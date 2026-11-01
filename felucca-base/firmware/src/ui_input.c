@@ -1976,6 +1976,7 @@ static void ui_input(void)
 #endif
     fm6_poll();                                         /* FM6: PTCH turned -> its patch */
     morph_poll();                                       /* DUELL 4b: MIDI's MORPH actions, AMOUNT / TARGET's settings */
+    TIDE_POLL();                                         /* TIDE hook (H13) */
     pc_poll();                                          /* DUELL: MIDI's PROGRAM CHANGEs (ui.c) */
     pl_poll();                                          /* DUELL 0.2.16: PATCHES' accelerated K1 loads the sound it settled on (ui.c) */
     mode_settings();                                    /* DUELL step 5: the MODE and its settings byte */
@@ -2421,3 +2422,6 @@ timeout:
     ui.force = 1;
     ui_message("SETUP CANCELLED");
 }
+#if DUELL_TIDE
+#include "tide_ui.c"           /* TIDE hook (H13): TIDE's UI side */
+#endif

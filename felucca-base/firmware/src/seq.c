@@ -326,7 +326,7 @@ static __attribute__((noinline)) void arp_chord(track_t *t, const uint32_t *list
 static uint32_t arp_seq_notes(track_t *t, const uint32_t *list, uint32_t n, uint8_t *out, uint32_t *vel)
 {
     uint32_t len = t->p[P_SLEN] > 0 ? (uint32_t)t->p[P_SLEN] : 1u, k = t->arp_idx, i, j, m = 0, nt, lo = 127, oc;
-    const step_t *s = &seq_steps(t)[k % len];
+    const step_t *s = TIDE_PLAY_STEP(t, k % len);   /* TIDE hook (H2) */
     int32_t off;
     if (s->time != ST_NOTE || !s->n)
         return 0;                                   /* a rest */
@@ -1088,6 +1088,7 @@ static void seq_start(void)
 {
     uint32_t i;
     midi_grid_reset();
+    TIDE_SEQ_START();                               /* TIDE hook (H3) */
     motion_begin();
     for (i = 0; i < NTRK; i++) {                   /* every track from its step 0, together */
         track_t *t = &trk[i];
@@ -1159,7 +1160,7 @@ static __attribute__((noinline)) void seq_step(track_t *t, const step_t *s, uint
     uint32_t vel = (s->flags & SF_ACCENT) ? 127u : (s->vel ? s->vel : 96u);
     uint32_t slide_in = t->seq_hold && t->seq_n && !(skip & SEQ_REP);
     uint32_t len = t->p[P_SLEN] ? (uint32_t)t->p[P_SLEN] : 1u;
-    uint32_t next_tie = seq_steps(t)[(idx + 1u) % len].time == ST_TIE;
+    uint32_t next_tie = TIDE_PLAY_STEP(t, (idx + 1u) % len)->time == ST_TIE;   /* TIDE hook (H2) */
     uint32_t hits = step_ratchet(s);
     uint8_t nn[4], vv[4];                           /* the notes it plays */
     uint32_t m = 0, sk = 0;
@@ -1243,7 +1244,7 @@ static __attribute__((noinline)) void seq_audition(void)
  * The step is read again: an edit to fewer parts (or another source in a song) ends the repeats */
 static __attribute__((noinline)) void seq_ratchet(track_t *t, uint32_t period)
 {
-    const step_t *s = &seq_steps(t)[t->seq_idx];
+    const step_t *s = TIDE_PLAY_STEP(t, t->seq_idx);   /* TIDE hook (H2) */
     uint32_t hits = step_ratchet(s);
     if (t->rat_left >= hits) {
         t->rat_left = 0;
@@ -1284,7 +1285,7 @@ static __attribute__((noinline)) void seq_mods_off(track_t *t)
  * already sounds left out (rskip), then its notes. On its start, or (NUDGE) at its start + its nudge */
 static __attribute__((noinline)) void seq_play(track_t *t, uint32_t idx, uint32_t period)
 {
-    const step_t *s = &seq_steps(t)[idx];
+    const step_t *s = TIDE_PLAY_STEP(t, idx);   /* TIDE hook (H2) */
     const motion_store_t *m = &motion;
     uint32_t skip = SEQ_ROLLED, i, k;
     if (mods_off & MODS_SEQ) {                      /* DUELL 0.2.14 GLO > MODULES SEQ OFF: no stored step plays, neither its notes nor its */
@@ -1339,12 +1340,12 @@ static __attribute__((noinline)) void seq_nd_start(track_t *t, uint32_t period, 
     t->nd_early = ND_NONE;
     if (t->nd_fired == t->seq_idx + 1u)
         ;                                           /* (it played early) */
-    else if ((d = seq_nudge(t, &seq_steps(t)[t->seq_idx])) > 0)
+    else if ((d = seq_nudge(t, TIDE_PLAY_STEP(t, t->seq_idx))) > 0)   /* TIDE hook (H2) */
         t->nd_late = (uint32_t)d * period / NUDGE_DIV + 1u;
     else
         seq_play(t, t->seq_idx, period);
     t->nd_fired = 0;
-    if ((d = seq_nudge(t, &seq_steps(t)[nx])) < 0) {
+    if ((d = seq_nudge(t, TIDE_PLAY_STEP(t, nx))) < 0) {   /* TIDE hook (H2) */
         uint32_t at = step_samples(t, period, t->seq_idx), back = (uint32_t)-d * period / NUDGE_DIV;
         at = (at > back ? at - back : 0u) + 1u;
         t->nd_early = at < t->nd_late ? t->nd_late : at;   /* (never before this step's own late play) */
@@ -1789,6 +1790,7 @@ static void events_block(uint32_t n)
     if (aud_req)
         seq_audition();                               /* (STEP PREVIEW: a step sounds, stopped) */
     uint32_t beat_adv = clock_mode ? midi_grid_advance(&midi_beat_grid, arp_n, 0u) : arp_n;
+    TIDE_BEAT_BLOCK(beat_adv);                         /* TIDE hook (H3) */
     for (i = 0; i < NSHOWN; i++)                      /* (tracks 3, 4: never step) */
         seq_tick(&trk[i], seq_n);
     if (cin_flush)
@@ -1811,3 +1813,6 @@ static void events_block(uint32_t n)
     if (song.playing)
         song.tick++;
 }
+#if DUELL_TIDE
+#include "tide_seq.c"          /* TIDE hook (H1): TIDE's sequencer side */
+#endif
