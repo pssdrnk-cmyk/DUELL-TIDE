@@ -535,6 +535,7 @@ static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int
     }
 }
 
+#include "unison_start.c"                                /* the extra UNISON voices' start offsets (fix C) */
 /* MONO / LEGATO / UNISON: one note on one voice (eight for UNISON, or the
  * engine's voice cap, spread by DETUNE over the same width) */
 static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int glide)
@@ -550,10 +551,11 @@ static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int g
         if (retrig || !v->active || !v->gate) {
             if ((!v->active || v->stage == 4u) && !voice_room(t, i > 0))
                 continue;                                   /* no room for this extra UNISON voice */
+            int was_sounding = v->active && v->stage != 0;  /* (a sounding voice keeps its phase on a re-strike) */
             /* level: about the same sum for 8 or 4 voices at random phases */
             voice_start(t, v, note, nv >= NVOICE ? vel * 36u / 100u : nv > 1u ? vel / 2u : vel, glide);
             v->side = (uint8_t)(i & 1u);                    /* SPREAD: the detuned voices alternate */
-            if (nv > 1u && i && !ENGINES[t->engine]->sampled) {   /* random start phases: */
+            if (nv > 1u && i && !was_sounding && !ENGINES[t->engine]->sampled) {   /* random start phases: */
 #if DUELL_BENCH
 #define MONO_SEED bench_mono_seed                           /* (bench builds: at file level, so the per-test reset can put it back: bench.c) */
 #else
@@ -561,7 +563,7 @@ static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int g
 #define MONO_SEED seed
 #endif
                 MONO_SEED = MONO_SEED * 1664525u + 1013904223u;
-                v->ph[0] += MONO_SEED;
+                unison_spread(t, v, MONO_SEED);              /* (one time offset for the voice: its oscillators keep their relative timing) */
             }
         } else {                                            /* legato: new pitch, same envelope */
             v->note = (uint8_t)note;
