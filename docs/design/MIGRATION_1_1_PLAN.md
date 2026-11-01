@@ -29,6 +29,11 @@ TIDE-off also passes target checks: **556,920 B**, app SHA-256 `0a35ee3e6e530c60
 - The affected legacy `click_test.c` cannot compile on this branch: it uses the removed `chain` global and POSIX two-argument `mkdir` on Windows. Capture hooks remain available in hostsim; no test was weakened. Log: `work/audit/tide-scope-click.log`.
 - Existing unrelated host-suite failures remain: erase/menu 65, morph 2, web editor 16, librarian 2, and the old editor-round MockUnit.deviceMenu exception. Claude's UI batch reproduces the same failures before/after its patch. Old `ui_render` also fails to compile on its baseline. No broad rerun is required before hardware audition.
 
+## Browser emulator review
+
+- Owner requested emulator review before hardware testing. Built the current merged sources with Emscripten; added the missing `tide_store.c` include after project storage, matching firmware include order. This changes only the browser build, not the packaged device firmware. Served locally at `http://127.0.0.1:8765/`; click to start audio.
+- Emulator smoke confirms key/MIDI sound, redraw, PLAY/STOP and patch persistence. It reports three failures: two first-start GUIDE expectations and the heavy-song fixture (which still hardcodes an old engine ID). These remain unresolved; no claim of a fully passing emulator suite. Log: `work/audit/tide-emulator-smoke.log`.
+
 ## Next / handoff
 
 1. **Package ready:** source commit `a5b768d`, `work/handover-2026-11-01/tide-device-test-a5b768d/duell-tide-a5b768d.fwsc`. App 576,804 B; unchanged OTA loader 11,510 B; package 614,666 B. Package SHA-256 `baf0f863c9a1de3d9fe16d3f0acb325919918dcb020160c057d57d712a9b7da5`; manifest, checksums and licenses alongside. The actual updater parser passes product FM-1_901, chip key 0x980f, 581,564 B slot, decrypted app bytes, CRC and padding checks, for both enabled and disabled packages. The earlier `tide-device-test-be070fb` artifact is superseded. Source work is committed; subsequent roadmap-only updates do not change this package.
