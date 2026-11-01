@@ -1062,7 +1062,7 @@ static __attribute__((noinline)) void uf_run(voice_t *v, int32_t *buf, uint32_t 
     if (!v->uft) {                                      /* from rest: no ramp */
         a1 = a2 = 0;
         v->ufw[0] = (int16_t)cx; v->ufw[1] = (int16_t)cb; v->ufw[2] = (int16_t)cl;
-    } else if (!blend && v->uft != 1u + s24) {
+    } else if (!blend && !v->msl && v->uft != 1u + s24) {   /* (a morph that already faded the second stage out: no second fade at its rounded end) */
         fd = s24 ? 1 : -1;                              /* SLOPE turned while sounding: the second stage fades in (out) over the block */
     }
     if (!cx && !a1 && !a2)
