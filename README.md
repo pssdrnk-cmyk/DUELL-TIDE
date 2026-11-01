@@ -20,8 +20,8 @@ It is made for playing the FM-1 as a **background**: set a tide going, then play
 
 | AUTO TIDE | MORPH SETTINGS | MORPH, mid-glide |
 |:---:|:---:|:---:|
-| <img src="docs/tide/auto-tide.png" width="260" alt="AUTO TIDE page with both parts: DRIFTING TO B 4/8, the SOUND and SEQ faders of parts 1 and 2, MODE DRIFT, TIME 8 BARS, WAIT OFF"> | <img src="docs/tide/morph-settings.png" width="260" alt="MORPH SETTINGS page: TARGET BOTH, VARY BARS 4 + 8, ROLL MUSIC, ARP, PITCH, WASH LEVEL"> | <img src="docs/tide/morph-gliding.png" width="260" alt="MORPH page while a tide plays: the fader at 62"> |
-| The glide's state on knob 1's line (here *drifting to B, bar 4 of 8*), with both parts gliding: each part's SOUND and SEQ fader and its steps as they play, and MODE / TIME / WAIT on knobs 2 to 4. | What the tide moves and how a new End B is rolled. Knob 1 picks the row, OCT+ / OCT- change it. | DUELL's own MORPH page follows the glide, so you see where the sound is between A and B. |
+| <img src="docs/tide/auto-tide-jrny-both.png" width="260" alt="AUTO TIDE page with both parts on a JRNY: JRNY TO B 10/16, the SOUND and SEQ faders of parts 1 and 2 half way, MODE JRNY, TIME 16 BARS, WAIT 2 BARS"> | <img src="docs/tide/morph-settings.png" width="260" alt="MORPH SETTINGS page: TARGET BOTH, VARY BARS 4 + 8, ROLL MUSIC, ARP, PITCH, WASH LEVEL"> | <img src="docs/tide/morph-gliding.png" width="260" alt="MORPH page while a tide plays: the fader at 62"> |
+| The glide's state on knob 1's line (here a *JRNY to B, bar 10 of 16*), with both parts gliding: each part's SOUND and SEQ fader, its steps as they play and the sound it has travelled to, and MODE / TIME / WAIT on knobs 2 to 4. | What the tide moves and how a new End B is rolled. Knob 1 picks the row, OCT+ / OCT- change it. | DUELL's own MORPH page follows the glide, so you see where the sound is between A and B. |
 
 *Screenshots from the [web emulator](https://pssdrnk-cmyk.github.io/DUELL-TIDE/emu/).*
 
