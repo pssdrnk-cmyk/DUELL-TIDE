@@ -330,6 +330,13 @@ static int tide_foot_parts(void)
     uint32_t g = cur_page()->graph;
     return NSHOWN >= 2u && !ui.perf && !ui.layer && !ui.ml.on && (g == GR_TIDE || g == GR_TIDELIST || g == GR_MODE || g == GR_MORPH);
 }
+/* .. TIDE and TIDE SET, whose footer has its two rows (MORPH's and MODE's cards take row 1: there row 2 names the selected part):
+ * part 1 on row 1, part 2 on row 2, each its engine in its colour and the sound it plays (owner, 2026-11-01: as JAM did) */
+static int tide_foot_two(void)
+{
+    uint32_t g = cur_page()->graph;
+    return tide_foot_parts() && !ui.menu && !ui.guide && !ui.confirm && (g == GR_TIDE || g == GR_TIDELIST);
+}
 
 /* ---------------------------------------------------------------- the cards --- */
 static void tide_columns(void)
@@ -370,8 +377,8 @@ static void tide_status(char *l)
     if (!glide_running())
         str_cpy(l, tide_both() ? "BOTH PARTS" : song.sel ? "PART 2" : "PART 1", 40);
     else if (gl.armed)
-        str_cpy(l, "GLIDE ON THE NEXT BAR", 40);
-    else if (gl.clocked && !song.playing)
+        str_cpy(l, song.playing || transport_req == 1u ? "GLIDE ON THE NEXT BAR" : "GLIDE STARTS WITH PLAY", 40);
+    else if (!song.playing)
         str_cpy(l, "PAUSED: PLAY GOES ON", 40);
     else {
         str_cpy(l, gl.hold ? "WAITING" : ST[gl.mode % 5u], 40);
