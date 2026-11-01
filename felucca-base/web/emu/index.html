@@ -12,19 +12,28 @@
 <style>
 /* DotGothic16 (SIL OFL 1.1, fonts/OFL.txt), cut to printable ASCII, for the knob labels */
 @font-face { font-family: "DotGothic16"; src: url("fonts/DotGothic16-subset.woff") format("woff"); font-display: swap; }
-:root { --bg: #8e8e93; --fg: #111; --dim: #2c2c2e; --rule: #5a5a5e;
+/* Barlow Semi Condensed (SIL OFL 1.1, fonts/OFL-Barlow.txt), the unit's screen font (assets/fonts), cut to Latin-1 */
+@font-face { font-family: "Barlow Semi Condensed"; font-weight: 500; src: url("fonts/BarlowSemiCondensed-Medium-subset.woff") format("woff"); font-display: swap; }
+@font-face { font-family: "Barlow Semi Condensed"; font-weight: 700; src: url("fonts/BarlowSemiCondensed-Bold-subset.woff") format("woff"); font-display: swap; }
+/* the page wears the unit's default screen theme, VIOLET (tools/gen_ui_palettes.py): ground, text, secondary, borders,
+   part 1 (A) and part 2 (A); --dim is the firmware's DIM (BG -> TEXT 42 %) brightened a step for small text */
+:root { --bg: #080108; --fg: #ffffff; --dim: #b5a8bd; --rule: #9a3fe0; --card: #0a0414;
+        --p1: #dc38ff; --p2: #ff1f8e;
         --body: #1d1d1f; --tray: #141415; --part: #2a2a2d; --edge: #3a3a3e; --label: #d6d6d8;
-        --lit: #fff4d6; --green: #5fe08a; color-scheme: light; }
+        --lit: #fff4d6; --green: #5fe08a; color-scheme: dark; }
 html, body { background: var(--bg); }
-body { margin: 0; color: var(--fg); font: 13px/1.6 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
+body { margin: 0; color: var(--fg); font: 500 15px/1.5 "Barlow Semi Condensed", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
 main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 32px; }
 @media (orientation: portrait) and (max-width: 700px) { main { padding: 8px 8px 24px; } }
-a { color: inherit; }
+a { color: var(--p1); }
+a:hover { color: var(--p2); }
 header.title { text-align: center; margin: 0 0 16px; }
-header.title h1 { font-size: 40px; font-weight: 700; margin: 0; letter-spacing: .02em; line-height: 1.2; }
+header.title h1 { font-size: 48px; font-weight: 700; margin: 0; letter-spacing: .02em; line-height: 1.1; }
+header.title h1 span { color: var(--p1); }
 header.title p { margin: 0; }
-header.title .tag { font-weight: 700; font-size: 15px; }
-header.title .version { margin-top: 6px; font-size: 12px; color: var(--dim); }
+header.title .tag { font-weight: 700; font-size: 17px; }
+header.title .note { color: var(--dim); }
+header.title .version { margin-top: 6px; font-size: 14px; color: var(--p2); font-weight: 700; letter-spacing: .04em; }
 .device { position: relative; width: 100%; aspect-ratio: 1000 / 624; user-select: none; -webkit-user-select: none;
           -webkit-touch-callout: none; touch-action: manipulation; }
 .device svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
@@ -75,33 +84,38 @@ header.title .version { margin-top: 6px; font-size: 12px; color: var(--dim); }
 .ktop:not(.lit) .slit { animation: top-pulse var(--kl-pms, 1130ms) ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .ktop:not(.lit) .slit { animation: none; } }
 .held .face { stroke: var(--lit); stroke-width: 3; }
-.latched .face { stroke: #79b8ff; stroke-width: 3; }
+.latched .face { stroke: var(--p2); stroke-width: 3; }
 .start { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 12px;
          background: rgba(0, 0, 0, .5); border-radius: 4% / 6%; }
 .start[hidden] { display: none; }
-.start button { font: inherit; font-size: 18px; padding: 12px 28px; background: #fff; color: #000; border: 0; cursor: pointer; }
+.start button { font: inherit; font-weight: 700; font-size: 20px; letter-spacing: .04em; padding: 10px 28px; background: var(--p1); color: var(--bg); border: 0; border-radius: 8px; cursor: pointer; }
+.start button:hover { background: var(--p2); }
 .start button:disabled { opacity: .4; cursor: progress; }
 .start p { margin: 0; max-width: 32em; text-align: center; color: #fff; }
 .keys, footer { margin: 16px 0 0; color: var(--dim); text-align: center; }
 section.info { max-width: 720px; margin: 24px auto 0; color: var(--fg); }
-section.info h2 { font-size: 15px; margin: 0 0 4px; }
+section.info h2 { font-size: 20px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--p1); margin: 0 0 4px; }
+section.info h2 + ul li::marker { color: var(--p1); }
+section.info h2.p2 { color: var(--p2); }
+section.info h2.p2 + ul li::marker { color: var(--p2); }
 section.info ul { margin: 0 0 16px; padding-left: 20px; }
 section.info li { margin: 2px 0; }
 .keys span { white-space: nowrap; margin: 0 8px; }
-kbd { font: 600 11px ui-monospace, Menlo, monospace; border: 1px solid var(--rule); padding: 0 4px; color: var(--fg); }
-footer { margin-top: 12px; font-size: 12px; }
+kbd { font: 700 13px "Barlow Semi Condensed", ui-monospace, Menlo, monospace; background: var(--card); border: 1px solid var(--rule); border-radius: 4px; padding: 0 5px; color: var(--fg); }
+footer { margin-top: 12px; font-size: 14px; }
 footer nav a { margin: 0 6px; }
-footer nav button { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0 6px; cursor: pointer; text-decoration: underline; }
-footer small { font-size: 11px; opacity: .8; }
+footer nav button { font: inherit; color: var(--p1); background: none; border: 0; padding: 0; margin: 0 6px; cursor: pointer; text-decoration: underline; }
+footer small { font-size: 12px; opacity: .8; }
+footer small.version { color: var(--p2); font-weight: 700; opacity: 1; }
 </style>
 </head>
 <body>
 <main>
 <header class="title">
-  <h1>DUELL-TIDE</h1>
+  <h1>DUELL-<span>TIDE</span></h1>
   <p class="tag">an unofficial fork of DUELL, MultiMorphing Bitimbral Synthesizer by OSCILL/R</p>
   <p class="version">@VERSION@ + TIDE web emulator</p>
-  <p class="tag">Not made or endorsed by OSCILL/R or M-VAVE. The official DUELL is at <a href="https://oscillr.github.io/DUELL/">oscillr.github.io/DUELL</a>.</p>
+  <p class="tag note">Not made or endorsed by OSCILL/R or M-VAVE. The official DUELL is at <a href="https://oscillr.github.io/DUELL/">oscillr.github.io/DUELL</a>.</p>
 </header>
 <div class="device" id="device">
   <svg id="panel" viewBox="0 0 1000 624" aria-hidden="true"></svg>
@@ -127,7 +141,7 @@ footer small { font-size: 11px; opacity: .8; }
     <li>TIDE: the first start loads DUB CHORD. Press HOME until AUTO TIDE, then twist KNOB 1: PLAY starts and the sound travels by itself. Twist KNOB 1 again to stop it where it is.</li>
     <li>The unit's own guide opens on the screen at the first start. The full tour is the <a href="https://github.com/oscillr/DUELL/blob/main/docs/QUICKSTART.md">quick start</a>.</li>
   </ul>
-  <h2>What is different from the real FM-1</h2>
+  <h2 class="p2">What is different from the real FM-1</h2>
   <ul>
     <li>Single core. The unit plays part 2 on the chip's second core. Here both parts run on one core.</li>
     <li>No USB. No firmware update, no USB audio, no editor connection. MIDI comes in through your browser (Web MIDI).</li>
@@ -140,7 +154,7 @@ footer small { font-size: 11px; opacity: .8; }
 <footer>
   <small class="version">@VERSION@ + TIDE web emulator</small><br>
   DUELL-TIDE is an unofficial fork of DUELL by OSCILL/R, which is a fork of Felucca. Free software under the GPL-3.0, with no warranty<br>
-  Felucca by Leo Kuroshita, Hügelton Instruments · browser build after charlesvestal's <a href="https://github.com/charlesvestal/fm1-x0x">X0X</a> · DotGothic16 font, <a href="fonts/OFL.txt">SIL OFL 1.1</a><br>
+  Felucca by Leo Kuroshita, Hügelton Instruments · browser build after charlesvestal's <a href="https://github.com/charlesvestal/fm1-x0x">X0X</a> · DotGothic16 and Barlow Semi Condensed fonts, <a href="fonts/OFL.txt">SIL OFL 1.1</a> (<a href="fonts/OFL-Barlow.txt">Barlow</a>)<br>
   <nav><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE">Source code (GPL-3.0)</a><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/LICENSE">Licence</a><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/CREDITS.md">Credits</a><a href="https://github.com/oscillr/DUELL">Official DUELL</a><a href="https://github.com/hugelton/Felucca">Based on Felucca</a><button type="button" id="dl">Download saved data</button><button type="button" id="ul">Load saved data</button><input type="file" id="ulfile" accept=".bin" hidden></nav>
   <small>M-VAVE and FM-1 are trademarks of their respective owners. DUELL-TIDE, DUELL and Felucca are not affiliated with or endorsed by them.</small>
 </footer>
