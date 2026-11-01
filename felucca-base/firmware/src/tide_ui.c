@@ -43,17 +43,70 @@ static void tide_home(uint32_t mask)
         seqm_home(k);
     }
 }
-/* KEEP (SEQ held, E4: ui_tools.c), the sound's half: what part pi sounds like now becomes its Original (then the ends rebased on it) */
+/* part pi sounds other than its Original: the fader off A, or End A itself moved (a roll or MORPH TO of A) */
+static int tide_sound_moved(uint32_t pi)
+{
+    return pi < NSHOWN && morph_view_on(pi) && (mph[pi].fader || mph[pi].top[0]);
+}
+/* KEEP's sound half: what part pi sounds like now becomes its Original (then the ends rebased on it, End B a new roll). The values
+ * as the fader blends them (morph_view_all); on FM6 the patch as it sounds (morph_tide.c tide_fm6_effective: the blend and a
+ * MORPH TO target's structure) with the carriers' envelopes as the engine played them (the AMP ENV knobs' offsets baked in:
+ * fm6_eff, fm6_env_apply), then the knobs on the kept patch's numbers (FM6_LOOK_NEW: offset 0), so the envelope heard stays even
+ * where moving a knob would clamp at 0 / 127; its SLOT the factory patch it equals or OWN (as fm6_adopt). One locked swap: the
+ * morph rests (no list) until the rebase, so no block hears the kept values blended again */
 static void tide_keep_sound(uint32_t pi)
 {
-    static int16_t v[EXT_P_LEN];
-    uint32_t id;
-    for (id = 0; id < EXT_P_LEN; id++)
-        v[id] = (id < P_COUNT || id >= XW_BASE) ? (int16_t)morph_view(pi, id) : trk[pi].p[id];
+    int16_t *v = tide_v;                                 /* (morph_tide.c's scratch: free here) */
+    uint8_t *fp = tide_fv;
+    morph_part_t *mp = &mph[pi];
+    uint32_t fm = trk[pi].eng_req == ENGI_FM6 && morph_isfm(mp);
+    morph_view_all(pi, v);
+    if (fm)
+        tide_fm6_effective(pi, fp);
     MORPH_LOCK();
-    memcpy(trk[pi].p, v, sizeof v);
+    if (fm && fm6_eff[pi].ok) {
+        uint32_t car = fm6_carriers(fm6_eff[pi].alg), k, j;
+        for (k = 0; k < 6u; k++)
+            if ((car >> k) & 1u)
+                for (j = 0; j < 4u; j++) {
+                    fp[k * FP_OP + FP_R1 + j] = fm6_eff[pi].p[k * FP_OP + FP_R1 + j];
+                    fp[k * FP_OP + FP_L1 + j] = fm6_eff[pi].p[k * FP_OP + FP_L1 + j];
+                }
+    }
+    memcpy(trk[pi].p, v, sizeof trk[pi].p);
+    mp->nid = mp->fnid = 0;
+    mp->cvalid = 0;
+    if (fm) {
+        fm6_set_patch(pi, fp);
+        fm6_env_look(pi, FM6_LOOK_NEW);
+        fm6_own_ok &= (uint8_t)~(1u << pi);
+        trk[pi].p[P_E7] = (int16_t)fm6_adopt_slot(fm6_patch[pi], trk[pi].p[P_E7]);
+        fm6_slot[pi] = (uint8_t)trk[pi].p[P_E7];
+    }
     MORPH_UNLOCK();
     morph_rebase_part(pi);
+}
+/* KEEP (SEQ TOOLS, G4: ui_tools.c TL_KEEP; plan H14): what part pi plays now becomes its own, one undo for both halves (SAVE held:
+ * the pattern and, when the sound was kept, the sound). The pattern half: the SEQ MORPH's variation as it plays (seqm_keep, 1.1's
+ * ties); steps it empties lose their locks (tl_unlock). The message; 0 = nothing to keep (said) */
+static const char *tide_tl_keep(track_t *t, uint64_t was, uint32_t len)
+{
+    uint32_t pi = trk_index(t);
+    int sq = pi < NSHOWN && seqm_active(pi), snd = tide_sound_moved(pi);
+    if (!sq && !snd) {
+        ui_message("NOTHING TO KEEP");
+        return 0;
+    }
+    tl_undo_take(t);
+    if (snd)
+        undo.what |= UNDO_SOUND;
+    if (sq) {
+        seqm_keep(t);
+        tl_unlock(t, was, len);
+    }
+    if (snd)
+        tide_keep_sound(pi);
+    return sq && snd ? "KEPT" : sq ? "SEQ KEPT" : "SOUND KEPT";
 }
 
 /* LINK (TARGET BOTH): the MORPH fader moved by hand to v moves the SEQ faders of mask to v too (ui_input.c morph_act) */

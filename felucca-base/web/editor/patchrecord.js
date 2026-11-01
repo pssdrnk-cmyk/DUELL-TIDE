@@ -12,7 +12,7 @@
 import { L, P_E0, descOf, valueText } from "./layout.js";
 
 export const PTF = { PAT: 1, TR: 2, FM6: 4, MB: 8, AK: 32, CB: 128, ALL: 175 };   // TR (0.2.19): the loudness is the pair of P_TRIM and the record carries no mixer level (P_LEVEL); a record without it held it as P_LEVEL: read as the trim. (PT_VER 3's XB 16 and BM 64 are gone: a record with them is refused)
-export const FIX = 20, VB = 20, WORST = 577;        // the fixed part; the values' bitmap; the biggest record there can be: the unit's PT_WORST (the firmware refuses a longer one)
+export const FIX = 20, VB = 20, WORST = 580;        // the fixed part; the values' bitmap; the biggest record there can be: the unit's PT_WORST (the firmware refuses a longer one; TIDE: 577 + MBV_FMT's 3)
 export const NX = 28, XW_BASE = 128;                // the extension slots (DUELL 1.1: NX 28)
 export const XB_DEFS = [64, 65, 64, 64, 64, 64, 64, 65, 64, 64, 64, 74, 134, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 191, 191, 64];   // slot k's default is XB_DEFS[k] - 64 (up_xb.h XB_DEFS: TWIN LINK is ON, SUB OCTAVE is -1, the two LFO LEVELs are 127)
 export const XB_NAMES = ["TWIN ROUTE", "TWIN LINK", "TWIN KEY TRACK", "TWIN FILTER ENV DEPTH", "TWIN LFO 1 DEPTH", "TWIN LFO 2 DEPTH", "SUB LEVEL", "SUB OCTAVE", "SUB WAVE", "SUB HARMONICS",
@@ -71,8 +71,9 @@ const NFM = 65, MBV_HDR = 22, MBV_FMN = 57, PIN_BYTES = 20, FM6_ENGINE = () => e
 // The End B block (morph.c MBV) at b[at] with avail bytes there, for an engine eng: its length, 0 = no block (morph_bv_size).
 //   [0] flags (1 the marks of the hand-set values follow, 2 the 65 FM6 End B bytes follow)   [1] AMOUNT + 1 (0 not stored; at most 101)   [2..21] a bit per wide id: End B differs from the Original
 //   then the values of the set bits at their range bits, padded to the byte   [flag 1] 20 bytes of marks   [flag 2] 57 bytes: 65 FM6 bytes, 7 bits each (each at most 99)
+//   [flag 4, TIDE's MBV_FMT, FM6 only] 3 bytes: End B's MORPH TO target (its factory index + 1, never 0) and the check sum of its patch (kept as they are)
 export function endBSize(b, at, avail, eng) {
-  if (avail < MBV_HDR || eng >= L.NENGINES || (b[at] & ~3) || b[at + 1] > 101 || ((b[at] & 2) && eng !== FM6_ENGINE())) return 0;
+  if (avail < MBV_HDR || eng >= L.NENGINES || (b[at] & ~7) || b[at + 1] > 101 || ((b[at] & 6) && eng !== FM6_ENGINE())) return 0;
   let nb = 0;
   for (let w = 0; w < 160; w++) if (b[at + 2 + (w >> 3)] >> (w & 7) & 1) { if (!widOk(w) || NEVER.has(w)) return 0; nb += widBits(eng, w); }
   let len = MBV_HDR + (nb + 7 >> 3);
@@ -86,6 +87,10 @@ export function endBSize(b, at, avail, eng) {
     const p = { n: (at + len) * 8 };
     for (let i = 0; i < NFM; i++) if (bsGet(b, p, 7) > 99) return 0;
     len += MBV_FMN;
+  }
+  if (b[at] & 4) {
+    if (len + 3 > avail || !b[at + len]) return 0;
+    len += 3;
   }
   return len;
 }

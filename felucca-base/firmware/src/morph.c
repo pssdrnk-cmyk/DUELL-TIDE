@@ -2165,6 +2165,7 @@ static uint32_t morph_sig(void)
  *            a bitstream padded to the byte
  *   [MBV_PINS] 20 bytes: a bit per wide id, End B's values set by hand (EDITABLE B)
  *   [MBV_FMB]  57 bytes: End B's 65 FM6 bytes (fm_byte order, 0..99), 7 bits each, LSB first
+ *   [MBV_FMT]  TIDE only, 3 bytes: End B's MORPH TO target on FM6 (morph_tide.c tide_mbv_make)
  * The 26 wide values that never differ between the ends (mbv_never: never rolled, not in WILD either, not editable at B, kept equal by the fold) have no bit.
  * Lossless: a value is stored inside its range, which is what a load fits it to anyway (param_fit). From the alpha on these ranges are part of the format
  * (frozen: a changed range in params.c or an engine's edit table would read stored patches wrong) */
@@ -2173,8 +2174,8 @@ static uint32_t morph_sig(void)
 #define MBV_HDR 22u
 #define MBV_FMN ((NFM * 7u + 7u) / 8u)                   /* 57 */
 #define MBV_VMAX 96u                                     /* the values' most bytes: every wide value but mbv_never's at the worst engine (762 bits, the placeholder of the retired engines; FM6 745); morph_bv_limits_ok */
-#define MBV_MAX (MBV_HDR + MBV_VMAX + PIN_BYTES + MBV_FMN)   /* 195 */
-_Static_assert(PIN_BYTES == 20u && EXT_P_LEN <= 160u && MBV_FMN == 57u && MBV_MAX == 195u, "MBV: the two bitmaps and the FM6 bytes");
+#define MBV_MAX (MBV_HDR + MBV_VMAX + PIN_BYTES + MBV_FMN + TIDE_MBV_FMT_N)   /* 195 (TIDE: 198) */   /* TIDE hook (H9) */
+_Static_assert(PIN_BYTES == 20u && EXT_P_LEN <= 160u && MBV_FMN == 57u && MBV_MAX == 195u + TIDE_MBV_FMT_N, "MBV: the two bitmaps and the FM6 bytes");
 static int mbv_wid(uint32_t w) { return w < P_COUNT || (w >= XW_BASE && w < EXT_P_LEN); }
 static int mbv_never(uint32_t w)                         /* a wide value End B never differs in */
 {
@@ -2238,7 +2239,7 @@ static int morph_bv_limits_ok(void)
 static uint32_t morph_bv_size(const uint8_t *b, uint32_t avail, uint32_t eng)
 {
     uint32_t w, nb = 0, len, at, i;
-    if (avail < MBV_HDR || eng >= NENGINES || (b[0] & ~(MBV_PINS | MBV_FMB)) || b[1] > 101u || ((b[0] & MBV_FMB) && eng != ENGI_FM6))
+    if (avail < MBV_HDR || eng >= NENGINES || (b[0] & ~(MBV_PINS | MBV_FMB | TIDE_MBV_FLAGS)) || b[1] > 101u || ((b[0] & (MBV_FMB | TIDE_MBV_FLAGS)) && eng != ENGI_FM6))   /* TIDE hook (H9) */
         return 0;
     for (w = 0; w < 160u; w++)
         if (b[2u + w / 8u] >> (w % 8u) & 1u) {
@@ -2263,6 +2264,7 @@ static uint32_t morph_bv_size(const uint8_t *b, uint32_t avail, uint32_t eng)
                 return 0;
         len += MBV_FMN;
     }
+    len = TIDE_MBV_SIZE(b, avail, len);                  /* TIDE hook (H9) */
     return len;
 }
 /* part pi's End B as a block into out (MBV_MAX bytes), against the Original ref (EXT_P_LEN values by wide id: what the record / project stores of the sound;
@@ -2312,7 +2314,7 @@ static uint32_t morph_bv_make(uint32_t pi, const int16_t *ref, uint8_t *out)
                 bs_put(out, &at, bb[i], 7u);
         }
     }
-    return (at + 7u) / 8u;
+    return TIDE_MBV_MAKE(pi, out, (at + 7u) / 8u);       /* TIDE hook (H9) */
 }
 /* a loaded sound's End B from its block b (morph_rebase_part, after the rebase: base = the Original just loaded): a new End B entry (UNDO goes back to the
  * Original as after any loaded B), the marks of the values set by hand, the part's AMOUNT. A damaged block: nothing (End B stays the Original) */
@@ -2355,6 +2357,7 @@ static void morph_bv_load(uint32_t pi, const uint8_t *b)
     mp->bstay = 0;
     morph_build(mp);
     MORPH_UNLOCK();
+    TIDE_MBV_LOAD(pi, b, len);                           /* TIDE hook (H9) */
 }
 /* a MULTI-less load of End B values (the project file, project.c): part pi's End B from block b, the fader at A (as morph_load_part) */
 static void morph_load_part_v(uint32_t pi, const uint8_t *b)

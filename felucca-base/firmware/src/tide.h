@@ -47,6 +47,12 @@ static void tide_poll(void);
 #define TIDE_FM6_TARGET(mp, tr, p, w) tide_fm6_target((mp), (tr), (p), (w))   /* (audio ISR) */
 #define TIDE_UNDO(pi, x) morph_fmto_sync((pi), (x))
 #define TIDE_MORPH_PROTOS static void tide_fm6_target(const morph_part_t *mp, uint32_t tr, uint8_t *p, int32_t w);
+/* H9 (morph.c's MBV block, main loop): End B's MORPH TO target on FM6 saved with patches, multis and the project (morph_tide.c) */
+#define TIDE_MBV_FMT_N 3u
+#define TIDE_MBV_FLAGS MBV_FMT
+#define TIDE_MBV_SIZE(b, avail, len) tide_mbv_size((b), (avail), (len))
+#define TIDE_MBV_MAKE(pi, out, n) tide_mbv_make((pi), (out), (n))
+#define TIDE_MBV_LOAD(pi, b, len) tide_mbv_load((pi), (b), (len))
 /* H10-H17 (the pages, the knobs, MIDI, the storage; main loop): tide_ui.c (end of ui_input.c), tide_store.c (felucca.c, after
  * upreset.c and project.c). Prototypes for the DUELL files that call them before they are compiled */
 static void graph_tide(void);
@@ -63,6 +69,11 @@ static void tide_list_oct(uint32_t oct);
 static int tide_store_load(uint8_t *b, uint32_t n);
 static void tide_store_mark(const uint8_t *b, uint32_t n);
 static void tide_store_poll(void);
+static const char *tide_tl_keep(track_t *t, uint64_t was, uint32_t len);   /* (tide_ui.c) */
+static void tl_undo_take(track_t *t);                    /* (ui_tools.c, compiled after tide_ui.c) */
+static void tl_unlock(track_t *t, uint64_t was, uint32_t len);
+#define TIDE_TL_KEEP , TL_KEEP                           /* H14 (ui_tools.c): SEQ TOOLS' G4, KEEP (the grid draws F3..F4's eight: no box) */
+#define TIDE_TL_DO(t, p, was, len) do { if ((p) == TL_KEEP) return tide_tl_keep((t), (was), (len)); } while (0)
 #define OBJ_TIDE (OBJ_PATCHX0 + 15u)                     /* TIDE's settings: patch chunk 21's object (storage.c, tide_store.c) */
 #define TIDE_PT_NCH 21u                                  /* the patch store's chunks with TIDE: 126 saved patches at most (plan §4.5) */
 #define TIDE_MG_N 5u                                     /* ui.mg's gestures: MORPH's, GLO's and GLIDE's (tide_ui.c TIDE_G_GLIDE) */
@@ -103,6 +114,13 @@ static void tide_store_poll(void);
 #define TIDE_FM6_TARGET(mp, tr, p, w) ((void)0)
 #define TIDE_UNDO(pi, x) ((void)0)
 #define TIDE_MORPH_PROTOS
+#define TIDE_MBV_FMT_N 0u
+#define TIDE_MBV_FLAGS 0u
+#define TIDE_MBV_SIZE(b, avail, len) (len)
+#define TIDE_MBV_MAKE(pi, out, n) (n)
+#define TIDE_MBV_LOAD(pi, b, len) ((void)0)
+#define TIDE_TL_KEEP
+#define TIDE_TL_DO(t, p, was, len) ((void)0)
 #define TIDE_PT_NCH 22u
 #define TIDE_MG_N 4u
 #define TIDE_PAGE(pg) 0

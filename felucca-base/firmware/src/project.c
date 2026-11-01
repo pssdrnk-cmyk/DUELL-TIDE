@@ -26,7 +26,7 @@
 #define PROJ_PHYS 2u                           /* project_t.phys, byte 64: always written 2, a project that says otherwise is not one */
 #define PROJ_REV 8u                            /* byte 67: 8 = ROLL CHAINED storage (2026-10-29): per part, after the extension slots, End B as values (a length byte, 0 = none, then morph.c's MBV block: the hand-set marks in it), then engine, preset and the steps; the edit list and the 7-byte seed block are gone. 7 (editable B: the edit list and the 7-byte block) and before are refused */
 #define PROJ_MB_N 7u                           /* End B's seed block: morph.c MB_N (a MULTI keeps it: multi.c; the project file does not since PROJ_REV 8) */
-#define PROJ_BV_MAX 195u                       /* End B as values: morph.c MBV_MAX (the _Static_assert at project_capture) */
+#define PROJ_BV_MAX (195u + TIDE_MBV_FMT_N)    /* End B as values: morph.c MBV_MAX (the _Static_assert at project_capture) */   /* TIDE hook (H9) */
 #define PROJ_NAME_LEN 12u                      /* the name: the reserved tail's end */
 typedef struct {                               /* one track */
     int16_t p[P_COUNT];

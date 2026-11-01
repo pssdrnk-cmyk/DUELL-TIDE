@@ -11,6 +11,46 @@
 
 static uint8_t morph_fmto[NSHOWN][2][FP_SIZE];          /* MORPH TO on FM6: the target's whole patch per end */
 static uint8_t morph_fmto_k[NSHOWN][2];                  /* .. the tok it is of (0: none) */
+/* main-loop scratch shared by morph_to_sound, morph_fmto_sync, tide_mbv_load and tide_ui.c tide_keep_sound (RAM: .data + .bss is
+ * tight). Lifetimes checked: none of them calls another while it holds these (tide_keep_sound is done with both before its
+ * morph_rebase_part, which may reach tide_mbv_load); never from the audio ISR */
+static int16_t tide_v[EXT_P_LEN];
+static uint8_t tide_fv[FP_SIZE + 1u];
+
+/* the FM6 patch bytes the morph blends (fm_byte): 1 there. The others are a MORPH TO target's structure (algorithm, ratios,
+ * detune, ...). Made on first use, from either context (the same bytes each time) */
+static uint8_t tide_fm_bl[FP_SIZE], tide_fm_bl_ok;
+static const uint8_t *tide_fm_blended(void)
+{
+    uint32_t i;
+    if (!tide_fm_bl_ok) {
+        for (i = 0; i < NFM; i++)
+            tide_fm_bl[fm_byte(i)] = 1;
+        tide_fm_bl_ok = 1;
+    }
+    return tide_fm_bl;
+}
+/* the target patch fv's structure as a 16-bit check (Fletcher-16 over the bytes the morph does not blend, but TRANSPOSE: PITCH OFF
+ * replaces it with the part's own): what MBV_FMT stores, so a load knows the target is still the one saved */
+static uint32_t tide_fmto_sum(const uint8_t *fv)
+{
+    const uint8_t *bl = tide_fm_blended();
+    uint32_t i, a = 1, b = 0;
+    for (i = 0; i < FP_NAME; i++)
+        if (!bl[i] && i != FP_TRNSP) {
+            a = (a + fv[i]) % 255u;
+            b = (b + a) % 255u;
+        }
+    return b << 8 | a;
+}
+/* end x of part pi's target cache := patch fv (FP_SIZE) of MORPH TO sound tk (index + 1). The caller holds the lock */
+static void tide_fmto_put(uint32_t pi, uint32_t x, uint32_t tk, const uint8_t *fv)
+{
+    memcpy(morph_fmto[pi][x], fv, FP_SIZE);
+    if (!(morph.cfg & MC_PIT))
+        morph_fmto[pi][x][FP_TRNSP] = fm6_patch[pi % NTRK][FP_TRNSP];
+    morph_fmto_k[pi][x] = (uint8_t)tk;
+}
 
 /* SLOT value s's patch into v (FP_SIZE + 1 bytes, sanitized), as fm6_load_slot reads it, without loading it. 1: none there */
 static int fm6_slot_patch(uint32_t s, uint8_t *v)
@@ -54,9 +94,10 @@ static int tide_roll(morph_part_t *mp, uint32_t pi, uint32_t x, int8_t *end, uin
  * blends go to the target's, the rest flips to it at the middle (tide_fm6_target); SLOT itself stays. 0: none */
 static int morph_to_sound(uint32_t pi, uint32_t x, uint32_t k)
 {
-    static int16_t v[EXT_P_LEN];
     static int8_t end[EXT_P_LEN], v8[EXT_P_LEN];
-    static uint8_t fv[FP_SIZE + 1u], fend[NFM];
+    static uint8_t fend[NFM];
+    int16_t *v = tide_v;
+    uint8_t *fv = tide_fv;
     int fm;
     morph_part_t *mp;
     const engine_t *e;
@@ -110,12 +151,8 @@ static int morph_to_sound(uint32_t pi, uint32_t x, uint32_t k)
     memcpy(mp->hx[x][j % XH], end + XW_BASE, NX);
     mp->xv[x] = (uint8_t)(mp->xv[x] < XH ? mp->xv[x] + 1u : XH);
     memcpy(mp->fh[x][j], fm ? fend : mp->fb, NFM);
-    if (fm) {
-        memcpy(morph_fmto[pi][x], fv, FP_SIZE);
-        if (!(morph.cfg & MC_PIT))
-            morph_fmto[pi][x][FP_TRNSP] = fm6_patch[pi % NTRK][FP_TRNSP];
-        morph_fmto_k[pi][x] = (uint8_t)(k + 1u);
-    }
+    if (fm)
+        tide_fmto_put(pi, x, k + 1u, fv);
     mp->tok[x][j] = (uint8_t)(k + 1u);
     mp->seed[x][j] = 0;
     mp->rcfg[x][j] = mp->ramt[x][j] = 0;
@@ -135,18 +172,15 @@ static int morph_to_sound(uint32_t pi, uint32_t x, uint32_t k)
 /* the cached target patch of end x again when an UNDO came back to another MORPH TO entry (FM6) */
 static void morph_fmto_sync(uint32_t pi, uint32_t x)
 {
-    static uint8_t fv[FP_SIZE + 1u];
+    uint8_t *fv = tide_fv;
     morph_part_t *mp = &mph[pi % NSHOWN];
     uint32_t tk = mp->tok[x & 1u][mp->top[x & 1u]];
     const ds_sound_t *s;
     if (!morph_isfm(mp) || !tk || tk == morph_fmto_k[pi % NSHOWN][x & 1u] || !(s = ds_get(eng_idx(mp->eng), tk - 1u)) ||
         fm6_slot_patch((uint32_t)clamp(ds_value(s, P_E7, 0), 0, 255), fv))
         return;
-    if (!(morph.cfg & MC_PIT))
-        fv[FP_TRNSP] = fm6_patch[pi % NTRK][FP_TRNSP];
     MORPH_LOCK();
-    memcpy(morph_fmto[pi % NSHOWN][x & 1u], fv, FP_SIZE);
-    morph_fmto_k[pi % NSHOWN][x & 1u] = (uint8_t)tk;
+    tide_fmto_put(pi % NSHOWN, x & 1u, tk, fv);
     mp->fser++;
     MORPH_UNLOCK();
 }
@@ -162,18 +196,70 @@ static int32_t morph_to_of(uint32_t pi, uint32_t x)
  * target does not blend, from the side the fader is on (S1: its middle; S2: the transition's side) */
 static void tide_fm6_target(const morph_part_t *mp, uint32_t tr, uint8_t *p, int32_t w)
 {
-    static uint8_t fade[FP_SIZE], made;
+    const uint8_t *fade;                                 /* (the bytes the blend owns: they keep the blend) */
     uint32_t sd = w >= 16384, i, tk = mp->tok[sd][mp->top[sd]];
     if (!tk || tk != morph_fmto_k[tr][sd])
         return;
-    if (!made) {                                         /* (the bytes the blend owns: they keep the blend) */
-        for (i = 0; i < NFM; i++)
-            fade[fm_byte(i)] = 1;
-        made = 1;
-    }
+    fade = tide_fm_blended();
     for (i = 0; i < FP_NAME; i++)
         if (!fade[i])
             p[i] = morph_fmto[tr][sd][i];
+}
+
+/* H9 (morph.c's MBV block, plan §4.10): End B's MORPH TO target on FM6 saved with it. MBV_FMT: 3 bytes at the block's end, the
+ * target's factory index + 1 and tide_fmto_sum of its patch (LSB first). Written only when End B is a MORPH TO sound whose
+ * patch is cached; every other block stays 1.1's (a plain 1.1 build refuses a block with the flag: integration note) */
+#define MBV_FMT 4u
+static uint32_t tide_mbv_make(uint32_t pi, uint8_t *out, uint32_t n)
+{
+    const morph_part_t *mp = &mph[pi];
+    uint32_t tk = mp->tok[1][mp->top[1]], c;
+    if (!morph_isfm(mp) || !tk || tk != morph_fmto_k[pi][1])
+        return n;
+    c = tide_fmto_sum(morph_fmto[pi][1]);
+    out[0] |= MBV_FMT;
+    out[n] = (uint8_t)tk;
+    out[n + 1u] = (uint8_t)c;
+    out[n + 2u] = (uint8_t)(c >> 8);
+    return n + 3u;
+}
+/* the length of a block with MBV_FMT (len: without it; avail bytes there), 0 = no block */
+static uint32_t tide_mbv_size(const uint8_t *b, uint32_t avail, uint32_t len)
+{
+    if (!(b[0] & MBV_FMT))
+        return len;
+    return len && len + 3u <= avail && b[len] ? len + 3u : 0u;
+}
+/* after morph_bv_load's End B (block b, len bytes): the target back when its sound's patch is still the one saved (its SLOT may be
+ * a user voice bank slot changed since); else End B keeps only the blended bytes, as 1.1 */
+static void tide_mbv_load(uint32_t pi, const uint8_t *b, uint32_t len)
+{
+    uint8_t *fv = tide_fv;
+    morph_part_t *mp = &mph[pi];
+    const ds_sound_t *s;
+    uint32_t tk;
+    if (!len || !(b[0] & MBV_FMT) || !morph_isfm(mp))
+        return;
+    tk = b[len - 3u];
+    if (!(s = ds_get(eng_idx(mp->eng), tk - 1u)) || fm6_slot_patch((uint32_t)clamp(ds_value(s, P_E7, 0), 0, 255), fv) ||
+        tide_fmto_sum(fv) != ((uint32_t)b[len - 2u] | (uint32_t)b[len - 1u] << 8))
+        return;
+    MORPH_LOCK();
+    mp->tok[1][mp->top[1]] = (uint8_t)tk;
+    tide_fmto_put(pi, 1u, tk, fv);
+    morph_build(mp);
+    MORPH_UNLOCK();
+}
+
+/* KEEP (tide_ui.c tide_keep_sound): part pi's FM6 patch as it sounds at the fader into p (FP_SIZE + 1): the stored patch, the
+ * blend at the fader and a MORPH TO target's structure from the side that sounds (morph_fm6 with tide_fm6_target, as the audio
+ * path makes it; S2's crossing decides the side there). The AMP ENV / E-knob offsets stay out (they are the Original's knobs) */
+static void tide_fm6_effective(uint32_t pi, uint8_t *p)
+{
+    memcpy(p, fm6_patch[pi % NTRK], FP_SIZE + 1u);
+    MORPH_LOCK();
+    (void)morph_fm6(pi, p);
+    MORPH_UNLOCK();
 }
 
 /* S2 (the smooth crossings, morph_xfer.c) is not ported yet: what GLIDE writes for them (glide_motion) is kept here and read by

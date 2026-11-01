@@ -216,6 +216,9 @@ static int at_home(void) { return cur_page()->fam == FAM_TRK; }   /* HOME's roun
 #endif
 #include "../firmware/src/upreset.c"
 #include "../firmware/src/project.c"
+#if DUELL_TIDE
+#include "../firmware/src/tide_store.c"                   /* (felucca.c: TIDE's settings record, after upreset.c and project.c) */
+#endif
 
 /* names the firmware no longer has (the SCALE quick layer, PATCHES' RESTORE dialog): kept only so that this file, and tests/gen_factory_multis.c which includes it, compile.
  * The tests that use them are stale like ui_old_uslot's: they need rewriting to the current UI (not done here) */
