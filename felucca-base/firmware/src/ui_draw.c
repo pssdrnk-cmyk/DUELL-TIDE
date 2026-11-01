@@ -405,7 +405,7 @@ static uint32_t badge_lit(void)
         return ui.layer == LAYER_GLO ? (1u << NSHOWN) - 1u : lit;   /* GLO's cards are per part: both (QUICK SCALE, whose three were global, is removed: change list A.7) */
     if (page_global(pg) || pg->scope == SC_MODE)   /* (a GLOBAL page: the SCALE page's, GLO's; the MODE page counts as global as in screen_global and ui_input.c algo_input, item 138: one rule. A global screen draws no capsules, so nothing on the screen changes) */
         return (1u << NSHOWN) - 1u;
-    if ((pg->graph == GR_MORPH || pg->scope == SC_TEST || pg->scope == SC_PERF))
+    if ((pg->graph == GR_MORPH || TIDE_PAGE(pg) || pg->scope == SC_TEST || pg->scope == SC_PERF))   /* TIDE hook */
         lit |= morph_mask(song.sel);                    /* (ALGORITHM's PART 1 / BOTH / PART 2 there: the morph's target) */
     return lit;
 }
@@ -2403,6 +2403,7 @@ static void draw_columns(void)
         k1_after_next = 0;
         return;
     }
+    TIDE_COLUMNS();                                    /* TIDE hook (TIDE, TIDE LIST) */
     if (cur_page()->scope == SC_MORPH) {               /* MORPH (fader, ROLL, UNDO, AMOUNT: v3), MORPH SET (SMART ARP PITCH; 0.2.9: TARGET is ALGORITHM's BOTH) */
         uint32_t pi = song.sel, f = morph_fader_of(pi);
         int32_t g;

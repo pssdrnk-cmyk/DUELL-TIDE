@@ -198,7 +198,7 @@ static const uint8_t ANIM_ORD[3] = {1, 0, 2};          /* (a value's place in th
  * its byte [15][26] kept as stored) */
 /* HOME OPENS (DUELL): the page the HOME button opens from another page, power-on and leaving the menu (ui.c go_main): MORPH (the
  * default, stored 0), MODE, MIXER; ui_home_pg (ui.c), an unknown stored code reads as MORPH (0.2.14: OVERVIEW's 3 too) */
-static const char *const HOMEPG_N[HP_COUNT] = {"MORPH", "MODE"};   /* (0.2.25: MIXER left HOME for GLO; a stored MIXER reads MORPH) */
+static const char *const HOMEPG_N[HP_COUNT] = {TIDE_HOME_NAME, "MODE"};   /* TIDE hook */   /* (0.2.25: MIXER left HOME for GLO; a stored MIXER reads MORPH) */
 /* (SCALE LINK, a CONTROL row of 0.2.1 builds before the global scale, is RETIRED: the scale is the instrument's, core.h; the editor protocol never
  * listed it, so no id is lost) */
 

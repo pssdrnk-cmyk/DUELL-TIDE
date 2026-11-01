@@ -1932,6 +1932,7 @@ static uint32_t graph_signature(void)
     if (off_module(pg))                              /* (item 125: the notice: nothing else on the page is drawn) */
         return (h ^ off_module(pg)) * 16777619u + grid_on;
     h ^= (uint32_t)pg->graph * 131u + TSEL->eng_req + song.sel * 7777u + ui.page * 1291u;
+    TIDE_GRAPH_SIG(pg, h);                           /* TIDE hook (TIDE: the faders, the glide, the steps; TIDE LIST: its rows only) */
     if (pg->graph == GR_NONE || pg->graph == GR_TEMPO || (pg->graph == GR_ARP && !arp_drawn(t) && !AREA_PIC)) h ^= ui.frame / 2u;   /* (the scope; 0.2.25: ARP's pattern and STEREO MASTER's picture are static; TEMPLATE 9: ARP without a pattern shows the calm flat baseline, static too) */
     if (pg->graph == GR_MSTG || pg->graph == GR_COMP)   /* (0.2.23: DUEL's note; 0.2.25 layout round: STEREO MASTER's picture, COMPRESSOR's curve: the settings, the mode) */
         h = (h ^ ((duell_mode == DM_SPLIT) * 0x2545F491u + (uint32_t)song.bm * 977u + (uint32_t)song.ms[0] * 7919u + (uint32_t)song.cp[0] * 31u + (uint32_t)song.cp[1] * 104729u)) * 16777619u;
@@ -3320,14 +3321,17 @@ static void draw_graph(void)
         cv_oy = 0;
         graph_perf();
         break;
+#if !DUELL_TIDE                                      /* TIDE hook: MORPH SET is not in TIDE's round (TIDE LIST has SMART ARP PITCH) */
     case GR_MORPHSET:
         cv_oy = 0;
         graph_morphset();
         break;
+#endif
     case GR_MODE:
         cv_oy = 0;
         graph_mode();
         break;
+    TIDE_GRAPH_CASES                                 /* TIDE hook */
     case GR_MIDI:
         cv_oy = 0;
         graph_midi();

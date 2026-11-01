@@ -175,3 +175,11 @@ static void tide_fm6_target(const morph_part_t *mp, uint32_t tr, uint8_t *p, int
         if (!fade[i])
             p[i] = morph_fmto[tr][sd][i];
 }
+
+/* S2 (the smooth crossings, morph_xfer.c) is not ported yet: what GLIDE writes for them (glide_motion) is kept here and read by
+ * nothing, and WASH LEVEL is a setting with no sound yet (TIDE LIST shows and saves it) */
+typedef struct { uint16_t motion; uint8_t follow, side; } mxs_t;
+static mxs_t mxs[NSHOWN];
+static uint8_t morph_wlvl = 2;
+static const uint16_t XWL[4] = {0u, 16384u, 32768u, 49152u};
+static int32_t xrise(int32_t x) { return x; }

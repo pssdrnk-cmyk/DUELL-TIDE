@@ -2563,7 +2563,7 @@ static void morph_set_cfg(uint32_t bit, uint32_t on)      /* v2: SMART (on = bit
  * part from MIDI), BOTH every shown part (morph_mask). MIDI arrives in the audio ISR (events_block): a roll is too
  * heavy for it and the actions take the lock, so the ISR only queues (morph_push) and the main loop runs the queue in
  * order (morph_pop, ui_input.c morph_poll). */
-enum { MQ_FADER, MQ_AMOUNT, MQ_TARGET, MQ_ROLL, MQ_UNDO, MQ_SMART, MQ_ARP, MQ_PITCH };   /* (v2: no KEEP) */
+enum { MQ_FADER, MQ_AMOUNT, MQ_TARGET, MQ_ROLL, MQ_UNDO, MQ_SMART, MQ_ARP, MQ_PITCH  TIDE_MQ_KINDS };   /* (v2: no KEEP) */
 #define MQ_N 16u
 static uint32_t mq_buf[MQ_N];                            /* kind | part << 8 | value << 16 */
 static volatile uint8_t mq_w, mq_r;                      /* (the ISR writes mq_w, the main loop mq_r) */
@@ -2631,7 +2631,7 @@ static uint32_t morph_do(uint32_t kind, uint32_t mask, uint32_t v)
 static void morph_push(uint32_t kind, uint32_t pi, uint32_t v)
 {
     uint32_t w = mq_w, e = kind | pi << 8 | v << 16;
-    if (w != mq_r && (kind == MQ_FADER || kind == MQ_AMOUNT) && (mq_buf[(w - 1u) % MQ_N] & 0xFFFFu) == (kind | pi << 8)) {
+    if (w != mq_r && (kind == MQ_FADER || kind == MQ_AMOUNT TIDE_MQ_MERGE(kind)) && (mq_buf[(w - 1u) % MQ_N] & 0xFFFFu) == (kind | pi << 8)) {
         mq_buf[(w - 1u) % MQ_N] = e;                     /* (the main loop takes the queue with the ISR off) */
         return;
     }

@@ -47,6 +47,39 @@ static void tide_poll(void);
 #define TIDE_FM6_TARGET(mp, tr, p, w) tide_fm6_target((mp), (tr), (p), (w))   /* (audio ISR) */
 #define TIDE_UNDO(pi, x) morph_fmto_sync((pi), (x))
 #define TIDE_MORPH_PROTOS static void tide_fm6_target(const morph_part_t *mp, uint32_t tr, uint8_t *p, int32_t w);
+/* H10-H17 (the pages, the knobs, MIDI, the storage; main loop): tide_ui.c (end of ui_input.c), tide_store.c (felucca.c, after
+ * upreset.c and project.c). Prototypes for the DUELL files that call them before they are compiled */
+static void graph_tide(void);
+static void graph_tidelist(void);
+static void tide_columns(void);
+static uint32_t tide_sig(void);
+static uint32_t tide_list_sig(void);
+static void tide_knob(uint32_t slot, int32_t s);
+static int tide_reset(uint32_t k);
+static void tide_link(uint32_t mask, uint32_t v);
+static void tide_midi(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi);
+static int tide_list_on(void);
+static void tide_list_oct(uint32_t oct);
+static int tide_store_load(uint8_t *b, uint32_t n);
+static void tide_store_mark(const uint8_t *b, uint32_t n);
+static void tide_store_poll(void);
+#define OBJ_TIDE (OBJ_PATCHX0 + 15u)                     /* TIDE's settings: patch chunk 21's object (storage.c, tide_store.c) */
+#define TIDE_PT_NCH 21u                                  /* the patch store's chunks with TIDE: 126 saved patches at most (plan §4.5) */
+#define TIDE_MG_N 5u                                     /* ui.mg's gestures: MORPH's, GLO's and GLIDE's (tide_ui.c TIDE_G_GLIDE) */
+#define TIDE_PAGE(pg) ((pg)->scope == SC_TIDE)
+#define TIDE_LINK(kind, mask, v) do { if ((kind) == MQ_FADER) tide_link((mask), (v)); } while (0)   /* LINK: the SEQ fader follows */
+#define TIDE_MQ_ROUTE(kind, mask, v, pi) ((kind) >= MQ_GLIDE ? (tide_midi((kind), (mask), (v), (pi)), 1) : 0)   /* GLIDE, the SEQ fader */
+#define TIDE_MQ_KINDS , MQ_GLIDE, MQ_SEQF
+#define TIDE_MQ_MERGE(kind) || (kind) == MQ_SEQF
+#define TIDE_KNOB(pg, slot, steps) (TIDE_PAGE(pg) ? (tide_knob((slot), (steps)), 1) : 0)
+#define TIDE_RESET_CASE case SC_TIDE: return tide_reset(k);
+#define TIDE_LIST_ON() tide_list_on()
+#define TIDE_LIST_OCT(oct) tide_list_oct(oct)
+#define TIDE_GRAPH_CASES case GR_TIDE: cv_oy = 0; graph_tide(); break; case GR_TIDELIST: cv_oy = 0; graph_tidelist(); break;
+#define TIDE_GRAPH_SIG(pg, h) do { if ((pg)->graph == GR_TIDELIST) return ((h) ^ tide_list_sig()) * 16777619u; \
+                                   if (TIDE_PAGE(pg)) (h) = ((h) ^ tide_sig() ^ (uint32_t)morph.target * 0x85EBCA77u) * 16777619u; } while (0)
+#define TIDE_COLUMNS() do { if (TIDE_PAGE(cur_page())) { tide_columns(); return; } } while (0)
+#define TIDE_HOME_NAME "TIDE"                            /* MENU > CONTROL > HOME OPENS: the first page of the round */
 
 #else
 
@@ -70,6 +103,21 @@ static void tide_poll(void);
 #define TIDE_FM6_TARGET(mp, tr, p, w) ((void)0)
 #define TIDE_UNDO(pi, x) ((void)0)
 #define TIDE_MORPH_PROTOS
+#define TIDE_PT_NCH 22u
+#define TIDE_MG_N 4u
+#define TIDE_PAGE(pg) 0
+#define TIDE_LINK(kind, mask, v) ((void)0)
+#define TIDE_MQ_ROUTE(kind, mask, v, pi) 0
+#define TIDE_MQ_KINDS
+#define TIDE_MQ_MERGE(kind)
+#define TIDE_KNOB(pg, slot, steps) 0
+#define TIDE_RESET_CASE
+#define TIDE_LIST_ON() 0
+#define TIDE_LIST_OCT(oct) ((void)0)
+#define TIDE_GRAPH_CASES
+#define TIDE_GRAPH_SIG(pg, h) ((void)0)
+#define TIDE_COLUMNS() ((void)0)
+#define TIDE_HOME_NAME "MORPH"
 
 #endif
 #endif

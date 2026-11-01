@@ -212,7 +212,7 @@ static void up_values(const up_rec_t *r, int16_t *v)   /* the record's values cl
 
 
 /* ---------------------------------------------------------------- the store --- */
-#define PT_NCH 22u                               /* chunks = storage.c objects: 0..5 OBJ_PATCH0.., 6..21 OBJ_PATCHX0.. (pt_obj); 16..21 = objects 43..48 at 0xBA000..0xC5FFF (the cloud plan's job A) */
+#define PT_NCH TIDE_PT_NCH                               /* chunks = storage.c objects: 0..5 OBJ_PATCH0.., 6..21 OBJ_PATCHX0.. (pt_obj); 16..21 = objects 43..48 at 0xBA000..0xC5FFF (the cloud plan's job A) */
 #define PT_CAP 3584u                             /* a chunk's most bytes: the payload (at sector offset 256) ends at 0xF00 (ST_PAYLOAD_END) */
 #define PT_HDR 4u
 #define PT_MAGIC 0x5450u                         /* "PT" */
@@ -255,8 +255,8 @@ static void up_values(const up_rec_t *r, int16_t *v)   /* the record's values cl
 #if FELUCCA_FLASH
 _Static_assert(PT_CAP + ST_PAYLOAD_OFF == ST_PAYLOAD_END && PT_CAP <= ST_PAYLOAD_MAX, "a patch chunk is one storage object whose payload ends at 0xF00");
 #endif
-_Static_assert(PT_WORST == 577u && PT_K == 6u && PT_WORST * PT_K + PT_HDR <= PT_CAP && PT_MAX >= UP_SLOTS && AK_WORST <= AK_MAX, "the store's limit: 6 records of the worst size fit a chunk, and PT_MAX is at least the slot count (all 128 always fit)");
-_Static_assert(PT_NCH == 22u, "pt_obj, the erase list (erase_data.c), the backup (editor_backup.c)");
+_Static_assert(PT_WORST == 577u && PT_K == 6u && PT_WORST * PT_K + PT_HDR <= PT_CAP && PT_MAX + (22u - TIDE_PT_NCH) * PT_K >= UP_SLOTS && AK_WORST <= AK_MAX, "the store's limit: 6 records of the worst size fit a chunk, and PT_MAX is at least the slot count (all 128 always fit)");
+_Static_assert(PT_NCH == TIDE_PT_NCH, "pt_obj, the erase list (erase_data.c), the backup (editor_backup.c)");   /* TIDE hook (21: chunk 21 is TIDE's settings) */
 _Static_assert(PT_FIX + PT_VB + PT_VMAX + MBV_MAX + 32u + UPF_PK + AK_MAX <= 768u, "pt_enc holds a record");
 _Static_assert(EXT_P_LEN <= PT_VB * 8u && P_COUNT < 255u, "the values' bitmap holds every wide id");
 /* the directory: slot -> its record and what the lists need without reading flash */

@@ -129,6 +129,9 @@
 #define ERASE_FEED() fm1_wdt_feed()   /* erase_data.c (via project.c): the watchdog fed between the erases */
 #include "upreset.c"             /* user presets (RAM mirror; flash with FELUCCA_FLASH) */
 #include "project.c"
+#if DUELL_TIDE
+#include "tide_store.c"          /* TIDE hook (H17): TIDE's own settings record */
+#endif
 #if FELUCCA_OTA
 #include "ota.c"
 #include "ota_hw.c"

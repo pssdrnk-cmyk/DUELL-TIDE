@@ -609,6 +609,7 @@ static void morph_act(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi)
     if (kind == MQ_TARGET && v < 2u)
         track_select(v);                                /* (a learned CC for MORPH TARGET, which has no shipped number: PART 1 / PART 2; BOTH keeps the part the other pages edit) */
     r = morph_do(kind, mask, v);
+    TIDE_LINK(kind, mask, v);                           /* TIDE hook (LINK: TARGET BOTH moves the SEQ fader with it) */
     if (kind == MQ_ROLL)
         morph_say_end("ROLLED ", v);
     else if (kind == MQ_UNDO)
@@ -646,7 +647,7 @@ static void algo_step(int32_t s)
 }
 static void algo_input(int32_t s)
 {
-    if (ui.perf || (cur_page()->graph == GR_MORPH))   /* (PERFORM: its page, shown while ui.perf) */
+    if (ui.perf || (cur_page()->graph == GR_MORPH) || TIDE_PAGE(cur_page()))   /* TIDE hook */   /* (PERFORM: its page, shown while ui.perf) */
         algo_step(s);
     else if (page_global(cur_page()) || cur_page()->scope == SC_MODE)   /* 0.2.24 (owner): a GLOBAL page edits no part: ALGORITHM does nothing there (it switched the highlight colour and nothing else); the MODE page counts as global (ui_draw.c screen_global) */
         return;
@@ -777,6 +778,7 @@ static void morph_poll(void)
     uint32_t q[MQ_N], n = morph_pop(q), i;
     for (i = 0; i < n; i++) {
         uint32_t pi = (q[i] >> 8) & 0xFFu;
+        if (!TIDE_MQ_ROUTE(q[i] & 0xFFu, pi == MQ_PART_ALL ? (1u << NSHOWN) - 1u : morph_mask(pi), q[i] >> 16, pi))   /* TIDE hook */
         morph_act(q[i] & 0xFFu, pi == MQ_PART_ALL ? (1u << NSHOWN) - 1u : morph_mask(pi), q[i] >> 16, pi);   /* (ALL: LAYER's wheel) */
     }
     morph_settings();
@@ -1145,6 +1147,8 @@ static void edit_param(uint32_t slot, int32_t steps)
     const page_t *pg = cur_page();
     const param_desc_t *d;
     int32_t v;
+    if (TIDE_KNOB(pg, slot, steps))                       /* TIDE hook (TIDE, TIDE LIST) */
+        return;
     if (pg->scope == SC_MORPH) {                          /* HOME's MORPH, MORPH SET (4b) */
         morph_knob(slot, steps);
         return;
@@ -1436,6 +1440,7 @@ static int knob_reset(uint32_t k)
     if (act_cols())
         return 0;
     switch (pg->scope) {
+    TIDE_RESET_CASE                                     /* TIDE hook */
     case SC_MORPH:
         if (pg->graph == GR_MORPHSET)
             return 0;
@@ -2027,9 +2032,9 @@ static void ui_input(void)
     if (((pressed >> panel.btn[B_REC]) & 1u) && ui.ly == LAYER_REC)
         ui.rec_t0 |= 2u;                                /* (REC is its layer's button now: its tap is layer_tap's) */
     layer_oct_open(pressed);                            /* (OCT± with a SET layer's button down: it opens now) */
-    oct = oct_taps(pressed, (ui.menu || ui.confirm || act_cols() || name_on() || layer_set_open() || ui.ml.on) && !layer_glo_held());   /* (0.2.24: with GLO held OCT- / OCT+ are the mutes: no tap for anyone) */
+    oct = oct_taps(pressed, (ui.menu || ui.confirm || act_cols() || name_on() || layer_set_open() || ui.ml.on || TIDE_LIST_ON()) && !layer_glo_held());   /* TIDE hook */   /* (0.2.24: with GLO held OCT- / OCT+ are the mutes: no tap for anyone) */
     oct = layer_oct(pressed, oct);                      /* (a SET layer's OCT-: put back) */
-    oct_rel(ui.menu || ui.confirm || act_cols() || name_on() || layer_set_open() || ui.ml.on);   /* (OCT± on a normal page: on release) */
+    oct_rel(ui.menu || ui.confirm || act_cols() || name_on() || layer_set_open() || ui.ml.on || TIDE_LIST_ON());   /* TIDE hook */   /* (OCT± on a normal page: on release) */
     layer_masks();                                      /* seq.c: keys pressed with a layer's button are its own */
     lay = layer_held();
     {   /* a key pressed with the button: a combo (its edge, or the ISR already took it); then not the grid's or a step's */
@@ -2259,6 +2264,8 @@ static void ui_input(void)
             go_main();
     } else if (ui.ml.on && oct) {                          /* MIDI LEARN: OCT- clears the picked CC, OCT+ done */
         ml_oct(oct);
+    } else if (oct && TIDE_LIST_ON()) {                    /* TIDE hook (TIDE LIST: the row's value one on / back) */
+        TIDE_LIST_OCT(oct);
     }
     song.grid = (uint8_t)keys_mode();                 /* (seq.c: NAME's keys are silent) */
     if (song.seq_mode && cur_page()->graph == GR_ROLL) {   /* STEP */
@@ -2318,7 +2325,7 @@ static void ui_input(void)
             continue;
         }
         if (pg->scope == SC_STEP || page_desc(pg, k, &hv) ||
-            (pg->scope == SC_MORPH && !(pg->graph == GR_MORPHSET && k == 3u)) || pg->scope == SC_MODE || pg->scope == SC_MIDI || pg->scope == SC_TEST || pg->scope == SC_PERF || pg->scope == SC_MODS || pg->graph == GR_GLO ||
+            (pg->scope == SC_MORPH && !(pg->graph == GR_MORPHSET && k == 3u)) || TIDE_PAGE(pg) || pg->scope == SC_MODE || pg->scope == SC_MIDI || pg->scope == SC_TEST || pg->scope == SC_PERF || pg->scope == SC_MODS || pg->graph == GR_GLO ||
             (k == 3u && duck_midi_page(pg)) || (pg->scope == SC_SCALE && k < 3u) || (pg->scope == SC_FXSUM && k < 3u) ||            /* (SCALE: K1 SCALE, K2 ROOT, K3 OFF-SCALE; K4 is an empty column) */
             (pg->graph == GR_TEMPO && k == TEMPO_TAP_SLOT) ||
             ((pg->graph == GR_MOD || pg->graph == GR_PATS) && k == 0u)
