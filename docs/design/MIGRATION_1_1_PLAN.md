@@ -5,6 +5,17 @@ Complete functionality before the whole-repo fitting pass. Memory use is diagnos
 Merged into `jam11`: S1 UI, compaction commit `21cbbe5`, Claude KEEP/storage commit `4f29aa8`, and the integrated crossings/control/DSP fixes. The isolated `audit/tide-crossings` copy remains the verification snapshot.
 
 
+Active work (handover checkpoint, 1 November 2026):
+
+- Continue in `work/wt/duell-jam11`, branch `jam11`. Core integration is `6bb1e67`; the following UI-stage commit contains the completed feedback and first fitting changes. Claude's `tide-keep` worktree is separate and must not be reset.
+- UI stage complete: visible G4 KEEP below the eight SEQ TOOLS boxes; STORE FULL on both patch-save flows; STEP variation outlines and redraw signature; selected part's live destination name in the existing single-row footer; 16-step theme updates during motion.
+- TIDE splash/About lettering now reuses the existing L alphabet font. Credits, animated background and startup controls remain. The graphic logo artwork changes; the TIDE-off path keeps the original SVG bitmaps. This is a fitting fallback, not proof that the remaining UI code is lean.
+- Scoped verification: KEEP/storage 72/72 and MIDI/PERFORM/UI 24/24 under full ASan/UBSan; actual native captures inspected for SEQ TOOLS, STEP, splash/About. Only the affected groups were run; no new broad regression sweep.
+- Last target image: `measurements/tide-ui-final/result.json`, 581,364 B, 200 B free, all ELF/RAM/call-closure checks pass. It preceded the final small KEEP-hint coordinate fix; the exact UI-commit build is queued next. Evidence/UI captures are under `felucca-base/build` and `work/audit/tide-ui-*.log`.
+- Split: Claude owns the stock 1.1 UI renderer/font cleanup on a separate branch, starting at the UI-stage commit. Codex owns TIDE planner/control size and final integration. See `docs/design/CLAUDE_UI_COMPACTION_HANDOFF.md` once created. No device flash authorized.
+- Deeper audit candidates: template selection in `ui_draw.c` versus the fallback switch in `ui_graph.c`; old MATRIX `graph_mod` and `graph_engine` fallbacks appear superseded on normal pages, but must be checked against every overlay/virtual page before removal. No legacy renderer has been removed yet. Existing compaction evidence: `work/audit/DEEP-UI-COMPACTION-REVIEW.md`; do not repeat its discarded global noinline/merge-functions trials.
+- Helpers in `work/audit`: `crossings_host_build.py wt/duell-jam11 candidate <test.c>` and `stock_compare_build.py 1.1 wt/duell-jam11 <unique-label>` (Windows target tools need elevated execution). Earlier audit evidence is in `work/audit/tide-crossings`, not inside this checkout.
+
 Current integration status (1 November 2026):
 
 - Claude's KEEP/storage implementation is merged into `jam11` with full crossings/wash, PERFORM GLIDE A/B and assignable MIDI GLIDE/SEQ MORPH. Claude's separate worktree is untouched. Nothing flashed. Continue functionality and cleanup here; memory fitting and hardware acceptance remain outstanding.

@@ -1947,7 +1947,7 @@ static void draw_foot(void)
     pfl[0] = pfr[0] = 0;
     if (!ui.ml.on && !ui.layer && !ui.guide && grid_on != 16)
         (void)perf_foot(pfl, pfr);                     /* PERFORM: row 1 says what SELECT and ALGORITHM do there; row 2 as on every page (TEMPLATE 9: no first row, as PERFORM_NEW_LAYOUT_V4: SELECT = BALANCE is on knob 1's line) */
-    sound_label(t, pn);                                /* "#12 FOLD BASS": the slot's number, when the sound is in a slot */
+    TIDE_FOOT_NAME(t, pn);                                /* "#12 FOLD BASS": the slot's number, when the sound is in a slot */
     if (ui.layer) {                                    /* a layer's map: its button and kind in the page's place */
         layer_foot_title(ti, ct);
     } else if (ui.guide) {                             /* item 118: the GUIDE / SETUP page's counter, "1/5" (the MENU's copy "1/3"), where every other page has its number */
@@ -2801,6 +2801,15 @@ static uint32_t splash_t0, splash_fr;
  * No RAM: the run list is walked from its start, only the pixels inside the strip are touched. */
 static void splash_logo_draw(int32_t y0, int32_t h)
 {
+#if DUELL_TIDE
+    /* Reuse the existing font glyphs instead of a second bitmap alphabet. */
+    (void)y0; (void)h;
+    cv_text_in(0, 80 - AF_L_CAP_Y, 240, &AF_L, "DUELL", T_TEXT, T_BG);
+    cv_text_in(0, 123, 240, &AF_M, "MultiMorphing", T_TEXT, T_BG);
+    cv_text_in(0, 145, 240, &AF_M, "Bitimbral Synthesizer", T_TEXT, T_BG);
+    cv_text_in(0, 167, 240, &AF_S, "by OSCILL/R", T_TEXT, T_BG);
+#else
+
     uint16_t tx = T_TEXT;
     uint32_t i, p = 0;
     uint8_t gray = (tx >> 11) == (tx & 31u);            /* (GREY / MONO: one channel blended, so the pixel stays neutral) */
@@ -2822,6 +2831,7 @@ static void splash_logo_draw(int32_t y0, int32_t h)
         }
         p = e;
     }
+#endif
 }
 /* MENU > ABOUT's key hints (0.2.9, the owner: KNOB 1 scrolls, SELECT goes left and right between its sections; OCT- back, lit) */
 static const khint_t ABOUT_KEYS[2] = {{KC_K1, "SCROLL"}, {KC_SELECT, "HEADINGS"}};   /* (DUELL 1.1: SELECT jumps to the next heading: the logo, ABOUT, CREDITS, LICENSES) */
@@ -3209,7 +3219,7 @@ static void ui_draw(void)
     {   /* item 152 A: a fader moved (MORPH, a modulated fader) shifts the part colour A -> B only: the page is drawn again WITHOUT the BG fill (ui_refresh); the part, the layer or a GLOBAL page changing the background fills as before */
         uint8_t keep = (uint8_t)(ux.part == (song.sel & 1u) && ux.layer == (uint8_t)(duell_mode_req == DM_LAYER) && ux.glob == (uint8_t)(screen_global() != 0));
         uint16_t bg0 = ux.bg;
-        if (theme_follow(song.sel, morph_fader_of(0), morph_fader_of(1), duell_mode_req == DM_LAYER, screen_global())) {
+        if (theme_follow(song.sel, TIDE_THEME_F(morph_fader_of(0)), TIDE_THEME_F(morph_fader_of(1)), duell_mode_req == DM_LAYER, screen_global())) {
             if (keep && bg0 == ux.bg)
                 ui_refresh();
             else

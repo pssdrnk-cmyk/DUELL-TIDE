@@ -227,6 +227,10 @@ static int32_t about_sec[2];                           /* ABOUT's CREDITS and LI
 /* the DUELL word of the logo (tools/gen_splash_logo.py SPL_WORD, 80 % of the splash's size), coverage blended onto the canvas in the text colour; (x, y) its top left */
 static void about_word_draw(int32_t x, int32_t y)
 {
+#if DUELL_TIDE
+    cv_text(x, y + (28 - AF_L_CAP_H) / 2 - AF_L_CAP_Y, &AF_L, "DUELL", T_TEXT);
+#else
+
     uint32_t i, p = 0;
     for (i = 0; i < (uint32_t)sizeof SPL_WORD; i++) {
         uint32_t v = SPL_WORD[i] >> 4, n = (SPL_WORD[i] & 15u) + 1u, e = p + n;
@@ -238,6 +242,7 @@ static void about_word_draw(int32_t x, int32_t y)
         }
         p = e;
     }
+#endif
 }
 static const char *about_cores(const char **l2)         /* the CORES line (owner, test3): two cores playing, or one (the second core off: it did not start, a fault, or the jobs paused: the automatic fallback);
                                                         * item 119: the long form is 234 px, the card holds 220: two lines, "CORES: 1 RUNNING" and "(SECOND CORE OFF)", every word whole */

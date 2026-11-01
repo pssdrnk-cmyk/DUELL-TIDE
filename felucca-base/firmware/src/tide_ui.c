@@ -521,7 +521,7 @@ static void tide_roll_ghosts(const track_t *t, uint32_t base, uint32_t ncol)
         if (sqm_hit(v))
             for (j = 0; j < v->n && j < 4u; j++)
                 if ((y = pr_row_y(v->note[j])) >= PR_Y0 && y < ybot)
-                    cv_frame(x + 1, y, 11, PR_RH, T_ACCENT);
+                    cv_frame(x + 1, y, PR_CW - 2, PR_RH, T_ACCENT);
     }
 }
 /* .. what changes them: the fader, End B (its seed) and the amounts */

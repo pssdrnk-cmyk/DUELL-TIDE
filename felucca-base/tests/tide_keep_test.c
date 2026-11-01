@@ -334,10 +334,14 @@ static void t_limit(void)
     for (k = 0; k < UP_SLOTS; k++)
         n += (uint32_t)up_used(k);
     CHECK("limit: 126 distinct patches saved", ok && n == 126u);
-    CHECK("limit: the 127th refused (PT_FULL, read as SAVE ERROR)", up_store(126, 0) == PT_FULL && !up_used(126));
+    CHECK("limit: the 127th refused (PT_FULL)", up_store(126, 0) == PT_FULL && !up_used(126));
     for (k = 0, n = 0; k < UP_SLOTS; k++)
         n += (uint32_t)up_used(k);
     CHECK("  .. nothing else changed", n == 126u);
+    ui.svs = 126; patch_save_do(0);
+    CHECK("limit: panel save reports STORE FULL", msg_is("STORE FULL") && !up_used(126));
+    up_ui_named(2, 126, "FULL", CAT_PAD);
+    CHECK("limit: named save reports STORE FULL", msg_is("STORE FULL") && !up_used(126));
     CHECK("  .. an overwrite still fits", up_store(10, "AGAIN") == 0 && up_used(10));
     CHECK("limit: 128 slots to browse", UP_SLOTS == 128u);
 }

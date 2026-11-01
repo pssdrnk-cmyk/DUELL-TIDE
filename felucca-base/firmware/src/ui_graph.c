@@ -310,6 +310,9 @@ static void graph_roll(const track_t *t, uint16_t c)
             cv_line(x + UT_T7_NOTE_X + UT_T7_NOTE_W, y + PR_RH / 2, x + PR_CW + UT_T7_NOTE_X + 2, ny + PR_RH / 2, T_TEXT);   /* the slide into the next note (from the end of its bar to the start of the next) */
         }
     }
+#if DUELL_TIDE
+    tide_roll_ghosts(t, base, ncol);
+#endif
     if (PR_AREA) {                                    /* TEMPLATE 9: the rows cut at the window's edges (the area's rows above and under the window back to the background) */
         int32_t ay, ah;
         area_rect(&ay, &ah);
@@ -2027,6 +2030,9 @@ static uint32_t graph_signature(void)
         if (ph / 16u != ui.bank)
             ph = 0xFFFFu;                            /* the roll shows the cursor's bank only */
         h ^= steps_hash(t) + ph * 31u + ui.cursor * 7919u + ui.bank * 613u;
+#if DUELL_TIDE
+        h = (h ^ tide_roll_sig(t)) * 16777619u;
+#endif
         {                                            /* the parameter locks' marks (the roll) */
             uint64_t lk = motion_lock_steps(trk_index(t));
             h = (h ^ (uint32_t)lk ^ (uint32_t)(lk >> 32) * 2654435761u) * 16777619u;

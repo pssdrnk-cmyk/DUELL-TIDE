@@ -1582,7 +1582,7 @@ static void patch_save_do(uint32_t both)
     save_nm[0] = 0;
     up_slot_label(l, ui.svs % UP_SLOTS);
     if (rc)
-        ui_message("SAVE ERROR");
+        ui_message(TIDE_SAVE_ERROR(rc));
     else if (n > 1u)
         ui_message("SAVED 1+2");
     else
@@ -1645,7 +1645,7 @@ static void up_ui_named(uint32_t op, uint32_t k, const char *name, uint32_t cat)
     if (rc == 3)
         ui_message(op == 1u ? "RESTORED (RAM)" : op == 3u ? "RENAMED (RAM)" : "SAVED (RAM)");
     else if (rc)
-        ui_message(op == 1u ? "RESTORE ERROR" : "SAVE ERROR");
+        ui_message(op == 1u ? "RESTORE ERROR" : TIDE_SAVE_ERROR(rc));
     else
         ui_say(op == 1u ? "RESTORED " : op == 3u ? "RENAMED " : "SAVED ", l);
     ui.force = 1;

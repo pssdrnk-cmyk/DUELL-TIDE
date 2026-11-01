@@ -72,7 +72,14 @@ static void tide_store_poll(void);
 static const char *tide_tl_keep(track_t *t, uint64_t was, uint32_t len);   /* (tide_ui.c) */
 static void tl_undo_take(track_t *t);                    /* (ui_tools.c, compiled after tide_ui.c) */
 static void tl_unlock(track_t *t, uint64_t was, uint32_t len);
-#define TIDE_TL_KEEP , TL_KEEP                           /* H14 (ui_tools.c): SEQ TOOLS' G4, KEEP (the grid draws F3..F4's eight: no box) */
+#define TIDE_TL_KEEP , TL_KEEP                           /* SEQ held + G4; labelled below the tools grid */
+#define TIDE_SAVE_ERROR(rc) ((rc) == PT_FULL ? "STORE FULL" : "SAVE ERROR")
+#define TIDE_THEME_F(f) ((f) >= 120u ? 127u : (f) & ~7u)
+static int tide_foot_parts(void);
+static void tide_part_name(uint32_t pi, char *b);
+static void tide_roll_ghosts(const track_t *t, uint32_t base, uint32_t ncol);
+static uint32_t tide_roll_sig(const track_t *t);
+#define TIDE_FOOT_NAME(t, b) do { if (tide_foot_parts()) tide_part_name(trk_index(t), (b)); else sound_label((t), (b)); } while (0)
 #define TIDE_TL_DO(t, p, was, len) do { if ((p) == TL_KEEP) return tide_tl_keep((t), (was), (len)); } while (0)
 #define OBJ_TIDE (OBJ_PATCHX0 + 15u)                     /* TIDE's settings: patch chunk 21's object (storage.c, tide_store.c) */
 #define TIDE_PT_NCH 21u                                  /* the patch store's chunks with TIDE: 126 saved patches at most (plan §4.5) */
@@ -120,6 +127,9 @@ static void tl_unlock(track_t *t, uint64_t was, uint32_t len);
 #define TIDE_MBV_MAKE(pi, out, n) (n)
 #define TIDE_MBV_LOAD(pi, b, len) ((void)0)
 #define TIDE_TL_KEEP
+#define TIDE_SAVE_ERROR(rc) "SAVE ERROR"
+#define TIDE_THEME_F(f) (f)
+#define TIDE_FOOT_NAME(t, b) sound_label((t), (b))
 #define TIDE_TL_DO(t, p, was, len) ((void)0)
 #define TIDE_PT_NCH 22u
 #define TIDE_MG_N 4u

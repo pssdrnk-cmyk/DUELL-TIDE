@@ -5,6 +5,19 @@
 static unsigned checks, failures;
 #define CHECK(label, cond) do { checks++; if (!(cond)) { failures++; printf("FAIL: %s\n", label); } } while (0)
 
+static void screen(const char *path)
+{
+    FILE *f=fopen(path,"wb");
+    if (!f) return;
+    fprintf(f,"P6\n240 240\n255\n");
+    for (uint32_t i=0;i<240u*240u;i++) {
+        uint16_t v=swap16(host_screen[i]);
+        uint8_t rgb[3]={(uint8_t)(((v>>11)&31u)*255u/31u),(uint8_t)(((v>>5)&63u)*255u/63u),(uint8_t)((v&31u)*255u/31u)};
+        fwrite(rgb,1,3,f);
+    }
+    fclose(f);
+}
+
 int main(void)
 {
     uint32_t q[MQ_N], n;
@@ -68,17 +81,32 @@ int main(void)
     CHECK("PERFORM A launches a glide", gl.on && gl.to == 0 && gl.mask == 1);
     frame();
     const char *shot = getenv("DUELL_TEST_SCREENSHOT");
-    if (shot) {
-        FILE *f=fopen(shot,"wb");
-        if (f) {
-            fprintf(f,"P6\n240 240\n255\n");
-            for (uint32_t i=0;i<240u*240u;i++) {
-                uint16_t v=swap16(host_screen[i]);
-                uint8_t rgb[3]={(uint8_t)(((v>>11)&31u)*255u/31u),(uint8_t)(((v>>5)&63u)*255u/63u),(uint8_t)((v&31u)*255u/31u)};
-                fwrite(rgb,1,3,f);
-            }
-            fclose(f);
+    if (shot) screen(shot);
+    gl.on = gl.armed = 0; perf_leave();
+    btn_down(B_SEQ); frames(800);
+    CHECK("SEQ tools opens with KEEP available", ui.layer == LAYER_SEQ && tl_cell(TL_KEEP));
+    if (shot) screen("build/tide-seq-tools.ppm");
+    btn_up(B_SEQ); frame();
+    uint32_t pg=0, pages=sizeof PAGES/sizeof PAGES[0];
+    while(pg<pages && PAGES[pg].graph!=GR_ROLL) pg++;
+    CHECK("STEP page is reachable", pg<pages);
+    if (pg<pages) {
+        ui.page=pg; ui.cursor=ui.bank=0; page_entered();
+        trk[0].p[P_SLEN]=16;
+        memset(trk[0].step,0,sizeof trk[0].step);
+        for(uint32_t k=0;k<16;k+=4) {
+            trk[0].step[k].time=ST_NOTE; trk[0].step[k].n=1;
+            trk[0].step[k].note[0]=(uint8_t)(60+k/2);
+            trk[0].step[k].vel=100;
         }
+        seqm_roll(0); seqm_set_fader(0,127);
+        ui.force=1; frame();
+        if (shot) screen("build/tide-step.ppm");
+    }
+    if (shot) {
+        splash_frame(5,0); screen("build/tide-splash.ppm");
+        ui.menu=2; ui.menu_scroll=1; ui.force=1; frame();
+        screen("build/tide-about.ppm");
     }
     printf("tidecontrols: %u checks, %u failures\n", checks, failures);
     return failures ? 1 : 0;
