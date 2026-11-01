@@ -346,7 +346,8 @@ static const uint8_t DIV48[7] = {32, 64, 4, 144, 72, 36, 18};   /* 4T 2T 32T 2D 
 static uint32_t midi_beat_samples;                    /* zero until an external clock has a measured tempo */
 static uint32_t beat_samples(void)
 {
-    return clock_src() && midi_beat_samples ? midi_beat_samples : (uint32_t)FS * 60u / (uint32_t)song.g[G_BPM];
+    uint32_t bpm = song.g[G_BPM] >= 40 ? (uint32_t)song.g[G_BPM] : 120u;   /* (Felucca #282: a transient uninitialized tempo must not divide by zero) */
+    return clock_src() && midi_beat_samples ? midi_beat_samples : (uint32_t)FS * 60u / bpm;
 }
 static uint32_t div_samples(uint32_t div)
 {

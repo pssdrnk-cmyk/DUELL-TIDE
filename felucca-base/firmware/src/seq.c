@@ -279,6 +279,8 @@ _Static_assert(AM_SEQ == AM_SEQ_ID, "core.h arp_mode: the SEQUENCER mode's value
  * step.note[0] - 60 semitones, onto the scale when SCALE is not CHR; ACCENT = velocity 127; gate = AGATE; OCT: one
  * octave up per pass through the pattern */
 
+#include "midi_grid.c"       /* external clock: exact progress in musical units and fractional carries (fix A) */
+
 static void arp_forget(track_t *t)               /* (its notes ended otherwise: trk_all_off) */
 {
     mo_flush(t);
@@ -597,8 +599,22 @@ static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
     t->arp_pos += n;
     if (t->arp_pos < period + (uint32_t)((t->arp_idx & 1u) ? sw : -sw) && t->arp_pos != 0xFFFFFFF + n)
         return;
-    t->arp_pos = 0;
-    arp_fire(t, period);
+    if (clock_src() && t->arp_pos != 0xFFFFFFFu + n) {   /* external clock: carry the overshoot, every step due fires */
+        uint32_t duration = period + (uint32_t)((t->arp_idx & 1u) ? sw : -sw);
+        do {
+            t->arp_pos -= duration;
+            arp_fire(t, period);
+            duration = period + (uint32_t)((t->arp_idx & 1u) ? sw : -sw);
+        } while (t->arp_pos >= duration);
+        if (t->arp_note) {
+            if (t->arp_off <= t->arp_pos) arp_off(t);
+            else t->arp_off -= t->arp_pos;
+        }
+    } else {
+        if (clock_src()) midi_arp_grid[trk_index(t)].remainder = 0;
+        t->arp_pos = 0;
+        arp_fire(t, period);
+    }
     if (t->arp_note)
         t->arp_ph = 1;                              /* (the next step's note-on continues this phrase: voice.c) */
 }
@@ -1071,6 +1087,7 @@ static void keyboard_block(void)
 static void seq_start(void)
 {
     uint32_t i;
+    midi_grid_reset();
     motion_begin();
     for (i = 0; i < NTRK; i++) {                   /* every track from its step 0, together */
         track_t *t = &trk[i];
@@ -1337,6 +1354,8 @@ static __attribute__((noinline)) void seq_nd_start(track_t *t, uint32_t period, 
 static void seq_tick(track_t *t, uint32_t n)
 {
     uint32_t period, len;
+    if (clock_src())
+        n = midi_grid_advance(&midi_seq_grid[trk_index(t)], n, (uint32_t)t->p[P_SDIV]);
     if (t->seq_n && !t->seq_hold) {
         if (t->seq_off <= n)
             seq_release(t);
@@ -1466,6 +1485,8 @@ static __attribute__((noinline)) void cin_record(void)
 /* the metronome's beat: adv samples on while the transport runs (click.c sounds it in this block) */
 static void click_tick(uint32_t adv)
 {
+    if (clock_src())
+        adv = midi_grid_advance(&midi_click_grid, adv, 2u);
     uint32_t p = div_samples(2), beat = 0;
     if (clk_pos == CLK_START) {
         clk_pos = 0;
@@ -1767,16 +1788,20 @@ static void events_block(uint32_t n)
     }
     if (aud_req)
         seq_audition();                               /* (STEP PREVIEW: a step sounds, stopped) */
+    uint32_t beat_adv = clock_mode ? midi_grid_advance(&midi_beat_grid, arp_n, 0u) : arp_n;
     for (i = 0; i < NSHOWN; i++)                      /* (tracks 3, 4: never step) */
         seq_tick(&trk[i], seq_n);
     if (cin_flush)
         cin_record();
     if (song.playing)
         click_tick(seq_n);
-    for (i = 0; i < NSHOWN; i++)
-        arp_step(&trk[i], arp_n, arp_gate);
-    duck_pump(arp_n);                                 /* DUCK SRC PUMP: the arp's samples (fx.c) */
-    beat_pos += arp_n;               /* the beat the ARP LED flashes on (ui_leds) */
+    for (i = 0; i < NSHOWN; i++) {
+        uint32_t an = clock_mode ? midi_grid_advance(&midi_arp_grid[i], arp_n, (uint32_t)trk[i].p[P_ARATE]) : arp_n;
+        uint32_t gn = clock_mode && (song.playing || (!midi_clock.stopped && midi_clock.have_pulse)) ? an : arp_gate;
+        arp_step(&trk[i], an, gn);
+    }
+    duck_pump(beat_adv);                              /* DUCK SRC PUMP: the arp's samples (fx.c) */
+    beat_pos += beat_adv;            /* the beat the ARP LED flashes on (ui_leds) */
     if (beat_pos >= beat_samples()) {
         beat_pos -= beat_samples();
         beat_pos = beat_pos < beat_samples() ? beat_pos : 0u;
