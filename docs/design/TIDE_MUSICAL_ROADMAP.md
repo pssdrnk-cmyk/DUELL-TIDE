@@ -277,3 +277,13 @@ Combined verification used a fresh snapshot of `17d306a` plus the exact pending 
 Combined image delta against R0: **+2,000 B flash**, no ordinary/pool/hot RAM growth. All reserves, placement, call reach and range-X closure checks pass. Application flash is tight; only 1,732 B remains. These are linked-build measurements, not live heap/CPU measurements or physical-unit validation.
 
 Evidence and retained combined package: `work/merge-m1-m2-build/` (`integration-build.log`, `integration-tests.log`, `emulator-build.log`, `emulator-note.log`, `package-smoke.log`, `off-build.log`, `candidate.fwsc`). M1 retains the owner's favorable host A/B result; M2's listening comparison is still pending. No firmware write or release upload is part of this push. The repository's existing Pages workflow runs on a `jam11` push.
+
+### Device installation — 1 November 2026
+
+The owner authorized flashing after the integration/push. Firmware source checkpoint `1196a82`; exact combined package SHA-256 `3a07a5431e346c5ac67830d2410c715350b6296836d62b486a80c8aa9961794d`. The connected unit identified as DUELL 1.1, model FM-1_901, port DUELL 0, 128 patch slots and the expected 10 engines.
+
+Full backups were saved before writing in `work/backups/m1-m2-1196a82/`. The Python helper's older revision-7 music checker marks revision-8 current music as raw; its bytes and CRC were retained, and the actual candidate firmware's native `proj_import` accepted the 3,840-byte, two-part, 127-parameter revision-8 record under strict ASan/UBSan. This helper mismatch remains a follow-up tooling issue; a default helper restore would skip that raw-marked record.
+
+The normal installer wrote to 100%, rebooted, verified FM-1_901, and a fresh INFO returned DUELL 1.1 with the same slot/engine capabilities. Initial readback matched 15 of 16 archive objects; decoded current-music comparison showed only Part 2's live End-B destination differed after restart. The validated pre-flash current-music object 0 was restored through the existing music-only restore API and accepted by the unit's own validation. Final readback matches **all 16 objects byte-for-byte**, including current music, settings, empty multi objects, pattern slots and user wavetables. Both End-B blocks and amounts also match in the native decoded comparison.
+
+Local evidence: `flash.log`, `post-flash-info.txt`, `music-validation.log`, `music-restore.log`, `final-readback-comparison.json`, `final-music-comparison.log`, pre-flash archives and the final archive under `restored/`, all in the backup folder above. This establishes physical installation, reboot/identity and user-data readback. It does not establish live audio quality, physical MIDI/clock timing or CPU performance; those acceptance checks remain pending.
