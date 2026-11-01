@@ -98,14 +98,23 @@ def read_version():
 
 def toolchain():
     tc = os.environ.get("JIELI_TOOLCHAIN")
-    if not tc or not (Path(tc) / "pi32v2" / "bin" / "clang").exists():
-        raise SystemExit("JIELI_TOOLCHAIN must point at the JieLi Linux toolchain "
-                         "(the directory with pi32v2/ and common/; see tools/get_toolchain.sh)")
+    if not tc or not ((Path(tc) / "pi32v2" / "bin" / "clang").exists() or (Path(tc) / "bin" / "clang.exe").exists()):
+        raise SystemExit("JIELI_TOOLCHAIN must point at the JieLi Linux toolchain (the directory with pi32v2/ and common/; "
+                         "see tools/get_toolchain.sh) or at the Windows toolchain's pi32 directory (bin/clang.exe)")
     return Path(tc).resolve()
 
 
+# JAM: the Windows toolchain keeps every tool in one bin/ directory, under its own names
+WIN_TOOLS = {"pi32v2/bin/clang": "clang.exe", "pi32v2/bin/ld": "pi32v2-ld.exe",
+             "common/bin/objcopy": "llvm-objcopy.exe", "common/bin/objdump": "llvm-objdump.exe"}
+
+
+def windows_toolchain():
+    return platform.system() == "Windows" and (toolchain() / "bin" / "clang.exe").exists()
+
+
 def use_docker():
-    native = platform.system() == "Linux" and platform.machine() in ("x86_64", "AMD64")
+    native = (platform.system() == "Linux" and platform.machine() in ("x86_64", "AMD64")) or windows_toolchain()
     return os.environ.get("JIELI_DOCKER", "0" if native else "1") == "1"
 
 
@@ -117,6 +126,8 @@ def tc(tool, *args):
     if use_docker():
         cmd = ["docker", "run", "--rm", "--platform", "linux/amd64", "-v", f"{SRC}:/work",
                "-v", f"{toolchain()}:/opt/jieli:ro", "-w", "/work", DOCKER_IMAGE, f"/opt/jieli/{tool}", *rel]
+    elif windows_toolchain():
+        cmd = [str(toolchain() / "bin" / WIN_TOOLS[tool]), *rel]
     else:
         cmd = [str(toolchain() / tool), *rel]
     r = subprocess.run(cmd, cwd=SRC, capture_output=True, text=True)
