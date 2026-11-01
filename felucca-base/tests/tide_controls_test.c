@@ -85,6 +85,33 @@ static void test_wait_off_in_hold(void)
     transport_req = 2u; run(48);
 }
 
+/* Both panel routes must also release a paused hold without moving the endpoint. */
+static void test_wait_off_paused(void)
+{
+    for (uint32_t reset = 0; reset < 2u; reset++) {
+        uint32_t i;
+        ui_power_on(); frame();
+        transport_req = 2u; run(48);
+        song.sel = 0; morph.target = MT_SELECTED;
+        gl.mode = GM_LOOP; gl.target = GT_SOUND; gl.time = 0; gl.wait = 1; gl.on = gl.armed = 0;
+        song.g[G_BPM] = 120;
+        glide_launch(1u, 1u, 0);
+        for (i = 0; i < 400u && !gl.hold; i++) run(16);
+        CHECK("paused WAIT: reaches endpoint hold", gl.on && gl.hold && morph_fader_of(0) == 127u);
+        transport_req = 2u; run(48);
+        if (reset) tide_reset(3u); else tide_knob(3u, -1);
+        run(48);
+        CHECK("paused WAIT: OFF removes hold at the endpoint", !gl.hold && gl.on && gl.to == 0u && !song.playing && morph_fader_of(0) == 127u);
+        run(640);
+        CHECK("paused WAIT: return remains paused", gl.prog == 0u && morph_fader_of(0) == 127u);
+        transport_req = 1u; run(32);
+        CHECK("paused WAIT: PLAY resumes from endpoint", gl.on && !gl.hold && gl.prog < (1u << GLIDE_Q) / 20u && morph_fader_of(0) >= 126u);
+        run(640);
+        CHECK("paused WAIT: return moves after PLAY", morph_fader_of(0) < 126u);
+        glide_stop(); transport_req = 2u; run(48);
+    }
+}
+
 /* a BOTH-parts glide launched from part 1: a hand on part 2's fader takes the lane over too */
 static void test_both_takeover(void)
 {
@@ -107,6 +134,129 @@ static void test_both_takeover(void)
     CHECK("both:   part 1 stays where it stopped", morph_fader_of(0) == f0 && f0 < 127u);
     gl.on = gl.armed = 0;
     transport_req = 2u; run(48);
+}
+
+/* a glide of target / mode / WAIT on the parts of mask, read from part pi, 1-bar trips at 120 BPM, playing */
+static void r0_launch(uint32_t pi, uint32_t mask, uint32_t target, uint32_t mode, uint32_t wait)
+{
+    ui_power_on(); frame();
+    transport_req = 2u; run(48);
+    song.sel = (uint8_t)pi; morph.target = MT_SELECTED;
+    gl.mode = (uint8_t)mode; gl.target = (uint8_t)target; gl.time = 0; gl.wait = (uint8_t)wait; gl.on = gl.armed = 0;
+    song.g[G_BPM] = 120;
+    glide_launch(1u, mask, pi);
+    run(96);
+}
+static void r0_hold(void)
+{
+    for (uint32_t i = 0; i < 400u && !gl.hold; i++) run(16);
+}
+
+/* R0a: WAIT edited while playing during a hold: up keeps the hold (no new destination), OFF ends it once, the knob or OCT- reset */
+static void test_wait_edit_running(void)
+{
+    for (uint32_t reset = 0; reset < 2u; reset++) {
+        uint32_t n0, n1, s0, s1;
+        r0_launch(0, 1u, GT_SOUND, GM_DRIFT, 1u);
+        r0_hold();
+        CHECK("running WAIT: a DRIFT reaches a held arrival at B", gl.on && gl.hold && gl.to == 0u && morph_fader_of(0) == 127u);
+        n0 = mph[0].n[0]; s0 = mph[0].seed[0][mph[0].top[0]];
+        tide_knob(3u, 1); run(48);
+        CHECK("running WAIT: WAIT up keeps the hold", gl.on && gl.hold && gl.to == 0u && morph_fader_of(0) == 127u);
+        if (reset) tide_reset(3u); else { tide_knob(3u, -1); tide_knob(3u, -1); }
+        run(32);
+        n1 = mph[0].n[0]; s1 = mph[0].seed[0][mph[0].top[0]];
+        CHECK("running WAIT: OFF ends the hold, the return starts at the endpoint", gl.on && !gl.hold && gl.to == 0u && gl.prog < (1u << GLIDE_Q) / 20u && morph_fader_of(0) >= 126u);
+        CHECK("running WAIT:   no second destination (End A not rolled again)", n1 == n0 && s1 == s0);
+        for (uint32_t i = 0; i < 400u && gl.to == 0u; i++) run(16);
+        CHECK("running WAIT:   the return arrives at A, then turns", gl.on && gl.to == 1u && morph_fader_of(0) <= 1u);        glide_stop(); transport_req = 2u; run(48);
+    }
+}
+
+/* R0b: a BOTH-parts glide taken over on either part, from either launching part, on each lane, moving or held */
+static void test_takeover_symmetric(void)
+{
+    static const char *const NAME[2][2] = {{"takeover: part 1 launches, part 2 SOUND", "takeover: part 1 launches, part 2 SEQ"},
+                                           {"takeover: part 2 launches, part 1 SOUND", "takeover: part 2 launches, part 1 SEQ"}};
+    for (uint32_t pi = 0; pi < 2u; pi++)
+        for (uint32_t lane = 0; lane < 2u; lane++)
+            for (uint32_t held = 0; held < 2u; held++) {
+                uint32_t other = pi ^ 1u, keep = lane ^ 1u, still;
+                char label[96];
+                r0_launch(pi, 3u, GT_BOTH, GM_LOOP, held ? 1u : 0u);
+                if (held) r0_hold(); else run(800);
+                CHECK(NAME[pi][lane], gl.on == 3u && (!held || gl.hold));
+                if (lane == GT_SOUND) morph_do(MQ_FADER, 1u << other, 100u); else seqm_set_fader(other, 100u);
+                run(32);
+                still = GLIDE_LANE[lane].get(pi);
+                snprintf(label, sizeof label, "%s%s: the touched lane stops", NAME[pi][lane], held ? " (held)" : "");
+                CHECK(label, !((gl.on >> lane) & 1u));
+                snprintf(label, sizeof label, "%s%s:   the other lane goes on", NAME[pi][lane], held ? " (held)" : "");
+                CHECK(label, (gl.on >> keep) & 1u);
+                run(2400);
+                snprintf(label, sizeof label, "%s%s:   the hand's value stays, the launcher's too", NAME[pi][lane], held ? " (held)" : "");
+                CHECK(label, GLIDE_LANE[lane].get(other) == 100u && GLIDE_LANE[lane].get(pi) == still);
+                glide_stop(); transport_req = 2u; run(48);
+            }
+}
+
+/* R0b: MIDI on the other part, selecting the other part, and a patch load on it (also one that leaves the fader where it was) */
+static void test_takeover_routes(void)
+{
+    uint32_t f;
+    r0_launch(0, 3u, GT_BOTH, GM_LOOP, 0u);
+    run(800);
+    song.sel = 1; run(320);
+    CHECK("takeover: selecting part 2 alone cancels nothing", gl.on == 3u);
+    song.sel = 0;
+    morph_push(MQ_FADER, 1u, 90u); run(32);
+    CHECK("takeover: a MIDI MORPH on part 2, TARGET BOTH: LINK moves its SEQ fader too, both lanes stop",
+          !gl.on && morph_fader_of(1) == 90u && seqm_fader_of(1) == 90u);
+    glide_stop(); transport_req = 2u; run(48);
+
+    r0_launch(0, 3u, GT_SOUND, GM_LOOP, 0u);
+    run(800);
+    morph_push(MQ_FADER, 1u, 90u); run(32);
+    f = morph_fader_of(0);
+    run(800);
+    CHECK("takeover: a MIDI MORPH on part 2 stops a SOUND glide", !gl.on && morph_fader_of(1) == 90u && morph_fader_of(0) == f);
+    glide_stop(); transport_req = 2u; run(48);
+
+    r0_launch(1, 3u, GT_BOTH, GM_LOOP, 0u);
+    run(800);
+    morph_push(MQ_SEQF, 0u, 90u); run(32);
+    CHECK("takeover: a MIDI SEQ fader on part 1 stops the SEQ lane", (gl.on & 1u) && !(gl.on & 2u) && seqm_fader_of(0) == 90u);
+    glide_stop(); transport_req = 2u; run(48);
+
+    r0_launch(0, 3u, GT_SOUND, GM_LOOP, 0u);
+    run(800);
+    apply_preset_to(&trk[1], 3u); run(64);
+    CHECK("takeover: a patch load on part 2 stops the SOUND lane", !gl.on && morph_fader_of(1) == 0u);
+    f = morph_fader_of(0);
+    run(800);
+    CHECK("takeover:   part 1 stays where it stopped", morph_fader_of(0) == f);
+    glide_stop(); transport_req = 2u; run(48);
+
+    r0_launch(0, 3u, GT_BOTH, GM_JOURNEY, 0u);           /* (the glide's own arrivals and targets are no load) */
+    run(12000);
+    CHECK("takeover: a JOURNEY's own arrivals never take it over (6 trips)", gl.on == 3u);
+    glide_stop(); transport_req = 2u; run(48);
+
+    for (uint32_t p = 0; p < 2u; p++) {                  /* a held arrival at A: the load leaves the fader at 0 */
+        char label[80];
+        r0_launch(p, 3u, GT_SOUND, GM_LOOP, 1u);
+        r0_hold();                                       /* (at B) */
+        gl.wait = 0; run(96);
+        gl.wait = 1;
+        r0_hold();                                       /* (at A now) */
+        CHECK("takeover: a LOOP holds at A", gl.on && gl.hold && gl.to == 1u && morph_fader_of(0) == 0u && morph_fader_of(1) == 0u);
+        apply_preset_to(&trk[p ^ 1u], 3u); run(64);
+        snprintf(label, sizeof label, "takeover: a same-value load on part %u during a hold at A stops the lane", (unsigned)(p ^ 1u) + 1u);
+        CHECK(label, !gl.on);
+        run(4000);
+        CHECK("takeover:   neither fader leaves A", morph_fader_of(0) == 0u && morph_fader_of(1) == 0u);
+        glide_stop(); transport_req = 2u; run(48);
+    }
 }
 
 /* owner 2026-11-01: on the TIDE page a K1 twist while gliding stops the glide where it is; PLAY goes on, the next twist launches */
@@ -311,7 +461,11 @@ int main(void)
     test_glide_transport();
     test_twist_stop();
     test_wait_off_in_hold();
+    test_wait_off_paused();
     test_both_takeover();
+    test_wait_edit_running();
+    test_takeover_symmetric();
+    test_takeover_routes();
     test_seq_rule();
     test_seq_ghost();
     test_settings_flicker();

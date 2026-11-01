@@ -76,6 +76,7 @@ enum { MDL_BRIGHT, MDL_MOVE, MDL_SHAPE, MDL_SPACE, MDL_CHAR, MDL_PITCH, MDL_N };
 static int32_t sound_complement_dir(uint32_t pi, uint32_t axis, int32_t direction);
 static int16_t mm_dv[NSHOWN][2][MDL_N];                   /* each end's dials (WANDER walks on from them) */
 static int8_t mm_dir[NSHOWN][MDL_N];                      /* WANDER: each dial's way */
+static uint8_t mm_loads[NSHOWN];                          /* each part's sound loads (morph_rebase_part): GLIDE sees a load that left the fader as it was */
 
 /* value id at dial d (-1000..1000, times w/6): toward hi at +1000, lo at -1000; the reach either way at least min */
 static void mm_dial(int8_t *end, const engine_t *e, const int8_t *o, uint32_t id, int32_t d, int32_t w, int32_t lo, int32_t hi, int32_t min)

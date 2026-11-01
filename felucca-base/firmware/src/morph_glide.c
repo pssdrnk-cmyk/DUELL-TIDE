@@ -81,6 +81,7 @@ static struct {
     uint8_t playing;                                     /* the transport as the last pass saw it (a STOP pauses, a PLAY goes on) */
     uint8_t beat_seen;
     uint8_t from[GLIDE_LANES], last[GLIDE_LANES][NSHOWN];   /* last: each moved part's fader as the last pass left it */
+    uint8_t loads[NSHOWN];                               /* each moved part's sound loads then (mm_loads: a load at the fader's own value) */
     uint32_t beats;                                      /* whole beats since the start, or since PLAY went on after a STOP */
     uint32_t bq, run;                                    /* Q16 beats: run before the last STOP; run in this stretch (as last seen) */
     uint32_t prog;                                       /* progress 0..1 << GLIDE_Q, for the page */
@@ -117,17 +118,21 @@ static uint32_t glide_ease(uint32_t p)
     return (uint32_t)((q * q * (3u << GLIDE_Q) - 2u * q * q * q) >> (2 * GLIDE_Q));
 }
 
-/* the faders of lane l on every part it moves, as seen now; a hand on any of them (BOTH: the other part's too) takes the lane over */
+/* the faders of lane l on every part it moves, as seen now; a hand on any of them (BOTH: the other part's too) takes the lane over,
+ * and so does a sound load on the SOUND lane even where the fader was at A already */
 static void glide_seen(uint32_t l)
 {
     for (uint32_t k = 0; k < NSHOWN; k++)
-        if ((gl.mask >> k) & 1u)
+        if ((gl.mask >> k) & 1u) {
             gl.last[l][k] = (uint8_t)GLIDE_LANE[l].get(k);
+            if (l == GT_SOUND)
+                gl.loads[k] = mm_loads[k];
+        }
 }
 static int glide_touched(uint32_t l)
 {
     for (uint32_t k = 0; k < NSHOWN; k++)
-        if (((gl.mask >> k) & 1u) && GLIDE_LANE[l].get(k) != gl.last[l][k])
+        if (((gl.mask >> k) & 1u) && (GLIDE_LANE[l].get(k) != gl.last[l][k] || (l == GT_SOUND && mm_loads[k] != gl.loads[k])))
             return 1;
     return 0;
 }
@@ -269,6 +274,11 @@ static void glide_poll(void)
                 gl.bq += gl.run;
                 gl.beats = gl.run = 0;
                 gl.playing = 0;
+            }
+            if (gl.hold && !GLIDE_WAIT_BARS[gl.wait % GLIDE_WAITS]) {
+                /* WAIT OFF releases the hold even while stopped; PLAY starts the planned return. */
+                gl.hold = 0;
+                glide_begin_lanes();
             }
             return;
         }
