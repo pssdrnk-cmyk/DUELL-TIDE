@@ -24,6 +24,13 @@ SIZE_FILES = ["ui.c", "favorites.c", "menu_items.c", "icons.c", "ui_graph.c", "u
               "panel.c", "lcd.c", "gfx.c", "ota.c", "ota_hw.c", "up_fm6.c", "params.c", "editor_fm6.c",
               "ui_layer.c", "ui_perform.c", "ui_name.c", "ui_events.c", "main.c", "libc.c", "storage_hw.c", "engines.c"]
 # (DUELL 0.2.9: slice_store.c and ui_slice.c are gone with the SLICE engine)
+# Apply the existing size policy to TIDE as well. isr_reach below still excludes
+# every function reachable from either interrupt before applying minsize.
+SIZE_FILES += ["ui_boxes.c", "ui_fm6op.c", "ui_guide.c", "ui_kb.c", "ui_tools.c"]
+SIZE_FILES += ["morph_tide.c", "morph_music.c", "morph_fm_shape.c", "morph_complement.c",
+               "morph_glide.c", "seq_morph.c", "seq_rhythm.c", "seq_phrase.c",
+               "seq_evolve.c", "seq_voicelead.c", "seq_dialogue.c", "tide_seq.c",
+               "tide_ui.c", "tide_store.c"]
 ISR_ROOTS = ("fm1_alnk0_irq", "fm1_timer5_irq")      # hal/fm1_isr.S: the audio ISR, the key / LED scan (+ USB poll)
 DEF = re.compile(r"^(?:static|void|int|uint\w*|int\w*|const)\b[^;=(]*?\b([A-Za-z_]\w*)\s*\(", re.M)
 IR_DEF = re.compile(r"^(define [^\n]*?@\"?([\w.]+)\"?\([^\n]*\)(?: unnamed_addr| local_unnamed_addr)?)( #\d+[^\n]*\{)$",
@@ -48,7 +55,9 @@ def definitions(text):
 
 
 def size_names():
-    names = set()
+    # morph.c also contains block-rate audio code: select only its main-loop
+    # preset-roll entry here, rather than applying the policy to the whole file.
+    names = {"morph_roll_from"}
     for f in SIZE_FILES:
         names.update(definitions((SRC / f).read_text()))
     return names

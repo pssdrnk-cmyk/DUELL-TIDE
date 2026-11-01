@@ -2797,7 +2797,7 @@ static uint8_t splash_on;
 static uint8_t splash_guide;                        /* the GUIDE follows this splash (its bit was clear at splash_begin) */
 static uint32_t splash_t0, splash_fr;
 /* The lockup (the art director's SVG, rasterised by tools/gen_splash_logo.py into build/gen/splash_logo.h: 4-bit coverage,
- * byte = value << 4 | (run - 1)), blended in T_TEXT over what the strip holds; the strip starts at screen row y0, h rows.
+ * byte = value << 4 | (run - 1); 0x0f plus a byte skips 16..271 transparent pixels), blended in T_TEXT over what the strip holds; the strip starts at screen row y0, h rows.
  * No RAM: the run list is walked from its start, only the pixels inside the strip are touched. */
 static void splash_logo_draw(int32_t y0, int32_t h)
 {
@@ -2805,7 +2805,9 @@ static void splash_logo_draw(int32_t y0, int32_t h)
     uint32_t i, p = 0;
     uint8_t gray = (tx >> 11) == (tx & 31u);            /* (GREY / MONO: one channel blended, so the pixel stays neutral) */
     for (i = 0; i < (uint32_t)sizeof SPL_LOGO; i++) {
-        uint32_t v = SPL_LOGO[i] >> 4, n = (SPL_LOGO[i] & 15u) + 1u, e = p + n;
+        uint32_t v = SPL_LOGO[i] >> 4, n = (SPL_LOGO[i] & 15u) + 1u;
+        if (!v && n == 16u) n += SPL_LOGO[++i]; /* extended transparent run */
+        uint32_t e = p + n;
         for (; v && p < e; p++) {
             int32_t py = SPL_LOGO_Y0 + (int32_t)(p / SPL_LOGO_W) - y0, px = SPL_LOGO_X0 + (int32_t)(p % SPL_LOGO_W), a = (int32_t)(v * 100u / 15u);
             uint16_t c;

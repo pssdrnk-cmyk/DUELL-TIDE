@@ -24,11 +24,13 @@ Output (a C header; the glyph / font types live in the renderer, firmware/src/gf
                 a run of 1..16 zeros or 15s, or one value 1..14 (huff_pack; about 28 % less than 2 px per byte)
   AF_<N>_HC     the code: the number of codes of each length 1..15, then the symbols in code order
                 ((count - 1) << 4 | value)
-  AF_<N>_G      aag_t {off, adv (1/16 px), bx, by, bw, bh} per glyph and phase (PHASES of S M, PHASES_L of L:
+  AF_<N>_G      aag_t {off, shape} per glyph and phase (shape packs bx, width and vertical phase deltas;
+                PHASES of S M, PHASES_L of L:
                 the glyph drawn at a pen of +0, +1/phases .. px, next to each other), ASCII 32..126, then the
                 extras (Latin-1 by their code; the ellipsis U+2026 as code 0x85, as in Windows-1252)
   AF_<N>_KERN / _KD  kerning pairs (key = a<<8|b, sorted) and their deltas in 1/16 px (GPOS of the weight)
-  AF_<N>        aafont_t (its last field: log2 of the phases)
+  AF_<N>_METRICS shared advance (1/16 px), y bearing and height, once per character
+  AF_<N>        aafont_t (includes phase count, bitmap code and shared metrics)
 Prints the byte cost of every face.
 """
 import argparse
@@ -48,7 +50,7 @@ PHASES, PHASES_L = 4, 2                # horizontal phases per glyph (aa_raster.
 # Keep the frequently drawn S labels and tiny D digits as nibbles. The other
 # faces use the existing lossless decoder; glyph pixels and metrics stay exact.
 PLAIN = []             # (filled by main(): every face of the barlow preset is PLAIN: as the design pictures set text, no kerning, no OpenType features)
-HUFF = [("M", "L", "T", "N", "X", "B", "P")]
+HUFF = [("S", "M", "L", "T", "D", "N", "X", "B", "P")]
 # L draws only "FELUCCA", the UPDATE MODE countdown digit, the calibration's control names (panel.c
 # B_NAME / E_NAME) (until DUELL 0.2.2 also MENU > LARGE's card values and page titles: some glyphs of the set below were only for those, a later size trim): a sparse face of those glyphs, the
 # space as its range and the rest as extras
@@ -225,8 +227,23 @@ def emit(face, tracking, gamma, kern_min):
     if hc:
         lines.append(ar.c_array(f"AF_{name}_HC", "uint8_t", hc, 24))
     lines.append(f"static const aag_t AF_{name}_G[{len(table)}] = {{")
-    for off, adv, bx, by, bw, bh in table:
-        lines.append(f"    {{{off}, {adv}, {bx}, {by}, {bw}, {bh}}},")
+    for i, (off, adv, bx, by, bw, bh) in enumerate(table):
+        base = table[i - i % phases]
+        dy, dh = by - base[3], bh - base[5]
+        assert -32 <= bx <= 31 and 0 <= bw <= 63, "glyph geometry out of range"
+        assert -1 <= dy <= 1 and -1 <= dh <= 1, "vertical phase delta out of range"
+        shape = (bx & 63) | (bw << 6) | ((dy + 1) << 12) | ((dh + 1) << 14)
+        lines.append(f"    {{{off}, {shape}}},")
+    lines.append("};")
+    metrics = []
+    for i in range(0, len(table), phases):
+        base = table[i]
+        metrics.append((base[1], base[3], base[5]))
+        for g in table[i:i + phases]:
+            assert g[1] == base[1], "advance differs between phases"
+    lines.append(f"static const aagm_t AF_{name}_METRICS[{len(metrics)}] = {{")
+    for adv, by, bh in metrics:
+        lines.append(f"    {{{adv}, {by}, {bh}}},")
     lines.append("};")
     if keys:
         lines.append(ar.c_array(f"AF_{name}_KERN", "uint16_t", keys, 12))
@@ -235,13 +252,14 @@ def emit(face, tracking, gamma, kern_min):
     lines.append(f"static const uint8_t AF_{name}_EX[{max(1, len(extras))}] = {{{ex}}};")
     lines.append(f"static const aafont_t AF_{name} = {{{r['h']}, {r['asc']}, {first}, {last}, {len(extras)}, {len(keys)}, "
                  f"AF_{name}_G, AF_{name}_DATA, {'AF_%s_KERN' % name if keys else '0'}, "
-                 f"{'AF_%s_KD' % name if keys else '0'}, AF_{name}_EX, {psh}, {'AF_%s_HC' % name if hc else '0'}}};")
+                 f"{'AF_%s_KD' % name if keys else '0'}, AF_{name}_EX, {psh}, {'AF_%s_HC' % name if hc else '0'}, "
+                 f"AF_{name}_METRICS}};")
     ref = "H" if "H" in chars else "0" if "0" in chars else None
     if ref:                                           # the capitals' band (gfx.c CAP_IN: centring text by it); a figures-only face: the band of 0
         cap = table[chars.index(ref) * phases]
         lines.append(f"#define AF_{name}_CAP_Y {cap[3]}   /* the ink of H: rows {cap[3]} .. {cap[3] + cap[5] - 1} of the line */")
         lines.append(f"#define AF_{name}_CAP_H {cap[5]}")
-    cost = {"data": len(data) + len(hc), "glyph_table": 8 * len(table), "kern": 3 * len(keys), "extras": len(extras),
+    cost = {"data": len(data) + len(hc), "glyph_table": 4 * len(table) + 4 * len(metrics), "kern": 3 * len(keys), "extras": len(extras),
             "glyphs": len(chars), "phases": phases, "pairs": len(keys), "h": r["h"], "asc": r["asc"], "px": px,
             "font": os.path.basename(font.split("#")[0]), "adv_digit": r["glyphs"]["0"][0] / 16}
     cost["total"] = cost["data"] + cost["glyph_table"] + cost["kern"] + cost["extras"]

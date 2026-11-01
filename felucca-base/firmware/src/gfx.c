@@ -8,7 +8,12 @@
  * each glyph is rasterised at 1 << psh horizontal phases (S M 4, L 2: drawn at a pen of +0, +1/4 .. px);
  * cv_text takes the phase that puts it within a phase step of its true place. Blending uses a 16-entry
  * ramp per (ink, background) pair, cached, so a pixel costs a nibble read and a store. Colours come from the theme tokens. */
-typedef struct { uint16_t off, adv; int8_t bx; uint8_t by, bw, bh; } aag_t;
+/* Advance and vertical metrics are shared by a character's horizontal phases. */
+/* shape: signed bx in 6 bits, width in 6, biased by/bh phase deltas in 2 each. */
+typedef struct { uint16_t off, shape; } aag_t;
+typedef struct { uint16_t adv; uint8_t by, bh; } aagm_t;
+static int32_t glyph_bx(const aag_t *g) { return (int32_t)((g->shape & 63u) ^ 32u) - 32; }
+static uint32_t glyph_bw(const aag_t *g) { return (g->shape >> 6) & 63u; }
 typedef struct {
     uint8_t h, asc, first, last, nex;   /* line height, baseline; ASCII range; extras */
     uint16_t nk;                        /* kerning pairs */
@@ -19,6 +24,7 @@ typedef struct {
     const uint8_t *ex;                  /* codes of the extra glyphs */
     uint8_t psh;                        /* log2 of the phases per glyph: g[i << psh] .. g[(i << psh) + phases - 1] */
     const uint8_t *hc;                  /* data's Huffman code (cv_alpha_hc), 0 = 2 px per byte (cv_alpha) */
+    const aagm_t *metrics;
 } aafont_t;
 /* a theme (tools/gen_ui_palettes.py): per-part backgrounds, the layer one, shared surfaces, and per part A, B: c the brief's
  * colours (fills), r the same readable as values, a the accent; hc: no gradients (the morph colour jumps at the middle) */
@@ -529,7 +535,7 @@ static void cv_alpha(int32_t x, int32_t y, uint32_t w, uint32_t h, const uint8_t
  * its repeat count ((count - 1) << 4 | value: runs of zeros and 15s). Codes of up to 8 bits come from a
  * 256-entry table made once per font in RAM (symbol | length << 8; 0 = a longer code: bit by bit). The
  * stream is read in order, so rows outside the clip are decoded and dropped; a run spans rows */
-#define HC_FONTS 8                       /* one cached table per Huffman-coded face (7 font faces + the icons) */
+#define HC_FONTS 8                       /* bounded font/icon lookup cache; a miss rebuilds an entry */
 /* Main-loop drawing only. Ordinary RAM has room; retain the pool for audio state. */
 static struct { const uint8_t *hc; uint16_t lut[256]; } hc_tab[HC_FONTS];
 static const uint16_t *hc_lut(const uint8_t *hc)
@@ -655,7 +661,7 @@ static int32_t text_w16(const aafont_t *f, const char *s)   /* the advance, 1/16
         uint32_t c = fold(f, (uint8_t)*s);
         if (prev)
             pen += kern(f, prev, c);
-        pen += f->g[glyph(f, c)].adv;
+        pen += f->metrics[glyph(f, c) >> f->psh].adv;
         prev = c;
     }
     return pen;
@@ -669,7 +675,7 @@ static int32_t text_w(const aafont_t *f, const char *s)
         uint32_t c = fold(f, (uint8_t)*s);
         if (prev)
             pen += kern(f, prev, c);
-        pen += f->g[glyph(f, c)].adv;
+        pen += f->metrics[glyph(f, c) >> f->psh].adv;
         prev = c;
     }
     return (pen + 8) >> 4;
@@ -687,6 +693,7 @@ static int32_t text_run(int32_t x, int32_t y, const aafont_t *f, const char *s, 
     for (; *s; s++) {
         uint32_t c = fold(f, (uint8_t)*s);
         const aag_t *g;
+        const aagm_t *m = &f->metrics[glyph(f, c) >> f->psh];
         int32_t pos, d0, d1;
         if (prev)
             pen += kern(f, prev, c);
@@ -709,20 +716,21 @@ static int32_t text_run(int32_t x, int32_t y, const aafont_t *f, const char *s, 
             pos = (pen + 8) & ~15;                   /* one phase (figures, ., blanks): the rounded pen */
         }
         err = pos - pen;
-        if (g->bw) {
-            int32_t gx = x + (pos >> 4) + g->bx, gy = y + g->by;
+        if (glyph_bw(g)) {
+            int32_t bw = (int32_t)glyph_bw(g), bh = m->bh + (int32_t)(g->shape >> 14) - 1;
+            int32_t gx = x + (pos >> 4) + glyph_bx(g), gy = y + m->by + (int32_t)((g->shape >> 12) & 3u) - 1;
             if (!rv)
                 ;                                    /* (text_ink: measured only) */
             else if (f->hc)
-                cv_alpha_hc(gx, gy, g->bw, g->bh, f->data + g->off, f->hc, rv);
+                cv_alpha_hc(gx, gy, bw, bh, f->data + g->off, f->hc, rv);
             else
-                cv_alpha(gx, gy, g->bw, g->bh, f->data + g->off, rv);
+                cv_alpha(gx, gy, bw, bh, f->data + g->off, rv);
             if (gx < x0) x0 = gx;
-            if (gx + g->bw > x1) x1 = gx + g->bw;
+            if (gx + bw > x1) x1 = gx + bw;
             if (GFX_HOOKS && gy < y0) y0 = gy;       /* (the rows: for the host's lint only) */
-            if (GFX_HOOKS && gy + g->bh > y1) y1 = gy + g->bh;
+            if (GFX_HOOKS && gy + bh > y1) y1 = gy + bh;
         }
-        pen += g->adv + text_trk;
+        pen += m->adv + text_trk;
         prev = c;
     }
     bb[0] = x0;
