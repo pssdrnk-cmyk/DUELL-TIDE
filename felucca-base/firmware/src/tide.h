@@ -97,7 +97,7 @@ static uint32_t tide_roll_sig(const track_t *t);
 #define TIDE_GRAPH_SIG(pg, h) do { if ((pg)->graph == GR_TIDELIST) return ((h) ^ tide_list_sig()) * 16777619u; \
                                    if (TIDE_PAGE(pg)) (h) = ((h) ^ tide_sig() ^ (uint32_t)morph.target * 0x85EBCA77u) * 16777619u; } while (0)
 #define TIDE_COLUMNS() do { if (TIDE_PAGE(cur_page())) { tide_columns(); return; } } while (0)
-#define TIDE_HOME_NAME "TIDE"                            /* MENU > CONTROL > HOME OPENS: the first page of the round */
+#define TIDE_HOME_NAME "MORPH"                           /* MENU > CONTROL > HOME OPENS: the first page of the round (MORPH, as stock; TIDE is the round's 4th) */
 
 #else
 
