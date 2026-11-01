@@ -3,9 +3,11 @@
  * S-curve. Generic lanes: a lane is a 0..127 value of a part set with a getter and a setter; the MORPH fader and the SEQ
  * MORPH fader are the two lanes today.
  *
- * Time: while the transport plays, bars of the musical clock (the internal tempo or an external MIDI clock: the beats the
- * sequencer counts, perf_beat, plus the position inside the beat), starting on the next downbeat; if the transport stops
- * the glide waits and goes on with PLAY. Launched while stopped, it runs in real time at the TEMPO setting.
+ * Time: bars of the musical clock only (the internal tempo or an external MIDI clock: the beats the sequencer counts,
+ * perf_beat, plus the position inside the beat): a glide moves while the transport plays, never on its own (owner, 2026-11-01).
+ * Launched while playing it starts on the next downbeat; a panel launch while stopped starts PLAY and the trip with its first
+ * bar (an external clock, a REC armed or a MIDI launch: it waits for PLAY). STOP pauses it where it is, to the sample of the
+ * beat; PLAY goes on from there.
  * MODE, at each arrival (the end left is silent there: its weight is 0), for each lane TARGET moves:
  *   ONCE     stops.
  *   LOOP     turns back: the same two ends (the SEQ comes home each trip).
@@ -76,11 +78,11 @@ static struct {
     uint8_t to;                                          /* the end it goes to: 0 A, 1 B */
     uint8_t pi;                                          /* the part whose faders it reads; mask: the parts it moves */
     uint8_t mask;
-    uint8_t clocked;                                     /* 1: the musical clock, 0: real time */
+    uint8_t playing;                                     /* the transport as the last pass saw it (a STOP pauses, a PLAY goes on) */
     uint8_t beat_seen;
     uint8_t from[GLIDE_LANES], last[GLIDE_LANES];
-    uint32_t beats;                                      /* whole beats since the start (clocked) */
-    uint32_t t0;                                         /* fm1_ms of the start (real time) */
+    uint32_t beats;                                      /* whole beats since the start, or since PLAY went on after a STOP */
+    uint32_t bq, run;                                    /* Q16 beats: run before the last STOP; run in this stretch (as last seen) */
     uint32_t prog;                                       /* progress 0..1 << GLIDE_Q, for the page */
     uint8_t wait;                                        /* WAIT: an index of GLIDE_WAIT_BARS */
     uint32_t wbars, wlast;                               /* WANDER, JOURNEY: the bars run since its start, at the last arrival */
@@ -121,7 +123,8 @@ static void glide_begin_lanes(void)
         gl.from[l] = gl.last[l] = (uint8_t)GLIDE_LANE[l].get(gl.pi);
     gl.beats = 0;
     gl.beat_seen = perf_beat;
-    gl.t0 = fm1_ms;
+    gl.bq = gl.run = 0;
+    gl.playing = song.playing != 0;
     gl.prog = 0;
 }
 
@@ -139,24 +142,17 @@ static void glide_start(uint32_t to, uint32_t mask, uint32_t pi)
     gl.mask = (uint8_t)mask;
     gl.pi = (uint8_t)pi;
     gl.on = (uint8_t)glide_lanes_of(gl.target);
-    gl.clocked = song.playing != 0;
-    gl.armed = gl.clocked;
+    gl.armed = 1;                                        /* (the next downbeat; stopped: the first one PLAY gives) */
     glide_begin_lanes();
 }
-/* A panel launch of a prepared pattern starts PLAY too. The request crosses the
- * existing audio queue; armed=2 waits for that start before following its clock. */
+/* A panel launch (the TIDE page's K1, PERFORM's GLIDE TO) while stopped starts PLAY too, whatever the glide moves (owner,
+ * 2026-11-01: the glide and PLAY go together). The request crosses the existing audio queue; armed=2 waits for that start
+ * and the trip begins with the sequencer's first bar. Not on an external clock (its Start comes from the gear) nor with REC armed */
 static void glide_launch(uint32_t to, uint32_t mask, uint32_t pi)
 {
-    uint32_t has_notes = 0;
-    if (!song.playing && !song.rec && !clock_src() && gl.target != GT_SOUND)
-        for (uint32_t k = 0; k < NSHOWN; k++)
-            if ((mask >> k) & 1u)
-                for (uint32_t j = 0; j < (uint32_t)clamp(trk[k].p[P_SLEN], 1, NSTEP); j++)
-                    has_notes |= trk[k].step[j].time == ST_NOTE && trk[k].step[j].n;
     glide_start(to, mask, pi);
-    if (has_notes) {
+    if (!song.playing && !song.rec && !clock_src()) {
         transport_req = 1u;
-        gl.clocked = 1;
         gl.armed = 2;
     }
 }
@@ -167,13 +163,11 @@ static int glide_running(void) { return gl.on != 0; }
 static uint32_t glide_progress(void)
 {
     uint64_t total_beats = (uint64_t)(gl.hold ? GLIDE_WAIT_BARS[gl.wait % GLIDE_WAITS] : glide_bars()) * 4u, p;
-    if (gl.clocked) {
+    if (song.playing) {                                  /* (this stretch: its whole beats and the position in the beat) */
         uint32_t bs = beat_samples(), pos = beat_pos;
-        p = (((uint64_t)gl.beats << GLIDE_Q) + ((uint64_t)(pos < bs ? pos : bs) << GLIDE_Q) / (bs ? bs : 1u)) / total_beats;
-    } else {
-        uint64_t ms = (uint64_t)total_beats * 60000u / (uint32_t)clamp(song.g[G_BPM], 40, 240);
-        p = ((uint64_t)(fm1_ms - gl.t0) << GLIDE_Q) / (ms ? ms : 1u);
+        gl.run = (gl.beats << GLIDE_Q) + (uint32_t)(((uint64_t)(pos < bs ? pos : bs) << GLIDE_Q) / (bs ? bs : 1u));
     }
+    p = ((uint64_t)gl.bq + gl.run) / total_beats;
     return p > (1u << GLIDE_Q) ? 1u << GLIDE_Q : (uint32_t)p;
 }
 
@@ -233,7 +227,7 @@ static void glide_poll(void)
     uint32_t l, e, end;
     uint8_t b = perf_beat;
     rhythm_poll(gl.on && (gl.on & (1u << GT_SEQ)) && gl.mode >= GM_WANDER &&
-                morph_musical && song.playing && !song.rec && gl.clocked && !gl.armed ? gl.mask : 0u);
+                morph_musical && song.playing && !song.rec && !gl.armed ? gl.mask : 0u);
     glide_shape_follow();
     if (!gl.on) {
         glide_motion(0);
@@ -247,17 +241,28 @@ static void glide_poll(void)
         gl.armed = 0;
         glide_begin_lanes();                      /* the sequencer's first bar, not a free-running trip */
     }
-    if (gl.clocked) {
+    {
         uint32_t nb = (uint8_t)(b - gl.beat_seen);
         gl.beat_seen = b;
-        if (!song.playing)
-            return;                                      /* (stopped: it waits for PLAY) */
+        if (!song.playing) {                             /* STOP: it pauses where it is and waits for PLAY */
+            if (gl.playing) {
+                gl.bq += gl.run;
+                gl.beats = gl.run = 0;
+                gl.playing = 0;
+            }
+            return;
+        }
         if (gl.armed) {
+            gl.playing = 1;
             if (!nb || beat_n != 0u)
-                return;                                  /* (from the next downbeat) */
+                return;                                  /* (from the next downbeat; PLAY's own start is one) */
             gl.armed = 0;
             glide_begin_lanes();
             return;
+        }
+        if (!gl.playing) {                               /* PLAY again: the trip goes on from where STOP left it (PLAY's start beat is not one of it) */
+            gl.playing = 1;
+            nb = 0;
         }
         gl.beats += nb;
     }

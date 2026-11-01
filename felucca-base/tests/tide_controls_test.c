@@ -18,6 +18,54 @@ static void screen(const char *path)
     fclose(f);
 }
 
+/* the main loop and the audio together: 16 ms frames with the audio blocks that fall in them (the transport and the beats run in mix_block) */
+static void run(uint32_t ms)
+{
+    static uint32_t acc;
+    for (uint32_t i = 0; i < ms / 16u; i++) {
+        int32_t out[2 * CTL];
+        acc += (uint32_t)FS * 16u;
+        while (acc >= 1000u * CTL) {
+            acc -= 1000u * CTL;
+            mix_block(out, CTL);
+        }
+        frame();
+    }
+}
+/* owner 2026-11-01: GLIDE moves with PLAY, never on its own clock */
+static void test_glide_transport(void)
+{
+    uint32_t f2, p2, p3;
+    ui_power_on(); frame();
+    transport_req = 2u; run(48);
+    song.sel = 0; morph.target = MT_SELECTED;
+    gl.mode = GM_ONCE; gl.target = GT_SOUND; gl.time = 0; gl.wait = 0; gl.on = gl.armed = 0;
+    song.g[G_BPM] = 120;                                 /* (1 bar: 2 s) */
+    glide_launch(1u, morph_mask(0), 0);
+    CHECK("glide/PLAY: a panel launch while stopped asks for PLAY, whatever it moves (SOUND)", transport_req == 1u && gl.armed == 2u);
+    run(96);
+    CHECK("glide/PLAY:   PLAY started, the trip with its first bar", song.playing && gl.on && !gl.armed);
+    run(640);
+    CHECK("glide/PLAY:   it moves while playing", morph_fader_of(0) > 0u && morph_fader_of(0) < 127u);
+    transport_req = 2u; run(48);
+    f2 = morph_fader_of(0); p2 = gl.prog;
+    run(1200);
+    CHECK("glide/PLAY: STOP pauses it where it is (no real-time clock)", !song.playing && gl.on && morph_fader_of(0) == f2 && gl.prog == p2);
+    transport_req = 1u; run(32);
+    p3 = gl.prog;
+    CHECK("glide/PLAY: PLAY goes on from there, no jump", song.playing && p3 >= p2 && p3 - p2 < (1u << GLIDE_Q) / 20u);
+    run(3000);
+    CHECK("glide/PLAY:   and arrives at B with the music", !gl.on && morph_fader_of(0) == 127u);
+    transport_req = 2u; run(48);
+    glide_start(0u, morph_mask(0), 0);                   /* (a MIDI launch: the gear runs the transport) */
+    run(800);
+    CHECK("glide/PLAY: a MIDI launch while stopped waits for PLAY", !song.playing && gl.on && gl.armed && morph_fader_of(0) == 127u);
+    transport_req = 1u; run(640);
+    CHECK("glide/PLAY:   and moves with it", song.playing && gl.on && !gl.armed && morph_fader_of(0) < 127u);
+    gl.on = gl.armed = 0;
+    transport_req = 2u; run(48);
+}
+
 int main(void)
 {
     uint32_t q[MQ_N], n;
@@ -108,6 +156,7 @@ int main(void)
         ui.menu=2; ui.menu_scroll=1; ui.force=1; frame();
         screen("build/tide-about.ppm");
     }
+    test_glide_transport();
     printf("tidecontrols: %u checks, %u failures\n", checks, failures);
     return failures ? 1 : 0;
 }

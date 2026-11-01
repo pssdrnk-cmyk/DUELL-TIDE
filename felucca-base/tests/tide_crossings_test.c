@@ -175,12 +175,31 @@ static void held_keep_retune(void)
     REQUIRE("kept held carrier stays at its committed frequency",n->live && n->base[carrier]==expected);
 }
 #endif
+#ifdef CROSSINGS
+/* the filter dip reaches the voices on 1.1's chain path too (CHAIN_ALL: every voice whose filter 1 runs), as track_render's plain path and the JAM fork's voice_chain.c */
+static void chain_dip(void)
+{
+    track_t *t=fresh(0);                                  /* ANALOG: the multimode filter */
+    const engine_t *e=ENGINES[0];
+    voice_t v; vmod_t m;
+    int32_t mid=UF_TOP/2;
+    memset(&v,0,sizeof v); memset(&m,0,sizeof m);
+    t->p[P_KTRK]=0; t->p[P_FREEC]=0;
+    t->mwon=1; t->mwpi=0; morph_cdd[0]=16384;
+    REQUIRE("chain path: filter 1's cutoff takes the crossing dip", morph_xcut(t,mid)<mid && chain_uc(e,t,&v,&m,mid,0)==morph_xcut(t,mid));
+    memset(&m,0,sizeof m);
+    REQUIRE("chain path: a dip under the open end runs filter 1", chain_f1_on(e,t,&v,&m,UF_TOP));
+    morph_cdd[0]=0; t->mwon=0;
+    memset(&m,0,sizeof m);
+    REQUIRE("chain path: no dip, an open filter 1 stays off", !chain_f1_on(e,t,&v,&m,UF_TOP) && chain_uc(e,t,&v,&m,mid,0)==mid);
+}
+#endif
 int main(void)
 {
     setvbuf(stdout, 0, _IONBF, 0);
     at_rest();
 #ifdef CROSSINGS
-    curves(); key_layout(); held_retune(); held_keep_retune(); compact_tuning();
+    curves(); key_layout(); held_retune(); held_keep_retune(); compact_tuning(); chain_dip();
 #endif
     printf("crossings: %u checks, %u failures\n",checks,failures);
     return failures?1:0;

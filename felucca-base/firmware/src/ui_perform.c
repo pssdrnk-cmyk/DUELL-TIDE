@@ -115,7 +115,7 @@ static void perf_input(uint32_t pressed, uint32_t now, uint32_t lay)
             ui.perf_rolls[k]++;
             if (ok) {
 #if DUELL_TIDE
-                glide_start(k, morph_mask(song.sel), song.sel);
+                glide_launch(k, morph_mask(song.sel), song.sel);   /* (a panel launch: PLAY starts with it) */
                 ui_message(k ? "GLIDE TO B" : "GLIDE TO A");
 #else
                 morph_act(MQ_ROLL, morph_mask(song.sel), k, song.sel);

@@ -1914,6 +1914,17 @@ static void draw_foot(void)
     if (!ui.ml.on && !ui.layer && !ui.guide && grid_on != 16)
         (void)perf_foot(pfl, pfr);                     /* PERFORM: row 1 says what SELECT and ALGORITHM do there; row 2 as on every page (TEMPLATE 9: no first row, as PERFORM_NEW_LAYOUT_V4: SELECT = BALANCE is on knob 1's line) */
     TIDE_FOOT_NAME(t, pn);                                /* "#12 FOLD BASS": the slot's number, when the sound is in a slot */
+#if DUELL_TIDE                                          /* TIDE hook: TIDE and TIDE SET name both parts, part 1 on row 1, part 2 on row 2 */
+    char pn1[20];
+    const char *en1 = "";
+    pn1[0] = 0;
+    if (tide_foot_two()) {
+        tide_part_name(0u, pn1);
+        tide_part_name(1u, pn);
+        en1 = eng_shown(ENGINES[trk[0].eng_req % NENGINES]->name);
+        ename = ENGINES[trk[1].eng_req % NENGINES]->name;
+    }
+#endif
     if (ui.layer) {                                    /* a layer's map: its button and kind in the page's place */
         layer_foot_title(ti, ct);
     } else if (ui.guide) {                             /* item 118: the GUIDE / SETUP page's counter, "1/5" (the MENU's copy "1/3"), where every other page has its number */
@@ -1945,6 +1956,9 @@ static void draw_foot(void)
     if (pfl[0])
         sig = str_hash(str_hash(sig + 0x9E2Fu, pfl), pfr);
     sig += (uint32_t)batt_shown() * 7777u;   /* (the battery and the CPU bar are in the footer) */
+#if DUELL_TIDE
+    sig = str_hash(str_hash(sig + (uint32_t)TIDE_FOOT_PART(song.sel) * 0x2F1Bu, en1), pn1);   /* TIDE hook (row 1: part 1) */
+#endif
     fnm = foot_names();
     sig += fnm * 3571u;
     ctp = FOOT_CT_R * 16 - (ct[0] ? text_w16(&AF_S, ct) : 0);   /* the counter's pen, 1/16 px */
@@ -1973,6 +1987,13 @@ static void draw_foot(void)
     } else if (save_hint) {                            /* PATTERNS / MULTIS: what a held SAVE does here (the steps are not the page's) */
         GFX_HOOK_ALIGN(0, 0, 240, 0, AL_H, "footer save hint centred");
         cv_text_in(0, 2, 240, &AF_S, save_hint, T_DIM, T_BG);
+#if DUELL_TIDE
+    } else if (pn1[0]) {                               /* TIDE hook: row 1, part 1 as row 2 names a part (its engine in its colour, the sound it plays) */
+        int32_t f1 = UT_FOOT_BASE - 15 - Y_FOOT - AF_S_CAP_Y - AF_S_CAP_H + 1, x = UT_FOOT_X * 16;
+        cv_text_x16(x, f1, &AF_S, en1, vt(T_PTHEME(0u), T_BG), T_BG);
+        x += text_w16(&AF_S, en1) + UT_FOOT_WORD_GAP * 16;
+        cv_free_text(x >> 4, f1, &AF_S, pn1, T_TEXT, T_BG, 235 - (x >> 4));
+#endif
     } else if (foot_steps()) {
         uint32_t i, ph = foot_playhead(t);
         if ((ui.bank + 1u) * 16u <= (uint32_t)t->p[P_SLEN])
@@ -2010,7 +2031,7 @@ static void draw_foot(void)
             cv_rect(nr, fy, 240 - nr, 20, T_BG);
         }
         if (fnm & 1u)
-            cv_text_x16(UT_FOOT_X * 16, fy, &AF_S, eng_shown(ename), vt(T_PTHEME(song.sel), T_BG), T_BG);   /* (the selected part's colour on a global page too, not the global gradient's) */
+            cv_text_x16(UT_FOOT_X * 16, fy, &AF_S, eng_shown(ename), vt(T_PTHEME(TIDE_FOOT_PART(song.sel)), T_BG), T_BG);   /* (the selected part's colour on a global page too, not the global gradient's; TIDE hook: on TIDE / TIDE SET part 2's) */
         foot_rec_mark(ctp);
         if (ct[0])
             cv_text_x16(ctp, fy, &AF_S, ct, T_MID, T_BG);

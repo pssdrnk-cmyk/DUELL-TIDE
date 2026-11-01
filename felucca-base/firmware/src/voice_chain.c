@@ -100,6 +100,9 @@ static int32_t chain_uc(const engine_t *e, track_t *t, voice_t *v, vmod_t *m, in
     v->msl = (uint16_t)msl;
     kt = p[P_KTRK] ? UF_KT(p[P_KTRK], v->pitch_cur) : 0;
     uc = clamp(ucut0 + m->cutoff + kt, 0, UF_TOP);
+#if DUELL_TIDE
+    uc = morph_xcut(t, uc);                             /* TIDE: the effective cutoff's crossing dip, as track_render's plain path */
+#endif
     m->ucn = clamp(ucut0 + m->cutoff - m->acc1 + kt, 0, UF_TOP);
     m->cutoff = accent_lift(v->vel, m->envq15);
     m->ucut = uc;                                       /* (NOISE's loudness make-up reads it) */
@@ -123,7 +126,11 @@ static inline uint32_t chain_f1_on(const engine_t *e, const track_t *t, const vo
         return 0;                                       /* (DUELL 1.1 BYPASS: the filter does not run) */
     if (p[P_FREEC] > 0)
         return 1;
+#if DUELL_TIDE
+    return morph_xcut(t, clamp(ucut0 + m->cutoff + (p[P_KTRK] ? UF_KT(p[P_KTRK], v->pitch_cur) : 0), 0, UF_TOP)) < UF_TOP;   /* TIDE: the crossing dip runs the filter */
+#else
     return clamp(ucut0 + m->cutoff + (p[P_KTRK] ? UF_KT(p[P_KTRK], v->pitch_cur) : 0), 0, UF_TOP) < UF_TOP;
+#endif
 }
 
 /* voice v this block: in the chain (it was last block, or it enters now). On the one block where it enters or leaves, the engine renders ONCE (at unity: the engine's own state moves once, whatever

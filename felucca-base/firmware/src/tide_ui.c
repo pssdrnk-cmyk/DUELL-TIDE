@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* TIDE (JAM before): the HOME round's TIDE and TIDE LIST pages (the round: TIDE, TIDE LIST, MODE, MORPH; 1.1's MORPH SET is
- * not in it: SMART / ARP / PITCH are TIDE LIST's ROLL, ARP, PITCH).
+/* TIDE (JAM before): the HOME round's TIDE and TIDE LIST pages (the round, as stock with TIDE added: MORPH, TIDE SET, MODE, TIDE;
+ * TIDE SET is the TIDE LIST page under that title, in 1.1's MORPH SET's place: SMART / ARP / PITCH are its ROLL, ARP, PITCH).
  *   JAM       the SOUND and SEQ faders with the glide's path, the 16 steps around the playhead, a status line. K1 GLIDE (twist
  *             left: glide to A, right: to B), K2 MODE (ONCE / LOOP / DRIFT / WNDR / JOURNEY), K3 TIME (bars), K4 WAIT   ... play
  *   TIDE LIST  the settings in a list, as the MENU's: K1 picks the row, OCT+ the next value, OCT- the one before. TARGET (SOUND /
@@ -330,6 +330,13 @@ static int tide_foot_parts(void)
     uint32_t g = cur_page()->graph;
     return NSHOWN >= 2u && !ui.perf && !ui.layer && !ui.ml.on && (g == GR_TIDE || g == GR_TIDELIST || g == GR_MODE || g == GR_MORPH);
 }
+/* .. TIDE and TIDE SET, whose footer has its two rows (MORPH's and MODE's cards take row 1: there row 2 names the selected part):
+ * part 1 on row 1, part 2 on row 2, each its engine in its colour and the sound it plays (owner, 2026-11-01: as JAM did) */
+static int tide_foot_two(void)
+{
+    uint32_t g = cur_page()->graph;
+    return tide_foot_parts() && !ui.menu && !ui.guide && !ui.confirm && (g == GR_TIDE || g == GR_TIDELIST);
+}
 
 /* ---------------------------------------------------------------- the cards --- */
 static void tide_columns(void)
@@ -370,8 +377,8 @@ static void tide_status(char *l)
     if (!glide_running())
         str_cpy(l, tide_both() ? "BOTH PARTS" : song.sel ? "PART 2" : "PART 1", 40);
     else if (gl.armed)
-        str_cpy(l, "GLIDE ON THE NEXT BAR", 40);
-    else if (gl.clocked && !song.playing)
+        str_cpy(l, song.playing || transport_req == 1u ? "GLIDE ON THE NEXT BAR" : "GLIDE STARTS WITH PLAY", 40);
+    else if (!song.playing)
         str_cpy(l, "PAUSED: PLAY GOES ON", 40);
     else {
         str_cpy(l, gl.hold ? "WAITING" : ST[gl.mode % 5u], 40);
