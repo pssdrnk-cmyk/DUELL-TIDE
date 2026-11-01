@@ -17,9 +17,10 @@ Already present: bounded sound walks; 16/32/64/128-bar phrase tiers; rhythm move
 | Stage | Outcome | Dependency | State |
 |---|---|---|---|
 | R0 | Reliable WAIT edits and takeover of either part | None | Implemented and host-tested (paused WAIT, running WAIT edits, symmetric takeover, same-value load); emulator and device acceptance pending |
-| M0 | Reproducible musical reference and pitch diagnostic | R0 for moving sessions | Planned |
-| M1 | ARP SEQ-aware space between parts | M0 | Planned; first musical implementation; assigned to Codex (owner, 1 November 2026) |
-| M2 | Smoother chord voicing over the loop join | M0 | Planned; separate listening comparison |
+| S0 | Room in flash and RAM for M2-M4 | None; before or alongside M2-M4 | Planned; findings below (1 November 2026) |
+| M0 | Reproducible musical reference and pitch diagnostic | R0 for moving sessions | Done (owner, 1 November 2026); its results are not yet recorded in this roadmap |
+| M1 | ARP SEQ-aware space between parts | M0 | Implemented, software-verified and owner A/B listening accepted; device comparison pending |
+| M2 | Smoother chord voicing over the loop join | M0 | In progress by Claude; M2a implemented and host-tested; listening comparison pending |
 | M3 | Less repetitive JRNY destinations | M0 | Planned |
 | M4 | Longer passages with restraint, development and recovery | M1-M3 accepted | Planned |
 | M5 | Transition loudness tuning where recordings demonstrate a problem | M0; final check after M4 | Evidence-dependent |
@@ -174,6 +175,22 @@ Final musical session: at least 10 minutes of MUSIC WNDR and JRNY with PITCH bot
 
 Each accepted stage records: source checkpoint, exact change, resource delta, tests actually run, A/B listening result, and any remaining limitation. Update this roadmap's state rather than creating duplicate status documents. Local commits may be made when requested; publishing and flashing remain separately authorized actions.
 
+## S0 — make room in flash and RAM
+
+Measured on the M1a candidate (`work/roadmap-m1-build`, image 578,216 B, before M2): flash **3,348 B** free of 581,564; ordinary RAM **1,712 B** above the 4 KiB reserve; pool + range Z **2,964 B** above the 8 KiB reserve; hot audio code 1,240 B above the 228 B reserve; range X 928 B. That is not enough for M2-M4. Earlier compaction is already in the build: every font face Huffman-packed, the splash transparent-run encoding, the size policy for TIDE and five UI files, MORPH_HIST cut from 9 to 3, the font decoder cache moved to ordinary RAM.
+
+The search covered all of DUELL, not only TIDE. Owner decisions (1 November 2026): the pattern-slot RAM mirror is not needed; code compaction is covered by the existing test groups. Each slice below is its own measured candidate with flash/RAM/pool/hot deltas. Changes to shared DUELL code intentionally move the TIDE-off image: record its new hash as the off baseline.
+
+- **S0a — pattern slots from flash.** `patslot.c` keeps all three PTS3 objects in the pool (`ps_bank`, 10,752 B) so the list never reads flash. Read slots from flash when needed instead; keep one object-sized buffer for a SAVE/ERASE whose flash write still waits until nothing plays (`ps_poll`). Expected saving about 7 KB of pool. Format, slot layout and flash map unchanged. Tests: save/load/erase of slots, first-start defaults, SAVE while playing, power cut during a write (A/B sector copy), list browsing.
+- **S0b — complete the size policy.** `multi.c` is `#include`d by `project.c`; `tools/size_fns.py` reads only the listed files' text, so multi's functions (about 3.2 KB of code) are never built for size. Add it. Extend the `morph.c` selection beyond its current eight main-loop functions; `isr_reach` keeps everything the interrupts reach at the existing policy. Expected 0.7-1.9 KB of flash.
+- **S0c — smaller FM6 pitch table.** `FM6_EXP2` is 1,025 entries (4,100 B) with linear interpolation; 257 entries keep the error far below one cent. About 3 KB of flash. Not bit-identical: adapt the affected FM6 tests to a tolerance and repeat M0's pitch check.
+- **S0d — share the update buffers.** `ota_stage` and `ota_dec` (about 2.7 KB of pool) can share memory with the save/load staging (`proj_wire_u`); a firmware update never runs alongside a save. Assert the exclusion in code.
+- **S0e — factory data packing.** Factory sounds and multis (`DS_PAIR` 9,642 B, `DM_REC` 9,625 B) are read only at load. Measure what a tighter encoding saves before deciding.
+
+Not pursued: strings (19.5 KB; duplicates already merged, the longest are licence credits that must stay); the second effects bus and engine memory (real per-part needs); drawing the keycap pills instead of storing them (`KC_DATA`, 4.9 KB; changes their look); broad no-inline of UI helpers (about 1.3 KB measured earlier, at a drawing-speed cost).
+
+Suggested order: S0b and S0a first (largest, simplest), then S0c, S0d, S0e as M2-M4 need the room.
+
 ## First implementation slice
 
 ### Local progress — 1 November 2026
@@ -202,3 +219,61 @@ Source: `c46ccf2` plus the uncommitted R0a follow-up above.
 Remaining for R0 acceptance: an emulator walkthrough of WAIT edits during a hold, then the device comparison when a package is requested. M1 is assigned to Codex; this branch's next local candidates are the M0 fixtures, then M2 or M3.
 
 R0a and R0b, with focused regressions, then M0 reference scenes. The first musical change is M1's correct ARP SEQ timing prediction and gentle use of it for space. M2 and M3 remain independent candidates until heard. M4 waits until the individual improvements are accepted; M5 changes code only when recordings justify it.
+
+### M1 implementation and software verification — 1 November 2026
+
+Owner explicitly selected M1. **Implementation and software checks are complete; owner host A/B listening accepted; testing on the unit remains pending.** The initial internal-clock-only slice was extended before delivery; external clocks and held keys are now supported.
+
+Scope: bounded main-loop onset prediction for ordinary sequences and SEQ arps, using SDIV/SSWING or ARATE/ASWING and the actual phase/index. External divisions use the same fractional grids as playback, converted to common Q8 musical time. The internal arp's overshoot discard and odd-length swing parity are retained. Ordinary nudges and ratchets are included. A short existing publication guard copies phase, fractional carry and held-key metadata; all searching runs after interrupts resume. Held-chord eligibility uses the existing key mapping without updating chord memory. REC disables only the no-key stand-in; a held chord can still compete. Stopped, muted, zero-level and disabled-module peers do not compete; ARP TARGET modulation without note-ons is excluded. Other arp modes and anomalous/extreme periods retain independent evolution.
+
+The existing direction, gap and repeat choices consume the result. There is no new UI, mode, clock, persistent record, dependency, or ISR search. Existing protection of original anchors, ties/slides/ratchets, density limits and alternation remains in place. ONCE/LOOP, manual rolls, PITCH OFF, KEEP/UNDO and transport code were not changed.
+
+Probability follows actual playback: ordinary CHANCE 0 suppresses attacks; SEQ arp playback ignores step CHANCE and compares APROB inclusively, so APROB 0 still permits 1/128. This slice does not change those existing semantics and never draws the live RNG.
+
+Verification:
+- `tidedialogue`: **429 checks, 0 failures**, strict ASan/UBSan. Eighteen internal/external-grid traces cover 8,493 step visits, with zero current/next-step mismatches within one block. Six additional nudge/ratchet/held-key traces cover 2,587 fired destinations, with zero mismatches. Unequal 9/7-step patterns, distinct ARATE/SDIV, odd wraps, swing 50/67/75, 120/128 BPM and 240 BPM stress are included.
+- USB/TRS pulse-input traces cover another 1,291 visits through the real clock handlers. USB fixtures have zero nominal one-block mismatches. The swung mixed TRS fixture has **19 nominal one-block mismatches** because interpolation uses whole-millisecond timestamps and tempo estimates change with pulse quantization. Across these wire-input traces, no predicted attack lies outside the measured three-block uncertainty bound, and no prediction misses an exactly coincident dispatch. This is explicitly weaker than exact future block prediction; no sub-millisecond wire precision is claimed.
+- Deliberately clashing, symmetric fixture: 64 eligible moves across both parts, 64 collisions under the existing independent direction versus 0 under dialogue, with unchanged attack count and every shared beat anchor retained. This numerical result does not establish a musical preference.
+- `tidecontrols`, `tidekeep`, `tidecrossings`, `clockguard`, `clockdrift` pass. The cleaned standalone timing test passes again after removing the temporary listening command from the tracked test.
+- Production image **577,832 to 579,528 B (+1,696 B)**. Ordinary RAM **67,920 B**, pool plus range Z **357,484 B**, hot audio code **11,044 B**, hot headroom **1,468 B**, all unchanged. All image/reserve/placement/call-reach/range-X checks pass. `DUELL_TIDE=0` package is byte-identical to `jam/off.sha256` (`6232c047c076ea52f836b1fffc25fb7c4706db8f8d856791f2d9a10e8b0ee9f3`).
+- Pinned CPU-emulator package smoke passes boot, LCD, MIDI note-on/off and finite bounded audio. This does not prove device CPU, sound or MIDI.
+
+Reference comparison uses an isolated `c46ccf2` snapshot plus the accepted R0 source changes; the current branch's concurrent M2, credit/cover/web and migration-document edits are excluded and preserved. Evidence is under `work/roadmap-m1-build`: `baseline-build.log`, `candidate-final-build.log`, `final-regressions.log`, `final-onset-traces.log`, `final-dialogue-clean.log`, `off-build.log`, `package-smoke.log`, and retained `candidate.fwsc`/`candidate-app.bin`.
+
+Listening files in `work/roadmap-m1-build/audio`: seeded 16-bar M04 at 120 BPM and M02 at 128 BPM are byte-identical between baseline and candidate. A deliberate-clash fixture using M04 sounds produces different audio while both automatic parts develop. All six raw renders are non-silent and unclipped. Root/pattern data come from the identified factory records; comparisons use MUSIC WNDR, BOTH, TIME 1 bar, WAIT OFF, PITCH OFF, WASH OFF, VARY ALL, seed `0x1234567` and the device USB reference master level. `clashing-A-then-B.wav` contains RMS-matched baseline A (32 s), 1 s silence, then candidate B (32 s); unmatched originals and `metrics.json` are retained. Rendering uses the actual firmware DSP in the existing host harness, not replacement synthesis. The separate reproducible listening driver stays in the evidence folder rather than adding a product/test-runner feature.
+
+Strict native audio rendering found existing signed-shift UB in **both** baseline and candidate: M04 `fx_bus.c:711`, M02 `eng_wheel.c:311`. Those failures are retained in `audio/*-strict.log`; normal-production-setting host renders are supplied for comparison. They are not claimed as strict DSP sanitizer passes. The timing/control regression groups retain their strict sanitizer flags.
+
+Owner listening result (1 November 2026): after hearing the level-matched deliberate-clash A/B, the owner preferred candidate B: "B is better, less busy I guess". Record this as a favorable but tentative subjective result for this host-rendered fixture; retain M1. It does not establish preference across every scene or device performance.
+
+Acceptance remaining: only when a package is explicitly requested, the device comparison with backup. No firmware installed, no hardware/physical-audio/CPU claim, no publishing. M1's local implementation and owner host A/B listening are complete.
+
+### M2a local slice — 1 November 2026
+
+Owner asked to proceed with M2. M2a is **implemented and host-tested**, not musically accepted; it was done ahead of the M0 fixtures, so the ordinary-chord listening scene is still to come.
+
+Source checkpoint: `17d306a`. Only `seq_voicelead.c` changes in firmware; the concurrent M1 edits (`seq_dialogue.c`, `tide_dialogue_test.c`) are untouched and excluded from the build comparison.
+
+- `sqm_voicelead` is now one bounded walk (`voicelead_walk`) run up to three times: the existing walk from no previous chord, measured; a second walk seeded with the first walk's last chord, measured; then the chosen one, written. The second is kept only when its whole-cycle movement (upper voices, chord to chord, plus last back to first) is strictly lower, so ties and already smooth loops keep today's voicing exactly. Per-chord candidates, scoring, constraints and the VOIC/MUSIC/PITCH gate are unchanged. No persistent state or pattern-sized scratch arrays; only fixed four-note temporaries, in the main loop. Worst case three times today's work.
+- New `tidevoicelead` group (strict ASan/UBSan): a loop whose first chord is written an octave below the rest (inner movement 28 to 4, join 24 to 0); an already smooth four-note loop unchanged; one chord unchanged; a chord tied across the join keeps its notes; repeated generation identical. 9,000 seeded random loops over chromatic and two other scales, with rests, ties, slides, single notes, triads and four-note chords: 15–17% improve, none change without a whole-cycle gain, and bass, pitch classes, note count, register 24..108, ±12 from the source, no duplicated voice and held/slid chords hold on every loop. **9,017 checks, 0 failures.** `tidecontrols`, `tidekeep`, `tidecrossings` and `tidedialogue` pass.
+- Build (isolated snapshots in `work/roadmap-m2-build`; baseline = `17d306a`): image 577,832 to 578,136 B (+304); ordinary RAM 67,920 B, pool + range Z 357,484 B, hot audio code 11,044 B and 1,468 B hot headroom unchanged. Every placement, reserve, call-reach and range-X check passes. The final combined M1/M2 measurement is recorded in the integration section below.
+
+Limits: ARP SEQ plays the held chord, not stored upper voices, so this has no effect there (M02 NIGHT ORGAN). Single-note lines and chord-size changes are not linked, as before. No emulator, listening or device check; nothing flashed or published.
+
+### M1 + M2 integration for GitHub — 1 November 2026
+
+Owner requested integration and push to the existing `pssdrnk-cmyk/DUELL-TIDE` fork. Both changes were already in the shared `jam11` checkout, so no separate topic-branch merge is needed. Remote `fork/jam11` was `876ddd5`; the R0 commit `17d306a` and this integration advance it without rewriting history. The older `fork/main` emulator redesign is superseded by the current TIDE page and is not merged over it.
+
+Combined verification used a fresh snapshot of `17d306a` plus the exact pending M1/M2 source files and tests. Seven groups pass: `tidedialogue`, `tidevoicelead`, `tidecontrols`, `tidekeep`, `tidecrossings`, `clockguard`, `clockdrift`. The browser WASM build/note smoke and pinned CPU-emulator packaged-firmware boot/LCD/MIDI/audio smoke both pass. Plain DUELL (`DUELL_TIDE=0`) remains byte-identical to the recorded off baseline.
+
+| Region | Used | Capacity | Free | Required free |
+|---|---:|---:|---:|---:|
+| Application flash | 579,832 B | 581,564 B | 1,732 B | Fits slot |
+| Ordinary RAM | 67,920 B | 73,728 B | 5,808 B | 4,096 B |
+| Pool including range Z | 357,484 B | 368,640 B | 11,156 B | 8,192 B |
+| Hot audio RAM | 11,044 B | 12,512 B | 1,468 B | 228 B |
+| Range X | 31,584 B | 32,512 B | 928 B | Fits region |
+
+Combined image delta against R0: **+2,000 B flash**, no ordinary/pool/hot RAM growth. All reserves, placement, call reach and range-X closure checks pass. Application flash is tight; only 1,732 B remains. These are linked-build measurements, not live heap/CPU measurements or physical-unit validation.
+
+Evidence and retained combined package: `work/merge-m1-m2-build/` (`integration-build.log`, `integration-tests.log`, `emulator-build.log`, `emulator-note.log`, `package-smoke.log`, `off-build.log`, `candidate.fwsc`). M1 retains the owner's favorable host A/B result; M2's listening comparison is still pending. No firmware write or release upload is part of this push. The repository's existing Pages workflow runs on a `jam11` push.

@@ -1,11 +1,16 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* Main-loop MUSIC voicing: keep the bass, chord tones and note count, and choose
  * nearby upper-note octaves against the preceding chord. No chord memory or new
- * endpoint data. Held/slide chains keep their existing note identities. */
+ * endpoint data. Held/slide chains keep their existing note identities.
+ * The loop join counts too: a second walk starts from the last chord, and is kept
+ * only when the whole cycle (last back to first included) moves less. */
 static int32_t voicelead_abs(int32_t n) { return n < 0 ? -n : n; }
-static void sqm_voicelead(const step_t *source, uint32_t len, step_t *out)
+/* one forward walk from previous[] of pn_io notes (0 = no chord before); leaves the last chord there.
+ * Returns the upper voices' movement chord to chord within the walk and back to its first;
+ * write 0 only measures */
+static int32_t voicelead_walk(const step_t *source, uint32_t len, step_t *out, int32_t *previous, uint32_t *pn_io, int write)
 {
-    int32_t previous[4] = {0};uint32_t pn = 0;
+    int32_t first[4] = {0}, cost = 0;uint32_t pn = *pn_io, fn = 0;
     for (uint32_t i = 0; i < len; i++) {
         step_t *s = &out[i];
         if (!sqm_hit(s) || s->n > 4u) continue;
@@ -48,9 +53,24 @@ static void sqm_voicelead(const step_t *source, uint32_t len, step_t *out)
                     memcpy(best,candidate,n*sizeof best[0]);
                 }
             }
-            for (uint32_t k = 1; k < n; k++) s->note[order[k]] = (uint8_t)best[k];
+            if (write) for (uint32_t k = 1; k < n; k++) s->note[order[k]] = (uint8_t)best[k];
         }
-        for (uint32_t k = 0; k < n; k++) previous[k] = s->note[order[k]];
+        if (fn) {if (pn == n) for (uint32_t k = 1; k < n; k++) cost += voicelead_abs(best[k] - previous[k]);}
+        else {memcpy(first,best,n*sizeof first[0]);fn = n;}
+        memcpy(previous,best,n*sizeof best[0]);
         pn = n;
     }
+    if (fn && fn == pn) for (uint32_t k = 1; k < fn; k++) cost += voicelead_abs(first[k] - previous[k]);
+    *pn_io = pn;
+    return cost;
+}
+static void sqm_voicelead(const step_t *source, uint32_t len, step_t *out)
+{
+    int32_t chord[4] = {0}, last[4];uint32_t n = 0;
+    int32_t plain = voicelead_walk(source, len, out, chord, &n, 0);   /* from nothing, as before */
+    uint32_t ln = n;memcpy(last,chord,sizeof last);
+    int32_t joined = voicelead_walk(source, len, out, chord, &n, 0);  /* from the last chord */
+    if (joined < plain) memcpy(chord,last,sizeof chord), n = ln;
+    else memset(chord,0,sizeof chord), n = 0;
+    voicelead_walk(source, len, out, chord, &n, 1);
 }

@@ -1,4 +1,10 @@
-# Active jam11 implementation - 1 November 2026
+# DUELL 1.1 migration — completed baseline, 1 November 2026
+
+The implementation and integration onto DUELL 1.1 are complete, and the owner confirms TIDE works on hardware. The earlier pending hardware/review statements below describe the retained migration snapshot, not the current acceptance state. No new push, publication or firmware write is authorized by this update.
+
+Next development: [TIDE musical refinement roadmap](TIDE_MUSICAL_ROADMAP.md). It covers the two reproduced GLIDE control defects, ARP SEQ dialogue, cyclic voice leading, JRNY destination memory, longer musical arcs, and evidence-led pitch/loudness checks. R0, M1 and M2a now have implementations; the roadmap records verification, listening acceptance and the remaining planned work.
+
+## Retained implementation snapshot — before owner hardware confirmation
 
 **Current stage: tested Claude fixes merged; TIDE/TIDE SET restyle built for owner emulator review. The complete implementation fits; nothing from this implementation has been flashed.** Continue in `work/wt/duell-jam11`, branch `jam11`. The older revision 3.5 plan below is historical, not the current build status.
 
