@@ -2795,6 +2795,7 @@ static void splash_logo_draw(int32_t y0, int32_t h)
     cv_text_in(0, 123, 240, &AF_M, "MultiMorphing", T_TEXT, T_BG);
     cv_text_in(0, 145, 240, &AF_M, "Bitimbral Synthesizer", T_TEXT, T_BG);
     cv_text_in(0, 167, 240, &AF_S, "by OSCILL/R", T_TEXT, T_BG);
+    cv_text_in(0, 188, 240, &AF_S, "generative TIDE by pssdrnk", T_TEXT, T_BG);   /* the fork's part */
 #else
 
     uint16_t tx = T_TEXT;
