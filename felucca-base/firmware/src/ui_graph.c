@@ -10,8 +10,8 @@
 #define PANEL_X0 10                                  /* the graphs' inner area: x 10..230 */
 #define PANEL_W 220
 #define GOY (grid_on ? 1 : 11)                                       /* graphs drawn on a 100 px scale sit at y 11..111 */
-/* the height ADSR and LFO are drawn on: 100 px */
-#define graph_ht (grid_on ? 76 : 100)
+/* the height the panel pictures are drawn on: the grid's 76 rows (every page that draws one is template 1 or the ENGINE page, 5; the old 100 px panel, grid_on 0, has none) */
+#define graph_ht 76
 /* the caption row of a part page's graph card (item 119): S, left aligned at x UT_GR_NOTE_X, its capitals' last row on UT_GR_NOTE_BASE (HOME's note row, canvas row 74 of the 76); on the old tall panel (grid_on 0) row 94 (was 98: a 15 px line was cut by the panel's end) */
 static void graph_cap_at(int32_t x, const char *s, uint16_t col, int32_t up)   /* up: rows above the caption row (a caption of two lines: the first one 17 up) */
 {
@@ -103,7 +103,7 @@ static void graph_lfo(const track_t *t, uint16_t c)
     const page_t *pg = cur_page();
     int l2 = (pg->id[0] >= P_L2RATE && pg->id[0] <= P_L2FADE) || (pg->id[0] >= P_L2SYNC && pg->id[0] <= P_L2POL) || pg->id[0] == XW_BASE + X_LFO2;   /* DUELL: LFO 2's pages (any of its ids in slot 1) draw LFO 2; 0.2.25: LFO 2 DEST too (LFO 1 DEST: LFO 1's) */
     uint32_t r = l2 ? P_L2RATE : P_LRATE, s = l2 ? P_L2SYNC : P_LSYNC;
-    int32_t x, cy = graph_ht / 2 - (grid_on == 1), a = 38 * graph_ht / 100, py = cy, uni = t->p[s + 2u] != 0;   /* (template 1: the zero line on screen row 65, the picture's) */
+    int32_t x, cy = graph_ht / 2 - 1, a = 38 * graph_ht / 100, py = cy, uni = t->p[s + 2u] != 0;   /* (template 1: the zero line on screen row 65, the picture's) */
     uint32_t ph = (uint32_t)t->p[r + 2u] << 25;
     int32_t z = uni ? cy + a : cy;                   /* the zero line: POL UNI draws 0..+1 over it */
     cv_rect(PANEL_X0, z, PANEL_W, 1, GR_GUIDE);
@@ -135,13 +135,12 @@ static int32_t bar_x(uint32_t i) { return 12 + (int32_t)(i % 16u) * 13 + (int32_
 /* TEMPLATE 9 (the SEQUENCER page in the big area, NEW_LAYOUT_SHEET_V2.png): the roll is a WINDOW of rows UT_A_ROLL_Y .. + UT_A_ROLL_H - 1 (52 .. 143) on the same 8 px rows, the first row's top
  * one row above the window (row 51, so that C4 sits on rows 91 .. 98 as the picture): 12 rows, 10 whole and the two at the edges cut by the window (about 11 rows, as the picture: E4, C4, G3 named).
  * The cursor frame, the playhead and the step lines span the window; the parameter lock marks sit under it */
-#define PR_AREA (grid_on == 16)
-#define PR_ROWS (PR_AREA ? 12 : UT_T7_ROWS)          /* semitones shown (item 118, TEMPLATE 7: 17, 1.4 octaves; was 21 at 5 px) */
+#define PR_ROWS 12                                  /* semitones shown (the area page's window: 12 rows, the two at its edges cut) */
 #define PR_RH UT_T7_RH                              /* px per row */
-#define PR_Y0 (PR_AREA ? UT_A_ROLL_Y - 1 : UT_T7_Y0)   /* the top row (SCREEN row: the roll is drawn in two strips, graph_roll_t7; TEMPLATE 9: one canvas, the area) */
-#define PR_WY0 (PR_AREA ? UT_A_ROLL_Y : PR_Y0)        /* the window the roll shows: its first screen row and the row after its last */
-#define PR_WY1 (PR_AREA ? UT_A_ROLL_Y + UT_A_ROLL_H : PR_Y0 + PR_ROWS * PR_RH)
-#define PR_LOCK_Y (PR_AREA ? UT_A_ROLL_Y + UT_A_ROLL_H + 1 : PR_Y0 + PR_ROWS * PR_RH + UT_T7_LOCK_DY)   /* the lock mark's top (TEMPLATE 9: not in the picture; one row under the window, QUESTION in the report) */
+#define PR_Y0 (UT_A_ROLL_Y - 1)                     /* the top row (SCREEN row: TEMPLATE 9, one canvas, the area) */
+#define PR_WY0 UT_A_ROLL_Y                          /* the window the roll shows: its first screen row and the row after its last */
+#define PR_WY1 (UT_A_ROLL_Y + UT_A_ROLL_H)
+#define PR_LOCK_Y (UT_A_ROLL_Y + UT_A_ROLL_H + 1)   /* the lock mark's top (TEMPLATE 9: not in the picture; one row under the window, QUESTION in the report) */
 #define PR_X0 UT_T7_X0                              /* the first step column */
 #define PR_CW UT_T7_CW                              /* px per step */
 #define PR_KX UT_T7_KX                              /* the keyboard strip, 9 px (black keys 5) */
@@ -270,8 +269,8 @@ static void graph_roll(const track_t *t, uint16_t c)
             cv_rect(PR_KX, y, KEY_BLACK[pc] ? 5 : 9, PR_RH - 1, KEY_BLACK[pc] ? PR_KEYB : PR_KEYW);
         if (pc == 0u)
             cv_rect(PR_X0, y + PR_RH - 1, gw, 1, PR_KEYW);
-        if ((pc == 0u || pc == 4u || pc == 7u) &&      /* C, E and G named (S, DIM): TEMPLATE 7, the strip's left, the advance ending at UT_T7_NAME_R, capitals' last row = the row's top + RH */
-            (!PR_AREA || (y + PR_RH - AF_S_CAP_H + 1 >= PR_WY0 && y + PR_RH < PR_WY1))) {   /* (TEMPLATE 9: only a name whose capitals are whole inside the window, never a cut one) */
+        if ((pc == 0u || pc == 4u || pc == 7u) &&      /* C, E and G named (S, DIM): the strip's left, the advance ending at UT_T7_NAME_R, capitals' last row = the row's top + RH */
+            y + PR_RH - AF_S_CAP_H + 1 >= PR_WY0 && y + PR_RH < PR_WY1) {   /* (only a name whose capitals are whole inside the window, never a cut one) */
             note_name(nb, (uint32_t)n);
             GFX_HOOK_ALIGN(0, y, UT_T7_NAME_R, y + PR_RH, AL_R | AL_PASS, "piano roll note names' right edge");
             cv_text_on(UT_T7_NAME_R - text_w(&AF_S, nb), UT_TY(S, y + PR_RH), &AF_S, nb, T_DIM, T_BG);
@@ -282,12 +281,8 @@ static void graph_roll(const track_t *t, uint16_t c)
     for (i = 0; i < ncol; i++) {
         uint32_t si = base + i;
         int32_t x = PR_X0 + (int32_t)i * PR_CW;
-        if (si == ui.cursor) {                        /* the cursor frame: 2 rows over the rows on each side (TEMPLATE 9: the window's height, as the picture) */
-            if (PR_AREA)
-                cv_frame(x, PR_WY0, PR_CW + 1, PR_WY1 - PR_WY0, T_TEXT);
-            else
-                cv_frame(x, PR_Y0 - 2, PR_CW + 1, ybot - PR_Y0 + 4, T_TEXT);
-        }
+        if (si == ui.cursor)                          /* the cursor frame: the window's height, as the picture */
+            cv_frame(x, PR_WY0, PR_CW + 1, PR_WY1 - PR_WY0, T_TEXT);
         if (song.playing && si == t->seq_idx)
             cv_rect(x + 6, PR_WY0, 1, PR_WY1 - PR_WY0, T_ACCENT);
     }
@@ -313,7 +308,7 @@ static void graph_roll(const track_t *t, uint16_t c)
 #if DUELL_TIDE
     tide_roll_ghosts(t, base, ncol);
 #endif
-    if (PR_AREA) {                                    /* TEMPLATE 9: the rows cut at the window's edges (the area's rows above and under the window back to the background) */
+    {                                                 /* the rows cut at the window's edges (the area's rows above and under the window back to the background) */
         int32_t ay, ah;
         area_rect(&ay, &ah);
         cv_rect(0, ay, 240, PR_WY0 - ay, T_BG);
@@ -339,8 +334,6 @@ static void graph_scale(const track_t *t, uint16_t c)
      * is not drawn: QUESTION in the report */
     kb_draw(UT_A_KB_X, UT_A_KB_Y, UT_A_KB_W, UT_A_KB_H, scale_lit(t), (uint32_t)root_of(t) % 12u, 1u, c);
 }
-static void panel_note(const char *a, const char *b, const char *c);
-static void panel_alert(uint32_t id, const char *a);
 #if DUELL_TEST_MODE
 static void graph_test(void);                        /* MENU > SYSTEM > TEST (ui_menu.c: the CPU meter's code) */
 #endif
@@ -500,11 +493,6 @@ static void graph_insert(const track_t *t, uint16_t c)
         py = y;
     }
 }
-/* MOD pages: the page's four slots as rows "1 LFO > CUT +50%" (M, a list's rows: the source to x 78, the arrow 84..98, the
- * destination of up to 5 characters 106..160, the amount from 172), the one KNOB 2..4 edit selected, slots that do
- * nothing (SRC, DEST or AMT at 0, or a destination the part cannot move now: mod.c mod_dst_why) dim. Under them (0.2.7, owner:
- * "you do not know what E7 or SYNC is") the selected slot's destination in full, "DEST: WAVE SYNC" (M), and on a line of its
- * own (S) why it does nothing, or which bus a bus value moves (mod.c mod_dst_line) */
 /* a matrix source as the unit shows it: in full words (DUELL 1.1, owner), a two-word name with its break ("AMP\nENV") for the SOURCE card (ui_draw.c draw_column: two lines in S);
  * the stored N_MSRC names stay the keys (the factory sound tool, the editor). A name the card or the list row has no room for is cut by the drawing (ellipsis), never shortened */
 static const char *msrc_shown(int32_t s)
@@ -532,58 +520,6 @@ static void one_line(char *d, uint32_t n, const char *s)
     for (i = 0; s[i] && i + 1u < n; i++)
         d[i] = s[i] == '\n' ? ' ' : s[i];
     d[i] = 0;
-}
-static void graph_mod(const track_t *t, uint16_t c)
-{
-    uint32_t k, base = mod_page_base(cur_page());      /* (MOD: slots 1..4, MOD 2: 5..8) */
-    char line[32];
-    const char *more;
-    int32_t dv = morph_view(song.sel, MSLOT_ID(base + mod_ui_slot) + 1u);   /* (the DEST card's value) */
-    for (k = 0; k < 4u; k++) {
-        const int16_t *p = &t->p[MSLOT_ID(base + k)];
-        int32_t am = morph_view(song.sel, MSLOT_ID(base + k) + 2u);   /* item 158 (as item 152 E, graph_mod_new): the amount as the fader sounds it (at B the rolled End B's), not the stored Original */
-        int32_t y = 4 + (int32_t)k * 20, on = p[0] && p[1] && am && !mod_dst_why(t, p[1]), sel = k == mod_ui_slot, x;
-        uint16_t bg = sel ? T_THEME : T_BG, col = sel ? T_INK : on ? c : T_DIM;
-        char b[PV_LEN];
-        const char *unit;
-        if (sel)
-            { CV_HL(6, y, 228, 17); cv_rrect(6, y, 228, 17, 4, T_THEME, T_BG); }
-        b[0] = (char)('1' + base + k);
-        b[1] = 0;
-        GFX_HOOK_ALIGN(0, y, 0, y + 17, AL_V, "mod row text centred up/down");
-        cv_text_on(14, y + CAP_IN(M, 17), &AF_M, b, sel ? T_INK : T_MID, bg);
-        GFX_HOOK_ALIGN(0, y, 0, y + 17, AL_V, "mod row text centred up/down");
-        {                                                /* (DUELL 1.1: the source in full; the column has 54 px: M, else S, else cut with an ellipsis) */
-            char sn[24];
-            one_line(sn, sizeof sn, msrc_shown(p[0]));
-            if (text_w(&AF_M, sn) <= 54)
-                cv_text_on(30, y + CAP_IN(M, 17), &AF_M, sn, col, bg);
-            else
-                cv_free_text(30, y + CAP_IN(S, 17), &AF_S, sn, col, bg, 54);
-        }
-        cv_line(84, y + 8, 98, y + 8, col);              /* an arrow */
-        cv_line(94, y + 4, 98, y + 8, col);
-        cv_line(94, y + 12, 98, y + 8, col);
-        {                                                /* (T0229: a two-line name, FILTER RES, on one line in S) */
-            const char *dn = mod_dst_name(t, p[1]);
-            char one[40];
-            one_line(one, sizeof one, dn);
-            /* (owner 2026-10-25: NO short row forms; AMP ATK, MULTI CUT, TWIN CUT are gone: the row shows the full name, and what the 64 px cannot hold the drawing cuts with an ellipsis until the redesign) */
-            if (text_w(&AF_M, one) <= 64)
-                cv_text_on(106, y + CAP_IN(M, 17), &AF_M, one, col, bg);
-            else                                         /* (DUELL 1.1: a full name the row has no 64 px for is cut with an ellipsis by the drawing, not shortened) */
-                cv_free_text(106, y + CAP_IN(S, 17), &AF_S, one, col, bg, 64);
-        }
-        param_format(&TP[P_M1AMT], (int16_t)am, b, &unit);
-        GFX_HOOK_ALIGN(0, y, 0, y + 17, AL_V, "mod row text centred up/down");
-        x = cv_text_on(172, y + CAP_IN(M, 17), &AF_M, b, col, bg) + 2;
-        GFX_HOOK_ALIGN(0, 0, 0, y + CAP_IN(M, 17) + AF_M.asc, AL_B, "mod row unit on its amount's baseline");
-        cv_text_on(x, y + CAP_IN(M, 17) + AF_M.asc - AF_S.asc, &AF_S, unit, sel ? T_INK : T_DIM, bg);   /* (a unit: S) */
-    }
-    mod_dst_line(t, dv, line, &more);
-    cv_free_text(14, 86 + CAP_IN(M, 17), &AF_M, line, dv && !mod_dst_why(t, dv) ? T_TEXT : T_DIM, T_BG, 212);
-    if (more)
-        cv_free_text(14, 105, &AF_S, more, T_MID, T_BG, 212);
 }
 
 #define PIC_NOTE16 (60 * 16)                           /* item 165: the pictures' note, middle C (pitch16, 1/16 semitone): ANALOG's SYNC / SUB, TRIO's intervals, VOICE's formants */
@@ -652,21 +588,6 @@ static void graph_pic_analog(const track_t *t, uint16_t c)
                 cv_line_t(PANEL_X0 + x - 1, py, PANEL_X0 + x, y, c, 2);
             py = y;
         }
-    }
-}
-/* DUELL 1.1 (PAGES_V2_glo-a.png): the calm picture on GLO's effect pages, a smooth curve of three slow sines in the gradient (a different one for each page), a thin zero line */
-static void graph_calm(uint32_t seed)
-{
-    int32_t x, py = 0, cy = graph_ht / 2, a = graph_ht * 3 / 10;
-    cv_oy = 0;
-    cv_rect(PANEL_X0, cy + 1, PANEL_W, 1, T_RAISE);
-    for (x = 0; x < PANEL_W; x++) {
-        uint32_t ph = (uint32_t)x * (0xFFFFFFFFu / PANEL_W);
-        int32_t w = sine_i(ph * (2u + seed % 3u) + seed * 0x13579BDFu) * 5 / 8 + sine_i(ph * (5u + seed % 4u) + seed * 0x2468ACEu) / 4 + sine_i(ph * 9u + seed * 0x7654321u) / 10;
-        int32_t y = cy + 1 - w * a / 32767;
-        if (x)
-            cv_line_t(PANEL_X0 + x - 1, py, PANEL_X0 + x, y, grad_col(PANEL_X0 + x), 2);
-        py = y;
     }
 }
 /* ---- the other engines' pictures (ENGINE_PICTURES_V1.png / V1b.png), drawn from the engine's own numbers; only on the engine page (grid_on 5), redrawn only when the page's signature changes ---- */
@@ -1051,13 +972,12 @@ static void graph_wheel(const track_t *t, uint16_t c)
     }
 }
 /* The FM charts' parts: an operator box 21 x 17 (rows 23 px apart, columns 24), junction dots, Manhattan routes */
-#define FM_BH 17
 #define FM_BH2 13                                    /* item 119, the 76 px card: box height (the digit's capitals are 11), row pitch, column pitch (boxes 3 px apart), box width, the chart's centre; its 74 rows 1 .. 74: the loop's 4, the boxes, a 3 px stem, the bus and the arrow's 2 */
 #define FM_RP2 17
 #define FM_CP2 22
 #define FM_BW2 19
 #define FM_XC 162
-static void fm_dot(int32_t x, int32_t y, uint16_t c) { if (grid_on) cv_rect(x - 1, y, 3, 2, c); else cv_rect(x - 1, y - 1, 3, 3, c); }   /* (the card's rows are 17 apart: a junction dot 3 x 2 on and under its jog row keeps a clear row to the boxes) */
+static void fm_dot(int32_t x, int32_t y, uint16_t c) { cv_rect(x - 1, y, 3, 2, c); }   /* (the card's rows are 17 apart: a junction dot 3 x 2 on and under its jog row keeps a clear row to the boxes) */
 /* a Manhattan route, 1 px: down from (x0, y0) to the jog row jy, across to x1, down to y1 */
 static void fm_route(int32_t x0, int32_t y0, int32_t x1, int32_t jy, int32_t y1, uint16_t c)
 {
@@ -1166,7 +1086,7 @@ static void graph_fm6(const track_t *t, uint16_t c, uint32_t sel)
         for (j = 0; j < 6u; j++)
             fan[j] += (uint8_t)(m[k] >> j & 1u);
     }
-    if (grid_on) {   /* item 119: the 76 px card. Boxes 19 x 13 (the digit's capitals are 11), 22 px apart across, 17 down; the chart in the right part of the card (its centre on x FM_XC), the algorithm and the voice name / the operator's frequency on two lines at the left */
+    {   /* item 119: the 76 px card. Boxes 19 x 13 (the digit's capitals are 11), 22 px apart across, 17 down; the chart in the right part of the card (its centre on x FM_XC), the algorithm and the voice name / the operator's frequency on two lines at the left */
         const int32_t tot = 4 + FM_BH2 + FM_RP2 * (int32_t)top + 3 + 3, yt = 4 + (74 - tot) / 2;   /* (the canvas row of the loop = yt - 4 + GOY; 4 + box + rows + stem + bus and the arrow's 2 under it) */
         bus = yt + FM_BH2 + FM_RP2 * (int32_t)top + 3;
         for (k = 0; k < 6u; k++) {
@@ -1174,16 +1094,9 @@ static void graph_fm6(const track_t *t, uint16_t c, uint32_t sel)
             y[k] = yt + FM_RP2 * ((int32_t)top - (int32_t)(FM6_CELL[alg][k] >> 4));
             if (car >> k & 1u) { cl = x[k] < cl ? x[k] : cl; cr = x[k] > cr ? x[k] : cr; }
         }
-    } else {
-    bus = 50 + (27 + 23 * (int32_t)top) / 2;         /* the chart centred on the 100 px scale */
-    for (k = 0; k < 6u; k++) {
-        x[k] = 120 + (int32_t)(FM6_CELL[alg][k] & 7u) * 24 - (int32_t)hi * 12;
-        y[k] = bus - 6 - FM_BH - 23 * (int32_t)(FM6_CELL[alg][k] >> 4);
-        if (car >> k & 1u) { cl = x[k] < cl ? x[k] : cl; cr = x[k] > cr ? x[k] : cr; }
-    }
     }
     {
-    const int32_t bh = grid_on ? FM_BH2 : FM_BH, bw = grid_on ? FM_BW2 : 21, hw = bw / 2;
+    const int32_t bh = FM_BH2, bw = FM_BW2, hw = bw / 2;
     for (k = 0; k < 6u; k++) {                       /* into k: its sources down to its jog row, across, down */
         for (j = 0; j < 6u; j++)
             if (m[k] >> j & 1u) {
@@ -1199,9 +1112,9 @@ static void graph_fm6(const track_t *t, uint16_t c, uint32_t sel)
         }
     }
     FM6_CHART_HOOK(FMH_BUS, 0, 0);
-    fm_bus(cl, cr, bus, grid_on ? 14 : 24, grid_on ? 2 : 3);
+    fm_bus(cl, cr, bus, 14, 2);
     FM6_CHART_HOOK(FMH_FB, fbop, 0);
-    fm_loop(x[fbop], y[fbop], hot == P_E1 ? T_ACCENT : fb ? T_MID : T_DIM, hw + 1, grid_on ? 2 : 5);
+    fm_loop(x[fbop], y[fbop], hot == P_E1 ? T_ACCENT : fb ? T_MID : T_DIM, hw + 1, 2);
     for (k = 0; k < 6u; k++) {
         uint32_t on = pt[(5u - k) * FP_OP + FP_OL] != 0, fill_c = (car >> k & 1u) && on;
         uint16_t f = hotset >> k & 1u ? T_ACCENT : c, fill = k == sel ? T_ACCENT : fill_c ? f : T_RAISE;
@@ -1214,19 +1127,19 @@ static void graph_fm6(const track_t *t, uint16_t c, uint32_t sel)
     }
     FM6_CHART_HOOK(FMH_LABEL, 0, 0);
     {   /* the labels: on the 76 px card at the left, the algorithm and under it the voice name / the operator's frequency (the chart has the right part of the card) */
-        const int32_t ly = grid_on ? 2 - 1 : 4 - GOY, ly2 = grid_on ? 22 - 1 : 4 - GOY;
-        cv_text(grid_on ? 9 : 10, ly, &AF_S, b, hot == P_E0 || hot == P_E7 ? T_ACCENT : T_MID);
+        const int32_t ly = 2 - 1, ly2 = 22 - 1;
+        cv_text(9, ly, &AF_S, b, hot == P_E0 || hot == P_E7 ? T_ACCENT : T_MID);
         if (sel < 6u) {                                  /* the operator picked: "OP3 x1.50" */
             char fq[16] = {'O', 'P', (char)('1' + sel), ' ', 0};
             fop_freq(pt + (5u - sel) * FP_OP, fq + 4);
-            if (grid_on) cv_text(9, ly2, &AF_S, fq, T_TEXT); else cv_text_r(228, ly2, &AF_S, fq, T_TEXT, T_BG);
+            cv_text(9, ly2, &AF_S, fq, T_TEXT);
         } else if (fm6_bank_slot(fm6_slot[(t - trk) % NTRK]) >= 0) {   /* SLOT B1..B32: the bank voice's name */
             char nm[11];
             for (k = 0; k < 10u; k++)
                 nm[k] = (char)pt[FP_NAME + k];
             for (nm[10] = 0; k && nm[k - 1] == ' '; k--)
                 nm[k - 1] = 0;
-            if (grid_on) cv_text(9, ly2, &AF_S, nm, T_TEXT); else cv_text_r(228, ly2, &AF_S, nm, T_TEXT, T_BG);
+            cv_text(9, ly2, &AF_S, nm, T_TEXT);
         }
     }
     FM6_CHART_HOOK(FMH_END, alg, 0);
@@ -1240,7 +1153,7 @@ static void graph_fm6env(const track_t *t, uint16_t c)
 {
     static const char *const STG[4] = {"ATK", "DEC", "SUS", "REL"};
     const uint8_t *op = fop_bytes((uint32_t)(t - trk));
-    int32_t top = grid_on ? 23 - GOY : 24, bot = grid_on ? 66 - GOY : 88, x[6], y[6], k;   /* (the 76 px card: the curve on rows 23 .. 66, the axis on 68; the 122 px panel: 35 .. 99) */
+    int32_t top = 23 - GOY, bot = 66 - GOY, x[6], y[6], k;   /* (the 76 px card: the curve on rows 23 .. 66, the axis on 68) */
     uint32_t sg = fop_stg & 3u;
     char b[24] = {'O', 'P', (char)('1' + fop_op % 6u), 0};
 #define FEGY(l) (bot - (int32_t)(l) * (bot - top) / 99)
@@ -1263,13 +1176,13 @@ static void graph_fm6env(const track_t *t, uint16_t c)
     fm_dot(x[k], y[k], T_ACCENT);
 #undef FEGY
 #undef FEGW
-    cv_text(grid_on ? 9 : 10, grid_on ? 2 - GOY : 4 - GOY, &AF_S, b, T_MID);   /* (the 76 px card: capitals' rows 6 .. 16 as the chart's label) */
+    cv_text(9, 2 - GOY, &AF_S, b, T_MID);   /* (the 76 px card: capitals' rows 6 .. 16 as the chart's label) */
     str_cpy(b, STG[sg], sizeof b);
     str_cpy(b + str_len(b), "  R ", 5);
     fmt_int(b + str_len(b), op[FP_R1 + sg]);
     str_cpy(b + str_len(b), "  L ", 5);
     fmt_int(b + str_len(b), op[FP_L1 + sg]);
-    cv_text_r(grid_on ? 231 : 228, grid_on ? 2 - GOY : 4 - GOY, &AF_S, b, T_TEXT, T_BG);
+    cv_text_r(231, 2 - GOY, &AF_S, b, T_TEXT, T_BG);
 }
 
 /* SAVE > MULTI's slots: used and their names (project.c multi.c keeps them in RAM: cheap every frame) */
@@ -1936,7 +1849,7 @@ static uint32_t graph_signature(void)
         return (h ^ off_module(pg)) * 16777619u + grid_on;
     h ^= (uint32_t)pg->graph * 131u + TSEL->eng_req + song.sel * 7777u + ui.page * 1291u;
     TIDE_GRAPH_SIG(pg, h);                           /* TIDE hook (TIDE: the faders, the glide, the steps; TIDE LIST: its rows only) */
-    if (pg->graph == GR_NONE || pg->graph == GR_TEMPO || (pg->graph == GR_ARP && !arp_drawn(t) && !AREA_PIC)) h ^= ui.frame / 2u;   /* (the scope; 0.2.25: ARP's pattern and STEREO MASTER's picture are static; TEMPLATE 9: ARP without a pattern shows the calm flat baseline, static too) */
+    if (pg->graph == GR_NONE || pg->graph == GR_TEMPO || 0) h ^= ui.frame / 2u;   /* (the scope; 0.2.25: ARP's pattern and STEREO MASTER's picture are static; TEMPLATE 9: ARP without a pattern shows the calm flat baseline, static too) */
     if (pg->graph == GR_MSTG || pg->graph == GR_COMP)   /* (0.2.23: DUEL's note; 0.2.25 layout round: STEREO MASTER's picture, COMPRESSOR's curve: the settings, the mode) */
         h = (h ^ ((duell_mode == DM_SPLIT) * 0x2545F491u + (uint32_t)song.bm * 977u + (uint32_t)song.ms[0] * 7919u + (uint32_t)song.cp[0] * 31u + (uint32_t)song.cp[1] * 104729u)) * 16777619u;
     if (pg->graph == GR_EQ)                          /* (0.2.25: the band of the knob just turned is drawn in the accent) */
@@ -2045,92 +1958,25 @@ static uint32_t graph_signature(void)
     }
     return h;
 }
-/* a list row (17 px), in M as every list's (PRESETS, USER, PATTERNS, PROJECT, PARAMETER LOCKS, MOD, the MENU): the selected
- * one a THEME bar with INK text; tag at x 14 (the widest, DRUM, to x 57), free text from x LIST_NX to x1 */
-#define LIST_T3 (grid_on == 5 || grid_on == 15)   /* TEMPLATE 3's rows (item 115; template 3 itself, grid_on 8, is removed: the list pages are area pages; the ENGINE page's list while K1 turns uses them; item 165: also over LOFI's / NOISE's cells) */
-#define LIST_Y(k) ((grid_on == 5 || grid_on == 15 ? UT_T2_LIST_Y : 3) + (LIST_T3 ? UT_T3_ROW_PITCH : 17) * (int32_t)(k))
-#define LIST_TY CAP_IN(M, 16)                           /* a row's text: its capitals rows 2 .. 12 of the row */
-#define LIST_NX 64
+/* TEMPLATE 3's list row (item 115, FINAL_V1_03_patches; template 3 itself, grid_on 8, is removed: the list pages are area pages): the ENGINE page's list while K1 turns (grid_on 5; item 165:
+ * also over LOFI's / NOISE's cells, 15). The row 19 px high over the card's width, the selected one in the part colour with white text, the number and the name
+ * on ONE baseline; free text from x UT_T3_NAME_X to x1 */
+#define LIST_Y(k) (UT_T2_LIST_Y + UT_T3_ROW_PITCH * (int32_t)(k))
 static void list_row(int32_t y, int sel, const char *tag, uint16_t tc, const char *name, uint16_t nc, int32_t x1)
 {
-    if (grid_on == 1 && y + 16 > (int32_t)H_GRAPH)        /* (DUELL 1.1: the grid's panel is 78 px: a row that does not fit whole is not drawn) */
-        return;
     uint16_t bg = sel ? T_THEME : T_BG;
-    if (LIST_T3) {                                         /* TEMPLATE 3 (item 115, FINAL_V1_03_patches): the row 19 px high over the card's width, the selected one in the part colour with white text, the number and the name on ONE baseline */
-        int32_t ty;
-        uint16_t on_part = ux_cr(T_TEXT, T_THEME) >= 300u ? T_TEXT : ux_cr(T_BG, T_THEME) >= ux_cr(T_TEXT, T_THEME) ? T_BG : T_TEXT;   /* white on the part colour where it reads 3:1, else the better of BG / TEXT (item 111's number cell) */
-        if (y < 0 || y + UT_T3_ROW_H > (int32_t)cv_h)  /* (a row outside the canvas) */
-            return;
-        ty = UT_TY(M, y + UT_T3_TEXT_BASE);
-        if (sel)
-            { CV_HL(UT_T3_ROW_X, y, UT_T3_ROW_W, UT_T3_ROW_H); cv_rrect(UT_T3_ROW_X, y, UT_T3_ROW_W, UT_T3_ROW_H, UT_T3_ROW_R, T_THEME, T_BG); }
-        GFX_HOOK_ALIGN(0, y, 0, y + UT_T3_ROW_H - 1, AL_V, "list row text centred up/down");
-        cv_text_on(UT_T3_TAG_X, ty, &AF_M, tag, sel ? on_part : tc, bg);
-        if (name[0])
-            GFX_HOOK_ALIGN(0, y, 0, y + UT_T3_ROW_H - 1, AL_V, "list row text centred up/down");
-        cv_free_text(UT_T3_NAME_X, ty, &AF_M, name, sel ? on_part : nc, bg, x1 - UT_T3_NAME_X);
+    uint16_t on_part = ux_cr(T_TEXT, T_THEME) >= 300u ? T_TEXT : ux_cr(T_BG, T_THEME) >= ux_cr(T_TEXT, T_THEME) ? T_BG : T_TEXT;   /* white on the part colour where it reads 3:1, else the better of BG / TEXT (item 111's number cell) */
+    int32_t ty;
+    if (y < 0 || y + UT_T3_ROW_H > (int32_t)cv_h)      /* (a row outside the canvas) */
         return;
-    }
+    ty = UT_TY(M, y + UT_T3_TEXT_BASE);
     if (sel)
-        { CV_HL(6, y, 228, 16); cv_rrect(6, y, 228, 16, 4, T_THEME, T_BG); }
-    GFX_HOOK_ALIGN(0, y, 0, y + 16, AL_V, "list row text centred up/down");
-    cv_text_on(14, y + LIST_TY, &AF_M, tag, sel ? T_INK : tc, bg);
+        { CV_HL(UT_T3_ROW_X, y, UT_T3_ROW_W, UT_T3_ROW_H); cv_rrect(UT_T3_ROW_X, y, UT_T3_ROW_W, UT_T3_ROW_H, UT_T3_ROW_R, T_THEME, T_BG); }
+    GFX_HOOK_ALIGN(0, y, 0, y + UT_T3_ROW_H - 1, AL_V, "list row text centred up/down");
+    cv_text_on(UT_T3_TAG_X, ty, &AF_M, tag, sel ? on_part : tc, bg);
     if (name[0])
-        GFX_HOOK_ALIGN(0, y, 0, y + 16, AL_V, "list row text centred up/down");
-    cv_free_text(LIST_NX, y + LIST_TY, &AF_M, name, sel ? T_INK : nc, bg, x1 - LIST_NX);
-}
-/* a favourite's star on a row at y (item 115: template 3 puts it 12 px at x 214, rel 3; the others' 16 px strip) */
-static void list_star(int32_t y, int sel)
-{
-    if (LIST_T3) {
-        if (y < 0 || y + UT_T3_ROW_H > (int32_t)cv_h)
-            return;
-        GFX_HOOK_ALIGN(0, y, 0, y + UT_T3_ROW_H - 1, AL_V, "list row star centred up/down");
-        cv_icon_in(UT_T3_STAR_X, y + UT_T3_STAR_DY, 0, 12, 12, ICON_X_STAR, sel ? (ux_cr(T_TEXT, T_THEME) >= 300u ? T_TEXT : ux_cr(T_BG, T_THEME) >= ux_cr(T_TEXT, T_THEME) ? T_BG : T_TEXT) : T_THEME, sel ? T_THEME : T_BG);
-        return;
-    }
-    GFX_HOOK_ALIGN(0, y, 0, y + 16, AL_V, "list row star centred up/down");
-    cv_icon_in(214, y, 0, 16, 12, ICON_X_STAR, sel ? T_INK : T_ACCENT, sel ? T_THEME : T_BG);
-}
-/* an empty list: a title and a hint, centred */
-static void note_line(int32_t y, const char *s, uint16_t fg)   /* centred S; "[K2] ADD PATTERN": a key hint */
-{
-    uint32_t n;
-    int32_t id = kc_tag(s, &n);
-    if (id < 0) {
-        GFX_HOOK_ALIGN(0, 0, 240, 0, AL_H, "panel note centred");
-        cv_text_in(0, y, 240, &AF_S, s, fg, T_BG);
-        return;
-    }
-    s += n;
-    while (*s == ' ')
-        s++;
-    GFX_HOOK_ALIGN(0, 0, 240, 0, AL_H | AL_N(2), "panel note hint centred");
-    cv_text_on(cv_keycap(HALF_UP(240 - kh_ink((uint32_t)id, s)), y + 3, (uint32_t)id, T_KEY, T_KINK, T_BG) + KH_GAP, y,
-               &AF_S, s, fg, T_BG);
-}
-static void panel_note(const char *a, const char *b, const char *c)
-{
-    GFX_HOOK_ALIGN(0, 0, 240, 0, AL_H, "panel note centred");
-    cv_text_in(0, 30, 240, &AF_M, a, T_TEXT, T_BG);
-    if (b) note_line(60, b, T_MID);
-    if (c) note_line(82, c, T_DIM);
-}
-/* the same title led by an icon (16 px, the accent's: the header message's, ui_draw.c draw_head) in the middle of
- * the panel: the title's capitals centred up and down in it, the icon's ink on them; across, the pair centred by
- * its ink */
-#define PA_GAP 6                                        /* icon ink -> title ink (setup_title's) */
-static void panel_alert(uint32_t id, const char *a)
-{
-    int32_t bi[4], bt[4], x, y = CAP_IN(M, (int32_t)H_GRAPH);
-    icon_ink(16, id, bi);
-    text_ink(&AF_M, a, bt);
-    x = HALF_UP(240 - (bi[2] - bi[0] + PA_GAP + bt[2] - bt[0])) - bi[0];
-    GFX_HOOK_ALIGN(0, 0, 240, 0, AL_H | AL_N(2), "panel alert centred");
-    GFX_HOOK_ALIGN(0, y + AF_M_CAP_Y, 0, y + AF_M_CAP_Y + AF_M_CAP_H, AL_V | AL_PASS, "panel alert icon on its title's line");
-    cv_icon_in(x, y + AF_M_CAP_Y, 0, AF_M_CAP_H, 16, id, T_ACCENT, T_BG);
-    GFX_HOOK_ALIGN(0, 0, 0, (int32_t)H_GRAPH, AL_V | AL_PASS, "panel alert title in the panel's middle");
-    cv_text_on(x + bi[2] + PA_GAP - bt[0], y, &AF_M, a, T_TEXT, T_BG);
+        GFX_HOOK_ALIGN(0, y, 0, y + UT_T3_ROW_H - 1, AL_V, "list row text centred up/down");
+    cv_free_text(UT_T3_NAME_X, ty, &AF_M, name, sel ? on_part : nc, bg, x1 - UT_T3_NAME_X);
 }
 
 /* TEMPLATE 9 (PATCHES_MULTIS_NEW_LAYOUT_V3.png, PATTERNS_NEW_LAYOUT.png): the list pages' five rows in the big area, SCREEN rows (draw_graph sets cv_oy): row k's top UT_L5_Y0 + k UT_L5_PITCH,
@@ -2167,8 +2013,7 @@ static uint32_t list5_first(uint32_t cur, uint32_t n)
 static void graph_browse(void)
 {
     uint32_t total, cur = pl_cursor(&total), c0;
-    int32_t row;
-    if (AREA_PIC) {                                     /* TEMPLATE 9: five rows, the cursor on the middle one (ALL goes round; a type is a bounded window) */
+    {                                                   /* TEMPLATE 9: five rows, the cursor on the middle one (ALL goes round; a type is a bounded window) */
         uint32_t r;
         if (!total) {
             char b[24];
@@ -2198,94 +2043,16 @@ static void graph_browse(void)
             sl_name(k, nm);
             list_row5(r, index == cur, tag, nm, T_TEXT, list_fav(k));
         }
-        return;
     }
-    if (!total) {
-        char b[24];
-        if (list_mode() == 1u) {
-            panel_note("NO FAVORITES", "TYPE ALL TO ADD SOUNDS", 0);
-            return;
-        }
-        str_cpy(b, "NO ", sizeof b);                    /* a type with no sound (an engine whose slots were all saved over) */
-        str_cpy(b + 3, list_name(list_mode()), sizeof b - 3);
-        str_cpy(b + str_len(b), " SOUNDS", sizeof b - str_len(b));
-        panel_note(b, "[K2] ANOTHER TYPE", 0);
-        return;
-    }
-    c0 = cur < total ? cur : 0u;
-    for (row = -3; row <= 3; row++) {
-        int32_t y = LIST_Y(row + 3);
-        char tag[6], nm[13];
-        uint32_t index, k;
-        int sel, fav;
-        if (!list_mode()) {                              /* ALL: the list goes round */
-            index = (c0 + total * 4u + (uint32_t)(row + 3) - 3u) % total;
-        } else {                                         /* a type: a bounded window */
-            uint32_t first = cur < total && cur > 3u ? cur - 3u : 0u, last = total > 7u ? total - 7u : 0u;
-            if (first > last)
-                first = last;
-            index = first + (uint32_t)(row + 3);
-            if (index >= total)
-                continue;
-        }
-        sel = index == cur;
-        k = preset_at(index);
-        up_slot_label(tag, k);
-        sl_name(k, nm);
-        fav = list_fav(k);
-        list_row(y, sel, tag, T_DIM, nm, T_TEXT, fav ? 212 : 232);
-        if (fav)
-            list_star(y, sel);
-    }
-}
-/* the EDIT layer (ui_layer.c): the sound loaded, as the browser's selected row: its slot "#7", the name, the star of a favourite */
-static void engine_sound_row(int32_t y)
-{
-    char tag[6], nm[13];
-    uint32_t s = slot_of(TSEL);
-    int fav = preset_favorite();
-    if (s < UP_SLOTS) {
-        up_slot_label(tag, s);
-        sl_name(s, nm);
-    } else {
-        str_cpy(tag, "--", sizeof tag);                  /* a sound from no slot: its factory name (no factory sound: INIT) */
-        str_cpy(nm, ds_name(TSEL->eng_req % NENGINES, TSEL->preset), sizeof nm);
-    }
-    list_row(y, 1, tag, T_DIM, nm, T_TEXT, fav ? 212 : 232);
-    if (fav)
-        list_star(y, 1);
-}
-/* EDIT's first page, ENGINE (SPEC 1.2): the engines round the selected one (the previous and the next of PRESETS'
- * order, as KNOB 1 steps; DRUM is never in it) and under them the sound loaded, as the browser's selected row */
-static void graph_engine(void)
-{
-    uint32_t e = TSEL->eng_req % NENGINES;
-    int32_t d;
-    for (d = -1; d <= 1; d++) {
-        const engine_t *en = ENGINES[d < 0 ? eng_step(e, -1) : d > 0 ? eng_step(e, 1) : e];
-        list_row(LIST_Y((uint32_t)(d + 1)), d == 0, eng_shown(en->name), T_MID, "", T_MID, 232);   /* (DUELL 1.1, owner 2026-10-25: no cryptic tag ANLG PHAS VOCL WHEL NOIS, no ENG: the row is the full engine name, in the tag's column) */
-    }
-    engine_sound_row(LIST_Y(4));
 }
 /* SAVE > PATTERNS: the 32 slots around the one picked ("P03  OFFBEAT"; one list, every slot holds a pattern) */
 static void graph_pats(void)
 {
-    uint32_t n = pat_count(), cur = pat_pick();
-    int32_t row, first = clamp((int32_t)cur - 3, 0, (int32_t)n > 7 ? (int32_t)n - 7 : 0);
-    if (AREA_PIC) {                                     /* TEMPLATE 9: five rows, the slot picked on the middle one where it can be */
-        uint32_t r, f = list5_first(cur, n);
-        for (r = 0; r < UT_L5_ROWS && f + r < n; r++) {
-            char tag[4], nm[13];
-            pat_label(f + r, tag, nm);
-            list_row5(r, f + r == cur, tag, nm, T_TEXT, 0);
-        }
-        return;
-    }
-    for (row = 0; row < 7 && (uint32_t)(first + row) < n; row++) {
-        uint32_t k = (uint32_t)(first + row);
+    uint32_t n = pat_count(), cur = pat_pick(), r, f = list5_first(cur, n);   /* TEMPLATE 9: five rows, the slot picked on the middle one where it can be */
+    for (r = 0; r < UT_L5_ROWS && f + r < n; r++) {
         char tag[4], nm[13];
-        pat_label(k, tag, nm);
-        list_row(LIST_Y(row), k == cur, tag, T_MID, nm, T_TEXT, 232);
+        pat_label(f + r, tag, nm);
+        list_row5(r, f + r == cur, tag, nm, T_TEXT, 0);
     }
 }
 /* SAVE > TOOLS (DUELL/release_drafts/TOOLS_NEW_LAYOUT_V2.png, owner 2026-10-29): three rows on the background, no card, no box, no knob-1 line (this is NOT an area page,
@@ -2465,26 +2232,13 @@ static void graph_events(void)
 /* SAVE > MULTI: the sixteen multis around the one picked ("M05  LOFI JAM"; unnamed "USED"; empty "M14  --" dim) */
 static void graph_slots(void)
 {
-    uint32_t cur = (uint32_t)(song.g[G_SLOT] - 1) % MU_SLOTS;
-    int32_t row, first = clamp((int32_t)cur - 3, 0, (int32_t)MU_SLOTS - 7);
-    if (AREA_PIC) {                                     /* TEMPLATE 9: five rows, the multi picked on the middle one where it can be */
-        uint32_t r, f = list5_first(cur, MU_SLOTS);
-        for (r = 0; r < UT_L5_ROWS && f + r < MU_SLOTS; r++) {
-            char b[4];
-            int used = graph_project_used(f + r);
-            const char *nmp = graph_project_name(f + r);
-            mu_label(b, f + r);
-            list_row5(r, f + r == cur, b, !used ? "--" : nmp[0] ? nmp : "USED", used ? T_TEXT : T_DIM, 0);
-        }
-        return;
-    }
-    for (row = 0; row < 7; row++) {
-        uint32_t k = (uint32_t)(first + row);
+    uint32_t cur = (uint32_t)(song.g[G_SLOT] - 1) % MU_SLOTS, r, f = list5_first(cur, MU_SLOTS);   /* TEMPLATE 9: five rows, the multi picked on the middle one where it can be */
+    for (r = 0; r < UT_L5_ROWS && f + r < MU_SLOTS; r++) {
         char b[4];
-        int used = graph_project_used(k);
-        const char *n = graph_project_name(k);
-        mu_label(b, k);
-        list_row(LIST_Y(row), k == cur, b, T_MID, !used ? "--" : n[0] ? n : "USED", used ? T_TEXT : T_DIM, 232);
+        int used = graph_project_used(f + r);
+        const char *nmp = graph_project_name(f + r);
+        mu_label(b, f + r);
+        list_row5(r, f + r == cur, b, !used ? "--" : nmp[0] ? nmp : "USED", used ? T_TEXT : T_DIM, 0);
     }
 }
 /* MIXER page: four SURF columns, one under each card: the track number on its cushion (in the accent:
@@ -2569,33 +2323,6 @@ static void trk_short_name(uint32_t c, char *b)      /* the track's sound, b hol
         str_cpy(b, eng_shown(e->name), 13);
 }
 
-/* oscilloscope of the output, triggered on a rising zero crossing: a RAISE centre line, the trace 2 px (in silence
- * a flat line on it; MENU > SCREEN OFF keeps it from staying on the panel for hours) */
-static void graph_scope(uint16_t c)
-{
-    static int16_t snap[SCOPE_N] __attribute__((section(".pool")));
-    uint32_t w = scope_w, i, trig = 0;
-    int32_t cy = (int32_t)cv_h / 2, py = cy, x, peak = 1500, a = 46;
-    for (i = 0; i < SCOPE_N; i++) {
-        snap[i] = scope_buf[(w + i) & (SCOPE_N - 1u)];
-        if (snap[i] > peak)
-            peak = snap[i];
-        else if (-snap[i] > peak)
-            peak = -snap[i];
-    }
-    for (i = 1; i < SCOPE_N - 240u; i++)
-        if (snap[i - 1] < 0 && snap[i] >= 0) {
-            trig = i;
-            break;
-        }
-    cv_rect(PANEL_X0, cy, PANEL_W, 1, T_RAISE);
-    for (x = 0; x < PANEL_W; x++) {
-        int32_t y = cy - snap[trig + (uint32_t)x] * a / peak;    /* auto-scaled */
-        if (x)
-            cv_line_t(PANEL_X0 - 1 + x, py, PANEL_X0 + x, y, c, 2);
-        py = y;
-    }
-}
 
 /* HOME's MORPH (4b; v5 2026-10-11, SPEC 3.5): the morph as a picture: a field of thin wave lines across the whole width of
  * the panel's box (x 6..233, y 2..75), A at its left edge, B at its right, blending from one to the other (colour and
@@ -3106,21 +2833,6 @@ static void graph_morphset(void)
     }
 }
 
-/* TEMPLATE 7 (item 118, FINAL_V1_07_sequencer): the roll's card, rows UT_T7_Y .. +UT_T7_H (147: the canvas holds 124), drawn in two strips with the roll's own screen coordinates */
-#define T7_STRIP 101                                 /* strip B's first screen row */
-static void graph_roll_t7(const track_t *t, uint16_t c)
-{
-    uint32_t p;
-    for (p = 0; p < 2u; p++) {
-        int32_t y0 = p ? T7_STRIP : UT_T7_Y, y1 = p ? UT_T7_Y + UT_T7_H : T7_STRIP;
-        cv_begin(240, (uint32_t)(y1 - y0), T_BG);
-        cv_bg = T_BG;
-        cv_oy = -y0;
-        graph_roll(t, c);
-        cv_oy = 0;
-        cv_blit(0, (uint32_t)y0);
-    }
-}
 /* SEQUENCER HELP (item 118, FINAL_V1_07b_sequencer_help): eight rows of the roll's symbols with their words and plain meanings, on the background; two strips (rows 24 .. 140, 140 .. 217).
  * The symbol is drawn with the roll's own colours (the notes dim, the accent white, the lock mark and the cursor as the roll draws them) */
 static void graph_seqhelp(void)
@@ -3235,10 +2947,6 @@ static void draw_graph(void)
         cv_blit(0, (uint32_t)ay);
         return;
     }
-    if (pg->graph == GR_ROLL && grid_on == 10) {     /* TEMPLATE 7 (item 118): the STEP page's roll card in two strips */
-        graph_roll_t7(t, c);
-        return;
-    }
     if (pg->graph == GR_SEQHELP) {                   /* SEQUENCER HELP (item 118): the legend, on the background */
         graph_seqhelp();
         return;
@@ -3257,67 +2965,34 @@ static void draw_graph(void)
     case GR_LFO:
         graph_lfo(t, c);
         break;
-    case GR_ROLL:
-        cv_oy = 0;
-        graph_roll(t, c);
-        break;
-    case GR_SCALE:
-        graph_scale(t, c);
-        break;
-    case GR_CHORD:
-        cv_oy = 0;
-        graph_chord(t, c);
-        break;
     case GR_FX:
         graph_fx(t, c);
         break;
     case GR_INS:
         graph_insert(t, c);
         break;
-    case GR_MOD:
-        cv_oy = 0;
-        graph_mod(t, c);
-        break;
-    case GR_BROWSE:
-        cv_oy = 0;
-        graph_browse();
-        break;
     case GR_ENGINE:                                  /* T0227: WHEEL's drawbars and FM6's chart on the page that edits their first controls; the engines' list while K1 turns */
         if (!(ui.hot_t && ui.hot_col == 0u) && ENGINES[t->eng_req % NENGINES] == &ENG_WHEEL) { graph_wheel(t, c); break; }
         if (!(ui.hot_t && ui.hot_col == 0u) && t->eng_req % NENGINES == ENGI_FM6) { graph_fm6(t, c, 6u); break; }
-        if (grid_on == 5 && ui.hot_t && ui.hot_col == 0u) {   /* K1 turning: the list of engines in the picture's place (the approved list look) */
+        if (ui.hot_t && ui.hot_col == 0u) {          /* K1 turning: the list of engines in the picture's place (the approved list look) */
             graph_eng_list(t);
             break;
         }
-        if (grid_on == 5) {                          /* option B: the picture of the engine (LOFI and NOISE have none since item 165: grid_on 15, cells), the list is the slim row's */
-            if (ENGINES[t->eng_req % NENGINES] == &ENG_ANALOG)
+        {                                            /* option B (grid_on 5: LOFI and NOISE have no picture since item 165, grid_on 15, cells): the picture of the engine */
+            const engine_t *en = ENGINES[t->eng_req % NENGINES];
+            if (en == &ENG_ANALOG)
                 graph_pic_analog(t, c);
-            else if (ENGINES[t->eng_req % NENGINES] == &ENG_PHASE)
+            else if (en == &ENG_PHASE)
                 pic_phase(t, c);
-            else if (ENGINES[t->eng_req % NENGINES] == &ENG_WAVE)
+            else if (en == &ENG_WAVE)
                 pic_table(t, c);
-            else if (ENGINES[t->eng_req % NENGINES] == &ENG_FORMANT)
+            else if (en == &ENG_FORMANT)
                 pic_voice(t, c);
-            else if (ENGINES[t->eng_req % NENGINES] == &ENG_PHYS)
+            else if (en == &ENG_PHYS)
                 pic_phys(t, c);
-            else if (ENGINES[t->eng_req % NENGINES] == &ENG_TRIO)
-                pic_trio(t, c);
-            break;
+            else if (en == &ENG_TRIO)
+                pic_trio(t, c);                      /* (a retired engine, a stored DIGITAL, SAMPLE .. sound: no picture) */
         }
-        cv_oy = 0;
-        graph_engine();
-        break;
-    case GR_SLOTS:
-        cv_oy = 0;
-        graph_slots();
-        break;
-    case GR_PATS:
-        cv_oy = 0;
-        graph_pats();
-        break;
-    case GR_EVENTS:
-        cv_oy = 0;
-        graph_events();
         break;
     case GR_MORPH:
         cv_oy = 0;
@@ -3374,15 +3049,6 @@ static void draw_graph(void)
     case GR_CYCLE:
         graph_cycle(t, c);
         break;
-    case GR_ARP:
-        if (arp_drawn(t)) {
-            cv_oy = 0;
-            graph_arp(t, c);
-        } else {
-            cv_oy = 0;
-            graph_scope(c);
-        }
-        break;
 #if DUELL_TEST_MODE
     case GR_TEST:
         cv_oy = 0;
@@ -3399,9 +3065,7 @@ static void draw_graph(void)
     default:
         if (pg->scope == SC_ENGINE && ENGINES[t->eng_req % NENGINES] == &ENG_WHEEL) graph_wheel(t, c);
         else if (pg->scope == SC_ENGINE && t->eng_req % NENGINES == ENGI_FM6) graph_fm6(t, c, 6u);   /* EDIT 1 and 2 */
-        else if (grid_on == 1) graph_calm(ui.page);   /* (DUELL 1.1: every grid page without a picture of its own: the calm curve, not the live scope) */
-        else { cv_oy = 0; graph_scope(c); }
-        break;
+        break;                                       /* (no other page comes here: the plain card pages are CELL pages, template 8, which return above; the MIXER is a layer) */
     }
     cv_oy = 0;
     cv_blit(0, Y_GRAPH);
