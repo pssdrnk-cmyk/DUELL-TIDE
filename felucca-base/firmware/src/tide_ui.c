@@ -444,7 +444,7 @@ static void tide_track(int32_t y, const char *name, uint32_t f, uint32_t lane, i
 static void tide_steps(const track_t *t, int32_t y, int32_t hmax, uint16_t c)
 {
     uint32_t len = (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP), page = song.playing ? t->seq_idx / 16u : 0u, i;
-    int32_t h1 = hmax == 25 ? 10 : 6, hs = hmax == 25 ? 5 : 3;   /* (a single note, each further note of a chord) */
+    int32_t h1 = hmax >= 20 ? 10 : 6, hs = hmax >= 20 ? 5 : 3;   /* (a single note, each further note of a chord; one part tall, both parts short) */
     for (i = 0; i < 16u; i++) {
         uint32_t idx = page * 16u + i;
         int32_t x = bar_x(i), h;
@@ -479,6 +479,9 @@ static void tide_steps(const track_t *t, int32_t y, int32_t hmax, uint16_t c)
 
 /* TIDE's body. One part (ALGORITHM on PART 1 / PART 2): its SOUND and SEQ faders, its steps. BOTH: each fader row a pair (part 1 over
  * part 2, their numbers and colours) and the steps in two rows, part 1 above. The glide's status is knob 1's line (tide_columns) */
+/* what each MODE does, one short line under the faders (owner, 2026-11-01) */
+static const char *const GL_MODE_WHAT[5] = {"ONE TRIP, THEN IT STOPS", "BACK AND FORTH, A AND B", "NEW TWISTS ON YOUR SOUND",
+                                            "WALKS AWAY FROM YOUR SOUND", "TRAVELS THROUGH YOUR SOUNDS"};
 static void graph_tide(void)
 {
     uint32_t pi = song.sel, k;
@@ -489,13 +492,14 @@ static void graph_tide(void)
         for (k = 0; k < NSHOWN; k++) {
             tide_track(58 + 12 * (int32_t)k, k ? "" : "SOUND", morph_fader_of(k), GT_SOUND, (int32_t)k);
             tide_track(84 + 12 * (int32_t)k, k ? "" : "SEQ", seqm_fader_of(k), GT_SEQ, (int32_t)k);
-            tide_steps(&trk[k], 117 + 18 * (int32_t)k, 15, vt(T_PTHEME(k), T_BG));
+            tide_steps(&trk[k], 126 + 13 * (int32_t)k, 10, vt(T_PTHEME(k), T_BG));
         }
     } else {
         tide_track(62, "SOUND", morph_fader_of(pi), GT_SOUND, -1);
         tide_track(84, "SEQ", seqm_fader_of(pi), GT_SEQ, -1);
-        tide_steps(TSEL, 128, 25, vt(T_THEME, T_BG));
+        tide_steps(TSEL, 135, 22, vt(T_THEME, T_BG));
     }
+    cv_text_in(0, UT_TY(S, (tide_both() ? 107 : 102) + AF_S_CAP_H / 2), 240, &AF_S, GL_MODE_WHAT[gl.mode % 5u], T_MID, T_BG);   /* (between the faders and the steps' tallest bars) */
     /* Keep GLIDE's progress bar as well as its status and moving fader knobs.
      * This strip sits below both parts' playheads and above the card row. */
     if (glide_running() && !gl.armed) {

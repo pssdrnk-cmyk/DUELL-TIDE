@@ -479,6 +479,7 @@ static uint32_t arp_list(const track_t *t, uint32_t *list, uint32_t *cnt)
         if (j == n)
             list[n++] = x;
     }
+    n = TIDE_SEQ_CHORD(t, list, n);                 /* TIDE hook (H2b) */
     *cnt = n;
     if (!t->p[P_AORDER] && t->p[P_AMODE] != AM_ORD)   /* (ORD: as pressed, held[] keeps that order) */
         for (i = 1; i < n; i++)
@@ -588,7 +589,7 @@ static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
         else
             t->arp_off -= gate_n;
     }
-    if (!arp_mode(t) || !t->nheld) {                 /* (0.2.14: MODULES' ARP OFF / SEQ OFF: as the arp's MODE OFF) */
+    if (!arp_mode(t) || (!t->nheld && !TIDE_SEQ_GHOST(t))) {   /* (0.2.14: MODULES' ARP OFF / SEQ OFF: as the arp's MODE OFF; TIDE hook H2b) */
         t->arp_ph = 0;                              /* (a new press starts a new phrase) */
         if (!t->nheld && t->arp_note)
             arp_off(t);

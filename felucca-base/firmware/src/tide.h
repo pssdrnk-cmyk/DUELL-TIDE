@@ -18,11 +18,17 @@
  * (seq_steps), never this */
 static const step_t *tide_play_step(const track_t *t, uint32_t idx, step_t *buf);
 #define TIDE_PLAY_STEP(t, idx) tide_play_step((t), (idx), &(step_t){.n = 0})
+/* H2b (seq.c, audio path): ARP SEQ with no key held plays on PLAY from a stand-in, the part's last chord or C4 (the steps as written) */
+static int tide_seq_ghost(const track_t *t);
+static uint32_t tide_seq_chord(const track_t *t, uint32_t *list, uint32_t n);
+#define TIDE_SEQ_GHOST(t) tide_seq_ghost(t)
+#define TIDE_SEQ_CHORD(t, list, n) tide_seq_chord((t), (list), (n))
 /* H3 (seq.c, audio path): VARY BARS' bar count since PLAY and the bar turning in this block; the patterns' completed loops (the
  * phrase lifecycle, seq_rhythm.c). Counted here, read by tide_seq.c and the pages */
 static volatile uint8_t sqm_bar, sqm_bar_turn;
 static volatile uint8_t tide_seq_loops[NTRK];
-#define TIDE_SEQ_START() (sqm_bar = sqm_bar_turn = 0)     /* (the phrase from the top; MIDI CONTINUE keeps it) */
+#define TIDE_SEQ_START() (sqm_bar = sqm_bar_turn = 0, tide_seq_ghost_start())     /* (the phrase from the top; MIDI CONTINUE keeps it) */
+static void tide_seq_ghost_start(void);
 #define TIDE_BEAT_BLOCK(adv) (sqm_bar_turn = (uint8_t)(beat_n == 3u && beat_pos + (adv) >= beat_samples()))
 #define TIDE_BEAT() do { if (!beat_n && song.playing) sqm_bar++; } while (0)
 #define TIDE_SEQ_LOOP(t, len) do { if ((t)->seq_idx + 1u == (len) && (t)->seq_pos < 0x7FFFFFFFu) tide_seq_loops[trk_index(t)]++; } while (0)   /* (the startup sentinel is no loop) */
@@ -115,6 +121,8 @@ static int tide_foot_two(void);
 #else
 
 #define TIDE_PLAY_STEP(t, idx) (&seq_steps(t)[(idx)])
+#define TIDE_SEQ_GHOST(t) 0
+#define TIDE_SEQ_CHORD(t, list, n) (n)
 #define TIDE_SEQ_START() ((void)0)
 #define TIDE_BEAT_BLOCK(adv) ((void)(adv))
 #define TIDE_BEAT() ((void)0)

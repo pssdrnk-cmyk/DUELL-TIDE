@@ -1034,8 +1034,8 @@ static const page_t PAGES[] = {
      * parameter */
 #if DUELL_TIDE                                           /* TIDE hook (H10): HOME round: MORPH, MORPH MODES, TIDE, MODE (owner 2026-11-01) */
     {"MORPH", FAM_TRK, SC_MORPH, GR_MORPH, {0xFF, 0xFF, 0xFF, 0xFF}},
-    {"MORPH MODES", FAM_TRK, SC_TIDE, GR_TIDELIST, {0xFF, 0xFF, 0xFF, 0xFF}},
-    {"TIDE", FAM_TRK, SC_TIDE, GR_TIDE, {0xFF, 0xFF, 0xFF, 0xFF}},
+    {"MORPH SETTINGS", FAM_TRK, SC_TIDE, GR_TIDELIST, {0xFF, 0xFF, 0xFF, 0xFF}},
+    {"AUTO TIDE", FAM_TRK, SC_TIDE, GR_TIDE, {0xFF, 0xFF, 0xFF, 0xFF}},
     {"MODE", FAM_TRK, SC_MODE, GR_MODE, {0xFF, 0xFF, 0xFF, 0xFF}},
 #else
     {"MORPH", FAM_TRK, SC_MORPH, GR_MORPH, {0xFF, 0xFF, 0xFF, 0xFF}},

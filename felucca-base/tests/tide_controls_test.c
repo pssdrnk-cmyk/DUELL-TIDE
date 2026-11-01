@@ -123,6 +123,37 @@ static void test_seq_rule(void)
     CHECK("SEQ rule:   while WILD still moves the arp mode", moved > 0u);
 }
 
+/* owner 2026-11-01: ARP SEQ on PLAY with no key held plays from the last chord held, else C4 (the steps as written); not while recording */
+static void test_seq_ghost(void)
+{
+    track_t *t = &trk[0];
+    uint32_t i, heard = 0;
+    ui_power_on(); frame();
+    transport_req = 2u; run(48);
+    t->p[P_SLEN] = 4;
+    memset(t->step, 0, sizeof t->step);
+    for (i = 0; i < 4u; i++) { t->step[i].time = ST_NOTE; t->step[i].n = 1; t->step[i].note[0] = (uint8_t)(60 + 2 * i); t->step[i].vel = 100; }
+    t->p[P_AMODE] = AM_SEQ_ID; t->p[P_ARATE] = 5; t->p[P_APROB] = 127; t->p[P_AOCT] = 1;
+    memset(tide_chord_n, 0, sizeof tide_chord_n);
+    run(320);
+    CHECK("seq ghost: stopped, no key: silent as before", !t->arp_note);
+    transport_req = 1u;
+    for (i = 0; i < 60u; i++) { run(16); heard |= t->arp_note >= 60u && t->arp_note <= 66u; }
+    CHECK("seq ghost: PLAY, no key: the steps play from C4, as written", song.playing && heard);
+    input_on(t, 48, 100); heard = 0;
+    for (i = 0; i < 60u; i++) { run(16); heard |= t->arp_note >= 48u && t->arp_note <= 54u; }
+    CHECK("seq ghost: a key held plays as ever (from it)", t->nheld == 1u && heard);
+    input_off(t, 48); heard = 0;
+    for (i = 0; i < 60u; i++) { run(16); heard |= t->arp_note >= 48u && t->arp_note <= 54u; }
+    CHECK("seq ghost: let go, it goes on from that key (the last chord)", !t->nheld && heard);
+    song.rec = 1; run(320);
+    CHECK("seq ghost: recording: silent (it would record its own pattern)", !t->arp_note);
+    song.rec = 0;
+    transport_req = 2u; run(320);
+    CHECK("seq ghost: STOP: silent", !song.playing && !t->arp_note);
+    t->p[P_AMODE] = 0;
+}
+
 int main(void)
 {
     uint32_t q[MQ_N], n;
@@ -216,6 +247,7 @@ int main(void)
     test_glide_transport();
     test_twist_stop();
     test_seq_rule();
+    test_seq_ghost();
     printf("tidecontrols: %u checks, %u failures\n", checks, failures);
     return failures ? 1 : 0;
 }
