@@ -534,6 +534,16 @@ static void graph_tidelist(void)
     }
     cv_oy = 0;
     cv_blit(0, (uint32_t)y0);
+    {   /* how a value changes (owner, 2026-11-01): the keycaps under the list, S, the hints' colour (the list's own strip: the canvas holds 124 rows) */
+        int32_t hy = UT_L5_Y0 + UT_L5_PITCH * (int32_t)JL_VIS + 4, x;
+        cv_begin(240, 20, T_BG);
+        cv_bg = T_BG;
+        cv_oy = -hy;
+        x = cv_free_hint(UT_L5_TAG_X, UT_TY(S, hy + 14), "[OCT-]", T_MID, T_BG, 60);
+        cv_free_hint(x + 4, UT_TY(S, hy + 14), "[OCT+] CHANGE THE VALUE", T_MID, T_BG, 222 - x);
+        cv_oy = 0;
+        cv_blit(0, (uint32_t)hy);
+    }
 }
 
 /* STEP page (ui_graph.c graph_roll): while the part's SEQ fader is above A, each step SEQ MORPH plays otherwise than it is stored shows

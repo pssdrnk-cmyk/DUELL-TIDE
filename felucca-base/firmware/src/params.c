@@ -1032,11 +1032,11 @@ static const page_t PAGES[] = {
      * SMART, 2 ARP, 3 PITCH, 4 empty: 0.2.9, TARGET is ALGORITHM's BOTH), the output MODE (SPEC 5b.1: KNOB 1 SPLIT / STEREO / LAYER; core.h duell_mode, kept with
      * the settings: ui_input.c mode_knob, mode_settings), the MIXER (MUTE PAN SPACE LEVEL: the mixer level). No P_* id: the morph is not a
      * parameter */
-#if DUELL_TIDE                                           /* TIDE hook (H10): HOME's round as stock, MORPH, TIDE SET (in MORPH SET's place: its SMART ARP PITCH are TIDE SET's), MODE, then TIDE (owner 2026-11-01) */
+#if DUELL_TIDE                                           /* TIDE hook (H10): HOME round: MORPH, MORPH MODES, TIDE, MODE (owner 2026-11-01) */
     {"MORPH", FAM_TRK, SC_MORPH, GR_MORPH, {0xFF, 0xFF, 0xFF, 0xFF}},
-    {"TIDE SET", FAM_TRK, SC_TIDE, GR_TIDELIST, {0xFF, 0xFF, 0xFF, 0xFF}},
-    {"MODE", FAM_TRK, SC_MODE, GR_MODE, {0xFF, 0xFF, 0xFF, 0xFF}},
+    {"MORPH MODES", FAM_TRK, SC_TIDE, GR_TIDELIST, {0xFF, 0xFF, 0xFF, 0xFF}},
     {"TIDE", FAM_TRK, SC_TIDE, GR_TIDE, {0xFF, 0xFF, 0xFF, 0xFF}},
+    {"MODE", FAM_TRK, SC_MODE, GR_MODE, {0xFF, 0xFF, 0xFF, 0xFF}},
 #else
     {"MORPH", FAM_TRK, SC_MORPH, GR_MORPH, {0xFF, 0xFF, 0xFF, 0xFF}},
     {"MORPH SET", FAM_TRK, SC_MORPH, GR_MORPHSET, {0xFF, 0xFF, 0xFF, 0xFF}},
