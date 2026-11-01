@@ -66,6 +66,63 @@ static void test_glide_transport(void)
     transport_req = 2u; run(48);
 }
 
+/* owner 2026-11-01: on the TIDE page a K1 twist while gliding stops the glide where it is; PLAY goes on, the next twist launches */
+static void test_twist_stop(void)
+{
+    uint32_t pg = 0, pages = sizeof PAGES / sizeof PAGES[0], f;
+    ui_power_on(); frame();
+    while (pg < pages && PAGES[pg].graph != GR_TIDE) pg++;
+    CHECK("twist: the TIDE page exists", pg < pages);
+    ui.page = pg; ui.cursor = ui.bank = 0; page_entered();
+    song.sel = 0; morph.target = MT_SELECTED;
+    gl.mode = GM_ONCE; gl.target = GT_SOUND; gl.time = 0; gl.wait = 0; gl.on = gl.armed = 0;
+    song.g[G_BPM] = 120;
+    run(480);
+    tide_knob(0, 1);
+    CHECK("twist: a twist launches (and starts PLAY)", gl.on && gl.to == 1u);
+    run(1200);
+    f = morph_fader_of(0);
+    CHECK("twist:   it is moving", song.playing && gl.on && f > 0u && f < 127u);
+    run(480);
+    tide_knob(0, 1);
+    f = morph_fader_of(0);
+    CHECK("twist: a twist while gliding stops it, PLAY goes on", !glide_running() && song.playing);
+    tide_knob(0, 1); tide_knob(0, 1);
+    CHECK("twist:   the rest of the same twist does nothing", !glide_running());
+    run(1200);
+    CHECK("twist:   the sound stays where it stopped", song.playing && morph_fader_of(0) == f && f > 0u && f < 127u);
+    tide_knob(0, -1);
+    CHECK("twist: the next twist launches again", gl.on && gl.to == 0u);
+    gl.on = gl.armed = 0;
+    transport_req = 2u; run(48);
+}
+
+/* a WILD roll with ARP ON keeps a SEQ Original on SEQ and never draws SEQ for another (morph.c, TIDE_AMODE_KEEP / _END) */
+static void test_seq_rule(void)
+{
+    int8_t o[P_COUNT], end[P_COUNT];
+    uint32_t i, seed, kept = 1, drawn = 0, moved = 0;
+    uint8_t sv = mrc;
+    for (i = 0; i < P_COUNT; i++)
+        o[i] = (int8_t)trk[0].p[i];
+    mrc = MC_WILD | MC_ARP;
+    o[P_AMODE] = AM_SEQ_ID;
+    for (seed = 1; seed <= 300u; seed++) {
+        morph_roll_pure(o, end, &ENG_ANALOG, 100, seed, 0, 1);
+        kept &= end[P_AMODE] == AM_SEQ_ID;
+    }
+    o[P_AMODE] = 2;
+    for (seed = 1; seed <= 300u; seed++) {
+        morph_roll_pure(o, end, &ENG_ANALOG, 100, seed, 0, 1);
+        drawn += end[P_AMODE] == AM_SEQ_ID;
+        moved += end[P_AMODE] != 2;
+    }
+    mrc = sv;
+    CHECK("SEQ rule: a SEQ Original stays SEQ (300 WILD rolls)", kept);
+    CHECK("SEQ rule: another arp mode is never rolled into SEQ", !drawn);
+    CHECK("SEQ rule:   while WILD still moves the arp mode", moved > 0u);
+}
+
 int main(void)
 {
     uint32_t q[MQ_N], n;
@@ -157,6 +214,8 @@ int main(void)
         screen("build/tide-about.ppm");
     }
     test_glide_transport();
+    test_twist_stop();
+    test_seq_rule();
     printf("tidecontrols: %u checks, %u failures\n", checks, failures);
     return failures ? 1 : 0;
 }

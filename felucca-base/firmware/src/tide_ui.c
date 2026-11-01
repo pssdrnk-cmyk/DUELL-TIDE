@@ -208,8 +208,11 @@ static void tide_knob(uint32_t slot, int32_t s)
         return;
     }
     switch (slot) {
-    case 0:
-        if ((d = gesture_det(TIDE_G_GLIDE, s, 1)) != 0) {
+    case 0:                                              /* (gliding, a twist stops it where it is: PLAY goes on; the next one launches) */
+        if ((d = gesture_det(TIDE_G_GLIDE, s, 1)) != 0 && glide_running()) {
+            glide_stop();
+            ui_message("GLIDE STOPPED");
+        } else if (d) {
             glide_launch(d > 0, mask, pi);
             ui_message(d > 0 ? "GLIDE TO B" : "GLIDE TO A");
         }
