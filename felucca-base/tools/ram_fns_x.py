@@ -38,6 +38,8 @@ C1_NAMES = ["fm1_c1_main"]
 # to X in TWOCORE builds: the click fixes (INSERT ramp, FM6 start ramp) grew range Z, and the pool tail (4,096 B rule) has only 8 B to spare. X has the room (316 B).
 X_FROM_Z = ["mod_tsrc", "mod_part_put"]
 if os.environ.get("DUELL_TWOCORE") == "1":
+    # Former top-hot loops; no algorithm/compiler change, RAM placement only.
+    NAMES += ["eq_run", "ins_swept"]
     NAMES = NAMES + ["mix_ramp", "spread_run", "f2_go", "f2_svf", "f2_comb", "f2_comp", "f2_drv", "sub_pass"] + X_FROM_Z   # (final line: hunt1's spread_run, hunt3's two moves from Z, cloud jobs E and F's functions)
 ELF_NAMES = NAMES + (C1_NAMES if os.environ.get("DUELL_TWOCORE") == "1" else [])
 LO, HI = 0x01C00000, 0x01C07F00                 # the range (app_ram.ld RAMX)
