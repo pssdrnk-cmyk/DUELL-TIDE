@@ -1,11 +1,12 @@
 <!doctype html>
 <!-- SPDX-License-Identifier: GPL-3.0-only
-     DUELL site landing page (GitHub Pages). Copyright (C) 2026 OSCILL/R (DUELL). Part of DUELL, a modified version of Felucca. -->
+     DUELL site landing page (GitHub Pages). Copyright (C) 2026 OSCILL/R (DUELL). Part of DUELL, a modified version of Felucca.
+     DUELL-TIDE (an unofficial fork) replaces the page's text with its own, 2026-11-01. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DUELL - MultiMorphing Bitimbral Synthesizer by OSCILL/R</title>
+<title>DUELL-TIDE - an unofficial fork of DUELL by OSCILL/R</title>
 <style>
   :root { --bg: #fff; --fg: #000; --dim: #666; --line: #ccc; --warn: #b00020; }
   @media (prefers-color-scheme: dark) { :root { --bg: #000; --fg: #fff; --dim: #999; --line: #444; --warn: #ff6b81; } }
@@ -26,32 +27,30 @@
 </head>
 <body>
 <main>
-  <h1>DUELL</h1>
-  <p class="tag"><b>MultiMorphing<br>Bitimbral Synthesizer</b><br>by OSCILL/R</p>
-
-  <p><b>Two synths in one small box.</b> DUELL is free, open-source firmware for the M-VAVE FM-1. It turns the FM-1 into a bitimbral instrument: two complete parts, three ways to play them together (LAYER, DUEL, STEREO), and a morph that glides between two versions of every sound.</p>
-
-  <p><b>Web emulator: <a href="emu/">open it in your browser</a></b></p>
+  <h1>DUELL-TIDE</h1>
+  <p class="tag"><b>An unofficial fork of DUELL</b><br>MultiMorphing Bitimbral Synthesizer by OSCILL/R</p>
 
   <div class="box">
-    <p><b>DUELL 1.0: the firmware for the FM-1 and the web editor are available now. Web emulator: <a href="emu/">open it in your browser</a>.</b></p>
-    <p>The firmware has been run on one real FM-1 by its author. The way back to the official firmware has worked about three times, on the author's unit, and has not been tried on others. Installing is at your own risk: read the install guide and the recovery notes first.</p>
+    <p><b>This is not the official DUELL.</b> DUELL-TIDE is a personal fork of DUELL 1.1. It is not made, affiliated with or endorsed by OSCILL/R or M-VAVE. The official DUELL, with its installer and editor, is at <a href="https://oscillr.github.io/DUELL/">oscillr.github.io/DUELL</a>. Please send TIDE problems to this fork, not to the DUELL author.</p>
   </div>
 
+  <p><b>TIDE lets the FM-1 play itself.</b> A sound glides from its End A to an End B and back, never quite the same way twice, and in JRNY it travels on through other sounds while the pattern changes with it. Set it going and play over it. Everything else is DUELL 1.1 by OSCILL/R.</p>
+
+  <p><a class="btn" href="emu/">Open the web emulator</a></p>
+  <p class="small">No FM-1 needed. Press HOME until AUTO TIDE, then twist KNOB 1.</p>
+
   <ul class="links">
-    <li><a href="emu/">Web emulator</a><span>DUELL in your browser, no FM-1 needed.</span></li>
-    <li><a href="install/">Installer</a><span>Flash DUELL to an FM-1, or go back to the official firmware. At your own risk.</span></li>
-    <li><a href="editor/">Editor</a><span>Edit both parts live, browse and save patches and multis, and (Backup page) save everything to a file and restore it. Chrome or Edge.</span></li>
-    <li><a href="https://github.com/oscillr/DUELL/blob/main/docs/QUICKSTART.md">Quick start</a><span>The short tour. More guides are in the <a href="https://github.com/oscillr/DUELL/tree/main/docs">docs folder</a>: install, recovery, troubleshooting, known issues, testing.</span></li>
-    <li><a href="https://github.com/oscillr/DUELL/issues/new/choose">Report a bug</a><span>Found something? Please open an issue with the bug report form.</span></li>
-    <li><a href="https://github.com/oscillr/DUELL/releases">Releases</a><span>The firmware package and the release notes.</span></li>
-    <li><a href="https://github.com/oscillr/DUELL">Source code on GitHub</a><span>The full design (SPEC.md) is there too.</span></li>
+    <li><a href="emu/">Web emulator</a><span>DUELL-TIDE in your browser.</span></li>
+    <li><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/jam11#readme">What TIDE adds, and how to install it</a><span>There is no TIDE release yet: you build it yourself. Tested on one FM-1 only. At your own risk.</span></li>
+    <li><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues">Report a TIDE problem</a><span>On this fork's issue page.</span></li>
+    <li><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE">Source code on GitHub</a><span>Branch jam11.</span></li>
+    <li><a href="https://oscillr.github.io/DUELL/">The official DUELL</a><span>OSCILL/R's site: installer, editor, emulator and releases of plain DUELL.</span></li>
   </ul>
 
-  <p class="small">DUELL is free software under the GPL-3.0, with <b>no warranty</b>. It is a modified version of
+  <p class="small">DUELL-TIDE is free software under the GPL-3.0, with <b>no warranty</b>. It is a modified version of DUELL by OSCILL/R, itself a modified version of
     <a href="https://github.com/hugelton/Felucca">Felucca</a> by Leo Kuroshita, Hügelton Instruments, with the SHIM and RESO reverbs from JIANT.
-    See <a href="https://github.com/oscillr/DUELL/blob/main/NOTICE.md">NOTICE</a>.
-    DUELL is independent and not affiliated with M-VAVE. M-VAVE and FM-1 are trademarks of their respective owners.</p>
+    See <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/NOTICE.md">NOTICE</a>.
+    It is independent and not affiliated with OSCILL/R or M-VAVE. M-VAVE and FM-1 are trademarks of their respective owners.</p>
 </main>
 </body>
 </html>
