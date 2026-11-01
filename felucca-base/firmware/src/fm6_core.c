@@ -459,14 +459,22 @@ static int32_t fm6_scale_level(int32_t note, const uint8_t *op)
 }
 
 /* the operator's pitch (msfa note osc_freq): ratio mode as an offset from the note, fixed mode absolute */
+/* Mode, coarse, fine and detune are four adjacent bytes in a DX7 operator.
+ * The crossing planner retains only those bytes; ordinary voices use the wrapper. */
+_Static_assert(FP_FC == FP_MODE + 1 && FP_FF == FP_MODE + 2 && FP_DET == FP_MODE + 3, "FM6 tuning byte order");
+static int32_t fm6_osc_base4(const uint8_t *op, int32_t note, int32_t extra)
+{
+    int32_t det = op[3];
+    if (!op[0]) {
+        int32_t lf = (int32_t)FM6_DETUNE[note] * (det - 7) + FM6_COARSE[op[1] & 31u] + extra;
+        return op[2] ? lf + FM6_FINE[op[2] % 100u] : lf;
+    }
+    return ((4458616 * ((op[1] & 3) * 100 + op[2] % 100u)) >> 3) + (det > 7 ? 13457 * (det - 7) : 0);
+}
+
 static int32_t fm6_osc_base(const uint8_t *op, int32_t note, int32_t extra)
 {
-    int32_t det = op[FP_DET];
-    if (!op[FP_MODE]) {
-        int32_t lf = (int32_t)FM6_DETUNE[note] * (det - 7) + FM6_COARSE[op[FP_FC] & 31u] + extra;
-        return op[FP_FF] ? lf + FM6_FINE[op[FP_FF] % 100u] : lf;
-    }
-    return ((4458616 * ((op[FP_FC] & 3) * 100 + op[FP_FF] % 100u)) >> 3) + (det > 7 ? 13457 * (det - 7) : 0);
+    return fm6_osc_base4(op + FP_MODE, note, extra);
 }
 
 /* a note-on (msfa note init) of patch p, MIDI note `note` (transposed), velocity vel. fresh: from silence

@@ -129,11 +129,35 @@ static void held_retune(void)
         REQUIRE("FM6 bridge stops at endpoint",!fm6_xt[0].on);
         fm6_note_t *ended=(fm6_note_t*)ENG_MEM(0);
         unsigned v=0; while(v<FM6_POLY && !t->v[v].active) v++;
-        const uint8_t *p=direction ? fm6_xt[0].pa : fm6_xt[0].pb;
+        const uint8_t *p=morph_fmto[0][direction ? 0 : 1];
         int32_t expected=fm6_osc_base(p+carrier*FP_OP,60+p[FP_TRNSP]-24,0);
         REQUIRE("held carrier reaches endpoint frequency",v<FM6_POLY && ended[v].base[carrier]==expected);
     }
     REQUIRE("both full traversals completed",traversals==2);
+}
+static void compact_tuning(void)
+{
+    static const int note[5]={0,36,60,84,127};
+    uint8_t patch[FP_SIZE+1u]={0};
+    fm6_xpitch_t packed;
+    unsigned ok=1;
+    for(unsigned sample=0;sample<32;sample++) {
+        patch[FP_TRNSP]=(uint8_t)(sample%49u);
+        for(unsigned k=0;k<6;k++) {
+            uint8_t *op=patch+k*FP_OP;
+            op[FP_MODE]=(uint8_t)((sample+k)&1u);
+            op[FP_FC]=(uint8_t)((sample+5u*k)%32u);
+            op[FP_FF]=(uint8_t)((13u*sample+19u*k)%100u);
+            op[FP_DET]=(uint8_t)((sample+k)%15u);
+        }
+        fm6_xpitch_pack(&packed,patch);
+        for(unsigned k=0;k<6;k++) for(unsigned n=0;n<5;n++) {
+            int a=clamp(note[n]+patch[FP_TRNSP]-24,0,127);
+            int b=clamp(note[n]+packed.transpose-24,0,127);
+            ok &= fm6_osc_base(patch+k*FP_OP,a,4096)==fm6_osc_base4(packed.op[k],b,4096);
+        }
+    }
+    REQUIRE("compact endpoints preserve ratio/fixed tuning and transpose",ok);
 }
 static void held_keep_retune(void)
 {
@@ -143,7 +167,7 @@ static void held_keep_retune(void)
     for(unsigned i=0;i<2200;i++) audio_blocks(1);
     unsigned slot=0; while(slot<FM6_POLY && !t->v[slot].active) slot++;
     fm6_note_t *n=(fm6_note_t*)ENG_MEM(0)+slot;
-    int32_t expected=fm6_osc_base(fm6_xt[0].pb+carrier*FP_OP,60,0);
+    int32_t expected=fm6_osc_base(morph_fmto[0][1]+carrier*FP_OP,60,0);
     REQUIRE("held KEEP fixture reaches ratio B",slot<FM6_POLY && n->live && n->base[carrier]==expected);
     tide_keep_sound(0);
     REQUIRE("KEEP retains a retuned held carrier",n->live && n->base[carrier]==expected);
@@ -156,7 +180,7 @@ int main(void)
     setvbuf(stdout, 0, _IONBF, 0);
     at_rest();
 #ifdef CROSSINGS
-    curves(); key_layout(); held_retune(); held_keep_retune();
+    curves(); key_layout(); held_retune(); held_keep_retune(); compact_tuning();
 #endif
     printf("crossings: %u checks, %u failures\n",checks,failures);
     return failures?1:0;

@@ -244,8 +244,8 @@ static void morph_xplan(uint32_t pi)
     x->coh = coh;
     memcpy(x->sfor, sfor, sizeof sfor);
     if (fm && !fm6_xt[pi].on) {
-        memcpy(fm6_xt[pi].pa, pa, sizeof pa);
-        memcpy(fm6_xt[pi].pb, pb, sizeof pb);
+        fm6_xpitch_pack(&fm6_xt[pi].pa, pa);
+        fm6_xpitch_pack(&fm6_xt[pi].pb, pb);
     }
     x->planned = 1;
     MORPH_UNLOCK();

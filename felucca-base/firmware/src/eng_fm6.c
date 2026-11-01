@@ -67,6 +67,12 @@ static struct {                                  /* the patch through the macros
  * changed key rebuilds fm6_eff), fm6_morph(tr, p) = apply it to the 155 bytes p. Set by morph.c; null = no morph */
 static uint32_t (*fm6_morph)(uint32_t tr, uint8_t *p);
 #if DUELL_TIDE
+/* Crossing endpoints need tuning, not another copy of levels, EGs and LFOs. */
+typedef struct {
+    uint8_t op[6][4];
+    uint8_t transpose;
+} fm6_xpitch_t;
+_Static_assert(sizeof(fm6_xpitch_t) == 25u, "compact FM6 endpoint");
 typedef struct {
     uint8_t on;                                  /* a transition runs: alg, fb, att, tune and glide are live */
     uint8_t alg, fb;                             /* the algorithm (0..31) and feedback now */
@@ -79,7 +85,7 @@ typedef struct {
     uint8_t xs;                                  /* bit s: operator s stands in now (a copy of operator sfor[s] - 1 at that carrier's B frequency) */
     uint8_t sfor[6];                             /* .. the carrier each stand-in stands for + 1 (0: none) */
     uint8_t dirty;                               /* a held note still holds a stand-in (fm6_xblock runs on after the transition) */
-    uint8_t pa[FP_SIZE + 1u], pb[FP_SIZE + 1u];  /* the ends' patches (macros applied) */
+    fm6_xpitch_t pa, pb;                         /* endpoint tuning with macros applied */
 } fm6_xt_t;
 static fm6_xt_t fm6_xt[NLIVE] __attribute__((section(".pool"))); /* zeroed at startup before audio */
 typedef struct {
@@ -537,6 +543,15 @@ static void fm6_xphase(fm6_note_t *n, uint32_t k, uint32_t skip, uint32_t mute)
         n->op[k].phase = (int32_t)((uint32_t)n->op[best].phase * bm);
 }
 
+/* Main-loop snapshot, published under MORPH_LOCK by morph_xplan. */
+static void fm6_xpitch_pack(fm6_xpitch_t *d, const uint8_t *p)
+{
+    uint32_t k;
+    for (k = 0; k < 6u; k++)
+        memcpy(d->op[k], p + k * FP_OP + FP_MODE, 4u);
+    d->transpose = p[FP_TRNSP];
+}
+
 static __attribute__((noinline)) void fm6_xtune(const track_t *t, uint32_t tr, fm6_note_t *n, const voice_t *v, uint32_t mask)
 {
     const fm6_xt_t *x = &fm6_xt[tr];
@@ -544,17 +559,18 @@ static __attribute__((noinline)) void fm6_xtune(const track_t *t, uint32_t tr, f
     (void)t;
     for (k = 0; k < 6u; k++) {
         uint32_t b = (x->tune >> k) & 1u, g = (x->glide >> k) & 1u;
-        const uint8_t *p = b ? x->pb : x->pa, *op = p + k * FP_OP;
-        int32_t note = clamp((int32_t)v->note + p[FP_TRNSP] - 24, 0, 127);
+        const fm6_xpitch_t *p = b ? &x->pb : &x->pa;
+        const uint8_t *op = p->op[k];
+        int32_t note = clamp((int32_t)v->note + p->transpose - 24, 0, 127);
         if (!((mask >> k) & 1u) || ((n->xs | n->xr) >> k) & 1u || (!g && ((n->xb >> k) & 1u) == b))
             continue;
         if (g) {                                       /* (same mode, coarse and fine: only DET differs, a few cents) */
-            int32_t a0 = fm6_osc_base(x->pa + k * FP_OP, note, 0), b0 = fm6_osc_base(x->pb + k * FP_OP, note, 0);
+            int32_t a0 = fm6_osc_base4(x->pa.op[k], note, 0), b0 = fm6_osc_base4(x->pb.op[k], note, 0);
             n->base[k] = a0 + (int32_t)(((int64_t)(b0 - a0) * x->gv) >> 15);
             continue;
         }
-        n->base[k] = fm6_osc_base(op, note, 0);
-        n->fixed = (uint8_t)((n->fixed & ~(1u << k)) | ((op[FP_MODE] & 1u) << k));
+        n->base[k] = fm6_osc_base4(op, note, 0);
+        n->fixed = (uint8_t)((n->fixed & ~(1u << k)) | ((op[0] & 1u) << k));
         n->xb = (uint8_t)((n->xb & ~(1u << k)) | (b << k));
         fm6_xphase(n, k, 0u, x->mute);
     }
@@ -596,15 +612,15 @@ static __attribute__((noinline)) void fm6_xblock(track_t *t, uint32_t tr)
             if (r >= 6u)
                 continue;
             if ((want & bit) && !(n->xs & bit)) {       /* take: the copy of the carrier, at its B frequency */
-                const uint8_t *op = x->pb + r * FP_OP;
+                const uint8_t *op = x->pb.op[r];
                 sv->env = n->env[s];
                 sv->ol0 = n->ol0[s];
                 sv->base = n->base[s];
                 sv->phase = n->op[s].phase;
                 sv->fixed = (uint8_t)((n->fixed >> s) & 1u);
                 fm6_xcopy(n, s, r);
-                n->base[s] = fm6_osc_base(op, clamp((int32_t)t->v[i].note + x->pb[FP_TRNSP] - 24, 0, 127), 0);
-                n->fixed = (uint8_t)((n->fixed & ~bit) | ((op[FP_MODE] & 1u) << s));
+                n->base[s] = fm6_osc_base4(op, clamp((int32_t)t->v[i].note + x->pb.transpose - 24, 0, 127), 0);
+                n->fixed = (uint8_t)((n->fixed & ~bit) | ((op[0] & 1u) << s));
                 if (!((n->xb >> r) & 1u))               /* (going back the carrier plays this frequency: the copy keeps its phase) */
                     fm6_xphase(n, s, 1u << r, x->mute);
                 n->xs = (uint8_t)(n->xs | bit);
