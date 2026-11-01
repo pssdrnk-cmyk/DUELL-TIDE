@@ -576,7 +576,6 @@ static void fm6_render(track_t *t, voice_t *v, int32_t *out, uint32_t len, const
     lf = fm6_note_logfreq(m->pitch16 + (p[FP_TRNSP] - 24) * 16, m->fine);
     fb = clamp(fm6_eff[tr].fb + ((m->shape - (64 << 8)) >> 11), 0, 7);
     lvl = clamp(t->p[P_E2], -64, 63) * 24 + clamp(m->cutoff >> 8, -150, 150) * 16;   /* microsteps */
-    fm6_note_ol(n, p);                                  /* (DUELL MORPH: an OL that moved under the note) */
     if (m->amask) {                                     /* DUELL ARP TARGET (SPEC 2.3): operators on the arp's pitch */
         if (!fm6_note_compute(n, p, bus, fm6_lfo_v[tr], fm6_lfo_d[tr], lf, fm6_eff[tr].alg, fb,
                               atg_fm6(m, fm6_eff[tr].dt, dt2, ul), lvl << 16, ul))

@@ -76,8 +76,9 @@ static inline int32_t fm6_sin(int32_t ph)
 /* ------------------------------------------------------------ envelope --- */
 typedef struct {                 /* msfa Env: level in Q24 log2 (2^24 = 6 dB), 16 more bits than the original */
     int32_t level, target, inc, statc;
-    int16_t outlevel;            /* microsteps (99 * 32 = full) */
+    int16_t outlevel;            /* the note-on output level, microsteps (99 * 32 = full) */
     uint8_t rscale, ix, rising, down;
+    uint8_t key, velocity;       /* the note-on key and velocity, for fm6_live_level (in the struct's existing padding) */
 } fm6_env_t;
 
 static const uint8_t FM6_LEVELLUT[20] = {0, 5, 9, 13, 17, 20, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 42, 43, 45, 46};
@@ -122,6 +123,7 @@ static void fm6_env_init(fm6_env_t *e, const uint8_t *op, int32_t outlevel, int3
 {
     e->outlevel = (int16_t)outlevel;
     e->rscale = (uint8_t)rate_scaling;
+    e->key = e->velocity = 0;
     e->level = 0;
     e->down = 1;
     fm6_env_advance(e, op, 0);
@@ -408,7 +410,7 @@ typedef struct {                 /* a sounding note (msfa's note): 252 bytes */
     fm6_penv_t penv;
     uint8_t fixed;               /* bit k: operator k has a fixed frequency */
     uint8_t live, down, rsv;
-    uint8_t ol0[6];              /* each operator's OL at the note-on, or when last followed (fm6_note_ol: the morph moves it live) */
+    uint8_t ol0[6];              /* each operator's OL at the note-on (a live OL other than this is applied after the envelope: fm6_live_level) */
     int32_t dc;                  /* (eng_fm6.c) the output's DC blocker */
 } fm6_note_t;
 
@@ -483,6 +485,8 @@ static void fm6_note_init(fm6_note_t *n, const uint8_t *p, int32_t note, int32_t
         ol = (ol > 127 ? 127 : ol) * 32;
         ol += fm6_scale_vel(vel, op[FP_KVS]);
         fm6_env_init(&n->env[k], op, ol < 0 ? 0 : ol, fm6_scale_rate(note, op[FP_RS]));
+        n->env[k].key = (uint8_t)note;
+        n->env[k].velocity = (uint8_t)(vel < 0 ? 0 : vel > 127 ? 127 : vel);
         n->ol0[k] = op[FP_OL];
         n->base[k] = fm6_osc_base(op, note, 0);
         n->fixed |= (uint8_t)((op[FP_MODE] & 1u) << k);
@@ -491,27 +495,26 @@ static void fm6_note_init(fm6_note_t *n, const uint8_t *p, int32_t note, int32_t
     n->live = n->down = 1;
 }
 
-/* DUELL MORPH: an operator's OL that changed under a sounding note (the morph moves it per block) shifts that operator's
- * envelope by the same number of levels (each OL step = 32 units); nothing changed: nothing done (bit-identical) */
-static void fm6_note_ol(fm6_note_t *n, const uint8_t *p)
+/* DUELL MORPH (JAM fix, 2026-10-29): an operator's OL that moved under a sounding note (the morph moves it per block) is a
+ * gain over the note-on envelope, not an edit of its state. Before, the EG's level and target were shifted and clamped,
+ * so an OL that went to 0 and back lost its attenuation and the note came back louder or silent. The key and velocity
+ * scaling are re-evaluated before the clamp (an operator that started silent keeps them too), and the current patch's
+ * EG ceiling keeps an all-zero envelope silent. Unchanged OL: not called (bit-identical) */
+static __attribute__((noinline)) int32_t fm6_live_level(const fm6_env_t *e, const uint8_t *op, int32_t level)
 {
-    uint32_t k;
-    for (k = 0; k < 6u; k++) {
-        uint32_t ol = p[k * FP_OP + FP_OL];
-        fm6_env_t *e = &n->env[k];
-        int32_t d, ne;
-        if (ol == n->ol0[k])
-            continue;
-        d = (fm6_scaleout((int32_t)ol) - fm6_scaleout(n->ol0[k])) << 5;
-        n->ol0[k] = (uint8_t)ol;
-        ne = e->outlevel + d;
-        e->outlevel = (int16_t)(ne < 0 ? 0 : ne > 4096 ? 4096 : ne);
-        e->level += d << 16;
-        e->level = e->level < 0 ? 0 : e->level > (17 << 24) ? 17 << 24 : e->level;
-        e->target += d << 16;
-        e->target = e->target < (16 << 16) ? 16 << 16 : e->target > (17 << 24) ? 17 << 24 : e->target;
-        e->rising = e->target > e->level;
-    }
+    int32_t ol = fm6_scaleout(op[FP_OL]) + fm6_scale_level(e->key, op), peak = 0;
+    uint32_t i;
+    ol = (ol > 127 ? 127 : ol) * 32 + fm6_scale_vel(e->velocity, op[FP_KVS]);
+    if (ol < 0)
+        ol = 0;
+    for (i = 0; i < 4u; i++)
+        if (op[FP_L1 + i] > peak)
+            peak = op[FP_L1 + i];
+    peak = (fm6_scaleout(peak) >> 1) * 64 + ol - 4256;
+    if (peak < 16)
+        peak = 16;
+    level += (ol - e->outlevel) * 65536;
+    return level < 0 ? 0 : level > peak * 65536 ? peak * 65536 : level;
 }
 
 static void fm6_note_key(fm6_note_t *n, const uint8_t *p, int down)
@@ -550,6 +553,8 @@ static int fm6_note_compute(fm6_note_t *n, const uint8_t *p, int32_t *out, int32
     for (k = 0; k < 6u; k++) {
         const uint8_t *op = p + k * FP_OP;
         int32_t level = fm6_env_get(&n->env[k], op);
+        if (op[FP_OL] != n->ol0[k])                /* (the morph moved this operator's OL under the note) */
+            level = fm6_live_level(&n->env[k], op, level);
         uint32_t ams = FM6_AMSENS[op[FP_AMS] & 3u];
         n->op[k].freq = fm6_freq((n->fixed >> k) & 1u ? n->base[k] : logfreq + n->base[k] + pitch_mod + dt[k]);
         if (ams) {                                 /* msfa: pt = exp(sensamp / 262144 * 0.07 + 12.2) */
