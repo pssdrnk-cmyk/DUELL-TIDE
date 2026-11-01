@@ -1224,8 +1224,8 @@ static void morph_roll_step(const int8_t *org, const int8_t *st, int8_t *end, co
             else if ((mrc & MC_WILD) && mr_below(r, 100u) < amount)
                 (void)mr_next(r);                       /* SLCR PAT RATE (WILD: a switch that flips, the pick's draw) */
         } else if (g.kind == MK_STEP) {                 /* v2: a choice that flips (WILD, PITCH, ARP) */
-            if (mr_below(r, 100u) < amount && !(id == P_AMODE && !org[id])) {   /* (an arp that is off in the saved patch stays off) */
-                int32_t v = morph_other(r, id == P_AMODE ? 1 : pd->min, pd->max + 1, st[id]);
+            if (mr_below(r, 100u) < amount && !(id == P_AMODE && (!org[id] || TIDE_AMODE_KEEP(org[id])))) {   /* (an arp that is off in the saved patch stays off; TIDE hook: SEQ too) */
+                int32_t v = morph_other(r, id == P_AMODE ? 1 : pd->min, id == P_AMODE ? TIDE_AMODE_END(pd->max + 1) : pd->max + 1, st[id]);
                 if (!(g.flags & MF_SW))                  /* (SMART: ARP MODE, RATE and OCTAVES and the whole-number pitch values are switches: drawn, not set) */
                     end[id] = (int8_t)v;
             }

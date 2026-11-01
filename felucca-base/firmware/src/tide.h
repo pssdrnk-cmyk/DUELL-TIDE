@@ -46,6 +46,10 @@ static void tide_poll(void);
 #define TIDE_BUILD_FNID(mp) ((mp)->fnid |= (uint8_t)((mp)->tok[0][(mp)->top[0]] | (mp)->tok[1][(mp)->top[1]]))   /* (MORPH TO's FM6 flip) */
 #define TIDE_FM6_TARGET(mp, tr, p, w) tide_fm6_target((mp), (tr), (p), (w))   /* (audio ISR) */
 #define TIDE_UNDO(pi, x) morph_fmto_sync((pi), (x))
+/* ARP ON (WILD): a roll never turns the arp into SEQ, nor a SEQ arp into another mode. SEQ is not an arp's flavour: it decides whether
+ * PLAY sounds the part at all (seq.c: the steps only as offsets on held keys), so a roll there silenced a TIDE part (owner, 2026-11-01) */
+#define TIDE_AMODE_KEEP(v) ((v) == AM_SEQ_ID)
+#define TIDE_AMODE_END(n) AM_SEQ_ID
 #define TIDE_MORPH_PROTOS static void tide_fm6_target(const morph_part_t *mp, uint32_t tr, uint8_t *p, int32_t w);
 /* H9 (morph.c's MBV block, main loop): End B's MORPH TO target on FM6 saved with patches, multis and the project (morph_tide.c) */
 #define TIDE_MBV_FMT_N 3u
@@ -129,6 +133,8 @@ static int tide_foot_two(void);
 #define TIDE_BUILD_FNID(mp) ((void)0)
 #define TIDE_FM6_TARGET(mp, tr, p, w) ((void)0)
 #define TIDE_UNDO(pi, x) ((void)0)
+#define TIDE_AMODE_KEEP(v) 0
+#define TIDE_AMODE_END(n) (n)
 #define TIDE_MORPH_PROTOS
 #define TIDE_MBV_FMT_N 0u
 #define TIDE_MBV_FLAGS 0u
