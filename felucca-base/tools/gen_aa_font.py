@@ -45,10 +45,10 @@ LOCAL_INTER = os.path.expanduser("~/Library/Fonts/Inter.ttc")   # 4.001: 0 Regul
 EXTRAS = [0xA9, 0xB0, 0xB7, 0xC4, 0xD6, 0xDC, 0xE4, 0xF6, 0xFC, 0x2026]  # (c) deg . A: O: U: a: o: u: (Latin-1), ...
 CODE = {0x2026: 0x85}                  # characters outside Latin-1 -> their one-byte code in the firmware
 PHASES, PHASES_L = 4, 2                # horizontal phases per glyph (aa_raster.raster_font): S M, L
-# faces stored Huffman-coded (--huff): M and L. S, the most drawn and the least compressible (-15 %), stays
-# 2 px per byte, so the labels draw at full speed
+# Keep the frequently drawn S labels and tiny D digits as nibbles. The other
+# faces use the existing lossless decoder; glyph pixels and metrics stay exact.
 PLAIN = []             # (filled by main(): every face of the barlow preset is PLAIN: as the design pictures set text, no kerning, no OpenType features)
-HUFF = [("M", "L")]   # (gfx.c HC_FONTS: three Huffman tables, M, L and the icons; the other faces stay nibbles)
+HUFF = [("M", "L", "T", "N", "X", "B", "P")]
 # L draws only "FELUCCA", the UPDATE MODE countdown digit, the calibration's control names (panel.c
 # B_NAME / E_NAME) (until DUELL 0.2.2 also MENU > LARGE's card values and page titles: some glyphs of the set below were only for those, a later size trim): a sparse face of those glyphs, the
 # space as its range and the rest as extras
