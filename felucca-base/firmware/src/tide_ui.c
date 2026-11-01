@@ -354,10 +354,7 @@ static void tide_columns(void)
     int32_t g;
     if (cur_page()->graph == GR_TIDELIST) {
         draw_column(0, "SETTING", JL_NAME[jl_sel % JL_N], "", VAL(0u), -1, ICON_NONE);
-        draw_column_hide(1);
-        draw_column_hide(2);
-        draw_column_hide(3);
-        return;
+        return;                                          /* (no cards: the list and its hint own the card row; hiding them cleared it under the list on every redraw, a flicker while the colour follows a glide) */
     }
     g = morph_pending(TIDE_G_GLIDE);
     tide_status(st);

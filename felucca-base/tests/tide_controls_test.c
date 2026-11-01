@@ -154,6 +154,27 @@ static void test_seq_ghost(void)
     t->p[P_AMODE] = 0;
 }
 
+/* owner 2026-11-01: MORPH SETTINGS flickered while playing: a glide moves the part colour, the page is drawn again, and the hidden
+ * cards cleared the card row under the list each time */
+static void test_settings_flicker(void)
+{
+    uint32_t pg = 0, tp = 0, pages = sizeof PAGES / sizeof PAGES[0], i, fl = 0;
+    static uint16_t ref[240 * 240];
+    ui_power_on(); frame();
+    while (pg < pages && PAGES[pg].graph != GR_TIDELIST) pg++;
+    while (tp < pages && PAGES[tp].graph != GR_TIDE) tp++;
+    ui.page = pg; ui.cursor = ui.bank = 0; page_entered(); run(320);
+    memcpy(ref, host_screen, sizeof ref);
+    gl.mode = GM_WANDER; gl.target = GT_SOUND; gl.time = 0; gl.wait = 0;
+    glide_launch(1u, morph_mask(0), 0); run(500);
+    for (i = 0; i < 120u; i++) { host_fl_begin(); run(16); fl += host_fl_end(0, 240); }
+    CHECK("settings flicker: gliding, the page never flashes", glide_running() && fl == 0u);
+    glide_stop(); transport_req = 2u; run(320);
+    ui.page = tp; page_entered(); run(320);
+    ui.page = pg; page_entered(); run(320);
+    CHECK("settings flicker: back from AUTO TIDE, no card left in the card row", !memcmp(host_screen + 142 * 240, ref + 142 * 240, 2u * 240u * 66u));
+}
+
 int main(void)
 {
     uint32_t q[MQ_N], n;
@@ -248,6 +269,7 @@ int main(void)
     test_twist_stop();
     test_seq_rule();
     test_seq_ghost();
+    test_settings_flicker();
     printf("tidecontrols: %u checks, %u failures\n", checks, failures);
     return failures ? 1 : 0;
 }
