@@ -358,10 +358,10 @@ static int32_t morph_xdepth(uint32_t tp) { return morph_xarc(tp, XW0, XW1); }
 static uint16_t morph_cdd[NSHOWN];                      /* the filter dip: its depth (Q15); the voices' effective cutoff, routes and key included,
                                                           * goes that share of the way down to the floor (morph_xcut) */
 #define XBR_Q8 4634                                      /* GLIDE's breath at its deepest: two octaves of the dial (2317 Q8 steps an octave) */
-/* WASH LEVEL (TIDE LIST; ui_jam.c keeps it in the settings): 0 OFF, 1 LOW, 2 MID (the default), 3 HIGH. It scales GLIDE's movement
+/* WASH LEVEL (TIDE LIST; ui_jam.c keeps it in the settings): 0 OFF (the default since 2026-11-01, owner), 1 LOW, 2 MID, 3 HIGH. It scales GLIDE's movement
  * (the breath, the swell: XWL, x 0 .. 1.5), a transition's swell, and the wash's fill (15 dB under the part's level at rest at MID,
  * 3 dB a step: XWS). OFF: plain glides, a transition still smoothed (its filter dip, the INSERT's, FM6's valley) */
-static uint8_t morph_wlvl = 2u;
+static uint8_t morph_wlvl = 0u;
 static const uint16_t XWL[4] = {0u, 16384u, 32768u, 49152u};
 static const uint8_t XWS[4] = {0u, 6u, 5u, 4u};          /* the fill's level: the level at rest >> XWS (18, 15, 12 dB under it; owner, 2026-10-29: 6 dB less, "too much") */
 /* the audio ISR, per voice and block (voice.c track_render, voice_chain.c): the effective cutoff uc (Q8 dial) of part t through

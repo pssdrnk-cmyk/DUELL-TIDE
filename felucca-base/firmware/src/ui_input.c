@@ -1963,7 +1963,7 @@ static void first_boot_poll(void)
     {   /* (0.2.11: a new unit takes all of M01, XFADE .. too, whatever MODE RECALL says: it is the one load that is not the user's) */
         uint8_t keep = ui_prefs2;
         ui_prefs2 |= PREF_MODE_RECALL >> 16;
-        project_load(0);
+        project_load(TIDE_FIRST_MULTI);                 /* TIDE hook (H18) */
         ui_prefs2 = keep;
     }
     morph.target = MT_BOTH;                             /* (2026-10-29: a new unit in LAYER starts with the part selector on BOTH) */
@@ -1989,7 +1989,7 @@ static void ui_input(void)
     mode_settings();                                    /* DUELL step 5: the MODE and its settings byte */
     scale_sync();                                       /* DUELL: the global SCALE / ROOT / OFF-SCALE <-> their settings bytes (ui.c) */
     midi_ch_sync();                                     /* DUELL step 6: GLO > MIDI' parts' channels and their settings bytes */
-    first_boot_poll();                                  /* DUELL 0.1: a new unit starts in LAYER with M01 */
+    first_boot_poll();                                  /* DUELL 0.1: a new unit starts in LAYER with M01 (TIDE: M02) */
     clock_poll();                                       /* DUELL 0.2.14: CLK AUTO's switch said in the header */
 #if DUELL_VELO
     sense_enable(keyvel_on());

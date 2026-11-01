@@ -117,6 +117,9 @@ static int tide_foot_two(void);
                                    if (TIDE_PAGE(pg)) (h) = ((h) ^ tide_sig() ^ (uint32_t)morph.target * 0x85EBCA77u) * 16777619u; } while (0)
 #define TIDE_COLUMNS() do { if (TIDE_PAGE(cur_page())) { tide_columns(); return; } } while (0)
 #define TIDE_HOME_NAME "MORPH"                           /* MENU > CONTROL > HOME OPENS: the first page of the round (MORPH, as stock; TIDE is the round's 4th) */
+/* H18 (ui_input.c first_boot_poll): the factory multi a new unit (or one after ERASE DATA, and the emulator) starts with: M02 NIGHT ORGAN,
+ * the TIDE showcase (owner, 2026-11-01): its two SEQUENCER arps play on PLAY with no key held (ARP SEQ), AUTO TIDE set to JRNY */
+#define TIDE_FIRST_MULTI 1u
 
 #else
 
@@ -128,6 +131,7 @@ static int tide_foot_two(void);
 #define TIDE_BEAT() ((void)0)
 #define TIDE_SEQ_LOOP(t, len) ((void)0)
 #define TIDE_POLL() ((void)0)
+#define TIDE_FIRST_MULTI 0
 #define TIDE_PART_FIELDS
 #define TIDE_CFG_BITS() 0u
 #define TIDE_BLK_CFG_OK(c) ((c) < 32u)

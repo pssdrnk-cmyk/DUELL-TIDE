@@ -87,7 +87,8 @@ static struct {
     uint8_t wait;                                        /* WAIT: an index of GLIDE_WAIT_BARS */
     uint32_t wbars, wlast;                               /* WANDER, JOURNEY: the bars run since its start, at the last arrival */
     uint8_t hold;                                        /* holding an arrival WAIT bars (the faders still) */
-} gl = {GT_SOUND, GM_ONCE, 3u, 0, 0, 0, 0, 0, 0, 0, {0}, {0}, 0, 0, 0};
+} gl = {.target = GT_BOTH, .mode = GM_JOURNEY, .time = 3u, .wait = 1u};   /* the defaults (no TIDE record yet): the showcase, BOTH, JRNY, 8 bars,
+                                                                            * WAIT 1 bar (owner, 2026-11-01) */
 
 static void glide_shape_follow(void)
 {
