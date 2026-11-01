@@ -628,7 +628,7 @@ static void wv_read(const int8_t *tab, uint32_t lo, uint32_t sh, const uint32_t 
         const int8_t *a = tab + ((uint32_t)fp >> 16) * WV_FS + lo + (ph >> sh);
         int32_t fr = (int32_t)((ph >> (sh - 12u)) & 0xFFFu);
         int32_t x0 = a[0], x1 = a[1], y0 = a[WV_FS], y1 = a[WV_FS + 1u];
-        int32_t l = (x0 << 12) + (x1 - x0) * fr, h = (y0 << 12) + (y1 - y0) * fr;
+        int32_t l = x0 * 4096 + (x1 - x0) * fr, h = y0 * 4096 + (y1 - y0) * fr;
         dst[i] = (l + ((((h - l) >> 6) * (int32_t)wq) >> 6)) >> 4;   /* 127 -> 32512 */
         fp += dfp;
     }
@@ -639,7 +639,7 @@ static void wv_read_sine(const int8_t *tab, const uint32_t *rp, int32_t fp, int3
     uint32_t i;
     for (i = 0; i < n; i++) {
         const int8_t *a = tab + ((uint32_t)fp >> 16) * WV_FS + WV_FUND;
-        int32_t f0 = a[0], fa = (f0 << 12) + (a[WV_FS] - f0) * (int32_t)(((uint32_t)fp >> 4) & 0xFFFu);   /* Q12 */
+        int32_t f0 = a[0], fa = f0 * 4096 + (a[WV_FS] - f0) * (int32_t)(((uint32_t)fp >> 4) & 0xFFFu);   /* Q12 */
         dst[i] = (sine_i(rp[i]) * (fa >> 6)) >> 12;     /* x 2 (it is halved) x 256 (8 bits -> Q15) */
         fp += dfp;
     }
@@ -818,7 +818,7 @@ static __attribute__((noinline)) void wv_dmix(int32_t *s1, const int32_t *s2, in
 {
     uint32_t i;
     for (i = 0; i < n; i++) {
-        int32_t wq = (d0 << 12) + (((d1 - d0) * (int32_t)i << 12) / (int32_t)CTL);   /* Q15 (WV_DF x 4096 = 32768) */
+        int32_t wq = d0 * 4096 + ((d1 - d0) * (int32_t)i * 4096 / (int32_t)CTL);   /* Q15 (WV_DF x 4096 = 32768) */
         s1[i] += (((s2[i] - s1[i]) >> 1) * wq) >> 15;
     }
 }
@@ -871,7 +871,7 @@ static void wave_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     if (bend > 0 || sync > 0 || v->s[6]) {               /* the DC tracker: the cycle's mean (~7 Hz) taken off */
         int32_t dc = v->s[6];
         for (i = 0; i < n; i++) {
-            dc += ((s1[i] << 8) - dc) >> 10;
+            dc += (s1[i] * 256 - dc) >> 10;
             s1[i] -= dc >> 8;
         }
         v->s[6] = !bend && !sync && dc > -1024 && dc < 1024 ? 0 : dc;   /* (off again once it has settled near 0) */
