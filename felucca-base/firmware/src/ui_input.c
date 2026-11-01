@@ -1995,7 +1995,9 @@ static void ui_input(void)
     sense_vel_type_set(keyvel_type());                  /* (DUELL 1.1: the curve types, from the saved setting the same way) */
     sense_at_type_set(aftert_type());                       /* (MENU > CONTROL > AFTERTOUCH: the same way, its own line) */                          /* (MENU > CONTROL > KEY VELOCITY: from the saved setting at power-on, and a record imported later; a no-op while it holds) */
 #endif
+#if defined(FELUCCA_HOST_SCOPE) && FELUCCA_HOST_SCOPE
     scope_mix = 0;                                      /* (0.2.14: MENU > SCOPE is gone, the scope always draws OUT; a stored MIX bit is ignored) */
+#endif
     rp_apply();                                         /* (MENU > CLICK, CLICK LEVEL, COUNT-IN: click.c, seq.c) */
     cmp_sync();                                         /* (0.2.21 GLO > COMP: song.cp[] <-> the settings word, fx.c cmp_cfg for the audio side) */
     ms_sync();                                          /* (0.2.23 GLO > WIDTH: song.ms[] <-> the settings bytes, fx.c wd_sel for the audio side) */

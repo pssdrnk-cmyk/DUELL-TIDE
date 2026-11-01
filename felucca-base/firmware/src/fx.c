@@ -3130,10 +3130,9 @@ static __attribute__((noinline)) void mix_gather(uint32_t n, const blockstate_t 
     }
 }
 
-/* the HOME oscilloscope (ui_graph.c graph_scope): every other sample of the left channel. MENU > DISPLAY > SCOPE (1.2,
- * Discussion #165): OUT (0, the default) what goes out, after MASTER (audio.c audio_block, before the click); MIX the
- * mix before MASTER (and before SPEAKER EQ and the limiter), at the level MASTER at its top gives, so its
- * size does not follow the volume. The click is in neither */
+/* Host-only capture for the metronome routing regression. No hardware page
+ * reads the retired HOME scope, so its buffer and ISR work are not built. */
+#if defined(FELUCCA_HOST_SCOPE) && FELUCCA_HOST_SCOPE
 #define SCOPE_N 512u
 static int16_t scope_buf[SCOPE_N];
 static uint32_t scope_w;
@@ -3144,6 +3143,8 @@ static __attribute__((noinline)) void scope_take_mix(uint32_t n)
     for (i = 1; i < n; i += 2u)                         /* (((x >> 2) * MASTER_FULL) >> 10 is x) */
         scope_buf[scope_w++ & (SCOPE_N - 1u)] = (int16_t)clamp(mix_l[i] + wet[i], -32767, 32767);
 }
+
+#endif
 
 /* DUELL GLO's level meters (ui_layer.c glo_meters). STEREO and LAYER read each part's own peak, t->peak (mix_part, kept anyway).
  * SPLIT also scans the two buses after their effect returns (mix_l: part 1's side, mix_r: part 2's) while the page shows: the UI
@@ -3394,7 +3395,9 @@ static void mix_block(int32_t *out, uint32_t n)
         if (dm_split)
             meter_scan(n);                              /* (GLO's page shows: SPLIT's two buses) */
     }
+#if defined(FELUCCA_HOST_SCOPE) && FELUCCA_HOST_SCOPE
     if (scope_mix)
         scope_take_mix(n);
+#endif
     mix_master(out, n, perf, mg);
 }

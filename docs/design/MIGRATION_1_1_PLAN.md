@@ -1,43 +1,52 @@
-# Active jam11 implementation - owner update, 1 November 2026
+# Active jam11 implementation - 1 November 2026
 
-Complete functionality before the whole-repo fitting pass. Memory use is diagnostic during development; retain production limits and no-flash checks. Keep full crossings/wash and integrate Claude KEEP/storage. Owner explicitly accepts TIDE-specific saves for exact FM6 recall.
+**The complete TIDE implementation now fits. Next gate: actual FM-1 testing; nothing from this implementation has been flashed.** Continue in `work/wt/duell-jam11`, branch `jam11`. The older revision 3.5 plan below is historical, not the current build status.
 
-Merged into `jam11`: S1 UI, compaction commit `21cbbe5`, Claude KEEP/storage commit `4f29aa8`, and the integrated crossings/control/DSP fixes. The isolated `audit/tide-crossings` copy remains the verification snapshot.
+## Completed
 
+- Integrated S1 pages, GLIDE, sound/sequence journeys, full crossings/wash, FM6 live tuning, Claude KEEP/storage, combined undo, and the six always-on fixes. Owner accepts TIDE-only saves for exact FM6 recall.
+- UI feedback: G4 KEEP hint below SEQ TOOLS; STORE FULL in both save flows; STEP variation outlines and refresh; selected-part destination footer; quantized theme updates. TIDE splash/About uses the existing L alphabet font; credits, animation and controls remain. TIDE-off keeps the original bitmap artwork.
+- Cold morph compiler policy (`946afe7`) saves 304 B without changing function bodies. Compact FM6 tuning endpoints (`be070fb`) recover 576 B of pool including alignment for 16 B flash cost.
+- Claude UI compaction `50cfdac` merged at `0736b23`: removes superseded renderers and unreachable layout paths. It saves 4,240 B flash, 1,024 B ordinary RAM and 1,024 B pool. Claude's pixel comparisons match all 2,514 TIDE-on and 2,469 TIDE-off cases. Result and proof: `work/handover-2026-11-01/CLAUDE-UI-COMPACTION-RESULT.md` and `ui-compact-proof/`. Separate Claude worktrees are preserved; the UI freeze is over.
+- Retired hardware scope capture is now host-only (`FELUCCA_HOST_SCOPE` in `tests/hostsim.c`). The old settings bit remains reserved/ignored. This removes obsolete production source while preserving metronome test capture; it yields no further image reduction after compiler dead-code elimination.
 
-Active work (handover checkpoint, 1 November 2026):
+## Current measurements
 
-- Continue in `work/wt/duell-jam11`, branch `jam11`. Core integration is `6bb1e67`; UI stage is `f2ff36f`. Claude's `tide-keep` worktree is separate and must not be reset.
-- UI stage complete: visible G4 KEEP below the eight SEQ TOOLS boxes; STORE FULL on both patch-save flows; STEP variation outlines and redraw signature; selected part's live destination name in the existing single-row footer; 16-step theme updates during motion.
-- TIDE splash/About lettering now reuses the existing L alphabet font. Credits, animated background and startup controls remain. The graphic logo artwork changes; the TIDE-off path keeps the original SVG bitmaps. This is a fitting fallback, not proof that the remaining UI code is lean.
-- Scoped verification: KEEP/storage 72/72 and MIDI/PERFORM/UI 24/24 under full ASan/UBSan; actual native captures inspected for SEQ TOOLS, STEP, splash/About. Only the affected groups were run; no new broad regression sweep.
-- Exact UI baseline target (`f2ff36f`): **581,332 / 581,564 B**, **232 B free**, SHA-256 `2e5fa2eb2762a51a491c9ad769e701886fa2197c1ff628bc550c451520777136`. All target ELF/RAM/call-closure checks pass (`errors: []`). Evidence: `work/audit/jam11-measurements/tide-ui-baseline-f2ff36f/`. Current code fits with the font-based logo fallback, but has little flash room. Further code cleanup is ongoing; no on-unit validation yet.
-- Split: Claude owns the stock 1.1 UI renderer/font cleanup on a separate branch from `f2ff36f` (handoff prepared; user will dispatch). Codex owns TIDE planner/control size and final integration. See `CLAUDE_UI_COMPACTION_HANDOFF.md`. No device flash authorized.
-- Deeper audit candidates: template selection in `ui_draw.c` versus the fallback switch in `ui_graph.c`; old MATRIX `graph_mod` and `graph_engine` fallbacks appear superseded on normal pages, but must be checked against every overlay/virtual page before removal. No legacy renderer has been removed yet. Existing compaction evidence: `work/audit/DEEP-UI-COMPACTION-REVIEW.md`; do not repeat its discarded global noinline/merge-functions trials.
-- Helpers in `work/audit`: `crossings_host_build.py wt/duell-jam11 candidate <test.c>` and `stock_compare_build.py 1.1 wt/duell-jam11 <unique-label>` (Windows target tools need elevated execution). Earlier audit evidence is in `work/audit/tide-crossings`, not inside this checkout.
+Freshly regenerated production assets reproduce the merged app byte for byte: **576,804 / 581,564 B**, **4,760 B flash free**, SHA-256 `632486ae063fc6817c059b6fc4f84bdc7c98f5a97152f78bd4a3ede7f11aee48`. All target ELF, startup, RAM placement, call reach and range-X closure checks pass (`errors: []`). Evidence: `work/audit/jam11-measurements/tide-ui-release-generated/` (same app as `tide-ui-merged/`). Production bounds remain unchanged.
 
-Current integration status (1 November 2026):
+| Memory area | Used | Space remaining |
+|---|---:|---:|
+| Ordinary RAM | 67,808 B | 1,824 B after the 4 KiB reserve |
+| Pool plus range Z | 357,508 B | 2,940 B after the 8 KiB reserve |
+| Range X | 31,584 B | 928 B |
+| Hot audio plus flash driver | 13,968 B | 1,468 B physical; 1,240 B after the 228 B reserve |
 
-- Claude's KEEP/storage implementation is merged into `jam11` with full crossings/wash, PERFORM GLIDE A/B and assignable MIDI GLIDE/SEQ MORPH. Claude's separate worktree is untouched. Nothing flashed. Continue functionality and cleanup here; memory fitting and hardware acceptance remain outstanding.
-- Fixed live KEEP envelope capture before temporary FM6 bridge cloning, audible structural-side capture, crossing reset on a new Original/preset, FM6 cache-key bit overlap, planning order after journey updates, and independent MIDI zone latches for each part/channel.
-- Replaced undefined signed left shifts on exercised shared DSP paths with bounded multiplication. Full address/undefined-behaviour checking is enabled; the imported shift-base suppression is removed.
-- Focused host results: KEEP/storage 70 checks; crossings 562 checks; MIDI/PERFORM 22 checks; EQ 13 checks. ANALOG and FM6 at-rest renders match the reference sample for sample (combined hash `d3d0b151f5d71383`). These are host results, not hardware/audio audition.
-- TIDE-off image: 561,564 bytes; SHA-256 `3e7f2d511b865b0ab4da64a239ea1db5c7a6138f3a32ba6cab3dad484df6f2b4`, identical to the compacted reference with the same DSP arithmetic fixes. ELF checks pass for that off build.
-- Full enabled target: link fails, flash overflow 3,828 bytes. The unchanged release bound remains enforced. Current integrated map is saved in `measurements/integrated-final/layout.map`; no enabled firmware package is ready to flash.
-- Enabled link-map diagnostics: ordinary RAM 800 bytes beyond its 4 KiB reserve; pool plus range Z 1,340 bytes beyond its 8 KiB reserve; range X 928 bytes free; hot audio RAM 1,240 bytes beyond its 228-byte reserve. RAM call-closure analysis passes; a final enabled ELF validation awaits a successful link.
-- Broader inherited failures reproduce on the reference: erase/menu 65 checks after correcting its patch-capacity fixture to PT_MAX; morph 2; web editor 16; old editor-round test throws the same MockUnit.deviceMenu error; librarian 2. The new TIDE destination parser case passes. Native twin_test is unavailable because its POSIX memory-mapping header is absent on Windows. No tests were weakened to conceal these failures.
-- Still pending: whole-repository fitting, hardware audition of crossings/KEEP/clock, and UI feedback polish (visible KEEP label, clearer full-store message, STEP variation ghosts and journey footer/redraw polish). The historical budget estimates below are superseded by these measured enabled-build results.
+TIDE-off also passes target checks: **556,920 B**, app SHA-256 `0a35ee3e6e530c6047ce69ae0df75440b79dda493c9d02960829b2ec3b5b9777`. `jam/off.sha256` now records package SHA-256 `1efb2d84c26cf436194b725d36dd2364bb80aedcf911e076dd19c23ab505bb7e` for the intentionally updated shared baseline (font/compiler/UI cleanup and retired scope). This supersedes the fixes-only hash; it does not claim byte identity with untouched upstream 1.1. Evidence: `tide-ui-off-current/`. The package hash was calculated from the checked app and unchanged loader; the shell wrapper itself has not been run in this stage.
+
+## Verification and limits
+
+- Focused host checks: KEEP/storage 72/72; crossings 563/563; MIDI/PERFORM/UI 24/24; EQ 13/13, with ASan/UBSan. The latest merged controls run passes 24/24. ANALOG and FM6 at-rest samples match the reference (`d3d0b151f5d71383`). Native SEQ TOOLS, STEP, splash/About and PERFORM captures were inspected. These establish host behavior, not physical audio or MIDI.
+- The affected legacy `click_test.c` cannot compile on this branch: it uses the removed `chain` global and POSIX two-argument `mkdir` on Windows. Capture hooks remain available in hostsim; no test was weakened. Log: `work/audit/tide-scope-click.log`.
+- Existing unrelated host-suite failures remain: erase/menu 65, morph 2, web editor 16, librarian 2, and the old editor-round MockUnit.deviceMenu exception. Claude's UI batch reproduces the same failures before/after its patch. Old `ui_render` also fails to compile on its baseline. No broad rerun is required before hardware audition.
+
+## Next / handoff
+
+1. Prepare the checksummed device-test package from `tide-ui-release-generated`, using the unchanged FM-1_901 loader; validate through the updater parser. The earlier `tide-device-test-be070fb` artifact is superseded.
+2. Obtain owner authorization before any firmware write. Then audition held FM6 A-to-B-to-A crossings, GLIDE/journeys and sequence motion, KEEP plus undo and save/reload, heavy polyphony/CPU, and external clock with the TR-6S. No physical results are claimed yet.
+3. Further compaction is optional until hardware findings justify it. Retain the current font-based branding; bitmap restoration has not been measured against the merged budget. USB audio and the full crossings/wash remain enabled.
+
+Build helpers: `work/audit/stock_compare_build.py 1.1 wt/duell-jam11 <unique-label>` (`DUELL_REGENERATE=1` regenerates assets, `DUELL_TIDE_OVERRIDE=0` disables TIDE, `DUELL_MEASUREMENTS_DIR` selects external output); `crossings_host_build.py wt/duell-jam11 candidate <test.c>`. Windows target tools need approved execution. `work/audit/tide-crossings` is an older evidence snapshot, not the active source.
 
 ---
 
 # JAM on DUELL 1.1 — migration plan
 
-Status: **revision 3.5, paused for handover (2026-11-01)**: see **`docs/design/HANDOVER_2026-11-01.md`**. Steps 0, 1, 2a and
+Historical snapshot: **revision 3.5, before the integration and fitting work above (2026-11-01)**: see **`docs/design/HANDOVER_2026-11-01.md`**. Steps 0, 1, 2a and
 S1 part 1 are committed on `jam11` (`1c04831`). The S1 UI is on `jam11-s1-ui-wip` (`54e8727`): it compiles, but the link
 overflows the flash slot by 2,484 B, and about 9-10 KB more are needed with S2. Codex is investigating why it wasn't
 foreseen and where to compact. The handover's tables supersede the space figures below where they differ.
 
-### Current state (2026-11-01)
+### Historical state at revision 3.5 (2026-11-01)
 
 | What | State |
 |---|---|
@@ -446,14 +455,3 @@ Open questions for the next audit pass (revision 3.2):
    range-X additions still fit together?
 5. §4.8: the 8-slot font cache (2.6 KB of `.bss`) plus SEQ MORPH buffers if moved to `.bss`: is the ordinary RAM
    budget (~10 KB free) still comfortable with the S1-S3 state?
-
-### Immediate continuation
-
-- UI files are frozen for Claude. Codex completed cold compiler-policy compaction in `tools/size_fns.py`: size-optimize `morph_end_pure`, `morph_roll_step`, `morph_fm_roll`, and outline `morph_end_pure` after ISR reachability exclusion. Function bodies are unchanged. Measured image 581,028 B, saving 304 B; **536 B flash free**. All target checks pass. Evidence: `work/audit/jam11-measurements/tide-cold-outline/`. Largest current TIDE control function: `morph_roll_from` 7,462 B, including inlined callees. Inspect `morph_end_pure`, `morph_roll_step`, `morph_fm_roll` before selecting a no-behavior-change compaction candidate.
-- Keep the 232-byte fitting baseline intact and compare any candidate against it. Do not rerun broad suites. User requested continuing autonomously until a clean stage or genuine input/hardware test is needed.
-
-- Next Codex RAM candidate: crossing state `fm6_xt` is 712 B in pool RAM and stores two complete 156-byte FM6 endpoints per part. Its consumers use only four oscillator tuning bytes per operator plus transpose. Evaluate compact 25-byte endpoint snapshots, sharing the existing pitch calculation; preserve all frequency/envelope/stand-in behavior and check the representative crossing renderer once. UI files remain frozen for Claude.
-
-- RAM compaction is complete in `fm6_core.c`, `eng_fm6.c`, `morph_xfer.c`: the 712-byte `fm6_xt` pool state becomes 192 bytes; linked pool is 576 bytes smaller including alignment. Target image is 581,044 B (520 B free), all ELF/RAM checks pass. Crossing render and compact-endpoint contract pass **563/563** under full ASan/UBSan, with unchanged at-rest hash `d3d0b151f5d71383`. The contract covers ratio/fixed modes, transpose and boundary notes. Evidence `work/audit/jam11-measurements/tide-freq-pack/` and `work/audit/tide-freq-pack-*.log`. No saved format changes.
-
-- Current software stage is ready for a packaged device-test candidate: image **581,044 B**, **520 B flash free**; ordinary RAM reserve margin **800 B**; pool+Z reserve margin **1,916 B**; X free **928 B**; hot-code reserve margin **1,240 B**. Codex is building the unchanged project OTA loader and checksummed FM-1_901 package next. No broad suite repeated, no flash authorized; next functional gate is actual FM-1 audio/CPU/clock audition. Claude UI compaction can proceed independently.

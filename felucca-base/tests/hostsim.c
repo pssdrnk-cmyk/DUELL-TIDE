@@ -18,6 +18,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+/* Test-only pre-click/MIX capture, retained for the metronome routing checks. */
+#define FELUCCA_HOST_SCOPE 1
 #define __attribute__(x)
 #define memset felucca_memset
 #define memcpy felucca_memcpy

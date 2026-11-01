@@ -93,15 +93,16 @@ static __attribute__((noinline)) void master_dac(int32_t *out, uint32_t n)   /* 
 
 static void audio_block(int32_t *out, uint32_t n)       /* mix (fx.c), then Q15 -> 24 bit */
 {
-    uint32_t i;
     mix_block(out, n);
 #if FELUCCA_UAC
     uac_tap(out, n);                                    /* the USB audio input: the same master output, at the fixed level */
 #endif
     master_dac(out, n);                                 /* MASTER's volume for the DAC (speaker, headphones): out is Q15 x 2^OUT_SHIFT from here */
-    if (!scope_mix)                                     /* the HOME scope (SCOPE OUT): the music, before the click */
-        for (i = 1; i < n; i += 2u)                     /* (MIX: fx.c mix_block took it) */
+#if defined(FELUCCA_HOST_SCOPE) && FELUCCA_HOST_SCOPE
+    if (!scope_mix)                                     /* host OUT capture: music before the click */
+        for (uint32_t i = 1; i < n; i += 2u)             /* (MIX: fx.c mix_block took it) */
             scope_buf[scope_w++ & (SCOPE_N - 1u)] = (int16_t)(out[2u * i] >> OUT_SHIFT);
+#endif
     click_render(out, n, OUT_SHIFT);                    /* the metronome (click.c): the DAC only, not USB */
 }
 
