@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/duell-tide-cover.jpg" alt="DUELL-TIDE: DUELL 1.1 with TIDE, an unofficial fork" width="960"></p>
+<p align="center"><img src="docs/duell-tide-cover.jpg" alt="DUELL-TIDE: DUELL 1.1 by OSCILL/R, with TIDE by pssdrnk" width="960"></p>
 
 # DUELL-TIDE
 
@@ -6,7 +6,7 @@
 
 [Try it in the browser](https://pssdrnk-cmyk.github.io/DUELL-TIDE/emu/) · [What changed](#what-changed-from-duell-11) · [Install](#install) · [Issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues)
 
-> **This is not the official DUELL.** DUELL-TIDE is a personal fork of [DUELL](https://github.com/oscillr/DUELL) 1.1 by **OSCILL/R**. It is not made, affiliated with or endorsed by OSCILL/R or M-VAVE. Please don't send TIDE problems to the DUELL author: use this fork's [issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues). DUELL and its credit belong to OSCILL/R; the code stays GPL-3.0-only.
+> **TIDE is by pssdrnk, not by OSCILL/R.** DUELL-TIDE is pssdrnk's fork of [DUELL](https://github.com/oscillr/DUELL) 1.1, which is made by **OSCILL/R**. The fork is not made, affiliated with or endorsed by OSCILL/R or M-VAVE. Please don't send TIDE problems to the DUELL author: use this fork's [issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues). DUELL and its credit belong to OSCILL/R; the code stays GPL-3.0-only.
 
 > **Use at your own risk.** TIDE has run on **one FM-1, the fork owner's**. It has no release and no wide testing. The FM-1 has a single copy of its firmware and no known rollback; a failed write can leave it dark, and then only a hardware recovery helps ([docs/RECOVERY.md](docs/RECOVERY.md)). Back up first. No warranty.
 
@@ -88,7 +88,7 @@ To put TIDE on an FM-1 you build it yourself:
 
 TIDE reports itself as DUELL 1.1; the AUTO TIDE page in HOME's round shows that TIDE is on the unit.
 
-**The way back:** install the official DUELL 1.1 package from [OSCILL/R's releases](https://github.com/oscillr/DUELL/releases) the same way (or with their installer page), or return to M-VAVE's official firmware (V15) as in [docs/INSTALL.md](docs/INSTALL.md). Your backup restores with `jam_dev.py restore` or the editor's Backup page.
+**The way back:** install the original DUELL 1.1 package from [OSCILL/R's releases](https://github.com/oscillr/DUELL/releases) the same way (or with their installer page), or return to M-VAVE's official firmware (V15) as in [docs/INSTALL.md](docs/INSTALL.md). Your backup restores with `jam_dev.py restore` or the editor's Backup page.
 
 ---
 
