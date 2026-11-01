@@ -95,7 +95,14 @@ static int tide_foot_two(void);
 #define TIDE_RESET_CASE case SC_TIDE: return tide_reset(k);
 #define TIDE_LIST_ON() tide_list_on()
 #define TIDE_LIST_OCT(oct) tide_list_oct(oct)
-#define TIDE_GRAPH_CASES case GR_TIDE: cv_oy = 0; graph_tide(); break; case GR_TIDELIST: cv_oy = 0; graph_tidelist(); break;
+#define TIDE_GRAPH_CASES
+/* TIDE and TIDE SET are template 9 pages (owner, 2026-11-01: 1.1's look): the knob-1 line and the card row are ui_draw.c's; the pages draw
+ * their own body (ui_graph.c draw_graph, before the area's canvas), and the card row sits TIDE_LIFT rows higher so that the footer keeps its
+ * two rows (tide_foot_two: part 1 and part 2) */
+#define TIDE_LIFT 8
+#define TIDE_GRAPH_OWN(pg) do { if (TIDE_PAGE(pg)) { if ((pg)->graph == GR_TIDE) graph_tide(); else graph_tidelist(); return; } } while (0)
+#define TIDE_CARD_LIFT() (tide_foot_two() ? TIDE_LIFT : 0)
+#define TIDE_FOOT_FULL() tide_foot_two()
 #define TIDE_GRAPH_SIG(pg, h) do { if ((pg)->graph == GR_TIDELIST) return ((h) ^ tide_list_sig()) * 16777619u; \
                                    if (TIDE_PAGE(pg)) (h) = ((h) ^ tide_sig() ^ (uint32_t)morph.target * 0x85EBCA77u) * 16777619u; } while (0)
 #define TIDE_COLUMNS() do { if (TIDE_PAGE(cur_page())) { tide_columns(); return; } } while (0)
@@ -146,6 +153,9 @@ static int tide_foot_two(void);
 #define TIDE_LIST_ON() 0
 #define TIDE_LIST_OCT(oct) ((void)0)
 #define TIDE_GRAPH_CASES
+#define TIDE_GRAPH_OWN(pg) ((void)0)
+#define TIDE_CARD_LIFT() 0
+#define TIDE_FOOT_FULL() 0
 #define TIDE_GRAPH_SIG(pg, h) ((void)0)
 #define TIDE_COLUMNS() ((void)0)
 #define TIDE_HOME_NAME "MORPH"

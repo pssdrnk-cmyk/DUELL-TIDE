@@ -864,14 +864,14 @@ static void area_rect(int32_t *y, int32_t *h)
 static void area_geo(uint32_t c, int32_t *x, int32_t *y, int32_t *w, int32_t *h)
 {
     uint32_t cols = grid_on == 5 ? 3u : area_cols;
-    int32_t top = UT_A_CARD_Y - (AREA_TWO ? UT_A_LBL2_PITCH : 0);
+    int32_t top = UT_A_CARD_Y - (AREA_TWO ? UT_A_LBL2_PITCH : 0) - TIDE_CARD_LIFT();   /* TIDE hook (TIDE: the row higher, the footer's two rows under it) */
     *x = *y = *w = *h = 0;
     if (c < 1u || c > cols)
         return;
     *x = UT_A_X0 + (cols == 2u ? UT_A_DX2 : UT_A_DX3) * (int32_t)(c - 1u);
     *w = cols == 2u ? UT_A_W2 : UT_A_W3;
     *y = top;
-    *h = UT_A_CARD_Y + UT_A_CARD_H - top;
+    *h = UT_A_CARD_Y + UT_A_CARD_H - TIDE_CARD_LIFT() - top;
 }
 static void grid_geo(uint32_t c, int32_t *x, int32_t *y, int32_t *w, int32_t *h)
 {
@@ -1971,7 +1971,7 @@ static void draw_foot(void)
     if (!ui.force && sig == ui.foot_sig)
         return;
     ui.foot_sig = sig;
-    foot_short = (grid_on == 1 || grid_on == 3 || grid_on == 4 || grid_on == 5 || grid_on == 7 || grid_on == 9 || grid_on == 11 || grid_on == 12 || grid_on == 13 || grid_on == 14 || grid_on == 15 || grid_on == 16 || grid_on == 17 || ui.guide) && !ui.ml.on && !pfl[0] && !save_hint && !foot_steps();   /* (DUELL 1.1 grid pages: row 1 is empty, the cards use its rows) */
+    foot_short = (grid_on == 1 || grid_on == 3 || grid_on == 4 || grid_on == 5 || grid_on == 7 || grid_on == 9 || grid_on == 11 || grid_on == 12 || grid_on == 13 || grid_on == 14 || grid_on == 15 || grid_on == 16 || grid_on == 17 || ui.guide) && !ui.ml.on && !pfl[0] && !save_hint && !foot_steps() && !TIDE_FOOT_FULL();   /* TIDE hook: TIDE / TIDE SET keep both rows */   /* (DUELL 1.1 grid pages: row 1 is empty, the cards use its rows) */
     cv_begin(240, foot_short ? H_FOOT - 15 : pfl[0] ? H_FOOT + 15 : H_FOOT, T_BG);   /* (item 120: PERFORM's footer is 15 rows taller, its two hint lines on top) */
     cv_oy = foot_short ? -15 : pfl[0] ? 15 : 0;
     if (ui.ml.on) {                               /* row 1: MIDI LEARN's line, OCT+ DONE at the right (the one way out) */
@@ -2196,7 +2196,7 @@ static int area_plan(const page_t *pg, uint32_t g)
     int two = 0, moved;
     if (g == 16u && (pg->scope == SC_SCALE || pg->graph == GR_PATS || pg->graph == GR_SLOTS))
         cols = 2u;
-    else if (g == 16u && (pg->graph == GR_EVENTS || pg->graph == GR_ROLL || pg->graph == GR_BROWSE || pg->scope == SC_PERF))
+    else if (g == 16u && (pg->graph == GR_EVENTS || pg->graph == GR_ROLL || pg->graph == GR_BROWSE || pg->scope == SC_PERF || TIDE_PAGE(pg)))   /* TIDE hook */
         cols = 3u;
     else {                                              /* a page of parameter cards (ARP 1/3, ARP 2/3, CHORD; the ENGINE page): its slots 2 .. 4 that hold a card at all; their labels */
         for (s = 1; s < 4u; s++)
@@ -3368,7 +3368,7 @@ static void ui_draw_page(uint32_t counting)
             g = 4;
         if (!ui.perf && !page_over && gp->graph == GR_ENGINE)
             g = eng_cells(gp) ? 15 : 5;                 /* (item 165: LOFI and NOISE have no picture: cells under the K1 row) */
-        if (!ui.perf && !page_over && area_page(gp))   /* TEMPLATE 9 (block C): the AREA pages (over the ARP / list / STEP exceptions above: ARP 1/3, ARP 2/3, PARAMETER LOCKS, SEQUENCER, GLOBAL SCALE, CHORD, PATCHES, MULTIS, PATTERNS) */
+        if (!ui.perf && !page_over && (area_page(gp) || TIDE_PAGE(gp)))   /* TIDE hook; TEMPLATE 9 (block C): the AREA pages (over the ARP / list / STEP exceptions above: ARP 1/3, ARP 2/3, PARAMETER LOCKS, SEQUENCER, GLOBAL SCALE, CHORD, PATCHES, MULTIS, PATTERNS) */
             g = 16;
         if (perf_pg)                                    /* TEMPLATE 9: the PERFORM page (PERFORM_NEW_LAYOUT_V4: knob 1's line with SELECT = BALANCE, the 4 x 4 boxes in the area, three cards) */
             g = 16;

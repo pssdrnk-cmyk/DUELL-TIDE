@@ -2917,6 +2917,7 @@ static void draw_graph(void)
         graph_mod_new(t);
         return;
     }
+    TIDE_GRAPH_OWN(pg);                              /* TIDE hook: TIDE and TIDE SET draw their own body (template 9's knob-1 line and cards are draw_columns') */
     if (AREA_PIC && pg->graph != GR_PERF) {          /* TEMPLATE 9 (LAYOUT_IMPLEMENTATION_PLAN.md J7): the page's picture into the big area, one canvas of the area's rows blitted at its first row;
                                                       * every picture here draws in SCREEN rows (cv_oy = minus the area's first row). PERFORM keeps its own path below (ui_perform.c) */
         int32_t ay, ah;

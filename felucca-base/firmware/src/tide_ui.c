@@ -339,25 +339,34 @@ static int tide_foot_two(void)
 }
 
 /* ---------------------------------------------------------------- the cards --- */
+/* template 9 (owner, 2026-11-01): knob 1 is the page's LINE, knobs 2 .. 4 the card row. TIDE: GLIDE's line says what the glide does
+ * (the status line's words: "WNDR TO B  3/8", "GLIDE ON THE NEXT BAR"; at rest the gesture, A<>B, and at the right the part(s) it
+ * moves); MODE, TIME, WAIT the cards. TIDE SET: knob 1 the row picked (SETTING), no cards */
+static void tide_status(char *l);
 static void tide_columns(void)
 {
+    static char st[40];
     char val[12];
     const char *unit;
     int32_t g;
     if (cur_page()->graph == GR_TIDELIST) {
-        draw_column_hide(0);
+        draw_column(0, "SETTING", JL_NAME[jl_sel % JL_N], "", VAL(0u), -1, ICON_NONE);
         draw_column_hide(1);
         draw_column_hide(2);
         draw_column_hide(3);
         return;
     }
     g = morph_pending(TIDE_G_GLIDE);
-    if (glide_running())
-        str_cpy(val, gl.armed ? "BAR" : gl.to ? "B>" : "<A", sizeof val);
-    else
+    tide_status(st);
+    if (glide_running()) {
+        draw_column(0, "GLIDE", st, "", T_ACCENT, -1, ICON_NONE);
+    } else {
         str_cpy(val, g < 0 ? "<A" : g > 0 ? "B>" : "A<>B", sizeof val);
-    draw_column(0, "GLIDE", val, "", g || glide_running() ? T_ACCENT : VAL(0u),
-                glide_running() && !gl.armed ? (int32_t)((gl.prog * 1000u) >> GLIDE_Q) : -1, ICON_NONE);
+        k1_after_next = st;                              /* (PART 1, PART 2, BOTH PARTS at the line's right end) */
+        k1_after_col = T_MID;
+        k1_after_r = 1;
+        draw_column(0, "GLIDE", val, "", g ? T_ACCENT : VAL(0u), -1, ICON_NONE);
+    }
     draw_column(1, "MODE", GL_MODE_NAME[gl.mode % 5u], "", VAL(1u), -1, ICON_NONE);
     fmt_int(val, (int32_t)glide_bars());
     draw_column(2, "TIME", val, glide_bars() == 1u ? "BAR" : "BARS", VAL(2u), -1, ICON_NONE);
@@ -393,47 +402,53 @@ static void tide_status(char *l)
     }
 }
 
-#define JP_X0 74                                         /* the faders' tracks: x JP_X0 .. JP_X1 */
-#define JP_X1 226
+/* the body, screen rows TB_Y0 .. TB_Y1 - 1 between the knob-1 line and the card row (lifted TIDE_LIFT), one canvas */
+#define TB_Y0 UT_A_GR_Y
+#define TB_Y1 (UT_A_CARD_Y - TIDE_LIFT)
+#define JP_X0 82                                         /* the faders' tracks: x JP_X0 .. JP_X1 */
+#define JP_X1 222
 static int32_t tide_x(uint32_t f) { return JP_X0 + (int32_t)f * (JP_X1 - JP_X0) / 127; }
 
-/* a fader's row: its name, the track, the glide's way (from where it started to the end it goes to) and the knob. part: -1 the
- * selected part's row (THEME); 0 / 1 that part's row in BOTH (its number before the track, the knob in its colour; name "" on the
- * second row of a pair) */
+/* a fader's row on screen row y (its track's middle): its name (S, MID; BOTH: the part's number in its colour before it, the name on the
+ * first row of a pair only), the track (a 3 px rounded bar, as the cards' bars), the glide's way on it (from where it started to the end
+ * it goes to, the tint), A and B at its ends, the knob (the part's colour). part: -1 the selected part's row; 0 / 1 that part's row in BOTH */
 static void tide_track(int32_t y, const char *name, uint32_t f, uint32_t lane, int32_t part)
 {
     uint16_t kc = part < 0 ? T_THEME : T_PTHEME((uint32_t)part);
+    int32_t ty = UT_TY(S, y + AF_S_CAP_H / 2), x = tide_x(f);
+    if (part >= 0)
+        cv_text_on(UT_A_K1_DOT_X, ty, &AF_S, part ? "2" : "1", vt(kc, T_BG), T_BG);
     if (name[0])
-        cv_text_on(part < 0 ? 12 : 18, y - 7, &AF_S, name, T_MID, T_BG);
-    if (part >= 0)                                      /* (at the left edge, as the step rows' numbers) */
-        cv_text_on(6, y - 7, &AF_S, part ? "2" : "1", vt(kc, T_BG), T_BG);
-    cv_rect(JP_X0, y, JP_X1 - JP_X0 + 1, 1, T_LINE);
-    cv_text_on(JP_X0 - 9, y - 7, &AF_S, "A", T_DIM, T_BG);
-    cv_text_on(JP_X1 + 3, y - 7, &AF_S, "B", T_DIM, T_BG);
+        cv_text_on(part < 0 ? UT_A_K1_DOT_X : 20, ty, &AF_S, name, T_MID, T_BG);
+    cv_text_on(JP_X0 - 10, ty, &AF_S, "A", T_DIM, T_BG);
+    cv_text_on(JP_X1 + 5, ty, &AF_S, "B", T_DIM, T_BG);
+    cv_rrect(JP_X0, y - 1, JP_X1 - JP_X0 + 1, 3, 1, T_RAISE, T_BG);
     if (glide_running() && ((gl.on >> lane) & 1u) && (part < 0 || ((gl.mask >> part) & 1u))) {
         int32_t a = tide_x(gl.from[lane]), b = tide_x(gl.to ? 127u : 0u);
-        cv_rect(a < b ? a : b, y - 1, (a < b ? b - a : a - b) + 1, 3, T_TINT);
+        cv_rrect(a < b ? a : b, y - 1, (a < b ? b - a : a - b) + 1, 3, 1, T_TINT, T_RAISE);
     }
     if (part < 0)
-        cv_rect(tide_x(f) - 2, y - 5, 5, 11, kc);
+        cv_rrect(x - 3, y - 6, 7, 13, 2, kc, T_BG);
     else
-        cv_rect(tide_x(f) - 2, y - 4, 5, 9, kc);
+        cv_rrect(x - 2, y - 4, 5, 9, 2, kc, T_BG);
 }
 
-/* a part's 16 steps around its playhead, standing on row y (bars up to hmax tall: 25 alone, 15 in BOTH's two rows): a hit as a bar
- * (a chord taller), lit where it varies, hollow where the variation drops it, a moved or ghost hit as a lit outline; the playing
- * step underlined. As they play now (seq_play_step: with VARY BARS 4 + 8 the variation shows on every 4th bar) */
-static void tide_steps(const track_t *t, int32_t y, int32_t hmax)
+/* a part's 16 steps around its playhead, standing on row y (bars up to hmax tall: 25 alone, 15 in BOTH's two rows), in the footer's
+ * columns (bar_x) and its rounded bars: a hit a bar (a chord taller) in the part's colour, the accent where it varies, a lit outline
+ * where it is moved or added, a dim outline where the variation drops it; a tie a short bar, an empty step a stub, the steps past
+ * the pattern's end a line; the playing step underlined. As they play now (seq_play_step: with VARY BARS 4 + 8 the variation shows
+ * on every 4th bar) */
+static void tide_steps(const track_t *t, int32_t y, int32_t hmax, uint16_t c)
 {
     uint32_t len = (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP), page = song.playing ? t->seq_idx / 16u : 0u, i;
     int32_t h1 = hmax == 25 ? 10 : 6, hs = hmax == 25 ? 5 : 3;   /* (a single note, each further note of a chord) */
     for (i = 0; i < 16u; i++) {
         uint32_t idx = page * 16u + i;
-        int32_t x = 18 + (int32_t)i * 13 + (int32_t)(i / 4u) * 4, h;
+        int32_t x = bar_x(i), h;
         const step_t *o, *v;
         step_t b;
         if (idx >= len) {
-            cv_rect(x, y, 9, 1, T_LINE);
+            cv_rect(x, y - 1, 9, 1, T_LINE);
             continue;
         }
         o = &t->step[idx];
@@ -442,69 +457,83 @@ static void tide_steps(const track_t *t, int32_t y, int32_t hmax)
             h = h1 + hs * (int32_t)(v->n - 1u);
             h = h > hmax ? hmax : h;
             if (v == o || !memcmp(v, o, sizeof *v))
-                cv_rect(x, y - h, 9, h, T_MID);
+                cv_rrect(x, y - h, 9, h, 2, c, T_BG);
             else if (o->time == ST_NOTE && o->n)
-                cv_rect(x, y - h, 9, h, T_ACCENT);
+                cv_rrect(x, y - h, 9, h, 2, T_ACCENT, T_BG);
             else
                 cv_frame(x, y - h, 9, h, T_ACCENT);
         } else if (v->time == ST_TIE) {
-            cv_rect(x, y - h1 / 2, 9, h1 / 2, T_DIM);
+            cv_rrect(x, y - h1 / 2, 9, h1 / 2, 1, T_MID, T_BG);
         } else if (o->time == ST_NOTE && o->n) {
             cv_frame(x, y - h1, 9, h1, T_DIM);
         } else {
-            cv_rect(x, y - 1, 9, 1, T_LINE);
+            cv_rrect(x, y - 3, 9, 3, 1, T_DIM, T_BG);
         }
         if (song.playing && idx == t->seq_idx)
-            cv_rect(x, y + (hmax == 25 ? 3 : 2), 9, hmax == 25 ? 2 : 1, T_TEXT);
+            cv_rect(x, y + 2, 9, 2, T_TEXT);
     }
 }
 
-/* JAM's panel. One part (ALGORITHM on PART 1 / PART 2): its SOUND and SEQ faders, its steps. BOTH: each fader row a pair (part 1
- * over part 2, their numbers and colours) and the steps in two rows, part 1 above */
+/* TIDE's body. One part (ALGORITHM on PART 1 / PART 2): its SOUND and SEQ faders, its steps. BOTH: each fader row a pair (part 1 over
+ * part 2, their numbers and colours) and the steps in two rows, part 1 above. The glide's status is knob 1's line (tide_columns) */
 static void graph_tide(void)
 {
     uint32_t pi = song.sel, k;
-    char l[40];
+    cv_begin(240, TB_Y1 - TB_Y0, T_BG);
+    cv_bg = T_BG;
+    cv_oy = -TB_Y0;
     if (tide_both()) {
         for (k = 0; k < NSHOWN; k++) {
-            tide_track(12 + 13 * (int32_t)k, k ? "" : "SOUND", morph_fader_of(k), GT_SOUND, (int32_t)k);
-            tide_track(40 + 13 * (int32_t)k, k ? "" : "SEQ", seqm_fader_of(k), GT_SEQ, (int32_t)k);
-            cv_text_on(6, 64 + 18 * (int32_t)k, &AF_S, k ? "2" : "1", vt(T_PTHEME(k), T_BG), T_BG);
-            tide_steps(&trk[k], 78 + 18 * (int32_t)k, 15);
+            tide_track(58 + 12 * (int32_t)k, k ? "" : "SOUND", morph_fader_of(k), GT_SOUND, (int32_t)k);
+            tide_track(84 + 12 * (int32_t)k, k ? "" : "SEQ", seqm_fader_of(k), GT_SEQ, (int32_t)k);
+            tide_steps(&trk[k], 117 + 18 * (int32_t)k, 15, vt(T_PTHEME(k), T_BG));
         }
     } else {
-        tide_track(16, "SOUND", morph_fader_of(pi), GT_SOUND, -1);
-        tide_track(38, "SEQ", seqm_fader_of(pi), GT_SEQ, -1);
-        tide_steps(TSEL, 86, 25);
+        tide_track(62, "SOUND", morph_fader_of(pi), GT_SOUND, -1);
+        tide_track(84, "SEQ", seqm_fader_of(pi), GT_SEQ, -1);
+        tide_steps(TSEL, 128, 25, vt(T_THEME, T_BG));
     }
-    tide_status(l);
-    GFX_HOOK_ALIGN(0, 0, 240, 0, AL_H, "jam status centred");
-    cv_text_in(0, tide_both() ? 104 : 100, 240, &AF_S, l, T_DIM, T_BG);
+    /* Keep GLIDE's progress bar as well as its status and moving fader knobs.
+     * This strip sits below both parts' playheads and above the card row. */
+    if (glide_running() && !gl.armed) {
+        int32_t w = (int32_t)((222u * gl.prog) >> GLIDE_Q);
+        cv_rrect(9, TB_Y1 - 3, 222, 3, 1, T_RAISE, T_BG);
+        if (w > 0)
+            cv_rrect(9, TB_Y1 - 3, w, 3, 1, T_ACCENT, T_RAISE);
+    }
+    cv_oy = 0;
+    cv_blit(0, TB_Y0);
 }
-/* TIDE LIST: the rows as the MENU draws them (ui_menu.c menu_row): a label at the left, the value at the right (ON / OFF a switch),
- * the picked row THEME with INK, 1 px rules between the others */
-#define JL_Y0 6                                          /* the first row */
-#define JL_P 30                                          /* a row's pitch (28 px and a 2 px gap) */
-#define JL_VIS 5u                                        /* rows shown: the list scrolls to keep the picked one in view */
+/* TIDE SET: the settings as the list pages' rows (PATCHES, template 9: UT_L5_*), from row UT_L5_Y0, 20 apart: the name (M) at the left,
+ * the value (M, the part's colour; a switch for ON / OFF) at the right, the picked row filled in the part's colour with dark text.
+ * Knob 1 picks the row (knob 1's line names it), OCT+ the next value, OCT- the one before */
+#define JL_VIS 6u                                        /* rows shown: the list scrolls to keep the picked one in view */
 static void graph_tidelist(void)
 {
     uint32_t r, top = jl_sel % JL_N >= JL_VIS ? jl_sel % JL_N - (JL_VIS - 1u) : 0u;
+    int32_t y0 = UT_L5_Y0 - 2;
+    cv_begin(240, (uint32_t)(UT_L5_PITCH * (int32_t)JL_VIS + 2), T_BG);
+    cv_bg = T_BG;
+    cv_oy = -y0;
     for (r = top; r < JL_N && r < top + JL_VIS; r++) {
-        int32_t y = JL_Y0 + (int32_t)(r - top) * JL_P, h = JL_P - 2, vy = y + CAP_IN(M, h);
+        int32_t y = UT_L5_Y0 + (int32_t)(r - top) * UT_L5_PITCH, ty = UT_TY(M, y + UT_L5_TEXT_BASE), xr = UT_L5_X + UT_L5_W - 8;
         int sel = r == jl_sel % JL_N;
         uint16_t bg = sel ? T_THEME : T_BG;
         const char *v = jl_vname(r, jl_get(r));
         if (sel)
-            cv_rrect(MR_X, y, MR_W, h, 6, T_THEME, T_BG);
-        else if (r > top && r - 1u != jl_sel % JL_N)
-            cv_rect(MR_X + 6, y - 1, MR_W - 12, 1, T_LINE);
-        GFX_HOOK_ALIGN(0, y, 0, y + h, AL_V, "jam list row name centred up/down");
-        cv_text_on(MR_LX, vy, &AF_M, JL_NAME[r], sel ? T_INK : T_TEXT, bg);
-        if (jl_n(r) == 2u && (str_eq(v, "ON") || str_eq(v, "OFF")))
-            menu_switch(MR_VR, y, h, str_eq(v, "ON"), sel);
-        else
-            cv_text_r(MR_VR, vy, &AF_M, v, sel ? T_INK : T_THEME, bg);
+            cv_rrect(UT_L5_X, y, UT_L5_W, UT_L5_H, UT_T3_ROW_R, T_THEME, T_BG);
+        cv_text_on(UT_L5_TAG_X, ty, &AF_M, JL_NAME[r], sel ? T_INK : T_TEXT, bg);
+        if (jl_n(r) == 2u && (str_eq(v, "ON") || str_eq(v, "OFF"))) {   /* a switch (the MENU's, in the row's colours) */
+            int on = str_eq(v, "ON");
+            int32_t x = xr - 26, sy = y + HALF_UP(UT_L5_H - 14);
+            uint16_t track = on ? (sel ? T_INK : T_THEME) : T_DIM, knob = on ? (sel ? T_THEME : T_INK) : T_TEXT;
+            cv_rrect(x, sy, 26, 14, -7, track, bg);
+            cv_rrect(on ? x + 14 : x + 2, sy + 2, 10, 10, -5, knob, track);
+        } else
+            cv_text_r(xr, ty, &AF_M, v, sel ? T_INK : T_THEME, bg);
     }
+    cv_oy = 0;
+    cv_blit(0, (uint32_t)y0);
 }
 
 /* STEP page (ui_graph.c graph_roll): while the part's SEQ fader is above A, each step SEQ MORPH plays otherwise than it is stored shows

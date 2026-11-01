@@ -1,43 +1,45 @@
 # Active jam11 implementation - 1 November 2026
 
-**The complete TIDE implementation now fits. Next gate: actual FM-1 testing; nothing from this implementation has been flashed.** Continue in `work/wt/duell-jam11`, branch `jam11`. The older revision 3.5 plan below is historical, not the current build status.
+**Current stage: tested Claude fixes merged; TIDE/TIDE SET restyle built for owner emulator review. The complete implementation fits; nothing from this implementation has been flashed.** Continue in `work/wt/duell-jam11`, branch `jam11`. The older revision 3.5 plan below is historical, not the current build status.
 
 ## Completed
 
 - Integrated S1 pages, GLIDE, sound/sequence journeys, full crossings/wash, FM6 live tuning, Claude KEEP/storage, combined undo, and the six always-on fixes. Owner accepts TIDE-only saves for exact FM6 recall.
-- UI feedback: G4 KEEP hint below SEQ TOOLS; STORE FULL in both save flows; STEP variation outlines and refresh; selected-part destination footer; quantized theme updates. TIDE splash/About uses the existing L alphabet font; credits, animation and controls remain. TIDE-off keeps the original bitmap artwork.
+- UI feedback: G4 KEEP hint below SEQ TOOLS; STORE FULL in both save flows; STEP variation outlines and refresh; two-part destination footer on TIDE/TIDE SET (selected part only on MORPH/MODE); quantized theme updates. TIDE splash/About uses the existing L alphabet font; credits, animation and controls remain. TIDE-off keeps the original bitmap artwork.
 - Cold morph compiler policy (`946afe7`) saves 304 B without changing function bodies. Compact FM6 tuning endpoints (`be070fb`) recover 576 B of pool including alignment for 16 B flash cost.
 - Claude UI compaction `50cfdac` merged at `0736b23`: removes superseded renderers and unreachable layout paths. It saves 4,240 B flash, 1,024 B ordinary RAM and 1,024 B pool. Claude's pixel comparisons match all 2,514 TIDE-on and 2,469 TIDE-off cases. Result and proof: `work/handover-2026-11-01/CLAUDE-UI-COMPACTION-RESULT.md` and `ui-compact-proof/`. Separate Claude worktrees are preserved; the UI freeze is over.
 - Retired hardware scope capture is now host-only (`FELUCCA_HOST_SCOPE` in `tests/hostsim.c`). The old settings bit remains reserved/ignored. This removes obsolete production source while preserving metronome test capture; it yields no further image reduction after compiler dead-code elimination.
 
 ## Current measurements
 
-Freshly regenerated production assets reproduce the merged app byte for byte: **576,804 / 581,564 B**, **4,760 B flash free**, SHA-256 `632486ae063fc6817c059b6fc4f84bdc7c98f5a97152f78bd4a3ede7f11aee48`. All target ELF, startup, RAM placement, call reach and range-X closure checks pass (`errors: []`). Evidence: `work/audit/jam11-measurements/tide-ui-release-generated/` (same app as `tide-ui-merged/`). Production bounds remain unchanged.
+The final restyle build with the merged functional fixes measures: **577,116 / 581,564 B**, **4,448 B flash free**, SHA-256 `ca7963ad7f34f5bb05cf1c44fbf8650d5f489e1201a604e5e07e40ee9fc0d0a7`. All target ELF, startup, RAM placement, call reach and range-X closure checks pass (`errors: []`). Evidence: `work/audit/jam11-measurements/tide-restyle-final/`. The earlier fresh-asset build is retained in `tide-ui-release-generated/`. Production bounds remain unchanged.
 
 | Memory area | Used | Space remaining |
 |---|---:|---:|
-| Ordinary RAM | 67,808 B | 1,824 B after the 4 KiB reserve |
-| Pool plus range Z | 357,508 B | 2,940 B after the 8 KiB reserve |
+| Ordinary RAM | 67,872 B | 1,760 B after the 4 KiB reserve |
+| Pool plus range Z | 357,480 B | 2,968 B after the 8 KiB reserve |
 | Range X | 31,584 B | 928 B |
 | Hot audio plus flash driver | 13,968 B | 1,468 B physical; 1,240 B after the 228 B reserve |
 
-TIDE-off also passes target checks: **556,920 B**, app SHA-256 `0a35ee3e6e530c6047ce69ae0df75440b79dda493c9d02960829b2ec3b5b9777`. `jam/off.sha256` now records package SHA-256 `1efb2d84c26cf436194b725d36dd2364bb80aedcf911e076dd19c23ab505bb7e` for the intentionally updated shared baseline (font/compiler/UI cleanup and retired scope). This supersedes the fixes-only hash; it does not claim byte identity with untouched upstream 1.1. Evidence: `tide-ui-off-current/`. The package hash was calculated from the checked app and unchanged loader; the shell wrapper itself has not been run in this stage.
+TIDE-off also passes target checks: **556,920 B**, app SHA-256 `0a35ee3e6e530c6047ce69ae0df75440b79dda493c9d02960829b2ec3b5b9777`. `jam/off.sha256` now records package SHA-256 `1efb2d84c26cf436194b725d36dd2364bb80aedcf911e076dd19c23ab505bb7e` for the intentionally updated shared baseline (font/compiler/UI cleanup and retired scope). This supersedes the fixes-only hash; it does not claim byte identity with untouched upstream 1.1. Evidence: `tide-ui-off-current/` and `tide-restyle-off/` (same app bytes). Claude also ran `jam/check_off.sh` successfully on `516b700`. The package hash was calculated from the checked app and unchanged loader; the shell wrapper itself has not been run in this stage.
 
 ## Verification and limits
 
-- Focused host checks: KEEP/storage 72/72; crossings 563/563; MIDI/PERFORM/UI 24/24; EQ 13/13, with ASan/UBSan. The latest merged controls run passes 24/24. ANALOG and FM6 at-rest samples match the reference (`d3d0b151f5d71383`). Native SEQ TOOLS, STEP, splash/About and PERFORM captures were inspected. These establish host behavior, not physical audio or MIDI.
+- Focused host checks: KEEP/storage 72/72; crossings 566/566; MIDI/PERFORM/UI 32/32; EQ 13/13, with ASan/UBSan. The restyle controls, crossings and KEEP groups pass under ASan/UBSan. The shared UI suite reports the same 13 failures documented on Claude's baseline (`tide-restyle-uitest.log`). ANALOG and FM6 at-rest samples match the reference (`d3d0b151f5d71383`). Native SEQ TOOLS, STEP, splash/About and PERFORM captures were inspected. These establish host behavior, not physical audio or MIDI.
 - The affected legacy `click_test.c` cannot compile on this branch: it uses the removed `chain` global and POSIX two-argument `mkdir` on Windows. Capture hooks remain available in hostsim; no test was weakened. Log: `work/audit/tide-scope-click.log`.
 - Existing unrelated host-suite failures remain: erase/menu 65, morph 2, web editor 16, librarian 2, and the old editor-round MockUnit.deviceMenu exception. Claude's UI batch reproduces the same failures before/after its patch. Old `ui_render` also fails to compile on its baseline. No broad rerun is required before hardware audition.
 
-## Browser emulator review
+## Evening fixes and restyle / owner emulator review
 
-- Owner requested emulator review before hardware testing. Built the current merged sources with Emscripten; added the missing `tide_store.c` include after project storage, matching firmware include order. This changes only the browser build, not the packaged device firmware. Served locally at `http://127.0.0.1:8765/`; click to start audio.
-- Emulator smoke confirms key/MIDI sound, redraw, PLAY/STOP and patch persistence. It reports three failures: two first-start GUIDE expectations and the heavy-song fixture (which still hardcodes an old engine ID). These remain unresolved; no claim of a fully passing emulator suite. Log: `work/audit/tide-emulator-smoke.log`.
+- Claude `tide-fix` `516b700` merged at `2f37ef2`; the separate worktree is untouched. HOME now opens MORPH, then TIDE SET, MODE, TIDE. The chain filter path now applies the crossing/GLIDE dip; GLIDE follows PLAY with pause/resume; both TIDE footer rows identify their part. Claude's tested target was 576,880 B; the restyle adds 236 B.
+- Applied the reviewed restyle draft from `work/handover-2026-11-01/tide-restyle-wip/`, with its tuple typo removed. TIDE/TIDE SET use the existing template-9 knob line and card/list style. All six settings are visible. Retained the GLIDE progress bar as a thin strip above the cards, in addition to its status and moving fader knobs. Kept sound/sequence lanes, notes/chords/ties, variation outlines, playheads, part selection and both footer rows. Card lifting is limited to actual TIDE pages, excluding overlays.
+- Rendered and inspected selected-part/BOTH views, populated and varied note patterns, running/paused GLIDE, and the last selected setting. Evidence: `build/host-review/tide-restyle/` and `work/audit/tide-restyle-preview.png`. Final label and playhead spacing is in `tide-restyle-final-shots.log`.
+- Rebuilt the current emulator at `http://127.0.0.1:8765/?build=tide-restyle-966027`. The build now fingerprints the WASM and worklet URLs, avoiding reuse of old assets after the page loads a new build. Browser source includes real TIDE settings storage. The previously observed browser smoke limitations (two GUIDE expectations and the old heavy-song fixture) remain; no new full emulator sweep or physical validation is claimed.
 
 ## Next / handoff
 
-1. **Package ready:** source commit `a5b768d`, `work/handover-2026-11-01/tide-device-test-a5b768d/duell-tide-a5b768d.fwsc`. App 576,804 B; unchanged OTA loader 11,510 B; package 614,666 B. Package SHA-256 `baf0f863c9a1de3d9fe16d3f0acb325919918dcb020160c057d57d712a9b7da5`; manifest, checksums and licenses alongside. The actual updater parser passes product FM-1_901, chip key 0x980f, 581,564 B slot, decrypted app bytes, CRC and padding checks, for both enabled and disabled packages. The earlier `tide-device-test-be070fb` artifact is superseded. Source work is committed; subsequent roadmap-only updates do not change this package.
-2. Obtain owner authorization before any firmware write. Then audition held FM6 A-to-B-to-A crossings, GLIDE/journeys and sequence motion, KEEP plus undo and save/reload, heavy polyphony/CPU, and external clock with the TR-6S. No physical results are claimed yet.
+1. **Owner review first:** inspect the restyled emulator, the HOME order, two footer rows and retained motion/note/progress displays. No further design change or firmware write is required for this review.
+2. The old `tide-device-test-a5b768d` package is superseded by the evening functional fixes and restyle; retain it as historical evidence. After owner review, regenerate a checked package from the accepted source before requesting authorization to flash. Actual FM-1 audio/CPU/GLIDE/KEEP and TR-6S clock testing remains outstanding.
 3. Further compaction is optional until hardware findings justify it. Retain the current font-based branding; bitmap restoration has not been measured against the merged budget. USB audio and the full crossings/wash remain enabled.
 
 Build helpers: `work/audit/stock_compare_build.py 1.1 wt/duell-jam11 <unique-label>` (`DUELL_REGENERATE=1` regenerates assets, `DUELL_TIDE_OVERRIDE=0` disables TIDE, `DUELL_MEASUREMENTS_DIR` selects external output); `crossings_host_build.py wt/duell-jam11 candidate <test.c>`. Windows target tools need approved execution. `work/audit/tide-crossings` is an older evidence snapshot, not the active source.
