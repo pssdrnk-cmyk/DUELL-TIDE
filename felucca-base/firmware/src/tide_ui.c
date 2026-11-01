@@ -60,18 +60,22 @@ static void tide_keep_sound(uint32_t pi)
     uint8_t *fp = tide_fv;
     morph_part_t *mp = &mph[pi];
     uint32_t fm = trk[pi].eng_req == ENGI_FM6 && morph_isfm(mp);
-    morph_view_all(pi, v);
+    morph_view_at(pi, v, 1);
     if (fm)
         tide_fm6_effective(pi, fp);
     MORPH_LOCK();
-    if (fm && fm6_eff[pi].ok) {
-        uint32_t car = fm6_carriers(fm6_eff[pi].alg), k, j;
-        for (k = 0; k < 6u; k++)
-            if ((car >> k) & 1u)
-                for (j = 0; j < 4u; j++) {
-                    fp[k * FP_OP + FP_R1 + j] = fm6_eff[pi].p[k * FP_OP + FP_R1 + j];
-                    fp[k * FP_OP + FP_L1 + j] = fm6_eff[pi].p[k * FP_OP + FP_L1 + j];
-                }
+    if (fm) {
+        int16_t env[4];
+        int32_t eoff[4];
+        uint32_t e0 = (uint32_t)v[P_E0], k;
+        uint32_t alg = e0 >= 1u && e0 <= 32u ? e0 - 1u : fp[FP_ALG] & 31u;
+        uint32_t base_alg = e0 >= 1u && e0 <= 32u ? e0 - 1u : fm6_patch[pi][FP_ALG] & 31u;
+        /* Bake AMP ENV before any temporary bridge clones an operator. Other
+         * macros remain knobs and must not be applied to the stored patch twice. */
+        if (fm6_env_offsets(env, fm6_patch[pi], base_alg, &v[P_ATK], eoff))
+            for (k = 0; k < 6u; k++)
+                if ((fm6_carriers(alg) >> k) & 1u)
+                    fm6_env_apply(fp + k * FP_OP, eoff);
     }
     memcpy(trk[pi].p, v, sizeof trk[pi].p);
     mp->nid = mp->fnid = 0;
@@ -585,5 +589,6 @@ static void tide_poll(void)
     tide_settings();
     glide_poll();                                        /* a launched GLIDE moves its faders */
     seqm_poll();                                         /* the SEQ MORPH's ends follow pattern edits (TRANS, SHIFT, an edit) */
+    morph_xpoll();                                       /* plan any destination GLIDE generated in this same pass */
     tide_store_poll();
 }

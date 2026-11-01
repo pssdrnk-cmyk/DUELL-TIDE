@@ -410,6 +410,9 @@ typedef struct {                 /* a sounding note (msfa's note): 252 bytes */
     fm6_penv_t penv;
     uint8_t fixed;               /* bit k: operator k has a fixed frequency */
     uint8_t live, down, rsv;
+#if DUELL_TIDE
+    uint8_t xb, xs, xr; /* crossing frequency side, active stand-ins, pending restores */
+#endif
     uint8_t ol0[6];              /* each operator's OL at the note-on (a live OL other than this is applied after the envelope: fm6_live_level) */
     int32_t dc;                  /* (eng_fm6.c) the output's DC blocker */
 } fm6_note_t;

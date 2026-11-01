@@ -1103,7 +1103,7 @@ static __attribute__((noinline)) void uf_run(voice_t *v, int32_t *buf, uint32_t 
             }
             y = u2;
         }
-        buf[i] = soft_knee(y << 1, UF_KNEE);
+        buf[i] = soft_knee(y * 2, UF_KNEE);
     }
     v->ufw[0] = (int16_t)cx; v->ufw[1] = (int16_t)cb; v->ufw[2] = (int16_t)cl;
     v->uf[0] = a1; v->uf[1] = a2; v->uf[2] = b1; v->uf[3] = b2;
@@ -1333,7 +1333,10 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
         if (uf) {                                       /* the multimode filter: the cutoff routes are its own */
             v->msl = (uint16_t)msl;
             int32_t kt = p[P_KTRK] ? UF_KT(p[P_KTRK], v->pitch_cur) : 0;   /* KEY TRK (0.2.21): the note's pitch around C3, an octave of cutoff per octave at +100 %; 0: nothing added, nothing computed */
-            int32_t uc = clamp(ucut0 + m.cutoff + kt, 0, UF_TOP);   /* the effective cut: the dial plus every route (and the key) */
+            int32_t uc = clamp(ucut0 + m.cutoff + kt, 0, UF_TOP);
+#if DUELL_TIDE
+            uc = morph_xcut(t, uc); /* TIDE: the effective cutoff's crossing dip */
+#endif   /* the effective cut: the dial plus every route (and the key) */
             int32_t ucn = clamp(ucut0 + m.cutoff - m.acc1 + kt, 0, UF_TOP);   /* the same without the accent (filter 2 LINK, NOISE's make-up) */
             m.cutoff = accent_lift(v->vel, m.envq15);   /* the routes are the filter's, whatever CUT is; the accent's lift stays the engine's own (its tone control, as ever) */
             m.ucut = uc;

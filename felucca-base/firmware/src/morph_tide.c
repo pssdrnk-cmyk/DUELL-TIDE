@@ -194,10 +194,10 @@ static int32_t morph_to_of(uint32_t pi, uint32_t x)
 
 /* H8 (audio ISR, fm6_sync through morph_fm6): after the blend of part tr's patch copy p at B weight w, the bytes a MORPH TO
  * target does not blend, from the side the fader is on (S1: its middle; S2: the transition's side) */
-static void tide_fm6_target(const morph_part_t *mp, uint32_t tr, uint8_t *p, int32_t w)
+static void tide_fm6_side(const morph_part_t *mp, uint32_t tr, uint8_t *p, uint32_t sd)
 {
     const uint8_t *fade;                                 /* (the bytes the blend owns: they keep the blend) */
-    uint32_t sd = w >= 16384, i, tk = mp->tok[sd][mp->top[sd]];
+    uint32_t i, tk = mp->tok[sd][mp->top[sd]];
     if (!tk || tk != morph_fmto_k[tr][sd])
         return;
     fade = tide_fm_blended();
@@ -262,10 +262,6 @@ static void tide_fm6_effective(uint32_t pi, uint8_t *p)
     MORPH_UNLOCK();
 }
 
-/* S2 (the smooth crossings, morph_xfer.c) is not ported yet: what GLIDE writes for them (glide_motion) is kept here and read by
- * nothing, and WASH LEVEL is a setting with no sound yet (TIDE LIST shows and saves it) */
-typedef struct { uint16_t motion; uint8_t follow, side; } mxs_t;
-static mxs_t mxs[NSHOWN];
-static uint8_t morph_wlvl = 2;
-static const uint16_t XWL[4] = {0u, 16384u, 32768u, 49152u};
-static int32_t xrise(int32_t x) { return x; }
+
+static void tide_fm6_target(const morph_part_t *mp, uint32_t tr, uint8_t *p, int32_t w)
+{ tide_fm6_side(mp,tr,p,morph_xside(mp,w,1)); }

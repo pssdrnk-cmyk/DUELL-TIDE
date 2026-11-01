@@ -102,7 +102,7 @@ static void fill(void)                                /* every kind of user data
     apply_preset_to(&trk[0], 3u);
     up_store_trk(&trk[0], 7u, "TEST A", CAT_BASS);
     up_store_trk(&trk[0], 20u, "TEST B", CAT_LEAD);
-    for (i = 0; i < 128u; i++)                        /* the cloud plan's job A: all 128 slots, the PATCH store's 22 chunks (the six new ones, 0xBA000..0xC5FFF, too) */
+    for (i = 0; i < PT_MAX; i++)                      /* fill every supported patch slot and every patch chunk */
         if (i != 7u && i != 20u)
             up_store_trk(&trk[0], i, "FILL", CAT_PAD);
     {   /* the velocity calibration (OBJ_VELO, 0xC6000 / 0xC7000): 128 bytes, saved twice so both copies hold one */
@@ -172,8 +172,8 @@ int main(void)
     memset(nor, 0xFF, sizeof nor);
     fill();
     memcpy(snap, nor, sizeof nor);
-    ck("filled: settings, autosave, 128 patches (all 22 chunks), 2 pattern slots, 2 multis stored", ({ persist_t tmp_rec; st_load(OBJ_SETTINGS, &tmp_rec, sizeof tmp_rec) > 0; }) &&
-       up_count() == 128u && pt_n[12] > 0u && pt_n[PT_NCH - 1u] > 0u && ({ uint8_t v[160]; velo_cal_load(v, sizeof v) == 128 && v[0] == 0u; }) && ps_changed(2) && ps_changed(12) && project_used(4) && project_used(11));
+    ck("filled: settings, autosave, all supported patches and chunks, 2 pattern slots, 2 multis stored", ({ persist_t tmp_rec; st_load(OBJ_SETTINGS, &tmp_rec, sizeof tmp_rec) > 0; }) &&
+       up_count() == PT_MAX && pt_n[12] > 0u && pt_n[PT_NCH - 1u] > 0u && ({ uint8_t v[160]; velo_cal_load(v, sizeof v) == 128 && v[0] == 0u; }) && ps_changed(2) && ps_changed(12) && project_used(4) && project_used(11));
 
     {   /* velo_cal_load / velo_cal_save (job D's store): the length is 1..128, a smaller buffer is refused, the record that was saved is the record loaded
          * (the two sectors are put back as they were afterwards: the flash image of the checks below is the filled one) */

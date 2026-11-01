@@ -453,6 +453,26 @@ static void __attribute__((noinline)) midi_morph(uint32_t ch, uint32_t pi, uint3
     }
 }
 
+#if DUELL_TIDE
+/* MIDI ISR: queue work; planning and sequence changes remain on the main loop.
+ * Staying in one end zone must not restart a glide on every controller message. */
+static uint8_t midi_tide_fired[16]; /* two bits per shown part, independently on each channel */
+static void midi_tide(uint32_t ch, uint32_t pi, uint32_t code, uint32_t value)
+{
+    if (pi >= NSHOWN)
+        return;
+    if (code == MAP_T_SEQ) {
+        morph_push(MQ_SEQF, pi, value);
+    } else {
+        uint32_t zone = value < 43u ? 1u : value < 85u ? 0u : 2u;
+        uint32_t shift = pi * 2u, old = (midi_tide_fired[ch & 15u] >> shift) & 3u;
+        midi_tide_fired[ch & 15u] = (uint8_t)((midi_tide_fired[ch & 15u] & ~(3u << shift)) | (zone << shift));
+        if (zone && zone != old)
+            morph_push(MQ_GLIDE, pi, zone - 1u);
+    }
+}
+#endif
+
 /* DUELL step 5 (SPEC 5b.1): the MODE is global (not a part's): 0-42 SPLIT, 43-85 STEREO, 86-127 LAYER, on any channel (also one ROUT does
  * not play: the MODE is no part's), a value that keeps the mode does nothing. XFADE 0..127 -> 0..100 % (item 157: BALANCE is no target any more);
  * SPLIT 0 = OFF, 1..127 = the note n. Queued for nothing: mode_apply runs here, in the ISR */
@@ -512,6 +532,10 @@ static void __attribute__((noinline)) midi_map_cc(uint32_t ch, track_t *ct, uint
             return;
         id = e == 15u ? (code == MAP_T_CUTOFF_SMART ? P_FREEA : P_FREEB) : P_E0 + e - 1u;   /* (15: the multimode filter's CUT, RES) */
         midi_cc_set(t, id, value);
+#if DUELL_TIDE
+    } else if (code == MAP_T_GLIDE || code == MAP_T_SEQ) {
+        midi_tide(ch, trk_index(t), code, value);
+#endif
     } else if (code >= MAP_T_MORPH && code <= MAP_T_PITCH) {
         midi_morph(ch, trk_index(t), code, value);
     } else {

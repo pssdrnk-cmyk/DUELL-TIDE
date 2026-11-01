@@ -77,6 +77,7 @@ static void fader(uint32_t v)
 {
     morph_do(MQ_FADER, 1u, v);
     mph[0].sm_r = 32768;
+    frame(); /* S2 plans changed destinations in the main loop before rendering. */
     ablocks(4);
 }
 /* what part 0 sounds like at the fader: its values, the effective FM6 patch, the engine's patch (fm6_eff: the blend, the target, the
@@ -93,6 +94,12 @@ static void hear(heard_t *h)
 }
 static int same(const heard_t *a, const heard_t *b)
 {
+    if (memcmp(a, b, sizeof *a)) {
+        for (uint32_t i=0;i<EXT_P_LEN;i++) if(a->v[i]!=b->v[i]) { printf("tidekeep diff value %u: %d / %d\n",i,a->v[i],b->v[i]); break; }
+        for (uint32_t i=0;i<FP_SIZE;i++) if(a->fp[i]!=b->fp[i]) { printf("tidekeep diff target byte %u: %u / %u\n",i,a->fp[i],b->fp[i]); break; }
+        for (uint32_t i=0;i<FP_SIZE;i++) if(a->eng[i]!=b->eng[i]) { printf("tidekeep diff engine byte %u: %u / %u\n",i,a->eng[i],b->eng[i]); break; }
+        printf("tidekeep context fader=%u side=%u tp=%u plan=%u sound=%u need=%u\n",mph[0].fader,mxs[0].side,mxs[0].tp,mxs[0].planned,mxs[0].sounding,mxs[0].need);
+    }
     return !memcmp(a->v, b->v, sizeof a->v) && !memcmp(a->fp, b->fp, FP_SIZE) && !memcmp(a->eng, b->eng, FP_SIZE);
 }
 static const uint32_t AT[3] = {0u, 64u, 127u};
@@ -335,6 +342,99 @@ static void t_limit(void)
     CHECK("limit: 128 slots to browse", UP_SLOTS == 128u);
 }
 
+static void t_keep_macros(void)
+{
+    uint8_t want[FP_SIZE];
+    int32_t dt[6];
+    for (uint32_t i=0; i<2; i++) {
+        fresh(); setup(); fader(64);
+        trk[0].p[P_E1]=2; trk[0].p[P_E2]=-9; trk[0].p[P_E3]=17;
+        trk[0].p[P_E4]=i ? -24 : 24;
+        trk[0].p[P_E5]=2; trk[0].p[P_E6]=27;
+        trk[0].p[P_ATK]=48; trk[0].p[P_DEC]=73;
+        ablocks(4);
+        memcpy(want, fm6_eff[0].p, sizeof want);
+        want[FP_ALG]=fm6_eff[0].alg; want[FP_FB]=fm6_eff[0].fb;
+        memcpy(dt,fm6_eff[0].dt,sizeof dt);
+        tools_key(TL_KEEP); frames(8); ablocks(4);
+        uint8_t got[FP_SIZE]; memcpy(got,fm6_eff[0].p,sizeof got);
+        got[FP_ALG]=fm6_eff[0].alg; got[FP_FB]=fm6_eff[0].fb;
+        CHECK("KEEP preserves nonzero macros and AMP ENV", !memcmp(want,got,sizeof want));
+        CHECK("KEEP preserves carrier detune", !memcmp(dt,fm6_eff[0].dt,sizeof dt));
+    }
+}
+
+static void t_keep_live(void)
+{
+    uint8_t want[FP_SIZE], got[FP_SIZE];
+    fresh(); setup(); fader(0);
+    trk_note_on(&trk[0],60,100); ablocks(8);
+    fader(127);
+    for (uint32_t i=0;i<200 && !fm6_xt[0].on;i++) ablocks(1);
+    CHECK("live KEEP fixture enters a bridge", fm6_xt[0].on && mxs[0].tp > XW0 && mxs[0].tp < XW1);
+    /* Compare the underlying morph tone, before the temporary bridge/wash.
+     * A saved patch captures tone parameters, not voice phases or an FX tail. */
+    MORPH_LOCK();
+    (void)morph_begin(&trk[0], 0);
+    uint8_t on=fm6_xt[0].on; fm6_xt[0].on=0; fm6_eff[0].ok=0;
+    fm6_sync(&trk[0]); memcpy(want,fm6_eff[0].p,sizeof want);
+    want[FP_ALG]=fm6_eff[0].alg; want[FP_FB]=fm6_eff[0].fb;
+    fm6_xt[0].on=on; fm6_eff[0].ok=0;
+    morph_end(&trk[0]);
+    MORPH_UNLOCK();
+    tools_key(TL_KEEP);
+    CHECK("KEEP resets crossing position", mxs[0].tp == 0 && mxs[0].side == 0 && !fm6_xt[0].on);
+    uint32_t dirty=0;
+    for(uint32_t i=0;i<FM6_POLY;i++) {
+        fm6_note_t *n=(fm6_note_t*)ENG_MEM(0)+i;
+        dirty |= n->xs | n->xr;
+    }
+    CHECK("KEEP returns all borrowed operators", !dirty && !fm6_xt[0].dirty);
+    ablocks(4);
+    memcpy(got,fm6_eff[0].p,sizeof got);
+    got[FP_ALG]=fm6_eff[0].alg; got[FP_FB]=fm6_eff[0].fb;
+    if (memcmp(want,got,sizeof want)) for(uint32_t i=0;i<FP_SIZE;i++) if(want[i]!=got[i]) {printf("live KEEP byte %u: %u / %u\n",i,want[i],got[i]);break;}
+    CHECK("live KEEP preserves the underlying morph tone", !memcmp(want,got,sizeof want));
+    trk_note_off(&trk[0],60);
+
+    fresh(); setup(); fader(0); trk_note_on(&trk[0],60,100); ablocks(8); fader(127);
+    for (uint32_t i=0;i<200 && !fm6_xt[0].on;i++) ablocks(1);
+    apply_preset_to(&trk[0],(uint32_t)sound_a);
+    frames(1);
+    CHECK("a loaded sound starts with a fresh crossing", mxs[0].tp == 0 && mxs[0].side == 0 && !fm6_xt[0].on);
+    CHECK("a loaded sound replans its own endpoints", !mxs[0].planned || mxs[0].esig == morph_xesig(0));
+    ablocks(4); trk_note_off(&trk[0],60);
+}
+
+static void t_keep_held_b(void)
+{
+    int32_t base[6], phase[6];
+    fresh(); setup();
+    /* Deliberately different endpoint frequencies: the factory pair alone may
+     * use identical ratios and conceal a retune back to A during KEEP. */
+    for(uint32_t k=0;k<6;k++) {
+        uint32_t id=k*FP_OP+FP_FC, a=fm6_patch[0][id];
+        morph_fmto[0][1][id]=(uint8_t)(a==31u ? 30u : a+1u);
+    }
+    morph_build(&mph[0]); mph[0].fser++; mph[0].cvalid=0; morph_xplan(0);
+    fader(0);
+    trk_note_on(&trk[0],60,100); ablocks(8); fader(127); ablocks(1800);
+    uint32_t slot=0;
+    while(slot<FM6_POLY && !trk[0].v[slot].active) slot++;
+    CHECK("held B fixture finishes its crossing", slot<FM6_POLY && !fm6_xt[0].on && mxs[0].side==1);
+    if(slot==FM6_POLY) return;
+    fm6_note_t *n=(fm6_note_t*)ENG_MEM(0)+slot;
+    memcpy(base,n->base,sizeof base);
+    for(uint32_t k=0;k<6;k++) phase[k]=n->op[k].phase;
+    tools_key(TL_KEEP);
+    CHECK("KEEP at B keeps the held voice alive", n->live && trk[0].v[slot].active);
+    CHECK("KEEP at B preserves held-note frequencies", !memcmp(base,n->base,sizeof base));
+    uint32_t same=1;
+    for(uint32_t k=0;k<6;k++) same &= phase[k]==n->op[k].phase;
+    CHECK("KEEP at B preserves held-note phases", same);
+    trk_note_off(&trk[0],60);
+}
+
 int main(void)
 {
     pick();
@@ -343,6 +443,9 @@ int main(void)
         return 1;
     t_fmt();
     t_keep();
+    t_keep_macros();
+    t_keep_live();
+    t_keep_held_b();
     t_store();
     t_limit();
     printf("tidekeep: %d of %d checks failed\n", bad, checks);

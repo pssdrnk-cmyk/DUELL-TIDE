@@ -797,11 +797,11 @@ static __attribute__((noinline)) void ins_drive(ins_t *s, const track_t *t, int3
             s->cnt--;
             y = s->hold;
         } else {
-            s->hp += ((x << 8) - s->hp) >> 8;            /* ~27 Hz low cut (Q8: no offset left by the rounding) */
+            s->hp += ((x * 256) - s->hp) >> 8;            /* ~27 Hz low cut (Q8: no offset left by the rounding) */
             v = clamp(x - (s->hp >> 8), -230000, 230000);
             y = ins_shape(ty, ((v >> 3) * g) >> 9, 0);    /* (>> 3 first: 32 bits) */
         }
-        y <<= 4;                                        /* (x16: the low cutoffs' rounding leaves no offset) */
+        y *= 16;                                        /* (x16: the low cutoffs' rounding leaves no offset) */
         v = mulq16(y - s->lp1, (uint32_t)k);             /* TONE / LPF: two one-pole low-passes */
         y = v + s->lp1;
         s->lp1 = y + v;
@@ -811,7 +811,7 @@ static __attribute__((noinline)) void ins_drive(ins_t *s, const track_t *t, int3
         y = (y + 8) >> 4;
         if (!crush) {
             y = (y * lvl) >> 12;                        /* LEVEL */
-            s->dc += ((y << 8) - s->dc) >> 9;           /* DC blocker, ~14 Hz (FUZZ's lopsided halves) */
+            s->dc += ((y * 256) - s->dc) >> 9;           /* DC blocker, ~14 Hz (FUZZ's lopsided halves) */
             y -= s->dc >> 8;
         }
         b[i] = pf_mix(x, y, s->w);
@@ -839,7 +839,7 @@ static __attribute__((noinline)) void ins_swept(ins_t *s, const track_t *t, int3
             }
             s->u.ph.fb = clamp(y, -32767, 32767);
             y <<= 2;                                    /* (y: at an eighth) */
-            s->dc += ((y << 8) - s->dc) >> 9;           /* DC blocker, ~14 Hz (a clipped loud input is lopsided) */
+            s->dc += ((y * 256) - s->dc) >> 9;           /* DC blocker, ~14 Hz (a clipped loud input is lopsided) */
             b[i] = pf_mix(x, (x >> 1) + y - (s->dc >> 8), s->w);   /* (dry + all-passed) / 2 */
         }
         s->ph += n * inc;
@@ -951,7 +951,7 @@ static __attribute__((noinline)) void ins_lofi(ins_t *s, const track_t *t, int32
         if (tape) {
             y = ins_tape_sat(v, g, comp);               /* SAT: tanh of (voice-sum / 65536) x gain */
             y += (((int32_t)noise32(&s->u.lo.rng) >> 24) * 3) >> 3;   /* the hiss: +-48, flat */
-            y <<= 4;
+            y *= 16;
             v = mulq16(y - s->lp1, (uint32_t)k);        /* TONE: one one-pole high-cut */
             y = v + s->lp1;
             s->lp1 = y + v;
@@ -962,7 +962,7 @@ static __attribute__((noinline)) void ins_lofi(ins_t *s, const track_t *t, int32
             y = v << 3;
             s->hp += ((y << 8) - s->hp) >> 6;           /* the band: ~110 Hz high-pass .. */
             y -= s->hp >> 8;
-            y <<= 4;
+            y *= 16;
             v = mulq16(y - s->lp1, (uint32_t)k);        /* .. ~6 kHz low-pass */
             y = v + s->lp1;
             s->lp1 = y + v;
@@ -986,7 +986,7 @@ static __attribute__((noinline)) void ins_lofi(ins_t *s, const track_t *t, int32
             s->lp2 += ((nz << 4) - s->lp2) >> 3;
             y += nz - (s->lp2 >> 4);                    /* dust: the noise through a ~880 Hz high-pass */
         }
-        s->dc += ((y << 8) - s->dc) >> 9;               /* DC blocker, ~14 Hz */
+        s->dc += ((y * 256) - s->dc) >> 9;               /* DC blocker, ~14 Hz */
         y -= s->dc >> 8;
         b[i] = pf_mix(x, y, s->w);
     }
@@ -1073,7 +1073,7 @@ static const uint32_t EQ_K[25] = {      /* 2^(-r / 6), r -12 .. 12: 1 / Q */
 /* a coefficient b / a0 in Q28, saturated to 32 bit (never reached: every setting's fits, tests/eq32_test.c) */
 static __attribute__((noinline)) int32_t eq_q28(int64_t b, int64_t a0)
 {
-    int64_t v = (b << 28) / a0;
+    int64_t v = (b * ((int64_t)1 << 28)) / a0;
     return v > 2147483647ll ? 2147483647 : v < -2147483648ll ? (int32_t)-2147483648ll : (int32_t)v;
 }
 /* sin h / h and cos h by the Taylor sum to h^9, Horner's way: t = 1 - h2 t / d for the divisors d (sin: 72 42 20 6, cos: 56 30 12 2), the first step on t = 1
@@ -2161,7 +2161,7 @@ static __attribute__((noinline)) void track_dist_ramp(track_t *t, int32_t *b, ui
     }
     q0 = w0 >= 12 * 256 ? 32768 : (w0 < 0 ? 0 : w0 * 32 / 3);   /* the blend in Q15: SAT / 12 (w Q8: w * 32768 / 3072) */
     q1 = w1 >= 12 * 256 ? 32768 : (w1 < 0 ? 0 : w1 * 32 / 3);
-    st = ((q1 - q0) << 10) / (int32_t)n;
+    st = ((q1 - q0) * 1024) / (int32_t)n;
     /* DUELL 1.1 (SATURATION under modulation, owner): the drive terms (g, k, mk) follow the FRACTIONAL followed SAT too. They were the integer SAT's for the whole block, a step of up to 1.5 drive
      * steps at every block boundary while the SAT moves through the blend zone (the wet is the part that is mixed in by q, so the step was small but audible as a 1.4 kHz buzz under a fast LFO).
      * Now g, k and mk go in a straight line from their value at the block before's followed SAT (w0, Q8) to this block's (w1) inside the block, the same way as the blend q: the integer SAT
@@ -2174,9 +2174,9 @@ static __attribute__((noinline)) void track_dist_ramp(track_t *t, int32_t *b, ui
     k1 = 32000 - ((d1q * 95) >> 8);
     mk = 30000 - ((d0q * 120) >> 8);
     mk1 = 30000 - ((d1q * 120) >> 8);
-    gs = ((g1 - g) << 10) / (int32_t)n;
-    ks = ((k1 - k) << 10) / (int32_t)n;
-    mks = ((mk1 - mk) << 10) / (int32_t)n;
+    gs = ((g1 - g) * 1024) / (int32_t)n;
+    ks = ((k1 - k) * 1024) / (int32_t)n;
+    mks = ((mk1 - mk) * 1024) / (int32_t)n;
     b0 = softclip(bias);
     xl = (g > g1 ? g : g1) > 9000 ? 57500 : 230000;     /* the largest input whose product with the drive of the block stays in 32 bits (as track_dist) */
     for (i = 0; i < (int32_t)n; i++) {
@@ -2298,10 +2298,10 @@ static __attribute__((noinline)) int32_t mix_ramp(const mixpart_t *m, int32_t pk
     uint32_t n = m->n, pp = m->pp;
     uint32_t on = pacc_on[pp];
     int32_t gl0 = pan_gv[pp] ? pan_g[pp][0] : gl, gr0 = pan_gv[pp] ? pan_g[pp][1] : gr, ni = (int32_t)n, i, xmax = 1;
-    int32_t glq = gl0 << 16, grq = gr0 << 16, dgl = ((gl - gl0) << 16) / ni, dgr = ((gr - gr0) << 16) / ni;
-    int32_t lq = mx_lv[pp] << 8, dl = ((lvl - mx_lv[pp]) << 8) / ni;
+    int32_t glq = gl0 << 16, grq = gr0 << 16, dgl = ((gl - gl0) * 65536) / ni, dgr = ((gr - gr0) * 65536) / ni;
+    int32_t lq = mx_lv[pp] << 8, dl = ((lvl - mx_lv[pp]) * 256) / ni;
     int32_t cq = mx_sd[pp][0] << 8, dq = mx_sd[pp][1] << 8, rq = mx_sd[pp][2] << 8;
-    int32_t dc = ((c - mx_sd[pp][0]) << 8) / ni, dd = ((d - mx_sd[pp][1]) << 8) / ni, dr = ((r - mx_sd[pp][2]) << 8) / ni;
+    int32_t dc = ((c - mx_sd[pp][0]) * 256) / ni, dd = ((d - mx_sd[pp][1]) * 256) / ni, dr = ((r - mx_sd[pp][2]) * 256) / ni;
     for (i = 0; i < 3; i++)                             /* (sends: the largest of either end, as the plain loop's guard) */
         xmax = mx_sd[pp][i] > xmax ? mx_sd[pp][i] : xmax;
     xmax = c > xmax ? c : xmax;
@@ -2484,10 +2484,10 @@ static __attribute__((noinline)) void spread_post(uint32_t pp, uint32_t n, const
             part_acc_t *ac = &pacc[pp];
             const int32_t *b = pscr[pp].buf, *d = pscr[pp].sbuf;
             int32_t ni = (int32_t)n, xmax = 1, i, pm;
-            int32_t lq = prv[0] << 8, dlq = ((cur[0] - prv[0]) << 8) / ni;   /* the level, the three sends (Q8), the four pan gains (Q16): each a line from the block before's to this block's */
-            int32_t cq = prv[1] << 8, dcq = ((cur[1] - prv[1]) << 8) / ni, eq = prv[2] << 8, deq = ((cur[2] - prv[2]) << 8) / ni, rq = prv[3] << 8, drq = ((cur[3] - prv[3]) << 8) / ni;
-            int32_t aq = prv[4] << 16, daq = ((cur[4] - prv[4]) << 16) / ni, bq = prv[5] << 16, dbq = ((cur[5] - prv[5]) << 16) / ni;
-            int32_t gq = prv[6] << 16, dgq = ((cur[6] - prv[6]) << 16) / ni, hq = prv[7] << 16, dhq = ((cur[7] - prv[7]) << 16) / ni;
+            int32_t lq = prv[0] << 8, dlq = ((cur[0] - prv[0]) * 256) / ni;   /* the level, the three sends (Q8), the four pan gains (Q16): each a line from the block before's to this block's */
+            int32_t cq = prv[1] << 8, dcq = ((cur[1] - prv[1]) * 256) / ni, eq = prv[2] << 8, deq = ((cur[2] - prv[2]) * 256) / ni, rq = prv[3] << 8, drq = ((cur[3] - prv[3]) * 256) / ni;
+            int32_t aq = prv[4] << 16, daq = ((cur[4] - prv[4]) * 65536) / ni, bq = prv[5] << 16, dbq = ((cur[5] - prv[5]) * 65536) / ni;
+            int32_t gq = prv[6] << 16, dgq = ((cur[6] - prv[6]) * 65536) / ni, hq = prv[7] << 16, dhq = ((cur[7] - prv[7]) * 65536) / ni;
             uint32_t on = pacc_on[pp] | (prv[1] ? 2u : 0u) | (prv[2] ? 4u : 0u) | (prv[3] ? 8u : 0u);   /* (a send ramping down to 0 still has samples to write) */
             for (k = 1; k < 4u; k++) {
                 xmax = prv[k] > xmax ? prv[k] : xmax;
@@ -2734,7 +2734,16 @@ static __attribute__((noinline)) int part_voice(mixpart_t *m, track_t *t, uint32
     mod_begin(t);                                       /* the matrix's per-block values into t->p (mod.c) */
     m->spread = pscr[m->pp].spread_on = t->p[P_SPRD] > 0 && (trk_vmode(t) == V_POLY || trk_vmode(t) == V_UNISON) && !bs->dm_split;   /* (SPREAD,
                                                          * mix_spread; SPLIT: none, the part is mono on its side) */
+#if DUELL_TIDE
+    uint32_t sounding = track_render(t, b, n);
+    if (m->pp < NLIVE) {
+        if (sounding) morph_valley(m->pp, b, m->spread ? pscr[m->pp].sbuf : 0, n);
+        else morph_vrest(m->pp);
+    }
+    if (sounding)
+#else
     if (track_render(t, b, n))
+#endif
         t->tail = t->p[P_ITYPE] ? 64 : 16;              /* blocks of DIST / INSERT state to run out after the last
                                                          * voice (the INSERT's: 46 ms, a flanger's feedback) */
     else if (!(t->p[P_DIST] | t->p[P_ITYPE] | t->p[P_EQLG] | t->p[P_EQMG] | t->p[P_EQHG]) ||
@@ -2814,7 +2823,7 @@ static __attribute__((noinline)) void part_fx(mixpart_t *m)
     uint32_t n = m->n, pp = m->pp, fxm;
     int32_t pan_mv, pq;
     pan_mv = pan_follow(pp, m->pan_st, 0, m->spread);
-    pq = pan_x[pp] + ((t->p[P_PAN] - m->pan_st) << 8);  /* the pan this block mixes at, Q8: the smoothed stored pan plus the matrix's offset as it was */
+    pq = pan_x[pp] + ((t->p[P_PAN] - m->pan_st) * 256);  /* the pan this block mixes at, Q8: the smoothed stored pan plus the matrix's offset as it was */
     {
         int32_t dw0 = dist_x[pp], dlv = dist_live[pp];  /* (0.2.25: the followed SAT before and after this block's step, for the blend ramp) */
         t->p[P_DIST] = (int16_t)dist_follow(pp, t->p[P_DIST], 0);   /* the SAT this block runs at (put back below; mod_end puts the stored back too) */
@@ -2885,7 +2894,7 @@ static __attribute__((noinline)) void part_mix(const mixpart_t *m)
             pacc_on[pp] |= (uint8_t)((mx_sd[pp][0] ? 2u : 0u) | (mx_sd[pp][1] ? 4u : 0u) | (mx_sd[pp][2] ? 8u : 0u));   /* (a send ramping down to 0 still has samples to write) */
             pk = mix_ramp(m, pk, gl, gr, lvl, c, d, r);
         } else if (ramp) {
-            int32_t glq = pan_g[pp][0] << 16, grq = pan_g[pp][1] << 16, dgl = ((gl - pan_g[pp][0]) << 16) / (int32_t)n, dgr = ((gr - pan_g[pp][1]) << 16) / (int32_t)n;
+            int32_t glq = pan_g[pp][0] << 16, grq = pan_g[pp][1] << 16, dgl = ((gl - pan_g[pp][0]) * 65536) / (int32_t)n, dgr = ((gr - pan_g[pp][1]) * 65536) / (int32_t)n;
             for (i = 0; i < n; i++) {
                 int32_t x = (b[i] * LV4(lvl)) >> 10, a = x < 0 ? -x : x;
                 int32_t xs = clamp(x, -xmax, xmax);

@@ -70,7 +70,7 @@ static uint32_t sub_step(const track_t *t, const voice_t *v, const vmod_t *m)
 static __attribute__((noinline)) void sub_pass(int32_t *tmp, uint32_t cfg, uint32_t ph, uint32_t st, int32_t g0, int32_t g1, int32_t h1, int32_t h2, uint32_t n)
 {
     uint32_t o = cfg >> 2 & 3u, w = cfg & 3u, inc = st << o, i, pw = w == 3u ? 0x40000000u : 0x80000000u;
-    int32_t gq = g0 << 8, dg = n ? ((g1 - g0) << 8) / (int32_t)n : 0, pk = w == 3u ? 21845 : 32768;
+    int32_t gq = g0 * 256, dg = n ? ((g1 - g0) * 256) / (int32_t)n : 0, pk = w == 3u ? 21845 : 32768;
     ph <<= o;
     if (inc >= 0x40000000u)                             /* no octave above the Nyquist rate (the 2x step would wrap) */
         h1 = 0;

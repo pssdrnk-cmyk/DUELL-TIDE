@@ -96,7 +96,7 @@ static __attribute__((noinline)) void f2_lad(f2k_t *s, const int32_t *in, int32_
     int32_t s1 = s->s[0], s2 = s->s[1], s3 = s->s[2], s4 = s->s[3], y4 = s->s[4];
     uint32_t i;
     for (i = 0; i < n; i++) {
-        int32_t u = softclip((in[i] >> 1) - ((kf * (y4 >> 6)) >> 12)) << 6, v, y1, y2, y3;
+        int32_t u = softclip((in[i] >> 1) - ((kf * (y4 >> 6)) >> 12)) * 64, v, y1, y2, y3;
         v = (int32_t)(((int64_t)(u - s1) * G + 32768) >> 16);
         y1 = v + s1;
         s1 = y1 + v;
@@ -155,7 +155,7 @@ static __attribute__((noinline)) void f2_comb(f2k_t *s, int16_t *line, uint32_t 
             rp += (int32_t)len << 8;
         ix = rp >> 8;
         ix1 = ix + 1 == (int32_t)len ? 0 : ix + 1;
-        del = (line[ix] + (((line[ix1] - line[ix]) * (rp & 255)) >> 8)) << 1;
+        del = (line[ix] + (((line[ix1] - line[ix]) * (rp & 255)) >> 8)) * 2;
         lp += ((del - lp) * 3) >> 2;                    /* the loop's damping */
         dcs += ((lp << 12) - dcs) >> 11;                /* .. and a high-pass at 3.4 Hz: a feedback comb has a gain of 1 / (1 - feedback) at 0 Hz, 16 at the most, and the line's clip would make an offset of it */
         y = in[i] + ((fe * (lp - ((dcs + 2048) >> 12))) >> 12);
@@ -359,7 +359,7 @@ static __attribute__((noinline)) void f2_cut(track_t *t, voice_t *v, const vmod_
     }
     if (mod->on)
         ms += mod_f2_voice(t, v);
-    q->tune = clamp((clamp(p[P_CUT2], -24, 24) << 4) + ((ms * 2711) >> 15), -768, 768);
+    q->tune = clamp((clamp(p[P_CUT2], -24, 24) * 16) + ((ms * 2711) >> 15), -768, 768);
     ac = accent_dir(accent_lift(v->vel, m->envq15), accent_dir_type(q->ty));   /* the accent's lift, the way filter 2's TYPE opens (LP up, HP down, BP / NOTCH / COMB none); uc is filter 1's cutoff WITHOUT its own lift (voice_chain.c passes m->ucn) */
     c = link ? uc + TW_OFF_Q8(clamp(p[P_CUT2], -TW_OFF_MAX, TW_OFF_MAX)) + ac : clamp(p[P_CUT2], 0, UF_STEPS) * 256 + (ACCENT_BOTH(ENGINES[t->engine]) ? ac : 0);   /* LINK off: the lift only on ANALOG, TRIO, NOISE, as before */
     if (XV(t, X_KTRK2))

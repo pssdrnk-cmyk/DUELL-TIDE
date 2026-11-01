@@ -57,7 +57,7 @@ def definitions(text):
 def size_names():
     # morph.c also contains block-rate audio code: select only its main-loop
     # preset-roll entry here, rather than applying the policy to the whole file.
-    names = {"morph_roll_from"}
+    names = {"morph_roll_from", "morph_xplan", "morph_xesig", "morph_xpoll", "fm6_cross_macros"}
     for f in SIZE_FILES:
         names.update(definitions((SRC / f).read_text()))
     return names

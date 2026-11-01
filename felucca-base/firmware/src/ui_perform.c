@@ -23,7 +23,13 @@ static const char *const PF_NAME[PF_KEYS] = {
     "1/8", "1/16", "1/32", "REV",
     "TAPE", "FREEZE", "OCT+", "OCT-",
     "FLG", "PHS", "DRV", "PUMP",
-    "RND A", "RND B", "MUTE 1", "MUTE 2",
+
+#if DUELL_TIDE
+    "GLIDE A", "GLIDE B",
+#else
+    "RND A", "RND B",
+#endif
+    "MUTE 1", "MUTE 2",
 };
 #define PF_SMALL ((1u << 5) | (1u << 14) | (1u << 15))  /* FREEZE, MUTE 1, MUTE 2: the smaller size in the picture */
 
@@ -107,8 +113,14 @@ static void perf_input(uint32_t pressed, uint32_t now, uint32_t lay)
     for (k = 0; k < 2u; k++)                            /* ROLL A / B: the MORPH page's roll, once a press */
         while (ui.perf_rolls[k] != perf_roll_n[k]) {
             ui.perf_rolls[k]++;
-            if (ok)
+            if (ok) {
+#if DUELL_TIDE
+                glide_start(k, morph_mask(song.sel), song.sel);
+                ui_message(k ? "GLIDE TO B" : "GLIDE TO A");
+#else
                 morph_act(MQ_ROLL, morph_mask(song.sel), k, song.sel);
+#endif
+            }
         }
     held = perf_places();
     fresh = held & ~ui.perf_seen;
