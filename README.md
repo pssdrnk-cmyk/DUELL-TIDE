@@ -1,24 +1,61 @@
-# DUELL
+# DUELL-TIDE
 
-**MultiMorphing Bitimbral Synthesizer**  
-**by OSCILL/R**
+**An unofficial fork of DUELL 1.1 that lets the FM-1 play itself.**
 
-**Two synths in one small box.** DUELL is free, open-source firmware (GPL-3.0) for the M-VAVE FM-1. It turns the FM-1 into a bitimbral instrument: two complete parts, three ways to play them together, and a morph that glides between two versions of every sound. This is **DUELL 1.1**.
+> **This is not the official DUELL.** DUELL-TIDE is a personal fork of [DUELL](https://github.com/oscillr/DUELL) 1.1 by **OSCILL/R**. It is not made, affiliated with or endorsed by OSCILL/R or M-VAVE. Please don't send TIDE problems to the DUELL author: use this fork's [issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues). DUELL and its credit belong to OSCILL/R; the code stays GPL-3.0-only.
 
-**Try it in your browser, no FM-1 needed:** <https://oscillr.github.io/DUELL/emu/>
+**TIDE** turns the FM-1 into a self-evolving background. A sound glides by itself from its End A to an End B and back, never quite the same way twice, like a tide between two shores. You set it going and play over it; a hand on the knob can still take over. Everything else is DUELL 1.1 as OSCILL/R made it (below, from "What is in it" on).
 
 <p align="left"><img src="docs/duell-deck.png" alt="DUELL" width="720"></p>
 
-> **Install at your own risk.** DUELL has run on **two FM-1 units, the author's**, and more than 100 people have installed it through the Firmware Hub. The way back to the official firmware (V15) has worked for the author. The FM-1 has a single copy of its firmware and no known rollback. Back up first. Read [docs/RECOVERY.md](docs/RECOVERY.md) and [docs/KNOWN_LIMITS.md](docs/KNOWN_LIMITS.md). No warranty. DUELL is not affiliated with M-VAVE.
+> **Use at your own risk.** TIDE has run on **one FM-1, the fork owner's**. It has no release and no wide testing. The FM-1 has a single copy of its firmware and no known rollback; a failed write can leave it dark, and then only a hardware recovery helps ([docs/RECOVERY.md](docs/RECOVERY.md)). Back up first. No warranty.
 
-## Install and update
+## What TIDE adds
 
-1. Use **Chrome or Edge** on a computer (the installer needs WebMIDI with SysEx), a **data** USB cable straight into the computer (no hub), and an FM-1.
-2. Open the installer page: <https://oscillr.github.io/DUELL/install/>. Save a backup, press Install, wait for Done, then switch the unit off and on once.
-3. While the new firmware is written, the unit shows the **update screen**: the DUELL word over moving wave lines, WRITING, a percent number, a bar of 20 segments and DO NOT SWITCH OFF. Do not unplug until it is done. If the screen stays dark the write may still be running: wait for the installer to say Done.
-4. Details, the checklist and the way back to the official firmware: [docs/INSTALL.md](docs/INSTALL.md). If something goes wrong: [docs/RECOVERY.md](docs/RECOVERY.md).
+HOME's round is **MORPH, MORPH SETTINGS, AUTO TIDE, MODE**.
 
-The package is `duell-1.1.fwsc` (compare its SHA-256 with `SHA256SUMS` on the release page).
+**AUTO TIDE** (knob 1 GLIDE, knob 2 MODE, knob 3 TIME, knob 4 WAIT). PLAY starts the glide; it follows the transport (stop pauses it, PLAY goes on). The five modes, each with its own line on the screen:
+
+| MODE | What it does |
+|---|---|
+| **ONCE** | One trip, then it stops. |
+| **LOOP** | Back and forth between A and B. |
+| **DRIFT** | New twists on your sound: the end it left is rolled again from your original sound. |
+| **WNDR** | Walks away from your sound, a little further each time. |
+| **JRNY** | Travels through your sounds, including to other engines (FM6 too). |
+
+TIME is the length of a trip in bars, WAIT the rest at each end. Twist knob 1 while it glides and it stops where it is; the sound stays.
+
+**MORPH SETTINGS**: what the tide moves (TARGET: sound, pattern or both), how often the pattern varies (VARY BARS), how a new End B is rolled (ROLL: **MUSIC**, the default, stays close to the sound's character; SMART and WILD are DUELL's), ARP, PITCH and WASH LEVEL (the blend when two unlike sounds cross).
+
+**SEQ MORPH**: a pattern has an A and a B too, and the tide moves the notes with the sound.
+
+**ARP SEQ**: with no key held, PLAY plays the part's pattern from the last chord held on it (or from C4).
+
+**KEEP** (in the tools): keeps the sound and pattern you hear right now as the part's own, to save or to start the next tide from.
+
+Smaller changes, also in the TIDE-off build:
+- MODE / SPLIT: turning left at OFF stays OFF (it jumped back to the middle key).
+- Fixes for clock and tempo changes, FM6 live levels, PHYS tuning and the unison level, each with a test.
+
+Building with `DUELL_TIDE=0` gives DUELL 1.1 without any TIDE code.
+
+## Install
+
+**There is no TIDE release yet**, and no web installer or browser emulator for it. The links on OSCILL/R's site (installer, emulator, editor, releases) install and show **plain DUELL**, not TIDE.
+
+To try TIDE now you build it yourself:
+1. Build the package as in [felucca-base/BUILDING.md](felucca-base/BUILDING.md): `python3 tools/build.py` in `felucca-base`. TIDE is on by default. The result is `felucca-base/build/duell-1.1.fwsc`.
+2. Install it with `python3 ../jam/jam_dev.py flash build/duell-1.1.fwsc` (needs `pip install mido python-rtmidi`). It saves a backup of the unit first, then writes the package with `tools/fm1_install.py`. Use a **data** USB cable straight into the computer (no hub), and keep the computer awake.
+3. While it writes, the unit shows the update screen (WRITING, a percent number, DO NOT SWITCH OFF). Don't unplug until the installer says it is done, then switch the unit off and on once.
+
+TIDE reports itself as DUELL 1.1; the AUTO TIDE page in HOME's round shows that TIDE is on the unit.
+
+**The way back:** install the official DUELL 1.1 package from [OSCILL/R's releases](https://github.com/oscillr/DUELL/releases) the same way (or with their installer page), or return to M-VAVE's official firmware (V15) as in [docs/INSTALL.md](docs/INSTALL.md). Your backup restores with `jam_dev.py restore` or the editor's Backup page.
+
+---
+
+*From here on: DUELL 1.1 by OSCILL/R, as in the upstream README.*
 
 ## What is in it
 
@@ -170,8 +207,10 @@ Building a device image is described in [felucca-base/BUILDING.md](felucca-base/
 | Know the limits | [docs/KNOWN_LIMITS.md](docs/KNOWN_LIMITS.md), [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) |
 | See what changed | [CHANGELOG.md](CHANGELOG.md), [RELEASE_NOTES.md](RELEASE_NOTES.md) |
 | Read the full design | [SPEC.md](SPEC.md) |
-| Report a bug | the [bug report form](https://github.com/oscillr/DUELL/issues/new/choose) |
+| Report a bug | TIDE: this fork's [issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues). Plain DUELL: OSCILL/R's [bug report form](https://github.com/oscillr/DUELL/issues/new/choose) |
 
 ## Credits and licence
 
 DUELL is a fork of **Felucca** by Leo Kuroshita (@kurogedelic), Hügelton Instruments, and is licensed under the **GPL-3.0-only** ([LICENSE](LICENSE)). The whole list of thanks and of third-party parts is in [CREDITS.md](CREDITS.md), [NOTICE.md](NOTICE.md) and [felucca-base/LICENSING.md](felucca-base/LICENSING.md); the upstream commit is in [UPSTREAM_COMMIT.txt](UPSTREAM_COMMIT.txt). The DUELL logo and artwork are the work of OSCILL/R and are not part of the GPL licence; the code and the splash graphic as shipped in the firmware are GPL-3.0-only. DUELL is an independent project and is not affiliated with M-VAVE.
+
+DUELL-TIDE (the TIDE pages, the glide and SEQ MORPH, and the fixes listed above) is a fork of DUELL 1.1 under the same GPL-3.0-only licence. It is not affiliated with OSCILL/R or M-VAVE.
