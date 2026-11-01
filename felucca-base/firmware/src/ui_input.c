@@ -807,8 +807,10 @@ static void mode_knob(uint32_t slot, int32_t s)
     }
     if (slot == 2u) {                                   /* SPLIT OFF, then the note C-1 .. G9 (LAYER) */
         int32_t v;
-        if (mix_split == 0u && s != 0)                  /* item 155 (owner): OFF, the first turn either way starts at the MIDDLE KEY of the unit's 27 keys (F3 .. G5, key 13 = F#4, note 66, stored 67), then goes on from there; no snapping: the knob moves the value as ever, only the step out of OFF is this long */
-            s = SPLIT_MID + (s > 0 ? s - 1 : s + 1);
+        if (mix_split == 0u && s < 0)                   /* OFF is the left end: a turn left there stays OFF (it bounced back to the middle key) */
+            return;
+        if (mix_split == 0u && s > 0)                   /* item 155 (owner): OFF, the first turn right starts at the MIDDLE KEY of the unit's 27 keys (F3 .. G5, key 13 = F#4, note 66, stored 67), then goes on from there; no snapping: the knob moves the value as ever, only the step out of OFF is this long */
+            s = SPLIT_MID + s - 1;
         else
             s = (int32_t)mix_split + s;
         v = clamp(s, 0, 128);

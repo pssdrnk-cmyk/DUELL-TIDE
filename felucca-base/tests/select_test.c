@@ -181,7 +181,7 @@ static void sweep_home(void)
     for (k = 0; ok && k < m; k++)
         ok &= str_eq(PAGES[r[k]].title, ORDER[k]);
     expect("HOME's round: MORPH, MORPH SET, MODE (0.2.14: no OVERVIEW; 0.2.25: no MIXER)", ok);
-    {   /* item 155: MODE SPLIT in LAYER (item 158: on K3, the cards line up to the left): OFF, the first turn either way starts at the middle key F#4 (stored 67), then goes on; the bottom is OFF again */
+    {   /* item 155: MODE SPLIT in LAYER (item 158: on K3, the cards line up to the left): OFF, the first turn right starts at the middle key F#4 (stored 67), then goes on; the bottom is OFF again and stays */
         uint8_t m0 = duell_mode_req, s0 = mix_split;
         int ok2;
         uint8_t p0 = ui.page;
@@ -192,13 +192,16 @@ static void sweep_home(void)
         turn(EN_K3, 1);   ok2 &= mix_split == 68u;
         turn(EN_K3, -2);  ok2 &= mix_split == 66u;
         mix_split = 0;  turn(EN_K3, -1);
-        ok2 &= mix_split == 67u;
+        ok2 &= mix_split == 0u;
         mix_split = 0;  turn(EN_K3, 3);
         ok2 &= mix_split == 69u;
         mix_split = 1;  turn(EN_K3, -1);
         ok2 &= mix_split == 0u;
         turn(EN_K3, 0);   ok2 &= mix_split == 0u;
-        expect("MODE K3 SPLIT (item 158): OFF + a turn either way = F#4 (middle of F3..G5), then +-1; C-1 - 1 = OFF; a stored split is read as it was", ok2);
+        turn(EN_K3, -1);  ok2 &= mix_split == 0u;
+        mix_split = 2;  turn(EN_K3, -4);
+        ok2 &= mix_split == 0u;
+        expect("MODE K3 SPLIT (item 158): OFF + a turn right = F#4 (middle of F3..G5), then +-1; C-1 - 1 = OFF, and turning on left stays OFF (no bounce to the middle); a stored split is read as it was", ok2);
         mix_split = 128;  turn(EN_K3, 5);
         expect("  .. SPLIT stays at G9 at the top", mix_split == 128u);
         duell_mode_force(m0); ui_mode_set = ui.mode_seen = m0; mix_split = s0;
