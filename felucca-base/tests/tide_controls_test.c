@@ -66,6 +66,49 @@ static void test_glide_transport(void)
     transport_req = 2u; run(48);
 }
 
+/* WAIT turned OFF while an arrival is held: the hold ends (it divided by a zero-bar hold) and the trip goes on */
+static void test_wait_off_in_hold(void)
+{
+    uint32_t i;
+    ui_power_on(); frame();
+    transport_req = 2u; run(48);
+    song.sel = 0; morph.target = MT_SELECTED;
+    gl.mode = GM_LOOP; gl.target = GT_SOUND; gl.time = 0; gl.wait = 1; gl.on = gl.armed = 0;
+    song.g[G_BPM] = 120;
+    glide_launch(1u, morph_mask(0), 0);
+    for (i = 0; i < 400u && !gl.hold; i++) run(16);
+    CHECK("wait off: the LOOP reaches a held arrival", gl.on && gl.hold);
+    gl.wait = 0;
+    run(160);
+    CHECK("wait off:   the hold ends, the trip back runs", gl.on && !gl.hold && gl.to == 0u);
+    gl.on = gl.armed = 0;
+    transport_req = 2u; run(48);
+}
+
+/* a BOTH-parts glide launched from part 1: a hand on part 2's fader takes the lane over too */
+static void test_both_takeover(void)
+{
+    uint32_t f0;
+    ui_power_on(); frame();
+    transport_req = 2u; run(48);
+    song.sel = 0; morph.target = MT_SELECTED;
+    gl.mode = GM_ONCE; gl.target = GT_SOUND; gl.time = 2; gl.wait = 0; gl.on = gl.armed = 0;
+    song.g[G_BPM] = 120;
+    morph_do(MQ_FADER, 3u, 35u); frame();
+    glide_launch(1u, 3u, 0);
+    run(2000);
+    CHECK("both: the glide moves both parts", gl.on && morph_fader_of(0) > 35u && morph_fader_of(1) == morph_fader_of(0));
+    morph_do(MQ_FADER, 2u, 100u);                        /* (part 2 selected, its fader moved) */
+    run(32);
+    f0 = morph_fader_of(0);
+    run(2000);
+    CHECK("both:   part 2's hand stops the lane", !(gl.on & (1u << GT_SOUND)));
+    CHECK("both:   part 2 stays where the hand left it", morph_fader_of(1) == 100u);
+    CHECK("both:   part 1 stays where it stopped", morph_fader_of(0) == f0 && f0 < 127u);
+    gl.on = gl.armed = 0;
+    transport_req = 2u; run(48);
+}
+
 /* owner 2026-11-01: on the TIDE page a K1 twist while gliding stops the glide where it is; PLAY goes on, the next twist launches */
 static void test_twist_stop(void)
 {
@@ -267,6 +310,8 @@ int main(void)
     }
     test_glide_transport();
     test_twist_stop();
+    test_wait_off_in_hold();
+    test_both_takeover();
     test_seq_rule();
     test_seq_ghost();
     test_settings_flicker();
