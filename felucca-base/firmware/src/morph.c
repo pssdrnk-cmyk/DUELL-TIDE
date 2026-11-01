@@ -1162,6 +1162,10 @@ static void morph_twin_rules(const int8_t *o, const int8_t *st, int8_t *end)
  * tag view) but the Original's on / off locks (DUCK DEPTH, INSERT TYPE, TWIN TYPE); every zero lock (a matrix amount, MF_ZERO, ARP off, the pitch draws) is a
  * zero of the Original; the limits of the tags (MF_CAP, MF_FLOOR, MF_CEIL, MF_RISE) and the loudness rules' windows stay around the Original; the moves of a
  * rule (the other way, back toward) and the sides a value keeps are the start's. Pure: the same arguments give the same end; st == org: the roll of before */
+#if DUELL_TIDE
+#include "morph_music.c"         /* TIDE hook (H4): MUSICAL MORPH (MC_MUSIC) */
+#include "morph_fm_shape.c"      /* .. FM6's SHAPE coordinate */
+#endif
 static void morph_roll_step(const int8_t *org, const int8_t *st, int8_t *end, const engine_t *e, uint32_t amount, uint32_t seed,
                             uint32_t part, uint32_t stereo)
 {
@@ -1275,6 +1279,7 @@ typedef struct {
     uint8_t xv[2];                                       /* .. how many of the entries ending at top[e] hold a roll's slots (1 .. XH; fewer after an UNDO past XH rolls: the slots at the Original) */
     uint16_t seed[2][MORPH_HIST];                        /* .. their seeds (0: not a roll: the Original) */
     uint8_t rcfg[2][MORPH_HIST], ramt[2][MORPH_HIST];    /* v2: .. the MC_* bits and the AMOUNT each was rolled with */
+    TIDE_PART_FIELDS                                     /* TIDE hook */
     uint8_t rdep[2][MORPH_HIST];                         /* ROLL CHAINED: .. how many rolls from the Original each is (0: the Original, 1: its seed makes it again from the Original, 2..255: a chain the seed alone does not) */
     uint8_t top[2], n[2];                                /* n: entries kept (1 .. MORPH_HIST) */
     uint8_t fader, amount;                               /* 0..127, 0..100 */
@@ -1303,6 +1308,7 @@ typedef struct {
     mxf_t cxf;
 } morph_part_t;
 static morph_part_t mph[NSHOWN];
+TIDE_MORPH_PROTOS                                        /* TIDE hook */
 static struct {
     uint8_t cfg;                                         /* v2 (SPEC 3.5): MC_WILD (SMART off), MC_ARP, MC_PIT: the settings */
     uint8_t target;                                      /* MT_SELECTED / MT_BOTH */
@@ -1384,6 +1390,7 @@ static void morph_build(morph_part_t *mp)
             g.kind = MK_STEP;
         if (e == &ENG_WAVE && id == P_E6 && A[ix] && B[ix] && (!ramp || S[ix]))
             g.kind = MK_CONT;                           /* WAVE's STEPS between two counts: a blend (rounded); OFF against a count stays a flip at the middle (the count would pass through 2 places at the OFF end) */
+        TIDE_BUILD_KIND(mp, id, g.kind);                 /* TIDE hook */
         if (g.kind != MK_CONT && g.kind != MK_FADE && g.kind != MK_SLOT && g.kind != MK_STEP)
             continue;
         if (g.kind == MK_SLOT && (id - P_M1SRC) % 3u)
@@ -1409,6 +1416,7 @@ static void morph_build(morph_part_t *mp)
         for (id = 0; id < NFM; id++)
             mp->fnid |= mp->fh[0][mp->top[0]][id] != mp->fb[id] || mp->fh[1][mp->top[1]][id] != mp->fb[id] ||
                         (ramp && mp->fsm[id] != mp->fb[id]);
+        TIDE_BUILD_FNID(mp);                             /* TIDE hook */
         mp->fser++;
         if (mp->fnid)
             fm6_morph = morph_fm6;
@@ -1549,6 +1557,7 @@ static uint32_t morph_fm6(uint32_t tr, uint8_t *p)
         uint32_t b = fm_byte(i);
         p[b] = (uint8_t)clamp((int32_t)p[b] + morph_fm_v(mp, i, w, 1) - (int32_t)mp->fb[i], 0, 99);
     }
+    TIDE_FM6_TARGET(mp, tr, p, w);                       /* TIDE hook (H8) */
     return key;
 }
 
@@ -1711,7 +1720,7 @@ static void morph_fm_live(uint32_t pi, uint8_t *live)     /* part pi's FM6 patch
 
 static uint32_t morph_new_seed(void);
 static void morph_roll_cfg(uint32_t pi, uint32_t x, uint32_t seed, uint32_t amount, uint32_t cfg);
-static uint32_t morph_cfg_of(uint32_t pi) { return (morph.cfg & MC_SET) | (duell_stereo ? MC_STEREO : 0u) | (pi ? MC_PART : 0u); }
+static uint32_t morph_cfg_of(uint32_t pi) { return (morph.cfg & MC_SET) | (duell_stereo ? MC_STEREO : 0u) | (pi ? MC_PART : 0u) | TIDE_CFG_BITS(); }   /* TIDE hook */
 /* v2: a patch's saved End B (MB_N bytes in the user preset record, upreset.c): 'M', seed (16 bit), AMOUNT, MC_* bits, 0,
  * a check byte (DUELL: byte 5 = the part's AMOUNT knob + 1 at saving, 0 = not stored: older patches; a load sets the part's AMOUNT to it, else to the roll's). morph_ld: the block of the sound being loaded (set by up_load before load_end, read by morph_rebase_part) */
 #define MB_N 7u
@@ -1725,7 +1734,7 @@ static uint16_t mb_said;                                 /* the last message of 
 static uint8_t morph_blk_sum(const uint8_t *b) { return (uint8_t)(b[0] ^ b[1] ^ b[2] ^ b[3] ^ b[4] ^ b[5] ^ 0x5Au); }
 static int morph_blk_ok(const uint8_t *b)
 {
-    return b && b[0] == MB_MARK && (b[1] | b[2] << 8) && b[3] <= 100u && b[4] < 32u && b[5] <= 101u && b[6] == morph_blk_sum(b);
+    return b && b[0] == MB_MARK && (b[1] | b[2] << 8) && b[3] <= 100u && TIDE_BLK_CFG_OK(b[4]) && b[5] <= 101u && b[6] == morph_blk_sum(b);
 }
 
 static void morph_pin_load(morph_part_t *mp, const xb_edit_t *ed, uint32_t ne);
@@ -1747,6 +1756,7 @@ static void morph_rebase_part(uint32_t pi)               /* ends = the Original,
         mp->xv[e] = 1;
         mp->seed[e][0] = 0;
         mp->rcfg[e][0] = mp->ramt[e][0] = mp->rdep[e][0] = 0;
+        TIDE_REBASE_END(pi, mp, e);                      /* TIDE hook */
         mp->top[e] = 0;
         mp->n[e] = 1;
     }
@@ -1774,16 +1784,16 @@ static void morph_rebase_part(uint32_t pi)               /* ends = the Original,
                                                          * stream (on either part); PAN only where the mode lets it (3b).
                                                          * The part's AMOUNT knob stays the player's (a setting, kept over
                                                          * power cycles): it is the next ROLL's */
-#if !DUELL_BENCH
+#if !DUELL_BENCH && !DUELL_TIDE                           /* (TIDE hook (H6): a factory sound's B is rolled, MUSICAL by default: no DS_ENDB) */
         const uint8_t *eb = ds_endb(t->eng_req, t->preset);    /* End B as exact values (the sound's block, as a saved patch carries it; the AMOUNT is in it); the bench builds keep the seed roll */
         if (eb)
             morph_bv_load(pi, eb);
         else
 #endif
         {
-        morph_roll_cfg(pi, 1u, ds_seed(t->eng_req, t->preset), ds_amount(t->eng_req, t->preset),
-                       duell_stereo ? MC_STEREO : 0u);
-        mp->amount = (uint8_t)ds_amount(t->eng_req, t->preset);   /* ... and the part's AMOUNT knob follows the sound's category amount */
+        morph_roll_cfg(pi, 1u, ds_seed(t->eng_req, t->preset), TIDE_FACTORY_AMOUNT(ds_amount(t->eng_req, t->preset)),
+                       (duell_stereo ? MC_STEREO : 0u) | TIDE_FACTORY_CFG());   /* TIDE hook */
+        mp->amount = (uint8_t)TIDE_FACTORY_AMOUNT(ds_amount(t->eng_req, t->preset));   /* ... and the part's AMOUNT knob follows the sound's category amount */
         }
     } else {                                             /* none saved: a fresh roll at the current AMOUNT */
         morph_roll_cfg(pi, 1u, morph_new_seed(), mp->amount, morph_cfg_of(pi));
@@ -1895,6 +1905,10 @@ static void morph_ramp(morph_part_t *mp, uint32_t x)
 
 /* ROLL end x (0 A, 1 B) of part pi: seed 1..65535, AMOUNT, cfg (MC_*: the settings the roll is made with, STEREO mode, the part
  * whose stream it is). The same Original, seed, AMOUNT and cfg give the same end (the FM6 bytes too) */
+#if DUELL_TIDE
+#include "morph_tide.c"          /* TIDE hook (H4): MORPH TO, the MUSICAL roll, the FM6 target */
+#include "morph_complement.c"    /* .. the two parts' contrast */
+#endif
 /* ROLL CHAINED: from the start st / fst (EXT_P_LEN values, NFM FM6 bytes; the Original mp->base / mp->fb for a roll from the Original) */
 static void morph_end_pure(morph_part_t *mp, const int8_t *st, const uint8_t *fst, int8_t *end, uint8_t *fend, uint32_t pi, uint32_t seed, uint32_t amount, uint32_t cfg)
 {
@@ -1932,6 +1946,7 @@ static void morph_roll_from(uint32_t pi, uint32_t x, uint32_t seed, uint32_t amo
         memcpy(fst, mp->fh[x][mp->top[x]], NFM);
         dep = mp->rdep[x][mp->top[x]];
     }
+    if (!TIDE_ROLL(mp, pi, x, end, fend, seed, amount, cfg, &ndep)) {   /* TIDE hook (H5): a MUSICAL end from the Original */
     morph_end_pure(mp, st, fst, end, fend, pi, seed, amount, cfg);
     ndep = dep < 255u ? dep + 1u : 255u;
     if (chain && !amount && !(x && pin_count(mp->pin[mp->top[1] % EDITB_PINH]))) {   /* a step of 0: the end stays what it is, so the new entry keeps what makes it (its seed, AMOUNT, bits and depth) */
@@ -1940,6 +1955,7 @@ static void morph_roll_from(uint32_t pi, uint32_t x, uint32_t seed, uint32_t amo
         cfg = mp->rcfg[x][t];
         amount = mp->ramt[x][t];
         ndep = dep;                                      /* (the start's depth: 0 when it is the Original) */
+    }
     }
     MORPH_LOCK();
     morph_ramp(mp, x);
@@ -1952,6 +1968,7 @@ static void morph_roll_from(uint32_t pi, uint32_t x, uint32_t seed, uint32_t amo
     mp->rcfg[x][k] = (uint8_t)cfg;
     mp->ramt[x][k] = (uint8_t)amount;
     mp->rdep[x][k] = (uint8_t)ndep;
+    TIDE_TOK_SET(mp, x, k, 0);                           /* TIDE hook (a roll, not a MORPH TO sound) */
     mp->top[x] = (uint8_t)k;
     if (mp->n[x] < MORPH_HIST)
         mp->n[x]++;
@@ -2044,6 +2061,7 @@ static void morph_b_stay(morph_part_t *mp)
     mp->rcfg[1][k] = mp->rcfg[1][t];
     mp->ramt[1][k] = mp->ramt[1][t];
     mp->rdep[1][k] = mp->rdep[1][t];
+    TIDE_TOK_COPY(mp, 1, k, t);                          /* TIDE hook */
     if (k % EDITB_PINH != t % EDITB_PINH)
         memcpy(mp->pin[k % EDITB_PINH], mp->pin[t % EDITB_PINH], PIN_BYTES);
     mp->xv[1] = (uint8_t)(mp->xv[1] < XH ? mp->xv[1] + 1u : XH);
@@ -2330,6 +2348,7 @@ static void morph_bv_load(uint32_t pi, const uint8_t *b)
     mp->seed[1][k] = 0;                                  /* (no seed: values) */
     mp->rcfg[1][k] = mp->ramt[1][k] = 0;
     mp->rdep[1][k] = 2;                                  /* (not what a seed makes again) */
+    TIDE_TOK_SET(mp, 1, k, 0);                           /* TIDE hook */
     mp->top[1] = (uint8_t)k;
     if (mp->n[1] < MORPH_HIST)
         mp->n[1]++;
@@ -2499,6 +2518,7 @@ static int morph_undo_part(uint32_t pi, uint32_t x)
         memcpy(mp->hx[x][mp->top[x] % XH], mp->base + XW_BASE, NX);   /* (XH under 9: the roll's slots are gone from the ring: at the Original) */
     morph_build(mp);
     MORPH_UNLOCK();
+    TIDE_UNDO(pi, x);                                    /* TIDE hook (MORPH TO's FM6 target of the entry come back to) */
     return 1;
 }
 
@@ -2688,6 +2708,7 @@ static int morph_unpack(const uint8_t *b, uint32_t n)
             mp->ramt[e][0] = mp->amount;
             mp->seed[e][0] = (uint16_t)(q[2u + 2u * e] | q[3u + 2u * e] << 8);
             mp->rdep[e][0] = q[6u + e] ? q[6u + e] : mp->seed[e][0] ? 1u : 0u;   /* (a block of before: 0, one roll) */
+            TIDE_TOK_SET(mp, e, 0, 0);                   /* TIDE hook */
             memcpy(mp->h[e][0], q + 8u + e * P_COUNT, P_COUNT);
             if (morph_isfm(mp) && mp->seed[e][0])        /* (the FM6 bytes are not stored: the seed regenerates them, from the Original: exact for one roll; a chain's are its last roll's: ROLL_CHAIN_CHANGE.md) */
                 morph_fm_roll(mp->fb, mp->fb, morph_fm_car(pi, mp->base), mp->fh[e][0], mp->amount, mp->seed[e][0], pi);

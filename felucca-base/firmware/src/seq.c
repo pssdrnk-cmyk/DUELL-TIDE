@@ -1375,6 +1375,7 @@ static void seq_tick(track_t *t, uint32_t n)
             seq_nd_due(t, period, len, cur_len, n);
         if (t->seq_pos < cur_len && t->seq_pos != 0x7FFFFFFFu + n)
             break;
+        TIDE_SEQ_LOOP(t, len);                    /* TIDE hook (H3) */
         t->seq_pos = t->seq_pos >= 0x7FFFFFFFu ? 0u : t->seq_pos - cur_len;   /* (the pattern loops: % len below) */
         t->seq_idx = (uint16_t)((t->seq_idx + 1u) % len);
         rec_hold(t, t->seq_idx, len);
@@ -1809,6 +1810,7 @@ static void events_block(uint32_t n)
         beat_pos = beat_pos < beat_samples() ? beat_pos : 0u;
         beat_n = (beat_n + 1u) & 3u;
         perf_beat++;                                  /* (PERFORM's PUMP: the beats, perform.c) */
+        TIDE_BEAT();                                  /* TIDE hook (H3) */
     }
     if (song.playing)
         song.tick++;
