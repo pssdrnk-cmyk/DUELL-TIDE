@@ -449,5 +449,7 @@ Open questions for the next audit pass (revision 3.2):
 
 ### Immediate continuation
 
-- UI files are frozen for Claude. Codex is inspecting cold morph generation/outlining opportunities in `morph.c`; no new control/DSP code changes yet. Largest current TIDE control function: `morph_roll_from` 7,462 B, including inlined callees. Inspect `morph_end_pure`, `morph_roll_step`, `morph_fm_roll` before selecting a no-behavior-change compaction candidate.
+- UI files are frozen for Claude. Codex completed cold compiler-policy compaction in `tools/size_fns.py`: size-optimize `morph_end_pure`, `morph_roll_step`, `morph_fm_roll`, and outline `morph_end_pure` after ISR reachability exclusion. Function bodies are unchanged. Measured image 581,028 B, saving 304 B; **536 B flash free**. All target checks pass. Evidence: `work/audit/jam11-measurements/tide-cold-outline/`. Largest current TIDE control function: `morph_roll_from` 7,462 B, including inlined callees. Inspect `morph_end_pure`, `morph_roll_step`, `morph_fm_roll` before selecting a no-behavior-change compaction candidate.
 - Keep the 232-byte fitting baseline intact and compare any candidate against it. Do not rerun broad suites. User requested continuing autonomously until a clean stage or genuine input/hardware test is needed.
+
+- Next Codex RAM candidate: crossing state `fm6_xt` is 712 B in pool RAM and stores two complete 156-byte FM6 endpoints per part. Its consumers use only four oscillator tuning bytes per operator plus transpose. Evaluate compact 25-byte endpoint snapshots, sharing the existing pitch calculation; preserve all frequency/envelope/stand-in behavior and check the representative crossing renderer once. UI files remain frozen for Claude.

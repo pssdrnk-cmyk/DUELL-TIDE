@@ -57,7 +57,7 @@ def definitions(text):
 def size_names():
     # morph.c also contains block-rate audio code: select only its main-loop
     # preset-roll entry here, rather than applying the policy to the whole file.
-    names = {"morph_roll_from", "morph_xplan", "morph_xesig", "morph_xpoll", "fm6_cross_macros"}
+    names = {"morph_roll_from", "morph_end_pure", "morph_roll_step", "morph_fm_roll", "morph_xplan", "morph_xesig", "morph_xpoll", "fm6_cross_macros"}
     for f in SIZE_FILES:
         names.update(definitions((SRC / f).read_text()))
     return names
@@ -90,7 +90,10 @@ def main(src, dst):
         if m.group(2) not in names:
             return m.group(0)
         hit.add(m.group(2))
-        return m.group(1) + " minsize" + m.group(3)
+        # One shared cold constructor instead of copies inside roll/save paths.
+        # This is selected only after the ISR-reachability exclusion above.
+        attr = " minsize noinline" if m.group(2) == "morph_end_pure" else " minsize"
+        return m.group(1) + attr + m.group(3)
     Path(dst).write_text(IR_DEF.sub(mark, ir))
     print(f"size: {len(hit)} main-loop functions built for size ({len(names) - len(hit)} not in this build; "
           f"{len(size_names() & isr)} reached from an interrupt kept -Os)")
