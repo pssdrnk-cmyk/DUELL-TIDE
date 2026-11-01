@@ -857,7 +857,7 @@ static int morph_cut_route(const int8_t *o, const int8_t *x, uint32_t k)
 static int32_t morph_cut_net(const int8_t *o, const int8_t *x, uint32_t cut)
 {
     int32_t s1 = 96 + (x[P_SUS] >> 2), s2 = 96 + (x[P_E2SUS] >> 2), n, k;
-    n = ((x[cut] - o[cut]) << 7) + (x[P_ED_FLT] - o[P_ED_FLT]) * s1 + (x[P_E2FLT] - o[P_E2FLT]) * s2;
+    n = ((x[cut] - o[cut]) * 128) + (x[P_ED_FLT] - o[P_ED_FLT]) * s1 + (x[P_E2FLT] - o[P_E2FLT]) * s2;
     for (k = 0; k < (int32_t)NMSLOT; k++)                /* a route to CUT from a unipolar source (VEL, ENV, ..) the same at */
         if (morph_cut_route(o, x, (uint32_t)k))         /* both: its amount, at half (its mean) */
             n += (x[MSLOT_ID(k) + 2u] - o[MSLOT_ID(k) + 2u]) << 6;
@@ -1448,16 +1448,16 @@ static void morph_apply(const morph_part_t *mp, int16_t *p, int32_t w, int ramp,
             continue;
         kind &= 0x3Fu;
         if (kind == MK_CONT) {
-            int32_t a8 = A[ix] << 8, b8 = B[ix] << 8, v;
+            int32_t a8 = A[ix] * 256, b8 = B[ix] * 256, v;
             if (ramp && O[ix] != (X ? B : A)[ix]) {      /* the replaced end glides from what it was */
-                int32_t o8 = O[ix] << 8, x8 = o8 + ((((X ? B : A)[ix] - O[ix]) * 256 * r) >> 15);
+                int32_t o8 = O[ix] * 256, x8 = o8 + ((((X ? B : A)[ix] - O[ix]) * 256 * r) >> 15);
                 if (X)
                     b8 = x8;
                 else
                     a8 = x8;
             }
             if (pin)
-                a8 += (p[id] - base[ix]) << 8;           /* (A's side still follows the Original) */
+                a8 += (p[id] - base[ix]) * 256;           /* (A's side still follows the Original) */
             v = (a8 + (((b8 - a8) * w) >> 15) + 128) >> 8;
             p[id] = (int16_t)clamp(pin ? v : p[id] + v - base[ix], en->lo, en->hi);
         } else if (kind == MK_FADE) {
