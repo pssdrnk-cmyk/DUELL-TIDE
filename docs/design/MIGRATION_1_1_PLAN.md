@@ -31,7 +31,7 @@ TIDE-off also passes target checks: **556,920 B**, app SHA-256 `0a35ee3e6e530c60
 
 ## Next / handoff
 
-1. Prepare the checksummed device-test package from `tide-ui-release-generated`, using the unchanged FM-1_901 loader; validate through the updater parser. The earlier `tide-device-test-be070fb` artifact is superseded.
+1. **Package ready:** source commit `a5b768d`, `work/handover-2026-11-01/tide-device-test-a5b768d/duell-tide-a5b768d.fwsc`. App 576,804 B; unchanged OTA loader 11,510 B; package 614,666 B. Package SHA-256 `baf0f863c9a1de3d9fe16d3f0acb325919918dcb020160c057d57d712a9b7da5`; manifest, checksums and licenses alongside. The actual updater parser passes product FM-1_901, chip key 0x980f, 581,564 B slot, decrypted app bytes, CRC and padding checks, for both enabled and disabled packages. The earlier `tide-device-test-be070fb` artifact is superseded. Source work is committed; subsequent roadmap-only updates do not change this package.
 2. Obtain owner authorization before any firmware write. Then audition held FM6 A-to-B-to-A crossings, GLIDE/journeys and sequence motion, KEEP plus undo and save/reload, heavy polyphony/CPU, and external clock with the TR-6S. No physical results are claimed yet.
 3. Further compaction is optional until hardware findings justify it. Retain the current font-based branding; bitmap restoration has not been measured against the merged budget. USB audio and the full crossings/wash remain enabled.
 
