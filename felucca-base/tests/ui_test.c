@@ -8915,20 +8915,14 @@ static int test_item164(void)
     return bad;
 }
 
-/* ---------------------------------------------------------------- item 158 (coordinator): the OLD matrix row list (ui_graph.c graph_mod) shows the amounts as the fader sounds them, as graph_mod_new (item 152 E) --- */
-/* (graph_mod is drawn only when a GR_MOD page is current outside template 4; under PERFORM or a layer's page_over the current page is never a MATRIX page, so no screen reaches it today:
- * the test draws it directly, on the MATRIX page, into the graph canvas) */
-static int i158_modrow0(char *amt, size_t n)            /* graph_mod drawn; the amount text of row 1 (x 172, rows 4 .. 21) -> amt */
+/* ---------------------------------------------------------------- item 158 (coordinator): the matrix rows show the amounts as the fader sounds them after ROLL A at fader A (item 152 E: at B) --- */
+/* (this checked the OLD row list, graph_mod, drawn directly: no screen reached it, and it is gone (ui-compact). The MATRIX page's rows are graph_mod_new, template 4: the screen is read whole) */
+static int i158_modrow0(char *amt, size_t n)            /* the screen read; the amount of row 1 (graph_mod_new: rows MX_Y0 .. + MX_H, right aligned at x 232, its unit apart) -> amt */
 {
     uint32_t k;
-    txt_n = txt_pend = txt_grid = 0;
-    txt_on = 1;
-    cv_begin(240, 124, T_BG);
-    graph_mod(TSEL, T_THEME);
-    cv_blit(0, 76);
-    txt_on = 0;
+    screen_read();
     for (k = 0; k < txt_n; k++)
-        if (txt_log[k].x0 >= 170 && txt_log[k].x0 <= 176 && txt_log[k].y0 >= 76 && txt_log[k].y1 <= 76 + 24) {
+        if (txt_log[k].x0 >= 150 && txt_log[k].x1 <= 232 && txt_log[k].y0 >= MX_Y0 + 8 && txt_log[k].y1 <= MX_Y0 + MX_H && strcmp(txt_log[k].s, "%")) {
             str_cpy(amt, txt_log[k].s, n);
             return 1;
         }
@@ -8954,8 +8948,8 @@ static int test_item158_modlist(void)
     param_format(&TP[P_M1AMT], morph_view(song.sel, MSLOT_ID(0) + 2u), want, &u);
     param_format(&TP[P_M1AMT], TSEL->p[P_M1AMT], orig, &u);
     ok &= strcmp(want, orig) && !strcmp(after, want) && strcmp(after, before) && graph_signature() != s0;   /* (and the redraw signature follows it: graph_signature, GR_MOD) */
-    printf("    item 158 (info): the old matrix list's row 1: '%s' before, '%s' after ROLL A at fader A (sounding '%s', stored '%s')\n", before, after, want, orig);
-    return check("item 158: the old matrix row list (graph_mod) shows the amount as the fader sounds it after ROLL A at fader A (as graph_mod_new), not the stored Original; its redraw signature changes", ok);
+    printf("    item 158 (info): the matrix row 1: '%s' before, '%s' after ROLL A at fader A (sounding '%s', stored '%s')\n", before, after, want, orig);
+    return check("item 158: the MATRIX rows (graph_mod_new) show the amount as the fader sounds it after ROLL A at fader A, not the stored Original; its redraw signature changes", ok);
 }
 
 /* ---------------------------------------------------------------- item 158 S3 (owner): no empty pages: a page with no card to show is not in the page order --- */

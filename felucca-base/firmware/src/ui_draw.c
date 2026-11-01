@@ -924,17 +924,6 @@ static void grid_geo(uint32_t c, int32_t *x, int32_t *y, int32_t *w, int32_t *h)
         *h = UT_T4_H;
         return;
     }
-    if (grid_on == 10) {                               /* TEMPLATE 7 (item 118): the STEP page's four cards in one compact row under the roll */
-        static const int16_t W7[3] = {UT_T7_CARD_W0, UT_T7_CARD_W1, UT_T7_CARD_W2};
-        uint32_t i;
-        *x = UT_T7_X;
-        for (i = 0; i < c; i++)
-            *x += W7[i] + UT_T7_CARD_GAP;
-        *w = c == 3u ? UT_T7_CARD_R - *x : W7[c];
-        *y = UT_T7_CARD_Y;
-        *h = UT_T7_CARD_H;
-        return;
-    }
     if (grid_on == 3) {                                /* MODE: K2 K3 K4 in a row under the list (K1 is the list) */
         *x = 4 + 78 * (int32_t)(c - 1u);
         *w = 76;
@@ -1198,24 +1187,6 @@ static void card_t4_paint(uint32_t c, int32_t gw, int32_t gh, const char *label,
             cv_rrect(pad, UT_T4_BAR_Y, fx < UT_T4_BAR_MIN ? UT_T4_BAR_MIN : fx, UT_T4_BAR_H, UT_T4_BAR_R, gc, rest);
     }
 }
-/* TEMPLATE 7 card (item 118; ui_tokens.h UT_T7_*, FINAL_V1_07_sequencer): the STEP page's STEP / NOTE / LENGTH / FLAG, compact: the numbered dot + the label (S) on baseline UT_T7_LBL_BASE, the value (L, else M, else S; cut by the card's
- * edge, never ellipsised) on UT_T7_VAL_BASE with its unit (M) on the same baseline; no bar. A label wider than its room is cut by the card's edge and listed (CARD_LABEL_HOOK), never shortened */
-static void card_t7_paint(uint32_t c, int32_t gw, int32_t gh, const char *label, const char *vb, const char *unit, uint16_t vc, int hot)
-{
-    const aafont_t *vf = &AF_L;
-    int32_t room = gw - UT_T7_VAL_X - UT_T7_VAL_PAD_R, uw = unit[0] ? text_w(&AF_M, unit) + UT_CARD_UNIT_GAP : 0, x;
-    if (label[0])
-        card_label(c, UT_T7_DOT_X, UT_T7_LBL_DX, UT_T7_LBL_BASE, label, hot ? T_ACCENT : T_MID, gw - UT_T7_LBL_DX - 3);
-    if (text_w(vf, vb) + uw > room)
-        vf = &AF_M;
-    if (text_w(vf, vb) + uw > room)
-        vf = &AF_S;
-    if (vb[0]) {
-        x = cv_text_on(UT_T7_VAL_X, card_ty(vf, UT_T7_VAL_BASE), vf, vb, vt(vc, T_BG), T_BG);
-        if (unit[0])
-            cv_text_on(x + UT_CARD_UNIT_GAP, UT_TY(M, UT_T7_VAL_BASE), &AF_M, unit, T_MID, T_BG);
-    }
-}
 /* TEMPLATE 9 (grid_on 16): the knob-1 LINE of the area page, on the canvas of rows UT_A_K1_Y .. + UT_A_K1_H (240 wide; begun by the caller). No card, no bar, everything on ONE baseline UT_A_K1_BASE, left aligned:
  * the numbered dot 1 and the label (S, T_MID; hot: the accent), the value (S, its colour vc) UT_A_K1_VAL_GAP after the label, its unit (white: "/16" with no space, any other unit one space after it),
  * then the text `after` (S, colour ac): UT_A_K1_AFTER_GAP after the value, or (after_r) flush right ending at UT_A_K1_R; a right text that would touch the value is not drawn */
@@ -1354,11 +1325,6 @@ static void draw_card_grid(uint32_t c, const char *label, const char *val, const
     }
     if (grid_on == 7) {                                 /* TEMPLATE 4: the MIXER's LEVEL / PAN card (item 117) */
         card_t4_paint(c, gw, gh, lb, vb, unit, vc, ratio, hot, ctr);
-        cv_blit((uint32_t)gx, (uint32_t)gy);
-        return;
-    }
-    if (grid_on == 10) {                                /* TEMPLATE 7: a card of the STEP page (item 118) */
-        card_t7_paint(c, gw, gh, lb, vb, unit, vc, hot);
         cv_blit((uint32_t)gx, (uint32_t)gy);
         return;
     }
@@ -1991,7 +1957,7 @@ static void draw_foot(void)
     if (!ui.force && sig == ui.foot_sig)
         return;
     ui.foot_sig = sig;
-    foot_short = (grid_on == 1 || grid_on == 3 || grid_on == 4 || grid_on == 5 || grid_on == 7 || grid_on == 9 || grid_on == 10 || grid_on == 11 || grid_on == 12 || grid_on == 13 || grid_on == 14 || grid_on == 15 || grid_on == 16 || grid_on == 17 || ui.guide) && !ui.ml.on && !pfl[0] && !save_hint && !foot_steps();   /* (DUELL 1.1 grid pages: row 1 is empty, the cards use its rows) */
+    foot_short = (grid_on == 1 || grid_on == 3 || grid_on == 4 || grid_on == 5 || grid_on == 7 || grid_on == 9 || grid_on == 11 || grid_on == 12 || grid_on == 13 || grid_on == 14 || grid_on == 15 || grid_on == 16 || grid_on == 17 || ui.guide) && !ui.ml.on && !pfl[0] && !save_hint && !foot_steps();   /* (DUELL 1.1 grid pages: row 1 is empty, the cards use its rows) */
     cv_begin(240, foot_short ? H_FOOT - 15 : pfl[0] ? H_FOOT + 15 : H_FOOT, T_BG);   /* (item 120: PERFORM's footer is 15 rows taller, its two hint lines on top) */
     cv_oy = foot_short ? -15 : pfl[0] ? 15 : 0;
     if (ui.ml.on) {                               /* row 1: MIDI LEARN's line, OCT+ DONE at the right (the one way out) */
@@ -3373,8 +3339,6 @@ static void ui_draw_page(uint32_t counting)
             g = 1;
         if (!ui.perf && !page_over && gp->scope == SC_MORPH && gp->graph == GR_MORPHSET)
             g = 1;
-        if (!ui.perf && !page_over && gp->graph == GR_ROLL)   /* TEMPLATE 7 (item 118): the STEP page, the big piano roll and four compact cards */
-            g = 10;
         if (!ui.perf && !page_over && gp->graph == GR_SEQHELP)   /* SEQUENCER HELP (item 118): the legend page, drawn whole by ui_graph.c */
             g = 11;
         if (!ui.perf && !page_over && gp->scope == SC_MODE)
