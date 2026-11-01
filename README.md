@@ -1,50 +1,87 @@
+<p align="center"><img src="docs/duell-tide-cover.jpg" alt="DUELL-TIDE: DUELL 1.1 with TIDE, an unofficial fork" width="960"></p>
+
 # DUELL-TIDE
 
-**An unofficial fork of DUELL 1.1 that lets the FM-1 play itself.**
+**DUELL 1.1 for the M-VAVE FM-1, plus TIDE: a morph that plays and evolves by itself.**
+
+[Try it in the browser](https://pssdrnk-cmyk.github.io/DUELL-TIDE/emu/) · [What changed](#what-changed-from-duell-11) · [Install](#install) · [Issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues)
 
 > **This is not the official DUELL.** DUELL-TIDE is a personal fork of [DUELL](https://github.com/oscillr/DUELL) 1.1 by **OSCILL/R**. It is not made, affiliated with or endorsed by OSCILL/R or M-VAVE. Please don't send TIDE problems to the DUELL author: use this fork's [issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues). DUELL and its credit belong to OSCILL/R; the code stays GPL-3.0-only.
 
-**TIDE** turns the FM-1 into a self-evolving background. A sound glides by itself from its End A to an End B and back, never quite the same way twice, like a tide between two shores. You set it going and play over it; a hand on the knob can still take over. Everything else is DUELL 1.1 as OSCILL/R made it (below, from "What is in it" on).
-
-<p align="left"><img src="docs/duell-deck.png" alt="DUELL" width="720"></p>
-
 > **Use at your own risk.** TIDE has run on **one FM-1, the fork owner's**. It has no release and no wide testing. The FM-1 has a single copy of its firmware and no known rollback; a failed write can leave it dark, and then only a hardware recovery helps ([docs/RECOVERY.md](docs/RECOVERY.md)). Back up first. No warranty.
 
-## What TIDE adds
+## The idea
 
-HOME's round is **MORPH, MORPH SETTINGS, AUTO TIDE, MODE**.
+DUELL's MORPH glides a sound between two versions of itself, End A and End B, with one fader. **TIDE moves that fader for you**, in time with the music: from A to B and back, each trip a little different, like a tide between two shores. The pattern can glide with the sound.
 
-**AUTO TIDE** (knob 1 GLIDE, knob 2 MODE, knob 3 TIME, knob 4 WAIT). PLAY starts the glide; it follows the transport (stop pauses it, PLAY goes on). The five modes, each with its own line on the screen:
+It is made for playing the FM-1 as a **background**: set a tide going, then play your drum machine, bass or sampler over it. Nothing has to be managed live, and a hand on the knob can still take over at any time.
 
-| MODE | What it does |
+## What it looks like
+
+| AUTO TIDE | MORPH SETTINGS | MORPH, mid-glide |
+|:---:|:---:|:---:|
+| <img src="docs/tide/auto-tide.png" width="260" alt="AUTO TIDE page: DRIFTING TO A 3/8, the SOUND and SEQ faders, MODE DRIFT, TIME 8 BARS, WAIT OFF"> | <img src="docs/tide/morph-settings.png" width="260" alt="MORPH SETTINGS page: TARGET BOTH, VARY BARS 4 + 8, ROLL MUSIC, ARP, PITCH, WASH LEVEL"> | <img src="docs/tide/morph-gliding.png" width="260" alt="MORPH page while a tide plays: the fader at 62"> |
+| The glide's state on knob 1's line (here *drifting to A, bar 3 of 8*), both faders, the steps as they play, and MODE / TIME / WAIT on knobs 2 to 4. | What the tide moves and how a new End B is rolled. Knob 1 picks the row, OCT+ / OCT- change it. | DUELL's own MORPH page follows the glide, so you see where the sound is between A and B. |
+
+*Screenshots from the [web emulator](https://pssdrnk-cmyk.github.io/DUELL-TIDE/emu/).*
+
+## Play a tide in four steps
+
+1. Press **HOME** until **AUTO TIDE** shows. HOME's round is now **MORPH → MORPH SETTINGS → AUTO TIDE → MODE**.
+2. Pick a **MODE** with knob 2, a trip length (**TIME**, in bars) with knob 3 and a rest at each end (**WAIT**) with knob 4.
+3. Twist **knob 1** right (to B) or left (to A) and press **PLAY**. While the music plays, the glide starts on the next bar.
+4. Play over it. **STOP** pauses the glide and PLAY goes on from there. Twist knob 1 while it glides and it stops where it is; the sound stays.
+
+On the very first start TIDE comes up ready: multi **M02 NIGHT ORGAN**, AUTO TIDE on **JRNY**, both parts, 8 bars, WAIT 1. Just press PLAY.
+
+## What changed from DUELL 1.1
+
+### New: AUTO TIDE (in HOME's round)
+
+| MODE | What the tide does |
 |---|---|
 | **ONCE** | One trip, then it stops. |
 | **LOOP** | Back and forth between A and B. |
 | **DRIFT** | New twists on your sound: the end it left is rolled again from your original sound. |
-| **WNDR** | Walks away from your sound, a little further each time. |
-| **JRNY** | Travels through your sounds, including to other engines (FM6 too). |
+| **WNDR** | Wanders away from your sound, a little further each trip. |
+| **JRNY** | Travels through your sounds, also to other engines (FM6 included). |
 
-TIME is the length of a trip in bars, WAIT the rest at each end. Twist knob 1 while it glides and it stops where it is; the sound stays.
+Each mode has its own line on the screen, so you can read what it will do. Where two very different sounds cross, TIDE passes them through a short filter dip, so the change sounds like a move rather than a cut.
 
-**MORPH SETTINGS**: what the tide moves (TARGET: sound, pattern or both), how often the pattern varies (VARY BARS), how a new End B is rolled (ROLL: **MUSIC**, the default, stays close to the sound's character; SMART and WILD are DUELL's), ARP, PITCH and WASH LEVEL (the blend when two unlike sounds cross).
+### New: MORPH SETTINGS (in HOME's round)
 
-**SEQ MORPH**: a pattern has an A and a B too, and the tide moves the notes with the sound.
+| Row | What it sets |
+|---|---|
+| **TARGET** | What the tide moves: the SOUND, the pattern (SEQ) or BOTH. |
+| **VARY BARS** | How often the pattern plays a variation. |
+| **ROLL** | How a new End B is made. **MUSIC** (new, the default) stays close to the sound's character; SMART and WILD are DUELL's own. |
+| **ARP**, **PITCH** | DUELL's MORPH switches, now on this page. |
+| **WASH LEVEL** | How much blend is added where two unlike sounds cross. OFF by default. |
 
-**ARP SEQ**: with no key held, PLAY plays the part's pattern from the last chord held on it (or from C4).
+### New: in the sequencer and tools
 
-**KEEP** (in the tools): keeps the sound and pattern you hear right now as the part's own, to save or to start the next tide from.
+- **SEQ MORPH**: a pattern has an End A and an End B too, and the tide moves the notes with the sound.
+- **ARP SEQ on PLAY**: with no key held, PLAY plays the part's pattern from the last chord held on it (or from C4).
+- **KEEP** (in the SEQ tools): makes the sound and pattern you hear right now the part's own, to save or to start the next tide from.
 
-Smaller changes, also in the TIDE-off build:
-- MODE / SPLIT: turning left at OFF stays OFF (it jumped back to the middle key).
-- Fixes for clock and tempo changes, FM6 live levels, PHYS tuning and the unison level, each with a test.
+### Fixed (also in a build without TIDE)
 
-Building with `DUELL_TIDE=0` gives DUELL 1.1 without any TIDE code.
+- **MODE / SPLIT**: turning left at OFF stays OFF (it jumped back to the middle key).
+- **External MIDI clock**: tempo changes keep the phase; the progress is exact.
+- **FM6**: a live operator level acts as a gain over the note-on envelope.
+- **UNISON**: every oscillator of an extra voice is spread; the FM6 level follows the voices running.
+- **PHYS**: the string loop is in tune.
+- Undefined arithmetic removed from MORPH, FM6, PHYS and WAVE. Each fix has a host test.
+
+### Under the hood
+
+To make room for TIDE in the FM-1's flash, the fonts are Huffman-coded and UI render paths no page reaches are gone. Building with `DUELL_TIDE=0` gives DUELL 1.1 without any TIDE code; `jam/check_off.sh` checks that.
 
 ## Install
 
-**There is no TIDE release yet**, and no web installer or browser emulator for it. The links on OSCILL/R's site (installer, emulator, editor, releases) install and show **plain DUELL**, not TIDE.
+**There is no TIDE release yet** and no web installer. The links on OSCILL/R's site (installer, emulator, editor, releases) install and show **plain DUELL**, not TIDE. To try TIDE without a unit, use [this fork's emulator](https://pssdrnk-cmyk.github.io/DUELL-TIDE/emu/).
 
-To try TIDE now you build it yourself:
+To put TIDE on an FM-1 you build it yourself:
 1. Build the package as in [felucca-base/BUILDING.md](felucca-base/BUILDING.md): `python3 tools/build.py` in `felucca-base`. TIDE is on by default. The result is `felucca-base/build/duell-1.1.fwsc`.
 2. Install it with `python3 ../jam/jam_dev.py flash build/duell-1.1.fwsc` (needs `pip install mido python-rtmidi`). It saves a backup of the unit first, then writes the package with `tools/fm1_install.py`. Use a **data** USB cable straight into the computer (no hub), and keep the computer awake.
 3. While it writes, the unit shows the update screen (WRITING, a percent number, DO NOT SWITCH OFF). Don't unplug until the installer says it is done, then switch the unit off and on once.
@@ -55,7 +92,11 @@ TIDE reports itself as DUELL 1.1; the AUTO TIDE page in HOME's round shows that 
 
 ---
 
-*From here on: DUELL 1.1 by OSCILL/R, as in the upstream README.*
+# DUELL 1.1 reference
+
+*From here on: DUELL 1.1 by OSCILL/R, as in the upstream README. TIDE leaves all of it as it is.*
+
+<p align="left"><img src="docs/duell-deck.png" alt="DUELL 1.1 by OSCILL/R" width="640"></p>
 
 ## What is in it
 
@@ -105,7 +146,8 @@ The unit shows up as **DUELL** (USB-MIDI; USB audio input as set in the menu). T
 
 One map for the whole unit. A CC on a part's channel moves that part; "both parts" rows answer on any channel. Generated from [docs/MIDI_MAP_DEFAULTS.csv](docs/MIDI_MAP_DEFAULTS.csv): **70** direct CCs, **23** locked and input numbers, 35 unused.
 
-**Direct CCs**
+<details>
+<summary><b>Direct CCs</b> (70 rows)</summary>
 
 | CC | On the unit | MIDI standard name | Scope |
 |---|---|---|---|
@@ -180,6 +222,7 @@ One map for the whole unit. A CC on a part's channel moves that part; "both part
 | 117 | CYCLE CURVE | Undefined | the part of the channel |
 | 118 | CYCLE SYNC | Undefined | the part of the channel |
 
+</details>
 
 **Input numbers:** CC 1, 2, 4, 11 and 64 are inputs (mod wheel, breath, foot, expression, sustain pedal) that you can use as sources in the mod matrix; they cannot be assigned to parameters. CC 1 also moves the morph fader.
 
