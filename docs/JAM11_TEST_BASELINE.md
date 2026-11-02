@@ -2,6 +2,17 @@
 
 Current maintenance priorities: [roadmap](ROADMAP.md). Totals below describe their named source checkpoints, not a continuously updated count.
 
+## Full run: 2 November 2026, `4443c13` (T0 branches merged, morph fixed)
+
+`sh jam/check.sh`, 600 s per group, in a `git archive` snapshot (logs `work/check-full-4443c13/`), then re-run in the checkout for the groups the snapshot or the old `cc` shim got wrong (`work/check-full-4443c13-rerun/`). **80 passed, 34 failed, 22 skipped** (before: 65 / 58 / 11). `check_off.sh` PASS (`ade430c7…`).
+
+- `morph` now runs to its `fork()` with no failed check (SKIP here). Its two roll checks were test-side: the seeds hash is `0x2f8cb758` on Windows / llvm-mingw for 1.1's own `974d875` too (both values accepted), and TIDE rolls a factory sound's B, so ROLL chained to depth 2 (the save check rolls from the Original now; a new check covers SAVE of a MUSICAL B).
+- `multiv8` needs the tags `v1.0` / `v1.1`: it fails in a `git archive` snapshot, passes in a checkout.
+- The shared `work/shims/cc` took the POSIX stand-ins from `DUELL/` (1.0, no `sys/mman.h`); it now takes the tested checkout's `jam/wincompat` first. `twin`, `twocore`, `subcyc`, `xvalues`, `velaccent`, `tcmeas` then SKIP at `fork()` instead of failing to compile.
+- Still FAIL, as the t0-win notes say: `ownerimport` (tool fix), `benchsim` (stale model, macOS counter), `emu` (no first-start GUIDE, silent heavy song).
+
+FAIL: perform ui step3 engine dlyev dx7import fm6 uf pan mxstep modinert eqon modules uitest editor editorjson reverb halltail locut shimmer panic bassmono comp master stereochorus benchsim ownerimport pages scope2 editb velo emu converttwin jam_dev
+
 ## Supervised maintenance batch: 2 November 2026
 
 Pinned `7c22b13` plus reviewed local factory-packing and GLO knob-jump changes: native host equivalents of `bank`, `tidekeep` (72), `tidecontrols` (121), new `knobjump` (6) and `sidechain` (17) compile and pass with ASan/UBSan and no recovery. The new bank coverage compares actual C decoding/lookup/all three load kinds across every factory voice with original uncompressed pairs; a separate retained-baseline header comparison verifies unchanged pairs and metadata. `knobjump` is registered in the existing selectable/default host groups. Its runner syntax check passes.
