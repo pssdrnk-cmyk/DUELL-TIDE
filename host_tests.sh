@@ -255,7 +255,7 @@ twocore_mut() {
     if $OUT/twocore_mut 0 -nomut > $OUT/last.log 2>&1; then echo "   FAIL (the mutation was NOT detected)"; fail=1; else echo "   PASS (detected by the scene-0 faults: $(grep -c 'twocore: FAIL' $OUT/last.log) checks failed)"; fi
   else echo "   PASS (detected by the ownership audit: $(grep -c 'twocore: FAIL' $OUT/last.log) checks failed)"; fi
 }
-run() { echo "== $1"; shift; "$@" > "$OUT/last.log" 2>&1 && echo "   PASS" || { echo "   FAIL"; tail -15 "$OUT/last.log"; fail=1; }; }
+run() { echo "== $1"; shift; "$@" > "$OUT/last.log" 2>&1 && echo "   PASS" || { echo "   FAIL"; grep -E " FAIL$|Assertion" "$OUT/last.log" | head -60; tail -15 "$OUT/last.log"; fail=1; }; }   # (every failed check first: the tail alone hid most of them)
 for t in $want; do case $t in
   regress) $CC -DNPART=4 -o $OUT/regress tests/regress.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run regress $OUT/regress tests/golden.txt tests/cpu_baseline.txt ;;
   midiout) $CC -o $OUT/midi_out_seq_test tests/midi_out_seq_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run midiout $OUT/midi_out_seq_test ;;
