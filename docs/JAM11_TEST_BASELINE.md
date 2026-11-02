@@ -1,6 +1,8 @@
 # jam11 Windows test baseline
 
-## Current: 2 November 2026, `bd339c9`
+Current maintenance priorities: [roadmap](ROADMAP.md). Totals below describe their named source checkpoints, not a continuously updated count.
+
+## Broad-run snapshot: 2 November 2026, `bd339c9`
 
 `sh jam/check.sh`, 600 s per group (full run at `75a987a`, the groups changed after it re-run at `bd339c9`). **65 passed, 57 failed (fm6 a timeout), 12 skipped.** Before this round (`8506f2c`): 58 / 65 / 11.
 
@@ -24,6 +26,13 @@ PASS: chord strum performcap dlymod hang atgt patslot multi release menuproduct 
 FAIL: velaccent mod perform perflevelmut ui select step3 engine morphui dlyev patch patchraw bank dx7import mrender loadcost cpuscen uf pan twocore tcmeas mxstep modinert eqon level modules uitest motion backup editor editorjson midictl reverb halltail locut shimmer panic bassmono comp master stereochorus benchsim benchrun ownerimport xbmut fuzz xvalues twin subcyc pages scope2 editb velo emu converttwin jam_dev; timeout fm6
 
 SKIP: regress perflevel morph mode sounds fmbass wave mixsplit partindep duckpart budget insert
+
+## Later focused evidence — 2 November 2026
+
+- S0 merge `254a501` reports 65 passed / 58 failed / 11 skipped. Its commit records an FM6 timeout and two existing morph-roll failures exposed by the improved runner. Keep that run separate from `bd339c9`'s totals.
+- `backup` passed at `e176f6e` against 1.1 + TIDE + S0a (`work/check-duell-jam11/backup.log`, reviewed during installation). The older FAIL list above is the broad-run snapshot, not the status of this repaired group.
+- Five revision-8 backup-helper tests and the installed package's pinned CPU-emulator smoke passed during the S0/DSP installation. Retained logs: `work/backups/s0-e176f6e-2026-11-02/`.
+- `patch` repair is in progress in the shared checkout. It exposed the End-B preservation bug fixed in `dd2acd5`; do not count the whole group as PASS until its coherent run is recorded. No new aggregate has been inferred from these individual checks.
 
 ## Step 0 (history)
 

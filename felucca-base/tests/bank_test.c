@@ -1,12 +1,10 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* DUELL 1.0: THE FACTORY BANK and the ARP RECALL.
- * 1. The bank (tools/factory_bank.duell-patches.json, the owner's 128 patches as exported, imported by tools/import_bank.py; tests/factory_bank_records.txt: "NN crc32
- *    record-hex trim" per slot, slot and revision bytes 0, the crc32 the file's own, trim the balanced TRIM of tools/factory_bank_trims.json). For every browse slot k the
- *    factory sound is loaded through the firmware (sl_load, as PATCHES loads it) and saved through the firmware (up_patch_save_part, as SAVE does: End B block, extension
- *    block, arp / keys block, the FM6 patch). Then the stored record and the file's record are both put into the store and decoded the firmware's way (up_rec, ak_get,
- *    upf_get) and compared FIELD BY FIELD: engine, name, category, all 127 values but the TRIM (which must be the balanced one in the stored record and the file's own in
- *    the file's), the extension slots, End B block, hand-set edits, pattern, FM6 patch; and the stored record must carry the arp and keys block (arp OFF written
- *    explicitly). Counted: byte for byte equal to the file's record (the case when the TRIM is unchanged and the file's record has the block), equal in every field.
+ * 1. The bank (DUELL 1.1: the firmware's own factory sounds, sounds.c from tools/duell_sounds.py with End B as exact values; the 1.0 records file
+ *    tests/factory_bank_records.txt holds PT_VER 3 records the store no longer reads, and is not used). For every browse slot the store takes (128; TIDE 126) the
+ *    factory sound is loaded through the firmware (sl_load, as PATCHES loads it), saved through the firmware (up_patch_save_part, as SAVE does: End B block, arp /
+ *    keys block, the FM6 patch) and loaded back from its slot: the same sound (every value as the record keeps it, the extension slots, End B as it sounds, the
+ *    FM6 patch); every record carries End B and the arp and keys block (arp OFF written explicitly).
  * 2. The arp recall: a patch saved with the arp OFF turns the arp OFF when it is loaded after one with the arp ON; a patch with an arp brings it back (all eight values);
  *    a factory sound without an arp turns an arp off; the chord keys the same; a record without the block (written before 1.0) loads as arp OFF, keys at their
  *    defaults; the global MODULES switch still kills the arp.
@@ -21,21 +19,7 @@ static void ck(const char *what, int ok)
     printf("bank: %-120s %s\n", what, ok ? "ok" : "FAIL");
     bad += !ok;
 }
-static uint32_t crc32_of(const uint8_t *p, uint32_t n)
-{
-    uint32_t c = 0xFFFFFFFFu, i, j;
-    for (i = 0; i < n; i++) {
-        c ^= p[i];
-        for (j = 0; j < 8u; j++)
-            c = c >> 1 ^ (0xEDB88320u & (0u - (c & 1u)));
-    }
-    return ~c;
-}
-static int hexv(int c) { return c <= '9' ? c - '0' : (c | 32) - 'a' + 10; }
 
-static uint8_t want[128][600], got[128][PT_WORST + 8];
-static uint32_t wn[128], gn[128];
-static int wtrim[128];
 
 /* the fields of a stored slot, the firmware's decode */
 typedef struct {
@@ -50,28 +34,6 @@ static void decode(uint32_t k, dec_t *d)
     d->fm = upf_get(k, d->pk) == 0;
     d->has_ak = ak_get(k, &d->a);
 }
-/* 0: the same in every field but P_TRIM; else a short reason */
-static const char *same_fields(const dec_t *x, const dec_t *y)
-{
-    uint32_t i;
-    if (x->r.engine != y->r.engine || memcmp(x->r.name, y->r.name, 12))
-        return "engine or name";
-    for (i = 0; i < P_COUNT; i++)
-        if (i != P_TRIM && x->r.packed[i] != y->r.packed[i])
-            return "a value";
-    if (x->r.packed[UP_CAT_AT] != y->r.packed[UP_CAT_AT])
-        return "category";
-    if (memcmp(x->r.packed + UP_MB_AT, y->r.packed + UP_MB_AT, UP_MB_N))
-        return "End B block";
-    if (memcmp(x->r.xz, y->r.xz, NX) || x->r.xb_n != y->r.xb_n || memcmp(x->r.xb, y->r.xb, x->r.xb_n * sizeof x->r.xb[0]))
-        return "extension block";
-    if (memcmp(x->r.note, y->r.note, 16) || memcmp(x->r.flags, y->r.flags, 16))
-        return "pattern";
-    if (x->fm != y->fm || (x->fm && memcmp(x->pk, y->pk, FM6_PACKED)))
-        return "FM6 patch";
-    return 0;
-}
-
 static void set_arp(track_t *t, int on)
 {
     uint32_t i;
@@ -82,7 +44,7 @@ static void set_arp(track_t *t, int on)
         t->p[P_ARATE] = 5;
         t->p[P_AOCT] = 2;
         t->p[P_AGATE] = 77;
-        t->p[P_ASWING] = 9;
+        t->p[P_ASWING] = 59;                          /* (1.1: SWING 50..75) */
         t->p[P_APROB] = 100;
         t->p[P_AHOLD] = 1;
         t->p[P_AORDER] = 1;
@@ -97,81 +59,94 @@ static int arp_equal(const track_t *t, const int16_t *v)
     return 1;
 }
 
+/* part 0 as it sounds now: every value as a record keeps it (PT_VER 4: inside its range), the slots, End B as it sounds, the FM6 patch, the arp */
+typedef struct {
+    uint32_t eng;
+    int16_t v[P_COUNT], x[NX], b[EXT_P_LEN];
+    uint8_t pk[FM6_PACKED];
+} snd_t;
+static void snd_take(snd_t *s)
+{
+    const track_t *t = &trk[0];
+    uint32_t i;
+    memset(s, 0, sizeof *s);
+    s->eng = t->eng_req;
+    for (i = 0; i < P_COUNT; i++)
+        s->v[i] = (int16_t)wv_code(s->eng, i, motion_base_value(t, i));
+    for (i = 0; i < NX; i++)
+        s->x[i] = (int16_t)wv_code(s->eng, XWID(i), XV(t, i));
+    (void)morph_ready(0);
+    morph_effective_x(0, 1u, s->b);
+    for (i = 0; i < EXT_P_LEN; i++)
+        s->b[i] = mbv_wid(i) && !mbv_never(i) ? (int16_t)wv_code(s->eng, i, s->b[i]) : 0;
+    if (s->eng == ENGI_FM6)
+        fm6_pack(fm6_patch[0], s->pk);
+}
+/* 0: the same sound; else what differs */
+static const char *snd_diff(const snd_t *a, const snd_t *b)
+{
+    uint32_t i;
+    if (a->eng != b->eng)
+        return "engine";
+    for (i = 0; i < P_COUNT; i++)
+        if (i != P_LEVEL && a->v[i] != b->v[i])
+            return "a value";
+    if (memcmp(a->x, b->x, sizeof a->x))
+        return "an extension slot";
+    if (memcmp(a->b, b->b, sizeof a->b))
+        return "End B";
+    if (memcmp(a->pk, b->pk, sizeof a->pk))
+        return "FM6 patch";
+    return 0;
+}
+
+/* slot k into part 0 as PATCHES loads it, the engine switch done (as the audio's next blocks finish it: the morph's sound is then the part's) */
+static void load_settled(uint32_t k)
+{
+    sl_load(k);
+    trk[0].engine = trk[0].eng_req;
+}
+
 int main(int argc, char **argv)
 {
-    const char *fn = argc > 1 ? argv[1] : "tests/factory_bank_records.txt";
-    FILE *f = fopen(fn, "r");
-    static char line[4096];
-    uint32_t n_ok = 0, n_bytes = 0, n_fields = 0, n_noend = 0, k, i, nrec = 0;
-    static dec_t dw, dg;
-    if (!f) {
-        printf("bank: cannot open %s\n", fn);
-        return 2;
-    }
+    uint32_t n_ok = 0, n_same = 0, n_blocks = 0, k, i, nsave = PT_MAX < UP_SLOTS ? PT_MAX : UP_SLOTS;
+    static dec_t dg;
+    static snd_t fac, back;
+    (void)argc; (void)argv;
     ui_power_on();
     frame();
     song.playing = 0;
-    while (fgets(line, sizeof line, f)) {
-        unsigned num, crc;
-        char *h;
-        uint32_t n = 0;
-        if (sscanf(line, "%u %x", &num, &crc) != 2 || !(h = strchr(strchr(line, ' ') + 1, ' ')) || num < 1u || num > 128u)
-            continue;
-        for (h++; isxdigit((unsigned char)h[0]) && isxdigit((unsigned char)h[1]); h += 2)
-            want[num - 1u][n++] = (uint8_t)(hexv(h[0]) << 4 | hexv(h[1]));
-        wn[num - 1u] = n;
-        wtrim[num - 1u] = atoi(h);
-        if (crc32_of(want[num - 1u], n) != crc) {
-            printf("bank: #%u: the line's crc32 does not match its record\n", num);
-            bad++;
-        }
-        nrec++;
-    }
-    fclose(f);
-    ck("the records file holds the 128 patches", nrec == 128u);
-    /* pass 1: every factory sound through the firmware's load and save */
-    for (k = 0; k < 128u; k++) {
-        sl_load((k + 61u) % UP_SLOTS);                    /* another sound first: nothing of the one before may leak into this one */
-        sl_load(k);
-        if (up_patch_save_part(0, k) != 0 || !up_used(k) || !(gn[k] = up_raw_get(k, got[k]))) {
+    /* 1.1: the factory bank is the firmware's own (sounds.c from tools/duell_sounds.py, End B as exact values); the 1.0 records file
+     * (tests/factory_bank_records.txt, PT_VER 3) is no longer read by the store. Every factory sound: loaded, saved through SAVE's path, loaded
+     * back from the saved slot: the same sound (every value as the record keeps it, the slots, End B as it sounds, the FM6 patch), and the
+     * record carries End B and the arp / keys block (126 slots with TIDE: its store's limit) */
+    for (k = 0; k < nsave; k++) {
+        const char *why;
+        load_settled((k + 61u) % UP_SLOTS);               /* another sound first: nothing of the one before may leak into this one */
+        load_settled(k);
+        snd_take(&fac);
+        if (up_patch_save_part(0, k) != 0 || !up_used(k)) {
             printf("bank: #%u: the firmware did not store it\n", k + 1u);
             bad++;
             continue;
         }
         n_ok++;
-    }
-    ck("all 128 factory slots load and store through the firmware", n_ok == 128u);
-    /* pass 2: the file's record and the stored one, decoded the firmware's way */
-    for (k = 0; k < 128u; k++) {
-        const char *why;
-        int stored_ak;
-        if (!gn[k])
-            continue;
-        up_put_raw(k, want[k], wn[k]);
-        decode(k, &dw);
-        up_put_raw(k, got[k], gn[k]);
         decode(k, &dg);
-        stored_ak = dg.has_ak && (dg.a.g & AK_ARP) && (dg.a.g & AK_KEYS);
-        why = same_fields(&dg, &dw);
-        if (gn[k] == wn[k] && !memcmp(got[k], want[k], wn[k]))
-            n_bytes++;
-        if (!why && up_value(&dg.r, P_TRIM) == wtrim[k] && up_value(&dw.r, P_TRIM) == up_value(&dw.r, P_TRIM) && stored_ak) {
-            n_fields++;
-            continue;
-        }
-        if (why && !strcmp(why, "End B block") && !(dw.r.packed[UP_MB_AT]) && !same_fields((dg.r.packed[UP_MB_AT] = 0, memset(dg.r.packed + UP_MB_AT, 0, UP_MB_N), &dg), &dw) &&
-            up_value(&dg.r, P_TRIM) == wtrim[k] && stored_ak) {
-            n_noend++;
-            printf("bank: #%u equals the file's record in every field but the End B block (the file has none, the firmware's save always writes one)\n", k + 1u);
-            continue;
-        }
-        printf("bank: #%u DIFFERS (%s; trim stored %d, wanted %d; arp block %s)\n", k + 1u, why ? why : "the TRIM or the arp block", up_value(&dg.r, P_TRIM), wtrim[k], stored_ak ? "yes" : "NO");
-        bad++;
+        n_blocks += (pt_raw(k)[4] & PTF_MB) && dg.has_ak && (dg.a.g & AK_ARP) && (dg.a.g & AK_KEYS);
+        load_settled((k + 61u) % UP_SLOTS);
+        load_settled(k);
+        snd_take(&back);
+        if ((why = snd_diff(&fac, &back)) != 0) {
+            printf("bank: #%u: loaded from its saved slot it DIFFERS (%s)\n", k + 1u, why);
+            bad++;
+        } else
+            n_same++;
     }
-    printf("bank: %u of 128 slots: %u equal the file's record in every field (TRIM the balanced one, the arp block written), %u of them byte for byte, %u equal but for the End B block the file lacks\n",
-           n_ok, n_fields, n_bytes, n_noend);
-    ck("every factory slot stores as the file's record (all fields; one End B block the file lacks)", n_fields + n_noend == 128u && n_noend <= 1u);
-    for (k = 0; k < 128u; k++)
+    printf("bank: %u factory sounds saved, %u the same sound loaded back, %u records with End B and the arp / keys block\n", n_ok, n_same, n_blocks);
+    ck("every factory sound the store takes (128; TIDE 126) loads and stores through the firmware", n_ok == nsave);
+    ck("  loaded back from its saved slot each is the same sound (values, slots, End B, FM6 patch); every record carries End B and the arp / keys block",
+       n_same == nsave && n_blocks == nsave);
+    for (k = 0; k < UP_SLOTS; k++)
         sl_restore(k);
 
     /* 2. the arp recall */
