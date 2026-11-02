@@ -188,7 +188,7 @@
 # perflevelmut: its mutations, run once each (perflevel must FAIL): a boost allowed, the direction swapped, the total not kept, a memory of its own (the MIXER's writes between the steps ignored)
 # midimapmut: the safety rules' mutations, run once each (midimap_test must FAIL): the lock check removed, two parameters allowed on one CC, the morph's trigger back on the CC number
 cd "$(dirname "$0")/felucca-base" || exit 1
-OUT=build/host; mkdir -p "$OUT" build/mod_demo build/ui_new build/ui_slot
+OUT=build/host; mkdir -p "$OUT" build/mod_demo build/ui_new/ppm build/ui_slot
 unset DUELL_TEST_MODE                                  # (the environment switch is for device / emulator builds; the tests set theirs below)
 CCR="cc -O2 -w -DHOST_MIX_FOLLOWS_MASTER=1 -Ibuild/gen -Ifirmware/src -Itests"      # the release configuration (switch off)
 CCD="cc -O2 -w -Ibuild/gen -Ifirmware/src -Itests"      # the device's own mix level (no HOST_MIX_FOLLOWS_MASTER): the browser build, web/emu, has none

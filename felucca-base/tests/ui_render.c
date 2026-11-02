@@ -166,7 +166,7 @@ static void hk_icon(int32_t x, int32_t y, uint32_t size, uint32_t id);   /* (aft
 #define GFX_HOOK_ALIGN(x0, y0, x1, y1, mode, tag) hk_align(x0, (y0) + cv_oy, x1, (y1) + cv_oy, mode, tag)
 static int32_t pen_c0, pen_c1;                  /* GFX_HOOK_PEN: the capitals' band of the text being hooked, always (item 122's keycap table) */
 static uint8_t pen_h;                           /* GFX_HOOK_PEN: the line height of the text being hooked (its face) */
-#define GFX_HOOK_PEN(y, f) (pen_h = (f)->h, pen_c0 = (y) + cv_oy + (f)->g[glyph((f), 'H')].by, pen_c1 = pen_c0 + (f)->g[glyph((f), 'H')].bh, al_n ? (al_cy0 = pen_c0, al_cy1 = pen_c1) : 0)
+#define GFX_HOOK_PEN(y, f) (pen_h = (f)->h, pen_c0 = (y) + cv_oy + (f)->metrics[glyph((f), 'H') >> (f)->psh].by, pen_c1 = pen_c0 + (f)->metrics[glyph((f), 'H') >> (f)->psh].bh, al_n ? (al_cy0 = pen_c0, al_cy1 = pen_c1) : 0)
 #define GFX_HOOK_ITEM(x0, y0, x1, y1) al_item(x0, (y0) + cv_oy, x1, (y1) + cv_oy, 1, "cushion")
 #define GFX_HOOK_ICON(x, y, size, id) hk_icon(x, (y) + cv_oy, size, id)
 static void hk_text(int32_t x0, int32_t y0, int32_t x1, int32_t y1, const char *s, uint32_t flags)
@@ -781,7 +781,7 @@ static void mslot_ui(uint32_t k, int32_t s, int32_t d, int32_t a)   /* matrix sl
 }
 /* DUELL: SAVE > PATTERNS, the one list of 32 slots (patslot.c; the scenes that showed Felucca's SONG): P01..P03 saved from part 1
  * (LEN 16, 32, 7), the row picked: v 0 a slot that holds its default (P05 TRANCE ROLL), 1 a saved one (P02), 2 SAVE picked on it, 3
- * OVERWRITE?, 4 ERASE?, 5 playing (LOAD picked), 6 the list's end (P32 SEVEN EIGHT) */
+ * OVERWRITE?, 4 SAVE held: SAVE OVER? (1.1: no per-slot ERASE), 5 playing (LOAD picked), 6 the list's end (P32 SEVEN EIGHT) */
 static void pslot_scene(uint32_t v)
 {
     static const int16_t L[3] = {16, 32, 7};
@@ -803,10 +803,16 @@ static void pslot_scene(uint32_t v)
     ui.ppick = (uint8_t)(v == 0u ? 4u : v == 6u ? PS_SLOTS - 1u : 1u);
     ui.act = v == 2u || v == 3u ? 4u : v == 4u ? 3u : v == 5u ? 2u : 0u;
     if (v == 3u) confirm_open(CF_OVR_PSLOT, 1);
-    if (v == 4u) confirm_open(CF_ERASE_PSLOT, 1);
+    if (v == 4u) confirm_open(CF_HOLD_PSLOT, ui.ppick);
     if (v == 5u) song.playing = 1;
     ui.msg_t = 0;
 }
+/* HOME's second page: TIDE puts MORPH SETTINGS (a list: TARGET, VARY BARS, ROLL, ARP, PITCH) in MORPH SET's place */
+#if DUELL_TIDE
+#define MORPH_SET_TITLE "MORPH SETTINGS"
+#else
+#define MORPH_SET_TITLE "MORPH SET"
+#endif
 /* the FM engine of the FM screens: FM6 (DIGITAL is gone in 0.2.14) */
 #define E_FM ENGI_FM6
 #define go_home() go_main_to(HP_MORPH)           /* (HOME is MORPH, the main page, since 0.2.14: the OVERVIEW screen is gone) */
@@ -1375,9 +1381,9 @@ static void setup(int s)
     case S_MORPH_TWIST:
         go_title("MORPH"); ui.mg.acc[0] = -2; ui.mg.acc[1] = 2; ui.mg.t[0] = ui.mg.t[1] = fm1_ms; ui.hot_col = 3; ui.hot_t = 30;
         morph_do(MQ_FADER, 1u, 64u); break;
-    case S_MORPH_SET: go_title("MORPH SET"); break;
-    case S_MORPH_SET_BOTH: morph_set_target(1); go_title("MORPH SET"); ui.hot_col = 0; ui.hot_t = 30; break;
-    case S_MORPH_SET_WILD: morph_set_cfg(MC_WILD | MC_ARP | MC_PIT, 1); morph_set_target(1); go_title("MORPH SET"); ui.hot_col = 1; ui.hot_t = 30; break;
+    case S_MORPH_SET: go_title(MORPH_SET_TITLE); break;
+    case S_MORPH_SET_BOTH: morph_set_target(1); go_title(MORPH_SET_TITLE); ui.hot_col = 0; ui.hot_t = 30; break;
+    case S_MORPH_SET_WILD: morph_set_cfg(MC_WILD | MC_ARP | MC_PIT, 1); morph_set_target(1); go_title(MORPH_SET_TITLE); ui.hot_col = 1; ui.hot_t = 30; break;
     case S_MORPH_SAVE: go_title("MORPH"); confirm_open(CF_SAVE_OVER, 0u); break;   /* SAVE held: the SAVE OVER dialog */
     /* MORPH v3 (the ribbons): the fader at 64 and 127 with part 1 playing (its peak), BOTH at 64 (both parts playing) */
     case S_MORPH_MID: morph_do(MQ_FADER, 1u, 64u); go_title("MORPH"); trk[0].peak = 5000; break;
@@ -1449,8 +1455,7 @@ static void setup(int s)
         roll_scene(S_ROLL_ACID);
         motion_set_lock(TSEL, 2, P_REV, 100); motion_set_lock(TSEL, 6, P_E4, 20); motion_set_lock(TSEL, 6, P_ATK, 90);
         motion_set_lock(TSEL, 9, P_E5, 110); motion_set_lock(TSEL, 13, P_REV, 80);
-        if (s == S_ROLL_LOCK_HELD) {
-            ui.plk_src = 0;
+        if (s == S_ROLL_LOCK_HELD) {   /* (1.0 removed the held step's lock gesture and ui.plk_src: the step's key held only) */
             ui.entry_open = 1;
             fm1_in.notes = 1u << 10;
             ui.hot_col = 0; ui.hot_t = 30;
@@ -1511,7 +1516,7 @@ static void setup(int s)
 }
 static void draw(int s)
 {
-    if (!strstr(S_NAME[s], "rec") && !strstr(S_NAME[s], "head") && !strstr(S_NAME[s], "batt") && !strstr(S_NAME[s], "motion") && !strstr(S_NAME[s], "layer_hint")) {
+    if (s < 0 || (!strstr(S_NAME[s], "rec") && !strstr(S_NAME[s], "head") && !strstr(S_NAME[s], "batt") && !strstr(S_NAME[s], "motion") && !strstr(S_NAME[s], "layer_hint"))) {   /* (s -1: a state set by hand, the FM6 charts: no scene name to read) */
         song.rec = 0;                                  /* (the scenes arm the recording and set USB power for their own tests: an ordinary unit shows neither REC nor the charging bolt) */
         usb.config = 0;
     }
