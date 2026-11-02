@@ -125,7 +125,7 @@ static inline __attribute__((always_inline)) void analog_osc(track_t *t, voice_t
     /* DTN in cents. OSC B carries the voice's fine factor (unison detune, TUNE, bend) as OSC A does (SPEC 2.3: it
      * dropped it before DUELL) */
     uint32_t inc2 = det ? cents_inc(m->pitch16, det, m->fine) : inc1;
-    uint32_t pw = 0x80000000u + (uint32_t)((m->shape - (64 << 8)) << 15);
+    uint32_t pw = 0x80000000u + (uint32_t)((m->shape - (64 << 8)) * 32768);
     int32_t m2 = mix * 258, m1 = 32767 - m2;                    /* osc mix Q15 */
     if (m->amask)                                               /* ARP TARGET: the units on the arp (SPEC 2.3) */
         atg_analog(m, det, &inc1, &inc2, &m1, &m2);

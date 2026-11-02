@@ -289,8 +289,8 @@ static int32_t dc_l, dc_r, dce_l, dce_r;
  * to +-31 at the output after silence.) */
 static inline int32_t dc_block(int32_t x, int32_t *dc, int32_t *err)
 {
-    int32_t e = (x << 6) - *dc + *err, d = e >> 12;
-    *err = e - (d << 12);
+    int32_t e = x * 64 - *dc + *err, d = e >> 12;
+    *err = e - d * 4096;
     *dc += d;
     return x - ((*dc + 32) >> 6);
 }
@@ -779,7 +779,7 @@ static __attribute__((noinline)) void ins_drive(ins_t *s, const track_t *t, int3
     int32_t a = t->p[P_IA], g1 = 4096 + a * a * 3;      /* DRIVE, Q12: 1x .. 12.8x, gentle at first */
     int32_t k = ins_lpk(crush ? t->p[P_IC] : t->p[P_IB]), l1 = crush ? 4096 : LEVEL_Q12[t->p[P_IC] & 127];
     int32_t g0 = s->u.lo.wa ? s->u.lo.wa : g1, l0 = s->u.lo.wa ? s->u.lo.wb : l1;   /* hunt3: DRIVE and LEVEL go from the block before's value to this block's in a line (a morph or a route that moved */
-    int32_t gq = g0 << 11, lq = l0 << 11, dg = (g1 - g0) << 6, dl = (l1 - l0) << 6;   /* A or C by a step was a click: #23 KICK BASS, #7 FM BASS 2); Q11, CTL = 32 samples; still: the old code bit for bit */
+    int32_t gq = g0 * 2048, lq = l0 * 2048, dg = (g1 - g0) * 64, dl = (l1 - l0) * 64;   /* A or C by a step was a click: #23 KICK BASS, #7 FM BASS 2); Q11, CTL = 32 samples; still: the old code bit for bit */
     s->u.lo.wa = g1;
     s->u.lo.wb = l1;
     for (i = 0; i < n; i++) {
@@ -838,7 +838,7 @@ static __attribute__((noinline)) void ins_swept(ins_t *s, const track_t *t, int3
                 u = y;
             }
             s->u.ph.fb = clamp(y, -32767, 32767);
-            y <<= 2;                                    /* (y: at an eighth) */
+            y *= 4;                                     /* (y: at an eighth) */
             s->dc += ((y * 256) - s->dc) >> 9;           /* DC blocker, ~14 Hz (a clipped loud input is lopsided) */
             b[i] = pf_mix(x, (x >> 1) + y - (s->dc >> 8), s->w);   /* (dry + all-passed) / 2 */
         }
@@ -924,7 +924,7 @@ static __attribute__((noinline)) void ins_lofi(ins_t *s, const track_t *t, int32
             s->u.lo.tgt = (int32_t)(r >> 16) - 32768;
             s->u.lo.nxt = 11025 + (int32_t)((r >> 1) & 0x7FFFu);
         }
-        s->u.lo.wa += (((s->u.lo.tgt << 8) - s->u.lo.wa) * ni) >> 12;   /* two one-poles of ~1.7 Hz (1 / 4096 a sample) */
+        s->u.lo.wa += ((s->u.lo.tgt * 256 - s->u.lo.wa) * ni) >> 12;   /* two one-poles of ~1.7 Hz (1 / 4096 a sample) */
         s->u.lo.wb += ((s->u.lo.wa - s->u.lo.wb) * ni) >> 12;
         walk = clamp(s->u.lo.wb >> 7, -32767, 32767);   /* Q15, x2 (the smoothing leaves ~half the target's range) */
         s->ph += (uint32_t)ni * (730454u + (uint32_t)((walk >> 5) * 146));   /* flutter 7.5 Hz +-20 % */
@@ -2110,7 +2110,7 @@ static int32_t pan_g[NLIVE][2];                         /* the plain mix's gains
 static uint8_t pan_gv[NLIVE];                           /* .. valid (the block before was a plain sounding block) */
 static __attribute__((noinline)) int32_t pan_follow(uint32_t p, int32_t stored, int silent, int fine)
 {
-    int32_t tg = stored << 8, d = tg - pan_x[p];
+    int32_t tg = stored * 256, d = tg - pan_x[p];
     if (silent || (d > -16 && d < 16)) {
         pan_x[p] = tg;
         return 0;

@@ -690,7 +690,7 @@ static __attribute__((noinline)) void BUS_FN(cho_zrun)(const int32_t *cho_in, ui
  * straight line between the block's two sine values from where they were (so a change of DEPTH, RATE or the delay time never jumps),
  * and the depth reached glides at most half a sample a block (0.6 s from 0 to the top): no click turning DEPTH. State per bus (fxs_t
  * dm_*): the buses never share it. */
-#define DM_STEP 128                                     /* the depth glides at most 0.5 sample (Q8) a block */
+#define DM_DEV_STEP 128                                 /* the depth glides at most 0.5 sample (Q8) a block */
 static __attribute__((noinline)) void BUS_FN(dly_mod)(uint32_t dmask, uint32_t dl, const int32_t *cho_in, const int32_t *dly_in,
                                                       int32_t *wet, uint32_t n, uint32_t pp, int32_t *dsd)
 {
@@ -703,12 +703,12 @@ static __attribute__((noinline)) void BUS_FN(dly_mod)(uint32_t dmask, uint32_t d
     int32_t room = (int32_t)(dmask - 2u - (pp ? dl << 1 : dl)) << 8;   /* the line's end: a tap never reads past the oldest sample */
     cap = cap > room ? (room > 0 ? room : 0) : cap;
     dev = dev > cap ? cap : dev;                        /* (the target, Q8 samples: 100 % = 441 samples = 10 ms, 1129 a percent) */
-    BUS_FX.dm_dev += clamp(dev - BUS_FX.dm_dev, -DM_STEP, DM_STEP);
+    BUS_FX.dm_dev += clamp(dev - BUS_FX.dm_dev, -DM_DEV_STEP, DM_DEV_STEP);
     dev = BUS_FX.dm_dev > cap ? cap : BUS_FX.dm_dev;
     BUS_FX.dm_dev = dev;
     BUS_FN(cho_glide)(cdepth, &cdq, &cst);
-    el = ((sine_i(pl + inc) * (dev >> 3)) >> 12) << 8;  /* where the offsets are to be at the block's end (Q16) */
-    er = ((sine_i(pr + inc + (inc >> 4)) * (dev >> 3)) >> 12) << 8;
+    el = ((sine_i(pl + inc) * (dev >> 3)) >> 12) * 256;  /* where the offsets are to be at the block's end (Q16) */
+    er = ((sine_i(pr + inc + (inc >> 4)) * (dev >> 3)) >> 12) * 256;
     sl = (el - xl) >> CTL_LOG2;
     sr = (er - xr) >> CTL_LOG2;
     BUS_FX.dm_pl += inc;

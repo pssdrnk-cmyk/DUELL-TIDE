@@ -783,10 +783,10 @@ static void fm6_render(track_t *t, voice_t *v, int32_t *out, uint32_t len, const
 #endif
               ) {                                     /* DUELL ARP TARGET (SPEC 2.3): operators on the arp's pitch */
         if (!fm6_note_compute(n, p, bus, fm6_lfo_v[tr], fm6_lfo_d[tr], lf, fm6_eff[tr].alg, fb,
-                              atg_fm6(m, fm6_eff[tr].dt, dt2, ul), lvl << 16, ul))
+                              atg_fm6(m, fm6_eff[tr].dt, dt2, ul), lvl * 65536, ul))
             return;
     } else if (!fm6_note_compute(n, p, bus, fm6_lfo_v[tr], fm6_lfo_d[tr], lf, fm6_eff[tr].alg, fb, fm6_eff[tr].dt,
-                                 lvl << 16, 0)) {
+                                 lvl * 65536, 0)) {
         return;                                         /* every carrier below the threshold */
     }
     /* the voice's amplitude ramp x VOICE_FS (one carrier at full: VOICE_FS / 2), six voices in unison ~ one */

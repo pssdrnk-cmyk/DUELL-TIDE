@@ -60,7 +60,7 @@ static __attribute__((noinline)) void f2_svf(f2k_t *s, const int32_t *in, int32_
     uint32_t i;
     if (mode >= 2u)
         mb = -(k >> 2);                                 /* HP / notch: in - k bp (- lp) */
-    mba = s->s[2] << 5;                                 /* (k * bp in the output moves in a line from last block's k: a step of RES would step the output) */
+    mba = s->s[2] * 32;                                 /* (k * bp in the output moves in a line from last block's k: a step of RES would step the output) */
     dmb = mb - s->s[2];
     tsvf_coef_k(&f, idx, k);
     for (i = 0; i < n; i++) {
@@ -114,7 +114,7 @@ static __attribute__((noinline)) void f2_lad(f2k_t *s, const int32_t *in, int32_
             y4 = neg ? -a : a;
         }
         s4 = y4 + v;
-        out[i] = soft_knee(((y4 + 32) >> 6) << 1, UF_KNEE);
+        out[i] = soft_knee(((y4 + 32) >> 6) * 2, UF_KNEE);
     }
     s->s[0] = s1;
     s->s[1] = s2;
@@ -157,7 +157,7 @@ static __attribute__((noinline)) void f2_comb(f2k_t *s, int16_t *line, uint32_t 
         ix1 = ix + 1 == (int32_t)len ? 0 : ix + 1;
         del = (line[ix] + (((line[ix1] - line[ix]) * (rp & 255)) >> 8)) * 2;
         lp += ((del - lp) * 3) >> 2;                    /* the loop's damping */
-        dcs += ((lp << 12) - dcs) >> 11;                /* .. and a high-pass at 3.4 Hz: a feedback comb has a gain of 1 / (1 - feedback) at 0 Hz, 16 at the most, and the line's clip would make an offset of it */
+        dcs += (lp * 4096 - dcs) >> 11;                /* .. and a high-pass at 3.4 Hz: a feedback comb has a gain of 1 / (1 - feedback) at 0 Hz, 16 at the most, and the line's clip would make an offset of it */
         y = in[i] + ((fe * (lp - ((dcs + 2048) >> 12))) >> 12);
         ys = soft_knee(y, UF_KNEE);
         line[wr] = (int16_t)((ys + 1) >> 1);            /* (the line holds half: 64383 / 2 at the most) */
@@ -199,7 +199,7 @@ static void f2_start(const track_t *t, const voice_t *v, f2s_t *s, f2k_t *k, uin
             s->nst = 0x2468ACE + (int32_t)v->age;
     } else if (ty == TT_LADDER) {
         int32_t y = ((x >> 1) * 4096) / (4096 + clamp(res, 0, 127) * 142);
-        k->s[0] = k->s[1] = k->s[2] = k->s[3] = k->s[4] = y << 6;
+        k->s[0] = k->s[1] = k->s[2] = k->s[3] = k->s[4] = y * 64;
     } else if (ty == TT_COMB) {
         uint32_t pi = PART_OF(t), len;
         int16_t *line;
@@ -294,7 +294,7 @@ static inline int32_t f2_wp(const f2q_t *q, uint32_t i)
 }
 /* BLEND at sample i of the block, in 1/32 (bq, -2048 .. 2016) and the weights it gives (Q12): bsw the unfiltered input's share of filter 2's input (SERIES, BLEND above 0), bnw filter 1's share of
  * the output (SERIES, BLEND below 0), wpw filter 2's share (PARALLEL) */
-static inline int32_t f2_bq(const f2q_t *q, uint32_t i) { return (q->b0 << 5) + (q->b1 - q->b0) * (int32_t)(i + 1u); }
+static inline int32_t f2_bq(const f2q_t *q, uint32_t i) { return q->b0 * 32 + (q->b1 - q->b0) * (int32_t)(i + 1u); }
 
 /* before filter 1 (voice_chain.c chain_stages): dry gets the signal that filter 2 needs unfiltered, and in PARALLEL (or while the ROUTE slides to or from it) DRIVE acts on the signal that enters
  * filter 1: tmp. dry holds (s->dk): 1 the engine's signal as it came (SERIES with BLEND above 0; the ROUTE sliding), 2 the driven signal (PARALLEL: both filters get it), 0 nothing */

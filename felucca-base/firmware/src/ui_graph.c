@@ -1861,7 +1861,7 @@ static uint32_t graph_signature(void)
     if (pg->graph == GR_ENGINE && ENGINES[t->eng_req % NENGINES] == &ENG_WAVE) {   /* DUELL 1.1: the WAVE picture reads the table the main loop builds a frame at a time: it is drawn again when the build is done (have), */
         const wv_mem_t *wm = (const wv_mem_t *)ENG_MEM(t - trk);                    /* not only when a knob moved: without this a TABLE change left the picture blank (test3) */
         if (wm)
-            h = (h ^ ((uint32_t)wm->h.have | (uint32_t)wm->h.want << 8 | (uint32_t)wm->h.fade << 16 | (uint32_t)wv_uver[0] << 20 ^ (uint32_t)wv_uver[1] << 24 ^ (uint32_t)wv_uver[2] << 28)) * 16777619u;
+            h = (h ^ ((uint32_t)wm->h.have | (uint32_t)wm->h.want << 8 | (uint32_t)wm->h.fade << 16 | ((uint32_t)wv_uver[0] << 20 ^ (uint32_t)wv_uver[1] << 24 ^ (uint32_t)wv_uver[2] << 28))) * 16777619u;
     }
     if (pg->graph == GR_ENGINE)                      /* (the list while K1 turns replaces the picture) */
         h = (h ^ (ui.hot_t && ui.hot_col == 0u ? 0x51ED27u : 0u)) * 16777619u;

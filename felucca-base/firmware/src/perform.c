@@ -139,7 +139,7 @@ static struct {
     /* PUMP */
     int32_t pdn;                       /* the duck now, Q16 (0: none) */
     uint8_t pph, pbeat;                /* 0 at rest, 1 the attack, 3 the release; the beats seen (perf_beat) */
-} pf = {.src = PF_N, .next = PF_N, .mg = {32768, 32768, 32768, 32768}};
+} pf = {.src = PF_N, .next = PF_N, .mg = {32768, 32768}};
 
 static int16_t fl_buf[FL_LEN][2];      /* FLANGER's line: L R, at half the level (headroom) */
 

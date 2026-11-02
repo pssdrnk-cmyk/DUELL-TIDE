@@ -114,7 +114,7 @@ static void noise_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
             cnt = 1024 + (int32_t)(r & 3071u);
         }
         v->s[3] = (int32_t)((uint32_t)tg << 16 | (uint32_t)cnt);
-        drift += ((tg << 4) - drift) >> 10;           /* Q19 */
+        drift += (tg * 16 - drift) >> 10;             /* Q19 */
         d16 = ((drift >> 11) * drft * drft) >> 14;    /* up to about +-16 semitones */
         gain = 32767 - ((((32767 - (drift >> 4)) >> 1) * drft) >> 8);   /* down to -6 dB as it falls */
     }
@@ -189,30 +189,30 @@ static void noise_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
         x = w;
         if (colr) {                                   /* pink: three leaky poles (Kellet), brown: a leaky integrator */
             int32_t pk;
-            b0 = ((b0 * 32690) >> 15) + ((w * 3245) >> 15);
-            b1 = ((b1 * 31555) >> 15) + ((w * 9716) >> 15);
-            b2 = ((b2 * 18678) >> 15) + ((w * 17247) >> 14);
+            b0 = b0 + ((-b0 * 78) >> 15) + ((w * 3245) >> 15);      /* b * k >> 15 written as b + (-b * (32768 - k) >> 15): the same value, */
+            b1 = b1 + ((-b1 * 1213) >> 15) + ((w * 9716) >> 15);    /* but b * k overflowed 32 bits once a loud, lopsided input drove b0 */
+            b2 = b2 + ((-b2 * 14090) >> 15) + ((w * 17247) >> 14);  /* past ~65700 (br past ~65900): the pole wrapped to the other sign */
             pk = (b0 + b1 + b2 + ((w * 6055) >> 15)) >> 2;
             if (colr <= (64 << 8)) {
                 x = w + mulq15(pk - w, cf);
             } else {
-                br = ((br * 32580) >> 15) + ((w * 3480) >> 15);
+                br = br + ((-br * 188) >> 15) + ((w * 3480) >> 15);
                 x = pk + mulq15(br - pk, cf);
             }
         }
         y = soft_knee(((x >> 4) * gq) >> 8, 48000);   /* the make-up (a bound for mulq15 too: 64383 at the most) */
         if (mode == NZ_META) {                        /* the knee bends a lopsided tone: a DC blocker, ~14 Hz */
-            reg += (uint32_t)(((y << 8) - (int32_t)reg) >> 9);
+            reg += (uint32_t)((y * 256 - (int32_t)reg) >> 9);
             y -= (int32_t)reg >> 8;
         }
         if (crsh) {                                   /* hold 1..16 samples, 16 .. 4 bits */
             if ((int32_t)--ph <= 0 || ph > 16u) {
                 ph = 1u + (uint32_t)crsh / 8u;
-                reg = (uint32_t)(y >> (crsh / 11) << (crsh / 11));
+                reg = (uint32_t)((y >> (crsh / 11)) * (1 << (crsh / 11)));
             }
             y = (int32_t)reg;
         }
-        out[i] += voice_amp(y, m, i) << sh;
+        out[i] += voice_amp(y, m, i) * (1 << sh);
     }
     v->s[0] = wand;
     v->s[2] = rng;

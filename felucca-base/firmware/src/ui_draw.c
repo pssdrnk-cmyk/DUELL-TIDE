@@ -659,7 +659,7 @@ static void draw_head(void)
     ui.head_sig = sig;
     cv_begin(240, H_HEAD, T_BG);
     if (!glob) {                                       /* a part page: the capsules */
-        uint32_t lit = badge_lit(), p;
+        uint32_t lit = badge_lit();
         int32_t v0 = -1, v1 = -1;
         if (nv == 2u) {
             v0 = vn[0];

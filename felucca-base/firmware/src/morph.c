@@ -999,7 +999,7 @@ static void morph_uf_safe(const int8_t *o, const int8_t *org, int8_t *end, uint3
 static void morph_uf_open(const int8_t *o, int8_t *end, const engine_t *e)
 {
     static const uint8_t DEP[4] = {P_ED_FLT, P_E2FLT, P_LD_FLT, P_L2FLT};
-    int32_t m = end[P_FREEC], bw = m <= 64 ? m : (127 - m) * 64 / 63, lw = m < 64 ? 64 - m : 0, hw = m > 64 ? (m - 64) * 64 / 63 : 0, wlo, whi, k, over;
+    int32_t m = end[P_FREEC], bw = m <= 64 ? m : (127 - m) * 64 / 63, hw = m > 64 ? (m - 64) * 64 / 63 : 0, wlo, whi, k, over;
     uint32_t tried = 0;
     int sine = e == &ENG_ANALOG && (end[P_E0] == 2 || end[P_E0] == 3);   /* (WAVE 2 TRI, 3 SIN: eng_analog.c N_ANALOG_WAVE) */
     if (bw < 16 && hw < 16)
