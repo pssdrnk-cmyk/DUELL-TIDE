@@ -159,9 +159,9 @@ tail 3
 measure 0.0 9.0
 expect close
 
-test PHASE-31  PHASE #31 BRAZEN
+test PHASE-31  PHASE #32 BRAZEN (the test keeps its old name)
 mode STEREO
-load patch 1 #31 "BRAZEN"
+load patch 1 #32 "BRAZEN"
 at 0.0  note C3 vel 100 len 1.5
 at 2.0  chord C3 E3 G3 vel 100
 at 3.0  morph 0 127 over 3
@@ -315,11 +315,11 @@ tail 3
 measure 0.0 9.0
 expect close
 
-# ---- DUEL: the MONO DUEL pair #15 BREADBIN (part 1, left) + #27 SQUARE LEAD (part 2, right), a bass line and a lead line (no factory slot holds a DUEL multi on T0229)
-test DUEL-SCENE  DUEL: #15 BREADBIN bass line (channel 1) + #27 SQUARE LEAD (channel 2)
+# ---- DUEL: the MONO DUEL pair #15 BREADBIN (part 1, left) + #28 SQUARE LEAD (part 2, right), a bass line and a lead line (no factory slot holds a DUEL multi on T0229)
+test DUEL-SCENE  DUEL: #15 BREADBIN bass line (channel 1) + #28 SQUARE LEAD (channel 2)
 mode DUEL
 load patch 1 #15 "BREADBIN"
-load patch 2 #27 "SQUARE LEAD"
+load patch 2 #28 "SQUARE LEAD"
 
 at 0.0  note C2 vel 100 len 0.8 ch 1
 at 1.0  note C2 vel 100 len 0.8 ch 1

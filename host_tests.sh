@@ -451,7 +451,7 @@ for t in $want; do case $t in
                    && $OUT/uac_test > "$OUT/last.log" 2>&1 || { echo "   FAIL (uac_test CDC $c)"; tail -15 "$OUT/last.log"; ub=1; }
            done
            [ $ub = 0 ] && echo "   PASS" || fail=1 ;;
-  emu)     { . "$HOME/emsdk/emsdk_env.sh" >/dev/null 2>&1; sh web/emu/build.sh >"$OUT/emu_build.log" 2>&1 && $CCD -ffp-contract=off -o build/emu/native_check web/emu/native_check.c -lm && build/emu/native_check build/emu/native.f32; } || { echo "== emu"; echo "   FAIL (build)"; tail -5 "$OUT/emu_build.log"; fail=1; false; } && run emu "$EMSDK_NODE" web/emu/emu_test.mjs build/emu/felucca.wasm build/emu/native.f32 ;;
+  emu)     { if [ -f "$HOME/emsdk/emsdk_env.sh" ]; then . "$HOME/emsdk/emsdk_env.sh" >/dev/null 2>&1; fi; sh web/emu/build.sh >"$OUT/emu_build.log" 2>&1 && $CCD -ffp-contract=off -o build/emu/native_check web/emu/native_check.c -lm && build/emu/native_check build/emu/native.f32; } || { echo "== emu"; echo "   FAIL (build)"; tail -5 "$OUT/emu_build.log"; fail=1; false; } && run emu "$EMSDK_NODE" web/emu/emu_test.mjs build/emu/felucca.wasm build/emu/native.f32 ;;
   # ---- the cloud plan's job A (the store): the extension block, the 22 chunks, the velocity store (tests/xb_test.c; patch, patchraw, backup, multi, project, persist, erase, fuzz_ed and fuzz_proj are extended in place)
   xb)      awk '/^#define FL_/{p=1} p{print} p&&!/\\$/{p=0}' firmware/hal/fm1_flash.h | grep -v 'FL_FAR\|FL_XIP' > $OUT/fl_macros.h     # (the real FL_* range macros of the device header)
            if cc -O1 -g -w -fsanitize=address,undefined -I$OUT -Ifirmware/src -Itests -o $OUT/xb_test tests/xb_test.c 2>/dev/null; then :; else echo "   (no AddressSanitizer here: the bounds checks run without it)"; $CC -O1 -I$OUT -o $OUT/xb_test tests/xb_test.c || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; }; fi && run xb $OUT/xb_test ;;
@@ -537,7 +537,7 @@ PY
            for m in 1 2 3 4; do
              case $m in
                1) mn="DRIVE runs at 0 (chain_f2.c: the shaper is called whatever DRIVE is)"; mf=firmware/src/chain_f2.c; ms='s/if (q\.d0 | q\.d1)/if (1)/g' ;;
-               2) mn="LADDER's tanh removed (chain_f2.c f2_lad: the sum enters the cascade unsaturated)"; mf=firmware/src/chain_f2.c; ms='s/int32_t u = softclip((in\[i\] >> 1) - ((kf \* (y4 >> 6)) >> 12)) << 6,/int32_t u = ((in[i] >> 1) - ((kf * (y4 >> 6)) >> 12)) << 6,/' ;;
+               2) mn="LADDER's tanh removed (chain_f2.c f2_lad: the sum enters the cascade unsaturated)"; mf=firmware/src/chain_f2.c; ms='s/int32_t u = softclip((in\[i\] >> 1) - ((kf \* (y4 >> 6)) >> 12)) \* 64,/int32_t u = ((in[i] >> 1) - ((kf * (y4 >> 6)) >> 12)) * 64,/' ;;   # (1.1 writes the stage gain * 64)
                3) mn="the TYPE cross-fade removed (chain_f2.c: the new type at once)"; mf=firmware/src/chain_f2.c; ms='s/b\[i\] = a\[i\] + (((b\[i\] - a\[i\]) \* (int32_t)(base + i + 1u)) >> 8);/b[i] = b[i] + 0 * base;/' ;;
                4) mn="chain_on true at TYPE OFF (chain_f2.c chain_f2_on)"; mf=firmware/src/chain_f2.c; ms='s/return v->chn == VCH_RUN \&\& (s->ty || s->fade);/return 1;/' ;;
              esac

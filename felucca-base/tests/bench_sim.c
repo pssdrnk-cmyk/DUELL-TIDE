@@ -664,29 +664,29 @@ static int stage1_checks(void)
             const char *inf;
             bad += check("8 BENCHT2 slack, calm, lrun, vrun: a number sets it and `info` says so; default puts it back",
                          !strcmp(con("slack 10443"), "OK slack 10443\r\n") && !strcmp(con("calm 2500"), "OK calm 2500\r\n") && !strcmp(con("lrun 7"), "OK lrun 7\r\n") && !strcmp(con("vrun 3"), "OK vrun 3\r\n") &&
-                         (inf = con("info"), strstr(inf, ",slack 10443,calm 2500,lrun 7,vrun 3,vwin 0/2000,floor 0\r\n")) &&
-                         is_ok("slack default") && is_ok("calm def") && is_ok("lrun default") && is_ok("vrun default") && (inf = con("info"), strstr(inf, ",slack 3481,calm 10000,lrun 4,vrun 0,vwin 0/2000,floor 0\r\n")));
+                         (inf = con("info"), strstr(inf, ",slack 10443,calm 2500,lrun 7,vrun 3,vwin 0/2000,floor 0,core1 on\r\n")) &&
+                         is_ok("slack default") && is_ok("calm def") && is_ok("lrun default") && is_ok("vrun default") && (inf = con("info"), strstr(inf, ",slack 3481,calm 10000,lrun 4,vrun 0,vwin 0/2000,floor 0,core1 on\r\n")));
             bad += check("8 BENCHT2 the limits: a negative, too large or missing number, a word that is not a number, lrun 0 are ERR and change nothing; vrun 0 is allowed (BENCHT4: off)",
                          is_err("slack -1") && is_err("slack 400001") && is_err("slack") && is_err("slack x") && is_err("calm 80001") && is_err("calm") && is_err("lrun 0") && is_err("vrun 1001") && is_err("vrun") && is_err("vrun -1") && is_ok("vrun 0") &&
-                         is_ok("slack 0") && is_ok("slack 400000") && is_ok("calm 0") && is_ok("calm 80000") && is_ok("lrun 1000") && (inf = con("info"), strstr(inf, ",slack 400000,calm 80000,lrun 1000,vrun 0,vwin 0/2000,floor 0\r\n")));
+                         is_ok("slack 0") && is_ok("slack 400000") && is_ok("calm 0") && is_ok("calm 80000") && is_ok("lrun 1000") && (inf = con("info"), strstr(inf, ",slack 400000,calm 80000,lrun 1000,vrun 0,vwin 0/2000,floor 0,core1 on\r\n")));
             bad += check("8 BENCHT2 pause off: the late run huge, the very late run and window off (nothing pauses the jobs but a real fault); pause on: the defaults; a wrong word is ERR",
-                         is_ok("vrun 4") && is_ok("vwin 8") && is_ok("pause off") && (inf = con("info"), strstr(inf, ",lrun 1000,vrun 0,vwin 0/2000,floor 0\r\n")) && is_ok("pause on") && (inf = con("info"), strstr(inf, ",lrun 4,vrun 0,vwin 0/2000,floor 0\r\n")) &&
+                         is_ok("vrun 4") && is_ok("vwin 8") && is_ok("pause off") && (inf = con("info"), strstr(inf, ",lrun 1000,vrun 0,vwin 0/2000,floor 0,core1 on\r\n")) && is_ok("pause on") && (inf = con("info"), strstr(inf, ",lrun 4,vrun 0,vwin 0/2000,floor 0,core1 on\r\n")) &&
                          is_err("pause maybe") && is_err("pause"));
             bad += check("8 BENCHT2 reset puts the settings back; `tcm` answers with its header line",
-                         is_ok("slack 99") && is_ok("pause off") && is_ok("reset") && (inf = con("info"), strstr(inf, ",slack 3481,calm 10000,lrun 4,vrun 0,vwin 0/2000,floor 0\r\n")) &&
+                         is_ok("slack 99") && is_ok("pause off") && is_ok("reset") && (inf = con("info"), strstr(inf, ",slack 3481,calm 10000,lrun 4,vrun 0,vwin 0/2000,floor 0,core1 on\r\n")) &&
                          strstr(con("tcm"), "BENCH,TCM,very late jobs 0,shown 0"));
         }
         {   /* BENCHT3: the very late window and the floor */
             const char *inf;
             bad += check("8 BENCHT3 vwin K [MS] and floor: they set, `info` says so (BENCHT4: vwin 0/2000 floor 0 at the start), default puts them back, K 0 is off, pause off turns the window off, reset puts them back",
-                         (inf = con("info"), strstr(inf, ",vwin 0/2000,floor 0\r\n")) && !strcmp(con("vwin 5 1500"), "OK vwin 5\r\n") && (inf = con("info"), strstr(inf, ",vwin 5/1500,floor 0\r\n")) &&
-                         is_ok("vwin 3") && (inf = con("info"), strstr(inf, ",vwin 3/1500,floor 0\r\n")) && is_ok("vwin 0") && (inf = con("info"), strstr(inf, ",vwin 0/1500,")) &&
-                         !strcmp(con("floor 1"), "OK floor 1\r\n") && (inf = con("info"), strstr(inf, ",floor 1\r\n")) && is_ok("floor 0") && is_ok("vwin 8 2000") && (inf = con("info"), strstr(inf, ",vwin 8/2000,floor 0\r\n")) &&
-                         is_ok("vwin default") && is_ok("floor 1") && is_ok("floor default") && (inf = con("info"), strstr(inf, ",vwin 0/2000,floor 0\r\n")) && is_ok("vwin 8") && is_ok("pause off") && (inf = con("info"), strstr(inf, ",vwin 0/2000,floor 0\r\n")) && is_ok("reset") &&
-                         (inf = con("info"), strstr(inf, ",vrun 0,vwin 0/2000,floor 0\r\n")));
+                         (inf = con("info"), strstr(inf, ",vwin 0/2000,floor 0,core1 on\r\n")) && !strcmp(con("vwin 5 1500"), "OK vwin 5\r\n") && (inf = con("info"), strstr(inf, ",vwin 5/1500,floor 0,core1 on\r\n")) &&
+                         is_ok("vwin 3") && (inf = con("info"), strstr(inf, ",vwin 3/1500,floor 0,core1 on\r\n")) && is_ok("vwin 0") && (inf = con("info"), strstr(inf, ",vwin 0/1500,")) &&
+                         !strcmp(con("floor 1"), "OK floor 1\r\n") && (inf = con("info"), strstr(inf, ",floor 1,core1 on\r\n")) && is_ok("floor 0") && is_ok("vwin 8 2000") && (inf = con("info"), strstr(inf, ",vwin 8/2000,floor 0,core1 on\r\n")) &&
+                         is_ok("vwin default") && is_ok("floor 1") && is_ok("floor default") && (inf = con("info"), strstr(inf, ",vwin 0/2000,floor 0,core1 on\r\n")) && is_ok("vwin 8") && is_ok("pause off") && (inf = con("info"), strstr(inf, ",vwin 0/2000,floor 0,core1 on\r\n")) && is_ok("reset") &&
+                         (inf = con("info"), strstr(inf, ",vrun 0,vwin 0/2000,floor 0,core1 on\r\n")));
             bad += check("8 BENCHT3 the limits: vwin K above 16 or below 0, MS 0 or above 60000, a missing or non-number, floor 2, floor with no value are ERR and change nothing",
                          is_err("vwin 17") && is_err("vwin -1") && is_err("vwin 5 0") && is_err("vwin 5 60001") && is_err("vwin") && is_err("vwin x") && is_err("vwin 5 y") && is_err("floor 2") && is_err("floor") && is_err("floor x") &&
-                         (inf = con("info"), strstr(inf, ",vwin 0/2000,floor 0\r\n")) && is_ok("vwin 16 60000") && (inf = con("info"), strstr(inf, ",vwin 16/60000,floor 0\r\n")) && is_ok("reset"));
+                         (inf = con("info"), strstr(inf, ",vwin 0/2000,floor 0,core1 on\r\n")) && is_ok("vwin 16 60000") && (inf = con("info"), strstr(inf, ",vwin 16/60000,floor 0,core1 on\r\n")) && is_ok("reset"));
         }
         bad += check("8 end: the owner's session put back (both parts' values, the mode); the keys sound again",
                      is_ok("end") && !btl.sess && !bench.holds && !kb_boot_hold && (project_capture(&after), after.t[0].p[P_LEVEL] == 77 && after.t[1].p[P_PAN] == 30 && duell_mode_req == DM_STEREO));
@@ -993,7 +993,10 @@ int main(int argc, char **argv)
             int ok = bench_res[ia].avg > bench_res[ra].avg && bench_res[ra].avg > bench_res[ic].avg && bench_res[dl].avg > bench_res[bo].avg &&
                      bench_res[bench_find("HVY DUEL 8+8")].avg > bench_res[bench_find("TYP DUEL 8+8")].avg;
             printf("bench_sim: IDLE ST %.1f %%, ANALOG 1 %.1f %%, INS PHASER %.1f %%, BUS OFF ST %.1f %%, DL RAND ST %.1f %%\n", row_avg(ic), row_avg(ra), row_avg(ia), row_avg(bo), row_avg(dl));
-            bad += check("the stages cost something: a voice over idle, an insert over its voice, RANDOM over SENDS OFF, heavy over typical", ok);
+            if (have_counter)
+                bad += check("the stages cost something: a voice over idle, an insert over its voice, RANDOM over SENDS OFF, heavy over typical", ok);
+            else                                       /* (without it the load is audio.c's estimate from the voices alone: an insert or a delay mode costs nothing in it) */
+                printf("bench_sim: the stages' costs need the instruction counter (macOS): not compared\n");
         }
         {                                               /* (the log as the console had it: host_tests.sh feeds it to tools/bench_log.py) */
             FILE *lf = fopen(getenv("BENCH_SIM_LOG") ? getenv("BENCH_SIM_LOG") : "build/host/bench_sim.log", "w");
@@ -1056,7 +1059,7 @@ int main(int argc, char **argv)
             bad += check("7 the NOTES budget: held open while the cost rows measure, given while the M16 rows do; the rows say so (OPEN / ON)",
                          !bud_cost && bud_m16 && bench_res[a4].bopen && !bench_res[m3].bopen && bench_res[m3].bn[0] >= 1u && !bench_bopen);
             bad += check("7 the log: budget OPEN and ON rows, ramcode '-' (no RAMPLACE here), boots 3, INFO with ramcode and boots",
-                         strstr(host_log, ",OPEN,-,3\r\n") && strstr(host_log, ",ON,-,3\r\n") && strstr(host_log, ",ramcode -,boots 3,c0stack 1024/256,cores 2,why OK,slack 3481,calm 10000,lrun 4,vrun 0,vwin 0/2000,floor 0\r\n"));
+                         strstr(host_log, ",OPEN,-,3\r\n") && strstr(host_log, ",ON,-,3\r\n") && strstr(host_log, ",ramcode -,boots 3,c0stack 1024/256,cores 2,why OK,slack 3481,calm 10000,lrun 4,vrun 0,vwin 0/2000,floor 0,core1 on\r\n"));
         }
         if (update) {
             bad += write_model("firmware/src/bench_model.h");

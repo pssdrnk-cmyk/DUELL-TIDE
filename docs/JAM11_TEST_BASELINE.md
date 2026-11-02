@@ -16,6 +16,22 @@ Real bug found and fixed: RENAME / recategorise and the editor's FM6 PUT dropped
 
 `morph` moved from SKIP to FAIL when the runner began listing every failed check (`e10bbc0`): its two roll checks already fail at `8506f2c`.
 
+### Windows and tools groups (branch `t0-win`)
+
+`jam/wincompat/sys/mman.h` (anonymous shared maps as plain memory: the child they share with is never forked here). `jam/check.sh` reports any "... which Windows does not have: skipped" stop as SKIP, not only fork. Note: `work/shims/cc` points at the main checkout's `jam/wincompat`, so the new header counts once it is there.
+
+| Group | Now | Why |
+|---|---|---|
+| velaccent twocore tcmeas xvalues twin subcyc | SKIP (fork), every check before it passes | twin also: its LADDER mutation pattern follows 1.1's `* 64` |
+| uf | FAIL (compile) | 1.1 API: `PTF_BM` gone, `card_label` and its call changed: a stale-test rewrite, not Windows |
+| ownerimport | FAIL | fixed: compiles through the shell's `cc`, the export holds 126 records with TIDE. Left: `tools/import_owner_edits.py` reads every 1.1 factory sound as edited (1.1 fills the free matrix slots with default routes the recipe comparison does not know): a tool fix |
+| benchrun | SKIP (termios) | the runner needs termios and select() on pipes; the parser checks pass. OWNER-1 had BRAZEN #31 and SQUARE LEAD #27 (they are #32, #28) |
+| benchsim | FAIL (2) | fixed: 1.1's INFO line ends in `,core1 on`; the cost order needs the macOS counter (reported, not compared). Left, firmware data: the row "INS BIT CRUSHER" is 102 px (column 94), `bench_model.h` is stale (regenerating needs the macOS counter) |
+| emu | FAIL (3) | fixed: it sourced `~/emsdk` unconditionally and stopped with no output. Left: no first-start GUIDE on a fresh flash, the heavy test song is silent after PLAY (the native build agrees): 1.1 / TIDE behaviour, needs a look |
+| converttwin | FAIL (explained) | a one-time 0.2.x migration check: 1.1 rebuilt the factory multis as MU_VER 8 (other values, other sounds) and the tool reads today's tables, so "committed == tool output" cannot hold; retire it or freeze it with its own tables: owner decision. Its run also rewrites `tools/convert_twin_done.json` |
+| editorjson | FAIL (16, explained) | not Windows: the web editor tests keep 1.0 expectations (menu 33 items: 1.1 dropped CPU METER; MIDI MAP tab; NX 28; matrix VIB and SPACE; MULTI FILTER 2/2 without LFO 2; FM6 AMP ENV no longer hidden; 1.1's renames SATURATION, WAVE SHAPING, TWIN RES, FILTER ENV DEPTH break the R1 naming checks). The mock's ARP / SEQ menu items are "DEMO ONLY" values the firmware does not have: an upstream / owner call before rewriting |
+| jam_dev | FAIL (explained) | its mock is the web editor's MockUnit, which still builds 1.0 objects (old music header, pre-PT_VER 4 patch records) that 1.1's checkObject refuses: same root as editorjson |
+
 ## Broad-run snapshot: 2 November 2026, `bd339c9`
 
 `sh jam/check.sh`, 600 s per group (full run at `75a987a`, the groups changed after it re-run at `bd339c9`). **65 passed, 57 failed (fm6 a timeout), 12 skipped.** Before this round (`8506f2c`): 58 / 65 / 11.
