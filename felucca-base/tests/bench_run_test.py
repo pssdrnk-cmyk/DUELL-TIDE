@@ -12,6 +12,9 @@ import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
+if os.name == "nt":                 # Windows: no termios; the parser checks need none (the runner, below, is not run here)
+    import types
+    sys.modules.setdefault("termios", types.ModuleType("termios"))
 import bench_run as br  # noqa: E402
 
 SIM = os.path.join(ROOT, "build", "host", "bench_sim")
@@ -76,6 +79,9 @@ except br.SuiteError as e:
     check("a wrong word in a suite is an error with its line", "line 2" in str(e))
 
 # ---- the runner against the Mac twin
+if os.name == "nt":                 # the runner talks to the unit or the twin through termios and select() on pipes (macOS / Linux only, its docstring)
+    print("JAM: the runner needs termios and select() on pipes, which Windows does not have: skipped")
+    sys.exit(1 if bad else 77)
 if not os.path.exists(SIM):
     print("bench_run: build/host/bench_sim not built: the runner is not run against it")
     sys.exit(1 if bad else 0)

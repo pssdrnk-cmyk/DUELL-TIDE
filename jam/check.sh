@@ -2,7 +2,7 @@
 # DUELL JAM: the whole check in one command (Git Bash on Windows; also Linux / macOS).
 #   sh jam/check.sh [test ...]        (default: the device build, every host test group, the patcher's tests)
 # Each host test group runs on its own with a time limit, so a slow or stuck one cannot stall the rest. On Windows a group
-# that needs fork() stops at once (jam/wincompat/sys/wait.h) and is reported SKIP, not FAIL, unless a check failed before it. The summary and every
+# that needs fork() (jam/wincompat/sys/wait.h) or another POSIX-only part stops there with "... which Windows does not have: skipped" and is reported SKIP, not FAIL, unless a check failed before it. The summary and every
 # group's output land in ../work/check/ (outside the repository).
 set -u
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
@@ -38,18 +38,18 @@ for g in $groups; do
     rc=$?
     # a check that failed before the group reached a part it cannot run here is a failure, not a skip: the group's own FAIL lines
     # (not the runner's "   FAIL" summary, which a fork stop also prints) and failed assertions come first
-    real=$(grep -E "FAIL|Assertion failed" "$out" | grep -vE "^   FAIL|needs fork\(\)" | head -1)
+    real=$(grep -E "FAIL|Assertion failed" "$out" | grep -vE "^   FAIL|which Windows does not have: skipped" | head -1)
     if [ $rc -eq 124 ]; then
         echo "TIMEOUT $g (over ${LIMIT} s)"; fail=$((fail + 1)); failed="$failed $g"
     elif [ -n "$real" ]; then
-        if grep -q "needs fork(), which Windows does not have" "$out"; then
-            echo "FAIL    $g (a check failed before the part that needs fork)"
+        if grep -q "which Windows does not have: skipped" "$out"; then
+            echo "FAIL    $g (a check failed before the part Windows cannot run)"
         else
             echo "FAIL    $g"
         fi
         fail=$((fail + 1)); failed="$failed $g"
-    elif grep -q "needs fork(), which Windows does not have" "$out"; then
-        echo "SKIP    $g (needs fork)"; skip=$((skip + 1))
+    elif grep -q "which Windows does not have: skipped" "$out"; then
+        echo "SKIP    $g ($(grep -m1 -o "needs [^,]*, which Windows" "$out" | sed "s/, which Windows//"))"; skip=$((skip + 1))
     elif grep -q "^   FAIL" "$out" || [ $rc -ne 0 ]; then
         echo "FAIL    $g"; fail=$((fail + 1)); failed="$failed $g"
     else
