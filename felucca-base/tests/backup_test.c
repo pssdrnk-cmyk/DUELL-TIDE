@@ -368,7 +368,7 @@ int main(void)
                      st_crc32(m_a, ml) == mc && !memcmp(m_a, "MUL1", 4));
         bad += check("GET of the runtime id 0 still works after multis were read (no staging clash)", list(0, &len, &crc) == 0 && get(0, 0, 64) == 0 &&
                      get(14, 0, 64) == 0 && get(0, 0, 64) == 0);
-        memcpy(p_a, &ps_bank[0], pl);
+        memcpy(p_a, ps_obj(0), pl);
         at2 = ps_at[2];
         bad += check("a pattern object GET is the RAM mirror (CRC as listed)", st_crc32(p_a, pl) == pc && !memcmp(p_a, "PTS3", 4));
         bad += check("only the objects with a stored multi list a length (M10 = object 4, id 17; object 3, id 16: none)",
@@ -391,7 +391,7 @@ int main(void)
         {
             int n = st_load(OBJ_PATSLOT0, got, sizeof got);
             bad += check("restore: ps_poll writes nothing over it; flash and mirror are the restored object, P3 is back by name, P6 is its default again",
-                         n == (int)pl && st_crc32(got, pl) == pc && !memcmp(&ps_bank[0], p_a, pl) && ps_changed(2) && !ps_changed(5));
+                         n == (int)pl && st_crc32(got, pl) == pc && !memcmp(ps_obj(0), p_a, pl) && ps_changed(2) && !ps_changed(5));
         }
         {
             char nm[13];

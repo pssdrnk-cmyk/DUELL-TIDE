@@ -30,10 +30,13 @@
  * 16-slot format. A payload ends at 3584 + 256 = 0xF00: a sector's tail from 0xF00 stays erased (where the update loader and the
  * SPL look for update records, as fm6_vbank.c keeps it). The stock firmware's "USR" region (0xEA000..0xFBFFF) is never written.
  *
- * RAM: a mirror of the three objects (.pool, the same 3 x 3584 bytes as the 16-slot format), so the list never reads flash. SAVE and
- * ERASE change the mirror at once (jam: while playing too); the flash write waits until nothing plays (ps_poll, from settings_poll: no
- * erase is heard). The defaults of an object that was missing or unreadable are written the same way, once nothing plays.
- * Without FELUCCA_FLASH (host builds) the mirror is all there is. */
+ * RAM (S0a): ONE object (ps_buf, .pool, 3584 bytes) and every slot's name, LEN and flags (ps_meta), so the list never reads flash.
+ * A LOAD reads its slot's object into ps_buf (or, while ps_buf holds another object's unsaved SAVE, reads the slot from the flash
+ * for that load only); SAVE and ERASE change ps_buf at once (jam: while playing too); the flash write waits until nothing plays
+ * (ps_poll, from settings_poll: no erase is heard). The one exception: a SAVE into ANOTHER object while one still waits writes the
+ * waiting one at once (ps_take: the flash duck's short dip, owner 2 November 2026). An object that was missing or unreadable is its
+ * defaults (ps_def): built again whenever it is needed, written once nothing plays.
+ * Without FELUCCA_FLASH (host builds) the three objects stay in RAM (ps_bank): that is all there is. */
 #define PS_PER_OBJ 11u
 #define PS_NOBJ ((PS_SLOTS + PS_PER_OBJ - 1u) / PS_PER_OBJ)
 #define PS_OBJ_MAX 3584u                        /* ST_PAYLOAD_END - ST_PAYLOAD_OFF */
@@ -49,16 +52,28 @@ _Static_assert(PS_OBJ_MAX == ST_PAYLOAD_END - ST_PAYLOAD_OFF, "a pattern object 
 #endif
 _Static_assert(PS_NOBJ == 3u && (PS_NOBJ - 1u) * PS_PER_OBJ < PS_SLOTS, "32 slots in 3 objects: 11, 11 and 10");
 _Static_assert(NPATTERNS == PS_SLOTS, "the default patterns are the content of the pattern slots, one each");
-static uint8_t ps_bank[PS_NOBJ][PS_OBJ_MAX] __attribute__((aligned(4), section(".pool")));   /* (main loop only) */
+#if FELUCCA_FLASH
+static uint8_t ps_buf[PS_OBJ_MAX] __attribute__((aligned(4), section(".pool")));   /* the object ps_buf_o (main loop only) */
+#define PS_MEM(o) ps_buf
+#else
+static uint8_t ps_bank[PS_NOBJ][PS_OBJ_MAX];    /* (host builds without flash: every object) */
+#define PS_MEM(o) ps_bank[o]
+#endif
+typedef struct { uint8_t fl, len, nl; char name[PS_NAME]; } ps_meta_t;   /* a slot's flags, LEN and name: what the list shows */
+static ps_meta_t ps_meta[PS_SLOTS] __attribute__((section(".pool")));
 static uint16_t ps_at[PS_SLOTS];                /* slot k's record: its offset in its object (kept by ps_index) */
+static uint16_t ps_used[PS_NOBJ];               /* object o's length, header included */
+static uint8_t ps_buf_o = 0xFFu;                /* the object ps_buf holds (0xFF none; flash builds) */
 static uint8_t ps_dirty;                        /* bit o: object o changed in RAM, not in flash yet */
+static uint8_t ps_def;                          /* bit o: object o is its slots' defaults, not from the flash (built again when needed) */
 static uint8_t ps_booted;                       /* ps_boot has run (a host test that never boots the stores: the first access does) */
 static void ps_boot(void);
 
 static uint32_t ps_nslot(uint32_t o) { return PS_SLOTS - o * PS_PER_OBJ > PS_PER_OBJ ? PS_PER_OBJ : PS_SLOTS - o * PS_PER_OBJ; }
-static uint32_t ps_used_len(uint32_t o) { if (!ps_booted) ps_boot(); return (uint32_t)ps_bank[o][4] | (uint32_t)ps_bank[o][5] << 8; }
-static void ps_set_used(uint32_t o, uint32_t n) { ps_bank[o][4] = (uint8_t)n; ps_bank[o][5] = (uint8_t)(n >> 8); }
-static uint8_t *ps_rec(uint32_t k) { if (!ps_booted) ps_boot(); return &ps_bank[k / PS_PER_OBJ][ps_at[k]]; }   /* (k < PS_SLOTS) */
+static uint32_t ps_used_len(uint32_t o) { if (!ps_booted) ps_boot(); return ps_used[o]; }
+static void ps_set_used(uint32_t o, uint32_t n) { PS_MEM(o)[4] = (uint8_t)n; PS_MEM(o)[5] = (uint8_t)(n >> 8); ps_used[o] = (uint16_t)n; }
+static const ps_meta_t *ps_m(uint32_t k) { if (!ps_booted) ps_boot(); return &ps_meta[k]; }   /* (k < PS_SLOTS) */
+static int ps_pending(uint32_t o) { return o < PS_NOBJ && (ps_dirty >> o & 1u) && !(ps_def >> o & 1u); }   /* a SAVE only RAM holds */
 static uint32_t ps_rlen(const uint8_t *r) { return 2u + ((uint32_t)r[0] | (uint32_t)r[1] << 8); }   /* the record's bytes, rlen included */
 
 /* step s -> 9 bytes (project.c proj_pack's packing: NUDGE in bit 7 of the notes, RATCH in bit 7 of VEL and CHANCE) */
@@ -231,13 +246,19 @@ static uint32_t ps_rec_ok(const uint8_t *r, const uint8_t *e)
     return p == end ? n : 0;
 }
 
-/* the offsets of the records of object o (the object is valid) */
-static void ps_index(uint32_t o)
+/* the offsets, names, LENs and flags of the records of object o, as b (the object is valid) */
+static void ps_index(uint32_t o, const uint8_t *b)
 {
     uint32_t i, at = PS_HDR;
+    ps_used[o] = (uint16_t)(b[4] | b[5] << 8);
     for (i = 0; i < ps_nslot(o); i++) {
-        ps_at[o * PS_PER_OBJ + i] = (uint16_t)at;
-        at += ps_rlen(&ps_bank[o][at]);
+        uint32_t k = o * PS_PER_OBJ + i;
+        ps_at[k] = (uint16_t)at;
+        ps_meta[k].fl = b[at + 2u];
+        ps_meta[k].len = b[at + 3u];
+        ps_meta[k].nl = b[at + 7u];
+        memcpy(ps_meta[k].name, &b[at + 8u], b[at + 7u]);
+        at += ps_rlen(&b[at]);
     }
 }
 /* object o as b (len bytes): the shape ps_obj_check wants (a PUT of the editor's backup restore is checked with it too) */
@@ -274,64 +295,122 @@ static uint32_t ps_def_rec(uint8_t *d, uint32_t k)
 
 static void ps_touch(uint32_t o) { ps_dirty |= (uint8_t)(1u << o); }
 
-static void ps_reset_obj(uint32_t o)            /* all the defaults of object o (to be written when nothing plays) */
+static void ps_build_def(uint32_t o)            /* the defaults of object o into its RAM */
 {
-    uint8_t r[PS_REC_MAX];
+    uint8_t r[PS_REC_MAX], *b = PS_MEM(o);
     uint32_t i, at = PS_HDR;
-    memset(ps_bank[o], 0, PS_OBJ_MAX);
+    memset(b, 0, PS_OBJ_MAX);
     for (i = 0; i < ps_nslot(o); i++) {
         uint32_t n = ps_def_rec(r, o * PS_PER_OBJ + i);
-        memcpy(&ps_bank[o][at], r, n);
+        memcpy(&b[at], r, n);
         at += n;
     }
-    ps_bank[o][0] = 'P'; ps_bank[o][1] = 'T'; ps_bank[o][2] = 'S'; ps_bank[o][3] = '3';
-    ps_bank[o][6] = (uint8_t)ps_nslot(o);
-    ps_bank[o][7] = PS_PER_OBJ;
+    b[0] = 'P'; b[1] = 'T'; b[2] = 'S'; b[3] = '3';
+    b[6] = (uint8_t)ps_nslot(o);
+    b[7] = PS_PER_OBJ;
     ps_set_used(o, at);
-    ps_index(o);
+    ps_index(o, b);
+}
+static void ps_reset_obj(uint32_t o)            /* all the defaults of object o (to be written when nothing plays; ps_buf is free for it) */
+{
+#if FELUCCA_FLASH
+    ps_buf_o = (uint8_t)o;
+#endif
+    ps_build_def(o);
+    ps_def |= (uint8_t)(1u << o);
     ps_touch(o);
 }
 
-static void ps_obj_check(uint32_t o, int len)   /* after a load: a wrong shape is the defaults, each record checked */
+static void ps_obj_check(uint32_t o, int len)   /* after a load into the object's RAM: a wrong shape is the defaults, each record checked */
 {
-    if (len <= 0 || !ps_obj_ok(o, ps_bank[o], (uint32_t)len))
+    if (len <= 0 || !ps_obj_ok(o, PS_MEM(o), (uint32_t)len))
         ps_reset_obj(o);
     else
-        ps_index(o);
+        ps_index(o, PS_MEM(o));
 }
 
 static void ps_boot(void)                       /* persist_boot (up_boot): the slots from flash, else the defaults */
 {
     uint32_t o;
     ps_dirty = 0;
+    ps_def = 0;
     ps_booted = 1;
     for (o = 0; o < PS_NOBJ; o++) {
 #if FELUCCA_FLASH
-        ps_obj_check(o, flash_ok ? st_load(OBJ_PATSLOT0 + o, ps_bank[o], PS_OBJ_MAX) : -1);
+        ps_buf_o = (uint8_t)o;                  /* (the one before is in the flash or its defaults: nothing lost) */
+        ps_obj_check(o, flash_ok ? st_load(OBJ_PATSLOT0 + o, ps_buf, PS_OBJ_MAX) : -1);
 #else
         ps_obj_check(o, -1);
 #endif
     }
 }
 
-static int ps_changed(uint32_t k) { return k < PS_SLOTS && (ps_rec(k)[2] & PS_F_CHANGED); }   /* saved by the user: ERASE gives the default back */
-static uint32_t ps_len(uint32_t k) { return k < PS_SLOTS ? ps_rec(k)[3] : 0u; }
+#if FELUCCA_FLASH
+static int ps_write(uint32_t o)                 /* object o (in ps_buf) to the flash now: 0 ok */
+{
+    if (!flash_ok || ps_buf_o != o || st_save(OBJ_PATSLOT0 + o, ps_buf, ps_used[o]))
+        return -1;
+    ps_dirty &= (uint8_t)~(1u << o);
+    ps_def &= (uint8_t)~(1u << o);
+    return 0;
+}
+#endif
+/* object o into ps_buf. A SAVE of another object that still waits for the flash is written first, at once (the one dip).
+ * 0 ok, -1 the flash failed (ps_buf as it was) */
+static int ps_take(uint32_t o)
+{
+#if FELUCCA_FLASH
+    int len;
+    if (!ps_booted)
+        ps_boot();
+    if (ps_buf_o == o)
+        return 0;
+    if (ps_pending(ps_buf_o) && ps_write(ps_buf_o))
+        return -1;
+    if (ps_def >> o & 1u) {
+        ps_buf_o = (uint8_t)o;
+        ps_build_def(o);
+        return 0;
+    }
+    ps_buf_o = 0xFFu;
+    len = flash_ok ? st_load(OBJ_PATSLOT0 + o, ps_buf, PS_OBJ_MAX) : -1;
+    if (len != (int)ps_used[o] || !ps_obj_ok(o, ps_buf, (uint32_t)len))
+        return -1;                              /* (it was valid at boot: never replaced by the defaults here, the user's slots stay in the flash) */
+    ps_buf_o = (uint8_t)o;
+    ps_index(o, ps_buf);
+#else
+    (void)o;
+    if (!ps_booted)
+        ps_boot();
+#endif
+    return 0;
+}
+/* object o's bytes (ps_used_len(o) long), in RAM until the next ps_take; 0: the flash failed (the editor's backup reads it) */
+static const uint8_t *ps_obj(uint32_t o) { return ps_take(o) ? 0 : PS_MEM(o); }
+
+static int ps_changed(uint32_t k) { return k < PS_SLOTS && (ps_m(k)->fl & PS_F_CHANGED); }   /* saved by the user: ERASE gives the default back */
+static uint32_t ps_len(uint32_t k) { return k < PS_SLOTS ? ps_m(k)->len : 0u; }
 static void ps_name(uint32_t k, char *b)        /* slot k's stored name (b: 13 bytes; "" none) */
 {
-    uint32_t i, n = k < PS_SLOTS ? ps_rec(k)[7] : 0u;
+    uint32_t i, n = k < PS_SLOTS ? ps_m(k)->nl : 0u;
     for (i = 0; i < n; i++)
-        b[i] = (char)ps_rec(k)[8u + i];
+        b[i] = ps_meta[k].name[i];
     b[i] = 0;
 }
 
-/* record r (n bytes) into slot k: its place in its object. 0 ok, 2 does not fit (nothing changed) */
+/* record r (n bytes) into slot k: its place in its object. 0 ok, 2 does not fit (nothing changed), 3 the flash failed */
 static int ps_splice(uint32_t k, const uint8_t *r, uint32_t n)
 {
-    uint32_t o = k / PS_PER_OBJ, old = ps_rlen(ps_rec(k)), used = ps_used_len(o), at = ps_at[k];
+    uint32_t o = k / PS_PER_OBJ, old, used, at;
+    if (ps_take(o))
+        return 3;
+    old = ps_rlen(&PS_MEM(o)[ps_at[k]]);
+    used = ps_used[o];
+    at = ps_at[k];
     if (used - old + n > PS_OBJ_MAX)
         return 2;
     {                                           /* the records after slot k move by n - old bytes (the device's libc has no memmove) */
-        uint8_t *b = ps_bank[o];
+        uint8_t *b = PS_MEM(o);
         uint32_t i, tail = used - at - old;
         if (n > old)
             for (i = tail; i-- > 0;)
@@ -340,11 +419,28 @@ static int ps_splice(uint32_t k, const uint8_t *r, uint32_t n)
             for (i = 0; i < tail; i++)
                 b[at + n + i] = b[at + old + i];
     }
-    memcpy(&ps_bank[o][at], r, n);
+    memcpy(&PS_MEM(o)[at], r, n);
     ps_set_used(o, used - old + n);
-    ps_index(o);
+    ps_index(o, PS_MEM(o));
+    ps_def &= (uint8_t)~(1u << o);              /* (the user's now) */
     ps_touch(o);
     return 0;
+}
+
+/* the editor's backup restored object o as b (len bytes, checked, already in the flash): RAM follows, no write waits */
+static void ps_restored(uint32_t o, const uint8_t *b, uint32_t len)
+{
+#if FELUCCA_FLASH
+    if (ps_buf_o == o || !ps_pending(ps_buf_o)) {
+        memcpy(ps_buf, b, len);
+        ps_buf_o = (uint8_t)o;
+    }
+#else
+    memcpy(ps_bank[o], b, len);
+#endif
+    ps_index(o, b);
+    ps_dirty &= (uint8_t)~(1u << o);
+    ps_def &= (uint8_t)~(1u << o);
 }
 
 static void ps_trk_get(const void *ctx, uint32_t i, uint8_t *b9) { ps_pack_step(&((const track_t *)ctx)->step[i], b9); }
@@ -367,14 +463,40 @@ static int ps_save_trk(const track_t *t, uint32_t k, const char *name)
 }
 
 /* slot k -> track t's steps (all 64) and LEN DIV SWING GATE QUANTIZE; the sound stays (ui.c pat_load: the undo copy). 0 ok, 1 bad slot */
+/* slot k's record for a LOAD: in ps_buf, or (while ps_buf holds another object's waiting SAVE) read into tmp (PS_REC_MAX bytes)
+ * from the flash or built as its default: no write, no dip. 0: the flash failed */
+static const uint8_t *ps_rec_for_load(uint32_t k, uint8_t *tmp)
+{
+    uint32_t o = k / PS_PER_OBJ;
+#if FELUCCA_FLASH
+    if (!ps_booted)
+        ps_boot();
+    if (ps_buf_o != o && ps_pending(ps_buf_o)) {
+        st_hdr_t h;
+        uint32_t n;
+        if (ps_def >> o & 1u) {
+            ps_def_rec(tmp, k);
+            return tmp;
+        }
+        if (!flash_ok || st_current(OBJ_PATSLOT0 + o, &h) < 0 || h.len != ps_used[o])   /* (the payload is left in st_buf) */
+            return 0;
+        n = ps_rec_ok(st_buf + ps_at[k], st_buf + h.len);
+        if (!n || n > PS_REC_MAX)
+            return 0;
+        memcpy(tmp, st_buf + ps_at[k], n);
+        return tmp;
+    }
+#endif
+    return ps_take(o) ? 0 : &PS_MEM(o)[ps_at[k]];
+}
+
 static int ps_load_trk(track_t *t, uint32_t k)
 {
     const uint8_t *r, *p, *end;
     uint32_t i, nl, nst;
-    uint8_t b[PS_STEP];
-    if (k >= PS_SLOTS)
+    uint8_t b[PS_STEP], tmp[PS_REC_MAX];
+    if (k >= PS_SLOTS || !(r = ps_rec_for_load(k, tmp)))
         return 1;
-    r = ps_rec(k);
     nl = r[7];
     nst = r[8u + nl];
     p = r + 9u + nl;
@@ -414,12 +536,14 @@ static void ps_poll(void)
     uint32_t o;
     if (!ps_dirty || !flash_ok || (ps_retry_ms && (uint32_t)(fm1_ms - ps_retry_ms) < 1000u) || !autosave_quiet())
         return;
-    for (o = 0; o < PS_NOBJ && !((ps_dirty >> o) & 1u); o++)
-        ;
+    if (ps_buf_o < PS_NOBJ && (ps_dirty >> ps_buf_o & 1u))
+        o = ps_buf_o;                           /* the object in RAM first (a waiting SAVE); then the defaults, built again */
+    else
+        for (o = 0; o < PS_NOBJ && !((ps_dirty >> o) & 1u); o++)
+            ;
     if (o >= PS_NOBJ)
         return;
-    if (st_save(OBJ_PATSLOT0 + o, ps_bank[o], ps_used_len(o)) == 0) {
-        ps_dirty &= (uint8_t)~(1u << o);
+    if (ps_take(o) == 0 && ps_write(o) == 0) {
         ps_retry_ms = 0;
     } else {
         ps_retry_ms = fm1_ms | 1u;

@@ -1,1 +1,1 @@
-6232c047c076ea52f836b1fffc25fb7c4706db8f8d856791f2d9a10e8b0ee9f3  duell-1.1.fwsc (DUELL_TIDE=0; fixes + shared font/compiler/UI compaction + MODE SPLIT no bounce from OFF)
+b531ace311cb2ba19f9a0a425b2bd7901bcb72cc3e44c9cf9ace213718a53dd1  duell-1.1.fwsc (DUELL_TIDE=0; fixes + shared font/compiler/UI compaction + MODE SPLIT no bounce from OFF + S0 size policy and one pattern object in RAM; ABOUT date pinned Nov  1 2026)

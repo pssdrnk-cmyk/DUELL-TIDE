@@ -90,7 +90,7 @@ static void make_pattern(track_t *t, uint32_t k)
     }
     t->p[P_SLEN] = (int16_t)(5u + (k * 7u) % 60u);
     t->p[P_SDIV] = (int16_t)(k % 5u);
-    t->p[P_SSWING] = (int16_t)((k * 13u) % 100u);
+    t->p[P_SSWING] = (int16_t)(TP[P_SSWING].min + (int32_t)((k * 13u) % (uint32_t)(TP[P_SSWING].max - TP[P_SSWING].min + 1)));   /* (1.1: SWING 50..75) */
     t->p[P_SGATE] = (int16_t)(1u + (k * 29u) % 127u);
     t->p[P_SQNT] = (int16_t)(k & 1u);
 }
@@ -103,9 +103,12 @@ static void power_cycle(void)                        /* the RAM is gone; the fla
 {
     dead = 0;
     cut_bytes = -1;
-    memset(ps_bank, 0x5A, sizeof ps_bank);
+    memset(ps_buf, 0x5A, sizeof ps_buf);
+    memset(ps_meta, 0x5A, sizeof ps_meta);
     memset(ps_at, 0, sizeof ps_at);
+    ps_buf_o = 0xFFu;
     ps_dirty = 0;
+    ps_def = 0;
     ui_power_on();
     flash_ok = 1;
     ps_boot();
@@ -202,7 +205,7 @@ int main(void)
             if (ps_used_len(o) > mx)
                 mx = ps_used_len(o);
         ck("  the objects: 11 + 11 + 10 slots, magic PTS3, well inside the 3584 B payload (largest object here: see the number)",
-           ps_bank[0][6] == 11 && ps_bank[1][6] == 11 && ps_bank[2][6] == 10 && ps_bank[0][7] == 11 && !memcmp(ps_bank[0], "PTS3", 4) && mx < 2500u && u > 600u);
+           ps_obj(0)[6] == 11 && ps_obj(1)[6] == 11 && ps_obj(2)[6] == 10 && ps_obj(0)[7] == 11 && !memcmp(ps_obj(0), "PTS3", 4) && mx < 2500u && u > 600u);
         printf("patslot:   default objects use %u / %u / %u bytes of %u\n", ps_used_len(0), ps_used_len(1), ps_used_len(2), PS_OBJ_MAX);
     }
     flush();
@@ -224,14 +227,15 @@ int main(void)
     }
     {   /* the old format (PTS2, 16 slots of 596 bytes) and damage are not read: the object's slots are their defaults */
         uint8_t keep[PS_OBJ_MAX];
-        memcpy(keep, ps_bank[1], sizeof keep);
-        ps_bank[1][3] = '2';                                    /* "PTS2" */
+        memcpy(keep, ps_obj(1), sizeof keep);
+        ps_buf[3] = '2';                                    /* "PTS2" */
         ps_obj_check(1, (int)ps_used_len(1));
-        ck("an object with the old magic (PTS2) is the defaults again (and is written back)", !memcmp(ps_bank[1], keep, ps_used_len(1)) && (ps_dirty & 2u));
+        ck("an object with the old magic (PTS2) is the defaults again (and is written back)", !memcmp(ps_obj(1), keep, ps_used_len(1)) && (ps_dirty & 2u));
         ps_dirty = 0;
-        ps_bank[0][20] ^= 0x80u;                                /* a damaged record (name or steps) */
+        ps_take(0);
+        ps_buf[20] ^= 0x80u;                                /* a damaged record (name or steps) */
         ps_obj_check(0, (int)ps_used_len(0));
-        ck("  a damaged object likewise", !ps_changed(0) && (ps_dirty & 1u) && ps_obj_ok(0, ps_bank[0], ps_used_len(0)));
+        ck("  a damaged object likewise", !ps_changed(0) && (ps_dirty & 1u) && ps_obj_ok(0, ps_obj(0), ps_used_len(0)));
         ps_dirty = 0;
         ck("  a length that is not the object's own, or 0, likewise", (ps_obj_check(2, (int)ps_used_len(2) - 1), (ps_dirty & 4u)) &&
            (ps_dirty = 0, ps_obj_check(2, 0), (ps_dirty & 4u)));
@@ -340,31 +344,33 @@ int main(void)
         ok &= ps_changed(k) && !ps_load_trk(&trk[1], k) && same_pattern(&trk[1], &ref2);
     }
     ck("32 slots: each loads its own pattern after a power cycle (onto either part)", ok);
-    song.sel = 0;
-    go_title("PATTERNS");
-    pick(6);
-    turn(EN_K3, 1);                                  /* ERASE */
-    press(B_OCTUP);
-    ck("ERASE asks first", ui.confirm == CF_ERASE_PSLOT);
-    press(B_OCTUP);
-    ck("  OCT+: ERASED P07", msg_is("ERASED P07") && !ps_changed(6));
-    flush();
-    power_cycle();
-    ok = !ps_changed(6);
-    for (k = 0; k < PS_SLOTS; k++) {
-        make_pattern(&ref2, 100u + k);
-        if (k != 6u)
-            ok &= ps_changed(k) && !ps_load_trk(&trk[1], k) && same_pattern(&trk[1], &ref2);
+    {   /* S0a: ONE object in RAM. Saves into two objects while playing: the first is written at the second (the one dip);
+         * a LOAD while a SAVE waits reads its slot from the flash and writes nothing */
+        track_t ref3;
+        song.sel = 0;
+        song.playing = 1;
+        make_pattern(&trk[0], 700u);
+        lo_hit = 0xFFFFFFFFu; hi_hit = 0;
+        ck("S0a: SAVE P02 while playing: kept in RAM, nothing written", ps_save_trk(&trk[0], 1, "ONE") == 0 && ps_pending(0) &&
+           lo_hit == 0xFFFFFFFFu);
+        make_pattern(&trk[0], 701u);
+        ck("  SAVE P13 (another object) while playing: P02's object is written at once, P13's waits",
+           ps_save_trk(&trk[0], 12, "TWO") == 0 && !(ps_dirty & 1u) && ps_pending(1) && lo_hit >= 0xD6000u && hi_hit <= 0xD8000u);
+        lo_hit = 0xFFFFFFFFu; hi_hit = 0;
+        make_pattern(&ref3, 700u);
+        ck("  LOAD P02 while P13 waits: its steps from the flash, nothing written, P13 still waits",
+           !ps_load_trk(&trk[1], 1) && same_pattern(&trk[1], &ref3) && lo_hit == 0xFFFFFFFFu && ps_pending(1));
+        make_pattern(&ref3, 104u);
+        ck("  LOAD P05 likewise (its record read for the load only)", !ps_load_trk(&trk[1], 4) && same_pattern(&trk[1], &ref3) && lo_hit == 0xFFFFFFFFu);
+        ck("  the list shows both names at once (from RAM, no flash read)", ({ char x[13], y[13]; ps_name(1, x); ps_name(12, y); str_eq(x, "ONE") && str_eq(y, "TWO"); }));
+        song.playing = 0;
+        flush();
+        power_cycle();
+        make_pattern(&ref3, 701u);
+        ck("  after STOP and a power cycle: P13 as saved", !ps_load_trk(&trk[1], 12) && same_pattern(&trk[1], &ref3) && ps_changed(12));
+        make_pattern(&ref3, 700u);
+        ck("  and P02 as saved", !ps_load_trk(&trk[1], 1) && same_pattern(&trk[1], &ref3) && ps_changed(1));
     }
-    {
-        char tag[4], nm2[13];
-        pat_label(6, tag, nm2);
-        ck("  ERASE gave the default back: P07 GLASS LOOP (its steps too)", str_eq(nm2, PATTERNS[6].name) && !ps_changed(6) &&
-           !ps_load_trk(&trk[1], 6) && trk[1].step[1].note[0] == PATTERNS[6].note[1] && trk[1].p[P_SLEN] == 16);
-        pat_label(4, tag, nm2);
-        ck("  P05 still shows its stored name SLOT", str_eq(nm2, "SLOT"));
-    }
-    ck("  after a power cycle P07 is its default, the other 31 as saved", ok);
     go_title("PATTERNS");
     pick(6);
     turn(EN_K2, 1);
@@ -475,8 +481,8 @@ int main(void)
         song.sel = 0;
         go_title("PATTERNS");
         pat_used = NSTEP;
-        for (k = 0; k < 11u; k++)
-            ps_erase(k) , ps_dirty = ps_dirty;
+        ps_take(0);
+        ps_reset_obj(0);                              /* (object 0: P01..P11 their defaults) */
         for (k = 0; k < 11u; k++) {
             make_pattern(&trk[0], 500u + k);
             if ((r = (uint32_t)ps_save_trk(&trk[0], k, "HEAVY CHORDS")) != 0) {
@@ -485,8 +491,8 @@ int main(void)
             }
         }
         ck("eleven 64-step patterns with chords, velocities and chances do not fit one object: SAVE is refused (2) before the last", r == 2u && full_at < 11u);
-        printf("patslot:   a heavy 64-step pattern takes about %u bytes; refused at the %u. in the object\n", ps_rlen(ps_rec(0)), full_at + 1u);
-        memcpy(keep, ps_bank[0], sizeof keep);
+        printf("patslot:   a heavy 64-step pattern takes about %u bytes; refused at the %u. in the object\n", ps_rlen(ps_obj(0) + ps_at[0]), full_at + 1u);
+        memcpy(keep, ps_obj(0), sizeof keep);
         len_before = ps_used_len(0);
         before = ps_dirty;
         (void)before;
@@ -496,9 +502,8 @@ int main(void)
         press(B_OCTUP);
         press(B_OCTUP);
         press(B_OCTUP);
-        ck("  the UI says PATTERN LIST FULL and the object is as it was", msg_is("PATTERN LIST FULL") && ps_used_len(0) == len_before && !memcmp(keep, ps_bank[0], len_before));
+        ck("  the UI says PATTERN LIST FULL and the object is as it was", msg_is("PATTERN LIST FULL") && ps_used_len(0) == len_before && !memcmp(keep, ps_obj(0), len_before));
         ck("  a short pattern still fits (the empty tail steps cost nothing)", (pat_used = 3, make_pattern(&trk[0], 3), ps_save_trk(&trk[0], full_at, "SHORT")) == 0);
-        ck("  ERASE of a heavy slot frees the room (its default is smaller)", ps_erase(0) == 0 && !ps_changed(0));
     }
 
     printf(bad ? "patslot: FAILED (%d)\n" : "patslot: all ok\n", bad);

@@ -31,6 +31,9 @@ SIZE_FILES += ["morph_tide.c", "morph_music.c", "morph_fm_shape.c", "morph_compl
                "morph_glide.c", "seq_morph.c", "seq_rhythm.c", "seq_phrase.c",
                "seq_evolve.c", "seq_voicelead.c", "seq_dialogue.c", "tide_seq.c",
                "tide_ui.c", "tide_store.c"]
+# S0b: multi.c is #included by project.c, so its text was never read here; morph.c whole, not only its roll entry:
+# its block-rate code (morph_apply, morph_cur, ...) is reached from the audio interrupt, so isr_reach keeps it -Os
+SIZE_FILES += ["multi.c", "morph.c"]
 ISR_ROOTS = ("fm1_alnk0_irq", "fm1_timer5_irq")      # hal/fm1_isr.S: the audio ISR, the key / LED scan (+ USB poll)
 DEF = re.compile(r"^(?:static|void|int|uint\w*|int\w*|const)\b[^;=(]*?\b([A-Za-z_]\w*)\s*\(", re.M)
 IR_DEF = re.compile(r"^(define [^\n]*?@\"?([\w.]+)\"?\([^\n]*\)(?: unnamed_addr| local_unnamed_addr)?)( #\d+[^\n]*\{)$",
@@ -55,8 +58,7 @@ def definitions(text):
 
 
 def size_names():
-    # morph.c also contains block-rate audio code: select only its main-loop
-    # preset-roll entry here, rather than applying the policy to the whole file.
+    # single main-loop functions of files the policy does not take whole (morph.c's own are in SIZE_FILES now)
     names = {"morph_roll_from", "morph_end_pure", "morph_roll_step", "morph_fm_roll", "morph_xplan", "morph_xesig", "morph_xpoll", "fm6_cross_macros"}
     for f in SIZE_FILES:
         names.update(definitions((SRC / f).read_text()))
