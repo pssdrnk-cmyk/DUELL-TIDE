@@ -664,6 +664,49 @@ def multi_versions(b: bytes) -> list[tuple[int, int]]:
     return out
 
 
+def _music8_problem(b: bytes) -> Optional[str]:
+    """Revision-8 framing from project.c proj_unpack; the unit still validates on PUT.
+
+    End-B values are variable length (unlike revision 7). Check bounds before
+    reading them, and the native FNV hash as well as the archive's outer CRC.
+    Motion events can be sanitized by the unit, so do not reject old targets.
+    """
+    if _u32le(b, 4) != MAX_OBJ or b[64] != 2:
+        return "damaged current music header"
+    checksum = 0x811C9DC5
+    for value in b[:-4]:
+        checksum = ((checksum ^ value) * 16777619) & 0xFFFFFFFF
+    if checksum != _u32le(b, MAX_OBJ - 4):
+        return "damaged current music checksum"
+    end = MAX_OBJ - 4 - 12 - 2 * 128  # fixed FM6 patch/name trailer
+    pos = 68
+    for _ in range(2):
+        if pos + MUSIC_P_COUNT + 1 > end or any(v > 191 for v in b[pos:pos + MUSIC_P_COUNT]):
+            return "damaged current music parameters"
+        pos += MUSIC_P_COUNT
+        nx = b[pos]
+        pos += 1
+        if pos + nx + 1 > end or any(v > 191 for v in b[pos:pos + nx]):
+            return "damaged current music extensions"
+        pos += nx
+        nb = b[pos]
+        pos += 1
+        if nb > 198 or pos + nb + 2 + 64 * 9 > end:
+            return "damaged current music End B"
+        pos += nb
+        if b[pos] >= NENGINES:
+            return "damaged current music engine"
+        pos += 2
+        for _ in range(64):
+            meta, chance = b[pos + 4], b[pos + 8] & 127
+            if meta > 127 or (meta & 7) > 4 or ((meta >> 3) & 3) > 2 or chance > 101:
+                return "damaged current music step"
+            pos += 9
+    if pos + 388 > end or b[pos] > 128 or b[pos + 1] & ~3:
+        return "damaged current music motion"
+    return None
+
+
 def check_object(key: int, b: bytes) -> Optional[str]:
     """None when the object is acceptable for key (a patch: 1000 + slot), else a short reason (duellbackup.js checkObject)."""
     n = len(b)
@@ -672,9 +715,9 @@ def check_object(key: int, b: bytes) -> Optional[str]:
     if key == 0:
         if n != MAX_OBJ or _u32le(b, 0) != 0x46554E42:
             return "not the current music of a DUELL unit"
-        if b[63] != 2 or b[66] != MUSIC_P_COUNT or b[67] != 7:
+        if b[63] != 2 or b[66] != MUSIC_P_COUNT or b[67] not in (7, 8):
             return "the music of an older DUELL version, which kept four parts and a song chain; make a new backup with this version"
-        return None
+        return _music8_problem(b) if b[67] == 8 else None
     if key == 1:
         return None if n >= 64 and _u32le(b, 0) == 0x50455234 else "not a settings record"
     if is_patch_key(key):
