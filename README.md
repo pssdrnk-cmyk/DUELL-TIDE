@@ -1,12 +1,12 @@
-<p align="center"><img src="docs/duell-tide-cover.jpg" alt="DUELL-TIDE: DUELL 1.1 by OSCILL/R, with TIDE by pssdrnk" width="960"></p>
+<p align="center"><img src="docs/duell-tide-cover.jpg" alt="DUELL with TIDE: DUELL 1.1 by OSCILL/R, TIDE by pssdrnk" width="960"></p>
 
-# DUELL-TIDE
+# DUELL with TIDE
 
 **DUELL 1.1 for the M-VAVE FM-1, plus TIDE: a morph that plays and evolves by itself.**
 
 [Try it in the browser](https://pssdrnk-cmyk.github.io/DUELL-TIDE/emu/) · [What changed](#what-changed-from-duell-11) · [Install](#install) · [Issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues)
 
-> **TIDE is by pssdrnk, not by OSCILL/R.** DUELL-TIDE is pssdrnk's fork of [DUELL](https://github.com/oscillr/DUELL) 1.1, which is made by **OSCILL/R**. The fork is not made, affiliated with or endorsed by OSCILL/R or M-VAVE. Please don't send TIDE problems to the DUELL author: use this fork's [issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues). DUELL and its credit belong to OSCILL/R; the code stays GPL-3.0-only.
+> **TIDE is by pssdrnk, not by OSCILL/R.** DUELL with TIDE is pssdrnk's fork of [DUELL](https://github.com/oscillr/DUELL) 1.1, which is made by **OSCILL/R**. The fork is not made, affiliated with or endorsed by OSCILL/R or M-VAVE. Please don't send TIDE problems to the DUELL author: use this fork's [issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues). DUELL and its credit belong to OSCILL/R; the code stays GPL-3.0-only.
 
 > **Use at your own risk.** TIDE has run on **one FM-1, the fork owner's**. It has no release and no wide testing. The FM-1 has a single copy of its firmware and no known rollback; a failed write can leave it dark, and then only a hardware recovery helps ([docs/RECOVERY.md](docs/RECOVERY.md)). Back up first. No warranty.
 
@@ -256,4 +256,4 @@ Building a device image is described in [felucca-base/BUILDING.md](felucca-base/
 
 DUELL is a fork of **Felucca** by Leo Kuroshita (@kurogedelic), Hügelton Instruments, and is licensed under the **GPL-3.0-only** ([LICENSE](LICENSE)). The whole list of thanks and of third-party parts is in [CREDITS.md](CREDITS.md), [NOTICE.md](NOTICE.md) and [felucca-base/LICENSING.md](felucca-base/LICENSING.md); the upstream commit is in [UPSTREAM_COMMIT.txt](UPSTREAM_COMMIT.txt). The DUELL logo and artwork are the work of OSCILL/R and are not part of the GPL licence; the code and the splash graphic as shipped in the firmware are GPL-3.0-only. DUELL is an independent project and is not affiliated with M-VAVE.
 
-DUELL-TIDE (the TIDE pages, the glide and SEQ MORPH, and the fixes listed above) is a fork of DUELL 1.1 under the same GPL-3.0-only licence. It is not affiliated with OSCILL/R or M-VAVE.
+DUELL with TIDE (the TIDE pages, the glide and SEQ MORPH, and the fixes listed above) is a fork of DUELL 1.1 under the same GPL-3.0-only licence. It is not affiliated with OSCILL/R or M-VAVE.

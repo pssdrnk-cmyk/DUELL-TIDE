@@ -2791,7 +2791,11 @@ static void splash_logo_draw(int32_t y0, int32_t h)
 #if DUELL_TIDE
     /* Reuse the existing font glyphs instead of a second bitmap alphabet. */
     (void)y0; (void)h;
-    cv_text_in(0, 80 - AF_L_CAP_Y, 240, &AF_L, "DUELL", T_TEXT, T_BG);
+    /* the name, DUELL with TIDE: one centred line, "with" smaller and muted on the same baseline */
+    int32_t gap = 6, x = (240 - text_w(&AF_L, "DUELL") - text_w(&AF_M, "with") - text_w(&AF_L, "TIDE") - 2 * gap) / 2;
+    x = cv_text_on(x, 80 - AF_L_CAP_Y, &AF_L, "DUELL", T_TEXT, T_BG) + gap;
+    x = cv_text_on(x, 80 + AF_L_CAP_H - AF_M_CAP_H - AF_M_CAP_Y, &AF_M, "with", T_MID, T_BG) + gap;
+    cv_text_on(x, 80 - AF_L_CAP_Y, &AF_L, "TIDE", T_TEXT, T_BG);
     cv_text_in(0, 123, 240, &AF_M, "MultiMorphing", T_TEXT, T_BG);
     cv_text_in(0, 145, 240, &AF_M, "Bitimbral Synthesizer", T_TEXT, T_BG);
     cv_text_in(0, 167, 240, &AF_S, "by OSCILL/R", T_TEXT, T_BG);
