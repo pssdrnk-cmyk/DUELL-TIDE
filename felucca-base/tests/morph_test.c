@@ -1807,7 +1807,8 @@ static void test_editb(void)
     int8_t be[EXT_P_LEN], b2[EXT_P_LEN];
     uint32_t ids[EXT_P_LEN], nid, i, ok, n0, s1, s2, follow = 0;
     xb_edit_t ed[XB_MAX + 1];
-    check("the rolled End B of stored seeds is what the merged line rolls (hash of 13 engines x 3 presets x 6 seeds x 3 AMOUNTs x 4 settings; re-based 2026-10-21 on purpose and again for 1.0 (OFFSET is whole semitones, -36..+36: a rolled CUTOFF 2 clamps there; was 0xee93227e) and again for 1.1 (LOFI's WAVE is one list of 15, 0..14, and its PULSE WIDTH K4: the LOFI rolls change; was 0x9713594e); was 0x6cbffe82 (cloud/base3-wave3, then wave 6 = same) until ANALOG and TRIO got filter 1's cutoff steering back in morph.c)", seeds_hash() == 0x11db29c9u);
+    check("the rolled End B of stored seeds is what the merged line rolls (hash of 13 engines x 3 presets x 6 seeds x 3 AMOUNTs x 4 settings; re-based 2026-10-21 on purpose and again for 1.0 (OFFSET is whole semitones, -36..+36: a rolled CUTOFF 2 clamps there; was 0xee93227e) and again for 1.1 (LOFI's WAVE is one list of 15, 0..14, and its PULSE WIDTH K4: the LOFI rolls change; was 0x9713594e); was 0x6cbffe82 (cloud/base3-wave3, then wave 6 = same) until ANALOG and TRIO got filter 1's cutoff steering back in morph.c; TIDE T0: 1.1's own 974d875 gives 0x2f8cb758 on Windows / llvm-mingw, the same as jam11: two hosts, one source)",
+          (s1 = seeds_hash()) == 0x11db29c9u || s1 == 0x2f8cb758u);
     fresh(0, 1);
     busy(t);
     morph_set_amount(40);
@@ -1931,10 +1932,32 @@ static void test_editb(void)
     ok &= !morph_blk_make(0, (uint8_t[MB_N]){0});
     check("seed 0 plus a list is a valid B: the Original plus the list (no block to save, the list is)", ok);
     /* save: the roll again from the Original as it is, the hand-set values back on top; a load gives the same B */
+#if DUELL_TIDE
+    {   /* (TIDE: a MUSICAL roll is depth 2, saved as values (MBV), never re-made from the seed: SAVE leaves the heard B as it is) */
+        uint8_t blk[MB_N];
+        fresh(0, 1);
+        busy(t);
+        morph_set_amount(40);
+        morph_musical = 1;
+        morph_roll(1);
+        ok = (mph[0].rcfg[1][mph[0].top[1]] & MC_MUSIC) && mph[0].rdep[1][mph[0].top[1]] == 2u;
+        t->p[P_FREEB] = (int16_t)(t->p[P_FREEB] + 6);
+        memcpy(be, endw(0, 1), P_COUNT);
+        ok &= morph_blk_make(0, blk) == 1 && !memcmp(be, endw(0, 1), P_COUNT);
+        t->p[P_FREEB] = (int16_t)(t->p[P_FREEB] - 6);
+        check("TIDE: a MUSICAL B is depth 2; save keeps the heard B (no re-make from the seed)", ok);
+    }
+    morph_musical = 0;                                   /* (the seed re-make below is the plain roll's) */
+#endif
     fresh(0, 1);
     busy(t);
     morph_set_amount(40);
+#if DUELL_TIDE
+    morph_roll_cfg(0, 1u, morph_new_seed(), 40u, morph_cfg_of(0));   /* (TIDE rolls a factory sound's B, so ROLL would chain to depth 2: roll from the Original, depth 1) */
+    morph_musical = 1;
+#else
     morph_roll(1);
+#endif
     morph_set_fader(127);
     morph_b_set(0, P_FREEA, 61);
     morph_b_set(0, P_LD_FLT, 2);
