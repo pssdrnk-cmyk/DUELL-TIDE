@@ -239,7 +239,7 @@ static void pd_line(const pdw_t *const *wp, uint32_t *php, uint32_t inc, uint32_
             s = mulq15(s, s2[i]);                                                                                  \
         amp = m->amp0 + ((x + ((x >> 31) & (CTL - 1))) >> CTL_LOG2);                                              \
         x = (int32_t)((uint32_t)x + (uint32_t)d);                                                                  \
-        out[i] += mulq15(mulq15(s, amp), VOICE_FS) << 1;                                                           \
+        out[i] += mulq15(mulq15(s, amp), VOICE_FS) * 2;                                                            \
     }
 
 static void pd_mix(int32_t *out, const int32_t *s1, const int32_t *s2, uint32_t n, const vmod_t *m, uint32_t line)    /* line: 0 one, 1 mix, 2 ring */
@@ -312,7 +312,7 @@ static __attribute__((noinline)) void phase_render_m(track_t *t, voice_t *v, int
                 tg1 ^= 1;
             s = ring ? mulq15(s, s2) : (s + s2) >> 1;
         }
-        out[i] += voice_amp(s, m, i) << 1;
+        out[i] += voice_amp(s, m, i) * 2;
     }
     v->ph[0] = ph0;
     v->ph[1] = ph1;
