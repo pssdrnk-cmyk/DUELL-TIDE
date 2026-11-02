@@ -237,8 +237,10 @@ int main(void)
     bad += check("  a FUN11 of revision 5 (either memory trim 1's two-part format or job A's slots alone; valid hash): refused", !proj_import(&c, &st2, sizeof st2));
     st2 = st; st2.raw[67] = 6; rehash(&st2);
     bad += check("  a FUN11 of revision 6 (job A's lists, no End B block; valid hash): refused", !proj_import(&c, &st2, sizeof st2));
-    st2 = st; st2.raw[67] = 8; rehash(&st2);
-    bad += check("  a revision above this firmware's: refused", !proj_import(&c, &st2, sizeof st2));
+    st2 = st; st2.raw[67] = 7; rehash(&st2);
+    bad += check("  a FUN11 of revision 7 (editable B: the edit list and the 7-byte seed block; valid hash): refused", !proj_import(&c, &st2, sizeof st2));
+    st2 = st; st2.raw[67] = PROJ_REV + 1u; rehash(&st2);
+    bad += check("  a revision above this firmware's (PROJ_REV 8): refused", !proj_import(&c, &st2, sizeof st2));
     st2 = st; st2.raw[63] = 4; rehash(&st2);
     bad += check("  `parts` 4 (the hidden parts 3 and 4 of 0.2.25 and before; valid hash): refused", !proj_import(&c, &st2, sizeof st2));
     st2 = st; st2.raw[66] = (uint8_t)(P_COUNT - 5u); rehash(&st2);
