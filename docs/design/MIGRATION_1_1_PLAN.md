@@ -1,10 +1,10 @@
 # DUELL 1.1 migration — completed baseline; status updated 2 November 2026
 
-The implementation and integration onto DUELL 1.1 are complete, and the owner confirms TIDE works on hardware. The earlier pending hardware/review statements below describe the retained migration snapshot, not the current acceptance state. The owner subsequently authorized the refinement integration, GitHub push and installation. Combined R0/M1/M2a source `1196a82` was installed on 1 November 2026; reboot identity was verified and all 16 backed-up data objects match byte-for-byte after the current-music restore. Device listening, physical clock timing and CPU acceptance of these refinements remain pending.
+The implementation and integration onto DUELL 1.1 are complete, and the owner confirms TIDE works on hardware. This document retains migration evidence. The pending statements and resource measurements below refer to their named historical checkpoints. Current installed/source state, memory figures and engineering priorities live in [the roadmap](../ROADMAP.md).
 
-Next development: [TIDE musical refinement roadmap](TIDE_MUSICAL_ROADMAP.md). It covers the two reproduced GLIDE control defects, ARP SEQ dialogue, cyclic voice leading, JRNY destination memory, longer musical arcs, and evidence-led pitch/loudness checks. R0, M1 and M2a now have implementations; the roadmap records verification, listening acceptance and the remaining planned work.
+R0, M1 and M2a were installed at `1196a82` on 1 November; the S0/DSP checkpoint `e176f6e` was installed on 2 November. Engineering maintenance now has priority over musical expansion. Detailed [musical proposals](TIDE_MUSICAL_DESIGN.md) remain available separately.
 
-Current installed build: **579,832 / 581,564 B application flash (1,732 B free)**; ordinary RAM **5,808 B free**, pool including range Z **11,156 B free**, hot audio RAM **1,468 B free**. Required reserves pass. Exact package hash, verification, backup and installation evidence are in the [roadmap integration and installation receipts](TIDE_MUSICAL_ROADMAP.md#m1--m2-integration-for-github).
+Historical M1/M2 installed build: **579,832 / 581,564 B application flash (1,732 B free)**; ordinary RAM **5,808 B free**, pool including range Z **11,156 B free**, hot audio RAM **1,468 B free**. These figures were superseded by S0/DSP. Original [integration and installation receipts](../history/TIDE_ROADMAP_2026-11-02.md#m1--m2-integration-for-github) are retained; use the roadmap for the current budget.
 
 ## Retained implementation snapshot — before owner hardware confirmation
 

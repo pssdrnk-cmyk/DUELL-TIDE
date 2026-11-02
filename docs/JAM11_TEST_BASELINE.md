@@ -2,6 +2,12 @@
 
 Current maintenance priorities: [roadmap](ROADMAP.md). Totals below describe their named source checkpoints, not a continuously updated count.
 
+## Supervised maintenance batch: 2 November 2026
+
+Pinned `7c22b13` plus reviewed local factory-packing and GLO knob-jump changes: native host equivalents of `bank`, `tidekeep` (72), `tidecontrols` (121), new `knobjump` (6) and `sidechain` (17) compile and pass with ASan/UBSan and no recovery. The new bank coverage compares actual C decoding/lookup/all three load kinds across every factory voice with original uncompressed pairs; a separate retained-baseline header comparison verifies unchanged pairs and metadata. `knobjump` is registered in the existing selectable/default host groups. Its runner syntax check passes.
+
+Production on/off builds pass all existing layout/reserve/reach/closure checks. The unchanged off build reproduces `4b140b...`; the shared-code candidate's explained new package hash is `ade430c7b254f6a25a846caa5af6cd95e2ff83f544a0c6c367358476f50c7713`, with the same pinned ABOUT date. The exact retained TIDE-on package passes the hash-pinned CPU-emulator boot/LCD/MIDI-note/bounded-audio smoke. Evidence, native commands, source manifest and earlier failed restricted Windows launch attempts are under `work/outputs/maintenance/run-20261102-1922/`. No new whole-suite aggregate, installation or physical-device acceptance is implied.
+
 ## T0 progress: 2 November 2026, later
 
 Repaired test-side (T0, roadmap): `backup`, `patch`, `patchraw`, `bank` now PASS. They rewrite the 1.0 record checks for PT_VER 4 (End B as an MBV block; values lossless only inside their range; SWING 50..75), TIDE's 126-patch store, 1.1's PATCHES knobs (K3 SAVE, K4 FAV, no per-slot RESTORE) and S0a's one pattern object (a backup LIST writes a waiting pattern save). Shared helper: `felucca-base/tests/endb_store.h`. `bank` no longer reads `tests/factory_bank_records.txt` (PT_VER 3, refused by 1.1): it saves and reloads every factory sound and compares the sound.
@@ -40,7 +46,7 @@ SKIP: regress perflevel morph mode sounds fmbass wave mixsplit partindep duckpar
 - S0 merge `254a501` reports 65 passed / 58 failed / 11 skipped. Its commit records an FM6 timeout and two existing morph-roll failures exposed by the improved runner. Keep that run separate from `bd339c9`'s totals.
 - `backup` passed at `e176f6e` against 1.1 + TIDE + S0a (`work/check-duell-jam11/backup.log`, reviewed during installation). The older FAIL list above is the broad-run snapshot, not the status of this repaired group.
 - Five revision-8 backup-helper tests and the installed package's pinned CPU-emulator smoke passed during the S0/DSP installation. Retained logs: `work/backups/s0-e176f6e-2026-11-02/`.
-- `patch` repair is in progress in the shared checkout. It exposed the End-B preservation bug fixed in `dd2acd5`; do not count the whole group as PASS until its coherent run is recorded. No new aggregate has been inferred from these individual checks.
+- `patch` repair exposed the End-B preservation bug fixed in `dd2acd5`. Subsequent commits record `patch` passing at `379e844` and `patchraw` passing at `52c6604` against 1.1 + TIDE. These commit-recorded focused results do not imply a new full-suite run. Other test repair continues independently.
 
 ## Step 0 (history)
 
