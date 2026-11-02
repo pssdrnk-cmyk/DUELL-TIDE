@@ -489,8 +489,8 @@ for t in $want; do case $t in
         if ((rc = st_prog(base + ST_PAYLOAD_OFF + off, st_buf + off, n)) != 0)'
            xb_mut "PT_K 7 records a chunk, the _Static_assert still in place (upreset.c)" patch_test.c firmware/src/upreset.c '#define PT_K ((PT_CAP - PT_HDR) / PT_WORST)' '#define PT_K 7u'
            xb_mut "PT_K 7 records a chunk with the _Static_assert taken out: the 128-slot guarantee must break at run time (upreset.c)" patch_test.c firmware/src/upreset.c '#define PT_K ((PT_CAP - PT_HDR) / PT_WORST)' '#define PT_K 7u' \
-              firmware/src/upreset.c '_Static_assert(PT_K == 6u && PT_WORST * PT_K + PT_HDR <= PT_CAP && PT_MAX >= UP_SLOTS' '_Static_assert(PT_MAX >= UP_SLOTS'
-           xb_mut "the extension block's length check removed (upreset.c pt_rec_ok)" patch_test.c firmware/src/upreset.c '    if ((p[4] & PTF_XB) && xb_block_ok(p + a, rl - a) != 1u + p[a])' '    if (0)'
+              firmware/src/upreset.c '_Static_assert(PT_WORST == 577u + TIDE_MBV_FMT_N && PT_K == 6u && PT_WORST * PT_K + PT_HDR <= PT_CAP && PT_MAX + (22u - TIDE_PT_NCH) * PT_K >= UP_SLOTS' '_Static_assert(PT_MAX + (22u - TIDE_PT_NCH) * PT_K >= UP_SLOTS'
+           xb_mut "End B's AMOUNT check removed (morph.c morph_bv_size, the block check pt_rec_ok's layout runs: PT_VER 4 has no extension block)" patchraw_test.c firmware/src/morph.c ' || b[1] > 101u || ' ' || '
            xb_mut "PATCH_RAW's length check removed (editor_patchraw.c BEGIN: PT_FIX .. PT_WORST)" patchraw_test.c firmware/src/editor_patchraw.c 'if (n != 9u || a[8] > 15u || len < PT_FIX || len > PT_WORST)' 'if (n != 9u || a[8] > 15u)' ;;
   fuzz)    SAN=; cc -fsanitize=address,undefined -fno-sanitize=shift -w -x c -o /dev/null - 2>/dev/null <<'EOF2' && SAN="-fsanitize=address,undefined -fno-sanitize=shift"
 int main(void) { return 0; }
