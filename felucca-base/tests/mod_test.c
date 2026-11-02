@@ -1104,19 +1104,19 @@ static void test_dest027(void)
         uint8_t sv = mrc;
         memset(o, 0, sizeof o);
         for (sd = 0; sd < 400u; sd++) {
-            uint32_t rs = morph_state(sd, 0);
+            uint32_t rs = morph_state(sd, 0), rz = rs;   /* (ROLL CHAINED: rz the zero-amount stream; the start st and the Original org are o: a first roll) */
             o[MSLOT_ID(0)] = MS_LFO;
             o[MSLOT_ID(0) + 1u] = (int8_t)(sd & 1u ? MD_CUT : MD_RSIZE);
             o[MSLOT_ID(0) + 2u] = 40;
             memcpy(end, o, sizeof end);
             mrc = MC_WILD | MC_PIT;
-            morph_slot(&rs, ENGINES[0], o, end, 0, 100, 1);
+            morph_slot(&rs, &rz, ENGINES[0], o, o, o, end, 0, 100, 1);
             newd += (sd & 1u) && (uint8_t)end[MSLOT_ID(0) + 1u] >= MD_N_026;
             nn += end[MSLOT_ID(0) + 1u] != o[MSLOT_ID(0) + 1u];
-            rs = morph_state(sd, 1);
+            rs = rz = morph_state(sd, 1);
             mrc = MC_PIT;
             memcpy(end, o, sizeof end);
-            morph_slot(&rs, ENGINES[0], o, end, 0, 100, 1);
+            morph_slot(&rs, &rz, ENGINES[0], o, o, o, end, 0, 100, 1);
             kept &= end[MSLOT_ID(0)] == o[MSLOT_ID(0)] && end[MSLOT_ID(0) + 1u] == o[MSLOT_ID(0) + 1u];
         }
         mrc = sv;
