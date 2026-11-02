@@ -22,7 +22,7 @@ DS_ENDB / DS_ENDB_AT. The AMOUNT in the block is 'bamt' (the category's if absen
 End B by a seed (morph.c morph_rebase_part): 'bamt' (the AMOUNT %, default by category: CAT_BAMT) and 'bseed' (1..65535, chosen by
 tests/sound_audit.c SOUND_BSEED=1 so End B keeps A's loudness and roughly its brightness; absent: the hash of (engine, idx)).
 
-Output (firmware/src/sounds.c reads it): DS_PAIR (2 bytes a pair), DS_SOUNDS (engine-major: sound k of engine e is
+Output (firmware/src/sounds.c reads it): DS_PACKED (bitstream of signed value bytes and lossless ID deltas), DS_SOUNDS (engine-major: sound k of engine e is
 DS_SOUNDS[DS_ENG_AT[e] + k], k = its 'idx', the identity favourites, shadows and the End B seed use: append-only per
 engine), DS_LIST (the browse order: category, then engine in ENGINE_ORDER, then name).
 """
@@ -450,16 +450,42 @@ def emit(path, sounds, lst, engines, cats, idname):
          " * firmware/src/sounds.c). Do not edit: edit tools/duell_sounds.py */", "#pragma once", "",
          f"#define DS_N {len(sounds)}u", f"#define DS_NENG {NENG_TABLE}u"]
     npairs = sum(len(s["pairs"]) for s in sounds)
-    L += [f"#define DS_NPAIRS {npairs}u", "",
-          "static const ds_pair_t DS_PAIR[DS_NPAIRS ? DS_NPAIRS : 1u] = {"]
-    at = 0
+    bits = []
+
+    def put_bits(value, n):
+        for shift in range(n - 1, -1, -1):
+            bits.append((value >> shift) & 1)
+
     for s in sounds:
-        s["at"] = at
-        L.append(f"    /* {engines[s['e']]['name']} {s['idx']} {s['name']} */")
-        row = [f"{{{idname[i]}, {v}}}" for i, v in s["pairs"]]
-        for i in range(0, len(row), 6):
-            L.append("    " + ", ".join(row[i:i + 6]) + ",")
-        at += len(s["pairs"])
+        s["at"] = len(bits)
+        pairs = s["pairs"]
+        if pairs:
+            put_bits(pairs[0][0], 8)                   # first parameter ID is absolute
+            for j, (pid, value) in enumerate(pairs):
+                if j:
+                    delta = pid - pairs[j - 1][0]
+                    if not 1 <= delta <= 255:
+                        die(f"{s['name']}: parameter IDs must be strictly increasing bytes")
+                    if delta <= 15:
+                        put_bits(delta - 1, 4)           # nibble 15 is reserved for an absolute-ID escape
+                    else:
+                        put_bits(15, 4)
+                        put_bits(pid, 8)
+                put_bits(value & 0xFF, 8)                # exact two's-complement byte representation
+    packed_bits = len(bits)
+    if packed_bits > 65535:
+        die(f"packed ID/value stream is {packed_bits} bits; ds_sound_t.at is limited to 65535")
+    packed = [sum(bits[i + j] << (7 - j) for j in range(min(8, len(bits) - i)))
+              for i in range(0, len(bits), 8)]
+    L += [f"#define DS_NPAIRS {npairs}u", f"#define DS_PACKED_BITS {packed_bits}u",
+          f"#define DS_PACKED_BYTES {len(packed)}u", "",
+          "/* Per sound: first ID (8 bits), then each exact value byte; before values after the first, a 4-bit delta minus one (1..15),",
+          " * or nibble 15 followed by an absolute ID byte. The final partial byte is zero padded; the pair count bounds every reader. */",
+          "static const uint8_t DS_PACKED[DS_PACKED_BYTES ? DS_PACKED_BYTES : 1u] = {"]
+    for i in range(0, len(packed), 20):
+        L.append("    " + ", ".join(map(str, packed[i:i + 20])) + ",")
+    if not packed:
+        L.append("    0")
     L += ["};", "", "/* engine-major: sound k of engine e = DS_SOUNDS[DS_ENG_AT[e] + k] (k: the factory index) */",
           "static const ds_sound_t DS_SOUNDS[DS_N ? DS_N : 1u] = {"]
     for s in sounds:
@@ -468,6 +494,19 @@ def emit(path, sounds, lst, engines, cats, idname):
                  f"{s['bseed']}u}},"
                  f"   /* {s['cat']}; {s['recipe']} */")
     L += ["};"]
+    L += ["", "/* Test-only independent reference: original uncompressed (ID, signed value) pairs. */",
+          "#ifdef DS_PACK_EQUIV_TEST",
+          "static const ds_pair_t DS_REF_PAIR[DS_NPAIRS ? DS_NPAIRS : 1u] = {"]
+    ref_at = 0
+    ref_offsets = []
+    for s in sounds:
+        ref_offsets.append(ref_at)
+        row = [f"{{{idname[i]}, {v}}}" for i, v in s["pairs"]]
+        for i in range(0, len(row), 6):
+            L.append("    " + ", ".join(row[i:i + 6]) + ",")
+        ref_at += len(s["pairs"])
+    L += ["};", f"static const uint16_t DS_REF_AT[DS_N + 1u] = {{" + ", ".join(map(str, ref_offsets + [ref_at])) + "};",
+          "#endif", ""]
     L += ["", "/* End B as exact values (tools/endb.py = morph.c's End B block, MBV, as a patch record carries it): DS_ENDB_AT[g]..DS_ENDB_AT[g + 1] are sound g's block bytes",
           " * in DS_ENDB (g = its DS_SOUNDS index); equal = the sound has no block (its End B is rolled from its seed). Load: morph.c morph_bv_load. */"]
     at, offs, flat = 0, [], []
@@ -488,7 +527,7 @@ def emit(path, sounds, lst, engines, cats, idname):
           "/* the browse order (BASS LEAD PAD PLUCK KEYS FX OTHER; within one by ENGINE_ORDER, then name): DS_SOUNDS indices */",
           "static const uint8_t DS_LIST[DS_N ? DS_N : 1u] = {" + ", ".join(map(str, lst)) + "};", ""]
     Path(path).write_text("\n".join(L))
-    return npairs
+    return npairs, len(packed)
 
 
 def table(sounds, lst, engines):
@@ -503,8 +542,8 @@ def main(argv):
     data = load_data(Path(__file__).resolve().parent / "duell_sounds.py")
     sounds, lst, engines, cats, idname = build(data)
     if len(argv) > 1 and argv[1] != "--check":
-        n = emit(argv[1], sounds, lst, engines, cats, idname)
-        size = 2 * n + len(sounds) * (12 + 4) + sum(len(s["name"]) + 1 for s in sounds) + NENG_TABLE + 1
+        n, packed_bytes = emit(argv[1], sounds, lst, engines, cats, idname)
+        size = packed_bytes + len(sounds) * (12 + 4) + sum(len(s["name"]) + 1 for s in sounds) + NENG_TABLE + 1
         print(f"gen_duell_sounds: {len(sounds)} sounds, {n} pairs, ~{size} B flash -> {argv[1]}")
     else:
         table(sounds, lst, engines)

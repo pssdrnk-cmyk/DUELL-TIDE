@@ -10,6 +10,7 @@
  *    defaults; the global MODULES switch still kills the arp.
  *   build/host/bank_test [records-file]          (DUELL/host_tests.sh "bank") */
 #include <ctype.h>
+#define DS_PACK_EQUIV_TEST 1
 #define UI_TEST_NO_MAIN 1
 #include "ui_test.c"
 
@@ -57,6 +58,54 @@ static int arp_equal(const track_t *t, const int16_t *v)
         if (t->p[P_AMODE + i] != v[i])
             return 0;
     return 1;
+}
+
+/* Exercise the actual packed C reader against the generator's independent original pair table. */
+static void ds_pack_equiv(void)
+{
+    uint32_t g, id, kind, n = XW_BASE + NX, bad_pairs = 0, bad_put = 0, bad_value = 0;
+    for (g = 0; g < DS_N; g++) {
+        const ds_sound_t *s = &DS_SOUNDS[g];
+        uint32_t a = DS_REF_AT[g], end = DS_REF_AT[g + 1u];
+        for (id = a; id < end; id++) {
+            const ds_pair_t *q = &DS_REF_PAIR[id];
+            if (ds_value(s, q->id, -12345) != q->v)
+                bad_pairs++;
+        }
+        for (id = 0; id < n; id++) {
+            int32_t fallback = -12345, want = fallback;
+            uint32_t r;
+            for (r = a; r < end; r++)
+                if (DS_REF_PAIR[r].id == id) {
+                    want = DS_REF_PAIR[r].v;
+                    break;
+                }
+            if (ds_value(s, id, fallback) != want)
+                bad_value++;
+        }
+        for (kind = 0; kind < 3u; kind++) {
+            int16_t got[XW_BASE + NX];
+            int16_t want[XW_BASE + NX];
+            for (id = 0; id < n; id++)
+                got[id] = want[id] = -300;
+            for (id = a; id < end; id++) {
+                const ds_pair_t *q = &DS_REF_PAIR[id];
+                uint32_t qkind = q->id >= P_AMODE && q->id <= P_AORDER ? 1u :
+                                 q->id == P_CHRD || q->id == P_VOIC ? 2u : 0u;
+                if ((q->id < P_COUNT && qkind == kind) ||
+                    (q->id >= XW_BASE && q->id < XW_BASE + NX && kind == 0u))
+                    want[q->id] = q->v;
+            }
+            ds_put(s, got, (int)kind);
+            for (id = 0; id < n; id++)
+                bad_put += got[id] != want[id];
+        }
+    }
+    ck("packed C reader matches every original pair, including signed and extension values", bad_pairs == 0u);
+    ck("ds_value matches original values and defaults for every parameter/extension ID", bad_value == 0u && ds_value(0, 0u, -7) == -7);
+    ck("ds_put matches original normal, arp-only, and key-only loads", bad_put == 0u);
+    if (bad_pairs || bad_put || bad_value)
+        printf("bank: packed equivalence mismatches pairs=%u values=%u loads=%u\n", bad_pairs, bad_value, bad_put);
 }
 
 /* part 0 as it sounds now: every value as a record keeps it (PT_VER 4: inside its range), the slots, End B as it sounds, the FM6 patch, the arp */
@@ -113,6 +162,7 @@ int main(int argc, char **argv)
     static dec_t dg;
     static snd_t fac, back;
     (void)argc; (void)argv;
+    ds_pack_equiv();
     ui_power_on();
     frame();
     song.playing = 0;

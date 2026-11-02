@@ -3,8 +3,9 @@
  * which stay compiled for the host tests' renders and nothing else of the product reads).
  *
  * Format (build/gen/duell_sounds.h, written by tools/gen_duell_sounds.py from tools/duell_sounds.py): a sound is a name
- * (<= 12 characters), its engine, category (category.c CAT_*), flags, and a SPARSE list of (P_ id, value) pairs, two bytes
- * each, on top of INIT: every sound parameter at its default (params.c TP; the engine's EDIT defaults for P_E0..P_E7).
+ * (<= 12 characters), its engine, category (category.c CAT_*), flags, and a sparse stream of signed value bytes plus
+ * losslessly delta-coded parameter IDs, on top of INIT: every sound parameter at its default (params.c TP; the engine's
+ * EDIT defaults for P_E0..P_E7).
  * Arp settings and the trim are pairs like any other (ui.c apply_preset_to: a factory sound sets its TRIM, its loudness
  * (0.2.19: the PATCH TRIM; the player's mixer LEVEL is not a sound's), and an arp sound lends the arp: ds_arp).
  *
@@ -24,10 +25,15 @@ typedef struct {
     int8_t v;
 } ds_pair_t;
 typedef struct {
+    uint32_t bit;                /* next encoded field in DS_PACKED */
+    uint32_t i;
+    uint8_t id;
+} ds_iter_t;
+typedef struct {
     const char *name;
     uint8_t eng, cat, flags, np; /* engine index, CAT_*, DSF_*, pairs */
     uint8_t bamt;                /* End B: the AMOUNT (%) */
-    uint16_t at;                 /* its first pair in DS_PAIR */
+    uint16_t at;                 /* first bit in its DS_PACKED stream */
     uint16_t bseed;              /* End B: the seed (0: the hash of (engine, index)) */
 } ds_sound_t;
 #define DSF_MONO 1u              /* (informative: the generator wrote VOICE LEG) */
@@ -35,6 +41,7 @@ typedef struct {
 #define DSF_KEYS 4u              /* sets the chord keys (a pair in P_CHRD, P_VOIC; never a scale: it is the instrument's, core.h): lent like the arp (ui.c ds_keys) */
 #include "duell_sounds.h"
 _Static_assert(DS_NENG >= NENGINES && DS_N <= 255u, "duell_sounds.h: DS_ENG_AT covers every engine, DS_LIST bytes");
+_Static_assert(DS_PACKED_BITS <= 65535u, "duell_sounds.h: packed sound bit offsets fit ds_sound_t.at");
 
 static uint32_t ds_count(uint32_t e) { return e < NENGINES ? (uint32_t)(DS_ENG_AT[e + 1u] - DS_ENG_AT[e]) : 0u; }
 static const ds_sound_t *ds_get(uint32_t e, uint32_t k) { return k < ds_count(e) ? &DS_SOUNDS[DS_ENG_AT[e] + k] : 0; }
@@ -50,24 +57,63 @@ static uint32_t ds_cat_of(uint32_t e, uint32_t k)
 }
 static int ds_arp_id(uint32_t id) { return id >= P_AMODE && id <= P_AORDER; }
 static int ds_key_id(uint32_t id) { return id == P_CHRD || id == P_VOIC; }
+/* Read an MSB-first field. The generated index and pair count ensure no read starts past DS_PACKED_BITS. */
+static uint32_t ds_bits(uint32_t *at, uint32_t n)
+{
+    uint32_t v = 0;
+    while (n--) {
+        v = (v << 1) | ((DS_PACKED[*at >> 3] >> (7u - (*at & 7u))) & 1u);
+        ++*at;
+    }
+    return v;
+}
+static void ds_iter_start(const ds_sound_t *s, ds_iter_t *it)
+{
+    it->bit = s->at;
+    it->i = 0;
+    it->id = s->np ? (uint8_t)ds_bits(&it->bit, 8u) : 0u;
+}
+static int ds_iter_next(const ds_sound_t *s, ds_iter_t *it, ds_pair_t *q)
+{
+    uint32_t raw;
+    if (it->i >= s->np)
+        return 0;
+    if (it->i) {
+        raw = ds_bits(&it->bit, 4u);
+        if (raw == 15u)
+            it->id = (uint8_t)ds_bits(&it->bit, 8u);
+        else
+            it->id = (uint8_t)(it->id + raw + 1u);
+    }
+    raw = ds_bits(&it->bit, 8u);
+    q->id = it->id;
+    q->v = (int8_t)(raw < 128u ? (int32_t)raw : (int32_t)raw - 256);
+    ++it->i;
+    return 1;
+}
 /* sound s's pairs into p (kind: 1 the arp's pairs only, 2 the scale / chord keys' only, 0 every other one) */
 static void ds_put(const ds_sound_t *s, int16_t *p, int kind)
 {
-    uint32_t i;
-    for (i = 0; i < s->np; i++) {
-        const ds_pair_t *q = &DS_PAIR[s->at + i];
-        if (q->id < P_COUNT && (ds_arp_id(q->id) ? 1 : ds_key_id(q->id) ? 2 : 0) == kind)
-            p[q->id] = q->v;
-        else if (q->id >= XW_BASE && q->id < XW_BASE + NX && !kind)   /* an extension slot (ext.h XV): a pair of wide id 128 + k (cloud job B) */
-            p[q->id] = q->v;
+    ds_iter_t it;
+    ds_pair_t q;
+    ds_iter_start(s, &it);
+    while (ds_iter_next(s, &it, &q)) {
+        if (q.id < P_COUNT && (ds_arp_id(q.id) ? 1 : ds_key_id(q.id) ? 2 : 0) == kind)
+            p[q.id] = q.v;
+        else if (q.id >= XW_BASE && q.id < XW_BASE + NX && !kind)   /* an extension slot (ext.h XV): a pair of wide id 128 + k (cloud job B) */
+            p[q.id] = q.v;
     }
 }
 static int32_t ds_value(const ds_sound_t *s, uint32_t id, int32_t def)   /* sound s's value of id, def if it has none */
 {
-    uint32_t i;
-    for (i = 0; s && i < s->np; i++)
-        if (DS_PAIR[s->at + i].id == id)
-            return DS_PAIR[s->at + i].v;
+    ds_iter_t it;
+    ds_pair_t q;
+    if (!s)
+        return def;
+    ds_iter_start(s, &it);
+    while (ds_iter_next(s, &it, &q))
+        if (q.id == id)
+            return q.v;
     return def;
 }
 
