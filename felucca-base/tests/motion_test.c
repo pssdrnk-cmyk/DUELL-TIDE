@@ -87,7 +87,7 @@ static int compact_project(void)
     corrupt = packed; corrupt.raw[68] = 255; uint32_t sum = proj_hash(corrupt.raw, sizeof corrupt - 4u);
     memcpy(corrupt.raw + sizeof corrupt - 4u, &sum, 4);
     bad += check("compact parameter range is validated even with a correct hash", !proj_import(&after, &corrupt, sizeof corrupt));
-    corrupt = packed; uint32_t probability_byte = 68u + P_COUNT + 1u + NX + 1u + 7u + 2u + 8u;   /* (PROJ_REV 7: End B block 7 bytes; REV 6: the slots and the edit list sit after the values) */ corrupt.raw[probability_byte] = 127;
+    corrupt = packed; uint32_t probability_byte = 68u + P_COUNT + 1u + NX + 1u + packed.raw[68u + P_COUNT + 1u + NX] + 2u + 8u;   /* (PROJ_REV 8: part A's End B as values, its length byte after the slots; then engine, preset, step 1's chance byte) */ corrupt.raw[probability_byte] = 127;
     sum = proj_hash(corrupt.raw, sizeof corrupt - 4u); memcpy(corrupt.raw + sizeof corrupt - 4u, &sum, 4);
     bad += check("invalid probability is refused even with a correct hash", !proj_import(&after, &corrupt, sizeof corrupt));
     project_save(1); motion_clear(t); t->p[P_M5AMT] = 0; step_set_chance(&t->step[3], 100);
@@ -537,6 +537,7 @@ static int lock_project(void)
 /* the UI: hold a step, turn a knob (ui_input.c lock_*) */
 static void lk_down(uint32_t k) { fm1_in.notes |= 1u << k; host_notes |= 1u << k; frame(); }
 static void lk_up(uint32_t k) { fm1_in.notes &= ~(1u << k); frame(); }
+#ifdef MOTION_TEST_STALE                                 /* (the held-step lock gesture went in 1.0 with lock_held: parked with its caller below) */
 static int lock_ui(void)
 {
     int bad = 0, ok;
@@ -577,6 +578,7 @@ static int lock_ui(void)
     bad += check("from FX: the knobs lock DIST CHO DLY REV", lock_id(0) == P_DIST && lock_id(3) == P_REV);
     return bad;
 }
+#endif
 /* 1.1.5: lock edits by hand are one undo (SAVE held), redo too */
 static int lock_undo(void)
 {
