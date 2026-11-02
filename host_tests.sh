@@ -278,21 +278,24 @@ for t in $want; do case $t in
   dlyev)   $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/dlyev_test tests/dlyev_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run dlyev $OUT/dlyev_test ;;
   perflevel) $CC "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/perf_level_test tests/perf_level_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run perflevel $OUT/perf_level_test ;;
   perflevelmut) plm() {                                # perflevel's self-check: a COPY of firmware/ and tests/ with the rule broken must make tests/perf_level_test.c FAIL
-             name=$1; f0=$2; ex=$3
+             name=$1; f0=$2; ex=$3                        # (built -DPL_RULE_ONLY: the mutants break the rule, the audio part needs fork(); the unmutated rule must pass first)
              echo "== perflevel_mut $name"
              rm -rf build/perflevel_mut; mkdir -p build/perflevel_mut
              cp -R firmware tests build/perflevel_mut/ || { echo "   FAIL (copy)"; fail=1; return; }
-             f=build/perflevel_mut/$f0; sed "$ex" "$f" > "$f.new" && mv "$f.new" "$f"
-             if cmp -s "$f" "$f0"; then echo "   FAIL (the mutation changed nothing in $f0)"; fail=1; return; fi
-             if ! $CC "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/perflevel_mut build/perflevel_mut/tests/perf_level_test.c -lm > $OUT/last.log 2>&1; then
+             f=build/perflevel_mut/$f0; [ -z "$ex" ] || { sed "$ex" "$f" > "$f.new" && mv "$f.new" "$f"; }
+             if [ -n "$ex" ] && cmp -s "$f" "$f0"; then echo "   FAIL (the mutation changed nothing in $f0)"; fail=1; return; fi
+             if ! $CC -DPL_RULE_ONLY "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/perflevel_mut build/perflevel_mut/tests/perf_level_test.c -lm > $OUT/last.log 2>&1; then
                echo "   FAIL (the mutated build does not compile)"; tail -5 $OUT/last.log; fail=1; return
              fi
-             if $OUT/perflevel_mut > $OUT/last.log 2>&1; then echo "   FAIL (the mutation was NOT detected)"; fail=1; else echo "   PASS (detected: $(grep -c ' FAIL$' $OUT/last.log) checks failed)"; fi
+             if [ -z "$ex" ]; then
+               if $OUT/perflevel_mut > $OUT/last.log 2>&1; then echo "   PASS ($(tail -1 $OUT/last.log))"; else echo "   FAIL (the rule fails unmutated)"; grep ' FAIL$' $OUT/last.log | head; fail=1; fi
+             elif $OUT/perflevel_mut > $OUT/last.log 2>&1; then echo "   FAIL (the mutation was NOT detected)"; fail=1; else echo "   PASS (detected: $(grep -c ' FAIL$' $OUT/last.log) checks failed)"; fi
            }
-           plm "a boost allowed (the part that takes raised up to the table's top, +7.5 dB)" firmware/src/ui_input.c 's/if (up->p\[P_LEVEL\] < PERF_BAL_HOME) {/if (up->p[P_LEVEL] < 127) {/'
-           plm "the direction swapped (right toward part 1)" firmware/src/ui_input.c 's/track_t \*up = &trk\[s > 0 ? 1 : 0\], \*dn = &trk\[s > 0 ? 0 : 1\];/track_t *up = \&trk[s > 0 ? 0 : 1], *dn = \&trk[s > 0 ? 1 : 0];/'
-           plm "the total not kept (the other part never raised: item 160's first rule without its raise)" firmware/src/ui_input.c 's/if (up->p\[P_LEVEL\] < PERF_BAL_HOME) {/if (0 \&\& up->p[P_LEVEL] < PERF_BAL_HOME) {/'
-           plm "a memory of its own (steps from the knob's last levels, the MIXER's writes ignored)" firmware/src/ui_input.c 's/^static void perf_balance(int32_t s)$/static int16_t pb_mem[2] = {-1, -1}; static void perf_balance_(int32_t s); static void perf_balance(int32_t s) { if (pb_mem[0] >= 0) trk[0].p[P_LEVEL] = pb_mem[0], trk[1].p[P_LEVEL] = pb_mem[1]; perf_balance_(s); pb_mem[0] = trk[0].p[P_LEVEL], pb_mem[1] = trk[1].p[P_LEVEL]; } static void perf_balance_(int32_t s)/' ;;
+           plm "control: the rule unmutated" firmware/src/ui_input.c ''
+           plm "a boost allowed (the part that goes up raised toward the table's top, +7.5 dB, not 0 dB)" firmware/src/ui_input.c 's/g0 = (int32_t)LEVEL_Q12\[PERF_BAL_HOME\];/g0 = (int32_t)LEVEL_Q12[127];/'
+           plm "the direction swapped (right toward part 1)" firmware/src/ui_input.c 's/pos = perf_bal_pos - s;/pos = perf_bal_pos + s;/'
+           plm "the total not kept (the part that goes up never raised)" firmware/src/ui_input.c 's/^    if (up)$/    if (0 \&\& up)/'
+           plm "a memory of its own (the MIXER's writes between the steps ignored)" firmware/src/ui_input.c 's/if (perf_bal_pos != 0 && (trk\[0\]/if (0 \&\& perf_bal_pos != 0 \&\& (trk[0]/' ;;
   mode)    $CC "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/mode_test tests/mode_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run mode $OUT/mode_test ;;
   hang)    $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/hang_test tests/hang_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run hang $OUT/hang_test ;;
   atgt)    $CC -o $OUT/atgt_test tests/atgt_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run atgt $OUT/atgt_test ;;

@@ -40,6 +40,24 @@ static int32_t ref_level(int32_t base, int32_t detents, int32_t up)
     }
     return g <= 0.0 ? 0 : bi;
 }
+/* the firmware works in the Q12 gain (integers: g' rounded to the nearest unit before the nearest index): where the exact g' lies within 1 unit of the midpoint between
+ * two table entries either of them is the formula's answer */
+static int ref_ok(int32_t got, int32_t base, int32_t detents, int32_t up)
+{
+    double p = (detents < 0 ? -detents : detents) / 32.0, g = LEVEL_Q12[base & 127], g0 = LEVEL_Q12[112];
+    int32_t r = ref_level(base, detents, up), f;
+    if (got == r)
+        return 1;
+    if (detents == 0 || got < 0 || got > 127)
+        return 0;
+    for (f = 0; LEVEL_Q12[f] != LEVEL_Q12[got]; f++)
+        ;
+    if (f != got)                                        /* (equal table entries: the first index, as the nearest search gives) */
+        return 0;
+    g = up ? g + (g0 - g) * p : g * (1.0 - p);
+    return fabs(g - (LEVEL_Q12[got] + LEVEL_Q12[r]) / 2.0) <= 1.0 &&   /* (the two neighbouring gains around g: g within 1 unit of their midpoint) */
+           ((LEVEL_Q12[got] <= g && g <= LEVEL_Q12[r]) || (LEVEL_Q12[r] <= g && g <= LEVEL_Q12[got]));
+}
 
 /* ------------------------------------------------------------------ the audio --- */
 static uint32_t pl_eng(const char *n)
@@ -184,7 +202,7 @@ static void perform_on(void) { hold(B_FX); frame(); }
 /* the levels the reference gives for the position pos (detents, plus = part 1 louder) from the base levels */
 static int lv_ref(int32_t b1, int32_t b2, int32_t pos)
 {
-    return lv_is(ref_level(b1, pos, pos > 0), ref_level(b2, pos, pos < 0));
+    return ref_ok(trk[0].p[P_LEVEL], b1, pos, pos > 0) && ref_ok(trk[1].p[P_LEVEL], b2, pos, pos < 0);
 }
 static void t_rule(void)
 {
@@ -218,18 +236,18 @@ static void t_rule(void)
     ok = 1;
     for (n = 0; n < sizeof BASE / sizeof BASE[0]; n++) {
         lv_set(BASE[n][0], BASE[n][1]);
-        turn(EN_SELECT, -32);                             /* to the right end: part 2 only */
+        turn(EN_SELECT, 32);                              /* to the right end: part 2 only (a step right = +1, as the walks below) */
         ok &= lv_is(0, 112);
-        turn(EN_SELECT, -5);
-        ok &= lv_is(0, 112);                              /* (no further) */
-        turn(EN_SELECT, 64);                              /* to the left end: part 1 only */
-        ok &= lv_is(112, 0);
         turn(EN_SELECT, 5);
+        ok &= lv_is(0, 112);                              /* (no further) */
+        turn(EN_SELECT, -64);                             /* to the left end: part 1 only */
         ok &= lv_is(112, 0);
-        turn(EN_SELECT, -32);
+        turn(EN_SELECT, -5);
+        ok &= lv_is(112, 0);
+        turn(EN_SELECT, 32);
         ok &= lv_is(BASE[n][0], BASE[n][1]);
     }
-    expect("the ends: p = +1 (32 detents left): LEVEL 1 at 0 dB (112), LEVEL 2 OFF; p = -1 (32 right): the mirror; more turning stays; back to the middle = the base levels", ok);
+    expect("the ends: p = -1 (32 detents right): LEVEL 1 OFF, LEVEL 2 at 0 dB (112); p = +1 (32 left): the mirror; more turning stays; back to the middle = the base levels", ok);
     /* no level above index 112 (unless the base itself is above and then it is not raised) and the direction of each part */
     {
         uint32_t above = 0, wrongway = 0;
@@ -327,7 +345,9 @@ static void t_rule(void)
 int main(void)
 {
     setvbuf(stdout, NULL, _IONBF, 0);
+#ifndef PL_RULE_ONLY                                    /* (perflevelmut: its mutants break the rule only; no fork needed) */
     t_audio();                                          /* (first: each child from the process's power-on state) */
+#endif
 #ifndef PL_RECORD
     t_rule();
 #endif
