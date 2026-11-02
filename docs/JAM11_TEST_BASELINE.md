@@ -2,6 +2,17 @@
 
 Current maintenance priorities: [roadmap](ROADMAP.md). Totals below describe their named source checkpoints, not a continuously updated count.
 
+## T0 progress: 2 November 2026, UI groups (branch `t0-ui`)
+
+Repaired test-side, now PASS: `select`, `morphui`, `perflevelmut`, `motion`, `fuzz`, `xbmut`. `mod` and `level` compile and run with no failed check up to their first `fork()` (SKIP on Windows). Causes: TIDE's HOME round (MORPH SETTINGS in MORPH SET's place, then AUTO TIDE; ALGORITHM selects BOTH there), cards read from the drawn texts (`ui.col` is a hash since 1.1), item 160's third BALANCE rule, the 1.1 header capsule's A / B letter, PT_VER 4 / PROJ_REV 8 / MU_VER 8 layouts, End B kept as values as the B end sounds it, TIDE's MUSIC roll AMOUNT.
+
+Still FAIL:
+- `ui` compiles and runs (`8099bdf`) but its lint finds real screens, not stale names: ENGINE FM6's FEEDBACK label off its card (uitest item 158 says the same), TIDE's splash / ABOUT credit line over the waves, the retired SCALE layer's scenes, menu INFO / TEST bottom rows, AUTO TIDE's 'A', 1487 alignment and 36 box findings. Needs owner / firmware decisions.
+- `editb`: one mutant needs `midi_control_test.c` to compile (`tests/scenes.h` mu_put_rec, the t0-scenes groups); the others match once morph_test's 2 known roll failures are not counted.
+- Not started: `uitest`, `pages` (its card reads and the 1.0 card-width model of section (a)), `perform`, `step3`, `engine`, `scope2`, `velo`, `pan`, `dx7import`.
+
+No firmware bug found in these groups.
+
 ## T0 progress: 2 November 2026, later
 
 Repaired test-side (T0, roadmap): `backup`, `patch`, `patchraw`, `bank` now PASS. They rewrite the 1.0 record checks for PT_VER 4 (End B as an MBV block; values lossless only inside their range; SWING 50..75), TIDE's 126-patch store, 1.1's PATCHES knobs (K3 SAVE, K4 FAV, no per-slot RESTORE) and S0a's one pattern object (a backup LIST writes a waiting pattern save). Shared helper: `felucca-base/tests/endb_store.h`. `bank` no longer reads `tests/factory_bank_records.txt` (PT_VER 3, refused by 1.1): it saves and reloads every factory sound and compares the sound.
