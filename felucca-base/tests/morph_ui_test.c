@@ -15,6 +15,7 @@
  *   SETTINGS   AMOUNT, SMART, ARP, PITCH kept in the settings bytes (TARGET's bit reserved, not read or written: 0.2.9), back after a power cycle; the default writes nothing
  * Built and run by DUELL/host_tests.sh (name: morphui): the UI sources against ui_test.c's stub display and knobs. */
 #define UI_TEST_NO_MAIN 1
+#define UI_TEXT_CAPTURE 1                                 /* (a card read from the texts drawn: ui_test.c card_match; ui.col is a hash since 1.1) */
 #include "ui_test.c"
 
 static int bad, ncheck;
@@ -37,15 +38,58 @@ static uint32_t page_of(const char *title)
     return i;
 }
 static void morph_page(void) { ui.menu = 0; go_title("MORPH"); frames(32); }
+/* a factory sound's AMOUNT as a load sets it (TIDE: MUSIC's own while ROLL is MUSIC, tide.h TIDE_FACTORY_AMOUNT) */
+static uint32_t snd_amount(uint32_t e, uint32_t k) { return (uint32_t)TIDE_FACTORY_AMOUNT(ds_amount(e, k)); }
 static uint32_t rolls(uint32_t pi, uint32_t e) { return mph[pi].n[e]; }   /* the end's entries (1: the Original only) */
 static uint32_t seed_now(uint32_t pi, uint32_t e) { return mph[pi].seed[e][mph[pi].top[e]]; }
 static const int8_t *endp(uint32_t pi, uint32_t e) { return mph[pi].h[e][mph[pi].top[e]]; }
 static int end_is_base(uint32_t pi, uint32_t e) { return !memcmp(mph[pi].h[e][mph[pi].top[e]], mph[pi].base, P_COUNT); }
-static int card_is(uint32_t c, const char *label, const char *val)   /* the card's cache key: "LABEL|VALUE|UNIT..." */
+static int card_is(uint32_t c, const char *label, const char *val)   /* the card shows the label and the value (""/"": nothing drawn in it) */
 {
     char want[40];
-    snprintf(want, sizeof want, "%s|%s|", label, val);
-    return !strncmp(ui.col[c], want, strlen(want));
+    if (!label[0] && !val[0])
+        return card_hidden(c);
+    snprintf(want, sizeof want, "%s|%s", label, val);
+    if (card_match(c, want))
+        return 1;
+    return c == 0u && card_match(0, val) &&   /* (MORPH since 1.1: K1's label is on the knob-1 line above its big value) */
+           rows_has(UT_A_K1_Y, UT_A_K1_Y + UT_A_K1_H, label);
+}
+#if DUELL_TIDE
+/* TIDE: MORPH SETTINGS is in MORPH SET's place, a list (tide_ui.c): K1 the row, OCT+ the next value, OCT- the one before; SMART / ARP / PITCH are its ROLL, ARP, PITCH */
+#define MORPH_SET_TITLE "MORPH SETTINGS"
+static void mset_row(uint32_t r) { turn(EN_K1, -8); if (r) turn(EN_K1, (int32_t)r); }
+static void mset_put(uint32_t r, uint32_t v)            /* row r to its value v: OCT- to the first, then OCT+ v times */
+{
+    uint32_t k;
+    mset_row(r);
+    for (k = 0; k < 4u; k++)
+        press(B_OCTDN);
+    for (k = 0; k < v; k++)
+        press(B_OCTUP);
+    frame();
+}
+#else
+#define MORPH_SET_TITLE "MORPH SET"
+#endif
+/* the letter in part pi's header capsule (A or B; 0 none): the texts drawn in its cell (ui_draw.c head_capsule) */
+static char cap_letter(uint32_t pi)
+{
+    uint32_t i;
+    screen_read();
+    for (i = 0; i < txt_n; i++)
+        if (txt_log[i].y1 <= 22 && (pi ? txt_log[i].x0 >= 200 : txt_log[i].x1 <= 40) && (!strcmp(txt_log[i].s, "A") || !strcmp(txt_log[i].s, "B")))
+            return txt_log[i].s[0];
+    return 0;
+}
+/* End B as a patch record keeps it (PT_VER 4: the values, each lossless inside its range: morph.c wv_code), a against b on engine eng */
+static int endb_same(uint32_t eng, const int8_t *a, const int8_t *b)
+{
+    uint32_t i;
+    for (i = 0; i < P_COUNT; i++)
+        if (i != P_LEVEL && wv_code(eng, i, a[i]) != wv_code(eng, i, b[i]))
+            return 0;
+    return 1;
 }
 static void fresh(void)
 {
@@ -56,11 +100,16 @@ static void fresh(void)
 /* ------------------------------------------------------------------ ROUND --- */
 static void t_round(void)
 {
-    static const char *const T[3] = {"MORPH", "MORPH SET", "MODE"};   /* (0.2.25 layout round: the MIXER is GLO's first page, not HOME's) */
+#if DUELL_TIDE
+    static const char *const T[] = {"MORPH", "MORPH SETTINGS", "AUTO TIDE", "MODE"};   /* (TIDE: MORPH SETTINGS in MORPH SET's place, then AUTO TIDE) */
+#else
+    static const char *const T[] = {"MORPH", "MORPH SET", "MODE"};   /* (0.2.25 layout round: the MIXER is GLO's first page, not HOME's) */
+#endif
+    const uint32_t NT = sizeof T / sizeof T[0];
     uint32_t k, ok = 1;
     fresh();
     go_title("AMP ENV");                                 /* (from another page HOME opens MORPH) */
-    for (k = 0; k < 3u; k++) {
+    for (k = 0; k < NT; k++) {
         press(B_HOME);
         frames(64);
         ok &= str_eq(PAGES[ui.page].title, T[k]);
@@ -70,14 +119,14 @@ static void t_round(void)
     expect("HOME tapped: MORPH, MORPH SET, MODE, then MORPH again (0.2.14: no OVERVIEW; 0.2.25: no MIXER)", ok && str_eq(PAGES[ui.page].title, "MORPH"));
     press(B_HOME);
     frames(64);
-    expect("  .. and MORPH SET; from another page HOME opens MORPH", str_eq(PAGES[ui.page].title, "MORPH SET"));
+    expect("  .. and MORPH SET; from another page HOME opens MORPH", str_eq(PAGES[ui.page].title, T[1]));
     go_title("AMP ENV");
     press(B_HOME);
     frames(64);
     ok = str_eq(PAGES[ui.page].title, "MORPH");
-    for (k = 1; k <= 3u; k++) {
+    for (k = 1; k <= NT; k++) {
         turn(EN_SELECT, 1);
-        ok &= where() == page_of(T[k % 3u]);
+        ok &= where() == page_of(T[k % NT]);
     }
     expect("SELECT right: the same round (MODE, then MORPH)", ok);
     turn(EN_SELECT, -1);
@@ -86,7 +135,7 @@ static void t_round(void)
     {
         char nm[20], ct[12];
         page_parts(nm, ct);
-        expect("footer title: MORPH 1/3", str_eq(nm, "MORPH") && str_eq(ct, "1/3"));
+        expect("footer title: MORPH 1/3 (TIDE: 1/4)", str_eq(nm, "MORPH") && str_eq(ct, NT == 4u ? "1/4" : "1/3"));
     }
 }
 
@@ -146,30 +195,22 @@ static void t_editb(void)
         const char *unit;
         param_format(&TP[P_ATK], (int16_t)morph_view(0, P_ATK), want, &unit);
     }
-    snprintf(un, sizeof un, "ATTACK|%s|", want);
-    expect("  the card shows B's value", !strncmp(ui.col[k], un, strlen(un)));
+    snprintf(un, sizeof un, "ATTACK|%s", want);
+    expect("  the card shows B's value", card_match(k, un));
     expect("  the header letter is B in B's colour and the page is a sound page", head_ab_on() && head_ab_b() == 1u);
-    {
-        uint32_t cx, cy, found = 0;
-        ui.force = 1; draw_head(); ui.force = 0;
-        for (cy = 6; cy < 18u; cy++)
-            for (cx = 34; cx < 46u; cx++)
-                found |= swap16(host_screen[cy * 240u + cx]) == T_PEND(0, 1);
-        expect("  .. its cushion is drawn right of the badges (x 33 .. 46) in part 1's B colour", found && ink_cols(33, 46) > 8u);
+    {   /* DUELL 1.1 header (ui_draw.c head_capsule, item 82): each part's capsule [number | letter | voices] holds the end its knobs edit, A or B, on every part page */
+        expect("  .. part 1's capsule reads B", cap_letter(0) == 'B');
         morph_set_fader(0);
         frames(32);
-        ui.force = 1; draw_head(); ui.force = 0;
-        found = 0;
-        for (cy = 6; cy < 18u; cy++)
-            for (cx = 34; cx < 46u; cx++)
-                found |= swap16(host_screen[cy * 240u + cx]) == T_PEND(0, 0);
-        expect("  .. A below the B end, in A's colour", found && head_ab_b() == 0u);
+        expect("  .. A below the B end", cap_letter(0) == 'A' && head_ab_b() == 0u);
+        morph_set_fader(127);
+        frames(32);
         morph_page();
-        ui.force = 1; draw_head(); ui.force = 0;
-        expect("  .. no letter on MORPH", !head_ab_on() && !ink_cols(33, 46));
-        go_title("MORPH SET");
-        ui.force = 1; draw_head(); ui.force = 0;
-        expect("  .. nor on MORPH SET", !head_ab_on() && !ink_cols(33, 46));
+        expect("  .. the capsule's letter on MORPH too (1.1: no separate cushion)", cap_letter(0) == 'B');
+        go_title(MORPH_SET_TITLE);
+        expect("  .. and on MORPH SET", cap_letter(0) == 'B');
+        morph_set_fader(0);
+        frames(32);
         go_title("MIXER");
         ui.force = 1; draw_head(); ui.force = 0;
         expect("  .. nor on the global pages (GLO)", !head_ab_on());
@@ -247,16 +288,22 @@ static void t_editb(void)
     hold(B_SAVE);
     press(B_OCTUP);
     n = morph_edits(0, ed);
-    memcpy(b0, endp(0, 1), P_COUNT);
+    {   /* (1.1: the record keeps End B as the B end sounds it, morph_effective_x at 127: A edited after B moves what B sounds) */
+        int16_t bx[EXT_P_LEN];
+        uint32_t i;
+        morph_effective_x(0, 1u, bx);
+        for (i = 0; i < P_COUNT; i++)
+            b0[i] = (int8_t)clamp(bx[i], -128, 127);
+    }
     memcpy(pa, trk[0].p, sizeof pa);
-    ok = up_used(sl) && !strncmp(ui.msg, "SAVED", 5) && n == 2u && up_rec(sl)->xb_n == 2u;
+    ok = up_used(sl) && !strncmp(ui.msg, "SAVED", 5) && n == 2u && (pt_raw(sl)[4] & PTF_MB);   /* (PT_VER 4: End B and its marks in the record's MBV block) */
     turn(EN_PRESET, 1);
     frames(32);
     expect("(control) another sound: no hand-set values", morph_edits(0, ed) == 0u);
     turn(EN_PRESET, -1);
     frames(32);
     expect("a patch saved with values set by hand: loading it gives A as saved, End B exactly as saved and the same two values, the fader at A",
-           ok && trk[0].user == sl + 1u && mph[0].fader == 0u && !memcmp(pa, trk[0].p, sizeof pa) && !memcmp(b0, endp(0, 1), P_COUNT) && morph_edits(0, ed) == 2u &&
+           ok && trk[0].user == sl + 1u && mph[0].fader == 0u && !memcmp(pa, trk[0].p, sizeof pa) && endb_same(mph[0].eng, b0, endp(0, 1)) && morph_edits(0, ed) == 2u &&
            pin_get(morph_pins(&mph[0]), P_ATK) && pin_get(morph_pins(&mph[0]), P_SUS));
     /* undo of loads (SAVE held), both orders */
     fresh();
@@ -317,7 +364,7 @@ static void t_knobs(void)
     turn(EN_K4, 5);
     snprintf(amt_txt, sizeof amt_txt, "%u", (unsigned)(a0 + 5u));
     expect("KNOB 4: AMOUNT of the selected part (+5), the other part's stays", mph[0].amount == a0 + 5u && mph[1].amount == a1 &&
-           a0 == ds_amount(trk[0].eng_req, trk[0].preset));
+           a0 == snd_amount(trk[0].eng_req, trk[0].preset));
     frame();
     expect("  .. the cards in v3's order: MORPH, ROLL, UNDO, AMOUNT (KNOB 4)", card_is(0, "MORPH", "A") && card_is(1, "ROLL", "A<>B") &&
            card_is(2, "UNDO", "A<>B") && card_is(3, "AMOUNT", amt_txt));
@@ -353,6 +400,26 @@ static void t_knobs(void)
     settle();
     turn(EN_K3, -MORPH_DET);
     expect("KNOB 3 left: UNDO A, B stays; no KEEP", rolls(0, 0) == 1u && msg_is("UNDO A") && rolls(0, 1) == 2u);
+#if DUELL_TIDE
+    /* TIDE: MORPH SETTINGS, the list in MORPH SET's place: ROLL SMART -> WILD, ARP ON, PITCH ON (the same settings bits); K2..K4 do nothing; ALGORITHM is the
+     * morph's selector there (PART 1, BOTH, PART 2: tide_ui.c) */
+    go_title(MORPH_SET_TITLE);
+    frames(32);
+    mset_put(2u, 2u); mset_put(3u, 1u); mset_put(4u, 1u);
+    expect("ROLL WILD, ARP ON, PITCH ON on MORPH SETTINGS (TIDE's list: K1 the row, OCT+ the value; the settings bits)",
+           morph.cfg == (MC_WILD | MC_ARP | MC_PIT) && favorites.factory[15][8] == 7u);
+    {
+        uint32_t c = morph.cfg, t = morph.target;
+        turn(EN_K2, 1); turn(EN_K3, -1); turn(EN_K4, 1); turn(EN_K4, -1);
+        frame();
+        expect("  .. KNOB 2..4: nothing (no card on the list)", morph.cfg == c && morph.target == t);
+    }
+    turn(EN_ALGO, 1);
+    expect("  .. ALGORITHM on MORPH SETTINGS: BOTH next (TIDE: the morph's selector, as on MORPH)", song.sel == 0u && morph.target == MT_BOTH);
+    turn(EN_ALGO, -1);
+    mset_put(2u, 0u); mset_put(3u, 0u); mset_put(4u, 0u);
+    expect("  .. and back: MUSIC (TIDE's default: SMART with the musical dials), ARP OFF, PITCH OFF (the defaults)", !morph.cfg && !favorites.factory[15][8]);
+#else
     /* MORPH SET (0.2.9): SMART, ARP, PITCH, KNOB 4 empty; no TARGET card (ALGORITHM's BOTH on the MORPH page is the target) */
     go_title("MORPH SET");
     frames(32);
@@ -374,6 +441,7 @@ static void t_knobs(void)
     turn(EN_K1, 1); turn(EN_K2, -1); turn(EN_K3, -1);
     frame();
     expect("  .. and back: SMART ON, ARP OFF, PITCH OFF (the defaults)", !morph.cfg && !favorites.factory[15][8]);
+#endif
 }
 
 /* ---------------------------------------------------------------- GESTURE --- */
@@ -471,8 +539,8 @@ static void t_target(void)
     }
     turn(EN_K3, MORPH_DET);
     expect("BOTH: UNDO B acts on both parts", rolls(0, 1) == 2u && rolls(1, 1) == 1u);
-    go_title("MORPH SET"); frames(32);
-    expect("BOTH, then MORPH SET: one badge (the selected part), BOTH kept", morph.target == MT_BOTH && badge_lit() == 1u);
+    go_title(MORPH_SET_TITLE); frames(32);
+    expect("BOTH, then MORPH SET: one badge (the selected part; TIDE's MORPH SETTINGS: both, as MORPH), BOTH kept", morph.target == MT_BOTH && badge_lit() == (DUELL_TIDE ? 3u : 1u));
     morph_page();
     expect("  .. back on MORPH: both badges again", morph.target == MT_BOTH && badge_lit() == 3u);
 }
@@ -689,13 +757,13 @@ static void t_load(void)
            mph[0].fader == 0u && end_is_base(0, 0) && !end_is_base(0, 1) && rolls(0, 0) == 1u && rolls(0, 1) == 2u &&
            !seed_now(0, 0) && seed_now(0, 1) && mph[0].nid && mph[0].preset == trk[0].preset);
     expect("AMOUNT follows the patch: the loaded factory sound's own AMOUNT shows on KNOB 4 (the rolled one's too)",
-           !trk[0].user && mph[0].amount == ds_amount(trk[0].eng_req, trk[0].preset) && mph[0].ramt[1][mph[0].top[1]] == mph[0].amount);
+           !trk[0].user && mph[0].amount == snd_amount(trk[0].eng_req, trk[0].preset) && mph[0].ramt[1][mph[0].top[1]] == mph[0].amount);
     turn(EN_K4, 7);
-    expect("  .. turning KNOB 4 changes the AMOUNT", mph[0].amount != ds_amount(trk[0].eng_req, trk[0].preset));
+    expect("  .. turning KNOB 4 changes the AMOUNT", mph[0].amount != snd_amount(trk[0].eng_req, trk[0].preset));
     turn(EN_PRESET, 1);
     frames(32);
     expect("  .. the next sound load sets it to that sound's AMOUNT again",
-           mph[0].amount == ds_amount(trk[0].eng_req, trk[0].preset));
+           mph[0].amount == snd_amount(trk[0].eng_req, trk[0].preset));
 }
 
 /* ------------------------------------------------------------ item 154: BREADBIN --- */
@@ -719,6 +787,10 @@ static void t_item154(void)
     static const uint32_t XI[3] = {X_ENV2, X_LFO1, X_LFO2};    /* TWIN ENV 2 / LFO 1 / LFO 2 (BREADBIN has TWIN on) */
     static const uint32_t PI[3] = {P_LD_FLT, P_LD_SHP, P_LD_AMP};
     fresh();
+#if DUELL_TIDE
+    go_title(MORPH_SET_TITLE); frames(32);
+    mset_put(2u, 1u);                                   /* (TIDE: ROLL SMART, 1.1's roll the owner's steps used; MUSIC, TIDE's default, keeps the LFO depths) */
+#endif
     preset_pos(&tot);
     for (n = 0; n < tot; n++) {
         preset_go(n);
@@ -770,6 +842,10 @@ static void t_item154(void)
             seen += card_vv(&trk[0].p[PI[k]]) != trk[0].p[PI[k]];
         expect("item 154: ROLL A with the fader at A: the cards change at once (the end the fader is at)", seen >= 2u);
     }
+#if DUELL_TIDE
+    go_title(MORPH_SET_TITLE); frames(32);
+    mset_put(2u, 0u);                                   /* (back to MUSIC, TIDE's default: the setting outlives a power cycle) */
+#endif
 }
 
 /* ---------------------------------------------------------------- SAVE HELD --- */
@@ -817,9 +893,9 @@ static void t_save(void)
     expect("(control) another sound: End B is another roll", memcmp(endp(0, 1), b0, P_COUNT) != 0);
     turn(EN_PRESET, -1);
     frames(32);
-    expect("PRESETS back one: the saved slot loads: fader at A, the saved sound, End B exactly as saved (seed, AMOUNT, values)",
+    expect("PRESETS back one: the saved slot loads: fader at A, the saved sound, End B exactly as saved (PT_VER 4: its values, no seed; AMOUNT)",
            trk[0].user == sl + 1u && mph[0].fader == 0u && end_is_base(0, 0) && trk[0].p[P_REL] != fac[P_REL] &&
-           !memcmp(endp(0, 1), b0, P_COUNT) && seed_now(0, 1) == sd && mph[0].amount == am);
+           endb_same(mph[0].eng, endp(0, 1), b0) && seed_now(0, 1) == 0u && sd != 0u && mph[0].amount == am);
     hold(B_SAVE);
     press(B_OCTUP);
     expect("SAVE held over it again: the same slot (no second one)", up_count() == 1u && up_used(sl) && !strncmp(ui.msg, "SAVED", 5) && preset_pos(&t2) == pos);
@@ -859,36 +935,40 @@ static void t_settings(void)
     expect("the default AMOUNT and SELECTED write nothing (the bytes stay 0, no flash write at power-on)",
            !favorites.factory[15][12] && !favorites.factory[15][13] && !ui.mset_dirty);
     morph_page();
-    turn(EN_K4, 40 - (int)mph[0].amount);
+    turn(EN_K4, 30 - (int)mph[0].amount);   /* (30: TIDE's MUSIC roll loads at 40 already, a turn to 40 would turn nothing) */
     turn(EN_ALGO, 1);
     turn(EN_ALGO, 1);                                   /* (0.2.9: BOTH, then PART 2) */
     turn(EN_K4, 5 - (int)mph[1].amount);
     turn(EN_ALGO, -1);                                  /* BOTH: not saved */
-    go_title("MORPH SET"); frames(32);
+    go_title(MORPH_SET_TITLE); frames(32);
+#if DUELL_TIDE
+    mset_put(3u, 1u); mset_put(4u, 1u);                 /* (ARP ON, PITCH ON) */
+#else
     turn(EN_K2, 1);
     turn(EN_K3, 1);
     frame();
-    expect("AMOUNT 40 / 5 into the settings bytes (1 + %), BOTH not (bit 7 reserved, 0.2.9), a save queued",
-           favorites.factory[15][12] == 41u && favorites.factory[15][13] == 6u && ui.mset_dirty && morph.target == MT_BOTH);
+#endif
+    expect("AMOUNT 30 / 5 into the settings bytes (1 + %), BOTH not (bit 7 reserved, 0.2.9), a save queued",
+           favorites.factory[15][12] == 31u && favorites.factory[15][13] == 6u && ui.mset_dirty && morph.target == MT_BOTH);
     frames(2200);
     expect("  .. saved once the knob rested ~2 s (settings_save)", !ui.mset_dirty);
     power_cycle();
-    expect("after a power cycle: each part's AMOUNT = its sound's (the settings keep 40 / 5 as the player's own), not BOTH (power-on: one part), ARP and PITCH ON; the ends' rolls and faders not kept; "
+    expect("after a power cycle: each part's AMOUNT = its sound's (the settings keep 30 / 5 as the player's own), not BOTH (power-on: one part), ARP and PITCH ON; the ends' rolls and faders not kept; "
            "part 1's factory sound: its own End B (its seed and AMOUNT, SMART, no ARP / PITCH: sounds.c)",
-           mph[0].amount == ds_amount(trk[0].eng_req, trk[0].preset) && mph[1].amount == ds_amount(trk[1].eng_req, trk[1].preset) &&
-           favorites.factory[15][12] == 41u && favorites.factory[15][13] == 6u && morph.target == MT_SELECTED && rolls(0, 0) == 1u && !mph[0].fader &&
+           mph[0].amount == snd_amount(trk[0].eng_req, trk[0].preset) && mph[1].amount == snd_amount(trk[1].eng_req, trk[1].preset) &&
+           favorites.factory[15][12] == 31u && favorites.factory[15][13] == 6u && morph.target == MT_SELECTED && rolls(0, 0) == 1u && !mph[0].fader &&
            morph.cfg == (MC_ARP | MC_PIT) && !trk[0].user && trk[0].preset < ds_count(trk[0].eng_req) &&
            mph[0].seed[1][mph[0].top[1]] == ds_seed(trk[0].eng_req, trk[0].preset) &&
-           mph[0].ramt[1][mph[0].top[1]] == ds_amount(trk[0].eng_req, trk[0].preset) && !(mph[0].rcfg[1][mph[0].top[1]] & MC_SET));
-    favorites.factory[15][12] = 0x80u | 41u;            /* an older setting with TARGET BOTH */
+           mph[0].ramt[1][mph[0].top[1]] == snd_amount(trk[0].eng_req, trk[0].preset) && !(mph[0].rcfg[1][mph[0].top[1]] & MC_SET));
+    favorites.factory[15][12] = 0x80u | 31u;            /* an older setting with TARGET BOTH */
     power_cycle();
     frames(2500);
     expect("an older setting's TARGET BOTH bit: power-on is not BOTH; the bit is kept as stored (no rewrite, no flash write)",
-           morph.target == MT_SELECTED && favorites.factory[15][12] == (0x80u | 41u) && !ui.mset_dirty);
+           morph.target == MT_SELECTED && favorites.factory[15][12] == (0x80u | 31u) && !ui.mset_dirty);
     morph_page();
     turn(EN_ALGO, 1);
     frames(2500);
-    expect("  .. ALGORITHM's BOTH writes nothing either (the bit stays)", morph.target == MT_BOTH && favorites.factory[15][12] == (0x80u | 41u) &&
+    expect("  .. ALGORITHM's BOTH writes nothing either (the bit stays)", morph.target == MT_BOTH && favorites.factory[15][12] == (0x80u | 31u) &&
            !ui.mset_dirty);
     favorites.factory[15][12] = 0xFF; favorites.factory[15][13] = 102;
     frame();
