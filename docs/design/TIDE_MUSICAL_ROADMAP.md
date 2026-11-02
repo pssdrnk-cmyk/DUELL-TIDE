@@ -1,6 +1,6 @@
 # TIDE musical refinement roadmap
 
-Updated: 2 November 2026. Status: **R0, M1 and M2a integrated and pushed; combined firmware installed and user data verified. M1 host A/B accepted; device listening, clock and CPU acceptance remain pending.**
+Updated: 2 November 2026. Status: **R0, M1 and M2a integrated and pushed; combined firmware installed and user data verified. M1 host A/B accepted; device listening, clock and CPU acceptance remain pending. M7–M9 (syncopation, question and answer, buildup/breakdown) added as owner concepts.**
 
 ## Purpose and accepted baseline
 
@@ -24,6 +24,9 @@ Already present: bounded sound walks; 16/32/64/128-bar phrase tiers; rhythm move
 | M3 | Less repetitive JRNY destinations | M0 | Planned |
 | M4 | Longer passages with restraint, development and recovery | M1-M3 accepted | Planned |
 | M5 | Transition loudness tuning where recordings demonstrate a problem | M0; final check after M4 | Evidence-dependent |
+| M7 | Syncopation: moves lean to off-beats and pushes | M1 | Proposed by the owner, 2 November 2026 |
+| M8 | Question and answer: alternating turnarounds, turn-taking, echoes | M7 | Proposed by the owner, 2 November 2026 |
+| M9 | Buildup, peak, stop, breakdown; harshness drives busyness | M7, M8, S0; overlaps M4 | Proposed by the owner, 2 November 2026; relation to M4 open |
 | M6 | Combined listening and device acceptance | Accepted individual slices | Planned |
 
 Implement and review one slice at a time. Keep or revert each musical change on its own merits. Do not accumulate every feature and only then listen. No calendar estimate is assigned before M0 establishes the amount of work and available memory.
@@ -164,6 +167,123 @@ Treat roughly 3 dB of unexplained sustained level change in a matched role as an
 Fix a demonstrated cause at its narrowest point: incorrect unison scaling, crossing gain, or a specific preset's trim/envelope. Do not add an automatic compressor, blanket per-frame gain normalization or another wash layer. Any trim changes need independent audition and a check of their effect outside TIDE; prefer TIDE-specific correction when the source sound is already correct at rest.
 
 Acceptance: the identified unwanted step/dip is reduced without pumping, clipped peaks, disappearing bass or altered at-rest sounds outside the authorized correction. If no clear outlier exists, complete M5 with measurements and no code change.
+
+## Owner musical concepts — 2 November 2026
+
+The owner listens to TIDE as a background next to a TR-6S and misses three things: **syncopation**, **question-and-answer** between the two parts, and **buildup and breakdown**. The stages M7, M8 and M9 below explain each idea musically first, then record what the code does today, what it needs and how to judge it. They follow the rules above. The exceptions the owner asked for are named where they apply. Nothing in them adds a page, control, saved field or mode: they are automatic MUSIC WNDR/JRNY behaviour.
+
+Step numbers below count a 16-step bar from 1: the beats are steps 1, 5, 9 and 13 (code index `i % 4 == 0`); the off-beat 8ths are 3, 7, 11 and 15; the 16ths either side of an off-beat 8th are 2, 4, 6, 8, 10, 12, 14 and 16.
+
+The three ideas build on each other. Syncopation decides *where* in the bar a part leans. Question-and-answer decides *which part* speaks in which bar. Buildup and breakdown decide *how much* is said over 32–64 bars. Implement and listen to them in that order.
+
+## M7 — syncopation
+
+### What it means musically
+
+Syncopation is weight placed where the listener does not expect it: on the weak 16ths between the beats, or one 16th *before* a beat so the note pushes into the bar line instead of landing on it. In house and dub techno the kick owns the four beats, so a chord or stab that avoids them and sits on the "and" (the off-beat 8th) or the "a" (the 16th just before a beat) makes the groove lean forward and leaves the kick room. Three figures matter most here:
+
+- **The off-beat stab.** Chords on steps 3, 7, 11 and 15, against the kick: the classic dub-chord placement. It sounds relaxed and spacious.
+- **The push (anticipation).** A hit on step 4, 8, 12 or 16, one 16th before a beat. It sounds urgent and drives forward, especially before the bar line (step 16 into step 1). One pushed chord per bar or two is enough; every chord pushed sounds like the pattern has slipped a 16th.
+- **The dotted cross-rhythm.** Hits every three 16ths (steps 1, 4, 7, 10, 13, 16) so the figure goes in and out of phase with the four-beat kick and only lines up again every few bars. Used once in a while, this is the most hypnotic of the three: it gives a long loop a slow sense of rotation.
+
+Two things limit it. The beats stay audible as reference: syncopation only sounds like syncopation against something steady, here the TR-6S and the pattern's own anchor hits. And a fully syncopated pattern stops sounding syncopated; it sounds like a shifted pattern. The aim is a pull towards the off-beats, not a complete move.
+
+### What the code does today
+
+- The older SYNC dial (shift chosen hits one 16th later or earlier, `seq_morph.c`) is forced to 0 in MUSIC WNDR/JRNY (`seq_morph.c` dial roll; `rhythm_begin()` in `seq_rhythm.c`). The cumulative phrase overlay replaced it.
+- `rhythm_mutate()` moves one non-anchor hit by one 16th. The direction comes from momentum and from `phrase_direction()`, which only avoids the other part's predicted attacks. It does not know whether the destination is on a beat, an off-beat 8th or a push, so a move away from the off-beat is as likely as a move towards it, and syncopation appears only by chance.
+- The beats (steps 1, 5, 9, 13) never move or drop. Keep this: they are the reference that makes the rest syncopated.
+- Only the older DENS dial weights new hits towards the off-beat 8th (weight 3 on step 3/7/11/15, 2 on other 16ths).
+
+### What is needed
+
+M7a, metric weighting of moves: when `rhythm_mutate()` and `phrase_direction()` choose between the two neighbouring 16ths, weight the destination by its place in the beat: off-beat 8th highest, push (step 4/8/12/16) next, other weak 16ths next, a beat never (anchors are already fixed; an ordinary hit should also not be moved *onto* a beat by this preference). Keep the existing peer-avoidance as a stronger factor: syncopating into the other part's attack is still a collision. Keep it a soft preference with the existing stochastic direction so the phrase still drifts.
+
+M7b, a cap on pushes: at most one or two pushed hits per bar per part, and never push a hit that already ties or slides. This keeps the push an accent instead of a shift.
+
+M7c, only if M7a is accepted: a rare dotted cross-rhythm opportunity during development stretches (M9), built from the existing move/repeat operations, not a new pattern generator. Reject it if it sounds like a different pattern instead of the same motif rotating.
+
+Resource estimate: a weight table and a few comparisons; no new state.
+
+Tests: a straight four-on-the-floor chord pattern drifts towards off-beats over many loops; a pattern already on off-beats stays there; anchors never move; the push cap holds; ties/slides/ratchets untouched; peer collisions still decrease (M1 fixture); seeded repeatability.
+
+Acceptance: over a long WNDR pass the share of hits on off-beat 8ths and pushes rises, while the motif stays recognisable and the beats remain present. Listening: the groove leans forward and sits better against the TR-6S kick. Reject if it sounds as if the pattern has slipped out of time.
+
+## M8 — question and answer between the two parts
+
+### What it means musically
+
+Call and response is a conversation: one part plays a short phrase that sounds open (a question), and the other part replies with a phrase that sounds closed (an answer). In a 4-bar phrase the usual shape is: bars 1–2 part 1 asks while part 2 stays in the background, bars 3–4 part 2 answers while part 1 steps back. Over the next phrase the roles can swap. What makes it audible:
+
+- **Taking turns.** The asking part is fuller and more active for its two bars; the answering part waits with sparse hits or long held notes, then becomes the active one. If both parts are equally busy all the time there is no conversation, only two monologues.
+- **Turnarounds that alternate.** The last bar of a phrase (the turnaround) is where a loop usually varies. If part 1 varies at bar 2 and part 2 at bar 4, the variations themselves become a question and its reply.
+- **The answer echoes the question.** The reply reuses the question's rhythm (or a recognisable part of it), shifted into the space the question left, so the listener hears that the two belong together. An unrelated reply sounds like coincidence.
+- **Open and closed endings.** With pitch, a question ends away from home (the 2nd, 4th or 6th degree, or the top of the chord) and the answer ends at home (the root, or the 5th). Rhythmically, a question can end on a push or an off-beat; an answer ends on or near a beat.
+
+The two parts still share the groove: the beats stay, and they may play together on downbeats. Turn-taking is about who leads, not about silencing one part.
+
+### What the code does today
+
+- `phrase_peer_attack()` predicts the other part's attacks and the gap/repeat/direction choices prefer the space between them (M1). This is avoidance: the parts do not talk at the same moment. It does not decide who leads, and the parts do not respond to each other's material.
+- `rhythm_poll()` alternates which part receives a development edit (`rhythm.turn`). These are pattern edits every two loops, not bar-by-bar turns in a phrase.
+- VARY BARS 4 + 8 plays the variation on every fourth bar, but `sqm_bar_turn` is one shared offset (`seq_play_step()` in `seq_morph.c`), so both parts vary on the same bars 4 and 8, together.
+- There is no notion of a 2- or 4-bar phrase, no open/closed ending, and no reuse of one part's rhythm by the other.
+
+### What is needed
+
+M8a, alternating turnarounds (smallest, try first): give each part its own bar offset in the VARY BARS 4 + 8 rule, so part 2 varies on bars 2 and 6 and part 1 on bars 4 and 8. Each part's variation is then followed two bars later by the other's. About one line plus tests. VARY BARS ALL is unchanged.
+
+M8b, turn-taking within a phrase: from the shared bar counter, assign each 4-bar phrase a leading part for bars 1–2 and the other for bars 3–4 (swap the order every other phrase from the seed). In its following bars the non-leading part plays a thinned version of its current pattern: the existing gap rules applied as a per-bar playback mask (keep the beats and long notes; drop some optional hits), not as stored edits. The leading part may use its current variation. Only parts selected for TIDE take part; a single selected part plays as today.
+
+M8c, echo and endings, only if M8b is accepted: when the leading role changes, give the new leader a bias to reuse the previous leader's last-bar rhythm on its own free steps (through the existing move/repeat operations). With PITCH on and MUSIC voice leading available, bias the leader's last note of bar 2 away from the root and the answer's last note of bar 4 towards the root or 5th of the selected scale, without inventing harmony (see the rule on scales above). ARP SEQ plays the held chord, so the pitch part does not apply there.
+
+Resource estimate: M8a none; M8b a few bytes of phrase state plus a mask path in the step read (check the ISR cost: `seq_play_step()` runs in the audio interrupt); M8c depends on S0.
+
+Tests: per-part VARY offsets with different pattern lengths and DIVs; STOP/PLAY keeps whatever bar-count behaviour VARY BARS has today; the mask never removes beats, ties or slides; one selected part; WAIT holds; external clock; KEEP stores the varied pattern, not the mask.
+
+Acceptance: listening on a two-part scene, the parts audibly take turns and one sounds like it replies to the other. Turnarounds no longer collide. Reject if the thinned part sounds like it is dropping out by mistake, or if the drive suffers.
+
+## M9 — buildup, peak, stop and breakdown
+
+### What it means musically
+
+Techno is arranged in tension and release. A **buildup** raises tension gradually: the sound gets brighter, rougher and more resonant, and the part gets busier — more hits, repeats, ratchets, syncopation — so every bar feels a little more urgent. It ends at a **peak**: the densest, harshest bar. Then comes the **stop**, a sudden drop: the FM-1 falls silent for a bar or two and only the effects tails and the TR-6S remain. The silence is what makes the peak feel like a peak. After it, the **breakdown**: the opposite colour, a soft, warm, consonant sound with slow attacks, long release and more space (reverb/delay), and a sparse sequence — few, long notes, the beats and a rare extra hit — so the music breathes. From there the next buildup starts.
+
+The owner's specific link: **harshness and busyness go together.** When the sound is harsh it should become gradually busier; when it turns pleasant and harmonic the sequence becomes rare. Sound and rhythm are no longer moved independently but by one shared tension.
+
+Musical details that make it work:
+
+- **The buildup is gradual and long** (16–32 bars), the stop is abrupt and short (1–2 bars), and the breakdown sits between (8–16 bars). An even split sounds mechanical.
+- **The stop falls on a phrase boundary** (the end of an 8- or 16-bar phrase) and does not cut a sounding note's release or the effects tails. It is a musical rest, not a mute.
+- **The motif survives.** After the breakdown the evolved phrase is still recognisable: the breakdown thins it and the next buildup fills it again from there. It does not restart from the original pattern.
+- **Both parts move with the arc, not identically.** During the buildup the call-and-response (M8) can quicken (turns every bar instead of every two bars); in the breakdown one part may hold a long chord while the other plays the rare notes.
+- **"Harsh" and "harmonic" are sound qualities, not loudness.** Harsh: high cutoff, high resonance, drive, strong FM modulation and feedback, short percussive envelopes, noise. Harmonic and pleasant: low cutoff, low resonance, simple whole-number FM ratios, low modulation, long envelopes, more reverb. A brighter sound also sounds louder; M5's loudness checks apply.
+- **The arc varies.** Not every buildup reaches a stop; lengths vary from the seed (as M4b proposes) so the cycle is not predictable.
+
+### What the code does today
+
+- `morph_complement.c` already measures four qualities from parameters (no audio analysis): brightness (LP cutoff), movement (filter LFO depth), space (reverb+delay+chorus) and envelope length (including FM6 carrier rates). JRNY's `sound_complement_pick()` uses them to prefer a sound that contrasts with the other part.
+- WNDR walks brightness and other dials independently of the sequence.
+- Phrase density is bounded: `phrase_repeat()` adds at most a quarter more hits than the original, and `phrase_gap()` removes no more than half. These bounds are the same at every moment.
+- The phrase tiers (16/32/64/128 bars) make larger changes more likely in longer phrases, but there is no shared tension and no stop or breakdown.
+
+### What is needed
+
+M9a, a harshness score: extend the parameter measures with resonance, drive and, for FM6, modulator levels/feedback and ratio simplicity; NOISE engines count as harsh. Usable for the current sound (WNDR) and JRNY candidates.
+
+M9b, harshness drives busyness (the owner's link; can be tried before the full arc): set the phrase density bounds from the current harshness — a harsh sound may reach more added repeats and the occasional ratchet; a soft sound is held towards fewer, longer notes. This replaces the fixed bounds above and is a deliberate change to the rule "preserve existing density bounds", asked for by the owner.
+
+M9c, the arc: one tension value shared by both parts, advanced by musical bars (not wall time) through build → peak → stop → breakdown → next build. During the build the WNDR walk is biased towards the harsh side and the M7 syncopation weighting is strongest; at the peak the density bound is highest; the stop is a phrase-aligned rest of the TIDE parts' sequences (notes release naturally, tails ring); in the breakdown JRNY scoring prefers soft, harmonic candidates (adding a sign from the arc to `sound_candidate_score()`) and the density bound drops below today's minimum. STOP of the transport freezes the arc, resume continues it, a new WNDR/JRNY session starts it fresh. WAIT bars count as musical time.
+
+The sudden stop is a deliberate exception to the "no endpoint jumps" acceptance of M4; that rule still applies to the sound glides themselves.
+
+Limits: JRNY stays within the current engine and category (see M3), so the soft breakdown sound must come from the same palette; crossing categories for breakdowns would be a separate owner decision. Long sustained breakdown chords depend on the sound's own envelope. M9c needs S0 for flash room.
+
+Relation to M4: M9 covers the same ground as M4a's settle/develop/open/recover arc and is the owner's more specific version of it. Whether M9 replaces M4 or the two are combined is an open owner decision; until then, design them together and do not build both.
+
+Tests: harshness ordering on known presets (e.g. a resonant acid sound above a soft pad); busyness tracks harshness in both directions; arc boundaries at different TIME/WAIT values and pattern lengths; stop aligned to phrase ends and never cutting a release; STOP/PLAY and resume; one or two selected parts; AMOUNT zero; KEEP during each phase; long-session bounds over at least 256 bars (no progressive thinning, no permanent maximum brightness or density).
+
+Acceptance: a 10-minute session has audible buildups, peaks, clean stops and calmer breakdowns; harsh stretches are busier and soft stretches sparse; the motif carries across; the TR-6S stays in front during stops. Reject if the arc sounds scripted, if stops sound like dropouts, or if the background starts drawing more attention than the instruments it supports.
 
 ## M6 — accept the combined result
 
