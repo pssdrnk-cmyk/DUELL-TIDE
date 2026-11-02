@@ -24,7 +24,7 @@
  * DUELL 0.2.14 (INFO 42 01 caps bit 2): ids 13..20 = OBJ_MULTI0..7 (M01-02 .. M15-16, two multis an object, magic MUL1, multi.c) and ids
  * 21..23 = OBJ_PATSLOT0..2 (P01-11, P12-22, P23-32, 11 / 11 / 10 slots an object, magic PTS3, a compact variable-length object, patslot.c) are in the
  * archive (27 ids). They are read
- * where they live (a multi object from flash through st_current, a pattern object from the RAM mirror ps_bank, which is the truth while a
+ * where they live (a multi object from flash through st_current, a pattern object from RAM (patslot.c ps_obj), which is the truth while a
  * pattern write is pending), never from the staging RAM (the runtime snapshot of id 0 sits there). An object with no multi record is listed
  * with length 0, and a PUT of length 0 writes that empty object (the factory multis show again). A pattern object is never empty (every
  * slot holds a pattern): a PUT of length 0 gives its slots their defaults again.
@@ -133,10 +133,11 @@ static const uint8_t *ed_bk_object(uint32_t id, uint32_t *len)
         *len = sizeof wt_ram[u];
         return (const uint8_t *)&wt_ram[u];
     }
-    if (ed_bk_pat(id) >= 0) {                       /* the pattern slots: the RAM mirror is the truth (a write may be pending) */
+    if (ed_bk_pat(id) >= 0) {                       /* the pattern slots: RAM is the truth (a write may be pending; S0a: ps_obj brings the object in) */
         uint32_t o = (uint32_t)ed_bk_pat(id);
-        *len = ps_used_len(o);                      /* (no slot is empty: the object is always there, defaults included) */
-        return ps_bank[o];
+        const uint8_t *b = ps_obj(o);
+        *len = b ? ps_used_len(o) : 0u;             /* (no slot is empty: the object is always there, defaults included; 0: the flash failed) */
+        return b;
     }
     if (id == 0u) { *len = sizeof(project_store_t); return ED_BK_RAW; }
     if (id == 1u) { *len = sizeof(persist_t); return ed_bk_settings_rec(); }
@@ -220,6 +221,7 @@ static uint32_t ed_bk_commit(void)
     } else if (ed_bk_pat(ed_bk_id) >= 0) {     /* DUELL: a PATTERN object (11 or 10 slots, PTS3); length 0 = the defaults of its slots again */
         uint32_t o = (uint32_t)ed_bk_pat(ed_bk_id);
         if (!ed_bk_len) {
+            if (ps_take(o)) return 4;               /* (S0a: the object into RAM first) */
             ps_reset_obj(o);                        /* (marks the object dirty: the flash follows; a failed write is retried) */
             sync_reload = 1; ui.force = 1;
             return 0;
@@ -228,9 +230,7 @@ static uint32_t ed_bk_commit(void)
 #if FELUCCA_FLASH
         if (!flash_ok || st_save(OBJ_PATSLOT0 + o, raw, ed_bk_len)) return 4;
 #endif
-        memcpy(ps_bank[o], raw, ed_bk_len);         /* the mirror is the restored object; no write of the old one is pending */
-        ps_obj_check(o, (int)ed_bk_len);
-        ps_dirty &= (uint8_t)~(1u << o);
+        ps_restored(o, raw, ed_bk_len);             /* RAM is the restored object; no write of the old one is pending */
         sync_reload = 1; ui.force = 1;
         return 0;
     } else if (ed_bk_id == ED_BK_PATCH) {     /* one patch record into its slot (the store places it); length 0: the slot's record removed */
@@ -323,7 +323,7 @@ static int ed_backup_handle(uint32_t cmd, const uint8_t *a, uint32_t n)
         if (!rc) for (uint32_t i = 0; i < ED_BK_N; i++) {
             uint32_t len;
             const uint8_t *p = ed_bk_object(ED_BK_IDS[i], &len);
-            ed_b(ED_BK_IDS[i]); ed_bk_u32(len); ed_bk_u32(st_crc32(p, len));
+            ed_b(ED_BK_IDS[i]); ed_bk_u32(len); ed_bk_u32(p ? st_crc32(p, len) : 0u);
             fm1_wdt_feed();
         }
         return 1;

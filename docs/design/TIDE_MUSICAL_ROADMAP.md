@@ -17,7 +17,8 @@ Already present: bounded sound walks; 16/32/64/128-bar phrase tiers; rhythm move
 | Stage | Outcome | Dependency | State |
 |---|---|---|---|
 | R0 | Reliable WAIT edits and takeover of either part | None | Implemented, host-tested and included in the verified combined emulator/package build; installed, with device behavior acceptance pending |
-| S0 | Room in flash and RAM for M2-M4 | None; before or alongside M2-M4 | Planned; findings below (1 November 2026) |
+| S0 | Room in flash and RAM for M2-M4 | None; before or alongside M2-M4 | S0a and S0b implemented and host-tested on branch `s0-room` (2 November 2026), not flashed; S0c-S0e planned |
+| T0 | Repair the host test baseline: 63 of 121 groups fail on plain 1.1 | None; before M3 and M4 | Planned (owner, 2 November 2026); `patslot` partly repaired with S0a |
 | M0 | Reproducible musical reference and pitch diagnostic | R0 for moving sessions | Done (owner, 1 November 2026); its results are not yet recorded in this roadmap |
 | M1 | ARP SEQ-aware space between parts | M0 | Implemented, software-verified, owner host A/B accepted and installed; device listening comparison pending |
 | M2 | Smoother chord voicing over the loop join | M0 | M2a implemented, host-tested, integrated and installed; musical listening comparison pending |
@@ -425,6 +426,29 @@ The search covered all of DUELL, not only TIDE. Owner decisions (1 November 2026
 Not pursued: strings (19.5 KB; duplicates already merged, the longest are licence credits that must stay); the second effects bus and engine memory (real per-part needs); drawing the keycap pills instead of storing them (`KC_DATA`, 4.9 KB; changes their look); broad no-inline of UI helpers (about 1.3 KB measured earlier, at a drawing-speed cost).
 
 Suggested order: S0b and S0a first (largest, simplest), then S0c, S0d, S0e as M2-M4 need the room.
+
+### S0a and S0b — 2 November 2026
+
+Branch `s0-room`, from `jam11` `8506f2c` (firmware source as `a41d1bf`). Not flashed, not merged.
+
+- **S0b:** `tools/size_fns.py` takes `multi.c` and the whole of `morph.c`. Its audio-rate code (`morph_apply`, `morph_cur`, `morph_begin`, ...) is reached from the audio interrupt, so `isr_reach` keeps it at -Os; 1,344 functions built for size (1,224 before), hot audio code unchanged. The single names of `morph_xfer.c` and `eng_fm6.c` stay listed. The main-loop morph steps during a glide (`morph_do`, `morph_ramp`, `morph_build`) are now built for size; no CPU measurement on the unit yet.
+- **S0a:** `patslot.c` keeps ONE pattern object in RAM (`ps_buf`, 3,584 B) plus every slot's name, LEN and flags (`ps_meta`, 480 B) in place of all three objects (10,752 B). A LOAD reads its object into RAM; while RAM holds another object's waiting SAVE, the slot is read from the flash for that load only (no write). An object that was missing or damaged is its defaults, built again when needed. Owner rule: a SAVE into a different object (P01-11, P12-22, P23-32) while another object's SAVE still waits during playback writes the waiting one at once, with the flash duck's short dip; the owner accepted it as rare and barely audible. Format, flash map and the editor backup are unchanged.
+- **Date pin:** MENU > SYSTEM > ABOUT shows `__DATE__`, so `jam/check_off.sh` failed on every day after its baseline was recorded. `build.py` now takes `DUELL_BUILD_DATE` and `check_off.sh` pins it to `Nov  1 2026`. Proven: the date pin alone, on today's date, reproduces the old `6232c047...` exactly.
+
+| Region | `a41d1bf` | `s0-room` | Delta |
+|---|---:|---:|---:|
+| Application flash (image) | 579,916 B | 579,712 B | -204 B (S0b -928, S0a +724) |
+| Pool + range Z | 357,484 B | 350,796 B | -6,688 B (free to the stack guard 11,156 -> 17,844 B) |
+| Ordinary RAM | 67,920 B | 67,936 B | +16 B |
+| Hot audio code | 11,044 B | 11,048 B | +4 B |
+
+TIDE-off baseline moves to `b531ace3...` (shared code, as S0 expects). Verified: device build with all placement/reach checks, packaged-firmware CPU-emulator smoke (boot, LCD, MIDI note, finite audio; package `a6a1aa72...`), `check_off` PASS on the new baseline, and the full host suite on a clean `a41d1bf` snapshot against the candidate: the same 58 pass / 63 fail / 11 skip groups and no differing check line in any group. `patslot` was repaired enough to run: the stale per-slot ERASE checks are gone (1.1 removed that UI), its pattern generator keeps SWING in 1.1's 50..75, and seven S0a checks are new (all pass). Its remaining 22 failures are old UI-flow checks and fail identically on the baseline (T0). Not established: CPU on the unit, the dip on the unit, a real-flash LOAD while a SAVE waits.
+
+Flash is still the limit: 1,852 B free. S0c (smaller FM6 pitch table, about 3 KB) is the next flash step.
+
+## T0 — repair the host test baseline
+
+On 1 November 2026 (`docs/JAM11_TEST_BASELINE.md`) 63 of 121 host test groups failed on plain 1.1 before any TIDE change: upstream's own tests use names 1.1 removed (`CF_ERASE_PSLOT`, `ps_erase`, `up_xb_in`, `ui.plk_src`) or check 1.0 behaviour (SWING from 0, old argument counts). Comparing against that list catches new breakage only where a test still runs; the pattern slots, multis, backup, persist, project, UI and editor have no working net. Repair one group at a time, test-side only (no firmware change to make a test pass, unless the test found a real bug: then that fix is its own always-on change with an `off.sha256` update). Order by what TIDE and S0 touch: `patslot` (22 UI-flow checks left), `backup` (does not compile), `persist`, `multi`, `project`, `ui`/`uitest`, `morphui`, `perform`, then the rest. Each repaired group moves from FAIL to PASS in `JAM11_TEST_BASELINE.md`.
 
 ## First implementation slice
 

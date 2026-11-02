@@ -327,6 +327,9 @@ def build_app():
     v = os.environ.get("FELUCCA_USB_LAYOUT")   # firmware/src/usb.c: how the USB composite presents itself (#67), 0..3
     if v in ("0", "1", "2", "3"):
         flags.append(f"-DFELUCCA_USB_LAYOUT={v}")
+    v = os.environ.get("DUELL_BUILD_DATE")   # ABOUT's date ("Nov  1 2026", __DATE__'s form): unset, the day of the build
+    if v and re.fullmatch(r"[A-Z][a-z]{2} [ 123]\d \d{4}", v):
+        flags.append(f'-DDUELL_BUILD_DATE="{v}"')
     flags.append(f'-DFELUCCA_ID="{PRODUCT}"')
     # felucca.c goes to LLVM IR without the optimizer, the main-loop functions (UI, stores, editor) are
     # marked minsize (tools/size_fns.py), then the IR is compiled at -Os. FELUCCA_SIZE=0: -Os everywhere

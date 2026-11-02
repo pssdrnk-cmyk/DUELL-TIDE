@@ -3,7 +3,10 @@
 #   sh jam/check_off.sh            build with DUELL_TIDE=0 and compare the package with jam/off.sha256
 # off.sha256 holds the package hash of the last commit that changed DUELL's own behaviour (the fixes). A TIDE change
 # must never change it; a new always-on fix updates it in the same commit, with the reason in the message.
+# MENU > SYSTEM > ABOUT shows the build date (__DATE__): it is pinned to the day the first baseline was recorded,
+# so the hash compares across days.
 set -u
+export DUELL_BUILD_DATE="Nov  1 2026"
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 . "$REPO/jam/env.sh"
 want="$(cut -c1-64 "$REPO/jam/off.sha256")"
