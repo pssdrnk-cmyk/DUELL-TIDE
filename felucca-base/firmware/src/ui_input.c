@@ -1332,6 +1332,17 @@ static uint8_t oct_mod;                                 /* OCT- was used as a mo
 static uint8_t kr_on[4];                                /* knob k: a reset happened, its detents are ignored while it goes on */
 static uint32_t kr_t[4];
 
+/* Commit a knob link into GLO and swallow the detents still in flight. */
+static void glo_knob_jump(uint32_t page, uint32_t knob)
+{
+    ui.page = (uint8_t)page;
+    ui.fam_last[FAM_GLO] = ui.page;
+    knob &= 3u;
+    kr_on[knob] = 1;
+    kr_t[knob] = fm1_ms;
+    page_entered();
+}
+
 /* FX's second page, SEND FX (0.2.22; the sends are shown, not edited): a twist of K1 (CHORUS), K2 (DELAY) or K3 (REVERB) either way jumps to GLO's CHORUS, DELAY 1/2 or REVERB: the page change
  * only, no value changes (the sends are the FX page's), and the knob does not stick or snap to anything. The rest of that twist is swallowed (kr_on: the same quiet time as after a reset), so it
  * does not move the new page's first card. K4 has no card. SENDS OFF: the cards are not drawn and the knobs do nothing (card_hidden_vp). The GLO family remembers the page (the next tap of GLO comes back to it) */
@@ -1346,11 +1357,7 @@ static void fxsum_knob(uint32_t slot, int32_t steps)
             break;
     if (i >= NPAGES)
         return;
-    ui.page = (uint8_t)i;
-    ui.fam_last[FAM_GLO] = ui.page;
-    kr_on[slot] = 1;
-    kr_t[slot] = fm1_ms;
-    page_entered();
+    glo_knob_jump(i, slot);
 }
 
 /* DUCK 1/2 (FX) while the part's SRC is MIDI: K4 is a link card to GLO > SIDECHAIN (params.c duck_midi_page) */
@@ -1364,11 +1371,7 @@ static void schain_jump(uint32_t knob, int32_t steps)
             break;
     if (i >= NPAGES)
         return;
-    ui.page = (uint8_t)i;
-    ui.fam_last[FAM_GLO] = ui.page;
-    kr_on[knob & 3u] = 1;                               /* (the knob that jumped: its further detents are swallowed) */
-    kr_t[knob & 3u] = fm1_ms;
-    page_entered();
+    glo_knob_jump(i, knob);
 }
 
 /* item 125: a twist of any knob of a page whose module is OFF (ui.c off_module, the notice of ui_graph.c graph_off) jumps to GLO > MODULES; the rest of that twist is swallowed (kr_on) as after fxsum_knob */
@@ -1382,11 +1385,7 @@ static void off_knob(uint32_t knob, int32_t steps)
             break;
     if (i >= NPAGES)
         return;
-    ui.page = (uint8_t)i;
-    ui.fam_last[FAM_GLO] = ui.page;
-    kr_on[knob & 3u] = 1;
-    kr_t[knob & 3u] = fm1_ms;
-    page_entered();
+    glo_knob_jump(i, knob);
 }
 
 /* 0: no reset on this card (the turn goes on as ever); 1: reset (said); 2: the card is not shown (a selection makes it inapplicable): nothing */
