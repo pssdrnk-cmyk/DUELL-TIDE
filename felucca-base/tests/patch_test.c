@@ -11,20 +11,13 @@
  *   3. the slots: a fresh unit holds the factory sound in all 128 (nothing written), SAVE overwrites the slot it is told to (K1 in the dialog picks it,
  *      the slot the sound came from is offered), RESTORE brings the factory sound back bit for bit, RESTORE ALL, MIDI program change = the slot,
  *      FAV is the slot's, a power cut at every step of a SAVE, a RESTORE and a RESTORE ALL;
- *   4. the page: ONE list of 128 slots (the number, the name), K1 steps and loads, K2 TYPE a filter, K3 FAV, K4 RESTORE drawn on the slot the part plays (reloads its saved version).
+ *   4. the page: ONE list of 128 slots (the number, the name), K1 steps and loads, K2 TYPE a filter, K3 SAVE, K4 FAV (1.1: no RESTORE on the page).
  *   build/host/patch_test            (DUELL/host_tests.sh "patch") */
 #define UI_TEST_NO_MAIN 1
 #define FELUCCA_FLASH 1
 #include "ui_test.c"
-/* ROLL CHAINED storage (PT_VER 4): the seed block (up_mblk), the extension block's edit list (up_xb_in / up_xb_nin) and the flags PTF_XB / PTF_BM (16 / 64) are gone from the record.
- * These stand-ins are only so that this file compiles; the checks that use them are stale and need rewriting to the new record (End B as values: up_bv_in, the values at range bits) */
-#ifndef PTF_XB
-#define PTF_XB 16u
-#define PTF_BM 64u
-#endif
-static const uint8_t *up_mblk;
-static const xb_edit_t *up_xb_in;
-static uint32_t up_xb_nin;
+#include "endb_store.h"
+#define NSAVE (PT_MAX < UP_SLOTS ? PT_MAX : UP_SLOTS)   /* records the store always takes: 126 with TIDE (chunk 21 holds its settings, plan 4.5), else all 128 */
 
 static uint8_t nor[0x100000];
 static long cut_bytes = -1;
@@ -94,7 +87,7 @@ static uint32_t pt_bytes(void)
     return n;
 }
 /* part t as the biggest record there can be: FM6 with its patch, every value off its default, the arp in SEQ mode with all sixteen
- * values and sixteen full steps; the caller sets up_mblk (End B) for the rest */
+ * values and sixteen full steps; End B with 32 values set by hand comes with store_with_b(.., worst_ed, XB_MAX) */
 static xb_edit_t worst_ed[XB_MAX];
 static void worst_part(track_t *t, uint32_t idx)
 {
@@ -124,51 +117,35 @@ static void worst_part(track_t *t, uint32_t idx)
         XV(t, i) = (int16_t)((int)xb_def(i) - 64 + 1 + (int)(idx % 50u));
     for (i = 0; i < XB_MAX; i++)
         worst_ed[i] = (xb_edit_t){(uint8_t)(i < 28u ? 4u * i + 1u : 128u + i - 28u), (int16_t)(127 - (int)(i * 3u + idx % 7u))};
-    up_xb_in = worst_ed;
-    up_xb_nin = XB_MAX;
 }
 
-/* how many of the two LFO TRIGs a stored record holds (pairs, or the bitmap form's set bits); pr: the values' start (pt_layout) */
+/* part t (worst_part before) into slot k with the biggest End B: every value it can move off the Original, the 32 values set by hand, FM6's
+ * bytes too: the record PT_WORST bounds */
+static int store_worst(track_t *t, uint32_t k, const char *nm)
+{
+    uint32_t pi = (uint32_t)(t - trk), w, i;
+    morph_part_t *mp = morph_ready(pi);
+    morph_pin_load(mp, worst_ed, XB_MAX);
+    for (w = 0; w < EXT_P_LEN; w++)
+        if (mbv_wid(w) && !mbv_never(w) && morph_editable(mp, w, 0)) {
+            const param_desc_t *d = morph_desc(ENGINES[eng_idx(mp->eng)], w);
+            int32_t o = mp->base[w];
+            *morph_bval(mp, w) = (int8_t)(o + 1 <= d->max ? o + 1 : o - 1);
+        }
+    if (morph_isfm(mp))
+        for (i = 0; i < NFM; i++)
+            mp->fh[1][mp->top[1]][i] = mp->fb[i] < 99u ? mp->fb[i] + 1u : mp->fb[i] - 1u;
+    morph_build(mp);
+    return store_endb_cat(t, k, nm, 0);
+}
+
+/* how many of the two LFO TRIGs a stored record holds (PT_VER 4: their bits in the values' bitmap); pr: the values' start (pt_layout) */
 static uint32_t trig_stored(const uint8_t *raw, uint32_t pr)
 {
-    uint32_t j, n = 0;
-    if (raw[4] & PTF_BM) {
-        n += raw[pr + P_LTRIG / 8u] >> (P_LTRIG % 8u) & 1u;
-        n += raw[pr + P_L2TRIG / 8u] >> (P_L2TRIG % 8u) & 1u;
-    } else {
-        for (j = 0; j < raw[19]; j++)
-            n += raw[pr + 2u * j] == P_LTRIG || raw[pr + 2u * j] == P_L2TRIG;
-    }
-    return n;
+    return (raw[pr + P_LTRIG / 8u] >> (P_LTRIG % 8u) & 1u) + (raw[pr + P_L2TRIG / 8u] >> (P_L2TRIG % 8u) & 1u);
 }
 
 
-/* the records of this section as hex lines "name hex" in build/host/xb_fixture.txt: what the firmware writes (and refuses), for the editor's tests (web/) to parse */
-static FILE *xbfix;
-static void fixline(const char *name, const uint8_t *b, uint32_t n)
-{
-    uint32_t i;
-    if (!xbfix)
-        return;
-    fprintf(xbfix, "%s ", name);
-    for (i = 0; i < n; i++)
-        fprintf(xbfix, "%02x", b[i]);
-    fprintf(xbfix, "\n");
-}
-/* a stored record with its extension block replaced by blk (bn bytes, 0: none): the flag and the length follow; the new length */
-static uint32_t rec_with_block(const uint8_t *src, uint32_t n, const uint8_t *blk, uint32_t bn, uint8_t *dst)
-{
-    uint32_t xbo, mb, pr, pat, fm, nn;
-    pt_layout(src, &xbo, &mb, &pr, &pat, &fm);
-    nn = n - (mb - xbo) + bn;
-    memcpy(dst, src, xbo);
-    memcpy(dst + xbo, blk, bn);
-    memcpy(dst + xbo + bn, src + mb, n - mb);
-    dst[4] = (uint8_t)((dst[4] & ~PTF_XB) | (bn ? PTF_XB : 0u));
-    dst[0] = (uint8_t)nn;
-    dst[1] = (uint8_t)(nn >> 8);
-    return nn;
-}
 
 int main(void)
 {
@@ -192,17 +169,26 @@ int main(void)
     trk[0].p[P_E4] = (int16_t)(trk[0].p[P_E4] + 9);
     trk[0].p[P_TRIM] = 99;
     for (i = 0; i < P_COUNT; i++)
-        was[i] = i == P_LEVEL ? (int16_t)up_def(0, P_LEVEL) : motion_base_value(&trk[0], i);   /* (0.2.19: the mixer level is no patch's) */
-    up_mblk = (const uint8_t[]){'M', 1, 2, 25, 3, 0, 77};
-    ck("overwrite the same slot with other values + an End B block", up_store_trk(&trk[0], 7u, "TEST A", CAT_BASS) == 0);
-    up_mblk = 0;
-    power_cycle();
+        was[i] = i == P_LEVEL ? (int16_t)up_def(0, P_LEVEL) : (int16_t)wv_val(0, i, wv_code(0, i, motion_base_value(&trk[0], i)));   /* (0.2.19: the mixer level is no patch's;
+                                                                                         * PT_VER 4: a value as its range keeps it, what a load fits it to) */
     {
+        static const xb_edit_t e1[2] = {{P_ATK, 30}, {P_REL, 90}};
+        ck("overwrite the same slot with other values + an End B block (two values set by hand)", store_with_b_cat(&trk[0], 7u, "TEST A", CAT_BASS, e1, 2) == 0 && eb_n);
+    }
+    {
+        static uint8_t keep[MBV_MAX];
+        uint32_t nkeep = eb_n, ebn;
+        const uint8_t *eb;
+        memcpy(keep, eb_blk, eb_n);
+        power_cycle();
+        {
         const up_rec_t *r = up_rec(7);
+        eb = rec_endb(7u, &ebn);
         ok = up_used(7) && up_count() == 1u && str_eq(r->name, "TEST A") && up_cat(7) == CAT_BASS && r->engine == 0u &&
-             r->packed[UP_MB_AT] == 'M' && r->packed[UP_MB_AT + 6] == 77;
+             eb && ebn == nkeep && !memcmp(eb, keep, nkeep);
         for (i = 0; i < P_COUNT; i++)
-            ok &= up_value(r, i) == was[i];
+            ok &= wv_code(0, i, up_value(r, i)) == wv_code(0, i, was[i]);   /* (PT_VER 4: equal inside the range, what a load fits it to) */
+        }
     }
     ck("after a power cycle: the same name, category, every value, End B block; still one record", ok);
     /* 0.2.7: the matrix's new destinations (stored as their DST numbers 23..45, appended) come back as they were */
@@ -211,7 +197,8 @@ int main(void)
     trk[0].p[P_M8SRC] = MS_MODW, trk[0].p[P_M8DST] = MD_E2REL, trk[0].p[P_M8AMT] = 63;
     trk[0].p[P_M7SRC] = MS_LFO2, trk[0].p[P_M7DST] = MD_E1 + 5, trk[0].p[P_M7AMT] = -64;
     for (i = 0; i < P_COUNT; i++)
-        was[i] = i == P_LEVEL ? (int16_t)up_def(0, P_LEVEL) : motion_base_value(&trk[0], i);   /* (0.2.19: the mixer level is no patch's) */
+        was[i] = i == P_LEVEL ? (int16_t)up_def(0, P_LEVEL) : (int16_t)wv_val(0, i, wv_code(0, i, motion_base_value(&trk[0], i)));   /* (0.2.19: the mixer level is no patch's;
+                                                                                         * PT_VER 4: a value as its range keeps it, what a load fits it to) */
     ok = up_store_trk(&trk[0], 7u, "TEST A", CAT_BASS) == 0;
     power_cycle();
     for (i = 0; i < P_COUNT; i++)
@@ -286,9 +273,9 @@ int main(void)
         apply_preset_to(t, 3u);
         t->p[P_RES2] = 5; t->p[P_DRV2] = 9;              /* ids 25 / 26, once ROOT and SCALE: the TWIN FILTER's RES 2 and DRIVE, stored with the patch like any value */
         t->p[P_AMODE] = AM_SEQ;
-        t->p[P_ARATE] = 3; t->p[P_AOCT] = 2; t->p[P_AGATE] = 40; t->p[P_ASWING] = 17; t->p[P_APROB] = 91; t->p[P_AHOLD] = 1;
+        t->p[P_ARATE] = 3; t->p[P_AOCT] = 2; t->p[P_AGATE] = 40; t->p[P_ASWING] = 67;   /* (1.1: SWING 50..75) */ t->p[P_APROB] = 91; t->p[P_AHOLD] = 1;
         t->p[P_AORDER] = 1; t->p[P_CHRD] = 3; t->p[P_VOIC] = 1;
-        t->p[P_SLEN] = 12; t->p[P_SDIV] = 2; t->p[P_SSWING] = 31; t->p[P_SGATE] = 71; t->p[P_SQNT] = 0;
+        t->p[P_SLEN] = 12; t->p[P_SDIV] = 2; t->p[P_SSWING] = 61; t->p[P_SGATE] = 71; t->p[P_SQNT] = 0;
         t->p[P_ATGT] = 3;
         for (i = 0; i < NSTEP; i++)
             step_clear(&t->step[i]);
@@ -375,8 +362,8 @@ int main(void)
         {
             ak_t a;
             const uint8_t *ab = pt_ak_raw(b_slot);
-            ck("arp off + default sequencer: the AK block is there, the arp and keys groups at their defaults (4 bytes with its length)",
-               (pt_raw(b_slot)[4] & PTF_AK) && ab && pt_rd16(ab) == 2u && ak_get(b_slot, &a) && a.g == (AK_ARP | AK_KEYS) && a.arp[0] == 0);
+            ck("arp off + default sequencer: the AK block is there, the arp and keys groups at their defaults (5 bytes with its length: g + the PT_VER 4 bitmap)",
+               (pt_raw(b_slot)[4] & PTF_AK) && ab && pt_rd16(ab) == 3u && ak_get(b_slot, &a) && a.g == (AK_ARP | AK_KEYS) && a.arp[0] == 0);
         }
         t->p[P_AMODE] = 2; t->p[P_ARATE] = 6; t->p[P_CHRD] = 2; t->p[P_SLEN] = 9;
         memset(mark, 0, sizeof mark);
@@ -457,185 +444,148 @@ int main(void)
         up_put(a_slot, 0); up_put(b_slot, 0); up_put(42u, 0);
     }
 
-    /* 1c: an OLD record that holds a SCALE (ordinal 8 of its AK block) is read and the scale discarded; CHRD still applies */
+    /* 1c: PT_VER 4 retired the SCALE ordinal (8) of the keys group: a block that names it is no block (the record reads as arp OFF, default keys);
+     * a keys block with CHRD alone applies it. Neither touches the global scale (1.1: chunks before PT_VER 4 are not read at all) */
     {
-        static const uint8_t blk[7] = {5, 0, 2 | 8, 0x00, 0x03, 64 + 5, 64 + 4};   /* g KEYS|BM, bitmap bits 8 (SCALE) 9 (CHRD), values 5, 4 */
+        static uint8_t blk[8], blk2[8];
         track_t *t = &trk[0];
         up_rec_t r;
-        uint32_t rc;
+        uint32_t rc, rc2, at;
         ak_t a;
         set_engine_of(t, 0u);
         apply_preset_to(t, 3u);
-        r = *up_rec(60u);                                    /* (an unused slot: all zero) */
         memset(&r, 0, sizeof r);
         r.used = UP_USED; r.ver = UP_VER; r.engine = 0; r.np = P_COUNT;
         memcpy(r.name, "OLD KEYS", 9);
         for (i = 0; i < P_COUNT; i++) up_set_value(&r, i, param_desc_of(0, i)->def);
+        blk[0] = 5; blk[1] = 0; blk[2] = AK_KEYS; blk[3] = 0x00; blk[4] = 0x03; blk[5] = 5; blk[6] = 4;   /* u16 length 5: g KEYS, bm bits 8 SCALE + 9 CHRD, values */
         up_ak_in = blk;
         rc = (uint32_t)up_put(44u, &r);
+        memset(blk2, 0, sizeof blk2);
+        blk2[2] = AK_KEYS; blk2[4] = 0x02;                                                 /* g KEYS, bm bit 9 CHRD = 4 in the bits of its range */
+        at = 5u * 8u;
+        bs_put(blk2, &at, wv_code(0, P_CHRD, 4), wv_bits(0, P_CHRD));
+        blk2[0] = (uint8_t)((at + 7u) / 8u - 2u); blk2[1] = 0;
+        up_ak_in = blk2;
+        rc2 = (uint32_t)up_put(45u, &r);
         up_ak_in = 0;
         scale_g = 3; root_g = 2;
         t->p[P_CHRD] = 0; t->p[P_DRV2] = 0;
-        ck("an old record with a SCALE in its keys block still reads (the parse as it was; the retired ordinal's value reads 0)", rc == 0u && ak_get(44u, &a) && a.key[0] == 0 && a.key[1] == 4);
+        ck("a keys block naming the retired SCALE (ordinal 8) is no block: the record stores, ak_get finds none", rc == 0u && !ak_get(44u, &a));
         up_load(44u);
-        ck("  loading it: CHRD applies, the SCALE is discarded (the part's and the global scale unchanged)",
-           t->p[P_CHRD] == 4 && t->p[P_DRV2] == 0 && scale_g == 3 && root_g == 2);
+        ck("  loading it: arp OFF, default keys (CHRD at its default), the global scale unchanged", t->p[P_CHRD] == TP[P_CHRD].def && scale_g == 3 && root_g == 2);
+        t->p[P_CHRD] = 0;
+        ck("a keys block with CHRD alone reads", rc2 == 0u && ak_get(45u, &a) && a.key[1] == 4);
+        up_load(45u);
+        ck("  loading it: CHRD applies, the global scale unchanged", t->p[P_CHRD] == 4 && t->p[P_DRV2] == 0 && scale_g == 3 && root_g == 2);
         scale_g = 0; root_g = 0;
-        up_put(44u, 0);
+        up_put(44u, 0); up_put(45u, 0);
     }
 
-    /* 1d: the EXTENSION BLOCK (up_xb.h, PTF_XB; the cloud plan's job A): the 16 slots and the hand-set B edits in the record */
+    /* 1d (DUELL 1.1, PT_VER 4): the 28 extension slots are values by wide id (XW_BASE + i) in the record's sparse values; End B with the values set by
+     * hand is the MBV block (PTF_MB). The 1.0 extension block (PTF_XB: tags, its own list of edits) is gone, and up_rec's xb list is no longer filled */
     {
-        static uint8_t raw[PT_WORST + 8], alt[PT_WORST + 8], blk[XB_BLOCK_MAX + 16], good[PT_WORST + 8];
-        static xb_edit_t ed[XB_MAX + 1];
+        static uint8_t raw[PT_WORST + 8], good[PT_WORST + 8], keep[MBV_MAX];
+        static xb_edit_t ed[XB_MAX], mine[XB_MAX], got[XB_MAX];
         track_t *t = &trk[0];
         up_rec_t r;
-        uint32_t bn, rn, xbo, mb, pr, pat, fm, j, was_n;
-        const uint8_t *p;
+        uint32_t rn, n0, nmine, nkeep, ebn, ngot;
+        const uint8_t *p, *eb;
         set_engine_of(t, 0u);
         apply_preset_to(t, 2u);
-        xbfix = fopen("build/host/xb_fixture.txt", "w");
         for (i = 0; i < NX; i++)
             XV(t, i) = (int16_t)xb_def(i) - 64;
-        up_xb_in = 0; up_xb_nin = 0;
-        ok = up_store_trk(t, 40u, "XB NONE", 0) == 0;
+        ok = store_with_b(t, 40u, "XB NONE", 0, 0) == 0;
         p = pt_raw(40u);
-        ck("1d: every slot at its default, no edit: no extension block (the flag clear, the record as it was)", ok && p && !(p[4] & PTF_XB));
-        rn = up_raw_get(40u, good);
-        fixline("none", good, rn);
+        ck("1d: every slot at its default, no End B: no slot among the record's values, no End B block", ok && p && !rec_xbits(p) && !(p[4] & PTF_MB));
+        n0 = pt_rd16(p);
         XV(t, X_LINK) = 0;
-        ok = up_store_trk(t, 41u, "XB LINK", 0) == 0;
+        ok = store_with_b(t, 41u, "XB LINK", 0, 0) == 0;
         p = pt_raw(41u);
-        ck("  one slot off its default (LINK 0): a block of 6 bytes, [5][1][tag 1][2][wide id 129][0 + 64], the flag set", ok && p && (p[4] & PTF_XB) && p[20] == 5u && p[21] == XB_VER &&
-           p[22] == XB_T_EXT && p[23] == 2u && p[24] == XWID(X_LINK) && p[25] == 64u && pt_rd16(p) == rn + 6u);
-        fixline("one_slot", (up_raw_get(41u, alt), alt), pt_rd16(p));
+        ck("  one slot off its default (LINK 0): that slot alone among the record's values, no more than two bytes more (its bits)", ok && p && rec_xbits(p) == 1u << X_LINK && pt_rd16(p) >= n0 && pt_rd16(p) <= n0 + 2u);
         XV(t, X_LINK) = (int16_t)xb_def(X_LINK) - 64;
-        /* all 16 slots off default, edits: SAVE, a power cycle, up_rec and a LOAD */
+        /* all 28 slots off default and End B with values set by hand: SAVE, a power cycle, up_rec, the record's End B and a LOAD */
         for (i = 0; i < NX; i++)
             XV(t, i) = (int16_t)(i * 9u % 120u) - 60;
         XV(t, X_SUBHARM) = 127; XV(t, X_CYCURVE) = -64;
-        ed[0] = (xb_edit_t){P_REL, 99}; ed[1] = (xb_edit_t){126, -64}; ed[2] = (xb_edit_t){XWID(X_SUBLVL), 127}; ed[3] = (xb_edit_t){0, 0};
-        up_xb_in = ed; up_xb_nin = 4;
-        ok = up_store_trk(t, 42u, "XB ALL", 0) == 0;
-        up_xb_in = 0; up_xb_nin = 0;
-        was_n = pt_rd16(pt_raw(42u));
-        fixline("slots_and_edits", (up_raw_get(42u, alt), alt), was_n);
+        ed[0] = (xb_edit_t){P_REL, 99}; ed[1] = (xb_edit_t){P_ATK, 20}; ed[2] = (xb_edit_t){XWID(X_SUBLVL), 100}; ed[3] = (xb_edit_t){P_E1, 0};
+        ok = store_with_b(t, 42u, "XB ALL", ed, 4) == 0 && eb_n;
+        memcpy(keep, eb_blk, eb_n);
+        nkeep = eb_n;
+        nmine = morph_edits(0, mine);
         power_cycle();
         t = &trk[0];
         r = *up_rec(42u);
         for (i = 0; i < NX; i++)
-            ok &= up_xval(&r, i) == (i == X_SUBHARM ? 127 : i == X_CYCURVE ? -64 : (int)(i * 9u % 120u) - 60);
-        ok &= r.xb_n == 4u && r.xb[0].wid == P_REL && r.xb[0].val == 99 && r.xb[1].wid == 126 && r.xb[1].val == -64 && r.xb[2].wid == XWID(X_SUBLVL) &&
-              r.xb[2].val == 127 && r.xb[3].wid == 0 && r.xb[3].val == 0 && pt_rd16(pt_raw(42u)) == was_n;
-        ck("  all 16 slots off default and 4 edits: after SAVE and a power cycle up_rec has every slot and every edit (wide ids 0, 126, 128+)", ok);
+            ok &= xfit_eq(0, i, up_xval(&r, i), i == X_SUBHARM ? 127 : i == X_CYCURVE ? -64 : (int)(i * 9u % 120u) - 60);
+        eb = rec_endb(42u, &ebn);
+        ck("  all 28 slots off default and End B with values set by hand: after SAVE and a power cycle up_rec has every slot, the record the same End B block",
+           ok && nmine >= 3u && eb && ebn == nkeep && !memcmp(eb, keep, nkeep) && (eb[0] & MBV_PINS));
         for (i = 0; i < NX; i++)
             XV(t, i) = 0;
         ok = up_load(42u) == 0;
         for (i = 0; i < NX; i++)
             ok &= XV(t, i) == up_xval(&r, i);
         ck("  LOAD writes the slots to the part (XV)", ok);
+        (void)morph_ready(0);
+        ngot = morph_edits(0, got);
+        ck("  .. and End B's values set by hand come back as set by hand (the same ids and values)", ngot == nmine && !memcmp(got, mine, nmine * sizeof got[0]));
         set_engine_of(t, 0u);
         for (i = 0; i < NX; i++)
             XV(t, i) = 5;
-        ok = up_load(40u) == 0;                                       /* the record without a block */
+        ok = up_load(40u) == 0;                                       /* the record without slots and End B */
         for (i = 0; i < NX; i++)
             ok &= XV(t, i) == (int16_t)xb_def(i) - 64;
-        ck("  a record with no block loads the defaults into every slot (not what the part held)", ok);
-        /* a record with unknown tags and ids loads; PATCH_RAW keeps it bit for bit; a SAVE of its slot keeps what is known */
+        ck("  a record with no slots stored loads the defaults into every slot (not what the part held)", ok);
+        /* PATCH_RAW keeps a record bit for bit; a rename writes it again with its slots and End B */
+        rn = up_raw_get(42u, good);
+        ok = up_put_raw(43u, good, rn) == 0;
+        ck("  PATCH_RAW keeps it bit for bit (up_raw_get = what was put)", ok && up_raw_get(43u, raw) == rn && !memcmp(raw + 4, good + 4, rn - 4u));
+        ok = up_rename_cat(43u, "XB RENAMED", 0) == 0;
+        r = *up_rec(43u);
+        eb = rec_endb(43u, &ebn);
+        ck("  a rename writes it again: its slots and its End B block stay", ok && up_xval(&r, X_LINK) == up_xval(up_rec(42u), X_LINK) && xfit_eq(0, X_SUBHARM, up_xval(&r, X_SUBHARM), 127) &&
+           eb && ebn == nkeep && !memcmp(eb, keep, nkeep));
+        /* a damaged End B block refuses the record (PATCH_RAW rc 1) */
         {
-            uint8_t b[] = {0, XB_VER, 9, 3, 1, 2, 3,                                  /* an unknown tag, skipped by its n */
-                           XB_T_EXT, 8, XWID(X_LINK), 64 + 7, 200, 70, 144, 70, XWID(X_ENV2), 64 + 5,   /* slot 1 = 7, wide ids 200 and 144 unknown (skipped), slot 3 = 5 */
-                           17, 0,                                                /* another unknown tag, empty */
-                           XB_T_EDIT, 2, P_REL, 80};                              /* one edit */
-            b[0] = (uint8_t)(sizeof b - 1u);
-            rn = rec_with_block(good, rn, b, sizeof b, raw);
-            fixline("unknown_tags_and_ids", raw, rn);
-            ok = up_put_raw(43u, raw, rn) == 0;
-            r = *up_rec(43u);
-            ok &= up_xval(&r, X_LINK) == 7 && up_xval(&r, X_ENV2) == 5 && up_xval(&r, X_ROUTE) == (int)xb_def(X_ROUTE) - 64 && r.xb_n == 1u && r.xb[0].wid == P_REL && r.xb[0].val == 16;
-            ck("  a record with unknown tags (9, 17), unknown wide ids (200, 144) loads: the slots it names, the others at their defaults, the one edit", ok);
-            ck("  PATCH_RAW keeps it bit for bit (up_raw_get = what was put, the unknown tags too)", up_raw_get(43u, alt) == rn && !memcmp(alt + 4, raw + 4, rn - 4u));
-            ok = up_rename_cat(43u, "XB RENAMED", 0) == 0;
-            r = *up_rec(43u);
-            ck("  a rename writes it again: the slots and the edit it knows stay (the unknown tags are not carried over, by design)",
-               ok && up_xval(&r, X_LINK) == 7 && up_xval(&r, X_ENV2) == 5 && r.xb_n == 1u && r.xb[0].wid == P_REL && up_raw_get(43u, alt) < rn);
-        }
-        /* a block whose lengths do not add up, or that cannot be read, refuses the record (PATCH_RAW rc 1, a chunk image: the record is passed over) */
-        {
-            static const char *WHAT[] = {"L one too long", "L one too short", "L over the record", "XV 2", "XV 0", "a section past the block", "a tag 1 twice", "a tag 2 twice",
-                                         "an odd n in tag 1", "an odd n in tag 2", "a value byte 192 in tag 1", "a value byte 192 in tag 2", "33 edits", "wide id 127 in an edit",
-                                         "an edit id twice", "L 0", "a lone tag byte"};
-            uint32_t m, bad_n = 0, refused_n = 0;
-            const uint32_t T1 = 2u * NX;                                    /* item 138: tag 1's bytes with every slot set (NX 16 -> 28 in DUELL 1.1: the offsets were for 16 pairs) */
-            for (i = 0; i < XB_MAX; i++)
-                ed[i] = (xb_edit_t){(uint8_t)(2u * i), (int16_t)i};
-            for (i = 0; i < NX; i++)
-                blk[i] = (uint8_t)(xb_def(i) < 191u ? xb_def(i) + 1u : xb_def(i) - 1u);   /* (item 138: a slot whose default is the top value 127 (byte 191, the LFO LEVELs of 1.1) one under it: 192 is a damaged byte) */
-            bn = xb_block_build(blk, ed, 3, blk + 32);                      /* a good block: tag 1 (NX pairs, T1 bytes) + tag 2 (3 edits) */
-            ok = bn == 2u + 2u + T1 + 2u + 6u && xb_block_ok(blk + 32, bn) == bn;
+            static const char *WHAT[] = {"AMOUNT 102", "an unknown flag", "the FM6 flag on another engine", "a cut record (length one short)"};
+            uint32_t m, xbo, mb, pr, pat, fm, bad_n = 0, refused_n = 0;
+            pt_layout(good, &xbo, &mb, &pr, &pat, &fm);
             for (m = 0; m < sizeof WHAT / sizeof WHAT[0]; m++) {
-                uint8_t b[XB_BLOCK_MAX + 8];
-                uint32_t n2 = bn, rc;
-                memcpy(b, blk + 32, bn);
+                uint32_t n2 = rn, rc;
+                memcpy(raw, good, rn);
                 switch (m) {
-                case 0: b[0]++; break;
-                case 1: b[0]--; break;
-                case 2: b[0] = 250; break;
-                case 3: b[1] = 2; break;
-                case 4: b[1] = 0; break;
-                case 5: b[3] = 255; break;                                  /* tag 1's n */
-                case 6: b[2 + 2 + T1] = XB_T_EXT; break;                    /* the second section becomes a tag 1 too */
-                case 7: b[2 + 2 + T1] = XB_T_EDIT; b[2] = XB_T_EDIT; break;
-                case 8: b[3] = (uint8_t)(T1 - 1u); b[2 + 2 + T1 - 1] = 0; break;   /* an odd n (T1 - 1): the sections no longer add up either */
-                case 9: b[2 + 2 + T1 + 1] = 5; break;
-                case 10: b[5] = 192; break;
-                case 11: b[2 + 2 + T1 + 3] = 192; break;
-                case 12:
-                    for (j = 0; j <= XB_MAX; j++) ed[j] = (xb_edit_t){(uint8_t)(2u * j), 1};
-                    n2 = 2u + 2u + 2u + 2u * (XB_MAX + 1u);
-                    b[0] = (uint8_t)(n2 - 1u); b[1] = XB_VER; b[2] = XB_T_EDIT; b[3] = (uint8_t)(2u * (XB_MAX + 1u));
-                    for (j = 0; j <= XB_MAX; j++) { b[4 + 2u * j] = ed[j].wid; b[5 + 2u * j] = 65; }
-                    n2 = 4u + 2u * (XB_MAX + 1u);
-                    b[0] = (uint8_t)(n2 - 1u);
-                    break;
-                case 13: b[2 + 2 + T1 + 2] = 127; break;
-                case 14: b[2 + 2 + T1 + 4] = b[2 + 2 + T1 + 2]; break;
-                case 15: b[0] = 0; break;
-                default: n2 = 3; b[0] = 2; b[2] = 7; break;
+                case 0: raw[mb + 1u] = 102u; break;
+                case 1: raw[mb] |= 128u; break;
+                case 2: raw[mb] |= MBV_FMB; break;
+                default: n2 = rn - 1u; raw[0] = (uint8_t)n2; raw[1] = (uint8_t)(n2 >> 8); break;
                 }
-                rn = rec_with_block(good, up_raw_get(40u, good), b, n2, raw);
-                { char nmf[40]; snprintf(nmf, sizeof nmf, "REFUSED_%u", m); fixline(nmf, raw, rn); }
-                rc = (uint32_t)up_put_raw(44u, raw, rn);
+                rc = (uint32_t)up_put_raw(44u, raw, n2);
                 refused_n += rc == 1u && !up_used(44u);
                 bad_n += rc != 1u;
                 if (rc != 1u)
                     printf("patch:     not refused: %s (rc %u)\n", WHAT[m], rc);
             }
-            ck("  every damaged block (17 kinds: lengths that do not add up, XV, a tag twice, an odd n, a value byte over 191, 33 edits, wide id 127, an id twice ...) refuses the record, nothing written",
-               ok && !bad_n && refused_n == sizeof WHAT / sizeof WHAT[0]);
+            ck("  every damaged End B (AMOUNT past 101, an unknown flag, FM6's flag on another engine, a cut record) refuses the record, nothing written",
+               !bad_n && refused_n == sizeof WHAT / sizeof WHAT[0]);
         }
-        /* the chunk images: a bad record is passed over at boot, its neighbour stays; an image of the chunk version before (2) is no chunk; the newer revision wins */
+        /* the chunk images: a bad record is passed over at boot, its neighbour stays; an image of the chunk version before is no chunk; the newer revision wins */
         {
-            uint32_t w, c2;
-            uint8_t b[XB_BLOCK_MAX + 8];
+            uint32_t w, c2, xbo, mb, pr, pat, fm;
             up_rec_t q;
             q = *up_rec(42u);
-            for (i = 0; i < NX; i++) blk[i] = (uint8_t)(xb_def(i) + 3u);
-            memset(ed, 0, sizeof ed);
-            bn = xb_block_build(blk, ed, 0, b);                            /* tag 1 only */
             pt_work[0] = (uint8_t)PT_MAGIC; pt_work[1] = (uint8_t)(PT_MAGIC >> 8); pt_work[2] = PT_VER; pt_work[3] = 0;
             w = PT_HDR;
-            up_xb_in = 0; up_xb_nin = 0;
             n = pt_encode(50u, 1u, &q, 0); memcpy(pt_work + w, pt_enc, n); w += n;               /* slot 50: good */
-            rn = rec_with_block(pt_enc, n, b, bn, raw);
-            raw[2] = 51u; raw[3] = 1u; b[0]++;                                                    /* slot 51: the block's L is one too long */
-            rn = rec_with_block(raw, rn, b, bn, alt);
-            alt[2] = 51u; alt[3] = 1u;
-            memcpy(pt_work + w, alt, rn); w += rn;
+            memcpy(raw, good, rn);                                                                /* slot 51: record 42's, End B's AMOUNT damaged */
+            pt_layout(raw, &xbo, &mb, &pr, &pat, &fm);
+            raw[mb + 1u] = 102u;
+            raw[2] = 51u; raw[3] = 1u;
+            memcpy(pt_work + w, raw, rn); w += rn;
             n = pt_encode(52u, 1u, &q, 0); memcpy(pt_work + w, pt_enc, n); w += n;               /* slot 52: good */
             pt_sv(4u, pt_work, w);
             power_cycle();
-            ck("  a chunk image with a record whose block is damaged: that record is passed over at boot, the records before and after it stay", up_used(50u) && !up_used(51u) && up_used(52u));
+            ck("  a chunk image with a record whose End B is damaged: that record is passed over at boot, the records before and after it stay", up_used(50u) && !up_used(51u) && up_used(52u));
             pt_work[2] = PT_VER - 1u;                                                             /* the chunk version of before: no chunk */
             pt_sv(4u, pt_work, w);
             power_cycle();
@@ -659,40 +609,42 @@ int main(void)
                 power_cycle();
             }
         }
-        /* RESTORE and RESTORE ALL: the other slots keep their slots and edits; the restored one is its factory sound; a SAVE after works */
+        /* RESTORE and RESTORE ALL: the other slots keep their slots and End B; the restored one is its factory sound; a SAVE after works */
+        t = &trk[0];
         for (k = 0; k < UP_SLOTS; k++)
             up_put(k, 0);
+        ok = 1;
         for (k = 70; k < 73u; k++) {
             for (i = 0; i < NX; i++)
                 XV(t, i) = (int16_t)((int)(i + k) % 100) - 50;
-            ed[0] = (xb_edit_t){(uint8_t)k, (int16_t)(k - 60u)};
-            up_xb_in = ed; up_xb_nin = 1;
-            ok &= up_store_trk(t, k, "XB RST", 0) == 0;
+            ed[0] = (xb_edit_t){P_REL, (int16_t)(k - 60u)};
+            ok &= store_with_b(t, k, "XB RST", ed, 1) == 0;
         }
-        up_xb_in = 0; up_xb_nin = 0;
-        ok = up_used(70u) && sl_restore(71u) == 0 && !up_used(71u) && up_used(70u) && up_used(72u);
+        ok &= up_used(70u) && sl_restore(71u) == 0 && !up_used(71u) && up_used(70u) && up_used(72u);
         r = *up_rec(72u);
         for (i = 0; i < NX; i++)
-            ok &= up_xval(&r, i) == (int)(i + 72u) % 100 - 50;
-        ok &= r.xb_n == 1u && r.xb[0].wid == 72u && r.xb[0].val == 12;
-        ck("  RESTORE of one slot: the others keep their 16 slots and their edit; the restored slot is its factory sound again", ok);
+            ok &= xfit_eq(0, i, up_xval(&r, i), (int)(i + 72u) % 100 - 50);
+        ok &= rec_endb(72u, &ebn) != 0;
+        ck("  RESTORE of one slot: the others keep their slots and their End B; the restored slot is its factory sound again", ok);
         power_cycle();
         r = *up_rec(70u);
-        ck("  and after a power cycle too", up_used(70u) && up_used(72u) && !up_used(71u) && up_xval(&r, 3) == (int)(3u + 70u) % 100 - 50 && r.xb_n == 1u);
+        ck("  and after a power cycle too", up_used(70u) && up_used(72u) && !up_used(71u) && xfit_eq(0, 3, up_xval(&r, 3), (int)(3u + 70u) % 100 - 50) && rec_endb(70u, &ebn) != 0);
         ok = sl_restore_all() == 0 && up_count() == 0u;
         for (k = 70; k < 73u; k++)
             ok &= !up_used(k);
-        ck("  RESTORE ALL: no record left; a SAVE after it stores with its slots and edits again", ok && ({ for (i = 0; i < NX; i++) XV(t, i) = 33; ed[0] = (xb_edit_t){9, 9}; up_xb_in = ed; up_xb_nin = 1;
-            ok = up_store_trk(t, 5u, "AFTER", 0) == 0; up_xb_in = 0; up_xb_nin = 0; ok && up_xval(up_rec(5u), 7) == 33 && up_rec(5u)->xb_n == 1u; }));
+        t = &trk[0];
+        for (i = 0; i < NX; i++)
+            XV(t, i) = 33;
+        ed[0] = (xb_edit_t){P_REL, 9};
+        ok &= store_with_b(t, 5u, "AFTER", ed, 1) == 0 && xfit_eq(0, 7, up_xval(up_rec(5u), 7), 33) && rec_endb(5u, &ebn) != 0;
+        ck("  RESTORE ALL: no record left; a SAVE after it stores with its slots and End B again", ok);
         for (k = 0; k < UP_SLOTS; k++)
             up_put(k, 0);
         for (i = 0; i < NX; i++)
             XV(t, i) = (int16_t)xb_def(i) - 64;
-        if (xbfix)
-            fclose(xbfix);
     }
 
-    /* 2: the limit: 128 slots, every one of them can always be written (UP_SLOTS = 128 worst-case records always fit) */
+    /* 2: the limit: NSAVE worst-case records always fit (128, every slot; with TIDE 126, its settings take chunk 21: plan 4.5, a 127th NEW record is STORE FULL) */
     {
         uint32_t maxrec = 0, mx = 0, c, per = 0;
         for (k = 0; k < UP_SLOTS; k++)
@@ -700,10 +652,11 @@ int main(void)
         printf("patch: PT_WORST %u bytes (SEQ-arp FM6 record %u, plain %u), PT_K %u per chunk, %u chunks, PT_MAX %u, chunk payload %u (ends at 0x%X)\n",
                (unsigned)PT_WORST, (unsigned)PT_W_SEQ, (unsigned)PT_W_PLAIN, (unsigned)PT_K, (unsigned)PT_NCH, (unsigned)PT_MAX, (unsigned)PT_CAP,
                (unsigned)(PT_CAP + ST_PAYLOAD_OFF));
-        ck("PT_MAX = chunks x records per chunk is at least the 128 slots, a chunk of PT_K worst records fits its payload", PT_MAX == PT_NCH * PT_K && PT_MAX >= UP_SLOTS &&
-           UP_SLOTS == 128u && PT_K * PT_WORST + PT_HDR <= PT_CAP && PT_K == 6u && PT_NCH == 22u);
-        ck("  the payload ends at sector offset 0xF00 (the updater's scan), 22 chunks = 16 more A/B pairs at 0xA6000..0xC5FFF",
-           PT_CAP + ST_PAYLOAD_OFF == 0xF00u && PT_NCH == 22u && st_sector(OBJ_PATCHX0, 0) == 0xA6000u && st_sector(OBJ_PATCHX0 + 9u, 1) + 4096u == 0xBA000u &&
+        ck("PT_MAX = chunks x records per chunk (22 x 6 = 132, at least the 128 slots; TIDE 21 x 6 = 126), a chunk of PT_K worst records fits its payload",
+           PT_MAX == PT_NCH * PT_K && PT_MAX + (22u - PT_NCH) * PT_K >= UP_SLOTS && UP_SLOTS == 128u && PT_K * PT_WORST + PT_HDR <= PT_CAP && PT_K == 6u &&
+           PT_NCH == (DUELL_TIDE ? 21u : 22u) && NSAVE == (DUELL_TIDE ? 126u : 128u));
+        ck("  the payload ends at sector offset 0xF00 (the updater's scan), 22 objects = 16 more A/B pairs at 0xA6000..0xC5FFF (TIDE: the last one its settings)",
+           PT_CAP + ST_PAYLOAD_OFF == 0xF00u && PT_NCH + (DUELL_TIDE ? 1u : 0u) == 22u && st_sector(OBJ_PATCHX0, 0) == 0xA6000u && st_sector(OBJ_PATCHX0 + 9u, 1) + 4096u == 0xBA000u &&
            st_sector(OBJ_PATCHX0 + 10u, 0) == 0xBA000u && st_sector(OBJ_PATCHX0 + 15u, 1) + 4096u == 0xC6000u && OBJ_COUNT >= OBJ_PATCHX0 + 16u &&
            OBJ_PATCHX0 == OBJ_FM6VB + 1u);
         {   /* the 22 chunks' 44 sectors: all different, none of another object's, none the voice bank's (id 32 is refused) */
@@ -721,15 +674,17 @@ int main(void)
             ck("  the 22 chunks' sectors are all different and no other object's; ids 30..32 (unused, and the FM6 voice bank's) are no store objects",
                !same && !other && st_head(OBJ_FM6VB, 0, &h) != 0 && st_save(OBJ_FM6VB, "x", 1) < 0 && st_wipe(OBJ_FM6VB) < 0 && st_head(30, 0, &h) != 0 && st_save(31, "x", 1) < 0);
         }
-        /* A: 128 small records (every slot), the directory is all there is in RAM: no mirror */
+        /* A: NSAVE small records (every slot; TIDE: 126 of them), the directory is all there is in RAM: no mirror */
         set_engine_of(&trk[0], 0u);
         apply_preset_to(&trk[0], 2u);
-        for (n = 0, k = 0; k < UP_SLOTS; k++) {
+        for (n = 0, k = 0; k < NSAVE; k++) {
             char nmx[8] = {'S', (char)('0' + k / 10u % 10u), (char)('0' + k % 10u), 0};
             trk[0].p[P_TRIM] = (int16_t)(40 + k % 50u);
             n += up_store_trk(&trk[0], k, nmx, 0) == 0;
         }
-        ck("128 plain records store, one in every slot", n == UP_SLOTS && up_count() == UP_SLOTS);
+        ck("NSAVE plain records store, one a slot (128; TIDE 126)", n == NSAVE && up_count() == NSAVE);
+        if (NSAVE < UP_SLOTS)
+            ck("  TIDE: one more NEW record is refused as full (STORE FULL), nothing lost", up_store_trk(&trk[0], NSAVE, "FULL", 0) == PT_FULL && !up_used(NSAVE) && up_count() == NSAVE);
         for (c = 0; c < PT_NCH; c++)
             mx = pt_cnt(c) > mx ? pt_cnt(c) : mx;
         ck("  no chunk holds more than PT_K records, and every one of the 22 chunks is used", mx <= PT_K && pt_cnt(0) && pt_cnt(PT_NCH - 1u));
@@ -757,9 +712,12 @@ int main(void)
             memset(pt_dir, 0x5A, sizeof pt_dir);
             memset(pt_len, 0x5A, sizeof pt_len);
             power_cycle();
-            ck("  a power cycle rebuilds the directory from flash: every entry equal", !memcmp(snap, pt_dir, sizeof snap) && up_count() == UP_SLOTS);
+            ok = !memcmp(snap, pt_dir, NSAVE * sizeof snap[0]) && up_count() == NSAVE;
+            for (k = NSAVE; k < UP_SLOTS; k++)                /* (an unused slot: only its chunk mark is rebuilt, the rest is never read) */
+                ok &= pt_dir[k].ch == PT_NOCH;
+            ck("  a power cycle rebuilds the directory from flash: every entry equal (TIDE: the two unused slots marked unused)", ok);
             ok = 1;
-            for (k = 0; k < UP_SLOTS; k++) {
+            for (k = 0; k < NSAVE; k++) {
                 char nmx[8] = {'S', (char)('0' + k / 10u % 10u), (char)('0' + k % 10u), 0}, got[13];
                 up_name(k, got);
                 ok &= str_eq(got, nmx) && !str_eq(up_rec(k)->name, "") && up_rec(k)->engine == 0u;
@@ -769,32 +727,31 @@ int main(void)
         kk = pt_bytes();
         watch = 1;
         wrote = stray = 0;
-        trk[0].user = 0;                              /* the part plays a factory sound: SAVE offers its slot; with all 128 saved any slot still takes it */
+        trk[0].user = 0;                              /* the part plays a factory sound: SAVE offers its slot; with the store full any stored slot still takes it */
         k = (uint32_t)up_patch_save_part(0, 77u);
-        ck("  with all 128 slots saved a SAVE over any slot works (there is no 'full'): written in the patch store only, still 128", k == 0u && wrote && !stray &&
-           up_count() == UP_SLOTS && up_used(77) && trk[0].user == 78u);
+        ck("  with the store full a SAVE over any stored slot works: written in the patch store only, still NSAVE", k == 0u && wrote && !stray &&
+           up_count() == NSAVE && up_used(77) && trk[0].user == 78u);
         watch = 0;
         /* B: every one of them overwritten with the worst record, in place: all fit whatever the first fill looked like */
-        for (n = 0, k = 0; k < UP_SLOTS; k++) {
+        for (n = 0, k = 0; k < NSAVE; k++) {
             char nmx[8] = {'W', (char)('0' + k / 10u % 10u), (char)('0' + k % 10u), 0};
             worst_part(&trk[1], k);
-            up_mblk = (const uint8_t[]){'M', 1, 2, 25, 3, 0, 77};
             fm6_adopt(1);
-            n += up_store_trk(&trk[1], k, nmx, 0) == 0;
-            up_mblk = 0;
+            n += store_worst(&trk[1], k, nmx) == 0;
             maxrec = pt_rd16(pt_raw(k)) > maxrec ? pt_rd16(pt_raw(k)) : maxrec;
         }
         printf("patch: the biggest record stored: %u bytes (PT_WORST %u)\n", maxrec, (unsigned)PT_WORST);
-        ck("128 worst-case records overwrite the small ones in place: every one stores", n == UP_SLOTS && up_count() == UP_SLOTS);
-        ck("  the worst record really is about PT_WORST (the bound is tight) and never above it", maxrec <= PT_WORST && maxrec + 8u >= PT_WORST);
+        ck("NSAVE worst-case records overwrite the small ones in place: every one stores", n == NSAVE && up_count() == NSAVE);
+        ck("  the worst record is never above PT_WORST, and apart from End B the bound is tight (MBV_MAX bounds every engine, the retired placeholder's; FM6's End B is its own biggest)",
+           maxrec <= PT_WORST && maxrec + (MBV_MAX - eb_n) + 8u >= PT_WORST && eb_n > MBV_MAX / 2u);
         for (c = 0, mx = 0; c < PT_NCH; c++)
             mx = pt_cnt(c) > mx ? pt_cnt(c) : mx;
         ck("  every chunk within its PT_K records and its bytes", mx <= PT_K && pt_len[0] <= PT_CAP && pt_len[PT_NCH - 1u] <= PT_CAP);
         for (c = 0; c < PT_NCH; c++)
             per += pt_len[c] > PT_HDR;
         power_cycle();
-        ck("  after a power cycle: all of them there, the FM6 patch of each intact, all 22 chunks used", up_count() == UP_SLOTS && per == PT_NCH);
-        for (ok = 1, k = 0; k < UP_SLOTS; k++) {
+        ck("  after a power cycle: all of them there, the FM6 patch of each intact, every chunk used", up_count() == NSAVE && per == PT_NCH);
+        for (ok = 1, k = 0; k < NSAVE; k++) {
             const up_rec_t *r = up_rec(k);
             ak_t a;
             ok &= r->engine == ENGI_FM6 && !upf_get(k, pk2) && pk2[6] == (uint8_t)(k % 99u) && ak_get(k, &a) &&
@@ -807,19 +764,18 @@ int main(void)
                 for (cc = 0; cc < 2u; cc++)
                     for (i = 0xF00u; i < 0x1000u; i++)
                         tail &= nor[st_sector(pt_obj(o), cc) + i] == 0xFFu;
-            ck("  the tails (0xF00..0xFFF) of all 44 chunk sectors are still erased with the fullest chunks", tail);
+            ck("  the tails (0xF00..0xFFF) of every chunk sector are still erased with the fullest chunks", tail);
         }
         for (k = 0; k < UP_SLOTS; k++)
             up_put(k, 0);
         ck("  all erased", up_count() == 0u);
-        /* B2: 128 FM6-size patches (an FM6 sound with its patch, 190 bytes about): typical, all fit with room */
+        /* B2: NSAVE FM6-size patches (an FM6 sound with its patch, 190 bytes about): typical, all fit with room */
         {
             uint32_t tot = 0, big = 0;
-            up_xb_in = 0;                                                 /* (typical: no hand-set B edits, the slots at their defaults) */
-            up_xb_nin = 0;
+            /* (typical: no End B, the slots at their defaults) */
             for (i = 0; i < NX; i++)
                 XV(&trk[1], i) = (int16_t)xb_def(i) - 64;
-            for (n = 0, k = 0; k < UP_SLOTS; k++) {
+            for (n = 0, k = 0; k < NSAVE; k++) {
                 char nmx[8] = {'F', (char)('0' + k / 10u % 10u), (char)('0' + k % 10u), 0};
                 set_engine_of(&trk[1], ENGI_FM6);
                 apply_preset_to(&trk[1], 1u + k % 7u);
@@ -829,47 +785,45 @@ int main(void)
                 tot += pt_rd16(pt_raw(k));
                 big = pt_rd16(pt_raw(k)) > big ? pt_rd16(pt_raw(k)) : big;
             }
-            printf("patch: 128 FM6 sounds: %u bytes of records (%u a record, biggest %u), 128 x 75 B plain sounds would be %u\n", tot, tot / 128u, big, 128u * 75u);
-            ck("128 FM6-size patches (the factory FM6 sounds with their patch) all store, about 190 bytes each", n == UP_SLOTS && up_count() == UP_SLOTS && tot / 128u < 260u);
+            printf("patch: %u FM6 sounds: %u bytes of records (%u a record, biggest %u)\n", (unsigned)NSAVE, tot, tot / NSAVE, big);
+            ck("NSAVE FM6-size patches (the factory FM6 sounds with their patch) all store, about 190 bytes each", n == NSAVE && up_count() == NSAVE && tot / NSAVE < 260u);
             for (c = 0, mx = 0; c < PT_NCH; c++)
                 mx = pt_len[c] > mx ? pt_len[c] : mx;
             printf("patch: the fullest chunk holds %u of %u bytes\n", mx, (unsigned)PT_CAP);
             power_cycle();
-            for (ok = 1, k = 0; k < UP_SLOTS; k++)
+            for (ok = 1, k = 0; k < NSAVE; k++)
                 ok &= upf_fm6(k) && !upf_get(k, pk2);
-            ck("  after a power cycle all 128 are there with their patches", ok && up_count() == UP_SLOTS);
+            ck("  after a power cycle all of them are there with their patches", ok && up_count() == NSAVE);
             for (k = 0; k < UP_SLOTS; k++)
                 up_put(k, 0);
         }
         /* C: the last save torn by a power cut: that one is lost, the others stay; then it works */
-        for (k = 0; k + 1u < UP_SLOTS; k++) {
+        for (k = 0; k + 1u < NSAVE; k++) {
             worst_part(&trk[1], k);
-            up_mblk = (const uint8_t[]){'M', 1, 2, 25, 3, 0, 77};
             fm6_adopt(1);
-            up_store_trk(&trk[1], k, "W", 0);
-            up_mblk = 0;
+            store_worst(&trk[1], k, "W");
         }
-        ck("127 worst-case records stored", up_count() == UP_SLOTS - 1u);
-        worst_part(&trk[1], UP_SLOTS - 1u);
+        ck("NSAVE - 1 worst-case records stored", up_count() == NSAVE - 1u);
+        worst_part(&trk[1], NSAVE - 1u);
         fm6_adopt(1);
         for (n = 0; n < 2u; n++) {
             cut_bytes = n ? (long)(PT_WORST + PT_HDR + 8u) : 100;
-            ck(n ? "a power cut in the last save's payload (the 128th): SAVE ERROR" : "a power cut at the start of the last save: SAVE ERROR",
-               up_store_trk(&trk[1], 127u, "LAST", 0) != 0);
+            ck(n ? "a power cut in the last save's payload (the last that fits): SAVE ERROR" : "a power cut at the start of the last save: SAVE ERROR",
+               store_worst(&trk[1], NSAVE - 1u, "LAST") != 0);
             power_cycle();
-            ck("  after the power comes back: the other 127 records, the last one not stored", up_count() == UP_SLOTS - 1u && !up_used(127));
-            worst_part(&trk[1], UP_SLOTS - 1u);
+            ck("  after the power comes back: the other records, the last one not stored", up_count() == NSAVE - 1u && !up_used(NSAVE - 1u));
+            worst_part(&trk[1], NSAVE - 1u);
             fm6_adopt(1);
         }
-        ck("  the same save then works: 128 stored", up_store_trk(&trk[1], 127u, "LAST", 0) == 0 && up_count() == UP_SLOTS);
+        ck("  the same save then works: NSAVE stored", store_worst(&trk[1], NSAVE - 1u, "LAST") == 0 && up_count() == NSAVE);
         power_cycle();
-        ck("  after a power cycle: 128 records, the last one too", up_count() == UP_SLOTS && up_used(127));
+        ck("  after a power cycle: NSAVE records, the last one too", up_count() == NSAVE && up_used(NSAVE - 1u));
         worst_part(&trk[1], 5u);
         fm6_adopt(1);
-        ck("an overwrite of a stored one with all 128 stored still works (in place)", up_store_trk(&trk[1], 100u, "LAST 2", 0) == 0 && up_count() == UP_SLOTS);
-        ck("  an erase makes a place: the next new patch then works", up_put(0, 0) == 0 && up_store_trk(&trk[1], 0u, "AGAIN", 0) == 0 && up_count() == UP_SLOTS);
+        ck("an overwrite of a stored one with the store full still works (in place)", store_worst(&trk[1], 100u, "LAST 2") == 0 && up_count() == NSAVE);
+        ck("  an erase makes a place: the next new patch then works", up_put(0, 0) == 0 && store_worst(&trk[1], 0u, "AGAIN") == 0 && up_count() == NSAVE);
         /* C2: a power cut at EVERY step of a save (every 8th programmed byte, every byte near the commit record, the erase itself): the
-         * chunk is the old one or the new one, never anything else; the other 127 are never touched */
+         * chunk is the old one or the new one, never anything else; the others are never touched */
         {
             uint32_t steps = 0, bad_cut = 0, newer = 0, cl = pt_dir[100].len, ch = pt_dir[100].ch;
             long cb, lim = (long)pt_len[ch] + 40;
@@ -878,27 +832,27 @@ int main(void)
                 worst_part(&trk[1], 9u);
                 fm6_adopt(1);
                 cut_bytes = cb;
-                (void)up_store_trk(&trk[1], 100u, "CUTSTEP", 0);
+                (void)store_worst(&trk[1], 100u, "CUTSTEP");
                 power_cycle();
                 up_name(100, got);
                 steps++;
-                if (up_count() != UP_SLOTS || !up_used(100) || (!str_eq(got, "LAST 2") && !str_eq(got, "CUTSTEP")))
+                if (up_count() != NSAVE || !up_used(100) || (!str_eq(got, "LAST 2") && !str_eq(got, "CUTSTEP")))
                     bad_cut++;
                 newer += str_eq(got, "CUTSTEP");
-                for (k = 0; k < UP_SLOTS && !bad_cut; k += 9u)
+                for (k = 0; k < NSAVE && !bad_cut; k += 9u)
                     if (k != 100u && !upf_fm6(k))
                         bad_cut++;
                 if (str_eq(got, "CUTSTEP"))
-                    up_store_trk(&trk[1], 100u, "LAST 2", 0);   /* back to the old name for the next cut */
+                    store_worst(&trk[1], 100u, "LAST 2");   /* back to the old name for the next cut */
             }
-            ck("a power cut at every step of a save (payload pages, commit record, readback): old or new, never half, 128 intact", steps > 100u && !bad_cut);
+            ck("a power cut at every step of a save (payload pages, commit record, readback): old or new, never half, the others intact", steps > 100u && !bad_cut);
             printf("patch: %u cut points tried in a %u byte record's chunk save (%u ended with the new record)\n", steps, cl, newer);
             cut_bytes = -1;
             power_cycle();
-            ck("  and a cut in the erase of the other sector (the erase fails): the old chunk stays", (dead = 0, 1) && up_count() == UP_SLOTS);
+            ck("  and a cut in the erase of the other sector (the erase fails): the old chunk stays", (dead = 0, 1) && up_count() == NSAVE);
             (void)ch;
         }
-        /* D: the page with all 128 saved: the same 128 slots; SAVE held opens the OVERWRITE dialog as ever (no 'full', no message about room) */
+        /* D: the page with the store full: the same 128 slots; SAVE held on a stored slot opens the OVERWRITE dialog as ever (no message about room) */
         power_cycle();
         song.playing = 0;
         set_engine_of(&trk[0], 0u);
@@ -907,10 +861,10 @@ int main(void)
         frame();
         (void)preset_pos(&occ);
         (void)pl_cursor(&total);
-        ck("with 128 saved the list is the 128 slots, the same as with none", total == UP_SLOTS && occ == UP_SLOTS);
+        ck("with the store full the list is the 128 slots, the same as with none", total == UP_SLOTS && occ == UP_SLOTS);
         hold(B_SAVE);
-        ck("hold SAVE with all 128 saved: the OVERWRITE dialog, no message about room; OCT-: nothing written", ui.confirm == CF_SAVE_OVER &&
-           (press(B_OCTDN), !ui.confirm) && up_count() == UP_SLOTS);
+        ck("hold SAVE with the store full: the OVERWRITE dialog, no message about room; OCT-: nothing written", ui.confirm == CF_SAVE_OVER &&
+           (press(B_OCTDN), !ui.confirm) && up_count() == NSAVE);
         for (k = 0; k < UP_SLOTS; k++)
             up_put(k, 0);
         ck("  all erased", up_count() == 0u);
@@ -935,16 +889,15 @@ int main(void)
         }
         power_cycle();
         ck("a store with more records a chunk than PT_K (60 in six chunks) stays readable after a power cycle", up_count() == 60u && up_used(59));
-        ck("  new patches still store (into the other chunks), up to 128; an old chunk is not given more",
+        ck("  new patches still store (into the other chunks); an old chunk is not given more",
            up_store_trk(&trk[0], 70u, "NEW", 0) == 0 && up_count() == 61u && pt_dir[70].ch >= 6u && pt_n[0] == 10u);
         ck("  a stored one is still rewritten in place, and erased", up_store_trk(&trk[0], 5u, "SAME", 0) == 0 && up_put(5, 0) == 0 && up_count() == 60u);
         for (k = 0; k < UP_SLOTS; k++)
             up_put(k, 0);
-        {   /* an AK block of the first form (np, then (id, value) pairs: records written before the bitmap form) still decodes */
+        {   /* PT_VER 4: the AK block's pairs form (np, then (id, value) pairs) is gone with the chunks before it (never read): such bytes are no block */
             static const uint8_t old[] = {AK_ARP, 1, P_ARATE, 5 + 64};
             ak_t a;
-            ck("an AK block in the pairs form (older records, and up to two values) still decodes", ak_dec(old, sizeof old, 0u, &a) && a.g == AK_ARP &&
-               a.arp[P_ARATE - P_AMODE] == 5);
+            ck("an AK block in the old pairs form is no block (PT_VER 4 reads its bitmap form only)", !ak_dec(old, sizeof old, 0u, &a));
         }
     }
 
@@ -1128,7 +1081,7 @@ int main(void)
                     if (up_used(k)) {
                         nrec++;
                         if (k % 11u == 0u)
-                            base_ok &= up_value(up_rec(k), P_REL) == (int)(20 + k);
+                            base_ok &= vfit_eq(up_rec(k)->engine, P_REL, up_value(up_rec(k), P_REL), (int)(20 + k));   /* (PT_VER 4: as REL's range keeps it) */
                     }
                 if (a == 0u) {                          /* SAVE: slot 64 is its factory sound or the new record, all the saved ones intact */
                     int is_new = up_used(sl);
@@ -1234,11 +1187,11 @@ int main(void)
     trk[0].p[P_E4] = (int16_t)(trk[0].p[P_E4] + 7);
     ui.msg_t = 0;
     ui.force = 1; frame();
-    ck("the slot the part plays (a factory sound, edited): the RESTORE card is drawn", ui.col[3][0] != 0x7f && ui.col[0][0] != 0x7f);
+    ck("the slot the part plays (a factory sound, edited): the FAV card is drawn", ui.col[3][0] != 0x7f && ui.col[0][0] != 0x7f);
     turn(EN_K4, 1);
-    ck("K4 RESTORE there: the dialog RESTORE #11 TO LAST SAVE?, the factory sound is the saved version", ui.confirm == CF_RESTORE && ui.confirm_trk == 10u);
-    press(B_OCTDN);
-    ck("  OCT-: nothing changes", !ui.confirm);
+    ck("K4 there is FAV (1.1: the page has no RESTORE): no dialog, slot #11 starred", !ui.confirm && favorite_has(NENGINES, 10u));
+    turn(EN_K4, -1);
+    ck("  K4 left: the star off, nothing else changes", !ui.confirm && !favorite_has(NENGINES, 10u));
     hold(B_SAVE);
     ck("hold SAVE: the OVERWRITE dialog, the slot the sound came from offered (#11), nothing written yet", ui.confirm == CF_SAVE_OVER && ui.svs == 10u && !up_count());
     {
@@ -1310,18 +1263,9 @@ int main(void)
        trk[0].user == 13u && !strncmp(ui.msg, "SAVED", 5) && pl_cursor(&total) == 12u && total == UP_SLOTS && up_rec(12)->engine == trk[0].eng_req);
     kk = 12u;
     turn(EN_K4, 1);
-    ck("K4 RESTORE on a saved slot: the dialog RESTORE #13 TO <factory name>?", ui.confirm == CF_RESTORE && ui.confirm_trk == 12u);
-    {
-        char a1[32], b1[32];
-        confirm_text(a1, b1);
-        ck("  it reads RESTORE #13 TO LAST SAVE? and, under it, the saved patch's name", str_eq(a1, "RESTORE #13 TO LAST SAVE?") && b1[0] && !strstr(b1, "..."));
-    }
-    press(B_OCTDN);
-    ck("  OCT-: nothing changes", !ui.confirm && up_used(12));
-    turn(EN_K4, 1);
-    press(B_OCTUP);
-    ck("  OCT+: RESTORED #13: the record stays, the part plays it, the cursor stays on the slot",
-       msg_is("RESTORED #13") && up_used(12) && up_count() == 1u && trk[0].user == 13u && pl_cursor(&total) == 12u && slot_of(&trk[0]) == 12u);
+    ck("K4 on a saved slot: FAV too, no dialog; the record, the part and the cursor stay (1.1: RESTORE ALL in SAVE > TOOLS is the only restore)",
+       !ui.confirm && favorite_has(NENGINES, 12u) && up_used(12) && up_count() == 1u && trk[0].user == 13u && pl_cursor(&total) == 12u);
+    turn(EN_K4, -1);
     (void)sl_restore(12u);                              /* (the record out of the way for the checks below) */
     {
         uint32_t eng0 = TSEL->eng_req;
@@ -1340,8 +1284,8 @@ int main(void)
     go_title("PATCHES");
     sl_load(5u);
     frame();
-    turn(EN_K3, 1);
-    ck("K3 FAV marks the cursor's slot", preset_favorite() && favorite_has(NENGINES, 5u));
+    turn(EN_K4, 1);
+    ck("K4 FAV marks the cursor's slot", preset_favorite() && favorite_has(NENGINES, 5u));
     {   /* TYPE FAV lists the starred slots; a saved sound in a starred slot stays in it */
         list_set(1u);
         (void)preset_pos(&total);

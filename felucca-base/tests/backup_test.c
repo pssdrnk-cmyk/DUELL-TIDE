@@ -38,31 +38,8 @@ static void fl_plain_window_init(void) {}
 #include "../firmware/src/upreset.c"
 #include "../firmware/src/project.c"
 #include "old_pack.h"
-/* 1.1 (ROLL CHAINED storage): a patch record carries End B as its values (morph.c MBV) with the marks of the values set by hand; the 1.0 hand-set
- * list (up_xb_in) is gone. Store t (part 0) into slot k with the values ed[0..ne) set by hand on End B: as up_patch_save_part builds the block */
-#define NSAVE (PT_MAX < UP_SLOTS ? PT_MAX : UP_SLOTS)   /* records the store takes: 126 with TIDE (its settings use chunk 21, plan §4.5), else 128 */
-static int store_with_b(track_t *t, uint32_t k, const char *nm, const xb_edit_t *ed, uint32_t ne)
-{
-    static uint8_t bv[MBV_MAX];
-    int16_t ref[EXT_P_LEN];
-    uint32_t i;
-    int rc;
-    if (ne) {
-        (void)morph_ready(0);
-        morph_pin_load(&mph[0], ed, ne);
-        memset(ref, 0, sizeof ref);
-        for (i = 0; i < P_COUNT; i++)
-            ref[i] = motion_base_value(t, i);
-        for (i = 0; i < NX; i++)
-            ref[XW_BASE + i] = (int16_t)clamp(XV(t, i), -64, 127);
-        up_bv_n = morph_bv_make(0, ref, bv);
-        up_bv_in = up_bv_n ? bv : 0;
-    }
-    rc = up_store_trk(t, k, nm, 0);
-    up_bv_in = 0;
-    up_bv_n = 0;
-    return rc;
-}
+#include "endb_store.h"
+#define NSAVE (PT_MAX < UP_SLOTS ? PT_MAX : UP_SLOTS)   /* records the store takes: 126 with TIDE (its settings use chunk 21, plan 4.5), else 128 */
 
 enum { ED_BACKUP_LIST = 65, ED_BACKUP_GET, ED_BACKUP_PUT };
 static uint8_t rep[4096];
