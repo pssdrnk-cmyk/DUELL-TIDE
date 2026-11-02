@@ -152,17 +152,10 @@ static void lv_load(void)
 }
 
 /* ------------------------------------------------------------------------------------------- 3. SAVE, RESTORE, records */
-/* how many (id, value) pairs a stored record holds for id, in either form */
+/* whether a stored record holds a value for id */
 static int pair_of(const uint8_t *raw, uint32_t id)
 {
-    uint32_t a, b, pr, d, e, i;
-    pt_layout(raw, &a, &b, &pr, &d, &e);
-    if (raw[4] & PTF_BM)
-        return raw[pr + id / 8u] >> (id % 8u) & 1u;
-    for (i = 0; i < raw[19]; i++)
-        if (raw[pr + 2u * i] == id)
-            return 1;
-    return 0;
+    return raw[PT_FIX + id / 8u] >> (id % 8u) & 1u;      /* (PT_VER 4: always the values' bitmap, a bit per wide id off its default) */
 }
 static void lv_save(void)
 {
@@ -210,15 +203,16 @@ static void lv_save(void)
         for (e = 0; e < P_COUNT; e++)
             up_set_value(&o, e, (int16_t)up_def(0, e));
         memcpy(o.name, "OLD LEVEL", 9);
-        up_set_value(&o, P_TRIM, 97);                  /* (the one pair; below it is moved to id 0 and the flag taken off: a record of 0.2.14 .. 0.2.18) */
-        ck("an old record: written (one pair)", (up_put(s, &o) & ~3) == 0 && (p = pt_raw(s)) != 0 && !(p[4] & PTF_BM) && p[19] == 1u);
+        up_set_value(&o, P_TRIM, 97);                  /* (the one value; below it is moved to id 0 and the flag taken off: a record of before the split) */
+        ck("an old record: written (one value)", (up_put(s, &o) & ~3) == 0 && (p = pt_raw(s)) != 0 && p[19] == 1u && pair_of(p, P_TRIM));
         p = pt_raw(s);
         c = pt_dir[s].ch;
         rl = pt_dir[s].len;
         pt_work[0] = (uint8_t)PT_MAGIC; pt_work[1] = (uint8_t)(PT_MAGIC >> 8); pt_work[2] = PT_VER; pt_work[3] = 0;
         memcpy(pt_work + PT_HDR, p, rl);
         pt_work[PT_HDR + 4u] &= (uint8_t)~PTF_TR;       /* no TRIM flag ... */
-        pt_work[PT_HDR + PT_FIX] = id0;                  /* ... and the pair is LEVEL's, id 0 (the first pair after the fixed part) */
+        pt_work[PT_HDR + PT_FIX + P_TRIM / 8u] &= (uint8_t)~(1u << (P_TRIM % 8u));   /* ... and the value is LEVEL's, id 0 (PT_VER 4: its bit in the bitmap; the one */
+        pt_work[PT_HDR + PT_FIX] |= (uint8_t)(1u << id0);                              /* value stays in place: both ranges are 0..127, 7 bits) */
         pt_sv(c, pt_work, PT_HDR + rl);
         pt_boot();
         ck("  the record of before the split is read: LEVEL 97 is the TRIM 97, the mixer value the stored default", up_used(s) && up_value(up_rec(s), P_TRIM) == 97 && up_value(up_rec(s), P_LEVEL) == 104);
@@ -279,41 +273,42 @@ static void lv_multi(void)
     ok = pr.t[0].p[P_LEVEL] == 77 && pr.t[1].p[P_LEVEL] == 33 && pr.t[0].p[P_TRIM] == 91 && pr.t[1].p[P_TRIM] == 97;
     ck("project_capture holds both", ok);
     pr.sum = proj_sum(&pr);
-    ok = proj_pack(&st, &pr) && st.raw[67] == PROJ_REV && PROJ_REV == 7 && proj_import(&back, &st, sizeof st) && back.t[0].p[P_LEVEL] == 77 && back.t[1].p[P_LEVEL] == 33 &&
+    ok = proj_pack(&st, &pr) && st.raw[67] == PROJ_REV && PROJ_REV == 8 && proj_import(&back, &st, sizeof st) && back.t[0].p[P_LEVEL] == 77 && back.t[1].p[P_LEVEL] == 33 &&
          back.t[0].p[P_TRIM] == 91 && back.t[1].p[P_TRIM] == 97;
-    ck("project format revision 6: packed and read back with both", ok);
+    ck("project format revision 8: packed and read back with both", ok);
     st.raw[67] = 2;                                   /* (the hash covers the revision byte: rehash, so the format check says no, not the hash) */
     {
         uint32_t sum = proj_hash(st.raw, PROJ_STORE_SIZE - 4u);
         memcpy(st.raw + PROJ_STORE_SIZE - 4u, &sum, 4);
     }
     ck("  a project of revision 2 (one level) is refused", !proj_import(&back, &st, sizeof st));
-    ck("multi version 7", MU_VER == 7u);
+    ck("multi version 8", MU_VER == 8u);
+    int32_t m01_trim[2] = {-1, -1};
     /* the factory multis: a mixer level of their own (unity up to 0.2.22; 0.2.23: each multi's balance, -16 .. +4 dB), the trim the sound's */
     for (i = 0; i < DF_N; i++) {
         const uint8_t *b = DM_REC + DM_AT[i];
-        uint32_t pos = MU_G_AT + 2u * b[2], t;
-        if (b[0] != 7u)
+        uint32_t pos = MU_G_AT + 2u * b[2], t, k, ns;
+        if (b[0] != 8u)
             ok = 0;
-        for (t = 0; t < 2u; t++) {
-            const uint8_t *v = b + pos + 4u + MB_N;
-            uint32_t fl = b[pos + 3];
+        for (t = 0; t < 2u; t++) {                        /* (MU_VER 8, per part: engine, preset, AMOUNT, flags, End B's length and block, the values, the NX slots, the step map, the steps, the FM6 patch) */
+            uint32_t fl = b[pos + 3], nb = b[pos + 4];
+            const uint8_t *v = b + pos + 5u + nb;
             ok &= v[P_LEVEL] - 64 >= 80 && v[P_LEVEL] - 64 <= 120 && v[P_TRIM] - 64 >= 30;   /* (0.2.23: the new multis set their own mix, -16 .. +4 dB) */
+            if (i == 0u)
+                m01_trim[t] = v[P_TRIM] - 64;             /* (M01's: its sounds' trims, REESE BASS and SQUELCH) */
             n++;
-            pos += 4u + MB_N + b[1];
-            pos += 1u + b[pos];                           /* (MU_VER 7: nx, the extension slots) */
-            pos += 1u + 2u * b[pos];                      /* (.. ne, the hand-set B edits) */
-            pos += 8u + PS_STEP * (uint32_t)(__builtin_popcount(b[pos]) + __builtin_popcount(b[pos + 1]) + __builtin_popcount(b[pos + 2]) + __builtin_popcount(b[pos + 3]) +
-                                           __builtin_popcount(b[pos + 4]) + __builtin_popcount(b[pos + 5]) + __builtin_popcount(b[pos + 6]) + __builtin_popcount(b[pos + 7])) +
-                   (fl & 1u ? 128u : 0u);
+            pos += 5u + nb + P_COUNT + NX;
+            for (k = ns = 0; k < 8u; k++)
+                ns += (uint32_t)__builtin_popcount(b[pos + k]);
+            pos += 8u + MU_STEP * ns + (fl & 1u ? UPF_PK : 0u);
         }
     }
-    ck("every factory multi record (version 7): each part's mixer level a fader position of -16 .. +4 dB, its trim the sound's", ok && n == 2u * DF_N);
+    ck("every factory multi record (version 8): each part's mixer level a fader position of -16 .. +4 dB, its trim the sound's", ok && n == 2u * DF_N);
     /* a factory multi loads with the mixer at unity; the sounds' trims are the ones the multi's sounds carry */
     fresh();
     trk[0].p[P_LEVEL] = 20;
     project_load(0u);
-    ck("a factory multi (M01) loaded: the mixer back at its stored unity, a trim", trk[0].p[P_LEVEL] == 112 && trk[1].p[P_LEVEL] == 112 && trk[0].p[P_TRIM] == 113 && trk[1].p[P_TRIM] == 87);
+    ck("a factory multi (M01) loaded: the mixer back at its stored unity, a trim", trk[0].p[P_LEVEL] == 112 && trk[1].p[P_LEVEL] == 112 && trk[0].p[P_TRIM] == m01_trim[0] && trk[1].p[P_TRIM] == m01_trim[1]);   /* (1.1's bank: 125 and 99) */
 }
 
 /* ------------------------------------------------------------------------------------------ 5. MIDI */

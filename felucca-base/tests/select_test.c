@@ -170,22 +170,26 @@ static void sweep_buttons(void)
  * longer on it); SELECT right and HOME's taps go round it the same way, SELECT left backwards */
 static void sweep_home(void)
 {
-    static const char *const ORDER[3] = {"MORPH", "MORPH SET", "MODE"};   /* (0.2.25 layout round: the MIXER is GLO's first page) */
+#if DUELL_TIDE                                           /* (TIDE: MORPH SETTINGS in MORPH SET's place, then AUTO TIDE) */
+    static const char *const ORDER[] = {"MORPH", "MORPH SETTINGS", "AUTO TIDE", "MODE"};
+#else
+    static const char *const ORDER[] = {"MORPH", "MORPH SET", "MODE"};   /* (0.2.25 layout round: the MIXER is GLO's first page) */
+#endif
     uint8_t r[8];
     uint32_t m, k, ok, c;
     ui_power_on();
     song.g[G_BPM] = 117;
     m = home_round(r);
     c = 0;
-    ok = m == 3u;
+    ok = m == sizeof ORDER / sizeof ORDER[0];
     for (k = 0; ok && k < m; k++)
         ok &= str_eq(PAGES[r[k]].title, ORDER[k]);
-    expect("HOME's round: MORPH, MORPH SET, MODE (0.2.14: no OVERVIEW; 0.2.25: no MIXER)", ok);
+    expect("HOME's round: MORPH, MORPH SET (TIDE: MORPH SETTINGS, AUTO TIDE), MODE (0.2.14: no OVERVIEW; 0.2.25: no MIXER)", ok);
     {   /* item 155: MODE SPLIT in LAYER (item 158: on K3, the cards line up to the left): OFF, the first turn right starts at the middle key F#4 (stored 67), then goes on; the bottom is OFF again and stays */
         uint8_t m0 = duell_mode_req, s0 = mix_split;
         int ok2;
         uint8_t p0 = ui.page;
-        enter(r[2]);
+        enter(r[m - 1u]);                                 /* (MODE, the round's last) */
         duell_mode_force(DM_LAYER); ui_mode_set = ui.mode_seen = DM_LAYER;
         mix_split = 0;  turn(EN_K3, 1);
         ok2 = mix_split == 67u;
@@ -381,7 +385,7 @@ static void sweep_menu(void)
 /* a layer button held: SELECT is nobody's (not the tempo, not the page) */
 static void sweep_layers(void)
 {
-    static const uint8_t LB[] = {B_SCL, B_EDIT, B_SEQ, B_REC, B_LFO, B_ENV, B_ARP};   /* (GLO is a page, not a held layer, since step 6; FX neither,
+    static const uint8_t LB[] = {B_EDIT, B_SEQ, B_REC, B_LFO, B_ENV, B_ARP};   /* (SCALE neither since 1.1: its quick layer is gone, the button opens SCALE; GLO is a page, not a held layer, since step 6; FX neither,
                                                                                          * since 0.2.2; LFO ENV ARP: 0.2.9's QUICK EDIT layers) */
     uint32_t l;
     for (l = 0; l < sizeof LB; l++) {
@@ -1037,7 +1041,7 @@ static void sweep_rec_hold(void)
         ui.perf = 1;
         trk[0].p[P_LEVEL] = 112, trk[1].p[P_LEVEL] = 112;
         turn(EN_SELECT, 3);
-        expect("PERFORM: SELECT turns BALANCE (3 right: LEVEL 1 -1.5 dB, LEVEL 2 stays 0 dB: capped), the page stays", trk[0].p[P_LEVEL] == 109 && trk[1].p[P_LEVEL] == 112 && ui.page == pg && ui.perf);
+        expect("PERFORM: SELECT turns BALANCE (item 160's third rule: 3 right = p -3/32, LEVEL 1 x 29/32 = index 110, LEVEL 2 stays 0 dB), the page stays", trk[0].p[P_LEVEL] == 110 && trk[1].p[P_LEVEL] == 112 && ui.page == pg && ui.perf);
         ui.perf = 0;
         trk[0].p[P_LEVEL] = l0, trk[1].p[P_LEVEL] = l1;
     }
@@ -1049,7 +1053,8 @@ static void sweep_rec_hold(void)
             mute += PAGES[p].fam == FAM_EDIT && (PAGES[p].id[0] == P_MUTE || PAGES[p].id[1] == P_MUTE || PAGES[p].id[2] == P_MUTE || PAGES[p].id[3] == P_MUTE);
             if (str_eq(PAGES[p].title, "VOICE 2/2")) {
                 go_title("VOICE 2/2");
-                ok = PAGES[p].id[3] == P_TRIM && lock_page_ok(p) && ui.plk_src == p + 1u && lock_id(2) == 0xFFu && lock_id(3) == P_TRIM;   /* (DUELL 1.1 ui.c lock_id: a step lock only for what the matrix offers: PATCH LEVEL is MD_LEVEL, SPREAD is no destination) */
+                ok = PAGES[p].id[3] == P_TRIM && motion_param(P_TRIM) && mod_lock_ok(TSEL, P_TRIM) &&   /* (1.0 removed lock_page_ok and ui.plk_src with the held-step gesture: */
+                     !(motion_param(PAGES[p].id[2]) && mod_lock_ok(TSEL, PAGES[p].id[2]));         /*  a knob records a lock on what ui.c lock_id would take) */   /* (DUELL 1.1 ui.c lock_id: a step lock only for what the matrix offers: PATCH LEVEL is MD_LEVEL, SPREAD is no destination) */
             }
         }
         for (p = 0; p < NPAGES; p++)
@@ -1342,6 +1347,10 @@ static void sweep_algo(void)
             mp = i;
             continue;
         }
+#if DUELL_TIDE
+        if (PAGES[i].scope == SC_TIDE)                  /* (TIDE's MORPH SETTINGS and AUTO TIDE: ALGORITHM is the morph's selector there, PART 1 / BOTH / PART 2, as on MORPH: tide_ui.c) */
+            continue;
+#endif
         morph.target = MT_SELECTED;
         song.sel = 0;
         enter(i);

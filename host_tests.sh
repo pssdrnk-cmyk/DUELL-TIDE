@@ -189,7 +189,7 @@
 # perflevelmut: its mutations, run once each (perflevel must FAIL): a boost allowed, the direction swapped, the total not kept, a memory of its own (the MIXER's writes between the steps ignored)
 # midimapmut: the safety rules' mutations, run once each (midimap_test must FAIL): the lock check removed, two parameters allowed on one CC, the morph's trigger back on the CC number
 cd "$(dirname "$0")/felucca-base" || exit 1
-OUT=build/host; mkdir -p "$OUT" build/mod_demo build/ui_new build/ui_slot
+OUT=build/host; mkdir -p "$OUT" build/mod_demo build/ui_new/ppm build/ui_slot
 unset DUELL_TEST_MODE                                  # (the environment switch is for device / emulator builds; the tests set theirs below)
 CCR="cc -O2 -w -DHOST_MIX_FOLLOWS_MASTER=1 -Ibuild/gen -Ifirmware/src -Itests"      # the release configuration (switch off)
 CCD="cc -O2 -w -Ibuild/gen -Ifirmware/src -Itests"      # the device's own mix level (no HOST_MIX_FOLLOWS_MASTER): the browser build, web/emu, has none
@@ -279,21 +279,24 @@ for t in $want; do case $t in
   dlyev)   $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/dlyev_test tests/dlyev_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run dlyev $OUT/dlyev_test ;;
   perflevel) $CC "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/perf_level_test tests/perf_level_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run perflevel $OUT/perf_level_test ;;
   perflevelmut) plm() {                                # perflevel's self-check: a COPY of firmware/ and tests/ with the rule broken must make tests/perf_level_test.c FAIL
-             name=$1; f0=$2; ex=$3
+             name=$1; f0=$2; ex=$3                        # (built -DPL_RULE_ONLY: the mutants break the rule, the audio part needs fork(); the unmutated rule must pass first)
              echo "== perflevel_mut $name"
              rm -rf build/perflevel_mut; mkdir -p build/perflevel_mut
              cp -R firmware tests build/perflevel_mut/ || { echo "   FAIL (copy)"; fail=1; return; }
-             f=build/perflevel_mut/$f0; sed "$ex" "$f" > "$f.new" && mv "$f.new" "$f"
-             if cmp -s "$f" "$f0"; then echo "   FAIL (the mutation changed nothing in $f0)"; fail=1; return; fi
-             if ! $CC "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/perflevel_mut build/perflevel_mut/tests/perf_level_test.c -lm > $OUT/last.log 2>&1; then
+             f=build/perflevel_mut/$f0; [ -z "$ex" ] || { sed "$ex" "$f" > "$f.new" && mv "$f.new" "$f"; }
+             if [ -n "$ex" ] && cmp -s "$f" "$f0"; then echo "   FAIL (the mutation changed nothing in $f0)"; fail=1; return; fi
+             if ! $CC -DPL_RULE_ONLY "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/perflevel_mut build/perflevel_mut/tests/perf_level_test.c -lm > $OUT/last.log 2>&1; then
                echo "   FAIL (the mutated build does not compile)"; tail -5 $OUT/last.log; fail=1; return
              fi
-             if $OUT/perflevel_mut > $OUT/last.log 2>&1; then echo "   FAIL (the mutation was NOT detected)"; fail=1; else echo "   PASS (detected: $(grep -c ' FAIL$' $OUT/last.log) checks failed)"; fi
+             if [ -z "$ex" ]; then
+               if $OUT/perflevel_mut > $OUT/last.log 2>&1; then echo "   PASS ($(tail -1 $OUT/last.log))"; else echo "   FAIL (the rule fails unmutated)"; grep ' FAIL$' $OUT/last.log | head; fail=1; fi
+             elif $OUT/perflevel_mut > $OUT/last.log 2>&1; then echo "   FAIL (the mutation was NOT detected)"; fail=1; else echo "   PASS (detected: $(grep -c ' FAIL$' $OUT/last.log) checks failed)"; fi
            }
-           plm "a boost allowed (the part that takes raised up to the table's top, +7.5 dB)" firmware/src/ui_input.c 's/if (up->p\[P_LEVEL\] < PERF_BAL_HOME) {/if (up->p[P_LEVEL] < 127) {/'
-           plm "the direction swapped (right toward part 1)" firmware/src/ui_input.c 's/track_t \*up = &trk\[s > 0 ? 1 : 0\], \*dn = &trk\[s > 0 ? 0 : 1\];/track_t *up = \&trk[s > 0 ? 0 : 1], *dn = \&trk[s > 0 ? 1 : 0];/'
-           plm "the total not kept (the other part never raised: item 160's first rule without its raise)" firmware/src/ui_input.c 's/if (up->p\[P_LEVEL\] < PERF_BAL_HOME) {/if (0 \&\& up->p[P_LEVEL] < PERF_BAL_HOME) {/'
-           plm "a memory of its own (steps from the knob's last levels, the MIXER's writes ignored)" firmware/src/ui_input.c 's/^static void perf_balance(int32_t s)$/static int16_t pb_mem[2] = {-1, -1}; static void perf_balance_(int32_t s); static void perf_balance(int32_t s) { if (pb_mem[0] >= 0) trk[0].p[P_LEVEL] = pb_mem[0], trk[1].p[P_LEVEL] = pb_mem[1]; perf_balance_(s); pb_mem[0] = trk[0].p[P_LEVEL], pb_mem[1] = trk[1].p[P_LEVEL]; } static void perf_balance_(int32_t s)/' ;;
+           plm "control: the rule unmutated" firmware/src/ui_input.c ''
+           plm "a boost allowed (the part that goes up raised toward the table's top, +7.5 dB, not 0 dB)" firmware/src/ui_input.c 's/g0 = (int32_t)LEVEL_Q12\[PERF_BAL_HOME\];/g0 = (int32_t)LEVEL_Q12[127];/'
+           plm "the direction swapped (right toward part 1)" firmware/src/ui_input.c 's/pos = perf_bal_pos - s;/pos = perf_bal_pos + s;/'
+           plm "the total not kept (the part that goes up never raised)" firmware/src/ui_input.c 's/^    if (up)$/    if (0 \&\& up)/'
+           plm "a memory of its own (the MIXER's writes between the steps ignored)" firmware/src/ui_input.c 's/if (perf_bal_pos != 0 && (trk\[0\]/if (0 \&\& perf_bal_pos != 0 \&\& (trk[0]/' ;;
   mode)    $CC "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/mode_test tests/mode_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run mode $OUT/mode_test ;;
   hang)    $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/hang_test tests/hang_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run hang $OUT/hang_test ;;
   atgt)    $CC -o $OUT/atgt_test tests/atgt_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run atgt $OUT/atgt_test ;;
@@ -490,8 +493,8 @@ for t in $want; do case $t in
         if ((rc = st_prog(base + ST_PAYLOAD_OFF + off, st_buf + off, n)) != 0)'
            xb_mut "PT_K 7 records a chunk, the _Static_assert still in place (upreset.c)" patch_test.c firmware/src/upreset.c '#define PT_K ((PT_CAP - PT_HDR) / PT_WORST)' '#define PT_K 7u'
            xb_mut "PT_K 7 records a chunk with the _Static_assert taken out: the 128-slot guarantee must break at run time (upreset.c)" patch_test.c firmware/src/upreset.c '#define PT_K ((PT_CAP - PT_HDR) / PT_WORST)' '#define PT_K 7u' \
-              firmware/src/upreset.c '_Static_assert(PT_K == 6u && PT_WORST * PT_K + PT_HDR <= PT_CAP && PT_MAX >= UP_SLOTS' '_Static_assert(PT_MAX >= UP_SLOTS'
-           xb_mut "the extension block's length check removed (upreset.c pt_rec_ok)" patch_test.c firmware/src/upreset.c '    if ((p[4] & PTF_XB) && xb_block_ok(p + a, rl - a) != 1u + p[a])' '    if (0)'
+              firmware/src/upreset.c '_Static_assert(PT_WORST == 577u + TIDE_MBV_FMT_N && PT_K == 6u && PT_WORST * PT_K + PT_HDR <= PT_CAP && PT_MAX + (22u - TIDE_PT_NCH) * PT_K >= UP_SLOTS' '_Static_assert(PT_MAX + (22u - TIDE_PT_NCH) * PT_K >= UP_SLOTS'
+           xb_mut "End B's AMOUNT check removed (morph.c morph_bv_size, the block check pt_rec_ok's layout runs: PT_VER 4 has no extension block)" patchraw_test.c firmware/src/morph.c ' || b[1] > 101u || ' ' || '
            xb_mut "PATCH_RAW's length check removed (editor_patchraw.c BEGIN: PT_FIX .. PT_WORST)" patchraw_test.c firmware/src/editor_patchraw.c 'if (n != 9u || a[8] > 15u || len < PT_FIX || len > PT_WORST)' 'if (n != 9u || a[8] > 15u)' ;;
   fuzz)    SAN=; cc -fsanitize=address,undefined -fno-sanitize=shift -w -x c -o /dev/null - 2>/dev/null <<'EOF2' && SAN="-fsanitize=address,undefined -fno-sanitize=shift"
 int main(void) { return 0; }
