@@ -1,12 +1,14 @@
-# DUELL 1.1 migration — completed baseline, 1 November 2026
+# DUELL 1.1 migration — completed baseline; status updated 2 November 2026
 
-The implementation and integration onto DUELL 1.1 are complete, and the owner confirms TIDE works on hardware. The earlier pending hardware/review statements below describe the retained migration snapshot, not the current acceptance state. No new push, publication or firmware write is authorized by this update.
+The implementation and integration onto DUELL 1.1 are complete, and the owner confirms TIDE works on hardware. The earlier pending hardware/review statements below describe the retained migration snapshot, not the current acceptance state. The owner subsequently authorized the refinement integration, GitHub push and installation. Combined R0/M1/M2a source `1196a82` was installed on 1 November 2026; reboot identity was verified and all 16 backed-up data objects match byte-for-byte after the current-music restore. Device listening, physical clock timing and CPU acceptance of these refinements remain pending.
 
 Next development: [TIDE musical refinement roadmap](TIDE_MUSICAL_ROADMAP.md). It covers the two reproduced GLIDE control defects, ARP SEQ dialogue, cyclic voice leading, JRNY destination memory, longer musical arcs, and evidence-led pitch/loudness checks. R0, M1 and M2a now have implementations; the roadmap records verification, listening acceptance and the remaining planned work.
 
+Current installed build: **579,832 / 581,564 B application flash (1,732 B free)**; ordinary RAM **5,808 B free**, pool including range Z **11,156 B free**, hot audio RAM **1,468 B free**. Required reserves pass. Exact package hash, verification, backup and installation evidence are in the [roadmap integration and installation receipts](TIDE_MUSICAL_ROADMAP.md#m1--m2-integration-for-github).
+
 ## Retained implementation snapshot — before owner hardware confirmation
 
-**Current stage: tested Claude fixes merged; TIDE/TIDE SET restyle built for owner emulator review. The complete implementation fits; nothing from this implementation has been flashed.** Continue in `work/wt/duell-jam11`, branch `jam11`. The older revision 3.5 plan below is historical, not the current build status.
+**Historical stage: tested Claude fixes merged; TIDE/TIDE SET restyle built for owner emulator review. The complete implementation fits; nothing from this implementation has been flashed.** Continue in `work/wt/duell-jam11`, branch `jam11`. The older revision 3.5 plan below is historical, not the current build status.
 
 ## Completed
 
@@ -16,7 +18,7 @@ Next development: [TIDE musical refinement roadmap](TIDE_MUSICAL_ROADMAP.md). It
 - Claude UI compaction `50cfdac` merged at `0736b23`: removes superseded renderers and unreachable layout paths. It saves 4,240 B flash, 1,024 B ordinary RAM and 1,024 B pool. Claude's pixel comparisons match all 2,514 TIDE-on and 2,469 TIDE-off cases. Result and proof: `work/handover-2026-11-01/CLAUDE-UI-COMPACTION-RESULT.md` and `ui-compact-proof/`. Separate Claude worktrees are preserved; the UI freeze is over.
 - Retired hardware scope capture is now host-only (`FELUCCA_HOST_SCOPE` in `tests/hostsim.c`). The old settings bit remains reserved/ignored. This removes obsolete production source while preserving metronome test capture; it yields no further image reduction after compiler dead-code elimination.
 
-## Current measurements
+## Historical restyle measurements
 
 The final restyle build with the merged functional fixes measures: **577,116 / 581,564 B**, **4,448 B flash free**, SHA-256 `ca7963ad7f34f5bb05cf1c44fbf8650d5f489e1201a604e5e07e40ee9fc0d0a7`. All target ELF, startup, RAM placement, call reach and range-X closure checks pass (`errors: []`). Evidence: `work/audit/jam11-measurements/tide-restyle-final/`. The earlier fresh-asset build is retained in `tide-ui-release-generated/`. Production bounds remain unchanged.
 
@@ -42,7 +44,7 @@ TIDE-off also passes target checks: **556,920 B**, app SHA-256 `0a35ee3e6e530c60
 - Rendered and inspected selected-part/BOTH views, populated and varied note patterns, running/paused GLIDE, and the last selected setting. Evidence: `build/host-review/tide-restyle/` and `work/audit/tide-restyle-preview.png`. Final label and playhead spacing is in `tide-restyle-final-shots.log`.
 - Rebuilt the current emulator at `http://127.0.0.1:8765/?build=tide-restyle-966027`. The build now fingerprints the WASM and worklet URLs, avoiding reuse of old assets after the page loads a new build. Browser source includes real TIDE settings storage. The previously observed browser smoke limitations (two GUIDE expectations and the old heavy-song fixture) remain; no new full emulator sweep or physical validation is claimed.
 
-## Next / handoff
+## Historical next steps / handoff (superseded by the roadmap)
 
 1. **Owner review first:** inspect the restyled emulator, the HOME order, two footer rows and retained motion/note/progress displays. No further design change or firmware write is required for this review.
 2. The old `tide-device-test-a5b768d` package is superseded by the evening functional fixes and restyle; retain it as historical evidence. After owner review, regenerate a checked package from the accepted source before requesting authorization to flash. Actual FM-1 audio/CPU/GLIDE/KEEP and TR-6S clock testing remains outstanding.

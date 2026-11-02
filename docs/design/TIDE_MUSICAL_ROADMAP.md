@@ -1,12 +1,12 @@
 # TIDE musical refinement roadmap
 
-Date: 1 November 2026. Status: **implementation started locally with owner authorization; R0 validation in progress**.
+Updated: 2 November 2026. Status: **R0, M1 and M2a integrated and pushed; combined firmware installed and user data verified. M1 host A/B accepted; device listening, clock and CPU acceptance remain pending.**
 
 ## Purpose and accepted baseline
 
 Make two-part TIDE sessions develop with more space, continuity and direction while preserving the owner's patterns and sounds. The intended setting is house and dub techno, with the FM-1 supporting a TR-6S and live playing.
 
-The owner confirms the current TIDE implementation works on hardware. The DUELL 1.1 port is complete; this is a subsequent refinement programme, not unfinished migration work. No GitHub push, publishing, deployment or firmware write is requested here. New hardware comparisons concern changes made by this programme, not re-approval of the existing implementation.
+The owner confirms the current TIDE implementation works on hardware. The DUELL 1.1 port is complete; this is a subsequent refinement programme, not unfinished migration work. The owner subsequently authorized integration, GitHub push and flashing; the combined source `1196a82` was installed on 1 November 2026. See the integration and device-installation receipts below. New hardware comparisons concern changes made by this programme, not re-approval of the existing implementation.
 
 Source inspected: `jam11`, through `08a5ac7`, plus current working-tree changes. While this roadmap was being written, the branch advanced to `fb9d62d`, changing the showcase to M04 DUB CHORD, 16-bar travel and WAIT 2 bars; the scene list below reflects that update. The branch is shared and may advance again: capture a fresh source revision and diff before each implementation slice. Preserve concurrent edits. The audit's latest inspected target log reported 577,692 / 581,564 B (3,872 B free); this is a historical measurement, not a budget for subsequently changed source.
 
@@ -16,11 +16,11 @@ Already present: bounded sound walks; 16/32/64/128-bar phrase tiers; rhythm move
 
 | Stage | Outcome | Dependency | State |
 |---|---|---|---|
-| R0 | Reliable WAIT edits and takeover of either part | None | Implemented and host-tested (paused WAIT, running WAIT edits, symmetric takeover, same-value load); emulator and device acceptance pending |
+| R0 | Reliable WAIT edits and takeover of either part | None | Implemented, host-tested and included in the verified combined emulator/package build; installed, with device behavior acceptance pending |
 | S0 | Room in flash and RAM for M2-M4 | None; before or alongside M2-M4 | Planned; findings below (1 November 2026) |
 | M0 | Reproducible musical reference and pitch diagnostic | R0 for moving sessions | Done (owner, 1 November 2026); its results are not yet recorded in this roadmap |
-| M1 | ARP SEQ-aware space between parts | M0 | Implemented, software-verified and owner A/B listening accepted; device comparison pending |
-| M2 | Smoother chord voicing over the loop join | M0 | In progress by Claude; M2a implemented and host-tested; listening comparison pending |
+| M1 | ARP SEQ-aware space between parts | M0 | Implemented, software-verified, owner host A/B accepted and installed; device listening comparison pending |
+| M2 | Smoother chord voicing over the loop join | M0 | M2a implemented, host-tested, integrated and installed; musical listening comparison pending |
 | M3 | Less repetitive JRNY destinations | M0 | Planned |
 | M4 | Longer passages with restraint, development and recovery | M1-M3 accepted | Planned |
 | M5 | Transition loudness tuning where recordings demonstrate a problem | M0; final check after M4 | Evidence-dependent |
@@ -246,7 +246,7 @@ Strict native audio rendering found existing signed-shift UB in **both** baselin
 
 Owner listening result (1 November 2026): after hearing the level-matched deliberate-clash A/B, the owner preferred candidate B: "B is better, less busy I guess". Record this as a favorable but tentative subjective result for this host-rendered fixture; retain M1. It does not establish preference across every scene or device performance.
 
-Acceptance remaining: only when a package is explicitly requested, the device comparison with backup. No firmware installed, no hardware/physical-audio/CPU claim, no publishing. M1's local implementation and owner host A/B listening are complete.
+At this isolated M1 checkpoint, no firmware had been installed or published. The later authorized integration, push and installation are recorded below. M1 implementation and owner host A/B listening are complete; physical listening, clock and CPU acceptance remain pending.
 
 ### M2a local slice — 1 November 2026
 
@@ -258,7 +258,7 @@ Source checkpoint: `17d306a`. Only `seq_voicelead.c` changes in firmware; the co
 - New `tidevoicelead` group (strict ASan/UBSan): a loop whose first chord is written an octave below the rest (inner movement 28 to 4, join 24 to 0); an already smooth four-note loop unchanged; one chord unchanged; a chord tied across the join keeps its notes; repeated generation identical. 9,000 seeded random loops over chromatic and two other scales, with rests, ties, slides, single notes, triads and four-note chords: 15–17% improve, none change without a whole-cycle gain, and bass, pitch classes, note count, register 24..108, ±12 from the source, no duplicated voice and held/slid chords hold on every loop. **9,017 checks, 0 failures.** `tidecontrols`, `tidekeep`, `tidecrossings` and `tidedialogue` pass.
 - Build (isolated snapshots in `work/roadmap-m2-build`; baseline = `17d306a`): image 577,832 to 578,136 B (+304); ordinary RAM 67,920 B, pool + range Z 357,484 B, hot audio code 11,044 B and 1,468 B hot headroom unchanged. Every placement, reserve, call-reach and range-X check passes. The final combined M1/M2 measurement is recorded in the integration section below.
 
-Limits: ARP SEQ plays the held chord, not stored upper voices, so this has no effect there (M02 NIGHT ORGAN). Single-note lines and chord-size changes are not linked, as before. No emulator, listening or device check; nothing flashed or published.
+Limits: ARP SEQ plays the held chord, not stored upper voices, so this has no effect there (M02 NIGHT ORGAN). Single-note lines and chord-size changes are not linked, as before. At this isolated M2a checkpoint, no emulator, listening or device check had been performed and nothing had been flashed or published. Combined software verification and installation followed below; M2 listening acceptance remains pending.
 
 ### M1 + M2 integration for GitHub — 1 November 2026
 
