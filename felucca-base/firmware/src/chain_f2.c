@@ -157,7 +157,7 @@ static __attribute__((noinline)) void f2_comb(f2k_t *s, int16_t *line, uint32_t 
         ix1 = ix + 1 == (int32_t)len ? 0 : ix + 1;
         del = (line[ix] + (((line[ix1] - line[ix]) * (rp & 255)) >> 8)) * 2;
         lp += ((del - lp) * 3) >> 2;                    /* the loop's damping */
-        dcs += (lp * 4096 - dcs) >> 11;                /* .. and a high-pass at 3.4 Hz: a feedback comb has a gain of 1 / (1 - feedback) at 0 Hz, 16 at the most, and the line's clip would make an offset of it */
+        dcs += (lp * 4096 - dcs) >> 11;                 /* .. and a high-pass at 3.4 Hz: a feedback comb has a gain of 1 / (1 - feedback) at 0 Hz, 16 at the most, and the line's clip would make an offset of it */
         y = in[i] + ((fe * (lp - ((dcs + 2048) >> 12))) >> 12);
         ys = soft_knee(y, UF_KNEE);
         line[wr] = (int16_t)((ys + 1) >> 1);            /* (the line holds half: 64383 / 2 at the most) */

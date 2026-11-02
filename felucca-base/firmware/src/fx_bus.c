@@ -707,7 +707,7 @@ static __attribute__((noinline)) void BUS_FN(dly_mod)(uint32_t dmask, uint32_t d
     dev = BUS_FX.dm_dev > cap ? cap : BUS_FX.dm_dev;
     BUS_FX.dm_dev = dev;
     BUS_FN(cho_glide)(cdepth, &cdq, &cst);
-    el = ((sine_i(pl + inc) * (dev >> 3)) >> 12) * 256;  /* where the offsets are to be at the block's end (Q16) */
+    el = ((sine_i(pl + inc) * (dev >> 3)) >> 12) * 256; /* where the offsets are to be at the block's end (Q16) */
     er = ((sine_i(pr + inc + (inc >> 4)) * (dev >> 3)) >> 12) * 256;
     sl = (el - xl) >> CTL_LOG2;
     sr = (er - xr) >> CTL_LOG2;

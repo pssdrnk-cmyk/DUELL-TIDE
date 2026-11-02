@@ -528,8 +528,9 @@ static int editb_power_test(void)
     as_power_on();
     ok &= autosave_boot(1) == 1;
     morph_ready(0);                                         /* (the first use of the morph) */
-    bad += check("EDITABLE B: a power cycle (autosave): End B comes back as it was (the seed, the whole end)",
-                 ok && morph_seed_of(0, 1) == seed0 && endb_same(b0, morph_cur(&mph[0], 1)) && !memcmp(bx0, morph_curx(&mph[0], 1), NX) && mph[0].fader == 0u);
+    (void)seed0;                                            /* (PROJ_REV 8 keeps End B as its values: no seed comes back) */
+    bad += check("EDITABLE B: a power cycle (autosave): End B comes back as it was (the whole end; PROJ_REV 8: values, not the seed)",
+                 ok && endb_same(b0, morph_cur(&mph[0], 1)) && !memcmp(bx0, morph_curx(&mph[0], 1), NX) && mph[0].fader == 0u);
     ok = morph_edits(0, ed) == 2u && ed[0].wid == ed0[0].wid && ed[0].val == ed0[0].val && ed[1].wid == ed0[1].wid && ed[1].val == ed0[1].val;
     bad += check("  .. and the two values set by hand with it", ok);
     as_run(300000u);
