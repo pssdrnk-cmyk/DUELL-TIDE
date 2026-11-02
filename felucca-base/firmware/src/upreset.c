@@ -717,6 +717,21 @@ static const uint8_t *pt_ak_raw(uint32_t k)
     pt_layout_x(p, &xbo, &mb, &pr, &pat, &fm, &ak);
     return p + ak;
 }
+/* slot k's End B block (morph.c MBV) copied into out (MBV_MAX): its length, 0 none. A rewrite of the record (rename, the editor's FM6 PUT) hands
+ * it on as up_bv_in, so the record keeps it */
+static uint32_t pt_mb_copy(uint32_t k, uint8_t *out)
+{
+    const uint8_t *p = pt_raw(k);
+    uint32_t xbo, mb, pr, pat, fm, n;
+    if (!p || !(p[4] & PTF_MB))
+        return 0;
+    pt_layout(p, &xbo, &mb, &pr, &pat, &fm);
+    n = pat - mb;
+    if (n > MBV_MAX)
+        return 0;
+    memcpy(out, p + mb, n);
+    return n;
+}
 static int ak_get(uint32_t k, ak_t *a)
 {
     const uint8_t *b = pt_ak_raw(k);
@@ -1167,7 +1182,7 @@ static int up_store(uint32_t k, const char *name) { return up_store_cat(k, name,
 static int up_rename_cat(uint32_t k, const char *name, uint32_t cat)
 {
     up_rec_t r;
-    uint8_t pk[FM6_PACKED];
+    uint8_t pk[FM6_PACKED], bv[MBV_MAX];
     int rc;
     if (!up_used(k))
         return 1;
@@ -1176,10 +1191,14 @@ static int up_rename_cat(uint32_t k, const char *name, uint32_t cat)
     up_set_cat(&r, cat);
     if (!upf_get(k, pk))                                /* (an FM6 sound keeps its patch) */
         up_pk_in = pk;
+    up_bv_n = pt_mb_copy(k, bv);                        /* (its End B) */
+    up_bv_in = up_bv_n ? bv : 0;
     up_ak_in = pt_ak_raw(k);                            /* (and its arp / keys / pattern block) */
     rc = up_put(k, &r);
     up_pk_in = 0;
     up_ak_in = 0;
+    up_bv_in = 0;
+    up_bv_n = 0;
     return rc;
 }
 static int up_rename(uint32_t k, const char *name) { return up_rename_cat(k, name, 0); }
