@@ -1,6 +1,6 @@
 # TIDE musical refinement roadmap
 
-Updated: 2 November 2026. Status: **R0, M1 and M2a integrated and pushed; combined firmware installed and user data verified. M1 host A/B accepted; device listening, clock and CPU acceptance remain pending. M7–M10 (syncopation, question and answer, buildup/breakdown, smoother transitions) added as owner concepts.**
+Updated: 2 November 2026. Status: **R0, M1 and M2a integrated and pushed; combined firmware installed and user data verified. M1 host A/B accepted; device listening, clock and CPU acceptance remain pending. M7–M10 (syncopation, question and answer, buildup/breakdown, smoother transitions) added as owner concepts, with a feasibility study of space and controls.**
 
 ## Purpose and accepted baseline
 
@@ -323,6 +323,82 @@ Resource estimate: M10b a per-part fractional weight and a few bytes of cutoff s
 Tests: endpoints bit-exact at fader 0 and 127; at-rest sounds unchanged; monotone sweeps with no step larger than a set threshold on long glides; every structural switch still inside its hidden stretch with groups staggered; manual knob edits and pinned B values still work; STOP/PLAY pause and resume mid-trip; hand takeover mid-glide; external clock; CPU cost of the per-block interpolation.
 
 Acceptance: a 16- and a 64-bar glide on a sustained chord sound like one continuous change with no ticks or stair-steps; the old sound's space audibly carries into the new colour; no new clicks, level dips or CPU problems on the unit. Reject a group order that makes the middle of the trip sound like neither sound.
+
+## Feasibility — space and controls for M3 and M7–M10 (2 November 2026)
+
+### Room available today
+
+Measured on the current base (`work/s0-build/base-build.log`, 2 November 2026 07:17): image 579,916 of 581,564 B, so **1,648 B of flash free**; ordinary RAM 1,712 B above the 4 KiB reserve; pool + range Z 2,964 B above the 8 KiB reserve; hot audio code 1,240 B above the 228 B reserve; range X 928 B. The S0b candidate in the same folder brings the image to 578,988 B (**+928 B**, 2,576 B free). S0 work is in progress there (S0a pattern-slot tests were failing at 07:35); this study does not touch it.
+
+RAM, pool and range Z are not the constraint: every proposal below needs well under 200 B of state. **Flash is.** The hot audio block matters only for M8b and M10b, which change code the audio interrupt runs.
+
+### Estimated cost per stage
+
+Estimates come from the sizes of comparable functions in the current image (`felucca.dis`): `rhythm_mutate` 586 B, `phrase_peer_attack` 1,842 B, `sound_axis` + `sound_candidate_score` 656 B, `tide_journey` 1,444 B, `morph_apply_at` 1,082 B, `morph_xstep` 1,994 B; all TIDE rhythm/phrase/sound/sequence-morph code together is about 9.4 KB. These are ranges for planning, not measurements; each slice records its real delta.
+
+| Stage | Flash | RAM | Hot/ISR | Notes |
+|---|---|---|---|---|
+| M3 destination memory | 300–500 B | ~20 B | none | ring of four per part |
+| M7a+b syncopation weights, push cap | 200–400 B | 0 | none | inside `rhythm_mutate`/`phrase_direction` |
+| M7c dotted cross-rhythm | 300–500 B | 0–4 B | none | only if M7a accepted |
+| M8a alternating turnarounds | 50–100 B | 1–2 B | ~20 B | `seq_play_step()` runs in the ISR |
+| M8b turn-taking mask | 600–1,000 B | 8–16 B | 50–150 B | per-bar playback mask in the step read |
+| M8c echo and endings | 800–1,500 B | ~16 B | none | needs PITCH; not for ARP SEQ |
+| M9a harshness score | 400–700 B | 0 | none | extends `sound_axis` |
+| M9b harshness drives busyness | 200–400 B | 0 | none | density bounds from harshness |
+| M9c the arc (build/peak/stop/breakdown) | 1,000–2,000 B | 16–32 B | none | replaces M4a if chosen |
+| M10b no stairs | 300–600 B | 8–16 B | 100–300 B + CPU | per-block interpolation; defeats the blend cache while gliding |
+| M10c staggered groups | 300–600 B | 0 | 50–150 B | |
+| M10d switches on the beat | 200–400 B | ~4 B | none | |
+| New TIDE LIST rows (three, see below) | 500–900 B | 3 B | none | labels, handlers, store fields |
+| **All of it** | **about 5.2–9.6 KB** | **~100–150 B** | **~250–650 B** | |
+
+### How to make the room
+
+- **S0b** (size policy for `multi.c` and more of `morph.c`): measured +928 B.
+- **S0c** (smaller FM6 pitch table): about 3 KB; needs a tolerance in FM6 tests and the M0 pitch check.
+- **S0e** (factory data packing): unmeasured; the factory sounds and multis are 19 KB, so a tighter encoding may give several KB.
+- S0a and S0d free pool, not flash.
+- Owner-decided drops from 1 November, if still needed: splash logo about 6 KB, S font Huffman about 1.8 KB, extras about 2.1 KB, the 1.1 guide about 1.2 KB.
+
+With S0b + S0c the flash free is about 5.6 KB: enough for M3, M7, M8a/b, M9a/b, M10b/d and the three rows (about 3–5 KB), not for everything. M8c and M9c, the two largest musical pieces, need S0e or one of the drops. M10b additionally needs a measured CPU budget on the unit: the blend is cached today while the fader stands still, and interpolating every block during a glide removes that saving.
+
+Feasible order by room: S0b → M3 → M7a/b → M8a → (S0c) → M10a measurement → M10b/d → M9a/b → M8b → rows → (S0e or a drop) → M9c → M8c → M10c.
+
+### Controls: what the user decides, what stays in code
+
+The owner (2 November 2026) wants a few choices back: how much change to expect, the energy, how random, and whether buildup and breakdown phases are allowed. These are **intent** choices: they set how TIDE behaves, not individual parameters. Everything else stays automatic.
+
+The TIDE page's four columns (GLIDE, MODE, TIME, WAIT) are full, so the new choices go into the TIDE LIST, which has six rows today (TARGET, VARY BARS, ROLL, ARP, PITCH, WASH LEVEL). The TIDE settings record stores 7 of its 32 field bytes, so three more fit; the loader must accept the older, shorter record (keep the stored fields, default the new ones) so an update does not reset the owner's settings.
+
+User decisions (TIDE LIST rows, all automatic MUSIC WNDR/JRNY behaviour):
+
+- **CHANGE — SLIGHT / MEDIUM / BOLD** (default MEDIUM = today). How much each trip changes: SEQ AMT (today fixed at 50 with no knob), how often phrase edits happen, and how many edits a trip may carry. The sound's AMOUNT on the MORPH page stays as it is; CHANGE scales the sequence and phrase side, AMOUNT the sound side.
+- **ENERGY — DEEP / EVEN / DRIVE** (default EVEN = today). The character of the background: DEEP leans to sparse, on-beat-and-off-beat placement, darker and softer sounds; DRIVE to busier, more syncopated patterns (M7 pushes), brighter and harsher sounds (M9b). It biases the existing walks; it does not fix a sound. If "upbeat / downbeat" was meant as the feel (on-beat versus off-beat placement) rather than energy, this row is where that choice would live; to be confirmed with the owner.
+- **ARC — OFF / BUILD / FULL** (default to be decided by listening). Whether buildup and breakdown phases are allowed: OFF = today's even evolution; BUILD = gradual buildups and easing back, no stop; FULL = buildup, peak, stop and breakdown (M9c).
+- **Randomness — the existing ROLL row (MUSIC / SMART / WILD)** already chooses how free the changes are. No new row; its labels and help text should say so.
+
+Shown, not chosen: the TIDE status line can show where the arc is ("BUILD 12/24", "PEAK", "BREAK 3/8") in the same way it shows "WNDR TO B 3/8" now. It costs little and lets the owner anticipate a stop while playing.
+
+Code-only (no control; tuned by listening):
+
+- M3 destination memory; M7 metric weights and push cap; M8 turnaround offsets, turn-taking, echo and open/closed endings; M9 harshness score, phase lengths and their variation, stop placement on phrase boundaries; M10 smoothing, group order and switch timing.
+- These read the three choices above where it makes sense (CHANGE scales edit counts, ENERGY biases syncopation and harshness, ARC enables M9c), but expose no separate settings.
+
+This changes the earlier rule "no new menu, save format, global mode" for these three rows only, at the owner's request. Each row still needs its own listening check that its settings sound clearly different and that the default matches today's behaviour.
+
+### Open decisions — parked 2 November 2026
+
+The owner parked these for a later decision. Claude's recommendations, with the reasons, so the decision can be made without redoing the discussion:
+
+1. **Who owns the drop.** Recommended: the buildup runs automatically, reaches PEAK and holds it, shown on the status line; the owner fires the stop with one gesture; if nothing happens within about 8 bars it stops by itself at the next phrase boundary. Reason: an automatic drop will eventually land on the owner's own S-1 line or SP-404 fill, and an arrangement decision belongs to the performer.
+2. **ENERGY and ARC.** Recommended: keep both, as *average* (ENERGY) and *swing* (ARC): dub techno is low energy with a big swing, peak-time techno high energy with a small one. Merge them if listening shows their combinations do not sound clearly different.
+3. **"Upbeat / downbeat".** Recommended: read it as energy, and let syncopation follow ENERGY (more drive = more pushes and off-beats) instead of being its own setting; a separate feel setting mostly produces combinations that sound wrong.
+4. **CHANGE.** Recommended: per trip and still cumulative, with no pull home (the owner's earlier decision); SLIGHT = small steps that add up slowly. HOME remains the way back.
+5. **Space.** Recommended: keep the splash logo; do S0b, then S0c, then measure S0e; weigh the logo against M9c/M8c only if the arc still feels missing after the cheaper stages and S0e is small.
+6. **Order.** Recommended: M10a/b, M8a, M7, M8b, M9b, then M9c. M10b improves every glide, M8a is almost free, M9c should sit on accepted layers.
+7. **Row count.** Recommended test for every row: would the owner change it during a set? If not, it is tuning and belongs in code. Cut ROLL WILD or CHANGE BOLD if they sound alike.
+8. **A launched buildup and drop** (owner idea, 2 November 2026): start a buildup by hand during play that runs over a set number of bars, drops and recovers, without a new screen. Placement candidates: OCT+ held + K1 on the TIDE page (beside OCT- + K1 = HOME), GLIDE A + GLIDE B pressed together on PERFORM, or a sixth MODE; undecided.
 
 ## M6 — accept the combined result
 
