@@ -1156,14 +1156,13 @@ static void test_bits_migrate(void)
         memcpy(st.raw + PROJ_STORE_SIZE - 4u, &sum, 4);
     }
     ck("project: byte 67 = 0 (before 0.2.14, the hash right): refused, not converted", !proj_import(&b, &st, sizeof st));
-    /* 3. a multi: version 7 as written loads as it is; a version 6 (before the extension slots), a version 5, a version 4 (0.2.16 .. 0.2.18: one level), 3 (0.2.14 / 0.2.15: the PING switch) or 2 record is refused; the factory multis (version 7) load */
+    /* 3. a multi: version 8 as written loads as it is; a version 7 (the edit list), 6 (before the extension slots), 5, 4 (0.2.16 .. 0.2.18: one level), 3 (0.2.14 / 0.2.15: the PING switch) or 2 record is refused; the factory multis (version 8) load */
     {
-        static uint8_t rec[MU_REC_MAX + 8u], blk[NSHOWN][MB_N], amt[NSHOWN], set[6];
+        static uint8_t rec[MU_REC_MAX + 8u], amt[NSHOWN], set[6];
         uint32_t len, cut = 0, crush_parts = 0;
         static project_t q;
-        memset(blk, 0, sizeof blk);
         len = mu_pack(rec, &a, &cut);
-        ok = rec[0] == MU_VER && MU_VER == 7u && mu_unpack(&q, amt, set, rec, len) && q.t[0].p[P_IA] == 60 && !memcmp(&q.motion, &a.motion, sizeof a.motion);
+        ok = rec[0] == MU_VER && MU_VER == 8u && mu_unpack(&q, amt, set, rec, len) && q.t[0].p[P_IA] == 60 && !memcmp(&q.motion, &a.motion, sizeof a.motion);
         rec[0] = 2u;
         ok &= !mu_unpack(&q, amt, set, rec, len);
         rec[0] = 3u;
@@ -1174,9 +1173,11 @@ static void test_bits_migrate(void)
         ok &= !mu_unpack(&q, amt, set, rec, len);
         rec[0] = 6u;
         ok &= !mu_unpack(&q, amt, set, rec, len);
-        rec[0] = 7u; rec[1] = (uint8_t)(P_COUNT - 1u);
+        rec[0] = 7u;
         ok &= !mu_unpack(&q, amt, set, rec, len);
-        ck("multi: version 6 as written loads as it is; a version 5 (0.2.19 .. 0.2.21: DUCK SRC 2..17 were channels), 4, 3 or 2 record, or one of another P_COUNT, is refused", ok);
+        rec[0] = 8u; rec[1] = (uint8_t)(P_COUNT - 1u);
+        ok &= !mu_unpack(&q, amt, set, rec, len);
+        ck("multi: version 8 as written loads as it is; a version 7, 6, 5 (0.2.19 .. 0.2.21: DUCK SRC 2..17 were channels), 4, 3 or 2 record, or one of another P_COUNT, is refused", ok);
         ok = 1;
         for (k = 0; k < DF_N; k++) {
             static project_t o;
