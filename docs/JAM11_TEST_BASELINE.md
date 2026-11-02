@@ -2,6 +2,14 @@
 
 Current maintenance priorities: [roadmap](ROADMAP.md). Totals below describe their named source checkpoints, not a continuously updated count.
 
+## T0 progress: 2 November 2026, later
+
+Repaired test-side (T0, roadmap): `backup`, `patch`, `patchraw`, `bank` now PASS. They rewrite the 1.0 record checks for PT_VER 4 (End B as an MBV block; values lossless only inside their range; SWING 50..75), TIDE's 126-patch store, 1.1's PATCHES knobs (K3 SAVE, K4 FAV, no per-slot RESTORE) and S0a's one pattern object (a backup LIST writes a waiting pattern save). Shared helper: `felucca-base/tests/endb_store.h`. `bank` no longer reads `tests/factory_bank_records.txt` (PT_VER 3, refused by 1.1): it saves and reloads every factory sound and compares the sound.
+
+Real bug found and fixed: RENAME / recategorise and the editor's FM6 PUT dropped a saved patch's End B (`dd2acd5`).
+
+`morph` moved from SKIP to FAIL when the runner began listing every failed check (`e10bbc0`): its two roll checks already fail at `8506f2c`.
+
 ## Broad-run snapshot: 2 November 2026, `bd339c9`
 
 `sh jam/check.sh`, 600 s per group (full run at `75a987a`, the groups changed after it re-run at `bd339c9`). **65 passed, 57 failed (fm6 a timeout), 12 skipped.** Before this round (`8506f2c`): 58 / 65 / 11.
