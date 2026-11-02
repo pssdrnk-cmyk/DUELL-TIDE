@@ -1,6 +1,6 @@
 # TIDE musical refinement roadmap
 
-Updated: 2 November 2026. Status: **R0, M1 and M2a integrated and pushed; combined firmware installed and user data verified. M1 host A/B accepted; device listening, clock and CPU acceptance remain pending. M7–M9 (syncopation, question and answer, buildup/breakdown) added as owner concepts.**
+Updated: 2 November 2026. Status: **R0, M1 and M2a integrated and pushed; combined firmware installed and user data verified. M1 host A/B accepted; device listening, clock and CPU acceptance remain pending. M7–M10 (syncopation, question and answer, buildup/breakdown, smoother transitions) added as owner concepts.**
 
 ## Purpose and accepted baseline
 
@@ -27,6 +27,7 @@ Already present: bounded sound walks; 16/32/64/128-bar phrase tiers; rhythm move
 | M7 | Syncopation: moves lean to off-beats and pushes | M1 | Proposed by the owner, 2 November 2026 |
 | M8 | Question and answer: alternating turnarounds, turn-taking, echoes | M7 | Proposed by the owner, 2 November 2026 |
 | M9 | Buildup, peak, stop, breakdown; harshness drives busyness | M7, M8, S0; overlaps M4 | Proposed by the owner, 2 November 2026; relation to M4 open |
+| M10 | Smoother sound transitions: no stairs, staggered groups, switches on the beat | M0; measure first | Proposed by the owner, 2 November 2026 |
 | M6 | Combined listening and device acceptance | Accepted individual slices | Planned |
 
 Implement and review one slice at a time. Keep or revert each musical change on its own merits. Do not accumulate every feature and only then listen. No calendar estimate is assigned before M0 establishes the amount of work and available memory.
@@ -284,6 +285,44 @@ Relation to M4: M9 covers the same ground as M4a's settle/develop/open/recover a
 Tests: harshness ordering on known presets (e.g. a resonant acid sound above a soft pad); busyness tracks harshness in both directions; arc boundaries at different TIME/WAIT values and pattern lengths; stop aligned to phrase ends and never cutting a release; STOP/PLAY and resume; one or two selected parts; AMOUNT zero; KEEP during each phase; long-session bounds over at least 256 bars (no progressive thinning, no permanent maximum brightness or density).
 
 Acceptance: a 10-minute session has audible buildups, peaks, clean stops and calmer breakdowns; harsh stretches are busier and soft stretches sparse; the motif carries across; the TR-6S stays in front during stops. Reject if the arc sounds scripted, if stops sound like dropouts, or if the background starts drawing more attention than the instruments it supports.
+
+## M10 — smoother sound transitions
+
+### What it means musically
+
+A sound change in a background should feel like the same instrument slowly turning into another, not like a sequence of small edits. Three things make a change sound smooth to a listener:
+
+- **Continuous motion.** A filter that opens over 16 bars should sweep, not climb a staircase. On a held pad or a dub chord with long release, every small jump in cutoff, envelope or send is audible as a tiny tick or a sudden change of colour, and dozens of them over a glide sound restless.
+- **An order in which things change.** When a sound designer moves from one patch to another by hand, they rarely move everything at once. The brightness usually leads (it is what the ear follows), the envelope shape follows, and the space (reverb, delay, chorus) trails, so the old sound's tail is still in the room while the new colour arrives. Everything moving in lockstep on one curve sounds mechanical and makes the middle of the trip a muddy average of the two sounds.
+- **Changes that land with the music.** Switches that cannot blend (arp mode, voice mode, a chord) are least noticeable when they coincide with a musical boundary, a new bar or phrase, rather than at an arbitrary moment in the middle of a note.
+
+Loudness belongs here too: a sound that becomes brighter seems louder, one that closes or thins seems to drop away. M5 already covers measured level problems; M10 must not introduce new ones.
+
+### What the code does today
+
+- Structural switches are already hidden carefully (`morph_xfer.c`): FM6 algorithm changes cross a bridge of pure sines with equal-power fades; wave, filter type and model switches happen while the filter valley is closed; the insert fades to dry while its type changes; the sends swell so the tails carry the old sound. Keep all of this.
+- Continuous values blend linearly between the two ends at the fader's position (`morph_apply`). The fader has 128 positions (`morph_wb`), the ends are stored as whole-number parameter values, and the result is written once a block with no interpolation between fader positions. The part filter's dial has 82 positions (`UF_STEPS`) and is read without its own smoothing (`voice.c`, `ucut0`). On a long glide this most likely produces audible stairs; measure it before changing anything.
+- Every continuous value follows the same S-curve (`glide_ease`) at the same time.
+- Values that only shape the next notes (arp, voice and glide mode, chord) switch at the fader's middle (`morph_xfer.c` header).
+- JRNY stays within one engine, so the transition never has to cross engines.
+
+### What is needed
+
+M10a, measure first: render slow glides on the host (1, 16 and 64 bars) between pairs with large cutoff, envelope and send differences, and record the effective cutoff, levels and send amounts every block. Count the steps and their size; listen for them on a sustained chord. If no audible stairs exist, record that and skip M10b.
+
+M10b, continuous values without stairs: interpolate the blend weight between fader positions every block (the glide knows its exact progress, finer than 128 positions), and give the cutoff dial sub-step resolution through the morph path so a slow sweep is continuous. Keep the exact endpoints: fader 0 is End A and 127 is End B bit for bit, and a sound at rest is unchanged. Manual knob turns keep their current response.
+
+M10c, staggered groups: inside the existing travel, give each group its own portion of the curve — brightness and filter lead (for example 0–70 % of the trip), envelope and shape in the middle (15–85 %), space and effects trail (30–100 %). Each group still starts at its End A and ends at its End B, so the arrival is identical; only the path differs. The structural valley/bridge timings stay where they are, and the groups must agree with them (the filter must be closed when a switch happens). Try the order and spans by listening; reject it if the middle of the trip sounds less coherent than today.
+
+M10d, musical switch timing: move the switches that only shape the next notes from the exact middle to the first bar (or note-on) boundary inside the hidden stretch, so they arrive with the music. Fall back to the middle when there is no clock or no boundary in time.
+
+Not in M10: crossing engines (JRNY keeps its engine; a cross-engine change would need two engines sounding at once, with CPU and voice cost, and is a separate owner decision); automatic loudness matching (M5, evidence-based).
+
+Resource estimate: M10b a per-part fractional weight and a few bytes of cutoff state, plus per-block work in the audio ISR that must be measured against the hot headroom; M10c a small table of group spans; M10d a few bytes of pending-switch state.
+
+Tests: endpoints bit-exact at fader 0 and 127; at-rest sounds unchanged; monotone sweeps with no step larger than a set threshold on long glides; every structural switch still inside its hidden stretch with groups staggered; manual knob edits and pinned B values still work; STOP/PLAY pause and resume mid-trip; hand takeover mid-glide; external clock; CPU cost of the per-block interpolation.
+
+Acceptance: a 16- and a 64-bar glide on a sustained chord sound like one continuous change with no ticks or stair-steps; the old sound's space audibly carries into the new colour; no new clicks, level dips or CPU problems on the unit. Reject a group order that makes the middle of the trip sound like neither sound.
 
 ## M6 — accept the combined result
 
