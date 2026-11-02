@@ -710,7 +710,7 @@ static void test_control(void)
         memset(blk, 0, sizeof blk);
         song.bm = 5;
         project_capture(&q);
-        len = mu_pack(rec, &q, blk, &cut);
+        len = mu_pack(rec, &q, &cut);
         ok = len > MU_G_AT && q.bm == 0 && rec[5] == (uint8_t)(morph.target == MT_BOTH);
         expect("a save writes byte 5 bits 1..4 as 0 and project byte 65 as 0 (BASS MONO 100 Hz on the unit)", ok);
         rec[5] = (uint8_t)((rec[5] & 1u) | 7u << 1);    /* a record of 0.2.19 / 0.2.20 with BASS MONO 125 Hz in it */
@@ -719,11 +719,11 @@ static void test_control(void)
             project_t q2;
             project_capture(&q2);
             q2.bm = 3;
-            ok = mu_unpack(&q2, blk, amt, set, rec, len) && q2.bm == 3u;
+            ok = mu_unpack(&q2, amt, set, rec, len) && q2.bm == 3u;
             rec[5] = (uint8_t)((rec[5] & 1u) | 12u << 1);   /* a code past BM_N */
-            ok &= mu_unpack(&q2, blk, amt, set, rec, len) && q2.bm == 3u;
+            ok &= mu_unpack(&q2, amt, set, rec, len) && q2.bm == 3u;
             rec[5] |= 0x20u;                            /* a reserved bit set: not a multi this firmware loads */
-            ok &= !mu_unpack(&q2, blk, amt, set, rec, len);
+            ok &= !mu_unpack(&q2, amt, set, rec, len);
         }
         expect("  .. an older record with BASS MONO in it loads with the unit's value kept (any code); a stray bit 5..7 in byte 5 is still no multi", ok);
     }

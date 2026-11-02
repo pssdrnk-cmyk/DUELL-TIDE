@@ -1162,26 +1162,26 @@ static void test_bits_migrate(void)
         uint32_t len, cut = 0, crush_parts = 0;
         static project_t q;
         memset(blk, 0, sizeof blk);
-        len = mu_pack(rec, &a, blk, &cut);
-        ok = rec[0] == MU_VER && MU_VER == 7u && mu_unpack(&q, blk, amt, set, rec, len) && q.t[0].p[P_IA] == 60 && !memcmp(&q.motion, &a.motion, sizeof a.motion);
+        len = mu_pack(rec, &a, &cut);
+        ok = rec[0] == MU_VER && MU_VER == 7u && mu_unpack(&q, amt, set, rec, len) && q.t[0].p[P_IA] == 60 && !memcmp(&q.motion, &a.motion, sizeof a.motion);
         rec[0] = 2u;
-        ok &= !mu_unpack(&q, blk, amt, set, rec, len);
+        ok &= !mu_unpack(&q, amt, set, rec, len);
         rec[0] = 3u;
-        ok &= !mu_unpack(&q, blk, amt, set, rec, len);
+        ok &= !mu_unpack(&q, amt, set, rec, len);
         rec[0] = 4u;
-        ok &= !mu_unpack(&q, blk, amt, set, rec, len);
+        ok &= !mu_unpack(&q, amt, set, rec, len);
         rec[0] = 5u;
-        ok &= !mu_unpack(&q, blk, amt, set, rec, len);
+        ok &= !mu_unpack(&q, amt, set, rec, len);
         rec[0] = 6u;
-        ok &= !mu_unpack(&q, blk, amt, set, rec, len);
+        ok &= !mu_unpack(&q, amt, set, rec, len);
         rec[0] = 7u; rec[1] = (uint8_t)(P_COUNT - 1u);
-        ok &= !mu_unpack(&q, blk, amt, set, rec, len);
+        ok &= !mu_unpack(&q, amt, set, rec, len);
         ck("multi: version 6 as written loads as it is; a version 5 (0.2.19 .. 0.2.21: DUCK SRC 2..17 were channels), 4, 3 or 2 record, or one of another P_COUNT, is refused", ok);
         ok = 1;
         for (k = 0; k < DF_N; k++) {
             static project_t o;
             uint32_t t;
-            ok &= DM_REC[DM_AT[k]] == MU_VER && mu_unpack(&o, blk, amt, set, DM_REC + DM_AT[k], DM_LEN[k]);
+            ok &= DM_REC[DM_AT[k]] == MU_VER && mu_unpack(&o, amt, set, DM_REC + DM_AT[k], DM_LEN[k]);
             for (t = 0; t < NSHOWN; t++)
                 if (o.t[t].p[P_ITYPE] == IT_CRUSH) {
                     printf("insert:   factory multi #%u part %u: INSERT CRUSH, A %d = %s bits\n", k, t + 1u, o.t[t].p[P_IA], N_IBITS[o.t[t].p[P_IA]]);
