@@ -600,7 +600,7 @@ static uint32_t tide_sig(void)
 /* ---------------------------------------------------------------- kept over a power cycle --- */
 /* MODE, TIME, WAIT, TARGET, VARY BARS, the ROLL's MUSIC and WASH LEVEL in TIDE's own record (tide_store.c: OBJ_TIDE, patch chunk 21's
  * sector pair; plan §4.5), not in the settings record (1.1 uses the bytes JAM had there). ARP, PITCH and WILD are the morph's own byte
- * (ui.c ui_morph_cfg). The record is read once at power-on (none or damaged: the defaults); a change is saved ~2 s after the last one,
+ * (ui.c ui_morph_cfg). The record is read once at power-on (none or damaged: the defaults; neither is written back); a change is saved ~2 s after the last one,
  * while stopped and not during ERASE DATA (tide_store_poll) */
 enum { TS_MODE, TS_TIME, TS_TARGET, TS_WAIT, TS_VARY, TS_MUSIC, TS_WASH, TS_N };
 static uint8_t tide_seen[TS_N], tide_seen_ok;
@@ -618,7 +618,6 @@ static void tide_settings(void)
             morph_musical = (uint8_t)(b[TS_MUSIC] & 1u);
             morph_wlvl = (uint8_t)(b[TS_WASH] & 3u);
         }
-        tide_seen_ok = 1;
     }
     w[TS_MODE] = gl.mode;
     w[TS_TIME] = gl.time;
@@ -627,7 +626,10 @@ static void tide_settings(void)
     w[TS_VARY] = sqm_vary_all;
     w[TS_MUSIC] = morph_musical;
     w[TS_WASH] = (uint8_t)(morph_wlvl & 3u);
-    if (memcmp(w, tide_seen, TS_N)) {
+    if (!tide_seen_ok) {                                 /* (what was read, or the defaults: not a change, nothing to write at every power-on) */
+        memcpy(tide_seen, w, TS_N);
+        tide_seen_ok = 1;
+    } else if (memcmp(w, tide_seen, TS_N)) {
         memcpy(tide_seen, w, TS_N);
         tide_store_mark(w, TS_N);
     }

@@ -731,7 +731,7 @@ static void midi_cc_set(track_t *t, uint32_t id, uint32_t value)
            python3 tests/midimap_refgen.py build/gen_test >/dev/null
            mmm "the lock check removed (map_set and map_clear take a standard number)" firmware/src/midi_learn.c 's/if (MAP_LOCKED_CC(cc))$/if (0 \&\& MAP_LOCKED_CC(cc))/'
            mmm "two parameters allowed on one CC (a taken number is no conflict)" firmware/src/midi_learn.c 's/ \&\& !force) {/ \&\& 0) {/'
-           mmm "the morph trigger back on the CC number (bit cc - 21)" firmware/src/midi_control.c 's/uint32_t pi, uint32_t code, uint32_t value)$/uint32_t pi, uint32_t code, uint32_t value, uint32_t cc)/' \
+           mmm "the morph trigger back on the CC number (bit cc - 21)" firmware/src/midi_control.c 's/midi_morph(uint32_t ch, uint32_t pi, uint32_t code, uint32_t value)$/midi_morph(uint32_t ch, uint32_t pi, uint32_t code, uint32_t value, uint32_t cc)/' \
                firmware/src/midi_control.c 's/midi_morph(ch, trk_index(t), code, value);/midi_morph(ch, trk_index(t), code, value, cc);/' \
                firmware/src/midi_control.c 's/b = 1u << (code - MAP_T_ROLL_A);/b = 1u << (cc - 21u);/'
            mmm "ROLL's halves moved (End B from 64 instead of 85: the middle rolls)" firmware/src/midi_control.c 's/if (value < 85u)$/if (value < 64u)/' ;;
