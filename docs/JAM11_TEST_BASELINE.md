@@ -12,6 +12,8 @@ Production on/off builds pass all existing layout/reserve/reach/closure checks. 
 
 Repaired test-side (T0, roadmap): `backup`, `patch`, `patchraw`, `bank` now PASS. They rewrite the 1.0 record checks for PT_VER 4 (End B as an MBV block; values lossless only inside their range; SWING 50..75), TIDE's 126-patch store, 1.1's PATCHES knobs (K3 SAVE, K4 FAV, no per-slot RESTORE) and S0a's one pattern object (a backup LIST writes a waiting pattern save). Shared helper: `felucca-base/tests/endb_store.h`. `bank` no longer reads `tests/factory_bank_records.txt` (PT_VER 3, refused by 1.1): it saves and reloads every factory sound and compares the sound.
 
+Scene-fed groups (branch `t0-scenes`, `e796169`, `433347e`): `tests/scenes/*.bin` converted from MU_VER 7 to 8 by the new `felucca-base/tools/multi_v7_to_v8.py` (End B made by the firmware's own roll; group `multiv8` checks it against 1.1's own converted factory multis and the scenes against the tool, PASS). `scenes.h` calls 1.1's `mu_put_rec`. Lossy: M09 SWING 17 becomes 54 % (old scale 16); BALANCE dropped in M03..M06 (1.1 has none). Results: `loadcost`, `cpuscen`, `midictl` PASS; `mrender` SKIP (one `fork()` per render: its 0.2.22 hashes are still unchecked here); `modules` FAIL 1 of 95 (an ARP in SEQUENCER: HOLD on K1, UI expectation, not the scenes); `panic` FAIL 2 (LAYER RESO / PLATE: the next chord after STOP ALL 2.3..2.9 dB off the cleared run, 1.5 allowed; plain DUELL 1.1 without TIDE fails it too, plus LAYER ROOM / SHIM). Not re-baselined.
+
 Real bug found and fixed: RENAME / recategorise and the editor's FM6 PUT dropped a saved patch's End B (`dd2acd5`).
 
 `morph` moved from SKIP to FAIL when the runner began listing every failed check (`e10bbc0`): its two roll checks already fail at `8506f2c`.

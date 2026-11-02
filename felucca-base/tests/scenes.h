@@ -13,7 +13,8 @@
  * scene_put(k, NAME) stores the record in slot k (0..15) as a SAVED multi (multi.c's own store: flash or the host RAM store);
  * scene_load(k, NAME) does that and loads it as the MULTI page does, with the MODE, XFADE and SPLIT it holds applied (as the
  * CPU TEST multis always did, and as MODE RECALL ON does). A test loads a scene into the slot it used to load, so what it measures and
- * hashes is what it was. The files are read relative to felucca-base (host_tests.sh runs there). */
+ * hashes is what it was. The files are read relative to felucca-base (host_tests.sh runs there). DUELL 1.1 loads only MU_VER 8: the records were
+ * converted from version 7 by tools/multi_v7_to_v8.py (End B as the values 1.0 rolled; tests/multi_v7_to_v8_test.py). */
 #include <stdio.h>
 static uint32_t scene_rec(const char *name, uint8_t *rec, uint32_t max)
 {
@@ -36,7 +37,7 @@ static void scene_put(uint32_t k, const char *name)
     uint32_t n = scene_rec(name, rec, sizeof rec), cut, len;
     k %= MU_SLOTS;
     mu_obj_read(k / 2u);
-    len = mu_put_rec(k & 1u, 1, 0, &cut, rec, n);
+    len = mu_put_rec(k & 1u, 1, &cut, rec, n);
     if (mu_obj_write(k / 2u, len)) {
         fprintf(stderr, "scenes.h: %s not stored in M%02u\n", name, k + 1u);
         exit(2);
