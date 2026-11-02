@@ -40,6 +40,26 @@ static int store_with_b_cat(track_t *t, uint32_t k, const char *nm, uint32_t cat
 }
 static int store_with_b(track_t *t, uint32_t k, const char *nm, const xb_edit_t *ed, uint32_t ne) { return store_with_b_cat(t, k, nm, 0, ed, ne); }
 
+/* part t (its worst-case values set before) into slot k with the biggest End B: every value its morph can move off the Original, the values
+ * ed[0..ne) set by hand, FM6's bytes too: the record PT_WORST bounds */
+static int store_worst_cat(track_t *t, uint32_t k, const char *nm, uint32_t cat, const xb_edit_t *ed, uint32_t ne)
+{
+    uint32_t pi = (uint32_t)(t - trk), w, i;
+    morph_part_t *mp = morph_ready(pi);
+    morph_pin_load(mp, ed, ne);
+    for (w = 0; w < EXT_P_LEN; w++)
+        if (mbv_wid(w) && !mbv_never(w) && morph_editable(mp, w, 0)) {
+            const param_desc_t *d = morph_desc(ENGINES[eng_idx(mp->eng)], w);
+            int32_t o = mp->base[w];
+            *morph_bval(mp, w) = (int8_t)(o + 1 <= d->max ? o + 1 : o - 1);
+        }
+    if (morph_isfm(mp))
+        for (i = 0; i < NFM; i++)
+            mp->fh[1][mp->top[1]][i] = mp->fb[i] < 99u ? mp->fb[i] + 1u : mp->fb[i] - 1u;
+    morph_build(mp);
+    return store_endb_cat(t, k, nm, cat);
+}
+
 /* slot k's stored End B block (0: none) and its length */
 static const uint8_t *rec_endb(uint32_t k, uint32_t *n)
 {

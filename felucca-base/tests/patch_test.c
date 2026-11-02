@@ -119,25 +119,7 @@ static void worst_part(track_t *t, uint32_t idx)
         worst_ed[i] = (xb_edit_t){(uint8_t)(i < 28u ? 4u * i + 1u : 128u + i - 28u), (int16_t)(127 - (int)(i * 3u + idx % 7u))};
 }
 
-/* part t (worst_part before) into slot k with the biggest End B: every value it can move off the Original, the 32 values set by hand, FM6's
- * bytes too: the record PT_WORST bounds */
-static int store_worst(track_t *t, uint32_t k, const char *nm)
-{
-    uint32_t pi = (uint32_t)(t - trk), w, i;
-    morph_part_t *mp = morph_ready(pi);
-    morph_pin_load(mp, worst_ed, XB_MAX);
-    for (w = 0; w < EXT_P_LEN; w++)
-        if (mbv_wid(w) && !mbv_never(w) && morph_editable(mp, w, 0)) {
-            const param_desc_t *d = morph_desc(ENGINES[eng_idx(mp->eng)], w);
-            int32_t o = mp->base[w];
-            *morph_bval(mp, w) = (int8_t)(o + 1 <= d->max ? o + 1 : o - 1);
-        }
-    if (morph_isfm(mp))
-        for (i = 0; i < NFM; i++)
-            mp->fh[1][mp->top[1]][i] = mp->fb[i] < 99u ? mp->fb[i] + 1u : mp->fb[i] - 1u;
-    morph_build(mp);
-    return store_endb_cat(t, k, nm, 0);
-}
+static int store_worst(track_t *t, uint32_t k, const char *nm) { return store_worst_cat(t, k, nm, 0, worst_ed, XB_MAX); }
 
 /* how many of the two LFO TRIGs a stored record holds (PT_VER 4: their bits in the values' bitmap); pr: the values' start (pt_layout) */
 static uint32_t trig_stored(const uint8_t *raw, uint32_t pr)
