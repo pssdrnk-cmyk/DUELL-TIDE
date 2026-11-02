@@ -1,14 +1,16 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* DUELL MULTI (project.c multi.c, SAVE > MULTI, SPEC 5b.4) against simulated NOR flash:
- *   1. SAVE (KNOB 4, OCT+, the NAME screen, OCT+) of a distinct state: part 1 and part 2 on other engines (part 2 FM6 with
+ *   1. SAVE (KNOB 3, OCT+, the NAME screen, OCT+) of a distinct state: part 1 and part 2 on other engines (part 2 FM6 with
  *      an edited patch), a pattern on each, an automation lock, MODE LAYER, TEMPO, DLY TIME, MORPH TARGET BOTH and SMART
  *      OFF, End B rolled on both parts, the fader moved; after a power cycle (RAM gone, flash read again) LOAD (KNOB 2, OCT+)
- *      gives the same parameters, engines, steps, patch, automation, globals, MODE, TARGET, settings, End B (seed and the
- *      values it regenerates), the fader at A; the writes stay in the multi store's two ranges;
- *   2. sixteen slots, each its own, through a power cycle; rewriting one leaves its pair partner as it was; ERASE (dialog);
+ *      gives the same parameters, engines, steps, patch, automation, globals, MODE, TARGET, settings, End B (MU_VER 8: the
+ *      values it sounded), the fader at A; the writes stay in the multi store's two ranges;
+ *   2. sixteen slots, each its own, through a power cycle; rewriting one leaves its pair partner as it was; project_erase
+ *      (DUELL 1.1: no ERASE card on the page) brings the factory multi back;
  *   3. a power cut during a slot write leaves both multis of the pair as they were (A/B, the commit record last);
+ *   4. MU_VER 8 records: round trips, refused versions and damage, the worst multi;
  *   5. the factory multis; 6. (0.2.12) 0.2.11's six (0.2.13: M01 M02 M07..M10) played from the keys in LAYER, the transport stopped and with PLAY: both parts answer
- *      a key, follow another key, stop or stay latched on the release, and nothing plays without a key.
+ *      a key, follow another key, stop or stay latched on the release, and nothing plays without a key (TIDE: an ARP SEQ part's stand-in plays on PLAY).
  *   build/host/multi_test            (DUELL/host_tests.sh "multi") */
 #define UI_TEST_NO_MAIN 1
 #define FELUCCA_FLASH 1
@@ -66,12 +68,41 @@ static void power_cycle(void)                        /* the RAM is gone; the fla
     uint32_t k;
     dead = 0;
     cut_bytes = -1;
+#if DUELL_TIDE
+    {   /* (TIDE's SEQ MORPH is RAM only: after a power cycle it starts as on a new unit, not from an earlier section's ends and fader) */
+        static const sqm_part_t SQM0 = {.notes = SQM_AMT_DEF};
+        for (k = 0; k < NSHOWN; k++)
+            sqm[k] = SQM0;
+        memset(sqm_pat, 0, sizeof sqm_pat);
+    }
+#endif
     ui_power_on();
     for (k = 0; k < NTRK; k++)                       /* (the patches too: another sound than any saved) */
         memset(fm6_patch[k], 0, sizeof fm6_patch[k]);
     flash_ok = 1;
     multi_boot();
     frame();
+}
+/* MU_VER 8 keeps End B as the values it sounds (morph_bv_make: morph_effective_x at 127, each in its stored code): part pi's End B now in
+ * those codes, to compare a saved state with a loaded one */
+static void endb_codes(uint32_t pi, int16_t *c)
+{
+    int16_t v[EXT_P_LEN];
+    uint32_t w;
+    morph_effective_x(pi, 1u, v);
+    for (w = 0; w < EXT_P_LEN; w++)
+        c[w] = mbv_wid(w) && !mbv_never(w) ? (int16_t)wv_code(mph[pi].eng, w, v[w]) : 0;
+}
+static int endb_set(uint32_t pi)                     /* End B is not the Original (a factory multi's End B as values: MU_VER 8, no seed) */
+{
+    int16_t a[EXT_P_LEN], b[EXT_P_LEN];
+    uint32_t w;
+    morph_effective_x(pi, 0u, a);
+    morph_effective_x(pi, 1u, b);
+    for (w = 0; w < EXT_P_LEN; w++)
+        if (mbv_wid(w) && !mbv_never(w) && wv_code(mph[pi].eng, w, a[w]) != wv_code(mph[pi].eng, w, b[w]))
+            return 1;
+    return 0;
 }
 static void pattern(track_t *t, uint32_t k)          /* a pattern seeded by k, every field of a step used */
 {
@@ -231,9 +262,35 @@ static void keys_drive(void)
         play_run(k, 1u << d4, 2u * sec, sec, 0, q);
         ck("  another key (D4): both parts play the same figure two semitones up (follows the keys)", pr_shifted(&r[0], &q[0], 2) && pr_shifted(&r[1], &q[1], 2));
         play_run(k, 0u, 2u * sec, 0u, 1, z);
+#if DUELL_TIDE
+        {   /* (TIDE, owner 2026-11-01: an ARP SEQ part plays on PLAY with no key, from its last chord or C4; the other parts stay silent) */
+            uint32_t pi2;
+            ok = 1;
+            for (pi2 = 0; pi2 < NSHOWN; pi2++)
+                ok &= arp_mode(&trk[pi2]) == AM_SEQ_ID ? z[pi2].n > 0u : z[pi2].n == 0u;
+        }
+#else
+        ok = z[0].n == 0u && z[1].n == 0u;
+#endif
         play_run(k, 1u << d4, 2u * sec, sec, 1, p);
-        ck("  PLAY: no key, nothing plays (no stored pattern of its own); a key with PLAY plays what it plays stopped",
-           z[0].n == 0u && z[1].n == 0u && pr_shifted(&r[0], &p[0], 2) && pr_shifted(&r[1], &p[1], 2));
+        {
+            static pr_t rr[NSHOWN];
+            memcpy(rr, r, sizeof rr);
+#if DUELL_TIDE
+            {   /* (after the release, on PLAY, the stand-in goes on from the last chord: an ARP SEQ part compares the notes while the key is held) */
+                uint32_t pi2;
+                for (pi2 = 0; pi2 < NSHOWN; pi2++)
+                    if (arp_mode(&trk[pi2]) == AM_SEQ_ID) {
+                        while (p[pi2].n && p[pi2].n <= PR_MAX && p[pi2].blk[p[pi2].n - 1u] >= 2u * sec)
+                            p[pi2].n--;
+                        while (rr[pi2].n && rr[pi2].n <= PR_MAX && rr[pi2].blk[rr[pi2].n - 1u] >= 2u * sec)
+                            rr[pi2].n--;
+                    }
+            }
+#endif
+            ck("  PLAY: no key, nothing plays (TIDE: an ARP SEQ part's stand-in does); a key with PLAY plays what it plays stopped",
+               ok && pr_shifted(&rr[0], &p[0], 2) && pr_shifted(&rr[1], &p[1], 2));
+        }
     }
     /* the pads (M05 WHISPER TIDE, M06 TINE STRINGS, M07 FINAL REEL, M13 COLD CHAPEL (the owner's original, 0.2.25: the bowl an arp on the latched chord)): a chord, then let go: both parts sound from the chord and stay latched (HOLD ALL);
      * WHISPER TIDE's choir is a latched arp that goes on after the release (0.2.25: M06 is the owner's TINE STRINGS, keyed, nothing latched),
@@ -308,12 +365,14 @@ static void editb_worst_multi(void)
                 motion.event[i2] = (motion_event_t){(uint8_t)((i2 & 1u) << 6 | (i2 >> 1) % 64u), P_REV, (int8_t)(i2 % 100u)};
             motion.count = MOTION_MAX;
             motion.on = 3;
-            ck("  the worst multi (2 FM6 parts, 64 steps each, 32 + 32 values set by hand, a full automation) saves", project_save_as(13u, "WORST") == 0 && msg_is("B EDITS CUT"));
+            ck("  the worst multi (2 FM6 parts, 64 steps each, 32 + 32 values set by hand, a full automation) saves: PARAMETER LOCKS CUT (MU_VER 8: End B and its marks always fit)",
+               project_save_as(13u, "WORST") == 0 && msg_is("PARAMETER LOCKS CUT"));
             project_load(13u);
             frames(50);
             for (pi = 0; pi < NSHOWN; pi++)
                 kept += morph_edits(pi, gg);
-            ck("  .. the line says B EDITS CUT, the automation is all gone, 39 of the 64 values are back (part 1's 32, 7 of part 2's; item 138: NX 28 takes 24 bytes = 12 edits)", kept == 39u && motion.count == 0u && morph_edits(0, gg) == XB_MAX);
+            amsg = motion.count;
+            ck("  .. LOAD: all 64 values set by hand are back, and the part of the automation that fitted", kept == 2u * XB_MAX && motion.count > 0u && motion.count < MOTION_MAX);
             for (pi = 0; pi < NSHOWN; pi++) {
                 mph[pi].fader = 0;
                 morph_roll_seed(pi, 1u, 900u + pi);          /* a roll drops the hand-set values */
@@ -322,18 +381,19 @@ static void editb_worst_multi(void)
                 motion.event[i2] = (motion_event_t){(uint8_t)((i2 & 1u) << 6 | (i2 >> 1) % 64u), P_REV, (int8_t)(i2 % 100u)};
             motion.count = MOTION_MAX;
             rc = project_save_as(13u, "WORST");
-            amsg = msg_is("PARAMETER LOCKS CUT");   /* (item 138: the message of multi.c since the page became PARAMETER LOCKS) */
+            amsg = (int)motion.count == MOTION_MAX && msg_is("PARAMETER LOCKS CUT") ? amsg : -1;   /* (the count with the hand-set values, or -1) */   /* (item 138: the message of multi.c since the page became PARAMETER LOCKS) */
             motion.count = 0;
             project_load(13u);
             frames(50);
-            ck("  without hand-set values it says PARAMETER LOCKS CUT (26 of the 128 events fit)", rc == 0 && amsg && motion.count == 26u);
+            ck("  rolled again (no values set by hand): PARAMETER LOCKS CUT again, the automation cut to what fits", rc == 0 && amsg >= 0 && motion.count > 0u && motion.count < MOTION_MAX);
             ck("  (erased again)", project_erase(13u) == 0 && project_factory(13));
 }
 
 int main(void)
 {
     static track_t ref[NSHOWN];
-    static uint8_t patch[FP_SIZE + 1u], endb[NSHOWN][P_COUNT], fendb[NSHOWN][NFM];
+    static uint8_t patch[FP_SIZE + 1u], fendb[NSHOWN][NFM];
+    static int16_t endb[NSHOWN][EXT_P_LEN];
     static motion_store_t mref;
     uint32_t seedb[NSHOWN], k, pi, ok;
     memset(nor, 0xFF, sizeof nor);
@@ -344,6 +404,8 @@ int main(void)
     apply_preset_to(&trk[0], 1u);
     set_engine_of(&trk[1], ENGI_FM6);
     apply_preset_to(&trk[1], 2u);
+    trk[0].engine = trk[0].eng_req;                  /* (no audio runs here: the engine-change fade is over; else the morph is another sound's) */
+    trk[1].engine = trk[1].eng_req;
     trk[0].p[P_LEVEL] = 91;
     trk[1].p[P_PAN] = -20;
     trk[1].p[P_AMODE] = 2;                           /* (the arp is a part's parameter) */
@@ -383,7 +445,7 @@ int main(void)
     ck("SAVE > MULTI is SAVE's page, sixteen slots (KNOB 1 M01..M16), all sixteen the factory multis (0.2.23; M11 EERIE SIGNAL)", cur_page()->graph == GR_SLOTS &&
        cur_page()->fam == FAM_SAVE && GP[G_SLOT].max == 16 && project_used(10) && project_factory(10) && str_eq(mu_names[10], "EERIE SIGNAL"));
     watch = 1;
-    press_k(EN_K4);                                  /* SAVE: a used (factory) slot: OVERWRITE M11?, then the NAME screen */
+    press_k(EN_K3);                                  /* SAVE (1.1: K3): a used (factory) slot: OVERWRITE M11?, then the NAME screen */
     ck("SAVE over the factory M11 asks OVERWRITE M11?", ui.confirm == CF_OVR_PROJ);
     press(B_OCTUP);
     ck("  OCT+ opens NAME (placeholder MULTI M11)", name_on() && str_eq(nm.ph, "MULTI M11"));
@@ -395,7 +457,7 @@ int main(void)
     for (pi = 0; pi < NSHOWN; pi++) {                /* (what was saved: the save may roll End B again from its seed) */
         ref[pi] = trk[pi];
         seedb[pi] = morph_seed_of(pi, 1);
-        memcpy(endb[pi], morph_cur(&mph[pi], 1), P_COUNT);
+        endb_codes(pi, endb[pi]);
         memcpy(fendb[pi], mph[pi].fh[1][mph[pi].top[1]], NFM);
     }
     memcpy(patch, fm6_patch[1], sizeof patch);
@@ -410,6 +472,8 @@ int main(void)
     ui_prefs2 |= PREF_MODE_RECALL >> 16;              /* (0.2.11: this test reads the stored MODE back: MODE RECALL ON; the option's own tests are below) */
     press_k(EN_K2);                                  /* LOAD (no dialog) */
     frames(50);
+    for (pi = 0; pi < NSHOWN; pi++)
+        trk[pi].engine = trk[pi].eng_req;            /* (the engine-change fade, which audio blocks would finish) */
     ok = 1;
     for (pi = 0; pi < NSHOWN; pi++)
         ok &= !memcmp(trk[pi].p, ref[pi].p, sizeof ref[pi].p) && trk[pi].eng_req == ref[pi].eng_req &&
@@ -424,9 +488,13 @@ int main(void)
     ck("  SHIM's PITCH DOWN and MOD 37 (0.2.19: the ids of the old PING-PONG switch and NAME card) are back", song.g[G_SHPITCH] == SHP_DOWN && song.g[G_SHMOD] == 37);
     ok = 1;
     for (pi = 0; pi < NSHOWN; pi++)
-        ok &= morph_seed_of(pi, 1) == seedb[pi] && !memcmp(morph_cur(&mph[pi], 1), endb[pi], P_COUNT) &&
-              !memcmp(mph[pi].fh[1][mph[pi].top[1]], fendb[pi], NFM) && mph[pi].fader == 0u;
-    ck("  End B of each part: the same seed and the same values (FM6 bytes too); the fader at A", ok);
+    {
+        static int16_t now[EXT_P_LEN];
+        endb_codes(pi, now);
+        ok &= !memcmp(now, endb[pi], sizeof now) && !memcmp(mph[pi].fh[1][mph[pi].top[1]], fendb[pi], NFM) && mph[pi].fader == 0u;
+    }
+    (void)seedb;
+    ck("  End B of each part: the same values as it sounded when saved (MU_VER 8: values, no seed; FM6 bytes too); the fader at A", ok);
     {   /* cloud job G (EDITABLE B): the values set by hand go through a multi (the record's edit lists), with End B */
         xb_edit_t el[NSHOWN][XB_MAX], g[XB_MAX];
         uint32_t ne[NSHOWN], w, n;
@@ -490,7 +558,7 @@ int main(void)
             uint8_t blk[NSHOWN][MB_N], rec[MU_REC_MAX];
             memset(blk, 0, sizeof blk);
             project_capture(&q);
-            ck("  the record holds no BASS MONO (byte 5 bits 1..4 are 0 with 125 Hz on the unit; 0.2.24: the capture writes 0 too, a unit setting)", q.bm == 0 && song.bm == 6 && mu_pack(rec, &q, blk, &cut) > MU_G_AT && (rec[5] >> 1) == 0);
+            ck("  the record holds no BASS MONO (byte 5 bits 1..4 are 0 with 125 Hz on the unit; 0.2.24: the capture writes 0 too, a unit setting)", q.bm == 0 && song.bm == 6 && mu_pack(rec, &q, &cut) > MU_G_AT && (rec[5] >> 1) == 0);
         }
         for (i = 0; i < sizeof GS / sizeof GS[0]; i++)
             song.g[GS[i].id] = GS[i].other;
@@ -518,10 +586,10 @@ int main(void)
             uint8_t blk[NSHOWN][MB_N];
             memset(blk, 0, sizeof blk);
             project_capture(&q);
-            len = mu_pack(rec2, &q, blk, &cut);
+            len = mu_pack(rec2, &q, &cut);
             rec2[5] = (uint8_t)((rec2[5] & 1u) | 5u << 1);
             mu_obj_read(13u / 2u);
-            mu_put_rec(13u & 1u, 1, blk, &cut, rec2, len);
+            mu_put_rec(13u & 1u, 1, &cut, rec2, len);
             ok = mu_obj_write(13u / 2u, MU_HDR + mu_rd16(mu_buf + 4) + mu_rd16(mu_buf + 6)) == 0;
             mu_obj_read(13u / 2u);
             mu_note(13u / 2u);
@@ -579,16 +647,15 @@ int main(void)
     go_title("MULTIS");
     song.g[G_SLOT] = 12;
     frame();
-    press_k(EN_K3);                                  /* ERASE: the dialog */
-    ck("ERASE asks first (ERASE M12?)", ui.confirm == CF_ERASE_MULTI);
-    press(B_OCTUP);
+    ck("MULTIS: only LOAD and SAVE are actions (DUELL 1.1: no ERASE card)", act_cols() == 6u);
+    ck("project_erase (no UI in 1.1; the factory multi comes back): ERASED M12", project_erase(11) == 0 && msg_is("ERASED M12"));
     power_cycle();
-    ck("  OCT+: ERASED; after a power cycle M12 is its factory multi again (DEAD BUFFER), its partner M11 kept", project_factory(11) &&
+    ck("  after a power cycle M12 is its factory multi again (DEAD BUFFER), its partner M11 kept", project_factory(11) &&
        str_eq(mu_names[11], "DEAD BUFFER") && project_used(10) && str_eq(mu_names[10], "MULTI K"));
     go_title("MULTIS");
     song.g[G_SLOT] = 4;
     frame();
-    press_k(EN_K4);
+    press_k(EN_K3);                                  /* SAVE (1.1: K2 LOAD, K3 SAVE) */
     ck("SAVE over a used slot asks OVERWRITE M04?", ui.confirm == CF_OVR_PROJ);
     press(B_OCTDN);
 
@@ -701,7 +768,7 @@ int main(void)
         for (k = 0; k < MU_SLOTS; k++) {              /* each part's engine + factory index names the intended sound */
             project_load(k);
             for (pi = 0; pi < NSHOWN; pi++)
-                ok &= str_eq(ds_name(trk[pi].eng_req, trk[pi].preset), SN[k][pi]) && (morph_seed_of(pi, 1) != 0u) &&
+                ok &= str_eq(ds_name(trk[pi].eng_req, trk[pi].preset), SN[k][pi]) && (trk[pi].engine = trk[pi].eng_req, endb_set(pi)) &&
                       (AM[k][pi] < 0 || trk[pi].p[P_AMODE] == AM[k][pi]);
             ok &= duell_mode_req == MD[k] && proj_cur == k && song.g[G_BPM] == BPM[k] && mix_split == SPL[k] && (XF[k] == 255u || mix_xf == XF[k]) &&
                   song.g[G_RLOCUT] == (k == 3u ? 80 : k == 6u ? 79 : k == 12u ? 95 : 75);   /* (0.2.25: the owner's M04 DUB CHORD has its reverb LOW CUT at 80, his M07 FINAL REEL at 79) */
@@ -719,12 +786,14 @@ int main(void)
                 break;
             }
         }
-        ck("LOAD of M01..M16 (MODE RECALL ON): the intended sounds, MODE, TEMPO, SPLIT / XFADE, arps and SEQUENCER steps, LOW CUT 75, End B seeded", ok);
+        ck("LOAD of M01..M16 (MODE RECALL ON): the intended sounds, MODE, TEMPO, SPLIT / XFADE, arps and SEQUENCER steps, LOW CUT 75, an End B of its own", ok);
         {   /* 0.2.13 (owner): M01 REESE SWAMP's AMOUNT 17 % on both parts, End B rolled at 17 % (1.0: the firmware's ROLL B again, tools/morph_b_roll.py: one seed, 16816, for both parts) */
             project_load(0);
-            ok &= morph_amount_of(0) == 17u && morph_amount_of(1) == 17u && morph_seed_of(0, 1) == 16816u && morph_seed_of(1, 1) == 16816u;
+            trk[0].engine = trk[0].eng_req;
+            trk[1].engine = trk[1].eng_req;
+            ok &= morph_amount_of(0) == 17u && morph_amount_of(1) == 17u && endb_set(0) && endb_set(1);
         }
-        ck("  0.2.13: M01 REESE SWAMP: AMOUNT 17 % on both parts, End B its own (seeds 16816 / 16816)", ok);
+        ck("  0.2.13: M01 REESE SWAMP: AMOUNT 17 % on both parts, End B its own (MU_VER 8: its values, converted once from the seed 16816)", ok);
         {   /* M16 STRESS TEST (0.2.23): every effect on: both inserts, SAT, the EQ, the ducker, the three sends; RANDOM delay, SHIM (its record's PITCH BOTH reads UP since 0.2.25); an arp */
             project_load(15);
             ok = song.g[G_DMODE] == DMD_RAND && song.g[G_RTYPE] == 3 && song.g[G_SHPITCH] == SHP_UP && song.g[G_CDEPTH] > 0 && trk[1].p[P_AMODE] != 0;
@@ -735,11 +804,7 @@ int main(void)
         ck("  M16 STRESS TEST: the 24 dB filters and three sends on both parts, insert + SAT on part 1, EQ + ducker on part 2, RANDOM delay, SHIM (the record's PITCH BOTH loads as UP, 0.2.25), part 2's arp", ok);
         ui_prefs2 &= (uint8_t)~(PREF_MODE_RECALL >> 16);
         memcpy(before, nor, sizeof nor);
-        go_title("MULTIS");
-        song.g[G_SLOT] = 1;
-        frame();
-        press_k(EN_K3);
-        ck("ERASE of an unchanged factory slot: ALREADY FACTORY, no dialog, nothing written", msg_is("ALREADY FACTORY") && !ui.confirm &&
+        ck("project_erase of an unchanged factory slot: ALREADY FACTORY, nothing written (1.1: no ERASE card)", project_erase(0) == 1 && msg_is("ALREADY FACTORY") &&
            !memcmp(before, nor, sizeof nor));
         song.playing = 0;
         song.g[G_BPM] = 151;
@@ -749,14 +814,10 @@ int main(void)
            !project_factory(3) && project_factory(2) && project_factory(4) && project_factory(5));
         project_load(3);
         ck("  and loads the saved one (TEMPO 151)", song.g[G_BPM] == 151);
-        go_title("MULTIS");
-        song.g[G_SLOT] = 4;
-        frame();
-        press_k(EN_K3);
-        press(B_OCTUP);
+        ok = project_erase(3) == 0;
         power_cycle();
         project_load(3);
-        ck("ERASE of the overwrite restores DUB CHORD (after a power cycle too); it loads again", project_factory(3) &&
+        ck("project_erase of the overwrite restores DUB CHORD (after a power cycle too); it loads again", ok && project_factory(3) &&
            str_eq(mu_names[3], "DUB CHORD") && str_eq(ds_name(trk[0].eng_req, trk[0].preset), "BIG STAB") && song.g[G_BPM] != 151);
         n = project_rename(5, "STACK 2");
         power_cycle();
@@ -878,7 +939,7 @@ int main(void)
         memset(nor, 0xFF, sizeof nor);
         power_cycle();
         ui_prefs2 |= PREF_MODE_RECALL >> 16;           /* (0.2.11: the reference reads M01's stored MODE) */
-        project_load(0);
+        project_load(TIDE_FIRST_MULTI);                /* (the multi a new unit starts with: M01; TIDE's hook H18 may pick another) */
         ui_prefs2 &= (uint8_t)~(PREF_MODE_RECALL >> 16);
         memcpy(m01, trk, sizeof m01);
         m01_bpm = (uint32_t)song.g[G_BPM];
@@ -1165,7 +1226,7 @@ int main(void)
             if (v == 0u) old[0] = 2u; else if (v == 1u) old[0] = 1u; else { old[0] = 3u; old[1] = (uint8_t)(P_COUNT - 1u); }
             memcpy(keep, old, len);
             mu_obj_read(o);
-            ok2 &= mu_obj_write(o, mu_put_rec(10u & 1u, 1, 0, &cut, keep, len)) == 0;
+            ok2 &= mu_obj_write(o, mu_put_rec(10u & 1u, 1, &cut, keep, len)) == 0;
             mu_obj_read(o);
             mu_note(o);
             trk[0].p[P_LEVEL] = 55;
@@ -1186,7 +1247,7 @@ int main(void)
             memcpy(old, DM_REC + DM_AT[df_of(0u)], DM_LEN[df_of(0u)]);
             old[0] = 2u;
             (void)r;
-            ok2 &= mu_obj_write(o, mu_put_rec(0u, 1, 0, &cut, old, DM_LEN[df_of(0u)])) == 0;
+            ok2 &= mu_obj_write(o, mu_put_rec(0u, 1, &cut, old, DM_LEN[df_of(0u)])) == 0;
         }
         mu_obj_read(o);
         mu_note(o);
@@ -1196,15 +1257,15 @@ int main(void)
         ck("  a SAVE over the old record replaces it, the multi loads again", ok2);
         project_erase(10u);
     }
-    {   /* MU_VER 7 (the cloud plan's job A): per part the NX extension slots and the hand-set B edit list; the worst multi; the old version refused */
+    {   /* MU_VER 8 (ROLL CHAINED storage, 2026-10-29): per part End B as values (an MBV block after its length byte), the NX slots dense
+         * without a count, no edit list (the values set by hand are End B's marks), steps in 7 bytes; every other version refused */
         static project_t q, q2;
         static uint8_t rec[2048], keep[2048];
-        uint8_t blk[NSHOWN][MB_N], amt[NSHOWN], set[6];
-        uint32_t cut, len, i, t, ok3, base, evs[3];
-        uint32_t nxat = MU_G_AT + 2u * G_COUNT + 4u + MB_N + P_COUNT;   /* part 1's nx byte */
-        memset(blk, 0, sizeof blk);
-        ck("MU_VER is 7 and a part without steps, patch or edits is MU_PART_FIX bytes (nx, the NX slots, ne included)", MU_VER == 7u && MU_PART_FIX == 4u + MB_N + P_COUNT + 1u + NX + 1u + 8u);
-        /* (a) the music's slots and a list through SAVE, a power cycle and LOAD (the slots only: the live list is job G's) */
+        uint8_t amt[NSHOWN], set[6];
+        uint32_t cut, len, i, t, ok3, base, evs[2], p0 = MU_G_AT + 2u * MU_NG, nb0;
+        ck("MU_VER is 8 and a part without End B, steps or patch is MU_PART_FIX bytes (engine, preset, AMOUNT, flags, End B's length, the values, the NX slots, the step map)",
+           MU_VER == 8u && MU_PART_FIX == 4u + 1u + P_COUNT + NX + 8u && MU_STEP == 7u);
+        /* (a) the music's slots through SAVE, a power cycle and LOAD */
         ui_power_on();
         for (t = 0; t < NSHOWN; t++)
             for (i = 0; i < NX; i++)
@@ -1218,64 +1279,47 @@ int main(void)
         for (t = 0; t < NSHOWN; t++)
             for (i = 0; i < NX; i++)
                 ok3 &= XV(&trk[t], i) == (t ? 100 - 5 * (int)i : 3 * (int)i - 40);
-        ck("the 16 extension slots of both parts survive SAVE, a power cycle and LOAD (through XV)", ok3);
+        ck("the extension slots of both parts survive SAVE, a power cycle and LOAD (through XV)", ok3);
         project_erase(12u);
-        /* (b) the record: round trip of the slots and the lists, both parts */
-        project_capture(&q);
+        /* (b) the record: round trip of the slots and both parts' End B blocks */
         for (t = 0; t < NSHOWN; t++) {
-            for (i = 0; i < NX; i++)
-                q.t[t].x[i] = (int16_t)(t ? 127 - (8 * (int)i) % 191 : -64 + (9 * (int)i) % 191);   /* (item 138: NX 28: kept inside -64 .. 127, the plain forms ran past both ends from slot 22 on) */
-            q.xe_n[t] = (uint8_t)(t ? 5u : XB_MAX);
-            for (i = 0; i < q.xe_n[t]; i++) {
-                q.xe[t][i].wid = (uint8_t)(i < 31u ? 3u * i : 128u + 3u);
-                q.xe[t][i].val = (int16_t)(i * 4 - 60);
-            }
+            trk[t].engine = trk[t].eng_req;
+            morph_ready(t);
+            morph_roll_seed(t, 1u, 4242u + t);
         }
-        len = mu_pack(rec, &q, blk, &cut);
-        ok3 = !cut && len <= MU_REC_MAX && rec[0] == 7u && rec[nxat] == NX && mu_unpack(&q2, blk, amt, set, rec, len);
-        for (t = 0; ok3 && t < NSHOWN; t++)
-            ok3 &= !memcmp(q2.t[t].x, q.t[t].x, sizeof q.t[t].x) && q2.xe_n[t] == q.xe_n[t] && !memcmp(q2.xe[t], q.xe[t], q.xe_n[t] * sizeof q.xe[t][0]);
-        ck("a record with 32 + 5 hand-set B edits and all slots off their defaults: packs without a cut, unpacks equal", ok3);
-        memcpy(keep, rec, len);
-        rec[0] = 6u;
-        ck("  the same bytes marked version 6 (the old form): not a multi", !mu_unpack(&q2, blk, amt, set, rec, len));
-        rec[0] = 8u;
-        ck("  marked version 8: not a multi", !mu_unpack(&q2, blk, amt, set, rec, len));
-        /* (c) a longer list (newer firmware), a shorter one (older) */
-        memcpy(rec, keep, len);
-        {
-            uint32_t at2 = nxat + 1u + NX;
-            memmove(rec + at2 + 3u, rec + at2, len - at2);
-            rec[nxat] = NX + 3u;
-            memset(rec + at2, 0x55, 3);
-            ok3 = mu_unpack(&q2, blk, amt, set, rec, len + 3u);
-            for (t = 0; ok3 && t < NSHOWN; t++)
-                ok3 &= !memcmp(q2.t[t].x, q.t[t].x, sizeof q.t[t].x) && q2.xe_n[t] == q.xe_n[t] && !memcmp(q2.xe[t], q.xe[t], q.xe_n[t] * sizeof q.xe[t][0]);
-            ck("a longer slot list (nx = NX + 3, a newer firmware): loads, the extra bytes ignored, the lists and the rest as they were", ok3);
-            memcpy(rec, keep, len);
-            memmove(rec + nxat + 1u + 6u, rec + at2, len - at2);
-            rec[nxat] = 6u;
-            ok3 = mu_unpack(&q2, blk, amt, set, rec, len - (NX - 6u));
-            for (i = 0; i < NX; i++)
-                ok3 &= q2.t[0].x[i] == (i < 6u ? q.t[0].x[i] : (int16_t)xb_def(i) - 64);
-            ck("a shorter slot list (nx = 6, an older firmware): loads, the other ten slots are their defaults", ok3 && q2.xe_n[0] == XB_MAX);
-        }
-        memcpy(rec, keep, len);
-        rec[nxat + 1u + NX] = XB_MAX + 1u;
-        ck("a list of 33 edits: not a multi", !mu_unpack(&q2, blk, amt, set, rec, len));
-        memcpy(rec, keep, len);
-        rec[nxat + 1u + NX + 1u + 2u] = rec[nxat + 1u + NX + 1u];
-        ck("  an edit id twice: not a multi", !mu_unpack(&q2, blk, amt, set, rec, len));
-        memcpy(rec, keep, len);
-        rec[nxat + 1u + NX + 1u] = 127u;
-        ck("  wide id 127 in an edit: not a multi", !mu_unpack(&q2, blk, amt, set, rec, len));
-        memcpy(rec, keep, len);
-        rec[nxat + 3u] = 192u;
-        ck("  a slot value byte above 191: not a multi", !mu_unpack(&q2, blk, amt, set, rec, len));
-        ck("  every byte of the record cut short: not a multi (never read past the end)", ({ uint32_t c, okc = 1; memcpy(rec, keep, len);
-            for (c = 0; c < len; c++) okc &= !mu_unpack(&q2, blk, amt, set, rec, c); okc; }));
-        /* (d) the worst multi: two FM6 parts, 64 steps each, both with 32 hand-set B edits, and a full automation */
         project_capture(&q);
+        for (t = 0; t < NSHOWN; t++)
+            for (i = 0; i < NX; i++)
+                q.t[t].x[i] = (int16_t)(t ? 127 - (8 * (int)i) % 191 : -64 + (9 * (int)i) % 191);   /* (kept inside -64 .. 127) */
+        len = mu_pack(rec, &q, &cut);
+        ok3 = !cut && len <= MU_REC_MAX && rec[0] == 8u && q.bvn[0] && q.bvn[1] && mu_unpack(&q2, amt, set, rec, len);
+        for (t = 0; ok3 && t < NSHOWN; t++)
+            ok3 &= !memcmp(q2.t[t].x, q.t[t].x, sizeof q.t[t].x) && q2.bvn[t] == q.bvn[t] && !memcmp(q2.bv[t], q.bv[t], q.bvn[t]) && q2.xe_n[t] == 0u &&
+                   !memcmp(q2.t[t].p, q.t[t].p, sizeof q.t[t].p) && !memcmp(q2.t[t].step, q.t[t].step, sizeof q.t[t].step);
+        ck("a record with both parts' End B and all slots off their defaults: packs without a cut, unpacks equal (values, slots, steps, End B blocks)", ok3);
+        memcpy(keep, rec, len);
+        nb0 = rec[p0 + 4u];
+        rec[0] = 7u;
+        ck("  the same bytes marked version 7 (the old form, with edit lists): not a multi", !mu_unpack(&q2, amt, set, rec, len));
+        rec[0] = 9u;
+        ck("  marked version 9: not a multi", !mu_unpack(&q2, amt, set, rec, len));
+        memcpy(rec, keep, len);
+        rec[p0 + 4u] = (uint8_t)(MBV_MAX + 1u);
+        ck("an End B block longer than MBV_MAX: not a multi", !mu_unpack(&q2, amt, set, rec, len));
+        memcpy(rec, keep, len);
+        rec[p0 + 4u] = (uint8_t)(nb0 - 1u);
+        ck("  an End B length that is not its block's own: not a multi", !mu_unpack(&q2, amt, set, rec, len));
+        memcpy(rec, keep, len);
+        rec[p0 + 5u + nb0 + P_COUNT + 2u] = 192u;
+        ck("a slot value byte above 191: not a multi", !mu_unpack(&q2, amt, set, rec, len));
+        memcpy(rec, keep, len);
+        rec[p0 + 5u + nb0 + 3u] = 192u;
+        ck("  a parameter value byte above 191: not a multi", !mu_unpack(&q2, amt, set, rec, len));
+        memcpy(rec, keep, len);
+        ck("  one byte more than the record: not a multi (the length is exact)", !mu_unpack(&q2, amt, set, rec, len + 1u));
+        ck("  every byte of the record cut short: not a multi (never read past the end)", ({ uint32_t c, okc = 1; memcpy(rec, keep, len);
+            for (c = 0; c < len; c++) okc &= !mu_unpack(&q2, amt, set, rec, c); okc; }));
+        /* (c) the worst multi: two FM6 parts with End B, 64 steps each, and a full automation */
         for (t = 0; t < NSHOWN; t++) {
             q.t[t].engine = ENGI_FM6;
             for (i = 0; i < NSTEP; i++) {
@@ -1290,36 +1334,28 @@ int main(void)
             q.motion.event[i] = (motion_event_t){(uint8_t)((i & 1u) << 6 | (i >> 1) % 64u), P_REV, (int8_t)(i % 100u)};
         q.motion.count = MOTION_MAX;
         q.motion.on = 3;
-        for (base = 0; base < 3u; base++) {
-            for (t = 0; t < NSHOWN; t++) {
-                q.xe_n[t] = base == 0u ? 0u : XB_MAX;
-                for (i = 0; i < XB_MAX; i++) {
-                    q.xe[t][i].wid = (uint8_t)(i < 31u ? 4u * i : 130u);
-                    q.xe[t][i].val = (int16_t)i;
-                }
-            }
-            if (base == 2u)                                  /* few steps: everything fits */
+        for (base = 0; base < 2u; base++) {
+            if (base == 1u)                                  /* few steps: everything fits */
                 for (t = 0; t < NSHOWN; t++)
                     for (i = 8; i < NSTEP; i++) {
                         memset(&q.t[t].step[i], 0, sizeof q.t[t].step[i]);
                         step_clear(&q.t[t].step[i]);
                     }
-            len = mu_pack(rec, &q, blk, &cut);
-            ok3 = len <= MU_REC_MAX && mu_unpack(&q2, blk, amt, set, rec, len);
+            len = mu_pack(rec, &q, &cut);
+            ok3 = len <= MU_REC_MAX && mu_unpack(&q2, amt, set, rec, len);
             evs[base] = ok3 ? q2.motion.count : 999u;
-            printf("multi: worst multi, case %u (%s): %u bytes of %u, automation %u of %u events kept, edits kept %u + %u of %u + %u, cut bits %u\n", base,
-                   base == 0u ? "no edits" : base == 1u ? "32 edits on both parts, 64 steps each" : "32 + 32 edits, 8 steps each", len, (unsigned)MU_REC_MAX,
-                   evs[base], (unsigned)MOTION_MAX, ok3 ? q2.xe_n[0] : 0u, ok3 ? q2.xe_n[1] : 0u, q.xe_n[0], q.xe_n[1], cut);
+            for (t = 0; ok3 && t < NSHOWN; t++)
+                ok3 &= !memcmp(q2.t[t].step, q.t[t].step, sizeof q.t[t].step) && q2.bvn[t] == q.bvn[t] && !memcmp(q2.bv[t], q.bv[t], q.bvn[t]);
+            printf("multi: worst multi, case %u (%s): %u bytes of %u, automation %u of %u events kept, cut bits %u\n", base,
+                   base == 0u ? "64 steps each" : "8 steps each", len, (unsigned)MU_REC_MAX, evs[base], (unsigned)MOTION_MAX, cut);
             if (base == 0u)
-                ck("  worst multi, no edits (2 FM6 parts, 64 steps each, full automation): fits, the automation is cut, 26 events are left (item 138: NX 28, 24 bytes more for the two parts' slot lists: 34 - 8)", ok3 && (cut & 1u) && !(cut & 2u) && evs[0] == 26u);
-            if (base == 1u)
-                ck("  worst multi with 32 + 32 edits: the sound, steps and slots stay; the automation goes first, then the last edits (B EDITS CUT)",
-                   ok3 && evs[1] == 0u && (cut & 2u) && q2.xe_n[0] == XB_MAX && q2.xe_n[1] < XB_MAX && q2.xe_n[0] + q2.xe_n[1] == (MU_REC_MAX - mu_base_len(&q)) / 2u &&
-                   !memcmp(q2.xe[0], q.xe[0], XB_MAX * sizeof q.xe[0][0]) && !memcmp(q2.xe[1], q.xe[1], q2.xe_n[1] * sizeof q.xe[1][0]));
-            if (base == 2u)
-                ck("  with 8 steps a part and 32 + 32 edits: everything fits, the automation keeps most of its room", ok3 && !(cut & 2u) && q2.xe_n[0] == XB_MAX && q2.xe_n[1] == XB_MAX && evs[2] > 80u);
+                ck("  worst multi (2 FM6 parts, End B, 64 steps each, full automation): fits; the sound, steps and End B stay, the automation is cut to what fits",
+                   ok3 && cut == 1u && evs[0] > 0u && evs[0] < MOTION_MAX && len + 3u > MU_REC_MAX);
+            else
+                ck("  with 8 steps a part: everything fits, the whole automation too", ok3 && !cut && evs[1] == MOTION_MAX);
         }
-        ck("  the sound and steps of the worst multi always fit (_Static_assert in multi.c): 1838 bytes with the 60 bytes of slots (item 138: NX 28)", MU_G_AT + 2u * G_COUNT + NSHOWN * (MU_PART_FIX + NSTEP * PS_STEP + FM6_PACKED) + 1u + 3u == 1838u);
+        ck("  the sound, End B and steps of the worst multi always fit (_Static_assert in multi.c)",
+           MU_G_AT + 2u * MU_NG + NSHOWN * (MU_PART_FIX + MBV_MAX + NSTEP * MU_STEP + UPF_PK) + 1u + 2u <= MU_REC_MAX);
     }
     keys_drive();                                    /* 6: the factory multis played from the keys (0.2.12; 0.2.23's set) */
     editb_worst_multi();                             /* 7: cloud job G, the worst multi through SAVE (it leaves the state changed: last) */
