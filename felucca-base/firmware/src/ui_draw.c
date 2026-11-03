@@ -1764,6 +1764,8 @@ static int card_hidden_vp(const int16_t *vp)
         return 1;
     if (duck_off(t) && (vp == &t->p[P_DKRATE] || vp == &t->p[P_DKTHR] || vp == &t->p[P_DKDEP] || vp == &t->p[P_DKATK] || vp == &t->p[P_DKRLS] || vp == &t->p[P_DKCRV]))   /* DUCK SRC OFF (0.2.24): nothing ducks, the other DUCK cards have nothing to act on */
         return 1;
+    if (vp == &t->p[P_VOICE] && !ui.ml.on && cur_page()->graph == GR_CHORD && (!t->p[P_CHRD] || t->p[P_VOICE] == V_POLY))   /* the CHORD page's K4: the part's VOICE shows only where it is what keeps the chord from playing (a chord needs POLY, ui_graph.c chord_line says NEEDS POLY); the cards of the page stay two at most (STRUM needs POLY) */
+        return 1;
     if (vp == &XV(t, X_STRUM) && !strum_acts(t))        /* DUELL 1.1 item 144: STRUM acts only on a chord the keys play: CHRD on, POLY, the arp not playing (chord.c strum_acts) */
         return 1;
     if (vp == &t->p[P_PRIO] && t->p[P_VOICE] == V_POLY)   /* T0227 (owner: the controls that apply): NOTE PRIORITY picks the one note of MONO, LEGATO, UNISON (voice.c mono_pick); POLY sounds every key */

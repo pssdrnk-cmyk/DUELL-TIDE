@@ -423,6 +423,30 @@ static void chord_kb(uint32_t lit, uint32_t root, uint16_t c)
 {
     kb_draw(UT_A_KB_X, UT_A_KB_Y, UT_A_KB_W, UT_A_KB_H, lit, root, 2u, c);
 }
+/* TYPE on: the line under the keyboard (the row of the TYPE OFF hint). Left, why the keys do not play what the page shows: NEEDS POLY (MONO / LEG / UNI play a chord's root alone; K4 is the VOICE),
+ * SET A SCALE (DIA3 / DIA7 with the CHROMATIC scale play the plain MAJ triad / MAJ7: chord.c chord_tones). Right, the last chord played by name, as chord_last has it (not with NEEDS POLY:
+ * it was not played as a chord) */
+static void chord_line(const track_t *t)
+{
+    int32_t ay, ah, base = UT_A_KB_Y + UT_A_KB_H + 14, y = UT_TY(S, base);
+    const char *why = trk_vmode(t) != V_POLY ? "NEEDS POLY" : t->p[P_CHRD] <= CH_DIA7 && scale_mask(t) == 0xFFFu ? "SET A SCALE" : 0;
+    uint32_t k = trk_index(t), i;
+    area_rect(&ay, &ah);
+    if (base >= ay + ah)
+        return;
+    if (why)
+        cv_text_on(UT_A_KB_X, y, &AF_S, why, T_TEXT, T_BG);
+    if (trk_vmode(t) == V_POLY && chord_last[k].n) {
+        char b[4 * 3 + 1];
+        b[0] = 0;
+        for (i = 0; i < chord_last[k].n && i < CHORD_MAX; i++) {
+            if (i)
+                str_cpy(b + str_len(b), " ", 2);
+            str_cpy(b + str_len(b), N_NOTE[chord_last[k].note[i] % 12u], 3);
+        }
+        cv_text_on(UT_A_KB_X + UT_A_KB_W - text_w(&AF_S, b), y, &AF_S, b, T_MID, T_BG);
+    }
+}
 static void graph_chord(const track_t *t, uint16_t c)
 {
     uint32_t root, lo, lit;
@@ -442,6 +466,7 @@ static void graph_chord(const track_t *t, uint16_t c)
             lit = chord_keys(t, &lo, &root);
     }
     chord_kb(lit, root, c);
+    chord_line(t);
 }
 /* the four sends as faders under their cards: a RAISE slot, the THEME fill from the bottom, a cap */
 static void graph_fx(const track_t *t, uint16_t c)
