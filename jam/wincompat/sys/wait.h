@@ -28,6 +28,8 @@ static inline void *jam_nt(const char *name) { return jam_ProcAddr(jam_ModH("ntd
 #define jam_NtTerm ((long (__stdcall *)(void *, long))jam_nt("NtTerminateProcess"))
 extern unsigned long __stdcall jam_WaitObj(void *, unsigned long) __asm__("WaitForSingleObject");
 extern int __stdcall jam_ExitCode(void *, unsigned long *) __asm__("GetExitCodeProcess");
+extern unsigned long __stdcall jam_GetCwd(unsigned long, unsigned short *) __asm__("GetCurrentDirectoryW");
+extern int __stdcall jam_SetCwd(const unsigned short *) __asm__("SetCurrentDirectoryW");
 extern int __stdcall jam_CloseH(void *) __asm__("CloseHandle");
 extern void *__stdcall jam_CurProc(void) __asm__("GetCurrentProcess");
 
@@ -47,14 +49,22 @@ static int jam_in_child;
 static inline pid_t fork(void)
 {
     jam_clone_info info = { 0 };
+    unsigned short cwd[1024];
     int i;
     long r;
     fflush(NULL);
+    cwd[0] = 0;
+    jam_GetCwd(1024, cwd);              /* the child's current-directory handle is not inherited: relative paths fail until it is set again */
     for (i = 0; i < JAM_MAXKIDS && jam_kids[i].h; i++) ;
     r = jam_RtlClone(2 /* inherit handles */, 0, 0, 0, &info);
     if (r == 297 /* STATUS_PROCESS_CLONED: this is the child */) {
         for (i = 0; i < JAM_MAXKIDS; i++) jam_kids[i].h = 0;
         jam_in_child = 1;
+        if (cwd[0]) {                    /* (setting the folder it is already in leaves the dead handle: step out and back) */
+            static const unsigned short up[] = { 'C', ':', 92 /* backslash */, 0 };
+            jam_SetCwd(up);
+            jam_SetCwd(cwd);
+        }
         return 0;
     }
     if (r != 0 || i >= JAM_MAXKIDS) {
