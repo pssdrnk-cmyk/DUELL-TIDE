@@ -383,11 +383,99 @@ static void t_poly(void)
     keepcheck();
 }
 
+
+/* ------------------------------------------------------------------------------------------------ SYNC --- */
+/* part 1: movable hits on the E of the beats (steps 1, 5, 9, 13) and the beats themselves; 64 mutations from `seed`; the reached positions */
+static void sync_run(uint32_t mode, uint32_t div, uint32_t seed, uint32_t base, uint32_t *share, uint32_t *onbeat, uint32_t *maxpush)
+{
+    static const uint8_t HITS[8] = {0, 4, 8, 12, 1, 5, 9, 13};
+    uint32_t n, k, a = 0, pushes[4] = {0, 0, 0, 0};
+    setup(16, 16, div, div, 0);
+    for (k = 0; k < NSTEP; k++)
+        trk[0].step[k] = (step_t){{0}, 0, ST_REST, 0, 0, 0};
+    for (k = 0; k < 8u; k++) {
+        trk[0].step[HITS[k]] = (step_t){{(uint8_t)(60 + k)}, 1, ST_NOTE, 0, 100, 0};
+        if (base == 1u)                                     /* an already off-beat pattern: the "and"s */
+            trk[0].step[HITS[k]] = (step_t){{0}, 0, ST_REST, 0, 0, 0};
+    }
+    if (base == 1u)
+        for (k = 0; k < 8u; k++)
+            trk[0].step[(k % 2u ? 2u : 0u) + 4u * (k / 2u)] = (step_t){{(uint8_t)(60 + k)}, 1, ST_NOTE, 0, 100, 0};
+    for (k = 0; k < 16u; k++)
+        trk[1].step[k] = (step_t){{0}, 0, ST_REST, 0, 0, 0};
+    sqm_sync = (uint8_t)mode;
+    song.playing = 0;
+    seqm_poll();
+    sqm_refresh(0, 1);
+    memset(&rhythm, 0, sizeof rhythm);
+    for (n = 0; n < 64u; n++) {
+        rhythm_mutate(0, seed * 7919u + n * 104729u);
+        sqm_refresh(0, 1);
+    }
+    *share = *onbeat = *maxpush = 0;
+    for (k = 0; k < 16u; k++)
+        if (sqm_hit(&trk[0].step[k])) {
+            int32_t at = (int32_t)k + rhythm_offset(0, k);
+            uint32_t m = tide_metric(&trk[0], (uint32_t)at);
+            a++;
+            *share += m == SM_AND || m == SM_A;
+            *onbeat += m == SM_BEAT && at != (int32_t)k;   /* (the anchors sit on beats; a moved hit must not) */
+            if (m == SM_A)
+                pushes[(uint32_t)at / 16u]++;
+        }
+    *maxpush = pushes[0];
+    (void)a;
+}
+static void t_sync(void)
+{
+    uint32_t mode, seed, sh[3] = {0, 0, 0}, ob[3] = {0, 0, 0}, mp[3] = {0, 0, 0}, s, o, m, same = 1, kept[3] = {0, 0, 0};
+    CHECK("rows: TURNS / POLY / SYNC show their names", !strcmp(jl_vname(JL_TURNS, 1), "TAKE TURNS") && !strcmp(jl_vname(JL_TURNS, 0), "TOGETHER") &&
+          !strcmp(jl_vname(JL_POLY, 2), "WIDE") && !strcmp(jl_vname(JL_SYNC, 1), "SOFT") && !strcmp(jl_vname(JL_SYNC, 2), "PUSH") && jl_n(JL_SYNC) == 3u);
+    for (mode = 0; mode < 3u; mode++)
+        for (seed = 1; seed <= 12u; seed++) {
+            sync_run(mode, 2, seed, 0, &s, &o, &m);
+            sh[mode] += s, ob[mode] += o, mp[mode] = m > mp[mode] ? m : mp[mode];
+            sync_run(mode, 2, seed, 1, &s, &o, &m);
+            kept[mode] += s;
+        }
+    printf("  SYNC (12 seeds, 64 moves, E-position hits): hits on the and / push: OFF %u, SOFT %u, PUSH %u of 48; kept from 48 and-hits: OFF %u, SOFT %u, PUSH %u; beats hit by moved: %u %u %u\n",
+           sh[0], sh[1], sh[2], kept[0], kept[1], kept[2], ob[0], ob[1], ob[2]);
+    CHECK("SYNC SOFT / PUSH: the and + push share rises over OFF, PUSH at least SOFT", sh[1] > sh[0] && sh[2] >= sh[1]);
+    CHECK("  .. no moved hit lands on a beat", ob[1] == 0u && ob[2] == 0u);
+    CHECK("  .. the push cap: at most 1 (SOFT) / 2 (PUSH) in the bar", mp[1] <= 1u && mp[2] <= 2u);
+    CHECK("  .. a pattern already on the and keeps most of it (SOFT 75 %)", kept[1] * 4u >= 48u * 3u);
+    CHECK("  .. and keeps more than OFF does", kept[1] >= kept[0]);
+    for (seed = 1; seed <= 12u; seed++) {                  /* triplets (SDIV 4): not a supported grid, SYNC behaves as OFF */
+        uint32_t s0, o0, m0, s1, o1, m1;
+        sync_run(0, 4, seed, 0, &s0, &o0, &m0);
+        sync_run(2, 4, seed, 0, &s1, &o1, &m1);
+        same &= s0 == s1 && o0 == o1 && m0 == m1;
+    }
+    CHECK("triplet grid: SYNC PUSH equals OFF", same);
+    CHECK("tide_metric: 1/16 loop of 16: step 0 beat, 2 and, 3 push (A), 1 E; swing 66 % turns the push into an E", (setup(16, 16, 2, 2, 0), tide_metric(&trk[0], 0) == SM_BEAT &&
+          tide_metric(&trk[0], 2) == SM_AND && tide_metric(&trk[0], 3) == SM_A && tide_metric(&trk[0], 1) == SM_E &&
+          (trk[0].p[P_SSWING] = 66, tide_metric(&trk[0], 3) == SM_E)));
+    setup(10, 16, 2, 2, 0);
+    CHECK("tide_metric: a loop of 10 sixteenths is 2.5 beats: not supported", tide_metric(&trk[0], 3) == SM_NONE);
+    setup(16, 16, 1, 2, 0);
+    CHECK("tide_metric: 1/8: every second step is a beat, step 1 the and", tide_metric(&trk[0], 2) == SM_BEAT && tide_metric(&trk[0], 1) == SM_AND);
+    setup(16, 16, 2, 2, 0);
+    sqm_auto = 3, sqm_poly = 2;
+    {   uint32_t b, pulse = 0, same2 = 1;
+        for (b = 0; b < 300000u; b++) {
+            block(0, &pulse, 240, b);
+            same2 &= tide_metric(&trk[0], 3) == SM_A;      /* (the full stored loop, even while a stretch is on) */
+        }
+        CHECK("POLY: tide_metric reads the full stored loop all along", same2);
+    }
+    sqm_sync = 1;
+}
+
 /* ------------------------------------------------------------------------------------------------ store --- */
 static void t_store(void)
 {
-    uint8_t old[7] = {GM_WANDER, 2, GT_BOTH, 1, 1, 0, 3}, rec[5 + 9] = {'T', 'I', 'D', 'E', TIDE_STORE_VER};
-    uint8_t b[9];
+    uint8_t old[7] = {GM_WANDER, 2, GT_BOTH, 1, 1, 0, 3}, rec[5 + 16] = {'T', 'I', 'D', 'E', TIDE_STORE_VER};
+    uint8_t b[16];
     memset(nor, 0xFF, sizeof nor);
     ui_power_on();
     flash_ok = 1;
@@ -396,8 +484,8 @@ static void t_store(void)
     memcpy(rec + 5, old, 7);
     st_save(OBJ_TIDE, rec, 5 + 7);                       /* the first record: 7 fields */
     memset(b, 0xEE, sizeof b);
-    CHECK("an older record (7 fields) loads: 7 fields read, the rest untouched", tide_store_load_min(b, 9, 7) == 7u && !memcmp(b, old, 7) && b[7] == 0xEEu);
-    CHECK("  .. and tide_store_load(9) still wants all 9", !tide_store_load(b, 9));
+    CHECK("an older record (7 fields) loads: 7 fields read, the rest untouched", tide_store_load_min(b, TS_N, 7) == 7u && !memcmp(b, old, 7) && b[7] == 0xEEu);
+    CHECK("  .. and tide_store_load(TS_N) still wants all of them", !tide_store_load(b, TS_N));
     tide_store_dirty = 0;
     tide_seen_ok = 0;
     sqm_turns = 0, sqm_poly = 0;
@@ -405,31 +493,40 @@ static void t_store(void)
     tide_settings();
     CHECK("the settings of the older record are kept", gl.mode == GM_WANDER && gl.time == 2u && gl.target == GT_BOTH && gl.wait == 1u && sqm_vary_all == 1u &&
           morph_musical == 0u && morph_wlvl == 3u);
-    CHECK("  .. TURNS and POLY at their defaults: TAKE TURNS, GENTLE", sqm_turns == 1u && sqm_poly == 1u);
+    CHECK("  .. TURNS, POLY and SYNC at their defaults: TAKE TURNS, GENTLE, SOFT", sqm_turns == 1u && sqm_poly == 1u && sqm_sync == 1u);
     CHECK("  .. nothing is written back by the load alone", !tide_store_dirty);
     sqm_turns = 0, sqm_poly = 2;
     tide_settings();
-    CHECK("a change is marked for saving with 9 fields", tide_store_dirty && tide_store_n == 5u + 9u);
+    CHECK("a change is marked for saving with all the fields", tide_store_dirty && tide_store_n == 5u + TS_N);
     fm1_ms += 3000u;
     song.playing = 0;
     tide_store_poll();
-    CHECK("  .. saved", !tide_store_dirty && tide_store_load(b, 9) && b[TS_TURNS] == 0u && b[TS_POLY] == 2u && !memcmp(b, old, 7));
+    CHECK("  .. saved", !tide_store_dirty && tide_store_load(b, TS_N) && b[TS_TURNS] == 0u && b[TS_POLY] == 2u && !memcmp(b, old, 7));
     tide_seen_ok = 0;
     sqm_turns = 1, sqm_poly = 1;
     gl.mode = GM_ONCE;
     tide_settings();
     CHECK("  .. read back after a restart", sqm_turns == 0u && sqm_poly == 2u && gl.mode == GM_WANDER);
-    rec[5 + TS_TURNS] = 9, rec[5 + TS_POLY] = 9;
-    st_save(OBJ_TIDE, rec, 5 + 9);
+    {   /* the 9-byte record of the TURNS / POLY build: those two kept, SYNC at its default */
+        uint8_t r9[5 + 9] = {'T', 'I', 'D', 'E', TIDE_STORE_VER, GM_LOOP, 1, GT_SEQ, 0, 0, 1, 0, 0, 2};
+        st_save(OBJ_TIDE, r9, sizeof r9);
+        tide_seen_ok = 0;
+        sqm_sync = 0;
+        tide_settings();
+        CHECK("a 9-byte record: TURNS and POLY kept, SYNC SOFT", gl.mode == GM_LOOP && sqm_turns == 0u && sqm_poly == 2u && sqm_sync == 1u);
+    }
+    rec[5 + TS_TURNS] = 9, rec[5 + TS_POLY] = 9, rec[5 + TS_SYNC] = 9;
+    st_save(OBJ_TIDE, rec, 5 + TS_N);
     tide_seen_ok = 0;
     tide_settings();
-    CHECK("a value out of range: TURNS by its low bit, POLY back at GENTLE", sqm_turns == 1u && sqm_poly == 1u);
+    CHECK("a value out of range: TURNS, POLY, SYNC at their defaults", sqm_turns == 1u && sqm_poly == 1u && sqm_sync == 1u);
 }
 
 int main(void)
 {
     t_turns();
     t_poly();
+    t_sync();
     t_store();
     printf("tideturns: %d of %d checks failed\n", bad, checks);
     return bad != 0;

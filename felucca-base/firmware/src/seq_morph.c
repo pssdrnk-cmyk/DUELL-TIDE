@@ -85,6 +85,7 @@ static uint32_t sqm_best(uint32_t *score, uint32_t len)
     return b;
 }
 
+static volatile uint8_t sqm_sync = 1;                   /* SYNC: 0 OFF, 1 SOFT, 2 PUSH (tide_ui.c, the TIDE LIST; seq_rhythm.c, seq_dialogue.c) */
 static void sqm_refresh(uint32_t pi, int force);
 #include "seq_rhythm.c"
 

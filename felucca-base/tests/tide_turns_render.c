@@ -30,6 +30,8 @@ static void fl_plain_window_init(void) {}
 #define BPM 124u
 #define BARS 16u
 static const uint8_t STAB[16] = {0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0};   /* part 1: off-beat chords (steps 7, 11, 15) */
+static const uint8_t STABE[16] = {1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0};   /* SYNC demo: chords on beats 1 and 3 and the E of 2 and 4, to be pulled to the and */
+static uint32_t g_edit, g_sync = 1;                      /* g_edit: the phrase edits run (rhythm_poll), the SYNC demo's pattern */
 static const uint8_t LINE[16] = {1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0};   /* part 2: a bass line against them */
 
 static void setup(uint32_t fader, uint32_t seed)
@@ -69,7 +71,7 @@ static void setup(uint32_t fader, uint32_t seed)
         t->p[P_SGATE] = p ? 80 : 40;
         t->seq_active = 1;
         for (i = 0; i < 16u; i++)
-            if (p ? LINE[i] : STAB[i]) {
+            if (p ? LINE[i] : (g_edit ? STABE[i] : STAB[i])) {
                 t->step[i].time = ST_NOTE;
                 t->step[i].n = p ? 1 : 3;
                 t->step[i].note[0] = (uint8_t)(p ? 36 + (i % 4u) * 2u : 60 + (i % 3u) * 3u);
@@ -96,12 +98,15 @@ static uint32_t render(const char *path, uint32_t turns, uint32_t poly, uint32_t
     sqm_turns = (uint8_t)turns;
     sqm_poly = (uint8_t)poly;
     sqm_auto = 3;
+    sqm_sync = (uint8_t)g_sync;
     if (f)
         wav_hdr(f, n);
     transport_req = 1;
     for (t = 0; t < n; t += CTL) {
         events_block(CTL);
         sqm_auto = 3;
+        if (g_edit && (t / CTL) % 64u == 0u)
+            rhythm_poll(3);                    /* (the main loop's pass) */
         if (f)
             mix_block(ob, CTL);
         short_blocks += poly_len[0] || poly_len[1];
@@ -122,6 +127,17 @@ static uint32_t render(const char *path, uint32_t turns, uint32_t poly, uint32_t
 int main(int argc, char **argv)
 {
     const char *dir = argc > 1 ? argv[1] : ".";
+    if (argc > 2 && !strcmp(argv[2], "sync")) {
+        char q[512];
+        g_edit = 1;
+        g_sync = 0;
+        snprintf(q, sizeof q, "%s/sync_before_off.wav", dir);
+        render(q, 1, 0, 0, 5, 1);
+        g_sync = 2;
+        snprintf(q, sizeof q, "%s/sync_after_push.wav", dir);
+        render(q, 1, 0, 0, 5, 1);
+        return 0;
+    }
     char path[512];
     uint32_t seed, found = 0;
     /* a seed with a WIDE stretch inside the 16 bars (the first can start at the 8th loop) */

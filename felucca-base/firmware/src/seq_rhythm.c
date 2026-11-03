@@ -6,7 +6,7 @@
 #define RHYTHM_REPEAT 128u
 #define RHYTHM_REST 127u
 static int phrase_mutate(uint32_t pi, uint32_t seed);
-static int32_t phrase_direction(uint32_t pi, int32_t cur, uint32_t len, int32_t dir);
+static int32_t phrase_direction(uint32_t pi, int32_t cur, uint32_t len, int32_t dir, uint32_t seed);
 static uint8_t rhythm_map[NSHOWN][NSTEP] __attribute__((section(".pool")));
 static struct {
     uint32_t source[NSHOWN];
@@ -92,6 +92,38 @@ static void rhythm_apply(uint32_t pi, uint32_t len, step_t *out)
         out[dest] = source[i];
     }
 }
+/* Where stored step idx sits in the beat, against the FULL stored loop (never POLY's shortened one): SM_BEAT, E, AND, A (the push, a 16th before the
+ * beat), SM_ODD (a 32nd), or SM_NONE for a grid not supported (triplets, slow rates, 1/48s, a loop that is not a whole number of beats), which then
+ * behaves as before. Heavy swing (the sum, as step_samples) pulls the A towards the next beat: it counts as E. Main loop. */
+enum { SM_NONE, SM_BEAT, SM_E, SM_AND, SM_A, SM_ODD };
+static uint32_t tide_per(const track_t *t)      /* 32nds a step lasts (0: not a supported grid) */
+{
+    uint32_t d = (uint32_t)t->p[arp_mode(t) == AM_SEQ_ID ? P_ARATE : P_SDIV], per = d == 0u ? 8u : d == 1u ? 4u : d == 2u ? 2u : d == 3u ? 1u : 0u;
+    return per && !((sqm_len(t) * per) % 8u) ? per : 0u;
+}
+static uint32_t tide_metric(const track_t *t, uint32_t idx)
+{
+    uint32_t per = tide_per(t), p32;
+    if (!per)
+        return SM_NONE;
+    p32 = (idx * per) % 8u;
+    if (p32 == 6u && sw_old(t->p[P_SSWING]) + sw_old(song.g[G_SWING]) >= 60)
+        return SM_E;
+    return p32 == 0u ? SM_BEAT : p32 == 4u ? SM_AND : p32 == 6u ? SM_A : p32 == 2u ? SM_E : SM_ODD;
+}
+/* the part's attacks on the push in the bar of step idx, as reached (stored hit + offset), the one at skip left out (M7b's cap) */
+static uint32_t tide_pushes(uint32_t pi, uint32_t idx, uint32_t skip, uint32_t len)
+{
+    const track_t *t = &trk[pi];
+    uint32_t per = tide_per(t), n = 0, k;
+    for (k = 0; k < len && per; k++) {
+        int32_t at = (int32_t)k + rhythm_offset(pi, k);
+        if (k != skip && sqm_hit(&t->step[k]) && rhythm_map[pi][k] != RHYTHM_REST && at >= 0 && at < (int32_t)len &&
+            tide_metric(t, (uint32_t)at) == SM_A && (uint32_t)at * per / 32u == idx * per / 32u)
+            n++;
+    }
+    return n;
+}
 /* Move one onset from its reached position, retaining direction; never move an original anchor,
  * overwrite another attack or disturb held/ratcheted notes on either end. */
 static int rhythm_mutate(uint32_t pi, uint32_t seed)
@@ -105,13 +137,20 @@ static int rhythm_mutate(uint32_t pi, uint32_t seed)
         int32_t cur = (int32_t)i + rhythm_offset(pi, i);
         if (!(i % 4u) || !sqm_hit(&t->step[i]) || sqm_held(t->step, i, len) ||
             rhythm_map[pi][i] == RHYTHM_REST) continue;
-        int32_t preferred = phrase_direction(pi, cur, len, rhythm.dir[pi]);
+        int32_t preferred = phrase_direction(pi, cur, len, rhythm.dir[pi], seed);
+        if (sqm_sync && tide_metric(t, 0) != SM_NONE && tide_metric(t, (uint32_t)cur) == SM_AND && sqm_hash(seed, i, 0x5Du) % 4u < (sqm_sync == 2u ? 3u : 2u))
+            continue;                                /* SYNC: a hit that sits on the "and" tends to stay */
         for (uint32_t attempt = 0; attempt < 2u; attempt++) {
             int32_t dir = attempt ? -preferred : preferred;
             int32_t dest = cur + dir;
             if (dest <= 0 || dest >= (int32_t)len ||
                 ((rhythm_map[pi][i] & RHYTHM_REPEAT) && (uint32_t)dest == i)) continue;
             if ((uint32_t)dest != i && !sqm_target(t->step, (uint32_t)dest, len)) continue;
+            if (sqm_sync && tide_metric(t, 0) != SM_NONE) {          /* SYNC: never onto a real beat; the push is an accent (M7b) */
+                uint32_t m = tide_metric(t, (uint32_t)dest);
+                if (m == SM_BEAT || (m == SM_A && (tide_pushes(pi, (uint32_t)dest, i, len) >= (sqm_sync == 2u ? 2u : 1u) ||
+                                                   sqm_hit(&t->step[((uint32_t)dest + 1u) % len])))) continue;
+            }
             int ok = 1;
             for (uint32_t k = 0; k < len; k++)
                 if (k != i && sqm_hit(&t->step[k]) && rhythm_map[pi][k] != RHYTHM_REST &&

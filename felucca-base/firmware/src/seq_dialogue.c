@@ -129,11 +129,19 @@ static int phrase_peer_attack(uint32_t pi, uint32_t dest)
     }
     return 0;
 }
-static int32_t phrase_direction(uint32_t pi, int32_t cur, uint32_t len, int32_t dir)
+static int32_t phrase_direction(uint32_t pi, int32_t cur, uint32_t len, int32_t dir, uint32_t seed)
 {
     int32_t a = cur + dir, b = cur - dir;
-    if (a > 0 && b > 0 && a < (int32_t)len && b < (int32_t)len &&
-        phrase_peer_attack(pi, (uint32_t)a) > phrase_peer_attack(pi, (uint32_t)b))
-        return -dir;
+    if (a > 0 && b > 0 && a < (int32_t)len && b < (int32_t)len) {
+        if (sqm_sync && tide_metric(&trk[pi], 0) != SM_NONE) {   /* SYNC: the "and" and the push over the other 16ths; the peer's attack stays the stronger term */
+            static const uint8_t W[6] = {0, 0, 1, 3, 2, 1};
+            uint32_t sa = (phrase_peer_attack(pi, (uint32_t)a) ? 0u : 4u) + W[tide_metric(&trk[pi], (uint32_t)a)];
+            uint32_t sb = (phrase_peer_attack(pi, (uint32_t)b) ? 0u : 4u) + W[tide_metric(&trk[pi], (uint32_t)b)];
+            if (sa != sb && sqm_hash(seed, (uint32_t)cur, 0x5Cu) % 24u < (sqm_sync == 2u ? 21u : 16u))
+                return sa > sb ? dir : -dir;
+        }
+        if (phrase_peer_attack(pi, (uint32_t)a) > phrase_peer_attack(pi, (uint32_t)b))
+            return -dir;
+    }
     return dir;
 }

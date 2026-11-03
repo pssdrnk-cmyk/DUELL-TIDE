@@ -165,6 +165,7 @@ static void offset_trace(unsigned detail, unsigned external)
 static void dialogue_choices(void)
 {
     unsigned collisions=0, independent=0, moves=0;
+    sqm_sync=0;   /* the M1 fixture is the OFF regression: SYNC SOFT keeps a hit on the "and" in place more often (tideturns covers SYNC) */
     for(unsigned pi=0;pi<2;pi++) for(unsigned seed=0;seed<32;seed++) {
         setup(1,1,120,50);
         for(unsigned p=0;p<2;p++) {
@@ -259,7 +260,7 @@ int main(void)
     trk[0].seq_pos = trk[1].arp_pos = 0;
     trk[1].step[2].time = ST_NOTE; trk[1].step[2].n = 1;
     trk[1].step[4].time = ST_REST;
-    CHECK("direction prefers the eligible neighboring gap", phrase_direction(0,3,8,-1) == 1);
+    CHECK("direction prefers the eligible neighboring gap", phrase_direction(0,3,8,-1,1) == 1);
     printf("M1 dialogue: %u checks, %u failures\n", checks, failures);
     return failures != 0;
 }
