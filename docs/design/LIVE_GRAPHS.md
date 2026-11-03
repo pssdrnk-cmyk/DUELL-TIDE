@@ -29,5 +29,5 @@ List pages (MULTIS, PATTERNS, SAVE) and the TIDE pages: no motion.
 Geometry is read from the pictures (76-row card, `GOY`, x 12..226); the pictures are not touched. Colours are tokens only: playhead `T_ACCENT`, dot `T_TEXT`, lit curve `T_ACCENT` (the text tone where a light palette makes the accent the part colour), tracks `T_RAISE`, label `T_MID`: dark and light palettes read. Cost (measured, basic blocks): a picture redraw 87..150 k, so animation = redraw rate; MATRIX bars as strips cost ~500 per frame instead of 161 k.
 
 ## Better than the old version
-- about 40 % less code (one marker, one sweep, one clock, one curve walk; goal under 400 lines against 535 old / 629 first port);
+- less code: 500 lines against 535 old / 629 first port (one marker, one sweep, one clock, one curve walk; the pictures' geometry is still repeated, they are not touched);
 - PREVIEW looks and behaves the same everywhere; frame-rate independent creep; no hand-kept per-voice dots; matrix without page redraws; FM6 pages follow the real operator envelope.

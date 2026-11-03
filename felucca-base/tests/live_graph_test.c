@@ -114,11 +114,11 @@ static mv_t moves_env(uint32_t n, uint32_t r, uint32_t ms)
         frames(ms);
         h = panel_hash();
         m.active += lv.n;
-        if (lv.n && (lv.ex != ox || lv.ey != oy))
+        if (lv.n && (lv.x != ox || lv.y != oy))
             m.pos++;
         if (h != hs)
             m.img++;
-        ox = lv.ex, oy = lv.ey, hs = h;
+        ox = lv.x, oy = lv.y, hs = h;
     }
     return m;
 }
@@ -133,11 +133,11 @@ static mv_t moves_lx(uint32_t n, uint32_t r, uint32_t ms)
         frames(ms);
         h = panel_hash();
         m.active += lv.n;
-        if (lv.n && (lv.lx != ox || lv.ly != oy))
+        if (lv.n && (lv.x != ox || lv.y != oy))
             m.pos++;
         if (h != hs)
             m.img++;
-        ox = lv.lx, oy = lv.ly, hs = h;
+        ox = lv.x, oy = lv.y, hs = h;
     }
     return m;
 }
@@ -159,28 +159,31 @@ static void t_env(void)
     voice_at(t, 0, 1, 1 << 23);
     frames(400);
     expect("ENV the playhead: the latest note, half way up the attack", lv.kind == LV_ENV && lv.n == 1u &&
-           lv.ex == 12 + a / 2 && lv.ey == bot - 500 * (bot - top) / 1000);
+           lv.x == 12 + a / 2 && lv.y == bot - 500 * (bot - top) / 1000);
     voice_at(t, 1, 2, 80 << 17);                     /* (another voice: not followed) */
     frames(100);
-    expect("ENV one playhead only: the latest note's, not another voice's", lv.ex == 12 + a / 2);
+    expect("ENV one playhead only: the latest note's, not another voice's", lv.x == 12 + a / 2);
     t->v[1].active = 0;
     voice_at(t, 0, 2, (80 << 17) + (1 << 22));
     frames(400);
-    expect("ENV decay above SUS: on the decay, before its end", lv.ex > x1 && lv.ex < x1 + d);
+    expect("ENV decay above SUS: on the decay, before its end", lv.x > x1 && lv.x < x1 + d);
     voice_at(t, 0, 2, 80 << 17);
     frames(200);
-    was = lv.ex;
+    was = lv.x;
     frames(400);
-    expect("ENV held at SUS: on the sustain line, creeping along it", lv.ex >= x1 + d && lv.ex > was && lv.ex < x3 &&
-           abs(lv.ey - (bot - sus * (bot - top) / 1000)) <= 1);
+    expect("ENV held at SUS: on the sustain line, creeping along it", lv.x >= x1 + d && lv.x > was && lv.x < x3 &&
+           abs(lv.y - (bot - sus * (bot - top) / 1000)) <= 1);
+    was = lv.x;
+    frames(1008);
+    expect("ENV the creep on a held sustain is 8 px a second, whatever the look rate", lv.x - was >= 7 && lv.x - was <= 9);
     shot("env");
     voice_at(t, 0, 3, (80 << 17) / 4);
     frames(400);
-    expect("ENV released, at a quarter of SUS: on the release, falling", lv.ex > x3 && lv.ex <= x3 + r && lv.ey > bot - sus * (bot - top) / 1000);
+    expect("ENV released, at a quarter of SUS: on the release, falling", lv.x > x3 && lv.x <= x3 + r && lv.y > bot - sus * (bot - top) / 1000);
     t->p[P_REL] = 127;
     voice_at(t, 0, 3, 1 << 14);
     frames(80);
-    expect("a morph lengthening RELEASE mid-note keeps the playhead inside the panel", lv.ex <= 227);
+    expect("a morph lengthening RELEASE mid-note keeps the playhead inside the panel", lv.x <= 227);
     quiet(t);
     frames(400);
     expect("ENV no note: no playhead", lv.n == 0u);
@@ -213,14 +216,14 @@ static void t_env_early_release(void)
     t->m_vi = 0;
     voice_at(t, 0, 2, 600 << 14);                    /* (decaying, well above SUS) */
     frames(80);
-    at = lv.ex, ay = lv.ey;
+    at = lv.x, ay = lv.y;
     lv_eg(t, P_ATK, &g);
     voice_at(t, 0, 3, 590 << 14);
     frames(80);
-    expect("ENV released during the decay: the playhead stays where it was (no jump to the sustain end)", lv.n && lv.estg == 3u && abs(lv.ex - at) <= 2 && lv.ex < g.x3);
+    expect("ENV released during the decay: the playhead stays where it was (no jump to the sustain end)", lv.n && lv.estg == 3u && abs(lv.x - at) <= 2 && lv.x < g.x3);
     voice_at(t, 0, 3, 100 << 14);
     frames(80);
-    expect("ENV the early release falls on from the observed level", lv.ex > at && lv.ey > ay);
+    expect("ENV the early release falls on from the observed level", lv.x > at && lv.y > ay);
     shot("env_early_release");
     quiet(t);
     frames(80);
@@ -287,10 +290,10 @@ static void t_fm6(void)
     saved_state = (uint32_t)fm6_note_of(t, &t->v[t->m_vi % NVOICE])->env[5].level;
     frames(64);
     expect("FM6 live drawing never advances the audio envelope", saved_state == (uint32_t)fm6_note_of(t, &t->v[t->m_vi % NVOICE])->env[5].level);
-    go_title("AMP DEST"); frames(80); x = lv.ex;
+    go_title("AMP DEST"); frames(80); x = lv.x;
     expect("FM6 AMP DEST draws the operator envelope (graph_fm6env), live", lv.kind == LV_FMENV && TIDE_AMPDEST_FM6(cur_page(), t));
     render(22); frames(64);
-    expect("FM6 AMP DEST also follows its real operator envelope", lv.kind == LV_FMENV && lv.n && lv.ex != x);
+    expect("FM6 AMP DEST also follows its real operator envelope", lv.kind == LV_FMENV && lv.n && lv.x != x);
     shot("fm6_amp_dest_live");
     go_title("AMP ENV"); frames(80);
     expect("FM6 AMP ENV (the unused generic ADSR): no playhead", lv.kind == LV_NONE && !TIDE_AMPDEST_FM6(cur_page(), t));
@@ -353,15 +356,15 @@ static void t_lfo(void)
     t->lfo_ph = ph0 + 100u * LV_LFO_STEP + 7u;
     frames(80);
     shot("lfo");
-    expect("LFO 1 the playhead at the phase (100 px into the first cycle), the dot on the wave", lv.kind == LV_LFO && lv.lx == 100 && lv.ly == lv_lfo_y(t, 0, 100));
-    x = PANEL_X0 + lv.lx;
-    expect("LFO 1 the dot is on the screen (TEXT)", px(x, Y_GRAPH + GOY + lv.ly) == T_TEXT);
+    expect("LFO 1 the playhead at the phase (100 px into the first cycle), the dot on the wave", lv.kind == LV_LFO && lv.x == PANEL_X0 + 100 && lv.y == lv_lfo_y(t, 0, 100));
+    x = lv.x;
+    expect("LFO 1 the dot is on the screen (TEXT)", px(x, Y_GRAPH + GOY + lv.y) == T_TEXT);
     t->lfo_ph = ph0 + 10u * LV_LFO_STEP + 7u;
     frames(80);
-    expect("LFO 1 after a wrap: the second cycle", lv.lx == 120);
+    expect("LFO 1 after a wrap: the second cycle", lv.x == PANEL_X0 + 120);
     t->lfo_ph = ph0 + 5u * LV_LFO_STEP + 7u;
     frames(80);
-    expect("LFO 1 after the next wrap: the first again", lv.lx == 5);
+    expect("LFO 1 after the next wrap: the first again", lv.x == PANEL_X0 + 5);
 }
 static void t_lfo_audio(void)
 {
@@ -406,31 +409,31 @@ static void t_lfo2(void)
     render(32); frames(80);
     m = moves_lx(24, 0, 80);
     expect("LFO 2 unused: its silent preview moves (the picture too) while the real generator remains idle", lv.kind == LV_LFO &&
-           lv.n && lv.preview_id && m.pos >= 10 && m.img >= 10 && !lv_l2_on(t) && t->lfo2.ph == ph);
+           lv.n && lv.pv && m.pos >= 10 && m.img >= 10 && !lv_l2_on(t) && t->lfo2.ph == ph);
     shot("lfo2_unrouted");
     t->p[P_M1SRC] = MS_LFO2, t->p[P_M1DST] = MD_CUT, t->p[P_M1AMT] = 16;
     morph_rebase_part(song.sel); render(8); frames(80);
-    expect("LFO 2 routed in the matrix: the real phase", lv_l2_on(t) && lv.n && !lv.preview_id && t->lfo2.ph != ph);
-    x = lv.lx; render(32); frames(80);
-    expect("LFO 2 playhead advances with the audio and stays on its own wave", lv.lx != x && lv.ly == lv_lfo_y(t, 1, lv.lx));
+    expect("LFO 2 routed in the matrix: the real phase", lv_l2_on(t) && lv.n && !lv.pv && t->lfo2.ph != ph);
+    x = lv.x; render(32); frames(80);
+    expect("LFO 2 playhead advances with the audio and stays on its own wave", lv.x != x && lv.y == lv_lfo_y(t, 1, lv.x - PANEL_X0));
     ph = t->lfo2.ph; frames(64);
     expect("LFO 2 display never ticks the generator", t->lfo2.ph == ph);
     for (i = 0; i < NELEM(pages); i++) {
         go_title(pages[i]); frames(80);
-        expect(pages[i], lv_lfo2_page(cur_page()) && lv.kind == LV_LFO && lv.n && lv.ly == lv_lfo_y(t, 1, lv.lx));
+        expect(pages[i], lv_lfo2_page(cur_page()) && lv.kind == LV_LFO && lv.n && lv.y == lv_lfo_y(t, 1, lv.x - PANEL_X0));
     }
     shot("lfo2_running");
     t->p[P_M1AMT] = 0;
     morph_rebase_part(song.sel); render(8); frames(80);
-    expect("LFO 2 matrix amount zero: back to the silent preview", !lv_l2_on(t) && lv.n && lv.preview_id);
+    expect("LFO 2 matrix amount zero: back to the silent preview", !lv_l2_on(t) && lv.n && lv.pv);
     t->p[P_TWTYPE] = TT_LP, XV(t, X_LFO2) = 16;
     morph_rebase_part(song.sel); render(8); frames(80);
-    expect("LFO 2 TWIN-only depth keeps its live display active", lv_l2_on(t) && lv.n && !lv.preview_id);
+    expect("LFO 2 TWIN-only depth keeps its live display active", lv_l2_on(t) && lv.n && !lv.pv);
     t->p[P_TWTYPE] = TT_OFF;
     morph_rebase_part(song.sel); render(8); frames(80);
-    expect("LFO 2 a disabled TWIN filter uses the silent preview", !lv_l2_on(t) && lv.n && lv.preview_id);
+    expect("LFO 2 a disabled TWIN filter uses the silent preview", !lv_l2_on(t) && lv.n && lv.pv);
     go_title("LFO 1"); frames(80);
-    expect("LFO 1 retains its always-running playhead", lv.kind == LV_LFO && lv.n && !lv.preview_id);
+    expect("LFO 1 retains its always-running playhead", lv.kind == LV_LFO && lv.n && !lv.pv);
     ui_prefs |= PREF_ANIM_OFF; go_title("LFO 2"); frames(80);
     ph = panel_hash(); frames(200);
     expect("LFO 2 with ANIM OFF: no preview, the picture static", lv.kind == LV_NONE && ph == panel_hash());
@@ -458,27 +461,27 @@ static void t_cycle(void)
     render(2); go_title("CYCLE ENV 2/2"); frames(80);
     m = moves_lx(24, 0, 80);
     expect("CYCLE unused: its preview moves (the picture too) without enabling the audio generator", lv.kind == LV_CYCLE &&
-           lv.n && lv.preview_id && m.pos >= 10 && m.img >= 10 && !t->cy);
+           lv.n && lv.pv && m.pos >= 10 && m.img >= 10 && !t->cy);
     shot("cycle_unrouted");
     t->p[P_M1SRC] = MS_CYCLE, t->p[P_M1DST] = MD_CUT, t->p[P_M1AMT] = 16;
     morph_rebase_part(song.sel);
-    render(4); frames(80); x = lv.lx; frames(160);
+    render(4); frames(80); x = lv.x; frames(160);
     expect("CYCLE routed but with no sounding note still has an animated silent preview", t->cy &&
-           lv.n && lv.preview_id && lv.lx != x);
+           lv.n && lv.pv && lv.x != x);
     trk_note_on(t, 60, 100); render(4); frames(80);
     vi = t->m_vi % NVOICE; v = &t->v[vi];
     lv_cy_geom(t, &g);
-    expect("CYCLE routed: the latest sounding note has a playhead on its rise", t->cy && lv.n && !lv.preview_id &&
-           cy_st[song.sel][vi] == 1 && lv.lx >= g.x0 && lv.lx < g.x0 + g.rw);
-    x = lv.lx; render(20); frames(80);
-    expect("CYCLE real audio ticks advance the playhead", lv.lx > x);
+    expect("CYCLE routed: the latest sounding note has a playhead on its rise", t->cy && lv.n && !lv.pv &&
+           cy_st[song.sel][vi] == 1 && lv.x >= g.x0 && lv.x < g.x0 + g.rw);
+    x = lv.x; render(20); frames(80);
+    expect("CYCLE real audio ticks advance the playhead", lv.x > x);
     lin = cy_lin[song.sel][vi]; y = cy_y[song.sel][vi]; st = cy_st[song.sel][vi];
     frames(64);
     expect("CYCLE display reads the state without advancing or changing it", cy_lin[song.sel][vi] == lin &&
            cy_y[song.sel][vi] == y && cy_st[song.sel][vi] == st);
     XV(t, X_CYCURVE) = 40; morph_rebase_part(song.sel);
     render(12); frames(80);
-    expect("CYCLE curved rise: the dot uses the actual generated value", lv.ly == g.base -
+    expect("CYCLE curved rise: the dot uses the actual generated value", lv.y == g.base -
            (int32_t)cycle_value(t, v) * (g.base - g.top) / 32768);
     shot("cycle_rise");
     m = moves_lx(40, 14, 80);
@@ -487,11 +490,11 @@ static void t_cycle(void)
     for (i = 0; i < 500 && cy_st[song.sel][vi] != 2; i++) render(1);
     render(10); frames(80);
     expect("CYCLE fall travels to the right on the falling half", cy_st[song.sel][vi] == 2 &&
-           lv.lx >= g.x0 + g.rw && lv.ly == g.base - (int32_t)cycle_value(t, v) * (g.base - g.top) / 32768);
+           lv.x >= g.x0 + g.rw && lv.y == g.base - (int32_t)cycle_value(t, v) * (g.base - g.top) / 32768);
     shot("cycle_fall");
     go_title("CYCLE ENV 1/2"); frames(80); lv_cy_geom(t, &g);
     expect("CYCLE first page uses its time-proportioned repeated shape", lv.n && g.n == 3 &&
-           lv.lx >= g.x0 && lv.lx <= g.x0 + g.n * g.cw);
+           lv.x >= g.x0 && lv.x <= g.x0 + g.n * g.cw);
     shot("cycle_overview");
     ui_prefs |= PREF_ANIM_OFF; frames(80);
     expect("CYCLE respects ANIM OFF", lv.kind == LV_NONE);
@@ -499,13 +502,13 @@ static void t_cycle(void)
     expect("CYCLE a stationary audio state does not redraw repeatedly", redraws(20, 0) == 0);
     XV(t, X_CYSYNC) = 1, XV(t, X_CYRISE) = 42, XV(t, X_CYFALL) = 42;
     morph_rebase_part(song.sel); render(4); frames(80); lv_cy_geom(t, &g);
-    expect("CYCLE SYNC uses the same live state and note-value geometry", lv.n && lv.lx >= g.x0 && lv.lx <= g.x0 + g.n * g.cw);
+    expect("CYCLE SYNC uses the same live state and note-value geometry", lv.n && lv.x >= g.x0 && lv.x <= g.x0 + g.n * g.cw);
     XV(t, X_CYMODE) = 1; morph_rebase_part(song.sel);
     cycle_start(t, v, 0); render(800); frames(80); lv_cy_geom(t, &g);
     expect("CYCLE ONCE ends at zero and the end of its single shape", cy_st[song.sel][vi] == 0 && lv.n &&
-           lv.lx == g.x0 + g.cw && lv.ly == g.base);
+           lv.x == g.x0 + g.cw && lv.y == g.base);
     t->p[P_M1AMT] = 0; morph_rebase_part(song.sel); render(2); frames(80);
-    expect("CYCLE amount zero switches to a silent preview", !t->cy && lv.n && lv.preview_id);
+    expect("CYCLE amount zero switches to a silent preview", !t->cy && lv.n && lv.pv);
     quiet(t); frames(80);
     song.sel = 1; t = TSEL;
     fm_bass2(t);
@@ -517,7 +520,7 @@ static void t_cycle(void)
     go_title("CYCLE ENV 2/2"); trk_note_on(t, 60, 100); render(8); frames(80);
     lv_cy_geom(t, &g); vi = t->m_vi % NVOICE;
     expect("CYCLE follows FM BASS 2 on part 2 using that part's actual generator", t->cy && lv.n &&
-           t->v[vi].active && cy_st[1][vi] == 1 && lv.ly == g.base -
+           t->v[vi].active && cy_st[1][vi] == 1 && lv.y == g.base -
            (int32_t)cycle_value(t, &t->v[vi]) * (g.base - g.top) / 32768);
     shot("cycle_fm6"); quiet(t); frames(80);
     song.sel = 0;
@@ -611,11 +614,11 @@ static void t_ins(void)
     ins[(uint32_t)(t - trk) % NLIVE].ph = 40u * LV_LFO_STEP + 9u;
     frames(80);
     shot("insert");
-    expect("INSERT CHORUS: the playhead at the sweep's phase (40 px), the dot on the sine", lv.kind == LV_INS && lv.lx == 40 &&
-           px(PANEL_X0 + 40, Y_GRAPH + GOY + lv.ly) == T_TEXT);
+    expect("INSERT CHORUS: the playhead at the sweep's phase (40 px), the dot on the sine", lv.kind == LV_INS && lv.x == PANEL_X0 + 40 &&
+           px(lv.x, Y_GRAPH + GOY + lv.y) == T_TEXT);
     ins[(uint32_t)(t - trk) % NLIVE].ph = 90u * LV_LFO_STEP + 9u;
     frames(80);
-    expect("INSERT the playhead moves with the phase", lv.lx == 90);
+    expect("INSERT the playhead moves with the phase", lv.x == PANEL_X0 + 90);
     t->p[P_ITYPE] = IT_SOFT;
     frames(80);
     expect("INSERT a drive (no sweep): no playhead", lv.kind == LV_NONE);
