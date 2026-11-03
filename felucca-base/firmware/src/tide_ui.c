@@ -147,8 +147,9 @@ static uint32_t jl_get(uint32_t r)
 static const char *jl_vname(uint32_t r, uint32_t v)
 {
     static const char *const VARY[2] = {"4 + 8", "ALL"}, *const ROLL[3] = {"MUSIC", "SMART", "WILD"}, *const SW[2] = {"OFF", "ON"},
-                             *const WL[4] = {"OFF", "LOW", "MID", "HIGH"};
-    return r == JL_TARGET ? GL_TARGET_NAME[v % 3u] : r == JL_VARY ? VARY[v & 1u] : r == JL_ROLL ? ROLL[v % 3u] : r == JL_WASH ? WL[v & 3u] : SW[v & 1u];
+                             *const WL[4] = {"OFF", "LOW", "MID", "HIGH"},
+                             *const TURNS[2] = {"TOGETHER", "TAKE TURNS"}, *const POLY[3] = {"OFF", "GENTLE", "WIDE"};
+    return r == JL_TURNS ? TURNS[v & 1u] : r == JL_POLY ? POLY[v % 3u] : r == JL_TARGET ? GL_TARGET_NAME[v % 3u] : r == JL_VARY ? VARY[v & 1u] : r == JL_ROLL ? ROLL[v % 3u] : r == JL_WASH ? WL[v & 3u] : SW[v & 1u];
 }
 static void jl_put(uint32_t r, uint32_t v)
 {
