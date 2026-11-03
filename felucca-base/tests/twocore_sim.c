@@ -499,7 +499,7 @@ static void sim_block(int32_t *out, uint32_t n)
         if (lo > (int32_t)R->lim_max_over)
             R->lim_max_over = (uint32_t)lo;
 #if TC_MEAS
-        R->cap_viol += (int32_t)(tcr.dl - tcr.cap) > 0;
+        R->cap_viol += !tcr.nott && (int32_t)(tcr.dl - tcr.cap) > 0;   /* (item 90: a block of no take-over is posted at the wait limit, which is past the cap by design) */
 #endif
         R->nott += tcr.nott != 0u;
         R->dl_sum[b % TCR_BLOCKS] += tcr.dl - tcr.t0;
@@ -753,6 +753,10 @@ int main(int argc, char **argv)
                              s, FNAME[f], ow, c->own, hs, hr2, hm, m->n, vb, m->nv, m->badclk);
                     expect(what, ow == c->own && hs == m->n && hr2 == m->n && hm == m->n && vb == m->nv && m->badclk == 0 && m->nv <= c->vlate && m->n <= m->posted);
                 }
+                if (c->pauses > 0 && (f == F_LATE_RUN || f == F_NOANS)) {   /* (the own split names the pause: with DUELL 1.1 item 142 no block has 'deadline already past' in these runs, so the pause is the reason that must show) */
+                    snprintf(what, sizeof what, "scene %u %s: blocks with no job because the jobs are paused are counted as such (%u, pauses %u)", s, FNAME[f], m->own[TCM_OWN_PAUSE], c->pauses);
+                    expect(what, m->own[TCM_OWN_PAUSE] > 0);
+                }
                 snprintf(what, sizeof what, "scene %u %s: no deadline was later than core 0's own latest moment to play part 2 (%u posted jobs over it)", s, FNAME[f], r.cap_viol);
                 expect(what, r.cap_viol == 0);
                 if (f == F_NONE) {
@@ -870,9 +874,9 @@ int main(int argc, char **argv)
                 expect(what, c->vlate <= 2u + c->blocks / 150u && c->pauses == 0 && c->silent == 0 && !r.strike && r.up);
                 break;
             case F_FLOORX:
-                snprintf(what, sizeof what, "scene %u floorx: a job that cannot fit before the latest deadline is not given: own because of the floor %u blocks, very late %u in %u halves (core 1 is tried again when the measured time has faded out), no pause, no silent block, no strike", s,
-                         r.m.own[TCM_OWN_FL], c->vlate, c->blocks / 4u);
-                expect(what, r.m.own[TCM_OWN_FL] >= c->blocks / 16u && c->vlate <= 2u + c->blocks / 150u && c->pauses == 0 && c->silent == 0 && !r.strike && r.up);
+                snprintf(what, sizeof what, "scene %u floorx: a job that cannot fit before the latest deadline is not given: own because of the floor %u blocks, or posted with no take-over because of it (DUELL 1.1 item 90: under the two-core rule a floor that does not fit leaves the job posted at the wait limit, nott %u), very late %u in %u halves (core 1 is tried again when the measured time has faded out), no pause, no silent block, no strike", s,
+                         r.m.own[TCM_OWN_FL], r.nott, c->vlate, c->blocks / 4u);
+                expect(what, r.m.own[TCM_OWN_FL] + r.nott >= c->blocks / 16u && c->vlate <= 2u + c->blocks / 150u && c->pauses == 0 && c->silent == 0 && !r.strike && r.up);
                 break;
             case F_NOFLOOR:
                 snprintf(what, sizeof what, "scene %u nofloor: with the floor off the same slow job is very late again and again (%u in %u halves), nothing pauses, no own because of the floor (%u)", s, c->vlate, c->blocks / 4u, r.m.own[TCM_OWN_FL]);

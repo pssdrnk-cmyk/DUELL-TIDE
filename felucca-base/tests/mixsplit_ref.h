@@ -45,7 +45,7 @@ static __attribute__((noinline)) int32_t ref_mix_ramp(const int32_t *b, uint32_t
         } else {
             l = lq >> 8, sc = cq >> 8, sd = dq >> 8, sr = rq >> 8, gli = glq >> 16, gri = grq >> 16;
         }
-        x = ((b[i] >> 2) * l) >> 10;
+        x = (b[i] * (l >> 2)) >> 10;
         a = x < 0 ? -x : x;
         xs = clamp(x, -xmax, xmax);
         if (a > pk)
@@ -74,8 +74,8 @@ static void ref_mix_part(track_t *t, uint32_t n)
     if (track_render(t, b, n))
         t->tail = t->p[P_ITYPE] ? 64 : 16;              /* blocks of DIST / INSERT state to run out after the last
                                                          * voice (the INSERT's: 46 ms, a flanger's feedback) */
-    else if (!t->tail || !(t->p[P_DIST] | t->p[P_ITYPE] | t->p[P_EQLG] | t->p[P_EQMG] | t->p[P_EQHG]) ||
-             pfx_x[(uint32_t)(t - trk) % NLIVE] == 32768 || !--t->tail) {   /* (0.2.14 MODULES PART FX OFF: no DIST / INSERT tail to run out) */
+    else if ((!(t->p[P_DIST] | t->p[P_ITYPE] | t->p[P_EQLG] | t->p[P_EQMG] | t->p[P_EQHG]) ||
+              pfx_x[(uint32_t)(t - trk) % NLIVE] == 32768) ? (t->tail = 0, 1) : (!t->tail || !--t->tail)) {   /* (0.2.14 MODULES PART FX OFF: no DIST / INSERT tail to run out; DUELL 1.1 item 135: nothing to run out, the count ends) */
         if (trk[0].eqlv | trk[1].eqlv)                  /* (the old eq_live byte: any part) */
             eq_rest(t);                                 /* (the EQ's states clear with the tail) */
         pfx_snap(t, &ref_bs);                                    /* (PART FX: what is asked, at once: nothing sounds) */
@@ -170,7 +170,7 @@ static void ref_mix_part(track_t *t, uint32_t n)
         } else if (ramp) {
             int32_t glq = pan_g[pp][0] << 16, grq = pan_g[pp][1] << 16, dgl = ((gl - pan_g[pp][0]) << 16) / (int32_t)n, dgr = ((gr - pan_g[pp][1]) << 16) / (int32_t)n;
             for (i = 0; i < n; i++) {
-                int32_t x = ((b[i] >> 2) * lvl) >> 10, a = x < 0 ? -x : x;
+                int32_t x = (b[i] * LV4(lvl)) >> 10, a = x < 0 ? -x : x;
                 int32_t xs = clamp(x, -xmax, xmax);
                 if (a > pk)
                     pk = a;
@@ -187,7 +187,7 @@ static void ref_mix_part(track_t *t, uint32_t n)
             }
         } else
         for (i = 0; i < n; i++) {
-            int32_t x = ((b[i] >> 2) * lvl) >> 10, a = x < 0 ? -x : x;   /* pre-shift: 8 loud voices */
+            int32_t x = (b[i] * LV4(lvl)) >> 10, a = x < 0 ? -x : x;   /* pre-shift: 8 loud voices */
             int32_t xs = clamp(x, -xmax, xmax);         /* sends: mulq15 would overflow */
             if (a > pk)
                 pk = a;
@@ -249,7 +249,7 @@ static void ref_mix_block(int32_t *out, uint32_t n)
         dm_step();                                      /* DUELL step 5: the MODE changing (the dip) */
     if (snd_st != SND_ON || (mods_off & MODS_SENDS) || snd_panic)
         snd_step();                                     /* DUELL 0.2.14 MODULES SENDS: OFF, fading, clearing its lines */
-    sp_tap = snd_st != SND_OFF && (perf_space > 0 || sv.spc > 0);   /* (SPACE right of the middle, or gliding there: the parts' dry mix for its floor) */
+    sp_tap = snd_st != SND_OFF && (perf_space + mod_space_off() > 0 || sv.spc > 0);   /* (SPACE right of the middle, or gliding there: the parts' dry mix for its floor) */
     if (sp_tap)
         memset(sp_fc, 0, sizeof sp_fc), memset(sp_fd, 0, sizeof sp_fd), memset(sp_fr, 0, sizeof sp_fr);
     if (perf_idle()) {                                  /* PERFORM (perform.c) idle: nothing but its 1/16's clock */
@@ -328,8 +328,8 @@ static void ref_mix_block(int32_t *out, uint32_t n)
         return;
     }
     for (i = 0; i < n; i++) {
-        int32_t l = (((mix_l[i] + wet[i]) >> 2) * mg) >> 10;
-        int32_t r = (((mix_r[i] + wet[i]) >> 2) * mg) >> 10;
+        int32_t l = ((mix_l[i] + wet[i]) * LV4(mg)) >> 10;
+        int32_t r = ((mix_r[i] + wet[i]) * LV4(mg)) >> 10;
         master_out(&l, &r);
         out[2u * i] = l;
         out[2u * i + 1u] = r;
