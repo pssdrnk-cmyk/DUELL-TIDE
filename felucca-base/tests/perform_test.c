@@ -29,6 +29,7 @@
  *             the cost of SPACE +100 per reverb model, STEREO and DUEL
  *   COST      the song's instructions a sample, idle and with each effect (proc_pid_rusage) */
 #define UI_TEST_NO_MAIN 1
+#define UI_TEXT_CAPTURE 1                                 /* (a card read from the texts drawn: ui_test.c card_match) */
 #define CHO_NOSKIP 1   /* 0.2.21: the plain bus leaves the chorus out of silent blocks (fx_bus.c cho_zrun); the cost checks here measure PERFORM's own stages against an idle mix, and SPACE's send floors would switch the chorus on in it (the always-running chorus of before is what they were set against; chorusskip_test.c proves the skip invisible) */
 #include "ui_test.c"
 #include <sys/wait.h>
@@ -51,12 +52,13 @@ static void fresh(void)
 }
 static void settle(void) { frames(600); }
 static uint32_t wkey(uint32_t p) { return key_at(0, p); }   /* white key p (0 = F3) */
-static int card_is(uint32_t c, const char *label, const char *val)   /* the card's cache key: "LABEL|VALUE|UNIT..." */
+static int card_is(uint32_t c, const char *label, const char *val)   /* the card shows the label and the value (read from the texts drawn: ui.col is a hash since 1.1) */
 {
-    char want[40];
-    snprintf(want, sizeof want, "%s|%s|", label, val);
-    return !strncmp(ui.col[c], want, strlen(want));
+    char want[48];
+    snprintf(want, sizeof want, "%s|%s", label, val);
+    return card_match(c, want);
 }
+static int bal(int32_t base, int32_t pos, int k) { return perf_bal_level(base, pos, k == 0 ? pos > 0 : pos < 0); }   /* LEVEL k after BALANCE at detent pos (ui_input.c perf_balance) */
 static const char *title_now(void) { return cur_page()->title; }
 static int under_is(const char *t) { return str_eq(PAGES[ui.page].title, t); }
 static void perform_on(void) { hold(B_FX); frame(); }
@@ -86,11 +88,11 @@ static void t_entry(void)
     frames(500);
     btn_up(B_FX);
     frames(32);
-    expect("  FX held 0.5 s (under the hold): a tap, the next FX page", !ui.perf && str_eq(title_now(), "INSERT 1/2"));
+    expect("  FX held 0.5 s (under the hold): a tap, the next FX page", !ui.perf && str_eq(title_now(), "SEND FX"));
     perform_on();
     hold(B_FX);
     frames(32);
-    expect("FX held again in PERFORM: off, back to the page under it", !ui.perf && str_eq(title_now(), "INSERT 1/2"));
+    expect("FX held again in PERFORM: off, back to the page under it", !ui.perf && str_eq(title_now(), "SEND FX"));
     go_main_to(HP_MORPH);
     frames(32);
     perform_on();
@@ -113,7 +115,7 @@ static void t_entry(void)
     turn(EN_SELECT, -3);
     frames(32);
     expect("SELECT turned in PERFORM: no other page, PERFORM stays (it is BALANCE there, push-pull: 1 right, 3 left from 0 dB / 0 dB = L1 0 dB, L2 -1.5 dB)", ui.perf && str_eq(title_now(), "PERFORM") &&
-           trk[0].p[P_LEVEL] == 112 && trk[1].p[P_LEVEL] == 109);
+           trk[0].p[P_LEVEL] == bal(112, 2, 0) && trk[1].p[P_LEVEL] == bal(112, 2, 1));   /* (item 160's formula, perf_bal_level) */
     trk[0].p[P_LEVEL] = trk[1].p[P_LEVEL] = 112;
     {
         char ti[16], ct[8];
@@ -266,15 +268,15 @@ static void t_knobs(void)
         ui.msg_t = 0;
         turn(EN_SELECT, 2);
         frame();
-        expect("SELECT in PERFORM: BALANCE 2 right = LEVEL 1 -1.0 dB, LEVEL 2 stays 0 dB (capped), no sound loaded, still PERFORM", trk[0].p[P_LEVEL] == 110 && trk[1].p[P_LEVEL] == 112 && ui.perf &&
+        expect("SELECT in PERFORM: BALANCE 2 right = LEVEL 1 -1.0 dB, LEVEL 2 stays 0 dB (capped), no sound loaded, still PERFORM", trk[0].p[P_LEVEL] == bal(112, -2, 0) && trk[1].p[P_LEVEL] == bal(112, -2, 1) && ui.perf &&
                                                                                  trk[1].eng_req == e1 && trk[1].preset == q1);
         expect("  no header message (item 160: the old BALANCE n has no value left to show)", !ui.msg_t);
         expect("  the footer: SELECT = BALANCE (no number, item 160), ALGORITHM = PART 1",
                perf_foot(l, r) && str_eq(l, "SELECT = BALANCE") && str_eq(r, "ALGORITHM = PART 1"));
         turn(EN_SELECT, -5);
-        expect("  SELECT left 5: LEVEL 2 down 5 steps (-2.5 dB), LEVEL 1 up 2 to 0 dB (then capped)", trk[0].p[P_LEVEL] == 112 && trk[1].p[P_LEVEL] == 107 && ui.perf);
+        expect("  SELECT left 5: LEVEL 2 down 5 steps (-2.5 dB), LEVEL 1 up 2 to 0 dB (then capped)", trk[0].p[P_LEVEL] == bal(112, 3, 0) && trk[1].p[P_LEVEL] == bal(112, 3, 1) && ui.perf);
         turn(EN_SELECT, 3);
-        expect("  3 right: LEVEL 1 -1.5 dB, LEVEL 2 -1.0 dB, a stray SELECT turn never ends PERFORM", trk[0].p[P_LEVEL] == 109 && trk[1].p[P_LEVEL] == 110 && ui.perf);
+        expect("  3 right: LEVEL 1 -1.5 dB, LEVEL 2 -1.0 dB, a stray SELECT turn never ends PERFORM", trk[0].p[P_LEVEL] == bal(112, 0, 0) && trk[1].p[P_LEVEL] == bal(112, 0, 1) && ui.perf);
         turn(EN_SELECT, 2);
     }
     turn(EN_ALGO, 1);                                   /* (0.2.9: PART 1, BOTH, PART 2 from left to right) */
@@ -288,7 +290,7 @@ static void t_knobs(void)
     expect("  left: BOTH, part 2 kept as the selected part", song.sel == 1u && morph.target == MT_BOTH && badge_lit() == 3u);
     {
         char l[24], r[24];
-        expect("  the footer: ALGO: BOTH", perf_foot(l, r) && str_eq(r, "ALGO: BOTH"));
+        expect("  the footer: ALGO: BOTH", perf_foot(l, r) && str_eq(r, "ALGORITHM = BOTH"));
     }
     turn(EN_K1, 7);
     expect("  K1 MORPH with BOTH: both parts' faders (part 2's + 7 on both)", morph_fader_of(0) == 7u && morph_fader_of(1) == 7u);
@@ -297,7 +299,7 @@ static void t_knobs(void)
         turn(EN_PRESET, 1);
         frame();
         expect("  PRESETS with BOTH: both parts moved on from their own sound, selection kept",
-               (trk[0].eng_req != e0 || trk[0].preset != p0) && (trk[1].eng_req != e1 || trk[1].preset != q1) && song.sel == 1u && trk[0].p[P_LEVEL] == 107 && trk[1].p[P_LEVEL] == 112);
+               (trk[0].eng_req != e0 || trk[0].preset != p0) && (trk[1].eng_req != e1 || trk[1].preset != q1) && song.sel == 1u && trk[0].p[P_LEVEL] == bal(112, -2, 0) && trk[1].p[P_LEVEL] == bal(112, -2, 1));   /* (the BALANCE turn above: pos -2) */
         expect("  .. and they are still different sounds",
                trk[0].eng_req != trk[1].eng_req || trk[0].preset != trk[1].preset);
         turn(EN_PRESET, -1);
@@ -341,7 +343,7 @@ static void t_knobs(void)
         expect("HOME's round has no MIXER page any more (the SPACE copy went with it; PERFORM's K2 keeps SPACE)", !seen && perf_space == 3);
     }
     turn(EN_PRESET, 1);
-    expect("  LEVELs kept after PERFORM and a patch load (the MIXER's, not the patch's)", trk[0].p[P_LEVEL] == 107 && trk[1].p[P_LEVEL] == 112);
+    expect("  LEVELs kept after PERFORM and a patch load (the MIXER's, not the patch's)", trk[0].p[P_LEVEL] == bal(112, -2, 0) && trk[1].p[P_LEVEL] == bal(112, -2, 1));
 }
 
 /* (0.2.11, owner) a multi load resets the performance macros (SPACE, FILTER) to neutral; a patch load keeps SPACE */
@@ -394,8 +396,12 @@ static void t_roll(void)
     frames(200);                                        /* (held: no more rolls) */
     key_up(k);
     frame();
+#if DUELL_TIDE                                         /* (TIDE: PERFORM's ROLL keys launch a glide to that end, perform ui_perform.c: no roll) */
+    expect("GLIDE TO A (TIDE's ROLL A key, PART 1): the message, no roll on either part", rolls(0, 0) == a0 && rolls(1, 0) == a1 && msg_is("GLIDE TO A"));
+#else
     expect("ROLL A (PART 1): part 1's end A rolled once, part 2 untouched", rolls(0, 0) == a0 + 1u && rolls(1, 0) == a1 &&
                                                                              msg_is("ROLLED A"));
+#endif
     turn(EN_ALGO, 1);                                   /* BOTH (0.2.9: the middle) */
     b0 = rolls(0, 1);
     b1 = rolls(1, 1);
@@ -407,9 +413,13 @@ static void t_roll(void)
     key_down(k);
     key_up(k);                                          /* (two quick presses in one pass: two rolls) */
     frame();
+#if DUELL_TIDE
+    expect("GLIDE TO B (TIDE's ROLL B key, BOTH, pressed twice): the message, no roll on either part", rolls(0, 1) == b0 && rolls(1, 1) == b1 && msg_is("GLIDE TO B"));
+#else
     expect("ROLL B with BOTH, pressed twice: both parts' end B rolled twice", rolls(0, 1) == (b0 + 2u > MORPH_HIST ? MORPH_HIST : b0 + 2u) && rolls(1, 1) == (b1 + 2u > MORPH_HIST ? MORPH_HIST : b1 + 2u) &&
                                                                                                     (uint32_t)(mph[0].top[1] - t0 + MORPH_HIST) % MORPH_HIST == 2u % MORPH_HIST &&
                                                                                                     (uint32_t)(mph[1].top[1] - t1 + MORPH_HIST) % MORPH_HIST == 2u % MORPH_HIST);
+#endif
 }
 
 /* ------------------------------------------------------------ the song --- */
@@ -2376,7 +2386,7 @@ static void t_leave_ui(void)
         perform_on(); frame();
         char want[12];
         snprintf(want, sizeof want, "+%d", s);
-        expect("  .. back in PERFORM the cards show them, KILL not greyed", card_is(1, "SPACE", want) && !strncmp(ui.col[2], "KILL|", 5));
+        expect("  .. back in PERFORM the cards show them, KILL not greyed", card_is(1, "SPACE", want) && card_match(2, "KILL"));
         perf_space = 0; perf_filt = 0;
         press(B_FX);
     }
