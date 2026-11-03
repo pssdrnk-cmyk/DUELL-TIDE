@@ -354,7 +354,7 @@ static void test_math(void)
           t->p[P_E0 + 1] < -10);
     mod_end(t);
     check("the engine parameters restored", t->p[P_E0 + k_pw] == 100 && t->p[P_E0 + 1] == 0);
-    check("DST names: E1..E8 by the engine's labels", str_eq(mod_dst_name(t, MD_E1 + (int32_t)k_pw), "PW") &&
+    check("DST names: E1..E8 by the engine's labels", str_eq(mod_dst_name(t, MD_E1 + (int32_t)k_pw), "PULSE WIDTH") &&
                                                           str_eq(mod_dst_name(t, MD_CUT), "MULTI\nCUTOFF"));
 
     /* per-voice sources on a per-block destination: the latest note-on */
@@ -889,9 +889,9 @@ static void test_dest027(void)
     int16_t keep[P_COUNT];
     uint64_t l0, r0, l1, r1;
 
-    for (k = 0, ok = MD_N == 56 && MD_FMODE == 46 && MD_AATK == 47 && MD_N_026 == 23 && MD_DEPTH == 20 && MD_DEPTH2 == 22; k < MD_N_026; k++)
+    for (k = 0, ok = MD_N == 57 && MD_FMODE == 46 && MD_AATK == 47 && MD_N_026 == 23 && MD_DEPTH == 20 && MD_DEPTH2 == 22; k < MD_N_026; k++)
         ok &= str_eq(N_MDST[k], OLD[k]);
-    check("0.2.7: DST 0..22 are 0.2.6's (a stored matrix means what it meant); 23 new ones appended (46), 0.2.25 FMODE the 47th, T0229 the AMP ENV times 48th .. 51st", ok);
+    check("0.2.7: DST 0..22 are 0.2.6's (a stored matrix means what it meant); 23 new ones appended (46), 0.2.25 FMODE the 47th, T0229 the AMP ENV times 48th .. 51st, 1.1 SPACE the 57th", ok);
     check("  the editor's DESC lists every DST name (the limit is 64 now)", MD_N <= 64);
     {   /* no new DST name is an engine's EDIT label: gen_duell_sounds.py reads a sound's MOD route "RES" (ANALOG's E6) by N_MDST
          * first, so a DST called RES moved ANALOG SQUELCH's route to the universal filter's RES (its golden changed) */
@@ -917,7 +917,7 @@ static void test_dest027(void)
             ok &= str_len(b) > 6u && (!MD_IS_BUS(v) || more);   /* (a bus value: always which bus; a faded one: why; 0.2.25: FMODE, after the bus values, is a part value) */
         }
         mod_dst_line(&trk[0], MD_RDAMP, b, &more);
-        ok &= str_eq(b, "DEST: REVERB DAMP") && str_eq(more, "SHARED BUS: BOTH PARTS ADD");
+        ok &= str_eq(b, "DEST: REVERB DAMPING") && str_eq(more, "SHARED BUS: BOTH PARTS ADD");
         mod_dst_line(&trk[0], MD_LEVEL, b, &more);
         ok &= str_eq(b, "DEST: PATCH LEVEL");   /* (0.2.25 layout round: TRIM is shown PATCH LEVEL) */
         mod_dst_line(&trk[0], MD_DEPTH, b, &more);
@@ -928,7 +928,7 @@ static void test_dest027(void)
         mod_dst_line(&trk[1], MD_CRATE, b, &more);
         ok &= str_eq(b, "DEST: CHORUS RATE") && str_eq(more, "MOVES BUS B ONLY (PART 2)");
         duell_mode_req = DM_STEREO;
-        check("  the MATRIX page's DEST line names every destination in words (\"DEST: REVERB DAMP\", which bus it moves)", ok);
+        check("  the MATRIX page's DEST line names every destination in words (\"DEST: REVERB DAMPING\", which bus it moves)", ok);
     {   /* 0.2.25: FILTER MODE (MD_FMODE 46): the multimode filter's MODE per block, put back after; named FMODE, "DEST: FILTER 1 MODE" */
         char b2[32];
         const char *more2;
@@ -990,15 +990,15 @@ static void test_dest027(void)
             mix_block(out_buf, CTL);
         ok &= w->h.want == want && w->h.have == want && !w->h.fade && t->p[P_E0] == tab;
         check("WAVE: MODW -> POS and -> E7 (STEPS) move them; -> TABLE (REBUILD) does nothing: no table change, no rebuild", ok);
-        check("  the MATRIX page: TABLE faded REBUILD, E7 (STEPS) and POS live (E8 faded UNUSED); its line \"DEST: WAVE POS\"",
+        check("  the MATRIX page: TABLE faded REBUILD, E7 (STEPS) and POS live (E8 faded UNUSED); its line \"DEST: WAVE POSITION\"",
               str_eq(mod_dst_why(t, MD_E1), "REBUILD") && !mod_dst_why(t, MD_E1 + 6) && str_eq(mod_dst_why(t, MD_E1 + 7), "UNUSED") && !mod_dst_why(t, MD_E1 + 1));
         {
             char b2[32];
             const char *more;
             mod_dst_line(t, MD_E1 + 1, b2, &more);
-            ok = str_eq(b2, "DEST: WAVE POS") && !more;
+            ok = str_eq(b2, "DEST: WAVE POSITION") && !more;   /* (DUELL 1.1: POSITION in full) */
             mod_dst_line(t, MD_E1 + 7, b2, &more);
-            check("  .. \"DEST: WAVE POS\"; the unused slot \"DEST: WAVE EDIT 2 KNOB 4\" + NOT USED BY THIS ENGINE",
+            check("  .. \"DEST: WAVE POSITION\"; the unused slot \"DEST: WAVE EDIT 2 KNOB 4\" + NOT USED BY THIS ENGINE",
                   ok && str_eq(b2, "DEST: WAVE EDIT 2 KNOB 4") && more && str_eq(more, "NOT USED BY THIS ENGINE"));
             mod_dst_line(t, MD_E1 + 6, b2, &more);
             check("  .. E7: \"DEST: WAVE STEPS\", nothing against it", str_eq(b2, "DEST: WAVE STEPS") && !more);
