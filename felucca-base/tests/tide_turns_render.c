@@ -105,8 +105,11 @@ static uint32_t render(const char *path, uint32_t turns, uint32_t poly, uint32_t
     for (t = 0; t < n; t += CTL) {
         events_block(CTL);
         sqm_auto = 3;
-        if (g_edit && (t / CTL) % 64u == 0u)
-            rhythm_poll(3);                    /* (the main loop's pass) */
+        if ((g_edit || turns >= 2u) && (t / CTL) % 64u == 0u) {
+            if (g_edit)
+                rhythm_poll(3);                /* (the main loop's pass) */
+            sqm_thin_build();
+        }
         if (f)
             mix_block(ob, CTL);
         short_blocks += poly_len[0] || poly_len[1];
@@ -127,6 +130,16 @@ static uint32_t render(const char *path, uint32_t turns, uint32_t poly, uint32_t
 int main(int argc, char **argv)
 {
     const char *dir = argc > 1 ? argv[1] : ".";
+    if (argc > 2 && !strcmp(argv[2], "answer")) {
+        char q[512];
+        g_edit = 1;
+        g_sync = 1;
+        snprintf(q, sizeof q, "%s/answer_before_take_turns.wav", dir);
+        render(q, 1, 0, 127, 5, 1);
+        snprintf(q, sizeof q, "%s/answer_after_echo.wav", dir);
+        render(q, 3, 0, 127, 5, 1);
+        return 0;
+    }
     if (argc > 2 && !strcmp(argv[2], "sync")) {
         char q[512];
         g_edit = 1;

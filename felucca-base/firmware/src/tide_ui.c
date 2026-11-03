@@ -130,7 +130,7 @@ static const char *const JL_NAME[JL_N] = {"TARGET", "VARY BARS", "ROLL", "ARP", 
 static uint8_t jl_sel;                                   /* the row picked (K1) */
 static void morph_act(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi);   /* (ui_input.c) */
 
-static uint32_t jl_n(uint32_t r) { return r == JL_WASH ? 4u : r == JL_TARGET || r == JL_ROLL || r == JL_POLY || r == JL_SYNC ? 3u : 2u; }
+static uint32_t jl_n(uint32_t r) { return r == JL_WASH ? 4u : r == JL_TURNS ? 4u : r == JL_TARGET || r == JL_ROLL || r == JL_POLY || r == JL_SYNC ? 3u : 2u; }
 static uint32_t jl_get(uint32_t r)
 {
     switch (r) {
@@ -149,8 +149,8 @@ static const char *jl_vname(uint32_t r, uint32_t v)
 {
     static const char *const VARY[2] = {"4 + 8", "ALL"}, *const ROLL[3] = {"MUSIC", "SMART", "WILD"}, *const SW[2] = {"OFF", "ON"},
                              *const WL[4] = {"OFF", "LOW", "MID", "HIGH"},
-                             *const TURNS[2] = {"TOGETHER", "TAKE TURNS"}, *const POLY[3] = {"OFF", "GENTLE", "WIDE"}, *const SYNC[3] = {"OFF", "SOFT", "PUSH"};
-    return r == JL_TURNS ? TURNS[v & 1u] : r == JL_POLY ? POLY[v % 3u] : r == JL_SYNC ? SYNC[v % 3u] : r == JL_TARGET ? GL_TARGET_NAME[v % 3u] : r == JL_VARY ? VARY[v & 1u] : r == JL_ROLL ? ROLL[v % 3u] : r == JL_WASH ? WL[v & 3u] : SW[v & 1u];
+                             *const TURNS[4] = {"TOGETHER", "TAKE TURNS", "LEAD", "ECHO"}, *const POLY[3] = {"OFF", "GENTLE", "WIDE"}, *const SYNC[3] = {"OFF", "SOFT", "PUSH"};
+    return r == JL_TURNS ? TURNS[v & 3u] : r == JL_POLY ? POLY[v % 3u] : r == JL_SYNC ? SYNC[v % 3u] : r == JL_TARGET ? GL_TARGET_NAME[v % 3u] : r == JL_VARY ? VARY[v & 1u] : r == JL_ROLL ? ROLL[v % 3u] : r == JL_WASH ? WL[v & 3u] : SW[v & 1u];
 }
 static void jl_put(uint32_t r, uint32_t v)
 {
@@ -178,8 +178,8 @@ static void jl_put(uint32_t r, uint32_t v)
         ui_message(v == 0u ? "WASH OFF" : v == 1u ? "WASH LOW" : v == 2u ? "WASH MID" : "WASH HIGH");
         break;
     case JL_TURNS:
-        sqm_turns = (uint8_t)(v & 1u);
-        ui_message(v ? "PARTS TAKE TURNS" : "PARTS VARY TOGETHER");
+        sqm_turns = (uint8_t)(v & 3u);
+        ui_message(v == 0u ? "PARTS VARY TOGETHER" : v == 1u ? "PARTS TAKE TURNS" : v == 2u ? "ONE LEADS, ONE THINS OUT" : "THE ANSWER ECHOES");
         break;
     case JL_POLY:                                        /* (seq_poly.c: one part's loop shorter now and then, back at a phrase) */
         sqm_poly = (uint8_t)(v % 3u);
@@ -612,7 +612,7 @@ static uint32_t tide_sig(void)
     return (morph_fader_of(pi) | seqm_fader_of(pi) << 7 | (uint32_t)gl.on << 14 | (uint32_t)gl.armed << 16 | (uint32_t)gl.target << 17 |
             (uint32_t)gl.mode << 19 | (uint32_t)gl.to << 22 | (uint32_t)gl.hold << 23 | (song.playing ? t->seq_idx : 0xFFu) << 24) ^
            (gl.prog >> 10) * 2654435761u ^ ((gl.prog * bars) >> GLIDE_Q) * 0x27D4EB2Fu ^ sqm_key(&sqm[pi < NSHOWN ? pi : 0u]) * 40503u ^
-           ((uint32_t)gl.time | (uint32_t)gl.wait << 4 | (uint32_t)jl_sel << 8 | (uint32_t)sqm_vary_all << 12 | (uint32_t)morph_musical << 13 | (uint32_t)sqm_turns << 27 | (uint32_t)sqm_poly << 28 | (uint32_t)sqm_sync << 30 |
+           ((uint32_t)gl.time | (uint32_t)gl.wait << 4 | (uint32_t)jl_sel << 8 | (uint32_t)sqm_vary_all << 12 | (uint32_t)morph_musical << 13 | (uint32_t)sqm_turns * 0x2545F491u | (uint32_t)sqm_poly << 28 | (uint32_t)sqm_sync << 30 |
             (uint32_t)morph.cfg << 16 | (uint32_t)((sqm_bar + sqm_bar_turn) & 3u) << 24 | (uint32_t)song.playing << 26) * 0x9E3779B1u ^
            (tide_both() ? (morph_fader_of(1u - pi) | seqm_fader_of(1u - pi) << 7 | (song.playing ? trk[1u - pi].seq_idx : 0xFFu) << 14) * 0x85EBCA77u ^
                              sqm_key(&sqm[(1u - pi) % NSHOWN]) * 0xC2B2AE3Du ^ 0x27D4EB2Fu : 0u);
@@ -639,7 +639,7 @@ static void tide_settings(void)
             sqm_vary_all = (uint8_t)(b[TS_VARY] & 1u);
             morph_musical = (uint8_t)(b[TS_MUSIC] & 1u);
             morph_wlvl = (uint8_t)(b[TS_WASH] & 3u);
-            sqm_turns = (uint8_t)(b[TS_TURNS] & 1u);
+            sqm_turns = (uint8_t)(b[TS_TURNS] < 4u ? b[TS_TURNS] : 1u);
             sqm_poly = (uint8_t)(b[TS_POLY] < 3u ? b[TS_POLY] : 1u);
             sqm_sync = (uint8_t)(b[TS_SYNC] < 3u ? b[TS_SYNC] : 1u);
         }
@@ -667,6 +667,7 @@ static void tide_settings(void)
 static void tide_poll(void)
 {
     tide_settings();
+    sqm_thin_build();                                    /* LEAD / ECHO: the follower's mask */
     glide_poll();                                        /* a launched GLIDE moves its faders */
     seqm_poll();                                         /* the SEQ MORPH's ends follow pattern edits (TRANS, SHIFT, an edit) */
     morph_xpoll();                                       /* plan any destination GLIDE generated in this same pass */

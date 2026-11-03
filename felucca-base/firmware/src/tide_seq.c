@@ -8,6 +8,7 @@ static uint32_t step_cont(const step_t *s) { (void)s; return 0u; }   /* (no per-
 static const step_t *seq_play_step(const track_t *t, uint32_t idx, step_t *buf);   /* (seq_dialogue.c reads it before seq_morph.c has it) */
 #include "seq_morph.c"
 #include "seq_poly.c"
+#include "seq_answer.c"
 
 static const step_t *tide_play_step(const track_t *t, uint32_t idx, step_t *buf)
 {

@@ -471,6 +471,122 @@ static void t_sync(void)
     sqm_sync = 1;
 }
 
+
+/* ----------------------------------------------------------------------------------------------- ANSWER --- */
+static void put_hits(uint32_t p, const uint8_t *at, uint32_t n)
+{
+    uint32_t k;
+    for (k = 0; k < NSTEP; k++)
+        trk[p].step[k] = (step_t){{0}, 0, ST_REST, 0, 0, 0};
+    for (k = 0; k < n; k++)
+        trk[p].step[at[k]] = (step_t){{(uint8_t)(60 + k)}, 1, ST_NOTE, 0, 100, 0};
+}
+static int thin_bit(uint32_t p, uint32_t i) { return (int)((sqm_thin[p][i >> 5] >> (i & 31u)) & 1u); }
+static void t_answer(void)
+{
+    static const uint8_t H[] = {0, 2, 3, 4, 6, 7, 8, 10, 11, 12, 14, 15};
+    uint32_t i, p, bar, drops, cand, bad = 0, wrong = 0, sh[2] = {0, 0}, n, seed;
+    step_t buf;
+    CHECK("TURNS shows its four values", !strcmp(jl_vname(JL_TURNS, 2), "LEAD") && !strcmp(jl_vname(JL_TURNS, 3), "ECHO") && jl_n(JL_TURNS) == 4u);
+    setup(16, 16, 2, 2, 0);
+    put_hits(0, H, 12);
+    put_hits(1, H, 12);
+    sqm_auto = 3, sqm_turns = 2;
+    song.playing = 1;
+    seqm_poll();
+    sqm_refresh(0, 1), sqm_refresh(1, 1);
+    sqm_thin_build();
+    for (drops = 0, cand = 0, i = 0; i < 16u; i++) {
+        drops += (uint32_t)thin_bit(0, i);
+        if (i % 4u && sqm_hit(&trk[0].step[i]))
+            cand++;
+        if (thin_bit(0, i) && (i % 4u == 0u || !sqm_hit(&trk[0].step[i])))
+            bad++;
+    }
+    CHECK("mask: no beat, no anchor, only hits; half of the candidates (rounded up) dropped", !bad && cand == 8u && drops == 4u);
+    {   /* held hits: a tie after step 3 and 11, a slide on 7 */
+        step_t *st = trk[0].step;
+        st[4] = (step_t){{0}, 0, ST_TIE, 0, 0, 0};
+        st[12] = (step_t){{0}, 0, ST_TIE, 0, 0, 0};
+        st[7].flags |= SF_SLIDE;
+        sqm_refresh(0, 1);
+        sqm_thin_build();
+        CHECK("  .. a hit before a tie and a slid hit are never dropped", !thin_bit(0, 3) && !thin_bit(0, 11) && !thin_bit(0, 7));
+    }
+    put_hits(0, H, 2);
+    sqm_refresh(0, 1);
+    sqm_thin_build();
+    CHECK("  .. a pattern of 2 hits is left whole", !sqm_thin[0][0] && !sqm_thin[0][1]);
+    put_hits(0, H, 12);
+    sqm_refresh(0, 1);
+    sqm_thin_build();
+    /* the leader per bar: bars 0-1 part 2, 2-3 part 1, over the 8-bit wrap, with the last block's turn */
+    for (bar = 0; bar < 600u; bar++) {
+        uint32_t turn;
+        for (turn = 0; turn < 2u; turn++) {
+            uint32_t b = (bar + turn) & 3u;
+            sqm_bar = (uint8_t)bar, sqm_bar_turn = (uint8_t)turn;
+            for (p = 0; p < 2u; p++) {
+                uint32_t lead = b < 2u ? 1u : 0u, masked = 0, any = 0;
+                for (i = 0; i < 16u; i++)
+                    if (thin_bit(p, i)) {
+                        any = 1;
+                        masked |= seq_play_step(&trk[p], i, &buf)->time == ST_REST;
+                    }
+                wrong += any && (p == lead ? masked : !masked);
+            }
+        }
+    }
+    CHECK("the leader plays whole, the other part thinned: part 2 on bars 1-2, part 1 on 3-4 (also over the wrap at 256)", !wrong);
+    sqm_bar = 0, sqm_bar_turn = 0;
+    {   uint32_t m0 = 0;
+        for (i = 0; i < 16u; i++)
+            m0 += seq_play_step(&trk[0], i, &buf)->time == ST_NOTE;
+        sqm_turns = 1;
+        for (i = 0, n = 0; i < 16u; i++)
+            n += seq_play_step(&trk[0], i, &buf)->time == ST_NOTE;
+        CHECK("  .. TAKE TURNS: nothing masked, part 1 whole (12 hits), thinned under LEAD", n == 12u && m0 < 12u);
+        sqm_turns = 2;
+        sqm_auto = 1;
+        for (i = 0, n = 0; i < 16u; i++)
+            n += seq_play_step(&trk[0], i, &buf)->time == ST_NOTE;
+        CHECK("  .. one part only: no mask", n == 12u);
+        sqm_auto = 3, song.playing = 0;
+        for (i = 0, n = 0; i < 16u; i++)
+            n += seq_play_step(&trk[0], i, &buf)->time == ST_NOTE;
+        CHECK("  .. stopped: no mask", n == 12u);
+        song.playing = 1, poly_len[0] = 14;
+        for (i = 0, n = 0; i < 16u; i++)
+            n += seq_play_step(&trk[0], i, &buf)->time == ST_NOTE;
+        poly_len[0] = 0;
+        CHECK("  .. a part in a POLY stretch is never thinned", n == 12u);
+    }
+    /* ECHO: part 1's movable hits lean into the places part 2 thinned away */
+    for (n = 0; n < 2u; n++)
+        for (seed = 1; seed <= 12u; seed++) {
+            uint32_t k, m;
+            setup(16, 16, 2, 2, 0);
+            put_hits(1, H, 12);
+            put_hits(0, (const uint8_t[]){0, 4, 8, 12, 1, 5, 9, 13}, 8);
+            sqm_auto = 3, sqm_turns = n ? 3u : 2u, sqm_sync = 0;
+            seqm_poll();
+            sqm_refresh(0, 1), sqm_refresh(1, 1);
+            sqm_thin_build();
+            memset(&rhythm, 0, sizeof rhythm);
+            for (m = 0; m < 48u; m++) {
+                rhythm_mutate(0, seed * 7919u + m * 104729u);
+                sqm_refresh(0, 1);
+            }
+            for (k = 0; k < 16u; k++)
+                if (sqm_hit(&trk[0].step[k]) && thin_bit(1, (uint32_t)((int32_t)k + rhythm_offset(0, k))))
+                    sh[n]++;
+        }
+    printf("  ECHO (12 seeds, 48 moves): part 1 hits on part 2's thinned places: LEAD %u, ECHO %u\n", sh[0], sh[1]);
+    CHECK("ECHO: more of part 1's hits sit on part 2's thinned places than with LEAD", sh[1] > sh[0]);
+    sqm_turns = 1, sqm_sync = 1, sqm_auto = 0;
+    sqm_thin_build();
+}
+
 /* ------------------------------------------------------------------------------------------------ store --- */
 static void t_store(void)
 {
@@ -527,6 +643,7 @@ int main(void)
     t_turns();
     t_poly();
     t_sync();
+    t_answer();
     t_store();
     printf("tideturns: %d of %d checks failed\n", bad, checks);
     return bad != 0;

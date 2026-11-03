@@ -133,6 +133,9 @@ static int32_t phrase_direction(uint32_t pi, int32_t cur, uint32_t len, int32_t 
 {
     int32_t a = cur + dir, b = cur - dir;
     if (a > 0 && b > 0 && a < (int32_t)len && b < (int32_t)len) {
+        if (sqm_turns == 3u && phrase_peer_attack(pi, (uint32_t)a) == phrase_peer_attack(pi, (uint32_t)b) &&
+            tide_echo(pi, (uint32_t)a) != tide_echo(pi, (uint32_t)b))   /* ECHO: a hit leans into the places the peer left free */
+            return tide_echo(pi, (uint32_t)a) ? dir : -dir;
         if (sqm_sync && tide_metric(&trk[pi], 0) != SM_NONE) {   /* SYNC: the "and" and the push over the other 16ths; the peer's attack stays the stronger term */
             static const uint8_t W[6] = {0, 0, 1, 3, 2, 1};
             uint32_t sa = (phrase_peer_attack(pi, (uint32_t)a) ? 0u : 4u) + W[tide_metric(&trk[pi], (uint32_t)a)];

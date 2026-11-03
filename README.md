@@ -60,6 +60,7 @@ Each mode has its own line on the screen, so you can read what it will do. Where
 | **ARP**, **PITCH** | DUELL's MORPH switches, now on this page. |
 | **WASH LEVEL** | How much blend is added where two unlike sounds cross. OFF by default. |
 | **TURNS** | With both parts in automatic WNDR or JRNY: **TAKE TURNS** (the default) lets part 2 vary on bars 2 and 6 and part 1 on bars 4 and 8, so each variation is answered two bars later; TOGETHER varies both on bars 4 and 8. |
+| **TURNS** (more values) | TOGETHER, TAKE TURNS, **LEAD** (part 2 leads bars 1-2 of every 4, part 1 bars 3-4, and the other part plays a thinned version of its pattern: beats, held notes and about half of the other hits stay) and **ECHO** (also leans the answer's hits into the places the call left free). Playback only: KEEP stores the whole pattern. |
 | **SYNC** | OFF / **SOFT** (default) / PUSH. In automatic WNDR or JRNY the pattern edits that move a hit by a 16th lean towards the "and" (the off-beat 8th) and allow an occasional push into the beat (SOFT one a bar, PUSH two); the beats never move and a hit never lands on one. Grids it cannot read (triplets, slow rates, loops that are not whole beats) behave as before. |
 | **POLY** | In automatic WNDR or JRNY one part's loop is now and then a few steps shorter, so its motif moves against the beat, then plays whole again at a phrase. OFF; **GENTLE** (the default) 15 or 14 of 16 steps, rarely; WIDE 12 to 15, more often. Only the playing changes: your stored pattern and its length are never rewritten. |
 
