@@ -1820,7 +1820,7 @@ static void draw_act_column(uint32_t c, const char *label, uint16_t vc, uint32_t
 static void sound_name(const track_t *t, char *b)
 {
     b[0] = 0;
-    if (t->user && !UP_EMPTY_USER((uint32_t)t->user - 1u))   /* (an empty USER slot has no sound of its own: the part keeps the one it plays) */
+    if (UP_REC_USER(t))   /* (an empty USER slot has no sound of its own: the part keeps the one it plays) */
         sl_name((uint32_t)t->user - 1u, b);
     else
         str_cpy(b, ds_name(t->eng_req % NENGINES, t->preset), 16);   /* (DUELL: sounds.c; INIT for none) */

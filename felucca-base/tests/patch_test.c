@@ -1422,7 +1422,7 @@ int main(void)
            slot_of(&trk[0]) == UP_SLOTS && slot_place(&trk[0]) == UP_SLOTS + 1u && slot_home(&trk[0]) == UP_USER0);
         snd = trk[0].preset;
         sl_load(UP_USER0 + 2u);
-        ck("  loading an empty USER slot changes no sound; the part points at it (SAVE offers it), the footer keeps the sound's own name", trk[0].preset == snd && trk[0].user == UP_USER0 + 3u &&
+        ck("  loading an empty USER slot changes no sound; the part points at it (SAVE offers it), the footer keeps the sound's own name", trk[0].preset == snd && trk[0].user == UP_PTR_EMPTY(UP_USER0 + 2u) &&
            slot_of(&trk[0]) == UP_USER0 + 2u && slot_home(&trk[0]) == UP_USER0 + 2u);
         {
             char nm3[16];
@@ -1469,7 +1469,7 @@ int main(void)
         song.sel = 0;
         sl_load(UP_USER0);
         ck("  a part pointed at an empty USER slot is not a stored record (TIDE's JRNY / WNDR and the End B roll treat it as factory); a saved one is",
-           trk[0].user == UP_USER0 + 1u && !UP_REC_USER(&trk[0]) && (ui.svs = (uint8_t)UP_USER0, patch_save_do(0), UP_REC_USER(&trk[0])));
+           trk[0].user == UP_PTR_EMPTY(UP_USER0) && !UP_REC_USER(&trk[0]) && (ui.svs = (uint8_t)UP_USER0, patch_save_do(0), UP_REC_USER(&trk[0])));
     }
 
     printf(bad ? "patch: FAILED (%d)\n" : "patch: all ok\n", bad);
