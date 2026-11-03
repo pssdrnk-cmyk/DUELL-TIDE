@@ -2602,6 +2602,21 @@ static void draw_columns(void)
         uint32_t n = pat_count(), k = pat_pick();
         char tag[4], nm[13];
         pat_label(k, tag, nm);
+#if DUELL_TIDE
+        {                                              /* U3: the pattern the selected part plays from a slot, after the picked one on knob 1's line */
+            static char cur_txt[16];
+            uint32_t pl = pat_last[song.sel % NTRK];
+            if (pl) {
+                char t2[4], n2[13];
+                pat_label(pl - 1u, t2, n2);
+                str_cpy(cur_txt, "LOADED ", sizeof cur_txt);
+                str_cpy(cur_txt + 7, t2, sizeof cur_txt - 7);
+                k1_after_next = cur_txt;
+                k1_after_col = T_ACCENT;
+                k1_after_r = 1;
+            }
+        }
+#endif
         draw_column(0, "SLOT", tag, "", VAL(0u), (int32_t)k * 1000 / (int32_t)(n > 1u ? n - 1u : 1u), ICON_X_PATTERN);
         draw_act_column(1, "LOAD", T_THEME, ICON_AUTO);
         draw_act_column(2, "SAVE", T_THEME, ICON_AUTO);   /* (change list A.9 / H.8: ERASE is gone, SAVE is knob 3) */

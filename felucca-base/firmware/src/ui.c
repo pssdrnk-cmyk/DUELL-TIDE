@@ -42,6 +42,19 @@ typedef struct {
 } mu_pv_t;
 static void multi_preview(uint32_t slot, mu_pv_t *o);   /* .. U3: the MULTIS page's preview of one record (multi.c) */
 static uint32_t multi_gen(void);
+static const char *multi_vname(uint32_t slot, uint32_t part);   /* .. a part's sound name in the slot (kept by mu_note: no decode); its MODE: 0 OFF, 1 ARP, 2 SEQ, |4 the pattern holds a note */
+static uint32_t multi_vmode(uint32_t slot, uint32_t part);
+typedef struct {                                  /* SAVE > PATTERNS' preview of one slot: state 0 none, 1 decoded, 2 damaged; len the LEN; has: a note in it; bar: the first 16 steps */
+    uint8_t state, len, has, bar[16];
+} pat_pv_t;
+static void ps_preview(uint32_t k, pat_pv_t *o);   /* .. (patslot.c) */
+static uint32_t ps_gen(void);                      /* .. counts the slots' changes */
+/* a step as the previews draw it: 1 empty, 2 tie, 3 note, 4 chord, |8 an accent on a note (0 is "past the pattern's end") */
+static uint8_t pv_bar_of(const step_t *s)
+{
+    uint8_t b = s->time == ST_NOTE && s->n ? (s->n > 1u ? 4u : 3u) : s->time == ST_TIE ? 2u : 1u;
+    return (uint8_t)(b | (b >= 3u && (s->flags & SF_ACCENT) ? 8u : 0u));
+}
 #endif
 /* The PATCH SLOTS (upreset.c, the slot layer): ONE list of UP_SLOTS (128), slot k = its saved record, else the factory sound at browse position k */
 static uint32_t slot_of(const track_t *t);         /* the slot t's sound is in, UP_SLOTS = none */

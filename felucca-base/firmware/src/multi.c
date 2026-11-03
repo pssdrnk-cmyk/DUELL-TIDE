@@ -375,6 +375,18 @@ static int mu_unpack(project_t *q, uint8_t amt[NSHOWN], uint8_t set[6], const ui
 /* the RAM view of object o (in mu_buf): which of its two multis load, their names */
 #if DUELL_TIDE
 static uint32_t mu_gen;                           /* counts the records' changes (mu_note): the MULTIS preview decodes again when it moves */
+static uint8_t mu_vp[MU_SLOTS][NSHOWN][4];        /* per slot and part, from the decode mu_note does anyway: engine, preset, MODE (0 OFF, 1 ARP, 2 SEQ), 1 = a note in the pattern: the list rows' voice names */
+static void mu_vp_set(uint8_t *v, const proj_trk_t *d)
+{
+    uint32_t i, slen = (uint32_t)clamp(d->p[P_SLEN], 1, NSTEP);
+    v[0] = d->engine;
+    v[1] = d->preset;
+    v[2] = d->p[P_AMODE] == AM_SEQ_ID ? 2u : d->p[P_AMODE] ? 1u : 0u;
+    v[3] = 0;
+    for (i = 0; i < slen; i++)
+        if (d->step[i].time == ST_NOTE && d->step[i].n)
+            v[3] = 1;
+}
 #endif
 static void mu_note(uint32_t o)
 {
@@ -387,6 +399,9 @@ static void mu_note(uint32_t o)
         uint8_t amt[NSHOWN], set[6];
         k = 2u * o + h;
         mu_names[k][0] = 0;
+#if DUELL_TIDE
+        memset(mu_vp[k], 0, sizeof mu_vp[k]);
+#endif
         mu_used &= (uint16_t)~(1u << k);
         mu_fact &= (uint16_t)~(1u << k);
         int ok = len && mu_unpack(&proj_scratch, amt, set, r, len);
@@ -399,6 +414,10 @@ static void mu_note(uint32_t o)
         if (ok) {
             mu_used |= (uint16_t)(1u << k);
             proj_name_get(mu_names[k], r + MU_NAME_AT);
+#if DUELL_TIDE
+            mu_vp_set(mu_vp[k][0], &proj_scratch.t[0]);
+            mu_vp_set(mu_vp[k][1], &proj_scratch.t[1]);
+#endif
         }
     }
 }
@@ -455,18 +474,24 @@ static void multi_preview(uint32_t slot, mu_pv_t *o)
     for (t = 0; t < NSHOWN; t++) {
         const proj_trk_t *d = &proj_scratch.t[t];
         uint32_t slen = (uint32_t)clamp(d->p[P_SLEN], 1, NSTEP);
-        o->p[t].eng = d->engine;
-        o->p[t].preset = d->preset;
-        o->p[t].mode = d->p[P_AMODE] == AM_SEQ_ID ? 2u : d->p[P_AMODE] ? 1u : 0u;
-        for (i = 0; i < slen; i++) {
-            const step_t *s = &d->step[i];
-            uint8_t b = s->time == ST_NOTE && s->n ? (s->n > 1u ? 4u : 3u) : s->time == ST_TIE ? 2u : 1u;
-            if (b >= 3u)
-                o->p[t].has = 1;
-            if (i < 16u)
-                o->p[t].bar[i] = (uint8_t)(b | (b >= 3u && (s->flags & SF_ACCENT) ? 8u : 0u));
-        }
+        uint8_t v[4];
+        mu_vp_set(v, d);
+        o->p[t].eng = v[0];
+        o->p[t].preset = v[1];
+        o->p[t].mode = v[2];
+        o->p[t].has = v[3];
+        for (i = 0; i < 16u && i < slen; i++)
+            o->p[t].bar[i] = pv_bar_of(&d->step[i]);
     }
+}
+static const char *multi_vname(uint32_t slot, uint32_t part)
+{
+    return project_used(slot) ? ds_name(mu_vp[slot % MU_SLOTS][part % NSHOWN][0] % NENGINES, mu_vp[slot % MU_SLOTS][part % NSHOWN][1]) : "";
+}
+static uint32_t multi_vmode(uint32_t slot, uint32_t part)
+{
+    const uint8_t *v = mu_vp[slot % MU_SLOTS][part % NSHOWN];
+    return v[2] | (v[3] ? 4u : 0u);
 }
 #endif
 static int project_factory(uint32_t slot) { return (mu_fact >> (slot % MU_SLOTS)) & 1u; }   /* shows its factory multi */

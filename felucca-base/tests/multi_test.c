@@ -465,6 +465,20 @@ int main(void)
         ck("  the preview of M11 is its record: decoded, both parts' sounds named, no engine out of range", pv.state == 1u && pv.p[0].eng < NENGINES && pv.p[1].eng < NENGINES &&
            gsl_key == (10u | multi_gen() << 8));
         ck("  the music is still the one before the preview decoded (the scratch only)", trk[0].eng_req == eng0);
+        {                                            /* the PATTERNS preview: a slot saved over previews its own contents; empty = no note; the tracks stay */
+            pat_pv_t pp;
+            track_t keep = trk[0];
+            uint32_t i;
+            ps_preview(2u, &pp);
+            ck("PATTERNS preview: P03 (factory) decodes, has notes, LEN as the list says", pp.state == 1u && pp.has && pp.len == ps_len(2u));
+            for (i = 0; i < NSTEP; i++)
+                step_clear(&trk[0].step[i]);
+            ck("  a cleared pattern saved over P03 (a user overwrite)", ps_save_trk(&trk[0], 2u, "EMPTY ONE") == 0);
+            ps_preview(2u, &pp);
+            ck("  previews its own contents: decoded, no note (NO SEQUENCE), the new gen", pp.state == 1u && !pp.has && pp.len == ps_len(2u) && ps_gen() != 0u);
+            trk[0] = keep;
+            ck("  the live track is untouched by the preview", !memcmp(&trk[0], &keep, sizeof keep));
+        }
     }
 #endif
     watch = 1;
