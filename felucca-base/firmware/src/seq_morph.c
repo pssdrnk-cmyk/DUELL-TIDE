@@ -262,6 +262,8 @@ static void sqm_refresh(uint32_t pi, int force)
 }
 
 static volatile uint8_t sqm_vary_all;                   /* VARY BARS: 0 4 + 8, 1 ALL (tide_ui.c, the TIDE LIST) */
+static volatile uint8_t sqm_turns = 1;                  /* TURNS: 0 TOGETHER, 1 TAKE TURNS (tide_ui.c, the TIDE LIST) */
+static volatile uint8_t sqm_auto;                       /* the parts in automatic MUSIC WNDR/JRNY, a bit each (glide_poll, main loop) */
 /* the step part t plays at idx with the variation heard (vary 1; 0: End A): the stored one while End A is the Original and the
  * fader at 0, else the end its beat is on. The UI's view and KEEP (vary 1 always: the variation as it plays on a varied bar) */
 static const step_t *sqm_step(const track_t *t, uint32_t idx, uint32_t vary)
@@ -274,11 +276,12 @@ static const step_t *sqm_step(const track_t *t, uint32_t idx, uint32_t vary)
         return q->aon || q->hold || (rhythm.active & (1u << pi)) ? &sqm_pat[pi][0][idx] : &t->step[idx];
     return &sqm_pat[pi][q->fader >= 1u + sqm_hash(q->tseed, idx / 4u, 9u) % 127u][idx];
 }
-/* the step the sequencer plays (audio interrupt): with VARY BARS 4 + 8, while playing, End A but on every 4th bar */
+/* the step the sequencer plays (audio interrupt): with VARY BARS 4 + 8, while playing, End A but on every 4th bar (TAKE TURNS, both parts in automatic WNDR / JRNY: part 2 on bars 2 and 6) */
 static const step_t *seq_play_step(const track_t *t, uint32_t idx, step_t *buf)
 {
+    uint32_t off = sqm_turns && sqm_auto == 3u && t == &trk[1];   /* TAKE TURNS: part 2 two bars on, in the shared bars (bars 2 and 6) */
     (void)buf;
-    return sqm_step(t, idx, sqm_vary_all || !song.playing || ((sqm_bar + sqm_bar_turn) & 3u) == 3u);
+    return sqm_step(t, idx, sqm_vary_all || !song.playing || ((sqm_bar + sqm_bar_turn + 2u * off) & 3u) == 3u);
 }
 
 /* ------------------------------------------------------------------ the controls (main loop) --- */

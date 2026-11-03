@@ -10,22 +10,28 @@
 static uint8_t tide_store_buf[4u + 1u + TIDE_STORE_MAX], tide_store_dirty;
 static uint32_t tide_store_n, tide_store_t;
 
-/* the fields (n bytes) as stored: 1, or 0 when there is no valid record (a new unit, ERASE DATA, a record of another version) */
-static int tide_store_load(uint8_t *b, uint32_t n)
+/* the fields as stored: how many of the n were read (at least min; the rest of b is untouched, the caller's defaults), or 0 when there is
+ * no valid record (a new unit, ERASE DATA, a record of another version, one shorter than min): an older, shorter record keeps its fields */
+static uint32_t tide_store_load_min(uint8_t *b, uint32_t n, uint32_t min)
 {
 #if FELUCCA_FLASH
     uint8_t r[sizeof tide_store_buf];
     int len = st_load(OBJ_TIDE, r, sizeof r);
-    if (len < 5 + (int)n || r[0] != 'T' || r[1] != 'I' || r[2] != 'D' || r[3] != 'E' || r[4] != TIDE_STORE_VER)
+    uint32_t have;
+    if (len < 5 + (int)min || r[0] != 'T' || r[1] != 'I' || r[2] != 'D' || r[3] != 'E' || r[4] != TIDE_STORE_VER)
         return 0;
-    memcpy(b, r + 5, n);
-    return 1;
+    have = (uint32_t)len - 5u;
+    have = have < n ? have : n;
+    memcpy(b, r + 5, have);
+    return have;
 #else
     (void)b;
     (void)n;
+    (void)min;
     return 0;
 #endif
 }
+static int tide_store_load(uint8_t *b, uint32_t n) { return tide_store_load_min(b, n, n) != 0u; }
 /* the fields changed: saved ~2 s after the last change (tide_store_poll) */
 static void tide_store_mark(const uint8_t *b, uint32_t n)
 {

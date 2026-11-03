@@ -251,8 +251,9 @@ static void glide_poll(void)
 {
     uint32_t l, k, e, end;
     uint8_t b = perf_beat;
-    rhythm_poll(gl.on && (gl.on & (1u << GT_SEQ)) && gl.mode >= GM_WANDER &&
-                morph_musical && song.playing && !song.rec && !gl.armed ? gl.mask : 0u);
+    sqm_auto = (uint8_t)(gl.on && (gl.on & (1u << GT_SEQ)) && gl.mode >= GM_WANDER &&
+                         morph_musical && song.playing && !song.rec && !gl.armed ? gl.mask & 3u : 0u);   /* (automatic MUSIC WNDR / JRNY: TURNS, POLY) */
+    rhythm_poll(sqm_auto);
     glide_shape_follow();
     if (!gl.on) {
         glide_motion(0);

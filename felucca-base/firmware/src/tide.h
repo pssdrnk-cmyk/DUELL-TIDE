@@ -77,6 +77,7 @@ static void tide_midi(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi);
 static int tide_list_on(void);
 static void tide_list_oct(uint32_t oct);
 static int tide_store_load(uint8_t *b, uint32_t n);
+static uint32_t tide_store_load_min(uint8_t *b, uint32_t n, uint32_t min);
 static void tide_store_mark(const uint8_t *b, uint32_t n);
 static void tide_store_poll(void);
 static const char *tide_tl_keep(track_t *t, uint64_t was, uint32_t len);   /* (tide_ui.c) */
