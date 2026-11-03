@@ -71,8 +71,11 @@ const splash1 = a.screen();
 a.render(1000);                                    // DUELL splash (ui_draw.c): 1.2 s + 0.5 s before the first-start GUIDE, drawn by the loop, notes play through it
 const home = a.screen();
 check("DUELL splash: still moving at 1 s, gone at 2 s (the GUIDE drawn)", splash1.some((v, i) => v !== home[i]) && colours(home) > 0);
-check(`boots: the splash, then the first-start GUIDE (page ${a.ex.web_guide()}, ${colours(home)} colours) over HOME, the HOME LED lit`,
-      splash > 1 && a.ex.web_guide() === 1 && colours(home) > 4 && (a.ex.web_lit_buttons() >> B.HOME & 1) === 1);
+a.tap(B.OCTUP);                                    // DUELL 1.1: the first start's splash waits for OCT + (to the GUIDE) or HOME (skip it) and uses the press up
+a.render(600);
+const guideScr = a.screen();
+check(`boots: the splash, then the first-start GUIDE (page ${a.ex.web_guide()}, ${colours(guideScr)} colours) over HOME, the HOME LED lit`,
+      splash > 1 && a.ex.web_guide() === 1 && colours(guideScr) > 4 && (a.ex.web_lit_buttons() >> B.HOME & 1) === 1);
 check("silent at rest", a.peak === 0);
 a.ex.web_keys(1 << 7);                                        // C4
 a.render(300);
@@ -86,16 +89,18 @@ a.ex.web_midi(0x90, 64, 100);                                  // Web MIDI: E4 o
 a.render(300);
 a.ex.web_midi(0x80, 64, 0);
 a.render(300);
+a.ex.web_midi(0xB0, 123, 0);                                   // all notes off (1.1 + TIDE: the first start is M04, whose chord a key leaves sounding; the settings write waits for no voice)
+a.render(300);
 check(`a MIDI note in (USB-MIDI's queue) sounds (peak ${a.peak.toFixed(3)})`, a.peak > 0.01);
 { // DUELL 0.2.11: the keys and MIDI above played under the GUIDE; SELECT turns its page, HOME leaves it and the settings are written once
   const w = a.ex.web_flash_writes_count(), g = a.ex.web_guide();
-  a.turn(EN.SELECT, 1);
+  a.tap(B.OCTUP);                                 // (1.1: page 1 is a question, SELECT picks its option; OCT + turns the page)
   const g2 = a.ex.web_guide();
   a.tap(B.HOME);
   a.render(300);
   let tail = 300;                                 // (0.2.11: the settings write waits for silence: M01's release tails first, a few seconds at most)
   while (a.ex.web_flash_writes_count() === w && tail < 10000) { a.render(100); tail += 100; }
-  check(`the GUIDE stayed up while playing (page ${g}), SELECT: page ${g2}, HOME left it, the settings written (after ${tail} ms: silence)`,
+  check(`the GUIDE stayed up while playing (page ${g}), OCT +: page ${g2}, HOME left it, the settings written (after ${tail} ms: silence)`,
         g === 1 && g2 === 2 && a.ex.web_guide() === 0 && a.ex.web_flash_writes_count() > w);
 }
 const draws = a.ex.web_screen_draws();
@@ -159,8 +164,8 @@ check("a fresh instance with the kept sectors has it; one without does not",
 // ---- deterministic: the same gestures, the same samples
 async function song() {
   const d = await device(null);
-  d.render(2200);                                  // (past the splash, 1.7 s on a fresh flash: buttons are not read under it; the first-start
-                                                   // GUIDE is up after it and stays: PLAY plays through it, the same in the native build)
+  d.render(2200);                                  // (past the splash's 1.7 s, which on a fresh flash waits for OCT + or HOME: buttons are not read under it)
+  d.tap(B.OCTUP);                                  // (OCT +: the first-start GUIDE is up and stays: PLAY plays through it, the same in the native build)
   d.ex.web_test_heavy();
   d.tap(B.PLAY);
   d.rec = true;

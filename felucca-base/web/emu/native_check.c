@@ -28,8 +28,12 @@ int main(int argc, char **argv)
         return 2;
     web_nor_erase();
     web_boot();
-    render(2200);                                 /* (past the splash, 1.7 s on a fresh flash: buttons are not read under it; the first-start
-                                                   * GUIDE is up after it (DUELL 0.2.11), PLAY plays through it as emu_test.mjs's song does) */
+    render(2200);                                 /* (past the splash, 1.7 s on a fresh flash: buttons are not read under it; it waits for OCT + (1.1),
+                                                   * then the first-start GUIDE is up, PLAY plays through it as emu_test.mjs's song does) */
+    web_buttons(1u << B_OCTUP);
+    render(60);
+    web_buttons(0);
+    render(60);
     web_test_heavy();
     web_buttons(1u << B_PLAY);
     render(60);
