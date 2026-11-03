@@ -514,7 +514,7 @@ Sources for the playing styles (fetched 2026-10-14, data only):
 - **Part 2: #126 TABLA TALK** (PHYS; hand drum): a SEQUENCER arp at 1/16, GATE 64: `0(acc) . 0 +7 . 0 . +5(acc) 0 . +7 . 0(acc) . +12 .`; REV 21; LEVEL 112.
 - **Globals:** delay 1/8 dotted FDBK 27 MIX 71; ROOM SIZE 61. Loudness -17.6 dB.
 
-## 7.16 M16 STRESS TEST (a CPU test, not music; 0.2.23)
+## 7.16 M16 STRESS TEST (a CPU test, not music; 0.2.23 until U2 B: since then the test scene tests/scenes/M16_STRESS_TEST.bin, and M16 is CELLAR TAPE)
 - The owner plays it to see how many notes the unit takes (docs/TESTING.md). The two dearest sounds by the host count (`cpu_scenarios_test` per voice: PHYS about 17 to 20 %, WAVE about 8 to 9.5 %): **#37 PAN WHISTLE** (PHYS, POLY) and **#60 DIGITAL PAD** (WAVE, POLY, an arp UP 1/16 over 2 octaves, GATE 127, its long release overlapping). Both: the multimode filter HP 24 dB at 61 Hz (RES 17: it runs, the sound barely changes), an insert (FLANG / CHOR, MIX 97), SAT 41, EQ +4 / -3 / +3 dB, the DUCK PUMP 1/4 DEPTH 41 %, CHO 71, DLY 61, REV 71, LEVEL 112. **Globals:** 137 BPM, chorus DEPTH 77, the delay RANDOM (CHANCE 71 %) 1/8 FDBK 61, SHIM SIZE 107 with PITCH BOTH and MOD 51. The master COMP is the unit's (turn it on by hand). Host model (`CPU_SCEN=S`): LAYER 1 key 78 %, 2 keys 110 %, 3 and more 136 % (8 voices); DUEL with part 2 on channel 2: 92 / 124 / 150 %.
 
 ---

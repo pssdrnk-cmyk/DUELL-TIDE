@@ -634,7 +634,7 @@ Two-part playing is the heart of DUELL, so the multitimbral setup is saved whole
   | M13 | COLD CHAPEL | LAYER | #61 EVOLVING PAD | #56 SINGING BOWL | the owner's original multi, byte for byte (0.2.11 .. 0.2.22: M07; 71 BPM; back in 0.2.25 in the slot of BASILDON) |
   | M14 | GARGLE ACID | LAYER | #21 GROWL BASS | #5 SQUELCH | a growl bass two octaves down on the key, a 16-step acid riff on it, 127 BPM (the owner's, 0.2.11; back in 0.2.24) |
   | M15 | WOOD & SKIN | LAYER | #71 MARBLE RUN | #126 TABLA TALK | drum-less percussion: marimba arpeggio and tabla line, interlocking |
-  | M16 | STRESS TEST | LAYER | #37 PAN WHISTLE | #60 DIGITAL PAD | CPU test, not music: every stage on; free to overwrite (docs/TESTING.md) |
+  | M16 | CELLAR TAPE | LAYER | PLUCK BASS (ARP SEQ, offbeat C line) | CLAVICLE (plain pattern, Cm9 / Fm9 stabs) | dub techno, 122 BPM; PLAY alone plays both (U2 B). The CPU STRESS TEST that was M16 until then is the test scene tests/scenes/M16_STRESS_TEST.bin (docs/TESTING.md) |
 
   Spare (0.2.24, not in a slot): VELVET TINES (the 0.2.23 TINE STRINGS: #46 VELVET BOW + #83 TINE ROOM, XFADE 37; renamed in 0.2.25, the owner's M06 has the name), BOWL & WIND (#56 SINGING BOWL + #112 MOOR WIND, the 0.2.23 drone), SEVENOAKS (#48 LAMPLIGHT + #81 FROST BELLS, a tribute), BASILDON (#7 FM BASS 2 + #86 TIN TOLL, a tribute; M13 in 0.2.23 .. 0.2.25, out for the owner's COLD CHAPEL: the multi least different from the rest by the similarity measure), MONO DUEL (#15 BREADBIN + #27 SQUARE LEAD in DUEL; M08 in 0.2.24 .. 0.2.25 (M09 in 0.2.23), out for the owner's HAZY TENSOR: "Mono-dual is out"). MONO DUEL was the only factory multi in DUEL: since 0.2.25 none of the sixteen uses DUEL.
 

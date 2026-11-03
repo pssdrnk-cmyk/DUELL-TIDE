@@ -700,10 +700,14 @@ static BENCH_FN void bench_part(uint32_t p, const bench_scn_t *s)   /* a part fr
     else if (p == 0u && (s->flt == 12u || s->flt == 24u))
         t->p[P_FREEA] = 41, t->p[P_FREEB] = 40, t->p[P_FREEC] = 0, t->p[P_KTRK] = 0, t->p[P_FREED] = s->flt == 24u ? 2 : 1;
 }
-static BENCH_FN void bench_load_m16(void)              /* M16 STRESS TEST as a multi LOAD has it (multi.c project_load: slot 16 as stored, the factory one unless
-                                                        * the owner saved over it), then LAYER whatever MULTI LOAD says */
+#ifndef BENCH_LOAD_M16
+#define BENCH_LOAD_M16() project_load(15u)             /* (the host twin loads the STRESS TEST scene instead: U2 B, M16 is CELLAR TAPE) */
+#endif
+static BENCH_FN void bench_load_m16(void)              /* the "M16" rows: slot 16 as a multi LOAD has it (multi.c project_load: as stored, the factory one unless
+                                                        * the owner saved over it), then LAYER whatever MULTI LOAD says. Until U2 B that was the STRESS TEST; the rows
+                                                        * now measure the factory CELLAR TAPE, and the old record is tests/scenes/M16_STRESS_TEST.bin */
 {
-    project_load(15u);
+    BENCH_LOAD_M16();
 }
 static BENCH_FN void bench_set(const bench_scn_t *s)            /* the row's whole setting (main loop). The UI's per-frame syncs (ui_input.c:
                                                         * cmp_sync, ms_sync, mods_apply, mode_settings) are not running while the BENCH screen is up, so

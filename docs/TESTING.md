@@ -37,9 +37,9 @@ Hardware checklist:
 - [ ] **Sidechain / ducker**: sources PUMP, PART and MIDI channel/note; depth, attack, release; no clicks.
 - [ ] **Stability**: play for a while with an arp running and many effects on; report any freeze, reboot or screen glitch.
 
-## CPU test (M16 STRESS TEST in every build; MENU > SYSTEM > TEST in developer builds only)
+## CPU test (the STRESS TEST scene; MENU > SYSTEM > TEST in developer builds only)
 
-**The release has no TEST screen** (ABOUT still shows the CPU line). Since 0.2.23 every build has the factory multi **M16 STRESS TEST** (below); the four TEST multis of earlier developer builds are gone from the slots (the host tests keep them as test scenes). The TEST screen is for developer builds, made with the test mode on (`DUELL_TEST_MODE=1`, off by default):
+**The release has no TEST screen** (ABOUT still shows the CPU line). Since 0.2.23 and until U2 B every build had the factory multi **M16 STRESS TEST** (below); it is no longer a factory multi (M16 is CELLAR TAPE, a normal multi): the record is the host test scene `tests/scenes/M16_STRESS_TEST.bin`, and the host CPU tests (cpu_scenarios, budget, deadline, `tools/cpu_budget.sh`) load it from there, so the calibration keeps its meaning. To try it on a unit it can be written to a slot with the editor. the four TEST multis of earlier developer builds are gone from the slots (the host tests keep them as test scenes). The TEST screen is for developer builds, made with the test mode on (`DUELL_TEST_MODE=1`, off by default):
 
 - Device: `DUELL_TEST_MODE=1 ./build.sh` in `felucca-base/` (it compiles with `-DDUELL_TEST_MODE=1`; the factory multis are the same sixteen as in the release).
 - Emulator: `DUELL_TEST_MODE=1 .venv/bin/python gen_only.py`, then `DUELL_TEST_MODE=1 sh felucca-base/web/emu/build.sh`.

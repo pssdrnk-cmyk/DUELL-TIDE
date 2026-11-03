@@ -42,6 +42,8 @@ void *memcpy(void *d, const void *s, size_t n) { return mf_memcpy(d, s, (unsigne
 static void fm1_irq_off(void);
 static void fm1_irq_on(void);
 #include "ui_test.c"
+#include "scenes.h"
+#define BENCH_LOAD_M16() do { uint32_t w_ = nor_writes; scene_load(15, "M16_STRESS_TEST"); nor_writes = w_; } while (0)   /* (U2 B: the STRESS TEST the M16 rows were written for; its store is not the run's flash write) */
 static uint8_t nor[0x100000];
 static uint32_t nor_writes;
 static int st_read(uint32_t off, void *dst, uint32_t n) { memcpy(dst, nor + off, n); return 0; }

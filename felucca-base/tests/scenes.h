@@ -5,6 +5,8 @@
  *   tests/scenes/M13_TEST_1_BASE.bin .. M16_TEST_4_MIX.bin   the four CPU TEST multis (tests/gen_test_multis.c made them)
  *   tests/scenes/M01_REESE_SWAMP.bin .. M10_FINAL_REEL.bin   the factory multis of 0.2.13 .. 0.2.22 in their slots of then (0.2.24: M06 ACID ETHER,
  *                                                            M07 COLD CHAPEL and M08 GARGLE ACID are factory multis again, M09 / M06 / M14, the same bytes)
+ *   tests/scenes/M16_STRESS_TEST.bin                         the STRESS TEST, the factory M16 of 0.2.23 .. 1.1 before U2 B (M16 is CELLAR TAPE now): the CPU tests
+ *                                                            (cpu_scenarios, tools/cpu_budget.sh, bench_sim) load it with scene_load(15, ...) so their calibration keeps its meaning
  *   tests/scenes/spare/M06_TINE_STRINGS.bin (VELVET TINES), M07_BOWL_AND_WIND.bin, M14_SEVENOAKS.bin, M13_BASILDON.bin   SPARE DATA (0.2.24; BASILDON 0.2.25): multis made
  *                                                            for 0.2.23 that left the sixteen so the owner's could come back (tools/factory_multis.py SPARE); multi_render_test renders them
  *                                                            (0.2.25: M07_COLD_CHAPEL.bin is also the factory multi M13, byte for byte)

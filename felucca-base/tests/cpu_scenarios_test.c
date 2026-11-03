@@ -8,7 +8,7 @@
  * guards on the fader in the middle (SMART's wake rule, morph.c morph_wake_half: the morph must not creep back up); C, the VOICE CAP
  * (voice.c vcap: the caps of heavy pairs and the factory multis, measured with and without, never below 4, new notes only).
  * DUELL 0.2.23: the multis of Q, N, K, O are the TEST SCENES of tests/scenes.h (0.2.22's factory multis and CPU TEST multis, byte for byte, loaded as then);
- * G (default) today's sixteen factory multis (MODE RECALL ON), 4 + 4 notes at fader 63, guarded at 100 % (M16 the STRESS TEST unguarded); S the STRESS TEST
+ * G (default) today's sixteen factory multis (MODE RECALL ON), 4 + 4 notes at fader 63, guarded at 100 % (U2 B: M16 is CELLAR TAPE, guarded too; the STRESS TEST is tests/scenes/M16_STRESS_TEST.bin); S the STRESS TEST
  * played from the keys in LAYER / STEREO / DUEL, 1..8 keys (docs/TESTING.md).
  * CPU_SCEN=letters for more: I the INSERT types incl. TAPE, VINYL (0.2.14), N the other factory multis (M02, M07..M10) as Q (no guard), P the cap's per-voice table, E engine pairs x SMART / WILD rolls, M what a factory End B moves, X the
  * stages a small move wakes, W WAVE incl. the kitchen sink, K the faded choices of M04 (WIRED SNAIL) / M14 / M15, F bursts (retrigger, 64 MIDI
@@ -440,7 +440,7 @@ static double stress_run(uint32_t mode, uint32_t nk, uint32_t fader, uint32_t co
     uint32_t i, n, keys = 0, vb = 0;
     power();
     ui_prefs2 |= PREF_MODE_RECALL >> 16;
-    project_load(15);
+    scene_load(15, "M16_STRESS_TEST");               /* (U2 B: the STRESS TEST is a test scene, no longer the factory M16) */
     duell_mode_req = (uint8_t)mode;
     if (comp) {
         song.cp[0] = 20; song.cp[1] = 4;
@@ -536,7 +536,7 @@ int main(void)
             double pk, av = multi_run(m, 4, 63, &pk);
             printf("G M%02u %-12s 4+4 notes fader  63: avg %5.1f %%  peak half %5.1f %%  (parts: %s / %s, mode %u)\n", m + 1, mu_names[m], av, pk,
                    ENGINES[trk[0].engine]->name, ENGINES[trk[1].engine]->name, (unsigned)dm_cur);
-            if (m < 15u) {
+            if (m < 16u) {
                 snprintf(b, sizeof b, "M%02u %s 4 + 4 notes, fader 63, average (a factory multi)", m + 1, mu_names[m]);
                 guard(b, av, 100.0);
             }

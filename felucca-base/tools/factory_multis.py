@@ -64,6 +64,7 @@ def note(s):
 # In LAYER each part maps a played key with its own TRN (seq.c key_on, 0.2.23: until 0.2.22 part 2 got part 1's note and the split compared it),
 # so an octave between the parts can be set with either part's TRN.
 # Order (0.2.24): 1-4 bass grooves and splits, 5-8 pads, layers and the dry pair, 9-12 the four multis of 0.2.1 as made (the owner's),
+# U2 B (1.1): M03 M05 M06 M07 M08 M13 M16 got sequenced arrangements and M10 M11 M12 their own line (tests/revise_multis.c + revise_table.h from tools/factory_multis/original/Mnn.bin, the records as they were); the records here are those, kept
 # 13-15 for performing (0.2.25: 13 is the owner's original COLD CHAPEL, in the slot of BASILDON, the multi least different from the rest), 16 the stress test.
 SEND = ("P_CHOR", "P_DLY", "P_REV")
 MULTIS = [
@@ -116,17 +117,14 @@ MULTIS = [
     dict(slot=14, name="GARGLE ACID", kept=True, owner=True, mode="LAYER", parts=[dict(sound="GROWL BASS"), dict(sound="SQUELCH")],
          what="a growl bass two octaves down holding the key, a 16-step acid riff on it at 127 BPM (the owner's, 0.2.11 .. 0.2.22: M08; back in 0.2.24)"),
     # slot 15: the owner's WOOD & SKIN (0.2.31), from tools/owner_multis.py (his file duell-multi-M15-WOOD_SKIN.duell-multis.json, record v7, 487 B, crc32 975420133); the 0.2.23 record built here differed in one byte (index 52)
-    # ---- 16: the STRESS TEST (owner, 0.2.23: how many notes the unit takes; a test, free to overwrite) ----
-    dict(slot=16, name="STRESS TEST", mode="LAYER", stress=True,
-         what="CPU stress test, not music: the two dearest sounds, every stage on (24 dB multimode filters, FLANGER insert + SAT on the whistle, EQ + ducker on the pad, chorus, RANDOM delay, SHIM BOTH), "
-              "a 1/16 arp pad with a short gate and release (0.2.24: calibrated so one key plays on the unit: host model 1 key ~62 %, 2 keys ~78 %, 3 keys ~95 %)",
-         g=dict(G_BPM=137, G_DTIME="1/8", G_DFDBK=61, G_DMIX=90, G_DMODE="RAND", G_DMDEP=71, G_DMRATE=44, G_CDEPTH=77, G_CRATE=41,
-                G_RTYPE="SHIM", G_RSIZE=107, G_RDAMP=51, G_SHPITCH="BOTH", G_SHMOD=51),
-         parts=[dict(sound="PAN WHISTLE", set=dict(P_VOICE="POLY", P_FREEA="u_uf(61)", P_FREEB=17, P_FREEC=127, P_FREED=2, P_ITYPE="FLANGER", P_IMIX=97, P_DIST=41,
-                                                    P_CHOR=71, P_DLY=61, P_REV=71, P_LEVEL=112)),
-                dict(sound="DIGITAL PAD", set=dict(P_VOICE="POLY", P_FREEA="u_uf(61)", P_FREEB=17, P_FREEC=127, P_FREED=2, P_AMODE="UP", P_ARATE="1/16", P_AOCT=2, P_AGATE=71, P_AHOLD="OFF",
-                                                    P_REL=47, P_EQLG=4, P_EQMG=-3, P_EQHG=3,
-                                                    P_DKSRC="PUMP", P_DKRATE="1/4", P_DKDEP=41, P_CHOR=71, P_DLY=61, P_REV=71, P_LEVEL=112))]),
+    # ---- 16: CELLAR TAPE (U2 B follow-up, owner: the stress test is no longer a factory multi; its record is the test scene tests/scenes/M16_STRESS_TEST.bin) ----
+    dict(slot=16, name="CELLAR TAPE", mode="LAYER",
+         what="deep dub techno: an offbeat plucked sub line under minor-ninth chord stabs, dotted-eighth delay and a plate (PLAY alone plays both; a held key transposes the bass and plays the stabs' chord)",
+         g=dict(G_BPM=122, G_DTIME="4D", G_DFDBK=58, G_DMIX=84, G_DMODE="DIGI", G_RTYPE="PLATE", G_RSIZE=84, G_RDAMP=61),
+         parts=[dict(sound="PLUCK BASS", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=55, P_AHOLD="OFF", P_VOICE="LEG", P_DLY=0, P_REV=0, P_LEVEL=112),
+                     steps=". . -24A . . . -24 . . . -22 . . -24 -19 ."),
+                dict(sound="CLAVICLE", set=dict(P_CHRD="MIN7", P_VOIC="CLOSE", P_SGATE=30, P_DLY=77, P_REV=44, P_LEVEL=104),
+                     steps=". . . n63+67+70+74A . . . . . . n65+68+72+75 . . . .")]),
 ]
 
 # ---- spare multis (0.2.24): made for 0.2.23, out of the sixteen so the owner's COLD CHAPEL, ACID ETHER and GARGLE ACID could come back.

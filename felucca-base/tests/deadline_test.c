@@ -36,10 +36,11 @@
 #define UI_TEST_NO_MAIN 1
 #include <stdint.h>
 #include "ui_test.c"
+#include "scenes.h"
 
-#define DL_REF 0xb8db0653a8dfc654ull                    /* the pre-item-132 sources (BUDGET_LIMIT 80, BUDGET_HO charged), this test, 2026-10-26 (item 142: with the 1.15 limit as worked out here) */
-#define DL_REF2 0x40924773c6c4fbf0ull                   /* item 142: the posted deadlines (tcr_post_deadline) at 16 post moments with the new wait limit (item 137's was 0xccfd48c6e1c8ecc7) */
-#define DL_REF3 0x70d45c7084c0d110ull                   /* item 142: the new wait limits (recorded on the item 142 sources, 2026-10-27) */
+#define DL_REF 0xe2d0569e4ca5f697ull                    /* the pre-item-132 sources (BUDGET_LIMIT 80, BUDGET_HO charged), this test, 2026-10-26 (item 142: with the 1.15 limit as worked out here; re-based 2026-11-03: U2 B, ten factory multis hold sequences / other arps, was 0xb8db0653a8dfc654) */
+#define DL_REF2 0xc0af709a3883c486ull                   /* item 142: the posted deadlines (tcr_post_deadline) at 16 post moments with the new wait limit (item 137's was 0xccfd48c6e1c8ecc7; re-based 2026-11-03: U2 B, ten factory multis hold sequences / other arps, was 0x40924773c6c4fbf0) */
+#define DL_REF3 0x05a0318a41d71b48ull                   /* item 142: the new wait limits (recorded on the item 142 sources, 2026-10-27; re-based 2026-11-03: U2 B, ten factory multis hold sequences / other arps, was 0x70d45c7084c0d110) */
 static uint64_t h3 = 1469598103934665603ull;
 static uint64_t n_lim_chg[4], bad_wltrue, bad_wllater, bad_wlsafe, n_lim;
 static int32_t lim_chg_max;
@@ -291,7 +292,10 @@ int main(void)
     for (i = 1; i <= 16u; i++) {                        /* the 16 factory multis as loaded (MODE RECALL), morphs included */
         boot();
         ui_prefs2 |= PREF_MODE_RECALL >> 16;
-        project_load((int)i);
+        if (i == 15u)
+            scene_load(15, "M16_STRESS_TEST");          /* (U2 B: the STRESS TEST, now a test scene, as these hashes had it; CELLAR TAPE is the factory M16) */
+        else
+            project_load((int)i);
         frame();
         sweep();
     }

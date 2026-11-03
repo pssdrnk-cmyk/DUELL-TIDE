@@ -47,7 +47,9 @@ static const rn_t RN[] = {
     /* 0.2.25: BASILDON left M13 for the owner's COLD CHAPEL (spare data; its M13 hashes of 0.2.25) */
     {"X13_BASILDON", 12, "spare/M13_BASILDON", 1},
     /* 0.2.25: MONO DUEL left M08 for the owner's HAZY TENSOR (spare data; loaded as a test scene in its old slot, with its MODE: DUEL) */
-    {"X08_MONO_DUEL", 7, "spare/M08_MONO_DUEL", 1}};
+    {"X08_MONO_DUEL", 7, "spare/M08_MONO_DUEL", 1},
+    /* U2 B: the STRESS TEST left M16 for CELLAR TAPE (test scene, loaded into its old slot with its MODE: the hashes M16 had) */
+    {"S17_STRESS_TEST", 15, "M16_STRESS_TEST", 1}};
 #define NR (sizeof RN / sizeof *RN)
 static const uint32_t FAD[3] = {0, 63, 127};
 
@@ -169,6 +171,7 @@ int main(int argc, char **argv)
                    "# 1.0 owner's answers: M04 DUB CHORD's TRIM one more step down (peak ceiling) and its seed k = 20: its three renders made again. M05 / M11 name VOICE sounds by their closed-up factory indices (CROONER left the bank): same sound, same hashes.\n"
                    "# DUELL 1.1 / jam11, on purpose, all 105 (docs/JAM11_TEST_BASELINE.md): every render changes by the 1.1 sound changes the regress golden (tests/golden.txt) traces on 1.0 and jam11 audio: the\n"
                    "# note-start stagger (item 144: the chords start 2 voices a block), BIT DEPTH, REVERB_FIX / SHIM / delay rounding, the factory sounds' new recipes and End B as values, the multis' ROLL B;\n"
+                   "# U2 B: M16 is CELLAR TAPE (new, three hashes re-made); S17_STRESS_TEST is the former M16 record as a test scene (new baseline: scenes render with BASS MONO off, the factory multis with it on).\n"
                    "# jam11 adds TIDE's roll changes and PHYS tuning. (Not compared audio against 1.0: the 1.0 tree does not build this test on Linux, nor does stock 1.1 (scenes.h / mu_put_rec).)\n");
         for (m = 0; m < NR; m++)
             for (f = 0; f < 3u; f++)

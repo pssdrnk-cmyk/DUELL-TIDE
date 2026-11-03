@@ -89,7 +89,7 @@ This is the compiled factory set checked at `bee34f9`, not a device readback; sa
 | M13 COLD CHAPEL | 71 | EVOLVING PAD: empty; notes latch | SINGING BOWL: empty; up arp 1/2; latched power chords | Random / Resonator |
 | M14 GARGLE ACID | 127 | GROWL BASS: empty; transpose -24 | SQUELCH: 16 / 10; SEQ 1/16 | Digital / Plate |
 | M15 WOOD & SKIN | 107 | MARBLE RUN: empty; up arp 1/8, two octaves | TABLA TALK: 16 / 9; SEQ 1/16 | Digital / Room |
-| M16 STRESS TEST | 137 | PAN WHISTLE: empty | DIGITAL PAD: empty; up arp 1/16, two octaves | Random / Shimmer |
+| M16 CELLAR TAPE (was STRESS TEST, U2 B) | 122 | PLUCK BASS: SEQ 1/16 offbeat line | CLAVICLE: 16 / 2 chord stabs | Digital 4D / Plate |
 
 M03, M05, M06, M07, M08, M13 and M16 have empty patterns on both parts. M10–M12 each contain the same rising C4–D#5 chromatic pattern on part 2, accented every fourth step, alongside their classic arp settings. All sixteen records store LAYER mode, no keyboard split (including M03 despite its name), straight global swing (50%) and no automation/parameter-lock events. MODE RECALL controls whether stored mode/crossfade settings are applied.
 

@@ -126,6 +126,11 @@ static void zsection(const char *tag, uint32_t tide)
         }
 }
 '''
+code = code.replace('project_load(15);', 'if (g_stress) scene_load(15, "M16_STRESS_TEST"); else project_load(g_slot);')
+code = code.replace('static uint32_t g_tide,', 'static uint32_t g_slot = 15, g_play, g_stress, g_tide,')
+TS = '    if (tide)' + chr(10) + '        tide_setup();'
+code = code.replace(TS, TS + chr(10) + '    if (g_play) { seq_start(); song.playing = 1; }   /* PLAY: the stored arrangement (U2 B) */')
+code = code.replace('nk = tide ? 0u : 1u;', 'nk = tide || g_play ? 0u : 1u;')
 code = code.replace('@NL@', CH)
 rep('int main(void)\n', code + '\nint main(void)\n', 'main')
 main_hook = '''    if (strchr(sec, 'Z') || strchr(sec, 'T')) {   /* cpu-budget */
@@ -133,6 +138,10 @@ main_hook = '''    if (strchr(sec, 'Z') || strchr(sec, 'T')) {   /* cpu-budget *
         if (getenv("TURNS")) g_t_turns = (uint32_t)atoi(getenv("TURNS"));
         if (getenv("POLY")) g_t_poly = (uint32_t)atoi(getenv("POLY"));
         if (getenv("JRNY")) g_t_jrny = (uint32_t)atoi(getenv("JRNY"));
+        if (getenv("SLOT")) g_slot = (uint32_t)atoi(getenv("SLOT")) - 1u;
+        g_stress = !getenv("SLOT");                 /* (no SLOT: the old STRESS TEST, as before) */
+        if (getenv("STRESS")) g_stress = (uint32_t)atoi(getenv("STRESS"));   /* 1: the old M16 STRESS TEST (tests/scenes/M16_STRESS_TEST.bin), the proxy's 70 % calibration point */
+        if (getenv("PLAY")) g_play = (uint32_t)atoi(getenv("PLAY"));
         if (strchr(sec, 'Z')) zsection("Z", 0);
         if (strchr(sec, 'T')) zsection("T", 1);
         return 0;

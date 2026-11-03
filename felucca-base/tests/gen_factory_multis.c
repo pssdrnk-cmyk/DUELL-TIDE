@@ -61,6 +61,21 @@ static int parse_steps(track_t *t, const char *s, uint32_t len)
         step_t *st = &t->step[i];
         while (*s == ' ') s++;
         if (*s == '.') { st->time = ST_REST; s++; }
+        else if (*s == 'n') {                    /* U2 B: "n60+64+67" a plain pattern's step, up to four absolute notes (C4 = 60), suffix A an accent */
+            s++;
+            st->time = ST_NOTE;
+            st->vel = 100;
+            for (;;) {
+                int32_t v = 0;
+                while (*s >= '0' && *s <= '9') v = v * 10 + (*s++ - '0');
+                if (st->n >= 4u) { fprintf(stderr, "more than four notes in a step\n"); exit(1); }
+                st->note[st->n++] = (uint8_t)v;
+                if (*s != '+') break;
+                s++;
+            }
+            for (; *s == 'A'; s++)
+                st->flags |= SF_ACCENT;
+        }
         else {
             int32_t sg = 1, v = 0;
             if (*s == '+' || *s == '-')
