@@ -214,10 +214,34 @@ def parse_record(ctx, b):
     return dict(engine=eng, cat=b[6], name=name, values=full, mb=mb, steps=steps, fm6=fm6, ext=ext)
 
 
+TIDE = bool(re.search(r"^#define DUELL_TIDE 1", (ROOT / "firmware" / "src" / "tide.h").read_text(), re.M))   # the TIDE fork (firmware/src/tide.h)
+LEGACY = [("P_ED_FLT", 2, 2), ("P_E2SHP", 11, 3), ("P_L2PIT", 12, 1), ("P_L2FLT", 12, 2), ("P_L2SHP", 12, 3)]   # mod.c mod_legacy_move L[]: card, MS_ source, MD_ destination
+
+
+def drop_preselect(ctx, vals, factory):
+    """DUELL 1.1 MATRIX PRESELECTION (mod.c mod_preselect): a sound that loads gets default pairs at AMOUNT 0 in its free slots, and a save stores them; at amount 0 they
+    play nothing and the next load fills them again, so they are not the owner's: a slot with AMT 0 is dropped and the used slots packed up (mod_compact's order)"""
+    sl = [[ctx.ids["P_M%d%s" % (k + 1, f)] for f in ("SRC", "DST", "AMT")] for k in range(8)]
+    for card, src, dst in reversed(LEGACY):     # DUELL 1.1 mod_legacy_move put a retired card's value into a free slot as the sound loaded: back onto its card (the recipes' form, the same sound)
+        hit = [ids for ids in sl if (vals.get(ids[0], 0), vals.get(ids[1], 0)) == (src, dst) and vals.get(ids[2], 0)]
+        if hit and not vals.get(ctx.ids[card], 0) and factory["p"].get(card[2:]):   # (only where the recipe has the card: a route of its own stays)
+            vals[ctx.ids[card]] = vals[hit[-1][2]]
+            for i in hit[-1]:
+                vals[i] = 0
+    used = [[vals.get(i, 0) for i in ids] for ids in sl if vals.get(ids[0], 0) and vals.get(ids[2], 0)]
+    for k, ids in enumerate(sl):
+        for i, v in zip(ids, used[k] if k < len(used) else (0, 0, 0)):
+            vals[i] = v
+
+
 def sound_from_record(ctx, rec, factory):
     """the duell_sounds.py form of a record: p = every value off the INIT defaults (not the track's own), End B from the block"""
     eng = rec["engine"]
     p = {}
+    drop_preselect(ctx, rec["values"], factory)
+    if ctx.eng_names[eng] == "FM6":                  # DUELL 1.1 (eng_fm6.c fm6_env_look NEW): a factory FM6 sound's AMP ENV knobs start on its patch's own numbers as it loads: not the owner's
+        for nm in ("P_ATK", "P_DEC", "P_SUS", "P_REL"):
+            rec["values"][ctx.ids[nm]] = ctx.default(eng, ctx.ids[nm])
     for pid in sorted(rec["values"]):
         nm = ctx.name_of.get(pid)
         if nm is None or (pid < ctx.e0 and nm[2:] in SKIP_NAMES):
@@ -237,7 +261,9 @@ def sound_from_record(ctx, rec, factory):
     if (cat0 in ("BASS", "PERC") or "KICK" in rec["name"]) and "KTRK" not in p:
         p["KTRK"] = rec["values"][ctx.ids["P_KTRK"]]
     s = dict(engine=ctx.eng_names[eng], idx=factory["idx"], name=rec["name"], cat=CATS[rec["cat"]] if rec["cat"] else factory["cat"], p=p)
-    if rec["mb"]:                                    # PT_VER 4: End B as exact values (the block of the record): 'bend' {label: End B value} (where it differs from the Original), 'bpin' (the marks of the values set by hand), 'bfm' (FM6 bytes), 'bamt' (the AMOUNT)
+    if TIDE:                                         # TIDE (firmware tide.h H6): a factory sound's B is rolled MUSICAL as it loads, the recipe's End B is not used; the record's is that roll: the recipe's stays
+        s.update({k: v for k, v in factory.items() if k in ("bseed", "bamt", "bend", "bpin", "bfm")})
+    elif rec["mb"]:                                  # PT_VER 4: End B as exact values (the block of the record): 'bend' {label: End B value} (where it differs from the Original), 'bpin' (the marks of the values set by hand), 'bfm' (FM6 bytes), 'bamt' (the AMOUNT)
         d = endb.decode(rec["mb"], eng)
         if d["amt"]:
             s["bamt"] = d["amt"] - 1
@@ -462,7 +488,7 @@ def main(argv):
                 report.append("#%d %s: edited (%s)" % (slot + 1, s["name"], ", ".join(diff[:8]) + (" ..." if len(diff) > 8 else "") if diff else "End B only"))
             own[k] = s
     if fm6_seen:
-        report.append("note: %d FM6 patch(es) in the files: their operator data is not imported (duell_sounds.py has no place for it); the values are" % fm6_seen)
+        report.append("note: %d FM6 patch(es) in the files: their operator data is not imported (duell_sounds.py has no place for it), nor the AMP ENV knobs (a factory FM6 sound's start on its patch's numbers); the other values are" % fm6_seen)
     if steps_seen:
         report.append("note: %d patch(es) carry SEQUENCER steps: not imported" % steps_seen)
     # ---- multis
