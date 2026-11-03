@@ -45,8 +45,12 @@ static void tide_store_poll(void)
     if (!tide_store_dirty || fm1_ms - tide_store_t < 2000u || song.playing || erase_busy())
         return;                                          /* (a knob turned writes once; never while playing: the flash write ducks the audio) */
 #if FELUCCA_FLASH
-    if (st_save(OBJ_TIDE, tide_store_buf, tide_store_n))
-        return;                                          /* (failed: tried again next pass) */
+    if (!flash_ok || !autosave_quiet())
+        return;                                          /* (no flash, or a key / voice sounding: the other autosaves wait the same) */
+    if (st_save(OBJ_TIDE, tide_store_buf, tide_store_n)) {
+        tide_store_t = fm1_ms;                           /* (failed: tried again after the 2 s again, not at every pass) */
+        return;
+    }
 #endif
     tide_store_dirty = 0;
 }
