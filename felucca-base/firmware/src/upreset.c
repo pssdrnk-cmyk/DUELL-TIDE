@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* DUELL's PATCH store (SAVE > PATCHES, SPEC 3.6; editor protocol v2, cmds 16-21): ONE list of UP_SLOTS (128) patch slots (owner, 2026-10-15).
+/* DUELL's PATCH store (SAVE > PATCHES, SPEC 3.6; editor protocol v2, cmds 16-21): ONE list of UP_SLOTS (128) patch slots (owner, 2026-10-15; with TIDE the store holds 126, see below).
  * Slot k holds a SAVED record if one was written (SAVE overwrites the slot it is told to), else the FACTORY sound at browse position k
  * (sounds.c DS_LIST: category, engine, name = the #NN numbers): a virtual fallback, nothing is written at first boot, a fresh or erased
  * unit shows the factory sounds in all 128 slots. RESTORE removes the record of a slot, so the factory sound comes back; the factory sound
@@ -14,9 +14,10 @@
  * when it is loaded or edited (pt_raw: a ring of four), a write loads the one chunk it changes into a work buffer (pt_work).
  * The limit is HONEST and it is the slot count: PT_WORST is the largest record there can be (an FM6 sound with its patch, a SEQ-mode arp
  * with a full 16-step pattern, End B, a shadow marker, every parameter off its default), PT_K of them fit a chunk with its header,
- * PT_MAX = PT_NCH x PT_K = 128 = UP_SLOTS records of any kind always fit, so every one of the 128 slots can always be written, whatever
- * the other 127 hold. A chunk takes a NEW record only under PT_K records, which keeps that guarantee. There is no 'full': a slot is never
- * refused for room. PT_FULL (no chunk has room) cannot happen below that; it stays as a guard and reads as a plain SAVE ERROR.
+ * PT_MAX = PT_NCH x PT_K records of any kind always fit: 22 x 6 = 132 >= 128 = UP_SLOTS, so without TIDE every one of the 128 slots can always be written,
+ * whatever the other 127 hold. With TIDE (chunk 21 is its settings) it is 21 x 6 = 126: a 127th NEW record finds no chunk under PT_K records, PT_FULL,
+ * nothing written (the screen says STORE FULL, tide.h TIDE_SAVE_ERROR); a slot that already holds a record can always be rewritten. A chunk takes a NEW
+ * record only under PT_K records, whatever its size, which keeps both guarantees.
  *
  * Chunk: u16 'PT' magic, u8 version PT_VER, u8 0, then records back to back. Record (little endian):
  *   0 u16 length of the whole record     2 u8 slot (0..127)       3 u8 revision (+1 at every rewrite; a record that moved to
@@ -220,7 +221,7 @@ static void up_values(const up_rec_t *r, int16_t *v)   /* the record's values cl
 #define PT_VER 4u                                /* the chunk image's version (byte 2 after "PT"): 4 = ROLL CHAINED storage (2026-10-29: the values by wide id in the bits of their ranges, End B as values (morph.c MBV), the AK block's steps in 7 bytes; 6 records a chunk, 22 chunks); 3 and before are refused (no backward compatibility before the alpha) */
 #define PT_NONE 0xFFFFu
 #define PT_NOCH 0xFFu                            /* a directory entry with no record */
-#define PT_FULL 4                                /* up_put: no chunk has room (a guard only: PT_MAX records always fit; reads as SAVE ERROR) */
+#define PT_FULL 4                                /* up_put: no chunk takes a new record (without TIDE a guard only: 128 always fit; with TIDE the 127th new record: STORE FULL) */
 #define PT_VB 20u                                /* PT_VER 4: the values' bitmap, a bit per wide id (0..126 the ids, 127 never, 128..155 the extension slots) */
 #define PTF_PAT 1u
 #define PTF_TR 2u                                /* 0.2.19: the TRIM form: the loudness is the pair of P_TRIM (the PATCH TRIM) and the record carries no MIXER LEVEL (P_LEVEL is never written). A record
@@ -251,7 +252,7 @@ static void up_values(const up_rec_t *r, int16_t *v)   /* the record's values cl
 #define PT_W_PLAIN (PT_FIX + PT_VB + PT_VMAX + MBV_MAX + 32u + UPF_PK)               /* 490 (TIDE: 493) */
 #define PT_WORST (PT_W_SEQ > PT_W_PLAIN ? PT_W_SEQ : PT_W_PLAIN)
 #define PT_K ((PT_CAP - PT_HDR) / PT_WORST)
-#define PT_MAX (PT_NCH * PT_K)                   /* 132 records of the worst size: at least the 128 slots (a chunk takes a NEW record only under PT_K) */
+#define PT_MAX (PT_NCH * PT_K)                   /* 132 records of the worst size (TIDE: 126): at least the 128 slots without TIDE (a chunk takes a NEW record only under PT_K) */
 #if FELUCCA_FLASH
 _Static_assert(PT_CAP + ST_PAYLOAD_OFF == ST_PAYLOAD_END && PT_CAP <= ST_PAYLOAD_MAX, "a patch chunk is one storage object whose payload ends at 0xF00");
 #endif
@@ -925,7 +926,7 @@ static int pt_write(uint32_t c, uint32_t skip, uint32_t n)
     return rc;
 }
 /* slot k = r (+ pk), or its record removed (r 0: RESTORE, the factory sound is back), in the chunks and in flash: 0 ok, 2 flash error
- * (nothing changed), 3 no flash (kept in RAM), PT_FULL no room (a guard only) */
+ * (nothing changed), 3 no flash (kept in RAM), PT_FULL no room (TIDE: the 127th new record; else a guard only) */
 static uint32_t pt_next_rev(uint32_t k) { return pt_dir[k].ch != PT_NOCH ? (uint32_t)pt_dir[k].rev + 1u : 0u; }
 /* slot k := the record already in pt_enc (n bytes, its slot and revision bytes set): the part of pt_put that places and writes it */
 static int pt_put_enc(uint32_t k, uint32_t n)
@@ -1082,7 +1083,7 @@ static void up_ram_reset(void)
 }
 
 /* record k = *r (0: its record removed, RESTORE) in the patch store and flash: 0 ok, 1 bad slot, 2 flash error or the transport runs (nothing
- * written), 3 no flash (kept in RAM), 4 no chunk has room (a guard: PT_MAX = 128 records always fit, only a flash fault can make a
+ * written), 3 no flash (kept in RAM), 4 no chunk takes a new record (TIDE: the 127th; without it 128 always fit, only a flash fault can make a
  * write fail; nothing written). up_pk_in: the FM6 patch it carries. What the parts that play the slot do about it: sl_restore */
 static int up_put(uint32_t k, const up_rec_t *r)
 {
