@@ -68,6 +68,9 @@ static uint8_t ps_dirty;                        /* bit o: object o changed in RA
 static uint8_t ps_def;                          /* bit o: object o is its slots' defaults, not from the flash (built again when needed) */
 static uint8_t ps_booted;                       /* ps_boot has run (a host test that never boots the stores: the first access does) */
 static void ps_boot(void);
+#if FELUCCA_FLASH
+static void ps_refresh(uint32_t o);
+#endif
 
 static uint32_t ps_nslot(uint32_t o) { return PS_SLOTS - o * PS_PER_OBJ > PS_PER_OBJ ? PS_PER_OBJ : PS_SLOTS - o * PS_PER_OBJ; }
 static uint32_t ps_used_len(uint32_t o) { if (!ps_booted) ps_boot(); return ps_used[o]; }
@@ -289,8 +292,9 @@ static void ps_def_get(const void *ctx, uint32_t i, uint8_t *b9)
 }
 static uint32_t ps_def_rec(uint8_t *d, uint32_t k)
 {
-    return ps_enc(d, TP[P_SQNT].def ? PS_F_QNT : 0u, PATTERNS[k].len, PATTERNS[k].div, (uint32_t)TP[P_SSWING].def,
-                  (uint32_t)TP[P_SGATE].def, PATTERNS[k].name, ps_def_get, &k);
+    return ps_enc(d, TP[P_SQNT].def ? PS_F_QNT : 0u, PATTERNS[k].len, PATTERNS[k].div,
+                  PATTERNS[k].swing ? PATTERNS[k].swing : (uint32_t)TP[P_SSWING].def,
+                  PATTERNS[k].gate ? PATTERNS[k].gate : (uint32_t)TP[P_SGATE].def, PATTERNS[k].name, ps_def_get, &k);
 }
 
 #if DUELL_TIDE
@@ -345,6 +349,8 @@ static void ps_boot(void)                       /* persist_boot (up_boot): the s
 #if FELUCCA_FLASH
         ps_buf_o = (uint8_t)o;                  /* (the one before is in the flash or its defaults: nothing lost) */
         ps_obj_check(o, flash_ok ? st_load(OBJ_PATSLOT0 + o, ps_buf, PS_OBJ_MAX) : -1);
+        if (!(ps_def >> o & 1u))
+            ps_refresh(o);
 #else
         ps_obj_check(o, -1);
 #endif
@@ -432,6 +438,27 @@ static int ps_splice(uint32_t k, const uint8_t *r, uint32_t n)
     ps_touch(o);
     return 0;
 }
+
+#if FELUCCA_FLASH
+/* boot, an object read from the flash: a slot nobody saved over (no CHANGED flag) is whatever the firmware's table holds now, not the default
+ * an earlier firmware wrote there (the factory patterns change between versions); a saved slot is never touched. The object is written at once
+ * if anything changed (nothing plays yet); if the flash refuses it, RAM goes back to what the flash holds */
+static void ps_refresh(uint32_t o)
+{
+    uint8_t r[PS_REC_MAX];
+    uint32_t i, k, n;
+    for (i = 0; i < ps_nslot(o); i++) {
+        k = o * PS_PER_OBJ + i;
+        n = ps_def_rec(r, k);
+        if (!(ps_meta[k].fl & PS_F_CHANGED) && (n != ps_rlen(&ps_buf[ps_at[k]]) || memcmp(&ps_buf[ps_at[k]], r, n)))
+            ps_splice(k, r, n);
+    }
+    if ((ps_dirty >> o & 1u) && ps_write(o)) {
+        ps_dirty &= (uint8_t)~(1u << o);
+        ps_obj_check(o, st_load(OBJ_PATSLOT0 + o, ps_buf, PS_OBJ_MAX));
+    }
+}
+#endif
 
 /* the editor's backup restored object o as b (len bytes, checked, already in the flash): RAM follows, no write waits */
 static void ps_restored(uint32_t o, const uint8_t *b, uint32_t len)
