@@ -930,7 +930,15 @@ static void load_both(uint32_t mode, uint32_t slot)    /* patch slot #slot+1 on 
     power();
     duell_mode_force(mode);
     for (k = 0; k < 2u; k++) {
-        pc_recall(k, slot, 0);
+        if (slot >= UP_SLOTS) {                         /* U1: a factory sound a USER slot displaced: a read-only place, no program change reaches it */
+            uint32_t was = song.sel;
+            song.sel = (uint8_t)k;
+            sl_load(slot);
+            song.sel = (uint8_t)was;
+            sync_reload = 1;
+            ui_refresh();
+        } else
+            pc_recall(k, slot, 0);
         spin(40);
     }
 }
@@ -964,7 +972,9 @@ static void t_loaded(void)
     bd_t b, bo;
     printf("budget: --- item 142: every factory patch AS LOADED (both parts, LAYER / STEREO / DUEL; its MORPH End B rolled by the load): the items, the caps and the deadline items as before\n");
     for (m = 0; m < 3u; m++)
-        for (s = 0; s < UP_SLOTS; s++) {
+        for (s = 0; s < UP_VSLOTS; s++) {
+            if (s >= UP_USER0 && s < UP_SLOTS)          /* (an empty USER slot has no factory sound: the 128 factory sounds are the places before and after it) */
+                continue;
             load_both(MODES[m], s);
             nm += (mph[0].nid || mph[0].fnid) && (mph[1].nid || mph[1].fnid) && !morph_stale(&trk[0], &mph[0]) && !morph_stale(&trk[1], &mph[1]);
             bd_build(&b);

@@ -1461,7 +1461,7 @@ static int sl_load(uint32_t k)
         return 0;
 #if UP_NUSER
     if (sl_empty_user(k)) {                        /* U1: an empty USER slot loads nothing: the sound stays, the part points at the slot (SAVE offers it) */
-        TSEL->user = (uint8_t)(k + 1u);
+        TSEL->user = (uint8_t)UP_PTR_EMPTY(k);
         mph[song.sel].user = TSEL->user;
         return 1;
     }
@@ -1561,8 +1561,13 @@ static int sl_restore_all(void)
 static uint32_t slot_of(const track_t *t)
 {
     uint32_t e = t->eng_req % NENGINES, r;
-    if (t->user)
+    if (t->user) {
+#if UP_NUSER
+        if (t->user > UP_SLOTS)
+            return t->user - 1u < UP_VSLOTS ? UP_USER0 + (uint32_t)t->user - 1u - UP_SLOTS : UP_SLOTS;
+#endif
         return t->user - 1u < UP_SLOTS ? (uint32_t)t->user - 1u : UP_SLOTS;
+    }
     r = ds_list_rank(e, t->preset);
     return r < UP_USER0 && !up_used(r) ? r : UP_SLOTS;
 }
@@ -1616,7 +1621,7 @@ static int up_patch_save_part(uint32_t pi, uint32_t k)
         return 1;
     if (save_nm[0] && !both_names)                      /* 0.2.21: RENAME in the SAVE dialog (one part only) */
         str_cpy(nm, save_nm, sizeof nm);
-    else if (t->user && !UP_EMPTY_USER((uint32_t)t->user - 1u))   /* its slot's name; else the factory sound it plays */
+    else if (UP_REC_USER(t))   /* its slot's name; else the factory sound it plays */
         sl_name((uint32_t)t->user - 1u, nm);
     else
         str_cpy(nm, ds_name(t->eng_req % NENGINES, t->preset), 13);

@@ -15,10 +15,8 @@
 #define UP_NUSER 4u
 #define PS_NUSER 4u
 #define UP_EMPTY_USER(k) sl_empty_user(k)           /* U1 (upreset.c): slot k is an empty USER voice slot */
-static int sl_empty_user(uint32_t k);
-static int sl_user(uint32_t k);
-#define UP_REC_USER(t) ((t)->user && !UP_EMPTY_USER((uint32_t)(t)->user - 1u))   /* the part plays a stored record (a part pointed at an empty USER slot still plays its factory sound) */
-#define UP_IS_USER(k) sl_user(k)
+#define UP_PTR_EMPTY(k) (UP_SLOTS + 1u + (k) - UP_USER0)   /* t->user of a part pointed at the empty USER slot k (SAVE offers it): past UP_SLOTS, so it is no record */
+#define UP_REC_USER(t) ((t)->user && (t)->user <= UP_SLOTS)   /* the part plays a stored record (a pointer at an empty USER slot still plays its factory sound); plain arithmetic: every TU that includes morph.c has it */
 
 /* H2 (seq.c, audio path): a step as it plays, the Original's or the SEQ MORPH's variation (tide_seq.c). The
  * compound literal is the variation's room, alive for the enclosing block. The editor and pages read the Original
@@ -208,7 +206,6 @@ static int tide_foot_two(void);
 #define UP_NUSER 0u
 #define PS_NUSER 0u
 #define UP_EMPTY_USER(k) 0
-#define UP_IS_USER(k) 0
 #define UP_REC_USER(t) ((t)->user)
 
 #endif
