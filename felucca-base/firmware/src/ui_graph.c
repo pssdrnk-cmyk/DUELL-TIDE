@@ -1931,7 +1931,14 @@ static uint32_t graph_signature(void)
             h ^= (uint32_t)project_used(i) << (8u + i);
         graph_project_used(0);
         h += graph_pname_sig;
+#if DUELL_TIDE
+        h = (h ^ (multi_gen() + 1u) * 0x9E3779B1u ^ (uint32_t)project_cur_slot() << 16) * 16777619u;   /* (U3: the preview's record, the multi loaded now) */
+#endif
     }
+#if DUELL_TIDE
+    if (pg->graph == GR_PATS)                        /* (U3: the preview's slot record, the pattern loaded now) */
+        h = (h ^ (ps_gen() + 1u) * 0x9E3779B1u ^ (uint32_t)pat_last[song.sel % NTRK] << 16) * 16777619u;
+#endif
     if (pg->graph == GR_TOOLS)                       /* TOOLS: the third row (RESTORE ALL PATCHES) is dimmed while no slot holds a saved sound */
         h = (h ^ (up_count() != 0u) * 0x27D4EB2Fu) * 16777619u;
     if (pg->graph == GR_EVENTS)                      /* PARAMETER LOCKS: the rows, the one selected, + ADD's place, PLAY,
@@ -2049,6 +2056,7 @@ static void graph_browse(void)
         }
     }
 }
+#if !DUELL_TIDE
 /* SAVE > PATTERNS: the 32 slots around the one picked ("P03  OFFBEAT"; one list, every slot holds a pattern) */
 static void graph_pats(void)
 {
@@ -2059,6 +2067,7 @@ static void graph_pats(void)
         list_row5(r, f + r == cur, tag, nm, T_TEXT, 0);
     }
 }
+#endif
 /* SAVE > TOOLS (DUELL/release_drafts/TOOLS_NEW_LAYOUT_V2.png, owner 2026-10-29): three rows on the background, no card, no box, no knob-1 line (this is NOT an area page,
  * template 9). Each row, screen rows, the rows TOOLS_PITCH apart: the numbered knob dot (11 px, white, its digit dark) at x TOOLS_DOT_X, its top on the name's capitals' first row; the action's
  * NAME in the names face (AF_NAME: Bold 20, capitals 14 rows), left aligned at x TOOLS_NAME_X; under it the sub line (M, the 11-row face, the selected part's colour) at the same x, and the OCT+ key
@@ -2233,6 +2242,151 @@ static void graph_events(void)
         }
     }
 }
+#if DUELL_TIDE
+/* SAVE > MULTIS and SAVE > PATTERNS (U3, owner 2026-11-03: the selectors say what they pick), ONE look: a window of LR_ROWS entries in the list rows' style (the number (M, dim), the name (M), the
+ * picked one filled in the part colour with dark text, T_INK) with the picked entry OPENED: its preview sits under its row, before the next entry, and takes LP_H rows (the window always fills the
+ * area). An entry that is not open says what it holds in the status words flush right (a multi: what each part does, SEQ / ARP / OFF in the part colours; a pattern: its LEN); the one loaded now has the star
+ * after its number (and knob 1's line names it). The open entry, a multi: each part's sound name in the part's colour, what it does (the box), its first 16 steps in the TIDE step display's bars, or NO
+ * SEQUENCE (an arp that runs is still marked); a pattern: its 16 steps in tall bars, or NO SEQUENCE. multi.c multi_preview / patslot.c ps_preview decode when the slot or a record changes, never per
+ * frame, and touch nothing live. The rows go through list_row1 (the one helper: labels such as USER rows drop in as its texts) */
+#define LR_ROWS 3u
+#define LP_H 36                  /* the open entry's preview: rows under its row */
+#define LP_BAND 18               /* a multi's part band */
+#define LR_STAR_X 38
+#define LR_R 229                 /* the status words end here */
+static void list_row1(int32_t top, int sel, int open, const char *tag, const char *name, uint16_t nc, const char *ra, uint16_t rac, const char *rb, uint16_t rbc, int star, int boxed)
+{
+    int32_t ty = UT_TY(M, top + UT_L5_TEXT_BASE), x = LR_R;
+    uint16_t bg = sel ? T_THEME : T_BG;
+    if (sel)
+        { CV_HL(UT_L5_X, top, UT_L5_W, UT_L5_H); cv_rrect(UT_L5_X, top, UT_L5_W, UT_L5_H, UT_T3_ROW_R, T_THEME, T_BG); }
+    cv_text_on(UT_L5_TAG_X, ty, &AF_M, tag, sel ? T_INK : T_DIM, bg);
+    if (star)
+        cv_icon_in(LR_STAR_X, top + UT_T3_STAR_DY, 0, 12, 12, ICON_X_STAR, sel ? T_TEXT : T_ACCENT, bg);
+    if (boxed) {                                     /* a multi's parts as the preview draws them: the mode in a box in the part colour, a dash for OFF */
+        const char *w[2] = {ra, rb};
+        uint16_t wc[2] = {rac, rbc};
+        int32_t i, bx;
+        for (i = 1; i >= 0; i--) {
+            bx = x - 26 + 1;
+            if (str_eq(w[i], "OFF")) {
+                cv_text_in(bx, UT_TY(S, top + UT_L5_TEXT_BASE), 26, &AF_S, "-", T_DIM, bg);
+            } else if (w[i][0]) {
+                cv_frame(bx, top + 3, 26, 13, sel ? T_INK : wc[i]);
+                cv_text_in(bx, UT_TY(S, top + UT_L5_TEXT_BASE), 26, &AF_S, w[i], sel ? T_INK : wc[i], bg);
+            }
+            x -= 30;
+        }
+        if (!ra[0] && !rb[0])
+            x = LR_R;
+    } else {
+    if (rb[0]) {
+        cv_text_r(x, UT_TY(S, top + UT_L5_TEXT_BASE), &AF_S, rb, sel ? T_INK : rbc, bg);
+        x -= text_w(&AF_S, rb) + 8;
+    }
+    if (ra[0])
+        cv_text_r(x, UT_TY(S, top + UT_L5_TEXT_BASE), &AF_S, ra, sel ? T_INK : rac, bg);
+    if (ra[0])
+        x -= text_w(&AF_S, ra) + 8;
+    }
+    if (name[0])
+        cv_free_text(UT_L5_NAME_X + (star ? 6 : 0), ty, &AF_M, name, sel ? T_INK : nc, bg, x - UT_L5_NAME_X - (star ? 6 : 0));
+    (void)open;
+}
+/* the window's first entry (the picked one on the middle row where it can be), and the row of entry e (rows 0 .. LR_ROWS - 1; the entries after the picked one are LP_H lower) */
+static uint32_t list_first(uint32_t cur, uint32_t n)
+{
+    uint32_t f = cur > LR_ROWS / 2u ? cur - LR_ROWS / 2u : 0u;
+    return f > n - LR_ROWS ? n - LR_ROWS : f;
+}
+static int32_t list_top(uint32_t e, uint32_t picked)
+{
+    return UT_L5_Y0 + UT_L5_PITCH * (int32_t)e + (e > picked ? LP_H : 0);
+}
+/* 16 steps in a band of hmax rows from row y, from x0 in pitch p, w wide, colour c (bar: pv_bar_of, 0 past the end) */
+static void pv_bars(int32_t x0, int32_t y, int32_t hmax, int32_t p, int32_t w, const uint8_t *bar, uint16_t c)
+{
+    uint32_t i;
+    for (i = 0; i < 16u; i++) {
+        uint32_t bv = bar[i], k = bv & 7u;
+        int32_t x = x0 + p * (int32_t)i, h = k == 4u ? hmax : k == 3u ? hmax * (bv & 8u ? 9 : 6) / 10 : k == 2u ? hmax * 3 / 10 : 2;
+        if (!k)
+            cv_rect(x, y + hmax - 1, w, 1, T_LINE);
+        else
+            cv_rrect(x, y + hmax - h, w, h, 1, k >= 3u ? c : k == 2u ? T_MID : T_DIM, T_BG);
+    }
+}
+static mu_pv_t gsl_pv;
+static uint32_t gsl_key = 0xFFFFFFFFu;
+static void graph_slots(void)
+{
+    uint32_t cur = (uint32_t)(song.g[G_SLOT] - 1) % MU_SLOTS, e, t, f = list_first(cur, MU_SLOTS), pk = cur - f;
+    char b[4];
+    graph_project_used(0);                           /* (the names, once) */
+    for (e = 0; e < LR_ROWS; e++) {
+        uint32_t s = f + e;
+        int used = project_used(s);
+        const char *nmp = graph_project_name(s), *w[NSHOWN] = {"", ""};
+        mu_label(b, s);
+        if (used && e != pk)
+            for (t = 0; t < NSHOWN; t++) {
+                uint32_t m = multi_vmode(s, t);
+                w[t] = (m & 3u) == 2u ? "SEQ" : (m & 3u) == 1u ? "ARP" : "OFF";
+            }
+        list_row1(list_top(e, pk), e == pk, e == pk, b, multi_bad(s) ? "DAMAGED" : !used ? "--" : nmp[0] ? nmp : "USED", used ? T_TEXT : T_DIM, w[0], T_PTHEME(0), w[1], T_PTHEME(1), used && project_cur_slot() == s, 1);
+    }
+    if (gsl_key != (cur | multi_gen() << 8)) {       /* the highlighted record changed: decode it once */
+        gsl_key = cur | multi_gen() << 8;
+        multi_preview(cur, &gsl_pv);
+    }
+    {
+        int32_t y0 = list_top(pk, pk) + UT_L5_PITCH;
+        if (gsl_pv.state != 1u) {
+            cv_text_in(0, UT_TY(S, y0 + 22), 240, &AF_S, gsl_pv.state ? "DAMAGED" : "EMPTY SLOT", T_MID, T_BG);
+            return;
+        }
+        for (t = 0; t < NSHOWN; t++) {
+            int32_t y = y0 + LP_BAND * (int32_t)t;
+            uint16_t c = T_PTHEME(t);
+            uint32_t md = gsl_pv.p[t].mode;
+            cv_free_text(UT_L5_TAG_X, UT_TY(M, y + 14), &AF_M, ds_name(gsl_pv.p[t].eng % NENGINES, gsl_pv.p[t].preset), c, T_BG, 90);
+            cv_frame(107, y + 3, 26, 13, md ? c : T_DIM);
+            cv_text_in(107, UT_TY(S, y + 13), 26, &AF_S, md == 2u ? "SEQ" : md ? "ARP" : "OFF", md ? c : T_DIM, T_BG);
+            if (gsl_pv.p[t].has)
+                pv_bars(138, y + 2, 14, 6, 4, gsl_pv.p[t].bar, md == 2u ? c : T_MID);   /* (only a SEQ part plays them: under an arp they are dimmed) */
+            else
+                cv_text_r(LR_R, UT_TY(S, y + 13), &AF_S, "NO SEQUENCE", T_MID, T_BG);
+        }
+    }
+}
+static pat_pv_t gpp_pv;
+static uint32_t gpp_key = 0xFFFFFFFFu;
+static void graph_pats(void)
+{
+    uint32_t n = pat_count(), cur = pat_pick(), e, f = list_first(cur, n), pk = cur - f;
+    for (e = 0; e < LR_ROWS; e++) {
+        char tag[4], nm[13], ln[12];
+        uint32_t s = f + e;
+        pat_label(s, tag, nm);
+        str_cpy(ln, "LEN ", sizeof ln);
+        fmt_int(ln + 4, (int32_t)ps_len(s));
+        list_row1(list_top(e, pk), e == pk, e == pk, tag, nm, T_TEXT, ln, T_MID, "", T_MID, pat_last[song.sel % NTRK] == s + 1u, 0);
+    }
+    if (gpp_key != (cur | ps_gen() << 8)) {
+        gpp_key = cur | ps_gen() << 8;
+        ps_preview(cur, &gpp_pv);
+    }
+    {
+        int32_t y0 = list_top(pk, pk) + UT_L5_PITCH;
+        if (gpp_pv.state != 1u)
+            cv_text_in(0, UT_TY(S, y0 + 22), 240, &AF_S, "DAMAGED", T_MID, T_BG);
+        else if (gpp_pv.has)
+            pv_bars(14, y0 + 2, 32, 13, 10, gpp_pv.bar, T_THEME);
+        else
+            cv_text_in(0, UT_TY(S, y0 + 22), 240, &AF_S, "NO SEQUENCE", T_MID, T_BG);
+    }
+}
+#else
 /* SAVE > MULTI: the sixteen multis around the one picked ("M05  LOFI JAM"; unnamed "USED"; empty "M14  --" dim) */
 static void graph_slots(void)
 {
@@ -2245,6 +2399,7 @@ static void graph_slots(void)
         list_row5(r, f + r == cur, b, !used ? "--" : nmp[0] ? nmp : "USED", used ? T_TEXT : T_DIM, 0);
     }
 }
+#endif
 /* MIXER page: four SURF columns, one under each card: the track number on its cushion (in the accent:
  * the selected track) with a REC / ARM / MUTE badge (P_MUTE, KNOB 1), the sound's short name (a MUTE badge
  * when armed and muted), the LEVEL knob (dB inside) with the output meter beside it, then the PAN and REV

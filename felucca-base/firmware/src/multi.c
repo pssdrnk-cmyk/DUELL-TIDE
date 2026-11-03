@@ -373,18 +373,49 @@ static int mu_unpack(project_t *q, uint8_t amt[NSHOWN], uint8_t set[6], const ui
 }
 
 /* the RAM view of object o (in mu_buf): which of its two multis load, their names */
+#if DUELL_TIDE
+static uint16_t mu_bad;                           /* bit k: M(k + 1) holds a record this firmware does not load (not empty: LOAD says DAMAGED, the row and the preview too; no factory multi shows for it) */
+static uint32_t mu_gen;                           /* counts the records' changes (mu_note): the MULTIS preview decodes again when it moves */
+static uint8_t mu_vp[MU_SLOTS][NSHOWN][4];        /* per slot and part, from the decode mu_note does anyway: engine, preset, MODE (0 OFF, 1 ARP, 2 SEQ), 1 = a note in the pattern: the list rows' voice names */
+static void mu_vp_set(uint8_t *v, const proj_trk_t *d)
+{
+    uint32_t i, slen = (uint32_t)clamp(d->p[P_SLEN], 1, NSTEP);
+    v[0] = d->engine;
+    v[1] = d->preset;
+    v[2] = d->p[P_AMODE] == AM_SEQ_ID ? 2u : d->p[P_AMODE] ? 1u : 0u;
+    v[3] = 0;
+    for (i = 0; i < slen; i++)
+        if (d->step[i].time == ST_NOTE && d->step[i].n)
+            v[3] = 1;
+}
+#endif
 static void mu_note(uint32_t o)
 {
     uint32_t h, len, k;
+#if DUELL_TIDE
+    mu_gen++;
+#endif
     for (h = 0; h < 2u; h++) {
         const uint8_t *r = mu_rec(h, &len);
         uint8_t amt[NSHOWN], set[6];
         k = 2u * o + h;
         mu_names[k][0] = 0;
+#if DUELL_TIDE
+        memset(mu_vp[k], 0, sizeof mu_vp[k]);
+#endif
         mu_used &= (uint16_t)~(1u << k);
         mu_fact &= (uint16_t)~(1u << k);
         int ok = len && mu_unpack(&proj_scratch, amt, set, r, len);
-        if (!ok && df_of(k) < DF_N) {             /* nothing stored, or a record this firmware does not load (one of before 0.2.14): the factory multi (ROM) */
+#if DUELL_TIDE
+        mu_bad &= (uint16_t)~(1u << k);
+        if (!ok && len)                           /* a record that is there but not loadable: DAMAGED, as LOAD says (audit C01), never the factory multi */
+            mu_bad |= (uint16_t)(1u << k);
+#endif
+#if DUELL_TIDE
+        if (!ok && !len && df_of(k) < DF_N) {
+#else
+        if (!ok && df_of(k) < DF_N) {
+#endif             /* nothing stored, or a record this firmware does not load (one of before 0.2.14): the factory multi (ROM) */
             r = DM_REC + DM_AT[df_of(k)];
             len = DM_LEN[df_of(k)];
             mu_fact |= (uint16_t)(1u << k);
@@ -393,6 +424,10 @@ static void mu_note(uint32_t o)
         if (ok) {
             mu_used |= (uint16_t)(1u << k);
             proj_name_get(mu_names[k], r + MU_NAME_AT);
+#if DUELL_TIDE
+            mu_vp_set(mu_vp[k][0], &proj_scratch.t[0]);
+            mu_vp_set(mu_vp[k][1], &proj_scratch.t[1]);
+#endif
         }
     }
 }
@@ -422,6 +457,58 @@ static void multi_ram_reset(void)                 /* (host tests: a power-on; wi
 }
 
 static int project_used(uint32_t slot) { return (mu_used >> (slot % MU_SLOTS)) & 1u; }
+#if DUELL_TIDE
+/* U3, the MULTIS page's preview of one record, read-only: the record is decoded (mu_unpack, into the scratch, as mu_note does) and only what the page
+ * draws is kept: per part its sound (engine, preset), what its MODE does (0 OFF, 1 ARP, 2 SEQ), whether the pattern holds a note, and its first 16 steps
+ * (0 past the end, 1 empty, 2 tie, 3 note, 4 chord; |8 accent). Nothing live is touched: not the sounds, the patterns, the transport nor the morph.
+ * state: 0 empty slot, 1 decoded, 2 damaged. The caller calls it when the slot or mu_gen changes, never every frame */
+static uint32_t multi_gen(void) { return mu_gen; }
+static int multi_bad(uint32_t slot) { return (mu_bad >> (slot % MU_SLOTS)) & 1u; }
+static void multi_preview(uint32_t slot, mu_pv_t *o)
+{
+    uint32_t k = slot % MU_SLOTS, len, t, i;
+    uint8_t amt[NSHOWN], set[6];
+    const uint8_t *r;
+    int ok;
+    memset(o, 0, sizeof *o);
+    if ((mu_bad >> k) & 1u) {
+        o->state = 2;
+        return;
+    }
+    if (!project_used(k))
+        return;
+    o->state = 2;
+    mu_obj_read(k / 2u);
+    r = mu_rec(k & 1u, &len);
+    ok = len && mu_unpack(&proj_scratch, amt, set, r, len);
+    if (!ok && df_of(k) < DF_N)                        /* (as mu_note: a slot that holds nothing it loads shows its factory multi) */
+        ok = mu_unpack(&proj_scratch, amt, set, DM_REC + DM_AT[df_of(k)], DM_LEN[df_of(k)]);
+    if (!ok)
+        return;
+    o->state = 1;
+    for (t = 0; t < NSHOWN; t++) {
+        const proj_trk_t *d = &proj_scratch.t[t];
+        uint32_t slen = (uint32_t)clamp(d->p[P_SLEN], 1, NSTEP);
+        uint8_t v[4];
+        mu_vp_set(v, d);
+        o->p[t].eng = v[0];
+        o->p[t].preset = v[1];
+        o->p[t].mode = v[2];
+        o->p[t].has = v[3];
+        for (i = 0; i < 16u && i < slen; i++)
+            o->p[t].bar[i] = pv_bar_of(&d->step[i]);
+    }
+}
+static const char *multi_vname(uint32_t slot, uint32_t part)
+{
+    return project_used(slot) ? ds_name(mu_vp[slot % MU_SLOTS][part % NSHOWN][0] % NENGINES, mu_vp[slot % MU_SLOTS][part % NSHOWN][1]) : "";
+}
+static uint32_t multi_vmode(uint32_t slot, uint32_t part)
+{
+    const uint8_t *v = mu_vp[slot % MU_SLOTS][part % NSHOWN];
+    return v[2] | (v[3] ? 4u : 0u);
+}
+#endif
 static int project_factory(uint32_t slot) { return (mu_fact >> (slot % MU_SLOTS)) & 1u; }   /* shows its factory multi */
 /* slot's name -> b (PROJ_NAME_LEN + 1 bytes); 0 = an empty slot (b "") */
 static int project_info(uint32_t slot, char *b)
