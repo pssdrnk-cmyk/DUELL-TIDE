@@ -27,7 +27,7 @@ What was built from `SUB_AND_CYCLE_DESIGN.md` (the decisions there are the ones 
 - **STEPS.** Stored 0 = OFF, n = n + 1 places (the enum has no meaningless value). Place k of n + 1 is `k (127 << 8) / n` in knob units, the first and last at the ends of the scan; 19 places are the 19 frames.
 - **Morph of STEPS.** A roll never touches it (SMART: excluded; WILD: it draws as the old unused slot did, so no stored End B changes). Two counts in the ends blend (rounded), OFF against a count flips at the middle.
 
-## State (ordinary RAM, arrays `[NLIVE][NVOICE]`, each part's own row)
+## State (RAM, arrays `[NLIVE][NVOICE]`, each part's own row)
 
 | Array | Bytes |
 |---|---|

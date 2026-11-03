@@ -293,7 +293,13 @@ static uint32_t ps_def_rec(uint8_t *d, uint32_t k)
                   (uint32_t)TP[P_SGATE].def, PATTERNS[k].name, ps_def_get, &k);
 }
 
+#if DUELL_TIDE
+static uint32_t ps_gen_n;                       /* counts the slots' changes: the PATTERNS preview decodes again when it moves */
+static uint32_t ps_gen(void) { return ps_gen_n; }
+static void ps_touch(uint32_t o) { ps_dirty |= (uint8_t)(1u << o); ps_gen_n++; }
+#else
 static void ps_touch(uint32_t o) { ps_dirty |= (uint8_t)(1u << o); }
+#endif
 
 static void ps_build_def(uint32_t o)            /* the defaults of object o into its RAM */
 {
@@ -518,6 +524,46 @@ static int ps_load_trk(track_t *t, uint32_t k)
     return 0;
 }
 
+#if DUELL_TIDE
+/* SAVE > PATTERNS' preview of slot k (read only: the record is read as a LOAD reads it, no write, no dip, and decoded into pat_pv_t; the tracks are not touched) */
+static void ps_preview(uint32_t k, pat_pv_t *o)
+{
+    const uint8_t *r, *p, *end;
+    uint32_t i, nl, nst, len;
+    uint8_t b[PS_STEP], tmp[PS_REC_MAX];
+    memset(o, 0, sizeof *o);
+    if (k >= PS_SLOTS)
+        return;
+    o->state = 2;
+    if (!(r = ps_rec_for_load(k, tmp)))
+        return;
+    nl = r[7];
+    nst = r[8u + nl];
+    len = r[3];
+    p = r + 9u + nl;
+    end = r + ps_rlen(r);
+    o->len = (uint8_t)len;
+    for (i = 0; i < len && i < NSTEP; i++) {
+        step_t s;
+        if (i < nst) {
+            uint32_t n = ps_xstep(p, end, b);
+            if (!n)
+                return;
+            p += n;
+        } else {
+            memset(b, 0, sizeof b);
+            b[4] = (uint8_t)(ST_REST << 3);
+        }
+        if (!ps_unpack_step(b, &s))
+            return;
+        if (s.time == ST_NOTE && s.n)
+            o->has = 1;
+        if (i < 16u)
+            o->bar[i] = pv_bar_of(&s);
+    }
+    o->state = 1;
+}
+#endif
 static void ps_label(char *b, uint32_t k)       /* "P01" .. "P32" (b: 4 bytes) */
 {
     b[0] = 'P';

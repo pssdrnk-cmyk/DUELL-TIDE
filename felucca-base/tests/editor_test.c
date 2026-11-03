@@ -166,6 +166,27 @@ static int motion_locks(void)
         bad += check("  op 8 with a further byte: no reply", !request(ED_MOTION, a, 3));
         motion_clear(&trk[1]);
     }
+    /* F01: ops 9..11 (target ids past 127) change the record; 7 / 8 only query */
+    {
+        uint32_t id, hi = 0;
+        for (id = 128; id < 256 && !hi; id++)
+            if (motion_param(id)) hi = id;
+        if (hi) {
+            a[0] = 1; a[1] = 9; a[2] = 3; a[3] = (uint8_t)(hi & 127u); a[4] = 1; a[5] = (uint8_t)((10 + 8192) & 127); a[6] = (uint8_t)((10 + 8192) >> 7);
+            request(ED_MOTION, a, 7);
+            bad += check("F01 MOTION op 9 on a target >= 128: rc 0, the record is stored", host_wire[6] == 0 && motion_count(&trk[1]) == 1u);
+            a[1] = 11; a[2] = 4;
+            request(ED_MOTION, a, 7);
+            bad += check("  op 11 stores a lock on it", host_wire[6] == 0 && motion_count(&trk[1]) == 2u && motion_lock_count(&trk[1]) == 1u);
+            a[1] = 7; request(ED_MOTION, a, 2); a[1] = 8; request(ED_MOTION, a, 2);
+            bad += check("  ops 7 and 8 only query", motion_count(&trk[1]) == 2u);
+            a[1] = 10; a[2] = 3;
+            request(ED_MOTION, a, 5);
+            bad += check("  op 10 deletes the event", host_wire[6] == 0 && motion_count(&trk[1]) == 1u);
+            motion_clear(&trk[1]);
+        } else
+            bad += check("F01: a target >= 128 exists", 0);
+    }
     return bad;
 }
 

@@ -293,8 +293,9 @@ static void hooks(void)
         feed(k, 500u - (uint32_t)(70.0 * (i + 1) / 30.0), 1, 2200);
     }
     keys_now(1u << k);
-    vh_check("a squeeze: the part's aftertouch (t->at, the matrix source) goes up (DUELL 1.1, NORMAL type: > 40), the other part's does not",
-             trk[0].at > 40u && trk[1].at == 0u);
+    /* (DUELL 1.1: SC_AT_SPAN is 140 counts, not 64: this 70-count squeeze reads 54 at NORMAL, a straight line less the noise floor and the smoothing) */
+    vh_check("a squeeze: the part's aftertouch (t->at, the matrix source) goes up (DUELL 1.1, NORMAL type: 50 .. 58, 54), the other part's does not",
+             trk[0].at >= 50u && trk[0].at <= 58u && trk[1].at == 0u);
     feed(k, 1023, 0, 2200);
     feed(k, 1023, 0, 2200);
     keys_now(0);
@@ -325,7 +326,7 @@ static void hooks(void)
         feed(k, 500u - (uint32_t)(70.0 * (i + 1) / 30.0), 1, 2200);
     }
     keys_now(1u << k);
-    vh_check("LAYER: both parts get the pressure (DUELL 1.1: 54 for this squeeze, > 40)", trk[0].at > 40u && trk[1].at > 40u && trk[0].at == trk[1].at);
+    vh_check("LAYER: both parts get the pressure (DUELL 1.1: 54 for this squeeze, 50 .. 58)", trk[0].at >= 50u && trk[0].at <= 58u && trk[0].at == trk[1].at);
     keys_now(0);
     sense_enable(0);
     sense_at_enable(0);
@@ -431,7 +432,7 @@ static void lines_alone(void)
         if (trk[0].at > vmax)
             vmax = trk[0].at;
     }
-    vh_check("AFTERTOUCH alone: a squeeze sends the pressure to the part (DUELL 1.1, NORMAL type: 54 for this squeeze; > 40)", vmax > 40u);
+    vh_check("AFTERTOUCH alone: a squeeze sends the pressure to the part (DUELL 1.1, NORMAL type: 54 for this squeeze; 50 .. 58)", vmax >= 50u && vmax <= 58u);
     vh_check("AFTERTOUCH alone: the velocity is the fixed 100 and no key waits", sense_vel(k) == 100u && sense_gate(1u << k, 0) == (1u << k));
     keys_now(0);
     sense_at_enable(0);

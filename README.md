@@ -34,7 +34,7 @@ It is made for playing the FM-1 as a **background**: set a tide going, then play
 3. Twist **knob 1** right (to B) or left (to A) and press **PLAY**. While the music plays, the glide starts on the next bar.
 4. Play over it. **STOP** pauses the glide and PLAY goes on from there. Twist knob 1 while it glides and it stops where it is; the sound stays.
 
-On the very first start TIDE comes up ready: multi **M02 NIGHT ORGAN**, AUTO TIDE on **JRNY**, both parts, 8 bars, WAIT 1. Just press PLAY.
+On the very first start TIDE comes up ready: multi **M04 DUB CHORD**, AUTO TIDE on **JRNY**, both parts, 16 bars, WAIT 2. Just press PLAY.
 
 ## What changed from DUELL 1.1
 
@@ -46,9 +46,11 @@ On the very first start TIDE comes up ready: multi **M02 NIGHT ORGAN**, AUTO TID
 | **LOOP** | Back and forth between A and B. |
 | **DRIFT** | New twists on your sound: the end it left is rolled again from your original sound. |
 | **WNDR** | Wanders away from your sound, a little further each trip. |
-| **JRNY** | Travels through your sounds, also to other engines (FM6 included). |
+| **JRNY** | Travels through factory sounds within each part's current engine, including FM6. |
 
 Each mode has its own line on the screen, so you can read what it will do. Where two very different sounds cross, TIDE passes them through a short filter dip, so the change sounds like a move rather than a cut.
+
+JRNY prefers the starting sound's category, with a broader-category fallback when needed. It keeps the current engine. See [current limits](docs/KNOWN_LIMITS.md) and the [roadmap](docs/ROADMAP.md) for the available behaviour and planned improvements.
 
 ### New: TIDE SETTINGS (in HOME's round)
 
