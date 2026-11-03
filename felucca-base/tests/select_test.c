@@ -1322,7 +1322,12 @@ static void sweep_mixer(void)
     turn(EN_K2, 2); frame();
     expect("MIXER: K2 turns part 2's LEVEL only", trk[1].p[P_LEVEL] != l1 && trk[0].p[P_LEVEL] == l0);
     turn(EN_ALGO, 1); frames(4);
-    expect("MIXER: a GLOBAL page: ALGORITHM moves no part", song.sel == 0u && badge_lit() == 3u);
+    expect("MIXER: ALGORITHM selects PART 2 (a GLO page keeps its global screen, the message names the part)", song.sel == 1u && badge_lit() == 3u && ux.glob == 1u);
+    enter(0); frames(4);
+    expect("MIXER: leaving GLO keeps the part chosen there", song.sel == 1u);
+    go_title("MIXER"); frames(4);
+    turn(EN_ALGO, -1); frames(4);
+    expect("MIXER: ALGORITHM back to PART 1", song.sel == 0u && badge_lit() == 3u);
     frames(600);                                         /* (past the knob's accent) */
     trk[0].peak = trk[1].peak = 0;
     frames(80);                                          /* (the meters fall to rest) */
@@ -1354,6 +1359,23 @@ static void sweep_algo(void)
         morph.target = MT_SELECTED;
         song.sel = 0;
         enter(i);
+        if (PAGES[i].fam == FAM_GLO && page_global(&PAGES[i])) {   /* GLO (the MIXER first; owner: "GLO / Mixer doesn't allow change of the selected voice"): ALGORITHM picks the part, the screen stays global, BOTH is left alone */
+            turn(EN_ALGO, 1);
+            ok &= song.sel == 1u && morph.target == MT_SELECTED && badge_lit() == 3u && ux.glob == 1u;
+            turn(EN_ALGO, 1);
+            ok &= song.sel == 1u;
+            turn(EN_ALGO, -1);
+            ok &= song.sel == 0u && morph.target == MT_SELECTED;
+            morph.target = MT_BOTH;
+            turn(EN_ALGO, 1);
+            frame();
+            ok2 &= song.sel == 1u && morph.target == MT_BOTH && badge_lit() == 3u;
+            if (!ok || !ok2) {
+                printf("select: ALGORITHM on GLO page %u (%s)\n", (unsigned)i, PAGES[i].title);
+                break;
+            }
+            continue;
+        }
         if (page_global(&PAGES[i]) || PAGES[i].scope == SC_MODE) {   /* 0.2.24 (owner): a GLOBAL page edits no part: ALGORITHM does nothing there (no part switch, no colour switch); the MODE page counts as global (ui_draw.c screen_global, badge_lit; ui_input.c algo_input; items 128, 138) */
             turn(EN_ALGO, 1); turn(EN_ALGO, -1); turn(EN_ALGO, 1);
             ok &= song.sel == 0u && morph.target == MT_SELECTED && badge_lit() == 3u && ux.glob == 1u;

@@ -649,7 +649,12 @@ static void algo_input(int32_t s)
 {
     if (ui.perf || (cur_page()->graph == GR_MORPH) || TIDE_PAGE(cur_page()))   /* TIDE hook */   /* (PERFORM: its page, shown while ui.perf) */
         algo_step(s);
-    else if (page_global(cur_page()) || cur_page()->scope == SC_MODE)   /* 0.2.24 (owner): a GLOBAL page edits no part: ALGORITHM does nothing there (it switched the highlight colour and nothing else); the MODE page counts as global (ui_draw.c screen_global) */
+    else if (cur_page()->fam == FAM_GLO && page_global(cur_page())) {   /* GLO (the MIXER first): the selected part still changes (the part every other page and the keys use); the screen stays global, so a message names it */
+        uint32_t was = song.sel;
+        track_select((uint32_t)clamp((int32_t)song.sel + (s > 0 ? 1 : -1), 0, NSHOWN - 1));
+        if (song.sel != was)
+            ui_message(song.sel ? "PART 2" : "PART 1");
+    } else if (page_global(cur_page()) || cur_page()->scope == SC_MODE)   /* 0.2.24 (owner): a GLOBAL page edits no part: ALGORITHM does nothing there (it switched the highlight colour and nothing else); the MODE page counts as global (ui_draw.c screen_global) */
         return;
     else
         track_select((uint32_t)clamp((int32_t)song.sel + (s > 0 ? 1 : -1), 0, NSHOWN - 1));
