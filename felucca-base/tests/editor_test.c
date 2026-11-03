@@ -177,26 +177,28 @@ static int preferences(void)
     uint32_t n = request(ED_INFO, a, 0);
     bad += check("INFO explicitly tags display capabilities (song rows 0 since DUELL, the SONG lanes tag gone) without changing command 33",
         ED_SONG_RETIRED == 33 && ED_UI_STATE == 34 && ED_FAV_SET == 38 &&
-        host_wire[n - 57] == 0 && host_wire[n - 56] == 0x55 &&
-        host_wire[n - 55] == 1 && host_wire[n - 54] == 9 &&
-        host_wire[n - 53] == 0x4d && host_wire[n - 52] == 1 &&
-        host_wire[n - 51] == 64u && host_wire[n - 50] == 1 &&   /* (64 kept: 41 01 says 128) */
-        host_wire[n - 49] == 0x42 && host_wire[n - 48] == 1 && host_wire[n - 47] == 63 &&   /* (the cloud plan's job A: bit 5, the patch store as logical records, object 40 + a slot; DUELL 0.2.15: bit 4, the patch store's chunks 6..15 as backup ids 27..31 and 35..39; DUELL 0.2.14: bit 2, multis and pattern slots in the backup; bit 3, the user wavetables 24..26 and cmds 81..83) */
-        host_wire[n - 46] == 0x46 && host_wire[n - 45] == 1 && host_wire[n - 44] == FM6_NFACTORY &&
-        host_wire[n - 43] == 0 &&                        /* (no bank since 1.0.3) */
-        host_wire[n - 42] == 0x53 && host_wire[n - 41] == 1 && host_wire[n - 40] == 3 &&
-        host_wire[n - 39] == 0x50 && host_wire[n - 38] == 1 && host_wire[n - 37] == 3 &&   /* FM6 v2: no bank, preset patches */
-        host_wire[n - 36] == 0x4E && host_wire[n - 35] == 1 && host_wire[n - 34] == 33 &&   /* MENU settings: 33 items (0.2.25 hunt4: USB LEVEL, id 10, removed); was 34 items (0.2.25: DRIVE, id 43, removed; 0.2.23: + WIDTH, DRIVE, ids 42, 43; 0.2.22: + SIDECHAIN P1 CH, P1 NOTE, P2 CH, P2 NOTE, ids 38..41; 0.2.21: + COMP's THRESH, RATIO, ATTACK, RELEASE, ids 34..37; 0.2.19: OUTPUT EQ, id 9, retired; + BASS MONO, id 33; 0.2.14: + PERF LEAVE, id 32); (DUELL 0.2.2: STYLE, LARGE, FX LATCH, HELP retired too; 0.2.9: CPU METER, id 26; 0.2.11: MODE RECALL, id 27; 0.2.14: SCOPE, OVERVIEW retired, GLO > MODULES' four, ids 28..31) */
-        host_wire[n - 33] == 0x52 && host_wire[n - 32] == 1 && host_wire[n - 31] == 4 &&   /* RATCH */
-        host_wire[n - 30] == 0x4C && host_wire[n - 29] == 1 && host_wire[n - 28] == 1 &&   /* 1.1 parameter locks */
-        host_wire[n - 27] == 0x41 && host_wire[n - 26] == 1 && host_wire[n - 25] == 0 && host_wire[n - 24] == 1 &&   /* 1.2: 128 */
-        host_wire[n - 23] == 0x54 && host_wire[n - 22] == 1 && host_wire[n - 21] == NUDGE_DIV &&   /* 1.2: NUDGE */
-        host_wire[n - 20] == 0x56 && host_wire[n - 19] == 1 && host_wire[n - 18] == 32 &&   /* 1.4.1: FM6 voice bank */
-        host_wire[n - 17] == 0x43 && host_wire[n - 16] == 1 && host_wire[n - 15] == ML_N &&
-        host_wire[n - 14] == 0x58 && host_wire[n - 13] == 1 && host_wire[n - 12] == (UP_SLOTS & 127) && host_wire[n - 11] == (UP_SLOTS >> 7) &&
-        host_wire[n - 10] == 0x5A && host_wire[n - 9] == 1 && host_wire[n - 8] == 1 &&
-        host_wire[n - 7] == 0x59 && host_wire[n - 6] == 1 && host_wire[n - 5] == NX &&   /* cloud plan job I: scope 2, the extension slots (NX) */   /* DUELL 0.2.19: PATCH_RAW */   /* DUELL 0.2.15: the patch capacity, 128 as two 7-bit bytes */   /* 1.5: MIDI LEARN */
-        host_wire[n - 4] == 0x4B && host_wire[n - 3] == 1 && host_wire[n - 2] == 1);   /* DUELL: the MIDI MAP (cmds 85..88) */   /* DUELL 0.2.19: PATCH_RAW */   /* DUELL 0.2.15: the patch capacity, 128 as two 7-bit bytes */   /* 1.5: MIDI LEARN */
+        host_wire[n - 63] == 0 && host_wire[n - 62] == 0x55 &&
+        host_wire[n - 61] == 1 && host_wire[n - 60] == 9 &&
+        host_wire[n - 59] == 0x4d && host_wire[n - 58] == 1 &&
+        host_wire[n - 57] == 64u && host_wire[n - 56] == 1 &&   /* (64 kept: 41 01 says 128) */
+        host_wire[n - 55] == 0x42 && host_wire[n - 54] == 1 && host_wire[n - 53] == 63 &&   /* (the cloud plan's job A: bit 5, the patch store as logical records, object 40 + a slot; DUELL 0.2.15: bit 4, the patch store's chunks 6..15 as backup ids 27..31 and 35..39; DUELL 0.2.14: bit 2, multis and pattern slots in the backup; bit 3, the user wavetables 24..26 and cmds 81..83) */
+        host_wire[n - 52] == 0x46 && host_wire[n - 51] == 1 && host_wire[n - 50] == FM6_NFACTORY &&
+        host_wire[n - 49] == 0 &&                        /* (no bank since 1.0.3) */
+        host_wire[n - 48] == 0x53 && host_wire[n - 47] == 1 && host_wire[n - 46] == 3 &&
+        host_wire[n - 45] == 0x50 && host_wire[n - 44] == 1 && host_wire[n - 43] == 3 &&   /* FM6 v2: no bank, preset patches */
+        host_wire[n - 42] == 0x4E && host_wire[n - 41] == 1 && host_wire[n - 40] == 32 &&   /* MENU settings: 33 items (0.2.25 hunt4: USB LEVEL, id 10, removed); was 34 items (0.2.25: DRIVE, id 43, removed; 0.2.23: + WIDTH, DRIVE, ids 42, 43; 0.2.22: + SIDECHAIN P1 CH, P1 NOTE, P2 CH, P2 NOTE, ids 38..41; 0.2.21: + COMP's THRESH, RATIO, ATTACK, RELEASE, ids 34..37; 0.2.19: OUTPUT EQ, id 9, retired; + BASS MONO, id 33; 0.2.14: + PERF LEAVE, id 32); (DUELL 0.2.2: STYLE, LARGE, FX LATCH, HELP retired too; 0.2.9: CPU METER, id 26; 0.2.11: MODE RECALL, id 27; 0.2.14: SCOPE, OVERVIEW retired, GLO > MODULES' four, ids 28..31) */
+        host_wire[n - 39] == 0x52 && host_wire[n - 38] == 1 && host_wire[n - 37] == 4 &&   /* RATCH */
+        host_wire[n - 36] == 0x4C && host_wire[n - 35] == 1 && host_wire[n - 34] == 3 &&   /* 1.1 parameter locks */
+        host_wire[n - 33] == 0x41 && host_wire[n - 32] == 1 && host_wire[n - 31] == 0 && host_wire[n - 30] == 1 &&   /* 1.2: 128 */
+        host_wire[n - 29] == 0x54 && host_wire[n - 28] == 1 && host_wire[n - 27] == NUDGE_DIV &&   /* 1.2: NUDGE */
+        host_wire[n - 26] == 0x56 && host_wire[n - 25] == 1 && host_wire[n - 24] == 32 &&   /* 1.4.1: FM6 voice bank */
+        host_wire[n - 23] == 0x43 && host_wire[n - 22] == 1 && host_wire[n - 21] == ML_N &&
+        host_wire[n - 20] == 0x58 && host_wire[n - 19] == 1 && host_wire[n - 18] == (UP_SLOTS & 127) && host_wire[n - 17] == (UP_SLOTS >> 7) &&
+        host_wire[n - 16] == 0x5A && host_wire[n - 15] == 1 && host_wire[n - 14] == 1 &&
+        host_wire[n - 13] == 0x59 && host_wire[n - 12] == 1 && host_wire[n - 11] == NX &&   /* cloud plan job I: scope 2, the extension slots (NX) */   /* DUELL 0.2.19: PATCH_RAW */   /* DUELL 0.2.15: the patch capacity, 128 as two 7-bit bytes */   /* 1.5: MIDI LEARN */
+        host_wire[n - 7] == 0x4B && host_wire[n - 6] == 1 && host_wire[n - 5] == 1 &&
+        host_wire[n - 10] == 0x5B && host_wire[n - 9] == 1 && host_wire[n - 8] == 1 &&   /* 1.1: BYPASS (cmd 89) */
+        host_wire[n - 4] == 0x4F && host_wire[n - 3] == 1 && host_wire[n - 2] == 1);   /* DUELL: the MIDI MAP (cmds 85..88) */   /* DUELL 0.2.19: PATCH_RAW */   /* DUELL 0.2.15: the patch capacity, 128 as two 7-bit bytes */   /* 1.5: MIDI LEARN */
     request(ED_UI_SET, a, 2);
     bad += check("UI_SET updates the actual palette and reports RAM-only saving",
         host_wire[5] == 3 && settings.palette == 3 && T_BG == UI_PALETTES[3].bg[ux.part]);
@@ -778,7 +780,7 @@ static int usb_burst(void)
 }
 
 /* ---- MENU_DESC / MENU_SET (72, 73): the menu's settings over the editor ---- */
-typedef struct { uint32_t index, id, kind, nnames, tab, rest; int32_t value, min, max; char name[16], names[20][12], tabname[16], unit[16]; } menu_item_t;
+typedef struct { uint32_t index, id, kind, nnames, tab, rest; int32_t value, min, max; char name[16], names[20][24], tabname[16], unit[16]; } menu_item_t;
 static uint32_t menu_desc(uint32_t index, menu_item_t *it)   /* the reply's payload length; it parsed */
 {
     uint8_t a[1] = {(uint8_t)index};
@@ -796,7 +798,7 @@ static uint32_t menu_desc(uint32_t index, menu_item_t *it)   /* the reply's payl
         p++;
     }
     while (it->kind == 0u && p < n - 1u && it->nnames < 20u && (int32_t)it->nnames < it->max - it->min + 1) {   /* (kind 0: max - min + 1) */
-        for (k = 0; p < n - 1u && host_wire[p] && k < 11u; ) it->names[it->nnames][k++] = (char)host_wire[p++];
+        for (k = 0; p < n - 1u && host_wire[p] && k < 23u; ) it->names[it->nnames][k++] = (char)host_wire[p++];
         p++; it->nnames++;
     }
     it->tab = 127;                                          /* 1.0.5: then the row's tab, index and name */
@@ -808,6 +810,7 @@ static uint32_t menu_desc(uint32_t index, menu_item_t *it)   /* the reply's payl
     it->rest = p < n - 1u ? n - 1u - p : 0u;                /* (bytes left over: none) */
     return n - 6u;
 }
+static uint32_t idle0;                                    /* (ui_idle as the MODULES check starts) */
 static uint32_t menu_set(uint32_t id, int32_t v)            /* -> rc; host_wire[6], [7..8]: id, value */
 {
     uint8_t a[3] = {(uint8_t)id, (uint8_t)((v + 8192) & 127), (uint8_t)(((v + 8192) >> 7) & 127)};
@@ -819,7 +822,7 @@ static int menu_protocol(void)
     /* DUELL 0.2.14: the new names (ANIMATION, BUTTON HOLD, OUTPUT EQ, STEP KEYS WRITE / ADD, MULTI LOAD KEEPS MODE / SETS MODE), SCALE LEDS in
      * DISPLAY, SCOPE (18) and OVERVIEW (23) retired, HOME OPENS without OVERVIEW; a fresh unit's defaults: KNOB ACCEL ON, USB SERIAL OFF,
      * CLICK REC (settings_persist.c settings_defaults, as persist_boot runs it on a unit with no settings) */
-#define MDN 33u
+#define MDN 32u
     static const char *const WANT[MDN][2] = {
         {"COLOR", 0}, {"ANIMATION", "ON,OFF,IDLE"}, {"LEDS", "OFF,LOW,MEDIUM,MAX"},
         {"BUTTON HOLD", "0.3 s,0.4 s,0.5 s,0.6 s"}, {"KNOB ACCEL", "OFF,ON"},
@@ -830,9 +833,10 @@ static int menu_protocol(void)
         {"STEP PREVIEW", "OFF,ON"}, {"STEP KEYS", "WRITE,ADD"},                                        /* (1.2; 0.2.14: SCOPE retired) */
         {"TUNE", 0},   /* (1.2: the project's TUNE, a number; DUELL 0.1: MIDI IN, id 21, left MENU for GLO > CHANNELS) */
         {"HOME OPENS", "MORPH,MODE"},                                                                /* (DUELL 0.1, id 25; 0.2.14: no OVERVIEW; 0.2.25: no MIXER, GLO's first page now) */
-        {"CPU METER", "ON,OFF"},                                                                     /* (DUELL 0.2.9, id 26) */
+        /* (CPU METER, id 26, retired in 1.1 with the CPU bar: no row) */
         {"MULTI LOAD", "KEEPS MODE,SETS MODE"},                                                      /* (DUELL 0.2.11, id 27) */
-        {"ARP", "OFF,ON"}, {"SEQ", "OFF,ON"}, {"SENDS", "OFF,ON"}, {"PART FX", "OFF,ON"},
+        {"ARP", "OFF,FOLLOWS PATCH,KEEPS RUNNING"}, {"SEQ", "OFF,FOLLOWS PATCH,KEEPS RUNNING"},   /* (DUELL 1.1: ARP_SEQ_RUN_SWITCH) */
+         {"SENDS", "OFF,ON"}, {"PART FX", "OFF,ON"},
         {"PERF LEAVE", "FADE,KEEP"},          /* (DUELL 0.2.14: id 32, CONTROL) */
         {"BASS MONO", "OFF,40Hz,50Hz,63Hz,80Hz,100Hz,125Hz,160Hz,200Hz,250Hz,315Hz,400Hz"},   /* (DUELL 0.2.19: id 33, the MASTER page, tab MASTER: no MENU tab) */
         {"THRESH", 0}, {"RATIO", "OFF,1.5:1,2:1,3:1,4:1,6:1,8:1,12:1,INF"},                              /* (DUELL 0.2.21: ids 34..37, GLO > COMP, tab MASTER; THRESH a number in dB) */
@@ -841,11 +845,11 @@ static int menu_protocol(void)
         {"P1 CH", 0}, {"P1 NOTE", 0}, {"P2 CH", 0}, {"P2 NOTE", 0},   /* (DUELL 0.2.22: ids 38..41, GLO > SIDECHAIN, tab SIDECHAIN; numbers) */
         {"WIDTH", 0}};                                                /* (DUELL 0.2.23: id 42, GLO > WIDTH, tab MASTER; a number; 0.2.25: id 43, DRIVE, is gone) */
         /* (DUELL 0.2.14: GLO > MODULES, ids 28..31, tab MODULES) */
-    static const uint8_t ID[MDN] = {0, 3, 4, 5, 6, 11, 12, 13, 14, 15, 16, 17, 19, 20, 22, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42};   /* (1 STYLE, 2 LARGE, 7 FX LATCH, 8 BPM LOCK, 18 SCOPE,
+    static const uint8_t ID[MDN] = {0, 3, 4, 5, 6, 11, 12, 13, 14, 15, 16, 17, 19, 20, 22, 25, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42};   /* (1 STYLE, 2 LARGE, 7 FX LATCH, 8 BPM LOCK, 18 SCOPE,
                                                                                                          * 21 MIDI IN, 23 OVERVIEW, 24 HELP: retired) */
-    static const int32_t DEF[MDN] = {-1, 0, 2, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 4400, 0, 0, 0, 1, 1, 1, 1, 0, 8, -17, 0, 80, 40, 10, 36, 10, 36, 100};   /* (0.2.23 WIDTH 100 %; 0.2.14 MODULES: ON; PERF LEAVE: FADE; 0.2.19 BASS MONO: OFF; 0.2.21 COMP: THRESH -17 dB, RATIO 1:1, ATTACK 10 ms, RELEASE 200 ms) */   /* (COLOR: the default palette; 0.2.14: ACCEL ON,
+    static const int32_t DEF[MDN] = {-1, 0, 2, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 4400, 0, 0, 1, 1, 1, 1, 0, 8, -17, 0, 80, 40, 10, 36, 10, 36, 100};   /* (0.2.23 WIDTH 100 %; 0.2.14 MODULES: ON; PERF LEAVE: FADE; 0.2.19 BASS MONO: OFF; 0.2.21 COMP: THRESH -17 dB, RATIO 1:1, ATTACK 10 ms, RELEASE 200 ms) */   /* (COLOR: the default palette; 0.2.14: ACCEL ON,
                                                                                                     * USB SERIAL OFF, CLICK REC) */
-    static const uint8_t TAB[MDN] = {0, 0, 0, 1, 1, 3, 2, 2, 2, 3, 0, 0, 1, 1, 2, 1, 0, 1, 4, 4, 4, 4, 1, 5, 5, 5, 5, 5, 6, 6, 6, 6, 5};   /* DISPLAY CONTROL AUDIO
+    static const uint8_t TAB[MDN] = {0, 0, 0, 1, 1, 3, 2, 2, 2, 3, 0, 0, 1, 1, 2, 1, 1, 4, 4, 4, 4, 1, 5, 5, 5, 5, 5, 6, 6, 6, 6, 5};   /* DISPLAY CONTROL AUDIO
                                                                                                      * SYSTEM (DUELL 0.1: no MIDI tab) */
     static const char *const TABN[7] = {"DISPLAY", "CONTROL", "AUDIO", "SYSTEM", "MODULES", "MASTER", "SIDECHAIN"};   /* (0.2.14: MODULES, no MENU tab: GLO > MODULES; 0.2.19: MASTER, the GLO > MASTER page) */
     int bad = 0, ok = 1;
@@ -863,13 +867,13 @@ static int menu_protocol(void)
         n = menu_desc(i, &it);
         joined[0] = 0;
         for (k = 0; k < it.nnames; k++) { if (k) strcat(joined, ","); strcat(joined, it.names[k]); }
-        ok &= i >= 32u ? n > 10u && it.index == i && it.id == ID[i] && it.kind == 1 && it.min == 0 && it.max == (i == 32u ? 200 : 100) &&
-                         !it.nnames && !strcmp(it.unit, i == 32u ? "%" : "") && !strcmp(it.name, WANT[i][0])   /* (0.2.23: numbers: WIDTH 0..200 %, DRIVE 0..100) */
-              : i >= 28u ? n > 10u && it.index == i && it.id == ID[i] && it.kind == 1 && it.min == (((i - 28u) & 1u) ? 0 : 1) && it.max == (((i - 28u) & 1u) ? 127 : 16) &&
+        ok &= i >= 31u ? n > 10u && it.index == i && it.id == ID[i] && it.kind == 1 && it.min == 0 && it.max == (i == 31u ? 200 : 100) &&
+                         !it.nnames && !strcmp(it.unit, i == 31u ? "%" : "") && !strcmp(it.name, WANT[i][0])   /* (0.2.23: numbers: WIDTH 0..200 %, DRIVE 0..100) */
+              : i >= 27u ? n > 10u && it.index == i && it.id == ID[i] && it.kind == 1 && it.min == (((i - 27u) & 1u) ? 0 : 1) && it.max == (((i - 27u) & 1u) ? 127 : 16) &&
                          !it.nnames && !it.unit[0] && !strcmp(it.name, WANT[i][0])   /* (0.2.22: numbers: a channel 1..16, a note 0..127) */
-              : i == 26u || i == 27u ? n > 10u && it.index == i && it.id == ID[i] && it.kind == 1 && it.min == 0 && it.max == (i == 26u ? 120 : 80) &&
+              : i == 25u || i == 26u ? n > 10u && it.index == i && it.id == ID[i] && it.kind == 1 && it.min == 0 && it.max == (i == 25u ? 120 : 80) &&
                          !it.nnames && !it.unit[0] && !strcmp(it.name, WANT[i][0])   /* (0.2.24: ATTACK 0..120, RELEASE 0..80 as numbers: the index of a fine time) */
-              : i == 24u ? n > 10u && it.index == i && it.id == ID[i] && it.kind == 1 && it.min == -40 && it.max == 0 &&
+              : i == 23u ? n > 10u && it.index == i && it.id == ID[i] && it.kind == 1 && it.min == -40 && it.max == 0 &&
                          !it.nnames && !strcmp(it.unit, "dB") && !strcmp(it.name, "THRESH")   /* (a number: dB) */
               : i == 14u ? n > 10u && it.index == i && it.id == ID[i] && it.kind == 2 && it.min == 4153 && it.max == 4662 &&
                          !it.nnames && !strcmp(it.unit, "Hz") && !strcmp(it.name, "TUNE")     /* (0.2.22: a number in tenths: A4 in 0.1 Hz, 415.3 .. 466.2) */
@@ -946,15 +950,16 @@ static int menu_protocol(void)
                                                          * project's, rc 0: in the music, no settings record) */
     ok &= menu_set(23, 1) == 1 && favorites.factory[15][26] == 0u && ui_prefs2 == 0x86u && ui_scr == 1u;   /* (OVERVIEW, id 23: retired in DUELL 0.2.14, an unknown id: rc 1) */
     ok &= menu_set(25, 1) == 3 && ui_home_pg == HP_MODE && ui_prefs2 == 0x86u;                       /* (DUELL 0.1: HOME OPENS, its own byte) */
-    ok &= menu_set(26, 1) == 3 && (ui_prefs2 & 0x10u) && ui_prefs2 == 0x96u && ui_home_pg == HP_MODE;   /* (DUELL 0.2.9: CPU METER OFF, bit 4 of its byte; set = OFF, clear = ON) */
-    ok &= menu_set(27, 1) == 3 && (ui_prefs2 & 0x40u) && ui_prefs2 == 0xD6u;                     /* (DUELL 0.2.11 MODE RECALL ON, 0.2.14 MULTI LOAD SETS MODE: bit 6 of its byte) */
-    ok &= ui_idle == 0u && menu_set(28, 0) == 3 && ed_rv(host_wire + 7) == 0 && ui_idle == 2u && mods_off == MODS_ARP &&   /* (0.2.14 MODULES: ARP OFF, bit 1 of [15][10]; */
-          menu_set(29, 0) == 3 && menu_set(30, 0) == 3 && menu_set(31, 0) == 3 && ui_idle == 30u && mods_off == MODS_ALL &&   /* SEQ, SENDS, PART FX bits 2..4; */
-          menu_set(30, 1) == 3 && ed_rv(host_wire + 7) == 1 && ui_idle == 22u && menu_set(31, 9) == 3 && ed_rv(host_wire + 7) == 1 && ui_idle == 6u &&   /* ON clears, clamped */
-          ui_prefs2 == 0xD6u;                                                                         /* .. nothing else moved) */
-    ok &= menu_set(32, 1) == 3 && ed_rv(host_wire + 7) == 1 && ui_idle == 0x26u && perf_keep() && mods_off == (MODS_ARP | MODS_SEQ) &&   /* (0.2.14 PERF LEAVE KEEP: bit 5 of [15][10]; the MODULES bits stay) */
-          menu_set(32, 9) == 3 && ed_rv(host_wire + 7) == 1 && ui_prefs2 == 0xD6u;
-    ok &= menu_set(33, 5) == 3 && ed_rv(host_wire + 7) == 5 && song.bm == 5 && bm_sel == 5u && ui_ms_set[0] == MS_TAG && ui_ms_set[3] == 6u && ui_prefs2 == 0xD6u && ui_idle == 0x26u &&   /* (0.2.24 BASS MONO 100 Hz: a unit setting, the settings byte [15][21] = 6, rc 3 = saved; the audio side at once) */
+    ok &= menu_set(26, 1) == 1 && !(ui_prefs2 & 0x10u) && ui_prefs2 == 0x86u && ui_home_pg == HP_MODE;   /* (CPU METER, id 26: retired in 1.1 with the CPU bar, an unknown id: rc 1, its bit stays clear) */
+    ok &= menu_set(27, 1) == 3 && (ui_prefs2 & 0x40u) && ui_prefs2 == 0xC6u;                     /* (DUELL 0.2.11 MODE RECALL ON, 0.2.14 MULTI LOAD SETS MODE: bit 6 of its byte) */
+    idle0 = ui_idle;   /* (1.1: a new unit has KEY VELOCITY on, 0x40, in this byte) */
+    ok &= ui_idle == idle0 && menu_set(28, 0) == 3 && ed_rv(host_wire + 7) == 0 && ui_idle == (idle0 | 2u) && mods_off == MODS_ARP &&   /* (0.2.14 MODULES: ARP OFF, bit 1 of [15][10]; */
+          menu_set(29, 0) == 3 && menu_set(30, 0) == 3 && menu_set(31, 0) == 3 && ui_idle == (idle0 | 30u) && mods_off == MODS_ALL &&   /* SEQ, SENDS, PART FX bits 2..4; */
+          menu_set(30, 1) == 3 && ed_rv(host_wire + 7) == 1 && ui_idle == (idle0 | 22u) && menu_set(31, 9) == 3 && ed_rv(host_wire + 7) == 1 && ui_idle == (idle0 | 6u) &&   /* ON clears, clamped */
+          ui_prefs2 == 0xC6u;                                                                         /* .. nothing else moved) */
+    ok &= menu_set(32, 1) == 3 && ed_rv(host_wire + 7) == 1 && ui_idle == (idle0 | 0x26u) && perf_keep() && mods_off == (MODS_ARP | MODS_SEQ) &&   /* (0.2.14 PERF LEAVE KEEP: bit 5 of [15][10]; the MODULES bits stay) */
+          menu_set(32, 9) == 3 && ed_rv(host_wire + 7) == 1 && ui_prefs2 == 0xC6u;
+    ok &= menu_set(33, 5) == 3 && ed_rv(host_wire + 7) == 5 && song.bm == 5 && ui_ms_set[0] == MS_TAG && ui_ms_set[3] == 6u && ui_prefs2 == 0xC6u && ui_idle == (idle0 | 0x26u) &&   /* (0.2.24 BASS MONO 100 Hz: a unit setting, the settings byte [15][21] = 6, rc 3 = saved; the audio side at once) */
           menu_set(33, 99) == 3 && ed_rv(host_wire + 7) == (int32_t)BM_N && menu_set(33, 0) == 3 && ed_rv(host_wire + 7) == 0 && song.bm == 0 && ui_ms_set[3] == 1u;
     menu_set(33, 5);
     ok &= menu_set(34, -10) == 3 && ed_rv(host_wire + 7) == -10 && song.cp[0] == 30 && (cmp_cfg & 255u) == 30u && (cmp_set >> 24) == 0xC8u &&   /* (0.2.21 COMP: THRESH -10 dB = index 30; the settings word, the audio side; rc 3 here: no flash) */
@@ -962,7 +967,7 @@ static int menu_protocol(void)
           menu_set(35, 5) == 3 && ed_rv(host_wire + 7) == 5 && song.cp[1] == 5 && (cmp_cfg >> 8 & 15u) == 5u && menu_set(35, 99) == 3 && ed_rv(host_wire + 7) == 8 && menu_set(35, 5) == 3 &&
           menu_set(36, 7) == 3 && song.cp[2] == 7 && menu_set(36, 999) == 3 && ed_rv(host_wire + 7) == 120 && menu_set(36, 7) == 3 &&
           menu_set(37, 9) == 3 && song.cp[3] == 9 && menu_set(37, 999) == 3 && ed_rv(host_wire + 7) == 80 && menu_set(37, 9) == 3 &&
-          cmp_cfg == (30u | 5u << 8 | 7u << 16 | 9u << 24) && cmp_set == (0xC8000000u | 30u | 5u << 6 | 7u << 10 | 9u << 17) && ui_prefs2 == 0xD6u && ui_idle == 0x26u && song.bm == 5;   /* (a device setting: no other settings byte, the music untouched) */
+          cmp_cfg == (30u | 5u << 8 | 7u << 16 | 9u << 24) && cmp_set == (0xC8000000u | 30u | 5u << 6 | 7u << 10 | 9u << 17) && ui_prefs2 == 0xC6u && ui_idle == (idle0 | 0x26u) && song.bm == 5;   /* (a device setting: no other settings byte, the music untouched) */
     {   /* 0.2.22 SIDECHAIN: ids 38..41, the ducker's MIDI channel and note per part, a device setting in the settings bytes [15][14..17] (sc_midi is the audio side's copy) */
         persist_t pe;
         ok = menu_set(38, 5) == 3 && ed_rv(host_wire + 7) == 5 && sc_midi[0] == 4u && ui_sc_set[0] == 5u &&
@@ -988,13 +993,13 @@ static int menu_protocol(void)
         bad += check("  .. the default again: WIDTH 100 % (the stage off)", wd_sel == 100u);
     }
     for (i = 0; i < MDN; i++) {                         /* MENU_DESC reads them back */
-        static const int32_t SET[MDN] = {2, 1, 1, 3, 1, 1, 2, 0, 2, 1, 1, 2, 1, 1, 4387, 1, 1, 1, 0, 0, 1, 1, 1, 5, -10, 5, 7, 9, 10, 36, 10, 36, 100};   /* (0.2.25: HOME OPENS MODE, 1: MIXER is gone) */
+        static const int32_t SET[MDN] = {2, 1, 1, 3, 1, 1, 2, 0, 2, 1, 1, 2, 1, 1, 4387, 1, 1, 0, 0, 1, 1, 1, 5, -10, 5, 7, 9, 10, 36, 10, 36, 100};   /* (0.2.25: HOME OPENS MODE, 1: MIXER is gone) */
         menu_desc(i, &it);
         ok &= it.value == SET[i];
     }
-    bad += check("MENU_SET: every setting applied as the menu does (palette, EQ, CLICK, COUNT-IN at once, RESTORE LAST, SCALE LEDS, SCREEN OFF, STEP PREVIEW, STEP KEYS, HOME OPENS, CPU METER, MULTI LOAD), read back", ok);
+    bad += check("MENU_SET: every setting applied as the menu does (palette, EQ, CLICK, COUNT-IN at once, RESTORE LAST, SCALE LEDS, SCREEN OFF, STEP PREVIEW, STEP KEYS, HOME OPENS, MULTI LOAD), read back", ok);
     ok = menu_set(3, 0) == 3 && !(ui_prefs & PREF_ANIM_OFF) && (ui_prefs & PREF_ACCEL) &&
-         menu_set(26, 0) == 3 && !(ui_prefs2 & 0x10u) && ui_prefs2 == 0xC6u &&   /* (CPU METER back to ON: its bit clears, the others stay) */
+         menu_set(26, 0) == 1 && !(ui_prefs2 & 0x10u) && ui_prefs2 == 0xC6u &&   /* (CPU METER, retired in 1.1: an unknown id, nothing moves) */
          menu_set(27, 0) == 3 && ui_prefs2 == 0x86u;   /* (MULTI LOAD back to KEEPS MODE) */
     bad += check("MENU_SET: a flag back to its default leaves the other flags", ok);
 
