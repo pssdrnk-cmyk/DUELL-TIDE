@@ -495,7 +495,7 @@ static int ed_args_ok(uint32_t cmd, const uint8_t *a, uint32_t n)
     case ED_MOTION:
         return (n == 1u || (n == 2u && (a[1] == 2u || a[1] == 7u || a[1] == 8u)) || (n == 3u && a[1] == 1u && a[2] <= 1u) ||
                 (n == 6u && (a[1] == 3u || a[1] == 5u)) || (n == 4u && a[1] == 4u) || (n == 3u && a[1] == 6u) ||
-                 (n == 7u && (a[1] == 9u || a[1] == 11u)) || (n == 5u && a[1] == 10u)) &&
+                 (n == 7u && (a[1] == 9u || a[1] == 11u) && a[4] <= 1u) || (n == 5u && a[1] == 10u && a[4] <= 1u)) &&
                a[0] < NTRK;
     default:
         return 1;                                  /* variable payloads validate in their handler */
@@ -533,7 +533,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
     switch (cmd) {
     case ED_MOTION: {
         track_t *t = &trk[a[0]]; uint32_t rc = 0;
-        if (na > 1u && a[1] >= 7u) {
+        if (na > 1u && (a[1] == 7u || a[1] == 8u)) {
             /* (the query with the kinds; 8: all of them, 1.2) */
         } else if (na > 1u) {
             if (a[1] == 1u) motion_set_enabled(t, a[2]);
