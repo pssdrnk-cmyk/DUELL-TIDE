@@ -2,6 +2,14 @@
 
 Current maintenance priorities: [roadmap](ROADMAP.md). Totals below describe their named source checkpoints, not a continuously updated count.
 
+## Full run: 3 November 2026, `0d66b59` (t0-sound: the 12 sound groups)
+
+`sh jam/check.sh` in the `t0-sound` checkout (logs `work/check-duell-t0-sound/`). **92 passed, 22 failed, 22 skipped** (before: 80 / 34 / 22). No new failures. No firmware change, so `check_off.sh` is unchanged.
+
+- Now PASS: reverb halltail locut shimmer stereochorus comp master bassmono eqon dlyev mxstep modinert. Stock 1.1 and jam11 hash these renders the same. Each 1.0 -> 1.1 difference was dumped and compared as audio (`jam/soundref`) and traced to an intended 1.1 change. No firmware bug was found. The new references and measurements are in [JAM11_SOUND_REFERENCES.md](JAM11_SOUND_REFERENCES.md).
+
+FAIL: perform ui step3 engine dx7import fm6 uf pan modules uitest editor editorjson panic benchsim ownerimport pages scope2 editb velo emu converttwin jam_dev
+
 ## Full run: 2 November 2026, `4443c13` (T0 branches merged, morph fixed)
 
 `sh jam/check.sh`, 600 s per group, in a `git archive` snapshot (logs `work/check-full-4443c13/`), then re-run in the checkout for the groups the snapshot or the old `cc` shim got wrong (`work/check-full-4443c13-rerun/`). **80 passed, 34 failed, 22 skipped** (before: 65 / 58 / 11). `check_off.sh` PASS (`ade430c7…`).
