@@ -107,10 +107,10 @@ static uint32_t play_leds(void)
     uint32_t n = t->seq_n < 4u ? t->seq_n : 4u, i, k, note, used = 0, m = 0, hit;
     for (i = 0; i < n; i++)
         s[i] = t->seq_notes[i];
-    if (t->arp_note)
+    if (t->arp_note | (t->arp_nz & 1u))
         s[n++] = t->arp_note;
     for (i = 0; i < 3u; i++)                            /* (the ARP's CHORD) */
-        if (t->arp_ch[i])
+        if (t->arp_ch[i] || ((t->arp_nz >> (i + 1u)) & 1u))
             s[n++] = t->arp_ch[i];
     for (k = 0; n && k < 27u; k++) {
         note = kb_map(t, k);
