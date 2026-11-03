@@ -11,7 +11,7 @@ import { createInterface } from "node:readline";
 import { MockUnit, buildPatchRecord, buildMultiObject } from "../felucca-base/web/editor/mockunit.js";
 import { readArchive, captureBackup, parseInfo, checkObject, DUELL_IDS } from "../felucca-base/web/editor/duellbackup.js";
 import { bkCrc } from "../felucca-base/web/fm1backup.js";
-import { storeDefaults, engineIndex, XB_DEFS } from "../felucca-base/web/editor/patchrecord.js";
+import { storeDefaults, engineIndex, XB_DEFS, buildEndB } from "../felucca-base/web/editor/patchrecord.js";
 
 const HDR = [0xf0, 0x7d, 0x46, 0x4c];
 let unit = new MockUnit();                     // seeded as test_duellbackup.mjs's default unit: patches in slots 0 1 5 64, multis M03 M04 M12, pattern P03, wavetable USR2
@@ -57,7 +57,7 @@ const CONTROL = {
   // a saved patch; rich: with the extension block, 32 hand-set edits and 60 values off their default (the bitmap form), as test_duellbackup.mjs's biggest records
   setPatch: (m) => {
     const eng = m.engine ?? 0, rich = m.rich ? { values: storeDefaults(eng).map((v, i) => (i >= 40 && i < 100 ? (v >= 100 ? v - 1 : v + 1) : v)), ext: XB_DEFS.map((d) => d - 64 + 1),
-      edits: Array.from({ length: 32 }, (_, i) => ({ wid: i < 26 ? i * 4 : 128 + (i - 26), val: i * 3 - 40 })), mb: [1, 2, 3, 4, 5, 6, 7],
+      edits: Array.from({ length: 32 }, (_, i) => ({ wid: i < 26 ? i * 4 : 128 + (i - 26), val: i * 3 - 40 })), mb: buildEndB({ engine: eng, amount: 40, values: { 9: 5, 45: 70 }, marks: [9], ...(eng === engineIndex("FM6") ? { fm6: Array.from({ length: 65 }, (_, i) => i) } : {}) }),
       ...(eng === engineIndex("FM6") ? { patch128: Array.from({ length: 128 }, (_, i) => i) } : {}) } : {};   // (an FM6 one with its patch: over 256 bytes, two GET / PUT pieces)
     unit.setRecord(m.slot, buildPatchRecord({ name: m.name, engine: eng, cat: m.cat ?? 0, ...rich })); unit.rebuild(); return {};
   },

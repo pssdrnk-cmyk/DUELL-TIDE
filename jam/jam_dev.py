@@ -55,7 +55,7 @@ PATCH_PAGES_OLD = 4                                              # a unit with 1
 def slot_bytes(slot: int) -> list[int]:
     """A slot in a GET / PUT begin: one 7-bit byte; a slot of 128..191 a second byte, its bit 7 (JAM bank: the unit takes the longer request)."""
     return [slot & 127] if slot < 128 else [slot & 127, slot >> 7]
-REC_FIX, REC_WORST = 20, 534
+REC_FIX, REC_WORST = 20, 580   # (PT_VER 4: the unit's PT_WORST 577 + TIDE's 3)
 CAPS_MULTI_PATTERN, CAPS_WAVETABLES, CAPS_PATCH16, CAPS_PATCH_RECORDS = 4, 8, 16, 32
 FORMAT, VERSION = "duell-backup", 5
 DUELL_IDS = [0, 1, *range(13, 27)]
@@ -411,18 +411,91 @@ def group_key(k: int) -> Optional[str]:
     return None
 
 
+_LAYOUT: dict = {}
+
+
+def _layout_json() -> dict:
+    if not _LAYOUT:
+        _LAYOUT.update(json.loads((BASE / "web" / "editor" / "layout.json").read_text(encoding="utf-8")))
+    return _LAYOUT
+
+
+REC_VB, REC_NX, XW_BASE = 20, 28, 128
+PTF_ALL = 175
+MBV_HDR, MBV_FMN, PIN_BYTES, NFM = 22, 57, 20, 65
+# the wide values End B never differs in (patchrecord.js NEVER, morph.c mbv_never)
+MBV_NEVER = {0, 5, 21, 22, 23, 24, 29, 30, 31, 32, 40, 81, 82, 86, 94, 105, 111, 112, 115, 116, 117, 118, 149, 153, 154, 155}
+
+
+def _wid_ok(w: int) -> bool:
+    return 0 <= w < 127 or XW_BASE <= w < XW_BASE + REC_NX
+
+
+def _wid_bits(eng: int, w: int) -> int:
+    """patchrecord.js widBits: the bits of the stored range of wide id w (layout.json is written from the unit's own tables)."""
+    L = _layout_json()
+    if w == 127:
+        r = {"min": 0, "max": 0}
+    elif w >= XW_BASE:
+        r = L["XTP"][w - XW_BASE]
+    else:
+        r = L["ENG"][eng]["edit"][w - 119] if w >= 119 else L["TP"][w]
+    n, b = r["max"] - r["min"] + 1, 0
+    while b < 16 and (1 << b) < n:
+        b += 1
+    return b
+
+
+def _end_b_size(b: bytes, at: int, avail: int, eng: int) -> int:
+    """patchrecord.js endBSize (morph.c morph_bv_size): the End B block's length at b[at:], 0 when it is no block."""
+    fm6 = next((i for i, e in enumerate(_layout_json()["ENG"]) if e["name"] == "FM6"), -1)
+    if avail < MBV_HDR or eng >= NENGINES or b[at] & ~7 or b[at + 1] > 101 or (b[at] & 6 and eng != fm6):
+        return 0
+    nb = 0
+    for w in range(160):
+        if b[at + 2 + (w >> 3)] >> (w & 7) & 1:
+            if not _wid_ok(w) or w in MBV_NEVER:
+                return 0
+            nb += _wid_bits(eng, w)
+    n = MBV_HDR + (nb + 7 >> 3)
+    if b[at] & 1:
+        if n + PIN_BYTES > avail:
+            return 0
+        if any(b[at + n + (w >> 3)] >> (w & 7) & 1 and not _wid_ok(w) for w in range(160)):
+            return 0
+        n += PIN_BYTES
+    if b[at] & 2:
+        if n + MBV_FMN > avail:
+            return 0
+        pos = (at + n) * 8
+        for _ in range(NFM):
+            v = sum((b[(pos + i) >> 3] >> ((pos + i) & 7) & 1) << i for i in range(7))
+            pos += 7
+            if v > 99:
+                return 0
+        n += MBV_FMN
+    if b[at] & 4:
+        if n + 3 > avail or not b[at + n]:
+            return 0
+        n += 3
+    return n
+
+
 def _record_layout(b: bytes) -> tuple[dict[str, int], int]:
-    """Where a patch record's optional parts start and the total length its flags imply (upreset.c pt_layout_x)."""
-    f, o, at, ln = b[4], REC_FIX, {}, _u16(b, 0)
-    at["xb"] = o
-    if f & PTF["XB"]:
-        if o + 1 > ln:
-            return at, o + 65536
-        o += 1 + b[o]
-    at["mb"] = o
-    o += 7 if f & PTF["MB"] else 0
+    """Where a patch record's optional parts start and the total length its flags imply (patchrecord.js layout, upreset.c pt_layout_x; PT_VER 4)."""
+    f, ln, eng = b[4], _u16(b, 0), b[5]
+    o, at = REC_FIX, {}
     at["pr"] = o
-    o += 16 + b[19] if f & PTF["BM"] else 2 * b[19]
+    if o + REC_VB > ln or eng >= NENGINES:
+        return at, o + 65536
+    nb = sum(_wid_bits(eng, w) for w in range(REC_VB * 8) if b[o + (w >> 3)] >> (w & 7) & 1 and _wid_ok(w))
+    o += REC_VB + (nb + 7 >> 3)
+    at["mb"] = o
+    if f & PTF["MB"]:
+        n = _end_b_size(b, o, ln - o, eng) if o < ln else 0
+        if not n:
+            return at, o + 65536
+        o += n
     o += 32 if f & PTF["PAT"] else 0
     o += 112 if f & PTF["FM6"] else 0
     if f & PTF["AK"]:
@@ -432,50 +505,14 @@ def _record_layout(b: bytes) -> tuple[dict[str, int], int]:
     return at, o
 
 
-def _xblock_problem(b: bytes, at: int, avail: int) -> Optional[str]:
-    """The extension block's checks (patchrecord.js parseXBlock, firmware xb_block_ok): None when good."""
-    def bad(e: str) -> str:
-        return f"The extension block is damaged ({e})."
-    if avail < 2 or b[at] < 1 or 1 + b[at] > avail:
-        return bad("its length")
-    if b[at + 1] != XB_VER:
-        return bad(f"version {b[at + 1]}")
-    end, p, seen = at + 1 + b[at], at + 2, set()
-    while p < end:
-        if p + 2 > end:
-            return bad("a section is cut off")
-        tag, n = b[p], b[p + 1]
-        p += 2
-        if p + n > end:
-            return bad("a section runs past the block")
-        if tag in (1, 2):
-            if tag in seen:
-                return bad(f"tag {tag} twice")
-            if n & 1:
-                return bad(f"tag {tag} has an odd length")
-            seen.add(tag)
-            if any(b[p + i + 1] > 191 for i in range(0, n, 2)):
-                return bad(f"tag {tag} has a value out of range")
-            if tag == 2:
-                if n // 2 > XB_MAX:
-                    return bad("more than 32 edits")
-                ids: set[int] = set()
-                for i in range(0, n, 2):
-                    if b[p + i] == 127:
-                        return bad("wide id 127")
-                    if b[p + i] in ids:
-                        return bad(f"wide id {b[p + i]} twice")
-                    ids.add(b[p + i])
-        p += n
-    return None
-
-
 def _parse_record_problem(b: bytes) -> Optional[str]:
     """patchrecord.js parseRecord's refusals (the decoding itself is not needed here)."""
-    if len(b) < REC_FIX or len(b) > REC_WORST:
+    if len(b) < REC_FIX + REC_VB or len(b) > REC_WORST:
         return "The record has the wrong size."
     if _u16(b, 0) != len(b):
         return "The record's length field does not match its size."
+    if b[4] & ~PTF_ALL:
+        return "The record has flags this editor does not know."
     if not b[4] & PTF["CB"]:
         return "The record is in the form of a firmware before 0.2.14, which no longer loads."
     if b[5] >= NENGINES:
@@ -485,22 +522,11 @@ def _parse_record_problem(b: bytes) -> Optional[str]:
     at, total = _record_layout(b)
     if total != len(b):
         return "The record's parts do not add up to its length."
-    if b[4] & PTF["XB"]:
-        why = _xblock_problem(b, at["xb"], len(b) - at["xb"])
-        if why:
-            return why
-    pr, nv = at["pr"], b[19]
-    if b[4] & PTF["BM"]:
-        ids = [i for i in range(128) if b[pr + (i >> 3)] >> (i & 7) & 1]
-        if any(i >= P_COUNT for i in ids):
-            return "The record stores a parameter that does not exist."
-        if len(ids) != nv:
-            return "The record's value count does not match its bitmap."
-        stored = [b[pr + 16 + j] for j in range(nv)]
-    else:
-        stored = [b[pr + 2 * i + 1] for i in range(nv) if b[pr + 2 * i] < P_COUNT]
-    if any(v - 64 > 127 for v in stored):
-        return "The record stores a value out of range."
+    ids = [w for w in range(REC_VB * 8) if b[at["pr"] + (w >> 3)] >> (w & 7) & 1]
+    if any(not _wid_ok(w) for w in ids):
+        return "The record stores a parameter that does not exist."
+    if len(ids) != b[19]:
+        return "The record's value count does not match its bitmap."
     return None
 
 
@@ -515,13 +541,6 @@ def record_problem(b: bytes) -> Optional[str]:
         return "the name has a character that is not printable"
     if any(name[n:]):
         return "the name is not padded with 0"
-    pr = _record_layout(b)[0]["pr"]
-    for j in range(b[19]):
-        if b[4] & PTF["BM"]:
-            if b[pr + 16 + j] > 191:
-                return "a value is out of range"
-        elif b[pr + 2 * j] >= P_COUNT or b[pr + 2 * j + 1] > 191:
-            return "it stores a parameter that does not exist or a value out of range"
     return None
 
 
@@ -726,6 +745,8 @@ def check_object(key: int, b: bytes) -> Optional[str]:
         if b[2] or b[3]:
             return "not a patch record as it is backed up (the slot and revision bytes are not 0)"
         why = record_problem(b)
+        if why and b[4] & (16 | 64):
+            return "a patch record of an older DUELL version, which this firmware does not load; make a new backup with this version"   # (PT_VER 3: the extension block and bitmap flags, 16 and 64)
         return f"damaged patch record ({why})" if why else None
     g = group_key(key)
     if g == "multis":
@@ -1143,7 +1164,7 @@ def _object_steps(g: Group, a: Archive, include_raw: bool, plan: Plan) -> None:
         if o.raw and not include_raw:
             plan.excluded.append((label, f"it could not be checked when the backup was made ({o.problem}); the unit keeps what it holds there"))
             continue
-        old = next((v for v in multi_versions(o.data) if v != (7, MUSIC_P_COUNT)), None) if g.key == "multis" and not o.raw else None
+        old = next((v for v in multi_versions(o.data) if v != (8, MUSIC_P_COUNT)), None) if g.key == "multis" and not o.raw else None   # (MU_VER 8 since 1.1)
         if old and not include_raw:
             plan.excluded.append((label, f"a multi record of version {old[0]}, which this firmware does not load; the unit keeps what it holds there"))
             continue

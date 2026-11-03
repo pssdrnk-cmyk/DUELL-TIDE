@@ -136,7 +136,8 @@ export class MockUnit {
       Object.assign(st[12], { flags: 2, notes: [52, 0, 0, 0] }); Object.assign(st[13], { n: 1, notes: [57, 0, 0, 0], time: 0, vel: 70 });
       Object.assign(st[4], { notes: [50, 0, 0, 0], flags: 1, vel: 127 }); Object.assign(st[14], { n: 1, notes: [60, 0, 0, 0], time: 0, ratchet: 3, chance: 60, vel: 80 });
     }
-    this.objs.set(0, filler(3840, 1, [0x42, 0x4E, 0x55, 0x46])); { const o = this.objs.get(0); o[63] = 2; o[66] = 127; o[67] = 8; }   // (the music: 2 parts, 127 values, revision 8)
+    this.objs.set(0, filler(3840, 1, [0x42, 0x4E, 0x55, 0x46])); { const o = this.objs.get(0); o[63] = 2; o[66] = 127; o[67] = 8; o[4] = 3840 & 255; o[5] = 3840 >> 8; o[6] = o[7] = 0; o[64] = 2; o.fill(0, 68, 3836);
+      let h = 0x811C9DC5; for (let i = 0; i < 3836; i++) h = Math.imul(h ^ o[i], 16777619) >>> 0; for (let i = 0; i < 4; i++) o[3836 + i] = (h >>> (8 * i)) & 255; }   // (project.c proj_unpack: the size at 4, 2 parts at 64, the FNV hash in the last 4 bytes)   // (the music: 2 parts, 127 values, revision 8)
     this.objs.set(1, filler(this.settingsSize, 2, [0x34, 0x52, 0x45, 0x50]));
     if (seed) {
       for (const [slot, name, eng, cat] of [[0, "WARM PAD", 0, 3], [1, "SUB BASS", 0, 1], [5, "BELL", 12, 5], [64, "WAVE LEAD", 14, 2]])
