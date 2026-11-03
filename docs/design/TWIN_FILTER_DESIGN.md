@@ -50,7 +50,7 @@ Words used here that are not yet in GLOSSARY.md (explained once, here):
 - no new RAM for the comb lines (they use the engine memory that 8 of the 10 engines leave empty).
 
 **The main risks:**
-1. Core 1's code RAM is full today (pool tail 2,840 B against the 2,816 B temporary rule; hot RAM exactly at its 228 B limit, CONFIRMED MERGE_JOIN1). The RAM shrink must land first.
+1. Core 1's code RAM is full today (pool tail 2,840 B against the 2,816 B temporary rule; hot code exactly at its 228 B limit, CONFIRMED MERGE_JOIN1). The RAM shrink must land first.
 2. The patch format: PARALLEL needs about 6 stored values. Only 4 parameter ids are free, so PARALLEL needs the extension block before the alpha. A series-only version fits the 4 free ids with no format change (plan B).
 3. Whether it sounds worth 2 notes. Only your ears and your Snow can say that, so a cheap offline render test comes first (section 5).
 
@@ -425,9 +425,9 @@ This answers the first pass's "a per-note comb is 13 to 47 KB: impossible". It i
 - **Elsewhere, in flash** (not run by core 1): about 1 to 1.5 KB for the pages, morph rules, matrix and formats.
 
 **Where it must sit** (CONFIRMED, MERGE_JOIN1):
-- Core 1 runs only from RAM. The new code goes in range Z, in its own functions outside the hot block.
+- Core 1 runs only from RAM. The new code goes in range Z, in its own functions outside the hot code.
 - Range Z shares room with the pool tail, which is 2,840 B on the bench build against a temporary rule of 2,816 B. 1.5 KB more does not fit until the RAM shrink lands.
-- The hot block is exactly at its 228 B limit, and the one branch that sends a note into the TWIN path must sit in `track_render` (hot): about 16 to 24 B. That also needs the shrink, or a cold piece moved out of the hot block.
+- The hot code is exactly at its 228 B limit, and the one branch that sends a note into the TWIN path must sit in `track_render` (hot): about 16 to 24 B. That also needs the shrink, or a cold piece moved out of the hot code.
 
 ### 4.5 What must be measured on the bench before committing
 
@@ -567,7 +567,7 @@ Effort: step 2 is about 1 to 2 rounds and can be done off the unit; step 3 is 1 
 | EDIT page order and the MULTI FILTER 2/2 cards | `params.c` PAGES | CONFIRMED |
 | BAL (part balance), CURVE (DUCK), DRIVE as a long name, COMB as a WAVE table name | `ui_draw.c`, `params.c`, `eng_wave.c` | CONFIRMED |
 | Engine memory 12,888 B a part; FM6, WAVE, PHYS use it; the others do not | `engines.c`, `eng_fm6.c`, `eng_wave.c` (19 x 646 B frames), `eng_phys.c` | CONFIRMED |
-| Hot RAM 228 B free (at its limit), pool tail 2,840 B against a 2,816 B temporary bench rule, RAM headroom 6,220 B, range Z | release_drafts/MERGE_JOIN1.md | CONFIRMED (build numbers) |
+| Hot code 228 B free (at its limit), pool tail 2,840 B against a 2,816 B temporary bench rule, RAM headroom 6,220 B, range Z | release_drafts/MERGE_JOIN1.md | CONFIRMED (build numbers) |
 | SAT's 1..11 blend rule; TAPE's level-keeping gain | SPEC 2.4 | CONFIRMED |
 | Clipper has twin filters only in HYBRID, no comb, no filter FM in HYBRID and dsp.c | release_drafts/CLIPPER_STUDY.md section 3 | CONFIRMED there |
 | Virus: saturation after filter 1; filters in series, parallel, split; filter 2 as a 2-pole after a 4-pole | research note, HEADLINE_FEATURES_2 (SOS) | CONFIRMED in those sources |
