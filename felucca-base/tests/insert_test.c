@@ -14,6 +14,7 @@
  * 5. the cost per type and track (instructions / sample, host) against an 8-voice ANALOG part.
  * 6. demos (DEMO_DIR): each TYPE on a loop (acid line + drums), two bars dry, two bars with the INSERT. */
 #define UI_TEST_NO_MAIN 1
+#define UI_TEXT_CAPTURE 1                              /* (the grid cards are read from the texts drawn in them: ui_test.c card_match) */
 #include "ui_test.c"
 #ifdef __APPLE__
 #include <libproc.h>
@@ -336,7 +337,7 @@ static void test_motion(void)
     t->p[P_SLEN] = 16;
     t->seq_active = 1;
     ok_a &= !motion_set_event(t, 0, P_IMIX, 0) && !motion_set_event(t, 8, P_IMIX, 127);
-    ok_l &= !motion_set_lock(t, 4, P_ITYPE, IT_CRUSH);
+    ok_l &= motion_set_lock(t, 4, P_ITYPE, IT_CRUSH) == 1;       /* (DUELL 1.1, owner item 34: INSERT TYPE is no matrix destination, so no step can lock it: refused) */
     seq_start();
     for (k = 0; k < 2750u; k++) {                       /* 16 steps of 172.3 blocks (1/16 at 120 BPM), not again */
         uint32_t idx;
@@ -354,12 +355,12 @@ static void test_motion(void)
             seen_c |= t->p[P_ITYPE] == IT_CRUSH;
         if (idx == 5u)
             seen_back |= t->p[P_ITYPE] == IT_FOLD;
-        ok_l &= idx == 4u || t->p[P_ITYPE] == IT_FOLD;
+        ok_l &= t->p[P_ITYPE] == IT_FOLD;
     }
     seq_stop();
     ck("MIX as automation: 0 on steps 1..8 (nothing runs), 100 % from step 9, the wet share there 4 blocks on",
        ok_a && step_s && seen_w);
-    ck("TYPE as a step's lock: CRUSH on step 5 only, FOLD before and after", ok_l && seen_c && seen_back);
+    ck("TYPE as a step's lock: refused (1.1: not a matrix destination), the TYPE stays FOLD on every step", ok_l && !seen_c && seen_back);
 }
 
 /* ------------------------------------------------------------------ 4 --- */
@@ -391,7 +392,7 @@ static void test_stored(void)
     up_values(&r, v);
     ok = v[P_ITYPE] == 3 && v[P_IA] == 11 && v[P_IMIX] == 101;
     ck("user presets: the INSERT's values kept", ok);
-    /* the pages: INSERT and INSERT 2 after FX (DUELL: the SLICER is removed), then EQ 1, the labels and values per TYPE */
+    /* the pages: INSERT and INSERT 2 after FX and SEND FX (0.2.22) (DUELL: the SLICER is removed), then EQ 1, the labels and values per TYPE */
     {
         uint32_t p, ps = 0, pi = 0, pi2 = 0, pd = 0;
         char val[16];
@@ -403,7 +404,7 @@ static void test_stored(void)
             if (str_eq(PAGES[p].title, "INSERT 2/2")) pi2 = p;
             if (str_eq(PAGES[p].title, "EQ 1/2")) pd = p;
         }
-        ok = pi == ps + 1u && pi2 == pi + 1u && pd == pi2 + 1u && PAGES[pi].fam == FAM_FX && PAGES[pi].id[0] == P_ITYPE &&
+        ok = pi == ps + 2u && str_eq(PAGES[ps + 1u].title, "SEND FX") && pi2 == pi + 1u && pd == pi2 + 1u && PAGES[pi].fam == FAM_FX && PAGES[pi].id[0] == P_ITYPE &&
              PAGES[pi2].id[0] == P_IMIX;
         set_ins(t, IT_CRUSH, 99, 96, 96, 127);
         ok &= str_eq(track_desc(t, P_IA)->label, "BITS") && track_desc(t, P_IA)->def == 99 && str_eq(track_desc(t, P_IB)->label, "RATE") &&
@@ -422,7 +423,8 @@ static void test_stored(void)
               str_eq(track_desc(t, P_IC)->label, "FDBK");
         t->p[P_ITYPE] = IT_OFF;
         ok &= str_eq(track_desc(t, P_IA)->label, "INS A") && str_eq(param_desc_of(0, P_IB)->label, "INS B");
-        for (i = P_ITYPE; i <= P_IMIX; i++)
+        ok &= !motion_param(P_ITYPE);                   /* (DUELL 1.1, owner item 34: the TYPE is no matrix destination: it is no lock or automation target) */
+        for (i = P_IA; i <= P_IMIX; i++)
             ok &= motion_param(i) && !param_kept(i);
         ck("pages: FX, INSERT (TYPE A B C), INSERT 2 (MIX), EQ 1; A B C named by TYPE; recordable; part of the sound", ok);
     }
@@ -839,7 +841,7 @@ static void test_bits_knob(void)
         frames(16);
     }
     ck("BITS knob: TYPE turned to CRUSH, BITS reads A (A stays 64: 6 bits on the new curve)",
-       TSEL->p[P_ITYPE] == IT_CRUSH && TSEL->p[P_IA] == 64 && !strncmp(ui.col[1], "BITS|6|", 7));
+       TSEL->p[P_ITYPE] == IT_CRUSH && TSEL->p[P_IA] == 64 && card_match(1, "BITS|6|"));
     prev = TSEL->p[P_IA];
     for (i = 0; i < 140u; i++) {                        /* all the way down: one step a detent, the card follows */
         turn(EN_K2, -1);
@@ -847,7 +849,7 @@ static void test_bits_knob(void)
         moved &= TSEL->p[P_IA] == (prev > 0 ? prev - 1 : 0);
         prev = TSEL->p[P_IA];
         snprintf(want, sizeof want, "BITS|%s|", N_IBITS[prev]);
-        ok &= !strncmp(ui.col[1], want, strlen(want));
+        ok &= card_match(1, want);
         mark |= (uint32_t)morph_view_moved(song.sel, P_IA);
         if ((uint32_t)atoi(N_IBITS[prev]) != last) {
             last = (uint32_t)atoi(N_IBITS[prev]);
@@ -861,8 +863,8 @@ static void test_bits_knob(void)
         frames(16);
         prev = TSEL->p[P_IA];
         snprintf(want, sizeof want, "BITS|%s|", N_IBITS[prev]);
-        ok &= !strncmp(ui.col[1], want, strlen(want));
-        n16 += !strncmp(ui.col[1], "BITS|16|", 8) && prev != last16;   /* (clicks past 127 stay on it) */
+        ok &= card_match(1, want);
+        n16 += card_match(1, "BITS|16|") && prev != last16;   /* (clicks past 127 stay on it) */
         last16 = prev;
     }
     ck("BITS knob: 140 detents up, A 127 and the card 16 (on the last two detents only); every reading matches A", ok && prev == 127 && n16 == 2u);
@@ -957,16 +959,17 @@ static void test_bits_knob(void)
 /* DIST as it was before 0.2.14 (the wet signal alone, the states as they are): what the blend is built from */
 static void dist_ref_wet(track_t *t, int32_t *b, uint32_t n)
 {
-    int32_t d = t->p[P_DIST], i, g, k, mk, bias = 2400, b0;
+    int32_t d = t->p[P_DIST], i, g, k, mk, bias = 2400, b0, xl;
     g = 4096 + d * d * 2;
     k = 32000 - d * 95;
     mk = 30000 - d * 120;
     b0 = softclip(bias);
+    xl = g > 9216 ? 57500 : 230000;                  /* (DUELL 1.1 BIT DEPTH: the wet of fx.c without the two-bit pre-shift, the input limited by the drive instead) */
     for (i = 0; i < (int32_t)n; i++) {
         int32_t x = b[i], y;
         t->dist_hp += (x - t->dist_hp + 64) >> 7;
-        x = clamp(x - t->dist_hp, -230000, 230000);
-        y = softclip((((x >> 2) * g) >> 10) + bias) - b0;
+        x = clamp(x - t->dist_hp, -xl, xl);
+        y = softclip(((x * g) >> 12) + bias) - b0;
         t->dist_lp1 += mulq15(y - t->dist_lp1, k);
         t->dist_lp2 += mulq15(t->dist_lp1 - t->dist_lp2, k);
         b[i] = mulq15(t->dist_lp2, mk);
