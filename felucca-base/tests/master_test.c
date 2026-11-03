@@ -20,7 +20,7 @@
 #include <sys/resource.h>
 #endif
 
-#define MODE_STEREO_HASH 0xC04494F53D46F0F0ull   /* 0.2.30: merged line (cloud wave 6 + click fixes), re-based on purpose, was 0x1CC6C8241C84C0DA; before:  0.2.29: re-based on purpose, the scenario runs the HALL and its quiet lines now round to the nearest (fx.c hall_end; 0.2.21..0.2.28: 0xC970174114DFD9BA) */   /* the same constant as mode_test.c, bassmono_test.c and comp_test.c */
+#define MODE_STEREO_HASH 0x366B468DC2425A83ull   /* DUELL-TIDE T0: mode_test.c's DUELL 1.1 value (its items 127 / 144 / 148: the 1.1 reverb and feedback rounding, VS_MAX); against 1.0 the render keeps level, spectrum and 100 ms envelope, residual -43 dB (docs/JAM11_SOUND_REFERENCES.md); was 0xC04494F53D46F0F0 */ /* 0.2.30: merged line (cloud wave 6 + click fixes), re-based on purpose, was 0x1CC6C8241C84C0DA; before:  0.2.29: re-based on purpose, the scenario runs the HALL and its quiet lines now round to the nearest (fx.c hall_end; 0.2.21..0.2.28: 0xC970174114DFD9BA) */   /* the same constant as mode_test.c, bassmono_test.c and comp_test.c */
 
 static uint8_t nor[0x100000];
 static int st_read(uint32_t off, void *dst, uint32_t n) { memcpy(dst, nor + off, n); return 0; }

@@ -17,9 +17,11 @@
 #include "mode_test.c"
 
 /* what 0.2.20 rendered (build this file on c755ca0 with -DSC_BASE=1 to print them) */
-#define H_ST_SEND0 0x95e535e6638a3a73ull
-#define H_ST_DEPTH0 0xb8a39b104ccea803ull
-#define H_DUEL_CHO 0xec69d9e302f65abdull
+/* DUELL-TIDE T0: the three re-made with DUELL 1.1 (its delay feedback rounding, mulq15r, and the 1.1 level stages); against 1.0: same level, spectrum and 100 ms envelope,
+ * residual -66 dB (docs/JAM11_SOUND_REFERENCES.md). 1.0: 0x95e535e6638a3a73, 0xb8a39b104ccea803, 0xec69d9e302f65abd */
+#define H_ST_SEND0 0x2d06d9a773c2f0dbull
+#define H_ST_DEPTH0 0x63211e1720e2b2c3ull
+#define H_DUEL_CHO 0x966eb25d94c84fefull
 
 static uint64_t sc_fnv(const int32_t *x, uint32_t n, uint64_t h)
 {
@@ -521,7 +523,11 @@ static void sc_cost(void)
     bus_cfg(DM_STEREO, 100, 44);
     sm = bus_cost(P_MOD);
     printf("stereochorus: cost, host instructions per sample of the bus stage (chorus + plain delay + ROOM): mono tap (DUEL's) %.1f, stereo %.1f (%+.1f); with the delay's modulation: mono %.1f, stereo %.1f (%+.1f)\n", m, s, s - m, mm, sm, sm - mm);
-    expect("COST: measured, the stereo chorus adds under 60 (90 with the delay modulation) instructions per sample", m > 0 && s > 0 && s - m < 60.0 && sm - mm < 90.0);
+    if (!(m > 0 && s > 0)) {                         /* (DUELL-TIDE T0: no instruction counter on this host, as locut_test.c: report only) */
+        printf("stereochorus: cost not measured (no instruction counter)\n");
+        return;
+    }
+    expect("COST: measured, the stereo chorus adds under 60 (90 with the delay modulation) instructions per sample", s - m < 60.0 && sm - mm < 90.0);
 }
 
 /* ------------------------------------------------------------ the listening set --- */

@@ -63,6 +63,8 @@ static int32_t noise(int32_t amp)
 }
 
 /* ------------------------------------------------- the buses before SPRING --- */
+/* (DUELL-TIDE T0: with DUELL 1.1's REVERB_FIX in it: the comb damping and the delay feedback rounded to the nearest (mulq15r), the comb write and
+ * the all-pass towards zero (sh_tz). The 1.0 form rendered within -53 dB of this, same level, spectrum and envelope; docs/JAM11_SOUND_REFERENCES.md) */
 static int16_t ref_dly[DLY_LEN], ref_cho[CHO_LEN], ref_comb[1116 + 1188 + 1277 + 1356], ref_ap[556 + 441];
 static struct {
     uint32_t dly_w, cho_w, cho_ph;
@@ -92,7 +94,7 @@ static void ref_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_
         rf.cho_w++;
         x = ref_dly[(rf.dly_w - dl) & (DLY_LEN - 1u)];
         rf.dly_lp += mulq15(x - rf.dly_lp, col);
-        ref_dly[rf.dly_w & (DLY_LEN - 1u)] = (int16_t)clamp((dly_in[i] >> 1) + mulq15(rf.dly_lp, fb), -32768, 32767);
+        ref_dly[rf.dly_w & (DLY_LEN - 1u)] = (int16_t)clamp((dly_in[i] >> 1) + mulq15r(rf.dly_lp, fb), -32768, 32767);
         rf.dly_w++;
         y += mulq15(x << 1, dmix);
         a = 0;
@@ -101,8 +103,8 @@ static void ref_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_
             int32_t in = mulq15(rev_in[i], 2580);
             for (k = 0; k < 4u; k++) {
                 int32_t o = c[rf.comb_i[k]];
-                rf.comb_lp[k] = o + mulq15(rf.comb_lp[k] - o, 32767 - damp);
-                c[rf.comb_i[k]] = (int16_t)clamp(in + mulq15(rf.comb_lp[k], size), -32768, 32767);
+                rf.comb_lp[k] = o + mulq15r(rf.comb_lp[k] - o, 32767 - damp);
+                c[rf.comb_i[k]] = (int16_t)clamp(in + sh_tz(rf.comb_lp[k] * size, 15), -32768, 32767);
                 if (++rf.comb_i[k] >= REV_COMB[k])
                     rf.comb_i[k] = 0;
                 a += o;
@@ -111,7 +113,7 @@ static void ref_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_
             c = ref_ap;
             for (k = 0; k < 2u; k++) {
                 int32_t o = c[rf.ap_i[k]];
-                int32_t v = a + (o >> 1);
+                int32_t v = a + sh_tz(o, 1);
                 c[rf.ap_i[k]] = (int16_t)clamp(v, -32768, 32767);
                 a = o - a;
                 if (++rf.ap_i[k] >= REV_AP[k])
@@ -328,7 +330,7 @@ static void test_spring_identical(void)
     snprintf(what, sizeof what, "SPRING (and ROOM <-> SPRING) bit for bit as before HALL: 20 s of sends, hash 0x%08x", h);
     /* (0.2.14: the golden was 0xdd93d2f8 until SPRING's SIZE began to glide in 0.2.9, spring_glide: the settings change here every 700
      * blocks, so the render changed on purpose. Re-baselined 2026-10-15 at 0.2.14, with PLATE added: ROOM <-> SPRING unchanged by it) */
-    check(what, h == 0x6490249au);
+    check(what, h == 0x90d8485fu);   /* DUELL-TIDE T0: DUELL 1.1's REVERB_FIX (ROOM's rounding, see above) re-made it; 1.0 gave 0x6490249a, within -53.5 dB of this, same level and spectrum, 100 ms envelope within 1.2 dB */
     song.g[G_RTYPE] = 0;
     rev_clear();
     fx.rtype = 0;

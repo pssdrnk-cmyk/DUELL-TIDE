@@ -15,12 +15,14 @@
 #undef main
 #define GATE_DB 8.0
 #define GATE_TOP (-72.0)               /* above this the tail must fall at its own rate (below it: the 16-bit lines' last LSBs, -75 .. -80) */
-#ifndef REF_ROOM                    /* the 0.2.28 hashes (f8046c6, TAIL_UPDATE=1) */
-#define REF_ROOM 0x7e9433ad6aedb715ull
-#define REF_SPRING 0xf570c74dd5d108b0ull
-#define REF_SHIM 0x0cfd1b9eb116b228ull
-#define REF_RESO 0x2bcc24a058ad4255ull
-#define REF_PLATE 0x925195a27243ed9bull
+#ifndef REF_ROOM                    /* DUELL-TIDE T0: the DUELL 1.1 hashes (REVERB_FIX: ROOM / RESO / SHIM rounding, SHIM low-passes; was the 0.2.28 set, f8046c6). Against 1.0 the same
+                                       * level and spectrum, residual -44.7 dB; the one large difference is a 1.0 tail stuck at -58 dBFS for ~10 s that 1.1 ends in exact zeros
+                                       * (docs/JAM11_SOUND_REFERENCES.md). 0.2.28: ROOM 0x7e9433ad6aedb715, SPRING 0xf570c74dd5d108b0, SHIM 0x0cfd1b9eb116b228, RESO 0x2bcc24a058ad4255, PLATE 0x925195a27243ed9b */
+#define REF_ROOM 0x02879802c2ff09d0ull
+#define REF_SPRING 0x544264e2a2709943ull
+#define REF_SHIM 0xdd66869cca41988bull
+#define REF_RESO 0x6552e1281ad58f56ull
+#define REF_PLATE 0x86d0863381bd1b3full
 #endif
 static double db(double ms) { return ms > 0 ? 10 * log10(ms / (32767.0 * 32767.0)) : -999; }
 static int fails;
@@ -133,7 +135,7 @@ int main(void)
             if (upd)
                 printf("  %s 0x%016llxull\n", NM[t], (unsigned long long)h);
             else
-                CHECK(h == REF[t], "%s: not bit for bit as 0.2.28 (0x%016llx)", NM[t], (unsigned long long)h);
+                CHECK(h == REF[t], "%s: not bit for bit as DUELL 1.1 (0x%016llx)", NM[t], (unsigned long long)h);
         }
     }
     printf(fails ? "hall_tail: %d FAIL\n" : "hall_tail: all passed\n", fails);

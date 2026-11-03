@@ -20,12 +20,15 @@
 #define MODE_TEST_NO_MAIN 1
 #include "mode_test.c"
 
-/* the SHIM before this change, rendered by the base commit (ff8df90) */
-#define H_BUS_A 0x3c328d00u
-#define H_BUS_B 0x091f03d3u
-#define H_MIX_STEREO 0x379c68a0d823dec8ull   /* (0.2.31: the three mix hashes re-based on purpose, the factory sounds WAVE 1 and PHYS 2 were refined; were 0xb0349e95305d0465, 0xbeaf994edade7675, 0xbc2a1061abc66350)  (job 3, on purpose: part 2 draws its own random numbers in the voice stage (voice.c part_rand), so the shared sequence the PHYS pluck's note-on seed comes from is not advanced by part 2's LFO any more; the scene plays a pad and a PHYS pluck on two parts; before: 0x3f372eed50047294, 0x330c1c778ef2d2bc, 0x1820f49e32024f34. 0.2.25: re-pinned on purpose: #62 VOWEL PAD's LFO 1 -> SUB now glides within each block (eng_wave.c SUB without a zipper); before: 0x48d788950a6e2499, 0x44ecba0fd49884b1, 0x9630cfd1f0e803c2. 0.2.22: re-pinned a third time on purpose: the scene plays #62 VOWEL PAD and #75 GHOST HARP, which now have KEY TRK +51 % (owner); before that: 0x5d413c2d194a9478, 0xda3d519d67bc89d2, 0xee5127709d5c78ac. Earlier: re-pinned again on purpose: the scene plays #75 GHOST HARP, whose PATCH TRIM went 112 -> 113 for the new low cut (owner-approved); first pin at the new LOCUT default: 0x11b435e273a6282c, 0x38a7ce86978f2a06, 0x1d5a2be01b32b1eb. Then: re-pinned on purpose: the scene runs at the new LOCUT default, 75 = 299 Hz, the reverb low cut's new range; the bus alone, above, is unchanged. Before: 0x290f333a12786bd9, 0x9a25b46b919706e7, 0x8862eba6c6787015 at value 61 = 88 Hz) */
-#define H_MIX_LAYER 0x61248d80e97da59cull   /* (DUELL 1.0: the three mix hashes re-based on purpose: the factory sounds WAVE 1 and PHYS 2 are the owner's bank now) */
-#define H_MIX_DUEL 0xea63f53d61b8b378ull
+/* the SHIM before this change, rendered by the base commit (ff8df90); DUELL-TIDE T0: re-made with DUELL 1.1, whose REVERB_FIX changed SHIM on purpose (the octave-up line and
+ * its return low-passed, fx_bus.c sh_lp / sh_rlp; feedback SH_AMT 13100 -> 11000; gates SH_GATE 24 -> 4, SH_OGATE 6 -> 2). Against 1.0: level -0.1 .. -0.2 dB, the bus tails end
+ * ~0.1 s sooner, the whole mix's halo up to 10 dB lower late in the tail (docs/JAM11_SOUND_REFERENCES.md). 1.0: bus A 0x3c328d00, B 0x091f03d3; mix 0x379c68a0d823dec8,
+ * 0x61248d80e97da59c, 0xea63f53d61b8b378 */
+#define H_BUS_A 0x867969dcu
+#define H_BUS_B 0x44ad1f1bu
+#define H_MIX_STEREO 0xd90fffa1e83066a0ull   /* (0.2.31: the three mix hashes re-based on purpose, the factory sounds WAVE 1 and PHYS 2 were refined; were 0xb0349e95305d0465, 0xbeaf994edade7675, 0xbc2a1061abc66350)  (job 3, on purpose: part 2 draws its own random numbers in the voice stage (voice.c part_rand), so the shared sequence the PHYS pluck's note-on seed comes from is not advanced by part 2's LFO any more; the scene plays a pad and a PHYS pluck on two parts; before: 0x3f372eed50047294, 0x330c1c778ef2d2bc, 0x1820f49e32024f34. 0.2.25: re-pinned on purpose: #62 VOWEL PAD's LFO 1 -> SUB now glides within each block (eng_wave.c SUB without a zipper); before: 0x48d788950a6e2499, 0x44ecba0fd49884b1, 0x9630cfd1f0e803c2. 0.2.22: re-pinned a third time on purpose: the scene plays #62 VOWEL PAD and #75 GHOST HARP, which now have KEY TRK +51 % (owner); before that: 0x5d413c2d194a9478, 0xda3d519d67bc89d2, 0xee5127709d5c78ac. Earlier: re-pinned again on purpose: the scene plays #75 GHOST HARP, whose PATCH TRIM went 112 -> 113 for the new low cut (owner-approved); first pin at the new LOCUT default: 0x11b435e273a6282c, 0x38a7ce86978f2a06, 0x1d5a2be01b32b1eb. Then: re-pinned on purpose: the scene runs at the new LOCUT default, 75 = 299 Hz, the reverb low cut's new range; the bus alone, above, is unchanged. Before: 0x290f333a12786bd9, 0x9a25b46b919706e7, 0x8862eba6c6787015 at value 61 = 88 Hz) */
+#define H_MIX_LAYER 0x21e238fd72036a98ull   /* (DUELL 1.0: the three mix hashes re-based on purpose: the factory sounds WAVE 1 and PHYS 2 are the owner's bank now) */
+#define H_MIX_DUEL 0x1bcbf70fbc1add71ull
 
 static uint32_t xs0 = 0x1234567u;
 static int32_t rnd(int32_t amp)
@@ -300,7 +303,7 @@ int main(int argc, char **argv)
     /* ---- DEFAULT: bit for bit */
     bus_hashes(&ha, &hb);
     printf("shimmer: bus hashes A %08x B %08x\n", ha, hb);
-    expect("DEFAULT: PITCH UP, MOD 0 on the bus alone (A and B, SIZE / DAMP moving, bursts): the SHIM of 0.2.18, bit for bit", ha == H_BUS_A && hb == H_BUS_B);
+    expect("DEFAULT: PITCH UP, MOD 0 on the bus alone (A and B, SIZE / DAMP moving, bursts): the SHIM of DUELL 1.1, bit for bit", ha == H_BUS_A && hb == H_BUS_B);
     {
         static const uint32_t MODES[3] = {DM_STEREO, DM_LAYER, DM_SPLIT};
         uint64_t m[3], ref[3] = {H_MIX_STEREO, H_MIX_LAYER, H_MIX_DUEL};
@@ -313,7 +316,7 @@ int main(int argc, char **argv)
             ok &= m[i] == ref[i];
         }
         printf("shimmer: mix hashes STEREO 0x%016llxull LAYER 0x%016llxull DUEL 0x%016llxull\n", (unsigned long long)m[0], (unsigned long long)m[1], (unsigned long long)m[2]);
-        expect("DEFAULT: a pad and a pluck through SHIM in STEREO, LAYER and DUEL: the whole mix is the 0.2.18 render bit for bit", ok);
+        expect("DEFAULT: a pad and a pluck through SHIM in STEREO, LAYER and DUEL: the whole mix is the DUELL 1.1 render bit for bit", ok);
     }
     /* ---- PITCH */
     {
@@ -615,8 +618,11 @@ int main(int argc, char **argv)
         mods_off |= MODS_SENDS;
         song.g[G_RTYPE] = 3;
         ui.page = (uint8_t)ps; page_entered();
+        for (k = 0; k < 4u; k++)                        /* (DUELL-TIDE T0: 1.1's item 125 draws the MODULES notice and returns before the cards, leaving the card cache as it was:
+                                                         * mark it empty first, then no card may have been drawn into it) */
+            ui.col[k][0] = 0x7f, ui.col[k][1] = 0;
         ui.force = 1; ui_draw();
-        ok = ui.col[0][0] == 0x7f && ui.col[1][0] == 0x7f;
+        ok = ui.col[0][0] == 0x7f && ui.col[1][0] == 0x7f && ui.col[2][0] == 0x7f && ui.col[3][0] == 0x7f && off_module(cur_page()) == MODS_SENDS;
         mods_off &= ~MODS_SENDS;
         expect("UI: SENDS OFF: the SHIMMER cards are not drawn (as REVERB's)", ok);
         song.g[G_RTYPE] = 2;
