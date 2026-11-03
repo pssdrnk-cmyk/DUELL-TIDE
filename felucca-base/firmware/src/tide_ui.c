@@ -349,6 +349,33 @@ static const uint8_t JFAM[CAT_N] = {
     [CAT_KEYS] = FAM_HARM, [CAT_PERC] = FAM_PERC, [CAT_FX] = FAM_PERC, [CAT_OTHER] = FAM_HARM};
 typedef char jfam_covers_every_category[CAT_N == 9 ? 1 : -1];
 static uint32_t fam_of(uint32_t cat) { return cat < CAT_N ? JFAM[cat] : FAM_HARM; }
+#include "jrny_pairs.h"
+/* the candidates pick[0..n) less those whose glide from sound `at` was measured bad (jrny_pairs.h), unless that leaves under three:
+ * a small family keeps what it has. n unchanged where `at` is no factory sound */
+#ifdef JP_TEST                                         /* (the host test switches the skip off to count what it saves) */
+static uint8_t jp_off;
+#else
+#define jp_off 0
+#endif
+static uint32_t jp_filter(uint32_t e, int32_t at, uint32_t *pick, uint32_t n)
+{
+    uint32_t i, m, a, b, w;
+    uint32_t keep[64];
+    if (at < 0 || jp_off)
+        return n;
+    for (i = m = 0; i < n; i++) {
+        a = (uint32_t)at < pick[i] ? (uint32_t)at : pick[i], b = (uint32_t)at ^ pick[i] ^ a;
+        for (w = 0; w < JP_N && JP_BAD[w] != (e << 12 | a << 6 | b); w++)
+            ;
+        if (w == JP_N)
+            keep[m++] = pick[i];
+    }
+    if (m < 3u)
+        return n;
+    for (i = 0; i < m; i++)
+        pick[i] = keep[i];
+    return m;
+}
 /* the candidates pick[0..n) of part k without its last h targets, for the most h that leaves any (the oldest forgiven first: a
  * group of four or fewer sounds still turns); n unchanged where none is in the history or the memory is empty */
 static uint32_t jh_filter(uint32_t k, uint32_t e, uint32_t *pick, uint32_t n)
@@ -398,6 +425,7 @@ static void tide_journey(uint32_t mask, uint32_t x, uint32_t snd, uint32_t seq)
                     if ((UP_REC_USER(t) || pass == 2u || fam_of(ds_cat_of(e, j)) == fam) && (int32_t)j != at && (pass || (int32_t)j != was) &&
                         !tide_taken(k, e, j))
                         pick[n++] = j;
+            n = jp_filter(e, UP_REC_USER(t) ? -1 : at, pick, n);
             n = jh_filter(k, e, pick, n);
             c = n ? pick[(r >> 8) % n] : 0u;
             if (n > 1u)
