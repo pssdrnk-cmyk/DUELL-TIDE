@@ -1931,6 +1931,9 @@ static uint32_t graph_signature(void)
             h ^= (uint32_t)project_used(i) << (8u + i);
         graph_project_used(0);
         h += graph_pname_sig;
+#if DUELL_TIDE
+        h = (h ^ (multi_gen() + 1u) * 0x9E3779B1u ^ (uint32_t)project_cur_slot() << 16) * 16777619u;   /* (U3: the preview's record, the multi loaded now) */
+#endif
     }
     if (pg->graph == GR_TOOLS)                       /* TOOLS: the third row (RESTORE ALL PATCHES) is dimmed while no slot holds a saved sound */
         h = (h ^ (up_count() != 0u) * 0x27D4EB2Fu) * 16777619u;
@@ -2233,6 +2236,66 @@ static void graph_events(void)
         }
     }
 }
+#if DUELL_TIDE
+/* SAVE > MULTI (U3): three of the sixteen multis around the one picked ("M05  LOFI JAM"; unnamed "USED"; empty "M14  --" dim), the picked one on the middle row where it can be, the
+ * one loaded now tagged LOADED; under them the two parts of the HIGHLIGHTED record as it will load (preview only: multi.c multi_preview decodes it when the slot or a record changes, never per
+ * frame, and touches nothing live). A part: its sound's name in the part's colour, what its MODE does (ARP / SEQ / OFF), its first 16 steps in the bars of the TIDE step display (tide_steps),
+ * or NO SEQUENCE (an arp that runs is still marked) */
+#define MP_ROWS 3u
+#define MP_Y0 113                /* part 1's band (rows 113 .. 129); part 2's MP_PITCH below */
+#define MP_PITCH 18
+#define MP_NAME_W 92
+#define MP_MODE_X 107
+#define MP_MODE_W 26
+#define MP_BAR_X 138
+#define MP_BAR_PITCH 6
+static mu_pv_t gsl_pv;
+static uint32_t gsl_key = 0xFFFFFFFFu;
+static void graph_slots(void)
+{
+    uint32_t cur = (uint32_t)(song.g[G_SLOT] - 1) % MU_SLOTS, r, t, f = cur > MP_ROWS / 2u ? cur - MP_ROWS / 2u : 0u;
+    char b[4];
+    if (f > MU_SLOTS - MP_ROWS)
+        f = MU_SLOTS - MP_ROWS;
+    graph_project_used(0);                           /* (the names, once) */
+    for (r = 0; r < MP_ROWS; r++) {
+        int used = project_used(f + r), sel = f + r == cur;
+        const char *nmp = graph_project_name(f + r);
+        mu_label(b, f + r);
+        list_row5(r, sel, b, !used ? "--" : nmp[0] ? nmp : "USED", used ? T_TEXT : T_DIM, 0);
+        if (project_cur_slot() == f + r)
+            cv_text_r(UT_L5_X + UT_L5_W - 6, UT_TY(S, UT_L5_Y0 + UT_L5_PITCH * (int32_t)r + UT_L5_TEXT_BASE), &AF_S, "LOADED", sel ? T_INK : T_ACCENT, sel ? T_THEME : T_BG);
+    }
+    if (gsl_key != (cur | multi_gen() << 8)) {            /* the highlighted record changed: decode it once */
+        gsl_key = cur | multi_gen() << 8;
+        multi_preview(cur, &gsl_pv);
+    }
+    if (gsl_pv.state != 1u) {
+        cv_text_in(0, UT_TY(S, MP_Y0 + MP_PITCH + 2), 240, &AF_S, gsl_pv.state ? "DAMAGED" : "EMPTY SLOT", T_DIM, T_BG);
+        return;
+    }
+    for (t = 0; t < NSHOWN; t++) {
+        int32_t y = MP_Y0 + MP_PITCH * (int32_t)t, i;
+        uint16_t c = T_PTHEME(t);
+        const char *md = gsl_pv.p[t].mode == 2u ? "SEQ" : gsl_pv.p[t].mode ? "ARP" : "OFF";
+        cv_free_text(UT_L5_TAG_X, UT_TY(M, y + 14), &AF_M, ds_name(gsl_pv.p[t].eng % NENGINES, gsl_pv.p[t].preset), c, T_BG, MP_NAME_W);
+        cv_frame(MP_MODE_X, y + 2, MP_MODE_W, 13, gsl_pv.p[t].mode ? c : T_DIM);
+        cv_text_in(MP_MODE_X, UT_TY(S, y + 12), MP_MODE_W, &AF_S, md, gsl_pv.p[t].mode ? c : T_DIM, T_BG);
+        if (!gsl_pv.p[t].has) {
+            cv_text_r(UT_L5_X + UT_L5_W - 6, UT_TY(S, y + 12), &AF_S, "NO SEQUENCE", T_DIM, T_BG);
+            continue;
+        }
+        for (i = 0; i < 16; i++) {
+            uint32_t bv = gsl_pv.p[t].bar[i], k = bv & 7u;
+            int32_t x = MP_BAR_X + MP_BAR_PITCH * i, h = k == 4u ? 12 : k == 3u ? (bv & 8u ? 10 : 7) : k == 2u ? 4 : 2;
+            if (!k)
+                cv_rect(x, y + 15, 4, 1, T_LINE);
+            else
+                cv_rrect(x, y + 16 - h, 4, h, 1, k >= 3u ? (gsl_pv.p[t].mode == 2u ? c : T_MID) : k == 2u ? T_MID : T_DIM, T_BG);   /* (only a SEQ part plays them: under an arp they are dimmed) */
+        }
+    }
+}
+#else
 /* SAVE > MULTI: the sixteen multis around the one picked ("M05  LOFI JAM"; unnamed "USED"; empty "M14  --" dim) */
 static void graph_slots(void)
 {
@@ -2245,6 +2308,7 @@ static void graph_slots(void)
         list_row5(r, f + r == cur, b, !used ? "--" : nmp[0] ? nmp : "USED", used ? T_TEXT : T_DIM, 0);
     }
 }
+#endif
 /* MIXER page: four SURF columns, one under each card: the track number on its cushion (in the accent:
  * the selected track) with a REC / ARM / MUTE badge (P_MUTE, KNOB 1), the sound's short name (a MUTE badge
  * when armed and muted), the LEVEL knob (dB inside) with the output meter beside it, then the PAN and REV

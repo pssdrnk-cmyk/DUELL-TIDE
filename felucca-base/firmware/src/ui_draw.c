@@ -2612,6 +2612,19 @@ static void draw_columns(void)
         uint32_t k = (uint32_t)(song.g[G_SLOT] - 1) % MU_SLOTS;
         int used = project_used(k);
         mu_label(val, k);
+#if DUELL_TIDE
+        {                                              /* U3: the multi loaded now, after the picked one on knob 1's line (the list and the preview show the one browsed) */
+            static char cur_txt[16];
+            if (project_cur_slot() < MU_SLOTS) {
+                str_cpy(cur_txt, "LOADED ", sizeof cur_txt);
+                mu_label(cur_txt + 7, project_cur_slot());
+            } else
+                str_cpy(cur_txt, "NOTHING LOADED", sizeof cur_txt);
+            k1_after_next = cur_txt;
+            k1_after_col = T_ACCENT;
+            k1_after_r = 1;
+        }
+#endif
         draw_column(0, "SLOT", val, "", VAL(0u), (int32_t)k * 1000 / (int32_t)(MU_SLOTS - 1u), ICON_AUTO);
         draw_act_column(1, "LOAD", used ? T_THEME : T_DIM, ICON_AUTO);
         draw_act_column(2, "SAVE", T_THEME, ICON_AUTO);   /* (change list A.9: ERASE is gone, SAVE is knob 3) */

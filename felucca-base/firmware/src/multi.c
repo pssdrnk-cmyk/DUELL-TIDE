@@ -373,9 +373,15 @@ static int mu_unpack(project_t *q, uint8_t amt[NSHOWN], uint8_t set[6], const ui
 }
 
 /* the RAM view of object o (in mu_buf): which of its two multis load, their names */
+#if DUELL_TIDE
+static uint32_t mu_gen;                           /* counts the records' changes (mu_note): the MULTIS preview decodes again when it moves */
+#endif
 static void mu_note(uint32_t o)
 {
     uint32_t h, len, k;
+#if DUELL_TIDE
+    mu_gen++;
+#endif
     for (h = 0; h < 2u; h++) {
         const uint8_t *r = mu_rec(h, &len);
         uint8_t amt[NSHOWN], set[6];
@@ -422,6 +428,47 @@ static void multi_ram_reset(void)                 /* (host tests: a power-on; wi
 }
 
 static int project_used(uint32_t slot) { return (mu_used >> (slot % MU_SLOTS)) & 1u; }
+#if DUELL_TIDE
+/* U3, the MULTIS page's preview of one record, read-only: the record is decoded (mu_unpack, into the scratch, as mu_note does) and only what the page
+ * draws is kept: per part its sound (engine, preset), what its MODE does (0 OFF, 1 ARP, 2 SEQ), whether the pattern holds a note, and its first 16 steps
+ * (0 past the end, 1 empty, 2 tie, 3 note, 4 chord; |8 accent). Nothing live is touched: not the sounds, the patterns, the transport nor the morph.
+ * state: 0 empty slot, 1 decoded, 2 damaged. The caller calls it when the slot or mu_gen changes, never every frame */
+static uint32_t multi_gen(void) { return mu_gen; }
+static void multi_preview(uint32_t slot, mu_pv_t *o)
+{
+    uint32_t k = slot % MU_SLOTS, len, t, i;
+    uint8_t amt[NSHOWN], set[6];
+    const uint8_t *r;
+    int ok;
+    memset(o, 0, sizeof *o);
+    if (!project_used(k))
+        return;
+    o->state = 2;
+    mu_obj_read(k / 2u);
+    r = mu_rec(k & 1u, &len);
+    ok = len && mu_unpack(&proj_scratch, amt, set, r, len);
+    if (!ok && df_of(k) < DF_N)                        /* (as mu_note: a slot that holds nothing it loads shows its factory multi) */
+        ok = mu_unpack(&proj_scratch, amt, set, DM_REC + DM_AT[df_of(k)], DM_LEN[df_of(k)]);
+    if (!ok)
+        return;
+    o->state = 1;
+    for (t = 0; t < NSHOWN; t++) {
+        const proj_trk_t *d = &proj_scratch.t[t];
+        uint32_t slen = (uint32_t)clamp(d->p[P_SLEN], 1, NSTEP);
+        o->p[t].eng = d->engine;
+        o->p[t].preset = d->preset;
+        o->p[t].mode = d->p[P_AMODE] == AM_SEQ_ID ? 2u : d->p[P_AMODE] ? 1u : 0u;
+        for (i = 0; i < slen; i++) {
+            const step_t *s = &d->step[i];
+            uint8_t b = s->time == ST_NOTE && s->n ? (s->n > 1u ? 4u : 3u) : s->time == ST_TIE ? 2u : 1u;
+            if (b >= 3u)
+                o->p[t].has = 1;
+            if (i < 16u)
+                o->p[t].bar[i] = (uint8_t)(b | (b >= 3u && (s->flags & SF_ACCENT) ? 8u : 0u));
+        }
+    }
+}
+#endif
 static int project_factory(uint32_t slot) { return (mu_fact >> (slot % MU_SLOTS)) & 1u; }   /* shows its factory multi */
 /* slot's name -> b (PROJ_NAME_LEN + 1 bytes); 0 = an empty slot (b "") */
 static int project_info(uint32_t slot, char *b)

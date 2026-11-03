@@ -444,6 +444,29 @@ int main(void)
     frame();
     ck("SAVE > MULTI is SAVE's page, sixteen slots (KNOB 1 M01..M16), all sixteen the factory multis (0.2.23; M11 EERIE SIGNAL)", cur_page()->graph == GR_SLOTS &&
        cur_page()->fam == FAM_SAVE && GP[G_SLOT].max == 16 && project_used(10) && project_factory(10) && str_eq(mu_names[10], "EERIE SIGNAL"));
+#if DUELL_TIDE
+    {                                                /* U3: browsing the MULTIS page (the preview) changes nothing live, decodes once per slot, and shows the record */
+        uint32_t k, sum0, sum1, gen = multi_gen(), eng0 = trk[0].eng_req;
+        mu_pv_t pv;
+        project_capture(&proj_scratch);
+        sum0 = proj_sum(&proj_scratch);
+        for (k = 0; k < MU_SLOTS; k++) {
+            song.g[G_SLOT] = (int16_t)(k + 1u);
+            frame();
+        }
+        song.g[G_SLOT] = 11;
+        frame();
+        frame();
+        project_capture(&proj_scratch);
+        sum1 = proj_sum(&proj_scratch);
+        ck("MULTIS preview: all sixteen slots browsed, the music, the transport and the loaded multi unchanged (no record was written: the record counter stands)",
+           sum0 == sum1 && !song.playing && multi_gen() == gen);
+        multi_preview(10u, &pv);
+        ck("  the preview of M11 is its record: decoded, both parts' sounds named, no engine out of range", pv.state == 1u && pv.p[0].eng < NENGINES && pv.p[1].eng < NENGINES &&
+           gsl_key == (10u | multi_gen() << 8));
+        ck("  the music is still the one before the preview decoded (the scratch only)", trk[0].eng_req == eng0);
+    }
+#endif
     watch = 1;
     press_k(EN_K3);                                  /* SAVE (1.1: K3): a used (factory) slot: OVERWRITE M11?, then the NAME screen */
     ck("SAVE over the factory M11 asks OVERWRITE M11?", ui.confirm == CF_OVR_PROJ);

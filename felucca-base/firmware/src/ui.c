@@ -33,6 +33,16 @@ static uint32_t project_cur_slot(void);           /* .. the multi the music came
 static int project_factory(uint32_t slot);         /* .. M01..M10 not overwritten: shows its factory multi */
 static int erase_data_run(void);                   /* DUELL 0.2.2: MENU > SYSTEM > ERASE DATA (erase_data.c) */
 static void mu_label(char *b, uint32_t k);         /* .. "M01" .. "M16" */
+#if DUELL_TIDE
+typedef struct {
+    uint8_t state;
+    struct {
+        uint8_t eng, preset, mode, has, bar[16];
+    } p[NSHOWN];
+} mu_pv_t;
+static void multi_preview(uint32_t slot, mu_pv_t *o);   /* .. U3: the MULTIS page's preview of one record (multi.c) */
+static uint32_t multi_gen(void);
+#endif
 /* The PATCH SLOTS (upreset.c, the slot layer): ONE list of UP_SLOTS (128), slot k = its saved record, else the factory sound at browse position k */
 static uint32_t slot_of(const track_t *t);         /* the slot t's sound is in, UP_SLOTS = none */
 static uint32_t slot_home(const track_t *t);       /* .. where SAVE offers to write it */
