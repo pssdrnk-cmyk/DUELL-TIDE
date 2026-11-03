@@ -1848,7 +1848,7 @@ static void morph_rebase_part(uint32_t pi)               /* ends = the Original,
         morph_roll_cfg(pi, 1u, (uint32_t)(morph_ld[1] | morph_ld[2] << 8), morph_ld[3], morph_ld[4]);
     } else if (morph_ld_n) {                             /* EDITABLE B: no roll saved, but values set by hand: End B is the Original with them on top ("seed 0 plus a list"; the roll below is for a sound with neither) */
                                                          /* (nothing to roll: B = entry 0, the Original) */
-    } else if (!t->user && t->preset < ds_count(t->eng_req)) {   /* DUELL: a factory sound (sounds.c): its own B, always
+    } else if (!UP_REC_USER(t) && t->preset < ds_count(t->eng_req)) {   /* DUELL: a factory sound (sounds.c): its own B, always
                                                          * the same: its seed and AMOUNT, SMART / PITCH / ARP off, part 1's
                                                          * stream (on either part); PAN only where the mode lets it (3b).
                                                          * The part's AMOUNT knob stays the player's (a setting, kept over

@@ -743,6 +743,10 @@ static void patch_save_ask(void)
 {
     if (cur_page()->graph == GR_PATS) {     /* PATTERNS (DUELL 0.2.2): the pattern slot picked, the part's pattern over it (the slot's */
         uint32_t ps = pat_pick();                       /* under its name; every slot holds a pattern) */
+        if (PS_NUSER && ps >= PS_SLOTS) {
+            ui_message("PICK A USER SLOT");
+            return;
+        }
         confirm_open(CF_HOLD_PSLOT, ps);
         return;
     }
@@ -1585,6 +1589,10 @@ static void act_do(void)
     if (cur_page()->graph == GR_PATS) {                   /* LOAD (1), SAVE (2): the slot picked */
         uint32_t ps = pat_pick();
         if (c == 2u) {
+            if (PS_NUSER && ps >= PS_SLOTS) {                         /* U1: a displaced default pattern loads, never saves */
+                ui_message("PICK A USER SLOT");
+                return;
+            }
             confirm_open(CF_OVR_PSLOT, ps);               /* (replaces what the slot holds: the dialog, then the NAME screen) */
         } else if (pat_needs_confirm(TSEL)) {             /* the user's steps: the dialog */
             confirm_open(CF_LOAD_PAT, song.sel);
@@ -2158,6 +2166,8 @@ static void ui_input(void)
             } else if (kind == CF_HOLD_PSLOT) {         /* SAVE held on PATTERNS: straight into the slot, its name kept */
                 char tag[4], pn[13];
                 pat_label(ui.confirm_trk % PS_SLOTS, tag, pn);
+                if (ui.confirm_trk % PS_SLOTS >= PS_USER0 && !ps_changed(ui.confirm_trk % PS_SLOTS))
+                    pn[0] = 0;                          /* (an empty USER slot has no name to keep) */
                 pslot_save_ui(ui.confirm_trk % PS_SLOTS, pn);
             } else if (kind == CF_HOLD_MULTI) {         /* SAVE held on MULTIS: straight into the slot, its name kept */
                 char pn[13];

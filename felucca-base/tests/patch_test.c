@@ -843,7 +843,7 @@ int main(void)
         frame();
         (void)preset_pos(&occ);
         (void)pl_cursor(&total);
-        ck("with the store full the list is the 128 slots, the same as with none", total == UP_SLOTS && occ == UP_SLOTS);
+        ck("with the store full the list is the 128 slots, the same as with none", total == UP_VSLOTS && occ == UP_VSLOTS);
         hold(B_SAVE);
         ck("hold SAVE with the store full: the OVERWRITE dialog, no message about room; OCT-: nothing written", ui.confirm == CF_SAVE_OVER &&
            (press(B_OCTDN), !ui.confirm) && up_count() == NSAVE);
@@ -891,7 +891,7 @@ int main(void)
         uint32_t fe, fk, same = 0, named = 0;
         ck("a fresh unit: nothing saved, no chunk written, the factory sounds fill all 128 slots (ds_list_n() = 128 = UP_SLOTS)",
            up_count() == 0u && pt_bytes() == 0u && ds_list_n() == UP_SLOTS && UP_SLOTS == 128u);
-        for (k = 0; k < UP_SLOTS; k++) {
+        for (k = 0; k < UP_USER0; k++) {   /* (U1: the factory sounds of the slots before the USER ones) */
             char nmk[13];
             int16_t v1[P_COUNT];
             sl_name(k, nmk);
@@ -918,15 +918,15 @@ int main(void)
             same += ok;
             named += nmk[0] != 0 && !str_eq(nmk, "INIT");
         }
-        ck("  every slot's name, engine, category and values are its browse position's factory sound's (sl_values equals a factory load)", same == UP_SLOTS && named == UP_SLOTS);
+        ck("  every slot's name, engine, category and values are its browse position's factory sound's (sl_values equals a factory load)", same == UP_USER0 && named == UP_USER0);
         {   /* load slot k on part 1: the same as the PATCHES list loads (the engine, the factory index, the values) */
             uint32_t good = 0;
-            for (k = 0; k < UP_SLOTS; k += 5u) {
+            for (k = 0; k < UP_USER0; k += 5u) {
                 song.sel = 0;
                 sl_load(k);
                 good += sl_fac(k, &fe, &fk) && trk[0].eng_req == fe && trk[0].preset == fk && !trk[0].user && slot_of(&trk[0]) == k;
             }
-            ck("  sl_load(k) plays the factory sound (engine, index), the part is in slot k (no record: user 0)", good == (UP_SLOTS + 4u) / 5u);
+            ck("  sl_load(k) plays the factory sound (engine, index), the part is in slot k (no record: user 0)", good == (UP_USER0 + 4u) / 5u);
         }
     }
 
@@ -1100,11 +1100,11 @@ int main(void)
     song.playing = 0;
     {
         uint32_t fe, fk, good = 0;
-        for (k = 0; k < UP_SLOTS; k += 9u) {
+        for (k = 0; k < UP_USER0; k += 9u) {
             pc_recall(0u, k, k & 1u);
             good += sl_fac(k, &fe, &fk) && trk[0].eng_req == fe && trk[0].preset == fk && slot_of(&trk[0]) == k;
         }
-        ck("MIDI program change n (bank 0 or 1) loads slot n: the factory sound of that browse position", good == (UP_SLOTS + 8u) / 9u);
+        ck("MIDI program change n (bank 0 or 1) loads slot n: the factory sound of that browse position", good == (UP_USER0 + 8u) / 9u);
         song.sel = 0;
         sl_load(20u);
         trk[0].p[P_REL] = 33;
@@ -1154,13 +1154,13 @@ int main(void)
        str_eq(PAGES[ui.page + 3u].title, "TOOLS"));
     (void)pl_cursor(&total);
     (void)preset_pos(&occ);
-    ck("ONE list of 128 slots: no empty place, no tail, the cursor on the slot of the sound the part plays", total == UP_SLOTS && occ == UP_SLOTS &&
+    ck("ONE list of 128 slots: no empty place, no tail, the cursor on the slot of the sound the part plays", total == UP_VSLOTS && occ == UP_VSLOTS &&
        pl_cursor(&total) == slot_of(&trk[0]) && slot_of(&trk[0]) < UP_SLOTS);
     ok = 1;
     for (i = 0; i < 300u; i++) {
         uint32_t c0 = pl_cursor(&total);
         turn(EN_K1, 1);
-        ok &= pl_cursor(&total) == (c0 + 1u) % UP_SLOTS && slot_of(&trk[0]) == pl_cursor(&total) && !trk[0].user;
+        ok &= pl_cursor(&total) == (c0 + 1u) % UP_VSLOTS && slot_place(&trk[0]) == preset_at(pl_cursor(&total)) && (!trk[0].user || trk[0].user > UP_USER0);
     }
     ck("K1 steps the slots one by one, round the ends (300 steps), each loads its sound (the part is always in the slot under the cursor)", ok);
     go_title("PATCHES");
@@ -1242,7 +1242,7 @@ int main(void)
     }
     press(B_OCTUP);
     ck("  OCT+: SAVED #13: that slot holds the sound now, the part plays it, one record, the list is still 128 slots, the cursor on it", up_used(12) && up_count() == 1u &&
-       trk[0].user == 13u && !strncmp(ui.msg, "SAVED", 5) && pl_cursor(&total) == 12u && total == UP_SLOTS && up_rec(12)->engine == trk[0].eng_req);
+       trk[0].user == 13u && !strncmp(ui.msg, "SAVED", 5) && pl_cursor(&total) == 12u && total == UP_VSLOTS && up_rec(12)->engine == trk[0].eng_req);
     kk = 12u;
     turn(EN_K4, 1);
     ck("K4 on a saved slot: FAV too, no dialog; the record, the part and the cursor stay (1.1: RESTORE ALL in SAVE > TOOLS is the only restore)",
@@ -1394,6 +1394,82 @@ int main(void)
         ck("  the decoded LIN record reads LIN, the EXP one EXP (up_rec)", up_value(up_rec(52u), P_DKCRV) == 0 && up_value(up_rec(53u), P_DKCRV) == 1);
         up_put(52u, 0);
         up_put(53u, 0);
+    }
+
+    memset(nor, 0xFF, sizeof nor);
+    power_cycle();
+    song.playing = 0;
+    song.sel = 0;
+    set_engine_of(&trk[0], 0u);
+    apply_preset_to(&trk[0], 1u);
+    {   /* U1: the last 4 slots are USER slots; the factory sounds they displace are read-only places after them; a record already there stays */
+        char tag[6], nmu[13];
+        uint32_t fe2, fk2, e2, k2, bad = 0, snd;
+        up_slot_label(tag, UP_USER0);
+        sl_name(UP_USER0, nmu);
+        ck("U1: slot 125 is USER 1, empty: tag U1, name USER EMPTY, no factory sound, no record",
+           UP_NUSER == 4u && str_eq(tag, "U1") && str_eq(nmu, "USER EMPTY") && !sl_fac(UP_USER0, &fe2, &fk2) && !up_used(UP_USER0) && sl_empty_user(UP_USER0 + 3u));
+        for (k2 = 0; k2 < UP_NUSER; k2++) {   /* the displaced factory sounds: places 129..132, numbered #125..#128, the sounds browse positions 124..127 held */
+            e2 = ds_list_at(UP_USER0 + k2, &fk2);
+            up_slot_label(tag, UP_SLOTS + k2);
+            bad |= !(sl_fac(UP_SLOTS + k2, &fe2, &fk2) && fe2 == e2) || sl_engine(UP_SLOTS + k2) != fe2 || tag[0] != '#' || tag[1] != '1' || tag[3] != (char)('5' + k2);
+            sl_name(UP_SLOTS + k2, nmu);
+            bad |= !str_eq(nmu, ds_name(fe2, fk2));
+        }
+        ck("  the 4 displaced factory sounds are reachable as read-only places #125..#128 (name, engine, label)", !bad);
+        sl_load(UP_SLOTS + 1u);
+        ck("  loading a displaced place plays that factory sound, in no slot to save over (SAVE offers USER 1)", trk[0].preset == sl_tk[UP_USER0 + 1u] && !trk[0].user &&
+           slot_of(&trk[0]) == UP_SLOTS && slot_place(&trk[0]) == UP_SLOTS + 1u && slot_home(&trk[0]) == UP_USER0);
+        snd = trk[0].preset;
+        sl_load(UP_USER0 + 2u);
+        ck("  loading an empty USER slot changes no sound; the part points at it (SAVE offers it), the footer keeps the sound's own name", trk[0].preset == snd && trk[0].user == UP_USER0 + 3u &&
+           slot_of(&trk[0]) == UP_USER0 + 2u && slot_home(&trk[0]) == UP_USER0 + 2u);
+        {
+            char nm3[16];
+            sound_name(&trk[0], nm3);
+            ck("  .. sound_name is the sound's, not USER EMPTY", !str_eq(nm3, "USER EMPTY") && nm3[0]);
+        }
+        ck("  every list but FAV shows the empty USER slots (ALL, one category, one engine)", ({ uint32_t m, seen = 0; for (m = 0; m < LIST_N; m++) { list_set(m); seen += m == 1u ? !list_keep(UP_USER0) : list_keep(UP_USER0); } list_set(0); seen == LIST_N; }));
+        song.sel = 0;
+        ui.svs = (uint8_t)UP_USER0;
+        trk[0].user = 0;
+        sl_load(UP_SLOTS + 1u);
+        patch_save_do(0);
+        ck("  SAVE over USER 1 (ui.svs): a record with the sound's own name, not USER EMPTY; the displaced #126 is still there",
+           up_used(UP_USER0) && up_count() == 1u && !str_eq(({ sl_name(UP_USER0, nmu); nmu; }), "USER EMPTY") && str_eq(nmu, ds_name(trk[0].eng_req, trk[0].preset)) &&
+           sl_fac(UP_SLOTS + 1u, &fe2, &fk2) && fk2 == snd && !sl_empty_user(UP_USER0) && sl_empty_user(UP_USER0 + 1u));
+        power_cycle();
+        ck("  after a power cycle USER 1 is still there; USER 2..4 still empty", up_used(UP_USER0) && !up_used(UP_USER0 + 1u) && up_count() == 1u);
+        sl_load(UP_USER0);
+        (void)pl_cursor(&total);
+        ck("  the record is the browse list's place, label U1, in the 132 places", up_used(UP_USER0) && total == UP_VSLOTS && preset_at(pl_cursor(&total)) == UP_USER0);
+    }
+
+    {   /* U1: the factory multis hold engine + factory index, never a browse slot: loading them gives the factory sound whatever the USER slots hold; a part pointed at an empty USER slot still plays a factory sound */
+        uint32_t m, pi, bad2 = 0, hit = 0;
+        for (m = 0; m < DF_N; m++) {
+            memset(nor, 0xFF, sizeof nor);
+            power_cycle();
+            song.playing = 0;
+            sl_load(UP_SLOTS);
+            project_load(m);
+            for (pi = 0; pi < NSHOWN; pi++) {
+                uint32_t r = ds_list_rank(trk[pi].eng_req % NENGINES, trk[pi].preset);
+                char a[16];
+                sound_name(&trk[pi], a);
+                bad2 |= trk[pi].user != 0u || !str_eq(a, ds_name(trk[pi].eng_req % NENGINES, trk[pi].preset));
+                if (r >= UP_USER0 && r < UP_SLOTS) {
+                    hit++;
+                    bad2 |= slot_of(&trk[pi]) != UP_SLOTS || slot_place(&trk[pi]) != r + UP_NUSER || slot_home(&trk[pi]) != UP_USER0;
+                }
+            }
+        }
+        printf("patch:   factory multis: %u parts play a sound a USER slot displaced\n", hit);
+        ck("U1: every factory multi loads its factory sounds (user 0, the factory name; a displaced one sits at its read-only place)", !bad2);
+        song.sel = 0;
+        sl_load(UP_USER0);
+        ck("  a part pointed at an empty USER slot is not a stored record (TIDE's JRNY / WNDR and the End B roll treat it as factory); a saved one is",
+           trk[0].user == UP_USER0 + 1u && !UP_REC_USER(&trk[0]) && (ui.svs = (uint8_t)UP_USER0, patch_save_do(0), UP_REC_USER(&trk[0])));
     }
 
     printf(bad ? "patch: FAILED (%d)\n" : "patch: all ok\n", bad);

@@ -501,10 +501,16 @@ static int ps_load_trk(track_t *t, uint32_t k)
     const uint8_t *r, *p, *end;
     uint32_t i, nl, nst;
     uint8_t b[PS_STEP], tmp[PS_REC_MAX];
-    if (k >= PS_SLOTS || !(r = ps_rec_for_load(k, tmp)))
+    if (k >= PS_VSLOTS)
+        return 1;
+    if (k >= PS_SLOTS)                          /* U1: the default pattern a USER slot displaced (a read-only place) */
+        ps_def_rec(tmp, k - PS_NUSER), r = tmp;
+    else if (!(r = ps_rec_for_load(k, tmp)))
         return 1;
     nl = r[7];
     nst = r[8u + nl];
+    if (k >= PS_USER0 && k < PS_SLOTS && !(r[2] & PS_F_CHANGED))   /* an empty USER slot loads a blank pattern */
+        nst = 0;
     p = r + 9u + nl;
     end = r + ps_rlen(r);
     for (i = 0; i < NSTEP; i++) {

@@ -60,6 +60,10 @@ static uint8_t pv_bar_of(const step_t *s)
 /* The PATCH SLOTS (upreset.c, the slot layer): ONE list of UP_SLOTS (128), slot k = its saved record, else the factory sound at browse position k */
 static uint32_t slot_of(const track_t *t);         /* the slot t's sound is in, UP_SLOTS = none */
 static uint32_t slot_home(const track_t *t);       /* .. where SAVE offers to write it */
+static uint32_t slot_place(const track_t *t);      /* .. its browse place (a USER slot's displaced factory sound: UP_SLOTS..; UP_VSLOTS none) */
+#if UP_NUSER
+static int sl_empty_user(uint32_t k);              /* U1: slot k is an empty USER slot */
+#endif
 static uint32_t sl_engine(uint32_t k);             /* slot k's engine, name, category: its record's, else its factory sound's */
 static void sl_name(uint32_t k, char *b);
 static uint32_t sl_cat(uint32_t k);
@@ -1387,12 +1391,28 @@ static void track_defaults_steps(track_t *t)
  * sounds are not listed (a sound still carries one). A slot holds all 64 steps with its LEN, DIV, SWING, GATE and QUANTIZE. The notes are
  * loaded as they are: the defaults are C4 (60) + an offset, so they also serve the SEQUENCER arp as it is;
  * SCL TRANS / OCT transpose what plays */
-static uint32_t pat_count(void) { return PS_SLOTS; }
+/* U1: the list is the 32 slots, the last PS_NUSER of them USER slots (tag "U1".., "USER EMPTY" until saved: a slot not CHANGED), then the default patterns those slots
+ * displaced as read-only places (their old tags "P29".."P32", loadable, never saved over) */
+static uint32_t pat_count(void) { return PS_VSLOTS; }
 
-static void pat_label(uint32_t n, char *tag, char *name)   /* tag: 4 bytes ("P03"), name: 13 ("OFFBEAT"; "SAVED" if it has none) */
+static void pat_label(uint32_t n, char *tag, char *name)   /* tag: 4 bytes ("P03", "U1"), name: 13 ("OFFBEAT"; "SAVED" if it has none) */
 {
-    ps_label(tag, n % PS_SLOTS);
-    ps_name(n % PS_SLOTS, name);
+    n %= PS_VSLOTS;
+    if (n >= PS_USER0 && n < PS_SLOTS) {
+        tag[0] = 'U';
+        tag[1] = (char)('1' + n - PS_USER0);
+        tag[2] = 0;
+        if (!ps_changed(n)) {
+            str_cpy(name, "USER EMPTY", 13);
+            return;
+        }
+    } else {
+        ps_label(tag, n >= PS_SLOTS ? n - PS_NUSER : n);
+    }
+    if (n >= PS_SLOTS)
+        str_cpy(name, PATTERNS[n - PS_NUSER].name, 13);
+    else
+        ps_name(n, name);
     if (!name[0])
         str_cpy(name, "SAVED", 13);
 }
@@ -1439,7 +1459,15 @@ static void pat_load_ui(track_t *t, uint32_t n)
 static void pslot_save_ui(uint32_t k, const char *name)
 {
     char l[4];
+#if PS_NUSER
+    if (k >= PS_SLOTS) {                                /* U1: a default pattern a USER slot displaced is read-only */
+        ui_message("PICK A USER SLOT");
+        return;
+    }
+    pat_label(k, l, (char[13]){0});                     /* (U1 for a USER slot) */
+#else
     ps_label(l, k);
+#endif
     switch (ps_save_trk(TSEL, k, name)) {
     case 0:
         break;
@@ -1708,6 +1736,8 @@ static int list_fav(uint32_t k) { return favorite_has(NENGINES, k); }
 static int list_keep(uint32_t k)
 {
     uint32_t m = list_mode();
+    if (UP_EMPTY_USER(k))                                /* U1: an empty USER slot is in every list but FAV, so it is always at hand */
+        return m != 1u;
     if (m > CAT_N)                                       /* one engine: only its sounds (a filter, nothing is loaded) */
         return sl_engine(k) == eng_vis(m - CAT_N - 1u);
     return m == 1u ? list_fav(k) : m ? sl_cat(k) == m - 1u : 1;
@@ -1722,8 +1752,8 @@ static uint32_t track_cat(const track_t *t)
 /* place of the selected part's slot in the list shown (*total its length); total when its sound is in no slot or not in this TYPE */
 static uint32_t preset_pos(uint32_t *total)
 {
-    uint32_t s = slot_of(TSEL), k, n = 0, pos = 0xFFFFFFFFu;
-    for (k = 0; k < UP_SLOTS; k++) {
+    uint32_t s = slot_place(TSEL), k, n = 0, pos = 0xFFFFFFFFu;
+    for (k = 0; k < UP_VSLOTS; k++) {
         if (!list_keep(k)) continue;
         if (k == s) pos = n;
         n++;
@@ -1734,9 +1764,9 @@ static uint32_t preset_pos(uint32_t *total)
 static uint32_t preset_at(uint32_t n)                    /* place n of the list shown -> its slot; UP_SLOTS past the end */
 {
     uint32_t k;
-    for (k = 0; k < UP_SLOTS; k++)
+    for (k = 0; k < UP_VSLOTS; k++)
         if (list_keep(k) && !n--) return k;
-    return UP_SLOTS;
+    return UP_VSLOTS;
 }
 static void preset_go(uint32_t n);
 /* PATCHES (SPEC 3.6): the cursor is the place of the slot the selected part plays; K1 steps on and loads it. */
@@ -1806,7 +1836,7 @@ static void pl_step(uint32_t role, int32_t steps)
 static uint32_t pl_cursor_slot(void)
 {
     uint32_t total, cur = pl_cursor(&total);
-    return cur < total ? preset_at(cur) : UP_SLOTS;
+    return cur < total ? preset_at(cur) : UP_VSLOTS;
 }
 
 /* FAV of the selected part's slot (a sound in no slot has no flag: the card says NO SLOT) */
@@ -1846,7 +1876,7 @@ static void preset_hinted(void)                     /* after a sound load: SAVE 
 static void preset_go(uint32_t n)                    /* load place n of the list shown into the selected track (the sound only) */
 {
     uint32_t k = preset_at(n);
-    if (k < UP_SLOTS)
+    if (k < UP_VSLOTS)
         sl_load(k);
     preset_hinted();
 }

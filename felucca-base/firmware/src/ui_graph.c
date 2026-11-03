@@ -2499,7 +2499,7 @@ static void trk_short_name(uint32_t c, char *b)      /* the track's sound, b hol
 {
     const track_t *t = &trk[c];
     const engine_t *e = ENGINES[t->eng_req % NENGINES];
-    if (t->user)
+    if (t->user && !UP_EMPTY_USER((uint32_t)t->user - 1u))
         sl_name((uint32_t)t->user - 1u, b);
     else if (ds_count(t->eng_req % NENGINES))
         str_cpy(b, ds_name(t->eng_req % NENGINES, t->preset), 13);
