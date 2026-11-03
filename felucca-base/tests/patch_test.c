@@ -1445,6 +1445,33 @@ int main(void)
         ck("  the record is the browse list's place, label U1, in the 132 places", up_used(UP_USER0) && total == UP_VSLOTS && preset_at(pl_cursor(&total)) == UP_USER0);
     }
 
+    {   /* U1: the factory multis hold engine + factory index, never a browse slot: loading them gives the factory sound whatever the USER slots hold; a part pointed at an empty USER slot still plays a factory sound */
+        uint32_t m, pi, bad2 = 0, hit = 0;
+        for (m = 0; m < DF_N; m++) {
+            memset(nor, 0xFF, sizeof nor);
+            power_cycle();
+            song.playing = 0;
+            sl_load(UP_SLOTS);
+            project_load(m);
+            for (pi = 0; pi < NSHOWN; pi++) {
+                uint32_t r = ds_list_rank(trk[pi].eng_req % NENGINES, trk[pi].preset);
+                char a[16];
+                sound_name(&trk[pi], a);
+                bad2 |= trk[pi].user != 0u || !str_eq(a, ds_name(trk[pi].eng_req % NENGINES, trk[pi].preset));
+                if (r >= UP_USER0 && r < UP_SLOTS) {
+                    hit++;
+                    bad2 |= slot_of(&trk[pi]) != UP_SLOTS || slot_place(&trk[pi]) != r + UP_NUSER || slot_home(&trk[pi]) != UP_USER0;
+                }
+            }
+        }
+        printf("patch:   factory multis: %u parts play a sound a USER slot displaced\n", hit);
+        ck("U1: every factory multi loads its factory sounds (user 0, the factory name; a displaced one sits at its read-only place)", !bad2);
+        song.sel = 0;
+        sl_load(UP_USER0);
+        ck("  a part pointed at an empty USER slot is not a stored record (TIDE's JRNY / WNDR and the End B roll treat it as factory); a saved one is",
+           trk[0].user == UP_USER0 + 1u && !UP_REC_USER(&trk[0]) && (ui.svs = (uint8_t)UP_USER0, patch_save_do(0), UP_REC_USER(&trk[0])));
+    }
+
     printf(bad ? "patch: FAILED (%d)\n" : "patch: all ok\n", bad);
     return bad ? 1 : 0;
 }

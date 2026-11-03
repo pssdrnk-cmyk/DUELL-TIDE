@@ -15,6 +15,9 @@
 #define UP_NUSER 4u
 #define PS_NUSER 4u
 #define UP_EMPTY_USER(k) sl_empty_user(k)           /* U1 (upreset.c): slot k is an empty USER voice slot */
+static int sl_empty_user(uint32_t k);
+static int sl_user(uint32_t k);
+#define UP_REC_USER(t) ((t)->user && !UP_EMPTY_USER((uint32_t)(t)->user - 1u))   /* the part plays a stored record (a part pointed at an empty USER slot still plays its factory sound) */
 #define UP_IS_USER(k) sl_user(k)
 
 /* H2 (seq.c, audio path): a step as it plays, the Original's or the SEQ MORPH's variation (tide_seq.c). The
@@ -186,6 +189,7 @@ static int tide_foot_two(void);
 #define PS_NUSER 0u
 #define UP_EMPTY_USER(k) 0
 #define UP_IS_USER(k) 0
+#define UP_REC_USER(t) ((t)->user)
 
 #endif
 
