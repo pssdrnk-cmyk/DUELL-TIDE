@@ -266,8 +266,8 @@ static void t_who_params(void)
          fmt_is(P_FREEC, 65, "BP>HP", "") && fmt_is(P_FREEC, 126, "BP>HP", "") && fmt_is(P_FREEC, 127, "HP", "") &&
          fmt_is(P_FREED, 1, "12dB", "") && fmt_is(P_FREED, 2, "24dB", "");
     expect("MODE shows LP / LP>BP / BP / BP>HP / HP (5 characters at most), SLOPE 12dB / 24dB", ok);
-    expect("CUT and RES can be automated (a knob move is a parameter lock / event); MODE and SLOPE are settings (not)",
-           motion_param(P_FREEA) && motion_param(P_FREEB) && !motion_param(P_FREEC) && !motion_param(P_FREED));
+    expect("CUT, RES and MODE can be automated (1.1: the matrix destinations, MODE one since 0.2.25); SLOPE is a setting (not)",
+           motion_param(P_FREEA) && motion_param(P_FREEB) && motion_param(P_FREEC) && !motion_param(P_FREED));
     ok = 1;
     for (i = 0; i < NELEM(MIDI_CC_ENG); i++)
         ok &= ENGINES[i]->ufilt == 1u ? MIDI_CC_ENG[i] == MCC_UF : ENGINES[i]->ufilt == 2u ? MIDI_CC_ENG[i] && MIDI_CC_ENG[i] != MCC_UF : 1;
@@ -1145,17 +1145,9 @@ static void t_migrate(void)
         {
             uint32_t len = pt_encode(5u, 1u, &r, 0), n = 0, at, has48 = 0, has45 = 0;
             const uint8_t *o = pt_enc;
-            if (!(o[4] & PTF_BM)) {
-                n = o[19];
-                at = PT_FIX;
-                for (i = 0; i < n; i++) {
-                    has45 |= o[at + 2u * i] == P_FREEA && o[at + 2u * i + 1u] == UF_STEPS + 64;
-                    has48 |= o[at + 2u * i] == P_FREED && o[at + 2u * i + 1u] == 1 + 64;
-                }
-            } else {
-                has45 = o[PT_FIX + P_FREEA / 8u] >> (P_FREEA % 8u) & 1u;
-                has48 = o[PT_FIX + P_FREED / 8u] >> (P_FREED % 8u) & 1u;
-            }
+            (void)n; (void)at;                        /* (PT_VER 4: the values are always a bitmap, a bit per id) */
+            has45 = o[PT_FIX + P_FREEA / 8u] >> (P_FREEA % 8u) & 1u;
+            has48 = o[PT_FIX + P_FREED / 8u] >> (P_FREED % 8u) & 1u;
             expect("a patch of today (the bypass) is stored with CUT 82 and SLOPE 12 dB (4 bytes more than before: the mark of today's CUT)", len > PT_FIX && has45 && has48);
         }
     }
@@ -1438,7 +1430,7 @@ static void t_ktrk_params(void)
 }
 
 static int hid(uint32_t id) { return card_hidden_vp(&TSEL->p[id]); }
-static const char *card_label(uint32_t c, int16_t **vp)
+static const char *card_lbl(uint32_t c, int16_t **vp)        /* (ui_draw.c has its own card_label since 1.1) */
 {
     const param_desc_t *d = page_desc(cur_page(), c, vp);
     return d ? d->label : "";
@@ -1452,8 +1444,8 @@ static void t_ktrk_ui(void)
     init_engine_of(TSEL, eng_named("PHASE")); plain_filter(TSEL);
     go_title("MULTI FILTER 2/2"); frame();
     ok = str_eq(cur_page()->title, "MULTI FILTER 2/2");
-    ok &= str_eq(card_label(0, &vp), "KTRK") && vp == &TSEL->p[P_KTRK] && str_eq(card_label(1, &vp), "ENV 2") && vp == &TSEL->p[P_E2FLT] &&
-          str_eq(card_label(2, &vp), "LFO 1") && vp == &TSEL->p[P_LD_FLT] && str_eq(card_label(3, &vp), "LFO 2") && vp == &TSEL->p[P_L2FLT];
+    ok &= str_eq(card_lbl(0, &vp), "KTRK") && vp == &TSEL->p[P_KTRK] && str_eq(card_lbl(1, &vp), "ENV 2") && vp == &TSEL->p[P_E2FLT] &&
+          str_eq(card_lbl(2, &vp), "LFO 1") && vp == &TSEL->p[P_LD_FLT] && str_eq(card_lbl(3, &vp), "LFO 2") && vp == &TSEL->p[P_L2FLT];
     ok &= !hid(P_KTRK) && !hid(P_E2FLT) && !hid(P_LD_FLT) && !hid(P_L2FLT);
     turn(EN_K1, 5); ok &= TSEL->p[P_KTRK] == 5;
     turn(EN_K2, 3); ok &= TSEL->p[P_E2FLT] == 3;
@@ -1477,7 +1469,7 @@ static void t_ktrk_ui(void)
     b = TSEL->p[P_L2FLT];
     turn(EN_K2, 3); ok2 &= TSEL->p[P_L2FLT] == b + 3;
     go_title("MULTI FILTER 2/2"); frame();
-    ok2 &= card_label(1, &vp)[0] == 'E' && vp == &TSEL->p[P_E2FLT] && TSEL->p[P_E2FLT] == 3 + 2 && TSEL->p[P_LD_FLT] == -4 + 2 && TSEL->p[P_L2FLT] == 6 + 3;
+    ok2 &= card_lbl(1, &vp)[0] == 'E' && vp == &TSEL->p[P_E2FLT] && TSEL->p[P_E2FLT] == 3 + 2 && TSEL->p[P_LD_FLT] == -4 + 2 && TSEL->p[P_L2FLT] == 6 + 3;
     expect("  .. the same stored values on the DEST pages: ENV 2 DEST, LFO 1 DEST and LFO 2 DEST draw their FLT cards too (ufilt 1), the knobs move the value MULTI FILTER 2/2 shows; AMP DEST keeps its own FLT (no card on 2/2)", ok2);
     ui_power_on();
     init_engine_of(TSEL, eng_named("ANALOG"));
