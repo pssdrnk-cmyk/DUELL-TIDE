@@ -200,12 +200,134 @@ static void first(void)
     }
 }
 
+/* --- HINTS: the CHORD page --- */
+static const char *outdir;
+static void shot(const char *name)
+{
+    if (outdir)
+        screen_save(outdir, name);
+}
+static int line_has(const char *s) { return rows_has(128, 152, s); }
+static void key_tap(uint32_t k)                        /* key k (key 7 = C4 at the first start's octave) held for a moment */
+{
+    fm1_in.notes |= 1u << k;
+    run(96);
+    fm1_in.notes &= ~(1u << k);
+    run(96);
+}
+static void names_of(uint32_t part, char *b)           /* the last chord of the part as the page should say it */
+{
+    uint32_t i;
+    b[0] = 0;
+    for (i = 0; i < chord_last[part].n && i < CHORD_MAX; i++) {
+        if (i)
+            strcat(b, " ");
+        strcat(b, N_NOTE[chord_last[part].note[i] % 12u]);
+    }
+}
+static void hints(void)   /* (K3 / K4: the VOICE card is MODE, only while a chord is on and the part is not POLY) */
+{
+    char nm[16];
+    track_t *t;
+    first_start();
+    t = &trk[0];
+    go_page(GR_CHORD);
+    run(100);
+    shot("1_start_part1_min7");
+    expect("first start, part 1 (POLY, MIN7): no hint on the line under the keyboard, no MODE card (only VOICING)", card_hidden(2) && card_hidden(3) && !line_has("NEEDS POLY") && !line_has("SET A SCALE") && !line_has("KEYS PLAY CHORDS IN THE SCALE"));
+    expect("  the K1 line says TYPE and the chord's name, K2 the voicing, as before", card_match(0, "TYPE") && rows_has(24, 48, "Cm7") && card_match(1, "VOICING|CLOSE"));
+    key_tap(7);
+    names_of(0, nm);
+    expect("  a key played: the last chord's notes by name under the keyboard (4 notes)", chord_last[0].n == 4u && nm[0] && line_has(nm));
+    shot("2_part1_after_a_key");
+
+    t->p[P_CHRD] = CH_DIA3;
+    scale_g = 0;
+    run(100);
+    shot("3_dia3_chromatic");
+    expect("DIA3 with the CHROMATIC scale: SET A SCALE", line_has("SET A SCALE"));
+    t->p[P_CHRD] = CH_DIA7;
+    run(100);
+    expect("  DIA7 too", line_has("SET A SCALE"));
+    t->p[P_CHRD] = CH_MAJ;
+    run(100);
+    expect("  not for a fixed shape (MAJ names its own tones)", !line_has("SET A SCALE"));
+    t->p[P_CHRD] = CH_DIA3;
+    scale_g = 1;
+    run(100);
+    shot("4_dia3_c_major");
+    expect("  and gone once the scale is C MAJOR", !line_has("SET A SCALE") && !line_has("NEEDS POLY"));
+    scale_g = 0;
+
+    song.sel = 1;
+    go_page(GR_CHORD);
+    run(100);
+    t = &trk[1];
+    t->p[P_AMODE] = 0;                                  /* (part 2 runs an arp in M04: that alone hides STRUM; off, so that the voice mode is the reason) */
+    XV(t, X_STRUM) = 0;
+    t->p[P_CHRD] = CH_DIA3;
+    run(100);
+    shot("5_part2_legato_dia3");
+    expect("part 2 (LEGATO) with TYPE DIA3: NEEDS POLY (it plays the root alone)", t->p[P_VOICE] == V_LEGATO && line_has("NEEDS POLY"));
+    expect("  STRUM is hidden there (it cannot act), so the VOICE card (MODE) moves up to the third place, knob 3 (the cards and knobs close ranks)", !card_hidden(2) && card_hidden(3) && card_match(2, "MODE|LEGATO"));
+    turn(EN_K3, -2);
+    run(100);
+    shot("6_part2_k4_to_poly");
+    expect("  that knob down to POLY: the hint is gone, the MODE card leaves (it shows only where the chord needs POLY), STRUM takes the place", t->p[P_VOICE] == V_POLY && !line_has("NEEDS POLY") && card_hidden(3) && card_match(2, "STRUM"));
+    t->p[P_VOICE] = V_MONO;
+    t->p[P_CHRD] = CH_OFF;
+    run(100);
+    shot("7_part2_type_off");
+    expect("TYPE OFF: the old hint only (no NEEDS POLY, no SET A SCALE, no MODE card) in any voice mode", card_hidden(2) && line_has("KEYS PLAY CHORDS IN THE SCALE") && !line_has("NEEDS POLY") && !line_has("SET A SCALE"));
+    t->p[P_VOICE] = V_UNISON;
+    t->p[P_CHRD] = CH_MIN7;
+    chord_last[1].n = 4;
+    chord_last[1].note[0] = 60; chord_last[1].note[1] = 63; chord_last[1].note[2] = 67; chord_last[1].note[3] = 70;
+    run(100);
+    expect("UNISON with a chord on: NEEDS POLY, and no note names of a chord that was not played", line_has("NEEDS POLY") && !line_has("C D# G A#"));
+    t->p[P_VOICE] = V_POLY;
+    run(100);
+    expect("  back in POLY the last chord's names are there (C D# G A#)", line_has("C D# G A#") && !line_has("NEEDS POLY"));
+    t->p[P_VOICE] = V_LEGATO;
+    t->p[P_CHRD] = CH_OFF;
+    song.sel = 0;
+}
+
+/* the VOICING card beside STRUM (POLY, no arp: two narrow cards) shows all five voicings whole */
+static void voicings(void)
+{
+    static const char *const SHOWN[5] = {"CLOSE", "OPEN", "1ST INV", "2ND INV", "BASS NOTE"};
+    uint32_t v, ok = 1;
+    first_start();
+    trk[0].p[P_AMODE] = 0;
+    XV(&trk[0], X_STRUM) = 0;
+    trk[0].p[P_CHRD] = CH_DIA7;
+    go_page(GR_CHORD);
+    for (v = 0; v < 5u; v++) {
+        trk[0].p[P_VOIC] = (int16_t)v;
+        run(100);
+        if (!card_match(2, "STRUM") || !card_match(1, "VOICING") || !card_has(SHOWN[v])) {
+            printf("  voicing %u: the VOICING card does not say %s\n", (unsigned)v, SHOWN[v]);
+            ok = 0;
+        }
+    }
+    expect("the VOICING card beside STRUM shows CLOSE, OPEN, 1ST INV, 2ND INV, BASS NOTE (+OCT) whole (the text drawn is the whole name: a cut word would show short)", ok);
+    trk[0].p[P_VOIC] = VC_INV1;
+    run(100);
+    expect("  1ST INV and 2ND INV can be told apart (the card said INVERSION for both)", card_match(1, "VOICING|1ST INV"));
+    trk[0].p[P_VOIC] = VC_INV2;
+    run(100);
+    expect("  .. 2ND INV", card_match(1, "VOICING|2ND INV"));
+    trk[0].p[P_VOIC] = VC_CLOSE;
+}
+
 int main(int argc, char **argv)
 {
-    (void)argc;
-    (void)argv;
+    outdir = argc > 1 ? argv[1] : 0;
     keep();
     first();
+    /* hints(); */
+    voicings();
     printf(bad ? "chordkeep: %d FAILED of %d\n" : "chordkeep: all %d passed\n", bad ? bad : ncheck, ncheck);
     return bad ? 1 : 0;
 }

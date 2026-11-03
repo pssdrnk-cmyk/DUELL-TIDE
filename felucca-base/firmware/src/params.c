@@ -1220,7 +1220,7 @@ static const char *const VAL_SHOWN[][3] = {
     {"CURVE", "LIN", "LINEAR"}, {"CURVE", "EXP", "EXPONENTIAL"},
     {"CLK", "INT", "INTERNAL"}, {"ROUT", "OWN CH", "PART CHANNEL"}, {"ROUT", "SELECTED", "ANY CHANNEL"},
     {"TYPE", "SHIM", "SHIMMER"}, {"TYPE", "RESO", "RESONATOR"},                                  /* REVERB TYPE */
-    {"VOIC", "INV1", "INVERSION 1"}, {"VOIC", "INV2", "INVERSION 2"},
+    {"VOIC", "INV1", "1ST INV"}, {"VOIC", "INV2", "2ND INV"},   /* ("INVERSION 1" was cut to "INVERSION" on the narrow cards the CHORD page has beside STRUM: INV 1 or 2 could not be told apart) */
     {"ARP", "MAJ", "MAJOR"}, {"ARP", "MIN", "MINOR"},                                           /* LOFI ARP */
     {"ENG", "PHYS", "PHYSICAL"},                                                                 /* the engine list value (G_ENGSEL): the stored name PHYS stays the key */
     {"MODEL", "MODAL", "BELL"}, {"MODEL", "MEMB", "DRUM"}, {"MODEL", "SYMP", "SITAR"},          /* PHYS (owner 2026-10-25: the stored names MODAL MEMB SYMP stay the keys) */
