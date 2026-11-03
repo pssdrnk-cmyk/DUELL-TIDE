@@ -5282,10 +5282,10 @@ static int test_scale_leds(void)
                  (unsigned)kv[KL_LOW], (unsigned)kv[KL_TOP]);
         bad += check(what, ok);
     }
-    ok = KEY_LV[LEDS_DIM][KL_SCL] == 120u && KEY_LV[LEDS_DIM][KL_ROOT] == 240u && KEY_LV[LEDS_DIM][KL_LOW] == 168u &&
+    ok = KEY_LV[LEDS_DIM][KL_SCL] == 50u && KEY_LV[LEDS_DIM][KL_ROOT] == 240u && KEY_LV[LEDS_DIM][KL_LOW] == 168u &&
          KEY_LV[LEDS_DIM_LO][KL_ROOT] < 240u && KEY_LV[LEDS_DIM_LO][KL_SCL] < KEY_LV[LEDS_DIM][KL_SCL] &&
          KEY_LV[LEDS_INV][KL_SCL] > KEY_LV[LEDS_DIM][KL_SCL] && KEY_LV[LEDS_INV][KL_ROOT] == 240u && !KEY_LV[LEDS_INV][KL_LOW];
-    bad += check("0.2.11 KEY_LV: MEDIUM's scale keys at 1/2, its root full; LOW dimmer overall; MAX brighter (the root lit, the played keys dim..dark)", ok);
+    bad += check("0.2.11 KEY_LV (DUELL 1.1): MEDIUM's scale keys at 21 %, its root full; LOW dimmer overall; MAX brighter (the root lit, the played keys dim..dark)", ok);
     for (mi = 0; mi < LEDS_COUNT; mi++) {
         uint32_t m = MODES[mi], held = 1u << 1 | 1u << 9;   /* F#3 (out of the scale) and D4 (in it) held */
         uint32_t scale = white & ~C_KEYS, k_all;
@@ -5364,9 +5364,9 @@ static int test_scale_leds(void)
         song.g[G_BPM] = 240;
         ui_leds();
         ok &= host_pu_ms == 250u;
-        song.g[G_BPM] = 30;
+        song.g[G_BPM] = 40;                             /* (TEMPO's minimum; below it beat_samples takes 120, Felucca #282) */
         ui_leds();
-        ok &= host_pu_ms == 2000u;                      /* (the hardware clamps to 150..2000 ms: 30 BPM is the slowest it follows) */
+        ok &= host_pu_ms == 1500u;
         song.playing = 0;
         song.g[G_BPM] = 120;
         trk[0].p[P_AMODE] = 1;                          /* an arp sounding (a note held), the transport stopped: the beat too */
@@ -7588,6 +7588,11 @@ static int test_no_flash(void)
  * C. PATCHES: the header shows PATCHES at every patch (never "ENGINE <name>" in the title's place, M on a higher baseline), the title's pixels are the same at all 128 patches.
  * D. MATRIX: the destination's smaller steps are the Bold face (L, T), never M or S, and fit their room.
  * E. MATRIX: the rows show the amounts as the fader sounds them (End B at the fader's B end), like the AMT card */
+#if DUELL_TIDE   /* TIDE's MUSICAL roll (the default) leaves the matrix routes alone; the rows' display checks roll the classic way */
+#define TIDE_CLASSIC_ROLL(on) (morph_musical = !(on))
+#else
+#define TIDE_CLASSIC_ROLL(on) ((void)0)
+#endif
 static uint32_t screen_hash(uint32_t y0, uint32_t y1, uint32_t x0, uint32_t x1)
 {
     uint32_t h = 2166136261u, x, y;
@@ -7661,7 +7666,7 @@ static int test_item152_flicker(void)
     turn(EN_K2, -1);
     n += host_fl_end(0, 240);
     host_fl_begin();
-    turn(EN_K3, 1);                                      /* FAV */
+    turn(EN_K4, 1);                                      /* FAV (1.1: K4; K3 opens the save window) */
     n += host_fl_end(0, 240);
     bad += check("item 152 A:   .. the TYPE and the FAV card: no blank frame", n == 0u);
     bad += check("item 152 A:   .. and the screen equals a hard forced redraw", forced_equals_now("PATCHES"));
@@ -8159,7 +8164,7 @@ static int test_item152_matrix(void)
                     const void *f = txt_log[k].f;
                     if (f == (const void *)&AF_T) seen_t = 1;
                     if (f == (const void *)&AF_L) seen_l = 1;
-                    if (f != (const void *)&AF_T && f != (const void *)&AF_L) {
+                    if (f != (const void *)&AF_T && f != (const void *)&AF_L && !(f == (const void *)&AF_M && !strcmp(txt_log[k].s, "%"))) {   /* (the amount's % is M by design: change list A.2 / D) */
                         ok_face = 0;
                         printf("    item 152 D: dst %u '%s' drawn in another face\n", d, txt_log[k].s);
                     }
@@ -8182,9 +8187,13 @@ static int test_item152_matrix(void)
         TSEL->p[P_M2SRC] = MS_ENV; TSEL->p[P_M2DST] = MD_SHP; TSEL->p[P_M2AMT] = -30;
         go_title("MATRIX 1-4");
         morph_act(MQ_AMOUNT, morph_mask(song.sel), 60u, song.sel);
-        morph_act(MQ_ROLL, morph_mask(song.sel), 1u, song.sel);
-        frames(64);
         morph_act(MQ_FADER, morph_mask(song.sel), 127u, song.sel);
+        TIDE_CLASSIC_ROLL(1);
+        for (seed = 0; seed < 24u && morph_view(song.sel, MSLOT_ID(0) + 2u) == TSEL->p[P_M1AMT]; seed++) {   /* (a roll may keep slot 1's amount: roll again) */
+            morph_act(MQ_ROLL, morph_mask(song.sel), 1u, song.sel);
+            frames(64);
+        }
+        TIDE_CLASSIC_ROLL(0);
         frames(160);
         moved = morph_view(song.sel, MSLOT_ID(0) + 2u) != TSEL->p[P_M1AMT];
         param_format(&TP[P_M1AMT], morph_view(song.sel, MSLOT_ID(0) + 2u), want, &u);
@@ -8267,7 +8276,7 @@ static int test_item156_cells(void)
         {"EDIT 2", 3, -1, -1, -1, -1, 0, 1}, {"EDIT 2", 5, -1, -1, -1, -1, 0, 1}, {"EDIT 2", 9, -1, -1, -1, -1, 0, 1},
     };
     static const struct { const char *title; int8_t eng; uint8_t grid; } KEEP[] = {   /* pages with a real picture: as they were */
-        {"EDIT 1", 7, 1}, {"EDIT 1", 12, 1}, {"EDIT 2", 12, 1}, {"ENGINE", 0, 5}, {"SUB OSC", -1, 1}, {"AMP ENV", -1, 1}, {"LFO 1", -1, 1}, {"ARP 1/3", -1, 0}, {"ARP 3/3", 0, 0}, {"ARP 3/3", 12, 0}, {"STEREO MASTER", -1, 1},
+        {"EDIT 1", 7, 1}, {"EDIT 1", 12, 1}, {"EDIT 2", 12, 1}, {"ENGINE", 0, 5}, {"SUB OSC", -1, 1}, {"AMP ENV", -1, 1}, {"LFO 1", -1, 1}, {"ARP 1/3", -1, 16}, {"ARP 3/3", 0, 14}, {"ARP 3/3", 12, 14}, {"STEREO MASTER", -1, 1},
     };
     int bad = 0, ok_n = 1, ok_geo = 1, ok_txt = 1, ok_px = 1, ok_keep = 1, ok_seg = 1, ok_val = 1, ok_redraw = 1, ok_sw = 1;
     uint32_t k, c, i;
@@ -8547,7 +8556,7 @@ static int test_item162_tempo(void)
         uint16_t bg;
         c156_state(&TP);
         song.g[G_CLOCK] = 0;
-        song.g[G_BPM] = GP[G_BPM].min; song.g[G_SWING] = 0;
+        song.g[G_BPM] = GP[G_BPM].min; song.g[G_SWING] = GP[G_SWING].min;   /* (1.1: SWING 50..75) */
         frames(64);
         screen_read();
         c156_rect(cell_n, cell_at[1], r);
@@ -8868,7 +8877,7 @@ static int test_item164(void)
         go_title("CHORD");
         frames(64);
         screen_read();
-        ok2 = c164_find("DIATONIC 7TH", &f1) && f1 == (const void *)&AF_T;
+        ok2 = c164_find("DIATONIC 7TH", &f1) && (f1 == (const void *)&AF_T || f1 == (const void *)&AF_S);   /* (1.1: the CHORD page names its TYPE on a row beside the label, in S) */
         TSEL->p[P_LSYNC] = 6; TSEL->p[P_LTRIG] = 1; TSEL->p[P_LPOL] = 1;
         go_title("LFO 1 TRIG");
         frames(64);
@@ -8933,21 +8942,25 @@ static int test_item158_modlist(void)
     char before[16], after[16], want[16], orig[16];
     const char *u;
     int ok;
-    uint32_t s0;
+    uint32_t s0, sg;
     ui_power_on();
     TSEL->p[P_M1SRC] = MS_LFO; TSEL->p[P_M1DST] = MD_CUT; TSEL->p[P_M1AMT] = 20;
     go_title("MATRIX 1-4");
     ok = i158_modrow0(before, sizeof before);
-    s0 = graph_signature();
+    sg = graph_signature();
     morph_act(MQ_AMOUNT, morph_mask(song.sel), 60u, song.sel);
-    morph_act(MQ_ROLL, morph_mask(song.sel), 0u, song.sel);          /* ROLL A, the fader at A */
-    frames(64);
     morph_act(MQ_FADER, morph_mask(song.sel), 0u, song.sel);
+    TIDE_CLASSIC_ROLL(1);
+    for (s0 = 0; s0 < 24u && morph_view(song.sel, MSLOT_ID(0) + 2u) == TSEL->p[P_M1AMT]; s0++) {   /* ROLL A, the fader at A (a roll may keep slot 1's amount: roll again) */
+        morph_act(MQ_ROLL, morph_mask(song.sel), 0u, song.sel);
+        frames(64);
+    }
+    TIDE_CLASSIC_ROLL(0);
     frames(160);
     ok &= i158_modrow0(after, sizeof after);
     param_format(&TP[P_M1AMT], morph_view(song.sel, MSLOT_ID(0) + 2u), want, &u);
     param_format(&TP[P_M1AMT], TSEL->p[P_M1AMT], orig, &u);
-    ok &= strcmp(want, orig) && !strcmp(after, want) && strcmp(after, before) && graph_signature() != s0;   /* (and the redraw signature follows it: graph_signature, GR_MOD) */
+    ok &= strcmp(want, orig) && !strcmp(after, want) && strcmp(after, before) && graph_signature() != sg;   /* (and the redraw signature follows it: graph_signature, GR_MOD) */
     printf("    item 158 (info): the matrix row 1: '%s' before, '%s' after ROLL A at fader A (sounding '%s', stored '%s')\n", before, after, want, orig);
     return check("item 158: the MATRIX rows (graph_mod_new) show the amount as the fader sounds it after ROLL A at fader A, not the stored Original; its redraw signature changes", ok);
 }
@@ -8985,7 +8998,7 @@ static int i158_count_ok(void)                         /* the footer's count (pa
 static int test_item158_pages(void)
 {
     int bad = 0, ok_off = 1, ok_on = 1, ok_ducked = 1, ok_fall = 1, ok_jump = 1, ok_all = 1, ok_edit = 1;
-    uint32_t d1 = i158_page("DUCK 1/2"), d2 = i158_page("DUCK 2/2"), sf = i158_page("SEND FX"), i, f, a, b, sel, step;
+    uint32_t d1 = i158_page("DUCK 1/2"), d2 = i158_page("DUCK 2/2"), sf = i158_page("FX"), i, f, a, b, sel, step;   /* (1.1: DUCK is the family's last page: the next is FX) */
     /* SOURCE OFF: DUCK 2/2 is out of the order; DUCK 1/2 is the family's only DUCK page, titled without a number; the steps skip 2/2 both ways */
     ui_power_on();
     TSEL->p[P_DKSRC] = 3;
@@ -9250,7 +9263,7 @@ static int test_item158_edges(void)
     ui_power_on();
     (void)nopen;
     bad158 = check("item 158: every page x mode x engine x state: no label or value on a card touches or crosses the card's edge (1 px kept; the labels over the 1 px a letter cap listed OPEN)", !nbad && screens > 1000u);
-    return bad158 + check("item 158:   .. the 8 labels over the cap (more than 1 px a letter) are drawn untightened, as before item 158 (all 8 seen; item 165: LOFI's PULSE WIDTH fits its cell)", open_seen == 0xFFu);
+    return bad158 + check("item 158:   .. the label still over the cap (more than 1 px a letter), FILTER ENV DEPTH on the 116 px MULTI FILTER 2/2 / TWIN MOD cards, is drawn untightened, as before item 158 (DUELL 1.1: the other seven fit as two-line labels; OPEN for the owner)", open_seen == (1u << 5));
 }
 
 /* ---------------------------------------------------------------- item 165 (owner decisions A .. F on ENGINE_PAGES_REVIEW.md: the ENGINE pictures true, LOFI / NOISE cells, full wave names) --- */
