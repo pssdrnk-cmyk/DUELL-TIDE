@@ -49,8 +49,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const tabPages = new Set(GLOBAL_TABS.flatMap((t) => t.pages)), gOn = new Set(); for (const pg of L.PAGES) if (pg.scope === "GLOBAL" && tabPages.has(pg.title) && pg.title !== "MULTIS") for (const id of pg.ids) if (id >= 0 && id < L.G_COUNT) gOn.add(id);
   const gm = [...gOn].filter((id) => !GLOBAL[id]); ok(gm.length === 0, `labels: every global control on a page has a long label (${gm.join(",") || "none missing"})`);
   const want = { 42: "PRIORITY", 37: "MODE", 41: "GLIDE TYPE", 38: "GLIDE", 95: "SPREAD", 44: "UNISON DETUNE", 102: "TEMPO SYNC", 73: "ATTACK", 74: "DECAY", 75: "SUSTAIN", 76: "RELEASE", 109: "PATCH LEVEL", 6: "PITCH DEPTH", 7: "TIMBRE DEPTH",
-    114: "FILTER ENV", 27: "KEY TRACK", 14: "LFO 1", 117: "LFO 2", 29: "LENGTH", 30: "DIVISION", 31: "SWING", 32: "GATE", 81: "TYPE", 96: "TYPE", 105: "CURVE", 112: "RATE", 16: "AMP DEPTH" };
-  ok(Object.entries(want).every(([id, t]) => PART[id][0] === t), "labels (T0229, rules R1..R6): inside a card the short name, the card's title carries the context (VOICE: MODE PRIORITY GLIDE TYPE SPREAD; MULTI CUTOFF MOD: FILTER ENV KEY TRACK LFO 1 LFO 2; PATTERN: LENGTH DIVISION SWING GATE; CHORD / INSERT: TYPE; DUCKING: RATE CURVE)");
+    114: "FILTER ENV DEPTH", 27: "KEY TRACK", 14: "LFO 1 DEPTH", 29: "LENGTH", 30: "DIVISION", 31: "SWING", 32: "GATE", 81: "TYPE", 96: "TYPE", 105: "CURVE", 112: "RATE", 16: "AMP DEPTH" };
+  ok(Object.entries(want).every(([id, t]) => PART[id][0] === t), "labels (T0229, rules R1..R6): inside a card the short name, the card's title carries the context (VOICE: MODE PRIORITY GLIDE TYPE SPREAD; MULTI CUTOFF MOD: FILTER ENV DEPTH KEY TRACK LFO 1 DEPTH (1.1: no LFO 2 card); PATTERN: LENGTH DIVISION SWING GATE; CHORD / INSERT: TYPE; DUCKING: RATE CURVE)");
   const vce = longDesc(L.TP[37], 37), prio = longDesc(L.TP[42], 42);
   ok(vce.names.join() === "POLY,MONO,LEGATO,UNISON" && prio.names.join() === "LAST,LOWEST,HIGHEST" && vce.short === "VCE", "labels: value names spelled out (POLY MONO LEGATO UNISON; LAST LOWEST HIGHEST; id 43 is the TWIN FILTER's TYPE now, job I names it), the unit's short label kept");
   ok(longDesc(L.TP[37], 37) === vce && L.TP[37].label === "VCE", "labels: the same descriptor object for the same control (a drag is never rebuilt) and the firmware's table untouched");
@@ -253,13 +253,13 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const orig = m.request.bind(m); m.request = async (r, o) => { if (r[0] === CMD.MENU_DESC) descs++; return orig(r, o); };
   const val = (id) => u.menu.find((x) => x.id === id).value;
   m.deviceMenu(42, 150); m.deviceMenu(33, 6); m.deviceMenu(35, 4); m.deviceMenu(34, -9); m.deviceMenu(39, 60); m.deviceMenu(29, 0); m.deviceMenu(22, 4320);
-  m.deviceMenu(6, 0); m.deviceMenu(26, 1); m.deviceGlobalQuiet(ID.G_BPM, 133);
+  m.deviceMenu(6, 0); m.deviceMenu(15, 1); m.deviceGlobalQuiet(ID.G_BPM, 133);
   const bpm0 = u.g[ID.G_BPM];
   u.startPoll(60);
   await sleep(700);
   ok(val(42) === 150 && val(33) === 6 && val(35) === 4 && val(34) === -9 && val(39) === 60 && val(29) === 0 && menuEvents > 0,
     "poll: WIDTH, BASS MONO, COMP RATIO / THRESH, a SIDECHAIN note and a MODULES switch turned ON THE UNIT reach the editor's settings (and a \"menu\" event)");
-  ok(val(22) === 4320 && val(6) === 0 && val(26) === 1, "poll: the other MENU rows (TUNE, KNOB ACCEL, CPU METER) follow within a turn of the rotation");
+  ok(val(22) === 4320 && val(6) === 0 && val(15) === 1, "poll: the other MENU rows (TUNE, KNOB ACCEL, RESTORE LAST) follow within a turn of the rotation");
   ok(bpm0 !== 133 && u.g[ID.G_BPM] === 133, "poll: a global (TEMPO) whose push was lost is read from the dump");
   u.disconnect();
   // not while the user holds a control or has a write in flight
@@ -301,7 +301,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   ok(lenOk, "labels: the slots' long value names keep the firmware list's length and order (ROUTE: PARALLEL; SUB WAVE: TRIANGLE)");
   ok(longDesc(L.XTP[X.X_CYRISE], "x11") === longDesc(L.XTP[X.X_CYRISE], "x11") && longDesc(L.XTP[X.X_CYRISE], "x11").label === "RISE" && longDesc(L.XSYNC[0], "x11").label === "RISE" && longDesc(L.XSYNC[0], "x11").fk === L.XSYNC[0].fk, "labels: the same descriptor object for the same slot (a drag is never rebuilt); CYCLE RISE keeps its name with SYNC on");
   ok(whyText("TWIN OFF").length > 5 && whyText("TWIN COMB").length > 5 && ["TWIN OFF", "TWIN COMB"].every((k) => WHY[k].length <= 60), "labels: the hide reasons of the second filter are short plain lines (TWIN OFF, TWIN COMB)");
-  ok(Object.keys(TWIN_LONG).join() === "OFFSET,CUTOFF,TUNE,RES,FDBK" && NX === 16, "labels: CUTOFF 2 reads OFFSET, CUTOFF or TUNE and RES 2 reads RESONANCE or FEEDBACK by the unit's short labels");
+  ok(Object.keys(TWIN_LONG).join() === "OFFSET,CUTOFF,TUNE,RES,FDBK" && NX === 28, "labels: CUTOFF 2 reads OFFSET, CUTOFF or TUNE and RES 2 reads RESONANCE or FEEDBACK by the unit's short labels");
 }
 
 // ---- tabs

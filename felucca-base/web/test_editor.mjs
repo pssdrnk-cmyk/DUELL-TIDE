@@ -46,14 +46,14 @@ async function connect(opt = {}) { const m = new MockUnit(opt), u = new Unit(new
   const tr = valueText(L.TP[ID.P_TRIM], L.TP[ID.P_TRIM].def); ok(tr.val === "-4.0" && tr.unit === "dB" && L.TP[ID.P_TRIM].label === "TRIM" && L.TP[0].label === "LVL" && L.TP[0].def === 112 && L.TP[ID.P_TRIM].def === 104, `value text: the PATCH TRIM default as the unit shows it (${tr.val} ${tr.unit})`);
   ok(valueText(L.TP[ID.P_FREEA], 82).unit.toLowerCase().includes("khz") && valueText(L.TP[ID.P_FREEA], 0).val.startsWith("30"), "value text: the multimode CUT shows its cutoff, 30 Hz .. kHz, as the firmware formats it");
   ok(enumOrder(L.TP[ID.P_LSYNC])[0] === 0 && enumOrder(L.TP[ID.P_LSYNC]).length === 18 && enumOrder(L.TP[ID.P_SDIV]).length === 17, "value order: enums list in the order the unit's knob steps them (SYNC, DIV)");
-  const dst = L.TP[ID.P_M1SRC + 1]; ok(enumOrder(dst).length === L.MD.N && enumOrder(dst)[3] === 38, "value order: the matrix DST list in the unit's grouped order (RES after CUT)");
+  const dst = L.TP[ID.P_M1SRC + 1]; ok(enumOrder(dst).length === L.MD.N && enumOrder(dst).indexOf(38) === enumOrder(dst).indexOf(2) + 1, "value order: the matrix DST list in the unit's grouped order (RES after CUT)");
 }
 // ---- the hide rule (a control that does not apply is not shown; inertReason / ginert return why, null: it applies)
 {
   const mk = (n) => defaultPart(E(n));
   ok(inertReason(mk("ANALOG"), ID.P_IA) === "INSERT OFF" && inertReason({ ...mk("ANALOG"), p: Object.assign(mk("ANALOG").p.slice(), { [ID.P_ITYPE]: 1 }) }, ID.P_IA) === null, "hide rule: INSERT A B C MIX are hidden while TYPE is OFF, live when it is on");
   ok(inertReason(mk("ANALOG"), ID.P_ITYPE) === null, "hide rule: INSERT TYPE itself is never hidden");
-  const q = mk("FM6"); ok(inertReason(q, ID.P_ATK) === "OWN ENV" && inertReason(mk("ANALOG"), ID.P_ATK) === null, "hide rule: FM6's own envelopes hide AMP ENV; other engines keep it");
+  const q = mk("FM6"); ok(inertReason(q, ID.P_ATK) === null && inertReason(mk("ANALOG"), ID.P_ATK) === null, "hide rule: 1.1: FM6's AMP ENV knobs move the carrier envelopes (not hidden), as the other engines'");
   {
     const g = []; g[ID.G_DMODE] = 0;
     ok(gdescOf(g, ID.G_DMDEP).label === "MDEPTH" && ginert(g, ID.G_DMRATE) === null && ginert(g, ID.G_PINGSPREAD) === "DIGI", "hide rule: delay MODE DIGITAL: DEPTH is DEPTH, RATE live, SPREAD hidden (the plain delay has no side)");
@@ -90,7 +90,8 @@ async function connect(opt = {}) { const m = new MockUnit(opt), u = new Unit(new
     ok(L.ENG[E("FM6")].uiord.join() === "7,0,1,2,3,4,5,6" && L.ENG[E("ANALOG")].uiord.join() === "0,1,2,3,6,4,5,7", "page order: FM6 EDIT 1 is SLOT ALG FB MLVL, EDIT 2 MRAT MEG VMOD DTUN (uiord); the other engines in order");
     const lab = (t) => T(t).filter((i) => i >= 0 && i < 255).map((i) => L.TP[i].label).join(" ");
     ok(lab("MULTI FILTER 1/2") === "CUT RES MODE SLOPE", "page order: MULTI FILTER 1/2 is CUT RES MODE SLOPE (0.2.20, owner)");
-    ok(lab("MULTI FILTER 2/2") === "KTRK FLT FLT FLT" && T("MULTI FILTER 2/2")[1] === ID.P_E2FLT && T("MULTI FILTER 2/2")[2] === ID.P_LD_FLT && T("MULTI FILTER 2/2")[0] === ID.P_KTRK && T("MULTI FILTER 2/2")[3] === ID.P_L2FLT,
+    ok(lab("MULTI FILTER 2/2") === "KTRK FLT FLT" && T("MULTI FILTER 2/2")[1] === ID.P_E2FLT && T("MULTI FILTER 2/2")[2] === ID.P_LD_FLT && T("MULTI FILTER 2/2")[0] === ID.P_KTRK && T("MULTI FILTER 2/2")[3] === -1,   // (1.1: LFO 2 has no cutoff card, its route is a matrix slot)
+
        "page order: MULTI FILTER 2/2 (0.2.22) is KTRK, ENV 2's, LFO 1's and LFO 2's cutoff amounts (no AMP ENV card, owner) (the ids of the DEST pages' FLT cards, one stored value each, on both pages; the unit labels them ENV 2 / LFO 1 / LFO 2)");
     ok(ID.P_KTRK === 27 && L.TP[27].label === "KTRK" && L.TP[27].min === -63 && L.TP[27].max === 63 && L.TP[27].def === 32 && L.TP[27].fmt === 27, "KEY TRK: id 27, KTRK -63..+63, default 32 (0.2.22: +51 %), format 27 (0.2.21)");
     ok(valueText(L.TP[27], 63).val === "+100" && valueText(L.TP[27], -63).val === "-100" && valueText(L.TP[27], 0).val === "0" && valueText(L.TP[27], 32).val === "+51", "KEY TRK: shown -100 .. 0 .. +100 % as the firmware formats it");
@@ -124,7 +125,7 @@ async function connect(opt = {}) { const m = new MockUnit(opt), u = new Unit(new
 // ---- connect, read, live edit with WATCH
 {
   const { m, u } = await connect();
-  ok(u.writable && u.parts.length === 2 && u.parts[0].eng === 0 && u.parts[1].eng === E("FM6") && u.g.length === 27 && u.info.menuCount === 33, "connect: INFO checked against the firmware tables, both parts and the globals read");
+  ok(u.writable && u.parts.length === 2 && u.parts[0].eng === 0 && u.parts[1].eng === E("FM6") && u.g.length === 27 && u.info.menuCount === 32, "connect: INFO checked against the firmware tables, both parts and the globals read");
   const seen = []; u.on("param", (d) => seen.push(d));
   u.writeParam(1, ID.P_FREEA, 40); await u.idle();
   ok(m.parts[1].p[ID.P_FREEA] === 40 && u.parts[1].p[ID.P_FREEA] === 40, "edit: a slider moves part 2's CUT on the unit without selecting it (TRACK_PARAM)");
@@ -208,7 +209,7 @@ async function connect(opt = {}) { const m = new MockUnit(opt), u = new Unit(new
 // ---- MENU and MIDI learn
 {
   const { m, u } = await connect();
-  const items = await u.readMenu(); ok(items.length === 33 && items.some((i) => i.name === "COLOR" && i.names.length === L.PALETTES.LIST.length && i.names.join() === L.PALETTES.LIST.map((p) => p.name).join()) && items.find((i) => i.name === "TUNE").unit === "Hz" && items.find((i) => i.name === "TUNE").kind === 2 && items.find((i) => i.name === "TUNE").min === 4153 && items.find((i) => i.name === "TUNE").max === 4662 && items.find((i) => i.name === "TUNE").value === 4400, "menu: 33 items (0.2.25: no USB LEVEL) with names, ranges, units and tabs as the unit describes them");
+  const items = await u.readMenu(); ok(items.length === 32 && items.some((i) => i.name === "COLOR" && i.names.length === L.PALETTES.LIST.length && i.names.join() === L.PALETTES.LIST.map((p) => p.name).join()) && items.find((i) => i.name === "TUNE").unit === "Hz" && items.find((i) => i.name === "TUNE").kind === 2 && items.find((i) => i.name === "TUNE").min === 4153 && items.find((i) => i.name === "TUNE").max === 4662 && items.find((i) => i.name === "TUNE").value === 4400, "menu: 32 items (1.1: no CPU METER; 0.2.25: no USB LEVEL) with names, ranges, units and tabs as the unit describes them");
   {   // DUELL 0.2.22: TUNE (id 22) is a number in tenths (kind 2): A4 in 0.1 Hz, v14 as it is (no coarse / fine pair); the page shows it with one decimal
     const t = items.find((i) => i.id === 22);
     ok(t.kind === 2 && t.value === 4400 && t.tabName === "AUDIO" && await u.setMenu(22, 4320) === 4320 && await u.setMenu(22, 8000) === 4662 && await u.setMenu(22, 0) === 4153 && await u.setMenu(22, 4400) === 4400 && (4320 / 10).toFixed(1) === "432.0",
@@ -218,10 +219,10 @@ async function connect(opt = {}) { const m = new MockUnit(opt), u = new Unit(new
   }
   {   // DUELL 0.2.14: GLO > MODULES (ids 28..31, tab 4 "MODULES") and PERF LEAVE (id 32, CONTROL) are offered like any MENU setting
     const mods = items.filter((i) => i.id >= 28 && i.id <= 31), pl = items.find((i) => i.id === 32);
-    ok(mods.length === 4 && mods.map((i) => i.name).join() === "ARP,SEQ,SENDS,PART FX" && mods.every((i) => i.tabName === "MODULES" && i.tab === 4 && i.names.join() === "OFF,ON" && i.value === 1)
+    ok(mods.length === 4 && mods.map((i) => i.name).join() === "ARP,SEQ,SENDS,PART FX" && mods.every((i) => i.tabName === "MODULES" && i.tab === 4 && i.names.join() === (i.id < 30 ? "OFF,FOLLOWS PATCH,KEEPS RUNNING" : "OFF,ON") && i.value === 1)
        && pl && pl.name === "PERF LEAVE" && pl.tabName === "CONTROL" && pl.names.join() === "FADE,KEEP", "menu: the MODULES switches (28..31, tab MODULES, ON) and PERF LEAVE (32, CONTROL, FADE / KEEP)");
     const bmn = items.find((i) => i.id === 33);
-    ok(bmn && bmn.name === "BASS MONO" && bmn.tabName === "MASTER" && bmn.value === 0 && bmn.names.length === 12 && bmn.names[0] === "OFF" && bmn.names[5] === "100 Hz" && bmn.names[11] === "400 Hz" && await u.setMenu(33, 5) === 5 && await u.setMenu(33, 99) === 11 && await u.setMenu(33, 0) === 0, "menu: BASS MONO (33, tab MASTER, OFF + 40 .. 400 Hz) is offered and set");
+    ok(bmn && bmn.name === "BASS MONO" && bmn.tabName === "MASTER" && bmn.value === 0 && bmn.names.length === 12 && bmn.names[0] === "OFF" && bmn.names[5] === "100Hz" && bmn.names[11] === "400Hz" && await u.setMenu(33, 5) === 5 && await u.setMenu(33, 99) === 11 && await u.setMenu(33, 0) === 0, "menu: BASS MONO (33, tab MASTER, OFF + 40 .. 400 Hz) is offered and set");
     const sc = [38, 39, 40, 41].map((id) => items.find((i) => i.id === id));   // 0.2.22 SIDECHAIN: P1 CH, P1 NOTE, P2 CH, P2 NOTE (numbers; tab SIDECHAIN; the device's, whatever the DUCK SRC is)
     ok(sc.every((i) => i && i.tabName === "SIDECHAIN" && i.kind === 1) && sc.map((i) => i.name).join() === "P1 CH,P1 NOTE,P2 CH,P2 NOTE" && sc.map((i) => i.value).join() === "10,36,10,36" && sc.map((i) => i.min + "-" + i.max).join() === "1-16,0-127,1-16,0-127"
        && await u.setMenu(38, 5) === 5 && await u.setMenu(39, 0) === 0 && await u.setMenu(40, 99) === 16 && await u.setMenu(41, 127) === 127 && await u.setMenu(38, 10) === 10 && await u.setMenu(39, 36) === 36 && await u.setMenu(40, 10) === 10 && await u.setMenu(41, 36) === 36
@@ -287,7 +288,7 @@ async function connect(opt = {}) { const m = new MockUnit(opt), u = new Unit(new
 {
   const keys = PART_TABS.map((t) => t.key).join(), gk = GLOBAL_TABS.map((t) => t.key).join();
   ok(keys === "engine,filter,envelope,lfo,matrix,fx,arpseq,roll" && PART_TABS.map((t) => t.label).join() === "ENGINE,FILTER,ENV,LFO,MATRIX,FX,ARP,SEQ", `layout: each part column has the tabs ENGINE FILTER ENV LFO MATRIX FX ARP SEQ (${keys})`);
-  ok(gk === "global,patches,multis,patterns,midi,tables,settings", `layout: the global column has the tabs GLOBAL PATCHES MULTIS PATTERNS MIDI WAVETABLES SETTINGS (${gk})`);
+  ok(gk === "global,patches,multis,patterns,midi,midimap,tables,settings", `layout: the global column has the tabs GLOBAL PATCHES MULTIS PATTERNS MIDI MIDI MAP WAVETABLES SETTINGS (${gk})`);
   const part = new Set(PART_TABS.flatMap((t) => t.pages)), glob = new Set(GLOBAL_TABS.flatMap((t) => t.pages));
   ok(["MULTI FILTER 1/2", "MULTI FILTER 2/2", "FX", "INSERT 1/2", "DUCK 2/2", "ARP 1/3", "STEP", "LFO 2 DEST", "MATRIX 5-8"].every((t) => part.has(t)) && ["CHORUS", "DELAY 1/2", "DELAY 2/2", "REVERB", "TEMPO", "MODULES"].every((t) => glob.has(t)), "layout: filter, FX, arp and step pages are in the part tabs, buses and tempo in the global column");
   ok([...part].every((t) => !glob.has(t)), "layout: no page is in both a part tab and the global column");
@@ -331,10 +332,10 @@ async function connect(opt = {}) { const m = new MockUnit(opt), u = new Unit(new
   const { PART, GLOBAL, MASTER, engineLong } = await import("./editor/labels.js");
   ok(PART[0][0] === "LEVEL" && PART[39][0] === "PAN" && PART[40][0] === "MUTE" && PART[109][0] === "PATCH LEVEL" && PART[22][0] === "CHANCE" && GLOBAL[17][0] === "DRIFT" && MASTER.WIDTH[0] === "WIDTH",
      "names: the MIXER block's LEVEL, PAN, MUTE; PATCH LEVEL; CHANCE (the arp); DRIFT (the shimmer); STEREO MASTER's WIDTH");
-  ok(PART[33][0] === "DRIVE" && [34, 35, 36].map((i) => PART[i][0]).join() === "CHORUS,DELAY,REVERB" && [15, 4, 7].map((i) => GLOBAL[i][0]).join() === "MODE,TIME,MIX" && [111, 107, 108, 110].map((i) => PART[i][0]).join() === "SOURCE,DEPTH,ATTACK,RELEASE" && PART[90][0] === "MID Q",
-     "names: no word twice on a card (SATURATION: DRIVE; SENDS: CHORUS DELAY REVERB; DELAY: MODE TIME MIX; DUCKING: SOURCE DEPTH ATTACK RELEASE); MID Q");
-  ok(engineLong("ANALOG", "SUB") === "SUB" && engineLong("PHASE", "WAVE") === "WAVE 1" && engineLong("PHASE", "WAVE2") === "WAVE 2" && engineLong("PHASE", "DCW") === "SHAPING" && engineLong("PHASE", "ENV") === "SHAPING ENV" && engineLong("ANALOG", "WAVE") === "WAVEFORM",
-     "names: SUB (not SUB OSCILLATOR); PHASE: WAVE 1, WAVE 2 (owner: as the unit), SHAPING, SHAPING ENV");
+  ok(PART[33][0] === "SATURATION" && [34, 35, 36].map((i) => PART[i][0]).join() === "CHORUS,DELAY,REVERB" && [15, 4, 7].map((i) => GLOBAL[i][0]).join() === "MODE,TIME,MIX" && [111, 107, 108, 110].map((i) => PART[i][0]).join() === "SOURCE,DEPTH,ATTACK,RELEASE" && PART[90][0] === "MID Q",
+     "names: no word twice on a card (SATURATION: 1.1 names it so; SENDS: CHORUS DELAY REVERB; DELAY: MODE TIME MIX; DUCKING: SOURCE DEPTH ATTACK RELEASE); MID Q");
+  ok(engineLong("ANALOG", "SUB") === "SUB" && engineLong("PHASE", "WAVE") === "WAVE 1" && engineLong("PHASE", "WAVE2") === "WAVE 2" && engineLong("PHASE", "DCW") === "WAVE SHAPING" && engineLong("PHASE", "ENV") === "SHAPING ENV" && engineLong("ANALOG", "WAVE") === "WAVEFORM",
+     "names: SUB (not SUB OSCILLATOR); PHASE: WAVE 1, WAVE 2 (owner: as the unit), WAVE SHAPING (1.1), SHAPING ENV");
   const { longDesc } = await import("./editor/labels.js");
   const g = []; g[ID.G_DMODE] = 0; const dDigi = longDesc(gdescOf(g, ID.G_DMDEP), "g13"); g[ID.G_DMODE] = 2; const dRand = longDesc(gdescOf(g, ID.G_DMDEP), "g13");
   ok(dDigi.label === "MOD DEPTH" && dRand.label === "CHANCE", "names: the delay's depth card is MOD DEPTH in DIGITAL / PING-PONG and CHANCE in RANDOM / OCT UP, never both in one label");
@@ -345,7 +346,7 @@ async function connect(opt = {}) { const m = new MockUnit(opt), u = new Unit(new
   const { CMD, v14, rv14, parseInfo, xReadArgs, xWriteArgs, parseXReply } = await import("./editor/proto.js");
   const { XPART, TWIN_LONG, VALUE_NAMES, MATRIX_GROUPS, longValue, PART, longDesc } = await import("./editor/labels.js");
   const names = Object.keys(X);
-  ok(NX === 16 && XW_BASE === 128 && L.XTP.length === NX && names.length === 15 && names.every((n, k) => X[n] === k) && L.XTP[NX - 1].label === "-", "scope 2 layout: NX 16 slots (15 used, X15 the spare), the slot numbers by name, wide ids from 128");
+  ok(NX === 28 && XW_BASE === 128 && L.XTP.length === NX && names.length === 28 && names.every((n, k) => X[n] === k) && L.XTP[NX - 1].label === "STRUM", "scope 2 layout: NX 28 slots (1.1: all used, the last STRUM), the slot numbers by name, wide ids from 128");
   {   // each slot's descriptor, as params.c XTP says (label, format, range, default, names)
     const want = [["ROUTE", 0, 1, 0, "SERIES,PARAL"], ["LINK", 0, 1, 1, "OFF,ON"], ["KTRK2", -63, 63, 0], ["ENV2", -64, 63, 0], ["LFO1", -64, 63, 0], ["LFO2", -64, 63, 0], ["LEVEL", 0, 127, 0], ["OCTAVE", 0, 2, 1, "-2,-1,0"],
       ["WAVE", 0, 3, 0, "SINE,TRI,SQUARE,PULSE"], ["HARM", 0, 127, 0], ["MODE", 0, 1, 0, "LOOP,ONCE"], ["RISE", 0, 127, 10], ["FALL", 0, 127, 70], ["CURVE", -64, 63, 0], ["SYNC", 0, 1, 0, "OFF,ON"]];
@@ -383,12 +384,12 @@ async function connect(opt = {}) { const m = new MockUnit(opt), u = new Unit(new
   }
   {   // the labels: no control repeats TWIN or FILTER inside a titled card (naming rule R1); FILTER ENV is the one name with the word (the owner wrote it for MULTI CUTOFF MOD and TWIN CUTOFF MOD)
     const labs = [...Object.values(XPART).map((x) => x[0]), ...Object.values(TWIN_LONG), ...[25, 26, 43, 101, 106].map((i) => PART[i][0])];
-    ok(labs.every((l) => !/TWIN/.test(l) && (!/FILTER/.test(l) || l === "FILTER ENV")), `names (R1): no label of the second filter's, SUB's or CYCLE's controls repeats TWIN or FILTER (${labs.filter((l) => /TWIN|FILTER/.test(l)).join() || "none"})`);
+    ok(labs.every((l) => (!/TWIN/.test(l) || l === "TWIN CUTOFF" || l === "TWIN RES") && (!/FILTER/.test(l) || ["FILTER ENV DEPTH", "FILTER BLEND", "FILTER DRIVE"].includes(l))), `names (R1, 1.1 spelling: TWIN CUTOFF, TWIN RES, FILTER ENV DEPTH, FILTER BLEND, FILTER DRIVE are whole names): no other label of the second filter's, SUB's or CYCLE's controls repeats TWIN or FILTER (${labs.filter((l) => /TWIN|FILTER/.test(l)).join() || "none"})`);
     ok([25, 26, 43, 101, 106].every((i) => PART[i][1].length > 20) && Object.values(XPART).every((x) => x[1].length >= 20) && PART[43][0] === "TYPE" && PART[101][0] === "BLEND" && PART[26][0] === "DRIVE" && PART[25][0] === "RESONANCE" && PART[106][0] === "CUTOFF", "names: ids 25, 26, 43, 101, 106 are RESONANCE, DRIVE, TYPE, BLEND, CUTOFF with tooltips (they were ROOT, SCALE, ALLOCATION, FILTER TYPE, none)");
     const t = longDesc(L.TP[ID.P_TWTYPE], ID.P_TWTYPE);
     ok(t.names.join() === "OFF,LOW-PASS,BAND-PASS,HIGH-PASS,NOTCH,LADDER,COMB" && L.TP[ID.P_TWTYPE].names.join() === "OFF,LP,BP,HP,NOTCH,LADDER,COMB", "names: TYPE lists OFF, LOW-PASS, BAND-PASS, HIGH-PASS, NOTCH, LADDER, COMB (the firmware's LP BP HP spelled out, same order)");
     const rt = longDesc(xdescOf(defaultPart(0), X.X_ROUTE), "x0"), sw = longDesc(xdescOf(defaultPart(0), X.X_SUBWAVE), "x8");
-    ok(rt.names.join() === "SERIES,PARALLEL" && sw.names.join() === "SINE,TRIANGLE,SQUARE,PULSE" && longDesc(xdescOf(defaultPart(0), X.X_ENV2), "x3").label === "FILTER ENV" && longDesc(xdescOf(defaultPart(0), X.X_KTRK2), "x2").label === "KEY TRACK", "names: ROUTE SERIES / PARALLEL, SUB WAVE spelled out, FILTER ENV and KEY TRACK on TWIN CUTOFF MOD");
+    ok(rt.names.join() === "SERIES,PARALLEL" && sw.names.join() === "SINE,TRIANGLE,SQUARE,PULSE" && longDesc(xdescOf(defaultPart(0), X.X_ENV2), "x3").label === "FILTER ENV DEPTH" && longDesc(xdescOf(defaultPart(0), X.X_KTRK2), "x2").label === "KEY TRACK", "names: ROUTE SERIES / PARALLEL, SUB WAVE spelled out, FILTER ENV DEPTH and KEY TRACK on TWIN CUTOFF MOD");
     const dr = longDesc(L.TP[ID.P_DRV2], ID.P_DRV2);
     ok(valueText(dr, 0).val === "OFF" && valueText(dr, 1).val !== "OFF" && valueText(longDesc(L.TP[ID.P_BLEND], ID.P_BLEND), 0).val === "BOTH" && valueText(longDesc(L.TP[ID.P_BLEND], ID.P_BLEND), -64).val === "MULTI" && valueText(longDesc(L.TP[ID.P_BLEND], ID.P_BLEND), 63).val === "TWIN" && valueText(longDesc(L.TP[ID.P_BLEND], ID.P_BLEND), 32).val === "TWIN 50%" && valueText(longDesc(L.TP[ID.P_BLEND], ID.P_BLEND), -32).val === "MULTI 50%" && isBipolar(L.TP[ID.P_BLEND]) && !isBipolar(L.TP[ID.P_DRV2]), "controls: DRIVE shows OFF at 0; BLEND is a bipolar slider (the centre is marked)");
     const bip = [L.TW.OFFSET, L.TW.TUNE, L.TW.FDBK, L.XTP[X.X_KTRK2], L.XTP[X.X_ENV2], L.XTP[X.X_LFO1], L.XTP[X.X_LFO2], L.XTP[X.X_CYCURVE], L.TP[ID.P_BLEND]], plain = [L.TW.CUTOFF, L.TW.RES, L.XTP[X.X_SUBLVL], L.XTP[X.X_SUBHARM], L.XTP[X.X_CYRISE], L.TP[ID.P_DRV2]];
@@ -404,10 +405,10 @@ async function connect(opt = {}) { const m = new MockUnit(opt), u = new Unit(new
   }
   {   // the matrix: the new destinations and the source CYCLE by the firmware's name tables
     const dn = L.TP[ID.P_M1SRC + 1].names, sn = L.TP[ID.P_M1SRC].names;
-    ok(L.MD.CUT2 === 51 && L.MD.RES2 === 52 && L.MD.DRIVE === 53 && L.MD.BLEND === 54 && L.MD.SUBLVL === 55 && L.MD.N === 56 && L.MD.S_CYCLE === 15 && dn.slice(51).join() === "CUT2,FRES2,FDRV,FBLND,SUBLV" && sn[15] === "CYCLE",
+    ok(L.MD.CUT2 === 51 && L.MD.RES2 === 52 && L.MD.DRIVE === 53 && L.MD.BLEND === 54 && L.MD.SUBLVL === 55 && L.MD.N === 57 && L.MD.S_CYCLE === 15 && dn.slice(51, 56).join() === "CUT2,FRES2,FDRV,FBLND,SUBLV" && sn[15] === "CYCLE",
        "matrix: destinations 51..55 CUT2 FRES2 FDRV FBLND SUBLV and the source 15 CYCLE are the firmware's names");
-    ok(longValue(ID.P_M1SRC + 1, "CUT2") === "TWIN CUTOFF" && longValue(ID.P_M1SRC + 1, "FRES2") === "TWIN FILTER RESONANCE" && longValue(ID.P_M1SRC + 1, "FDRV") === "FILTER DRIVE" && longValue(ID.P_M1SRC + 1, "FBLND") === "FILTER BLEND" && longValue(ID.P_M1SRC + 1, "SUBLV") === "SUB LEVEL" && longValue(ID.P_M1SRC, "CYCLE") === "CYCLE",
-       "matrix names: TWIN CUTOFF, TWIN FILTER RESONANCE, FILTER DRIVE, FILTER BLEND, SUB LEVEL; the source CYCLE");
+    ok(longValue(ID.P_M1SRC + 1, "CUT2") === "TWIN CUTOFF" && longValue(ID.P_M1SRC + 1, "FRES2") === "TWIN RES" && longValue(ID.P_M1SRC + 1, "FDRV") === "FILTER DRIVE" && longValue(ID.P_M1SRC + 1, "FBLND") === "FILTER BLEND" && longValue(ID.P_M1SRC + 1, "SUBLV") === "SUB LEVEL" && longValue(ID.P_M1SRC, "CYCLE") === "CYCLE",
+       "matrix names: TWIN CUTOFF, TWIN RES, FILTER DRIVE, FILTER BLEND, SUB LEVEL; the source CYCLE");
     const flat = (g) => g.flatMap(([, v]) => v);
     ok([51, 52, 53, 54, 55].every((v) => flat(MATRIX_GROUPS.dst).includes(v)) && flat(MATRIX_GROUPS.src).includes(15) && new Set(flat(MATRIX_GROUPS.dst)).size === flat(MATRIX_GROUPS.dst).length, "matrix groups: the new destinations are in the FILTER and ENGINE groups, CYCLE with the envelopes, no value twice");
     const off = defaultPart(0), on = defaultPart(0); on.p[ID.P_TWTYPE] = 1;
@@ -421,7 +422,7 @@ async function connect(opt = {}) { const m = new MockUnit(opt), u = new Unit(new
   // ---- the protocol, against the simulated unit
   {
     const { m, u } = await connect();
-    ok(parseInfo(await u.req(CMD.INFO)).nx === 16 && u.hasX && u.info.nx === 16, "scope 2: INFO has the tag 59 01 NX (16)");
+    ok(parseInfo(await u.req(CMD.INFO)).nx === 28 && u.hasX && u.info.nx === 28, "scope 2: INFO has the tag 59 01 NX (28)");
     ok(u.parts.every((q) => q.x.length === NX && q.x.every((v, k) => v === L.XTP[k].def)), "scope 2: both parts' slots are read at connect: all at their defaults");
     let a = await u.req(CMD.GET, [2, X.X_LINK]); ok(a.length === 4 && a[0] === 2 && a[1] === 1 && rv14(a, 2) === 1, "scope 2: GET");
     a = await u.req(CMD.SET, [2, X.X_CYRISE, ...v14(55)]); ok(rv14(a, 2) === 55 && m.parts[0].x[X.X_CYRISE] === 55, "scope 2: SET stores it and echoes the value");
