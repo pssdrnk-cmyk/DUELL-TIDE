@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0          # multiv8 reads git tags
+          fetch-depth: 0          # multiv8 reads the v1.0 / v1.1 files from git (the tags if there are any, else their commits)
 
       - uses: actions/setup-python@v5
         with:
@@ -32,7 +32,7 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Python packages (the generators: Pillow, fontTools; benchaudio: numpy)
+      - name: "Python packages (the generators: Pillow, fontTools; benchaudio: numpy)"
         run: |
           sudo apt-get install -y -qq libfribidi0 libraqm0      # (Pillow's text layout: without Raqm the fonts are drawn differently)
           python3 -m pip install --quiet pillow==12.3.0 fonttools==4.65.0 numpy
