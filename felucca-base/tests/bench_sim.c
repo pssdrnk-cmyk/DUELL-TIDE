@@ -643,6 +643,8 @@ static int stage1_checks(void)
         r = con("load patch 1 61");
         bad += check("8 load patch 1 61: 'OK patch 61 EVOLVING PAD'", !strcmp(r, "OK patch 61 EVOLVING PAD\r\n"));
         bad += check("8 load: no such multi / part / slot is ERR", is_err("load multi 17") && is_err("load multi 0") && is_err("load patch 3 1") && is_err("load patch 1 129") && is_err("load foo"));
+        bad += check("8 audit F07: a number out of the int32 range is ERR (it wrapped to a small one before); the int32 limits are numbers but no multi; a minus sign alone is no number",
+                     is_err("load multi 4294967297") && is_err("load multi 4294967313") && is_err("load multi -4294967295") && is_err("load multi 2147483649") && is_err("load multi 99999999999999999999") && is_err("load multi -") && is_err("load multi 2147483647") && is_err("load multi -2147483648"));
         bad += check("8 mode: DUEL STEREO LAYER, others ERR", is_ok("mode LAYER") && duell_mode_req == DM_LAYER && is_ok("mode duel") && duell_mode_req == DM_SPLIT && is_ok("mode STEREO") && is_err("mode MONO") && is_err("mode"));
         bad += check("8 set: a part's value by label, by enum name, clamped; a global value; wrong names, parts and values are ERR",
                      is_ok("set 1 SRC8 LFO2") && trk[0].p[P_M8SRC] == 12 && is_ok("set 1 DST8 CUT") && trk[0].p[P_M8DST] == 2 && is_ok("set 1 AMT8 63") && trk[0].p[P_M8AMT] == 63 &&

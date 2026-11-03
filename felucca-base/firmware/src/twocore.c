@@ -22,7 +22,7 @@ static tc_t tc TC_BSS;          /* (tc_nv, the record across a reset: declared b
 /* hand core 1 the next job (only when tc_closed(): the words of the job before are no longer read). Returns its number */
 static TC_FN uint32_t tc_post(uint32_t arg)
 {
-    uint32_t j = tc.job + 1u;
+    uint32_t j = tc_next(tc.job);
     TC_ST(&tc_mb.arg, arg);
     TC_ST(&tc_mb.chk, TC_CHECK(j, arg));
     TC_SYNC();
