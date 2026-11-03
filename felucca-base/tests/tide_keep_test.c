@@ -14,12 +14,14 @@
 
 static uint8_t nor[0x100000];
 static int st_read(uint32_t off, void *dst, uint32_t n) { memcpy(dst, nor + off, n); return 0; }
-static int st_erase(uint32_t off) { memset(nor + off, 0xFF, 4096); return 0; }
+static int nor_fail, nor_ops;                    /* (a failing flash: every erase / program refused, counted) */
+static int st_erase(uint32_t off) { nor_ops++; if (nor_fail) return -1; memset(nor + off, 0xFF, 4096); return 0; }
 static int st_prog(uint32_t off, const void *src, uint32_t n)
 {
     const uint8_t *s = src;
     uint32_t i;
-    if ((off & 0xFFu) + n > 256u)
+    nor_ops++;
+    if (nor_fail || (off & 0xFFu) + n > 256u)
         return -1;
     for (i = 0; i < n; i++)
         nor[off + i] &= s[i];
@@ -316,6 +318,21 @@ static void t_store(void)
         st_save(OBJ_TIDE, r, 12);
         CHECK("store: a whole one: read", tide_store_load(b, 7) && !memcmp(b, w, 7));
     }
+    /* a failing write is paced, not repeated at every poll (F04): one attempt, then a retry after the pacing interval */
+    tide_store_mark(w, 7);
+    fm1_ms += 2500u;
+    nor_fail = 1; nor_ops = 0;
+    for (b[0] = 0; b[0] < 100; b[0]++)
+        tide_store_poll();
+    CHECK("store: a failed write is tried once for 100 polls", nor_ops == 1 && tide_store_dirty);
+    nor_ops = 0;
+    fm1_ms += 2500u;
+    tide_store_poll();
+    CHECK("store: .. tried again after the pacing interval", nor_ops == 1 && tide_store_dirty);
+    nor_fail = 0;
+    fm1_ms += 2500u;
+    tide_store_poll();
+    CHECK("store: .. a success clears dirty", !tide_store_dirty && tide_store_load(b, 7));
     CHECK("store: ERASE DATA runs", erase_data_run() == 0);
     CHECK("store: .. and wipes it", !tide_store_load(b, 7));
     tide_store_mark(w, 7);
