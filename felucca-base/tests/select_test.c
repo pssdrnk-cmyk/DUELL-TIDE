@@ -170,8 +170,8 @@ static void sweep_buttons(void)
  * longer on it); SELECT right and HOME's taps go round it the same way, SELECT left backwards */
 static void sweep_home(void)
 {
-#if DUELL_TIDE                                           /* (TIDE: MORPH SETTINGS in MORPH SET's place, then AUTO TIDE) */
-    static const char *const ORDER[] = {"MORPH", "MORPH SETTINGS", "AUTO TIDE", "MODE"};
+#if DUELL_TIDE                                           /* (TIDE: TIDE SETTINGS in MORPH SET's place, then AUTO TIDE) */
+    static const char *const ORDER[] = {"MORPH", "TIDE SETTINGS", "AUTO TIDE", "MODE"};
 #else
     static const char *const ORDER[] = {"MORPH", "MORPH SET", "MODE"};   /* (0.2.25 layout round: the MIXER is GLO's first page) */
 #endif
@@ -184,7 +184,7 @@ static void sweep_home(void)
     ok = m == sizeof ORDER / sizeof ORDER[0];
     for (k = 0; ok && k < m; k++)
         ok &= str_eq(PAGES[r[k]].title, ORDER[k]);
-    expect("HOME's round: MORPH, MORPH SET (TIDE: MORPH SETTINGS, AUTO TIDE), MODE (0.2.14: no OVERVIEW; 0.2.25: no MIXER)", ok);
+    expect("HOME's round: MORPH, MORPH SET (TIDE: TIDE SETTINGS, AUTO TIDE), MODE (0.2.14: no OVERVIEW; 0.2.25: no MIXER)", ok);
     {   /* item 155: MODE SPLIT in LAYER (item 158: on K3, the cards line up to the left): OFF, the first turn right starts at the middle key F#4 (stored 67), then goes on; the bottom is OFF again and stays */
         uint8_t m0 = duell_mode_req, s0 = mix_split;
         int ok2;
@@ -1348,7 +1348,7 @@ static void sweep_algo(void)
             continue;
         }
 #if DUELL_TIDE
-        if (PAGES[i].scope == SC_TIDE)                  /* (TIDE's MORPH SETTINGS and AUTO TIDE: ALGORITHM is the morph's selector there, PART 1 / BOTH / PART 2, as on MORPH: tide_ui.c) */
+        if (PAGES[i].scope == SC_TIDE)                  /* (TIDE's TIDE SETTINGS and AUTO TIDE: ALGORITHM is the morph's selector there, PART 1 / BOTH / PART 2, as on MORPH: tide_ui.c) */
             continue;
 #endif
         morph.target = MT_SELECTED;

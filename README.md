@@ -20,16 +20,16 @@ It is made for playing the FM-1 as a **background**: set a tide going, then play
 
 ## What it looks like
 
-| AUTO TIDE | MORPH SETTINGS | MORPH, mid-glide |
+| AUTO TIDE | TIDE SETTINGS | MORPH, mid-glide |
 |:---:|:---:|:---:|
-| <img src="docs/tide/auto-tide-both-parts.png" width="260" alt="AUTO TIDE page with both parts: JRNY, 16 BARS, WAIT 2 BARS, the SOUND and SEQ faders of parts 1 and 2 at B"> | <img src="docs/tide/morph-settings.png" width="260" alt="MORPH SETTINGS page: TARGET BOTH, VARY BARS 4 + 8, ROLL MUSIC, ARP, PITCH, WASH LEVEL"> | <img src="docs/tide/morph-gliding.png" width="260" alt="MORPH page while a tide plays: the fader at 62"> |
+| <img src="docs/tide/auto-tide-both-parts.png" width="260" alt="AUTO TIDE page with both parts: JRNY, 16 BARS, WAIT 2 BARS, the SOUND and SEQ faders of parts 1 and 2 at B"> | <img src="docs/tide/morph-settings.png" width="260" alt="TIDE SETTINGS page: TARGET BOTH, VARY BARS 4 + 8, ROLL MUSIC, ARP, PITCH, WASH LEVEL"> | <img src="docs/tide/morph-gliding.png" width="260" alt="MORPH page while a tide plays: the fader at 62"> |
 | The glide's state on knob 1's line (here *paused: PLAY goes on*), with both parts: each part's SOUND and SEQ fader, its steps as they play and the sound it has travelled to, and MODE / TIME / WAIT on knobs 2 to 4. | What the tide moves and how a new End B is rolled. Knob 1 picks the row, OCT+ / OCT- change it. | DUELL's own MORPH page follows the glide, so you see where the sound is between A and B. |
 
 *Screenshots from the [web emulator](https://pssdrnk-cmyk.github.io/DUELL-TIDE/emu/).*
 
 ## Play a tide in four steps
 
-1. Press **HOME** until **AUTO TIDE** shows. HOME's round is now **MORPH → MORPH SETTINGS → AUTO TIDE → MODE**.
+1. Press **HOME** until **AUTO TIDE** shows. HOME's round is now **MORPH → TIDE SETTINGS → AUTO TIDE → MODE**.
 2. Pick a **MODE** with knob 2, a trip length (**TIME**, in bars) with knob 3 and a rest at each end (**WAIT**) with knob 4. Turn **ALGORITHM** to BOTH to glide both parts at once.
 3. Twist **knob 1** right (to B) or left (to A) and press **PLAY**. While the music plays, the glide starts on the next bar.
 4. Play over it. **STOP** pauses the glide and PLAY goes on from there. Twist knob 1 while it glides and it stops where it is; the sound stays.
@@ -50,7 +50,7 @@ On the very first start TIDE comes up ready: multi **M02 NIGHT ORGAN**, AUTO TID
 
 Each mode has its own line on the screen, so you can read what it will do. Where two very different sounds cross, TIDE passes them through a short filter dip, so the change sounds like a move rather than a cut.
 
-### New: MORPH SETTINGS (in HOME's round)
+### New: TIDE SETTINGS (in HOME's round)
 
 | Row | What it sets |
 |---|---|
