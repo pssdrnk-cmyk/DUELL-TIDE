@@ -2,6 +2,8 @@
 
 Current maintenance priorities: [roadmap](ROADMAP.md). Totals below describe their named source checkpoints, not a continuously updated count.
 
+**Latest full run (3 November 2026, Windows `sh jam/check.sh`): 112 passed, 0 failed, 25 skipped.** The test-tree cleanup (T0) is finished; the boot pack added the `bootpack` group. The 25 skips need `fork()` or an instruction counter; they run in the Linux host-test CI and in the WSL sections below.
+
 ## Linux (WSL) groups: 3 November 2026, branch `lx-sound`
 
 `velaccent regress mod mode sounds mrender wave subcyc xvalues budget` pass in WSL (`wsl.exe -d Ubuntu -- sh jam/wsl.sh <group ...>`). The Windows check is unchanged: 111 passed, 0 failed, 25 skipped (these groups SKIP at `fork()`). No firmware change, so `check_off.sh` and `off.sha256` stay as they are. Stock 1.1 fails the same groups on Linux, so these were 1.0 expectations, not TIDE regressions.
@@ -67,7 +69,7 @@ Full `sh jam/check.sh` after rebasing on the UI groups: **110 passed, 1 failed (
 
 `sh jam/check.sh` on jam11 `95c7021` + t0-ui2: every group passes or is a correct SKIP (`fork()` and similar). `ui`: 0 lint findings, 0 alignment findings, 0 boxes.
 
-- Firmware screen fixes of the last round (always-on, off hash updated, image 578340 B): header messages on the header's middle; a card unit on an M value's baseline; piano roll note names' right edge; MONO label chip; save-dialog hint centring; two-line labels in cells and area cards, a long single word under its dot; QNTZ for the narrow automation card; TIDE list pill an allowed highlight; the NAME keys' words one row up; TIDE splash credit line off a strip edge.
+- Firmware screen fixes of the last round (always-on, off hash updated, flash 578340 B): header messages on the header's middle; a card unit on an M value's baseline; piano roll note names' right edge; MONO label chip; save-dialog hint centring; two-line labels in cells and area cards, a long single word under its dot; QNTZ for the narrow automation card; TIDE list pill an allowed highlight; the NAME keys' words one row up; TIDE splash credit line off a strip edge.
 - Lint (test-side): rolling digits and sweep frames are not overdraw; the REC sweep and SCALE scenes draw as the device; 1.1's MODULES page is a cell page; TIDE's splash is set in glyphs; the '<' '>' name keys are not declared (their ink cannot be measured; they look centred by their coordinates, not checked on screen).
 - Resolved (3 November, polish-notes): a squeeze reads 54 at NORMAL type because 1.1 raised SC_AT_SPAN from 64 to 140 counts (`sense.c` is identical to 1.1); `velo_hook_test` now pins 50 .. 58. The web record does round-trip SLOPE 24 dB; 12 dB is the store default (0) and a load fits it to 12 dB, so `test_librarian` compares fitted values. With TIDE the store holds 126 patches (a 127th new one: STORE FULL), see KNOWN_ISSUES.
 
@@ -76,7 +78,7 @@ Full `sh jam/check.sh` after rebasing on the UI groups: **110 passed, 1 failed (
 `sh jam/check.sh`: **108 passed, 3 failed, 25 skipped**. Failing: `ui`, `editorjson`, `jam_dev` (the last two are the web editor's 1.0 model, see the t0-win notes below).
 
 - Repaired test-side, now PASS: `uitest`, `pages`, `engine`, `scope2`, `velo`, `pan`, `dx7import`, `editb`, `fm6`. `perform` and `step3` run every check up to their `fork()` (SKIP). Causes: cards read from the drawn texts (`ui.col` is a hash), 1.1 / TIDE behaviour (matrix packing on restore, FM6's AMS buffer overflow in `fm6_test.c` that hung on Windows, KEY VELOCITY OFF + five types, PERFORM's ROLL keys are GLIDE TO in TIDE, item 160's BALANCE).
-- Real screen fixes (always-on, off hash updated, image +372 B in all): FM6 FEEDBACK label on its own line; two-line card labels where one line is too wide (FILTER ENV DEPTH, LOW / HIGH FREQUENCY, ROTARY SPEAKER); TEST / INFO bottom rows inside the canvas; TRIO WAVE values on two lines; TIDE splash credit line off a strip edge; AUTO TIDE's A clear of the knob.
+- Real screen fixes (always-on, off hash updated, flash +372 B in all): FM6 FEEDBACK label on its own line; two-line card labels where one line is too wide (FILTER ENV DEPTH, LOW / HIGH FREQUENCY, ROTARY SPEAKER); TEST / INFO bottom rows inside the canvas; TRIO WAVE values on two lines; TIDE splash credit line off a strip edge; AUTO TIDE's A clear of the knob.
 - `ui` still FAIL: the `roll` scene (TEMPO label under a '9'), the "sweep FLAT" scenes (menu rows, ABOUT, REC layer values; the REC sweep draws the layer without its cell template), 1452 alignment findings, 36 boxes (TIDE morph pill 134 x 19).
 - Was open, resolved above: the 54 at NORMAL is 1.1's own value (the test expected 1.0's over 100) and the web record round-trips SLOPE correctly (12 dB is the store default).
 
@@ -168,7 +170,7 @@ SKIP: regress perflevel morph mode sounds fmbass wave mixsplit partindep duckpar
 
 ## Step 0 (history)
 
-Step 0, commit `aa55e22` (1.1 `974d875` + Windows build, fonts 8-slot, hot room, `jam/` tools), 2026-11-01, `sh jam/check.sh` with a 600 s limit per group, Git Bash + llvm-mingw. Every later step is compared with this list, not with "all green".
+Step 0, commit `aa55e22` (1.1 `974d875` + Windows build, fonts 8-slot, hot-code move, `jam/` tools), 2026-11-01, `sh jam/check.sh` with a 600 s limit per group, Git Bash + llvm-mingw. Every later step is compared with this list, not with "all green".
 
 Summary: 47 passed, 63 failed, 11 skipped.
 

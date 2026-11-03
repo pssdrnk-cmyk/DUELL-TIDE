@@ -38,7 +38,7 @@ Implement and review one slice at a time. Keep or revert each musical change on 
 - Keep the current pages, labels, controls and defaults unless a later owner request changes them. No new menu, save format, global mode or external dependency is planned.
 - Apply new musical policy to automatic MUSIC WNDR/JRNY where relevant. Preserve ONCE/LOOP, manual SMART/WILD rolls, PITCH OFF, transport and existing scope of KEEP/UNDO. Loop voicing refines the existing MUSIC/PITCH-gated voicing path.
 - Preserve note count and bass identity for voicing; preserve scale, original beat anchors, protected ties/slides/ratchets and existing density bounds for phrase changes. A scale permits notes; it does not establish the intended chord progression. Do not infer new harmony from a scale alone.
-- Build completed candidates with the existing checks: 228 B hot headroom, 8 KiB pool reserve, 4 KiB ordinary RAM reserve, call reach and range-X closure. Record flash/RAM/hot deltas against the immediately preceding accepted source. No reserve reductions to fit a feature.
+- Build completed candidates with the existing checks: 228 B hot code headroom, 8 KiB pool reserve, 4 KiB RAM reserve, call reach and range-X closure. Record flash/RAM/hot deltas against the immediately preceding accepted source. No reserve reductions to fit a feature.
 - New planning and scoring stay in the main loop with bounded work, fixed-size state and no allocation. ISR changes, if required to expose timing, must be small and measured. Do not put searching or voicing optimization in the ISR.
 - Saved legacy records continue to load. Session history and arrangement state remain ephemeral. If exact restart continuity later becomes a requirement, design it separately.
 - Use focused tests for new behavior, then the existing affected groups. Compare known failures with the same baseline. A host render is useful evidence; physical sound and CPU claims require device evidence.
@@ -331,7 +331,7 @@ M10d, musical switch timing: move the switches that only shape the next notes fr
 
 Not in M10: crossing engines (JRNY keeps its engine; a cross-engine change would need two engines sounding at once, with CPU and voice cost, and is a separate owner decision); automatic loudness matching (M5, evidence-based).
 
-Resource estimate: M10b a per-part fractional weight and a few bytes of cutoff state, plus per-block work in the audio ISR that must be measured against the hot headroom; M10c a small table of group spans; M10d a few bytes of pending-switch state.
+Resource estimate: M10b a per-part fractional weight and a few bytes of cutoff state, plus per-block work in the audio ISR that must be measured against the hot code headroom; M10c a small table of group spans; M10d a few bytes of pending-switch state.
 
 Tests: endpoints bit-exact at fader 0 and 127; at-rest sounds unchanged; monotone sweeps with no step larger than a set threshold on long glides; every structural switch still inside its hidden stretch with groups staggered; manual knob edits and pinned B values still work; STOP/PLAY pause and resume mid-trip; hand takeover mid-glide; external clock; CPU cost of the per-block interpolation.
 
@@ -341,9 +341,9 @@ Acceptance: a 16- and a 64-bar glide on a sustained chord sound like one continu
 
 ### Room available today
 
-Measured on the current base (`work/s0-build/base-build.log`, 2 November 2026 07:17): image 579,916 of 581,564 B, so **1,648 B of flash free**; ordinary RAM 1,712 B above the 4 KiB reserve; pool + range Z 2,964 B above the 8 KiB reserve; hot audio code 1,240 B above the 228 B reserve; range X 928 B. The S0b candidate in the same folder brings the image to 578,988 B (**+928 B**, 2,576 B free). S0 work is in progress there (S0a pattern-slot tests were failing at 07:35); this study does not touch it.
+Measured on the current base (`work/s0-build/base-build.log`, 2 November 2026 07:17): flash 579,916 of 581,564 B, so **1,648 B of flash free**; RAM 1,712 B above the 4 KiB reserve; pool 2,964 B above the 8 KiB reserve; hot code 1,240 B above the 228 B reserve; range X 928 B. The S0b candidate in the same folder brings the image to 578,988 B (**+928 B**, 2,576 B free). S0 work is in progress there (S0a pattern-slot tests were failing at 07:35); this study does not touch it.
 
-RAM, pool and range Z are not the constraint for the costed proposals below: each needs well under 200 B of state. **Flash is.** M7d is uncosted; its timing implications must be checked separately. The hot audio block matters only for M8b and M10b among the costed proposals, which change code the audio interrupt runs.
+RAM, pool and range Z are not the constraint for the costed proposals below: each needs well under 200 B of state. **Flash is.** M7d is uncosted; its timing implications must be checked separately. The hot code matters only for M8b and M10b among the costed proposals, which change code the audio interrupt runs.
 
 ### Estimated cost per stage
 
@@ -426,7 +426,7 @@ Each accepted stage records: source checkpoint, exact change, resource delta, te
 
 ## S0 — make room in flash and RAM
 
-Measured on the M1a candidate (`work/roadmap-m1-build`, image 578,216 B, before M2): flash **3,348 B** free of 581,564; ordinary RAM **1,712 B** above the 4 KiB reserve; pool + range Z **2,964 B** above the 8 KiB reserve; hot audio code 1,240 B above the 228 B reserve; range X 928 B. That is not enough for M2-M4. Earlier compaction is already in the build: every font face Huffman-packed, the splash transparent-run encoding, the size policy for TIDE and five UI files, MORPH_HIST cut from 9 to 3, the font decoder cache moved to ordinary RAM.
+Measured on the M1a candidate (`work/roadmap-m1-build`, flash 578,216 B, before M2): flash **3,348 B** free of 581,564; RAM **1,712 B** above the 4 KiB reserve; pool **2,964 B** above the 8 KiB reserve; hot code 1,240 B above the 228 B reserve; range X 928 B. That is not enough for M2-M4. Earlier compaction is already in the build: every font face Huffman-packed, the splash transparent-run encoding, the size policy for TIDE and five UI files, MORPH_HIST cut from 9 to 3, the font decoder cache moved to RAM.
 
 The search covered all of DUELL, not only TIDE. Owner decisions (1 November 2026): the pattern-slot RAM mirror is not needed; code compaction is covered by the existing test groups. Each slice below is its own measured candidate with flash/RAM/pool/hot deltas. Changes to shared DUELL code intentionally move the TIDE-off image: record its new hash as the off baseline.
 
@@ -444,16 +444,16 @@ Suggested order: S0b and S0a first (largest, simplest), then S0c, S0d, S0e as M2
 
 Isolated checkpoint: branch `s0-room`, from `jam11` `8506f2c` (firmware source as `a41d1bf`). It was not flashed or merged at this checkpoint; the subsequent integration and installation are recorded below.
 
-- **S0b:** `tools/size_fns.py` takes `multi.c` and the whole of `morph.c`. Its audio-rate code (`morph_apply`, `morph_cur`, `morph_begin`, ...) is reached from the audio interrupt, so `isr_reach` keeps it at -Os; 1,344 functions built for size (1,224 before), hot audio code unchanged. The single names of `morph_xfer.c` and `eng_fm6.c` stay listed. The main-loop morph steps during a glide (`morph_do`, `morph_ramp`, `morph_build`) are now built for size; no CPU measurement on the unit yet.
+- **S0b:** `tools/size_fns.py` takes `multi.c` and the whole of `morph.c`. Its audio-rate code (`morph_apply`, `morph_cur`, `morph_begin`, ...) is reached from the audio interrupt, so `isr_reach` keeps it at -Os; 1,344 functions built for size (1,224 before), hot code unchanged. The single names of `morph_xfer.c` and `eng_fm6.c` stay listed. The main-loop morph steps during a glide (`morph_do`, `morph_ramp`, `morph_build`) are now built for size; no CPU measurement on the unit yet.
 - **S0a:** `patslot.c` keeps ONE pattern object in RAM (`ps_buf`, 3,584 B) plus every slot's name, LEN and flags (`ps_meta`, 480 B) in place of all three objects (10,752 B). A LOAD reads its object into RAM; while RAM holds another object's waiting SAVE, the slot is read from the flash for that load only (no write). An object that was missing or damaged is its defaults, built again when needed. Owner rule: a SAVE into a different object (P01-11, P12-22, P23-32) while another object's SAVE still waits during playback writes the waiting one at once, with the flash duck's short dip; the owner accepted it as rare and barely audible. Format, flash map and the editor backup are unchanged.
 - **Date pin:** MENU > SYSTEM > ABOUT shows `__DATE__`, so `jam/check_off.sh` failed on every day after its baseline was recorded. `build.py` now takes `DUELL_BUILD_DATE` and `check_off.sh` pins it to `Nov  1 2026`. Proven: the date pin alone, on today's date, reproduces the old `6232c047...` exactly.
 
 | Region | `a41d1bf` | `s0-room` | Delta |
 |---|---:|---:|---:|
-| Application flash (image) | 579,916 B | 579,712 B | -204 B (S0b -928, S0a +724) |
-| Pool + range Z | 357,484 B | 350,796 B | -6,688 B (free to the stack guard 11,156 -> 17,844 B) |
-| Ordinary RAM | 67,920 B | 67,936 B | +16 B |
-| Hot audio code | 11,044 B | 11,048 B | +4 B |
+| Flash | 579,916 B | 579,712 B | -204 B (S0b -928, S0a +724) |
+| Pool | 357,484 B | 350,796 B | -6,688 B (free to the stack guard 11,156 -> 17,844 B) |
+| RAM | 67,920 B | 67,936 B | +16 B |
+| Hot code | 11,044 B | 11,048 B | +4 B |
 
 TIDE-off baseline moves to `b531ace3...` (shared code, as S0 expects). Verified: device build with all placement/reach checks, packaged-firmware CPU-emulator smoke (boot, LCD, MIDI note, finite audio; package `a6a1aa72...`), `check_off` PASS on the new baseline, and the full host suite on a clean `a41d1bf` snapshot against the candidate: the same 58 pass / 63 fail / 11 skip groups and no differing check line in any group. `patslot` was repaired enough to run: the stale per-slot ERASE checks are gone (1.1 removed that UI), its pattern generator keeps SWING in 1.1's 50..75, and seven S0a checks are new (all pass). Its remaining 22 failures are old UI-flow checks and fail identically on the baseline (T0). Not established: CPU on the unit, the dip on the unit, a real-flash LOAD while a SAVE waits.
 
@@ -461,7 +461,7 @@ Flash is still the limit: 1,852 B free. S0c (smaller FM6 pitch table, about 3 KB
 
 ### S0/DSP integration and device installation — 2 November 2026
 
-S0a/S0b were merged at `254a501`. The owner authorized flashing checkpoint `e176f6e` (firmware through `7535916`, followed by a test-only commit). The retained production build passes all placement, reserve and call-reach checks: image **579,728 B, 1,836 B flash free**, ordinary RAM 67,936 B, pool + range Z 350,796 B, hot audio 11,048 B with 1,464 B headroom. Against the previously installed M1/M2 build, flash is -104 B, ordinary RAM +16 B, pool -6,688 B and hot audio +4 B. This checkpoint also contains the shared DSP arithmetic fixes and the TIDE settings startup-write fix; M7–M10 are not implemented by it.
+S0a/S0b were merged at `254a501`. The owner authorized flashing checkpoint `e176f6e` (firmware through `7535916`, followed by a test-only commit). The retained production build passes all placement, reserve and call-reach checks: flash **579,728 B, 1,836 B flash free**, RAM 67,936 B, pool 350,796 B, hot code 11,048 B with 1,464 B headroom. Against the previously installed M1/M2 build, flash is -104 B, RAM +16 B, pool -6,688 B and hot code +4 B. This checkpoint also contains the shared DSP arithmetic fixes and the TIDE settings startup-write fix; M7–M10 are not implemented by it.
 
 Exact package SHA-256 `ba8fdaf9252a0cf64f5230472ce10e738801b22926b2619e46cb81216648a8aa`. This package passed the pinned CPU-emulator boot/LCD/MIDI/audio smoke; five revision-8 backup-validator tests passed. The connected FM-1 identified as FM-1_901 / DUELL 1.1 with 128 patch slots and 10 named engines. Two fresh pre-flash captures matched all 16 validated objects. The normal installer completed at 100%, rebooted and verified the same model and DUELL identity.
 
@@ -479,9 +479,9 @@ Starting checkpoint: `e6e1500` on `jam11`. The initial R0 fixes and basic tests 
 
 R0a follow-up: regression tests reproduced that WAIT OFF during a paused endpoint hold did not remove the hold until playback resumed. The main-loop STOP path now releases that hold without regenerating the destination or moving the endpoint. Tests cover both the WAIT knob and OCT-minus reset, a sustained pause, and a return trip resuming near progress zero. Before the fix: 66 checks, two failures; after: `tidecontrols`, `tidekeep` and `tidecrossings` pass with the existing strict sanitizer builds.
 
-Production build verification uses an isolated snapshot of `e6e1500` plus this slice, excluding concurrent edits: the shared output directory rejected generated-header writes. Candidate image 577,676 B; ordinary RAM 67,904 B (5,824 B free); pool including range Z 357,484 B (11,156 B free); hot audio code 11,044 B with 1,468 B headroom. All build placement, reserve, call-reach and range-X closure checks pass. Build evidence is in `work/roadmap-r0-build/build.log` beside the worktrees. Hardware and emulator interaction acceptance of this follow-up remain pending.
+Production build verification uses an isolated snapshot of `e6e1500` plus this slice, excluding concurrent edits: the shared output directory rejected generated-header writes. Candidate flash 577,676 B; RAM 67,904 B (5,824 B free); pool 357,484 B (11,156 B free); hot code 11,044 B with 1,468 B headroom. All build placement, reserve, call-reach and range-X closure checks pass. Build evidence is in `work/roadmap-r0-build/build.log` beside the worktrees. Hardware and emulator interaction acceptance of this follow-up remain pending.
 
-Measured against a fresh unchanged `e6e1500` build (`baseline-build.log`): image +16 B (577,660 to 577,676 B); ordinary RAM, pool, hot audio code and hot headroom unchanged. The isolated output directory's normal package is the baseline after this comparison; the candidate is explicitly retained as `work/roadmap-r0-build/candidate.fwsc` and `candidate-app.bin`.
+Measured against a fresh unchanged `e6e1500` build (`baseline-build.log`): flash +16 B (577,660 to 577,676 B); RAM, pool, hot code and hot code headroom unchanged. The isolated output directory's normal package is the baseline after this comparison; the candidate is explicitly retained as `work/roadmap-r0-build/candidate.fwsc` and `candidate-app.bin`.
 
 Remaining R0 work: broaden running WAIT edit/reset coverage and verify no duplicate destination generation; verify symmetric takeover across lanes, holds, MIDI and same-value patch loads. Do not mark R0 complete from the existing basic Part 2 SOUND takeover test. M0 reference capture follows R0; no new musical policy is implemented yet.
 
@@ -494,7 +494,7 @@ Source: `c46ccf2` plus the uncommitted R0a follow-up above.
 - Routes (`test_takeover_routes`): selecting the other part cancels nothing. A MIDI MORPH on the other part under TARGET BOTH also moves its SEQ fader through LINK, so both lanes stop (established LINK behaviour); under TARGET SOUND it stops the SOUND lane. A MIDI SEQ fader stops only the SEQ lane. A patch load on the other part stops the SOUND lane. A JOURNEY's own arrivals never stop it.
 - Defect found and fixed: a patch load on either part during a hold at A left the fader at 0, so value comparison missed it and the glide then moved the new sound. `morph_rebase_part` now counts loads per part (`mm_loads`, through the TIDE-only `TIDE_REBASE_END` hook), and the glide's SOUND lane compares that count as well as the fader value. KEEP and HOME rebase too, so they count as touches.
 - Tests: `tidecontrols` 121 checks, 0 failures (the same-value load cases failed before the fix); `tidecrossings` and `tidekeep` pass. `morph` (needs fork()) and `morphui` (4 FAILs) fail identically on the baseline and the candidate.
-- Build (isolated snapshots; baseline = `c46ccf2` + R0a follow-up): image 577,736 to 577,832 B (+96); ordinary RAM 67,904 to 67,920 B (+16); pool + range Z 357,484 B, hot audio code 11,044 B and 1,468 B hot headroom unchanged. Every placement, reserve, call-reach and range-X check passes. `DUELL_TIDE=0` is byte-identical to `jam/off.sha256` (`6232c047…`).
+- Build (isolated snapshots; baseline = `c46ccf2` + R0a follow-up): flash 577,736 to 577,832 B (+96); RAM 67,904 to 67,920 B (+16); pool 357,484 B, hot code 11,044 B and 1,468 B hot code headroom unchanged. Every placement, reserve, call-reach and range-X check passes. `DUELL_TIDE=0` is byte-identical to `jam/off.sha256` (`6232c047…`).
 
 Remaining for R0 acceptance: an emulator walkthrough of WAIT edits during a hold, then the device comparison when a package is requested. M1 is assigned to Codex; this branch's next local candidates are the M0 fixtures, then M2 or M3.
 
@@ -515,7 +515,7 @@ Verification:
 - USB/TRS pulse-input traces cover another 1,291 visits through the real clock handlers. USB fixtures have zero nominal one-block mismatches. The swung mixed TRS fixture has **19 nominal one-block mismatches** because interpolation uses whole-millisecond timestamps and tempo estimates change with pulse quantization. Across these wire-input traces, no predicted attack lies outside the measured three-block uncertainty bound, and no prediction misses an exactly coincident dispatch. This is explicitly weaker than exact future block prediction; no sub-millisecond wire precision is claimed.
 - Deliberately clashing, symmetric fixture: 64 eligible moves across both parts, 64 collisions under the existing independent direction versus 0 under dialogue, with unchanged attack count and every shared beat anchor retained. This numerical result does not establish a musical preference.
 - `tidecontrols`, `tidekeep`, `tidecrossings`, `clockguard`, `clockdrift` pass. The cleaned standalone timing test passes again after removing the temporary listening command from the tracked test.
-- Production image **577,832 to 579,528 B (+1,696 B)**. Ordinary RAM **67,920 B**, pool plus range Z **357,484 B**, hot audio code **11,044 B**, hot headroom **1,468 B**, all unchanged. All image/reserve/placement/call-reach/range-X checks pass. `DUELL_TIDE=0` package is byte-identical to `jam/off.sha256` (`6232c047c076ea52f836b1fffc25fb7c4706db8f8d856791f2d9a10e8b0ee9f3`).
+- Production flash **577,832 to 579,528 B (+1,696 B)**. RAM **67,920 B**, pool **357,484 B**, hot code **11,044 B**, hot code headroom **1,468 B**, all unchanged. All flash/reserve/placement/call-reach/range-X checks pass. `DUELL_TIDE=0` package is byte-identical to `jam/off.sha256` (`6232c047c076ea52f836b1fffc25fb7c4706db8f8d856791f2d9a10e8b0ee9f3`).
 - Pinned CPU-emulator package smoke passes boot, LCD, MIDI note-on/off and finite bounded audio. This does not prove device CPU, sound or MIDI.
 
 Reference comparison uses an isolated `c46ccf2` snapshot plus the accepted R0 source changes; the current branch's concurrent M2, credit/cover/web and migration-document edits are excluded and preserved. Evidence is under `work/roadmap-m1-build`: `baseline-build.log`, `candidate-final-build.log`, `final-regressions.log`, `final-onset-traces.log`, `final-dialogue-clean.log`, `off-build.log`, `package-smoke.log`, and retained `candidate.fwsc`/`candidate-app.bin`.
@@ -536,7 +536,7 @@ Source checkpoint: `17d306a`. Only `seq_voicelead.c` changes in firmware; the co
 
 - `sqm_voicelead` is now one bounded walk (`voicelead_walk`) run up to three times: the existing walk from no previous chord, measured; a second walk seeded with the first walk's last chord, measured; then the chosen one, written. The second is kept only when its whole-cycle movement (upper voices, chord to chord, plus last back to first) is strictly lower, so ties and already smooth loops keep today's voicing exactly. Per-chord candidates, scoring, constraints and the VOIC/MUSIC/PITCH gate are unchanged. No persistent state or pattern-sized scratch arrays; only fixed four-note temporaries, in the main loop. Worst case three times today's work.
 - New `tidevoicelead` group (strict ASan/UBSan): a loop whose first chord is written an octave below the rest (inner movement 28 to 4, join 24 to 0); an already smooth four-note loop unchanged; one chord unchanged; a chord tied across the join keeps its notes; repeated generation identical. 9,000 seeded random loops over chromatic and two other scales, with rests, ties, slides, single notes, triads and four-note chords: 15–17% improve, none change without a whole-cycle gain, and bass, pitch classes, note count, register 24..108, ±12 from the source, no duplicated voice and held/slid chords hold on every loop. **9,017 checks, 0 failures.** `tidecontrols`, `tidekeep`, `tidecrossings` and `tidedialogue` pass.
-- Build (isolated snapshots in `work/roadmap-m2-build`; baseline = `17d306a`): image 577,832 to 578,136 B (+304); ordinary RAM 67,920 B, pool + range Z 357,484 B, hot audio code 11,044 B and 1,468 B hot headroom unchanged. Every placement, reserve, call-reach and range-X check passes. The final combined M1/M2 measurement is recorded in the integration section below.
+- Build (isolated snapshots in `work/roadmap-m2-build`; baseline = `17d306a`): flash 577,832 to 578,136 B (+304); RAM 67,920 B, pool 357,484 B, hot code 11,044 B and 1,468 B hot code headroom unchanged. Every placement, reserve, call-reach and range-X check passes. The final combined M1/M2 measurement is recorded in the integration section below.
 
 Limits: ARP SEQ plays the held chord, not stored upper voices, so this has no effect there (M02 NIGHT ORGAN). Single-note lines and chord-size changes are not linked, as before. At this isolated M2a checkpoint, no emulator, listening or device check had been performed and nothing had been flashed or published. Combined software verification and installation followed below; M2 listening acceptance remains pending.
 
@@ -548,13 +548,13 @@ Combined verification used a fresh snapshot of `17d306a` plus the exact pending 
 
 | Region | Used | Capacity | Free | Required free |
 |---|---:|---:|---:|---:|
-| Application flash | 579,832 B | 581,564 B | 1,732 B | Fits slot |
-| Ordinary RAM | 67,920 B | 73,728 B | 5,808 B | 4,096 B |
-| Pool including range Z | 357,484 B | 368,640 B | 11,156 B | 8,192 B |
-| Hot audio RAM | 11,044 B | 12,512 B | 1,468 B | 228 B |
+| Flash | 579,832 B | 581,564 B | 1,732 B | Fits slot |
+| RAM | 67,920 B | 73,728 B | 5,808 B | 4,096 B |
+| Pool | 357,484 B | 368,640 B | 11,156 B | 8,192 B |
+| Hot code | 11,044 B | 12,512 B | 1,468 B | 228 B |
 | Range X | 31,584 B | 32,512 B | 928 B | Fits region |
 
-Combined image delta against R0: **+2,000 B flash**, no ordinary/pool/hot RAM growth. All reserves, placement, call reach and range-X closure checks pass. Application flash is tight; only 1,732 B remains. These are linked-build measurements, not live heap/CPU measurements or physical-unit validation.
+Combined delta against R0: **+2,000 B flash**, no RAM/pool/hot code growth. All reserves, placement, call reach and range-X closure checks pass. Flash is tight; only 1,732 B remains. These are linked-build measurements, not live heap/CPU measurements or physical-unit validation.
 
 Evidence and retained combined package: `work/merge-m1-m2-build/` (`integration-build.log`, `integration-tests.log`, `emulator-build.log`, `emulator-note.log`, `package-smoke.log`, `off-build.log`, `candidate.fwsc`). M1 retains the owner's favorable host A/B result; M2's listening comparison is still pending. No firmware write or release upload is part of this push. The repository's existing Pages workflow runs on a `jam11` push.
 
