@@ -2,13 +2,14 @@
 
 Status: design proposal, 3 November 2026; owner decisions recorded the same day (see the end). Nothing here is built. It is based on fork/jam11 `30212a1`. It also uses the uncommitted M8a TURNS and generative POLY work on branch `tide-turns` (`seq_poly.c`, `sqm_turns`, `sqm_auto`, `tide_store_load_min`), so recheck those names once that branch lands. Background and earlier reasoning are in [TIDE_MUSICAL_DESIGN.md](TIDE_MUSICAL_DESIGN.md) (M7, M8, M9). The delivery order is in the roadmap's "Musical delivery order".
 
-This document covers three steps, in this order. Each one is listened to and accepted before the next is built:
+This document covers four steps, in this order (step 4, STYLES, was added on 3 November). Each one is listened to and accepted before the next is built:
 
 | Step | What the owner hears | New TIDE SETTINGS row | Flash (est.) | RAM (est.) |
 |---|---|---|---:|---:|
 | 1. M7a/b SYNC | Movable chord hits drift towards the "and" and the occasional push into the beat | **SYNC** OFF / SOFT / PUSH | 300–450 B | 0 B |
 | 2. M8b/c ANSWER | One part leads for two bars while the other thins out, then they swap; later the answer echoes the call's rhythm | none: the **TURNS** row gains two values | 450–750 B | 16–20 B |
 | 3. M4/M9 ARC | 30–60-bar shapes: build, peak, optional 2-bar drop (automatic or by hand), sparse breakdown, recovery | **ARC** OFF / RISE / DROP | 1.1–1.7 KB | 9–13 B |
+| 4. STYLES | One row picks a genre: DUB / DEEP / MINIMAL / AMBIENT / PEAK set the other rows together | **STYLE** (top row) | 250–370 B | 1 B |
 
 All estimates are for the linked application image and have not been built. A fresh TIDE build of jam11 + the GLO fix (with boot-lz `ecd2918`), measured 3 November 2026: application 556,548 of the 581,564 B slot (about 25.0 KB free); RAM .data+.bss 67,936 of 73,728 B (5.8 KB free); pool 323,840 of 368,640 B. Pending branches (MULTIS preview, TURNS/POLY, U1, F05–F07, M3) take roughly 3–5 KB of that flash. All three steps together (about 2–3 KB flash, under 40 B RAM) fit without S0c/S0e or a drop.
 
@@ -243,19 +244,81 @@ A 10-minute session per setting (OFF, RISE, DROP) with M04 DUB CHORD in JRNY, TU
 5. **HOME during an arc.** Leaves it running (recommended) / restarts at RISE.
 6. **Arc lengths.** *Owner decision (3 November): 30–60-bar shapes.* One constant table; tune by ear.
 
+## 4. TIDE STYLES: one knob for the genre
+
+Owner request, 3 November 2026. A **STYLE** row at the top of TIDE SETTINGS sets the other rows together, so a style is chosen in one move. It is a preset of existing rows only. It adds no generator behaviour, and every row stays editable afterwards.
+
+### Values
+
+STYLE: DUB / DEEP / MINIMAL / AMBIENT / PEAK / CUSTOM. PEAK is the one added style. It is the only style that uses ARC DROP and ECHO, so the build-and-drop work has a one-move setting for the moments the owner wants it.
+
+"GLIDE" in the request is read as the glide's MODE column (the GLIDE column itself is the launch fader, not a setting). TIME is the trip length and WAIT the hold. TARGET, ROLL, ARP and PITCH are not set: they choose *what* TIDE may change, not the genre.
+
+| STYLE | MODE | TIME | WAIT | VARY BARS | TURNS | POLY | SYNC | ARC | WASH | Musical reason |
+|---|---|---|---|---|---|---|---|---|---|---|
+| DUB | JRNY | 16 bars | 2 bars | 4 + 8 | LEAD | GENTLE | SOFT | RISE | OFF | Off-beat chords that hold and change at the turnaround, two parts trading phrases, sounds wandering slowly through the palette: the showcase. |
+| DEEP | WNDR | 32 bars | 4 bars | 4 + 8 | ALTERNATE | OFF | SOFT | RISE | LOW | Deep house keeps one warm chord sound and lets it breathe: slow walks around the same sound, steady grid, a little wash, gentle rises. |
+| MINIMAL | WNDR | 8 bars | 0 | ALL | LEAD | WIDE | PUSH | OFF | OFF | Minimal lives on small changes every bar and loops shifting against the kick; no big arcs, so the groove never stops. |
+| AMBIENT | JRNY | 64 bars | 8 bars | 4 + 8 | TOGETHER | GENTLE | OFF | OFF | HIGH | A bed rather than a groove: very long sound journeys, straight placement, slow phasing, the most wash. |
+| PEAK | JRNY | 8 bars | 0 | ALL | ECHO | GENTLE | PUSH | DROP | OFF | Peak-time sets: busy, pushed, call and echo, buildups and drops (automatic and by hand). |
+| CUSTOM | — | — | — | — | — | — | — | — | — | Whatever the rows hold. Picking CUSTOM changes nothing. |
+
+Picking a style writes all its rows at once, through the same setters a hand edit uses (`jl_put()`, `gl.*`), so a running glide reacts exactly as if each value had been turned by hand. Values for rows not built yet (SYNC, ARC, LEAD/ECHO before steps 1–3) are ignored until those rows exist. For that reason STYLE ships after step 3.
+
+### Default at first start
+
+With no TIDE record (a new unit, ERASE DATA, the emulator), STYLE is **DUB**. DUB's values on the existing rows are exactly today's no-record defaults (`gl` initialiser in `morph_glide.c`: JRNY, 16 bars, WAIT 2 bars; VARY 4 + 8; WASH OFF; TARGET BOTH stays as it is). The first-start showcase (M04 DUB CHORD, `TIDE_FIRST_MULTI`) therefore starts as it does today, plus the accepted new rows. If a later default of an existing row changes, DUB's table changes with it.
+
+### Hand edit → CUSTOM
+
+One check in `tide_settings()` (`tide_ui.c`), which already compares the settings with `tide_seen` every frame. When STYLE ≠ CUSTOM and any of the nine owned values differs from that style's table entry, STYLE becomes CUSTOM and the values stay. This one place catches every path: TIDE page knobs (MODE, TIME, WAIT), TIDE SETTINGS rows, OCT− + K3/K4 resets and MIDI. It never switches back to a named style by itself, even if the values happen to match one again.
+
+### Record byte
+
+`TS_STYLE`, index 11: one byte appended after `TS_ARC`, giving 12 of 32 bytes. The rule from "The TIDE SETTINGS record" applies: `TIDE_STORE_VER` stays 1 and `TS_OLD` stays 7.
+
+- An old record (7, 9 or 11 bytes) has no STYLE byte, so it loads as **CUSTOM** with every stored value kept. An update never changes the owner's settings.
+- No record at all: DUB, which is today's behaviour.
+- An out-of-range byte loads as CUSTOM.
+- Downgrade: older firmware ignores byte 11.
+
+The row is `JL_STYLE`, inserted first in the `JL_*` enum. The record order is independent of the row order, so nothing else moves.
+
+### Cost
+
+A const table of 5 styles × 9 bytes (45 B), apply and compare code 150–250 B, and the row 50–70 B. About **250–370 B flash, 1 B RAM.**
+
+### Tests (extend `tide_controls_test.c`)
+
+- Each style sets exactly its nine rows and leaves TARGET, ROLL, ARP and PITCH unchanged. Picking CUSTOM changes nothing.
+- Every manual path (MODE/TIME/WAIT knobs, each owned TIDE SETTINGS row, OCT− + K3/K4, MIDI where mapped) switches STYLE to CUSTOM and keeps the edited value and all others. Edits to TARGET/ROLL/ARP/PITCH leave STYLE alone. Setting the values back by hand stays CUSTOM.
+- Round trip: no record → DUB, with the existing rows equal to today's defaults. 7-, 9- and 11-byte records → CUSTOM with their stored values. A 12-byte record → its style and values. An out-of-range style byte → CUSTOM. A style chosen, then a power cycle → the same style and values, and the record is written once per change, not every frame.
+- A style picked while a glide runs: the same result as turning the rows by hand (existing glide tests with the new setter path).
+
+### Listening test with the TR-6S
+
+Step through DUB, DEEP, MINIMAL, AMBIENT and PEAK for 32–64 bars each on M04 next to a steady TR-6S groove. Each should be recognisable within a minute without looking. Merge or drop a style that sounds like its neighbour (for example DEEP and DUB).
+
+### Open decisions
+
+1. **PEAK as a sixth style.** *Recommended: yes.* Without it, ARC DROP and ECHO are never reached from a style.
+2. **WASH in DUB.** OFF (today's showcase, recommended) / LOW (more dub space, but it changes the first start).
+3. **MODE in DEEP and MINIMAL.** WNDR (keeps the sound family, recommended) / JRNY.
+
 ## Settings summary
 
 | Row | Values | Default | Record byte | Old record |
 |---|---|---|---|---|
+| STYLE (new, top row) | DUB / DEEP / MINIMAL / AMBIENT / PEAK / CUSTOM | DUB (no record) | `TS_STYLE` (index 11) | absent → CUSTOM, stored values kept |
 | TURNS (exists on `tide-turns`) | TOGETHER / ALTERNATE / LEAD / ECHO | ALTERNATE, LEAD once accepted | `TS_TURNS` (index 7) | absent → ALTERNATE |
 | SYNC (new) | OFF / SOFT / PUSH | SOFT once accepted | `TS_SYNC` (index 9) | absent → default |
 | ARC (new) | OFF / RISE / DROP | OFF until accepted, then RISE | `TS_ARC` (index 10) | absent → default |
 
-Total: 11 of 32 record bytes. No new pages, modes or saved pattern data.
+Total: 12 of 32 record bytes. No new pages, modes or saved pattern data.
 
 ## Budget and order
 
-Build each step on its own, measure the image after each, and do not bundle them. Suggested order: the metric helper + SYNC (smallest, needed by the others), then LEAD, then ECHO, then ARC. Space is not expected to be the limit (see the figures at the top). Fallback only, if a later measurement shows flash running out: the cuts in order of least loss are the ECHO value (≈ 150–200 B), the ARC status text, and the ARC sound bias (keeping rhythm-only arcs). ARC DROP's mask costs little once LEAD's mask exists.
+Build each step on its own, measure the image after each, and do not bundle them. Suggested order: the metric helper + SYNC (smallest, needed by the others), then LEAD, then ECHO, then ARC, then STYLES. Space is not expected to be the limit (see the figures at the top). Fallback only, if a later measurement shows flash running out: the cuts in order of least loss are the ECHO value (≈ 150–200 B), the ARC status text, and the ARC sound bias (keeping rhythm-only arcs). ARC DROP's mask costs little once LEAD's mask exists.
 
 ## Owner decisions, 3 November 2026
 
@@ -263,6 +326,6 @@ Build each step on its own, measure the image after each, and do not bundle them
 2. TURNS gains LEAD and ECHO (TOGETHER / ALTERNATE / LEAD / ECHO); no new row.
 3. ARC ships the hand drop gesture (OCT− held + K2 on the TIDE page) now, alongside the automatic drops; not automatic-only.
 4. ARC uses 30–60-bar shapes with a brightness-only sound bias first; harshness (M9a) is a later decision.
-5. The budget fits: about 25 KB flash free before the pending branches' 3–5 KB. Build in the order SYNC, LEAD, ECHO, ARC, each measured on its own; the cut order is a fallback only.
+5. The budget fits: about 25 KB flash free before the pending branches' 3–5 KB. Build in the order SYNC, LEAD, ECHO, ARC, STYLES, each measured on its own; the cut order is a fallback only.
 
 Still open, with the recommended defaults above: SYNC/TURNS/ARC defaults after listening, the push cap, lead order, thinning amount, HOME during an arc, and whether a hand drop restarts RISE.
