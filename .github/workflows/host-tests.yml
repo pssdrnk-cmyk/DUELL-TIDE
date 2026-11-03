@@ -32,8 +32,13 @@ jobs:
         with:
           node-version: "20"
 
-      - name: numpy (benchaudio)
-        run: python3 -m pip install --quiet numpy
+      - name: Python packages (the generators: Pillow, fontTools; benchaudio: numpy)
+        run: |
+          sudo apt-get install -y -qq libfribidi0 libraqm0      # (Pillow's text layout: without Raqm the fonts are drawn differently)
+          python3 -m pip install --quiet pillow==12.3.0 fonttools==4.65.0 numpy
+
+      - name: Generated headers (the device build's, without its toolchain)
+        run: cd felucca-base && python3 tools/build.py --gen-only
 
       - name: Host tests (all groups)
         shell: bash               # (an explicit bash runs with pipefail: tee keeps the runner's exit code)

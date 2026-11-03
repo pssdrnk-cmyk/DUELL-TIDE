@@ -527,7 +527,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--release", nargs="?", const="", metavar="X.Y", help="release build: a folder release-<VERSION>-beta/ too. The version is always the VERSION file; an X.Y given here is ignored")
     ap.add_argument("--sdk", type=Path, help="JieLi AC79 SDK checkout (default: $AC79_SDK)")
+    ap.add_argument("--gen-only", action="store_true", help="only the generated headers (build/gen): what the host tests need, no toolchain or SDK")
     a = ap.parse_args()
+    if a.gen_only:
+        generate()
+        return
     ver = read_version()
     tag = f"{ver}-beta" if ver.startswith("0.") else ver    # 1.0 and later: duell-1.0.fwsc, no -beta
     if a.release:
