@@ -30,6 +30,12 @@ static void tide_wait_text(char *val, uint32_t n, const char **unit)
     }
 }
 
+/* JOURNEY's memory (tide_journey): the last JH_N sounds each part was sent to, newest first, as sound + 1 of engine jh_eng (0:
+ * none). RAM only, never saved; cleared when a WNDR/JRNY session starts (glide_start) and on HOME */
+#define JH_N 4u
+static uint8_t jh[2][JH_N], jh_eng[2];
+static void jh_clear(uint32_t k) { jh[k & 1u][0] = jh[k & 1u][1] = jh[k & 1u][2] = jh[k & 1u][3] = 0; }
+
 /* OCT- + K1 on JAM: home. The glide stops, each part of mask back to its Original sound (its ends rebased, the fader at A: End B
  * a roll again) and pattern (End A the Original, End B a variation) */
 static void tide_home(uint32_t mask)
@@ -39,6 +45,7 @@ static void tide_home(uint32_t mask)
     for (k = 0; k < NSHOWN; k++) {
         if (!((mask >> k) & 1u))
             continue;
+        jh_clear(k);
         morph_rebase_part(k);
         seqm_home(k);
     }
@@ -277,6 +284,38 @@ static int tide_taken(uint32_t k, uint32_t e, uint32_t j)   /* 1: the other part
         return 0;
     return (!t->user && t->preset == j) || morph_to_of(o, 0u) == (int32_t)j || morph_to_of(o, 1u) == (int32_t)j;
 }
+/* the candidates pick[0..n) of part k without its last h targets, for the most h that leaves any (the oldest forgiven first: a
+ * group of four or fewer sounds still turns); n unchanged where none is in the history or the memory is empty */
+static uint32_t jh_filter(uint32_t k, uint32_t e, uint32_t *pick, uint32_t n)
+{
+    uint32_t h, i, m, j;
+    if (jh_eng[k] != e) {                                /* (another engine: the sounds it holds are not these) */
+        jh_clear(k);
+        jh_eng[k] = (uint8_t)e;
+    }
+    for (h = JH_N; h; h--) {
+        for (i = m = 0; i < n; i++) {
+            for (j = 0; j < h && jh[k][j] != pick[i] + 1u; j++)
+                ;
+            m += j == h;
+        }
+        if (m)
+            break;
+    }
+    if (!h || m == n)
+        return n;
+    for (i = m = 0; i < n; i++) {
+        for (j = 0; j < h && jh[k][j] != pick[i] + 1u; j++)
+            ;
+        if (j == h)
+            pick[m++] = pick[i];
+    }
+    return m;
+}
+static void jh_push(uint32_t k, uint32_t c)
+{
+    jh[k][3] = jh[k][2], jh[k][2] = jh[k][1], jh[k][1] = jh[k][0], jh[k][0] = (uint8_t)(c + 1u);
+}
 static void tide_journey(uint32_t mask, uint32_t x, uint32_t snd, uint32_t seq)
 {
     uint32_t k, j, n, c, pass, pick[64], r = morph_new_seed();
@@ -294,11 +333,14 @@ static void tide_journey(uint32_t mask, uint32_t x, uint32_t snd, uint32_t seq)
                     if ((t->user || pass == 2u || ds_cat_of(e, j) == cat) && (int32_t)j != at && (pass || (int32_t)j != was) &&
                         !tide_taken(k, e, j))
                         pick[n++] = j;
+            n = jh_filter(k, e, pick, n);
             c = n ? pick[(r >> 8) % n] : 0u;
             if (n > 1u)
                 c = sound_complement_pick(k, e, c, pick[(r >> 16) % n], r >> 4);
             if (!n || !morph_to_sound(k, x, c))
                 gl_sound_roll(k, 1u << k, x);
+            else
+                jh_push(k, c);                           /* (only a target really adopted is remembered) */
             if (morph_isfm(morph_ready(k))) {
                 /* The scale checked the notes before the FM6 patch transpose.
                  * JRNY changes colour; keep the part's reference key. */
