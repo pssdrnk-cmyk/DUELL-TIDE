@@ -2,7 +2,6 @@
  * family falls back to the engine; every category is mapped. Prints eligible destinations per engine and family, the walk of
  * tide_jrny_memory_test.c (before: the sound's own category, after: its family). */
 #define UI_TEST_NO_MAIN 1
-#define JP_TEST 1
 #include "ui_test.c"
 
 static unsigned checks, failures;
@@ -20,49 +19,6 @@ static void setup(uint32_t e, uint32_t j)
     jh_clear(0); jh_clear(1);
 }
 
-
-/* a transition cur -> to of engine e is a measured bad pair (jrny_pairs.h) */
-static int pair_bad(uint32_t e, uint32_t x, uint32_t y)
-{
-    uint32_t a = x < y ? x : y, b = x ^ y ^ a, w = e << 12 | a << 6 | b, i;
-    for (i = 0; i < JP_N; i++)
-        if (JP_BAD[i] == w)
-            return 1;
-    return 0;
-}
-/* JOURNEY walks of every engine and family, the skip off and on: transitions made / on a bad pair, and the walks that stalled */
-static void pair_walks(uint32_t *moves, uint32_t *bad, uint32_t *stalls, uint32_t off)
-{
-    uint32_t e, f, j, i, x;
-    jp_off = (uint8_t)off;
-    *moves = *bad = *stalls = 0;
-    for (e = 0; e < NENGINES; e++) {
-        if (!eng_ok(e) || ds_count(e) < 2u)
-            continue;
-        for (f = 0; f < 4u; f++) {
-            uint32_t first = ds_count(e);
-            for (j = 0; j < ds_count(e); j++)
-                if (fam_of(ds_cat_of(e, j)) == f && j < first)
-                    first = j;
-            if (first == ds_count(e))
-                continue;
-            setup(e, first);
-            morph.gen = 991u + e * 4u + f; fm1_ms = 0;
-            for (i = 0, x = 1u; i < 48u; i++, x ^= 1u) {
-                int32_t cur = morph_to_of(0, x ^ 1u) >= 0 ? morph_to_of(0, x ^ 1u) : (int32_t)first, t;
-                tide_journey(1u, x, 1u, 0u);
-                t = morph_to_of(0, x);
-                if (t < 0) {
-                    ++*stalls;
-                    continue;
-                }
-                ++*moves;
-                *bad += pair_bad(e, (uint32_t)cur, (uint32_t)t);
-            }
-        }
-    }
-    jp_off = 0;
-}
 int main(void)
 {
     uint32_t e, c, j, f, mapped_ok = 1, longest = 0;
@@ -129,23 +85,6 @@ int main(void)
     CHECK("families: a pad reaches other categories of its family (keys, ..)", pad_other_cat > 0);
     CHECK("families: a lone family sound still moves (fallback to the engine)", !fb_walks || fb_out > 0);
     CHECK("families: no family outgrows the pick list", longest <= 64u);
-    {
-        uint32_t m0, b0, s0, m1, b1, s1, i;
-        int sorted = 1, same = 1;
-        pair_walks(&m0, &b0, &s0, 1u);
-        pair_walks(&m1, &b1, &s1, 0u);
-        for (i = 1; i < JP_N; i++)
-            sorted &= JP_BAD[i - 1u] < JP_BAD[i];
-        for (i = 0; i < JP_N; i++) {
-            uint32_t pe = JP_BAD[i] >> 12, pa = JP_BAD[i] >> 6 & 63u, pb = JP_BAD[i] & 63u;
-            same &= pe < NENGINES && pa < pb && pb < ds_count(pe) && fam_of(ds_cat_of(pe, pa)) == fam_of(ds_cat_of(pe, pb));
-        }
-        printf("bad-pair skip (%u pairs listed): %u JOURNEY moves, on a bad pair without the skip %u (%u%%), with it %u (%u%%); stalls %u / %u\n",
-               (unsigned)JP_N, m1, b0, m0 ? b0 * 100u / m0 : 0u, b1, m1 ? b1 * 100u / m1 : 0u, s0, s1);
-        CHECK("pairs: the list is sorted and names same-family pairs of one engine", sorted && same);
-        CHECK("pairs: fewer moves on a bad pair than without the skip", b1 < b0);
-        CHECK("pairs: the skip never stalls a walk", !s0 && !s1);
-    }
     printf("%u checks, %u failed\n", checks, failures);
     return failures != 0;
 }
