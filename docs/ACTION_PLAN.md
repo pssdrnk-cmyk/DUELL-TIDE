@@ -1,21 +1,23 @@
 # Maintenance action plan for agent handoff
 
-Prepared 2 November 2026. **First supervised batch complete.** Three GPT-6 Luna agents delivered P1/P2/P4; the P2 agent then scoped and implemented P3. The coordinator reviewed, corrected and checked P1/P3, and applied them locally without committing or installing. The [roadmap](ROADMAP.md) owns programme priorities and installed status. This file supplies bounded tasks, their order and their acceptance criteria; update task status here and programme status there.
+Prepared 2 November 2026; status reconciled 3 November 2026. **First supervised batch complete, committed and flashed (part of every package since `ecd2918`, 3 November).** Three GPT-6 Luna agents delivered P1/P2/P4; the P2 agent then scoped and implemented P3. The coordinator reviewed, corrected and checked P1/P3, initially applying them locally; subsequent commits are `61eb641` (packing) and `89a9a77` (navigation). The [roadmap](ROADMAP.md) owns product priorities and the musical delivery order. Detailed batch briefs below are retained for continuity, not an instruction to launch another agent batch.
+
+**Current state:** the test-tree cleanup is finished (full check 112 pass / 0 fail / 25 skip, see the [test baseline](JAM11_TEST_BASELINE.md)). Future implementation uses the affected checks; whole-tree cleanup is no longer a gate.
 
 ## Outcome and scope
 
 Create useful application-flash headroom, simplify one inherited responsibility, and establish a compatible way to offer genuinely empty user voice and pattern slots while retaining the factory library. Keep sound, controls, saved records, KEEP/UNDO and manual takeover intact.
 
-The first delivery milestone is **one integrated, checked change with a positive net application-flash saving**, plus a short decision on the next memory candidate. A successful cleanup may save no bytes; report that separately. An unsuccessful experiment may be closed with evidence, but does not satisfy the flash-saving milestone. Musical expansion remains deferred. General save/backup improvements are a separate backlog.
+The first delivery milestone, **one integrated, checked change with a positive net application-flash saving**, is achieved in source. The full read-only firmware audit is complete; findings and coverage are retained at `work/audit/firmware-review-2026-11-03/AUDIT.md`, with correction candidates in roadmap A1. P7/U1 is a small planned convenience: 4–8 clear voice/pattern save destinations using existing addresses/overwrite behaviour while keeping factory access. It is not a gate to musical work. Exact live-morph restart preservation is not required. Current audio polish is accepted. TIDE configuration backup across flashes is a useful bounded follow-up; future settings-field growth is compatibility bugfixing. Further compaction should serve a selected feature's measured budget.
 
 ## Starting point and dispatch rules
 
 - Target: `work/wt/duell-jam11`, branch `jam11`; observed HEAD `7c22b13e1973d9388a0f2e57bffe78f694b599b6`. This is a planning reference, not an instruction to reset a newer checkout.
 - At preparation, README and several documentation files had existing edits; the reorganized roadmap/design/history were untracked, as was `felucca-base/nul.exe`. Preserve them. Test repair is an existing independent workflow; `backup`, `patch`, `patchraw` and `bank` have recorded focused passes. See the [test baseline](JAM11_TEST_BASELINE.md).
-- The installed package is still the one recorded in the roadmap, from `e176f6e` / firmware `7535916`. Branch HEAD, test repairs and a candidate build do not change installation status.
+- At preparation the installed package was `e176f6e` / firmware `7535916`. Since then `ecd2918` (boot pack) and `187e9d0` (`polish-all`, F01–F04) were flashed on 3 November; the roadmap records the current installed package. Branch HEAD, test repairs and a candidate build do not change installation status.
 - Before dispatch, the coordinator checks current HEAD, diff and active file ownership, and gives every agent an exact common source revision. Include any relevant uncommitted source explicitly; do not silently omit it. Supply this plan and the current roadmap when they are not yet part of that revision.
 - Reuse a suitable isolated checkout; create a managed worktree through the app's worktree tools only when needed. Do not have multiple agents edit or build in the shared `jam11` checkout. Give each candidate separate build output and log paths. Do not reuse or reset another workflow's worktree.
-- Three agent lanes plus the coordinator fit the available four slots. Only the coordinator edits the roadmap, action-plan status, shared test-baseline notes, build policy or common test runner. Agents return a patch/diff and evidence for review; publishing, installing and destructive cleanup are separate actions.
+- The completed batch used three agent lanes plus the coordinator. The test-tree cleanup is finished; the historical batch ownership is not current authority. Publishing, installing and destructive cleanup remain separate actions.
 - These are task briefs, not replacement engineering instructions. Read applicable owner/project instructions. No new agent-instruction files are needed.
 
 ## Queue and dependencies
@@ -23,33 +25,33 @@ The first delivery milestone is **one integrated, checked change with a positive
 | ID | Roadmap | Deliverable | Ready when | State |
 |---|---|---|---|---|
 | P0 | E1/E3 | Pinned source and comparable baseline | Coordinator starts | Complete: `7c22b13`; on/off builds retained; old off hash reproduced |
-| P1 | E1/E4 | Lossless factory-voice packing candidate | P0 | Applied locally: 1,888 B net TIDE-on flash saved; exhaustive C equivalence passes |
+| P1 | E1/E4 | Lossless factory-voice packing candidate | P0 | Committed `61eb641`: 1,888 B net TIDE-on flash saved in retained build; exhaustive C equivalence passes |
 | P2 | E1 | Temporary-buffer lifetime decision | P0 | Reviewed: project/storage overlap rejected; OTA reuse could save 512 B pool RAM, estimate only |
-| P3 | E2/E3 | One focused UI/input simplification | P0; ownership clear | Applied locally: shared GLO knob-jump helper; 48 B additional flash saved; input checks pass |
+| P3 | E2/E3 | One focused UI/input simplification | P0; ownership clear | Committed `89a9a77`: shared GLO knob-jump helper; 48 B additional flash saved in retained build; input checks pass |
 | P4 | U1 | Free-slot design and measured feasibility | P0; a lane becomes free | Reviewed proposal: FACTORY/USER groups, unchanged record IDs; no feature implemented |
 | P5 | E4/E3 | Next supported memory reduction | P2 decision; coordinator selects it | Parked: OTA-path verification cost for 512 B RAM is not the immediate flash priority |
-| P6 | E1–E4 | Integrated maintenance candidate and receipt | Each selected implementation passes its own checks | Complete locally: 1,936 B flash saved, all measured RAM/code regions unchanged; not installed |
-| P7 | U1 | Compatible free-slot implementation | P4 reviewed; user-facing/storage choices settled; budget demonstrated | Conditional |
+| P6 | E1–E4 | Integrated maintenance candidate and receipt | Each selected implementation passes its own checks | Complete: 1,936 B flash saved in its build, all measured RAM/code regions unchanged; flashed since as part of `ecd2918` and later packages |
+| P7 | U1 | 4–8 clear user save destinations | Smallest compatible UI/address choice; measured budget | Planned convenience; no capacity migration/full browser redesign required; stopped saves sufficient |
 | P8 | E5 | Reviewed retirement list | Maintenance work no longer needs the artifacts | Parked; inventory only |
 
-**Batch receipt:** `work/outputs/maintenance/run-20261102-1922/SUPERVISOR.md`, with the exact source manifest, patch, measured on/off artifacts and focused logs. The combined TIDE-on image is 577,920 B, leaving 3,644 B; ordinary RAM, pool+Z, X and hot audio code are unchanged. Strict `bank`, `tidekeep`, `tidecontrols`, `knobjump` and `sidechain` checks pass; pinned package CPU-emulator smoke passes. These are software results, not a hardware acceptance or installation.
+**Batch receipt:** `work/outputs/maintenance/run-20261102-1922/SUPERVISOR.md`, with the exact source manifest, patch, measured on/off artifacts and focused logs. The combined TIDE-on flash is 577,920 B, leaving 3,644 B; RAM, pool, range X and hot code are unchanged. Strict `bank`, `tidekeep`, `tidecontrols`, `knobjump` and `sidechain` checks pass; pinned package CPU-emulator smoke passes. These are software results, not a hardware acceptance or installation.
 
-**Next dispatch:** turn the reviewed P4 proposal into a narrow P7 brief after settling the visible USER rows/labels and grouped editor capability. Preserve occupied records; do not promise four empty rows on an arbitrarily full store. P5 remains parked. Unrelated legacy-test repairs and storage-backlog fixes are not prerequisites.
+**Next selection:** choose bounded corrections from the completed firmware audit's verified A1 findings. Keep a P7 brief to four initial save destinations per kind, up to eight if the same approach fits, with simple labels and factory access. Existing overwrite saving is acceptable; preserve occupied records and old editor compatibility. Do not require a new grouped-editor protocol, physical capacity expansion, exact live End-B continuation, or live-save workflow. P5 remains parked. TIDE configuration archive/restore can be a separate small change; settings-record extension should preserve old fields and default only missing new fields.
 
-If P1 produces no worthwhile net saving, close that experiment explicitly. Compare the factory-multi option and any supported P2 candidate before assigning the next compaction task; do not expand P1 into several codecs or change audio quality to obtain a number.
+P1's positive net saving is established; do not reopen it as an uncompleted experiment. Compare factory-multi packing or another supported candidate only if a selected feature needs more room. P5 remains parked because its RAM estimate does not address the flash constraint.
 
 ## P0 — coordinator: pin the baseline
 
 1. Record current source revision, relevant dirty changes and existing worker ownership. Resolve overlapping write ownership before dispatch, without discarding concurrent work.
 2. Make one production TIDE-on build of the pinned source using the existing Windows/Git Bash environment. Retain its build log, ELF/package and package SHA-256 under a unique evidence directory.
-3. Record application flash, ordinary RAM, pool plus Z, X and hot-code use, physical headroom and enforced reserves. Use the build's placement/call-reach/range-X checks. The installed figures are historical comparison only.
+3. Record flash, RAM, pool, range X and hot-code use, physical headroom and enforced reserves. Use the build's placement/call-reach/range-X checks. The installed figures are historical comparison only.
 4. Pass agents the source identity, baseline receipt and allowed file set. A worker may investigate while the baseline builds; candidate measurements must use comparable flags/toolchain and the same source starting point.
 
 **Done:** all workers can identify what their before/after numbers compare. No broad-suite repair or device session is required for this step.
 
 ## P1 — agent: recover flash through lossless factory-voice packing
 
-**Goal:** reduce the linked application image without changing any factory sound or its identity.
+**Goal:** reduce the linked firmware in flash without changing any factory sound or its identity.
 
 **Write ownership:** `felucca-base/tools/gen_duell_sounds.py`, `felucca-base/firmware/src/sounds.c`, and a narrowly scoped packing-equivalence test. Coordinate any existing test-file edit with its current owner. Generated headers are build outputs. Keep authored `duell_sounds.py` recipes and saved-record formats unchanged. Request a scope adjustment before touching the common runner, loader interfaces or other firmware modules.
 
@@ -100,6 +102,8 @@ Separate estimates from linked savings. Do not propose shrinking delay, performa
 **Stop:** one focused simplification. No page redesign, new controls, font/canvas changes or broad editor/test rewrite.
 
 ## P4 — agent: design genuinely empty voice and pattern slots
+
+**3 November scope clarification:** the owner accepts overwriting existing sounds and wants only 4–8 clear USER destinations. The original broad investigation below is retained as evidence; do not treat full catalogue/editor redesign, exact restart continuation or additional physical storage as requirements.
 
 **Mode:** read-only feasibility and user-flow proposal. No layout, migration, capacity or protocol changes yet.
 
@@ -158,7 +162,7 @@ Each agent returns **one short receipt** under `work/outputs/maintenance/<task-i
 Task / result: candidate | investigation complete | rejected | blocked
 Source: exact baseline revision + any included dirty source; candidate identity/diff
 Files changed and behavior preserved or deliberately proposed
-Measurements: before -> after -> delta for flash, ordinary RAM, pool+Z, X, hot
+Measurements: before -> after -> delta for flash, RAM, pool, range X, hot code
              (use "not measured" for investigation; label estimates)
 Checks: exact commands, observed pass/fail/skip, relevant log/artifact paths
 Risks/choices: remaining limitation, next decision, installation state

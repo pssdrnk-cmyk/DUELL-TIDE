@@ -361,6 +361,29 @@ static uint32_t sq_vel(track_t *t)
             return t->v[i].vel;
     return 0;
 }
+/* an arp on MIDI note 0 (C-1): its gate ends it like any other (arp_note 0 also reads as none: arp_nz marks it sounding) */
+static int arp_note0(void)
+{
+    int bad = 0;
+    uint32_t n, per, tries;
+    track_t *t = &trk[0];
+    for (n = 0; n < 2u; n++) {
+        reset();
+        t->p[P_AMODE] = 1; t->p[P_AOCT] = 1; t->p[P_APROB] = 127; t->p[P_AGATE] = 64; t->p[P_ARATE] = 2; scale_g = 0;
+        per = div_samples(2);
+        t->nheld = 1; t->held[0] = (uint8_t)n; memset(held_key[0], 0, sizeof held_key[0]);
+        t->arp_pos = 0xFFFFFFF; t->arp_idx = 0xFFFFFFFFu;
+        arp_tick(t, per);
+        vs_block();
+        bad += check(n ? "ARP on note 1: sounds" : "ARP on note 0: sounds", gate_note(t, n) && ngated(t) == 1u);
+        for (tries = 0; tries < 2u; tries++)
+            arp_tick(t, per / 4u);
+        bad += check(n ? "  note 1: the gate ends it" : "  note 0: the gate ends it, like note 1", !gate_note(t, n) && !ngated(t) && !t->arp_nz && !t->arp_note);
+        t->nheld = 0; trk_all_off(t);
+    }
+    return bad;
+}
+
 static int arp_seq_mode(void)
 {
     int bad = 0;
@@ -622,7 +645,7 @@ static int snap_follow(void)
 
 int main(void)
 {
-    int bad = global_scale() + theory() + shapes_voicings() + keys() + arp_rec() + arp_seq_mode() + midi_in() + kits() + snap_follow();
+    int bad = global_scale() + theory() + shapes_voicings() + keys() + arp_rec() + arp_seq_mode() + arp_note0() + midi_in() + kits() + snap_follow();
     printf("%s\n", bad ? "CHORD TEST FAILED" : "chord keys test passed");
     return bad != 0;
 }

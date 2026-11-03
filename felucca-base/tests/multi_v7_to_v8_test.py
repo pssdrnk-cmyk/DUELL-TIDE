@@ -32,7 +32,7 @@ def ok(c, what):
 
 
 # the tags are not on every clone (the GitHub fork has none): the commits they name, which jam11 contains, are the fallback
-TAG_COMMIT = {"v1.0": "e1ef5a74ac70a68f8b7e2bebee31e03f1ffc3a12", "v1.1": "974d87509e7e89db0738c731c8a657968e60e498"}
+TAG_COMMIT = {"v1.0": "33e2e2ed36a9d1a33a39ac1d1f06282c9045aab0", "v1.1": "974d87509e7e89db0738c731c8a657968e60e498"}
 
 
 def git_show(ref, path):

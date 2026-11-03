@@ -1,14 +1,22 @@
 # TIDE musical design notes
 
-Status: deferred proposals, retained 2 November 2026. Active priorities and delivery state live in [the roadmap](../ROADMAP.md). No feature in this document is made active merely by being described here.
+Status: planning proposals reviewed against source `6af479d` on 3 November 2026. Active priorities and delivery order live in [the roadmap](../ROADMAP.md). No new musical firmware is implemented by this review. The separate test-tree cleanup is finished; no test changes are assigned here.
 
-These notes preserve the owner's musical concepts, including polymeter and CHANGE/ENERGY/ARC, and their open decisions. Existing-behavior descriptions reflect the original design review; recheck affected source before implementation. Resource estimates and prior delivery receipts are retained in the [historical snapshot](../history/TIDE_ROADMAP_2026-11-02.md), not a current memory budget.
+These notes preserve the owner's musical concepts, including polymeter and CHANGE/ENERGY/ARC, and their open decisions. Recheck affected source before implementation. Resource descriptions below identify work/cost risks, not measured allocations or proof that the queue fits. The installed package (`187e9d0`) has about 24.9 KB flash free after the boot pack (`ecd2918`); any newer candidate needs its own linked budget. Prior estimates and delivery receipts remain in the [historical snapshot](../history/TIDE_ROADMAP_2026-11-02.md).
 
-M4 and M9 overlap: retain both descriptions until the owner resolves the arrangement policy; implement one scheduler rather than two. M3's four-entry destination history is ephemeral session state, unrelated to saving generated patterns to flash. Exact session restart continuity is a separate storage concern.
+M4 and M9 describe one future arrangement feature: use M9's musical intent with M4's restraint/recovery safeguards and one musical-time planner. Keep the alternative sketches below as design input, not two implementation tasks. Drop ownership, full-stop enablement and final phase policy remain open. M3's four-entry destination history is ephemeral session state. The owner does not require exact live-morph restart continuation. Saving stays simple: 4–8 USER destinations, existing overwrite behaviour acceptable, stopped saves sufficient. TIDE configuration backup is useful; future field growth is compatibility bugfixing. Current audio polish is accepted, so M5/M10 only become work for a demonstrated defect/regression or chosen feature change.
+
+## Idea — broader musical roles for the two-part palette
+
+Owner suggestion, 3 November 2026; an idea for discussion, with no implementation or priority assigned. Two parts are plenty; there is no desired track-count expansion.
+
+Explore more roles within the existing palette, such as **dub atmosphere**, **techno rumble** and **polyrhythmic patterns**. A role could describe sound, rhythmic behaviour and use of space together. The two parts could take complementary roles, for example a low rumble beneath a sparse dub atmosphere. Exact behaviour and presentation remain open.
 
 ## M3 — JRNY destination memory
 
 Current behavior: `tide_journey()` excludes the reached/left destinations where possible and the other part's originals/targets. It searches within the current engine/category, then widens its category fallback. It does not switch engines. Preserve that scope.
+
+Feasibility: counting the 128 authored records in `tools/duell_sounds.py` gives 66 engine/category groups; 61 contain four sounds or fewer, accounting for 99 voices. Endpoint/peer exclusions reduce availability further. History is a modest repetition refinement, not a guarantee of a wide palette. Do not widen categories merely to fill a history ring.
 
 ### M3a: avoid premature returns
 
@@ -26,7 +34,7 @@ Existing phrase tiers increase development opportunities at 16/32/64/128 bars. E
 
 ### M4a: a bounded phrase policy
 
-Prototype a 64-bar policy: 16 bars settle, 16 develop, 16 open, 16 recover. These are internal phases, not new UI modes. Compare with the current behavior before choosing final lengths/weights. Derive phase from accumulated musical time shared by both parts, not main-loop wall time; only selected parts receive edits. STOP freezes it, resume preserves it, and a genuinely new WNDR/JRNY session resets it. WAIT bars count as musical time without triggering extra edits during a hold.
+The initial restraint/recovery sketch is a 64-bar policy: 16 bars settle, 16 develop, 16 open, 16 recover. Compare it with the current behaviour before choosing lengths/weights, then reconcile it with M9 in the same planner. Derive phase from accumulated musical time shared by both parts, not main-loop wall time; only selected parts receive edits. STOP freezes it, resume preserves it, and a genuinely new WNDR/JRNY session resets it. WAIT bars count as musical time without extra arc-triggered edits during a hold; existing phrase development during WAIT must be accounted for explicitly rather than assuming it already pauses.
 
 - Settle: mostly retain the motif; allow small timbral motion.
 - Develop: favor one eligible rhythm/voicing change at a time.
@@ -43,6 +51,8 @@ Acceptance: audible contrast between active and restrained stretches, no endpoin
 
 ## M5 — loudness and transition calibration
 
+Status after owner clarification, 3 November: conditional only. Existing audio polish is accepted; this section is a method for an identified issue, not an outstanding general sound-polish milestone or a prerequisite to other work.
+
 Measure M0 pairs and any outliers discovered in M1-M4. Use identical note/velocity/gate input for source/target comparisons. Inspect short-window RMS and peaks along the transition, plus integrated loudness for sufficiently long material where the existing tools support it. Listen to bass weight, sustain, transient impact and effects tails; brightness changes can resemble level changes.
 
 Treat roughly 3 dB of unexplained sustained level change in a matched role as an investigation trigger, not an automatic normalization target. Expected envelope evolution, deliberate silence or the designed structural valley is not by itself a fault. Check WASH OFF first (current default), then LOW/MID/HIGH separately.
@@ -57,7 +67,7 @@ The owner listens to TIDE as a background next to a TR-6S and wants **syncopatio
 
 Step numbers below count a straight 16-step bar from 1: the beats are steps 1, 5, 9 and 13 (code index `i % 4 == 0`); the off-beat 8ths are 3, 7, 11 and 15; the 16ths either side of an off-beat 8th are 2, 4, 6, 8, 10, 12, 14 and 16. Unequal lengths or divisions need the actual shared-clock phase described in M7d rather than this local-index shorthand.
 
-The ideas build on each other. Syncopation decides *where* in the bar a part leans; polymeter lets its motif rotate against that bar through unequal loop lengths. Question-and-answer decides *which part* speaks in which bar. Buildup and breakdown decide *how much* is said over 32–64 bars. Implement and listen to separate slices in that order.
+Syncopation decides *where* in the bar a part leans; polymeter lets its motif rotate against that bar through unequal loop lengths. Question-and-answer decides *which part* speaks in which bar. Buildup and breakdown decide *how much* is said over longer stretches. These are distinct listening goals. The roadmap orders existing-length evaluation first, then the small turnaround experiment, metric weighting and conditional later form; implementation need not follow this document's section numbers.
 
 ## M7 — syncopation and polymeter
 
@@ -75,20 +85,20 @@ Two things limit it. The beats stay audible as reference: syncopation only sound
 
 - The older SYNC dial (shift chosen hits one 16th later or earlier, `seq_morph.c`) is forced to 0 in MUSIC WNDR/JRNY (`seq_morph.c` dial roll; `rhythm_begin()` in `seq_rhythm.c`). The cumulative phrase overlay replaced it.
 - `rhythm_mutate()` moves one non-anchor hit by one 16th. The direction comes from momentum and from `phrase_direction()`, which only avoids the other part's predicted attacks. It does not know whether the destination is on a beat, an off-beat 8th or a push, so a move away from the off-beat is as likely as a move towards it, and syncopation appears only by chance.
-- The beats (steps 1, 5, 9, 13) never move or drop. Keep this: they are the reference that makes the rest syncopated.
+- Original hits at local indexes divisible by four are protected from these phrase moves/gaps. On straight 16-step sixteenth-note loops they coincide with beats; with other divisions/lengths they are motif anchors, not a universal shared-beat map.
 - Only the older DENS dial weights new hits towards the off-beat 8th (weight 3 on step 3/7/11/15, 2 on other 16ths).
 
 ### What is needed
 
-M7a, metric weighting of moves: when `rhythm_mutate()` and `phrase_direction()` choose between the two neighbouring 16ths, weight the destination by its place in the beat: off-beat 8th highest, push (step 4/8/12/16) next, other weak 16ths next, a beat never (anchors are already fixed; an ordinary hit should also not be moved *onto* a beat by this preference). Keep the existing peer-avoidance as a stronger factor: syncopating into the other part's attack is still a collision. Keep it a soft preference with the existing stochastic direction so the phrase still drifts.
+M7a, metric weighting of eligible moves: softly favour off-beat 8ths and occasional anticipations while preserving source anchors and stochastic drift. Use actual playback division/phase for the weights. The smallest candidate may support straight sixteenth-note 16-step loops first and leave other grids unchanged; declare that boundary explicitly. Retain M1's preference for space, but evaluate deliberate shared attacks as part of the groove rather than making collision avoidance an absolute rule. A beat can be a musically useful destination.
 
 M7b, a cap on pushes: at most one or two pushed hits per bar per part, and never push a hit that already ties or slides. This keeps the push an accent instead of a shift.
 
 M7c, only if M7a is accepted: a rare dotted cross-rhythm opportunity during development stretches (M9), built from the existing move/repeat operations, not a new pattern generator. Reject it if it sounds like a different pattern instead of the same motif rotating.
 
-Resource estimate for M7a/b: a weight table and a few comparisons; no new state. M7c has its own estimate below; M7d is not yet costed.
+Cost boundary: reuse existing move choices and main-loop timing information; do not search in the audio interrupt. The push cap and shared-phase handling may need bounded state. Code/state cost is unmeasured; M7c and automatic M7d have no measured budget.
 
-Tests: a straight four-on-the-floor chord pattern drifts towards off-beats over many loops; a pattern already on off-beats stays there; anchors never move; the push cap holds; ties/slides/ratchets untouched; peer collisions still decrease (M1 fixture); seeded repeatability.
+Verification when implemented: use patterns with eligible non-anchor hits and compare their shared-clock onset distribution with the baseline; a stable offbeat motif should retain its feel. An anchor-only four-on-the-floor pattern has no eligible hits for a move-only policy, so it must not be the claimed demonstration. Existing DENS additions are separate from these moves. Cover anchor/continuation/ratchet protection, push bounds, seeded repeatability, M1 spacing and unchanged behaviour on explicitly unsupported grids.
 
 Acceptance: over a long WNDR pass the share of hits on off-beat 8ths and pushes rises, while the motif stays recognisable and the beats remain present. Listening: the groove leans forward and sits better against the TR-6S kick. Reject if it sounds as if the pattern has slipped out of time.
 
@@ -102,6 +112,9 @@ Automatic shortening is a separate bounded prototype: decide allowed lengths, ch
 
 Review M7 metric weighting against actual playback phase, division and swing: a local `i % 4` index is not always a beat in the shared bar. Preserve original motif anchors without forcing them onto global downbeats. M1 peer prediction follows each actual cycle; M8 turn-taking and the M9 arc follow shared musical bars.
 
+**Built (2 November 2026 session `tide-turns`): POLY.** TIDE SETTINGS row POLY: OFF / GENTLE (the default) / WIDE (`seq_poly.c`). In automatic MUSIC WNDR/JRNY (`sqm_auto`, set from `glide_poll`) one part's loop is shortened to len-1 or len-2 (GENTLE: 15 or 14 of 16) or len-1 to len-4 (WIDE: 15 to 12), for 8 (GENTLE) or 4 (WIDE) loops, then plays whole for at least 16 / 8 loops. The full loop is the reference: every change happens where it wraps (its first step), so the return re-locks the groove with no drift; inside a stretch the short loop restarts by itself, not at the shared bars. Chosen from the seed (`sqm[].tseed`, `morph.seed`) and the loop count, only at a phrase's first loop (a multiple of 4), never before the 8th loop after PLAY, the parts in turn and never both at once, a loop under 8 steps never. ARP SEQ is covered through `arp_idx`; the peer prediction (M1) returns no attack while a part is shortened.
+KEEP / UNDO policy: the shortened length is **performance only**. `P_SLEN` and the stored steps are never written, so KEEP stores the steps at the stored length (the variation as it plays, as before) and UNDO has nothing to undo about the length. Not captured. STOP/PLAY starts every part whole; POLY OFF, the glide ending (a hand taking over), a recording or a changed stored length bring the part back at the next full loop. WAIT does not change it (the flag stays set while the glide holds).
+
 Acceptance: the motif audibly rotates against the steady beat and reunites at the expected joint cycle, without clock drift, lost notes or forced bar resets. Compare 12/16 and 15/16 first without swing, then with swing and ARP SEQ; verify STOP/PLAY and manual length edits. Record software onset traces and owner listening separately. Automatic policy and resource cost remain pending and are excluded from the estimates below.
 
 ## M8 — question and answer between the two parts
@@ -113,7 +126,7 @@ Call and response is a conversation: one part plays a short phrase that sounds o
 - **Taking turns.** The asking part is fuller and more active for its two bars; the answering part waits with sparse hits or long held notes, then becomes the active one. If both parts are equally busy all the time there is no conversation, only two monologues.
 - **Turnarounds that alternate.** The last bar of a phrase (the turnaround) is where a loop usually varies. If part 1 varies at bar 2 and part 2 at bar 4, the variations themselves become a question and its reply.
 - **The answer echoes the question.** The reply reuses the question's rhythm (or a recognisable part of it), shifted into the space the question left, so the listener hears that the two belong together. An unrelated reply sounds like coincidence.
-- **Open and closed endings.** With pitch, a question ends away from home (the 2nd, 4th or 6th degree, or the top of the chord) and the answer ends at home (the root, or the 5th). Rhythmically, a question can end on a push or an off-beat; an answer ends on or near a beat.
+- **Open and closed endings.** A rhythmic question can end on a push or offbeat and an answer near a beat. Pitch-based tension/resolution depends on the sounding harmony; a selected scale's root or fifth alone does not establish a cadence. Begin with rhythmic relationships.
 
 The two parts still share the groove: the beats stay, and they may play together on downbeats. Turn-taking is about who leads, not about silencing one part.
 
@@ -126,15 +139,15 @@ The two parts still share the groove: the beats stay, and they may play together
 
 ### What is needed
 
-M8a, alternating turnarounds (smallest, try first): give each part its own bar offset in the VARY BARS 4 + 8 rule, so part 2 varies on bars 2 and 6 and part 1 on bars 4 and 8. Each part's variation is then followed two bars later by the other's. About one line plus tests. VARY BARS ALL is unchanged.
+M8a, alternating turnarounds (smallest, try first): in automatic MUSIC WNDR/JRNY with both parts selected, try part 2 variation on bars 2/6 and part 1 on 4/8. Use shared musical bars even when loop lengths differ. VARY ALL, a single selected part, ONCE/LOOP and manual playback retain their behaviour. The rule is small but its linked cost and integration are unmeasured; a global change to `seq_play_step()` would affect more than this scope. Alternating variation bars are an experiment in interplay, not sufficient proof of call-and-response. **Built (session `tide-turns`):** TIDE SETTINGS row TURNS: TOGETHER / TAKE TURNS (default). In automatic MUSIC WNDR/JRNY with both parts selected, part 2's turnaround is offset by two shared bars (`seq_play_step`); the offset counts the shared `sqm_bar`, so it holds for any lengths and DIVs. VARY ALL, one selected part, ONCE/LOOP, manual playback, stopped and external clock are unchanged.
 
 M8b, turn-taking within a phrase: from the shared bar counter, assign each 4-bar phrase a leading part for bars 1–2 and the other for bars 3–4 (swap the order every other phrase from the seed). In its following bars the non-leading part plays a thinned version of its current pattern: the existing gap rules applied as a per-bar playback mask (keep the beats and long notes; drop some optional hits), not as stored edits. The leading part may use its current variation. Only parts selected for TIDE take part; a single selected part plays as today.
 
-M8c, echo and endings, only if M8b is accepted: when the leading role changes, give the new leader a bias to reuse the previous leader's last-bar rhythm on its own free steps (through the existing move/repeat operations). With PITCH on and MUSIC voice leading available, bias the leader's last note of bar 2 away from the root and the answer's last note of bar 4 towards the root or 5th of the selected scale, without inventing harmony (see the rule on scales above). ARP SEQ plays the held chord, so the pitch part does not apply there.
+M8c, rhythmic echo, only if M8b is accepted: when the leading role changes, try a recognizable part of the previous leader's last-bar rhythm on the new leader's eligible steps through existing move/repeat operations. Preserve each part's own pitches and register. Automatic pitch cadences are deferred: neither scale membership nor M2's within-part octave choices provides the required chord context. ARP SEQ's held-chord behaviour remains unchanged.
 
-Resource estimate: M8a none; M8b a few bytes of phrase state plus a mask path in the step read (check the ISR cost: `seq_play_step()` runs in the audio interrupt); M8c depends on S0.
+Cost boundary: all three slices add code and need individual linked measurements. For M8b, calculate follower masks in the main loop and publish bounded state; `seq_play_step()` in the audio interrupt should only do a cheap lookup/bit test. No extra full-pattern buffers. Earlier S0 savings do not establish capacity for M8c.
 
-Tests: per-part VARY offsets with different pattern lengths and DIVs; STOP/PLAY keeps whatever bar-count behaviour VARY BARS has today; the mask never removes beats, ties or slides; one selected part; WAIT holds; external clock; KEEP stores the varied pattern, not the mask.
+Verification when implemented: per-part VARY offsets with different pattern lengths/DIVs; existing STOP/PLAY bar-count behaviour; protected notes and live keys; single-part selection; WAIT; external clock; unchanged VARY ALL and manual modes. Define KEEP/UNDO capture semantics before adding masks: show whether thinning is performance-only or captured, and do not claim a saved result reproduces a playback mask it omits. Preserve sounding-note releases and effects tails rather than muting the post-effects output.
 
 Acceptance: listening on a two-part scene, the parts audibly take turns and one sounds like it replies to the other. Turnarounds no longer collide. Reject if the thinned part sounds like it is dropping out by mistake, or if the drive suffers.
 
@@ -152,35 +165,37 @@ Musical details that make it work:
 - **The stop falls on a phrase boundary** (the end of an 8- or 16-bar phrase) and does not cut a sounding note's release or the effects tails. It is a musical rest, not a mute.
 - **The motif survives.** After the breakdown the evolved phrase is still recognisable: the breakdown thins it and the next buildup fills it again from there. It does not restart from the original pattern.
 - **Both parts move with the arc, not identically.** During the buildup the call-and-response (M8) can quicken (turns every bar instead of every two bars); in the breakdown one part may hold a long chord while the other plays the rare notes.
-- **"Harsh" and "harmonic" are sound qualities, not loudness.** Harsh: high cutoff, high resonance, drive, strong FM modulation and feedback, short percussive envelopes, noise. Harmonic and pleasant: low cutoff, low resonance, simple whole-number FM ratios, low modulation, long envelopes, more reverb. A brighter sound also sounds louder; M5's loudness checks apply.
+- **Character needs calibration on actual sounds.** Cutoff, resonance, drive, FM modulation/feedback, ratios and envelope shape are possible proxies, not universal harshness or pleasantness rules. A NOISE patch can be soft; a simple FM ratio can be bright. Preserve the owner's harshness/busyness link as a bounded musical bias, with independent density limits and M5 level checks.
 - **The arc varies.** Not every buildup reaches a stop; lengths vary from the seed (as M4b proposes) so the cycle is not predictable.
 
 ### What the code does today
 
 - `morph_complement.c` already measures four qualities from parameters (no audio analysis): brightness (LP cutoff), movement (filter LFO depth), space (reverb+delay+chorus) and envelope length (including FM6 carrier rates). JRNY's `sound_complement_pick()` uses them to prefer a sound that contrasts with the other part.
 - WNDR walks brightness and other dials independently of the sequence.
-- Phrase density is bounded: `phrase_repeat()` adds at most a quarter more hits than the original, and `phrase_gap()` removes no more than half. These bounds are the same at every moment.
+- The phrase overlay has fixed density bounds: `phrase_repeat()` permits the original attack count plus `max(floor(original/4), 1)`; `phrase_gap()` stops at `ceil(original/2)` and never below one attack. Sparse patterns therefore do not have a strict 25% addition cap. Endpoint DENS edits can also affect the heard result; these overlay limits are not a complete audible-density model.
 - The phrase tiers (16/32/64/128 bars) make larger changes more likely in longer phrases, but there is no shared tension and no stop or breakdown.
 
 ### What is needed
 
-M9a, a harshness score: extend the parameter measures with resonance, drive and, for FM6, modulator levels/feedback and ratio simplicity; NOISE engines count as harsh. Usable for the current sound (WNDR) and JRNY candidates.
+M9a, a calibrated character proxy: first check whether existing brightness/movement/envelope measures distinguish the intended factory/user scenes. Add resonance/drive or FM-specific measures only when they improve that ordering. Do not label an entire engine harsh or perform real-time spectral analysis. If the proxy is unreliable, use the arrangement phase to bias sound and rhythm directly instead of claiming to measure perceived harshness.
 
 M9b, harshness drives busyness (the owner's link; can be tried before the full arc): set the phrase density bounds from the current harshness — a harsh sound may reach more added repeats and the occasional ratchet; a soft sound is held towards fewer, longer notes. This replaces the fixed bounds above and is a deliberate change to the rule "preserve existing density bounds", asked for by the owner.
 
-M9c, the arc: one tension value shared by both parts, advanced by musical bars (not wall time) through build → peak → stop → breakdown → next build. During the build the WNDR walk is biased towards the harsh side and the M7 syncopation weighting is strongest; at the peak the density bound is highest; the stop is a phrase-aligned rest of the TIDE parts' sequences (notes release naturally, tails ring); in the breakdown JRNY scoring prefers soft, harmonic candidates (adding a sign from the arc to `sound_candidate_score()`) and the density bound drops below today's minimum. STOP of the transport freezes the arc, resume continues it, a new WNDR/JRNY session starts it fresh. WAIT bars count as musical time.
+M9c, one shared arc with M4: first try gradual development and recovery without automatic stops. The fuller owner-requested option is build → peak → optional stop → breakdown → next build, with one musical-bar phase value for both parts. The build may bias WNDR colour and permitted density; recovery eases them back without erasing the motif. A full stop is a phrase-aligned rest of selected TIDE sequences, with notes releasing naturally and tails ringing. Drop ownership/enablement must be settled before implementing that option. STOP of the transport freezes the arc, resume continues it, a new WNDR/JRNY session starts it fresh, and WAIT counts as musical time. Reuse M8 phrase timing rather than adding another scheduler.
 
 The sudden stop is a deliberate exception to the "no endpoint jumps" acceptance of M4; that rule still applies to the sound glides themselves.
 
-Limits: JRNY stays within the current engine and category (see M3), so the soft breakdown sound must come from the same palette; crossing categories for breakdowns would be a separate owner decision. Long sustained breakdown chords depend on the sound's own envelope. M9c needs S0 for flash room.
+Limits: JRNY stays within the engine, with its existing category preference/fallback. A given palette may have no suitable soft breakdown sound; category/engine changes are not a free consequence of the arc. Longer gates cannot guarantee longer sustain from a decaying sound. Existing memory savings do not prove that M9c fits: require a fresh linked flash/RAM/hot-code budget and an affected real-device CPU comparison.
 
-Relation to M4: M9 covers the same ground as M4a's settle/develop/open/recover arc and is the owner's more specific version of it. Whether M9 replaces M4 or the two are combined is an open owner decision; until then, design them together and do not build both.
+Relation to M4: keep one combined implementation brief, using M9's musical intent and M4's bounds/recovery. The remaining owner decisions concern phase behaviour and performance control, not whether to build two schedulers.
 
 Tests: harshness ordering on known presets (e.g. a resonant acid sound above a soft pad); busyness tracks harshness in both directions; arc boundaries at different TIME/WAIT values and pattern lengths; stop aligned to phrase ends and never cutting a release; STOP/PLAY and resume; one or two selected parts; AMOUNT zero; KEEP during each phase; long-session bounds over at least 256 bars (no progressive thinning, no permanent maximum brightness or density).
 
 Acceptance: a 10-minute session has audible buildups, peaks, clean stops and calmer breakdowns; harsh stretches are busier and soft stretches sparse; the motif carries across; the TR-6S stays in front during stops. Reject if the arc sounds scripted, if stops sound like dropouts, or if the background starts drawing more attention than the instruments it supports.
 
 ## M10 — smoother sound transitions
+
+Status after owner clarification, 3 November: conditional only. Keep the current accepted sound/transition behaviour; investigate these proposals only for a demonstrated issue or an explicitly chosen transition change.
 
 ### What it means musically
 
@@ -195,7 +210,7 @@ Loudness belongs here too: a sound that becomes brighter seems louder, one that 
 ### What the code does today
 
 - Structural switches are already hidden carefully (`morph_xfer.c`): FM6 algorithm changes cross a bridge of pure sines with equal-power fades; wave, filter type and model switches happen while the filter valley is closed; the insert fades to dry while its type changes; the sends swell so the tails carry the old sound. Keep all of this.
-- Continuous values blend linearly between the two ends at the fader's position (`morph_apply`). The fader has 128 positions (`morph_wb`), the ends are stored as whole-number parameter values, and the result is written once a block with no interpolation between fader positions. The part filter's dial has 82 positions (`UF_STEPS`) and is read without its own smoothing (`voice.c`, `ucut0`). On a long glide this most likely produces audible stairs; measure it before changing anything.
+- Continuous values blend at the 128-position fader's weight (`morph_wb`), then `morph_apply_at()` rounds them back to whole parameter values. The part filter reads that cutoff into Q8 (`voice.c`, `ucut0`). This establishes quantization, not its audibility; measure slow glides before proposing a fix. Existing filter/transition processing also affects the heard result.
 - Every continuous value follows the same S-curve (`glide_ease`) at the same time.
 - Values that only shape the next notes (arp, voice and glide mode, chord) switch at the fader's middle (`morph_xfer.c` header).
 - JRNY stays within one engine, so the transition never has to cross engines.
@@ -204,15 +219,15 @@ Loudness belongs here too: a sound that becomes brighter seems louder, one that 
 
 M10a, measure first: render slow glides on the host (1, 16 and 64 bars) between pairs with large cutoff, envelope and send differences, and record the effective cutoff, levels and send amounts every block. Count the steps and their size; listen for them on a sustained chord. If no audible stairs exist, record that and skip M10b.
 
-M10b, continuous values without stairs: interpolate the blend weight between fader positions every block (the glide knows its exact progress, finer than 128 positions), and give the cutoff dial sub-step resolution through the morph path so a slow sweep is continuous. Keep the exact endpoints: fader 0 is End A and 127 is End B bit for bit, and a sound at rest is unchanged. Manual knob turns keep their current response.
+M10b, only for a demonstrated audible staircase: preserve fractional resolution through the affected control path, including the blend, cache invalidation and DSP consumer. A finer fader weight alone is insufficient if the result is rounded back to a whole parameter step. Start with the affected cutoff/control coordinate, not every parameter. Keep the exact endpoints: fader 0 is End A and 127 is End B bit for bit, and a sound at rest is unchanged. Manual knob turns keep their current response.
 
 M10c, staggered groups: inside the existing travel, give each group its own portion of the curve — brightness and filter lead (for example 0–70 % of the trip), envelope and shape in the middle (15–85 %), space and effects trail (30–100 %). Each group still starts at its End A and ends at its End B, so the arrival is identical; only the path differs. The structural valley/bridge timings stay where they are, and the groups must agree with them (the filter must be closed when a switch happens). Try the order and spans by listening; reject it if the middle of the trip sounds less coherent than today.
 
 M10d, musical switch timing: move the switches that only shape the next notes from the exact middle to the first bar (or note-on) boundary inside the hidden stretch, so they arrive with the music. Fall back to the middle when there is no clock or no boundary in time.
 
-Not in M10: crossing engines (JRNY keeps its engine; a cross-engine change would need two engines sounding at once, with CPU and voice cost, and is a separate owner decision); automatic loudness matching (M5, evidence-based).
+Outside M10: cross-engine JRNY and automatic loudness matching. A continuous cross-engine blend needs a separately reviewed engine-lifetime/voice/CPU design; changing engines at silence is a different behaviour. Neither is implemented or costed by this smoothing proposal. M5 addresses demonstrated level problems independently.
 
-Resource estimate: M10b a per-part fractional weight and a few bytes of cutoff state, plus per-block work in the audio ISR that must be measured against the hot headroom; M10c a small table of group spans; M10d a few bytes of pending-switch state.
+Resource estimate: M10b a per-part fractional weight and a few bytes of cutoff state, plus per-block work in the audio ISR that must be measured against the hot code headroom; M10c a small table of group spans; M10d a few bytes of pending-switch state.
 
 Tests: endpoints bit-exact at fader 0 and 127; at-rest sounds unchanged; monotone sweeps with no step larger than a set threshold on long glides; every structural switch still inside its hidden stretch with groups staggered; manual knob edits and pinned B values still work; STOP/PLAY pause and resume mid-trip; hand takeover mid-glide; external clock; CPU cost of the per-block interpolation.
 
@@ -222,34 +237,34 @@ Acceptance: a 16- and a 64-bar glide on a sustained chord sound like one continu
 
 The owner (2 November 2026) wants a few choices back: how much change to expect, the energy, how random, and whether buildup and breakdown phases are allowed. These are **intent** choices: they set how TIDE behaves, not individual parameters. Everything else stays automatic.
 
-The TIDE page's four columns (GLIDE, MODE, TIME, WAIT) are full, so the new choices go into the TIDE LIST, which has six rows today (TARGET, VARY BARS, ROLL, ARP, PITCH, WASH LEVEL). The TIDE settings record stores 7 of its 32 field bytes, so three more fit; the loader must accept the older, shorter record (keep the stored fields, default the new ones) so an update does not reset the owner's settings.
+The TIDE page's four columns (GLIDE, MODE, TIME, WAIT) are full, so the new choices go into the TIDE LIST, which has six rows today (TARGET, VARY BARS, ROLL, ARP, PITCH, WASH LEVEL). The TIDE settings record stores 7 of its 32 field bytes, so three more fit (TURNS and POLY use two: fields 7 and 8; the loader accepts the 7-field record and defaults them to TAKE TURNS / GENTLE); the loader must accept the older, shorter record (keep the stored fields, default the new ones) so an update does not reset the owner's settings.
 
 User decisions (TIDE LIST rows, all automatic MUSIC WNDR/JRNY behaviour):
 
 - **CHANGE — SLIGHT / MEDIUM / BOLD** (default MEDIUM = today). How much each trip changes: SEQ AMT (today fixed at 50 with no knob), how often phrase edits happen, and how many edits a trip may carry. The sound's AMOUNT on the MORPH page stays as it is; CHANGE scales the sequence and phrase side, AMOUNT the sound side.
 - **ENERGY — DEEP / EVEN / DRIVE** (default EVEN = today). The character of the background: DEEP leans to sparse, on-beat-and-off-beat placement, darker and softer sounds; DRIVE to busier, more syncopated patterns (M7 pushes), brighter and harsher sounds (M9b). It biases the existing walks; it does not fix a sound. If "upbeat / downbeat" was meant as the feel (on-beat versus off-beat placement) rather than energy, this row is where that choice would live; to be confirmed with the owner.
-- **ARC — OFF / BUILD / FULL** (default to be decided by listening). Whether buildup and breakdown phases are allowed: OFF = today's even evolution; BUILD = gradual buildups and easing back, no stop; FULL = buildup, peak, stop and breakdown (M9c).
-- **Randomness — the existing ROLL row (MUSIC / SMART / WILD)** already chooses how free the changes are. No new row; its labels and help text should say so.
+- **ARC — OFF / BUILD / FULL** (exact default and drop policy open; OFF is the conservative starting recommendation). OFF preserves today's evolution; BUILD allows gradual development/recovery without stops; FULL adds the explicitly enabled stop/breakdown policy when implemented.
+- **ROLL — MUSIC / SMART / WILD** selects generation policies. It is not a numeric randomness amount and does not replace CHANGE's amount/rate control. Retain the existing row; do not add a separate randomness control without a demonstrated musical distinction.
 
-Shown, not chosen: the TIDE status line can show where the arc is ("BUILD 12/24", "PEAK", "BREAK 3/8") in the same way it shows "WNDR TO B 3/8" now. It costs little and lets the owner anticipate a stop while playing.
+Shown, not chosen: an implemented arc should show its phase (for example "BUILD 12/24", "PEAK", "BREAK 3/8") on the existing status line so the owner can anticipate it. Include text/rendering cost in the measured candidate rather than declaring it free.
 
 Code-only (no control; tuned by listening):
 
 - M3 destination memory; M7 metric weights and push cap; M8 turnaround offsets, turn-taking, echo and open/closed endings; M9 harshness score, phase lengths and their variation, stop placement on phrase boundaries; M10 smoothing, group order and switch timing.
 - These read the three choices above where it makes sense (CHANGE scales edit counts, ENERGY biases syncopation and harshness, ARC enables M9c), but expose no separate settings.
 
-This changes the earlier rule "no new menu, save format, global mode" for these three rows only, at the owner's request. Each row still needs its own listening check that its settings sound clearly different and that the default matches today's behaviour.
+This changes the earlier rule "no new menu, save format, global mode" for these three rows only, at the owner's request. Deliver each row with the accepted behaviour it controls rather than reserving inactive UI. Each needs a listening check that choices are useful and distinct, compatible older-settings loading, and a defined backup boundary. The current settings backup omits TIDE's independent record; extra field bytes alone do not solve compatibility.
 
-### Open decisions — parked 2 November 2026
+### Open decisions — parked 2 November, reviewed 3 November 2026
 
-The owner parked these for a later decision. Claude's recommendations, with the reasons, so the decision can be made without redoing the discussion:
+The owner parked these for a later decision. The earlier discussion included Claude's recommendations; the entries below distinguish those from this review's recommendations. None of the unresolved performance choices is approved by this documentation update.
 
-1. **Who owns the drop.** Recommended: the buildup runs automatically, reaches PEAK and holds it, shown on the status line; the owner fires the stop with one gesture; if nothing happens within about 8 bars it stops by itself at the next phrase boundary. Reason: an automatic drop will eventually land on the owner's own S-1 line or SP-404 fill, and an arrangement decision belongs to the performer.
+1. **Who owns the drop.** Still open. Earlier recommendation: hold at PEAK, allow an owner gesture, then use an automatic timeout. Review recommendation: begin with gradual development/recovery; enable full stops only through an explicit ARC/performance policy. An owner-fired drop with an automatic timeout still permits an unsolicited stop, so that timeout must be a deliberate choice. No new gesture is selected here.
 2. **ENERGY and ARC.** Recommended: keep both, as *average* (ENERGY) and *swing* (ARC): dub techno is low energy with a big swing, peak-time techno high energy with a small one. Merge them if listening shows their combinations do not sound clearly different.
-3. **"Upbeat / downbeat".** Recommended: read it as energy, and let syncopation follow ENERGY (more drive = more pushes and off-beats) instead of being its own setting; a separate feel setting mostly produces combinations that sound wrong.
+3. **"Upbeat / downbeat".** Meaning remains open. ENERGY may gently bias syncopation if listening supports it, but metrical placement and average energy are distinct. Keep a separate feel control deferred without declaring its combinations musically wrong.
 4. **CHANGE.** Recommended: per trip and still cumulative, with no pull home (the owner's earlier decision); SLIGHT = small steps that add up slowly. HOME remains the way back.
-5. **Space.** Recommended: keep the splash logo; do S0b, then S0c, then measure S0e; weigh the logo against M9c/M8c only if the arc still feels missing after the cheaper stages and S0e is small.
-6. **Order.** Recommended: M10a/b, M8a, M7, M8b, M9b, then M9c. M10b improves every glide, M8a is almost free, M9c should sit on accepted layers.
-7. **Row count.** Recommended test for every row: would the owner change it during a set? If not, it is tuning and belongs in code. Cut ROLL WILD or CHANGE BOLD if they sound alike. M7d automatic polymeter enablement and allowed lengths remain open; do not silently tie loop-length changes to ENERGY or assume another row is approved.
+5. **Space.** The first lossless factory-sound packing/cleanup milestone is complete in source. Compare further lossless candidates against the chosen feature's measured budget. Keep effects, performance capture and visual assets until a concrete trade-off is justified; old S0 labels/estimates do not prove new capacity.
+6. **Order.** Use the completed source audit's verified useful corrections first. U1 is a bounded 4–8-destination convenience, not a musical prerequisite. Existing-polymeter evaluation can proceed independently; M8a remains the first small musical feature candidate, then M7a/b, conditional M3/M8b and one later M4/M9 policy. M2 listening is optional when relevant; M5/M10 require a demonstrated issue or chosen change. Section numbering is not a queue.
+7. **Row count.** Expose intent choices the owner needs while playing or preparing a session; leave implementation tuning in code. ROLL policy and CHANGE amount/rate have different roles even if one fixture sounds alike. M7d automatic polymeter enablement and lengths remain open; do not silently tie length changes to ENERGY or assume another row is approved.
 8. **A launched buildup and drop** (owner idea, 2 November 2026): start a buildup by hand during play that runs over a set number of bars, drops and recovers, without a new screen. Placement candidates: OCT+ held + K1 on the TIDE page (beside OCT- + K1 = HOME), GLIDE A + GLIDE B pressed together on PERFORM, or a sixth MODE; undecided.
 

@@ -40,7 +40,7 @@ static int phrase_repeat(uint32_t pi, uint32_t seed)
 {
     uint32_t len = sqm_len(&trk[pi]), base = 0;
     for (uint32_t i = 0; i < len; i++) base += sqm_hit(&trk[pi].step[i]);
-    if (phrase_count(pi, len) >= base + (base / 4u ? base / 4u : 1u)) return 0;
+    if (phrase_count(pi, len) >= tarc_cap(base)) return 0;
     /* Restore a dropped attack before adding another voice onset. */
     for (uint32_t j = 0; j < len; j++) {
         uint32_t i = (seed + j) % len;

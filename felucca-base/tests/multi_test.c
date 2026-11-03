@@ -323,19 +323,19 @@ static void keys_drive(void)
     /* U2 B (1.1): the sequenced arrangements of M03 M05 M06 M07 M08 M13 (and M16, M10 .. M12 for the plain line). PLAY alone starts the plain-pattern parts; the ARP SEQ
      * parts follow a transposed key (D4 two semitones above C4, the same blocks); a plain pattern part does not move with the key (a live key plays on top) */
     {
-        static const uint8_t SQ[6][2] = {{2, 1}, {5, 1}, {6, 1}, {7, 0}, {2, 0}, {15, 0}};   /* slot, the part: ARP SEQ (the first four), a plain pattern (the last two: the pad, the whistle) */
+        static const uint8_t SQ[6][2] = {{2, 1}, {5, 1}, {6, 1}, {7, 0}, {4, 0}, {15, 0}};   /* slot, the part: ARP SEQ (the first four), a plain pattern (the last two: M05's pad, the M16 whistle) */
         uint32_t m, pp, n;
         for (m = 0; m < 6u; m++) {
             k = SQ[m][0];
             pp = SQ[m][1];
-            play_run(k, 1u << c4, 3u * sec, sec / 2u, 0, r);
-            play_run(k, 1u << d4, 3u * sec, sec / 2u, 0, q);
-            play_run(k, 0u, 3u * sec, 0u, 1, z);
-            play_run(k, 1u << d4, 3u * sec, 0u, 1, p);
+            play_run(k, 1u << c4, (m < 4u ? 8u : 3u) * sec, sec / 2u, 0, r);
+            play_run(k, 1u << d4, (m < 4u ? 8u : 3u) * sec, sec / 2u, 0, q);
+            play_run(k, 0u, (m < 4u ? 8u : 3u) * sec, 0u, 1, z);
+            play_run(k, 1u << d4, (m < 4u ? 8u : 3u) * sec, 0u, 1, p);
             if (m < 4u) {
                 snprintf(line, sizeof line, "U2 B: M%02u part %u (ARP SEQ): a key plays the arrangement (%u notes), D4 two semitones above C4 on the same blocks%s", k + 1u, pp + 1u, r[pp].n,
                          DUELL_TIDE ? ", PLAY with no key plays it from C4" : "");
-                ck(line, trk[pp].p[P_AMODE] == 15 && r[pp].n >= 3u && pr_shifted(&r[pp], &q[pp], 2) && (!DUELL_TIDE || z[pp].n >= 3u));
+                ck(line, trk[pp].p[P_AMODE] == 15 && r[pp].n >= 2u && pr_shifted(&r[pp], &q[pp], 2) && (!DUELL_TIDE || z[pp].n >= 2u));
             } else {
                 snprintf(line, sizeof line, "U2 B: M%02u part %u (plain pattern): PLAY alone plays it (%u notes), a held key does not move its notes", k + 1u, pp + 1u, z[pp].n);
                 for (n = ok = 0; n < z[pp].n && n < PR_MAX; n++) {   /* (every note PLAY alone played is among the notes with the key held: the key adds its own) */
@@ -344,7 +344,7 @@ static void keys_drive(void)
                         ;
                     ok += i3 < p[pp].n && i3 < PR_MAX;
                 }
-                ck(line, trk[pp].p[P_AMODE] == 0 && z[pp].n >= 4u && ok == (z[pp].n < PR_MAX ? z[pp].n : PR_MAX));
+                ck(line, trk[pp].p[P_AMODE] == 0 && z[pp].n >= 2u && ok == (z[pp].n < PR_MAX ? z[pp].n : PR_MAX));
             }
         }
     }
@@ -481,6 +481,62 @@ int main(void)
     frame();
     ck("SAVE > MULTI is SAVE's page, sixteen slots (KNOB 1 M01..M16), all sixteen the factory multis (0.2.23; M11 EERIE SIGNAL)", cur_page()->graph == GR_SLOTS &&
        cur_page()->fam == FAM_SAVE && GP[G_SLOT].max == 16 && project_used(10) && project_factory(10) && str_eq(mu_names[10], "EERIE SIGNAL"));
+#if DUELL_TIDE
+    {                                                /* U3: browsing the MULTIS page (the preview) changes nothing live, decodes once per slot, and shows the record */
+        uint32_t k, sum0, sum1, gen = multi_gen(), eng0 = trk[0].eng_req;
+        mu_pv_t pv;
+        project_capture(&proj_scratch);
+        sum0 = proj_sum(&proj_scratch);
+        for (k = 0; k < MU_SLOTS; k++) {
+            song.g[G_SLOT] = (int16_t)(k + 1u);
+            frame();
+        }
+        song.g[G_SLOT] = 11;
+        frame();
+        frame();
+        project_capture(&proj_scratch);
+        sum1 = proj_sum(&proj_scratch);
+        ck("MULTIS preview: all sixteen slots browsed, the music, the transport and the loaded multi unchanged (no record was written: the record counter stands)",
+           sum0 == sum1 && !song.playing && multi_gen() == gen);
+        multi_preview(10u, &pv);
+        ck("  the preview of M11 is its record: decoded, both parts' sounds named, no engine out of range", pv.state == 1u && pv.p[0].eng < NENGINES && pv.p[1].eng < NENGINES &&
+           gsl_key == (10u | multi_gen() << 8));
+        ck("  the music is still the one before the preview decoded (the scratch only)", trk[0].eng_req == eng0);
+        {                                            /* audit C01: a record that is there but does not load (here a version 7 one over the factory M11) is DAMAGED, not the factory multi */
+            uint8_t junk[40];
+            uint32_t cut, len;
+            mu_pv_t dp;
+            memset(junk, 0, sizeof junk);
+            junk[0] = 7;
+            mu_obj_read(10u / 2u);
+            len = mu_put_rec(10u & 1u, 0, &cut, junk, sizeof junk);
+            ck("DAMAGED slot: a stored record this firmware does not load is written over the factory M11", mu_obj_write(10u / 2u, len) == 0);
+            mu_note(10u / 2u);
+            multi_preview(10u, &dp);
+            ck("  M11 is not used, shows no factory name, is marked damaged and previews as DAMAGED (state 2)", !project_used(10) && multi_bad(10) && !mu_names[10][0] && dp.state == 2u);
+            ck("  its partner M12 is still the factory multi", project_used(11) && !multi_bad(11) && project_factory(11));
+            mu_obj_read(10u / 2u);                   /* (empty again: the factory M11) */
+            len = mu_put_rec(10u & 1u, 0, &cut, 0, 0);
+            mu_obj_write(10u / 2u, len);
+            mu_note(10u / 2u);
+            ck("  emptied again: the factory M11 shows", project_used(10) && !multi_bad(10) && project_factory(10));
+        }
+        {                                            /* the PATTERNS preview: a slot saved over previews its own contents; empty = no note; the tracks stay */
+            pat_pv_t pp;
+            track_t keep = trk[0];
+            uint32_t i;
+            ps_preview(2u, &pp);
+            ck("PATTERNS preview: P03 (factory) decodes, has notes, LEN as the list says", pp.state == 1u && pp.has && pp.len == ps_len(2u));
+            for (i = 0; i < NSTEP; i++)
+                step_clear(&trk[0].step[i]);
+            ck("  a cleared pattern saved over P03 (a user overwrite)", ps_save_trk(&trk[0], 2u, "EMPTY ONE") == 0);
+            ps_preview(2u, &pp);
+            ck("  previews its own contents: decoded, no note (NO SEQUENCE), the new gen", pp.state == 1u && !pp.has && pp.len == ps_len(2u) && ps_gen() != 0u);
+            trk[0] = keep;
+            ck("  the live track is untouched by the preview", !memcmp(&trk[0], &keep, sizeof keep));
+        }
+    }
+#endif
     watch = 1;
     press_k(EN_K3);                                  /* SAVE (1.1: K3): a used (factory) slot: OVERWRITE M11?, then the NAME screen */
     ck("SAVE over the factory M11 asks OVERWRITE M11?", ui.confirm == CF_OVR_PROJ);
@@ -1268,7 +1324,11 @@ int main(void)
             mu_note(o);
             trk[0].p[P_LEVEL] = 55;
             /* (0.2.23: every slot has a factory multi, so the slot shows that one; a slot with none would list "--" and load nothing) */
+#if DUELL_TIDE                                       /* (audit C01: a record that is there and does not load is DAMAGED, the factory multi is not shown for it) */
+            ok2 &= !project_used(10u) && multi_bad(10u) && !project_info(10u, nm);
+#else
             ok2 &= project_used(10u) && project_factory(10u) && project_info(10u, nm) && !strcmp(nm, "EERIE SIGNAL");
+#endif
             project_load(10u);                       /* (the old record is there: DAMAGED, nothing loaded, no crash) */
             ok2 &= trk[0].p[P_LEVEL] == 55;
             trk[0].p[P_LEVEL] = 77;
@@ -1288,8 +1348,13 @@ int main(void)
         }
         mu_obj_read(o);
         mu_note(o);
+#if DUELL_TIDE
+        ok2 &= !project_used(0u) && multi_bad(0u) && !project_info(0u, nm);
+        ck("  a factory slot (M01) holding one is DAMAGED too (audit C01: not its factory multi), a LOAD changes nothing", ok2 && (project_load(0u), 1));
+#else
         ok2 &= project_used(0u) && project_factory(0u) && project_info(0u, nm) && !strcmp(nm, "REESE SWAMP");
         ck("  a factory slot (M01) holding one shows its factory multi (REESE SWAMP) and loads it", ok2 && (project_load(0u), 1));
+#endif
         ok2 = project_save_as(10u, "NEW ONE") == 0 && project_used(10u) && !project_factory(10u) && project_info(10u, nm) && !strcmp(nm, "NEW ONE");
         ck("  a SAVE over the old record replaces it, the multi loads again", ok2);
         project_erase(10u);

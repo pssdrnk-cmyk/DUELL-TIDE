@@ -85,6 +85,14 @@ static uint32_t sqm_best(uint32_t *score, uint32_t len)
     return b;
 }
 
+static volatile uint8_t sqm_turns = 1;                  /* TURNS: 0 TOGETHER, 1 TAKE TURNS (tide_ui.c, the TIDE LIST) */
+static volatile uint32_t sqm_thin[NSHOWN][2];            /* LEAD / ECHO: the steps the follower does not play, a bit each (seq_answer.c, main loop) */
+static int tide_echo(uint32_t pi, uint32_t idx);
+static volatile uint8_t sqm_arc;                         /* ARC: 0 OFF, 1 RISE, 2 DROP (tide_ui.c, the TIDE LIST; seq_arc.c) */
+static volatile uint8_t tarc_dropphr = 0xFFu, tarc_thin, tarc_fast, tarc_hold;   /* seq_arc.c's planner to the audio side: the drop's phrase, the parts thinned, turns every bar, no POLY */
+static uint32_t tarc_sync(void);
+static uint32_t tarc_cap(uint32_t base);
+static volatile uint8_t sqm_sync = 1;                   /* SYNC: 0 OFF, 1 SOFT, 2 PUSH (tide_ui.c, the TIDE LIST; seq_rhythm.c, seq_dialogue.c) */
 static void sqm_refresh(uint32_t pi, int force);
 #include "seq_rhythm.c"
 
@@ -262,6 +270,10 @@ static void sqm_refresh(uint32_t pi, int force)
 }
 
 static volatile uint8_t sqm_vary_all;                   /* VARY BARS: 0 4 + 8, 1 ALL (tide_ui.c, the TIDE LIST) */
+static volatile uint8_t sqm_poly = 1;                   /* POLY: 0 OFF, 1 GENTLE, 2 WIDE (tide_ui.c, the TIDE LIST; seq_poly.c) */
+static uint8_t poly_len[NSHOWN];                         /* (seq_poly.c: a part in a POLY stretch is never thinned) */
+static const step_t SQM_REST = {{0}, 0, ST_REST, 0, 0, 0};
+static volatile uint8_t sqm_auto;                       /* the parts in automatic MUSIC WNDR/JRNY, a bit each (glide_poll, main loop) */
 /* the step part t plays at idx with the variation heard (vary 1; 0: End A): the stored one while End A is the Original and the
  * fader at 0, else the end its beat is on. The UI's view and KEEP (vary 1 always: the variation as it plays on a varied bar) */
 static const step_t *sqm_step(const track_t *t, uint32_t idx, uint32_t vary)
@@ -274,11 +286,22 @@ static const step_t *sqm_step(const track_t *t, uint32_t idx, uint32_t vary)
         return q->aon || q->hold || (rhythm.active & (1u << pi)) ? &sqm_pat[pi][0][idx] : &t->step[idx];
     return &sqm_pat[pi][q->fader >= 1u + sqm_hash(q->tseed, idx / 4u, 9u) % 127u][idx];
 }
-/* the step the sequencer plays (audio interrupt): with VARY BARS 4 + 8, while playing, End A but on every 4th bar */
+/* the step the sequencer plays (audio interrupt): with VARY BARS 4 + 8, while playing, End A but on every 4th bar (TAKE TURNS, both parts in automatic WNDR / JRNY: part 2 on bars 2 and 6) */
 static const step_t *seq_play_step(const track_t *t, uint32_t idx, step_t *buf)
 {
+    uint32_t pi = (uint32_t)(t - trk), bar = (uint32_t)sqm_bar + sqm_bar_turn, off = sqm_turns && sqm_auto == 3u && pi == 1u;   /* TAKE TURNS: part 2 two bars on, in the shared bars (bars 2 and 6) */
+    const step_t *s = sqm_step(t, idx, sqm_vary_all || !song.playing || ((bar + 2u * off) & 3u) == 3u);
     (void)buf;
-    return sqm_step(t, idx, sqm_vary_all || !song.playing || ((sqm_bar + sqm_bar_turn) & 3u) == 3u);
+    /* LEAD / ECHO: part 2 leads bars 1-2 of 4, part 1 bars 3-4; the other plays its thinned End A (onsets only: a tie after one stays silent) */
+    if (pi < NSHOWN && song.playing && s->time == ST_NOTE) {
+        /* ARC: the drop's first 2 bars, both parts in automatic WNDR / JRNY start nothing (ties and tails ring) */
+        if (tarc_dropphr == ((bar >> 2) & 63u) && (bar & 3u) < 2u && ((sqm_auto >> pi) & 1u))
+            return &SQM_REST;
+        if (idx < NSTEP && !poly_len[pi] && ((sqm_thin[pi][idx >> 5] >> (idx & 31u)) & 1u) &&
+            (((tarc_thin >> pi) & 1u) || (sqm_turns >= 2u && sqm_auto == 3u && pi != (tarc_fast ? ((bar & 1u) ? 0u : 1u) : (bar & 3u) < 2u ? 1u : 0u))))
+            return &SQM_REST;
+    }
+    return s;
 }
 
 /* ------------------------------------------------------------------ the controls (main loop) --- */

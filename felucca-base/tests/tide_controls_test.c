@@ -347,7 +347,7 @@ static void test_seq_ghost(void)
     t->p[P_AMODE] = 0;
 }
 
-/* owner 2026-11-01: MORPH SETTINGS flickered while playing: a glide moves the part colour, the page is drawn again, and the hidden
+/* owner 2026-11-01: TIDE SETTINGS flickered while playing: a glide moves the part colour, the page is drawn again, and the hidden
  * cards cleared the card row under the list each time */
 static void test_settings_flicker(void)
 {
