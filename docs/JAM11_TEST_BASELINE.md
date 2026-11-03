@@ -2,6 +2,17 @@
 
 Current maintenance priorities: [roadmap](ROADMAP.md). Totals below describe their named source checkpoints, not a continuously updated count.
 
+## Linux (WSL) groups: 3 November 2026, branch `lx-ui`
+
+`perform step3 morph uf benchrun benchaudio ldrscreen multiv8` pass in WSL (`wsl.exe -d Ubuntu -- sh jam/wsl.sh <group>`); the Windows check is unchanged: 111 passed, 0 failed, 25 skipped. All changes are test or tool side; the TIDE=0 image is untouched (no firmware file changed).
+
+- `perform`, `step3`, `morph`, `uf` had stale expectations that Windows never reached (they SKIP at `fork()`): the tempo starts at 40 so 1/32 fits everywhere; FADE 2, KEY TRK and the other non-matrix ids are not automatable (HANDOFF_V2 item 34); AMP ENV and LFO 2 cutoff depths no longer act; MULTI FILTER 2/2 has no K4; the sparse PT_VER 4 record leaves SLOPE 12 dB out; PHYS BOW rolls from 0 (owner 2026-10-28); the plain-roll checks of `morph` run with MUSICAL off and the seeds check rolls from the Original (ROLL is chained); `morph` also divided by zero on an engine with no preset.
+- `benchrun`, `benchaudio`: patch 28 (was 27); the `--record` refusal test needs `--port` and a stand-in sox. Without the macOS instruction counter the twin's CPU figures are an estimate, so the verdict of the dear STRESS tests (WARN on a Mac, FAIL here) is not compared (`COUNTER` in both tests). Not compared on Linux: the cost checks of `perform`, `uf` (printed as "no instruction counter").
+- `ldrscreen` needs a `build/duell-*.fwsc`, which `fm1pkg_make.py` can only make with the JieLi SDK: SKIP (reported PASS) without one.
+- `multiv8`: the fork has no tags `v1.0` / `v1.1`, so the test falls back to the commits they name (`e1ef5a7`, `974d875`, both in jam11's history); `jam/wsl.sh` points git at the main repository for a worktree made on Windows (its `.git` file holds a C:/ path).
+- `build/host` is shared by WSL and Windows runs: delete it when switching (a Linux `bench_sim` is not an .exe, Windows then fails with "Exec format error").
+- CI: `.github/workflows/host-tests.yml` at `bee34f9` was invalid YAML (a colon in a step name, line 35): GitHub ran no job. Fixed in `b12c319`.
+
 ## Full run: 3 November 2026, `0d66b59` (t0-sound: the 12 sound groups)
 
 `sh jam/check.sh` in the `t0-sound` checkout (logs `work/check-duell-t0-sound/`). **92 passed, 22 failed, 22 skipped** (before: 80 / 34 / 22). No new failures. No firmware change, so `check_off.sh` is unchanged.
