@@ -54,6 +54,7 @@ Each mode has its own line on the screen, so you can read what it will do. Where
 
 | Row | What it sets |
 |---|---|
+| **STYLE** | The top row: DUB / DEEP / MINIMAL / AMBIENT / PEAK / CUSTOM sets the glide MODE, TIME and WAIT and the rows VARY BARS, TURNS, POLY, SYNC, ARC and WASH LEVEL together. DUB is the default on a new unit (JRNY, 16 bars, WAIT 2 bars, LEAD, GENTLE, SOFT, RISE). TARGET, ROLL, ARP and PITCH stay as they are. Changing any of the nine by hand turns STYLE into CUSTOM and keeps your values; an older settings record loads as CUSTOM. |
 | **TARGET** | What the tide moves: the SOUND, the pattern (SEQ) or BOTH. |
 | **VARY BARS** | How often the pattern plays a variation. |
 | **ROLL** | How a new End B is made. **MUSIC** (new, the default) stays close to the sound's character; SMART and WILD are DUELL's own. |

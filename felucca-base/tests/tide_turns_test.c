@@ -722,6 +722,139 @@ static void t_arc(void)
     (void)seqlen;
 }
 
+
+/* ------------------------------------------------------------------------------------------------ STYLE --- */
+static int style_is(uint32_t k)
+{
+    const uint8_t *t = STY[k];
+    return gl.mode == t[0] && gl.time == t[1] && gl.wait == t[2] && sqm_vary_all == t[3] && sqm_turns == t[4] && sqm_poly == t[5] && sqm_sync == t[6] &&
+           sqm_arc == t[7] && (morph_wlvl & 3u) == t[8];
+}
+static void t_style(void)
+{
+    uint32_t k, r, ok = 1, own = 1;
+    uint8_t b[16], rec[5 + 16] = {'T', 'I', 'D', 'E', TIDE_STORE_VER};
+    memset(nor, 0xFF, sizeof nor);
+    ui_power_on();
+    flash_ok = 1;
+    pt_boot();
+    frame();
+    CHECK("STYLE shows its names, 6 values, first row", !strcmp(jl_vname(JL_STYLE, 0), "DUB") && !strcmp(jl_vname(JL_STYLE, 4), "PEAK") && !strcmp(jl_vname(JL_STYLE, 5), "CUSTOM") &&
+          jl_n(JL_STYLE) == 6u && JL_STYLE == 0);
+    for (k = 0; k < 5u; k++) {
+        gl.target = GT_SEQ, morph_musical = 0;
+        jl_put(JL_STYLE, k);
+        tide_settings();
+        ok &= style_is(k) && tide_style == k && gl.target == GT_SEQ && morph_musical == 0u;
+        own &= STY[k][0] <= GM_JOURNEY && STY[k][1] < GLIDE_TIMES && STY[k][2] < GLIDE_WAITS;
+    }
+    CHECK("each style sets exactly its nine rows and leaves TARGET and ROLL (ARP, PITCH are the morph's own byte)", ok && own);
+    jl_put(JL_STYLE, 1);
+    jl_put(JL_STYLE, STY_CUSTOM);
+    tide_settings();
+    CHECK("CUSTOM changes nothing", tide_style == STY_CUSTOM && style_is(1));
+    /* a hand edit of each of the nine owned values: CUSTOM, the edited value and the rest kept; the other rows leave the style alone */
+    ok = 1;
+    for (r = 0; r < 9u; r++) {
+        jl_put(JL_STYLE, 4);
+        tide_settings();
+        switch (r) {
+        case 0: gl.mode = GM_WANDER; break;                       /* the MODE knob */
+        case 1: gl.time = 2; break;                               /* the TIME knob */
+        case 2: gl.wait = 1; break;                               /* the WAIT knob */
+        case 3: jl_put(JL_VARY, 0); break;
+        case 4: jl_put(JL_TURNS, 1); break;
+        case 5: jl_put(JL_POLY, 0); break;
+        case 6: jl_put(JL_SYNC, 0); break;
+        case 7: jl_put(JL_ARC, 1); break;
+        default: jl_put(JL_WASH, 2); break;
+        }
+        tide_settings();
+        ok &= tide_style == STY_CUSTOM;
+    }
+    CHECK("a hand edit of any of the nine rows turns STYLE into CUSTOM", ok);
+    jl_put(JL_STYLE, 3);
+    tide_settings();
+    gl.time = 5;
+    tide_reset(2u);                                               /* OCT- + K3: TIME 8 bars */
+    tide_settings();
+    CHECK("  .. also OCT- + K3 (the reset)", tide_style == STY_CUSTOM && gl.time == 3u);
+    jl_put(JL_STYLE, 3);
+    tide_settings();
+    jl_put(JL_TARGET, GT_SEQ);
+    jl_put(JL_ROLL, 1);
+    tide_settings();
+    CHECK("  .. TARGET and ROLL leave the style alone", tide_style == 3u);
+    jl_put(JL_STYLE, 2);
+    jl_put(JL_SYNC, 0);
+    tide_settings();
+    jl_put(JL_SYNC, 2);                                           /* back to the style's value by hand: stays CUSTOM */
+    tide_settings();
+    CHECK("  .. setting the values back by hand stays CUSTOM", tide_style == STY_CUSTOM && style_is(2));
+    /* the record */
+    memset(nor, 0xFF, sizeof nor);
+    ui_power_on();
+    flash_ok = 1;
+    pt_boot();
+    tide_seen_ok = 0;
+    tide_style = STY_CUSTOM;
+    gl.mode = GM_ONCE, gl.time = 0, gl.wait = 0, sqm_turns = 0, sqm_arc = 0, sqm_sync = 0, sqm_poly = 0;
+    tide_settings();
+    CHECK("no record: DUB, its existing rows today's defaults (JRNY, 16 bars, WAIT 2 bars, VARY 4 + 8, WASH OFF)", tide_style == STY_DUB && style_is(0) && gl.mode == GM_JOURNEY &&
+          GLIDE_BARS[gl.time] == 16u && GLIDE_WAIT_BARS[gl.wait] == 2u && !sqm_vary_all && !morph_wlvl);
+    {
+        static const uint8_t L[3] = {7, 9, 11};
+        for (k = 0; k < 3u; k++) {
+            memset(rec + 5, 0, 16);
+            rec[5 + TS_MODE] = GM_LOOP, rec[5 + TS_TIME] = 2, rec[5 + TS_TARGET] = GT_BOTH, rec[5 + TS_WAIT] = 1, rec[5 + TS_WASH] = 2;
+            rec[5 + TS_TURNS] = 3, rec[5 + TS_POLY] = 2, rec[5 + TS_SYNC] = 0, rec[5 + TS_ARC] = 2;
+            st_save(OBJ_TIDE, rec, 5u + L[k]);
+            tide_seen_ok = 0;
+            tide_style = STY_DUB;
+            tide_settings();
+            CHECK(k == 0 ? "a 7-byte record: CUSTOM, its values kept" : k == 1 ? "a 9-byte record: CUSTOM, its values kept" : "an 11-byte record: CUSTOM, its values kept",
+                  tide_style == STY_CUSTOM && gl.mode == GM_LOOP && gl.time == 2u && gl.wait == 1u && morph_wlvl == 2u && (L[k] < 9u || (sqm_turns == 3u && sqm_poly == 2u)) &&
+                  (L[k] < 11u || (sqm_sync == 0u && sqm_arc == 2u)));
+        }
+    }
+    memset(rec + 5, 0, 16);
+    for (k = 0; k < 9u; k++)
+        rec[5 + (k == 0 ? TS_MODE : k == 1 ? TS_TIME : k == 2 ? TS_WAIT : k == 3 ? TS_VARY : k == 4 ? TS_TURNS : k == 5 ? TS_POLY : k == 6 ? TS_SYNC : k == 7 ? TS_ARC : TS_WASH)] = STY[4][k];
+    rec[5 + TS_STYLE] = 4;
+    st_save(OBJ_TIDE, rec, 5u + TS_N);
+    tide_seen_ok = 0;
+    tide_style = STY_CUSTOM;
+    tide_settings();
+    CHECK("a 12-byte record: its style and values", tide_style == 4u && style_is(4));
+    rec[5 + TS_STYLE] = 9;
+    st_save(OBJ_TIDE, rec, 5u + TS_N);
+    tide_seen_ok = 0;
+    tide_style = 2;
+    tide_settings();
+    CHECK("an out-of-range style byte: CUSTOM", tide_style == STY_CUSTOM);
+    rec[5 + TS_STYLE] = 1;                                         /* DEEP's byte, PEAK's values: they differ, so CUSTOM at once */
+    st_save(OBJ_TIDE, rec, 5u + TS_N);
+    tide_seen_ok = 0;
+    tide_settings();
+    CHECK("a style byte whose values do not match its table: CUSTOM", tide_style == STY_CUSTOM);
+    /* a style picked, a power cycle: the same style, and the record is written once per change */
+    tide_store_dirty = 0;
+    jl_put(JL_STYLE, 3);
+    tide_settings();
+    CHECK("a style picked is marked for saving", tide_store_dirty && tide_store_n == 5u + TS_N);
+    fm1_ms += 3000u;
+    song.playing = 0;
+    tide_store_poll();
+    tide_settings();
+    tide_settings();
+    CHECK("  .. saved once, not again every frame", !tide_store_dirty && tide_store_load(b, TS_N) && b[TS_STYLE] == 3u);
+    tide_seen_ok = 0;
+    tide_style = STY_CUSTOM;
+    gl.mode = GM_ONCE;
+    tide_settings();
+    CHECK("  .. after a power cycle the same style and values", tide_style == 3u && style_is(3));
+}
+
 /* ------------------------------------------------------------------------------------------------ store --- */
 static void t_store(void)
 {
@@ -786,6 +919,7 @@ int main(void)
     t_sync();
     t_answer();
     t_arc();
+    t_style();
     t_store();
     printf("tideturns: %d of %d checks failed\n", bad, checks);
     return bad != 0;

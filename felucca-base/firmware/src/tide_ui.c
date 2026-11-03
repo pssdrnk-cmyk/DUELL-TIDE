@@ -125,12 +125,35 @@ static void tide_link(uint32_t mask, uint32_t v)
 }
 
 /* ---------------------------------------------------------------- TIDE LIST --- */
-enum { JL_TARGET, JL_VARY, JL_ROLL, JL_ARP, JL_PITCH, JL_WASH, JL_TURNS, JL_POLY, JL_SYNC, JL_ARC, JL_N };
-static const char *const JL_NAME[JL_N] = {"TARGET", "VARY BARS", "ROLL", "ARP", "PITCH", "WASH LEVEL", "TURNS", "POLY", "SYNC", "ARC"};
+enum { JL_STYLE, JL_TARGET, JL_VARY, JL_ROLL, JL_ARP, JL_PITCH, JL_WASH, JL_TURNS, JL_POLY, JL_SYNC, JL_ARC, JL_N };
+static const char *const JL_NAME[JL_N] = {"STYLE", "TARGET", "VARY BARS", "ROLL", "ARP", "PITCH", "WASH LEVEL", "TURNS", "POLY", "SYNC", "ARC"};
 static uint8_t jl_sel;                                   /* the row picked (K1) */
 static void morph_act(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi);   /* (ui_input.c) */
 
-static uint32_t jl_n(uint32_t r) { return r == JL_WASH ? 4u : r == JL_TURNS ? 4u : r == JL_TARGET || r == JL_ROLL || r == JL_POLY || r == JL_SYNC || r == JL_ARC ? 3u : 2u; }
+/* STYLE: one move sets the nine rows below it together (TARGET, ROLL, ARP and PITCH choose what TIDE may change, not the genre, and stay). A hand edit
+ * of any of the nine turns it into CUSTOM (tide_settings); CUSTOM itself changes nothing. mode, time (index), wait (index), VARY, TURNS, POLY, SYNC, ARC, WASH */
+enum { STY_DUB, STY_DEEP, STY_MINIMAL, STY_AMBIENT, STY_PEAK, STY_CUSTOM };
+static const uint8_t STY[5][9] = {
+    {GM_JOURNEY, 4, 2, 0, 2, 1, 1, 1, 0},                /* DUB: the showcase (today's no-record rows) with LEAD and a RISE */
+    {GM_WANDER, 5, 3, 0, 1, 0, 1, 1, 1},                 /* DEEP */
+    {GM_WANDER, 3, 0, 1, 2, 2, 2, 0, 0},                 /* MINIMAL */
+    {GM_JOURNEY, 6, 4, 0, 0, 1, 0, 0, 3},                /* AMBIENT */
+    {GM_JOURNEY, 3, 0, 1, 3, 1, 2, 2, 0}};               /* PEAK: ARC DROP and ECHO */
+static uint8_t tide_style = STY_DUB;
+static void tide_style_apply(uint32_t s)
+{
+    const uint8_t *t = STY[s];
+    gl.mode = t[0], gl.time = t[1], gl.wait = t[2];
+    sqm_vary_all = t[3], sqm_turns = t[4], sqm_poly = t[5], sqm_sync = t[6], sqm_arc = t[7], morph_wlvl = t[8];
+    tide_style = (uint8_t)s;
+}
+static int tide_style_holds(void)                        /* the nine rows are the style's */
+{
+    const uint8_t *t = STY[tide_style % 5u];
+    return gl.mode == t[0] && gl.time == t[1] && gl.wait == t[2] && sqm_vary_all == t[3] && sqm_turns == t[4] && sqm_poly == t[5] &&
+           sqm_sync == t[6] && sqm_arc == t[7] && (morph_wlvl & 3u) == t[8];
+}
+static uint32_t jl_n(uint32_t r) { return r == JL_WASH ? 4u : r == JL_STYLE ? 6u : r == JL_TURNS ? 4u : r == JL_TARGET || r == JL_ROLL || r == JL_POLY || r == JL_SYNC || r == JL_ARC ? 3u : 2u; }
 static uint32_t jl_get(uint32_t r)
 {
     switch (r) {
@@ -143,6 +166,7 @@ static uint32_t jl_get(uint32_t r)
     case JL_POLY: return sqm_poly;
     case JL_SYNC: return sqm_sync;
     case JL_ARC: return sqm_arc;
+    case JL_STYLE: return tide_style;
     default: return (morph.cfg & MC_PIT) != 0u;
     }
 }
@@ -150,13 +174,21 @@ static const char *jl_vname(uint32_t r, uint32_t v)
 {
     static const char *const VARY[2] = {"4 + 8", "ALL"}, *const ROLL[3] = {"MUSIC", "SMART", "WILD"}, *const SW[2] = {"OFF", "ON"},
                              *const WL[4] = {"OFF", "LOW", "MID", "HIGH"},
-                             *const TURNS[4] = {"TOGETHER", "TAKE TURNS", "LEAD", "ECHO"}, *const POLY[3] = {"OFF", "GENTLE", "WIDE"}, *const SYNC[3] = {"OFF", "SOFT", "PUSH"}, *const ARC[3] = {"OFF", "RISE", "DROP"};
-    return r == JL_TURNS ? TURNS[v & 3u] : r == JL_POLY ? POLY[v % 3u] : r == JL_SYNC ? SYNC[v % 3u] : r == JL_ARC ? ARC[v % 3u] : r == JL_TARGET ? GL_TARGET_NAME[v % 3u] : r == JL_VARY ? VARY[v & 1u] : r == JL_ROLL ? ROLL[v % 3u] : r == JL_WASH ? WL[v & 3u] : SW[v & 1u];
+                             *const TURNS[4] = {"TOGETHER", "TAKE TURNS", "LEAD", "ECHO"}, *const POLY[3] = {"OFF", "GENTLE", "WIDE"}, *const SYNC[3] = {"OFF", "SOFT", "PUSH"}, *const ARC[3] = {"OFF", "RISE", "DROP"},
+                             *const STYLE[6] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK", "CUSTOM"};
+    return r == JL_TURNS ? TURNS[v & 3u] : r == JL_POLY ? POLY[v % 3u] : r == JL_SYNC ? SYNC[v % 3u] : r == JL_ARC ? ARC[v % 3u] : r == JL_STYLE ? STYLE[v % 6u] : r == JL_TARGET ? GL_TARGET_NAME[v % 3u] : r == JL_VARY ? VARY[v & 1u] : r == JL_ROLL ? ROLL[v % 3u] : r == JL_WASH ? WL[v & 3u] : SW[v & 1u];
 }
 static void jl_put(uint32_t r, uint32_t v)
 {
     uint32_t pi = song.sel, mask = morph_mask(pi);
     switch (r) {
+    case JL_STYLE:
+        if (v < STY_CUSTOM)
+            tide_style_apply(v);
+        else
+            tide_style = STY_CUSTOM;
+        ui_message(v == 0u ? "STYLE DUB" : v == 1u ? "STYLE DEEP" : v == 2u ? "STYLE MINIMAL" : v == 3u ? "STYLE AMBIENT" : v == 4u ? "STYLE PEAK" : "STYLE CUSTOM");
+        break;
     case JL_TARGET:
         gl.target = (uint8_t)v;
         ui_message(v == GT_BOTH ? "GLIDE SOUND + SEQ" : v == GT_SEQ ? "GLIDE SEQ" : "GLIDE SOUND");
@@ -644,13 +676,13 @@ static uint32_t tide_sig(void)
  * sector pair; plan §4.5), not in the settings record (1.1 uses the bytes JAM had there). ARP, PITCH and WILD are the morph's own byte
  * (ui.c ui_morph_cfg). The record is read once at power-on (none or damaged: the defaults; neither is written back); a change is saved ~2 s after the last one,
  * while stopped and not during ERASE DATA (tide_store_poll) */
-enum { TS_MODE, TS_TIME, TS_TARGET, TS_WAIT, TS_VARY, TS_MUSIC, TS_WASH, TS_OLD, TS_TURNS = TS_OLD, TS_POLY, TS_SYNC, TS_ARC, TS_N };   /* (TS_OLD: the fields of the first record; a record of that length loads, the later fields at their defaults) */
+enum { TS_MODE, TS_TIME, TS_TARGET, TS_WAIT, TS_VARY, TS_MUSIC, TS_WASH, TS_OLD, TS_TURNS = TS_OLD, TS_POLY, TS_SYNC, TS_ARC, TS_STYLE, TS_N };   /* (TS_OLD: the fields of the first record; a record of that length loads, the later fields at their defaults) */
 static uint8_t tide_seen[TS_N], tide_seen_ok;
 static void tide_settings(void)
 {
     uint8_t w[TS_N];
     if (!tide_seen_ok) {
-        uint8_t b[TS_N] = {[TS_TURNS] = 1u, [TS_POLY] = 1u, [TS_SYNC] = 1u, [TS_ARC] = 0u};   /* (the defaults of the fields an older record lacks) */
+        uint8_t b[TS_N] = {[TS_TURNS] = 1u, [TS_POLY] = 1u, [TS_SYNC] = 1u, [TS_ARC] = 0u, [TS_STYLE] = STY_CUSTOM};   /* (the defaults of the fields an older record lacks) */
         uint32_t have = tide_store_load_min(b, TS_N, TS_OLD);
         if (have) {
             gl.mode = (uint8_t)(b[TS_MODE] <= GM_JOURNEY ? b[TS_MODE] : GM_ONCE);
@@ -664,8 +696,12 @@ static void tide_settings(void)
             sqm_poly = (uint8_t)(b[TS_POLY] < 3u ? b[TS_POLY] : 1u);
             sqm_sync = (uint8_t)(b[TS_SYNC] < 3u ? b[TS_SYNC] : 1u);
             sqm_arc = (uint8_t)(b[TS_ARC] < 3u ? b[TS_ARC] : 0u);
-        }
+            tide_style = (uint8_t)(have > TS_STYLE && b[TS_STYLE] < STY_CUSTOM ? b[TS_STYLE] : STY_CUSTOM);   /* (an older record: CUSTOM, its values kept) */
+        } else
+            tide_style_apply(STY_DUB);                   /* (no record: the DUB showcase) */
     }
+    if (tide_style < STY_CUSTOM && !tide_style_holds())
+        tide_style = STY_CUSTOM;                         /* a hand edit of any of the nine rows (knobs, rows, resets, MIDI) */
     w[TS_MODE] = gl.mode;
     w[TS_TIME] = gl.time;
     w[TS_TARGET] = gl.target;
@@ -677,6 +713,7 @@ static void tide_settings(void)
     w[TS_POLY] = sqm_poly;
     w[TS_SYNC] = sqm_sync;
     w[TS_ARC] = sqm_arc;
+    w[TS_STYLE] = tide_style;
     if (!tide_seen_ok) {                                 /* (what was read, or the defaults: not a change, nothing to write at every power-on) */
         memcpy(tide_seen, w, TS_N);
         tide_seen_ok = 1;

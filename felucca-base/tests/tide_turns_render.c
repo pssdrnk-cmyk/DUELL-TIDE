@@ -31,7 +31,7 @@ static void fl_plain_window_init(void) {}
 #define BARS 16u
 static const uint8_t STAB[16] = {0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0};   /* part 1: off-beat chords (steps 7, 11, 15) */
 static const uint8_t STABE[16] = {1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0};   /* SYNC demo: chords on beats 1 and 3 and the E of 2 and 4, to be pulled to the and */
-static uint32_t g_edit, g_sync = 1, g_arc, g_hand;                      /* g_edit: the phrase edits run (rhythm_poll), the SYNC demo's pattern */
+static uint32_t g_edit, g_sync = 1, g_arc, g_hand, g_style = 9;                      /* g_edit: the phrase edits run (rhythm_poll), the SYNC demo's pattern */
 static const uint8_t LINE[16] = {1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0};   /* part 2: a bass line against them */
 
 static void setup(uint32_t fader, uint32_t seed)
@@ -100,6 +100,8 @@ static uint32_t render(const char *path, uint32_t turns, uint32_t poly, uint32_t
     sqm_auto = 3;
     sqm_sync = (uint8_t)g_sync;
     sqm_arc = (uint8_t)g_arc;
+    if (g_style < 5u)
+        tide_style_apply(g_style);          /* (the nine rows as the style sets them) */
     if (f)
         wav_hdr(f, n);
     transport_req = 1;
@@ -142,6 +144,17 @@ int main(int argc, char **argv)
         render(q, 1, 0, 127, 5, 1);
         snprintf(q, sizeof q, "%s/answer_after_echo.wav", dir);
         render(q, 3, 0, 127, 5, 1);
+        return 0;
+    }
+    if (argc > 2 && !strcmp(argv[2], "style")) {
+        char q[512];
+        g_edit = 1;
+        g_style = 0;
+        snprintf(q, sizeof q, "%s/style_before_dub.wav", dir);
+        render(q, 1, 0, 0, 5, 1);
+        g_style = 4;
+        snprintf(q, sizeof q, "%s/style_after_peak.wav", dir);
+        render(q, 1, 0, 0, 5, 1);
         return 0;
     }
     if (argc > 2 && !strcmp(argv[2], "arc")) {

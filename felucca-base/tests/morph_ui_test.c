@@ -405,7 +405,7 @@ static void t_knobs(void)
      * morph's selector there (PART 1, BOTH, PART 2: tide_ui.c) */
     go_title(MORPH_SET_TITLE);
     frames(32);
-    mset_put(2u, 2u); mset_put(3u, 1u); mset_put(4u, 1u);
+    mset_put(JL_ROLL, 2u); mset_put(JL_ARP, 1u); mset_put(JL_PITCH, 1u);
     expect("ROLL WILD, ARP ON, PITCH ON on TIDE SETTINGS (TIDE's list: K1 the row, OCT+ the value; the settings bits)",
            morph.cfg == (MC_WILD | MC_ARP | MC_PIT) && favorites.factory[15][8] == 7u);
     {
@@ -417,7 +417,7 @@ static void t_knobs(void)
     turn(EN_ALGO, 1);
     expect("  .. ALGORITHM on TIDE SETTINGS: BOTH next (TIDE: the morph's selector, as on MORPH)", song.sel == 0u && morph.target == MT_BOTH);
     turn(EN_ALGO, -1);
-    mset_put(2u, 0u); mset_put(3u, 0u); mset_put(4u, 0u);
+    mset_put(JL_ROLL, 0u); mset_put(JL_ARP, 0u); mset_put(JL_PITCH, 0u);
     expect("  .. and back: MUSIC (TIDE's default: SMART with the musical dials), ARP OFF, PITCH OFF (the defaults)", !morph.cfg && !favorites.factory[15][8]);
 #else
     /* MORPH SET (0.2.9): SMART, ARP, PITCH, KNOB 4 empty; no TARGET card (ALGORITHM's BOTH on the MORPH page is the target) */
@@ -789,7 +789,7 @@ static void t_item154(void)
     fresh();
 #if DUELL_TIDE
     go_title(MORPH_SET_TITLE); frames(32);
-    mset_put(2u, 1u);                                   /* (TIDE: ROLL SMART, 1.1's roll the owner's steps used; MUSIC, TIDE's default, keeps the LFO depths) */
+    mset_put(JL_ROLL, 1u);                                   /* (TIDE: ROLL SMART, 1.1's roll the owner's steps used; MUSIC, TIDE's default, keeps the LFO depths) */
 #endif
     preset_pos(&tot);
     for (n = 0; n < tot; n++) {
@@ -844,7 +844,7 @@ static void t_item154(void)
     }
 #if DUELL_TIDE
     go_title(MORPH_SET_TITLE); frames(32);
-    mset_put(2u, 0u);                                   /* (back to MUSIC, TIDE's default: the setting outlives a power cycle) */
+    mset_put(JL_ROLL, 0u);                                   /* (back to MUSIC, TIDE's default: the setting outlives a power cycle) */
 #endif
 }
 
@@ -942,7 +942,7 @@ static void t_settings(void)
     turn(EN_ALGO, -1);                                  /* BOTH: not saved */
     go_title(MORPH_SET_TITLE); frames(32);
 #if DUELL_TIDE
-    mset_put(3u, 1u); mset_put(4u, 1u);                 /* (ARP ON, PITCH ON) */
+    mset_put(JL_ARP, 1u); mset_put(JL_PITCH, 1u);                 /* (ARP ON, PITCH ON) */
 #else
     turn(EN_K2, 1);
     turn(EN_K3, 1);
