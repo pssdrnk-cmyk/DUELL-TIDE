@@ -36,7 +36,7 @@ The screen shows the SOUND and SEQ faders with the glide's path, the 16 steps pl
 | LOOP | Back and forth between A and B. |
 | DRIFT | The end it left is rolled again from your sound: new twists around the same centre. |
 | WNDR | Walks away from your sound, a little further each trip; the steps grow with the phrase (16, 32, 64, 128 bars). Always computed from your original, so it can't run away. |
-| JRNY | Travels through other factory sounds of the same engine and kind, never the other part's. Also crosses engines (FM6 included) and gives each part its own pattern wander. |
+| JRNY | Travels through factory sounds of the part's own engine; it never changes engine. It picks the same kind of sound first, and another kind of that engine only if none is left. Never the other part's sound, and it avoids the last 4 destinations. Each part also gets its own pattern wander. |
 
 Where two very different sounds cross, a short filter dip hides the change (WASH LEVEL, below).
 
