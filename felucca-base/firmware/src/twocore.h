@@ -94,6 +94,13 @@ static void tc_job_run(uint32_t arg);
 #endif
 
 /* ---------------------------------------------------------------- core 1's side --- */
+/* the job number after j: 0 means no job, so the count skips it when it wraps (both sides use this) */
+static inline uint32_t tc_next(uint32_t j)
+{
+    j++;
+    return j ? j : 1u;
+}
+
 typedef struct {
     uint32_t last;              /* the last job number it answered (or refused) */
     uint32_t polls, beat, bad, mis, rr, k;
@@ -130,7 +137,7 @@ TC_C1_INLINE void tc_c1_step(tc_c1_t *c)
         TC_SYNC();                                      /* (the words core 0 wrote before the job word) */
         arg = TC_LD(&tc_mb.arg);
         chk = TC_LD(&tc_mb.chk);
-        if (j == c->last + 1u && chk == TC_CHECK(j, arg))
+        if (j == tc_next(c->last) && chk == TC_CHECK(j, arg))
             break;
         if (r >= TC_REREAD) {                           /* refused: never run */
             c->last = j;
