@@ -116,6 +116,8 @@ static void name_open(uint32_t kind, uint32_t slot)
         char tag[4];
         str_cpy(nm.ph, "PATTERN", sizeof nm.ph);
         pat_label(slot % PS_SLOTS, tag, b);
+        if (slot % PS_SLOTS >= PS_USER0 && !ps_changed(slot % PS_SLOTS))
+            b[0] = 0;                                  /* (an empty USER slot: a random name to start from) */
     } else {
         str_cpy(nm.ph, "MULTI ", sizeof nm.ph);       /* DUELL: "MULTI M05" (SAVE > MULTI) */
         mu_label(nm.ph + 6, slot % MU_SLOTS);

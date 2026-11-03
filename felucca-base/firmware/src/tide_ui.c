@@ -339,7 +339,7 @@ static int tide_taken(uint32_t k, uint32_t e, uint32_t j)   /* 1: the other part
     const track_t *t = &trk[o];
     if (NSHOWN < 2u || t->eng_req != e)
         return 0;
-    return (!t->user && t->preset == j) || morph_to_of(o, 0u) == (int32_t)j || morph_to_of(o, 1u) == (int32_t)j;
+    return (!UP_REC_USER(t) && t->preset == j) || morph_to_of(o, 0u) == (int32_t)j || morph_to_of(o, 1u) == (int32_t)j;
 }
 /* the candidates pick[0..n) of part k without its last h targets, for the most h that leaves any (the oldest forgiven first: a
  * group of four or fewer sounds still turns); n unchanged where none is in the history or the memory is empty */
@@ -381,13 +381,13 @@ static void tide_journey(uint32_t mask, uint32_t x, uint32_t snd, uint32_t seq)
         if (!((mask >> k) & 1u))
             continue;
         if (snd) {
-            uint32_t e = t->eng_req, cat = t->user ? 0u : ds_cat_of(e, t->preset);
+            uint32_t e = t->eng_req, cat = UP_REC_USER(t) ? 0u : ds_cat_of(e, t->preset);
             int32_t at = morph_to_of(k, x ^ 1u), was = morph_to_of(k, x);
-            if (at < 0 && !t->user)                      /* (the end reached is the Original or a roll: not the Original's own sound) */
+            if (at < 0 && !UP_REC_USER(t))                      /* (the end reached is the Original or a roll: not the Original's own sound) */
                 at = (int32_t)t->preset;
             for (pass = n = 0; pass < 3u && !n; pass++)   /* (0: the kind, neither end's; 1: the one left allowed; 2: any kind) */
                 for (j = 0; j < ds_count(e) && n < 64u; j++)
-                    if ((t->user || pass == 2u || ds_cat_of(e, j) == cat) && (int32_t)j != at && (pass || (int32_t)j != was) &&
+                    if ((UP_REC_USER(t) || pass == 2u || ds_cat_of(e, j) == cat) && (int32_t)j != at && (pass || (int32_t)j != was) &&
                         !tide_taken(k, e, j))
                         pick[n++] = j;
             n = jh_filter(k, e, pick, n);

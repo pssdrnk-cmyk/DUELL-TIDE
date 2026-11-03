@@ -49,10 +49,10 @@ export function buildMultiObject(names) {              // [nameA | null, nameB |
 }
 // The unit's 32 default patterns (engines.c PATTERNS[]: name, LEN, DIV; PATTERNS_PROPOSAL.md) as the objects 21..23 hold them (PTS3, patslot.js). The steps here are simple stand-ins (the
 // unit's own notes are in the firmware); the format, the names and the 11 + 11 + 10 split are the unit's.
-const DEFAULT_PATTERNS = [["MORODER OCT", 16, 2], ["ACID LINE", 16, 2], ["OFFBEAT", 16, 2], ["TECHNO RUMBL", 16, 2], ["TRANCE ROLL", 16, 2], ["8TH PULSE", 16, 2], ["GLASS LOOP", 16, 2], ["BERLIN RUN", 16, 2],
-  ["DETROIT STAB", 16, 2], ["FUNK 16TH", 16, 2], ["DUB HALFTIME", 16, 2], ["SKANK", 16, 2], ["GALLOP", 16, 2], ["PENTA RIFF", 16, 2], ["BOOGIE BASS", 16, 2], ["DOTTED HOOK", 16, 2], ["SUB DROP", 16, 2],
-  ["TUMBAO", 16, 2], ["MOTORIK", 16, 2], ["WALK LINE", 8, 1], ["2-STEP SUB", 16, 2], ["GHOST FUNK", 16, 2], ["TRIPLET SWAY", 12, 4], ["TRANCE GATE", 16, 2], ["RAVE STABS", 16, 2], ["EP COMP", 16, 2],
-  ["NEON HOOK", 16, 2], ["NIGHT CALL", 32, 2], ["PAD BREATH", 16, 2], ["DX OSTINATO", 16, 2], ["DX BELLS", 16, 2], ["SEVEN EIGHT", 14, 2]];
+const DEFAULT_PATTERNS = [["DUB CHORD", 16, 2], ["DEEP SHUFFLE", 16, 2], ["DUB OFFBEAT", 16, 2], ["HOUSE STAB", 16, 2], ["DOT DELAY", 16, 2], ["8TH PULSE", 16, 2], ["GLASS LOOP", 16, 2], ["BERLIN RUN", 16, 2],
+  ["DETROIT STAB", 16, 2], ["MINIMAL 12", 12, 2], ["DUB HALFTIME", 16, 2], ["SKANK", 16, 2], ["DEEP 332", 16, 2], ["PENTA RIFF", 16, 2], ["PAD BREATH", 16, 2], ["DOTTED HOOK", 16, 2], ["HALF PAD", 32, 2],
+  ["TUMBAO", 16, 2], ["MOTORIK", 16, 2], ["WALK LINE", 8, 1], ["2-STEP SUB", 16, 2], ["GHOST FUNK", 16, 2], ["TRIPLET SWAY", 12, 4], ["DUB PROG", 32, 2], ["RAVE STABS", 16, 2], ["EP COMP", 16, 2],
+  ["NEON HOOK", 16, 2], ["NIGHT CALL", 32, 2], ["TIED ROOTS", 16, 2], ["DX OSTINATO", 16, 2], ["DX BELLS", 16, 2], ["SEVEN EIGHT", 14, 2]];
 export function mockPatternRecord({ name, len = 16, div = 2, changed = 0 }) {      // one slot as the editor's 596-byte record
   const r = new Uint8Array(PATS.REC); r.set([PATS.USED, PATS.VER, len, div, 0, 64, 1, changed]); putName(r, 8, name);
   for (let k = 0; k < 64; k++) { const t = 20 + k * 9; if (k < len && k % 4 === 0) { r[t] = 48 + (k % 12); r[t + 4] = 1; r[t + 5] = 100; } else r[t + 4] = 2 << 3; }

@@ -195,7 +195,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 {
   const { m, u } = await connect();
   let r = await S.readPatterns(u);
-  ok(r.slots[2]?.name === "PAT THREE" && r.slots[2].len === 12 && r.slots.length === 32 && r.slots.every((x) => x && x.name) && r.slots[0].name === "MORODER OCT", "patterns: the 32 slots are read from the unit's objects 21..23 (P03 PAT THREE, 12 steps; every slot holds a named pattern)");
+  ok(r.slots[2]?.name === "PAT THREE" && r.slots[2].len === 12 && r.slots.length === 32 && r.slots.every((x) => x && x.name) && r.slots[0].name === "DUB CHORD", "patterns: the 32 slots are read from the unit's objects 21..23 (P03 PAT THREE, 12 steps; every slot holds a named pattern)");
   const rec = S.patternRecord(r.objs, 2), d = S.decodePattern(rec), back = S.encodePattern(d);
   ok(back.every((x, i) => x === rec[i]), "patterns: a record decodes and encodes bit for bit (notes, nudge, ratchet bits)");
   const s0 = { index: 0, n: 2, notes: [60, 67, 0, 0], time: 0, flags: 3, vel: 99, hits: [0, 0, 0], chance: 55, ratchet: 3, nudge: 3 }, s1 = S.unpackStep(S.packStep(s0), 0);
@@ -219,12 +219,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const r0 = await S.readPatterns(u);
   ok(r0.slots.length === 32 && S.PATTERN_SLOTS === 32, "patterns: the unit lists three objects: 32 slots (11 + 11 + 10), every one a pattern");
   const c = await connect({ pat32: true }), r = await S.readPatterns(c.u);
-  ok(r.slots.length === 32 && r.slots.every((x) => x && x.name) && r.slots[2].name === "OFFBEAT" && r.slots[31].name === "SEVEN EIGHT" && r.slots[31].len === 14, `patterns: ?mock=pat32 is the unit's plain defaults: ${r.slots.length} slots, P03 OFFBEAT, P32 SEVEN EIGHT (14 steps)`);
+  ok(r.slots.length === 32 && r.slots.every((x) => x && x.name) && r.slots[2].name === "DUB OFFBEAT" && r.slots[31].name === "SEVEN EIGHT" && r.slots[31].len === 14, `patterns: ?mock=pat32 is the unit's plain defaults: ${r.slots.length} slots, P03 DUB OFFBEAT, P32 SEVEN EIGHT (14 steps)`);
   ok([21, 22, 23].every((id, o) => { const b = c.m.objs.get(id); return b.length > 400 && b.length <= 3584 && String.fromCharCode(...b.slice(0, 4)) === "PTS3" && b[6] === (o < 2 ? 11 : 10) && b[7] === 11 && (b[4] | b[5] << 8) === b.length; }), "patterns: the objects are PTS3: used length = size, 11 / 11 / 10 slots, 11 an object (PS_PER from the header)");
   const rec = S.patternRecord(r.objs, 31), d = S.decodePattern(rec);
   await S.storePattern(c.u, 30, S.encodePattern({ ...d, name: "WRITTEN 31" }));
   const r2 = await S.readPatterns(c.u);
-  ok(r2.slots[30].name === "WRITTEN 31" && r2.slots[31].name === "SEVEN EIGHT" && r2.slots[0].name === "MORODER OCT" && S.patternRecord(r2.objs, 30)[7] === 1, "patterns: a slot of the third object (P31) is written and read back, its neighbours untouched, saved by the user (flag)");
+  ok(r2.slots[30].name === "WRITTEN 31" && r2.slots[31].name === "SEVEN EIGHT" && r2.slots[0].name === "DUB CHORD" && S.patternRecord(r2.objs, 30)[7] === 1, "patterns: a slot of the third object (P31) is written and read back, its neighbours untouched, saved by the user (flag)");
   // the compact format: every record packs and unpacks to itself; a pattern that fills an object is refused before anything is written
   const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
   const P = await import("./editor/patslot.js");

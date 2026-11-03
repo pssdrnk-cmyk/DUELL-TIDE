@@ -222,7 +222,7 @@ static void t_editb(void)
     n = morph_edits(0, ed);
     expect("  turning the same value again changes it, never counts again; A still untouched", n == 1u && !memcmp(pa, trk[0].p, sizeof pa));
     /* values both ends share */
-    k = knob_of(P_VOICE);
+    k = 0u; ui.menu = 0; go_title("VOICE 1/2"); frames(32);   /* (VOICE 1/2 K1: the CHORD page has the VOICE too, as its K4, shown only where chords need POLY) */
     ui.msg_t = 0;
     memcpy(pa, trk[0].p, sizeof pa);
     turn(EN_K1 + k, 1);
@@ -874,7 +874,7 @@ static void t_save(void)
     turn(EN_K4, 20);
     turn(EN_K2, MORPH_DET); settle();                   /* ROLL B at AMOUNT 45 */
     turn(EN_K1, 70);
-    expect("a factory sound is in its slot (the browse position), the list is the 128 slots", sl == pos && total == UP_SLOTS && sl < UP_SLOTS);
+    expect("a factory sound is in its slot (the browse position), the list is the 128 slots and the 4 displaced places", sl == pos && total == UP_VSLOTS && sl < UP_SLOTS);
     hold(B_SAVE);
     expect("SAVE held on MORPH: the OVERWRITE dialog for part 1, offering the slot the sound came from (nothing saved yet); OCT- cancels",
            ui.confirm == CF_SAVE_OVER && ui.confirm_trk == 0u && ui.svs == sl && !up_count() && (press(B_OCTDN), !ui.confirm && !up_count()));
@@ -886,7 +886,7 @@ static void t_save(void)
     expect("  OCT+: SAVED #NN, still on MORPH; one record, in that slot; the part plays that slot now",
            up_count() == 1u && up_used(sl) && !strncmp(ui.msg, "SAVED", 5) && str_eq(cur_page()->title, "MORPH") && trk[0].user == sl + 1u &&
            up_rec(sl)->engine == e && up_value(up_rec(sl), P_REL) == trk[0].p[P_REL]);
-    expect("the browser: the slot stays in its place (same position, same length 128)", preset_pos(&t2) == pos && t2 == UP_SLOTS && preset_at(pos) == sl);
+    expect("the browser: the slot stays in its place (same position, same length 132)", preset_pos(&t2) == pos && t2 == UP_VSLOTS && preset_at(pos) == sl);
     turn(EN_K4, -30);                                   /* AMOUNT 15, another B, another sound */
     turn(EN_PRESET, 1);
     frames(32);

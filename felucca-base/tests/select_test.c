@@ -1482,8 +1482,8 @@ static void test_page_order(void)
     expect("VOICE: 1/2 MODE PRIORITY DETUNE TRANSPOSE (T0227: no ALLOCATION; DUELL 1.1: TRANSPOSE is the patch's), 2/2 GLIDE MODE, GLIDE, SPREAD, PATCH LEVEL",
            v1->id[0] == P_VOICE && v1->id[1] == P_PRIO && v1->id[2] == P_DETUNE && v1->id[3] == P_TRANS &&
            v2->id[0] == P_GLMODE && v2->id[1] == P_GLIDE && v2->id[2] == P_SPRD && v2->id[3] == P_TRIM);
-    expect("CHORD: CHRD VOIC STRUM, K4 none (DUELL 1.1: TRANSPOSE moved to VOICE 1/2, the KEY OFFSET is gone; item 144: K3 STRUM, ext slot X27)", pg_titled("CHORD")->id[0] == P_CHRD && pg_titled("CHORD")->id[1] == P_VOIC &&
-           pg_titled("CHORD")->id[2] == XW_BASE + X_STRUM && pg_titled("CHORD")->id[3] == 0xFFu);
+    expect("CHORD: CHRD VOIC STRUM, K4 VOICE, shown only where chords need POLY (DUELL 1.1: TRANSPOSE moved to VOICE 1/2, the KEY OFFSET is gone; item 144: K3 STRUM, ext slot X27)", pg_titled("CHORD")->id[0] == P_CHRD && pg_titled("CHORD")->id[1] == P_VOIC &&
+           pg_titled("CHORD")->id[2] == XW_BASE + X_STRUM && pg_titled("CHORD")->id[3] == P_VOICE);
     expect("DUCK 2/2: CURVE ATK RLS", d2->id[0] == P_DKCRV && d2->id[1] == P_DKATK && d2->id[2] == P_DKRLS);
     expect("MULTI FILTER 1/2: CUT RES MODE SLOPE", mf->id[0] == P_FREEA && mf->id[1] == P_FREEB && mf->id[2] == P_FREEC && mf->id[3] == P_FREED);
     expect("MULTI FILTER 2/2 (0.2.22; DUELL 1.1): KTRK, ENV 2, LFO 1, no K4 (the LFO 2 cutoff depth no longer acts; the DEST pages' P_E2FLT, P_LD_FLT: one stored value each, shown on both; no AMP ENV card)",

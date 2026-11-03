@@ -4,6 +4,8 @@
 LTO split (bootguard.0 ...), a shrunk magic word, a wrong .noinit size, entry point or image size fail. The RAM code
 (check_ramcode, the DUELL_HOTRAM bench builds R1..R3): the release's flash driver and the hot layout pass; hot code without
 the switch, none with it, out of call reach, an interrupt / USB function in RAM, RAM code over boot_info, the stacks or .noinit fail.
+check_calls (every call's reach): calls at both bounds pass; one halfword past, a synthetic far call, a wrapped offset, an unrelocated
+crossing fail; with JIELI_TOOLCHAIN set, test links prove pi32v2-ld itself fails a call out of reach (link_tests).
 ELFCHECK_ELF=<felucca.elf> also checks a real one (add ELFCHECK_PROBE=1 for a core 1 probe build, ELFCHECK_HOT=1 for R1..R3)."""
 import os
 import struct
@@ -110,6 +112,82 @@ def ram(label, data, hot, want_fail, needle=None):
     ok = bool(errs) == want_fail and (needle is None or any(needle in e for e in errs))
     print(f"{'PASS' if ok else 'FAIL'}  {label}: " + ("; ".join(errs[:2]) if errs else "; ".join(notes)))
     return ok
+
+
+def call_tests():
+    """check_calls (the reach of every direct call, build.py): calls at both bounds pass; one halfword past either, a far call from range Z
+    to the end of a full image, a linked call that went elsewhere (a wrapped offset), a branch that crosses without a relocation fail"""
+    elf = {"sections": {".text": (0x02000120, 0x8DFBC), ".ramz": (0x01C68D00, 0x7000), ".ram_text": (0x01C7C100, 0x3700)},
+           "funcs": [(0x01C68D00, 0x01C68D40), (0x01C7C100, 0x01C7C140), (0x02000200, 0x02000240), (0x0207C000, 0x0207C040)]}
+
+    def line(a, t, kind="call"):
+        return f"{a:8x}:    80 ea 00 00       \t{kind} {t - a - 4} <f : {t:x} >"
+
+    def case(label, calls, want_fail, needle, extra=(), wrap=None):
+        sites = {a: ("caller", "callee", t) for a, t in calls}
+        dis = "\n".join([line(a, wrap if wrap is not None else t) for a, t in calls] + list(extra))
+        errs, note = elfcheck.check_calls(elf, sites, dis, 22404)
+        ok = bool(errs) == want_fail and (needle is None or any(needle in e for e in errs))
+        print(f"{'PASS' if ok else 'FAIL'}  call reach: {label}: " + ("; ".join(errs[:2]) if errs else note))
+        return ok
+    hot, z, end = 0x01C7C100, 0x01C68D00, 0x0207C000
+    good = case("hot -> flash at +0x3FFFFE, flash -> hot at -0x400000", [(hot, hot + 4 + 0x3FFFFE), (0x02000200, 0x02000204 - 0x400000)],
+                False, None)
+    good &= case("hot -> flash one halfword past +0x3FFFFE", [(hot, hot + 4 + 0x400000)], True, "beyond a call's reach")
+    good &= case("flash -> RAM one halfword past -0x400000", [(0x02000200, 0x02000204 - 0x400002)], True, "beyond a call's reach")
+    good &= case("synthetic far call: range Z -> the end of a full image", [(z + 0x10, end)], True, "beyond a call's reach")
+    good &= case("synthetic far call: the end of a full image -> range Z", [(end + 0x10, z)], True, "beyond a call's reach")
+    good &= case("the linked call goes elsewhere (wrapped)", [(hot, 0x02000200)], True, "wrapped", wrap=0x02000200 - 0x800000)
+    good &= case("a crossing branch without a relocation", [], True, "without a relocation", extra=[line(end + 8, z, "goto")])
+    sites ={hot: ("caller", "callee", 0x02000200)}
+    errs, _ = elfcheck.check_calls(elf, sites, "", 0)
+    ok = any("not calls" in e for e in errs)
+    print(f"{'PASS' if ok else 'FAIL'}  call reach: a relocation that is not a call in the disassembly: " + "; ".join(errs[:1]))
+    return good and ok
+
+
+def link_tests():
+    """the toolchain itself (when JIELI_TOOLCHAIN is set: jam/env.sh): pi32v2-ld links a call / goto at both bounds of elfcheck.CALL_MIN ..
+    CALL_MAX and fails the link one halfword past either and 8 MiB away (no silent wrap); ram_place.call_sites + check_calls agree with it"""
+    import subprocess
+    import tempfile
+    import ram_place
+    tc = os.environ.get("JIELI_TOOLCHAIN")
+    if not tc:
+        print("SKIP  call reach: test links (no JIELI_TOOLCHAIN)")
+        return True
+    tc = Path(tc)
+    win = (tc / "bin" / "clang.exe").exists()
+    tool = {k: tc / "bin" / w if win else tc / u for k, w, u in (("cc", "clang.exe", "pi32v2/bin/clang"),
+                                                               ("ld", "pi32v2-ld.exe", "pi32v2/bin/ld"),
+                                                               ("dis", "llvm-objdump.exe", "common/bin/objdump"))}
+    good = True
+    with tempfile.TemporaryDirectory() as td:
+        t = Path(td)
+        (t / "f.c").write_text("void g(void);\nvoid f(void) { g(); }\n")
+        (t / "k.c").write_text("void g(void);\nvoid k(void) { g(); __asm__ volatile(\"nop\"); }\n")
+        (t / "g.c").write_text("void g(void) { __asm__ volatile(\"nop\"); }\n")
+        for n in ("f", "k", "g"):
+            subprocess.run([str(tool["cc"]), "-target", "pi32v2", "-Os", "-ffunction-sections", "-fno-builtin", "-c", f"{n}.c", "-o", f"{n}.o"],
+                           cwd=t, check=True)
+        # f: goto g at 0x02000000 (offset from 0x02000004); k: call g at 0x02000002 (from 0x02000006)
+        for fn, site in (("f", 0x02000000), ("k", 0x02000002)):
+            for off in (elfcheck.CALL_MAX, elfcheck.CALL_MAX + 2, elfcheck.CALL_MIN, elfcheck.CALL_MIN - 2, 0x800000, -0x800000):
+                g = site + 4 + off
+                (t / "t.ld").write_text(f"SECTIONS {{ .s 0x02000000 : {{ *(.text.{fn}) }} .g {g:#x} : {{ *(.text.g) }} }}\n")
+                r = subprocess.run([str(tool["ld"]), "-e", fn, "-T", "t.ld", f"{fn}.o", "g.o", "-o", "t.elf"], cwd=t, capture_output=True, text=True)
+                fits = elfcheck.CALL_MIN <= off <= elfcheck.CALL_MAX
+                ok = (r.returncode == 0) == fits and (fits or "relocation truncated to fit" in r.stdout + r.stderr)
+                if fits and ok:
+                    elf = elfcheck.read_elf((t / "t.elf").read_bytes())
+                    dis = subprocess.run([str(tool["dis"]), "-d", "t.elf"], cwd=t, capture_output=True, text=True, check=True).stdout
+                    sites, s_err = ram_place.call_sites([(n, (t / n).read_bytes()) for n in (f"{fn}.o", "g.o")], elf)
+                    errs, _ = elfcheck.check_calls(elf, sites, dis)
+                    ok = not s_err and not errs and sites == {site: (fn, "g", g)}
+                print(f"{'PASS' if ok else 'FAIL'}  call reach: test link {fn} -> g offset {off:#x}: " +
+                      ("linked, checked" if fits else "the link fails") + ("" if ok else f" ({r.returncode}: {(r.stdout + r.stderr)[:120]})"))
+                good &= ok
+    return good
 
 
 def ramplace_tests(fake_obj, obj_names):
@@ -232,7 +310,9 @@ def main():
     print(f"{'PASS' if ok else 'FAIL'}  hot_fns: {names} -> {got}; renamed {done}")
     good &= ok
     good &= ramplace_tests(fake_obj, obj_names)
-    src = elfcheck.source_noinit(Path(__file__).resolve().parents[1] / "firmware")   # the sources' list, all in the table
+    good &= call_tests()
+    good &= link_tests()
+    src =elfcheck.source_noinit(Path(__file__).resolve().parents[1] / "firmware")   # the sources' list, all in the table
     miss = sorted(set(src) - set(elfcheck.NOINIT_OBJECTS))
     print(f"{'FAIL' if miss or not set(DECLARED) <= set(src) else 'PASS'}  sources declare {sorted(src)}")
     good &= not miss and set(DECLARED) <= set(src)

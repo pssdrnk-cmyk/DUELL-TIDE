@@ -17,7 +17,10 @@ boot, so garbage read as "magic present", bootguard.failed counted up from garba
   (c) the entry point is not 0x02000120, or the image exceeds the app slot;
   (d) (check_ramcode, DUELL 2026-10-15) the RAM code (.ram_text: the flash driver, and in a DUELL_HOTRAM build the hot audio
       code after _hot_start) leaves RAM, overlaps data / pool / stacks / .noinit, holds interrupt / USB / MIDI / update code,
-      is out of a direct call's reach of .text, or hot code appears without --hot (DUELL_HOTRAM); .noinit not at 0x01C7C000.
+      is out of a direct call's reach of .text, or hot code appears without --hot (DUELL_HOTRAM); .noinit not at 0x01C7C000;
+  (e) (check_calls, DUELL 2026-11-03) a direct call / goto of the linked objects is out of the instruction's reach, the linked
+      instruction does not go where its relocation says (a wrapped offset), or a branch leaves its code section without a relocation
+      (unchecked). build.py runs it; it replaces (d)'s conservative bound "RAM code to the end of .text" there.
 It only reads: the package bytes do not change.
 """
 import re
@@ -60,7 +63,7 @@ def read_elf(data):
     names = [cstr(sh[shstrndx][4] + s[0]) for s in sh]
     sections = {n: (s[3], s[5]) for n, s in zip(names, sh) if n}
     contents = {n: data[s[4]:s[4] + s[5]] for n, s in zip(names, sh) if n in (".ramx", ".ramz", ".ram_text", ".data") and s[1] == 1}
-    symbols = []
+    symbols, funcs = [], []
     for s in sh:
         if s[1] != 2:              # SHT_SYMTAB
             continue
@@ -71,12 +74,15 @@ def read_elf(data):
                 continue
             sec = names[shndx] if 0 < shndx < len(names) else ""
             symbols.append((cstr(strtab + st_name), value, size, sec))
+            if info & 0xF == 2 and size:        # STT_FUNC: the code ranges (check_calls: .text's constants are not code)
+                funcs.append((value, value + size))
     image_end = APP_XIP
     for i in range(phnum):
         p_type, _, _, paddr, filesz = struct.unpack_from("<IIIII", data, phoff + i * phentsize)
         if p_type == 1 and filesz and APP_XIP <= paddr < APP_XIP + 0x01000000:
             image_end = max(image_end, paddr + filesz)
-    return {"entry": entry, "sections": sections, "symbols": symbols, "image_end": image_end, "contents": contents}
+    return {"entry": entry, "sections": sections, "symbols": symbols, "image_end": image_end, "contents": contents,
+            "funcs": sorted(funcs)}
 
 
 def source_noinit(fw):
@@ -137,18 +143,27 @@ def check(elf, declared, probe=False, image_size=None, region=None):
 
 # RAM code (.ram_text): the flash driver (hal/fm1_flash.h, no calls) and, in a DUELL_HOTRAM build (bench R1..R3, firmware/app_hot.ld),
 # the hot audio functions after it (_hot_start). Both layouts must keep it in RAM below boot_info, clear of the data, the pool, the
-# stacks and .noinit, and keep the interrupt / USB / MIDI / update paths in the flash (as in the release); hot code must be within a
-# direct call's reach (R_PI32V2_LONG_JUMP_23M2: +-4 MiB) of the whole .text, both ways.
+# stacks and .noinit, and keep the interrupt / USB / MIDI / update paths in the flash (as in the release). The reach of the calls between
+# RAM and the flash: check_calls, call by call (build.py); without it (exact=False: this tool's command line, an LTO build) hot code must
+# be within a direct call's reach of the whole .text, both ways (conservative: .text ends with the constants, which nothing calls).
 RAM_LO, RAM_TOP = 0x01C00000, 0x01C7FD4C      # RAM0 .. boot_info (the SDK's linker.ld: 0x1c7fe00 - 128 - 52)
 STACKS = (0x01C74000, 0x01C7C000)              # app.ld / app_hot.ld: _guard0 .. _sstack_top
 NOINIT_ADDR = 0x01C7C000                       # .noinit (the crash record the update loader keeps: loader.ld)
 CALL_REACH = 0x400000
+# pi32v2's direct call / goto: call 0xEA80 | imm6, goto 0xEAC0 | imm6, then imm16; imm22 is a signed halfword offset from the instruction
+# + 4 (relocation R_PI32V2_LONG_JUMP_23M2). So target - (site + 4) is in -0x400000 .. +0x3FFFFE: decoded on all 7578 calls / gotos of
+# the 1.1 integ image, and by test links (tests/elfcheck_test.py link_tests): pi32v2-ld (GNU ld 2.26.51) links both bounds and fails the
+# link one halfword past either ("relocation truncated to fit"), also 8 / 16 MiB away (no silent wrap). Every other branch is resolved by
+# the assembler inside its own section (the objects hold no other branch relocation); pointers (R_PI32V2_MOV_ABS32, ABS32) are absolute.
+CALL_MIN, CALL_MAX = -0x400000, 0x3FFFFE
+FLASH = 0x02000000
 FLASH_ONLY = re.compile(r"_irq$|^usb_|^uac_|^ota_|^ed_|^midi_|^uart_")
 
 
-def check_ramcode(elf, hot=False, ramplace=False):
+def check_ramcode(elf, hot=False, ramplace=False, exact=False):
     """-> (errors, notes) for the RAM code; hot: a DUELL_HOTRAM build (hot audio code expected after _hot_start); ramplace: a
-    DUELL_RAMPLACE build (ranges X and Z: check_ramplace; without it, neither may exist)"""
+    DUELL_RAMPLACE build (ranges X and Z: check_ramplace; without it, neither may exist); exact: the caller checks every call's reach
+    (check_calls), so the conservative bound (hot code to the end of .text) is only reported"""
     errors, notes = [], []
     for n in (".ramx", ".ramz"):
         if not ramplace and elf["sections"].get(n, (0, 0))[1]:
@@ -186,12 +201,69 @@ def check_ramcode(elf, hot=False, ramplace=False):
     if hot_fns:
         et = sym.get("_etext", elf["image_end"])
         reach = et - lo
-        if reach >= CALL_REACH:
+        if reach >= CALL_REACH and not exact:
             errors.append(f"hot code at {lo:#x} is {reach:#x} from the end of .text {et:#x}: beyond a call's reach {CALL_REACH:#x}")
-        note += (f", hot audio code {hi - hs} B ({len(hot_fns)} functions), call reach {reach:#x} of {CALL_REACH:#x}, "
-                 f"{RAM_TOP - hi} B free up to boot_info")
+        note += (f", hot audio code {hi - hs} B ({len(hot_fns)} functions), " +
+                 (f"{reach:#x} to the end of .text (each call checked: call reach)" if exact else f"call reach {reach:#x} of {CALL_REACH:#x}") +
+                 f", {RAM_TOP - hi} B free up to boot_info")
     notes.append(note)
     return errors, notes
+
+
+def code_block(elf, a):
+    """the code section holding address a (.text, .ram_text, .ramx, .ramz), or None"""
+    for n in (".text", ".ram_text", ".ramx", ".ramz"):
+        s = elf["sections"].get(n)
+        if s and s[0] <= a < s[0] + s[1]:
+            return n
+    return None
+
+
+def check_calls(elf, sites, dis, free=0):
+    """-> (errors, note): the reach of every direct call / goto. sites: {address: (caller, callee, target)}, every call relocation of the
+    linked objects at its linked address (tools/ram_place.py call_sites); dis: objdump -d of the ELF; free: the app slot's free bytes.
+    Fails a call whose offset is out of CALL_MIN..CALL_MAX, a linked instruction that does not go to its relocation's target, and a
+    branch inside a function that leaves its code section without a relocation (so every crossing is one of the checked sites)"""
+    import bisect
+    errors, crossing, worst = [], 0, None
+    for a, (caller, callee, tgt) in sorted(sites.items()):
+        off = tgt - (a + 4)
+        if not CALL_MIN <= off <= CALL_MAX:
+            errors.append(f"call {caller} {a:#x} -> {callee} {tgt:#x}: offset {off:#x} is beyond a call's reach {CALL_MIN:#x}..{CALL_MAX:#x}")
+        elif (a >= FLASH) != (tgt >= FLASH):
+            crossing += 1
+            spare = CALL_MAX - off if off >= 0 else off - CALL_MIN
+            if worst is None or spare < worst[0]:
+                worst = (spare, caller, callee)
+    funcs = elf["funcs"]
+    starts = [f[0] for f in funcs]
+
+    def in_func(a):
+        i = bisect.bisect_right(starts, a) - 1
+        return i >= 0 and a < funcs[i][1]
+    seen, loose = set(), []
+    for ln in dis.splitlines():
+        m = DIS_LINE.match(ln)
+        if not m:
+            continue
+        a = int(m.group(1), 16)
+        tgt = dis_target(a, m.group(3))
+        if a in sites:
+            seen.add(a)
+            if tgt != sites[a][2] or len(m.group(2).split()) != 4:
+                errors.append(f"the linked call at {a:#x} in {sites[a][0]} goes to {tgt if tgt is None else hex(tgt)}, its relocation to "
+                              f"{sites[a][1]} {sites[a][2]:#x} (a wrapped offset?)")
+        elif tgt is not None and in_func(a) and code_block(elf, a) != code_block(elf, tgt):
+            loose.append(f"{a:#x} -> {tgt:#x}")
+    if loose:
+        errors.append(f"{len(loose)} branches leave their code section without a relocation (reach not checked): {loose[:4]}")
+    if set(sites) - seen:
+        errors.append(f"{len(set(sites) - seen)} call relocations are not calls in the disassembly: {[hex(a) for a in sorted(set(sites) - seen)[:4]]}")
+    note = f"call reach: {len(sites)} direct calls in reach ({CALL_MIN:#x}..{CALL_MAX:#x} from the call + 4, the linker's own limit)"
+    if worst:
+        note += (f"; {crossing} cross between RAM and the flash, the nearest to the limit {worst[1]} -> {worst[2]} ({worst[0]} B spare; "
+                 + (f"the slot's {free} B free cannot use it up)" if free < worst[0] else f"more than the slot's {free} B free could use up)"))
+    return errors, note
 
 
 def report(elf):
