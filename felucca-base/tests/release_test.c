@@ -35,7 +35,7 @@ int main(void)
 {
     static const char *const FN[16] = {"REESE SWAMP", "NIGHT ORGAN", "PAD SPLIT", "DUB CHORD", "WHISPER TIDE", "TINE STRINGS", "FINAL REEL",
                                        "HAZY TENSOR", "ACID ETHER", "WIRED SNAIL", "EERIE SIGNAL", "DEAD BUFFER", "COLD CHAPEL", "GARGLE ACID",
-                                       "WOOD & SKIN", "STRESS TEST"};   /* (the 0.2.24 order, tools/factory_multis.py) */
+                                       "WOOD & SKIN", "CELLAR TAPE"};   /* (the 0.2.24 order, tools/factory_multis.py) */
     uint32_t k, ok, test_rows = 0, sys_rows = 0;
     memset(nor, 0xFF, sizeof nor);
     ui_power_on();
@@ -66,9 +66,9 @@ int main(void)
     ck("no page is called TEST (the GLO round is untouched)", ok);
     for (k = 0, ok = 1; k < MU_SLOTS; k++)
         ok &= project_used(k) && project_factory(k) && str_eq(mu_names[k], FN[k]);
-    ck("M01..M16 are the factory multis (0.2.24 order: REESE SWAMP, NIGHT ORGAN .. WOOD & SKIN, M16 STRESS TEST), as in the test mode", ok);
+    ck("M01..M16 are the factory multis (0.2.24 order: REESE SWAMP, NIGHT ORGAN .. WOOD & SKIN, M16 CELLAR TAPE), as in the test mode", ok);
     project_load(15);
-    ck("LOAD of M16 loads the STRESS TEST (PHYS + WAVE)", proj_cur == 15u && trk[0].eng_req == 9u && trk[1].eng_req == ENGI_WAVE);
+    ck("LOAD of M16 loads CELLAR TAPE (PHYS + PHASE)", proj_cur == 15u && trk[0].eng_req == ENGI_PHYS && str_eq(ENGINES[trk[1].eng_req]->name, "PHASE"));
     printf(bad ? "release: FAILED (%d)\n" : "release: all ok\n", bad);
     return bad ? 1 : 0;
 }

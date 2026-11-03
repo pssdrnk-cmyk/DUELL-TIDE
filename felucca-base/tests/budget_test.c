@@ -29,6 +29,7 @@ void *memcpy(void *d, const void *s, size_t n) { return mf_memcpy(d, s, (unsigne
 static void fm1_irq_off(void);
 static void fm1_irq_on(void);
 #include "ui_test.c"
+#include "scenes.h"
 static uint8_t nor[0x100000];
 static int st_read(uint32_t off, void *dst, uint32_t n) { memcpy(dst, nor + off, n); return 0; }
 static int st_erase(uint32_t off) { memset(nor + off, 0xFF, 4096); return 0; }
@@ -382,7 +383,10 @@ static void load_multi(uint32_t i)
 {
     power();
     ui_prefs2 |= PREF_MODE_RECALL >> 16;
-    project_load(i);
+    if (i == 15u)
+        scene_load(15, "M16_STRESS_TEST");              /* (U2 B: slot 16 of these hashes is the STRESS TEST, now a test scene; CELLAR TAPE is the factory M16) */
+    else
+        project_load(i);
     frame();
 }
 static const char *why_name(uint32_t r)

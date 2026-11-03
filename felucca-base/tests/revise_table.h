@@ -37,11 +37,6 @@ static const rv_t RV[] = {
     { 13, { { .trans = KEEP, .sdiv = "1/1", .sgate = 124,
               .steps = "A2+E3 - F3+A3 - D3+F3 - E3+A3 -" },
             KP } },
-    /* M16 STRESS TEST, 137 BPM: still a stress test for keys. PLAY alone sounds the whistle as a 16-step 1/8 minor-pentatonic run, one voice (about 74 % worst half on the
-     * cpu_budget proxy); keys bring the pad's arp and chords on top as before */
-    { 16, { { .trans = KEEP, .sdiv = "1/8", .sgate = 70,
-              .steps = "C5 Eb5 G5 Bb5 G5 Eb5 C5 Bb4 G4 Bb4 C5 Eb5 G5 Bb5 C6 Bb5" },
-            KP } },
     /* M10 / M11 / M12: the shared chromatic run C4..D#5 is replaced by a line of each one's own, under its arp */
     { 10, { KP, { .trans = KEEP, .steps = "C5A . . Eb5 . G5 . . Bb5A . . G5 . Eb5 . ." } } },
     { 11, { KP, { .trans = KEEP, .steps = "C4A . . . Eb4 . . Gb4 . . A4 . . . Gb4 ." } } },

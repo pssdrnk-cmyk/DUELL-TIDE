@@ -15,6 +15,7 @@
 #define UI_TEST_NO_MAIN 1
 #define FELUCCA_FLASH 1
 #include "ui_test.c"
+#include "scenes.h"                                   /* (U2 B: the STRESS TEST, once M16, is the scene tests/scenes/M16_STRESS_TEST.bin) */
 
 static uint8_t nor[0x100000];
 static long cut_bytes = -1;                         /* the power goes after that many programmed bytes */
@@ -323,7 +324,7 @@ static void keys_drive(void)
     /* U2 B (1.1): the sequenced arrangements of M03 M05 M06 M07 M08 M13 (and M16, M10 .. M12 for the plain line). PLAY alone starts the plain-pattern parts; the ARP SEQ
      * parts follow a transposed key (D4 two semitones above C4, the same blocks); a plain pattern part does not move with the key (a live key plays on top) */
     {
-        static const uint8_t SQ[6][2] = {{2, 1}, {5, 1}, {6, 1}, {7, 0}, {4, 0}, {15, 0}};   /* slot, the part: ARP SEQ (the first four), a plain pattern (the last two: M05's pad, the M16 whistle) */
+        static const uint8_t SQ[6][2] = {{2, 1}, {5, 1}, {6, 1}, {7, 0}, {4, 0}, {15, 1}};   /* slot, the part: ARP SEQ (the first four), a plain pattern (the last two: M05's pad, the M16 chord stabs) */
         uint32_t m, pp, n;
         for (m = 0; m < 6u; m++) {
             k = SQ[m][0];
@@ -833,21 +834,21 @@ int main(void)
     {
         static const char *const FN[16] = {"REESE SWAMP", "NIGHT ORGAN", "PAD SPLIT", "DUB CHORD", "WHISPER TIDE", "TINE STRINGS", "FINAL REEL",
                                            "HAZY TENSOR", "ACID ETHER", "WIRED SNAIL", "EERIE SIGNAL", "DEAD BUFFER", "COLD CHAPEL", "GARGLE ACID",
-                                           "WOOD & SKIN", "STRESS TEST"};
+                                           "WOOD & SKIN", "CELLAR TAPE"};
         static const char *const SN[16][2] = {{"REESE BASS", "SQUELCH"}, {"PEDAL BASS", "DRAWBARS"}, {"EVOLVING PAD", "EMBER GLOW"},
                                               {"BIG STAB", "TIDAL SUB"}, {"DIGITAL PAD", "WHISPER PAD"}, {"STRING MACH", "TINE ROOM"},
                                               {"BRASS PAD", "STRING MACH"}, {"LADDER BASS", "GEARBOX"}, {"BREADBIN", "LADDER BASS"},
                                               {"SFORZANDO", "GLASS SHARDS"}, {"VESPERS", "JAZZ CLUB"}, {"FROZEN AIR", "MODEM"},
                                               {"EVOLVING PAD", "SINGING BOWL"}, {"GROWL BASS", "SQUELCH"}, {"MARBLE RUN", "TABLA TALK"},
-                                              {"PAN WHISTLE", "DIGITAL PAD"}};
+                                              {"PLUCK BASS", "CLAVICLE"}};
         static const uint8_t MD[16] = {DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER,
                                        DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER};   /* (0.2.25: no factory multi in DUEL; M08 MONO DUEL, the only one, is spare: the owner's HAZY TENSOR, LAYER) */
-        static const uint8_t BPM[16] = {124, 121, 97, 117, 77, 77, 71, 117, 120, 120, 120, 120, 71, 127, 107, 137};
+        static const uint8_t BPM[16] = {124, 121, 97, 117, 77, 77, 71, 117, 120, 120, 120, 120, 71, 127, 107, 122};
         static const uint8_t SPL[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};          /* (the splits: F4 + 1, compared with the key as played) */
         static const uint8_t XF[16] = {0, 0, 0, 0, 0, 0, 58, 0, 0, 0, 0, 0, 0, 0, 0, 0};   /* (M07: the owner's FINAL REEL, XFADE 58; 1.0: M01..M05, M08..M15 are the owner's duell-multis-13 records) */
         /* (seq.c AM_*: UP 1, RND 4, SEQ 15; the kept records of before 0.2.23 as they were: M13 COLD CHAPEL's bowl an arp UP, M14 GARGLE ACID's riff a SEQ arp) */
         static const int8_t AM[16][2] = {{0, 15}, {15, 15}, {0, 15}, {15, 15}, {0, 4}, {0, 15}, {0, 15}, {15, 4}, {3, 15},
-                                         {0, 3}, {0, 4}, {0, 3}, {0, 1}, {0, 15}, {1, 15}, {0, 1}};   /* (1.0: the arp modes of the owner's records) */
+                                         {0, 3}, {0, 4}, {0, 3}, {0, 1}, {0, 15}, {1, 15}, {15, 0}};   /* (1.0: the arp modes of the owner's records) */
         static uint8_t before[0x100000];
         uint32_t n, st;
         memset(nor, 0xFF, sizeof nor);
@@ -888,13 +889,14 @@ int main(void)
         }
         ck("  0.2.13: M01 REESE SWAMP: AMOUNT 17 % on both parts, End B its own (MU_VER 8: its values, converted once from the seed 16816)", ok);
         {   /* M16 STRESS TEST (0.2.23): every effect on: both inserts, SAT, the EQ, the ducker, the three sends; RANDOM delay, SHIM (its record's PITCH BOTH reads UP since 0.2.25); an arp */
-            project_load(15);
+            scene_load(15, "M16_STRESS_TEST");            /* (the scene is stored in slot 16 for this check, erased again below) */
             ok = song.g[G_DMODE] == DMD_RAND && song.g[G_RTYPE] == 3 && song.g[G_SHPITCH] == SHP_UP && song.g[G_CDEPTH] > 0 && trk[1].p[P_AMODE] != 0;
             for (pi = 0; pi < NSHOWN; pi++)                /* (0.2.24: the part stages are split between the parts: FLANG + SAT on part 1, EQ + ducker on part 2) */
                 ok &= trk[pi].p[P_CHOR] && trk[pi].p[P_DLY] && trk[pi].p[P_REV] && trk[pi].p[P_VOICE] == V_POLY && trk[pi].p[P_FREED] == 2;
             ok &= trk[0].p[P_ITYPE] != 0 && trk[0].p[P_DIST] != 0 && trk[1].p[P_EQLG] != 0 && trk[1].p[P_DKDEP] != 0;
         }
-        ck("  M16 STRESS TEST: the 24 dB filters and three sends on both parts, insert + SAT on part 1, EQ + ducker on part 2, RANDOM delay, SHIM (the record's PITCH BOTH loads as UP, 0.2.25), part 2's arp", ok);
+        project_erase(15);
+        ck("  the STRESS TEST scene: the 24 dB filters and three sends on both parts, insert + SAT on part 1, EQ + ducker on part 2, RANDOM delay, SHIM (the record's PITCH BOTH loads as UP, 0.2.25), part 2's arp", ok);
         ui_prefs2 &= (uint8_t)~(PREF_MODE_RECALL >> 16);
         memcpy(before, nor, sizeof nor);
         ck("project_erase of an unchanged factory slot: ALREADY FACTORY, nothing written (1.1: no ERASE card)", project_erase(0) == 1 && msg_is("ALREADY FACTORY") &&
@@ -958,7 +960,7 @@ int main(void)
         ck("  the engine and patch names the panel draws follow (VOICE / VESPERS, M11 EERIE SIGNAL)", str_eq(b, "M11 EERIE SIGNAL") &&
            str_eq(nm_a, "VESPERS") && str_eq(ENGINES[trk[0].eng_req]->name, "VOICE"));
         turn(EN_K3, 40);
-        ck("  many detents right: stops at the last used, M16 STRESS TEST (PHYS + WAVE)", proj_cur == 15u && trk[0].eng_req == 9u && trk[1].eng_req == ENGI_WAVE);
+        ck("  many detents right: stops at the last used, M16 CELLAR TAPE (PHYS + PHASE)", proj_cur == 15u && trk[0].eng_req == ENGI_PHYS && str_eq(ENGINES[trk[1].eng_req]->name, "PHASE"));
         f0 = (uint32_t)proj_cur;
         turn(EN_K3, 1);
         ck("  right at the end: nothing", proj_cur == f0);

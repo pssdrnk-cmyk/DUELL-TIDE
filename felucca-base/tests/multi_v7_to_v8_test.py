@@ -109,6 +109,9 @@ def main():
 
     # 3. the committed scenes are the tool's output
     sc = sorted((ROOT / "tests" / "scenes").glob("*.bin")) + sorted((ROOT / "tests" / "scenes" / "spare").glob("*.bin"))
+    stress = ROOT / "tests" / "scenes" / "M16_STRESS_TEST.bin"      # (U2 B: 1.1's M16 STRESS TEST record as it was, already version 8: not a conversion)
+    sc = [f for f in sc if f != stress]
+    ok(stress.read_bytes() == git_show("v1.1", "tools/factory_multis/M16.bin"), "M16_STRESS_TEST.bin is 1.1's M16 record, byte for byte")
     rel = [f.relative_to(ROOT).as_posix() for f in sc]
     old = [git_show("v1.1", r) for r in rel]
     ok(all(o[0] == 7 for o in old) and all(f.read_bytes()[0] == 8 for f in sc), "%d scenes: version 7 in v1.1, version 8 here" % len(sc))

@@ -36,8 +36,8 @@
  *   EMPTY SLOT / DAMAGED; the first SAVE there replaces it, and a factory slot shows its factory multi instead.
  *
  * Factory multis (build/gen/duell_multis.h, tools/gen_duell_multis.py from tools/factory_multis/M01..M16.bin, made by tools/factory_multis.py), DUELL 0.2.23:
- * all sixteen slots, M01 REESE SWAMP (a new unit's first start loads it, ui_input.c first_boot_poll) .. M15 WOOD & SKIN and M16 STRESS TEST (a CPU
- * test to play on the unit, free to overwrite; SPEC 5b.4 lists them; 0.2.24: the owner's COLD CHAPEL, ACID ETHER, GARGLE ACID of 0.2.22 in M06, M09, M14)
+ * all sixteen slots, M01 REESE SWAMP (a new unit's first start loads it, ui_input.c first_boot_poll) .. M15 WOOD & SKIN and M16 STRESS TEST until U2 B, CELLAR TAPE since (the CPU
+ * test is the host scene tests/scenes/M16_STRESS_TEST.bin; SPEC 5b.4 lists them; 0.2.24: the owner's COLD CHAPEL, ACID ETHER, GARGLE ACID of 0.2.22 in M06, M09, M14)
  * are in the firmware image (ROM), not in flash. While a slot's stored record is
  * empty (first boot, a flash erase, ERASE of a saved overwrite) it shows and loads the factory multi (mu_fact bit); SAVE
  * over it stores an ordinary record that wins from then on and survives firmware updates (the ROM copy is only the default);
