@@ -33,6 +33,18 @@ Current maintenance priorities: [roadmap](ROADMAP.md). Totals below describe the
 - `build/host` is shared by WSL and Windows runs: delete it when switching (a Linux `bench_sim` is not an .exe, Windows then fails with "Exec format error").
 - CI: `.github/workflows/host-tests.yml` at `bee34f9` was invalid YAML (a colon in a step name, line 35): GitHub ran no job. Fixed in `b12c319`.
 
+## Linux (WSL) run: 3 November 2026, lx-parts (the fork() groups)
+
+`wsl.exe -d Ubuntu -- sh jam/wsl.sh mixsplit partindep duckpart twocore tcmeas insert twin`: **all seven groups PASS** (including `twin_partindep`, `twin_twocore` and every `partindep_mut` / `twocore_mut` / `twin_mut` self-check). These groups SKIP on Windows (they need `fork()` / pthreads); they had never been brought up to DUELL 1.1 + TIDE. No firmware bug was found: every failure was a stale 1.0 reference or expectation.
+
+- `mixsplit`, `partindep`, `duckpart`, `twin_*`: `tests/mixsplit_ref.h` (the old combined path) now carries 1.1's own changes in the same verbatim way: BIT DEPTH's level stages (`LV4`), item 135's tail count, SPACE's matrix offset (`mod_space_off`). `mix_block`, the staged path and the old path are then equal bit for bit in every scene and schedule. `partindep`'s pinned `OLD_HASH` table was re-made (all 12 scenes: the 1.0 hashes pinned the 1.0 sound).
+- `twocore`, `tcmeas`: `twocore_sim.c` checks follow items 90 and 142: a block with no take-over is posted at the wait limit (past the cap by design, not a violation); `floorx` accepts the floor's "does not fit" as such a block. One `TC_MEAS`-only line in `twocore_run.c` records the true-cost cap when the posted deadline is the true-cost one (bench builds only; the TIDE=0 image is unchanged, `off.sha256` stays). The own-split self-check "a deadline already past is counted as paused" had become vacuous (no such block exists since item 142); it is replaced by "a paused block is counted as a deadline already past", with a check that late_run / noans show their paused blocks.
+- `insert`: DIST's reference wet follows BIT DEPTH; the BITS card is read from the texts drawn in it (the grid cards no longer keep `LABEL|VALUE|UNIT`); the page order has SEND FX after FX; INSERT TYPE is no matrix destination since item 34, so it is no lock or automation target (the test now expects the refusal).
+- Not compared: `insert`'s cost section needs an instruction counter Linux does not have (it prints "skipped"); the twocore cost figures are not asserted.
+
+- Windows full check on this branch: **112 passed, 0 failed, 25 skipped** (the seven groups above SKIP on Windows as before). Note: a WSL run leaves Linux binaries without `.exe` in `felucca-base/build/host/`; the Windows runner then executes them ("Exec format error", reported FAIL). Delete `mixsplit_test partindep_test partindep_mut duckpart_test twocore_sim twocore_meas twocore_mut insert_test` there before a Windows check.
+
+
 ## Full run: 3 November 2026, `0d66b59` (t0-sound: the 12 sound groups)
 
 `sh jam/check.sh` in the `t0-sound` checkout (logs `work/check-duell-t0-sound/`). **92 passed, 22 failed, 22 skipped** (before: 80 / 34 / 22). No new failures. No firmware change, so `check_off.sh` is unchanged.
