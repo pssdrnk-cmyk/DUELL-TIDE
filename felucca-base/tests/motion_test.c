@@ -714,11 +714,46 @@ static int auto_list(void)
     }
     return bad;
 }
+/* audit F06: a knob turn on a part that records, the 128 records used: FULL takes no undo copy and records no hit (the copy from before stays);
+ * a turn that fits, or one that overwrites a record already there, does */
+static int knob_undos;
+static void knob_undo_count(track_t *t) { (void)t; knob_undos++; }
+static int knob_full_undo(void)
+{
+    int bad = 0;
+    uint32_t i, hit;
+    track_t *t;
+    ui_power_on();
+    t = TSEL;
+    track_defaults_steps(t);
+    t->p[P_SLEN] = 16;
+    song.playing = 0;
+    song.rec = (uint8_t)(1u << trk_index(t));
+    knob_undos = 0;
+    motion_knob_begin(0, knob_undo_count);
+    hit = (uint32_t)motion_capture(t, P_REV, 40);
+    bad += check("knob lock, room left: recorded, one undo copy, a hit", hit == 1u && knob_undos == 1 && motion_lock_count(t) == 1u && motion_knob_end() == 1);
+    for (i = 0; motion.count < MOTION_MAX; i++)          /* the 128 used (another track) */
+        motion_set_event(&trk[1], i % NSTEP, i < NSTEP ? P_REV : P_DLY, 10);
+    knob_undos = 0;
+    motion_full = 0;
+    motion_knob_begin(1, knob_undo_count);
+    hit = (uint32_t)motion_capture(t, P_REV, 50);
+    bad += check("knob lock, the 128 used: FULL, no undo copy, no hit", hit == 0u && knob_undos == 0 && motion_full == 1u && motion.count == MOTION_MAX && motion_knob_end() == 0);
+    knob_undos = 0;
+    motion_knob_begin(0, knob_undo_count);
+    hit = (uint32_t)motion_capture(t, P_REV, 60);
+    bad += check("knob lock, the 128 used, the record there: overwritten, an undo copy, a hit", hit == 1u && knob_undos == 1 && motion_knob_end() == 1);
+    motion_clear(&trk[1]);
+    motion_clear(t);
+    song.rec = 0;
+    return bad;
+}
 int main(void)
 {
     int bad = motion_recording() + motion_capacity() + probability_playback() + compact_project() + fun7_89() + loads() + repeat_mode();
     bad += arp_new_modes();
-    bad += lock_playback() + lock_edit() + lock_project() + auto_list();
+    bad += lock_playback() + lock_edit() + lock_project() + auto_list() + knob_full_undo();
 #ifdef MOTION_TEST_STALE
     /* Felucca-era groups that need the DRUM grid (track 4) or SAVE held = undo, both gone in DUELL: compiled, not run. Port, then move up. */
     bad += lock_ui() + lock_undo();

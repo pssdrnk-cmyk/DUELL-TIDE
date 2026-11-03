@@ -1685,16 +1685,21 @@ static BENCH_FN int bench_tok(const char **pp, char *out, uint32_t max)   /* the
 }
 static BENCH_FN int bench_int(const char *s, int32_t *v)               /* a decimal number, signed */
 {
-    int32_t x = 0, neg = 0;
+    uint32_t x = 0, lim = 0x7FFFFFFFu;                                  /* (checked: a token out of the int32 range is no number) */
+    int32_t neg = 0;
     if (*s == '-')
-        neg = 1, s++;
+        neg = 1, lim++, s++;
     if (*s < '0' || *s > '9')
         return 0;
-    for (; *s >= '0' && *s <= '9'; s++)
-        x = x * 10 + (*s - '0');
+    for (; *s >= '0' && *s <= '9'; s++) {
+        uint32_t d = (uint32_t)(*s - '0');
+        if (x > (lim - d) / 10u)
+            return 0;
+        x = x * 10u + d;
+    }
     if (*s)
         return 0;
-    *v = neg ? -x : x;
+    *v = neg ? (int32_t)(0u - x) : (int32_t)x;
     return 1;
 }
 static BENCH_FN int bench_arg(const char **pp, int32_t *v)             /* the next word as a number */

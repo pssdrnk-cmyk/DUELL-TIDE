@@ -118,7 +118,7 @@ Rules: bit-exact audio, goldens unchanged, nothing added to the hot set (`tools/
 - Linker scripts: `KEEP(*(.c1_text*))` inside the PC limit's RAM window (the bench put it at the end of `app_hot.ld`'s `.ram_text`, after the hot functions); `.pool.ztwocore` and `.noinit.ztwocore` placed after the existing objects (the patterns `*(.pool*)` and `*(.noinit*)` already take them; check that the existing objects keep their addresses). `tools/elfcheck.py` knows `tc_nv`; check the `.noinit` size of a real `DUELL_TWOCORE=1` link.
 - Part 2's code in RAM: the engines in range X (old program RAM, 31.75 KB; code there cannot call the flash), the voice loop, filter, matrix, morph and the rest of the engines in range Z (end of the memory pool, about 28 KB, can call everything); the start-up copy; the PC limit's RAM window widened to cover them.
 - The developer page: arm a start (`tc_arm`, then a restart), and the rows: core 1's load, late and very late blocks, re-reads, stack peak (`tc_stack_peak`), flash parks.
-- The device build and the hot RAM check.
+- The device build and the hot code check.
 
 ## 7. Tests
 
@@ -227,7 +227,7 @@ RAM with the flag on, added by job 5: `tcs` 48 B, `tcr` 52 B (both `.bss`), `tc_
 
 ### 8.10 What the local stage-1 build needs
 
-- Part 2's code and tables core 1 reaches from `tc_job_run`: `docs/TWOCORE_JOB5_REACH.txt` (found from the compiled calls and the address-taken functions and tables: a superset; 283 functions, about 52 KB on the device, 25 of them already in the hot RAM set; the tables with pointers (the engine descriptors) and the read-only tables). They go into the RAM ranges X and Z (section 6) or stay reachable for core 1; the engines X cannot call the flash.
+- Part 2's code and tables core 1 reaches from `tc_job_run`: `docs/TWOCORE_JOB5_REACH.txt` (found from the compiled calls and the address-taken functions and tables: a superset; 283 functions, about 52 KB on the device, 25 of them already in the hot code set; the tables with pointers (the engine descriptors) and the read-only tables). They go into the RAM ranges X and Z (section 6) or stay reachable for core 1; the engines X cannot call the flash.
 - Core 1's stack: the deepest chain found is `tc_job_run` > `part_voice` > `track_render` > `wave_render` > `wv_line` > `wv_osc` > `wv_lvl` > `wv_read_sine` > `sine_i`, 1,680 B on the host (x86-64 frames); about 1.1 to 1.3 KB on the device, in the 4 KB user stack of `fm1_c1_stack`. Read `tc_stack_peak` on the unit.
 - New objects: `tc_ctx` (64 B, `TC_CTX_SECT`) in `.pool.ztwocore` after `tc_mb` (the pool's tail needs 64 B more), `tcs` and `tcr` in `.bss` (100 B); no new `.noinit` object (`tc_nv` as before); no new section (`.c1_text` as in section 6).
 - The developer page's rows: the counters `tcs` (blocks, in time, late, very late, silent, refused, pauses, resumes) and `tc.parks`.

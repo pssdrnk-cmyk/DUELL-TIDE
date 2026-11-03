@@ -121,7 +121,7 @@ static void flush(void)                              /* main loop passes until e
         settings_poll();
     }
 }
-static uint32_t row_of(uint32_t k) { return pat_count() - PS_SLOTS + k; }   /* the list row of slot k */
+static uint32_t row_of(uint32_t k) { return k; }   /* the list row of slot k (U1: the places after the 32 slots are the displaced defaults) */
 static void pick(uint32_t k) { ui.ppick = (uint8_t)row_of(k); ui.force = 1; frame(); }
 
 int main(void)
@@ -189,7 +189,7 @@ int main(void)
     ok = 1;
     for (k = 0; k < PS_SLOTS; k++) {
         uint32_t i;
-        ps_load_trk(&trk[1], k);
+        ps_load_trk(&trk[1], k >= PS_USER0 ? k + PS_NUSER : k);   /* (U1: a USER slot loads blank; its default is the place after the 32) */
         ok &= trk[1].p[P_SLEN] == PATTERNS[k].len && trk[1].p[P_SDIV] == PATTERNS[k].div && trk[1].p[P_SSWING] == TP[P_SSWING].def && trk[1].p[P_SGATE] == TP[P_SGATE].def;
         for (i = 0; i < NSTEP; i++) {
             step_t e;
@@ -250,14 +250,18 @@ int main(void)
     ref = trk[0];
     go_title("PATTERNS");
     frame();
-    ck("SAVE > PATTERNS is the page (SAVE's), one list of exactly the 32 slots", cur_page()->graph == GR_PATS &&
-       cur_page()->fam == FAM_SAVE && pat_count() == PS_SLOTS && PS_SLOTS == 32u);
+    ck("SAVE > PATTERNS is the page (SAVE's), 32 slots (the last 4 USER) and the 4 defaults they displaced", cur_page()->graph == GR_PATS &&
+       cur_page()->fam == FAM_SAVE && pat_count() == PS_VSLOTS && PS_SLOTS == 32u && PS_NUSER == 4u && PS_VSLOTS == 36u);
     {
         char tag[4], nm[13];
         pat_label(2, tag, nm);
         ck("slot 3 is its default pattern: P03 OFFBEAT", str_eq(tag, "P03") && str_eq(nm, PATTERNS[2].name) && !ps_changed(2));
+        pat_label(35, tag, nm);
+        ck("the last place is the displaced default: P32 SEVEN EIGHT", str_eq(tag, "P32") && str_eq(nm, PATTERNS[31].name) && !ps_changed(31));
         pat_label(31, tag, nm);
-        ck("slot 32 is the last one: P32 SEVEN EIGHT", str_eq(tag, "P32") && str_eq(nm, PATTERNS[31].name) && !ps_changed(31));
+        ck("slot 32 is the last USER slot, empty: U4 USER EMPTY", str_eq(tag, "U4") && str_eq(nm, "USER EMPTY") && !ps_changed(31));
+        pat_label(28, tag, nm);
+        ck("slot 29 is USER 1, empty: U1 USER EMPTY; P29 is the place 33", str_eq(tag, "U1") && str_eq(nm, "USER EMPTY") && (pat_label(32, tag, nm), str_eq(tag, "P29") && str_eq(nm, PATTERNS[28].name)));
     }
     pick(2);
     turn(EN_K3, 1);                                  /* SAVE (DUELL 1.1: K2 LOAD, K3 SAVE) */
@@ -398,12 +402,12 @@ int main(void)
         ck("  and P02 as saved", !ps_load_trk(&trk[1], 1) && same_pattern(&trk[1], &ref3) && ps_changed(1));
     }
     go_title("PATTERNS");
-    pick(31);
+    pick(35);
     turn(EN_K2, 1);
     press(B_OCTUP);
     if (ui.confirm)
         press(B_OCTUP);
-    ck("LOAD of the reset slot 32: its default pattern (SEVEN EIGHT, 14 steps)", msg_is("LOADED P32 SEVEN EIGHT") &&
+    ck("LOAD of the default pattern place 36 (the reset slot 32): its default pattern (SEVEN EIGHT, 14 steps)", msg_is("LOADED P32 SEVEN EIGHT") &&
        trk[0].step[0].note[0] == PATTERNS[31].note[0] && trk[0].step[6].note[0] == PATTERNS[31].note[6] && trk[0].p[P_SLEN] == 14);
     pick(0);
     turn(EN_K3, 1);
@@ -533,6 +537,52 @@ int main(void)
         ck("  a short pattern still fits (the empty tail steps cost nothing)", (pat_used = 3, make_pattern(&trk[0], 3), ps_save_trk(&trk[0], full_at, "SHORT")) == 0);
         ps_reset_obj(0);
         ck("  an object reset frees the room (the defaults are smaller)", !ps_changed(0) && ps_used_len(0) < len_before);
+    }
+
+    /* U1: the USER slots. U1..U4 start empty (a default is not 'changed'), load blank, save like any slot and stay through a power cycle; the displaced defaults load and never save */
+    {
+        char tag[4], nm2[13];
+        uint32_t i;
+        ps_reset_obj(2);
+        flush();
+        power_cycle();
+        go_title("PATTERNS");
+        make_pattern(&trk[0], 41u);
+        pick(29);
+        turn(EN_K2, 1);
+        press(B_OCTUP);
+        if (ui.confirm)
+            press(B_OCTUP);
+        ok = msg_is("LOADED U2 USER EMPTY");
+        for (i = 0; i < NSTEP; i++)
+            ok &= trk[0].step[i].time == ST_REST || seq_is_empty(&trk[0]);
+        ck("LOAD of an empty USER slot (U2): a blank pattern", ok && seq_is_empty(&trk[0]));
+        make_pattern(&trk[0], 42u);
+        ref = trk[0];
+        pick(29);
+        turn(EN_K3, 1);
+        press(B_OCTUP);
+        press(B_OCTUP);
+        ck("SAVE into U2 asks (the dialog), then opens the NAME screen (not holding the name USER EMPTY)", name_on() && nm.kind == NK_PATTERN && nm.slot == 29u && !str_eq(nm.s, "USER EMPTY"));
+        str_cpy(nm.s, "MY RIFF", sizeof nm.s);
+        nm.len = nm.cur = 7;
+        press(B_OCTUP);
+        ck("  SAVED U2: the slot is 'changed', the row reads U2 MY RIFF", msg_is("SAVED U2") && ps_changed(29) && (pat_label(29, tag, nm2), str_eq(tag, "U2") && str_eq(nm2, "MY RIFF")));
+        flush();
+        power_cycle();
+        ck("  after a power cycle U2 is there as saved, U1 U3 U4 still empty, the defaults P29 P32 untouched",
+           !ps_load_trk(&trk[1], 29) && same_pattern(&trk[1], &ref) && ps_changed(29) && !ps_changed(28) && !ps_changed(30) && !ps_changed(31) &&
+           !ps_load_trk(&trk[1], 32) && trk[1].p[P_SLEN] == PATTERNS[28].len && !ps_load_trk(&trk[1], 35) && trk[1].p[P_SLEN] == PATTERNS[31].len);
+        go_title("PATTERNS");
+        pick(33);
+        turn(EN_K3, 1);
+        press(B_OCTUP);
+        ck("a displaced default (P30) is not a save target: PICK A USER SLOT", msg_is("PICK A USER SLOT") && !ui.confirm && !name_on() && !ps_changed(30));
+        {   /* an occupied record (pre-existing 'changed' slot 30 = P30) stays occupied: the row shows its own name, the default is still the place after */
+            make_pattern(&trk[0], 43u);
+            ck("a record already in slot 31 (saved before U1) shows as a USER slot with its name", ps_save_trk(&trk[0], 30, "OLD SAVE") == 0 && (pat_label(30, tag, nm2), str_eq(tag, "U3") && str_eq(nm2, "OLD SAVE")) &&
+               (pat_label(34, tag, nm2), str_eq(tag, "P31") && str_eq(nm2, PATTERNS[30].name)));
+        }
     }
 
     printf(bad ? "patslot: FAILED (%d)\n" : "patslot: all ok\n", bad);

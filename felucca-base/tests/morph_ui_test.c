@@ -56,8 +56,8 @@ static int card_is(uint32_t c, const char *label, const char *val)   /* the card
            rows_has(UT_A_K1_Y, UT_A_K1_Y + UT_A_K1_H, label);
 }
 #if DUELL_TIDE
-/* TIDE: MORPH SETTINGS is in MORPH SET's place, a list (tide_ui.c): K1 the row, OCT+ the next value, OCT- the one before; SMART / ARP / PITCH are its ROLL, ARP, PITCH */
-#define MORPH_SET_TITLE "MORPH SETTINGS"
+/* TIDE: TIDE SETTINGS is in MORPH SET's place, a list (tide_ui.c): K1 the row, OCT+ the next value, OCT- the one before; SMART / ARP / PITCH are its ROLL, ARP, PITCH */
+#define MORPH_SET_TITLE "TIDE SETTINGS"
 static void mset_row(uint32_t r) { turn(EN_K1, -8); if (r) turn(EN_K1, (int32_t)r); }
 static void mset_put(uint32_t r, uint32_t v)            /* row r to its value v: OCT- to the first, then OCT+ v times */
 {
@@ -101,7 +101,7 @@ static void fresh(void)
 static void t_round(void)
 {
 #if DUELL_TIDE
-    static const char *const T[] = {"MORPH", "MORPH SETTINGS", "AUTO TIDE", "MODE"};   /* (TIDE: MORPH SETTINGS in MORPH SET's place, then AUTO TIDE) */
+    static const char *const T[] = {"MORPH", "TIDE SETTINGS", "AUTO TIDE", "MODE"};   /* (TIDE: TIDE SETTINGS in MORPH SET's place, then AUTO TIDE) */
 #else
     static const char *const T[] = {"MORPH", "MORPH SET", "MODE"};   /* (0.2.25 layout round: the MIXER is GLO's first page, not HOME's) */
 #endif
@@ -222,7 +222,7 @@ static void t_editb(void)
     n = morph_edits(0, ed);
     expect("  turning the same value again changes it, never counts again; A still untouched", n == 1u && !memcmp(pa, trk[0].p, sizeof pa));
     /* values both ends share */
-    k = knob_of(P_VOICE);
+    k = 0u; ui.menu = 0; go_title("VOICE 1/2"); frames(32);   /* (VOICE 1/2 K1: the CHORD page has the VOICE too, as its K4, shown only where chords need POLY) */
     ui.msg_t = 0;
     memcpy(pa, trk[0].p, sizeof pa);
     turn(EN_K1 + k, 1);
@@ -401,12 +401,12 @@ static void t_knobs(void)
     turn(EN_K3, -MORPH_DET);
     expect("KNOB 3 left: UNDO A, B stays; no KEEP", rolls(0, 0) == 1u && msg_is("UNDO A") && rolls(0, 1) == 2u);
 #if DUELL_TIDE
-    /* TIDE: MORPH SETTINGS, the list in MORPH SET's place: ROLL SMART -> WILD, ARP ON, PITCH ON (the same settings bits); K2..K4 do nothing; ALGORITHM is the
+    /* TIDE: TIDE SETTINGS, the list in MORPH SET's place: ROLL SMART -> WILD, ARP ON, PITCH ON (the same settings bits); K2..K4 do nothing; ALGORITHM is the
      * morph's selector there (PART 1, BOTH, PART 2: tide_ui.c) */
     go_title(MORPH_SET_TITLE);
     frames(32);
-    mset_put(2u, 2u); mset_put(3u, 1u); mset_put(4u, 1u);
-    expect("ROLL WILD, ARP ON, PITCH ON on MORPH SETTINGS (TIDE's list: K1 the row, OCT+ the value; the settings bits)",
+    mset_put(JL_ROLL, 2u); mset_put(JL_ARP, 1u); mset_put(JL_PITCH, 1u);
+    expect("ROLL WILD, ARP ON, PITCH ON on TIDE SETTINGS (TIDE's list: K1 the row, OCT+ the value; the settings bits)",
            morph.cfg == (MC_WILD | MC_ARP | MC_PIT) && favorites.factory[15][8] == 7u);
     {
         uint32_t c = morph.cfg, t = morph.target;
@@ -415,9 +415,9 @@ static void t_knobs(void)
         expect("  .. KNOB 2..4: nothing (no card on the list)", morph.cfg == c && morph.target == t);
     }
     turn(EN_ALGO, 1);
-    expect("  .. ALGORITHM on MORPH SETTINGS: BOTH next (TIDE: the morph's selector, as on MORPH)", song.sel == 0u && morph.target == MT_BOTH);
+    expect("  .. ALGORITHM on TIDE SETTINGS: BOTH next (TIDE: the morph's selector, as on MORPH)", song.sel == 0u && morph.target == MT_BOTH);
     turn(EN_ALGO, -1);
-    mset_put(2u, 0u); mset_put(3u, 0u); mset_put(4u, 0u);
+    mset_put(JL_ROLL, 0u); mset_put(JL_ARP, 0u); mset_put(JL_PITCH, 0u);
     expect("  .. and back: MUSIC (TIDE's default: SMART with the musical dials), ARP OFF, PITCH OFF (the defaults)", !morph.cfg && !favorites.factory[15][8]);
 #else
     /* MORPH SET (0.2.9): SMART, ARP, PITCH, KNOB 4 empty; no TARGET card (ALGORITHM's BOTH on the MORPH page is the target) */
@@ -540,7 +540,7 @@ static void t_target(void)
     turn(EN_K3, MORPH_DET);
     expect("BOTH: UNDO B acts on both parts", rolls(0, 1) == 2u && rolls(1, 1) == 1u);
     go_title(MORPH_SET_TITLE); frames(32);
-    expect("BOTH, then MORPH SET: one badge (the selected part; TIDE's MORPH SETTINGS: both, as MORPH), BOTH kept", morph.target == MT_BOTH && badge_lit() == (DUELL_TIDE ? 3u : 1u));
+    expect("BOTH, then MORPH SET: one badge (the selected part; TIDE's TIDE SETTINGS: both, as MORPH), BOTH kept", morph.target == MT_BOTH && badge_lit() == (DUELL_TIDE ? 3u : 1u));
     morph_page();
     expect("  .. back on MORPH: both badges again", morph.target == MT_BOTH && badge_lit() == 3u);
 }
@@ -789,7 +789,7 @@ static void t_item154(void)
     fresh();
 #if DUELL_TIDE
     go_title(MORPH_SET_TITLE); frames(32);
-    mset_put(2u, 1u);                                   /* (TIDE: ROLL SMART, 1.1's roll the owner's steps used; MUSIC, TIDE's default, keeps the LFO depths) */
+    mset_put(JL_ROLL, 1u);                                   /* (TIDE: ROLL SMART, 1.1's roll the owner's steps used; MUSIC, TIDE's default, keeps the LFO depths) */
 #endif
     preset_pos(&tot);
     for (n = 0; n < tot; n++) {
@@ -844,7 +844,7 @@ static void t_item154(void)
     }
 #if DUELL_TIDE
     go_title(MORPH_SET_TITLE); frames(32);
-    mset_put(2u, 0u);                                   /* (back to MUSIC, TIDE's default: the setting outlives a power cycle) */
+    mset_put(JL_ROLL, 0u);                                   /* (back to MUSIC, TIDE's default: the setting outlives a power cycle) */
 #endif
 }
 
@@ -874,7 +874,7 @@ static void t_save(void)
     turn(EN_K4, 20);
     turn(EN_K2, MORPH_DET); settle();                   /* ROLL B at AMOUNT 45 */
     turn(EN_K1, 70);
-    expect("a factory sound is in its slot (the browse position), the list is the 128 slots", sl == pos && total == UP_SLOTS && sl < UP_SLOTS);
+    expect("a factory sound is in its slot (the browse position), the list is the 128 slots and the 4 displaced places", sl == pos && total == UP_VSLOTS && sl < UP_SLOTS);
     hold(B_SAVE);
     expect("SAVE held on MORPH: the OVERWRITE dialog for part 1, offering the slot the sound came from (nothing saved yet); OCT- cancels",
            ui.confirm == CF_SAVE_OVER && ui.confirm_trk == 0u && ui.svs == sl && !up_count() && (press(B_OCTDN), !ui.confirm && !up_count()));
@@ -886,7 +886,7 @@ static void t_save(void)
     expect("  OCT+: SAVED #NN, still on MORPH; one record, in that slot; the part plays that slot now",
            up_count() == 1u && up_used(sl) && !strncmp(ui.msg, "SAVED", 5) && str_eq(cur_page()->title, "MORPH") && trk[0].user == sl + 1u &&
            up_rec(sl)->engine == e && up_value(up_rec(sl), P_REL) == trk[0].p[P_REL]);
-    expect("the browser: the slot stays in its place (same position, same length 128)", preset_pos(&t2) == pos && t2 == UP_SLOTS && preset_at(pos) == sl);
+    expect("the browser: the slot stays in its place (same position, same length 132)", preset_pos(&t2) == pos && t2 == UP_VSLOTS && preset_at(pos) == sl);
     turn(EN_K4, -30);                                   /* AMOUNT 15, another B, another sound */
     turn(EN_PRESET, 1);
     frames(32);
@@ -942,7 +942,7 @@ static void t_settings(void)
     turn(EN_ALGO, -1);                                  /* BOTH: not saved */
     go_title(MORPH_SET_TITLE); frames(32);
 #if DUELL_TIDE
-    mset_put(3u, 1u); mset_put(4u, 1u);                 /* (ARP ON, PITCH ON) */
+    mset_put(JL_ARP, 1u); mset_put(JL_PITCH, 1u);                 /* (ARP ON, PITCH ON) */
 #else
     turn(EN_K2, 1);
     turn(EN_K3, 1);

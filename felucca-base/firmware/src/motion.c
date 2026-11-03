@@ -302,6 +302,16 @@ static int motion_knob_end(void)
     motion_knob_hit = 0;
     return hit;
 }
+/* 1 = a lock on track k's step / id fits: the record already there, or a free one */
+static int motion_room(uint32_t k, uint32_t step, uint32_t id)
+{
+    uint32_t i;
+    if (motion.count < MOTION_MAX)
+        return 1;
+    for (i = 0; i < motion.count; i++)
+        if (motion.event[i].place == MOTION_PLACE(k, step, id) && (motion.event[i].param & 0x7Fu) == (id & 0x7Fu)) return 1;
+    return 0;
+}
 /* the lock of part t's parameter id with value: stopped, on the cursor's step; playing, on the step playing now (before the
  * first step has started: step 1). 1 = recorded, 0 = not (the records are full), -1 = no step inside the pattern's length
  * (the turn is then a live edit, as with record off) */
@@ -318,6 +328,10 @@ static int motion_knob_lock(track_t *t, uint32_t id, int16_t value)
     motion_unguard(f);
     if (step >= len)
         return -1;
+    if (!motion_room(k, step, id)) {            /* FULL: no undo copy, no hit (the copy from before stays) */
+        motion_full = 1;
+        return 0;
+    }
     if (motion_knob_undo)
         motion_knob_undo(t);
     motion_knob_hit = 1;

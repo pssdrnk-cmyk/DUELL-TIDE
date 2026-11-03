@@ -11,6 +11,7 @@ enum { LV_NONE, LV_ENV, LV_LFO, LV_FILT, LV_CHORD, LV_TWIN, LV_INS, LV_MOD, LV_C
 #define LV_H0 2166136261u
 /* one look every LV_EVERY frames (15 a second: a picture redraw is 87 .. 150 k basic blocks, the animation costs by the redraw rate); the marker's line: first canvas row, rows */
 #define LV_EVERY 4u
+#define LV_BUSY 205u                                 /* the audio's load (song.cpu_q8, the figure ABOUT shows and the overload guard reads; 256 = 100 %): above 80 % no look is taken, the marker stands where it was */
 static const uint8_t LV_LINE[10][2] = {{0, 0}, {2, 66}, {6, 64}, {0, 0}, {0, 0}, {0, 0}, {6, 64}, {0, 0}, {4, 60}, {20, 46}};
 
 static struct {
@@ -339,13 +340,13 @@ static void lv_cycle_take(const track_t *t)
 }
 
 /* ---- the others' taps */
-static void lv_filt_take(const track_t *t)           /* the latest note's effective cutoffs (t->lvc, t->lvc2: Q8 dial steps >> 7) while a voice sounds */
+static void lv_filt_take(const track_t *t)           /* the latest note's effective cutoffs (t->lvc, LVC2(t): Q8 dial steps >> 7) while a voice sounds */
 {
     uint32_t i, on = 0;
     for (i = 0; i < NVOICE; i++)
         on |= t->v[i].active && t->v[i].stage != 4u;
     lv.fc = on && ENGINES[t->engine % NENGINES]->ufilt ? gf_cut_hz(40 + 198 * (int32_t)t->lvc) : 0u;
-    lv.fc2 = on && twin_on(t) && t->p[P_TWTYPE] != TT_COMB ? gf_cut_hz(40 + 198 * (int32_t)t->lvc2) : 0u;
+    lv.fc2 = on && twin_on(t) && t->p[P_TWTYPE] != TT_COMB ? gf_cut_hz(40 + 198 * (int32_t)LVC2(t)) : 0u;
 }
 static int32_t lv_voice_lvl(const voice_t *v)        /* a voice's envelope level, 0 .. 1000 (0: not sounding) */
 {
@@ -358,7 +359,7 @@ static uint32_t live_sig(const page_t *pg, const track_t *t)
     uint32_t h = LV_H0, i, k;
     if (TIDE_AMPDEST_FM6(pg, t))                     /* (the operator envelope's picture, live or not: it follows the operator, the stage, the patch) */
         h = (h ^ ((fop_op + 1u) * 40503u + (fop_stg + 1u) * 7919u + fm6_pgen[song.sel % NTRK] * 2246822519u)) * 16777619u;
-    if (ui.frame % LV_EVERY && lv.kind == live_kind(pg, t))
+    if ((ui.frame % LV_EVERY || song.cpu_q8 > LV_BUSY) && lv.kind == live_kind(pg, t))
         return lv.sig | (h ^ LV_H0) ? lv.sig ^ h : 0u;
     k = lv.kind = live_kind(pg, t);
     lv.sig = lv.n = lv.pv = lv.fc = lv.fc2 = lv.ch = 0;
@@ -494,7 +495,7 @@ static void live_strip(const page_t *pg, const track_t *t)
  * the two octaves from the C below the lowest sounding note (chord_live_keys), or the last chord's (chord_keys) */
 static void live_chord(const track_t *t)
 {
-    static const uint8_t WHITE_IX[12] = {0, 0, 1, 0, 2, 3, 0, 4, 0, 5, 0, 6}, BLACK_IX[12] = {0, 0, 0, 1, 0, 0, 3, 0, 4, 0, 5, 0};
+    static const uint8_t IX[12] = {0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6};   /* a white key's index in the octave; a black key's: the white key it follows */
     uint32_t set[4], lo = 128u, root, i, j;
     int32_t pitch = UT_A_KB_W + KB_GAP, bh = UT_A_KB_H * KB_BLACK_PCT / 100, bw = (pitch / 14 - KB_GAP) * KB_BLACK_W_NUM / KB_BLACK_W_DEN;
     if (!lv.sig || lv.kind != LV_CHORD)
@@ -506,13 +507,13 @@ static void live_chord(const track_t *t)
         (void)chord_keys(t, &lo, &root);
     }
     for (j = 0; j < NVOICE; j++) {
-        int32_t lvl = lv_voice_lvl(&t->v[j]), d = (int32_t)t->v[j].note - (int32_t)lo, s = d % 12, o = 7 * (d / 12), blk = s == 1 || s == 3 || s == 6 || s == 8 || s == 10, x, w, h;
+        int32_t lvl = lv_voice_lvl(&t->v[j]), d = (int32_t)t->v[j].note - (int32_t)lo, s = d % 12, o = 7 * (d / 12), blk = 0x54A >> (s & 15) & 1, x, w, h;
         if (!lvl || d < 0 || d >= (int32_t)CHORD_KB_SPAN)
             continue;
         if (blk) {                                   /* a black key: its bar inside the key, 2 px narrower, in its upper part */
-            x = UT_A_KB_X + (BLACK_IX[s] + o + 1) * pitch / 14 - KB_GAP / 2 - bw / 2 + 2, w = bw - 4, h = 1 + lvl * (bh - 4) / 1000;
+            x = UT_A_KB_X + (IX[s] + o + 1) * pitch / 14 - KB_GAP / 2 - bw / 2 + 2, w = bw - 4, h = 1 + lvl * (bh - 4) / 1000;
         } else {                                     /* a white key: the middle of its part under the black keys */
-            int32_t i0 = WHITE_IX[s] + o;
+            int32_t i0 = IX[s] + o;
             x = (UT_A_KB_X + i0 * pitch / 14 + UT_A_KB_X + (i0 + 1) * pitch / 14 - KB_GAP - 3) / 2, w = 3, h = 1 + lvl * (UT_A_KB_H - bh - 8) / 1000;
         }
         if (w >= 1)

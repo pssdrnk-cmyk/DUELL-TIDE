@@ -472,7 +472,7 @@ A standard-defined number used for something the standard does not say, or a sta
 | Standard names on the unit | none | names of the 61 numbers that have a standard meaning, 5 to 12 characters each | about +0.8 to 1 KB flash, est. |
 | Standard names in the editor | none | all 128 names, a constant list | about 3 KB of editor code, no firmware cost |
 | RAM | about 260 B | about 260 B | 0 |
-| Hot RAM | 0 | 0 | 0 |
+| Hot code | 0 | 0 | 0 |
 | Code (firmware) | 2 to 3 KB | 3 to 4 KB | +1 KB: more target kinds (global effects, engine values scaled by the engine's own range, stepped values), the exceptions view |
 | CPU | one table read per CC | same | 0 |
 | Rounds | 5 to 7 | 7 to 9 | +2: (1) building the shipped image and a host test that walks all 88 lines (every number unique, every target exists, every standard-numbered row equals section 2.1 of this document, every row in range), (2) editor: STANDARD NAME column, BY NUMBER table, exceptions filter, CSV and printable list |

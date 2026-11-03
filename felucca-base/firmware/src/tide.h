@@ -12,6 +12,13 @@
 #endif
 
 #if DUELL_TIDE
+#define UP_NUSER 4u
+#define PS_NUSER 4u
+#define UP_EMPTY_USER(k) sl_empty_user(k)           /* U1 (upreset.c): slot k is an empty USER voice slot */
+static int sl_empty_user(uint32_t k);
+static int sl_user(uint32_t k);
+#define UP_REC_USER(t) ((t)->user && !UP_EMPTY_USER((uint32_t)(t)->user - 1u))   /* the part plays a stored record (a part pointed at an empty USER slot still plays its factory sound) */
+#define UP_IS_USER(k) sl_user(k)
 
 /* H2 (seq.c, audio path): a step as it plays, the Original's or the SEQ MORPH's variation (tide_seq.c). The
  * compound literal is the variation's room, alive for the enclosing block. The editor and pages read the Original
@@ -27,11 +34,24 @@ static uint32_t tide_seq_chord(const track_t *t, uint32_t *list, uint32_t n);
  * phrase lifecycle, seq_rhythm.c). Counted here, read by tide_seq.c and the pages */
 static volatile uint8_t sqm_bar, sqm_bar_turn;
 static volatile uint8_t tide_seq_loops[NTRK];
-#define TIDE_SEQ_START() (sqm_bar = sqm_bar_turn = 0, tide_seq_ghost_start())     /* (the phrase from the top; MIDI CONTINUE keeps it) */
+/* H3b (seq.c, audio path): POLY (seq_poly.c): the loop's length now, the step after seq_idx, the arp step k, an arp step started */
+static void tide_poly_start(void);
+static uint32_t tide_slen(const track_t *t);
+static uint32_t tide_seq_next(track_t *t);
+static int tide_seq_wrapping(const track_t *t, uint32_t len);
+static uint32_t tide_arp_idx(const track_t *t, uint32_t k, uint32_t len);
+static void tide_arp_tick(track_t *t);
+static int tide_poly_on(const track_t *t);
+#define TIDE_SLEN(t) tide_slen(t)
+#define TIDE_SEQ_NEXT(t, len) tide_seq_next(t)
+#define TIDE_SEQ_RELEN(t, len) ((len) = tide_slen(t))   /* (a stretch began or ended at this step) */
+#define TIDE_ARP_IDX(t, k, len) tide_arp_idx((t), (k), (len))
+#define TIDE_ARP_TICK(t) tide_arp_tick(t)
+#define TIDE_SEQ_START() (sqm_bar = sqm_bar_turn = 0, tide_poly_start(), tide_seq_ghost_start())     /* (the phrase from the top; MIDI CONTINUE keeps it) */
 static void tide_seq_ghost_start(void);
 #define TIDE_BEAT_BLOCK(adv) (sqm_bar_turn = (uint8_t)(beat_n == 3u && beat_pos + (adv) >= beat_samples()))
 #define TIDE_BEAT() do { if (!beat_n && song.playing) sqm_bar++; } while (0)
-#define TIDE_SEQ_LOOP(t, len) do { if ((t)->seq_idx + 1u == (len) && (t)->seq_pos < 0x7FFFFFFFu) tide_seq_loops[trk_index(t)]++; } while (0)   /* (the startup sentinel is no loop) */
+#define TIDE_SEQ_LOOP(t, len) do { if (tide_seq_wrapping((t), (len)) && (t)->seq_pos < 0x7FFFFFFFu) tide_seq_loops[trk_index(t)]++; } while (0)   /* (the startup sentinel is no loop) */
 /* H13 (ui_input.c, main loop): once a frame, after morph_poll: GLIDE, the SEQ MORPH's ends, the settings */
 static void tide_poll(void);
 #define TIDE_POLL() tide_poll()
@@ -77,6 +97,7 @@ static void tide_midi(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi);
 static int tide_list_on(void);
 static void tide_list_oct(uint32_t oct);
 static int tide_store_load(uint8_t *b, uint32_t n);
+static uint32_t tide_store_load_min(uint8_t *b, uint32_t n, uint32_t min);
 static void tide_store_mark(const uint8_t *b, uint32_t n);
 static void tide_store_poll(void);
 static const char *tide_tl_keep(track_t *t, uint64_t was, uint32_t len);   /* (tide_ui.c) */
@@ -87,6 +108,7 @@ static void tl_unlock(track_t *t, uint64_t was, uint32_t len);
 #define TIDE_THEME_F(f) ((f) >= 120u ? 127u : (f) & ~7u)
 static int tide_foot_parts(void);
 static void tide_part_name(uint32_t pi, char *b);
+static int32_t tarc_bright(void);                        /* ARC's brightness lean for the next sound (seq_arc.c) */
 static void tide_roll_ghosts(const track_t *t, uint32_t base, uint32_t ncol);
 static uint32_t tide_roll_sig(const track_t *t);
 #define TIDE_FOOT_NAME(t, b) do { if (tide_foot_parts()) tide_part_name(trk_index(t), (b)); else sound_label((t), (b)); } while (0)
@@ -135,6 +157,11 @@ static int tide_foot_two(void);
 #define TIDE_SEQ_GHOST(t) 0
 #define TIDE_SEQ_CHORD(t, list, n) (n)
 #define TIDE_SEQ_START() ((void)0)
+#define TIDE_SLEN(t) ((uint32_t)(t)->p[P_SLEN])
+#define TIDE_SEQ_NEXT(t, len) (((uint32_t)(t)->seq_idx + 1u) % (len))
+#define TIDE_ARP_IDX(t, k, len) ((k) % (len))
+#define TIDE_ARP_TICK(t) ((void)0)
+#define TIDE_SEQ_RELEN(t, len) ((void)0)
 #define TIDE_BEAT_BLOCK(adv) ((void)(adv))
 #define TIDE_BEAT() ((void)0)
 #define TIDE_SEQ_LOOP(t, len) ((void)0)
@@ -191,6 +218,18 @@ static int tide_foot_two(void);
 #define TIDE_LIVE_STRIP(pg, t) ((void)0)
 #define TIDE_LIVE_CHORD(t) ((void)0)
 #define TIDE_AMPDEST_FM6(pg, t) 0
+#define UP_NUSER 0u
+#define PS_NUSER 0u
+#define UP_EMPTY_USER(k) 0
+#define UP_IS_USER(k) 0
+#define UP_REC_USER(t) ((t)->user)
 
 #endif
+
+/* U1 (upreset.c, patslot.c, ui*.c): the last UP_NUSER voice slots and PS_NUSER pattern slots are USER slots, empty until saved. The factory
+ * sounds / patterns they displace stay listed after them as read-only places (voice places UP_SLOTS.., pattern places PS_SLOTS..). No record moves */
+#define UP_USER0 (UP_SLOTS - UP_NUSER)
+#define UP_VSLOTS (UP_SLOTS + UP_NUSER)
+#define PS_USER0 (PS_SLOTS - PS_NUSER)
+#define PS_VSLOTS (PS_SLOTS + PS_NUSER)
 #endif

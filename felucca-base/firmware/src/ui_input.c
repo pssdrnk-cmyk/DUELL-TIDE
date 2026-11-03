@@ -107,10 +107,10 @@ static uint32_t play_leds(void)
     uint32_t n = t->seq_n < 4u ? t->seq_n : 4u, i, k, note, used = 0, m = 0, hit;
     for (i = 0; i < n; i++)
         s[i] = t->seq_notes[i];
-    if (t->arp_note)
+    if (t->arp_note | (t->arp_nz & 1u))
         s[n++] = t->arp_note;
     for (i = 0; i < 3u; i++)                            /* (the ARP's CHORD) */
-        if (t->arp_ch[i])
+        if (t->arp_ch[i] || ((t->arp_nz >> (i + 1u)) & 1u))
             s[n++] = t->arp_ch[i];
     for (k = 0; n && k < 27u; k++) {
         note = kb_map(t, k);
@@ -649,7 +649,12 @@ static void algo_input(int32_t s)
 {
     if (ui.perf || (cur_page()->graph == GR_MORPH) || TIDE_PAGE(cur_page()))   /* TIDE hook */   /* (PERFORM: its page, shown while ui.perf) */
         algo_step(s);
-    else if (page_global(cur_page()) || cur_page()->scope == SC_MODE)   /* 0.2.24 (owner): a GLOBAL page edits no part: ALGORITHM does nothing there (it switched the highlight colour and nothing else); the MODE page counts as global (ui_draw.c screen_global) */
+    else if (cur_page()->fam == FAM_GLO && page_global(cur_page())) {   /* GLO (the MIXER first): the selected part still changes (the part every other page and the keys use); the screen stays global, so a message names it */
+        uint32_t was = song.sel;
+        track_select((uint32_t)clamp((int32_t)song.sel + (s > 0 ? 1 : -1), 0, NSHOWN - 1));
+        if (song.sel != was)
+            ui_message(song.sel ? "PART 2" : "PART 1");
+    } else if (page_global(cur_page()) || cur_page()->scope == SC_MODE)   /* 0.2.24 (owner): a GLOBAL page edits no part: ALGORITHM does nothing there (it switched the highlight colour and nothing else); the MODE page counts as global (ui_draw.c screen_global) */
         return;
     else
         track_select((uint32_t)clamp((int32_t)song.sel + (s > 0 ? 1 : -1), 0, NSHOWN - 1));
@@ -738,6 +743,10 @@ static void patch_save_ask(void)
 {
     if (cur_page()->graph == GR_PATS) {     /* PATTERNS (DUELL 0.2.2): the pattern slot picked, the part's pattern over it (the slot's */
         uint32_t ps = pat_pick();                       /* under its name; every slot holds a pattern) */
+        if (PS_NUSER && ps >= PS_SLOTS) {
+            ui_message("PICK A USER SLOT");
+            return;
+        }
         confirm_open(CF_HOLD_PSLOT, ps);
         return;
     }
@@ -1580,6 +1589,10 @@ static void act_do(void)
     if (cur_page()->graph == GR_PATS) {                   /* LOAD (1), SAVE (2): the slot picked */
         uint32_t ps = pat_pick();
         if (c == 2u) {
+            if (PS_NUSER && ps >= PS_SLOTS) {                         /* U1: a displaced default pattern loads, never saves */
+                ui_message("PICK A USER SLOT");
+                return;
+            }
             confirm_open(CF_OVR_PSLOT, ps);               /* (replaces what the slot holds: the dialog, then the NAME screen) */
         } else if (pat_needs_confirm(TSEL)) {             /* the user's steps: the dialog */
             confirm_open(CF_LOAD_PAT, song.sel);
@@ -2153,6 +2166,8 @@ static void ui_input(void)
             } else if (kind == CF_HOLD_PSLOT) {         /* SAVE held on PATTERNS: straight into the slot, its name kept */
                 char tag[4], pn[13];
                 pat_label(ui.confirm_trk % PS_SLOTS, tag, pn);
+                if (ui.confirm_trk % PS_SLOTS >= PS_USER0 && !ps_changed(ui.confirm_trk % PS_SLOTS))
+                    pn[0] = 0;                          /* (an empty USER slot has no name to keep) */
                 pslot_save_ui(ui.confirm_trk % PS_SLOTS, pn);
             } else if (kind == CF_HOLD_MULTI) {         /* SAVE held on MULTIS: straight into the slot, its name kept */
                 char pn[13];

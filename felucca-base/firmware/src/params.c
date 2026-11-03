@@ -954,7 +954,7 @@ static const page_t PAGES[] = {
     /* SCL (the button printed SEL): page 1 SCALE is GLOBAL (K1 SCALE, K2 ROOT, K3 OFF-SCALE SNAP / PLAY: the instrument's, core.h), page 2 CHORD is the
      * SELECTED PART's (K1 CHRD, K2 VOIC: chord.c, K3 STRUM: seq.c strum_block; TRANSPOSE is the patch's since DUELL 1.1: VOICE 1/2 K4). No page mixes the two kinds (owner rule) */
     {"SCALE", FAM_SCL, SC_SCALE, GR_SCALE, {0xFF, 0xFF, 0xFF, 0xFF}},
-    {"CHORD", FAM_SCL, SC_TRACK, GR_CHORD, {P_CHRD, P_VOIC, XW_BASE + X_STRUM, 0xFF}},   /* DUELL 1.1 (owner 2026-10-27): K1 CHRD, K2 VOIC (the part's chord keys), K3 STRUM (item 144: ext slot X27, hidden where it cannot act: ui_draw.c card_hidden_vp), K4 free. TRANSPOSE left
+    {"CHORD", FAM_SCL, SC_TRACK, GR_CHORD, {P_CHRD, P_VOIC, XW_BASE + X_STRUM, P_VOICE}},   /* DUELL 1.1 (owner 2026-10-27): K1 CHRD, K2 VOIC (the part's chord keys), K3 STRUM (item 144: ext slot X27, hidden where it cannot act: ui_draw.c card_hidden_vp), K4 the part's VOICE (chord keys play a chord only in POLY: the page says NEEDS POLY, ui_graph.c graph_chord; the same control as VOICE 1/2 K1). TRANSPOSE left
                                                                              * this page for VOICE 1/2 K4 (it is the patch's now: a setting sits on the page it belongs to); the KEY OFFSET is removed */
     /* SPEC 1.2: EDIT's first sub-page is the ENGINE page (the engine is never hidden behind a hold), then the engine's */
     /* T0227 (owner): the ENGINE page changes the engine and starts its controls: K1 ENGINE, K2..K4 the engine's first three (card positions 0..2: engine_t.uiord);
@@ -1034,7 +1034,7 @@ static const page_t PAGES[] = {
      * parameter */
 #if DUELL_TIDE                                           /* TIDE hook (H10): HOME round: MORPH, MORPH MODES, TIDE, MODE (owner 2026-11-01) */
     {"MORPH", FAM_TRK, SC_MORPH, GR_MORPH, {0xFF, 0xFF, 0xFF, 0xFF}},
-    {"MORPH SETTINGS", FAM_TRK, SC_TIDE, GR_TIDELIST, {0xFF, 0xFF, 0xFF, 0xFF}},
+    {"TIDE SETTINGS", FAM_TRK, SC_TIDE, GR_TIDELIST, {0xFF, 0xFF, 0xFF, 0xFF}},
     {"AUTO TIDE", FAM_TRK, SC_TIDE, GR_TIDE, {0xFF, 0xFF, 0xFF, 0xFF}},
     {"MODE", FAM_TRK, SC_MODE, GR_MODE, {0xFF, 0xFF, 0xFF, 0xFF}},
 #else
@@ -1220,7 +1220,7 @@ static const char *const VAL_SHOWN[][3] = {
     {"CURVE", "LIN", "LINEAR"}, {"CURVE", "EXP", "EXPONENTIAL"},
     {"CLK", "INT", "INTERNAL"}, {"ROUT", "OWN CH", "PART CHANNEL"}, {"ROUT", "SELECTED", "ANY CHANNEL"},
     {"TYPE", "SHIM", "SHIMMER"}, {"TYPE", "RESO", "RESONATOR"},                                  /* REVERB TYPE */
-    {"VOIC", "INV1", "INVERSION 1"}, {"VOIC", "INV2", "INVERSION 2"},
+    {"VOIC", "INV1", "1ST INV"}, {"VOIC", "INV2", "2ND INV"},   /* ("INVERSION 1" was cut to "INVERSION" on the narrow cards the CHORD page has beside STRUM: INV 1 or 2 could not be told apart) */
     {"ARP", "MAJ", "MAJOR"}, {"ARP", "MIN", "MINOR"},                                           /* LOFI ARP */
     {"ENG", "PHYS", "PHYSICAL"},                                                                 /* the engine list value (G_ENGSEL): the stored name PHYS stays the key */
     {"MODEL", "MODAL", "BELL"}, {"MODEL", "MEMB", "DRUM"}, {"MODEL", "SYMP", "SITAR"},          /* PHYS (owner 2026-10-25: the stored names MODAL MEMB SYMP stay the keys) */

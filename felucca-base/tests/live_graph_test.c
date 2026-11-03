@@ -9,7 +9,7 @@
  *            while the audio generator stands still; used (matrix, TWIN), it follows the audio phase
  *   CYCLE    the latest note's real rise / fall position and value; unrouted or no note: a silent animated PREVIEW; ONCE ends at zero
  *   FILTER   the latest note's effective cutoff (voice.c t->lvc): the dial with no route, an ENV sweep moves it; nothing without a voice
- *   TWIN     a tick at each filter's live cutoff (t->lvc2); COMB: none for filter 2
+ *   TWIN     a tick at each filter's live cutoff (LVC2(t)); COMB: none for filter 2
  *   INSERT   CHORUS: the playhead at the sweep's phase on the drawn sine
  *   MOD      under each acting row a bar for its source; a row that does nothing: none
  *   CHORD    a bar in a sounding key; none without a voice
@@ -352,6 +352,13 @@ static void t_cost(void)
     n = redraws(20, env_rise);
     printf("livegraph: a rising envelope: %u redraws in 20 frames\n", (unsigned)n);
     expect("COST a moving envelope: drawn every 4th frame (15 a second), and it is drawn", n >= 4u && n <= 6u);
+    song.cpu_q8 = 230;                               /* the audio at 90 %: no look is taken, the marker stands (nothing redraws, nothing is lost: the page is still the picture) */
+    n = redraws(20, env_rise);
+    expect("CPU GUARD above 80 % load the moving envelope is not drawn again", n == 0u);
+    song.cpu_q8 = 180;                               /* 70 %: it moves again */
+    n = redraws(20, env_rise);
+    expect("CPU GUARD below 80 % load the animation is back", n >= 4u && n <= 6u);
+    song.cpu_q8 = 0;
     ui_prefs |= PREF_ANIM_OFF;
     n = redraws(2, env_rise);                        /* (one redraw takes the overlay away) */
     n = redraws(20, env_rise) + (n > 1u) * 100u;
@@ -690,9 +697,9 @@ static void t_twin(void)
     trk_note_on(t, 60, 100);
     render(8);
     frames(80);
-    printf("livegraph: TWIN lvc %u lvc2 %u\n", (unsigned)t->lvc, (unsigned)t->lvc2);
+    printf("livegraph: TWIN lvc %u lvc2 %u\n", (unsigned)t->lvc, (unsigned)LVC2(t));
     x1 = PANEL_X0 + gf_x(gf_cut_hz(40 + 198 * 120) << 8), x2 = PANEL_X0 + gf_x(gf_cut_hz(40 + 198 * 60) << 8);
-    expect("TWIN filter 2 LINK off, no route: its live cutoff is CUTOFF 2's dial (30 steps); filter 1's its own (60)", lv.kind == LV_TWIN && t->lvc2 == 60u && t->lvc == 120u);
+    expect("TWIN filter 2 LINK off, no route: its live cutoff is CUTOFF 2's dial (30 steps); filter 1's its own (60)", lv.kind == LV_TWIN && LVC2(t) == 60u && t->lvc == 120u);
     expect("TWIN the two ticks: filter 1 capped at the top, filter 2 at the bottom", px(x1, Y_GRAPH + GOY + 5) == T_ACCENT && px(x2, Y_GRAPH + GOY + 60) == T_ACCENT);
     shot("twin");
     t->p[P_TWTYPE] = TT_COMB;

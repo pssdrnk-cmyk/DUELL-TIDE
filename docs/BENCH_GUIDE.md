@@ -87,7 +87,7 @@ The CSV has more: the voices that sounded (`vox`), the voices cut (`shed`), the 
 
 - AVG / PEAK / MISS are measured on your unit, by the audio interrupt itself, exactly as the CPU bar does it. Nothing of the audio is held off for the bench: if the unit cuts voices or engages LIGHT FX, that is what it really does (the name turns amber).
 - MDL is the Mac's instruction count for the same row (the scale of `./host_tests.sh bench`: 33 instructions a sample = 1 %). X is the calibration you asked for.
-- The bench build is not byte-identical to T0225 (it cannot be: it has the bench in it). The audio code is the same code, the hot RAM block is identical, every audio function has the same size; in BENCH-A1 the engines' render code sits 18 to 96 bytes later in the flash than in T0225 (the bench's two hooks in the UI code). That can move the readings by a little (a cache effect, expected small, not measured); the differences between rows (a stage's cost) are not affected. BENCH-B1 moves the code a little more (its safety hooks), so compare B1's rows with B1's own C1 IDLE rows, not with BENCH-A1.
+- The bench build is not byte-identical to T0225 (it cannot be: it has the bench in it). The audio code is the same code, the hot code is identical, every audio function has the same size; in BENCH-A1 the engines' render code sits 18 to 96 bytes later in the flash than in T0225 (the bench's two hooks in the UI code). That can move the readings by a little (a cache effect, expected small, not measured); the differences between rows (a stage's cost) are not affected. BENCH-B1 moves the code a little more (its safety hooks), so compare B1's rows with B1's own C1 IDLE rows, not with BENCH-A1.
 
 ## Back to the normal build
 

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* DUELL's PATCH store (SAVE > PATCHES, SPEC 3.6; editor protocol v2, cmds 16-21): ONE list of UP_SLOTS (128) patch slots (owner, 2026-10-15).
+/* DUELL's PATCH store (SAVE > PATCHES, SPEC 3.6; editor protocol v2, cmds 16-21): ONE list of UP_SLOTS (128) patch slots (owner, 2026-10-15; with TIDE the store holds 126, see below).
  * Slot k holds a SAVED record if one was written (SAVE overwrites the slot it is told to), else the FACTORY sound at browse position k
  * (sounds.c DS_LIST: category, engine, name = the #NN numbers): a virtual fallback, nothing is written at first boot, a fresh or erased
  * unit shows the factory sounds in all 128 slots. RESTORE removes the record of a slot, so the factory sound comes back; the factory sound
@@ -14,9 +14,10 @@
  * when it is loaded or edited (pt_raw: a ring of four), a write loads the one chunk it changes into a work buffer (pt_work).
  * The limit is HONEST and it is the slot count: PT_WORST is the largest record there can be (an FM6 sound with its patch, a SEQ-mode arp
  * with a full 16-step pattern, End B, a shadow marker, every parameter off its default), PT_K of them fit a chunk with its header,
- * PT_MAX = PT_NCH x PT_K = 128 = UP_SLOTS records of any kind always fit, so every one of the 128 slots can always be written, whatever
- * the other 127 hold. A chunk takes a NEW record only under PT_K records, which keeps that guarantee. There is no 'full': a slot is never
- * refused for room. PT_FULL (no chunk has room) cannot happen below that; it stays as a guard and reads as a plain SAVE ERROR.
+ * PT_MAX = PT_NCH x PT_K records of any kind always fit: 22 x 6 = 132 >= 128 = UP_SLOTS, so without TIDE every one of the 128 slots can always be written,
+ * whatever the other 127 hold. With TIDE (chunk 21 is its settings) it is 21 x 6 = 126: a 127th NEW record finds no chunk under PT_K records, PT_FULL,
+ * nothing written (the screen says STORE FULL, tide.h TIDE_SAVE_ERROR); a slot that already holds a record can always be rewritten. A chunk takes a NEW
+ * record only under PT_K records, whatever its size, which keeps both guarantees.
  *
  * Chunk: u16 'PT' magic, u8 version PT_VER, u8 0, then records back to back. Record (little endian):
  *   0 u16 length of the whole record     2 u8 slot (0..127)       3 u8 revision (+1 at every rewrite; a record that moved to
@@ -220,7 +221,7 @@ static void up_values(const up_rec_t *r, int16_t *v)   /* the record's values cl
 #define PT_VER 4u                                /* the chunk image's version (byte 2 after "PT"): 4 = ROLL CHAINED storage (2026-10-29: the values by wide id in the bits of their ranges, End B as values (morph.c MBV), the AK block's steps in 7 bytes; 6 records a chunk, 22 chunks); 3 and before are refused (no backward compatibility before the alpha) */
 #define PT_NONE 0xFFFFu
 #define PT_NOCH 0xFFu                            /* a directory entry with no record */
-#define PT_FULL 4                                /* up_put: no chunk has room (a guard only: PT_MAX records always fit; reads as SAVE ERROR) */
+#define PT_FULL 4                                /* up_put: no chunk takes a new record (without TIDE a guard only: 128 always fit; with TIDE the 127th new record: STORE FULL) */
 #define PT_VB 20u                                /* PT_VER 4: the values' bitmap, a bit per wide id (0..126 the ids, 127 never, 128..155 the extension slots) */
 #define PTF_PAT 1u
 #define PTF_TR 2u                                /* 0.2.19: the TRIM form: the loudness is the pair of P_TRIM (the PATCH TRIM) and the record carries no MIXER LEVEL (P_LEVEL is never written). A record
@@ -251,7 +252,7 @@ static void up_values(const up_rec_t *r, int16_t *v)   /* the record's values cl
 #define PT_W_PLAIN (PT_FIX + PT_VB + PT_VMAX + MBV_MAX + 32u + UPF_PK)               /* 490 (TIDE: 493) */
 #define PT_WORST (PT_W_SEQ > PT_W_PLAIN ? PT_W_SEQ : PT_W_PLAIN)
 #define PT_K ((PT_CAP - PT_HDR) / PT_WORST)
-#define PT_MAX (PT_NCH * PT_K)                   /* 132 records of the worst size: at least the 128 slots (a chunk takes a NEW record only under PT_K) */
+#define PT_MAX (PT_NCH * PT_K)                   /* 132 records of the worst size (TIDE: 126): at least the 128 slots without TIDE (a chunk takes a NEW record only under PT_K) */
 #if FELUCCA_FLASH
 _Static_assert(PT_CAP + ST_PAYLOAD_OFF == ST_PAYLOAD_END && PT_CAP <= ST_PAYLOAD_MAX, "a patch chunk is one storage object whose payload ends at 0xF00");
 #endif
@@ -925,7 +926,7 @@ static int pt_write(uint32_t c, uint32_t skip, uint32_t n)
     return rc;
 }
 /* slot k = r (+ pk), or its record removed (r 0: RESTORE, the factory sound is back), in the chunks and in flash: 0 ok, 2 flash error
- * (nothing changed), 3 no flash (kept in RAM), PT_FULL no room (a guard only) */
+ * (nothing changed), 3 no flash (kept in RAM), PT_FULL no room (TIDE: the 127th new record; else a guard only) */
 static uint32_t pt_next_rev(uint32_t k) { return pt_dir[k].ch != PT_NOCH ? (uint32_t)pt_dir[k].rev + 1u : 0u; }
 /* slot k := the record already in pt_enc (n bytes, its slot and revision bytes set): the part of pt_put that places and writes it */
 static int pt_put_enc(uint32_t k, uint32_t n)
@@ -1082,7 +1083,7 @@ static void up_ram_reset(void)
 }
 
 /* record k = *r (0: its record removed, RESTORE) in the patch store and flash: 0 ok, 1 bad slot, 2 flash error or the transport runs (nothing
- * written), 3 no flash (kept in RAM), 4 no chunk has room (a guard: PT_MAX = 128 records always fit, only a flash fault can make a
+ * written), 3 no flash (kept in RAM), 4 no chunk takes a new record (TIDE: the 127th; without it 128 always fit, only a flash fault can make a
  * write fail; nothing written). up_pk_in: the FM6 patch it carries. What the parts that play the slot do about it: sl_restore */
 static int up_put(uint32_t k, const up_rec_t *r)
 {
@@ -1100,9 +1101,19 @@ static int up_put(uint32_t k, const up_rec_t *r)
     return rc;
 }
 
-static void up_slot_label(char *b, uint32_t k)  /* "#7", "#128" (b holds 5): the number of the slot, 1..128 */
+static void up_slot_label(char *b, uint32_t k)  /* "#7", "#128", "U1" (b holds 5): the number of the slot, 1..128; the USER slots U1..; a displaced factory place keeps its number */
 {
     uint32_t n = k + 1u, i = 0;
+#if UP_NUSER
+    if (k >= UP_USER0 && k < UP_SLOTS) {
+        b[0] = 'U';
+        b[1] = (char)('1' + k - UP_USER0);
+        b[2] = 0;
+        return;
+    }
+    if (k >= UP_SLOTS)
+        n -= UP_NUSER;
+#endif
     b[i++] = '#';
     if (n >= 100u)
         b[i++] = (char)('0' + n / 100u % 10u);
@@ -1389,9 +1400,21 @@ static void sl_tab(void)
     }
     sl_tn = (uint8_t)(n < UP_SLOTS ? n : UP_SLOTS);
 }
+/* U1: slots UP_USER0.. (USER 1..) hold no factory sound: an empty one is empty, a record is the owner's. The factory sounds at the browse positions they stand
+ * on are the read-only places UP_SLOTS.. (browse order: ..#123, U1..U4, #125..#128), never written. Nothing is stored for them */
+#if UP_NUSER
+static int sl_user(uint32_t k) { return k >= UP_USER0 && k < UP_SLOTS; }
+static int sl_empty_user(uint32_t k) { return sl_user(k) && !up_used(k); }
+#endif
 static int sl_fac(uint32_t k, uint32_t *e, uint32_t *fk)   /* 1: slot k has a factory sound (engine *e, its factory index *fk) */
 {
     sl_tab();
+#if UP_NUSER
+    if (k >= UP_VSLOTS || sl_user(k))
+        return 0;
+    if (k >= UP_SLOTS)
+        k -= UP_NUSER;
+#endif
     if (k >= sl_tn)
         return 0;
     *e = sl_te[k];
@@ -1408,6 +1431,12 @@ static uint32_t sl_engine(uint32_t k)            /* the engine slot k's sound pl
 static void sl_name(uint32_t k, char *b)         /* upper case, 0-terminated: b holds 13 */
 {
     uint32_t e, fk;
+#if UP_NUSER
+    if (sl_empty_user(k)) {
+        str_cpy(b, "USER EMPTY", 13);
+        return;
+    }
+#endif
     if (up_used(k) || !sl_fac(k, &e, &fk)) {
         up_name(k, b);
         if (!b[0])
@@ -1428,8 +1457,15 @@ static uint32_t sl_cat(uint32_t k)               /* its category (category.c CAT
 static int sl_load(uint32_t k)
 {
     uint32_t e, fk;
-    if (k >= UP_SLOTS)
+    if (k >= UP_VSLOTS)
         return 0;
+#if UP_NUSER
+    if (sl_empty_user(k)) {                        /* U1: an empty USER slot loads nothing: the sound stays, the part points at the slot (SAVE offers it) */
+        TSEL->user = (uint8_t)(k + 1u);
+        mph[song.sel].user = TSEL->user;
+        return 1;
+    }
+#endif
     if (up_used(k) && !up_load(k))                 /* (up_load: 0 = the record loaded) */
         return 1;
     if (!sl_fac(k, &e, &fk)) {
@@ -1528,16 +1564,33 @@ static uint32_t slot_of(const track_t *t)
     if (t->user)
         return t->user - 1u < UP_SLOTS ? (uint32_t)t->user - 1u : UP_SLOTS;
     r = ds_list_rank(e, t->preset);
-    return r < UP_SLOTS && !up_used(r) ? r : UP_SLOTS;
+    return r < UP_USER0 && !up_used(r) ? r : UP_SLOTS;
 }
-/* where SAVE offers to write part t's sound: its slot; else the slot its factory sound belongs to (even if that holds a record now); else #1 */
+/* the browse place of part t's sound: its slot, or the read-only place of a factory sound a USER slot displaced; UP_VSLOTS: none */
+static uint32_t slot_place(const track_t *t)
+{
+#if UP_NUSER
+    uint32_t s = slot_of(t), r;
+    if (s < UP_SLOTS)
+        return s;
+    r = t->user ? UP_SLOTS : ds_list_rank(t->eng_req % NENGINES, t->preset);
+    return r >= UP_USER0 && r < UP_SLOTS ? r + UP_NUSER : UP_VSLOTS;
+#else
+    return slot_of(t);
+#endif
+}
+/* where SAVE offers to write part t's sound: its slot; else the slot its factory sound belongs to (even if that holds a record now; a displaced one: USER 1); else #1 */
 static uint32_t slot_home(const track_t *t)
 {
     uint32_t r;
     if (slot_of(t) < UP_SLOTS)
         return slot_of(t);
     r = ds_list_rank(t->eng_req % NENGINES, t->preset);
+#if UP_NUSER
+    return r < UP_USER0 ? r : r < UP_SLOTS ? UP_USER0 : 0u;
+#else
     return r < UP_SLOTS ? r : 0u;
+#endif
 }
 
 /* ---- SAVE (hold SAVE, ui_input.c patch_save_ask) ---- */
@@ -1563,7 +1616,7 @@ static int up_patch_save_part(uint32_t pi, uint32_t k)
         return 1;
     if (save_nm[0] && !both_names)                      /* 0.2.21: RENAME in the SAVE dialog (one part only) */
         str_cpy(nm, save_nm, sizeof nm);
-    else if (t->user)                                   /* its slot's name; else the factory sound it plays */
+    else if (t->user && !UP_EMPTY_USER((uint32_t)t->user - 1u))   /* its slot's name; else the factory sound it plays */
         sl_name((uint32_t)t->user - 1u, nm);
     else
         str_cpy(nm, ds_name(t->eng_req % NENGINES, t->preset), 13);

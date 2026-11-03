@@ -30,6 +30,12 @@ static void tide_wait_text(char *val, uint32_t n, const char **unit)
     }
 }
 
+/* JOURNEY's memory (tide_journey): the last JH_N sounds each part was sent to, newest first, as sound + 1 of engine jh_eng (0:
+ * none). RAM only, never saved; cleared when a WNDR/JRNY session starts (glide_start) and on HOME */
+#define JH_N 4u
+static uint8_t jh[2][JH_N], jh_eng[2];
+static void jh_clear(uint32_t k) { jh[k & 1u][0] = jh[k & 1u][1] = jh[k & 1u][2] = jh[k & 1u][3] = 0; }
+
 /* OCT- + K1 on JAM: home. The glide stops, each part of mask back to its Original sound (its ends rebased, the fader at A: End B
  * a roll again) and pattern (End A the Original, End B a variation) */
 static void tide_home(uint32_t mask)
@@ -39,6 +45,7 @@ static void tide_home(uint32_t mask)
     for (k = 0; k < NSHOWN; k++) {
         if (!((mask >> k) & 1u))
             continue;
+        jh_clear(k);
         morph_rebase_part(k);
         seqm_home(k);
     }
@@ -125,12 +132,35 @@ static void tide_link(uint32_t mask, uint32_t v)
 }
 
 /* ---------------------------------------------------------------- TIDE LIST --- */
-enum { JL_TARGET, JL_VARY, JL_ROLL, JL_ARP, JL_PITCH, JL_WASH, JL_N };
-static const char *const JL_NAME[JL_N] = {"TARGET", "VARY BARS", "ROLL", "ARP", "PITCH", "WASH LEVEL"};
+enum { JL_STYLE, JL_TARGET, JL_VARY, JL_ROLL, JL_ARP, JL_PITCH, JL_WASH, JL_TURNS, JL_POLY, JL_SYNC, JL_ARC, JL_N };
+static const char *const JL_NAME[JL_N] = {"STYLE", "TARGET", "VARY BARS", "ROLL", "ARP", "PITCH", "WASH LEVEL", "TURNS", "POLY", "SYNC", "ARC"};
 static uint8_t jl_sel;                                   /* the row picked (K1) */
 static void morph_act(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi);   /* (ui_input.c) */
 
-static uint32_t jl_n(uint32_t r) { return r == JL_WASH ? 4u : r == JL_TARGET || r == JL_ROLL ? 3u : 2u; }
+/* STYLE: one move sets the nine rows below it together (TARGET, ROLL, ARP and PITCH choose what TIDE may change, not the genre, and stay). A hand edit
+ * of any of the nine turns it into CUSTOM (tide_settings); CUSTOM itself changes nothing. mode, time (index), wait (index), VARY, TURNS, POLY, SYNC, ARC, WASH */
+enum { STY_DUB, STY_DEEP, STY_MINIMAL, STY_AMBIENT, STY_PEAK, STY_CUSTOM };
+static const uint8_t STY[5][9] = {
+    {GM_JOURNEY, 4, 2, 0, 2, 1, 1, 1, 0},                /* DUB: the showcase (today's no-record rows) with LEAD and a RISE */
+    {GM_WANDER, 5, 3, 0, 1, 0, 1, 1, 1},                 /* DEEP */
+    {GM_WANDER, 3, 0, 1, 2, 2, 2, 0, 0},                 /* MINIMAL */
+    {GM_JOURNEY, 6, 4, 0, 0, 1, 0, 0, 3},                /* AMBIENT */
+    {GM_JOURNEY, 3, 0, 1, 3, 1, 2, 2, 0}};               /* PEAK: ARC DROP and ECHO */
+static uint8_t tide_style = STY_DUB;
+static void tide_style_apply(uint32_t s)
+{
+    const uint8_t *t = STY[s];
+    gl.mode = t[0], gl.time = t[1], gl.wait = t[2];
+    sqm_vary_all = t[3], sqm_turns = t[4], sqm_poly = t[5], sqm_sync = t[6], sqm_arc = t[7], morph_wlvl = t[8];
+    tide_style = (uint8_t)s;
+}
+static int tide_style_holds(void)                        /* the nine rows are the style's */
+{
+    const uint8_t *t = STY[tide_style % 5u];
+    return gl.mode == t[0] && gl.time == t[1] && gl.wait == t[2] && sqm_vary_all == t[3] && sqm_turns == t[4] && sqm_poly == t[5] &&
+           sqm_sync == t[6] && sqm_arc == t[7] && (morph_wlvl & 3u) == t[8];
+}
+static uint32_t jl_n(uint32_t r) { return r == JL_WASH ? 4u : r == JL_STYLE ? 6u : r == JL_TURNS ? 4u : r == JL_TARGET || r == JL_ROLL || r == JL_POLY || r == JL_SYNC || r == JL_ARC ? 3u : 2u; }
 static uint32_t jl_get(uint32_t r)
 {
     switch (r) {
@@ -139,19 +169,33 @@ static uint32_t jl_get(uint32_t r)
     case JL_ROLL: return morph.cfg & MC_WILD ? 2u : morph_musical ? 0u : 1u;
     case JL_ARP: return (morph.cfg & MC_ARP) != 0u;
     case JL_WASH: return morph_wlvl & 3u;
+    case JL_TURNS: return sqm_turns;
+    case JL_POLY: return sqm_poly;
+    case JL_SYNC: return sqm_sync;
+    case JL_ARC: return sqm_arc;
+    case JL_STYLE: return tide_style;
     default: return (morph.cfg & MC_PIT) != 0u;
     }
 }
 static const char *jl_vname(uint32_t r, uint32_t v)
 {
     static const char *const VARY[2] = {"4 + 8", "ALL"}, *const ROLL[3] = {"MUSIC", "SMART", "WILD"}, *const SW[2] = {"OFF", "ON"},
-                             *const WL[4] = {"OFF", "LOW", "MID", "HIGH"};
-    return r == JL_TARGET ? GL_TARGET_NAME[v % 3u] : r == JL_VARY ? VARY[v & 1u] : r == JL_ROLL ? ROLL[v % 3u] : r == JL_WASH ? WL[v & 3u] : SW[v & 1u];
+                             *const WL[4] = {"OFF", "LOW", "MID", "HIGH"},
+                             *const TURNS[4] = {"TOGETHER", "TAKE TURNS", "LEAD", "ECHO"}, *const POLY[3] = {"OFF", "GENTLE", "WIDE"}, *const SYNC[3] = {"OFF", "SOFT", "PUSH"}, *const ARC[3] = {"OFF", "RISE", "DROP"},
+                             *const STYLE[6] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK", "CUSTOM"};
+    return r == JL_TURNS ? TURNS[v & 3u] : r == JL_POLY ? POLY[v % 3u] : r == JL_SYNC ? SYNC[v % 3u] : r == JL_ARC ? ARC[v % 3u] : r == JL_STYLE ? STYLE[v % 6u] : r == JL_TARGET ? GL_TARGET_NAME[v % 3u] : r == JL_VARY ? VARY[v & 1u] : r == JL_ROLL ? ROLL[v % 3u] : r == JL_WASH ? WL[v & 3u] : SW[v & 1u];
 }
 static void jl_put(uint32_t r, uint32_t v)
 {
     uint32_t pi = song.sel, mask = morph_mask(pi);
     switch (r) {
+    case JL_STYLE:
+        if (v < STY_CUSTOM)
+            tide_style_apply(v);
+        else
+            tide_style = STY_CUSTOM;
+        ui_message(v == 0u ? "STYLE DUB" : v == 1u ? "STYLE DEEP" : v == 2u ? "STYLE MINIMAL" : v == 3u ? "STYLE AMBIENT" : v == 4u ? "STYLE PEAK" : "STYLE CUSTOM");
+        break;
     case JL_TARGET:
         gl.target = (uint8_t)v;
         ui_message(v == GT_BOTH ? "GLIDE SOUND + SEQ" : v == GT_SEQ ? "GLIDE SEQ" : "GLIDE SOUND");
@@ -172,6 +216,22 @@ static void jl_put(uint32_t r, uint32_t v)
     case JL_WASH:                                        /* (morph_xfer.c: GLIDE's breath, the swell and the wash, together) */
         morph_wlvl = (uint8_t)(v & 3u);
         ui_message(v == 0u ? "WASH OFF" : v == 1u ? "WASH LOW" : v == 2u ? "WASH MID" : "WASH HIGH");
+        break;
+    case JL_TURNS:
+        sqm_turns = (uint8_t)(v & 3u);
+        ui_message(v == 0u ? "PARTS VARY TOGETHER" : v == 1u ? "PARTS TAKE TURNS" : v == 2u ? "ONE LEADS, ONE THINS OUT" : "THE ANSWER ECHOES");
+        break;
+    case JL_POLY:                                        /* (seq_poly.c: one part's loop shorter now and then, back at a phrase) */
+        sqm_poly = (uint8_t)(v % 3u);
+        ui_message(v == 0u ? "POLY OFF" : v == 1u ? "POLY GENTLE" : "POLY WIDE");
+        break;
+    case JL_SYNC:                                        /* (seq_rhythm.c: the phrase edits lean to the "and" and the push) */
+        sqm_sync = (uint8_t)(v % 3u);
+        ui_message(v == 0u ? "SYNC OFF" : v == 1u ? "SYNC SOFT" : "SYNC PUSH");
+        break;
+    case JL_ARC:                                         /* (seq_arc.c: a build, a peak, an optional drop and a breakdown over 36-64 bars) */
+        sqm_arc = (uint8_t)(v % 3u);
+        ui_message(v == 0u ? "ARC OFF" : v == 1u ? "ARC RISE" : "ARC DROP");
         break;
     default:
         morph_act(MQ_PITCH, mask, v, pi);
@@ -253,6 +313,10 @@ static int tide_reset(uint32_t k)
         ui_message("HOME");
         return 1;
     }
+    if (k == 1u) {                                       /* MODE has no reset: OCT- + K2 drops (ARC) at the next phrase */
+        ui_message(tarc_drop_hand());
+        return 1;
+    }
     if (k == 2u) {
         gl.time = 3u;
         return reset_say("TIME");
@@ -275,7 +339,39 @@ static int tide_taken(uint32_t k, uint32_t e, uint32_t j)   /* 1: the other part
     const track_t *t = &trk[o];
     if (NSHOWN < 2u || t->eng_req != e)
         return 0;
-    return (!t->user && t->preset == j) || morph_to_of(o, 0u) == (int32_t)j || morph_to_of(o, 1u) == (int32_t)j;
+    return (!UP_REC_USER(t) && t->preset == j) || morph_to_of(o, 0u) == (int32_t)j || morph_to_of(o, 1u) == (int32_t)j;
+}
+/* the candidates pick[0..n) of part k without its last h targets, for the most h that leaves any (the oldest forgiven first: a
+ * group of four or fewer sounds still turns); n unchanged where none is in the history or the memory is empty */
+static uint32_t jh_filter(uint32_t k, uint32_t e, uint32_t *pick, uint32_t n)
+{
+    uint32_t h, i, m, j;
+    if (jh_eng[k] != e) {                                /* (another engine: the sounds it holds are not these) */
+        jh_clear(k);
+        jh_eng[k] = (uint8_t)e;
+    }
+    for (h = JH_N; h; h--) {
+        for (i = m = 0; i < n; i++) {
+            for (j = 0; j < h && jh[k][j] != pick[i] + 1u; j++)
+                ;
+            m += j == h;
+        }
+        if (m)
+            break;
+    }
+    if (!h || m == n)
+        return n;
+    for (i = m = 0; i < n; i++) {
+        for (j = 0; j < h && jh[k][j] != pick[i] + 1u; j++)
+            ;
+        if (j == h)
+            pick[m++] = pick[i];
+    }
+    return m;
+}
+static void jh_push(uint32_t k, uint32_t c)
+{
+    jh[k][3] = jh[k][2], jh[k][2] = jh[k][1], jh[k][1] = jh[k][0], jh[k][0] = (uint8_t)(c + 1u);
 }
 static void tide_journey(uint32_t mask, uint32_t x, uint32_t snd, uint32_t seq)
 {
@@ -285,20 +381,23 @@ static void tide_journey(uint32_t mask, uint32_t x, uint32_t snd, uint32_t seq)
         if (!((mask >> k) & 1u))
             continue;
         if (snd) {
-            uint32_t e = t->eng_req, cat = t->user ? 0u : ds_cat_of(e, t->preset);
+            uint32_t e = t->eng_req, cat = UP_REC_USER(t) ? 0u : ds_cat_of(e, t->preset);
             int32_t at = morph_to_of(k, x ^ 1u), was = morph_to_of(k, x);
-            if (at < 0 && !t->user)                      /* (the end reached is the Original or a roll: not the Original's own sound) */
+            if (at < 0 && !UP_REC_USER(t))                      /* (the end reached is the Original or a roll: not the Original's own sound) */
                 at = (int32_t)t->preset;
             for (pass = n = 0; pass < 3u && !n; pass++)   /* (0: the kind, neither end's; 1: the one left allowed; 2: any kind) */
                 for (j = 0; j < ds_count(e) && n < 64u; j++)
-                    if ((t->user || pass == 2u || ds_cat_of(e, j) == cat) && (int32_t)j != at && (pass || (int32_t)j != was) &&
+                    if ((UP_REC_USER(t) || pass == 2u || ds_cat_of(e, j) == cat) && (int32_t)j != at && (pass || (int32_t)j != was) &&
                         !tide_taken(k, e, j))
                         pick[n++] = j;
+            n = jh_filter(k, e, pick, n);
             c = n ? pick[(r >> 8) % n] : 0u;
             if (n > 1u)
                 c = sound_complement_pick(k, e, c, pick[(r >> 16) % n], r >> 4);
             if (!n || !morph_to_sound(k, x, c))
                 gl_sound_roll(k, 1u << k, x);
+            else
+                jh_push(k, c);                           /* (only a target really adopted is remembered) */
             if (morph_isfm(morph_ready(k))) {
                 /* The scale checked the notes before the FM6 patch transpose.
                  * JRNY changes colour; keep the part's reference key. */
@@ -389,7 +488,19 @@ static void tide_status(char *l)
         str_cpy(l, song.playing || transport_req == 1u ? "GLIDE ON THE NEXT BAR" : "GLIDE STARTS WITH PLAY", 40);
     else if (!song.playing)
         str_cpy(l, "PAUSED: PLAY GOES ON", 40);
-    else {
+    else if (sqm_arc && sqm_auto && tarc.run) {         /* ARC: where the shape is ("RISE 3/6", "PEAK", "DROP", "BREAK 2/3") */
+        str_cpy(l, tarc_name(), 40);
+        if (tarc.phase != AP_PEAK && tarc.phase != AP_DROP) {
+            str_cpy(l + str_len(l), " ", 4);
+            fmt_int(n, (int32_t)(tarc.len - tarc.left + 1u));
+            str_cpy(l + str_len(l), n, 8);
+            str_cpy(l + str_len(l), "/", 4);
+            fmt_int(n, (int32_t)tarc.len);
+            str_cpy(l + str_len(l), n, 8);
+        }
+        if (tarc.hand && tarc.phase != AP_DROP)
+            str_cpy(l + str_len(l), "  DROP NEXT", 16);
+    } else {
         str_cpy(l, gl.hold ? "WAITING" : ST[gl.mode % 5u], 40);
         if (!gl.hold)
             str_cpy(l + str_len(l), gl.to ? " TO B" : " TO A", 8);
@@ -596,7 +707,7 @@ static uint32_t tide_sig(void)
     return (morph_fader_of(pi) | seqm_fader_of(pi) << 7 | (uint32_t)gl.on << 14 | (uint32_t)gl.armed << 16 | (uint32_t)gl.target << 17 |
             (uint32_t)gl.mode << 19 | (uint32_t)gl.to << 22 | (uint32_t)gl.hold << 23 | (song.playing ? t->seq_idx : 0xFFu) << 24) ^
            (gl.prog >> 10) * 2654435761u ^ ((gl.prog * bars) >> GLIDE_Q) * 0x27D4EB2Fu ^ sqm_key(&sqm[pi < NSHOWN ? pi : 0u]) * 40503u ^
-           ((uint32_t)gl.time | (uint32_t)gl.wait << 4 | (uint32_t)jl_sel << 8 | (uint32_t)sqm_vary_all << 12 | (uint32_t)morph_musical << 13 |
+           ((uint32_t)gl.time | (uint32_t)gl.wait << 4 | (uint32_t)jl_sel << 8 | (uint32_t)sqm_vary_all << 12 | (uint32_t)morph_musical << 13 | (uint32_t)sqm_turns * 0x2545F491u | (uint32_t)sqm_poly << 28 | (uint32_t)sqm_sync << 30 | (uint32_t)(sqm_arc * 7u + tarc.phase * 3u + tarc.left) << 16 |
             (uint32_t)morph.cfg << 16 | (uint32_t)((sqm_bar + sqm_bar_turn) & 3u) << 24 | (uint32_t)song.playing << 26) * 0x9E3779B1u ^
            (tide_both() ? (morph_fader_of(1u - pi) | seqm_fader_of(1u - pi) << 7 | (song.playing ? trk[1u - pi].seq_idx : 0xFFu) << 14) * 0x85EBCA77u ^
                              sqm_key(&sqm[(1u - pi) % NSHOWN]) * 0xC2B2AE3Du ^ 0x27D4EB2Fu : 0u);
@@ -607,14 +718,15 @@ static uint32_t tide_sig(void)
  * sector pair; plan §4.5), not in the settings record (1.1 uses the bytes JAM had there). ARP, PITCH and WILD are the morph's own byte
  * (ui.c ui_morph_cfg). The record is read once at power-on (none or damaged: the defaults; neither is written back); a change is saved ~2 s after the last one,
  * while stopped and not during ERASE DATA (tide_store_poll) */
-enum { TS_MODE, TS_TIME, TS_TARGET, TS_WAIT, TS_VARY, TS_MUSIC, TS_WASH, TS_N };
+enum { TS_MODE, TS_TIME, TS_TARGET, TS_WAIT, TS_VARY, TS_MUSIC, TS_WASH, TS_OLD, TS_TURNS = TS_OLD, TS_POLY, TS_SYNC, TS_ARC, TS_STYLE, TS_N };   /* (TS_OLD: the fields of the first record; a record of that length loads, the later fields at their defaults) */
 static uint8_t tide_seen[TS_N], tide_seen_ok;
 static void tide_settings(void)
 {
     uint8_t w[TS_N];
     if (!tide_seen_ok) {
-        uint8_t b[TS_N];
-        if (tide_store_load(b, TS_N)) {
+        uint8_t b[TS_N] = {[TS_TURNS] = 1u, [TS_POLY] = 1u, [TS_SYNC] = 1u, [TS_ARC] = 0u, [TS_STYLE] = STY_CUSTOM};   /* (the defaults of the fields an older record lacks) */
+        uint32_t have = tide_store_load_min(b, TS_N, TS_OLD);
+        if (have) {
             gl.mode = (uint8_t)(b[TS_MODE] <= GM_JOURNEY ? b[TS_MODE] : GM_ONCE);
             gl.time = (uint8_t)(b[TS_TIME] < GLIDE_TIMES ? b[TS_TIME] : 3u);
             gl.target = (uint8_t)(b[TS_TARGET] <= GT_BOTH ? b[TS_TARGET] : GT_SOUND);
@@ -622,8 +734,16 @@ static void tide_settings(void)
             sqm_vary_all = (uint8_t)(b[TS_VARY] & 1u);
             morph_musical = (uint8_t)(b[TS_MUSIC] & 1u);
             morph_wlvl = (uint8_t)(b[TS_WASH] & 3u);
-        }
+            sqm_turns = (uint8_t)(b[TS_TURNS] < 4u ? b[TS_TURNS] : 1u);
+            sqm_poly = (uint8_t)(b[TS_POLY] < 3u ? b[TS_POLY] : 1u);
+            sqm_sync = (uint8_t)(b[TS_SYNC] < 3u ? b[TS_SYNC] : 1u);
+            sqm_arc = (uint8_t)(b[TS_ARC] < 3u ? b[TS_ARC] : 0u);
+            tide_style = (uint8_t)(have > TS_STYLE && b[TS_STYLE] < STY_CUSTOM ? b[TS_STYLE] : STY_CUSTOM);   /* (an older record: CUSTOM, its values kept) */
+        } else
+            tide_style_apply(STY_DUB);                   /* (no record: the DUB showcase) */
     }
+    if (tide_style < STY_CUSTOM && !tide_style_holds())
+        tide_style = STY_CUSTOM;                         /* a hand edit of any of the nine rows (knobs, rows, resets, MIDI) */
     w[TS_MODE] = gl.mode;
     w[TS_TIME] = gl.time;
     w[TS_TARGET] = gl.target;
@@ -631,6 +751,11 @@ static void tide_settings(void)
     w[TS_VARY] = sqm_vary_all;
     w[TS_MUSIC] = morph_musical;
     w[TS_WASH] = (uint8_t)(morph_wlvl & 3u);
+    w[TS_TURNS] = sqm_turns;
+    w[TS_POLY] = sqm_poly;
+    w[TS_SYNC] = sqm_sync;
+    w[TS_ARC] = sqm_arc;
+    w[TS_STYLE] = tide_style;
     if (!tide_seen_ok) {                                 /* (what was read, or the defaults: not a change, nothing to write at every power-on) */
         memcpy(tide_seen, w, TS_N);
         tide_seen_ok = 1;
@@ -644,6 +769,8 @@ static void tide_settings(void)
 static void tide_poll(void)
 {
     tide_settings();
+    tarc_poll();                                         /* ARC: the phrase counted, the levers set */
+    sqm_thin_build();                                    /* LEAD / ECHO and ARC: the follower's mask */
     glide_poll();                                        /* a launched GLIDE moves its faders */
     seqm_poll();                                         /* the SEQ MORPH's ends follow pattern edits (TRANS, SHIFT, an edit) */
     morph_xpoll();                                       /* plan any destination GLIDE generated in this same pass */

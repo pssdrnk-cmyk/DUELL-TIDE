@@ -387,8 +387,8 @@ The existing CUT keeps meaning filter 1. With LINK on, it reaches filter 2 too.
   - TRIO loses its filter loop;
   - NOISE loses its filter, keeping its loudness rule.
 - **The engines are core 1's code in range X**, which has 1,264 B free (CONFIRMED, MERGE_JOIN1). With the freed 1.0 to 1.4 KB, range X could hold TWIN's 1.5 to 1.8 KB, which now includes LINK, the four amounts and the TRIO-style types. Range Z and its pool tail would then stay untouched.
-  - HYPOTHESIS: that the hot audio code may call into range X needs the link map.
-- **Hot block:** the ufilt 2 branch in `track_render` goes, which gives back a few bytes towards the TWIN branch (est. 20 to 40 B). HYPOTHESIS until built.
+  - HYPOTHESIS: that the hot code may call into range X needs the link map.
+- **Hot code:** the ufilt 2 branch in `track_render` goes, which gives back a few bytes towards the TWIN branch (est. 20 to 40 B). HYPOTHESIS until built.
 
 ---
 
@@ -461,7 +461,7 @@ The existing CUT keeps meaning filter 1. With LINK on, it reaches filter 2 too.
 | Free ids 25, 26, 42, 106 | `core.h`, `params.c` | CONFIRMED |
 | MULTI FILTER 2/2 card order | `params.c` PAGES | CONFIRMED |
 | Engine card order without moving ids | `core.h` engine_t.uiord | CONFIRMED |
-| Hot RAM, range X / Z, RAM headroom | release_drafts/MERGE_JOIN1.md | CONFIRMED (build numbers) |
+| Hot code, range X / Z, RAM headroom | release_drafts/MERGE_JOIN1.md | CONFIRMED (build numbers) |
 | MULTI FILTER costs | SPEC 2.5, docs/CPU_PLAN.md | measured / device est. |
 | Cost of the removed engine filters; every net figure; code sizes | my operation counts | est. |
 | Virus: Cutoff Link on by default, one Env Amount for cutoff 1 and 2, Filter Balance semantics | [Virus TI quickstart, p. 28](https://manualzilla.com/doc/5804536/virus-ti-series?page=28), [p. 160](https://manualzilla.com/doc/5804536/virus-ti-series?page=160) (search excerpts) | HYPOTHESIS |
