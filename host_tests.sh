@@ -650,7 +650,7 @@ static void midi_cc_set(track_t *t, uint32_t id, uint32_t value)
     }
     t->p[id] = (int16_t)v;
     (void)motion_capture(t, id, (int16_t)v);'
-           eb_mut "SAVE loses the hand-set values (upreset.c patch save writes no edit list)" morph_ui_test.c firmware/src/upreset.c 'up_xb_nin = morph_edits(pi, ed);' 'up_xb_nin = 0u * morph_edits(pi, ed);'
+           eb_mut "SAVE loses End B and its hand-set values (upreset.c patch save writes no End B block: PT_VER 4's MBV)" morph_ui_test.c firmware/src/upreset.c 'up_bv_n = morph_bv_make(pi, ref, bv);' 'up_bv_n = 0u * morph_bv_make(pi, ref, bv);'
            eb_mut "SAVE loses the hand-set values (morph.c morph_blk_make forgets the marks on its re-roll)" morph_test.c firmware/src/morph.c '                memcpy(morph_pins(mp), pn, PIN_BYTES);' '                memset(morph_pins(mp), 0, PIN_BYTES);'
            [ $eb = 0 ] && echo "   PASS" || fail=1 ;;
   velo)    # KEY SENSE (DUELL_VELO; docs/design/VELO_STUDY.md, docs/VELO_CSV.md): the sense core on a simulated hand (tests/velo_test.c, velo_pill.h), the converter stage of the scan tick against a
