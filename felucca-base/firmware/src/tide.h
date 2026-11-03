@@ -117,6 +117,13 @@ static int tide_foot_two(void);
                                    if (TIDE_PAGE(pg)) (h) = ((h) ^ tide_sig() ^ (uint32_t)morph.target * 0x85EBCA77u) * 16777619u; } while (0)
 #define TIDE_COLUMNS() do { if (TIDE_PAGE(cur_page())) { tide_columns(); return; } } while (0)
 #define TIDE_HOME_NAME "MORPH"                           /* MENU > CONTROL > HOME OPENS: the first page of the round (MORPH, as stock; TIDE is the round's 4th) */
+/* LIVE GRAPHS (ui_live.c, included by ui_graph.c; the animation of the envelope, LFO, CYCLE, filter, insert, matrix and chord pictures; MENU > ANIM OFF takes it away). FM6 AMP DEST shows the operator envelope (OP ENV's picture) so that it can follow it */
+#define TIDE_LIVE_SIG(pg, t, h) ((h) = ((h) ^ live_sig((pg), (t))) * 16777619u)
+#define TIDE_LIVE_DRAW(pg, t) live_draw((pg), (t))
+#define TIDE_LIVE_MOD(t, y0) live_mod((t), (y0))
+#define TIDE_LIVE_STRIP(pg, t) live_strip((pg), (t))
+#define TIDE_LIVE_CHORD(t) live_chord(t)
+#define TIDE_AMPDEST_FM6(pg, t) ((pg)->graph == GR_ADSR && (pg)->id[0] == P_ED_PIT && (t)->eng_req % NENGINES == ENGI_FM6 && fop_ok())
 /* H18 (ui_input.c first_boot_poll): the factory multi a new unit (or one after ERASE DATA, and the emulator) starts with: M04 DUB CHORD,
  * the TIDE showcase (owner, 2026-11-01): its two 16-step SEQUENCER arps play on PLAY with no key held (ARP SEQ), AUTO TIDE set to JRNY.
  * (M02 NIGHT ORGAN before: 8 steps, "not a great showcase") */
@@ -178,6 +185,12 @@ static int tide_foot_two(void);
 #define TIDE_GRAPH_SIG(pg, h) ((void)0)
 #define TIDE_COLUMNS() ((void)0)
 #define TIDE_HOME_NAME "MORPH"
+#define TIDE_LIVE_SIG(pg, t, h) ((void)0)
+#define TIDE_LIVE_DRAW(pg, t) ((void)0)
+#define TIDE_LIVE_MOD(t, y0) ((void)0)
+#define TIDE_LIVE_STRIP(pg, t) ((void)0)
+#define TIDE_LIVE_CHORD(t) ((void)0)
+#define TIDE_AMPDEST_FM6(pg, t) 0
 
 #endif
 #endif

@@ -407,6 +407,7 @@ EXPORT void web_enc(uint32_t role, int32_t n)
         web_enc_steps[panel.enc[role] % 7u] += n * panel.dir[role];
 }
 EXPORT void web_master(uint32_t v) { web_master_adc = v > 1023u ? 1023u : v; }
+EXPORT void web_palette(uint32_t n) { settings.palette = (uint8_t)n; palette_set(n); ui.force = 1; }   /* (the screen-dump runs, live_graph_emu.mjs: a palette without the MENU) */
 /* a channel message from Web MIDI, as a USB-MIDI packet arrives (usb.c midi_enqueue): 0 = the ring was full */
 EXPORT uint32_t web_midi(uint32_t status, uint32_t d1, uint32_t d2)
 {
