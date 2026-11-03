@@ -954,7 +954,7 @@ static const page_t PAGES[] = {
     /* SCL (the button printed SEL): page 1 SCALE is GLOBAL (K1 SCALE, K2 ROOT, K3 OFF-SCALE SNAP / PLAY: the instrument's, core.h), page 2 CHORD is the
      * SELECTED PART's (K1 CHRD, K2 VOIC: chord.c, K3 STRUM: seq.c strum_block; TRANSPOSE is the patch's since DUELL 1.1: VOICE 1/2 K4). No page mixes the two kinds (owner rule) */
     {"SCALE", FAM_SCL, SC_SCALE, GR_SCALE, {0xFF, 0xFF, 0xFF, 0xFF}},
-    {"CHORD", FAM_SCL, SC_TRACK, GR_CHORD, {P_CHRD, P_VOIC, XW_BASE + X_STRUM, 0xFF}},   /* DUELL 1.1 (owner 2026-10-27): K1 CHRD, K2 VOIC (the part's chord keys), K3 STRUM (item 144: ext slot X27, hidden where it cannot act: ui_draw.c card_hidden_vp), K4 free. TRANSPOSE left
+    {"CHORD", FAM_SCL, SC_TRACK, GR_CHORD, {P_CHRD, P_VOIC, XW_BASE + X_STRUM, P_VOICE}},   /* DUELL 1.1 (owner 2026-10-27): K1 CHRD, K2 VOIC (the part's chord keys), K3 STRUM (item 144: ext slot X27, hidden where it cannot act: ui_draw.c card_hidden_vp), K4 the part's VOICE (chord keys play a chord only in POLY: the page says NEEDS POLY, ui_graph.c graph_chord; the same control as VOICE 1/2 K1). TRANSPOSE left
                                                                              * this page for VOICE 1/2 K4 (it is the patch's now: a setting sits on the page it belongs to); the KEY OFFSET is removed */
     /* SPEC 1.2: EDIT's first sub-page is the ENGINE page (the engine is never hidden behind a hold), then the engine's */
     /* T0227 (owner): the ENGINE page changes the engine and starts its controls: K1 ENGINE, K2..K4 the engine's first three (card positions 0..2: engine_t.uiord);

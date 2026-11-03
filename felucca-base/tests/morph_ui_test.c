@@ -222,7 +222,7 @@ static void t_editb(void)
     n = morph_edits(0, ed);
     expect("  turning the same value again changes it, never counts again; A still untouched", n == 1u && !memcmp(pa, trk[0].p, sizeof pa));
     /* values both ends share */
-    k = knob_of(P_VOICE);
+    k = 0u; ui.menu = 0; go_title("VOICE 1/2"); frames(32);   /* (VOICE 1/2 K1: the CHORD page has the VOICE too, as its K4, shown only where chords need POLY) */
     ui.msg_t = 0;
     memcpy(pa, trk[0].p, sizeof pa);
     turn(EN_K1 + k, 1);

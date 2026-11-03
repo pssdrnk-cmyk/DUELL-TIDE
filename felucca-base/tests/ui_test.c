@@ -6397,11 +6397,11 @@ static int test_transpose_patch(void)
             ok = PAGES[i].fam == FAM_EDIT && PAGES[i].scope == SC_TRACK && PAGES[i].id[0] == P_VOICE && PAGES[i].id[1] == P_PRIO && PAGES[i].id[2] == P_DETUNE &&
                  PAGES[i].id[3] == P_TRANS;
         if (str_eq(PAGES[i].title, "CHORD"))
-            ok2 = PAGES[i].scope == SC_TRACK && PAGES[i].id[0] == P_CHRD && PAGES[i].id[1] == P_VOIC && PAGES[i].id[2] == XW_BASE + X_STRUM && PAGES[i].id[3] == 0xFFu;
+            ok2 = PAGES[i].scope == SC_TRACK && PAGES[i].id[0] == P_CHRD && PAGES[i].id[1] == P_VOIC && PAGES[i].id[2] == XW_BASE + X_STRUM && PAGES[i].id[3] == P_VOICE;
     }
     bad += check("TRANSPOSE: VOICE 1/2's K4 (MODE PRIORITY DETUNE TRANSPOSE), on no other part page; -24..+24 semitones, default 0", ok && n == 1u &&
                  TP[P_TRANS].min == -24 && TP[P_TRANS].max == 24 && TP[P_TRANS].def == 0 && TP[P_TRANS].fmt == F_SEMI);
-    bad += check("  the CHORD page: K1 CHRD, K2 VOIC, K3 STRUM (item 144), K4 no control (TRANSPOSE left it, the KEY OFFSET is gone)", ok2);
+    bad += check("  the CHORD page: K1 CHRD, K2 VOIC, K3 STRUM (item 144), K4 the part's VOICE (chords need POLY: the page says so; TRANSPOSE left it, the KEY OFFSET is gone)", ok2);
     bad += check("  the KEY OFFSET is gone: slot 27 is STRUM now (0..100 ms, learnable; item 144), no label KOFF", X_STRUM == NX - 1 && str_eq(XTP[X_STRUM].label, "STRUM") &&
                  XTP[X_STRUM].min == 0 && XTP[X_STRUM].max == 100 && map_code_ok(XW_BASE + X_STRUM) && str_eq(label_shown("TRN"), "TRANSPOSE") && str_eq(label_shown("KOFF"), "KOFF"));
     t->p[P_VOICE] = V_UNISON;                                                   /* (all four cards: PRIORITY and DETUNE act) */
@@ -6420,13 +6420,13 @@ static int test_transpose_patch(void)
     ok = !card_hidden(0) && !card_hidden(1) && !card_hidden(2) && card_hidden(3) && card_match(2, "STRUM|OFF");
     turn(EN_K3, 5); frame();
     ok2 = XV(t, X_STRUM) > 0 && XV(t, X_STRUM) <= 100 && card_match(2, "STRUM|ms");
-    bad += check("  the CHORD page (item 144): K3 STRUM, OFF at 0, K3 turns it up (ms); no card at K4", ok && ok2);
+    bad += check("  the CHORD page (item 144): K3 STRUM, OFF at 0, K3 turns it up (ms); no card at K4 (the VOICE card shows only where chords need POLY)", ok && ok2);
     t->p[P_CHRD] = CH_OFF; frame();
     ok = card_hidden(2);
     t->p[P_CHRD] = CH_MAJ; t->p[P_AMODE] = 1; frame();
     ok &= card_hidden(2);
     t->p[P_AMODE] = 0; t->p[P_VOICE] = V_MONO; frame();
-    ok &= card_hidden(2);
+    ok &= !card_match(2, "STRUM") && card_match(2, "MODE|MONO");   /* (STRUM hides; the VOICE card, MODE, takes its place: the chord needs POLY) */
     t->p[P_VOICE] = V_POLY; frame();
     ok &= !card_hidden(2);
     XV(t, X_STRUM) = 0;

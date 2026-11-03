@@ -23,7 +23,7 @@
  {"title":"DUCK 1/2","fam":"FX","scope":"TRACK","graph":"NONE","ids":[111,112,107,-1],"engines":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14],"global":0},
  {"title":"DUCK 2/2","fam":"FX","scope":"TRACK","graph":"NONE","ids":[105,108,110,-1],"engines":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14],"global":0},
  {"title":"SCALE","fam":"SCL","scope":"SCALE","graph":"SCALE","ids":[-1,-1,-1,-1],"engines":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14],"global":1},
- {"title":"CHORD","fam":"SCL","scope":"TRACK","graph":"CHORD","ids":[81,82,155,-1],"engines":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14],"global":0},
+ {"title":"CHORD","fam":"SCL","scope":"TRACK","graph":"CHORD","ids":[81,82,155,37],"engines":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14],"global":0},
  {"title":"ENGINE","fam":"EDIT","scope":"ENGINE","graph":"ENGINE","ids":[-1,119,120,121],"engines":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14],"global":0},
  {"title":"EDIT 1","fam":"EDIT","scope":"ENGINE","graph":"NONE","ids":[122,123,124,125],"engines":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14],"global":0},
  {"title":"EDIT 2","fam":"EDIT","scope":"ENGINE","graph":"NONE","ids":[126,-1,-1,-1],"engines":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14],"global":0},

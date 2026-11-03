@@ -124,7 +124,7 @@ static int strum(void)
     {
         const page_t *pg = 0;
         for (i = 0; i < NELEM(PAGES); i++) if (str_eq(PAGES[i].title, "CHORD")) pg = &PAGES[i];
-        bad += check("  the CHORD page: K1 CHRD, K2 VOIC, K3 STRUM, K4 none", pg && pg->id[0] == P_CHRD && pg->id[1] == P_VOIC && pg->id[2] == XW_BASE + X_STRUM && pg->id[3] == 0xFF);
+        bad += check("  the CHORD page: K1 CHRD, K2 VOIC, K3 STRUM, K4 VOICE (shown only where chords need POLY)", pg && pg->id[0] == P_CHRD && pg->id[1] == P_VOIC && pg->id[2] == XW_BASE + X_STRUM && pg->id[3] == P_VOICE);
     }
     t->p[P_CHRD] = CH_MAJ7;
     midi_xv_set(t, X_STRUM, 127); ok = XV(t, X_STRUM) == 100;

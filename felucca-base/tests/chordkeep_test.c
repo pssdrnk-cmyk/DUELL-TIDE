@@ -326,7 +326,7 @@ int main(int argc, char **argv)
     outdir = argc > 1 ? argv[1] : 0;
     keep();
     first();
-    /* hints(); */
+    hints();
     voicings();
     printf(bad ? "chordkeep: %d FAILED of %d\n" : "chordkeep: all %d passed\n", bad ? bad : ncheck, ncheck);
     return bad ? 1 : 0;
