@@ -378,6 +378,10 @@ static __attribute__((noinline)) void f2_cut(track_t *t, voice_t *v, const vmod_
     }
     s->cl = c;
     q->cab = c;
+#if DUELL_TIDE
+    if (v == &t->v[t->m_vi % NVOICE])
+        LVC2(t) = (uint8_t)(c >> 7);                    /* TIDE live graphs: the TWIN pages' tick (ui_live.c); written only */
+#endif
 }
 
 /* ------------------------------------------------------------------------------------------ the stage --- */

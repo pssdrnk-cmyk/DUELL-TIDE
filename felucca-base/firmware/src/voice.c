@@ -1341,6 +1341,10 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
             m.cutoff = accent_lift(v->vel, m.envq15);   /* the routes are the filter's, whatever CUT is; the accent's lift stays the engine's own (its tone control, as ever) */
             m.ucut = uc;
             m.ucn = ucn;
+#if DUELL_TIDE
+            if (v == &t->v[t->m_vi % NVOICE])
+                t->lvc = (uint8_t)(uc >> 7);            /* TIDE live graphs: the FILTER page's tick (ui_live.c); written only */
+#endif
             if ((uc < UF_TOP || p[P_FREEC] > 0) && !BYP(t, BY_MULTI)) {   /* (the bypass: MODE LP, the effective cut at the open end; DUELL 1.1: or the BYPASS switch) */
                 if (v->uft == UF_BYP) {                 /* (0.2.25: out of the bypass while sounding: from rest, faded in over the block) */
                     v->uft = 0;

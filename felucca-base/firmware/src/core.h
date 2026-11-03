@@ -651,7 +651,8 @@ typedef struct track {
     int32_t m_cycle, f2add, venv;
     uint8_t f2m, cym, cy;
     uint8_t vrm;                 /* DUELL 1.1: the DEST cards' virtual per-note routes (mod.c VR): bit 0 CYCLE to TWIN CUTOFF, bit 1 CYCLE to PITCH */
-    uint8_t rsv_sz[1];           /* (sizeof(track_t) a multiple of 16: below; 0.2.14: 12 more, the step_t hit / acc bytes and the drum notes gone; DUELL: 15 before ENV 2, LFO 2; 4b: 7 before mf; EQ: 4 less for P_COUNT 113; DUCK: 4 more for 119; DUCK 3: 6 more for 122, the old pad of 6 gone and 4 added; ENV 2 / LFO 2 DEST: 2 more for 127, the p[] growth padded to 4; wave 0: p[] 17 entries longer = 34 B, the pad 4 -> 2; F02: arp_nz, 2 -> 1) */
+    union { uint8_t rsv_sz[1]; uint8_t lvc; };   /* TIDE live graphs: the pad byte, or (DUELL_TIDE) the latest note's effective cutoff of filter 1, Q8 dial steps >> 7 (voice.c, voice_chain.c write it; ui_live.c reads it; the audio never does; filter 2's is tide_lvc2[]) */
+    /* (sizeof(track_t) a multiple of 16: below; 0.2.14: 12 more, the step_t hit / acc bytes and the drum notes gone; DUELL: 15 before ENV 2, LFO 2; 4b: 7 before mf; EQ: 4 less for P_COUNT 113; DUCK: 4 more for 119; DUCK 3: 6 more for 122, the old pad of 6 gone and 4 added; ENV 2 / LFO 2 DEST: 2 more for 127, the p[] growth padded to 4; wave 0: p[] 17 entries longer = 34 B, the pad 4 -> 2; F02: arp_nz, 2 -> 1) */
     uint8_t arp_nz;              /* (the pad's other byte) bit 0: arp_note, bit 1..3: arp_ch[0..2] sounds MIDI note 0 (its value 0 reads as none; seq.c ARP_UP) */
 } track_t;
 /* the audio ISR indexes trk[] with a multiply by a small immediate and a shift while the size is a multiple of 16; 1.5's
@@ -834,3 +835,7 @@ static volatile uint32_t fm1_ms;  /* milliseconds since boot (TIMER4-based, TIME
 #define BOOTGUARD_MAGIC 0x42475244u
 struct { uint32_t magic, failed, pending; } bootguard __attribute__((section(".noinit")));
 #include "tide.h"                 /* TIDE hook: the plug (DUELL_TIDE; tide.h) */
+#if DUELL_TIDE
+static uint8_t tide_lvc2[NLIVE];  /* TIDE live graphs: the latest note's effective cutoff of filter 2, Q8 dial steps >> 7 (chain_f2.c writes it, ui_live.c reads it; the pad bytes of track_t are used up) */
+#define LVC2(t) (tide_lvc2[(uint32_t)((t) - trk) % NLIVE])
+#endif

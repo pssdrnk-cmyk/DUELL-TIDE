@@ -24,6 +24,10 @@ static void graph_cap_at(int32_t x, const char *s, uint16_t col, int32_t up)   /
     cv_oy = o;
 }
 static void graph_cap(const char *s, uint16_t col) { graph_cap_at(grid_on ? UT_GR_NOTE_X : PANEL_X0 + 2, s, col, 0); }
+#if DUELL_TIDE
+static void live_mod(const track_t *t, int32_t y0);          /* TIDE LIVE GRAPHS (ui_live.c, below the pictures): the matrix rows' bars, the chord keys' bars */
+static void live_chord(const track_t *t);
+#endif
 static int32_t guide_wrap(int32_t x, int32_t y, int32_t w, const aafont_t *f, const char *s, uint16_t fg, int32_t p);   /* (ui_guide.c) */
 static uint32_t knob_slot(const page_t *pg, uint32_t k);   /* (ui_draw.c, T0227: the page slot a knob addresses once the cards moved left) */
 #ifndef CARD_LABEL_HOOK
@@ -958,6 +962,7 @@ static void graph_mod_new(const track_t *t)
                 cv_free_text(34, y + 20, &AF_T, dn, big, bg, room);   /* (the smallest step, still the whole word) */
             (void)more;
         }
+        TIDE_LIVE_MOD(t, y0);                        /* TIDE: each acting row's source now (ui_live.c) */
         cv_oy = 0;
         cv_blit(0, (uint32_t)y0);
     }
@@ -1617,10 +1622,17 @@ static void graph_sub(const track_t *t, uint16_t c)
 /* CYCLE ENV 1/2 and 2/2 (cloud job H, SUB_AND_CYCLE_DESIGN B4): the cycle's shape as cycle.c makes it (y = x + c (x^2 - x), c = CURVE / 64, on the rise; the fall is 1 - that of the progress), RISE and FALL in the
  * proportion of their times (ENV_LIN's steps; with SYNC the note values' share of a bar), three rise-fall shapes for LOOP, one then rest for ONCE. 2/2 draws the one cycle large, rise and fall the same width, with the straight line behind it
  * (CURVE 0) so the bend shows. The times themselves are on the cards: the picture is the shape, not a time scale */
+#if DUELL_TIDE                                      /* TIDE: the shape fits the 76-row card (the caption row 64 ..): stock 8 .. 92 ran under the cards, and the live playhead floated where no line showed */
+#define CY_TOP 6
+#define CY_BASE 62
+#else
+#define CY_TOP 8
+#define CY_BASE 92
+#endif
 static void graph_cycle(const track_t *t, uint16_t c)
 {
     const int big = cur_page()->id[0] == XW_BASE + X_CYCURVE;
-    int32_t top = 8, base = 92, cv = clamp(XV(t, X_CYCURVE), -64, 63) * 512, w = PANEL_W - 4, n = big || XV(t, X_CYMODE) ? 1 : 3, x0 = PANEL_X0 + 2, px = 0, py = 0, cw, rw, fw, i;
+    int32_t top = CY_TOP, base = CY_BASE, cv = clamp(XV(t, X_CYCURVE), -64, 63) * 512, w = PANEL_W - 4, n = big || XV(t, X_CYMODE) ? 1 : 3, x0 = PANEL_X0 + 2, px = 0, py = 0, cw, rw, fw, i;
     uint32_t pass;
     uint64_t dr, df;
     uint32_t r = (uint32_t)XV(t, X_CYRISE) & 127u, f = (uint32_t)XV(t, X_CYFALL) & 127u;
@@ -1869,6 +1881,9 @@ static uint32_t vals_hash(const track_t *t)
         h = (h ^ (uint32_t)(uint16_t)song.g[i]) * 16777619u;
     return h;
 }
+#if DUELL_TIDE
+#include "ui_live.c"                                 /* TIDE: LIVE GRAPHS, the overlays of the pictures above */
+#endif
 static uint32_t graph_signature(void)
 {
     const page_t *pg = cur_page();
@@ -1992,6 +2007,7 @@ static uint32_t graph_signature(void)
             h = (h ^ pr_held()) * 16777619u;
         }
     }
+    TIDE_LIVE_SIG(pg, t, h);                         /* TIDE: the live overlays' positions (0: none on this page) */
     return h;
 }
 /* TEMPLATE 3's list row (item 115, FINAL_V1_03_patches; template 3 itself, grid_on 8, is removed: the list pages are area pages): the ENGINE page's list while K1 turns (grid_on 5; item 165:
@@ -3068,6 +3084,7 @@ static void draw_graph(void)
     if (!ui.force && sig == ui.graph_sig) {
         if (pg->graph == GR_COMP)                    /* (0.2.25: the gain reduction bar, its own strip, each frame) */
             comp_meter();
+        TIDE_LIVE_STRIP(pg, t);                      /* TIDE: the matrix rows' bars move alone */
         return;
     }
     ui.graph_sig = sig;
@@ -3120,9 +3137,10 @@ static void draw_graph(void)
             graph_roll(t, c);
         else if (pg->scope == SC_SCALE || pg->graph == GR_SCALE)
             graph_scale(t, c);
-        else if (pg->graph == GR_CHORD)
+        else if (pg->graph == GR_CHORD) {
             graph_chord(t, c);
-        else if (pg->graph == GR_BROWSE)
+            TIDE_LIVE_CHORD(t);                      /* TIDE: the sounding keys' envelope levels */
+        } else if (pg->graph == GR_BROWSE)
             graph_browse();
         else if (pg->graph == GR_PATS)
             graph_pats();
@@ -3145,6 +3163,10 @@ static void draw_graph(void)
     cv_oy = GOY;                                     /* graphs on a 100 px scale */
     switch (pg->graph) {
     case GR_ADSR:
+        if (TIDE_AMPDEST_FM6(pg, t)) {               /* TIDE: FM6 owns its amplitude; AMP DEST shows the operator envelope, which the live graphs follow */
+            graph_fm6env(t, c);
+            break;
+        }
         graph_adsr(t, c);
         break;
     case GR_LFO:
@@ -3252,6 +3274,7 @@ static void draw_graph(void)
         else if (pg->scope == SC_ENGINE && t->eng_req % NENGINES == ENGI_FM6) graph_fm6(t, c, 6u);   /* EDIT 1 and 2 */
         break;                                       /* (no other page comes here: the plain card pages are CELL pages, template 8, which return above; the MIXER is a layer) */
     }
+    TIDE_LIVE_DRAW(pg, t);                           /* TIDE: over the picture just drawn */
     cv_oy = 0;
     cv_blit(0, Y_GRAPH);
     if (pg->graph == GR_COMP) {                      /* (the bar over the panel just drawn) */
