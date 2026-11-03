@@ -651,7 +651,8 @@ typedef struct track {
     int32_t m_cycle, f2add, venv;
     uint8_t f2m, cym, cy;
     uint8_t vrm;                 /* DUELL 1.1: the DEST cards' virtual per-note routes (mod.c VR): bit 0 CYCLE to TWIN CUTOFF, bit 1 CYCLE to PITCH */
-    uint8_t rsv_sz[2];           /* (sizeof(track_t) a multiple of 16: below; 0.2.14: 12 more, the step_t hit / acc bytes and the drum notes gone; DUELL: 15 before ENV 2, LFO 2; 4b: 7 before mf; EQ: 4 less for P_COUNT 113; DUCK: 4 more for 119; DUCK 3: 6 more for 122, the old pad of 6 gone and 4 added; ENV 2 / LFO 2 DEST: 2 more for 127, the p[] growth padded to 4; wave 0: p[] 17 entries longer = 34 B, the pad 4 -> 2) */
+    uint8_t rsv_sz[1];           /* (sizeof(track_t) a multiple of 16: below; 0.2.14: 12 more, the step_t hit / acc bytes and the drum notes gone; DUELL: 15 before ENV 2, LFO 2; 4b: 7 before mf; EQ: 4 less for P_COUNT 113; DUCK: 4 more for 119; DUCK 3: 6 more for 122, the old pad of 6 gone and 4 added; ENV 2 / LFO 2 DEST: 2 more for 127, the p[] growth padded to 4; wave 0: p[] 17 entries longer = 34 B, the pad 4 -> 2; F02: arp_nz, 2 -> 1) */
+    uint8_t arp_nz;              /* (the pad's other byte) bit 0: arp_note, bit 1..3: arp_ch[0..2] sounds MIDI note 0 (its value 0 reads as none; seq.c ARP_UP) */
 } track_t;
 /* the audio ISR indexes trk[] with a multiply by a small immediate and a shift while the size is a multiple of 16; 1.5's
  * new track parameters (the INSERT, the filter TYPE, ENV SYNC) and state would make it no multiple (the constant
