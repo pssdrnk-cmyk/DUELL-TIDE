@@ -13,7 +13,7 @@
 #include "ui_test.c"
 #include "mode_scn.h"
 
-#define MODE_STEREO_HASH 0x9C13C6ADFCF3BC87ull   /* 0.2.32: re-based on purpose (the direct depth cards reach 100 % at +63, the merged line); was 0xC04494F53D46F0F0 */ /* older: */   /* 0.2.30: merged line (cloud wave 6 + click fixes), re-based on purpose, was 0x1CC6C8241C84C0DA; before:  0.2.29: re-based on purpose, the scenario runs the HALL and its quiet lines now round to the nearest (fx.c hall_end; 0.2.21..0.2.28: 0xC970174114DFD9BA) */        /* mode_test.c's (0.2.21) */
+#define MODE_STEREO_HASH 0x366B468DC2425A83ull   /* DUELL 1.1 item 148: the same re-based hash as mode_test.c (VS_MAX 2); was 0x9C13C6ADFCF3BC87. 0.2.32: re-based 0.2.32: re-based on purpose (the direct depth cards reach 100 % at +63, the merged line); was 0xC04494F53D46F0F0 */ /* older: */   /* 0.2.30: merged line (cloud wave 6 + click fixes), re-based on purpose, was 0x1CC6C8241C84C0DA; before:  0.2.29: re-based on purpose, the scenario runs the HALL and its quiet lines now round to the nearest (fx.c hall_end; 0.2.21..0.2.28: 0xC970174114DFD9BA) */        /* mode_test.c's (0.2.21) */
 static int bad, ncheck;
 static int expect(const char *what, int ok)
 {
@@ -177,7 +177,7 @@ int main(void)
     setvbuf(stdout, NULL, _IONBF, 0);
     {   /* REST first (the scenario must be the process's first render): the matrix-modulated STEREO scenario bit for bit as before (the stored pan never moves there; the parts start sounding at their pans) */
         uint64_t h = mode_stereo_scenario();
-        expect("REST: mode_scn.h's STEREO scenario (LFO -> PAN from the matrix, PAN -30 and +40 from the start) is bit for bit the 0.2.21 hash", h == MODE_STEREO_HASH);
+        expect("REST: mode_scn.h's STEREO scenario (LFO -> PAN from the matrix, PAN -30 and +40 from the start) is bit for bit the 1.1 hash (mode_test.c)", h == MODE_STEREO_HASH);
         printf("pan: STEREO scenario hash %016llX (%s)\n", (unsigned long long)h, h == MODE_STEREO_HASH ? "as before" : "CHANGED");
     }
     step_case("plain", 0, 40, 0);
