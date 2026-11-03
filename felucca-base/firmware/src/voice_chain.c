@@ -106,6 +106,10 @@ static int32_t chain_uc(const engine_t *e, track_t *t, voice_t *v, vmod_t *m, in
     m->ucn = clamp(ucut0 + m->cutoff - m->acc1 + kt, 0, UF_TOP);
     m->cutoff = accent_lift(v->vel, m->envq15);
     m->ucut = uc;                                       /* (NOISE's loudness make-up reads it) */
+#if DUELL_TIDE
+    if (v == &t->v[t->m_vi % NVOICE])
+        t->lvc = (uint8_t)(uc >> 7);                    /* TIDE live graphs (ui_live.c); written only */
+#endif
     return uc;
 }
 
