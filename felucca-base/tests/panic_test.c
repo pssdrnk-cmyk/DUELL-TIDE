@@ -30,6 +30,9 @@ static res_t scen(uint32_t dmode, uint32_t rtype, uint32_t kind)
     flash_ok = 1;
     multi_boot();
     frame();
+    memset(dly_buf, 0, sizeof dly_buf);                 /* the lines of the run before: a device starts from rest, the host process carries them over */
+    snd_lines_clear();
+    rng_state = 0x1234567u; mod_seed = 0x2545F491u;     /* (the same random streams every run: the chord's voices and the music's chances differ by dB otherwise, 1.1) */
     song.master_q12 = 2048;
     for (k = 0; k < 27u; k++)
         if (kb_map(&trk[0], k) == 60u || kb_map(&trk[0], k) == 64u || kb_map(&trk[0], k) == 67u)
