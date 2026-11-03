@@ -38,7 +38,7 @@ for g in $groups; do
     rc=$?
     # a check that failed before the group reached a part it cannot run here is a failure, not a skip: the group's own FAIL lines
     # (not the runner's "   FAIL" summary, which a fork stop also prints) and failed assertions come first
-    real=$(grep -E "FAIL|Assertion failed" "$out" | grep -vE "^   FAIL|which Windows does not have: skipped" | head -1)
+    real=$(grep -E "FAIL|Assertion failed" "$out" | grep -vE "^   FAIL|which Windows does not have: skipped|(^|[^0-9])0 FAIL" | head -1)
     if [ $rc -eq 124 ]; then
         echo "TIMEOUT $g (over ${LIMIT} s)"; fail=$((fail + 1)); failed="$failed $g"
     elif [ -n "$real" ]; then
