@@ -45,6 +45,7 @@
  *   SOUND_ONLY=NAME                          only that sound
  *   SOUND_DUMP=DIR                           also writes each sound's End A render (STEREO, the one note) to DIR/E<engine>_<index>.i32: int32 left / right pairs, the mix before
  *                                            MASTER, as measured (the proof renders of cloud job J: tools/convert_twin_report.py compares two builds')
+ *   SOUND_HZ=1                               also the brightness itself (the weighted spectral centroid, Hz) of A and of End B (STEREO), and End B's peak (STEREO / SPLIT)
  *   SOUND_WIN=1                              also the windows (loudest 1.5 s, 0.5 s, the 1.5 s before key-off) and when the
  *                                            peak came */
 #define main hostsim_main
@@ -288,6 +289,8 @@ int main(void)
                n + 1, s->name, CAT_NAME[s->cat % CAT_N], ENGINES[e]->name, A->peak, A->loud, A->l1, A->l3, A->med16, A->t3,
                T->w05, Ap->cmed, cpk, Bt->loud - A->loud, Bp->loud - Ap->loud, Bt->bright / A->bright, Bp->bright / Ap->bright,
                (unsigned)ds_seed(e, k), (unsigned)ds_amount(e, k), why, A->sus ? 'S' : 'D', hit ? 'H' : ' ');
+        if (getenv("SOUND_HZ"))
+            printf("  centroid A %.0f Hz B %.0f Hz, B peak %.1f/%.1f", A->bright, Bt->bright, Bt->peak, Bp->peak);
         if (getenv("SOUND_WIN"))
             printf("  w1.5 %.1f w0.5 %.1f last1.5 %.1f peak@%.2fs l9 %.1f", A->w15, A->w05, A->last15, A->peak_t, A->l9);
         if (trim) {

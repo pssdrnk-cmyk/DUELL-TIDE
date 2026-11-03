@@ -1387,18 +1387,18 @@ __attribute__((unused)) static uint32_t up_count(void)                 /* slots 
  * ONE list of UP_SLOTS (128) patch slots. Slot k is its saved record if there is one (up_used), else the factory sound at browse position k
  * (sounds.c ds_list_at: category, engine, name = the #NN numbers, #NN = k + 1). Nothing is written for the factory ones (a virtual
  * fallback). With fewer than 128 factory sounds the slots past them are INIT sounds (never in the product: a test checks the 128). */
-static uint8_t sl_te[UP_SLOTS], sl_tk[UP_SLOTS], sl_tn = 0xFFu;   /* the browse list as a table (engine, factory index per position), built once: the factory
+static uint8_t sl_te[UP_SLOTS + UP_NXTRA], sl_tk[UP_SLOTS + UP_NXTRA], sl_tn = 0xFFu;   /* the browse list as a table (engine, factory index per position), built once: the factory
                                                                   * table is const, and the lists ask for a slot's sound in loops (plain .bss: the pool is not cleared) */
 static void sl_tab(void)
 {
     uint32_t i, n = ds_list_n(), k;
     if (sl_tn != 0xFFu)
         return;
-    for (i = 0; i < n && i < UP_SLOTS; i++) {
+    for (i = 0; i < n && i < UP_SLOTS + UP_NXTRA; i++) {
         sl_te[i] = (uint8_t)ds_list_at(i, &k);
         sl_tk[i] = (uint8_t)k;
     }
-    sl_tn = (uint8_t)(n < UP_SLOTS ? n : UP_SLOTS);
+    sl_tn = (uint8_t)(n < UP_SLOTS + UP_NXTRA ? n : UP_SLOTS + UP_NXTRA);
 }
 /* U1: slots UP_USER0.. (USER 1..) hold no factory sound: an empty one is empty, a record is the owner's. The factory sounds at the browse positions they stand
  * on are the read-only places UP_SLOTS.. (browse order: ..#123, U1..U4, #125..#128), never written. Nothing is stored for them */
@@ -1410,11 +1410,11 @@ static int sl_fac(uint32_t k, uint32_t *e, uint32_t *fk)   /* 1: slot k has a fa
 {
     sl_tab();
 #if UP_NUSER
-    if (k >= UP_VSLOTS || sl_user(k))
+    if (sl_user(k))
         return 0;
-    if (k >= UP_SLOTS)
-        k -= UP_NUSER;
 #endif
+    if (k >= UP_SLOTS)                           /* (the displaced places, then the sounds past the bank's 128: the browse position is the place less the USER slots) */
+        k -= UP_NUSER;
     if (k >= sl_tn)
         return 0;
     *e = sl_te[k];
@@ -1564,7 +1564,7 @@ static uint32_t slot_of(const track_t *t)
     if (t->user) {
 #if UP_NUSER
         if (t->user > UP_SLOTS)
-            return t->user - 1u < UP_VSLOTS ? UP_USER0 + (uint32_t)t->user - 1u - UP_SLOTS : UP_SLOTS;
+            return t->user <= UP_SLOTS + UP_NUSER ? UP_USER0 + (uint32_t)t->user - 1u - UP_SLOTS : UP_SLOTS;
 #endif
         return t->user - 1u < UP_SLOTS ? (uint32_t)t->user - 1u : UP_SLOTS;
     }
@@ -1574,15 +1574,11 @@ static uint32_t slot_of(const track_t *t)
 /* the browse place of part t's sound: its slot, or the read-only place of a factory sound a USER slot displaced; UP_VSLOTS: none */
 static uint32_t slot_place(const track_t *t)
 {
-#if UP_NUSER
     uint32_t s = slot_of(t), r;
     if (s < UP_SLOTS)
         return s;
     r = t->user ? UP_SLOTS : ds_list_rank(t->eng_req % NENGINES, t->preset);
-    return r >= UP_USER0 && r < UP_SLOTS ? r + UP_NUSER : UP_VSLOTS;
-#else
-    return slot_of(t);
-#endif
+    return r >= UP_USER0 && r < UP_SLOTS + UP_NXTRA ? r + UP_NUSER : UP_VSLOTS;
 }
 /* where SAVE offers to write part t's sound: its slot; else the slot its factory sound belongs to (even if that holds a record now; a displaced one: USER 1); else #1 */
 static uint32_t slot_home(const track_t *t)
@@ -1592,7 +1588,7 @@ static uint32_t slot_home(const track_t *t)
         return slot_of(t);
     r = ds_list_rank(t->eng_req % NENGINES, t->preset);
 #if UP_NUSER
-    return r < UP_USER0 ? r : r < UP_SLOTS ? UP_USER0 : 0u;
+    return r < UP_USER0 ? r : r < UP_SLOTS + UP_NXTRA ? UP_USER0 : 0u;
 #else
     return r < UP_SLOTS ? r : 0u;
 #endif

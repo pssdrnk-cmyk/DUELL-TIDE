@@ -1,8 +1,10 @@
 # DUELL factory sounds: PATCHES numbers (1.0)
 
-The 128 factory sounds in the order the device lists them in PATCHES (TYPE ALL): by category (BASS, LEAD, PAD, PLUCK, KEYS, PERC, FX, OTHER), then engine, then name. **A number is a patch slot**: slot #NN holds the factory sound of this list at position NN until you save a sound there (RESTORE brings it back); MIDI program change n loads slot n, #n + 1. Generated from `felucca-base/tools/duell_sounds.py` with the sort in `felucca-base/tools/gen_duell_sounds.py` (`gen_duell_sounds.py --check` prints the same list).
+The 160 factory sounds in the order the device lists them in PATCHES (TYPE ALL): by category (BASS, LEAD, PAD, PLUCK, KEYS, PERC, FX, OTHER), then engine, then name. **A number is a patch slot**: slot #NN holds the factory sound of this list at position NN until you save a sound there (RESTORE brings it back); MIDI program change n loads slot n, #n + 1. Generated from `felucca-base/tools/duell_sounds.py` with the sort in `felucca-base/tools/gen_duell_sounds.py` (`gen_duell_sounds.py --check` prints the same list).
 
 **1.0: the factory bank is the owner's bank** (`felucca-base/tools/factory_bank.duell-patches.json`, imported by `tools/import_bank.py`; each patch exactly as exported, only its TRIM balanced, release_drafts/BANK_LEVELS.md). YO YA is new (marked NEW), CARNIVAL is not in the bank, so #108 to #125 moved by one. The Old column is the number in 0.2.31.
+
+**Past the 128 (1.1 with TIDE):** #129 to #160 are 32 more factory sounds (the 8 of the dub pack and 24 for TIDE's JRNY: pads, chords, stabs, plucks, textures), listed after the 128 so no number of the 128 moves. They are read-only places in PATCHES, not slots: a number past #128 holds no saved sound, has no FAV and no MIDI program change, and SAVE offers USER 1 for it. Their order is the same one: category, engine, name. (With the USER slots, U1 to U4 stand at the places of #125 to #128, which stay listed after the slots.) The Old column says "new".
 
 | PATCHES # | Name | Old (0.2.31) |
 |---|---|---|
@@ -134,3 +136,35 @@ The 128 factory sounds in the order the device lists them in PATCHES (TYPE ALL):
 | 126 | TABLA TALK | 126 |
 | 127 | GEIGER | 127 |
 | 128 | MODEM | 128 |
+| 129 | FOG BANK | new |
+| 130 | NEON DRIFT | new |
+| 131 | SLOW TIDE | new |
+| 132 | WARM WASH | new |
+| 133 | AIR SHIMMER | new |
+| 134 | DEEP BLUE | new |
+| 135 | STAR FIELD | new |
+| 136 | TAPE CLOUD | new |
+| 137 | ORGAN WASH | new |
+| 138 | ROTOR HAZE | new |
+| 139 | DUB BLIP | new |
+| 140 | HOLLOW POP | new |
+| 141 | SUB PLUCK | new |
+| 142 | TAPE PLUCK | new |
+| 143 | AIR POP | new |
+| 144 | COMB PLUCK | new |
+| 145 | GLASS POP | new |
+| 146 | DARK MIN7 | new |
+| 147 | DUB CHORD | new |
+| 148 | LOW STAB | new |
+| 149 | SOUL STAB | new |
+| 150 | SUNDAY KEYS | new |
+| 151 | GLASS KEYS | new |
+| 152 | ICE STAB | new |
+| 153 | SOFT EP | new |
+| 154 | DEEP ORGAN | new |
+| 155 | HOUSE ORGAN | new |
+| 156 | ORGAN SKANK | new |
+| 157 | SOFT ORGAN | new |
+| 158 | NIGHT DRONE | new |
+| 159 | DUST BED | new |
+| 160 | TAPE HISS | new |

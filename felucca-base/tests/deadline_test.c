@@ -275,9 +275,11 @@ int main(void)
                         }
                 mods_off = 0;
             }
-    for (m = 0; m < 2u; m++)                            /* every factory sound as stored (inserts, SAT, EQ, matrix, SUB, TWIN, morph-free), both parts */
+    for (m = 0; m < 2u; m++)                            /* every factory sound as stored (inserts, SAT, EQ, matrix, SUB, TWIN, morph-free), both parts: the bank's 128 (the references are theirs;
+                                                         * tools/duell_sounds.py N_BASE: the sounds added after them, indices from DL_BANK_N up, are not part of "the same as before") */
         for (e1 = 0; e1 < NENG_SHOWN; e1++) {
-            uint32_t en = ENGINE_ORDER[e1], n = ds_count(en);
+            static const uint8_t DL_BANK_N[16] = {20, 0, 11, 9, 0, 8, 13, 7, 0, 12, 0, 11, 14, 0, 23, 0};
+            uint32_t en = ENGINE_ORDER[e1], n = ds_count(en) < DL_BANK_N[en] ? ds_count(en) : DL_BANK_N[en];
             boot();
             duell_mode_force(m ? DM_SPLIT : DM_LAYER);
             for (f = 0; f < n; f++) {
