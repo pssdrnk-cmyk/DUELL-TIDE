@@ -560,7 +560,22 @@ async function midiOn() {
 // ------------------------------------------------------------------ switching on
 const status = document.getElementById("status");
 const say = (t) => { status.textContent = t; status.hidden = !t; };
+// A plain static server sends Last-Modified without Cache-Control, so this page itself can be served stale and
+// its ?v= stamps then name an old wasm. Ask the server for the page uncached; if its build differs, reload once.
+const BUILD = "@BUILD@";
+(async () => {
+  try {
+    const t = await (await fetch(location.pathname, { cache: "no-store" })).text();
+    const live = /const BUILD = "([0-9a-f]+)"/.exec(t);
+    if (live && live[1] !== BUILD && sessionStorage.getItem("duell-stale") !== live[1]) {
+      sessionStorage.setItem("duell-stale", live[1]);
+      location.reload();
+    }
+  } catch { /* offline or no storage: carry on with this build */ }
+})();
+let resumeHeld = null;
 async function switchOn() {
+  if (resumeHeld) return resumeHeld();                  // already built, the browser only holds the clock back
   const go = document.getElementById("go");
   go.disabled = true;
   go.textContent = "Starting…";
@@ -590,9 +605,24 @@ async function switchOn() {
       };
       node.port.postMessage({ type: "load", wasm, sectors: loadFlash(), master: masterValue }, [wasm]);
     });
-    await ac.resume();
-    document.getElementById("start").hidden = true;
-    go.textContent = "Audio on";
+    // The device's clock is the audio clock: a context the browser keeps suspended (no user gesture, a throttled
+    // page) draws no frames. Do not wait on it forever; keep the button so another click can resume it.
+    await Promise.race([ac.resume(), new Promise((r) => setTimeout(r, 1500))]);
+    if (ac.state === "running") {
+      document.getElementById("start").hidden = true;
+      go.textContent = "Audio on";
+    } else {
+      go.disabled = false;
+      go.textContent = "Click to start audio";
+      say("The browser is holding the audio back, so the screen waits. Click the button again.");
+      resumeHeld = () => ac.resume();
+      ac.addEventListener("statechange", () => {
+        if (ac.state !== "running") return;
+        say("");
+        document.getElementById("start").hidden = true;
+        go.textContent = "Audio on";
+      });
+    }
     if (ac.sampleRate !== 44100) console.warn(`DUELL: the browser plays at ${ac.sampleRate} Hz, the pitch is off by ${(1200 * Math.log2(ac.sampleRate / 44100)).toFixed(0)} cents.`);
     syncButtons();
     syncKeys();
