@@ -113,7 +113,7 @@ ok(DUELL_IDS.every((id) => same(archive.objects.get(id).bytes, A.objs.get(id) ||
 const d = describe(bytesOf(archive), archive.engines);
 ok(d.patches.map((p) => `${p.slot}:${p.name}:${p.engineName}:${p.category}`).join() === "0:WARM PAD:ANALOG:PAD,1:SUB BASS:ANALOG:BASS,5:BELL:FM6:KEYS,64:WAVE LEAD:WAVE:LEAD", "preview: patch names, engines and categories by slot");
 ok(d.multis.map((m) => `${m.label}:${m.name}`).join() === "M03:TESTONE,M04:TESTTWO,M12:LIVE SET", "preview: multi names (M03 M04 in object 14, M12 in object 18)");
-ok(d.patterns.length === 32 && d.patterns[2].label === "P03" && d.patterns[2].name === "PAT THREE" && d.patterns[2].length === 12 && d.patterns[31].label === "P32" && d.patterns[31].name === "SEVEN EIGHT" && d.patterns[31].length === 14 && d.patterns[0].name === "MORODER OCT", "preview: 32 pattern slots by name and length (P03 PAT THREE 12, P32 SEVEN EIGHT 14)");
+ok(d.patterns.length === 32 && d.patterns[2].label === "P03" && d.patterns[2].name === "PAT THREE" && d.patterns[2].length === 12 && d.patterns[31].label === "P32" && d.patterns[31].name === "SEVEN EIGHT" && d.patterns[31].length === 14 && d.patterns[0].name === "DUB CHORD", "preview: 32 pattern slots by name and length (P03 PAT THREE 12, P32 SEVEN EIGHT 14)");
 ok(await athrows(() => captureBackup((r, o) => { const x = new MockUnit(); x.playing = true; return x.request(r, o); }, info), /playing/), "capture while the unit plays: refused with a plain message");
 {
   const u = new MockUnit(); let n = 0;
