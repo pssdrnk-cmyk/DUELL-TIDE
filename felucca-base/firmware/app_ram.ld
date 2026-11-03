@@ -11,10 +11,14 @@
  * The PC limit's RAM window (hal/fm1_guard.h) runs from _pc_ram_lo (= the start of X) to the end of the hot block (_rt_end): one window
  * over X, Z and the hot block (and the data between them: a wider window guards less; there are two windows, the other is the flash).
  * DUELL bench builds (src/bench.c): .bench_text / .bench_rodata after all other code, .bench_bss after .bss, .pool.zbench (the bench's
- * session copy) after the other pool objects; range Z then starts that much later (elfcheck checks Z against the pool's real end). */
+ * session copy) after the other pool objects; range Z then starts that much later (elfcheck checks Z against the pool's real end).
+ * The boot pack (src/ramplace.c): the four load images (.ram_text, .data, .ramz, .ramx) are linked one after the other after .text, but
+ * tools/build.py writes ONE compressed stream from _boot_pack (= the first of them) instead of them. XIP is longer here than the app slot
+ * (0x8DFBC) by 128 KiB so the link places the images as they are (tools/build.py checks the packed image against the slot); .text itself
+ * must end inside the slot. */
 MEMORY
 {
-    XIP    (rx)  : ORIGIN = 0x02000120, LENGTH = 0x8DFBC
+    XIP    (rx)  : ORIGIN = 0x02000120, LENGTH = 0x8DFBC + 0x20000
     RAMX   (rwx) : ORIGIN = 0x01C00000, LENGTH = 0x7F00
     RAM    (rwx) : ORIGIN = 0x01C08000, LENGTH = 72K
     POOL   (rw)  : ORIGIN = 0x01C1A000, LENGTH = 0x5A000
@@ -27,6 +31,7 @@ SECTIONS
     .text : { KEEP(*(.text.crt0)) *(.text*) *(.bench_text*) *(.rodata*) *(.bench_rodata*) . = ALIGN(4); _etext = .; } > XIP   /* (.bench_text before the constants: it is the farthest code from range Z and the two-core bench build sits at the 4 MiB call reach; no call goes to the constants) */
     .ram_text : { _rt_start = .; KEEP(*(.ram_text*)) . = ALIGN(4); _hot_start = .; *(.hotx.*) . = MAX(., _hot_start + _hot_pad); . = ALIGN(4); _rt_end = .; } > RAMCODE AT > XIP
     _rt_load = LOADADDR(.ram_text);
+    _boot_pack = _rt_load;
     .data : { . = ALIGN(4); _data_start = .; *(.data*) *(.sdata*) *(.bench_data*) . = ALIGN(4); _data_end = .; } > RAM AT > XIP
     _data_load = LOADADDR(.data);
     .bss (NOLOAD) : { _bss_start = .; *(.bss*) *(.sbss*) *(COMMON) *(.bench_bss*) . = ALIGN(4); _bss_end = .; } > RAM
@@ -40,5 +45,6 @@ SECTIONS
     _guard0 = 0x01C74000; _ustack_lo = 0x01C74100; _ustack_top = 0x01C7A000;
     _guard1 = 0x01C7A000; _sstack_lo = 0x01C7A100; _sstack_top = 0x01C7C000;
     ASSERT(_rz_end <= _guard0, "range Z runs into the stack guard")
+    ASSERT(_etext <= 0x02000120 + 0x8DFBC, ".text runs past the app slot")
     /DISCARD/ : { *(.comment) *(.note*) }
 }

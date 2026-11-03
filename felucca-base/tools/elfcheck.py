@@ -59,7 +59,7 @@ def read_elf(data):
         return data[off:data.index(b"\0", off)].decode("latin-1")
     names = [cstr(sh[shstrndx][4] + s[0]) for s in sh]
     sections = {n: (s[3], s[5]) for n, s in zip(names, sh) if n}
-    contents = {n: data[s[4]:s[4] + s[5]] for n, s in zip(names, sh) if n in (".ramx", ".ramz", ".ram_text") and s[1] == 1}
+    contents = {n: data[s[4]:s[4] + s[5]] for n, s in zip(names, sh) if n in (".ramx", ".ramz", ".ram_text", ".data") and s[1] == 1}
     symbols = []
     for s in sh:
         if s[1] != 2:              # SHT_SYMTAB
@@ -272,6 +272,29 @@ def dis_functions(dis):
     return fns
 
 
+def check_boot_pack(elf, img, sym, app_xip=APP_XIP):
+    """the boot pack (tools/bootpack.py) at _boot_pack, at the end of the image: decoded, the four sections as linked, each at its
+    address with its hash"""
+    import bootpack
+    at = sym.get("_boot_pack")
+    if at is None:
+        return ["no _boot_pack (firmware/app_ram.ld)"]
+    off = at - app_xip
+    if at % 4 or off < 0 or off > len(img):
+        return [f"_boot_pack {at:#x} is not in the app image"]
+    try:
+        hdr, secs = bootpack.unpack(bytes(img[off:]))
+    except ValueError as e:
+        return [str(e)]
+    end = off + 4 * bootpack.HDR_WORDS + hdr[2]
+    errors = [] if all(b == 0xFF for b in img[end:]) else [f"the boot pack's stream ({hdr[2]} B) does not end the image"]
+    for k, ((name, tag), body) in enumerate(zip(bootpack.SECTIONS, secs)):
+        addr, n, h = hdr[3 + 3 * k:6 + 3 * k]
+        if addr != sym.get(f"{tag}_start") or body != elf["contents"].get(name, b"") or bootpack.bp_hash(body) != h:
+            errors.append(f"the boot pack's {name} ({addr:#x}, {n} B) is not the section as linked")
+    return errors
+
+
 def check_ramplace(elf, img, dis, app_xip=APP_XIP):
     """-> (errors, notes) for ranges X and Z. img: the app image (felucca.bin) the package carries; dis: objdump -d of the ELF"""
     import ram_fns_x
@@ -304,19 +327,16 @@ def check_ramplace(elf, img, dis, app_xip=APP_XIP):
         bad = [n for n in got if FLASH_ONLY.search(n)]
         if bad:
             errors.append(f"interrupt / USB / MIDI / update code in {name}: {bad[:4]}")
-    # the start-up copy: symbols at the sections' bounds, load images inside the package's image and equal to the sections
+    # the start-up copy: symbols at the sections' bounds; the boot pack (src/ramplace.c) in the app image at _boot_pack, decoding to the
+    # four sections as linked, with their addresses, lengths and hashes
     for tag, name, lo, hi in (("rx", ".ramx", xlo, xhi), ("rz", ".ramz", zlo, zhi)):
-        s0, s1, ld = sym.get(f"_{tag}_start"), sym.get(f"_{tag}_end"), sym.get(f"_{tag}_load")
-        if s0 != lo or s1 is None or not (hi <= s1 <= hi + 3) or ld is None:
-            errors.append(f"_{tag}_start / _{tag}_end / _{tag}_load do not bound {name} ({s0}, {s1}, {ld})")
-            continue
-        off = ld - app_xip
-        body = elf["contents"].get(name, b"")
-        if ld % 4 or off < 0 or off + len(body) > len(img) or bytes(img[off:off + len(body)]) != body:
-            errors.append(f"{name}'s load image at {ld:#x} is not in the app image as linked")
+        s0, s1 = sym.get(f"_{tag}_start"), sym.get(f"_{tag}_end")
+        if s0 != lo or s1 is None or not (hi <= s1 <= hi + 3):
+            errors.append(f"_{tag}_start / _{tag}_end do not bound {name} ({s0}, {s1})")
+    errors += check_boot_pack(elf, img, sym, app_xip)
     fns = dis_functions(dis)
     cst = fns.get("fm1_cstart", [])
-    vals = {k: sym.get(k) for k in ("_rx_load", "_rz_load", "_rx_end", "_rz_end", "_pc_ram_lo")}
+    vals = {k: sym.get(k) for k in ("_boot_pack", "_rx_end", "_rz_end", "_pc_ram_lo")}
 
     def loads(insns, v):
         return [i for i, (_, t) in enumerate(insns) if v is not None and re.search(rf"= {v}\b", t)]
@@ -340,23 +360,23 @@ def check_ramplace(elf, img, dis, app_xip=APP_XIP):
             if hit:
                 return hit
         return None
-    copy_at, before = None, []                            # the copy: fm1_cstart itself, or one function it calls; calls before it
+    copy_at, before = None, []                            # the copy: the unpack (src/ramplace.c bp_unpack, not inlined), called by fm1_cstart; calls before it
     for i, (a, t) in enumerate(cst):
-        if loads([(0, t)], vals["_rx_load"]) or loads([(0, t)], vals["_rz_load"]):
-            copy_at = i
-            break
         tgt = dis_target(a, t)
         if tgt is not None and re.search(r"\bcall\b", t):
             callee = at.get(tgt)
-            if callee and loads(fns[callee], vals["_rx_load"]) and loads(fns[callee], vals["_rz_load"]):
+            if callee and loads(fns[callee], vals["_boot_pack"]):
                 copy_at = i
+                hit = reaches_xz(callee, set())
+                if hit:
+                    errors.append(f"the unpack {callee} runs X / Z code ({hit}) before X and Z are there")
                 break
             hit = in_xz(tgt) and hex(tgt) or callee and reaches_xz(callee, set())
             if hit or not callee:
                 errors.append(f"fm1_cstart calls {callee or hex(tgt)} before it copies ranges X and Z, and it runs X / Z code ({hit or '?'})")
             before.append(callee or hex(tgt))
     if copy_at is None:
-        errors.append("fm1_cstart does not copy ranges X and Z (no load of _rx_load / _rz_load)")
+        errors.append("fm1_cstart does not unpack ranges X and Z (no call of a function that loads _boot_pack)")
     # the PC limit window: from range X to the end of the hot block, set by the guard (inlined into fm1_cstart)
     lo_pc, hi_pc = vals["_pc_ram_lo"], sym.get("_rt_end")
     guard = cst + fns.get("fm1_guard_enable", [])
@@ -394,6 +414,6 @@ def check_ramplace(elf, img, dis, app_xip=APP_XIP):
     notes.append(f"range X {xlo:#010x}..{xhi:#010x} {xhi - xlo} B of {RANGE_X[1] - RANGE_X[0]} ({RANGE_X[1] - xhi} B free): closed (no call "
                  f"leaves RAM, none through a pointer, none from the flash); range Z {zlo:#010x}..{zhi:#010x} {zhi - zlo} B "
                  f"({STACK_GUARD - zhi} B free up to the stack guard)")
-    notes.append(f"start-up: fm1_cstart copies X and Z before any code there can run (before it only {', '.join(sorted(set(before))) or 'nothing'}, flash only); load images in the app image, equal to the sections; PC window "
+    notes.append(f"start-up: fm1_cstart copies X and Z before any code there can run (before it only {', '.join(sorted(set(before))) or 'nothing'}, flash only); the boot pack decodes to the four sections; PC window "
                  f"{lo_pc:#010x}..{hi_pc - 1:#010x} covers X, Z and the hot block ({head} B hot headroom)")
     return errors, notes

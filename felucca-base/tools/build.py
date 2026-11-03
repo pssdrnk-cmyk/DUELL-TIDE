@@ -63,6 +63,7 @@ OUT = SRC / "build"
 GEN = OUT / "gen"
 LDR = OUT / "loader"
 sys.path.insert(0, str(SRC / "tools"))
+import bootpack  # noqa: E402
 import elfcheck  # noqa: E402
 import hot_fns  # noqa: E402
 import ram_place  # noqa: E402
@@ -394,10 +395,12 @@ def build_app():
     def symv(name):
         return int(re.search(r"^([0-9a-f]+) .*\s" + name + r"$", syms, re.M).group(1), 16)
     img = bytearray((OUT / "text.bin").read_bytes())
-    # .ram_text and .data follow .text at their load addresses; crt0 copies them by words (DUELL_RAMPLACE: then .ramz and .ramx, main.c)
+    if ramplace():                  # the boot pack (src/ramplace.c): one LZMA stream instead of the four load images
+        img = boot_pack(img, symv)
+        (OUT / "felucca.bin").write_bytes(img)
+        return bytes(img), syms, dis, rt
+    # .ram_text and .data follow .text at their load addresses; crt0 copies them by words
     loads = [("ramtext.bin", "_rt_load"), ("data.bin", "_data_load")]
-    if ramplace():
-        loads = sorted(loads + [("ramz.bin", "_rz_load"), ("ramx.bin", "_rx_load")], key=lambda sl: symv(sl[1]))
     for sect, lname in loads:
         load = symv(lname)
         if load % 4:
@@ -411,6 +414,25 @@ def build_app():
     img += b"\xff" * (-len(img) % 4)
     (OUT / "felucca.bin").write_bytes(img)
     return bytes(img), syms, dis, rt
+
+
+BOOT_BINS = {".ram_text": "ramtext.bin", ".data": "data.bin", ".ramz": "ramz.bin", ".ramx": "ramx.bin"}   # (build_app's objcopy files)
+
+
+def boot_pack(img, symv):
+    """the app image with the boot pack (tools/bootpack.py) from _boot_pack on (the four load images are linked after .text, the first
+    at _boot_pack)"""
+    at = symv("_boot_pack")
+    if at - APP_XIP < len(img) or at % 4:
+        raise SystemExit(f"_boot_pack {at:#x} overlaps .text or is not word aligned")
+    blobs = [(symv(tag + "_start"), (OUT / BOOT_BINS[name]).read_bytes() if (OUT / BOOT_BINS[name]).exists() else b"")
+             for name, tag in bootpack.SECTIONS]
+    try:
+        img += b"\xff" * (at - APP_XIP - len(img)) + bootpack.pack(blobs)
+    except ValueError as e:
+        raise SystemExit(str(e))
+    img += b"\xff" * (-len(img) % 4)
+    return img
 
 
 POOL_TAIL_MIN = 8192        # the pool-tail rule: pool end (or range Z's end) to the stack guard keeps this much spare

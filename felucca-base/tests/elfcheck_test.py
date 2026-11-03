@@ -114,6 +114,7 @@ def ram(label, data, hot, want_fail, needle=None):
 
 def ramplace_tests(fake_obj, obj_names):
     """DUELL_RAMPLACE (check_ramplace, tools/ram_place.py): a layout as the RAM1 build links it passes; each broken rule fails"""
+    import bootpack
     import ram_fns_x
     import ram_fns_z
     import ram_place
@@ -121,23 +122,24 @@ def ramplace_tests(fake_obj, obj_names):
     X0, Z0, XIP = 0x01C00000, 0x01C6CE6C, 0x02000120
     fx, fz = ram_fns_x.NAMES, ram_fns_z.NAMES
 
-    def layout(xcode=None, zhi=None, img_ok=True, cst=None, pc=True, xat=X0, extra_x=(), extra=()):
+    def layout(xcode=None, zhi=None, img_ok=True, cst=None, pc=True, xat=X0, extra_x=(), extra=(), unpack=()):
         xsz, zsz = 4 * len(fx), 4 * len(fz)
         xbody, zbody = bytes(range(256)) * (xsz // 256 + 1), bytes(range(255, -1, -1)) * (zsz // 256 + 1)
         xbody, zbody = xbody[:xsz], zbody[:zsz]
-        img = bytearray(0x400)
-        img[0x100:0x100 + xsz], img[0x200:0x200 + zsz] = xbody, (zbody if img_ok else bytes(zsz))
+        rtbody, dbody = bytes(range(16)), bytes(range(32, 40))
+        img = bytes(0x100) + bootpack.pack([(0x01C7C100, rtbody), (0x01C08000, dbody), (Z0, zbody if img_ok else bytes(zsz)), (xat, xbody)])
         syms = [(f, xat + 4 * i, 4, ".ramx") for i, f in enumerate([*fx, *extra_x])] + [(f, Z0 + 4 * i, 4, ".ramz") for i, f in enumerate(fz)]
-        syms += [("_rx_start", xat, 0, ".ramx"), ("_rx_end", xat + xsz, 0, ".ramx"), ("_rx_load", XIP + 0x100, 0, ""),
-                 ("_rz_start", Z0, 0, ".ramz"), ("_rz_end", Z0 + zsz, 0, ".ramz"), ("_rz_load", XIP + 0x200, 0, ""),
+        syms += [("_rx_start", xat, 0, ".ramx"), ("_rx_end", xat + xsz, 0, ".ramx"), ("_boot_pack", XIP + 0x100, 0, ""),
+                 ("_rz_start", Z0, 0, ".ramz"), ("_rz_end", Z0 + zsz, 0, ".ramz"), ("_rt_start", 0x01C7C100, 0, ".ram_text"),
+                 ("_data_start", 0x01C08000, 0, ".data"),
                  ("_pc_ram_lo", X0, 0, ""), ("_rt_end", 0x01C7FC68, 0, ".ram_text"), ("ramplace_copy", 0x02000300, 8, ".text")]
         elf = {"sections": {".ramx": (xat, xsz), ".ramz": (Z0, zhi - Z0 if zhi else zsz), ".pool": (0x01C1A000, Z0 - 0x01C1A000),
                             ".ram_text": (0x01C7C100, 0x3B68), ".data": (0x01C08000, 0x200), ".bss": (0x01C08200, 0xD000)},
-               "symbols": syms, "contents": {".ramx": xbody, ".ramz": zbody}}
+               "symbols": syms, "contents": {".ramx": xbody, ".ramz": zbody, ".ram_text": rtbody, ".data": dbody}}
         cs = cst if cst is not None else [f"   2000400:    be ea c5 a0       \tcall -1030 <ramplace_copy : 2000300 >",
                                             f"   2000404:    c1 ff 00 00 c0 01 \tr1 = {X0 if pc else 1} <_pc_ram_lo : 1c00000 >"]
-        dis = "\n".join(["ramplace_copy:", f"   2000300:    c1 ff 00 00 c0 01 \tr1 = {XIP + 0x100} <_rx_load : 2000220 >",
-                          f"   2000306:    c1 ff 00 00 c0 01 \tr2 = {XIP + 0x200} <_rz_load : 2000320 >", "fm1_cstart:", *cs,
+        dis = "\n".join(["ramplace_copy:", f"   2000300:    c1 ff 00 00 c0 01 \tr1 = {XIP + 0x100} <_boot_pack : 2000220 >",
+                          *unpack, "fm1_cstart:", *cs,
                           fx[0] + ":", f"   {xat:x}:    bf ea 00 00       \t" + (xcode or f"call 60 <{fz[0]} : {Z0:x} >"), *extra])
         return elf, bytes(img), dis
 
@@ -153,7 +155,9 @@ def ramplace_tests(fake_obj, obj_names):
     good &= rp("an unannotated call from X to the flash", {"xcode": "call 4000000"}, True, "calls the flash")
     good &= rp("range Z into the stack guard", {"zhi": 0x01C74010}, True, "stack guard")
     good &= rp("range X off 0x01C00000..0x01C07F00", {"xat": 0x01C07EC0}, True, "leaves")
-    good &= rp("a load image not in the app image", {"img_ok": False}, True, "load image")
+    good &= rp("a boot pack that does not decode to the sections", {"img_ok": False}, True, "not the section as linked")
+    good &= rp("the unpack calls range Z (memset)", {"unpack": [f"   2000306:    be ea c5 a0       \tcall 99 <memset : {Z0:x} >"]},
+               True, "before X and Z are there")
     copy = ["   2000404:    be ea c5 a0       \tcall -1030 <ramplace_copy : 2000300 >",
             f"   2000408:    c1 ff 00 00 c0 01 \tr1 = {X0} <_pc_ram_lo : 1c00000 >"]
     good &= rp("a flash-only call before the copy (the boot guard)", {"cst": ["   2000400:    be ea c5 a0       \tcall 99 <fm1_p33_read : 2000900 >",
@@ -164,7 +168,7 @@ def ramplace_tests(fake_obj, obj_names):
                                                                          *copy], "extra": ["fm1_irq_init:",
                                                                          f"   2000900:    be ea 00 00       \tcall 99 <memset : {Z0:x} >"]},
                True, "runs X / Z code")
-    good &= rp("no copy at all", {"cst": copy[1:]}, True, "does not copy")
+    good &= rp("no copy at all", {"cst": copy[1:]}, True, "does not unpack")
     good &= rp("the PC window not set from range X", {"pc": False}, True, "PC limit")
     good &= rp("a function in X not on the list", {"extra_x": ["usb_poll"]}, True, "not listed")
     obj, _ = fake_obj([".text.lcd_spin", "@.text.analog_render", ".rela.text.analog_render", ".text.memset", ".text.part_voice2"])

@@ -295,8 +295,13 @@ static void fm1_main(void)
 
 void fm1_cstart(void)
 {
-    uint32_t *s, *d, p3, src, wdt;
+    uint32_t *d, p3, src, wdt;
     int bg_enter;
+#if DUELL_RAMPLACE
+    uint32_t unpacked;
+#else
+    uint32_t *s;
+#endif
 #if DUELL_TWOCORE
     fm1_cpu1_halt();                           /* (after Felucca 1.6.1: a second core still running from before this reset would read the
                                                 * RAM cleared below; hal/fm1_sys.h) */
@@ -314,20 +319,22 @@ void fm1_cstart(void)
     if (bg_enter)
         fm1_enter_uboot();
 #if DUELL_RAMPLACE
-    ramplace_copy();                            /* the RAM ranges X and Z before anything can call them (memset, memcpy are in Z; ramplace.c);
-                                                 * after the boot guard: a start that dies here counts as a failed one (2: the update mode) */
+    unpacked = ramplace_copy();                 /* the RAM ranges X and Z (and .data, .ram_text: the boot pack, ramplace.c) before anything can
+                                                 * call them (memset, memcpy are in Z); after the boot guard: a start that dies here counts as
+                                                 * a failed one (2: the update mode) */
 #endif
     fm1_irq_init();
     for (d = _bss_start; d < _bss_end; d++)
         *d = 0;
     for (d = _pool_start; d < _pool_end; d++)
         *d = 0;
+#if DUELL_RAMPLACE
+    ramplace_boot(unpacked);                    /* X and Z compared with their hashes (the update mode if they stay wrong) */
+#else
     for (s = _data_load, d = _data_start; d < _data_end; s++, d++)
         *d = *s;
     for (s = _rt_load, d = _rt_start; d < _rt_end; s++, d++)
         *d = *s;                                /* flash driver code that must run from RAM */
-#if DUELL_RAMPLACE
-    ramplace_boot();                            /* X and Z compared with their load images (the update mode if they stay wrong) */
 #endif
     fm1_mailbox_clear();
     fm1_guard_enable(FM1_GUARD_STACK | FM1_GUARD_WRITE | FM1_GUARD_BUS | FM1_GUARD_PC);
