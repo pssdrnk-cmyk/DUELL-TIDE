@@ -785,7 +785,7 @@ static void mslot_ui(uint32_t k, int32_t s, int32_t d, int32_t a)   /* matrix sl
     TSEL->p[P_M1AMT + 3u * k] = (int16_t)a;
 }
 /* DUELL: SAVE > PATTERNS, the one list of 32 slots (patslot.c; the scenes that showed Felucca's SONG): P01..P03 saved from part 1
- * (LEN 16, 32, 7), the row picked: v 0 a slot that holds its default (P05 TRANCE ROLL), 1 a saved one (P02), 2 SAVE picked on it, 3
+ * (LEN 16, 32, 7), the row picked: v 0 a slot that holds its default (P05 DOT DELAY), 1 a saved one (P02), 2 SAVE picked on it, 3
  * OVERWRITE?, 4 SAVE held: SAVE OVER? (1.1: no per-slot ERASE), 5 playing (LOAD picked), 6 the list's end (P32 SEVEN EIGHT) */
 static void pslot_scene(uint32_t v)
 {

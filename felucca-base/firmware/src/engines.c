@@ -146,8 +146,8 @@ static uint32_t eng_step(uint32_t e, int32_t dir)
 /* DUELL's 32 default patterns: the content the 32 slots P01..P32 of SAVE > PATTERNS hold on a new unit and after ERASE (patslot.c
  * ps_default; they are ordinary slots, all overwritable, no second list: the arp's SEQ mode, the sequencer and the editor read the
  * same slots). Our own set of classic rhythmic / melodic idioms, written for this firmware (no melody of a recording; no drum
- * imitations: this is not a drum machine, PATTERNS_PROPOSAL.md). A pattern has LEN steps (8..32) on DIV (2 = 1/16, 1 = 1/8, 4 = 1/8T); SWING 0
- * and GATE 64 for all. EVERY note is ROOT + offset in semitones (O(x), ROOT = C4 = 60,
+ * imitations: this is not a drum machine, PATTERNS_PROPOSAL.md). A pattern has LEN steps (8..32) on DIV (2 = 1/16, 1 = 1/8, 4 = 1/8T); SWING and
+ * GATE the pattern's own where it gives them (the swung and gated chord patterns), else the sequencer's defaults (50, 64). EVERY note is ROOT + offset in semitones (O(x), ROOT = C4 = 60,
  * the note the SEQUENCER arp mode reads as offset 0: arp_seq_notes uses note - 60), so a pattern works on any engine and
  * in the SEQ arp on the held notes; in the step sequencer it plays from C4 (OCT- / SCL TRANS move it; it is the same bar
  * for a bass, a pad or a lead). 0 = rest. Flags: 1 accent, 2 slide, 4 tie (holds the previous note).
@@ -163,22 +163,23 @@ static const struct {
     const char *name;
     uint8_t len, div;
     uint8_t note[NPAT_STEPS], flags[NPAT_STEPS];
+    uint8_t swing, gate;                         /* 0 = the default (SWG 50 %, GATE 64) */
 } PATTERNS[] = {
-    /* 1 disco bass: 16ths jumping root / octave, the bar's last beat walks up to the 5th and b7 */
-    {"MORODER OCT", 16, 2, {O(0), O(12), O(0), O(12), O(0), O(12), O(0), O(12), O(0), O(12), O(0), O(12), O(0), O(12), O(7), O(10)},
-     {A_, 0, 0, 0, A_, 0, 0, 0, A_, 0, 0, 0, A_, 0, 0, 0}},
-    /* 2 303 acid line: 16ths with rests, octave jumps, accents and slides */
-    {"ACID LINE", 16, 2, {O(0), O(0), O(12), O(0), O(3), 0, O(0), O(10), O(0), 0, O(12), O(7), O(0), O(3), 0, O(5)},
-     {A_, 0, A_ | S_, 0, S_, 0, 0, A_ | S_, 0, 0, A_, S_, 0, 0, 0, S_}},
-    /* 3 house bass: the root on the off-beat 8ths only, the last one an octave up */
-    {"OFFBEAT", 16, 2, {0, 0, O(0), 0, 0, 0, O(0), 0, 0, 0, O(0), 0, 0, 0, O(12), 0},
-     {0, 0, A_, 0, 0, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0}},
-    /* 4 techno rumble: three 16ths after every beat, the beat itself empty (the kick sits there) */
-    {"TECHNO RUMBL", 16, 2, {0, O(0), O(0), O(0), 0, O(0), O(0), O(0), 0, O(0), O(0), O(0), 0, O(0), O(0), O(-2)},
-     {0, A_, 0, 0, 0, A_, 0, 0, 0, A_, 0, 0, 0, A_, 0, 0}},
-    /* 5 trance / psy rolling bass: unbroken 16ths, the octave on the off-beat 8ths */
-    {"TRANCE ROLL", 16, 2, {O(0), O(0), O(12), O(0), O(0), O(0), O(12), O(0), O(0), O(0), O(12), O(0), O(0), O(0), O(12), O(10)},
-     {A_, 0, 0, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0, 0, 0}},
+    /* 1 dub techno chord: stabs on the off-beat 8ths, two of them held on ties for the echo to carry, the last a minor 3rd up */
+    {"DUB CHORD", 16, 2, {0, 0, O(0), 0, 0, 0, O(0), 0, 0, 0, O(0), 0, 0, 0, O(3), 0},
+     {0, 0, A_, T_, T_, 0, 0, 0, 0, 0, A_, T_, T_, 0, 0, 0}},
+    /* 2 deep house shuffle: the off-beat 8th and the swung 16th after it, the last hit a whole tone down (SWING 60) */
+    {"DEEP SHUFFLE", 16, 2, {0, 0, O(0), 0, 0, O(0), 0, 0, 0, 0, O(0), 0, 0, O(-2), 0, 0},
+     {0, 0, A_, 0, 0, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0}, 60, 36},
+    /* 3 dub offbeat stabs: the off-beat 8ths only, accents on the 2nd and 4th (SWING 54) */
+    {"DUB OFFBEAT", 16, 2, {0, 0, O(0), 0, 0, 0, O(0), 0, 0, 0, O(0), 0, 0, 0, O(0), 0},
+     {0, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0, 0, 0, A_, 0}, 54, 42},
+    /* 4 house stabs: off-beat 8ths with a double hit before the 2nd beat and the 4th, accents on 7 and 15 (SWING 56) */
+    {"HOUSE STAB", 16, 2, {0, 0, O(0), O(0), 0, 0, O(0), 0, 0, 0, O(0), O(0), 0, 0, O(0), 0},
+     {0, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0, 0, 0, A_, 0}, 56, 30},
+    /* 5 dotted delay figure: hits every three 16ths, root C then down a major 3rd, a 5th and a 4th (SWING 52) */
+    {"DOT DELAY", 16, 2, {O(0), 0, 0, O(0), 0, 0, 0, O(-4), 0, 0, O(-7), 0, 0, 0, O(-5), 0},
+     {A_, 0, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0, 0, 0, 0}, 52, 36},
     /* 6 straight 8th-note pulse (new wave / driving rock bass), the last 8th on the 5th */
     {"8TH PULSE", 16, 2, {O(0), 0, O(0), 0, O(0), 0, O(0), 0, O(0), 0, O(0), 0, O(0), 0, O(7), 0},
      {A_, 0, 0, 0, A_, 0, 0, 0, A_, 0, 0, 0, A_, 0, 0, 0}},
@@ -191,30 +192,30 @@ static const struct {
     /* 9 Detroit / house stab rhythm: syncopated chord hits (3-3-4-3-3 feel), root, minor 3rd, 5th */
     {"DETROIT STAB", 16, 2, {O(0), 0, 0, O(3), 0, 0, O(7), 0, 0, 0, O(0), 0, 0, O(3), 0, 0},
      {A_, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-    /* 10 funk 16th groove: the one, ghost 16ths, octave pops, a walk-down fill */
-    {"FUNK 16TH", 16, 2, {O(0), 0, O(0), O(12), 0, O(0), 0, O(10), 0, O(0), 0, O(0), O(12), 0, O(7), O(5)},
-     {A_, 0, 0, A_, 0, 0, 0, 0, 0, 0, 0, 0, A_, 0, 0, 0}},
+    /* 10 minimal 12: a three-beat loop for polymeter against a 16-step part, a drop of a whole tone held on a tie */
+    {"MINIMAL 12", 12, 2, {O(0), 0, 0, O(0), 0, 0, O(0), 0, 0, O(-2), 0, 0},
+     {A_, 0, 0, 0, 0, 0, 0, 0, 0, 0, T_, 0}, 0, 40},
     /* 11 dub half-time: few long notes, the root, a 5th below after the space */
     {"DUB HALFTIME", 16, 2, {O(0), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, O(-5), 0, 0, 0},
      {A_, T_, T_, T_, T_, T_, T_, 0, 0, 0, 0, 0, 0, T_, T_, 0}},
     /* 12 reggae skank: the off-beat of beats 2 and 4, a bubbling 5th in between */
     {"SKANK", 16, 2, {0, 0, 0, 0, 0, 0, O(0), 0, 0, 0, 0, O(7), 0, 0, O(0), 0},
      {0, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0, 0, 0, A_, 0}},
-    /* 13 galloping bass: eighth + two 16ths on every beat, the last beat up a minor 3rd */
-    {"GALLOP", 16, 2, {O(0), 0, O(0), O(0), O(0), 0, O(0), O(0), O(0), 0, O(0), O(0), O(3), 0, O(3), O(3)},
-     {A_, 0, 0, 0, A_, 0, 0, 0, A_, 0, 0, 0, A_, 0, 0, 0}},
+    /* 13 house 3-3-2: the long-short-long comp, stabs on 1, a, & of 2, a of 3, & of 4 (SWING 54) */
+    {"DEEP 332", 16, 2, {O(0), 0, 0, O(0), 0, 0, O(0), 0, 0, 0, 0, O(3), 0, 0, O(0), 0},
+     {A_, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 54, 40},
     /* 14 minor pentatonic riff: root, b3, 4, 5, b7 (and the b7 below), a slide into the 4th */
     {"PENTA RIFF", 16, 2, {O(0), 0, O(3), O(5), 0, O(7), 0, O(5), O(3), 0, O(0), 0, O(-2), 0, O(0), 0},
      {A_, 0, 0, S_, 0, A_, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0}},
-    /* 15 boogie-woogie bass: root, 3rd, 5th, 6th, b7 in pairs */
-    {"BOOGIE BASS", 16, 2, {O(0), O(0), O(4), O(4), O(7), O(7), O(9), O(9), O(10), O(10), O(9), O(9), O(7), O(7), O(4), O(4)},
-     {A_, 0, 0, 0, A_, 0, 0, 0, A_, 0, 0, 0, A_, 0, 0, 0}},
+    /* 15 pad breath: two long tied chords a bar, the second a major 3rd down, a step of air before each (GATE 100) */
+    {"PAD BREATH", 16, 2, {O(0), 0, 0, 0, 0, 0, 0, 0, O(-4), 0, 0, 0, 0, 0, 0, 0},
+     {A_, T_, T_, T_, T_, T_, T_, 0, A_, T_, T_, T_, T_, T_, T_, 0}, 0, 100},
     /* 16 synthpop hook on dotted rhythms */
     {"DOTTED HOOK", 16, 2, {O(12), 0, 0, O(10), 0, 0, O(7), 0, 0, O(5), 0, 0, O(7), 0, 0, 0},
      {A_, 0, 0, 0, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0, 0}},
-    /* 17 trap / halftime: a long root and a slide down an octave */
-    {"SUB DROP", 16, 2, {O(0), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, O(-12), 0, 0, 0},
-     {A_, T_, T_, T_, T_, T_, T_, 0, 0, 0, 0, 0, A_ | S_, T_, T_, T_}},
+    /* 17 half-time pad: one chord a bar held on ties, a step of air, then a whole tone down (two bars, GATE 100) */
+    {"HALF PAD", 32, 2, {O(0), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, O(-2), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+     {A_, T_, T_, T_, T_, T_, T_, T_, T_, T_, T_, T_, T_, T_, T_, 0, A_, T_, T_, T_, T_, T_, T_, T_, T_, T_, T_, T_, T_, T_, T_, 0}, 0, 100},
     /* 18 Latin: the anticipated bass of salsa and son */
     {"TUMBAO", 16, 2, {0, 0, 0, 0, 0, 0, O(0), 0, 0, 0, 0, 0, O(7), 0, O(12), O(7)},
      {0, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0, 0, 0, A_, 0}},
@@ -233,9 +234,9 @@ static const struct {
     /* 23 blues 12/8: a rolling triplet groove */
     {"TRIPLET SWAY", 12, 4, {O(0), 0, O(7), O(3), 0, O(7), O(0), 0, O(7), O(5), 0, O(7)},
      {A_, 0, 0, A_, 0, 0, A_, 0, 0, A_, 0, 0}},
-    /* 24 trance: one chord gated 3-3-3-3-2-2 */
-    {"TRANCE GATE", 16, 2, {O(0), 0, 0, O(0), 0, 0, O(0), 0, 0, O(0), 0, O(0), 0, O(0), 0, 0},
-     {A_, 0, 0, 0, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0, 0}},
+    /* 24 dub progression: off-beat stabs over two bars, the root, then a major 3rd down, then a 4th (SWING 54) */
+    {"DUB PROG", 32, 2, {0, 0, O(0), 0, 0, 0, O(0), 0, 0, 0, O(0), 0, 0, 0, O(0), 0, 0, 0, O(-4), 0, 0, 0, O(-4), 0, 0, 0, O(-5), 0, 0, 0, O(-5), 0},
+     {0, 0, A_, 0, 0, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0}, 54, 42},
     /* 25 90s rave: stabs on the one, the a of one and the and of two */
     {"RAVE STABS", 16, 2, {O(7), 0, 0, O(7), 0, 0, 0, O(10), 0, 0, 0, 0, O(7), 0, 0, O(12)},
      {A_, 0, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, A_, 0, 0, A_}},
@@ -248,8 +249,8 @@ static const struct {
     /* 28 pop / minor: a call and an answer (32 steps) */
     {"NIGHT CALL", 32, 2, {O(7), 0, O(7), O(10), 0, O(12), 0, O(10), O(7), 0, 0, 0, 0, 0, 0, 0, O(5), 0, O(5), O(8), 0, O(10), 0, O(8), O(3), 0, 0, 0, 0, 0, 0, 0},
      {A_, 0, 0, 0, 0, 0, 0, 0, A_, T_, 0, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0, 0, 0, A_, T_, T_, T_, 0, 0, 0, 0}},
-    /* 29 ambient: two long tied chord roots a bar */
-    {"PAD BREATH", 16, 2, {O(0), 0, 0, 0, 0, 0, 0, 0, O(7), 0, 0, 0, 0, 0, 0, 0},
+    /* 29 ambient: two long tied chord roots a bar, a root and its 5th */
+    {"TIED ROOTS", 16, 2, {O(0), 0, 0, 0, 0, 0, 0, 0, O(7), 0, 0, 0, 0, 0, 0, 0},
      {A_, T_, T_, T_, T_, T_, T_, T_, A_, T_, T_, T_, T_, T_, T_, T_}},
     /* 30 FM marimba ostinato: the root alternating with the octave and a moving third */
     {"DX OSTINATO", 16, 2, {O(0), 0, O(12), 0, O(7), 0, O(12), 0, O(3), 0, O(12), 0, O(5), 0, O(12), 0},

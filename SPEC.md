@@ -455,26 +455,44 @@ SMART, ARP and PITCH are saved with the device settings (not the patch; TARGET n
 
 SAVE > PATTERNS is ONE list of 32 slots, P01..P32, for the whole device (no part chooser: LOAD goes to the selected part, SAVE saves it). All 32 are overwritable and none is empty: they hold the **32 default patterns** as ordinary slots on a new unit and after ERASE DATA, and ERASE of a slot gives its default back ("ALREADY DEFAULT" when it holds it). There is no second list: the arp's SEQ mode plays the part's own steps, which came from a slot or were played; a factory sound's PAT(n) (preset_t.pat) is the number of a slot. The set is our own: generic rhythmic and melodic idioms of dance, funk, dub and pop music, none copying a recognisable melody and none imitating a kick, snare or hat (this is not a drum machine); 8 to 32 steps (LEN, DIV per pattern). Defined in `engines.c` (`PATTERNS[]`, PATTERNS_PROPOSAL.md), names at most 12 characters. The slots are stored compactly (`patslot.c`, format PTS3, three flash objects of 11, 11 and 10 slots that share 3584 bytes each); a SAVE that does not fit its object says PATTERN LIST FULL.
 
-**Offsets, not absolute notes.** Every note is **C4 (60) + an offset in semitones**, 0 = rest. That is exactly what the SEQUENCER arp mode reads (note - 60 per step), so a pattern loaded into a part also works as the SEQ arp pattern on the held notes, on any engine. In the step sequencer the patterns play from C4 (OCT- or SCL TRANS move them); **not while the part's arp MODE is SEQUENCER (0.2.12):** then the steps are the arp's, played on the held keys only, and PLAY does not also play them from C4 (`seq.c seq_play`; the transport, the automation and STEP PREVIEW go on as before). Flags used: accent, slide, tie (holds the previous note; the SEQ arp treats a tie as a rest). A slot sets the part's LEN, DIV, SWING, GATE and QUANTIZE with its steps (the defaults: SWING 0, GATE 64, DIV 1/16, a few on 1/8 or 1/8T).
+**Offsets, not absolute notes.** Every note is **C4 (60) + an offset in semitones**, 0 = rest. That is exactly what the SEQUENCER arp mode reads (note - 60 per step), so a pattern loaded into a part also works as the SEQ arp pattern on the held notes, on any engine. In the step sequencer the patterns play from C4 (OCT- or SCL TRANS move them); **not while the part's arp MODE is SEQUENCER (0.2.12):** then the steps are the arp's, played on the held keys only, and PLAY does not also play them from C4 (`seq.c seq_play`; the transport, the automation and STEP PREVIEW go on as before). Flags used: accent, slide, tie (holds the previous note; the SEQ arp treats a tie as a rest). A slot sets the part's LEN, DIV, SWING, GATE and QUANTIZE with its steps (the defaults: SWING 50, GATE 64, DIV 1/16, a few on 1/8 or 1/8T; the swung and gated chord patterns carry their own SWING and GATE: `PATTERNS[].swing / .gate`, 0 = default).
+
+**Chord and pad patterns (2026-11-03, session `factory-patterns`).** P01..P05, P10, P13, P15, P17 and P24 are written for chord and pad playing (dub techno, deep house) next to a drum machine: stabs on the off-beats with room left (at most half the steps, hits that are not on a beat so TIDE can move them, offsets within an octave so a CHORD TYPE key or the SEQ arp moves a whole chord), ties for the echo to carry, a 12-step loop for POLY and two long pads. They replaced MORODER OCT, ACID LINE, OFFBEAT, TECHNO RUMBL, TRANCE ROLL, FUNK 16TH, GALLOP, BOOGIE BASS, SUB DROP and TRANCE GATE; P29 PAD BREATH became TIED ROOTS. A slot that was never saved over follows the table at power-on (`patslot.c ps_refresh`: the default an earlier firmware wrote is replaced once, a saved slot is never touched).
 
 | Slot | Name | Idiom |
 |---|---|---|
-| P01 | MORODER OCT | Disco / Italo bass: 16ths jumping root and octave, accent on each beat, the last beat walks up to the 5th and b7. |
-| P02 | ACID LINE | 303-style acid line: 16ths with rests, octave jumps, accents and slides. |
-| P03 | OFFBEAT | House bass: the root on the off-beat 8ths only, the last one an octave up. |
-| P04 | TECHNO RUMBL | Techno rumble: three 16ths after every beat, the beat empty (the kick sits there). |
-| P05 | TRANCE ROLL | Trance / psy rolling bass: unbroken 16ths, the octave on the off-beat 8ths. |
+| P01 | DUB CHORD | Dub techno chord: stabs on the off-beat 8ths, two of them held on ties for the echo to carry, the last a minor 3rd up. |
+| P02 | DEEP SHUFFLE | Deep house shuffle: the off-beat 8th and the swung 16th after it, the last hit a whole tone down (SWING 60). |
+| P03 | DUB OFFBEAT | Dub offbeat stabs: the off-beat 8ths only, accents on the 2nd and 4th (SWING 54). |
+| P04 | HOUSE STAB | House stabs: off-beat 8ths with a double hit before the 2nd beat and the 4th, accents on 7 and 15 (SWING 56). |
+| P05 | DOT DELAY | Dotted delay figure: hits every three 16ths, root C then down a major 3rd, a 5th and a 4th (SWING 52). |
 | P06 | 8TH PULSE | Straight 8th-note pulse (new wave / driving rock bass), the last 8th on the 5th. |
-| P07 | ARP UPDOWN | Minor-triad arpeggio climbing two octaves and falling back, 16ths. |
-| P08 | BERLIN RUN | Berlin-school sequencer run: the root as a pedal on every other 16th, a figure climbing and falling between. |
-| P09 | DETROIT STAB | Detroit / house chord-stab rhythm: syncopated hits (gaps 3-3-4-3-3), root, minor 3rd, 5th. |
-| P10 | FUNK 16TH | Funk bass groove: the one, ghost 16ths, octave pops, a walk-down fill. |
-| P11 | DUB HALFTIME | Dub half-time: few long tied notes, the root, a 5th below after the space. |
+| P07 | GLASS LOOP | Minimal: a repeating cell where one upper note changes each bar. |
+| P08 | BERLIN RUN | Berlin school run: the root as a pedal on every other 16th, a figure climbing and falling between. |
+| P09 | DETROIT STAB | Detroit / house stab rhythm: syncopated chord hits (3-3-4-3-3 feel), root, minor 3rd, 5th. |
+| P10 | MINIMAL 12 | Minimal 12: a three-beat loop for polymeter against a 16-step part, a drop of a whole tone held on a tie. |
+| P11 | DUB HALFTIME | Dub half-time: few long notes, the root, a 5th below after the space. |
 | P12 | SKANK | Reggae skank: the off-beat of beats 2 and 4, a bubbling 5th in between. |
-| P13 | GALLOP | Galloping bass: an 8th and two 16ths on every beat, the last beat up a minor 3rd. |
-| P14 | PENTA RIFF | Minor-pentatonic riff: root, b3, 4, 5, b7 (and the b7 below), a slide into the 4th. |
-| P15 | BREAKBEAT | Breakbeat syncopation: the hits of a broken kick / snare pattern, accents on the backbeats. |
-| P16 | FOUR FLOOR | Four on the floor: one hit on every beat, a kick-style gate for any sound. |
+| P13 | DEEP 332 | House 3-3-2: the long-short-long comp, stabs on 1, a, & of 2, a of 3, & of 4 (SWING 54). |
+| P14 | PENTA RIFF | Minor pentatonic riff: root, b3, 4, 5, b7 (and the b7 below), a slide into the 4th. |
+| P15 | PAD BREATH | Pad breath: two long tied chords a bar, the second a major 3rd down, a step of air before each (GATE 100). |
+| P16 | DOTTED HOOK | Synthpop hook on dotted rhythms. |
+| P17 | HALF PAD | Half-time pad: one chord a bar held on ties, a step of air, then a whole tone down (two bars, GATE 100). |
+| P18 | TUMBAO | Latin: the anticipated bass of salsa and son. |
+| P19 | MOTORIK | Krautrock: driving 8ths between root and octave. |
+| P20 | WALK LINE | Jazz: a walking bass in quarters up and down a minor scale. |
+| P21 | 2-STEP SUB | UK garage: the skipping sub bass of 2-step. |
+| P22 | GHOST FUNK | Neo-soul: sparse low ghost notes with one accent. |
+| P23 | TRIPLET SWAY | Blues 12/8: a rolling triplet groove. |
+| P24 | DUB PROG | Dub progression: off-beat stabs over two bars, the root, then a major 3rd down, then a 4th (SWING 54). |
+| P25 | RAVE STABS | 90s rave: stabs on the one, the a of one and the and of two. |
+| P26 | EP COMP | Electric-piano comping: short chords on a 3-3-2 rhythm with ties. |
+| P27 | NEON HOOK | Synthwave lead hook. |
+| P28 | NIGHT CALL | Pop / minor: a call and an answer (32 steps). |
+| P29 | TIED ROOTS | Ambient: two long tied chord roots a bar, a root and its 5th. |
+| P30 | DX OSTINATO | FM marimba ostinato: the root alternating with the octave and a moving third. |
+| P31 | DX BELLS | FM bells and tines: sparse tones in 5ths and octaves with ties. |
+| P32 | SEVEN EIGHT | Prog: a riff in 7/8 (14 steps). |
 
 **Random pattern (not built).** A one-percentage roll of a pattern (the morph AMOUNT) is cheap in code but has no honest control: the PATTERNS page uses all four knobs (SLOT, LOAD, ERASE, SAVE) and the label law forbids a second meaning. Open decision: where ROLL lives (see Appendix C).
 
