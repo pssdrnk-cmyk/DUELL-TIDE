@@ -19,6 +19,7 @@
  * Built and run by DUELL/host_tests.sh (name: modules). */
 #define UI_TEST_NO_MAIN 1
 #define FELUCCA_FLASH 1
+#define UI_TEXT_CAPTURE 1                              /* (a card is read from the texts drawn in it: ui_test.c card_match; ui.col is a hash since 1.1) */
 #include "ui_test.c"
 #include "scenes.h"                                   /* (0.2.23: 0.2.22's M01 / M03 as test scenes) */
 
@@ -778,7 +779,7 @@ static void test_ui(void)
     trk[0].p[P_AMODE] = AM_SEQ;
     show("ARP 1/3");
     expect("  .. an arp in SEQUENCER: its cards not drawn (HOLD, which applies, moved left to K1), no step strip",
-           !off_module(cur_page()) && !strncmp(ui.col[0], "HOLD|", 5) && card_hid(1) && card_hid(2) && !foot_steps());
+           !off_module(cur_page()) && card_match(0, "HOLD") && card_hid(1) && card_hid(2) && !foot_steps());
     trk[0].p[P_AMODE] = 0;
     go_page(GR_EVENTS); ui.force = 1; frame();
     expect("  .. AUTOMATION: a SEQ notice page, no step strip", off_module(cur_page()) == MODS_SEQ && !foot_steps());
