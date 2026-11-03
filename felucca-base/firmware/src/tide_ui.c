@@ -409,7 +409,7 @@ static void tide_status(char *l)
 #define JP_X1 222
 static int32_t tide_x(uint32_t f) { return JP_X0 + (int32_t)f * (JP_X1 - JP_X0) / 127; }
 
-/* a fader's row on screen row y (its track's middle): its name (S, MID; BOTH: the part's number in its colour before it, the name on the
+/* a fader's row on screen row y (its track's middle): its name (S, MID; BOTH: the part's number in its colour before it, as its knob and steps, the name on the
  * first row of a pair only), the track (a 3 px rounded bar, as the cards' bars), the glide's way on it (from where it started to the end
  * it goes to, the tint), A and B at its ends, the knob (the part's colour). part: -1 the selected part's row; 0 / 1 that part's row in BOTH */
 static void tide_track(int32_t y, const char *name, uint32_t f, uint32_t lane, int32_t part)
@@ -417,7 +417,7 @@ static void tide_track(int32_t y, const char *name, uint32_t f, uint32_t lane, i
     uint16_t kc = part < 0 ? T_THEME : T_PTHEME((uint32_t)part);
     int32_t ty = UT_TY(S, y + AF_S_CAP_H / 2), x = tide_x(f);
     if (part >= 0)
-        cv_text_on(UT_A_K1_DOT_X, ty, &AF_S, part ? "2" : "1", vt(kc, T_BG), T_BG);
+        cv_text_on(UT_A_K1_DOT_X, ty, &AF_S, part ? "2" : "1", kc, T_BG);
     if (name[0])
         cv_text_on(part < 0 ? UT_A_K1_DOT_X : 20, ty, &AF_S, name, T_MID, T_BG);
     cv_text_on(JP_X0 - 12, ty, &AF_S, "A", T_DIM, T_BG);   /* (clear of the knob at A: its 7 px start at JP_X0 - 3) */
@@ -433,7 +433,7 @@ static void tide_track(int32_t y, const char *name, uint32_t f, uint32_t lane, i
         cv_rrect(x - 2, y - 4, 5, 9, 2, kc, T_BG);
 }
 
-/* a part's 16 steps around its playhead, standing on row y (bars up to hmax tall: 25 alone, 15 in BOTH's two rows), in the footer's
+/* a part's 16 steps around its playhead, standing on row y (bars up to hmax tall: 22 alone, 9 in BOTH's two rows), in the footer's
  * columns (bar_x) and its rounded bars: a hit a bar (a chord taller) in the part's colour, the accent where it varies, a lit outline
  * where it is moved or added, a dim outline where the variation drops it; a tie a short bar, an empty step a stub, the steps past
  * the pattern's end a line; the playing step underlined. As they play now (seq_play_step: with VARY BARS 4 + 8 the variation shows
@@ -475,7 +475,10 @@ static void tide_steps(const track_t *t, int32_t y, int32_t hmax, uint16_t c)
 }
 
 /* TIDE's body. One part (ALGORITHM on PART 1 / PART 2): its SOUND and SEQ faders, its steps. BOTH: each fader row a pair (part 1 over
- * part 2, their numbers and colours) and the steps in two rows, part 1 above. The glide's status is knob 1's line (tide_columns) */
+ * part 2, their numbers and colours) and the steps in two rows, part 1 above. The glide's status is knob 1's line (tide_columns).
+ * BOTH's rows (capitals, bars, playhead marks): faders 49 .. 96, the MODE line 99 .. 109, steps 111 .. 123 and 125 .. 137, the glide's
+ * bar 139 .. 141: nothing touches. The steps and the part numbers take the part's own colour (T_PTHEME, as the knobs and the MORPH
+ * page's curves), not vt's text fallback, which turned one part black in the light palettes */
 /* what each MODE does, one short line under the faders (owner, 2026-11-01) */
 static const char *const GL_MODE_WHAT[5] = {"ONE TRIP, THEN IT STOPS", "BACK AND FORTH, A AND B", "NEW TWISTS ON YOUR SOUND",
                                             "WALKS AWAY FROM YOUR SOUND", "TRAVELS THROUGH YOUR SOUNDS"};
@@ -487,16 +490,16 @@ static void graph_tide(void)
     cv_oy = -TB_Y0;
     if (tide_both()) {
         for (k = 0; k < NSHOWN; k++) {
-            tide_track(58 + 12 * (int32_t)k, k ? "" : "SOUND", morph_fader_of(k), GT_SOUND, (int32_t)k);
-            tide_track(84 + 12 * (int32_t)k, k ? "" : "SEQ", seqm_fader_of(k), GT_SEQ, (int32_t)k);
-            tide_steps(&trk[k], 126 + 13 * (int32_t)k, 10, vt(T_PTHEME(k), T_BG));
+            tide_track(54 + 12 * (int32_t)k, k ? "" : "SOUND", morph_fader_of(k), GT_SOUND, (int32_t)k);
+            tide_track(79 + 12 * (int32_t)k, k ? "" : "SEQ", seqm_fader_of(k), GT_SEQ, (int32_t)k);
+            tide_steps(&trk[k], 120 + 14 * (int32_t)k, 9, T_PTHEME(k));
         }
     } else {
         tide_track(62, "SOUND", morph_fader_of(pi), GT_SOUND, -1);
         tide_track(84, "SEQ", seqm_fader_of(pi), GT_SEQ, -1);
-        tide_steps(TSEL, 135, 22, vt(T_THEME, T_BG));
+        tide_steps(TSEL, 135, 22, T_THEME);
     }
-    cv_text_in(0, UT_TY(S, (tide_both() ? 107 : 102) + AF_S_CAP_H / 2), 240, &AF_S, GL_MODE_WHAT[gl.mode % 5u], T_MID, T_BG);   /* (between the faders and the steps' tallest bars) */
+    cv_text_in(0, UT_TY(S, (tide_both() ? 104 : 102) + AF_S_CAP_H / 2), 240, &AF_S, GL_MODE_WHAT[gl.mode % 5u], T_MID, T_BG);   /* (between the faders and the steps' tallest bars) */
     /* Keep GLIDE's progress bar as well as its status and moving fader knobs.
      * This strip sits below both parts' playheads and above the card row. */
     if (glide_running() && !gl.armed) {
