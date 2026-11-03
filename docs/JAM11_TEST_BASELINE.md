@@ -10,6 +10,14 @@ Current maintenance priorities: [roadmap](ROADMAP.md). Totals below describe the
 
 FAIL: perform ui step3 engine dx7import fm6 uf pan modules uitest editor editorjson panic benchsim ownerimport pages scope2 editb velo emu converttwin jam_dev
 
+## T0 progress: 3 November 2026, tools groups (branch `t0-tools`)
+
+Full `sh jam/check.sh` at `c90f679` (before t0-sound merged): **87 passed, 26 failed, 23 skipped** (before: 80 / 34 / 22). No group failed that did not fail before.
+
+Now PASS: `ownerimport` (tool: `import_owner_edits.py` drops 1.1's preselected matrix pairs at AMOUNT 0, puts moved depth cards back, ignores FM6's AMP ENV knobs and, with TIDE, keeps the recipe's End B because a factory sound's B is rolled at load), `converttwin` (the multis comparison with job J retired; the ledger is `CONVERT_TWIN_LEDGER`), `benchsim` (row INS BIT CRUSH fits the column; model signatures current, its averages still need the macOS counter), `modules`, `panic` (test: scenarios start from the same lines and random streams; not a STOP ALL fault), `emu` (test: the first-start splash waits for OCT+; the first start's M04 is left sounding by a key until all-notes-off, so the settings write waits), `editor` (INFO tail, 32 menu items, ARP / SEQ three-way, KEY VELOCITY default). `uf` compiles and every check passes, SKIP at `fork()`.
+
+Still FAIL: `editorjson` (16 web-editor expectations from 1.0) and `jam_dev` (15 tests: `jam/test_jam_dev.py` uses the web editor's MockUnit, which builds 1.0 objects: music header, pre-PT_VER 4 patch records). Same root: the mock and the expectations need a 1.1 rewrite, an owner / upstream call. No firmware change, `off.sha256` untouched.
+
 ## Full run: 2 November 2026, `4443c13` (T0 branches merged, morph fixed)
 
 `sh jam/check.sh`, 600 s per group, in a `git archive` snapshot (logs `work/check-full-4443c13/`), then re-run in the checkout for the groups the snapshot or the old `cc` shim got wrong (`work/check-full-4443c13-rerun/`). **80 passed, 34 failed, 22 skipped** (before: 65 / 58 / 11). `check_off.sh` PASS (`ade430c7…`).
