@@ -18,7 +18,10 @@ import glob
 import os
 import select
 import sys
-import termios
+try:
+    import termios                 # (the serial runner only; --from FILE needs none of it: Windows has no termios)
+except ImportError:
+    termios = None
 import time
 
 

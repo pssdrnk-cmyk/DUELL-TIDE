@@ -1070,6 +1070,8 @@ int main(int argc, char **argv)
     /* 6b the model (BENCH_MODEL_UPDATE: written after the B1 rows, below) */
     if (!update) {
         uint32_t off = 0;
+        if (!bench.model_ok)
+            printf("bench_sim: the list: %u rows, signature %08X; bench_model.h: %u rows, %08X\n", (unsigned)BENCH_NSCN, bench_sig_n(BENCH_NSCN), (unsigned)BENCH_MODEL_N, BENCH_MODEL_SIG);
         bad += check("the model header is current (rows, names)", bench.model_ok);
         if (bench.model_ok && have_counter)
             for (i = 0; i < BENCH_NAUTO; i++) {

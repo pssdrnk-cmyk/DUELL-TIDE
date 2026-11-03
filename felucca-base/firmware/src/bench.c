@@ -107,7 +107,7 @@ static const bench_scn_t BENCH_SCN[] BENCH_RO = {
     VX("WAVE 1", E_WAVE, 1, "voice/WAVE"), VX("WAVE 4", E_WAVE, 4, 0),
     /* the part stages, on one ANALOG voice */
     PT("INS SOFT CLIP", "insert/SOFT_CLIP", .ins = 1), PT("INS HARD CLIP", "insert/HARD_CLIP", .ins = 2), PT("INS FOLD", "insert/FOLD", .ins = 3),
-    PT("INS FUZZ", "insert/FUZZ", .ins = 4), PT("INS BIT CRUSHER", "insert/BIT_CRUSHER", .ins = 5), PT("INS PHASER", "insert/PHASER", .ins = 6),
+    PT("INS FUZZ", "insert/FUZZ", .ins = 4), PT("INS BIT CRUSH", "insert/BIT_CRUSHER", .ins = 5), PT("INS PHASER", "insert/PHASER", .ins = 6),
     PT("INS FLANGER", "insert/FLANGER", .ins = 7), PT("INS CHORUS", "insert/CHORUS", .ins = 8), PT("INS TAPE", "insert/TAPE", .ins = 9),
     PT("INS VINYL", "insert/VINYL", .ins = 10), PT("SAT 64", "part/SAT", .sat = 64),
     PT("EQ 1 BAND", 0, .eq = 1), PT("EQ 2 BANDS", 0, .eq = 2), PT("EQ 3 BANDS", "part/EQ", .eq = 3), PT("DUCK PUMP", "part/DUCK", .duck = 1),
