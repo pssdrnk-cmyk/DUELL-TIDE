@@ -148,6 +148,8 @@ static void sense_on(void)
     sense_enable(0);
     sense_at_enable(0);
     sense_reset();
+    sense_vel_type_set(SC_TYPE_NORMAL);                   /* (DUELL 1.1: the curve types: a reset leaves none chosen) */
+    sense_at_type_set(SC_TYPE_NORMAL);
     sense_enable(1);
     sense_at_enable(1);                                   /* (DUELL 1.0: AFTERTOUCH is its own line; these scenes use both) */
     sense_curve_set(100);
@@ -212,7 +214,7 @@ static void hooks(void)
             printf("\n");
         }
         vh_check("a chord key: every chord note has the key's velocity", ok && vel > 90u);
-        vh_check("  .. and so does every MIDI out note-on", mo_w - mo_r == n && pk);
+        vh_check("  .. and so does every MIDI out note-on (DUELL 1.1: the chord key sends three notes, two voices gated at that block)", mo_w - mo_r >= n && pk);
     }
     keys_now(0);
     vh_blk(60);
@@ -291,8 +293,8 @@ static void hooks(void)
         feed(k, 500u - (uint32_t)(70.0 * (i + 1) / 30.0), 1, 2200);
     }
     keys_now(1u << k);
-    vh_check("a squeeze: the part's aftertouch (t->at, the matrix source) goes up (> 100), the other part's does not",
-             trk[0].at > 100u && trk[1].at == 0u);
+    vh_check("a squeeze: the part's aftertouch (t->at, the matrix source) goes up (DUELL 1.1, NORMAL type: > 40), the other part's does not",
+             trk[0].at > 40u && trk[1].at == 0u);
     feed(k, 1023, 0, 2200);
     feed(k, 1023, 0, 2200);
     keys_now(0);
@@ -313,12 +315,17 @@ static void hooks(void)
     feed(k, 200, 0, 2200);
     feed(k, 500, 1, 2200);
     keys_now(1u << k);
+    for (i = 0; i < 12u; i++) {                           /* (DUELL 1.1: a light hold first: the pressure is read from the rest the key settles at) */
+        feed(k, 220, 0, 2200);
+        feed(k, 500, 1, 2200);
+    }
+    keys_now(1u << k);
     for (i = 0; i < 30u; i++) {
         feed(k, 220, 0, 2200);
         feed(k, 500u - (uint32_t)(70.0 * (i + 1) / 30.0), 1, 2200);
     }
     keys_now(1u << k);
-    vh_check("LAYER: both parts get the pressure", trk[0].at > 100u && trk[1].at > 100u);
+    vh_check("LAYER: both parts get the pressure (DUELL 1.1: 54 for this squeeze, > 40)", trk[0].at > 40u && trk[1].at > 40u && trk[0].at == trk[1].at);
     keys_now(0);
     sense_enable(0);
     sense_at_enable(0);
@@ -327,31 +334,31 @@ static void hooks(void)
 /* MENU > CONTROL > KEY VELOCITY (menu_items.c MI_KEYVEL): OFF / ON on sense_enable, default OFF (the bit clear; set = ON since 0.2.31), saved in bit 6 of the byte [15][10] */
 static void menu_line(void)
 {
-    uint8_t keep = ui_idle;
-    vh_check("KEY VELOCITY: the row is on CONTROL, named, two values OFF / ON", MI_TAB[MI_KEYVEL] == MTAB_CONTROL && str_eq(MI_NAME[MI_KEYVEL], "KEY VELOCITY") && menu_n(MI_KEYVEL) == 2u &&
-             str_eq(menu_vname(MI_KEYVEL, 0), "OFF") && str_eq(menu_vname(MI_KEYVEL, 1), "ON"));
+    uint8_t keep = ui_idle, keep_type = ui_sense_type;   /* (1.1: the menu also sets the curve types: put back at the end) */
+    vh_check("KEY VELOCITY: the row is on CONTROL, named, two values OFF / ON", MI_TAB[MI_KEYVEL] == MTAB_CONTROL && str_eq(MI_NAME[MI_KEYVEL], "KEY VELOCITY") && menu_n(MI_KEYVEL) == 6u &&
+             str_eq(menu_vname(MI_KEYVEL, 0), "OFF") && str_eq(menu_vname(MI_KEYVEL, 3), "NORMAL"));   /* (DUELL 1.1: OFF and five types; ON is the first type) */
     ui_idle &= (uint8_t)~KEYVEL_ON_BIT;
     sense_enable(0);
     vh_check("KEY VELOCITY: a clear bit (a new unit, an older record) = OFF, the default", menu_get(MI_KEYVEL) == 0u && sense_enabled() == 0u);
     menu_put(MI_KEYVEL, 1);
     vh_check("KEY VELOCITY ON: sense_enable(1), the bit set", menu_get(MI_KEYVEL) == 1u && sense_enabled() == 1u && (ui_idle & KEYVEL_ON_BIT));
-    vh_check("KEY VELOCITY: a step up turns it ON, a step down OFF", menu_step(MI_KEYVEL, 1) == 1u && menu_step(MI_KEYVEL, -1) == 0u);
+    vh_check("KEY VELOCITY: a step up turns it ON, a step down OFF", menu_step(MI_KEYVEL, -1) == 0u && menu_step(MI_KEYVEL, 1) == 2u);
     vh_check("KEY VELOCITY ON: the other bits of the byte are kept", (ui_idle & (uint8_t)~KEYVEL_ON_BIT) == (keep & (uint8_t)~KEYVEL_ON_BIT));
     menu_put(MI_KEYVEL, 0);
     vh_check("KEY VELOCITY OFF: sense_enable(0), the bit clear", menu_get(MI_KEYVEL) == 0u && sense_enabled() == 0u && !(ui_idle & KEYVEL_ON_BIT));
     ui_idle = keep;
     sense_enable(0);
     /* DUELL 1.0 (owner): AFTERTOUCH on its own line, the same switch, bit 7 of the same byte (set = OFF), default ON since 0.2.32 */
-    vh_check("AFTERTOUCH: the row is on CONTROL, named in whole words, two values OFF / ON", MI_TAB[MI_AFTERT] == MTAB_CONTROL && str_eq(MI_NAME[MI_AFTERT], "AFTERTOUCH") && menu_n(MI_AFTERT) == 2u &&
-             str_eq(menu_vname(MI_AFTERT, 0), "OFF") && str_eq(menu_vname(MI_AFTERT, 1), "ON"));
+    vh_check("AFTERTOUCH: the row is on CONTROL, named in whole words, two values OFF / ON", MI_TAB[MI_AFTERT] == MTAB_CONTROL && str_eq(MI_NAME[MI_AFTERT], "AFTERTOUCH") && menu_n(MI_AFTERT) == 6u &&
+             str_eq(menu_vname(MI_AFTERT, 0), "OFF") && str_eq(menu_vname(MI_AFTERT, 3), "NORMAL"));
     ui_idle &= (uint8_t)~AFTERT_OFF_BIT;
     sense_at_enable(menu_get(MI_AFTERT));
-    vh_check("AFTERTOUCH: a clear bit (a new unit, an older record) = ON, the default (0.2.32); KEY VELOCITY stays OFF", menu_get(MI_AFTERT) == 1u && sense_at_enabled() == 1u && menu_get(MI_KEYVEL) == 0u);
+    vh_check("AFTERTOUCH: a clear bit (a new unit, an older record) = ON, the default (0.2.32); KEY VELOCITY stays OFF", menu_get(MI_AFTERT) != 0u && sense_at_enabled() == 1u && menu_get(MI_KEYVEL) == 0u);   /* (1.1: the value is 1 + the type) */
     menu_put(MI_AFTERT, 0);
     vh_check("AFTERTOUCH OFF: the bit set", menu_get(MI_AFTERT) == 0u && sense_at_enabled() == 0u && (ui_idle & AFTERT_OFF_BIT));
     menu_put(MI_AFTERT, 1);
     vh_check("AFTERTOUCH ON: sense_at_enable(1), the bit set, KEY VELOCITY untouched", menu_get(MI_AFTERT) == 1u && sense_at_enabled() == 1u && !(ui_idle & AFTERT_OFF_BIT) && menu_get(MI_KEYVEL) == 0u && sense_enabled() == 0u);
-    vh_check("AFTERTOUCH: a step up turns it ON, a step down OFF", menu_step(MI_AFTERT, 1) == 1u && menu_step(MI_AFTERT, -1) == 0u);
+    vh_check("AFTERTOUCH: a step up turns it ON, a step down OFF", menu_step(MI_AFTERT, -1) == 0u && menu_step(MI_AFTERT, 1) == 2u);
     vh_check("AFTERTOUCH ON: the other bits of the byte are kept", (ui_idle & (uint8_t)~AFTERT_OFF_BIT) == (keep & (uint8_t)~AFTERT_OFF_BIT));
     menu_put(MI_AFTERT, 0);
     vh_check("AFTERTOUCH OFF: the bit clear", menu_get(MI_AFTERT) == 0u && sense_at_enabled() == 0u && (ui_idle & AFTERT_OFF_BIT));
@@ -363,6 +370,7 @@ static void menu_line(void)
     menu_put(MI_AFTERT, 0);
     vh_check("  both OFF: the sensing stops", !sense_running());
     ui_idle = keep;
+    ui_sense_type = keep_type;
     sense_enable(0);
     sense_at_enable(0);
 }
@@ -373,6 +381,8 @@ static void lines_alone(void)
     sense_enable(0);
     sense_at_enable(0);
     sense_reset();
+    sense_vel_type_set(SC_TYPE_NORMAL);
+    sense_at_type_set(SC_TYPE_NORMAL);
     sense_enable(1);                                      /* KEY VELOCITY alone */
     sense_curve_set(100);
     T = 1000000u;
@@ -381,6 +391,11 @@ static void lines_alone(void)
     feed(k, 1023, 0, 2200);
     feed(k, 200, 0, 2200);
     feed(k, 500, 1, 2200);
+    keys_now(1u << k);
+    for (i = 0; i < 12u; i++) {                           /* (DUELL 1.1: a light hold first: the pressure is read from the rest the key settles at) */
+        feed(k, 220, 0, 2200);
+        feed(k, 500, 1, 2200);
+    }
     keys_now(1u << k);
     for (i = 0; i < 30u; i++) {
         feed(k, 220, 0, 2200);
@@ -391,14 +406,23 @@ static void lines_alone(void)
     keys_now(0);
     sense_enable(0);
     sense_reset();
+    sense_vel_type_set(SC_TYPE_NORMAL);
+    sense_at_type_set(SC_TYPE_NORMAL);
     sense_at_enable(1);                                   /* AFTERTOUCH alone */
     sense_curve_set(100);
     T = 1000000u;
     vh_setup(DM_STEREO);
+    sense_enable(0);                                      /* (the setup runs the UI: the lines as the test wants them) */
+    sense_at_enable(1);
     prime(k);
     feed(k, 1023, 0, 2200);
     feed(k, 200, 0, 2200);
     feed(k, 500, 1, 2200);
+    keys_now(1u << k);
+    for (i = 0; i < 12u; i++) {                           /* (DUELL 1.1: a light hold first: the pressure is read from the rest the key settles at) */
+        feed(k, 220, 0, 2200);
+        feed(k, 500, 1, 2200);
+    }
     keys_now(1u << k);
     for (i = 0; i < 30u; i++) {
         feed(k, 220, 0, 2200);
@@ -407,7 +431,7 @@ static void lines_alone(void)
         if (trk[0].at > vmax)
             vmax = trk[0].at;
     }
-    vh_check("AFTERTOUCH alone: a squeeze sends the pressure to the part (> 100)", vmax > 100u);
+    vh_check("AFTERTOUCH alone: a squeeze sends the pressure to the part (DUELL 1.1, NORMAL type: 54 for this squeeze; > 40)", vmax > 40u);
     vh_check("AFTERTOUCH alone: the velocity is the fixed 100 and no key waits", sense_vel(k) == 100u && sense_gate(1u << k, 0) == (1u << k));
     keys_now(0);
     sense_at_enable(0);
