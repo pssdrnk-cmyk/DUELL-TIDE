@@ -2315,7 +2315,7 @@ static void graph_slots(void)
                 uint32_t m = multi_vmode(s, t);
                 w[t] = (m & 3u) == 2u ? "SEQ" : (m & 3u) == 1u ? "ARP" : "OFF";
             }
-        list_row1(list_top(e, pk), e == pk, e == pk, b, !used ? "--" : nmp[0] ? nmp : "USED", used ? T_TEXT : T_DIM, w[0], T_PTHEME(0), w[1], T_PTHEME(1), used && project_cur_slot() == s);
+        list_row1(list_top(e, pk), e == pk, e == pk, b, multi_bad(s) ? "DAMAGED" : !used ? "--" : nmp[0] ? nmp : "USED", used ? T_TEXT : T_DIM, w[0], T_PTHEME(0), w[1], T_PTHEME(1), used && project_cur_slot() == s);
     }
     if (gsl_key != (cur | multi_gen() << 8)) {       /* the highlighted record changed: decode it once */
         gsl_key = cur | multi_gen() << 8;

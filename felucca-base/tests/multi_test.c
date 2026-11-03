@@ -465,6 +465,25 @@ int main(void)
         ck("  the preview of M11 is its record: decoded, both parts' sounds named, no engine out of range", pv.state == 1u && pv.p[0].eng < NENGINES && pv.p[1].eng < NENGINES &&
            gsl_key == (10u | multi_gen() << 8));
         ck("  the music is still the one before the preview decoded (the scratch only)", trk[0].eng_req == eng0);
+        {                                            /* audit C01: a record that is there but does not load (here a version 7 one over the factory M11) is DAMAGED, not the factory multi */
+            uint8_t junk[40];
+            uint32_t cut, len;
+            mu_pv_t dp;
+            memset(junk, 0, sizeof junk);
+            junk[0] = 7;
+            mu_obj_read(10u / 2u);
+            len = mu_put_rec(10u & 1u, 0, &cut, junk, sizeof junk);
+            ck("DAMAGED slot: a stored record this firmware does not load is written over the factory M11", mu_obj_write(10u / 2u, len) == 0);
+            mu_note(10u / 2u);
+            multi_preview(10u, &dp);
+            ck("  M11 is not used, shows no factory name, is marked damaged and previews as DAMAGED (state 2)", !project_used(10) && multi_bad(10) && !mu_names[10][0] && dp.state == 2u);
+            ck("  its partner M12 is still the factory multi", project_used(11) && !multi_bad(11) && project_factory(11));
+            mu_obj_read(10u / 2u);                   /* (empty again: the factory M11) */
+            len = mu_put_rec(10u & 1u, 0, &cut, 0, 0);
+            mu_obj_write(10u / 2u, len);
+            mu_note(10u / 2u);
+            ck("  emptied again: the factory M11 shows", project_used(10) && !multi_bad(10) && project_factory(10));
+        }
         {                                            /* the PATTERNS preview: a slot saved over previews its own contents; empty = no note; the tracks stay */
             pat_pv_t pp;
             track_t keep = trk[0];
@@ -1268,7 +1287,11 @@ int main(void)
             mu_note(o);
             trk[0].p[P_LEVEL] = 55;
             /* (0.2.23: every slot has a factory multi, so the slot shows that one; a slot with none would list "--" and load nothing) */
+#if DUELL_TIDE                                       /* (audit C01: a record that is there and does not load is DAMAGED, the factory multi is not shown for it) */
+            ok2 &= !project_used(10u) && multi_bad(10u) && !project_info(10u, nm);
+#else
             ok2 &= project_used(10u) && project_factory(10u) && project_info(10u, nm) && !strcmp(nm, "EERIE SIGNAL");
+#endif
             project_load(10u);                       /* (the old record is there: DAMAGED, nothing loaded, no crash) */
             ok2 &= trk[0].p[P_LEVEL] == 55;
             trk[0].p[P_LEVEL] = 77;
@@ -1288,8 +1311,13 @@ int main(void)
         }
         mu_obj_read(o);
         mu_note(o);
+#if DUELL_TIDE
+        ok2 &= !project_used(0u) && multi_bad(0u) && !project_info(0u, nm);
+        ck("  a factory slot (M01) holding one is DAMAGED too (audit C01: not its factory multi), a LOAD changes nothing", ok2 && (project_load(0u), 1));
+#else
         ok2 &= project_used(0u) && project_factory(0u) && project_info(0u, nm) && !strcmp(nm, "REESE SWAMP");
         ck("  a factory slot (M01) holding one shows its factory multi (REESE SWAMP) and loads it", ok2 && (project_load(0u), 1));
+#endif
         ok2 = project_save_as(10u, "NEW ONE") == 0 && project_used(10u) && !project_factory(10u) && project_info(10u, nm) && !strcmp(nm, "NEW ONE");
         ck("  a SAVE over the old record replaces it, the multi loads again", ok2);
         project_erase(10u);

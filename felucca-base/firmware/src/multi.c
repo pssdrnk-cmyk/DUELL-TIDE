@@ -374,6 +374,7 @@ static int mu_unpack(project_t *q, uint8_t amt[NSHOWN], uint8_t set[6], const ui
 
 /* the RAM view of object o (in mu_buf): which of its two multis load, their names */
 #if DUELL_TIDE
+static uint16_t mu_bad;                           /* bit k: M(k + 1) holds a record this firmware does not load (not empty: LOAD says DAMAGED, the row and the preview too; no factory multi shows for it) */
 static uint32_t mu_gen;                           /* counts the records' changes (mu_note): the MULTIS preview decodes again when it moves */
 static uint8_t mu_vp[MU_SLOTS][NSHOWN][4];        /* per slot and part, from the decode mu_note does anyway: engine, preset, MODE (0 OFF, 1 ARP, 2 SEQ), 1 = a note in the pattern: the list rows' voice names */
 static void mu_vp_set(uint8_t *v, const proj_trk_t *d)
@@ -405,7 +406,16 @@ static void mu_note(uint32_t o)
         mu_used &= (uint16_t)~(1u << k);
         mu_fact &= (uint16_t)~(1u << k);
         int ok = len && mu_unpack(&proj_scratch, amt, set, r, len);
-        if (!ok && df_of(k) < DF_N) {             /* nothing stored, or a record this firmware does not load (one of before 0.2.14): the factory multi (ROM) */
+#if DUELL_TIDE
+        mu_bad &= (uint16_t)~(1u << k);
+        if (!ok && len)                           /* a record that is there but not loadable: DAMAGED, as LOAD says (audit C01), never the factory multi */
+            mu_bad |= (uint16_t)(1u << k);
+#endif
+#if DUELL_TIDE
+        if (!ok && !len && df_of(k) < DF_N) {
+#else
+        if (!ok && df_of(k) < DF_N) {
+#endif             /* nothing stored, or a record this firmware does not load (one of before 0.2.14): the factory multi (ROM) */
             r = DM_REC + DM_AT[df_of(k)];
             len = DM_LEN[df_of(k)];
             mu_fact |= (uint16_t)(1u << k);
@@ -453,6 +463,7 @@ static int project_used(uint32_t slot) { return (mu_used >> (slot % MU_SLOTS)) &
  * (0 past the end, 1 empty, 2 tie, 3 note, 4 chord; |8 accent). Nothing live is touched: not the sounds, the patterns, the transport nor the morph.
  * state: 0 empty slot, 1 decoded, 2 damaged. The caller calls it when the slot or mu_gen changes, never every frame */
 static uint32_t multi_gen(void) { return mu_gen; }
+static int multi_bad(uint32_t slot) { return (mu_bad >> (slot % MU_SLOTS)) & 1u; }
 static void multi_preview(uint32_t slot, mu_pv_t *o)
 {
     uint32_t k = slot % MU_SLOTS, len, t, i;
@@ -460,6 +471,10 @@ static void multi_preview(uint32_t slot, mu_pv_t *o)
     const uint8_t *r;
     int ok;
     memset(o, 0, sizeof *o);
+    if ((mu_bad >> k) & 1u) {
+        o->state = 2;
+        return;
+    }
     if (!project_used(k))
         return;
     o->state = 2;

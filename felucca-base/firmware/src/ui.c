@@ -42,6 +42,7 @@ typedef struct {
 } mu_pv_t;
 static void multi_preview(uint32_t slot, mu_pv_t *o);   /* .. U3: the MULTIS page's preview of one record (multi.c) */
 static uint32_t multi_gen(void);
+static int multi_bad(uint32_t slot);               /* .. a record is there that does not load (DAMAGED) */
 static const char *multi_vname(uint32_t slot, uint32_t part);   /* .. a part's sound name in the slot (kept by mu_note: no decode); its MODE: 0 OFF, 1 ARP, 2 SEQ, |4 the pattern holds a note */
 static uint32_t multi_vmode(uint32_t slot, uint32_t part);
 typedef struct {                                  /* SAVE > PATTERNS' preview of one slot: state 0 none, 1 decoded, 2 damaged; len the LEN; has: a note in it; bar: the first 16 steps */
