@@ -1,6 +1,7 @@
 # Runs every host test group on Linux. On the owner's Windows machine 25 groups SKIP (they need fork(), or termios
 # and select() on pipes: jam/wincompat); here they run. Nothing is built for the device and nothing is published.
-# The log of each run is kept as an artifact (host-tests-log).
+# The groups are dealt round-robin to 8 machines that run at once (one machine took over 30 minutes); each keeps its log
+# as an artifact (host-tests-log-<shard>).
 name: Host tests
 
 on:
@@ -18,7 +19,11 @@ concurrency:
 jobs:
   host-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 150
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -40,15 +45,19 @@ jobs:
       - name: Generated headers (the device build's, without its toolchain)
         run: cd felucca-base && python3 tools/build.py --gen-only
 
-      - name: Host tests (all groups)
+      - name: "Host tests (shard ${{ matrix.shard }} of 8)"
         shell: bash               # (an explicit bash runs with pipefail: tee keeps the runner's exit code)
-        run: sh host_tests.sh 2>&1 | tee host-tests.out
+        run: |
+          # host_tests.sh's own default list (emu needs ~/emsdk: not here), every 8th group from this shard's place
+          groups=$(sed -n 's/^want="\${\*:-\([^"]*\)}"$/\1/p' host_tests.sh | tr ' ' '\n' | grep -v '^\$' | awk -v s=${{ matrix.shard }} 'NF && (NR - 1) % 8 == s' | tr '\n' ' ')
+          echo "groups: $groups"
+          sh host_tests.sh $groups 2>&1 | tee host-tests.out
 
       - name: Keep the log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: host-tests-log
+          name: host-tests-log-${{ matrix.shard }}
           path: |
             host-tests.out
             felucca-base/build/host/*.log
