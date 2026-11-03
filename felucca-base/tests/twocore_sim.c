@@ -753,6 +753,10 @@ int main(int argc, char **argv)
                              s, FNAME[f], ow, c->own, hs, hr2, hm, m->n, vb, m->nv, m->badclk);
                     expect(what, ow == c->own && hs == m->n && hr2 == m->n && hm == m->n && vb == m->nv && m->badclk == 0 && m->nv <= c->vlate && m->n <= m->posted);
                 }
+                if (c->pauses > 0 && (f == F_LATE_RUN || f == F_NOANS)) {   /* (the own split names the pause: with DUELL 1.1 item 142 no block has 'deadline already past' in these runs, so the pause is the reason that must show) */
+                    snprintf(what, sizeof what, "scene %u %s: blocks with no job because the jobs are paused are counted as such (%u, pauses %u)", s, FNAME[f], m->own[TCM_OWN_PAUSE], c->pauses);
+                    expect(what, m->own[TCM_OWN_PAUSE] > 0);
+                }
                 snprintf(what, sizeof what, "scene %u %s: no deadline was later than core 0's own latest moment to play part 2 (%u posted jobs over it)", s, FNAME[f], r.cap_viol);
                 expect(what, r.cap_viol == 0);
                 if (f == F_NONE) {

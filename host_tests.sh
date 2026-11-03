@@ -365,7 +365,7 @@ for t in $want; do case $t in
              MUTFLAGS=-DTC_MEAS=1
              twocore_mut "BENCHT2: core 1 stamps the end of a job before it ran it (twocore.h t_end)" firmware/src/twocore.h 's/te = TC_TICKS();/te = ts;/';
              twocore_mut "BENCHT2: the finish margin has the wrong sign (twocore_run.c tcm_collect)" firmware/src/twocore_run.c 's/mg = (int32_t)(tcr.dl - te);/mg = (int32_t)(te - tcr.dl);/';
-             twocore_mut "BENCHT2: a deadline already past is counted as paused (twocore_run.c own_why)" firmware/src/twocore_run.c 's/tcr.own_why = TCM_OWN_DL;/tcr.own_why = TCM_OWN_PAUSE;/';
+             twocore_mut "BENCHT2: a paused block is counted as a deadline already past (twocore_run.c own_why)" firmware/src/twocore_run.c 's/: TCM_OWN_PAUSE;/: TCM_OWN_DL;/';
              twocore_mut "BENCHT2: the block of a very late job is not counted (twocore_run.c vblk)" firmware/src/twocore_run.c 's/tcm.vblk\[tcj.blk % TCR_BLOCKS\]++;//';
              twocore_mut "BENCHT2: the clear request is ignored (twocore_run.c tcm.clr)" firmware/src/twocore_run.c 's/if (tcm.clr)/if (0)/';
              twocore_mut "BENCHT3: the deadline's floor removed (twocore_run.c tcr_deadline)" firmware/src/twocore_run.c 's/if (TCR_FLOOR_NOW) {/if (0) {/';
