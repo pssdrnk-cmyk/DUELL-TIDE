@@ -6,9 +6,10 @@
  *   - dips more than DIP_DB under the quieter end              (level dip)
  *   - peaks PEAK_OVER dB over the louder end                    (peak)
  *   - is brighter than CENT_X times the brighter end           (harsh midpoint)
+ * The renders run the main loop between blocks (pump: WAVE table builds, the morph plan): without it a WAVE glide never builds its new table and reads silent.
  *   build: cc -O2 -w -Ibuild/gen -Ifirmware/src -Itests -DFELUCCA_VERSION=\"x\" -o build/host/jrny_pair_audit tests/jrny_pair_audit.c -lm
  *   run:   build/host/jrny_pair_audit [family 0..3 (default 0 HARMONIC)]   prints every failing pair and the totals; JP_ALL=1 every pair
- *   list:  JP_EMIT=1 build/host/jrny_pair_audit 4 2>pairs.txt (family 4 = all): the PAIR lines, sorted, are firmware/src/jrny_pairs.h (word = engine << 12 | a << 6 | b) */
+ *   list:  JP_EMIT=1 build/host/jrny_pair_audit 4 2>pairs.txt (family 4 = all): the failing pairs as PAIR lines on stderr */
 #define main hostsim_main
 #include "hostsim.c"
 #undef main
@@ -40,10 +41,21 @@ static void setup(void *v)
     mph[0].fader = (uint8_t)j->f;
 }
 #define NJ 12u
+/* the main loop between the audio blocks (main.c): a WAVE table build waits on it, and the morph plans its transition on it */
+static void pump(void)
+{
+    static uint32_t n;
+    fm1_ms += 3u;
+    while (wave_service())
+        ;
+    if (!(++n & 7u))
+        morph_xpoll();
+}
 static void run(job_t *jb, lz_t *L, uint32_t n)
 {
     uint32_t i, j;
     lz_hold = 3.0;
+    lz_pre_block = pump;
     for (i = 0; i < n; i += NJ) {
         lz_job_t t[NJ];
         for (j = i; j < n && j < i + NJ; j++)
