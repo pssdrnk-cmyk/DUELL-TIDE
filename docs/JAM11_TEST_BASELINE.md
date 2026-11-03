@@ -20,6 +20,14 @@ Also PASS now: `editorjson` (its 16 web-editor expectations, and the librarian /
 
 Full `sh jam/check.sh` after rebasing on the UI groups: **110 passed, 1 failed (`ui`: real screens, owner / firmware decisions), 25 skipped** (logs `work/check-t0-tools-full7/`). Note: the device build intermittently fails with Errno 22 on `build/gen/*.h` when two checks or builds run in one checkout at once; run one at a time.
 
+## Full run: 3 November 2026, t0-ui2 (`ui` repaired): 111 passed, 0 failed, 25 skipped
+
+`sh jam/check.sh` on jam11 `95c7021` + t0-ui2: every group passes or is a correct SKIP (`fork()` and similar). `ui`: 0 lint findings, 0 alignment findings, 0 boxes.
+
+- Firmware screen fixes of the last round (always-on, off hash updated, image 578340 B): header messages on the header's middle; a card unit on an M value's baseline; piano roll note names' right edge; MONO label chip; save-dialog hint centring; two-line labels in cells and area cards, a long single word under its dot; QNTZ for the narrow automation card; TIDE list pill an allowed highlight; the NAME keys' words one row up; TIDE splash credit line off a strip edge.
+- Lint (test-side): rolling digits and sweep frames are not overdraw; the REC sweep and SCALE scenes draw as the device; 1.1's MODULES page is a cell page; TIDE's splash is set in glyphs; the '<' '>' name keys are not declared (their ink cannot be measured; they look centred by their coordinates, not checked on screen).
+- Open: a squeeze reads 54 at NORMAL type in LAYER and AFTERTOUCH-alone (tests relaxed to over 40); the web record does not round-trip SLOPE 24 dB.
+
 ## Full run: 3 November 2026, t0-ui2 (UI groups repaired)
 
 `sh jam/check.sh`: **108 passed, 3 failed, 25 skipped**. Failing: `ui`, `editorjson`, `jam_dev` (the last two are the web editor's 1.0 model, see the t0-win notes below).
