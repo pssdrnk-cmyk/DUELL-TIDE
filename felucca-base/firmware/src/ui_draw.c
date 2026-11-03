@@ -2842,7 +2842,11 @@ static void about_keys(int32_t y)                      /* SCROLL and HEADINGS on
 /* hint_y: 0 the splash; else the screen row of MENU > ABOUT's key hints (about_keys), drawn on top of the last strip */
 static void splash_frame(uint32_t st, int32_t hint_y)
 {
+#if DUELL_TIDE
+    static const int32_t EDGE[4] = {0, 108, 188, 240};   /* the strips: no text row lies across an edge (TIDE's credit line is on rows 192 .. 206) */
+#else
     static const int32_t EDGE[4] = {0, 108, 200, 240};   /* the strips: no text row lies across an edge */
+#endif
     const ui_pal_t *pl = &UI_PALETTES[ux.pal % NPALETTES];
     uint16_t col[SPL_N];
     uint32_t band, x, j, m = st * 0x00800000u;          /* the motion: 2^32 a turn */
