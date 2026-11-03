@@ -58,12 +58,7 @@ static void fresh(uint32_t eng)
     frames(64);
 }
 static int hidden_col(uint32_t c) { return card_hidden(c); }
-static int card_is(uint32_t c, const char *s)
-{
-    if (!strncmp(s, "FILTER ENV DEPTH", 16))              /* its label is 112 px in a 116 px card: drawn past the card's rectangle (OPEN, docs/JAM11_TEST_BASELINE.md), so read from the rows */
-        return rows_has(27, 215, "FILTER ENV DEPTH");
-    return card_match(c, s);
-}
+static int card_is(uint32_t c, const char *s) { return card_match(c, s); }
 static int blank_col(uint32_t c) { return hidden_col(c); }   /* not drawn, or a blank slot */
 static int cards_are(const char *a, const char *b, const char *c, const char *d)   /* "" : the column is empty (not drawn, or a blank slot) */
 {

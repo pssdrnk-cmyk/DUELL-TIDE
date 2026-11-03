@@ -1227,6 +1227,7 @@ static const char *const VAL_SHOWN[][3] = {
     {"REG", "CLARI", "CLARINET"}, {"REG", "CHAPL", "CHAPEL"}, {"REG", "BRITE", "BRIGHT"},        /* WHEEL's BARS list (owner 2026-10-25) */
     {"PERC", "2ND", "SECOND"}, {"PERC", "3RD", "THIRD"}, {"PERC", "2SOFT", "SECOND\nSOFT"}, {"PERC", "3SOFT", "THIRD\nSOFT"},
     {"PERC", "2SLOW", "SECOND\nSLOW"}, {"PERC", "3SLOW", "THIRD\nSLOW"},                        /* WHEEL's PERCUSSION (the real organ's tabs) */
+    {"WAVE", "2xPULSE+TRI", "2xPULSE+\nTRI"}, {"WAVE", "2xSAW+TRI", "2xSAW+\nTRI"}, {"WAVE", "PULSE&SAW", "PULSE&\nSAW"}, {"WAVE", "PULSE&NOISE", "PULSE&\nNOISE"},   /* TRIO's WAVE: too wide for its card in one line */
     {"TABLE", "SAWSQ", "SQUARE\nSAW"}, {"TABLE", "HARM", "HARMONICS"}, {"TABLE", "ODD", "SQR\nSWEEP"}, {"TABLE", "RESO", "FILTER\nSWEEP"}, {"TABLE", "DIGI", "FM"},
     {"TABLE", "HOOVR", "HOOVER"}, {"TABLE", "WOBBL", "WOBBLE"}, {"TABLE", "USR1", "USER 1"}, {"TABLE", "USR2", "USER 2"}, {"TABLE", "USR3", "USER 3"},   /* WAVE (owner 2026-10-25: the stored names stay the keys) */
     /* the scales (owner 2026-10-25: full words; the stored names are the keys; GLOBAL SCALE card, the piano roll title) */

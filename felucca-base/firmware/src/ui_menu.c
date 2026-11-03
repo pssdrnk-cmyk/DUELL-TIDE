@@ -669,29 +669,29 @@ static void graph_test(void)
     cv_rect(8, 64, fill, 8, col);
     cv_rect(8 + 224 * (int32_t)CPU_WARN / 100, 72, 1, 3, T_MID);
     cv_rect(8 + (tick > 222 ? 222 : tick), 61, 2, 14, T_TEXT);
-    x = cv_text_on(10, 79, &AF_S, "PEAK HOLD", T_MID, T_BG);
+    x = cv_text_on(10, 77, &AF_S, "PEAK HOLD", T_MID, T_BG);
     test_pct(v, cpum.hold);
-    cv_text_on(x + 6, 79, &AF_S, v, cpu_col(plv, T_BG), T_BG);
+    cv_text_on(x + 6, 77, &AF_S, v, cpu_col(plv, T_BG), T_BG);
     fmt_int(v, (int32_t)(test_missed() > 9999u ? 9999u : test_missed()));
-    x = cv_text_r(230, 79, &AF_S, v, cpu_recent() ? cpu_col(2u, T_BG) : T_TEXT, T_BG);
-    cv_text_r(x - 6, 79, &AF_S, "MISSED", T_MID, T_BG);
-    cv_text_on(10, 93, &AF_S, cpu_word(), lvl ? cpu_col(lvl, T_BG) : T_MID, T_BG);
+    x = cv_text_r(230, 77, &AF_S, v, cpu_recent() ? cpu_col(2u, T_BG) : T_TEXT, T_BG);
+    cv_text_r(x - 6, 77, &AF_S, "MISSED", T_MID, T_BG);
+    cv_text_on(10, 89, &AF_S, cpu_word(), lvl ? cpu_col(lvl, T_BG) : T_MID, T_BG);
 #ifdef FELUCCA_METER_EST
-    cv_text_r(230, 93, &AF_S, "EMULATOR ESTIMATE", T_DIM, T_BG);
+    cv_text_r(230, 89, &AF_S, "EMULATOR ESTIMATE", T_DIM, T_BG);
 #endif
-    x = cv_text_on(10, 107, &AF_S, "ERASE", T_MID, T_BG);   /* DUELL 0.2.11: the longest flash erase since boot (storage_hw.c: the driver's own time) */
+    x = cv_text_on(10, 101, &AF_S, "ERASE", T_MID, T_BG);   /* DUELL 0.2.11: the longest flash erase since boot (storage_hw.c: the driver's own time) */
     if (felucca_dbg.erase_max_us) {
         fmt_int(v, (int32_t)((felucca_dbg.erase_max_us + 500u) / 1000u));
         str_cpy(v + str_len(v), "MS", 3);
     } else
         str_cpy(v, "--", 3);
-    cv_text_on(x + 6, 107, &AF_S, v, T_TEXT, T_BG);
+    cv_text_on(x + 6, 101, &AF_S, v, T_TEXT, T_BG);
     v[0] = (char)('0' + vcap_shown(0));          /* DUELL 0.2.11: the VOICE CAP of part 1 / part 2 (voice.c vcap; the engine's own cap included) */
     str_cpy(v + 1, " / ", 4);
     v[4] = (char)('0' + vcap_shown(1));
     v[5] = 0;
-    x = cv_text_r(230, 107, &AF_S, v, T_TEXT, T_BG);
-    cv_text_r(x - 6, 107, &AF_S, "VOICES", T_MID, T_BG);
+    x = cv_text_r(230, 101, &AF_S, v, T_TEXT, T_BG);
+    cv_text_r(x - 6, 101, &AF_S, "VOICES", T_MID, T_BG);
 }
 /* The TEST screen (ui.menu 3): the page TEST_PAGE drawn by the page code (header with its name TEST in the top middle, the K1..K4 cards, the
  * panel graph_test, the footer), page_over making it the current page; the LAYER state is put aside while it draws */

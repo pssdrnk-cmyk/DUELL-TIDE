@@ -1082,6 +1082,7 @@ static void card_paint(const card_geo_t *g, uint32_t c, int32_t gx, int32_t gw, 
     if (!big) {
         uint16_t lc = hot ? T_ACCENT : grid_mot ? T_THEME : T_MID;
         int32_t lroom = gw - pad - g->lbl_dx - g->lbl_pad_r;
+        char one2[24], l12[24];
         if (label[0] && g->area) {                      /* TEMPLATE 9: one line, or two (the dot on the first, one line above the shared baseline; the second line under the label's pen) */
             char one[24], l1[24];
             const char *l2 = area_label_lines(label, one, l1, lroom);
@@ -1090,13 +1091,18 @@ static void card_paint(const card_geo_t *g, uint32_t c, int32_t gx, int32_t gw, 
                 text_trk = lbl_trk(pad + g->lbl_dx, &AF_S, l2);
                 cv_text_on(pad + g->lbl_dx, UT_TY(S, g->lbl_base), &AF_S, l2, lc, T_BG);
                 text_trk = 0;
-            } else if (grid_on == 5 && text_w(&AF_S, one) > lroom && text_w(&AF_S, one) <= gw - pad - UT_A_LBL_PAD_R) {   /* one long word (FM6's FEEDBACK): under the dot, on the second label line the ENGINE page's cards always have */
+            } else if (grid_on == 5 && text_w(&AF_S, one) > lroom && text_w(&AF_S, one) <= gw - pad) {   /* one long word (FM6's FEEDBACK): under the dot, on the second label line the ENGINE page's cards always have */
                 card_label(c, pad, pad + g->lbl_dx, g->lbl_base - UT_A_LBL2_PITCH, "", lc, lroom);
                 text_trk = lbl_trk(pad, &AF_S, one);
                 cv_text_on(pad, UT_TY(S, g->lbl_base), &AF_S, one, lc, T_BG);
                 text_trk = 0;
             } else
                 card_label(c, pad, pad + g->lbl_dx, g->lbl_base, one, lc, lroom);
+        } else if (label[0] && !g->seg && !g->cut && text_w(&AF_S, label) > lroom && area_label_lines(label, one2, l12, lroom)) {   /* a template 1 card whose label is wider than its room (FILTER ENV DEPTH on the 116 px cards): two lines above the value, the dot on the first */
+            card_label(c, pad, pad + g->lbl_dx, g->lbl_base - 10, l12, lc, lroom);
+            text_trk = lbl_trk(pad + g->lbl_dx, &AF_S, area_label_lines(label, one2, l12, lroom));
+            cv_text_on(pad + g->lbl_dx, UT_TY(S, g->lbl_base + 2), &AF_S, area_label_lines(label, one2, l12, lroom), lc, T_BG);
+            text_trk = 0;
         } else if (label[0])
             card_label(c, pad, pad + g->lbl_dx, g->lbl_base, label, lc, lroom);
         if (g->pill_base)

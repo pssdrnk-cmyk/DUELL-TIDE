@@ -420,7 +420,7 @@ static void tide_track(int32_t y, const char *name, uint32_t f, uint32_t lane, i
         cv_text_on(UT_A_K1_DOT_X, ty, &AF_S, part ? "2" : "1", vt(kc, T_BG), T_BG);
     if (name[0])
         cv_text_on(part < 0 ? UT_A_K1_DOT_X : 20, ty, &AF_S, name, T_MID, T_BG);
-    cv_text_on(JP_X0 - 10, ty, &AF_S, "A", T_DIM, T_BG);
+    cv_text_on(JP_X0 - 12, ty, &AF_S, "A", T_DIM, T_BG);   /* (clear of the knob at A: its 7 px start at JP_X0 - 3) */
     cv_text_on(JP_X1 + 5, ty, &AF_S, "B", T_DIM, T_BG);
     cv_rrect(JP_X0, y - 1, JP_X1 - JP_X0 + 1, 3, 1, T_RAISE, T_BG);
     if (glide_running() && ((gl.on >> lane) & 1u) && (part < 0 || ((gl.mask >> part) & 1u))) {

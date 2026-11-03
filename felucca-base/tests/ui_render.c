@@ -506,7 +506,8 @@ static void contain(int32_t x, int32_t y)
             int touch = b->x0 < r[2] && r[0] < b->x1 && b->y0 < r[3] && r[1] < b->y1;
             int in = b->x0 >= r[0] && b->x1 <= r[2] && b->y0 >= r[1] && b->y1 <= r[3];
             int around = r[0] >= b->x0 && r[2] <= b->x1 && r[1] >= b->y0 && r[3] <= b->y1;   /* (a mark inside the box) */
-            if (touch && !in && !around) {
+            int digits2 = b->s[0] >= '0' && b->s[0] <= '9' && b->s[1] >= '0' && b->s[1] <= '9' && !b->s[2] && b->x0 >= r[0] && b->x1 - r[2] <= 4;   /* (the capsule's voices number: two digits are 16 px wide, 4 px over the cell by design: ui_draw.c head_capsule, owner V13) */
+            if (touch && !in && !around && !digits2) {
                 rbox_t t = *b, o = {(int16_t)(r[0] + x), (int16_t)(r[1] + y), (int16_t)(r[2] + x), (int16_t)(r[3] + y), 0, "cell"};
                 t.x0 += (int16_t)x; t.x1 += (int16_t)x; t.y0 += (int16_t)y; t.y1 += (int16_t)y;
                 nspill++;
@@ -1345,8 +1346,8 @@ static void setup(int s)
         for (k = 0; k < 3u; k++) ml_learn(40u + k, k & 3u, P_ATK + k);
         break;
     }
-    case S_SCL_PEEK: go_title("AMP ENV"); ui.layer = LAYER_SCL; break;
-    case S_SCL_ACTIVE: go_home(); ui.layer = LAYER_SCL; root_g = 3; scale_g = 2; ui.hot_col = 1; ui.hot_t = 30; break;
+    case S_SCL_PEEK: go_title("SCALE"); break;   /* (DUELL 1.1: the SCALE quick layer is retired, its button opens the SCALE page) */
+    case S_SCL_ACTIVE: go_title("SCALE"); root_g = 3; scale_g = 2; ui.hot_col = 1; ui.hot_t = 30; break;
     /* DUELL 3.6: EDIT's first page, ENGINE (KNOB 1 ENGINE, 2 SOUND, 3 FAV, 4 INIT): ANALOG; FM6; a favourite; a user sound;
      * the INIT dialog (every scene is also drawn LARGE) */
     case S_ENGINE: go_title("ENGINE"); break;

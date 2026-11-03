@@ -9263,7 +9263,7 @@ static int test_item158_edges(void)
     ui_power_on();
     (void)nopen;
     bad158 = check("item 158: every page x mode x engine x state: no label or value on a card touches or crosses the card's edge (1 px kept; the labels over the 1 px a letter cap listed OPEN)", !nbad && screens > 1000u);
-    return bad158 + check("item 158:   .. the label still over the cap (more than 1 px a letter), FILTER ENV DEPTH on the 116 px MULTI FILTER 2/2 / TWIN MOD cards, is drawn untightened, as before item 158 (DUELL 1.1: the other seven fit as two-line labels; OPEN for the owner)", open_seen == (1u << 5));
+    return bad158 + check("item 158:   .. no label is left over the cap: the eight of item 158 fit as two-line labels (DUELL 1.1; FILTER ENV DEPTH since t0-ui2: a template 1 card breaks a too wide label into two lines)", open_seen == 0u);
 }
 
 /* ---------------------------------------------------------------- item 165 (owner decisions A .. F on ENGINE_PAGES_REVIEW.md: the ENGINE pictures true, LOFI / NOISE cells, full wave names) --- */
