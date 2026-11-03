@@ -167,6 +167,8 @@ static void morph_roll_musical(const int8_t *o, int8_t *end, const engine_t *e, 
                 if (next >= -lim && next <= lim)
                     move = contrast;
             }
+            if (i == MDL_BRIGHT && tarc_bright())            /* ARC: brighter towards the peak, softer in the breakdown */
+                move = tarc_bright();
             d[i] += move * step;
             if (d[i] > lim)
                 d[i] = lim, *dr = -1;

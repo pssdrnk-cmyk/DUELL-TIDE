@@ -257,7 +257,10 @@ static int ota_ufw(uint8_t *hdr, uint32_t *fl_off, uint32_t *fl_len, uint32_t *o
 
 static int ota_stage(void)                       /* steps 1..6; 0 = host said success */
 {
-    static uint8_t hdr[0x400] __attribute__((section(".pool"))), b[512] __attribute__((section(".pool"))), mine[512] __attribute__((section(".pool")));
+    /* one 1 KiB staging space: the UFW header (step 1) is dead once ota_ufw has handed back the four offsets and
+     * lengths, so the two 512-B blocks of steps 2..6 take its place (b: the host's block, mine: our flash head) */
+    static uint8_t hdr[0x400] __attribute__((section(".pool")));
+    uint8_t *const b = hdr, *const mine = hdr + 512;
     uint32_t i, n, ota_off, ota_len, fl_off, fl_len, c, len, own, official;
     int rc;
     /* 1. UFW header + entry list */

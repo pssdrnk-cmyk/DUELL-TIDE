@@ -812,9 +812,9 @@ static void pslot_scene(uint32_t v)
     if (v == 5u) song.playing = 1;
     ui.msg_t = 0;
 }
-/* HOME's second page: TIDE puts MORPH SETTINGS (a list: TARGET, VARY BARS, ROLL, ARP, PITCH) in MORPH SET's place */
+/* HOME's second page: TIDE puts TIDE SETTINGS (a list: TARGET, VARY BARS, ROLL, ARP, PITCH) in MORPH SET's place */
 #if DUELL_TIDE
-#define MORPH_SET_TITLE "MORPH SETTINGS"
+#define MORPH_SET_TITLE "TIDE SETTINGS"
 #else
 #define MORPH_SET_TITLE "MORPH SET"
 #endif

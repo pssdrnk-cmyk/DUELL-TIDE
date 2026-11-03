@@ -33,9 +33,11 @@ const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
   ok(r.ok && r.name === "TEST ONE" && r.engine === 0 && r.cat === 3 && r.slot === 0 && r.rev === 0 && same(r.values, v) && (rec[4] & PTF.CB), "record: built and parsed back (name, engine, category, every value; slot and revision 0)");
   ok(rec[0] === rec.length && rec.length === 20 + 20 + 3 && rec[19] === 3, "record: sparse, a 20 byte bitmap and three values of 7 bits (21 bits, 3 bytes), the length field is the length");
   ok(same(rec, expectRecord(0, "TEST ONE", 3, [[45, 60], [46, 20], [ID.P_TRIM, 99]])), "record: the bytes are the ones written out here from the format: bitmap by wide id, each value minus its minimum in the bits of its range");
-  const many = storeDefaults(0).map((d, i) => (i % 3 === 0 && i > 0 && i < 100 && i !== 48 && d + 1 <= rangeOf(0, i).max ? d + 1 : d));   // (id 48, SLOPE 24 dB, comes back 12: the unit stores it as a pair, upreset.c; the editor record keeps it apart: OPEN, the web editor still has the 1.0 record model)
+  const many = storeDefaults(0).map((d, i) => (i % 3 === 0 && i > 0 && i < 100 && d + 1 <= rangeOf(0, i).max ? d + 1 : d));   // (id 48, SLOPE, is 12 dB here: 12 dB is its store default 0 fitted to the range 1..2, so it is not stored and reads back as 0, which a load fits to 12 dB, as the unit does: compared fitted)
   const rb = buildRecord({ engine: 0, name: "BITMAP", values: many }), pb = parseRecord(rb);
-  ok(pb.ok && same(pb.values, many) && rb.length <= WORST, "record: many values off the default come back the same");
+  const fit = (vs) => vs.map((x, i) => (i < 127 ? Math.max(rangeOf(0, i).min, Math.min(rangeOf(0, i).max, x)) : x));   // a load fits each value to its range
+  ok(pb.ok && same(fit(pb.values), fit(many)) && rb.length <= WORST, "record: many values off the default come back the same (each fitted to its range, as a load does: SLOPE 12 dB is stored as the default 0)");
+  { const v24 = storeDefaults(0); v24[48] = 2; ok(parseRecord(buildRecord({ engine: 0, name: "S24", values: v24 })).values[48] === 2, "record: SLOPE 24 dB is stored as a pair and comes back 24 dB"); }
   const fm = Array.from({ length: 128 }, (_, i) => (i * 7 + 3) % 128), vv = storeDefaults(FM6E); vv[P_E0 + 7] = 8;
   const rf = buildRecord({ engine: FM6E, name: "FM ONE", values: vv, patch128: fm }), pf = parseRecord(rf);
   ok(pf.ok && (rf[4] & PTF.FM6) && same([...pf.fm6], fm) && pf.values[P_E0 + 7] === 8, "record: an FM6 sound carries its 128 byte patch (packed 8 to 7) and SLOT OWN");

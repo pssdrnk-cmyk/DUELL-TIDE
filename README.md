@@ -20,21 +20,21 @@ It is made for playing the FM-1 as a **background**: set a tide going, then play
 
 ## What it looks like
 
-| AUTO TIDE | MORPH SETTINGS | MORPH, mid-glide |
+| AUTO TIDE | TIDE SETTINGS | MORPH, mid-glide |
 |:---:|:---:|:---:|
-| <img src="docs/tide/auto-tide-both-parts.png" width="260" alt="AUTO TIDE page with both parts: JRNY, 16 BARS, WAIT 2 BARS, the SOUND and SEQ faders of parts 1 and 2 at B"> | <img src="docs/tide/morph-settings.png" width="260" alt="MORPH SETTINGS page: TARGET BOTH, VARY BARS 4 + 8, ROLL MUSIC, ARP, PITCH, WASH LEVEL"> | <img src="docs/tide/morph-gliding.png" width="260" alt="MORPH page while a tide plays: the fader at 62"> |
+| <img src="docs/tide/auto-tide-both-parts.png" width="260" alt="AUTO TIDE page with both parts: JRNY, 16 BARS, WAIT 2 BARS, the SOUND and SEQ faders of parts 1 and 2 at B"> | <img src="docs/tide/morph-settings.png" width="260" alt="TIDE SETTINGS page: TARGET BOTH, VARY BARS 4 + 8, ROLL MUSIC, ARP, PITCH, WASH LEVEL"> | <img src="docs/tide/morph-gliding.png" width="260" alt="MORPH page while a tide plays: the fader at 62"> |
 | The glide's state on knob 1's line (here *paused: PLAY goes on*), with both parts: each part's SOUND and SEQ fader, its steps as they play and the sound it has travelled to, and MODE / TIME / WAIT on knobs 2 to 4. | What the tide moves and how a new End B is rolled. Knob 1 picks the row, OCT+ / OCT- change it. | DUELL's own MORPH page follows the glide, so you see where the sound is between A and B. |
 
 *Screenshots from the [web emulator](https://pssdrnk-cmyk.github.io/DUELL-TIDE/emu/).*
 
 ## Play a tide in four steps
 
-1. Press **HOME** until **AUTO TIDE** shows. HOME's round is now **MORPH → MORPH SETTINGS → AUTO TIDE → MODE**.
+1. Press **HOME** until **AUTO TIDE** shows. HOME's round is now **MORPH → TIDE SETTINGS → AUTO TIDE → MODE**.
 2. Pick a **MODE** with knob 2, a trip length (**TIME**, in bars) with knob 3 and a rest at each end (**WAIT**) with knob 4. Turn **ALGORITHM** to BOTH to glide both parts at once.
 3. Twist **knob 1** right (to B) or left (to A) and press **PLAY**. While the music plays, the glide starts on the next bar.
 4. Play over it. **STOP** pauses the glide and PLAY goes on from there. Twist knob 1 while it glides and it stops where it is; the sound stays.
 
-On the very first start TIDE comes up ready: multi **M02 NIGHT ORGAN**, AUTO TIDE on **JRNY**, both parts, 8 bars, WAIT 1. Just press PLAY.
+On the very first start TIDE comes up ready: multi **M04 DUB CHORD**, AUTO TIDE on **JRNY**, both parts, 16 bars, WAIT 2. Just press PLAY.
 
 ## What changed from DUELL 1.1
 
@@ -46,19 +46,27 @@ On the very first start TIDE comes up ready: multi **M02 NIGHT ORGAN**, AUTO TID
 | **LOOP** | Back and forth between A and B. |
 | **DRIFT** | New twists on your sound: the end it left is rolled again from your original sound. |
 | **WNDR** | Wanders away from your sound, a little further each trip. |
-| **JRNY** | Travels through your sounds, also to other engines (FM6 included). |
+| **JRNY** | Travels through factory sounds within each part's current engine, including FM6. |
 
 Each mode has its own line on the screen, so you can read what it will do. Where two very different sounds cross, TIDE passes them through a short filter dip, so the change sounds like a move rather than a cut.
 
-### New: MORPH SETTINGS (in HOME's round)
+JRNY prefers the starting sound's category, with a broader-category fallback when needed. It keeps the current engine. See [current limits](docs/KNOWN_LIMITS.md) and the [roadmap](docs/ROADMAP.md) for the available behaviour and planned improvements.
+
+### New: TIDE SETTINGS (in HOME's round)
 
 | Row | What it sets |
 |---|---|
+| **STYLE** | The top row: DUB / DEEP / MINIMAL / AMBIENT / PEAK / CUSTOM sets the glide MODE, TIME and WAIT and the rows VARY BARS, TURNS, POLY, SYNC, ARC and WASH LEVEL together. DUB is the default on a new unit (JRNY, 16 bars, WAIT 2 bars, LEAD, GENTLE, SOFT, RISE). TARGET, ROLL, ARP and PITCH stay as they are. Changing any of the nine by hand turns STYLE into CUSTOM and keeps your values; an older settings record loads as CUSTOM. |
 | **TARGET** | What the tide moves: the SOUND, the pattern (SEQ) or BOTH. |
 | **VARY BARS** | How often the pattern plays a variation. |
 | **ROLL** | How a new End B is made. **MUSIC** (new, the default) stays close to the sound's character; SMART and WILD are DUELL's own. |
 | **ARP**, **PITCH** | DUELL's MORPH switches, now on this page. |
 | **WASH LEVEL** | How much blend is added where two unlike sounds cross. OFF by default. |
+| **TURNS** | With both parts in automatic WNDR or JRNY: **TAKE TURNS** (the default) lets part 2 vary on bars 2 and 6 and part 1 on bars 4 and 8, so each variation is answered two bars later; TOGETHER varies both on bars 4 and 8. |
+| **TURNS** (more values) | TOGETHER, TAKE TURNS, **LEAD** (part 2 leads bars 1-2 of every 4, part 1 bars 3-4, and the other part plays a thinned version of its pattern: beats, held notes and about half of the other hits stay) and **ECHO** (also leans the answer's hits into the places the call left free). Playback only: KEEP stores the whole pattern. |
+| **SYNC** | OFF / **SOFT** (default) / PUSH. In automatic WNDR or JRNY the pattern edits that move a hit by a 16th lean towards the "and" (the off-beat 8th) and allow an occasional push into the beat (SOFT one a bar, PUSH two); the beats never move and a hit never lands on one. Grids it cannot read (triplets, slow rates, loops that are not whole beats) behave as before. |
+| **ARC** | OFF (the default) / RISE / DROP. In automatic WNDR or JRNY the tide follows a shape of 36 to 64 bars, counted in 4-bar phrases: it **rises** (more syncopation and repeats, faster turns, brighter sounds), holds a **peak**, then eases into a thinned **breakdown** with softer sounds and recovers. DROP also drops by itself on about half of the arcs: both parts start no notes for two bars while tails and your other gear carry on. The AUTO TIDE page's status line shows the phase ("RISE 3/6", "PEAK", "DROP", "BREAK 2/3"). **Drop by hand:** hold OCT- and turn K2 on the AUTO TIDE page: the drop comes at the next phrase ("DROP NEXT PHRASE"); turn again before it to cancel. It works in RISE and DROP, and says "ARC OFF" when ARC is off. |
+| **POLY** | In automatic WNDR or JRNY one part's loop is now and then a few steps shorter, so its motif moves against the beat, then plays whole again at a phrase. OFF; **GENTLE** (the default) 15 or 14 of 16 steps, rarely; WIDE 12 to 15, more often. Only the playing changes: your stored pattern and its length are never rewritten. |
 
 ### New: in the sequencer and tools
 

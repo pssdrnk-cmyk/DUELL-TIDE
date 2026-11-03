@@ -23,9 +23,10 @@ await new Promise((r) => server.listen(0, "127.0.0.1", r));
 const c = await launch();
 const E = (x) => c.eval(x);
 const idle = () => E("(async () => { await window.__app.unit.idle(); return true; })()");
-const snap = () => E("JSON.stringify({ p: window.__app.mock.parts.map((q) => q.p), x: window.__app.mock.parts.map((q) => q.x), g: window.__app.mock.g, m: window.__app.mock.menu.map((x) => x[6]) })").then(JSON.parse);
+const snap = () => E("JSON.stringify({ p: window.__app.mock.parts.map((q) => q.p), x: window.__app.mock.parts.map((q) => q.x), g: window.__app.mock.g, m: window.__app.mock.menu.map((x) => x[6]), lk: JSON.stringify(window.__app.mock.motion ?? []) })").then(JSON.parse);   // (lk: DUELL 1.1's PARAMETER LOCKS records, mockunit.js this.motion: the LOCKS tab's sliders edit those)
 const changed = (a, b) => {
   const out = [];
+  if (a.lk !== b.lk) out.push("a PARAMETER LOCKS record");
   for (let k = 0; k < 2; k++) a.p[k].forEach((v, i) => { if (v !== b.p[k][i]) out.push(`part ${k + 1} id ${i}`); });
   for (let k = 0; k < 2; k++) a.x[k].forEach((v, i) => { if (v !== b.x[k][i]) out.push(`part ${k + 1} extension slot ${i}`); });   // (cloud job I: SUB OSC, CYCLE ENV and the TWIN cards' slots)
   a.g.forEach((v, i) => { if (v !== b.g[i]) out.push(`global ${i}`); });
@@ -37,7 +38,7 @@ const sliders = (col) => E(`JSON.stringify((() => {
   const column = document.querySelectorAll('.col')[${col}], out = [];
   for (const el of column.querySelectorAll('.cell input[type=range]')) {
     const cell = el.closest('.cell');
-    if (!el.offsetParent || cell.classList.contains('gone') || el.disabled) continue;
+    if (!el.offsetParent || cell.classList.contains('gone') || el.disabled || el.closest('.ladding')) continue;   // (the LOCKS tab's add row: its STEP picks where a new lock goes and writes nothing)
     const r = el.getBoundingClientRect(), lab = cell.querySelector('.lab')?.textContent || '?', card = cell.closest('section')?.querySelector('h3')?.firstChild?.textContent?.trim() || '';
     const fill = cell.querySelector('.fill'), bip = !!cell.querySelector('.slider.bipolar');
     out.push({ lab, card, min: +el.min, max: +el.max, v: +el.value, x0: r.left + 6, x1: r.right - 6, y: r.top + r.height / 2, bip, fill: fill ? { left: fill.style.left, width: fill.style.width } : null });
@@ -64,7 +65,7 @@ for (const col of [0, 2]) {
     const list = await sliders(col);
     for (let si = 0; si < list.length; si++) {
       // 0.2.25: a column can be taller than the window (the GLOBAL tab with the MASTER cards): the slider is scrolled into view first, then measured again
-      await E(`(() => { const all = [...document.querySelectorAll('.col')[${col}].querySelectorAll('.cell input[type=range]')].filter((el) => el.offsetParent && !el.closest('.cell').classList.contains('gone') && !el.disabled); all[${si}]?.scrollIntoView({ block: 'center' }); return true; })()`);
+      await E(`(() => { const all = [...document.querySelectorAll('.col')[${col}].querySelectorAll('.cell input[type=range]')].filter((el) => el.offsetParent && !el.closest('.cell').classList.contains('gone') && !el.disabled && !el.closest('.ladding')); all[${si}]?.scrollIntoView({ block: 'center' }); return true; })()`);
       await c.sleep(30);
       const s = (await sliders(col))[si] ?? list[si];
       if (s.max <= s.min) continue;
@@ -111,8 +112,10 @@ ok(bipolarSeen >= 8 && plainSeen >= 20, `sliders: the fill bar follows the value
 {   // the depth cards of MULTI FILTER 2/2 (the owner's broken ones) are among the dragged, under their own labels (cloud job I: on the FILTER tab)
   await clickTab(0, "FILTER"); await idle(); await c.sleep(100);
   const list = await sliders(0), labs = list.map((s) => s.lab);
-  const want = ["FILTER ENV", "KEY TRACK", "LFO 1", "LFO 2"], cm = list.filter((s) => s.card === "MULTI CUTOFF MOD").map((s) => s.lab);   // (T0229: the MULTI CUTOFF MOD card, owner 0b)
-  ok(want.join() === cm.join(), `sliders: MULTI CUTOFF MOD (part 1 on PHASE) shows FILTER ENV, KEY TRACK, LFO 1, LFO 2, all dragged above (${cm.join(", ")})`);
+  // (T0229: the cutoff amounts, owner 0b; DUELL 1.1, owner items 12, 23: inside the MULTI FILTER box, no MULTI CUTOFF MOD card)
+  // (1.1 dropped the LFO 2 cutoff depth: params.c MULTI FILTER 2/2 K4; the knob number leads a label)
+  const want = ["KEY TRACK", "FILTER ENV DEPTH", "LFO 1 DEPTH"], cm = list.map((s) => ({ ...s, lab: s.lab.replace(/^\d/, "") })).filter((s) => s.card === "MULTI FILTER" && want.includes(s.lab)).map((s) => s.lab);
+  ok(want.join() === cm.join() && !list.some((s) => s.card === "MULTI CUTOFF MOD"), `sliders: MULTI FILTER (part 1 on PHASE) holds KEY TRACK, FILTER ENV DEPTH, LFO 1 DEPTH, all dragged above (${cm.join(", ")})`);
 }
 {   // T0227 (owner): the engine drop-down changes the engine at once (no dialog), one undo step puts it back; the ENGINE tab has ONE card of the engine's own controls
   await clickTab(0, "ENGINE"); await idle(); await c.sleep(100);

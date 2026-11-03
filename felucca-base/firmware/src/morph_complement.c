@@ -89,8 +89,26 @@ static int32_t sound_candidate_score(uint32_t pi, uint32_t engine, uint32_t pres
     if (d < 0) d = -d;
     return score + (d > 12 ? 12 : d);
 }
+static int32_t sound_cand_bright(uint32_t engine, uint32_t preset)
+{
+    const engine_t *e = ENGINES[engine];
+    const ds_sound_t *s = ds_get(engine, preset);
+    if (!s) return 0;
+    int16_t p[EXT_P_LEN] = {0};
+    for (uint32_t id = 0; id < P_E0; id++) p[id] = TP[id].def;
+    for (uint32_t id = 0; id < NX; id++) p[XW_BASE + id] = XTP[id].def;
+    for (uint32_t id = 0; id < 8u; id++) p[P_E0 + id] = e->edit[id].def;
+    ds_put(s, p, 0);
+    return p[P_FREEA];
+}
 static uint32_t sound_complement_pick(uint32_t pi, uint32_t engine, uint32_t a, uint32_t b, uint32_t seed)
 {
-    if (!morph_musical || (morph.cfg & MC_WILD) || !(seed & 3u) || !sound_peer_available(pi)) return a;
+    int32_t tb;
+    if (!morph_musical || (morph.cfg & MC_WILD)) return a;
+    if ((tb = tarc_bright()) != 0) {                     /* ARC: the brighter (peak) or the softer (breakdown) of the two */
+        int32_t x = sound_cand_bright(engine, a), y = sound_cand_bright(engine, b);
+        if (x != y) return (y > x) == (tb > 0) ? b : a;
+    }
+    if (!(seed & 3u) || !sound_peer_available(pi)) return a;
     return sound_candidate_score(pi, engine, b) > sound_candidate_score(pi, engine, a) ? b : a;
 }

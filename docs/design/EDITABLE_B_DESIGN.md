@@ -211,7 +211,7 @@ The "rolled B + up to 32 hand edits" idea of the first helpers is the right base
 |---|---|---|
 | CPU while playing | **0** | The blend already reads B as full values (CONFIRMED). |
 | CPU at an edit | one rebuild of the morph's list per knob step, with interrupts off: tens of microseconds (est.) | `morph_build` runs locked (CONFIRMED); it can be made to update only the one value |
-| RAM | +0.3 to 0.5 KB, ordinary RAM, not hot RAM (est.): a "set by hand" mark per value per B history entry (about 29 bytes x 9 x 2 parts) | struct sizes |
+| RAM | +0.3 to 0.5 KB, RAM, not hot code (est.): a "set by hand" mark per value per B history entry (about 29 bytes x 9 x 2 parts) | struct sizes |
 | Code (flash) | +1.5 to 2.5 KB (est.) | edit routing, list save/load, header letter, UNDO, messages |
 | Patch bytes | +1 to +65 a patch (typical 3 to 31); +up to 130 a multi; the autosave the same | section 3 |
 | Effort | 2 to 3 local rounds + 1 session on your unit (est.); after stage A | |
