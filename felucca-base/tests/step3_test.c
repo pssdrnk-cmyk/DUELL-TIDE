@@ -775,9 +775,9 @@ static void t_pages(void)
         turn(EN_K3, 1);
         ok &= TSEL->p[P_L2POL] == 1 && TSEL->p[P_LPOL] == 0;
         ck("LFO on LFO DEST opens LFO 2 (KNOB 2 RATE2), again LFO 2 TRIG (KNOB 3 POL2); LFO 1's untouched", ok);
-        ok = motion_param(P_L2RATE) && motion_param(P_L2FADE) && motion_param(P_E2ATK) && motion_param(P_E2REL) &&
+        ok = motion_param(P_L2RATE) && !motion_param(P_L2FADE) && motion_param(P_E2ATK) && motion_param(P_E2REL) &&
              !motion_param(P_L2SYNC) && !motion_param(P_L2POL) && !motion_param(P_M5SRC);
-        ck("automation as their twins: RATE2..FADE2, ATK2..REL2 yes; SYNC2 TRIG2 POL2 and the matrix no", ok);
+        ck("automation as their twins (the matrix destinations only, HANDOFF_V2 item 34): RATE2, ATK2..REL2 yes; FADE2, SYNC2 TRIG2 POL2 and the matrix no", ok);
     }
 }
 

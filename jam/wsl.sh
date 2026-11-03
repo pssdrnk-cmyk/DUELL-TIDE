@@ -9,6 +9,11 @@ set -u
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 [ -x "$HOME/venv/bin/python" ] && PATH="$HOME/venv/bin:$PATH"
 export PATH
+# A git worktree made on Windows has a .git file naming a C:/ path, which Linux git cannot read (multiv8 needs git show): point git at the main repository.
+if [ -f "$REPO/.git" ] && ! git -C "$REPO" rev-parse >/dev/null 2>&1; then
+  gd=$(sed -n 's/^gitdir: //p' "$REPO/.git" | sed 's|/worktrees/.*||')
+  [ -n "$gd" ] && GIT_DIR=$(wslpath -u "$gd" 2>/dev/null) && export GIT_DIR
+fi
 cd "$REPO/felucca-base" || exit 1
 mkdir -p build/host
 python3 tools/build.py --gen-only > build/host/wsl_gen.log 2>&1 || { tail build/host/wsl_gen.log; exit 1; }

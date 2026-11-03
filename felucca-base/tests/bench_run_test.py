@@ -18,6 +18,8 @@ if os.name == "nt":                 # Windows: no termios; the parser checks nee
 import bench_run as br  # noqa: E402
 
 SIM = os.path.join(ROOT, "build", "host", "bench_sim")
+# the twin counts instructions on macOS only (bench_sim.c instr_now); elsewhere its CPU figures are audio.c's estimate (16 + 10 per voice %), which a dear STRESS test exceeds: a verdict that rests on the CPU is not compared there
+COUNTER = sys.platform == "darwin"
 bad = 0
 
 
@@ -111,7 +113,7 @@ with tempfile.TemporaryDirectory() as tmp:
           by["FLASH-WRITE"]["verdict"] == "FAIL" and "CRASH" in by["FLASH-WRITE"]["why"] and by["MATRIX-SH"]["verdict"] == "PASS" and by["SOAK-SHORT"]["verdict"] == "PASS" and r.returncode == 1)
     # --only, --list, --dry-run need no unit
     r = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "bench_run.py"), "--dry-run", "--only", "DUEL*,SOAK-M07"], capture_output=True, text=True)
-    check("--dry-run --only prints the console words of the tests picked, no unit", "bench load patch 1 15" in r.stdout and "bench load patch 2 27" in r.stdout and "bench mode DUEL" in r.stdout and "2 tests" in r.stdout)
+    check("--dry-run --only prints the console words of the tests picked, no unit", "bench load patch 1 15" in r.stdout and "bench load patch 2 28" in r.stdout and "bench mode DUEL" in r.stdout and "2 tests" in r.stdout)
     # ---- core 1 (the two-core build's columns): the twin plays scenarios (BENCH_SIM_TC), the runner's rules for them (BENCH_TWOCORE1.md)
     def tc_run(scn, *extra):
         o = os.path.join(tmp, "tc_" + scn + "_" + str(len(extra)))
@@ -249,7 +251,7 @@ with tempfile.TemporaryDirectory() as tmp:
     by = {x["test"]: x for x in rows}
     sm = open(os.path.join(o, "summary.txt")).read() if os.path.exists(os.path.join(o, "summary.txt")) else ""
     check("TWOCORE-3 against the twin with a pause by a run of very late blocks: the default test FAILs (a pause), the contrast test is WARN (diagnosis), exit 1; the settings come back (default: vrun 0 window 0 floor 0 'new'; contrast: vrun 4 window 8 'b3')",
-          len(rows) == 2 and by["CHORDS-DEF"]["verdict"] == "FAIL" and "pauses (fault 0, run of very late" in by["CHORDS-DEF"]["why"] and by["STRESS-RUNWIN"]["verdict"] == "WARN" and r.returncode == 1
+          len(rows) == 2 and by["CHORDS-DEF"]["verdict"] == "FAIL" and "pauses (fault 0, run of very late" in by["CHORDS-DEF"]["why"] and (by["STRESS-RUNWIN"]["verdict"] == "WARN" or not COUNTER and "pauses (fault 0, run of very late" in by["STRESS-RUNWIN"]["why"]) and r.returncode == 1
           and (by["CHORDS-DEF"]["tmvrun"], by["CHORDS-DEF"]["tmvwink"], by["CHORDS-DEF"]["tmfloor"]) == ("0", "0", "0") and (by["STRESS-RUNWIN"]["tmvrun"], by["STRESS-RUNWIN"]["tmvwink"], by["STRESS-RUNWIN"]["tmvwinms"]) == ("4", "8", "2000")
           and re.search(r"CHORDS-DEF\s+3481\s+10000\s+new\s+0", sm) and re.search(r"STRESS-RUNWIN\s+3481\s+10000\s+b3\s+0", sm))
     o = os.path.join(tmp, "t4b")

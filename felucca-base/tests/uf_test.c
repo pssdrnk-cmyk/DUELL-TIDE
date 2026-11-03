@@ -386,7 +386,7 @@ static void open_routes(track_t *t)                      /* routes that only ope
 }
 static void routes_on(track_t *t)
 {
-    t->p[P_ED_FLT] = -40; t->p[P_LD_FLT] = 50; t->p[P_E2FLT] = 60; t->p[P_L2FLT] = 30;
+    t->p[P_LD_FLT] = 50; t->p[P_E2FLT] = -60;       /* (1.1: AMP ENV and LFO 2 FLT depths no longer act (voice.c); ENV 2 below the open end closes it) */
     t->p[P_E2SUS] = 127; t->p[P_L2PIT] = 0; t->p[P_LRATE] = 90;
 }
 static void routes_zero(track_t *t)                      /* every route present but at depth 0 / amount 0 */
@@ -433,7 +433,7 @@ static void t_bypass(void)
     expect("the defaults (MODE LP, CUT 82): RES 127 and SLOPE 24 dB change nothing, bit for bit, on all nine engines (the filter does not run)", ok_res);
     expect("  .. routes that only open it (ENV 1 / ENV 2 FLT +, VEL -> CUT +) keep it at the open end: bit for bit", ok_open);
     expect("  .. every route assigned at 0 (depths 0, matrix CUT routes at AMT 0): bit for bit", ok_zero);
-    expect("  .. routes that close it (ENV 1 FLT -40, the LFOs) run it: the render differs", ok_routes);
+    expect("  .. routes that close it (ENV 2 FLT -60, LFO 1 FLT) run it: the render differs", ok_routes);
     expect("CUT 81 (one step in) is nearly transparent on every engine: it runs on all of them, additively", ok_near);
     {   /* the exact rule: the bypass is MODE LP at the open end; every other MODE runs there */
         uint32_t e = eng_named("PHASE");
@@ -920,10 +920,8 @@ static void t_sweeps(void)
 }
 
 /* ------------------------------------------------------------------ 7 ROUTES --- */
-static void r_env1(track_t *t) { set_f(t); t->p[P_ED_FLT] = 40; }
 static void r_env2(track_t *t) { set_f(t); t->p[P_E2FLT] = 40; t->p[P_E2SUS] = 127; }
 static void r_lfo1(track_t *t) { set_f(t); t->p[P_LD_FLT] = 60; t->p[P_LRATE] = 100; t->p[P_LWAVE] = 2; }
-static void r_lfo2(track_t *t) { set_f(t); t->p[P_L2FLT] = 60; t->p[P_L2RATE] = 100; t->p[P_L2WAVE] = 2; }
 static void r_vel(track_t *t) { set_f(t); t->p[P_M1SRC] = MS_VEL; t->p[P_M1DST] = MD_CUT; t->p[P_M1AMT] = 63; }
 static void r_env(track_t *t) { set_f(t); t->p[P_M1SRC] = MS_ENV; t->p[P_M1DST] = MD_CUT; t->p[P_M1AMT] = 40; }
 static void r_at(track_t *t) { set_f(t); t->p[P_M1SRC] = MS_AT; t->p[P_M1DST] = MD_CUT; t->p[P_M1AMT] = 40; t->at = 127; }
@@ -943,8 +941,8 @@ static double hi_swing(void)                              /* the high band over 
 static void t_routes(void)
 {
     static const struct { const char *n; setup_t s; int moves; } R[] = {
-        {"ENV 1 FLT +40", r_env1, 0}, {"ENV 2 FLT +40", r_env2, 0}, {"matrix VEL -> CUT +63", r_vel, 0}, {"matrix ENV -> CUT +40", r_env, 0},
-        {"matrix AT -> CUT +40", r_at, 0}, {"LFO 1 FLT +60", r_lfo1, 1}, {"LFO 2 FLT +60", r_lfo2, 1}, {"matrix LFO2 -> CUT +40", r_lfo2m, 1}};
+        {"ENV 2 FLT +40", r_env2, 0}, {"matrix VEL -> CUT +63", r_vel, 0}, {"matrix ENV -> CUT +40", r_env, 0},
+        {"matrix AT -> CUT +40", r_at, 0}, {"LFO 1 FLT +60", r_lfo1, 1}, {"matrix LFO2 -> CUT +40", r_lfo2m, 1}};
     uint32_t i, k, ok = 1, s;
     static const char *const E[2] = {"PHASE", "WAVE"};   /* (GRAIN until 0.2.8) */
     for (s = 1; s <= 2u; s++)
@@ -965,7 +963,7 @@ static void t_routes(void)
                     ok &= h > base + 4.0;
             }
         }
-    expect("PHASE, WAVE at CUT 37, 12 and 24 dB: ENV 1 / ENV 2 FLT, matrix VEL / ENV / AT -> CUT open the filter; LFO 1 / LFO 2 FLT, matrix LFO2 -> CUT sweep it", ok);
+    expect("PHASE, WAVE at CUT 37, 12 and 24 dB: ENV 2 FLT, matrix VEL / ENV / AT -> CUT open the filter; LFO 1 FLT, matrix LFO2 -> CUT sweep it (1.1: AMP ENV and LFO 2 FLT no longer act)", ok);
     {   /* the sum clamps: a deep route cannot leave the dial (the open end at most) */
         sf(70, 0, 0, 1);
         render(eng_named("PHASE"), r_vel, 100);
@@ -1148,7 +1146,7 @@ static void t_migrate(void)
             (void)n; (void)at;                        /* (PT_VER 4: the values are always a bitmap, a bit per id) */
             has45 = o[PT_FIX + P_FREEA / 8u] >> (P_FREEA % 8u) & 1u;
             has48 = o[PT_FIX + P_FREED / 8u] >> (P_FREED % 8u) & 1u;
-            expect("a patch of today (the bypass) is stored with CUT 82 and SLOPE 12 dB (4 bytes more than before: the mark of today's CUT)", len > PT_FIX && has45 && has48);
+            expect("a patch of today (the bypass) is stored with the mark of today's CUT (82); SLOPE 12 dB is the default and, in the sparse PT_VER 4 record, left out", len > PT_FIX && has45 && !has48);
         }
     }
     {   /* projects: 0.2.14 converts no 0.2.2 CUT (SLOPE 0) any more; a project of today restores as it is, the CUT automation too */
@@ -1403,7 +1401,7 @@ static void t_ktrk_params(void)
     param_format(&TP[P_KTRK], 32, b, &u); ok &= str_eq(b, "+51");
     param_format(&TP[P_KTRK], 1, b, &u); ok &= str_eq(b, "+2");
     expect("  .. shown -100 % .. 0 .. +100 % (63 = +100, 32 = +51)", ok);
-    expect("  .. automatable (a knob move is a lock / event), MIDI LEARN takes it (every id below P_E0)", motion_param(P_KTRK) && P_KTRK < P_E0);
+    expect("  .. not automatable (1.1: only the matrix destinations are recorded, HANDOFF_V2 item 34), every id below P_E0 for MIDI LEARN", !motion_param(P_KTRK) && P_KTRK < P_E0);
     ok = 1;
     {   /* a stored patch keeps it: SAVE writes it (it used to write QNT's default there), LOAD brings it back; the store's default is 0 */
         track_t *t;
@@ -1445,56 +1443,49 @@ static void t_ktrk_ui(void)
     go_title("MULTI FILTER 2/2"); frame();
     ok = str_eq(cur_page()->title, "MULTI FILTER 2/2");
     ok &= str_eq(card_lbl(0, &vp), "KTRK") && vp == &TSEL->p[P_KTRK] && str_eq(card_lbl(1, &vp), "ENV 2") && vp == &TSEL->p[P_E2FLT] &&
-          str_eq(card_lbl(2, &vp), "LFO 1") && vp == &TSEL->p[P_LD_FLT] && str_eq(card_lbl(3, &vp), "LFO 2") && vp == &TSEL->p[P_L2FLT];
-    ok &= !hid(P_KTRK) && !hid(P_E2FLT) && !hid(P_LD_FLT) && !hid(P_L2FLT);
+          str_eq(card_lbl(2, &vp), "LFO 1") && vp == &TSEL->p[P_LD_FLT];
+
+    ok &= !hid(P_KTRK) && !hid(P_E2FLT) && !hid(P_LD_FLT);
     turn(EN_K1, 5); ok &= TSEL->p[P_KTRK] == 5;
     turn(EN_K2, 3); ok &= TSEL->p[P_E2FLT] == 3;
     turn(EN_K3, -4); ok &= TSEL->p[P_LD_FLT] == -4;
-    turn(EN_K4, 6); ok &= TSEL->p[P_L2FLT] == 6;
-    expect("PHASE (ufilt 1): MULTI FILTER 2/2 is K1 KTRK, K2 ENV 2 (the id P_E2FLT of the DEST page: ONE stored value), K3 LFO 1 (P_LD_FLT), K4 LFO 2 (P_L2FLT; no AMP ENV card); all four live", ok);
+    expect("PHASE (ufilt 1): MULTI FILTER 2/2 is K1 KTRK, K2 ENV 2 (the id P_E2FLT of the DEST page: ONE stored value), K3 LFO 1 (P_LD_FLT); K4 empty (1.1: the LFO 2 and AMP ENV cutoff depths are gone); all three live", ok);
     go_title("ENV 2 DEST"); frame();
-    ok2 = !hid(P_E2FLT) && !hid(P_E2SHP);
+    ok2 = !hid(P_E2FLT);
     b = TSEL->p[P_E2FLT];
     turn(EN_K1, 2);
     ok2 &= TSEL->p[P_E2FLT] == b + 2;
-    turn(EN_K2, 4); ok2 &= TSEL->p[P_E2SHP] == 4;
+
     go_title("LFO 1 DEST"); frame();
     ok2 &= !hid(P_LD_FLT) && !hid(P_LD_PIT) && !hid(P_LD_SHP) && !hid(P_LD_AMP);
     b = TSEL->p[P_LD_FLT];
     turn(EN_K2, 2); ok2 &= TSEL->p[P_LD_FLT] == b + 2;
-    go_title("AMP DEST"); frame();
-    ok2 &= !hid(P_ED_FLT);
-    go_title("LFO 2 DEST"); frame();
-    ok2 &= !hid(P_L2FLT);
-    b = TSEL->p[P_L2FLT];
-    turn(EN_K2, 3); ok2 &= TSEL->p[P_L2FLT] == b + 3;
     go_title("MULTI FILTER 2/2"); frame();
-    ok2 &= card_lbl(1, &vp)[0] == 'E' && vp == &TSEL->p[P_E2FLT] && TSEL->p[P_E2FLT] == 3 + 2 && TSEL->p[P_LD_FLT] == -4 + 2 && TSEL->p[P_L2FLT] == 6 + 3;
-    expect("  .. the same stored values on the DEST pages: ENV 2 DEST, LFO 1 DEST and LFO 2 DEST draw their FLT cards too (ufilt 1), the knobs move the value MULTI FILTER 2/2 shows; AMP DEST keeps its own FLT (no card on 2/2)", ok2);
+    ok2 &= card_lbl(1, &vp)[0] == 'E' && vp == &TSEL->p[P_E2FLT] && TSEL->p[P_E2FLT] == 3 + 2 && TSEL->p[P_LD_FLT] == -4 + 2;
+    expect("  .. the same stored values on the DEST pages: ENV 2 DEST and LFO 1 DEST draw their FLT cards too (ufilt 1), the knobs move the value MULTI FILTER 2/2 shows (AMP DEST and LFO 2 DEST have no FLT card in 1.1)", ok2);
     ui_power_on();
     init_engine_of(TSEL, eng_named("ANALOG"));
     go_title("MULTI FILTER 2/2"); frame();
-    ok3 = !hid(P_KTRK) && !hid(P_E2FLT) && !hid(P_LD_FLT) && !hid(P_L2FLT);
+    ok3 = !hid(P_KTRK) && !hid(P_E2FLT) && !hid(P_LD_FLT);
     b = TSEL->p[P_KTRK]; turn(EN_K1, 7); ok3 &= TSEL->p[P_KTRK] == b + 7;
     b = TSEL->p[P_E2FLT]; turn(EN_K2, 3); ok3 &= TSEL->p[P_E2FLT] == b + 3;
     b = TSEL->p[P_LD_FLT]; turn(EN_K3, 3); ok3 &= TSEL->p[P_LD_FLT] == b + 3;
-    b = TSEL->p[P_L2FLT]; turn(EN_K4, 3); ok3 &= TSEL->p[P_L2FLT] == b + 3;
     go_title("ENV 2 DEST"); frame();
     ok3 &= !hid(P_E2FLT);
     b = TSEL->p[P_E2FLT]; turn(EN_K1, 3); ok3 &= TSEL->p[P_E2FLT] == b + 3;
     go_title("LFO 1 DEST"); frame();
     ok3 &= !hid(P_LD_FLT);
     b = TSEL->p[P_LD_FLT]; turn(EN_K2, 3); ok3 &= TSEL->p[P_LD_FLT] == b + 3;
-    expect("ANALOG (ufilt 1 since cloud job J): MULTI FILTER 2/2 shows KTRK, ENV 2, LFO 1, LFO 2, all live; the DEST pages keep their FLT cards", ok3);
+    expect("ANALOG (ufilt 1 since cloud job J): MULTI FILTER 2/2 shows KTRK, ENV 2, LFO 1, all live; ENV 2 DEST and LFO 1 DEST keep their FLT cards", ok3);
     for (k = 0, ok = 1; k < NENG_SHOWN; k++) {
         const engine_t *e = ENGINES[eng_vis(k)];
         init_engine_of(TSEL, eng_vis(k));
         go_title("ENV 2 DEST"); frame();
         ok &= !hid(P_E2FLT);
         go_title("MULTI FILTER 2/2"); frame();
-        ok &= hid(P_E2FLT) == (e->ufilt != 1u) && hid(P_L2FLT) == (e->ufilt != 1u) && hid(P_LD_FLT) == (e->ufilt != 1u) && !hid(P_KTRK);
+        ok &= hid(P_E2FLT) == (e->ufilt != 1u) && hid(P_LD_FLT) == (e->ufilt != 1u) && !hid(P_KTRK);
     }
-    expect("  .. every engine shown: the DEST pages always draw their FLT cards; MULTI FILTER 2/2 draws ENV 2, LFO 1 and LFO 2 on the engines where they drive the multimode filter (ufilt 1) only", ok);
+    expect("  .. every engine shown: the DEST pages always draw their FLT cards; MULTI FILTER 2/2 draws ENV 2 and LFO 1 on the engines where they drive the multimode filter (ufilt 1) only", ok);
 }
 static void t_ktrk_roll(void)
 {

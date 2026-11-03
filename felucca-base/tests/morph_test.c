@@ -60,6 +60,17 @@ static uint32_t preset_by_name(uint32_t e, const char *n)
             return k;
     return 0;
 }
+
+/* TIDE rolls a factory sound's B MUSICAL by default; the checks of the plain roll (seeds, independent ends, the audible gap) run with that off, as the MUSICAL ones set it on themselves */
+#if DUELL_TIDE
+#define PLAIN_ON() (morph_musical = 0)
+#define PLAIN_OFF() (morph_musical = 1)
+#define PLAIN_ROLL(f) do { PLAIN_ON(); f; PLAIN_OFF(); } while (0)
+#else
+#define PLAIN_ON() ((void)0)
+#define PLAIN_OFF() ((void)0)
+#define PLAIN_ROLL(f) f
+#endif
 static void fresh(uint32_t e, uint32_t pi)
 {
     uint32_t k;
@@ -525,7 +536,7 @@ static void test_exact(void)
             int16_t keep[P_COUNT], prev[P_COUNT];
             const int8_t *A, *B;
             int32_t pw[MX_N];
-            fresh(list[k], r % ENGINES[list[k]]->npresets);
+            fresh(list[k], ENGINES[list[k]]->npresets ? r % ENGINES[list[k]]->npresets : 0u);   /* (a retired engine has no preset) */
             busy(t);
             morph_set_amount(30 + r * 3);
             morph_roll_seed(0, 0, 100 + r);
@@ -890,11 +901,11 @@ static void test_target_seed(void)
     /* seeds */
     fresh(0, 1);
     morph_set_amount(40);
-    morph_roll_seed(0, 0, 31337);
+    morph_roll_cfg(0, 0, 31337, 40, morph_cfg_of(0));   /* (from the Original: the player's ROLL is chained since 2026-10-29) */
     memcpy(a, endp(0, 0), P_COUNT);
-    morph_roll_seed(0, 0, 4711);
+    morph_roll_cfg(0, 0, 4711, 40, morph_cfg_of(0));
     memcpy(b, endp(0, 0), P_COUNT);
-    morph_roll_seed(0, 0, 31337);
+    morph_roll_cfg(0, 0, 31337, 40, morph_cfg_of(0));   /* (from the Original: the player's ROLL is chained since 2026-10-29) */
     ok = !memcmp(a, endp(0, 0), P_COUNT) && memcmp(a, b, P_COUNT);
     {
         int8_t c[P_COUNT];
@@ -1197,6 +1208,7 @@ static void test_reach(void)
             ra = note_lb(250);
             ba = note_bright;
             fresh(ef, pf);
+            PLAIN_ON();
             morph_set_amount(70);
             morph_roll_seed(0, 0, 100u + s);
             morph_roll_seed(0, 1, 200u + s);
@@ -1216,6 +1228,7 @@ static void test_reach(void)
                100 * ch[0], 100 * ch[9], 100 * bch[5], 100 * bch[0], 100 * bch[9], (unsigned)good);
         check("FM6: at AMOUNT 70 End B differs audibly from End A (RMS or brightness >= 15 % in at least 8 of 10 seeds); patch intact",
               good >= 8u && ok);
+    PLAIN_OFF();
     }
     /* D: LOFI at AMOUNT 100, 20 seeds, 64 fader steps: no step far above the median step (loudness and brightness); DUELL WAVE the
      * same (its SYNC LEAD and ALL ON presets: SYNC, BEND, DTN, SUB rolled; TABLE never) */
@@ -1294,7 +1307,9 @@ static void test_v2(void)
         busy(t);
         morph_set_amount(70);
         morph_set_fader(90);
-        morph_roll(1);
+        PLAIN_ON();                                      /* (TIDE rolls a factory sound's B MUSICAL, saved as values, never re-made from the seed: this is the seed block's check, so roll from the Original, depth 1) */
+        morph_roll_cfg(0, 1u, morph_new_seed(), 70u, morph_cfg_of(0));
+        PLAIN_OFF();
         t->p[P_FREEA] = (int16_t)(t->p[P_FREEA] + 3);          /* an edit after the roll: the block re-rolls B on this Original */
         ok &= morph_blk_make(0, blk);
         memcpy(b0, endp(0, 1), P_COUNT);
@@ -1474,7 +1489,7 @@ static void test_v2(void)
 /* -------------------------------- 12 owner rules for SMART (2026-10-12), a few fast checks --- */
 static void test_rules(void)
 {
-    uint32_t seed, k, ok_dist = 1, dist_up = 0, ok_ins = 1, ok_bow = 1, ok_mx = 1, amt_moved = 0, wild_ins = 0, wild_bow = 0, wild_mx = 0;
+    uint32_t seed, k, ok_dist = 1, dist_up = 0, ok_ins = 1, ok_bow = 1, smart_bow = 0, ok_mx = 1, amt_moved = 0, wild_ins = 0, wild_bow = 0, wild_mx = 0;
     uint32_t bow_pos = 0, dist_fix = 0;
     int8_t o[P_COUNT], end[P_COUNT];
     uint32_t ea = eng_by_name("ANALOG"), ep = eng_by_name("PHYS");
@@ -1510,7 +1525,8 @@ static void test_rules(void)
     for (seed = 1; seed <= 100u; seed++) {
         mrc = 0;
         morph_roll_pure(o, end, &ENG_PHYS, 100, seed, 0, 0);
-        ok_bow &= end[P_E0 + 6u] == 0;
+        ok_bow &= end[P_E0 + 6u] <= 100;                  /* (owner 2026-10-28: BOW rolls also from 0, a ceiling of 100) */
+        smart_bow += end[P_E0 + 6u] != 0;
         mrc = MC_WILD;
         morph_roll_pure(o, end, &ENG_PHYS, 100, seed, 0, 0);
         wild_bow += end[P_E0 + 6u] != 0;
@@ -1522,7 +1538,7 @@ static void test_rules(void)
         morph_roll_pure(o, end, &ENG_PHYS, 100, seed, 0, 0);
         bow_pos += end[P_E0 + 6u] != 60;
     }
-    check("SMART: PHYS BOW 0 stays 0 (WILD may bow); BOW > 0 rolls", ok_bow && wild_bow && bow_pos > 50);
+    check("SMART: PHYS BOW rolls also from 0 (owner 2026-10-28; ceiling 100); BOW > 0 rolls", ok_bow && smart_bow > 50 && wild_bow && bow_pos > 50);
     /* 5. the matrix in SMART: routes keep SRC / DST, none added or removed, only AMT rolls; WILD still adds / changes */
     fresh(ea, 0);
     for (k = 0; k < NMSLOT; k++)
@@ -2015,7 +2031,6 @@ static void test_editb(void)
     }
     check("a hand-set value blends at the middle of the fader exactly as the same value in a rolled end does", ok);
 }
-
 int main(void)
 {
     test_editb();                                       /* (cloud job G; first: a failure further down does not hide it) */
@@ -2027,7 +2042,7 @@ int main(void)
     test_sweeps();
     test_ramp();
     test_undo_keep();
-    test_target_seed();
+    PLAIN_ROLL(test_target_seed());
     test_safety();
     test_cost();
     test_reach();

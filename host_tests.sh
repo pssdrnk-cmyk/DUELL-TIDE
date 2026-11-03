@@ -704,8 +704,9 @@ static void midi_cc_set(track_t *t, uint32_t id, uint32_t value)
              [ "$vb" = 0 ] && echo "   PASS" || { echo "   FAIL"; fail=1; }
            fi ;;
   ldrscreen) P=$(ls -t build/duell-*.fwsc 2>/dev/null); O=${LDR_OLD:-$(echo "$P" | sed -n 2p)}; N=${LDR_NEW:-$(echo "$P" | sed -n 1p)}; [ -n "$O" ] || O=$N   # (LDR_OLD and LDR_NEW, else the newest two packages in build/; one package is used as both)
+           if [ -z "$N" ]; then run ldrscreen echo "skipped: no update package (build/duell-*.fwsc, or LDR_OLD / LDR_NEW): fm1pkg_make.py needs the JieLi SDK of a device build"; else
            $CC -O1 -DLDR_SCREEN_TEST=1 -o $OUT/ldr_test_screen tests/ldr_test.c -lm && $CC -O1 -o $OUT/ldr_test_plain tests/ldr_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } &&
-           run ldrscreen sh -c "$OUT/ldr_test_screen $O $N > $OUT/ldr_s.log && $OUT/ldr_test_plain $O $N > $OUT/ldr_p.log && [ \"\$(grep FINAL $OUT/ldr_s.log)\" = \"\$(grep FINAL $OUT/ldr_p.log)\" ] && grep -q 'loader test passed' $OUT/ldr_s.log && grep -q 'loader test passed' $OUT/ldr_p.log || { grep -E 'FAIL|FINAL' $OUT/ldr_s.log $OUT/ldr_p.log; exit 1; }" ;;
+           run ldrscreen sh -c "$OUT/ldr_test_screen $O $N > $OUT/ldr_s.log && $OUT/ldr_test_plain $O $N > $OUT/ldr_p.log && [ \"\$(grep FINAL $OUT/ldr_s.log)\" = \"\$(grep FINAL $OUT/ldr_p.log)\" ] && grep -q 'loader test passed' $OUT/ldr_s.log && grep -q 'loader test passed' $OUT/ldr_p.log || { grep -E 'FAIL|FINAL' $OUT/ldr_s.log $OUT/ldr_p.log; exit 1; }"; fi ;;
   lcdboot) cc -O1 -w -Ifirmware/hal -Ifirmware/src -o $OUT/lcd_boot_late -DFM1_LCD_BL_LATE=1 tests/lcd_boot_test.c && cc -O1 -w -Ifirmware/hal -Ifirmware/src -o $OUT/lcd_boot_ldr tests/lcd_boot_test.c || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } &&
            { run lcdboot_main $OUT/lcd_boot_late; run lcdboot_loader $OUT/lcd_boot_ldr
              run lcdboot_sources sh -c 'li() { awk "/^static void lcd_init\\(void\\)/,/^}/" | grep -c fm1_lcd_backlight; }

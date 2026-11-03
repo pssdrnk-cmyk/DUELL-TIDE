@@ -22,6 +22,8 @@ import bench_record as brec  # noqa: E402
 import bench_run as br  # noqa: E402
 
 SIM = os.path.join(ROOT, "build", "host", "bench_sim")
+# the twin counts instructions on macOS only; elsewhere its CPU figures are an estimate and a verdict that rests on them (a dear STRESS test: FAIL) is not compared
+COUNTER = sys.platform == "darwin"
 bad = 0
 R = 44100
 
@@ -471,17 +473,18 @@ tail 2
     ok_, rws = an.selfcheck(ra, rb)
     check("twin: the same test recorded twice: selfcheck PASS, and the samples are bit for bit equal", ok_ and np.array_equal(np.asarray(an.read_wav(wav)[0]), np.asarray(an.read_wav(w2)[0])))
     # --record refuses when the Mac's DUELL input is not at 44.1 kHz
-    saved = brec.device_rate
+    saved, saved_sox = brec.device_rate, brec.find_sox
+    brec.find_sox = lambda: "/usr/bin/sox"                  # (the rate check is the thing tested: sox need not be installed)
     brec.device_rate = lambda name="DUELL": 48000
     try:
         with contextlib.redirect_stdout(io.StringIO()):
-            br.main(["--record", "--suite", suite, "--out", os.path.join(tmp, "refused"), "--runs", runsd, "--only", "SILENCE"])
+            br.main(["--record", "--port", os.devnull, "--suite", suite, "--out", os.path.join(tmp, "refused"), "--runs", runsd, "--only", "SILENCE"])   # (--port: no unit is needed, the rate is checked before the port is opened)
         refused = False
         why = ""
     except SystemExit as e:
         refused, why = True, str(e.code)
     finally:
-        brec.device_rate = saved
+        brec.device_rate, brec.find_sox = saved, saved_sox
     check("--record on the unit with the Mac's DUELL input at 48 kHz: REFUSED before anything runs, with the setup steps; nothing created",
           refused and "44100" in why and "Audio MIDI Setup" in why and not os.path.exists(os.path.join(tmp, "refused", "audio")))
     # a run folder prune through the runner's --keep: the old audio goes
@@ -550,7 +553,7 @@ if os.path.exists(SIM):
     check("twin, RECORD-1 --record: the main table has the audio column 'clk/gap (+vs 1c)' right after the core 1 column, a row each ('2c ok' then '0/0'), and the AUDIO section follows",
           len(hdr) == 1 and hdr[0].index("core 1") < hdr[0].index("clk/gap") < hdr[0].index("verdict") and re.search(r"STRESS-DEF .*2c ok +0/0", summr) is not None and "AUDIO (" in summr)
     check("twin, RECORD-1: the twin has no core 1 to switch off, so the runner says so: STRESS-1CORE 'NOT A ONE-CORE RUN' (WARN, no comparison), columns clk_vs_1c / gap_vs_1c / onecore_of in results.csv",
-          len(rowsr) == 2 and rowsr[0]["test"] == "STRESS-1CORE" and "NOT A ONE-CORE RUN" in rowsr[0]["audio_why"] and rowsr[0]["verdict"] in ("WARN",)
+          len(rowsr) == 2 and rowsr[0]["test"] == "STRESS-1CORE" and "NOT A ONE-CORE RUN" in rowsr[0]["audio_why"] and rowsr[0]["verdict"] in (("WARN",) if COUNTER else ("WARN", "FAIL"))
           and all(k in rowsr[0] for k in ("clk_vs_1c", "gap_vs_1c", "onecore_of")) and rowsr[0]["onecore_of"] == "STRESS-DEF" and rowsr[1]["clk_vs_1c"] == "")
     # --prove-chain is parsed by the merged runner (the twin refuses it: it has no tone build); --only still selects
     with contextlib.redirect_stdout(io.StringIO()):

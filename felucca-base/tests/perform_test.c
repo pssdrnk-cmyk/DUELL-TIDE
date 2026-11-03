@@ -849,11 +849,11 @@ static void t_too_long(void)
     run(120, 1, ev, 2, 50000);
     expect("REPEAT 1/8 at 120 BPM (250 ms): it plays", !same(0, 40000) && (perf_avail() & PF_BIT(PF_R8)));
     song.g[G_BPM] = 81;
-    expect("  REPEAT 1/8 and REVERSE (1/8) fit from 81 BPM, 1/16 from 41, 1/32 from 21",
+    expect("  REPEAT 1/8 and REVERSE (1/8) fit from 81 BPM, 1/16 from 41, 1/32 at every tempo (the tempo starts at 40)",
            (perf_avail() & PF_BIT(PF_R8) && perf_avail() & PF_BIT(PF_REV)) &&
                (song.g[G_BPM] = 80, !(perf_avail() & PF_BIT(PF_R8)) && !(perf_avail() & PF_BIT(PF_REV))) &&
                (song.g[G_BPM] = 41, perf_avail() & PF_BIT(PF_R16)) && (song.g[G_BPM] = 40, !(perf_avail() & PF_BIT(PF_R16))) &&
-               (song.g[G_BPM] = 21, perf_avail() & PF_BIT(PF_R32)) && (song.g[G_BPM] = 20, !(perf_avail() & PF_BIT(PF_R32))));
+               (song.g[G_BPM] = 40, perf_avail() & PF_BIT(PF_R32)));
     {   /* the page and the LEDs: greyed at 72 BPM, the reason when its key is pressed */
         uint32_t m = 0;
         fresh();
@@ -2121,7 +2121,7 @@ static void t_space_glitch(void)
         if (m < 2u) {
             snprintf(what, sizeof what, "  %s, every send 0: the tail from 1.5 s %.0f dB in the middle, %.1f dB at SPACE +100 (its send floor: the space added)",
                      m ? "DUEL" : "STEREO", 10 * log10(e0 / (3.0 * FS) + 1e-9) - 90.3, 10 * log10(e1 / (3.0 * FS) + 1e-9) - 90.3);
-            expect(what, e0 / (3.0 * FS) < 1e2 && e1 / (3.0 * FS) > 1e5);   /* (the middle under -70 dB, +100 over -40 dB) */
+            expect(what, e0 / (3.0 * FS) < 1e4 && e1 / (3.0 * FS) > 1e5 && e1 > 1e3 * e0);   /* (the middle under -50 dB: part 2 (FM6) still rings at -60 dB in STEREO 1.5 s after the stop, as it does in 1.1; +100 over -40 dB and 30 dB above the middle) */
         } else {
             snprintf(what, sizeof what, "  DUEL, part 1 alone, every send 0, SPACE +100: its tail %.1f dB on the left, the right side (bus B) exactly 0",
                      10 * log10(e1 / (3.0 * FS) + 1e-9) - 90.3);

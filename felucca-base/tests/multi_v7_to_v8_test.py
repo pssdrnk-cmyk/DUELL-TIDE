@@ -31,10 +31,16 @@ def ok(c, what):
     fails += not c
 
 
+# the tags are not on every clone (the GitHub fork has none): the commits they name, which jam11 contains, are the fallback
+TAG_COMMIT = {"v1.0": "e1ef5a74ac70a68f8b7e2bebee31e03f1ffc3a12", "v1.1": "974d87509e7e89db0738c731c8a657968e60e498"}
+
+
 def git_show(ref, path):
     r = subprocess.run(["git", "show", "%s:felucca-base/%s" % (ref, path)], cwd=ROOT, capture_output=True)
     if r.returncode:
-        sys.exit("multi_v7_to_v8_test: git show %s:%s failed (the tags v1.0 and v1.1 are needed)" % (ref, path))
+        r = subprocess.run(["git", "show", "%s:felucca-base/%s" % (TAG_COMMIT[ref], path)], cwd=ROOT, capture_output=True)
+    if r.returncode:
+        sys.exit("multi_v7_to_v8_test: git show %s:%s failed (the tags v1.0 and v1.1, or their commits, are needed)" % (ref, path))
     return r.stdout
 
 
