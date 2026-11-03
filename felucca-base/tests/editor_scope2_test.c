@@ -126,9 +126,9 @@ static int scope2(void)
     /* LINK and TYPE: the knobs' setters */
     reset();
     TSEL->p[P_TWTYPE] = TT_LP; TSEL->p[P_FREEA] = 30; TSEL->p[P_CUT2] = 5; XV(TSEL, X_LINK) = 1;
-    ok = wr(2, X_LINK, 0, &v) && v == 0 && XV(TSEL, X_LINK) == 0 && TSEL->p[P_CUT2] == 35;
+    ok = wr(2, X_LINK, 0, &v) && v == 0 && XV(TSEL, X_LINK) == 0 && TSEL->p[P_CUT2] == 30 + TW_OFF_STEPS(5);   /* (1.1: an offset in whole semitones, a dial step is 1.324 of them) */
     ok &= wr(2, X_LINK, 1, &v) && v == 1 && TSEL->p[P_CUT2] == 5;
-    bad += check("SET LINK scope 2 is twin_link_set: CUTOFF 2 5 (offset) <-> 35 (30 + 5) with filter 1's CUTOFF 30", ok);
+    bad += check("SET LINK scope 2 is twin_link_set: CUTOFF 2 5 (offset) <-> 35 (30 + 5) with filter 1's CUTOFF 30 (DUELL 1.1: 5 semitones = TW_OFF_STEPS(5) dial steps)", ok);
     TSEL->eng_req = ENGI_WAVE; TSEL->p[P_TWTYPE] = TT_LP;
     ok = wr(0, P_TWTYPE, TT_COMB, &v) && v == TT_LP && TSEL->p[P_TWTYPE] == TT_LP;
     TSEL->eng_req = 0;
