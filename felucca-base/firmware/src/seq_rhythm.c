@@ -138,7 +138,7 @@ static int rhythm_mutate(uint32_t pi, uint32_t seed)
         if (!(i % 4u) || !sqm_hit(&t->step[i]) || sqm_held(t->step, i, len) ||
             rhythm_map[pi][i] == RHYTHM_REST) continue;
         int32_t preferred = phrase_direction(pi, cur, len, rhythm.dir[pi], seed);
-        if (sqm_sync && tide_metric(t, 0) != SM_NONE && tide_metric(t, (uint32_t)cur) == SM_AND && sqm_hash(seed, i, 0x5Du) % 4u < (sqm_sync == 2u ? 3u : 2u))
+        if (tarc_sync() && tide_metric(t, 0) != SM_NONE && tide_metric(t, (uint32_t)cur) == SM_AND && sqm_hash(seed, i, 0x5Du) % 4u < (tarc_sync() == 2u ? 3u : 2u))
             continue;                                /* SYNC: a hit that sits on the "and" tends to stay */
         for (uint32_t attempt = 0; attempt < 2u; attempt++) {
             int32_t dir = attempt ? -preferred : preferred;
@@ -146,9 +146,9 @@ static int rhythm_mutate(uint32_t pi, uint32_t seed)
             if (dest <= 0 || dest >= (int32_t)len ||
                 ((rhythm_map[pi][i] & RHYTHM_REPEAT) && (uint32_t)dest == i)) continue;
             if ((uint32_t)dest != i && !sqm_target(t->step, (uint32_t)dest, len)) continue;
-            if (sqm_sync && tide_metric(t, 0) != SM_NONE) {          /* SYNC: never onto a real beat; the push is an accent (M7b) */
+            if (tarc_sync() && tide_metric(t, 0) != SM_NONE) {          /* SYNC: never onto a real beat; the push is an accent (M7b) */
                 uint32_t m = tide_metric(t, (uint32_t)dest);
-                if (m == SM_BEAT || (m == SM_A && (tide_pushes(pi, (uint32_t)dest, i, len) >= (sqm_sync == 2u ? 2u : 1u) ||
+                if (m == SM_BEAT || (m == SM_A && (tide_pushes(pi, (uint32_t)dest, i, len) >= (tarc_sync() == 2u ? 2u : 1u) ||
                                                    sqm_hit(&t->step[((uint32_t)dest + 1u) % len])))) continue;
             }
             int ok = 1;

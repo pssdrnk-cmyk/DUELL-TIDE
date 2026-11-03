@@ -125,12 +125,12 @@ static void tide_link(uint32_t mask, uint32_t v)
 }
 
 /* ---------------------------------------------------------------- TIDE LIST --- */
-enum { JL_TARGET, JL_VARY, JL_ROLL, JL_ARP, JL_PITCH, JL_WASH, JL_TURNS, JL_POLY, JL_SYNC, JL_N };
-static const char *const JL_NAME[JL_N] = {"TARGET", "VARY BARS", "ROLL", "ARP", "PITCH", "WASH LEVEL", "TURNS", "POLY", "SYNC"};
+enum { JL_TARGET, JL_VARY, JL_ROLL, JL_ARP, JL_PITCH, JL_WASH, JL_TURNS, JL_POLY, JL_SYNC, JL_ARC, JL_N };
+static const char *const JL_NAME[JL_N] = {"TARGET", "VARY BARS", "ROLL", "ARP", "PITCH", "WASH LEVEL", "TURNS", "POLY", "SYNC", "ARC"};
 static uint8_t jl_sel;                                   /* the row picked (K1) */
 static void morph_act(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi);   /* (ui_input.c) */
 
-static uint32_t jl_n(uint32_t r) { return r == JL_WASH ? 4u : r == JL_TURNS ? 4u : r == JL_TARGET || r == JL_ROLL || r == JL_POLY || r == JL_SYNC ? 3u : 2u; }
+static uint32_t jl_n(uint32_t r) { return r == JL_WASH ? 4u : r == JL_TURNS ? 4u : r == JL_TARGET || r == JL_ROLL || r == JL_POLY || r == JL_SYNC || r == JL_ARC ? 3u : 2u; }
 static uint32_t jl_get(uint32_t r)
 {
     switch (r) {
@@ -142,6 +142,7 @@ static uint32_t jl_get(uint32_t r)
     case JL_TURNS: return sqm_turns;
     case JL_POLY: return sqm_poly;
     case JL_SYNC: return sqm_sync;
+    case JL_ARC: return sqm_arc;
     default: return (morph.cfg & MC_PIT) != 0u;
     }
 }
@@ -149,8 +150,8 @@ static const char *jl_vname(uint32_t r, uint32_t v)
 {
     static const char *const VARY[2] = {"4 + 8", "ALL"}, *const ROLL[3] = {"MUSIC", "SMART", "WILD"}, *const SW[2] = {"OFF", "ON"},
                              *const WL[4] = {"OFF", "LOW", "MID", "HIGH"},
-                             *const TURNS[4] = {"TOGETHER", "TAKE TURNS", "LEAD", "ECHO"}, *const POLY[3] = {"OFF", "GENTLE", "WIDE"}, *const SYNC[3] = {"OFF", "SOFT", "PUSH"};
-    return r == JL_TURNS ? TURNS[v & 3u] : r == JL_POLY ? POLY[v % 3u] : r == JL_SYNC ? SYNC[v % 3u] : r == JL_TARGET ? GL_TARGET_NAME[v % 3u] : r == JL_VARY ? VARY[v & 1u] : r == JL_ROLL ? ROLL[v % 3u] : r == JL_WASH ? WL[v & 3u] : SW[v & 1u];
+                             *const TURNS[4] = {"TOGETHER", "TAKE TURNS", "LEAD", "ECHO"}, *const POLY[3] = {"OFF", "GENTLE", "WIDE"}, *const SYNC[3] = {"OFF", "SOFT", "PUSH"}, *const ARC[3] = {"OFF", "RISE", "DROP"};
+    return r == JL_TURNS ? TURNS[v & 3u] : r == JL_POLY ? POLY[v % 3u] : r == JL_SYNC ? SYNC[v % 3u] : r == JL_ARC ? ARC[v % 3u] : r == JL_TARGET ? GL_TARGET_NAME[v % 3u] : r == JL_VARY ? VARY[v & 1u] : r == JL_ROLL ? ROLL[v % 3u] : r == JL_WASH ? WL[v & 3u] : SW[v & 1u];
 }
 static void jl_put(uint32_t r, uint32_t v)
 {
@@ -188,6 +189,10 @@ static void jl_put(uint32_t r, uint32_t v)
     case JL_SYNC:                                        /* (seq_rhythm.c: the phrase edits lean to the "and" and the push) */
         sqm_sync = (uint8_t)(v % 3u);
         ui_message(v == 0u ? "SYNC OFF" : v == 1u ? "SYNC SOFT" : "SYNC PUSH");
+        break;
+    case JL_ARC:                                         /* (seq_arc.c: a build, a peak, an optional drop and a breakdown over 36-64 bars) */
+        sqm_arc = (uint8_t)(v % 3u);
+        ui_message(v == 0u ? "ARC OFF" : v == 1u ? "ARC RISE" : "ARC DROP");
         break;
     default:
         morph_act(MQ_PITCH, mask, v, pi);
@@ -267,6 +272,10 @@ static int tide_reset(uint32_t k)
     if (k == 0u) {
         tide_home(morph_mask(song.sel));
         ui_message("HOME");
+        return 1;
+    }
+    if (k == 1u) {                                       /* MODE has no reset: OCT- + K2 drops (ARC) at the next phrase */
+        ui_message(tarc_drop_hand());
         return 1;
     }
     if (k == 2u) {
@@ -405,7 +414,19 @@ static void tide_status(char *l)
         str_cpy(l, song.playing || transport_req == 1u ? "GLIDE ON THE NEXT BAR" : "GLIDE STARTS WITH PLAY", 40);
     else if (!song.playing)
         str_cpy(l, "PAUSED: PLAY GOES ON", 40);
-    else {
+    else if (sqm_arc && sqm_auto && tarc.run) {         /* ARC: where the shape is ("RISE 3/6", "PEAK", "DROP", "BREAK 2/3") */
+        str_cpy(l, tarc_name(), 40);
+        if (tarc.phase != AP_PEAK && tarc.phase != AP_DROP) {
+            str_cpy(l + str_len(l), " ", 4);
+            fmt_int(n, (int32_t)(tarc.len - tarc.left + 1u));
+            str_cpy(l + str_len(l), n, 8);
+            str_cpy(l + str_len(l), "/", 4);
+            fmt_int(n, (int32_t)tarc.len);
+            str_cpy(l + str_len(l), n, 8);
+        }
+        if (tarc.hand && tarc.phase != AP_DROP)
+            str_cpy(l + str_len(l), "  DROP NEXT", 16);
+    } else {
         str_cpy(l, gl.hold ? "WAITING" : ST[gl.mode % 5u], 40);
         if (!gl.hold)
             str_cpy(l + str_len(l), gl.to ? " TO B" : " TO A", 8);
@@ -612,7 +633,7 @@ static uint32_t tide_sig(void)
     return (morph_fader_of(pi) | seqm_fader_of(pi) << 7 | (uint32_t)gl.on << 14 | (uint32_t)gl.armed << 16 | (uint32_t)gl.target << 17 |
             (uint32_t)gl.mode << 19 | (uint32_t)gl.to << 22 | (uint32_t)gl.hold << 23 | (song.playing ? t->seq_idx : 0xFFu) << 24) ^
            (gl.prog >> 10) * 2654435761u ^ ((gl.prog * bars) >> GLIDE_Q) * 0x27D4EB2Fu ^ sqm_key(&sqm[pi < NSHOWN ? pi : 0u]) * 40503u ^
-           ((uint32_t)gl.time | (uint32_t)gl.wait << 4 | (uint32_t)jl_sel << 8 | (uint32_t)sqm_vary_all << 12 | (uint32_t)morph_musical << 13 | (uint32_t)sqm_turns * 0x2545F491u | (uint32_t)sqm_poly << 28 | (uint32_t)sqm_sync << 30 |
+           ((uint32_t)gl.time | (uint32_t)gl.wait << 4 | (uint32_t)jl_sel << 8 | (uint32_t)sqm_vary_all << 12 | (uint32_t)morph_musical << 13 | (uint32_t)sqm_turns * 0x2545F491u | (uint32_t)sqm_poly << 28 | (uint32_t)sqm_sync << 30 | (uint32_t)(sqm_arc * 7u + tarc.phase * 3u + tarc.left) << 16 |
             (uint32_t)morph.cfg << 16 | (uint32_t)((sqm_bar + sqm_bar_turn) & 3u) << 24 | (uint32_t)song.playing << 26) * 0x9E3779B1u ^
            (tide_both() ? (morph_fader_of(1u - pi) | seqm_fader_of(1u - pi) << 7 | (song.playing ? trk[1u - pi].seq_idx : 0xFFu) << 14) * 0x85EBCA77u ^
                              sqm_key(&sqm[(1u - pi) % NSHOWN]) * 0xC2B2AE3Du ^ 0x27D4EB2Fu : 0u);
@@ -623,13 +644,13 @@ static uint32_t tide_sig(void)
  * sector pair; plan §4.5), not in the settings record (1.1 uses the bytes JAM had there). ARP, PITCH and WILD are the morph's own byte
  * (ui.c ui_morph_cfg). The record is read once at power-on (none or damaged: the defaults; neither is written back); a change is saved ~2 s after the last one,
  * while stopped and not during ERASE DATA (tide_store_poll) */
-enum { TS_MODE, TS_TIME, TS_TARGET, TS_WAIT, TS_VARY, TS_MUSIC, TS_WASH, TS_OLD, TS_TURNS = TS_OLD, TS_POLY, TS_SYNC, TS_N };   /* (TS_OLD: the fields of the first record; a record of that length loads, the later fields at their defaults) */
+enum { TS_MODE, TS_TIME, TS_TARGET, TS_WAIT, TS_VARY, TS_MUSIC, TS_WASH, TS_OLD, TS_TURNS = TS_OLD, TS_POLY, TS_SYNC, TS_ARC, TS_N };   /* (TS_OLD: the fields of the first record; a record of that length loads, the later fields at their defaults) */
 static uint8_t tide_seen[TS_N], tide_seen_ok;
 static void tide_settings(void)
 {
     uint8_t w[TS_N];
     if (!tide_seen_ok) {
-        uint8_t b[TS_N] = {[TS_TURNS] = 1u, [TS_POLY] = 1u, [TS_SYNC] = 1u};   /* (the defaults of the fields an older record lacks) */
+        uint8_t b[TS_N] = {[TS_TURNS] = 1u, [TS_POLY] = 1u, [TS_SYNC] = 1u, [TS_ARC] = 0u};   /* (the defaults of the fields an older record lacks) */
         uint32_t have = tide_store_load_min(b, TS_N, TS_OLD);
         if (have) {
             gl.mode = (uint8_t)(b[TS_MODE] <= GM_JOURNEY ? b[TS_MODE] : GM_ONCE);
@@ -642,6 +663,7 @@ static void tide_settings(void)
             sqm_turns = (uint8_t)(b[TS_TURNS] < 4u ? b[TS_TURNS] : 1u);
             sqm_poly = (uint8_t)(b[TS_POLY] < 3u ? b[TS_POLY] : 1u);
             sqm_sync = (uint8_t)(b[TS_SYNC] < 3u ? b[TS_SYNC] : 1u);
+            sqm_arc = (uint8_t)(b[TS_ARC] < 3u ? b[TS_ARC] : 0u);
         }
     }
     w[TS_MODE] = gl.mode;
@@ -654,6 +676,7 @@ static void tide_settings(void)
     w[TS_TURNS] = sqm_turns;
     w[TS_POLY] = sqm_poly;
     w[TS_SYNC] = sqm_sync;
+    w[TS_ARC] = sqm_arc;
     if (!tide_seen_ok) {                                 /* (what was read, or the defaults: not a change, nothing to write at every power-on) */
         memcpy(tide_seen, w, TS_N);
         tide_seen_ok = 1;
@@ -667,7 +690,8 @@ static void tide_settings(void)
 static void tide_poll(void)
 {
     tide_settings();
-    sqm_thin_build();                                    /* LEAD / ECHO: the follower's mask */
+    tarc_poll();                                         /* ARC: the phrase counted, the levers set */
+    sqm_thin_build();                                    /* LEAD / ECHO and ARC: the follower's mask */
     glide_poll();                                        /* a launched GLIDE moves its faders */
     seqm_poll();                                         /* the SEQ MORPH's ends follow pattern edits (TRANS, SHIFT, an edit) */
     morph_xpoll();                                       /* plan any destination GLIDE generated in this same pass */

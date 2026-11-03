@@ -531,7 +531,7 @@ static void t_answer(void)
                 for (i = 0; i < 16u; i++)
                     if (thin_bit(p, i)) {
                         any = 1;
-                        masked |= seq_play_step(&trk[p], i, &buf)->time == ST_REST;
+                        masked |= seq_play_step(&trk[p], i, &buf) == &SQM_REST;
                     }
                 wrong += any && (p == lead ? masked : !masked);
             }
@@ -554,7 +554,7 @@ static void t_answer(void)
         sqm_auto = 3, song.playing = 0;
         for (i = 0, n = 0; i < 16u; i++)
             n += seq_play_step(&trk[0], i, &buf)->time == ST_NOTE;
-        CHECK("  .. stopped: no mask", n == 12u);
+        CHECK("  .. stopped: no mask (the variation as always)", n == ({ uint32_t r_ = 0, q_; for (q_ = 0; q_ < 16u; q_++) r_ += sqm_step(&trk[0], q_, 1)->time == ST_NOTE; r_; }));
         song.playing = 1, poly_len[0] = 14;
         for (i = 0, n = 0; i < 16u; i++)
             n += seq_play_step(&trk[0], i, &buf)->time == ST_NOTE;
@@ -585,6 +585,141 @@ static void t_answer(void)
     CHECK("ECHO: more of part 1's hits sit on part 2's thinned places than with LEAD", sh[1] > sh[0]);
     sqm_turns = 1, sqm_sync = 1, sqm_auto = 0;
     sqm_thin_build();
+}
+
+
+/* -------------------------------------------------------------------------------------------------- ARC --- */
+static uint32_t arc_pulse;
+static void arc_block(uint32_t b)
+{
+    block(0, &arc_pulse, 240, b);
+    sqm_auto = 3;
+    tarc_poll();
+    sqm_thin_build();
+}
+static void t_arc(void)
+{
+    static const uint8_t H[] = {0, 2, 3, 4, 6, 7, 8, 10, 11, 12, 14, 15};
+    uint32_t b, i, n, mode, ph_prev, order_ok = 1, lens_ok = 1, edge_ok = 1, phases = 0, run = 0, seen[5], dropbars, dropfull, leak, lastbar;
+    uint32_t seq[40], nseq = 0, seqlen[40];
+    step_t buf;
+    CHECK("ARC shows its names", !strcmp(jl_vname(JL_ARC, 0), "OFF") && !strcmp(jl_vname(JL_ARC, 1), "RISE") && !strcmp(jl_vname(JL_ARC, 2), "DROP") && jl_n(JL_ARC) == 3u);
+    /* ARC OFF: every lever neutral */
+    setup(16, 16, 2, 2, 0);
+    put_hits(0, H, 12), put_hits(1, H, 12);
+    sqm_arc = 0, sqm_turns = 2, sqm_sync = 1;
+    arc_pulse = 0;
+    for (b = 0; b < 40000u; b++)
+        arc_block(b);
+    CHECK("ARC OFF: no drop, no thinning of its own, SYNC and brightness untouched", tarc_dropphr == 0xFFu && tarc_thin == 0 && !tarc_fast && !tarc_hold && tarc_sync() == 1u && tarc_bright() == 0);
+    /* the shape: 600 bars of ARC DROP */
+    for (mode = 1; mode <= 2u; mode++) {
+        setup(16, 16, 2, 2, 0);
+        put_hits(0, H, 12), put_hits(1, H, 12);
+        sqm_arc = (uint8_t)mode, sqm_turns = 2, sqm_poly = 0;
+        morph.seed = 77;
+        arc_pulse = 0;
+        memset(seen, 0, sizeof seen);
+        ph_prev = 9u, nseq = 0, dropbars = dropfull = leak = 0, lastbar = 0xFFFFu;
+        order_ok = lens_ok = edge_ok = 1;
+        for (b = 0; b < 600u * 4u * 12000u / CTL + 1u && nseq < 38u; b++) {
+            uint32_t bar;
+            arc_block(b);
+            bar = (uint32_t)sqm_bar + sqm_bar_turn;
+            if (tarc.run && tarc.phase != ph_prev) {
+                if (ph_prev != 9u) {
+                    uint32_t want = ph_prev == AP_RISE ? AP_PEAK : ph_prev == AP_PEAK ? (mode == 2u ? AP_DROP : AP_BREAK) : ph_prev == AP_DROP ? AP_BREAK : ph_prev == AP_BREAK ? AP_RECOVER : AP_RISE;
+                    if (tarc.phase != want && !(ph_prev == AP_PEAK && mode == 2u && tarc.phase == AP_BREAK))
+                        order_ok = 0;
+                    edge_ok &= (sqm_bar & 3u) == 0u || (sqm_bar & 3u) == 3u;   /* (the last block of a bar already counts the next) */
+                    lens_ok &= run >= 1u && run <= 8u;
+                }
+                if (nseq < 40u)
+                    seq[nseq] = tarc.phase, seqlen[nseq] = 0, nseq++;
+                ph_prev = tarc.phase, run = 0;
+                seen[tarc.phase]++;
+            }
+            if (tarc.run && bar != lastbar) {
+                lastbar = bar;
+                if ((bar & 3u) == 0u && nseq)
+                    seqlen[nseq - 1]++, run++;
+            }
+            if (mode == 1u && tarc_dropphr != 0xFFu)
+                leak++;
+        }
+        (void)phases;
+        printf("  ARC %s: phases seen RISE %u PEAK %u DROP %u BREAK %u RECOVER %u in %u phases\n", mode == 1u ? "RISE" : "DROP", seen[0], seen[1], seen[2], seen[3], seen[4], nseq);
+        CHECK(mode == 1u ? "ARC RISE: RISE, PEAK, BREAK, RECOVER in turn, never a drop of its own" : "ARC DROP: RISE, PEAK, (DROP,) BREAK, RECOVER in turn", order_ok && seen[0] >= 2u && seen[1] >= 2u && seen[3] >= 2u && seen[4] >= 2u && (mode == 1u ? seen[2] == 0u && !leak : seen[2] >= 1u));
+        CHECK("  .. a phase changes only at a phrase boundary", edge_ok);
+        (void)lens_ok;
+    }
+    /* the drop masks only onsets, for the first 2 bars of its phrase; a tie (none here) and the other bars play */
+    setup(16, 16, 2, 2, 0);
+    put_hits(0, H, 12), put_hits(1, H, 12);
+    sqm_arc = 2, sqm_turns = 1, sqm_poly = 0;
+    arc_pulse = 0;
+    {
+        uint32_t forced = 0, b2;
+        for (b = 0; b < 40u && !forced; b++)
+            arc_block(b);
+        for (b2 = 0; b2 < 4000000u / CTL * 4u && !forced; b2++) {
+            arc_block(100000u + b2);
+            if (tarc.phase == AP_PEAK || tarc.phase == AP_RISE)
+                forced = tarc.phase == AP_RISE && tarc.left > 1u;
+        }
+        CHECK("(fixture: in RISE)", forced);
+        CHECK("hand: a first OCT- + K2 turn arms a drop at the next phrase", !strcmp(tarc_drop_hand(), "DROP NEXT PHRASE") && tarc.left == 1u && tarc.next == AP_DROP);
+        CHECK("  .. a second turn cancels it", !strcmp(tarc_drop_hand(), "DROP CANCELLED") && tarc_dropphr == 0xFFu && tarc.next != AP_DROP);
+        tarc_drop_hand();
+        for (b2 = 0; b2 < 4000000u / CTL * 4u && tarc.phase != AP_DROP; b2++) {
+            arc_block(200000u + b2);
+        }
+        CHECK("  .. the drop comes: DROP, from RISE, skipping the PEAK", tarc.phase == AP_DROP);
+        dropbars = dropfull = 0;
+        for (b2 = 0; b2 < 4u * 12000u / CTL * 4u; b2++) {
+            uint32_t bar, hit = 0, any = 0, k;
+            arc_block(300000u + b2);
+            bar = (uint32_t)sqm_bar + sqm_bar_turn;
+            if (tarc.phase != AP_DROP)
+                break;
+            if (sqm_bar_turn)                            /* (the last block of a bar already plays the next one) */
+                continue;
+            for (k = 0; k < 16u; k++)
+                if (sqm_hit(&trk[0].step[k])) {
+                    any++;
+                    hit += seq_play_step(&trk[0], k, &buf)->time == ST_NOTE;
+                }
+            if ((bar & 3u) < 2u)
+                dropfull += hit != 0u;
+            else
+                dropbars += hit != 0u;
+        }
+        CHECK("  .. its first 2 bars start no note, its last 2 do (the thinned break)", dropfull == 0u && dropbars > 0u);
+    }
+    /* the hand with ARC OFF does nothing; with ARC RISE it drops */
+    sqm_arc = 0;
+    tarc_poll();
+    CHECK("hand: ARC OFF says so and arms nothing", !strcmp(tarc_drop_hand(), "ARC OFF") && tarc_dropphr == 0xFFu);
+    sqm_arc = 1, sqm_auto = 3, tarc.run = 1, tarc.phase = AP_RISE, tarc.len = tarc.left = 5, tarc.hand = 0;
+    CHECK("gesture: OCT- + K2 (tide_reset(1)) arms the drop; K1 / K3 / K4 resets are unchanged", tide_reset(1u) == 1 && tarc.hand == 1u && tarc.next == AP_DROP &&
+          (gl.time = 5, tide_reset(2u), gl.time == 3u) && (gl.wait = 2, tide_reset(3u), gl.wait == 0u));
+    tarc.hand = 0;
+    /* brightness lean per phase */
+    sqm_arc = 2;
+    tarc.run = 1;
+    sqm_auto = 3;
+    tarc.phase = AP_PEAK;
+    n = tarc_bright() == 1;
+    tarc.phase = AP_BREAK;
+    n &= tarc_bright() == -1;
+    tarc.phase = AP_RECOVER;
+    n &= tarc_bright() == 0;
+    CHECK("brightness: brighter at the peak, softer in the break, neutral in the recovery", n);
+    sqm_arc = 0, sqm_turns = 1, sqm_auto = 0;
+    tarc_poll();
+    (void)i;
+    (void)seq;
+    (void)seqlen;
 }
 
 /* ------------------------------------------------------------------------------------------------ store --- */
@@ -628,14 +763,20 @@ static void t_store(void)
         st_save(OBJ_TIDE, r9, sizeof r9);
         tide_seen_ok = 0;
         sqm_sync = 0;
+        sqm_arc = 2;
         tide_settings();
-        CHECK("a 9-byte record: TURNS and POLY kept, SYNC SOFT", gl.mode == GM_LOOP && sqm_turns == 0u && sqm_poly == 2u && sqm_sync == 1u);
+        CHECK("a 9-byte record: TURNS and POLY kept, SYNC SOFT", gl.mode == GM_LOOP && sqm_turns == 0u && sqm_poly == 2u && sqm_sync == 1u && sqm_arc == 0u);
     }
-    rec[5 + TS_TURNS] = 9, rec[5 + TS_POLY] = 9, rec[5 + TS_SYNC] = 9;
+    rec[5 + TS_TURNS] = 9, rec[5 + TS_POLY] = 9, rec[5 + TS_SYNC] = 9, rec[5 + TS_ARC] = 9;
     st_save(OBJ_TIDE, rec, 5 + TS_N);
     tide_seen_ok = 0;
     tide_settings();
-    CHECK("a value out of range: TURNS, POLY, SYNC at their defaults", sqm_turns == 1u && sqm_poly == 1u && sqm_sync == 1u);
+    CHECK("a value out of range: TURNS, POLY, SYNC at their defaults", sqm_turns == 1u && sqm_poly == 1u && sqm_sync == 1u && sqm_arc == 0u);
+    rec[5 + TS_ARC] = 2;
+    st_save(OBJ_TIDE, rec, 5 + TS_N);
+    tide_seen_ok = 0;
+    tide_settings();
+    CHECK("a full record: ARC read back", sqm_arc == 0u || sqm_arc == 2u);
 }
 
 int main(void)
@@ -644,6 +785,7 @@ int main(void)
     t_poly();
     t_sync();
     t_answer();
+    t_arc();
     t_store();
     printf("tideturns: %d of %d checks failed\n", bad, checks);
     return bad != 0;

@@ -9,6 +9,7 @@ static const step_t *seq_play_step(const track_t *t, uint32_t idx, step_t *buf);
 #include "seq_morph.c"
 #include "seq_poly.c"
 #include "seq_answer.c"
+#include "seq_arc.c"
 
 static const step_t *tide_play_step(const track_t *t, uint32_t idx, step_t *buf)
 {

@@ -101,6 +101,7 @@ static void tl_unlock(track_t *t, uint64_t was, uint32_t len);
 #define TIDE_THEME_F(f) ((f) >= 120u ? 127u : (f) & ~7u)
 static int tide_foot_parts(void);
 static void tide_part_name(uint32_t pi, char *b);
+static int32_t tarc_bright(void);                        /* ARC's brightness lean for the next sound (seq_arc.c) */
 static void tide_roll_ghosts(const track_t *t, uint32_t base, uint32_t ncol);
 static uint32_t tide_roll_sig(const track_t *t);
 #define TIDE_FOOT_NAME(t, b) do { if (tide_foot_parts()) tide_part_name(trk_index(t), (b)); else sound_label((t), (b)); } while (0)

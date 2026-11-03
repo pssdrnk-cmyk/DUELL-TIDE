@@ -42,6 +42,7 @@ static void tide_poly_wrap(uint32_t pi, uint32_t len)
     static const uint8_t PCT[3] = {0, 15, 40}, SPAN[3] = {0, 8, 4}, FREE[3] = {0, 16, 8};
     uint32_t lc = ++poly_lc[pi], mode = sqm_poly % 3u, h;
     int ok = mode && len >= 8u && ((sqm_auto >> pi) & 1u) && song.playing && !song.rec;
+    int calm = !tarc_hold;                               /* (ARC: no new stretch at the PEAK or the DROP) */
     if (poly_len[pi]) {
         if (!ok || lc >= poly_end[pi] || poly_len[pi] >= len) {
             poly_len[pi] = 0;
@@ -49,7 +50,7 @@ static void tide_poly_wrap(uint32_t pi, uint32_t len)
         }
         return;
     }
-    if (!ok || lc < poly_free[pi] || (lc & 3u) || ((lc >> 2) & 1u) != pi || poly_len[(pi + 1u) % NSHOWN])
+    if (!ok || !calm || lc < poly_free[pi] || (lc & 3u) || ((lc >> 2) & 1u) != pi || poly_len[(pi + 1u) % NSHOWN])
         return;                                          /* (a phrase's first loop; the parts take the phrases in turn; never both) */
     h = sqm_hash(sqm[pi].tseed ^ (uint32_t)morph.seed * 0x9E3779B1u, lc, 0x70u);
     if (h % 100u >= PCT[mode])

@@ -16,7 +16,7 @@ static void sqm_thin_build(void)
         uint32_t m[2] = {0, 0};
         const track_t *t = &trk[pi];
         uint32_t len = sqm_len(t);
-        if (sqm_turns >= 2u && sqm[pi].ok && len > 4u) {
+        if ((sqm_turns >= 2u || ((tarc_thin >> pi) & 1u)) && sqm[pi].ok && len > 4u) {
             const step_t *p = sqm_pat[pi][0];            /* (End A as played: it carries the phrase overlay) */
             uint32_t score[NSTEP], hits = 0, cand = 0, grid = tide_metric(t, 0) != SM_NONE;
             for (i = 0; i < len; i++)

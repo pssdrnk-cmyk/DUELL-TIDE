@@ -31,7 +31,7 @@ static void fl_plain_window_init(void) {}
 #define BARS 16u
 static const uint8_t STAB[16] = {0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0};   /* part 1: off-beat chords (steps 7, 11, 15) */
 static const uint8_t STABE[16] = {1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0};   /* SYNC demo: chords on beats 1 and 3 and the E of 2 and 4, to be pulled to the and */
-static uint32_t g_edit, g_sync = 1;                      /* g_edit: the phrase edits run (rhythm_poll), the SYNC demo's pattern */
+static uint32_t g_edit, g_sync = 1, g_arc, g_hand;                      /* g_edit: the phrase edits run (rhythm_poll), the SYNC demo's pattern */
 static const uint8_t LINE[16] = {1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0};   /* part 2: a bass line against them */
 
 static void setup(uint32_t fader, uint32_t seed)
@@ -99,6 +99,7 @@ static uint32_t render(const char *path, uint32_t turns, uint32_t poly, uint32_t
     sqm_poly = (uint8_t)poly;
     sqm_auto = 3;
     sqm_sync = (uint8_t)g_sync;
+    sqm_arc = (uint8_t)g_arc;
     if (f)
         wav_hdr(f, n);
     transport_req = 1;
@@ -108,8 +109,11 @@ static uint32_t render(const char *path, uint32_t turns, uint32_t poly, uint32_t
         if ((g_edit || turns >= 2u) && (t / CTL) % 64u == 0u) {
             if (g_edit)
                 rhythm_poll(3);                /* (the main loop's pass) */
+            tarc_poll();
             sqm_thin_build();
         }
+        if (g_hand && t / CTL == g_hand)
+            tarc_drop_hand();                  /* OCT- + K2 */
         if (f)
             mix_block(ob, CTL);
         short_blocks += poly_len[0] || poly_len[1];
@@ -138,6 +142,17 @@ int main(int argc, char **argv)
         render(q, 1, 0, 127, 5, 1);
         snprintf(q, sizeof q, "%s/answer_after_echo.wav", dir);
         render(q, 3, 0, 127, 5, 1);
+        return 0;
+    }
+    if (argc > 2 && !strcmp(argv[2], "arc")) {
+        char q[512];
+        g_edit = 1;
+        snprintf(q, sizeof q, "%s/arc_before_off.wav", dir);
+        render(q, 2, 0, 0, 5, 1);
+        g_arc = 2;
+        g_hand = 6u * 4u * (uint32_t)FS * 60u / BPM / CTL;   /* the hand drops in bar 6: the drop comes at bar 8 */
+        snprintf(q, sizeof q, "%s/arc_after_drop.wav", dir);
+        render(q, 2, 0, 0, 5, 1);
         return 0;
     }
     if (argc > 2 && !strcmp(argv[2], "sync")) {
