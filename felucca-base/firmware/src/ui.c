@@ -1479,7 +1479,9 @@ static void ds_arp(track_t *t, const ds_sound_t *s, const int16_t *ov)
     }
 }
 
-/* the same for the chord keys (P_CHRD, P_VOIC; DSF_KEYS): a pad may set chord keys. No scale: it is the instrument's (core.h) */
+/* the same for the chord keys (P_CHRD, P_VOIC; DSF_KEYS): a pad may set chord keys. No scale: it is the instrument's (core.h).
+ * A sound with no chord of its own (CHRD OFF in it: most of them, and a patch saved with the chord keys off) leaves the player's choice alone: only a sound that sets a chord
+ * lends it, and the next load gives the player's back (owner, "I can't enable auto chord": every load used to set CHRD OFF) */
 static const uint8_t DS_KEYID[2] = {P_CHRD, P_VOIC};
 static uint8_t ds_klent[NTRK];
 static int16_t ds_key_was[NTRK][2], ds_key_set[NTRK][2];
@@ -1504,6 +1506,11 @@ static void ds_keys(track_t *t, const ds_sound_t *s, const int16_t *ov)   /* ov:
                 t->p[DS_KEYID[i]] = ov[i];
         else
             ds_put(s, t->p, 2);
+        if (!t->p[P_CHRD]) {                            /* (no chord in the sound: nothing lent, the part's own stay) */
+            for (i = 0; i < 2u; i++)
+                t->p[DS_KEYID[i]] = ds_key_was[k][i];
+            return;
+        }
         for (i = 0; i < 2u; i++)
             ds_key_set[k][i] = t->p[DS_KEYID[i]];
         ds_klent[k] = 1;

@@ -328,7 +328,7 @@ int main(void)
             same = 1;
             for (i = 0; i < 16u; i++)
                 if (IDS[i] != AK_NOSCALE)
-                    same &= t->p[IDS[i]] == (i < 11u ? TP[IDS[i]].def : mark[i]);
+                    same &= t->p[IDS[i]] == (i < 9u ? TP[IDS[i]].def : mark[i]);   /* (the arp back to OFF; CHRD VOIC, ids 9 and 10, stay the player's: a patch without a chord leaves them) */
             ck("  the next sound loaded (no arp of its own) sets the arp OFF and the keys to their defaults; the player's LEN DIV SWING GATE QUANTIZE and steps come back", same && !memcmp(t->step, own, sizeof own));
             up_load(a_slot);
             t->p[P_ARATE] = 9;                                  /* edited while loaded, and the pattern too: */
@@ -356,8 +356,8 @@ int main(void)
         same = 1;
         for (i = 0; i < 16u; i++)
             if (IDS[i] != AK_NOSCALE)
-                same &= t->p[IDS[i]] == (i < 11u ? TP[IDS[i]].def : mark[i]);
-        ck("the arp OFF patch loads: arp OFF, no chord keys; LEN and the steps stay the player's", same && !memcmp(st0, t->step, sizeof st0));
+                same &= t->p[IDS[i]] == (i < 9u ? TP[IDS[i]].def : mark[i]);   /* (the arp back to OFF; CHRD VOIC, ids 9 and 10, stay the player's: a patch without a chord leaves them) */
+        ck("the arp OFF patch loads: arp OFF, the player's chord keys stay (a patch with no chord of its own leaves them); LEN and the steps stay the player's", same && !memcmp(st0, t->step, sizeof st0));
         {   /* an older record (before 1.0: no block) reads as the defaults: arp OFF, keys at their defaults, no pattern of its own */
             uint8_t rec[PT_WORST + 8];
             uint32_t rn = up_raw_get(b_slot, rec), xbo, mb, pr, pat, fm, ak;
@@ -372,8 +372,8 @@ int main(void)
             same = 1;
             for (i = 0; i < 16u; i++)
                 if (IDS[i] != AK_NOSCALE)
-                    same &= t->p[IDS[i]] == (i < 11u ? TP[IDS[i]].def : mark[i]);
-            ck("an older record (no block) loads as arp OFF and default keys (it used to leave the current arp); LEN and the steps stay", same && !memcmp(st0, t->step, sizeof st0));
+                    same &= t->p[IDS[i]] == (i < 9u ? TP[IDS[i]].def : mark[i]);   /* (the arp back to OFF; CHRD VOIC, ids 9 and 10, stay the player's: a patch without a chord leaves them) */
+            ck("an older record (no block) loads as arp OFF, the chord keys stay the player's (it used to leave the current arp); LEN and the steps stay", same && !memcmp(st0, t->step, sizeof st0));
         }
         /* a rename keeps the block; the editor's UP_PUT (no block) drops it */
         ck("RENAME keeps the block", up_rename(a_slot, "SEQ ARP 2") == 0 && (pt_raw(a_slot)[4] & PTF_AK) && ak_get(a_slot, &(ak_t){0}) );
