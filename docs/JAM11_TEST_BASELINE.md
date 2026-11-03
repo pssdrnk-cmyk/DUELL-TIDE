@@ -2,6 +2,26 @@
 
 Current maintenance priorities: [roadmap](ROADMAP.md). Totals below describe their named source checkpoints, not a continuously updated count.
 
+## Linux (WSL) groups: 3 November 2026, branch `lx-sound`
+
+`velaccent regress mod mode sounds mrender wave subcyc xvalues budget` pass in WSL (`wsl.exe -d Ubuntu -- sh jam/wsl.sh <group ...>`). The Windows check is unchanged: 111 passed, 0 failed, 25 skipped (these groups SKIP at `fork()`). No firmware change, so `check_off.sh` and `off.sha256` stay as they are. Stock 1.1 fails the same groups on Linux, so these were 1.0 expectations, not TIDE regressions.
+
+- **Stale expectations fixed in the tests:**
+  - `regress`: the voice pool is 16 (item 90), and a chord starts VS_MAX 2 voices a block (item 144), so the voice checks fill 16 voices and let the chords start; the full-cap check lets POLY part 3 lose one voice.
+  - `mod`, `xvalues`: 57 destinations (SPACE), 18 sources, names PULSE WIDTH / REVERB DAMPING / WAVE POSITION / TWIN FEEDBACK. SUB HARMONICS has no card and never rolls.
+  - `mode`: with TIDE the MODE page is HOME's fourth (4/4).
+  - `wave`: SMART rolls WAVE SYNC also from 0 (owner 2026-10-28).
+  - `subcyc`: the harness runs `vs_block()` per block; the REF scenes now compare the scene with and without the SUB / CYCLE values (the frozen cloud/base3-wave2 hashes predate the stagger and BIT DEPTH).
+  - `velaccent`: ANALOG factory 4 allowance 0.95 -> 1.10 dB (1.05 measured, stock 1.1 the same).
+  - `sounds`: `tests/loudness.h` used a float expression as an array size (gcc refused it). An End B the owner made as values is not judged by the seed windows.
+  - `cost` checks (`mode`, `mod`, `regress` CPU): no instruction counter on Linux: reported, not compared.
+- **Re-baselined, with the audio compared:** `regress` golden (210). 1.0's hashes pass on Linux. All 210 renders were dumped from 1.0 and jam11 and compared (`jam/soundref/regress_dmp.sh`, `acmp`). Built with `-DVS_MAX=8` the presets of ANALOG FM6 LOFI NOISE TRIO WAVE WHEEL, the sends and the 4-track mix fall to -40 .. -52 dB residual: BIT DEPTH, REVERB_FIX, SHIM. The rest is the PHYS accent / brightness and string tuning, PHASE, and the factory sounds' new recipes (`sound/*`). jam11 and stock 1.1 render 204 of 222 segments bit-exact; the others are PHYS strings (jam11's tuning), UNISON and my changed voice checks.
+- **Re-baselined without a 1.0 audio comparison** (the 1.0 and stock 1.1 trees do not build these tests on Linux): `mrender` (105 hashes), `xvalues` roll and matrix hashes (the matrix hash equals stock 1.1; the roll hash differs from it by TIDE's roll changes), `budget` LOADED_REF (End B as values, reworked ROLL B). Reasons are in the comments next to each value.
+- **Findings for the owner (not fixed, reported as KNOWN by `sounds`; stock 1.1 shows the same six):** BEHIVE has no LFO TRIG FREE; SINGING BOWL and ARP PLUCK are quiet in the body; FLOOR THUD and TABLA TALK miss the hit level; GHOST HARP clips (+0.5 dBFS peak in jam11; -6.2 in stock 1.1, after the PHYS string tuning).
+- Tools: `jam/soundref/regress_dmp.sh` (regress audio dump), `jam/soundref/i32rec.c` (MULTI_DUMP / SOUND_DUMP to acmp records).
+- Windows after WSL runs: delete `felucca-base/build` first (Python gets Errno 22 on files WSL made).
+
+
 ## Linux (WSL) groups: 3 November 2026, branch `lx-ui`
 
 `perform step3 morph uf benchrun benchaudio ldrscreen multiv8` pass in WSL (`wsl.exe -d Ubuntu -- sh jam/wsl.sh <group>`); the Windows check is unchanged: 111 passed, 0 failed, 25 skipped. All changes are test or tool side; the TIDE=0 image is untouched (no firmware file changed).
