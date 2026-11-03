@@ -59,6 +59,8 @@ Each mode has its own line on the screen, so you can read what it will do. Where
 | **ROLL** | How a new End B is made. **MUSIC** (new, the default) stays close to the sound's character; SMART and WILD are DUELL's own. |
 | **ARP**, **PITCH** | DUELL's MORPH switches, now on this page. |
 | **WASH LEVEL** | How much blend is added where two unlike sounds cross. OFF by default. |
+| **TURNS** | With both parts in automatic WNDR or JRNY: **TAKE TURNS** (the default) lets part 2 vary on bars 2 and 6 and part 1 on bars 4 and 8, so each variation is answered two bars later; TOGETHER varies both on bars 4 and 8. |
+| **POLY** | In automatic WNDR or JRNY one part's loop is now and then a few steps shorter, so its motif moves against the beat, then plays whole again at a phrase. OFF; **GENTLE** (the default) 15 or 14 of 16 steps, rarely; WIDE 12 to 15, more often. Only the playing changes: your stored pattern and its length are never rewritten. |
 
 ### New: in the sequencer and tools
 

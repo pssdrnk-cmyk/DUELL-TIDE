@@ -263,6 +263,7 @@ static void sqm_refresh(uint32_t pi, int force)
 
 static volatile uint8_t sqm_vary_all;                   /* VARY BARS: 0 4 + 8, 1 ALL (tide_ui.c, the TIDE LIST) */
 static volatile uint8_t sqm_turns = 1;                  /* TURNS: 0 TOGETHER, 1 TAKE TURNS (tide_ui.c, the TIDE LIST) */
+static volatile uint8_t sqm_poly = 1;                   /* POLY: 0 OFF, 1 GENTLE, 2 WIDE (tide_ui.c, the TIDE LIST; seq_poly.c) */
 static volatile uint8_t sqm_auto;                       /* the parts in automatic MUSIC WNDR/JRNY, a bit each (glide_poll, main loop) */
 /* the step part t plays at idx with the variation heard (vary 1; 0: End A): the stored one while End A is the Original and the
  * fader at 0, else the end its beat is on. The UI's view and KEEP (vary 1 always: the variation as it plays on a varied bar) */

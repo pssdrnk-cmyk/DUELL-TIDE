@@ -54,6 +54,7 @@ static int phrase_peer_attack(uint32_t pi, uint32_t dest)
     }
     MORPH_UNLOCK();
     if (!phrase_available(t, &c[0], ownarp) || !phrase_available(peer, &c[1], arp)) return 0;
+    if (tide_poly_on(t) || tide_poly_on(peer)) return 0;   /* (a shortened loop's cycle is not the pattern's: no prediction) */
     uint32_t len = sqm_len(peer), ownlen = sqm_len(t);
     uint32_t period = div_samples((uint32_t)peer->p[arp ? P_ARATE : P_SDIV]);
     uint32_t ownperiod = div_samples((uint32_t)t->p[ownarp ? P_ARATE : P_SDIV]);

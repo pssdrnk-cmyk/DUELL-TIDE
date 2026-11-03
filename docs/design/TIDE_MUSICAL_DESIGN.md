@@ -102,6 +102,9 @@ Automatic shortening is a separate bounded prototype: decide allowed lengths, ch
 
 Review M7 metric weighting against actual playback phase, division and swing: a local `i % 4` index is not always a beat in the shared bar. Preserve original motif anchors without forcing them onto global downbeats. M1 peer prediction follows each actual cycle; M8 turn-taking and the M9 arc follow shared musical bars.
 
+**Built (2 November 2026 session `tide-turns`): POLY.** TIDE SETTINGS row POLY: OFF / GENTLE (the default) / WIDE (`seq_poly.c`). In automatic MUSIC WNDR/JRNY (`sqm_auto`, set from `glide_poll`) one part's loop is shortened to len-1 or len-2 (GENTLE: 15 or 14 of 16) or len-1 to len-4 (WIDE: 15 to 12), for 8 (GENTLE) or 4 (WIDE) loops, then plays whole for at least 16 / 8 loops. The full loop is the reference: every change happens where it wraps (its first step), so the return re-locks the groove with no drift; inside a stretch the short loop restarts by itself, not at the shared bars. Chosen from the seed (`sqm[].tseed`, `morph.seed`) and the loop count, only at a phrase's first loop (a multiple of 4), never before the 8th loop after PLAY, the parts in turn and never both at once, a loop under 8 steps never. ARP SEQ is covered through `arp_idx`; the peer prediction (M1) returns no attack while a part is shortened.
+KEEP / UNDO policy: the shortened length is **performance only**. `P_SLEN` and the stored steps are never written, so KEEP stores the steps at the stored length (the variation as it plays, as before) and UNDO has nothing to undo about the length. Not captured. STOP/PLAY starts every part whole; POLY OFF, the glide ending (a hand taking over), a recording or a changed stored length bring the part back at the next full loop. WAIT does not change it (the flag stays set while the glide holds).
+
 Acceptance: the motif audibly rotates against the steady beat and reunites at the expected joint cycle, without clock drift, lost notes or forced bar resets. Compare 12/16 and 15/16 first without swing, then with swing and ARP SEQ; verify STOP/PLAY and manual length edits. Record software onset traces and owner listening separately. Automatic policy and resource cost remain pending and are excluded from the estimates below.
 
 ## M8 — question and answer between the two parts
@@ -126,7 +129,7 @@ The two parts still share the groove: the beats stay, and they may play together
 
 ### What is needed
 
-M8a, alternating turnarounds (smallest, try first): give each part its own bar offset in the VARY BARS 4 + 8 rule, so part 2 varies on bars 2 and 6 and part 1 on bars 4 and 8. Each part's variation is then followed two bars later by the other's. About one line plus tests. VARY BARS ALL is unchanged.
+M8a, alternating turnarounds (smallest, try first): give each part its own bar offset in the VARY BARS 4 + 8 rule, so part 2 varies on bars 2 and 6 and part 1 on bars 4 and 8. Each part's variation is then followed two bars later by the other's. About one line plus tests. VARY BARS ALL is unchanged. **Built (session `tide-turns`):** TIDE SETTINGS row TURNS: TOGETHER / TAKE TURNS (default). In automatic MUSIC WNDR/JRNY with both parts selected, part 2's turnaround is offset by two shared bars (`seq_play_step`); the offset counts the shared `sqm_bar`, so it holds for any lengths and DIVs. VARY ALL, one selected part, ONCE/LOOP, manual playback, stopped and external clock are unchanged.
 
 M8b, turn-taking within a phrase: from the shared bar counter, assign each 4-bar phrase a leading part for bars 1–2 and the other for bars 3–4 (swap the order every other phrase from the seed). In its following bars the non-leading part plays a thinned version of its current pattern: the existing gap rules applied as a per-bar playback mask (keep the beats and long notes; drop some optional hits), not as stored edits. The leading part may use its current variation. Only parts selected for TIDE take part; a single selected part plays as today.
 
@@ -222,7 +225,7 @@ Acceptance: a 16- and a 64-bar glide on a sustained chord sound like one continu
 
 The owner (2 November 2026) wants a few choices back: how much change to expect, the energy, how random, and whether buildup and breakdown phases are allowed. These are **intent** choices: they set how TIDE behaves, not individual parameters. Everything else stays automatic.
 
-The TIDE page's four columns (GLIDE, MODE, TIME, WAIT) are full, so the new choices go into the TIDE LIST, which has six rows today (TARGET, VARY BARS, ROLL, ARP, PITCH, WASH LEVEL). The TIDE settings record stores 7 of its 32 field bytes, so three more fit; the loader must accept the older, shorter record (keep the stored fields, default the new ones) so an update does not reset the owner's settings.
+The TIDE page's four columns (GLIDE, MODE, TIME, WAIT) are full, so the new choices go into the TIDE LIST, which has six rows today (TARGET, VARY BARS, ROLL, ARP, PITCH, WASH LEVEL). The TIDE settings record stores 7 of its 32 field bytes, so three more fit (TURNS and POLY use two: fields 7 and 8; the loader accepts the 7-field record and defaults them to TAKE TURNS / GENTLE); the loader must accept the older, shorter record (keep the stored fields, default the new ones) so an update does not reset the owner's settings.
 
 User decisions (TIDE LIST rows, all automatic MUSIC WNDR/JRNY behaviour):
 

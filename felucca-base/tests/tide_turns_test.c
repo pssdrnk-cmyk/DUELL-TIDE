@@ -1,0 +1,436 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
+/* TIDE: TURNS (M8a, alternating turnarounds) and POLY (M7d, generative polymeter), docs/design/TIDE_MUSICAL_DESIGN.md.
+ *   turns    which shared bars each part plays its variation on, with equal and with different lengths and DIVs; the unchanged modes
+ *            (TOGETHER, VARY ALL, one part, manual, stopped, external clock); glide_poll's "automatic" flag
+ *   poly     the shortened loop's lengths, that every stretch ends at the full loop's first step and the groove is back in phase (sequencer
+ *            and ARP SEQ), never both parts, POLY OFF / manual / recording / STOP-PLAY, the stored steps and lengths untouched, KEEP
+ *   store    the settings record: an older, shorter record keeps its fields and defaults the new ones; a new one round-trips */
+#define UI_TEST_NO_MAIN 1
+#define FELUCCA_FLASH 1
+#include "ui_test.c"
+
+static uint8_t nor[0x100000];
+static int st_read(uint32_t off, void *dst, uint32_t n) { memcpy(dst, nor + off, n); return 0; }
+static int st_erase(uint32_t off) { memset(nor + off, 0xFF, 4096); return 0; }
+static int st_prog(uint32_t off, const void *src, uint32_t n)
+{
+    const uint8_t *s = src;
+    uint32_t i;
+    if ((off & 0xFFu) + n > 256u)
+        return -1;
+    for (i = 0; i < n; i++)
+        nor[off + i] &= s[i];
+    return 0;
+}
+static uint32_t irq_save(void) { return 0; }
+static void irq_restore(uint32_t f) { (void)f; }
+static uint32_t fl_jedec_ram(void) { return 0x856014u; }
+static void fl_plain_window_init(void) {}
+
+static int bad, checks;
+#define CHECK(s, x) do { checks++; if (!(x)) { printf("tideturns: FAIL %s\n", s); bad++; } } while (0)
+
+enum { INTERNAL, EXTERNAL };
+/* two parts of 16 notes (len, div as asked), PLAY from the top, the SEQ MORPH's End B at the fader's top for both */
+static void setup(uint32_t len0, uint32_t len1, uint32_t div0, uint32_t div1, uint32_t arp)
+{
+    uint32_t p, i;
+    ui_power_on();
+    frame();
+    gl.on = gl.armed = 0;
+    transport_req = 0;
+    song.playing = song.rec = 0;
+    mods_off = 0;
+    duell_mode = DM_STEREO;
+    usb.config = 1;
+    memset(&midi_clock, 0, sizeof midi_clock);
+    song.g[G_CLOCK] = 0;
+    song.g[G_BPM] = 240;
+    song.g[G_SWING] = 50;
+    midi_pch[0] = 0;
+    midi_pch[1] = 1;
+    memset(sqm, 0, sizeof sqm);
+    memset(&rhythm, 0, sizeof rhythm);
+    for (p = 0; p < 2; p++) {
+        track_t *t = &trk[p];
+        memset(t->step, 0, sizeof t->step);
+        t->p[P_SLEN] = (int16_t)(p ? len1 : len0);
+        t->p[P_SDIV] = (int16_t)(p ? div1 : div0);
+        t->p[P_ARATE] = (int16_t)(p ? div1 : div0);
+        t->p[P_AMODE] = (int16_t)(((arp >> p) & 1u) ? AM_SEQ : AM_OFF);
+        t->p[P_APROB] = 127;
+        t->p[P_AOCT] = 1;
+        t->p[P_AGATE] = 64;
+        t->p[P_SQNT] = 1;
+        t->p[P_MUTE] = 0;
+        t->p[P_LEVEL] = 100;
+        t->nheld = 0;
+        t->seq_active = 1;
+        for (i = 0; i < (uint32_t)t->p[P_SLEN]; i++) {
+            t->step[i].time = i % 3u == 1u ? ST_REST : ST_NOTE;
+            t->step[i].n = t->step[i].time == ST_NOTE;
+            t->step[i].note[0] = (uint8_t)(60 + i);
+            t->step[i].vel = 100;
+        }
+    }
+    sqm_vary_all = 0;
+    sqm_turns = 1;
+    sqm_poly = 1;
+    sqm_auto = 0;
+    for (p = 0; p < 2; p++) {
+        seqm_set_amount(p, 80);
+        seqm_roll(p);
+        seqm_set_fader(p, 127);
+    }
+    seqm_poll();
+    seq_start();
+    song.playing = 1;
+}
+static int varied(uint32_t p)
+{
+    step_t buf;
+    return seq_play_step(&trk[p], 0, &buf) == &sqm_pat[p][1][0];
+}
+/* PLAY for `bars` bars (events_block, one control block at a time); per part the (bar + turn) mod 8 values it played varied on */
+static void block(uint32_t ext, uint32_t *pulse, uint32_t bpm, uint32_t b)
+{
+    if (ext) {
+        fm1_ms = 10u + (uint32_t)((uint64_t)(b + 1u) * CTL * 1000u / FS);
+        while ((uint64_t)(*pulse + 1u) * (uint32_t)FS * 60u <= (uint64_t)(b + 1u) * CTL * bpm * 24u) {
+            (*pulse)++;
+            midi_enqueue(0xFu | 0xF8u << 8, 1);
+        }
+    }
+    events_block(CTL);
+}
+static uint32_t run_turns(uint32_t bars, uint32_t ext, uint32_t *seen0, uint32_t *seen1)
+{
+    uint32_t b, pulse = 0, n = bars * 4u * (uint32_t)FS * 60u / 240u / CTL + 1u, bpm = 240;
+    *seen0 = *seen1 = 0;
+    if (ext) {
+        song.g[G_CLOCK] = 1;
+        memset(&midi_clock, 0, sizeof midi_clock);
+        midi_clock.mode = 1;
+        fm1_ms = 10;
+        midi_clock_transport(0xFA, 10);
+        midi_clock_pulse(10);
+    }
+    for (b = 0; b < n; b++) {
+        uint32_t k;
+        block(ext, &pulse, bpm, b);
+        k = ((uint32_t)sqm_bar + sqm_bar_turn) & 7u;   /* (the state the audio path reads for the next block) */
+        if (varied(0))
+            *seen0 |= 1u << k;
+        if (varied(1))
+            *seen1 |= 1u << k;
+    }
+    return sqm_bar;
+}
+
+static void t_turns(void)
+{
+    uint32_t a, b, bars, k;
+    static const uint8_t L[][4] = {{16, 16, 2, 2}, {12, 16, 3, 3}, {16, 15, 3, 2}, {9, 7, 2, 3}, {32, 16, 3, 3}};
+    for (k = 0; k < 5u; k++) {
+        setup(L[k][0], L[k][1], L[k][2], L[k][3], 0);
+        sqm_auto = 3;
+        bars = run_turns(16, INTERNAL, &a, &b);
+        CHECK("TAKE TURNS, both parts automatic: part 1 on bars 4 and 8, part 2 on bars 2 and 6 of every 8 (any lengths / DIVs)",
+              bars >= 15u && a == 0x88u && b == 0x22u);
+    }
+    setup(16, 16, 2, 2, 0);
+    sqm_auto = 3, sqm_turns = 0;
+    run_turns(16, INTERNAL, &a, &b);
+    CHECK("TOGETHER: both parts on bars 4 and 8", a == 0x88u && b == 0x88u);
+    setup(16, 16, 2, 2, 0);
+    sqm_auto = 3, sqm_vary_all = 1;
+    run_turns(16, INTERNAL, &a, &b);
+    CHECK("VARY ALL: every bar, both parts", a == 0xFFu && b == 0xFFu);
+    setup(16, 16, 2, 2, 0);
+    sqm_auto = 1;
+    run_turns(16, INTERNAL, &a, &b);
+    CHECK("one part selected (automatic on part 1 only): both as today, bars 4 and 8", a == 0x88u && b == 0x88u);
+    setup(16, 16, 2, 2, 0);
+    sqm_auto = 2;
+    run_turns(16, INTERNAL, &a, &b);
+    CHECK("  .. on part 2 only", a == 0x88u && b == 0x88u);
+    setup(16, 16, 2, 2, 0);
+    sqm_auto = 0;
+    run_turns(16, INTERNAL, &a, &b);
+    CHECK("manual (no automatic MUSIC WNDR / JRNY): together, as today", a == 0x88u && b == 0x88u);
+    setup(16, 16, 2, 2, 0);
+    sqm_auto = 3;
+    run_turns(16, EXTERNAL, &a, &b);
+    CHECK("external clock: TAKE TURNS in the beats the clock gives", a == 0x88u && b == 0x22u);
+    setup(16, 16, 2, 2, 0);
+    sqm_auto = 3;
+    song.playing = 0;
+    CHECK("stopped: the variation as always (the editor's view)", varied(0) && varied(1));
+    /* glide_poll's flag: automatic MUSIC WNDR / JRNY on the SEQ lane, playing, not recording, not armed (rhythm_poll's own condition) */
+    setup(16, 16, 2, 2, 0);
+    gl.on = 3, gl.mode = GM_WANDER, gl.mask = 3, gl.armed = 0;
+    morph_musical = 1;
+    glide_poll();
+    CHECK("automatic WANDER on BOTH: flagged for both parts", sqm_auto == 3u);
+    gl.on = 3, gl.mode = GM_JOURNEY;
+    glide_poll();
+    CHECK("  .. JOURNEY too", sqm_auto == 3u);
+    gl.on = 3, gl.hold = 1;
+    glide_poll();
+    CHECK("  .. during WAIT (the faders still) the phrase goes on", sqm_auto == 3u);
+    gl.on = 3, gl.hold = 0;
+    gl.mode = GM_LOOP;
+    glide_poll();
+    CHECK("  .. not LOOP", sqm_auto == 0u);
+    gl.on = 3, gl.mode = GM_WANDER, gl.mask = 1;
+    glide_poll();
+    CHECK("  .. one part: that part's bit", sqm_auto == 1u);
+    gl.on = 3, gl.mask = 3, morph_musical = 0;
+    glide_poll();
+    CHECK("  .. not with ROLL SMART / WILD", sqm_auto == 0u);
+    gl.on = 3, morph_musical = 1, song.rec = 1;
+    glide_poll();
+    CHECK("  .. not while recording", sqm_auto == 0u);
+    song.rec = 0;
+    gl.on = 1;
+    glide_poll();
+    CHECK("  .. not on the SOUND lane alone", sqm_auto == 0u);
+}
+
+/* ------------------------------------------------------------------------------------------------ POLY --- */
+typedef struct {
+    uint32_t steps[2];                  /* steps played */
+    uint32_t shorts[2];                 /* stretches begun */
+    uint32_t minrun[2], maxrun[2];      /* the shortest / longest loop run (steps between two first steps) */
+    uint32_t badlock[2];                /* a full-length loop that did not start where the full loop would */
+    uint32_t longest_short[2];          /* the most steps in a row played in a shortened stretch */
+    uint32_t both;                      /* a step with both parts shortened */
+    uint32_t badlen[2];                 /* a loop length outside the mode's set */
+    uint32_t runs_full[2];
+} polystat_t;
+static polystat_t ps;
+/* run `bars` bars; per step started of part p: the position in the part's own loop; ARP SEQ parts by their arp_idx */
+static void run_poly(uint32_t bars, uint32_t arp, uint32_t mode, uint32_t lo, uint32_t hi)
+{
+    uint32_t p, b, n = bars * 4u * (uint32_t)FS * 60u / 240u / CTL + 1u, pulse = 0;
+    uint32_t last[2] = {0xFFFFFFFFu, 0xFFFFFFFFu}, run[2] = {0, 0}, since[2] = {0xFFFFFFFEu, 0xFFFFFFFEu}, shortrun[2] = {0, 0}, total[2] = {0, 0}, wasp[2] = {0, 0};
+    memset(&ps, 0, sizeof ps);
+    ps.minrun[0] = ps.minrun[1] = 0xFFFFFFFFu;
+    (void)mode;
+    for (b = 0; b < n; b++) {
+        block(0, &pulse, 240, b);
+        for (p = 0; p < 2; p++) {
+            track_t *t = &trk[p];
+            uint32_t full = (uint32_t)t->p[P_SLEN], now;
+            int a = (arp >> p) & 1u;
+            now = a ? tide_arp_idx(t, t->arp_idx, full) : t->seq_idx;
+            if (a ? t->arp_idx == 0xFFFFFFFFu : t->seq_pos >= 0x7FFFFFFFu)
+                continue;
+            if (now == last[p] && (a ? t->arp_idx == since[p] : 1))
+                continue;
+            if (a && t->arp_idx == since[p])
+                continue;
+            since[p] = t->arp_idx;
+            last[p] = now;
+            ps.steps[p]++;
+            total[p]++;
+            if (poly_len[p] && !wasp[p])
+                ps.shorts[p]++;
+            if (poly_len[p])
+                ps.badlen[p] += poly_len[p] < lo || poly_len[p] > hi, ps.minrun[p] = poly_len[p] < ps.minrun[p] ? poly_len[p] : ps.minrun[p];
+            wasp[p] = poly_len[p];
+            if (poly_len[p])
+                shortrun[p]++, ps.longest_short[p] = shortrun[p] > ps.longest_short[p] ? shortrun[p] : ps.longest_short[p];
+            else
+                shortrun[p] = 0;
+            if (poly_len[0] && poly_len[1])
+                ps.both++;
+            if (now == 0) {
+                if (run[p]) {
+                    ps.maxrun[p] = run[p] > ps.maxrun[p] ? run[p] : ps.maxrun[p];
+                    if (run[p] == full) {
+                        ps.runs_full[p]++;
+                        ps.badlock[p] += (total[p] - 1u) % full != 0u;   /* a full loop starts where the full loop would: the groove is back */
+                    }
+                }
+                run[p] = 0;
+            }
+            run[p]++;
+        }
+    }
+}
+static void keepcheck(void)
+{
+    static step_t before[2][NSTEP];
+    int16_t len[2];
+    uint32_t p;
+    for (p = 0; p < 2; p++)
+        memcpy(before[p], trk[p].step, sizeof before[p]), len[p] = trk[p].p[P_SLEN];
+    (void)len;
+}
+
+static void t_poly(void)
+{
+    static step_t keep0[NSTEP], keep1[NSTEP];
+    static const uint8_t M[3][2] = {{0, 0}, {14, 15}, {12, 15}};
+    uint32_t mode, arp;
+    for (arp = 0; arp < 4u; arp += 3u) {
+        for (mode = 1; mode <= 2u; mode++) {
+            const char *nm = arp ? (mode == 1u ? "ARP SEQ GENTLE" : "ARP SEQ WIDE") : (mode == 1u ? "GENTLE" : "WIDE");
+            char msg[96];
+            setup(16, 16, 2, 2, arp);
+            sqm_auto = 3, sqm_poly = (uint8_t)mode;
+            memcpy(keep0, trk[0].step, sizeof keep0), memcpy(keep1, trk[1].step, sizeof keep1);
+            run_poly(400, arp, mode, M[mode][0], M[mode][1]);
+            snprintf(msg, sizeof msg, "%s: a part's loop is shortened now and then, both parts", nm);
+            CHECK(msg, ps.shorts[0] + ps.shorts[1] >= 2u && ps.shorts[0] && ps.shorts[1]);
+            snprintf(msg, sizeof msg, "%s: lengths only %u to %u of 16", nm, M[mode][0], M[mode][1]);
+            CHECK(msg, !ps.badlen[0] && !ps.badlen[1] && ps.minrun[0] >= M[mode][0] && ps.minrun[1] >= M[mode][0]);
+            snprintf(msg, sizeof msg, "%s: every full loop starts where the full loop would (the groove re-locks), full loops return", nm);
+            CHECK(msg, !ps.badlock[0] && !ps.badlock[1] && ps.runs_full[0] > 20u && ps.runs_full[1] > 20u);
+            snprintf(msg, sizeof msg, "%s: never both parts shortened at once", nm);
+            CHECK(msg, !ps.both);
+            snprintf(msg, sizeof msg, "%s: a stretch is a phrase or two (%u steps at most)", nm, mode == 1u ? 8u * 16u : 4u * 16u);
+            CHECK(msg, ps.longest_short[0] <= (mode == 1u ? 8u * 16u : 4u * 16u) && ps.longest_short[1] <= (mode == 1u ? 8u * 16u : 4u * 16u));
+            snprintf(msg, sizeof msg, "%s: the stored steps and lengths are never touched", nm);
+            CHECK(msg, trk[0].p[P_SLEN] == 16 && trk[1].p[P_SLEN] == 16 && !memcmp(keep0, trk[0].step, sizeof keep0) && !memcmp(keep1, trk[1].step, sizeof keep1));
+            if (!arp)
+                printf("  %s: %u / %u stretches in 400 bars, shortest loop %u / %u\n", nm, ps.shorts[0], ps.shorts[1], ps.minrun[0], ps.minrun[1]);
+        }
+    }
+    {   /* GENTLE is rarer than WIDE */
+        uint32_t g, w;
+        setup(16, 16, 2, 2, 0);
+        sqm_auto = 3, sqm_poly = 1;
+        run_poly(400, 0, 1, 14, 15);
+        g = ps.shorts[0] + ps.shorts[1];
+        setup(16, 16, 2, 2, 0);
+        sqm_auto = 3, sqm_poly = 2;
+        run_poly(400, 0, 2, 12, 15);
+        w = ps.shorts[0] + ps.shorts[1];
+        CHECK("GENTLE shortens less often than WIDE", g < w);
+    }
+    {   /* a single selected part, other lengths: 32 steps, 12 steps; and a loop under 8 never shortens */
+        setup(32, 12, 2, 2, 0);
+        sqm_auto = 3, sqm_poly = 2;
+        run_poly(400, 0, 2, 28, 31);
+        CHECK("32 steps: shortened to 28..31 (len - 1..4), the 12-step part under WIDE 8..11", ps.shorts[0] > 0 && ps.minrun[0] >= 28u);
+        setup(7, 16, 2, 2, 0);
+        sqm_auto = 3, sqm_poly = 2;
+        run_poly(200, 0, 2, 12, 15);
+        CHECK("a loop under 8 steps is never shortened", ps.shorts[0] == 0u && ps.maxrun[0] == 7u);
+    }
+    {   /* the modes that keep the loop whole */
+        setup(16, 16, 2, 2, 0);
+        sqm_auto = 3, sqm_poly = 0;
+        run_poly(300, 0, 0, 16, 16);
+        CHECK("POLY OFF: never", !ps.shorts[0] && !ps.shorts[1] && ps.maxrun[0] == 16u);
+        setup(16, 16, 2, 2, 0);
+        sqm_auto = 0, sqm_poly = 2;
+        run_poly(300, 0, 0, 16, 16);
+        CHECK("manual playback (not automatic): never", !ps.shorts[0] && !ps.shorts[1]);
+        setup(16, 16, 2, 2, 0);
+        sqm_auto = 1, sqm_poly = 2;
+        run_poly(400, 0, 2, 12, 15);
+        CHECK("one part automatic: only that part", ps.shorts[0] > 0u && !ps.shorts[1]);
+        setup(16, 16, 2, 2, 0);
+        sqm_auto = 3, sqm_poly = 2;
+        song.rec = 1;
+        run_poly(300, 0, 0, 16, 16);
+        song.rec = 0;
+        CHECK("recording: never", !ps.shorts[0] && !ps.shorts[1]);
+    }
+    {   /* leaving: POLY OFF, the glide stopping, STOP / PLAY, KEEP, WAIT; with a shortened loop on */
+        uint32_t i, b, pulse = 0;
+        setup(16, 16, 2, 2, 0);
+        sqm_auto = 3, sqm_poly = 2;
+        for (b = 0; b < 400000u && !poly_len[0] && !poly_len[1]; b++)
+            block(0, &pulse, 240, b);
+        CHECK("(fixture: a stretch began)", poly_len[0] || poly_len[1]);
+        i = poly_len[0] ? 0u : 1u;
+        memcpy(keep0, trk[i].step, sizeof keep0);
+        {   /* KEEP (SEQ TOOLS) while the loop is short: the stored length and steps stay, the loop goes on */
+            seqm_set_fader(i, 127);
+            song.sel = (uint8_t)i;
+            song.playing = 0;
+            tools_key(TL_KEEP);
+            song.playing = 1;
+            CHECK("KEEP during a shortened loop: P_SLEN is the stored 16", trk[i].p[P_SLEN] == 16);
+        }
+        sqm_poly = 0;
+        for (b = 0; b < 4u * 16u * 3u * 4u * 4u && (poly_len[0] || poly_len[1]); b++)
+            block(0, &pulse, 240, b + 400000u);
+        CHECK("POLY OFF while shortened: whole again at the next full loop", !poly_len[0] && !poly_len[1]);
+        sqm_poly = 2;
+        for (b = 0; b < 400000u && !poly_len[0] && !poly_len[1]; b++)
+            block(0, &pulse, 240, b + 800000u);
+        sqm_auto = 0;
+        for (b = 0; b < 2000u && (poly_len[0] || poly_len[1]); b++)
+            block(0, &pulse, 240, b + 1200000u);
+        CHECK("the glide stopping (manual takeover): whole again at the next full loop", !poly_len[0] && !poly_len[1]);
+        sqm_auto = 3;
+        for (b = 0; b < 400000u && !poly_len[0] && !poly_len[1]; b++)
+            block(0, &pulse, 240, b + 1400000u);
+        CHECK("(fixture: again)", poly_len[0] || poly_len[1]);
+        seq_start();
+        CHECK("STOP / PLAY: both parts whole, from the top", !poly_len[0] && !poly_len[1] && trk[0].seq_idx == 15u && poly_ref[0] == 15u);
+        seq_start();
+        song.playing = 1;
+        sqm_auto = 3, sqm_poly = 2;
+        run_poly(6, 0, 2, 12, 15);
+        CHECK("the first bars after PLAY (the first two phrases) are whole (the groove is heard first)", !ps.shorts[0] && !ps.shorts[1]);
+    }
+    keepcheck();
+}
+
+/* ------------------------------------------------------------------------------------------------ store --- */
+static void t_store(void)
+{
+    uint8_t old[7] = {GM_WANDER, 2, GT_BOTH, 1, 1, 0, 3}, rec[5 + 9] = {'T', 'I', 'D', 'E', TIDE_STORE_VER};
+    uint8_t b[9];
+    memset(nor, 0xFF, sizeof nor);
+    ui_power_on();
+    flash_ok = 1;
+    pt_boot();
+    frame();
+    memcpy(rec + 5, old, 7);
+    st_save(OBJ_TIDE, rec, 5 + 7);                       /* the first record: 7 fields */
+    memset(b, 0xEE, sizeof b);
+    CHECK("an older record (7 fields) loads: 7 fields read, the rest untouched", tide_store_load_min(b, 9, 7) == 7u && !memcmp(b, old, 7) && b[7] == 0xEEu);
+    CHECK("  .. and tide_store_load(9) still wants all 9", !tide_store_load(b, 9));
+    tide_store_dirty = 0;
+    tide_seen_ok = 0;
+    sqm_turns = 0, sqm_poly = 0;
+    gl.mode = GM_ONCE, gl.time = 0, gl.target = GT_SOUND, gl.wait = 0, sqm_vary_all = 0, morph_musical = 1, morph_wlvl = 0;
+    tide_settings();
+    CHECK("the settings of the older record are kept", gl.mode == GM_WANDER && gl.time == 2u && gl.target == GT_BOTH && gl.wait == 1u && sqm_vary_all == 1u &&
+          morph_musical == 0u && morph_wlvl == 3u);
+    CHECK("  .. TURNS and POLY at their defaults: TAKE TURNS, GENTLE", sqm_turns == 1u && sqm_poly == 1u);
+    CHECK("  .. nothing is written back by the load alone", !tide_store_dirty);
+    sqm_turns = 0, sqm_poly = 2;
+    tide_settings();
+    CHECK("a change is marked for saving with 9 fields", tide_store_dirty && tide_store_n == 5u + 9u);
+    fm1_ms += 3000u;
+    song.playing = 0;
+    tide_store_poll();
+    CHECK("  .. saved", !tide_store_dirty && tide_store_load(b, 9) && b[TS_TURNS] == 0u && b[TS_POLY] == 2u && !memcmp(b, old, 7));
+    tide_seen_ok = 0;
+    sqm_turns = 1, sqm_poly = 1;
+    gl.mode = GM_ONCE;
+    tide_settings();
+    CHECK("  .. read back after a restart", sqm_turns == 0u && sqm_poly == 2u && gl.mode == GM_WANDER);
+    rec[5 + TS_TURNS] = 9, rec[5 + TS_POLY] = 9;
+    st_save(OBJ_TIDE, rec, 5 + 9);
+    tide_seen_ok = 0;
+    tide_settings();
+    CHECK("a value out of range: TURNS by its low bit, POLY back at GENTLE", sqm_turns == 1u && sqm_poly == 1u);
+}
+
+int main(void)
+{
+    t_turns();
+    t_poly();
+    t_store();
+    printf("tideturns: %d of %d checks failed\n", bad, checks);
+    return bad != 0;
+}

@@ -326,7 +326,7 @@ static __attribute__((noinline)) void arp_chord(track_t *t, const uint32_t *list
 static uint32_t arp_seq_notes(track_t *t, const uint32_t *list, uint32_t n, uint8_t *out, uint32_t *vel)
 {
     uint32_t len = t->p[P_SLEN] > 0 ? (uint32_t)t->p[P_SLEN] : 1u, k = t->arp_idx, i, j, m = 0, nt, lo = 127, oc;
-    const step_t *s = TIDE_PLAY_STEP(t, k % len);   /* TIDE hook (H2) */
+    const step_t *s = TIDE_PLAY_STEP(t, TIDE_ARP_IDX(t, k, len));   /* TIDE hooks (H2, H3b) */
     int32_t off;
     if (s->time != ST_NOTE || !s->n)
         return 0;                                   /* a rest */
@@ -542,6 +542,7 @@ static __attribute__((noinline)) void arp_fire(track_t *t, uint32_t period)
         return;
     }
     t->arp_idx++;
+    TIDE_ARP_TICK(t);                               /* TIDE hook (H3b) */
     if (atgt_bits(t)) {                             /* ARP TARGET: the units move, no note (atg_fire) */
         atg_fire(t, list, cnt, len, period);
         return;
@@ -1160,7 +1161,7 @@ static __attribute__((noinline)) void seq_step(track_t *t, const step_t *s, uint
     uint32_t i, j, gate = period * (uint32_t)t->p[P_SGATE] / 128u;
     uint32_t vel = (s->flags & SF_ACCENT) ? 127u : (s->vel ? s->vel : 96u);
     uint32_t slide_in = t->seq_hold && t->seq_n && !(skip & SEQ_REP);
-    uint32_t len = t->p[P_SLEN] ? (uint32_t)t->p[P_SLEN] : 1u;
+    uint32_t len = TIDE_SLEN(t) ? TIDE_SLEN(t) : 1u;   /* TIDE hook (H3b) */
     uint32_t next_tie = TIDE_PLAY_STEP(t, (idx + 1u) % len)->time == ST_TIE;   /* TIDE hook (H2) */
     uint32_t hits = step_ratchet(s);
     uint8_t nn[4], vv[4];                           /* the notes it plays */
@@ -1367,7 +1368,7 @@ static void seq_tick(track_t *t, uint32_t n)
     if (!song.playing)
         return;
     period = div_samples((uint32_t)t->p[P_SDIV]);
-    len = (uint32_t)t->p[P_SLEN];
+    len = TIDE_SLEN(t);                            /* TIDE hook (H3b) */
     len = len ? len : 1u;
     t->seq_pos += n;
     for (;;) {
@@ -1378,7 +1379,8 @@ static void seq_tick(track_t *t, uint32_t n)
             break;
         TIDE_SEQ_LOOP(t, len);                    /* TIDE hook (H3) */
         t->seq_pos = t->seq_pos >= 0x7FFFFFFFu ? 0u : t->seq_pos - cur_len;   /* (the pattern loops: % len below) */
-        t->seq_idx = (uint16_t)((t->seq_idx + 1u) % len);
+        t->seq_idx = (uint16_t)TIDE_SEQ_NEXT(t, len);   /* TIDE hook (H3b) */
+        TIDE_SEQ_RELEN(t, len);
         rec_hold(t, t->seq_idx, len);
         if (t->p[P_SQNT] && !t->nd_fired)
             seq_play(t, t->seq_idx, period);        /* QUANTIZE ON: every step on its start, as before 1.2 */

@@ -27,11 +27,24 @@ static uint32_t tide_seq_chord(const track_t *t, uint32_t *list, uint32_t n);
  * phrase lifecycle, seq_rhythm.c). Counted here, read by tide_seq.c and the pages */
 static volatile uint8_t sqm_bar, sqm_bar_turn;
 static volatile uint8_t tide_seq_loops[NTRK];
-#define TIDE_SEQ_START() (sqm_bar = sqm_bar_turn = 0, tide_seq_ghost_start())     /* (the phrase from the top; MIDI CONTINUE keeps it) */
+/* H3b (seq.c, audio path): POLY (seq_poly.c): the loop's length now, the step after seq_idx, the arp step k, an arp step started */
+static void tide_poly_start(void);
+static uint32_t tide_slen(const track_t *t);
+static uint32_t tide_seq_next(track_t *t);
+static int tide_seq_wrapping(const track_t *t, uint32_t len);
+static uint32_t tide_arp_idx(const track_t *t, uint32_t k, uint32_t len);
+static void tide_arp_tick(track_t *t);
+static int tide_poly_on(const track_t *t);
+#define TIDE_SLEN(t) tide_slen(t)
+#define TIDE_SEQ_NEXT(t, len) tide_seq_next(t)
+#define TIDE_SEQ_RELEN(t, len) ((len) = tide_slen(t))   /* (a stretch began or ended at this step) */
+#define TIDE_ARP_IDX(t, k, len) tide_arp_idx((t), (k), (len))
+#define TIDE_ARP_TICK(t) tide_arp_tick(t)
+#define TIDE_SEQ_START() (sqm_bar = sqm_bar_turn = 0, tide_poly_start(), tide_seq_ghost_start())     /* (the phrase from the top; MIDI CONTINUE keeps it) */
 static void tide_seq_ghost_start(void);
 #define TIDE_BEAT_BLOCK(adv) (sqm_bar_turn = (uint8_t)(beat_n == 3u && beat_pos + (adv) >= beat_samples()))
 #define TIDE_BEAT() do { if (!beat_n && song.playing) sqm_bar++; } while (0)
-#define TIDE_SEQ_LOOP(t, len) do { if ((t)->seq_idx + 1u == (len) && (t)->seq_pos < 0x7FFFFFFFu) tide_seq_loops[trk_index(t)]++; } while (0)   /* (the startup sentinel is no loop) */
+#define TIDE_SEQ_LOOP(t, len) do { if (tide_seq_wrapping((t), (len)) && (t)->seq_pos < 0x7FFFFFFFu) tide_seq_loops[trk_index(t)]++; } while (0)   /* (the startup sentinel is no loop) */
 /* H13 (ui_input.c, main loop): once a frame, after morph_poll: GLIDE, the SEQ MORPH's ends, the settings */
 static void tide_poll(void);
 #define TIDE_POLL() tide_poll()
@@ -129,6 +142,11 @@ static int tide_foot_two(void);
 #define TIDE_SEQ_GHOST(t) 0
 #define TIDE_SEQ_CHORD(t, list, n) (n)
 #define TIDE_SEQ_START() ((void)0)
+#define TIDE_SLEN(t) ((uint32_t)(t)->p[P_SLEN])
+#define TIDE_SEQ_NEXT(t, len) (((uint32_t)(t)->seq_idx + 1u) % (len))
+#define TIDE_ARP_IDX(t, k, len) ((k) % (len))
+#define TIDE_ARP_TICK(t) ((void)0)
+#define TIDE_SEQ_RELEN(t, len) ((void)0)
 #define TIDE_BEAT_BLOCK(adv) ((void)(adv))
 #define TIDE_BEAT() ((void)0)
 #define TIDE_SEQ_LOOP(t, len) ((void)0)
