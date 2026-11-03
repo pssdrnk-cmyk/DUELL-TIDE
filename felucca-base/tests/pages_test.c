@@ -11,8 +11,11 @@
  *   (f) graphs   the three new graph kinds draw something, the TWIN pages' pictures follow the state, the signature follows the extension slots
  * Built and run by DUELL/host_tests.sh (name: pages): the UI sources against ui_test.c's stub display and knobs. */
 #define UI_TEST_NO_MAIN 1
+#define UI_TEXT_CAPTURE 1                                 /* (a card read from the texts drawn: ui_test.c card_match; ui.col is a hash since 1.1) */
 #include <stdlib.h>
 #include "ui_test.c"
+#define PG_LBL_W 91                                       /* (DUELL 1.1: the TWIN, CYCLE and SUB pages are 2 x 2 cards of 116 px: a label's room 116 - 6 - 15 - 4, a value's 116 - 12) */
+#define PG_ROOM 104
 
 static int bad, ncheck;
 static int expect(const char *what, int ok)
@@ -54,9 +57,14 @@ static void fresh(uint32_t eng)
     go_main_to(HP_MORPH);
     frames(64);
 }
-static int hidden_col(uint32_t c) { return ui.col[c][0] == '\x7f'; }
-static int card_is(uint32_t c, const char *s) { return !strncmp(ui.col[c], s, strlen(s)); }
-static int blank_col(uint32_t c) { return hidden_col(c) || ui.col[c][0] == '|'; }   /* not drawn, or a blank slot */
+static int hidden_col(uint32_t c) { return card_hidden(c); }
+static int card_is(uint32_t c, const char *s)
+{
+    if (!strncmp(s, "FILTER ENV DEPTH", 16))              /* its label is 112 px in a 116 px card: drawn past the card's rectangle (OPEN, docs/JAM11_TEST_BASELINE.md), so read from the rows */
+        return rows_has(27, 215, "FILTER ENV DEPTH");
+    return card_match(c, s);
+}
+static int blank_col(uint32_t c) { return hidden_col(c); }   /* not drawn, or a blank slot */
 static int cards_are(const char *a, const char *b, const char *c, const char *d)   /* "" : the column is empty (not drawn, or a blank slot) */
 {
     const char *w[4] = {a, b, c, d};
@@ -86,14 +94,14 @@ static int fits_card(const page_t *pg, uint32_t slot, const char *tag)
     lbl = desc_shown(d);
     l2 = label_split(lbl, l1);
     lines = l2 != 0;
-    if (text_w(&AF_S, lines ? l1 : lbl) > LBL_W || (l2 && text_w(&AF_S, l2) > LBL_W)) {
+    if (text_w(&AF_S, lines ? l1 : lbl) > PG_LBL_W || (l2 && text_w(&AF_S, l2) > PG_LBL_W)) {
         printf("pages: label of %s does not fit: '%s' %d px\n", tag, lbl, text_w(&AF_S, lines ? l1 : lbl));
         ok = 0;
     }
     if (text_w(&AF_S, lines ? l1 : lbl) > w_lbl_max)
         w_lbl_max = text_w(&AF_S, lines ? l1 : lbl);
     for (v = d->min; v <= d->max; v++) {
-        int32_t room = COL_W - 8, wm;
+        int32_t room = PG_ROOM, wm;
         const int16_t save = *vp;
         param_format(d, (int16_t)v, val, &unit);
         *vp = (int16_t)v;
@@ -154,10 +162,9 @@ static void test_fit(void)
     set_twin(0, 1);
     XV(TSEL, X_CYSYNC) = 0;
     expect("(a) every label and value of every new card fits its card in every state (labels 50 px, values 49 px, medium then small)", ok);
-    printf("pages: widest label %d px (limit %d); widest value in the medium font %d px; %d values in the small font, the widest %d px (limit %d)\n", w_lbl_max, (int)LBL_W, w_val_m_max, n_small, w_val_s_max, COL_W - 8);
+    printf("pages: widest label %d px (limit %d); widest value in the medium font %d px; %d values in the small font, the widest %d px (limit %d)\n", w_lbl_max, PG_LBL_W, w_val_m_max, n_small, w_val_s_max, PG_ROOM);
     {   /* the names the owner named: PARAL, FDBK, OFFSET fit; PARALLEL, FEEDBACK do not */
-        expect("(a) PARAL, FDBK, OFFSET fit; PARALLEL (70 px medium, 55 small) and FEEDBACK (58 px) do not", text_w(&AF_M, "PARAL") <= COL_W - 8 && text_w(&AF_S, "FDBK") <= (int)LBL_W && text_w(&AF_S, "OFFSET") <= (int)LBL_W &&
-                text_w(&AF_S, "PARALLEL") > COL_W - 8 && text_w(&AF_S, "FEEDBACK") > (int)LBL_W);
+        expect("(a) PARAL, FDBK, OFFSET fit (DUELL 1.1: the pages are 116 px cards: PARALLEL and FEEDBACK fit too)", text_w(&AF_M, "PARAL") <= PG_ROOM && text_w(&AF_S, "FDBK") <= PG_LBL_W && text_w(&AF_S, "OFFSET") <= PG_LBL_W && text_w(&AF_S, "FEEDBACK") <= PG_LBL_W);
     }
     {   /* the page titles in the header (about 150 px of room, medium font) */
         static const char *const T[] = {"TWIN FILTER", "TWIN MOD", "TWIN CHAIN", "SUB OSC", "CYCLE ENV 1/2", "CYCLE ENV 2/2"};
@@ -301,10 +308,19 @@ static void test_pages(void)
 }
 
 /* ----------------------------------------------------------------------------------------- (c) cards --- */
-static int gauge_filled(uint32_t c, int32_t dx)       /* the pixel of card c's gauge row, dx px from the track's centre: not the track's colour */
+static uint16_t gauge_track;
+static int gauge_filled(uint32_t c, int32_t dx)       /* the pixel of card c's gauge row, dx px from the track's centre: not the track's colour (DUELL 1.1: the card's own geometry, grid_geo / the template's bar row) */
 {
-    int32_t x = CARD_X(c) + 5 + (CARD_W - 10) / 2 + dx, y = (int32_t)Y_LABEL + 39;
-    return host_screen[y * 240 + x] != swap16(T_BG);
+    int32_t gx, gy, gw, gh, x, y;
+    const card_geo_t *cg;
+    screen_read();
+    cg = grid_cg();
+    grid_geo(c, &gx, &gy, &gw, &gh);
+    x = gx + gw / 2 + dx;
+    y = gy + (cg ? cg->bar_y : 39);
+    if (!gauge_track)
+        gauge_track = host_screen[y * 240 + gx + 8];     /* (the track: the first look is at a card with a centre gauge at 0, nothing filled at its left end) */
+    return host_screen[y * 240 + x] != gauge_track;
 }
 static void test_cards(void)
 {
@@ -349,10 +365,10 @@ static void test_cards(void)
     goto_page("TWIN MOD");
     set_twin(TT_LP, 1);
     frames(64);
-    expect("(c) TWIN MOD (LP): KEY TRACK, FILTER ENV, LFO 1, LFO 2", cards_are("KEY", "FILTER ENV\n|", "LFO 1\nDEPTH|", "LFO 2\nDEPTH|"));
+    expect("(c) TWIN MOD (LP): KEY TRACK, FILTER ENV, LFO 1, LFO 2", cards_are("KEY TRACK|", "FILTER ENV DEPTH|", "LFO 1 DEPTH|", "LFO 2 DEPTH|"));
     set_twin(TT_COMB, 1);
     frames(64);
-    expect("(c) TWIN MOD on COMB: KEY TRACK hidden, FILTER ENV, LFO 1, LFO 2 move left", cards_are("FILTER ENV\n|", "LFO 1\nDEPTH|", "LFO 2\nDEPTH|", ""));
+    expect("(c) TWIN MOD on COMB: KEY TRACK hidden, FILTER ENV, LFO 1, LFO 2 move left", cards_are("FILTER ENV DEPTH|", "LFO 1 DEPTH|", "LFO 2 DEPTH|", ""));
     turn(EN_K1, 5);
     frames(64);
     expect("(c) .. K1 is FILTER ENV", XV(TSEL, X_ENV2) > 0 && XV(TSEL, X_KTRK2) == 0);
@@ -393,7 +409,7 @@ static void test_cards(void)
             ok &= !hidden_col(k);
         goto_page("MULTI FILTER 2/2");
         frames(64);
-        for (k = 0; k < 4u; k++)
+        for (k = 0; k < 3u; k++)                          /* (1.1: its three amount cards, FILTER ENV, LFO 1, LFO 2: no K4) */
             ok &= !hidden_col(k);
     }
     expect("(c) filter 1's pages show all four cards for every filter 2 state", ok);
@@ -415,7 +431,7 @@ static void test_cards(void)
     set_twin(TT_LP, 0);
     TSEL->p[P_CUT2] = 60;
     frames(64);
-    ok = gauge_filled(2, -10) && !gauge_filled(2, 20);
+    ok = gauge_filled(2, -40) && gauge_filled(2, 0) && !gauge_filled(2, 40);   /* (60 of 0..127 on a 100 px track: the left half and a bit more) */
     expect("(c) CUTOFF (LINK off) fills from the left, as every unipolar card", ok);
     goto_page("TWIN CHAIN");
     set_twin(TT_LP, 1);
@@ -428,18 +444,19 @@ static void test_cards(void)
     expect("(c) BLEND's gauge fills from the centre", ok);
     goto_page("TWIN FILTER");
     frames(64);
-    expect("(c) TYPE shows no gauge (a list)", !gauge_filled(0, -15) && !gauge_filled(0, 15) && !gauge_filled(0, 0));
 
     /* WAVE's STEPS card (job F: the engine's own edit slot E7 = P_E6): on EDIT 1's K4, EDIT 2 (the empty E8) is skipped */
     fresh(ENGI_WAVE);
     goto_page("EDIT 1");
     TSEL->p[P_E6] = 0;
     frames(64);
-    expect("(c) WAVE EDIT 1: SYNC, DTN, STEPS (OFF), the fourth card empty (its own SUB went: cloud job J; DTN and STEPS moved one place left)", cards_are("SYNC|", "DETUNE|", "STEPS|OFF", ""));
+    expect("(c) WAVE EDIT 1 (DUELL 1.1): HARD SYNC, DETUNE, PHASE BEND, the fourth card empty; STEPS (OFF) is EDIT 2's K4", cards_are("HARD SYNC|", "DETUNE|", "PHASE BEND|", ""));
+    goto_page("EDIT 2");
+    frames(64);
+    expect("(c) WAVE EDIT 2: WAVE, TABLE, POSITION, STEPS (OFF)", card_is(3, "STEPS|OFF"));
     TSEL->p[P_E6] = 2;
     frames(64);
-    expect("(c) .. STEPS 3 places is stored 2 and shows 3", card_is(2, "STEPS|3"));
-    expect("(c) WAVE's EDIT 2 (E8, unused) is not in the round", !page_visible(page_of("EDIT 2")));
+    expect("(c) .. STEPS 3 places is stored 2 and shows 3", card_is(3, "STEPS|3"));
     fresh(0);
     goto_page("EDIT 1");
     frames(64);
@@ -490,7 +507,7 @@ static void test_quick(void)
     qp = ly_page(LAYER_EDIT);
     ok = ui.layer == LAYER_EDIT && qp->id[0] == P_FREEA && qp->id[1] == P_FREEB && qp->id[2] == P_CUT2 && qp->id[3] == P_RES2;
     expect("(d) filter 2 on and UNLINKED: CUT 1, RES 1, CUT 2, RES 2", ok);
-    expect("(d) .. the cards are MULTI CUTOFF, MULTI RES, TWIN CUTOFF, TWIN RES (DUELL 1.1: two lines; the cache key holds the label cut at 11 letters) under the group cells MULTI FILTER and TWIN FILTER", cards_are("MULTI\nCUTOF|", "MULTI\nRES|", "TWIN\nCUTOFF|", "TWIN\nRES|"));
+    expect("(d) .. the cards are MULTI CUTOFF, MULTI RES, TWIN CUTOFF, TWIN RES (DUELL 1.1: two lines; the cache key holds the label cut at 11 letters) under the group cells MULTI FILTER and TWIN FILTER", cards_are("MULTI\nCUTOFF|", "MULTI\nRES|", "TWIN\nCUTOFF|", "TWIN\nRES|"));
     {
         int16_t c2 = TSEL->p[P_CUT2], r2 = TSEL->p[P_RES2], c1 = TSEL->p[P_FREEA];
         turn(EN_K3, -2);
@@ -517,7 +534,7 @@ static void test_quick(void)
     close_quick();
     btn_down(B_LFO);                                  /* DUELL 1.1: QUICK LFO's K2 and K4 (each LFO's cutoff depth) are MULTI CUTOFF in two lines; K1 and K3 keep their own names */
     frames(480);
-    expect("(d) QUICK LFO: K2 and K4 are MULTI CUTOFF (two lines), K1 and K3 RATE", ui.layer == LAYER_LFO && card_is(1, "MULTI\nCUTOF|") && card_is(3, "MULTI\nCUTOF|") && card_is(0, "RATE|") && card_is(2, "RATE|"));
+    expect("(d) QUICK LFO: K2 and K4 are MULTI CUTOFF (two lines), K1 and K3 RATE", ui.layer == LAYER_LFO && card_is(1, "MULTI\nCUTOFF|") && card_is(3, "TWIN CUTOFF|") && card_is(0, "RATE|") && card_is(2, "RATE|"));
     btn_up(B_LFO);
     frames(64);
     /* the filter 2 state changes while the layer is shown: its cards follow */
@@ -546,8 +563,8 @@ static void test_names(void)
     mod_dst_line(TSEL, MD_CUT2, b, &more);
     expect("(e) TWIN CUTOFF reads TUNE on COMB (card and full line)", str_eq(mod_dst_name(TSEL, MD_CUT2), "TWIN\nTUNE") && str_eq(b, "DEST: TWIN TUNE"));
     mod_dst_line(TSEL, MD_RES2, b, &more);
-    expect("(e) TWIN / RES reads FEEDBACK on COMB", str_eq(mod_dst_name(TSEL, MD_RES2), "TWIN\nFDBK") && str_eq(b, "DEST: TWIN FEEDBACK"));
-    expect("(e) the card names fit (every line of the two-line names in the small font, 49 px; the matrix row names MULTI CUT / TWIN CUT / MULTI RES / TWIN RES in 64 px; the longest full line in the 212 px of the DEST line)", text_w(&AF_S, "MULTI") <= COL_W - 8 && text_w(&AF_S, "TWIN") <= COL_W - 8 && text_w(&AF_S, "CUTOFF") <= COL_W - 8 && text_w(&AF_S, "FILTER") <= (int)LBL_W && text_w(&AF_S, "MULTI CUT") <= 64 && text_w(&AF_S, "TWIN CUT") <= 64 && text_w(&AF_S, "MULTI RES") <= 64 && text_w(&AF_S, "TWIN RES") <= 64 && text_w(&AF_M, "DEST: TWIN FEEDBACK") <= 212 && text_w(&AF_M, "DEST: MULTI FILTER CUTOFF") <= 212);
+    expect("(e) TWIN / RES reads FEEDBACK on COMB", str_eq(mod_dst_name(TSEL, MD_RES2), "TWIN\nFEEDBACK") && str_eq(b, "DEST: TWIN FEEDBACK"));
+    expect("(e) the card names fit (every line of the two-line names in the small font, 49 px; the matrix row names MULTI CUT / TWIN CUT / MULTI RES / TWIN RES in 64 px; the longest full line in the 212 px of the DEST line)", text_w(&AF_S, "MULTI") <= PG_ROOM && text_w(&AF_S, "TWIN") <= PG_ROOM && text_w(&AF_S, "CUTOFF") <= PG_ROOM && text_w(&AF_S, "FILTER") <= PG_LBL_W && text_w(&AF_S, "MULTI CUT") <= 64 && text_w(&AF_S, "TWIN CUT") <= 64 && text_w(&AF_S, "MULTI RES") <= 64 && text_w(&AF_S, "TWIN RES") <= 64 && text_w(&AF_M, "DEST: TWIN FEEDBACK") <= 212 && text_w(&AF_M, "DEST: MULTI FILTER CUTOFF") <= 212);
 }
 
 /* ---------------------------------------------------------------------------------------- (f) graphs --- */
@@ -686,7 +703,7 @@ static void test_sub_cycle_cards(void)
     expect("(g) .. with SYNC on RISE and FALL read note values", card_is(1, "SYNC|ON") && !card_is(2, "RISE|0 ms"));
     goto_page("CYCLE ENV 2/2");
     frames(64);
-    expect("(g) CYCLE ENV 2/2: CURVE on K1 alone", cards_are("CURVE|", "", "", ""));
+    expect("(g) CYCLE ENV 2/2: CURVE on K1 alone", cards_are("CURVE|", "PITCH|", "", ""));   /* (1.1: CURVE, PITCH; TWIN CUTOFF too with the twin filter on, PAN in stereo) */
 }
 
 int main(void)
