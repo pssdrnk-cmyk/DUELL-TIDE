@@ -2254,7 +2254,7 @@ static void graph_events(void)
 #define LP_BAND 18               /* a multi's part band */
 #define LR_STAR_X 38
 #define LR_R 229                 /* the status words end here */
-static void list_row1(int32_t top, int sel, int open, const char *tag, const char *name, uint16_t nc, const char *ra, uint16_t rac, const char *rb, uint16_t rbc, int star)
+static void list_row1(int32_t top, int sel, int open, const char *tag, const char *name, uint16_t nc, const char *ra, uint16_t rac, const char *rb, uint16_t rbc, int star, int boxed)
 {
     int32_t ty = UT_TY(M, top + UT_L5_TEXT_BASE), x = LR_R;
     uint16_t bg = sel ? T_THEME : T_BG;
@@ -2263,6 +2263,23 @@ static void list_row1(int32_t top, int sel, int open, const char *tag, const cha
     cv_text_on(UT_L5_TAG_X, ty, &AF_M, tag, sel ? T_INK : T_DIM, bg);
     if (star)
         cv_icon_in(LR_STAR_X, top + UT_T3_STAR_DY, 0, 12, 12, ICON_X_STAR, sel ? T_TEXT : T_ACCENT, bg);
+    if (boxed) {                                     /* a multi's parts as the preview draws them: the mode in a box in the part colour, a dash for OFF */
+        const char *w[2] = {ra, rb};
+        uint16_t wc[2] = {rac, rbc};
+        int32_t i, bx;
+        for (i = 1; i >= 0; i--) {
+            bx = x - 26 + 1;
+            if (str_eq(w[i], "OFF")) {
+                cv_text_in(bx, UT_TY(S, top + UT_L5_TEXT_BASE), 26, &AF_S, "-", T_DIM, bg);
+            } else if (w[i][0]) {
+                cv_frame(bx, top + 3, 26, 13, sel ? T_INK : wc[i]);
+                cv_text_in(bx, UT_TY(S, top + UT_L5_TEXT_BASE), 26, &AF_S, w[i], sel ? T_INK : wc[i], bg);
+            }
+            x -= 30;
+        }
+        if (!ra[0] && !rb[0])
+            x = LR_R;
+    } else {
     if (rb[0]) {
         cv_text_r(x, UT_TY(S, top + UT_L5_TEXT_BASE), &AF_S, rb, sel ? T_INK : rbc, bg);
         x -= text_w(&AF_S, rb) + 8;
@@ -2271,6 +2288,7 @@ static void list_row1(int32_t top, int sel, int open, const char *tag, const cha
         cv_text_r(x, UT_TY(S, top + UT_L5_TEXT_BASE), &AF_S, ra, sel ? T_INK : rac, bg);
     if (ra[0])
         x -= text_w(&AF_S, ra) + 8;
+    }
     if (name[0])
         cv_free_text(UT_L5_NAME_X + (star ? 6 : 0), ty, &AF_M, name, sel ? T_INK : nc, bg, x - UT_L5_NAME_X - (star ? 6 : 0));
     (void)open;
@@ -2315,7 +2333,7 @@ static void graph_slots(void)
                 uint32_t m = multi_vmode(s, t);
                 w[t] = (m & 3u) == 2u ? "SEQ" : (m & 3u) == 1u ? "ARP" : "OFF";
             }
-        list_row1(list_top(e, pk), e == pk, e == pk, b, multi_bad(s) ? "DAMAGED" : !used ? "--" : nmp[0] ? nmp : "USED", used ? T_TEXT : T_DIM, w[0], T_PTHEME(0), w[1], T_PTHEME(1), used && project_cur_slot() == s);
+        list_row1(list_top(e, pk), e == pk, e == pk, b, multi_bad(s) ? "DAMAGED" : !used ? "--" : nmp[0] ? nmp : "USED", used ? T_TEXT : T_DIM, w[0], T_PTHEME(0), w[1], T_PTHEME(1), used && project_cur_slot() == s, 1);
     }
     if (gsl_key != (cur | multi_gen() << 8)) {       /* the highlighted record changed: decode it once */
         gsl_key = cur | multi_gen() << 8;
@@ -2324,7 +2342,7 @@ static void graph_slots(void)
     {
         int32_t y0 = list_top(pk, pk) + UT_L5_PITCH;
         if (gsl_pv.state != 1u) {
-            cv_text_in(0, UT_TY(S, y0 + 22), 240, &AF_S, gsl_pv.state ? "DAMAGED" : "EMPTY SLOT", T_DIM, T_BG);
+            cv_text_in(0, UT_TY(S, y0 + 22), 240, &AF_S, gsl_pv.state ? "DAMAGED" : "EMPTY SLOT", T_MID, T_BG);
             return;
         }
         for (t = 0; t < NSHOWN; t++) {
@@ -2337,7 +2355,7 @@ static void graph_slots(void)
             if (gsl_pv.p[t].has)
                 pv_bars(138, y + 2, 14, 6, 4, gsl_pv.p[t].bar, md == 2u ? c : T_MID);   /* (only a SEQ part plays them: under an arp they are dimmed) */
             else
-                cv_text_r(LR_R, UT_TY(S, y + 13), &AF_S, "NO SEQUENCE", T_DIM, T_BG);
+                cv_text_r(LR_R, UT_TY(S, y + 13), &AF_S, "NO SEQUENCE", T_MID, T_BG);
         }
     }
 }
@@ -2352,7 +2370,7 @@ static void graph_pats(void)
         pat_label(s, tag, nm);
         str_cpy(ln, "LEN ", sizeof ln);
         fmt_int(ln + 4, (int32_t)ps_len(s));
-        list_row1(list_top(e, pk), e == pk, e == pk, tag, nm, T_TEXT, ln, T_MID, "", T_MID, pat_last[song.sel % NTRK] == s + 1u);
+        list_row1(list_top(e, pk), e == pk, e == pk, tag, nm, T_TEXT, ln, T_MID, "", T_MID, pat_last[song.sel % NTRK] == s + 1u, 0);
     }
     if (gpp_key != (cur | ps_gen() << 8)) {
         gpp_key = cur | ps_gen() << 8;
@@ -2361,11 +2379,11 @@ static void graph_pats(void)
     {
         int32_t y0 = list_top(pk, pk) + UT_L5_PITCH;
         if (gpp_pv.state != 1u)
-            cv_text_in(0, UT_TY(S, y0 + 22), 240, &AF_S, "DAMAGED", T_DIM, T_BG);
+            cv_text_in(0, UT_TY(S, y0 + 22), 240, &AF_S, "DAMAGED", T_MID, T_BG);
         else if (gpp_pv.has)
             pv_bars(14, y0 + 2, 32, 13, 10, gpp_pv.bar, T_THEME);
         else
-            cv_text_in(0, UT_TY(S, y0 + 22), 240, &AF_S, "NO SEQUENCE", T_DIM, T_BG);
+            cv_text_in(0, UT_TY(S, y0 + 22), 240, &AF_S, "NO SEQUENCE", T_MID, T_BG);
     }
 }
 #else
