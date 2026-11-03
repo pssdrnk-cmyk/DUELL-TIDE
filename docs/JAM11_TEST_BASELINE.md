@@ -16,7 +16,9 @@ Full `sh jam/check.sh` at `c90f679` (before t0-sound merged): **87 passed, 26 fa
 
 Now PASS: `ownerimport` (tool: `import_owner_edits.py` drops 1.1's preselected matrix pairs at AMOUNT 0, puts moved depth cards back, ignores FM6's AMP ENV knobs and, with TIDE, keeps the recipe's End B because a factory sound's B is rolled at load), `converttwin` (the multis comparison with job J retired; the ledger is `CONVERT_TWIN_LEDGER`), `benchsim` (row INS BIT CRUSH fits the column; model signatures current, its averages still need the macOS counter), `modules`, `panic` (test: scenarios start from the same lines and random streams; not a STOP ALL fault), `emu` (test: the first-start splash waits for OCT+; the first start's M04 is left sounding by a key until all-notes-off, so the settings write waits), `editor` (INFO tail, 32 menu items, ARP / SEQ three-way, KEY VELOCITY default). `uf` compiles and every check passes, SKIP at `fork()`.
 
-Still FAIL: `editorjson` (16 web-editor expectations from 1.0) and `jam_dev` (15 tests: `jam/test_jam_dev.py` uses the web editor's MockUnit, which builds 1.0 objects: music header, pre-PT_VER 4 patch records). Same root: the mock and the expectations need a 1.1 rewrite, an owner / upstream call. No firmware change, `off.sha256` untouched.
+Also PASS now: `editorjson` (its 16 web-editor expectations, and the librarian / backup tests behind it, follow 1.1: 32 menu items, ARP / SEQ three-way, NX 28, 1.1's names, record limit 580) and `jam_dev` (the tool's record check is the PT_VER 4 layout with layout.json's ranges, multis are MU_VER 8, the mock builds a valid revision 8 music object and a real End B block).
+
+Full `sh jam/check.sh` after rebasing on the UI groups: **110 passed, 1 failed (`ui`: real screens, owner / firmware decisions), 25 skipped** (logs `work/check-t0-tools-full7/`). Note: the device build intermittently fails with Errno 22 on `build/gen/*.h` when two checks or builds run in one checkout at once; run one at a time.
 
 ## Full run: 3 November 2026, t0-ui2 (UI groups repaired)
 
