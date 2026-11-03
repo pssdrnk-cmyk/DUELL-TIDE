@@ -170,9 +170,9 @@ int main(void)
     clr();
 
     {   /* the width of the LAYER note on GLO > MIDI (ui_graph.c graph_midi, AF_S at x = 12, the screen is 240 wide) */
-        int32_t w = text_w(&AF_S, "LAYER MODE: PART 1 CHANNEL COUNTS");
+        int32_t w = text_w(&AF_S, "LAYER: PART 1 CHANNEL COUNTS");
         printf("  LAYER note width %d px (x 12 .. %d of 240)\n", (int)w, (int)(12 + w));
-        bad += check("LAYER note fits inside the 240 px screen (the longest other line on that page is 203 px)", 12 + w <= 240);
+        bad += check("LAYER note fits inside the 240 px screen with a margin (the longest other line on that page is 203 px)", 12 + w <= 228);
     }
     printf("%s\n", bad ? "MIDI OUT ARP/SEQ TEST FAILED" : "midi out arp/seq test passed");
     return bad != 0;
