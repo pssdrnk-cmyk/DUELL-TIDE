@@ -273,7 +273,11 @@ static void graph_roll(const track_t *t, uint16_t c)
             y + PR_RH - AF_S_CAP_H + 1 >= PR_WY0 && y + PR_RH < PR_WY1) {   /* (only a name whose capitals are whole inside the window, never a cut one) */
             note_name(nb, (uint32_t)n);
             GFX_HOOK_ALIGN(0, y, UT_T7_NAME_R, y + PR_RH, AL_R | AL_PASS, "piano roll note names' right edge");
-            cv_text_on(UT_T7_NAME_R - text_w(&AF_S, nb), UT_TY(S, y + PR_RH), &AF_S, nb, T_DIM, T_BG);
+            {
+                int32_t ib[4];
+                text_ink(&AF_S, nb, ib);                   /* (the ink's right edge on UT_T7_NAME_R, not the advance's) */
+                cv_text_on(UT_T7_NAME_R - ib[2], UT_TY(S, y + PR_RH), &AF_S, nb, T_DIM, T_BG);
+            }
         }
     }
     for (i = 0; i <= ncol; i++)                       /* step lines, the beats brighter (over the window) */

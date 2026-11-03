@@ -524,8 +524,10 @@ static void graph_tidelist(void)
         int sel = r == jl_sel % JL_N;
         uint16_t bg = sel ? T_THEME : T_BG;
         const char *v = jl_vname(r, jl_get(r));
-        if (sel)
+        if (sel) {
+            CV_HL(UT_L5_X, y, UT_L5_W, UT_L5_H);          /* (the picked row's pill: an allowed highlight, as the other lists') */
             cv_rrect(UT_L5_X, y, UT_L5_W, UT_L5_H, UT_T3_ROW_R, T_THEME, T_BG);
+        }
         cv_text_on(UT_L5_TAG_X, ty, &AF_M, JL_NAME[r], sel ? T_INK : T_TEXT, bg);
         if (jl_n(r) == 2u && (str_eq(v, "ON") || str_eq(v, "OFF"))) {   /* a switch (the MENU's, in the row's colours) */
             int on = str_eq(v, "ON");

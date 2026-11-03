@@ -236,7 +236,7 @@ static int oct_show_on(void)
  * (H_HEAD / 2; ui_test.c test_head_centres): icons by cv_icon_mid, text by its capitals' band (CAP_IN; the odd row left over above it, as
  * everywhere): M (the page name, the octave, a message: capitals rows 6..16) from y 2, S (OCT, a key hint: rows 7..15) from y 4 */
 #define HEAD_SY CAP_IN(S, H_HEAD)
-#define HEAD_MY (CAP_IN(M, H_HEAD) - 2)             /* (PALETTES_V3_1.png: the title's capitals on rows 4 .. 14) */
+#define HEAD_MY CAP_IN(M, H_HEAD)                   /* (the capitals on the header's middle, as the title's Bold 15 (item 111): was 2 rows higher, PALETTES_V3_1.png's rows 4 .. 14) */
 #define HEAD_TRK_X 3                                   /* the part badge: 1 2 side by side, 14 px cushions 15 apart (cv_part) */
 #define HEAD_LEFT_R 32                                 /* the part badges end here (ink 31): the page name starts 4 px on at the earliest */
 #define HEAD_BAT_X 214                                 /* the battery's cell */
@@ -814,15 +814,15 @@ static void card_label_line(uint32_t c, int32_t lx, int32_t ly, const char *txt,
 {
     const aafont_t *lf = &AF_S;
     int32_t cy = ly + AF_S_CAP_Y;
-    if (text_w(lf, txt) > COL_W - 2 - lx)               /* (item 120: cut by the card's edge, never ellipsised; listed) */
-        CARD_LABEL_HOOK(c, txt, text_w(lf, txt), COL_W - 2 - lx);
     text_trk = lbl_trk(lx, lf, txt);                   /* (item 158: tightened only when it would reach the card's edge) */
+    if (text_w(lf, txt) > COL_W - 2 - lx && !text_trk)  /* (item 120: cut by the card's edge, never ellipsised; listed: not when the tightening fits it) */
+        CARD_LABEL_HOOK(c, txt, text_w(lf, txt), COL_W - 2 - lx);
     if (hot && T_ACCENT == T_MID) {                     /* MONO: no colour tells the hot knob: its label inverted, */
         int32_t b[4], w;                                /* the chip 2 px round its ink (M: 3 above, 2 below) */
         text_ink(lf, txt, b);
         w = b[2] - b[0] + 4;
         if (w > COL_W + 1 - lx - b[0]) w = COL_W + 1 - lx - b[0];
-        cv_rrect(lx + b[0] - 2, cy - 3, w, 15, 3, T_ACCENT, T_BG);
+        cv_rrect(lx + b[0] - 2, cy - 3, w, 17, 3, T_ACCENT, T_BG);
         GFX_HOOK_ALIGN(lx + b[0] - 2, cy - 3, lx + b[0] - 2 + w, cy + 12, AL_HV,
                        "card label chip (MONO hot)");
         cv_text_on(lx, ly, lf, txt, T_INK, T_ACCENT);
@@ -958,9 +958,9 @@ static void dot_label(uint32_t c, int32_t dx, int32_t lx, int32_t base, const ch
     int32_t dy = base - AF_S_CAP_H + 1;               /* the dot's top = the label's cap top; its diameter = the label's cap height */
     cv_rrect(dx, dy, AF_S_CAP_H, AF_S_CAP_H, AF_S_CAP_H / 2, dc, under);
     cv_text_in(dx, dy + HALF_UP(AF_S_CAP_H - AF_D_CAP_H) - AF_D_CAP_Y, AF_S_CAP_H, &AF_DOT, dg, under, dc);
-    if (text_w(&AF_S, label) > room)
-        CARD_LABEL_HOOK(c, label, text_w(&AF_S, label), room);
     text_trk = lbl_trk(lx, &AF_S, label);              /* (item 158: tightened only when it would reach the card's edge) */
+    if (text_w(&AF_S, label) > room + 3 && !text_trk)  /* (not cut: the tightening fits it, or it keeps 1 px of the room's 4 px margin) */
+        CARD_LABEL_HOOK(c, label, text_w(&AF_S, label), room);
     cv_text_on(lx, UT_TY(S, base), &AF_S, label, lc, under);
     text_trk = 0;
 }
@@ -1091,17 +1091,17 @@ static void card_paint(const card_geo_t *g, uint32_t c, int32_t gx, int32_t gw, 
                 text_trk = lbl_trk(pad + g->lbl_dx, &AF_S, l2);
                 cv_text_on(pad + g->lbl_dx, UT_TY(S, g->lbl_base), &AF_S, l2, lc, T_BG);
                 text_trk = 0;
-            } else if (grid_on == 5 && text_w(&AF_S, one) > lroom && text_w(&AF_S, one) <= gw - pad) {   /* one long word (FM6's FEEDBACK): under the dot, on the second label line the ENGINE page's cards always have */
+            } else if (AREA_TWO && text_w(&AF_S, one) > lroom && text_w(&AF_S, one) <= gw - pad) {   /* one long word (FM6's FEEDBACK): under the dot, on the second label line the ENGINE page's cards always have */
                 card_label(c, pad, pad + g->lbl_dx, g->lbl_base - UT_A_LBL2_PITCH, "", lc, lroom);
                 text_trk = lbl_trk(pad, &AF_S, one);
                 cv_text_on(pad, UT_TY(S, g->lbl_base), &AF_S, one, lc, T_BG);
                 text_trk = 0;
             } else
                 card_label(c, pad, pad + g->lbl_dx, g->lbl_base, one, lc, lroom);
-        } else if (label[0] && !g->seg && !g->cut && text_w(&AF_S, label) > lroom && area_label_lines(label, one2, l12, lroom)) {   /* a template 1 card whose label is wider than its room (FILTER ENV DEPTH on the 116 px cards): two lines above the value, the dot on the first */
-            card_label(c, pad, pad + g->lbl_dx, g->lbl_base - 10, l12, lc, lroom);
+        } else if (label[0] && text_w(&AF_S, label) > lroom && area_label_lines(label, one2, l12, lroom)) {   /* a template 1 card whose label is wider than its room (FILTER ENV DEPTH on the 116 px cards): two lines above the value, the dot on the first */
+            card_label(c, pad, pad + g->lbl_dx, g->seg ? g->lbl_base : g->lbl_base - 10, l12, lc, lroom);   /* (a CELL has the room below: its first line stays) */
             text_trk = lbl_trk(pad + g->lbl_dx, &AF_S, area_label_lines(label, one2, l12, lroom));
-            cv_text_on(pad + g->lbl_dx, UT_TY(S, g->lbl_base + 2), &AF_S, area_label_lines(label, one2, l12, lroom), lc, T_BG);
+            cv_text_on(pad + g->lbl_dx, UT_TY(S, g->seg ? g->lbl_base + 13 : g->lbl_base + 2), &AF_S, area_label_lines(label, one2, l12, lroom), lc, T_BG);
             text_trk = 0;
         } else if (label[0])
             card_label(c, pad, pad + g->lbl_dx, g->lbl_base, label, lc, lroom);
@@ -1584,8 +1584,6 @@ static void draw_column(uint32_t c, const char *label, const char *val, const ch
         } else if (!strip && label[0]) {
             const aafont_t *lf = &AF_S;                 /* the label in S */
             int32_t lw = text_w(lf, label), ix = lx, ly = v2 ? 2 : 3;   /* (item 120: a two-line value takes the card's rows 15 and 28, the label one row up) */
-            if (lw > COL_W - 2 - lx)                    /* (cut by the card's edge, never ellipsised; listed) */
-                CARD_LABEL_HOOK(c, label, lw, COL_W - 2 - lx);
             int32_t cy = ly + AF_S_CAP_Y, chh = AF_S_CAP_H;
             uint32_t ic = ICON_NONE;                       /* (DUELL 1.1: no icon before a label, not even MOTION's: the label shows in the theme colour) */
             if (mot && ix + ICON_CELL + ICON_GAP + lw > COL_W - 2)
@@ -1598,13 +1596,15 @@ static void draw_column(uint32_t c, const char *label, const char *val, const ch
             else if (mot)                               /* the label from x 19 (5 + 12 + 2) */
                 lc = hot ? T_ACCENT : T_THEME;          /* no room for MOTION's icon: the label says it */
             text_trk = lbl_trk(lx, lf, label);          /* (item 158: tightened only when it would reach the card's edge) */
+            if (lw > COL_W - 2 - lx && !text_trk)       /* (cut by the card's edge, never ellipsised; listed: not when the tightening fits it) */
+                CARD_LABEL_HOOK(c, label, lw, COL_W - 2 - lx);
             if (hot && T_ACCENT == T_MID) {             /* MONO: no colour tells the hot knob: its label inverted, */
                 int32_t b[4], w;                        /* the chip 2 px round its ink (M: 3 above, 2 below) */
                 text_ink(lf, label, b);
                 w = b[2] - b[0] + 4;
                 if (w > COL_W + 1 - lx - b[0]) w = COL_W + 1 - lx - b[0];
-                cv_rrect(lx + b[0] - 2, cy - 3, w, 15, 3, T_ACCENT, T_BG);
-                GFX_HOOK_ALIGN(lx + b[0] - 2, cy - 3, lx + b[0] - 2 + w, 18, AL_HV,
+                cv_rrect(lx + b[0] - 2, cy - 3, w, 17, 3, T_ACCENT, T_BG);
+                GFX_HOOK_ALIGN(lx + b[0] - 2, cy - 3, lx + b[0] - 2 + w, 20, AL_HV,
                                "card label chip (MONO hot)");
                 cv_text_on(lx, ly, lf, label, T_INK, T_ACCENT);
             } else
@@ -1631,7 +1631,7 @@ static void draw_column(uint32_t c, const char *label, const char *val, const ch
         }
         if (unit[0]) {
             GFX_HOOK_ALIGN(0, 0, 0, vf == &AF_M ? 17 + AF_M.asc : (l2 || v2 ? 28 : 20) + AF_S.asc, AL_B, "card unit on its value's baseline");
-            cv_text_on(x, l2 || v2 ? 28 : 20, &AF_S, unit, T_MID, T_BG);     /* on the value's baseline (S) */
+            cv_text_on(x, vf == &AF_M ? 17 + AF_M.asc - AF_S.asc : l2 || v2 ? 28 : 20, &AF_S, unit, T_MID, T_BG);     /* on the value's baseline (S; an M value stands on row 17) */
         }
         if (!strip && why) {                            /* the reason where the gauge would be (its capitals rows 31 .. 39) */
             GFX_HOOK_ALIGN(0, 28, 0, 28 + AF_S.asc, AL_B, "card reason under its value");
@@ -2226,7 +2226,10 @@ static int area_plan(const page_t *pg, uint32_t g)
             if (!d)
                 continue;
             lb = quick_label(pg, s) ? quick_label(pg, s) : desc_shown(d);
-            two |= area_label_lines(lb, one, l1, (cols == 2u ? UT_A_W2 : UT_A_W3) - UT_A_PAD - UT_A_LBL_DX - UT_A_LBL_PAD_R) != 0;
+            {
+                int32_t room = (cols == 2u ? UT_A_W2 : UT_A_W3) - UT_A_PAD - UT_A_LBL_DX - UT_A_LBL_PAD_R;
+                two |= area_label_lines(lb, one, l1, room) != 0 || (text_w(&AF_S, lb) > room && text_w(&AF_S, lb) <= (cols == 2u ? UT_A_W2 : UT_A_W3) - UT_A_PAD);   /* (a long single word goes under its dot) */
+            }
         }
     }
     if (g == 5u)                                        /* (the ENGINE page's cards are always the taller ones: AREA_TWO) */
@@ -2323,7 +2326,7 @@ static void draw_columns(void)
             fmt_int(val, (int32_t)ev_nudged(t));
             draw_column(1, "NUDGED", val, "", T_MID, -1, ICON_NONE);
             draw_column(2, "", "", "", T_THEME, -1, ICON_NONE);
-            draw_column(3, "QUANTIZE", t->p[P_SQNT] ? "ON" : "OFF", "", VAL(3u), -1, ICON_QUANTIZE);
+            draw_column(3, "QNTZ", t->p[P_SQNT] ? "ON" : "OFF", "", VAL(3u), -1, ICON_QUANTIZE);
             return;
         }
         if (k == EVK_ADD) {
@@ -3173,7 +3176,7 @@ static void draw_confirm(void)
     }
     if (hint) {                                       /* SAVE held: K1 picks the slot the sound goes to */
         GFX_HOOK_ALIGN(0, 78, DLG_W, 78 + KC_H, AL_H | AL_N(4), "dialog hint centred");
-        int32_t w1 = kh_ink(KC_K1, "OTHER SLOT"), w2 = kh_ink(KC_K2, "RENAME"), x0 = HALF_UP(DLG_W - (w1 + 14 + w2));   /* K1 OTHER SLOT, K2 RENAME (0.2.21) */
+        int32_t w1 = kh_ink(KC_K1, "OTHER SLOT"), w2 = kh_ink(KC_K2, "RENAME"), x0 = HALF_UP(DLG_W - (w1 + 14 + w2)) - 1;   /* (the ink's centre on the dialog's: the keycaps' side margins) K1 OTHER SLOT, K2 RENAME (0.2.21) */
         cv_key_hint(x0, 78, KC_K1, "OTHER SLOT", 1, T_BG);
         cv_key_hint(x0 + w1 + 14, 78, KC_K2, "RENAME", 1, T_BG);
     }

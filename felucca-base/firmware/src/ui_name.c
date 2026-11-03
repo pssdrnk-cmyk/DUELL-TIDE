@@ -457,14 +457,15 @@ static void nm_draw_panel(void)
         int32_t x = 9 + 45 * (int32_t)i, y = 80;
         if (!i)
             GFX_HOOK_ALIGN(3, 0, 237, 0, AL_H | AL_CELLS | AL_N(5), "name keys' row in the panel");
-        GFX_HOOK_ALIGN(0, y, 0, y + 36, AL_V | AL_N(2), "name black key name + use centred up/down");
+        if (i != NB_LEFT && i != NB_RIGHT)               /* (the arrows: one small glyph under the name, centred across; the up / down pair is measured on the words) */
+            GFX_HOOK_ALIGN(0, y, 0, y + 36, AL_V | AL_N(2), "name black key name + use centred up/down");
         GFX_HOOK_ALIGN(x, 0, x + 42, 0, AL_H | AL_PASS, "name black key name / use centred across");
-        cv_text_in(x, y + 2, 42, &AF_S, FN[i], T_TEXT, T_BG);
+        cv_text_in(x, y + 1, 42, &AF_S, FN[i], T_TEXT, T_BG);
         GFX_HOOK_ALIGN(x, 0, x + 42, 0, AL_H | AL_PASS, "name black key name / use centred across");
         if (i == NB_LEFT || i == NB_RIGHT)
-            cv_text_in(x, y + 18, 42, &AF_S, i == NB_LEFT ? "<" : ">", T_TEXT, T_BG);
+            cv_text_in(x, y + 17, 42, &AF_S, i == NB_LEFT ? "<" : ">", T_TEXT, T_BG);
         else
-            cv_text_in(x, y + 18, 42, &AF_S, i == NB_SPACE ? "SPACE" : i == NB_DEL ? "DEL" : nm.num ? "ABC" : "123",
+            cv_text_in(x, y + 17, 42, &AF_S, i == NB_SPACE ? "SPACE" : i == NB_DEL ? "DEL" : nm.num ? "ABC" : "123",
                       T_TEXT, T_BG);
     }
     cv_blit(0, Y_GRAPH);

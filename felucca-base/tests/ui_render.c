@@ -430,6 +430,10 @@ static void finding(const char *what, const rbox_t *b, const rbox_t *o)
     static uint32_t nseen;
     char key[64];
     uint32_t i;
+    if ((strstr(cur_name, "/roll") || !strcmp(cur_name, "roll cost")) && (!strcmp(what, "overlaps") || !strncmp(what, "hidden in part", 14) || !strncmp(what, "spills out", 10)))
+        return;                                  /* the rolling digits slide past their label and cell by design (the film of ui_draw.c's roll: a digit mid-roll is cut by its card's clip) */
+    if (!strncmp(cur_name, "sweep ", 6) && !strncmp(what, "hidden in part", 14))
+        return;                                  /* a sweep draws one frame after another on the same screen: a later frame over an earlier one is what it does, not a defect */
     nfind++;
     snprintf(key, sizeof key, "%.20s|%.14s|%.24s", cur_name, what, b->s);
     for (i = 0; i < nseen && strcmp(seen[i], key); i++) ;
@@ -1576,7 +1580,7 @@ static void draw(int s)
             if (rep) fprintf(rep, "FIND %-26s the splash lines: part 1 colour %u px, part 2 colour %u px, %u px of a blend in POLICE\n", cur_name, c0, c1, other);
             nfind++;
         }
-        if (ink + soft < 800u || (!pl->hc && pl->name[0] != 'M' && !ink) || n_text) {   /* (MONO's two-level screen may blend every edge) */
+        if (ink + soft < 800u || (!pl->hc && pl->name[0] != 'M' && !ink) || (!DUELL_TIDE && n_text)) {   /* (MONO's two-level screen may blend every edge; TIDE's splash is set in the fonts' glyphs, ui_draw.c splash_logo_draw: font texts by design) */
             if (rep) fprintf(rep, "FIND %-26s the splash lockup: %u px of the text colour, %u soft edge px, %u font texts (want >= 800 together, text colour, none)\n", cur_name, ink, soft, n_text);
             nfind++;
         } else {
@@ -1824,6 +1828,8 @@ static void roll_frames(const char *dir)
         }
     }
     page_over = 0;
+    nscr = npend = 0;
+    cur_name = "roll cost";                         /* (name was this function's: no dangling pointer for the findings after it; the cost run rolls the same digits) */
 }
 /* the host cost of a roll frame: the header and the cards (draw_head, draw_columns) while both strips roll,
  * against the same calls on an idle frame (nothing drawn) and a full redraw of the four cards and the header */
@@ -1948,6 +1954,7 @@ static void align_sweeps(void)
         ui.menu = 0; ui_prefs = 0; ui_rec_prefs = 0; settings_hold = 0; settings_leds = 0;
         cur_name = st ? "sweep LINE: REC layer values" : "sweep FLAT: REC layer values";
         go_home(); ui.layer = LAYER_REC;              /* (the map and the cards: every value of the three, each track) */
+        draw(S_REC_LAYER); nscr = npend = 0;          /* (the layer's own cell template, as the device draws it: the scene's setup first) */
         for (k = 0; k < 27u * 2u; k++) {
             rp_put(RP_CLICK, k % 3u); rp_put(RP_COUNTIN, k / 3u % 3u); rp_put(RP_LEVEL, k / 9u % 3u);
             song.sel = (uint8_t)(k % NTRK); ui_prefs = 0;
@@ -2198,7 +2205,7 @@ static void round_check(void)
                         ui_draw();
                         head_page_title(tb, &pi);
                         if (strcmp(tb, "MODULES")) { fprintf(stderr, "ui_render: GLO round: the MODULES page's header says '%s'\n", tb); nfind++; }
-                        if (grid_on != 12) { fprintf(stderr, "ui_render: GLO round: the MODULES page is not drawn as its four lines (grid %u)\n", (unsigned)grid_on); nfind++; }
+                        if (grid_on != 14) { fprintf(stderr, "ui_render: GLO round: the MODULES page is not drawn as its cells (DUELL 1.1: template 8, item 156) (grid %u)\n", (unsigned)grid_on); nfind++; }
                     }
                 }
                 (void)at;
