@@ -2627,7 +2627,7 @@ static void graph_midi(void)
     }
     big_line(74, "MIDI IN", sel ? "ANY CHANNEL" : "PART CHANNEL", 1);
     if (m == DM_LAYER && !sel)                    /* 1.1: both channels stay editable in LAYER; the note says which one counts */
-        cv_text_on(12, 92, &AF_S, "LAYER MODE: PART 1 CHANNEL COUNTS", T_ACCENT, T_BG);
+        cv_text_on(12, 92, &AF_S, "LAYER: PART 1 CHANNEL COUNTS", T_ACCENT, T_BG);
     else
         cv_text_on(12, 92, &AF_S, sel ? "ANY CHANNEL PLAYS THE SELECTED PART" : same ? "SAME CHANNEL: ONLY PART 1 PLAYS" : "EACH PART ON ITS OWN CHANNEL", same && !sel ? T_ACCENT : T_MID, T_BG);
 }
