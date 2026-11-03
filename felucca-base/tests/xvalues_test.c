@@ -106,7 +106,7 @@ static void t_tables(void)
         okl &= text_w(&AF_S, d->label) <= LBL_FIT;
         for (j = 0; d->fmt == F_ENUM && j <= (uint32_t)d->max; j++)
             okv &= text_w(&AF_S, d->names[j]) <= VAL_FIT;
-        okt &= g.kind == MK_CONT || g.kind == MK_HARD;
+        okt &= g.kind == MK_CONT || g.kind == MK_HARD || (k == X_SUBHARM && g.kind == MK_EX);   /* (SUB HARMONICS: no card since 0.2.31, never rolled) */
         oki &= d->min >= -128 && d->max <= 127;
         okx &= param_desc_of(0, XW_BASE + k) == d && track_desc(&trk[0], XW_BASE + k) == d;
     }
@@ -264,7 +264,7 @@ static void roll_end(uint32_t pi, uint32_t x, uint32_t seed, uint32_t amount, ui
 
 static void t_morph_old(void)
 {
-    ck("the End B of every id but the five from a stored seed: cloud/base3's hash (24 seeds x 3 AMOUNTs x SMART / WILD x PITCH / ARP x both streams x 13 engines)", hash_c(roll_child) == 0x93396a7983cefeb4ull);   /* (re-based 2026-10-28, item 154: ANALOG and TRIO give back less of a rolled ENV / ENV 2 / LFO 1 / LFO 2 -> FLT depth when the band-pass window is exceeded (morph.c morph_uf_open: together, the largest first, or the other way); only those four ids (5, 14, 114, 117) moved, the hash without them is the same as before (0x1b84c7b5a0ae32a5); was 0xa929659621e83d4f) (re-based 2026-10-28, item 152: WILD also rolls the AMOUNT of an assigned matrix route that is at 0 (morph.c morph_slot, its own stream): only matrix amounts moved, the hash without the matrix ids is the same as before (33ac50046660cb9a); was 0xf1c026d493b49c3d) (re-based again 2026-10-28: SMART also sets no LFO shape, ARP RATE, whole-number pitch value (PITCH on), the draws stay; was 0xb429a4835a7674ae) (2026-10-27: SMART no longer sets a switch (SLOPE, an engine's choice, ARP MODE / OCTAVES), the draws stay; was 0xb1e053d0900cfbc1) (re-based on purpose 2026-10-21: ANALOG and TRIO rolls keep filter 1's cutoff steering; was cloud/base3's 0x8ac190ea492b678f; re-based again for DUELL 1.1: LOFI's WAVE is one list, 0..14, and K4 is PULSE WIDTH, so the LOFI rolls change; was 0x03e34858cc8b1a21) */
+    ck("the End B of every id but the five from a stored seed: cloud/base3's hash (24 seeds x 3 AMOUNTs x SMART / WILD x PITCH / ARP x both streams x 13 engines)", hash_c(roll_child) == 0x51c5d094e26b775aull);   /* (re-based 2026-11-03 on Linux for jam11: 1.1's reworked SMART / WILD rolls (stock 1.1 gives 0x2b371d1574e4edda), and TIDE's: a WILD roll with ARP ON keeps the arp mode, MORPH TO / MUSICAL roll, UNISON and FM6 edits; was 0x93396a7983cefeb4) /* (re-based 2026-10-28, item 154: ANALOG and TRIO give back less of a rolled ENV / ENV 2 / LFO 1 / LFO 2 -> FLT depth when the band-pass window is exceeded (morph.c morph_uf_open: together, the largest first, or the other way); only those four ids (5, 14, 114, 117) moved, the hash without them is the same as before (0x1b84c7b5a0ae32a5); was 0xa929659621e83d4f) (re-based 2026-10-28, item 152: WILD also rolls the AMOUNT of an assigned matrix route that is at 0 (morph.c morph_slot, its own stream): only matrix amounts moved, the hash without the matrix ids is the same as before (33ac50046660cb9a); was 0xf1c026d493b49c3d) (re-based again 2026-10-28: SMART also sets no LFO shape, ARP RATE, whole-number pitch value (PITCH on), the draws stay; was 0xb429a4835a7674ae) (2026-10-27: SMART no longer sets a switch (SLOPE, an engine's choice, ARP MODE / OCTAVES), the draws stay; was 0xb1e053d0900cfbc1) (re-based on purpose 2026-10-21: ANALOG and TRIO rolls keep filter 1's cutoff steering; was cloud/base3's 0x8ac190ea492b678f; re-based again for DUELL 1.1: LOFI's WAVE is one list, 0..14, and K4 is PULSE WIDTH, so the LOFI rolls change; was 0x03e34858cc8b1a21) */
     {   /* the draws of the five ids' old tags are kept: ROOT / SCALE a pitch item, ALLOC a hard switch, the TYPE a fade on ANALOG */
         uint32_t seed, ok = 1, moved = 0;
         for (seed = 1; seed <= 300u; seed++) {
@@ -482,7 +482,8 @@ static void t_morph_rules(void)
                 mrc = (uint8_t)(cfg ? MC_WILD : 0u);
                 morph_roll_full(o2, e2, en, amount, seed, 0, 1);
                 mrc = sv;
-                ok_sub &= e2[XW_BASE + X_SUBHARM] == o2[XW_BASE + X_SUBHARM] && e2[XW_BASE + X_SUBOCT] == o2[XW_BASE + X_SUBOCT] && e2[XW_BASE + X_SUBWAVE] == o2[XW_BASE + X_SUBWAVE];
+                ok_sub &= e2[XW_BASE + X_SUBHARM] == o2[XW_BASE + X_SUBHARM] &&   /* (HARMONICS never rolls; SMART keeps the sub's switches, WILD may flip them: morph.c) */
+                          (cfg || (e2[XW_BASE + X_SUBOCT] == o2[XW_BASE + X_SUBOCT] && e2[XW_BASE + X_SUBWAVE] == o2[XW_BASE + X_SUBWAVE]));
             }
             {   /* the stream does not depend on the Original (the draws of the five ids and the slots are made whether or not a value rolls) */
                 int8_t e3[EXT_P_LEN];
@@ -538,7 +539,7 @@ static void t_matrix(void)
     uint64_t base = scene_hash(0);
     track_t *t;
     uint32_t ok;
-    ck("a busy two-part matrix render (every per-note destination from ENV, ENV 2, VEL, KEY, RAND, the LFOs; PAN, sends, E5, RES, FMODE) is cloud/base3's hash: mod_voice runs as it did", hash_c(matrix_child) == 0xc3a35d49b4be06fdull);   /* (re-based on purpose 2026-10-21: the click fixes of hunt1..hunt4 (LFO / matrix slew, SAT, PHASE seam); was cloud/base3's 0xec458fefd57d01b4; and for 1.0: the matrix amount +63 acts as a true 100 %, mod.c MX_AMT; was 0x4396c17e8041202e; DUELL 1.1: the smooth accent ramp (core.h accent_dir_*, voice.c, voice_chain.c) moved it from 0x8c526ee5e3c74750; with those edits put back to the 1.0 files the old hash comes out) */
+    ck("a busy two-part matrix render (every per-note destination from ENV, ENV 2, VEL, KEY, RAND, the LFOs; PAN, sends, E5, RES, FMODE) is cloud/base3's hash: mod_voice runs as it did", hash_c(matrix_child) == 0xf543d5abd1c7de69ull);   /* (re-based 2026-11-03 on Linux for 1.1 / jam11 (stock 1.1 gives the same): item 144's note-start stagger (VS_MAX 2; the chords of the scene start 2 voices a block: -DVS_MAX=99 gives 0xd10b49bf6d83837b), BIT DEPTH and the reverb fix; was 0xc3a35d49b4be06fd) /* (re-based on purpose 2026-10-21: the click fixes of hunt1..hunt4 (LFO / matrix slew, SAT, PHASE seam); was cloud/base3's 0xec458fefd57d01b4; and for 1.0: the matrix amount +63 acts as a true 100 %, mod.c MX_AMT; was 0x4396c17e8041202e; DUELL 1.1: the smooth accent ramp (core.h accent_dir_*, voice.c, voice_chain.c) moved it from 0x8c526ee5e3c74750; with those edits put back to the 1.0 files the old hash comes out) */
     ck("CUTOFF 2 routes (ENV VEL KEY RAND ENV 2 CYCLE LFO) change no sample of the product: the second list is read by the chain only", second_hash(prep_f2routes) == base);
     ck("CYCLE to CUT, SHP, PITCH (per note) and PAN (per block): a working source since job F (cycle.c): it moves the sound (job B's stub at rest changed no sample)", second_hash(prep_cycleroutes) != base);
     /* the lists */
@@ -645,7 +646,7 @@ static void t_matrix(void)
         }
         ok2 &= !strcmp(mod_dst_name(t, MD_CUT2), "TWIN\nCUTOFF") && !strcmp(mod_dst_name(t, MD_BLEND), "FILTER\nBLEND") && !strcmp(N_MDST[MD_DRIVE], "FDRV") && !strcmp(N_MSRC[MS_CYCLE], "CYCLE");
         t->p[P_TWTYPE] = TT_COMB;
-        ok2 &= !strcmp(mod_dst_name(t, MD_CUT2), "TWIN\nTUNE") && !strcmp(mod_dst_name(t, MD_RES2), "TWIN\nFDBK");
+        ok2 &= !strcmp(mod_dst_name(t, MD_CUT2), "TWIN\nTUNE") && !strcmp(mod_dst_name(t, MD_RES2), "TWIN\nFEEDBACK");   /* (DUELL 1.1: FEEDBACK in full) */
         mod_dst_line(t, MD_CUT2, b, &more);
         ok2 &= !strcmp(b, "DEST: TWIN TUNE");
         t->p[P_TWTYPE] = TT_OFF;
@@ -660,8 +661,8 @@ static void t_matrix(void)
         }
         for (i = 0; i < MS_N; i++)
             ok4 &= MSRC_ORDER[i] < MS_N;
-        ck("the knob orders hold every destination (56) and source (16) once; CYCLE sits after ENV2; MS_VOICE counts it", ok3 && ok4 && MSRC_ORDER[3] == MS_CYCLE && MSRC_ORDER[2] == MS_ENV2 && MS_VOICE(MS_CYCLE) &&
-           MD_N == 56 && MS_N == 16 && MD_CUT2 == 51 && MD_SUBLVL == 55 && MS_CYCLE == 15);
+        ck("the knob orders hold every destination (57) and source (18) once; CYCLE sits after ENV2; MS_VOICE counts it", ok3 && ok4 && MSRC_ORDER[3] == MS_CYCLE && MSRC_ORDER[2] == MS_ENV2 && MS_VOICE(MS_CYCLE) &&
+           MD_N == 57 && MS_N == 18 && MD_CUT2 == 51 && MD_SUBLVL == 55 && MS_CYCLE == 15);
     }
 }
 

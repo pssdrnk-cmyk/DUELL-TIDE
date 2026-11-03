@@ -996,8 +996,13 @@ static void t_ui(void)
     press(B_HOME);
     frames(64);
     page_title(ti);
-    expect("HOME tapped twice from the start (on MORPH): the MODE page (HOME's third sub-page), its footer MODE 3/3 (0.2.25: the MIXER is GLO's)",
-           ui.page == page_of("MODE") && str_eq(ti, "MODE 3/3"));
+    if (ui.page != page_of("MODE")) {                   /* (DUELL with TIDE: AUTO TIDE is HOME's third sub-page, MODE the fourth: 4/4) */
+        press(B_HOME);
+        frames(64);
+        page_title(ti);
+    }
+    expect("HOME tapped from the start (on MORPH) twice (TIDE: three times): the MODE page (HOME's last sub-page), its footer MODE 3/3 (4/4 with TIDE's AUTO TIDE; 0.2.25: the MIXER is GLO's)",
+           ui.page == page_of("MODE") && (str_eq(ti, "MODE 3/3") || str_eq(ti, "MODE 4/4")));
     turn(EN_K1, 1);                                     /* (item 118: the list reads LAYER, STEREO, DUEL from the top; KNOB 1 to the right goes DOWN it) */
     expect("MODE: KNOB 1 right at DUEL (SPLIT, the list's last row) stays DUEL", duell_mode_req == DM_SPLIT);
     turn(EN_K1, -1);
@@ -1107,7 +1112,10 @@ static void t_cost(void)
     b = dip_blocks();
     printf("mode:   the switch STEREO -> SPLIT: %u blocks, %.0f instructions per sample over them (the 8 silent blocks clear "
            "16 KB each)\n", b, i0 ? (double)(instr_now() - i0) / (b * CTL) : 0.0);
-    expect("cost measured (SPLIT runs both buses: at most twice STEREO's whole mix)", st > 0 && sp > 0 && sp < 2.0 * st);
+    if (st > 0 && sp > 0)
+        expect("cost measured (SPLIT runs both buses: at most twice STEREO's whole mix)", sp < 2.0 * st);
+    else
+        printf("mode:   (no instruction counter on this host: cost not measured)\n");
 }
 
 /* ------------------------------------------------- JIANT's SHIM, RESO --- */

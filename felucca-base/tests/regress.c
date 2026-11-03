@@ -17,7 +17,7 @@
  *    per sample counted by the kernel (proc_pid_rusage ri_instructions: the same on every run within
  *    ~1 %, unlike wall time), compared with CPU_FILE (tests/cpu_baseline.txt) at +-25 %; ns per
  *    sample printed for information. A count over the budget fails, one far under it only warns.
- * 4. voices: the shared budget of 8 across 4 parts, stolen voices fade (no step), MONO / LEGATO /
+ * 4. voices: the shared budget of 16 across 4 parts (1.1 item 90), stolen voices fade (no step), MONO / LEGATO /
  *    UNISON keep their note under pressure, the VOICE engine's 4-voice cap, release frees voices, and
  *    no hanging note after the note-offs on any routing (USB channels 1..4, others while the
  *    selected track changes, the keys while the selected track changes, with ARP and the voice modes).
@@ -458,8 +458,8 @@ static int chk_budget(char *msg, uint32_t n)
     finish();
     snprintf(msg, n, "4 POLY parts, random notes: at most %u voices active (budget %u), VOICE part at most %u (cap 4), "
              "%u voices taken, %u still fading after their block, all free %.2f s after the note-offs",
-             worst, NVOICE, vworst, voice_kills - kills0, fading, R.free_s);
-    return worst <= NVOICE && vworst <= 4u && !fading && R.free_s >= 0 && voice_kills > kills0;
+             worst, VPOOL, vworst, voice_kills - kills0, fading, R.free_s);
+    return worst <= VPOOL && vworst <= 4u && !fading && R.free_s >= 0 && voice_kills > kills0;
 }
 
 /* MIDI packets in one audio block can reuse a voice before its stolen tail fades. */
@@ -473,29 +473,33 @@ static int chk_retrigger_budget(char *msg, uint32_t n)
         for (p = 0; p < NPART; p++) {
             memset(trk[p].v, 0, sizeof trk[p].v);
             host_preset(&trk[p], p == 0 && round ? 5u : 0u, 0);
-            trk[p].p[P_VOICE] = p >= 2u ? V_MONO : V_POLY;
+            trk[p].p[P_VOICE] = p == 3u ? V_MONO : V_POLY;   /* (1.1 item 90: the pool is 16: 4 + 8 + 4 fill it before part 4's note) */
             trk[p].p[P_AMODE] = 0;
             trk[p].p[P_SUS] = 127;
         }
         for (i = 0; i < NELEM(NOTES); i++)
             trk_note_on(&trk[0], NOTES[i], 100);
-        for (i = 0; i < 3u; i++)
+        for (i = 0; i < 8u; i++)
             trk_note_on(&trk[1], 64u + 3u * i, 100);
-        trk_note_on(&trk[2], 74, 100);
-        blk();
+        for (i = 0; i < 4u; i++)
+            trk_note_on(&trk[2], 74u + 3u * i, 100);
+        for (i = 0; i < 5u; i++)                       /* (1.1 item 144 NOTE-START STAGGER: a chord starts VS_MAX voices a block) */
+            blk();
         for (i = 0; i < NVOICE; i++)
             if (trk[0].v[i].active && trk[0].v[i].note == 52u)
                 old = &trk[0].v[i];
         trk_note_off(&trk[0], 52);
         trk_note_on(&trk[3], 79, 100);
-        bad += !old || old->stage != 4u || voices_busy() != NVOICE;
+        bad += !old || old->stage != 4u || voices_busy() != VPOOL;
         /* Same pitch, then a new pitch with all four local VOICE slots still active. */
         trk_note_on(&trk[0], round ? 57u : 52u, 100);
         i = voices_busy();
         worst = i > worst ? i : worst;
-        bad += i != NVOICE;
+        bad += i != VPOOL;
         blk();
-        bad += voices_busy() != NVOICE || !trk[2].v[0].gate || !trk[3].v[0].gate;
+        for (i = 0, p = 0; i < NVOICE; i++)
+            p += trk[2].v[i].gate;                     /* (part 3 is POLY now: the full cap's take may cost it one of its four) */
+        bad += voices_busy() != VPOOL || p < 3u || !trk[3].v[0].gate;
         for (p = 0; p < NPART; p++)
             trk_all_off(&trk[p]);
         for (i = 0; i < 4u * FS / CTL && !parts_free(); i++)
@@ -503,7 +507,7 @@ static int chk_retrigger_budget(char *msg, uint32_t n)
         bad += !parts_free();
     }
     snprintf(msg, n, "same-note retrigger and full local-cap replacement before the fade: at most %u voices, "
-             "both MONO parts kept, all released", worst);
+             "the MONO part kept, the POLY part loses at most one, all released", worst);
     return !bad;
 }
 
@@ -523,6 +527,8 @@ static int chk_cap_mode_budget(char *msg, uint32_t n)
         }
         for (i = 0; i < NVOICE; i++)
             trk_note_on(&trk[0], 48u + i * 2u, 100);
+        for (i = 0; i < 5u; i++)                       /* (the stagger: all 8 started) */
+            blk();
         trk[0].p[P_VOICE] = MODE[round];
         if (round == 2u) {
             /* A lower cap must not protect old upper slots while the lower extras fade. */
@@ -535,15 +541,15 @@ static int chk_cap_mode_budget(char *msg, uint32_t n)
             trk_note_on(&trk[p], 70u + p * 3u, 100);
             i = voices_busy();
             worst = i > worst ? i : worst;
-            bad += i > NVOICE || !trk[0].v[0].gate || trk[0].v[0].note != 48u;
+            bad += i > VPOOL || !trk[0].v[0].gate || trk[0].v[0].note != 48u;
         }
         trk[1].p[P_VOICE] = V_POLY;
         trk_note_on(&trk[1], 84, 100);
         i = voices_busy();
         worst = i > worst ? i : worst;
-        bad += i > NVOICE || !trk[0].v[0].gate;
+        bad += i > VPOOL || !trk[0].v[0].gate;
         blk();
-        bad += voices_busy() > NVOICE || !trk[0].v[0].gate;
+        bad += voices_busy() > VPOOL || !trk[0].v[0].gate;
         for (p = 1; p < NPART; p++)
             bad += !trk[p].v[0].gate;
         for (p = 0; p < NPART; p++)
@@ -575,17 +581,19 @@ static int chk_mode_budget(char *msg, uint32_t n)
                 trk_note_on(&trk[0], 48, 100);
             else
                 for (i = 0; i < NVOICE; i++) trk_note_on(&trk[0], 48u + 2u * i, 100);
+            for (i = 0; i < 5u; i++)                   /* (the stagger: a chord starts VS_MAX voices a block) */
+                blk();
             bad += voices_busy() != NVOICE;
             trk[0].p[P_VOICE] = (int16_t)mode;
             for (p = 1; p < NPART; p++) {
                 trk_note_on(&trk[p], 72u + p, 100);
-                bad += voices_busy() > NVOICE || !trk[0].v[0].gate || !trk[p].v[0].gate;
+                bad += voices_busy() > VPOOL || !trk[0].v[0].gate || !trk[p].v[0].gate;
             }
             blk();
-            bad += voices_busy() > NVOICE;
+            bad += voices_busy() > VPOOL;
             for (p = 0; p < NPART; p++) trk_all_off(&trk[p]);
         }
-    snprintf(msg, n, "POLY / UNISON chord -> MONO / LEGATO / UNISON: extra voices reclaimed, leads kept, budget %u", NVOICE);
+    snprintf(msg, n, "POLY / UNISON chord -> MONO / LEGATO / UNISON: extra voices reclaimed, leads kept, budget %u", VPOOL);
     return !bad;
 }
 
@@ -625,7 +633,7 @@ static int chk_mode_release(char *msg, uint32_t n)
                     trk[0].p[P_VOICE] = (int16_t)to;
                     trk_note_off(&trk[0], order ? 60u : 64u);
                     trk_note_off(&trk[0], order ? 64u : 60u);
-                    bad += mode_release_gates() != 0 || trk[0].nmono != 0 || voices_busy() > NVOICE;
+                    bad += mode_release_gates() != 0 || trk[0].nmono != 0 || voices_busy() > VPOOL;
                     for (i = 0; i < FS / CTL && !parts_free(); i++) blk();
                     bad += !parts_free();
                     cases++;
@@ -660,7 +668,7 @@ static int chk_mode_release(char *msg, uint32_t n)
             trk_note_off(&trk[0], lead);
             bad += mode_release_gates() != want || trk[0].v[0].note != 76u || trk[0].mono_note != 76u;
             trk_note_off(&trk[0], 76);
-            bad += mode_release_gates() != 0 || trk[0].nmono != 0 || voices_busy() > NVOICE;
+            bad += mode_release_gates() != 0 || trk[0].nmono != 0 || voices_busy() > VPOOL;
             cases++;
         }
     }
@@ -674,7 +682,7 @@ static int chk_mode_release(char *msg, uint32_t n)
  * within 1.5 x the largest one in the 0.25 s before it (a hard cut is several times larger) */
 static int chk_steal_fade(char *msg, uint32_t n)
 {
-    static const uint8_t N1[7] = {48, 52, 55, 59, 62, 65, 69};
+    static const uint8_t N1[8] = {48, 52, 55, 59, 62, 65, 69, 72};
     const uint32_t frames = 4u * FS;
     int32_t *L = calloc(frames + CTL, sizeof *L);
     uint32_t f, i, p, k, ev[8], nev = 0, bad = 0;
@@ -686,10 +694,11 @@ static int chk_steal_fade(char *msg, uint32_t n)
     for (f = 0; f < frames; f += CTL) {
         uint32_t ms = f * 1000u / FS, k0 = voice_kills;
         if (f == 0)
-            for (i = 0; i < 7u; i++)
+            for (i = 0; i < 8u; i++)
                 trk_note_on(&trk[0], N1[i], 90);
         if (f == at(0.5))
-            trk_note_on(&trk[1], 74, 90);
+            for (i = 0; i < 8u; i++)               /* (1.1 pool 16: part 1 holds 8, part 2 five, part 3 three; then each take of 2 / 3 gives up a voice) */
+                trk_note_on(&trk[i < 5u ? 1 : 2], 74u + i, 90);
         if (ms >= 1000u && f % (FS / 2u) < CTL && ms < 3500u)
             trk_note_on(&trk[ms / 500u % 2u ? 1u : 2u], 76u + ms / 250u, 90);
         blk();
@@ -729,7 +738,7 @@ static int chk_keep(char *msg, uint32_t n, uint32_t mode)
     trk[0].p[P_AMODE] = 0;
     trk[0].p[P_SUS] = 100;
     for (k = 1; k < NPART; k++) {
-        host_preset(&trk[k], ENGI_FM6, 1);          /* (DIGITAL BELL, converted to FM6, until 0.2.13) */
+        host_preset(&trk[k], 0, 1);          /* (ANALOG: FM6's cap of 6 keeps two parts under the 1.1 pool of 16) */
         trk[k].p[P_VOICE] = V_POLY;
         trk[k].p[P_AMODE] = 0;
         trk[k].p[P_SUS] = 100;
@@ -977,7 +986,7 @@ int main(int argc, char **argv)
 
     /* 4: the voice checks */
     k0 = nj;
-    add(J_CHECK, "voices: budget of 8 across 4 parts")->check = chk_budget;
+    add(J_CHECK, "voices: budget of 16 across 4 parts")->check = chk_budget;
     add(J_CHECK, "voices: reuse before the stolen tail fades")->check = chk_retrigger_budget;
     add(J_CHECK, "voices: budget after a live mode change")->check = chk_mode_budget;
     add(J_CHECK, "voices: budget after voice mode changes")->check = chk_cap_mode_budget;
@@ -1068,8 +1077,8 @@ int main(int argc, char **argv)
         if (r->tail_peak > LIM_TAIL)
             snprintf(why + strlen(why), sizeof why - strlen(why), " not silent at the end: peak %d (limit %d);",
                      r->tail_peak, LIM_TAIL);
-        if (r->vmax > NVOICE)
-            snprintf(why + strlen(why), sizeof why - strlen(why), " %u voices (budget %u);", r->vmax, NVOICE);
+        if (r->vmax > VPOOL)
+            snprintf(why + strlen(why), sizeof why - strlen(why), " %u voices (budget %u);", r->vmax, VPOOL);
         if (why[0]) {
             printf("regress: HEALTH FAIL  %s:%s\n", j->name, why);
             h_fail++;
@@ -1118,7 +1127,12 @@ int main(int argc, char **argv)
                    "# than that (a shape route) changes. Both are glitch removals (a hiss that pulsed with each duck, a step of the bent wave).\n"
                    "# hunt4 (release_drafts/HUNT4.md), on purpose, 17 of the 210 (every PHASE preset and sound): PHASE's bend is built once a block, so a moving DCW (the envelope's sweep) stepped at the\n"
                    "# block seams; eng_phase.c phase_render_0 carries the step as an offset that dies away in 8 samples (a buzz at 1,378 Hz and its harmonics, -62 .. -77 dBFS above 3 kHz, #31 BRAZEN's\n"
-                   "# whistle). A glitch removal: the peak of every one of the 17 moves by at most 0.1 dB.\n");
+                   "# whistle). A glitch removal: the peak of every one of the 17 moves by at most 0.1 dB.\n"
+                   "# DUELL 1.1 / jam11, on purpose, all 210 (docs/JAM11_TEST_BASELINE.md; 1.0's hashes pass on Linux unchanged). The audio of every render was dumped from 1.0 and from jam11 and\n"
+                   "# compared (jam/soundref/regress_dmp.sh, acmp). (1) NOTE-START STAGGER (item 144, VS_MAX 2): a chord's voices start 1..3 blocks apart; built with -DVS_MAX=8 the presets of ANALOG FM6\n"
+                   "# LOFI NOISE TRIO WAVE WHEEL, the sends and the 4-track mix fall to -40 .. -52 dB residual, which is (2) BIT DEPTH (the level stages keep the two low bits), REVERB_FIX (comb damping and\n"
+                   "# delay feedback rounded, tails end in exact silence), the SHIM rework. (3) The rest: the velocity accent and PHYS exciter brightness from the key (not the velocity), the string loop's\n"
+                   "# tuning (phys_dsp.c), PHASE's bend, and the factory sounds' new recipes, TRANS and End B as values (tools/duell_sounds.py): the sound/ renders and the PHYS / PHASE / VOICE presets.\n");
         for (i = g0; i < g1; i++)
             fprintf(f, "%s %016llx\n", J[i].name, (unsigned long long)J[i].r.hash);
         fclose(f);

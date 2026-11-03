@@ -166,7 +166,10 @@ int main(int argc, char **argv)
                    "# 1.0: the owner's duell-multis-13 file (13 records, byte for byte) is the factory M01..M05 and M08..M15 (M06, M07, M16 unchanged): their 39 renders re-made once; the test scenes are unchanged.\n"
                    "# 1.0 volume check (release_drafts/VOLUME_CHECK_V1.md): the TRIM of both parts of M01 M02 M04 M05 M06 M07 M08 M13 M15 moved by the same dB (tools/multi_trim.py): their 27 renders are made again (one re-base for 1.0 in all).\n"
                    "# 1.0 MORPH B (release_drafts/MORPH_B_ROLL_V1.md): End B of M01..M15 rolled again with the firmware's ROLL B (tools/morph_b_roll.py, fixed seeds): their fader 63 and 127 renders (30) made again; fader 0 (End A) is unchanged.\n"
-                   "# 1.0 owner's answers: M04 DUB CHORD's TRIM one more step down (peak ceiling) and its seed k = 20: its three renders made again. M05 / M11 name VOICE sounds by their closed-up factory indices (CROONER left the bank): same sound, same hashes.\n");
+                   "# 1.0 owner's answers: M04 DUB CHORD's TRIM one more step down (peak ceiling) and its seed k = 20: its three renders made again. M05 / M11 name VOICE sounds by their closed-up factory indices (CROONER left the bank): same sound, same hashes.\n"
+                   "# DUELL 1.1 / jam11, on purpose, all 105 (docs/JAM11_TEST_BASELINE.md): every render changes by the 1.1 sound changes the regress golden (tests/golden.txt) traces on 1.0 and jam11 audio: the\n"
+                   "# note-start stagger (item 144: the chords start 2 voices a block), BIT DEPTH, REVERB_FIX / SHIM / delay rounding, the factory sounds' new recipes and End B as values, the multis' ROLL B;\n"
+                   "# jam11 adds TIDE's roll changes and PHYS tuning. (Not compared audio against 1.0: the 1.0 tree does not build this test on Linux, nor does stock 1.1 (scenes.h / mu_put_rec).)\n");
         for (m = 0; m < NR; m++)
             for (f = 0; f < 3u; f++)
                 fprintf(g, "%s f%u %016llx\n", RN[m].name, FAD[f], (unsigned long long)got[m * 3 + f]);
