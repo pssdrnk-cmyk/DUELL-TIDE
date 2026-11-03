@@ -1818,7 +1818,7 @@ static void draw_act_column(uint32_t c, const char *label, uint16_t vc, uint32_t
 static void sound_name(const track_t *t, char *b)
 {
     b[0] = 0;
-    if (t->user)
+    if (t->user && !UP_EMPTY_USER((uint32_t)t->user - 1u))   /* (an empty USER slot has no sound of its own: the part keeps the one it plays) */
         sl_name((uint32_t)t->user - 1u, b);
     else
         str_cpy(b, ds_name(t->eng_req % NENGINES, t->preset), 16);   /* (DUELL: sounds.c; INIT for none) */
@@ -2578,8 +2578,8 @@ static void draw_columns(void)
     if (cur_page()->graph == GR_BROWSE) {              /* PATCHES (change list A.9, PATCHES_MULTIS_NEW_LAYOUT_V3): K1 PATCH (the slot's number), K2 TYPE, K3 SAVE (the save window), K4 FAV; RESTORE is gone */
         uint32_t total, cur = pl_cursor(&total), k = pl_cursor_slot();
         char sl[6];
-        up_slot_label(sl, k < UP_SLOTS ? k : 0u);
-        draw_column(0, "PATCH", k < UP_SLOTS ? sl : "--", "", VAL(0u), cur < total && total > 1u ? (int32_t)(cur * 1000u / (total - 1u)) : -1, ICON_NONE);
+        up_slot_label(sl, k < UP_VSLOTS ? k : 0u);
+        draw_column(0, "PATCH", k < UP_VSLOTS ? sl : "--", "", VAL(0u), cur < total && total > 1u ? (int32_t)(cur * 1000u / (total - 1u)) : -1, ICON_NONE);
         if (CARD_SEG_ON) {                             /* (TEMPLATE 9: TYPE is a CHOICE of the list's kinds: the segment line) */
             cell_seg_n = (uint8_t)LIST_N;
             cell_seg_i = (uint8_t)list_mode();
@@ -3026,12 +3026,21 @@ static void confirm_text(char *a, char *b)          /* a, b hold 32 */
         break;
     case CF_OVR_PSLOT:                                  /* PATTERNS: SAVE over what the slot holds */
         str_cpy(a, "OVERWRITE ", 24);
+#if PS_NUSER
+        {                                               /* its tag and name */
+            char tag[4];
+            pat_label(k % PS_SLOTS, tag, b);
+            str_cpy(a + str_len(a), tag, 4);
+        }
+        str_cpy(a + str_len(a), "?", 2);
+#else
         ps_label(a + str_len(a), k % PS_SLOTS);
         str_cpy(a + str_len(a), "?", 2);
         {                                               /* its name */
             char tag[4];
             pat_label(k % PS_SLOTS, tag, b);
         }
+#endif
         break;
     case CF_HOLD_PSLOT:                                 /* SAVE held on PATTERNS: "SAVE OVER MELODY?", the slot under it */
     case CF_HOLD_MULTI: {                               /* SAVE held on MULTIS */

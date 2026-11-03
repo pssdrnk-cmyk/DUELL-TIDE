@@ -1100,9 +1100,19 @@ static int up_put(uint32_t k, const up_rec_t *r)
     return rc;
 }
 
-static void up_slot_label(char *b, uint32_t k)  /* "#7", "#128" (b holds 5): the number of the slot, 1..128 */
+static void up_slot_label(char *b, uint32_t k)  /* "#7", "#128", "U1" (b holds 5): the number of the slot, 1..128; the USER slots U1..; a displaced factory place keeps its number */
 {
     uint32_t n = k + 1u, i = 0;
+#if UP_NUSER
+    if (k >= UP_USER0 && k < UP_SLOTS) {
+        b[0] = 'U';
+        b[1] = (char)('1' + k - UP_USER0);
+        b[2] = 0;
+        return;
+    }
+    if (k >= UP_SLOTS)
+        n -= UP_NUSER;
+#endif
     b[i++] = '#';
     if (n >= 100u)
         b[i++] = (char)('0' + n / 100u % 10u);
@@ -1389,9 +1399,21 @@ static void sl_tab(void)
     }
     sl_tn = (uint8_t)(n < UP_SLOTS ? n : UP_SLOTS);
 }
+/* U1: slots UP_USER0.. (USER 1..) hold no factory sound: an empty one is empty, a record is the owner's. The factory sounds at the browse positions they stand
+ * on are the read-only places UP_SLOTS.. (browse order: ..#123, U1..U4, #125..#128), never written. Nothing is stored for them */
+#if UP_NUSER
+static int sl_user(uint32_t k) { return k >= UP_USER0 && k < UP_SLOTS; }
+static int sl_empty_user(uint32_t k) { return sl_user(k) && !up_used(k); }
+#endif
 static int sl_fac(uint32_t k, uint32_t *e, uint32_t *fk)   /* 1: slot k has a factory sound (engine *e, its factory index *fk) */
 {
     sl_tab();
+#if UP_NUSER
+    if (k >= UP_VSLOTS || sl_user(k))
+        return 0;
+    if (k >= UP_SLOTS)
+        k -= UP_NUSER;
+#endif
     if (k >= sl_tn)
         return 0;
     *e = sl_te[k];
@@ -1408,6 +1430,12 @@ static uint32_t sl_engine(uint32_t k)            /* the engine slot k's sound pl
 static void sl_name(uint32_t k, char *b)         /* upper case, 0-terminated: b holds 13 */
 {
     uint32_t e, fk;
+#if UP_NUSER
+    if (sl_empty_user(k)) {
+        str_cpy(b, "USER EMPTY", 13);
+        return;
+    }
+#endif
     if (up_used(k) || !sl_fac(k, &e, &fk)) {
         up_name(k, b);
         if (!b[0])
@@ -1428,8 +1456,15 @@ static uint32_t sl_cat(uint32_t k)               /* its category (category.c CAT
 static int sl_load(uint32_t k)
 {
     uint32_t e, fk;
-    if (k >= UP_SLOTS)
+    if (k >= UP_VSLOTS)
         return 0;
+#if UP_NUSER
+    if (sl_empty_user(k)) {                        /* U1: an empty USER slot loads nothing: the sound stays, the part points at the slot (SAVE offers it) */
+        TSEL->user = (uint8_t)(k + 1u);
+        mph[song.sel].user = TSEL->user;
+        return 1;
+    }
+#endif
     if (up_used(k) && !up_load(k))                 /* (up_load: 0 = the record loaded) */
         return 1;
     if (!sl_fac(k, &e, &fk)) {
@@ -1528,16 +1563,33 @@ static uint32_t slot_of(const track_t *t)
     if (t->user)
         return t->user - 1u < UP_SLOTS ? (uint32_t)t->user - 1u : UP_SLOTS;
     r = ds_list_rank(e, t->preset);
-    return r < UP_SLOTS && !up_used(r) ? r : UP_SLOTS;
+    return r < UP_USER0 && !up_used(r) ? r : UP_SLOTS;
 }
-/* where SAVE offers to write part t's sound: its slot; else the slot its factory sound belongs to (even if that holds a record now); else #1 */
+/* the browse place of part t's sound: its slot, or the read-only place of a factory sound a USER slot displaced; UP_VSLOTS: none */
+static uint32_t slot_place(const track_t *t)
+{
+#if UP_NUSER
+    uint32_t s = slot_of(t), r;
+    if (s < UP_SLOTS)
+        return s;
+    r = t->user ? UP_SLOTS : ds_list_rank(t->eng_req % NENGINES, t->preset);
+    return r >= UP_USER0 && r < UP_SLOTS ? r + UP_NUSER : UP_VSLOTS;
+#else
+    return slot_of(t);
+#endif
+}
+/* where SAVE offers to write part t's sound: its slot; else the slot its factory sound belongs to (even if that holds a record now; a displaced one: USER 1); else #1 */
 static uint32_t slot_home(const track_t *t)
 {
     uint32_t r;
     if (slot_of(t) < UP_SLOTS)
         return slot_of(t);
     r = ds_list_rank(t->eng_req % NENGINES, t->preset);
+#if UP_NUSER
+    return r < UP_USER0 ? r : r < UP_SLOTS ? UP_USER0 : 0u;
+#else
     return r < UP_SLOTS ? r : 0u;
+#endif
 }
 
 /* ---- SAVE (hold SAVE, ui_input.c patch_save_ask) ---- */
@@ -1563,7 +1615,7 @@ static int up_patch_save_part(uint32_t pi, uint32_t k)
         return 1;
     if (save_nm[0] && !both_names)                      /* 0.2.21: RENAME in the SAVE dialog (one part only) */
         str_cpy(nm, save_nm, sizeof nm);
-    else if (t->user)                                   /* its slot's name; else the factory sound it plays */
+    else if (t->user && !UP_EMPTY_USER((uint32_t)t->user - 1u))   /* its slot's name; else the factory sound it plays */
         sl_name((uint32_t)t->user - 1u, nm);
     else
         str_cpy(nm, ds_name(t->eng_req % NENGINES, t->preset), 13);

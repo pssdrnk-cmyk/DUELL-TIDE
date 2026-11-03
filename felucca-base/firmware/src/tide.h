@@ -12,6 +12,10 @@
 #endif
 
 #if DUELL_TIDE
+#define UP_NUSER 4u
+#define PS_NUSER 4u
+#define UP_EMPTY_USER(k) sl_empty_user(k)           /* U1 (upreset.c): slot k is an empty USER voice slot */
+#define UP_IS_USER(k) sl_user(k)
 
 /* H2 (seq.c, audio path): a step as it plays, the Original's or the SEQ MORPH's variation (tide_seq.c). The
  * compound literal is the variation's room, alive for the enclosing block. The editor and pages read the Original
@@ -178,6 +182,17 @@ static int tide_foot_two(void);
 #define TIDE_GRAPH_SIG(pg, h) ((void)0)
 #define TIDE_COLUMNS() ((void)0)
 #define TIDE_HOME_NAME "MORPH"
+#define UP_NUSER 0u
+#define PS_NUSER 0u
+#define UP_EMPTY_USER(k) 0
+#define UP_IS_USER(k) 0
 
 #endif
+
+/* U1 (upreset.c, patslot.c, ui*.c): the last UP_NUSER voice slots and PS_NUSER pattern slots are USER slots, empty until saved. The factory
+ * sounds / patterns they displace stay listed after them as read-only places (voice places UP_SLOTS.., pattern places PS_SLOTS..). No record moves */
+#define UP_USER0 (UP_SLOTS - UP_NUSER)
+#define UP_VSLOTS (UP_SLOTS + UP_NUSER)
+#define PS_USER0 (PS_SLOTS - PS_NUSER)
+#define PS_VSLOTS (PS_SLOTS + PS_NUSER)
 #endif
