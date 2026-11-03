@@ -33,6 +33,30 @@ static uint32_t project_cur_slot(void);           /* .. the multi the music came
 static int project_factory(uint32_t slot);         /* .. M01..M10 not overwritten: shows its factory multi */
 static int erase_data_run(void);                   /* DUELL 0.2.2: MENU > SYSTEM > ERASE DATA (erase_data.c) */
 static void mu_label(char *b, uint32_t k);         /* .. "M01" .. "M16" */
+#if DUELL_TIDE
+typedef struct {
+    uint8_t state;
+    struct {
+        uint8_t eng, preset, mode, has, bar[16];
+    } p[NSHOWN];
+} mu_pv_t;
+static void multi_preview(uint32_t slot, mu_pv_t *o);   /* .. U3: the MULTIS page's preview of one record (multi.c) */
+static uint32_t multi_gen(void);
+static int multi_bad(uint32_t slot);               /* .. a record is there that does not load (DAMAGED) */
+static const char *multi_vname(uint32_t slot, uint32_t part);   /* .. a part's sound name in the slot (kept by mu_note: no decode); its MODE: 0 OFF, 1 ARP, 2 SEQ, |4 the pattern holds a note */
+static uint32_t multi_vmode(uint32_t slot, uint32_t part);
+typedef struct {                                  /* SAVE > PATTERNS' preview of one slot: state 0 none, 1 decoded, 2 damaged; len the LEN; has: a note in it; bar: the first 16 steps */
+    uint8_t state, len, has, bar[16];
+} pat_pv_t;
+static void ps_preview(uint32_t k, pat_pv_t *o);   /* .. (patslot.c) */
+static uint32_t ps_gen(void);                      /* .. counts the slots' changes */
+/* a step as the previews draw it: 1 empty, 2 tie, 3 note, 4 chord, |8 an accent on a note (0 is "past the pattern's end") */
+static uint8_t pv_bar_of(const step_t *s)
+{
+    uint8_t b = s->time == ST_NOTE && s->n ? (s->n > 1u ? 4u : 3u) : s->time == ST_TIE ? 2u : 1u;
+    return (uint8_t)(b | (b >= 3u && (s->flags & SF_ACCENT) ? 8u : 0u));
+}
+#endif
 /* The PATCH SLOTS (upreset.c, the slot layer): ONE list of UP_SLOTS (128), slot k = its saved record, else the factory sound at browse position k */
 static uint32_t slot_of(const track_t *t);         /* the slot t's sound is in, UP_SLOTS = none */
 static uint32_t slot_home(const track_t *t);       /* .. where SAVE offers to write it */

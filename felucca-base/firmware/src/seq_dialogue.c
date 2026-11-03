@@ -54,6 +54,7 @@ static int phrase_peer_attack(uint32_t pi, uint32_t dest)
     }
     MORPH_UNLOCK();
     if (!phrase_available(t, &c[0], ownarp) || !phrase_available(peer, &c[1], arp)) return 0;
+    if (tide_poly_on(t) || tide_poly_on(peer)) return 0;   /* (a shortened loop's cycle is not the pattern's: no prediction) */
     uint32_t len = sqm_len(peer), ownlen = sqm_len(t);
     uint32_t period = div_samples((uint32_t)peer->p[arp ? P_ARATE : P_SDIV]);
     uint32_t ownperiod = div_samples((uint32_t)t->p[ownarp ? P_ARATE : P_SDIV]);
@@ -128,11 +129,22 @@ static int phrase_peer_attack(uint32_t pi, uint32_t dest)
     }
     return 0;
 }
-static int32_t phrase_direction(uint32_t pi, int32_t cur, uint32_t len, int32_t dir)
+static int32_t phrase_direction(uint32_t pi, int32_t cur, uint32_t len, int32_t dir, uint32_t seed)
 {
     int32_t a = cur + dir, b = cur - dir;
-    if (a > 0 && b > 0 && a < (int32_t)len && b < (int32_t)len &&
-        phrase_peer_attack(pi, (uint32_t)a) > phrase_peer_attack(pi, (uint32_t)b))
-        return -dir;
+    if (a > 0 && b > 0 && a < (int32_t)len && b < (int32_t)len) {
+        if (sqm_turns == 3u && phrase_peer_attack(pi, (uint32_t)a) == phrase_peer_attack(pi, (uint32_t)b) &&
+            tide_echo(pi, (uint32_t)a) != tide_echo(pi, (uint32_t)b))   /* ECHO: a hit leans into the places the peer left free */
+            return tide_echo(pi, (uint32_t)a) ? dir : -dir;
+        if (tarc_sync() && tide_metric(&trk[pi], 0) != SM_NONE) {   /* SYNC: the "and" and the push over the other 16ths; the peer's attack stays the stronger term */
+            static const uint8_t W[6] = {0, 0, 1, 3, 2, 1};
+            uint32_t sa = (phrase_peer_attack(pi, (uint32_t)a) ? 0u : 4u) + W[tide_metric(&trk[pi], (uint32_t)a)];
+            uint32_t sb = (phrase_peer_attack(pi, (uint32_t)b) ? 0u : 4u) + W[tide_metric(&trk[pi], (uint32_t)b)];
+            if (sa != sb && sqm_hash(seed, (uint32_t)cur, 0x5Cu) % 24u < (tarc_sync() == 2u ? 21u : 16u))
+                return sa > sb ? dir : -dir;
+        }
+        if (phrase_peer_attack(pi, (uint32_t)a) > phrase_peer_attack(pi, (uint32_t)b))
+            return -dir;
+    }
     return dir;
 }

@@ -281,10 +281,22 @@ _Static_assert(AM_SEQ == AM_SEQ_ID, "core.h arp_mode: the SEQUENCER mode's value
 
 #include "midi_grid.c"       /* external clock: exact progress in musical units and fractional carries (fix A) */
 
+/* an arp note 0 (C-1) is a sounding note: its value reads as none, arp_nz says it sounds (bit 0 arp_note, 1..3 arp_ch) */
+#define ARP_UP(t) ((t)->arp_note | ((t)->arp_nz & 1u))
+#define ARP_CH_UP(t) ((t)->arp_ch[0] | (t)->arp_ch[1] | (t)->arp_ch[2] | ((t)->arp_nz & 14u))
+static __attribute__((noinline)) void arp_put(track_t *t, uint32_t i, uint32_t nt)   /* slot i (0 arp_note, 1.. arp_ch) plays nt */
+{
+    if (i)
+        t->arp_ch[i - 1u] = (uint8_t)nt;
+    else
+        t->arp_note = (uint8_t)nt;
+    t->arp_nz = (uint8_t)((t->arp_nz & ~(1u << i)) | (!nt << i));
+}
+
 static void arp_forget(track_t *t)               /* (its notes ended otherwise: trk_all_off) */
 {
     mo_flush(t);
-    t->arp_note = t->arp_ch[0] = t->arp_ch[1] = t->arp_ch[2] = 0;
+    t->arp_note = t->arp_ch[0] = t->arp_ch[1] = t->arp_ch[2] = t->arp_nz = 0;
     t->atg_note = t->atg_vel = t->atg_lat = 0;
     t->arp_ph = 0;
 }
@@ -295,11 +307,12 @@ static __attribute__((noinline)) void arp_chord_off(track_t *t, int rec)   /* th
 {
     uint32_t i;
     for (i = 0; i < 3u; i++)
-        if (t->arp_ch[i]) {
+        if (t->arp_ch[i] || ((t->arp_nz >> (i + 1u)) & 1u)) {
             if (rec)
                 rec_release(t, t->arp_ch[i]);
             arp_note_off(t, t->arp_ch[i]);
             t->arp_ch[i] = 0;
+            t->arp_nz &= (uint8_t)~(2u << i);
         }
 }
 
@@ -312,10 +325,7 @@ static __attribute__((noinline)) void arp_chord(track_t *t, const uint32_t *list
         nt = (uint32_t)clamp((int32_t)list[i] + 12 * (int32_t)o, 0, 127);
         if (nt == 127u && top++)
             continue;                               /* (notes clamped onto the top one: once) */
-        if (!t->arp_note)
-            t->arp_note = (uint8_t)nt;
-        else
-            t->arp_ch[i - 1u] = (uint8_t)nt;
+        arp_put(t, i, nt);
         if (rec_on(t))
             rec_note(t, nt, 100);
         arp_note_on(t, nt, 100);
@@ -326,7 +336,7 @@ static __attribute__((noinline)) void arp_chord(track_t *t, const uint32_t *list
 static uint32_t arp_seq_notes(track_t *t, const uint32_t *list, uint32_t n, uint8_t *out, uint32_t *vel)
 {
     uint32_t len = t->p[P_SLEN] > 0 ? (uint32_t)t->p[P_SLEN] : 1u, k = t->arp_idx, i, j, m = 0, nt, lo = 127, oc;
-    const step_t *s = TIDE_PLAY_STEP(t, k % len);   /* TIDE hook (H2) */
+    const step_t *s = TIDE_PLAY_STEP(t, TIDE_ARP_IDX(t, k, len));   /* TIDE hooks (H2, H3b) */
     int32_t off;
     if (s->time != ST_NOTE || !s->n)
         return 0;                                   /* a rest */
@@ -355,10 +365,7 @@ static __attribute__((noinline)) void arp_seq(track_t *t, const uint32_t *list, 
     if (!m)
         return;                                     /* a rest */
     for (i = 0; i < m; i++) {
-        if (!t->arp_note)
-            t->arp_note = out[i];
-        else
-            t->arp_ch[i - 1u] = out[i];
+        arp_put(t, i, out[i]);
         if (rec_on(t))
             rec_note(t, out[i], vel);
         arp_note_on(t, out[i], vel);
@@ -368,20 +375,22 @@ static __attribute__((noinline)) void arp_seq(track_t *t, const uint32_t *list, 
 
 static void arp_silence(track_t *t)              /* the sounding arp note(s) end */
 {
-    if (t->arp_ch[0] | t->arp_ch[1] | t->arp_ch[2])
+    if (ARP_CH_UP(t))
         arp_chord_off(t, 0);
     arp_note_off(t, t->arp_note);
     t->arp_note = 0;
+    t->arp_nz &= (uint8_t)~1u;
 }
 
 static void arp_off(track_t *t)                  /* the sounding arp note(s) end (a recorded one too) */
 {
-    if (t->arp_ch[0] | t->arp_ch[1] | t->arp_ch[2])
+    if (ARP_CH_UP(t))
         arp_chord_off(t, rec_on(t));
     arp_note_off(t, t->arp_note);
     if (rec_on(t))
         rec_release(t, t->arp_note);
     t->arp_note = 0;
+    t->arp_nz &= (uint8_t)~1u;
 }
 
 /* the place in the note list (len notes) the step arp_idx plays (not inlined, as arp_chord); UP+8 adds its note */
@@ -504,7 +513,7 @@ static __attribute__((noinline)) void atg_fire(track_t *t, uint32_t *list, uint3
 {
     uint32_t nt = 128, vel = 100, i, m, o;
     uint8_t out[4];
-    if (t->arp_note)
+    if (ARP_UP(t))
         arp_off(t);                                 /* (a classic step's note: the mask just changed) */
     if (t->p[P_AMODE] == AM_SEQ) {
         if ((uint32_t)(rng() & 127u) <= (uint32_t)t->p[P_APROB])
@@ -537,25 +546,26 @@ static __attribute__((noinline)) void arp_fire(track_t *t, uint32_t period)
 {
     uint32_t cnt, list[64], len, j;
     if (!(len = arp_list(t, list, &cnt))) {        /* (every key silent now) */
-        if (t->arp_note)
+        if (ARP_UP(t))
             arp_off(t);
         return;
     }
     t->arp_idx++;
+    TIDE_ARP_TICK(t);                               /* TIDE hook (H3b) */
     if (atgt_bits(t)) {                             /* ARP TARGET: the units move, no note (atg_fire) */
         atg_fire(t, list, cnt, len, period);
         return;
     }
     t->atg_vel = 0;                                 /* (arp_off is the note's again) */
     if (t->p[P_AMODE] == AM_SEQ) {                  /* SEQ: the step pattern (chance: the arp's PROB) */
-        if (t->arp_note)
+        if (ARP_UP(t))
             arp_off(t);
         if ((uint32_t)(rng() & 127u) <= (uint32_t)t->p[P_APROB])
             arp_seq(t, list, cnt, period);
         return;
     }
     j = t->p[P_AMODE] == AM_CHORD ? 0u : arp_pick(t, list, len);
-    if (t->arp_note)
+    if (ARP_UP(t))
         arp_off(t);
     if ((uint32_t)(rng() & 127u) <= (uint32_t)t->p[P_APROB]) {
         t->arp_off = period * (uint32_t)t->p[P_AGATE] / 128u;
@@ -563,7 +573,7 @@ static __attribute__((noinline)) void arp_fire(track_t *t, uint32_t period)
             arp_chord(t, list, cnt);
             return;
         }
-        t->arp_note = (uint8_t)list[j];
+        arp_put(t, 0, list[j]);
         if (rec_on(t))
             rec_note(t, t->arp_note, 100);           /* recording: what the arp plays */
         arp_note_on(t, t->arp_note, 100);
@@ -577,7 +587,7 @@ static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
 {
     uint32_t period;
     int32_t sw;
-    if (t->arp_note) {
+    if (ARP_UP(t)) {
         if (t->arp_off <= gate_n)
             arp_off(t);
         else
@@ -591,7 +601,7 @@ static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
     }
     if (!arp_mode(t) || (!t->nheld && !TIDE_SEQ_GHOST(t))) {   /* (0.2.14: MODULES' ARP OFF / SEQ OFF: as the arp's MODE OFF; TIDE hook H2b) */
         t->arp_ph = 0;                              /* (a new press starts a new phrase) */
-        if (!t->nheld && t->arp_note)
+        if (!t->nheld && ARP_UP(t))
             arp_off(t);
         return;
     }
@@ -607,7 +617,7 @@ static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
             arp_fire(t, period);
             duration = period + (uint32_t)((t->arp_idx & 1u) ? sw : -sw);
         } while (t->arp_pos >= duration);
-        if (t->arp_note) {
+        if (ARP_UP(t)) {
             if (t->arp_off <= t->arp_pos) arp_off(t);
             else t->arp_off -= t->arp_pos;
         }
@@ -616,7 +626,7 @@ static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
         t->arp_pos = 0;
         arp_fire(t, period);
     }
-    if (t->arp_note)
+    if (ARP_UP(t))
         t->arp_ph = 1;                              /* (the next step's note-on continues this phrase: voice.c) */
 }
 
@@ -1133,7 +1143,7 @@ static void seq_stop(void)
     memset(cin_n, 0, sizeof cin_n);
     if (clock_src())                               /* external clock: the arp stops with the transport, */
         for (i = 0; i < NPART; i++)                /* its sounding note too (HOLD keeps the latched chord) */
-            if (trk[i].arp_note)
+            if (ARP_UP(&trk[i]))
                 arp_off(&trk[i]);
     for (i = 0; i < NTRK; i++) {
         seq_release(&trk[i]);
@@ -1160,7 +1170,7 @@ static __attribute__((noinline)) void seq_step(track_t *t, const step_t *s, uint
     uint32_t i, j, gate = period * (uint32_t)t->p[P_SGATE] / 128u;
     uint32_t vel = (s->flags & SF_ACCENT) ? 127u : (s->vel ? s->vel : 96u);
     uint32_t slide_in = t->seq_hold && t->seq_n && !(skip & SEQ_REP);
-    uint32_t len = t->p[P_SLEN] ? (uint32_t)t->p[P_SLEN] : 1u;
+    uint32_t len = TIDE_SLEN(t) ? TIDE_SLEN(t) : 1u;   /* TIDE hook (H3b) */
     uint32_t next_tie = TIDE_PLAY_STEP(t, (idx + 1u) % len)->time == ST_TIE;   /* TIDE hook (H2) */
     uint32_t hits = step_ratchet(s);
     uint8_t nn[4], vv[4];                           /* the notes it plays */
@@ -1367,7 +1377,7 @@ static void seq_tick(track_t *t, uint32_t n)
     if (!song.playing)
         return;
     period = div_samples((uint32_t)t->p[P_SDIV]);
-    len = (uint32_t)t->p[P_SLEN];
+    len = TIDE_SLEN(t);                            /* TIDE hook (H3b) */
     len = len ? len : 1u;
     t->seq_pos += n;
     for (;;) {
@@ -1378,7 +1388,8 @@ static void seq_tick(track_t *t, uint32_t n)
             break;
         TIDE_SEQ_LOOP(t, len);                    /* TIDE hook (H3) */
         t->seq_pos = t->seq_pos >= 0x7FFFFFFFu ? 0u : t->seq_pos - cur_len;   /* (the pattern loops: % len below) */
-        t->seq_idx = (uint16_t)((t->seq_idx + 1u) % len);
+        t->seq_idx = (uint16_t)TIDE_SEQ_NEXT(t, len);   /* TIDE hook (H3b) */
+        TIDE_SEQ_RELEN(t, len);
         rec_hold(t, t->seq_idx, len);
         if (t->p[P_SQNT] && !t->nd_fired)
             seq_play(t, t->seq_idx, period);        /* QUANTIZE ON: every step on its start, as before 1.2 */
@@ -1704,7 +1715,7 @@ static void events_block(uint32_t n)
                 /* DUELL 1.1 ARP KEEPS RUNNING, a patch load: the voices end (a new sound starts clean) and the arp's own notes get their MIDI note-offs (mo_flush), but the held and latched
                  * notes (nheld, held[], arp_phys), the step counter and the phrase (arp_ph) stay: the next arp step plays the new sound */
                 mo_flush(t);
-                t->arp_note = t->arp_ch[0] = t->arp_ch[1] = t->arp_ch[2] = 0;
+                t->arp_note = t->arp_ch[0] = t->arp_ch[1] = t->arp_ch[2] = t->arp_nz = 0;
                 t->atg_note = t->atg_vel = t->atg_lat = 0;
             } else {
                 t->nheld = 0;
@@ -1730,7 +1741,7 @@ static void events_block(uint32_t n)
             else {
                 if (t->atg_lat)
                     atg_release(t);
-                if (t->arp_note)
+                if (ARP_UP(t))
                     arp_silence(t);
                 for (j = 0; j < t->nheld; j++)
                     trk_note_on(t, t->held[j], 100);
@@ -1743,7 +1754,7 @@ static void events_block(uint32_t n)
             t->nheld = 0;
             if (!am)
                 t->arp_phys = 0;
-            if (t->arp_note)
+            if (ARP_UP(t))
                 arp_silence(t);
         }
         t->armp = (int16_t)am;

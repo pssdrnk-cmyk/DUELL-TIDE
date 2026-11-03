@@ -2,9 +2,9 @@
 
 The implementation and integration onto DUELL 1.1 are complete, and the owner confirms TIDE works on hardware. This document retains migration evidence. The pending statements and resource measurements below refer to their named historical checkpoints. Current installed/source state, memory figures and engineering priorities live in [the roadmap](../ROADMAP.md).
 
-R0, M1 and M2a were installed at `1196a82` on 1 November; the S0/DSP checkpoint `e176f6e` was installed on 2 November. Engineering maintenance now has priority over musical expansion. Detailed [musical proposals](TIDE_MUSICAL_DESIGN.md) remain available separately.
+R0, M1 and M2a were installed at `1196a82` on 1 November; the S0/DSP checkpoint `e176f6e` was installed on 2 November; the boot pack `ecd2918` and `polish-all` `187e9d0` followed on 3 November (18:31 and 19:42). Engineering maintenance now has priority over musical expansion. Detailed [musical proposals](TIDE_MUSICAL_DESIGN.md) remain available separately.
 
-Historical M1/M2 installed build: **579,832 / 581,564 B application flash (1,732 B free)**; ordinary RAM **5,808 B free**, pool including range Z **11,156 B free**, hot audio RAM **1,468 B free**. These figures were superseded by S0/DSP. Original [integration and installation receipts](../history/TIDE_ROADMAP_2026-11-02.md#m1--m2-integration-for-github) are retained; use the roadmap for the current budget.
+Historical M1/M2 installed build: **579,832 / 581,564 B flash (1,732 B free)**; RAM **5,808 B free**, pool **11,156 B free**, hot code **1,468 B free**. These figures were superseded by S0/DSP. Original [integration and installation receipts](../history/TIDE_ROADMAP_2026-11-02.md#m1--m2-integration-for-github) are retained; use the roadmap for the current budget.
 
 ## Retained implementation snapshot — before owner hardware confirmation
 
@@ -15,7 +15,7 @@ Historical M1/M2 installed build: **579,832 / 581,564 B application flash (1,732
 - Integrated S1 pages, GLIDE, sound/sequence journeys, full crossings/wash, FM6 live tuning, Claude KEEP/storage, combined undo, and the six always-on fixes. Owner accepts TIDE-only saves for exact FM6 recall.
 - UI feedback: G4 KEEP hint below SEQ TOOLS; STORE FULL in both save flows; STEP variation outlines and refresh; two-part destination footer on TIDE/TIDE SET (selected part only on MORPH/MODE); quantized theme updates. TIDE splash/About uses the existing L alphabet font; credits, animation and controls remain. TIDE-off keeps the original bitmap artwork.
 - Cold morph compiler policy (`946afe7`) saves 304 B without changing function bodies. Compact FM6 tuning endpoints (`be070fb`) recover 576 B of pool including alignment for 16 B flash cost.
-- Claude UI compaction `50cfdac` merged at `0736b23`: removes superseded renderers and unreachable layout paths. It saves 4,240 B flash, 1,024 B ordinary RAM and 1,024 B pool. Claude's pixel comparisons match all 2,514 TIDE-on and 2,469 TIDE-off cases. Result and proof: `work/handover-2026-11-01/CLAUDE-UI-COMPACTION-RESULT.md` and `ui-compact-proof/`. Separate Claude worktrees are preserved; the UI freeze is over.
+- Claude UI compaction `50cfdac` merged at `0736b23`: removes superseded renderers and unreachable layout paths. It saves 4,240 B flash, 1,024 B RAM and 1,024 B pool. Claude's pixel comparisons match all 2,514 TIDE-on and 2,469 TIDE-off cases. Result and proof: `work/handover-2026-11-01/CLAUDE-UI-COMPACTION-RESULT.md` and `ui-compact-proof/`. Separate Claude worktrees are preserved; the UI freeze is over.
 - Retired hardware scope capture is now host-only (`FELUCCA_HOST_SCOPE` in `tests/hostsim.c`). The old settings bit remains reserved/ignored. This removes obsolete production source while preserving metronome test capture; it yields no further image reduction after compiler dead-code elimination.
 
 ## Historical restyle measurements
@@ -24,10 +24,10 @@ The final restyle build with the merged functional fixes measures: **577,116 / 5
 
 | Memory area | Used | Space remaining |
 |---|---:|---:|
-| Ordinary RAM | 67,872 B | 1,760 B after the 4 KiB reserve |
-| Pool plus range Z | 357,480 B | 2,968 B after the 8 KiB reserve |
+| RAM | 67,872 B | 1,760 B after the 4 KiB reserve |
+| Pool | 357,480 B | 2,968 B after the 8 KiB reserve |
 | Range X | 31,584 B | 928 B |
-| Hot audio plus flash driver | 13,968 B | 1,468 B physical; 1,240 B after the 228 B reserve |
+| Hot code plus flash driver | 13,968 B | 1,468 B physical; 1,240 B after the 228 B reserve |
 
 TIDE-off also passes target checks: **556,920 B**, app SHA-256 `0a35ee3e6e530c6047ce69ae0df75440b79dda493c9d02960829b2ec3b5b9777`. `jam/off.sha256` now records package SHA-256 `1efb2d84c26cf436194b725d36dd2364bb80aedcf911e076dd19c23ab505bb7e` for the intentionally updated shared baseline (font/compiler/UI cleanup and retired scope). This supersedes the fixes-only hash; it does not claim byte identity with untouched upstream 1.1. Evidence: `tide-ui-off-current/` and `tide-restyle-off/` (same app bytes). Claude also ran `jam/check_off.sh` successfully on `516b700`. The package hash was calculated from the checked app and unchanged loader; the shell wrapper itself has not been run in this stage.
 
@@ -58,20 +58,20 @@ Build helpers: `work/audit/stock_compare_build.py 1.1 wt/duell-jam11 <unique-lab
 
 Historical snapshot: **revision 3.5, before the integration and fitting work above (2026-11-01)**: see **`docs/design/HANDOVER_2026-11-01.md`**. Steps 0, 1, 2a and
 S1 part 1 are committed on `jam11` (`1c04831`). The S1 UI is on `jam11-s1-ui-wip` (`54e8727`): it compiles, but the link
-overflows the flash slot by 2,484 B, and about 9-10 KB more are needed with S2. Codex is investigating why it wasn't
+overflows flash by 2,484 B, and about 9-10 KB more are needed with S2. Codex is investigating why it wasn't
 foreseen and where to compact. The handover's tables supersede the space figures below where they differ.
 
 ### Historical state at revision 3.5 (2026-11-01)
 
 | What | State |
 |---|---|
-| FM-1 | `DUELL 1.1` + font compaction (8-slot) + hot-room placement, package `work/checkpoints/DUELL-2026-11-01-1.1-fonts8-hotroom/duell-1.1-fonts8-hotroom.fwsc`, SHA-256 `7de3761b…1cdff867`. INFO answers |
+| FM-1 | `DUELL 1.1` + font compaction (8-slot) + hot-code move, package `work/checkpoints/DUELL-2026-11-01-1.1-fonts8-hotroom/duell-1.1-fonts8-hotroom.fwsc`, SHA-256 `7de3761b…1cdff867`. INFO answers |
 | Flash history today | 09:0x plain 1.1 → 09:35 back to JAM 1.0 + restore (another session) → 09:40 fonts8 → plain 1.1 → fonts8 (owner's A/B comparison). Backups before each flash in `work/backups/` |
 | Unit settings | still holds JAM 1.0's [15][23] = 0x69 (NOTES LEFT OFF) unless the owner ran ERASE DATA; ERASE DATA is planned at the first `jam11` flash |
-| `jam11` worktree (`work/wt/duell-jam11`) | step 0: `1d29995` Windows toolchain, `0c48565` fonts (8-slot), `ac0fee1` hot room, `aa55e22` `jam/` tools, `33ea81a` test baseline. Step 1: `d445608` D (FM6), `b6b669e` E, `67ea2ec` F, `baeec20` B + D (PHYS/WAVE), `1c56523` C, `a227e4a` A; `e9a5495` LF fix for three tools files |
+| `jam11` worktree (`work/wt/duell-jam11`) | step 0: `1d29995` Windows toolchain, `0c48565` fonts (8-slot), `ac0fee1` hot-code move, `aa55e22` `jam/` tools, `33ea81a` test baseline. Step 1: `d445608` D (FM6), `b6b669e` E, `67ea2ec` F, `baeec20` B + D (PHYS/WAVE), `1c56523` C, `a227e4a` A; `e9a5495` LF fix for three tools files |
 | Branch `jam` (`71654ba`) | untouched reference |
 | Audits | `work/audit/MIGRATION_1_1_AUDIT.md` (rev 2, answered here); `work/audit/DUELL-1.1-COMPACTION.md` (font compaction, adopted as 8-slot); re-audit of rev 3.2: `work/audit/MIGRATION_1_1_REAUDIT_3_2.md` (go for step 0 and fixes; §4.9 before S1) |
-| Hot-room build (adopted) | `work/checkpoints/DUELL-2026-11-01-1.1-fonts8-hotroom/` (fonts 8-slot + hot room, SHA-256 `7de3761b…1cdff867`), built and confirmed here, **flashed 2026-11-01 ~09:52 (backup `DUELL-backup-2026-11-01-0950.json`), INFO answers; owner: "plays as before" (by ear; 1.1 retired the CPU bar, so the number is only on MENU > SYSTEM > ABOUT, not yet compared). M16 STRESS TEST on this build (owner): about 70 % CPU, peak 80 %, the UI a bit slower, no crash or dropout; key count not noted; no fonts-only figure yet to compare against** |
+| Hot-code move build (adopted) | `work/checkpoints/DUELL-2026-11-01-1.1-fonts8-hotroom/` (fonts 8-slot + hot-code move, SHA-256 `7de3761b…1cdff867`), built and confirmed here, **flashed 2026-11-01 ~09:52 (backup `DUELL-backup-2026-11-01-0950.json`), INFO answers; owner: "plays as before" (by ear; 1.1 retired the CPU bar, so the number is only on MENU > SYSTEM > ABOUT, not yet compared). M16 STRESS TEST on this build (owner): about 70 % CPU, peak 80 %, the UI a bit slower, no crash or dropout; key count not noted; no fonts-only figure yet to compare against** |
 | Open | `jam_dev` test fixtures for 1.1 formats; whether to flash the fixes build (Raqm-correct); step 2; §4.9 before S1
 
 ## 0. Summary in plain words
@@ -108,7 +108,7 @@ and only if they fit.
 | Base | `654a89e` | DUELL 1.0 as forked |
 | JAM source | `71654ba` (branch `jam`) | reference for the port; never changed |
 | Target | **`974d87509e7e89db0738c731c8a657968e60e498`** (tag `v1.1`, includes the 1.1 code commit `16d0223`) | branch `jam11`, worktree `work/wt/duell-jam11` |
-| **Installed now** | 1.1 + font compaction (8-slot) + hot-room placement, `work/checkpoints/DUELL-2026-11-01-1.1-fonts8-hotroom/` (SHA-256 `7de3761b…1cdff867`) | the unit's current state; step 0's two optimizations |
+| **Installed now** | 1.1 + font compaction (8-slot) + hot-code move, `work/checkpoints/DUELL-2026-11-01-1.1-fonts8-hotroom/` (SHA-256 `7de3761b…1cdff867`) | the unit's current state; step 0's two optimizations |
 | Rollback: fonts only | `work/checkpoints/DUELL-2026-11-01-1.1-fonts8/` (SHA-256 `606e5a50…e55b02`) | 1.1 + font compaction |
 | Rollback: plain 1.1 | `work/checkpoints/DUELL-2026-11-01-plain-1.1/duell-1.1.fwsc`, SHA-256 `f3787beb…d7c16584b` (`SHA256SUMS` beside it, read-only file; with its build log and after-flash backup) | immutable copy (audit F8). Not the release package: the release's hash is `f8f8cdee…`. Different build, same source. |
 | Rollback: last JAM | `work/checkpoints/DUELL-2026-10-31-2040-sound-complement/`; JAM backup `work/backups/DUELL-backup-2026-11-01-0900.json` | the last JAM that was played |
@@ -174,7 +174,7 @@ Fix order by risk: E, F (journey correctness) before A-D.
 | H6 | `morph.c` | factory End B when a sound loads (§4.2) |
 | H7 | `morph.c` | `tok[2][MORPH_HIST]` beside `rdep`; truthful depth (§4.1) |
 | H8 | `morph.c` | FM6 target consumer: non-blended FM6 fields of a MORPH TO target, `mxs[].side` (audit F1) |
-| H9 | `fx.c`, `voice.c`, `eng_fm6.c` | S2 crossings: valley/wash in the mix block, `morph_xcut` in the filter cut, FM6 bridge. **Audio path, hot block** (§4.8) |
+| H9 | `fx.c`, `voice.c`, `eng_fm6.c` | S2 crossings: valley/wash in the mix block, `morph_xcut` in the filter cut, FM6 bridge. **Audio path, hot code** (§4.8) |
 | H10 | `ui_layer.c` | `#include "ui_jam.c"`; JAM, JAM LIST in the HOME round |
 | H11 | `ui_graph.c` | JAM/JAM LIST draw dispatch and redraw signatures; SEQ MORPH ghost steps |
 | H12 | `ui_draw.c` | footer: both parts on JAM / MORPH |
@@ -232,7 +232,7 @@ dropped. Tests: onset count, sustained duration, missed-onset behaviour, before 
 `morph_xfer.c` comes back in slice S2: FM6 bridge, valleys, cut handoff and the wash with its JAM LIST row WASH LEVEL.
 It's measured as one slice. If it doesn't fit, cut in this order: (1) the wash and WASH LEVEL, removing the whole
 wash path including `glide_motion`'s use of `XWL` / `mxs[].motion/follow`, not just `xrise`; (2) move crossing audio
-functions out of the hot block into flash (works, costs CPU; measure load); (3) ask the owner. Acceptance: forward and
+functions out of the hot code into flash (works, costs CPU; measure load); (3) ask the owner. Acceptance: forward and
 backward FM6, filter-type and insert transitions, compared with JAM 1.0 renders of the same pairs.
 
 ### 4.5 Settings storage: `OBJ_JAM` (owner decision, audit F5)
@@ -269,10 +269,10 @@ was kept as raw data by the editor. ERASE DATA at the first `jam11` boot.
 
 | Region | plain 1.1 | Usable for JAM | What JAM needs (estimate, from JAM 1.0 symbols; real numbers come from each slice's link) |
 |---|---|---|---|
-| App flash slot (581,564 B) | 574,280 B (566,456 B with font compaction) | 7,284 B; **15,108 B** with font compaction; + 9,438 B from `DS_ENDB`/`_AT` = **~24,500 B** | S1+S3 ~15-17 KB, S2 crossings: unmeasured (a few KB), S4 extras ~2-3 KB → likely fits; measure each slice |
-| Call reach (hot block → end of `.text`) | 0x3fe228 (0x3fc398 with fonts) | 7,640 B; **15,464 B** with fonts (+ whatever is removed) | grows with flash; check each slice |
-| Hot block (`.ram_text`) | 12,172 B (11,180 B with hot room) | 112 B; **1,104 B** with hot room (physical room to boot_info minus `HOT_HEADROOM` 228, `elfcheck.py:245, 392-393`) | S2 crossings + fix C: unmeasured |
-| Range X | 30,276 B (31,268 B with hot room) | 2,236 B; **1,244 B** with hot room | fix B adds `px_atan2t`, `px_atan` (JAM 1.0's list); measure |
+| Flash (581,564 B) | 574,280 B (566,456 B with font compaction) | 7,284 B; **15,108 B** with font compaction; + 9,438 B from `DS_ENDB`/`_AT` = **~24,500 B** | S1+S3 ~15-17 KB, S2 crossings: unmeasured (a few KB), S4 extras ~2-3 KB → likely fits; measure each slice |
+| Call reach (hot code → end of `.text`) | 0x3fe228 (0x3fc398 with fonts) | 7,640 B; **15,464 B** with fonts (+ whatever is removed) | grows with flash; check each slice |
+| Hot code (`.ram_text`) | 12,172 B (11,180 B with hot-code move) | 112 B; **1,104 B** with hot-code move (physical room to boot_info minus `HOT_HEADROOM` 228, `elfcheck.py:245, 392-393`) | S2 crossings + fix C: unmeasured |
+| Range X | 30,276 B (31,268 B with hot-code move) | 2,236 B; **1,244 B** with hot-code move | fix B adds `px_atan2t`, `px_atan` (JAM 1.0's list); measure |
 | Pool | 8,344 B free (9,880 B with the font cache in `.bss`) | 152 B; **1,688 B** with fonts (8,192 B reserve, `POOL_TAIL_MIN`) | SEQ MORPH buffers `sqm_buf` 576 + `rhythm_map` 128 + `rhythm` 20 = **724 B** → fits with fonts; `.bss` still preferred |
 | `.data` + `.bss` | 59,632 of 73,728 B (63,760 B with the 8-slot font cache) | **5,872 B** with fonts (73,728 − 63,760 − the 4,096 B reserve, `tools/build.py:460`; re-audit) | see the RAM ledger, §4.9 |
 
@@ -282,26 +282,26 @@ labels and D digits stay plain), and `gfx.c` moves the decoder cache from `.pool
 metrics are identical (the audit compared all 1,392 glyph entries and 11,136 render cases). Use the **8-slot
 variant** (`work/audit/compact11/DUELL-1.1-lossless-size-8slots.patch`, `HC_FONTS` 3 → 8): with 3 slots, 8 Huffman
 faces share them and the last slot is rebuilt (256 entries) on every face change while a page draws. 8 slots
-remove that for 2.6 KB of ordinary RAM.
+remove that for 2.6 KB of RAM.
 
 | | plain 1.1 | + fonts, 3-slot cache | + fonts, 8-slot cache (chosen) |
 |---|---|---|---|
-| App image / free | 574,280 / 7,284 B | 566,456 / **15,108 B** | 566,456 / **15,108 B** |
+| Flash / free | 574,280 / 7,284 B | 566,456 / **15,108 B** | 566,456 / **15,108 B** |
 | Call reach margin | 7,640 B | 15,464 B | 15,464 B |
-| Pool + Z free (8,192 reserve) | 8,344 B (152 spare) | 9,880 B (**1,688 spare**) | 9,880 B (**1,688 spare**) |
+| Pool free (8,192 reserve) | 8,344 B (152 spare) | 9,880 B (**1,688 spare**) | 9,880 B (**1,688 spare**) |
 | `.data` + `.bss` (of 73,728; 4,096 B must stay free) | 59,632 B | 61,184 B | 63,760 B (**5,872 B usable**) |
-| Hot block | 12,172 B (112 usable) | unchanged | unchanged |
+| Hot code | 12,172 B (112 usable) | unchanged | unchanged |
 
 With `DS_ENDB` left out too (§4.2): **about 24.5 KB of flash for JAM**, against the 15-17 KB estimate for S1+S3
 plus S2 and S4. **Checked on the unit 2026-11-01:** the owner flashed the 8-slot build, plain 1.1, then the 8-slot build
 again, and found drawing "feels the same" (package `work/checkpoints/DUELL-2026-11-01-1.1-fonts8/`, SHA-256
-`606e5a50…e55b02`; superseded on the unit by the hot-room build). That's a judgement by feel, not a timing measurement. Recheck once
+`606e5a50…e55b02`; superseded on the unit by the hot-code move build). That's a judgement by feel, not a timing measurement. Recheck once
 `jam_poll` runs in the same main loop. Goes into step 0 as its own commit.
 
-**Hot-room placement (measured 2026-11-01; `work/audit/DUELL-1.1-FAST-RAM.md`, rebuilt and confirmed here on top
+**Hot-code move (measured 2026-11-01; `work/audit/DUELL-1.1-FAST-RAM.md`, rebuilt and confirmed here on top
 of the font compaction).** `tools/hot_fns.py` and `tools/ram_fns_x.py` move `eq_run` (214 B) and `ins_swept` (778 B)
-from the hot block into spare range X, in two-core builds only. Both stay in on-chip RAM, and the compiled code is
-unchanged (same IR hash per the audit); only the placement moves. Measured: hot audio 12,172 → **11,180 B** (29
+from the hot code into spare range X, in two-core builds only. Both stay in on-chip RAM, and the compiled code is
+unchanged (same IR hash per the audit); only the placement moves. Measured: hot code 12,172 → **11,180 B** (29
 functions), 1,332 B physical room, **1,104 B usable**; range X 30,276 → 31,268 B (**1,244 B free**); image, pool and
 call reach unchanged. All build checks pass (closure, start-up copy, PC window, reserves). Flashed 2026-11-01. RAM placement
 can change timing. **On the unit (owner, 2026-11-01):** plays as before by ear; M16 STRESS TEST about 70 % CPU,
@@ -309,8 +309,8 @@ peak 80 % (MENU > SYSTEM > ABOUT; 1.1 has no CPU bar), UI a bit slower under tha
 fonts-only figure was taken; **the owner judged the comparison unnecessary and adopts it.** Goes into step 0 as its own commit
 after that check.
 
-**Build environment (found in step 0).** The step-0 build is 112 B smaller than the flashed hot-room package
-(566,344 vs 566,456 B), with identical sources. Cause: today's flashed builds (plain 1.1, fonts8, hot room) were made
+**Build environment (found in step 0).** The step-0 build is 112 B smaller than the flashed hot-code move package
+(566,344 vs 566,456 B), with identical sources. Cause: today's flashed builds (plain 1.1, fonts8, hot-code move) were made
 with `JAM_WORK=C:/...` exported before sourcing `env.sh`. Git Bash splits PATH at the drive colon, so the venv and
 FriBiDi dropped out, Pillow ran without Raqm ("Raqm layout was requested, but Raqm is not available" in those logs),
 and several glyphs were drawn differently (e.g. face L's digit advance 12 px instead of 13; S/M/L/T/N/X/keycap data
@@ -326,7 +326,7 @@ Space plan, in order:
 2. **Flash:** the font compaction (above) and leaving out `DS_ENDB` (§4.2). Keep USB audio (owner).
 3. **Flash, if still short:** slice S4 (extras) only if it fits; then the splash logo (~6 KB, plain splash text
    instead); then the 1.1 first-start guide (~1.2 KB). Each one is an owner decision when reached.
-4. **Hot block:** with the hot-room placement (below) there are 1,104 B usable. Crossings and fix C go into the hot
+4. **Hot code:** with the hot-code move (below) there are 1,104 B usable. Crossings and fix C go into the hot
    block only as far as they fit; the rest stays in flash. Measure the CPU load on the unit (BENCH or load figures)
    for each one.
 5. Keep every existing check: `HOT_HEADROOM` 228, the 8 KiB pool reserve, call reach, range X closure.
@@ -403,8 +403,8 @@ Each step is one or a few commits, builds, passes its tests, and records its spa
 
 | Step | Work | Done when |
 |---|---|---|
-| **0 Base** | `jam11` from `974d875`; Windows toolchain lines; font compaction (8-slot); hot-room placement; `jam/` tools (`env.sh` finds and normalizes `JAM_WORK`); AGENTS.md space rule; Windows baseline test list | **Done 2026-11-01:** `1d29995`, `0c48565`, `ac0fee1`, `aa55e22`, `33ea81a`. AGENTS.md updated. Build: image 566,344 B, hot 11,180 B, `.data`+`.bss` 63,760 B, call reach 0x3fc328. Baseline (`docs/JAM11_TEST_BASELINE.md`): 47 pass, 63 fail, 11 skip. Most failures are upstream 1.1's own tests, which no longer compile against its firmware; `jam_dev`'s mock fixtures are 1.0-format (the tool itself works on the 1.1 unit) |
-| **1 Fixes** | E, F, then A, B, C, D, each re-applied on 1.1 with its tests | **Committed 2026-11-01**, each test failing on stock 1.1 and passing with the fix. D (FM6, `d445608`): defined arithmetic in `fm6_core.c` (stock stops under UBSan in `fm6_scale_vel`). E (`b6b669e`): `fm6liveol` 36 checks, stock fails 9. F (`67ea2ec`): `slopehandoff`. B (`baeec20`, with D's PHYS SYMP / WAVE part): `physintune`, stock PLUCK +57 cents, HARP +20..+34; one conflict with 1.1's own PHYS change (BRIGHT/DAMP from the key), both kept. C (`1c56523`): `unisonlevel` + zero DETUNE, stock fails 11 (TRIO +8.4 dB, NOISE +9.2, FM6 mean +7.2 over POLY). A (`a227e4a`, clock parts only, JAM's sequencer changes left out): `clockguard`, `clockdrift`, `uartdma`, `uarttimer`, all four fail on stock (a division by zero, Felucca #282, guarded in `fx.c beat_samples`; ARP and sequence phase lost on tempo changes; UART CON0 width; the timer module). Space after step 1: image **568,588 B** (+2,244 over step 0), `.data`+`.bss` 63,792 B, hot **10,976 B** (−204), range X **31,584 B** (928 free), call reach 0x3fcb88. Not in step 1: JAM's two-core fault watch in `main.c` (`tc_closed`/`tc_watch`), not in the plan's scope. **Regression:** `check-duell-jam11-fixes` 56/56 pass (baseline 47 + `fm6liveol slopehandoff signedfm physintune unisonlevel clockguard clockdrift uartdma uarttimer`); package checkpoint `work/checkpoints/DUELL-2026-11-01-jam11-step1-a227e4a/` |
+| **0 Base** | `jam11` from `974d875`; Windows toolchain lines; font compaction (8-slot); hot-code move; `jam/` tools (`env.sh` finds and normalizes `JAM_WORK`); AGENTS.md space rule; Windows baseline test list | **Done 2026-11-01:** `1d29995`, `0c48565`, `ac0fee1`, `aa55e22`, `33ea81a`. AGENTS.md updated. Build: flash 566,344 B, hot 11,180 B, `.data`+`.bss` 63,760 B, call reach 0x3fc328. Baseline (`docs/JAM11_TEST_BASELINE.md`): 47 pass, 63 fail, 11 skip. Most failures are upstream 1.1's own tests, which no longer compile against its firmware; `jam_dev`'s mock fixtures are 1.0-format (the tool itself works on the 1.1 unit) |
+| **1 Fixes** | E, F, then A, B, C, D, each re-applied on 1.1 with its tests | **Committed 2026-11-01**, each test failing on stock 1.1 and passing with the fix. D (FM6, `d445608`): defined arithmetic in `fm6_core.c` (stock stops under UBSan in `fm6_scale_vel`). E (`b6b669e`): `fm6liveol` 36 checks, stock fails 9. F (`67ea2ec`): `slopehandoff`. B (`baeec20`, with D's PHYS SYMP / WAVE part): `physintune`, stock PLUCK +57 cents, HARP +20..+34; one conflict with 1.1's own PHYS change (BRIGHT/DAMP from the key), both kept. C (`1c56523`): `unisonlevel` + zero DETUNE, stock fails 11 (TRIO +8.4 dB, NOISE +9.2, FM6 mean +7.2 over POLY). A (`a227e4a`, clock parts only, JAM's sequencer changes left out): `clockguard`, `clockdrift`, `uartdma`, `uarttimer`, all four fail on stock (a division by zero, Felucca #282, guarded in `fx.c beat_samples`; ARP and sequence phase lost on tempo changes; UART CON0 width; the timer module). Space after step 1: flash **568,588 B** (+2,244 over step 0), `.data`+`.bss` 63,792 B, hot **10,976 B** (−204), range X **31,584 B** (928 free), call reach 0x3fcb88. Not in step 1: JAM's two-core fault watch in `main.c` (`tc_closed`/`tc_watch`), not in the plan's scope. **Regression:** `check-duell-jam11-fixes` 56/56 pass (baseline 47 + `fm6liveol slopehandoff signedfm physintune unisonlevel clockguard clockdrift uartdma uarttimer`); package checkpoint `work/checkpoints/DUELL-2026-11-01-jam11-step1-a227e4a/` |
 | **2 Plug** | `DUELL_JAM`, `jam.h`, hook lines with empty stubs | **Split (2026-11-01).** **2a done** (uncommitted, regression running): `jam.h` (included at the end of `core.h`), `DUELL_JAM` passed by `tools/build.py`, stubs `jam_seq.c` (H1, end of `seq.c`) and `jam_ui.c` (end of `ui_input.c`); hooks H2 at all six played-step reads of 1.1's `seq.c` **including `next_tie`** (§4.9.3), H3 in `seq_start` and after `beat_adv` in `events_block`, H13 `JAM_POLL()` after `morph_poll()` in `ui_input`. **`DUELL_JAM=0` is byte-identical to step 1** (package SHA-256 `b081f24e…` both); the stubbed `DUELL_JAM=1` build is the same size (stubs inlined away). **2b, with the §4.9 design before S1:** the morph hooks (H4-H8: roll operation, factory End B, `tok`, the FM6 target consumer), storage (H17, `OBJ_JAM`) and UI hooks (H10-H12, H14-H16), because their form depends on that design. Same rule: `DUELL_JAM=0` stays byte-identical to `b081f24e…` |
 | **S1 Journey** | GLIDE, MUSICAL (§4.1), MORPH TO + FM6 target consumer, full FM6 destination persistence and KEEP (§4.9), JAM + JAM LIST pages, `OBJ_JAM`, `jam_poll`, PERFORM/MIDI hooks; `DS_ENDB` out; **explicit disabled adapters** for the sequence (S3) and bridge (S2) state so S1 can be auditioned on its own | generative acceptance (§6) for sound, **without** structural-switch acceptance (that is S2); emulator shows both pages; space within the §4.9 ledger. The S1 audition is not the finished smooth journey |
 | **S2 Crossings** | `morph_xfer.c` (§4.4) | forward/backward structural transitions compared with JAM 1.0; space within limits, or the §4.4 cut order applied |
@@ -458,7 +458,7 @@ This plan doesn't authorize sending or publishing anything (audit).
 | F6 FM6 live level, ANALOG slope fade | accepted: fixes E and F |
 | F7 `seqm_poll`, complete KEEP, no fixed hook count | accepted: H13, H14, §3 |
 | F8 immutable rollback | done: §1 checkpoint with SHA-256 |
-| Space audits (2026-11-01) | `work/audit/DUELL-1.1-COMPACTION.md` (fonts) and `work/audit/DUELL-1.1-FAST-RAM.md` (hot room): both rebuilt and confirmed here, flashed, accepted by the owner (§4.8); fonts adopted with an 8-slot cache instead of 3 |
+| Space audits (2026-11-01) | `work/audit/DUELL-1.1-COMPACTION.md` (fonts) and `work/audit/DUELL-1.1-FAST-RAM.md` (hot-code move): both rebuilt and confirmed here, flashed, accepted by the owner (§4.8); fonts adopted with an 8-slot cache instead of 3 |
 | Answers 1-8 | folded into §2.2 (UART DMA), §3.1 H2 (line numbers, preview), §4.2, §4.5 lifecycle, §5 step 2 |
 
 Open questions for the next audit pass (revision 3.2):
@@ -468,5 +468,5 @@ Open questions for the next audit pass (revision 3.2):
 3. §4.8: which crossing functions (S2) are hot in JAM 1.0, and how many bytes does each add, now against 1,104 B usable?
 4. §4.8: with `eq_run` and `ins_swept` in range X (1,244 B left), do fix B's `px_atan2t` / `px_atan` and any S2
    range-X additions still fit together?
-5. §4.8: the 8-slot font cache (2.6 KB of `.bss`) plus SEQ MORPH buffers if moved to `.bss`: is the ordinary RAM
+5. §4.8: the 8-slot font cache (2.6 KB of `.bss`) plus SEQ MORPH buffers if moved to `.bss`: is the RAM
    budget (~10 KB free) still comfortable with the S1-S3 state?
