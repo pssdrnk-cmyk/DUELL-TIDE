@@ -8,12 +8,12 @@ static unsigned checks, failures;
 
 #define STEPS 48u
 
-/* part 0 on the first sound of group (e, cat) as its Original; returns the group's size */
+/* part 0 on the first sound of group (e, role family) as its Original; returns the group's size */
 static uint32_t setup(uint32_t e, uint32_t cat)
 {
     uint32_t j, n = 0, first = 0;
     for (j = 0; j < ds_count(e); j++)
-        if (ds_cat_of(e, j) == cat) {
+        if (fam_of(ds_cat_of(e, j)) == cat) {
             if (!n++)
                 first = j;
         }
@@ -66,11 +66,11 @@ int main(void)
     for (e = 0; e < NENGINES; e++) {
         if (!eng_ok(e) || ds_count(e) < 2u)
             continue;
-        for (cat = 0; cat < 32u; cat++) {
+        for (cat = 0; cat < 4u; cat++) {
             uint32_t n, i, ra, rb, dist;
             uint32_t j;
             for (n = j = 0; j < ds_count(e); j++)
-                n += ds_cat_of(e, j) == cat;
+                n += fam_of(ds_cat_of(e, j)) == cat;
             if (n < 1u || seen[e][cat]++)
                 continue;
             groups++;
@@ -127,7 +127,7 @@ int main(void)
     /* a session start clears it, and so does HOME */
     for (e = 0; e < NENGINES && !(eng_ok(e) && ds_count(e) > 6u); e++)
         ;
-    setup(e, ds_cat_of(e, 0));
+    setup(e, fam_of(ds_cat_of(e, 0)));
     tide_journey(1u, 1u, 1u, 0u);
     CHECK("jrny memory: a pick is remembered", jh[0][0] != 0 && jh_eng[0] == e);
     gl.mode = GM_JOURNEY; gl.on = gl.armed = 0; gl.target = GT_SEQ;

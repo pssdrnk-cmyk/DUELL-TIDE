@@ -341,6 +341,14 @@ static int tide_taken(uint32_t k, uint32_t e, uint32_t j)   /* 1: the other part
         return 0;
     return (!UP_REC_USER(t) && t->preset == j) || morph_to_of(o, 0u) == (int32_t)j || morph_to_of(o, 1u) == (int32_t)j;
 }
+/* JOURNEY roams a role family, not one category: HARMONIC (pads, keys, anything else), BASS, LEAD / PLUCK, PERC / FX. Every
+ * category is mapped here; a new one stops the build until it is placed (a category past the table counts as HARMONIC) */
+enum { FAM_HARM, FAM_BASS, FAM_LEAD, FAM_PERC };
+static const uint8_t JFAM[CAT_N] = {
+    [CAT_NONE] = FAM_HARM, [CAT_BASS] = FAM_BASS, [CAT_LEAD] = FAM_LEAD, [CAT_PAD] = FAM_HARM, [CAT_PLUCK] = FAM_LEAD,
+    [CAT_KEYS] = FAM_HARM, [CAT_PERC] = FAM_PERC, [CAT_FX] = FAM_PERC, [CAT_OTHER] = FAM_HARM};
+typedef char jfam_covers_every_category[CAT_N == 9 ? 1 : -1];
+static uint32_t fam_of(uint32_t cat) { return cat < CAT_N ? JFAM[cat] : FAM_HARM; }
 /* the candidates pick[0..n) of part k without its last h targets, for the most h that leaves any (the oldest forgiven first: a
  * group of four or fewer sounds still turns); n unchanged where none is in the history or the memory is empty */
 static uint32_t jh_filter(uint32_t k, uint32_t e, uint32_t *pick, uint32_t n)
@@ -381,13 +389,13 @@ static void tide_journey(uint32_t mask, uint32_t x, uint32_t snd, uint32_t seq)
         if (!((mask >> k) & 1u))
             continue;
         if (snd) {
-            uint32_t e = t->eng_req, cat = UP_REC_USER(t) ? 0u : ds_cat_of(e, t->preset);
+            uint32_t e = t->eng_req, fam = UP_REC_USER(t) ? 0u : fam_of(ds_cat_of(e, t->preset));
             int32_t at = morph_to_of(k, x ^ 1u), was = morph_to_of(k, x);
             if (at < 0 && !UP_REC_USER(t))                      /* (the end reached is the Original or a roll: not the Original's own sound) */
                 at = (int32_t)t->preset;
-            for (pass = n = 0; pass < 3u && !n; pass++)   /* (0: the kind, neither end's; 1: the one left allowed; 2: any kind) */
+            for (pass = n = 0; pass < 3u && !n; pass++)   /* (0: the family, neither end's; 1: the one left allowed; 2: any sound, the family being empty) */
                 for (j = 0; j < ds_count(e) && n < 64u; j++)
-                    if ((UP_REC_USER(t) || pass == 2u || ds_cat_of(e, j) == cat) && (int32_t)j != at && (pass || (int32_t)j != was) &&
+                    if ((UP_REC_USER(t) || pass == 2u || fam_of(ds_cat_of(e, j)) == fam) && (int32_t)j != at && (pass || (int32_t)j != was) &&
                         !tide_taken(k, e, j))
                         pick[n++] = j;
             n = jh_filter(k, e, pick, n);
