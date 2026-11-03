@@ -107,7 +107,7 @@ M8a already staggers the turnarounds: part 2 varies on bar 2, part 1 on bar 4. M
 The TURNS row grows from 2 to 4 values. Each value includes the one before it, so the owner can step through them in one set:
 
 - **TOGETHER**: today without M8a.
-- **ALTERNATE** (M8a, the `tide-turns` default): staggered turnarounds only.
+- **TAKE TURNS** (M8a, the `tide-turns` default): staggered turnarounds only.
 - **LEAD** (M8b): plus the follower thinning.
 - **ECHO** (M8c): plus the echo bias.
 
@@ -139,7 +139,7 @@ Cost: leader + mask in ISR 60–100 B, mask builder 250–400 B, echo scoring 12
 
 ### With TURNS, POLY and SYNC
 
-- LEAD and ECHO include ALTERNATE: part 2's End B variation lands on bar 2, inside its own lead, and part 1's on bar 4. A follower is never also varying.
+- LEAD and ECHO include TAKE TURNS: part 2's End B variation lands on bar 2, inside its own lead, and part 1's on bar 4. A follower is never also varying.
 - POLY: a shortened loop wraps at `tide_slen()`, so its stored index no longer matches the bar. That does not matter, because the mask is indexed by stored step and tests one bit per lookup. POLY already alternates parts per phrase (`(lc >> 2) & 1`). *Recommended:* while a part is in a POLY stretch it is never thinned. The rotation is its "question", and thinning it as well makes it disappear.
 - SYNC: thinning keeps a follower's off-beats, so the follower keeps the off-beat chord while the leader plays its busier figure. This is the classic dub layout.
 - A single selected part, TURNS < LEAD, a recording, or the glide stopped (`sqm_auto != 3`): no mask, exactly as today.
@@ -154,7 +154,7 @@ New `tide_answer_test.c`, beside `tide_turns_test.c`:
 
 - Leader per bar: bars 0–1 part 2, 2–3 part 1, across `sqm_bar` wrap at 256 and with `sqm_bar_turn` set on the last block of a bar.
 - The mask never removes a beat, an anchor, a held/tied/slid/ratcheted hit or a step before a tie. It keeps ≥ 2 hits and drops ⌈n/2⌉ of the candidates.
-- Masked onsets produce no note-on, and a tie after one stays silent. A held note across the follower boundary releases at its own gate, not earlier (host render: compare gate-off times with LEAD and ALTERNATE).
+- Masked onsets produce no note-on, and a tie after one stays silent. A held note across the follower boundary releases at its own gate, not earlier (host render: compare gate-off times with LEAD and TAKE TURNS).
 - KEEP during a follower bar stores the unmasked pattern, and UNDO restores the previous one.
 - One selected part, `sqm_auto != 3`, STOP/PLAY (`sqm_bar` reset): the leader comes from the bar count again. ARP SEQ stand-in chords are masked the same way.
 - ECHO: with fixed seeds, over 64 edits, part 1's hits on part 2's thinned positions rise, and peer collisions do not.
@@ -162,14 +162,14 @@ New `tide_answer_test.c`, beside `tide_turns_test.c`:
 
 ### Listening test with the TR-6S
 
-Same setup as M7, both parts in JRNY, TARGET BOTH, the TR-6S playing kick + hats + a clap on 2 and 4. Play TURNS ALTERNATE, LEAD and ECHO for 64 bars each from the same start. Listen for the parts audibly taking turns every two bars and the follower sounding *calmer*, not broken. With ECHO, after a few minutes, listen for the answer starting to sound like the call. Reject LEAD if the follower sounds like it is dropping notes by mistake, or if the drive suffers against the TR-6S. Reject ECHO if the two parts converge into one rhythm.
+Same setup as M7, both parts in JRNY, TARGET BOTH, the TR-6S playing kick + hats + a clap on 2 and 4. Play TURNS TAKE TURNS, LEAD and ECHO for 64 bars each from the same start. Listen for the parts audibly taking turns every two bars and the follower sounding *calmer*, not broken. With ECHO, after a few minutes, listen for the answer starting to sound like the call. Reject LEAD if the follower sounds like it is dropping notes by mistake, or if the drive suffers against the TR-6S. Reject ECHO if the two parts converge into one rhythm.
 
 ### Open decisions
 
 1. **Lead order.** Fixed (part 2 asks, part 1 answers, matching M8a) / swap every 8 bars. *Recommended: fixed first.* Swapping also requires swapping M8a's offset in the same expression, which is easy to add after the listening test.
 2. **How thin.** Drop half / a third / all optional hits. *Recommended: half.* "All" sounds like a dropout.
 3. **ECHO as its own value or part of LEAD?** *Owner decision (3 November): TURNS gains LEAD and ECHO as separate values*, then merge if it is always preferred.
-4. **Default TURNS.** *Recommended: ALTERNATE stays the default until LEAD passes the listening test; then LEAD.*
+4. **Default TURNS.** *Recommended: TAKE TURNS stays the default until LEAD passes the listening test; then LEAD.*
 
 ## 3. M4/M9: ARC, build, peak, drop, breakdown
 
@@ -213,7 +213,7 @@ Cost: planner 300–450 B, levers 400–700 B, JRNY/WNDR bias 150–250 B, statu
 
 ### With TURNS, POLY and SYNC
 
-The arc's phrase is the M8 4-bar phrase, so phases always change at a call-and-response boundary. A drop is the first two bars of a phrase, which with LEAD are part 2's question, and the answer then enters in bar 3. Build quickens turns, and breakdown thins both parts. With TURNS TOGETHER or ALTERNATE the arc still works: the thinning lever then applies to both parts in BREAK only. With one selected part, the arc runs for that part and skips the turn lever. POLY rotation is allowed in RISE and BREAK and blocked at PEAK/DROP.
+The arc's phrase is the M8 4-bar phrase, so phases always change at a call-and-response boundary. A drop is the first two bars of a phrase, which with LEAD are part 2's question, and the answer then enters in bar 3. Build quickens turns, and breakdown thins both parts. With TURNS TOGETHER or TAKE TURNS the arc still works: the thinning lever then applies to both parts in BREAK only. With one selected part, the arc runs for that part and skips the turn lever. POLY rotation is allowed in RISE and BREAK and blocked at PEAK/DROP.
 
 ### KEEP / UNDO
 
@@ -257,11 +257,13 @@ STYLE: DUB / DEEP / MINIMAL / AMBIENT / PEAK / CUSTOM. PEAK is the one added sty
 | STYLE | MODE | TIME | WAIT | VARY BARS | TURNS | POLY | SYNC | ARC | WASH | Musical reason |
 |---|---|---|---|---|---|---|---|---|---|---|
 | DUB | JRNY | 16 bars | 2 bars | 4 + 8 | LEAD | GENTLE | SOFT | RISE | OFF | Off-beat chords that hold and change at the turnaround, two parts trading phrases, sounds wandering slowly through the palette: the showcase. |
-| DEEP | WNDR | 32 bars | 4 bars | 4 + 8 | ALTERNATE | OFF | SOFT | RISE | LOW | Deep house keeps one warm chord sound and lets it breathe: slow walks around the same sound, steady grid, a little wash, gentle rises. |
+| DEEP | WNDR | 32 bars | 4 bars | 4 + 8 | TAKE TURNS | OFF | SOFT | RISE | LOW | Deep house keeps one warm chord sound and lets it breathe: slow walks around the same sound, steady grid, a little wash, gentle rises. |
 | MINIMAL | WNDR | 8 bars | 0 | ALL | LEAD | WIDE | PUSH | OFF | OFF | Minimal lives on small changes every bar and loops shifting against the kick; no big arcs, so the groove never stops. |
 | AMBIENT | JRNY | 64 bars | 8 bars | 4 + 8 | TOGETHER | GENTLE | OFF | OFF | HIGH | A bed rather than a groove: very long sound journeys, straight placement, slow phasing, the most wash. |
 | PEAK | JRNY | 8 bars | 0 | ALL | ECHO | GENTLE | PUSH | DROP | OFF | Peak-time sets: busy, pushed, call and echo, buildups and drops (automatic and by hand). |
 | CUSTOM | — | — | — | — | — | — | — | — | — | Whatever the rows hold. Picking CUSTOM changes nothing. |
+
+MINIMAL note: VARY ALL + SYNC PUSH + POLY WIDE is the busiest combination after PEAK. The listening test must confirm it still reads as "minimal". If it does not, the fallback is SYNC SOFT.
 
 Picking a style writes all its rows at once, through the same setters a hand edit uses (`jl_put()`, `gl.*`), so a running glide reacts exactly as if each value had been turned by hand. Values for rows not built yet (SYNC, ARC, LEAD/ECHO before steps 1–3) are ignored until those rows exist. For that reason STYLE ships after step 3.
 
@@ -310,7 +312,7 @@ Step through DUB, DEEP, MINIMAL, AMBIENT and PEAK for 32–64 bars each on M04 n
 | Row | Values | Default | Record byte | Old record |
 |---|---|---|---|---|
 | STYLE (new, top row) | DUB / DEEP / MINIMAL / AMBIENT / PEAK / CUSTOM | DUB (no record) | `TS_STYLE` (index 11) | absent → CUSTOM, stored values kept |
-| TURNS (exists on `tide-turns`) | TOGETHER / ALTERNATE / LEAD / ECHO | ALTERNATE, LEAD once accepted | `TS_TURNS` (index 7) | absent → ALTERNATE |
+| TURNS (exists on `tide-turns`) | TOGETHER / TAKE TURNS / LEAD / ECHO | TAKE TURNS, LEAD once accepted | `TS_TURNS` (index 7) | absent → TAKE TURNS |
 | SYNC (new) | OFF / SOFT / PUSH | SOFT once accepted | `TS_SYNC` (index 9) | absent → default |
 | ARC (new) | OFF / RISE / DROP | OFF until accepted, then RISE | `TS_ARC` (index 10) | absent → default |
 
@@ -323,7 +325,7 @@ Build each step on its own, measure the image after each, and do not bundle them
 ## Owner decisions, 3 November 2026
 
 1. SYNC gets its own row (OFF / SOFT / PUSH).
-2. TURNS gains LEAD and ECHO (TOGETHER / ALTERNATE / LEAD / ECHO); no new row.
+2. TURNS gains LEAD and ECHO (TOGETHER / TAKE TURNS / LEAD / ECHO); no new row.
 3. ARC ships the hand drop gesture (OCT− held + K2 on the TIDE page) now, alongside the automatic drops; not automatic-only.
 4. ARC uses 30–60-bar shapes with a brightness-only sound bias first; harshness (M9a) is a later decision.
 5. The budget fits: about 25 KB flash free before the pending branches' 3–5 KB. Build in the order SYNC, LEAD, ECHO, ARC, STYLES, each measured on its own; the cut order is a fallback only.
