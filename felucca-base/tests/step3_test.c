@@ -214,10 +214,17 @@ static void t_old_projects(void)
     ck("FUN11 round trip: DUELL's values on the reused ids kept (slots 5..8), parts A B, motion", ok);
     /* restored onto the device: no crash, the parts have what the project holds there */
     ok = !project_restore_runtime(&d);
-    for (t = 0; t < NSHOWN; t++)
+    for (t = 0; t < NSHOWN; t++) {
+        static track_t nt;                              /* (DUELL 1.1: a restore moves the retired DEST cards' routes into the matrix and packs it: the same steps on a copy of what the project holds) */
+        memcpy(&nt, &trk[t], sizeof nt);
+        memcpy(nt.p, c.t[t].p, sizeof nt.p);
+        (void)mod_legacy_move(&nt);
+        mod_preselect(&nt);
+        mod_compact(&nt);
         for (i = 0; i < P_E0; i++)
-            ok &= trk[t].p[i] == (int16_t)param_fit(param_desc_of(trk[t].eng_req, i), c.t[t].p[i]);
-    ck("  restored onto the device: parts A B with DUELL's values on the reused ids", ok && trk[0].p[P_M5AMT] == 21 && trk[1].p[P_M8AMT] == -40);
+            ok &= trk[t].p[i] == (int16_t)param_fit(param_desc_of(trk[t].eng_req, i), nt.p[i]);
+    }
+    ck("  restored onto the device: parts A B with DUELL's values on the reused ids", ok && trk[0].p[P_M4AMT] == 21 && trk[1].p[P_M5AMT] == -40);   /* (packed: the routes after the three of the default sounds) */
 }
 
 /* the backup (editor_backup.c): an archive's project is refused when it is not this firmware's FUN11; the settings object of DUELL's keeps its map */
