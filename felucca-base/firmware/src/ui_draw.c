@@ -1090,6 +1090,11 @@ static void card_paint(const card_geo_t *g, uint32_t c, int32_t gx, int32_t gw, 
                 text_trk = lbl_trk(pad + g->lbl_dx, &AF_S, l2);
                 cv_text_on(pad + g->lbl_dx, UT_TY(S, g->lbl_base), &AF_S, l2, lc, T_BG);
                 text_trk = 0;
+            } else if (grid_on == 5 && text_w(&AF_S, one) > lroom && text_w(&AF_S, one) <= gw - pad - UT_A_LBL_PAD_R) {   /* one long word (FM6's FEEDBACK): under the dot, on the second label line the ENGINE page's cards always have */
+                card_label(c, pad, pad + g->lbl_dx, g->lbl_base - UT_A_LBL2_PITCH, "", lc, lroom);
+                text_trk = lbl_trk(pad, &AF_S, one);
+                cv_text_on(pad, UT_TY(S, g->lbl_base), &AF_S, one, lc, T_BG);
+                text_trk = 0;
             } else
                 card_label(c, pad, pad + g->lbl_dx, g->lbl_base, one, lc, lroom);
         } else if (label[0])
