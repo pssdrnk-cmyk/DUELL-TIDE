@@ -36,8 +36,9 @@ DUELL_RAMPLACE=1 (two-core stage 1a; needs a BENCH_TAG and DUELL_HOTRAM 3): part
 the wider PC window (hal/fm1_guard.h) and ABOUT's RAM CODE line. tools/elfcheck.py check_ramplace checks the result. Unset: nothing of it.
 
 Every build (device, test, bench, release) ends with the start-up layout check (tools/elfcheck.py: the .noinit objects
-whole and of their C size, no LTO-split "bootguard.0", the .noinit size, the entry point, the app slot); it only
-reads the ELF, the package bytes are unchanged.
+whole and of their C size, no LTO-split "bootguard.0", the .noinit size, the entry point, the app slot) and the reach of
+every direct call of the link (ram_place.call_sites, elfcheck.check_calls); it only reads the ELF and the objects, the package
+bytes are unchanged.
 """
 import argparse
 import hashlib
@@ -264,6 +265,12 @@ def app_ld():
     return FW / ("app_hot.ld" if hotram() else "app.ld")
 
 
+def app_objs():
+    """the app link's objects (build_app): crt0, the vectors, the interrupt entries and felucca.o as placed (hot set, ranges X / Z)"""
+    main = "felucca_ram.o" if ramplace() else "felucca_hot.o" if hotram() else "felucca.o"
+    return [OUT / "crt0.o", OUT / "fm1_vec.o", OUT / "fm1_isr.o", OUT / main]
+
+
 def ld_regions():
     """the app linker script's MEMORY regions (app_ld()): name -> (origin, length)"""
     regs = {}
@@ -376,8 +383,9 @@ def build_app():
             plugin.append(f"-plugin-opt=mcpu={opt_cpu(opt)}")
         plugin += [f"-plugin-opt={o}" for o in llvm]
     pad = [f"--defsym=_hot_pad={hot_fns.PAD[hotram()]}"] if hotram() in hot_fns.PAD else []   # R7: the hot block padded to R3's size
-    tc("pi32v2/bin/ld", *plugin, *pad, "-T", app_ld(), OUT / "crt0.o", OUT / "fm1_vec.o", OUT / "fm1_isr.o",
-       obj, "-o", elf)
+    if app_objs()[-1] != obj:
+        raise SystemExit(f"build: app_objs() does not name {obj.name}")
+    tc("pi32v2/bin/ld", *plugin, *pad, "-T", app_ld(), *app_objs(), "-o", elf)
     for sect in ("text.bin", "data.bin", "ramtext.bin", "ramx.bin", "ramz.bin"):
         (OUT / sect).unlink(missing_ok=True)
     dcpu = [f"-mcpu={opt_cpu(opt)}"] if opt_cpu(opt) else []   # (the disassembler knows that core's instructions only when told)
@@ -579,14 +587,19 @@ def main():
     elf = elfcheck.read_elf((OUT / "felucca.elf").read_bytes())     # the start-up layout (tools/elfcheck.py)
     lay_err = elfcheck.check(elf, elfcheck.source_noinit(FW), "1" in (os.environ.get("DUELL_CORE1_PROBE"), os.environ.get("DUELL_TWOCORE")), len(img),
                              ld_regions()["NOINIT"])
-    ram_err, ram_notes = elfcheck.check_ramcode(elf, bool(hotram()), ramplace())
+    exact = "-flto" not in opt_flags()[0]   # the reach of every call (an LTO build's felucca.o is bitcode: the conservative bound instead)
+    ram_err, ram_notes = elfcheck.check_ramcode(elf, bool(hotram()), ramplace(), exact)
     lay_err += ram_err
     notes += ram_notes
-    if ramplace():                  # the RAM ranges X and Z (tools/elfcheck.py check_ramplace; the reach of every call: tools/ram_place.py)
+    if ramplace():                  # the RAM ranges X and Z (tools/elfcheck.py check_ramplace)
         rp_err, rp_notes = elfcheck.check_ramplace(elf, img, dis, APP_XIP)
-        r_err, r_note = ram_place.reach_check((OUT / "felucca_ram.o").read_bytes(), elf)
-        lay_err += rp_err + r_err
-        notes += rp_notes + [r_note]
+        lay_err += rp_err
+        notes += rp_notes
+    if exact:                       # every call / goto relocation of the link at its address (tools/ram_place.py, elfcheck.py check_calls)
+        sites, s_err = ram_place.call_sites([(o.name, o.read_bytes()) for o in app_objs()], elf)
+        c_err, c_note = elfcheck.check_calls(elf, sites, dis, APP_SLOT - len(img))
+        lay_err += s_err + c_err
+        notes.append(c_note)
     errors += lay_err
     if not lay_err:
         nsect = elf["sections"][".noinit"]

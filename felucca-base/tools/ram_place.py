@@ -15,7 +15,8 @@ Checks on the object (before the link; the linker also fails on a call out of re
   - a function in X is called (or its address taken in code) only from X, Z or the hot block: the flash cannot reach X;
   - a function in X calls (or takes the address of) only functions in X, Z or the hot block: X cannot reach the flash, and core 1 must not
     run flash code from it (the shared cache, BENCH-B3).
-After the link (reach_check, with the ELF's addresses): every call / jump relocation in the object is within +-4 MiB of its target.
+After the link (call_sites, then tools/elfcheck.py check_calls; every build): every call / jump relocation of every linked object at its
+linked address, within the instruction's reach of its target.
 """
 import struct
 import sys
@@ -28,7 +29,6 @@ OLD = b".text."
 PREFIX = {"X": b".ramx.", "Z": b".ramz."}       # the same length as .text.: renamed in place
 R_CALL = 2                                      # R_PI32V2_LONG_JUMP_23M2 (call / goto: +-4 MiB)
 R_ABS_INSN = 5                                  # a 32-bit address in an instruction pair (no reach limit)
-CALL_REACH = 0x400000
 
 
 def lists():
@@ -136,28 +136,53 @@ def check_object(obj, hot_names=()):
     return errors, notes
 
 
-def reach_check(obj, elf):
-    """every call / jump relocation of the object within +-4 MiB of its target, at the linked addresses. elf: elfcheck.read_elf()"""
-    addr = {}
+def call_sites(objs, elf):
+    """every call / goto relocation (R_CALL) of the linked objects at its linked address, for elfcheck.check_calls. objs: [(name, bytes)]
+    (all the objects of the link); elf: elfcheck.read_elf() of the link. An input section's address: a named symbol defined in it whose
+    address in the ELF is unique, less its value. -> ({site: (caller, callee, target)}, errors: a relocation that cannot be placed)"""
+    at = {}
     for n, a, sz, sec in elf["symbols"]:
-        if n and sec in (".text", ".ram_text", ".ramx", ".ramz"):
-            addr.setdefault(n, a)
-    errors, far, worst = [], 0, 0
-    for src, off, typ, to, sym, add in graph(obj):
-        if typ != R_CALL:
-            continue
-        sf, _ = _fn(src)
-        tf, _ = _fn(to) if not sym else (sym, None)
-        if sf not in addr or tf not in addr:
-            continue
-        site, tgt = addr[sf] + off, addr[tf] + add
-        dist = abs(tgt - site)
-        if (tgt >= 0x02000000) != (site >= 0x02000000):
-            worst = max(worst, dist)
-        if dist >= CALL_REACH:
-            errors.append(f"call {sf}+{off:#x} -> {tf} is {dist:#x} away (reach {CALL_REACH:#x})")
-            far += 1
-    return errors[:6], f"call reach: every call between RAM and the flash within {worst:#x} of {CALL_REACH:#x}"
+        if n:
+            at.setdefault(n, set()).add(a)
+    sites, errors = {}, []
+    for oname, d in objs:
+        sh, base = _sections(d)
+        names = [_cstr(d, base + s[0]).decode() for s in sh]
+        syms, bases = [], {}
+        for s in sh:
+            if s[1] == 2:                       # SHT_SYMTAB
+                strtab = sh[s[6]][4]
+                for j in range(s[5] // 16):
+                    st_name, value, size, info, _, shndx = struct.unpack_from("<IIIBBH", d, s[4] + j * 16)
+                    n = _cstr(d, strtab + st_name).decode()
+                    syms.append((n, value, info & 0xF, shndx))
+                    if n and info & 0xF not in (3, 4) and 0 < shndx < len(sh) and len(at.get(n, ())) == 1:
+                        bases.setdefault(shndx, set()).add(next(iter(at[n])) - value)
+
+        def place(shndx):
+            b = bases.get(shndx, ())
+            return next(iter(b)) if len(b) == 1 else None
+        for s in sh:
+            if s[1] != 4:                       # SHT_RELA
+                continue
+            src = names[s[7]]
+            caller = _fn(src)[0] or src
+            for j in range(s[5] // 12):
+                off, info, add = struct.unpack_from("<IIi", d, s[4] + j * 12)
+                if info & 0xFF != R_CALL:
+                    continue
+                n, value, typ, shndx = syms[info >> 8]
+                if n and typ != 3 and len(at.get(n, ())) == 1:
+                    tb, callee = next(iter(at[n])), n
+                else:
+                    tb = place(shndx) if 0 < shndx < len(sh) else None
+                    tb, callee = (None if tb is None else tb + value), n or _fn(names[shndx])[0] or names[shndx]
+                sb = place(s[7])
+                if sb is None or tb is None:
+                    errors.append(f"{oname}: the call {src}+{off:#x} -> {callee} cannot be placed in the ELF")
+                    continue
+                sites[sb + off] = (caller, callee, tb + add)
+    return sites, errors[:6]
 
 
 def functions(obj):
