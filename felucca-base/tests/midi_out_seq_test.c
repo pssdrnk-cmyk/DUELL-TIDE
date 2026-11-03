@@ -150,6 +150,24 @@ int main(void)
     bad += check("LAYER: part 1's arp sends on channel 1", ev_n >= 1 && ST(0) == 0x90u && CHN(0) == 0u && NOTE(0) == 60u);
     duell_mode_force(DM_SPLIT);
 
+    /* 8. USB MIDI out not draining (ring full): a note-on must not take the last slot and leave its note-off dropped (stuck note on the host) */
+    reset();
+    t = &trk[0];
+    while (mo_w - mo_r < MQ - 1u) midi_out_event(0x08u | 0x8Fu << 8 | 1u << 16);       /* filler note-offs, channel 16, up to one free slot */
+    arp_note_on(t, 60, 100); arp_note_off(t, 60);
+    {
+        int ons = 0, offs = 0;
+        uint32_t k;
+        for (k = mo_r; k != mo_w; k++) {
+            uint32_t pkt = midi_out_q[k % MQ];
+            ons += ((pkt >> 8) & 0xFFu) == 0x90u && ((pkt >> 16) & 0x7Fu) == 60u;
+            offs += ((pkt >> 8) & 0xFFu) == 0x80u && ((pkt >> 16) & 0x7Fu) == 60u;
+        }
+        bad += check("full ring: no note-on without its note-off reaches the host (stuck note)", ons == 0 || offs >= ons);
+        bad += check("  the ring never overruns", mo_w - mo_r <= MQ);
+    }
+    clr();
+
     {   /* the width of the LAYER note on GLO > MIDI (ui_graph.c graph_midi, AF_S at x = 12, the screen is 240 wide) */
         int32_t w = text_w(&AF_S, "LAYER MODE: PART 1 CHANNEL COUNTS");
         printf("  LAYER note width %d px (x 12 .. %d of 240)\n", (int)w, (int)(12 + w));
