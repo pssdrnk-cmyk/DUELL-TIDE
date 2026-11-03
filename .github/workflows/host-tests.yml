@@ -53,6 +53,11 @@ jobs:
           echo "groups: $groups"
           sh host_tests.sh $groups 2>&1 | tee host-tests.out
 
+      - name: Failures as annotations (readable without signing in, unlike the log)
+        if: failure()
+        run: |
+          awk '/^== /{g=$0} /FAIL|rror:/{print g " | " $0}' host-tests.out | sed 's/%/%25/g' | head -40 | while IFS= read -r l; do echo "::error title=shard ${{ matrix.shard }}::$l"; done
+
       - name: Keep the log
         if: always()
         uses: actions/upload-artifact@v4
