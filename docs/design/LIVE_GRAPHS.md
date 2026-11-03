@@ -23,11 +23,14 @@ List pages (MULTIS, PATTERNS, SAVE) and the TIDE pages: no motion.
 5. **One curve walk** for the envelopes: a pixel walk along graph_adsr's curve (attack, exp decay, sustain, exp release) finds the point for a level and draws the lit part to it (replaces the old inverse lookup + three-phase lit drawing).
 
 ## One frame clock
-`live_sig()` (called from `graph_signature`) looks at 30 a second (`ui.frame` even) or 15 for pictures costing more than ~80 k basic blocks (table, one number per kind); a still marker is not drawn again; ANIM OFF = kind NONE. Time-based creep: on a held sustain the marker moves 8 px a second whatever the look rate.
+`live_sig()` (called from `graph_signature`) looks every 4th frame: **15 a second everywhere** (`LV_EVERY`, one number; owner: 10 .. 15 is enough). A still marker is not drawn again; ANIM OFF = kind NONE. Creep on a held sustain is time-based: 8 px a second whatever the look rate.
+
+## The marker is on the line
+The picture is the truth: every marker's row is computed from the picture's own line at the marker's column (ENV: the same pixel walk that draws the curve, the attack as its one straight line; LFO / INSERT: the wave's function; CYCLE: graph_cycle's formula; OP ENV: the segment between its vertices), never from the audio's value. An early release (before the sustain) goes to the start of the drawn release and falls along it by the same share the real one has fallen. The host test samples the dot against the picture alone (ANIM OFF): LFO 5 waves x 11 phases, ENV 3 stages x 10 levels, CYCLE, INSERT, OP ENV: 0 off the line. graph_cycle's shape (stock rows 8 .. 92) ran under the cards, so the line and the dot vanished at its lower end: under `DUELL_TIDE` it fits the 76-row card (rows 6 .. 62); `DUELL_TIDE=0` keeps the stock rows.
 
 ## Fit with 1.1
-Geometry is read from the pictures (76-row card, `GOY`, x 12..226); the pictures are not touched. Colours are tokens only: playhead `T_ACCENT`, dot `T_TEXT`, lit curve `T_ACCENT` (the text tone where a light palette makes the accent the part colour), tracks `T_RAISE`, label `T_MID`: dark and light palettes read. Cost (measured, basic blocks): a picture redraw 87..150 k, so animation = redraw rate; MATRIX bars as strips cost ~500 per frame instead of 161 k.
+Geometry is read from the pictures (76-row card, `GOY`, x 12..226); the pictures are not touched. Colours are tokens only: playhead `T_ACCENT`, dot `T_TEXT`, lit curve `T_ACCENT` (the text tone where a light palette makes the accent the part colour), tracks `T_RAISE`, label `T_MID`: dark and light palettes read. Cost (measured, basic blocks): a picture redraw 87..150 k, so animation = redraw rate (15 a second: 1.3 .. 2.3 M blocks/s while a page moves); MATRIX bars as strips cost ~500 per frame instead of 161 k.
 
 ## Better than the old version
-- less code: 500 lines against 535 old / 629 first port (one marker, one sweep, one clock, one curve walk; the pictures' geometry is still repeated, they are not touched);
+- less code: 521 lines against 535 old / 629 first port (one marker, one sweep, one clock, one curve walk; the pictures' geometry is still repeated, they are not touched);
 - PREVIEW looks and behaves the same everywhere; frame-rate independent creep; no hand-kept per-voice dots; matrix without page redraws; FM6 pages follow the real operator envelope.

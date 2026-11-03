@@ -1597,10 +1597,17 @@ static void graph_sub(const track_t *t, uint16_t c)
 /* CYCLE ENV 1/2 and 2/2 (cloud job H, SUB_AND_CYCLE_DESIGN B4): the cycle's shape as cycle.c makes it (y = x + c (x^2 - x), c = CURVE / 64, on the rise; the fall is 1 - that of the progress), RISE and FALL in the
  * proportion of their times (ENV_LIN's steps; with SYNC the note values' share of a bar), three rise-fall shapes for LOOP, one then rest for ONCE. 2/2 draws the one cycle large, rise and fall the same width, with the straight line behind it
  * (CURVE 0) so the bend shows. The times themselves are on the cards: the picture is the shape, not a time scale */
+#if DUELL_TIDE                                      /* TIDE: the shape fits the 76-row card (the caption row 64 ..): stock 8 .. 92 ran under the cards, and the live playhead floated where no line showed */
+#define CY_TOP 6
+#define CY_BASE 62
+#else
+#define CY_TOP 8
+#define CY_BASE 92
+#endif
 static void graph_cycle(const track_t *t, uint16_t c)
 {
     const int big = cur_page()->id[0] == XW_BASE + X_CYCURVE;
-    int32_t top = 8, base = 92, cv = clamp(XV(t, X_CYCURVE), -64, 63) * 512, w = PANEL_W - 4, n = big || XV(t, X_CYMODE) ? 1 : 3, x0 = PANEL_X0 + 2, px = 0, py = 0, cw, rw, fw, i;
+    int32_t top = CY_TOP, base = CY_BASE, cv = clamp(XV(t, X_CYCURVE), -64, 63) * 512, w = PANEL_W - 4, n = big || XV(t, X_CYMODE) ? 1 : 3, x0 = PANEL_X0 + 2, px = 0, py = 0, cw, rw, fw, i;
     uint32_t pass;
     uint64_t dr, df;
     uint32_t r = (uint32_t)XV(t, X_CYRISE) & 127u, f = (uint32_t)XV(t, X_CYFALL) & 127u;

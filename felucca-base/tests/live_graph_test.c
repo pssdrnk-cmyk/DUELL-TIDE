@@ -68,7 +68,7 @@ static uint32_t redraws(uint32_t n, void (*move)(uint32_t))   /* frames whose gr
     }
     return r;
 }
-static void env_rise(uint32_t i) { TSEL->v[0].env = (int32_t)((i + 1u) << 19); }
+static void env_rise(uint32_t i) { TSEL->v[0].env = (int32_t)((i + 1u) << 20); }
 static uint32_t ufilt_engine(void)
 {
     uint32_t i;
@@ -86,6 +86,22 @@ static uint32_t panel_hash(void)                      /* the picture area's pixe
             h = (h ^ host_screen[y * 240u + x]) * 16777619u;
     return h;
 }
+/* the marker on the picture's own line: the same page with ANIM OFF is the picture alone; its line colour (the part colour, or the accent where a stage is picked) must be within 2 rows of the dot at the dot's column */
+static int line_hit(void)
+{
+    int32_t x = lv.x, y = lv.y, r, ok = 0;
+    ui_prefs |= PREF_ANIM_OFF;
+    frames(80);
+    for (r = y - 2; r <= y + 2; r++)
+        ok |= px(x, Y_GRAPH + GOY + r) == T_THEME || px(x, Y_GRAPH + GOY + r) == T_ACCENT;
+    if (!ok)
+        for (r = y - 8; r <= y + 8; r++)
+            printf("   col %d row %d: %04x (theme %04x accent %04x)\n", (int)x, (int)r, px(x, Y_GRAPH + GOY + r), T_THEME, T_ACCENT);
+    ui_prefs &= (uint8_t)~PREF_ANIM_OFF;
+    frames(80);
+    return ok;
+}
+static void on_line(const char *what) { expect(what, line_hit()); }
 static uint32_t screen_hash(void)
 {
     uint32_t h = 2166136261u, i;
@@ -159,7 +175,8 @@ static void t_env(void)
     voice_at(t, 0, 1, 1 << 23);
     frames(400);
     expect("ENV the playhead: the latest note, half way up the attack", lv.kind == LV_ENV && lv.n == 1u &&
-           lv.x == 12 + a / 2 && lv.y == bot - 500 * (bot - top) / 1000);
+           lv.x == 12 + a / 2 && abs(lv.y - (bot - (lv.x - 12) * (bot - top) / a)) <= 1);
+    on_line("ENV the attack's dot is on the drawn line");
     voice_at(t, 1, 2, 80 << 17);                     /* (another voice: not followed) */
     frames(100);
     expect("ENV one playhead only: the latest note's, not another voice's", lv.x == 12 + a / 2);
@@ -167,12 +184,14 @@ static void t_env(void)
     voice_at(t, 0, 2, (80 << 17) + (1 << 22));
     frames(400);
     expect("ENV decay above SUS: on the decay, before its end", lv.x > x1 && lv.x < x1 + d);
+    on_line("ENV the decay's dot is on the drawn line");
     voice_at(t, 0, 2, 80 << 17);
     frames(200);
     was = lv.x;
     frames(400);
     expect("ENV held at SUS: on the sustain line, creeping along it", lv.x >= x1 + d && lv.x > was && lv.x < x3 &&
            abs(lv.y - (bot - sus * (bot - top) / 1000)) <= 1);
+    on_line("ENV the sustain's dot is on the drawn line");
     was = lv.x;
     frames(1008);
     expect("ENV the creep on a held sustain is 8 px a second, whatever the look rate", lv.x - was >= 7 && lv.x - was <= 9);
@@ -180,6 +199,7 @@ static void t_env(void)
     voice_at(t, 0, 3, (80 << 17) / 4);
     frames(400);
     expect("ENV released, at a quarter of SUS: on the release, falling", lv.x > x3 && lv.x <= x3 + r && lv.y > bot - sus * (bot - top) / 1000);
+    on_line("ENV the release's dot is on the drawn line");
     t->p[P_REL] = 127;
     voice_at(t, 0, 3, 1 << 14);
     frames(80);
@@ -207,7 +227,7 @@ static void t_env_early_release(void)
 {
     track_t *t;
     lv_eg_t g;
-    int16_t at, ay;
+    int16_t ay;
     ui_power_on(); frame();
     go_title("AMP ENV"); frame();
     t = TSEL;
@@ -216,14 +236,16 @@ static void t_env_early_release(void)
     t->m_vi = 0;
     voice_at(t, 0, 2, 600 << 14);                    /* (decaying, well above SUS) */
     frames(80);
-    at = lv.x, ay = lv.y;
     lv_eg(t, P_ATK, &g);
     voice_at(t, 0, 3, 590 << 14);
     frames(80);
-    expect("ENV released during the decay: the playhead stays where it was (no jump to the sustain end)", lv.n && lv.estg == 3u && abs(lv.x - at) <= 2 && lv.x < g.x3);
+    expect("ENV released during the decay: the dot goes to the start of the drawn release (it stays on the line)", lv.n && lv.estg == 3u && lv.x >= g.x3 && lv.x <= g.x3 + 3);
+    on_line("ENV the early release's first dot is on the drawn line");
+    ay = lv.y;
     voice_at(t, 0, 3, 100 << 14);
     frames(80);
-    expect("ENV the early release falls on from the observed level", lv.x > at && lv.y > ay);
+    expect("ENV the early release falls on along the drawn release", lv.x > g.x3 + 3 && lv.y > ay);
+    on_line("ENV the early release's later dot is on the drawn line");
     shot("env_early_release");
     quiet(t);
     frames(80);
@@ -243,7 +265,7 @@ static void t_env_audio(void)
     trk_note_on(t, 60, 100);
     m = moves_env(40, 8, 48);
     printf("livegraph: AMP ENV audio: %u positions, %u images in 40 steps (%u active)\n", m.pos, m.img, m.active);
-    expect("ENV AMP ENV with real audio: the playhead moves and the picture follows, frame by frame", m.pos >= 15 && m.img >= 15 && m.active >= 30);
+    expect("ENV AMP ENV with real audio: the playhead moves and the picture follows, frame by frame", m.pos >= 6 && m.img >= 6 && m.active >= 30);
     shot("env_audio");
     trk_note_off(t, 60);
     m = moves_env(30, 12, 48);
@@ -257,7 +279,7 @@ static void t_env_audio(void)
     trk_note_on(t, 60, 100);
     m = moves_env(40, 8, 48);
     printf("livegraph: ENV 2 audio: %u positions, %u images in 40 steps\n", m.pos, m.img);
-    expect("ENV FILTER ENV (ENV 2) with real audio: the playhead moves and the picture follows", lv.kind == LV_ENV && m.pos >= 12 && m.img >= 12);
+    expect("ENV FILTER ENV (ENV 2) with real audio: the playhead moves and the picture follows", lv.kind == LV_ENV && m.pos >= 5 && m.img >= 5);
     shot("env2_audio");
     trk_note_off(t, 60);
     render(6000);
@@ -292,8 +314,9 @@ static void t_fm6(void)
     expect("FM6 live drawing never advances the audio envelope", saved_state == (uint32_t)fm6_note_of(t, &t->v[t->m_vi % NVOICE])->env[5].level);
     go_title("AMP DEST"); frames(80); x = lv.x;
     expect("FM6 AMP DEST draws the operator envelope (graph_fm6env), live", lv.kind == LV_FMENV && TIDE_AMPDEST_FM6(cur_page(), t));
-    render(22); frames(64);
+    render(88); frames(80);
     expect("FM6 AMP DEST also follows its real operator envelope", lv.kind == LV_FMENV && lv.n && lv.x != x);
+    on_line("FM6 AMP DEST: the dot is on the operator envelope's line");
     shot("fm6_amp_dest_live");
     go_title("AMP ENV"); frames(80);
     expect("FM6 AMP ENV (the unused generic ADSR): no playhead", lv.kind == LV_NONE && !TIDE_AMPDEST_FM6(cur_page(), t));
@@ -328,7 +351,7 @@ static void t_cost(void)
     expect("COST a still envelope: the graph is not drawn again", n == 0u);
     n = redraws(20, env_rise);
     printf("livegraph: a rising envelope: %u redraws in 20 frames\n", (unsigned)n);
-    expect("COST a moving envelope: drawn at most every 2nd frame (30 a second), and it is drawn", n >= 8u && n <= 10u);
+    expect("COST a moving envelope: drawn every 4th frame (15 a second), and it is drawn", n >= 4u && n <= 6u);
     ui_prefs |= PREF_ANIM_OFF;
     n = redraws(2, env_rise);                        /* (one redraw takes the overlay away) */
     n = redraws(20, env_rise) + (n > 1u) * 100u;
@@ -359,12 +382,96 @@ static void t_lfo(void)
     expect("LFO 1 the playhead at the phase (100 px into the first cycle), the dot on the wave", lv.kind == LV_LFO && lv.x == PANEL_X0 + 100 && lv.y == lv_lfo_y(t, 0, 100));
     x = lv.x;
     expect("LFO 1 the dot is on the screen (TEXT)", px(x, Y_GRAPH + GOY + lv.y) == T_TEXT);
+    on_line("LFO 1 the dot is on the drawn wave");
     t->lfo_ph = ph0 + 10u * LV_LFO_STEP + 7u;
     frames(80);
     expect("LFO 1 after a wrap: the second cycle", lv.x == PANEL_X0 + 120);
     t->lfo_ph = ph0 + 5u * LV_LFO_STEP + 7u;
     frames(80);
     expect("LFO 1 after the next wrap: the first again", lv.x == PANEL_X0 + 5);
+}
+/* the dot on the line all along: the LFO's five waves at eleven phases, the envelope's attack, decay and release at ten levels each */
+static void t_on_line_sweeps(void)
+{
+    track_t *t;
+    uint32_t w, k, ph0, bad;
+    int32_t a;
+    ui_power_on(); frame();
+    go_title("LFO 1"); frame();
+    t = TSEL;
+    ph0 = (uint32_t)t->p[P_LRATE + 2u] << 25;
+    for (w = 0; w < 5u; w++) {
+        t->p[P_LWAVE] = (int16_t)w;
+        for (bad = 0, k = 0; k < 11u; k++) {
+            t->lfo_ph = ph0 + (k * 19u + 3u) * LV_LFO_STEP + 5u;
+            frames(80);
+            bad += !line_hit();
+        }
+        printf("livegraph: LFO wave %u: %u of 11 dots off the line\n", (unsigned)w, (unsigned)bad);
+        expect("LFO the dot follows the drawn wave", bad == 0u);
+    }
+    go_title("AMP ENV"); frame();
+    quiet(t);
+    t->p[P_ATK] = 64, t->p[P_DEC] = 64, t->p[P_SUS] = 50, t->p[P_REL] = 64;
+    t->m_vi = 0;
+    a = 0;
+    for (w = 1; w <= 3u; w++) {                       /* stage 1 attack, 2 decay, 3 release */
+        for (bad = 0, k = 0; k < 10u; k++) {
+            int32_t lvl = w == 1u ? (int32_t)(k * 100u + 50u) : (int32_t)(1000u - k * 70u);
+            if (w == 3u) lvl = (int32_t)(500u - k * 45u);
+            if (w == 2u) { voice_at(t, 0, 1, 1 << 23); frames(160); }   /* (a new note for each decay) */
+            voice_at(t, 0, w, (int32_t)(((int64_t)lvl << 24) / 1000));
+            frames(160);
+            bad += lv.n && !line_hit();
+            a += lv.n;
+        }
+        printf("livegraph: ENV stage %u: %u of 10 dots off the line\n", (unsigned)w, (unsigned)bad);
+        expect("ENV the dot follows the drawn curve", bad == 0u);
+    }
+    expect("ENV the sweep had dots to check", a >= 25);
+    quiet(t);
+}
+static void t_on_line_more(void)
+{
+    track_t *t;
+    uint32_t k, ty, bad, n;
+    ui_power_on(); frame();
+    t = TSEL;
+    XV(t, X_CYMODE) = 0, XV(t, X_CYRISE) = 70, XV(t, X_CYFALL) = 70, XV(t, X_CYSYNC) = 0;
+    for (n = 0; n < 2u; n++) {                       /* CYCLE ENV 2/2 (one big shape, bent) and 1/2 (three small), a preview all along */
+        XV(t, X_CYCURVE) = n ? -30 : 40;
+        go_title(n ? "CYCLE ENV 1/2" : "CYCLE ENV 2/2"); frames(80);
+        for (bad = 0, k = 0; k < 14u; k++) {
+            frames(240);
+            bad += lv.n && !line_hit();
+        }
+        printf("livegraph: CYCLE page %u: %u of 14 dots off the line\n", (unsigned)n, (unsigned)bad);
+        expect("CYCLE the dot follows the drawn shape", bad == 0u);
+    }
+    t->p[P_IB] = 100;
+    go_title("INSERT 1/2"); frame();
+    for (ty = IT_PHASER; ty <= IT_CHORUS; ty++) {
+        t->p[P_ITYPE] = (int16_t)ty;
+        for (bad = 0, k = 0; k < 10u; k++) {
+            ins[song.sel % NLIVE].ph = (k * 23u + 3u) * LV_LFO_STEP + 7u;
+            frames(80);
+            bad += !line_hit();
+        }
+        printf("livegraph: INSERT type %u: %u of 10 dots off the line\n", (unsigned)ty, (unsigned)bad);
+        expect("INSERT the dot follows the drawn sweep", bad == 0u);
+    }
+    t->p[P_ITYPE] = IT_OFF;
+    ui_power_on(); frame();
+    t = TSEL; fm_bass2(t); render(4);
+    go_title("OP ENV"); frames(80);
+    trk_note_on(t, 60, 100);
+    for (bad = 0, n = 0, k = 0; k < 30u; k++) {
+        render(60); frames(80);
+        if (lv.n) { n++; bad += !line_hit(); }
+    }
+    printf("livegraph: OP ENV: %u of %u dots off the line\n", (unsigned)bad, (unsigned)n);
+    expect("FM6 OP ENV the dot follows the operator envelope's line", n >= 10u && bad == 0u);
+    trk_note_off(t, 60);
 }
 static void t_lfo_audio(void)
 {
@@ -481,8 +588,8 @@ static void t_cycle(void)
            cy_y[song.sel][vi] == y && cy_st[song.sel][vi] == st);
     XV(t, X_CYCURVE) = 40; morph_rebase_part(song.sel);
     render(12); frames(80);
-    expect("CYCLE curved rise: the dot uses the actual generated value", lv.y == g.base -
-           (int32_t)cycle_value(t, v) * (g.base - g.top) / 32768);
+    expect("CYCLE curved rise: the dot uses the actual generated value", abs(lv.y - (g.base - (int32_t)cycle_value(t, v) * (g.base - g.top) / 32768)) <= 2);
+    on_line("CYCLE the dot is on the drawn curve (its CURVE bent)");
     shot("cycle_rise");
     m = moves_lx(40, 14, 80);
     printf("livegraph: CYCLE audio: %u positions, %u images in 40 steps\n", m.pos, m.img);
@@ -490,7 +597,7 @@ static void t_cycle(void)
     for (i = 0; i < 500 && cy_st[song.sel][vi] != 2; i++) render(1);
     render(10); frames(80);
     expect("CYCLE fall travels to the right on the falling half", cy_st[song.sel][vi] == 2 &&
-           lv.x >= g.x0 + g.rw && lv.y == g.base - (int32_t)cycle_value(t, v) * (g.base - g.top) / 32768);
+           lv.x >= g.x0 + g.rw && abs(lv.y - (g.base - (int32_t)cycle_value(t, v) * (g.base - g.top) / 32768)) <= 2);
     shot("cycle_fall");
     go_title("CYCLE ENV 1/2"); frames(80); lv_cy_geom(t, &g);
     expect("CYCLE first page uses its time-proportioned repeated shape", lv.n && g.n == 3 &&
@@ -520,8 +627,7 @@ static void t_cycle(void)
     go_title("CYCLE ENV 2/2"); trk_note_on(t, 60, 100); render(8); frames(80);
     lv_cy_geom(t, &g); vi = t->m_vi % NVOICE;
     expect("CYCLE follows FM BASS 2 on part 2 using that part's actual generator", t->cy && lv.n &&
-           t->v[vi].active && cy_st[1][vi] == 1 && lv.y == g.base -
-           (int32_t)cycle_value(t, &t->v[vi]) * (g.base - g.top) / 32768);
+           t->v[vi].active && cy_st[1][vi] == 1 && abs(lv.y - (g.base - (int32_t)cycle_value(t, &t->v[vi]) * (g.base - g.top) / 32768)) <= 2);
     shot("cycle_fm6"); quiet(t); frames(80);
     song.sel = 0;
 }
@@ -610,6 +716,7 @@ static void t_ins(void)
     frame();
     t = TSEL;
     t->p[P_ITYPE] = IT_CHORUS, t->p[P_IB] = 100;
+    ins[(uint32_t)(t - trk) % NLIVE].ph = 0u;                   /* (the sweep the other tests left: from its start) */
     go_title("INSERT 1/2"); frame();
     ins[(uint32_t)(t - trk) % NLIVE].ph = 40u * LV_LFO_STEP + 9u;
     frames(80);
@@ -619,6 +726,7 @@ static void t_ins(void)
     ins[(uint32_t)(t - trk) % NLIVE].ph = 90u * LV_LFO_STEP + 9u;
     frames(80);
     expect("INSERT the playhead moves with the phase", lv.x == PANEL_X0 + 90);
+    on_line("INSERT the dot is on the drawn sweep");
     t->p[P_ITYPE] = IT_SOFT;
     frames(80);
     expect("INSERT a drive (no sweep): no playhead", lv.kind == LV_NONE);
@@ -790,6 +898,8 @@ int main(int argc, char **argv)
     t_cost();
     t_lfo();
     t_lfo_audio();
+    t_on_line_sweeps();
+    t_on_line_more();
     t_lfo2();
     t_cycle();
     t_filt();

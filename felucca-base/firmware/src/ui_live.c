@@ -9,15 +9,14 @@
 enum { LV_NONE, LV_ENV, LV_LFO, LV_FILT, LV_CHORD, LV_TWIN, LV_INS, LV_MOD, LV_CYCLE, LV_FMENV };
 #define LV_LFO_STEP (0xFFFFFFFFu / (PANEL_W / 2u))   /* graph_lfo, graph_insert: two cycles over the panel */
 #define LV_H0 2166136261u
-/* the frames between two looks, minus 1 (a mask of ui.frame): the envelopes' pictures are cheap enough for 30 a second, the others redraw 87 .. 150 k basic blocks: 15 a second;
- * and the marker's line (first canvas row, rows) */
-static const uint8_t LV_MASK[10] = {1, 1, 3, 3, 3, 3, 3, 1, 3, 1};   /* NONE ENV LFO FILT CHORD TWIN INS MOD CYCLE FMENV */
-static const uint8_t LV_LINE[10][2] = {{0, 0}, {2, 66}, {6, 64}, {0, 0}, {0, 0}, {0, 0}, {6, 64}, {0, 0}, {6, 88}, {20, 46}};
+/* one look every LV_EVERY frames (15 a second: a picture redraw is 87 .. 150 k basic blocks, the animation costs by the redraw rate); the marker's line: first canvas row, rows */
+#define LV_EVERY 4u
+static const uint8_t LV_LINE[10][2] = {{0, 0}, {2, 66}, {6, 64}, {0, 0}, {0, 0}, {0, 0}, {6, 64}, {0, 0}, {4, 60}, {20, 46}};
 
 static struct {
     uint32_t sig, kind, n, pv;                       /* the look's signature, the page's kind, a marker is there, it is a PREVIEW */
     int16_t x, y;                                    /* the marker */
-    int16_t elvl, erel, erelx;                       /* ENV: the last level seen, the release's starting level and x */
+    int16_t elvl, erel;                              /* ENV: the last level seen, the level the release began at */
     uint8_t evi, estg, epid;                         /* .. voice (+1), stage, which part / envelope */
     uint32_t t0;                                     /* fm1_ms when the marker settled on a held level (the creep), 0: not yet */
     uint32_t ph, odd, who;                           /* the sweep: the phase last seen, the cycle, whose */
@@ -133,6 +132,18 @@ static int32_t lv_eg_lvl(const lv_eg_t *g, int32_t x, int32_t *e)   /* the level
     }
     return (x - g->x0) * 1000 / g->a;                /* attack: linear */
 }
+static int32_t lv_eg_y(const lv_eg_t *g, int32_t x, int32_t *e)   /* the picture's row at x: the attack is one straight line, the rest one vertex a pixel */
+{
+    int32_t l = lv_eg_lvl(g, x, e);
+    return x <= g->x1 && x <= g->x3 ? g->bot - (x - g->x0) * (g->bot - g->top) / g->a : g->bot - l * (g->bot - g->top) / 1000;
+}
+static int32_t lv_eg_at(const lv_eg_t *g, int32_t x)
+{
+    int32_t i, e = 32768, y = g->bot;
+    for (i = g->x0; i <= x; i++)
+        y = lv_eg_y(g, i, &e);
+    return y;
+}
 /* the first x after from at which the curve has fallen to lvl (to: none before it) */
 static int32_t lv_eg_find(const lv_eg_t *g, int32_t from, int32_t to, int32_t lvl)
 {
@@ -147,16 +158,11 @@ static int32_t lv_eg_x(const lv_eg_t *g, uint32_t stg, int32_t lvl)
 {
     return stg == 1u ? g->x0 + g->a * lvl / 1000 : lv_eg_find(g, g->x1, g->x1 + g->d, lvl);
 }
-/* a release can begin during the attack or the decay: its path starts at the observed point */
-static void lv_eg_rel(lv_eg_t *g)
-{
-    g->x3 = lv.erelx, g->rel = lv.erel, g->r = clamp(g->r, 1, 227 - g->x3);   /* (RELEASE may change under a running morph) */
-}
 static void lv_eg_lit(const lv_eg_t *g, int32_t xmax, uint16_t c)   /* the part already played, lit over the picture's curve */
 {
     int32_t x, e = 32768, y, py = 0;
     for (x = g->x0; x <= xmax; x++, py = y) {
-        y = g->bot - lv_eg_lvl(g, x, &e) * (g->bot - g->top) / 1000;
+        y = lv_eg_y(g, x, &e);
         if (x > g->x0 && (y - py > 1 || py - y > 1))
             cv_line_t(x - 1, py, x, y, c, 2);
         else
@@ -180,14 +186,12 @@ static void lv_env_take(const track_t *t, const page_t *pg)
     if (lv.epid != id || lv.evi != vi + 1u || (stg == 1u && lv.estg != 1u))   /* a new note or view */
         lv.t0 = 0, lv.evi = (uint8_t)(vi + 1u), lv.estg = 0, lv.elvl = (int16_t)lvl;
     lv.epid = (uint8_t)id;
-    if (stg == 3u && lv.estg != 3u) {                /* the release begins: where from */
+    if (stg == 3u && lv.estg != 3u)                  /* the release begins: from the higher of the last level seen and this one */
         lv.erel = (int16_t)(lv.elvl > lvl ? lv.elvl : lvl);
-        lv.erelx = (int16_t)(lv.estg == 1u || lv.erel > g.sus + 10 ? lv_eg_x(&g, lv.estg == 1u ? 1u : 2u, lv.erel) : g.x3);
-    }
     lv.estg = (uint8_t)stg;
-    if (stg == 3u) {
-        lv_eg_rel(&g);
-        x = lv.erel && lvl < lv.erel ? lv_eg_find(&g, g.x3, g.x3 + g.r, lvl) : g.x3;
+    if (stg == 3u) {                                 /* the drawn release starts at SUS: the marker is as far down it as the real one is down from where it began (an early release: from the line's start) */
+        int32_t share = lv.erel ? lvl * g.sus / lv.erel : 0;
+        x = share < g.sus ? lv_eg_find(&g, g.x3, g.x3 + g.r, share) : g.x3;
     } else if (stg == 1u || stg == 2u) {
         x = lv_eg_x(&g, stg, lvl);
         if (stg == 2u && g.sus && g.x3 > g.x1 + g.d && x >= g.x1 + g.d - 1)   /* held on the sustain: creeping along it */
@@ -197,7 +201,7 @@ static void lv_env_take(const track_t *t, const page_t *pg)
     } else {
         return;
     }
-    lv.x = (int16_t)x, lv.y = (int16_t)(g.bot - lvl * (g.bot - g.top) / 1000), lv.elvl = (int16_t)lvl;
+    lv.x = (int16_t)x, lv.y = (int16_t)lv_eg_at(&g, x), lv.elvl = (int16_t)lvl;   /* (on the drawn line: the row of the picture at x, not of the level) */
     lv.n = 1;
 }
 
@@ -295,7 +299,7 @@ static void lv_cy_geom(const track_t *t, lv_cy_t *g)
     const int big = cur_page()->id[0] == XW_BASE + X_CYCURVE;
     uint64_t dr, df;
     uint32_t r = (uint32_t)XV(t, X_CYRISE) & 127u, f = (uint32_t)XV(t, X_CYFALL) & 127u;
-    g->top = 8, g->base = 92, g->x0 = PANEL_X0 + 2, g->n = big || XV(t, X_CYMODE) ? 1 : 3;
+    g->top = CY_TOP, g->base = CY_BASE, g->x0 = PANEL_X0 + 2, g->n = big || XV(t, X_CYMODE) ? 1 : 3;
     if (XV(t, X_CYSYNC))
         dr = (uint64_t)ESYNC_UNITS[esync_idx((int32_t)r)] + 2u, df = (uint64_t)ESYNC_UNITS[esync_idx((int32_t)f)] + 2u;
     else
@@ -307,11 +311,11 @@ static void lv_cy_geom(const track_t *t, lv_cy_t *g)
 static void lv_cycle_take(const track_t *t)
 {
     uint32_t pi = song.sel % NLIVE, vi = trk[pi].m_vi % NVOICE, st, phase;
-    int32_t lin, value, c = clamp(XV(t, X_CYCURVE), -64, 63) * 512;
+    int32_t lin, i, u, y01, cyc, c = clamp(XV(t, X_CYCURVE), -64, 63) * 512;
     lv_cy_t g;
     lv.pv = !trk[pi].cy || !trk[pi].v[vi].active;
     if (!lv.pv) {
-        st = cy_st[pi][vi], lin = clamp(cy_lin[pi][vi], 0, 1 << 24), value = cy_y[pi][vi];
+        st = cy_st[pi][vi], lin = clamp(cy_lin[pi][vi], 0, 1 << 24);
     } else {                                         /* its own clock at the set RISE and FALL (ONCE: a second of rest) */
         uint32_t r = (uint32_t)XV(t, X_CYRISE) & 127u, f = (uint32_t)XV(t, X_CYFALL) & 127u, q = beat_samples();
         uint32_t kr = XV(t, X_CYSYNC) ? esync_one(q, (int32_t)r, 0) : ENV_LIN[r], kf = XV(t, X_CYSYNC) ? esync_one(q, (int32_t)f, 0) : ENV_LIN[f];
@@ -320,13 +324,17 @@ static void lv_cycle_take(const track_t *t)
         uint32_t period = rise + fall + (XV(t, X_CYMODE) ? 1000u : 0u), pos = (uint32_t)((uint64_t)lv_uiph(4u + song.sel, (1ull << 32) / period, 0) * period >> 32);
         st = pos < rise ? 1u : pos < rise + fall ? 2u : 0u;
         lin = st == 1u ? (int32_t)((uint64_t)pos * (1u << 24) / rise) : st == 2u ? (1 << 24) - (int32_t)((uint64_t)(pos - rise) * (1u << 24) / fall) : 0;
-        value = st == 1u ? cy_curve(lin >> 9, c) : st == 2u ? 32768 - cy_curve(32768 - (lin >> 9), c) : 0;
     }
     phase = st == 1u ? (uint32_t)lin : st == 2u ? (2u << 24) - (uint32_t)lin : 2u << 24;
     lv_cy_geom(t, &g);
-    lv.x = (int16_t)(g.x0 + (int32_t)lv_cyc(phase, 4u + pi * NVOICE + vi, (uint32_t)g.n) * g.cw +
-        (st == 1u ? (int32_t)(((int64_t)g.rw * lin) >> 24) : st == 2u ? g.rw + (int32_t)(((int64_t)g.fw * ((1 << 24) - lin)) >> 24) : g.cw));
-    lv.y = (int16_t)(g.base - value * (g.base - g.top) / 32768);
+    cyc = (int32_t)lv_cyc(phase, 4u + pi * NVOICE + vi, (uint32_t)g.n);
+    i = st == 1u ? (int32_t)(((int64_t)g.rw * lin) >> 24) : st == 2u ? g.rw + (int32_t)(((int64_t)g.fw * ((1 << 24) - lin)) >> 24) : g.cw;   /* the px in the cycle */
+    lv.x = (int16_t)(g.x0 + cyc * g.cw + i);
+    if (i <= g.rw)                                   /* the row of graph_cycle's line at that px: y = x + c (x^2 - x) on the rise, 1 - that on the fall */
+        u = i * 32768 / g.rw, y01 = u + ((c * ((u * u >> 15) - u)) >> 15);
+    else
+        u = (i - g.rw) * 32768 / g.fw, y01 = 32768 - (u + ((c * ((u * u >> 15) - u)) >> 15));
+    lv.y = (int16_t)(g.base - clamp(y01, 0, 32768) * (g.base - g.top) / 32768);
     lv.n = 1;
 }
 
@@ -350,7 +358,7 @@ static uint32_t live_sig(const page_t *pg, const track_t *t)
     uint32_t h = LV_H0, i, k;
     if (TIDE_AMPDEST_FM6(pg, t))                     /* (the operator envelope's picture, live or not: it follows the operator, the stage, the patch) */
         h = (h ^ ((fop_op + 1u) * 40503u + (fop_stg + 1u) * 7919u + fm6_pgen[song.sel % NTRK] * 2246822519u)) * 16777619u;
-    if ((ui.frame & LV_MASK[lv.kind % 10u]) && lv.kind == live_kind(pg, t))
+    if (ui.frame % LV_EVERY && lv.kind == live_kind(pg, t))
         return lv.sig | (h ^ LV_H0) ? lv.sig ^ h : 0u;
     k = lv.kind = live_kind(pg, t);
     lv.sig = lv.n = lv.pv = lv.fc = lv.fc2 = lv.ch = 0;
@@ -380,7 +388,7 @@ static uint32_t live_sig(const page_t *pg, const track_t *t)
         lv.who = 0;
     if (k == LV_NONE)
         return h ^ LV_H0 ? h : 0u;
-    lv.sig = ((uint32_t)(uint16_t)lv.x | (uint32_t)(uint16_t)lv.y << 12 | lv.n << 28 | (uint32_t)(lv.estg == 3u) << 29) ^ lv.fc ^ lv.fc2 * 2654435761u ^ lv.ch ^ (lv.estg == 3u ? (uint32_t)(uint16_t)lv.erelx << 8 : 0u);
+    lv.sig = ((uint32_t)(uint16_t)lv.x | (uint32_t)(uint16_t)lv.y << 12 | lv.n << 28) ^ lv.fc ^ lv.fc2 * 2654435761u ^ lv.ch;
     lv.sig = (lv.sig + 1u) * 2654435761u ^ k;       /* (never 0 on a live page: the overlay going away is a redraw) */
     return lv.sig ^ h;
 }
@@ -416,8 +424,6 @@ static void live_draw(const page_t *pg, const track_t *t)
             if (lv.kind == LV_ENV) {                 /* the curve played so far, lit (the text tone where the accent is the part colour) */
                 lv_eg_t g;
                 lv_eg(t, env_of(pg), &g);
-                if (lv.estg == 3u)
-                    lv_eg_rel(&g);
                 lv_eg_lit(&g, lv.x, T_ACCENT != T_THEME ? T_ACCENT : T_TEXT);
             }
             lv_mark();
