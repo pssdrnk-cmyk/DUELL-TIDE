@@ -6,6 +6,18 @@ by OSCILL/R
 
 Each release: a one-line summary, then New, Fixed, Compatibility, Install, Files.
 
+## DUELL 1.1 with TIDE (unreleased, pssdrnk's fork)
+
+Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrnk-cmyk/DUELL-TIDE>), adding TIDE, a morph that plays and evolves by itself. Add a line here for every build flashed to a unit: date, commit, what changed.
+
+- **New:** AUTO TIDE in HOME's round, with the modes ONCE, LOOP, DRIFT, WNDR and JRNY (JRNY also travels to other engines, FM6 included); where two unlike sounds cross, a short filter dip.
+- **New:** MORPH SETTINGS in HOME's round: TARGET (SOUND, SEQ or BOTH), VARY BARS, ROLL (MUSIC, the default, SMART, WILD), ARP, PITCH, WASH LEVEL (OFF by default).
+- **New:** SEQ MORPH (a pattern has an End A and an End B), ARP SEQ on PLAY, KEEP in the SEQ tools; K1 twisted while gliding stops the glide.
+- **Fixed (also with `DUELL_TIDE=0`):** MODE / SPLIT stays OFF when turned left at OFF; the external MIDI clock keeps its phase across tempo changes; FM6 live operator level; UNISON spread; PHYS string tuning; undefined arithmetic in MORPH, FM6, PHYS and WAVE (UBSan clean); End B kept by rename and FM6 PUT. Each fix has a host test.
+- **Under the hood:** Huffman-coded fonts, unreached UI render paths removed, the RAM load images packed as one LZMA stream at boot (about 24.9 KB of flash free). `DUELL_TIDE=0` builds DUELL 1.1 without any TIDE code; `jam/check_off.sh` checks it.
+- **Builds on the fork owner's unit:** 2026-11-01 `bda5a9d` (first TIDE on 1.1); 2026-11-02 `e176f6e` (S0 pattern room + DSP fixes); 2026-11-03 `ecd2918` (boot pack; ABOUT shows RAM CODE OK 57 KB).
+- **Install:** no release package yet; back up first ([docs/RECOVERY.md](docs/RECOVERY.md)).
+
 ## DUELL 1.1
 
 An update for the M-VAVE FM-1. The whole user interface is redesigned, so you see more at a glance, and PERFORM, STRUM and MORPH have new things to play with.

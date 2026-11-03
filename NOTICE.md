@@ -6,6 +6,8 @@
 
 DUELL is free, open-source firmware for the M-VAVE FM-1. Source: <https://github.com/oscillr/DUELL>.
 
+**Modified version.** This repository is **DUELL with TIDE**, a modified version of DUELL 1.1 made by pssdrnk from 2026-10-27 on (source: <https://github.com/pssdrnk-cmyk/DUELL-TIDE>). It is not an official DUELL release and is not made or endorsed by OSCILL/R. The changes are listed in [CHANGELOG.md](CHANGELOG.md) and in the git history; the upstream DUELL commit is the tag `v1.1`.
+
 - **Based on Felucca** by Leo Kuroshita (@kurogedelic), Hügelton Instruments (<https://github.com/hugelton/Felucca>). DUELL is a modified version of Felucca. The upstream commit it was taken from is in [UPSTREAM_COMMIT.txt](UPSTREAM_COMMIT.txt).
 - **JIANT** (juanjiant-bit, <https://github.com/juanjiant-bit/JIANT>) is credited for the SHIM and RESO reverbs only.
 - The PLATE reverb is based on the reverb of the CHOMPI firmware (<https://github.com/CHOMPI-Club/CHOMPI>, MIT, Copyright (c) 2026 CHOMPI Club), which is Emilie Gillet's plate reverb of Mutable Instruments Rings / Clouds (MIT, Copyright 2014 Emilie Gillet), rewritten as integer code. The MIT notices are in [felucca-base/LICENSES/MIT-CHOMPI.txt](felucca-base/LICENSES/MIT-CHOMPI.txt). The name and logo of CHOMPI are trademarks of CHOMPI Club and are not used.
