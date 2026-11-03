@@ -1,0 +1,50 @@
+# Runs every host test group on Linux. On the owner's Windows machine 25 groups SKIP (they need fork(), or termios
+# and select() on pipes: jam/wincompat); here they run. Nothing is built for the device and nothing is published.
+# The log of each run is kept as an artifact (host-tests-log).
+name: Host tests
+
+on:
+  push:
+    branches: [jam11]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: host-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # multiv8 reads git tags
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: numpy (benchaudio)
+        run: python3 -m pip install --quiet numpy
+
+      - name: Host tests (all groups)
+        shell: bash               # (an explicit bash runs with pipefail: tee keeps the runner's exit code)
+        run: sh host_tests.sh 2>&1 | tee host-tests.out
+
+      - name: Keep the log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: host-tests-log
+          path: |
+            host-tests.out
+            felucca-base/build/host/*.log
+          if-no-files-found: ignore
