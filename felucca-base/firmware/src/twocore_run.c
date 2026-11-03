@@ -409,8 +409,12 @@ static uint32_t tcr_deadline_true(uint32_t now, uint32_t dl)
         }
     }
 #endif
-    if ((int32_t)(dt - now) > 0 && (int32_t)(dt - tcr.lim) < 0)
+    if ((int32_t)(dt - now) > 0 && (int32_t)(dt - tcr.lim) < 0) {
+#if TC_MEAS
+        tcr.cap = cap;                                  /* (bench measurement: the posted deadline is this true-cost one, so its ceiling is this cap (item 142: later than the 1.15 table's)) */
+#endif
         return dt;
+    }
     return dl;
 }
 /* the deadline a job is posted with (tcr_begin; tests/deadline_test.c checks it for every setup): tcr_deadline, and under the two-core rule, when that is already past, the true-cost one */
