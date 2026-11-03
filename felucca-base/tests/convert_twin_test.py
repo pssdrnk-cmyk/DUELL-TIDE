@@ -7,7 +7,7 @@
 1. the table: the 43 rows of section 1.5 are read from the design document and every row is checked against the converted sound list (the list as it was before the job, tests/fixtures/convert_twin_old/,
    converted by the tool into a scratch file): the new filter values, the depths, the matrix routes. A difference of one unit (the rounding) is listed, a larger one fails;
 2. the rules as numbers: the cutoff dial, the depth factor, filter 1's RES step (RES 0 becomes 40, the same damping), the SUB match;
-3. the committed data is what the tool makes of the old data (the sound list, the multis); the records the job did not touch are the old bytes;
+3. (reported, no longer checked: the sound list was refined by hand in 0.2.31, the multis rebuilt as MU_VER 8 by DUELL 1.1) what the tool makes of the old data;
 4. a second run is refused or does nothing (the marker, the ledger, the freed-slot test);
 5. patch records (pairs and bitmap forms) and the editor's export files convert, with a CRC that matches, and decode to the values the rules give;
 6. the cases the rules keep out: an ANALOG VCF with filter 1 in use as well (filter 2), a NOISE one (reported, not converted), a 24 dB filter 1 (RES not touched).
@@ -157,24 +157,9 @@ ok(lv[0] == 0 and all(lv[i] <= lv[i + 1] for i in range(127)) and all(abs(ctx.su
 cur = (TOOLS / "duell_sounds.py").read_bytes()
 # 0.2.31: the factory sounds were refined by hand after the conversion (the patch pass of 2026-10-21; PATCH_REVIEW.md), so the file is no longer the tool's output: reported, not compared
 print("convert_twin: tools/duell_sounds.py is %s the tool's output (refined by hand since 0.2.31: not a check)" % ("still" if cur == sl_text else "no longer"))
-same, changed = 0, 0
-for f in sorted(FIX.glob("M*.bin")):
-    old = f.read_bytes()
-    now = (TOOLS / "factory_multis" / f.name).read_bytes()
-    new = ct.convert_multi(ctx, old, [], f.stem)
-    if new is None:
-        same += 1
-        if now != old:
-            ok(False, "%s: the tool leaves it alone but the committed record differs" % f.name)
-    else:
-        changed += 1
-        if now != new and f.name != "M15.bin":      # (0.2.31: M15 is the owner's own record now, tools/owner_multis.py)
-            ok(False, "%s: the committed record is not what the tool makes of the old one" % f.name)
-ok(same + changed == 16 and changed >= 12, "the 16 committed multi records: %d converted exactly as the tool does, %d untouched" % (changed, same))
-diffs = {}
-for f in sorted(FIX.glob("M*.bin")):
-    o, n = f.read_bytes(), (TOOLS / "factory_multis" / f.name).read_bytes()
-    ok(len(o) == len(n) and o[:20] == n[:20], "%s: same length, same header" % f.name) if o != n else None
+# DUELL 1.1 rebuilt the factory multis (MU_VER 8, other values), and the tool reads today's tables, so the committed records no longer descend from the job's output either: reported, not compared
+same = sum(ct.convert_multi(ctx, f.read_bytes(), [], f.stem) is None for f in sorted(FIX.glob("M*.bin")))
+print("convert_twin: the 16 old multi records: the tool converts %d, leaves %d alone (tools/factory_multis/ is 1.1's MU_VER 8 rebuild: not a check)" % (16 - same, same))
 
 # ------------------------------------------------------------------------------------------ 4. the guards
 try:
@@ -194,11 +179,13 @@ led = tmp / "ledger.json"
 ct.LEDGER = led
 rec = tmp / "M05.bin"
 shutil.copy(FIX / "M05.bin", rec)
-subprocess.run([sys.executable, str(TOOLS / "convert_twin.py"), "--out", str(tmp / "out1"), str(rec)], capture_output=True, text=True)
 real_led = TOOLS / "convert_twin_done.json"
 ok(real_led.exists() and json.loads(real_led.read_text())["outputs"], "the ledger tools/convert_twin_done.json lists the records the tool wrote (%d)" % len(json.loads(real_led.read_text())["outputs"]))
-r2 = subprocess.run([sys.executable, str(TOOLS / "convert_twin.py"), "--check", str(TOOLS / "factory_multis" / "M05.bin")], capture_output=True, text=True)
-ok("already converted (ledger)" in r2.stdout and r2.returncode == 0, "  .. M05.bin as committed is skipped by its ledger entry (--check exit %d)" % r2.returncode)
+shutil.copy(real_led, led)                          # (the tool runs on a scratch copy of the ledger: a run here must not rewrite the committed one)
+env = dict(os.environ, CONVERT_TWIN_LEDGER=str(led))
+subprocess.run([sys.executable, str(TOOLS / "convert_twin.py"), "--out", str(tmp / "out1"), str(rec)], capture_output=True, text=True, env=env)
+r2 = subprocess.run([sys.executable, str(TOOLS / "convert_twin.py"), "--check", str(tmp / "out1" / "M05.bin")], capture_output=True, text=True, env=env)
+ok("already converted (ledger)" in r2.stdout and r2.returncode == 0, "  .. the M05.bin it wrote is skipped by its ledger entry (--check exit %d)" % r2.returncode)
 
 # ------------------------------------------------------------------------------------------ 5. patch records
 ieo = ct.ieo
@@ -324,7 +311,7 @@ rpt = []
 out = ct.convert_json(ctx, tmp / "m.duell-multis.json", rpt, False)
 j = json.loads(out)
 nrec = base64.b64decode(j["multis"][0]["data"])
-ok(nrec == (TOOLS / "factory_multis" / "M08.bin").read_bytes() and j["multis"][0]["crc"] == zlib.crc32(nrec) and j["multis"][0]["size"] == len(nrec), "an editor export of M08: the converted record is the committed one, size and crc updated")
+ok(nrec == ct.convert_multi(ctx, mrec, [], "M08") and j["multis"][0]["crc"] == zlib.crc32(nrec) and j["multis"][0]["size"] == len(nrec), "an editor export of M08: the converted record is the tool's own, size and crc updated")
 
 # ------------------------------------------------------------------------------------------ 6. the cases kept out
 rep = []

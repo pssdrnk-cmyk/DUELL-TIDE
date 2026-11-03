@@ -40,6 +40,7 @@ import base64
 import hashlib
 import importlib.util
 import json
+import os
 import re
 import sys
 import zlib
@@ -48,7 +49,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 TOOLS = ROOT / "tools"
 SRC = ROOT / "firmware" / "src"
-LEDGER = TOOLS / "convert_twin_done.json"
+LEDGER = Path(os.environ.get("CONVERT_TWIN_LEDGER") or TOOLS / "convert_twin_done.json")   # (the test points it at a scratch copy)
 MARKER = "CONVERT_TWIN"
 
 
