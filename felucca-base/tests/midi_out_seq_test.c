@@ -45,6 +45,7 @@ static void reset(void)
     memset(mo_bits, 0, sizeof mo_bits); kb_mo = 0;
     trk[0].p[P_VOICE] = V_POLY; scale_g = 0; root_g = 0;
     midi_pch[0] = 0; midi_pch[1] = 1;
+    trk[0].p[P_TRANS] = 0;                               /* (1.1: a power-on part has TRN -12; the key C4 = note 60 below needs 0) */
     events_block(CTL);
     clr();
 }
