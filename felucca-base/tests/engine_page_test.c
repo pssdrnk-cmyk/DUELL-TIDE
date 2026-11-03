@@ -10,6 +10,7 @@
  *   ALGORITHM    the other part keeps its own engine, the page stays ENGINE and shows that part's engine
  * Built and run by DUELL/host_tests.sh (name: engine): the UI sources against ui_test.c's stub display and knobs. */
 #define UI_TEST_NO_MAIN 1
+#define UI_TEXT_CAPTURE 1                                 /* (a card read from the texts drawn: ui_test.c card_match; ui.col is a hash since 1.1) */
 #include "ui_test.c"
 
 static int bad;
@@ -202,8 +203,7 @@ static void test_knob3(void)
         tap_edit();
         ui.force = 1; draw_columns();
         snprintf(w, sizeof w, "%s: ENGINE page cards: ENGINE, then the engine's own (no SOUND, FAV, INIT)", ENGINES[e]->name);
-        expect(w, !strncmp(ui.col[0], "ENGINE|", 7) && strncmp(ui.col[1], "SOUND|", 6) && strncmp(ui.col[2], "FAV|", 4) && strncmp(ui.col[3], "INIT|", 5) &&
-                  ui.col[1][0] != 0x7f);
+        expect(w, str_eq(cur_page()->title, "ENGINE") && !card_match(1, "SOUND") && !card_match(2, "FAV") && !card_match(3, "INIT") && !card_hidden(1));
     }
 }
 static void test_knob4(void)
@@ -226,7 +226,8 @@ static void test_knob4(void)
         turn(EN_K1, 1);
         frames(64);
         for (i = 0; i < P_E0; i++)
-            ok &= TSEL->p[i] == p0[i];
+            if (!(TSEL->eng_req == ENGI_FM6 && i >= P_ATK && i <= P_REL))   /* (FM6's AMP ENV knobs are derived from its patch: fm6_env_derive) */
+                ok &= TSEL->p[i] == p0[i];
         sound_label(TSEL, n1);
         expect("K1 (ENGINE): only the engine and its own eight change; the patch name and its slot stay on the screen",
                ok && TSEL->eng_req != 0u && str_eq(n0, n1) && slot_of(TSEL) == sl0 && sl0 < UP_SLOTS);
