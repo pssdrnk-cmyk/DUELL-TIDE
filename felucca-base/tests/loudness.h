@@ -15,7 +15,7 @@
 #define LZ_HOLD 4.0               /* the default hold (s); the variable lz_hold overrides it (the sound audit: 10 s, the tap: 1 s) */
 #define LZ_HOLD_MAX 10.0
 #define LZ_TAIL 1.0
-#define LZ_NBMAX ((uint32_t)((LZ_HOLD_MAX + LZ_TAIL) * FS) / CTL)
+#define LZ_NBMAX ((((uint32_t)LZ_HOLD_MAX + (uint32_t)LZ_TAIL) * FS) / CTL)   /* (integer arithmetic: a float expression is no constant array size to gcc) */
 static double lz_hold = LZ_HOLD;  /* set before lz_spawn (the child forks with it) */
 static void (*lz_pre_block)(void);   /* (tests/multi_loudness.c: run before every block, in the child; default none) */
 static const char *lz_dump_name;  /* cloud job J (the proof renders): when set before lz_spawn, the child also writes the render, int32 left / right pairs (mix before MASTER, as measured), to this file */
