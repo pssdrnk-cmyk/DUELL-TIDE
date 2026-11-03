@@ -889,8 +889,8 @@ int main(void)
     song.playing = 0;
     {
         uint32_t fe, fk, same = 0, named = 0;
-        ck("a fresh unit: nothing saved, no chunk written, the factory sounds fill all 128 slots (ds_list_n() = 128 = UP_SLOTS)",
-           up_count() == 0u && pt_bytes() == 0u && ds_list_n() == UP_SLOTS && UP_SLOTS == 128u);
+        ck("a fresh unit: nothing saved, no chunk written, the factory sounds fill all 128 slots (ds_list_n() = 128 = UP_SLOTS) and the sounds past the bank's 128 (UP_NXTRA) have places after them",
+           up_count() == 0u && pt_bytes() == 0u && ds_list_n() == UP_SLOTS + UP_NXTRA && UP_SLOTS == 128u && UP_VSLOTS == UP_SLOTS + UP_NUSER + UP_NXTRA);
         for (k = 0; k < UP_USER0; k++) {   /* (U1: the factory sounds of the slots before the USER ones) */
             char nmk[13];
             int16_t v1[P_COUNT];
@@ -1442,7 +1442,30 @@ int main(void)
         ck("  after a power cycle USER 1 is still there; USER 2..4 still empty", up_used(UP_USER0) && !up_used(UP_USER0 + 1u) && up_count() == 1u);
         sl_load(UP_USER0);
         (void)pl_cursor(&total);
-        ck("  the record is the browse list's place, label U1, in the 132 places", up_used(UP_USER0) && total == UP_VSLOTS && preset_at(pl_cursor(&total)) == UP_USER0);
+        ck("  the record is the browse list's place, label U1, in all the places", up_used(UP_USER0) && total == UP_VSLOTS && preset_at(pl_cursor(&total)) == UP_USER0);
+    }
+
+    {   /* the factory sounds past the bank's 128 (tools/duell_sounds.py N_BASE): no browse position of the 128 moves, the others are read-only places after the displaced ones */
+        static const uint8_t BANK_N[16] = {20, 0, 11, 9, 0, 8, 13, 7, 0, 12, 0, 11, 14, 0, 23, 0};   /* the bank's factory sounds per engine: their index is under this */
+        uint32_t r, e3, k3, bad3 = 0, fe3, fk3, bad4 = 0;
+        char tg[6], nm4[13];
+        for (r = 0; r < ds_list_n(); r++) {
+            e3 = ds_list_at(r, &k3);
+            bad3 |= (k3 < BANK_N[e3]) != (r < 128u);
+        }
+        ck("sounds past the bank's 128: the browse positions 0..127 hold exactly the bank's sounds (nothing moved), the later ones follow", !bad3 && ds_list_n() == 128u + UP_NXTRA && UP_NXTRA > 0u);
+        for (r = 0; r < UP_NXTRA; r++) {
+            uint32_t pl = UP_SLOTS + UP_NUSER + r;
+            e3 = ds_list_at(128u + r, &k3);
+            up_slot_label(tg, pl);
+            sl_name(pl, nm4);
+            bad4 |= !(sl_fac(pl, &fe3, &fk3) && fe3 == e3 && fk3 == k3) || sl_engine(pl) != e3 || up_used(pl) || tg[0] != '#' || !str_eq(nm4, ds_name(e3, k3));
+        }
+        ck("  each is a read-only place #129.. with its name, engine and a label, never a slot", !bad4 && !sl_fac(UP_VSLOTS, &fe3, &fk3));
+        sl_load(UP_VSLOTS - 1u);
+        ck("  loading the last plays that sound, in no slot to save over (SAVE offers USER 1), its place is found again",
+           trk[0].eng_req == ds_list_at(ds_list_n() - 1u, &k3) && trk[0].preset == k3 && !trk[0].user && slot_of(&trk[0]) == UP_SLOTS && slot_place(&trk[0]) == UP_VSLOTS - 1u &&
+           slot_home(&trk[0]) == UP_USER0);
     }
 
     {   /* U1: the factory multis hold engine + factory index, never a browse slot: loading them gives the factory sound whatever the USER slots hold; a part pointed at an empty USER slot still plays a factory sound */

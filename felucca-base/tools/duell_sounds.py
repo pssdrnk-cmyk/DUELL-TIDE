@@ -13,6 +13,10 @@ bpin [labels] (marks of values set by hand), bfm [65 FM6 bytes of End B]. The se
 # CONVERT_TWIN: the engine filters of the earlier sound lists are the twin filter's already (tools/convert_twin.py, a second run is refused).
 CONVERT_TWIN = 1
 
+# N_BASE: the first 128 sounds are the bank (the patch slots' factory places); the sounds after them are LISTED after those (gen_duell_sounds.py, upreset.c UP_NXTRA):
+# no browse place of the 128 moves when sounds are appended (the identity of a sound is still (engine, idx), append-only per engine)
+N_BASE = 128
+
 SOUNDS = [
     dict(engine='ANALOG', idx=2, name='BEHIVE', cat='BASS', bseed=18967,  # #1
          p={
@@ -1914,5 +1918,365 @@ SOUNDS = [
             'KTRK': 56, 'DIST': 15, 'CHOR': 6, 'DLY': 72, 'REV': 8, 'DETUNE': 41, 'FREEA': 82, 'FREEB': 37, 'FREEC': 7, 'M1AMT': 17, 'E2ATK': 16,
             'E2DEC': 68, 'E2SUS': 11, 'E2REL': 54, 'L2RATE': 77, 'L2PHASE': 3, 'L2FADE': 12, 'E2FLT': 29, 'E2': 5, 'E7': 20, 'SUB LEVEL': 10,
             'CYCLE RISE': 26, 'CYCLE FALL': 50, 'CYCLE CURVE': 1, 'AMPENV SATN': 8, 'FILTERENV MRES': -16, 'CYCLE PAN': 7, 'LFO2 MMODE': -13,
+         }),
+    # DUB PACK (tools/dub_pack/pack.py; docs: work/outputs/dub-pack-2026-11-03): a saw chord through the 24 dB multimode filter, the filter envelope snapping it open and shut,
+    # chorus + a long delay + a room behind it. End B: thrown into the echo: darker, more resonant, the snap gone, the delay and the reverb up.
+    dict(engine='ANALOG', idx=20, name='DUB CHORD', cat='KEYS', bamt=20,  # #129
+         p={
+            'ATK': 3, 'DEC': 72, 'SUS': 34, 'REL': 70, 'LRATE': 30, 'LWAVE': 1, 'LD_FLT': 3, 'KTRK': 20, 'CHOR': 68, 'DLY': 70, 'REV': 48,
+            'FREEA': 38, 'FREEB': 44, 'FREED': 2, 'E2ATK': 0, 'E2DEC': 68, 'E2SUS': 0, 'E2REL': 66, 'E2FLT': 26, 'TRIM': 107, 'E2': 24, 'E7': 18,
+            'MOD1': ('VEL', 'CUT', 14), 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'FREEA': 26, 'FREEB': 66, 'E2FLT': 6, 'DLY': 108, 'REV': 84, 'CHOR': 94, 'REL': 88, 'DEC': 80, 'SUS': 40,
+         }),
+    # DUB PACK: a square chord, closed filter, a little drive and tape wobble: the dark minor seventh that sits under a hat.
+    # End B: the filter opens, the drive comes up, the delay and the reverb deepen (a lift into the break).
+    dict(engine='ANALOG', idx=21, name='DARK MIN7', cat='KEYS', bamt=20,  # #130
+         p={
+            'ATK': 10, 'DEC': 78, 'SUS': 26, 'REL': 80, 'LRATE': 24, 'LWAVE': 1, 'LD_FLT': 4, 'KTRK': 16, 'CHOR': 36, 'DLY': 60, 'REV': 62,
+            'DIST': 22, 'FREEA': 30, 'FREEB': 56, 'FREED': 2, 'E2DEC': 74, 'E2SUS': 0, 'E2REL': 72, 'E2FLT': 18, 'ITYPE': 9, 'IA': 50, 'IB': 71,
+            'IC': 110, 'TRIM': 112, 'E1': 1, 'E2': 16, 'E7': 30, 'MOD1': ('VEL', 'CUT', 12), 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'FREEA': 46, 'FREEB': 34, 'DIST': 54, 'DLY': 86, 'REV': 96, 'E2FLT': 30, 'DEC': 84,
+         }),
+    # DUB PACK: a drawbar organ with second-harmonic percussion and key click, snapped by the filter envelope, slow rotor, a dub delay.
+    # End B: a mellower registration, the filter closed, the rotor FAST, the delay and the reverb up.
+    dict(engine='WHEEL', idx=7, name='ORGAN SKANK', cat='KEYS', bamt=20,  # #131
+         p={
+            'ATK': 0, 'DEC': 62, 'SUS': 52, 'REL': 50, 'KTRK': 20, 'CHOR': 14, 'DLY': 64, 'REV': 36, 'FREEA': 56, 'FREEB': 26, 'FREED': 2, 'E2ATK': 0,
+            'E2DEC': 60, 'E2SUS': 0, 'E2REL': 56, 'E2FLT': 22, 'TRIM': 113, 'E1': 4, 'E5': 1, 'E6': 55, 'E7': 18, 'E8': 1, 'MOD1': ('VEL', 'CUT', 12),
+            'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'FREEA': 36, 'E2FLT': 6, 'E1': 1, 'E8': 2, 'DLY': 96, 'REV': 70, 'E7': 40,
+         }),
+    # DUB PACK: detuned saws, a slow swell, a low-pass that breathes with a slow LFO, a thick chorus and a long room.
+    # End B: the filter opens, the detune doubles, the chorus and the room fill the space.
+    dict(engine='ANALOG', idx=22, name='WARM WASH', cat='PAD', bamt=20,  # #132
+         p={
+            'ATK': 84, 'DEC': 100, 'SUS': 127, 'REL': 100, 'LRATE': 20, 'LWAVE': 1, 'LD_FLT': 5, 'KTRK': 24, 'CHOR': 92, 'DLY': 22, 'REV': 76,
+            'EQLG': -2, 'FREEA': 44, 'FREEB': 12, 'FREED': 2, 'E2ATK': 90, 'E2DEC': 100, 'E2SUS': 96, 'E2REL': 96, 'L2RATE': 14, 'L2WAVE': 1,
+            'E2FLT': 12, 'TRIM': 88, 'E2': 34, 'E4': 3, 'E7': 12, 'MOD1': ('VEL', 'CUT', 8), 'MOD2': ('LFO2', 'CUT', 4), 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'FREEA': 58, 'E2': 60, 'CHOR': 112, 'REV': 100, 'DLY': 58, 'ATK': 96, 'E2FLT': 22,
+         }),
+    # DUB PACK: two phase-distortion voices, the DCW swept slowly by an LFO and the envelope, high-shelf lift, wide spread, a very long room and a late echo.
+    # End B: the DCW opens to a brighter, glassier tone with more detune, spread and room.
+    dict(engine='PHASE', idx=11, name='AIR SHIMMER', cat='PAD', bamt=20,  # #133
+         p={
+            'ATK': 78, 'DEC': 100, 'SUS': 127, 'REL': 104, 'LRATE': 18, 'LWAVE': 1, 'LD_SHP': 5, 'KTRK': 30, 'CHOR': 84, 'DLY': 46, 'REV': 100,
+            'FREEA': 68, 'FREEB': 8, 'FREED': 1, 'E2ATK': 84, 'E2DEC': 100, 'E2SUS': 80, 'E2REL': 98, 'L2RATE': 21, 'L2WAVE': 1, 'EQHG': 4,
+            'SPRD': 70, 'TRIM': 88, 'E1': 3, 'E2': 7, 'E3': 50, 'E4': 44, 'E5': 24, 'MOD1': ('LFO2', 'E3', 10), 'MOD2': ('ENV2', 'E3', 8),
+            'MOD3': ('VEL', 'CUT', 6), 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'E3': 88, 'E5': 52, 'REV': 127, 'CHOR': 110, 'FREEA': 74, 'DLY': 70, 'ATK': 92, 'SPRD': 100,
+         }),
+    # DUB PACK: a pulse-width pad that never sits still: a very slow LFO, a slow second LFO and the cycle envelope (about 20 s) move the filters and the oscillator mix
+    # against each other; a band-pass twin filter on top. Hold a chord and leave it. End B: the same motion, faster and the other way round, filter lower, room deeper.
+    dict(engine='ANALOG', idx=23, name='SLOW TIDE', cat='PAD', bamt=25,  # #134
+         p={
+            'ATK': 100, 'DEC': 100, 'SUS': 127, 'REL': 108, 'LRATE': 5, 'LWAVE': 1, 'LD_FLT': 10, 'KTRK': 22, 'CHOR': 66, 'DLY': 50, 'REV': 96,
+            'RES2': 20, 'TWTYPE': 1, 'FREEA': 52, 'FREEB': 26, 'FREED': 2, 'E2ATK': 104, 'E2DEC': 110, 'E2SUS': 70, 'E2REL': 100, 'L2RATE': 9,
+            'L2WAVE': 1, 'E2FLT': 20, 'CUT2': 6, 'TRIM': 91, 'E1': 4, 'E2': 40, 'E3': 70, 'E4': 6, 'MOD1': ('CYCLE', 'CUT', 16),
+            'MOD2': ('LFO2', 'E3', 24), 'MOD3': ('LFO1', 'CUT2', 10), 'MOD4': ('VEL', 'CUT', 6), 'CYCLE RISE': 127, 'CYCLE FALL': 127, 'LTRIG': 1,
+            'L2TRIG': 1,
+         },
+         bend={
+            'FREEA': 40, 'LRATE': 16, 'L2RATE': 22, 'M1AMT': -16, 'E2': 70, 'REV': 110, 'CHOR': 90, 'E2FLT': 6,
+         }),
+    # DUB PACK: a sine pluck with the sub oscillator an octave below, mono legato with a short glide, a filter that pops and closes; play it low.
+    # End B: rings longer, the filter and the sub open, the echo up (a held bass note in the break).
+    dict(engine='ANALOG', idx=24, name='SUB PLUCK', cat='PLUCK', bamt=20,  # #135
+         p={
+            'ATK': 0, 'DEC': 68, 'SUS': 0, 'REL': 58, 'KTRK': 22, 'DIST': 30, 'DLY': 36, 'REV': 16, 'FREEA': 34, 'FREEB': 28, 'FREED': 2, 'E2ATK': 0,
+            'E2DEC': 62, 'E2SUS': 0, 'E2REL': 56, 'E2FLT': 30, 'VOICE': 2, 'GLIDE': 14, 'GLMODE': 1, 'TRIM': 113, 'E1': 3, 'E2': 6, 'E7': 20,
+            'SUB LEVEL': 96, 'SUB OCTAVE': 1, 'SUB WAVE': 0, 'MOD1': ('VEL', 'CUT', 14), 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'DEC': 86, 'FREEA': 48, 'DLY': 66, 'E2FLT': 12, 'SUB LEVEL': 112, 'REL': 74,
+         }),
+    # DUB PACK: crackle (DUST) through a drifting band-pass, vinyl insert, a long room and an echo: a bed to lay under the chords. Any key starts it.
+    # End B: denser and darker, the crush up, the room fuller.
+    dict(engine='NOISE', idx=11, name='DUST BED', cat='FX', bamt=25,  # #136
+         p={
+            'ATK': 100, 'DEC': 100, 'SUS': 127, 'REL': 104, 'LRATE': 12, 'LWAVE': 1, 'LD_FLT': 8, 'KTRK': 0, 'CHOR': 48, 'DLY': 56, 'REV': 94,
+            'RES2': 20, 'TWTYPE': 2, 'FREEA': 44, 'FREEB': 60, 'FREED': 1, 'ITYPE': 10, 'IA': 60, 'IB': 80, 'IC': 70, 'CUT2': 24, 'TRIM': 123,
+            'E1': 1, 'E2': 58, 'E6': 115, 'E7': 36, 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'E2': 30, 'E6': 127, 'E8': 30, 'FREEA': 34, 'REV': 110, 'LRATE': 30,
+         }),
+    # ---- the sounds added for TIDE's JRNY (dub techno / deep house groups: pads, chords, stabs, plucks, textures), after the dub pack
+    # a bright saw chord for the house stab: the filter snapped open and shut fast, a short room, a little echo. Dry next to DUB CHORD.
+    # End B: the lift: the filter up, the drive up, the room opens a little.
+    dict(engine='ANALOG', idx=25, name='SOUL STAB', cat='KEYS', bamt=20,  # #137
+         p={
+            'ATK': 0, 'DEC': 86, 'SUS': 0, 'REL': 52, 'LRATE': 40, 'LWAVE': 1, 'LD_FLT': 2, 'KTRK': 30, 'CHOR': 40, 'DLY': 36, 'REV': 30, 'FREEA': 64,
+            'FREEB': 22, 'FREED': 2, 'E2ATK': 0, 'E2DEC': 56, 'E2SUS': 0, 'E2REL': 52, 'E2FLT': 34, 'TRIM': 108, 'E2': 14, 'E7': 6,
+            'MOD1': ('VEL', 'CUT', 16), 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'FREEA': 70, 'E7': 30, 'E2FLT': 44, 'REV': 44,
+         }),
+    # a soft sustained square chord: slow-ish attack, mellow filter, wide chorus, a long release into the room. The warm side of the keys.
+    # End B: the filter opens, the chorus and the room widen, the attack leans in.
+    dict(engine='ANALOG', idx=26, name='SUNDAY KEYS', cat='KEYS', bamt=20,  # #138
+         p={
+            'ATK': 26, 'DEC': 90, 'SUS': 84, 'REL': 82, 'LRATE': 22, 'LWAVE': 1, 'LD_FLT': 4, 'KTRK': 20, 'CHOR': 96, 'DLY': 20, 'REV': 56,
+            'FREEA': 30, 'FREEB': 12, 'FREED': 2, 'E2ATK': 30, 'E2DEC': 80, 'E2SUS': 40, 'E2REL': 76, 'E2FLT': 14, 'TRIM': 98, 'E1': 1, 'E2': 22,
+            'MOD1': ('VEL', 'CUT', 10), 'MOD2': ('CYCLE', 'CUT', 6), 'CYCLE RISE': 110, 'CYCLE FALL': 110, 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'FREEA': 44, 'CHOR': 110, 'REV': 86, 'ATK': 50,
+         }),
+    # a low saw + sub chord an octave down: the dub-techno chord that sits under the kick, a quick filter pluck, echo behind it.
+    # End B: the filter shuts and the echo grows (the chord goes into the delay).
+    dict(engine='ANALOG', idx=27, name='LOW STAB', cat='KEYS', bamt=20,  # #139
+         p={
+            'ATK': 0, 'DEC': 72, 'SUS': 60, 'REL': 54, 'KTRK': 12, 'DIST': 12, 'CHOR': 24, 'DLY': 52, 'REV': 36, 'FREEA': 44, 'FREEB': 30, 'FREED': 2,
+            'E2ATK': 0, 'E2DEC': 60, 'E2SUS': 0, 'E2REL': 52, 'E2FLT': 30, 'TRIM': 110, 'E1': 6, 'E7': 20, 'MOD1': ('VEL', 'CUT', 14), 'LTRIG': 1,
+            'L2TRIG': 1,
+         },
+         bend={
+            'FREEA': 24, 'DLY': 90, 'E2FLT': 12, 'REV': 60,
+         }),
+    # a very dark, nearly still pad: square waves, a veil of noise, the filter low, a huge room. A fog under the chords.
+    # End B: the filter lifts a little, more noise, the room as big as it goes.
+    dict(engine='ANALOG', idx=28, name='FOG BANK', cat='PAD', bamt=25,  # #140
+         p={
+            'ATK': 100, 'DEC': 100, 'SUS': 127, 'REL': 110, 'LRATE': 8, 'LWAVE': 1, 'LD_FLT': 5, 'L2RATE': 12, 'KTRK': 24, 'CHOR': 84, 'DLY': 24,
+            'REV': 100, 'SPRD': 60, 'EQHG': -3, 'FREEA': 28, 'FREEB': 20, 'FREED': 2, 'E2ATK': 96, 'E2DEC': 100, 'E2SUS': 80, 'E2REL': 100,
+            'E2FLT': 14, 'TRIM': 94, 'E1': 1, 'E2': 36, 'E4': 14, 'MOD1': ('CYCLE', 'CUT', 6), 'CYCLE RISE': 112, 'CYCLE FALL': 112, 'LTRIG': 1,
+            'L2TRIG': 1,
+         },
+         bend={
+            'FREEA': 44, 'E4': 40, 'REV': 120, 'CHOR': 100,
+         }),
+    # a brighter pulse-width pad that drifts: the width and the filter wander on slow LFOs, a bright chorus, a light echo.
+    # End B: more detune, the filter opens, wider chorus and echo.
+    dict(engine='ANALOG', idx=29, name='NEON DRIFT', cat='PAD', bamt=25,  # #141
+         p={
+            'ATK': 74, 'DEC': 100, 'SUS': 127, 'REL': 96, 'LRATE': 18, 'LWAVE': 1, 'LD_FLT': 8, 'L2RATE': 11, 'KTRK': 30, 'CHOR': 80, 'DLY': 36,
+            'REV': 62, 'SPRD': 54, 'FREEA': 58, 'FREEB': 26, 'FREED': 2, 'E2ATK': 80, 'E2DEC': 100, 'E2SUS': 90, 'E2REL': 90, 'E2FLT': 18, 'TRIM': 95,
+            'E1': 4, 'E2': 30, 'MOD1': ('LFO2', 'SHP', 10), 'MOD2': ('CYCLE', 'CUT', 7), 'MOD3': ('AT', 'CUT', 11), 'CYCLE RISE': 108,
+            'CYCLE FALL': 108, 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'FREEA': 74, 'E2': 55, 'CHOR': 100, 'DLY': 56,
+         }),
+    # a short square blip for the echo: the filter pops and shuts, the delay does the rest.
+    # End B: more echo and a longer tail, the filter lower.
+    dict(engine='ANALOG', idx=30, name='DUB BLIP', cat='PLUCK', bamt=20,  # #142
+         p={
+            'ATK': 0, 'DEC': 80, 'SUS': 0, 'REL': 44, 'KTRK': 34, 'CHOR': 20, 'DLY': 92, 'REV': 28, 'FREEA': 50, 'FREEB': 40, 'FREED': 2, 'E2ATK': 0,
+            'E2DEC': 50, 'E2SUS': 0, 'E2REL': 46, 'E2FLT': 44, 'TRIM': 114, 'E1': 1, 'E2': 8, 'E7': 8, 'MOD1': ('VEL', 'CUT', 16), 'LTRIG': 1,
+            'L2TRIG': 1,
+         },
+         bend={
+            'DLY': 110, 'FREEA': 28, 'REV': 60, 'DEC': 62,
+         }),
+    # a soft triangle pluck with a touch of tape drive and chorus, a medium decay, a warm tail.
+    # End B: brighter, more chorus, a bigger room.
+    dict(engine='ANALOG', idx=31, name='TAPE PLUCK', cat='PLUCK', bamt=20,  # #143
+         p={
+            'ATK': 0, 'DEC': 98, 'SUS': 0, 'REL': 70, 'LRATE': 24, 'LWAVE': 1, 'LD_FLT': 4, 'KTRK': 28, 'DIST': 8, 'CHOR': 56, 'DLY': 44, 'REV': 40,
+            'FREEA': 50, 'FREEB': 14, 'FREED': 2, 'E2ATK': 0, 'E2DEC': 70, 'E2SUS': 0, 'E2REL': 62, 'E2FLT': 28, 'TRIM': 107, 'E1': 0, 'E2': 20,
+            'MOD1': ('VEL', 'CUT', 12), 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'FREEA': 58, 'CHOR': 80, 'REV': 66,
+         }),
+    # a hollow pulse-width pluck: the width falls with the envelope, an echo in the gaps.
+    # End B: the filter shuts, the envelope bites less, the echo deepens.
+    dict(engine='ANALOG', idx=32, name='HOLLOW POP', cat='PLUCK', bamt=20,  # #144
+         p={
+            'ATK': 0, 'DEC': 92, 'SUS': 0, 'REL': 56, 'KTRK': 30, 'CHOR': 30, 'DLY': 56, 'REV': 30, 'FREEA': 60, 'FREEB': 30, 'FREED': 2, 'E2ATK': 0,
+            'E2DEC': 56, 'E2SUS': 0, 'E2REL': 50, 'E2FLT': 36, 'TRIM': 112, 'E1': 4, 'E2': 16, 'MOD1': ('ENV2', 'SHP', 16),
+            'MOD2': ('VEL', 'CUT', 12), 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'FREEA': 36, 'DLY': 90, 'E2FLT': 20,
+         }),
+    # a slow dark drone: two saws wide-detuned an octave down, a low filter that breathes, drive and a long room. Hold a key and leave it.
+    # End B: the filter breathes faster and higher, the room as big as it goes.
+    dict(engine='ANALOG', idx=33, name='NIGHT DRONE', cat='FX', bamt=25,  # #145
+         p={
+            'ATK': 100, 'DEC': 100, 'SUS': 127, 'REL': 110, 'LRATE': 6, 'LWAVE': 1, 'LD_FLT': 10, 'L2RATE': 9, 'KTRK': 0, 'TRANS': -12, 'DIST': 20,
+            'CHOR': 60, 'DLY': 40, 'REV': 110, 'FREEA': 24, 'FREEB': 30, 'FREED': 2, 'E2ATK': 100, 'E2DEC': 100, 'E2SUS': 90, 'E2REL': 100,
+            'E2FLT': 10, 'TRIM': 92, 'E2': 50, 'E7': 30, 'MOD1': ('LFO2', 'CUT', 10), 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'FREEA': 40, 'LRATE': 14, 'REV': 127,
+         }),
+    # a full drawbar chord organ for the house bed: third-harmonic percussion, slow rotor, a gentle filter, a bit of echo.
+    # End B: the rotor goes FAST, the filter opens, more room.
+    dict(engine='WHEEL', idx=8, name='DEEP ORGAN', cat='KEYS', bamt=20,  # #146
+         p={
+            'ATK': 4, 'DEC': 100, 'SUS': 127, 'REL': 56, 'KTRK': 24, 'CHOR': 10, 'DLY': 36, 'REV': 44, 'FREEA': 48, 'FREEB': 14, 'FREED': 2,
+            'E2ATK': 0, 'E2DEC': 80, 'E2SUS': 40, 'E2REL': 60, 'E2FLT': 12, 'TRIM': 104, 'E1': 15, 'E5': 2, 'E6': 30, 'E7': 24, 'E8': 1,
+            'MOD1': ('VEL', 'CUT', 10), 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'E8': 2, 'FREEA': 66, 'REV': 66,
+         }),
+    # a soft flute-and-mellow organ chord: no percussion, a slow rotor, a dark filter, a warm room. The quiet organ.
+    # End B: the filter opens, the room grows, the rotor speeds up.
+    dict(engine='WHEEL', idx=9, name='SOFT ORGAN', cat='KEYS', bamt=20,  # #147
+         p={
+            'ATK': 14, 'DEC': 100, 'SUS': 127, 'REL': 70, 'KTRK': 20, 'CHOR': 40, 'DLY': 20, 'REV': 56, 'FREEA': 40, 'FREEB': 10, 'FREED': 2,
+            'E2ATK': 0, 'E2DEC': 80, 'E2SUS': 50, 'E2REL': 60, 'E2FLT': 8, 'TRIM': 100, 'E1': 1, 'E5': 0, 'E6': 10, 'E7': 0, 'E8': 1,
+            'MOD1': ('VEL', 'CUT', 8), 'MOD2': ('CYCLE', 'CUT', 6), 'CYCLE RISE': 110, 'CYCLE FALL': 110, 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'FREEA': 56, 'REV': 90, 'E8': 2,
+         }),
+    # a bright house organ stab-and-hold: the BRITE registration, second-harmonic percussion and click, driven a little, a short echo.
+    # End B: more drive, the rotor fast, a longer echo.
+    dict(engine='WHEEL', idx=10, name='HOUSE ORGAN', cat='KEYS', bamt=20,  # #148
+         p={
+            'ATK': 0, 'DEC': 60, 'SUS': 100, 'REL': 40, 'KTRK': 24, 'CHOR': 18, 'DLY': 30, 'REV': 26, 'FREEA': 70, 'FREEB': 18, 'FREED': 2,
+            'E2ATK': 0, 'E2DEC': 56, 'E2SUS': 0, 'E2REL': 50, 'E2FLT': 20, 'TRIM': 104, 'E1': 13, 'E5': 1, 'E6': 70, 'E7': 40, 'E8': 1,
+            'MOD1': ('VEL', 'CUT', 10), 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'E8': 2, 'E7': 70, 'DLY': 60,
+         }),
+    # a string-registration organ pad: a long swell, slow rotor, chorus, a big room.
+    # End B: the rotor fast, the filter up, the room as large as it goes.
+    dict(engine='WHEEL', idx=11, name='ORGAN WASH', cat='PAD', bamt=25,  # #149
+         p={
+            'ATK': 80, 'DEC': 100, 'SUS': 127, 'REL': 100, 'LRATE': 17, 'LWAVE': 1, 'LD_FLT': 4, 'KTRK': 24, 'CHOR': 70, 'DLY': 20, 'REV': 90,
+            'FREEA': 52, 'FREEB': 10, 'FREED': 2, 'E2ATK': 90, 'E2DEC': 100, 'E2SUS': 76, 'E2REL': 96, 'E2FLT': 10, 'TRIM': 95, 'E1': 11, 'E4': 2,
+            'E8': 1, 'MOD1': ('CYCLE', 'CUT', 6), 'CYCLE RISE': 112, 'CYCLE FALL': 112, 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'E8': 2, 'FREEA': 66, 'REV': 110,
+         }),
+    # a bright resonant-saw pad that glitters: the DCW moves on a slow LFO and the envelope, a lifted top, a late echo.
+    # End B: the DCW settles lower, the filter closes a touch, the room grows.
+    dict(engine='PHASE', idx=12, name='STAR FIELD', cat='PAD', bamt=25,  # #150
+         p={
+            'ATK': 70, 'DEC': 100, 'SUS': 127, 'REL': 96, 'LRATE': 19, 'LWAVE': 1, 'LD_FLT': 4, 'L2RATE': 23, 'KTRK': 30, 'CHOR': 64, 'DLY': 52,
+            'REV': 70, 'SPRD': 50, 'EQHG': 2, 'FREEA': 70, 'FREEB': 14, 'FREED': 2, 'E2ATK': 76, 'E2DEC': 100, 'E2SUS': 80, 'E2REL': 94, 'E2FLT': 12,
+            'TRIM': 101, 'E1': 5, 'E2': 0, 'E3': 90, 'E4': 20, 'E5': 30, 'MOD1': ('LFO2', 'E3', 14), 'MOD2': ('ENV2', 'E3', 8),
+            'MOD3': ('CYCLE', 'CUT', 6), 'CYCLE RISE': 108, 'CYCLE FALL': 108, 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'E3': 60, 'FREEA': 56, 'REV': 100,
+         }),
+    # a soft glassy phase-distortion electric piano: double-sine, a mellow bite, chorus and a room.
+    # End B: a brighter, wider chime.
+    dict(engine='PHASE', idx=13, name='GLASS KEYS', cat='KEYS', bamt=20,  # #151
+         p={
+            'ATK': 0, 'DEC': 92, 'SUS': 40, 'REL': 70, 'KTRK': 28, 'CHOR': 60, 'DLY': 30, 'REV': 50, 'FREEA': 66, 'FREEB': 10, 'FREED': 2, 'E2ATK': 0,
+            'E2DEC': 76, 'E2SUS': 0, 'E2REL': 60, 'E2FLT': 14, 'TRIM': 102, 'E1': 3, 'E2': 0, 'E3': 36, 'E4': 70, 'MOD1': ('VEL', 'SHP', 10),
+            'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'E3': 56, 'CHOR': 90, 'REV': 76,
+         }),
+    # a plucked comb wavetable: the position falls with the envelope, a plucked string without a body.
+    # End B: the position higher, more echo.
+    dict(engine='WAVE', idx=23, name='COMB PLUCK', cat='PLUCK', bamt=20,  # #152
+         p={
+            'ATK': 0, 'DEC': 98, 'SUS': 0, 'REL': 70, 'KTRK': 28, 'CHOR': 22, 'DLY': 40, 'REV': 38, 'FREEA': 74, 'FREEB': 12, 'FREED': 2, 'E2ATK': 0,
+            'E2DEC': 70, 'E2SUS': 0, 'E2REL': 60, 'E2FLT': 14, 'TRIM': 112, 'E1': 9, 'E2': 20, 'MOD1': ('VEL', 'SHP', 16), 'MOD2': ('ENV2', 'E2', 20),
+            'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'E2': 70, 'DLY': 80, 'REV': 60,
+         }),
+    # tape hiss: brownish noise through a soft low-pass, a few clicks, the cutoff drifting; a quiet floor to lay under the chords.
+    # End B: darker and denser, more drift, the room fuller.
+    dict(engine='NOISE', idx=12, name='TAPE HISS', cat='FX', bamt=25,  # #153
+         p={
+            'ATK': 92, 'DEC': 100, 'SUS': 127, 'REL': 104, 'LRATE': 10, 'LWAVE': 1, 'KTRK': 0, 'CHOR': 30, 'DLY': 20, 'REV': 80, 'FREEA': 62,
+            'FREEB': 16, 'FREED': 1, 'TRIM': 104, 'E1': 0, 'E2': 30, 'E6': 14, 'E7': 40, 'E8': 0, 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'E2': 110, 'E6': 40, 'E7': 70, 'REV': 100,
+         }),
+    # a deep phase-distortion pad that never sits still: resonant triangle, the DCW swept by a slow LFO and the 20 s cycle, a very deep room.
+    # End B: the DCW opens, the LFO speeds up, the room as big as it goes.
+    dict(engine='PHASE', idx=14, name='DEEP BLUE', cat='PAD', bamt=25,  # #154
+         p={
+            'ATK': 100, 'DEC': 100, 'SUS': 127, 'REL': 108, 'LRATE': 6, 'LWAVE': 1, 'LD_FLT': 6, 'L2RATE': 10, 'KTRK': 24, 'CHOR': 70, 'DLY': 36,
+            'REV': 104, 'SPRD': 64, 'FREEA': 48, 'FREEB': 16, 'FREED': 2, 'E2ATK': 104, 'E2DEC': 100, 'E2SUS': 70, 'E2REL': 100, 'E2FLT': 14,
+            'TRIM': 100, 'E1': 6, 'E2': 0, 'E3': 40, 'E4': 72, 'E5': 12, 'MOD1': ('LFO2', 'E3', 18), 'MOD2': ('CYCLE', 'E3', 14), 'CYCLE RISE': 125,
+            'CYCLE FALL': 125, 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'E3': 70, 'FREEA': 60, 'L2RATE': 18, 'REV': 116,
+         }),
+    # a warm detuned pad, two square voices, a wow on the filter and a very wide chorus: the tape-machine pad.
+    # End B: more detune, the filter and the DCW open, the chorus fills the width.
+    dict(engine='PHASE', idx=15, name='TAPE CLOUD', cat='PAD', bamt=25,  # #155
+         p={
+            'ATK': 84, 'DEC': 100, 'SUS': 127, 'REL': 100, 'LRATE': 22, 'LWAVE': 1, 'LD_FLT': 7, 'L2RATE': 15, 'KTRK': 26, 'CHOR': 100, 'DLY': 30,
+            'REV': 62, 'SPRD': 48, 'EQHG': -2, 'FREEA': 56, 'FREEB': 10, 'FREED': 2, 'E2ATK': 86, 'E2DEC': 100, 'E2SUS': 84, 'E2REL': 96, 'E2FLT': 10,
+            'TRIM': 84, 'E1': 1, 'E2': 2, 'E3': 54, 'E4': 40, 'E5': 40, 'MOD1': ('CYCLE', 'CUT', 7), 'CYCLE RISE': 112, 'CYCLE FALL': 112, 'LTRIG': 1,
+            'L2TRIG': 1,
+         },
+         bend={
+            'E5': 70, 'FREEA': 66, 'CHOR': 110, 'E3': 70,
+         }),
+    # a bright icy phase-distortion stab: resonant saw, the DCW wide open, a high filter, a long echo behind a short note.
+    # End B: the DCW and the filter fall, the echo longer.
+    dict(engine='PHASE', idx=16, name='ICE STAB', cat='KEYS', bamt=20,  # #156
+         p={
+            'ATK': 0, 'DEC': 80, 'SUS': 0, 'REL': 56, 'KTRK': 30, 'CHOR': 30, 'DLY': 56, 'REV': 44, 'FREEA': 82, 'FREEB': 10, 'FREED': 2, 'E2ATK': 0,
+            'E2DEC': 60, 'E2SUS': 0, 'E2REL': 50, 'E2FLT': 10, 'TRIM': 113, 'E1': 5, 'E2': 0, 'E3': 100, 'E4': 50, 'MOD1': ('VEL', 'SHP', 12),
+            'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'E3': 60, 'FREEA': 66, 'DLY': 90,
+         }),
+    # a soft phase-distortion electric piano that holds: a double-sine bell, chorus, a slow shimmer on the shape.
+    # End B: a brighter bite, wider chorus, a bigger room.
+    dict(engine='PHASE', idx=17, name='SOFT EP', cat='KEYS', bamt=20,  # #157
+         p={
+            'ATK': 0, 'DEC': 100, 'SUS': 70, 'REL': 76, 'LRATE': 36, 'LWAVE': 1, 'LD_SHP': 5, 'KTRK': 28, 'CHOR': 80, 'DLY': 24, 'REV': 56,
+            'FREEA': 60, 'FREEB': 10, 'FREED': 2, 'E2ATK': 0, 'E2DEC': 80, 'E2SUS': 10, 'E2REL': 66, 'E2FLT': 12, 'TRIM': 91, 'E1': 3, 'E2': 0,
+            'E3': 44, 'E4': 66, 'MOD1': ('VEL', 'SHP', 10), 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'E3': 62, 'CHOR': 100, 'REV': 80,
+         }),
+    # a breathy plucked air table: the position sweeps with the envelope, a medium echo and room.
+    # End B: the position higher, a longer echo and room.
+    dict(engine='WAVE', idx=24, name='AIR POP', cat='PLUCK', bamt=20,  # #158
+         p={
+            'ATK': 0, 'DEC': 90, 'SUS': 0, 'REL': 70, 'KTRK': 28, 'CHOR': 40, 'DLY': 50, 'REV': 50, 'FREEA': 70, 'FREEB': 10, 'FREED': 2, 'E2ATK': 0,
+            'E2DEC': 70, 'E2SUS': 0, 'E2REL': 60, 'E2FLT': 12, 'TRIM': 116, 'E1': 25, 'E2': 40, 'MOD1': ('ENV2', 'E2', 18),
+            'MOD2': ('VEL', 'CUT', 10), 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'E2': 80, 'REV': 80, 'DLY': 80,
+         }),
+    # a glassy plucked table, bright and short with a long room: a bottle tapped in a hall.
+    # End B: the position higher, the room larger, the chorus fuller.
+    dict(engine='WAVE', idx=25, name='GLASS POP', cat='PLUCK', bamt=20,  # #159
+         p={
+            'ATK': 0, 'DEC': 96, 'SUS': 0, 'REL': 76, 'KTRK': 30, 'CHOR': 24, 'DLY': 36, 'REV': 56, 'FREEA': 78, 'FREEB': 8, 'FREED': 2, 'E2ATK': 0,
+            'E2DEC': 74, 'E2SUS': 0, 'E2REL': 62, 'E2FLT': 10, 'TRIM': 110, 'E1': 11, 'E2': 30, 'MOD1': ('ENV2', 'E2', 24),
+            'MOD2': ('VEL', 'SHP', 12), 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'E2': 70, 'CHOR': 50, 'REV': 80,
+         }),
+    # a smooth-registration organ pad with the rotor FAST: a shimmer on a slow swell, a lifted top, a big room.
+    # End B: the rotor goes slow, the filter opens, the room larger.
+    dict(engine='WHEEL', idx=12, name='ROTOR HAZE', cat='PAD', bamt=25,  # #160
+         p={
+            'ATK': 60, 'DEC': 100, 'SUS': 127, 'REL': 96, 'LRATE': 21, 'LWAVE': 1, 'LD_FLT': 5, 'KTRK': 24, 'CHOR': 40, 'DLY': 24, 'REV': 82,
+            'FREEA': 56, 'FREEB': 10, 'FREED': 2, 'E2ATK': 80, 'E2DEC': 100, 'E2SUS': 80, 'E2REL': 90, 'E2FLT': 8, 'TRIM': 103, 'E1': 3, 'E4': 3,
+            'E8': 2, 'MOD1': ('CYCLE', 'CUT', 6), 'CYCLE RISE': 112, 'CYCLE FALL': 112, 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'E8': 1, 'FREEA': 68, 'REV': 100, 'E4': 5,
          }),
 ]

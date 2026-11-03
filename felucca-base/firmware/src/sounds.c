@@ -32,16 +32,16 @@ typedef struct {
 typedef struct {
     const char *name;
     uint8_t eng, cat, flags, np; /* engine index, CAT_*, DSF_*, pairs */
-    uint8_t bamt;                /* End B: the AMOUNT (%) */
-    uint16_t at;                 /* first bit in its DS_PACKED stream */
+    uint32_t at;                 /* first bit in its DS_PACKED stream */
     uint16_t bseed;              /* End B: the seed (0: the hash of (engine, index)) */
+    uint8_t bamt;                /* End B: the AMOUNT (%) */
 } ds_sound_t;
 #define DSF_MONO 1u              /* (informative: the generator wrote VOICE LEG) */
 #define DSF_ARP 2u               /* sets the arp (a pair in P_AMODE .. P_AORDER) */
 #define DSF_KEYS 4u              /* sets the chord keys (a pair in P_CHRD, P_VOIC; never a scale: it is the instrument's, core.h): lent like the arp (ui.c ds_keys) */
 #include "duell_sounds.h"
 _Static_assert(DS_NENG >= NENGINES && DS_N <= 255u, "duell_sounds.h: DS_ENG_AT covers every engine, DS_LIST bytes");
-_Static_assert(DS_PACKED_BITS <= 65535u, "duell_sounds.h: packed sound bit offsets fit ds_sound_t.at");
+_Static_assert(DS_PACKED_BITS <= 0xFFFFFFu, "duell_sounds.h: packed sound bit offsets fit ds_sound_t.at");
 
 static uint32_t ds_count(uint32_t e) { return e < NENGINES ? (uint32_t)(DS_ENG_AT[e + 1u] - DS_ENG_AT[e]) : 0u; }
 static const ds_sound_t *ds_get(uint32_t e, uint32_t k) { return k < ds_count(e) ? &DS_SOUNDS[DS_ENG_AT[e] + k] : 0; }

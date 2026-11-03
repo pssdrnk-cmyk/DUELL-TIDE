@@ -25,6 +25,8 @@ tests/sound_audit.c SOUND_BSEED=1 so End B keeps A's loudness and roughly its br
 Output (firmware/src/sounds.c reads it): DS_PACKED (bitstream of signed value bytes and lossless ID deltas), DS_SOUNDS (engine-major: sound k of engine e is
 DS_SOUNDS[DS_ENG_AT[e] + k], k = its 'idx', the identity favourites, shadows and the End B seed use: append-only per
 engine), DS_LIST (the browse order: category, then engine in ENGINE_ORDER, then name).
+The first N_BASE sounds of duell_sounds.py (the 128 of the bank: the patch slots' factory places, upreset.c) keep their browse places; a sound after them ('late') is
+listed after those, in the same order among themselves, so no place of the 128 moves when sounds are added (upreset.c UP_NXTRA: read-only places after the USER slots').
 """
 import importlib.util
 import math
@@ -426,7 +428,7 @@ def build(data):
                 block = endb.encode(e, bamt + 1, vals, None, marks, fm)   # (no Original here: the firmware adds routes at a load, mod.c; tools/convert_endb.py checks against the firmware's own)
             except ValueError as x:
                 die(f"{where}: {x}")
-        sounds.append({"e": e, "idx": idx, "name": name, "cat": s["cat"], "mono": bool(s.get("mono")), "arp": arp,
+        sounds.append({"e": e, "idx": idx, "name": name, "cat": s["cat"], "mono": bool(s.get("mono")), "arp": arp, "late": n >= getattr(data, "N_BASE", 1 << 30),
                        "keys": keys, "pairs": sorted(pairs.items()), "recipe": s.get("recipe", ""), "bamt": bamt,
                        "bseed": bseed, "endb": block})
     for e in {x["e"] for x in sounds}:
@@ -437,7 +439,7 @@ def build(data):
         die("more than 255 sounds: widen DS_LIST / DS_ENG_AT")
     sounds.sort(key=lambda x: (x["e"], x["idx"]))
     rank = {e: i for i, e in enumerate(order)}
-    lst = sorted(range(len(sounds)), key=lambda g: (CATS.index(sounds[g]["cat"]), rank.get(sounds[g]["e"], 99),
+    lst = sorted(range(len(sounds)), key=lambda g: (sounds[g]["late"], CATS.index(sounds[g]["cat"]), rank.get(sounds[g]["e"], 99),
                                                     sounds[g]["name"]))
     idname = {v: k for k, v in ids.items()}
     for xn, (wid, *_rest) in xtp.items():
@@ -473,8 +475,8 @@ def emit(path, sounds, lst, engines, cats, idname):
                         put_bits(pid, 8)
                 put_bits(value & 0xFF, 8)                # exact two's-complement byte representation
     packed_bits = len(bits)
-    if packed_bits > 65535:
-        die(f"packed ID/value stream is {packed_bits} bits; ds_sound_t.at is limited to 65535")
+    if packed_bits > 0xFFFFFF:
+        die(f"packed ID/value stream is {packed_bits} bits; ds_sound_t.at is limited to 24 bits")
     packed = [sum(bits[i + j] << (7 - j) for j in range(min(8, len(bits) - i)))
               for i in range(0, len(bits), 8)]
     L += [f"#define DS_NPAIRS {npairs}u", f"#define DS_PACKED_BITS {packed_bits}u",
@@ -490,8 +492,8 @@ def emit(path, sounds, lst, engines, cats, idname):
           "static const ds_sound_t DS_SOUNDS[DS_N ? DS_N : 1u] = {"]
     for s in sounds:
         fl = " | ".join(f for f, on in (("DSF_MONO", s["mono"]), ("DSF_ARP", s["arp"]), ("DSF_KEYS", s["keys"])) if on) or "0"
-        L.append(f"    {{\"{s['name']}\", {s['e']}, {cats[s['cat']]}, {fl}, {len(s['pairs'])}, {s['bamt']}, {s['at']}, "
-                 f"{s['bseed']}u}},"
+        L.append(f"    {{\"{s['name']}\", {s['e']}, {cats[s['cat']]}, {fl}, {len(s['pairs'])}, {s['at']}u, "
+                 f"{s['bseed']}u, {s['bamt']}}},"
                  f"   /* {s['cat']}; {s['recipe']} */")
     L += ["};"]
     L += ["", "/* Test-only independent reference: original uncompressed (ID, signed value) pairs. */",
@@ -524,7 +526,7 @@ def emit(path, sounds, lst, engines, cats, idname):
     L += ["};", f"static const uint16_t DS_ENDB_AT[DS_N + 1u] = {{" + ", ".join(map(str, offs)) + "};", ""]
     eng_at = [sum(1 for s in sounds if s["e"] < e) for e in range(NENG_TABLE + 1)]
     L += ["static const uint8_t DS_ENG_AT[DS_NENG + 1u] = {" + ", ".join(map(str, eng_at)) + "};",
-          "/* the browse order (BASS LEAD PAD PLUCK KEYS FX OTHER; within one by ENGINE_ORDER, then name): DS_SOUNDS indices */",
+          "/* the browse order (BASS LEAD PAD PLUCK KEYS FX OTHER; within one by ENGINE_ORDER, then name; the sounds past N_BASE after those, the same way): DS_SOUNDS indices */",
           "static const uint8_t DS_LIST[DS_N ? DS_N : 1u] = {" + ", ".join(map(str, lst)) + "};", ""]
     Path(path).write_text("\n".join(L))
     return npairs, len(packed)

@@ -214,9 +214,12 @@ static int tide_foot_two(void);
 #endif
 
 /* U1 (upreset.c, patslot.c, ui*.c): the last UP_NUSER voice slots and PS_NUSER pattern slots are USER slots, empty until saved. The factory
- * sounds / patterns they displace stay listed after them as read-only places (voice places UP_SLOTS.., pattern places PS_SLOTS..). No record moves */
+ * sounds / patterns they displace stay listed after them as read-only places (voice places UP_SLOTS.., pattern places PS_SLOTS..). No record moves.
+ * The factory sounds past the 128 of the bank (sounds.c DS_N, tools/duell_sounds.py N_BASE) follow the displaced ones as read-only voice places too (UP_NXTRA);
+ * none has a slot: they are for the PATCHES list, TIDE and the editor's sound lists, and SAVE offers USER 1 for them */
+#define UP_NXTRA (DS_N > UP_SLOTS ? DS_N - UP_SLOTS : 0u)
 #define UP_USER0 (UP_SLOTS - UP_NUSER)
-#define UP_VSLOTS (UP_SLOTS + UP_NUSER)
+#define UP_VSLOTS (UP_SLOTS + UP_NUSER + UP_NXTRA)
 #define PS_USER0 (PS_SLOTS - PS_NUSER)
 #define PS_VSLOTS (PS_SLOTS + PS_NUSER)
 #endif
