@@ -118,7 +118,7 @@ static int clock_test(uint32_t source)
     clock_packet(source == 1u ? 2u : 1u, 0xFA, 1);
     bad += check(source == 1 ? "USB mode ignores TRS Start" : "TRS mode ignores USB Start", !song.playing);
     clock_packet(source, 0xFA, 2);
-    bad += check(source == 1 ? "USB Start begins at step zero" : "TRS Start begins at step zero", song.playing && trk[0].seq_idx == 0u);
+    bad += check(source == 1 ? "USB Start arms step zero" : "TRS Start arms step zero", song.playing && trk[0].seq_pos == 0x7FFFFFFFu);
     clock_to(source, 2, 7);
     bad += check(source == 1 ? "USB six pulses advance exactly one 16th step" : "TRS six pulses advance exactly one 16th step", trk[0].seq_idx == 1u && song.g[G_BPM] == 120);
     fm1_ms = 132; events_block(CTL); uint16_t idx = trk[0].seq_idx; uint32_t pos = trk[0].seq_pos;
@@ -505,7 +505,7 @@ static int auto_clock_test(void)
     /* Start locks at once; the locked port's Stop / Continue; the other port's Start ignored; silence after Stop: INT, stopped */
     ac_setup(); ac_run(0, 0, 100, 0);
     queued(0xFA, 0, 0, 1);
-    bad += check("USB Start in AUTO: locked at once, plays from step 1", clock_src() == 1u && song.playing && trk[1].seq_idx == 0u);
+    bad += check("USB Start in AUTO: locked at once, arms step 1", clock_src() == 1u && song.playing && trk[1].seq_pos == 0x7FFFFFFFu);
     ac_run(120, 0, 500, 0);
     bad += check("USB Start then its pulses: the steps move", trk[1].seq_idx > 0u && clock_src() == 1u);
     queued(0xFC, 0, 0, 1);
