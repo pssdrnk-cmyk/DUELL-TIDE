@@ -12,7 +12,7 @@ enum { LV_NONE, LV_ENV, LV_LFO, LV_FILT, LV_CHORD, LV_TWIN, LV_INS, LV_MOD, LV_C
 /* one look every LV_EVERY frames (15 a second: a picture redraw is 87 .. 150 k basic blocks, the animation costs by the redraw rate); the marker's line: first canvas row, rows */
 #define LV_EVERY 4u
 #define LV_BUSY 205u                                 /* the audio's load (song.cpu_q8, the figure ABOUT shows and the overload guard reads; 256 = 100 %): above 80 % no look is taken, the marker stands where it was */
-static const uint8_t LV_LINE[10][2] = {{0, 0}, {2, 66}, {6, 64}, {0, 0}, {0, 0}, {0, 0}, {6, 64}, {0, 0}, {4, 60}, {20, 46}};
+static const uint8_t LV_LINE[10][2] = {{0, 0}, {2, 66}, {6, 64}, {0, 0}, {0, 0}, {0, 0}, {6, 64}, {0, 0}, {4, 54}, {20, 46}};
 
 static struct {
     uint32_t sig, kind, n, pv;                       /* the look's signature, the page's kind, a marker is there, it is a PREVIEW */
@@ -429,12 +429,8 @@ static void live_draw(const page_t *pg, const track_t *t)
             }
             lv_mark();
         }
-        if (lv.pv) {                                 /* PREVIEW: the caption row, no ground of its own */
-            int32_t o = cv_oy;
-            cv_oy = 0;
-            cv_text(grid_on ? UT_GR_NOTE_X : PANEL_X0 + 2, grid_on ? UT_TY(S, UT_GR_NOTE_BASE - UT_GR_Y) : 94 + o, &AF_S, "PREVIEW", T_MID);
-            cv_oy = o;
-        }
+        if (lv.pv)                                   /* PREVIEW: the pictures' own caption row (graph_cap) */
+            graph_cap("PREVIEW", T_MID);
     } else if (lv.kind == LV_FILT) {
         if (lv.fc)
             lv_filt_draw(t);

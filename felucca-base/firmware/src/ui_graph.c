@@ -1623,8 +1623,8 @@ static void graph_sub(const track_t *t, uint16_t c)
  * proportion of their times (ENV_LIN's steps; with SYNC the note values' share of a bar), three rise-fall shapes for LOOP, one then rest for ONCE. 2/2 draws the one cycle large, rise and fall the same width, with the straight line behind it
  * (CURVE 0) so the bend shows. The times themselves are on the cards: the picture is the shape, not a time scale */
 #if DUELL_TIDE                                      /* TIDE: the shape fits the 76-row card (the caption row 64 ..): stock 8 .. 92 ran under the cards, and the live playhead floated where no line showed */
-#define CY_TOP 6
-#define CY_BASE 62
+#define CY_TOP 6                                    /* (the base leaves the 7 px playhead dot clear of the PREVIEW caption, graph_cap) */
+#define CY_BASE 56
 #else
 #define CY_TOP 8
 #define CY_BASE 92
