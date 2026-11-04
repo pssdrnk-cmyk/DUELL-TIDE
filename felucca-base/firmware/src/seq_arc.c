@@ -5,7 +5,7 @@
  * notes for its first 2 bars; ties and the effects' tails ring; it is the breakdown's first phrase), BREAK 2-4 with the drop (both parts thinned, softer sounds), RECOVER 1-2 (the
  * thinning lifts one part at a time). ARC RISE has no drop of its own; ARC DROP drops by itself on about half of the arcs; the hand
  * (OCT- + K2 on the TIDE page, tarc_drop_hand) drops at the next phrase in either. Playback masks only: KEEP stores the whole pattern,
- * nothing here is saved, a power cycle starts at RISE. ARC OFF: every lever neutral, as before. The planner is main loop only; the
+ * nothing here is saved, a power cycle starts at RISE. STOP and PLAY leave the arc where it was; a load or a K1 stop starts it again. ARC OFF: every lever neutral, as before. The planner is main loop only; the
  * audio interrupt reads tarc_dropphr, tarc_thin, tarc_fast (seq_morph.c seq_play_step) and tarc_hold (seq_poly.c). */
 enum { AP_RISE, AP_PEAK, AP_DROP, AP_BREAK, AP_RECOVER };
 static struct { uint8_t last, phase, left, len, next, t, hand, cnt, run, phr, hleft; } tarc;   /* hleft: the phrases left before a hand drop shortened the phase */
@@ -52,13 +52,12 @@ static void tarc_levers(uint32_t auto_mask)
 static void tarc_poll(void)
 {
     uint32_t cur = (uint32_t)(sqm_bar >> 2) & 63u, am = sqm_auto;
-    if (!sqm_arc || !am) {
-        tarc.run = 0;
+    if (!sqm_arc || (!am && !glide_tide_on()))
+        tarc.run = 0;                                    /* (no tide to follow: a K1 stop, a lane taken by hand; STOP / PLAY, REC and the launch wait only pause the arc) */
+    if (!am) {
         tarc_clear();
         return;
     }
-    if (!song.playing)
-        return;
     if (!tarc.run) {                                     /* a session starts at RISE */
         tarc.run = 1, tarc.last = (uint8_t)cur, tarc.phr = 0;
         tarc_begin(AP_RISE);
@@ -117,3 +116,13 @@ static int32_t tarc_bright(void)                         /* +1 brighter, -1 soft
     return tarc.phase == AP_PEAK || (tarc.phase == AP_RISE && tarc.t >= 128u) ? 1 : tarc.phase == AP_BREAK || tarc.phase == AP_DROP ? -1 : 0;
 }
 static const char *tarc_name(void) { static const char *const N[5] = {"RISE", "PEAK", "DROP", "BREAK", "RECOVER"}; return N[tarc.phase % 5u]; }
+/* TIDE hook H18: a multi, project or pattern load into the parts of mask. The tide starts as written (no generation, no pitch edits, D6) and the
+ * arc at RISE; a trip that goes on keeps its lane (sqm_reseat) */
+static void tide_loaded(uint32_t mask)
+{
+    for (uint32_t k = 0; k < NSHOWN; k++)
+        if ((mask >> k) & 1u)
+            seqm_home(k);
+    tarc.run = 0;
+    sqm_reseat = 1;
+}

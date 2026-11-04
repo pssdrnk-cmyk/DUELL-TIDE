@@ -1425,6 +1425,7 @@ static void pat_load(track_t *t, uint32_t n)
     pat_last[trk_index(t)] = (uint8_t)(n + 1u);
     pat_from[trk_index(t)] = 0;                     /* (a phrase: no PROJECT slot) */
     load_end(t);
+    TIDE_LOADED(1u << trk_index(t));                /* TIDE hook (H18): the part starts as written, the arc at RISE */
     ui.force = 1;
 }
 

@@ -255,12 +255,18 @@ static void glide_motion(int on)
         mxs[k].follow = (uint8_t)(gl.on && ((gl.on >> GT_SOUND) & 1u) && ((gl.mask >> k) & 1u));   /* (the transition rides the trip itself) */
     }
 }
+/* the trip is an automatic MUSIC WNDR / JRNY on the SEQ lane, the transport aside: seq_arc.c keeps its arc through a STOP while this holds */
+static uint32_t glide_tide_on(void) { return (gl.on & (1u << GT_SEQ)) && gl.mode >= GM_WANDER && morph_musical && (gl.mask & 3u); }
 static void glide_poll(void)
 {
     uint32_t l, k, e, end;
     uint8_t b = perf_beat;
-    sqm_auto = (uint8_t)(gl.on && (gl.on & (1u << GT_SEQ)) && gl.mode >= GM_WANDER &&
-                         morph_musical && song.playing && !song.rec && !gl.armed ? gl.mask & 3u : 0u);   /* (automatic MUSIC WNDR / JRNY: TURNS, POLY) */
+    if (sqm_reseat) {                                    /* a load put the SEQ fader back to A (tide_loaded): not a hand on it */
+        if ((gl.on >> GT_SEQ) & 1u)
+            glide_seen(GT_SEQ);
+        sqm_reseat = 0;
+    }
+    sqm_auto = (uint8_t)(glide_tide_on() && song.playing && !song.rec && !gl.armed ? gl.mask & 3u : 0u);   /* (automatic MUSIC WNDR / JRNY: TURNS, POLY) */
     rhythm_poll(sqm_auto);
     glide_shape_follow();
     if (!gl.on) {

@@ -390,6 +390,7 @@ static int project_restore_runtime(const project_t *input)
     for (k = 0; k < NTRK; k++)
         pat_sig[k] = ~steps_sig(&trk[k]);               /* a project's steps are the user's */
     undo_depth--;
+    TIDE_LOADED(3u);                                    /* TIDE hook (H18): both parts start as written, the arc at RISE */
     if (!proj_morph_skip)                               /* PROJ_REV 8: each part's End B as saved (the autosave, a backup): its values (the marks of the values set by hand in them); a project without leaves the morph as it was (the next action re-bases it) */
         for (k = 0; k < NSHOWN; k++)
             if (p->bvn[k])
