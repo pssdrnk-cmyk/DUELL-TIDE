@@ -109,3 +109,4 @@ Superseded documents, each with a one-line header saying by what.
 | [felucca-base/CONTRIBUTING.md](../felucca-base/CONTRIBUTING.md) | contributor | reference | OSCILL/R's contributing rules for plain DUELL; the fork's are in [CONTRIBUTING.md](../CONTRIBUTING.md). |
 | [felucca-base/LICENSING.md](../felucca-base/LICENSING.md), [felucca-base/LICENSES/](../felucca-base/LICENSES/) | all | current | Licences of the third-party parts. |
 | felucca-base/.github/ | none | inactive | Felucca's own issue forms. GitHub reads only the `.github` folder at the top, so these are not used. |
+| [history/ROADMAP_BASELINE_2026-11-03.md](history/ROADMAP_BASELINE_2026-11-03.md) | developers | historical | The roadmap's baseline and evidence tables before the 4 November beta |
