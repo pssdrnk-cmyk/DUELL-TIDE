@@ -488,7 +488,7 @@ static int tide_both(void) { return morph.target == MT_BOTH; }   /* ALGORITHM on
 static void tide_status(char *l)
 {
     static const char *const ST[5] = {"GLIDING", "LOOPING", "DRIFTING", "WNDR", "JRNY"};
-    uint32_t bars = gl.hold ? GLIDE_WAIT_BARS[gl.wait % GLIDE_WAITS] : glide_bars(), at = ((gl.prog * bars) >> GLIDE_Q) + 1u;
+    uint32_t bars = gl.hold ? GLIDE_WAIT_BARS[gl.wait % GLIDE_WAITS] : glide_trip_bars(), at = ((gl.prog * bars) >> GLIDE_Q) + 1u;
     char n[8];
     if (!glide_running())
         str_cpy(l, tide_both() ? "BOTH PARTS" : song.sel ? "PART 2" : "PART 1", 40);
@@ -813,7 +813,7 @@ static uint32_t tide_roll_sig(const track_t *t)
 /* what makes the JAM pages redraw: the faders, the glide, the steps playing and their variation, the settings, the list */
 static uint32_t tide_sig(void)
 {
-    uint32_t pi = song.sel, bars = gl.hold ? GLIDE_WAIT_BARS[gl.wait % GLIDE_WAITS] : glide_bars();
+    uint32_t pi = song.sel, bars = gl.hold ? GLIDE_WAIT_BARS[gl.wait % GLIDE_WAITS] : glide_trip_bars();
     const track_t *t = TSEL;
     return (morph_fader_of(pi) | seqm_fader_of(pi) << 7 | (uint32_t)gl.on << 14 | (uint32_t)gl.armed << 16 | (uint32_t)gl.target << 17 |
             (uint32_t)gl.mode << 19 | (uint32_t)gl.to << 22 | (uint32_t)gl.hold << 23 | (song.playing ? t->seq_idx : 0xFFu) << 24) ^

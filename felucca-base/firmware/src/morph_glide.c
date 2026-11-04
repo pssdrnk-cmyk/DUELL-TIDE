@@ -88,6 +88,7 @@ static struct {
     uint8_t wait;                                        /* WAIT: an index of GLIDE_WAIT_BARS */
     uint32_t wbars, wlast;                               /* WANDER, JOURNEY: the bars run since its start, at the last arrival */
     uint8_t hold;                                        /* holding an arrival WAIT bars (the faders still) */
+    uint8_t tt;                                          /* audit C3: the TIME the running trip took at its start (TIME lands at the next turn) */
 } gl = {.target = GT_BOTH, .mode = GM_JOURNEY, .time = 4u, .wait = 2u};   /* the defaults (no TIDE record yet): the showcase, BOTH, JRNY, 16 bars,
                                                                             * WAIT 2 bars (owner, 2026-11-01) */
 
@@ -108,7 +109,8 @@ static void glide_shape_follow(void)
         }
     }
 }
-static uint32_t glide_bars(void) { return GLIDE_BARS[gl.time < GLIDE_TIMES ? gl.time : 3u]; }
+static uint32_t glide_bars(void) { return GLIDE_BARS[gl.time < GLIDE_TIMES ? gl.time : 3u]; }   /* the TIME setting (the page's TIME) */
+static uint32_t glide_trip_bars(void) { return GLIDE_BARS[gl.tt < GLIDE_TIMES ? gl.tt : 3u]; }   /* the running trip's length */
 static uint32_t glide_lanes_of(uint32_t target) { return target == GT_BOTH ? 3u : 1u << target; }
 
 /* the S-curve 3p^2 - 2p^3, Q16 */
@@ -149,6 +151,7 @@ static void glide_begin_lanes(void)
     gl.bq = gl.run = 0;
     gl.playing = song.playing != 0;
     gl.prog = 0;
+    gl.tt = gl.time;                                     /* (every trip start: launch, the downbeat, an arrival, a WAIT's end) */
 }
 
 /* launch towards end `to` (0 A, 1 B) on the parts of mask, read from part pi */
@@ -190,7 +193,7 @@ static int glide_running(void) { return gl.on != 0; }
 /* progress of the glide now, Q16 (0 at the start .. 1 at the end) */
 static uint32_t glide_progress(void)
 {
-    uint64_t total_beats = (uint64_t)(gl.hold ? GLIDE_WAIT_BARS[gl.wait % GLIDE_WAITS] : glide_bars()) * 4u, p;
+    uint64_t total_beats = (uint64_t)(gl.hold ? GLIDE_WAIT_BARS[gl.wait % GLIDE_WAITS] : glide_trip_bars()) * 4u, p;
     if (song.playing) {                                  /* (this stretch: its whole beats and the position in the beat) */
         uint32_t bs = beat_samples(), pos = beat_pos;
         gl.run = (gl.beats << GLIDE_Q) + (uint32_t)(((uint64_t)(pos < bs ? pos : bs) << GLIDE_Q) / (bs ? bs : 1u));
@@ -213,7 +216,7 @@ static void glide_arrive(void)
     if (gl.mode >= GM_WANDER) {                          /* the phrase tier of this generation */
         static const uint8_t B[4] = {16, 32, 64, 128};
         uint32_t k;
-        gl.wbars += glide_bars();
+        gl.wbars += glide_trip_bars();
         mm_tier = 0;
         for (k = 0; k < 4u; k++)
             if (gl.wbars / B[k] > gl.wlast / B[k])
@@ -244,7 +247,7 @@ static void glide_motion(int on)
     if (on) {
         p = p > 32768u ? 32768u : p;
         m = (uint32_t)xrise((int32_t)(p <= 16384u ? p * 2u : (32768u - p) * 2u));
-        m = (m * DEPTH[gl.time < GLIDE_TIMES ? gl.time : 3u]) >> 15;
+        m = (m * DEPTH[gl.tt < GLIDE_TIMES ? gl.tt : 3u]) >> 15;
         m = (m * XWL[morph_wlvl & 3u]) >> 15;            /* (WASH LEVEL: x 0, 0.5, 1, 1.5) */
     }
     for (k = 0; k < NSHOWN; k++) {

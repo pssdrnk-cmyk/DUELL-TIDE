@@ -108,8 +108,8 @@ A new unit starts on DUB, so the bold values above are DUB's. A unit that had TI
 
 | When | Settings |
 |---|---|
-| At once (next step or bar) | VARY BARS, WASH LEVEL, TURNS, POLY, SYNC. ARC switched on starts a RISE; switched off it ends the arc. TIME (also when a STYLE sets it) rescales the trip in progress. |
-| At the next turn (when the trip arrives) | MODE, WAIT, and ROLL, ARP and PITCH (they shape the next end that is rolled or picked). |
+| At once (next step or bar) | VARY BARS, WASH LEVEL, TURNS, POLY, SYNC. ARC switched on starts a RISE; switched off it ends the arc. |
+| At the next turn (when the trip arrives) | MODE, WAIT, TIME (also when a STYLE sets it; the page shows the new TIME at once, the bar count goes on with the trip that runs), and ROLL, ARP and PITCH (they shape the next end that is rolled or picked). |
 | At the next start (knob 1) | TARGET: what the tide moves is fixed when a glide starts. |
 
 ### New: sounds, patterns and saving
