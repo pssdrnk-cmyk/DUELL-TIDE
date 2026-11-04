@@ -921,13 +921,16 @@ static void env2_tick(const track_t *t, voice_t *v)
     case 2:
         v->env2 += mulq16(sus - v->env2, t->esk2[1]);
         break;
-    case 3:
-        v->env2 -= mulq16(v->env2, t->esk2[2]);
-        if (v->env2 < (1 << 12)) {
+    case 3: {
+        int32_t d = mulq16(v->env2, t->esk2[2]);
+        v->env2 -= d;
+        /* A slow Q16 release can round its decrement to zero above the floor. */
+        if (!d || v->env2 < (1 << 12)) {
             v->env2 = 0;
             v->stage2 = 0;
         }
         break;
+    }
     default:
         v->env2 = 0;
         break;
@@ -950,14 +953,17 @@ static int32_t env_tick(track_t *t, voice_t *v)
     case 2:
         v->env += mulq16(sus - v->env, t->esk[1]);
         break;
-    case 3:
-        v->env -= mulq16(v->env, t->esk[2]);
-        if (v->env < (1 << 12)) {
+    case 3: {
+        int32_t d = mulq16(v->env, t->esk[2]);
+        v->env -= d;
+        /* A slow Q16 release can round its decrement to zero above the floor. */
+        if (!d || v->env < (1 << 12)) {
             v->env = 0;
             v->stage = 0;
             v->active = 0;
         }
         break;
+    }
     case 4:                                             /* given up for another part: this block fades it */
         v->env = 0;
         v->stage = 0;

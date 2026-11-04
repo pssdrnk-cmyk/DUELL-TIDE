@@ -428,6 +428,43 @@ static int env2_follows_env1(int esync)
     }
     return same && moved && b > 250u;
 }
+/* P04: Q16 release coefficients at slow tempi must eventually free the voice,
+ * including ENV 2's independent release. Tick the real envelopes without DSP. */
+static void t_slow_release(void)
+{
+    static const int16_t bpm[] = {40, 60, 70, 120};
+    static const int16_t rel[] = {120, 127};            /* 3BAR and 4BAR */
+    uint32_t i, j;
+    for (i = 0; i < sizeof bpm / sizeof bpm[0]; i++)
+        for (j = 0; j < sizeof rel / sizeof rel[0]; j++) {
+            track_t *t = &trk[0];
+            voice_t v = {0};
+            uint32_t n, limit;
+            int monotone = 1;
+            char what[88];
+            fresh(0, 0);
+            song.g[G_CLOCK] = 0;
+            song.g[G_BPM] = bpm[i];
+            t->p[P_ESYNC] = 1;
+            t->p[P_REL] = t->p[P_E2REL] = rel[j];
+            esync_coef(t);
+            esync2_coef(t);
+            v.env = v.env2 = 1 << 24;
+            v.stage = v.stage2 = 3;
+            v.active = 1;
+            limit = 3u * (beat_samples() * ESYNC_UNITS[esync_idx(rel[j])] / 96u / CTL) + 1024u;
+            for (n = 0; n < limit && (v.active || v.stage2); n++) {
+                int32_t before = v.env, before2 = v.env2;
+                env_tick(t, &v);
+                env2_tick(t, &v);
+                monotone &= v.env >= 0 && v.env <= before && v.env2 >= 0 && v.env2 <= before2;
+            }
+            printf("step3: release %d BPM %s: %u ticks, ENV1 %d stage %u active %u, ENV2 %d stage %u\n",
+                   bpm[i], ESYNC_NAMES[esync_idx(rel[j])], n, v.env, v.stage, v.active, v.env2, v.stage2);
+            snprintf(what, sizeof what, "ESYNC %d BPM %s: both releases end and free the voice", bpm[i], ESYNC_NAMES[esync_idx(rel[j])]);
+            ck(what, monotone && !v.active && !v.stage && !v.env && !v.stage2 && !v.env2);
+        }
+}
 static double rms_block(void)
 {
     double s = 0;
@@ -790,6 +827,7 @@ int main(void)
     t_slots();
     t_bitident();
     t_env2();
+    t_slow_release();
     t_lfo2();
     t_pages();
     t_cost();
