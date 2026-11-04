@@ -72,6 +72,10 @@ static uint32_t tide_seq_next(track_t *t)
             tide_poly_wrap(pi, len);
             if (poly_len[pi] != was)
                 return 0;                                /* (the full loop's first step: where a stretch begins or ends; inside one the short loop goes on) */
+        } else if (poly_len[pi] && song.rec) {           /* audit C10: REC ends a stretch at once, on the full loop's own step (recorded notes land where they belong) */
+            poly_len[pi] = 0;
+            poly_free[pi] = (uint16_t)(poly_lc[pi] + 8u);
+            return ref;
         }
     }
     cur = tide_slen(t);

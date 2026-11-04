@@ -372,6 +372,17 @@ static void t_poly(void)
         for (b = 0; b < 400000u && !poly_len[0] && !poly_len[1]; b++)
             block(0, &pulse, 240, b + 1400000u);
         CHECK("(fixture: again)", poly_len[0] || poly_len[1]);
+        {   /* audit C10: REC during a stretch: the loop is whole at the next step, on the full loop's step (no recording lands on the short loop) */
+            uint32_t j = poly_len[0] ? 0u : 1u, moves = 0, was = trk[j].seq_idx;
+            song.rec = (uint8_t)(1u << j);
+            for (b = 0; b < 40000u && moves < 2u; b++) {
+                block(0, &pulse, 240, b + 1800000u);
+                if (trk[j].seq_idx != was)
+                    moves++, was = trk[j].seq_idx;
+            }
+            CHECK("REC during a POLY stretch: whole at the next step, the step the full loop is on", !poly_len[j] && trk[j].seq_idx == poly_ref[j] && poly_ref[j] != 0u);
+            song.rec = 0;
+        }
         seq_start();
         CHECK("STOP / PLAY: both parts whole, from the top", !poly_len[0] && !poly_len[1] && trk[0].seq_idx == 15u && poly_ref[0] == 15u);
         seq_start();
