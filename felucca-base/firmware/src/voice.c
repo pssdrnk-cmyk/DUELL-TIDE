@@ -417,18 +417,20 @@ static voice_t *voice_alloc(track_t *t, uint32_t note)
     return voice_reuse(t, &t->v[best == np ? 0 : best]);
 }
 
-/* glide: RATE = a fixed speed, TIME = the same time for any interval */
+/* glide (P01): RATE = 64 semitones in the time GLD shows (TIME_MS_X10; ENV_LIN is 1 << 24 in that time), so a wider jump
+ * takes longer; TIME = the whole interval in that time. Steps in 1/65536 of a 1/16 semitone (gfrac below pitch_cur) */
 static void glide_set(track_t *t, voice_t *v, int glide)
 {
     if (!glide || !v->pitch_cur) {
         v->pitch_cur = v->pitch16;
-        v->gstep = 0;
+        v->gstep = v->gfrac = 0;
         return;
     }
     if (t->p[P_GLMODE]) {
-        int32_t d = v->pitch16 - v->pitch_cur, ticks = 1 + t->p[P_GLIDE] * t->p[P_GLIDE] / 8;
-        d = d < 0 ? -d : d;
-        v->gstep = d / ticks > 0 ? d / ticks : 1;
+        int32_t d = (v->pitch16 - v->pitch_cur) * 65536 - v->gfrac;
+        uint32_t e = ENV_LIN[t->p[P_GLIDE] & 127];
+        d = ((d < 0 ? -d : d) + 32768) >> 16;           /* whole 1/16 st (0: RATE ends the last bit) */
+        v->gstep = (int32_t)((e >> 8) * (uint32_t)d + (((e & 255u) * (uint32_t)d) >> 8));   /* d * e >> 8, no overflow */
     } else {
         v->gstep = 0;
     }
@@ -493,7 +495,7 @@ static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int
     v->mrnd = t->m_rnd;
     t->m_vi = (uint8_t)(v - t->v);
     glide_set(t, v, glide);
-    v->apitch = t->atg_note ? (int32_t)t->atg_note * 16 : v->pitch16;   /* ARP TARGET: at the arp's note now */
+    v->apitch = (t->atg_note ? (int32_t)t->atg_note * 16 : v->pitch16) * 65536;   /* ARP TARGET: at the arp's note now */
     v->again = t->atg_vel * 258;
     v->stage2 = 1;                                      /* ENV 2 (DUELL): an attack, from where it is (as ENV) */
     v->offn = 0;                                        /* (hunt3: a step still being cancelled ends with the old note) */
@@ -988,20 +990,18 @@ static __attribute__((noinline)) void spread_sum(int32_t *out, const int32_t *sb
 }
 
 /* ARP TARGET (SPEC 2.3, seq.c atg_fire): the voice's arp pitch towards the arp's note now (the root's while there is none),
- * with the part's GLIDE as a note's (RATE: GLD's speed; 0: a jump), as the offset adelta over the root's pitch16 (so
+ * with the part's GLIDE as a note's (RATE: GLD's speed, in 1/65536 of a 1/16 st; 0: a jump), as the offset adelta over the root's pitch16 (so
  * TUNE, bend, LFO, ENV and the matrix move both alike); its level towards the step's gate (velocity, 0 off) in ~3 ms */
 static __attribute__((noinline)) void atg_voice(const track_t *t, voice_t *v, vmod_t *m)
 {
-    int32_t want = t->atg_note ? (int32_t)t->atg_note * 16 : v->pitch_cur, d = want - v->apitch, g;
+    int32_t want = (t->atg_note ? (int32_t)t->atg_note * 16 : v->pitch_cur) * 65536, d = want - v->apitch, g;
     if (d && !t->p[P_GLIDE]) {
         v->apitch = want;
     } else if (d) {
-        int32_t st = (int32_t)(ENV_LIN[t->p[P_GLIDE] & 127] >> 14);
-        if (st < 1)
-            st = 1;
+        int32_t st = (int32_t)(ENV_LIN[t->p[P_GLIDE] & 127] << 2);
         v->apitch += d > 0 ? (d < st ? d : st) : (-d < st ? d : -st);
     }
-    m->adelta = v->apitch - v->pitch_cur;
+    m->adelta = (v->apitch >> 16) - v->pitch_cur;
     g = t->atg_vel * 258 - v->again;
     v->again += g > -4 && g < 4 ? g : g / 4;
     m->again = v->again;
@@ -1244,7 +1244,7 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
     for (i = 0; i < NVOICE; i++) {
         voice_t *v = &t->v[i];
         vmod_t m;
-        int32_t env, pitch;
+        int32_t env, pitch, vf;
         if (!v->active)
             continue;
         {
@@ -1276,12 +1276,12 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
             m.amp0 = v->env_out;
             v->env_out = m.amp1;
         }
-        if (v->pitch_cur != v->pitch16) {               /* glide */
-            int32_t d = v->pitch16 - v->pitch_cur;
-            int32_t st = v->gstep ? v->gstep : (int32_t)(ENV_LIN[(p[P_GLIDE] ? p[P_GLIDE] : 40) & 127] >> 14);   /* slide: ~45 ms */
-            if (st < 1)
-                st = 1;
-            v->pitch_cur += d > 0 ? (d < st ? d : st) : (-d < st ? d : -st);
+        if (v->pitch_cur != v->pitch16 || v->gfrac) {   /* glide (glide_set), in 1/65536 of a 1/16 st */
+            int32_t q = v->pitch_cur * 65536 + v->gfrac, d = v->pitch16 * 65536 - q;
+            int32_t st = v->gstep ? v->gstep : (int32_t)(ENV_LIN[(p[P_GLIDE] ? p[P_GLIDE] : 40) & 127] << 2);   /* RATE (slide: GLD 40's) */
+            q += d > 0 ? (d < st ? d : st) : (-d < st ? d : -st);
+            v->pitch_cur = q >> 16;
+            v->gfrac = (uint16_t)q;
         }
         if (!env && !m.amp0 && v->stage == 2 && !e->sampled) {
             v->lastc = v->lastd = 0;
@@ -1290,9 +1290,10 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
         pitch = v->pitch_cur + tune + bend16 + ((lfo * DEP_AMT(p[P_LD_PIT]) * 3) >> 15) + ((m.envq15 * DEP_AMT(p[P_ED_PIT]) * 3) >> 15);
         m.pitch16 = clamp(pitch, 0, 2047);
         m.inc = pitch_inc(m.pitch16);
-        m.fine = v->fine + tune_fine + bend_fine;
-        if (v->fine + tune_fine + bend_fine)             /* residual below 1/16 semitone */
-            m.inc += (uint32_t)((int32_t)(m.inc >> 12) * (v->fine + tune_fine + bend_fine));
+        vf = v->fine + tune_fine + bend_fine + ((v->gfrac * 947) >> 22);   /* (gfrac: 1/65536 of 1/16 st = 14.8 fine) */
+        m.fine = vf;
+        if (vf)                                         /* residual below 1/16 semitone */
+            m.inc += (uint32_t)((int32_t)(m.inc >> 12) * vf);
         m.cutoff = ((lfo * DEP_AMT(p[P_LD_FLT])) >> 7) +
                    (((E2Q(t, v)) * DEP_AMT(p[P_E2FLT])) >> 7); /* (DUELL 1.1: AMP ENV's and LFO 2's cutoff depths no longer act; FILTER ENV's MULTI CUTOFF and LFO 1's stay) */
         if (e == &ENG_NOISE)                            /* NOISE's DRFT wander of the cutoff, worked out by the block before (eng_noise.c): filter 1's, one block late */
@@ -1310,9 +1311,9 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
         if (abits)
             atg_voice(t, v, &m);
         if (mod->on) {                                   /* the modulation matrix (mod.c) */
-            mod_voice(t, v, &m, v->fine + tune_fine + bend_fine);
+            mod_voice(t, v, &m, vf);
             if (t->cy)                                   /* its second list (cloud job B, mod.c): CYCLE's per-note routes, after mod_voice .. */
-                mod_cycle_voice(t, v, &m, v->fine + tune_fine + bend_fine);
+                mod_cycle_voice(t, v, &m, vf);
             t->venv = m.envq15;                          /* .. and this voice's ENV for filter 2's sum (mod_f2_voice, called by the chain) */
         }
         if (e == &ENG_WAVE && p[P_E6])                  /* WAVE STEPS (eng_wave.c): POS lands on one of STEPS places; the block ramp is the cross-fade between two steps */

@@ -172,7 +172,8 @@ int main(int argc, char **argv)
                    "# DUELL 1.1 / jam11, on purpose, all 105 (docs/JAM11_TEST_BASELINE.md): every render changes by the 1.1 sound changes the regress golden (tests/golden.txt) traces on 1.0 and jam11 audio: the\n"
                    "# note-start stagger (item 144: the chords start 2 voices a block), BIT DEPTH, REVERB_FIX / SHIM / delay rounding, the factory sounds' new recipes and End B as values, the multis' ROLL B;\n"
                    "# U2 B: M16 is CELLAR TAPE (new, three hashes re-made); S17_STRESS_TEST is the former M16 record as a test scene (new baseline: scenes render with BASS MONO off, the factory multis with it on).\n"
-                   "# jam11 adds TIDE's roll changes and PHYS tuning. (Not compared audio against 1.0: the 1.0 tree does not build this test on Linux, nor does stock 1.1 (scenes.h / mu_put_rec).)\n");
+                   "# jam11 adds TIDE's roll changes and PHYS tuning. (Not compared audio against 1.0: the 1.0 tree does not build this test on Linux, nor does stock 1.1 (scenes.h / mu_put_rec).)\n"
+                   "# Audit P01 (2026-11-04), on purpose, 18 renders: GLIDE takes the time GLD shows (voice.c glide_set); the multis with a LEGATO part that glides between the held chord keys, M01 M08 M14 S01 S08 X08, re-made once; the others are unchanged.\n");
         for (m = 0; m < NR; m++)
             for (f = 0; f < 3u; f++)
                 fprintf(g, "%s f%u %016llx\n", RN[m].name, FAD[f], (unsigned long long)got[m * 3 + f]);
