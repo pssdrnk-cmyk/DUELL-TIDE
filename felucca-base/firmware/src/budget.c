@@ -375,7 +375,7 @@ static uint8_t part_notes_reason(int part)
     return NR_ENGINE;                                   /* the engine's own voices are what is left */
 }
 
-static void budget_poll(void)                           /* main loop, every frame (main.c, beside vcap_poll) */
+static void budget_poll(void)                           /* main loop, every frame (main.c) */
 {
     bd_t b;
     uint32_t n[2], p;

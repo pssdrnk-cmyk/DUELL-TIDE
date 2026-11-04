@@ -379,6 +379,7 @@ static void phase_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
         phase_render_0(t, v, out, n, m);
 }
 
+#if DUELL_PRESETS                                     /* (Felucca's engine presets: no firmware code reads them since the factory sounds of sounds.c; the host tests do: core.h) */
 static const preset_t PHASE_PRESETS[] = {
     /* name, {WAVE, WAVE2, DCW, ENV, DTN, LINE, -, -}, {A D S R}, fenv, mono (E7 was the engine's own SUB until cloud job J) */
     {"BRASS", {0, 0, 30, 90, 0, 0, 0, 0}, {8, 70, 90, 40}, 0, 0, FX(0, 20, 20, 40), PAT(6)},
@@ -388,6 +389,7 @@ static const preset_t PHASE_PRESETS[] = {
     {"BELL", {6, 0, 80, 50, 0, 0, 0, 0}, {0, 95, 0, 90}, 0, 0, FX(0, 0, 30, 70), PAT(7)},
     {"WIRE", {4, 7, 70, 40, 7, 0, 0, 0}, {10, 80, 80, 60}, 0, 0, FX(15, 30, 30, 40), PAT(4)},
 };
+#endif
 
 static const engine_t ENG_PHASE = {
     .name = "PHASE",
@@ -402,8 +404,10 @@ static const engine_t ENG_PHASE = {
         {"-", F_INT, 0, 0, 0, 0, 0},                 /* was SUB: the global SUB LAYER (chain_sub.c) replaces it */
         {"-", F_INT, 0, 0, 0, 0, 0},
     },
+#if DUELL_PRESETS
     .presets = PHASE_PRESETS,
     .npresets = NELEM(PHASE_PRESETS),
+#endif
     .note_on = phase_note_on,
     .render = phase_render,
     .knob = {P_E2, P_E3, P_E4, P_REL},

@@ -233,6 +233,7 @@ static void lofi_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
         lofi_body(t, v, out, n, m, 0);
 }
 
+#if DUELL_PRESETS                                     /* (Felucca's engine presets: no firmware code reads them since the factory sounds of sounds.c; the host tests do: core.h) */
 static const preset_t LOFI_PRESETS[] = {
     {"PULSE LD", {0, 0, 32, 0, 0, 20, 0, 127}, {0, 60, 90, 30}, 0, 1, FX(0, 0, 40, 20), PAT(4)},
     {"WAVE BASS", {1, 1, 0, 0, 0, 0, 0, 90}, {0, 50, 70, 20}, 0, 1, FX(0, 0, 10, 0), PAT(2)},
@@ -242,6 +243,7 @@ static const preset_t LOFI_PRESETS[] = {
     /* STEP: 25 % pulse, DCY 34 = D7 (a 15-step decay over 0.5 s), REL ~54 ms of staircase after note-off */
     {"STEP LEAD", {4, 0, 40, 34, 0, 16, 0, 127}, {0, 64, 127, 55}, 0, 1, FX(0, 0, 40, 20), PAT(4)},
 };
+#endif
 
 static const engine_t ENG_LOFI = {
     .name = "LOFI",
@@ -256,8 +258,10 @@ static const engine_t ENG_LOFI = {
         {"ARP", F_ENUM, 0, 3, 0, N_RARP, 0},
         {"TONE", F_PCT, 0, 127, 127, 0, 0},
     },
+#if DUELL_PRESETS
     .presets = LOFI_PRESETS,
     .npresets = NELEM(LOFI_PRESETS),
+#endif
     .note_on = lofi_note_on,
     .render = lofi_render,
     .knob = {P_E1, P_E2, P_E3, P_REL},

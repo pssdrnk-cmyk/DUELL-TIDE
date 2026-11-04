@@ -212,6 +212,7 @@ static void formant_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, con
     v->s[6] = lp;
 }
 
+#if DUELL_PRESETS                                     /* (Felucca's engine presets: no firmware code reads them since the factory sounds of sounds.c; the host tests do: core.h) */
 static const preset_t FORMANT_PRESETS[] = {
     /* VOWEL VOWL2 TALK SHIFT | BUZZ BREATH Q RAND */
     {"CHOIR AAH", {0, 0, 0, 0, 40, 22, 60, 0}, {85, 90, 115, 95}, 0, 0, FX(0, 70, 15, 90), PAT(5)},
@@ -219,6 +220,7 @@ static const preset_t FORMANT_PRESETS[] = {
     {"WOW BASS", {95, 0, 68, 0, 100, 0, 80, 0}, {0, 70, 70, 30}, 0, 1, FX(10, 0, 10, 10), PAT(8)},
     {"WHISPER", {0, 95, 88, 3, 50, 120, 50, 0}, {50, 90, 110, 90}, 0, 0, FX(0, 40, 30, 70), PAT(5)},
 };
+#endif
 
 static const engine_t ENG_FORMANT = {
     .name = "VOICE",
@@ -233,8 +235,10 @@ static const engine_t ENG_FORMANT = {
         {"Q", F_PCT, 0, 127, 64, 0, 0},
         {"RAND", F_PCT, 0, 127, 0, 0, 0},
     },
+#if DUELL_PRESETS
     .presets = FORMANT_PRESETS,
     .npresets = NELEM(FORMANT_PRESETS),
+#endif
     .note_on = formant_note_on,
     .render = formant_render,
     .knob = {P_E0, P_E4, P_E5, P_E2},

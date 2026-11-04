@@ -634,7 +634,7 @@ static uint32_t test_sig(void)                         /* what the panel shows *
     test_sync();
     h = (h ^ cpu_sig()) * 16777619u;
     h = (h ^ felucca_dbg.erase_max_us / 1000u) * 16777619u;
-    h = (h ^ (vcap_shown(0) * 16u + vcap_shown(1))) * 16777619u;
+    h = (h ^ (trk_nvoice(&trk[0]) * 16u + trk_nvoice(&trk[1]))) * 16777619u;
     test_multi_name(b);
     h = str_hash(h, b);
     for (k = 0; k < 2u; k++) {
@@ -686,9 +686,9 @@ static void graph_test(void)
     } else
         str_cpy(v, "--", 3);
     cv_text_on(x + 6, 101, &AF_S, v, T_TEXT, T_BG);
-    v[0] = (char)('0' + vcap_shown(0));          /* DUELL 0.2.11: the VOICE CAP of part 1 / part 2 (voice.c vcap; the engine's own cap included) */
+    v[0] = (char)('0' + trk_nvoice(&trk[0]));    /* the notes part 1 / part 2 get now (the NOTES budget, the engine's own cap included; voice.c trk_nvoice) */
     str_cpy(v + 1, " / ", 4);
-    v[4] = (char)('0' + vcap_shown(1));
+    v[4] = (char)('0' + trk_nvoice(&trk[1]));
     v[5] = 0;
     x = cv_text_r(230, 101, &AF_S, v, T_TEXT, T_BG);
     cv_text_r(x - 6, 101, &AF_S, "VOICES", T_MID, T_BG);

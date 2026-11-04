@@ -202,6 +202,7 @@ static void phys_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
 
 /* MODAL partials by STRC: 34 harmonic, 70 1 : 2.83 : 5.48 : 8.90 (a free bar, a chime: 1 : 2.76 : 5.40 : 8.93),
  * 98 1 : 3.57 : 7.65, 116 1 : 4.0 : 9.0 (a tuned bar: 1 : 4 : 10) */
+#if DUELL_PRESETS                                     /* (Felucca's engine presets: no firmware code reads them since the factory sounds of sounds.c; the host tests do: core.h) */
 static const preset_t PHYS_PRESETS[] = {
     /* name, {MODEL, STRC, BRIT, DAMP, POS, ACC, BOW, EXC}, {A D S R}, fenv, mono */
     {"BELL TREE", {PM_MODAL, 70, 100, 106, 12, 100, 0, 6}, {0, 100, 127, 96}, 0, 0, FX(0, 20, 30, 60), PAT(7)},
@@ -216,6 +217,7 @@ static const preset_t PHYS_PRESETS[] = {
     {"DRONE STRING", {PM_SYMP, 127, 80, 88, 64, 100, 92, 0}, {0, 100, 127, 90}, 0, 0, FX(0, 10, 20, 50), PAT(3)},
     {"HARP", {PM_SYMP, 8, 62, 74, 60, 90, 0, 0}, {0, 100, 127, 80}, 0, 0, FX(0, 20, 20, 60), PAT(3)},
 };
+#endif
 
 static const engine_t ENG_PHYS = {
     .name = "PHYS",
@@ -230,8 +232,10 @@ static const engine_t ENG_PHYS = {
         {"BOW", F_PCT, 0, 127, 0, 0, 0},
         {"EXC", F_PCT, 0, 127, 0, 0, 0},
     },
+#if DUELL_PRESETS
     .presets = PHYS_PRESETS,
     .npresets = NELEM(PHYS_PRESETS),
+#endif
     .note_on = phys_note_on,
     .render = phys_render,
     .knob = {P_E1, P_E2, P_E3, P_E4},
