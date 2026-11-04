@@ -6,10 +6,32 @@
  * Contexts: tide_play_step in the audio path; everything else in the main loop. */
 static uint32_t step_cont(const step_t *s) { (void)s; return 0u; }   /* (no per-note continuations in 1.1: ties instead) */
 static const step_t *seq_play_step(const track_t *t, uint32_t idx, step_t *buf);   /* (seq_dialogue.c reads it before seq_morph.c has it) */
+/* The chance rolls the TIDE page shows: a bit a step of the last roll's miss (a step's CHANCE in seq_play, or, on an ARP SEQ part, the arp's PROB
+ * in arp_fire), set or cleared where the sequencer rolls, cleared at PLAY. A step has rolled in the pass when it is at or behind the playhead:
+ * the page reads the bit then, and shows the step undecided before. Audio path writes, main loop reads */
+static volatile uint32_t tide_miss[NSHOWN][2];
 #include "seq_morph.c"
 #include "seq_poly.c"
 #include "seq_answer.c"
 #include "seq_arc.c"
+
+static void tide_miss_put(const track_t *t, uint32_t idx, int miss)
+{
+    uint32_t pi = trk_index(t);
+    if (pi < NSHOWN && idx < NSTEP)
+        tide_miss[pi][idx >> 5] = (tide_miss[pi][idx >> 5] & ~(1u << (idx & 31u))) | (uint32_t)(miss != 0) << (idx & 31u);
+}
+static int tide_chance_roll(const track_t *t, uint32_t idx, uint32_t chance, int miss)
+{
+    if (chance && arp_mode(t) != AM_SEQ_ID)               /* (an ARP SEQ part's steps do not play: its rolls are the arp's) */
+        tide_miss_put(t, idx, miss);
+    return miss;
+}
+static int tide_aroll(const track_t *t, int hit)
+{
+    tide_miss_put(t, tide_arp_idx(t, t->arp_idx, tide_poly_full(t)), !hit);
+    return hit;
+}
 
 static const step_t *tide_play_step(const track_t *t, uint32_t idx, step_t *buf)
 {

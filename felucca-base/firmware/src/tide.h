@@ -50,6 +50,11 @@ static void tide_seq_ghost_start(void);
 #define TIDE_BEAT_BLOCK(adv) (sqm_bar_turn = (uint8_t)(beat_n == 3u && beat_pos + (adv) >= beat_samples()))
 #define TIDE_BEAT() do { if (!beat_n && song.playing) sqm_bar++; } while (0)
 #define TIDE_SEQ_LOOP(t, len) do { if (tide_seq_wrapping((t), (len)) && (t)->seq_pos < 0x7FFFFFFFu) tide_seq_loops[trk_index(t)]++; } while (0)   /* (the startup sentinel is no loop) */
+/* H3c (seq.c, audio path): the chance rolls the TIDE page shows (tide_seq.c): a step's (seq_play) and the SEQ arp's PROB (arp_fire); each returns the miss / hit it is given */
+static int tide_chance_roll(const track_t *t, uint32_t idx, uint32_t chance, int miss);
+static int tide_aroll(const track_t *t, int hit);
+#define TIDE_CHANCE(t, idx, s, miss) tide_chance_roll((t), (idx), step_chance(s) < 100u, (miss))
+#define TIDE_APROB(t, hit) tide_aroll((t), (hit))
 /* H13 (ui_input.c, main loop): once a frame, after morph_poll: GLIDE, the SEQ MORPH's ends, the settings */
 static void tide_poll(void);
 #define TIDE_POLL() tide_poll()
@@ -163,6 +168,8 @@ static int tide_foot_two(void);
 #define TIDE_BEAT_BLOCK(adv) ((void)(adv))
 #define TIDE_BEAT() ((void)0)
 #define TIDE_SEQ_LOOP(t, len) ((void)0)
+#define TIDE_CHANCE(t, idx, s, miss) (miss)
+#define TIDE_APROB(t, hit) (hit)
 #define TIDE_POLL() ((void)0)
 #define TIDE_FIRST_MULTI 0
 #define TIDE_PART_FIELDS

@@ -21,6 +21,7 @@ static uint32_t tide_poly_full(const track_t *t) { return (uint32_t)clamp(t->p[P
 static void tide_poly_start(void)
 {
     uint32_t i;
+    memset((void *)tide_miss, 0, sizeof tide_miss);
     for (i = 0; i < NSHOWN; i++) {
         poly_len[i] = 0;
         poly_ref[i] = (uint8_t)(tide_poly_full(&trk[i]) - 1u);

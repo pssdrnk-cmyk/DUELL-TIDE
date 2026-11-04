@@ -552,45 +552,148 @@ static void tide_track(int32_t y, const char *name, uint32_t f, uint32_t lane, i
         cv_rrect(x - 2, y - 4, 5, 9, 2, kc, T_BG);
 }
 
+/* The steps as the sequencer plays them: ONE model for the page (tide_steps, tide_sig) and its test (tests/tide_steps_test.c). A page of
+ * 16 steps of part t, each as it sounds (seq_play_step_at, the very function the audio interrupt calls) in the bar it plays in: the
+ * bar now for the step playing, the next ones for the steps ahead (their time from the playhead's position in the step, each step's
+ * swung length, the beat in the bar), the bars behind for the steps gone; not the one bar now for all 16. Also:
+ *  - the loop's length now (POLY shortens it: the steps past it do not play) and, on an ARP SEQ part, the arp's step as the playhead
+ *    (the arp steps alone, the SEQ-mode steps do not play, a tie is no note, the chance is the arp's PROB);
+ *  - a chance step: undecided (maybe) until the sequencer rolled it, then its roll (tide_miss: sounding or dropped); a tie sounds
+ *    only if the hit it holds does. The page draws an undecided step striped.
+ * Returns the playhead's step (TV_NOPH: stopped). page 0xFF: the playhead's page */
+enum { TV_END, TV_REST, TV_DROP, TV_TIE, TV_HIT, TV_MOVE, TV_ADD };
+typedef struct { uint8_t k, n, maybe; } tv_t;
+#define TV_NOPH 0xFFu
+static int tv_hit(const step_t *s) { return s->time == ST_NOTE && s->n; }
+/* step s (index j) of part t: 0 silent, 1 sounds, 2 undecided (its roll not made yet) */
+static uint32_t tv_state(const track_t *t, const step_t *s, uint32_t j, uint32_t rolled, uint32_t arp)
+{
+    uint32_t c = arp ? (t->p[P_APROB] >= 127 ? 100u : 50u) : step_chance(s);
+    if (c >= 100u)
+        return 1;
+    if (!c)
+        return 0;
+    return rolled ? !((tide_miss[trk_index(t)][(j >> 5) & 1u] >> (j & 31u)) & 1u) : 2u;
+}
+/* the bar a step starts in (tide_views): `at` its start from now in samples (the playhead's position in its step, the steps' lengths); the
+ * audio side starts a step in the block it falls in, with that block's bar turn: the bar's line at or before the block's end. ob: into the bar now, bl: its length */
+static uint32_t tv_bar(int32_t at, int32_t ob, int32_t bl)
+{
+    int32_t d = ob + (at >= 0 ? (at + (int32_t)CTL - 1) / (int32_t)CTL : -(-at / (int32_t)CTL)) * (int32_t)CTL;
+    return (uint32_t)sqm_bar + (uint32_t)(d >= 0 ? d / bl : -((-d + bl - 1) / bl));
+}
+static uint32_t tide_views(const track_t *t, uint32_t page, tv_t *out)
+{
+    uint32_t pi = trk_index(t), len = sqm_len(t), L = len, ph = TV_NOPH, pos = 0, per = 0, i, j, m;
+    uint32_t arp = arp_mode(t) == AM_SEQ_ID;
+    int32_t ob = 0, bl = 1;
+    if (song.playing) {
+        if (pi < NSHOWN && poly_len[pi] && poly_len[pi] < len)
+            L = poly_len[pi];
+        if (!arp)
+            ph = t->seq_idx, pos = t->seq_pos;
+        else if (t->arp_idx != 0xFFFFFFFFu)
+            ph = tide_arp_idx(t, t->arp_idx, len), pos = t->arp_pos;
+        ph = ph < L ? ph : TV_NOPH;
+        pos = pos < 0x7FFFFFFu ? pos : 0u;                   /* (before the first block of a PLAY) */
+        per = div_samples((uint32_t)t->p[arp ? P_ARATE : P_SDIV]);
+        bl = (int32_t)(4u * beat_samples());
+        ob = (int32_t)(beat_n * beat_samples() + beat_pos);  /* (into the bar now) */
+    }
+    if (page == 0xFFu)
+        page = ph == TV_NOPH ? 0u : ph / 16u;
+    for (i = 0; i < 16u; i++) {
+        uint32_t idx = page * 16u + i, bar = sqm_bar, st = 1;
+        int32_t at = -(int32_t)pos;
+        const step_t *o = &t->step[idx < NSTEP ? idx : 0u], *v, *w;
+        tv_t *e = &out[i];
+        e->k = TV_END, e->n = e->maybe = 0;
+        if (idx >= L)
+            continue;
+        if (ph != TV_NOPH) {
+            for (j = idx < ph ? idx : ph; j < (idx > ph ? idx : ph); j++)
+                at += (idx > ph ? 1 : -1) * (int32_t)phrase_duration(t, j, per, (int)arp, 0);
+            bar = tv_bar(at, ob, bl);
+        }
+        v = seq_play_step_at(t, idx, bar);
+        e->n = v->n;
+        e->k = tv_hit(v) ? (v == o || !memcmp(v, o, sizeof *v) ? TV_HIT : tv_hit(o) ? TV_MOVE : TV_ADD) : v->time == ST_TIE ? TV_TIE : TV_REST;
+        if (e->k >= TV_HIT || e->k == TV_TIE) {
+            st = arp && e->k == TV_TIE ? 0u : tv_state(t, v, idx, ph != TV_NOPH && idx <= ph, arp);
+            if (e->k == TV_TIE && !arp) {                    /* a tie sounds while the hit before it is held: each step held it through to the next (a tie after it in the bar it started in, or a slide) */
+                uint32_t cur = idx, b2 = bar;
+                int32_t a2 = at;
+                for (m = 0; m < L; m++) {
+                    j = cur ? cur - 1u : L - 1u;
+                    if (ph != TV_NOPH)
+                        a2 -= (int32_t)phrase_duration(t, j, per, 0, 0), b2 = tv_bar(a2, ob, bl);
+                    w = seq_play_step_at(t, j, b2);
+                    if (seq_play_step_at(t, cur, b2)->time != ST_TIE && !(w->flags & SF_SLIDE)) {
+                        m = L;
+                        break;
+                    }
+                    if (w->time != ST_TIE)
+                        break;
+                    cur = j;
+                }
+                m = m < L && tv_hit(w) && step_ratchet(w) == 1u ? tv_state(t, w, j, ph != TV_NOPH && (j <= ph || j > idx), 0u) : 0u;
+                st = !st || !m ? 0u : (st | m) & 2u ? 2u : 1u;
+            }
+            e->maybe = st == 2u;
+            if (!st)
+                e->k = TV_REST;
+        }
+        if (e->k == TV_REST && tv_hit(o))
+            e->k = TV_DROP;
+    }
+    return ph;
+}
+
 /* a part's 16 steps around its playhead, standing on row y (bars up to hmax tall: 22 alone, 9 in BOTH's two rows), in the footer's
  * columns (bar_x) and its rounded bars: a hit a bar (a chord taller) in the part's colour, the accent where it varies, a lit outline
- * where it is moved or added, a dim outline where the variation drops it; a tie a short bar, an empty step a stub, the steps past
- * the pattern's end a line; the playing step underlined. As they play now (seq_play_step: with VARY BARS 4 + 8 the variation shows
- * on every 4th bar) */
+ * where it is added, a dim outline where the variation, the thinning or a chance roll drops it; a tie a short bar, an empty step a
+ * stub, the steps past the pattern's end a line; the playing step underlined. A chance step not rolled yet is striped. As they play
+ * now (tide_views) */
 static void tide_steps(const track_t *t, int32_t y, int32_t hmax, uint16_t c)
 {
-    uint32_t len = (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP), page = song.playing ? t->seq_idx / 16u : 0u, i;
-    int32_t h1 = hmax >= 20 ? 10 : 6, hs = hmax >= 20 ? 5 : 3;   /* (a single note, each further note of a chord; one part tall, both parts short) */
+    tv_t tv[16];
+    uint32_t ph = tide_views(t, 0xFFu, tv), page = ph == TV_NOPH ? 0u : ph / 16u, i;
+    int32_t h1 = hmax >= 20 ? 10 : 6, hs = hmax >= 20 ? 5 : 3, r;   /* (a single note, each further note of a chord; one part tall, both parts short) */
     for (i = 0; i < 16u; i++) {
-        uint32_t idx = page * 16u + i;
-        int32_t x = bar_x(i), h;
-        const step_t *o, *v;
-        step_t b;
-        if (idx >= len) {
+        int32_t x = bar_x(i), h = h1 / 2;
+        const tv_t *e = &tv[i];
+        if (e->k == TV_END) {
             cv_rect(x, y - 1, 9, 1, T_LINE);
             continue;
         }
-        o = &t->step[idx];
-        v = seq_play_step(t, idx, &b);
-        if (v->time == ST_NOTE && v->n) {
-            h = h1 + hs * (int32_t)(v->n - 1u);
+        if (e->k >= TV_HIT) {
+            h = h1 + hs * (int32_t)(e->n - 1u);
             h = h > hmax ? hmax : h;
-            if (v == o || !memcmp(v, o, sizeof *v))
-                cv_rrect(x, y - h, 9, h, 2, c, T_BG);
-            else if (o->time == ST_NOTE && o->n)
-                cv_rrect(x, y - h, 9, h, 2, T_ACCENT, T_BG);
-            else
+            if (e->k == TV_ADD)
                 cv_frame(x, y - h, 9, h, T_ACCENT);
-        } else if (v->time == ST_TIE) {
-            cv_rrect(x, y - h1 / 2, 9, h1 / 2, 1, T_MID, T_BG);
-        } else if (o->time == ST_NOTE && o->n) {
+            else
+                cv_rrect(x, y - h, 9, h, 2, e->k == TV_MOVE ? T_ACCENT : c, T_BG);
+        } else if (e->k == TV_TIE)
+            cv_rrect(x, y - h, 9, h, 1, T_MID, T_BG);
+        else if (e->k == TV_DROP)
             cv_frame(x, y - h1, 9, h1, T_DIM);
-        } else {
+        else
             cv_rrect(x, y - 3, 9, 3, 1, T_DIM, T_BG);
-        }
-        if (song.playing && idx == t->seq_idx)
+        if (e->maybe && e->k != TV_ADD)
+            for (r = 1; r < h; r += 2)
+                cv_rect(x, y - h + r, 9, 1, T_BG);
+        if (ph == page * 16u + i)
             cv_rect(x, y + 2, 9, 2, T_TEXT);
     }
+}
+/* what the steps look like now (the page's redraw: nothing the model reads may change without it) */
+static uint32_t tide_steps_sig(const track_t *t)
+{
+    tv_t tv[16];
+    uint32_t h = tide_views(t, 0xFFu, tv), i;
+    for (i = 0; i < 16u; i++)
+        h = (h ^ (uint32_t)tv[i].k ^ (uint32_t)tv[i].n << 4 ^ (uint32_t)tv[i].maybe << 8) * 16777619u;
+    return h;
 }
 
 /* TIDE's body. One part (ALGORITHM on PART 1 / PART 2): its SOUND and SEQ faders, its steps. BOTH: each fader row a pair (part 1 over
@@ -718,7 +821,8 @@ static uint32_t tide_sig(void)
            ((uint32_t)gl.time | (uint32_t)gl.wait << 4 | (uint32_t)jl_sel << 8 | (uint32_t)sqm_vary_all << 12 | (uint32_t)morph_musical << 13 | (uint32_t)sqm_turns * 0x2545F491u | (uint32_t)sqm_poly << 28 | (uint32_t)sqm_sync << 30 | (uint32_t)(sqm_arc * 7u + tarc.phase * 3u + tarc.left) << 16 |
             (uint32_t)morph.cfg << 16 | (uint32_t)((sqm_bar + sqm_bar_turn) & 3u) << 24 | (uint32_t)song.playing << 26) * 0x9E3779B1u ^
            (tide_both() ? (morph_fader_of(1u - pi) | seqm_fader_of(1u - pi) << 7 | (song.playing ? trk[1u - pi].seq_idx : 0xFFu) << 14) * 0x85EBCA77u ^
-                             sqm_key(&sqm[(1u - pi) % NSHOWN]) * 0xC2B2AE3Du ^ 0x27D4EB2Fu : 0u);
+                             sqm_key(&sqm[(1u - pi) % NSHOWN]) * 0xC2B2AE3Du ^ tide_steps_sig(&trk[1u - pi]) * 0x165667B1u ^ 0x27D4EB2Fu : 0u) ^
+           tide_steps_sig(t) * 0xD3A2646Cu;
 }
 
 /* ---------------------------------------------------------------- kept over a power cycle --- */

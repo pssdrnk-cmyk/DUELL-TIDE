@@ -287,11 +287,10 @@ static const step_t *sqm_step(const track_t *t, uint32_t idx, uint32_t vary)
     return &sqm_pat[pi][q->fader >= 1u + sqm_hash(q->tseed, idx / 4u, 9u) % 127u][idx];
 }
 /* the step the sequencer plays (audio interrupt): with VARY BARS 4 + 8, while playing, End A but on every 4th bar (TAKE TURNS, both parts in automatic WNDR / JRNY: part 2 on bars 2 and 6) */
-static const step_t *seq_play_step(const track_t *t, uint32_t idx, step_t *buf)
+static const step_t *seq_play_step_at(const track_t *t, uint32_t idx, uint32_t bar)
 {
-    uint32_t pi = (uint32_t)(t - trk), bar = (uint32_t)sqm_bar + sqm_bar_turn, off = sqm_turns && sqm_auto == 3u && pi == 1u;   /* TAKE TURNS: part 2 two bars on, in the shared bars (bars 2 and 6) */
+    uint32_t pi = (uint32_t)(t - trk), off = sqm_turns && sqm_auto == 3u && pi == 1u;   /* TAKE TURNS: part 2 two bars on, in the shared bars (bars 2 and 6) */
     const step_t *s = sqm_step(t, idx, sqm_vary_all || !song.playing || ((bar + 2u * off) & 3u) == 3u);
-    (void)buf;
     /* LEAD / ECHO: part 2 leads bars 1-2 of 4, part 1 bars 3-4; the other plays its thinned End A (onsets only: a tie after one stays silent) */
     if (pi < NSHOWN && song.playing && s->time == ST_NOTE) {
         /* ARC: the drop's first 2 bars, both parts in automatic WNDR / JRNY start nothing (ties and tails ring) */
@@ -302,6 +301,12 @@ static const step_t *seq_play_step(const track_t *t, uint32_t idx, step_t *buf)
             return &SQM_REST;
     }
     return s;
+}
+/* .. in the bar now (the audio interrupt); the TIDE page asks for the bar each step plays in (tide_ui.c tide_views) */
+static const step_t *seq_play_step(const track_t *t, uint32_t idx, step_t *buf)
+{
+    (void)buf;
+    return seq_play_step_at(t, idx, (uint32_t)sqm_bar + sqm_bar_turn);
 }
 
 /* ------------------------------------------------------------------ the controls (main loop) --- */
