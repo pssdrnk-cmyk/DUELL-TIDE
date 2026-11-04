@@ -24,6 +24,10 @@ static int tide_seq_ghost(const track_t *t)
 {
     return song.playing && !song.rec && trk_index(t) < NSHOWN && arp_mode(t) == AM_SEQ_ID;
 }
+static int tide_arp_paused(const track_t *t)
+{
+    return !song.playing && !t->arp_phys && trk_index(t) < NSHOWN && arp_mode(t) == AM_SEQ_ID && !clock_src();
+}
 static uint32_t tide_seq_chord(const track_t *t, uint32_t *list, uint32_t n)
 {
     uint32_t pi = trk_index(t), i;
@@ -50,7 +54,7 @@ static void tide_seq_ghost_start(void)
 {
     uint32_t k;
     for (k = 0; k < NSHOWN; k++)
-        if (!trk[k].nheld && arp_mode(&trk[k]) == AM_SEQ_ID) {
+        if (!trk[k].arp_phys && arp_mode(&trk[k]) == AM_SEQ_ID) {
             trk[k].arp_pos = 0xFFFFFFF;
             trk[k].arp_idx = 0xFFFFFFFFu;
         }

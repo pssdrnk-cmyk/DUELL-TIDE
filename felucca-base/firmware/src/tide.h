@@ -27,6 +27,10 @@ static const step_t *tide_play_step(const track_t *t, uint32_t idx, step_t *buf)
 static int tide_seq_ghost(const track_t *t);
 static uint32_t tide_seq_chord(const track_t *t, uint32_t *list, uint32_t n);
 #define TIDE_SEQ_GHOST(t) tide_seq_ghost(t)
+/* H2c (seq.c arp_step): a SEQ arp is the part's sequencer, so a plain STOP stops it too, also on a chord HOLD keeps (owner, 2026-11-04: "sound is even playing
+ * when the stop button is pressed"): no step while the transport is stopped and no key is down; the latched chord stays for PLAY (STOP ALL ends it) */
+static int tide_arp_paused(const track_t *t);
+#define TIDE_ARP_PAUSED(t) tide_arp_paused(t)
 #define TIDE_SEQ_CHORD(t, list, n) tide_seq_chord((t), (list), (n))
 /* H3 (seq.c, audio path): VARY BARS' bar count since PLAY and the bar turning in this block; the patterns' completed loops (the
  * phrase lifecycle, seq_rhythm.c). Counted here, read by tide_seq.c and the pages */
@@ -153,6 +157,7 @@ static int tide_foot_two(void);
 
 #define TIDE_PLAY_STEP(t, idx) (&seq_steps(t)[(idx)])
 #define TIDE_SEQ_GHOST(t) 0
+#define TIDE_ARP_PAUSED(t) 0
 #define TIDE_SEQ_CHORD(t, list, n) (n)
 #define TIDE_SEQ_START() ((void)0)
 #define TIDE_SLEN(t) ((uint32_t)(t)->p[P_SLEN])

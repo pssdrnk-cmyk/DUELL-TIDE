@@ -398,7 +398,7 @@ static int arp_seq_mode(void)
     t->p[P_SLEN] = 4; scale_g = 0; t->p[P_AOCT] = 1; t->p[P_APROB] = 127; t->p[P_AGATE] = 64;
     t->p[P_ARATE] = 2; t->p[P_AMODE] = AM_SEQ;
     per = div_samples(2);
-    t->nheld = 1; t->held[0] = 48; memset(held_key[0], 0, sizeof held_key[0]);
+    t->nheld = 1; t->arp_phys = 1; t->held[0] = 48;  /* (a key down: a SEQ arp on a latched chord only waits for PLAY, tide.h H2c) */ memset(held_key[0], 0, sizeof held_key[0]);
     t->arp_pos = 0xFFFFFFF; t->arp_idx = 0xFFFFFFFFu;
     for (i = 0; i < 8; i++) {
         arp_tick(t, per);

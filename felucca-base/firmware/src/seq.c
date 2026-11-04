@@ -599,6 +599,12 @@ static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
         else
             t->arp_off -= gate_n;
     }
+    if (TIDE_ARP_PAUSED(t)) {                       /* TIDE hook (H2c): a SEQ arp on a latched chord waits for PLAY */
+        t->arp_ph = 0;
+        if (ARP_UP(t))
+            arp_off(t);
+        return;
+    }
     if (!arp_mode(t) || (!t->nheld && !TIDE_SEQ_GHOST(t))) {   /* (0.2.14: MODULES' ARP OFF / SEQ OFF: as the arp's MODE OFF; TIDE hook H2b) */
         t->arp_ph = 0;                              /* (a new press starts a new phrase) */
         if (!t->nheld && ARP_UP(t))
