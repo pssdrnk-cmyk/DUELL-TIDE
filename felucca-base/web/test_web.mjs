@@ -254,9 +254,9 @@ async function editorMock() {
        "editor: firmware without MENU settings is not asked");
   }
   await rq(E.req.uiSet(3, 0));
-  const scale = E.parse[E.CMD.DESC](await rq(E.req.desc(0, 26)));
+  const scale = E.parse[E.CMD.DESC](await rq(E.req.desc(0, 26)));   /* (DUELL 1.1: the instrument's SCALE_D, labelled SCALE, params.c; 1.0 sent the part parameter SCL) */
   const scaleNames = ["CHR", "MAJ", "MIN", "DOR", "MIX", "PEN", "MPEN", "HARM", "PHRY", "LYD", "LOC", "MEL", "BLUES", "WHOLE", "DIMHW", "DIMWH"];
-  ok(scale.label === "SCL" && scale.max === 15 && eq(scale.names, scaleNames), "editor: all 16 scale names exposed");
+  ok(scale.label === "SCALE" && scale.max === 15 && eq(scale.names, scaleNames), "editor: all 16 scale names exposed");
   const scaleSet = E.parse[E.CMD.SET](await rq(E.req.set(0, scale.id, 15)));
   ok(scaleSet.value === 15, "editor: new scale selection is not clamped to the old range");
   const dump = E.parse[E.CMD.DUMP](await rq(E.req.dump()), info);

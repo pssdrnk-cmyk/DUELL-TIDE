@@ -290,14 +290,16 @@ static const step_t *sqm_step(const track_t *t, uint32_t idx, uint32_t vary)
 static const step_t *seq_play_step_at(const track_t *t, uint32_t idx, uint32_t bar)
 {
     uint32_t pi = (uint32_t)(t - trk), off = sqm_turns && sqm_auto == 3u && pi == 1u;   /* TAKE TURNS: part 2 two bars on, in the shared bars (bars 2 and 6) */
-    const step_t *s = sqm_step(t, idx, sqm_vary_all || !song.playing || ((bar + 2u * off) & 3u) == 3u);
-    /* LEAD / ECHO: part 2 leads bars 1-2 of 4, part 1 bars 3-4; the other plays its thinned End A (onsets only: a tie after one stays silent) */
+    uint32_t turn = ((bar + 2u * off) & 3u) == 3u;       /* (this part's own variation bar) */
+    const step_t *s = sqm_step(t, idx, sqm_vary_all || !song.playing || turn);
+    /* LEAD / ECHO: part 2 leads bars 1-2 of 4, part 1 bars 3-4; the other plays its thinned End A (onsets only: a tie after one stays silent).
+     * A part on its own variation bar is never the thinned follower (audit C7: the ARC's 1-bar turns put part 2's bar 2 on part 1) */
     if (pi < NSHOWN && song.playing && s->time == ST_NOTE) {
         /* ARC: the drop's first 2 bars, both parts in automatic WNDR / JRNY start nothing (ties and tails ring) */
         if (tarc_dropphr == ((bar >> 2) & 63u) && (bar & 3u) < 2u && ((sqm_auto >> pi) & 1u))
             return &SQM_REST;
         if (idx < NSTEP && !poly_len[pi] && ((sqm_thin[pi][idx >> 5] >> (idx & 31u)) & 1u) &&
-            (((tarc_thin >> pi) & 1u) || (sqm_turns >= 2u && sqm_auto == 3u && pi != (tarc_fast ? ((bar & 1u) ? 0u : 1u) : (bar & 3u) < 2u ? 1u : 0u))))
+            (((tarc_thin >> pi) & 1u) || (sqm_turns >= 2u && sqm_auto == 3u && !turn && pi != (tarc_fast ? ((bar & 1u) ? 0u : 1u) : (bar & 3u) < 2u ? 1u : 0u))))
             return &SQM_REST;
     }
     return s;

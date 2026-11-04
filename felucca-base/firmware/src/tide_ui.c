@@ -229,7 +229,7 @@ static void jl_put(uint32_t r, uint32_t v)
         sqm_sync = (uint8_t)(v % 3u);
         ui_message(v == 0u ? "SYNC OFF" : v == 1u ? "SYNC SOFT" : "SYNC PUSH");
         break;
-    case JL_ARC:                                         /* (seq_arc.c: a build, a peak, an optional drop and a breakdown over 36-64 bars) */
+    case JL_ARC:                                         /* (seq_arc.c: a build, a peak, an optional drop and a breakdown over 32-64 bars) */
         sqm_arc = (uint8_t)(v % 3u);
         ui_message(v == 0u ? "ARC OFF" : v == 1u ? "ARC RISE" : "ARC DROP");
         break;
@@ -488,7 +488,7 @@ static int tide_both(void) { return morph.target == MT_BOTH; }   /* ALGORITHM on
 static void tide_status(char *l)
 {
     static const char *const ST[5] = {"GLIDING", "LOOPING", "DRIFTING", "WNDR", "JRNY"};
-    uint32_t bars = gl.hold ? GLIDE_WAIT_BARS[gl.wait % GLIDE_WAITS] : glide_bars(), at = ((gl.prog * bars) >> GLIDE_Q) + 1u;
+    uint32_t bars = gl.hold ? GLIDE_WAIT_BARS[gl.wait % GLIDE_WAITS] : glide_trip_bars(), at = ((gl.prog * bars) >> GLIDE_Q) + 1u;
     char n[8];
     if (!glide_running())
         str_cpy(l, tide_both() ? "BOTH PARTS" : song.sel ? "PART 2" : "PART 1", 40);
@@ -827,13 +827,14 @@ static uint32_t tide_roll_sig(const track_t *t)
 /* what makes the JAM pages redraw: the faders, the glide, the steps playing and their variation, the settings, the list */
 static uint32_t tide_sig(void)
 {
-    uint32_t pi = song.sel, bars = gl.hold ? GLIDE_WAIT_BARS[gl.wait % GLIDE_WAITS] : glide_bars();
+    uint32_t pi = song.sel, bars = gl.hold ? GLIDE_WAIT_BARS[gl.wait % GLIDE_WAITS] : glide_trip_bars();
     const track_t *t = TSEL;
     return (morph_fader_of(pi) | seqm_fader_of(pi) << 7 | (uint32_t)gl.on << 14 | (uint32_t)gl.armed << 16 | (uint32_t)gl.target << 17 |
             (uint32_t)gl.mode << 19 | (uint32_t)gl.to << 22 | (uint32_t)gl.hold << 23 | (song.playing ? t->seq_idx : 0xFFu) << 24) ^
            (gl.prog >> 10) * 2654435761u ^ ((gl.prog * bars) >> GLIDE_Q) * 0x27D4EB2Fu ^ sqm_key(&sqm[pi < NSHOWN ? pi : 0u]) * 40503u ^
-           ((uint32_t)gl.time | (uint32_t)gl.wait << 4 | (uint32_t)jl_sel << 8 | (uint32_t)sqm_vary_all << 12 | (uint32_t)morph_musical << 13 | (uint32_t)sqm_turns * 0x2545F491u | (uint32_t)sqm_poly << 28 | (uint32_t)sqm_sync << 30 | (uint32_t)(sqm_arc * 7u + tarc.phase * 3u + tarc.left) << 16 |
+           ((uint32_t)gl.time | (uint32_t)gl.wait << 4 | (uint32_t)jl_sel << 8 | (uint32_t)sqm_vary_all << 12 | (uint32_t)morph_musical << 13 | (uint32_t)(sqm_turns & 3u) << 14 | (uint32_t)sqm_poly << 28 | (uint32_t)sqm_sync << 30 |
             (uint32_t)morph.cfg << 16 | (uint32_t)((sqm_bar + sqm_bar_turn) & 3u) << 24 | (uint32_t)song.playing << 26) * 0x9E3779B1u ^
+           ((uint32_t)sqm_arc | (uint32_t)tarc.phase << 2 | (uint32_t)tarc.left << 5 | (uint32_t)tarc.hand << 9 | (uint32_t)tarc.len << 10) * 0x2545F491u ^   /* (audit C4: no field ORed over another) */
            (tide_both() ? (morph_fader_of(1u - pi) | seqm_fader_of(1u - pi) << 7 | (song.playing ? trk[1u - pi].seq_idx : 0xFFu) << 14) * 0x85EBCA77u ^
                              sqm_key(&sqm[(1u - pi) % NSHOWN]) * 0xC2B2AE3Du ^ tide_steps_sig(&trk[1u - pi]) * 0x165667B1u ^ 0x27D4EB2Fu : 0u) ^
            tide_steps_sig(t) * 0xD3A2646Cu;
@@ -896,7 +897,7 @@ static void tide_poll(void)
 {
     tide_settings();
     tarc_poll();                                         /* ARC: the phrase counted, the levers set */
-    sqm_thin_build();                                    /* LEAD / ECHO and ARC: the follower's mask */
+    sqm_thin_poll();                                     /* LEAD / ECHO and ARC: the follower's mask (when what it reads changed) */
     glide_poll();                                        /* a launched GLIDE moves its faders */
     seqm_poll();                                         /* the SEQ MORPH's ends follow pattern edits (TRANS, SHIFT, an edit) */
     morph_xpoll();                                       /* plan any destination GLIDE generated in this same pass */

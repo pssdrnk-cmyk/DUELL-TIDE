@@ -88,7 +88,7 @@ How the tide behaves. **Knob 1** picks the row, **OCT+ / OCT-** change it. The r
 | **TURNS** | TOGETHER · TAKE TURNS · **LEAD** · ECHO | How the two parts share the variations. TOGETHER: both vary at once (bars 4 and 8 with VARY BARS 4 + 8). TAKE TURNS: part 2 varies on bars 2 and 6, part 1 on 4 and 8, so each change is answered two bars later. LEAD: the parts lead two bars each of every four while the other plays a thinned version of its pattern (beats, held notes and about half of the other hits stay). ECHO: as LEAD, and the answer's hits lean into the gaps the call left. Playback only: KEEP still stores the whole pattern. |
 | **POLY** | OFF · **GENTLE** · WIDE | Now and then one part's loop gets a few steps shorter, so its motif slides against the beat, then plays whole again at the next phrase. GENTLE: 15 or 14 of 16 steps, rarely. WIDE: 12 to 15 steps, more often. Your stored pattern is never changed. |
 | **SYNC** | OFF · **SOFT** · PUSH | The automatic pattern edits that move a hit lean towards the "and" (the off-beat 8th), with an occasional push into the beat: SOFT one a bar, PUSH two. The beats themselves never move and a hit never lands on one. Triplet grids, slow rates and loops that are not whole beats behave as with OFF. |
-| **ARC** | OFF · **RISE** · DROP | A long shape over 36 to 64 bars, counted in 4-bar phrases: the tide **rises** (more syncopation and repeats, faster turns, brighter sounds), holds a **peak**, eases into a thinned **breakdown**, and recovers. DROP also drops by itself on about half of the arcs: both parts stop starting notes for two bars while tails and your other gear carry on. The AUTO TIDE status line shows the phase (RISE 3/6, PEAK, DROP, BREAK 2/3). **Drop by hand** (RISE or DROP): on AUTO TIDE hold OCT- and turn knob 2; the drop comes at the next phrase (turn again to cancel). |
+| **ARC** | OFF · **RISE** · DROP | A long shape over 32 to 64 bars, counted in 4-bar phrases: the tide **rises** (more syncopation and repeats, faster turns, brighter sounds), holds a **peak**, eases into a thinned **breakdown**, and recovers. DROP also drops by itself on about half of the arcs: both parts stop starting notes for two bars while tails and your other gear carry on. The AUTO TIDE status line shows the phase (RISE 3/6, PEAK, DROP, BREAK 2/3). **Drop by hand** (RISE or DROP): on AUTO TIDE hold OCT- and turn knob 2; the drop comes at the next phrase (turn again to cancel). |
 
 **When TURNS, POLY, SYNC and ARC act.** Only while the tide runs by itself on a pattern: MODE **WNDR** or **JRNY**, **ROLL MUSIC**, **TARGET SEQ or BOTH**, the music playing. TURNS needs both parts (ALGORITHM BOTH). In any other setup these rows do nothing, so ONCE, LOOP and DRIFT always play your pattern as written.
 
@@ -108,8 +108,8 @@ A new unit starts on DUB, so the bold values above are DUB's. A unit that had TI
 
 | When | Settings |
 |---|---|
-| At once (next step or bar) | VARY BARS, WASH LEVEL, TURNS, POLY, SYNC. ARC switched on starts a RISE; switched off it ends the arc. TIME (also when a STYLE sets it) rescales the trip in progress. |
-| At the next turn (when the trip arrives) | MODE, WAIT, and ROLL, ARP and PITCH (they shape the next end that is rolled or picked). |
+| At once (next step or bar) | VARY BARS, WASH LEVEL, TURNS, POLY, SYNC. ARC switched on starts a RISE; switched off it ends the arc. |
+| At the next turn (when the trip arrives) | MODE, WAIT, TIME (also when a STYLE sets it; the page shows the new TIME at once, the bar count goes on with the trip that runs), and ROLL, ARP and PITCH (they shape the next end that is rolled or picked). |
 | At the next start (knob 1) | TARGET: what the tide moves is fixed when a glide starts. |
 
 ### New: sounds, patterns and saving

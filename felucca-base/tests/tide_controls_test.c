@@ -85,6 +85,45 @@ static void test_wait_off_in_hold(void)
     transport_req = 2u; run(48);
 }
 
+/* audit C3: TIME changed mid-trip (the knob, a STYLE) lands at the next turn: the running trip keeps its length, the fader no jump,
+ * the status' bar count goes on with the trip that runs while the page's TIME reads the new setting */
+static void test_time_mid_trip(void)
+{
+    uint32_t i, p0, p1, p2, f0, f1;
+    char st[40];
+    ui_power_on(); frame();
+    transport_req = 2u; run(48);
+    song.sel = 0; morph.target = MT_SELECTED;
+    gl.mode = GM_LOOP; gl.target = GT_SOUND; gl.time = 2; gl.wait = 0; gl.on = gl.armed = 0;   /* (4 bars) */
+    song.g[G_BPM] = 120;
+    glide_launch(1u, morph_mask(0), 0);
+    run(4000);                                           /* (about 2 bars of 4) */
+    p0 = glide_progress(); f0 = morph_fader_of(0);
+    CHECK("TIME mid-trip: the 4-bar trip is under way", gl.on && !gl.armed && p0 > (1u << GLIDE_Q) / 4u && p0 < (3u << GLIDE_Q) / 4u);
+    tide_knob(2u, -2);                                   /* (TIME 1 bar) */
+    p1 = glide_progress();
+    gl.time = 6u;                                        /* (64 bars: MIDI, a STYLE) */
+    p2 = glide_progress();
+    gl.time = 0u;
+    CHECK("TIME mid-trip: the progress stays where it was (no jump to the end, no slide back)", p0 == p1 && p1 == p2);
+    tide_status(st);
+    CHECK("TIME mid-trip:   the status counts the trip that runs (x/4), the page's TIME is the new 1 BAR", strlen(st) > 2u && !strcmp(st + strlen(st) - 2u, "/4") && glide_bars() == 1u);
+    run(32);
+    f1 = morph_fader_of(0);
+    CHECK("TIME mid-trip:   the fader goes on smoothly, the trip not arrived", gl.on && gl.to == 1u && f1 + 3u >= f0 && f1 <= f0 + 6u && f1 < 127u);
+    tide_style_apply(STY_PEAK); gl.mode = GM_LOOP; gl.time = 0u;   /* (a STYLE pick sets TIME directly) */
+    run(32);
+    CHECK("TIME mid-trip: a STYLE pick leaves the running trip's length too", gl.on && gl.to == 1u && morph_fader_of(0) < 127u);
+    for (i = 0; i < 400u && gl.to == 1u; i++) run(16);
+    CHECK("TIME mid-trip:   the trip arrives at B at its own 4 bars (about 2 more)", gl.to == 0u && i > 180u && i < 300u);
+    tide_status(st);
+    CHECK("TIME mid-trip:   the next trip runs the new TIME (x/1)", strlen(st) > 2u && !strcmp(st + strlen(st) - 2u, "/1"));
+    for (i = 0; i < 400u && gl.to == 0u; i++) run(16);
+    CHECK("TIME mid-trip:   and takes 1 bar", gl.to == 1u && i > 100u && i < 150u);
+    sqm_turns = 0; sqm_poly = 0; sqm_sync = 0; sqm_arc = 0; sqm_vary_all = 0; morph_wlvl = 0;
+    glide_stop(); transport_req = 2u; run(48);
+}
+
 /* Both panel routes must also release a paused hold without moving the endpoint. */
 static void test_wait_off_paused(void)
 {
@@ -461,6 +500,7 @@ int main(void)
     test_glide_transport();
     test_twist_stop();
     test_wait_off_in_hold();
+    test_time_mid_trip();
     test_wait_off_paused();
     test_both_takeover();
     test_wait_edit_running();

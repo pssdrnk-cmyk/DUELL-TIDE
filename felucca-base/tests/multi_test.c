@@ -535,6 +535,25 @@ int main(void)
             ck("  previews its own contents: decoded, no note (NO SEQUENCE), the new gen", pp.state == 1u && !pp.has && pp.len == ps_len(2u) && ps_gen() != 0u);
             trk[0] = keep;
             ck("  the live track is untouched by the preview", !memcmp(&trk[0], &keep, sizeof keep));
+            {                                        /* audit C1 / C2: every list entry (the slots, the empty USER slots, the read-only places P29..P32) previews what its LOAD gives */
+                uint32_t k, same = 0, places = 0, users = 0;
+                for (k = 0; k < PS_VSLOTS; k++) {
+                    track_t t = trk[0];
+                    uint32_t hits = 0;
+                    ps_preview(k, &pp);
+                    if (ps_load_trk(&t, k) != 0)
+                        continue;
+                    for (i = 0; i < NSTEP && i < (uint32_t)t.p[P_SLEN]; i++)
+                        hits += t.step[i].time == ST_NOTE && t.step[i].n;
+                    same += pp.state == 1u && (pp.has != 0u) == (hits != 0u) && pp.len == (uint32_t)t.p[P_SLEN] && ps_len(k) == pp.len;
+                    places += k >= PS_SLOTS && pp.state == 1u && pp.has && pp.len == PATTERNS[k - PS_NUSER].len;
+                    users += k >= PS_USER0 && k < PS_SLOTS && pp.state == 1u && !pp.has && !hits;
+                }
+                ck("PATTERNS preview = LOAD for all 36 entries: decoded, notes iff the loaded pattern has notes, LEN as LOAD sets it and as the list says", same == PS_VSLOTS);
+                ck("  the read-only places P29..P32 preview their default pattern (not DAMAGED, not LEN 0)", places == PS_NUSER);
+                ck("  an empty USER slot previews no note (its LOAD gives a blank pattern)", users == PS_NUSER);
+                trk[0] = keep;
+            }
         }
     }
 #endif
