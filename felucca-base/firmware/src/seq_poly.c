@@ -95,6 +95,17 @@ static uint32_t tide_arp_idx(const track_t *t, uint32_t k, uint32_t len)
     uint32_t pi = trk_index(t);
     return pi < NSHOWN && poly_len[pi] && poly_len[pi] < len ? (k - poly_base[pi]) % poly_len[pi] : k % len;
 }
+/* the pages (main loop): the step part t plays now (the sequencer's seq_idx; an ARP SEQ part: the arp's step, arp_idx; 0xFFFFFFFF: none yet) and the
+ * loop's length it plays (POLY shortens it: the steps past it do not sound, whichever of the two walks the steps) */
+static uint32_t tide_play_idx(const track_t *t)
+{
+    return arp_mode(t) != AM_SEQ_ID ? (uint32_t)t->seq_idx : t->arp_idx == 0xFFFFFFFFu ? 0xFFFFFFFFu : tide_arp_idx(t, t->arp_idx, tide_poly_full(t));
+}
+static uint32_t tide_play_len(const track_t *t)
+{
+    uint32_t pi = trk_index(t), len = tide_poly_full(t);
+    return pi < NSHOWN && poly_len[pi] && poly_len[pi] < len ? poly_len[pi] : len;
+}
 static void tide_arp_tick(track_t *t)
 {
     uint32_t pi = trk_index(t), len = tide_poly_full(t), was;

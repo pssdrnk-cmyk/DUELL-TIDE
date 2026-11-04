@@ -291,7 +291,7 @@ static void graph_roll(const track_t *t, uint16_t c)
         int32_t x = PR_X0 + (int32_t)i * PR_CW;
         if (si == ui.cursor)                          /* the cursor frame: the window's height, as the picture */
             cv_frame(x, PR_WY0, PR_CW + 1, PR_WY1 - PR_WY0, T_TEXT);
-        if (song.playing && si == t->seq_idx)
+        if (song.playing && si == TIDE_PLAY_IDX(t))   /* (TIDE: an ARP SEQ part's arp step, as the sequencer plays) */
             cv_rect(x + 6, PR_WY0, 1, PR_WY1 - PR_WY0, T_ACCENT);
     }
     for (i = 0; i < ncol; i++) {                      /* the notes */
@@ -303,6 +303,10 @@ static void graph_roll(const track_t *t, uint16_t c)
             continue;                                 /* a REST, empty, or a TIE after one */
         st = &seq_steps(t)[s];
         col = s == ui.cursor || si == ui.cursor ? c : ux_mix(T_BASE, c, UT_T7_NOTE_PCT);   /* (item 118, the picture: the notes dim, the cursor step's in the part's colour) */
+#if DUELL_TIDE
+        if (si >= TIDE_PLAY_LEN(t))
+            col = ux_mix(T_BG, col, 40);                  /* (POLY shortens the loop: the steps past it are not played now) */
+#endif
         if (s == si)
             pr_bars(st, x + UT_T7_NOTE_X, UT_T7_NOTE_W, col, (st->flags & SF_ACCENT) != 0u, &y, step_ratchet(st));
         else                                          /* a TIE: the bars on through the gap before */
@@ -1990,7 +1994,7 @@ static uint32_t graph_signature(void)
                                                      * levels, FB; the operator pages: the operator, the stage) */
         h ^= (fm6_pgen[(t - trk) % NTRK] + 1u) * 2246822519u + (fop_op + 1u) * 40503u + (fop_stg + 1u) * 7919u;
     if (pg->graph == GR_ROLL) {
-        uint32_t ph = song.playing ? t->seq_idx : 0xFFFFu;
+        uint32_t ph = song.playing ? TIDE_PLAY_IDX(t) : 0xFFFFu;
         if (ph / 16u != ui.bank)
             ph = 0xFFFFu;                            /* the roll shows the cursor's bank only */
         h ^= steps_hash(t) + ph * 31u + ui.cursor * 7919u + ui.bank * 613u;

@@ -48,7 +48,7 @@ K1 picks the row. **OCT+** the next value, **OCT-** the one before. Saved over a
 
 | Row | Values (default first) | What it does | Start |
 |---|---|---|---|
-| **STYLE** | DUB, DEEP, MINIMAL, AMBIENT, PEAK, CUSTOM | The top row. One pick sets MODE, TIME, WAIT and the rows VARY BARS, TURNS, POLY, SYNC, ARC and WASH LEVEL together (TARGET, ROLL, ARP and PITCH stay yours). Changing any of those nine by hand turns it into CUSTOM and keeps your values; CUSTOM itself changes nothing. Table below. | DUB |
+| **STYLE** | DUB, DEEP, MINIMAL, AMBIENT, PEAK, CUSTOM | The top row. One pick sets MODE, TIME, WAIT and the rows VARY BARS, TURNS, POLY, SYNC, ARC and WASH LEVEL together (TARGET, ROLL, ARP and PITCH stay yours). Changing any of those nine by hand turns it into CUSTOM and keeps your values; step off CUSTOM onto a style and back, and CUSTOM brings those values back (until a power cycle). TURNS, POLY, SYNC and ARC act only in automatic MUSIC WNDR / JRNY with SEQ in TARGET: otherwise their values are dim and knob 1's line says what is missing. Table below. | DUB |
 | **TARGET** | BOTH, SOUND, SEQ | What the glide moves: the sound, the pattern, or both together. BOTH links the two faders; the MORPH fader moved by hand drags the SEQ fader with it. | BOTH |
 | **VARY BARS** | 4 + 8, ALL | When the pattern plays its variation: on every 4th bar of the phrase (4 + 8), or every bar. | 4 + 8 |
 | **ROLL** | MUSIC, SMART, WILD | How a new End B is made. MUSIC turns five dials (bright, movement, shape, space, character) inside the ranges where that kind of sound actually lives, so a brighter end is not a louder one. SMART is DUELL's own safe roll. WILD drops the safety rules. | MUSIC |
