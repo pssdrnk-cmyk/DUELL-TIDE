@@ -124,7 +124,7 @@ MULTIS = [
          parts=[dict(sound="PLUCK BASS", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=55, P_AHOLD="OFF", P_VOICE="LEG", P_DLY=0, P_REV=0, P_LEVEL=112),
                      steps=". . -24A . . . -24 . . . -22 . . -24 -19 ."),
                 dict(sound="CLAVICLE", set=dict(P_CHRD="MIN7", P_VOIC="CLOSE", P_SGATE=30, P_DLY=77, P_REV=44, P_LEVEL=104),
-                     steps=". . . n63+67+70+74A . . . . . . n65+68+72+75 . . . .")]),
+                     steps=". . . n63+67+70+74A . . . . . . . n65+68+72+75 . . . .")]),
 ]
 
 # ---- spare multis (0.2.24): made for 0.2.23, out of the sixteen so the owner's COLD CHAPEL, ACID ETHER and GARGLE ACID could come back.
@@ -443,6 +443,10 @@ def check(snd=None):
         err.append("two multis share a slot or a name (the spare ones counted)")
     if sum(1 for m in MULTIS if m.get("tribute")) > 3:
         err.append("more than three tribute multis (owner: at most 2 or 3)")
+    for m in MULTIS:                                  # (a pattern is 8 or 16 steps: one token short drifts a 16th a bar against the other part, M16 had 15)
+        for t, p in enumerate(m["parts"]):
+            if p.get("steps") and len(p["steps"].split()) not in (8, 16):
+                err.append("M%02d part %d: the pattern has %d steps, not 8 or 16" % (m["slot"], t + 1, len(p["steps"].split())))
     for m in MULTIS:
         f = DIR / ("M%02d.bin" % m["slot"])
         if not f.exists():

@@ -258,9 +258,11 @@ def sound_from_record(ctx, rec, factory):
         if v != df:
             p["%s %s" % (ctx.gs.XGROUP[xn[2:]], label)] = v
     cat0 = CATS[rec["cat"]] if rec["cat"] else factory["cat"]       # (a BASS / PERC / KICK sound without KEY TRK gets 0 from the generator: write the record's value, 32 included)
-    if (cat0 in ("BASS", "PERC") or "KICK" in rec["name"]) and "KTRK" not in p:
+    if (factory.get("lcat", cat0) in ("BASS", "PERC") or "KICK" in rec["name"]) and "KTRK" not in p:   # (lcat: the category the generator's defaults were made with, gen_duell_sounds.py)
         p["KTRK"] = rec["values"][ctx.ids["P_KTRK"]]
     s = dict(engine=ctx.eng_names[eng], idx=factory["idx"], name=rec["name"], cat=CATS[rec["cat"]] if rec["cat"] else factory["cat"], p=p)
+    if "lcat" in factory:
+        s["lcat"] = factory["lcat"]
     if TIDE:                                         # TIDE (firmware tide.h H6): a factory sound's B is rolled MUSICAL as it loads, the recipe's End B is not used; the record's is that roll: the recipe's stays
         s.update({k: v for k, v in factory.items() if k in ("bseed", "bamt", "bend", "bpin", "bfm")})
     elif rec["mb"]:                                  # PT_VER 4: End B as exact values (the block of the record): 'bend' {label: End B value} (where it differs from the Original), 'bpin' (the marks of the values set by hand), 'bfm' (FM6 bytes), 'bamt' (the AMOUNT)
@@ -394,8 +396,8 @@ def write_sounds(entries, path):
         tail = ""
         if "bend" in s:                                   # End B as values, in the form duell_sounds.py holds it (tools/endb.py sound_kwargs)
             tail = ",\n         " + ",\n         ".join(endb.sound_kwargs(s["bend"], s.get("bpin"), s.get("bfm")))
-        lines.append("    dict(engine=%r, idx=%d, name=%r, cat=%r%s%s,\n         p=%s%s)," % (
-            s["engine"], s["idx"], s["name"], s["cat"], ", bseed=%d" % s["bseed"] if "bseed" in s else "", ", bamt=%d" % s["bamt"] if "bamt" in s else "", py(s["p"]), tail))
+        lines.append("    dict(engine=%r, idx=%d, name=%r, cat=%r%s%s%s,\n         p=%s%s)," % (
+            s["engine"], s["idx"], s["name"], s["cat"], ", lcat=%r" % s["lcat"] if "lcat" in s else "", ", bseed=%d" % s["bseed"] if "bseed" in s else "", ", bamt=%d" % s["bamt"] if "bamt" in s else "", py(s["p"]), tail))
     lines.append("]")
     Path(path).write_text("\n".join(lines) + "\n")
 

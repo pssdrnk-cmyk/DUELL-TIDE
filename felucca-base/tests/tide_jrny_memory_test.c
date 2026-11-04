@@ -71,7 +71,7 @@ int main(void)
             uint32_t j;
             for (n = j = 0; j < ds_count(e); j++)
                 n += fam_of(ds_cat_of(e, j)) == cat;
-            if (n < 1u || seen[e][cat]++)
+            if (n < 2u || seen[e][cat]++)               /* (a sound alone in its family has no walk: it rolls itself, tide_jrny_family_test.c) */
                 continue;
             groups++;
             

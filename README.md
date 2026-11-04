@@ -70,7 +70,7 @@ The page that runs the tide. **ALGORITHM** picks the part it moves: PART 1, PART
 
 Each mode has its own line on the screen, so you can read what it will do. Where two very different sounds cross, TIDE passes them through a short filter dip, so the change sounds like a move rather than a cut.
 
-JRNY never changes a part's engine. It picks within the starting sound's role family (pads, keys and the rest; bass; lead and pluck; perc and FX), falling back to the engine's other sounds only when the family has none left, and it skips each part's last four destinations where the choice allows. See [current limits](docs/KNOWN_LIMITS.md) and the [roadmap](docs/ROADMAP.md).
+JRNY never changes a part's engine. It picks within the starting sound's role family (pads and keys; bass; lead and pluck; hits; FX and textures), rolling a new End B of the same sound when the family has no other sound, and it skips each part's last four destinations where the choice allows. See [current limits](docs/KNOWN_LIMITS.md) and the [roadmap](docs/ROADMAP.md).
 
 ### New: TIDE SETTINGS (in HOME's round)
 
@@ -188,7 +188,7 @@ ANALOG, PHASE, LOFI, VOICE, TRIO, WHEEL, PHYS, NOISE, FM6 and WAVE (with three u
 - A **SUB OSC** layer (sine, triangle, square or pulse, an octave or two down), **WAVE STEPS**, and a **CYCLE** envelope that can run as a modulation source.
 
 ### Factory content
-- **128 patches** (with TIDE: 160, see above), sorted by category (24 BASS, 19 LEAD, 21 PAD, 14 PLUCK, 16 KEYS, 7 PERC, 16 FX, 11 OTHER). The bank is levelled with each patch's TRIM. New in 1.0: **#25 DRIVEN SAW**, a driven lead that uses both filters in series. The list of numbers is [docs/PATCH_NUMBERS.md](docs/PATCH_NUMBERS.md).
+- **128 patches** (with TIDE: 160, see above), sorted by category (24 BASS, 19 LEAD, 22 PAD, 14 PLUCK, 16 KEYS, 12 PERC, 21 FX). The bank is levelled with each patch's TRIM. New in 1.0: **#25 DRIVEN SAW**, a driven lead that uses both filters in series. The list of numbers is [docs/PATCH_NUMBERS.md](docs/PATCH_NUMBERS.md).
 - **16 MULTI slots**: 15 factory multis (REESE SWAMP, NIGHT ORGAN, PAD SPLIT, DUB CHORD, WHISPER TIDE, TINE STRINGS, FINAL REEL, HAZY TENSOR, ACID ETHER, WIRED SNAIL, EERIE SIGNAL, DEAD BUFFER, COLD CHAPEL, GARGLE ACID, WOOD & SKIN), their levels balanced and each with its own End B, and M16 CELLAR TAPE (dub techno: an offbeat plucked sub under minor-ninth chord stabs). Every factory multi now has a sequence or a deliberate live part; the former M16 STRESS TEST is a test scene (tests/scenes/M16_STRESS_TEST.bin).
 - **32 patterns**, P01 to P32, all overwritable. Upstream fills every one with a default; with TIDE, P29 to P32 are empty USER slots (see above).
 - Save any patch into any of the 128 slots; RESTORE brings the slot's factory sound back (with TIDE, the last four slots are USER slots that hold no factory sound).
