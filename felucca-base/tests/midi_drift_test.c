@@ -159,11 +159,29 @@ static int drift_start_and_wrap(uint32_t source)
     return bad;
 }
 
+/* S05: Start arms the sequencer; step 0 sounds on the first clock after it (the MIDI downbeat), not on the Start byte. */
+static int drift_start_arms(uint32_t source)
+{
+    int bad=0; drift_setup(source,120);
+    transport_req=2; events_block(CTL);
+    for(uint32_t i=0;i<NSTEP;i++) { trk[0].step[i].time=ST_NOTE; trk[0].step[i].n=1; trk[0].step[i].note[0]=60; }
+    drift_packet(source,0xFA,100u);
+    for(uint32_t ms=101u;ms<120u;ms++) { fm1_ms=ms; events_block(CTL); }
+    uint32_t gated=0;
+    for(uint32_t i=0;i<NVOICE;i++) gated+=trk[0].v[i].gate!=0;
+    bad+=check("Start with no clock yet: step 0 and the click have not started",song.playing && !gated && clk_pos==CLK_START);
+    drift_packet(source,0xF8,120u);
+    gated=0;
+    for(uint32_t i=0;i<NVOICE;i++) gated+=trk[0].v[i].gate!=0;
+    bad+=check("the first clock after Start plays step 0 and the click",gated>0u && clk_pos!=CLK_START);
+    return bad;
+}
+
 int main(void)
 {
     int bad=drift_run(2,120,0,0)+drift_run(1,120,1,1)+drift_run(2,97,1,1)+
             drift_run(1,240,1,1)+drift_run(2,40,0,0);
-    bad+=drift_tempo_edges(1)+drift_tempo_edges(2)+drift_start_and_wrap(1)+drift_start_and_wrap(2);
+    bad+=drift_tempo_edges(1)+drift_tempo_edges(2)+drift_start_and_wrap(1)+drift_start_and_wrap(2)+drift_start_arms(1)+drift_start_arms(2);
     bad+=drift_tempo_steady(1,120)+drift_tempo_steady(2,97)+drift_tempo_steady(1,124)+drift_tempo_steady(2,140)+drift_tempo_steady(1,180)+drift_tempo_steady(2,40)+drift_tempo_steady(1,240)+drift_tempo_response();
     printf("MIDI LONG-RUN PHASE: %s\n",bad?"FAIL":"PASS");
     return bad!=0;

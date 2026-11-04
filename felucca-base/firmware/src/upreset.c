@@ -1270,7 +1270,7 @@ static int up_load(uint32_t k)
         return 1;
     r = up_rec(k);
     up_values(r, v);
-    load_begin(t, UNDO_SOUND);                          /* (ui.c: the copy for SAVE held = undo) */
+    load_begin(t, UNDO_SOUND);                          /* (ui.c: the copy for the undo) */
     panic_req |= (uint8_t)(1u << song.sel);
     panic_keep |= (uint8_t)(1u << song.sel);            /* (a patch load: ARP KEEPS RUNNING may keep the arp's note list, seq.c) */
     {

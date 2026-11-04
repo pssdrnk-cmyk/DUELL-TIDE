@@ -500,13 +500,22 @@ static void put_hits(uint32_t p, const uint8_t *at, uint32_t n)
         trk[p].step[at[k]] = (step_t){{(uint8_t)(60 + k)}, 1, ST_NOTE, 0, 100, 0};
 }
 static int thin_bit(uint32_t p, uint32_t i) { return (int)((sqm_thin[p][i >> 5] >> (i & 31u)) & 1u); }
+/* D2: LEAD and ECHO answer with a lead or pluck line (the Original's category): part p on its engine's first LEAD sound */
+static void lead_sound(uint32_t p)
+{
+    uint32_t e = trk[p].eng_req, j;
+    for (j = 0; j < ds_count(e) && ds_cat_of(e, j) != CAT_LEAD; j++)
+        ;
+    CHECK("a LEAD sound on the part's engine", j < ds_count(e));
+    trk[p].preset = (uint8_t)j, trk[p].user = 0;
+}
 static void t_answer(void)
 {
     static const uint8_t H[] = {0, 2, 3, 4, 6, 7, 8, 10, 11, 12, 14, 15};
     uint32_t i, p, bar, drops, cand, nbad = 0, wrong = 0, sh[2] = {0, 0}, n, seed;
     step_t buf;
     CHECK("TURNS shows its four values", !strcmp(jl_vname(JL_TURNS, 2), "LEAD") && !strcmp(jl_vname(JL_TURNS, 3), "ECHO") && jl_n(JL_TURNS) == 4u);
-    setup(16, 16, 2, 2, 0);
+    setup(16, 16, 2, 2, 0), lead_sound(0), lead_sound(1);
     put_hits(0, H, 12);
     put_hits(1, H, 12);
     sqm_auto = 3, sqm_turns = 2;
@@ -516,12 +525,13 @@ static void t_answer(void)
     sqm_thin_build();
     for (drops = 0, cand = 0, i = 0; i < 16u; i++) {
         drops += (uint32_t)thin_bit(0, i);
-        if (i % 4u && sqm_hit(&trk[0].step[i]))
+        if (!sqm_anchor(trk[0].step, 16u, i) && sqm_hit(&trk[0].step[i]))
             cand++;
-        if (thin_bit(0, i) && (i % 4u == 0u || !sqm_hit(&trk[0].step[i])))
+        if (thin_bit(0, i) && (i % 4u == 0u || sqm_anchor(trk[0].step, 16u, i) || !sqm_hit(&trk[0].step[i])))
             nbad++;
     }
-    CHECK("mask: no beat, no anchor, only hits; half of the candidates (rounded up) dropped", !nbad && cand == 8u && drops == 4u);
+    /* (the anchors of these 12 hits: the 4 beats, then 2 3 6 7 for the floor of 3/5: 8 of 12; candidates 10 11 14 15) */
+    CHECK("mask: no beat, no anchor, only hits; half of the candidates (rounded up) dropped", !nbad && cand == 4u && drops == 2u);
     {   /* held hits: a tie after step 3 and 11, a slide on 7 */
         step_t *st = trk[0].step;
         st[4] = (step_t){{0}, 0, ST_TIE, 0, 0, 0};
@@ -551,7 +561,7 @@ static void t_answer(void)
         sqm_thin_build();
         for (i = 0, nb = 0; i < 16u; i++)
             nb += (uint32_t)thin_bit(0, i);
-        CHECK("  .. VARY 4 + 8: the mask is End A's alone, as before (4 of 8)", nb == 4u);
+        CHECK("  .. VARY 4 + 8: the mask is End A's alone, as before (2 of 4)", nb == 2u);
     }
     put_hits(0, H, 2);
     sqm_refresh(0, 1);
@@ -622,7 +632,7 @@ static void t_answer(void)
     for (n = 0; n < 2u; n++)
         for (seed = 1; seed <= 12u; seed++) {
             uint32_t k, m;
-            setup(16, 16, 2, 2, 0);
+            setup(16, 16, 2, 2, 0), lead_sound(0), lead_sound(1);
             put_hits(1, H, 12);
             put_hits(0, (const uint8_t[]){0, 4, 8, 12, 1, 5, 9, 13}, 8);
             sqm_auto = 3, sqm_turns = n ? 3u : 2u, sqm_sync = 0;
@@ -640,7 +650,7 @@ static void t_answer(void)
         }
     {   /* audit C9: the masks are built when what they read changes, not every frame */
         uint32_t m0, m1, ok1, ok2, ok3;
-        setup(16, 16, 2, 2, 0);
+        setup(16, 16, 2, 2, 0), lead_sound(0), lead_sound(1);
         put_hits(0, H, 12), put_hits(1, H, 12);
         sqm_auto = 3, sqm_turns = 2, sqm_sync = 0;
         seqm_poll();

@@ -760,7 +760,7 @@ static uint32_t lock_id(uint32_t k)
     return id < 256u && motion_param(id) && mod_lock_ok(TSEL, id) ? id : 0xFFu;   /* (1.1: only what the matrix offers for this part now) */
 }
 
-static uint8_t pl_pend_on;                       /* PATCHES: a cursor place waits for its load (K1 accelerated, pl_step below) */
+static uint8_t pl_pend_on;                       /* a cursor place waits for its load (K1 on PATCHES, PRESETS on any page, accelerated: pl_step below) */
 static void ev_enter(void);
 static void page_entered(void)
 {
@@ -943,14 +943,14 @@ static int seq_is_empty(const track_t *t)
 
 /* One-step UNDO of a load. A sound load (a factory or user preset, an engine jump, TOOLS INIT, the
  * editor's PRESET / G_ENGSEL / UP_LOAD) changes the sound only; a pattern load (SAVE > PATTERNS) changes
- * the steps and the pattern parameters only. Each first copies the track as it was; SAVE held 0.7 s
- * swaps back what the loads changed (held again: the loads again), so steps recorded after a sound
+ * the steps and the pattern parameters only. Each first copies the track as it was; OCT- held and the PRESETS knob turned
+ * (ui_input.c load_undo_gate) swaps back what the loads changed (held again: the loads again), so steps recorded after a sound
  * load, or a sound edited after a pattern load, stay as they are. One copy for all tracks: the last
  * load wins. Loads in a row on one track with nothing changed in between (the PRESETS knob through the
  * list, one pattern after the other, an editor audition) keep the copy from before the first, so the
  * undo goes back past the whole browse. Not snapshotted: power-on, projects.
  * 1.1.5: a lock or automation edit by hand (a step held and a knob turned, a step's locks cleared, SEQ > PARAMETER LOCKS)
- * takes the copy too (UNDO_MOT: SAVE held puts the track's motion back, the sound and the steps stay; motion_undo_take).
+ * takes the copy too (UNDO_MOT: the undo puts the track's motion back, the sound and the steps stay; motion_undo_take).
  * A sound load keeps the track's motion on the parameters every engine has (load_end, motion.c motion_sound_loaded);
  * a pattern load drops it all (the steps it was on are gone) */
 enum { UNDO_SOUND = 1, UNDO_PAT = 2, UNDO_MOT = 4, UNDO_ENG = 8 /* (0.2.24: with UNDO_SOUND: an engine change, no sound load: no PERFORM fade, no pending place) */ };
@@ -1261,9 +1261,9 @@ static int param_kept_on(const track_t *t, uint32_t i) { (void)t; return param_k
 static void ds_seq_back(track_t *t);              /* (upreset.c: a patch's lent sequencer pattern back) */
 
 /* What the loads changed (undo.what) and the copy change places, so again = the loads again. DUELL save flow
- * (2026-10-11): SAVE held is SAVE OVER now (ui_input.c patch_save_ask); this stays the EDIT layer's OCT- (ui_layer.c). The sound: engine, preset and its parameters (not param_kept); the pattern: the steps and LEN
+ * (2026-10-11): SAVE held is SAVE OVER now (ui_input.c patch_save_ask); the undo is OCT- held + a PRESETS turn (ui_input.c load_undo_gate). The sound: engine, preset and its parameters (not param_kept); the pattern: the steps and LEN
  * DIV SWING GATE. The mix (LEVEL PAN MUTE) stays: no load changes it */
-static void undo_swap(void)
+static __attribute__((noinline)) void undo_swap(void)
 {
     track_t *t;
     uint32_t i;
@@ -1805,7 +1805,7 @@ static void pl_poll(void)                                /* every frame */
 {
     if (!pl_pend_on)
         return;
-    if (cur_page()->graph != GR_BROWSE || ui.menu)       /* the page was left: the cursor place is dropped, nothing loads */
+    if (ui.menu)                                         /* the menu opened: the place is dropped, nothing loads (a page left: page_entered) */
         pl_pend_on = 0;
     else if ((int32_t)(fm1_ms - pl_pend_t) >= 0)
         pl_commit();
