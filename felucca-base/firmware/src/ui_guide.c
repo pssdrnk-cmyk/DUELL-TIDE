@@ -302,9 +302,7 @@ static void guide_content(uint32_t pg)
         cv_text_on(GD_X, UT_TY(L, y), &AF_L, "SAVE OVER A PATCH", T_TEXT, T_BG);
         y = guide_rich(GD_X, y + UT_T6_G_HT, GD_W, "Keep [SAVE] pressed.") + UT_T6_G_TH;
         cv_text_on(GD_X, UT_TY(L, y), &AF_L, "PARAMETER LOCK", T_TEXT, T_BG);
-        y = guide_rich(GD_X, y + UT_T6_G_HT, GD_W, "Arm [REC] on STEP and turn a knob.") + UT_T6_G_TH;
-        cv_text_on(GD_X, UT_TY(L, y), &AF_L, "SOUND, PART, MORPH", T_TEXT, T_BG);
-        guide_rich(GD_X, y + UT_T6_G_HT, GD_W, "PRESETS, ALGORITHM, tap [HOME].");
+        guide_rich(GD_X, y + UT_T6_G_HT, GD_W, "One step gets its own value for the knob you turn. Arm [REC] on the STEP page and turn a knob.");
     } else {                                            /* 5: SETUP 5/5 */
         cv_text_on(GD_X, UT_TY(M, UT_T6_Q_BASE), &AF_M, "Set up MIDI now?", T_TEXT, T_BG);
         guide_option(&O5[0], "LATER", "GLO > MIDI HAS IT AT ANY TIME", "", "", "DEFAULT", guide_pick[1] == 0u);
