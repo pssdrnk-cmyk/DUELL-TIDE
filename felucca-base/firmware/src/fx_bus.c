@@ -706,6 +706,7 @@ static __attribute__((noinline)) void BUS_FN(dly_mod)(uint32_t dmask, uint32_t d
     BUS_FX.dm_dev += clamp(dev - BUS_FX.dm_dev, -DM_DEV_STEP, DM_DEV_STEP);
     dev = BUS_FX.dm_dev > cap ? cap : BUS_FX.dm_dev;
     BUS_FX.dm_dev = dev;
+    BUS_FX.dly_g = 0;                                   /* (the plain delay's slide starts from its time again: fx_buses_m) */
     BUS_FN(cho_glide)(cdepth, &cdq, &cst);
     el = ((sine_i(pl + inc) * (dev >> 3)) >> 12) * 256; /* where the offsets are to be at the block's end (Q16) */
     er = ((sine_i(pr + inc + (inc >> 4)) * (dev >> 3)) >> 12) * 256;
@@ -778,7 +779,8 @@ static __attribute__((noinline)) void BUS_FN(dly_mod)(uint32_t dmask, uint32_t d
  * time as the plain delay). The left return is the line at dl (the repeats 1, 3, 5 ...: the send, then the loop's turns), the
  * right the loop's own feedback tap (the repeats 2, 4, 6 ...: the line's end, low-passed, times FDBK). One line, no second
  * one. The delay's return is then no longer stereo-equal: wet gets its mid ((L + R) / 2) and dsd its side ((L - R) / 2,
- * added to the left and taken from the right: rev_side_mix does the same for HALL's). pp 0: the plain delay, bit for bit.
+ * added to the left and taken from the right: rev_side_mix does the same for HALL's). pp 0: the plain delay, bit for bit. A change of the delay time
+ * (TIME, TEMPO, a BPM step, the external clock's tempo) slides (dly_slide: the read point bends, it does not jump); a steady time reads the line as ever.
  * dl is at most half the line (the caller: delay_split). While the delay's modulation runs, fx_buses_mod (above) is called instead */
 static inline void BUS_FN(fx_buses_m)(uint32_t dmask, uint32_t dl, const int32_t *cho_in, const int32_t *dly_in,
                                       const int32_t *rev_in, int32_t *wet, uint32_t n, uint32_t pp, int32_t *dsd)
@@ -789,9 +791,11 @@ static inline void BUS_FN(fx_buses_m)(uint32_t dmask, uint32_t dl, const int32_t
     int32_t cdepth = SV_CDEP, rt, cdq, cst;
     uint32_t cinc = LFO_INC[song.g[G_CRATE] & 127] / CTL, st = dsd != 0;   /* (st: STEREO / LAYER, the chorus has a side) */
     uint32_t cw = BUS_FX.cho_w, cph = BUS_FX.cho_ph, cz = BUS_FX.cho_zs;
+    int32_t gx[2];
+    uint32_t tg = dl << 15, g = BUS_FX.dly_g ? BUS_FX.dly_g : tg;   /* (g: the read offset now, Q15; it slides to tg, a TIME / tempo change bends the repeats: no jump of the read head) */
     BUS_FN(cho_glide)(cdepth, &cdq, &cst);
     for (i = 0; i < n; i++) {
-        int32_t y = 0, x, r;
+        int32_t y = 0, x, x2, r;
         /* chorus: modulated short delay, 5..15 ms (cz: the line and this block's input are 0, the chorus gives 0: see cho_zrun) */
         if (!cz) {
             BUS_CHO[cw & (CHO_LEN - 1u)] = (int16_t)clamp(cho_in[i] >> 1, -32768, 32767);
@@ -808,9 +812,16 @@ static inline void BUS_FN(fx_buses_m)(uint32_t dmask, uint32_t dl, const int32_t
             cw++;
         }
         /* delay with a low-passed feedback */
-        if (pp) {
-            int32_t x2 = BUS_DLY[(BUS_FX.dly_w - 2u * dl) & dmask], yl, yr;
+        if (g != tg) {                                  /* (gliding: the line read between two samples) */
+            g = dly_slide(BUS_DLY, dmask, BUS_FX.dly_w, g, tg, pp, gx);
+            x = gx[0];
+            x2 = pp ? gx[1] : 0;
+        } else {
             x = BUS_DLY[(BUS_FX.dly_w - dl) & dmask];
+            x2 = pp ? BUS_DLY[(BUS_FX.dly_w - 2u * dl) & dmask] : 0;
+        }
+        if (pp) {
+            int32_t yl, yr;
             BUS_FX.dly_lp += mulq15(x2 - BUS_FX.dly_lp, col);
             r = mulq15(BUS_FX.dly_lp, fb);              /* the right return: the loop's end, once round */
             BUS_DLY[BUS_FX.dly_w & dmask] =
@@ -821,7 +832,6 @@ static inline void BUS_FN(fx_buses_m)(uint32_t dmask, uint32_t dl, const int32_t
             y += (yl + yr) >> 1;
             dsd[i] = (yl - yr) >> 1;
         } else {
-            x = BUS_DLY[(BUS_FX.dly_w - dl) & dmask];
             BUS_FX.dly_lp += mulq15(x - BUS_FX.dly_lp, col);
             BUS_DLY[BUS_FX.dly_w & dmask] =
                 (int16_t)clamp((dly_in[i] >> 1) + mulq15r(BUS_FX.dly_lp, fb), -32768, 32767);
@@ -837,6 +847,7 @@ static inline void BUS_FN(fx_buses_m)(uint32_t dmask, uint32_t dl, const int32_t
         BUS_FN(cho_skipped)++;
 #endif
     }
+    BUS_FX.dly_g = g;
     BUS_FX.cho_zs = 0;                                  /* (the flag is for one block: a call that did not come through cho_zrun never skips) */
     BUS_FX.cho_w = cw;
     BUS_FX.cho_ph = cph;
@@ -1082,6 +1093,7 @@ static __attribute__((noinline)) void BUS_FN(dly_ev)(uint32_t dlo, uint32_t dl, 
         e->sync = 0;
         e->ecnt = 0;
     }
+    BUS_FX.dly_g = 0;                                   /* (as dly_mod's) */
     if (mode)
         e->md = (uint8_t)mode;
     while (per < 2048u)

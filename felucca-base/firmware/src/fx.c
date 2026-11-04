@@ -52,6 +52,7 @@ typedef struct {
     uint16_t cho_z;                      /* 0.2.21 (fx_bus.c cho_zrun): the chorus line's run of zero samples written (saturates at CHO_LEN: the whole line is 0) */
     uint8_t byp;                         /* DUELL 1.1 BYPASS of the REVERB: 1 = skipped, its buffers cleared (fx_bus.c rev_byp) */
     uint8_t cho_zs;                      /* .. 1: this block's chorus input is all 0 and the whole line was 0 before it: fx_buses_m leaves the chorus out (its output is 0) */
+    uint32_t dly_g;                      /* the plain delay's read offset now (Q15 samples; fx_bus.c fx_buses_m: a TIME or tempo change slides to it; 0 = not running, the next block takes the time at once) */
 } fxs_t;
 static fxs_t fx;
 static int32_t lo_buf[CTL];             /* the reverb low cut's output block (fx_bus.c rev_locut; bus A and B run one after the other) */
@@ -519,6 +520,19 @@ static inline int32_t dly_tap(const int16_t *b, uint32_t m, uint32_t p)
     int32_t c0 = b[i & m], c1 = b[(i + 1u) & m];
     return c0 + (((c1 - c0) * (int32_t)((p >> 8) & 255u)) >> 8);
 }
+/* Plain TIME glide: move g (Q15 samples) 1/4096 of the remaining distance per sample, capped at half a sample,
+ * then interpolate at w - g and (PING-PONG) w - 2g. This bends the repeats without jumping or reversing the read head.
+ * At least one Q15 step reaches the exact target. Q15 keeps the full line below INT32_MAX, so the difference is signed-safe.
+ * Both bus instances share this helper; steady times keep the original integer read. */
+static __attribute__((noinline)) uint32_t dly_slide(const int16_t *b, uint32_t m, uint32_t w, uint32_t g, uint32_t t, uint32_t pp, int32_t *x)
+{
+    int32_t d = (int32_t)t - (int32_t)g, st = (d >> 12) + (d > 0);
+    uint32_t k;
+    g += (uint32_t)clamp(st, -16384, 16384);
+    for (k = 0; k <= pp; k++)
+        x[k] = dly_tap(b, m, (w << 16) - (g * (k + 1u) << 1));
+    return g;
+}
 /* The delay's EVENT modes (DUELL 0.2.14, core.h G_DMODE RAND / OCT+; fx_bus.c dly_ev): the state of bus A (STEREO and LAYER; SPLIT keeps the plain delay). Two
  * voices read the delay line (dly_buf: no buffer of its own) at a read head each; one plays the plain delay (NONE), the other starts an event on a random
  * share of the clock edges (RETRIG, REVERSE, UP an octave, DOWN an octave), the two crossfading. 76 bytes. "on" 0: not running (the next block starts it from
@@ -570,7 +584,7 @@ static __attribute__((noinline)) void ovl_step(uint32_t over, uint32_t q8)
     if (ovl_calm >= OVL_CALM_HALVES)
         ovl_lite = 0, ovl_calm = 0;
 }
-static void dlyev_clear(void) { memset(&dlyev, 0, sizeof dlyev); memset(&dlyev_b, 0, sizeof dlyev_b); }   /* the lines are cleared (SENDS OFF, STOP ALL, a mode change of the mix): from rest, both buses */
+static void dlyev_clear(void) { memset(&dlyev, 0, sizeof dlyev); memset(&dlyev_b, 0, sizeof dlyev_b); fx.dly_g = fx_b.dly_g = 0; }   /* the lines are cleared (SENDS OFF, STOP ALL, a mode change of the mix): from rest, both buses */
 static void dlyev_start(void) { dlyev.sync = 1; dlyev_b.sync = 1; }  /* PLAY: the clock edges count from the top (seq.c seq_start, as the DUCK's PUMP) */
 static struct { int32_t r[CTL], l[CTL]; } mixlr HOTG_BSS;   /* the pair in one pinned object (core.h HOTG_BSS): the hot PERFORM / delay code reaches the left as the right + 128 */
 #define mix_r (mixlr.r)
