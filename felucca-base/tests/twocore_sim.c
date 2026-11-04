@@ -90,6 +90,7 @@ typedef struct {
     uint64_t dl_sum[TCR_BLOCKS];                        /* the deadlines of the posted jobs, ticks after the half's start, summed per block of the half */
     uint32_t dl_n[TCR_BLOCKS];
     uint32_t nott;                                      /* posted jobs of blocks where core 0 could no longer take part 2 back in time (item 90, tcr.nott: the job is posted with the wait limit as its deadline, no take-over) */
+    uint32_t noans_nott;                                /* .. of them the jobs core 1 gives no answer to (the noans fault): each must end as a silent block, whichever blocks the host timing makes no-take-over blocks */
     uint64_t lim_sum[TCR_BLOCKS];                       /* the wait limits of the posted jobs, ticks after the half's start, summed per block of the half */
 #if TC_MEAS
     tcm_t m;                                            /* BENCHT2's timing figures at the end (tcm: twocore_run.c) */
@@ -502,6 +503,7 @@ static void sim_block(int32_t *out, uint32_t n)
         R->cap_viol += !tcr.nott && (int32_t)(tcr.dl - tcr.cap) > 0;   /* (item 90: a block of no take-over is posted at the wait limit, which is past the cap by design) */
 #endif
         R->nott += tcr.nott != 0u;
+        R->noans_nott += tcr.nott != 0u && pl_noans(tcr.job);
         R->dl_sum[b % TCR_BLOCKS] += tcr.dl - tcr.t0;
         R->dl_n[b % TCR_BLOCKS]++;
         R->lim_sum[b % TCR_BLOCKS] += tcr.lim - tcr.t0;
@@ -851,7 +853,7 @@ int main(int argc, char **argv)
                 snprintf(what, sizeof what, "scene %u noans: a core 1 that answers the take later than 100 us is a real fault: no answer %u, then yld, a fault pause (%u of %u pauses), core 0 played part 2 (output equal), no strike, nothing counted as without a pause (%u)", s, c->noanswer, c->pause_fault, c->pauses, c->vlate_ok);
                 if (r.nott) {   /* item 90: where core 0 had no time to take part 2 back, the unanswered take left part 2 silent for the block (a fault pause as well): silent blocks are expected, besides the blocks waiting for the open job */
                     snprintf(what, sizeof what, "scene %u noans (blocks with no take-over %u): no answer %u, a fault pause for each (%u of %u pauses), core 0 played part 2 where it could (own %u), part 2 silent where it could not (silent %u), no strike, nothing counted as without a pause (%u)", s, r.nott, c->noanswer, c->pause_fault, c->pauses, c->own, c->silent, c->vlate_ok);
-                    expect(what, c->noanswer > 0 && c->pauses > 0 && c->pause_fault == c->pauses && c->vlate_ok == 0 && c->own > 0 && c->silent > 0 && !r.strike && r.up);
+                    expect(what, c->noanswer > 0 && c->pauses > 0 && c->pause_fault == c->pauses && c->vlate_ok == 0 && c->own > 0 && (r.noans_nott == 0u || c->silent > 0) && !r.strike && r.up);   /* (silent: only where a no-answer job fell on a block of no take-over, which the host thread timing decides: a run whose no-take-over blocks missed the jobs core 1 never answers has none, and is still right) */
                 } else {
                     expect(what, c->noanswer > 0 && c->pauses > 0 && c->pause_fault == c->pauses && c->vlate_ok == 0 && c->silent == 0 && !r.strike && r.up);
                 }
