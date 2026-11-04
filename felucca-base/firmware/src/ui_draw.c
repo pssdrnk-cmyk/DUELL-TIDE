@@ -2641,9 +2641,6 @@ static void draw_columns(void)
             }
         }
 #endif
-#if DUELL_TIDE
-        tag[0] = 0;                                    /* (the picked row says its number) */
-#endif
         draw_column(0, "SLOT", tag, "", VAL(0u), (int32_t)k * 1000 / (int32_t)(n > 1u ? n - 1u : 1u), ICON_X_PATTERN);
         draw_act_column(1, "LOAD", T_THEME, ICON_AUTO);
         draw_act_column(2, "SAVE", T_THEME, ICON_AUTO);   /* (change list A.9 / H.8: ERASE is gone, SAVE is knob 3) */
@@ -2669,7 +2666,6 @@ static void draw_columns(void)
                 k1_after_r = 1;
             }
         }
-        val[0] = 0;                                    /* (the picked row says its number) */
 #endif
         draw_column(0, "SLOT", val, "", VAL(0u), (int32_t)k * 1000 / (int32_t)(MU_SLOTS - 1u), ICON_AUTO);
         draw_act_column(1, "LOAD", used ? T_THEME : T_DIM, ICON_AUTO);
