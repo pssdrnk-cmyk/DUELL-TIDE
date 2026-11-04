@@ -1,57 +1,196 @@
 <!doctype html>
 <!-- SPDX-License-Identifier: GPL-3.0-only
-     DUELL site landing page (GitHub Pages). Copyright (C) 2026 OSCILL/R (DUELL). Part of DUELL, a modified version of Felucca.
-     DUELL with TIDE (pssdrnk's fork) replaces the page's text with its own, 2026-11-01. -->
+     DUELL with TIDE: landing page (GitHub Pages). Copyright (C) 2026 OSCILL/R (DUELL). Part of DUELL, a modified version of Felucca.
+     DUELL with TIDE (pssdrnk's fork) replaces the page's text with its own, 2026-11-01; the design was renewed 2026-11-04.
+     Styles and the theme toggle: assets/site.css, assets/theme.js (self-hosted, no external requests). The builds shown come from install/channels.json. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DUELL with TIDE - TIDE by pssdrnk, built on DUELL by OSCILL/R</title>
-<style>
-  :root { --bg: #fff; --fg: #000; --dim: #666; --line: #ccc; --warn: #b00020; }
-  @media (prefers-color-scheme: dark) { :root { --bg: #000; --fg: #fff; --dim: #999; --line: #444; --warn: #ff6b81; } }
-  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
-  main { max-width: 600px; margin: 0 auto; padding: 48px 16px 64px; }
-  h1 { font-size: 40px; font-weight: 700; margin: 0; letter-spacing: .02em; }
-  h1 .with { color: var(--dim); font-size: .5em; font-weight: 400; }
-  .tag { margin: 0 0 24px; color: var(--dim); }
-  .tag b { color: var(--fg); }
-  a { color: inherit; }
-  ul.links { list-style: none; padding: 0; margin: 24px 0; }
-  ul.links li { border: 1px solid var(--line); border-radius: 8px; margin: 8px 0; padding: 10px 14px; }
-  ul.links a { font-weight: 700; }
-  ul.links span { display: block; color: var(--dim); font-size: 14px; }
-  .box { border: 1px solid var(--warn); border-radius: 8px; padding: 4px 14px; }
-  a.btn { display: inline-block; background: var(--fg); color: var(--bg); text-decoration: none; font-weight: 700; font-size: 18px; padding: 12px 28px; border-radius: 8px; }
-  .small { color: var(--dim); font-size: 13px; }
-</style>
+<meta name="description" content="TIDE is a morph that plays and evolves by itself, for the M-VAVE FM-1. DUELL 1.1 by OSCILL/R, plus TIDE by pssdrnk. Install it from this page, or try it in the browser.">
+<meta name="theme-color" content="#170f38">
+<meta property="og:title" content="DUELL with TIDE">
+<meta property="og:description" content="A morph that plays and evolves by itself, for the M-VAVE FM-1. TIDE by pssdrnk, built on DUELL 1.1 by OSCILL/R.">
+<meta property="og:image" content="https://pssdrnk-cmyk.github.io/DUELL-TIDE/img/duell-tide-cover.jpg">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1'%3E%3Cstop offset='0' stop-color='%237c4dff'/%3E%3Cstop offset='1' stop-color='%23d6247f'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='%23170f38'/%3E%3Cpath d='M6 38 C16 20 26 52 36 36 S52 22 58 34' fill='none' stroke='url(%23g)' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/theme.js"></script>
 </head>
 <body>
-<main>
-  <h1>DUELL <small class="with">with</small> TIDE</h1>
-  <p class="tag"><b>TIDE by pssdrnk</b>, built on DUELL<br>MultiMorphing Bitimbral Synthesizer by OSCILL/R</p>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="./">DUELL <span class="t">TIDE</span></a>
+    <nav aria-label="Main">
+      <a href="install/">Install</a>
+      <a href="emu/">Emulator</a>
+      <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/jam11#readme">Guide</a>
+      <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE">Source</a>
+    </nav>
+    <button class="theme" id="theme" type="button">Theme: system</button>
+  </div>
+</header>
 
-  <div class="box">
-    <p><b>TIDE is not by OSCILL/R.</b> DUELL with TIDE is pssdrnk's fork of DUELL 1.1. It is not made, affiliated with or endorsed by OSCILL/R or M-VAVE. The original DUELL by OSCILL/R, with its installer and editor, is at <a href="https://oscillr.github.io/DUELL/">oscillr.github.io/DUELL</a>. Please send TIDE problems to this fork, not to the DUELL author.</p>
+<section class="hero">
+  <svg class="waves" viewBox="0 0 1200 420" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+    <defs><linearGradient id="wg" x1="0" x2="1"><stop offset="0" stop-color="#8b5cf6"/><stop offset="1" stop-color="#ec4899"/></linearGradient></defs>
+    <g fill="none" stroke="url(#wg)" stroke-width="1.5">
+      <path d="M0 250 C150 130 300 370 450 250 S750 130 900 250 S1100 330 1200 220"/>
+      <path d="M0 280 C170 170 320 380 480 275 S780 170 930 280 S1120 350 1200 260" opacity=".8"/>
+      <path d="M0 215 C130 110 330 330 470 215 S760 100 910 215 S1110 290 1200 180" opacity=".6"/>
+      <path d="M0 310 C200 220 340 400 500 305 S800 220 960 315 S1130 380 1200 300" opacity=".5"/>
+      <path d="M0 180 C120 90 310 290 450 185 S740 80 890 185 S1090 250 1200 150" opacity=".35"/>
+    </g>
+  </svg>
+  <div class="wrap">
+    <p class="eyebrow">Firmware for the M-VAVE FM-1</p>
+    <h1><span>DUELL</span> <span class="with">with</span> <span class="tide">TIDE</span></h1>
+    <p class="lead">TIDE is a morph that plays and evolves by itself.</p>
+    <p>DUELL's MORPH glides a sound between two versions of itself, End A and End B. TIDE moves that fader for you, in time with the music, and each trip comes out a little different. Set a tide going, then play your drum machine, bass or sampler over it.</p>
+    <div class="actions">
+      <a class="btn" id="go-stable" href="install/#stable">Install Stable<small id="go-stable-sub">recommended</small></a>
+      <a class="btn beta" id="go-beta" href="install/#beta">Install Beta<small id="go-beta-sub">under test</small></a>
+      <a class="btn second" href="emu/">Try the emulator<small>in your browser, no FM-1 needed</small></a>
+    </div>
+    <p class="builds-line" id="builds-line" aria-live="polite">The builds are listed on the installer page.</p>
+    <p class="credit"><b>TIDE by pssdrnk, built on DUELL 1.1 by OSCILL/R.</b> Not made or endorsed by OSCILL/R or M-VAVE.</p>
+  </div>
+</section>
+
+<main id="main">
+  <div class="wrap">
+    <div class="notice risk" role="note">
+      <p><b class="t">Use at your own risk.</b> TIDE has run on one FM-1, the fork owner's. It has not been tested widely. The FM-1 has a single copy of its firmware and no known rollback. A failed write can leave it dark, and then only a hardware recovery helps (see the <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/docs/RECOVERY.md">recovery notes</a>). Back up first. No warranty.</p>
+    </div>
   </div>
 
-  <p><b>TIDE lets the FM-1 play itself.</b> A sound glides from its End A to an End B and back, never quite the same way twice, and in JRNY it travels on through other sounds while the pattern changes with it. Set it going and play over it. Everything else is DUELL 1.1 by OSCILL/R.</p>
+  <section class="block" id="what">
+    <div class="wrap">
+      <h2>What TIDE does</h2>
+      <p>The glide runs from A to B and back, never quite the same way twice. It is made for playing the FM-1 as a background: nothing has to be managed live, and a hand on the knob can take over at any time. The pattern can glide with the sound.</p>
+      <div class="shots">
+        <figure class="shot">
+          <img src="img/auto-tide-both-parts.png" width="240" height="240" alt="The AUTO TIDE page of the FM-1 with both parts: JRNY, 16 bars, wait 2 bars, the sound and sequence faders of parts 1 and 2 at B." loading="lazy">
+          <figcaption><b>AUTO TIDE</b>The glide's state on knob 1's line, with both parts. MODE, TIME and WAIT are on knobs 2 to 4.</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="img/morph-settings.png" width="240" height="240" alt="The TIDE SETTINGS page: target both, vary bars 4 plus 8, roll music, arp, pitch, wash level." loading="lazy">
+          <figcaption><b>TIDE SETTINGS</b>What the tide moves and how a new End B is made.</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="img/morph-gliding.png" width="240" height="240" alt="The MORPH page while a tide plays, with the fader at 62." loading="lazy">
+          <figcaption><b>MORPH, mid-glide</b>DUELL's own MORPH page follows the glide, so you see where the sound is between A and B.</figcaption>
+        </figure>
+      </div>
+      <p class="small">Screenshots from the <a href="emu/">web emulator</a>.</p>
 
-  <p><a class="btn" href="emu/">Open the web emulator</a></p>
-  <p class="small">No FM-1 needed. Press HOME until AUTO TIDE, then twist KNOB 1.</p>
+      <h3>Five modes</h3>
+      <ul class="plain">
+        <li><b>ONCE</b>: one trip, then it stops.</li>
+        <li><b>LOOP</b>: back and forth between A and B, the same two ends every time.</li>
+        <li><b>DRIFT</b>: new twists on your sound, never far from the original.</li>
+        <li><b>WNDR</b>: wanders away from your sound, a little further each trip.</li>
+        <li><b>JRNY</b>: travels through the factory sounds, on the part's own engine.</li>
+      </ul>
+    </div>
+  </section>
 
-  <ul class="links">
-    <li><a href="emu/">Web emulator</a><span>DUELL with TIDE in your browser.</span></li>
-    <li><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/jam11#readme">What TIDE adds, and how to install it</a><span>There is no TIDE release yet: you build it yourself. Tested on one FM-1 only. At your own risk.</span></li>
-    <li><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues">Report a TIDE problem</a><span>On this fork's issue page.</span></li>
-    <li><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE">Source code on GitHub</a><span>Branch jam11.</span></li>
-    <li><a href="https://oscillr.github.io/DUELL/">The original DUELL</a><span>OSCILL/R's site: installer, editor, emulator and releases of plain DUELL.</span></li>
-  </ul>
+  <section class="block" id="play">
+    <div class="wrap">
+      <h2>Play a tide in four steps</h2>
+      <ol class="steps">
+        <li>Press <b>HOME</b> until <b>AUTO TIDE</b> shows.</li>
+        <li>Pick a <b>MODE</b> with knob 2, a trip length (<b>TIME</b>, in bars) with knob 3 and a rest at each end (<b>WAIT</b>) with knob 4. Turn <b>ALGORITHM</b> to BOTH to glide both parts at once.</li>
+        <li>Twist <b>knob 1</b> right (to B) or left (to A) and press <b>PLAY</b>. While the music plays, the glide starts on the next bar.</li>
+        <li>Play over it. <b>STOP</b> pauses the glide and PLAY goes on from there.</li>
+      </ol>
+      <p class="small">On the very first start TIDE comes up ready: multi M04 DUB CHORD, AUTO TIDE on JRNY, both parts, 16 bars, WAIT 2. Just press PLAY.</p>
+    </div>
+  </section>
 
-  <p class="small">DUELL with TIDE is free software under the GPL-3.0, with <b>no warranty</b>. It is a modified version of DUELL by OSCILL/R, itself a modified version of
-    <a href="https://github.com/hugelton/Felucca">Felucca</a> by Leo Kuroshita, Hügelton Instruments, with the SHIM and RESO reverbs from JIANT.
-    See <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/NOTICE.md">NOTICE</a>.
-    It is independent and not affiliated with OSCILL/R or M-VAVE. M-VAVE and FM-1 are trademarks of their respective owners.</p>
+  <section class="block" id="builds">
+    <div class="wrap">
+      <h2>Stable and Beta</h2>
+      <div class="grid two">
+        <div class="panel" id="card-stable">
+          <h3>Stable <span class="chip ok">Recommended</span></h3>
+          <p>Tested and validated on the fork owner's FM-1. Build this one unless you want to help test.</p>
+          <p class="small" id="meta-stable">Release data not loaded.</p>
+          <p><a class="btn" href="install/#stable">Install Stable</a></p>
+        </div>
+        <div class="panel" id="card-beta">
+          <h3>Beta <span class="chip test">Under test</span></h3>
+          <p>A newer build that is still being tested. It can have bugs the stable build does not.</p>
+          <p class="small" id="meta-beta">Release data not loaded.</p>
+          <div id="beta-issues" hidden>
+            <p><b>Known open issues</b></p>
+            <ul class="plain" id="beta-issues-list"></ul>
+          </div>
+          <p><a class="btn beta" href="install/#beta">Install Beta</a></p>
+        </div>
+      </div>
+      <p class="small">The installer backs up your unit's sounds and settings first, checks the package's SHA-256 in your browser before it writes, and keeps a way back to the official firmware. A beta needs one more confirmation.</p>
+    </div>
+  </section>
+
+  <section class="block" id="links">
+    <div class="wrap">
+      <h2>More</h2>
+      <ul class="links">
+        <li><a href="emu/">Web emulator<span>DUELL with TIDE in your browser. Press HOME until AUTO TIDE, then twist KNOB 1.</span></a></li>
+        <li><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/jam11#readme">What TIDE adds<span>Every control and value, with the changes from DUELL 1.1.</span></a></li>
+        <li><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues">Report a TIDE problem<span>On this fork's issue page. Please do not send TIDE problems to the DUELL author.</span></a></li>
+        <li><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE">Source code on GitHub<span>pssdrnk-cmyk/DUELL-TIDE, branch jam11.</span></a></li>
+        <li><a href="editor/">Editor and backup page<span>DUELL's editor, for a unit connected by USB (Chrome or Edge).</span></a></li>
+        <li><a href="https://oscillr.github.io/DUELL/">The original DUELL<span>OSCILL/R's site, with plain DUELL 1.1.</span></a></li>
+      </ul>
+    </div>
+  </section>
 </main>
+
+<footer class="site">
+  <div class="wrap">
+    <p><b>TIDE is by pssdrnk, not by OSCILL/R.</b> DUELL with TIDE is pssdrnk's fork of <a href="https://github.com/oscillr/DUELL">DUELL</a> 1.1, which is made by OSCILL/R. It is not made, affiliated with or endorsed by OSCILL/R or M-VAVE. M-VAVE and FM-1 are trademarks of their respective owners. DUELL and its credit belong to OSCILL/R.</p>
+    <p>DUELL with TIDE is free software under the GPL-3.0, with <b>no warranty</b>. It is a modified version of DUELL by OSCILL/R, itself a modified version of
+      <a href="https://github.com/hugelton/Felucca">Felucca</a> by Leo Kuroshita, Hügelton Instruments, with the SHIM and RESO reverbs from JIANT.
+      The firmware package also holds three JieLi AC79 SDK files (uboot.boot, cfg_tool.bin, eq_cfg_hw.bin; JieLi Technology, Apache-2.0).
+      See <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/NOTICE.md">NOTICE</a>, <a href="install/LICENSES/">the licence texts</a> and <a href="install/LICENSE">the GPL-3.0</a>.</p>
+    <p>This site sets no cookies and loads nothing from other servers. The font is Barlow Semi Condensed (SIL Open Font License 1.1). The theme choice stays in your browser.</p>
+  </div>
+</footer>
+
+<script type="module">
+// What is released: install/channels.json (written by the site build from the GitHub releases). Without it the page keeps its fallback text.
+import { parseManifest, CHANNEL } from "./installer_state.js";
+const $ = (id) => document.getElementById(id);
+const line = (e) => `${e.tag}${e.commit ? " (" + e.commit.slice(0, 7) + ")" : ""}`;
+try {
+  const r = await fetch("install/channels.json", { cache: "no-store" });
+  if (!r.ok) throw new Error("no manifest");
+  const m = parseManifest(await r.json());
+  const parts = [];
+  for (const c of ["stable", "beta"]) {
+    const e = m[c];
+    if (e) {
+      parts.push(`${CHANNEL[c].label} ${e.date || e.tag}` + (c === "beta" ? ", under test" : ""));
+      $("go-" + c + "-sub").textContent = (e.date || e.tag) + (c === "beta" ? ", under test" : ", recommended");
+      $("meta-" + c).textContent = `Build ${line(e)}, ${e.date || "date unknown"}.`;
+    } else {
+      $("go-" + c + "-sub").textContent = "not released yet";
+      $("meta-" + c).textContent = c === "stable" ? "No stable build is published yet." : "No beta is published right now.";
+    }
+  }
+  $("builds-line").textContent = parts.length ? "Available now: " + parts.join(" · ") + "." : "No release is published yet. The emulator works without a unit.";
+  if (m.beta && m.beta.issues.length) {
+    const ul = $("beta-issues-list");
+    for (const t of m.beta.issues) { const li = document.createElement("li"); li.textContent = t; ul.append(li); }
+    $("beta-issues").hidden = false;
+  }
+} catch {
+  $("builds-line").textContent = "The builds are listed on the installer page.";
+}
+</script>
 </body>
 </html>

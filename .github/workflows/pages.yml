@@ -1,18 +1,23 @@
-# Publishes the DUELL site (landing page, installer, emulator) to GitHub Pages.
+# Publishes the DUELL with TIDE site (landing page, installer, emulator) to GitHub Pages.
 #
 # Nothing generated is committed. The workflow builds the site from the committed sources with
-# felucca-base/web/make_site.py. The two build products that need the firmware toolchain or Emscripten
-# are NOT built here; they are taken from the newest release (pre-releases count, drafts do not), if it has them:
-#   duell-*.fwsc            the firmware package, any version in the name (duell-0.2.1-beta.fwsc) -> /install/ (+ duell-latest.fwsc, duell-version.json)
-#   duell-emulator*.zip     the emulator, any version in the name (duell-emulator-0.2.1-beta.zip) (the contents of felucca-base/build/emu, zipped) -> /emu/
-# The emulator itself is built from the committed sources (step below); a release zip is used only if that build leaves nothing.
-# An emulator-only release is fine: without the .fwsc the installer page shows "DUELL firmware is not yet released"
-# (and its flow stays hidden); without the emulator zip /emu/ says the emulator is not attached. Neither fails the job.
+# felucca-base/web/make_site.py. The firmware packages and the emulator build are not made here (the firmware toolchain is not
+# on the runner); the packages come from the GitHub releases, the emulator is built from the sources:
+#   Stable  the newest normal (non-pre-release, non-draft) release with duell-tide-stable-YYYY-MM-DD.fwsc (GitHub's "Latest")
+#   Beta    the newest pre-release with duell-tide-beta-YYYY-MM-DD.fwsc that was published AFTER that stable release
+#           (an older beta is superseded and not offered)
+#   Both go to /install/stable/ and /install/beta/, with /install/channels.json: tag, date, commit, SHA-256 (from the release's
+#   .sha256 asset and GitHub's asset digest; the build stops if the package does not match them), release notes URL, known issues.
+#   felucca-base/web/releases.py does the choosing and the downloads.
+#   duell-emulator*.zip     the emulator, any version in the name (the contents of felucca-base/build/emu, zipped) -> /emu/, from the newest
+#                           release (pre-releases count, drafts do not), used only if the emulator build below leaves nothing.
+# The emulator is built from the committed sources (step below). With no release at all the installer page says "not released yet"
+# and keeps its install flow hidden; without the emulator zip /emu/ says the emulator is not attached. Neither fails the job.
 name: Pages
 
 # No `release` trigger: a release event runs from the release tag, and the github-pages environment only allows
 # deployments from main, so that run would fail at the deploy step. After publishing or editing a release, run this
-# workflow by hand (Actions > Pages > Run workflow, branch main): it picks up the newest release's files.
+# workflow by hand (Actions > Pages > Run workflow, branch main): it picks up the newest Stable and Beta releases.
 on:
   push:
     branches: [jam11]
@@ -49,17 +54,18 @@ jobs:
           EMU_PREVIEW=0 sh web/emu/build.sh
           node web/emu/note_test.mjs build/emu/felucca.wasm
 
-      - name: Fetch the package and the emulator from the newest release
+      - name: Fetch the Stable and Beta packages and the emulator from the releases
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
           mkdir -p dl/emu
-          # `gh release list` includes pre-releases; --exclude-drafts keeps unpublished drafts out
+          # the packages: releases.py picks Stable and Beta (rules in its header) and writes dl/stable.json, dl/beta.json, dl/<channel>/*.fwsc
+          python3 felucca-base/web/releases.py --repo "$GH_REPO" --out dl
+          # the emulator zip, as before: from the newest release, pre-releases included, drafts excluded
           tag=$(gh release list --exclude-drafts --limit 1 --json tagName --jq '.[0].tagName' || true)
           if [ -n "$tag" ]; then
-            echo "release: $tag"
-            gh release download "$tag" --pattern 'duell-*.fwsc' --dir dl || echo "no package in $tag"
+            echo "newest release: $tag"
             gh release download "$tag" --pattern 'duell-emulator*.zip' --dir dl || echo "no emulator in $tag"
           else
             echo "no release yet"
@@ -67,20 +73,21 @@ jobs:
           z=$(ls dl/duell-emulator*.zip 2>/dev/null | sort -V | tail -n 1 || true)   # any version; the highest wins
           if [ -n "$z" ]; then unzip -q -o "$z" -d dl/emu; fi
           true
-          ls -la dl dl/emu
+          ls -la dl dl/stable dl/beta dl/emu 2>/dev/null || true
 
       - name: Build the site
         run: |
           args=""
-          # any version in the name (duell-0.2.1-beta.fwsc); if a release carries several, the highest version wins.
-          # make_site.py reads the version from the file name and writes duell-latest.fwsc and duell-version.json.
-          pkg=$(ls dl/duell-[0-9]*.fwsc 2>/dev/null | sort -V | tail -n 1 || true)
-          if [ -n "$pkg" ]; then args="$args --pkg $pkg"; fi
+          for ch in stable beta; do
+            pkg=$(ls dl/$ch/duell-tide-$ch-*.fwsc 2>/dev/null | sort | tail -n 1 || true)
+            if [ -n "$pkg" ] && [ -f "dl/$ch.json" ]; then args="$args --${ch}-pkg $pkg --${ch}-info dl/$ch.json"; fi
+          done
           # the emulator built above from the sources wins over a release zip
           if [ -f felucca-base/build/emu/index.html ]; then args="$args --emu felucca-base/build/emu"
           elif [ -f dl/emu/index.html ]; then args="$args --emu dl/emu"; fi
-          # no --pkg: make_site.py looks for build/duell-*-beta.fwsc, which does not exist in a fresh checkout
+          # no package arguments (no release yet): the installer shows "not released yet"
           python3 felucca-base/web/make_site.py $args site
+          cat site/install/channels.json
 
       - uses: actions/configure-pages@v5
 

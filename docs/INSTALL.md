@@ -8,6 +8,8 @@ by OSCILL/R
 >
 > The installer page is <https://oscillr.github.io/DUELL/install/>; the package `duell-1.0.fwsc` is attached to the [release](https://github.com/oscillr/DUELL/releases) (compare its SHA-256 with the `SHA256SUMS` file there). If the page ever shows "DUELL firmware is not yet released", no package was found and the install flow stays hidden.
 
+> **DUELL with TIDE (this fork) has its own installer page:** <https://pssdrnk-cmyk.github.io/DUELL-TIDE/install/>. It offers two builds. **Stable** is the default: the build the fork owner validated, a normal GitHub release (tag `stable-YYYY-MM-DD`, package `duell-tide-stable-YYYY-MM-DD.fwsc`). **Beta** is a build under test, a GitHub pre-release (tag `beta-YYYY-MM-DD`, package `duell-tide-beta-YYYY-MM-DD.fwsc`), shown only while it is newer than the stable one; it needs a tick box and a second confirmation. The page shows the tag, date, commit and SHA-256 of what will be written, and checks the SHA-256 of the downloaded package in the browser against the release data (`install/channels.json`, written by the Pages workflow from the release) before it writes: on a mismatch it refuses. The backup, the way back to the official firmware and the resume after an interruption are as described below. After publishing or editing a release, run the Pages workflow by hand (Actions > Pages > Run workflow). The text below was written for OSCILL/R's page, whose files and names differ (`duell-latest.fwsc`, `duell-version.json`).
+
 ## What you need
 - An M-VAVE FM-1.
 - A computer with **Chrome or Edge** (the installer uses WebMIDI with SysEx; Safari and Firefox will not work).

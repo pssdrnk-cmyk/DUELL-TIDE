@@ -2,10 +2,12 @@
 // DUELL installer: the pure state -> UI mapping (no DOM). The page (install/index.html) applies the result;
 // test_installer_state.mjs checks it with node.
 //
-// state = { busy: null | "backup" | "install" | "return", ready, hasImage, hasStock }
+// state = { busy: null | "backup" | "install" | "return", ready, hasImage, hasStock, channel, betaAck }
 //   ready     WebMIDI is available
-//   hasImage  a DUELL package was accepted
+//   hasImage  a DUELL package was accepted (downloaded, its SHA-256 checked against the release data, its identity checked)
 //   hasStock  the official V15 file was chosen and verified
+//   channel   "stable" (default) or "beta": the build the user chose to install
+//   betaAck   the user ticked the extra confirmation for a beta (needed only when channel is "beta")
 export const ACTIONS = ["backup", "install", "return"];
 
 export const BANNERS = {
@@ -69,9 +71,11 @@ export function eraseDecision({ detected = null, touched = false, current = fals
 
 export function uiState(s) {
   const busy = s.busy || null;
+  const channel = s.channel === "beta" ? "beta" : "stable";
+  const needAck = channel === "beta" && !s.betaAck;        // a beta needs the extra confirmation before the Install button works
   const wants = {
     backup: s.ready,
-    install: s.ready && s.hasImage,
+    install: s.ready && s.hasImage && !needAck,
     return: s.ready && s.hasStock,
   };
   const buttons = {};
@@ -79,6 +83,7 @@ export function uiState(s) {
     let note = "";
     if (busy && busy !== a) note = `Locked: ${NAMES[busy]} is running. Wait until it says DONE.`;
     else if (busy === a) note = "Running. Do not unplug.";
+    else if (a === "install" && s.ready && s.hasImage && needAck) note = BETA.lockNote;
     buttons[a] = { enabled: !busy && !!wants[a], note };
   }
   return {
@@ -86,6 +91,7 @@ export function uiState(s) {
     buttons,
     bars: { backup: busy === "backup", install: busy === "install", return: busy === "return" },   // a bar is shown only in its own card, only while it runs
     inputsLocked: !!busy,                  // file pickers and checkboxes
+    channelLocked: !!busy,                 // the Stable / Beta choice and the beta box
     eraseBox: { disabled: !!busy, note: busy ? ERASE.lockNote : "" },   // the INSTALL card's erase box: locked while anything runs
     confirmUnload: !!busy,                 // beforeunload protection
   };
@@ -100,3 +106,93 @@ export const TEXT = {
     return: "Done. The official firmware is back. Switch the unit off and on.",
   },
 };
+
+// ---- the two builds: Stable and Beta (the Pages workflow publishes install/channels.json, see web/make_site.py)
+// Stable is the default and the recommended one: the build the fork owner validated on a unit. Beta is a build under test.
+export const REPO_URL = "https://github.com/pssdrnk-cmyk/DUELL-TIDE";
+export const CHANNELS = ["stable", "beta"];
+export const CHANNEL = {
+  stable: { label: "Stable", badge: "Recommended",
+            blurb: "Played and validated on the fork owner's FM-1. Choose this one unless you want to help test." },
+  beta:   { label: "Beta", badge: "Under test",
+            blurb: "A newer build that is still being tested. It can have bugs the stable build does not." },
+};
+export const BETA = {
+  warning: "This is a beta. It is under test and has known issues. The stable build is the one the fork owner validated.",
+  ackLabel: "I understand this is a beta under test. I have a backup, or I accept the risk without one.",
+  lockNote: "Beta: tick the box above to enable the install.",
+  none: "No known issues are listed in the release notes. Read the notes before you install.",
+};
+export const NOT_RELEASED = {
+  title: "DUELL with TIDE is not released yet.",
+  text: "No stable or beta package is published with this page, so there is nothing to install here. The emulator works without a unit.",
+};
+export const HASH_TEXT = {
+  checking: "Checking the SHA-256 in your browser ...",
+  ok: "SHA-256 checked in this browser: it matches the release.",
+  nohash: "The release data has no SHA-256 for this build, so it cannot be checked. Nothing will be written.",
+  size: "The downloaded file has another size than the release says. It was not accepted. Nothing will be written.",
+  bad: (want, got) => `The downloaded file does not match the release's SHA-256 (release ${want}, file ${got}). ` +
+                      "It was not accepted and nothing will be written. Reload the page; if it happens again, do not install and report it in the issues.",
+};
+
+const HEX = /^[0-9a-f]+$/;
+const SAFE_PATH = /^(?!\/)(?!.*\.\.)[A-Za-z0-9._\-\/]+$/;       // relative, no "..", no scheme or backslash: a file next to the page
+const clean = (v, n) => (typeof v === "string" ? v.replace(/[\u0000-\u001f]/g, " ").trim().slice(0, n) : "");
+const sha = (v) => (typeof v === "string" && /^[0-9a-fA-F]{64}$/.test(v.trim()) ? v.trim().toLowerCase() : "");
+
+// One manifest entry -> a checked entry, or null. The page never trusts a field it cannot check (a bad sha256 or file makes the build unavailable).
+export function parseChannel(name, e) {
+  if (!e || typeof e !== "object" || (e.channel && e.channel !== name)) return null;
+  const file = typeof e.file === "string" && SAFE_PATH.test(e.file) && e.file.endsWith(".fwsc") ? e.file : "";
+  const sha256 = sha(e.sha256);
+  const tag = clean(e.tag, 80);
+  if (!file || !sha256 || !tag) return null;
+  const commit = typeof e.commit === "string" && HEX.test(e.commit.toLowerCase()) && e.commit.length >= 7 && e.commit.length <= 40 ? e.commit.toLowerCase() : "";
+  const notesUrl = typeof e.notes_url === "string" && /^https:\/\//.test(e.notes_url) ? e.notes_url : "";
+  const issues = Array.isArray(e.known_issues) ? e.known_issues.map((x) => clean(x, 300)).filter(Boolean).slice(0, 12) : [];
+  return {
+    channel: name, tag, file, sha256, commit, notesUrl, issues,
+    date: /^\d{4}-\d{2}-\d{2}$/.test(e.date || "") ? e.date : "",
+    size: Number.isInteger(e.size) && e.size > 0 ? e.size : 0,
+    product: /^FM-1_9\d\d$/.test(e.product || "") ? e.product : "",
+    summary: clean(e.summary, 400),
+  };
+}
+// the whole install/channels.json -> { stable, beta } (each an entry or null)
+export function parseManifest(m) {
+  const c = m && typeof m === "object" && m.channels && typeof m.channels === "object" ? m.channels : {};
+  return { stable: parseChannel("stable", c.stable), beta: parseChannel("beta", c.beta) };
+}
+// Which build is selected. wanted: what the user (or the address, #beta) asked for. Stable wins by default; a channel that is not
+// published is never selected; null when there is no build at all.
+export function chooseChannel(manifest, wanted) {
+  const have = (c) => !!(manifest && manifest[c]);
+  if (CHANNELS.includes(wanted) && have(wanted)) return wanted;
+  if (have("stable")) return "stable";
+  if (have("beta")) return "beta";
+  return null;
+}
+// The check before anything is written: the downloaded bytes must be the file the release data describes.
+// entry: a parseChannel result; got: { sha256, size } of the bytes the browser downloaded. Returns { ok, text }.
+export function verifyDownload(entry, got) {
+  if (!entry || !entry.sha256) return { ok: false, text: HASH_TEXT.nohash };
+  if (entry.size && got.size !== entry.size) return { ok: false, text: HASH_TEXT.size };
+  const have = String(got.sha256 || "").toLowerCase();
+  if (have !== entry.sha256) return { ok: false, text: HASH_TEXT.bad(entry.sha256, have || "(none)") };
+  return { ok: true, text: HASH_TEXT.ok };
+}
+// the rows the page shows for "what will be written"
+export function infoRows(entry, product, size) {
+  const rows = [["Build", `${CHANNEL[entry.channel].label}, ${entry.tag}`]];
+  if (entry.date) rows.push(["Date", entry.date]);
+  if (entry.commit) rows.push(["Commit", entry.commit.slice(0, 7)]);
+  rows.push(["Package", `${entry.file.split("/").pop()} (${size || entry.size || "?"} bytes${product ? ", " + product : ""})`]);
+  rows.push(["SHA-256", entry.sha256]);
+  return rows;
+}
+// the question asked once more at the click on Install, for a beta only
+export function betaConfirmText(entry) {
+  return `Install the BETA build ${entry.tag}${entry.commit ? " (" + entry.commit.slice(0, 7) + ")" : ""}?\n\n` +
+    "It is under test and has known issues. The stable build is the one the fork owner validated. Back up first. Do not unplug while it writes.";
+}

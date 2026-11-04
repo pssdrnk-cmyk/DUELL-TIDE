@@ -1,5 +1,6 @@
 // node test_installer_state.mjs : the installer's state -> UI mapping (no DOM, no device)
-import { uiState, ACTIONS, BANNERS, TEXT, ERASE, eraseOutcome, SMART, detectUnit, eraseDecision } from "./installer_state.js";
+import { uiState, ACTIONS, BANNERS, TEXT, ERASE, eraseOutcome, SMART, detectUnit, eraseDecision,
+  CHANNELS, CHANNEL, BETA, HASH_TEXT, parseChannel, parseManifest, chooseChannel, verifyDownload, infoRows, betaConfirmText } from "./installer_state.js";
 import { readFileSync } from "node:fs";
 let failed = 0;
 const ok = (c, m) => { if (!c) { failed++; console.log("FAIL", m); } };
@@ -128,6 +129,73 @@ function onePage() {
   ok(/fail\("model"/.test(ota) && /fail\("mismatch"/.test(ota), "kept: fm1ota.js refuses another device model and a device that reports another firmware afterwards");
   ok(uiState({ ...base, busy: "install" }).confirmUnload && !uiState({ ...base, busy: "install" }).buttons.backup.enabled, "kept: one action at a time and the unload prompt (uiState)");
 }
+// ---- Stable / Beta: the channel choice, the beta confirmation, the manifest and the SHA-256 check
+const SHA_S = "7795e77798d053177a4d0b099f0754701e16e308c92fbe22fd54913abac41b30", SHA_B = "d94ac77c368417a889728e57db64f4b0853eaa0a2152e37ad4c97df9014e5d7c";
+const mk = (channel, tag, sha, extra = {}) => ({ channel, tag, date: tag.slice(-10), commit: "187e9d0", file: `${channel}/duell-tide-${tag}.fwsc`, size: 614666, sha256: sha, product: "FM-1_901",
+  notes_url: "https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases/tag/" + tag, summary: "s", known_issues: ["one", "two"], ...extra });
+const manifest = { schema: 1, channels: { stable: mk("stable", "stable-2026-11-03", SHA_S), beta: mk("beta", "beta-2026-11-04", SHA_B, { commit: "77a6df2" }) } };
+function channels() {
+  const m = parseManifest(manifest);
+  ok(m.stable && m.beta && m.stable.sha256 === SHA_S && m.beta.commit === "77a6df2" && m.beta.issues.length === 2 && m.stable.notesUrl.startsWith("https://"), "manifest: both builds read with tag, commit, SHA-256, notes link, issues");
+  // the choice: stable is the default and the recommended one; a beta only when asked for and published
+  ok(chooseChannel(m, undefined) === "stable" && chooseChannel(m, "") === "stable" && chooseChannel(m, "junk") === "stable", "choice: stable is the default");
+  ok(chooseChannel(m, "beta") === "beta" && chooseChannel(m, "stable") === "stable", "choice: beta when asked for (#beta), stable otherwise");
+  ok(chooseChannel({ stable: m.stable, beta: null }, "beta") === "stable", "choice: an unpublished beta is never selected");
+  ok(chooseChannel({ stable: null, beta: m.beta }, "stable") === "beta" && chooseChannel({ stable: null, beta: null }, "stable") === null && chooseChannel(null, "beta") === null, "choice: beta alone is selected; nothing published gives null");
+  ok(CHANNELS.join() === "stable,beta" && CHANNEL.stable.badge === "Recommended" && CHANNEL.beta.badge === "Under test", "labels: Stable recommended, Beta under test");
+  // the beta needs the extra confirmation; stable does not; nothing else changes
+  const b = { ...base, channel: "beta" };
+  ok(!uiState(b).buttons.install.enabled && uiState(b).buttons.install.note === BETA.lockNote, "beta without the box: Install is off, with the reason");
+  ok(uiState({ ...b, betaAck: true }).buttons.install.enabled, "beta with the box: Install is on");
+  ok(uiState({ ...base, channel: "stable" }).buttons.install.enabled && uiState({ ...base, channel: "stable", betaAck: false }).buttons.install.enabled, "stable: no box needed");
+  ok(!uiState({ ...b, betaAck: true, hasImage: false }).buttons.install.enabled, "beta with the box but no verified package: Install stays off");
+  ok(uiState({ ...b, betaAck: false }).buttons.backup.enabled && uiState({ ...b, betaAck: false }).buttons.return.enabled, "the beta box gates only Install (backup and return stay available)");
+  ok(ACTIONS.every((a) => !uiState({ ...b, betaAck: true, busy: "install" }).buttons[a].enabled) && uiState({ ...base, busy: "install" }).channelLocked && !uiState(base).channelLocked, "the build choice is locked while an action runs");
+  // a manifest is never trusted blindly
+  for (const bad of [{ sha256: "abc" }, { sha256: "z".repeat(64) }, { file: "../evil.fwsc" }, { file: "/abs/x.fwsc" }, { file: "https://x/y.fwsc" }, { file: "stable/x.bin" }, { tag: "" }, { channel: "beta" }])
+    ok(parseChannel("stable", { ...manifest.channels.stable, ...bad }) === null, `manifest: refuses ${JSON.stringify(bad).slice(0, 40)}`);
+  ok(parseManifest(null).stable === null && parseManifest({}).beta === null && parseManifest({ channels: { stable: "x" } }).stable === null, "manifest: junk gives no build");
+  ok(parseChannel("stable", { ...manifest.channels.stable, sha256: SHA_S.toUpperCase() }).sha256 === SHA_S, "manifest: SHA-256 is compared in lower case");
+  ok(parseChannel("stable", { ...manifest.channels.stable, notes_url: "javascript:alert(1)" }).notesUrl === "", "manifest: a notes link must be https");
+  const rows = infoRows(m.beta, "FM-1_901", 614666).map((r) => r.join("=")).join("|");
+  ok(/Build=Beta, beta-2026-11-04/.test(rows) && /Date=2026-11-04/.test(rows) && /Commit=77a6df2/.test(rows) && rows.includes("SHA-256=" + SHA_B) && /614666 bytes, FM-1_901/.test(rows), "what will be written: build, date, commit, package, SHA-256");
+  ok(/BETA build beta-2026-11-04 \(77a6df2\)/.test(betaConfirmText(m.beta)) && /under test/.test(betaConfirmText(m.beta)), "beta: the confirmation names the build");
+}
+function hashCheck() {
+  const m = parseManifest(manifest);
+  ok(verifyDownload(m.stable, { sha256: SHA_S, size: 614666 }).ok, "hash: the right bytes pass");
+  ok(verifyDownload(m.stable, { sha256: SHA_S.toUpperCase(), size: 614666 }).ok, "hash: case does not matter");
+  const bad = verifyDownload(m.stable, { sha256: SHA_B, size: 614666 });
+  ok(!bad.ok && bad.text.includes(SHA_S) && bad.text.includes(SHA_B) && /nothing will be written/.test(bad.text), "hash: another file is refused, both digests shown");
+  ok(!verifyDownload(m.stable, { sha256: "", size: 614666 }).ok && !verifyDownload(m.stable, { sha256: undefined, size: 614666 }).ok, "hash: no digest is a refusal");
+  ok(!verifyDownload(m.stable, { sha256: SHA_S, size: 614665 }).ok && verifyDownload(m.stable, { sha256: SHA_S, size: 614665 }).text === HASH_TEXT.size, "hash: a wrong size is refused");
+  ok(!verifyDownload(null, { sha256: SHA_S, size: 1 }).ok && !verifyDownload({ ...m.stable, sha256: "" }, { sha256: "", size: 614666 }).ok, "hash: a build with no SHA-256 in the release data cannot be installed");
+  ok(verifyDownload({ ...m.stable, size: 0 }, { sha256: SHA_S, size: 5 }).ok, "hash: size is checked only when the release says it");
+}
+function channelPage() {
+  const h = readFileSync(new URL("./install/index.html", import.meta.url), "utf8");
+  ok(/id="ch-stable"/.test(h) && /id="ch-beta"/.test(h) && /id="beta-ack"/.test(h) && h.includes(BETA.ackLabel), "page: Stable and Beta choices, the beta box with its text");
+  ok(h.indexOf('id="ch-stable"') < h.indexOf('id="ch-beta"') && h.indexOf('id="choose"') < h.indexOf('<button id="go"'), "page: the choice stands above the Install button, Stable first");
+  ok(/Beta: under test/.test(h) && /id="beta-issues"/.test(h) && /id="notes-beta"/.test(h) && /id="pkgfacts"/.test(h) && /id="hashstate"/.test(h), "page: beta warning, known issues, notes link, what will be written, hash state");
+  // the hash is verified before a package becomes installable, and a failure leaves no image
+  const acc = h.split("async function acceptPackage")[1].split("async function loadPackage")[0];
+  ok(acc.indexOf("sha256hex(bytes)") >= 0 && acc.indexOf("verifyDownload(") > acc.indexOf("sha256hex(bytes)") && acc.indexOf("image = logicalImage(bytes)") > acc.indexOf("if (!check.ok)"), "page: SHA-256 is computed and checked before the image is made");
+  ok(/if \(!check\.ok\) \{ image = null; product = null;[^}]*return; \}/.test(acc), "page: a mismatch clears the image and stops");
+  ok(!/duell-latest|duell-version\.json/.test(h) && /fetch\("\.\/channels\.json"/.test(h), "page: reads channels.json (no duell-latest / duell-version.json)");
+  ok(/if \(channel === "beta" && \(!betaAck \|\| !confirm\(betaConfirmText\(entry\)\)\)\) return;/.test(h) && h.indexOf("betaConfirmText(entry)") < h.indexOf("const wantErase"), "page: a beta asks again at the click, before anything is written");
+  ok(/betaAck = false;/.test(h.split("function selectChannel")[1].split("\n}")[0]), "page: choosing a build clears the beta box");
+  ok(/uiState\(\{[^}]*channel: channel \|\| "stable", betaAck/.test(h), "page: the channel and the box feed uiState");
+  // legal and safety lines that must stay
+  for (const t of ["GPL-3.0", "no warranty", "Felucca by Leo Kuroshita", "JIANT", "JieLi AC79 SDK", "Apache-2.0", "not affiliated with, endorsed by or supported by", "not by OSCILL/R", "This writes the official M-VAVE firmware back."])
+    ok(h.includes(t), `page keeps: ${t}`);
+  const l = readFileSync(new URL("./landing.html", import.meta.url), "utf8");
+  for (const t of ["GPL-3.0", "no warranty", "Felucca", "JIANT", "JieLi AC79 SDK", "Apache-2.0", "not made, affiliated with or endorsed by OSCILL/R or M-VAVE", "TIDE by pssdrnk, built on DUELL 1.1 by OSCILL/R", "Install Stable", "Install Beta", "Try the emulator", "DUELL-TIDE/issues", "Use at your own risk"])
+    ok(l.includes(t), `landing keeps: ${t}`);
+  const strip = (x) => x.replace(/data:image[^"]*/g, "");
+  ok(!/oscillr\/DUELL\/issues/.test(h + l), "pages: no bug-report link to OSCILL/R (they are credit and original-DUELL links only)");
+  ok(!/(?:src|href)="https?:\/\/(?!pssdrnk-cmyk\.github\.io|github\.com|www\.m-vave\.com|oscillr\.github\.io)/.test(strip(h + l)) && !/<script[^>]+src="https?:/.test(h + l), "pages: no scripts, styles or fonts from other hosts");
+}
+channels(); hashCheck(); channelPage();
 installerState(); pageWiring(); eraseBox(); erasePage(); smartDefault(); onePage();
 console.log(failed ? `INSTALLER STATE TESTS FAILED (${failed})` : "installer state tests passed");
 process.exit(failed ? 1 : 0);
