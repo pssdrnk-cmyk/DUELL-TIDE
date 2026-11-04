@@ -119,12 +119,15 @@ static void fm6_env_advance(fm6_env_t *e, const uint8_t *op, uint32_t ix)
     e->inc = (4 + (qrate & 3)) << (2 + FM6_LG_N + (qrate >> 2));
 }
 
-static void fm6_env_init(fm6_env_t *e, const uint8_t *op, int32_t outlevel, int32_t rate_scaling)
+/* a note-on. fresh: the level starts at 0; else (a retrigger or a steal of a sounding voice) it stays where it is and
+ * the attack runs from there, as the DX7 does, so a slow attack does not fall to silence and click */
+static void fm6_env_init(fm6_env_t *e, const uint8_t *op, int32_t outlevel, int32_t rate_scaling, int fresh)
 {
     e->outlevel = (int16_t)outlevel;
     e->rscale = (uint8_t)rate_scaling;
     e->key = e->velocity = 0;
-    e->level = 0;
+    if (fresh)
+        e->level = 0;
     e->down = 1;
     fm6_env_advance(e, op, 0);
 }
@@ -495,7 +498,7 @@ static void fm6_note_init(fm6_note_t *n, const uint8_t *p, int32_t note, int32_t
         int32_t ol = fm6_scaleout(op[FP_OL]) + fm6_scale_level(note, op);
         ol = (ol > 127 ? 127 : ol) * 32;
         ol += fm6_scale_vel(vel, op[FP_KVS]);
-        fm6_env_init(&n->env[k], op, ol < 0 ? 0 : ol, fm6_scale_rate(note, op[FP_RS]));
+        fm6_env_init(&n->env[k], op, ol < 0 ? 0 : ol, fm6_scale_rate(note, op[FP_RS]), fresh);
         n->env[k].key = (uint8_t)note;
         n->env[k].velocity = (uint8_t)(vel < 0 ? 0 : vel > 127 ? 127 : vel);
         n->ol0[k] = op[FP_OL];
