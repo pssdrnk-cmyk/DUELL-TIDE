@@ -572,6 +572,8 @@ static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int
 static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int glide)
 {
     uint32_t mode = (uint32_t)t->p[P_VOICE], nv = mode == V_UNISON ? trk_nvoice(t) : 1u, i;
+    const engine_t *en = ENGINES[t->engine];
+    uint32_t vt = en == &ENG_FM6 || en == &ENG_PHYS;    /* the velocity is timbre there (KVS, ACC): UNISON keeps it and lowers the amplitude instead (FM6: unison_gain.c; PHYS: xg below) */
     voice_trim(t);
     for (i = 0; i < nv; i++) {
         voice_t *v = &t->v[i];
@@ -584,7 +586,7 @@ static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int g
                 continue;                                   /* no room for this extra UNISON voice */
             int was_sounding = v->active && v->stage != 0;  /* (a sounding voice keeps its phase on a re-strike) */
             /* level: about the same sum for 8 or 4 voices at random phases */
-            voice_start(t, v, note, nv >= NVOICE ? vel * 36u / 100u : nv > 1u ? vel / 2u : vel, glide);
+            voice_start(t, v, note, vt ? vel : nv >= NVOICE ? vel * 36u / 100u : nv > 1u ? vel / 2u : vel, glide);
             v->side = (uint8_t)(i & 1u);                    /* SPREAD: the detuned voices alternate */
             if (nv > 1u && i && !was_sounding && !ENGINES[t->engine]->sampled) {   /* random start phases: */
 #if DUELL_BENCH
@@ -606,6 +608,8 @@ static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int g
                 v->vel = (uint8_t)vel;
             glide_set(t, v, glide);
         }
+        if (en == &ENG_PHYS && nv > 1u)                     /* (this note's share between the parts, times UNISON's amplitude) */
+            v->xg = (uint16_t)mulq15(t->lay_xg ? t->lay_xg : 32767, unison_amp[nv] * 11u >> 3);   /* (VOICE_FS 24000 -> Q15, 32768 / 24000 = 1.365 ~ 11 / 8) */
     }
     t->mono_note = (uint8_t)note;
 }
