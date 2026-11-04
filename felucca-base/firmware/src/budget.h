@@ -28,7 +28,7 @@
 
 /* what limits a part's number (part_notes_reason): the item whose removal would give the part the most notes */
 enum { NR_NONE,                 /* nothing: the part has all it can have (NOTES_MAX, the pool) */
-       NR_ENGINE,               /* the engine itself: its voice cost, or its own voice limit (PHYS 3, VOICE 4, FM6 6) */
+       NR_ENGINE,               /* the engine itself: its voice cost, or its own voice limit (PHYS 3, VOICE 4) */
        NR_FILTER,               /* the multimode filter's 24 dB slope (a voice) */
        NR_INSERT,               /* the part's INSERT */
        NR_SAT,                  /* the part's SAT */

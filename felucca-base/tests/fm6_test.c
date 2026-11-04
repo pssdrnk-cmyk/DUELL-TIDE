@@ -722,7 +722,8 @@ static void voices(void)
     track_render(&trk[0], b, CTL);
     for (i = 0; i < NVOICE; i++)
         n += trk[0].v[i].active;
-    check("voices: 8 keys in POLY: 6 voices (the engine's cap)", n == FM6_POLY && ENG_FM6.poly == FM6_POLY);
+    check("voices: 8 keys in POLY: 8 voices (the engine's cap, D18: the NOTES budget sets the number)", n == 8u && FM6_POLY == 8u && ENG_FM6.poly == FM6_POLY);
+    check("memory: eight notes (and TIDE's saves) fit the part's engine memory and leave the COMB 500+ samples a voice", FM6_MEM <= ENG_MEM_PART && (ENG_MEM_PART - ((FM6_MEM + 3u) & ~3u)) / (2u * NVOICE) >= 500u);
     for (i = 0; i < 8u; i++)
         trk_note_off(&trk[0], 48 + 2 * i);
     for (i = 0; i < FS * 8u / CTL; i++)
@@ -777,7 +778,7 @@ static void cost(void)
     heavy[FP_ALG] = 31;
     heavy[FP_FB] = 7;
     idle = mix_cost(heavy, 0);
-    printf("fm6: cost, host instructions per sample and voice (6 voices held; device estimate 1.7 %% per 100):\n");
+    printf("fm6: cost, host instructions per sample and voice (6 voices held of 8; device estimate 1.7 %% per 100):\n");
     for (pi = 0; pi <= FM6_NFACTORY; pi++) {
         uint8_t v[FP_SIZE + 1u];
         if (pi < FM6_NFACTORY)
