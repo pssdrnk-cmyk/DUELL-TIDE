@@ -406,7 +406,7 @@ static void seqm_wander_gen(uint32_t pi, uint32_t x, uint32_t tier)
     sqm_part_t *q;
     sqm_end_t nx;
     uint32_t k, r = morph_new_seed() * 2654435761u + 1u;
-    int32_t amt, step, v;
+    int32_t amt, step;
     if (pi >= NSHOWN)
         return;
     q = &sqm[pi];
@@ -427,12 +427,7 @@ static void seqm_wander_gen(uint32_t pi, uint32_t x, uint32_t tier)
         r = r * 1103515245u + 12345u;
         if (!q->dir[k] || (r >> 16) % 6u == 0u)
             q->dir[k] = (int8_t)((r >> 30) & 1u ? 1 : -1);
-        v = nx.d[k] + q->dir[k] * step;
-        if (v > amt)
-            v = amt, q->dir[k] = -1;
-        else if (v < -amt)
-            v = -amt, q->dir[k] = 1;
-        nx.d[k] = (int8_t)v;
+        nx.d[k] = (int8_t)tide_walk(nx.d[k], &q->dir[k], q->dir[k], step, amt);   /* (morph_music.c: the sound's dials walk the same way) */
     }
     sqm_pitch_mutate(&trk[pi], &nx, r, tier, q->notes);
     if (tier >= 3u || (tier == 2u && (r >> 8) & 1u))

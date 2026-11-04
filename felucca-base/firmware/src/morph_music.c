@@ -78,6 +78,18 @@ static int16_t mm_dv[NSHOWN][2][MDL_N];                   /* each end's dials (W
 static int8_t mm_dir[NSHOWN][MDL_N];                      /* WANDER: each dial's way */
 static uint8_t mm_loads[NSHOWN];                          /* each part's sound loads (morph_rebase_part): GLIDE sees a load that left the fader as it was */
 
+/* WANDER's dial walk, one for the sound's dials (morph_roll_musical) and the pattern's (seq_morph.c seqm_wander_gen): dial v a step of
+ * move (+1 / -1) on, bouncing at lim (its way, *dir, turns there) */
+static int32_t tide_walk(int32_t v, int8_t *dir, int32_t move, int32_t step, int32_t lim)
+{
+    v += move * step;
+    if (v > lim)
+        v = lim, *dir = -1;
+    else if (v < -lim)
+        v = -lim, *dir = 1;
+    return v;
+}
+
 /* value id at dial d (-1000..1000, times w/6): toward hi at +1000, lo at -1000; the reach either way at least min */
 static void mm_dial(int8_t *end, const engine_t *e, const int8_t *o, uint32_t id, int32_t d, int32_t w, int32_t lo, int32_t hi, int32_t min)
 {
@@ -169,11 +181,7 @@ static void morph_roll_musical(const int8_t *o, int8_t *end, const engine_t *e, 
             }
             if (i == MDL_BRIGHT && tarc_bright())            /* ARC: brighter towards the peak, softer in the breakdown */
                 move = tarc_bright();
-            d[i] += move * step;
-            if (d[i] > lim)
-                d[i] = lim, *dr = -1;
-            else if (d[i] < -lim)
-                d[i] = -lim, *dr = 1;
+            d[i] = tide_walk(d[i], dr, move, step, lim);
         }
     } else {                                             /* a roll: each dial half to all of AMOUNT, either way */
         for (i = 0; i < MDL_N; i++) {
