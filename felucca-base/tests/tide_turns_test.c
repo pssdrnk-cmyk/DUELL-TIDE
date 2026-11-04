@@ -620,6 +620,28 @@ static void t_answer(void)
                 if (sqm_hit(&trk[0].step[k]) && thin_bit(1, (uint32_t)((int32_t)k + rhythm_offset(0, k))))
                     sh[n]++;
         }
+    {   /* audit C9: the masks are built when what they read changes, not every frame */
+        uint32_t m0, m1, ok1, ok2, ok3;
+        setup(16, 16, 2, 2, 0);
+        put_hits(0, H, 12), put_hits(1, H, 12);
+        sqm_auto = 3, sqm_turns = 2, sqm_sync = 0;
+        seqm_poll();
+        tide_poll();
+        m0 = sqm_thin[0][0], m1 = sqm_thin[1][0];
+        sqm_thin[0][0] = 0x5A5A5A5Au;                     /* (a marker a rebuild would overwrite) */
+        tide_poll(), tide_poll();
+        ok1 = sqm_thin[0][0] == 0x5A5A5A5Au && m0 != 0u;
+        sqm_turns = 3;                                   /* ECHO: rebuilt at once */
+        tide_poll();
+        ok2 = sqm_thin[0][0] != 0x5A5A5A5Au;
+        sqm_turns = 2;
+        tide_poll();
+        ok3 = sqm_thin[0][0] == m0 && sqm_thin[1][0] == m1;
+        CHECK("masks: nothing changed, no rebuild (the marker stays); TURNS changed, rebuilt; back, the same masks", ok1 && ok2 && ok3);
+        trk[0].p[P_SLEN] = 12;
+        seqm_poll(), tide_poll(), tide_poll();
+        CHECK("  .. a new length rebuilds them (no bit past the loop)", !(sqm_thin[0][0] >> 12) && sqm_thin[0][0] != m0);
+    }
     printf("  ECHO (12 seeds, 48 moves): part 1 hits on part 2's thinned places: LEAD %u, ECHO %u\n", sh[0], sh[1]);
     CHECK("ECHO: more of part 1's hits sit on part 2's thinned places than with LEAD", sh[1] > sh[0]);
     sqm_turns = 1, sqm_sync = 1, sqm_auto = 0;

@@ -9,9 +9,9 @@ static int tide_echo(uint32_t pi, uint32_t idx)
     const track_t *a = &trk[pi], *b = &trk[pi ^ 1u];
     return sqm_turns == 3u && idx < NSTEP && a->p[P_SDIV] == b->p[P_SDIV] && sqm_len(a) == sqm_len(b) && ((sqm_thin[pi ^ 1u][idx >> 5] >> (idx & 31u)) & 1u);
 }
-static void sqm_thin_build(void)
+static int sqm_thin_build(void)                          /* 1: a mask changed */
 {
-    uint32_t pi, i, k;
+    uint32_t pi, i, k, ch = 0;
     for (pi = 0; pi < NSHOWN; pi++) {
         uint32_t m[2] = {0, 0};
         const track_t *t = &trk[pi];
@@ -39,7 +39,32 @@ static void sqm_thin_build(void)
                 m[i >> 5] |= 1u << (i & 31u);
             }
         }
+        ch |= (m[0] ^ sqm_thin[pi][0]) | (m[1] ^ sqm_thin[pi][1]);
+        MORPH_LOCK();                                    /* (audit C12: the audio interrupt sees both words of one mask) */
         sqm_thin[pi][0] = m[0];
         sqm_thin[pi][1] = m[1];
+        MORPH_UNLOCK();
     }
+    return ch != 0u;
+}
+/* main loop, every pass (tide_ui.c tide_poll): the masks again only when what they are built from changed (audit C9: not every frame):
+ * the ends played (sqm sig / tseed / ok), the lengths, the grids and swings tide_metric reads, TURNS, the ARC's thinning and VARY BARS.
+ * ECHO reads the peer's mask: built again until it settles (at most 3 passes) */
+static uint32_t sqm_thin_k, sqm_thin_kok;
+static void sqm_thin_poll(void)
+{
+    uint32_t pi, n, h = 2166136261u;
+    for (pi = 0; pi < NSHOWN; pi++) {
+        const track_t *t = &trk[pi];
+        h = (h ^ sqm[pi].sig) * 16777619u;
+        h = (h ^ sqm[pi].tseed) * 16777619u;
+        h = (h ^ (sqm[pi].ok | sqm_len(t) << 1 | (uint32_t)arp_mode(t) << 8 | (uint32_t)(uint8_t)t->p[P_SDIV] << 12 | (uint32_t)(uint8_t)t->p[P_ARATE] << 20)) * 16777619u;
+        h = (h ^ (uint32_t)(uint16_t)t->p[P_SSWING]) * 16777619u;
+    }
+    h = (h ^ ((uint32_t)(uint16_t)song.g[G_SWING] | (uint32_t)sqm_turns << 16 | (uint32_t)tarc_thin << 20 | (uint32_t)sqm_vary_all << 24)) * 16777619u;
+    if (sqm_thin_kok && h == sqm_thin_k)
+        return;
+    sqm_thin_k = h, sqm_thin_kok = 1;
+    for (n = 0; n < 3u && sqm_thin_build(); n++)
+        ;
 }

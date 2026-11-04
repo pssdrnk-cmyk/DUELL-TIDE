@@ -883,7 +883,7 @@ static void tide_poll(void)
 {
     tide_settings();
     tarc_poll();                                         /* ARC: the phrase counted, the levers set */
-    sqm_thin_build();                                    /* LEAD / ECHO and ARC: the follower's mask */
+    sqm_thin_poll();                                     /* LEAD / ECHO and ARC: the follower's mask (when what it reads changed) */
     glide_poll();                                        /* a launched GLIDE moves its faders */
     seqm_poll();                                         /* the SEQ MORPH's ends follow pattern edits (TRANS, SHIFT, an edit) */
     morph_xpoll();                                       /* plan any destination GLIDE generated in this same pass */
