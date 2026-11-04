@@ -6,8 +6,8 @@
 
 Two channels, from the repository's GitHub releases (drafts never count):
 
-  stable  the newest normal (non-pre-release) release that carries duell-tide-stable-YYYY-MM-DD.fwsc. That is GitHub's "Latest".
-  beta    the newest pre-release that carries duell-tide-beta-YYYY-MM-DD.fwsc AND was published after that stable release.
+  stable  the newest normal (non-pre-release) release that carries duell-tide-stable-YYYY-MM-DD[.N].fwsc. That is GitHub's "Latest".
+  beta    the newest pre-release that carries duell-tide-beta-YYYY-MM-DD[.N].fwsc AND was published after that stable release.
           An older beta is a superseded build: it is not offered. With no stable release at all, the newest beta is offered alone.
 
 For each channel found it downloads the package and its .sha256 into DIR/<channel>/ and writes DIR/<channel>.json
@@ -25,7 +25,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-PKG = re.compile(r"duell-tide-(stable|beta)-(\d{4}-\d{2}-\d{2})\.fwsc")
+PKG = re.compile(r"duell-tide-(stable|beta)-(\d{4}-\d{2}-\d{2})(?:\.\d+)?\.fwsc")
 SHA = re.compile(r"\b([0-9a-fA-F]{64})\b")
 
 

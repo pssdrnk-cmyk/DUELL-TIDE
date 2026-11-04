@@ -24,8 +24,8 @@
   web/make_site.py [--stable-pkg FILE.fwsc [--stable-info FILE.json]] [--beta-pkg FILE.fwsc [--beta-info FILE.json]] [--emu DIR] [OUT_DIR]
 
   OUT_DIR       default: site/ at the repository root
-  --stable-pkg  the Stable package, named duell-tide-stable-YYYY-MM-DD.fwsc
-  --beta-pkg    the Beta package, named duell-tide-beta-YYYY-MM-DD.fwsc
+  --stable-pkg  the Stable package, named duell-tide-stable-YYYY-MM-DD[.N].fwsc
+  --beta-pkg    the Beta package, named duell-tide-beta-YYYY-MM-DD[.N].fwsc
   --*-info      the release data (web/releases.py writes it from the GitHub release): tag, commit, published_at, notes_url, body, sha256.
                 Without it the tag and date come from the file name, and there is no commit, notes link or known-issues list.
                 When it has a sha256, the package must match it, or the build stops.
@@ -56,7 +56,7 @@ def product_of(raw):
     return "".join(chr((m - i - 1) & 0xFF) for i in range(BLOCKS) if (m := raw[i * BLK + KEEP]) != 0x7D)
 
 
-PKG_NAME = re.compile(r"duell-tide-(stable|beta)-(\d{4}-\d{2}-\d{2})\.fwsc")
+PKG_NAME = re.compile(r"duell-tide-(stable|beta)-(\d{4}-\d{2}-\d{2})(?:\.\d+)?\.fwsc")
 REPO = "pssdrnk-cmyk/DUELL-TIDE"
 
 
@@ -102,7 +102,7 @@ def channel_entry(channel, pkg, info_path):
     """check one package and return (manifest entry, bytes). Stops the build on a wrong name, identity or SHA-256."""
     m = PKG_NAME.fullmatch(pkg.name)
     if not m or m[1] != channel:
-        raise SystemExit(f"{pkg.name}: the {channel} package must be named duell-tide-{channel}-YYYY-MM-DD.fwsc")
+        raise SystemExit(f"{pkg.name}: the {channel} package must be named duell-tide-{channel}-YYYY-MM-DD[.N].fwsc")
     raw, product = check_package(pkg)
     sha = hashlib.sha256(raw).hexdigest()
     info = json.loads(Path(info_path).read_text(encoding="utf-8")) if info_path else {}
