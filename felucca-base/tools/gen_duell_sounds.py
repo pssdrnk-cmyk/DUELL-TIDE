@@ -18,7 +18,8 @@ matrix, a name over 12 characters, a bad category or engine, factory indices not
 End B AS VALUES (owner 2026-10-29: a pre-loaded patch carries its End B exactly like a saved patch, PT_VER 4): 'bend' {label: End B value} (only the values that differ from
 the Original; the labels are bend_labels()'s: a P_ name without P_, E1..E8, "<group> <label>" for an extension slot), 'bpin' [labels] (the values set by hand: the marks),
 'bfm' [65 FM6 bytes of End B] (FM6 only). They are packed into the End B block of the patch record (tools/endb.py = morph.c morph_bv_make's format) and written as
-DS_ENDB / DS_ENDB_AT. The AMOUNT in the block is 'bamt' (the category's if absent). A sound with 'bend' has its End B from the block; one without keeps the seed (below).
+DS_ENDB / DS_ENDB_AT. The AMOUNT in the block is 'bamt' (the category's if absent).
+'lcat' (optional): the category the generator's defaults (End B AMOUNT, KEY TRK 0 of a bass or hit) and the browse order were made with; a sound re-filed under another 'cat' (a role for JRNY and the TYPE filter) keeps its sound, its End B and its place in the list. A sound with 'bend' has its End B from the block; one without keeps the seed (below).
 End B by a seed (morph.c morph_rebase_part): 'bamt' (the AMOUNT %, default by category: CAT_BAMT) and 'bseed' (1..65535, chosen by
 tests/sound_audit.c SOUND_BSEED=1 so End B keeps A's loudness and roughly its brightness; absent: the hash of (engine, idx)).
 
@@ -304,7 +305,7 @@ def build(data):
         for key in ("engine", "idx", "name", "cat", "p"):
             if key not in s:
                 die(f"{where}: no '{key}'")
-        unknown = set(s) - {"engine", "idx", "name", "cat", "p", "mono", "recipe", "bamt", "bseed", "bend", "bpin", "bfm"}
+        unknown = set(s) - {"engine", "idx", "name", "cat", "p", "mono", "recipe", "bamt", "bseed", "bend", "bpin", "bfm", "lcat"}
         if unknown:
             die(f"{where}: unknown keys {sorted(unknown)}")
         name = s["name"]
@@ -315,6 +316,8 @@ def build(data):
         e = eng_by_name[s["engine"]]
         if s["cat"] not in CATS:
             die(f"{where}: category {s['cat']!r} not one of {CATS}")
+        if s.get("lcat", s["cat"]) not in CATS:
+            die(f"{where}: lcat {s['lcat']!r} not one of {CATS}")
         edit = engines[e]["edit"]
         if len(edit) != 8:
             die(f"{where}: {s['engine']}'s EDIT table could not be read (8 rows)")
@@ -373,7 +376,7 @@ def build(data):
             vid = ids["P_VOICE"]
             if vid not in pairs:
                 pairs[vid] = names["N_VOICE"].index("LEG")      # as the old presets' mono flag: LEGATO
-        if (s["cat"] in ("BASS", "PERC") or "KICK" in name) and ids["P_KTRK"] not in pairs:
+        if (s.get("lcat", s["cat"]) in ("BASS", "PERC") or "KICK" in name) and ids["P_KTRK"] not in pairs:
             pairs[ids["P_KTRK"]] = 0       # 0.2.22: KEY TRK defaults to +51 %; a bass, kick or percussion hit must not close its low notes: explicit 0
         # 0.2.24 (owner): the matrix stays PACKED: a sound's used slots (SRC not OFF) move up in their order, the rest is left out
         # (sound-identical: the firmware sums the slots in slot order; it packs a sound with gaps as it loads anyway, mod.c mod_compact)
@@ -400,7 +403,7 @@ def build(data):
         seen[key] = name
         arp = any(ids["P_" + a] in pairs for a in ARP_IDS)
         keys = any(ids["P_" + a] in pairs for a in KEY_IDS)
-        bamt, bseed = s.get("bamt", CAT_BAMT[s["cat"]]), s.get("bseed", 0)
+        bamt, bseed = s.get("bamt", CAT_BAMT[s.get("lcat", s["cat"])]), s.get("bseed", 0)
         if not isinstance(bamt, int) or isinstance(bamt, bool) or not (0 <= bamt <= 100 if "bend" in s else 1 <= bamt <= 40):
             die(f"{where}: bamt {bamt!r}: the End B AMOUNT is 1..40 (%); 0..100 for a sound with 'bend' (its block holds the knob exactly)")
         if not isinstance(bseed, int) or isinstance(bseed, bool) or not 0 <= bseed <= 65535:
@@ -428,7 +431,7 @@ def build(data):
                 block = endb.encode(e, bamt + 1, vals, None, marks, fm)   # (no Original here: the firmware adds routes at a load, mod.c; tools/convert_endb.py checks against the firmware's own)
             except ValueError as x:
                 die(f"{where}: {x}")
-        sounds.append({"e": e, "idx": idx, "name": name, "cat": s["cat"], "mono": bool(s.get("mono")), "arp": arp, "late": n >= getattr(data, "N_BASE", 1 << 30),
+        sounds.append({"e": e, "idx": idx, "name": name, "cat": s["cat"], "lcat": s.get("lcat", s["cat"]), "mono": bool(s.get("mono")), "arp": arp, "late": n >= getattr(data, "N_BASE", 1 << 30),
                        "keys": keys, "pairs": sorted(pairs.items()), "recipe": s.get("recipe", ""), "bamt": bamt,
                        "bseed": bseed, "endb": block})
     for e in {x["e"] for x in sounds}:
@@ -439,7 +442,7 @@ def build(data):
         die("more than 255 sounds: widen DS_LIST / DS_ENG_AT")
     sounds.sort(key=lambda x: (x["e"], x["idx"]))
     rank = {e: i for i, e in enumerate(order)}
-    lst = sorted(range(len(sounds)), key=lambda g: (sounds[g]["late"], CATS.index(sounds[g]["cat"]), rank.get(sounds[g]["e"], 99),
+    lst = sorted(range(len(sounds)), key=lambda g: (sounds[g]["late"], CATS.index(sounds[g]["lcat"]), rank.get(sounds[g]["e"], 99),
                                                     sounds[g]["name"]))
     idname = {v: k for k, v in ids.items()}
     for xn, (wid, *_rest) in xtp.items():

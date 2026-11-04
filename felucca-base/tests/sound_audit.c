@@ -115,7 +115,7 @@ static int au_keep(const ds_sound_t *s)
  * (KNOWN), not failed, until the owner decides: trim or re-voice the sound, or move the rule */
 static int au_known(const ds_sound_t *s)
 {
-    static const char *const KNOWN[] = {"BEHIVE", "SINGING BOWL", "ARP PLUCK", "GHOST HARP", "FLOOR THUD", "TABLA TALK"};
+    static const char *const KNOWN[] = {"BEHIVE", "SINGING BOWL", "ARP PLUCK"};
     uint32_t i;
     for (i = 0; i < sizeof KNOWN / sizeof *KNOWN; i++)
         if (str_eq(s->name, KNOWN[i]))
@@ -276,6 +276,8 @@ int main(void)
             why = "FAIL (quiet tap)";
         else if (!bok && !ds_endb(e, k))               /* (DUELL 1.1: an End B the owner made as values (sounds.c ds_endb, PT_VER 4) is his, not a seed's roll: not judged by the seed windows) */
             why = "FAIL (End B)";
+        else if (!bok)                                  /* (an authored End B outside the window: reported, the owner's to keep or trim; a tide to it is a jump in level or tone) */
+            why = "KNOWN (End B authored)";
         if (why[0] == 'F' && au_known(s)) {
             snprintf(known, sizeof known, "KNOWN%s", why + 4);
             why = known;
