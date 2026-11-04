@@ -591,7 +591,7 @@ static __attribute__((noinline)) void arp_fire(track_t *t, uint32_t period)
 }
 
 /* SWING is stored and shown as 50 .. 75 % (50 = straight, owner 2026-10-28). The timing keeps its old 0 .. 100 scale: old v = (percent - 50) * 4,
- * so 50 % = 0, 75 % = 100, and every step of 1 % is 4 old units; the same sums as before (core.h track_swing / swing_step_len: / 250) */
+ * so 50 % = 0, 75 % = 100, and every step of 1 % is 4 old units; the sums are these ones, below (the SWG of the track and the global add, at most 100) */
 static inline int32_t sw_old(int32_t pct) { return pct <= 50 ? 0 : pct >= 75 ? 100 : (pct - 50) * 4; }
 static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
 {
@@ -655,7 +655,7 @@ static void arp_tick(track_t *t, uint32_t n) { arp_step(t, n, n); }
  * and the odd ones shorter, so every odd step starts late */
 static uint32_t step_samples(const track_t *t, uint32_t period, uint32_t idx)
 {
-    int32_t sw = sw_old(t->p[P_SSWING]) + sw_old(song.g[G_SWING]);   /* the track's + the global, at most 100 (core.h track_swing / swing_step_len, same arithmetic) */
+    int32_t sw = sw_old(t->p[P_SSWING]) + sw_old(song.g[G_SWING]);   /* the track's + the global, at most 100 */
     sw = (sw > 100 ? 100 : sw) * (int32_t)period / 250;
     return period + (uint32_t)((idx & 1u) ? -sw : sw);
 }

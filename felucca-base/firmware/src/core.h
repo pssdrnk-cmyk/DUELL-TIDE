@@ -823,22 +823,6 @@ static volatile uint8_t offscale_g;                    /* OS_SNAP / OS_PLAY */
 static int32_t scale_of(const track_t *t) { (void)t; return scale_g; }
 static int32_t root_of(const track_t *t) { (void)t; return root_g; }
 
-/* SWING of a track's step clock: the track's own plus the global one, at most 100 (#31). The sequencer
- * (seq.c step_samples) times steps with it. At 100 the even
- * steps are 1.4 x the straight length and the odd ones 0.6 x. */
-#define SWING_MAX 100
-static inline int32_t track_swing(const track_t *t)
-{
-    int32_t sw = t->p[P_SSWING] + song.g[G_SWING];
-    return sw < 0 ? 0 : sw > SWING_MAX ? SWING_MAX : sw;
-}
-/* the length of step idx of a straight length `base`, swung: even steps longer, odd ones shorter */
-static inline uint32_t swing_step_len(const track_t *t, uint32_t base, uint32_t idx)
-{
-    int32_t sw = track_swing(t) * (int32_t)base / 250;
-    return base + (uint32_t)((idx & 1u) ? -sw : sw);
-}
-
 /* ----------------------------------------------------------- system --- */
 #define RING_PUBLISH() __asm__ volatile("" ::: "memory")   /* slot store before the index update */
 static volatile uint32_t fm1_ms;  /* milliseconds since boot (TIMER4-based, TIMER5 ISR in main.c) */
