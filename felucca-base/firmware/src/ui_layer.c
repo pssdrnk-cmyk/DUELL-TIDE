@@ -19,13 +19,13 @@
  *              no lock (#83: two quick taps step the family's pages as before). One seen bit for the three and GLO (bit 0)
  *   SEQ  SET   (1.2, on every page) TOOLS: the white keys from F3 the sequence tools
  *              (ui_tools.c: CLEAR, REVERSE, SHIFT < >, RANDOM, COOK, TRANS + / TRANS - on E4, F4; 0.2.14: the DRUM tracks' BEAT and lane tools are gone); KNOB 1..4 LEN DIV SWING GATE (the PATTERN page's up to
- *              1.1.5: the page is gone, they are here). Each action one undo (SAVE held), OCT- the track as the layer
+ *              1.1.5: the page is gone, they are here). Each action one undo (OCT- + a PRESETS turn outside the layer), OCT- the track as the layer
  *              opened (tl_open)
  *   REC  SET   (1.1.5, on every page; REC's tap still arms / disarms) DUELL 1.0 layout (QUICK_REC_NEW_LAYOUT.png; FIRMWARE_CHANGE_LIST_2026-10-28.md
  *              B.6): four cells of template 8 (grid_on 14, 2 x 2, knob c in cell c; the layer draws no panel of its own): KNOB 1 CLICK (OFF REC ON),
  *              KNOB 2 COUNT (COUNT-IN: OFF 1 BAR 2 BARS), KNOB 3 LEVEL (CLICK LEVEL: LOW MID HIGH), each with the choice's segment line; KNOB 4
  *              CLEAR: NO SEQUENCE (dimmed) when the selected track holds nothing, else TURN TO CLEAR; turning it opens the "CLEAR Tn SEQUENCE?"
- *              dialog (CF_CLEAR_SEQ: OCT+ YES, OCT- NO; the steps and automation go, one undo, SAVE held). The white keys F G A B no
+ *              dialog (CF_CLEAR_SEQ: OCT+ YES, OCT- NO; the steps and automation go, one undo, OCT- + a PRESETS turn). The white keys F G A B no
  *              longer act here (keys and LEDs). The settings are MENU > AUDIO's (ui.c rp_get / rp_put: one store), saved when the layer
  *              closes; OCT- puts back the settings and the track as the layer opened (tl_open)
  * The gesture: let go before HOLD (the menu: 0.3 .. 0.6 s) with nothing else touched: a tap, the button's page.
@@ -584,7 +584,7 @@ static uint32_t layer_oct(uint32_t pressed, uint32_t oct)
         } else if (lys.l == LAYER_SEQ || lys.l == LAYER_REC) {
             track_t *t = &trk[lys.trk % NTRK];
             {
-                if (lys.loaded) {                       /* (SAVE held then: the tools / the clear again) */
+                if (lys.loaded) {                       /* (the undo then: the tools / the clear again) */
                     tl_undo_take(t);
                     memcpy(t->step, tl_open.step, sizeof t->step);
                     if (motion_replace_track(t, &tl_open.mo))
@@ -614,7 +614,7 @@ static uint32_t layer_oct(uint32_t pressed, uint32_t oct)
 static int glo_sounding(uint32_t t) { return !trk[t].p[P_MUTE]; }
 static int rec_clearable(void) { return !seq_is_empty(TSEL) || motion_count(TSEL) != 0u; }
 /* QUICK REC, KNOB 4 CLEAR turned: the "CLEAR Tn SEQUENCE?" dialog (CF_CLEAR_SEQ, the TOOLS page's CLEAR: OCT+ YES clears the selected track's steps and automation and
- * ARP's latched chord, one undo, SAVE held; OCT- NO). Nothing recorded: the cell says NO SEQUENCE and the turn says so. lys.loaded: OCT- in the layer afterwards puts the
+ * ARP's latched chord, one undo, OCT- + a PRESETS turn; OCT- NO). Nothing recorded: the cell says NO SEQUENCE and the turn says so. lys.loaded: OCT- in the layer afterwards puts the
  * track back as the layer opened (tl_open), whatever the dialog's answer was */
 static void rec_clear_ask(void)
 {

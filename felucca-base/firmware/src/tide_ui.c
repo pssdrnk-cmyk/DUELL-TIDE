@@ -97,7 +97,7 @@ static void tide_keep_sound(uint32_t pi)
     MORPH_UNLOCK();
     morph_rebase_part(pi);
 }
-/* KEEP (SEQ TOOLS, G4: ui_tools.c TL_KEEP; plan H14): what part pi plays now becomes its own, one undo for both halves (SAVE held:
+/* KEEP (SEQ TOOLS, G4: ui_tools.c TL_KEEP; plan H14): what part pi plays now becomes its own, one undo for both halves (OCT- + a PRESETS turn:
  * the pattern and, when the sound was kept, the sound). The pattern half: the SEQ MORPH's variation as it plays (seqm_keep, 1.1's
  * ties); steps it empties lose their locks (tl_unlock). The message; 0 = nothing to keep (said) */
 static const char *tide_tl_keep(track_t *t, uint64_t was, uint32_t len)

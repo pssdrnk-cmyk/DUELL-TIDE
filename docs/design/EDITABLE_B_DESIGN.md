@@ -224,7 +224,7 @@ The "rolled B + up to 32 hand edits" idea of the first helpers is the right base
 3. **Clicks while editing B.** No new risk. At the B end an edit is like an edit at A today. The 50 ms ramp is only needed when a whole end is replaced (ROLL, UNDO), and that already exists.
 4. **Saving loses the hand-set values**, if the existing "re-make B from the seed before saving" runs without putting them back. A test must check: edit A, edit B, save, load, compare.
 5. **B ends drift after the alpha** (the finding in the verdict). The roll rules must freeze for existing values from the alpha on, with a test that rolls stored seeds and compares them to the alpha's results. Values set by hand are immune.
-6. **Two undo systems.** The EDIT layer's OCT- undo of loads and the morph's UNDO A / B. Hand edits of B belong to UNDO B only. The edit undo must never put A back over a B edit. Test both orders.
+6. **Two undo systems.** The load undo (OCT- held + a PRESETS turn) and the morph's UNDO A / B. Hand edits of B belong to UNDO B only. The edit undo must never put A back over a B edit. Test both orders.
 7. **Power cycle** (section 3.1): the autosave must carry the list, and today's possible loss of a saved B after power-on must be checked first.
 
 **What suits the cloud sessions** (all of it testable on a computer, no unit needed): the store logic, edit routing, save/load round trips, power-cut tests and the frozen-seed test. **What stays local:** the header letter on the unit, the feel of the B end on the hardware, and your session.
