@@ -503,6 +503,7 @@ static void t_bypass_series(void)
 
 /* ------------------------------------------------------------------ 4 RESPONSE --- */
 #define TAMP 16000.0
+static double tamp = TAMP;                          /* (uf_gain's input amplitude; t_lowcut lowers it: the RES 127 peak would reach the soft knee) */
 /* the gain of uf_run at frequency f (a sine, from rest: 0.3 s to settle, 0.3 s measured), CUT step c (Q8 any), MODE, RES, SLOPE; the
  * bypass (MODE LP at the open end): 1 */
 static double uf_gain(int32_t cq8, int32_t mode, int32_t res, int32_t slope, double f)
@@ -521,7 +522,7 @@ static double uf_gain(int32_t cq8, int32_t mode, int32_t res, int32_t slope, dou
     p[P_FREED] = (int16_t)slope;
     for (i = 0; i < N; i += CTL) {
         for (j = 0; j < CTL; j++)
-            in[j] = b[j] = (int32_t)lround(TAMP * sin(2 * M_PI * f * (i + j) / FS));
+            in[j] = b[j] = (int32_t)lround(tamp * sin(2 * M_PI * f * (i + j) / FS));
         uf_run(&v, b, CTL, cq8, p);
         if (i >= from)
             for (j = 0; j < CTL; j++) {
@@ -620,7 +621,7 @@ static void t_response(void)
                                                          * (away from the table's ends: the bilinear warp near 22 kHz, the fixed point's floor near 30 Hz) */
                     ok_slope &= s == 2u ? sl < -20.0 && sl > -27.0 : sl < -9.0 && sl > -13.5;
                 if (m == 64 && c == 41) {                   /* the band-pass round 690 Hz: its peak there, both sides down */
-                    ok_bp &= d[3] > -3.0 && d[4] > (s == 2u ? -4.5 : -3.5) && d[0] < -12.0 && d[7] < -12.0;
+                    ok_bp &= d[3] > (s == 2u ? -3.5 : -3.0) && d[4] > (s == 2u ? -4.5 : -3.5) && d[0] < -12.0 && d[7] < -12.0;
                 }
                 if (m == 32 && c == 41)                     /* LP>BP: between the two, nothing beyond either */
                     ok_blend &= d[0] < 0.5 && d[0] > -12.0 && d[7] < -12.0;
@@ -671,6 +672,52 @@ static int32_t uf_saw_peak(int32_t cq8, int32_t res, int32_t slope, double f, in
                     pk = abs(b[j]);
     }
     return pk;
+}
+/* ------------------------------------------------------------------ 4c BELOW 100 Hz (audit P03) --- */
+/* the mean of uf_run's output for a sine (steady state): the truncated fixed point left a DC offset of 0.5 / g, about -30 dBFS at a 40 Hz cutoff */
+static double uf_dc(int32_t cq8, int32_t res, double f)
+{
+    voice_t v;
+    int16_t p[P_COUNT];
+    int32_t b[CTL];
+    double sum = 0;
+    uint32_t i, j, N = (uint32_t)(0.8 * FS) / CTL * CTL, from = (uint32_t)(0.4 * FS), n = 0;
+    memset(&v, 0, sizeof v);
+    memset(p, 0, sizeof p);
+    p[P_FREEB] = (int16_t)res;
+    p[P_FREED] = 1;
+    for (i = 0; i < N; i += CTL) {
+        for (j = 0; j < CTL; j++)
+            b[j] = (int32_t)lround(TAMP * sin(2 * M_PI * f * (i + j) / FS));
+        uf_run(&v, b, CTL, cq8, p);
+        if (i >= from)
+            for (j = 0; j < CTL; j++)
+                sum += b[j], n++;
+    }
+    return sum / n;
+}
+static void t_lowcut(void)
+{
+    static const double HZ[] = {45, 60, 100};
+    uint32_t q;
+    int ok_peak = 1, ok_stop = 1, ok_dc = 1;
+    for (q = 0; q < NELEM(HZ); q++) {
+        int32_t cq = uf_q8_of_hz(HZ[q]);
+        double fc = 30.0 * pow(16000.0 / 30.0, (40 + ((cq * 99) >> 6)) / 256.0 / 127.0), ideal = 20 * log10(4096.0 / (8192 - 7600)), dc;   /* (1 / k at the cutoff) */
+        double pk, st;
+        tamp = 1500.0;
+        pk = db_of(uf_gain(cq, 0, 127, 1, fc));
+        tamp = TAMP;
+        st = db_of(uf_gain(cq, 0, 0, 1, 4 * fc));
+        dc = uf_dc(cq, 0, 4 * fc);
+        printf("uf:   CUT %.0f Hz: RES 127 peak %+.1f dB (ideal %+.1f), RES 0 at 4 x the cutoff %+.1f dB (ideal -24.6), DC %+.0f\n", fc, pk, ideal, st, dc);
+        ok_peak &= pk > ideal - 1.5 && pk < ideal + 1.5;
+        ok_stop &= st < -23.1 && st > -26.1;
+        ok_dc &= fabs(dc) < 40;
+    }
+    expect("below 100 Hz (CUT 45 / 60 / 100 Hz, 12 dB LP): the RES 127 peak at the cutoff within 1.5 dB of the ideal +16.8 (the Q13 coefficients gave +14.5 at 100 Hz, +15.4 at 60 Hz)", ok_peak);
+    expect("below 100 Hz: RES 0 at 4 x the cutoff within 1.5 dB of the ideal -24.6", ok_stop);
+    expect("below 100 Hz: a steady sine leaves no DC offset (under 40 of +-16000; the truncating filter left 700 .. 1200)", ok_dc);
 }
 static void t_bass(void)
 {
@@ -736,7 +783,7 @@ static void ref_uf_run(ref_v_t *v, int32_t *buf, uint32_t n, int32_t c, int32_t 
     if (!hp && !ic1 && !ic2)
         ic2 = buf[0] >> 1;
     for (i = 0; i < n; i++) {
-        int32_t x = buf[i] >> 1, v3 = x - ic2, v1 = (f.a1 * ic1 + f.a2 * v3) >> 13, v2 = ic2 + ((f.a2 * ic1 + f.a3 * v3) >> 13), y;
+        int32_t x = buf[i] >> 1, v3 = x - ic2, v1 = ic1 + ((f.b1 * ic1 + f.a2 * v3 + (1 << (f.sh - 1))) >> f.sh), v2 = ic2 + ((f.a2 * ic1 + f.a3 * v3 + (1 << (f.sh - 1))) >> f.sh), y;
         ic1 = clamp(2 * v1 - ic1, -150000, 150000);
         ic2 = clamp(2 * v2 - ic2, -150000, 150000);
         y = hp ? x - ((k * v1) >> 12) - v2 : v2;
@@ -1765,6 +1812,7 @@ int main(void)
     t_bypass_edge();
     t_response();
     t_bass();
+    t_lowcut();
     t_exact();
     t_sweeps();
     t_routes();

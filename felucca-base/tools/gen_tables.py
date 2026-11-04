@@ -73,8 +73,8 @@ def main(path):
     lo = [0.0] + [20.0 * (100 ** ((v - 1) / 126)) for v in range(1, 128)]
     L += arr("LOCUT_HZ", "uint16_t", [int(round(f)) for f in lo])
     L += arr("LOCUT_K", "uint16_t", [locut_k(f) for f in lo])
-    # trapezoidal (Simper) SVF: g = tan(pi fc / FS), Q12; stable at any cutoff/resonance
-    L += arr("SVF_G", "uint16_t", [int(4096 * math.tan(math.pi * min(f, 0.45 * FS) / FS)) for f in fc])
+    # trapezoidal (Simper) SVF: g = tan(pi fc / FS), Q14 (Q12 left 8 at 30 Hz); stable at any cutoff/resonance
+    L += arr("SVF_G", "uint16_t", [int(16384 * math.tan(math.pi * min(f, 0.45 * FS) / FS)) for f in fc])
     # level: 0 = off, else dB = (v - 112) / 2  (112 = 0 dB, 127 = +7.5 dB)
     db = [None] + [(v - 112) / 2 for v in range(1, 128)]
     L += arr("LEVEL_Q12", "uint16_t", [0] + [int(round(4096 * 10 ** (d / 20))) for d in db[1:]])

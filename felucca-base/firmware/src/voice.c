@@ -1086,7 +1086,7 @@ static __attribute__((noinline)) void uf_run(voice_t *v, int32_t *buf, uint32_t 
     int32_t gl = uc < UF_KZ ? uc : UF_KZ, gt = UF_TOP - uc < UF_KZ ? UF_TOP - uc : UF_KZ, idx = 40 + ((uc * 99) >> 6);
     int32_t cx = (wh * gt) >> 10, cb = ((((wb * gl) >> 10) * gt) >> 10) - cx, cl = ((wl * gl) >> 10) - cx;   /* the output: cx x + cb band-pass
                                                          * + cl low-pass (Q10; the kill zones in them), this block's */
-    int32_t a1 = v->uf[0], a2 = v->uf[1], b1 = v->uf[2], b2 = v->uf[3], ax, ab, al, dx, db, dl, fd = 0, xg;
+    int32_t a1 = v->uf[0], a2 = v->uf[1], b1 = v->uf[2], b2 = v->uf[3], ax, ab, al, dx, db, dl, fd = 0, xg, rf, rg = 0;
     if (v->msl) {                                        /* (v->msl: the part's MXF slope weight, bit 15 set when the other end is 24 dB; track_render sets it) */
         int32_t b24 = v->msl & 0x8000u ? 32 : 0;
         bl = s24 ? 32 : 0;
@@ -1112,13 +1112,14 @@ static __attribute__((noinline)) void uf_run(voice_t *v, int32_t *buf, uint32_t 
     run2 = s24 || blend || fd;
     xg = fd > 0 ? 0 : 32;
     uf_coef(&f, idx, k1);
+    rf = 1 << (f.sh - 1);
     if (run2)
-        uf_coef(&g, idx, k2);
+        uf_coef(&g, idx, k2), rg = 1 << (g.sh - 1);
     ax = v->ufw[0] << 5; ab = v->ufw[1] << 5; al = v->ufw[2] << 5;   /* (CTL 32: the weights ramp, Q15, exactly onto this block's) */
     dx = cx - v->ufw[0]; db = cb - v->ufw[1]; dl = cl - v->ufw[2];
     lp = !(dx | db | dl | cx | cb) && cl == 1024;      /* a steady low-pass: its output is the low-pass itself (0.2.2's loop's cost) */
     for (i = 0; i < n; i++) {
-        int32_t x = buf[i] >> 1, v3 = x - a2, v1 = (f.a1 * a1 + f.a2 * v3) >> 13, v2 = a2 + ((f.a2 * a1 + f.a3 * v3) >> 13), y = v2;
+        int32_t x = buf[i] >> 1, v3 = x - a2, v1 = a1 + ((f.b1 * a1 + f.a2 * v3 + rf) >> f.sh), v2 = a2 + ((f.a2 * a1 + f.a3 * v3 + rf) >> f.sh), y = v2;
         a1 = clamp(2 * v1 - a1, -150000, 150000);
         a2 = clamp(2 * v2 - a2, -150000, 150000);
         if (!lp) {
@@ -1126,7 +1127,7 @@ static __attribute__((noinline)) void uf_run(voice_t *v, int32_t *buf, uint32_t 
             y = ((ax >> 5) * x + (ab >> 5) * ((k1 * v1) >> 12) + (al >> 5) * v2) >> 10;
         }
         if (run2) {                                     /* 24 dB: the same MODE again */
-            int32_t z = clamp(y, -65536, 65536), u3 = z - b2, u1 = (g.a1 * b1 + g.a2 * u3) >> 13, u2 = b2 + ((g.a2 * b1 + g.a3 * u3) >> 13);
+            int32_t z = clamp(y, -65536, 65536), u3 = z - b2, u1 = b1 + ((g.b1 * b1 + g.a2 * u3 + rg) >> g.sh), u2 = b2 + ((g.a2 * b1 + g.a3 * u3 + rg) >> g.sh);
             b1 = clamp(2 * u1 - b1, -150000, 150000);
             b2 = clamp(2 * u2 - b2, -150000, 150000);
             u2 = lp ? u2 : ((ax >> 5) * z + (ab >> 5) * ((k2 * u1) >> 12) + (al >> 5) * u2) >> 10;

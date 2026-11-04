@@ -96,21 +96,29 @@ static uint32_t part_rand(track_t *t, uint32_t *st)
     return s;
 }
 
-/* Trapezoidal SVF (A. Simper), unconditionally stable. Coefficients per
- * block in Q13; signals stay within +-150000 so products fit in 32 bits. */
-typedef struct { int32_t a1, a2, a3; } tsvf_t;
+/* Trapezoidal SVF (A. Simper), unconditionally stable. Coefficients per block: the state update is
+ * v1 = ic1 + ((b1 ic1 + a2 v3) >> sh), v2 = ic2 + ((a2 ic1 + a3 v3) >> sh), v3 = in - ic2 (b1 = a1 - 1, the damping term, small
+ * at low cutoffs). Below ~1 kHz the coefficients are tiny (a3 = g^2 / den: 0 in Q13 under 100 Hz), so sh = 13 + s gives them s more bits,
+ * s picked so that a2 stays under 3072 (signals stay within +-150000: the products fit in 32 bits). */
+typedef struct { int32_t b1, a2, a3, sh; } tsvf_t;
 static inline void tsvf_coef_k(tsvf_t *c, int32_t cut, int32_t k)   /* cut: 0..127 << 8, k: damping Q12 */
 {
-    int32_t i, g, den;
+    uint32_t i, g, gk, den, s = 0;
+    int32_t a2;
     cut = clamp(cut, 0, 127 << 8);
-    i = cut >> 8;
-    g = SVF_G[i];
+    i = (uint32_t)cut >> 8;
+    g = SVF_G[i];                                      /* Q14 */
     if (i < 127)                                       /* between table points: sweeps without 128 steps */
-        g += ((SVF_G[i + 1] - g) * (cut & 255)) >> 8;
-    den = 4096 + ((g * (g + k)) >> 12);
-    c->a1 = (int32_t)((4096u << 13) / (uint32_t)den);
-    c->a2 = (c->a1 * g) >> 12;
-    c->a3 = (c->a2 * g) >> 12;
+        g += (uint32_t)(((int32_t)SVF_G[i + 1] - (int32_t)g) * (cut & 255) >> 8);
+    gk = g + ((uint32_t)k << 2);                       /* g + k, Q14 */
+    den = (1u << 14) + ((g * gk) >> 14);               /* 1 + g (g + k) */
+    while (s < 8u && (g << s) < 3072u)
+        s++;
+    a2 = (int32_t)((g << (13 + s)) / den);             /* g / den, Q(13 + s) */
+    c->a2 = a2;
+    c->a3 = (int32_t)(((uint32_t)a2 * g) >> 14);
+    c->b1 = -(int32_t)(((uint32_t)a2 * gk) >> 14);
+    c->sh = (int32_t)(13 + s);
 }
 static inline void tsvf_coef(tsvf_t *c, int32_t cut, int32_t reso)   /* reso 0..127: damping 2.0 .. ~0.15 */
 {
@@ -120,8 +128,8 @@ static inline void tsvf_coef(tsvf_t *c, int32_t cut, int32_t reso)   /* reso 0..
 static inline int32_t tsvf_lp(const tsvf_t *c, int32_t in, int32_t *ic1, int32_t *ic2)
 {
     int32_t v3 = in - *ic2;
-    int32_t v1 = (c->a1 * *ic1 + c->a2 * v3) >> 13;
-    int32_t v2 = *ic2 + ((c->a2 * *ic1 + c->a3 * v3) >> 13);
+    int32_t v1 = *ic1 + ((c->b1 * *ic1 + c->a2 * v3) >> c->sh);
+    int32_t v2 = *ic2 + ((c->a2 * *ic1 + c->a3 * v3) >> c->sh);
     *ic1 = clamp(2 * v1 - *ic1, -150000, 150000);
     *ic2 = clamp(2 * v2 - *ic2, -150000, 150000);
     return v2;
