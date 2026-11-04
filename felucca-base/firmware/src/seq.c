@@ -504,6 +504,13 @@ static uint32_t arp_list(const track_t *t, uint32_t *list, uint32_t *cnt)
     return len;
 }
 
+/* the arp's PROB roll: 0 never plays, 127 always (the random draw is still taken, so the sequence of draws is the same) */
+static __attribute__((noinline)) int arp_roll(const track_t *t)
+{
+    uint32_t r = (uint32_t)(rng() & 127u);
+    return r < (uint32_t)t->p[P_APROB] || t->p[P_APROB] >= 127;
+}
+
 /* ARP TARGET (SPEC 2.3): with units masked (params.c atgt_bits) an arp step plays no note: the held keys sound as notes
  * (input_on), and the step sets the note their masked units go to (atg_note: the note the classic arp would play; SEQ
  * and CHORD, which play several, their lowest) and the gate on those units' level (atg_vel: the step's velocity, 100,
@@ -516,7 +523,7 @@ static __attribute__((noinline)) void atg_fire(track_t *t, uint32_t *list, uint3
     if (ARP_UP(t))
         arp_off(t);                                 /* (a classic step's note: the mask just changed) */
     if (t->p[P_AMODE] == AM_SEQ) {
-        if ((uint32_t)(rng() & 127u) <= (uint32_t)t->p[P_APROB])
+        if (arp_roll(t))
             for (i = 0, m = arp_seq_notes(t, list, cnt, out, &vel); i < m; i++)
                 nt = out[i] < nt ? out[i] : nt;
     } else if (t->p[P_AMODE] == AM_CHORD) {         /* CHORD: its lowest note, an octave up each step through OCT */
@@ -524,11 +531,11 @@ static __attribute__((noinline)) void atg_fire(track_t *t, uint32_t *list, uint3
         for (i = 0; i < cnt; i++)
             nt = list[i] < nt ? list[i] : nt;
         nt = (uint32_t)clamp((int32_t)nt + 12 * (int32_t)o, 0, 127);
-        if ((uint32_t)(rng() & 127u) > (uint32_t)t->p[P_APROB])
+        if (!arp_roll(t))
             nt = 128;
     } else {
         i = arp_pick(t, list, len);
-        if ((uint32_t)(rng() & 127u) <= (uint32_t)t->p[P_APROB])
+        if (arp_roll(t))
             nt = list[i];
     }
     if (nt > 127u || !nt) {
@@ -560,14 +567,14 @@ static __attribute__((noinline)) void arp_fire(track_t *t, uint32_t period)
     if (t->p[P_AMODE] == AM_SEQ) {                  /* SEQ: the step pattern (chance: the arp's PROB) */
         if (ARP_UP(t))
             arp_off(t);
-        if (TIDE_APROB(t, (uint32_t)(rng() & 127u) <= (uint32_t)t->p[P_APROB]))   /* TIDE hook (H3c) */
+        if (TIDE_APROB(t, arp_roll(t)))   /* TIDE hook (H3c) */
             arp_seq(t, list, cnt, period);
         return;
     }
     j = t->p[P_AMODE] == AM_CHORD ? 0u : arp_pick(t, list, len);
     if (ARP_UP(t))
         arp_off(t);
-    if ((uint32_t)(rng() & 127u) <= (uint32_t)t->p[P_APROB]) {
+    if (arp_roll(t)) {
         t->arp_off = period * (uint32_t)t->p[P_AGATE] / 128u;
         if (t->p[P_AMODE] == AM_CHORD) {            /* CHORD: the first 4 notes, an octave up each step */
             arp_chord(t, list, cnt);
@@ -585,7 +592,7 @@ static __attribute__((noinline)) void arp_fire(track_t *t, uint32_t period)
 static inline int32_t sw_old(int32_t pct) { return pct <= 50 ? 0 : pct >= 75 ? 100 : (pct - 50) * 4; }
 static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
 {
-    uint32_t period;
+    uint32_t period, duration;
     int32_t sw;
     if (ARP_UP(t)) {
         if (t->arp_off <= gate_n)
@@ -614,23 +621,25 @@ static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
     period = div_samples((uint32_t)t->p[P_ARATE]);
     sw = sw_old(t->p[P_ASWING]) * (int32_t)period / 250;
     t->arp_pos += n;
-    if (t->arp_pos < period + (uint32_t)((t->arp_idx & 1u) ? sw : -sw) && t->arp_pos != 0xFFFFFFF + n)
+    duration = period + (uint32_t)((t->arp_idx & 1u) ? -sw : sw);   /* (after an even step the wait is longer: the offbeat lands late, as the sequencer's) */
+    if (t->arp_pos < duration && t->arp_pos != 0xFFFFFFF + n)
         return;
-    if (clock_src() && t->arp_pos != 0xFFFFFFFu + n) {   /* external clock: carry the overshoot, every step due fires */
-        uint32_t duration = period + (uint32_t)((t->arp_idx & 1u) ? sw : -sw);
+    if (t->arp_pos == 0xFFFFFFFu + n) {             /* a new phrase: its first step starts here */
+        if (clock_src()) midi_arp_grid[trk_index(t)].remainder = 0;
+        t->arp_pos = 0;
+        arp_fire(t, period);
+    } else {                                        /* the overshoot is carried, so no step is rounded up to a block; on the external clock every step due fires */
         do {
             t->arp_pos -= duration;
             arp_fire(t, period);
-            duration = period + (uint32_t)((t->arp_idx & 1u) ? sw : -sw);
-        } while (t->arp_pos >= duration);
+            duration = period + (uint32_t)((t->arp_idx & 1u) ? -sw : sw);
+        } while (t->arp_pos >= duration && clock_src());
+        if (t->arp_pos >= duration)                 /* (the internal clock: a faster RATE left more than a step; it starts afresh) */
+            t->arp_pos = 0;
         if (ARP_UP(t)) {
             if (t->arp_off <= t->arp_pos) arp_off(t);
             else t->arp_off -= t->arp_pos;
         }
-    } else {
-        if (clock_src()) midi_arp_grid[trk_index(t)].remainder = 0;
-        t->arp_pos = 0;
-        arp_fire(t, period);
     }
     if (ARP_UP(t))
         t->arp_ph = 1;                              /* (the next step's note-on continues this phrase: voice.c) */

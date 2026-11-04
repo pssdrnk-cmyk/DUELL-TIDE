@@ -96,7 +96,7 @@ int main(void)
     per = div_samples(2);
     t->nheld = 3; t->held[0] = 60; t->held[1] = 64; t->held[2] = 67; memset(held_key[0], 0, sizeof held_key[0]);
     t->arp_pos = 0xFFFFFFF; t->arp_idx = 0xFFFFFFFFu;
-    for (i = 0; i < 6; i++) { arp_tick(t, per); arp_tick(t, per / 2u); drain(); }
+    for (i = 0; i < 6; i++) { arp_tick(t, per); drain(); }   /* (a step per period: the overshoot is carried, a half period more would be a seventh step in nine) */
     bad += check("ARP: six steps, six note-ons C E G C E G in order", count(0x90u, 60) == 2 && count(0x90u, 64) == 2 && count(0x90u, 67) == 2 && NOTE(0) == 60u && NOTE(2) == 64u && NOTE(4) == 67u);
     bad += check("ARP: velocity 100 on channel 1, a note-off before the next note-on", VEL(0) == 100u && CHN(0) == 0u && ST(1) == 0x80u && NOTE(1) == 60u);
     t->nheld = 0; t->p[P_AMODE] = 0; arp_tick(t, per); drain();

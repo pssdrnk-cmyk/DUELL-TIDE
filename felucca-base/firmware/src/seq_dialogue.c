@@ -20,9 +20,8 @@ static uint32_t phrase_duration(const track_t *t, uint32_t idx, uint32_t period,
 {
     if (!arp) return step_samples(t, period, idx);
     int32_t sw = sw_old(t->p[P_ASWING]) * (int32_t)period / 250;
-    uint32_t n = period + (uint32_t)((idx & 1u) ? sw : -sw);
-    /* Only the internal arp discards overshoot at every step. */
-    return external ? n : ((n + CTL - 1u) / CTL) * CTL;
+    (void)external;   /* (the internal arp carries its overshoot too: seq.c arp_step) */
+    return period + (uint32_t)((idx & 1u) ? -sw : sw);
 }
 static int phrase_available(const track_t *t, const phrase_clock_t *c, int arp)
 {
@@ -104,8 +103,8 @@ static int phrase_peer_attack(uint32_t pi, uint32_t dest)
         uint32_t duration = phrase_duration(peer,idx,period,arp,external);
         uint64_t span = phrase_time(peer,duration,0,arp,external);
         s = seq_play_step(peer,idx % len,&buf);
-        /* Arp SEQ ignores step CHANCE and APROB is inclusive (0 still allows
-         * 1/128). Mark possible attacks without consuming the live RNG. */
+        /* Arp SEQ ignores step CHANCE. Mark possible attacks without
+         * consuming the live RNG. */
         if (sqm_hit(s) && !step_cont(s) && (arp || step_chance(s))) {
             uint32_t hits = arp ? 1u : step_ratchet(s);
             int32_t nd = arp ? 0 : seq_nudge(peer,s);
