@@ -40,33 +40,66 @@ On the very first start TIDE comes up ready: multi **M04 DUB CHORD**, AUTO TIDE 
 
 ### New: AUTO TIDE (in HOME's round)
 
+The page that runs the tide. **ALGORITHM** picks the part it moves: PART 1, PART 2 or BOTH.
+
+| Control | Values | What it does |
+|---|---|---|
+| **Knob 1** | twist right / left | Starts a glide to B (right) or to A (left); with the music playing it starts on the next bar. Twisted while gliding, it stops the glide where it is. |
+| **Knob 2: MODE** | ONCE · LOOP · DRIFT · WNDR · JRNY | What happens when a trip arrives (table below). |
+| **Knob 3: TIME** | 1 · 2 · 4 · 8 · 16 · 32 · 64 bars | How long one trip from one end to the other takes. With WASH LEVEL on, longer trips also breathe deeper. |
+| **Knob 4: WAIT** | OFF · 1 · 2 · 4 · 8 · 16 bars | A rest at each end before the next trip (the screen says WAITING). |
+
 | MODE | What the tide does |
 |---|---|
 | **ONCE** | One trip, then it stops. |
-| **LOOP** | Back and forth between A and B. |
-| **DRIFT** | New twists on your sound: the end it left is rolled again from your original sound. |
-| **WNDR** | Wanders away from your sound, a little further each trip. |
-| **JRNY** | Travels through factory sounds within each part's current engine, including FM6. |
+| **LOOP** | Back and forth between A and B, the same two ends every time. |
+| **DRIFT** | New twists on your sound: each time an end is left, it is rolled again from your original sound, so the tide never strays far. |
+| **WNDR** | Wanders away from your sound: each new end is rolled from the last one, a little further each trip. |
+| **JRNY** | Travels through the factory sounds: each end it leaves becomes another sound of the same kind on the part's own engine (FM6 included). |
 
 Each mode has its own line on the screen, so you can read what it will do. Where two very different sounds cross, TIDE passes them through a short filter dip, so the change sounds like a move rather than a cut.
 
-JRNY stays on each part's own engine, never changes it, and picks within the starting sound's role family (pads, keys and the rest; bass; lead and pluck; perc and FX), falling back to the engine's other sounds only when the family has none left. It remembers each part's last four destinations and skips them where the choice allows. See [current limits](docs/KNOWN_LIMITS.md) and the [roadmap](docs/ROADMAP.md).
+JRNY never changes a part's engine. It picks within the starting sound's role family (pads, keys and the rest; bass; lead and pluck; perc and FX), falling back to the engine's other sounds only when the family has none left, and it skips each part's last four destinations where the choice allows. See [current limits](docs/KNOWN_LIMITS.md) and the [roadmap](docs/ROADMAP.md).
 
 ### New: TIDE SETTINGS (in HOME's round)
 
-| Row | What it sets |
+How the tide behaves. **Knob 1** picks the row, **OCT+ / OCT-** change it. The rows, top to bottom:
+
+| Row | Values (**default**) | What it does |
+|---|---|---|
+| **STYLE** | **DUB** · DEEP · MINIMAL · AMBIENT · PEAK · CUSTOM | A one-move setup for a genre: sets MODE, TIME and WAIT on AUTO TIDE and the rows VARY BARS, WASH LEVEL, TURNS, POLY, SYNC and ARC together (table below). Change any of those by hand and STYLE shows CUSTOM, keeping your values. TARGET, ROLL, ARP and PITCH are yours and a style never changes them. |
+| **TARGET** | SOUND · SEQ · BOTH | What the tide moves: the sound (MORPH fader), the pattern (SEQ MORPH fader) or both together. |
+| **VARY BARS** | **4 + 8** · ALL | With a pattern gliding: 4 + 8 plays the variation only on every 4th bar (the pattern stays recognisable); ALL plays it on every bar. |
+| **ROLL** | **MUSIC** · SMART · WILD | How a new End B is made. MUSIC (new) stays close to the sound's character and keeps it playable; SMART is DUELL's own randomizer with its safety rules; WILD drops all the rules. |
+| **ARP** | ON · OFF | DUELL's MORPH switch: may a new End B change the arpeggiator's settings? |
+| **PITCH** | ON · OFF | DUELL's MORPH switch: may a new End B change the pitch settings? |
+| **WASH LEVEL** | **OFF** · LOW · MID · HIGH | How much each trip breathes: the filter dips and the sends swell in the middle of a trip, and the space where two unlike sounds cross is filled. OFF keeps the sound steady and dry; HIGH is half again more than MID. |
+| **TURNS** | TOGETHER · **TAKE TURNS** · LEAD · ECHO | How the two parts share the variations. TOGETHER: both vary at once (bars 4 and 8 with VARY BARS 4 + 8). TAKE TURNS: part 2 varies on bars 2 and 6, part 1 on 4 and 8, so each change is answered two bars later. LEAD: the parts lead two bars each of every four while the other plays a thinned version of its pattern (beats, held notes and about half of the other hits stay). ECHO: as LEAD, and the answer's hits lean into the gaps the call left. Playback only: KEEP still stores the whole pattern. |
+| **POLY** | OFF · **GENTLE** · WIDE | Now and then one part's loop gets a few steps shorter, so its motif slides against the beat, then plays whole again at the next phrase. GENTLE: 15 or 14 of 16 steps, rarely. WIDE: 12 to 15 steps, more often. Your stored pattern is never changed. |
+| **SYNC** | OFF · **SOFT** · PUSH | The automatic pattern edits that move a hit lean towards the "and" (the off-beat 8th), with an occasional push into the beat: SOFT one a bar, PUSH two. The beats themselves never move and a hit never lands on one. Triplet grids, slow rates and loops that are not whole beats behave as with OFF. |
+| **ARC** | **OFF** · RISE · DROP | A long shape over 36 to 64 bars, counted in 4-bar phrases: the tide **rises** (more syncopation and repeats, faster turns, brighter sounds), holds a **peak**, eases into a thinned **breakdown**, and recovers. DROP also drops by itself on about half of the arcs: both parts stop starting notes for two bars while tails and your other gear carry on. The AUTO TIDE status line shows the phase (RISE 3/6, PEAK, DROP, BREAK 2/3). **Drop by hand** (RISE or DROP): on AUTO TIDE hold OCT- and turn knob 2; the drop comes at the next phrase (turn again to cancel). |
+
+**When TURNS, POLY, SYNC and ARC act.** Only while the tide runs by itself on a pattern: MODE **WNDR** or **JRNY**, **ROLL MUSIC**, **TARGET SEQ or BOTH**, the music playing. TURNS needs both parts (ALGORITHM BOTH). In any other setup these rows do nothing, so ONCE, LOOP and DRIFT always play your pattern as written.
+
+**The STYLE presets**
+
+| STYLE | MODE | TIME | WAIT | VARY BARS | TURNS | POLY | SYNC | ARC | WASH |
+|---|---|---|---|---|---|---|---|---|---|
+| **DUB** | JRNY | 16 bars | 2 bars | 4 + 8 | LEAD | GENTLE | SOFT | RISE | OFF |
+| **DEEP** | WNDR | 32 bars | 4 bars | 4 + 8 | TAKE TURNS | OFF | SOFT | RISE | LOW |
+| **MINIMAL** | WNDR | 8 bars | OFF | ALL | LEAD | WIDE | PUSH | OFF | OFF |
+| **AMBIENT** | JRNY | 64 bars | 8 bars | 4 + 8 | TOGETHER | GENTLE | OFF | OFF | HIGH |
+| **PEAK** | JRNY | 8 bars | OFF | ALL | ECHO | GENTLE | PUSH | DROP | OFF |
+
+A new unit starts on DUB. A unit that had TIDE settings saved before STYLE existed keeps them and shows CUSTOM.
+
+**Changing settings while a tide plays.** There is no need to stop it; each change lands at its own moment:
+
+| When | Settings |
 |---|---|
-| **STYLE** | The top row: DUB / DEEP / MINIMAL / AMBIENT / PEAK / CUSTOM sets the glide MODE, TIME and WAIT and the rows VARY BARS, TURNS, POLY, SYNC, ARC and WASH LEVEL together. DUB is the default on a new unit (JRNY, 16 bars, WAIT 2 bars, LEAD, GENTLE, SOFT, RISE). TARGET, ROLL, ARP and PITCH stay as they are. Changing any of the nine by hand turns STYLE into CUSTOM and keeps your values; an older settings record loads as CUSTOM. |
-| **TARGET** | What the tide moves: the SOUND, the pattern (SEQ) or BOTH. |
-| **VARY BARS** | How often the pattern plays a variation. |
-| **ROLL** | How a new End B is made. **MUSIC** (new, the default) stays close to the sound's character; SMART and WILD are DUELL's own. |
-| **ARP**, **PITCH** | DUELL's MORPH switches, now on this page. |
-| **WASH LEVEL** | How much blend is added where two unlike sounds cross. OFF by default. |
-| **TURNS** | With both parts in automatic WNDR or JRNY: **TAKE TURNS** (the default) lets part 2 vary on bars 2 and 6 and part 1 on bars 4 and 8, so each variation is answered two bars later; TOGETHER varies both on bars 4 and 8. |
-| **TURNS** (more values) | TOGETHER, TAKE TURNS, **LEAD** (part 2 leads bars 1-2 of every 4, part 1 bars 3-4, and the other part plays a thinned version of its pattern: beats, held notes and about half of the other hits stay) and **ECHO** (also leans the answer's hits into the places the call left free). Playback only: KEEP stores the whole pattern. |
-| **SYNC** | OFF / **SOFT** (default) / PUSH. In automatic WNDR or JRNY the pattern edits that move a hit by a 16th lean towards the "and" (the off-beat 8th) and allow an occasional push into the beat (SOFT one a bar, PUSH two); the beats never move and a hit never lands on one. Grids it cannot read (triplets, slow rates, loops that are not whole beats) behave as before. |
-| **ARC** | OFF (the default) / RISE / DROP. In automatic WNDR or JRNY the tide follows a shape of 36 to 64 bars, counted in 4-bar phrases: it **rises** (more syncopation and repeats, faster turns, brighter sounds), holds a **peak**, then eases into a thinned **breakdown** with softer sounds and recovers. DROP also drops by itself on about half of the arcs: both parts start no notes for two bars while tails and your other gear carry on. The AUTO TIDE page's status line shows the phase ("RISE 3/6", "PEAK", "DROP", "BREAK 2/3"). **Drop by hand:** hold OCT- and turn K2 on the AUTO TIDE page: the drop comes at the next phrase ("DROP NEXT PHRASE"); turn again before it to cancel. It works in RISE and DROP, and says "ARC OFF" when ARC is off. |
-| **POLY** | In automatic WNDR or JRNY one part's loop is now and then a few steps shorter, so its motif moves against the beat, then plays whole again at a phrase. OFF; **GENTLE** (the default) 15 or 14 of 16 steps, rarely; WIDE 12 to 15, more often. Only the playing changes: your stored pattern and its length are never rewritten. |
+| At once (next step or bar) | VARY BARS, WASH LEVEL, TURNS, POLY, SYNC. ARC switched on starts a RISE; switched off it ends the arc. TIME (also when a STYLE sets it) rescales the trip in progress. |
+| At the next turn (when the trip arrives) | MODE, WAIT, and ROLL, ARP and PITCH (they shape the next end that is rolled or picked). |
+| At the next start (knob 1) | TARGET: what the tide moves is fixed when a glide starts. |
 
 ### New: sounds, patterns and saving
 
