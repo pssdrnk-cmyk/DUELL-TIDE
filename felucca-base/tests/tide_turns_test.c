@@ -912,9 +912,57 @@ static void t_store(void)
     CHECK("a full record: ARC read back", sqm_arc == 0u || sqm_arc == 2u);
 }
 
+/* audit C4: the AUTO TIDE page's redraw hash changes when any one of its settings changes, whatever TURNS is (TAKE TURNS' factor masked VARY BARS) */
+static void t_sig(void)
+{
+    uint32_t tu, f, ok = 1, h0, h1;
+    setup(16, 16, 2, 2, 0);
+    for (tu = 0; tu < 4u; tu++)
+        for (f = 0; f < 12u; f++) {
+            sqm_turns = (uint8_t)tu;
+            h0 = tide_sig();
+            switch (f) {
+            case 0: sqm_vary_all ^= 1u; break;
+            case 1: morph_musical ^= 1u; break;
+            case 2: sqm_poly ^= 1u; break;
+            case 3: sqm_sync ^= 1u; break;
+            case 4: sqm_arc ^= 1u; break;
+            case 5: tarc.phase ^= 1u; break;
+            case 6: tarc.left ^= 1u; break;
+            case 7: morph.cfg ^= 1u; break;
+            case 8: gl.wait ^= 1u; break;
+            case 9: jl_sel ^= 1u; break;
+            case 10: tarc.hand ^= 1u; break;
+            default: sqm_turns ^= 1u; break;
+            }
+            h1 = tide_sig();
+            if (h0 == h1) {
+                ok = 0;
+                printf("  tide_sig: TURNS %u, field %u flipped, hash unchanged %08x\n", tu, f, h0);
+            }
+            switch (f) {                                     /* (back) */
+            case 0: sqm_vary_all ^= 1u; break;
+            case 1: morph_musical ^= 1u; break;
+            case 2: sqm_poly ^= 1u; break;
+            case 3: sqm_sync ^= 1u; break;
+            case 4: sqm_arc ^= 1u; break;
+            case 5: tarc.phase ^= 1u; break;
+            case 6: tarc.left ^= 1u; break;
+            case 7: morph.cfg ^= 1u; break;
+            case 8: gl.wait ^= 1u; break;
+            case 9: jl_sel ^= 1u; break;
+            case 10: tarc.hand ^= 1u; break;
+            default: break;
+            }
+        }
+    CHECK("AUTO TIDE redraw hash: each setting moves it under every TURNS (TAKE TURNS no longer masks VARY BARS and the ARC)", ok);
+    sqm_turns = 0;
+}
+
 int main(void)
 {
     t_turns();
+    t_sig();
     t_poly();
     t_sync();
     t_answer();

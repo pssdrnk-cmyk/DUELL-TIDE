@@ -818,8 +818,9 @@ static uint32_t tide_sig(void)
     return (morph_fader_of(pi) | seqm_fader_of(pi) << 7 | (uint32_t)gl.on << 14 | (uint32_t)gl.armed << 16 | (uint32_t)gl.target << 17 |
             (uint32_t)gl.mode << 19 | (uint32_t)gl.to << 22 | (uint32_t)gl.hold << 23 | (song.playing ? t->seq_idx : 0xFFu) << 24) ^
            (gl.prog >> 10) * 2654435761u ^ ((gl.prog * bars) >> GLIDE_Q) * 0x27D4EB2Fu ^ sqm_key(&sqm[pi < NSHOWN ? pi : 0u]) * 40503u ^
-           ((uint32_t)gl.time | (uint32_t)gl.wait << 4 | (uint32_t)jl_sel << 8 | (uint32_t)sqm_vary_all << 12 | (uint32_t)morph_musical << 13 | (uint32_t)sqm_turns * 0x2545F491u | (uint32_t)sqm_poly << 28 | (uint32_t)sqm_sync << 30 | (uint32_t)(sqm_arc * 7u + tarc.phase * 3u + tarc.left) << 16 |
+           ((uint32_t)gl.time | (uint32_t)gl.wait << 4 | (uint32_t)jl_sel << 8 | (uint32_t)sqm_vary_all << 12 | (uint32_t)morph_musical << 13 | (uint32_t)(sqm_turns & 3u) << 14 | (uint32_t)sqm_poly << 28 | (uint32_t)sqm_sync << 30 |
             (uint32_t)morph.cfg << 16 | (uint32_t)((sqm_bar + sqm_bar_turn) & 3u) << 24 | (uint32_t)song.playing << 26) * 0x9E3779B1u ^
+           ((uint32_t)sqm_arc | (uint32_t)tarc.phase << 2 | (uint32_t)tarc.left << 5 | (uint32_t)tarc.hand << 9 | (uint32_t)tarc.len << 10) * 0x2545F491u ^   /* (audit C4: no field ORed over another) */
            (tide_both() ? (morph_fader_of(1u - pi) | seqm_fader_of(1u - pi) << 7 | (song.playing ? trk[1u - pi].seq_idx : 0xFFu) << 14) * 0x85EBCA77u ^
                              sqm_key(&sqm[(1u - pi) % NSHOWN]) * 0xC2B2AE3Du ^ tide_steps_sig(&trk[1u - pi]) * 0x165667B1u ^ 0x27D4EB2Fu : 0u) ^
            tide_steps_sig(t) * 0xD3A2646Cu;
