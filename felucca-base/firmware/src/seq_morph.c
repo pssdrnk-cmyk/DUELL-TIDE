@@ -277,7 +277,7 @@ static void sqm_refresh(uint32_t pi, int force)
 
 static volatile uint8_t sqm_vary_all;                   /* VARY BARS: 0 4 + 8, 1 ALL (tide_ui.c, the TIDE LIST) */
 static volatile uint8_t sqm_poly = 1;                   /* POLY: 0 OFF, 1 GENTLE, 2 WIDE (tide_ui.c, the TIDE LIST; seq_poly.c) */
-static uint8_t poly_len[NSHOWN];                         /* (seq_poly.c: a part in a POLY stretch is never thinned) */
+static volatile uint8_t poly_len[NSHOWN];                /* POLY (seq_poly.c): the loop's length now, 0: the stored one (audio path writes; a part in a stretch is never thinned) */
 static const step_t SQM_REST = {{0}, 0, ST_REST, 0, 0, 0};
 static volatile uint8_t sqm_restart;                     /* tide_loaded put the loaded parts at A: glide_poll starts the running trip again from there */
 static volatile uint8_t sqm_auto;                       /* the parts in automatic MUSIC WNDR/JRNY, a bit each (glide_poll, main loop) */
