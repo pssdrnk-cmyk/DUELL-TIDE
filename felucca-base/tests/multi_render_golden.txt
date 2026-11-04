@@ -34,6 +34,8 @@
 # ms later, so the phase differs from there on); that is not a click.
 # pedal hunt (release_drafts/PEDAL_BASS_HUNT.md): the ducker keeps 2 more bits of every ducked sample (fx.c duck_run), and PHASE slews a jumping DCW / ENV / SUB (eng_phase.c pd_sl):
 # the renders listed as CHANGED by the test before this commit were re-made once (the multis and scenes with a working ducker or a moving PHASE shape).
+# Audit P01 (2026-11-04), on purpose, 18 renders: GLIDE takes the time GLD shows (voice.c glide_set); the multis with a LEGATO part that glides between the held chord keys, M01 M08 M14 S01 S08 X08, re-made once; the others are unchanged.
+# Audit P01: the factory multis' own GLD migrated as the sounds' (their old 7-semitone glide: M01 26/26 -> 61/61, M08 38/28 -> 61/61, M14 21/26 -> 51/61): M01 M08 M14 re-made once more.
 
 # hunt4 (release_drafts/HUNT4.md): PHASE's moving DCW no longer steps at the block seams (eng_phase.c phase_render_0): S14 TEST 2 PHASE, S15 TEST 3 HEAVY and X14 SEVENOAKS re-made.
 
@@ -44,8 +46,6 @@
 # DUELL 1.1 / jam11, on purpose, all 105 (docs/JAM11_TEST_BASELINE.md): every render changes by the 1.1 sound changes the regress golden (tests/golden.txt) traces on 1.0 and jam11 audio: the
 # note-start stagger (item 144: the chords start 2 voices a block), BIT DEPTH, REVERB_FIX / SHIM / delay rounding, the factory sounds' new recipes and End B as values, the multis' ROLL B;
 # jam11 adds TIDE's roll changes and PHYS tuning. (Not compared audio against 1.0: the 1.0 tree does not build this test on Linux, nor does stock 1.1 (scenes.h / mu_put_rec).)
-# Audit P01 (2026-11-04), on purpose, 18 renders: GLIDE takes the time GLD shows (voice.c glide_set); the multis with a LEGATO part that glides between the held chord keys, M01 M08 M14 S01 S08 X08, re-made once; the others are unchanged.
-# Audit P01: the factory multis' own GLD migrated as the sounds' (their old 7-semitone glide: M01 26/26 -> 61/61, M08 38/28 -> 61/61, M14 21/26 -> 51/61): M01 M08 M14 re-made once more.
 M01 f0 8f401b317a6055d4
 M01 f63 7293c26bf03d33fc
 M01 f127 b14943c2106fd3b7
@@ -82,7 +82,11 @@ M11 f127 123831472c8ad218
 M12 f0 182e2cc7a55baebe
 M12 f63 2347f94383992fc9
 M12 f127 f9e4d2f308b95805
+M13 f0 d205a0f8cfe3b684
+M13 f63 f8658c549b383943
 M13 f127 d02d4538b0e01b13
+M14 f0 72495a610f4e0442
+M14 f63 5ba1773a0b90f779
 M14 f127 d1fe5e17de66232d
 M15 f0 fe3046207fefd6ce
 M15 f63 44637c928da763b6
@@ -90,7 +94,11 @@ M15 f127 9d74aa30385e6f3b
 M16 f0 7dfb7e7de536f875
 M16 f63 71b2424a0912d4e5
 M16 f127 dd68e03f6d94fa87
+S01_REESE_SWAMP f0 858a99b697c83d95
+S01_REESE_SWAMP f63 49be1e3165721e6c
 S01_REESE_SWAMP f127 de6928071c9eb65e
+S02_WHISPER_TIDE f0 5b3ad75ad70a2be3
+S02_WHISPER_TIDE f63 98fe1a208c24a3ed
 S02_WHISPER_TIDE f127 352c3b10a361499c
 S03_EERIE_SIGNAL f0 94429dc6202ea779
 S03_EERIE_SIGNAL f63 f70910f48ad10a35
