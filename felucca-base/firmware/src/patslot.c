@@ -401,7 +401,11 @@ static int ps_take(uint32_t o)
 static const uint8_t *ps_obj(uint32_t o) { return ps_take(o) ? 0 : PS_MEM(o); }
 
 static int ps_changed(uint32_t k) { return k < PS_SLOTS && (ps_m(k)->fl & PS_F_CHANGED); }   /* saved by the user: ERASE gives the default back */
+#if DUELL_TIDE                                   /* audit C1: a displaced default pattern (a read-only place PS_SLOTS..) has the LEN its LOAD gives */
+static uint32_t ps_len(uint32_t k) { return k < PS_SLOTS ? ps_m(k)->len : k < PS_VSLOTS ? (uint32_t)PATTERNS[k - PS_NUSER].len : 0u; }
+#else
 static uint32_t ps_len(uint32_t k) { return k < PS_SLOTS ? ps_m(k)->len : 0u; }
+#endif
 static void ps_name(uint32_t k, char *b)        /* slot k's stored name (b: 13 bytes; "" none) */
 {
     uint32_t i, n = k < PS_SLOTS ? ps_m(k)->nl : 0u;
@@ -565,13 +569,17 @@ static void ps_preview(uint32_t k, pat_pv_t *o)
     uint32_t i, nl, nst, len;
     uint8_t b[PS_STEP], tmp[PS_REC_MAX];
     memset(o, 0, sizeof *o);
-    if (k >= PS_SLOTS)
+    if (k >= PS_VSLOTS)
         return;
     o->state = 2;
-    if (!(r = ps_rec_for_load(k, tmp)))
+    if (k >= PS_SLOTS)                          /* audit C1: a read-only place previews the default pattern its LOAD gives */
+        ps_def_rec(tmp, k - PS_NUSER), r = tmp;
+    else if (!(r = ps_rec_for_load(k, tmp)))
         return;
     nl = r[7];
     nst = r[8u + nl];
+    if (k >= PS_USER0 && k < PS_SLOTS && !(r[2] & PS_F_CHANGED))   /* audit C2: an empty USER slot previews the blank pattern its LOAD gives */
+        nst = 0;
     len = r[3];
     p = r + 9u + nl;
     end = r + ps_rlen(r);
