@@ -2298,7 +2298,14 @@ static void graph_events(void)
 #define LP_H 66
 #define LP_BAND 31               /* a multi's part band: the chip, name and mode on one line, the steps under it */
 #define LR_STAR_X 38
-#define LR_R 229                 /* the status words end here */
+#define LR_R (UT_L5_X + UT_L5_W - 5)   /* the status words end here: 5 px in from the row's right end, as the number is from its left */
+/* a multi part's mode (2 SEQ, 1 ARP, 0 OFF) as a badge (the keycap pill), its right edge at r, its top row y: the part's tint with its colour's label (MONO, which has no
+ * tint: a keycap's colours); OFF the unavailable keycap's */
+static void lr_chip(int32_t r, int32_t y, uint32_t md, uint32_t k, uint16_t bg)
+{
+    uint32_t id = md == 2u ? KC_SEQ : md ? KC_ARP : KC_OFF;
+    cv_keycap(r - kc_w(id), y, id, !md ? T_DIM : ux.bw ? T_KEY : T_PTINT(k), !md || ux.bw ? T_KINK : T_PTHEME(k), bg);
+}
 static void list_row1(int32_t top, int sel, const char *tag, const char *name, uint16_t nc, const char *ra, uint16_t rac, const char *rb, uint16_t rbc, int star, int boxed)
 {
     int32_t ty = UT_TY(M, top + UT_L5_TEXT_BASE), x = LR_R;
@@ -2308,18 +2315,15 @@ static void list_row1(int32_t top, int sel, const char *tag, const char *name, u
     cv_text_on(UT_L5_TAG_X, ty, &AF_M, tag, sel ? T_INK : T_DIM, bg);
     if (star)
         cv_icon_in(LR_STAR_X, top + UT_T3_STAR_DY, 0, 12, 12, ICON_X_STAR, sel ? T_TEXT : T_ACCENT, bg);
-    if (boxed) {                                     /* a multi's parts as the panel draws them: the mode in a box in the part colour, a dash for OFF */
+    if (boxed) {                                     /* a multi's parts as the panel draws them: the mode's badge (lr_chip), a dash for OFF */
         const char *w[2] = {ra, rb};
-        uint16_t wc[2] = {rac, rbc};
-        int32_t i, bx;
+        int32_t i;
+        (void)rac; (void)rbc;
         for (i = 1; i >= 0; i--) {
-            bx = x - 26 + 1;
-            if (str_eq(w[i], "OFF")) {
-                cv_text_in(bx, UT_TY(S, top + UT_L5_TEXT_BASE), 26, &AF_S, "-", T_DIM, bg);
-            } else if (w[i][0]) {
-                cv_frame(bx, top + 3, 26, 13, sel ? T_INK : wc[i]);
-                cv_text_in(bx, UT_TY(S, top + UT_L5_TEXT_BASE), 26, &AF_S, w[i], sel ? T_INK : wc[i], bg);
-            }
+            if (str_eq(w[i], "OFF"))
+                cv_text_in(x - 24, UT_TY(S, top + UT_L5_TEXT_BASE), 24, &AF_S, "-", T_DIM, bg);
+            else if (w[i][0])
+                lr_chip(x, top + HALF_UP(UT_L5_H - KC_H), w[i][0] == 'S' ? 2u : 1u, (uint32_t)i, bg);
             x -= 30;
         }
         if (!ra[0] && !rb[0])
@@ -2427,13 +2431,12 @@ static void list_panel(int pats)
                 uint32_t md = gsl_pv.p[t].mode;
                 cv_rrect(UT_L5_TAG_X, y, 13, 13, 3, c, T_BG);
                 cv_text_in(UT_L5_TAG_X, UT_TY(M, y + 11), 13, &AF_M, d, T_INK, c);
-                cv_free_text(UT_L5_NAME_X - 17, UT_TY(M, y + 11), &AF_M, ds_name(gsl_pv.p[t].eng % NENGINES, gsl_pv.p[t].preset), c, T_BG, 150);
-                cv_frame(LR_R - 25, y, 26, 13, md ? c : T_DIM);
-                cv_text_in(LR_R - 25, UT_TY(S, y + 10), 26, &AF_S, md == 2u ? "SEQ" : md ? "ARP" : "OFF", md ? c : T_DIM, T_BG);
+                cv_free_text(UT_L5_NAME_X, UT_TY(M, y + 11), &AF_M, ds_name(gsl_pv.p[t].eng % NENGINES, gsl_pv.p[t].preset), c, T_BG, LR_R - 30 - UT_L5_NAME_X);   /* (in the list's name column) */
+                lr_chip(LR_R, y, md, t, T_BG);
                 if (gsl_pv.p[t].has)
-                    pv_bars(UT_L5_NAME_X - 17, y + 15, 10, 9, 7, gsl_pv.p[t].bar, md == 2u ? c : T_MID);   /* (only a SEQ part plays them: under an arp they are dimmed) */
+                    pv_bars(UT_L5_NAME_X, y + 15, 12, 9, 7, gsl_pv.p[t].bar, md == 2u ? c : T_MID);   /* (only a SEQ part plays them: under an arp they are dimmed) */
                 else
-                    cv_text_on(UT_L5_NAME_X - 17, UT_TY(S, y + 25), &AF_S, "NO SEQUENCE", T_MID, T_BG);
+                    cv_text_on(UT_L5_NAME_X, UT_TY(S, y + 26), &AF_S, "NO SEQUENCE", T_MID, T_BG);
             }
         }
     }
