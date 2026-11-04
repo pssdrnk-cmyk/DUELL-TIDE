@@ -17,14 +17,15 @@ static void sqm_thin_build(void)
         const track_t *t = &trk[pi];
         uint32_t len = sqm_len(t);
         if ((sqm_turns >= 2u || ((tarc_thin >> pi) & 1u)) && sqm[pi].ok && len > 4u) {
-            const step_t *p = sqm_pat[pi][0];            /* (End A as played: it carries the phrase overlay) */
+            const step_t *p = sqm_pat[pi][0], *pb = sqm_pat[pi][1];   /* (End A as played: it carries the phrase overlay; End B: VARY ALL plays it too) */
             uint32_t score[NSTEP], hits = 0, cand = 0, grid = tide_metric(t, 0) != SM_NONE;
             for (i = 0; i < len; i++)
                 hits += (uint32_t)sqm_hit(&p[i]);
             for (i = 0; i < len; i++) {
                 uint32_t mt = grid ? tide_metric(t, i) : SM_ODD, pref = mt == SM_AND ? 1u : mt == SM_A ? 2u : 3u;
                 score[i] = 0;
-                if (!sqm_hit(&p[i]) || !(i % 4u) || mt == SM_BEAT || sqm_held(p, i, len))
+                if (!sqm_hit(&p[i]) || !(i % 4u) || mt == SM_BEAT || sqm_held(p, i, len) ||
+                    (sqm_vary_all && (!sqm_hit(&pb[i]) || sqm_held(pb, i, len))))   /* (audit C8: VARY ALL: a hit both ends may drop) */
                     continue;
                 if (tide_echo(pi, i))
                     pref = 4u;                           /* (the answer sounds where the call left room) */

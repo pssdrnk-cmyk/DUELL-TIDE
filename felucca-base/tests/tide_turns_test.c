@@ -513,6 +513,28 @@ static void t_answer(void)
         sqm_thin_build();
         CHECK("  .. a hit before a tie and a slid hit are never dropped", !thin_bit(0, 3) && !thin_bit(0, 11) && !thin_bit(0, 7));
     }
+    {   /* audit C8: VARY ALL plays End B on the follower's bars too: the mask drops only hits End B may drop as well (End B: odd steps rest, a tie after 10) */
+        uint32_t ok = 1, nb = 0;
+        put_hits(0, H, 12);
+        sqm_refresh(0, 1);
+        for (i = 0; i < 16u; i++)
+            if (i & 1u)
+                sqm_pat[0][1][i] = (step_t){{0}, 0, ST_REST, 0, 0, 0};
+        sqm_pat[0][1][11] = (step_t){{0}, 0, ST_TIE, 0, 0, 0};
+        sqm_vary_all = 1;
+        sqm_thin_build();
+        for (i = 0; i < 16u; i++)
+            if (thin_bit(0, i)) {
+                nb++;
+                ok &= sqm_hit(&sqm_pat[0][0][i]) && !sqm_held(sqm_pat[0][0], i, 16u) && sqm_hit(&sqm_pat[0][1][i]) && !sqm_held(sqm_pat[0][1], i, 16u);
+            }
+        CHECK("VARY ALL: the follower's mask drops only hits both ends may drop (no End B rest, no hit before an End B tie), and still thins", ok && nb >= 1u);
+        sqm_vary_all = 0;
+        sqm_thin_build();
+        for (i = 0, nb = 0; i < 16u; i++)
+            nb += (uint32_t)thin_bit(0, i);
+        CHECK("  .. VARY 4 + 8: the mask is End A's alone, as before (4 of 8)", nb == 4u);
+    }
     put_hits(0, H, 2);
     sqm_refresh(0, 1);
     sqm_thin_build();
