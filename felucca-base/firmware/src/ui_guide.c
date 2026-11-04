@@ -256,6 +256,12 @@ static void guide_leader(int32_t x, int32_t y0, int32_t y, int32_t x1)
     else
         cv_rect(x, y, x1 - x, 1, T_MID);
 }
+/* from (x, y) right to xc, then up to y1 (the leader of a note to its item in the capsule) */
+static void guide_leader2(int32_t x, int32_t y, int32_t xc, int32_t y1)
+{
+    cv_rect(x, y, xc - x + 1, 1, T_MID);
+    cv_rect(xc, y1, 1, y - y1 + 1, T_MID);
+}
 /* one page's content into the current canvas (the caller sets cv_oy for the strip; everything is drawn at its SCREEN row) */
 static void guide_content(uint32_t pg)
 {
@@ -267,14 +273,20 @@ static void guide_content(uint32_t pg)
         guide_option(&O1[0], "LAYER", "BOTH PARTS COMBINED:", "VELOCITY CROSSFADE, KEY SPLIT", "", "RECOMMENDED", guide_pick[0] == 0u);
         guide_option(&O1[1], "STEREO", "BOTH PARTS IN ONE STEREO FIELD", "", "", "", guide_pick[0] == 1u);
         guide_option(&O1[2], "DUEL", "DUAL MONO, FOR EXTERNAL EFFECTS", "", "", "", guide_pick[0] == 2u);
-    } else if (pg == 2u) {                              /* the basics: the encoders and HOME (the page was the part marker's anatomy up to 1.1) */
-        y = UT_T6_G_HEAD0;
-        cv_text_on(GD_X, UT_TY(L, y), &AF_L, "SOUND AND PART", T_TEXT, T_BG);
-        y = guide_rich(GD_X, y + UT_T6_G_HT, GD_W, "Turn PRESETS for sounds and ALGORITHM for part 1 or 2.") + UT_T6_G_TH;
-        cv_text_on(GD_X, UT_TY(L, y), &AF_L, "MORPH", T_TEXT, T_BG);
-        y = guide_rich(GD_X, y + UT_T6_G_HT, GD_W, "Tap [HOME]. Knob 1 fades the sound from A to B.") + UT_T6_G_TH;
-        cv_text_on(GD_X, UT_TY(L, y), &AF_L, "MENU", T_TEXT, T_BG);
-        guide_rich(GD_X, y + UT_T6_G_HT, GD_W, "Keep [HOME] pressed.");
+    } else if (pg == 2u) {                              /* FIRST_RUN_SETUP_V2_A.png: PART MARKER, the capsule at the right, three short notes (part number, morph end, voices), each joined to its cell by a thin line */
+        const int32_t cx = 240 - 12 - CAP_W, tw = 172, my = AF_M_CAP_Y + AF_M_CAP_H / 2;
+        static const char *const NOTE[3] = {"The number marks part 1 or part 2.", "The letter shows which morph end you edit, A or B.", "In POLY the number is the voices still free. M, L, U in MONO, LEGATO, UNISON."};
+        static const int32_t NY[3] = {72, 108, 142};
+        uint32_t i;
+        cv_text_on(GD_X, UT_TY(L, UT_T6_G_HEAD0), &AF_L, "PART MARKER", T_TEXT, T_BG);
+        cv_oy += 50;                                    /* (head_capsule draws at the header's rows) */
+        head_capsule(cx, 0, 1u, 0u, 8, 0u);
+        cv_oy -= 50;
+        for (i = 0; i < 3u; i++) {                      /* each leader starts 3 px after the end of its own text's last line, runs right, then up to its item in the capsule */
+            int32_t xc = cx + (int32_t)i * CAP_NUM_W + (i == 0u ? CAP_NUM_W : i == 1u ? CAP_LET_W : CAP_VOI_W) / 2;
+            y = guide_wrap(GD_X, NY[i], i == 2u ? tw + 24 : tw, &AF_M, NOTE[i], T_TEXT, UT_T6_G_LINE + 1);
+            guide_leader2(guide_last_x + 3, y - (UT_T6_G_LINE + 1) + my, xc, 65);
+        }
     } else if (pg == 3u) {                              /* outcome as a heading (L), the how-sentence under it with its keycaps in the sentence */
         y = UT_T6_G_HEAD0;
         cv_text_on(GD_X, UT_TY(L, y), &AF_L, "PERFORM MODE", T_TEXT, T_BG);
@@ -290,7 +302,9 @@ static void guide_content(uint32_t pg)
         cv_text_on(GD_X, UT_TY(L, y), &AF_L, "SAVE OVER A PATCH", T_TEXT, T_BG);
         y = guide_rich(GD_X, y + UT_T6_G_HT, GD_W, "Keep [SAVE] pressed.") + UT_T6_G_TH;
         cv_text_on(GD_X, UT_TY(L, y), &AF_L, "PARAMETER LOCK", T_TEXT, T_BG);
-        guide_rich(GD_X, y + UT_T6_G_HT, GD_W, "One step gets its own value for the knob you turn. Arm [REC] on the STEP page, then turn a knob.");
+        y = guide_rich(GD_X, y + UT_T6_G_HT, GD_W, "Arm [REC] on STEP and turn a knob.") + UT_T6_G_TH;
+        cv_text_on(GD_X, UT_TY(L, y), &AF_L, "SOUND, PART, MORPH", T_TEXT, T_BG);
+        guide_rich(GD_X, y + UT_T6_G_HT, GD_W, "PRESETS, ALGORITHM, tap [HOME].");
     } else {                                            /* 5: SETUP 5/5 */
         cv_text_on(GD_X, UT_TY(M, UT_T6_Q_BASE), &AF_M, "Set up MIDI now?", T_TEXT, T_BG);
         guide_option(&O5[0], "LATER", "GLO > MIDI HAS IT AT ANY TIME", "", "", "DEFAULT", guide_pick[1] == 0u);
