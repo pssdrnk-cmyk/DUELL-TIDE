@@ -4,7 +4,7 @@
 MultiMorphing Bitimbral Synthesizer
 by OSCILL/R
 
-The web editor has a piano roll for the step pattern of each part. It is new in 0.2.20 beta and has been used on the real unit. The firmware did not change.
+The web editor has a piano roll for the step pattern of each part. It came with DUELL 0.2.20 and has been used on a real unit.
 
 ## Where it is
 - Each part column has a **PIANO ROLL** tab, after ARP / SEQ.

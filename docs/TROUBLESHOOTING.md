@@ -19,6 +19,10 @@ Symptom, then fix. For a failed or interrupted flash read [RECOVERY.md](RECOVERY
 | Emulator pitch sounds off | The browser plays at a rate other than 44.1 kHz; the console warns about it. |
 | A sound does not change when I turn SELECT | SELECT switches sub-pages and moves rows; knobs 1-4 adjust. See [QUICKSTART.md](QUICKSTART.md). |
 | MIDI notes play the wrong part | Part 1 listens on channel 1 and part 2 on channel 2. In LAYER, channel 1 plays both parts. |
-| SAVE ERROR | The flash failed to write: try again, and report it if it repeats. A save never runs out of room: every one of the 128 slots can always be written. |
+| SAVE ERROR | The flash failed to write: try again, and report it if it repeats. |
+| STORE FULL | With TIDE the patch store holds 126 saved patches, not 128. Saving into a 127th empty slot is refused and nothing is written. Overwriting a saved slot always works; RESTORE a saved slot to make room ([KNOWN_ISSUES.md](KNOWN_ISSUES.md)). |
+| The tide does not move | It moves only while the transport plays: press PLAY (STOP pauses it). Twist knob 1 on AUTO TIDE to start a glide. If you moved the fader by hand, that stopped the glide. See [TIDE_GUIDE.md](TIDE_GUIDE.md). |
+| TURNS, POLY, SYNC or ARC do nothing | They act only while the tide runs by itself on a pattern: MODE WNDR or JRNY, ROLL MUSIC, TARGET SEQ or BOTH, the music playing. TURNS also needs ALGORITHM on BOTH. ONCE, LOOP and DRIFT always play your pattern as written. |
+| TIDE SETTINGS shows STYLE CUSTOM | You changed one of the rows a style sets; your values are kept. Pick a style again to set them all. |
 | STOP TO SAVE | Saving needs the transport stopped. Press PLAY/STOP. |
-| Anything else | Open a bug report with the [form on GitHub](https://github.com/oscillr/DUELL/issues/new/choose). |
+| Anything else | TIDE, or this fork's installer, emulator and editor: open a bug report on [this fork's issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues/new/choose). A problem that plain DUELL has too: OSCILL/R's [bug report form](https://github.com/oscillr/DUELL/issues/new/choose). |

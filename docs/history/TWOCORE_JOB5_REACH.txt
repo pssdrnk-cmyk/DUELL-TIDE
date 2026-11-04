@@ -1,3 +1,5 @@
+Historical, superseded by ../TWOCORE_REACH_REAL.md. The first (stage 1, job 5) listing of what core 1 reaches; kept as measured then.
+
 DUELL TWO-CORE stage 1, job 5: what core 1 reaches from tc_job_run (docs/TWOCORE_STAGE1.md section 8.10).
 Found from the host build of tests/twocore_sim.c (clang -O0, one section per function and per object): every function and object that tc_job_run's code refers to,
 then those the reached code refers to, including the addresses of functions in tables (the engines' descriptors). A superset: a function reached only on a path the

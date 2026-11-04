@@ -1,6 +1,8 @@
 # RAMPLACE: part 2's voice code in unused RAM (two-core stage 1a)
 
-Branch `stage1a` (local, from `cloud/base` 85dee78). Design: `release_drafts/TWO_CORE_DESIGN.md` 3.2 item 3, 3.3, 5.2 stage 1; sizes from `docs/RAM_SIZING_STUDY.md`. Developer builds only; everything still runs on core 0, core 1 is not started.
+> Historical, superseded by [TWOCORE_STAGE1.md](../TWOCORE_STAGE1.md). Notes on the RAM-placement stage of the two-core work (developer builds); the second core now ships in every build.
+
+Branch `stage1a` (local, from `cloud/base` 85dee78). Design: a workspace file outside this repository 3.2 item 3, 3.3, 5.2 stage 1; sizes from `docs/RAM_SIZING_STUDY.md`. Developer builds only; everything still runs on core 0, core 1 is not started.
 
 ## Build
 

@@ -99,7 +99,7 @@ FAIL: perform ui step3 engine dlyev dx7import fm6 uf pan mxstep modinert eqon mo
 
 Pinned `7c22b13` plus reviewed local factory-packing and GLO knob-jump changes: native host equivalents of `bank`, `tidekeep` (72), `tidecontrols` (121), new `knobjump` (6) and `sidechain` (17) compile and pass with ASan/UBSan and no recovery. The new bank coverage compares actual C decoding/lookup/all three load kinds across every factory voice with original uncompressed pairs; a separate retained-baseline header comparison verifies unchanged pairs and metadata. `knobjump` is registered in the existing selectable/default host groups. Its runner syntax check passes.
 
-Production on/off builds pass all existing layout/reserve/reach/closure checks. The unchanged off build reproduces `4b140b...`; the shared-code candidate's explained new package hash is `ade430c7b254f6a25a846caa5af6cd95e2ff83f544a0c6c367358476f50c7713`, with the same pinned ABOUT date. The exact retained TIDE-on package passes the hash-pinned CPU-emulator boot/LCD/MIDI-note/bounded-audio smoke. Evidence, native commands, source manifest and earlier failed restricted Windows launch attempts are under `work/outputs/maintenance/run-20261102-1922/`. No new whole-suite aggregate, installation or physical-device acceptance is implied.
+Production on/off builds pass all existing layout/reserve/reach/closure checks. The unchanged off build reproduces `4b140b...`; the shared-code candidate's explained new package hash is `ade430c7b254f6a25a846caa5af6cd95e2ff83f544a0c6c367358476f50c7713`, with the same pinned ABOUT date. The exact retained TIDE-on package passes the hash-pinned CPU-emulator boot/LCD/MIDI-note/bounded-audio smoke. Evidence, native commands, source manifest and earlier failed restricted Windows launch attempts are under a workspace file outside this repository. No new whole-suite aggregate, installation or physical-device acceptance is implied.
 
 ## T0 progress: 2 November 2026, UI groups (branch `t0-ui`)
 
@@ -167,8 +167,8 @@ SKIP: regress perflevel morph mode sounds fmbass wave mixsplit partindep duckpar
 
 - S0 merge `254a501` reports 65 passed / 58 failed / 11 skipped. Its commit records an FM6 timeout and two existing morph-roll failures exposed by the improved runner. Keep that run separate from `bd339c9`'s totals.
 - `backup` passed at `e176f6e` against 1.1 + TIDE + S0a (`work/check-duell-jam11/backup.log`, reviewed during installation). The older FAIL list above is the broad-run snapshot, not the status of this repaired group.
-- Five revision-8 backup-helper tests and the installed package's pinned CPU-emulator smoke passed during the S0/DSP installation. Retained logs: `work/backups/s0-e176f6e-2026-11-02/`.
-- `patch` repair exposed the End-B preservation bug fixed in `dd2acd5`. Subsequent commits record `patch` passing at `379e844` and `patchraw` passing at `52c6604` against 1.1 + TIDE. These commit-recorded focused results do not imply a new full-suite run. Other test repair continues independently.
+- Five revision-8 backup-helper tests and the installed package's pinned CPU-emulator smoke passed during the S0/DSP installation. Retained logs: a workspace file outside this repository.
+- `patch` repair exposed the End B preservation bug fixed in `dd2acd5`. Subsequent commits record `patch` passing at `379e844` and `patchraw` passing at `52c6604` against 1.1 + TIDE. These commit-recorded focused results do not imply a new full-suite run. Other test repair continues independently.
 
 ## Step 0 (history)
 

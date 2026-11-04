@@ -1,5 +1,7 @@
 # Beta call-out: DUELL 0.2.20 beta
 
+> Historical, superseded by [INSTALL.md](../INSTALL.md) and [the README](../../README.md). OSCILL/R's call for testers of the DUELL 0.2.20 beta; its links point to the upstream project.
+
 **DUELL**
 MultiMorphing
 Bitimbral Synthesizer

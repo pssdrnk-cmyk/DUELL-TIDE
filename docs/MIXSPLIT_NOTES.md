@@ -1,5 +1,7 @@
 # MIXSPLIT: mix_block as separate stages (job 1 of the second-core work)
 
+> Developer reference, historical. Notes on splitting the audio block into stages (the first step of the two-core work); the stages are in `fx.c`. Kept at this path because source and test comments cite it.
+
 Branch `cloud/mixsplit`. Code: `felucca-base/firmware/src/fx.c` (stages), `felucca-base/tests/mixsplit_test.c` and `tests/mixsplit_ref.h` (the test and the old path it compares with). No arithmetic was changed: every stage body is the code that was inline in `mix_block` / `mix_part`, in the same order. Nothing here starts a second core; it only makes the cut lines visible and testable.
 
 ## 1. The stages

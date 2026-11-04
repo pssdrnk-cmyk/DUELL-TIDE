@@ -1,9 +1,11 @@
 # Claude: DUELL 1.1 UI cleanup and byte accounting
 
+> Historical, superseded by [the roadmap](../ROADMAP.md). A task brief for the UI-cleanup work of 2 November 2026 (flash accounting for the DUELL 1.1 migration); the work was merged and flashed.
+
 ## Starting point and ownership
 
 - Code baseline: **`f2ff36f`**, branch `jam11`. This contains Codex integration `6bb1e67`, Claude KEEP/storage `4f29aa8`, compaction `21cbbe5`, and the finished UI feedback stage.
-- Active checkout: `work/wt/duell-jam11`.
+- Active checkout: a workspace file outside this repository.
 - Use an isolated branch/copy from this commit. Do not change `jam11` directly. Do not reset the existing `tide-keep` worktree: it has unrelated test artifacts/changes. The original sibling `DUELL` checkout is the old JAM branch, not the current firmware.
 - **Claude owns:** UI rendering/layout/font cleanup (`ui_draw.c`, `ui_graph.c`, `ui_layer.c`, `ui_boxes.c`, `ui_menu.c`, `ui_tokens.h`, `gfx.c`, `icons.c`, UI-only helpers and font generators).
 - **Codex owns:** TIDE morph/planner/control code, FM6/audio/sequence/storage, integration and packaging. Do not edit `morph*.c`, `seq*.c`, `tide_ui.c`, `tide.h`, DSP/engine files, storage, global compiler/RAM placement policies. Propose any needed interface change first in the result file.
@@ -24,7 +26,7 @@ Remove only branches whose callers and selector invariants you can explain. Keep
 
 ## Already done; do not repeat
 
-Evidence is under the sibling `work/audit` directory:
+Evidence is under the sibling a workspace file outside this repository directory:
 
 - `STOCK-1.0-VS-1.1-SPACE.md`: stock app growth 76,344 B; UI code +25,734, fonts +20,497, factory data +11,474, remainder +18,639.
 - `DEEP-UI-COMPACTION-REVIEW.md`: all nine font faces Huffman-packed, packed per-phase metrics, lossless splash RLE, missing cold UI minsize entries and `morph_roll_from`. Pixel/metrics equivalence was checked.
@@ -35,7 +37,7 @@ Evidence is under the sibling `work/audit` directory:
 
 - Core scoped checks passed: KEEP/storage 70, crossings 562, controls 22, EQ 13. UI-stage checks: KEEP/storage **72/72**, MIDI/PERFORM/UI **24/24**, full ASan/UBSan. Native captures inspected for SEQ TOOLS, STEP, splash/About.
 - The current UI has visible G4 KEEP, STORE FULL, variation outlines, live selected-part destination footer, quantized theme motion.
-- First fitting fallback reuses the L alphabet font for splash/About text instead of SVG bitmap lettering. Branding/credits/animation/startup controls remain; TIDE-off retains original artwork. Exact `f2ff36f` baseline: **581,332 / 581,564 B**, **232 B free**, all ELF/RAM checks passed. Measurement: `work/audit/jam11-measurements/tide-ui-baseline-f2ff36f/result.json`; SHA-256 `2e5fa2eb2762a51a491c9ad769e701886fa2197c1ff628bc550c451520777136`. More headroom is wanted; if renderer savings permit restoring the bitmap artwork, report that as a separate option.
+- First fitting fallback reuses the L alphabet font for splash/About text instead of SVG bitmap lettering. Branding/credits/animation/startup controls remain; TIDE-off retains original artwork. Exact `f2ff36f` baseline: **581,332 / 581,564 B**, **232 B free**, all ELF/RAM checks passed. Measurement: a workspace file outside this repository; SHA-256 `2e5fa2eb2762a51a491c9ad769e701886fa2197c1ff628bc550c451520777136`. More headroom is wanted; if renderer savings permit restoring the bitmap artwork, report that as a separate option.
 - Font X/N/B are sparse numeric roles; do not use them for arbitrary alphabet text. L supports the alphabet.
 - Drawing coordinates are mixed: `box_grid` uses area-local coordinates and does not own/blit a canvas; its caller `draw_layer` owns the buffer/blit. Many graph functions use screen coordinates with `cv_oy`. Do not start another canvas inside `layer_seq` or draw its hint with unadjusted screen coordinates.
 - Existing broader reference failures: erase/menu 65; morph 2; web editor 16; librarian 2; old editor-round test throws in `MockUnit.deviceMenu`. These predate this integration. Do not weaken tests or turn this cleanup into fixing all of them. POSIX-only `twin_test` is unavailable in the native Windows harness.

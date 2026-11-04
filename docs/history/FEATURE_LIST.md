@@ -1,5 +1,7 @@
 # DUELL feature list (owner's choices; kept current by Claude)
 
+> Historical, superseded by [the roadmap](../ROADMAP.md) and [CHANGELOG.md](../../CHANGELOG.md). OSCILL/R's feature wish list of October 2026 for DUELL 1.0; the features it names were built or dropped.
+
 Started 2026-10-19 in the feature-research thread. Only features the owner has chosen or parked. Design studies are named where they exist. Nothing here is built yet. UI proposals are always for the owner to approve first.
 
 ## For the next version (chosen by the owner)

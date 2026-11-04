@@ -1,5 +1,7 @@
 # TWIN FILTER, design 2: the engine filters go, two filters for every engine (2026-10-19)
 
+> Design record. The feature is built; what ships is described in [SPEC.md](../../SPEC.md). Names, numbers and estimates below are as of the date of writing. Kept at this path because source comments cite it.
+
 Private. Research and design only. No code was changed, no branch made. TWIN_FILTER_DESIGN.md (design 1) and INDEX.md were not touched. I wrote no sounds and retuned none. The conversion table in section 1.5 is a mechanical mapping for you to review, not a sound edit. Every page and label is a proposal for you to approve.
 
 Marks: **CONFIRMED** (read today in the code, `wt/join0233`, or the docs), **HYPOTHESIS** (my reading or a web excerpt), **est.** (worked out, not measured), **measured**. CPU in points: 1 point = 1 % of one core's time.
@@ -461,7 +463,7 @@ The existing CUT keeps meaning filter 1. With LINK on, it reaches filter 2 too.
 | Free ids 25, 26, 42, 106 | `core.h`, `params.c` | CONFIRMED |
 | MULTI FILTER 2/2 card order | `params.c` PAGES | CONFIRMED |
 | Engine card order without moving ids | `core.h` engine_t.uiord | CONFIRMED |
-| Hot code, range X / Z, RAM headroom | release_drafts/MERGE_JOIN1.md | CONFIRMED (build numbers) |
+| Hot code, range X / Z, RAM headroom | a workspace file outside this repository | CONFIRMED (build numbers) |
 | MULTI FILTER costs | SPEC 2.5, docs/CPU_PLAN.md | measured / device est. |
 | Cost of the removed engine filters; every net figure; code sizes | my operation counts | est. |
 | Virus: Cutoff Link on by default, one Env Amount for cutoff 1 and 2, Filter Balance semantics | [Virus TI quickstart, p. 28](https://manualzilla.com/doc/5804536/virus-ti-series?page=28), [p. 160](https://manualzilla.com/doc/5804536/virus-ti-series?page=160) (search excerpts) | HYPOTHESIS |
