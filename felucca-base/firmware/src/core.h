@@ -334,7 +334,7 @@ typedef struct {
     int32_t env_out;             /* last control-rate amplitude, Q15 */
     int32_t env2;                /* ENV 2, Q24 (ticked only while a matrix slot reads it) */
     int32_t pitch16, pitch_cur;  /* 1/16 semitone, with glide */
-    int32_t gstep;               /* glide TIME mode: 1/16 st per control tick, 0 = RATE mode */
+    int32_t gstep;               /* glide TIME mode: 1/65536 of a 1/16 st per control tick, 0 = RATE mode */
     int32_t fine;                /* unison detune: phase increment * (1 + fine / 4096) */
     uint32_t ph[3];
     int32_t s[8];                /* engine state (filters, envs) */
@@ -342,12 +342,13 @@ typedef struct {
     int16_t ufw[3];              /* .. its output's weights of the last block (input, band-pass, low-pass; Q10): the next one ramps from them */
     uint8_t uft;                 /* .. how it last ran: 0 not (from rest next time), 1 12 dB, 2 24 dB, 3 bypassed while sounding (voice.c uf_edge) */
     int32_t apitch;              /* ARP TARGET (SPEC 2.3, voice.c atg_voice): the arp pitch of the masked units, 1/16
-                                  * semitone, with glide */
+                                  * semitone << 16, with glide */
     int32_t again;               /* .. their level (the arp's gate and accent), Q15, smoothed */
     uint32_t age;
     uint16_t xg;                 /* LAYER XFADE: this note's gain, Q15 (voice_start from track_t lay_xg), 0 = unity: the sound untouched */
     uint8_t mvel;                /* mod.c: the note-on velocity (before UNISON scaling) and RAND of the note */
     int16_t mrnd;
+    uint16_t gfrac;              /* glide: the position below pitch_cur, 1/65536 of a 1/16 st (in the pad before lastc: voice_t keeps its size) */
     int32_t lastc, lastd, offc;       /* hunt3 (voice.c voice_step): this voice's contribution to the last sample of its last block, and the change from the sample before (lastd); the step a re-strike made and still has to cancel */
     uint8_t offn, offp;          /* .. the samples of that step's decay left; 1: voice_start asks for the step to be measured in the next block */
     uint16_t msl;                /* MORPH (voice.c uf_run): the multimode filter's SLOPE cross-fade of the part, weight Q15 | 0x8000 when the other end is 24 dB; 0 = none */

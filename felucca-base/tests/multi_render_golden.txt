@@ -44,9 +44,11 @@
 # DUELL 1.1 / jam11, on purpose, all 105 (docs/JAM11_TEST_BASELINE.md): every render changes by the 1.1 sound changes the regress golden (tests/golden.txt) traces on 1.0 and jam11 audio: the
 # note-start stagger (item 144: the chords start 2 voices a block), BIT DEPTH, REVERB_FIX / SHIM / delay rounding, the factory sounds' new recipes and End B as values, the multis' ROLL B;
 # jam11 adds TIDE's roll changes and PHYS tuning. (Not compared audio against 1.0: the 1.0 tree does not build this test on Linux, nor does stock 1.1 (scenes.h / mu_put_rec).)
-M01 f0 700f0e6e20ebd724
-M01 f63 b91428f088a282f3
-M01 f127 d0fefdbd27631f40
+# Audit P01 (2026-11-04), on purpose, 18 renders: GLIDE takes the time GLD shows (voice.c glide_set); the multis with a LEGATO part that glides between the held chord keys, M01 M08 M14 S01 S08 X08, re-made once; the others are unchanged.
+# Audit P01: the factory multis' own GLD migrated as the sounds' (their old 7-semitone glide: M01 26/26 -> 61/61, M08 38/28 -> 61/61, M14 21/26 -> 51/61): M01 M08 M14 re-made once more.
+M01 f0 8f401b317a6055d4
+M01 f63 7293c26bf03d33fc
+M01 f127 b14943c2106fd3b7
 M02 f0 54443d677cd5121f
 M02 f63 fb9618f1169b6a96
 M02 f127 0aac9715067586a7
@@ -65,9 +67,9 @@ M06 f127 87f99f42b4ea33aa
 M07 f0 b30b22c31c77df0b
 M07 f63 ea77a63cbb462649
 M07 f127 e8f06db9dfef6f4e
-M08 f0 348e9259a316d3a0
-M08 f63 da25c2a2e82a2be8
-M08 f127 a8f559c3925f2ffe
+M08 f0 bd4069b19b49f39a
+M08 f63 a71947f5d7fb94ea
+M08 f127 6e6202de7a6e3de6
 M09 f0 8f02571cb790bf4d
 M09 f63 c0bbe1ac80ed9220
 M09 f127 b6d6ef6b0856d3a2
@@ -80,23 +82,15 @@ M11 f127 123831472c8ad218
 M12 f0 182e2cc7a55baebe
 M12 f63 2347f94383992fc9
 M12 f127 f9e4d2f308b95805
-M13 f0 d205a0f8cfe3b684
-M13 f63 f8658c549b383943
 M13 f127 d02d4538b0e01b13
-M14 f0 4db0cc46507b634d
-M14 f63 6b01b397589df44b
-M14 f127 4bea7c139f745aa0
+M14 f127 d1fe5e17de66232d
 M15 f0 fe3046207fefd6ce
 M15 f63 44637c928da763b6
 M15 f127 9d74aa30385e6f3b
 M16 f0 7dfb7e7de536f875
 M16 f63 71b2424a0912d4e5
 M16 f127 dd68e03f6d94fa87
-S01_REESE_SWAMP f0 9bd1fe560e20e65d
-S01_REESE_SWAMP f63 2c91dea32499a677
-S01_REESE_SWAMP f127 c00f0ffd6f967b16
-S02_WHISPER_TIDE f0 5b3ad75ad70a2be3
-S02_WHISPER_TIDE f63 98fe1a208c24a3ed
+S01_REESE_SWAMP f127 de6928071c9eb65e
 S02_WHISPER_TIDE f127 352c3b10a361499c
 S03_EERIE_SIGNAL f0 94429dc6202ea779
 S03_EERIE_SIGNAL f63 f70910f48ad10a35
@@ -113,9 +107,9 @@ S06_ACID_ETHER f127 05d53efab93aeb56
 S07_COLD_CHAPEL f0 af62d24abfe72be6
 S07_COLD_CHAPEL f63 57d4894859b9bec5
 S07_COLD_CHAPEL f127 6966e98ff8f965a0
-S08_GARGLE_ACID f0 7290e921508128a8
-S08_GARGLE_ACID f63 04f5c9c4c1c80873
-S08_GARGLE_ACID f127 079af06b0e075943
+S08_GARGLE_ACID f0 f00014305e93023b
+S08_GARGLE_ACID f63 45d06f61bba52bd8
+S08_GARGLE_ACID f127 362a62d3baaee254
 S09_NIGHT_ORGAN f0 b197597594484e98
 S09_NIGHT_ORGAN f63 d24d3e3c5eddd91f
 S09_NIGHT_ORGAN f127 01331b18a4ef0fa4
@@ -146,9 +140,9 @@ X14_SEVENOAKS f127 904973f661bc6ba2
 X13_BASILDON f0 fd7417c412b809e2
 X13_BASILDON f63 9bedfa9d86559213
 X13_BASILDON f127 ac704338802ae966
-X08_MONO_DUEL f0 6864db4cf444afd0
-X08_MONO_DUEL f63 3b9161233454e97e
-X08_MONO_DUEL f127 c3ec48a5e993c719
+X08_MONO_DUEL f0 a5597e1c2ca33235
+X08_MONO_DUEL f63 5603f058ea502692
+X08_MONO_DUEL f127 44c843e84783ba6e
 S17_STRESS_TEST f0 5daf206290a0fd6a
 S17_STRESS_TEST f63 3164989cbdf42a69
 S17_STRESS_TEST f127 600c89764388bd8f

@@ -10,7 +10,7 @@ The unit itself shows every VOICE card all the time; nothing on the unit changed
 | NOTE PRIORITY (PRIO) | Which held key sounds when only one note can: LAST pressed, LOWEST, HIGHEST (`mono_pick`) | MONO, LEGATO, UNISON | VOICES is POLY |
 | UNISON DETUNE (DTUNE) | How far the unison voices are spread in pitch: at 127 the outer voices are about +-23.5 cents from the middle (`mono_play`; fewer voices are spread as wide) | UNISON | VOICES is not UNISON |
 | GLIDE (GLD) | The slide from the last pitch to the new one. In POLY each voice glides from the pitch it played last; in MONO every note glides; in LEGATO and UNISON only between held keys. It also sets the speed of the arpeggiator's TARGET moves and of a step's SLIDE | always (0 is off) | never |
-| GLIDE MODE (GLMOD) | RATE: the same speed for every interval (a wide jump takes longer). TIME: the same time for every interval (`glide_set`) | GLIDE above 0 | GLIDE is 0 |
+| GLIDE MODE (GLMOD) | RATE: the same speed for every interval, 64 semitones in the time GLD shows (an octave takes 12/64 of it; a wide jump takes longer). TIME: every interval in the time GLD shows, 1 ms to 10 s (`glide_set`) | GLIDE above 0 | GLIDE is 0 |
 | STEREO SPREAD (SPRD) | The voices alternate left and right around PAN (`fx.c` `spread_on`) | POLY and UNISON (not in the output MODE DUEL, where the unit hides it too) | VOICES is MONO or LEGATO |
 | PATCH LEVEL (TRIM) | The sound's own loudness, saved with the patch | always | never |
 
@@ -20,5 +20,5 @@ The number of unison voices is not a control: UNISON uses every voice the engine
 
 - **No VOICE control is dead in the firmware**: each one is read in the cases above.
 - **VOICE ALLOCATION is no control any more**: the stored byte is ignored. A new POLY note rotates through the free voices; with GLIDE above 0 it takes the free voice nearest in pitch (`voice.c` `voice_alloc`).
-- **GLIDE MODE TIME with GLIDE at 0 and a step SLIDE**: `glide_set` with TIME and GLIDE 0 takes one tick for the whole interval, so a pattern's SLIDE jumps instead of the ~45 ms slide it has with RATE. The editor hides GLIDE MODE at GLIDE 0 (the usual case is right); this corner is a firmware question.
+- **GLIDE MODE TIME with GLIDE at 0 and a step SLIDE**: `glide_set` with TIME and GLIDE 0 takes GLD 0's 1 ms for the whole interval, so a pattern's SLIDE all but jumps instead of the slide it has with RATE (GLD 40's rate: an octave in about 3.5 ms). The editor hides GLIDE MODE at GLIDE 0 (the usual case is right); this corner is a firmware question.
 - **STEREO SPREAD in DUEL**: the unit hides it in DUEL (each part on its own output); the editor cannot read the output MODE, so it can show it there.
