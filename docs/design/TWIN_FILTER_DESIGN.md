@@ -1,5 +1,7 @@
 # TWIN FILTER: a Virus-style second filter for DUELL (design study, 2026-10-19)
 
+> Design record. The feature is built; what ships is described in [SPEC.md](../../SPEC.md); superseded by [TWIN_FILTER_DESIGN_2.md](TWIN_FILTER_DESIGN_2.md). Names, numbers and estimates below are as of the date of writing. Kept at this path because source comments cite it.
+
 Private. Research and design only: no code was changed and no branch was made. INDEX.md was not touched. I wrote no sounds. Every page, label and knob below is a proposal for you to approve, not a decision.
 
 Marks:
@@ -558,7 +560,7 @@ Effort: step 2 is about 1 to 2 rounds and can be done off the unit; step 3 is 1 
 | MULTI FILTER costs +46.6 / +58.6 / +77.3 / +104 host instructions a sample; device est. +1.8 / +2.6 points | SPEC 2.5 (uf_test.c), docs/CPU_PLAN.md section 2 | measured / device est. |
 | Most factory sounds run the MULTI FILTER (KEY TRK 32) | `budget.c` comment at BD_F12 | CONFIRMED |
 | Voice costs 4.3 to 8.6 points, PHYS 15.7 to 20.8; a note slot 124 B | docs/CPU_PLAN.md section 2 | measured host / device est. |
-| Two cores: M07 49.6 to 35.3 % | release_drafts/BENCHR2_RUN1.md | measured |
+| Two cores: M07 49.6 to 35.3 % | a workspace file outside this repository | measured |
 | Free ids 25, 26, 42, 106; P_COUNT 127 | `core.h` (P_ROOT / P_SCALE note, P_ALLOC), `params.c` (PFREE at 106, ALLOC "never read") | CONFIRMED |
 | The global SCALE page borrows id 26's description | `ui_input.c`, `ui_layer.c`, `ui_draw.c` (TP[P_SCALE]) | CONFIRMED |
 | The patch record's worst case counts every id (bitmap form) | `upreset.c` PT_W_SEQ / PT_WORST | CONFIRMED |
@@ -567,9 +569,9 @@ Effort: step 2 is about 1 to 2 rounds and can be done off the unit; step 3 is 1 
 | EDIT page order and the MULTI FILTER 2/2 cards | `params.c` PAGES | CONFIRMED |
 | BAL (part balance), CURVE (DUCK), DRIVE as a long name, COMB as a WAVE table name | `ui_draw.c`, `params.c`, `eng_wave.c` | CONFIRMED |
 | Engine memory 12,888 B a part; FM6, WAVE, PHYS use it; the others do not | `engines.c`, `eng_fm6.c`, `eng_wave.c` (19 x 646 B frames), `eng_phys.c` | CONFIRMED |
-| Hot code 228 B free (at its limit), pool tail 2,840 B against a 2,816 B temporary bench rule, RAM headroom 6,220 B, range Z | release_drafts/MERGE_JOIN1.md | CONFIRMED (build numbers) |
+| Hot code 228 B free (at its limit), pool tail 2,840 B against a 2,816 B temporary bench rule, RAM headroom 6,220 B, range Z | a workspace file outside this repository | CONFIRMED (build numbers) |
 | SAT's 1..11 blend rule; TAPE's level-keeping gain | SPEC 2.4 | CONFIRMED |
-| Clipper has twin filters only in HYBRID, no comb, no filter FM in HYBRID and dsp.c | release_drafts/CLIPPER_STUDY.md section 3 | CONFIRMED there |
+| Clipper has twin filters only in HYBRID, no comb, no filter FM in HYBRID and dsp.c | a workspace file outside this repository section 3 | CONFIRMED there |
 | Virus: saturation after filter 1; filters in series, parallel, split; filter 2 as a 2-pole after a 4-pole | research note, HEADLINE_FEATURES_2 (SOS) | CONFIRMED in those sources |
 | Virus filters before its amp; where its saturation sits in parallel; its cutoff link details | not found | HYPOTHESIS (Snow test, step 1) |
 | Every cost of TWIN's pieces, RAM per note, code sizes | my operation counts against the measured MULTI FILTER | est. |

@@ -6,7 +6,11 @@
 
 Thank you. Each line names the source, the link, the licence and what DUELL uses. The same list, with the exact files, is in [NOTICE.md](NOTICE.md) and [felucca-base/LICENSING.md](felucca-base/LICENSING.md). DUELL itself is GPL-3.0-only.
 
+**This fork**
+- **TIDE** (AUTO TIDE, TIDE SETTINGS, SEQ MORPH, the added sounds and patterns, and the fixes listed in the [README](README.md)) by **pssdrnk**, <https://github.com/pssdrnk-cmyk/DUELL-TIDE>. DUELL with TIDE is a fork of DUELL 1.1 and is not made or endorsed by OSCILL/R.
+
 **The base**
+- **DUELL** 1.1 by **OSCILL/R**, <https://github.com/oscillr/DUELL>, GPL-3.0-only.
 - **Felucca** by Leo Kuroshita (@kurogedelic), Hügelton Instruments, <https://github.com/hugelton/Felucca>, GPL-3.0. DUELL is a modified version of it.
 
 **Ideas and code that came into DUELL**

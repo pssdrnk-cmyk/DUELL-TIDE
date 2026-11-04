@@ -1,6 +1,8 @@
 # What core 1 really reaches (branch twocore1, both flags on)
 
-Measured with `tools/ram_reach.py build/felucca_ram.o tc_job_run fm1_c1_main` on a `DUELL_TWOCORE=1 DUELL_RAMPLACE=1` build (device code, -Os). It follows every relocation of the compiled object: calls, addresses taken in code, and the pointers in data tables (the engines' descriptors). The 283-function list of `TWOCORE_JOB5_REACH.txt` came from a host build with nothing inlined; this is the device's own graph.
+> Developer reference, historical. A measurement of what core 1 reaches in a two-core build (developer builds); see TWOCORE_STAGE1.md for the work. Kept at this path because source and test comments cite it.
+
+Measured with `tools/ram_reach.py build/felucca_ram.o tc_job_run fm1_c1_main` on a `DUELL_TWOCORE=1 DUELL_RAMPLACE=1` build (device code, -Os). It follows every relocation of the compiled object: calls, addresses taken in code, and the pointers in data tables (the engines' descriptors). The 283-function list of `history/TWOCORE_JOB5_REACH.txt` came from a host build with nothing inlined; this is the device's own graph.
 
 - Reached: 153 functions (the job `tc_job_run` is inlined into core 1's loop `fm1_c1_main`).
 - Already in RAM on the RAM1 line: 109 (hot code 22 = 8,984 B, range X 39 = 30,632 B, range Z 48 = 12,422 B).

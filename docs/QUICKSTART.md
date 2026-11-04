@@ -1,11 +1,8 @@
 # DUELL quick start
 
-**DUELL**
-MultiMorphing Bitimbral Synthesizer
-by OSCILL/R
+**DUELL** with TIDE: pssdrnk's fork of DUELL 1.1, MultiMorphing Bitimbral Synthesizer by OSCILL/R
 
-DUELL turns the FM-1 into two synths in one box. This page is the short tour; [SPEC.md](../SPEC.md) is the full design. DUELL 1.0 runs on the FM-1 ([INSTALL.md](INSTALL.md)) ([web emulator](https://oscillr.github.io/DUELL/emu/)).
-
+DUELL turns the FM-1 into two synths in one box. This page is the short tour; [SPEC.md](../SPEC.md) is the full design, and [TIDE_GUIDE.md](TIDE_GUIDE.md) covers TIDE, the fork's auto-morph. DUELL with TIDE runs on the FM-1 ([INSTALL.md](INSTALL.md)) and in the [web emulator](https://pssdrnk-cmyk.github.io/DUELL-TIDE/emu/). Where this page says "with TIDE", it describes this fork; the rest is plain DUELL.
 
 ## The idea
 - **Two parts**, 1 and 2. Each has its own sound, effects, EQ, ducker and arp. The **ALGORITHM** knob picks which part you are editing.
@@ -44,7 +41,7 @@ Hold **HOME**. Four tabs: **DISPLAY** (COLOR, LEDS, SCALE LEDS, ANIMATION, SCREE
 - To start from scratch (erases settings, patches, multis, patterns; keeps the FM6 voice bank): MENU (hold HOME) > SYSTEM > ERASE DATA. A reinstall alone keeps your data.
 - **WAVE user tables (new in 0.2.14):** WAVE's TABLE knob has three places after the factory tables, USR1 to USR3, named EMPTY until you fill them (an empty one plays a sine). You make a table in the editor from a WAV file (a single-cycle wave, or a wavetable file like the ones Serum and Vital export) and send it to a slot; the unit keeps it, ERASE DATA erases it, an update does not. **A user table is reduced to 19 frames and 64 harmonics and the phases are not kept**, so it sounds like the file's spectrum, not exactly like the file. A patch that uses USR2 on a unit where USR2 is empty plays a sine. The editor's WAVETABLES tab does this; see [EDITOR_LIBRARIAN.md](EDITOR_LIBRARIAN.md).
 - **Patch library in the editor (new in 0.2.20):** the editor's PATCHES tab exports one patch, a selection or the whole bank to a file, imports patch files and **DX7 `.syx` files** (each voice becomes an FM6 patch) with a preview and your choice of slots, copies and swaps slots by dragging, and loads a dropped patch into a part without saving. The WAVETABLES tab takes dropped WAV files and shares tables as small files. See [EDITOR_LIBRARIAN.md](EDITOR_LIBRARIAN.md).
-- The device backup (installer page, and the editor's Backup page) holds patches, MULTIs, PATTERNs, the user wavetables, settings and the current music. **Back up before you update:** patches, multis and projects saved with 0.2.13 or earlier do not load in 0.2.20. This beta's saves may also not load in other betas.
+- The device backup (installer page, and the editor's Backup page) holds patches, MULTIs, PATTERNs, the user wavetables, settings and the current music. **Back up before you update, and before you switch between the stable and the beta build.** TIDE's own settings (the TIDE SETTINGS rows) are kept on the unit but are not in that backup yet.
 
 ## Playing and modulation
 - **ARP**, **SEQ**, **PLAY/STOP**, **REC**: each part has an arp; the SEQUENCER arp mode plays a pattern of 1 to 64 steps (16 in a new pattern). REC arms recording on the sequencer pages (STEP, AUTOMATION) and in the SEQ layer; on every other page a tap of REC is the HOLD switch for the part or parts the keys play (both in LAYER; its light is bright when HOLD is on). While a part is armed for recording, a red dot and REC show in the bottom row of every page, next to the page number. PLAY/STOP lights green when stopped and red when playing (it blinks red on each beat of the count-in). When stopped, a short press of PLAY/STOP starts on its release; holding it for 0.6 s (or pressing it twice) is STOP ALL: it silences everything, the delay, chorus and reverb tails too (a single press of STOP leaves the tails to ring out).

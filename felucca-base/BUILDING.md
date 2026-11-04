@@ -1,4 +1,6 @@
-# Building Felucca
+# Building Felucca (DUELL with TIDE)
+
+> **DUELL with TIDE.** This is Felucca's build guide, with DUELL's changes. TIDE is built in by default; `DUELL_TIDE=0` builds plain DUELL 1.1 (`jam/check_off.sh` checks that it stays byte for byte the same). The package is `build/duell-1.1.fwsc`, named from the `VERSION` file. `python3 tools/build.py` does the same as `./build.sh` where the toolchain is installed. On Windows, `. jam/env.sh` in Git Bash points the build at a local toolchain folder (no Docker or WSL); see [../CONTRIBUTING.md](../CONTRIBUTING.md).
 
 The build makes three files in `build/`:
 
@@ -43,10 +45,10 @@ On Linux x86-64 the toolchain runs natively and Docker is not needed.
 `JIELI_TOOLCHAIN` and `AC79_SDK` override the default locations
 (`~/.jieli/toolchain`, `~/fw-AC79_AIoT_SDK`).
 
-The version comes from the `VERSION` file at the DUELL root (`0.MINOR.BUILD`, shown as "DUELL 0.2.1 beta").
-Every build writes `build/duell-<VERSION>-beta.fwsc` (identity `FM-1_901`), `build/duell-latest.fwsc` and
-`build/duell-version.json`. `./build.sh --release` also makes `build/release-<VERSION>-beta/`, which holds what a
-release ships: the package, the app (`duell-<VERSION>-beta-app.bin`), `SHA256SUMS`, `LICENSE`, `LICENSING.md` and
+The version comes from the `VERSION` file at the repository root (1.1, shown as "DUELL 1.1"; a `0.x.y` test version
+is named `...-beta`). Every build writes `build/duell-<VERSION>.fwsc` (identity `FM-1_901`), `build/duell-latest.fwsc` and
+`build/duell-version.json`. `./build.sh --release` also makes `build/release-<VERSION>/`, which holds what a
+release ships: the package, the app (`duell-<VERSION>-app.bin`), `SHA256SUMS`, `LICENSE`, `LICENSING.md` and
 `LICENSES/` (the package contains Apache-2.0 SDK files, so the licence texts travel with it).
 
 Build options (environment, `0` or `1`; defaults in `firmware/src/felucca.c`, `core.h` and `icons.c`):

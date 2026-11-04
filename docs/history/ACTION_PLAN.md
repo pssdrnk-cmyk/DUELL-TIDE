@@ -1,19 +1,21 @@
 # Maintenance action plan for agent handoff
 
-Prepared 2 November 2026; status reconciled 3 November 2026. **First supervised batch complete, committed and flashed (part of every package since `ecd2918`, 3 November).** Three GPT-6 Luna agents delivered P1/P2/P4; the P2 agent then scoped and implemented P3. The coordinator reviewed, corrected and checked P1/P3, initially applying them locally; subsequent commits are `61eb641` (packing) and `89a9a77` (navigation). The [roadmap](ROADMAP.md) owns product priorities and the musical delivery order. Detailed batch briefs below are retained for continuity, not an instruction to launch another agent batch.
+> Historical, superseded by [the roadmap](../ROADMAP.md). The maintenance batch described here (P1 to P4) is finished and part of the stable build; this page keeps the briefs and receipts as written.
 
-**Current state:** the test-tree cleanup is finished (full check 112 pass / 0 fail / 25 skip, see the [test baseline](JAM11_TEST_BASELINE.md)). Future implementation uses the affected checks; whole-tree cleanup is no longer a gate.
+Prepared 2 November 2026; status reconciled 3 November 2026. **First supervised batch complete, committed and flashed (part of every package since `ecd2918`, 3 November).** Three GPT-6 Luna agents delivered P1/P2/P4; the P2 agent then scoped and implemented P3. The coordinator reviewed, corrected and checked P1/P3, initially applying them locally; subsequent commits are `61eb641` (packing) and `89a9a77` (navigation). The [roadmap](../ROADMAP.md) owns product priorities and the musical delivery order. Detailed batch briefs below are retained for continuity, not an instruction to launch another agent batch.
+
+**Current state:** the test-tree cleanup is finished (full check 112 pass / 0 fail / 25 skip, see the [test baseline](../JAM11_TEST_BASELINE.md)). Future implementation uses the affected checks; whole-tree cleanup is no longer a gate.
 
 ## Outcome and scope
 
 Create useful application-flash headroom, simplify one inherited responsibility, and establish a compatible way to offer genuinely empty user voice and pattern slots while retaining the factory library. Keep sound, controls, saved records, KEEP/UNDO and manual takeover intact.
 
-The first delivery milestone, **one integrated, checked change with a positive net application-flash saving**, is achieved in source. The full read-only firmware audit is complete; findings and coverage are retained at `work/audit/firmware-review-2026-11-03/AUDIT.md`, with correction candidates in roadmap A1. P7/U1 is a small planned convenience: 4–8 clear voice/pattern save destinations using existing addresses/overwrite behaviour while keeping factory access. It is not a gate to musical work. Exact live-morph restart preservation is not required. Current audio polish is accepted. TIDE configuration backup across flashes is a useful bounded follow-up; future settings-field growth is compatibility bugfixing. Further compaction should serve a selected feature's measured budget.
+The first delivery milestone, **one integrated, checked change with a positive net application-flash saving**, is achieved in source. The full read-only firmware audit is complete; findings and coverage are retained at a workspace file outside this repository, with correction candidates in roadmap A1. P7/U1 is a small planned convenience: 4–8 clear voice/pattern save destinations using existing addresses/overwrite behaviour while keeping factory access. It is not a gate to musical work. Exact live-morph restart preservation is not required. Current audio polish is accepted. TIDE configuration backup across flashes is a useful bounded follow-up; future settings-field growth is compatibility bugfixing. Further compaction should serve a selected feature's measured budget.
 
 ## Starting point and dispatch rules
 
-- Target: `work/wt/duell-jam11`, branch `jam11`; observed HEAD `7c22b13e1973d9388a0f2e57bffe78f694b599b6`. This is a planning reference, not an instruction to reset a newer checkout.
-- At preparation, README and several documentation files had existing edits; the reorganized roadmap/design/history were untracked, as was `felucca-base/nul.exe`. Preserve them. Test repair is an existing independent workflow; `backup`, `patch`, `patchraw` and `bank` have recorded focused passes. See the [test baseline](JAM11_TEST_BASELINE.md).
+- Target: a workspace file outside this repository, branch `jam11`; observed HEAD `7c22b13e1973d9388a0f2e57bffe78f694b599b6`. This is a planning reference, not an instruction to reset a newer checkout.
+- At preparation, README and several documentation files had existing edits; the reorganized roadmap/design/history were untracked, as was `felucca-base/nul.exe`. Preserve them. Test repair is an existing independent workflow; `backup`, `patch`, `patchraw` and `bank` have recorded focused passes. See the [test baseline](../JAM11_TEST_BASELINE.md).
 - At preparation the installed package was `e176f6e` / firmware `7535916`. Since then `ecd2918` (boot pack) and `187e9d0` (`polish-all`, F01–F04) were flashed on 3 November; the roadmap records the current installed package. Branch HEAD, test repairs and a candidate build do not change installation status.
 - Before dispatch, the coordinator checks current HEAD, diff and active file ownership, and gives every agent an exact common source revision. Include any relevant uncommitted source explicitly; do not silently omit it. Supply this plan and the current roadmap when they are not yet part of that revision.
 - Reuse a suitable isolated checkout; create a managed worktree through the app's worktree tools only when needed. Do not have multiple agents edit or build in the shared `jam11` checkout. Give each candidate separate build output and log paths. Do not reuse or reset another workflow's worktree.
@@ -34,7 +36,7 @@ The first delivery milestone, **one integrated, checked change with a positive n
 | P7 | U1 | 4–8 clear user save destinations | Smallest compatible UI/address choice; measured budget | Planned convenience; no capacity migration/full browser redesign required; stopped saves sufficient |
 | P8 | E5 | Reviewed retirement list | Maintenance work no longer needs the artifacts | Parked; inventory only |
 
-**Batch receipt:** `work/outputs/maintenance/run-20261102-1922/SUPERVISOR.md`, with the exact source manifest, patch, measured on/off artifacts and focused logs. The combined TIDE-on flash is 577,920 B, leaving 3,644 B; RAM, pool, range X and hot code are unchanged. Strict `bank`, `tidekeep`, `tidecontrols`, `knobjump` and `sidechain` checks pass; pinned package CPU-emulator smoke passes. These are software results, not a hardware acceptance or installation.
+**Batch receipt:** a workspace file outside this repository, with the exact source manifest, patch, measured on/off artifacts and focused logs. The combined TIDE-on flash is 577,920 B, leaving 3,644 B; RAM, pool, range X and hot code are unchanged. Strict `bank`, `tidekeep`, `tidecontrols`, `knobjump` and `sidechain` checks pass; pinned package CPU-emulator smoke passes. These are software results, not a hardware acceptance or installation.
 
 **Next selection:** choose bounded corrections from the completed firmware audit's verified A1 findings. Keep a P7 brief to four initial save destinations per kind, up to eight if the same approach fits, with simple labels and factory access. Existing overwrite saving is acceptable; preserve occupied records and old editor compatibility. Do not require a new grouped-editor protocol, physical capacity expansion, exact live End-B continuation, or live-save workflow. P5 remains parked. TIDE configuration archive/restore can be a separate small change; settings-record extension should preserve old fields and default only missing new fields.
 
@@ -138,7 +140,7 @@ Shared-code changes require a TIDE-off build and comparison. `jam/check_off.sh` 
 
 ## P8 — parked housekeeping
 
-Use `work/housekeeping-2026-11-02/REPORT.md` as a dated inventory. Return an owner/consumer check and a proposed keep/archive/remove list. Retain backups, installed/candidate packages, source-to-artifact receipts and listening references. No recursive deletion or worktree retirement is authorized by this task; use managed worktree lifecycle tools when retirement is separately agreed.
+Use a workspace file outside this repository as a dated inventory. Return an owner/consumer check and a proposed keep/archive/remove list. Retain backups, installed/candidate packages, source-to-artifact receipts and listening references. No recursive deletion or worktree retirement is authorized by this task; use managed worktree lifecycle tools when retirement is separately agreed.
 
 ## Commands and evidence
 
@@ -154,9 +156,9 @@ JAM_CHECK_LOG="$JAM_WORK/outputs/maintenance/P1/check" sh jam/check.sh bank
 (cd felucca-base && python3 tools/gen_duell_sounds.py --check)
 ```
 
-Replace `P1` and the group list for the assignment; use distinct baseline/candidate paths. `sh host_tests.sh <groups>` is the existing host-only entry point when a coherent target build is already retained. Do not run the build wrapper and then repeat its target build without a reason. See [the test baseline](JAM11_TEST_BASELINE.md) for known failures, not a current all-green claim. Do not install new tooling or execute an external repository to perform these tasks.
+Replace `P1` and the group list for the assignment; use distinct baseline/candidate paths. `sh host_tests.sh <groups>` is the existing host-only entry point when a coherent target build is already retained. Do not run the build wrapper and then repeat its target build without a reason. See [the test baseline](../JAM11_TEST_BASELINE.md) for known failures, not a current all-green claim. Do not install new tooling or execute an external repository to perform these tasks.
 
-Each agent returns **one short receipt** under `work/outputs/maintenance/<task-id>/`, outside tracked product source, plus its reviewable patch/diff:
+Each agent returns **one short receipt** under a workspace file outside this repository, outside tracked product source, plus its reviewable patch/diff:
 
 ```text
 Task / result: candidate | investigation complete | rejected | blocked

@@ -1,5 +1,7 @@
 # Contributing to DUELL
 
+> This is OSCILL/R's file for plain DUELL, kept as it was. **For DUELL with TIDE (pssdrnk's fork) read [../CONTRIBUTING.md](../CONTRIBUTING.md)**; the issue links below go to OSCILL/R's project.
+
 Thanks for helping! To keep things easy to follow, please use the right place:
 
 | What | Where |

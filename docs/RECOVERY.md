@@ -1,8 +1,8 @@
 # Recovery: if a flash is interrupted or fails
 
-**DUELL 1.0**, MultiMorphing Bitimbral Synthesizer by OSCILL/R
+**DUELL** with TIDE: pssdrnk's fork of DUELL 1.1, MultiMorphing Bitimbral Synthesizer by OSCILL/R
 
-Plain version: **DUELL has run on two FM-1 units (the author's) and more than 100 people have installed it through the Firmware Hub, the way back to the official firmware (V15) has worked for the author, and nobody can promise that a failed flash is fixable.** You install at your own risk. This page says what we know, what we do not know, and what to try if you end up in this situation anyway.
+Plain version: **DUELL has run on two FM-1 units (the author's) and more than 100 people have installed it through the Firmware Hub; TIDE has run on one, the fork owner's. The way back to the official firmware (V15) has worked for the author, and nobody can promise that a failed flash is fixable.** You install at your own risk. This page says what we know, what we do not know, and what to try if you end up in this situation anyway.
 
 ## What is known
 - **The update screen.** While the loader writes the new firmware the unit shows DUELL, WRITING, a percent number, a bar of 20 segments and DO NOT SWITCH OFF. If the screen stays dark but the installer's bar moves, the write is running; the screen is only a guest of the loader and never stops it.
@@ -24,11 +24,11 @@ Plain version: **DUELL has run on two FM-1 units (the author's) and more than 10
 3. **Re-enter update mode.** If the unit does not respond normally, the installer detects an unit already waiting in update mode and resumes the write. If the page cannot see the unit, try another USB port, another data cable, another browser tab with no other MIDI program open. Switch the unit off and on.
 4. **Re-flash the official firmware.** On the installer page use the amber RETURN TO OFFICIAL FIRMWARE card ("Go back to the official firmware") with your own copy of the official V15 `FM-1.fwsc` from <https://www.m-vave.com/download>. If the unit is in update mode and you already saved a backup, tick "Resume an interrupted return".
    While it runs, the page shows an amber banner "RETURNING TO THE OFFICIAL FIRMWARE" and the progress "Writing official firmware" only in the RETURN card; the DUELL install card stays empty and is locked. If you see that banner, **it is not installing DUELL again. Do not unplug and do not close the page until it says DONE.** If it fails, the message stays in the RETURN card: press the same button again.
-5. **Ask for help** with an issue on GitHub: say which step stopped, the page's message, and what the screen shows. Do not post your device's data.
+5. **Ask for help** with an issue on [this fork's GitHub](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues/new/choose): say which build you installed (stable or beta, and its tag), which step stopped, the page's message, and what the screen shows. Do not post your device's data.
 6. If none of this brings the unit back, you may need hardware recovery tools (such as the community FM-1-transporter) or M-VAVE support. We cannot promise either.
 
 ## The backup page
-The installer page and the editor's Backup page (<https://oscillr.github.io/DUELL/editor/backup.html>) save a file with your patches, multis, patterns, user wavetables and settings. Keep a backup before every flash.
+The installer page and the editor's Backup page (<https://pssdrnk-cmyk.github.io/DUELL-TIDE/editor/backup.html>) save a file with your patches, multis, patterns, user wavetables and settings (not TIDE's own settings yet; note those down). Keep a backup before every flash.
 
 ## Your saved data
 A flash (also going back to the official firmware and installing DUELL again) keeps your saved data, so the unit comes back as it was left. To start from scratch use MENU > SYSTEM > ERASE DATA on the unit, or the installer's optional "Erase my saved data after installing" box ([INSTALL.md](INSTALL.md), "Keep or erase your data"). Back up first; it cannot be undone.

@@ -1,6 +1,8 @@
-# DUELL developer bench: how to use it (private)
+# DUELL developer bench: how to use it
 
-> **Bench suite stage 1 (BENCHC1 and newer):** the automatic runner `felucca-base/tools/bench_run.py` drives the unit over the USB serial console (`bench ...` words; the console is on whatever MENU > USB SERIAL says), plays the tests of `tools/bench_suites/OWNER-1.txt` on the unit's own audio clock and writes the results. Read release_drafts/BENCH_STAGE1.md (in the DUELL folder). The K4 run of this guide still works.
+> Developer reference, historical. The guide to the developer bench builds (BENCH-A and BENCH-B), which are not distributed; the local addresses it names are not reachable. Kept at this path because source and test comments cite it.
+
+> **Bench suite stage 1 (BENCHC1 and newer):** the automatic runner `felucca-base/tools/bench_run.py` drives the unit over the USB serial console (`bench ...` words; the console is on whatever MENU > USB SERIAL says), plays the tests of `tools/bench_suites/OWNER-1.txt` on the unit's own audio clock and writes the results. Read a workspace file outside this repository (in the DUELL folder). The K4 run of this guide still works.
 
 Two developer packages, built from branch `wip/bench0226` (= the 0.2.25 test build T0225 plus the bench). Both say **DEVELOPER BENCH BUILD: not for normal use**.
 
@@ -15,7 +17,7 @@ Two developer packages, built from branch `wip/bench0226` (= the 0.2.25 test bui
 - BENCH-B3 installer (B2 + the flash-write fix, below): <http://127.0.0.1:8792/bench/BENCH-B3/install/>
 - Back to the normal test build T0225: <http://127.0.0.1:8792/bench/latest/install/>
 
-**This branch (`bench1`, the two-core line: stage1a + the bench, bench suite stage 0):** the package is **BENCHC0** (DUELL 0.2.25 bench BENCHC0, RAM placement on, one core): <http://127.0.0.1:8792/bench/BENCHC0/install/>. The same BENCH screen and the same 88 rows as BENCH-A2; K3 runs STRESS 10M (one core, no core 1 load); BENCH-B's core 1 rows are not in this line (two-core stage 1 brings core 1). The cost rows hold the NOTES budget open, the M16 rows play with it. The log has seven more columns at the end: notes1, notes2, why1, why2, budget, ramcode, boots. Details: release_drafts/BENCH_STAGE0.md.
+**This branch (`bench1`, the two-core line: stage1a + the bench, bench suite stage 0):** the package is **BENCHC0** (DUELL 0.2.25 bench BENCHC0, RAM placement on, one core): <http://127.0.0.1:8792/bench/BENCHC0/install/>. The same BENCH screen and the same 88 rows as BENCH-A2; K3 runs STRESS 10M (one core, no core 1 load); BENCH-B's core 1 rows are not in this line (two-core stage 1 brings core 1). The cost rows hold the NOTES budget open, the M16 rows play with it. The log has seven more columns at the end: notes1, notes2, why1, why2, budget, ramcode, boots. Details: a workspace file outside this repository.
 
 Install exactly as for a test build (same installer page). Make a backup first on the installer page if you care about your saves.
 

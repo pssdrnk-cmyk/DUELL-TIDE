@@ -1,5 +1,7 @@
 # SUB LAYER, CYCLE and WAVE STEPS: build notes (cloud job F)
 
+> Historical, superseded by [SPEC.md](../../SPEC.md) and [the design study](../design/SUB_AND_CYCLE_DESIGN.md). Build notes of the SUB layer, CYCLE envelope and WAVE STEPS work (DUELL 1.0 development); the feature is built.
+
 What was built from `SUB_AND_CYCLE_DESIGN.md` (the decisions there are the ones built), and the choices the design left open. Private.
 
 ## Files

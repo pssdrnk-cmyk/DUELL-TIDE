@@ -1,26 +1,28 @@
 # DUELL 1.1 migration — completed baseline; status updated 2 November 2026
 
+> Design record. The feature is built; what ships is described in [the README](../../README.md) and [the roadmap](../ROADMAP.md) (the migration to DUELL 1.1 is complete). Names, numbers and estimates below are as of the date of writing. Kept at this path because source comments cite it.
+
 The implementation and integration onto DUELL 1.1 are complete, and the owner confirms TIDE works on hardware. This document retains migration evidence. The pending statements and resource measurements below refer to their named historical checkpoints. Current installed/source state, memory figures and engineering priorities live in [the roadmap](../ROADMAP.md).
 
 R0, M1 and M2a were installed at `1196a82` on 1 November; the S0/DSP checkpoint `e176f6e` was installed on 2 November; the boot pack `ecd2918` and `polish-all` `187e9d0` followed on 3 November (18:31 and 19:42). Engineering maintenance now has priority over musical expansion. Detailed [musical proposals](TIDE_MUSICAL_DESIGN.md) remain available separately.
 
-Historical M1/M2 installed build: **579,832 / 581,564 B flash (1,732 B free)**; RAM **5,808 B free**, pool **11,156 B free**, hot code **1,468 B free**. These figures were superseded by S0/DSP. Original [integration and installation receipts](../history/TIDE_ROADMAP_2026-11-02.md#m1--m2-integration-for-github) are retained; use the roadmap for the current budget.
+Historical M1/M2 installed build: **579,832 / 581,564 B flash (1,732 B free)**; RAM **5,808 B free**, pool **11,156 B free**, hot code **1,468 B free**. These figures were superseded by S0/DSP. Original [integration and installation receipts](../history/TIDE_ROADMAP_2026-11-02.md#m1--m2-integration-for-github--1-november-2026) are retained; use the roadmap for the current budget.
 
 ## Retained implementation snapshot — before owner hardware confirmation
 
-**Historical stage: tested Claude fixes merged; TIDE/TIDE SET restyle built for owner emulator review. The complete implementation fits; nothing from this implementation has been flashed.** Continue in `work/wt/duell-jam11`, branch `jam11`. The older revision 3.5 plan below is historical, not the current build status.
+**Historical stage: tested Claude fixes merged; TIDE/TIDE SET restyle built for owner emulator review. The complete implementation fits; nothing from this implementation has been flashed.** Continue in a workspace file outside this repository, branch `jam11`. The older revision 3.5 plan below is historical, not the current build status.
 
 ## Completed
 
 - Integrated S1 pages, GLIDE, sound/sequence journeys, full crossings/wash, FM6 live tuning, Claude KEEP/storage, combined undo, and the six always-on fixes. Owner accepts TIDE-only saves for exact FM6 recall.
 - UI feedback: G4 KEEP hint below SEQ TOOLS; STORE FULL in both save flows; STEP variation outlines and refresh; two-part destination footer on TIDE/TIDE SET (selected part only on MORPH/MODE); quantized theme updates. TIDE splash/About uses the existing L alphabet font; credits, animation and controls remain. TIDE-off keeps the original bitmap artwork.
 - Cold morph compiler policy (`946afe7`) saves 304 B without changing function bodies. Compact FM6 tuning endpoints (`be070fb`) recover 576 B of pool including alignment for 16 B flash cost.
-- Claude UI compaction `50cfdac` merged at `0736b23`: removes superseded renderers and unreachable layout paths. It saves 4,240 B flash, 1,024 B RAM and 1,024 B pool. Claude's pixel comparisons match all 2,514 TIDE-on and 2,469 TIDE-off cases. Result and proof: `work/handover-2026-11-01/CLAUDE-UI-COMPACTION-RESULT.md` and `ui-compact-proof/`. Separate Claude worktrees are preserved; the UI freeze is over.
+- Claude UI compaction `50cfdac` merged at `0736b23`: removes superseded renderers and unreachable layout paths. It saves 4,240 B flash, 1,024 B RAM and 1,024 B pool. Claude's pixel comparisons match all 2,514 TIDE-on and 2,469 TIDE-off cases. Result and proof: a workspace file outside this repository and `ui-compact-proof/`. Separate Claude worktrees are preserved; the UI freeze is over.
 - Retired hardware scope capture is now host-only (`FELUCCA_HOST_SCOPE` in `tests/hostsim.c`). The old settings bit remains reserved/ignored. This removes obsolete production source while preserving metronome test capture; it yields no further image reduction after compiler dead-code elimination.
 
 ## Historical restyle measurements
 
-The final restyle build with the merged functional fixes measures: **577,116 / 581,564 B**, **4,448 B flash free**, SHA-256 `ca7963ad7f34f5bb05cf1c44fbf8650d5f489e1201a604e5e07e40ee9fc0d0a7`. All target ELF, startup, RAM placement, call reach and range-X closure checks pass (`errors: []`). Evidence: `work/audit/jam11-measurements/tide-restyle-final/`. The earlier fresh-asset build is retained in `tide-ui-release-generated/`. Production bounds remain unchanged.
+The final restyle build with the merged functional fixes measures: **577,116 / 581,564 B**, **4,448 B flash free**, SHA-256 `ca7963ad7f34f5bb05cf1c44fbf8650d5f489e1201a604e5e07e40ee9fc0d0a7`. All target ELF, startup, RAM placement, call reach and range-X closure checks pass (`errors: []`). Evidence: a workspace file outside this repository. The earlier fresh-asset build is retained in `tide-ui-release-generated/`. Production bounds remain unchanged.
 
 | Memory area | Used | Space remaining |
 |---|---:|---:|
@@ -34,14 +36,14 @@ TIDE-off also passes target checks: **556,920 B**, app SHA-256 `0a35ee3e6e530c60
 ## Verification and limits
 
 - Focused host checks: KEEP/storage 72/72; crossings 566/566; MIDI/PERFORM/UI 32/32; EQ 13/13, with ASan/UBSan. The restyle controls, crossings and KEEP groups pass under ASan/UBSan. The shared UI suite reports the same 13 failures documented on Claude's baseline (`tide-restyle-uitest.log`). ANALOG and FM6 at-rest samples match the reference (`d3d0b151f5d71383`). Native SEQ TOOLS, STEP, splash/About and PERFORM captures were inspected. These establish host behavior, not physical audio or MIDI.
-- The affected legacy `click_test.c` cannot compile on this branch: it uses the removed `chain` global and POSIX two-argument `mkdir` on Windows. Capture hooks remain available in hostsim; no test was weakened. Log: `work/audit/tide-scope-click.log`.
+- The affected legacy `click_test.c` cannot compile on this branch: it uses the removed `chain` global and POSIX two-argument `mkdir` on Windows. Capture hooks remain available in hostsim; no test was weakened. Log: a workspace file outside this repository.
 - Existing unrelated host-suite failures remain: erase/menu 65, morph 2, web editor 16, librarian 2, and the old editor-round MockUnit.deviceMenu exception. Claude's UI batch reproduces the same failures before/after its patch. Old `ui_render` also fails to compile on its baseline. No broad rerun is required before hardware audition.
 
 ## Evening fixes and restyle / owner emulator review
 
 - Claude `tide-fix` `516b700` merged at `2f37ef2`; the separate worktree is untouched. HOME now opens MORPH, then TIDE SET, MODE, TIDE. The chain filter path now applies the crossing/GLIDE dip; GLIDE follows PLAY with pause/resume; both TIDE footer rows identify their part. Claude's tested target was 576,880 B; the restyle adds 236 B.
-- Applied the reviewed restyle draft from `work/handover-2026-11-01/tide-restyle-wip/`, with its tuple typo removed. TIDE/TIDE SET use the existing template-9 knob line and card/list style. All six settings are visible. Retained the GLIDE progress bar as a thin strip above the cards, in addition to its status and moving fader knobs. Kept sound/sequence lanes, notes/chords/ties, variation outlines, playheads, part selection and both footer rows. Card lifting is limited to actual TIDE pages, excluding overlays.
-- Rendered and inspected selected-part/BOTH views, populated and varied note patterns, running/paused GLIDE, and the last selected setting. Evidence: `build/host-review/tide-restyle/` and `work/audit/tide-restyle-preview.png`. Final label and playhead spacing is in `tide-restyle-final-shots.log`.
+- Applied the reviewed restyle draft from a workspace file outside this repository, with its tuple typo removed. TIDE/TIDE SET use the existing template-9 knob line and card/list style. All six settings are visible. Retained the GLIDE progress bar as a thin strip above the cards, in addition to its status and moving fader knobs. Kept sound/sequence lanes, notes/chords/ties, variation outlines, playheads, part selection and both footer rows. Card lifting is limited to actual TIDE pages, excluding overlays.
+- Rendered and inspected selected-part/BOTH views, populated and varied note patterns, running/paused GLIDE, and the last selected setting. Evidence: `build/host-review/tide-restyle/` and a workspace file outside this repository. Final label and playhead spacing is in `tide-restyle-final-shots.log`.
 - Rebuilt the current emulator at `http://127.0.0.1:8765/?build=tide-restyle-966027`. The build now fingerprints the WASM and worklet URLs, avoiding reuse of old assets after the page loads a new build. Browser source includes real TIDE settings storage. The previously observed browser smoke limitations (two GUIDE expectations and the old heavy-song fixture) remain; no new full emulator sweep or physical validation is claimed.
 
 ## Historical next steps / handoff (superseded by the roadmap)
@@ -50,7 +52,7 @@ TIDE-off also passes target checks: **556,920 B**, app SHA-256 `0a35ee3e6e530c60
 2. The old `tide-device-test-a5b768d` package is superseded by the evening functional fixes and restyle; retain it as historical evidence. After owner review, regenerate a checked package from the accepted source before requesting authorization to flash. Actual FM-1 audio/CPU/GLIDE/KEEP and TR-6S clock testing remains outstanding.
 3. Further compaction is optional until hardware findings justify it. Retain the current font-based branding; bitmap restoration has not been measured against the merged budget. USB audio and the full crossings/wash remain enabled.
 
-Build helpers: `work/audit/stock_compare_build.py 1.1 wt/duell-jam11 <unique-label>` (`DUELL_REGENERATE=1` regenerates assets, `DUELL_TIDE_OVERRIDE=0` disables TIDE, `DUELL_MEASUREMENTS_DIR` selects external output); `crossings_host_build.py wt/duell-jam11 candidate <test.c>`. Windows target tools need approved execution. `work/audit/tide-crossings` is an older evidence snapshot, not the active source.
+Build helpers: a workspace file outside this repository (`DUELL_REGENERATE=1` regenerates assets, `DUELL_TIDE_OVERRIDE=0` disables TIDE, `DUELL_MEASUREMENTS_DIR` selects external output); `crossings_host_build.py wt/duell-jam11 candidate <test.c>`. Windows target tools need approved execution. a workspace file outside this repository is an older evidence snapshot, not the active source.
 
 ---
 
@@ -65,13 +67,13 @@ foreseen and where to compact. The handover's tables supersede the space figures
 
 | What | State |
 |---|---|
-| FM-1 | `DUELL 1.1` + font compaction (8-slot) + hot-code move, package `work/checkpoints/DUELL-2026-11-01-1.1-fonts8-hotroom/duell-1.1-fonts8-hotroom.fwsc`, SHA-256 `7de3761b…1cdff867`. INFO answers |
-| Flash history today | 09:0x plain 1.1 → 09:35 back to JAM 1.0 + restore (another session) → 09:40 fonts8 → plain 1.1 → fonts8 (owner's A/B comparison). Backups before each flash in `work/backups/` |
+| FM-1 | `DUELL 1.1` + font compaction (8-slot) + hot-code move, package a workspace file outside this repository, SHA-256 `7de3761b…1cdff867`. INFO answers |
+| Flash history today | 09:0x plain 1.1 → 09:35 back to JAM 1.0 + restore (another session) → 09:40 fonts8 → plain 1.1 → fonts8 (owner's A/B comparison). Backups before each flash in a workspace file outside this repository |
 | Unit settings | still holds JAM 1.0's [15][23] = 0x69 (NOTES LEFT OFF) unless the owner ran ERASE DATA; ERASE DATA is planned at the first `jam11` flash |
-| `jam11` worktree (`work/wt/duell-jam11`) | step 0: `1d29995` Windows toolchain, `0c48565` fonts (8-slot), `ac0fee1` hot-code move, `aa55e22` `jam/` tools, `33ea81a` test baseline. Step 1: `d445608` D (FM6), `b6b669e` E, `67ea2ec` F, `baeec20` B + D (PHYS/WAVE), `1c56523` C, `a227e4a` A; `e9a5495` LF fix for three tools files |
+| `jam11` worktree (a workspace file outside this repository) | step 0: `1d29995` Windows toolchain, `0c48565` fonts (8-slot), `ac0fee1` hot-code move, `aa55e22` `jam/` tools, `33ea81a` test baseline. Step 1: `d445608` D (FM6), `b6b669e` E, `67ea2ec` F, `baeec20` B + D (PHYS/WAVE), `1c56523` C, `a227e4a` A; `e9a5495` LF fix for three tools files |
 | Branch `jam` (`71654ba`) | untouched reference |
-| Audits | `work/audit/MIGRATION_1_1_AUDIT.md` (rev 2, answered here); `work/audit/DUELL-1.1-COMPACTION.md` (font compaction, adopted as 8-slot); re-audit of rev 3.2: `work/audit/MIGRATION_1_1_REAUDIT_3_2.md` (go for step 0 and fixes; §4.9 before S1) |
-| Hot-code move build (adopted) | `work/checkpoints/DUELL-2026-11-01-1.1-fonts8-hotroom/` (fonts 8-slot + hot-code move, SHA-256 `7de3761b…1cdff867`), built and confirmed here, **flashed 2026-11-01 ~09:52 (backup `DUELL-backup-2026-11-01-0950.json`), INFO answers; owner: "plays as before" (by ear; 1.1 retired the CPU bar, so the number is only on MENU > SYSTEM > ABOUT, not yet compared). M16 STRESS TEST on this build (owner): about 70 % CPU, peak 80 %, the UI a bit slower, no crash or dropout; key count not noted; no fonts-only figure yet to compare against** |
+| Audits | a workspace file outside this repository (rev 2, answered here); a workspace file outside this repository (font compaction, adopted as 8-slot); re-audit of rev 3.2: a workspace file outside this repository (go for step 0 and fixes; §4.9 before S1) |
+| Hot-code move build (adopted) | a workspace file outside this repository (fonts 8-slot + hot-code move, SHA-256 `7de3761b…1cdff867`), built and confirmed here, **flashed 2026-11-01 ~09:52 (backup `DUELL-backup-2026-11-01-0950.json`), INFO answers; owner: "plays as before" (by ear; 1.1 retired the CPU bar, so the number is only on MENU > SYSTEM > ABOUT, not yet compared). M16 STRESS TEST on this build (owner): about 70 % CPU, peak 80 %, the UI a bit slower, no crash or dropout; key count not noted; no fonts-only figure yet to compare against** |
 | Open | `jam_dev` test fixtures for 1.1 formats; whether to flash the fixes build (Raqm-correct); step 2; §4.9 before S1
 
 ## 0. Summary in plain words
@@ -107,11 +109,11 @@ and only if they fit.
 |---|---|---|
 | Base | `654a89e` | DUELL 1.0 as forked |
 | JAM source | `71654ba` (branch `jam`) | reference for the port; never changed |
-| Target | **`974d87509e7e89db0738c731c8a657968e60e498`** (tag `v1.1`, includes the 1.1 code commit `16d0223`) | branch `jam11`, worktree `work/wt/duell-jam11` |
-| **Installed now** | 1.1 + font compaction (8-slot) + hot-code move, `work/checkpoints/DUELL-2026-11-01-1.1-fonts8-hotroom/` (SHA-256 `7de3761b…1cdff867`) | the unit's current state; step 0's two optimizations |
-| Rollback: fonts only | `work/checkpoints/DUELL-2026-11-01-1.1-fonts8/` (SHA-256 `606e5a50…e55b02`) | 1.1 + font compaction |
-| Rollback: plain 1.1 | `work/checkpoints/DUELL-2026-11-01-plain-1.1/duell-1.1.fwsc`, SHA-256 `f3787beb…d7c16584b` (`SHA256SUMS` beside it, read-only file; with its build log and after-flash backup) | immutable copy (audit F8). Not the release package: the release's hash is `f8f8cdee…`. Different build, same source. |
-| Rollback: last JAM | `work/checkpoints/DUELL-2026-10-31-2040-sound-complement/`; JAM backup `work/backups/DUELL-backup-2026-11-01-0900.json` | the last JAM that was played |
+| Target | **`974d87509e7e89db0738c731c8a657968e60e498`** (tag `v1.1`, includes the 1.1 code commit `16d0223`) | branch `jam11`, worktree a workspace file outside this repository |
+| **Installed now** | 1.1 + font compaction (8-slot) + hot-code move, a workspace file outside this repository (SHA-256 `7de3761b…1cdff867`) | the unit's current state; step 0's two optimizations |
+| Rollback: fonts only | a workspace file outside this repository (SHA-256 `606e5a50…e55b02`) | 1.1 + font compaction |
+| Rollback: plain 1.1 | a workspace file outside this repository, SHA-256 `f3787beb…d7c16584b` (`SHA256SUMS` beside it, read-only file; with its build log and after-flash backup) | immutable copy (audit F8). Not the release package: the release's hash is `f8f8cdee…`. Different build, same source. |
+| Rollback: last JAM | a workspace file outside this repository; JAM backup a workspace file outside this repository | the last JAM that was played |
 
 ## 2. Scope
 
@@ -276,11 +278,11 @@ was kept as raw data by the editor. ERASE DATA at the first `jam11` boot.
 | Pool | 8,344 B free (9,880 B with the font cache in `.bss`) | 152 B; **1,688 B** with fonts (8,192 B reserve, `POOL_TAIL_MIN`) | SEQ MORPH buffers `sqm_buf` 576 + `rhythm_map` 128 + `rhythm` 20 = **724 B** → fits with fonts; `.bss` still preferred |
 | `.data` + `.bss` | 59,632 of 73,728 B (63,760 B with the 8-slot font cache) | **5,872 B** with fonts (73,728 − 63,760 − the 4,096 B reserve, `tools/build.py:460`; re-audit) | see the RAM ledger, §4.9 |
 
-**Lossless font compaction (measured 2026-11-01; `work/audit/DUELL-1.1-COMPACTION.md`, rebuilt and confirmed
+**Lossless font compaction (measured 2026-11-01; a workspace file outside this repository, rebuilt and confirmed
 here).** Two files: `tools/gen_aa_font.py` Huffman-codes the faces T, N, X, B and P too (as M and L already are; S
 labels and D digits stay plain), and `gfx.c` moves the decoder cache from `.pool` to `.bss`. Glyph pixels and
 metrics are identical (the audit compared all 1,392 glyph entries and 11,136 render cases). Use the **8-slot
-variant** (`work/audit/compact11/DUELL-1.1-lossless-size-8slots.patch`, `HC_FONTS` 3 → 8): with 3 slots, 8 Huffman
+variant** (a workspace file outside this repository, `HC_FONTS` 3 → 8): with 3 slots, 8 Huffman
 faces share them and the last slot is rebuilt (256 entries) on every face change while a page draws. 8 slots
 remove that for 2.6 KB of RAM.
 
@@ -294,11 +296,11 @@ remove that for 2.6 KB of RAM.
 
 With `DS_ENDB` left out too (§4.2): **about 24.5 KB of flash for JAM**, against the 15-17 KB estimate for S1+S3
 plus S2 and S4. **Checked on the unit 2026-11-01:** the owner flashed the 8-slot build, plain 1.1, then the 8-slot build
-again, and found drawing "feels the same" (package `work/checkpoints/DUELL-2026-11-01-1.1-fonts8/`, SHA-256
+again, and found drawing "feels the same" (package a workspace file outside this repository, SHA-256
 `606e5a50…e55b02`; superseded on the unit by the hot-code move build). That's a judgement by feel, not a timing measurement. Recheck once
 `jam_poll` runs in the same main loop. Goes into step 0 as its own commit.
 
-**Hot-code move (measured 2026-11-01; `work/audit/DUELL-1.1-FAST-RAM.md`, rebuilt and confirmed here on top
+**Hot-code move (measured 2026-11-01; a workspace file outside this repository, rebuilt and confirmed here on top
 of the font compaction).** `tools/hot_fns.py` and `tools/ram_fns_x.py` move `eq_run` (214 B) and `ins_swept` (778 B)
 from the hot code into spare range X, in two-core builds only. Both stay in on-chip RAM, and the compiled code is
 unchanged (same IR hash per the audit); only the placement moves. Measured: hot code 12,172 → **11,180 B** (29
@@ -334,7 +336,7 @@ Space plan, in order:
 AGENTS.md's "hot code ≤ 12,032 B" rule is replaced by "the build's own checks pass (`HOT_HEADROOM`, pool reserve,
 call reach), and each slice reports its deltas against the phase-1 baseline". AGENTS.md is updated in phase 0.
 
-### 4.9 Before S1 (re-audit, `work/audit/MIGRATION_1_1_REAUDIT_3_2.md`)
+### 4.9 Before S1 (re-audit, a workspace file outside this repository)
 
 1. **Full FM6 destination: persistence and KEEP (P1).** 1.1's MBV block saves 65 blended FM6 bytes (packed into 57,
    `morph.c:2139-2150`, `morph_bv_make:2282`, `morph_bv_load:2327`). A JRNY destination with another algorithm,
@@ -404,7 +406,7 @@ Each step is one or a few commits, builds, passes its tests, and records its spa
 | Step | Work | Done when |
 |---|---|---|
 | **0 Base** | `jam11` from `974d875`; Windows toolchain lines; font compaction (8-slot); hot-code move; `jam/` tools (`env.sh` finds and normalizes `JAM_WORK`); AGENTS.md space rule; Windows baseline test list | **Done 2026-11-01:** `1d29995`, `0c48565`, `ac0fee1`, `aa55e22`, `33ea81a`. AGENTS.md updated. Build: flash 566,344 B, hot 11,180 B, `.data`+`.bss` 63,760 B, call reach 0x3fc328. Baseline (`docs/JAM11_TEST_BASELINE.md`): 47 pass, 63 fail, 11 skip. Most failures are upstream 1.1's own tests, which no longer compile against its firmware; `jam_dev`'s mock fixtures are 1.0-format (the tool itself works on the 1.1 unit) |
-| **1 Fixes** | E, F, then A, B, C, D, each re-applied on 1.1 with its tests | **Committed 2026-11-01**, each test failing on stock 1.1 and passing with the fix. D (FM6, `d445608`): defined arithmetic in `fm6_core.c` (stock stops under UBSan in `fm6_scale_vel`). E (`b6b669e`): `fm6liveol` 36 checks, stock fails 9. F (`67ea2ec`): `slopehandoff`. B (`baeec20`, with D's PHYS SYMP / WAVE part): `physintune`, stock PLUCK +57 cents, HARP +20..+34; one conflict with 1.1's own PHYS change (BRIGHT/DAMP from the key), both kept. C (`1c56523`): `unisonlevel` + zero DETUNE, stock fails 11 (TRIO +8.4 dB, NOISE +9.2, FM6 mean +7.2 over POLY). A (`a227e4a`, clock parts only, JAM's sequencer changes left out): `clockguard`, `clockdrift`, `uartdma`, `uarttimer`, all four fail on stock (a division by zero, Felucca #282, guarded in `fx.c beat_samples`; ARP and sequence phase lost on tempo changes; UART CON0 width; the timer module). Space after step 1: flash **568,588 B** (+2,244 over step 0), `.data`+`.bss` 63,792 B, hot **10,976 B** (−204), range X **31,584 B** (928 free), call reach 0x3fcb88. Not in step 1: JAM's two-core fault watch in `main.c` (`tc_closed`/`tc_watch`), not in the plan's scope. **Regression:** `check-duell-jam11-fixes` 56/56 pass (baseline 47 + `fm6liveol slopehandoff signedfm physintune unisonlevel clockguard clockdrift uartdma uarttimer`); package checkpoint `work/checkpoints/DUELL-2026-11-01-jam11-step1-a227e4a/` |
+| **1 Fixes** | E, F, then A, B, C, D, each re-applied on 1.1 with its tests | **Committed 2026-11-01**, each test failing on stock 1.1 and passing with the fix. D (FM6, `d445608`): defined arithmetic in `fm6_core.c` (stock stops under UBSan in `fm6_scale_vel`). E (`b6b669e`): `fm6liveol` 36 checks, stock fails 9. F (`67ea2ec`): `slopehandoff`. B (`baeec20`, with D's PHYS SYMP / WAVE part): `physintune`, stock PLUCK +57 cents, HARP +20..+34; one conflict with 1.1's own PHYS change (BRIGHT/DAMP from the key), both kept. C (`1c56523`): `unisonlevel` + zero DETUNE, stock fails 11 (TRIO +8.4 dB, NOISE +9.2, FM6 mean +7.2 over POLY). A (`a227e4a`, clock parts only, JAM's sequencer changes left out): `clockguard`, `clockdrift`, `uartdma`, `uarttimer`, all four fail on stock (a division by zero, Felucca #282, guarded in `fx.c beat_samples`; ARP and sequence phase lost on tempo changes; UART CON0 width; the timer module). Space after step 1: flash **568,588 B** (+2,244 over step 0), `.data`+`.bss` 63,792 B, hot **10,976 B** (−204), range X **31,584 B** (928 free), call reach 0x3fcb88. Not in step 1: JAM's two-core fault watch in `main.c` (`tc_closed`/`tc_watch`), not in the plan's scope. **Regression:** `check-duell-jam11-fixes` 56/56 pass (baseline 47 + `fm6liveol slopehandoff signedfm physintune unisonlevel clockguard clockdrift uartdma uarttimer`); package checkpoint a workspace file outside this repository |
 | **2 Plug** | `DUELL_JAM`, `jam.h`, hook lines with empty stubs | **Split (2026-11-01).** **2a done** (uncommitted, regression running): `jam.h` (included at the end of `core.h`), `DUELL_JAM` passed by `tools/build.py`, stubs `jam_seq.c` (H1, end of `seq.c`) and `jam_ui.c` (end of `ui_input.c`); hooks H2 at all six played-step reads of 1.1's `seq.c` **including `next_tie`** (§4.9.3), H3 in `seq_start` and after `beat_adv` in `events_block`, H13 `JAM_POLL()` after `morph_poll()` in `ui_input`. **`DUELL_JAM=0` is byte-identical to step 1** (package SHA-256 `b081f24e…` both); the stubbed `DUELL_JAM=1` build is the same size (stubs inlined away). **2b, with the §4.9 design before S1:** the morph hooks (H4-H8: roll operation, factory End B, `tok`, the FM6 target consumer), storage (H17, `OBJ_JAM`) and UI hooks (H10-H12, H14-H16), because their form depends on that design. Same rule: `DUELL_JAM=0` stays byte-identical to `b081f24e…` |
 | **S1 Journey** | GLIDE, MUSICAL (§4.1), MORPH TO + FM6 target consumer, full FM6 destination persistence and KEEP (§4.9), JAM + JAM LIST pages, `OBJ_JAM`, `jam_poll`, PERFORM/MIDI hooks; `DS_ENDB` out; **explicit disabled adapters** for the sequence (S3) and bridge (S2) state so S1 can be auditioned on its own | generative acceptance (§6) for sound, **without** structural-switch acceptance (that is S2); emulator shows both pages; space within the §4.9 ledger. The S1 audition is not the finished smooth journey |
 | **S2 Crossings** | `morph_xfer.c` (§4.4) | forward/backward structural transitions compared with JAM 1.0; space within limits, or the §4.4 cut order applied |
@@ -458,7 +460,7 @@ This plan doesn't authorize sending or publishing anything (audit).
 | F6 FM6 live level, ANALOG slope fade | accepted: fixes E and F |
 | F7 `seqm_poll`, complete KEEP, no fixed hook count | accepted: H13, H14, §3 |
 | F8 immutable rollback | done: §1 checkpoint with SHA-256 |
-| Space audits (2026-11-01) | `work/audit/DUELL-1.1-COMPACTION.md` (fonts) and `work/audit/DUELL-1.1-FAST-RAM.md` (hot-code move): both rebuilt and confirmed here, flashed, accepted by the owner (§4.8); fonts adopted with an 8-slot cache instead of 3 |
+| Space audits (2026-11-01) | a workspace file outside this repository (fonts) and a workspace file outside this repository (hot-code move): both rebuilt and confirmed here, flashed, accepted by the owner (§4.8); fonts adopted with an 8-slot cache instead of 3 |
 | Answers 1-8 | folded into §2.2 (UART DMA), §3.1 H2 (line numbers, preview), §4.2, §4.5 lifecycle, §5 step 2 |
 
 Open questions for the next audit pass (revision 3.2):

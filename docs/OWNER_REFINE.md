@@ -1,5 +1,7 @@
 # Refine every patch and multi, and keep the result
 
+> Developer reference, historical. OSCILL/R's procedure for turning edited sounds and multis into the factory set; used by the generator tools. Kept at this path because source and test comments cite it.
+
 **DUELL**
 MultiMorphing Bitimbral Synthesizer
 by OSCILL/R

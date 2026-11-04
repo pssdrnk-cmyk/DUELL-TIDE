@@ -1,5 +1,7 @@
 # EDITABLE B: design study for the MORPH's B end (for your decision; nothing is built)
 
+> Design record. The feature is built; what ships is described in [SPEC.md](../../SPEC.md). Names, numbers and estimates below are as of the date of writing. Kept at this path because source comments cite it.
+
 **Built (cloud job G, branch cloud/feat-editb):** the fader at 127 makes every sound page edit End B; the hand-set list (up to 32) is stored in the patch record (extension block section 2), the multi and the project (PROJ_REV 7 also carries End B's 7-byte block per part, so a power cycle keeps B); the recommended answers 1 to 5 are the behaviour; FM6 operator bytes are not in the list in version 1 (they move both ends, the line says OPS: SAME ON A AND B). Code: morph.c (morph_b_mode, morph_b_set, morph_edits, morph_pin_load), ui_input.c (edit_param, knob_reset), ui_draw.c (head_ab).
 
 Written 2026-10-19. Research and design only: no code was changed (when this was written). Every claim is marked **CONFIRMED** (I read it in the code or the documents) or **HYPOTHESIS** (my reasoning, not checked). Numbers marked "est." are estimates.
@@ -260,11 +262,11 @@ The "rolled B + up to 32 hand edits" idea of the first helpers is the right base
 
 | What | Where | Status |
 |---|---|---|
-| Your editable-B wording (fader at B, A/B mark by the badges) | transcript 2026-10-13 11:01:33 (session 3c42d9f5) | CONFIRMED (quoted) |
-| Your header wording (A or B instead of the multi number) | transcript 2026-10-13 20:42:19 | CONFIRMED (quoted) |
-| My 10:50 proposal you answered (B stored as values, record size) | transcript 2026-10-13 10:50:22 | CONFIRMED |
+| Your editable-B wording (fader at B, A/B mark by the badges) | the owner's message of 2026-10-13 | CONFIRMED (quoted) |
+| Your header wording (A or B instead of the multi number) | the owner's message of 2026-10-13 | CONFIRMED (quoted) |
+| My 10:50 proposal you answered (B stored as values, record size) | the owner's message of 2026-10-13 | CONFIRMED |
 | The decisions as recorded | memory `project-duell-fm1-firmware.md` (OWNER DECISIONS 2026-10-13, two entries); `project-headline-features-direction.md` ("his own earlier request") | CONFIRMED |
-| Your original MORPH wording (A and B ends, one percentage, save to the patch) | transcript 2026-10-10 07:03:19 | CONFIRMED |
+| Your original MORPH wording (A and B ends, one percentage, save to the patch) | the owner's message of 2026-10-10 | CONFIRMED |
 | Runtime: Original + 9 full copies per end, FM6 65 bytes per end | `morph.c` `morph_part_t` (lines ~986-1013) | CONFIRMED |
 | Blend per kind; B weight exactly 100 % at 127 | `morph.c` `morph_apply`, `morph_wb` | CONFIRMED |
 | Edits at any fader position move the Original; ends follow by offset | `morph.c` header notes, `morph_apply` ("p + v - base"), `morph_fold` | CONFIRMED |

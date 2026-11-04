@@ -1,5 +1,7 @@
 # TIDE next proposals: syncopation, call and response, the arc
 
+> Design record. The feature is built; what ships is described in [TIDE_GUIDE.md](../TIDE_GUIDE.md) (SYNC, TURNS LEAD / ECHO, ARC and STYLE). Names, numbers and estimates below are as of the date of writing. Kept at this path because source comments cite it.
+
 Status: design proposal, 3 November 2026; owner decisions recorded the same day (see the end). **Built since (branch `integ`, 4 November 2026): step 1 SYNC (`1344f53`), step 2 ANSWER, i.e. TURNS LEAD / ECHO (`e691df2`), step 3 ARC (`5f2ff83`) and step 4 STYLES (`9e3b716`), with TURNS and POLY; not yet on the unit. The text below is the design as proposed, with the names and values of that time; the TIDE guide and README describe what the code does.** It is based on fork/jam11 `30212a1`. It also uses the uncommitted M8a TURNS and generative POLY work on branch `tide-turns` (`seq_poly.c`, `sqm_turns`, `sqm_auto`, `tide_store_load_min`), so recheck those names once that branch lands. Background and earlier reasoning are in [TIDE_MUSICAL_DESIGN.md](TIDE_MUSICAL_DESIGN.md) (M7, M8, M9). The delivery order is in the roadmap's "Musical delivery order".
 
 This document covers four steps, in this order (step 4, STYLES, was added on 3 November). Each one is listened to and accepted before the next is built:

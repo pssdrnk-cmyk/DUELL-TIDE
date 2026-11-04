@@ -1,6 +1,6 @@
-# DUELL-TIDE: a player's guide
+# DUELL with TIDE: a player's guide
 
-Five minutes. Written from the firmware source at `3803fbc` (branch `integ`; pages and rows as they are in the code now). The unit runs the earlier build `187e9d0` until the next flash: its TIDE SETTINGS page (still called MORPH SETTINGS there) lacks the STYLE, TURNS, POLY, SYNC and ARC rows, and JRNY's role families and memory are new (see the end). Values marked *start* are suggestions for dub and house techno backgrounds, not defaults. Defaults are named as such.
+Five minutes. Written from the firmware source (pages and rows as they are in the code). It describes the **beta** line, `jam11`. The stable build `stable-2026-11-03` has an earlier TIDE: its TIDE SETTINGS page is still called MORPH SETTINGS and lacks the STYLE, TURNS, POLY, SYNC and ARC rows, and it has no JRNY role families or memory (see the end; [README](../README.md#builds-stable-and-beta) lists the builds). Values marked *start* are suggestions for dub and house techno backgrounds, not defaults. Defaults are named as such.
 
 ## The idea
 
@@ -88,9 +88,9 @@ In the SEQ tools, hold SEQ and press G4 (KEEP): what you hear now becomes the pa
 
 ---
 
-# Also new in the next build
+# New since the stable build
 
-In the source, not on the unit until the next flash.
+In the beta, not in the stable build `stable-2026-11-03`.
 
 | Feature | What it does |
 |---|---|

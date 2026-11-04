@@ -1,5 +1,7 @@
 # SUB LAYER, CYCLING ENVELOPE and WAVE STEPS: design study (2026-10-19)
 
+> Design record. The feature is built; what ships is described in [SPEC.md](../../SPEC.md). Names, numbers and estimates below are as of the date of writing. Kept at this path because source comments cite it.
+
 Private. Research and design only: no code was changed, no branch was made, INDEX.md was not touched. I wrote and retuned no sounds. Every page, label and knob below is a proposal for you to approve, not a decision.
 
 Marks (as in the TWIN FILTER studies):

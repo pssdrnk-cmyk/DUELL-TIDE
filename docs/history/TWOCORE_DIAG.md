@@ -1,6 +1,8 @@
 # TWO-CORE diagnosis (BENCHT2): what core 1's jobs measure, and the runtime switches
 
-Branch `twocore3` (from `twocore2`). Developer bench builds only (`DUELL_BENCH=1`, which turns on `TC_MEAS` in `src/twocore.h`); a normal build and a TWOCORE build without the bench have none of it. Owner's document: `release_drafts/BENCH_TWOCORE2.md`.
+> Historical, superseded by [TWOCORE_STAGE1.md](../TWOCORE_STAGE1.md). Diagnosis notes of the two-core bench builds (BENCHT2 to BENCHT4); the switches described are developer-build only.
+
+Branch `twocore3` (from `twocore2`). Developer bench builds only (`DUELL_BENCH=1`, which turns on `TC_MEAS` in `src/twocore.h`); a normal build and a TWOCORE build without the bench have none of it. Owner's document: a workspace file outside this repository.
 
 ## What is measured, per job (TIMER4 ticks, 24 a microsecond)
 
@@ -32,7 +34,7 @@ No cache or flash counter is read: nothing in the repository's hal, the DUELL no
 
 ## BENCHT3 (branch `twocore4`): the pause rule and the deadline floor
 
-Written after BENCHT2's run (release_drafts/BENCHT2_RUN1.md); the description for the owner is release_drafts/BENCH_TWOCORE3.md.
+Written after BENCHT2's run (a workspace file outside this repository); the description for the owner is a workspace file outside this repository.
 
 1. **Pause rule.** A very late block (core 1 had started, was not done by the deadline) whose job is done inside its half, with a good answer, no longer pauses the jobs by itself. The pause stays for: a wrong or refused answer, no answer, a silent block, a job not finished in its half (all "fault", unchanged, with the strikes of `tc_fail`), a run of `TCR_VLATE_RUN` (4) very late blocks in a row ("run"), `TCR_VWIN_K` (8) of them within `TCR_VWIN_MS` (2,000 ms) ("window": a ring of the last 16 times; a gap longer than the window starts the chain again), and a run of `TCR_LATE_RUN` late blocks (unchanged, "late"). `TCR_CALM_MS` (10 s) stays. Counters (`tcs`): `vlate_ok` (very late, finished, paused nothing), `pause_fault`, `pause_run`, `pause_win`, `pause_late` (they add up to `pauses`).
 2. **Floor.** `tcr_deadline(now, &nofit)`: `cap` = half end less the table's need (core 0's own latest moment); table deadline = `cap - slack`; with the floor on and a recent maximum run time `rm` (the largest `t_end - t_seen` of the last 128 to 256 blocks, TC_MEAS builds only: it needs core 1's clock reads): if the table deadline is still ahead and `now + rm > cap` the job cannot finish before core 0's latest moment whatever the deadline: `nofit` (no post, own reason `TCM_OWN_FL`); else deadline = max(table deadline, min(`now + rm + slack`, `cap`)). The buckets turn over by blocks, so a maximum that stopped the jobs fades. A normal (non-bench) build has no floor: nothing measures there.
@@ -41,7 +43,7 @@ Written after BENCHT2's run (release_drafts/BENCHT2_RUN1.md); the description fo
 
 ## BENCHT4 (branch `twocore5`, from `twocore4` 12bb007): "pause only for real faults"
 
-Written after BENCHT3's run (release_drafts/BENCHT3_RUN1.md); the description for the owner is release_drafts/BENCH_TWOCORE4.md.
+Written after BENCHT3's run (a workspace file outside this repository); the description for the owner is a workspace file outside this repository.
 
 1. **Pause rule.** The jobs pause only for: a fault (wrong or refused answer, no answer to the take within `TCR_ANSWER_US`, a crash/hang strike), a job not finished by its WAIT LIMIT (a silent block), and a run of `TCR_LATE_RUN` (4) late blocks (kept: core 1 not picking up jobs; never seen on the unit, it is not a very late block). A very late block whose job finished by the wait limit never pauses, however many in a row or in a window. The BENCHT3 run and window rules stay in the code, reachable only through `bench vrun N` / `bench vwin K [MS]`; their defaults are now `TCR_VLATE_RUN 0` and `TCR_VWIN_K 0` (0 = off). `vrun 0` is allowed.
 2. **Floor** default off (`bench floor 1` switches it on).

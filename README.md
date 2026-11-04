@@ -6,13 +6,13 @@
 
 **Stable: [`stable-2026-11-03`](https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/stable) · Beta: [`beta-2026-11-04`](https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/beta-2026-11-04)** ([what that means](#builds-stable-and-beta))
 
-[Try it in the browser](https://pssdrnk-cmyk.github.io/DUELL-TIDE/emu/) · [What changed](#what-changed-from-duell-11) · [Install](#install) · [Issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues)
+[Try it in the browser](https://pssdrnk-cmyk.github.io/DUELL-TIDE/emu/) · [What changed](#what-changed-from-duell-11) · [Install](#install) · [All documents](docs/DOCS_INDEX.md) · [Issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues)
 
 Development: [current roadmap and engineering priorities](docs/ROADMAP.md). Musical proposals and historical delivery evidence are linked there.
 
 > **TIDE is by pssdrnk, not by OSCILL/R.** DUELL with TIDE is pssdrnk's fork of [DUELL](https://github.com/oscillr/DUELL) 1.1, which is made by **OSCILL/R**. The fork is not made, affiliated with or endorsed by OSCILL/R or M-VAVE. Please don't send TIDE problems to the DUELL author: use this fork's [issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues). DUELL and its credit belong to OSCILL/R; the code stays GPL-3.0-only.
 
-> **Use at your own risk.** TIDE has run on **one FM-1, the fork owner's**. It has no release and no wide testing. The FM-1 has a single copy of its firmware and no known rollback; a failed write can leave it dark, and then only a hardware recovery helps ([docs/RECOVERY.md](docs/RECOVERY.md)). Back up first. No warranty.
+> **Use at your own risk.** TIDE has run on **one FM-1, the fork owner's**. It has releases (stable and beta, above) but no wide testing. The FM-1 has a single copy of its firmware and no known rollback; a failed write can leave it dark, and then only a hardware recovery helps ([docs/RECOVERY.md](docs/RECOVERY.md)). Back up first. No warranty.
 
 ## Builds: stable and beta
 
@@ -79,16 +79,16 @@ How the tide behaves. **Knob 1** picks the row, **OCT+ / OCT-** change it. The r
 | Row | Values (**default**) | What it does |
 |---|---|---|
 | **STYLE** | **DUB** · DEEP · MINIMAL · AMBIENT · PEAK · CUSTOM | A one-move setup for a genre: sets MODE, TIME and WAIT on AUTO TIDE and the rows VARY BARS, WASH LEVEL, TURNS, POLY, SYNC and ARC together (table below). Change any of those by hand and STYLE shows CUSTOM, keeping your values. TARGET, ROLL, ARP and PITCH are yours and a style never changes them. |
-| **TARGET** | SOUND · SEQ · BOTH | What the tide moves: the sound (MORPH fader), the pattern (SEQ MORPH fader) or both together. |
+| **TARGET** | SOUND · SEQ · **BOTH** | What the tide moves: the sound (MORPH fader), the pattern (SEQ MORPH fader) or both together. |
 | **VARY BARS** | **4 + 8** · ALL | With a pattern gliding: 4 + 8 plays the variation only on every 4th bar (the pattern stays recognisable); ALL plays it on every bar. |
 | **ROLL** | **MUSIC** · SMART · WILD | How a new End B is made. MUSIC (new) stays close to the sound's character and keeps it playable; SMART is DUELL's own randomizer with its safety rules; WILD drops all the rules. |
-| **ARP** | ON · OFF | DUELL's MORPH switch: may a new End B change the arpeggiator's settings? |
-| **PITCH** | ON · OFF | DUELL's MORPH switch: may a new End B change the pitch settings? |
+| **ARP** | **OFF** · ON | DUELL's MORPH switch: may a new End B change the arpeggiator's settings? |
+| **PITCH** | **OFF** · ON | DUELL's MORPH switch: may a new End B change the pitch settings? |
 | **WASH LEVEL** | **OFF** · LOW · MID · HIGH | How much each trip breathes: the filter dips and the sends swell in the middle of a trip, and the space where two unlike sounds cross is filled. OFF keeps the sound steady and dry; HIGH is half again more than MID. |
-| **TURNS** | TOGETHER · **TAKE TURNS** · LEAD · ECHO | How the two parts share the variations. TOGETHER: both vary at once (bars 4 and 8 with VARY BARS 4 + 8). TAKE TURNS: part 2 varies on bars 2 and 6, part 1 on 4 and 8, so each change is answered two bars later. LEAD: the parts lead two bars each of every four while the other plays a thinned version of its pattern (beats, held notes and about half of the other hits stay). ECHO: as LEAD, and the answer's hits lean into the gaps the call left. Playback only: KEEP still stores the whole pattern. |
+| **TURNS** | TOGETHER · TAKE TURNS · **LEAD** · ECHO | How the two parts share the variations. TOGETHER: both vary at once (bars 4 and 8 with VARY BARS 4 + 8). TAKE TURNS: part 2 varies on bars 2 and 6, part 1 on 4 and 8, so each change is answered two bars later. LEAD: the parts lead two bars each of every four while the other plays a thinned version of its pattern (beats, held notes and about half of the other hits stay). ECHO: as LEAD, and the answer's hits lean into the gaps the call left. Playback only: KEEP still stores the whole pattern. |
 | **POLY** | OFF · **GENTLE** · WIDE | Now and then one part's loop gets a few steps shorter, so its motif slides against the beat, then plays whole again at the next phrase. GENTLE: 15 or 14 of 16 steps, rarely. WIDE: 12 to 15 steps, more often. Your stored pattern is never changed. |
 | **SYNC** | OFF · **SOFT** · PUSH | The automatic pattern edits that move a hit lean towards the "and" (the off-beat 8th), with an occasional push into the beat: SOFT one a bar, PUSH two. The beats themselves never move and a hit never lands on one. Triplet grids, slow rates and loops that are not whole beats behave as with OFF. |
-| **ARC** | **OFF** · RISE · DROP | A long shape over 36 to 64 bars, counted in 4-bar phrases: the tide **rises** (more syncopation and repeats, faster turns, brighter sounds), holds a **peak**, eases into a thinned **breakdown**, and recovers. DROP also drops by itself on about half of the arcs: both parts stop starting notes for two bars while tails and your other gear carry on. The AUTO TIDE status line shows the phase (RISE 3/6, PEAK, DROP, BREAK 2/3). **Drop by hand** (RISE or DROP): on AUTO TIDE hold OCT- and turn knob 2; the drop comes at the next phrase (turn again to cancel). |
+| **ARC** | OFF · **RISE** · DROP | A long shape over 36 to 64 bars, counted in 4-bar phrases: the tide **rises** (more syncopation and repeats, faster turns, brighter sounds), holds a **peak**, eases into a thinned **breakdown**, and recovers. DROP also drops by itself on about half of the arcs: both parts stop starting notes for two bars while tails and your other gear carry on. The AUTO TIDE status line shows the phase (RISE 3/6, PEAK, DROP, BREAK 2/3). **Drop by hand** (RISE or DROP): on AUTO TIDE hold OCT- and turn knob 2; the drop comes at the next phrase (turn again to cancel). |
 
 **When TURNS, POLY, SYNC and ARC act.** Only while the tide runs by itself on a pattern: MODE **WNDR** or **JRNY**, **ROLL MUSIC**, **TARGET SEQ or BOTH**, the music playing. TURNS needs both parts (ALGORITHM BOTH). In any other setup these rows do nothing, so ONCE, LOOP and DRIFT always play your pattern as written.
 
@@ -102,7 +102,7 @@ How the tide behaves. **Knob 1** picks the row, **OCT+ / OCT-** change it. The r
 | **AMBIENT** | JRNY | 64 bars | 8 bars | 4 + 8 | TOGETHER | GENTLE | OFF | OFF | HIGH |
 | **PEAK** | JRNY | 8 bars | OFF | ALL | ECHO | GENTLE | PUSH | DROP | OFF |
 
-A new unit starts on DUB. A unit that had TIDE settings saved before STYLE existed keeps them and shows CUSTOM.
+A new unit starts on DUB, so the bold values above are DUB's. A unit that had TIDE settings saved before STYLE existed keeps them and shows CUSTOM; the rows it lacked load as TURNS TAKE TURNS, POLY GENTLE, SYNC SOFT and ARC OFF.
 
 **Changing settings while a tide plays.** There is no need to stop it; each change lands at its own moment:
 
@@ -143,13 +143,16 @@ To make room for TIDE in the FM-1's flash, the fonts are Huffman-coded and UI re
 
 ## Install
 
-**There is no TIDE release yet** and no web installer. The links on OSCILL/R's site (installer, emulator, editor, releases) install and show **plain DUELL**, not TIDE. To try TIDE without a unit, use [this fork's emulator](https://pssdrnk-cmyk.github.io/DUELL-TIDE/emu/).
+Two ways to put TIDE on an FM-1. Either way, [back up first](docs/RECOVERY.md) and use a **data** USB cable straight into the computer (no hub). The links on OSCILL/R's site (installer, emulator, editor, releases) install and show **plain DUELL**, not TIDE. To try TIDE without a unit, use [this fork's emulator](https://pssdrnk-cmyk.github.io/DUELL-TIDE/emu/).
 
-To put TIDE on an FM-1 you build it yourself:
+**1. The installer page** (Chrome or Edge): <https://pssdrnk-cmyk.github.io/DUELL-TIDE/install/>. It offers the **Stable** and the **Beta** channel, taken from this fork's [GitHub releases](https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases), saves a backup of the unit first, then writes the package. Steps, the checklist and the way back: [docs/INSTALL.md](docs/INSTALL.md).
+
+**2. Build it yourself:**
 1. Pick the build: `git checkout stable` for the validated one, or stay on `jam11` for the beta ([Builds](#builds-stable-and-beta)).
 2. Build the package as in [felucca-base/BUILDING.md](felucca-base/BUILDING.md): `python3 tools/build.py` in `felucca-base`. TIDE is on by default. The result is `felucca-base/build/duell-1.1.fwsc`.
-3. Install it with `python3 ../jam/jam_dev.py flash build/duell-1.1.fwsc` (needs `pip install mido python-rtmidi`). It saves a backup of the unit first, then writes the package with `tools/fm1_install.py`. Use a **data** USB cable straight into the computer (no hub), and keep the computer awake.
-4. While it writes, the unit shows the update screen (WRITING, a percent number, DO NOT SWITCH OFF). Don't unplug until the installer says it is done, then switch the unit off and on once.
+3. Install it with `python3 ../jam/jam_dev.py flash build/duell-1.1.fwsc` (needs `pip install mido python-rtmidi`). It saves a backup of the unit first, then writes the package with `tools/fm1_install.py`. Keep the computer awake.
+
+While it writes, the unit shows the update screen (WRITING, a percent number, DO NOT SWITCH OFF). Don't unplug until the installer says it is done, then switch the unit off and on once.
 
 TIDE reports itself as DUELL 1.1; the AUTO TIDE page in HOME's round shows that TIDE is on the unit.
 
@@ -186,8 +189,8 @@ ANALOG, PHASE, LOFI, VOICE, TRIO, WHEEL, PHYS, NOISE, FM6 and WAVE (with three u
 ### Factory content
 - **128 patches** (with TIDE: 160, see above), sorted by category (24 BASS, 19 LEAD, 21 PAD, 14 PLUCK, 16 KEYS, 7 PERC, 16 FX, 11 OTHER). The bank is levelled with each patch's TRIM. New in 1.0: **#25 DRIVEN SAW**, a driven lead that uses both filters in series. The list of numbers is [docs/PATCH_NUMBERS.md](docs/PATCH_NUMBERS.md).
 - **16 MULTI slots**: 15 factory multis (REESE SWAMP, NIGHT ORGAN, PAD SPLIT, DUB CHORD, WHISPER TIDE, TINE STRINGS, FINAL REEL, HAZY TENSOR, ACID ETHER, WIRED SNAIL, EERIE SIGNAL, DEAD BUFFER, COLD CHAPEL, GARGLE ACID, WOOD & SKIN), their levels balanced and each with its own End B, and M16 CELLAR TAPE (dub techno: an offbeat plucked sub under minor-ninth chord stabs). Every factory multi now has a sequence or a deliberate live part; the former M16 STRESS TEST is a test scene (tests/scenes/M16_STRESS_TEST.bin).
-- **32 patterns**, P01 to P32, all filled with a default and all overwritable.
-- Save any patch into any of the 128 slots; RESTORE brings the slot's factory sound back.
+- **32 patterns**, P01 to P32, all overwritable. Upstream fills every one with a default; with TIDE, P29 to P32 are empty USER slots (see above).
+- Save any patch into any of the 128 slots; RESTORE brings the slot's factory sound back (with TIDE, the last four slots are USER slots that hold no factory sound).
 
 ### Level
 A part has two levels, as on a hardware synth. The sound has a **TRIM** (its own loudness, saved with the patch) and the mixer has a **LEVEL** (your volume for the part: loading a sound does not change it, a multi remembers it). The MASTER's top is 0 dB.
@@ -205,7 +208,7 @@ Part 2 plays on the chip's second core. It starts at every power-on and needs no
 A MIDI channel for each part. Clock in (AUTO, INT, USB or TRS), program change, bank select, pitch bend, mod wheel, sustain pedal and the CC map below. MIDI LEARN teaches a CC to any other parameter. Not tested with a wide range of devices.
 
 ### USB, the editor and the backup
-The unit shows up as **DUELL** (USB-MIDI; USB audio input as set in the menu). The web editor, <https://oscillr.github.io/DUELL/editor/> (Chrome or Edge, unit connected), edits both parts live: all parameters, the ENGINE selector, the patch library for the 128 slots (export, import, drag between slots, DX7 `.syx` import), the MULTIS, a piano roll for the patterns, wavetable files and a Backup page that saves and restores everything (patches, multis, patterns, wavetables, settings). The editor has **no MIDI MAP tab yet**; assignments are made on the unit with MIDI LEARN. Try the editor without a unit with `?mock=1` on its address.
+The unit shows up as **DUELL** (USB-MIDI; USB audio input as set in the menu). The web editor, <https://oscillr.github.io/DUELL/editor/> (Chrome or Edge, unit connected; with a TIDE unit use [this fork's copy](https://pssdrnk-cmyk.github.io/DUELL-TIDE/editor/)), edits both parts live: all parameters, the ENGINE selector, the patch library for the 128 slots (export, import, drag between slots, DX7 `.syx` import), the MULTIS, a piano roll for the patterns, wavetable files and a Backup page that saves and restores everything (patches, multis, patterns, wavetables, settings). The editor has **no MIDI MAP tab yet**; assignments are made on the unit with MIDI LEARN. Try the editor without a unit with `?mock=1` on its address.
 
 ## MIDI CC map
 
@@ -302,7 +305,7 @@ The editor's MIDI MAP tab, switching multis with preset changes, the SUB HARMONI
 
 ## Build and test
 
-Building a device image is described in [felucca-base/BUILDING.md](felucca-base/BUILDING.md); a normal build has the two-core firmware and the update screen. Host tests: `./host_tests.sh` (see [docs/TESTING.md](docs/TESTING.md)).
+Building a device image is described in [felucca-base/BUILDING.md](felucca-base/BUILDING.md); a normal build has the two-core firmware and the update screen. Host tests: `./host_tests.sh` on Linux or macOS, `sh jam/check.sh` in Git Bash on Windows (see [docs/TESTING.md](docs/TESTING.md) and [CONTRIBUTING.md](CONTRIBUTING.md)).
 
 ## Read more
 
@@ -310,12 +313,15 @@ Building a device image is described in [felucca-base/BUILDING.md](felucca-base/
 |---|---|
 | Install or update | [docs/INSTALL.md](docs/INSTALL.md) |
 | Play it | [docs/QUICKSTART.md](docs/QUICKSTART.md) |
+| Play TIDE | [docs/TIDE_GUIDE.md](docs/TIDE_GUIDE.md) |
 | Fix a problem | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) |
 | Recover from a failed flash | [docs/RECOVERY.md](docs/RECOVERY.md) |
 | Know the limits | [docs/KNOWN_LIMITS.md](docs/KNOWN_LIMITS.md), [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) |
-| See what changed | [CHANGELOG.md](CHANGELOG.md), [RELEASE_NOTES.md](RELEASE_NOTES.md) |
+| See what changed | [CHANGELOG.md](CHANGELOG.md), [RELEASE_NOTES.md](RELEASE_NOTES.md) (DUELL 1.1's own notes, by OSCILL/R) |
 | Read the full design | [SPEC.md](SPEC.md) |
-| Report a bug | TIDE: this fork's [issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues). Plain DUELL: OSCILL/R's [bug report form](https://github.com/oscillr/DUELL/issues/new/choose) |
+| Find any other document | [docs/DOCS_INDEX.md](docs/DOCS_INDEX.md) (every document, its audience and whether it is current) |
+| Help build it | [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md) |
+| Report a bug | TIDE: this fork's [issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues/new/choose). Plain DUELL: OSCILL/R's [bug report form](https://github.com/oscillr/DUELL/issues/new/choose) |
 
 ## Credits and licence
 

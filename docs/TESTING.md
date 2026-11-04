@@ -1,15 +1,16 @@
-# What to test: DUELL 1.0
+# What to test: DUELL with TIDE
 
-Thank you for testing. You can test, at your own risk, on an FM-1 with DUELL 1.0 (see [INSTALL.md](INSTALL.md)). Web emulator: [https://oscillr.github.io/DUELL/emu/](https://oscillr.github.io/DUELL/emu/). It has been run on one real unit only, the author's, so reports from other units are especially welcome.
+Thank you for testing. You can test, at your own risk, on an FM-1 with DUELL with TIDE (see [INSTALL.md](INSTALL.md); the stable build is the validated one, the beta is the one that needs testers). Web emulator: <https://pssdrnk-cmyk.github.io/DUELL-TIDE/emu/>. TIDE has run on one real unit only, the fork owner's, so reports from other units are especially welcome.
 
 ## What to test
 
 - [ ] **DUEL / STEREO / LAYER**: DUEL keeps part 1 only on the left and part 2 only on the right (with effects on). STEREO is full stereo. LAYER plays both parts from the keys; try BALANCE, XFADE and the key SPLIT.
 - [ ] **MORPH**: move the fader slowly A to B, ROLL A and B, UNDO, change AMOUNT. Any click, dropout, silence or painful sound? Does a patch always load at A?
 - [ ] **Matrix**: assign a few of the 8 slots (LFO 2, ENV 2, velocity, aftertouch, mod wheel). Do ENV 2 and LFO 2 DEST pages do what they say?
+- [ ] **TIDE** ([TIDE_GUIDE.md](TIDE_GUIDE.md)): on AUTO TIDE twist knob 1 and press PLAY; try each MODE and each STYLE on TIDE SETTINGS; hear whether TURNS, POLY, SYNC and ARC change the pattern; STOP, then PLAY (the glide goes on from where it was); twist knob 1 while it glides (it stops). Does the screen match what you hear? Note MODE, STYLE, TARGET, ROLL, TURNS, POLY, SYNC and ARC in your report.
 - [ ] **MULTIs**: load the 16 factory multis (M01 to M16), then save, rename and erase your own. Power-cycle the unit and load again.
 - [ ] **PATTERNS**: load a factory pattern, edit and save over a slot, erase it, use it as the SEQUENCER arp pattern.
-- [ ] **PATCHES**: browse by TYPE, mark favourites, hold SAVE (OVERWRITE #NN: turn knob 1 to pick another slot, knob 2 to RENAME: the NAME screen, OCT+ back to the dialog, OCT+ saves under the new name), RESTORE the slot (knob 4), RESTORE ALL on SAVE > TOOLS, MIDI program change = slot. Fill all 128 slots by saving over each: there is no "full". Power-cycle the unit and check it all came back.
+- [ ] **PATCHES**: browse by TYPE, mark favourites, hold SAVE (OVERWRITE #NN: turn knob 1 to pick another slot, knob 2 to RENAME: the NAME screen, OCT+ back to the dialog, OCT+ saves under the new name), RESTORE the slot (knob 4), RESTORE ALL on SAVE > TOOLS, MIDI program change = slot. With TIDE the last four slots are USER slots (USER EMPTY until you save into them); the store holds 126 saved patches, so a 127th new save shows STORE FULL. Power-cycle the unit and check it all came back.
 - [ ] **MIDI** (if your browser has WebMIDI, e.g. Chrome or Edge): part 1 on channel 1, part 2 on channel 2, no stuck notes; mod wheel (CC1) moves the morph; program change and bank select.
 - [ ] **Sound palette**: audition the factory palette (about a hundred sounds, across the engines). Levels between sounds, anything harsh, stuck or silent?
 - [ ] **Ducker / effects**: depth, attack, release; SHIM, RESO, PLATE (switch between all six reverb types while a tail rings: no click), ping-pong; no clicks.
@@ -18,7 +19,7 @@ Thank you for testing. You can test, at your own risk, on an FM-1 with DUELL 1.0
 
 ## How to report a bug
 
-Open an issue with the [bug report form on GitHub](https://github.com/oscillr/DUELL/issues/new/choose). Choose where it happened and give the version shown in ABOUT, your browser and computer if it is the editor or installer, the steps, what you expected and what happened. Please do not paste private information. No warranty; DUELL is not affiliated with M-VAVE.
+Open an issue with the [bug report form on this fork's GitHub](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues/new/choose) (problems that plain DUELL has too go to OSCILL/R's [form](https://github.com/oscillr/DUELL/issues/new/choose)). Choose the build (stable or beta, and its tag), where it happened and give the version shown in ABOUT, your browser and computer if it is the editor or installer, the steps, what you expected and what happened. Please do not paste private information. No warranty; DUELL is not affiliated with M-VAVE.
 
 # For people with hardware
 

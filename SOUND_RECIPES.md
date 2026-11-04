@@ -1,5 +1,7 @@
 # DUELL factory sound recipes (research notes)
 
+> Research notes from the DUELL 1.0 sound design, kept as written. The factory sounds changed afterwards; the list that ships is [docs/PATCH_NUMBERS.md](docs/PATCH_NUMBERS.md).
+
 Purpose: typical settings of classic synth patches, in generic synth terms, as a starting point for DUELL factory presets. Written 2026-10-11, built up incrementally.
 
 ## How to read this
