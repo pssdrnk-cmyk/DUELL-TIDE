@@ -93,6 +93,8 @@ static int tide_echo(uint32_t pi, uint32_t idx);
 static volatile uint8_t sqm_arc;                         /* ARC: 0 OFF, 1 RISE, 2 DROP (tide_ui.c, the TIDE LIST; seq_arc.c) */
 static volatile uint8_t tarc_dropphr = 0xFFu, tarc_thin, tarc_fast, tarc_hold;   /* seq_arc.c's planner to the audio side: the drop's phrase, the parts thinned, turns every bar, no POLY */
 static uint32_t tarc_sync(void);
+static uint32_t glide_tide_on(void);
+static int tide_bass_part(const track_t *t);
 static uint32_t tarc_cap(uint32_t base);
 static int32_t tarc_bright(void);
 static volatile uint8_t sqm_sync = 1;                   /* SYNC: 0 OFF, 1 SOFT, 2 PUSH (tide_ui.c, the TIDE LIST; seq_rhythm.c, seq_dialogue.c) */
@@ -161,7 +163,7 @@ static void sqm_build(const step_t *p, uint32_t len, const sqm_end_t *x, uint32_
     for (k = 0; k < n && (i = sqm_best(score, len)) < len; k++)
         out[i].flags ^= SF_ACCENT;
     if (d[SD_VOIC]) {                                    /* VOIC: every chord the same inversions; single notes an octave */
-        if (morph_musical && (morph.cfg & MC_PIT)) {
+        if (morph_musical) {                             /* (the octaves of the chord's own tones: PITCH, the new notes, is not needed) */
             sqm_voicelead(p, len, out);
         } else for (i = 0; i < len; i++) {
             step_t *s = &out[i];
@@ -243,12 +245,14 @@ static void sqm_refresh(uint32_t pi, int force)
 {
     sqm_part_t *q = &sqm[pi];
     const track_t *t = &trk[pi];
-    uint32_t len = sqm_len(t), sig;
+    uint32_t len = sqm_len(t), sig, src = rhythm.source[pi];
     if (!q->n) {                                         /* the part's default End B, the first entry UNDO can go back to */
         sqm_rand(&q->b[0], 0x5EEDu + 0x2F1u * pi, q->notes);
         q->n = 1, q->top = 0;
     }
     rhythm_validate(pi, len);
+    if (rhythm.source[pi] != src)                        /* another pattern: the pitch offsets belong to the steps before */
+        sqm_pitch_clear(q);
     sig = sqm_sig(t, q, len) ^ (uint32_t)q->hold * 0x85EBCA77u ^ rhythm_hash(pi);
     if (!force && q->ok && sig == q->sig)
         return;
@@ -276,6 +280,7 @@ static volatile uint8_t sqm_vary_all;                   /* VARY BARS: 0 4 + 8, 1
 static volatile uint8_t sqm_poly = 1;                   /* POLY: 0 OFF, 1 GENTLE, 2 WIDE (tide_ui.c, the TIDE LIST; seq_poly.c) */
 static uint8_t poly_len[NSHOWN];                         /* (seq_poly.c: a part in a POLY stretch is never thinned) */
 static const step_t SQM_REST = {{0}, 0, ST_REST, 0, 0, 0};
+static volatile uint8_t sqm_restart;                     /* tide_loaded put the loaded parts at A: glide_poll starts the running trip again from there */
 static volatile uint8_t sqm_auto;                       /* the parts in automatic MUSIC WNDR/JRNY, a bit each (glide_poll, main loop) */
 /* the step part t plays at idx with the variation heard (vary 1; 0: End A): the stored one while End A is the Original and the
  * fader at 0, else the end its beat is on. The UI's view and KEEP (vary 1 always: the variation as it plays on a varied bar) */
@@ -450,6 +455,7 @@ static void seqm_home(uint32_t pi)
     if (pi >= NSHOWN)
         return;
     rhythm_reset(pi);
+    sqm_pitch_clear(&sqm[pi]);
     sqm[pi].aon = 0;
     sqm[pi].fader = 0;
     sqm_refresh(pi, 1);

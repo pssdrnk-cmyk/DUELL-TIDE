@@ -145,6 +145,224 @@ static void random_cases(unsigned scale)
     CHECK("random loops: invariants on every loop", invbad == 0);
 }
 
+/* ------------------------------------------------------------------ generation reset (audit M06, M07, B01, B02, B06, B17) --- */
+/* two parts of 16 notes: part 1 a bass line (C2 .. G2), part 2 a lead line; PLAY from the top */
+static void gen_setup(void)
+{
+    ui_power_on(); frame();
+    gl.on = gl.armed = 0; transport_req = 0; song.playing = song.rec = 0;
+    song.g[G_CLOCK] = 0; song.g[G_BPM] = 240;
+    memset(sqm, 0, sizeof sqm); sqm[0].notes = sqm[1].notes = 50u; memset(&rhythm, 0, sizeof rhythm);
+    memset(&tarc, 0, sizeof tarc); tarc_clear();
+    for (uint32_t p = 0; p < 2u; p++) {
+        track_t *t = &trk[p];
+        memset(t->step, 0, sizeof t->step);
+        t->p[P_SLEN] = 16; t->p[P_SDIV] = 2; t->p[P_AMODE] = AM_OFF; t->p[P_MUTE] = 0; t->p[P_SQNT] = 1;
+        t->seq_active = 1;
+        for (uint32_t i = 0; i < 16u; i++) {
+            t->step[i].time = ST_NOTE; t->step[i].n = 1; t->step[i].vel = 100;
+            t->step[i].note[0] = (uint8_t)(p ? 60 + (i % 5u) * 2u : 36 + (i % 5u) * 2u);
+        }
+    }
+    sqm_auto = 0;
+    morph.cfg |= MC_PIT;
+    scale_g = 1; root_g = 0;
+    seq_start(); song.playing = 1;
+}
+static uint32_t gen_walks(uint32_t pi, uint32_t n)         /* how many of n seeds the pitch walk moves a note of part pi */
+{
+    uint32_t k, moved = 0;
+    for (k = 0; k < n; k++) {
+        sqm_end_t x;
+        memset(&x, 0, sizeof x);
+        moved += sqm_pitch_walk(&trk[pi], &x, 1000u + k * 77u) < sqm_len(&trk[pi]);
+    }
+    return moved;
+}
+static void gen_pitch_cases(void)
+{
+    uint32_t lead, bass;
+    gen_setup();
+    bass = gen_walks(0, 200u); lead = gen_walks(1, 200u);
+    printf("   pitch walk on a major scale, 200 seeds: bass line %u, lead line %u\n", bass, lead);
+    CHECK("M06: PITCH never walks a bass line (notes under C3)", bass == 0u);
+    CHECK("M06: .. but it walks a lead line (the fixture is live)", lead > 100u);
+    scale_g = 0;                                           /* CHR: any pitch class is allowed, a walk would be chromatic */
+    lead = gen_walks(1, 200u);
+    printf("   pitch walk on CHR (chromatic mask), 200 seeds: lead line %u\n", lead);
+    CHECK("B17: PITCH does nothing while the scale is CHR", lead == 0u);
+    scale_g = 1;
+    for (uint32_t i = 0; i < 16u; i++) { trk[1].step[i].n = 3; trk[1].step[i].note[0] = 48; trk[1].step[i].note[1] = 60; trk[1].step[i].note[2] = 67; }
+    {   /* a chord: only its top note walks, the bass never */
+        uint32_t k, ok = 1, moved = 0;
+        for (k = 0; k < 100u; k++) {
+            sqm_end_t x;
+            uint32_t at;
+            memset(&x, 0, sizeof x);
+            at = sqm_pitch_walk(&trk[1], &x, 5000u + k * 31u);
+            if (at < 16u) { moved++; ok &= sqm_pitch_voice(&trk[1].step[at], at) == 2u; }
+        }
+        CHECK("M06: a chord's top note walks (the lowest, the bass, never)", ok && moved > 50u);
+    }
+}
+static void gen_voicelead_cases(void)
+{
+    sqm_end_t x;
+    step_t out[NSTEP];
+    uint32_t i, kept = 0;
+    gen_setup();
+    morph.cfg &= ~MC_PIT;                                  /* PITCH OFF (the default) */
+    morph_musical = 1;
+    for (i = 0; i < 16u; i++) chord(&trk[0].step[i], 36, i % 2u ? 55 : 52, i % 3u == 1u ? 60 : i % 3u ? 62 : 59, 0);   /* (C major) */
+    memset(&x, 0, sizeof x); x.seed = 7; x.d[SD_VOIC] = 60;
+    sqm_build(trk[0].step, 16, &x, 100u, out);
+    for (i = 0; i < 16u; i++) kept += lowest(&out[i]) == lowest(&trk[0].step[i]) && pcs(&out[i]) == pcs(&trk[0].step[i]);
+    printf("   VOIC +60, PITCH OFF, MUSIC: chords whose bass and chord tones are kept: %u of 16\n", kept);
+    CHECK("M07: voice leading runs with PITCH OFF (the bass of every chord stays)", kept == 16u);
+    morph_musical = 0;
+    sqm_build(trk[0].step, 16, &x, 100u, out);
+    for (i = kept = 0; i < 16u; i++) kept += lowest(&out[i]) == lowest(&trk[0].step[i]);
+    CHECK("M07: .. and ROLL SMART / WILD keeps the plain octave inversions", kept < 16u);
+    morph_musical = 1;
+}
+static void gen_home_load_cases(void)
+{
+    uint32_t i, k, ok, nz;
+    /* B01: HOME clears the phrase pitch edits of End B too */
+    gen_setup();
+    sqm_refresh(1, 1);
+    for (k = ok = 0; k < 50u && !ok; k++) ok = (uint32_t)phrase_pitch(1, 1234u + k * 77u);
+    for (i = nz = 0; i < SQM_PITCH_BYTES; i++) nz |= sqm[1].b[sqm[1].top].pitch[i];
+    CHECK("(fixture: a phrase pitch edit is on End B)", ok && nz);
+    seqm_home(1);
+    for (i = nz = 0; i < SQM_PITCH_BYTES; i++) nz |= sqm[1].b[sqm[1].top].pitch[i] | sqm[1].a.pitch[i];
+    CHECK("B01: HOME leaves no pitch edit on either end", !nz && !sqm[1].aon && !sqm[1].fader);
+    /* B02: a multi load and a pattern load start as written */
+    for (k = 0; k < 2u; k++) {
+        uint32_t diff;
+        gen_setup();
+        project_save(1);
+        for (i = 0; i < 12u; i++) seqm_wander_gen(1, 0u, 4u);
+        for (i = ok = 0; i < 50u && !ok; i++) ok = (uint32_t)phrase_pitch(1, 999u + i * 31u);
+        seqm_set_fader(1, 127);
+        sqm_refresh(1, 1);
+        CHECK("(fixture: a generation is on part 2)", sqm[1].aon && ok);
+        if (k) pat_load(&trk[1], 0); else project_load(1);
+        sqm_refresh(1, 0);
+        for (i = nz = 0; i < SQM_PITCH_BYTES; i++) nz |= sqm[1].b[sqm[1].top].pitch[i] | sqm[1].a.pitch[i];
+        for (i = diff = 0; i < 16u; i++) diff += memcmp(sqm_step(&trk[1], i, 0), &trk[1].step[i], sizeof(step_t)) != 0;
+        printf("   %s load: aon %u fader %u pitch %u, steps played otherwise than written (End A) %u\n", k ? "pattern" : "multi", sqm[1].aon, sqm[1].fader, nz != 0u, diff);
+        CHECK(k ? "B02: a pattern load starts as written (no generation, no pitch)" : "B02: a multi load starts as written (no generation, no pitch)",
+              !sqm[1].aon && !sqm[1].fader && !nz && !diff);
+    }
+    /* B02: an edited pattern (a new source) drops the pitch offsets stored for the old step indexes */
+    gen_setup();
+    sqm_refresh(1, 1);
+    for (k = ok = 0; k < 50u && !ok; k++) ok = (uint32_t)phrase_pitch(1, 4321u + k * 17u);
+    trk[1].step[3].note[0] = (uint8_t)(trk[1].step[3].note[0] + 1u);
+    sqm_refresh(1, 0);
+    for (i = nz = 0; i < SQM_PITCH_BYTES; i++) nz |= sqm[1].b[sqm[1].top].pitch[i] | sqm[1].a.pitch[i];
+    CHECK("B02: a pattern edit drops the pitch offsets of the old pattern", ok && !nz);
+}
+/* ARC: STOP / PLAY pauses it, a K1 stop or a load restarts it at RISE (D6, revised) */
+static void gen_arc_blocks(uint32_t n)
+{
+    for (uint32_t b = 0; b < n; b++) {
+        events_block(CTL);
+        glide_poll();
+        tarc_poll();
+    }
+}
+static void gen_arc_case(void)
+{
+    uint32_t phr, phase, cnt;
+    gen_setup();
+    morph_musical = 1; sqm_arc = 2;
+    gl.on = 3; gl.mode = GM_WANDER; gl.mask = 3; gl.armed = 0; gl.hold = 0;
+    gen_arc_blocks(4u * 4u * 12000u / CTL * 3u);           /* about 3 phrases (4 bars each) */
+    phr = tarc.phr; phase = tarc.phase; cnt = tarc.cnt;
+    printf("   ARC after PLAY: run %u phrase %u phase %s\n", tarc.run, phr, tarc_name());
+    CHECK("(fixture: ARC runs and counts phrases)", tarc.run && phr >= 2u);
+    song.playing = 0; glide_poll(); tarc_poll(); gen_arc_blocks(20u);
+    CHECK("ARC: STOP keeps the arc where it was", tarc.run && tarc.phr == phr && tarc.phase == phase && tarc.cnt == cnt);
+    seq_start(); song.playing = 1;
+    gen_arc_blocks(40u);
+    CHECK("ARC: PLAY resumes it (no restart at RISE)", tarc.run && tarc.phr >= phr && tarc.cnt == cnt);
+    glide_stop(); glide_poll(); tarc_poll();
+    CHECK("ARC: a K1 stop ends it", !tarc.run);
+    gl.on = 3; gl.mode = GM_WANDER; gl.mask = 3;
+    gen_arc_blocks(4u * 4u * 12000u / CTL * 2u);
+    CHECK("(fixture: running again)", tarc.run && tarc.phr >= 1u);
+    pat_load(&trk[0], 0);
+    CHECK("ARC: a pattern load restarts it", !tarc.run);
+    gl.on = 3; gl.mode = GM_WANDER; gl.mask = 3;
+    gen_arc_blocks(4u * 4u * 12000u / CTL * 2u);
+    CHECK("(fixture: running once more)", tarc.run && tarc.phr >= 1u);
+    project_save(2);
+    project_load(2);
+    CHECK("ARC: a multi load restarts it", !tarc.run);
+    gl.on = 3; gl.mode = GM_WANDER; gl.mask = 3;           /* (the load ended the trip: the player starts it again) */
+    gen_arc_blocks(40u);
+    printf("   after the load: run %u phase %s phrase %u gl.on %u\n", tarc.run, tarc_name(), tarc.phr, gl.on);
+    CHECK("  .. at RISE", tarc.run && tarc.phase == AP_RISE && tarc.phr < 2u);
+}
+
+/* D3: a part whose sound is in the BASS family does not walk, whatever its notes; a lead sound still does */
+static uint32_t gen_find_cat(uint32_t e, uint32_t cat)
+{
+    for (uint32_t k = 0; k < ds_count(e); k++)
+        if (ds_cat_of(e, k) == cat) return k;
+    return 0xFFFFu;
+}
+static void gen_bass_family_case(void)
+{
+    uint32_t e = trk[0].eng_req, kb, kl, bass, lead;
+    gen_setup();
+    e = trk[0].eng_req;
+    kb = gen_find_cat(e, CAT_BASS); kl = gen_find_cat(e, CAT_LEAD);
+    CHECK("(fixture: the engine has a bass and a lead sound)", kb != 0xFFFFu && kl != 0xFFFFu);
+    trk[0].user = 0; trk[1].user = 0;
+    trk[0].preset = (uint8_t)kb; trk[1].preset = (uint8_t)kl;
+    trk[1].eng_req = (uint8_t)e;
+    for (uint32_t i = 0; i < 16u; i++) trk[0].step[i].note[0] = (uint8_t)(60 + (i % 5u) * 2u);   /* the bass sound's line sits above C3 */
+    bass = gen_walks(0, 200u); lead = gen_walks(1, 200u);
+    printf("   pitch walk, a bass-family sound with its line above C3: %u of 200; a lead sound: %u\n", bass, lead);
+    CHECK("D3: a BASS-family sound does not walk, its line above C3 or not", bass == 0u);
+    CHECK("  .. a lead sound still walks", lead > 100u);
+}
+/* D6: a load in mid-trip puts the loaded parts back at A and the running trip starts again from there; the tide itself keeps running */
+static uint32_t gen_varied(void)
+{
+    uint32_t n = 0;
+    for (uint32_t p = 0; p < 2u; p++)
+        for (uint32_t i = 0; i < 16u; i++)
+            n += memcmp(sqm_step(&trk[p], i, 1), &trk[p].step[i], sizeof(step_t)) != 0;
+    return n;
+}
+static void gen_trip_case(void)
+{
+    for (uint32_t k = 0; k < 2u; k++) {
+        uint32_t b, worst = 0, mid;
+        gen_setup();
+        morph_musical = 1;
+        project_save(3);
+        gl.on = 3; gl.mode = GM_WANDER; gl.mask = 3; gl.armed = 0; gl.hold = 0; gl.time = 4; gl.to = 1; glide_begin_lanes();
+        for (b = 0; b < 48000u / CTL * 8u; b++) { events_block(CTL); seqm_poll(); glide_poll(); }
+        mid = sqm[0].fader | sqm[1].fader;
+        CHECK("(fixture: mid-trip, the SEQ fader is off A and the variation plays)", mid && gen_varied());
+        if (k) { pat_load(&trk[0], 0); pat_load(&trk[1], 0); } else project_load(3);
+        for (b = 0; b < 48000u / CTL; b++) {                /* the next bar */
+            uint32_t n;
+            events_block(CTL); seqm_poll(); glide_poll();
+            n = gen_varied();
+            worst = n > worst ? n : worst;
+        }
+        printf("   %s load in mid-trip (fader %u): steps varied in the next bar: %u at most; tide lanes %u, SEQ fader now %u\n", k ? "pattern" : "multi", mid, worst, gl.on, sqm[0].fader);
+        CHECK(k ? "D6: a pattern load in mid-trip: the next bar plays the pattern as written" : "D6: a multi load in mid-trip: the next bar plays the pattern as written", worst == 0u);
+        CHECK("  .. and the tide is still running", (gl.on & 2u) && gl.mode == GM_WANDER);
+    }
+}
+
 int main(void)
 {
     ui_power_on(); frame();
@@ -154,6 +372,12 @@ int main(void)
     random_cases(0);
     random_cases(1);
     random_cases(3);
+    gen_pitch_cases();
+    gen_voicelead_cases();
+    gen_home_load_cases();
+    gen_arc_case();
+    gen_bass_family_case();
+    gen_trip_case();
     printf("   %u checks, %u failures\n", checks, failures);
     return failures != 0;
 }

@@ -120,6 +120,9 @@ static void tl_unlock(track_t *t, uint64_t was, uint32_t len);
 #define TIDE_THEME_F(f) ((f) >= 120u ? 127u : (f) & ~7u)
 static int tide_foot_parts(void);
 static void tide_part_name(uint32_t pi, char *b);
+/* H18 (project.c restore, ui.c pat_load): a multi, project or pattern was loaded into the parts of mask; the tide starts as written (D6) */
+static void tide_loaded(uint32_t mask);                  /* (seq_arc.c) */
+#define TIDE_LOADED(mask) tide_loaded(mask)
 static int32_t tarc_bright(void);                        /* ARC's brightness lean for the next sound (seq_arc.c) */
 static void tide_roll_ghosts(const track_t *t, uint32_t base, uint32_t ncol);
 static uint32_t tide_roll_sig(const track_t *t);
@@ -206,6 +209,7 @@ static int tide_foot_two(void);
 #define TIDE_MBV_MAKE(pi, out, n) (n)
 #define TIDE_MBV_LOAD(pi, b, len) ((void)0)
 #define TIDE_TL_KEEP
+#define TIDE_LOADED(mask) ((void)0)
 #define TIDE_SAVE_ERROR(rc) "SAVE ERROR"
 #define TIDE_THEME_F(f) (f)
 #define TIDE_FOOT_NAME(t, b) sound_label((t), (b))
