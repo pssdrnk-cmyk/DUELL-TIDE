@@ -1771,7 +1771,7 @@ SOUNDS = [
          p={
             'ATK': 0, 'DEC': 74, 'SUS': 0, 'REL': 64, 'AMODE': 3, 'AOCT': 3, 'AGATE': 83, 'APROB': 102, 'RES2': 77, 'KTRK': 13, 'DIST': 32, 'DLY': 51,
             'TWTYPE': 2, 'FREEA': 51, 'FREEB': 41, 'E2ATK': 0, 'E2DEC': 56, 'E2SUS': 0, 'E2REL': 56, 'L2RATE': 27, 'L2WAVE': 1, 'ITYPE': 5, 'IA': 90,
-            'IB': 100, 'IMIX': 64, 'CUT2': 57, 'TRIM': 119, 'E2FLT': 21, 'L2FLT': 5, 'E1': 1, 'E2': 0, 'E3': 0, 'E7': 127, 'MOD1': ('AT', 'CUT2', 17),
+            'IB': 100, 'IMIX': 64, 'CUT2': 57, 'TRIM': 118, 'E2FLT': 21, 'L2FLT': 5, 'E1': 1, 'E2': 0, 'E3': 0, 'E7': 127, 'MOD1': ('AT', 'CUT2', 17),
             'MOD2': ('CYCLE', 'CUT2', 7), 'LTRIG': 1, 'L2TRIG': 1, 'TWIN LINK': 0, 'TWIN ENV2': 11, 'CYCLE RISE': 41, 'CYCLE FALL': 41,
             'CYCLE SYNC': 1,
          },
