@@ -117,7 +117,7 @@ A new unit starts on DUB, so the bold values above are DUB's. A unit that had TI
 - **32 more factory sounds**, #129 to #160 (dub, deep house: pads, chords, stabs, plucks, textures), so JRNY has more to travel between. They are read-only places after the 128 (SAVE offers USER 1).
 - **Ten factory patterns** are now chords and pads for dub techno and deep house (some carry their own swing and gate). A pattern slot you never saved over takes the new pattern at power-on; a saved one is never touched. Seven factory multis that had no sequence now have one, and M16 is CELLAR TAPE.
 - **USER slots**: the last four patch slots (U1 to U4) and pattern slots (P29 to P32) are empty places for your own work (`USER EMPTY` until saved). The factory sounds and patterns they stand in for stay listed after them, read-only.
-- **MULTIS and PATTERNS** show three rows with the picked entry opened: both parts' sound names, ARP / SEQ / OFF and the first 16 steps, or NO SEQUENCE, before you load. A record that does not load reads DAMAGED.
+- **MULTIS and PATTERNS** are plain lists; the picked entry's preview sits in a panel at the bottom of the page: both parts' sound names with ARP / SEQ / OFF and their first 16 steps (MULTIS), the pattern's 16 steps (PATTERNS), or NO SEQUENCE. The loaded entry has a star, and OCT+ runs the action (LOAD or SAVE) whose card shows its key. A record that does not load reads DAMAGED.
 - **Live graphs**: the ENV, LFO, CYCLE, filter, INSERT, MATRIX and CHORD pages show a moving marker (about 15 a second; paused above 80 % CPU; MENU > ANIMATION OFF makes them still). An LFO 2 or CYCLE that nothing reads is marked PREVIEW.
 
 ### New: in the sequencer and tools
@@ -135,6 +135,7 @@ A new unit starts on DUB, so the bold values above are DUB's. A unit that had TI
 - **PHYS**: the string loop is in tune.
 - **CHORD keys**: loading a sound no longer turns the chord TYPE / VOICING off; the page says NEEDS POLY or SET A SCALE when the keys cannot play the chord.
 - **GLO pages**: ALGORITHM picks the part (MIXER included).
+- **FM6 under MORPH**: a voice ends after its release even while the morph raises an operator level (it used to keep running, silent).
 - Undefined arithmetic removed from MORPH, FM6, PHYS and WAVE. Each fix has a host test.
 
 ### Under the hood

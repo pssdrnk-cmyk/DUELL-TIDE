@@ -19,7 +19,7 @@ HOME's round, one tap of **HOME** each: **MORPH → TIDE SETTINGS → AUTO TIDE 
 
 ## 2. AUTO TIDE (the page you live on)
 
-The screen shows the SOUND and SEQ faders with the glide's path, the 16 steps playing, and a status line. The glide only moves while the transport plays. STOP pauses it; PLAY carries on from there.
+The screen shows the SOUND and SEQ faders with the glide's path, the 16 steps as they play, and a status line. With both parts the faders sit in two columns, SOUND and SEQ, a row per part. In the steps a hit is a bar (a chord taller), a varied hit is in the accent colour, a hit the variation drops is a dim outline, a tie is a short bar, and a chance step is striped until it has rolled, then solid if it sounded or an outline if it did not. The glide only moves while the transport plays. STOP pauses it; PLAY carries on from there.
 
 | Knob | Name | What it does to the sound | Start |
 |---|---|---|---|
