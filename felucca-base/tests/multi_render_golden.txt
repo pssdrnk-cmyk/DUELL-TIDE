@@ -45,9 +45,10 @@
 # note-start stagger (item 144: the chords start 2 voices a block), BIT DEPTH, REVERB_FIX / SHIM / delay rounding, the factory sounds' new recipes and End B as values, the multis' ROLL B;
 # jam11 adds TIDE's roll changes and PHYS tuning. (Not compared audio against 1.0: the 1.0 tree does not build this test on Linux, nor does stock 1.1 (scenes.h / mu_put_rec).)
 # Audit P01 (2026-11-04), on purpose, 18 renders: GLIDE takes the time GLD shows (voice.c glide_set); the multis with a LEGATO part that glides between the held chord keys, M01 M08 M14 S01 S08 X08, re-made once; the others are unchanged.
-M01 f0 24363c763fdbd93e
-M01 f63 e31d0a09b0f26b7d
-M01 f127 15260cfecce9599a
+# Audit P01: the factory multis' own GLD migrated as the sounds' (their old 7-semitone glide: M01 26/26 -> 61/61, M08 38/28 -> 61/61, M14 21/26 -> 51/61): M01 M08 M14 re-made once more.
+M01 f0 8f401b317a6055d4
+M01 f63 7293c26bf03d33fc
+M01 f127 b14943c2106fd3b7
 M02 f0 54443d677cd5121f
 M02 f63 fb9618f1169b6a96
 M02 f127 0aac9715067586a7
@@ -66,9 +67,9 @@ M06 f127 87f99f42b4ea33aa
 M07 f0 b30b22c31c77df0b
 M07 f63 ea77a63cbb462649
 M07 f127 e8f06db9dfef6f4e
-M08 f0 58fd0be6f5904ec4
-M08 f63 baf1bac52658e9db
-M08 f127 974bf262fc9dd36d
+M08 f0 bd4069b19b49f39a
+M08 f63 a71947f5d7fb94ea
+M08 f127 6e6202de7a6e3de6
 M09 f0 8f02571cb790bf4d
 M09 f63 c0bbe1ac80ed9220
 M09 f127 b6d6ef6b0856d3a2
@@ -84,9 +85,9 @@ M12 f127 f9e4d2f308b95805
 M13 f0 5dee5a5baf2c6555
 M13 f63 c6f5aa46606462bd
 M13 f127 86a02b3e79d475c8
-M14 f0 ee6e6c9d3863186c
-M14 f63 80af921c10a02b94
-M14 f127 e8f1b3db33c0f588
+M14 f0 72495a610f4e0442
+M14 f63 5ba1773a0b90f779
+M14 f127 d1fe5e17de66232d
 M15 f0 fe3046207fefd6ce
 M15 f63 44637c928da763b6
 M15 f127 9d74aa30385e6f3b
