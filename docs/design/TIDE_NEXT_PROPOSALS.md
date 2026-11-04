@@ -170,7 +170,7 @@ Same setup as M7, both parts in JRNY, TARGET BOTH, the TR-6S playing kick + hats
 
 1. **Lead order.** Fixed (part 2 asks, part 1 answers, matching M8a) / swap every 8 bars. *Recommended: fixed first.* Swapping also requires swapping M8a's offset in the same expression, which is easy to add after the listening test.
 2. **How thin.** Drop half / a third / all optional hits. *Recommended: half.* "All" sounds like a dropout.
-3. **ECHO as its own value or part of LEAD?** *Owner decision (3 November): TURNS gains LEAD and ECHO as separate values*, then merge if it is always preferred.
+3. **ECHO as its own value or part of LEAD?** *Owner decision (3 November): TURNS gains LEAD and ECHO as separate values*, then merge if it is always preferred. **Decided 2026-11-04: ECHO folds into LEAD.** Planned, not built: TURNS becomes TOGETHER / TAKE TURNS / LEAD, the PEAK style uses LEAD, and a stored ECHO reads as LEAD.
 4. **Default TURNS.** *Recommended: TAKE TURNS stays the default until LEAD passes the listening test; then LEAD.*
 
 ## 3. M4/M9: ARC, build, peak, drop, breakdown
@@ -245,6 +245,8 @@ A 10-minute session per setting (OFF, RISE, DROP) with M04 DUB CHORD in JRNY, TU
 4. **Breakdown sound.** JRNY bias only / also slow the glide TIME in breakdown. *Recommended: bias only.* Changing TIME makes a second clock.
 5. **HOME during an arc.** Leaves it running (recommended) / restarts at RISE.
 6. **Arc lengths.** *Owner decision (3 November): 30–60-bar shapes.* One constant table; tune by ear.
+7. **ARC on STOP and PLAY.** **Decided 2026-11-04:** ARC resumes where it was and does not restart on STOP and PLAY. It restarts only on a load or a K1 stop. Planned, not built; the "STOP freezes, resume continues" test above is the intended behaviour.
+8. **Velocity.** **Decided 2026-11-04:** an automatic shape with no setting. RISE is louder; BREAK and the followers are softer. Planned, not built.
 
 ## 4. TIDE STYLES: one knob for the genre
 
@@ -320,6 +322,8 @@ Step through DUB, DEEP, MINIMAL, AMBIENT and PEAK for 32–64 bars each on M04 n
 
 Total: 12 of 32 record bytes. No new pages, modes or saved pattern data.
 
+Planned change (decided 4 November 2026): ECHO folds into LEAD, so the PEAK style would use LEAD where the table shows ECHO, and the TURNS row has three values.
+
 ## Budget and order
 
 Build each step on its own, measure the image after each, and do not bundle them. Suggested order: the metric helper + SYNC (smallest, needed by the others), then LEAD, then ECHO, then ARC, then STYLES. Space is not expected to be the limit (see the figures at the top). Fallback only, if a later measurement shows flash running out: the cuts in order of least loss are the ECHO value (≈ 150–200 B), the ARC status text, and the ARC sound bias (keeping rhythm-only arcs). ARC DROP's mask costs little once LEAD's mask exists.
@@ -333,3 +337,12 @@ Build each step on its own, measure the image after each, and do not bundle them
 5. The budget fits: about 25 KB flash free before the pending branches' 3–5 KB. Build in the order SYNC, LEAD, ECHO, ARC, STYLES, each measured on its own; the cut order is a fallback only.
 
 Still open, with the recommended defaults above: SYNC/TURNS/ARC defaults after listening, the push cap, lead order, thinning amount, HOME during an arc, and whether a hand drop restarts RISE.
+
+## Owner decisions, 4 November 2026
+
+Planned, not built; the plan is in [the roadmap](../ROADMAP.md#planned-work-after-the-4-november-2026-decisions).
+
+1. ECHO folds into LEAD (TURNS: TOGETHER / TAKE TURNS / LEAD). LEAD's call and response applies to lead and pluck roles only, never to chord skanks.
+2. ARC resumes on STOP and PLAY and restarts only on a load or a K1 stop.
+3. A velocity shape comes with ARC, with no setting: RISE louder, BREAK and the followers softer.
+4. A skank hit may drift at most two 16ths from its origin, and the bass never walks under PITCH ON.

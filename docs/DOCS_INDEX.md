@@ -78,7 +78,7 @@ Source and test comments cite these paths, so they stay where they are. Each say
 
 | Document | Audience | Status | Purpose |
 |---|---|---|---|
-| [TIDE_MUSICAL_DESIGN.md](design/TIDE_MUSICAL_DESIGN.md) | maintainer | current | The musical proposals for TIDE and their open decisions. |
+| [TIDE_MUSICAL_DESIGN.md](design/TIDE_MUSICAL_DESIGN.md) | maintainer | current | The musical proposals for TIDE, their decisions and the questions still open. |
 | [LIVE_GRAPHS.md](design/LIVE_GRAPHS.md) | contributor | design record | How the live graph markers work. |
 | [TIDE_NEXT_PROPOSALS.md](design/TIDE_NEXT_PROPOSALS.md) | maintainer | design record | SYNC, call and response, ARC and STYLES as proposed; all built. |
 | [MIGRATION_1_1_PLAN.md](design/MIGRATION_1_1_PLAN.md) | maintainer | design record | The move of TIDE onto DUELL 1.1 and its receipts. |
