@@ -38,19 +38,19 @@ static const int8_t MM_BAND[MMR_N][MB_N][2] = {
     /* PLUCK */ {{43, 67}, {11, 21}, {7, 31}, {0, 10}, {70, 95},  {60, 76},  {0, 5}, {0, 28},  {0, 38}, {23, 51}},
 };
 
-/* the engines' own values a SOURCE move may take, with their bands (the factory sounds' 10 .. 90 %); bright: 1 when up brightens */
-typedef struct { const char *eng; uint8_t e; int8_t lo, hi, bright, pit; } mm_src_t;   /* bright: up brightens (or turns metallic); pit: a pitch value */
-static const mm_src_t MM_ENG[] = {
-    {"ANALOG", 1, 0, 37, 0, 1}, {"ANALOG", 2, 0, 102, 0, 0},
-    {"PHASE", 2, 0, 50, 1, 0}, {"PHASE", 3, 14, 71, 1, 0}, {"PHASE", 4, 0, 13, 0, 1},
-    {"LOFI", 2, 40, 92, 0, 0}, {"LOFI", 7, 52, 110, 1, 0},
-    {"VOICE", 0, 0, 95, 0, 0}, {"VOICE", 1, 0, 127, 0, 0}, {"VOICE", 2, 20, 100, 0, 0}, {"VOICE", 4, 30, 96, 1, 0}, {"VOICE", 6, 50, 110, 1, 0},
-    {"TRIO", 3, 0, 9, 0, 1}, {"TRIO", 7, 17, 64, 0, 0},
-    {"WHEEL", 2, -4, 0, 0, 0}, {"WHEEL", 3, -8, 2, 1, 0}, {"WHEEL", 5, 0, 50, 1, 0},
-    {"PHYS", 1, 8, 116, 1, 0}, {"PHYS", 2, 47, 100, 1, 0}, {"PHYS", 3, 56, 120, 0, 0}, {"PHYS", 4, 10, 44, 0, 0},
-    {"NOISE", 1, 0, 64, 1, 0}, {"NOISE", 6, 0, 47, 0, 0},
-    {"FM6", 2, -8, 14, 1, 0}, {"FM6", 4, 0, 25, 1, 0}, {"FM6", 6, 0, 70, 1, 1},
-    {"WAVE", 1, 10, 50, 0, 0}, {"WAVE", 5, 0, 10, 0, 1},
+/* the engines' own values a SOURCE move may take, with their bands (the factory sounds' 10 .. 90 %); eng: the engine's index (engines.c ENGINES[]) */
+typedef struct { uint8_t eng, e; int8_t lo, hi, bright, pit; } mm_src_t;   /* bright: up brightens (or turns metallic); pit: a pitch value */
+static const mm_src_t MM_ENG[] = {                     /* 0 ANALOG, 2 PHASE, 3 LOFI, 5 VOICE, 6 TRIO, 7 WHEEL, 9 PHYS, 11 NOISE, 12 FM6, 14 WAVE */
+    {0, 1, 0, 37, 0, 1}, {0, 2, 0, 102, 0, 0},
+    {2, 2, 0, 50, 1, 0}, {2, 3, 14, 71, 1, 0}, {2, 4, 0, 13, 0, 1},
+    {3, 2, 40, 92, 0, 0}, {3, 7, 52, 110, 1, 0},
+    {5, 0, 0, 95, 0, 0}, {5, 1, 0, 127, 0, 0}, {5, 2, 20, 100, 0, 0}, {5, 4, 30, 96, 1, 0}, {5, 6, 50, 110, 1, 0},
+    {6, 3, 0, 9, 0, 1}, {6, 7, 17, 64, 0, 0},
+    {7, 2, -4, 0, 0, 0}, {7, 3, -8, 2, 1, 0}, {7, 5, 0, 50, 1, 0},
+    {9, 1, 8, 116, 1, 0}, {9, 2, 47, 100, 1, 0}, {9, 3, 56, 120, 0, 0}, {9, 4, 10, 44, 0, 0},
+    {11, 1, 0, 64, 1, 0}, {11, 6, 0, 47, 0, 0},
+    {12, 2, -8, 14, 1, 0}, {12, 4, 0, 25, 1, 0}, {12, 6, 0, 70, 1, 1},
+    {14, 1, 10, 50, 0, 0}, {14, 5, 0, 10, 0, 1},
 };
 
 static int mm_role(const int8_t *o)
@@ -112,7 +112,7 @@ static void mm_apply(const int8_t *o, int8_t *end, const engine_t *e, const int3
         const mm_src_t *q = &MM_ENG[i];
         uint32_t id = P_E0 + q->e;
         int32_t w = (q->hi - q->lo) / 3 + 1, lo, hi;
-        if (!str_eq(q->eng, e->name))
+        if (ENGINES[q->eng] != e)
             continue;
         lo = o[id] - w > q->lo ? o[id] - w : q->lo;
         hi = o[id] + w < q->hi ? o[id] + w : q->hi;
@@ -120,7 +120,7 @@ static void mm_apply(const int8_t *o, int8_t *end, const engine_t *e, const int3
         if (q->pit) {
             if (!(mrc & MC_PIT) || !d[MDL_PITCH])
                 continue;
-            if (str_eq(e->name, "TRIO")) {               /* (an interval an octave, past 600) */
+            if (e == &ENG_TRIO) {               /* (an interval an octave, past 600) */
                 if (d[MDL_PITCH] > 600 || d[MDL_PITCH] < -600)
                     mm_put(end, e, id, o[id] + (d[MDL_PITCH] > 0 ? 12 : -12));
             } else {
