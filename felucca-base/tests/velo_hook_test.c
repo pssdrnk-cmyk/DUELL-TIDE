@@ -234,7 +234,7 @@ static void hooks(void)
     keys_now(0);
     vh_blk(60);
 
-    /* the arp: its notes stay at 100, whatever the key's velocity */
+    /* the arp: its notes carry the key's velocity (audit S06; up to 1.1 they stayed at 100 whatever the key said) */
     vh_setup(DM_STEREO);
     sense_on();
     prime(11);
@@ -244,7 +244,7 @@ static void hooks(void)
     feed(11, 1010, 1, 2200);
     keys_now(1u << 11);
     vh_blk(40);
-    vh_check("the arp plays its notes at 100 (the key said soft)", vh_gated(&trk[0]) >= 1u && trk[0].m_vel == 100u);
+    vh_check("the arp plays its notes at the key's velocity (the key said soft: < 60)", vh_gated(&trk[0]) >= 1u && trk[0].m_vel < 60u);
     keys_now(0);
     trk[0].p[P_AMODE] = 0;
     vh_blk(60);
