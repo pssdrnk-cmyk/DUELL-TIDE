@@ -85,11 +85,10 @@ static uint32_t sqm_best(uint32_t *score, uint32_t len)
     return b;
 }
 
-static volatile uint8_t sqm_turns = 1;                  /* TURNS: 0 TOGETHER, 1 TAKE TURNS (tide_ui.c, the TIDE LIST) */
-static volatile uint32_t sqm_thin[NSHOWN][2];            /* LEAD / ECHO: the steps the follower does not play, a bit each (seq_answer.c, main loop) */
+static volatile uint8_t sqm_turns = 1;                  /* TURNS: 0 TOGETHER, 1 TAKE TURNS, 2 LEAD (tide_ui.c, the TIDE LIST; ECHO folded into LEAD, D7) */
+static volatile uint32_t sqm_thin[NSHOWN][2];            /* LEAD: the steps the follower does not play, a bit each (seq_answer.c, main loop) */
 static volatile int8_t sqm_dyn;                         /* ARC's dynamics, tarc_bright: +1 louder, -1 softer (seq_answer.c, main loop) */
-static volatile uint8_t sqm_lead;                        /* .. the parts LEAD / ECHO answer with, a bit each: lead and pluck lines (D2; seq_answer.c) */
-static int tide_echo(uint32_t pi, uint32_t idx);
+static volatile uint8_t sqm_lead;                        /* .. the parts LEAD answers with, a bit each: lead and pluck lines (D2; seq_answer.c) */
 static volatile uint8_t sqm_arc;                         /* ARC: 0 OFF, 1 RISE, 2 DROP (tide_ui.c, the TIDE LIST; seq_arc.c) */
 static volatile uint8_t tarc_dropphr = 0xFFu, tarc_thin, tarc_fast, tarc_hold;   /* seq_arc.c's planner to the audio side: the drop's phrase, the parts thinned, turns every bar, no POLY */
 static uint32_t tarc_sync(void);
@@ -294,7 +293,7 @@ static const step_t *sqm_step(const track_t *t, uint32_t idx, uint32_t vary)
         return q->aon || q->hold || (rhythm.active & (1u << pi)) ? &sqm_pat[pi][0][idx] : &t->step[idx];
     return &sqm_pat[pi][q->fader >= 1u + sqm_hash(q->tseed, idx / 4u, 9u) % 127u][idx];
 }
-/* LEAD / ECHO: part pi follows in this bar (part 2 leads bars 1-2 of 4, part 1 bars 3-4; ARC's fast turns: a bar each): a lead or pluck
+/* LEAD: part pi follows in this bar (part 2 leads bars 1-2 of 4, part 1 bars 3-4; ARC's fast turns: a bar each): a lead or pluck
  * line only (D2), and never on its own variation bar (audit C7: the ARC's 1-bar turns put part 2's bar 2 on part 1) */
 static int sqm_follows(uint32_t pi, uint32_t bar)
 {
@@ -307,7 +306,7 @@ static const step_t *seq_play_step_at(const track_t *t, uint32_t idx, uint32_t b
     uint32_t pi = (uint32_t)(t - trk), off = sqm_turns && sqm_auto == 3u && pi == 1u;   /* TAKE TURNS: part 2 two bars on, in the shared bars (bars 2 and 6) */
     uint32_t turn = ((bar + 2u * off) & 3u) == 3u;       /* (this part's own variation bar) */
     const step_t *s = sqm_step(t, idx, sqm_vary_all || !song.playing || turn);
-    /* LEAD / ECHO: the follower (sqm_follows) plays its thinned End A (onsets only: a tie after one stays silent) */
+    /* LEAD: the follower (sqm_follows) plays its thinned End A (onsets only: a tie after one stays silent) */
     if (pi < NSHOWN && song.playing && s->time == ST_NOTE) {
         /* ARC: the drop's first 2 bars, both parts in automatic WNDR / JRNY start nothing (ties and tails ring) */
         if (tarc_dropphr == ((bar >> 2) & 63u) && (bar & 3u) < 2u && ((sqm_auto >> pi) & 1u))
