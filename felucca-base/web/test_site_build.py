@@ -152,6 +152,12 @@ class Build(unittest.TestCase):
             self.assertEqual((self.out / "install" / e["file"]).stat().st_size, e["size"])
             self.assertTrue((self.out / "install" / (e["file"] + ".sha256")).read_text().startswith(e["sha256"]))
 
+    def test_newer_beta_published_before_stable_is_offered(self):   # the build date decides, not which release was created first
+        s, b = self.pkg("duell-tide-stable-2026-11-03.fwsc"), self.pkg("duell-tide-beta-2026-11-04.fwsc", extra=b"beta")
+        self.run_site("--stable-pkg", s, "--stable-info", self.info("stable", s, published_at="2026-11-04T07:00:00Z"),
+                      "--beta-pkg", b, "--beta-info", self.info("beta", b, published_at="2026-11-04T06:59:00Z"))
+        self.assertIsNotNone(self.manifest()["beta"])
+
     def test_beta_not_newer_is_dropped(self):
         s, b = self.pkg("duell-tide-stable-2026-11-03.fwsc"), self.pkg("duell-tide-beta-2026-11-02.fwsc", extra=b"b")
         self.run_site("--stable-pkg", s, "--beta-pkg", b)               # no release data: the dates in the names decide

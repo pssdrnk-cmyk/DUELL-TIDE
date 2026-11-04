@@ -56,7 +56,7 @@ def product_of(raw):
     return "".join(chr((m - i - 1) & 0xFF) for i in range(BLOCKS) if (m := raw[i * BLK + KEEP]) != 0x7D)
 
 
-PKG_NAME = re.compile(r"duell-tide-(stable|beta)-(\d{4}-\d{2}-\d{2})(?:\.\d+)?\.fwsc")
+PKG_NAME = re.compile(r"duell-tide-(stable|beta)-(\d{4}-\d{2}-\d{2})(?:\.(\d+))?\.fwsc")
 REPO = "pssdrnk-cmyk/DUELL-TIDE"
 
 
@@ -157,11 +157,11 @@ def main():
         if pkg:
             entries[channel], blobs[channel] = channel_entry(channel, Path(pkg), getattr(a, channel + "_info"))
     s_, b_ = entries["stable"], entries["beta"]
-    if s_ and b_ and s_["published_at"] and b_["published_at"] and b_["published_at"] <= s_["published_at"]:
-        notes.append(f"beta {b_['tag']} is not newer than stable {s_['tag']}: not offered")
-        entries["beta"] = b_ = None
-    elif s_ and b_ and b_["date"] < s_["date"]:
-        notes.append(f"beta {b_['tag']} is older than stable {s_['tag']}: not offered")
+    def build_key(e):                                  # the date and .N in the package name; the publishing time only breaks a tie
+        m = PKG_NAME.fullmatch(Path(e["file"]).name)
+        return (m[2], int(m[3] or 0), e.get("published_at") or "")
+    if s_ and b_ and build_key(b_) <= build_key(s_):
+        notes.append(f"beta {b_['tag']} is not a newer build than stable {s_['tag']}: not offered")
         entries["beta"] = b_ = None
 
     if out.exists():
