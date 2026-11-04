@@ -845,11 +845,20 @@ static int style_is(uint32_t k)
     return gl.mode == t[0] && gl.time == t[1] && gl.wait == t[2] && sqm_vary_all == t[3] && sqm_turns == t[4] && sqm_poly == t[5] && sqm_sync == t[6] &&
            sqm_arc == t[7] && (morph_wlvl & 3u) == t[8];
 }
+/* a TIDE record as bytes "TIDE", version, fields (the form object 48 held): placed in the settings record's tail, where TIDE keeps it now */
+static void put_rec(const uint8_t *r, uint32_t len)
+{
+    memset(tide_tail, 0, TIDE_TAIL_N);
+    memcpy(tide_tail, "TIDE", 4);
+    tide_tail[4] = (uint8_t)(len - 5u);
+    memcpy(tide_tail + 5, r + 5, len - 5u);
+}
 static void t_style(void)
 {
     uint32_t k, r, ok = 1, own = 1;
-    uint8_t b[16], rec[5 + 16] = {'T', 'I', 'D', 'E', TIDE_STORE_VER};
+    uint8_t b[16], rec[5 + 16] = {'T', 'I', 'D', 'E', 1};
     memset(nor, 0xFF, sizeof nor);
+    memset(tide_tail, 0, TIDE_TAIL_N);
     ui_power_on();
     flash_ok = 1;
     pt_boot();
@@ -909,6 +918,7 @@ static void t_style(void)
     CHECK("  .. setting the values back by hand stays CUSTOM", tide_style == STY_CUSTOM && style_is(2));
     /* the record */
     memset(nor, 0xFF, sizeof nor);
+    memset(tide_tail, 0, TIDE_TAIL_N);
     ui_power_on();
     flash_ok = 1;
     pt_boot();
@@ -924,7 +934,7 @@ static void t_style(void)
             memset(rec + 5, 0, 16);
             rec[5 + TS_MODE] = GM_LOOP, rec[5 + TS_TIME] = 2, rec[5 + TS_TARGET] = GT_BOTH, rec[5 + TS_WAIT] = 1, rec[5 + TS_WASH] = 2;
             rec[5 + TS_TURNS] = 3, rec[5 + TS_POLY] = 2, rec[5 + TS_SYNC] = 0, rec[5 + TS_ARC] = 2;
-            st_save(OBJ_TIDE, rec, 5u + L[k]);
+            put_rec(rec, 5u + L[k]);
             tide_seen_ok = 0;
             tide_style = STY_DUB;
             tide_settings();
@@ -937,19 +947,19 @@ static void t_style(void)
     for (k = 0; k < 9u; k++)
         rec[5 + (k == 0 ? TS_MODE : k == 1 ? TS_TIME : k == 2 ? TS_WAIT : k == 3 ? TS_VARY : k == 4 ? TS_TURNS : k == 5 ? TS_POLY : k == 6 ? TS_SYNC : k == 7 ? TS_ARC : TS_WASH)] = STY[4][k];
     rec[5 + TS_STYLE] = 4;
-    st_save(OBJ_TIDE, rec, 5u + TS_N);
+    put_rec(rec, 5u + TS_N);
     tide_seen_ok = 0;
     tide_style = STY_CUSTOM;
     tide_settings();
     CHECK("a 12-byte record: its style and values", tide_style == 4u && style_is(4));
     rec[5 + TS_STYLE] = 9;
-    st_save(OBJ_TIDE, rec, 5u + TS_N);
+    put_rec(rec, 5u + TS_N);
     tide_seen_ok = 0;
     tide_style = 2;
     tide_settings();
     CHECK("an out-of-range style byte: CUSTOM", tide_style == STY_CUSTOM);
     rec[5 + TS_STYLE] = 1;                                         /* DEEP's byte, PEAK's values: they differ, so CUSTOM at once */
-    st_save(OBJ_TIDE, rec, 5u + TS_N);
+    put_rec(rec, 5u + TS_N);
     tide_seen_ok = 0;
     tide_settings();
     CHECK("a style byte whose values do not match its table: CUSTOM", tide_style == STY_CUSTOM);
@@ -957,7 +967,7 @@ static void t_style(void)
     tide_store_dirty = 0;
     jl_put(JL_STYLE, 3);
     tide_settings();
-    CHECK("a style picked is marked for saving", tide_store_dirty && tide_store_n == 5u + TS_N);
+    CHECK("a style picked is marked for saving", tide_store_dirty && tide_tail[4] == TS_N);
     fm1_ms += 3000u;
     song.playing = 0;
     tide_store_poll();
@@ -974,15 +984,16 @@ static void t_style(void)
 /* ------------------------------------------------------------------------------------------------ store --- */
 static void t_store(void)
 {
-    uint8_t old[7] = {GM_WANDER, 2, GT_BOTH, 1, 1, 0, 3}, rec[5 + 16] = {'T', 'I', 'D', 'E', TIDE_STORE_VER};
+    uint8_t old[7] = {GM_WANDER, 2, GT_BOTH, 1, 1, 0, 3}, rec[5 + 16] = {'T', 'I', 'D', 'E', 1};
     uint8_t b[16];
     memset(nor, 0xFF, sizeof nor);
+    memset(tide_tail, 0, TIDE_TAIL_N);
     ui_power_on();
     flash_ok = 1;
     pt_boot();
     frame();
     memcpy(rec + 5, old, 7);
-    st_save(OBJ_TIDE, rec, 5 + 7);                       /* the first record: 7 fields */
+    put_rec(rec, 5 + 7);                       /* the first record: 7 fields */
     memset(b, 0xEE, sizeof b);
     CHECK("an older record (7 fields) loads: 7 fields read, the rest untouched", tide_store_load_min(b, TS_N, 7) == 7u && !memcmp(b, old, 7) && b[7] == 0xEEu);
     CHECK("  .. and tide_store_load(TS_N) still wants all of them", !tide_store_load(b, TS_N));
@@ -997,7 +1008,7 @@ static void t_store(void)
     CHECK("  .. nothing is written back by the load alone", !tide_store_dirty);
     sqm_turns = 0, sqm_poly = 2;
     tide_settings();
-    CHECK("a change is marked for saving with all the fields", tide_store_dirty && tide_store_n == 5u + TS_N);
+    CHECK("a change is marked for saving with all the fields", tide_store_dirty && tide_tail[4] == TS_N);
     fm1_ms += 3000u;
     song.playing = 0;
     tide_store_poll();
@@ -1008,8 +1019,8 @@ static void t_store(void)
     tide_settings();
     CHECK("  .. read back after a restart", sqm_turns == 0u && sqm_poly == 2u && gl.mode == GM_WANDER);
     {   /* the 9-byte record of the TURNS / POLY build: those two kept, SYNC at its default */
-        uint8_t r9[5 + 9] = {'T', 'I', 'D', 'E', TIDE_STORE_VER, GM_LOOP, 1, GT_SEQ, 0, 0, 1, 0, 0, 2};
-        st_save(OBJ_TIDE, r9, sizeof r9);
+        uint8_t r9[5 + 9] = {'T', 'I', 'D', 'E', 1, GM_LOOP, 1, GT_SEQ, 0, 0, 1, 0, 0, 2};
+        put_rec(r9, sizeof r9);
         tide_seen_ok = 0;
         sqm_sync = 0;
         sqm_arc = 2;
@@ -1017,12 +1028,12 @@ static void t_store(void)
         CHECK("a 9-byte record: TURNS and POLY kept, SYNC SOFT", gl.mode == GM_LOOP && sqm_turns == 0u && sqm_poly == 2u && sqm_sync == 1u && sqm_arc == 0u);
     }
     rec[5 + TS_TURNS] = 9, rec[5 + TS_POLY] = 9, rec[5 + TS_SYNC] = 9, rec[5 + TS_ARC] = 9;
-    st_save(OBJ_TIDE, rec, 5 + TS_N);
+    put_rec(rec, 5 + TS_N);
     tide_seen_ok = 0;
     tide_settings();
     CHECK("a value out of range: TURNS, POLY, SYNC at their defaults", sqm_turns == 1u && sqm_poly == 1u && sqm_sync == 1u && sqm_arc == 0u);
     rec[5 + TS_ARC] = 2;
-    st_save(OBJ_TIDE, rec, 5 + TS_N);
+    put_rec(rec, 5 + TS_N);
     tide_seen_ok = 0;
     tide_settings();
     CHECK("a full record: ARC read back", sqm_arc == 0u || sqm_arc == 2u);

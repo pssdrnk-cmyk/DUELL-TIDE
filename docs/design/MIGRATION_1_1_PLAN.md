@@ -250,7 +250,7 @@ backward FM6, filter-type and insert transitions, compared with JAM 1.0 renders 
   before `st_save` (no write per knob turn); skip while `erase_busy`; ERASE DATA already covers object 48 (audit).
 - **Plain 1.1 on a JAM unit:** `pt_scan_img` rejects the non-`PT` payload without clearing it (audit). Saving patches
   on plain 1.1 may overwrite it, which only loses JAM's settings.
-- **Backup:** the editor backup doesn't list object 48. JAM settings are outside backups (accepted, documented).
+- **Backup:** the editor backup doesn't list object 48. JAM settings are outside backups (accepted, documented). **Since `fix/prefs-backup` (D11):** the settings live in the settings record's reserved tail, so every backup holds them; object 48 is read once for migration and not written.
 - First `jam11` boot: **ERASE DATA** once, which clears 1.1's [15][22..23] bytes that still hold JAM 1.0 values (seen
   on the unit: [23] = 0x69 → NOTES LEFT OFF).
 

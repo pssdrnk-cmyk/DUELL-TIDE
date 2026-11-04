@@ -14,7 +14,7 @@ import { CATEGORIES, parseRecord } from "./patchrecord.js";
 export const PIECE = 112;                                        // data bytes of a PATCH_RAW piece (16 pack7 groups)
 const RC = { 1: "The unit refused the request (a bad slot, or a record it cannot read).", 2: "The unit found the record incomplete or damaged (checksum).",
   3: "The unit is playing and could not stop. Stop playback on the unit and try again.", 4: "The unit could not write its flash memory. The slot is as it was.",
-  5: "The transfer on the unit expired. Try again." };
+  5: "The transfer on the unit expired. Try again.", 6: "STORE FULL: the unit's patch store holds all the patches it can (126 with TIDE). Remove a saved patch on the unit, then write again." };
 const rcError = (rc, what = "") => new UnitError(`${what}${RC[rc] || `The unit answered error ${rc}.`}`, rc);
 
 export const hasRaw = (u) => !!u.info?.patchRaw;

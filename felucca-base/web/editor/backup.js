@@ -185,7 +185,7 @@ async function restore() {
   let safetyName = null;
   try {
     unitList = await listUnit(request, info.caps);
-    const plan = planRestore(archive, unitList, info.caps, sel, { includeRaw: $("includeraw").checked });
+    const plan = planRestore(archive, unitList, info.caps, sel, { includeRaw: $("includeraw").checked, patchCap: info.patchCap });
     if (!plan.steps.length) { say("status-restore", "Nothing to restore.", "warn"); say("result-restore", plan.excluded.map((x) => `${x.label}: ${x.reason}`).join("\n")); return; }
     const kinds = [...new Set(plan.steps.map((s) => s.group))].map((k) => GROUPS.find((g) => g.key === k).label.toLowerCase());
     const pw = plan.steps.filter((s) => s.key !== undefined), put = pw.filter((s) => s.size).length, gone = pw.length - put;
@@ -203,9 +203,10 @@ async function restore() {
     const r = await runRestore(request, plan, (d, t) => { const pc = d / Math.max(1, t) * 100; say("status-restore", `Restoring ${Math.round(pc)}%`); bar("bar-restore", pc); });
     const names = (ids) => ids.length ? ids.join(", ") : "none";
     if (r.failed) {
-      say("status-restore", "The restore stopped. Do not power off; restore again.", "warn");
-      say("result-restore", `${r.failed.message} (${isPatchKey(r.failed.id) ? "" : "object "}${objName(r.failed.id)}).\nWritten before it stopped: ${names(r.written.map(objName))}. Not written: ${isPatchKey(r.failed.id) ? "" : "object "}${objName(r.failed.id)} and everything after it.\n` +
-        `The unit holds a mix of its old data and the file's. Fix the cause, then restore the same file again. The safety backup ${safetyName} holds what was on the unit before.`);
+      const what = (f) => `${isPatchKey(f.id) ? "" : "object "}${objName(f.id)}`, full = r.failures.some((f) => f.rc === 6);
+      say("status-restore", `${r.failures.length === 1 ? "One object" : r.failures.length + " objects"} could not be restored.${full ? " STORE FULL." : ""} Do not power off; restore again.`, "warn");
+      say("result-restore", `${r.failures.map((f) => `${what(f)}: ${f.message}`).join("\n")}\nWritten: ${names(r.written.map(objName))}.\n` +
+        `${r.stopped ? "The restore stopped there; the objects after it were not tried. " : ""}The unit holds a mix of its old data and the file's for the objects above. Fix the cause, then restore the same file again. The safety backup ${safetyName} holds what was on the unit before.`);
       return;
     }
     say("status-restore", "Checking what was written ..");

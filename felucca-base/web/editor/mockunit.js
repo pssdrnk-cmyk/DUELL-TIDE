@@ -121,7 +121,8 @@ const BROWSE = factoryBrowse();
 
 const twRound = (x) => (x < 0 ? -Math.floor(-x + 0.5) : Math.floor(x + 0.5));   // C's (x * m + 2048) / 4096 for the sign-symmetric rounding
 export class MockUnit {
-  constructor({ caps = 63, playing = false, version = "FELUCCA DUELL 0.2.25 bet", seed = true, savedFlags = true, patchRaw = true, scope2 = true, pat32 = false, bypassCap = true, locksCap = true, morphView = false } = {}) {
+  constructor({ caps = 63, playing = false, version = "FELUCCA DUELL 0.2.25 bet", seed = true, savedFlags = true, patchRaw = true, scope2 = true, pat32 = false, bypassCap = true, locksCap = true, morphView = false, storeMax = 128 } = {}) {
+    this.storeMax = storeMax;            // the patch records the store takes (INFO 58 01): 126 on DUELL with TIDE; a new record past it is rc 6 (STORE FULL)
     this.morphView = morphView; this.shift = [new Map(), new Map()];   // item 159 (INFO 4F 01): the values read AS SHOWN at the MORPH fader; shift: a part's fader offset per id (shown = stored + offset)
     this.locksCap = locksCap; this.motion = []; this.bypassCap = bypassCap; this.pat32 = pat32; this.scope2 = scope2; this.savedFlags = savedFlags; this.patchRaw = patchRaw; this.prStage = null; this.version = version; this.caps = caps; this.playing = playing;
     this.tables = [null, null, null]; this.wtStage = null;    // the user wavetables {name, data} (caps bit 3, cmds 81..83)
@@ -200,7 +201,7 @@ export class MockUnit {
       else if (this.watchBits & 4) this.push(CMD.TRACK_CHANGED, [t, id, ...v14(this.shown(t, id))]);
     }
   }
-  get capacity() { return this.caps & 16 ? 128 : 48; }                // the patches the unit holds (INFO tag 58 01 with caps bit 4)
+  get capacity() { return this.caps & 16 ? this.storeMax : 48; }                // the patches the unit holds (INFO tag 58 01 with caps bit 4)
   get records() { return (this.caps & CAPS_PATCH_RECORDS) !== 0; }    // caps bit 5: the patches go one at a time as records (editor_backup.c); without it the unit is an older firmware: no pages, GET / PUT of 40 answer rc 1
   has(id) { return [0, 1, 2, 3, 4, 5, 8, 32, 33, 34].includes(id) || (OLD_PATCH_IDS.includes(id) ? !this.records && (id < 27 || (this.caps & 16) !== 0) : id >= 24 ? (this.caps & 8) !== 0 && id <= 26 : id >= 13 && id <= 23 && (this.caps & 4) !== 0); }
   patchBytes(slot) { const v = slot < 128 ? this.patches.get(slot) : null; return v ? this.recordOf(v).slice().fill(0, 2, 4) : null; }   // the saved record as the store gives it out (up_raw_get): slot and revision 0
@@ -614,6 +615,7 @@ export class MockUnit {
       if (RETIRED_IDS.includes(id)) { this.listed = false; return ret(0); }   // (dropped)
       if (id === PATCH_ID) {                            // the store's own check (pt_rec_ok, up_put_raw): the slot and revision bytes of the record are not looked at
         if (st.size && recordProblem(st.bytes)) return ret(2);
+        if (st.size && !this.patches.has(st.slot) && this.patches.size >= this.storeMax) return ret(6);   // STORE FULL: nothing written
         if (st.size) { this.setRecord(st.slot, st.bytes); this.log.push(`write patch ${st.slot}`); } else { this.patches.delete(st.slot); this.log.push(`remove patch ${st.slot}`); }
         this.listed = false;
         return ret(0);

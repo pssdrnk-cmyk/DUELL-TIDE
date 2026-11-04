@@ -876,15 +876,19 @@ static uint32_t tide_sig(void)
 }
 
 /* ---------------------------------------------------------------- kept over a power cycle --- */
-/* MODE, TIME, WAIT, TARGET, VARY BARS, the ROLL's MUSIC and WASH LEVEL in TIDE's own record (tide_store.c: OBJ_TIDE, patch chunk 21's
- * sector pair; plan §4.5), not in the settings record (1.1 uses the bytes JAM had there). ARP, PITCH and WILD are the morph's own byte
- * (ui.c ui_morph_cfg). The record is read once at power-on (none or damaged: the defaults; neither is written back); a change is saved ~2 s after the last one,
+/* MODE, TIME, WAIT, TARGET, VARY BARS, the ROLL's MUSIC and WASH LEVEL and the rest (TS_*) in TIDE's own record (tide_store.c: the settings record's reserved tail, so
+ * every backup holds it; an earlier build's object 48 is read once; plan §4.5), not in the bytes JAM used (1.1 uses them). ARP, PITCH and WILD are the morph's own byte
+ * (ui.c ui_morph_cfg). The record is read once at power-on and after a settings restore (none or damaged: the defaults; neither is written back); a change is saved ~2 s after the last one,
  * while stopped and not during ERASE DATA (tide_store_poll) */
 enum { TS_MODE, TS_TIME, TS_TARGET, TS_WAIT, TS_VARY, TS_MUSIC, TS_WASH, TS_OLD, TS_TURNS = TS_OLD, TS_POLY, TS_SYNC, TS_ARC, TS_STYLE, TS_N };   /* (TS_OLD: the fields of the first record; a record of that length loads, the later fields at their defaults) */
 static uint8_t tide_seen[TS_N], tide_seen_ok;
 static void tide_settings(void)
 {
     uint8_t w[TS_N];
+    if (tide_tail_new) {                                 /* a settings restore (editor_backup.c) brought other fields: read them again */
+        tide_tail_new = 0;
+        tide_seen_ok = 0;
+    }
     if (!tide_seen_ok) {
         uint8_t b[TS_N] = {[TS_TURNS] = 1u, [TS_POLY] = 1u, [TS_SYNC] = 1u, [TS_ARC] = 0u, [TS_STYLE] = STY_CUSTOM};   /* (the defaults of the fields an older record lacks) */
         uint32_t have = tide_store_load_min(b, TS_N, TS_OLD);

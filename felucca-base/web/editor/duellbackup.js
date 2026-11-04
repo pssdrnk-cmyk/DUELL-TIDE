@@ -270,7 +270,8 @@ export function readArchive(file) {
 
 // ---- the unit
 const NOTES = { 1: "The unit refused the request", 2: "The unit found the data invalid", 3: "The unit is playing. Stop playback on the unit and try again",
-                4: "The unit could not write its flash memory", 5: "The backup session on the unit expired. Start again" };
+                4: "The unit could not write its flash memory", 5: "The backup session on the unit expired. Start again",
+                6: "The unit's patch store is full (STORE FULL): delete a saved patch on the unit, then try again" };
 const rcCheck = (rc) => { if (rc) throw Object.assign(new Error(NOTES[rc] || `The unit answered error ${rc}`), { rc }); };
 export const CHUNK = 256;
 // LIST -> Map id -> {size, crc}; only the ids a DUELL backup holds are kept (the patches are not in it: LIST page)
@@ -361,6 +362,8 @@ export const rawLines = (problems, objects = null) => (problems || []).map((p) =
 // {id: 40, slot, key, size, crc, bytes, group: "patches"}: a PUT of the record, or (size 0) of nothing, which removes the slot's record. The patches are made EXACTLY the file's: one PUT
 // for each patch whose size or CRC differs on the unit (an identical one is not written again) and a removal for each slot the unit has saved and the file has not.
 // opt.includeRaw (0.2.25): also send the objects the backup could not check (the unit checks them at commit and refuses what it cannot load).
+// opt.patchCap (INFO tag 58 01, the patch records the store takes: 126 with TIDE): a file with more patches than that cannot be restored whole, so the patches are left out
+// with that reason and the other groups still go (D05). The removals of the slots the file does not have come BEFORE the patches that are written, so a nearly full store has the room.
 // A multi object whose records are of another version than this editor's firmware writes is left out unless includeRaw (the unit would refuse it).
 export function planRestore(archive, list, caps, sel, opt = {}) {
   const steps = [], excluded = [], skipped = [];
@@ -370,6 +373,7 @@ export function planRestore(archive, list, caps, sel, opt = {}) {
     if (g.key === "patches") {
       if (!archive.hasPatches) reason = archive.oldPatchChunks ? OLD_CHUNKS_NOTE.replace(/^P/, "p").replace(/\.$/, "") : "not in this file";
       else if (!((caps ?? 0) & g.caps)) reason = "this unit's firmware cannot restore patches one at a time (update it first)";
+      else if (opt.patchCap && idsOf(g, archive.objects).length > opt.patchCap) reason = `the file holds ${idsOf(g, archive.objects).length} patches and this unit stores at most ${opt.patchCap} (STORE FULL); remove some from the file or restore them later in parts`;
     } else if (g.caps && ((caps ?? 0) & g.caps) !== g.caps) reason = "this unit's firmware cannot restore them (update it first)";
     else if (!g.ids.every((id) => archive.objects.has(id))) reason = "not in this file";
     else if ((g.key === "settings" || g.key === "music") && list.get(g.ids[0])?.size !== archive.objects.get(g.ids[0]).size) reason = "the file was made by another DUELL version (its size differs from the unit's)";
@@ -395,35 +399,40 @@ export function planRestore(archive, list, caps, sel, opt = {}) {
       steps.push({ id, size: o.size, crc: o.crc, bytes: o.bytes, group: g.key });
     }
   }
-  const rank = (s) => (s.key !== undefined ? s.slot : 200 + RESTORE_ORDER.indexOf(s.id));   // the patches first, by slot
+  const rank = (s) => (s.key !== undefined ? (s.size ? s.slot : s.slot - 200) : 200 + RESTORE_ORDER.indexOf(s.id));   // the removals first (they free room), then the patches by slot, then the rest
   steps.sort((a, b) => rank(a) - rank(b));
   return { steps, excluded, skipped, caps };
 }
 // Send the steps, one object at a time (begin, 256-byte pieces, commit: the unit checks the CRC and the content, then writes; the old copy
-// stays valid until the new one is complete). A patch is a PUT of id 40 with its slot byte at the begin; every patch is its own atomic sequence. Stops at the first error.
-// Never aborts silently: the result says what was written (a patch by its key).
+// stays valid until the new one is complete). A patch is a PUT of id 40 with its slot byte at the begin; every patch is its own atomic sequence. An object that fails (a full
+// store, a flash error) is reported and the others still go (D05); only "the unit is playing" (rc 3) or no answer from the unit stops the run (`stopped`), as nothing more can be written then.
+// Never aborts silently: the result says what was written (a patch by its key) and every failure: { written, failed (the first or null), failures: [{id, message, rc}], stopped }.
 export async function runRestore(request, plan, onProgress = () => {}) {
-  const written = [], total = plan.steps.reduce((n, s) => n + s.size, 0); let done = 0;
+  let stopped = false; const written = [], failures = [], total = plan.steps.reduce((n, s) => n + s.size, 0); let done = 0;
   const put = async (args) => { const a = await request([BACKUP_CMD.PUT, args], { timeout: 6000, retries: 0 }); rcCheck(a[2]); };
   for (const s of plan.steps) {
     const at = s.key ?? s.id;
+    let failure = null;
     try {
       await put([0, s.id, ...bkU32(s.size), ...bkU32(s.crc), ...(s.key !== undefined ? [s.slot] : [])]);
-    } catch (e) { return { written, failed: { id: at, message: e.message, rc: e.rc } }; }
-    try {
-      for (let off = 0; off < s.size; off += CHUNK) {
-        const piece = s.bytes.subarray(off, off + CHUNK);
-        await put([1, s.id, ...bkU32(off), ...bkPack(piece)]);
-        done += piece.length; onProgress(done, total);
+    } catch (e) { failure = { id: at, message: e.message, rc: e.rc }; }
+    if (!failure) {
+      try {
+        for (let off = 0; off < s.size; off += CHUNK) {
+          const piece = s.bytes.subarray(off, off + CHUNK);
+          await put([1, s.id, ...bkU32(off), ...bkPack(piece)]);
+          done += piece.length; onProgress(done, total);
+        }
+        await put([2, s.id]);
+      } catch (e) {
+        await put([3, s.id]).catch(() => {});
+        failure = { id: at, message: e.message, rc: e.rc };
       }
-      await put([2, s.id]);
-    } catch (e) {
-      await put([3, s.id]).catch(() => {});
-      return { written, failed: { id: at, message: e.message, rc: e.rc } };
     }
+    if (failure) { failures.push(failure); if (failure.rc === undefined || failure.rc === 3) { stopped = true; break; } continue; }   // (playing, or no answer: nothing more can be written)
     written.push(at);
   }
-  return { written, failed: null };
+  return { written, failed: failures[0] ?? null, failures, stopped };
 }
 // After a restore: a fresh LIST (the patch pages too). The patch, multi and pattern objects must equal the file's (size and CRC; a removed patch must be gone). The music and the settings are
 // checked by the unit at commit but may read back in the unit's own normal form (an older record is brought up to date), so they are not compared.

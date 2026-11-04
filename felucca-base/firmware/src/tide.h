@@ -111,6 +111,7 @@ static int tide_store_load(uint8_t *b, uint32_t n);
 static uint32_t tide_store_load_min(uint8_t *b, uint32_t n, uint32_t min);
 static void tide_store_mark(const uint8_t *b, uint32_t n);
 static void tide_store_poll(void);
+static uint8_t tide_tail_new;                            /* settings_import (settings_persist.c) brought a TIDE record: tide_settings reads the fields again */
 static const char *tide_tl_keep(track_t *t, uint64_t was, uint32_t len);   /* (tide_ui.c) */
 static void tl_undo_take(track_t *t);                    /* (ui_tools.c, compiled after tide_ui.c) */
 static void tl_unlock(track_t *t, uint64_t was, uint32_t len);
@@ -126,7 +127,7 @@ static uint32_t tide_roll_sig(const track_t *t);
 static int tide_foot_two(void);
 #define TIDE_FOOT_PART(sel) (tide_foot_two() ? 1u : (sel))   /* the part footer row 2 names: on TIDE and TIDE SET part 2 (row 1: part 1) */
 #define TIDE_TL_DO(t, p, was, len) do { if ((p) == TL_KEEP) return tide_tl_keep((t), (was), (len)); } while (0)
-#define OBJ_TIDE (OBJ_PATCHX0 + 15u)                     /* TIDE's settings: patch chunk 21's object (storage.c, tide_store.c) */
+#define OBJ_TIDE (OBJ_PATCHX0 + 15u)                     /* patch chunk 21's object: where earlier TIDE builds kept the settings (read once, never written: tide_store.c) */
 #define TIDE_PT_NCH 21u                                  /* the patch store's chunks with TIDE: 126 saved patches at most (plan §4.5) */
 #define TIDE_MG_N 5u                                     /* ui.mg's gestures: MORPH's, GLO's and GLIDE's (tide_ui.c TIDE_G_GLIDE) */
 #define TIDE_PAGE(pg) ((pg)->scope == SC_TIDE)

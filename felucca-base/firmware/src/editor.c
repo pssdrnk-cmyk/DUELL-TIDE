@@ -85,6 +85,7 @@ static uint32_t ed_eng(const track_t *t) { return t->eng_req % NENGINES; }
  * compares and pushes CHANGED / STEP_CHANGED, or RELOAD after a load or when another
  * track was selected (v3: RELOAD and STEP_CHANGED carry the selected track). Pushes
  * go out only into a half-empty SysEx ring, so they never wait. */
+#define ED_PCAP (PT_MAX < UP_SLOTS ? PT_MAX : UP_SLOTS)    /* INFO 58 01: the patch records the store takes (TIDE: 126; else all 128 slots) */
 #define ED_PUSH_MAX 4u                                   /* frames per pass */
 #define ED_NV (P_COUNT + G_COUNT + NX)                   /* the track's parameters, the globals, then (scope 2) the track's extension slots */
 /* v4: the parameters of the tracks that are not selected which TRACK_CHANGED follows (the mixer) */
@@ -581,7 +582,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         ed_b(0x54); ed_b(1); ed_b(NUDGE_DIV);   /* 1.2: a step's nudge (1/16 step) after its ratchet; LFO 2, QNTZ */
         ed_b(0x56); ed_b(1); ed_b(FM6_NBANK);   /* 1.4.1: FM6's voice bank (cmds 74..77; SLOT 9..40 = B1..B32) */
         ed_b(0x43); ed_b(1); ed_b(ML_N);   /* 1.5: MIDI LEARN's map (cmds 78, 79; editor_learn.c) */
-        ed_b(0x58); ed_b(1); ed_b(UP_SLOTS & 127u); ed_b(UP_SLOTS >> 7);   /* DUELL 0.2.15: the patch store's capacity (all of them always fit), 14 bit */
+        ed_b(0x58); ed_b(1); ed_b(ED_PCAP & 127u); ed_b(ED_PCAP >> 7);   /* DUELL 0.2.15: the patch store's capacity, 14 bit: the slots, all of which always fit; TIDE's 21 chunks keep 126 records (a 127th is rc 6, STORE FULL) */
         ed_b(0x5A); ed_b(1); ed_b(1);   /* DUELL 0.2.19: bit 0 = PATCH_RAW (cmd 84, editor_patchraw.c): a slot's stored record read and written whole */
         ed_b(0x59); ed_b(1); ed_b(NX);  /* cloud plan job I: scope 2 (GET, SET, DESC, CHANGED, TRACK_PARAM's scope byte): the extension slots 0 .. NX-1 (ext.h) */
         ed_b(0x5B); ed_b(1); ed_b(1);   /* DUELL 1.1: bit 0 = BYPASS, cmd 89 (editor_bypass.c) */
@@ -798,7 +799,8 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
             up_values(&r, v);                              /* each value inside its range */
             for (i = 0; i < P_COUNT; i++)
                 up_set_value(&r, i, v[i]);                 /* the record's own form (v4: a byte each) */
-            rc = up_put(slot, &r) ? 2u : 0u;
+            rc = up_put(slot, &r);
+            rc = rc == PT_FULL ? 6u : rc ? 2u : 0u;        /* 6: STORE FULL (TIDE's 126 records; the 127th new one) */
         }
         ed_b(a[0]);
         ed_b(rc);
@@ -817,7 +819,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
                 nm[i] = (char)a[1 + i];
             int r;
             r = ed_flash_stop() ? 2 : up_store(a[0], nm);
-            rc = r ? 2u : 0u;
+            rc = r == PT_FULL ? 6u : r ? 2u : 0u;
             if (!r)
                 up_adopt(song.sel % NTRK, a[0]);           /* the selected part plays that slot now (as the device's SAVE) */
         }

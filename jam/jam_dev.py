@@ -68,7 +68,8 @@ DUELL_RE = re.compile(r"^(?:FELUCCA )?DUELL (\d+\.\d+(?:\.\d+)?)(?!\S)")
 PORT_RE = re.compile(r"duell", re.I)                     # the unit's USB product name; never probe other gear
 TIMEOUT_MSG = "Backup timed out. Keep the FM-1 connected and stopped."
 RC_NOTES = {1: "The unit refused the request", 2: "The unit found the data invalid", 3: "The unit is playing. Stop playback on the unit and try again",
-            4: "The unit could not write its flash memory", 5: "The backup session on the unit expired. Start again"}
+            4: "The unit could not write its flash memory", 5: "The backup session on the unit expired. Start again",
+            6: "The unit's patch store is full (STORE FULL): delete a saved patch on the unit, then try again"}
 OLD_CHUNKS_NOTE = "Patches saved by an older firmware (physical chunks) are in this file but cannot be restored."
 NO_RECORDS_NOTE = ("This unit's firmware cannot back up patches one at a time (it needs DUELL with INFO caps bit 5): this file has no patches.")
 
@@ -1125,12 +1126,17 @@ class Plan:
     caps: Optional[int]
 
 
-def _group_reason(g: Group, a: Archive, listed: dict[int, Listed], caps: int) -> Optional[str]:
+def _group_reason(g: Group, a: Archive, listed: dict[int, Listed], caps: int, patch_cap: Optional[int] = None) -> Optional[str]:
     """Why a whole group cannot be restored (duellbackup.js planRestore), None when it can."""
     if g.key == "patches":
         if not a.has_patches:
             return "patches saved by an older firmware (physical chunks) are in this file but cannot be restored" if a.old_patch_chunks else "not in this file"
-        return None if caps & g.caps else "this unit's firmware cannot restore patches one at a time (update it first)"
+        n = sum(1 for k in a.objects if is_patch_key(k))
+        if not caps & g.caps:
+            return "this unit's firmware cannot restore patches one at a time (update it first)"
+        if patch_cap and n > patch_cap:
+            return f"the file holds {n} patches and this unit stores at most {patch_cap} (STORE FULL); remove some from the file or restore them later in parts"
+        return None
     if g.caps and (caps & g.caps) != g.caps:
         return "this unit's firmware cannot restore them (update it first)"
     if not all(i in a.objects for i in g.ids):
@@ -1171,27 +1177,31 @@ def _object_steps(g: Group, a: Archive, include_raw: bool, plan: Plan) -> None:
         plan.steps.append(Step(i, o.data, g.key))
 
 
-def plan_restore(a: Archive, listed: dict[int, Listed], caps: Optional[int], include_raw: bool = False, sel: Optional[set[str]] = None) -> Plan:
-    """What a restore would send, nothing sent: patches by slot, then 13..20, 21..23, 24..26, 1, and the live music last."""
+def plan_restore(a: Archive, listed: dict[int, Listed], caps: Optional[int], include_raw: bool = False, sel: Optional[set[str]] = None,
+                 patch_cap: Optional[int] = None) -> Plan:
+    """What a restore would send, nothing sent: the removals of saved patches the file lacks first (they free room), the patches by slot, then 13..20,
+    21..23, 24..26, 1, and the live music last. patch_cap (INFO 58 01): a file with more patches than that leaves the patches out with the reason (D05)."""
     plan, c = Plan([], [], [], caps), caps or 0
     for g in GROUPS:
         if sel is not None and g.key not in sel:
             continue
-        why = _group_reason(g, a, listed, c)
+        why = _group_reason(g, a, listed, c, patch_cap)
         if why:
             plan.excluded.append((g.label, why))
         elif g.dynamic:
             _patch_steps(a, listed, include_raw, plan)
         else:
             _object_steps(g, a, include_raw, plan)
-    plan.steps.sort(key=lambda s: s.key - PATCH_KEY0 if s.patch else 200 + RESTORE_ORDER.index(s.key))
+    plan.steps.sort(key=lambda s: (s.key - PATCH_KEY0 if s.data else s.key - PATCH_KEY0 - 200) if s.patch else 200 + RESTORE_ORDER.index(s.key))
     return plan
 
 
 @dataclass
 class RestoreResult:
     written: list[int]
-    failed: Optional[tuple[int, str, Optional[int]]]     # (key, message, rc)
+    failed: Optional[tuple[int, str, Optional[int]]]     # the first failure: (key, message, rc)
+    failures: list[tuple[int, str, Optional[int]]] = field(default_factory=list)   # every failure, in the order tried (D05)
+    stopped: bool = False                                # the run was cut short: the unit is playing (rc 3) or did not answer (nothing more can be written)
 
 
 def _put(t: Transport, args: list[int]) -> None:
@@ -1221,8 +1231,9 @@ def _put_object(t: Transport, s: Step, tick: Callable[[int], None]) -> None:
 
 
 def run_restore(t: Transport, plan: Plan, progress: Optional[Progress] = None) -> RestoreResult:
-    """Send the steps one object at a time; stop at the first error and say what was written (duellbackup.js runRestore)."""
-    total, done, written = sum(len(s.data) for s in plan.steps), [0], []
+    """Send the steps one object at a time. An object that fails (a full store, a flash error) is reported and the others still go; only "the unit is
+    playing" (rc 3) or no answer stops the run. Says what was written and every failure (duellbackup.js runRestore)."""
+    total, done, written, failures, stopped = sum(len(s.data) for s in plan.steps), [0], [], [], False
 
     def tick(n: int) -> None:
         done[0] += n
@@ -1232,9 +1243,13 @@ def run_restore(t: Transport, plan: Plan, progress: Optional[Progress] = None) -
         try:
             _put_object(t, s, tick)
         except DuellError as e:
-            return RestoreResult(written, (s.key, str(e), e.rc))
+            failures.append((s.key, str(e), e.rc))
+            if e.rc is None or e.rc == 3:
+                stopped = True
+                break
+            continue
         written.append(s.key)
-    return RestoreResult(written, None)
+    return RestoreResult(written, failures[0] if failures else None, failures, stopped)
 
 
 @dataclass
@@ -1406,7 +1421,7 @@ def cmd_restore(a, conn: Conn, out, ask) -> int:
     print(f"file: a backup of {arch.firmware.removeprefix('FELUCCA ') or 'a DUELL unit'}, made {arch.created or 'an unknown date'}: {describe(arch)}", file=out)
     for line in raw_lines(arch) + arch.notes:
         print(f"  warning: {line}", file=out)
-    plan = plan_restore(arch, list_unit(conn.t, conn.info.caps), conn.info.caps, a.include_raw)
+    plan = plan_restore(arch, list_unit(conn.t, conn.info.caps), conn.info.caps, a.include_raw, patch_cap=conn.info.patch_cap)
     if not plan.steps:
         print("Nothing to restore.", file=out)
         for lab, why in plan.excluded:
@@ -1424,10 +1439,10 @@ def cmd_restore(a, conn: Conn, out, ask) -> int:
         return EXIT_FAIL
     r = run_restore(conn.t, plan, progress_printer("restore"))
     if r.failed:
-        key, msg, _rc = r.failed
-        print(f"error: the restore stopped at {name_of(key)}: {msg}.", file=sys.stderr)
-        print(f"  written before it stopped: {', '.join(map(name_of, r.written)) or 'none'}; not written: {name_of(key)} and everything after it.", file=sys.stderr)
-        print(f"  The unit holds a mix of its old data and the file's. Fix the cause and restore the same file again. {safety} holds what was on the unit before.", file=sys.stderr)
+        for key, msg, _rc in r.failures:
+            print(f"error: the restore stopped at {name_of(key)}: {msg}." if r.stopped and (key, msg, _rc) == r.failures[-1] else f"error: {name_of(key)} could not be restored: {msg}.", file=sys.stderr)
+        print(f"  written: {', '.join(map(name_of, r.written)) or 'none'}" + (f"; not written: everything after {name_of(r.failures[-1][0])}." if r.stopped else "."), file=sys.stderr)
+        print(f"  The unit holds a mix of its old data and the file's for the objects above. Fix the cause and restore the same file again. {safety} holds what was on the unit before.", file=sys.stderr)
         return EXIT_FAIL
     v = verify_restore(conn.t, plan)
     if v.differ:

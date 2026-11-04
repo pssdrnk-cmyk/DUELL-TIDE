@@ -73,7 +73,7 @@ export function bkCrc(bytes) {
   return (~c) >>> 0;
 }
 function bkCheck(rc) {
-  if (rc) throw new Error(({ 1: "Invalid archive object", 2: "Archive data failed validation", 3: "Stop playback first", 4: "Flash write failed", 5: "Start a fresh backup" })[rc] || `Archive error ${rc}`);
+  if (rc) throw new Error(({ 1: "Invalid archive object", 2: "Archive data failed validation", 3: "Stop playback first", 4: "Flash write failed", 5: "Start a fresh backup", 6: "Store full" })[rc] || `Archive error ${rc}`);
 }
 export function bkManifest(a) {
   if (a[0] !== 1) throw new Error("Unsupported archive protocol");
