@@ -560,7 +560,7 @@ static __attribute__((noinline)) void arp_fire(track_t *t, uint32_t period)
     if (t->p[P_AMODE] == AM_SEQ) {                  /* SEQ: the step pattern (chance: the arp's PROB) */
         if (ARP_UP(t))
             arp_off(t);
-        if ((uint32_t)(rng() & 127u) <= (uint32_t)t->p[P_APROB])
+        if (TIDE_APROB(t, (uint32_t)(rng() & 127u) <= (uint32_t)t->p[P_APROB]))   /* TIDE hook (H3c) */
             arp_seq(t, list, cnt, period);
         return;
     }
@@ -1303,7 +1303,7 @@ static __attribute__((noinline)) void seq_play(track_t *t, uint32_t idx, uint32_
         seq_mods_off(t);                            /* locks nor the automation (the transport, the arp and the LFO sync run on) */
         return;
     }
-    if (step_chance(s) < 100u && rng() % 100u >= step_chance(s))
+    if (TIDE_CHANCE(t, idx, s, step_chance(s) < 100u && rng() % 100u >= step_chance(s)))   /* TIDE hook (H3c) */
         skip = SEQ_MISS;
     motion_step(t, idx, m, skip == SEQ_ROLLED);
     if (t->p[P_AMODE] == AM_SEQ) {                  /* DUELL 0.2.12: the steps are the SEQUENCER arp's (offsets on the held keys, */
