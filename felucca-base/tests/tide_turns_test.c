@@ -690,8 +690,12 @@ static void t_arc(void)
                 forced = tarc.phase == AP_RISE && tarc.left > 1u;
         }
         CHECK("(fixture: in RISE)", forced);
-        CHECK("hand: a first OCT- + K2 turn arms a drop at the next phrase", !strcmp(tarc_drop_hand(), "DROP NEXT PHRASE") && tarc.left == 1u && tarc.next == AP_DROP);
-        CHECK("  .. a second turn cancels it", !strcmp(tarc_drop_hand(), "DROP CANCELLED") && tarc_dropphr == 0xFFu && tarc.next != AP_DROP);
+        {
+            uint32_t left0 = tarc.left;
+            CHECK("hand: a first OCT- + K2 turn arms a drop at the next phrase", !strcmp(tarc_drop_hand(), "DROP NEXT PHRASE") && tarc.left == 1u && tarc.next == AP_DROP);
+            CHECK("  .. a second turn cancels it", !strcmp(tarc_drop_hand(), "DROP CANCELLED") && tarc_dropphr == 0xFFu && tarc.next != AP_DROP);
+            CHECK("  .. and the RISE gets its phrases back (audit C6: the cancel does not shorten it)", tarc.left == left0 && left0 > 1u);
+        }
         tarc_drop_hand();
         for (b2 = 0; b2 < 4000000u / CTL * 4u && tarc.phase != AP_DROP; b2++) {
             arc_block(200000u + b2);

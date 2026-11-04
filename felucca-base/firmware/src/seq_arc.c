@@ -8,7 +8,7 @@
  * nothing here is saved, a power cycle starts at RISE. ARC OFF: every lever neutral, as before. The planner is main loop only; the
  * audio interrupt reads tarc_dropphr, tarc_thin, tarc_fast (seq_morph.c seq_play_step) and tarc_hold (seq_poly.c). */
 enum { AP_RISE, AP_PEAK, AP_DROP, AP_BREAK, AP_RECOVER };
-static struct { uint8_t last, phase, left, len, next, t, hand, cnt, run, phr; } tarc;
+static struct { uint8_t last, phase, left, len, next, t, hand, cnt, run, phr, hleft; } tarc;   /* hleft: the phrases left before a hand drop shortened the phase */
 
 static uint32_t tarc_rnd(uint32_t salt) { return sqm_hash(((uint32_t)morph.seed << 8) ^ tarc.cnt, (uint32_t)tarc.phr * 16u + tarc.run, 0xA4C0u + salt); }
 static uint32_t tarc_next_of(uint32_t ph)
@@ -87,12 +87,14 @@ static const char *tarc_drop_hand(void)
         tarc.hand = 0;
         tarc_dropphr = 0xFFu;
         tarc.next = (uint8_t)tarc_next_of(tarc.phase);
+        tarc.left = tarc.hleft;                          /* (audit C6: the phase gets its phrases back) */
         return "DROP CANCELLED";
     }
     if (tarc.phase == AP_DROP)
         return "DROPPING";
     tarc.hand = 1;
     tarc.next = AP_DROP;
+    tarc.hleft = tarc.left;
     if (tarc.left > 1u)
         tarc.left = 1;                                   /* (the phase ends with this phrase) */
     return "DROP NEXT PHRASE";
