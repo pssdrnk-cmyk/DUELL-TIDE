@@ -70,6 +70,7 @@ static int st_erase(uint32_t off) { (void)off; return -1; }
 static int card_hidden_vp(const int16_t *vp) { (void)vp; return 0; }
 #include "../firmware/src/editor.c"
 
+#define PCAP ED_PCAP                                     /* the patch records the store takes (INFO 58 01): TIDE 126, else 128 */
 static int check(const char *what, int ok)
 {
     printf("editor: %-70s %s\n", what, ok ? "ok" : "FAIL");
@@ -214,7 +215,7 @@ static int preferences(void)
         host_wire[n - 29] == 0x54 && host_wire[n - 28] == 1 && host_wire[n - 27] == NUDGE_DIV &&   /* 1.2: NUDGE */
         host_wire[n - 26] == 0x56 && host_wire[n - 25] == 1 && host_wire[n - 24] == 32 &&   /* 1.4.1: FM6 voice bank */
         host_wire[n - 23] == 0x43 && host_wire[n - 22] == 1 && host_wire[n - 21] == ML_N &&
-        host_wire[n - 20] == 0x58 && host_wire[n - 19] == 1 && host_wire[n - 18] == (UP_SLOTS & 127) && host_wire[n - 17] == (UP_SLOTS >> 7) &&
+        host_wire[n - 20] == 0x58 && host_wire[n - 19] == 1 && host_wire[n - 18] == (PCAP & 127) && host_wire[n - 17] == (PCAP >> 7) &&
         host_wire[n - 16] == 0x5A && host_wire[n - 15] == 1 && host_wire[n - 14] == 1 &&
         host_wire[n - 13] == 0x59 && host_wire[n - 12] == 1 && host_wire[n - 11] == NX &&   /* cloud plan job I: scope 2, the extension slots (NX) */   /* DUELL 0.2.19: PATCH_RAW */   /* DUELL 0.2.15: the patch capacity, 128 as two 7-bit bytes */   /* 1.5: MIDI LEARN */
         host_wire[n - 7] == 0x4B && host_wire[n - 6] == 1 && host_wire[n - 5] == 1 &&
@@ -633,6 +634,32 @@ static int user_preset_roundtrip(void)
         ok &= host_wire[5] == 2u && host_wire[6] == 2u && host_wire[n - 3u] == 0u && host_wire[n - 2u] == 1u && host_wire[n - 4u] == CAT_PAD;   /* (the categories, then SAVED: slot 2 factory 0, slot 3 saved 1) */
         bad += check("UP_PUT with a category (after the kind's 16 bytes; past the last: rc 1), UP_GET and UP_LIST give it", ok);
         k = k0;
+    }
+    if (PCAP < UP_SLOTS) {   /* TIDE: 126 records fit; the 127th NEW one is rc 6 (STORE FULL) from UP_PUT and UP_STORE (and tag 58 says 126), never "flash failed" */
+        uint32_t s;
+        char nm[8] = "FILL";
+        song.playing = 0;
+        for (s = 0; s < UP_SLOTS; s++)
+            if (up_used(s))
+                up_put(s, 0);
+        for (s = 0; s < PCAP; s++)
+            up_store(s, nm);
+        a[0] = UP_SLOTS - 1u;
+        a[k - 1u] = CAT_PAD;
+        request(ED_UP_PUT, a, k);
+        ok = host_wire[6] == 6u && !up_used(UP_SLOTS - 1u);
+        {
+            uint8_t sa[3] = {UP_SLOTS - 1u, 'S', 0};
+            request(ED_UP_STORE, sa, 3);
+        }
+        ok &= host_wire[6] == 6u && !up_used(UP_SLOTS - 1u) && up_count() == PCAP;
+        a[0] = 3;
+        request(ED_UP_PUT, a, k);
+        ok &= host_wire[6] != 6u && host_wire[6] != 1u;    /* (an existing slot is still rewritten: no flash here, so rc 2 as ever, never 6) */
+        bad += check("a full store (TIDE, 126 records): UP_PUT and UP_STORE of a new slot answer rc 6, an existing slot still takes its record", ok);
+        for (s = 0; s < UP_SLOTS; s++)
+            if (up_used(s))
+                up_put(s, 0);
     }
     return bad;
 }

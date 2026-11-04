@@ -36,7 +36,7 @@ Cost: about 120–180 B flash, no RAM. M7 uses it for weights, M8 for its thinni
 - Each new field is checked on load against its value count. A value out of range takes the default instead of being masked (`& 1u` would turn a future TURNS value 3 into 1). Change the TURNS check from `& 1u` to `< 4u ? v : default`.
 - Going back to older firmware is safe. The installed loader needs ≥ 7 bytes and reads only those 7. The `tide-turns` loader reads 9 of 11 and masks TURNS with `& 1u`, so a stored LEAD (2) loads as TOGETHER (0). That is harmless and is noted in the changelog.
 - Tests: extend the existing TIDE settings round trip in `tide_controls_test.c` to load 7-, 9- and 11-byte records, a short (< 7) record, a wrong version, and out-of-range new bytes. Each expects the stored fields or the defaults.
-- The editor backup still does not include object 48 (roadmap storage backlog). Nothing here changes that.
+- The editor backup did not include object 48 when this was written. Since `fix/prefs-backup` (D11) the fields live in the settings record's reserved tail and every backup holds them.
 
 Page: the TIDE SETTINGS list already scrolls (`JL_VIS` in `graph_tidelist()`). It goes from 8 rows to 10, with no new page. Each new row also needs `jl_n`, `jl_get`, `jl_vname`, `jl_put` and a `ui_message`, and must appear in the web editor's `layout.json`/`layout.js` if those mirror the rows.
 

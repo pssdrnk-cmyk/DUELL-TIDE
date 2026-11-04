@@ -207,7 +207,10 @@ static uint32_t pt_bytes_total(void)
     return n;
 }
 
-int main(void)
+#ifndef BACKUP_TEST_MAIN
+#define BACKUP_TEST_MAIN main                     /* (tests/tide_store_test.c includes this file and has its own main) */
+#endif
+int BACKUP_TEST_MAIN(void)
 {
     int bad = 0;
     uint32_t len = 0, crc = 0, before;
@@ -551,6 +554,9 @@ int main(void)
         bad += check("  and a second restore over the first (a newer revision each) leaves the same bytes", ok && up_count() == NSAVE - 1u);
         /* the records go where the store puts them: into slots other than their own too (the bytes carry no slot) */
         bad += check("  a record into another slot than it came from: the same bytes there", put_patch(9, rec[40], rlen[40], rcrc[40]) == 0 && up_raw_get(9, got) == rlen[40] && !memcmp(got, rec[40], rlen[40]));
+        if (NSAVE < UP_SLOTS)                                         /* TIDE: the store holds 126; the 127th NEW record is STORE FULL (rc 6, not "flash write failed"), nothing written */
+            bad += check("  one more NEW record: rc 6 (STORE FULL), nothing written, the others untouched", put_patch(UP_SLOTS - 1u, rec[1], rlen[1], rcrc[1]) == 6u &&
+                         !up_used(UP_SLOTS - 1u) && up_count() == NSAVE && up_raw_get(1, got) == rlen[1] && !memcmp(got, rec[1], rlen[1]));
         up_put(9, 0);
         /* refusals */
         e0 = erases;

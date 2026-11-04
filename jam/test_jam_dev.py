@@ -314,7 +314,7 @@ class RestoreTests(Base):
         self.assertRegex(out, r"Done: 20 objects written, 18 read back equal")
         self.assertTrue(any(re.match(r"DUELL-safety-backup-.*\.json$", f.name) for f in self.dir.iterdir()))
         log = after["log"]
-        self.assertEqual([x for x in log if "patch" in x], ["write patch 0", "write patch 5", "remove patch 9", "write patch 10"])
+        self.assertEqual([x for x in log if "patch" in x], ["remove patch 9", "write patch 0", "write patch 5", "write patch 10"])   # (the removals first: they free room, D05)
         self.assertEqual(log[-2:], ["write 1", "write 0"])                    # the settings, then the live music last
         safety = next(self.dir.glob("DUELL-safety-backup-*.json"))
         self.assertTrue(ctl("readArchive", text=safety.read_text())["accepted"])
@@ -336,13 +336,14 @@ class RestoreTests(Base):
         ctl("fail", id=14, op=1, rc=4)
         rc, _, err = run_main(["restore", str(p), "--yes", "--out", str(self.dir)])
         self.assertEqual(rc, 1)
-        self.assertIn("the restore stopped at object 14: The unit could not write its flash memory", err)
-        self.assertIn("written before it stopped: object 13;", err)
+        self.assertIn("object 14 could not be restored: The unit could not write its flash memory", err)
+        self.assertIn("written: object 13, object 15,", err)                 # D05: the other objects still go
         s = state()
         self.assertFalse(s["staged"])                                        # aborted
         self.assertEqual(s["objs"]["14"], mid["objs"]["14"])
-        self.assertEqual([x[:2] for x in s["sent"]][-3:], [[0, 14], [1, 14], [3, 14]])
-        self.assertNotIn("write 0", s["log"])
+        self.assertIn([0, 14], [x[:2] for x in s["sent"]])
+        self.assertIn([3, 14], [x[:2] for x in s["sent"]])                   # (the failed object was aborted)
+        self.assertIn("write 0", s["log"])                                   # the live music is still restored
 
     def test_failure_at_patch_commit(self):
         p = self.backup_file()
@@ -350,8 +351,8 @@ class RestoreTests(Base):
         ctl("fail", id=40, op=2, rc=4)
         rc, _, err = run_main(["restore", str(p), "--yes", "--out", str(self.dir)])
         self.assertEqual(rc, 1)
-        self.assertIn("patch #02", err)
-        self.assertIn("written before it stopped: none", err)
+        self.assertIn("patch #02 could not be restored", err)
+        self.assertIn("written: object 13,", err)                            # D05: the other groups still go
 
     def test_safety_backup_is_mandatory(self):
         p = self.backup_file()

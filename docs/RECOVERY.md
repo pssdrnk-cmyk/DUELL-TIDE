@@ -28,7 +28,9 @@ Plain version: **DUELL has run on two FM-1 units (the author's) and more than 10
 6. If none of this brings the unit back, you may need hardware recovery tools (such as the community FM-1-transporter) or M-VAVE support. We cannot promise either.
 
 ## The backup page
-The installer page and the editor's Backup page (<https://pssdrnk-cmyk.github.io/DUELL-TIDE/editor/backup.html>) save a file with your patches, multis, patterns, user wavetables and settings (not TIDE's own settings yet; note those down). Keep a backup before every flash.
+The installer page and the editor's Backup page (<https://pssdrnk-cmyk.github.io/DUELL-TIDE/editor/backup.html>) save a file with your patches, multis, patterns, user wavetables and settings (TIDE's own settings are in the settings from the next build on; a backup made before that has none, and restoring it leaves the unit's TIDE settings as they are). Keep a backup before every flash.
+
+**Going back to plain DUELL 1.1 is not supported.** A TIDE patch whose End B is an FM6 MORPH TO target (the destination sound with another algorithm) loses that End B on plain DUELL: plain DUELL does not read the record, the slot shows its factory sound, and the record is gone for good at the next write of that chunk. TIDE's settings are zeroed at plain DUELL's next settings save and start on DUB when TIDE is installed again. Back up before you go back, and expect to restore the patches with the editor on TIDE only.
 
 ## Your saved data
 A flash (also going back to the official firmware and installing DUELL again) keeps your saved data, so the unit comes back as it was left. To start from scratch use MENU > SYSTEM > ERASE DATA on the unit, or the installer's optional "Erase my saved data after installing" box ([INSTALL.md](INSTALL.md), "Keep or erase your data"). Back up first; it cannot be undone.
