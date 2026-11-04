@@ -50,7 +50,7 @@ On the very first start TIDE comes up ready: multi **M04 DUB CHORD**, AUTO TIDE 
 
 Each mode has its own line on the screen, so you can read what it will do. Where two very different sounds cross, TIDE passes them through a short filter dip, so the change sounds like a move rather than a cut.
 
-JRNY prefers the starting sound's category, with a broader-category fallback when needed. It keeps the current engine. See [current limits](docs/KNOWN_LIMITS.md) and the [roadmap](docs/ROADMAP.md) for the available behaviour and planned improvements.
+JRNY stays on each part's own engine, never changes it, and picks within the starting sound's role family (pads, keys and the rest; bass; lead and pluck; perc and FX), falling back to the engine's other sounds only when the family has none left. It remembers each part's last four destinations and skips them where the choice allows. See [current limits](docs/KNOWN_LIMITS.md) and the [roadmap](docs/ROADMAP.md).
 
 ### New: TIDE SETTINGS (in HOME's round)
 
@@ -68,6 +68,14 @@ JRNY prefers the starting sound's category, with a broader-category fallback whe
 | **ARC** | OFF (the default) / RISE / DROP. In automatic WNDR or JRNY the tide follows a shape of 36 to 64 bars, counted in 4-bar phrases: it **rises** (more syncopation and repeats, faster turns, brighter sounds), holds a **peak**, then eases into a thinned **breakdown** with softer sounds and recovers. DROP also drops by itself on about half of the arcs: both parts start no notes for two bars while tails and your other gear carry on. The AUTO TIDE page's status line shows the phase ("RISE 3/6", "PEAK", "DROP", "BREAK 2/3"). **Drop by hand:** hold OCT- and turn K2 on the AUTO TIDE page: the drop comes at the next phrase ("DROP NEXT PHRASE"); turn again before it to cancel. It works in RISE and DROP, and says "ARC OFF" when ARC is off. |
 | **POLY** | In automatic WNDR or JRNY one part's loop is now and then a few steps shorter, so its motif moves against the beat, then plays whole again at a phrase. OFF; **GENTLE** (the default) 15 or 14 of 16 steps, rarely; WIDE 12 to 15, more often. Only the playing changes: your stored pattern and its length are never rewritten. |
 
+### New: sounds, patterns and saving
+
+- **32 more factory sounds**, #129 to #160 (dub, deep house: pads, chords, stabs, plucks, textures), so JRNY has more to travel between. They are read-only places after the 128 (SAVE offers USER 1).
+- **Ten factory patterns** are now chords and pads for dub techno and deep house (some carry their own swing and gate). A pattern slot you never saved over takes the new pattern at power-on; a saved one is never touched. Seven factory multis that had no sequence now have one, and M16 is CELLAR TAPE.
+- **USER slots**: the last four patch slots (U1 to U4) and pattern slots (P29 to P32) are empty places for your own work (`USER EMPTY` until saved). The factory sounds and patterns they stand in for stay listed after them, read-only.
+- **MULTIS and PATTERNS** show three rows with the picked entry opened: both parts' sound names, ARP / SEQ / OFF and the first 16 steps, or NO SEQUENCE, before you load. A record that does not load reads DAMAGED.
+- **Live graphs**: the ENV, LFO, CYCLE, filter, INSERT, MATRIX and CHORD pages show a moving marker (about 15 a second; paused above 80 % CPU; MENU > ANIMATION OFF makes them still). An LFO 2 or CYCLE that nothing reads is marked PREVIEW.
+
 ### New: in the sequencer and tools
 
 - **SEQ MORPH**: a pattern has an End A and an End B too, and the tide moves the notes with the sound.
@@ -81,6 +89,8 @@ JRNY prefers the starting sound's category, with a broader-category fallback whe
 - **FM6**: a live operator level acts as a gain over the note-on envelope.
 - **UNISON**: every oscillator of an extra voice is spread; the FM6 level follows the voices running.
 - **PHYS**: the string loop is in tune.
+- **CHORD keys**: loading a sound no longer turns the chord TYPE / VOICING off; the page says NEEDS POLY or SET A SCALE when the keys cannot play the chord.
+- **GLO pages**: ALGORITHM picks the part (MIXER included).
 - Undefined arithmetic removed from MORPH, FM6, PHYS and WAVE. Each fix has a host test.
 
 ### Under the hood
@@ -129,7 +139,7 @@ ANALOG, PHASE, LOFI, VOICE, TRIO, WHEEL, PHYS, NOISE, FM6 and WAVE (with three u
 - A **SUB OSC** layer (sine, triangle, square or pulse, an octave or two down), **WAVE STEPS**, and a **CYCLE** envelope that can run as a modulation source.
 
 ### Factory content
-- **128 patches**, sorted by category (24 BASS, 19 LEAD, 21 PAD, 14 PLUCK, 16 KEYS, 7 PERC, 16 FX, 11 OTHER). The bank is levelled with each patch's TRIM. New in 1.0: **#25 DRIVEN SAW**, a driven lead that uses both filters in series. The list of numbers is [docs/PATCH_NUMBERS.md](docs/PATCH_NUMBERS.md).
+- **128 patches** (with TIDE: 160, see above), sorted by category (24 BASS, 19 LEAD, 21 PAD, 14 PLUCK, 16 KEYS, 7 PERC, 16 FX, 11 OTHER). The bank is levelled with each patch's TRIM. New in 1.0: **#25 DRIVEN SAW**, a driven lead that uses both filters in series. The list of numbers is [docs/PATCH_NUMBERS.md](docs/PATCH_NUMBERS.md).
 - **16 MULTI slots**: 15 factory multis (REESE SWAMP, NIGHT ORGAN, PAD SPLIT, DUB CHORD, WHISPER TIDE, TINE STRINGS, FINAL REEL, HAZY TENSOR, ACID ETHER, WIRED SNAIL, EERIE SIGNAL, DEAD BUFFER, COLD CHAPEL, GARGLE ACID, WOOD & SKIN), their levels balanced and each with its own End B, and M16 CELLAR TAPE (dub techno: an offbeat plucked sub under minor-ninth chord stabs). Every factory multi now has a sequence or a deliberate live part; the former M16 STRESS TEST is a test scene (tests/scenes/M16_STRESS_TEST.bin).
 - **32 patterns**, P01 to P32, all filled with a default and all overwritable.
 - Save any patch into any of the 128 slots; RESTORE brings the slot's factory sound back.

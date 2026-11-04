@@ -1,6 +1,6 @@
 # TIDE musical design notes
 
-Status: planning proposals reviewed against source `6af479d` on 3 November 2026. Active priorities and delivery order live in [the roadmap](../ROADMAP.md). No new musical firmware is implemented by this review. The separate test-tree cleanup is finished; no test changes are assigned here.
+Status: planning proposals reviewed against source `6af479d` on 3 November 2026. Active priorities and delivery order live in [the roadmap](../ROADMAP.md). No new musical firmware is implemented by this review. Since then (branch `integ`, 4 November 2026) M3 (JRNY memory and role families), M8a TURNS, M7d POLY, M7a/b SYNC, M8b/c ANSWER (LEAD / ECHO), M4/M9 ARC and STYLES have been built; see the [TIDE guide](../TIDE_GUIDE.md). The separate test-tree cleanup is finished; no test changes are assigned here.
 
 These notes preserve the owner's musical concepts, including polymeter and CHANGE/ENERGY/ARC, and their open decisions. Recheck affected source before implementation. Resource descriptions below identify work/cost risks, not measured allocations or proof that the queue fits. The installed package (`187e9d0`) has about 24.9 KB flash free after the boot pack (`ecd2918`); any newer candidate needs its own linked budget. Prior estimates and delivery receipts remain in the [historical snapshot](../history/TIDE_ROADMAP_2026-11-02.md).
 

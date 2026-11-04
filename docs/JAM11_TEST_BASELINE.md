@@ -4,6 +4,8 @@ Current maintenance priorities: [roadmap](ROADMAP.md). Totals below describe the
 
 **Latest full run (3 November 2026, Windows `sh jam/check.sh`): 112 passed, 0 failed, 25 skipped.** The test-tree cleanup (T0) is finished; the boot pack added the `bootpack` group. The 25 skips need `fork()` or an instruction counter; they run in the Linux host-test CI and in the WSL sections below.
 
+**4 November 2026, branch `integ`:** the Windows runner has since gained a real `fork()` and shared maps in `jam/wincompat` (`311dfdc`, `0bfa70b`), so the fork groups can run there and the skip count above no longer applies to a Windows run; `jam/check.sh` treats only a nonzero `FAIL` count as a failure (`f06a10a`). The totals in this file are those of the dated runs; no full run of `integ` is recorded here yet.
+
 ## Linux (WSL) groups: 3 November 2026, branch `lx-sound`
 
 `velaccent regress mod mode sounds mrender wave subcyc xvalues budget` pass in WSL (`wsl.exe -d Ubuntu -- sh jam/wsl.sh <group ...>`). The Windows check is unchanged: 111 passed, 0 failed, 25 skipped (these groups SKIP at `fork()`). No firmware change, so `check_off.sh` and `off.sha256` stay as they are. Stock 1.1 fails the same groups on Linux, so these were 1.0 expectations, not TIDE regressions.
