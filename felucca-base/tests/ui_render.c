@@ -1595,7 +1595,7 @@ static void draw(int s)
                                                    * text colour, no text drawn) over lines coloured part 1 -> part 2 of the theme (POLICE: two flat colours) */
         const ui_pal_t *pl = &UI_PALETTES[ux.pal % NPALETTES];
         uint32_t x, y, c0 = 0, c1 = 0, other = 0, ink = 0, soft = 0;
-        uint16_t top = pl->hc ? pl->c[0] : ux_mix(ux_mix(pl->c[0], pl->c[2], 0), T_BG, 18), bot = pl->hc ? pl->c[2] : ux_mix(ux_mix(pl->c[0], pl->c[2], 100), T_BG, 18);
+        uint16_t top = pl->hc ? pl->c[0] : ux_mix(ux_mix(pl->c[0], pl->c[2], 0), T_BG, SPL_LINE_DIM), bot = pl->hc ? pl->c[2] : ux_mix(ux_mix(pl->c[0], pl->c[2], 100), T_BG, SPL_LINE_DIM);
         n_text = 0;
         splash_frame(5, 0);
         for (y = 0; y < 240u; y++)                /* the ribbon's pixels: the two end colours present; POLICE: nothing but them and the page */

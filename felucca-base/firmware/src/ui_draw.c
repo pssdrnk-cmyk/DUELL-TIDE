@@ -2862,13 +2862,13 @@ static void splash_logo_draw(int32_t y0, int32_t h)
     (void)y0; (void)h;
     /* the name, DUELL with TIDE: one centred line, "with" smaller and muted on the same baseline */
     int32_t gap = 6, x = (240 - text_w(&AF_L, "DUELL") - text_w(&AF_M, "with") - text_w(&AF_L, "TIDE") - 2 * gap) / 2;
-    x = cv_text_on(x, 80 - AF_L_CAP_Y, &AF_L, "DUELL", T_TEXT, T_BG) + gap;
-    x = cv_text_on(x, 80 + AF_L_CAP_H - AF_M_CAP_H - AF_M_CAP_Y, &AF_M, "with", T_MID, T_BG) + gap;
-    cv_text_on(x, 80 - AF_L_CAP_Y, &AF_L, "TIDE", T_TEXT, T_BG);
-    cv_text_in(0, 123, 240, &AF_M, "MultiMorphing", T_TEXT, T_BG);
-    cv_text_in(0, 145, 240, &AF_M, "Bitimbral Synthesizer", T_TEXT, T_BG);
-    cv_text_in(0, 167, 240, &AF_S, "by OSCILL/R", T_TEXT, T_BG);
-    cv_text_in(0, 188, 240, &AF_S, "generative TIDE by pssdrnk", T_TEXT, T_BG);   /* the fork's part */
+    x = cv_text_on(x, 74 - AF_L_CAP_Y, &AF_L, "DUELL", T_TEXT, T_BG) + gap;   /* (the block 6 rows higher than before: ABOUT's key hints from row 206 no longer crowd the credit line) */
+    x = cv_text_on(x, 74 + AF_L_CAP_H - AF_M_CAP_H - AF_M_CAP_Y, &AF_M, "with", T_MID, T_BG) + gap;
+    cv_text_on(x, 74 - AF_L_CAP_Y, &AF_L, "TIDE", T_TEXT, T_BG);
+    cv_text_in(0, 117, 240, &AF_M, "MultiMorphing", T_TEXT, T_BG);
+    cv_text_in(0, 139, 240, &AF_M, "Bitimbral Synthesizer", T_TEXT, T_BG);
+    cv_text_in(0, 161, 240, &AF_S, "by OSCILL/R", T_TEXT, T_BG);
+    cv_text_in(0, 182, 240, &AF_S, "generative TIDE by pssdrnk", T_TEXT, T_BG);   /* the fork's part */
 #else
 
     uint16_t tx = T_TEXT;
@@ -2907,9 +2907,11 @@ static void about_keys(int32_t y)                      /* SCROLL and HEADINGS on
 static void splash_frame(uint32_t st, int32_t hint_y)
 {
 #if DUELL_TIDE
-    static const int32_t EDGE[4] = {0, 108, 188, 240};   /* the strips: no text row lies across an edge (TIDE's credit line is on rows 192 .. 206) */
+    static const int32_t EDGE[4] = {0, 102, 182, 240};   /* the strips: no text row lies across an edge (TIDE's credit line is on rows 186 .. 200) */
+#define SPL_LINE_DIM 45                                  /* the lines toward the background, %: TIDE's lockup is the fonts' thinner glyphs, which lines at 18 % crossed almost at the text's own strength (GREY) */
 #else
     static const int32_t EDGE[4] = {0, 108, 200, 240};   /* the strips: no text row lies across an edge */
+#define SPL_LINE_DIM 18
 #endif
     const ui_pal_t *pl = &UI_PALETTES[ux.pal % NPALETTES];
     uint16_t col[SPL_N];
@@ -2917,7 +2919,7 @@ static void splash_frame(uint32_t st, int32_t hint_y)
     int32_t j2;
     for (j = 0; j < (uint32_t)SPL_N; j++)               /* the part 1 colour to the part 2 colour; HC: two flat halves */
         col[j] = pl->hc ? pl->c[j >= (uint32_t)SPL_N / 2u ? 2 : 0]
-                        : ux_mix(ux_mix(pl->c[0], pl->c[2], (int32_t)j * 100 / (SPL_N - 1)), T_BG, 18);
+                        : ux_mix(ux_mix(pl->c[0], pl->c[2], (int32_t)j * 100 / (SPL_N - 1)), T_BG, SPL_LINE_DIM);
     for (band = 0; band < 3u; band++) {
         int32_t y0 = EDGE[band], h = EDGE[band + 1] - y0;
         cv_begin(240, (uint32_t)h, T_BG);
