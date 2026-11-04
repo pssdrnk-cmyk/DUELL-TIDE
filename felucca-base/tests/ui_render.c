@@ -849,9 +849,9 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_CHORD_NOSCALE, S_CHORD_NOSCALE7, S_PERFORM, S_PERFORM_HELD, S_PERFORM_SLOW, S_PERFORM_NOCLK, S_PERFORM_LAYER, S_MOD_WAVE,
        S_MOD_WAVE_SYNC, S_MOD_WAVE_E7, S_MOD_BUS, S_MOD_BUS_STEREO, S_MOD_INS_OFF, S_MOD_INS_FUZZ, S_MOD_PAN_DUEL, S_MOD_RETIRED,
        S_GUIDE1, S_GUIDE2, S_GUIDE3, S_GUIDE4, S_GUIDE5, S_GUIDE6, S_GUIDE_MSG, S_GUIDE_KNOB, S_GUIDE_OCT, S_GUIDE_ROW,
-       S_QUICK_FILTER, S_QUICK_GLO, S_MULTIS, S_MULTIS2, S_MODULES, S_MODULES_OFF, S_MODS_FX, S_MODS_ARP, S_MODS_ARP_SEQ,
+       S_QUICK_FILTER, S_QUICK_GLO, S_MULTIS, S_MULTIS2, S_MULTIS3, S_PSLOT_NOSEQ, S_MODULES, S_MODULES_OFF, S_MODS_FX, S_MODS_ARP, S_MODS_ARP_SEQ,
        S_MODS_MIXER, S_MODS_PERFORM, S_MODS_SCHAIN, S_MODS_AUTO, S_MODS_QUICK_ARP, S_MODS_MSG, S_TOOLS_RESTORE, S_PATCH_SAVE_BOTH, S_CONFIRM_RESTORE_ALL, S_PATCH_SAVE_NAMED, S_NAME_SAVE_PATCH, S_FXSUM, S_FXSUM_DUEL,
-       S_EQ_CURVE, S_EQ_CURVE2, S_COMP_CURVE, S_COMP_OFF, S_SMASTER, S_SMASTER_WIDE, S_FILT_MULTI, S_FILT_MULTI24, S_FILT_VCF, S_ARP_PATTERN, S_ARP_CHORD, S_SIDECHAIN_PARTS, S_VOICE_PATCH, S_OCTAVE, S_SPLASH_FIRST, S_GUIDE_MENU, S_ENGINE_LOFI, S_ENGINE_PHASE, S_ENGINE_VOICE, S_ENGINE_TRIO, S_ENGINE_PHYS, S_ENGINE_NOISE, S_ENGINE_WAVE, S_ENGINE_WHEEL, S_CAPSULES, S_STEREO_HOME, S_ENGINE_LIST, S_MODE_DUEL, S_SUB, S_EDIT_WAVE1, S_EDIT_VOICE1, S_CYCLE, S_TWIN, S_ABOUT_TOP, S_CYCLE2, S_CYCLE2_ALL, S_MIXER4, S_MOD_LONG, S_CONFIRM_ERASE_ALL, S_OFF_ARP, S_OFF_SEQ, S_OFF_SENDS, S_OFF_PFX, S_OFF_QARP, S_OFF_QSEQ, S_COUNT };
+       S_EQ_CURVE, S_EQ_CURVE2, S_COMP_CURVE, S_COMP_OFF, S_SMASTER, S_SMASTER_WIDE, S_FILT_MULTI, S_FILT_MULTI24, S_FILT_VCF, S_ARP_PATTERN, S_ARP_CHORD, S_SIDECHAIN_PARTS, S_VOICE_PATCH, S_OCTAVE, S_SPLASH_FIRST, S_GUIDE_MENU, S_ENGINE_LOFI, S_ENGINE_PHASE, S_ENGINE_VOICE, S_ENGINE_TRIO, S_ENGINE_PHYS, S_ENGINE_NOISE, S_ENGINE_WAVE, S_ENGINE_WHEEL, S_CAPSULES, S_STEREO_HOME, S_ENGINE_LIST, S_MODE_DUEL, S_SUB, S_EDIT_WAVE1, S_EDIT_VOICE1, S_CYCLE, S_TWIN, S_ABOUT_TOP, S_CYCLE2, S_CYCLE2_ALL, S_MIXER4, S_MOD_LONG, S_CONFIRM_ERASE_ALL, S_OFF_ARP, S_OFF_SEQ, S_OFF_SENDS, S_OFF_PFX, S_OFF_QARP, S_OFF_QSEQ, S_TIDE, S_TIDE_GLIDE, S_TIDE_BOTH, S_TIDE_BOTH_GLIDE, S_TIDE_WAIT, S_COUNT };
 static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "message_key", "message_nofile", "presets",
     "presets_nofav", "user", "phrases", "project", "tools", "pslot_empty", "pslot", "step", "auto_steps", "auto_add_chance",
     "automation", "mixer", "mixer_from_home", "mixer_pan", "env", "env_dest", "lfo", "mod", "fx", "dly", "scl", "chord", "chord_wide",
@@ -880,9 +880,9 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
     "scl_chromatic_play", "chord_noscale", "chord_noscale7", "perform", "perform_held", "perform_slow", "perform_noclock",
     "perform_layer", "mod_wave", "mod_wave_sync", "mod_wave_e7", "mod_bus", "mod_bus_stereo", "mod_ins_off", "mod_ins_fuzz",
     "mod_pan_duel", "mod_retired", "guide_1", "guide_2", "guide_3", "guide_4", "guide_5", "guide_6", "guide_message", "guide_knob",
-    "guide_octave", "menu_guide_row", "layer_quick_filter", "quick_glo", "multis", "multis_2", "modules", "modules_off", "mods_fx",
+    "guide_octave", "menu_guide_row", "layer_quick_filter", "quick_glo", "multis", "multis_2", "multis_3", "pslot_noseq", "modules", "modules_off", "mods_fx",
     "mods_arp", "mods_arp_seq", "mods_mixer", "mods_perform", "mods_schain", "mods_auto", "mods_quick_arp", "mods_msg", "tools_restore", "patches_save_both", "confirm_restore_all", "patches_save_named", "name_save_patch", "fxsum", "fxsum_duel",
-    "eq_curve", "eq_curve2", "comp_curve", "comp_off", "stereo_master", "stereo_master_wide", "filt_multi", "filt_multi24", "filt_vcf", "arp_pattern", "arp_chord", "sidechain_parts", "voice_patch", "octave", "splash_first", "guide_menu", "engine_lofi", "engine_phase", "engine_voice", "engine_trio", "engine_phys", "engine_noise", "engine_wave", "engine_wheel", "capsules", "stereo_home", "engine_list", "mode_duel", "sub", "edit_wave1", "edit_voice1", "cycle", "twin", "about_top", "cycle2", "cycle2_all", "mixer4", "mod_long", "confirm_erase_all", "off_arp", "off_seq", "off_sends", "off_pfx", "off_quick_arp", "off_quick_seq"};
+    "eq_curve", "eq_curve2", "comp_curve", "comp_off", "stereo_master", "stereo_master_wide", "filt_multi", "filt_multi24", "filt_vcf", "arp_pattern", "arp_chord", "sidechain_parts", "voice_patch", "octave", "splash_first", "guide_menu", "engine_lofi", "engine_phase", "engine_voice", "engine_trio", "engine_phys", "engine_noise", "engine_wave", "engine_wheel", "capsules", "stereo_home", "engine_list", "mode_duel", "sub", "edit_wave1", "edit_voice1", "cycle", "twin", "about_top", "cycle2", "cycle2_all", "mixer4", "mod_long", "confirm_erase_all", "off_arp", "off_seq", "off_sends", "off_pfx", "off_quick_arp", "off_quick_seq", "tide", "tide_glide", "tide_both", "tide_both_glide", "tide_wait"};
 
 /* the STEP page's piano roll (ui_graph.c graph_roll) on track 1, stopped unless said: an empty pattern; ACID in
  * A minor; POLY chords (Am7 F C G, tied); a line with ties, slides and accents in C major; LEN 32 on its second
@@ -1292,6 +1292,10 @@ static void setup(int s)
     case S_QUICK_GLO: go_title("AMP ENV"); ui.layer = LAYER_GLO; trk[0].peak = 11000; trk[1].peak = 4000; break;   /* 0.2.13 deck: GLO held, QUICK GLO (0.2.11) */
     case S_MULTIS: case S_MULTIS2:                /* 0.2.13 deck: SAVE > MULTIS, the factory multis in their 0.2.13 order (M01 REESE SWAMP loaded) */
         song.playing = 0; project_load(0); song.g[G_SLOT] = s == S_MULTIS ? 1 : 7; go_page(GR_SLOTS); ui.act = 2; ui.msg_t = 0; break;
+    case S_MULTIS3:                               /* SAVE > MULTIS with nothing loaded, M09 (an ARP part, a SEQ part) picked, K3 SAVE picked: OCT+ saves */
+        song.playing = 0; song.g[G_SLOT] = 9; go_page(GR_SLOTS); ui.act = 3; ui.msg_t = 0; break;
+    case S_PSLOT_NOSEQ:                           /* SAVE > PATTERNS, a slot that holds no steps (NO SEQUENCE), K3 SAVE picked */
+        song.playing = 0; memset(trk[0].step, 0, sizeof trk[0].step); ps_save_trk(&trk[0], 1, "NO STEPS"); go_page(GR_PATS); ui.ppick = 1; ui.act = 3; ui.msg_t = 0; break;
     case S_QUICK_ENV: go_title("LFO 1"); ui.layer = LAYER_ENV; break;
     /* DUELL 0.2.14 GLO > MODULES: the page (all ON; all OFF, its K2 just turned) and the cards a module OFF fades, with the footer's line */
     case S_MODULES: go_title("MODULES"); break;
@@ -1312,6 +1316,35 @@ static void setup(int s)
     case S_OFF_PFX: mods_put(MODS_PFX, 1u); go_title("EQ 1/2"); break;
     case S_OFF_QARP: mods_put(MODS_ARP, 1u); go_home(); ui.layer = LAYER_ARP; break;
     case S_OFF_QSEQ: mods_put(MODS_SEQ, 1u); go_home(); ui.layer = LAYER_SEQ; break;
+    /* TIDE: the AUTO TIDE page (tide_ui.c graph_tide): one part at rest (LOOP), one part gliding to B (its SOUND and SEQ faders
+     * on their way, 3/8, the progress bar), BOTH at rest, BOTH gliding (ARC's RISE), BOTH holding an arrival (WAITING) */
+    case S_TIDE: case S_TIDE_GLIDE: case S_TIDE_BOTH: case S_TIDE_BOTH_GLIDE: case S_TIDE_WAIT: {
+        uint32_t k, i, both = s == S_TIDE_BOTH || s == S_TIDE_BOTH_GLIDE || s == S_TIDE_WAIT, run = s != S_TIDE && s != S_TIDE_BOTH;
+        for (k = 0; k < 2u; k++) {
+            trk[k].p[P_SLEN] = (int16_t)(k ? 12 : 16);
+            memset(trk[k].step, 0, sizeof trk[k].step);
+            for (i = 0; i < 16u; i++)
+                if ((i + k) % 3u != 1u) {
+                    trk[k].step[i].time = ST_NOTE; trk[k].step[i].n = (uint8_t)(i % 5u == 0u ? 3u : 1u);
+                    trk[k].step[i].note[0] = (uint8_t)(48u + i); trk[k].step[i].note[1] = (uint8_t)(52u + i); trk[k].step[i].note[2] = (uint8_t)(55u + i);
+                    trk[k].step[i].vel = 100;
+                }
+            trk[k].seq_idx = 5u + k;
+        }
+        if (both) morph_set_target(1);
+        gl.mode = s == S_TIDE ? GM_LOOP : GM_WANDER; gl.on = gl.armed = gl.hold = 0;
+        go_title("AUTO TIDE");
+        if (run) {
+            song.playing = 1;
+            gl.on = 3u; gl.to = 1u; gl.mask = (uint8_t)(both ? 3u : 1u); gl.pi = 0; gl.from[0] = gl.from[1] = 10u;
+            gl.prog = (3u << GLIDE_Q) / 8u; gl.hold = (uint8_t)(s == S_TIDE_WAIT);
+            if (s != S_TIDE_BOTH_GLIDE) sqm_arc = 0;   /* (ARC off: the status line names the glide, "WNDR TO B  3/8", "WAITING  1/2"; BOTH gliding keeps ARC's "RISE 1/6") */
+            morph_do(MQ_FADER, gl.mask, 60u);
+            for (k = 0; k < 2u; k++) if ((gl.mask >> k) & 1u) seqm_set_fader(k, k ? 90u : 52u);
+        }
+        ui.force = 1;
+        break;
+    }
     case S_QUICK_ARP: go_home(); TSEL->p[P_AMODE] = 1; ui.layer = LAYER_ARP; break;
     case S_MENU_END: ui.menu = 1; ui.menu_sel = MI_COUNT - 1u; ui_prefs = 0xFF; ui_rec_prefs = 0x2A; break;   /* the last row,
                                                      * every flag set (CLICK ON, LEVEL HIGH, COUNT-IN 2 BARS) */
@@ -1562,7 +1595,7 @@ static void draw(int s)
                                                    * text colour, no text drawn) over lines coloured part 1 -> part 2 of the theme (POLICE: two flat colours) */
         const ui_pal_t *pl = &UI_PALETTES[ux.pal % NPALETTES];
         uint32_t x, y, c0 = 0, c1 = 0, other = 0, ink = 0, soft = 0;
-        uint16_t top = pl->hc ? pl->c[0] : ux_mix(ux_mix(pl->c[0], pl->c[2], 0), T_BG, 18), bot = pl->hc ? pl->c[2] : ux_mix(ux_mix(pl->c[0], pl->c[2], 100), T_BG, 18);
+        uint16_t top = pl->hc ? pl->c[0] : ux_mix(ux_mix(pl->c[0], pl->c[2], 0), T_BG, SPL_LINE_DIM), bot = pl->hc ? pl->c[2] : ux_mix(ux_mix(pl->c[0], pl->c[2], 100), T_BG, SPL_LINE_DIM);
         n_text = 0;
         splash_frame(5, 0);
         for (y = 0; y < 240u; y++)                /* the ribbon's pixels: the two end colours present; POLICE: nothing but them and the page */

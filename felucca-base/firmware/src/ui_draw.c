@@ -855,10 +855,19 @@ static const char *k1_after_next;
 static uint16_t k1_after_col;
 static uint8_t k1_after_r;
 /* the big area of an area page now (screen rows): the picture code of the page draws into rows *y .. *y + *h - 1 (x 0 .. 239). A page with a two-line card label leaves its last UT_A_LBL2_PITCH rows to the cards */
+#if DUELL_TIDE
+#define AREA_LIST_PG() (grid_on == 16 && (cur_page()->graph == GR_PATS || cur_page()->graph == GR_SLOTS))   /* SAVE > PATTERNS / MULTIS: the cards are one short row (label and key pill on one line) and the picked entry's panel sits under them (ui_graph.c list_panel) */
+#else
+#define AREA_LIST_PG() 0
+#endif
 static void area_rect(int32_t *y, int32_t *h)
 {
     *y = UT_A_GR_Y;
     *h = UT_A_GR_H - (area_two ? UT_A_LBL2_PITCH : 0);
+#if DUELL_TIDE
+    if (AREA_LIST_PG())
+        *h = LP_CARD_Y - UT_A_GR_Y;
+#endif
 }
 /* the card of knob c (1 .. 3) in the area card row: x, y, w, h (w = h = 0: no card in that column) */
 static void area_geo(uint32_t c, int32_t *x, int32_t *y, int32_t *w, int32_t *h)
@@ -872,6 +881,12 @@ static void area_geo(uint32_t c, int32_t *x, int32_t *y, int32_t *w, int32_t *h)
     *w = cols == 2u ? UT_A_W2 : UT_A_W3;
     *y = top;
     *h = UT_A_CARD_Y + UT_A_CARD_H - TIDE_CARD_LIFT() - top;
+#if DUELL_TIDE
+    if (AREA_LIST_PG()) {
+        *y = LP_CARD_Y;
+        *h = LP_CARD_H;
+    }
+#endif
 }
 static void grid_geo(uint32_t c, int32_t *x, int32_t *y, int32_t *w, int32_t *h)
 {
@@ -1127,7 +1142,12 @@ static void card_paint(const card_geo_t *g, uint32_t c, int32_t gx, int32_t gw, 
         for (i = 0; val[i] && val[i] != '\n'; i++)
             ;
         if (kn >= 0) {                                  /* "[OCT+]": the action's key pill (accent: it would act; DIM: it would not), its last row on pill_base */
-            cv_keycap(pad, g->pill_base - KC_H + 1, (uint32_t)kn, vc == T_ACCENT || vc == T_DIM ? vc : T_KEY, T_KINK, T_BG);
+            int32_t kx = pad, ky = g->pill_base - KC_H + 1;
+            if (AREA_LIST_PG()) {                       /* (SAVE > MULTIS / PATTERNS: the pill after the label, on its line: the picked action's key) */
+                kx = pad + g->lbl_dx + text_w(&AF_S, label) + 8;
+                ky = g->lbl_base - AF_S_CAP_H + 1 - HALF_UP(KC_H - AF_S_CAP_H);
+            }
+            cv_keycap(kx, ky, (uint32_t)kn, vc == T_ACCENT || vc == T_DIM ? vc : T_KEY, T_KINK, T_BG);
             ratio = -1;
         } else if (vf == &AF_S && text_w(vf, vb) + uw > room && val[i]) {   /* "DOUBLE / SINE": two lines, no bar */
             char v1[PV_LEN];
@@ -1312,6 +1332,8 @@ static void draw_card_grid(uint32_t c, const char *label, const char *val, const
     }
     if (AREA_ROW_ON) {                                  /* TEMPLATE 9 and the ENGINE page: a card of the area card row (its rows one label line lower inside the card when the page has a two-line label: the card starts that much higher) */
         card_geo_t ga = grid_on == 5 ? CGE : CGA;
+        if (AREA_LIST_PG())                             /* (SAVE > MULTIS / PATTERNS: the label on the list rows' text base) */
+            ga.lbl_base = UT_L5_TEXT_BASE;
         if (AREA_TWO) {
             ga.lbl_base = (int16_t)(ga.lbl_base + UT_A_LBL2_PITCH);
             ga.val_base = (int16_t)(ga.val_base + UT_A_LBL2_PITCH);
@@ -1813,7 +1835,7 @@ static int byp_card(const page_t *pg, const int16_t *vp)
 static void draw_act_column(uint32_t c, const char *label, uint16_t vc, uint32_t icon)   /* icon: ICON_AUTO = by label */
 {
     int picked = act_col() == c + 1u;
-    draw_column(c, label, picked || AREA_ON ? "[OCT+]" : "--", "", picked ? (act_ready() ? T_ACCENT : T_DIM) : vc, -1, icon);   /* (TEMPLATE 9, as the pictures: the OCT+ pill always, plain until the knob picks it; DIM: it cannot act) */
+    draw_column(c, label, picked || (AREA_ON && !AREA_LIST_PG()) ? "[OCT+]" : AREA_LIST_PG() ? "" : "--", "", picked ? (act_ready() ? T_ACCENT : T_DIM) : vc, -1, icon);   /* (TEMPLATE 9, as the pictures: the OCT+ pill always, plain until the knob picks it; DIM: it cannot act) */
 }
 
 /* the sound's name on the track: its slot's (a saved record's or a factory sound's), else the factory sound it plays (b holds 16) */
@@ -2605,10 +2627,10 @@ static void draw_columns(void)
         char tag[4], nm[13];
         pat_label(k, tag, nm);
 #if DUELL_TIDE
-        {                                              /* U3: the pattern the selected part plays from a slot, after the picked one on knob 1's line */
+        {                                              /* U3: the pattern the selected part plays from a slot, on knob 1's line, when the list does not show its star (the picked one is the list's) */
             static char cur_txt[16];
-            uint32_t pl = pat_last[song.sel % NTRK];
-            if (pl) {
+            uint32_t pl = pat_last[song.sel % NTRK], wf = list_first(k, n);
+            if (pl && (pl - 1u < wf || pl - 1u >= wf + LR_ROWS)) {
                 char t2[4], n2[13];
                 pat_label(pl - 1u, t2, n2);
                 str_cpy(cur_txt, "LOADED ", sizeof cur_txt);
@@ -2630,16 +2652,19 @@ static void draw_columns(void)
         int used = project_used(k);
         mu_label(val, k);
 #if DUELL_TIDE
-        {                                              /* U3: the multi loaded now, after the picked one on knob 1's line (the list and the preview show the one browsed) */
+        {                                              /* U3: the multi loaded now, on knob 1's line, when the list does not show its star (the picked one is the list's) */
             static char cur_txt[16];
-            if (project_cur_slot() < MU_SLOTS) {
-                str_cpy(cur_txt, "LOADED ", sizeof cur_txt);
-                mu_label(cur_txt + 7, project_cur_slot());
-            } else
-                str_cpy(cur_txt, "NOTHING LOADED", sizeof cur_txt);
-            k1_after_next = cur_txt;
-            k1_after_col = T_ACCENT;
-            k1_after_r = 1;
+            uint32_t wf = list_first(k, MU_SLOTS), cs = project_cur_slot();
+            if (cs >= MU_SLOTS || cs < wf || cs >= wf + LR_ROWS) {
+                if (cs < MU_SLOTS) {
+                    str_cpy(cur_txt, "LOADED ", sizeof cur_txt);
+                    mu_label(cur_txt + 7, cs);
+                } else
+                    str_cpy(cur_txt, "NOTHING LOADED", sizeof cur_txt);
+                k1_after_next = cur_txt;
+                k1_after_col = T_ACCENT;
+                k1_after_r = 1;
+            }
         }
 #endif
         draw_column(0, "SLOT", val, "", VAL(0u), (int32_t)k * 1000 / (int32_t)(MU_SLOTS - 1u), ICON_AUTO);
@@ -2837,13 +2862,13 @@ static void splash_logo_draw(int32_t y0, int32_t h)
     (void)y0; (void)h;
     /* the name, DUELL with TIDE: one centred line, "with" smaller and muted on the same baseline */
     int32_t gap = 6, x = (240 - text_w(&AF_L, "DUELL") - text_w(&AF_M, "with") - text_w(&AF_L, "TIDE") - 2 * gap) / 2;
-    x = cv_text_on(x, 80 - AF_L_CAP_Y, &AF_L, "DUELL", T_TEXT, T_BG) + gap;
-    x = cv_text_on(x, 80 + AF_L_CAP_H - AF_M_CAP_H - AF_M_CAP_Y, &AF_M, "with", T_MID, T_BG) + gap;
-    cv_text_on(x, 80 - AF_L_CAP_Y, &AF_L, "TIDE", T_TEXT, T_BG);
-    cv_text_in(0, 123, 240, &AF_M, "MultiMorphing", T_TEXT, T_BG);
-    cv_text_in(0, 145, 240, &AF_M, "Bitimbral Synthesizer", T_TEXT, T_BG);
-    cv_text_in(0, 167, 240, &AF_S, "by OSCILL/R", T_TEXT, T_BG);
-    cv_text_in(0, 188, 240, &AF_S, "generative TIDE by pssdrnk", T_TEXT, T_BG);   /* the fork's part */
+    x = cv_text_on(x, 74 - AF_L_CAP_Y, &AF_L, "DUELL", T_TEXT, T_BG) + gap;   /* (the block 6 rows higher than before: ABOUT's key hints from row 206 no longer crowd the credit line) */
+    x = cv_text_on(x, 74 + AF_L_CAP_H - AF_M_CAP_H - AF_M_CAP_Y, &AF_M, "with", T_MID, T_BG) + gap;
+    cv_text_on(x, 74 - AF_L_CAP_Y, &AF_L, "TIDE", T_TEXT, T_BG);
+    cv_text_in(0, 117, 240, &AF_M, "MultiMorphing", T_TEXT, T_BG);
+    cv_text_in(0, 139, 240, &AF_M, "Bitimbral Synthesizer", T_TEXT, T_BG);
+    cv_text_in(0, 161, 240, &AF_S, "by OSCILL/R", T_TEXT, T_BG);
+    cv_text_in(0, 182, 240, &AF_S, "generative TIDE by pssdrnk", T_TEXT, T_BG);   /* the fork's part */
 #else
 
     uint16_t tx = T_TEXT;
@@ -2882,9 +2907,11 @@ static void about_keys(int32_t y)                      /* SCROLL and HEADINGS on
 static void splash_frame(uint32_t st, int32_t hint_y)
 {
 #if DUELL_TIDE
-    static const int32_t EDGE[4] = {0, 108, 188, 240};   /* the strips: no text row lies across an edge (TIDE's credit line is on rows 192 .. 206) */
+    static const int32_t EDGE[4] = {0, 102, 182, 240};   /* the strips: no text row lies across an edge (TIDE's credit line is on rows 186 .. 200) */
+#define SPL_LINE_DIM 45                                  /* the lines toward the background, %: TIDE's lockup is the fonts' thinner glyphs, which lines at 18 % crossed almost at the text's own strength (GREY) */
 #else
     static const int32_t EDGE[4] = {0, 108, 200, 240};   /* the strips: no text row lies across an edge */
+#define SPL_LINE_DIM 18
 #endif
     const ui_pal_t *pl = &UI_PALETTES[ux.pal % NPALETTES];
     uint16_t col[SPL_N];
@@ -2892,7 +2919,7 @@ static void splash_frame(uint32_t st, int32_t hint_y)
     int32_t j2;
     for (j = 0; j < (uint32_t)SPL_N; j++)               /* the part 1 colour to the part 2 colour; HC: two flat halves */
         col[j] = pl->hc ? pl->c[j >= (uint32_t)SPL_N / 2u ? 2 : 0]
-                        : ux_mix(ux_mix(pl->c[0], pl->c[2], (int32_t)j * 100 / (SPL_N - 1)), T_BG, 18);
+                        : ux_mix(ux_mix(pl->c[0], pl->c[2], (int32_t)j * 100 / (SPL_N - 1)), T_BG, SPL_LINE_DIM);
     for (band = 0; band < 3u; band++) {
         int32_t y0 = EDGE[band], h = EDGE[band + 1] - y0;
         cv_begin(240, (uint32_t)h, T_BG);
