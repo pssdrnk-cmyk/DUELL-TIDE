@@ -52,6 +52,7 @@ static uint8_t in_key;                   /* the key (+ 1) whose notes go into in
  * note (a CHRD chord's other notes). Out of track_t: its size stays as the audio ISR's trk[] indexing wants it */
 static uint8_t held_key[NTRK][16];
 static int8_t held_dt[NTRK][16];
+static uint8_t arp_key_vel[NTRK];        /* the velocity of the newest key the track's arp was given (0: none yet; the arp plays 100 then) */
 static volatile uint8_t kb_asleep;       /* MENU > SCREEN OFF (ui.c): the screen dark or waking, a key pressed now only
                                           * wakes it (silent, no layer, its release nothing) */
 static uint8_t last_note = 60;
@@ -281,6 +282,8 @@ _Static_assert(AM_SEQ == AM_SEQ_ID, "core.h arp_mode: the SEQUENCER mode's value
 
 #include "midi_grid.c"       /* external clock: exact progress in musical units and fractional carries (fix A) */
 
+static uint32_t arp_vel(const track_t *t) { return arp_key_vel[trk_index(t)] ? arp_key_vel[trk_index(t)] : 100u; }
+
 /* an arp note 0 (C-1) is a sounding note: its value reads as none, arp_nz says it sounds (bit 0 arp_note, 1..3 arp_ch) */
 #define ARP_UP(t) ((t)->arp_note | ((t)->arp_nz & 1u))
 #define ARP_CH_UP(t) ((t)->arp_ch[0] | (t)->arp_ch[1] | (t)->arp_ch[2] | ((t)->arp_nz & 14u))
@@ -327,8 +330,8 @@ static __attribute__((noinline)) void arp_chord(track_t *t, const uint32_t *list
             continue;                               /* (notes clamped onto the top one: once) */
         arp_put(t, i, nt);
         if (rec_on(t))
-            rec_note(t, nt, 100);
-        arp_note_on(t, nt, 100);
+            rec_note(t, nt, arp_vel(t));
+        arp_note_on(t, nt, arp_vel(t));
     }
 }
 
@@ -354,7 +357,7 @@ static uint32_t arp_seq_notes(track_t *t, const uint32_t *list, uint32_t n, uint
         if (j == m && m < 4u)
             out[m++] = (uint8_t)nt;
     }
-    *vel = (s->flags & SF_ACCENT) ? 127u : 100u;
+    *vel = (s->flags & SF_ACCENT) ? 127u : arp_vel(t);
     return m;
 }
 
@@ -518,7 +521,7 @@ static __attribute__((noinline)) int arp_roll(const track_t *t)
  * units stay on the last note */
 static __attribute__((noinline)) void atg_fire(track_t *t, uint32_t *list, uint32_t cnt, uint32_t len, uint32_t period)
 {
-    uint32_t nt = 128, vel = 100, i, m, o;
+    uint32_t nt = 128, vel = arp_vel(t), i, m, o;
     uint8_t out[4];
     if (ARP_UP(t))
         arp_off(t);                                 /* (a classic step's note: the mask just changed) */
@@ -582,8 +585,8 @@ static __attribute__((noinline)) void arp_fire(track_t *t, uint32_t period)
         }
         arp_put(t, 0, list[j]);
         if (rec_on(t))
-            rec_note(t, t->arp_note, 100);           /* recording: what the arp plays */
-        arp_note_on(t, t->arp_note, 100);
+            rec_note(t, t->arp_note, arp_vel(t));    /* recording: what the arp plays */
+        arp_note_on(t, t->arp_note, arp_vel(t));
     }
 }
 
@@ -784,6 +787,7 @@ static __attribute__((noinline)) void cin_keep(track_t *t, uint32_t note, uint32
 static void input_on(track_t *t, uint32_t note, uint32_t vel)
 {
     last_note = (uint8_t)note;
+    arp_key_vel[trk_index(t)] = (uint8_t)vel;       /* (the arp plays the newest key's velocity) */
     if (cin_left)
         cin_keep(t, note, vel);
     if (rec_on(t) && !arp_mode(t))                 /* (ARP on: arp_tick records its notes) */
@@ -1819,11 +1823,12 @@ static void events_block(uint32_t n)
         seq_audition();                               /* (STEP PREVIEW: a step sounds, stopped) */
     uint32_t beat_adv = clock_mode ? midi_grid_advance(&midi_beat_grid, arp_n, 0u) : arp_n;
     TIDE_BEAT_BLOCK(beat_adv);                         /* TIDE hook (H3) */
-    for (i = 0; i < NSHOWN; i++)                      /* (tracks 3, 4: never step) */
+    uint32_t armed = clock_mode && song.playing && !midi_clock.have_pulse;   /* Start waits: step 0 (and the click) go with the first clock (midi_clock_pulse) */
+    for (i = 0; i < NSHOWN && !armed; i++)            /* (tracks 3, 4: never step) */
         seq_tick(&trk[i], seq_n);
     if (cin_flush)
         cin_record();
-    if (song.playing)
+    if (song.playing && !armed)
         click_tick(seq_n);
     for (i = 0; i < NSHOWN; i++) {
         uint32_t an = clock_mode ? midi_grid_advance(&midi_arp_grid[i], arp_n, (uint32_t)trk[i].p[P_ARATE]) : arp_n;
