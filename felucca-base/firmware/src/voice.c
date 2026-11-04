@@ -4,13 +4,15 @@
  * Runs in the audio ISR.
  *
  * Each synth part has its own NVOICE voices (so MONO / LEGATO / UNISON keep using
- * v[0..]); VPOOL (DUELL 1.1: 2 x NVOICE, each part its own) of all the parts' voices sound at once: a part that starts
- * a voice while the budget is full takes one from any part (voice_victim): the oldest
- * released voice, else the oldest extra UNISON voice, else the oldest held voice of a
- * POLY part that is not its lowest note. A voice taken from another part fades out
- * over one block (stage 4: the envelope goes to 0, the block's amplitude ramp
- * declicks it); one of the part's own is restarted in place, as before. Extra UNISON
- * voices only start when there is room. */
+ * v[0..]); VPOOL (DUELL 1.1: 2 x NVOICE, each part its own) of all the parts' voices sound at once. With the two parts
+ * of the unit the pool can never be full while a part has a voice to start (the part's own voices are at most NVOICE, so
+ * the other part holds at most the rest): a part steals only within its own voices (a note over its number restarts the
+ * oldest released voice, else the oldest held one, in place: voice_alloc). Only the host rig with NPART 4 (tests/regress.c)
+ * can fill the pool, and keeps voice_victim: a part that starts a voice while the budget is full takes one from any
+ * part: the oldest released voice, else the oldest extra UNISON voice, else the oldest held voice of a POLY part that is
+ * not its lowest note. A voice taken from another part fades out over one block (stage 4: the envelope goes to 0, the
+ * block's amplitude ramp declicks it); one of the part's own is restarted in place. Extra UNISON voices only start when
+ * there is room. */
 static uint32_t vage;                                   /* voice ages: one clock for every part */
 /* an LFO's WAVE (N_LWAVE) at phase ph; rnd: its S&H value of the cycle */
 static int32_t lfo_wave_of(int32_t wave, uint32_t rnd, uint32_t ph)
@@ -125,6 +127,7 @@ static uint8_t bnotes1[NTRK];                           /* DUELL 1.1 item 90: th
 static volatile uint8_t bd_one_now;                     /* DUELL 1.1 item 90: 1 = the audio plays both parts on core 0 right now (core 1 down, paused, or a flash park: twocore_run.c tcr_begin sets it
                                                          * every block): the note-on path and the counter use bnotes1. 0 in every one-core build */
 #define VPOOL (NVOICE * 2u)                             /* DUELL 1.1 item 90: the voices that may sound at once over both parts: each part its own NVOICE (was NVOICE shared); the NOTES budget holds the CPU */
+_Static_assert(NPART > 2 || NPART * NVOICE <= VPOOL, "voice.c: with two parts a part that has a voice to start must find the pool not full (the steal code is built only for NPART > 2)");
 #if DUELL_VCAP
 static const struct { const engine_t *e; uint8_t c; } VCOST[] = {   /* (tests/cpu_scenarios_test.c CPU_SCEN=P: the heaviest sound, its voices) */
     {&ENG_ANALOG, 51}, {&ENG_FM6, 61}, {&ENG_PHASE, 40}, {&ENG_LOFI, 24}, {&ENG_FORMANT, 60}, {&ENG_TRIO, 44}, {&ENG_WHEEL, 59},
@@ -261,6 +264,7 @@ static uint32_t lowest_held(const track_t *t)           /* index of the lowest h
     return low;
 }
 
+#if NPART > 2                                           /* (the unit's two parts never fill the pool: see the top. Only the host rig with four parts) */
 /* the voice to give up for a new one (see the top); soft: only released voices and
  * extra voices of other non-POLY parts (also ones left after a mode change).
  * Returns its index, *pp its part; NVOICE = none */
@@ -295,6 +299,7 @@ static uint32_t voice_victim(const track_t *self, int soft, track_t **pp)
     }
     return best;
 }
+#endif
 
 static uint32_t voice_kills;                            /* voices given up (budget, overload): console, hostsim */
 static void voice_kill(voice_t *v)                      /* fade out over the next block (env_tick stage 4) */
@@ -346,6 +351,7 @@ static uint32_t voice_trim_now(track_t *t)
 }
 #endif
 
+#if NPART > 2
 /* the budget is full: free a voice for part t. 0 = nothing to take (soft) */
 static int voice_room(track_t *t, int soft)
 {
@@ -360,6 +366,9 @@ static int voice_room(track_t *t, int soft)
     voice_kill(&vp->v[k]);
     return 1;
 }
+#else
+#define voice_room(t, soft) 1                           /* NPART 2: each part owns NVOICE of the VPOOL, so a part with a voice to start never finds the pool full */
+#endif
 
 static voice_t *voice_reuse(track_t *t, voice_t *v)
 {
@@ -373,19 +382,25 @@ static voice_t *voice_reuse(track_t *t, voice_t *v)
  * the next one round-robin (release tails ring out), REUSE (or any GLIDE) takes
  * the free voice whose last pitch is closest, so poly portamento moves each
  * voice the shortest way. Steal: the oldest released voice, else the oldest
- * held one, never the lowest held note (the bass). A free voice needs room in the
- * shared budget: when the voice to give up is one of this part's, it is restarted
- * in place instead. */
+ * held one, never the lowest held note (the bass). (NPART 4 host rig only: a free voice
+ * needs room in the shared budget; when the voice to give up is one of this part's, it is
+ * restarted in place instead.) */
 static voice_t *voice_alloc(track_t *t, uint32_t note)
 {
-    uint32_t i, np = trk_nvoice(t), best = np, low = np, nfree = 0;
+    uint32_t i, np = trk_nvoice(t), best = np, low = np;
+#if NPART > 2
+    uint32_t nfree = 0;
+#endif
     int32_t bd = 0x7FFFFFFF;
     voice_trim(t);
     for (i = 0; i < np; i++) {
         if (t->v[i].active && t->v[i].note == note)
             return voice_reuse(t, &t->v[i]);
+#if NPART > 2
         nfree += !t->v[i].active;
+#endif
     }
+#if NPART > 2
     if (nfree && voices_busy() >= VPOOL) {
         track_t *vp = 0;
         uint32_t k = voice_victim(t, 0, &vp);
@@ -394,6 +409,7 @@ static voice_t *voice_alloc(track_t *t, uint32_t note)
         if (k < NVOICE)
             voice_kill(&vp->v[k]);
     }
+#endif
     if (t->p[P_GLIDE]) {                                /* (T0227, owner: the stored VOICE ALLOCATION is ignored: ROTATE always; with GLIDE the free voice nearest in pitch, as ever) */
         for (i = 0; i < np; i++) {
             int32_t d = t->v[i].pitch_cur - (int32_t)note * 16;
