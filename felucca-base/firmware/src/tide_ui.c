@@ -97,7 +97,7 @@ static void tide_keep_sound(uint32_t pi)
     MORPH_UNLOCK();
     morph_rebase_part(pi);
 }
-/* KEEP (SEQ TOOLS, G4: ui_tools.c TL_KEEP; plan H14): what part pi plays now becomes its own, one undo for both halves (SAVE held:
+/* KEEP (SEQ TOOLS, G4: ui_tools.c TL_KEEP; plan H14): what part pi plays now becomes its own, one undo for both halves (OCT- + a PRESETS turn:
  * the pattern and, when the sound was kept, the sound). The pattern half: the SEQ MORPH's variation as it plays (seqm_keep, 1.1's
  * ties); steps it empties lose their locks (tl_unlock). The message; 0 = nothing to keep (said) */
 static const char *tide_tl_keep(track_t *t, uint64_t was, uint32_t len)
@@ -376,6 +376,11 @@ static const uint8_t JFAM[CAT_N] = {
     [CAT_KEYS] = FAM_HARM, [CAT_PERC] = FAM_PERC, [CAT_FX] = FAM_TEXT, [CAT_OTHER] = FAM_TEXT};
 typedef char jfam_covers_every_category[CAT_N == 9 ? 1 : -1];
 static uint32_t fam_of(uint32_t cat) { return cat < CAT_N ? JFAM[cat] : FAM_HARM; }
+/* the part's sound is in the BASS family (a factory sound's category, or the USER record's): the pitch walk leaves it alone (seq_evolve.c) */
+static int tide_bass_part(const track_t *t)
+{
+    return fam_of(UP_REC_USER(t) ? sl_cat((uint32_t)t->user - 1u) : ds_cat_of(t->eng_req, t->preset)) == FAM_BASS;
+}
 /* the candidates pick[0..n) of part k without its last h targets, for the most h that leaves any (the oldest forgiven first: a
  * group of four or fewer sounds still turns); n unchanged where none is in the history or the memory is empty */
 static uint32_t jh_filter(uint32_t k, uint32_t e, uint32_t *pick, uint32_t n)
@@ -876,15 +881,19 @@ static uint32_t tide_sig(void)
 }
 
 /* ---------------------------------------------------------------- kept over a power cycle --- */
-/* MODE, TIME, WAIT, TARGET, VARY BARS, the ROLL's MUSIC and WASH LEVEL in TIDE's own record (tide_store.c: OBJ_TIDE, patch chunk 21's
- * sector pair; plan §4.5), not in the settings record (1.1 uses the bytes JAM had there). ARP, PITCH and WILD are the morph's own byte
- * (ui.c ui_morph_cfg). The record is read once at power-on (none or damaged: the defaults; neither is written back); a change is saved ~2 s after the last one,
+/* MODE, TIME, WAIT, TARGET, VARY BARS, the ROLL's MUSIC and WASH LEVEL and the rest (TS_*) in TIDE's own record (tide_store.c: the settings record's reserved tail, so
+ * every backup holds it; an earlier build's object 48 is read once; plan §4.5), not in the bytes JAM used (1.1 uses them). ARP, PITCH and WILD are the morph's own byte
+ * (ui.c ui_morph_cfg). The record is read once at power-on and after a settings restore (none or damaged: the defaults; neither is written back); a change is saved ~2 s after the last one,
  * while stopped and not during ERASE DATA (tide_store_poll) */
 enum { TS_MODE, TS_TIME, TS_TARGET, TS_WAIT, TS_VARY, TS_MUSIC, TS_WASH, TS_OLD, TS_TURNS = TS_OLD, TS_POLY, TS_SYNC, TS_ARC, TS_STYLE, TS_N };   /* (TS_OLD: the fields of the first record; a record of that length loads, the later fields at their defaults) */
 static uint8_t tide_seen[TS_N], tide_seen_ok;
 static void tide_settings(void)
 {
     uint8_t w[TS_N];
+    if (tide_tail_new) {                                 /* a settings restore (editor_backup.c) brought other fields: read them again */
+        tide_tail_new = 0;
+        tide_seen_ok = 0;
+    }
     if (!tide_seen_ok) {
         uint8_t b[TS_N] = {[TS_TURNS] = 1u, [TS_POLY] = 1u, [TS_SYNC] = 1u, [TS_ARC] = 0u, [TS_STYLE] = STY_CUSTOM};   /* (the defaults of the fields an older record lacks) */
         uint32_t have = tide_store_load_min(b, TS_N, TS_OLD);

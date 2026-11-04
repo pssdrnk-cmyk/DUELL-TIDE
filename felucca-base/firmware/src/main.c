@@ -268,8 +268,10 @@ static void fm1_main(void)
         felucca_dbg.stage = 1;
         ui_input();
         wave_service();                               /* DUELL WAVE: a frame of a table build, if one waits (eng_wave.c) */
-        vcap_poll();                                  /* DUELL 0.2.11: the parts' VOICE CAP (voice.c) */
-        budget_poll();                                /* DUELL: the parts' NOTES budget (budget.c; the stricter of it and the VOICE CAP holds) */
+#if DUELL_VCAP
+        vcap_poll();                                  /* DUELL 0.2.11: the parts' VOICE CAP (voice.c; bench builds: it holds while the budget is held open) */
+#endif
+        budget_poll();                                /* DUELL: the parts' NOTES budget (budget.c) */
 #if DUELL_TWOCORE
         tc_watch(fm1_ms);                             /* the second core's safety net (twocore.c) */
         tc_trim_poll();                               /* (the jobs paused or core 1 stopped: notes above a part's number fade at once: twocore_run.c) */

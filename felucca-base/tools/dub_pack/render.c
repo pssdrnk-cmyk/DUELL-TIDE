@@ -32,7 +32,6 @@ static void dp_fresh(void)
     morph_musical = 1;
 #endif
     song.sel = 0;
-    vcap[0] = vcap[1] = 0;
     song.playing = 0;
     transport_req = 0;
 }

@@ -240,8 +240,8 @@ const KEYS = [1000, 1001, 1005, 1064];
   const rq = (r, o) => C.request(r, o);
   const plan = planRestore(archive, await listUnit(rq, 63), 63, all);
   const puts = plan.steps.filter((s) => s.key !== undefined);
-  ok(same(puts.map((s) => s.slot), [5, 9, 100]) && same(puts.map((s) => s.size > 0), [true, false, false]) && plan.skipped.join() === "1000,1001,1064" && puts.filter((s) => !s.size).every((s) => s.id === 40 && s.crc === 0 && s.bytes.length === 0),
-     "plan: one PUT for the patch that differs (slot 5), one PUT of length 0 for each slot the unit has saved and the file has not (9, 100); the identical ones (0, 1, 64) are skipped");
+  ok(same(puts.map((s) => s.slot), [9, 100, 5]) && same(puts.map((s) => s.size > 0), [false, false, true]) && plan.skipped.join() === "1000,1001,1064" && puts.filter((s) => !s.size).every((s) => s.id === 40 && s.crc === 0 && s.bytes.length === 0),
+     "plan: the removals first (D05: slots 9 and 100, a PUT of length 0 for each slot the unit has saved and the file has not), then the one PUT for the patch that differs (slot 5); the identical ones (0, 1, 64) are skipped");
   const r = await runRestore(rq, plan);
   const v = await verifyRestore(rq, plan);
   ok(r.failed === null && !C.objs.has(15) && bkCrc(C.objs.get(22)) === bkCrc(A.objs.get(22)) && v.differ.length === 0 && patchRows(C) === patchRows(A) && !C.patches.has(9) && !C.patches.has(100) && C.log.includes("remove patch 9") && C.log.includes("remove patch 100"),
@@ -278,27 +278,51 @@ const KEYS = [1000, 1001, 1005, 1064];
   const rq = (r, o) => E.request(r, o);
   const plan = planRestore(archive, await listUnit(rq, 63), 63, all);
   const r = await runRestore(rq, plan);
-  ok(r.failed?.id === 14 && /flash/.test(r.failed.message) && r.written.join() === "1000,1001,1005,1064,13" && !E.objs.has(14) && bkCrc(E.objs.get(0)) === bkCrc(new MockUnit({ seed: false }).objs.get(0)) && E.staged === null, "restore: a flash error in object 14 stops there, the four patches and object 13 are named as written, nothing after");
+  ok(r.failed?.id === 14 && r.failures.length === 1 && /flash/.test(r.failed.message) && r.written.join() === "1000,1001,1005,1064,13,15,16,17,18,19,20,21,22,23,24,25,26,1,0" && !E.objs.has(14) && E.objs.has(0) && E.staged === null, "restore: a flash error in object 14 is reported (D05) and every other object is still written, the settings and the music included");
   const P = new MockUnit({ seed: false }); P.fail = { id: 40, op: 2, rc: 4 };
   const rp = await runRestore((r2, o) => P.request(r2, o), planRestore(archive, await listUnit((r2, o) => P.request(r2, o), 63), 63, all));
-  ok(rp.failed?.id === 1000 && rp.failed.rc === 4 && rp.written.length === 0 && P.patches.size === 0 && P.staged === null && /patch #01/.test(objectLabel(rp.failed.id)), "restore: a flash error at the commit of the first patch stops there (rc 4, the failed patch named by its key), nothing written");
+  ok(rp.failed?.id === 1000 && rp.failed.rc === 4 && rp.failures.map((f) => f.id).join() === "1000,1001,1005,1064" && rp.written.length === 16 && P.patches.size === 0 && P.staged === null && /patch #01/.test(objectLabel(rp.failed.id)), "restore: a flash error at the commit of every patch (rc 4) reports all four by their keys (D05: not just the first) and writes the other groups");
   const F = new MockUnit({ seed: false });
   const rq2 = (r, o) => F.request(r, o);
   const plan2 = planRestore(archive, await listUnit(rq2, 63), 63, all);
   F.playing = true;
   const r2 = await runRestore(rq2, plan2);
-  ok(r2.failed?.rc === 3 && /Stop playback/.test(r2.failed.message) && r2.written.length === 0 && F.objs.size === 5 && F.patches.size === 0, "restore while the unit plays (rc 3): nothing written, the message says stop playback");
+  ok(r2.failed?.rc === 3 && r2.stopped && r2.failures.length === 1 && /Stop playback/.test(r2.failed.message) && r2.written.length === 0 && F.objs.size === 5 && F.patches.size === 0, "restore while the unit plays (rc 3): nothing written, the message says stop playback");
+  const Z = new MockUnit({ seed: false }), rz = (r, o) => Z.request(r, o);
+  let nz = 0;
+  const rt = await runRestore(async (q, o) => { if (q[0] === 67 && ++nz === 5) throw new Error("timed out"); return rz(q, o); }, planRestore(archive, await listUnit(rz, 63), 63, all));
+  ok(rt.stopped && rt.failures.length === 1 && rt.failed.rc === undefined && /timed out/.test(rt.failed.message) && rt.written.length < 20, "restore: no answer from the unit (a timeout) stops the run (nothing more can be written); the failure is reported");
   const G = new MockUnit({ seed: false, caps: 3 });                // the page would not offer it; if the unit refuses at begin it is reported, never skipped
   const plan3 = planRestore(archive, await listUnit((r, o) => G.request(r, o)), 7, new Set(["multis"]));
   const r3 = await runRestore((r, o) => G.request(r, o), plan3);
-  ok(r3.failed?.id === 13 && r3.failed.rc === 1 && r3.written.length === 0, "restore: an object the unit refuses at begin (rc 1) is reported as failed, not skipped");
+  ok(r3.failed?.id === 13 && r3.failed.rc === 1 && r3.failures.length === 8 && r3.written.length === 0, "restore: an object the unit refuses at begin (rc 1) is reported as failed, not skipped");
   const Q = new MockUnit({ seed: false, caps: 31 }), pq = planRestore(archive, await listUnit((r, o) => Q.request(r, o)), 63, new Set(["patches"]));
   const rq3 = await runRestore((r, o) => Q.request(r, o), pq);
-  ok(rq3.failed?.id === 1000 && rq3.failed.rc === 1 && Q.patches.size === 0, "restore: a patch PUT sent to a unit without caps bit 5 is refused at begin (rc 1) and reported");
+  ok(rq3.failed?.id === 1000 && rq3.failed.rc === 1 && rq3.failures.length === 4 && Q.patches.size === 0, "restore: a patch PUT sent to a unit without caps bit 5 is refused at begin (rc 1) and reported");
   const H = new MockUnit({ seed: false }); H.fail = { id: 21, op: 2, rc: 2 };
   const plan4 = planRestore(archive, await listUnit((r, o) => H.request(r, o), 63), 63, all);
   const r4 = await runRestore((r, o) => H.request(r, o), plan4);
-  ok(r4.failed?.id === 21 && r4.written.includes(20) && !r4.written.includes(1) && !r4.written.includes(0) && bkCrc(H.objs.get(0)) === bkCrc(new MockUnit({ seed: false }).objs.get(0)), "restore: the unit refusing a commit (rc 2) stops before the settings and the music");
+  ok(r4.failed?.id === 21 && r4.failures.length === 1 && r4.written.includes(20) && r4.written.includes(22) && r4.written.includes(1) && r4.written.includes(0), "restore: the unit refusing a commit (rc 2) is reported and the settings and the music are still restored (D05)");
+}
+{   // D04 / D05: a nearly full store (DUELL with TIDE holds 126 records; the mock holds 4 here): STORE FULL is told as such, the removals go first, every failure is reported
+  const S = new MockUnit({ seed: false, storeMax: 4 }), rq = (r, o) => S.request(r, o);
+  for (const k of [7, 8, 9, 10]) S.setRecord(k, buildPatchRecord({ name: `OLD ${k}` }));
+  S.rebuild();
+  const info4 = parseInfo(await S.request([1, []]));
+  ok(info4.patchCap === 4, "mock: INFO 58 01 says the records the store takes (4 here, 126 on TIDE)");
+  const listS = await listUnit(rq, 63), planS = planRestore(archive, listS, 63, new Set(["patches"]), { patchCap: 4 });
+  ok(planS.steps.slice(0, 4).every((s) => !s.size) && planS.steps.slice(4).every((s) => s.size) && planS.steps.length === 8, "plan: the removals of the unit's four saved patches come BEFORE the four patches that are written (a full store has the room then)");
+  const runS = await runRestore(rq, planS);
+  ok(runS.failed === null && runS.failures.length === 0 && S.patches.size === 4 && [...S.patches.keys()].sort((x, y) => x - y).join() === "0,1,5,64", "restore into a full store: removals first, then all four patches take (no rc 6)");
+  // a file with more patches than the unit takes: left out with the reason, the other groups still restored
+  const T = new MockUnit({ seed: false, storeMax: 3 }), rt = (r, o) => T.request(r, o);
+  const planT = planRestore(archive, await listUnit(rt, 63), 63, all, { patchCap: 3 });
+  ok(planT.excluded.some((x) => x.key === "patches" && /4 patches and this unit stores at most 3/.test(x.reason)) && planT.steps.every((s) => s.key === undefined) && planT.steps.length === 16, "plan: a file with more patches than the unit stores is left out with the reason (STORE FULL), the 16 other objects stay in the plan");
+  // the same without the pre-check (an older editor flow): the unit answers rc 6, it is reported by name with the STORE FULL text, and the other groups are still written
+  const U2 = new MockUnit({ seed: false, storeMax: 2 }), ru = (r, o) => U2.request(r, o);
+  const runU = await runRestore(ru, planRestore(archive, await listUnit(ru, 63), 63, all));
+  ok(runU.failures.length === 2 && runU.failures.every((f) => f.rc === 6 && /STORE FULL/.test(f.message)) && runU.failures.map((f) => f.id).join() === "1005,1064" && runU.written.length === 18 && U2.patches.size === 2 && U2.objs.has(0) && U2.objs.has(1),
+     "restore: a store that is full answers rc 6 for the patches that do not fit; both are reported by key with 'STORE FULL', the two that fit and every other group are written");
 }
 {   // the unit's own rules for PUT 40, over the wire
   const U = new MockUnit({ seed: false }), rq = (r, o) => U.request(r, o), rec = buildPatchRecord({ name: "WIRE" }), crc = bkCrc(rec);

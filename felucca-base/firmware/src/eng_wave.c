@@ -909,6 +909,7 @@ static __attribute__((noinline)) void wave_steps(track_t *t, voice_t *v, vmod_t 
     m->shape = (64 << 8) + k * (127 << 8) / n1 - base;
 }
 
+#if DUELL_PRESETS                                     /* (Felucca's engine presets: no firmware code reads them since the factory sounds of sounds.c; the host tests do: core.h) */
 static const preset_t WAVE_PRESETS[] = {
     /* name, {TABLE, POS, BEND, SYNC, -, DTN, STEPS, -}, {A D S R}, fenv, mono: the host tests' renders and costs (tests/regress.c);
      * DUELL's factory sounds are tools/duell_sounds.py's. The last one is the costliest voice: SYNC, BEND and DTN at once (E5 was the engine's own SUB until cloud job J) */
@@ -922,6 +923,7 @@ static const preset_t WAVE_PRESETS[] = {
     {"BENT DIGI", {10, 60, 60, 0, 0, 0, 0, 0}, {0, 90, 60, 50}, 0, 0, FX(0, 20, 30, 40), PAT(7)},
     {"ALL ON", {11, 80, 50, 60, 0, 12, 0, 0}, {10, 90, 100, 60}, 0, 0, FX(0, 30, 20, 40), PAT(5)},
 };
+#endif
 
 static const uint8_t WAVE_UIORD[8] = {0, 1, 6, 3, 5, 2, 4, 7};   /* card position -> E index (DUELL 1.1, owner): ENGINE TABLE POS STEPS (K4: it sits with POSITION under the picture); EDIT 1 SYNC DTN BEND and the unused SUB slot (hidden); the stored ids never move */
 
@@ -938,8 +940,10 @@ static const engine_t ENG_WAVE = {
         {"STEPS", F_ENUM, 0, 18, 0, N_WV_STEPS, 0},
         {"-", F_INT, 0, 0, 0, 0, 0},
     },
+#if DUELL_PRESETS
     .presets = WAVE_PRESETS,
     .npresets = NELEM(WAVE_PRESETS),
+#endif
     .note_on = wave_note_on,
     .render = wave_render,
     .block = wave_block,

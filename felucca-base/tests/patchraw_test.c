@@ -483,7 +483,7 @@ int main(void)
             rc = pr_all(k, W[k], lw[k]);
         ck("the worst record into every slot the store takes through PATCH_RAW: every write rc 0, whatever the other slots hold", !rc);
         if (NSAVE < UP_SLOTS)
-            ck("  TIDE: one more NEW record is refused (the store is full), nothing lost", pr_all(NSAVE, W[NSAVE], lw[NSAVE]) != 0u && !up_used(NSAVE) && up_count() == NSAVE);
+            ck("  TIDE: one more NEW record is refused with rc 6 (STORE FULL), nothing lost", pr_all(NSAVE, W[NSAVE], lw[NSAVE]) == 6u && !up_used(NSAVE) && up_count() == NSAVE);
         for (k = 0; k < NSAVE; k++)
             good += pr_read(k, G, &gl) == 1 && gl == lw[k] && same_but_pos(k, W[k], lw[k]) && !memcmp(G + 7, W[k] + 7, 12);
         ck("  each slot reads back its own record, the slot bytes the unit's", good == NSAVE);

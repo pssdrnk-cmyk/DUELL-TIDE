@@ -311,6 +311,7 @@ static void wheel_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
         out[i] += voice_amp(acc[i] >> 1, m, i) * 2;
 }
 
+#if DUELL_PRESETS                                     /* (Felucca's engine presets: no firmware code reads them since the factory sounds of sounds.c; the host tests do: core.h) */
 static const preset_t WHEEL_PRESETS[] = {
     /* name, {REG, -, BODY, TOP, PERC, CLICK, DRIVE, ROTR}, {A D S R}, fenv, mono (E2 was SUB until cloud job J) */
     {"FULL ORGAN", {15, 0, 0, 0, 0, 30, 20, 1}, {0, 64, 127, 45}, 0, 0, FX(0, 0, 10, 35), PAT(5)},
@@ -319,6 +320,7 @@ static const preset_t WHEEL_PRESETS[] = {
     {"SOFT FLUTE", {1, 0, -2, 0, 0, 10, 0, 1}, {0, 64, 127, 55}, 0, 0, FX(0, 20, 15, 55), PAT(5)},
     {"ROCK DRIVE", {7, 0, 0, 0, 0, 70, 100, 2}, {0, 64, 127, 40}, 0, 0, FX(35, 0, 10, 25), PAT(4)},
 };
+#endif
 
 static const uint8_t WHEEL_UIORD[8] = {0, 2, 3, 4, 5, 6, 7, 1};   /* card position -> E index: ENGINE REG BODY TOP; EDIT 1 PERC CLICK DRV ROTR; the unused SUB slot last (EDIT 2 is not shown); the stored ids never move */
 
@@ -335,8 +337,10 @@ static const engine_t ENG_WHEEL = {
         {"DRV", F_PCT, 0, 127, 0, 0, 0},
         {"ROTR", F_ENUM, 0, 2, 1, N_DRW_ROTR, 0},
     },
+#if DUELL_PRESETS
     .presets = WHEEL_PRESETS,
     .npresets = NELEM(WHEEL_PRESETS),
+#endif
     .note_on = wheel_note_on,
     .render = wheel_render,
     .knob = {P_E0, P_E4, P_E6, P_E7},

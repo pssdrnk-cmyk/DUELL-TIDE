@@ -292,53 +292,62 @@ static void t_store(void)
 {
     uint8_t b[8], w[7] = {1, 2, 3, 0, 1, 1, 2};
     fresh();
+    memset(tide_tail, 0, TIDE_TAIL_N);
+    memset(tide_tail_saved, 0, TIDE_TAIL_N);
     CHECK("store: a new unit has no record (the defaults)", !tide_store_load(b, 7));
     tide_store_mark(w, 7);
+    CHECK("store: a change is in the record at once (a backup reads it)", tide_store_load(b, 7) && !memcmp(b, w, 7));
     fm1_ms += 1000u;
     tide_store_poll();
-    CHECK("store: nothing written before 2 s", !tide_store_load(b, 7) && tide_store_dirty);
+    CHECK("store: nothing saved before 2 s", tide_store_dirty && !persist_pending);
     song.playing = 1;
     fm1_ms += 1500u;
     tide_store_poll();
-    CHECK("store: never while playing", !tide_store_load(b, 7));
+    CHECK("store: never while playing", tide_store_dirty && !persist_pending);
     song.playing = 0;
     tide_store_poll();
-    CHECK("store: written once quiet, read back", tide_store_load(b, 7) && !memcmp(b, w, 7) && !tide_store_dirty);
+    CHECK("store: saved once quiet (settings_save: written at once, nothing sounds)", !tide_store_dirty && !persist_pending);
     {
-        uint8_t r[16] = {'T', 'I', 'D', 'E', 2, 1, 2, 3, 0, 1, 1, 2};
-        st_save(OBJ_TIDE, r, 12);
-        CHECK("store: another version: the defaults", !tide_store_load(b, 7));
-        r[4] = TIDE_STORE_VER;
-        r[1] = 'X';
-        st_save(OBJ_TIDE, r, 12);
-        CHECK("store: a damaged mark: the defaults", !tide_store_load(b, 7));
-        r[1] = 'I';
-        st_save(OBJ_TIDE, r, 9);
+        persist_t p;
+        CHECK("store: .. and written into the settings record's tail", !persist_pending && st_load(OBJ_SETTINGS, &p, sizeof p) == (int)sizeof p &&
+              !memcmp(p.map_tail + TIDE_TAIL_AT, "TIDE", 4) && p.map_tail[TIDE_TAIL_AT + 4] == 7u && !memcmp(p.map_tail + TIDE_TAIL_AT + 5, w, 7) && !p.map_tail[0] && !p.map_tail[31]);
+        p.map_tail[TIDE_TAIL_AT + 1] = 'X';              /* a damaged mark: no record */
+        memset(tide_tail, 0xEE, TIDE_TAIL_N);
+        settings_import(&p, sizeof p);
+        CHECK("store: a damaged mark is not taken (the unit's own stays)", tide_tail[0] == 0xEEu);
+        memset(tide_tail, 0, TIDE_TAIL_N);
+        CHECK("store: no record: the defaults", !tide_store_load(b, 7));
+        p.map_tail[TIDE_TAIL_AT + 1] = 'I';
+        p.map_tail[TIDE_TAIL_AT + 4] = 5;                /* a short record */
+        settings_import(&p, sizeof p);
         CHECK("store: a short record: the defaults", !tide_store_load(b, 7));
-        st_save(OBJ_TIDE, r, 12);
+        p.map_tail[TIDE_TAIL_AT + 4] = 7;
+        settings_import(&p, sizeof p);
         CHECK("store: a whole one: read", tide_store_load(b, 7) && !memcmp(b, w, 7));
     }
-    /* a failing write is paced, not repeated at every poll (F04): one attempt, then a retry after the pacing interval */
+    /* a failing write is paced, not repeated at every poll (F04): one attempt, then a retry after the pacing interval (settings_poll) */
+    w[0] = 2;
     tide_store_mark(w, 7);
     fm1_ms += 2500u;
     nor_fail = 1; nor_ops = 0;
+    tide_store_poll();
     for (b[0] = 0; b[0] < 100; b[0]++)
-        tide_store_poll();
-    CHECK("store: a failed write is tried once for 100 polls", nor_ops == 1 && tide_store_dirty);
+        settings_poll();
+    CHECK("store: a failed write is tried once for 100 polls", nor_ops == 1 && persist_pending == 2u);
     nor_ops = 0;
     fm1_ms += 2500u;
-    tide_store_poll();
-    CHECK("store: .. tried again after the pacing interval", nor_ops == 1 && tide_store_dirty);
+    settings_poll();
+    CHECK("store: .. tried again after the pacing interval", nor_ops == 1 && persist_pending == 2u);
     nor_fail = 0;
     fm1_ms += 2500u;
-    tide_store_poll();
-    CHECK("store: .. a success clears dirty", !tide_store_dirty && tide_store_load(b, 7));
+    settings_poll();
+    CHECK("store: .. a success clears it", !persist_pending && tide_store_load(b, 7) && b[0] == 2u);
     CHECK("store: ERASE DATA runs", erase_data_run() == 0);
     CHECK("store: .. and wipes it", !tide_store_load(b, 7));
     tide_store_mark(w, 7);
     fm1_ms += 3000u;
     tide_store_poll();
-    CHECK("store: nothing written while the erase's restart is due", !tide_store_load(b, 7) && tide_store_dirty);
+    CHECK("store: nothing queued while the erase's restart is due", tide_store_dirty && !persist_pending);
     erase_at = 0;
 }
 

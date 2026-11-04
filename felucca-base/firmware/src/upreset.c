@@ -15,7 +15,7 @@
  * The limit is HONEST and it is the slot count: PT_WORST is the largest record there can be (an FM6 sound with its patch, a SEQ-mode arp
  * with a full 16-step pattern, End B, a shadow marker, every parameter off its default), PT_K of them fit a chunk with its header,
  * PT_MAX = PT_NCH x PT_K records of any kind always fit: 22 x 6 = 132 >= 128 = UP_SLOTS, so without TIDE every one of the 128 slots can always be written,
- * whatever the other 127 hold. With TIDE (chunk 21 is its settings) it is 21 x 6 = 126: a 127th NEW record finds no chunk under PT_K records, PT_FULL,
+ * whatever the other 127 hold. With TIDE (chunk 21 stays out of the store: earlier TIDE builds keep their settings there, tide_store.c) it is 21 x 6 = 126: a 127th NEW record finds no chunk under PT_K records, PT_FULL,
  * nothing written (the screen says STORE FULL, tide.h TIDE_SAVE_ERROR); a slot that already holds a record can always be rewritten. A chunk takes a NEW
  * record only under PT_K records, whatever its size, which keeps both guarantees.
  *
@@ -257,7 +257,7 @@ static void up_values(const up_rec_t *r, int16_t *v)   /* the record's values cl
 _Static_assert(PT_CAP + ST_PAYLOAD_OFF == ST_PAYLOAD_END && PT_CAP <= ST_PAYLOAD_MAX, "a patch chunk is one storage object whose payload ends at 0xF00");
 #endif
 _Static_assert(PT_WORST == 577u + TIDE_MBV_FMT_N && PT_K == 6u && PT_WORST * PT_K + PT_HDR <= PT_CAP && PT_MAX + (22u - TIDE_PT_NCH) * PT_K >= UP_SLOTS && AK_WORST <= AK_MAX, "the store's limit: 6 records of the worst size fit a chunk, and PT_MAX is at least the slot count (all 128 always fit)");
-_Static_assert(PT_NCH == TIDE_PT_NCH, "pt_obj, the erase list (erase_data.c), the backup (editor_backup.c)");   /* TIDE hook (21: chunk 21 is TIDE's settings) */
+_Static_assert(PT_NCH == TIDE_PT_NCH, "pt_obj, the erase list (erase_data.c), the backup (editor_backup.c)");   /* TIDE hook (21: chunk 21 is left to the earlier TIDE builds' settings record) */
 _Static_assert(PT_FIX + PT_VB + PT_VMAX + MBV_MAX + 32u + UPF_PK + AK_MAX <= 768u, "pt_enc holds a record");
 _Static_assert(EXT_P_LEN <= PT_VB * 8u && P_COUNT < 255u, "the values' bitmap holds every wide id");
 /* the directory: slot -> its record and what the lists need without reading flash */
@@ -960,7 +960,8 @@ static int pt_put(uint32_t k, const up_rec_t *r, const uint8_t *pk)
 }
 /* 0.2.19 (the editor's PATCH_RAW, editor_patchraw.c): slot k := the stored record rec (n bytes, exactly the form pt_encode writes; a record read
  * by up_raw_get). Refused (1) when it is no well-formed record of today's form (pt_rec_ok, a printable name, an engine that exists); 2 the transport
- * runs or the flash fails (nothing changed), 3 no flash (kept in RAM). The slot and revision bytes are the unit's: the record's own are ignored. */
+ * runs or the flash fails (nothing changed), 3 no flash (kept in RAM), PT_FULL (4) no chunk takes a new record (TIDE: the 127th; nothing written; the editor says
+ * STORE FULL, rc 6). The slot and revision bytes are the unit's: the record's own are ignored. */
 static int up_put_raw(uint32_t k, const uint8_t *rec, uint32_t n)
 {
     uint8_t *o = pt_enc;
@@ -987,7 +988,7 @@ static int up_put_raw(uint32_t k, const uint8_t *rec, uint32_t n)
     }
     rc = pt_put_enc(k, n);
     if (rc == 2 || rc == PT_FULL)
-        return rc == PT_FULL ? 2 : rc;
+        return rc;
     up_gen++;
     return rc;
 }
@@ -1270,7 +1271,7 @@ static int up_load(uint32_t k)
         return 1;
     r = up_rec(k);
     up_values(r, v);
-    load_begin(t, UNDO_SOUND);                          /* (ui.c: the copy for SAVE held = undo) */
+    load_begin(t, UNDO_SOUND);                          /* (ui.c: the copy for the undo) */
     panic_req |= (uint8_t)(1u << song.sel);
     panic_keep |= (uint8_t)(1u << song.sel);            /* (a patch load: ARP KEEPS RUNNING may keep the arp's note list, seq.c) */
     {

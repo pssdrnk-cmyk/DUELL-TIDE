@@ -1110,6 +1110,11 @@ int main(int argc, char **argv)
         }
         fprintf(f, "# FELUCCA golden renders (tests/regress.c): name, FNV-1a 64 of the output samples.\n"
                    "# Rewritten by GOLDEN_UPDATE=1 tests/run_tests.sh -- only for an intended change of the sound.\n"
+                   "# ARP timing (audit S01 / S02 / S11), on purpose, 14 of the 242: the internal-clock arp keeps the overshoot of each step instead of rounding it up to a block,\n"
+                   "# so its notes start on the exact grid:\n"
+                   "# ANALOG/15_GLASS_SHARDS, ANALOG/18_ARP_PLUCK, PHASE/03_WIRE_HARP, PHASE/05_CRYSTAL_CAVE, LOFI/03_MARBLE_RUN, LOFI/05_DEAD_BATTERY, VOICE/02_DOO_WOP,\n"
+                   "# TRIO/04_PEBBLE_POP, TRIO/05_CIRCUIT_BEND, WHEEL/04_NIGHT_BOX, PHYS/03_NYLON_GUT, PHYS/06_RAIN_CHIMES, NOISE/09_MODEM, FM6/07_ALIEN_CHIMES. Every other render is unchanged.\n"
+                   "# ARP velocity (audit S06), on purpose, the same 14 renders: the arp plays the velocity of the key that started it, not a fixed 100 (seq.c arp_vel).\n"
                    "# Job 3 (cloud/partstate2), on purpose, 12 of the 210: each part has its own random generator in the voice stage (voice.c part_rand: part 1 keeps the shared libc.c rng(), part 2 and the\n"
                    "# hidden parts draw from their own), so a silent part's LFO no longer advances the shared sequence the sounds below draw their note-on seeds / S&H values from:\n"
                    "# preset/PHYS/02_PLUCK, preset/PHYS/08_HARP, sound/ANALOG/15_GLASS_SHARDS, sound/PHASE/05_CRYSTAL_CAVE, sound/TRIO/05_CIRCUIT_BEND, sound/PHYS/02_GHOST_HARP, 03_NYLON_GUT, 06_RAIN_CHIMES,\n"

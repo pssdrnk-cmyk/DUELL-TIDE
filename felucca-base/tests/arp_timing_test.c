@@ -194,11 +194,57 @@ static void test_prob(void)
     expect("ARP PROB 64 plays about half of the steps", p64 > 1300u && p64 < 1700u);
 }
 
+/* S06: the arp plays the velocity of the key (the newest key for a chord), an ACCENT step 127; it used to be 100 */
+static void test_velocity(void)
+{
+    track_t *t = &trk[0];
+    uint32_t up, i, v_up = 0, v_ch = 0, v_sq = 0, v_acc = 0;
+    fresh();
+    t->p[P_AMODE] = AM_UP; t->p[P_ARATE] = 2; t->p[P_AOCT] = 1; t->p[P_AHOLD] = 0;
+    input_on(t, 60, 20);
+    for (i = 0; i < 400; i++) {
+        blk();
+        v_up = t->m_vel;
+    }
+    expect("ARP UP on a key at velocity 20 plays velocity 20", v_up == 20u);
+    input_on(t, 64, 90);
+    for (i = 0; i < 400; i++) {
+        blk();
+        v_up = t->m_vel;
+    }
+    expect("with a second key (velocity 90) the arp plays the newest key's velocity", v_up == 90u);
+    input_off(t, 60); input_off(t, 64);
+    fresh();
+    t->p[P_AMODE] = AM_CHORD; t->p[P_ARATE] = 2; t->p[P_AOCT] = 2; t->p[P_AHOLD] = 0;
+    input_on(t, 60, 40); input_on(t, 67, 70);
+    for (i = 0; i < 400; i++) {
+        blk();
+        v_ch = t->m_vel;
+    }
+    expect("ARP CHORD plays the newest key's velocity (70)", v_ch == 70u);
+    fresh();
+    t->p[P_AMODE] = AM_SEQ; t->p[P_ARATE] = 2; t->p[P_AOCT] = 1; t->p[P_AHOLD] = 0; t->p[P_SLEN] = 2;
+    t->step[0].time = ST_NOTE; t->step[0].n = 1; t->step[0].note[0] = 60;
+    t->step[1].time = ST_NOTE; t->step[1].n = 1; t->step[1].note[0] = 60; t->step[1].flags = SF_ACCENT;
+    input_on(t, 60, 55);
+    up = t->arp_idx;
+    for (i = 0; i < 200; i++) {
+        blk();
+        if (t->arp_idx != up && ARP_UP(t)) {
+            up = t->arp_idx;
+            if (t->step[up % 2u].flags & SF_ACCENT) v_acc = t->m_vel; else v_sq = t->m_vel;
+        }
+    }
+    printf("arptiming: ARP SEQ: plain step velocity %u, accent step %u\n", v_sq, v_acc);
+    expect("ARP SEQ plays the key's velocity (55), an ACCENT step 127", v_sq == 55u && v_acc == 127u);
+}
+
 int main(void)
 {
     test_drift();
     test_swing();
     test_prob();
+    test_velocity();
     printf("arptiming: %s\n", bad ? "FAILED" : "all ok");
     return bad ? 1 : 0;
 }

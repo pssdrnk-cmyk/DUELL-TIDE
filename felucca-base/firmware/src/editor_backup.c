@@ -236,7 +236,7 @@ static uint32_t ed_bk_commit(void)
     } else if (ed_bk_id == ED_BK_PATCH) {     /* one patch record into its slot (the store places it); length 0: the slot's record removed */
         int r = ed_bk_len ? up_put_raw(ed_bk_slot, raw, ed_bk_len) : sl_restore(ed_bk_slot);
         sync_reload = 1; ui.force = 1;
-        return r == 0 || r == 3 ? 0u : r == 1 ? 2u : song.playing ? 3u : 4u;   /* (3: no flash, kept in RAM; 1: no record the store would read; 2: the flash failed) */
+        return r == 0 || r == 3 ? 0u : r == 1 ? 2u : r == PT_FULL ? 6u : song.playing ? 3u : 4u;   /* (3: no flash, kept in RAM; 1: no record the store would read; 2: the flash failed; 6: STORE FULL, TIDE's 126 records) */
     } else return 1;
 #if FELUCCA_FLASH
     if (!flash_ok || st_save(obj, raw, ed_bk_len)) return 4;
@@ -249,7 +249,7 @@ static uint32_t ed_bk_commit(void)
         settings_import(q, sizeof *q);
         panel_init(); settings_init(); palette_set(settings.palette);
 #if FELUCCA_FLASH
-        persist_note(q); persist_pending = 0;
+        persist_note(q); persist_pending = DUELL_TIDE;   /* (TIDE: a backup without its fields keeps the unit's; the settings are saved again so the flash holds them too) */
 #endif
     }
     sync_reload = 1; ui.force = 1;

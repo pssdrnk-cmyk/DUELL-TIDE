@@ -296,7 +296,7 @@ export const NOT_EDITABLE = [
   ["MORPH", "the MORPH fader, ROLL and UNDO have no protocol command; a saved patch or multi keeps End B as exact values, and PATCH_RAW and the backup carry it (see below)"],
   ["MORPH SET", "SMART, ARP and PITCH of the morph have no protocol command"],
   ["TIDE SETTINGS", "TIDE's MORPH SET (MUSIC, SMART, WILD, ARP, PITCH, WASH): no protocol command"],
-  ["AUTO TIDE", "TIDE's automatic morph (MODE, TIME, WAIT, TARGET, VARY BARS): kept in the unit's own TIDE record, no protocol command (the backup does not carry it either)"],
+  ["AUTO TIDE", "TIDE's automatic morph (MODE, TIME, WAIT, TARGET, VARY BARS): kept in the settings record's reserved tail, no protocol command (the backup carries it with the settings)"],
   ["MODE", "the output MODE (DUEL, STEREO, LAYER), XFADE and SPLIT have no protocol command"],
 ];
 export function uncoveredPages() {

@@ -406,6 +406,7 @@ static __attribute__((noinline)) void BUS_FN(rev_reso)(const int32_t *rev_in, in
         uint32_t inc = pitch_inc((uint32_t)clamp(note[k] * 16, 0, 2047));
         per[k] = 0xFFFFFFFFu / ((inc >> 8) | 1u);          /* the period, Q8 */
         if (per[k] > (RS_LEN - 2u) << 8) per[k] = (RS_LEN - 2u) << 8;
+        per[k] -= ((uint32_t)(32767 - dk) << 8) / (uint32_t)(dk + 1);   /* the loop's one-pole (a = 32767 - dk) delays a / (1 - a) samples (Q8): the comb rings at the note, not flat as DAMP rises */
     }
     for (i = 0; i < n; i++) {
         int32_t in = mulq15(rev_in[i], 3600), a = 0;

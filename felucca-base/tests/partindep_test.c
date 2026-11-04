@@ -62,9 +62,11 @@ static int expect(const char *what, int ok)
 /* 0.2.32, on purpose: scenes 3, 5, 6 re-made (the direct depth cards reach 100 % at +63: DEP_AMT in voice.c / chain_f2.c; with DEP_AMT(a) = (a) the old pins hold). */
 /* 1.0 (job F1), on purpose: scenes 0, 2, 3, 5, 6, 7, 8, 9, 11 re-made (TWIN OFFSET in whole semitones, the matrix amount +63 acts as 64). */
 /* DUELL 1.1 (lx-parts), on purpose: all 12 scenes re-made. 1.1's DSP changes since 1.0 are in the old path (tests/mixsplit_ref.h: BIT_DEPTH's LV4 level stages, item 135's tail, item 160's BALANCE gone, the SPACE matrix offset) and in the helpers it calls (SAT's drive, DUCK, REVERB, ...). The paths still equal each other bit for bit in every scene. */
+/* audit P01 (2026-11-04), on purpose: scenes 9, 10, 11 re-made (part 2 glides, GLIDE 30 in UNISON / LEGATO: voice.c glide_set now takes the time GLD shows);
+ * they were 0x10031248d54636c9, 0x00ba6a225b5a3f8f, 0xc6c4863685dfc21c. */
 static const uint64_t OLD_HASH[NSCENE] = {
     0xf0d0572743238854ull, 0x1c363ab4f36aa258ull, 0x1152deb454944111ull, 0xd3a928aa44ee293eull, 0xb4ae75f1f096399bull, 0x65fc43887280e3c0ull, 0xebc9d9e8cfc07603ull, 0x1c310e660d84eb87ull, 0x4373d86bea4d679full,
-    0x10031248d54636c9ull, 0x00ba6a225b5a3f8full, 0xc6c4863685dfc21cull};   /* 0.2.31: re-based on purpose (SUB HARMONICS is disabled: the scenes' HARM values play as 0), were 0x57241fc736950a76, 0xae179d4cb7f62068, 0x653c0c9666564fdf. Scenes 9, 10, 11 (cloud job F: SUB, CYCLE, STEPS) have no commit before: pinned at the commit that made them, from the old combined path (the feature is in track_render, which it shares) */
+    0x2c5bc2c71a3c612dull, 0xd4b7de585e4eccb4ull, 0x675cf3b5383f9d0bull};   /* 0.2.31: re-based on purpose (SUB HARMONICS is disabled: the scenes' HARM values play as 0), were 0x57241fc736950a76, 0xae179d4cb7f62068, 0x653c0c9666564fdf. Scenes 9, 10, 11 (cloud job F: SUB, CYCLE, STEPS) have no commit before: pinned at the commit that made them, from the old combined path (the feature is in track_render, which it shares) */
 
 /* ---- the schedules */
 enum { SV, SF, SM, SE };                                /* the steps: voice (+ morph_begin), effects / silent way out, mix + end, morph_end */

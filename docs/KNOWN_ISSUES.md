@@ -5,10 +5,9 @@ What is known to be broken or untested. [KNOWN_LIMITS.md](KNOWN_LIMITS.md) lists
 ## TIDE (this fork)
 
 - **In the beta `beta-2026-11-04`, fixed in the next build:** the SAVE > MULTIS page layout, the TIDE page's step bars not always matching what plays, and a latched arp playing on after STOP (use STOP ALL there: a double press or a 0.6 s hold). [The README](../README.md#builds-stable-and-beta) says which build is which.
-- **Known and being fixed, not in any build yet:** delay TIME and TEMPO moves can click and the tempo is less steady under an external clock.
-- **ARC starts again at RISE after every STOP and PLAY**, and a multi or pattern loaded after a WNDR or JRNY session keeps the generated variation until you press HOME. Both are known; changes are planned.
+- **Fixed, not in a build yet:** delay TIME and TEMPO moves no longer click, and the tempo is steadier under an external clock. ARC resumes where it was after STOP and PLAY (a load or a K1 stop starts it again), and a multi or pattern loaded after a WNDR or JRNY session starts as written.
 - **TIDE has run on one FM-1, the fork owner's.** Other units, cables and USB hubs are untested. Use a data cable straight into the computer, no hub.
-- **TIDE's settings are not in the backup yet.** The TIDE SETTINGS rows are kept on the unit between power-ups, but the device backup (installer page, editor Backup page) does not hold them. Note them down before ERASE DATA or a reinstall with the erase box ticked.
+- **TIDE's settings are in the backup from the next build on.** The TIDE SETTINGS rows ride in the settings record's reserved tail, so every backup (installer page, editor Backup page) holds them and a restore brings them back. A backup made by an older build has none: restoring it leaves the unit's TIDE settings as they are. Plain DUELL 1.1 zeroes that tail at its next settings save, and TIDE then starts on DUB again.
 - **Tested in software and by ear on one unit.** Host tests, the emulator and the editor's mock unit show that the code does what it says; how a tide sounds with a real MIDI clock has been judged on one unit only.
 
 ## Inherited from DUELL 1.0

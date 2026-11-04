@@ -36,6 +36,9 @@
  *              dark after the time, nothing drawn, any input wakes it (SLPOUT, 120 ms, redraw, DISPON) and is
  *              swallowed; dialogs / count-in / UPDATE MODE keep it on; saved; the sound bit for bit while dark.
  * Built and run by tests/run_tests.sh. */
+#ifndef DUELL_VCAP
+#define DUELL_VCAP 1                                     /* (the tests built on this file keep the 0.2.11 VOICE CAP in frame(), as they always did: their goldens were made with it; the unit has the NOTES budget instead, core.h) */
+#endif
 #ifndef FELUCCA_CDC
 #define FELUCCA_CDC 1                                    /* (as src/felucca.c: the console built in, MENU > USB SERIAL) */
 #endif
@@ -9384,6 +9387,100 @@ static int c165_seg(uint32_t c, uint32_t i, uint32_t n, const char *what)   /* a
     }
     return 1;
 }
+/* fix/load-undo (audit T01, T05, T06; owner decision D26): OCT- held + a PRESETS turn undoes the last sound load (again: redo), only where
+ * PRESETS loads and never on the TIDE pages; the PRESETS knob steps like PATCHES' K1 on every page; long lists accelerate */
+static int test_load_undo(void)
+{
+    int bad = 0;
+    track_t *t;
+    track_t before;
+    uint32_t n, pos0, pos1, a, b;
+    int16_t oct0;
+    ui_power_on();
+    t = &trk[0];
+    my_steps(t);
+    t->p[P_E0 + 1] = 77;                          /* a sound edit the load will lose */
+    before = *t;
+    turn(EN_PRESET, 1);                           /* HOME: the next sound */
+    bad += check("load undo: PRESETS on HOME loads and takes the copy", !same_sound(t, &before) && undo.trk == 1u);
+    oct0 = song.octave;
+    btn_down(B_OCTDN);
+    frame();
+    turn(EN_PRESET, 1);
+    bad += check("load undo: OCT- held + a PRESETS turn puts the sound back (UNDO/REDO T1)", same_sound(t, &before) && msg_is("UNDO/REDO T1"));
+    turn(EN_PRESET, 1);
+    bad += check("..the rest of that turn loads nothing (swallowed)", same_sound(t, &before));
+    btn_up(B_OCTDN);
+    frame();
+    bad += check("..OCT- was a modifier: no octave moved on its release", song.octave == oct0);
+    frames(400);
+    btn_down(B_OCTDN);
+    frame();
+    turn(EN_PRESET, -1);
+    btn_up(B_OCTDN);
+    frame();
+    bad += check("..the next gesture is the redo (the load again)", !same_sound(t, &before) && msg_is("UNDO/REDO T1"));
+    frames(400);
+    /* no OCT-: PRESETS loads as ever; the undo copy is not touched by a plain turn of OCT- */
+    turn(EN_PRESET, 1);
+    bad += check("load undo: a PRESETS turn without OCT- loads", !same_sound(t, &before));
+    /* where PRESETS loads nothing there is nothing to undo: OCT- + PRESETS on PATTERNS does not swap */
+    go_page(GR_PATS);
+    ui.msg_t = 0;
+    before = *t;
+    btn_down(B_OCTDN);
+    frame();
+    turn(EN_PRESET, 1);
+    btn_up(B_OCTDN);
+    frame();
+    bad += check("..on PATTERNS (PRESETS loads nothing): no undo", same_sound(t, &before) && !msg_is("UNDO/REDO T1"));
+#if DUELL_TIDE
+    go_page(GR_TIDE);
+    ui.msg_t = 0;
+    before = *t;
+    btn_down(B_OCTDN);
+    frame();
+    turn(EN_PRESET, 1);
+    btn_up(B_OCTDN);
+    frame();
+    bad += check("..on the TIDE pages OCT- stays TIDE's (the STYLE reset): the turn loads, no undo", cur_page()->scope == SC_TIDE && !msg_is("UNDO/REDO T1"));
+#endif
+    /* T06: the PRESETS knob steps like PATCHES' K1 on every page: a fast turn loads only where it settles */
+    ui_power_on();
+    ui_prefs |= PREF_ACCEL;
+    go_page(GR_ENGINE);
+    t = &trk[0];
+    (void)preset_pos(&n);
+    pos0 = preset_pos(&n);
+    for (a = 0; a < 6u; a++) {
+        host_enc[panel.enc[EN_PRESET]] += panel.dir[EN_PRESET];
+        frame();
+    }
+    pos1 = preset_pos(&n);
+    bad += check("PRESETS on EDIT, KNOB ACCEL ON: a fast turn waits (the sounds it passes do not load)", pos1 != (pos0 + 6u) % n && pl_pend_on);
+    frames(300);
+    pos1 = preset_pos(&n);
+    bad += check("..and loads where it settles, further than one a detent", !pl_pend_on && (pos1 + n - pos0) % n > 6u);
+    /* T05: the matrix DST list (57 entries) accelerates; a short list (SRC, 18) does not */
+    go_page(GR_MOD);
+    t = &trk[0];
+    t->p[P_M1SRC] = MS_LFO;
+    t->p[P_M1DST] = 0;
+    for (a = 0; a < 8u; a++) {
+        host_enc[panel.enc[EN_K1 + 2u]] += panel.dir[EN_K1 + 2u];
+        frame();
+    }
+    bad += check("matrix DST (57 entries), KNOB ACCEL ON: 8 fast detents move past 8 places", t->p[P_M1DST] > 8);
+    b = (uint32_t)t->p[P_M1SRC];
+    for (a = 0; a < 4u; a++) {
+        host_enc[panel.enc[EN_K1 + 1u]] += panel.dir[EN_K1 + 1u];
+        frame();
+    }
+    bad += check("..SRC (18 entries): one place a detent", (uint32_t)t->p[P_M1SRC] == b + 4u);
+    ui_prefs &= ~(uint32_t)PREF_ACCEL;
+    return bad;
+}
+
 static int test_item165(void)
 {
     int bad = 0;
@@ -9812,6 +9909,7 @@ int main(void)
     bad += test_item158_pages();                    /* (item 158 S3: no empty pages) */
     bad += test_item158_edges();                    /* (item 158: nothing on a card cut by its edge) */
     bad += test_item165();                          /* (item 165: the ENGINE pictures true (ANALOG, TRIO, VOICE, PHASE), LOFI / NOISE cells, full wave names) */
+    bad += test_load_undo();                        /* (audit T01, T05, T06: OCT- + a PRESETS turn undoes a load; PRESETS steps as PATCHES' K1; long lists accelerate) */
 #ifdef UI_TEST_STALE
     /* Felucca-era groups whose expectations no longer match DUELL's UI (DRUM lanes, FX map, 4 tracks, old pages, PROJECT, song...):
      * compiled, not run. Port a group to the current UI, then move its call up. Build with -DUI_TEST_STALE to see how they stand. */

@@ -29,6 +29,10 @@ _Static_assert(NSHOWN <= NPART, "core.h: NSHOWN parts are shown, NPART parts exi
 #define DUELL_BENCH 0            /* DUELL developer switch (-DDUELL_BENCH=1; env DUELL_BENCH=1 + BENCH_TAG for tools/build.py): 1 builds in MENU > SYSTEM > BENCH, the
                                   * stage-timing bench (src/bench.c, docs/BENCH_GUIDE.md). 0 (every normal build) leaves all of it out: not a byte of it is compiled */
 #endif
+#ifndef DUELL_VCAP
+#define DUELL_VCAP DUELL_BENCH   /* the 0.2.11 VOICE CAP (voice.c vcap_poll), superseded by the NOTES budget (budget.c) on the unit: built only where the bench holds the budget open
+                                  * (bench_bopen: bnotes 0) and in the tests that measure it (-DDUELL_VCAP=1 or #define before the includes) */
+#endif
 #if defined(DUELL_CORE1_PROBE) && DUELL_CORE1_PROBE
 #error "DUELL_CORE1_PROBE (BENCH-B's synthetic core 1 rows) is not in this line: two-core stage 1 brings core 1 (twocore.c)"
 #endif
@@ -334,7 +338,7 @@ typedef struct {
     int32_t env_out;             /* last control-rate amplitude, Q15 */
     int32_t env2;                /* ENV 2, Q24 (ticked only while a matrix slot reads it) */
     int32_t pitch16, pitch_cur;  /* 1/16 semitone, with glide */
-    int32_t gstep;               /* glide TIME mode: 1/16 st per control tick, 0 = RATE mode */
+    int32_t gstep;               /* glide TIME mode: 1/65536 of a 1/16 st per control tick, 0 = RATE mode */
     int32_t fine;                /* unison detune: phase increment * (1 + fine / 4096) */
     uint32_t ph[3];
     int32_t s[8];                /* engine state (filters, envs) */
@@ -342,12 +346,13 @@ typedef struct {
     int16_t ufw[3];              /* .. its output's weights of the last block (input, band-pass, low-pass; Q10): the next one ramps from them */
     uint8_t uft;                 /* .. how it last ran: 0 not (from rest next time), 1 12 dB, 2 24 dB, 3 bypassed while sounding (voice.c uf_edge) */
     int32_t apitch;              /* ARP TARGET (SPEC 2.3, voice.c atg_voice): the arp pitch of the masked units, 1/16
-                                  * semitone, with glide */
+                                  * semitone << 16, with glide */
     int32_t again;               /* .. their level (the arp's gate and accent), Q15, smoothed */
     uint32_t age;
     uint16_t xg;                 /* LAYER XFADE: this note's gain, Q15 (voice_start from track_t lay_xg), 0 = unity: the sound untouched */
     uint8_t mvel;                /* mod.c: the note-on velocity (before UNISON scaling) and RAND of the note */
     int16_t mrnd;
+    uint16_t gfrac;              /* glide: the position below pitch_cur, 1/65536 of a 1/16 st (in the pad before lastc: voice_t keeps its size) */
     int32_t lastc, lastd, offc;       /* hunt3 (voice.c voice_step): this voice's contribution to the last sample of its last block, and the change from the sample before (lastd); the step a re-strike made and still has to cancel */
     uint8_t offn, offp;          /* .. the samples of that step's decay left; 1: voice_start asks for the step to be measured in the next block */
     uint16_t msl;                /* MORPH (voice.c uf_run): the multimode filter's SLOPE cross-fade of the part, weight Q15 | 0x8000 when the other end is 24 dB; 0 = none */
@@ -409,6 +414,10 @@ static uint8_t duell_mode = DM_STEREO;
  * mix_split: SPLIT 0 = OFF, else the note + 1 (LAYER only: below it part 1 plays alone, at or above it part 2) */
 static volatile uint8_t mix_xf, mix_split;
 
+#ifndef DUELL_PRESETS
+#define DUELL_PRESETS 1          /* 1: Felucca's engine preset tables (eng_*.c, engine_t.presets) are built; no firmware code reads them, the host tests render them (tests/hostsim.c,
+                                  * regress.c ..). tools/build.py passes -DDUELL_PRESETS=0 for the unit (1,6 KB of flash); DUELL_PRESETS=1 in its environment builds them in */
+#endif
 typedef struct {
     const char *name;
     int8_t e[8];                 /* P_E0..P_E7 (signed: an interval below the note; every value fits) */
@@ -429,8 +438,10 @@ typedef struct {                 /* an engine (engines.c ENGINES[]; the eng_*.c 
     const char *name;            /* "ANALOG" (PRESETS, the editor) */
     const char *page_title[2];   /* EDIT 1 and EDIT 2 */
     param_desc_t edit[8];        /* P_E0..P_E7 */
-    const preset_t *presets;
+#if DUELL_PRESETS
+    const preset_t *presets;     /* Felucca's presets: only the host tests read them (tools/build.py passes DUELL_PRESETS=0 for the unit: sounds.c has the factory sounds) */
     uint8_t npresets;
+#endif
     uint8_t knob[4];             /* HOME: the four parameters on KNOB 1..4 */
     uint8_t poly;                /* voice cap for POLY and UNISON, 0 = NVOICE */
     uint8_t sampled;             /* 1 = plays recorded material (a position, not a phase): voice.c keeps

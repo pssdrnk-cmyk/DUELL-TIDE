@@ -4,13 +4,15 @@
  * Runs in the audio ISR.
  *
  * Each synth part has its own NVOICE voices (so MONO / LEGATO / UNISON keep using
- * v[0..]); VPOOL (DUELL 1.1: 2 x NVOICE, each part its own) of all the parts' voices sound at once: a part that starts
- * a voice while the budget is full takes one from any part (voice_victim): the oldest
- * released voice, else the oldest extra UNISON voice, else the oldest held voice of a
- * POLY part that is not its lowest note. A voice taken from another part fades out
- * over one block (stage 4: the envelope goes to 0, the block's amplitude ramp
- * declicks it); one of the part's own is restarted in place, as before. Extra UNISON
- * voices only start when there is room. */
+ * v[0..]); VPOOL (DUELL 1.1: 2 x NVOICE, each part its own) of all the parts' voices sound at once. With the two parts
+ * of the unit the pool can never be full while a part has a voice to start (the part's own voices are at most NVOICE, so
+ * the other part holds at most the rest): a part steals only within its own voices (a note over its number restarts the
+ * oldest released voice, else the oldest held one, in place: voice_alloc). Only the host rig with NPART 4 (tests/regress.c)
+ * can fill the pool, and keeps voice_victim: a part that starts a voice while the budget is full takes one from any
+ * part: the oldest released voice, else the oldest extra UNISON voice, else the oldest held voice of a POLY part that is
+ * not its lowest note. A voice taken from another part fades out over one block (stage 4: the envelope goes to 0, the
+ * block's amplitude ramp declicks it); one of the part's own is restarted in place. Extra UNISON voices only start when
+ * there is room. */
 static uint32_t vage;                                   /* voice ages: one clock for every part */
 /* an LFO's WAVE (N_LWAVE) at phase ph; rnd: its S&H value of the cycle */
 static int32_t lfo_wave_of(int32_t wave, uint32_t rnd, uint32_t ph)
@@ -94,6 +96,7 @@ static void lfo_tick(track_t *t, lfo_t *l, uint32_t r, uint32_t s, int lfo1)
 }
 static void track_lfo_tick(track_t *t) { lfo_tick(t, &t->lfo1, P_LRATE, P_LSYNC, 1); }
 
+#if DUELL_VCAP                                          /* (core.h: bench builds and the tests that measure it; the unit has the NOTES budget instead, budget.c) */
 /* DUELL 0.2.11 VOICE CAP (owner, 2026-10-14; SPEC 6.3): a heavy combination gets fewer voices per part, so the predicted
  * worst case of both parts stays under VC_BUDGET of the half (the loadcost scale of docs/CPU_ANALYSIS.md: model %, the device
  * reads ~10-25 % lower). The cost of a voice (0.1 % of the half): the engine's (its heaviest factory sound, 8 voices held, minus the
@@ -109,7 +112,7 @@ static void track_lfo_tick(track_t *t) { lfo_tick(t, &t->lfo1, P_LRATE, P_LSYNC,
  * each part gets the cap that fits it alone (VC_BUDGET - VC_IDLE over its voice, VC_MIN at least) instead of 4. Computed
  * every UI frame (vcap_poll: main loop; a load, an engine, filter or SLOPE change, a roll are seen at once), deterministic.
  * It bites only for NEW notes: voice_alloc / UNISON take at most vcap voices (a note over the cap steals within the part, as
- * at an engine's own cap); notes that sound beyond the cap keep sounding until they end. Shown only on the TEST screen */
+ * at an engine's own cap); notes that sound beyond the cap keep sounding until they end. (The unit has the NOTES budget instead and its TEST screen shows those numbers; this cap is for the bench with the budget held open.) */
 #define VC_IDLE 150u                                    /* the idle mix with power-on FX: 15 % */
 #define VC_BUDGET 850u                                  /* 85 % */
 #define VC_F12 18u                                      /* the multimode filter a voice: 12 dB */
@@ -118,15 +121,19 @@ static void track_lfo_tick(track_t *t) { lfo_tick(t, &t->lfo1, P_LRATE, P_LSYNC,
 #define VC_FADE 20u                                     /* .. an engine choice cross-faded (M04 WIRED SNAIL's ANALOG WAVE, M14 PHASE WAVE: +2..2.6 %) */
 #define VC_MIN 4u
 static uint8_t vcap[NTRK];                              /* the cap of each part, 0: none yet (all of the engine's) */
+#endif
 static uint8_t bnotes[NTRK];                            /* DUELL NOTES budget (budget.c budget_poll): the notes of each part, 0: none yet (the budget is not asked) */
 static uint8_t bnotes1[NTRK];                           /* DUELL 1.1 item 90: the one-core numbers, always (bnotes holds the two-core ones while that rule is in force) */
 static volatile uint8_t bd_one_now;                     /* DUELL 1.1 item 90: 1 = the audio plays both parts on core 0 right now (core 1 down, paused, or a flash park: twocore_run.c tcr_begin sets it
                                                          * every block): the note-on path and the counter use bnotes1. 0 in every one-core build */
 #define VPOOL (NVOICE * 2u)                             /* DUELL 1.1 item 90: the voices that may sound at once over both parts: each part its own NVOICE (was NVOICE shared); the NOTES budget holds the CPU */
+_Static_assert(NPART > 2 || NPART * NVOICE <= VPOOL, "voice.c: with two parts a part that has a voice to start must find the pool not full (the steal code is built only for NPART > 2)");
+#if DUELL_VCAP
 static const struct { const engine_t *e; uint8_t c; } VCOST[] = {   /* (tests/cpu_scenarios_test.c CPU_SCEN=P: the heaviest sound, its voices) */
     {&ENG_ANALOG, 51}, {&ENG_FM6, 61}, {&ENG_PHASE, 40}, {&ENG_LOFI, 24}, {&ENG_FORMANT, 60}, {&ENG_TRIO, 44}, {&ENG_WHEEL, 59},
     {&ENG_PHYS, 144}, {&ENG_NOISE, 47}, {&ENG_WAVE, 52},   /* (FM6: 6 voices, PHYS 3, VOICE 4; WAVE: #60 DIGITAL PAD less its 12 dB filter) */
 };
+#endif
 /* voices the engine may use (POLY and UNISON): its cap, else all of them; DUELL 0.2.11: and the part's VOICE CAP; and the part's NOTES
  * (budget.c: the stricter of the two caps and the budget; a new note over it steals within the part, as at an engine's own cap) */
 static uint32_t trk_nvoice_eng(const track_t *t)
@@ -136,13 +143,21 @@ static uint32_t trk_nvoice_eng(const track_t *t)
 }
 static uint32_t trk_nvoice(const track_t *t)
 {
-    uint32_t p = (uint32_t)(t - trk) % NTRK, c = trk_nvoice_eng(t), v = vcap[p], b = bd_one_now ? bnotes1[p] : bnotes[p];
+    uint32_t p = (uint32_t)(t - trk) % NTRK, c = trk_nvoice_eng(t), b = bd_one_now ? bnotes1[p] : bnotes[p];
     if (b)                                              /* (item 90: the NOTES budget supersedes the 0.2.11 VOICE CAP, whose table and 8-voice pool are out of date) */
         return b < c ? b : c;
-    return v && v < c ? v : c;
+#if DUELL_VCAP
+    {
+        uint32_t v = vcap[p];
+        return v && v < c ? v : c;                      /* (no budget numbers: a bench build holding the budget open, a test) */
+    }
+#else
+    return c;
+#endif
 }
 static uint32_t vc_eng_cap(const engine_t *e) { return e->poly && e->poly < NVOICE ? e->poly : NVOICE; }
-static uint32_t vcap_shown(uint32_t p)                  /* the TEST screen: the voices part p may use (its sound's engine, the cap) */
+#if DUELL_VCAP
+static uint32_t vcap_shown(uint32_t p)                  /* the voices part p may use (its sound's engine, the cap) */
 {
     uint32_t c = vc_eng_cap(ENGINES[eng_idx(trk[p].eng_req)]);
     return vcap[p] && vcap[p] < c ? vcap[p] : c;
@@ -222,6 +237,7 @@ static void vcap_poll(void)                             /* main loop, every fram
     for (p = 0; p < 2u; p++)
         vcap[p] = (uint8_t)cap[p];
 }
+#endif
 
 /* the part's voice mode: P_VOICE */
 static uint32_t trk_vmode(const track_t *t)
@@ -248,6 +264,7 @@ static uint32_t lowest_held(const track_t *t)           /* index of the lowest h
     return low;
 }
 
+#if NPART > 2                                           /* (the unit's two parts never fill the pool: see the top. Only the host rig with four parts) */
 /* the voice to give up for a new one (see the top); soft: only released voices and
  * extra voices of other non-POLY parts (also ones left after a mode change).
  * Returns its index, *pp its part; NVOICE = none */
@@ -282,6 +299,7 @@ static uint32_t voice_victim(const track_t *self, int soft, track_t **pp)
     }
     return best;
 }
+#endif
 
 static uint32_t voice_kills;                            /* voices given up (budget, overload): console, hostsim */
 static void voice_kill(voice_t *v)                      /* fade out over the next block (env_tick stage 4) */
@@ -333,6 +351,7 @@ static uint32_t voice_trim_now(track_t *t)
 }
 #endif
 
+#if NPART > 2
 /* the budget is full: free a voice for part t. 0 = nothing to take (soft) */
 static int voice_room(track_t *t, int soft)
 {
@@ -347,6 +366,9 @@ static int voice_room(track_t *t, int soft)
     voice_kill(&vp->v[k]);
     return 1;
 }
+#else
+#define voice_room(t, soft) 1                           /* NPART 2: each part owns NVOICE of the VPOOL, so a part with a voice to start never finds the pool full */
+#endif
 
 static voice_t *voice_reuse(track_t *t, voice_t *v)
 {
@@ -360,19 +382,25 @@ static voice_t *voice_reuse(track_t *t, voice_t *v)
  * the next one round-robin (release tails ring out), REUSE (or any GLIDE) takes
  * the free voice whose last pitch is closest, so poly portamento moves each
  * voice the shortest way. Steal: the oldest released voice, else the oldest
- * held one, never the lowest held note (the bass). A free voice needs room in the
- * shared budget: when the voice to give up is one of this part's, it is restarted
- * in place instead. */
+ * held one, never the lowest held note (the bass). (NPART 4 host rig only: a free voice
+ * needs room in the shared budget; when the voice to give up is one of this part's, it is
+ * restarted in place instead.) */
 static voice_t *voice_alloc(track_t *t, uint32_t note)
 {
-    uint32_t i, np = trk_nvoice(t), best = np, low = np, nfree = 0;
+    uint32_t i, np = trk_nvoice(t), best = np, low = np;
+#if NPART > 2
+    uint32_t nfree = 0;
+#endif
     int32_t bd = 0x7FFFFFFF;
     voice_trim(t);
     for (i = 0; i < np; i++) {
         if (t->v[i].active && t->v[i].note == note)
             return voice_reuse(t, &t->v[i]);
+#if NPART > 2
         nfree += !t->v[i].active;
+#endif
     }
+#if NPART > 2
     if (nfree && voices_busy() >= VPOOL) {
         track_t *vp = 0;
         uint32_t k = voice_victim(t, 0, &vp);
@@ -381,6 +409,7 @@ static voice_t *voice_alloc(track_t *t, uint32_t note)
         if (k < NVOICE)
             voice_kill(&vp->v[k]);
     }
+#endif
     if (t->p[P_GLIDE]) {                                /* (T0227, owner: the stored VOICE ALLOCATION is ignored: ROTATE always; with GLIDE the free voice nearest in pitch, as ever) */
         for (i = 0; i < np; i++) {
             int32_t d = t->v[i].pitch_cur - (int32_t)note * 16;
@@ -417,18 +446,20 @@ static voice_t *voice_alloc(track_t *t, uint32_t note)
     return voice_reuse(t, &t->v[best == np ? 0 : best]);
 }
 
-/* glide: RATE = a fixed speed, TIME = the same time for any interval */
+/* glide (P01): RATE = 64 semitones in the time GLD shows (TIME_MS_X10; ENV_LIN is 1 << 24 in that time), so a wider jump
+ * takes longer; TIME = the whole interval in that time. Steps in 1/65536 of a 1/16 semitone (gfrac below pitch_cur) */
 static void glide_set(track_t *t, voice_t *v, int glide)
 {
     if (!glide || !v->pitch_cur) {
         v->pitch_cur = v->pitch16;
-        v->gstep = 0;
+        v->gstep = v->gfrac = 0;
         return;
     }
     if (t->p[P_GLMODE]) {
-        int32_t d = v->pitch16 - v->pitch_cur, ticks = 1 + t->p[P_GLIDE] * t->p[P_GLIDE] / 8;
-        d = d < 0 ? -d : d;
-        v->gstep = d / ticks > 0 ? d / ticks : 1;
+        int32_t d = (v->pitch16 - v->pitch_cur) * 65536 - v->gfrac;
+        uint32_t e = ENV_LIN[t->p[P_GLIDE] & 127];
+        d = ((d < 0 ? -d : d) + 32768) >> 16;           /* whole 1/16 st (0: RATE ends the last bit) */
+        v->gstep = (int32_t)((e >> 8) * (uint32_t)d + (((e & 255u) * (uint32_t)d) >> 8));   /* d * e >> 8, no overflow */
     } else {
         v->gstep = 0;
     }
@@ -493,7 +524,7 @@ static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int
     v->mrnd = t->m_rnd;
     t->m_vi = (uint8_t)(v - t->v);
     glide_set(t, v, glide);
-    v->apitch = t->atg_note ? (int32_t)t->atg_note * 16 : v->pitch16;   /* ARP TARGET: at the arp's note now */
+    v->apitch = (t->atg_note ? (int32_t)t->atg_note * 16 : v->pitch16) * 65536;   /* ARP TARGET: at the arp's note now */
     v->again = t->atg_vel * 258;
     v->stage2 = 1;                                      /* ENV 2 (DUELL): an attack, from where it is (as ENV) */
     v->offn = 0;                                        /* (hunt3: a step still being cancelled ends with the old note) */
@@ -921,13 +952,16 @@ static void env2_tick(const track_t *t, voice_t *v)
     case 2:
         v->env2 += mulq16(sus - v->env2, t->esk2[1]);
         break;
-    case 3:
-        v->env2 -= mulq16(v->env2, t->esk2[2]);
-        if (v->env2 < (1 << 12)) {
+    case 3: {
+        int32_t d = mulq16(v->env2, t->esk2[2]);
+        v->env2 -= d;
+        /* A slow Q16 release can round its decrement to zero above the floor. */
+        if (!d || v->env2 < (1 << 12)) {
             v->env2 = 0;
             v->stage2 = 0;
         }
         break;
+    }
     default:
         v->env2 = 0;
         break;
@@ -950,14 +984,17 @@ static int32_t env_tick(track_t *t, voice_t *v)
     case 2:
         v->env += mulq16(sus - v->env, t->esk[1]);
         break;
-    case 3:
-        v->env -= mulq16(v->env, t->esk[2]);
-        if (v->env < (1 << 12)) {
+    case 3: {
+        int32_t d = mulq16(v->env, t->esk[2]);
+        v->env -= d;
+        /* A slow Q16 release can round its decrement to zero above the floor. */
+        if (!d || v->env < (1 << 12)) {
             v->env = 0;
             v->stage = 0;
             v->active = 0;
         }
         break;
+    }
     case 4:                                             /* given up for another part: this block fades it */
         v->env = 0;
         v->stage = 0;
@@ -988,20 +1025,18 @@ static __attribute__((noinline)) void spread_sum(int32_t *out, const int32_t *sb
 }
 
 /* ARP TARGET (SPEC 2.3, seq.c atg_fire): the voice's arp pitch towards the arp's note now (the root's while there is none),
- * with the part's GLIDE as a note's (RATE: GLD's speed; 0: a jump), as the offset adelta over the root's pitch16 (so
+ * with the part's GLIDE as a note's (RATE: GLD's speed, in 1/65536 of a 1/16 st; 0: a jump), as the offset adelta over the root's pitch16 (so
  * TUNE, bend, LFO, ENV and the matrix move both alike); its level towards the step's gate (velocity, 0 off) in ~3 ms */
 static __attribute__((noinline)) void atg_voice(const track_t *t, voice_t *v, vmod_t *m)
 {
-    int32_t want = t->atg_note ? (int32_t)t->atg_note * 16 : v->pitch_cur, d = want - v->apitch, g;
+    int32_t want = (t->atg_note ? (int32_t)t->atg_note * 16 : v->pitch_cur) * 65536, d = want - v->apitch, g;
     if (d && !t->p[P_GLIDE]) {
         v->apitch = want;
     } else if (d) {
-        int32_t st = (int32_t)(ENV_LIN[t->p[P_GLIDE] & 127] >> 14);
-        if (st < 1)
-            st = 1;
+        int32_t st = (int32_t)(ENV_LIN[t->p[P_GLIDE] & 127] << 2);
         v->apitch += d > 0 ? (d < st ? d : st) : (-d < st ? d : -st);
     }
-    m->adelta = v->apitch - v->pitch_cur;
+    m->adelta = (v->apitch >> 16) - v->pitch_cur;
     g = t->atg_vel * 258 - v->again;
     v->again += g > -4 && g < 4 ? g : g / 4;
     m->again = v->again;
@@ -1244,7 +1279,7 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
     for (i = 0; i < NVOICE; i++) {
         voice_t *v = &t->v[i];
         vmod_t m;
-        int32_t env, pitch;
+        int32_t env, pitch, vf;
         if (!v->active)
             continue;
         {
@@ -1276,12 +1311,12 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
             m.amp0 = v->env_out;
             v->env_out = m.amp1;
         }
-        if (v->pitch_cur != v->pitch16) {               /* glide */
-            int32_t d = v->pitch16 - v->pitch_cur;
-            int32_t st = v->gstep ? v->gstep : (int32_t)(ENV_LIN[(p[P_GLIDE] ? p[P_GLIDE] : 40) & 127] >> 14);   /* slide: ~45 ms */
-            if (st < 1)
-                st = 1;
-            v->pitch_cur += d > 0 ? (d < st ? d : st) : (-d < st ? d : -st);
+        if (v->pitch_cur != v->pitch16 || v->gfrac) {   /* glide (glide_set), in 1/65536 of a 1/16 st */
+            int32_t q = v->pitch_cur * 65536 + v->gfrac, d = v->pitch16 * 65536 - q;
+            int32_t st = v->gstep ? v->gstep : (int32_t)(ENV_LIN[(p[P_GLIDE] ? p[P_GLIDE] : 40) & 127] << 2);   /* RATE (slide: GLD 40's) */
+            q += d > 0 ? (d < st ? d : st) : (-d < st ? d : -st);
+            v->pitch_cur = q >> 16;
+            v->gfrac = (uint16_t)q;
         }
         if (!env && !m.amp0 && v->stage == 2 && !e->sampled) {
             v->lastc = v->lastd = 0;
@@ -1290,9 +1325,10 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
         pitch = v->pitch_cur + tune + bend16 + ((lfo * DEP_AMT(p[P_LD_PIT]) * 3) >> 15) + ((m.envq15 * DEP_AMT(p[P_ED_PIT]) * 3) >> 15);
         m.pitch16 = clamp(pitch, 0, 2047);
         m.inc = pitch_inc(m.pitch16);
-        m.fine = v->fine + tune_fine + bend_fine;
-        if (v->fine + tune_fine + bend_fine)             /* residual below 1/16 semitone */
-            m.inc += (uint32_t)((int32_t)(m.inc >> 12) * (v->fine + tune_fine + bend_fine));
+        vf = v->fine + tune_fine + bend_fine + ((v->gfrac * 947) >> 22);   /* (gfrac: 1/65536 of 1/16 st = 14.8 fine) */
+        m.fine = vf;
+        if (vf)                                         /* residual below 1/16 semitone */
+            m.inc += (uint32_t)((int32_t)(m.inc >> 12) * vf);
         m.cutoff = ((lfo * DEP_AMT(p[P_LD_FLT])) >> 7) +
                    (((E2Q(t, v)) * DEP_AMT(p[P_E2FLT])) >> 7); /* (DUELL 1.1: AMP ENV's and LFO 2's cutoff depths no longer act; FILTER ENV's MULTI CUTOFF and LFO 1's stay) */
         if (e == &ENG_NOISE)                            /* NOISE's DRFT wander of the cutoff, worked out by the block before (eng_noise.c): filter 1's, one block late */
@@ -1310,9 +1346,9 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
         if (abits)
             atg_voice(t, v, &m);
         if (mod->on) {                                   /* the modulation matrix (mod.c) */
-            mod_voice(t, v, &m, v->fine + tune_fine + bend_fine);
+            mod_voice(t, v, &m, vf);
             if (t->cy)                                   /* its second list (cloud job B, mod.c): CYCLE's per-note routes, after mod_voice .. */
-                mod_cycle_voice(t, v, &m, v->fine + tune_fine + bend_fine);
+                mod_cycle_voice(t, v, &m, vf);
             t->venv = m.envq15;                          /* .. and this voice's ENV for filter 2's sum (mod_f2_voice, called by the chain) */
         }
         if (e == &ENG_WAVE && p[P_E6])                  /* WAVE STEPS (eng_wave.c): POS lands on one of STEPS places; the block ramp is the cross-fade between two steps */

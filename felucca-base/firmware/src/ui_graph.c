@@ -1950,7 +1950,7 @@ static uint32_t graph_signature(void)
     if (pg->graph == GR_MODS)                        /* (item 124: the knob just turned has the accent dot; the states are in mods_get / mods_keep_get below) */
         h = (h ^ (ui.hot_t ? ui.hot_col + 1u : 0u) * 2654435761u) * 16777619u;
     if (pg->graph == GR_FXSUM)
-        h = (h ^ ((uint32_t)(uint8_t)song.g[G_DTIME] | (uint32_t)(uint8_t)song.g[G_RTYPE] << 8 | (uint32_t)(uint8_t)song.g[G_RSIZE] << 16 | 0x01000000u) * 40503u) * 16777619u;
+        h = (h ^ ((uint32_t)(uint8_t)song.g[G_DTIME] | (uint32_t)(uint8_t)song.g[G_RTYPE] << 8 | (uint32_t)(uint8_t)song.g[G_RSIZE] << 16 | 0x01000000u | delay_div_shown() << 25) * 40503u) * 16777619u;
     h = (h ^ (clock_state() + 1u + clock_src() * 4u) * 3266489917u) * 16777619u;   /* (CLK: EXT / NO CLOCK, AUTO's source, on the TEMPO and MIDI pages) */
     if (pg->graph == GR_TEMPO)                       /* TEMPO's TAP card: the taps counted, over for good after 2 s */
         h = (h ^ (tempo_tapping() + 1u + (uint32_t)song.g[G_BPM] * 7u) * 2246822519u) * 16777619u;
@@ -2909,6 +2909,8 @@ static void graph_fxsum(void)
     }
     dm = N_DMODE_FULL[dly_mode_ui() & 3u];             /* (DUELL 1.1: the full word, not DIGI PING RAND OCT+) */
     param_format(glob_desc(G_DTIME), song.g[G_DTIME], tm, &unit2);
+    if (delay_div_shown() != (uint32_t)song.g[G_DTIME])   /* (a time that does not fit the line plays halved: the card shows what plays) */
+        str_cpy(tm, N_DIV[delay_div_shown()], sizeof tm);
     u1 = unit2 + (unit2[0] == ' ');                     /* (the unit is drawn small after the value, no gap, no space) */
     rt = val_shown(glob_desc(G_RTYPE), N_RTYPE[(uint32_t)clamp(song.g[G_RTYPE], 0, 5)]);   /* (SHIMMER, RESONATOR in full) */
     param_format(glob_desc(G_RSIZE), song.g[G_RSIZE], sz, &unit2);

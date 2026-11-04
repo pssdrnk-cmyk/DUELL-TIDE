@@ -325,6 +325,7 @@ export class Unit {
     const a = await this.req(CMD.UP_STORE, [slot, ...cstr(name)], 6000);
     if (a[1] === 1) throw new UnitError("The unit refused the name or the slot.", 1);
     if (a[1] === 2) throw new UnitError("The unit could not write: it could not stop playback in time, or the flash failed. Stop playback on the unit and try again.", 2);
+    if (a[1] === 6) throw new UnitError("STORE FULL: the unit's patch store holds all the patches it can (126 with TIDE). Save over a used slot, or remove a saved patch first.", 6);
     if (a[1] !== 0) throw new UnitError(`The unit answered error ${a[1]}.`, a[1]);
     if (this.parts[part]) this.parts[part].slot = slot;
     await this.listSlots();

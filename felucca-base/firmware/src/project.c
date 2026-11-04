@@ -390,6 +390,7 @@ static int project_restore_runtime(const project_t *input)
     for (k = 0; k < NTRK; k++)
         pat_sig[k] = ~steps_sig(&trk[k]);               /* a project's steps are the user's */
     undo_depth--;
+    TIDE_LOADED(3u);                                    /* TIDE hook (H18): both parts start as written, the arc at RISE */
     if (!proj_morph_skip)                               /* PROJ_REV 8: each part's End B as saved (the autosave, a backup): its values (the marks of the values set by hand in them); a project without leaves the morph as it was (the next action re-bases it) */
         for (k = 0; k < NSHOWN; k++)
             if (p->bvn[k])
@@ -411,6 +412,9 @@ static void persist_note(const persist_t *p)       /* p is the record now in the
 {
     memcpy(&persist_saved, p, sizeof persist_saved);
     persist_saved_map = persist_map_crc(p->map);
+#if DUELL_TIDE
+    memcpy(tide_tail_saved, p->map_tail + TIDE_TAIL_AT, TIDE_TAIL_N);
+#endif
 }
 static void persist_base(persist_t *p)             /* p := the saved record's head (fields this build does not export survive); the map is the caller's export */
 {
@@ -419,7 +423,11 @@ static void persist_base(persist_t *p)             /* p := the saved record's he
 }
 static int persist_is_saved(const persist_t *p)    /* the exported p equals what is in the flash */
 {
-    return !memcmp(p, &persist_saved, sizeof persist_saved) && persist_map_crc(p->map) == persist_saved_map;
+    return !memcmp(p, &persist_saved, sizeof persist_saved) && persist_map_crc(p->map) == persist_saved_map
+#if DUELL_TIDE
+           && !memcmp(p->map_tail + TIDE_TAIL_AT, tide_tail_saved, TIDE_TAIL_N)
+#endif
+        ;
 }
 static uint8_t persist_pending;                 /* 1 requested, 2 waiting after a flash error */
 static uint32_t persist_retry_ms;

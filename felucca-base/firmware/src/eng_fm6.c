@@ -812,6 +812,7 @@ static const char *const N_FM6_PATCH[] = {"F1", "F2", "F3", "F4", "F5", "F6", "F
 _Static_assert(NELEM(N_FM6_PATCH) == FM6_OWN + FM6_NBANK + FM6_NXF + 2u, "a SLOT name per value");
 
 /* {ALG, FB, MLVL, MRAT, MEG, VMOD, DTUN, SLOT}: the factory patch F1..F8 as it is, DTUN on the pad */
+#if DUELL_PRESETS                                     /* (Felucca's engine presets: no firmware code reads them since the factory sounds of sounds.c; the host tests do: core.h) */
 static const preset_t FM6_PRESETS[] = {
     {"TINE EP", {0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 127, 0}, 0, 0, FX(0, 45, 25, 35), PAT(6)},
     {"BELL", {0, 0, 0, 0, 0, 0, 0, 1}, {0, 0, 127, 0}, 0, 0, FX(0, 10, 30, 70), PAT(7)},
@@ -822,6 +823,7 @@ static const preset_t FM6_PRESETS[] = {
     {"ORGAN", {0, 0, 0, 0, 0, 0, 0, 6}, {0, 0, 127, 0}, 0, 0, FX(10, 40, 0, 30), PAT(6)},
     {"PLUCK", {0, 0, 0, 0, 0, 0, 0, 7}, {0, 0, 127, 0}, 0, 0, FX(0, 20, 35, 30), PAT(13)},
 };
+#endif
 
 /* 0.2.18 (page-order audit, finding 1): the cards show SLOT first (it loads a whole patch and so replaces what the cards after it hold), then ALG FB MLVL / MRAT MEG VMOD DTUN.
  * Card position -> E index; the stored ids E1..E8 (P_E0..P_E0+7) do not move, nor do patches, multis, projects, the matrix's E1..E8 or MIDI LEARN */
@@ -839,8 +841,10 @@ static const engine_t ENG_FM6 = {
         {"DTUN", F_PCT, 0, 127, 0, 0, 0},
         {"SLOT", F_INT, 0, FM6_OWN + FM6_NBANK + FM6_NXF, 0, N_FM6_PATCH, 0},
     },
+#if DUELL_PRESETS
     .presets = FM6_PRESETS,
     .npresets = NELEM(FM6_PRESETS),
+#endif
     .note_on = fm6_note_on,
     .render = fm6_render,
     .knob = {P_E2, P_E3, P_E4, P_E7},

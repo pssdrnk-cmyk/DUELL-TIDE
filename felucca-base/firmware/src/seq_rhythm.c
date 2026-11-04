@@ -15,6 +15,30 @@ static struct {
     uint8_t phase[NSHOWN];
 } rhythm __attribute__((section(".pool")));
 _Static_assert(sizeof rhythm == 20u, "rhythm control state budget");
+/* The motif's anchors (M01, M03): in the Original p, a beat; a hit on the place in the beat most of its hits take (an offbeat skank's
+ * "and"s are its anchors); then its other hits in order until max(2, 3/5 of its hits) are anchored. No mechanism drops or moves an
+ * anchor (DENS-, SYNC, the phrase gaps and moves, LEAD and ARC thinning): one identity floor for all of them. Main loop */
+static int sqm_anchor(const step_t *p, uint32_t len, uint32_t idx)
+{
+    uint32_t c[4] = {0, 0, 0, 0}, i, best = 0, hits = 0, n;
+    if (!(idx & 3u))
+        return 1;
+    if (!sqm_hit(&p[idx]))
+        return 0;
+    for (i = 0; i < len; i++)
+        if (sqm_hit(&p[i]))
+            c[i & 3u]++, hits++;
+    for (i = 1; i < 4u; i++)
+        if (c[i] > c[best])
+            best = i;
+    if ((idx & 3u) == best)
+        return 1;
+    for (n = c[0] + (best ? c[best] : 0u), i = 0; i < idx; i++)
+        n += (i & 3u) && (i & 3u) != best && sqm_hit(&p[i]);
+    return n < 2u || n * 5u < hits * 3u;
+}
+/* D1 (M02): a hit never sits more than two 16ths from its stored step */
+static int rhythm_far(int32_t d) { return d > 2 || d < -2; }
 static int32_t rhythm_offset(uint32_t pi, uint32_t i)
 {
     uint32_t m = rhythm_map[pi][i] & ~RHYTHM_REPEAT;
@@ -124,8 +148,8 @@ static uint32_t tide_pushes(uint32_t pi, uint32_t idx, uint32_t skip, uint32_t l
     }
     return n;
 }
-/* Move one onset from its reached position, retaining direction; never move an original anchor,
- * overwrite another attack or disturb held/ratcheted notes on either end. */
+/* Move one onset from its reached position, retaining direction, at most two 16ths from its stored step;
+ * never move an anchor, overwrite another attack or disturb held/ratcheted notes on either end. */
 static int rhythm_mutate(uint32_t pi, uint32_t seed)
 {
     track_t *t = &trk[pi];
@@ -135,15 +159,15 @@ static int rhythm_mutate(uint32_t pi, uint32_t seed)
     for (uint32_t j = 0; j < len; j++) {
         uint32_t i = (first + j) % len;
         int32_t cur = (int32_t)i + rhythm_offset(pi, i);
-        if (!(i % 4u) || !sqm_hit(&t->step[i]) || sqm_held(t->step, i, len) ||
-            rhythm_map[pi][i] == RHYTHM_REST) continue;
+        if (!sqm_hit(&t->step[i]) || sqm_held(t->step, i, len) ||
+            rhythm_map[pi][i] == RHYTHM_REST || sqm_anchor(t->step, len, i)) continue;
         int32_t preferred = phrase_direction(pi, cur, len, rhythm.dir[pi], seed);
         if (tarc_sync() && tide_metric(t, 0) != SM_NONE && tide_metric(t, (uint32_t)cur) == SM_AND && sqm_hash(seed, i, 0x5Du) % 4u < (tarc_sync() == 2u ? 3u : 2u))
             continue;                                /* SYNC: a hit that sits on the "and" tends to stay */
         for (uint32_t attempt = 0; attempt < 2u; attempt++) {
             int32_t dir = attempt ? -preferred : preferred;
             int32_t dest = cur + dir;
-            if (dest <= 0 || dest >= (int32_t)len ||
+            if (dest <= 0 || dest >= (int32_t)len || rhythm_far(dest - (int32_t)i) ||
                 ((rhythm_map[pi][i] & RHYTHM_REPEAT) && (uint32_t)dest == i)) continue;
             if ((uint32_t)dest != i && !sqm_target(t->step, (uint32_t)dest, len)) continue;
             if (tarc_sync() && tide_metric(t, 0) != SM_NONE) {          /* SYNC: never onto a real beat; the push is an accent (M7b) */
