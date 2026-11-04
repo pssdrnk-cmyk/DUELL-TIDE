@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* Phrase edits reuse the timing map and the existing packed pitch offsets.
  * Main loop only. A source may move, repeat at its old place too, or rest;
- * original beat anchors and continuation/slide/ratchet chains stay intact. */
+ * the motif's anchors (sqm_anchor) and continuation/slide/ratchet chains stay intact. */
 static uint32_t phrase_count(uint32_t pi, uint32_t len)
 {
     uint32_t n = 0;
@@ -13,7 +13,7 @@ static uint32_t phrase_count(uint32_t pi, uint32_t len)
 }
 static int phrase_source(uint32_t pi, uint32_t i, uint32_t len)
 {
-    return i % 4u && sqm_hit(&trk[pi].step[i]) && !sqm_held(trk[pi].step, i, len);
+    return sqm_hit(&trk[pi].step[i]) && !sqm_held(trk[pi].step, i, len) && !sqm_anchor(trk[pi].step, len, i);
 }
 static int phrase_gap(uint32_t pi, uint32_t seed)
 {
@@ -85,8 +85,8 @@ static int phrase_order(uint32_t pi, uint32_t seed)
                 (rhythm_map[pi][b] & RHYTHM_REPEAT)) continue;
             int32_t db = (int32_t)b + rhythm_offset(pi, b);
             /* Local reordering changes a short motif; never exchange two
-             * identical attacks, or jump across more than two beats. */
-            if (da - db > 8 || db - da > 8 ||
+             * identical attacks, or take a hit two 16ths past its stored step. */
+            if (rhythm_far(db - (int32_t)a) || rhythm_far(da - (int32_t)b) ||
                 !memcmp(&trk[pi].step[a], &trk[pi].step[b], sizeof(step_t))) continue;
             rhythm_put(pi, a, db - (int32_t)a);
             rhythm_put(pi, b, da - (int32_t)b);
