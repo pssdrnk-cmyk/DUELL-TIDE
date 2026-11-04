@@ -33,10 +33,10 @@ It is made for playing the FM-1 as a **background**: set a tide going, then play
 
 | AUTO TIDE | TIDE SETTINGS | MORPH, mid-glide |
 |:---:|:---:|:---:|
-| <img src="docs/tide/auto-tide-both-parts.png" width="260" alt="AUTO TIDE page with both parts: JRNY, 16 BARS, WAIT 2 BARS, the SOUND and SEQ faders of parts 1 and 2 at B"> | <img src="docs/tide/morph-settings.png" width="260" alt="TIDE SETTINGS page: TARGET BOTH, VARY BARS 4 + 8, ROLL MUSIC, ARP, PITCH, WASH LEVEL"> | <img src="docs/tide/morph-gliding.png" width="260" alt="MORPH page while a tide plays: the fader at 62"> |
-| The glide's state on knob 1's line (here *paused: PLAY goes on*), with both parts: each part's SOUND and SEQ fader, its steps as they play and the sound it has travelled to, and MODE / TIME / WAIT on knobs 2 to 4. | What the tide moves and how a new End B is rolled. Knob 1 picks the row, OCT+ / OCT- change it. | DUELL's own MORPH page follows the glide, so you see where the sound is between A and B. |
+| <img src="docs/tide/auto-tide-both-parts.png" width="260" alt="AUTO TIDE page with both parts gliding: WNDR to B, the SOUND and SEQ faders of parts 1 and 2 in two columns, both parts' steps, MODE WNDR, TIME 16 bars, WAIT 2 bars"> | <img src="docs/tide/morph-settings.png" width="260" alt="TIDE SETTINGS page: STYLE, TARGET BOTH, VARY BARS 4 + 8, ROLL MUSIC, ARP, PITCH; the rest of the rows scroll below"> | <img src="docs/tide/morph-gliding.png" width="260" alt="MORPH page while a tide plays: the fader at 64, ROLL, UNDO and AMOUNT 40 %"> |
+| The glide's state on knob 1's line (here *WNDR to B*), with both parts: the SOUND and SEQ faders in two columns, a row per part, each part's steps as they play and the sounds they have travelled to, and MODE / TIME / WAIT on knobs 2 to 4. | STYLE on top, then what the tide moves and how it changes. Knob 1 picks the row, OCT+ / OCT- change it. | DUELL's own MORPH page follows the glide, so you see where the sound is between A and B. |
 
-*Screenshots from the [web emulator](https://pssdrnk-cmyk.github.io/DUELL-TIDE/emu/).*
+*Screens rendered from the firmware's own drawing code (GREY palette); try them live in the [web emulator](https://pssdrnk-cmyk.github.io/DUELL-TIDE/emu/).*
 
 ## Play a tide in four steps
 
