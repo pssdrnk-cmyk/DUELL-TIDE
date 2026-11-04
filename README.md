@@ -4,6 +4,8 @@
 
 **DUELL 1.1 for the M-VAVE FM-1, plus TIDE: a morph that plays and evolves by itself.**
 
+**Stable: [`stable-2026-11-03`](https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/stable) · Beta: [`beta-2026-11-04`](https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/beta-2026-11-04)** ([what that means](#builds-stable-and-beta))
+
 [Try it in the browser](https://pssdrnk-cmyk.github.io/DUELL-TIDE/emu/) · [What changed](#what-changed-from-duell-11) · [Install](#install) · [Issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues)
 
 Development: [current roadmap and engineering priorities](docs/ROADMAP.md). Musical proposals and historical delivery evidence are linked there.
@@ -11,6 +13,15 @@ Development: [current roadmap and engineering priorities](docs/ROADMAP.md). Musi
 > **TIDE is by pssdrnk, not by OSCILL/R.** DUELL with TIDE is pssdrnk's fork of [DUELL](https://github.com/oscillr/DUELL) 1.1, which is made by **OSCILL/R**. The fork is not made, affiliated with or endorsed by OSCILL/R or M-VAVE. Please don't send TIDE problems to the DUELL author: use this fork's [issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues). DUELL and its credit belong to OSCILL/R; the code stays GPL-3.0-only.
 
 > **Use at your own risk.** TIDE has run on **one FM-1, the fork owner's**. It has no release and no wide testing. The FM-1 has a single copy of its firmware and no known rollback; a failed write can leave it dark, and then only a hardware recovery helps ([docs/RECOVERY.md](docs/RECOVERY.md)). Back up first. No warranty.
+
+## Builds: stable and beta
+
+| Channel | Build | Date | Status |
+|---|---|---|---|
+| **Stable** | [`stable-2026-11-03`](https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/stable-2026-11-03) (`187e9d0`), branch [`stable`](https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/stable) | 2026-11-03 | **Tested and validated** on the fork owner's FM-1. Build this one unless you want to help test. |
+| **Beta** | [`beta-2026-11-04`](https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/beta-2026-11-04) (`77a6df2`), on branch `jam11` | 2026-11-04 | **Under test.** Adds STYLE, ARC, SYNC, TURNS LEAD / ECHO, POLY, the USER slots, 32 more sounds, new patterns and multi sequences, list previews, JRNY role families and live graphs. Known open issues: the SAVE > MULTIS page layout, the TIDE page step bars not always matching what plays, and sound continuing after STOP (fixes in progress). |
+
+`jam11` (this page) is the development line: everything below describes the **beta**. A build becomes stable only after the fork owner has played and validated it on the unit. To build the stable one, check out the `stable` branch first (see [Install](#install)).
 
 ## The idea
 
@@ -135,9 +146,10 @@ To make room for TIDE in the FM-1's flash, the fonts are Huffman-coded and UI re
 **There is no TIDE release yet** and no web installer. The links on OSCILL/R's site (installer, emulator, editor, releases) install and show **plain DUELL**, not TIDE. To try TIDE without a unit, use [this fork's emulator](https://pssdrnk-cmyk.github.io/DUELL-TIDE/emu/).
 
 To put TIDE on an FM-1 you build it yourself:
-1. Build the package as in [felucca-base/BUILDING.md](felucca-base/BUILDING.md): `python3 tools/build.py` in `felucca-base`. TIDE is on by default. The result is `felucca-base/build/duell-1.1.fwsc`.
-2. Install it with `python3 ../jam/jam_dev.py flash build/duell-1.1.fwsc` (needs `pip install mido python-rtmidi`). It saves a backup of the unit first, then writes the package with `tools/fm1_install.py`. Use a **data** USB cable straight into the computer (no hub), and keep the computer awake.
-3. While it writes, the unit shows the update screen (WRITING, a percent number, DO NOT SWITCH OFF). Don't unplug until the installer says it is done, then switch the unit off and on once.
+1. Pick the build: `git checkout stable` for the validated one, or stay on `jam11` for the beta ([Builds](#builds-stable-and-beta)).
+2. Build the package as in [felucca-base/BUILDING.md](felucca-base/BUILDING.md): `python3 tools/build.py` in `felucca-base`. TIDE is on by default. The result is `felucca-base/build/duell-1.1.fwsc`.
+3. Install it with `python3 ../jam/jam_dev.py flash build/duell-1.1.fwsc` (needs `pip install mido python-rtmidi`). It saves a backup of the unit first, then writes the package with `tools/fm1_install.py`. Use a **data** USB cable straight into the computer (no hub), and keep the computer awake.
+4. While it writes, the unit shows the update screen (WRITING, a percent number, DO NOT SWITCH OFF). Don't unplug until the installer says it is done, then switch the unit off and on once.
 
 TIDE reports itself as DUELL 1.1; the AUTO TIDE page in HOME's round shows that TIDE is on the unit.
 
