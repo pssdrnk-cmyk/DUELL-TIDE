@@ -1338,8 +1338,8 @@ static void edit_param(uint32_t slot, int32_t steps)
 #define KR_QUIET_MS 300u
 static uint8_t oct_pend;                                /* bit 0 OCT-, bit 1 OCT+: pressed on a normal page, not let go yet */
 static uint8_t oct_mod;                                 /* OCT- was used as a modifier (a knob reset): no octave on its release */
-static uint8_t kr_on[5];                                /* knob k: a reset happened, its detents are ignored while it goes on */
-static uint32_t kr_t[5];
+static uint8_t kr_on[4];                                /* knob k: a reset happened, its detents are ignored while it goes on */
+static uint32_t kr_t[4];
 
 /* Commit a knob link into GLO and swallow the detents still in flight. */
 static void glo_knob_jump(uint32_t page, uint32_t knob)
@@ -1758,7 +1758,7 @@ static void presets_turn(int32_t s)
         pl_step(EN_PRESET, s);
 }
 /* OCT- held + a PRESETS turn (DUELL 1.1, owner decision D26): the load undo. ui.c undo_swap puts back the copy the last load, SEQ tool or lock edit took
- * (held again: the same again); once per gesture, the detents still in flight are dropped (kr_on[4], as a knob reset's). OCT- is a modifier then (no octave
+ * (held again: the same again); once per gesture, the detents still in flight are dropped (pu_t, as a knob reset's kr_on). OCT- is a modifier then (no octave
  * on its release). Only where PRESETS loads and OCT- is a plain button (not PERFORM, the dialogs, the menu, the action pages, the SET layers) and not on the
  * TIDE pages, where OCT- + a knob is the STYLE reset (tide_ui.c): there a turn loads as it always did */
 static int load_undo_gate(void)
@@ -1989,6 +1989,7 @@ static void first_boot_poll(void)
     settings_save();
 }
 
+static uint32_t pu_t;                                  /* fm1_ms of the last PRESETS detent swallowed after a load undo, 0 = none (load_undo_gate) */
 static void ui_input(void)
 {
     uint32_t pressed = fm1_input_edges(0), notes = fm1_input_note_edges(), now = fm1_ticks(), id, b, k;
@@ -2307,16 +2308,15 @@ static void ui_input(void)
      * and the page under it (HOME's sound, motion recorded), PRESETS could load a sound. They stay for the next pass */
     kq |= lay;
     if (!lay && (s = panel_enc(EN_PRESET)) != 0) {
-        if (kr_on[4] && fm1_ms - kr_t[4] >= KR_QUIET_MS)
-            kr_on[4] = 0;
-        if (kr_on[4]) {                                 /* after an undo: still turning, ignored until still */
-            kr_t[4] = fm1_ms;
+        if (pu_t && fm1_ms - pu_t >= KR_QUIET_MS)
+            pu_t = 0;
+        if (pu_t) {                                     /* after an undo: still turning, ignored until still */
+            pu_t = fm1_ms ? fm1_ms : 1u;
         } else if (load_undo_gate()) {                  /* OCT- held: the load undo, once (ui.c undo_swap) */
             pl_pend_on = 0;                             /* (a fast turn's waiting place does not load after it) */
             undo_swap();
             oct_mod = 1;
-            kr_on[4] = 1;
-            kr_t[4] = fm1_ms;
+            pu_t = fm1_ms ? fm1_ms : 1u;
         } else if (ui.perf) {                           /* PERFORM: the sound of the part(s) ALGORITHM chose (BOTH: each part its own step) */
             perf_presets(s);
         } else {
