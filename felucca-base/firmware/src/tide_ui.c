@@ -147,10 +147,11 @@ static const uint8_t STY[5][9] = {
     {GM_JOURNEY, 6, 4, 0, 0, 1, 0, 0, 3},                /* AMBIENT */
     {GM_JOURNEY, 3, 0, 1, 2, 1, 2, 2, 0}};               /* PEAK: ARC DROP and LEAD (ECHO before: D7) */
 static uint8_t tide_style = STY_DUB;
+static volatile uint8_t *const TIDE_ROW[9] = {&gl.mode, &gl.time, &gl.wait, &sqm_vary_all, &sqm_turns, &sqm_poly, &sqm_sync, &sqm_arc, &morph_wlvl};   /* (STY's order) */
 static __attribute__((noinline)) void tide_rows_set(const uint8_t *t)
 {
-    gl.mode = t[0], gl.time = t[1], gl.wait = t[2];
-    sqm_vary_all = t[3], sqm_turns = t[4], sqm_poly = t[5], sqm_sync = t[6], sqm_arc = t[7], morph_wlvl = t[8];
+    for (uint32_t i = 0; i < 9u; i++)
+        *TIDE_ROW[i] = t[i];
 }
 static void tide_style_apply(uint32_t s)
 {
@@ -159,7 +160,9 @@ static void tide_style_apply(uint32_t s)
 }
 static __attribute__((noinline)) void tide_rows_get(uint8_t *t)   /* the nine rows as they are now */
 {
-    t[0] = gl.mode, t[1] = gl.time, t[2] = gl.wait, t[3] = sqm_vary_all, t[4] = sqm_turns, t[5] = sqm_poly, t[6] = sqm_sync, t[7] = sqm_arc, t[8] = (uint8_t)(morph_wlvl & 3u);
+    for (uint32_t i = 0; i < 9u; i++)
+        t[i] = *TIDE_ROW[i];
+    t[8] &= 3u;                                          /* (WASH LEVEL) */
 }
 static int tide_style_holds(void)                        /* the nine rows are the style's */
 {
@@ -181,36 +184,37 @@ static __attribute__((noinline)) const char *jl_needs(uint32_t r)
         return 0;
     return gl.mode < GM_WANDER ? "WNDR OR JRNY" : !morph_musical ? "ROLL MUSIC" : gl.target == GT_SOUND ? "TARGET SEQ" : 0;   /* (what the row needs, short: knob 1's line has 91 px after "SETTING TURNS") */
 }
-static uint32_t jl_n(uint32_t r) { return r == JL_WASH ? 4u : r == JL_STYLE ? 6u : r == JL_TURNS || r == JL_TARGET || r == JL_ROLL || r == JL_POLY || r == JL_SYNC || r == JL_ARC ? 3u : 2u; }
+/* the rows as tables: how many values each has, its byte (STYLE, TARGET and the plain rows; ROLL, ARP and PITCH are the morph's), the values'
+ * names, and the header message a change shows: the prefix + the value's name, or a message of its own (TARGET, VARY BARS, TURNS) */
+static const uint8_t JL_NV[JL_N] = {6, 3, 2, 3, 2, 2, 4, 3, 3, 3, 3};
+static volatile uint8_t *const JL_VAR[JL_N] = {[JL_STYLE] = &tide_style, [JL_TARGET] = &gl.target, [JL_VARY] = &sqm_vary_all, [JL_WASH] = &morph_wlvl,
+                                               [JL_TURNS] = &sqm_turns, [JL_POLY] = &sqm_poly, [JL_SYNC] = &sqm_sync, [JL_ARC] = &sqm_arc};
+static const char *const JL_V[] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK", "CUSTOM", "SOUND", "SEQ", "BOTH", "4 + 8", "ALL", "MUSIC", "SMART", "WILD",
+                                   "OFF", "ON", "OFF", "ON", "OFF", "LOW", "MID", "HIGH", "TOGETHER", "TAKE TURNS", "LEAD", "OFF", "GENTLE", "WIDE",
+                                   "OFF", "SOFT", "PUSH", "OFF", "RISE", "DROP"};
+static const uint8_t JL_V0[JL_N] = {0, 6, 9, 11, 14, 16, 18, 22, 25, 28, 31};   /* (each row's first name in JL_V) */
+static const char *const JL_SAY[JL_N] = {"STYLE ", 0, 0, "", "", "", "WASH ", 0, "POLY ", "SYNC ", "ARC "};
+static const char *const JL_OWN[8] = {"GLIDE SOUND", "GLIDE SEQ", "GLIDE SOUND + SEQ", "VARY BARS 4 + 8", "VARY EVERY BAR",
+                                      "PARTS VARY TOGETHER", "PARTS TAKE TURNS", "PARTS LEAD IN TURNS"};
+static uint32_t jl_n(uint32_t r) { return JL_NV[r % JL_N]; }
 static uint32_t jl_get(uint32_t r)
 {
-    switch (r) {
-    case JL_TARGET: return gl.target;
-    case JL_VARY: return sqm_vary_all;
-    case JL_ROLL: return morph.cfg & MC_WILD ? 2u : morph_musical ? 0u : 1u;
-    case JL_ARP: return (morph.cfg & MC_ARP) != 0u;
-    case JL_WASH: return morph_wlvl & 3u;
-    case JL_TURNS: return sqm_turns;
-    case JL_POLY: return sqm_poly;
-    case JL_SYNC: return sqm_sync;
-    case JL_ARC: return sqm_arc;
-    case JL_STYLE: return tide_style;
-    default: return (morph.cfg & MC_PIT) != 0u;
-    }
+    r %= JL_N;
+    if (JL_VAR[r])
+        return *JL_VAR[r] & (r == JL_WASH ? 3u : 0xFFu);
+    return r == JL_ROLL ? (morph.cfg & MC_WILD ? 2u : morph_musical ? 0u : 1u) : (morph.cfg & (r == JL_ARP ? MC_ARP : MC_PIT)) != 0u;
 }
 static const char *jl_vname(uint32_t r, uint32_t v)
 {
-    static const char *const VARY[2] = {"4 + 8", "ALL"}, *const ROLL[3] = {"MUSIC", "SMART", "WILD"}, *const SW[2] = {"OFF", "ON"},
-                             *const WL[4] = {"OFF", "LOW", "MID", "HIGH"},
-                             *const TURNS[3] = {"TOGETHER", "TAKE TURNS", "LEAD"}, *const POLY[3] = {"OFF", "GENTLE", "WIDE"}, *const SYNC[3] = {"OFF", "SOFT", "PUSH"}, *const ARC[3] = {"OFF", "RISE", "DROP"},
-                             *const STYLE[6] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK", "CUSTOM"};
-    return r == JL_TURNS ? TURNS[v % 3u] : r == JL_POLY ? POLY[v % 3u] : r == JL_SYNC ? SYNC[v % 3u] : r == JL_ARC ? ARC[v % 3u] : r == JL_STYLE ? STYLE[v % 6u] : r == JL_TARGET ? GL_TARGET_NAME[v % 3u] : r == JL_VARY ? VARY[v & 1u] : r == JL_ROLL ? ROLL[v % 3u] : r == JL_WASH ? WL[v & 3u] : SW[v & 1u];
+    r %= JL_N;
+    return JL_V[JL_V0[r] + v % JL_NV[r]];
 }
 static void jl_put(uint32_t r, uint32_t v)
 {
     uint32_t pi = song.sel, mask = morph_mask(pi);
-    switch (r) {
-    case JL_STYLE:
+    const char *say;
+    r %= JL_N, v %= JL_NV[r];
+    if (r == JL_STYLE) {
         if (v < STY_CUSTOM) {
             if (tide_style == STY_CUSTOM || !tide_style_holds())
                 tide_custom_take();                      /* (the values being replaced are CUSTOM: kept for the way back) */
@@ -220,49 +224,18 @@ static void jl_put(uint32_t r, uint32_t v)
                 tide_rows_set(tide_custom);
             tide_style = STY_CUSTOM;
         }
-        ui_message(v == 0u ? "STYLE DUB" : v == 1u ? "STYLE DEEP" : v == 2u ? "STYLE MINIMAL" : v == 3u ? "STYLE AMBIENT" : v == 4u ? "STYLE PEAK" : "STYLE CUSTOM");
-        break;
-    case JL_TARGET:
-        gl.target = (uint8_t)v;
-        ui_message(v == GT_BOTH ? "GLIDE SOUND + SEQ" : v == GT_SEQ ? "GLIDE SEQ" : "GLIDE SOUND");
-        break;
-    case JL_VARY:
-        sqm_vary_all = (uint8_t)v;
-        ui_message(v ? "VARY EVERY BAR" : "VARY BARS 4 + 8");
-        break;
-    case JL_ROLL:                                        /* (MUSIC and SMART are SMART's tags with or without the dials; WILD drops them) */
+    } else if (r == JL_ROLL) {                           /* (MUSIC and SMART are SMART's tags with or without the dials; WILD drops them) */
         morph_musical = (uint8_t)(v == 0u);
         if ((v == 2u) != ((morph.cfg & MC_WILD) != 0u))
             morph_act(MQ_SMART, mask, v != 2u, pi);
-        ui_message(v == 0u ? "MUSIC" : v == 1u ? "SMART" : "WILD");
-        break;
-    case JL_ARP:
-        morph_act(MQ_ARP, mask, v, pi);
-        break;
-    case JL_WASH:                                        /* (morph_xfer.c: GLIDE's breath, the swell and the wash, together) */
-        morph_wlvl = (uint8_t)(v & 3u);
-        ui_message(v == 0u ? "WASH OFF" : v == 1u ? "WASH LOW" : v == 2u ? "WASH MID" : "WASH HIGH");
-        break;
-    case JL_TURNS:
-        sqm_turns = (uint8_t)(v % 3u);
-        ui_message(v == 0u ? "PARTS VARY TOGETHER" : v == 1u ? "PARTS TAKE TURNS" : "PARTS LEAD IN TURNS");
-        break;
-    case JL_POLY:                                        /* (seq_poly.c: one part's loop shorter now and then, back at a phrase) */
-        sqm_poly = (uint8_t)(v % 3u);
-        ui_message(v == 0u ? "POLY OFF" : v == 1u ? "POLY GENTLE" : "POLY WIDE");
-        break;
-    case JL_SYNC:                                        /* (seq_rhythm.c: the phrase edits lean to the "and" and the push) */
-        sqm_sync = (uint8_t)(v % 3u);
-        ui_message(v == 0u ? "SYNC OFF" : v == 1u ? "SYNC SOFT" : "SYNC PUSH");
-        break;
-    case JL_ARC:                                         /* (seq_arc.c: a build, a peak, an optional drop and a breakdown over 32-64 bars) */
-        sqm_arc = (uint8_t)(v % 3u);
-        ui_message(v == 0u ? "ARC OFF" : v == 1u ? "ARC RISE" : "ARC DROP");
-        break;
-    default:
-        morph_act(MQ_PITCH, mask, v, pi);
-        break;
-    }
+    } else if (!JL_VAR[r]) {                             /* ARP, PITCH: the morph's own switches (their message is morph_act's) */
+        morph_act(r == JL_ARP ? MQ_ARP : MQ_PITCH, mask, v, pi);
+        return;
+    } else                                               /* (WASH: morph_xfer.c's breath, swell and wash; TURNS, POLY, SYNC, ARC: seq_answer.c,
+                                                          * seq_poly.c, seq_rhythm.c, seq_arc.c) */
+        *JL_VAR[r] = (uint8_t)v;
+    say = JL_SAY[r];
+    ui_say(say ? say : JL_OWN[(r == JL_TARGET ? 0u : r == JL_VARY ? 3u : 5u) + v], say ? jl_vname(r, v) : "");
 }
 /* what the TIDE LIST draws (ui_graph.c graph_signature): the rows' values, the row picked, the parts' colours */
 static uint32_t tide_list_sig(void)
@@ -887,9 +860,15 @@ static uint32_t tide_sig(void)
  * while stopped and not during ERASE DATA (tide_store_poll) */
 enum { TS_MODE, TS_TIME, TS_TARGET, TS_WAIT, TS_VARY, TS_MUSIC, TS_WASH, TS_OLD, TS_TURNS = TS_OLD, TS_POLY, TS_SYNC, TS_ARC, TS_STYLE, TS_N };   /* (TS_OLD: the fields of the first record; a record of that length loads, the later fields at their defaults) */
 static uint8_t tide_seen[TS_N], tide_seen_ok;
+/* each field's byte; read back: a value under TS_LIM kept, else TS_DEF (TS_LIM 0: masked with TS_DEF) */
+static volatile uint8_t *const TS_VAR[TS_N] = {&gl.mode, &gl.time, &gl.target, &gl.wait, &sqm_vary_all, &morph_musical, &morph_wlvl, &sqm_turns, &sqm_poly,
+                                               &sqm_sync, &sqm_arc, &tide_style};
+static const uint8_t TS_LIM[TS_N] = {GM_JOURNEY + 1u, GLIDE_TIMES, GT_BOTH + 1u, GLIDE_WAITS, 0, 0, 0, 3, 3, 3, 3, STY_CUSTOM},
+                     TS_DEF[TS_N] = {GM_ONCE, 3, GT_SOUND, 0, 1, 1, 3, 1, 1, 1, 0, STY_CUSTOM};
 static void tide_settings(void)
 {
     uint8_t w[TS_N];
+    uint32_t i;
     if (tide_tail_new) {                                 /* a settings restore (editor_backup.c) brought other fields: read them again */
         tide_tail_new = 0;
         tide_seen_ok = 0;
@@ -897,36 +876,17 @@ static void tide_settings(void)
     if (!tide_seen_ok) {
         uint8_t b[TS_N] = {[TS_TURNS] = 1u, [TS_POLY] = 1u, [TS_SYNC] = 1u, [TS_ARC] = 0u, [TS_STYLE] = STY_CUSTOM};   /* (the defaults of the fields an older record lacks) */
         uint32_t have = tide_store_load_min(b, TS_N, TS_OLD);
-        if (have) {
-            gl.mode = (uint8_t)(b[TS_MODE] <= GM_JOURNEY ? b[TS_MODE] : GM_ONCE);
-            gl.time = (uint8_t)(b[TS_TIME] < GLIDE_TIMES ? b[TS_TIME] : 3u);
-            gl.target = (uint8_t)(b[TS_TARGET] <= GT_BOTH ? b[TS_TARGET] : GT_SOUND);
-            gl.wait = (uint8_t)(b[TS_WAIT] < GLIDE_WAITS ? b[TS_WAIT] : 0u);
-            sqm_vary_all = (uint8_t)(b[TS_VARY] & 1u);
-            morph_musical = (uint8_t)(b[TS_MUSIC] & 1u);
-            morph_wlvl = (uint8_t)(b[TS_WASH] & 3u);
-            sqm_turns = (uint8_t)(b[TS_TURNS] < 3u ? b[TS_TURNS] : b[TS_TURNS] == 3u ? 2u : 1u);   /* (a stored ECHO reads as LEAD: D7) */
-            sqm_poly = (uint8_t)(b[TS_POLY] < 3u ? b[TS_POLY] : 1u);
-            sqm_sync = (uint8_t)(b[TS_SYNC] < 3u ? b[TS_SYNC] : 1u);
-            sqm_arc = (uint8_t)(b[TS_ARC] < 3u ? b[TS_ARC] : 0u);
-            tide_style = (uint8_t)(have > TS_STYLE && b[TS_STYLE] < STY_CUSTOM ? b[TS_STYLE] : STY_CUSTOM);   /* (an older record: CUSTOM, its values kept) */
+        if (have) {                                      /* (an older record: STYLE CUSTOM, its values kept; a stored ECHO reads as LEAD: D7) */
+            for (i = 0; i < TS_N; i++)
+                *TS_VAR[i] = (uint8_t)(!TS_LIM[i] ? b[i] & TS_DEF[i] : b[i] < TS_LIM[i] ? b[i] : i == TS_TURNS && b[i] == 3u ? 2u : TS_DEF[i]);
         } else
             tide_style_apply(STY_DUB);                   /* (no record: the DUB showcase) */
     }
     if (tide_style < STY_CUSTOM && !tide_style_holds())
         tide_style = STY_CUSTOM;                         /* a hand edit of any of the nine rows (knobs, rows, resets, MIDI) */
-    w[TS_MODE] = gl.mode;
-    w[TS_TIME] = gl.time;
-    w[TS_TARGET] = gl.target;
-    w[TS_WAIT] = gl.wait;
-    w[TS_VARY] = sqm_vary_all;
-    w[TS_MUSIC] = morph_musical;
-    w[TS_WASH] = (uint8_t)(morph_wlvl & 3u);
-    w[TS_TURNS] = sqm_turns;
-    w[TS_POLY] = sqm_poly;
-    w[TS_SYNC] = sqm_sync;
-    w[TS_ARC] = sqm_arc;
-    w[TS_STYLE] = tide_style;
+    for (i = 0; i < TS_N; i++)
+        w[i] = *TS_VAR[i];
+    w[TS_WASH] &= 3u;
     if (!tide_seen_ok) {                                 /* (what was read, or the defaults: not a change, nothing to write at every power-on) */
         memcpy(tide_seen, w, TS_N);
         tide_seen_ok = 1;
