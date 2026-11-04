@@ -515,6 +515,8 @@ static __attribute__((noinline)) int32_t fm6_live_level(const fm6_env_t *e, cons
 {
     int32_t ol = fm6_scaleout(op[FP_OL]) + fm6_scale_level(e->key, op), peak = 0;
     uint32_t i;
+    if (!e->down && e->ix >= 4u)
+        return level;                               /* released and finished: an OL turned up later must not bring it back (the note never ended: fm6_note_done) */
     ol = (ol > 127 ? 127 : ol) * 32 + fm6_scale_vel(e->velocity, op[FP_KVS]);
     if (ol < 0)
         ol = 0;
