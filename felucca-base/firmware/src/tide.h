@@ -44,6 +44,10 @@ static int tide_seq_wrapping(const track_t *t, uint32_t len);
 static uint32_t tide_arp_idx(const track_t *t, uint32_t k, uint32_t len);
 static void tide_arp_tick(track_t *t);
 static int tide_poly_on(const track_t *t);
+static uint32_t tide_play_idx(const track_t *t);
+static uint32_t tide_play_len(const track_t *t);
+#define TIDE_PLAY_IDX(t) tide_play_idx(t)   /* (the pages: the step playing now, the loop's length it plays) */
+#define TIDE_PLAY_LEN(t) tide_play_len(t)
 #define TIDE_SLEN(t) tide_slen(t)
 #define TIDE_SEQ_NEXT(t, len) tide_seq_next(t)
 #define TIDE_SEQ_RELEN(t, len) ((len) = tide_slen(t))   /* (a stretch began or ended at this step) */
@@ -166,6 +170,8 @@ static int tide_foot_two(void);
 #define TIDE_SEQ_CHORD(t, list, n) (n)
 #define TIDE_SEQ_START() ((void)0)
 #define TIDE_SLEN(t) ((uint32_t)(t)->p[P_SLEN])
+#define TIDE_PLAY_IDX(t) ((uint32_t)(t)->seq_idx)
+#define TIDE_PLAY_LEN(t) ((uint32_t)(t)->p[P_SLEN])
 #define TIDE_SEQ_NEXT(t, len) (((uint32_t)(t)->seq_idx + 1u) % (len))
 #define TIDE_ARP_IDX(t, k, len) ((k) % (len))
 #define TIDE_ARP_TICK(t) ((void)0)

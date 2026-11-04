@@ -855,9 +855,10 @@ static void t_style(void)
     }
     CHECK("each style sets exactly its nine rows and leaves TARGET and ROLL (ARP, PITCH are the morph's own byte)", ok && own);
     jl_put(JL_STYLE, 1);
+    tide_custom_ok = 0;                                      /* (no CUSTOM kept: tests/ui_truth_test.c has the way back) */
     jl_put(JL_STYLE, STY_CUSTOM);
     tide_settings();
-    CHECK("CUSTOM changes nothing", tide_style == STY_CUSTOM && style_is(1));
+    CHECK("CUSTOM changes nothing (with no values of its own kept)", tide_style == STY_CUSTOM && style_is(1));
     /* a hand edit of each of the nine owned values: CUSTOM, the edited value and the rest kept; the other rows leave the style alone */
     ok = 1;
     for (r = 0; r < 9u; r++) {

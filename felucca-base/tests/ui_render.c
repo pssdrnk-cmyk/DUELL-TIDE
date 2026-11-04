@@ -2356,6 +2356,57 @@ int main(int argc, char **argv)
         snprintf(ap, sizeof ap, "%s/boxes.txt", out);
         boxf = fopen(ap, "w");
     }
+    {   /* TIDE's header messages: each must fit the title room (a long one wrapped onto a second line and overlapped the first) */
+        static const char *const M[] = {"PARTS LEAD IN TURNS", "PARTS VARY TOGETHER", "THE ANSWER ECHOES", "GLIDE SOUND + SEQ", "NO AUTO TIDE YET",
+            "DROP CANCELLED", "VARY BARS 4 + 8", "VARY EVERY BAR", "STYLE AMBIENT", "STYLE MINIMAL", "GLIDE STOPPED", "NOTHING TO KEEP", "PARTS TAKE TURNS", "GLIDE TO B", "WASH HIGH", "SEQ KEPT", "SOUND KEPT"};
+        uint32_t m;
+        for (m = 0; m < sizeof M / sizeof M[0]; m++) {
+            setup(S_HOME); pal(UI_DEFAULT_INDEX); song.rec = 0; usb.config = 0;
+            ui_message(M[m]);
+            ui.force = 1; cur_name = M[m];
+            draw(-1); lint();
+        }
+    }
+    {   /* AUTO TIDE / TIDE SETTINGS in the states the page sweep does not reach (audit 2026-11-04 lane C, C8): BOTH parts, gliding, armed, ARC, WAIT, POLY, 32 steps, the list's last rows,
+         * the ARC trip line, the list with inert rows */
+        static const char *const NM[] = {"at_single_rest", "at_both_rest", "at_both_glide", "at_both_armed_stopped", "at_both_arc_recover_dropnext",
+                                         "at_both_waiting16", "at_single_glide_32steps", "ts_bottom", "at_both_poly", "at_both_minimal_text", "at_both_arc_trip", "ts_inert", "ts_inert_dim"};
+        uint32_t pi, sc, k, i;
+        for (pi = 0; pi < NPAGES && strcmp(PAGES[pi].title, "AUTO TIDE"); pi++) ;
+        for (sc = 0; sc < sizeof NM / sizeof NM[0]; sc++) {
+            uint32_t pg = pi;
+            setup(S_HOME);
+            pal(UI_DEFAULT_INDEX);
+            song.rec = 0; usb.config = 0; ui.perf = 0;
+            morph.target = sc == 0 || sc == 6 ? MT_SELECTED : MT_BOTH;
+            for (k = 0; k < NSHOWN; k++) {
+                track_t *t = &trk[k];
+                t->p[P_SLEN] = (int16_t)(sc == 6 ? 32 : 16);
+                for (i = 0; i < NSTEP; i++) { memset(&t->step[i], 0, sizeof t->step[i]); t->step[i].time = ST_REST; }
+                for (i = 0; i < 32u; i++) if ((i + k) % 3u != 1u) { t->step[i].time = ST_NOTE; t->step[i].n = (uint8_t)(1u + (i % 4u == 0u) * 3u); t->step[i].note[0] = 60; t->step[i].note[1] = 63; t->step[i].note[2] = 67; t->step[i].note[3] = 70; }
+                t->step[5].time = ST_TIE;
+                t->seq_idx = (uint16_t)(7u + 4u * k);
+            }
+            song.playing = sc >= 2 && sc != 3 && sc != 7 && sc < 11;
+            gl.on = 0; gl.armed = 0; gl.hold = 0; gl.wait = 2; sqm_arc = 0; tarc.run = 0; tarc.hand = 0; poly_len[0] = 0;
+            if (sc >= 2 && sc != 7 && sc < 11) { gl.on = 3; gl.mask = 3; gl.to = 1; gl.prog = 1u << (GLIDE_Q - 1); gl.mode = GM_JOURNEY; gl.time = 6; }
+            if (sc == 3) gl.armed = 1;
+            if (sc == 4 || sc == 10) { sqm_arc = 2; sqm_auto = 3; tarc.run = 1; tarc.phase = 4; tarc.len = 2; tarc.left = 1; tarc.hand = sc == 4; }
+            if (sc == 5) { gl.hold = 1; gl.wait = 5; gl.prog = (1u << GLIDE_Q) - 1u; }
+            if (sc == 8) { poly_len[0] = 12; }
+            if (sc == 9) { gl.on = 0; gl.mode = GM_DRIFT; }
+            if (sc == 7 || sc >= 11) { for (pg = 0; pg < NPAGES && strcmp(PAGES[pg].title, "TIDE SETTINGS"); pg++) ; jl_sel = (uint8_t)(sc == 11 ? JL_TURNS : JL_N - 1); }
+            if (sc >= 11) { gl.mode = sc == 11 ? GM_ONCE : GM_JOURNEY; morph_musical = sc == 12; gl.target = GT_SOUND; }
+            ui.page = (uint8_t)pg;
+            ui.force = 1;
+            cur_name = NM[sc];
+            draw(-1);
+            lint();
+            write_ppm(out, "VIOLET", NM[sc]);
+            pal(UI_GREY_INDEX); ui.force = 1; draw(-1); lint(); write_ppm(out, "GREY", NM[sc]);
+        }
+        song.playing = 0; gl.on = 0; gl.armed = 0; gl.hold = 0; sqm_arc = 0; tarc.run = 0; tarc.hand = 0; poly_len[0] = 0; jl_sel = 0; morph_musical = 1; sqm_auto = 0;
+    }
     if (audf) fprintf(audf, "screen\ttexts\ttext_px\ticons\ticon_px\tkeycaps\tkeycap_px\tellipsised\ttight\twords\ttight_list\n");
     {   /* the lint itself: an overlap, a value too wide for its column, a text past its canvas, one past its cell */
         state(); pal(0); cur_name = "self-test";
