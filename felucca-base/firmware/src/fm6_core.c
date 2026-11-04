@@ -481,14 +481,20 @@ static int32_t fm6_osc_base(const uint8_t *op, int32_t note, int32_t extra)
 }
 
 /* a note-on (msfa note init) of patch p, MIDI note `note` (transposed), velocity vel. fresh: from silence
- * (phases, gains, feedback 0); else a retrigger keeps them, as msfa does */
+ * (phases, gains, feedback 0; the phases anywhere with OKS off); else a retrigger keeps them, as msfa does */
+static uint32_t fm6_oks_seed = 0x2545F491u;             /* the free-running start phases of OKS OFF patches (any non-zero value) */
 static void fm6_note_init(fm6_note_t *n, const uint8_t *p, int32_t note, int32_t vel, int fresh)
 {
     uint32_t k;
     note = note < 0 ? 0 : note > 127 ? 127 : note;
     if (fresh) {
-        for (k = 0; k < 6u; k++)
+        for (k = 0; k < 6u; k++) {
             n->op[k].phase = n->op[k].gain_out = 0;
+            if (!p[FP_OKS]) {                           /* OKS off: the oscillators are not synced to the key: a new note starts them anywhere (a DX7 free-runs them) */
+                fm6_oks_seed = fm6_oks_seed * 1664525u + 1013904223u;
+                n->op[k].phase = (int32_t)fm6_oks_seed;
+            }
+        }
         n->fb[0] = n->fb[1] = 0;
         n->dc = 0;
     }

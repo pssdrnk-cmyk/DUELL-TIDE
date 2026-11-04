@@ -612,6 +612,30 @@ static void macros(void)
         check("DTUN: centred (mean offset 0 on every algorithm), the outer carriers (n - 1) x 12 cents apart, modulators untouched", worst < 0.1 && !bad);
         (void)wspan;
     }
+    {   /* OKS (audit Q10): ON syncs the operators' phases to the key (every fresh note starts alike); OFF starts them anywhere (a DX7 free-runs them) */
+        static double y[2][2048];
+        static const int R[4] = {99, 99, 99, 99}, L[4] = {99, 99, 99, 0};
+        uint8_t v[FP_SIZE + 1u];
+        uint32_t k, o, same[2], nok = 0;
+        double d, r;
+        init_patch(v);                                  /* algorithm 32: six carriers, OP1..OP3 sound */
+        for (k = 1; k <= 6u; k++)
+            op_set(v, k, R, L, k <= 3u ? 90 : 0, k);
+        v[FP_ALG] = 31;
+        for (o = 0; o < 2u; o++) {                      /* OKS 1, then 0: two fresh notes each */
+            v[FP_OKS] = (uint8_t)(1u - o);
+            for (k = 0; k < 2u; k++) {
+                setup(v, 0);
+                voice_render(48, 100, y[k], 2048, 0);
+            }
+            for (d = 0, r = 0, k = 0; k < 2048u; k++)
+                d += (y[0][k] - y[1][k]) * (y[0][k] - y[1][k]), r += y[0][k] * y[0][k];
+            same[o] = d < r * 1e-9;
+            printf("fm6: OKS %u: two fresh notes differ by %.1f %% of the first (rms of the difference)\n", 1u - o, 100.0 * sqrt(d / (r + 1)));
+            nok += o ? d > r * 0.01 : 0;
+        }
+        check("OKS: on, every fresh note is the same (synced); off, the notes start their oscillators apart", same[0] && !same[1] && nok);
+    }
     {   /* SLOT: the main loop loads a factory patch; OWN keeps (and brings back) the track's own */
         uint8_t own[FP_SIZE + 1u];
         setup(base, 0);
