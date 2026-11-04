@@ -7,7 +7,7 @@
 Two channels, from the repository's GitHub releases (drafts never count):
 
   stable  the newest normal (non-pre-release) release that carries duell-tide-stable-YYYY-MM-DD[.N].fwsc. That is GitHub's "Latest".
-  beta    the newest pre-release that carries duell-tide-beta-YYYY-MM-DD[.N].fwsc AND was published after that stable release.
+  beta    the newest pre-release that carries duell-tide-beta-YYYY-MM-DD[.N].fwsc AND is a newer build than that stable one (the date and .N in the package name; the publishing time only breaks a tie).
           An older beta is a superseded build: it is not offered. With no stable release at all, the newest beta is offered alone.
 
 For each channel found it downloads the package and its .sha256 into DIR/<channel>/ and writes DIR/<channel>.json
@@ -25,12 +25,19 @@ import subprocess
 import sys
 from pathlib import Path
 
-PKG = re.compile(r"duell-tide-(stable|beta)-(\d{4}-\d{2}-\d{2})(?:\.\d+)?\.fwsc")
+PKG = re.compile(r"duell-tide-(stable|beta)-(\d{4}-\d{2}-\d{2})(?:\.(\d+))?\.fwsc")
 SHA = re.compile(r"\b([0-9a-fA-F]{64})\b")
 
 
 def _when(rel):
     return rel.get("published_at") or rel.get("created_at") or ""
+
+
+def _build(rel, channel):
+    """a build's place in time: the date and the .N of its package name, then the publishing time (two releases created
+    seconds apart must not decide which build is newer)"""
+    m = PKG.fullmatch(package_asset(rel, channel)["name"])
+    return (m[2], int(m[3] or 0), _when(rel))
 
 
 def package_asset(rel, channel):
@@ -43,8 +50,8 @@ def pick(releases):
     """{"stable": release | None, "beta": release | None} by the rules above (releases: the REST API list)"""
     live = sorted((r for r in releases if not r.get("draft")), key=_when, reverse=True)
     stable = next((r for r in live if not r.get("prerelease") and package_asset(r, "stable")), None)
-    beta = next((r for r in live if r.get("prerelease") and package_asset(r, "beta")
-                 and (stable is None or _when(r) > _when(stable))), None)
+    betas = sorted((r for r in live if r.get("prerelease") and package_asset(r, "beta")), key=lambda r: _build(r, "beta"), reverse=True)
+    beta = next((r for r in betas if stable is None or _build(r, "beta") > _build(stable, "stable")), None)
     return {"stable": stable, "beta": beta}
 
 

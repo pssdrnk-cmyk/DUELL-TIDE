@@ -57,6 +57,20 @@ class Pick(unittest.TestCase):
         newer["assets"] = [{"name": "duell-tide-stable-2026-11-10.fwsc", "size": 5}]
         self.assertEqual(self.tags(rels + [newer]), ("stable-2026-11-10", None))
 
+    def test_a_newer_beta_published_first_is_offered(self):   # the build date decides, not which release was created first
+        rels = copy.deepcopy(FIXTURE)
+        for r in rels:
+            if r["tag_name"] == "beta-2026-11-04":
+                r.update(published_at="2026-11-01T00:00:00Z", created_at="2026-11-01T00:00:00Z")
+        self.assertEqual(self.tags(rels), ("stable-2026-11-03", "beta-2026-11-04"))
+
+    def test_second_beta_of_a_day_wins(self):
+        rels = copy.deepcopy(FIXTURE)
+        two = copy.deepcopy(next(r for r in rels if r["tag_name"] == "beta-2026-11-04"))
+        two.update(tag_name="beta-2026-11-04.2", published_at="2026-11-04T05:00:00Z", created_at="2026-11-04T05:00:00Z")
+        two["assets"] = [{"name": "duell-tide-beta-2026-11-04.2.fwsc", "size": 5}]
+        self.assertEqual(self.tags(rels + [two]), ("stable-2026-11-03", "beta-2026-11-04.2"))
+
     def test_release_without_a_package_is_skipped(self):
         rels = copy.deepcopy(FIXTURE)
         emu_only = {"tag_name": "emu-1", "draft": False, "prerelease": False, "published_at": "2026-11-09T00:00:00Z", "assets": [{"name": "duell-emulator-1.zip"}]}
