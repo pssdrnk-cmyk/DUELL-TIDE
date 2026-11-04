@@ -29,6 +29,10 @@ _Static_assert(NSHOWN <= NPART, "core.h: NSHOWN parts are shown, NPART parts exi
 #define DUELL_BENCH 0            /* DUELL developer switch (-DDUELL_BENCH=1; env DUELL_BENCH=1 + BENCH_TAG for tools/build.py): 1 builds in MENU > SYSTEM > BENCH, the
                                   * stage-timing bench (src/bench.c, docs/BENCH_GUIDE.md). 0 (every normal build) leaves all of it out: not a byte of it is compiled */
 #endif
+#ifndef DUELL_VCAP
+#define DUELL_VCAP DUELL_BENCH   /* the 0.2.11 VOICE CAP (voice.c vcap_poll), superseded by the NOTES budget (budget.c) on the unit: built only where the bench holds the budget open
+                                  * (bench_bopen: bnotes 0) and in the tests that measure it (-DDUELL_VCAP=1 or #define before the includes) */
+#endif
 #if defined(DUELL_CORE1_PROBE) && DUELL_CORE1_PROBE
 #error "DUELL_CORE1_PROBE (BENCH-B's synthetic core 1 rows) is not in this line: two-core stage 1 brings core 1 (twocore.c)"
 #endif

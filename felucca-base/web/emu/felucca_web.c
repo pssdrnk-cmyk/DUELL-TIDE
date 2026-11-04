@@ -21,6 +21,7 @@
 #include <stdint.h>
 
 #define FELUCCA_WEB 1
+#define DUELL_VCAP 1                     /* this build never calls budget_poll: the 0.2.11 VOICE CAP (voice.c vcap_poll) stays what limits its notes (core.h) */
 #define FELUCCA_METER_EST 1              /* audio.c: no clock here, the CPU meter reads a voice-count model (labelled EST) */
 /* (FELUCCA_CDC: src/felucca.c's default: the console and MENU > USB SERIAL only in a DUELL_TEST_MODE build; the product emulator has neither) */
 #define FELUCCA_FLASH 1
@@ -300,7 +301,7 @@ static void web_frame(void)
     felucca_dbg.ui_frames++;
     ui_input();
     wave_service();                                       /* main.c: a frame of a WAVE table build */
-    vcap_poll();                                          /* main.c: the VOICE CAP (DUELL 0.2.11) */
+    vcap_poll();                                          /* the VOICE CAP (DUELL 0.2.11, voice.c): this build never calls budget_poll, so the cap is what limits the notes here, as before */
     settings_poll();
     autosave_poll();
     ui_leds();

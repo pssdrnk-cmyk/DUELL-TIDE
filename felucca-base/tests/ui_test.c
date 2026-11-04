@@ -36,6 +36,9 @@
  *              dark after the time, nothing drawn, any input wakes it (SLPOUT, 120 ms, redraw, DISPON) and is
  *              swallowed; dialogs / count-in / UPDATE MODE keep it on; saved; the sound bit for bit while dark.
  * Built and run by tests/run_tests.sh. */
+#ifndef DUELL_VCAP
+#define DUELL_VCAP 1                                     /* (the tests built on this file keep the 0.2.11 VOICE CAP in frame(), as they always did: their goldens were made with it; the unit has the NOTES budget instead, core.h) */
+#endif
 #ifndef FELUCCA_CDC
 #define FELUCCA_CDC 1                                    /* (as src/felucca.c: the console built in, MENU > USB SERIAL) */
 #endif

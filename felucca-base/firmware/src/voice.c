@@ -94,6 +94,7 @@ static void lfo_tick(track_t *t, lfo_t *l, uint32_t r, uint32_t s, int lfo1)
 }
 static void track_lfo_tick(track_t *t) { lfo_tick(t, &t->lfo1, P_LRATE, P_LSYNC, 1); }
 
+#if DUELL_VCAP                                          /* (core.h: bench builds and the tests that measure it; the unit has the NOTES budget instead, budget.c) */
 /* DUELL 0.2.11 VOICE CAP (owner, 2026-10-14; SPEC 6.3): a heavy combination gets fewer voices per part, so the predicted
  * worst case of both parts stays under VC_BUDGET of the half (the loadcost scale of docs/CPU_ANALYSIS.md: model %, the device
  * reads ~10-25 % lower). The cost of a voice (0.1 % of the half): the engine's (its heaviest factory sound, 8 voices held, minus the
@@ -109,7 +110,7 @@ static void track_lfo_tick(track_t *t) { lfo_tick(t, &t->lfo1, P_LRATE, P_LSYNC,
  * each part gets the cap that fits it alone (VC_BUDGET - VC_IDLE over its voice, VC_MIN at least) instead of 4. Computed
  * every UI frame (vcap_poll: main loop; a load, an engine, filter or SLOPE change, a roll are seen at once), deterministic.
  * It bites only for NEW notes: voice_alloc / UNISON take at most vcap voices (a note over the cap steals within the part, as
- * at an engine's own cap); notes that sound beyond the cap keep sounding until they end. Shown only on the TEST screen */
+ * at an engine's own cap); notes that sound beyond the cap keep sounding until they end. (The unit has the NOTES budget instead and its TEST screen shows those numbers; this cap is for the bench with the budget held open.) */
 #define VC_IDLE 150u                                    /* the idle mix with power-on FX: 15 % */
 #define VC_BUDGET 850u                                  /* 85 % */
 #define VC_F12 18u                                      /* the multimode filter a voice: 12 dB */
@@ -118,15 +119,18 @@ static void track_lfo_tick(track_t *t) { lfo_tick(t, &t->lfo1, P_LRATE, P_LSYNC,
 #define VC_FADE 20u                                     /* .. an engine choice cross-faded (M04 WIRED SNAIL's ANALOG WAVE, M14 PHASE WAVE: +2..2.6 %) */
 #define VC_MIN 4u
 static uint8_t vcap[NTRK];                              /* the cap of each part, 0: none yet (all of the engine's) */
+#endif
 static uint8_t bnotes[NTRK];                            /* DUELL NOTES budget (budget.c budget_poll): the notes of each part, 0: none yet (the budget is not asked) */
 static uint8_t bnotes1[NTRK];                           /* DUELL 1.1 item 90: the one-core numbers, always (bnotes holds the two-core ones while that rule is in force) */
 static volatile uint8_t bd_one_now;                     /* DUELL 1.1 item 90: 1 = the audio plays both parts on core 0 right now (core 1 down, paused, or a flash park: twocore_run.c tcr_begin sets it
                                                          * every block): the note-on path and the counter use bnotes1. 0 in every one-core build */
 #define VPOOL (NVOICE * 2u)                             /* DUELL 1.1 item 90: the voices that may sound at once over both parts: each part its own NVOICE (was NVOICE shared); the NOTES budget holds the CPU */
+#if DUELL_VCAP
 static const struct { const engine_t *e; uint8_t c; } VCOST[] = {   /* (tests/cpu_scenarios_test.c CPU_SCEN=P: the heaviest sound, its voices) */
     {&ENG_ANALOG, 51}, {&ENG_FM6, 61}, {&ENG_PHASE, 40}, {&ENG_LOFI, 24}, {&ENG_FORMANT, 60}, {&ENG_TRIO, 44}, {&ENG_WHEEL, 59},
     {&ENG_PHYS, 144}, {&ENG_NOISE, 47}, {&ENG_WAVE, 52},   /* (FM6: 6 voices, PHYS 3, VOICE 4; WAVE: #60 DIGITAL PAD less its 12 dB filter) */
 };
+#endif
 /* voices the engine may use (POLY and UNISON): its cap, else all of them; DUELL 0.2.11: and the part's VOICE CAP; and the part's NOTES
  * (budget.c: the stricter of the two caps and the budget; a new note over it steals within the part, as at an engine's own cap) */
 static uint32_t trk_nvoice_eng(const track_t *t)
@@ -136,13 +140,21 @@ static uint32_t trk_nvoice_eng(const track_t *t)
 }
 static uint32_t trk_nvoice(const track_t *t)
 {
-    uint32_t p = (uint32_t)(t - trk) % NTRK, c = trk_nvoice_eng(t), v = vcap[p], b = bd_one_now ? bnotes1[p] : bnotes[p];
+    uint32_t p = (uint32_t)(t - trk) % NTRK, c = trk_nvoice_eng(t), b = bd_one_now ? bnotes1[p] : bnotes[p];
     if (b)                                              /* (item 90: the NOTES budget supersedes the 0.2.11 VOICE CAP, whose table and 8-voice pool are out of date) */
         return b < c ? b : c;
-    return v && v < c ? v : c;
+#if DUELL_VCAP
+    {
+        uint32_t v = vcap[p];
+        return v && v < c ? v : c;                      /* (no budget numbers: a bench build holding the budget open, a test) */
+    }
+#else
+    return c;
+#endif
 }
 static uint32_t vc_eng_cap(const engine_t *e) { return e->poly && e->poly < NVOICE ? e->poly : NVOICE; }
-static uint32_t vcap_shown(uint32_t p)                  /* the TEST screen: the voices part p may use (its sound's engine, the cap) */
+#if DUELL_VCAP
+static uint32_t vcap_shown(uint32_t p)                  /* the voices part p may use (its sound's engine, the cap) */
 {
     uint32_t c = vc_eng_cap(ENGINES[eng_idx(trk[p].eng_req)]);
     return vcap[p] && vcap[p] < c ? vcap[p] : c;
@@ -222,6 +234,7 @@ static void vcap_poll(void)                             /* main loop, every fram
     for (p = 0; p < 2u; p++)
         vcap[p] = (uint8_t)cap[p];
 }
+#endif
 
 /* the part's voice mode: P_VOICE */
 static uint32_t trk_vmode(const track_t *t)
