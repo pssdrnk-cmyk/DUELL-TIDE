@@ -6,7 +6,7 @@
  * buses, as always (B idle: no cost). SPLIT: A takes part 1's sends and returns to the left only, B part 2's to the
  * right only (mix_block, split_buses): nothing of one part reaches the other side. The two delays share dly_buf (each half
  * of it); the chorus and reverb lines of B are its own (pool) */
-#define DLY_LEN 65536u           /* 1.49 s: 1/4 at 40 BPM fits */
+#define DLY_LEN 65536u           /* 1.49 s: 1/4 at 40 BPM does not fit (1.5 s); it halves to 1/8 (delay_samples) */
 #define DLY_HALF (DLY_LEN / 2u)  /* SPLIT: each part's delay (0.74 s; a longer time halves until it fits: delay_split) */
 #define CHO_LEN 2048u
 static int16_t dly_buf[DLY_LEN] __attribute__((section(".pool")));
@@ -378,10 +378,13 @@ static inline int32_t pf_mix(int32_t x, int32_t y, int32_t w)
 }
 #include "click.c"                                   /* the metronome's click (after the master: audio.c) */
 
+/* the TIME in samples; one that does not fit the line halves until it does (a note value of the tempo stays one, as delay_split) */
 static uint32_t delay_samples(void)
 {
     uint32_t s = div_samples((uint32_t)song.g[G_DTIME]);
-    return s < 16u ? 16u : s >= DLY_LEN ? DLY_LEN - 1u : s;
+    while (s >= DLY_LEN)
+        s >>= 1;
+    return s < 16u ? 16u : s;
 }
 
 /* HALL's helpers: m / 2^sh rounded towards zero (a product that feeds back must not floor: a loop of floors
@@ -1862,6 +1865,23 @@ static uint32_t delay_split(void)
     while (s >= DLY_HALF)
         s >>= 1;
     return s;
+}
+
+/* the TIME the delay plays as a division (the DELAY card): the stored one when it fits, else the one nearest the halved time */
+static uint32_t delay_div_shown(void)
+{
+    uint32_t d, t = (uint32_t)song.g[G_DTIME], best = t, bd = 0xFFFFFFFFu;
+    uint32_t s = dm_split || song.g[G_DMODE] == DMD_PING ? delay_split() : delay_samples();
+    if (div_samples(t) == s)
+        return t;
+    for (d = 0; d < sizeof N_DIV / sizeof *N_DIV; d++) {
+        uint32_t e = div_samples(d), x = e > s ? e - s : s - e;
+        if (x < bd) {
+            bd = x;
+            best = d;
+        }
+    }
+    return best;
 }
 
 /* DUELL 0.2.14 MODULES (SENDS: snd_* above; PART FX: pfx_* below): the fades' step a sample, Q15: 993 samples, 22.5 ms (as DM_STEP) */

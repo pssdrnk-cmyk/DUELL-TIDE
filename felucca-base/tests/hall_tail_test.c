@@ -21,7 +21,7 @@
 #define REF_ROOM 0x02879802c2ff09d0ull
 #define REF_SPRING 0x544264e2a2709943ull
 #define REF_SHIM 0xdd66869cca41988bull
-#define REF_RESO 0x6552e1281ad58f56ull
+#define REF_RESO 0x00114e14faed010cull   /* (the combs' period takes off the damping low-pass's delay: audit R04; was 0x6552e1281ad58f56) */
 #define REF_PLATE 0x86d0863381bd1b3full
 #endif
 static double db(double ms) { return ms > 0 ? 10 * log10(ms / (32767.0 * 32767.0)) : -999; }

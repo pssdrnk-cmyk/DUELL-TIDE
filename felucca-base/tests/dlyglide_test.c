@@ -7,7 +7,9 @@
  *    (the read head's jump gave -7.3 dB, PING-PONG -2.6 dB)
  * 2. a BPM step 120 -> 123 (DIGITAL): at most -48 dB (the jump gave -27.8 dB)
  * 3. an external clock re-measured every 16th at +-1 ms (midi_beat_samples as midi_clock.c had it): no burst above -40 dB against the tone in 1.9 s (80 before)
- * 4. the glide ends on the time: an impulse's first repeat lands exactly at the delay time, in a steady delay and 6 s after a TIME change */
+ * 4. the glide ends on the time: an impulse's first repeat lands exactly at the delay time, in a steady delay and 6 s after a TIME change
+ * 5. a time that does not fit the line halves until it does, in every mode (audit R03: it was clamped to 65535 samples, off the beat), and the
+ *    DELAY card shows the division it plays (fx.c delay_samples, delay_div_shown) */
 #define main hostsim_main
 #include "hostsim.c"
 #undef main
@@ -189,11 +191,48 @@ int main(void)
     /* a steady delay, and a TIME changed 6 s before the impulse (the glide has ended): the impulse's first repeat lands exactly at the delay time */
     {
         uint32_t t, got, want;
-        static const char *name[] = {"steady", "TIME changed 6 s before", "large upward TIME change (11025 -> 65535)", "large downward TIME change (65535 -> 11025)"};
-        for (t = 0; t < 4u; t++) {
+        static const char *name[] = {"steady", "TIME changed 6 s before", "large upward TIME change (11025 -> 65535)", "large downward TIME change (65535 -> 11025)", "1/4 at 40 BPM (66150 samples) halved to fit"};
+        for (t = 0; t < 5u; t++) {
             got = first_repeat(t, &want);
             sprintf(w, "%s: the impulse's first repeat lands at the delay time (%u, want %u)", name[t], got, want);
             check(w, got == want);
+        }
+    }
+    /* R03: every division at every tempo plays as the named time halved until it fits (never clamped), and the card names it */
+    {
+        uint32_t bpm, dv, off = 0, tot = 0;
+        for (bpm = 40; bpm <= 250u; bpm++)
+            for (dv = 0; dv < 17u; dv++) {
+                uint32_t want;
+                song.g[G_BPM] = (int16_t)bpm;
+                song.g[G_DTIME] = (int16_t)dv;
+                want = div_samples(dv);
+                while (want >= DLY_LEN)
+                    want >>= 1;
+                tot++;
+                off += delay_samples() != (want < 16u ? 16u : want);
+            }
+        sprintf(w, "every division at 40 .. 250 BPM plays as the named time halved to fit the line: %u of %u off", off, tot);
+        check(w, off == 0u);
+    }
+    {
+        uint32_t k;
+        static const struct { int bpm, tm, mode; uint32_t samples; int shown; } C[] = {
+            {77, 6, DMD_RAND, 34363u, 0},       /* M05: 1/2 at 77 BPM (68726) halves to 1/4 (was 65535, 4.6 % off) */
+            {71, 13, DMD_RAND, 55900u, 14},     /* M13: 2D at 71 BPM (111801) halves to 4D (was 65535, 41 % off) */
+            {71, 14, DMD_PING, 27950u, 15},     /* M07: 4D at 71 BPM in PING-PONG plays 8D (the card said 4D) */
+            {120, 14, DMD_DIGITAL, 33075u, 14}, /* fits: unchanged */
+            {40, 0, DMD_OCTUP, 33075u, 1},      /* 1/4 at 40 BPM (66150) does not fit: halves to 1/8 */
+        };
+        for (k = 0; k < 5u; k++) {
+            uint32_t got;
+            song.g[G_BPM] = (int16_t)C[k].bpm;
+            song.g[G_DTIME] = (int16_t)C[k].tm;
+            song.g[G_DMODE] = (int16_t)C[k].mode;
+            dm_split = 0;
+            got = C[k].mode == DMD_PING ? delay_split() : delay_samples();
+            sprintf(w, "BPM %d, TIME %d, mode %d: plays %u samples (want %u), the card shows division %u (want %d)", C[k].bpm, C[k].tm, C[k].mode, got, C[k].samples, delay_div_shown(), C[k].shown);
+            check(w, got == C[k].samples && delay_div_shown() == (uint32_t)C[k].shown);
         }
     }
     printf("DELAY GLIDE: %s\n", bad ? "FAIL" : "PASS");
