@@ -584,6 +584,34 @@ static void macros(void)
         printf("fm6: DTUN 0 / 127 (3 carriers): level swing over 50 ms windows %.3f / %.3f\n", v0, v1);
         check("DTUN: the carriers apart: they beat", v1 > v0 * 1.05);
     }
+    {   /* DTUN is centred (audit Q05, D18): on every algorithm the carriers' offsets average 0 and the outer ones are (n - 1) steps of up to 12 cents apart */
+        uint32_t alg, k, bad = 0, one = 0;
+        double worst = 0, wspan = 0;
+        for (alg = 0; alg < 32u; alg++) {
+            uint32_t car = fm6_carriers(alg), nc = 0;
+            double sum = 0, lo = 1e9, hi = -1e9;
+            memcpy(e, E0, sizeof e); e[0] = (int16_t)(alg + 1u); e[6] = 127;
+            setup(base, e);
+            fm6_sync(&trk[0]);
+            for (k = 0; k < 6u; k++) {
+                double c = fm6_eff[0].dt[k] / 13981.0;       /* cents */
+                if (!(car >> k & 1u)) {
+                    bad += fm6_eff[0].dt[k] != 0;
+                    continue;
+                }
+                nc++, sum += c;
+                lo = c < lo ? c : lo, hi = c > hi ? c : hi;
+            }
+            if (fabs(sum / nc) > worst)
+                worst = fabs(sum / nc);
+            if (nc > 1u && fabs((hi - lo) - 12.0 * (nc - 1u)) > 0.1)
+                bad++, wspan = hi - lo;
+            one += nc == 1u;
+        }
+        printf("fm6: DTUN 127 on the 32 algorithms: the carriers' mean offset at most %.2f cents (was +6 on the two-carrier ones), %u algorithms with one carrier (nothing to spread)\n", worst, one);
+        check("DTUN: centred (mean offset 0 on every algorithm), the outer carriers (n - 1) x 12 cents apart, modulators untouched", worst < 0.1 && !bad);
+        (void)wspan;
+    }
     {   /* SLOT: the main loop loads a factory patch; OWN keeps (and brings back) the track's own */
         uint8_t own[FP_SIZE + 1u];
         setup(base, 0);

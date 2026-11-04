@@ -15,7 +15,8 @@
  *   MRAT  added to the coarse ratio of the modulators (ratio mode only)
  *   MEG   the modulators' envelope times: + slower (rates down to 40 steps), - faster
  *   VMOD  added to the modulators' velocity sensitivity (0..7)
- *   DTUN  spreads the carriers apart in pitch (up to about +-36 cents between the outer ones)
+ *   DTUN  spreads the carriers apart in pitch, centred on the note: up to 12 cents a step, the outer carriers (n - 1) steps apart (12 cents with 2,
+ *         36 with 4, 60 with 6). A lone carrier (algorithms 17 to 19) has nothing to spread against: DTUN does nothing there (it would only transpose the voice)
  *   SLOT  F1..F8 load a factory patch; OWN (8) is the track's own patch: what a project, a user preset or the
  *         editor put there. A load shows F n when the patch is that factory one unchanged, else OWN (fm6_adopt).
  *         B1..B32 (9..40, 1.4.1) load a voice of the 32-voice bank in flash (fm6_vbank.c) as F n do; a bank slot
@@ -500,9 +501,8 @@ static void fm6_sync(const track_t *t)
             uint8_t *op = p + (5u - k) * FP_OP;              /* OP1 first: carriers in their order */
             uint32_t ki = 5u - k;
             fm6_eff[tr].dt[ki] = 0;
-            if ((car >> ki) & 1u) {                          /* carriers 0, +1, -1, +2, -2, +3 steps apart */
-                static const int8_t SPREAD[6] = {0, 1, -1, 2, -2, 3};
-                fm6_eff[tr].dt[ki] = SPREAD[n++] * step;
+            if ((car >> ki) & 1u) {                          /* the carriers a step apart, centred on the note */
+                fm6_eff[tr].dt[ki] = (2 * (int32_t)n++ - (int32_t)__builtin_popcount(car) + 1) * step / 2;
                 if (eon)                                     /* the AMP ENV knobs: every carrier's envelope by the same steps (a higher knob is slower or higher) */
                     fm6_env_apply(op, eoff);
                 continue;
@@ -870,9 +870,8 @@ static __attribute__((noinline)) void fm6_macros(uint8_t *p, const int16_t *e, u
         uint8_t *op = p + (5u - k) * FP_OP;                     /* OP1 first: carriers in their order */
         uint32_t ki = 5u - k;
         dt[ki] = 0;
-        if ((car >> ki) & 1u) {                                 /* carriers 0, +1, -1, +2, -2, +3 steps apart */
-            static const int8_t SPREAD[6] = {0, 1, -1, 2, -2, 3};
-            dt[ki] = SPREAD[n++] * step;
+        if ((car >> ki) & 1u) {                                 /* the carriers a step apart, centred on the note */
+            dt[ki] = (2 * (int32_t)n++ - (int32_t)__builtin_popcount(car) + 1) * step / 2;
             if (eoff) fm6_env_apply(op, eoff);
             continue;
         }
