@@ -9,7 +9,7 @@ Updated 4 November 2026. This is the current delivery and status document. The [
 | **Stable** | `stable-2026-11-03` (`187e9d0`): validated by the fork owner on the unit. Package SHA-256 `7795e777…1b30`. |
 | **Beta (published)** | `beta-2026-11-04` (`77a6df2`): flashed to the owner's unit 2026-11-04, under test. U1–U3, the 32 extra sounds, new patterns and multi sequences, JRNY role families, live graphs, the TIDE SETTINGS rows STYLE, TURNS (LEAD / ECHO), POLY, SYNC and ARC. Package SHA-256 `d94ac77c…5d7c`. |
 | **Next beta (release candidate)** | On `jam11`, staged as a draft release for the owner's test: the TIDE step bars show what plays (`tidesteps`), STOP ends a latched arp (`stophang`), an FM6 voice under MORPH ends after its release (also in plain DUELL), the audit fixes C1–C12 (a TIME change lands at the next turn, ARC 32–64 bars, PATTERNS preview = LOAD, …), the SAVE > MULTIS / PATTERNS redesign and a UI polish pass, and the rebuilt installer site with Stable / Beta channels. |
-| **In progress** | The arp timing and TIDE page truth fixes are merged (not yet in a build). Four more, each on its own branch: FM6 re-strike, delay-time glide with a steadier clock tempo, JRNY roles and level data, and CI. They are reviewed and merged one by one. |
+| **In progress** | The arp timing, TIDE page truth and FM6 re-strike fixes are merged (not yet in a build). Three more, each on its own branch: delay-time glide with a steadier clock tempo, JRNY roles and level data, and CI. They are reviewed and merged one by one. |
 | **Tests** | Full `sh jam/check.sh` on the candidate: **143 pass / 0 fail / 1 skip** (benchrun needs termios; it runs in the Linux CI). Web: installer state, site build, install flow (headless, fake unit), editor web tests pass. `jam/check_off.sh`: DUELL_TIDE=0 matches `jam/off.sha256` (`f0254580…`, changed on purpose by the FM6 fix). |
 | **Flash** | Candidate image 577,464 B of the 581,564 B slot: **4,100 B free**. RAM .data+.bss 68,480 of 73,728 B. Keep 0xEA000..0xFBFFF for future pattern / multi slots. |
 | **CPU (host proxy)** | Within +116 basic blocks a half of the 3 November measurement on the worst scene (DUEL, 3 keys, both sequencers); the threshold for a closer look is about +1,000. Check ABOUT on the unit after flashing: code layout can move the device figure. |
@@ -148,7 +148,7 @@ Each runs on its own branch until it is reviewed and merged. Crossed-out rows ar
 
 | Fix | What changes |
 |---|---|
-| FM6 re-strike | FM6 pads and keys stop clicking and dipping about 20 dB on re-strike, arp and held chords. Also true for plain DUELL. |
+| ~~FM6 re-strike~~ | ~~FM6 pads and keys stop clicking and dipping about 20 dB on re-strike, arp and held chords. Also true for plain DUELL.~~ Merged, not yet in a build. |
 | ~~Arp timing and swing direction~~ | ~~The arp stays on the grid for a whole set, and swing swings the right way.~~ Merged, not yet in a build. |
 | Delay-time glide, steadier clock tempo | TIME and TEMPO moves bend instead of clicking; the tempo and a synced delay stay steadier under an external clock. |
 | JRNY roles and level data | The sounds that fall in no role get one, FX are split from PERC, USER records honour the families, and level data for GHOST HARP and a few other sounds is corrected. |
