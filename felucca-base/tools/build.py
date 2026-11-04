@@ -325,6 +325,8 @@ def build_app():
         v = os.environ.get(flag)    # unset: the default in firmware/src/felucca.c (DUELL_TEST_MODE: core.h, 0 = release: no TEST screen, no M13..M16)
         if v in ("0", "1"):
             flags.append(f"-D{flag}={v}")
+    if os.environ.get("DUELL_PRESETS") != "1":   # Felucca's engine preset tables (engine_t.presets): no firmware code reads them (sounds.c's factory sounds replaced them), only the host tests do
+        flags.append("-DDUELL_PRESETS=0")
     v = os.environ.get("DUELL_VELO", "1")   # KEY SENSE (key velocity and aftertouch, sense.c): ON in every build since 0.2.30 (owner, 2026-10-21; before: developer builds only, build.py passed nothing and felucca.c's default 0 held).
     if v in ("0", "1"):                     # DUELL_VELO=0 in the environment builds the old velocity-free shape (host tests compile without the switch: felucca.c's default stays 0)
         flags.append(f"-DDUELL_VELO={v}")

@@ -234,6 +234,7 @@ static void analog_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, cons
 }
 
 /* {WAVE, DTN, MIX, NOIS, -, -, DRV, -}: the filter's three slots are unused (CUT RES KTR were filter 1's since cloud job J) */
+#if DUELL_PRESETS                                     /* (Felucca's engine presets: no firmware code reads them since the factory sounds of sounds.c; the host tests do: core.h) */
 static const preset_t ANALOG_PRESETS[] = {
     {"SAW LEAD", {0, 12, 64, 0, 0, 0, 10, 0}, {4, 70, 100, 50}, 20, 1, FX(0, 10, 45, 30), PAT(4)},
     {"SOFT PAD", {0, 20, 64, 4, 0, 0, 0, 0}, {80, 90, 110, 95}, 10, 0, FX(0, 60, 20, 70), PAT(5)},
@@ -248,6 +249,7 @@ static const preset_t ANALOG_PRESETS[] = {
     {"WIND", {0, 0, 0, 90, 0, 0, 0, 0}, {60, 90, 60, 80}, 50, 0, FX(0, 30, 30, 70), PAT(5)},
     {"STRINGS", {0, 25, 64, 0, 0, 0, 0, 0}, {70, 90, 115, 90}, 5, 0, FX(0, 60, 20, 70), PAT(5)},
 };
+#endif
 
 static const uint8_t ANALOG_UIORD[8] = {0, 1, 2, 3, 6, 4, 5, 7};   /* card position -> E index: ENGINE WAVE DTN MIX; EDIT 1 NOIS DRV (the three unused slots after them, hidden); the stored ids never move */
 
@@ -264,8 +266,10 @@ static const engine_t ENG_ANALOG = {
         {"DRV", F_PCT, 0, 127, 0, 0, 0},
         {"-", F_INT, 0, 0, 0, 0, 0},                 /* was KTR (filter 1's KEY TRK) */
     },
+#if DUELL_PRESETS
     .presets = ANALOG_PRESETS,
     .npresets = NELEM(ANALOG_PRESETS),
+#endif
     .note_on = analog_note_on,
     .render = analog_render,
     .desc = analog_desc,

@@ -226,6 +226,7 @@ static void noise_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
 }
 
 /* {MODE, COLR, -, -, -, DENS, DRFT, CRSH / CLK} (FREQ RES TRK are filter 1's since cloud job J) */
+#if DUELL_PRESETS                                     /* (Felucca's engine presets: no firmware code reads them since the factory sounds of sounds.c; the host tests do: core.h) */
 static const preset_t NOISE_PRESETS[] = {
     {"WIND", {NZ_ANLG, 64, 0, 0, 0, 0, 70, 0}, {90, 90, 110, 90}, 0, 0, FX(0, 30, 20, 80), PAT(5)},
     {"RAIN", {NZ_DUST, 30, 0, 0, 0, 105, 40, 0}, {10, 90, 127, 70}, 0, 0, FX(0, 0, 20, 70), PAT(5)},
@@ -234,6 +235,7 @@ static const preset_t NOISE_PRESETS[] = {
     {"ARCADE", {NZ_LFSR, 0, 0, 0, 0, 112, 0, 84}, {0, 80, 0, 50}, 0, 0, FX(0, 0, 10, 20), PAT(3)},
     {"METAL", {NZ_META, 0, 0, 0, 0, 32, 0, 0}, {0, 75, 40, 60}, 10, 0, FX(0, 20, 30, 45), PAT(7)},
 };
+#endif
 
 static const uint8_t NOISE_UIORD[8] = {0, 1, 5, 6, 7, 2, 3, 4};   /* card position -> E index: ENGINE MODE COLR DENS; EDIT 1 DRFT CRSH (FREQ RES TRK are unused slots, hidden); the stored ids never move */
 
@@ -250,8 +252,10 @@ static const engine_t ENG_NOISE = {
         {"DRFT", F_PCT, 0, 127, 0, 0, 0},
         {"CRSH", F_PCT, 0, 127, 0, 0, 0},           /* LFSR, META: the clock above the key */
     },
+#if DUELL_PRESETS
     .presets = NOISE_PRESETS,
     .npresets = NELEM(NOISE_PRESETS),
+#endif
     .note_on = noise_note_on,
     .render = noise_render,
     .knob = {P_FREEA, P_FREEB, P_E1, P_REL},   /* filter 1's CUT and RES (FREQ and RES were here) */

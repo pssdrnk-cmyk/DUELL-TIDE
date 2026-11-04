@@ -414,6 +414,10 @@ static uint8_t duell_mode = DM_STEREO;
  * mix_split: SPLIT 0 = OFF, else the note + 1 (LAYER only: below it part 1 plays alone, at or above it part 2) */
 static volatile uint8_t mix_xf, mix_split;
 
+#ifndef DUELL_PRESETS
+#define DUELL_PRESETS 1          /* 1: Felucca's engine preset tables (eng_*.c, engine_t.presets) are built; no firmware code reads them, the host tests render them (tests/hostsim.c,
+                                  * regress.c ..). tools/build.py passes -DDUELL_PRESETS=0 for the unit (1,6 KB of flash); DUELL_PRESETS=1 in its environment builds them in */
+#endif
 typedef struct {
     const char *name;
     int8_t e[8];                 /* P_E0..P_E7 (signed: an interval below the note; every value fits) */
@@ -434,8 +438,10 @@ typedef struct {                 /* an engine (engines.c ENGINES[]; the eng_*.c 
     const char *name;            /* "ANALOG" (PRESETS, the editor) */
     const char *page_title[2];   /* EDIT 1 and EDIT 2 */
     param_desc_t edit[8];        /* P_E0..P_E7 */
-    const preset_t *presets;
+#if DUELL_PRESETS
+    const preset_t *presets;     /* Felucca's presets: only the host tests read them (tools/build.py passes DUELL_PRESETS=0 for the unit: sounds.c has the factory sounds) */
     uint8_t npresets;
+#endif
     uint8_t knob[4];             /* HOME: the four parameters on KNOB 1..4 */
     uint8_t poly;                /* voice cap for POLY and UNISON, 0 = NVOICE */
     uint8_t sampled;             /* 1 = plays recorded material (a position, not a phase): voice.c keeps
