@@ -781,8 +781,8 @@ static void graph_tidelist(void)
             cv_rrect(UT_L5_X, y, UT_L5_W, UT_L5_H, UT_T3_ROW_R, T_THEME, T_BG);
         }
         cv_text_on(UT_L5_TAG_X, ty, &AF_M, JL_NAME[r], sel ? T_INK : T_TEXT, bg);
-        if (jl_n(r) == 2u && (str_eq(v, "ON") || str_eq(v, "OFF"))) {   /* a switch (the MENU's, in the row's colours) */
-            int on = str_eq(v, "ON");
+        if (r == JL_ARP || r == JL_PITCH) {              /* a switch (the MENU's, in the row's colours) */
+            int on = (int)jl_get(r);
             int32_t x = xr - 26, sy = y + HALF_UP(UT_L5_H - 14);
             uint16_t track = on ? (sel ? T_INK : T_THEME) : T_DIM, knob = on ? (sel ? T_THEME : T_INK) : T_TEXT;
             cv_rrect(x, sy, 26, 14, -7, track, bg);
