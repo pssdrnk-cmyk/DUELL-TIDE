@@ -40,10 +40,14 @@ static void tarc_clear(void)
 static void tarc_levers(uint32_t auto_mask)
 {
     uint32_t el = (uint32_t)tarc.len - tarc.left, ph = tarc.phase;   /* phrases of the phase done */
+    uint8_t th;
     tarc.t = (uint8_t)(ph == AP_RISE ? (el + 1u) * 255u / tarc.len : ph == AP_PEAK ? 255u : ph == AP_RECOVER ? (el + 1u) * 100u / tarc.len : 0u);
+    th = (uint8_t)(auto_mask & (ph == AP_BREAK || ph == AP_DROP ? 3u : ph == AP_RECOVER && !el ? 1u << (tarc.cnt & 1u) : 0u));
+    MORPH_LOCK();                                        /* (audit C12: the three levers change together for the audio interrupt) */
     tarc_fast = tarc.t >= 200u;
-    tarc_thin = (uint8_t)(auto_mask & (ph == AP_BREAK || ph == AP_DROP ? 3u : ph == AP_RECOVER && !el ? 1u << (tarc.cnt & 1u) : 0u));
+    tarc_thin = th;
     tarc_hold = ph == AP_PEAK || ph == AP_DROP || tarc_dropphr != 0xFFu;
+    MORPH_UNLOCK();
 }
 static void tarc_poll(void)
 {
