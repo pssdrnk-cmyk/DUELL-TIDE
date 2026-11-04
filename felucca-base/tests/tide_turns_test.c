@@ -320,6 +320,13 @@ static void t_poly(void)
         run_poly(200, 0, 2, 12, 15);
         CHECK("a loop under 8 steps is never shortened", ps.shorts[0] == 0u && ps.maxrun[0] == 7u);
     }
+    {   /* audit C11: past 65,535 full loops (about 36 hours) POLY still starts stretches (the counters were 16 bits: the next start sat a wrap ahead) */
+        setup(16, 16, 2, 2, 0);
+        sqm_auto = 3, sqm_poly = 2;
+        poly_lc[0] = poly_lc[1] = poly_free[0] = poly_free[1] = 0xFFFFu;
+        run_poly(200, 0, 2, 12, 15);
+        CHECK("POLY after 65,535 full loops: stretches go on", ps.shorts[0] + ps.shorts[1] > 0u);
+    }
     {   /* the modes that keep the loop whole */
         setup(16, 16, 2, 2, 0);
         sqm_auto = 3, sqm_poly = 0;

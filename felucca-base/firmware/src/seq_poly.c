@@ -14,7 +14,7 @@
  * (arp_idx), the peer prediction (M1) is blind to a shortened part. */
 static uint8_t poly_len[NSHOWN];                         /* the loop's length now, 0: the stored one */
 static uint8_t poly_ref[NSHOWN];                         /* sequencer: the full loop's step */
-static uint16_t poly_lc[NSHOWN], poly_end[NSHOWN], poly_free[NSHOWN];   /* full loops since PLAY; the stretch's end; the earliest next start */
+static uint32_t poly_lc[NSHOWN], poly_end[NSHOWN], poly_free[NSHOWN];   /* full loops since PLAY; the stretch's end; the earliest next start (audit C11: 32 bits, no wrap) */
 static uint32_t poly_base[NSHOWN];                       /* ARP SEQ: arp_idx at the stretch's start */
 
 static uint32_t tide_poly_full(const track_t *t) { return (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP); }
@@ -47,7 +47,7 @@ static void tide_poly_wrap(uint32_t pi, uint32_t len)
     if (poly_len[pi]) {
         if (!ok || lc >= poly_end[pi] || poly_len[pi] >= len) {
             poly_len[pi] = 0;
-            poly_free[pi] = (uint16_t)(lc + FREE[mode ? mode : 1u]);
+            poly_free[pi] = lc + FREE[mode ? mode : 1u];
         }
         return;
     }
@@ -57,7 +57,7 @@ static void tide_poly_wrap(uint32_t pi, uint32_t len)
     if (h % 100u >= PCT[mode])
         return;
     poly_len[pi] = (uint8_t)(len - 1u - (h >> 8) % (mode == 2u ? 4u : 2u));
-    poly_end[pi] = (uint16_t)(lc + SPAN[mode]);
+    poly_end[pi] = lc + SPAN[mode];
 }
 /* the sequencer steps from seq_idx: the next one (audio path, seq_tick) */
 static uint32_t tide_seq_next(track_t *t)
@@ -74,7 +74,7 @@ static uint32_t tide_seq_next(track_t *t)
                 return 0;                                /* (the full loop's first step: where a stretch begins or ends; inside one the short loop goes on) */
         } else if (poly_len[pi] && song.rec) {           /* audit C10: REC ends a stretch at once, on the full loop's own step (recorded notes land where they belong) */
             poly_len[pi] = 0;
-            poly_free[pi] = (uint16_t)(poly_lc[pi] + 8u);
+            poly_free[pi] = poly_lc[pi] + 8u;
             return ref;
         }
     }
