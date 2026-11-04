@@ -1,6 +1,6 @@
 # TIDE musical design notes
 
-Status: planning proposals reviewed against source `6af479d` on 3 November 2026. Active priorities and delivery order live in [the roadmap](../ROADMAP.md). No new musical firmware is implemented by this review. Since then (branch `integ`, 4 November 2026) M3 (JRNY memory and role families), M8a TURNS, M7d POLY, M7a/b SYNC, M8b/c ANSWER (LEAD / ECHO), M4/M9 ARC and STYLES have been built; see the [TIDE guide](../TIDE_GUIDE.md). The separate test-tree cleanup is finished; no test changes are assigned here.
+Status: planning proposals reviewed against source `6af479d` on 3 November 2026. Active priorities and delivery order live in [the roadmap](../ROADMAP.md). No new musical firmware is implemented by this review. Since then (branch `integ`, 4 November 2026) M3 (JRNY memory and role families), M8a TURNS, M7d POLY, M7a/b SYNC, M8b/c ANSWER (LEAD / ECHO), M4/M9 ARC and STYLES have been built; see the [TIDE guide](../TIDE_GUIDE.md). The separate test-tree cleanup is finished; no test changes are assigned here. On 4 November 2026 the owner settled several of the questions below; they are listed under "Decided on 4 November 2026" and are planned, not built (the plan is in [the roadmap](../ROADMAP.md#planned-work-after-the-4-november-2026-decisions)).
 
 These notes preserve the owner's musical concepts, including polymeter and CHANGE/ENERGY/ARC, and their open decisions. Recheck affected source before implementation. Resource descriptions below identify work/cost risks, not measured allocations or proof that the queue fits. The installed package (`187e9d0`) has about 24.9 KB flash free after the boot pack (`ecd2918`); any newer candidate needs its own linked budget. Prior estimates and delivery receipts remain in the [historical snapshot](../history/TIDE_ROADMAP_2026-11-02.md).
 
@@ -254,6 +254,19 @@ Code-only (no control; tuned by listening):
 - These read the three choices above where it makes sense (CHANGE scales edit counts, ENERGY biases syncopation and harshness, ARC enables M9c), but expose no separate settings.
 
 This changes the earlier rule "no new menu, save format, global mode" for these three rows only, at the owner's request. Deliver each row with the accepted behaviour it controls rather than reserving inactive UI. Each needs a listening check that choices are useful and distinct, compatible older-settings loading, and a defined backup boundary. The current settings backup omits TIDE's independent record; extra field bytes alone do not solve compatibility.
+
+### Decided on 4 November 2026 (planned, not built)
+
+These answer questions that were open or unspecified. They describe the intended behaviour; today's firmware is described in the [TIDE guide](../TIDE_GUIDE.md).
+
+- **Motif drift.** A skank hit may drift at most two 16ths from its origin.
+- **LEAD and roles.** Call and response (M8b) applies to lead and pluck roles only, never to chord skanks.
+- **Bass and PITCH.** With PITCH ON the bass never walks.
+- **Velocity.** An automatic shape with no setting: RISE louder, BREAK and the followers softer.
+- **ECHO.** M8c's rhythmic echo is not kept as its own TURNS value; ECHO folds into LEAD.
+- **ARC and the transport.** ARC resumes where it was on STOP and PLAY (live, STOP and PLAY resync with other gear, and a restart would throw the tide back to its opening stage). It restarts only on a load or a K1 stop. A multi or pattern loaded mid-session starts as written.
+- **Crossings.** A LINKed filter 2 closes with filter 1 during a crossing. WASH stays as a setting.
+- **Chords.** ARP SEQ honours ties (about 40 B) rather than playing real chord steps.
 
 ### Open decisions — parked 2 November, reviewed 3 November 2026
 
