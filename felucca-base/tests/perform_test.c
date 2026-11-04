@@ -447,6 +447,8 @@ static void song_setup(void)
         memcpy(v, SONG_B_PATCH, FP_SIZE);
         fm6_set_patch(1, v);
         fm6_slot[1] = SONG_B_SLOT;
+        t2->p[P_REL] = 0;                                   /* (the chord's own release is slow (R4 46): its tail ran on past the 1.5 s the tail tests assume to be dry. It was silent there only because
+                                                             * the song's step 8 restarted the chord from level 0 just before the stop; a restart keeps the level now (Q01)) */
         t2->preset = SONG_B_PRESET;
     }
     for (i = 0; i < 16u; i++) {

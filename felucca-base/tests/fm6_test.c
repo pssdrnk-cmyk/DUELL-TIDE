@@ -290,6 +290,37 @@ static void retrigger(void)
         jump = at;
         check("retrigger: the same key again while it sounds: no step larger than the tone's own", jump <= maxstep * 1.1);
     }
+    /* a slow attack (R1 70): the same key again while it sounds (voice.c restarts the voice in place, as it does for a steal
+     * and for arp and TIDE steps): the level continues from where it stands (Q01: it fell to about -39 dB, then attacked from 0) */
+    {
+        static const int R[4] = {70, 99, 99, 50}, L[4] = {99, 99, 99, 0}, Z[4] = {99, 99, 99, 99}, LZ[4] = {0, 0, 0, 0};
+        static int32_t y[FS / 2];
+        double ref = 0, worst, dip;
+        uint32_t k, w, at = (FS * 3u / 10u) / CTL * CTL;
+        init_patch(base);
+        op_set(base, 1, R, L, 99, 1);                  /* algorithm 1: OP1 a carrier; OP2..6 silent */
+        for (k = 2; k <= 6u; k++)
+            op_set(base, k, Z, LZ, 0, 1);
+        setup(base, 0);
+        trk_note_on(&trk[0], 60, 100);
+        for (k = 0; k < FS / 2u; k += CTL) {
+            if (k == at)
+                trk_note_on(&trk[0], 60, 100);
+            track_render(&trk[0], y + k, CTL);
+        }
+        for (k = at - 512u; k < at; k++)               /* the peak of the 512 samples before the restrike */
+            ref = fabs((double)y[k]) > ref ? fabs((double)y[k]) : ref;
+        worst = ref;
+        for (w = at; w < at + 4096u; w += CTL) {       /* the peak of each 256 samples after it (over a cycle or more) */
+            double pk = 0;
+            for (k = w; k < w + 256u; k++)
+                pk = fabs((double)y[k]) > pk ? fabs((double)y[k]) : pk;
+            worst = pk < worst ? pk : worst;
+        }
+        dip = ref > 0 ? 20.0 * log10(ref / (worst > 1 ? worst : 1)) : 99;
+        printf("fm6: slow attack, same key: level before %.0f, lowest after %.0f, dip %.1f dB\n", ref, worst, dip);
+        check("retrigger: the same key again while it sounds (R1 70): the level dips less than 3 dB", ref > 0 && dip < 3.0);
+    }
 }
 
 /* ------------------------------------------------------ DC, clipping --- */
