@@ -6,9 +6,9 @@
  *   C4 RANDOM D4 COOK                                    new / a little changed
  *   E4 TRANS + F4 TRANS -                                every note of the pattern one semitone up / down per press (owner 2026-10-28; clamped to 1..127)
  * (DUELL 0.2.14: the DRUM engine is gone, and with it E4 BEAT and the four lane tools G4..C5)
- * Each works on the selected track's steps 1..LEN (the steps past LEN stay) and is one undo: SAVE held swaps back
+ * Each works on the selected track's steps 1..LEN (the steps past LEN stay) and is one undo: OCT- held and a PRESETS turn swap back
  * the copy taken just before it (ui.c undo, UNDO_PAT; unlike a load the track's automation stays), so after a few
- * COOKs SAVE held takes back the last one only; the layer's OCT- puts back the track as the layer opened (tl_open).
+ * COOKs that undo takes back the last one only; the layer's OCT- puts back the track as the layer opened (tl_open).
  * A step that held something and is empty after loses its locks (as EDIT's step clear); REVERSE and SHIFT move the
  * steps' automation and locks with them. RANDOM and COOK draw from libc.c rng(): no seed is kept, each press
  * differs. A sequence of ties reversed keeps its note first: N T T -> N T T at the mirrored place */

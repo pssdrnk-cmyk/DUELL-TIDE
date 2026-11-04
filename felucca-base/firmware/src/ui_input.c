@@ -502,7 +502,7 @@ static void cursor_move(int32_t c)
  * that answered for them are removed too: no step is ever held for a lock now */
 
 /* a panel knob's turn is applied between these two (ui_input's knob loop, the layers' knobs): motion.c records a lock when
- * the part records; one undo per knob gesture (SAVE held takes the locks back), as the old gesture had */
+ * the part records; one undo per knob gesture (OCT- + a PRESETS turn takes the locks back), as the old gesture had */
 static uint8_t knob_rec_k;                              /* the knob turning (its undo tag) */
 static void knob_rec_undo(track_t *t)
 {
@@ -543,7 +543,7 @@ static void step_edit(uint32_t slot, int32_t steps)
     case 2:                                               /* TIME; a note's LEN (1.5: ui.c note_set_len) */
         if (step_on(st)) {
             uint32_t was = note_len(TSEL, ui.cursor), n;
-            step_undo_take(TSEL, 0x2000u);                /* (a knob turned on: one undo, SAVE held) */
+            step_undo_take(TSEL, 0x2000u);                /* (a knob turned on: one undo, OCT- + a PRESETS turn) */
             n = note_set_len(TSEL, ui.cursor, (uint32_t)clamp((int32_t)was + steps, 1, NSTEP));
             motion_undo_done(TSEL);
             if (steps > 0 && n == was)
@@ -738,7 +738,7 @@ static void morph_settings(void)
  * offered and K1 picks another (the slot is written and what it held is gone); with ALGORITHM's BOTH on the MORPH page both parts', each over its own
  * (0.2.9: not MORPH SET any more) (OCT+ saves: upreset.c patch_save_do; OCT- cancels). Every slot always holds something (a saved record or the
  * factory sound), so this is the only way to save: no 'new' sound, no NAME screen, no 'full'. It replaces the undo of
- * the last load SAVE held was (ui.c undo_swap: still the EDIT layer's OCT-) */
+ * the last load SAVE held was (now OCT- held + a PRESETS turn: load_undo_gate, ui.c undo_swap) */
 static void patch_save_ask(void)
 {
     if (cur_page()->graph == GR_PATS) {     /* PATTERNS (DUELL 0.2.2): the pattern slot picked, the part's pattern over it (the slot's */
@@ -1281,7 +1281,7 @@ static void edit_param(uint32_t slot, int32_t steps)
     }
     if (bm == 1u) {                                      /* the turn starts from what is heard and shown, End B's value; A stays as it is, nothing is recorded or learned from it but the pick */
         int32_t cur = morph_view(song.sel, bwid);
-        v = param_turn(d, cur, accel(EN_K1 + knob, steps, d->fmt == F_ENUM ? 0 : d->max - d->min));
+        v = param_turn(d, cur, accel(EN_K1 + knob, steps, d->fmt == F_ENUM && d->max - d->min < 24 ? 0 : d->max - d->min));
         if (v != cur) {
             if (morph_b_set(song.sel, bwid, v))
                 ui_message("B FULL: 32 VALUES");
@@ -1292,7 +1292,7 @@ static void edit_param(uint32_t slot, int32_t steps)
             ml_knob(TSEL, bwid);                         /* (MIDI LEARN: picked) */
         return;
     }
-    v = param_turn(d, *vp, accel(EN_K1 + knob, steps, d->fmt == F_ENUM ? 0 : d->max - d->min));   /* (the encoder turned: its acceleration) */
+    v = param_turn(d, *vp, accel(EN_K1 + knob, steps, d->fmt == F_ENUM && d->max - d->min < 24 ? 0 : d->max - d->min));   /* (the encoder turned: its acceleration) */
     if (d->names == N_MDST && pg->scope != SC_GLOBAL)
         v = dst_turn(d, was, v);                         /* 0.2.25: the matrix DEST passes what is not offered (mod.c mod_dst_offered) */
     if (vp == &TSEL->p[P_TWTYPE])
@@ -1338,8 +1338,8 @@ static void edit_param(uint32_t slot, int32_t steps)
 #define KR_QUIET_MS 300u
 static uint8_t oct_pend;                                /* bit 0 OCT-, bit 1 OCT+: pressed on a normal page, not let go yet */
 static uint8_t oct_mod;                                 /* OCT- was used as a modifier (a knob reset): no octave on its release */
-static uint8_t kr_on[4];                                /* knob k: a reset happened, its detents are ignored while it goes on */
-static uint32_t kr_t[4];
+static uint8_t kr_on[5];                                /* knob k: a reset happened, its detents are ignored while it goes on */
+static uint32_t kr_t[5];
 
 /* Commit a knob link into GLO and swallow the detents still in flight. */
 static void glo_knob_jump(uint32_t page, uint32_t knob)
@@ -1742,23 +1742,30 @@ static void seq_entry(uint32_t pressed)
 }
 
 /* Discussions #92 / #94 (SPEC 1.1a: no navigation): the PRESETS knob by page (the menu, a dialog, NAME and the layers: ui_input before this).
- *   PATCHES: the same as its KNOB 1 (pl_step: the one list of slots). The SEQ pages (STEP; PARAMETER LOCKS) and the list / action pages PATTERNS, MULTI:
- *     nothing (up to DUELL 3.4 the same as their KNOB 1, the cursor / the row: a second way to navigate, SPEC 1.1a;
- *     a sound load there would drop the track's motion: never); TOOLS: nothing
- *   HOME, PRESETS and every other page (EDIT, ENV, LFO, FX, SCL, ARP, MIXER, CLOCK, ...): the selected track's
- *     sound, one list over every engine, then the used user presets (preset_step). A sound load keeps the steps
- *     (SAVE held undoes it). Up to 1.0.3 it did that on HOME and PRESETS only */
+ *   The SEQ pages (STEP; PARAMETER LOCKS) and the list / action pages PATTERNS, MULTI: nothing (up to DUELL 3.4 the same as their KNOB 1, the
+ *     cursor / the row: a second way to navigate, SPEC 1.1a; a sound load there would drop the track's motion: never); TOOLS: nothing
+ *   PATCHES, HOME, PRESETS and every other page (EDIT, ENV, LFO, FX, SCL, ARP, MIXER, CLOCK, ...): the selected track's sound, one list over
+ *     every engine, then the used user presets, stepped as PATCHES' KNOB 1 does (pl_step: KNOB ACCEL ON, a fast turn loads only where it
+ *     settles). A sound load keeps the steps (OCT- + a PRESETS turn undoes it, below). Up to 1.0.3 it did that on HOME and PRESETS only */
+static int presets_loads(const page_t *pg)
+{
+    uint32_t g = pg->graph;
+    return !(g == GR_ROLL || g == GR_SLOTS || g == GR_PATS || g == GR_EVENTS || g == GR_TOOLS);
+}
 static void presets_turn(int32_t s)
 {
+    if (presets_loads(cur_page()))
+        pl_step(EN_PRESET, s);
+}
+/* OCT- held + a PRESETS turn (DUELL 1.1, owner decision D26): the load undo. ui.c undo_swap puts back the copy the last load, SEQ tool or lock edit took
+ * (held again: the same again); once per gesture, the detents still in flight are dropped (kr_on[4], as a knob reset's). OCT- is a modifier then (no octave
+ * on its release). Only where PRESETS loads and OCT- is a plain button (not PERFORM, the dialogs, the menu, the action pages, the SET layers) and not on the
+ * TIDE pages, where OCT- + a knob is the STYLE reset (tide_ui.c): there a turn loads as it always did */
+static int load_undo_gate(void)
+{
     const page_t *pg = cur_page();
-    uint32_t g = pg->graph;
-    if (g == GR_BROWSE) {
-        pl_step(0xFFu, s);                                /* PATCHES: the same as KNOB 1, one place a read */
-    } else if (g == GR_ROLL || g == GR_SLOTS || g == GR_PATS || g == GR_EVENTS) {
-        /* SPEC 1.1a: no second way to move the cursor / the row / the slot (KNOB 1 is it): nothing */
-    } else if (g != GR_TOOLS) {
-        preset_step(s);
-    }
+    return !ui.perf && (oct_pend & 1u) && ((fm1_in.buttons >> panel.btn[B_OCTDN]) & 1u) && !((fm1_in.buttons >> panel.btn[B_OCTUP]) & 1u) &&
+           presets_loads(pg) && !TIDE_PAGE(pg);
 }
 
 /* PLAY STOP (label: it plays and stops): running, a press stops at once; stopped, a short press starts on its RELEASE (a press never starts
@@ -2300,10 +2307,21 @@ static void ui_input(void)
      * and the page under it (HOME's sound, motion recorded), PRESETS could load a sound. They stay for the next pass */
     kq |= lay;
     if (!lay && (s = panel_enc(EN_PRESET)) != 0) {
-        if (ui.perf)                                    /* PERFORM: the sound of the part(s) ALGORITHM chose (BOTH: each part its own step) */
+        if (kr_on[4] && fm1_ms - kr_t[4] >= KR_QUIET_MS)
+            kr_on[4] = 0;
+        if (kr_on[4]) {                                 /* after an undo: still turning, ignored until still */
+            kr_t[4] = fm1_ms;
+        } else if (load_undo_gate()) {                  /* OCT- held: the load undo, once (ui.c undo_swap) */
+            pl_pend_on = 0;                             /* (a fast turn's waiting place does not load after it) */
+            undo_swap();
+            oct_mod = 1;
+            kr_on[4] = 1;
+            kr_t[4] = fm1_ms;
+        } else if (ui.perf) {                           /* PERFORM: the sound of the part(s) ALGORITHM chose (BOTH: each part its own step) */
             perf_presets(s);
-        else
+        } else {
             presets_turn(s);
+        }
     }
     if (!lay && (s = panel_enc(EN_ALGO)) != 0)        /* ALGORITHM: the part on every page; MORPH, PERFORM: PART 1 / BOTH / PART 2 */
         algo_input(s);
