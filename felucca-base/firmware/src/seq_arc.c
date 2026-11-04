@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* ARC (TIDE LIST, M4/M9; docs/design/TIDE_NEXT_PROPOSALS.md step 3). Included by tide_seq.c after seq_answer.c.
- * One shape over 36-64 bars, counted in the shared 4-bar phrases of sqm_bar (the clock TURNS and LEAD read), for the parts in automatic
- * WNDR / JRNY (sqm_auto): RISE 4-8 phrases (syncopation, repeats, faster turns, brighter sounds), PEAK 1, DROP (both parts start no
- * notes for its first 2 bars; ties and the effects' tails ring), BREAK 2-4 (both parts thinned, softer sounds), RECOVER 1-2 (the
+ * One shape over 32-64 bars, counted in the shared 4-bar phrases of sqm_bar (the clock TURNS and LEAD read), for the parts in automatic
+ * WNDR / JRNY (sqm_auto): RISE 4-8 phrases (syncopation, repeats, faster turns, brighter sounds), PEAK 1 (ARC DROP: 1-2), DROP (both parts start no
+ * notes for its first 2 bars; ties and the effects' tails ring; it is the breakdown's first phrase), BREAK 2-4 with the drop (both parts thinned, softer sounds), RECOVER 1-2 (the
  * thinning lifts one part at a time). ARC RISE has no drop of its own; ARC DROP drops by itself on about half of the arcs; the hand
  * (OCT- + K2 on the TIDE page, tarc_drop_hand) drops at the next phrase in either. Playback masks only: KEEP stores the whole pattern,
  * nothing here is saved, a power cycle starts at RISE. ARC OFF: every lever neutral, as before. The planner is main loop only; the
@@ -23,8 +23,8 @@ static uint32_t tarc_next_of(uint32_t ph)
 }
 static void tarc_begin(uint32_t ph)
 {
-    uint32_t h = tarc_rnd(2u), len = ph == AP_RISE ? 4u + h % 5u : ph == AP_PEAK ? (sqm_arc == 2u ? 1u + h % 3u : 1u) : ph == AP_DROP ? 1u :
-                                     ph == AP_BREAK ? 2u + h % 3u : 1u + h % 2u;
+    uint32_t h = tarc_rnd(2u), len = ph == AP_RISE ? 4u + h % 5u : ph == AP_PEAK ? (sqm_arc == 2u ? 1u + h % 2u : 1u) : ph == AP_DROP ? 1u :
+                                     ph == AP_BREAK ? (tarc.phase == AP_DROP ? 1u : 2u) + h % 3u : 1u + h % 2u;   /* (audit C5: a drop is the breakdown's first phrase, PEAK 1-2: 8-16 phrases) */
     tarc.phase = (uint8_t)ph;
     tarc.left = tarc.len = (uint8_t)len;
     tarc.cnt++;

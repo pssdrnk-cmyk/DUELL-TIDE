@@ -229,7 +229,7 @@ static void jl_put(uint32_t r, uint32_t v)
         sqm_sync = (uint8_t)(v % 3u);
         ui_message(v == 0u ? "SYNC OFF" : v == 1u ? "SYNC SOFT" : "SYNC PUSH");
         break;
-    case JL_ARC:                                         /* (seq_arc.c: a build, a peak, an optional drop and a breakdown over 36-64 bars) */
+    case JL_ARC:                                         /* (seq_arc.c: a build, a peak, an optional drop and a breakdown over 32-64 bars) */
         sqm_arc = (uint8_t)(v % 3u);
         ui_message(v == 0u ? "ARC OFF" : v == 1u ? "ARC RISE" : "ARC DROP");
         break;

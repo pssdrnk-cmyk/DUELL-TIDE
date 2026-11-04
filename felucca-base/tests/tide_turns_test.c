@@ -612,6 +612,28 @@ static void t_arc(void)
     for (b = 0; b < 40000u; b++)
         arc_block(b);
     CHECK("ARC OFF: no drop, no thinning of its own, SYNC and brightness untouched", tarc_dropphr == 0xFFu && tarc_thin == 0 && !tarc_fast && !tarc_hold && tarc_sync() == 1u && tarc_bright() == 0);
+    {   /* audit C5: an arc is 8-16 phrases (32-64 bars), as README and the guide say, over many seeds in both modes */
+        uint32_t m, sd, a, mn[3] = {99, 99, 99}, mx[3] = {0, 0, 0}, pkmx = 0;
+        for (m = 1; m <= 2u; m++)
+            for (sd = 0; sd < 400u; sd++) {
+                sqm_arc = (uint8_t)m, morph.seed = (uint8_t)sd, tarc.cnt = (uint8_t)(sd >> 8), tarc.phr = 0, tarc.run = 1, tarc.phase = AP_RECOVER;
+                tarc_begin(AP_RISE);
+                for (a = 0; a < 3u; a++) {                   /* (three arcs a seed) */
+                    uint32_t tot = tarc.len;
+                    do {
+                        tarc.phr = (uint8_t)(tarc.phr + tarc.len);
+                        tarc_begin(tarc.next);
+                        if (tarc.phase == AP_PEAK && tarc.len > pkmx) pkmx = tarc.len;
+                        if (tarc.phase != AP_RISE) tot += tarc.len;
+                    } while (tarc.phase != AP_RISE);
+                    if (tot < mn[m]) mn[m] = tot;
+                    if (tot > mx[m]) mx[m] = tot;
+                }
+            }
+        printf("  ARC length in phrases: RISE %u..%u, DROP %u..%u (PEAK up to %u)\n", mn[1], mx[1], mn[2], mx[2], pkmx);
+        CHECK("ARC length: every arc 8 to 16 phrases (32 to 64 bars) in RISE and DROP, PEAK at most 2", mn[1] >= 8u && mx[1] <= 16u && mn[2] >= 8u && mx[2] <= 16u && mx[2] == 16u && pkmx <= 2u);
+        sqm_arc = 0, tarc.run = 0;
+    }
     /* the shape: 600 bars of ARC DROP */
     for (mode = 1; mode <= 2u; mode++) {
         setup(16, 16, 2, 2, 0);
