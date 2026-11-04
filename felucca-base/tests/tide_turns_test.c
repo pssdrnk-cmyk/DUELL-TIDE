@@ -485,7 +485,7 @@ static int thin_bit(uint32_t p, uint32_t i) { return (int)((sqm_thin[p][i >> 5] 
 static void t_answer(void)
 {
     static const uint8_t H[] = {0, 2, 3, 4, 6, 7, 8, 10, 11, 12, 14, 15};
-    uint32_t i, p, bar, drops, cand, bad = 0, wrong = 0, sh[2] = {0, 0}, n, seed;
+    uint32_t i, p, bar, drops, cand, nbad = 0, wrong = 0, sh[2] = {0, 0}, n, seed;
     step_t buf;
     CHECK("TURNS shows its four values", !strcmp(jl_vname(JL_TURNS, 2), "LEAD") && !strcmp(jl_vname(JL_TURNS, 3), "ECHO") && jl_n(JL_TURNS) == 4u);
     setup(16, 16, 2, 2, 0);
@@ -501,9 +501,9 @@ static void t_answer(void)
         if (i % 4u && sqm_hit(&trk[0].step[i]))
             cand++;
         if (thin_bit(0, i) && (i % 4u == 0u || !sqm_hit(&trk[0].step[i])))
-            bad++;
+            nbad++;
     }
-    CHECK("mask: no beat, no anchor, only hits; half of the candidates (rounded up) dropped", !bad && cand == 8u && drops == 4u);
+    CHECK("mask: no beat, no anchor, only hits; half of the candidates (rounded up) dropped", !nbad && cand == 8u && drops == 4u);
     {   /* held hits: a tie after step 3 and 11, a slide on 7 */
         step_t *st = trk[0].step;
         st[4] = (step_t){{0}, 0, ST_TIE, 0, 0, 0};
@@ -538,6 +538,23 @@ static void t_answer(void)
         }
     }
     CHECK("the leader plays whole, the other part thinned: part 2 on bars 1-2, part 1 on 3-4 (also over the wrap at 256)", !wrong);
+    {   /* audit C7: the ARC's fast turns (a leader a bar): a part on its own variation bar (part 2 bar 2, part 1 bar 4) is never the thinned follower */
+        uint32_t vw = 0, fw = 0;
+        tarc_fast = 1;
+        for (bar = 0; bar < 8u; bar++) {
+            sqm_bar = (uint8_t)bar, sqm_bar_turn = 0;
+            for (p = 0; p < 2u; p++) {
+                uint32_t varies = ((bar + 2u * p) & 3u) == 3u, lead = (bar & 1u) ? 0u : 1u, masked = 0;
+                for (i = 0; i < 16u; i++)
+                    if (thin_bit(p, i))
+                        masked |= seq_play_step(&trk[p], i, &buf) == &SQM_REST;
+                vw += varies && masked;
+                fw += masked != (p != lead && !varies);
+            }
+        }
+        tarc_fast = 0;
+        CHECK("ARC fast turns: the part on its variation bar plays whole; otherwise the leader changes every bar", !vw && !fw);
+    }
     sqm_bar = 0, sqm_bar_turn = 0;
     {   uint32_t m0 = 0;
         for (i = 0; i < 16u; i++)
