@@ -91,6 +91,56 @@ static int drift_tempo_edges(uint32_t source)
     }
     return bad;
 }
+/* S04: signed timestamp jitter must keep the steady beat within 0.2 % of its true length. */
+static int drift_tempo_steady(uint32_t source, uint32_t bpm)
+{
+    int bad=0; drift_setup(source,bpm);
+    uint32_t lo=0xFFFFFFFFu,hi=0,rng=12345u;
+    char what[160];
+    for(uint32_t i=1;i<=bpm*24u;i++) {
+        rng=rng*1664525u+1013904223u;
+        int32_t jit=(int32_t)((rng>>16)%3u)-1;
+        uint32_t at=(uint32_t)((int32_t)(10u+(uint32_t)((uint64_t)i*60000u/(bpm*24u)))+jit);
+        drift_packet(source,0xF8,at);
+        if(i>=96u) {
+            uint32_t b=beat_samples();
+            lo=b<lo?b:lo; hi=b>hi?b:hi;
+        }
+    }
+    double ideal=(double)FS*60./bpm;
+    double error=fmax(fabs(hi-ideal),fabs(lo-ideal))*100./ideal;
+    snprintf(what,sizeof what,"source %u, %u BPM, +/-1 ms timestamps: beat_samples %u..%u, max error %.4f %% (at most 0.2)",source,bpm,lo,hi,error);
+    bad+=check(what,error<=.2+1e-9);
+    return bad;
+}
+static int drift_tempo_response(void)
+{
+    int bad=0; drift_setup(1,120);
+    uint64_t us=10000u;
+    for(uint32_t i=1;i<=24u;i++) {
+        us+=25000u;
+        drift_packet(1,0xF8,(uint32_t)(us/1000u));
+    }
+    bad+=check("tempo acquired after one beat (100 BPM)",midi_beat_samples==26460u);
+    for(uint32_t i=1;i<=96u;i++) {
+        us+=20000u;
+        drift_packet(1,0xF8,(uint32_t)(us/1000u));
+    }
+    bad+=check("a tempo step settles within four beats (125 BPM)",midi_beat_samples==21168u);
+    us+=10000000u;
+    drift_packet(1,0xF8,(uint32_t)(us/1000u));
+    bad+=check("a clock gap does not publish an invalid tempo",midi_beat_samples==21168u);
+    for(uint32_t i=1;i<=96u;i++) {
+        us+=25000u;
+        drift_packet(1,0xF8,(uint32_t)(us/1000u));
+    }
+    bad+=check("tempo recovers four beats after a clock gap",midi_beat_samples==26460u);
+    drift_setup(1,128);
+    for(uint32_t i=1;i<=96u;i++)
+        drift_packet(1,0xF8,10u+(uint32_t)((uint64_t)i*60000u/(128u*24u)));
+    bad+=check("128 BPM rounds the fractional beat to nearest sample (20671.875 -> 20672)",midi_beat_samples==20672u);
+    return bad;
+}
 static int drift_start_and_wrap(uint32_t source)
 {
     int bad=0; drift_setup(source,120);
@@ -114,6 +164,7 @@ int main(void)
     int bad=drift_run(2,120,0,0)+drift_run(1,120,1,1)+drift_run(2,97,1,1)+
             drift_run(1,240,1,1)+drift_run(2,40,0,0);
     bad+=drift_tempo_edges(1)+drift_tempo_edges(2)+drift_start_and_wrap(1)+drift_start_and_wrap(2);
+    bad+=drift_tempo_steady(1,120)+drift_tempo_steady(2,97)+drift_tempo_steady(1,124)+drift_tempo_steady(2,140)+drift_tempo_steady(1,180)+drift_tempo_steady(2,40)+drift_tempo_steady(1,240)+drift_tempo_response();
     printf("MIDI LONG-RUN PHASE: %s\n",bad?"FAIL":"PASS");
     return bad!=0;
 }

@@ -4,8 +4,8 @@
 /* Audio ISR state. Input timestamps keep USB/TRS jitter outside the render loop. */
 static struct {
     uint32_t pos, rendered, last_ms, start_ms, rem, interval_ms;
-    uint32_t pulse_units, interp_q8, tempo_ms;
-    uint8_t mode, have_pulse, tempo_valid, tempo_n;
+    uint32_t pulse_units, interp_q8, tempo_ms[4];
+    uint8_t mode, have_pulse, tempo_valid, tempo_n, tempo_i, tempo_beats;
     uint8_t seen;                                  /* a clock pulse of the selected source has arrived (the UI's EXT / NO CLOCK) */
     uint8_t stopped;                               /* an external Stop (0xFC or this unit's STOP) until the next Start / Continue: the arp waits */
     uint8_t lock;                                  /* CLK AUTO: the port locked onto (1 USB, 2 TRS), 0 = none, the internal clock runs */
@@ -90,21 +90,28 @@ static __attribute__((noinline)) void midi_clock_transport(uint32_t status, uint
 
 static __attribute__((noinline)) void midi_clock_pulse(uint32_t ms)
 {
-    if (!midi_clock.tempo_valid) {
+    if (!midi_clock.tempo_valid || ms - midi_clock.last_ms > AUTO_MAX_MS) {
         midi_clock.tempo_valid = 1;
-        midi_clock.tempo_ms = ms;
+        midi_clock.tempo_ms[0] = ms;
         midi_clock.tempo_n = 0;
-    } else if (++midi_clock.tempo_n == 6u) {
-        uint32_t dt = ms - midi_clock.tempo_ms;
-        midi_clock.tempo_ms = ms;
+        midi_clock.tempo_i = midi_clock.tempo_beats = 0;
+    } else if (++midi_clock.tempo_n == 24u) {
+        uint32_t i = (midi_clock.tempo_i + 1u) & 3u, beats = midi_clock.tempo_beats;
+        if (beats < 4u) beats++;
+        uint32_t dt = ms - midi_clock.tempo_ms[(i + 4u - beats) & 3u];
+        midi_clock.tempo_ms[i] = ms;
+        midi_clock.tempo_i = (uint8_t)i;
+        midi_clock.tempo_beats = (uint8_t)beats;
         midi_clock.tempo_n = 0;
-        /* Six clocks are a quarter of a beat. Reject gaps and corrupt bursts. */
-        if (dt >= 62u && dt <= 375u) {
-            uint32_t old_beat = beat_samples(), new_beat = (uint32_t)FS * dt / 250u;
+        /* Estimate once a beat, over up to four beats. The first beat acquires tempo; the longer window keeps +/-1 ms
+         * timestamp jitter within 0.2 % even at 240 BPM. Round fractional sample periods rather than biasing them down.
+         * Pulse counting and interpolation below still set phase. */
+        if (dt >= 250u * beats && dt <= 1500u * beats) {
+            uint32_t old_beat = beat_samples(), new_beat = ((uint32_t)FS * dt + 500u * beats) / (1000u * beats);
             if (song.playing && new_beat != old_beat)
                 clock_rescale(old_beat, new_beat);   /* (the master changed tempo: each track's step phase kept) */
             midi_beat_samples = new_beat;
-            song.g[G_BPM] = (int16_t)clamp((int32_t)((15000u + dt / 2u) / dt), 40, 240);
+            song.g[G_BPM] = (int16_t)clamp((int32_t)((60000u * beats + dt / 2u) / dt), 40, 240);
         }
     }
     midi_clock.seen = 1;
@@ -159,7 +166,7 @@ static uint32_t midi_clock_advance(uint32_t now)
 
 
 /* AUTO: lock onto port src (its pulses from now on are the clock). The steps keep their phase (the counters start from here: the next
- * pulses continue the current step), the tempo is the internal one until six pulses have measured the master's; a count-in on the
+ * pulses continue the current step), the tempo is the internal one until 24 pulses (one beat) have measured the master's; a count-in on the
  * internal clock is cancelled (an external clock never counts in) */
 static __attribute__((noinline)) void clock_lock(uint32_t src, uint32_t ms)
 {

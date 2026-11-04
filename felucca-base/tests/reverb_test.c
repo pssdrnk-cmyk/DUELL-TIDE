@@ -4,8 +4,8 @@
  * hostsim.c as regress.c.
  *   build/host/reverb_test [DEMODIR [DEMODIR2]]          (run_tests.sh: build/fx_demo build/reverb_demo)
  * 1. ROOM bit-identical: fx_buses against a copy of the buses as they were before SPRING (chorus, delay and the
- *    4-comb room in one loop), on noise sends with SIZE / DAMP / the delay and chorus settings changing, sample
- *    for sample. (The goldens of regress.c, all rendered with ROOM, say the same for the whole mix.)
+ *    4-comb room in one loop), on noise sends with SIZE / DAMP / feedback changing, sample for sample. Delay TIME
+ *    and chorus depth hold steady because their glides differ from the old reference; dlyglide_test.c covers TIME changes.
  * 2. SPRING decay: the impulse response's RT60 (Schroeder integral, -5 .. -35 dB) rises with SIZE, within
  *    0.15 .. 1 s at SIZE 0 and 2 .. 6 s at 127.
  * 3. SPRING dispersion: the group delay of the first arrival rises with frequency (1 .. 5 kHz, each band later
@@ -136,10 +136,12 @@ static void test_room_identical(void)
         if (b % 700u == 0u) {                                   /* the settings move now and then */
             song.g[G_RSIZE] = (int16_t)((uint32_t)noise(1 << 30) % 128u);
             song.g[G_RDAMP] = (int16_t)((uint32_t)noise(1 << 30) % 128u);
-            song.g[G_DTIME] = (int16_t)((uint32_t)noise(1 << 30) % 6u);
             song.g[G_DFDBK] = (int16_t)((uint32_t)noise(1 << 30) % 121u);
-            if (!b)                                             /* (the chorus depth once: since 0.2.9 it glides over a block when it moves, cho_glide; the */
-                song.g[G_CDEPTH] = (int16_t)((uint32_t)noise(1 << 30) % 128u);   /* reference below keeps the old jump. A depth that holds is bit for bit) */
+            if (!b) {                                           /* (the chorus depth and the delay time once: since 0.2.9 the depth glides over a block when it moves, cho_glide, */
+                song.g[G_CDEPTH] = (int16_t)((uint32_t)noise(1 << 30) % 128u);   /* and the time slides (dly_slide, dlyglide_test.c); the reference below keeps the old jumps. A depth and a time that hold are bit for bit) */
+                song.g[G_DTIME] = (int16_t)((uint32_t)noise(1 << 30) % 6u);
+                fx.dly_g = 0;
+            }
         }
         for (i = 0; i < CTL; i++) {
             int32_t on = (b / 300u) % 3u != 2u;                 /* bursts and silences: the tails too */
@@ -152,7 +154,7 @@ static void test_room_identical(void)
         for (i = 0; i < CTL; i++)
             diff += w0[i] != w1[i];
     }
-    check("ROOM: the buses bit for bit as before SPRING (30 s of noise sends, settings changing)", !diff && !fx.rtype);
+    check("ROOM: the buses bit for bit as before SPRING (30 s of noise sends, reverb/feedback swept; time/depth held)", !diff && !fx.rtype);
 }
 
 /* ------------------------------------------------------------- SPRING --- */
