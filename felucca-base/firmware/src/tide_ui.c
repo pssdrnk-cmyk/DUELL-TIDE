@@ -376,6 +376,11 @@ static const uint8_t JFAM[CAT_N] = {
     [CAT_KEYS] = FAM_HARM, [CAT_PERC] = FAM_PERC, [CAT_FX] = FAM_TEXT, [CAT_OTHER] = FAM_TEXT};
 typedef char jfam_covers_every_category[CAT_N == 9 ? 1 : -1];
 static uint32_t fam_of(uint32_t cat) { return cat < CAT_N ? JFAM[cat] : FAM_HARM; }
+/* the part's sound is in the BASS family (a factory sound's category, or the USER record's): the pitch walk leaves it alone (seq_evolve.c) */
+static int tide_bass_part(const track_t *t)
+{
+    return fam_of(UP_REC_USER(t) ? sl_cat((uint32_t)t->user - 1u) : ds_cat_of(t->eng_req, t->preset)) == FAM_BASS;
+}
 /* the candidates pick[0..n) of part k without its last h targets, for the most h that leaves any (the oldest forgiven first: a
  * group of four or fewer sounds still turns); n unchanged where none is in the history or the memory is empty */
 static uint32_t jh_filter(uint32_t k, uint32_t e, uint32_t *pick, uint32_t n)

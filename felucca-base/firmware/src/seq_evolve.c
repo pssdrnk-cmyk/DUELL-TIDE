@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* TIDE (JAM before): cumulative scale-note changes. Generation rolls remain rare; the phrase
  * lifecycle gives the same walk regular opportunities. One upper chord tone (or a melody note
- * away from the downbeat), at most an octave from its stored note. No pull home. Nothing under C3 walks (the bass), and on SCALE CHR
+ * away from the downbeat), at most an octave from its stored note. No pull home. Nothing under C3 walks, no part whose sound is in the BASS family, and on SCALE CHR
  * nothing does (every pitch class would be allowed).
  * Built only in the main loop; the audio ISR gets ordinary finished steps. */
 /* Five bits retain the full +/-12 semitone range without 64-byte maps. */
@@ -74,7 +74,7 @@ static void sqm_pitch_apply(const step_t *p, uint32_t len, const sqm_end_t *x, s
 static uint32_t sqm_pitch_walk(track_t *t, sqm_end_t *x, uint32_t seed)
 {
     uint32_t len = sqm_len(t), first, i, k, d;
-    if (scale_mask(t) == 0xFFFu) return len;        /* (SCALE CHR: every pitch class would do, the walk would be chromatic) */
+    if (scale_mask(t) == 0xFFFu || tide_bass_part(t)) return len;   /* (SCALE CHR: every pitch class would do, the walk would be chromatic; a bass-family sound: the bass never walks, D3) */
     first = sqm_hash(seed, 0, 42u) % len;
     for (uint32_t j = 0; j < len; j++) {
         i = (first + j) % len;

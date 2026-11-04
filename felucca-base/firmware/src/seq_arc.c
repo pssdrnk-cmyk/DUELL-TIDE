@@ -117,12 +117,12 @@ static int32_t tarc_bright(void)                         /* +1 brighter, -1 soft
 }
 static const char *tarc_name(void) { static const char *const N[5] = {"RISE", "PEAK", "DROP", "BREAK", "RECOVER"}; return N[tarc.phase % 5u]; }
 /* TIDE hook H18: a multi, project or pattern load into the parts of mask. The tide starts as written (no generation, no pitch edits, D6) and the
- * arc at RISE; a trip that goes on keeps its lane (sqm_reseat) */
+ * arc at RISE; a trip that runs starts again from A (sqm_restart: glide_poll) */
 static void tide_loaded(uint32_t mask)
 {
     for (uint32_t k = 0; k < NSHOWN; k++)
         if ((mask >> k) & 1u)
             seqm_home(k);
     tarc.run = 0;
-    sqm_reseat = 1;
+    sqm_restart = 1;
 }

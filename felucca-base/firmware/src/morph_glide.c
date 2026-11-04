@@ -261,10 +261,15 @@ static void glide_poll(void)
 {
     uint32_t l, k, e, end;
     uint8_t b = perf_beat;
-    if (sqm_reseat) {                                    /* a load put the SEQ fader back to A (tide_loaded): not a hand on it */
-        if ((gl.on >> GT_SEQ) & 1u)
-            glide_seen(GT_SEQ);
-        sqm_reseat = 0;
+    if (sqm_restart) {                                   /* a load (tide_loaded) put the SEQ fader at A: a running trip starts again from there, towards B */
+        sqm_restart = 0;
+        if (gl.on) {
+            gl.to = 1;
+            gl.hold = 0;
+            gl.wbars = gl.wlast = 0;
+            glide_begin_lanes();
+            gl.from[GT_SEQ] = 0;
+        }
     }
     sqm_auto = (uint8_t)(glide_tide_on() && song.playing && !song.rec && !gl.armed ? gl.mask & 3u : 0u);   /* (automatic MUSIC WNDR / JRNY: TURNS, POLY) */
     rhythm_poll(sqm_auto);

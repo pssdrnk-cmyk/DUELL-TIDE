@@ -92,6 +92,7 @@ static volatile uint8_t sqm_arc;                         /* ARC: 0 OFF, 1 RISE, 
 static volatile uint8_t tarc_dropphr = 0xFFu, tarc_thin, tarc_fast, tarc_hold;   /* seq_arc.c's planner to the audio side: the drop's phrase, the parts thinned, turns every bar, no POLY */
 static uint32_t tarc_sync(void);
 static uint32_t glide_tide_on(void);
+static int tide_bass_part(const track_t *t);
 static uint32_t tarc_cap(uint32_t base);
 static volatile uint8_t sqm_sync = 1;                   /* SYNC: 0 OFF, 1 SOFT, 2 PUSH (tide_ui.c, the TIDE LIST; seq_rhythm.c, seq_dialogue.c) */
 static void sqm_refresh(uint32_t pi, int force);
@@ -276,7 +277,7 @@ static volatile uint8_t sqm_vary_all;                   /* VARY BARS: 0 4 + 8, 1
 static volatile uint8_t sqm_poly = 1;                   /* POLY: 0 OFF, 1 GENTLE, 2 WIDE (tide_ui.c, the TIDE LIST; seq_poly.c) */
 static uint8_t poly_len[NSHOWN];                         /* (seq_poly.c: a part in a POLY stretch is never thinned) */
 static const step_t SQM_REST = {{0}, 0, ST_REST, 0, 0, 0};
-static volatile uint8_t sqm_reseat;                     /* tide_loaded put the faders back to A: glide_poll takes the SEQ lane's view of them anew */
+static volatile uint8_t sqm_restart;                     /* tide_loaded put the loaded parts at A: glide_poll starts the running trip again from there */
 static volatile uint8_t sqm_auto;                       /* the parts in automatic MUSIC WNDR/JRNY, a bit each (glide_poll, main loop) */
 /* the step part t plays at idx with the variation heard (vary 1; 0: End A): the stored one while End A is the Original and the
  * fader at 0, else the end its beat is on. The UI's view and KEEP (vary 1 always: the variation as it plays on a varied bar) */

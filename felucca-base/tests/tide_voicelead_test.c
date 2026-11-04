@@ -307,6 +307,62 @@ static void gen_arc_case(void)
     CHECK("  .. at RISE", tarc.run && tarc.phase == AP_RISE && tarc.phr < 2u);
 }
 
+/* D3: a part whose sound is in the BASS family does not walk, whatever its notes; a lead sound still does */
+static uint32_t gen_find_cat(uint32_t e, uint32_t cat)
+{
+    for (uint32_t k = 0; k < ds_count(e); k++)
+        if (ds_cat_of(e, k) == cat) return k;
+    return 0xFFFFu;
+}
+static void gen_bass_family_case(void)
+{
+    uint32_t e = trk[0].eng_req, kb, kl, bass, lead;
+    gen_setup();
+    e = trk[0].eng_req;
+    kb = gen_find_cat(e, CAT_BASS); kl = gen_find_cat(e, CAT_LEAD);
+    CHECK("(fixture: the engine has a bass and a lead sound)", kb != 0xFFFFu && kl != 0xFFFFu);
+    trk[0].user = 0; trk[1].user = 0;
+    trk[0].preset = (uint8_t)kb; trk[1].preset = (uint8_t)kl;
+    trk[1].eng_req = (uint8_t)e;
+    for (uint32_t i = 0; i < 16u; i++) trk[0].step[i].note[0] = (uint8_t)(60 + (i % 5u) * 2u);   /* the bass sound's line sits above C3 */
+    bass = gen_walks(0, 200u); lead = gen_walks(1, 200u);
+    printf("   pitch walk, a bass-family sound with its line above C3: %u of 200; a lead sound: %u\n", bass, lead);
+    CHECK("D3: a BASS-family sound does not walk, its line above C3 or not", bass == 0u);
+    CHECK("  .. a lead sound still walks", lead > 100u);
+}
+/* D6: a load in mid-trip puts the loaded parts back at A and the running trip starts again from there; the tide itself keeps running */
+static uint32_t gen_varied(void)
+{
+    uint32_t n = 0;
+    for (uint32_t p = 0; p < 2u; p++)
+        for (uint32_t i = 0; i < 16u; i++)
+            n += memcmp(sqm_step(&trk[p], i, 1), &trk[p].step[i], sizeof(step_t)) != 0;
+    return n;
+}
+static void gen_trip_case(void)
+{
+    for (uint32_t k = 0; k < 2u; k++) {
+        uint32_t b, worst = 0, mid;
+        gen_setup();
+        morph_musical = 1;
+        project_save(3);
+        gl.on = 3; gl.mode = GM_WANDER; gl.mask = 3; gl.armed = 0; gl.hold = 0; gl.time = 4; gl.to = 1; glide_begin_lanes();
+        for (b = 0; b < 48000u / CTL * 8u; b++) { events_block(CTL); seqm_poll(); glide_poll(); }
+        mid = sqm[0].fader | sqm[1].fader;
+        CHECK("(fixture: mid-trip, the SEQ fader is off A and the variation plays)", mid && gen_varied());
+        if (k) { pat_load(&trk[0], 0); pat_load(&trk[1], 0); } else project_load(3);
+        for (b = 0; b < 48000u / CTL; b++) {                /* the next bar */
+            uint32_t n;
+            events_block(CTL); seqm_poll(); glide_poll();
+            n = gen_varied();
+            worst = n > worst ? n : worst;
+        }
+        printf("   %s load in mid-trip (fader %u): steps varied in the next bar: %u at most; tide lanes %u, SEQ fader now %u\n", k ? "pattern" : "multi", mid, worst, gl.on, sqm[0].fader);
+        CHECK(k ? "D6: a pattern load in mid-trip: the next bar plays the pattern as written" : "D6: a multi load in mid-trip: the next bar plays the pattern as written", worst == 0u);
+        CHECK("  .. and the tide is still running", (gl.on & 2u) && gl.mode == GM_WANDER);
+    }
+}
+
 int main(void)
 {
     ui_power_on(); frame();
@@ -320,6 +376,8 @@ int main(void)
     gen_voicelead_cases();
     gen_home_load_cases();
     gen_arc_case();
+    gen_bass_family_case();
+    gen_trip_case();
     printf("   %u checks, %u failures\n", checks, failures);
     return failures != 0;
 }
