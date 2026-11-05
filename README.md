@@ -4,7 +4,7 @@
 
 **DUELL 1.1 for the M-VAVE FM-1, plus TIDE: a morph that plays and evolves by itself.**
 
-**Stable: [`stable-2026-11-03`](https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/stable) · Beta: [`beta-2026-11-04`](https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/beta-2026-11-04)** ([what that means](#builds-stable-and-beta))
+**Stable: [`stable-2026-11-03`](https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/stable) · Beta: [`1.0.0-b1`](https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/tide-1.0.0-b1)** ([what that means](#builds-stable-and-beta))
 
 [Try it in the browser](https://pssdrnk-cmyk.github.io/DUELL-TIDE/emu/) · [What changed](#what-changed-from-duell-11) · [Install](#install) · [All documents](docs/DOCS_INDEX.md) · [Issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues)
 
@@ -45,7 +45,7 @@ Two ways to put TIDE on an FM-1. Either way, [back up first](docs/RECOVERY.md) a
 **1. The installer page** (Chrome or Edge): <https://pssdrnk-cmyk.github.io/DUELL-TIDE/install/>. It offers the **Stable** and the **Beta** channel, taken from this fork's [GitHub releases](https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases), saves a backup of the unit first, then writes the package. Steps, the checklist and the way back: [docs/INSTALL.md](docs/INSTALL.md).
 
 **2. Build it yourself:**
-1. Pick the build: `git checkout stable` for the validated one, or stay on `jam11` for the beta ([Builds](#builds-stable-and-beta)).
+1. Pick the build: `git checkout stable` for the validated one, or stay on `jam11` for the beta, or `git checkout tide-1.0.0-b1` for exactly that version ([Builds](#builds-stable-and-beta)).
 2. Build the package as in [felucca-base/BUILDING.md](felucca-base/BUILDING.md): `python3 tools/build.py` in `felucca-base`. TIDE is on by default. The result is `felucca-base/build/duell-1.1.fwsc`.
 3. Install it with `python3 ../jam/jam_dev.py flash build/duell-1.1.fwsc` (needs `pip install mido python-rtmidi`). It saves a backup of the unit first, then writes the package with `tools/fm1_install.py`. Keep the computer awake.
 
@@ -55,18 +55,20 @@ TIDE keeps the version string DUELL 1.1 so every stock tool takes the unit for D
 
 **The way back:** install the original DUELL 1.1 package from [OSCILL/R's releases](https://github.com/oscillr/DUELL/releases) the same way (or with their installer page), or return to M-VAVE's official firmware (V15) as in [docs/INSTALL.md](docs/INSTALL.md). Your backup restores with `jam_dev.py restore` or the editor's Backup page.
 
-**Branches.** `jam11` is the development line (the name is the project's old code name). `stable` is the build the fork owner has validated; the tags `stable-2026-11-03` and `beta-2026-11-04` mark the published builds. `main` is meant to mirror OSCILL/R's DUELL, the base of a pull request that belongs to plain DUELL, and carries no TIDE.
+**Branches.** `jam11` is the development line (the name is the project's old code name). `stable` is the build the fork owner has validated; the tags `tide-1.0.0-b1`, `tide-1.0.0`, ... mark the published builds (the older ones are `stable-2026-11-03` and `beta-2026-11-04`). `main` is meant to mirror OSCILL/R's DUELL, the base of a pull request that belongs to plain DUELL, and carries no TIDE.
 
 ## Builds: stable and beta
 
+TIDE has its own version, `MAJOR.MINOR.PATCH`, kept in the file [`TIDE_VERSION`](TIDE_VERSION) and shown in MENU > SYSTEM > ABOUT beside the DUELL version (1.1). Every build flashed for testing is a **beta**: `1.0.0-b1`, `1.0.0-b2`, and so on. The first build the fork owner has validated on the unit is `1.0.0`; a fix after that is `1.0.1`, a new feature `1.1.0`. The git tag, the GitHub release and the section of the [CHANGELOG-TIDE](CHANGELOG-TIDE.md) carry the same name (the tag has `tide-` in front, as in `tide-1.0.0-b1`, so it cannot be mistaken for OSCILL/R's own `v1.0` and `v1.1`). A `+` after the version in ABOUT (`1.0.0-b1+`) means the build is not exactly the tagged release (for example built from a working copy with changes). The commit is named in the release notes.
+
 | Channel | Build | Date | Status |
 |---|---|---|---|
-| **Stable** | [`stable-2026-11-03`](https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/stable-2026-11-03) (`187e9d0`), branch [`stable`](https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/stable) | 2026-11-03 | **Tested and validated** on the fork owner's FM-1. Build this one unless you want to help test. |
-| **Beta** | [`beta-2026-11-04`](https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/beta-2026-11-04) (`77a6df2`), on branch `jam11` | 2026-11-04 | **Under test.** Adds STYLE, ARC, SYNC, TURNS LEAD / ECHO, POLY, the USER slots, 32 more sounds, new patterns and multi sequences, list previews, JRNY role families and live graphs. Known issues in this build: the SAVE > MULTIS page layout, the TIDE page step bars not always matching what plays, and a latched arp playing on after STOP (use STOP ALL). All three are fixed on `jam11` for the next beta. |
+| **Stable** | [`stable-2026-11-03`](https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/stable-2026-11-03) (`187e9d0`), branch [`stable`](https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/stable) | 2026-11-03 | **Tested and validated** on the fork owner's FM-1. It is older than the versions: its ABOUT shows a commit, not a TIDE version. The first versioned stable will be `1.0.0`. Build this one unless you want to help test. |
+| **Beta** | [`1.0.0-b1`](https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/tide-1.0.0-b1) (tag `tide-1.0.0-b1`), on branch `jam11` | not out yet | **Under test.** The first versioned build. It replaces `beta-2026-11-04` (adds STYLE, ARC, SYNC, TURNS LEAD, POLY, the USER slots, 32 more sounds, new patterns and multi sequences, list previews, JRNY role families and live graphs) and fixes its three known issues: the SAVE > MULTIS page layout, the TIDE page step bars not always matching what plays, and a latched arp playing on after STOP. What it holds: [CHANGELOG-TIDE](CHANGELOG-TIDE.md#100-b1). |
 
 Links from the project's pages (installer, emulator, issue forms) to the guides point at the `stable` branch, so they describe the firmware you can install; only the development documents stay on `jam11`.
 
-`jam11` (this page) is the development line: everything on this page describes the **beta**. A build becomes stable only after the fork owner has played and validated it on the unit. To build the stable one, check out the `stable` branch first (see [Install](#install)).
+`jam11` (this page) is the development line: everything on this page describes the **beta** (and what comes after it). A build becomes stable only after the fork owner has played and validated it on the unit. To build the stable one, check out the `stable` branch first (see [Install](#install)).
 
 ## What changed from DUELL 1.1
 

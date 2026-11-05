@@ -80,6 +80,39 @@ class Pick(unittest.TestCase):
         rel = {"tag_name": "x", "draft": False, "prerelease": False, "published_at": "2026-11-09T00:00:00Z", "assets": [{"name": "duell-tide-beta-2026-11-09.fwsc"}]}
         self.assertEqual(self.tags([rel]), (None, None))
 
+    # TIDE's own versions (D41): tag tide-X.Y.Z[-bN], package duell-tide-stable-X.Y.Z.fwsc / duell-tide-beta-X.Y.Z-bN.fwsc
+    @staticmethod
+    def rel(tag, channel, version, **kw):
+        r = {"tag_name": tag, "draft": False, "prerelease": channel == "beta", "published_at": "2026-12-01T00:00:00Z", "created_at": "2026-12-01T00:00:00Z",
+             "assets": [{"name": f"duell-tide-{channel}-{version}.fwsc", "size": 5}]}
+        r.update(kw)
+        return r
+
+    def test_versioned_beta_is_newer_than_the_dated_stable(self):
+        rels = copy.deepcopy(FIXTURE) + [self.rel("tide-1.0.0-b1", "beta", "1.0.0-b1", published_at="2026-11-01T00:00:00Z")]
+        self.assertEqual(self.tags(rels), ("stable-2026-11-03", "tide-1.0.0-b1"))     # (a dated build is older than any versioned one, whatever the clock says)
+
+    def test_versioned_order(self):
+        b1, b2 = self.rel("tide-1.0.0-b1", "beta", "1.0.0-b1"), self.rel("tide-1.0.0-b2", "beta", "1.0.0-b2", published_at="2026-11-30T00:00:00Z")
+        b10 = self.rel("tide-1.0.0-b10", "beta", "1.0.0-b10", published_at="2026-11-29T00:00:00Z")
+        self.assertEqual(self.tags([b1, b2, b10]), (None, "tide-1.0.0-b10"))          # (b10 after b2: numbers, not text)
+        s = self.rel("tide-1.0.0", "stable", "1.0.0")
+        self.assertEqual(self.tags([b1, b2, b10, s]), ("tide-1.0.0", None))           # the release is after its betas
+        b11 = self.rel("tide-1.1.0-b1", "beta", "1.1.0-b1")
+        self.assertEqual(self.tags([b1, s, b11]), ("tide-1.0.0", "tide-1.1.0-b1"))
+        s2 = self.rel("tide-1.0.1", "stable", "1.0.1", published_at="2026-11-01T00:00:00Z")
+        self.assertEqual(self.tags([b1, s, s2, b11]), ("tide-1.0.1", "tide-1.1.0-b1"))   # (the version decides, not the publishing time)
+
+    def test_versioned_name_must_match_its_channel(self):
+        self.assertEqual(self.tags([self.rel("x", "stable", "1.0.0-b1", prerelease=False)]), (None, None))   # (a -bN package is no stable)
+        self.assertEqual(self.tags([self.rel("x", "beta", "1.0.0")]), (None, None))                         # (a beta needs -bN)
+        self.assertIsNone(releases.parse_package("duell-tide-beta-1.0.0-beta1.fwsc"))
+
+    def test_info_of_a_versioned_release(self):
+        r = self.rel("tide-1.0.0-b1", "beta", "1.0.0-b1", body="Build `abcdef1`")
+        i = releases.info(r, "beta")
+        self.assertEqual((i["tag"], i["version"], i["date"], i["commit"]), ("tide-1.0.0-b1", "1.0.0-b1", "2026-12-01", "abcdef1"))
+
     def test_gh_paginate_output(self):
         two_pages = json.dumps(FIXTURE[:2]) + json.dumps(FIXTURE[2:])
         self.assertEqual(len(releases.read_releases_json(two_pages)), len(FIXTURE))
@@ -179,6 +212,27 @@ class Build(unittest.TestCase):
             self.run_site("--stable-pkg", self.pkg("duell-tide-stable-2026-11-03.fwsc", loader=False))
         with self.assertRaises(SystemExit):
             self.run_site("--stable-pkg", self.pkg("duell-tide-stable-2026-11-04.fwsc", product="FM-1_015"))
+
+    def test_versioned_packages(self):
+        s, b = self.pkg("duell-tide-stable-1.0.0.fwsc"), self.pkg("duell-tide-beta-1.1.0-b1.fwsc", extra=b"beta")
+        self.run_site("--stable-pkg", s, "--beta-pkg", b)                # no release data: tag, version and file from the names
+        m = self.manifest()
+        self.assertEqual((m["stable"]["tag"], m["stable"]["version"], m["stable"]["date"]), ("tide-1.0.0", "1.0.0", ""))
+        self.assertEqual((m["beta"]["tag"], m["beta"]["version"], m["beta"]["file"]), ("tide-1.1.0-b1", "1.1.0-b1", "beta/duell-tide-beta-1.1.0-b1.fwsc"))
+        info = self.info("beta", b, tag="tide-1.1.0-b1")
+        self.run_site("--beta-pkg", b, "--beta-info", info)
+        self.assertEqual(self.manifest()["beta"]["date"], "2026-11-04")   # (the release's publishing date)
+
+    def test_versioned_beta_not_newer_is_dropped(self):
+        s, b = self.pkg("duell-tide-stable-1.0.0.fwsc"), self.pkg("duell-tide-beta-1.0.0-b3.fwsc", extra=b"b")
+        self.run_site("--stable-pkg", s, "--beta-pkg", b)
+        self.assertIsNone(self.manifest()["beta"])
+
+    def test_misnamed_versioned_packages_stop_the_build(self):
+        with self.assertRaises(SystemExit):
+            self.run_site("--beta-pkg", self.pkg("duell-tide-beta-1.0.0.fwsc"))
+        with self.assertRaises(SystemExit):
+            self.run_site("--stable-pkg", self.pkg("duell-tide-stable-1.0.0-b1.fwsc"))
 
     def test_node_reads_the_manifest_the_build_wrote(self):
         s = self.pkg("duell-tide-stable-2026-11-03.fwsc")

@@ -141,6 +141,8 @@ const manifest = { schema: 1, channels: { stable: mk("stable", "stable-2026-11-0
 function channels() {
   const m = parseManifest(manifest);
   ok(m.stable && m.beta && m.stable.sha256 === SHA_S && m.beta.commit === "77a6df2" && m.beta.issues.length === 2 && m.stable.notesUrl.startsWith("https://"), "manifest: both builds read with tag, commit, SHA-256, notes link, issues");
+  const v = parseManifest({ channels: { beta: mk("beta", "tide-1.0.0-b1", SHA_B, { version: "1.0.0-b1", date: "2026-12-01", file: "beta/duell-tide-beta-1.0.0-b1.fwsc" }) } });
+  ok(v.beta && v.beta.version === "1.0.0-b1" && v.beta.tag === "tide-1.0.0-b1" && m.stable.version === "", "manifest: a TIDE version is read (older entries have none)");
   // the choice: stable is the default and the recommended one; a beta only when asked for and published
   ok(chooseChannel(m, undefined) === "stable" && chooseChannel(m, "") === "stable" && chooseChannel(m, "junk") === "stable", "choice: stable is the default");
   ok(chooseChannel(m, "beta") === "beta" && chooseChannel(m, "stable") === "stable", "choice: beta when asked for (#beta), stable otherwise");

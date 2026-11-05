@@ -6,9 +6,9 @@ Updated 5 November 2026. This is the current delivery and status document. The [
 
 | Item | State |
 |---|---|
-| **Stable** | `stable-2026-11-03` (`187e9d0`): validated by the fork owner on the unit. Package SHA-256 `7795e777…1b30`. |
-| **Beta (published)** | `beta-2026-11-04` (`77a6df2`): flashed to the owner's unit 2026-11-04, under test. U1–U3, the 32 extra sounds, new patterns and multi sequences, JRNY role families, live graphs, the TIDE SETTINGS rows STYLE, TURNS (LEAD / ECHO), POLY, SYNC and ARC. Package SHA-256 `d94ac77c…5d7c`. |
-| **Next beta (release candidate)** | On `jam11`, staged as a draft release for the owner's test: the TIDE step bars show what plays (`tidesteps`), STOP ends a latched arp (`stophang`), an FM6 voice under MORPH ends after its release (also in plain DUELL), the review fixes (a TIME change lands at the next turn, ARC 32–64 bars, PATTERNS preview = LOAD, …), the SAVE > MULTIS / PATTERNS redesign and a UI polish pass, and the rebuilt installer site with Stable / Beta channels. |
+| **Stable** | `stable-2026-11-03` (`187e9d0`): validated by the fork owner on the unit. It is from before the versions (the first versioned stable will be `1.0.0`). Package SHA-256 `7795e777…1b30`. |
+| **Beta (last dated one)** | `beta-2026-11-04` (`77a6df2`): flashed to the owner's unit 2026-11-04, under test. U1–U3, the 32 extra sounds, new patterns and multi sequences, JRNY role families, live graphs, the TIDE SETTINGS rows STYLE, TURNS (LEAD / ECHO), POLY, SYNC and ARC. Package SHA-256 `d94ac77c…5d7c`. |
+| **Next beta: `1.0.0-b1`** | The next build flashed (tag `tide-1.0.0-b1`, made when it is flashed; the file `TIDE_VERSION` holds `1.0.0-b1`). On `jam11`, the release candidate, for the owner's test: the TIDE step bars show what plays (`tidesteps`), STOP ends a latched arp (`stophang`), an FM6 voice under MORPH ends after its release (also in plain DUELL), the review fixes (a TIME change lands at the next turn, ARC 32–64 bars, PATTERNS preview = LOAD, …), the SAVE > MULTIS / PATTERNS redesign and a UI polish pass, and the rebuilt installer site with Stable / Beta channels. |
 | **In progress** | The arp timing, TIDE page truth, FM6 re-strike and JRNY roles fixes are on the owner's unit (`6fbd939`, 4 November 2026). Merged since, not yet in any build: the delay-time glide and steadier clock tempo; the ENV SYNC release end; the load undo and list acceleration; guide and QUICKSTART corrections; MIDI Start on the first clock, arp velocity, the arp on the grid, truthful swing and PLAY waiting for the master's bar; the TIDE motif, resets and velocity shape; TIDE settings in every backup and STORE FULL; delay times on the grid and RESO in tune; GLIDE that follows its display; ECHO folded into LEAD; FM6 with 8 voices, UNISON level, DTUN and OKS; RES over the whole knob and chorus in chorus range; flat chord names; the master soft knee, SPACE 3 dB gentler, COMP, silent tails, the SVF low end and the CUT slew; dead code out and the TIDE core simplified; CI. Still to do: the rest of the planned tables below. |
 | **Tests** | The last full `sh jam/check.sh` recorded here ran on the release candidate before the merges above: **143 pass / 0 fail / 1 skip** (benchrun needs termios; it runs in the Linux CI). Web: installer state, site build, install flow (headless, fake unit), editor web tests pass. `jam/check_off.sh`: DUELL_TIDE=0 matches `jam/off.sha256`, which every shared-code change re-pins on purpose (now `baff39b9…`). |
 | **Flash** | Development line (5 November 2026) 576,204 B of the 581,564 B slot: **5,360 B free**. RAM .data+.bss 68,432 of 73,728 B; pool 322,880 of 368,640 B. Keep 0xEA000..0xFBFFF for future pattern / multi slots. |
@@ -16,7 +16,31 @@ Updated 5 November 2026. This is the current delivery and status document. The [
 | **Development branch** | `jam11` (integration happens on a local `integ` branch and is pushed when it passes). Feature work runs in its own branches. Planned: rename `jam11` to `tide` (see [Planned work after the 4 November decisions](#planned-work-after-the-4-november-2026-decisions)). |
 | **Parked as its own rollout** | U4, 24 multi slots: a tested implementation waits on branch `wip-24-multis` (see the engineering table). It follows the release candidate. |
 
-Every flashed build is listed in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md); the README's [Builds](../README.md#builds-stable-and-beta) table says which is stable and which is beta.
+Every flashed build has a section in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md); the README's [Builds](../README.md#builds-stable-and-beta) table says which is stable and which is beta.
+
+## Versions
+
+TIDE has its own version, `MAJOR.MINOR.PATCH`, in one line of the file [`TIDE_VERSION`](../TIDE_VERSION) at the root of the repository. DUELL's own `VERSION` (1.1, OSCILL/R's) is not touched. MENU > SYSTEM > ABOUT shows both: DUELL 1.1 and TIDE's version beside the date.
+
+| Version | Means |
+|---|---|
+| `1.0.0-b1`, `1.0.0-b2`, ... | A **beta**: one per build flashed to a unit for testing. The number counts up until the build is validated. |
+| `1.0.0` | The first build the fork owner has validated on the unit: the **stable** one. |
+| `1.0.1` | A fix on top of a stable build. |
+| `1.1.0` | A new feature; its betas are `1.1.0-b1`, ... |
+
+Git tag, GitHub release and CHANGELOG section have the same name. The tag is the version with `tide-` in front (`tide-1.0.0-b1`, `tide-1.0.0`). Plain `v1.0.0` would be easy to mistake for OSCILL/R's own tags `v1.0` and `v1.1`, and `tide-` also sorts the fork's tags together. The commit is not in the name: it stays in the release notes ("Build `abc1234`") and in the checkpoints. The older dated tags `stable-2026-11-03` and `beta-2026-11-04` stay as history and are not renamed.
+
+**To cut a beta** (the coordinator does this, with the owner's OK for the push):
+
+1. Put the new version in `TIDE_VERSION` (for example `1.0.0-b2`), start a `## 1.0.0-b2` section at the top of `CHANGELOG-TIDE.md` for the lines of this build, and commit.
+2. Tag that commit before building: `git tag -a tide-1.0.0-b2 -m "TIDE 1.0.0-b2"`. `tools/build.py` shows `1.0.0-b2` in ABOUT only when the tree is clean and HEAD is that tag; in any other case it shows `1.0.0-b2+`, so a unit with a plus is a build that is not exactly the release. (`DUELL_TIDE_ID` sets any other text of up to 10 characters.)
+3. Build (`tools/build.py --release` in `felucca-base`), flash, test.
+4. To publish it: push the tag to the fork, make a GitHub **pre-release** named `1.0.0-b2` on it, attach the package as `duell-tide-beta-1.0.0-b2.fwsc` (and its `.sha256`), and put "Build `abc1234`" and the known issues in the notes. Then run Host tests by hand on `jam11`: Pages offers the new beta.
+
+**To cut a stable** (the owner has validated a beta on the unit): put `1.0.0` in `TIDE_VERSION`, start a `## 1.0.0` section in the CHANGELOG, commit, tag `tide-1.0.0`, build and check the package is the one tested; move the `stable` branch to that commit; make a normal GitHub release (not a pre-release, marked Latest) named `1.0.0` with the package `duell-tide-stable-1.0.0.fwsc` and its `.sha256`. Doc links in the README and the project's pages follow the `stable` branch. The next beta is `1.0.1-b1` (a fix) or `1.1.0-b1` (a feature).
+
+The site picks the stable and beta builds by these versions (`felucca-base/web/releases.py`): a beta is offered only while it is newer than the stable build, and `1.0.0-b2` is after `1.0.0-b1` and before `1.0.0`.
 
 ## What the instrument already supports
 

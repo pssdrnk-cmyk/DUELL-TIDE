@@ -163,6 +163,7 @@ export function parseChannel(name, e) {
   const issues = Array.isArray(e.known_issues) ? e.known_issues.map((x) => clean(x, 300)).filter(Boolean).slice(0, 12) : [];
   return {
     channel: name, tag, file, sha256, commit, notesUrl, issues,
+    version: clean(e.version, 24),
     date: /^\d{4}-\d{2}-\d{2}$/.test(e.date || "") ? e.date : "",
     size: Number.isInteger(e.size) && e.size > 0 ? e.size : 0,
     product: /^FM-1_9\d\d$/.test(e.product || "") ? e.product : "",

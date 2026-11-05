@@ -231,7 +231,7 @@ if (!navigator.requestMIDIAccess) {
 
 // ---- the builds: channels.json lists Stable and Beta (tag, date, commit, file, size, SHA-256, notes link). Stable is chosen unless the address says #beta.
 const showVersion = () => {
-  const v = entry ? `${CHANNEL[channel].label} ${entry.date || entry.tag}` : "DUELL with TIDE";
+  const v = entry ? `${CHANNEL[channel].label} ${entry.version || entry.date || entry.tag}` : "DUELL with TIDE";
   document.querySelectorAll(".ver").forEach((e) => { e.textContent = v; });
   $("install-what").textContent = entry ? `Writes: ${CHANNEL[channel].label} build ${entry.tag}${entry.commit ? " (" + entry.commit.slice(0, 7) + ")" : ""}. Chosen above.` : "";
 };

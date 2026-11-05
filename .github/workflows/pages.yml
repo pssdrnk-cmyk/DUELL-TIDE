@@ -3,9 +3,10 @@
 # Nothing generated is committed. The workflow builds the site from the committed sources with
 # felucca-base/web/make_site.py. The firmware packages and the emulator build are not made here (the firmware toolchain is not
 # on the runner); the packages come from the GitHub releases, the emulator is built from the sources:
-#   Stable  the newest normal (non-pre-release, non-draft) release with duell-tide-stable-YYYY-MM-DD.fwsc (GitHub's "Latest")
-#   Beta    the newest pre-release with duell-tide-beta-YYYY-MM-DD.fwsc whose build is NEWER than that stable one: the date (and .N)
-#           in the package name decides, the publishing time only breaks a tie (an older beta is superseded and not offered)
+#   Stable  the highest-version normal (non-pre-release, non-draft) release with duell-tide-stable-X.Y.Z.fwsc (tag tide-X.Y.Z; GitHub's "Latest")
+#   Beta    the newest pre-release with duell-tide-beta-X.Y.Z-bN.fwsc (tag tide-X.Y.Z-bN) whose build is NEWER than that stable one: the version
+#           in the package name decides, the publishing time only breaks a tie (an older beta is superseded and not offered).
+#           The older dated names (duell-tide-stable-YYYY-MM-DD.fwsc, ...-beta-...) still count and are older than any version.
 #   Both go to /install/stable/ and /install/beta/, with /install/channels.json: tag, date, commit, SHA-256 (from the release's
 #   .sha256 asset and GitHub's asset digest; the build stops if the package does not match them), release notes URL, known issues.
 #   felucca-base/web/releases.py does the choosing and the downloads.
