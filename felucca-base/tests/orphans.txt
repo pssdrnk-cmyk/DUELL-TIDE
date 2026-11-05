@@ -3,7 +3,6 @@
 compat_old_test.c          needs an old multi file as its argument (the 1.0 / 1.1 fixtures); not in a group yet
 compat_old_write_test.c    same
 erase_reset_test.c         needs the installer's erase frames as its argument
-erase_via_ed_test.c        does not build: ED_HDR0 is gone from the editor protocol; repair or delete
 graindelay_test.c          does not build on Windows (mkdir arity); runs on Linux/macOS; a Felucca CHOMPI reverb/delay comparison, not wired to a group
 revcompare_test.c          same
 poly_probe_test.c          a probe for POLY (needs fork(), so not on Windows); not in a group

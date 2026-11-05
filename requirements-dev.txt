@@ -2,4 +2,4 @@
 # Pillow's text layout needs libraqm and fribidi on the system (Linux: libraqm0 libfribidi0): without them the fonts are drawn differently.
 pillow==12.3.0
 fonttools==4.65.0
-numpy
+numpy==2.5.4

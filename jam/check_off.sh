@@ -12,9 +12,11 @@ REPO="$(cd "$(dirname "$0")/.." && pwd)"
 . "$REPO/jam/env.sh"
 want="$(cut -c1-64 "$REPO/jam/off.sha256")"
 cd "$REPO/felucca-base" || exit 1
-if ! DUELL_TIDE=0 python3 tools/build.py > "$JAM_WORK/check-off.log" 2>&1; then
-    tail -20 "$JAM_WORK/check-off.log"
-    echo "FAIL    DUELL_TIDE=0 does not build (log: $JAM_WORK/check-off.log)"
+LOG="$REPO/felucca-base/build/check-off.log"      # (in this checkout: two checkouts no longer overwrite one shared log)
+mkdir -p build
+if ! DUELL_TIDE=0 python3 tools/build.py > "$LOG" 2>&1; then
+    tail -20 "$LOG"
+    echo "FAIL    DUELL_TIDE=0 does not build (log: $LOG)"
     exit 1
 fi
 got="$(sha256sum build/duell-1.1.fwsc | cut -c1-64)"

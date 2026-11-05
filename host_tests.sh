@@ -205,6 +205,10 @@
 #   perform, mode, select, hang, menuproduct, bank. It guards that the OFF code compiles and still sounds and behaves as before; the byte-for-byte package check needs the JieLi toolchain (jam/check_off.sh, the owner's PC)
 # tidephrase (audit E12): tests/tide_phrase_test.c, firmware/src/seq_phrase.c and seq_evolve.c with statistical bounds over many seeds: the 5-bit pitch offsets round-trip; a pitch move is one scale step on a hit, never the bass, within an octave,
 #   none on SCALE CHR; 400 moves stay in scale and range; gaps keep half the attacks, repeats stop at tarc_cap, an order swap keeps the attacks and every hit within two 16ths; the anchors never move; the mutate cycle changes the phrase in most turns
+# (tidejrnyfamily also walks JOURNEY from every sound and requires that each of #129..#160 comes up as a target: AUTO TIDE reaches the fork's own sounds)
+# tidebuild (audit E12): tests/tide_build_test.c, the bounds of a generation as statistics over many seeds: sqm_build (an end has at least one hit, at most two hits more or fewer than the Original, the anchors stay, every dial at 0 is the
+#   Original; no note changes pitch class, VOIC stays within an octave and 24..108) and sound_complement_pick (the second part's sound: the muted peer, WILD and musical off keep the first, it is one of the two with the higher contrast
+#   score and both get picked, ARC's peak picks the brighter and its breakdown the softer); three mutations of the firmware (DENS two hits become six, a VOIC octave becomes 13 semitones, the pick takes the lower score) must each FAIL it
 # productcfg (audit U01): the tests build with DUELL_VELO off, but the product ships with KEY SENSE on (tools/build.py: DUELL_VELO 1). This group compiles mode, perform, chord, strum, select, step3, engine, hang and patch with
 #   -DDUELL_VELO=1 (sense.c force-included, as velo_hook_test does) and runs them: the key-on, sequencer and UI paths as the unit runs them. The other groups keep VELO off. regress, atgt, morph and multi do not build or
 #   pass with it yet (their stubs and expectations assume an immediate note-on); those are not in the group
@@ -231,7 +235,7 @@ python3 tools/gen_midi_map.py --sym MIDI_MAP_SHIPPED build/gen_test/midi_map_shi
 python3 tools/gen_version.py build/gen/duell_version.h || exit 1   # VERSION file -> build/gen/duell_version.h
 FV=$(sed -n 's/^#define DUELL_VERSION_STR "\(.*\)"/\1/p' build/gen/duell_version.h)
 [ -f "$HOME/emsdk/emsdk_env.sh" ] && EMU=emu || EMU=
-want="${*:-midiout velaccent regress chord chordkeep strum mod perform perflevel perflevelmut performcap ui select step3 engine morph morphui mode dlymod dlyev dlyglide dlyfb eqglide hang atgt patslot multi release menuproduct patch patchraw bank dx7import dx7compat splash knobjump sounds mrender fmbass fm6 physintune unisonlevel clockguard clockdrift arptiming uartdma uarttimer fm6liveol tidekeep tidecrossings audiopolish ubsanrender tidecontrols livegraph tideturns tidesteps stophang tidedialogue tidevoicelead tidemotif slopehandoff loadcost cpuscen uf wave hold reset resetwalk pan mixsplit partindep duckpart twocore tcmeas tcstage1 bootguard bootpack tcbench poolrule budget polylimits deadline velomono sat mxstep modinert eqon eq32 ovlguard matrixpack engswitch level guide guidesetup wtab wavetable modules uitest project fun10 motion persist backup editor editorjson midictl audio erase flashled usb elfcheck reverb halltail plate locut shimmer panic insert bassmono comp master stereochorus chorusskip sidechain tune bench benchsim benchrun benchaudio ownerimport rollbrowser sliders xb xbmut fuzz xvalues twin subcyc pages scope2 editb velo midimap midimapmut ldrscreen otareuse lcdboot tidejrnymemory tidejrnyfamily $EMU converttwin multiv8 uitruth tidestore resotune dctail glide tideoff pitchmod phasealias engleft tidephrase productcfg inherited orphans}"
+want="${*:-midiout velaccent regress chord chordkeep strum mod perform perflevel perflevelmut performcap ui select step3 engine morph morphui mode dlymod dlyev dlyglide dlyfb eqglide hang atgt patslot multi release menuproduct patch patchraw bank dx7import dx7compat splash knobjump sounds mrender fmbass fm6 physintune unisonlevel clockguard clockdrift arptiming uartdma uarttimer fm6liveol tidekeep tidecrossings audiopolish ubsanrender tidecontrols livegraph tideturns tidesteps stophang tidedialogue tidevoicelead tidemotif slopehandoff loadcost cpuscen uf wave hold reset resetwalk pan mixsplit partindep duckpart twocore tcmeas tcstage1 bootguard bootpack tcbench poolrule budget polylimits deadline velomono sat mxstep modinert eqon eq32 ovlguard matrixpack engswitch level guide guidesetup wtab wavetable modules uitest project fun10 motion persist backup editor editorjson midictl audio erase flashled usb elfcheck reverb halltail plate locut shimmer panic insert bassmono comp master stereochorus chorusskip sidechain tune bench benchsim benchrun benchaudio ownerimport rollbrowser sliders xb xbmut fuzz xvalues twin subcyc pages scope2 editb velo midimap midimapmut ldrscreen otareuse lcdboot tidejrnymemory tidejrnyfamily $EMU converttwin multiv8 uitruth tidestore resotune dctail glide tideoff pitchmod phasealias engleft tidephrase tidebuild productcfg inherited orphans}"
 fail=0
 # mxstep's PHASE self-check (hunt4): tests/mx_step_test.c built against a COPY of firmware/ and tests/ in which eng_phase.c's bridge of a moved DCW is switched off (the bend steps at
 # every block seam again); the PHASE check must FAIL, a pass means it cannot see the seam
@@ -245,6 +249,19 @@ mxstep_mut() {
     echo "   FAIL (the mutated build does not compile)"; tail -5 $OUT/last.log; fail=1; return
   fi
   if $OUT/mx_step_mut > $OUT/last.log 2>&1; then echo "   FAIL (the mutation was NOT detected)"; fail=1; else echo "   PASS (detected: $(grep -c 'FAIL' $OUT/last.log) checks failed)"; fi
+}
+# tidebuild's self-check: tests/tide_build_test.c against a COPY of firmware/ and tests/ with one rule broken (sed on the copy, name FILE SEDEXPR); the test must FAIL
+tidebuild_mut() {
+  name=$1; f=build/tidebuild_mut/$2
+  echo "== tidebuild_mut $name"
+  rm -rf build/tidebuild_mut; mkdir -p build/tidebuild_mut
+  cp -R firmware tests build/tidebuild_mut/ || { echo "   FAIL (copy)"; fail=1; return; }
+  sed "$3" "$f" > "$f.new" && mv "$f.new" "$f"
+  if cmp -s "$f" "$2"; then echo "   FAIL (the mutation changed nothing in $2)"; fail=1; return; fi
+  if ! $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/tide_build_mut build/tidebuild_mut/tests/tide_build_test.c -lm > $OUT/last.log 2>&1; then
+    echo "   FAIL (the mutated build does not compile)"; tail -5 $OUT/last.log; fail=1; return
+  fi
+  if $OUT/tide_build_mut > $OUT/last.log 2>&1; then echo "   FAIL (the mutation was NOT detected)"; fail=1; else echo "   PASS (detected: $(grep -c 'tidebuild: FAIL' $OUT/last.log) checks failed; first: $(grep -m1 'tidebuild: FAIL' $OUT/last.log | cut -c1-120))"; fi
 }
 # partindep's self-check: build tests/partindep_test.c against a COPY of firmware/ and tests/ in which one shared write has been put back (sed on the copy,
 # name FILE SEDEXPR [FILE SEDEXPR ..]); the test must FAIL, a pass means it cannot see that kind of dependency
@@ -283,7 +300,7 @@ twocore_mut() {
     if $OUT/twocore_mut 0 -nomut > $OUT/last.log 2>&1; then echo "   FAIL (the mutation was NOT detected)"; fail=1; else echo "   PASS (detected by the scene-0 faults: $(grep -c 'twocore: FAIL' $OUT/last.log) checks failed; first: $(grep -m1 'twocore: FAIL' $OUT/last.log | cut -c1-170))"; fi
   else echo "   PASS (detected by the invariant audit: $(grep -c 'twocore: FAIL' $OUT/last.log) checks failed; first: $(grep -m1 'twocore: FAIL' $OUT/last.log | cut -c1-170))"; fi
 }
-run() { echo "== $1"; shift; "$@" > "$OUT/last.log" 2>&1 && { if grep -q '^SKIP ' "$OUT/last.log"; then echo "   $(grep -m1 '^SKIP ' "$OUT/last.log")"; else echo "   PASS"; fi; } || { echo "   FAIL"; grep -E "FAIL|Assertion" "$OUT/last.log" | grep -vE "(^|[^0-9])0 FAIL" | head -60; tail -15 "$OUT/last.log"; fail=1; }; }   # (every failed check first: the tail alone hid most of them; the tests print "twocore: FAIL <text>", "FAIL: <text>", "xyz: FAIL <text>", almost never FAIL at the end of a line; a summary "0 FAIL" is not one; a test that could not run its checks prints a line "SKIP <why>": the group then reports "   SKIP <why>", never PASS)
+run() { echo "== $1"; shift; "$@" > "$OUT/last.log" 2>&1; rc=$?; [ $rc -eq 77 ] && grep -q "skipped" "$OUT/last.log" && { echo "   SKIP $(grep -m1 "skipped" "$OUT/last.log" | cut -c1-150)"; return 0; }; [ $rc -eq 0 ] && { if grep -q '^SKIP ' "$OUT/last.log"; then echo "   $(grep -m1 '^SKIP ' "$OUT/last.log")"; else echo "   PASS"; fi; } || { echo "   FAIL"; grep -E "FAIL|Assertion" "$OUT/last.log" | grep -vE "(^|[^0-9])0 FAIL" | head -60; tail -15 "$OUT/last.log"; fail=1; }; }   # (every failed check first: the tail alone hid most of them; the tests print "twocore: FAIL <text>", "FAIL: <text>", "xyz: FAIL <text>", almost never FAIL at the end of a line; a summary "0 FAIL" is not one; a test that could not run its checks prints a line "SKIP <why>": the group then reports "   SKIP <why>", never PASS; exit code 77 with the word "skipped" in the output is the Windows shim's "needs fork()" stop (jam/wincompat): "   SKIP", not FAIL)
 for t in $want; do case $t in
   regress) $CC -DNPART=4 -o $OUT/regress tests/regress.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run regress $OUT/regress tests/golden.txt tests/cpu_baseline.txt ;;
   ubsanrender) U="-O1 -fsanitize=undefined -fno-sanitize-recover=all"  # the scene renders under UBSan: a signed shift or overflow in the audio code fails here (audit A07)
@@ -504,6 +521,10 @@ for t in $want; do case $t in
   tideoff) CT="$CC -O1 -DDUELL_TIDE=0"; toff() { n=$1; s=$2; shift 2; $CT "-DFELUCCA_VERSION=\"$FV\"" $NP -o $OUT/off_$n tests/$s.c -lm || { echo "== tideoff_$n"; echo "   FAIL (does not compile with DUELL_TIDE=0)"; fail=1; return; }; run tideoff_$n $OUT/off_$n "$@"; }
            NP=-DNPART=4 toff regress regress tests/golden.txt tests/cpu_baseline.txt; NP= ; toff perform perform_test; toff mode mode_test; toff select select_test; toff hang hang_test; toff menuproduct menu_product_test; toff bank bank_test tests/factory_bank_records.txt ;;
   tidephrase) $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/tide_phrase_test tests/tide_phrase_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run tidephrase $OUT/tide_phrase_test ;;
+  tidebuild) $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/tide_build_test tests/tide_build_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run tidebuild $OUT/tide_build_test &&
+           tidebuild_mut "DENS: two hits become six" firmware/src/seq_morph.c 's/n = sqm_cnt(d\[SD_DENS\], 2u);/n = sqm_cnt(d[SD_DENS], 6u);/' &&
+           tidebuild_mut "VOIC: an octave becomes 13 semitones (another pitch class)" firmware/src/seq_morph.c 's/s->note\[lo\] = sqm_note(s->note\[lo\] + 12);/s->note[lo] = sqm_note(s->note[lo] + 13);/' &&
+           tidebuild_mut "the pick takes the lower contrast score" firmware/src/morph_complement.c 's/return sound_candidate_score(pi, engine, b) > sound_candidate_score(pi, engine, a) ? b : a;/return sound_candidate_score(pi, engine, b) < sound_candidate_score(pi, engine, a) ? b : a;/' ;;
   productcfg) CV="$CC -O1 -DDUELL_VELO=1 -include firmware/src/sense.c -Ifirmware/hal"; pcfg() { n=$1; s=$2; shift 2; $CV "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/pcfg_$n tests/$s.c -lm || { echo "== productcfg_$n"; echo "   FAIL (does not compile with DUELL_VELO=1)"; fail=1; return; }; run productcfg_$n $OUT/pcfg_$n "$@"; }
            for t in mode:mode_test perform:perform_test chord:chord_test strum:strum_test select:select_test step3:step3_test engine:engine_page_test hang:hang_test patch:patch_test; do pcfg ${t%%:*} ${t#*:}; done ;;
   inherited) for t in input:input_test.c midi_uart:midi_uart_test.c step15:step15_test.c stoptail:stoptail_test.c union:union_test.c; do n=${t%%:*}; s=${t#*:}
@@ -816,4 +837,6 @@ static void midi_cc_set(track_t *t, uint32_t id, uint32_t value)
                firmware/src/midi_control.c 's/b = 1u << (code - MAP_T_ROLL_A);/b = 1u << (cc - 21u);/'
            mmm "ROLL's halves moved (End B from 64 instead of 85: the middle rolls)" firmware/src/midi_control.c 's/if (value < 85u)$/if (value < 64u)/' ;;
 esac; done
+# the self-checks' copies of firmware/ and tests/ (build/*_mut, a few MB each) are kept only when something failed, to look at
+[ "$fail" -eq 0 ] && rm -rf build/*_mut
 exit $fail
