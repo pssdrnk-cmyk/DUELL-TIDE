@@ -9,7 +9,7 @@ DUELL turns the FM-1 into two synths in one box. This page is the short tour; [S
 - **Three modes** (on the MODE page, first knob: MODE. It is the third page of HOME's round, and the fourth with TIDE: MORPH, TIDE SETTINGS, AUTO TIDE, MODE):
   - **DUEL**: part 1 hard left, part 2 hard right, kept apart, effects included. For playing two sounds into two channels.
   - **STEREO**: both parts in one stereo field, for headphones.
-  - **LAYER**: both parts play on the keys together. The MODE page has XFADE (velocity crossfade) and SPLIT (a key split point) for it; DUEL and STEREO have neither.
+  - **LAYER** (default): both parts play on the keys together. The MODE page has XFADE (velocity crossfade) and SPLIT (a key split point) for it; DUEL and STEREO have neither.
 - **MORPH**: every sound has two ends, A and B, and one fader between them.
 
 ## The first-start guide
