@@ -578,13 +578,13 @@ static void t_answer(void)
             uint32_t b = (bar + turn) & 3u;
             sqm_bar = (uint8_t)bar, sqm_bar_turn = (uint8_t)turn;
             for (p = 0; p < 2u; p++) {
-                uint32_t lead = b < 2u ? 1u : 0u, masked = 0, any = 0;
+                uint32_t eb = (uint32_t)(uint8_t)bar + turn, lead = (b < 2u ? 1u : 0u) ^ (sqm_hash((uint32_t)morph.seed, eb >> 3, 0x4Cu) & 1u), masked = 0, any = 0;   /* (the opener swaps by the seed: M04) */
                 for (i = 0; i < 16u; i++)
                     if (thin_bit(p, i)) {
                         any = 1;
                         masked |= seq_play_step(&trk[p], i, &buf) == &SQM_REST;
                     }
-                wrong += any && (p == lead ? masked : !masked);
+                wrong += any && (p == lead || ((eb + 2u * p) & 3u) == 3u ? masked : !masked);
             }
         }
     }
@@ -595,7 +595,7 @@ static void t_answer(void)
         for (bar = 0; bar < 8u; bar++) {
             sqm_bar = (uint8_t)bar, sqm_bar_turn = 0;
             for (p = 0; p < 2u; p++) {
-                uint32_t varies = ((bar + 2u * p) & 3u) == 3u, lead = (bar & 1u) ? 0u : 1u, masked = 0;
+                uint32_t varies = ((bar + 2u * p) & 3u) == 3u, lead = ((bar & 1u) ? 0u : 1u) ^ (sqm_hash((uint32_t)morph.seed, bar >> 3, 0x4Cu) & 1u), masked = 0;
                 for (i = 0; i < 16u; i++)
                     if (thin_bit(p, i))
                         masked |= seq_play_step(&trk[p], i, &buf) == &SQM_REST;
@@ -609,6 +609,10 @@ static void t_answer(void)
     sqm_bar = 0, sqm_bar_turn = 0;
     {   uint32_t m0 = 0;
         for (i = 0; i < 16u; i++)
+            m0 += seq_play_step(&trk[0], i, &buf)->time == ST_NOTE;
+        while (sqm_hash((uint32_t)morph.seed, 0u, 0x4Cu) & 1u)   /* (a seed whose opener is not swapped in bar 0) */
+            morph.seed++;
+        for (i = 0, m0 = 0; i < 16u; i++)
             m0 += seq_play_step(&trk[0], i, &buf)->time == ST_NOTE;
         sqm_turns = 1;
         for (i = 0, n = 0; i < 16u; i++)

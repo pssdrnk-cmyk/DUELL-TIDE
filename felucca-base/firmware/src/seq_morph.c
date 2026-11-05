@@ -288,12 +288,12 @@ static const step_t *sqm_step(const track_t *t, uint32_t idx, uint32_t vary)
         return q->aon || q->hold || (rhythm.active & (1u << pi)) ? &sqm_pat[pi][0][idx] : &t->step[idx];
     return &sqm_pat[pi][q->fader >= 1u + sqm_hash(q->tseed, idx / 4u, 9u) % 127u][idx];
 }
-/* LEAD: part pi follows in this bar (part 2 leads bars 1-2 of 4, part 1 bars 3-4; ARC's fast turns: a bar each): a lead or pluck
- * line only (D2), and never on its own variation bar (audit C7: the ARC's 1-bar turns put part 2's bar 2 on part 1) */
+/* LEAD: part pi follows in this bar (part 2 leads bars 1-2 of 4, part 1 bars 3-4; ARC's fast turns: a bar each; the opener swaps now and then,
+ * by the seed, per 8 bars: M04): a lead or pluck line only (D2), and never on its own variation bar (audit C7: the ARC's 1-bar turns put part 2's bar 2 on part 1) */
 static int sqm_follows(uint32_t pi, uint32_t bar)
 {
     return sqm_turns >= 2u && sqm_auto == 3u && ((sqm_lead >> pi) & 1u) && ((bar + 2u * pi) & 3u) != 3u &&
-           pi != (~bar >> !tarc_fast & 1u);           /* (the leader: part 2 on bars 1-2 of 4, ARC's fast turns: on the odd bars) */
+           pi != ((~bar >> !tarc_fast ^ sqm_hash((uint32_t)morph.seed, bar >> 3, 0x4Cu)) & 1u);   /* (the leader: part 2 on bars 1-2 of 4, ARC's fast turns: on the odd bars; swapped on some 8-bar phrases) */
 }
 /* the step the sequencer plays (audio interrupt): with VARY BARS 4 + 8, while playing, End A but on every 4th bar (TAKE TURNS, both parts in automatic WNDR / JRNY: part 2 on bars 2 and 6) */
 static const step_t *seq_play_step_at(const track_t *t, uint32_t idx, uint32_t bar)
