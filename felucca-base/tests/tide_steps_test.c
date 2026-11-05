@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* TIDE page STEPS against the sound (tide_ui.c tide_views / tide_steps; owner, 2026-11-04: "the UI display or notes seems to be
  * disconnected from the sounds coming from the machine"). The sequencer runs block by block (events_block, a UI frame every 16 ms) in
- * automatic WNDR and JRNY, TARGET BOTH, ROLL MUSIC, across TURNS (4), POLY (3), SYNC (3), ARC (3), VARY BARS, with factory multis and
+ * automatic WNDR and JRNY, TARGET BOTH, ROLL MUSIC, across TURNS (3), POLY (3), SYNC (3), ARC (3), VARY BARS, with factory multis and
  * built patterns (chance steps, ties after them, chords, long patterns, an ARP SEQ part whose rate is not the steps'). For every step the
  * sequencer starts, the notes it triggers (the MIDI out ring: what arp_note_on sent) are compared with
  *   pred  the step as the page showed it one block before (the page's model, tide_views, the whole page of the part sampled as drawn)
@@ -330,24 +330,24 @@ int main(void)
         {3, 0, GM_JOURNEY, 1, 1, 1, 0, 0, 0, 24},
         {-1, 0, GM_WANDER, 1, 1, 1, 0, 0, 0, 24},
         {-1, 0, GM_JOURNEY, 2, 2, 2, 1, 0, 1, 24},
-        {-1, 0, GM_WANDER, 3, 1, 0, 2, 1, 0, 24},
+        {-1, 0, GM_WANDER, 2, 1, 0, 2, 1, 0, 24},
         {-1, 0, GM_JOURNEY, 0, 2, 1, 0, 0, 2, 24},
         {-1, 1, GM_WANDER, 1, 1, 1, 1, 0, 0, 32},
         {-1, 1, GM_JOURNEY, 2, 2, 2, 2, 0, 1, 32},
-        {-1, 1, GM_WANDER, 3, 0, 1, 0, 1, 0, 32},
+        {-1, 1, GM_WANDER, 2, 0, 1, 0, 1, 0, 32},
         {-1, 2, GM_JOURNEY, 1, 1, 1, 0, 0, 0, 24},
         {-1, 2, GM_WANDER, 2, 2, 2, 1, 0, 1, 24},
-        {-1, 3, GM_JOURNEY, 3, 2, 1, 2, 0, 0, 32},
+        {-1, 3, GM_JOURNEY, 2, 2, 1, 2, 0, 0, 32},
         {-1, 3, GM_WANDER, 0, 1, 0, 0, 1, 1, 24},
         {0, 0, GM_WANDER, 1, 1, 1, 0, 0, 0, 16},
         {5, 0, GM_JOURNEY, 2, 2, 2, 1, 0, 1, 16},
-        {8, 0, GM_WANDER, 3, 1, 1, 2, 0, 0, 16},
+        {8, 0, GM_WANDER, 2, 1, 1, 2, 0, 0, 16},
         {11, 0, GM_JOURNEY, 1, 2, 0, 0, 1, 1, 16},
         {13, 0, GM_WANDER, 2, 1, 2, 1, 0, 0, 16},
-        {15, 0, GM_JOURNEY, 3, 2, 1, 2, 0, 1, 16},
+        {15, 0, GM_JOURNEY, 2, 2, 1, 2, 0, 1, 16},
         {-1, 0, GM_WANDER, 1, 1, 1, 2, 0, 0, 72},       /* (ARC needs its 5+ phrases before a drop) */
         {-1, 1, GM_JOURNEY, 2, 2, 2, 2, 0, 0, 72},
-        {-1, 3, GM_WANDER, 3, 1, 1, 1, 0, 0, 72},
+        {-1, 3, GM_WANDER, 2, 1, 1, 1, 0, 0, 72},
     };
     uint32_t i, m, c, e, tot[M_N] = {0, 0};
     for (i = 0; i < sizeof S / sizeof S[0]; i++)

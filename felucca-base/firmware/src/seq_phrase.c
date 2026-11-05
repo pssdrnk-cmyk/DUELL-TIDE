@@ -44,12 +44,7 @@ static int phrase_repeat(uint32_t pi, uint32_t seed)
     /* Restore a dropped attack before adding another voice onset. */
     for (uint32_t j = 0; j < len; j++) {
         uint32_t i = (seed + j) % len;
-        if (rhythm_map[pi][i] != RHYTHM_REST || phrase_peer_attack(pi, i)) continue;
-        int free = 1;
-        for (uint32_t k = 0; k < len; k++)
-            if (k != i && sqm_hit(&trk[pi].step[k]) && rhythm_map[pi][k] != RHYTHM_REST &&
-                ((int32_t)k + rhythm_offset(pi, k) == (int32_t)i)) free = 0;
-        if (!free) continue;
+        if (rhythm_map[pi][i] != RHYTHM_REST || phrase_peer_attack(pi, i) || rhythm_lands(pi, i, (int32_t)i, len, 0)) continue;
         rhythm_map[pi][i] = 0;
         rhythm_mark(pi);
         return 1;
@@ -60,11 +55,7 @@ static int phrase_repeat(uint32_t pi, uint32_t seed)
             (rhythm_map[pi][i] & RHYTHM_REPEAT)) continue;
         /* A moved attack can answer itself at its original empty place. Other
          * sources must not already occupy that place. */
-        int free = 1;
-        for (uint32_t k = 0; k < len; k++)
-            if (k != i && sqm_hit(&trk[pi].step[k]) && rhythm_map[pi][k] != RHYTHM_REST &&
-                (int32_t)k + rhythm_offset(pi, k) == (int32_t)i) free = 0;
-        if (!free) continue;
+        if (rhythm_lands(pi, i, (int32_t)i, len, 0)) continue;
         rhythm_map[pi][i] |= RHYTHM_REPEAT;
         rhythm_mark(pi);
         return 1;

@@ -191,15 +191,25 @@ static uint32_t shed_released(uint32_t n)             /* the n oldest released v
     return k;
 }
 
+/* the level a released voice is ranked by: its envelope, or on an engine with its own envelopes (FM6: v->env is forced to full) the loudest carrier as the block left it */
+static int32_t shed_level(track_t *t, voice_t *v)
+{
+    return ENGINES[t->engine]->ownenv ? fm6_sub_follow(t, v) << 9 : v->env;
+}
+
 static void shed_voice(void)
 {
     uint32_t p, i;
     voice_t *best = 0;
+    int32_t low = 0;
     for (p = 0; p < NPART; p++)
         for (i = 0; i < NVOICE; i++) {
             voice_t *v = &trk[p].v[i];
-            if (v->active && !v->gate && v->stage != 4u && (!best || v->env < best->env))
-                best = v;
+            if (v->active && !v->gate && v->stage != 4u) {
+                int32_t l = shed_level(&trk[p], v);
+                if (!best || l < low)
+                    best = v, low = l;
+            }
         }
     if (best) {
         voice_kill(best);

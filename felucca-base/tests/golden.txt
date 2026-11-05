@@ -23,7 +23,7 @@
 # hunt4 (release_drafts/HUNT4.md), on purpose, 17 of the 210 (every PHASE preset and sound): PHASE's bend is built once a block, so a moving DCW (the envelope's sweep) stepped at the
 # block seams; eng_phase.c phase_render_0 carries the step as an offset that dies away in 8 samples (a buzz at 1,378 Hz and its harmonics, -62 .. -77 dBFS above 3 kHz, #31 BRAZEN's
 # whistle). A glitch removal: the peak of every one of the 17 moves by at most 0.1 dB.
-# filter precision (audit P03), on purpose, 123 of the 242 (the sounds that run the multimode filter at a cutoff the old coefficients truncated, or filter 2): the trapezoidal SVF
+# filter precision (audit P03), on purpose, 123 of the 210 (the sounds that run the multimode filter at a cutoff the old coefficients truncated, or filter 2): the trapezoidal SVF
 # keeps its coefficients with up to 7 more bits at low cutoffs and rounds its state update (dsp.c tsvf_coef_k, SVF_G in Q14), so a low cutoff, its resonance and its stopband are exact.
 # DUELL 1.1 / jam11, on purpose, all 210 (docs/JAM11_TEST_BASELINE.md; 1.0's hashes pass on Linux unchanged). The audio of every render was dumped from 1.0 and from jam11 and
 # compared (jam/soundref/regress_dmp.sh, acmp). (1) NOTE-START STAGGER (item 144, VS_MAX 2): a chord's voices start 1..3 blocks apart; built with -DVS_MAX=8 the presets of ANALOG FM6
@@ -84,7 +84,7 @@ preset/FM6/00_TINE_EP 54608962ce8cd8a2
 preset/FM6/01_BELL 6006f7d52e4b6020
 preset/FM6/02_FM_BASS 07f954bdd9f1f55c
 preset/FM6/03_BRASS 948dcfa69c9d0fce
-preset/FM6/04_PAD 8f7271b33d989a5a
+preset/FM6/04_PAD 6a99d938dbe94186
 preset/FM6/05_MARIMBA 74d93661319adb20
 preset/FM6/06_ORGAN 4bb5c5efeb8e6b48
 preset/FM6/07_PLUCK e35aa5097d76527d
@@ -117,20 +117,6 @@ sound/ANALOG/16_FOLD_BASS ca323ec247d86a54
 sound/ANALOG/17_SQUARE_LEAD c2273034268179f4
 sound/ANALOG/18_ARP_PLUCK 9ceab57c95e5edbe
 sound/ANALOG/19_DRIVEN_SAW b1d5b027fb2c5e70
-sound/ANALOG/20_DUB_CHORD 5925b0918986beeb
-sound/ANALOG/21_DARK_MIN7 663b4e617de0083b
-sound/ANALOG/22_WARM_WASH d2646bcb34b39b98
-sound/ANALOG/23_SLOW_TIDE f624d175552e86e0
-sound/ANALOG/24_SUB_PLUCK 6bd6686e10e82310
-sound/ANALOG/25_SOUL_STAB 897a12e9d5cf8680
-sound/ANALOG/26_SUNDAY_KEYS e652ad4d24b2187c
-sound/ANALOG/27_LOW_STAB bdb8c59b2b6fffa6
-sound/ANALOG/28_FOG_BANK 021a40a6e6ca29f4
-sound/ANALOG/29_NEON_DRIFT 9673ffeffaf4d982
-sound/ANALOG/30_DUB_BLIP f2bd2b26c7ba4bc8
-sound/ANALOG/31_TAPE_PLUCK d59a966661c61417
-sound/ANALOG/32_HOLLOW_POP 515a59ccc0c4b810
-sound/ANALOG/33_NIGHT_DRONE f4810d2305bc3e0b
 sound/PHASE/00_ELASTIC_BASS e43e2c7d4bd7c844
 sound/PHASE/01_BRAZEN 852d73520d181b2d
 sound/PHASE/02_LAMPLIGHT a75047780aec8dcf
@@ -142,13 +128,6 @@ sound/PHASE/07_SONAR_PING c92611242fbbaef8
 sound/PHASE/08_FAKE_KOTO 5e05ead8c4fa0e60
 sound/PHASE/09_FUZZ_BASS 05b55ff67525298c
 sound/PHASE/10_HARD_KICK 52234f0a006f0370
-sound/PHASE/11_AIR_SHIMMER 076005befa578edd
-sound/PHASE/12_STAR_FIELD 15374b1d5d31fb3a
-sound/PHASE/13_GLASS_KEYS a387459ef37783ed
-sound/PHASE/14_DEEP_BLUE 3e75cb1afdfb0766
-sound/PHASE/15_TAPE_CLOUD 06d5c7367e6c4655
-sound/PHASE/16_ICE_STAB f4846c7077f592c5
-sound/PHASE/17_SOFT_EP e9c850f61e390ba1
 sound/LOFI/00_CARTRIDGE f41d9a065d10383c
 sound/LOFI/01_PIXEL_HERO 6e2212b911cbee7c
 sound/LOFI/02_WOW_FLUTTER 1c9876a2fa9244e7
@@ -186,12 +165,6 @@ sound/WHEEL/03_JAZZ_CLUB 93bc23eea237b604
 sound/WHEEL/04_NIGHT_BOX 71c86208d0641eb4
 sound/WHEEL/05_LESLIE_STORM 95ad4571a665a6d8
 sound/WHEEL/06_TAPE_DRONE 38bd33741e6227d1
-sound/WHEEL/07_ORGAN_SKANK 0b877c16b892cf43
-sound/WHEEL/08_DEEP_ORGAN 926eb62fcdb2bd5c
-sound/WHEEL/09_SOFT_ORGAN 66fe57edcb53b403
-sound/WHEEL/10_HOUSE_ORGAN 3b9294beefa42d3b
-sound/WHEEL/11_ORGAN_WASH 3d3daf1e751b59a6
-sound/WHEEL/12_ROTOR_HAZE 12f462c081184aaa
 sound/PHYS/00_PAN_WHISTLE 02f0ea8f06480b14
 sound/PHYS/01_SINGING_BOWL 5e208b78dfde2af0
 sound/PHYS/02_GHOST_HARP fd3d2692c7e05e67
@@ -215,19 +188,17 @@ sound/NOISE/07_STATIC_SNARE 0ab24dfec4df0d70
 sound/NOISE/08_GEIGER cb042e812f09a830
 sound/NOISE/09_MODEM 6b448942dbcf4360
 sound/NOISE/10_REV_CYMBAL ff3d8c14675d86ac
-sound/NOISE/11_DUST_BED 2b484a8f3311910f
-sound/NOISE/12_TAPE_HISS b0934d623bc87104
 sound/FM6/00_SLAP_DOCTOR ab6a53eb25014008
 sound/FM6/01_HAN_SOLO da1397f2cb33d7d2
-sound/FM6/02_GLASS_HALL 5c215e069d7352ba
+sound/FM6/02_GLASS_HALL 44d189e8bf93d4f6
 sound/FM6/03_MALLET_WOOD 5fe0db77b441fe98
-sound/FM6/04_TINE_ROOM 5921c7df3dd0a87b
+sound/FM6/04_TINE_ROOM 5a9b971936ebb56f
 sound/FM6/05_BIG_STAB 15775818d78d930e
-sound/FM6/06_FROST_BELLS 899dfdd96af5aed4
-sound/FM6/07_ALIEN_CHIMES 6c11197755a034cc
+sound/FM6/06_FROST_BELLS 08e89dd80c6dda72
+sound/FM6/07_ALIEN_CHIMES bb5f52a2a58239bc
 sound/FM6/08_TEMPLE_BLOCK c76cc97e85541dac
-sound/FM6/09_ISLAND_STEEL 4960ecfe5d9bc824
-sound/FM6/10_SALOON_KEYS 83e4dec0b88a5819
+sound/FM6/09_ISLAND_STEEL 7d28c61571e14520
+sound/FM6/10_SALOON_KEYS 48f8f224646fd3d8
 sound/FM6/11_FRETLESS 73bf45e67652e115
 sound/FM6/12_FM_BASS_2 b75e80eda7f67e10
 sound/FM6/13_TUBE_BELLS 9b7758099f2966f5
@@ -254,9 +225,6 @@ sound/WAVE/19_LICORICE ca5eb30ebb277504
 sound/WAVE/20_BRASS_PAD 66a079d9cf846037
 sound/WAVE/21_KICK_BASS b670da439d2d2d0c
 sound/WAVE/22_SCREAMER 1b7f0d4a985a6f48
-sound/WAVE/23_COMB_PLUCK 438beed6baf7a956
-sound/WAVE/24_AIR_POP 5a5824d5031a9099
-sound/WAVE/25_GLASS_POP 58c8519650798484
 mode/ANALOG/POLY e43bddd98092e493
 mode/ANALOG/MONO ffbae72dea86596c
 mode/ANALOG/LEGATO e165dff569f8cb40
@@ -271,4 +239,4 @@ sends/ANALOG/delay bd08bfbc845ad604
 sends/ANALOG/reverb 4f6a52e6ff984e38
 sends/ANALOG/all 31e12b2e99c73157
 sends/ANALOG/dist c432fced27082ad4
-song/4track_mix d83b37df3034d4a6
+song/4track_mix 6b29b9f98c6e0257

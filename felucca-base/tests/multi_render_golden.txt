@@ -47,7 +47,7 @@
 # jam11 adds TIDE's roll changes and PHYS tuning. (Not compared audio against 1.0: the 1.0 tree does not build this test on Linux, nor does stock 1.1 (scenes.h / mu_put_rec).)
 # Audit P01 (2026-11-04), on purpose, 18 renders: GLIDE takes the time GLD shows (voice.c glide_set); the multis with a LEGATO part that glides between the held chord keys, M01 M08 M14 S01 S08 X08, re-made once; the others are unchanged.
 # Audit P01: the factory multis' own GLD migrated as the sounds' (their old 7-semitone glide: M01 26/26 -> 61/61, M08 38/28 -> 61/61, M14 21/26 -> 51/61): M01 M08 M14 re-made once more.
-# Audit P03 (filter precision), on purpose: the SVF keeps its precision at low cutoffs (dsp.c tsvf_coef_k): 102 of the 110 renders (the multis and scenes whose parts run a filter) are re-made once.
+# Audit P03 (filter precision), on purpose: the SVF keeps its precision at low cutoffs (dsp.c tsvf_coef_k): 102 of the 108 renders (the multis and scenes whose parts run a filter) are re-made once.
 # Audit P08 (CUT dial slewed, voice.c cut_slew), on purpose, 55 renders: the fader 63 / 127 renders of the multis and scenes whose MORPH moves the CUT dial.
 M01 f0 18162edf71d683da
 M01 f63 f796970976c8ec99
@@ -59,14 +59,14 @@ M03 f0 e656508f7fcf52c8
 M03 f63 c9e57a546d0efa22
 M03 f127 6618cd031df9c8b3
 M04 f0 accb803985946972
-M04 f63 7328468c137e45d8
-M04 f127 c60d63a1eec7e697
+M04 f63 b6ac4a470dc9df69
+M04 f127 35c11ca4cd82bc3f
 M05 f0 e0a47e433ce2ee03
 M05 f63 060d4b30c089f55d
 M05 f127 3655263a1fe855a3
-M06 f0 b0aa4e863f200520
-M06 f63 1695ba280783c523
-M06 f127 c7c8be6b65eb01ba
+M06 f0 b7f3ea0b85c08fd3
+M06 f63 010c7696421032a0
+M06 f127 50773a9f6b9b3cfd
 M07 f0 c0f04da25749241f
 M07 f63 6c17f24e47b3d0d8
 M07 f127 85ee175377bafccd
@@ -133,24 +133,24 @@ S13_TEST_1_BASE f127 dbc1614ce05aefce
 S14_TEST_2_PHASE f0 032c3d683abb9258
 S14_TEST_2_PHASE f63 9de1993b55da2a13
 S14_TEST_2_PHASE f127 da67e27474fcce1e
-S15_TEST_3_HEAVY f0 7ca91699ef08c970
-S15_TEST_3_HEAVY f63 db7d91fc608e5cfb
-S15_TEST_3_HEAVY f127 ce5be1e495097dcc
+S15_TEST_3_HEAVY f0 71c3dd663ecd143e
+S15_TEST_3_HEAVY f63 afe4dda1d64e78a6
+S15_TEST_3_HEAVY f127 216e648f86166016
 S16_TEST_4_MIX f0 3c6ff9cbc5670e0c
 S16_TEST_4_MIX f63 c89d845fdab660fa
 S16_TEST_4_MIX f127 c00d0e8b1f83744e
-X06_TINE_STRINGS f0 ef9ce7fc1ad5dac7
-X06_TINE_STRINGS f63 841d78c34145384f
-X06_TINE_STRINGS f127 f1e836f52e029ea8
+X06_TINE_STRINGS f0 a5b51c8f9f1d7e73
+X06_TINE_STRINGS f63 67c43ee8c41b5cd1
+X06_TINE_STRINGS f127 a227d86cb0534cb3
 X07_BOWL_AND_WIND f0 6fc2487c5f425105
 X07_BOWL_AND_WIND f63 57078d6df5beaa1e
 X07_BOWL_AND_WIND f127 1b0af3306eafe7bb
-X14_SEVENOAKS f0 10816b0c6fb2cc96
-X14_SEVENOAKS f63 7e7c1eda70c40b86
-X14_SEVENOAKS f127 537c4da53c4d821a
-X13_BASILDON f0 8c9d56cc256907b1
-X13_BASILDON f63 cbbfa38f9ca09d62
-X13_BASILDON f127 aca002243a6187ec
+X14_SEVENOAKS f0 27e35a761ddea83d
+X14_SEVENOAKS f63 c4138b57530b9dab
+X14_SEVENOAKS f127 8ef8307087569485
+X13_BASILDON f0 48c5dffff5800165
+X13_BASILDON f63 fd769333531c965a
+X13_BASILDON f127 b06778e4248653b4
 X08_MONO_DUEL f0 a5597e1c2ca33235
 X08_MONO_DUEL f63 6f51dd730c0b03ef
 X08_MONO_DUEL f127 76b45e8286f21b96
