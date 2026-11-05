@@ -199,7 +199,7 @@
 #   without learned CCs): identical parameter writes; the shipped map writes the same for each of today's 24 targets on its NEW number; the morph's triggers follow the target; a taken number is refused / forced; learn
 #   writes a line (16 at most); the settings record at its exact size (cloud/base3's size is no record); the extension values, the effects block, map_target_info. Built twice: the tests' power-on map is the legacy list
 #   (tests/midimap_legacy.csv), and once with the shipped list as the firmware's own (the two must pass); midimapgen: the generator's failures (tests/midimap_gen_test.py)
-# tideoff (audit E11): the firmware built with -DDUELL_TIDE=0 (plain DUELL, the same switch as jam/check_off.sh) and run through the tests that do not state a TIDE feature: regress (242 golden renders),
+# tideoff (audit E11): the firmware built with -DDUELL_TIDE=0 (plain DUELL, the same switch as jam/check_off.sh) and run through the tests that do not state a TIDE feature: regress (the golden renders),
 #   perform, mode, select, hang, menuproduct, bank. It guards that the OFF code compiles and still sounds and behaves as before; the byte-for-byte package check needs the JieLi toolchain (jam/check_off.sh, the owner's PC)
 # tidephrase (audit E12): tests/tide_phrase_test.c, firmware/src/seq_phrase.c and seq_evolve.c with statistical bounds over many seeds: the 5-bit pitch offsets round-trip; a pitch move is one scale step on a hit, never the bass, within an octave,
 #   none on SCALE CHR; 400 moves stay in scale and range; gaps keep half the attacks, repeats stop at tarc_cap, an order swap keeps the attacks and every hit within two 16ths; the anchors never move; the mutate cycle changes the phrase in most turns
