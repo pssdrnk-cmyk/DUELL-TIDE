@@ -612,7 +612,7 @@ int BACKUP_TEST_MAIN(void)
     }
 
 #if DUELL_TIDE
-    {   /* D06: FM6's voice bank is object 41 (INFO 44 01 bit 1): read only, not in the plain LIST, the stored payload and its CRC */
+    {   /* FM6's voice bank is object 41 (INFO 44 01 bit 1): read only, not in the plain LIST, the stored payload and its CRC */
         static uint8_t pk[FM6_PACKED], whole[FVB_LEN + 8u], one[FM6_PACKED];
         uint32_t k, c = 0xFFFFFFFFu, i, off, ok = 1, ids41 = 0;
         reset();

@@ -511,7 +511,7 @@ const KEYS = [1000, 1001, 1005, 1064];
   const N = new MockUnit();
   ok(await athrows(() => installerCapture((r, o) => N.request(r, o), "FELUCCA DUELL 0.2.26 bet"), /manifest/), "installer (still the old chunk model): a unit with caps 63 lists 24 ids, which no installer manifest has: its capture refuses (the Backup page is the way to back it up)");
 }
-{   // D06: FM6's voice bank (INFO tag 44 01 bit 1, GET 41, restored with FM6B_BEGIN / WRITE / END)
+{   // FM6's voice bank (INFO tag 44 01 bit 1, GET 41, restored with FM6B_BEGIN / WRITE / END)
   const voice = (k) => Uint8Array.from({ length: 128 }, (_, i) => (i * 7 + k * 13 + 5) & 127);
   ok(same([...unpackVoice(packVoice(voice(3)), 0)], [...voice(3)]), "voice bank: a record packs 8 to 7 and unpacks to the same 128 bytes");
   const S = new MockUnit({ fvBank: true }), sq = (r, o) => S.request(r, o);

@@ -297,7 +297,7 @@ class RetryTests(Base):
 
 
 class BankTests(Base):
-    """D06: FM6's voice bank (INFO tag 44 01 bit 1) in the archive: object 41, read with GET, written back with FM6B_BEGIN / WRITE / END."""
+    """FM6's voice bank (INFO tag 44 01 bit 1) in the archive: object 41, read with GET, written back with FM6B_BEGIN / WRITE / END."""
 
     def objs41(self, f):
         return [o for o in f["objects"] if o["id"] == 41]

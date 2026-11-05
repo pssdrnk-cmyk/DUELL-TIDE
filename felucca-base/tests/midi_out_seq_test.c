@@ -169,7 +169,7 @@ int main(void)
     }
     clr();
 
-    /* 9. D11: a note-on the ring dropped is not marked as sent (no stray note-off later); a note-off the ring dropped stays marked (the note is still on) */
+    /* 9. a note-on the ring dropped is not marked as sent (no stray note-off later); a note-off the ring dropped stays marked (the note is still on) */
     reset();
     t = &trk[0];
     while (mo_w - mo_r < MQ - MO_RESERVE) midi_out_event(0x08u | 0x8Fu << 8 | 1u << 16);   /* the ring up to the note-offs' reserve: a note-on finds no room */
