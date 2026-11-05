@@ -94,8 +94,6 @@ Superseded documents, each with a one-line header saying by what.
 | Document | Status | Superseded by |
 |---|---|---|
 | [TIDE_ROADMAP_2026-11-02.md](history/TIDE_ROADMAP_2026-11-02.md) | historical | [ROADMAP.md](ROADMAP.md) |
-| [ACTION_PLAN.md](history/ACTION_PLAN.md) | historical | [ROADMAP.md](ROADMAP.md) |
-| [UI_COMPACTION_HANDOFF.md](history/UI_COMPACTION_HANDOFF.md) | historical | [ROADMAP.md](ROADMAP.md) |
 | [FEATURE_LIST.md](history/FEATURE_LIST.md) | historical | [ROADMAP.md](ROADMAP.md), [CHANGELOG.md](../CHANGELOG.md) |
 | [BETA_CALL.md](history/BETA_CALL.md) | historical | [INSTALL.md](INSTALL.md) |
 | [TWOCORE_DIAG.md](history/TWOCORE_DIAG.md), [TWOCORE_JOB5_REACH.txt](history/TWOCORE_JOB5_REACH.txt), [RAMPLACE_NOTES.md](history/RAMPLACE_NOTES.md) | historical | [TWOCORE_STAGE1.md](TWOCORE_STAGE1.md) |

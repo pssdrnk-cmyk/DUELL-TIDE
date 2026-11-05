@@ -80,6 +80,7 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 - **New:** the emulator page shows the AUTO TIDE screen (the site's own screenshot) instead of a black square until the first frame arrives after "Click to start audio".
 - **New:** the cheat sheet is finished: it says DUELL with TIDE (TIDE by pssdrnk, not by OSCILL/R), carries a TIDE half (HOME's round, AUTO TIDE, TIDE SETTINGS), loads no fonts from other servers (Barlow Semi Condensed is served from the site) and is linked from the landing page.
 - **Under the hood:** the editor and the Backup page are titled DUELL with TIDE (the header picture keeps OSCILL/R's wordmark until the author agrees); the Backup page says the TIDE pages are not editable and their settings are in the backup.
+- **Under the hood:** the two task briefs for coding agents in `docs/history/` (the maintenance action plan and the UI compaction hand-off) are removed from the repository; the work they describe is merged and flashed.
 
 ## DUELL 1.1
 

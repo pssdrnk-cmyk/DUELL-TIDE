@@ -8,7 +8,7 @@ Updated 4 November 2026 (status of branch `integ`, HEAD `3803fbc`, added to the 
 
 This is the current delivery/status document. Detailed [musical proposals](../design/TIDE_MUSICAL_DESIGN.md) and the [historical roadmap and receipts](TIDE_ROADMAP_2026-11-02.md) are references, not competing work queues. Keep the [test baseline](../JAM11_TEST_BASELINE.md) as the record of test results.
 
-The [maintenance action plan](ACTION_PLAN.md) records the first completed batch from pinned source `7c22b13`: lossless factory-voice packing and one shared knob-navigation helper are now committed as `61eb641` and `89a9a77`; buffer and free-slot investigations are reviewed. The combined change saved 1,936 B flash in its own build; both commits are part of every package flashed since. These historical build measurements do not describe a newer package.
+The maintenance action plan (task briefs for coding agents, removed from the repository) recorded the first completed batch from pinned source `7c22b13`: lossless factory-voice packing and one shared knob-navigation helper are now committed as `61eb641` and `89a9a77`; buffer and free-slot investigations are reviewed. The combined change saved 1,936 B flash in its own build; both commits are part of every package flashed since. These historical build measurements do not describe a newer package.
 
 ## Baseline and evidence
 
