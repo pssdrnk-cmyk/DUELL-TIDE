@@ -105,7 +105,9 @@ typedef struct {                /* one part's items, host instructions a sample 
     uint32_t eng, filt, ext;    /* a voice: the engine, the multimode filter's slope, the morph's extras */
     uint32_t ins, sat, eq, misc;/* fixed: INSERT, SAT, EQ, the rest (ducker, KEY TRK, matrix, LFOs, arp) */
     uint32_t base;              /* fixed: the part's own work while it sounds (BD_PART_ON; no ablation removes it) */
+#if DUELL_TIDE
     uint32_t tide, tide_v;      /* what TIDE's DSP adds (A01; already inside misc and ext): fixed (valley, wash), and a voice (dip, FM6's bridge); the tests read them */
+#endif
     uint32_t cap;               /* the most notes it can have: NOTES_MAX, the pool, the engine's own limit */
     uint32_t on;                /* sounds at all (not muted) */
 } bd_part_t;
@@ -141,7 +143,10 @@ static void bd_part(const track_t *t, bd_part_t *r)
 {
     const engine_t *e = ENGINES[eng_idx(t->eng_req)];   /* (the sound's engine: a switch fades first, eng_req leads) */
     const int16_t *p = t->p;
-    uint32_t i, sl, bands, pi = (uint32_t)(t - trk), lf = 0, tide = 0, tide_v = 0, by = pi < 2u ? byp_m[pi] : 0u;   /* by: the BYPASS switches of the part (item 116: SAT, INSERT and EQ bypassed measured as not running) */
+    uint32_t i, sl, bands, pi = (uint32_t)(t - trk), lf = 0, by = pi < 2u ? byp_m[pi] : 0u;   /* by: the BYPASS switches of the part (item 116: SAT, INSERT and EQ bypassed measured as not running) */
+#if DUELL_TIDE
+    uint32_t tide = 0, tide_v = 0;                      /* TIDE's DSP items of the part (BD_TIDE_*) */
+#endif
     uint32_t sat = p[P_DIST] != 0;                      /* SAT on in the live values or at either morph end as it sounds (item 147) */
     bd_tw_t w = {0, 0, 0, 0};                           /* item 142: the TWIN FILTER of the morph's two ends as they sound (budget_feat.c adds the live one) */
     memset(r, 0, sizeof *r);
@@ -213,8 +218,10 @@ static void bd_part(const track_t *t, bd_part_t *r)
     r->misc += ((lf & 1u) + (lf >> 1)) * BD_LFO;
     r->misc += arp_mode(t) ? BD_ARP : 0;                /* (item 125: the arp as it plays now: MODULES' ARP OFF costs nothing; was p[P_AMODE]) */
     r->base = BD_PART_ON;
+#if DUELL_TIDE
     r->misc += tide;
     r->tide = tide, r->tide_v = tide_v;
+#endif
     bd_feat(t, r, &w);                                  /* TWIN FILTER (live, and the morph ends' from above), SUB, CYCLE (budget_feat.c) */
 }
 
