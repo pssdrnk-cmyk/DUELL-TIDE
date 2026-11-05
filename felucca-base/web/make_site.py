@@ -15,7 +15,7 @@
   install/stable/duell-tide-stable-DATE.fwsc   the Stable package (+ .sha256), when there is one
   install/beta/duell-tide-beta-DATE.fwsc       the Beta package (+ .sha256), when there is one
                               (+ LICENSE, LICENSING.md, LICENSES/: the package holds JieLi SDK files under Apache-2.0, see LICENSING.md)
-  fm1pkg.js fm1ota.js fm1backup.js installer_state.js   imported by the installer page as "../fm1*.js"
+  fm1pkg.js fm1ota.js fm1backup.js installer_state.js installer_backup.js   imported by the installer page as "../fm1*.js" (installer_backup.js imports editor/duellbackup.js)
   cheatsheet/                 the printable one-page cheat sheet (web/cheatsheet/index.html)
   editor/                     the editor (web/editor/: index.html the sound editor, backup.html the Backup page, layout.json from the firmware tables, the modules; ?mock=1 needs mockunit.js); it imports ../fm1backup.js
                               and ../installer_state.js
@@ -170,7 +170,7 @@ def main():
     inst.mkdir(parents=True)
     (out / ".nojekyll").write_text("", encoding="utf-8")
     shutil.copy(HERE / "landing.html", out / "index.html")
-    for js in ("fm1pkg.js", "fm1ota.js", "fm1backup.js", "installer_state.js"):
+    for js in ("fm1pkg.js", "fm1ota.js", "fm1backup.js", "installer_state.js", "installer_backup.js"):
         shutil.copy(HERE / js, out / js)
     shutil.copytree(HERE / "assets", out / "assets", ignore=shutil.ignore_patterns(".DS_Store"))
     img = out / "img"

@@ -160,7 +160,8 @@
 <script type="module">
 import { productOf, logicalImage, sha256hex, validateStockPackage } from "../fm1pkg.js";
 import { Updater } from "../fm1ota.js";
-import { BackupConnection, captureBackup, eraseAllData, parseInfo } from "../fm1backup.js";
+import { BackupConnection, eraseAllData, parseInfo } from "../fm1backup.js";
+import { captureUnitBackup } from "../installer_backup.js";
 import { uiState, TEXT, SWITCH_OFF_ON, ERASE, eraseOutcome, SMART, detectUnit, eraseDecision,
          CHANNELS, CHANNEL, NOT_RELEASED, HASH_TEXT, parseManifest, chooseChannel, verifyDownload, infoRows, betaConfirmText } from "../installer_state.js";
 
@@ -443,9 +444,9 @@ $("go").addEventListener("click", async () => {
 });
 
 // ---- backup
-function saveArchive(archive) {
+function saveArchive(archive, name) {
   const url = URL.createObjectURL(new Blob([JSON.stringify(archive)], { type: "application/json" }));
-  const a = document.createElement("a"); a.href = url; a.download = `DUELL-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  const a = document.createElement("a"); a.href = url; a.download = name;
   document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 function archiveInfo(a) {
@@ -453,7 +454,7 @@ function archiveInfo(a) {
   // the firmware reports "FELUCCA <version string>", DUELL's too. A complete backup needs the preferences, motion and backup tags
   // (the song-rows byte is not compared: Felucca sent 16, DUELL sends 0) and the backup tag's bit 0.
   const supported = /^FELUCCA /i.test(version) && tags.has(0x55) && tags.has(0x4d) && caps !== null && !!(caps & 1);
-  return { version, supported, caps: caps ?? 0, patchCap };
+  return { version, supported, caps: caps ?? 0, patchCap, raw: a };
 }
 // card = the card that shows the progress ("backup", or "return" when the return makes its backup first)
 async function doBackup(up, card) {
@@ -465,9 +466,9 @@ async function doBackup(up, card) {
     const info = archiveInfo(await link.request([1, []]));
     if (!detected) { detected = detectUnit(info.version); refresh(); }      // the backup just talked to the unit: reuse its answer
     if (!info.supported) { result(card, "This firmware cannot make a complete backup (the official firmware, or an old build). Nothing was saved.", card === "backup"); return false; }
-    const archive = await captureBackup((r, o) => link.request(r, o), info.version,
+    const { file, name } = await captureUnitBackup((r, o) => link.request(r, o), info.raw,
       (d, t) => { const pc = d / Math.max(1, t) * 100; say(card, `Saving backup ${Math.round(pc)}%`); if (card === "backup") $("bar-backup").value = pc; });
-    saveArchive(archive);
+    saveArchive(file, name);
     result(card, "Backup saved to your downloads." + (info.caps & 4 ? "" : " MULTIs and PATTERN slots are not in it (this firmware cannot save them)."));
     return true;
   } finally { link.close(); }

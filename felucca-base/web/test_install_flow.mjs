@@ -47,6 +47,14 @@ const FAKE = `(() => {
   const pack7 = (data) => { const out = []; let acc = 0, nb = 0; for (const b of data) { acc |= b << nb; nb += 8; while (nb >= 7) { out.push(acc & 0x7F); acc >>>= 7; nb -= 7; } } if (nb) out.push(acc & 0x7F); return out; };
   const unpack7 = (s) => { const out = []; let acc = 0, nb = 0; for (const b of s) { acc |= (b & 0x7F) << nb; nb += 7; while (nb >= 8) { out.push(acc & 0xFF); acc >>>= 8; nb -= 8; } } return out; };
   const w = window.__fake = { sent: 0, served: 0, bad: 0, upgrades: 0, identity: null, log: [], startAs: window.__startAs || "FM-1_015" };
+  w.seq = []; w.saved = [];
+  // a file the page offers as a download is kept here instead of saved (the order of events says what came before the install)
+  const blobs = new Map(), makeUrl = URL.createObjectURL.bind(URL), clickA = HTMLAnchorElement.prototype.click;
+  URL.createObjectURL = (b) => { const u = makeUrl(b); blobs.set(u, b); return u; };
+  HTMLAnchorElement.prototype.click = function () { if (this.download) { w.saved.push({ name: this.download, blob: blobs.get(this.href) }); w.seq.push("saved"); return; } return clickA.call(this); };
+  // window.__duell = options of a MockUnit (editor/mockunit.js): the unit then also answers the editor protocol (INFO, backup LIST / GET) as a DUELL unit does
+  let mock = null;
+  if (window.__duell) import("/editor/mockunit.js").then((m) => { mock = new m.MockUnit(window.__duell); w.mock = mock; });
   const access = { inputs: new Map(), outputs: new Map(), onstatechange: null };
   let waiting = null, queue = [], target = "FM-1_901";
   function boot(identity, name) {
@@ -66,11 +74,18 @@ const FAKE = `(() => {
     tx([0xF0, ...pack7(u), 0xF7]);
   }
   function rx(d) {
+    if (d[0] === 0xF0 && d[1] === 0x7D && d[2] === 0x46 && d[3] === 0x4C) {         // the editor protocol (a stock unit does not answer it)
+      if (!mock || w.identity.startsWith("ota-")) return;
+      const cmd = d[4];
+      if (cmd === 66 && !w.seq.includes("get")) w.seq.push("get");
+      mock.request([cmd, Array.from(d.slice(5, -1))], {}).then((p) => tx([0xF0, 0x7D, 0x46, 0x4C, cmd, ...p, 0xF7]), () => {});
+      return;
+    }
     if (eq(d, HS)) {
       const t = [...new TextEncoder().encode(w.identity)];
       tx([0xF0, ...pack7([0, 0x59, 0x11, 0, 0, 0, ...t, ...new Array(28 - t.length).fill(0)]), 0xF7]);
     } else if (eq(d, UPGRADE)) {
-      w.upgrades++;
+      w.upgrades++; w.seq.push("upgrade");
       queue = w.identity.startsWith("ota-") ? [...Array.from({ length: 6 }, (_, k) => [k * 512, 512]), [0xF0000000, 8]] : [[0, 64], [0x40, 160], [0x1000, 512], [0xE0000000, 8]];
       next();
     } else if (waiting) {
@@ -90,13 +105,14 @@ const FAKE = `(() => {
 const c = await launch();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let scriptId = null;
-async function open(hash, { startAs = "FM-1_015", answer = true } = {}) {
+async function open(hash, { startAs = "FM-1_015", answer = true, duell = null } = {}) {
   if (scriptId) await c.send("Page.removeScriptToEvaluateOnNewDocument", { identifier: scriptId });
-  scriptId = (await c.send("Page.addScriptToEvaluateOnNewDocument", { source: `window.__startAs = ${JSON.stringify(startAs)};` + FAKE + `window.__answer = ${answer};` })).identifier;
+  scriptId = (await c.send("Page.addScriptToEvaluateOnNewDocument", { source: `window.__startAs = ${JSON.stringify(startAs)}; window.__duell = ${JSON.stringify(duell)};` + FAKE + `window.__answer = ${answer};` })).identifier;
   await c.send("Emulation.setDeviceMetricsOverride", { width: 1000, height: 900, deviceScaleFactor: 1, mobile: false });
   await c.send("Page.navigate", { url: `${base}/install/?r=${Math.random()}${hash}` });
   await sleep(300);
   await c.until("document.readyState === 'complete'", 10000);
+  if (duell) await c.until("!!__fake.mock", 10000);
   await c.until("!!document.getElementById('hashstate') && document.getElementById('hashstate').textContent !== '' && !document.getElementById('hashstate').textContent.startsWith('Checking')", 15000).catch(() => {});
 }
 const t = (id) => c.eval(`document.getElementById(${JSON.stringify(id)}).textContent`);
@@ -166,6 +182,15 @@ await untick();
 await click("go");
 await c.until("document.getElementById('result-install').textContent.length > 0", 90000);
 ok((await t("result-install")) === "Done. Switch the unit off and on once." && (await c.eval("__fake.identity")) === "FM-1_901" && (await c.eval("__fake.upgrades")) === 1, "Resume: a unit left in update mode is finished with the chosen build");
+
+// 6. a current DUELL / TIDE unit (the mock unit: INFO caps 63, 24 objects in the plain LIST and the patches in four pages): "Save a backup file"
+const saved0 = "(async () => { const s = __fake.saved[0]; if (!s) return null; const j = JSON.parse(await s.blob.text()); return { name: s.name, format: j.format, version: j.version, ids: j.objects.map((o) => o.id) }; })()";
+await open("#stable", { startAs: "FM-1_901", duell: {} });
+await click("backup");
+await c.until("document.getElementById('result-backup').textContent.length > 0", 60000);
+const r6 = await t("result-backup"), f6 = await c.eval(saved0);
+ok(/^Backup saved/.test(r6) && f6 && f6.format === "duell-backup" && f6.version === 5 && [0, 1, 13, 21, 24, 40].every((id) => f6.ids.includes(id)),
+  `Backup: a current unit's file is saved (music, settings, multis, patterns, wavetables, patch records) [${r6.slice(0, 70)}]`);
 
 const errs = c.errors().filter((e) => !/404|favicon/.test(e));
 ok(errs.length === 0, "no script errors in the page" + (errs.length ? ": " + errs[0] : ""));

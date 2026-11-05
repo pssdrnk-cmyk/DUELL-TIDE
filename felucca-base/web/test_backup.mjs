@@ -123,5 +123,25 @@ ok([0, 1, 2, 6].every((id) => target.objs.get(id).every((v, i) => v === objs.fin
 const failing = device([], { failChunk: 2 });
 ok(await athrows(() => restoreBackup(failing.request, file)) && failing.log.includes("abort 2") && !failing.log.includes(0), "backup: a refused chunk aborts that object and stops before the live music");
 
+// the installer's backup (installer_backup.js) against the mock unit (editor/mockunit.js): a current unit (caps 63) lists 24 objects and its patches in pages
+{
+  const { MockUnit } = await import("./editor/mockunit.js");
+  const { captureUnitBackup } = await import("./installer_backup.js");
+  const { readArchive, isPatchKey } = await import("./editor/duellbackup.js");
+  const mk = async (opt) => { const u = new MockUnit(opt); return { u, info: await u.request([1, []]), req: (r, o) => u.request(r, o) }; };
+  const cur = await mk({});
+  ok(await athrows(() => captureBackup(cur.req, "TEST")), "installer backup: the old capture still stops on a current unit's 24-object LIST (why the installer must not use it for caps bit 5)");
+  const got = await captureUnitBackup(cur.req, cur.info);
+  const arc = readArchive(got.file);
+  ok(got.format === "duell-backup" && got.file.version === 5 && /^DUELL-backup-\d{4}-\d\d-\d\d-\d{4}\.json$/.test(got.name), "installer backup: a current unit gives the Backup page's file (duell-backup v5)");
+  ok([0, 1, 13, 21, 24].every((id) => arc.objects.has(id)) && [...arc.objects.keys()].filter(isPatchKey).length === 4 && arc.hasPatches && !arc.problems?.length, "installer backup: music, settings, multis, patterns, wavetables and the four saved patches are in it, nothing flagged raw");
+  for (const [caps, n] of [[31, 40], [15, 30], [7, 27]]) {
+    const old = await mk({ caps }), g = await captureUnitBackup(old.req, old.info);
+    ok(g.format === "felucca-backup" && g.file.objects.length === n && g.name === `DUELL-backup-${new Date().toISOString().slice(0, 10)}.json`, `installer backup: a unit with caps ${caps} (no patch records) still gives the ${n}-object felucca-backup file`);
+  }
+  const playing = await mk({ playing: true });
+  ok(await athrows(() => captureUnitBackup(playing.req, playing.info)), "installer backup: a unit that plays refuses it (the install must not go on)");
+}
+
 console.log(fails ? `BACKUP WEB TESTS FAILED (${fails})` : "backup web tests passed");
 process.exit(fails ? 1 : 0);
