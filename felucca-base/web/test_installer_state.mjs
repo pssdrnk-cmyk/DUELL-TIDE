@@ -120,7 +120,9 @@ function onePage() {
   const h = readFileSync(new URL("./install/index.html", import.meta.url), "utf8"), ota = readFileSync(new URL("./fm1ota.js", import.meta.url), "utf8");
   ok(!/class="chk"/.test(h) && !/Flash checklist/.test(h) && !/checksOk/.test(h), "install page: no flash checklist, no tick box gates the Install button");
   ok(!/<span class="n">\d<\/span>/.test(h), "install page: no numbered step headings");
-  ok(/Do not switch off or unplug the unit while it installs\./.test(h) && /<a href="\.\.\/editor\/backup\.html">Back up first \(recommended\)<\/a>/.test(h), "install page: the do-not-switch-off line and the Back up first link (a link, not a gate)");
+  ok(/Do not switch off or unplug the unit while it installs\./.test(h) && /first saves a backup file to your downloads and stops if that fails \(<a href="\.\.\/editor\/backup\.html">the Backup page<\/a> restores it\)/.test(h), "install page: the do-not-switch-off line and the Back up first link (a link, not a gate)");
+  const go = h.split('$("go").addEventListener("click"')[1].split("\n});")[0];
+  ok(/else if \(await backupBeforeInstall\(up\)\) \{ await up\.install\(/.test(go) && !/up\.install\(/.test(go.replace(/else if \(await backupBeforeInstall\(up\)\) \{ await up\.install\(/, "")), "install page: every fresh install goes through backupBeforeInstall (only the update-mode resume skips it)");
   ok(h.indexOf("Do not switch off or unplug") < h.indexOf('<button id="go"') && h.indexOf('<button id="go"') < h.indexOf("RETURN TO OFFICIAL FIRMWARE"), "install page: the line stands above the one Install button");
   ok(/<details id="backup-details">/.test(h) && h.includes('id="card-backup"') && /async function doBackup\(/.test(h) && /await doBackup\(up, "return"\)/.test(h), "install page: the Back up card is kept as a closed details; doBackup stays for the return");
   // kept, enforced by code (silent)

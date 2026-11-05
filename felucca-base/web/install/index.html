@@ -113,7 +113,7 @@
       <p class="small" id="erase-smart"></p>
       <p class="small" id="erase-help">Erases your settings (theme, scale, MIDI channels, favourites), the autosave, your patches, your multis and your patterns. The factory sounds, multis and patterns come back. This cannot be undone: back up first. Left off, your saved data stays and the unit comes back as you left it.</p>
       <p class="small" id="erase-lock"></p>
-      <p><b>Do not switch off or unplug the unit while it installs.</b> <a href="../editor/backup.html">Back up first (recommended)</a></p>
+      <p><b>Do not switch off or unplug the unit while it installs.</b> On a unit that runs DUELL the page first saves a backup file to your downloads and stops if that fails (<a href="../editor/backup.html">the Backup page</a> restores it).</p>
       <p><button id="go" class="act" disabled>Install <span class="ver">DUELL with TIDE</span></button></p>
       <p class="lock" id="lock-install"></p>
       <progress class="bar" id="bar-install" max="100" value="0" hidden></progress>
@@ -162,7 +162,7 @@ import { productOf, logicalImage, sha256hex, validateStockPackage } from "../fm1
 import { Updater } from "../fm1ota.js";
 import { BackupConnection, eraseAllData, parseInfo } from "../fm1backup.js";
 import { captureUnitBackup } from "../installer_backup.js";
-import { uiState, TEXT, SWITCH_OFF_ON, ERASE, eraseOutcome, SMART, detectUnit, eraseDecision,
+import { uiState, TEXT, BACKUP_FIRST, SWITCH_OFF_ON, ERASE, eraseOutcome, SMART, detectUnit, eraseDecision,
          CHANNELS, CHANNEL, NOT_RELEASED, HASH_TEXT, parseManifest, chooseChannel, verifyDownload, infoRows, betaConfirmText } from "../installer_state.js";
 
 const $ = (id) => document.getElementById(id);
@@ -420,6 +420,37 @@ async function eraseAfterInstall(midi) {
     finally { link.close(); }
   } catch (e) { log(String(e && e.stack || e)); return eraseOutcome(null, e); }
 }
+// The install saves a backup first (a unit in update mode cannot: the resume below skips it). A DUELL unit whose backup fails stops the install here, before anything is
+// written. A unit that does not answer INFO (the official firmware) or runs something else than DUELL has nothing of DUELL's to save: the install goes on.
+// A DUELL build that cannot make a complete backup asks once. Returns true when the install may go on.
+async function backupBeforeInstall(up) {
+  say("install", BACKUP_FIRST.looking);
+  const device = await up.find((id) => id.model === "FM-1");
+  if (!device) return true;                                   // no unit in normal mode: up.install says so
+  const input = device.link.input, output = device.link.output; device.link.close();
+  const link = new BackupConnection(input, output);
+  try {
+    let raw;
+    try { raw = await link.request([1, []]); } catch { return true; }       // no answer to INFO: nothing to save
+    const info = archiveInfo(raw);
+    if (!detected) { detected = detectUnit(info.version); refresh(); }
+    if (!info.supported) {
+      if (detectUnit(info.version).kind !== "duell") return true;
+      if (confirm(BACKUP_FIRST.cannot)) return true;
+      result("install", BACKUP_FIRST.declined);
+      return false;
+    }
+    const { file, name } = await captureUnitBackup((r, o) => link.request(r, o), raw,
+      (d, t) => say("install", `Saving backup ${Math.round(d / Math.max(1, t) * 100)}%`));
+    saveArchive(file, name);
+    say("install", BACKUP_FIRST.saved);
+    return true;
+  } catch (e) {
+    log(String(e && e.stack || e));
+    result("install", BACKUP_FIRST.failed(e && e.message ? e.message.replace(/\.$/, "") : "no reason given"), true);
+    return false;
+  } finally { link.close(); }
+}
 $("go").addEventListener("click", async () => {
   if (busy || !image || !entry) return;
   // what is written is the verified package of the chosen build (image comes only from bytes whose SHA-256 matched the release data)
@@ -436,7 +467,7 @@ $("go").addEventListener("click", async () => {
     if (ota) {
       ota.link.close();
       if (await up.resume(image, step, product)) installed = true; else result("install", ERR.stopped, true);
-    } else { await up.install(image, product, step); installed = true; }
+    } else if (await backupBeforeInstall(up)) { await up.install(image, product, step); installed = true; }
     if (installed && !wantErase) result("install", TEXT.done.install);
     else if (installed) { const o = await eraseAfterInstall(midi); result("install", o.text + " " + SWITCH_OFF_ON, o.bad); }
   } catch (e) { fail("install", e); }

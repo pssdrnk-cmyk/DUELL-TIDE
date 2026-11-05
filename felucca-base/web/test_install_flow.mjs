@@ -192,6 +192,33 @@ const r6 = await t("result-backup"), f6 = await c.eval(saved0);
 ok(/^Backup saved/.test(r6) && f6 && f6.format === "duell-backup" && f6.version === 5 && [0, 1, 13, 21, 24, 40].every((id) => f6.ids.includes(id)),
   `Backup: a current unit's file is saved (music, settings, multis, patterns, wavetables, patch records) [${r6.slice(0, 70)}]`);
 
+// 7. the install backs up first: the file is offered before the unit is told to switch to update mode
+await open("#stable", { startAs: "FM-1_901", duell: {} });
+await untick();
+await click("go");
+await c.until("document.getElementById('result-install').textContent.length > 0", 90000);
+const q7 = await c.eval("__fake.seq"), f7 = await c.eval(saved0);
+ok((await t("result-install")) === "Done. Switch the unit off and on once." && f7 && f7.format === "duell-backup" && q7.indexOf("saved") >= 0 && q7.indexOf("saved") < q7.indexOf("upgrade"),
+  `Install: a DUELL unit is backed up first, then written (${q7.join(" > ")})`);
+
+// 8. a backup that fails stops the install before anything is written (the unit plays: the backup is refused)
+await open("#stable", { startAs: "FM-1_901", duell: { playing: true } });
+await untick();
+await click("go");
+await c.until("document.getElementById('result-install').textContent.length > 0", 60000);
+const r8 = await t("result-install");
+ok(/Nothing was written/.test(r8) && /playing/i.test(r8) && (await c.eval("__fake.upgrades")) === 0 && (await c.eval("__fake.saved.length")) === 0 && (await c.eval("__fake.identity")) === "FM-1_901",
+  `Install: a failed backup stops it, the unit untouched [${r8.slice(0, 90)}]`);
+ok(await c.eval("!document.getElementById('go').disabled") && (await c.eval("document.getElementById('banner').hidden")), "Install: after the stop the page is free again (Install can be pressed once the unit is stopped)");
+
+// 9. a DUELL build that cannot make a complete backup (no backup capability): asked once, and 'Cancel' writes nothing
+await open("#stable", { startAs: "FM-1_901", duell: { caps: 0 }, answer: false });
+await untick();
+await click("go");
+await c.until("document.getElementById('result-install').textContent.length > 0", 60000);
+ok((await c.eval("__confirms.length")) === 1 && /backup/i.test(await c.eval("__confirms[0]")) && (await c.eval("__fake.upgrades")) === 0 && /Nothing was written/.test(await t("result-install")),
+  "Install: a unit that cannot back up asks first; 'Cancel' writes nothing");
+
 const errs = c.errors().filter((e) => !/404|favicon/.test(e));
 ok(errs.length === 0, "no script errors in the page" + (errs.length ? ": " + errs[0] : ""));
 await c.close();

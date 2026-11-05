@@ -48,7 +48,7 @@ While one of them runs, a coloured banner at the top says which ("BACKING UP", "
 2. **Back up.** Press "Save a backup file". It downloads a `DUELL-backup-DATE-TIME.json`. Limits: it works only if the FM-1 already runs Felucca or DUELL (not the official firmware). The file holds the patches, multis, patterns, user wavetables, settings and the current music; the restore is on the editor's Backup page.
 3. **The channel.** Pick **Stable** (the build the fork owner has validated; the one to take unless you want to help test) or **Beta** (the newest build, under test). The page loads that channel's package from the release; you do not choose a file. (Only the official M-VAVE file for the way back is chosen by hand.)
 4. **Connect** the FM-1 and allow MIDI/SysEx in the browser.
-5. **Install.** Wait for "Done".
+5. **Install.** On a unit that runs DUELL the page first saves a backup file to your downloads, and stops with nothing written if the backup fails (stop the unit if it plays, then press Install again). A unit on the official firmware has nothing to save. Wait for "Done".
 6. **Switch the unit off and on**, then hold HOME and open ABOUT to see the version (DUELL 1.1). While the firmware is written the unit shows the update screen (DUELL, WRITING, the percent, a bar and DO NOT SWITCH OFF); a dark screen does not mean the write has stopped.
 
 If anything stops: replug the cable and press Install again. The device stays in update mode until the write is finished. See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) and [RECOVERY.md](RECOVERY.md).
