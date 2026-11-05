@@ -2413,11 +2413,11 @@ static void list_panel(int pats)
             ps_preview(cur, &gpp_pv);
         }
         if (gpp_pv.state != 1u)
-            cv_text_in(0, UT_TY(S, LP_Y + 38), 240, &AF_S, "DAMAGED", T_MID, T_BG);
+            cv_text_on(UT_L5_NAME_X, UT_TY(S, LP_Y + 38), &AF_S, "DAMAGED", T_MID, T_BG);   /* (audit C14: from the name column, no centred body text) */
         else if (gpp_pv.has)
-            pv_bars(17, LP_Y + 8, 52, 13, 10, gpp_pv.bar, T_THEME);
+            pv_bars(UT_L5_NAME_X, LP_Y + 8, 52, 11, 8, gpp_pv.bar, T_THEME);   /* (the name column to x 225, inside the rows' pill) */
         else
-            cv_text_in(0, UT_TY(S, LP_Y + 38), 240, &AF_S, "NO SEQUENCE", T_MID, T_BG);
+            cv_text_on(UT_L5_NAME_X, UT_TY(S, LP_Y + 38), &AF_S, "NO SEQUENCE", T_MID, T_BG);
     } else {
         uint32_t cur = (uint32_t)(song.g[G_SLOT] - 1) % MU_SLOTS;
         if (gsl_key != (cur | multi_gen() << 8)) {       /* the highlighted record changed: decode it once */
@@ -2425,7 +2425,7 @@ static void list_panel(int pats)
             multi_preview(cur, &gsl_pv);
         }
         if (gsl_pv.state != 1u) {
-            cv_text_in(0, UT_TY(S, LP_Y + 38), 240, &AF_S, gsl_pv.state ? "DAMAGED" : "EMPTY SLOT", T_MID, T_BG);
+            cv_text_on(UT_L5_NAME_X, UT_TY(S, LP_Y + 38), &AF_S, gsl_pv.state ? "DAMAGED" : "EMPTY SLOT", T_MID, T_BG);
         } else {
             for (t = 0; t < NSHOWN; t++) {
                 int32_t y = LP_Y + 5 + LP_BAND * (int32_t)t;
@@ -2437,7 +2437,7 @@ static void list_panel(int pats)
                 cv_free_text(UT_L5_NAME_X, UT_TY(M, y + 11), &AF_M, ds_name(gsl_pv.p[t].eng % NENGINES, gsl_pv.p[t].preset), c, T_BG, LR_R - 30 - UT_L5_NAME_X);   /* (in the list's name column) */
                 lr_chip(LR_R, y, md, t, T_BG);
                 if (gsl_pv.p[t].has)
-                    pv_bars(UT_L5_NAME_X, y + 15, 12, 9, 7, gsl_pv.p[t].bar, md == 2u ? c : T_MID);   /* (only a SEQ part plays them: under an arp they are dimmed) */
+                    pv_bars(UT_L5_NAME_X, y + 15, 12, 11, 8, gsl_pv.p[t].bar, md == 2u ? c : T_MID);   /* (only a SEQ part plays them: under an arp they are dimmed) */
                 else
                     cv_text_on(UT_L5_NAME_X, UT_TY(S, y + 26), &AF_S, "NO SEQUENCE", T_MID, T_BG);
             }
