@@ -340,8 +340,7 @@ static void seqm_set_fader(uint32_t pi, uint32_t v)
 {
     if (pi >= NSHOWN)
         return;
-    if (!sqm[pi].ok)
-        sqm_refresh(pi, 1);
+    sqm_refresh(pi, 0);                                  /* (the signature check: ends built before an edit are rebuilt now, not up to 20 ms on; B04) */
     sqm[pi].fader = (uint8_t)(v > 127u ? 127u : v);
 }
 static void seqm_set_amount(uint32_t pi, uint32_t amt)   /* SEQ AMT */

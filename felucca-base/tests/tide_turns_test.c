@@ -1064,8 +1064,22 @@ static void t_sig(void)
     sqm_turns = 0;
 }
 
+/* B04: the SEQ fader moved after an edit plays the edited ends at once (not up to 20 ms on) */
+static void t_fader_edit(void)
+{
+    step_t keep[NSTEP];
+    setup(16, 16, 2, 2, 0);
+    seqm_set_fader(0, 0);
+    trk[0].step[0].note[0] = 30;
+    seqm_set_fader(0, 127);
+    memcpy(keep, sqm_pat[0][1], sizeof keep);
+    sqm_refresh(0, 1);
+    CHECK("SEQ fader moved after an edit: the ends are rebuilt at once", !memcmp(keep, sqm_pat[0][1], sizeof keep) && sqm_pat[0][1][0].note[0] == 30);
+}
+
 int main(void)
 {
+    t_fader_edit();
     t_turns();
     t_sig();
     t_poly();
