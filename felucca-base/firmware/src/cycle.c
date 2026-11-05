@@ -31,7 +31,7 @@ static int32_t cy_inv(int32_t y, int32_t c)
     uint32_t s, num, den;
     if (!c)
         return y;
-    s = (uint32_t)wv_isqrt((uint64_t)(a * a + 4 * (int64_t)c * y));   /* Q15 */
+    s = (uint32_t)isqrt64((uint64_t)(a * a + 4 * (int64_t)c * y));   /* Q15 */
     num = s > (uint32_t)a ? s - (uint32_t)a : (uint32_t)a - s;
     den = (uint32_t)(c < 0 ? -2 * c : 2 * c);
     return clamp((int32_t)((num << 15) / den), 0, 32768);

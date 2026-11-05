@@ -230,9 +230,7 @@ static void nm_random(void)                            /* a new name, never the 
     uint32_t x;
     do {
         x = nm.rnd ? nm.rnd : fm1_ms * 2654435761u | 1u;
-        x ^= x << 13;
-        x ^= x >> 17;
-        x ^= x << 5;
+        xs32(&x);
         nm.rnd = x;
         str_cpy(b, NM_RA[x & 63u], sizeof b);
         str_cpy(b + str_len(b), " ", 2);

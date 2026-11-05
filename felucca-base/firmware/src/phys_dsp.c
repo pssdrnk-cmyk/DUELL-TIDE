@@ -71,15 +71,6 @@
 static inline int32_t px_m(int32_t a, int32_t b, int sh) { return (int32_t)(((int64_t)a * b) >> sh); }
 static inline int32_t px_clamp(int32_t v, int32_t lo, int32_t hi) { return v < lo ? lo : v > hi ? hi : v; }
 
-static inline uint32_t px_rand(uint32_t *s)              /* xorshift32 */
-{
-    uint32_t x = *s;
-    x ^= x << 13;
-    x ^= x >> 17;
-    x ^= x << 5;
-    return *s = x;
-}
-
 /* sin(2 pi ph), ph a turn in Q32; Q30 (odd polynomial of the quarter wave, error ~4e-6) */
 static int32_t px_sin(uint32_t ph)
 {
@@ -154,23 +145,6 @@ static int64_t px_atan2t(int32_t y, int32_t x)
     return y < 0 ? -t : t;
 }
 
-static uint32_t px_isqrt64(uint64_t v)                    /* floor(sqrt(v)) */
-{
-    uint64_t r = 0, b = (uint64_t)1 << 62;
-    while (b > v)
-        b >>= 2;
-    while (b) {
-        if (v >= r + b) {
-            v -= r + b;
-            r = (r >> 1) + b;
-        } else {
-            r >>= 1;
-        }
-        b >>= 2;
-    }
-    return (uint32_t)r;
-}
-
 /* --------------------------------------------- ResonatorSvf (band / low) --- */
 typedef struct { int32_t g, rpg, gh; } px_svf_t;         /* Q28, Q28, Q30 */
 
@@ -199,8 +173,8 @@ static void px_csvf_coef(px_csvf_t *c, uint32_t f, int32_t res, int32_t pre_driv
     int32_t fr = px_sin(a >> 1) << 1;                    /* 2 sin(pi a), Q30 */
     int32_t r4 = 0, d1, d2;
     if (res > 0) {                                       /* res^0.25 = sqrt(sqrt(res)) */
-        r4 = (int32_t)px_isqrt64((uint64_t)res << 16);   /* Q16 */
-        r4 = (int32_t)px_isqrt64((uint64_t)r4 << 16);
+        r4 = (int32_t)isqrt64((uint64_t)res << 16);   /* Q16 */
+        r4 = (int32_t)isqrt64((uint64_t)r4 << 16);
     }
     d1 = (65536 - r4) << 13;                             /* 2 (1 - res^0.25), Q28 */
     if (fr > 0) {                                        /* min(2, 2 / freq - freq / 2) */
@@ -431,7 +405,7 @@ static void px_modal_run(const px_modal_blk_t *B, px_modal_t *M, int32_t *out, i
         for (i = 0; i < n; i++) {                        /* ResonatorSvf<1>, low-pass */
             int64_t in = 0;
             if (B->dust_thr) {                           /* Dust */
-                uint32_t u = px_rand(&rs);
+                uint32_t u = xs32(&rs);
                 if (u < B->dust_thr)
                     in = (int64_t)(((((uint64_t)u * B->dust_inv) >> 32) * (uint32_t)B->dust_gain) >> 7);   /* Q24 */
             } else if (!i && B->strike) {
@@ -533,7 +507,7 @@ static __attribute__((noinline)) void px_string_block(px_string_blk_t *B, px_str
             S->bk = 0;
             S->bn = per >> 16;
             S->bd = (uint32_t)(((uint64_t)per * (uint32_t)pos) >> 33);   /* pos / 2 of a period */
-            S->nz_a = S->nz_b = px_rand(&S->rng) | 1u;
+            S->nz_a = S->nz_b = xs32(&S->rng) | 1u;
             S->trig = 0;
         }
     }
@@ -651,14 +625,14 @@ static void px_string_excite(const px_string_blk_t *B, px_string_t *S, int32_t *
     for (i = 0; i < n; i++) {
         int32_t in = 0, x = 0;
         if (B->dust_thr) {
-            uint32_t u = px_rand(&S->rng);
+            uint32_t u = xs32(&S->rng);
             if (u < B->dust_thr)
                 x = (int32_t)(((((uint64_t)u * B->dust_inv) >> 32) * (uint32_t)B->dust_gain) >> 11);   /* Q20 */
         } else if (bk < bend) {                          /* rand in -1..1; with a pluck position, the */
             if (bk < S->bn)                              /* half of it minus its half pos / 2 periods */
-                x = (int32_t)(px_rand(&S->nz_a) >> (S->bd ? 12 : 11)) - (S->bd ? 1 << 19 : 1 << 20);   /* later */
+                x = (int32_t)(xs32(&S->nz_a) >> (S->bd ? 12 : 11)) - (S->bd ? 1 << 19 : 1 << 20);   /* later */
             if (S->bd && bk >= S->bd)
-                x -= (int32_t)(px_rand(&S->nz_b) >> 12) - (1 << 19);
+                x -= (int32_t)(xs32(&S->nz_b) >> 12) - (1 << 19);
             bk++;
         }
         if (x || ex.low || ex.band) {
@@ -694,7 +668,7 @@ static void px_string_run(const px_string_blk_t *B, px_string_t *S, const int32_
             int32_t s;
             src -= 1u << 30;
             if (!B->curved) {
-                int32_t nz = (int32_t)(px_rand(&rs) >> 12) - (1 << 19);   /* rand - 0.5 */
+                int32_t nz = (int32_t)(xs32(&rs) >> 12) - (1 << 19);   /* rand - 0.5 */
                 uint32_t q;
                 disp += px_m(B->noise_flt, nz - disp, 30);
                 q = (uint32_t)((1 << 30) + px_m(disp, B->noise_amt, 20));   /* the dispersion noise */

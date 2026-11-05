@@ -17,7 +17,7 @@ import os
 ENGINES = {
     "PHYS": ["phys_render", "px_string_block", "px_string_run", "px_memb_block", "px_modal_block", "px_modal_run",
              "px_string_excite", "px_symp_run", "px_symp_block", "px_modal_exciter", "px_exp2", "px_svf_coef",
-             "phys_symp_pitches", "px_sin", "px_modal_q", "px_isqrt64", "px_atan2t", "px_atan"],
+             "phys_symp_pitches", "px_sin", "px_modal_q", "px_atan2t", "px_atan"],
     "ANALOG": ["analog_render", "an_drive", "analog_render_m", "analog_render_x", "atg_analog", "atg_osc_b"],
     "TRIO": ["trio_render", "trio_pass", "trio_naive"],
     "PHASE": ["phase_render", "phase_render_m", "pd_line", "pd_edge", "pd_setup", "pd_wave", "pd_sl", "pd_pair", "pd_gap"],

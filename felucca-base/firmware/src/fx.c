@@ -957,26 +957,10 @@ static __attribute__((noinline)) void ins_swept(ins_t *s, const track_t *t, int3
  * VINYL: warp (a sine at 0.556 Hz) -> band (high-pass 110 Hz, low-pass 6 kHz) -> + clicks (Poisson, random size / sign / decay, high-passed
  * so each has no area) + dust (white noise through a ~880 Hz high-pass) -> DC blocker. The wet is the effect alone (the delay is 2 .. 6 samples when still).
  * The noise generator is the track's own and does not depend on MIX or the input. */
-static uint32_t ins_isqrt(uint32_t v)
-{
-    uint32_t r = 0, bit = 1u << 30;
-    while (bit > v)
-        bit >>= 2;
-    while (bit) {
-        if (v >= r + bit) {
-            v -= r + bit;
-            r = (r >> 1) + bit;
-        } else {
-            r >>= 1;
-        }
-        bit >>= 2;
-    }
-    return r;
-}
 /* TAPE's saturation (also the INSERT graph's curve): v8 an eighth of the voice-sum, g = SAT's gain (Q12), comp = 1 / sqrt(gain) (Q12) */
 static inline int32_t ins_tape_comp(int32_t g)   /* 4096 x gain^-0.75 (g = 4096 x gain): sqrt, then its root, a division in 32 bits */
 {
-    uint32_t q = ins_isqrt((uint32_t)g << 16), q4 = ins_isqrt(q << 8);   /* 256 x sqrt(g), 256 x g^0.25 */
+    uint32_t q = isqrt32((uint32_t)g << 16), q4 = isqrt32(q << 8);   /* 256 x sqrt(g), 256 x g^0.25 */
     return (int32_t)(0x80000000u / ((q * q4) >> 6));
 }
 static inline int32_t ins_tape_sat(int32_t v8, int32_t g, int32_t comp) { return (softclip((v8 * g) >> 10) * 2 * comp) >> 12; }
@@ -1438,22 +1422,6 @@ static int32_t sw_a = 4096, sw_b;                /* the gains reached (Q12) */
 static int32_t sw_em, sw_es;                     /* the mid's and the side's energy, smoothed */
 static int32_t sw_g = 4096;                      /* the guard (Q12), worked out every 4th block (sw_n) */
 static uint8_t sw_n;
-static uint32_t sw_isqrt(uint32_t x)            /* floor(sqrt(x)) */
-{
-    uint32_t r = 0, b = 1u << 30;
-    while (b > x)
-        b >>= 2;
-    while (b) {
-        if (x >= r + b) {
-            x -= r + b;
-            r = (r >> 1) + b;
-        } else {
-            r >>= 1;
-        }
-        b >>= 2;
-    }
-    return r;
-}
 static __attribute__((noinline)) void space_width(uint32_t n)
 {
     uint32_t i;
@@ -1465,7 +1433,7 @@ static __attribute__((noinline)) void space_width(uint32_t n)
     else if (!(sw_n++ & 3u)) {                          /* the guard (the energies of the blocks before: ~23 ms), every 4th block */
         int64_t num = (int64_t)sw_em + sw_es, den = (int64_t)sw_em + (((int64_t)sw_es * gs * gs) >> 24);
         uint32_t r = den > 0 ? (uint32_t)(num * 16777216 / den) : 16777216u;   /* (Q24, at most 1) */
-        sw_g = (int32_t)sw_isqrt(r > 16777216u ? 16777216u : r);   /* (Q12) */
+        sw_g = (int32_t)isqrt32(r > 16777216u ? 16777216u : r);   /* (Q12) */
     }
     g = sw_g;
     a1 = sp ? (g * (4096 + gs)) >> 13 : 4096;

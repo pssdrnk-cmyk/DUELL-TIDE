@@ -57,10 +57,7 @@ static __attribute__((noinline)) uint32_t lfo_sync_inc(uint32_t sync)   /* (not 
 static uint32_t lfo2_rand(uint32_t s)
 {
     s = s ? s : 0x7F4A7C15u;
-    s ^= s << 13;
-    s ^= s >> 17;
-    s ^= s << 5;
-    return s;
+    return xs32(&s);
 }
 
 /* one control tick of an LFO l of track t (DUELL: LFO 1, t->lfo1, and LFO 2, t->lfo2, share it): r its RATE (WAVE PHS FADE

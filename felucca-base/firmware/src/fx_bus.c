@@ -968,27 +968,7 @@ enum { DE_RETRIG, DE_REVERSE, DE_UP, DE_DOWN, DE_NONE };
 #endif
 static inline uint32_t BUS_FN(dlyev_rnd)(void)
 {
-    uint32_t r = BUS_EV.rng;
-    r ^= r << 13;
-    r ^= r >> 17;
-    r ^= r << 5;
-    BUS_EV.rng = r;
-    return r >> 8;                                      /* 24 bits */
-}
-static uint32_t BUS_FN(dlyev_isqrt)(uint32_t x)
-{
-    uint32_t r = 0, b = 1u << 30;
-    while (b > x)
-        b >>= 2;
-    while (b) {
-        if (x >= r + b) {
-            x -= r + b;
-            r = (r >> 1) + b;
-        } else
-            r >>= 1;
-        b >>= 2;
-    }
-    return r;
+    return xs32(&BUS_EV.rng) >> 8;                                      /* 24 bits */
 }
 /* a voice starts (a free one only): its event, pan, fade-in and read head; w16: the write head, dl16: the delay time (Q16 samples), per: the clock period */
 static void BUS_FN(dlyev_in)(dlyev_v_t *v, uint32_t w16, uint32_t dl16, uint32_t per, uint32_t dlen)
@@ -1002,8 +982,8 @@ static void BUS_FN(dlyev_in)(dlyev_v_t *v, uint32_t w16, uint32_t dl16, uint32_t
     v->nev = DE_NONE;
     p = v->npan;
     v->npan = 0;
-    v->gl = (int32_t)BUS_FN(dlyev_isqrt)((uint32_t)(32768 - p) << 15);   /* equal power, 32768 at the centre */
-    v->gr = (int32_t)BUS_FN(dlyev_isqrt)((uint32_t)(32768 + p) << 15);
+    v->gl = (int32_t)isqrt32((uint32_t)(32768 - p) << 15);   /* equal power, 32768 at the centre */
+    v->gr = (int32_t)isqrt32((uint32_t)(32768 + p) << 15);
     if (v->ev == DE_UP) {                               /* two delay times back, and far enough to last a period and its fade before the write head */
         uint32_t back = dl16 << 1, lo = (per + 2u * DE_FADE) << 16, hi = (dlen - 2048u) << 16;
         back = back < lo ? lo : back;

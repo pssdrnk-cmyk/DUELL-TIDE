@@ -33,7 +33,7 @@ GROUPS = {
                    "lfo_sync_inc", "esync_coef", "esync2_coef", "spread_sum"],
     "MOD": ["mod_begin", "mod_tsrc", "mod_depth", "mod_part_put", "mod_gain", "mod_end"],
     "MORPH": ["morph_apply", "morph_begin", "morph_dip"],
-    "HELPERS": ["__udivdi3", "memcpy", "div_divlu", "memset", "div_samples", "beat_samples", "part_rand", "div_nlz32",
+    "HELPERS": ["__udivdi3", "memcpy", "div_divlu", "memset", "div_samples", "beat_samples", "part_rand", "div_nlz32", "isqrt32", "isqrt64",
                 "phys_slot_of", "phys_reset"],
 }
 NAMES = [f for fs in GROUPS.values() for f in fs]
@@ -46,7 +46,7 @@ TWOCORE_GROUPS = {
     "PART CHAIN": ["part_fx", "part_mix", "part_rest", "pfx_mix", "pfx_mute", "pfx_snap", "pfx_restart", "acc_prep", "part_lvl", "pan_follow", "dist_follow",
                    "space_tap", "duck_part", "perf_mute", "perf_mute_sd", "perf_mute_rest",
                    "track_dist_ramp", "mx_slew"],   # (join0233: T0229's matrix round: SAT's blend ramp, which part 2's job calls (mix_ramp is in range X, tools/ram_fns_x.py); mx_slew, eq_taylor and eq_q28 are out-of-line helpers made in join0233-shrink so that mod_begin, mod_depth and eq_design stay small; mod_param is inlined into mod_begin and is no longer a function)
-    "EQ AND INSERTS": ["track_eq", "eq_design", "eq_taylor", "eq_q28", "eq_hz_q8", "eq_rest", "ins_lofi", "ins_drive", "ins_isqrt", "ins_rest", "__divdi3"],
+    "EQ AND INSERTS": ["track_eq", "eq_design", "eq_taylor", "eq_q28", "eq_hz_q8", "eq_rest", "ins_lofi", "ins_drive", "ins_rest", "__divdi3"],
     "CORE 1": ["tc_ctx_hash", "tc_c1_init", "retired_render"],
     # cloud wave 1, job B: what core 1 now reaches in flash that did not exist before (tools/ram_reach.py on the merged base: 1,430 device bytes): the voice chain's sequence
     # (chain_block and what it calls: they run only once a feature job makes chain_on true, but part_voice calls them), the matrix's CYCLE routes (mod_cycle_voice) and mod_begin's
