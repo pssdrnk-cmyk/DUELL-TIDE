@@ -625,7 +625,7 @@ static uint32_t tv_bar(int32_t at, int32_t ob, int32_t bl)
 }
 static uint32_t tide_views(const track_t *t, uint32_t page, tv_t *out)
 {
-    uint32_t pi = trk_index(t), len = sqm_len(t), L = len, ph = TV_NOPH, pos = 0, per = 0, i, j, m;
+    uint32_t len = sqm_len(t), L = len, ph = TV_NOPH, pos = 0, per = 0, i, j, m;
     uint32_t arp = arp_mode(t) == AM_SEQ_ID;
     int32_t ob = 0, bl = 1;
     if (song.playing) {

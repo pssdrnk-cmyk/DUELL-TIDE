@@ -810,23 +810,6 @@ static int32_t cv_text_grad(int32_t x, int32_t y, const aafont_t *f, const char 
     }
     return x + text_w(f, s);
 }
-/* a page TITLE in the global gradient. POLICE: (a) the title plain white, the gradient on the rule, the bars and the values (owner 2026-10-25, the default); (b) the gradient on the title too: set POLICE_TITLE_PLAIN to 0 (the one line to change) */
-#define POLICE_TITLE_PLAIN 1
-static int32_t cv_text_title(int32_t x, int32_t y, const aafont_t *f, const char *s, int32_t x0)
-{
-    if (POLICE_TITLE_PLAIN && str_eq(UI_PALETTES[ux.pal % NPALETTES].name, "POLICE"))
-        return cv_text(x, y, f, s, ux.text);
-    return cv_text_grad(x, y, f, s, x0);
-}
-/* a horizontal rule or bar in the global gradient: 6 px slices, each its own colour (x0: the screen column of x) */
-static void cv_rect_grad(int32_t x, int32_t y, int32_t w, int32_t h, int32_t x0)
-{
-    int32_t i, n;
-    for (i = 0; i < w; i += 6) {
-        n = w - i < 6 ? w - i : 6;
-        cv_rect(x + i, y, n, h, grad_col(x0 + i + n / 2));
-    }
-}
 /* right-aligned: the advance ends at xr */
 static int32_t cv_text_r(int32_t xr, int32_t y, const aafont_t *f, const char *s, uint16_t fg, uint16_t bg)
 {

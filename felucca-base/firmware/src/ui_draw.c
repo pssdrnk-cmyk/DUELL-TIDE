@@ -461,32 +461,6 @@ static uint32_t head_notes_sig(void)                    /* what the drawing depe
         s += n[0] * 31u + (c == 2u ? n[1] * 1009u : 0u) + (bnotes[0] < trk_nvoice_eng(&trk[0]) ? 5u : 0u) + (bnotes[1] < trk_nvoice_eng(&trk[1]) ? 7u : 0u);
     return s;
 }
-static int32_t head_notes_w(void)                       /* the room the numbers take from x HEAD_LEFT_R (+ the A / B cell), 0: none; the gap before the page name included */
-{
-    uint8_t n[2];
-    uint32_t c = head_notes(n), i;
-    int32_t w = 0;
-    char b[8];
-    for (i = 0; i < c; i++) {
-        b[0] = 0;
-        fmt_int(b, n[i]);
-        w += text_w(&AF_S, b) + (i ? HEAD_NOTES_GAP : 0);
-    }
-    return w ? w + 1 : 0;
-}
-static void head_notes_draw(int32_t x)
-{
-    uint8_t n[2];
-    uint32_t c = head_notes(n), i;
-    for (i = 0; i < c; i++) {
-        char b[8];
-        uint32_t hot = n[i] == 0u || (c == 2u ? head_notes_cpu(i) : head_notes_cpu(song.sel & 1u));   /* (one number: the selected part's budget) */
-        b[0] = 0;
-        fmt_int(b, n[i]);
-        GFX_HOOK_ALIGN(0, 0, 0, H_HEAD, AL_V, "header text on its middle");
-        x = cv_text(x, HEAD_SY, &AF_S, b, hot ? T_ACCENT : T_THEME) + HEAD_NOTES_GAP;
-    }
-}
 
 /* DUELL 1.1 HEADER (owner, HANDOFF_V2 items 82, 83 and the one after 86; HEADER_MORPH_MARKER_V1.png, the CAPSULE): on a PART page part 1's capsule [number | letter | voices] stands top left, part 2's top right,
  * 4 px from the screen's side and top, full capsules (all four corners round); the number cell is filled in the part's colour (the other part's grey), the letter (A or B: the morph end the part's knobs

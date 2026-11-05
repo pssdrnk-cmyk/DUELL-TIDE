@@ -247,15 +247,6 @@ static void guide_option(const t6_opt_t *g, const char *name, const char *d1, co
         if (d[i][0])
             cv_text_on(GD_X, UT_TY(S, g->dbase + (int32_t)i * UT_T6_LINE), &AF_S, d[i], picked ? lilac : grey, fill);
 }
-/* a thin line from (x, y0) down to y and right to x1 (the AVAILABLE VOICES notes' leaders) */
-static void guide_leader(int32_t x, int32_t y0, int32_t y, int32_t x1)
-{
-    cv_rect(x, y0, 1, y - y0 + 1, T_MID);
-    if (x1 < x)
-        cv_rect(x1, y, x - x1 + 1, 1, T_MID);
-    else
-        cv_rect(x, y, x1 - x, 1, T_MID);
-}
 /* from (x, y) right to xc, then up to y1 (the leader of a note to its item in the capsule) */
 static void guide_leader2(int32_t x, int32_t y, int32_t xc, int32_t y1)
 {
