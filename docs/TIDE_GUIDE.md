@@ -1,6 +1,6 @@
 # DUELL with TIDE: a player's guide
 
-Five minutes. Written from the firmware source (pages and rows as they are in the code). It describes the **beta** line, `jam11`. The stable build `stable-2026-11-03` has an earlier TIDE: its TIDE SETTINGS page is still called MORPH SETTINGS and lacks the STYLE, TURNS, POLY, SYNC and ARC rows, and it has no JRNY role families or memory (see the end; [README](../README.md#builds-stable-and-beta) lists the builds). Values marked *start* are suggestions for dub and house techno backgrounds, not defaults. Defaults are named as such.
+Five minutes. Written from the firmware source (pages and rows as they are in the code). It describes the firmware on the development line, `jam11`, as it is in the source; the published beta `beta-2026-11-04` is a little older, and the list at the end says what came after it. The stable build `stable-2026-11-03` has an earlier TIDE: its TIDE SETTINGS page is still called MORPH SETTINGS and lacks the STYLE, TURNS, POLY, SYNC and ARC rows, and it has no JRNY role families or memory (see the end; [README](../README.md#builds-stable-and-beta) lists the builds). Values marked *start* are suggestions for dub and house techno backgrounds, not defaults. Defaults are named as such.
 
 ## The idea
 
@@ -55,10 +55,16 @@ K1 picks the row. **OCT+** the next value, **OCT-** the one before. Saved over a
 | **ARP** | OFF, ON | OFF: rolls leave the arp's rate, gate and mode alone. ON: they may move them (never turning the arp into SEQ, so a TIDE part is never silenced). | OFF |
 | **PITCH** | OFF, ON | OFF: nothing that moves pitch changes. ON: small detune and, on TRIO, interval jumps. Keeps drones in tune when OFF. Only ON lets the automatic pattern edits walk a note one scale step: the top note of a chord or a lead note, never a bass note under C3 or in a part whose sound is in the BASS category, and nothing on SCALE CHR. The chord voicing of VOIC does not need PITCH. | OFF |
 | **WASH LEVEL** | OFF, LOW, MID, HIGH (default OFF) | The breath of a trip: filter dip, send swell and a wash where sounds cross. LOW is half, MID is full, HIGH one and a half. | LOW (try it; OFF is the default) |
-| **TURNS** | TOGETHER, TAKE TURNS, LEAD | Only in automatic WNDR / JRNY with both parts. TOGETHER: both parts vary on bars 4 and 8. TAKE TURNS: part 2 varies on bars 2 and 6, part 1 on 4 and 8, so each variation is answered two bars later. LEAD: part 2 leads bars 1-2 of every 4 and part 1 bars 3-4; a lead or pluck line answers by playing thinner and softer on the other part's bars (beats, held notes, the motif's own hits and about half of the rest stay), while a pad, a bass or a chord part keeps its pattern whole. Playback only: KEEP stores the whole pattern. | LEAD |
+| **TURNS** | TOGETHER, TAKE TURNS, LEAD | Only in automatic WNDR / JRNY with both parts. TOGETHER: both parts vary on bars 4 and 8. TAKE TURNS: part 2 varies on bars 2 and 6, part 1 on 4 and 8, so each variation is answered two bars later. LEAD: part 2 leads bars 1-2 of every 4 and part 1 bars 3-4; a lead or pluck line answers by playing thinner and softer on the other part's bars (beats, held notes, the motif's own hits and about half of the rest stay), while a pad, a bass or a chord part keeps its pattern whole. Playback only: KEEP stores the whole pattern. A stored older ECHO value reads as LEAD. | LEAD |
 | **POLY** | OFF, GENTLE, WIDE | In automatic WNDR / JRNY one part's loop is now and then shorter, so its motif drifts against the beat, then plays whole again at a phrase. GENTLE: 15 or 14 of 16 steps, rarely. WIDE: 12 to 15, more often. Your stored pattern is never changed. | GENTLE |
 | **SYNC** | OFF, SOFT, PUSH | In automatic WNDR / JRNY the pattern edits that move a hit by a 16th lean towards the "and" (the off-beat 8th) and allow an occasional push into the beat (SOFT one a bar, PUSH two). The beats never move and a hit never lands on one. With any SYNC a hit stays within two 16ths of its place, and the motif's own hits (an offbeat skank's "and"s) are never moved or dropped. | SOFT |
 | **ARC** | OFF, RISE, DROP | In automatic WNDR / JRNY the tide follows a shape of 32 to 64 bars: it rises (more syncopation and repeats, faster turns, brighter sounds), holds a peak, then eases into a thinned breakdown with softer sounds and recovers. DROP also drops by itself on about half of the arcs (both parts start no notes for two bars). The status line shows the phase. STOP and PLAY only pause the arc: PLAY goes on where it was. A load (multi, project, pattern) or a K1 stop starts it again at RISE. **Hand drop:** hold OCT- and turn K2 on the AUTO TIDE page; the drop lands at the next 4-bar phrase (a second turn cancels it). | RISE |
+
+**Dynamics.** No setting: in automatic WNDR / JRNY the hits play an eighth louder late in ARC's rise and at its peak and a quarter softer in its drop and breakdown (ARC on), and a quarter softer on a LEAD answer's bars (the two together: softer still). An accent counts as velocity 127 there and loses its accent. Playback only: KEEP stores the pattern's own velocities.
+
+**The motif is kept.** The automatic pattern edits never drop or move the pattern's anchors: its beats, the hits on the place in the beat most of its hits take (an offbeat skank's "and"s), and more of its hits in order until three fifths are anchored (at least two). A hit never sits more than two 16ths from its stored step, so a skank keeps its own shape. The phrase gaps and moves, SYNC, LEAD and ARC's thinning all leave the anchors alone.
+
+**Loading.** A multi, project or pattern load starts as written: both loaded parts go back to End A with no variation and no pitch edits from before, ARC starts again at RISE, and a running trip begins again from A (MODE and the auto state stay).
 
 Defaults with no saved settings (a new unit, or after ERASE DATA): STYLE DUB, that is MODE JRNY, TIME 16, WAIT 2, VARY 4 + 8, TURNS LEAD, POLY GENTLE, SYNC SOFT, ARC RISE, WASH OFF; and TARGET BOTH, ROLL MUSIC, ARP OFF, PITCH OFF. An older saved record loads as STYLE CUSTOM with its values kept and the rows it lacks at TURNS TAKE TURNS, POLY GENTLE, SYNC SOFT, ARC OFF.
 
@@ -104,3 +110,19 @@ In the beta, not in the stable build `stable-2026-11-03`.
 | **CHORD page** | Loading a sound no longer turns the chord TYPE / VOICING off; the page says NEEDS POLY or SET A SCALE when the keys cannot play the chord. |
 
 Settings that survive a power cycle stay compatible: an older saved record loads with the new rows at their defaults.
+
+# New since the published beta
+
+Merged on the development line, in no published build yet (the source is the reference).
+
+| Feature | What it does |
+|---|---|
+| **TURNS has three values** | TOGETHER, TAKE TURNS, LEAD. ECHO is folded into LEAD (it played like it); a stored ECHO reads as LEAD and STYLE PEAK uses LEAD. LEAD answers only on lead and pluck lines. |
+| **The motif is kept** | The automatic edits leave a pattern's anchors alone and a hit never moves more than two 16ths; see TIDE SETTINGS. |
+| **Dynamics** | Louder in ARC's late rise and peak, softer in its drop and breakdown and on a LEAD answer's bars. No setting. |
+| **Loads start as written** | A multi, project or pattern load drops the old variation and pitch walk, puts the parts at A and starts ARC again at RISE. |
+| **ARC keeps its place** | STOP and PLAY only pause the arc; a load or a K1 stop starts it again. |
+| **PITCH leaves the bass alone** | No note under C3 and no BASS-category sound is walked, and nothing moves on SCALE CHR. The chord voicing of VOIC works with PITCH OFF. |
+| **TIDE settings in every backup** | The TIDE SETTINGS rows ride in the settings record, so a backup holds them and a restore brings them back. A backup made by an older build holds none and leaves the unit's rows as they are. |
+| **Load undo** | OCT- held and a turn of PRESETS undoes the last sound load (again: redo). Not on the TIDE pages, where OCT- plus a knob is TIDE's own reset. |
+| **Chord names** | Flats in a flat key (C minor's DIA7 reads Ebmaj7, Abmaj7, Bb7), a stack of 4ths reads m7sus or msus, and DIA7 on a scale of six notes is a triad. |
