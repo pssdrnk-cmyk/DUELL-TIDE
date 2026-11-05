@@ -20,7 +20,7 @@ at 0.0  note C3 vel 100 len 1
 tail 1
 
 test FLASH-WRITE  a settings save at 1 s
-load multi 7 "FINAL REEL"
+load multi 16 "FINAL REEL"
 mode LAYER
 at 0.0  chord C3 E3 G3 B3 vel 90
 at 1.0  save-test
@@ -49,7 +49,7 @@ at 3.5  release
 end
 
 test SOAK-SHORT  a soak of 20 s, the RAM check read every 5 s
-load multi 7 "FINAL REEL"
+load multi 16 "FINAL REEL"
 mode LAYER
 soak 20 repeat CYC
 check 5
