@@ -1923,7 +1923,7 @@ SOUNDS = [
     # chorus + a long delay + a room behind it. End B: thrown into the echo: darker, more resonant, the snap gone, the delay and the reverb up.
     dict(engine='ANALOG', idx=20, name='DUB CHORD', cat='KEYS', bamt=20,  # #129
          p={
-            'ATK': 3, 'DEC': 72, 'SUS': 34, 'REL': 70, 'LRATE': 30, 'LWAVE': 1, 'LD_FLT': 3, 'KTRK': 20, 'CHOR': 68, 'DLY': 70, 'REV': 48,
+            'CHRD': 7, 'VOIC': 1, 'ATK': 3, 'DEC': 72, 'SUS': 34, 'REL': 70, 'LRATE': 30, 'LWAVE': 1, 'LD_FLT': 3, 'KTRK': 20, 'CHOR': 68, 'DLY': 70, 'REV': 48,
             'FREEA': 38, 'FREEB': 23, 'FREED': 2, 'E2ATK': 0, 'E2DEC': 68, 'E2SUS': 0, 'E2REL': 66, 'E2FLT': 26, 'TRIM': 107, 'E2': 24, 'E7': 18,
             'MOD1': ('VEL', 'CUT', 14), 'LTRIG': 1, 'L2TRIG': 1,
          },
@@ -1934,7 +1934,7 @@ SOUNDS = [
     # End B: the filter opens, the drive comes up, the delay and the reverb deepen (a lift into the break).
     dict(engine='ANALOG', idx=21, name='DARK MIN7', cat='KEYS', bamt=20,  # #130
          p={
-            'ATK': 10, 'DEC': 78, 'SUS': 26, 'REL': 80, 'LRATE': 24, 'LWAVE': 1, 'LD_FLT': 4, 'KTRK': 16, 'CHOR': 36, 'DLY': 60, 'REV': 62,
+            'CHRD': 7, 'VOIC': 1, 'ATK': 10, 'DEC': 78, 'SUS': 26, 'REL': 80, 'LRATE': 24, 'LWAVE': 1, 'LD_FLT': 4, 'KTRK': 16, 'CHOR': 36, 'DLY': 60, 'REV': 62,
             'DIST': 22, 'FREEA': 30, 'FREEB': 30, 'FREED': 2, 'E2DEC': 74, 'E2SUS': 0, 'E2REL': 72, 'E2FLT': 18, 'ITYPE': 9, 'IA': 50, 'IB': 71,
             'IC': 110, 'TRIM': 112, 'E1': 1, 'E2': 16, 'E7': 30, 'MOD1': ('VEL', 'CUT', 12), 'LTRIG': 1, 'L2TRIG': 1,
          },
@@ -2015,7 +2015,7 @@ SOUNDS = [
     # End B: the lift: the filter up, the drive up, the room opens a little.
     dict(engine='ANALOG', idx=25, name='SOUL STAB', cat='KEYS', bamt=20,  # #137
          p={
-            'ATK': 0, 'DEC': 86, 'SUS': 0, 'REL': 52, 'LRATE': 40, 'LWAVE': 1, 'LD_FLT': 2, 'KTRK': 30, 'CHOR': 40, 'DLY': 36, 'REV': 30, 'FREEA': 64,
+            'CHRD': 7, 'VOIC': 1, 'ATK': 0, 'DEC': 86, 'SUS': 0, 'REL': 52, 'LRATE': 40, 'LWAVE': 1, 'LD_FLT': 2, 'KTRK': 30, 'CHOR': 40, 'DLY': 36, 'REV': 30, 'FREEA': 64,
             'FREEB': 10, 'FREED': 2, 'E2ATK': 0, 'E2DEC': 56, 'E2SUS': 0, 'E2REL': 52, 'E2FLT': 34, 'TRIM': 108, 'E2': 14, 'E7': 6,
             'MOD1': ('VEL', 'CUT', 16), 'LTRIG': 1, 'L2TRIG': 1,
          },
@@ -2037,7 +2037,7 @@ SOUNDS = [
     # End B: the filter shuts and the echo grows (the chord goes into the delay).
     dict(engine='ANALOG', idx=27, name='LOW STAB', cat='KEYS', bamt=20,  # #139
          p={
-            'ATK': 0, 'DEC': 72, 'SUS': 60, 'REL': 54, 'KTRK': 12, 'DIST': 12, 'CHOR': 24, 'DLY': 52, 'REV': 36, 'FREEA': 44, 'FREEB': 15, 'FREED': 2,
+            'CHRD': 7, 'VOIC': 1, 'ATK': 0, 'DEC': 72, 'SUS': 60, 'REL': 54, 'KTRK': 12, 'DIST': 12, 'CHOR': 24, 'DLY': 52, 'REV': 36, 'FREEA': 44, 'FREEB': 15, 'FREED': 2,
             'E2ATK': 0, 'E2DEC': 60, 'E2SUS': 0, 'E2REL': 52, 'E2FLT': 30, 'TRIM': 110, 'E1': 6, 'E7': 20, 'MOD1': ('VEL', 'CUT', 14), 'LTRIG': 1,
             'L2TRIG': 1,
          },
@@ -2228,7 +2228,7 @@ SOUNDS = [
     # End B: the DCW and the filter fall, the echo longer.
     dict(engine='PHASE', idx=16, name='ICE STAB', cat='KEYS', bamt=20,  # #156
          p={
-            'ATK': 0, 'DEC': 80, 'SUS': 0, 'REL': 56, 'KTRK': 30, 'CHOR': 30, 'DLY': 56, 'REV': 44, 'FREEA': 82, 'FREEB': 4, 'FREED': 2, 'E2ATK': 0,
+            'CHRD': 7, 'VOIC': 1, 'ATK': 0, 'DEC': 80, 'SUS': 0, 'REL': 56, 'KTRK': 30, 'CHOR': 30, 'DLY': 56, 'REV': 44, 'FREEA': 82, 'FREEB': 4, 'FREED': 2, 'E2ATK': 0,
             'E2DEC': 60, 'E2SUS': 0, 'E2REL': 50, 'E2FLT': 10, 'TRIM': 113, 'E1': 5, 'E2': 0, 'E3': 100, 'E4': 50, 'MOD1': ('VEL', 'SHP', 12),
             'LTRIG': 1, 'L2TRIG': 1,
          },
