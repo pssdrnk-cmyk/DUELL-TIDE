@@ -79,6 +79,48 @@ ap = tm.analyse_phys(prow)
 check("PHYS: one more note = (K3 - K1) x 32.8125 / 4: MODAL 328, STRING 160, SYMP 280; ratios 1.00 / 0.49 / 0.85",
       abs(ap["models"]["MODAL"]["dearest"] - 328) < 0.5 and abs(ap["models"]["STRING"]["ratio"] - 0.488) < 0.01 and abs(ap["models"]["SYMP"]["ratio"] - 0.854) < 0.01)
 
+# ---- a run in which nothing sounded (the first unit run, 2026-11-05: the parts listened on MIDI channels 3 and 4, the tests played on 1 and 2): no figure, and the report says why
+EST = {"VALLEY": 66, "WASH": 60, "DIP": 1, "FM6": 7}
+qrows = [row("TIDE.VAL.P1", vox="0.0", p1_vn=0, p1_va=0), row("TIDE.VAL.P2", vox="0.0"), row("TIDE.WASH.P2", vox="0.0"), row("TIDE.X.FM6.W", vox="0.0", p1_fn=6, p2_fn=8),
+         row("TIDE.HEAVY.BASE", avg=13.5, vox="0.0"), row("TIDE.HEAVY.ON", avg=17.7, vox="0.0")]
+qa = tm.analyse_tide(qrows, EST)
+qtext = tm.report_text(qrows, EST)
+check("silent run: every TIDE test is listed as silent and the first note says NO VOICE SOUNDED", len(qa["silent"]) == 6 and qa["notes"][0].startswith("NO VOICE SOUNDED in 6 of 6"))
+check("silent run: the verdicts say no voice sounded, not 'the stage did not run' (and not the ROLL seed)", "no voice sounded in TIDE.VAL.P1" in qa["valley"]["verdict"] and "no voice sounded in TIDE.WASH.P2" in qa["wash"]["verdict"]
+      and "no voice sounded in TIDE.X.FM6.W" in qa["fm6"]["verdict"] and not any("ROLL seed" in n for n in qa["notes"]))
+check("silent run: the deadline is not claimed (NOT MEASURED), the proposal says nothing was measured", "NOT MEASURED" in qtext and "none (no stage was measured)" in qtext)
+qp = tm.analyse_phys([row("PHYS.00.MODAL.K1", avg=11.5, vox="0.0"), row("PHYS.00.MODAL.K3", avg=11.5, vox="0.0"), row("PHYS.03.STRING.K1", avg=11.5, vox="0.0"), row("PHYS.03.STRING.K3", avg=11.6, vox="0.0")])
+check("silent PHYS pairs: not a measurement (dearest None, not 0 or 2), left out and counted", qp["models"]["MODAL"]["dearest"] is None and qp["models"]["MODAL"]["silent"] == 1 and qp["models"]["STRING"]["dearest"] is None)
+check("silent PHYS pairs: the report says 'not measured'", "not measured" in tm.report_text([row("PHYS.00.MODAL.K1", avg=11.5, vox="0.0"), row("PHYS.00.MODAL.K3", avg=11.5, vox="0.0")]))
+qp2 = tm.analyse_phys([row("PHYS.00.MODAL.K1", avg=40, vox="2.0"), row("PHYS.00.MODAL.K3", avg=40 + 4 * 328 / 32.8125, vox="6.0")])
+check("PHYS pair with voices (2 then 6): measured, MODAL 328 host instructions a note", abs(qp2["models"]["MODAL"]["dearest"] - 328) < 0.5 and qp2["models"]["MODAL"]["silent"] == 0)
+
+
+def fake_bench(vox):
+    def run(argv):
+        d = argv[argv.index("--out") + 1]
+        os.makedirs(d, exist_ok=True)
+        with open(os.path.join(d, "results.csv"), "w", newline="") as fh:
+            fh.write("test,rep,avg,peak,vox\nTIDE.BASE,1,12.3,16.8," + vox + "\n")
+        return 0
+    return run
+
+
+pf0 = tm.preflight(fake_bench("0.0"), tempfile.mkdtemp())
+check("preflight: 0.0 voices is refused with the reason (MIDI IN / GLO > MIDI)", pf0[0] is False and "MIDI IN" in pf0[1])
+check("preflight: 4.0 voices passes", tm.preflight(fake_bench("4.0"), tempfile.mkdtemp()) == (True, "preflight: 4.0 voices sounding in the test chord"))
+
+# ---- the update loader of a package (the bench build's way back, firmware/src/bench_updl.c: the staged loader is checked against ota.bin's data CRC)
+pkg = os.path.join(ROOT, "build", "duell-1.1-bench-TDSP1.fwsc")
+if os.path.exists(pkg):
+    info = tm.package_loader(pkg)
+    check(f"package_loader: Felucca's own loader found in a built package (CRC16 {info['crc']:#06x}, {info['len']} bytes)", info["marker"] and 0 < info["crc"] < 65536 and 4000 < info["len"] < 0x4B00)
+try:
+    tm.package_loader(os.path.join(ROOT, "tools", "tide_measure.py"))
+    check("package_loader: a text file is refused", False)
+except ValueError:
+    check("package_loader: a text file is refused", True)
+
 # ---- the host twin: the real bench words and the stage timers
 if os.path.exists(SIM) or os.path.exists(SIM + ".exe"):
     sim = br.SimLink(SIM)
@@ -125,6 +167,40 @@ if os.path.exists(SIM) or os.path.exists(SIM + ".exe"):
     check("twin: the report is made from the run (stage table, scenes, deadline lines)", "## A01" in rep and "TIDE.HEAVY.ON against TIDE.HEAVY.BASE" in rep and "| TIDE.GLIDE.W |" in rep)
     P = run_suite("PHYS-MODELS", "PHYS.0*")
     check("twin: the PHYS suite runs (rows K1 and K3 of the first sounds)", len(P) >= 2 and all(r["status"] == "DONE" for r in P))
+    check("twin: voices sounded in every TIDE test (vox > 0), so nothing is listed silent", tm.analyse_tide(R, tm.budget_estimates())["silent"] == [] and all(tm.voices(v) > 0 for v in T_.values()))
+    check("twin: PHYS K3 sounds more voices than K1, so the pairs are measurements", tm.analyse_phys(P)["models"]["MODAL"]["n"] >= 1 and not tm.analyse_phys(P)["silent"])
+    # an owner's unit: the parts on MIDI channels 3 and 4 (the first unit run, 2026-11-05, played nothing: bench reset puts the parts on 1 and 2 for the session, bench end puts them back)
+    os.environ["BENCH_SIM_MIDI"] = "3 4 0"
+    try:
+        tmp2 = tempfile.mkdtemp()
+        sim2 = br.SimLink(SIM)
+        sim2.open()
+        sim2.send("@midi")
+        before = sim2.read(0)
+        unit2 = br.Unit(sim2, open(os.path.join(tmp2, "console.log"), "w"))
+        unit2.ok("bench reset")
+        sim2.send("@midi")
+        during = sim2.read(0)
+        unit2.ok("bench end")
+        sim2.send("@midi")
+        after = sim2.read(0)
+        sim2.close()
+        check("twin, parts on 3 and 4: before the session 3 4; `bench reset` puts them on 1 2 (PARTS); `bench end` puts the owner's back",
+              "channels 3 4" in before[0] and "channels 1 2" in during[0] and "route 0" in during[0] and "channels 3 4" in after[0])
+        R3 = run_suite("TIDE-DSP", "TIDE.BASE,TIDE.VAL.P1,TIDE.X.FM6.W")
+        T3 = tm.by_test(R3)
+        check("twin, parts on 3 and 4: the tests still make voices (the valley of TIDE.VAL.P1 works in every block, FM6's bridge on both parts in DUEL)",
+              tm.voices(T3["TIDE.BASE"]) > 0 and tm.stage(T3["TIDE.VAL.P1"], 1, "valley")["act"] > 100 and tm.stage(T3["TIDE.X.FM6.W"], 1, "fm6")["act"] > 100 and tm.stage(T3["TIDE.X.FM6.W"], 2, "fm6")["act"] > 100)
+        os.environ["BENCH_SIM_MIDI"] = "3 4 1"
+        R4 = run_suite("TIDE-DSP", "TIDE.BASE")
+        check("twin, MIDI IN on SEL and the parts on 3 and 4: the tests make voices too", tm.voices(tm.by_test(R4)["TIDE.BASE"]) > 0)
+        stripped = os.path.join(tmp2, "T.txt")
+        open(stripped, "w", newline="\n").write("".join(ln for ln in open(os.path.join(ROOT, "tools", "bench_suites", "TIDE-DSP.txt"), encoding="utf-8") if not ln.startswith("keysense")))
+        os.environ["BENCH_SIM_MIDI"] = "3 4 0"
+        pf = tm.preflight(br.main, tmp2, sim=SIM, suite=stripped)
+        check("twin, parts on 3 and 4: the preflight passes (" + pf[1] + ")", pf[0] is True)
+    finally:
+        del os.environ["BENCH_SIM_MIDI"]
 else:
     print("tidemeasure: SKIP the twin runs: build/host/bench_sim is not built (host_tests.sh tidemeasure builds it)")
 print(f"tidemeasure: {'FAIL' if bad else 'ok'}")

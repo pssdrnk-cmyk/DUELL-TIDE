@@ -524,20 +524,28 @@ class MeasureTests(Base):
             pkg.write_bytes(b"\0")
             return pkg
 
+        self.vox = "4.0"                                  # (what the preflight test reports: voices sounding)
+        self.suites_run: list = []
+        self.reply = ["OK updl the loader is whole, entering it"]
+
         def bench_main(argv):
             out = Path(argv[argv.index("--out") + 1])
             out.mkdir(parents=True, exist_ok=True)
             name = argv[argv.index("--suite") + 1]
             T = 24.0
             rows = []
-            if name == "TIDE-DSP":
+            if "--only" in argv:                          # the preflight: TIDE.BASE alone
+                rows = [dict(test="TIDE.BASE", avg=12.3, peak=16.9, vox=self.vox, tc=2, verdict="PASS", status="DONE", rep=1)]
+            elif name == "TIDE-DSP":
+                self.suites_run.append(name)
                 rows = [dict(test="TIDE.VAL.P1", p1_vn=1000, p1_va=1000, p1_vs=int(10 * T * 1000), p1_vm=300, tc=2, verdict="PASS", status="DONE", avg=50, peak=55, rep=1),
                         dict(test="TIDE.VAL.P2", p2_vn=1000, p2_va=1000, p2_vs=int(12 * T * 1000), p2_vm=320, tc=2, verdict="PASS", status="DONE", avg=50, peak=55, rep=1),
                         dict(test="TIDE.HEAVY.BASE", avg=80, peak=90, tc=2, verdict="PASS", status="DONE", rep=1), dict(test="TIDE.HEAVY.ON", avg=82, peak=92, tc=2, verdict="PASS", status="DONE", rep=1)]
             else:
+                self.suites_run.append(name)
                 for k, model, extra in ((0, "MODAL", 328), (3, "STRING", 160)):
-                    rows += [dict(test=f"PHYS.{k:02d}.{model}.K1", avg=40, tc=1, verdict="PASS", status="DONE", rep=1),
-                             dict(test=f"PHYS.{k:02d}.{model}.K3", avg=40 + 4 * extra / 32.8125, tc=1, verdict="PASS", status="DONE", rep=1)]
+                    rows += [dict(test=f"PHYS.{k:02d}.{model}.K1", avg=40, tc=1, verdict="PASS", status="DONE", rep=1, vox="2.0"),
+                             dict(test=f"PHYS.{k:02d}.{model}.K3", avg=40 + 4 * extra / 32.8125, tc=1, verdict="PASS", status="DONE", rep=1, vox="6.0")]
             cols = sorted({c for r in rows for c in r})
             import csv as _csv
             with open(out / "results.csv", "w", newline="", encoding="utf-8") as fh:
@@ -546,7 +554,12 @@ class MeasureTests(Base):
                 w.writerows(rows)
             return 0
 
-        jd.MEASURE_HOOKS.update(build=build, ports=lambda: ["COM9"], bench_main=bench_main, serial_send=lambda port, line: self.sent.append((port, line)), sleep=lambda s: None, wait_s=0.05)
+        def serial_send(port, line):
+            self.sent.append((port, line))
+            return self.reply
+
+        jd.MEASURE_HOOKS.update(build=build, ports=lambda: ["COM9"], bench_main=bench_main, serial_send=serial_send, sleep=lambda s: None, wait_s=0.05,
+                                loader=lambda pkg: {"crc": 27939, "len": 11478, "marker": True})
 
     def run_measure(self, *args, ask=lambda p: True):
         return run_main(["--mock", "measure", *args, "--out", str(self.d / "m"), "--out-backups", str(self.d / "bk"), "--installer", str(self.installer)], ask=ask)
@@ -559,7 +572,11 @@ class MeasureTests(Base):
         self.assertEqual(len(lines), 2)
         self.assertIn("bench.fwsc", lines[0])
         self.assertIn("normal.fwsc", lines[1])
-        self.assertEqual(self.sent, [("COM9", "uboot yes")])
+        self.assertEqual(self.sent, [("COM9", "bench updl 27939 yes")], "the way back is the staged update loader, NOT the mask-ROM `uboot yes` that fm1_install.py cannot reach")
+        self.assertEqual(self.suites_run, ["TIDE-DSP", "PHYS-MODELS"])
+        self.assertIn("fm1_unbrick.py restore", out, "the recovery is printed up front")
+        self.assertIn("ADMINISTRATOR PowerShell", out)
+        self.assertIn("preflight: 4.0 voices sounding", out)
         self.assertTrue(list((self.d / "bk").glob("DUELL-backup-*.json")), "a backup is made before the unit is touched")
         text = (self.d / "m" / "report.md").read_text(encoding="utf-8")
         self.assertIn("## A01", text)
@@ -567,6 +584,46 @@ class MeasureTests(Base):
         self.assertIn("| valley, SPREAD off | 2 (core 1) |", text)
         self.assertIn("## Q14", text)
         self.assertIn("back on DUELL", out)
+
+    def test_silent_preflight_stops_the_suites_but_the_unit_goes_back(self):
+        self.vox = "0.0"
+        rc, out, err = self.run_measure("tide", "--yes")
+        self.assertEqual(rc, 1)
+        self.assertEqual(self.suites_run, [], "nothing is measured on a unit that plays nothing")
+        self.assertIn("plays nothing", err)
+        self.assertEqual(self.sent, [("COM9", "bench updl 27939 yes")])
+        self.assertEqual(len(self.installs.read_text().splitlines()), 2, "the normal firmware still goes back")
+
+    def test_way_back_refused_leaves_the_unit_on_the_bench_build_and_prints_the_recovery(self):
+        self.reply = ["ERR updl: the staged loader is not the package's (CRC16 differs); nothing changed"]
+        rc, out, err = self.run_measure("tide", "--yes")
+        self.assertEqual(rc, 1)
+        self.assertEqual(len(self.installs.read_text().splitlines()), 1, "no second install: the unit never left the bench build")
+        self.assertIn("still running, nothing was changed", err)
+        self.assertIn("fm1_unbrick.py restore", err)
+        self.assertIn("ADMINISTRATOR PowerShell", err)
+        self.assertNotIn("uboot yes\"", "".join(x for _, x in self.sent))
+
+    def test_no_loader_in_the_bench_package_means_no_start(self):
+        def no_loader(pkg):
+            raise ValueError(f"{pkg}: no update loader in this package")
+        jd.MEASURE_HOOKS["loader"] = no_loader
+        rc, out, err = self.run_measure("tide", "--yes")
+        self.assertEqual(rc, 1)
+        self.assertIn("could not come back by itself", err)
+        self.assertFalse(self.installs.exists(), "the unit is not touched")
+        self.assertEqual(self.sent, [])
+        self.assertFalse(list((self.d / "bk").glob("DUELL-backup-*.json")), "not even a backup: nothing was started")
+
+    def test_back_step_only_goes_back(self):
+        rc, out, err = self.run_measure("back", "--yes", "--com", "COM9")
+        self.assertEqual(rc, 0, err + out)
+        self.assertEqual(self.sent, [("COM9", "bench updl 27939 yes")])
+        self.assertEqual(self.suites_run, [])
+        self.assertEqual(len(self.installs.read_text().splitlines()), 1)
+        self.assertIn("normal.fwsc", self.installs.read_text())
+        rc, out, err = self.run_measure("back", "--no-restore")
+        self.assertEqual(rc, 2)
 
     def test_cancel_touches_nothing(self):
         rc, out, err = self.run_measure("tide", ask=lambda p: False)
@@ -583,6 +640,7 @@ class MeasureTests(Base):
         self.assertEqual(len(self.installs.read_text().splitlines()), 1)
         self.assertEqual(self.sent, [])
         self.assertIn("the bench build stays installed", out)
+        self.assertIn("measure back", out, "and says how to go back later")
 
     def test_no_serial_port(self):
         jd.MEASURE_HOOKS["ports"] = lambda: []

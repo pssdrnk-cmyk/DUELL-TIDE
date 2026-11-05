@@ -6,7 +6,7 @@
   jam_dev.py [--mock] backup  [--out DIR] [--port NAME]
   jam_dev.py [--mock] restore FILE [--yes] [--include-raw] [--out DIR] [--port NAME]
   jam_dev.py [--mock] flash   PACKAGE.fwsc [--yes] [--out DIR] [--port NAME]
-  jam_dev.py measure [all|tide|velocity|report RUNDIR..] [--bench PKG] [--normal PKG] [--no-restore] [--com NAME] [--yes] [--out DIR]
+  jam_dev.py measure [all|tide|velocity|back|report RUNDIR..] [--bench PKG] [--normal PKG] [--no-restore] [--com NAME] [--yes] [--out DIR]
 
 The backup file is the web editor's own ("duell-backup" version 5, felucca-base/web/editor/duellbackup.js), byte for byte, so the Backup page can
 restore it and this tool can restore the page's files. Only the editor protocol's INFO and BACKUP_LIST / GET / PUT are sent (cmds 1, 65, 66, 67);
@@ -15,6 +15,8 @@ a firmware install is done by felucca-base/tools/fm1_install.py, run as a subpro
 
 `measure` is the unit measurement of audit A01 (TIDE's audio DSP on both cores), Q14 (PHYS per model) and T17 (key velocity): it builds the bench package, backs the unit up, installs the bench
 build, runs the suites over the USB serial console, writes work/measure/<stamp>/report.md, puts the normal firmware back, then records a guided key-velocity session over USB MIDI (docs/TESTING.md).
+The bench build has no updater: the way back is the update loader the normal firmware left in the flash (`bench updl`, checked against the package's own loader) and then fm1_install.py. The kit prints the
+exact recovery (mask-ROM UBOOT, fm1_unbrick.py in an Administrator PowerShell) up front and wherever the way back fails; `uboot yes` is that mask-ROM mode and fm1_install.py (USB-MIDI) cannot reach it.
 
 Exit codes: 0 ok, 1 failure (or cancelled), 2 bad arguments, 3 no DUELL unit found.
 """
@@ -1604,7 +1606,8 @@ class UsageError(DuellError):
 TOOLS = BASE / "tools"
 MEASURE_TAG = "TDSP1"
 BENCH_ENV = {"DUELL_BENCH": "1", "DUELL_TEST_MODE": "1", "BENCH_TAG": MEASURE_TAG, "DUELL_TWOCORE": "1", "DUELL_RAMPLACE": "1", "DUELL_HOTRAM": "3",
-             "FELUCCA_UAC": "0", "FELUCCA_OTA": "0", "BENCH_BSS_MIN": "1024"}     # the bench build that fits the app slot with TIDE: no USB audio, no editor / updater (the way back is `uboot yes`)
+             "FELUCCA_UAC": "0", "FELUCCA_OTA": "0", "BENCH_BSS_MIN": "1024"}     # the bench build that fits the app slot with TIDE: no USB audio, no editor / updater. The way back is `bench updl CRC yes`
+# (bench_updl.c: the update loader the normal firmware staged is entered again). NOT `uboot yes`: that is the chip's mask-ROM mode, which fm1_install.py (USB-MIDI) never reaches.
 DEFAULT_MEASURE = Path(os.environ.get("JAM_WORK") or REPO.parent / "work") / "measure"
 MEASURE_HOOKS: dict = {}        # tests: build, ports, bench_main, serial_send, source, sleep, dis, wait_s (the seams of the real calls)
 
@@ -1658,22 +1661,30 @@ def wait_for_serial(secs: float, want: Optional[str] = None) -> Optional[str]:
         sleep(1.0)
 
 
-def send_serial(port: str, line: str) -> None:
+def send_serial(port: str, line: str, secs: float = 0.5) -> list[str]:
+    """One console line to the unit, what it answers within secs (a unit that resets while it answers, as `bench updl` does, ends the reading: what came is kept)."""
     if MEASURE_HOOKS.get("serial_send"):
-        MEASURE_HOOKS["serial_send"](port, line)
-        return
+        return list(MEASURE_HOOKS["serial_send"](port, line) or [])
     br = kit()["bench_run"]
     link = (br.WinSerialLink if os.name == "nt" else br.SerialLink)(port)
     link.open()
+    got: list[str] = []
     try:
         link.send(line)
-        link.read(0.5)
+        end = time.monotonic() + secs
+        while time.monotonic() < end:
+            try:
+                got += link.read(0.2)
+            except Exception:                            # (the port went away: the unit reset)
+                break
     finally:
         link.close()
+    return got
 
 
 def install(pkg: Path, port: Optional[str], installer, out, mock: bool) -> int:
-    """fm1_install.py as a subprocess (cmd_flash's way): the unit must be on a firmware that starts the update (the normal one) or already in update mode (after `uboot yes`)."""
+    """fm1_install.py as a subprocess (cmd_flash's way): the unit must be on a firmware that starts the update (the normal one) or already in the Felucca update loader (a cut-off install, or after `bench updl`).
+    NOT after `uboot yes`: that is the chip's mask-ROM mode (a USB disk), which USB-MIDI never reaches; fm1_unbrick.py is what talks to it."""
     cmd = [sys.executable, "-I", str(installer or INSTALLER), str(pkg), "--yes"] + (["--port", port_base(port)] if port else [])
     if mock and not installer:
         print("mock: not installing; would run: " + " ".join(cmd), file=out)
@@ -1704,12 +1715,41 @@ class MidiNotes:
         self.port.close()
 
 
+WORK = Path(os.environ.get("JAM_WORK") or REPO.parent / "work")
+FM1_RECOVERY = WORK.parent / "fm1-recovery"                  # (beside the work folder: fm1_unbrick.py, jl-uboot-tool)
+
+
+def recovery_text(normal: Optional[Path]) -> str:
+    """The steps that always work when the unit does not come back by itself (the chip's mask-ROM mode and fm1_unbrick.py: an Administrator PowerShell)."""
+    pkg = str(Path(normal).resolve()) if normal else "<the normal package: duell-1.1.fwsc of the tree or of a checkpoint>"
+    return ("  1. The unit must be in the chip's own mode: Windows shows a USB disk 'WL82 UBOOT1.00'. It falls into it by itself when no firmware starts; from a running bench build\n"
+            "     hold OCT- and OCT+ together for 5 seconds (or send the console word `uboot yes`).\n"
+            f"  2. In an ADMINISTRATOR PowerShell:   cd \"{FM1_RECOVERY}\"   then   py fm1_unbrick.py restore \"{pkg}\"\n"
+            "     Answer WRITE when it asks. Then unplug the cable, switch the unit off, wait 5 s, switch it on.")
+
+
+def way_back_text(normal: Optional[Path]) -> str:
+    return ("The way back from the bench build is the update loader that the normal firmware left in the flash (the bench console word `bench updl`, which first checks it against the package's\n"
+            "own loader); then fm1_install.py puts the normal firmware on. If the unit does not come back, this always works:\n" + recovery_text(normal))
+
+
+def bench_loader(bench: Path) -> dict:
+    """The update loader of the bench package: its data CRC16 is what the bench build checks the staged copy against. Raises DuellError when there is none (no way back by itself)."""
+    try:
+        info = MEASURE_HOOKS["loader"](bench) if MEASURE_HOOKS.get("loader") else kit()["tide_measure"].package_loader(bench)
+    except (ValueError, OSError) as e:
+        raise DuellError(f"{e}\nWithout the package's update loader the bench build could not come back by itself, so nothing was started.")
+    if not info.get("marker"):
+        raise DuellError(f"{bench}: the update loader in this package is not Felucca's own; the bench build could not come back by itself, so nothing was started.")
+    return info
+
+
 def measure_tide(a, out_dir: Path, out, ask, opener: Opener) -> tuple[int, list[Path]]:
     k = kit()
-    ok_dis = None
-    if getattr(a, "bench_running", False):              # (an earlier run installed it and stopped: measure, then put the normal one back)
+    if getattr(a, "bench_running", False) or getattr(a, "step", None) == "back":   # (an earlier run installed it and stopped: measure / go back, and put the normal one back)
         normal = None if a.no_restore else (Path(a.normal) if a.normal else build_package({}, "normal (to put back)", out))
-        return bench_suites(a, out_dir, out, k, normal, opener)
+        bench = Path(a.bench) if a.bench else build_package(BENCH_ENV, "bench", out)
+        return bench_suites(a, out_dir, out, k, normal, bench_loader(bench), opener)
     conn = opener(a.port)
     found = conn.t.port_name                             # the installer must be told it: by itself it looks for "FM-1"
     try:
@@ -1718,6 +1758,8 @@ def measure_tide(a, out_dir: Path, out, ask, opener: Opener) -> tuple[int, list[
         normal = None
         if not a.no_restore:
             normal = Path(a.normal) if a.normal else build_package({}, "normal (to put back)", out)
+        loader = bench_loader(bench)                     # (before the unit is touched: no way back, no start)
+        print(way_back_text(normal), file=out)
         if not a.yes and not ask(f"Back up the unit, install the bench build {bench.name} and measure about 10 minutes (turn MASTER down, hands off the unit), then "
                                  + (f"put {normal.name} back" if normal else "leave the bench build installed") + "? [y/N] "):
             print("cancelled", file=out)
@@ -1729,54 +1771,83 @@ def measure_tide(a, out_dir: Path, out, ask, opener: Opener) -> tuple[int, list[
     if rc == 5:                                          # written and restarted: the bench build does not answer the installer's identity check
         print("note: the installer saw no identity after the restart; the bench build gives none, so its serial console is looked for next", file=out)
     elif rc:
-        print(f"error: the installer exited with {rc}; the backup above holds the unit's data", file=sys.stderr)
+        print(f"error: the installer exited with {rc}; the backup above holds the unit's data. If the unit is in update mode, run the install again to finish it:  "
+              f"py -I felucca-base/tools/fm1_install.py \"{bench}\" --yes", file=sys.stderr)
         return EXIT_FAIL, []
-    return bench_suites(a, out_dir, out, k, normal, opener)
+    return bench_suites(a, out_dir, out, k, normal, loader, opener)
 
 
-def bench_suites(a, out_dir: Path, out, k, normal, opener: Opener) -> tuple[int, list[Path]]:
-    """On the bench build: the suites over its serial console, then `uboot yes` and the normal package back (unless --no-restore)."""
+def go_back(a, out, port: str, loader: dict, normal: Optional[Path], opener: Opener) -> int:
+    """From the running bench build to the normal firmware: `bench updl` (the staged update loader, checked), then fm1_install.py (the unit is in update mode: it finishes the write)."""
+    sleep = MEASURE_HOOKS.get("sleep", time.sleep)
+    try:
+        reply = send_serial(port, f"bench updl {loader['crc']} yes", 2.5)
+    except Exception as e:
+        reply = [f"(no answer: {e})"]
+    text = " | ".join(x for x in reply if x and x != ">")
+    if not any("OK updl" in x for x in reply):
+        print("error: the bench build did not enter the update loader" + (f" (it says: {text})" if text else " (it did not answer)") + ". It is still running, nothing was changed.\n"
+              "(An older bench build has no `bench updl`; so does a package whose loader is not the one the unit holds.) To leave it:\n" + recovery_text(normal), file=sys.stderr)
+        return EXIT_FAIL
+    sleep(3.0)
+    if not normal:
+        print("the unit is in the update loader. Finish with:  py -I felucca-base/tools/fm1_install.py PACKAGE --yes", file=out)
+        return EXIT_OK
+    rc = install(normal, a.port, a.installer, out, a.mock)
+    if rc:
+        print(f"error: the normal firmware did not go back (installer exit {rc}). The unit is in the update loader (or on the bench build); finish the install with:\n"
+              f"  py -I felucca-base/tools/fm1_install.py \"{Path(normal).resolve()}\" --yes\n"
+              "(jam_dev.py flash does not do it: it first needs a running DUELL to back up.) If the unit does not show up as a MIDI device at all:\n" + recovery_text(normal), file=sys.stderr)
+        return EXIT_FAIL
+    back = wait_for_unit(opener, a.port, MEASURE_HOOKS.get("wait_s", 90.0))
+    if not back:
+        print("error: no DUELL unit answered after putting the normal firmware back (power-cycle it; if it stays dark:)\n" + recovery_text(normal), file=sys.stderr)
+        return EXIT_NOUNIT
+    print(f"back on DUELL {back.info.duell} ({back.info.version})", file=out)
+    back.t.close()
+    return EXIT_OK
+
+
+def bench_suites(a, out_dir: Path, out, k, normal, loader, opener: Opener) -> tuple[int, list[Path]]:
+    """On the bench build: the preflight (voices must sound), the suites over its serial console, then `bench updl` and the normal package back (unless --no-restore)."""
     port = wait_for_serial(MEASURE_HOOKS.get("wait_s", 90.0), a.com)
     if not port:
-        print("error: no serial port of the unit within 90 s of the install (is it the bench build? the unit prints BENCH on its screen; try --com NAME)", file=sys.stderr)
+        print("error: no serial port of the unit within 90 s of the install (is it the bench build? the unit prints BENCH on its screen; try --com NAME). If it stays dark or is in update mode:\n"
+              + recovery_text(normal), file=sys.stderr)
         return EXIT_NOUNIT, []
     print(f"bench build running on {port}", file=out)
     runs = []
     status = EXIT_OK
     try:
-        bench_main = MEASURE_HOOKS.get("bench_main") or k["bench_run"].main
-        for name in ("TIDE-DSP", "PHYS-MODELS"):
-            d = out_dir / name
-            argv = ["--suite", name, "--port", port, "--out", str(d), "--runs", str(out_dir / "runs"), "--no-caffeinate"]
-            print(f"== {name}", file=out, flush=True)
-            r = bench_main(argv)
-            if (d / "results.csv").exists():
-                runs.append(d)
-            if r not in (0, None):
-                print(f"note: {name} reported failures (exit {r}); the report says which tests", file=out)
+        if getattr(a, "step", None) == "back":
+            pass
+        else:
+            bench_main = MEASURE_HOOKS.get("bench_main") or k["bench_run"].main
+            ok, text = k["tide_measure"].preflight(bench_main, str(out_dir), port, runs=str(out_dir / "runs"))
+            print(text, file=out, flush=True)
+            if not ok:
+                print("error: the unit plays nothing for the test's notes, so the suites would measure the idle unit; they are not run. The unit goes back to the normal firmware.", file=sys.stderr)
+                status = EXIT_FAIL
+            for name in (("TIDE-DSP", "PHYS-MODELS") if ok else ()):
+                d = out_dir / name
+                argv = ["--suite", name, "--port", port, "--out", str(d), "--runs", str(out_dir / "runs"), "--no-caffeinate"]
+                print(f"== {name}", file=out, flush=True)
+                r = bench_main(argv)
+                if (d / "results.csv").exists():
+                    runs.append(d)
+                if r not in (0, None):
+                    print(f"note: {name} reported failures (exit {r}); the report says which tests", file=out)
     except SystemExit as e:
         print(f"error: {e}", file=sys.stderr)
         status = EXIT_FAIL
     finally:
         if not a.no_restore:
-            try:
-                send_serial(port, "uboot yes")
-                MEASURE_HOOKS.get("sleep", time.sleep)(3.0)
-            except Exception as e:
-                print(f"warning: could not send `uboot yes` ({e}); hold OCT- and OCT+ together for 5 s on the unit", file=sys.stderr)
-    if not a.no_restore and normal:
-        rc = install(normal, a.port, a.installer, out, a.mock)
-        if rc:
-            print(f"error: the normal firmware did not go back (installer exit {rc}). The unit is in update mode or on the bench build: run  jam_dev.py flash {normal}", file=sys.stderr)
-            return EXIT_FAIL, runs
-        back = wait_for_unit(opener, a.port, MEASURE_HOOKS.get("wait_s", 90.0))
-        if not back:
-            print("error: no DUELL unit answered after putting the normal firmware back (power-cycle it)", file=sys.stderr)
-            return EXIT_NOUNIT, runs
-        print(f"back on DUELL {back.info.duell} ({back.info.version})", file=out)
-        back.t.close()
-    else:
-        print(f"the bench build stays installed. To go back: the console word `uboot yes` (or OCT- and OCT+ for 5 s), then  jam_dev.py flash <the normal package>", file=out)
+            rc = go_back(a, out, port, loader, normal, opener)
+            if rc:
+                return rc, runs
+        else:
+            print("the bench build stays installed (the unit has no editor and no audio over USB meanwhile). To go back to the normal firmware:\n"
+                  f"  python3 jam/jam_dev.py measure back --com {port} --normal PACKAGE\n" + way_back_text(normal), file=out)
     return status, runs
 
 
@@ -1821,13 +1892,20 @@ def cmd_measure(a, out, ask, opener: Opener) -> int:
         runs = [Path(p) for p in a.runs]
         if not runs:
             raise UsageError("measure report RUNDIR [RUNDIR ...]")
+    if step == "back":
+        if a.no_restore:
+            raise UsageError("measure back puts the normal firmware on: --no-restore says the opposite")
+        status, _ = measure_tide(a, out_dir, out, ask, opener)
+        return status
     if step in ("all", "tide"):
         status, runs = measure_tide(a, out_dir, out, ask, opener)
         if status != EXIT_OK and not runs:
             return status
-    if step in ("all", "velocity"):
+    if step == "velocity" or (step == "all" and status == EXIT_OK):         # (not after a tide part that left the unit off the normal firmware: the key session needs it)
         st, velocity = measure_velocity(a, out, ask)
         status = status or st
+    elif step == "all":
+        print("the key-velocity session is skipped: the bench part did not finish cleanly (above); run `measure velocity` when the unit is on the normal firmware", file=out)
     rows = k["tide_measure"].load([str(r) for r in runs]) if runs else []
     text = k["tide_measure"].report_text(rows, stamp=stamp, build=f"bench {MEASURE_TAG}" if runs else "", libcalls=libcalls_section(k) if runs else None, velocity=velocity)
     path = out_dir / "report.md"
@@ -1860,8 +1938,9 @@ def build_parser() -> argparse.ArgumentParser:
     f.add_argument("--out", metavar="DIR", default=str(DEFAULT_OUT), help="where the backup goes")
     f.add_argument("--installer", default=None, help=argparse.SUPPRESS)   # (tests: a stand-in for fm1_install.py)
     m = sub.add_parser("measure", parents=[common], help="the unit measurement of TIDE's audio DSP, PHYS per model and key velocity (audit A01, Q14, T17)")
-    m.add_argument("step", nargs="?", choices=("all", "tide", "velocity", "report"), default="all",
-                   help="all (default): bench measurement, then the normal firmware back, then the velocity session; tide: only the bench part; velocity: only the key session; report RUNDIR..: the report of runs made")
+    m.add_argument("step", nargs="?", choices=("all", "tide", "velocity", "report", "back"), default="all",
+                   help="all (default): bench measurement, then the normal firmware back, then the velocity session; tide: only the bench part; velocity: only the key session; report RUNDIR..: the report of runs made; "
+                        "back: the bench build is running (an earlier run stopped or --no-restore): the normal firmware back, nothing measured")
     m.add_argument("runs", nargs="*", help="(report) the run folders (each holds results.csv)")
     m.add_argument("--bench", metavar="PKG", help="a bench package already built (default: built here with tools/build.py)")
     m.add_argument("--normal", metavar="PKG", help="the package to put back (default: the tree's normal build)")
