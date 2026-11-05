@@ -14,7 +14,7 @@
  * End A is the Original until a WANDER or JOURNEY glide makes it a generation: each arrival rolls the end left as the next one, its
  * dials a step on from the end reached (momentum, the step by the phrase tier), so every trip goes from one generation to the
  * next. The fader brings End B in a beat at a time (each beat its own threshold): monotone and reversible.
- * VARY BARS (TIDE LIST): 4 + 8 (the default) plays the variation only on every 4th bar since PLAY (bars 4 and 8 of each 8-bar
+ * VARY BARS (TIDE LIST): EVERY 4TH (the default) plays the variation only on every 4th bar since PLAY (bars 4 and 8 of each 8-bar
  * phrase; the others play End A), as a dub techno loop holds and changes at the turnaround (after DUB-1, sbegueria/fm1-dub);
  * ALL plays it on every bar. A bar is 4 beats of the clock (seq.c sqm_bar), whatever the pattern's length or DIV.
  * Contexts: the ends are built in the main loop into sqm_pat (seqm_poll, and every control); seq_play_step() runs in the audio
@@ -270,7 +270,7 @@ static void sqm_refresh(uint32_t pi, int force)
     MORPH_UNLOCK();
 }
 
-static volatile uint8_t sqm_vary_all;                   /* VARY BARS: 0 4 + 8, 1 ALL (tide_ui.c, the TIDE LIST) */
+static volatile uint8_t sqm_vary_all;                   /* VARY BARS: 0 EVERY 4TH, 1 EVERY BAR (tide_ui.c, the TIDE LIST) */
 static volatile uint8_t sqm_poly = 1;                   /* POLY: 0 OFF, 1 GENTLE, 2 WIDE (tide_ui.c, the TIDE LIST; seq_poly.c) */
 static volatile uint8_t poly_len[NSHOWN];                /* POLY (seq_poly.c): the loop's length now, 0: the stored one (audio path writes; a part in a stretch is never thinned) */
 static const step_t SQM_REST = {{0}, 0, ST_REST, 0, 0, 0};
@@ -295,7 +295,7 @@ static int sqm_follows(uint32_t pi, uint32_t bar)
     return sqm_turns >= 2u && sqm_auto == 3u && ((sqm_lead >> pi) & 1u) && ((bar + 2u * pi) & 3u) != 3u &&
            pi != (~bar >> !tarc_fast & 1u);           /* (the leader: part 2 on bars 1-2 of 4, ARC's fast turns: on the odd bars) */
 }
-/* the step the sequencer plays (audio interrupt): with VARY BARS 4 + 8, while playing, End A but on every 4th bar (TAKE TURNS, both parts in automatic WNDR / JRNY: part 2 on bars 2 and 6) */
+/* the step the sequencer plays (audio interrupt): with VARY BARS EVERY 4TH, while playing, End A but on every 4th bar (TAKE TURNS, both parts in automatic WNDR / JRNY: part 2 on bars 2 and 6) */
 static const step_t *seq_play_step_at(const track_t *t, uint32_t idx, uint32_t bar)
 {
     uint32_t pi = (uint32_t)(t - trk), off = sqm_turns && sqm_auto == 3u && pi == 1u;   /* TAKE TURNS: part 2 two bars on, in the shared bars (bars 2 and 6) */
@@ -450,7 +450,7 @@ static void seqm_home(uint32_t pi)
     sqm_refresh(pi, 1);
 }
 
-/* KEEP: the variation as it plays (on a varied bar, VARY BARS 4 + 8) becomes the stored pattern (the caller takes the undo copy
+/* KEEP: the variation as it plays (on a varied bar, VARY BARS EVERY 4TH) becomes the stored pattern (the caller takes the undo copy
  * first); End A the Original (the new one), the fader at 0, and End B a variation of the new Original. 0 = nothing to keep */
 static int seqm_keep(track_t *t)
 {

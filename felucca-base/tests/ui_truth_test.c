@@ -194,6 +194,11 @@ static void test_list_knobs(void)
     CHECK("LIST: it stops at the last value", gl.target == GT_BOTH);
     tide_knob(2u, -3);
     CHECK("LIST: knob 3 left is the one before", gl.target == GT_SEQ && jl_sel == JL_TARGET);
+    CHECK("LIST: the row names say what they do (D9)", !strcmp(JL_NAME[JL_ARP], "ROLL ARP") && !strcmp(JL_NAME[JL_PITCH], "ROLL PITCH") && !strcmp(JL_NAME[JL_WASH], "WASH") &&
+          !strcmp(jl_vname(JL_TARGET, 2), "SND+SEQ") && !strcmp(jl_vname(JL_VARY, 0), "EVERY 4TH") && !strcmp(jl_vname(JL_VARY, 1), "EVERY BAR"));
+    sqm_arc = 1; sqm_auto = 0;
+    CHECK("LIST: a hand drop with no automatic tide says what it needs", !strcmp(tarc_drop_hand(), "DROP NEEDS WNDR/JRNY"));
+    sqm_arc = 0;
     jl_sel = JL_STYLE;
     ui.force = 1; ui_draw();
     CHECK("LIST: the scroll mark is at the top with the first row picked", px_is(236, UT_L5_Y0 + 2, T_MID) && px_is(236, UT_L5_Y0 + 6 * UT_L5_PITCH - 2, T_RAISE));

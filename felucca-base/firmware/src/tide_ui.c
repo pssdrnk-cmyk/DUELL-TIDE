@@ -4,7 +4,7 @@
  *   TIDE      (AUTO TIDE) the SOUND and SEQ faders with the glide's path, the 16 steps around the playhead, a status line. K1 GLIDE (twist
  *             left: glide to A, right: to B), K2 MODE (ONCE / LOOP / DRIFT / WNDR / JRNY), K3 TIME (bars), K4 WAIT   ... play
  *   TIDE LIST  the settings in a list, as the MENU's: K1 picks the row, OCT+ the next value, OCT- the one before. STYLE, TARGET, VARY BARS,
- *             ROLL, ARP, PITCH, WASH LEVEL, TURNS, POLY, SYNC, ARC (JL_NAME)                                     ... set and forget
+ *             ROLL, ROLL ARP, ROLL PITCH, WASH, TURNS, POLY, SYNC, ARC (JL_NAME)                                     ... set and forget
  * LINK: TARGET BOTH links the two faders: GLIDE moves both, and the MORPH fader moved by hand (the MORPH page, the mod wheel, CC 70:
  * ui_input.c morph_act) moves the SEQ fader with it (tide_link). ALGORITHM is the morph's selector here too: PART 1, BOTH, PART 2
  * (morph_mask). The panel shows both faders with the glide on them, and the selected part's 16 steps as they play: varied ones
@@ -133,7 +133,7 @@ static void tide_link(uint32_t mask, uint32_t v)
 
 /* ---------------------------------------------------------------- TIDE LIST --- */
 enum { JL_STYLE, JL_TARGET, JL_VARY, JL_ROLL, JL_ARP, JL_PITCH, JL_WASH, JL_TURNS, JL_POLY, JL_SYNC, JL_ARC, JL_N };
-static const char *const JL_NAME[JL_N] = {"STYLE", "TARGET", "VARY BARS", "ROLL", "ARP", "PITCH", "WASH LEVEL", "TURNS", "POLY", "SYNC", "ARC"};
+static const char *const JL_NAME[JL_N] = {"STYLE", "TARGET", "VARY BARS", "ROLL", "ROLL ARP", "ROLL PITCH", "WASH", "TURNS", "POLY", "SYNC", "ARC"};
 static uint8_t jl_sel;                                   /* the row picked (K1) */
 static void morph_act(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi);   /* (ui_input.c) */
 
@@ -162,7 +162,7 @@ static __attribute__((noinline)) void tide_rows_get(uint8_t *t)   /* the nine ro
 {
     for (uint32_t i = 0; i < 9u; i++)
         t[i] = *TIDE_ROW[i];
-    t[8] &= 3u;                                          /* (WASH LEVEL) */
+    t[8] &= 3u;                                          /* (WASH) */
 }
 static int tide_style_holds(void)                        /* the nine rows are the style's */
 {
@@ -189,12 +189,12 @@ static __attribute__((noinline)) const char *jl_needs(uint32_t r)
 static const uint8_t JL_NV[JL_N] = {6, 3, 2, 3, 2, 2, 4, 3, 3, 3, 3};
 static volatile uint8_t *const JL_VAR[JL_N] = {[JL_STYLE] = &tide_style, [JL_TARGET] = &gl.target, [JL_VARY] = &sqm_vary_all, [JL_WASH] = &morph_wlvl,
                                                [JL_TURNS] = &sqm_turns, [JL_POLY] = &sqm_poly, [JL_SYNC] = &sqm_sync, [JL_ARC] = &sqm_arc};
-static const char *const JL_V[] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK", "CUSTOM", "SOUND", "SEQ", "BOTH", "4 + 8", "ALL", "MUSIC", "SMART", "WILD",
+static const char *const JL_V[] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK", "CUSTOM", "SOUND", "SEQ", "SND+SEQ", "EVERY 4TH", "EVERY BAR", "MUSIC", "SMART", "WILD",
                                    "OFF", "ON", "OFF", "ON", "OFF", "LOW", "MID", "HIGH", "TOGETHER", "TAKE TURNS", "LEAD", "OFF", "GENTLE", "WIDE",
                                    "OFF", "SOFT", "PUSH", "OFF", "RISE", "DROP"};
 static const uint8_t JL_V0[JL_N] = {0, 6, 9, 11, 14, 16, 18, 22, 25, 28, 31};   /* (each row's first name in JL_V) */
 static const char *const JL_SAY[JL_N] = {"STYLE ", 0, 0, "", "", "", "WASH ", 0, "POLY ", "SYNC ", "ARC "};
-static const char *const JL_OWN[8] = {"GLIDE SOUND", "GLIDE SEQ", "GLIDE SOUND + SEQ", "VARY BARS 4 + 8", "VARY EVERY BAR",
+static const char *const JL_OWN[8] = {"GLIDE SOUND", "GLIDE SEQ", "GLIDE SOUND + SEQ", "VARY EVERY 4TH", "VARY EVERY BAR",
                                       "PARTS VARY TOGETHER", "PARTS TAKE TURNS", "PARTS LEAD IN TURNS"};
 static uint32_t jl_n(uint32_t r) { return JL_NV[r % JL_N]; }
 static uint32_t jl_get(uint32_t r)
