@@ -432,8 +432,11 @@ def main(argv):
     fm6_seen = steps_seen = unchanged = changed = 0
     cand = {}
     for slot in sorted(patches):
-        if slot >= len(ctx.browse):
+        if slot >= ctx.layout["SLOTS"]:
             refused.append("slot #%d: there are 128 slots" % (slot + 1))
+            continue
+        if ctx.browse[slot] is None:        # (a TIDE build's USER slot: it holds no factory sound to replace)
+            refused.append("slot #%d: a USER slot holds no factory sound: not imported" % (slot + 1))
             continue
         eng_i, idx = ctx.browse[slot]
         eng = ctx.eng_names[eng_i]

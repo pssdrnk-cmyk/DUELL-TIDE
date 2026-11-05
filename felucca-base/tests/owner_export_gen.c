@@ -61,7 +61,7 @@ int main(int argc, char **argv)
         return perror(argv[1]), 1;
     fprintf(f, "{\"format\":\"duell-patches\",\"version\":1,\"app\":\"owner_export_gen\",\"firmware\":\"x\",\"source\":\"synthetic\",\"patches\":[\n");
     nlist = ds_list_n();
-    for (n = 0; n < nlist && n < UP_SLOTS && n < PT_MAX; n++) {   /* (what the store always takes: 126 with TIDE, chunk 21 holds its settings, plan 4.5; else 128) */
+    for (n = 0; n < nlist && n < UP_SLOTS - UP_NUSER && n < PT_MAX; n++) {   /* (the slots that hold a factory sound: with TIDE the last four are USER slots, empty until saved; else 128) */
         uint32_t k, e = ds_list_at(n, &k), a;
         uint8_t raw[PT_WORST + 16];
         uint32_t len;
