@@ -7,25 +7,82 @@ import { existsSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-export const CHROME = process.env.CHROME || ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(existsSync);
+export const CHROME = process.env.CHROME || ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser",
+  ...[process.env.PROGRAMFILES, process.env["PROGRAMFILES(X86)"], process.env.LOCALAPPDATA].filter(Boolean).flatMap((p) => [join(p, "Google/Chrome/Application/chrome.exe"), join(p, "Microsoft/Edge/Application/msedge.exe")])].find(existsSync);
 
-export async function launch() {
-  if (!CHROME) throw new Error("no Chrome found (set CHROME=/path/to/chrome)");
+// REQUIRE_CHROME=1 (the CI workflow sets it): a missing browser is a failure, not a quiet "skip" that reports PASS
+if (!CHROME && process.env.REQUIRE_CHROME) throw new Error("REQUIRE_CHROME is set but no Chrome was found (set CHROME=/path/to/chrome)");
+
+// Stops a Chrome and everything it started (its own process group, where there is one), waits for the exit, removes the profile.
+async function stop(proc, dir, exited) {
+  // The parent may already have exited while a renderer still belongs to its group.
+  if (process.platform !== "win32" || !exited.done) {
+    try { process.kill(process.platform === "win32" ? proc.pid : -proc.pid, "SIGKILL"); } catch { try { proc.kill("SIGKILL"); } catch { /* gone */ } }
+    await Promise.race([exited.p, new Promise((r) => setTimeout(r, 5000))]);
+  }
+  await rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }).catch(() => {});
+}
+
+// One start. It stops waiting the moment Chrome has exited, else after 30 s; the error says why (exit code, the end of Chrome's stderr).
+async function start() {
   const dir = await mkdtemp(join(tmpdir(), "duell-chrome-"));
-  const proc = spawn(CHROME, ["--headless=new", "--remote-debugging-port=0", `--user-data-dir=${dir}`, "--no-first-run", "--no-default-browser-check", "--disable-gpu", "--hide-scrollbars=false", "about:blank"], { stdio: "ignore" });
+  const args = ["--headless=new", "--remote-debugging-port=0", `--user-data-dir=${dir}`, "--no-first-run", "--no-default-browser-check", "--disable-gpu", "--disable-dev-shm-usage", "--hide-scrollbars=false"];
+  if (process.env.CI) args.push("--no-sandbox");   // (a CI runner: the sandbox needs user namespaces, which the runner image may restrict)
+  const proc = spawn(CHROME, [...args, "about:blank"], { stdio: ["ignore", "ignore", "pipe"], detached: process.platform !== "win32" });
+  let err = "";
+  proc.stderr.on("data", (d) => { err = (err + d).slice(-2000); });
+  const exited = { done: false, how: "" };
+  exited.p = new Promise((res) => { proc.once("exit", (code, sig) => { exited.done = true; exited.how = sig ? `signal ${sig}` : `exit code ${code}`; res(); }); proc.once("error", (e) => { exited.done = true; exited.how = `spawn error ${e.message}`; res(); }); });
   let port = 0;
-  for (let i = 0; i < 100 && !port; i++) {
+  for (let i = 0; i < 300 && !port && !exited.done; i++) {
     await new Promise((r) => setTimeout(r, 100));
     try { port = +(await readFile(join(dir, "DevToolsActivePort"), "utf8")).split("\n")[0]; } catch { /* not yet */ }
   }
-  if (!port) { proc.kill(); throw new Error("Chrome did not start"); }
-  const tabs = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
-  const ws = new WebSocket(tabs.find((t) => t.type === "page").webSocketDebuggerUrl);
-  await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
+  if (!port) {
+    const why = exited.done ? `Chrome ended (${exited.how})` : "no DevToolsActivePort after 30 s";
+    await stop(proc, dir, exited);
+    throw new Error(`Chrome did not start: ${why} [${CHROME}]${err.trim() ? "\n" + err.trim() : ""}`);
+  }
+  return { proc, dir, exited, port };
+}
+
+export async function launch() {
+  if (!CHROME) throw new Error("no Chrome found (set CHROME=/path/to/chrome)");
+  let st;
+  try { st = await start(); } catch (e) {   // one retry: a start that was slow or lost to the previous Chrome's leftovers; the first error is kept in the log
+    console.log(`cdp: first Chrome start failed (${String(e.message).split("\n")[0]}), trying once more`);
+    st = await start();
+  }
+  const { proc, dir, exited, port } = st;
+  let ws;
+  try {
+    const tabs = await (await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(5000) })).json();
+    ws = new WebSocket(tabs.find((t) => t.type === "page").webSocketDebuggerUrl);
+    await new Promise((res, rej) => {
+      const timer = setTimeout(() => rej(new Error("Chrome DevTools WebSocket did not open after 5 s")), 5000);
+      ws.onopen = () => { clearTimeout(timer); res(); };
+      ws.onerror = (e) => { clearTimeout(timer); rej(e); };
+    });
+  } catch (e) {
+    try { ws?.close(); } catch { /* closed */ }
+    await stop(proc, dir, exited);
+    throw e;
+  }
   let id = 0; const wait = new Map(), events = [];
   ws.onmessage = (m) => { const d = JSON.parse(m.data); if (d.id && wait.has(d.id)) { const [res, rej] = wait.get(d.id); wait.delete(d.id); d.error ? rej(new Error(d.error.message)) : res(d.result); } else if (d.method) events.push(d); };
-  const send = (method, params = {}) => new Promise((res, rej) => { const i = ++id; wait.set(i, [res, rej]); ws.send(JSON.stringify({ id: i, method, params })); });
-  await send("Page.enable"); await send("Runtime.enable"); await send("Log.enable");
+  ws.onclose = () => { for (const [, rej] of wait.values()) rej(new Error("Chrome DevTools connection closed")); wait.clear(); };
+  const send = (method, params = {}) => new Promise((res, rej) => {
+    const i = ++id, timer = setTimeout(() => { wait.delete(i); rej(new Error(`Chrome DevTools timed out: ${method}`)); }, 30000);
+    wait.set(i, [(v) => { clearTimeout(timer); res(v); }, (e) => { clearTimeout(timer); rej(e); }]);
+    ws.send(JSON.stringify({ id: i, method, params }));
+  });
+  try {
+    await send("Page.enable"); await send("Runtime.enable"); await send("Log.enable");
+  } catch (e) {
+    try { ws.close(); } catch { /* closed */ }
+    await stop(proc, dir, exited);
+    throw e;
+  }
   const c = {
     send, events, errors: () => events.filter((e) => e.method === "Runtime.exceptionThrown" || (e.method === "Runtime.consoleAPICalled" && e.params.type === "error") || (e.method === "Log.entryAdded" && e.params.entry.level === "error")).map((e) => JSON.stringify(e.params).slice(0, 400)),
     async open(url, w, h) {
@@ -59,7 +116,7 @@ export async function launch() {
       await send("Input.dispatchKeyEvent", { type: text ? "keyDown" : "rawKeyDown", key: k, code: k.length === 1 ? "Key" + k.toUpperCase() : k, windowsVirtualKeyCode: vk, modifiers: mods, text });
       await send("Input.dispatchKeyEvent", { type: "keyUp", key: k, code: k.length === 1 ? "Key" + k.toUpperCase() : k, windowsVirtualKeyCode: vk, modifiers: mods });
     },
-    async close() { try { ws.close(); } catch { /* closed */ } proc.kill(); await rm(dir, { recursive: true, force: true }).catch(() => {}); },
+    async close() { try { ws.close(); } catch { /* closed */ } await stop(proc, dir, exited); },
   };
   return c;
 }

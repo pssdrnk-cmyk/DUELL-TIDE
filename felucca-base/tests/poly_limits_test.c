@@ -72,7 +72,7 @@ static uint32_t sounding(const track_t *t) { uint32_t i, n = 0; for (i = 0; i < 
 int main(void)
 {
     static const char *const VN[V_N] = {"MULTI off", "MULTI 12 dB", "MULTI + TWIN LP"};
-    uint32_t t, va, one[2], two[2], k, okt = 1, okho = 1, st;
+    uint32_t t, va, one[2], two[2], k, okt = 1, okho = 1, st, fm6_two = 0;
     int32_t o[2 * CTL];
     printf("polylimits: notes a part in LAYER (both parts the same engine, its first factory sound cleaned), KEY SENSE on: one core / two cores%s\n",
 #ifdef OLD
@@ -100,6 +100,8 @@ int main(void)
             frame();
             mods_off = st ? MODS_SENDS : 0;   /* (after the frame: it puts the module state back) */
             numbers(one, two);
+            if (st == 1u && va == 0u && e == ENGI_FM6)
+                fm6_two = two[0];
 #ifndef OLD
             {   /* item 132: the two-core number is the most notes with globals + the part's stages + its voices <= BUDGET_LIMIT, no hand-over charged (item 137: 81 %, margin 1.00) */
                 bd_t b;
@@ -168,6 +170,9 @@ int main(void)
     }
 #ifndef OLD
     chk("two cores give every engine at least the one-core number", okt);
+#ifndef OLD
+    chk("(D18) FM6's own cap is 8: with the budget open (state B, MULTI off) two cores give it 8 notes, 2 more than the cap of 6 it had", ENG_FM6.poly == 8u && fm6_two == 8u);
+#endif
     chk("(item 132/137/142) the two-core number = the most notes within BUDGET_LIMIT 84 % at margin 1.00 with no hand-over charged (every cell of both tables)", okho);
 #endif
     /* (a) erased unit, WAVE both, POLY, LAYER */

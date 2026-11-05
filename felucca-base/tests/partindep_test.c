@@ -65,9 +65,10 @@ static int expect(const char *what, int ok)
 /* audit P01 (2026-11-04), on purpose: scenes 9, 10, 11 re-made (part 2 glides, GLIDE 30 in UNISON / LEGATO: voice.c glide_set now takes the time GLD shows);
  * they were 0x10031248d54636c9, 0x00ba6a225b5a3f8f, 0xc6c4863685dfc21c. */
 /* audit P07 (2026-11-05), on purpose: scenes 3, 4, 5 re-made (MORPH on both parts: the rolled End B moves filter 1's RES, whose damping is exponential now, voice.c UF_K);
- * they were 0xd3a928aa44ee293e, 0xb4ae75f1f096399b, 0x65fc43887280e3c0. */
+ * they were 0xd3a928aa44ee293e, 0xb4ae75f1f096399b, 0x65fc43887280e3c0; and again for MORPH's RES ceilings in the new law's steps (morph.c MORPH_UF_RES 28, MORPH_UF_RESBP 17,
+ * morph_music.c MM_BAND), were 0x6053b27ccd4ca6eb, 0x1527808e8a7232d1, 0xacaf5351d569d877. */
 static const uint64_t OLD_HASH[NSCENE] = {
-    0xf0d0572743238854ull, 0x1c363ab4f36aa258ull, 0x1152deb454944111ull, 0x6053b27ccd4ca6ebull, 0x1527808e8a7232d1ull, 0xacaf5351d569d877ull, 0xebc9d9e8cfc07603ull, 0x1c310e660d84eb87ull, 0x4373d86bea4d679full,
+    0xf0d0572743238854ull, 0x1c363ab4f36aa258ull, 0x1152deb454944111ull, 0xfe41050db7b9c15aull, 0xad558b64ed584b09ull, 0xfedca3ba20a904caull, 0xebc9d9e8cfc07603ull, 0x1c310e660d84eb87ull, 0x4373d86bea4d679full,
     0x2c5bc2c71a3c612dull, 0xd4b7de585e4eccb4ull, 0x675cf3b5383f9d0bull};   /* 0.2.31: re-based on purpose (SUB HARMONICS is disabled: the scenes' HARM values play as 0), were 0x57241fc736950a76, 0xae179d4cb7f62068, 0x653c0c9666564fdf. Scenes 9, 10, 11 (cloud job F: SUB, CYCLE, STEPS) have no commit before: pinned at the commit that made them, from the old combined path (the feature is in track_render, which it shares) */
 
 /* ---- the schedules */

@@ -13,15 +13,21 @@
 #                           release (pre-releases count, drafts do not), used only if the emulator build below leaves nothing.
 # The emulator is built from the committed sources (step below). With no release at all the installer page says "not released yet"
 # and keeps its install flow hidden; without the emulator zip /emu/ says the emulator is not attached. Neither fails the job.
+#
+# The site is published only after the "Host tests" workflow has passed on the same commit: this workflow starts when that one completes
+# (workflow_run) and the build job runs only if its conclusion is success, on exactly the commit it tested (not on whatever jam11 is by then).
+# A red or cancelled test run publishes nothing. To refresh release channels, run Host tests manually on jam11; its green completion publishes the site.
+# The runner uses ubuntu-24.04; every action is pinned to a full commit, with its version in the comment.
 name: Pages
 
 # No `release` trigger: a release event runs from the release tag, and the github-pages environment only allows
-# deployments from main, so that run would fail at the deploy step. After publishing or editing a release, run this
-# workflow by hand (Actions > Pages > Run workflow, branch main): it picks up the newest Stable and Beta releases.
+# deployments from the configured branch. After publishing or editing a release, run
+# Actions > Host tests > Run workflow on jam11: once green, Pages picks up the newest Stable and Beta releases.
 on:
-  push:
+  workflow_run:
+    workflows: ["Host tests"]
+    types: [completed]
     branches: [jam11]
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -34,21 +40,28 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # Only a successful run from this repository's publishing branch can publish.
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'jam11' && github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262   # v4.4.0
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}     # (exactly the commit the tests passed on)
+          persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065   # v5.6.0
         with:
           python-version: "3.12"
 
       - name: Build the emulator from the committed sources
         run: |
-          pip install pillow fonttools
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libfribidi0 libraqm0      # (the same fonts as the tests and the firmware: see host-tests.yml)
+          pip install pillow==12.3.0 fonttools==4.65.0
           git clone --depth 1 https://github.com/emscripten-core/emsdk.git "$HOME/emsdk"
           "$HOME/emsdk/emsdk" install 6.0.13
           "$HOME/emsdk/emsdk" activate 6.0.13
-          python3 gen_only.py
+          (cd felucca-base && python3 tools/build.py --gen-only)
           . "$HOME/emsdk/emsdk_env.sh"
           cd felucca-base
           EMU_PREVIEW=0 sh web/emu/build.sh
@@ -89,18 +102,18 @@ jobs:
           python3 felucca-base/web/make_site.py $args site
           cat site/install/channels.json
 
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b   # v5.0.0
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa   # v3.0.1
         with:
           path: site
 
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e   # v4.0.5

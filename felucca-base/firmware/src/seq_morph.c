@@ -44,6 +44,7 @@ static step_t sqm_pat[NSHOWN][2][NSTEP];               /* the two ends as played
 static step_t sqm_buf[NSTEP] __attribute__((section(".pool")));   /* an end being built, KEEP's copy (main loop; the pool: .bss is the tighter, plan §4.9.2) */
 static uint32_t sqm_poll_ms;
 static uint32_t sqm_len(const track_t *t);
+static uint32_t fnv(uint32_t h, const void *p, uint32_t n);   /* (ui.c: FNV-1a over n bytes, the TIDE keys' hash too) */
 
 static uint32_t sqm_key(const sqm_part_t *q) { return q->sig ^ q->tseed; }   /* (the UI's redraw key: changes with what the ends play) */
 static uint32_t sqm_hash(uint32_t seed, uint32_t idx, uint32_t salt)
@@ -85,11 +86,10 @@ static uint32_t sqm_best(uint32_t *score, uint32_t len)
     return b;
 }
 
-static volatile uint8_t sqm_turns = 1;                  /* TURNS: 0 TOGETHER, 1 TAKE TURNS (tide_ui.c, the TIDE LIST) */
-static volatile uint32_t sqm_thin[NSHOWN][2];            /* LEAD / ECHO: the steps the follower does not play, a bit each (seq_answer.c, main loop) */
+static volatile uint8_t sqm_turns = 1;                  /* TURNS: 0 TOGETHER, 1 TAKE TURNS, 2 LEAD (tide_ui.c, the TIDE LIST; ECHO folded into LEAD, D7) */
+static volatile uint32_t sqm_thin[NSHOWN][2];            /* LEAD: the steps the follower does not play, a bit each (seq_answer.c, main loop) */
 static volatile int8_t sqm_dyn;                         /* ARC's dynamics, tarc_bright: +1 louder, -1 softer (seq_answer.c, main loop) */
-static volatile uint8_t sqm_lead;                        /* .. the parts LEAD / ECHO answer with, a bit each: lead and pluck lines (D2; seq_answer.c) */
-static int tide_echo(uint32_t pi, uint32_t idx);
+static volatile uint8_t sqm_lead;                        /* .. the parts LEAD answers with, a bit each: lead and pluck lines (D2; seq_answer.c) */
 static volatile uint8_t sqm_arc;                         /* ARC: 0 OFF, 1 RISE, 2 DROP (tide_ui.c, the TIDE LIST; seq_arc.c) */
 static volatile uint8_t tarc_dropphr = 0xFFu, tarc_thin, tarc_fast, tarc_hold;   /* seq_arc.c's planner to the audio side: the drop's phrase, the parts thinned, turns every bar, no POLY */
 static uint32_t tarc_sync(void);
@@ -207,17 +207,11 @@ static void sqm_rand(sqm_end_t *x, uint32_t seed, uint32_t amt)
 static uint32_t sqm_len(const track_t *t) { return (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP); }
 static uint32_t sqm_sig(const track_t *t, const sqm_part_t *q, uint32_t len)
 {
-    const uint8_t *b = (const uint8_t *)t->step;
     const sqm_end_t *e[2] = {&q->a, &q->b[q->top]};
-    uint32_t h = 2166136261u, i, k;
-    for (i = 0; i < len * (uint32_t)sizeof(step_t); i++)
-        h = (h ^ b[i]) * 16777619u;
-    for (k = 0; k < 2u; k++) {
-        h = (h ^ e[k]->seed) * 16777619u;
-        for (i = 0; i < SD_N; i++)
-            h = (h ^ (uint8_t)e[k]->d[i]) * 16777619u;
-        for (i = 0; i < SQM_PITCH_BYTES; i++) h = (h ^ e[k]->pitch[i]) * 16777619u;
-    }
+    uint32_t h = fnv(2166136261u, t->step, len * (uint32_t)sizeof(step_t)), k;
+    _Static_assert(__builtin_offsetof(sqm_end_t, pitch) == __builtin_offsetof(sqm_end_t, d) + SD_N, "sqm_sig: the dials and the pitch bytes in one run");
+    for (k = 0; k < 2u; k++)
+        h = fnv((h ^ e[k]->seed) * 16777619u, e[k]->d, SD_N + SQM_PITCH_BYTES);
     h = (h ^ (uint32_t)scale_g ^ ((uint32_t)root_g << 8) ^ ((morph.cfg & MC_PIT) << 16) ^ ((uint32_t)morph_musical << 24)) * 16777619u;
     return (h ^ (len | (uint32_t)q->aon << 7 | (uint32_t)q->notes << 8)) * 16777619u;
 }
@@ -278,7 +272,7 @@ static void sqm_refresh(uint32_t pi, int force)
 
 static volatile uint8_t sqm_vary_all;                   /* VARY BARS: 0 4 + 8, 1 ALL (tide_ui.c, the TIDE LIST) */
 static volatile uint8_t sqm_poly = 1;                   /* POLY: 0 OFF, 1 GENTLE, 2 WIDE (tide_ui.c, the TIDE LIST; seq_poly.c) */
-static uint8_t poly_len[NSHOWN];                         /* (seq_poly.c: a part in a POLY stretch is never thinned) */
+static volatile uint8_t poly_len[NSHOWN];                /* POLY (seq_poly.c): the loop's length now, 0: the stored one (audio path writes; a part in a stretch is never thinned) */
 static const step_t SQM_REST = {{0}, 0, ST_REST, 0, 0, 0};
 static volatile uint8_t sqm_restart;                     /* tide_loaded put the loaded parts at A: glide_poll starts the running trip again from there */
 static volatile uint8_t sqm_auto;                       /* the parts in automatic MUSIC WNDR/JRNY, a bit each (glide_poll, main loop) */
@@ -294,7 +288,7 @@ static const step_t *sqm_step(const track_t *t, uint32_t idx, uint32_t vary)
         return q->aon || q->hold || (rhythm.active & (1u << pi)) ? &sqm_pat[pi][0][idx] : &t->step[idx];
     return &sqm_pat[pi][q->fader >= 1u + sqm_hash(q->tseed, idx / 4u, 9u) % 127u][idx];
 }
-/* LEAD / ECHO: part pi follows in this bar (part 2 leads bars 1-2 of 4, part 1 bars 3-4; ARC's fast turns: a bar each): a lead or pluck
+/* LEAD: part pi follows in this bar (part 2 leads bars 1-2 of 4, part 1 bars 3-4; ARC's fast turns: a bar each): a lead or pluck
  * line only (D2), and never on its own variation bar (audit C7: the ARC's 1-bar turns put part 2's bar 2 on part 1) */
 static int sqm_follows(uint32_t pi, uint32_t bar)
 {
@@ -307,7 +301,7 @@ static const step_t *seq_play_step_at(const track_t *t, uint32_t idx, uint32_t b
     uint32_t pi = (uint32_t)(t - trk), off = sqm_turns && sqm_auto == 3u && pi == 1u;   /* TAKE TURNS: part 2 two bars on, in the shared bars (bars 2 and 6) */
     uint32_t turn = ((bar + 2u * off) & 3u) == 3u;       /* (this part's own variation bar) */
     const step_t *s = sqm_step(t, idx, sqm_vary_all || !song.playing || turn);
-    /* LEAD / ECHO: the follower (sqm_follows) plays its thinned End A (onsets only: a tie after one stays silent) */
+    /* LEAD: the follower (sqm_follows) plays its thinned End A (onsets only: a tie after one stays silent) */
     if (pi < NSHOWN && song.playing && s->time == ST_NOTE) {
         /* ARC: the drop's first 2 bars, both parts in automatic WNDR / JRNY start nothing (ties and tails ring) */
         if (tarc_dropphr == ((bar >> 2) & 63u) && (bar & 3u) < 2u && ((sqm_auto >> pi) & 1u))
@@ -407,7 +401,7 @@ static void seqm_wander_gen(uint32_t pi, uint32_t x, uint32_t tier)
     sqm_part_t *q;
     sqm_end_t nx;
     uint32_t k, r = morph_new_seed() * 2654435761u + 1u;
-    int32_t amt, step, v;
+    int32_t amt, step;
     if (pi >= NSHOWN)
         return;
     q = &sqm[pi];
@@ -428,12 +422,7 @@ static void seqm_wander_gen(uint32_t pi, uint32_t x, uint32_t tier)
         r = r * 1103515245u + 12345u;
         if (!q->dir[k] || (r >> 16) % 6u == 0u)
             q->dir[k] = (int8_t)((r >> 30) & 1u ? 1 : -1);
-        v = nx.d[k] + q->dir[k] * step;
-        if (v > amt)
-            v = amt, q->dir[k] = -1;
-        else if (v < -amt)
-            v = -amt, q->dir[k] = 1;
-        nx.d[k] = (int8_t)v;
+        nx.d[k] = (int8_t)tide_walk(nx.d[k], &q->dir[k], q->dir[k], step, amt);   /* (morph_music.c: the sound's dials walk the same way) */
     }
     sqm_pitch_mutate(&trk[pi], &nx, r, tier, q->notes);
     if (tier >= 3u || (tier == 2u && (r >> 8) & 1u))

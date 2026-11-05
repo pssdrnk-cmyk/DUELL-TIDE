@@ -315,7 +315,8 @@ static uint32_t morph_xtunes(const mxs_t *x, uint32_t k, uint32_t tp)
 
 /* part pi's arc at rest (morph.c morph_begin: no morph on the part, or another sound's): what the valley, the wash and the voices'
  * dip read is cleared, so nothing of a transition or a glide stays on a sound that does not move (the audio ISR) */
-static uint16_t morph_cdd[NSHOWN];                      /* (below: the voices' filter dip) */
+static uint16_t morph_cdd[NSHOWN];                      /* the filter dip: its depth (Q15); the voices' effective cutoff, routes and key included,
+                                                          * goes that share of the way down to the floor (morph_xcut) */
 static __attribute__((noinline)) void morph_xrest(uint32_t pi)
 {
     mxs_t *x = &mxs[pi % NSHOWN];
@@ -355,10 +356,8 @@ static int32_t morph_xarc(uint32_t tp, uint32_t a, uint32_t b)
     return tp <= a || tp >= b ? 0 : tp < XLP0 ? xrise(xpos(tp, a, XLP0)) : tp <= XLP1 ? 32768 : 32768 - xrise(xpos(tp, XLP1, b));
 }
 static int32_t morph_xdepth(uint32_t tp) { return morph_xarc(tp, XW0, XW1); }
-static uint16_t morph_cdd[NSHOWN];                      /* the filter dip: its depth (Q15); the voices' effective cutoff, routes and key included,
-                                                          * goes that share of the way down to the floor (morph_xcut) */
 #define XBR_Q8 4634                                      /* GLIDE's breath at its deepest: two octaves of the dial (2317 Q8 steps an octave) */
-/* WASH LEVEL (TIDE LIST; ui_jam.c keeps it in the settings): 0 OFF (the default since 2026-11-01, owner), 1 LOW, 2 MID, 3 HIGH. It scales GLIDE's movement
+/* WASH LEVEL (TIDE LIST; tide_ui.c keeps it in the settings): 0 OFF (the default since 2026-11-01, owner), 1 LOW, 2 MID, 3 HIGH. It scales GLIDE's movement
  * (the breath, the swell: XWL, x 0 .. 1.5), a transition's swell, and the wash's fill (15 dB under the part's level at rest at MID,
  * 3 dB a step: XWS). OFF: plain glides, a transition still smoothed (its filter dip, the INSERT's, FM6's valley) */
 static uint8_t morph_wlvl = 0u;
@@ -440,8 +439,8 @@ static __attribute__((noinline)) void morph_xpost(track_t *t, uint32_t pi)
         /* the cutoff down toward 1.5 times the highest note: the effective one (morph_xcut): a filter envelope that opens a dark
          * patch's filter would otherwise keep it open */
         morph_cdd[pi] = (uint16_t)df;
-        if (p[P_FREEB] > 64)                             /* RES held to half while it closes: a switch through a resonant filter rings */
-            p[P_FREEB] = (int16_t)(p[P_FREEB] - (((p[P_FREEB] - 64) * df) >> 15));
+        if (p[P_FREEB] > 30)                             /* RES held to 30 while it closes (the damping of the old law's half, 64; audit P07): a switch through a resonant filter rings */
+            p[P_FREEB] = (int16_t)(p[P_FREEB] - (((p[P_FREEB] - 30) * df) >> 15));
     }
     if (x->dub) {                                        /* the swell: the delay and reverb sends, up to 3/4 of the way to full */
         p[P_DLY] = (int16_t)(p[P_DLY] + (((127 - p[P_DLY]) * (int32_t)x->dub * 3) >> 17));

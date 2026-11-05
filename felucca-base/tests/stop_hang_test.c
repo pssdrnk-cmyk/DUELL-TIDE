@@ -6,7 +6,7 @@
  *   GATE     no voice keeps its gate (a note held: sustaining), and no FM6 carrier keeps its key, a few blocks after the request; no gated voice without an owner (the sequencer, the arp, a key) while playing
  *   VOICES   every voice has ended within its envelope release (the formula of env_tick; FM6: within 44 s); after STOP ALL within 0.2 s
  *   LEVEL    the output is under -70 dBFS within the last voice + the FX tail of the same multi let go the same way (twice, 3 s at least); after STOP ALL within 0.5 s
- * Setups: the factory multis under TIDE (STYLE DUB: JRNY, WAIT 2, LEAD, POLY GENTLE, SYNC SOFT, ARC RISE; PEAK: ARC DROP, ECHO; 1 and 16 bar trips; TIDE idle),
+ * Setups: the factory multis under TIDE (STYLE DUB: JRNY, WAIT 2, LEAD, POLY GENTLE, SYNC SOFT, ARC RISE; PEAK: ARC DROP, LEAD; 1 and 16 bar trips; TIDE idle),
  * stopped at many moments after PLAY (mid step, mid glide, in WAIT, on the bar line), by a plain STOP and by STOP ALL. The failing cases are counted by
  * cause. STOPHANG_V=1 lists every failing case; STOPHANG_CASES=n sets the stop moments per setup (10); STOPHANG_MULTIS=0 skips the sweep of all sixteen multis.
  * Keys: a chord played and lifted with the PLAY STOP press (M04, M02: HOLD ARP latches it on a SEQ arp). */

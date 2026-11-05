@@ -24,7 +24,7 @@
 # hunt1 (release_drafts/CLICK_HUNT1.md): the fader's steps of the sends, PATCH LEVEL and PAN are ramped inside the block (mod.c mod_mixmv counts the open morph window): M08 f127,
 # M09 f63 f127, M12 f63 f127 re-made once (2 to 16 samples in the first 12 ms differ, by at most 15 of a peak of 17,000: the step of the fader set at the start).
 # hunt1: SAT out of 0 and back into 0 without a step (fx.c track_dist_ramp): M12 f127 and S05_DEAD_BUFFER f127 re-made once (their matrix route lets the followed SAT run down
-# through the integer 0 at 1.43 s, 9 blocks; from there on the render differs by at most 89 of a peak of 12,900 / 19,700, 0.5 ). The other 103 renders are unchanged.
+# through the integer 0 at 1.43 s, 9 blocks; from there on the render differs by at most 89 of a peak of 12,900 / 19,700, 0.5 %). The other 103 renders are unchanged.
 # hunt1: the SPREAD mix's gains in a line while a route or the MORPH window moves them, SAT's blend ramp on a SPREAD part (fx.c spread_run / spread_post): M03 f63 f127, M05 f0 f63 f127,
 # M06 f63 f127, M07 f0 f63 f127, M10 f63 f127, M11 f63 f127 re-made once (14 of 105; the start of the render, the stored PAN's follower and the fader's first steps on SPREAD parts:
 # the largest difference is 266 of a peak of 17,000 (M10 f127), most 4 to 95). The other 91 renders are unchanged.
@@ -34,6 +34,8 @@
 # ms later, so the phase differs from there on); that is not a click.
 # pedal hunt (release_drafts/PEDAL_BASS_HUNT.md): the ducker keeps 2 more bits of every ducked sample (fx.c duck_run), and PHASE slews a jumping DCW / ENV / SUB (eng_phase.c pd_sl):
 # the renders listed as CHANGED by the test before this commit were re-made once (the multis and scenes with a working ducker or a moving PHASE shape).
+# Audit P01 (2026-11-04), on purpose, 18 renders: GLIDE takes the time GLD shows (voice.c glide_set); the multis with a LEGATO part that glides between the held chord keys, M01 M08 M14 S01 S08 X08, re-made once; the others are unchanged.
+# Audit P01: the factory multis' own GLD migrated as the sounds' (their old 7-semitone glide: M01 26/26 -> 61/61, M08 38/28 -> 61/61, M14 21/26 -> 51/61): M01 M08 M14 re-made once more.
 
 # hunt4 (release_drafts/HUNT4.md): PHASE's moving DCW no longer steps at the block seams (eng_phase.c phase_render_0): S14 TEST 2 PHASE, S15 TEST 3 HEAVY and X14 SEVENOAKS re-made.
 
@@ -43,10 +45,7 @@
 # 1.0 owner's answers: M04 DUB CHORD's TRIM one more step down (peak ceiling) and its seed k = 20: its three renders made again. M05 / M11 name VOICE sounds by their closed-up factory indices (CROONER left the bank): same sound, same hashes.
 # DUELL 1.1 / jam11, on purpose, all 105 (docs/JAM11_TEST_BASELINE.md): every render changes by the 1.1 sound changes the regress golden (tests/golden.txt) traces on 1.0 and jam11 audio: the
 # note-start stagger (item 144: the chords start 2 voices a block), BIT DEPTH, REVERB_FIX / SHIM / delay rounding, the factory sounds' new recipes and End B as values, the multis' ROLL B;
-# U2 B: M16 is CELLAR TAPE (new, three hashes re-made); S17_STRESS_TEST is the former M16 record as a test scene (new baseline: scenes render with BASS MONO off, the factory multis with it on).
 # jam11 adds TIDE's roll changes and PHYS tuning. (Not compared audio against 1.0: the 1.0 tree does not build this test on Linux, nor does stock 1.1 (scenes.h / mu_put_rec).)
-# Audit P01 (2026-11-04), on purpose, 18 renders: GLIDE takes the time GLD shows (voice.c glide_set); the multis with a LEGATO part that glides between the held chord keys, M01 M08 M14 S01 S08 X08, re-made once; the others are unchanged.
-# Audit P01: the factory multis' own GLD migrated as the sounds' (their old 7-semitone glide: M01 26/26 -> 61/61, M08 38/28 -> 61/61, M14 21/26 -> 51/61): M01 M08 M14 re-made once more.
 # Audit P07 (2026-11-05), on purpose, 92 of the 108: RES's damping is exponential (voice.c UF_K); the factory multis' RES, FILTER ENV MRES and FRES depths (A and End B) moved to the step of the same damping (tools/factory_multis/*.bin), every one of M01..M16 re-made; the test scenes S, X are not migrated (they play the new law).
 # Audit R07 (2026-11-05), on purpose, 27 of the 108: the chorus's and the delay modulation's sweep holds its pitch swing above CRT 40 / MRATE 44 (fx_bus.c fx_swing), MDEPTH 100 = +-25 cents; M02 M04 M06 M07 (MDEPTH migrated to the same swing) and M08 (its 18 Hz chorus: CDP 127) re-made, and the scenes with a delay modulation or a fast chorus, S02 S07 S17 X07; the others are unchanged.
 M01 f0 12135e71ca318967
@@ -59,14 +58,14 @@ M03 f0 1f6c11eb99ac2e20
 M03 f63 60d6ccb0f5359107
 M03 f127 fb9a262b7ef7fa66
 M04 f0 6cb747d896bc064d
-M04 f63 dff1e5096d6a2926
-M04 f127 011d3cf7b1110e33
+M04 f63 54bf524f549703fd
+M04 f127 5f70f11743bcd5b8
 M05 f0 f5c42891322417bf
 M05 f63 c800ac81649fbd09
 M05 f127 d24803b4f6fc71e2
-M06 f0 4876f5f4d6c16de0
-M06 f63 a8f83224260d913e
-M06 f127 113a3e76906c7ad8
+M06 f0 7d57427cc48deb6e
+M06 f63 93161e1b1b8f3288
+M06 f127 12e40cb7241409e3
 M07 f0 a4632740153dc7b0
 M07 f63 cbfa8b05b3741e7c
 M07 f127 afae3dd468d6453d
@@ -133,24 +132,24 @@ S13_TEST_1_BASE f127 7c7e69fe16363b7a
 S14_TEST_2_PHASE f0 64c90fab6f837e1f
 S14_TEST_2_PHASE f63 dc4c086db7119e03
 S14_TEST_2_PHASE f127 61096eadf3fbc453
-S15_TEST_3_HEAVY f0 6df2d7bfdc137551
-S15_TEST_3_HEAVY f63 d63d21a642d6fbd8
-S15_TEST_3_HEAVY f127 051af36b8a410708
+S15_TEST_3_HEAVY f0 3c50f7659f88f1e3
+S15_TEST_3_HEAVY f63 9f7d412a981eeaba
+S15_TEST_3_HEAVY f127 7ad810cc3f88aae3
 S16_TEST_4_MIX f0 4ef8e2359827e7e1
 S16_TEST_4_MIX f63 7bbd7b4cd4cf6e38
 S16_TEST_4_MIX f127 8927d1a8dfd9bf5b
-X06_TINE_STRINGS f0 1a6c54b11709850d
-X06_TINE_STRINGS f63 6e4848c8a689b2d8
-X06_TINE_STRINGS f127 0532efe456895255
+X06_TINE_STRINGS f0 ab6e28811d8f569d
+X06_TINE_STRINGS f63 a3a96ca21244a87d
+X06_TINE_STRINGS f127 42fcaff448dc82f4
 X07_BOWL_AND_WIND f0 25b51f46a0acc899
 X07_BOWL_AND_WIND f63 c949bdbf0b34a770
 X07_BOWL_AND_WIND f127 111b61e78b6d0235
-X14_SEVENOAKS f0 b77e438350634143
-X14_SEVENOAKS f63 971f235564283e3c
-X14_SEVENOAKS f127 89b55a85a29421d1
-X13_BASILDON f0 861e993981eefc1f
-X13_BASILDON f63 0ff5467919c17653
-X13_BASILDON f127 278570154fa9f3b3
+X14_SEVENOAKS f0 3bfddfffcb8f602a
+X14_SEVENOAKS f63 e13bf88166e07f7a
+X14_SEVENOAKS f127 793b871bdf2685ce
+X13_BASILDON f0 a6f7fd7169b315df
+X13_BASILDON f63 eb7dc9ae2a8837bb
+X13_BASILDON f127 eb38e9a419e30ed5
 X08_MONO_DUEL f0 a5597e1c2ca33235
 X08_MONO_DUEL f63 ce4dd856e2916993
 X08_MONO_DUEL f127 b115705f19526a91
