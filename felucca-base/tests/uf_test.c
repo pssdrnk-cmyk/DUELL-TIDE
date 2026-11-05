@@ -56,14 +56,17 @@ static int32_t ob[2 * CTL];
 static int32_t *rec_l;                                   /* shared with the render's child process (mmap) */
 static volatile uint32_t *rec_nsh;
 #define rec_n (*rec_nsh)
+static int32_t *cut_sh;                                  /* filter 1's slewed CUT (Q8 dial steps) of part 1 per block of the last render */
+#define EFF_CUT() (ucut_sm[0])
 static int32_t *peak_sh;                                 /* the part's peak per block of the last render (t->peak), MAXB entries */
 static void shared_init(void)
 {
-    uint32_t sz = MAXB * CTL * sizeof(int32_t) + MAXB * sizeof(int32_t) + 64u;
+    uint32_t sz = MAXB * CTL * sizeof(int32_t) + 2u * MAXB * sizeof(int32_t) + 64u;
     uint8_t *m = mmap(0, sz, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANON, -1, 0);
     rec_l = (int32_t *)m;
     peak_sh = (int32_t *)(m + MAXB * CTL * sizeof(int32_t));
-    rec_nsh = (volatile uint32_t *)(m + MAXB * CTL * sizeof(int32_t) + MAXB * sizeof(int32_t));
+    cut_sh = (int32_t *)(m + MAXB * CTL * sizeof(int32_t) + MAXB * sizeof(int32_t));
+    rec_nsh = (volatile uint32_t *)(m + MAXB * CTL * sizeof(int32_t) + 2u * MAXB * sizeof(int32_t));
 }
 static uint32_t eng_named(const char *n)
 {
@@ -116,6 +119,7 @@ static void mblk(uint32_t n)
     while (n--) {
         mix_block(ob, CTL);
         if (rec_n < MAXB * CTL) {
+            cut_sh[rec_n / CTL] = EFF_CUT();
             peak_sh[rec_n / CTL] = trk[0].peak;              /* the part's own level this block (mix_part's running maximum) */
             trk[0].peak = 0;
             for (uint32_t i = 0; i < CTL; i++)
@@ -915,6 +919,34 @@ static void fb_cut_hp(track_t *t, uint32_t b)            /* HP: CUT 60 up to 82 
     t->p[P_FREEA] = (int16_t)(k < 22u ? 60u + k : 104u - k);
 }
 static void fb_slope(track_t *t, uint32_t b) { set_f(t); t->p[P_FREED] = (int16_t)(b / 100u % 2u ? 2 : 1); }
+/* the CUT dial slewed (audit P08): a sweep of the dial over 1 s moves filter 1's cutoff in steps well under a dial step a block (it moved 1.32 semitones at a block edge),
+ * lands exactly, and a jump of 8 steps or more (a sound load) is not slewed */
+static void fb_ramp(track_t *t, uint32_t b)              /* CUT 20 up to 60, a dial step every 34 blocks (1 s) from block 100 */
+{
+    uint32_t k = b < 100u ? 0u : (b - 100u) / 34u;
+    set_f(t);
+    t->p[P_FREEA] = (int16_t)(20u + (k > 40u ? 40u : k));
+}
+static void fb_cjump(track_t *t, uint32_t b) { set_f(t); t->p[P_FREEA] = (int16_t)(b < 300u ? 10 : 80); }
+static void t_cutslew(void)
+{
+    int32_t worst = 0, lag = 0, d;
+    uint32_t b, e = eng_named("PHASE");
+    sf(20, 60, 0, 1);
+    render_blk(e, fb_ramp);
+    for (b = 101u; b < 1500u; b++) {
+        d = cut_sh[b] - cut_sh[b - 1u];
+        worst = d < 0 ? (-d > worst ? -d : worst) : (d > worst ? d : worst);
+        d = cut_sh[b] - (int32_t)(20u + ((b - 100u) / 34u > 40u ? 40u : (b - 100u) / 34u)) * 256;
+        lag = d < 0 ? (-d > lag ? -d : lag) : (d > lag ? d : lag);
+    }
+    printf("uf:   CUT dial swept 20 .. 60 in 1 s: the largest move of the cutoff in one block %d of 256 (a dial step), the largest lag behind the dial %d\n", worst, lag);
+    expect("the CUT dial swept over 1 s: the cutoff moves under half a dial step (128 / 256) in any block, not a whole step", worst > 0 && worst <= 128);
+    expect("the swept CUT lands exactly on the dial (60) and never trails it by more than a dial step", cut_sh[1500] == 60 * 256 && lag <= 256);
+    sf(10, 60, 0, 1);
+    render_blk(e, fb_cjump);
+    expect("a CUT jump of 70 steps (a sound load) is not slewed: the cutoff is at the new dial in that block", cut_sh[299] == 10 * 256 && cut_sh[300] == 80 * 256);
+}
 static void t_sweeps(void)
 {
     static const char *const E[3] = {"PHASE", "WHEEL", "WAVE"};
@@ -1815,6 +1847,7 @@ int main(void)
     t_lowcut();
     t_exact();
     t_sweeps();
+    t_cutslew();
     t_routes();
     t_stable();
     t_migrate();

@@ -1064,6 +1064,14 @@ static __attribute__((noinline)) void atg_voice(const track_t *t, voice_t *v, vm
  * part's). It starts from rest (the integrators charged with the block's first sample: no step) when a voice starts or after a
  * bypass; the second stage starts charged with the first's low-pass state, and a SLOPE turned while it sounds fades the second stage
  * in (out) over one block */
+static int32_t ucut_sm[NLIVE];                          /* each part's CUT dial as filter 1 reads it (Q8 dial steps; track_render slews it to P_FREEA) */
+/* a part's CUT dial u (Q8) as filter 1 reads it: a quarter of the way a block (3 ms), exact landing (the dial and CC74 stepped 1.32 semitones at a block edge);
+ * a jump of 8 steps or more (a sound load) is not slewed */
+static __attribute__((noinline)) int32_t cut_slew(uint32_t ti, int32_t u)
+{
+    int32_t d = u - ucut_sm[ti], a = d < 0 ? -d : d;
+    return ucut_sm[ti] = a > 2048 ? u : ucut_sm[ti] + (d < 0 ? -((a + 3) >> 2) : (a + 3) >> 2);
+}
 #define UF_TOP (UF_STEPS << 8)                          /* the open end, Q8 dial steps */
 /* the three engines that lost their own filter (cloud job J, TWIN_FILTER_DESIGN_2 1.2): the accent (velocity over 110 opens the filter with the envelope) lifts BOTH filters on them, filter 1
  * (in its effective cutoff) and filter 2 even with LINK off (chain_f2.c f2_cut); on the other engines the lift stays the engine's own tone control and filter 2's linked cutoff */
@@ -1254,7 +1262,7 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
     bend16 = bend >= 0 ? bend / 16 : -((-bend + 15) / 16);
     bend_fine = (bend - bend16 * 16) * 2367 / 2560;
     uint32_t nr = 0, fade = t->xf_on && t->xf, abits = atgt_bits(t), uf = e->ufilt;
-    int32_t ucut0 = uf ? clamp(p[P_FREEA], 0, UF_STEPS) << 8 : 0;   /* the multimode filter's dial (Q8) */
+    int32_t ucut0 = uf ? cut_slew(ti, clamp(p[P_FREEA], 0, UF_STEPS) << 8) : 0;   /* the multimode filter's dial (Q8), slewed */
     int16_t pe_new[8];
     for (i = 0; i < n; i++)
         out[i] = 0;
