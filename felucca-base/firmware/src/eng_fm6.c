@@ -59,7 +59,7 @@ static struct {                                  /* the patch through the macros
     uint8_t gen, alg, fb, ok;
     int16_t e[7];                                /* P_E0..P_E6 it was made with */
     int16_t env[4];                              /* the AMP ENV knobs (P_ATK, P_DEC, P_SUS, P_REL) it was made with (fm6_env_derive) */
-    uint16_t ug;                                 /* the UNISON amplitude for the voices running now (unison_gain.c, once a block) */
+    uint16_t ug, ugp;                            /* the UNISON amplitude for the voices running now (unison_gain.c, once a block) and the block before's: the voices ramp from one to the other */
     uint32_t mk;                                 /* the morph's key it was made with (fm6_morph: 0 = none) */
     int32_t dt[6];                               /* DTUN: per operator, Q24 log2 */
 } fm6_eff[NLIVE];                              /* (DUELL: the shown parts; a hidden part never sounds) */
@@ -791,7 +791,7 @@ static void fm6_render(track_t *t, voice_t *v, int32_t *out, uint32_t len, const
     }
     /* the voice's amplitude ramp x VOICE_FS (one carrier at full: VOICE_FS / 2), the voices running in unison ~ one */
     k = fm6_eff[tr].ug;                               /* (UNISON: by the voices running, unison_gain.c; else VOICE_FS) */
-    a = mulq15(m->amp0, k);
+    a = mulq15(m->amp0, fm6_eff[tr].ugp);             /* (from the block before's, so a voice that stops or starts does not step the others) */
     da = (mulq15(m->amp1, k) - a) >> FM6_LG_N;
     for (i = 0; i < FM6_N; i++) {
         int32_t x = bus[i] - n->dc;
