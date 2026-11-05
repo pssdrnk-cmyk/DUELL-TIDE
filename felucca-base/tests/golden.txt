@@ -33,6 +33,10 @@
 # LOFI NOISE TRIO WAVE WHEEL, the sends and the 4-track mix fall to -40 .. -52 dB residual, which is (2) BIT DEPTH (the level stages keep the two low bits), REVERB_FIX (comb damping and
 # delay feedback rounded, tails end in exact silence), the SHIM rework. (3) The rest: the velocity accent and PHYS exciter brightness from the key (not the velocity), the string loop's
 # tuning (phys_dsp.c), PHASE's bend, and the factory sounds' new recipes, TRANS and End B as values (tools/duell_sounds.py): the sound/ renders and the PHYS / PHASE / VOICE presets.
+# CPU fix (wave 14, the FM6 release-tail cull), on purpose, 22 of the 245: a released FM6 note whose carriers together fell under -66 dB of one full carrier now ends
+# there, fading over its last block (fm6_core.c FM6_CULL, voice.c track_render), not at msfa's -89 dB threshold with a step: preset/FM6/00..07, sound/FM6/00..07 and
+# 09..13, and song/4track_mix (its FM6 track). Bit for bit as before up to that block; in it the largest difference is 31 of a peak of 12,900 (-52 dB).
+# sound/FM6/14_FM_HAZE, 15_DUB_DRAWBAR and 16_BELL_STAB (lane G's, without a golden until now) are added at today's hashes. Every other render is unchanged.
 preset/ANALOG/00_SAW_LEAD 6323c15d76dfb3b5
 preset/ANALOG/01_SOFT_PAD 88dbc29b63efac5b
 preset/ANALOG/02_SQR_BASS f6bd09aacbad9a6a
@@ -83,14 +87,14 @@ preset/NOISE/00_WIND 50c6b6591e8a9c55
 preset/NOISE/01_RAIN 3399b43de92c4719
 preset/NOISE/02_ARCADE 278181ba3ad2bfe6
 preset/NOISE/03_METAL 7045dc7ce41e1ba7
-preset/FM6/00_TINE_EP 0becad389e1f09a5
-preset/FM6/01_BELL 721567c66b69c7ab
-preset/FM6/02_FM_BASS 4ed2255c61c1d627
-preset/FM6/03_BRASS 0c79a3f57cd6a3f5
-preset/FM6/04_PAD 3d4ecd1bfcb18933
-preset/FM6/05_MARIMBA 6faca9e641030ced
-preset/FM6/06_ORGAN a82dfb1111506ad2
-preset/FM6/07_PLUCK 829b76b41aeba7bf
+preset/FM6/00_TINE_EP 2c55a28083ac633c
+preset/FM6/01_BELL 05027d337039fd5f
+preset/FM6/02_FM_BASS 38cd3835103baa3d
+preset/FM6/03_BRASS ed7f9f90d7f9a504
+preset/FM6/04_PAD c59112555467e892
+preset/FM6/05_MARIMBA 095d8ee69f94aef9
+preset/FM6/06_ORGAN 3aa4e65c48223075
+preset/FM6/07_PLUCK 52d9359b60b8bac1
 preset/WAVE/00_SAW_PAD a2174e646d641d88
 preset/WAVE/01_PWM_STRING f510bac6d6fb5069
 preset/WAVE/02_HARM_KEYS 6365829392315d28
@@ -220,20 +224,23 @@ sound/NOISE/09_MODEM 04d357c30d13527e
 sound/NOISE/10_REV_CYMBAL 23a35f51fdb372a4
 sound/NOISE/11_DUST_BED 6bc64304f6bdd9b6
 sound/NOISE/12_TAPE_HISS 7462423d17d54e47
-sound/FM6/00_SLAP_DOCTOR 27884fb1c9c093b8
-sound/FM6/01_HAN_SOLO 32ca404e51eab0ed
-sound/FM6/02_GLASS_HALL d8a151766d2fa249
-sound/FM6/03_MALLET_WOOD 62cd4a573f6a8008
-sound/FM6/04_TINE_ROOM c649b12d6bb2cde0
-sound/FM6/05_BIG_STAB 8e8de35c4005fb0b
-sound/FM6/06_FROST_BELLS 6074cba8f527b758
-sound/FM6/07_ALIEN_CHIMES 52b9787701e8d9fd
+sound/FM6/00_SLAP_DOCTOR d8f00caae0b2fbc8
+sound/FM6/01_HAN_SOLO 88e1cc1b19c6c1bf
+sound/FM6/02_GLASS_HALL cca45345b94d125e
+sound/FM6/03_MALLET_WOOD f7b7ea52e3a2a967
+sound/FM6/04_TINE_ROOM 3ac4bc75eacd8f31
+sound/FM6/05_BIG_STAB a152e93f050dba56
+sound/FM6/06_FROST_BELLS 7bc901788f9f9dc2
+sound/FM6/07_ALIEN_CHIMES a7a10cdbd7476b48
 sound/FM6/08_TEMPLE_BLOCK f3552ff10e5cd0bc
-sound/FM6/09_ISLAND_STEEL c8a4c98924d12774
-sound/FM6/10_SALOON_KEYS 000de52227e5e948
-sound/FM6/11_FRETLESS 4e21445a0304b5e0
-sound/FM6/12_FM_BASS_2 b99efddcf91afd99
-sound/FM6/13_TUBE_BELLS 61b3d86680331f03
+sound/FM6/09_ISLAND_STEEL 1a97219ee35f1ab0
+sound/FM6/10_SALOON_KEYS 445bd9fa3ebe904a
+sound/FM6/11_FRETLESS a19737250e635291
+sound/FM6/12_FM_BASS_2 5acd41e7105b5c89
+sound/FM6/13_TUBE_BELLS 5c30e104e5ce4c9c
+sound/FM6/14_FM_HAZE 7b0e72db2250d404
+sound/FM6/15_DUB_DRAWBAR 8ed0166e8b29beff
+sound/FM6/16_BELL_STAB 7f43b7800d603811
 sound/WAVE/00_PWM_PAD db987798846cb79a
 sound/WAVE/01_VOWEL_PAD 6ec5b11142be6979
 sound/WAVE/02_GLASS_PAD 325f3726eadaac1c
@@ -274,4 +281,4 @@ sends/ANALOG/delay 35dfaee5bfeb0bb4
 sends/ANALOG/reverb 446ae3d9a270e8a4
 sends/ANALOG/all 3de4dcb7ad20d1de
 sends/ANALOG/dist 7073cc27fa7ab80e
-song/4track_mix eaa532b1ae714c0e
+song/4track_mix c1e941ec51960c74

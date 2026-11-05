@@ -53,12 +53,15 @@
 # Audit P08 (CUT dial slewed, voice.c cut_slew), on purpose, 55 renders: the fader 63 / 127 renders of the multis and scenes whose MORPH moves the CUT dial.
 # Audit P09, on purpose, 9 renders: ANALOG's PW card is E4, the slot that held the old VCF's CUT; the test scenes S13, S14 and the spare X06 still store a CUT value there on a PWM part, which now sets its width.
 # D31 (audit G14, 2026-11-05), on purpose, 45 of the 108: the sixteen factory multis are in the curated dub / house order (BASIC CHORD, DUB CHORD, CELLAR TAPE, NIGHT ORGAN, ORGAN SKANK, WARM ECHO, MINIMAL 12, TINE DUB, DEEP 332, then the owner's PAD SPLIT .. FINAL REEL), six of them new: every M01..M16 render but M13 COLD CHAPEL (which keeps its slot) is another record; DUB CHORD's TIDAL SUB line is an octave up and its LEVEL 4 lower. The scenes and the spare renders are unchanged.
+# CPU fix (wave 14, the FM6 release-tail cull), on purpose, 13 of the 108: a released FM6 note whose carriers together fell under -66 dB of one full carrier ends there,
+# fading over its last block (fm6_core.c FM6_CULL): M02 and M08 (three faders each), M12 f63 f127, X06_TINE_STRINGS f63 f127 and X14_SEVENOAKS (three faders) are re-made
+# once; the others are unchanged.
 M01 f0 8516e2d86839da47
 M01 f63 9f57457fbb78001f
 M01 f127 fa4ed2b74f73b0d1
-M02 f0 b54581f5b21d1236
-M02 f63 a3635167fe54edb0
-M02 f127 09d390719cdef900
+M02 f0 c3cc9d4e6bf22b9d
+M02 f63 783cce578d09c32d
+M02 f127 c082fcf250b3835c
 M03 f0 d69c121f4374429f
 M03 f63 0f5977e037d6439f
 M03 f127 7bb367d7deabe4d2
@@ -74,9 +77,9 @@ M06 f127 ea3bc7726fa1498b
 M07 f0 4f9fbc7b5e25da21
 M07 f63 20d3e4fbadddf1e7
 M07 f127 17b92725dddd6dc6
-M08 f0 45570d0f98a7bee6
-M08 f63 731f00b0851362a4
-M08 f127 2814d8301b11c62b
+M08 f0 e09d0b4467fdae04
+M08 f63 8daa3e54c5e8fb97
+M08 f127 52fe0744be430f50
 M09 f0 41252ef499c03eff
 M09 f63 4c74a9d0fb5ec32f
 M09 f127 db865c4598cd784b
@@ -87,8 +90,8 @@ M11 f0 a9ad5e9c4297a62d
 M11 f63 16a2d6cc837a1c01
 M11 f127 e2f65b33ad3b6033
 M12 f0 87993c01bac9b774
-M12 f63 a9f4fc0e19dded9a
-M12 f127 7d3f73a93e41f562
+M12 f63 7f209d7f47e76081
+M12 f127 0cb261633c30eb91
 M13 f0 95eb65fd1fe5d0d5
 M13 f63 45ee3e79967f19f9
 M13 f127 8931eceb66bf96a6
@@ -144,14 +147,14 @@ S16_TEST_4_MIX f0 13531cae324f7def
 S16_TEST_4_MIX f63 267dbcce7591fd91
 S16_TEST_4_MIX f127 47346f11d9636f26
 X06_TINE_STRINGS f0 8b9863bac10b36e3
-X06_TINE_STRINGS f63 a14e1251ccb19c33
-X06_TINE_STRINGS f127 382094b4a93f9e43
+X06_TINE_STRINGS f63 19372a6974c56c76
+X06_TINE_STRINGS f127 b75a4f52f682c513
 X07_BOWL_AND_WIND f0 3664bc71311ac4f5
 X07_BOWL_AND_WIND f63 68d85908027e234f
 X07_BOWL_AND_WIND f127 5c2ac52bd4a9777f
-X14_SEVENOAKS f0 0c76ef85883e0d84
-X14_SEVENOAKS f63 82f70cc69632f272
-X14_SEVENOAKS f127 e7c2016def217281
+X14_SEVENOAKS f0 987bdf61bf8fac26
+X14_SEVENOAKS f63 5b14acc47337a470
+X14_SEVENOAKS f127 1da2f6fe10489f74
 X13_BASILDON f0 c1ec4e1e5bb6c561
 X13_BASILDON f63 ba91aefe304684f0
 X13_BASILDON f127 88cc15a8d1064601

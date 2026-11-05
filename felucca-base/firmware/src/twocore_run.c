@@ -349,7 +349,7 @@ static uint32_t tcr_deadline(uint32_t now, int *nofit)
          * is useful until the half's end less exactly that (= cap + part 2's own cost). Never later than the half's end (the globals are >= 0).
          * DUELL 1.1 item 142 (HANDOFF_V2 item 139): the later of that (the 1.15 table) and the same rest at TRUE cost (the items brought back as tcr_deadline_true does, rounded up) less
          * TCR_SLACK: the cushion is a flat 0.2 block instead of 15 % of the rest. Measured on the unit (item 139, 312 clean setups) the true rest covered core 0's real post-wait need
-         * at the half's peak in every case; core 1's block-0 job then fits the caps of BUDGET_LIMIT 84 (tests/deadline_test.c CORE 1). Never after the half's end */
+         * at the half's peak in every case; core 1's block-0 job then fits the caps of BUDGET_LIMIT (84 until wave 14, 72 now: more slack; tests/deadline_test.c CORE 1). Never after the half's end */
         uint32_t rest = need > c2 ? need - c2 : 0u, rt, c1t = tcr.t1f + a1 * tcr.t1v;
         int32_t lo, lt;
         rt = tcr.tg + (TCR_BLOCKS - 1u - k) * (tcr.two ? c1t + tcr.tg : c1t + tcr.t2f + a2 * tcr.t2v + tcr.tg);
