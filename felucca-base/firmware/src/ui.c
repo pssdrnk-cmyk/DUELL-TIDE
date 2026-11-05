@@ -664,38 +664,87 @@ static void layer_foot_title(char *nm, char *ct);   /* the footer's page name an
 static uint32_t layer_leds(uint32_t *br);
 static uint32_t layer_btn(void);
 
-/* FILTER the multimode filter's (every engine with ufilt; the engines' own filter pages are gone: cloud job J); OPERATOR, OP ENV, OPERATOR 2 an FM6 track's (its patch's
- * operators, ui_fm6op.c). (DUELL: DIGITAL's OP ENV pages and DRUM's LANES are gone, their ids hold DUELL's parameters; 0.2.9: SLICE's
- * SLICES page is gone with the engine) */
-static int page_twin_sub(uint32_t i)   /* TWIN MOD or TWIN CHAIN (cloud job H): the pages that exist only while filter 2's TYPE is not OFF */
-{
-    return PAGES[i].scope == SC_TRACK && (PAGES[i].id[0] == XW_BASE + X_KTRK2 || PAGES[i].id[0] == XW_BASE + X_ROUTE);
-}
-static int page_empty(const page_t *pg);              /* (ui_draw.c, item 158: a CELL page with no card to show) */
+static int page_twin_sub(uint32_t i) { return PAGES[i].vis == VIS_TWIN; }   /* TWIN MOD, TWIN CHAIN: the pages that exist only while filter 2's TYPE is not OFF */
+static int page_empty(const page_t *pg);              /* (ui_draw.c: a CELL page with no card to show) */
+/* Whether PAGES[i] is in the page order: a page that would show no card at all is not (DUCK 2/2 with SOURCE OFF; DUCK 1/2 and 2/2 of the part the other part ducks), and
+ * a page with a rule (page_t.vis) only while it holds. The page buttons, SELECT and the footer's count skip the others, as a hidden control */
 static int page_visible(uint32_t i)
 {
-    if (page_empty(&PAGES[i]))                        /* item 158 (owner: no empty pages): a page that would show no card at all is not in the page order (DUCK 2/2 with SOURCE OFF;
-                                                       * DUCK 1/2 and 2/2 of the part the other part ducks): the steps, SELECT and the footer's count skip it, as a hidden control */
+    const page_t *pg = &PAGES[i];
+    if (page_empty(pg))
         return 0;
-    if (PAGES[i].scope == SC_GLOBAL && PAGES[i].id[0] == G_SHPITCH)   /* SHIMMER (0.2.19): SHIM's PITCH and MOD, shown only while the reverb TYPE is SHIM (the page cycle skips it) */
+    switch (pg->vis) {
+    case VIS_SHIM:
         return song.g[G_RTYPE] == 3;
-    if ((PAGES[i].id[0] == P_FREEA && PAGES[i].id[3] == P_FREED) || (PAGES[i].scope == SC_TRACK && PAGES[i].id[0] == P_KTRK))   /* MULTI FILTER 1/2, 2/2 (DUELL 0.2.2, 0.2.21): the multimode filter's, on every engine that has it (ufilt) */
+    case VIS_UFILT:
         return ENGINES[TSEL->eng_req % NENGINES]->ufilt;
-    if (page_twin_sub(i))   /* TWIN MOD, TWIN CHAIN (cloud job H): filter 2's, skipped by the page buttons and SELECT while its TYPE is OFF
-                                                         * (twin_on; TWIN FILTER, the page with the TYPE switch, is always there); the footer's page count counts the visible ones only (ui_graph.c page_parts) */
+    case VIS_TWIN:
         return twin_on(TSEL);
-    if (PAGES[i].scope == SC_ENGINE && PAGES[i].id[0] == P_E7) {   /* T0227: EDIT 2 holds the engine's eighth card: only where the engine has one (ANALOG, TRIO, NOISE, PHASE, WAVE, WHEEL: none) */
-        uint32_t id = pg_id(&PAGES[i], 0);
+    case VIS_E7: {                                    /* EDIT 2 holds the engine's eighth card: only where the engine has one (ANALOG, TRIO, NOISE, PHASE, WAVE, WHEEL: none) */
+        uint32_t id = pg_id(pg, 0);
         const char *l = ENGINES[TSEL->eng_req % NENGINES]->edit[(id - P_E0) & 7u].label;
         return l && l[0] && l[0] != '-';
     }
-    if (PAGES[i].scope == SC_TRACK && PAGES[i].id[0] == P_ATGT)   /* ARP 3/3 (ARP TARGET; owner 2026-10-28): only where the engine has more than ALL (ANALOG, TRIO, FM6: its atgt kind); the page counter, SELECT and the footer skip it */
+    case VIS_ATGT:
         return ENGINES[eng_idx(TSEL->eng_req)]->atgt != ATG_NONE;
-    if (PAGES[i].graph >= GR_FMOP && PAGES[i].graph <= GR_FMENV)
+    case VIS_FM6:
         return TSEL->eng_req % NENGINES == ENGI_FM6;
-    if (PAGES[i].graph == GR_MOD && PAGES[i].id[1] == P_M5SRC)   /* MATRIX 5-8 (0.2.24, owner): only while slots 1..4 are all in use (the matrix stays packed: mod.c mod_compact) */
+    case VIS_M5:
         return TSEL->p[P_M4SRC] != 0;
-    return 1;
+    default:
+        return 1;
+    }
+}
+
+/* The pages with a controller of their own, by scope: one row each (the plain parameter pages have none). A new such page adds its row here and nowhere else.
+ *   hot   the knobs (bit k) whose turn lights their column
+ *   grid  the layout template ui_draw.c draws it with (0: by the generic rules there)
+ *   knob  what the four knobs do (edit_param); 0: the page's own rules in edit_param
+ *   reset what OCT- held + a knob does (knob_reset): 0 = nothing; the handlers are in ui_input.c */
+typedef struct {
+    uint8_t scope, hot, grid;
+    void (*knob)(uint32_t slot, int32_t steps);
+    int (*reset)(uint32_t k);
+} scope_ops_t;
+static void morph_knob(uint32_t slot, int32_t s);      /* (ui_input.c) */
+static void mode_knob(uint32_t slot, int32_t s);
+static void test_knob(uint32_t slot, int32_t s);
+static void scale_knob(uint32_t slot, int32_t steps);
+static void mods_knob(uint32_t slot, int32_t steps);
+static void fxsum_knob(uint32_t slot, int32_t steps);
+static void step_edit(uint32_t slot, int32_t steps);
+static void glo_knob(uint32_t k, int32_t s);
+static int reset_morph(uint32_t k);
+static int reset_perf(uint32_t k);
+static int reset_scale(uint32_t k);
+static int reset_midi(uint32_t k);
+static int reset_mods(uint32_t k);
+static int reset_glo(uint32_t k);
+#if DUELL_TEST_MODE
+#define TEST_KNOB test_knob                            /* (MENU > SYSTEM > TEST; a release has no TEST page) */
+#else
+#define TEST_KNOB 0
+#endif
+static const scope_ops_t SCOPE_OPS[] = {
+    {SC_MORPH, 0x0Fu, 1, morph_knob, reset_morph},     /* HOME's MORPH (MORPH SET: K4 has no card) */
+    {SC_MODE, 0x0Fu, 3, mode_knob, 0},
+    {SC_PERF, 0x0Fu, 0, perf_knob, reset_perf},
+    {SC_TEST, 0x0Fu, 0, TEST_KNOB, 0},
+    {SC_SCALE, 0x07u, 1, scale_knob, reset_scale},     /* K1 SCALE, K2 ROOT, K3 OFF-SCALE; K4 is an empty column */
+    {SC_MIDI, 0x0Fu, 0, 0, reset_midi},                /* (its knobs: the page's id slots decide, edit_param) */
+    {SC_MODS, 0x0Fu, 12, mods_knob, reset_mods},
+    {SC_FXSUM, 0x07u, 9, fxsum_knob, 0},
+    {SC_GMIX, 0x0Fu, 0, glo_knob, reset_glo},          /* GLO's MIXER: LEVEL 1, LEVEL 2, PAN 1, PAN 2 */
+    {SC_STEP, 0x0Fu, 0, step_edit, 0},
+    TIDE_SCOPE_OPS                                     /* TIDE hook (TIDE, TIDE LIST) */
+};
+static const scope_ops_t *scope_ops(uint32_t scope)
+{
+    uint32_t i;
+    for (i = 0; i < sizeof SCOPE_OPS / sizeof SCOPE_OPS[0]; i++)
+        if (SCOPE_OPS[i].scope == scope)
+            return &SCOPE_OPS[i];
+    return 0;
 }
 
 static uint32_t page_first(uint32_t fam)

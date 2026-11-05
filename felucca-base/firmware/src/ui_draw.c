@@ -3423,12 +3423,8 @@ static void ui_draw_page(uint32_t counting)
             if ((gp->scope == SC_TRACK || gp->scope == SC_ENGINE || gp->scope == SC_STEP) && gk != GR_MOD && gk != GR_ENGINE && gk != GR_USER &&
                 gk != GR_TRK && gk != GR_SLCR)
                 g = 1;
-            if (gp->scope == SC_SCALE)
-                g = 1;
-            if (gp->scope == SC_MODS)                   /* MODULES (item 124): no cards, four lines on the background (graph_mods) */
-                g = 12;
-            if (gp->scope == SC_FXSUM)                  /* TEMPLATE 5 (item 117): the SENDS page, no cards, all text on the background (graph_fxsum) */
-                g = 9;
+            if (scope_ops(gp->scope) && scope_ops(gp->scope)->grid)   /* the pages with a controller of their own (ui.c SCOPE_OPS): SCALE 1, MODULES 12 (four lines), SEND FX 9 (text), MORPH 1, MODE 3 */
+                g = scope_ops(gp->scope)->grid;
             /* owner V13: the working pages keep their own arrangement, only the look is new: PATCHES, PATTERNS, MULTIS, TOOLS (the SAVE family), STEP (the piano roll), PARAMETER LOCKS and ARP are not grid pages */
             if (gp->fam == FAM_SAVE || gp->fam == FAM_ARP || gk == GR_ROLL || gk == GR_EVENTS || gk == GR_BROWSE || gk == GR_PATS || gk == GR_SLOTS || gk == GR_TOOLS)
                 g = 0;
@@ -3437,14 +3433,8 @@ static void ui_draw_page(uint32_t counting)
             if (gp->scope == SC_GLOBAL && gp->fam == FAM_GLO && gk != GR_GLO)
                 g = 1;
         }
-        if (!ui.perf && !page_over && gp->scope == SC_MORPH && gp->graph == GR_MORPH)
-            g = 1;
-        if (!ui.perf && !page_over && gp->scope == SC_MORPH && gp->graph == GR_MORPHSET)
-            g = 1;
         if (!ui.perf && !page_over && gp->graph == GR_SEQHELP)   /* SEQUENCER HELP (item 118): the legend page, drawn whole by ui_graph.c */
             g = 11;
-        if (!ui.perf && !page_over && gp->scope == SC_MODE)
-            g = 3;
         if (!ui.perf && !page_over && gp->scope == SC_TRACK && gp->graph == GR_MOD)
             g = 4;
         if (!ui.perf && !page_over && gp->graph == GR_ENGINE)

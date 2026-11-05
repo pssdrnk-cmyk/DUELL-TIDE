@@ -1158,32 +1158,9 @@ static void edit_param(uint32_t slot, int32_t steps)
     const page_t *pg = cur_page();
     const param_desc_t *d;
     int32_t v;
-    if (TIDE_KNOB(pg, slot, steps))                       /* TIDE hook (TIDE, TIDE LIST) */
-        return;
-    if (pg->scope == SC_MORPH) {                          /* HOME's MORPH, MORPH SET (4b) */
-        morph_knob(slot, steps);
-        return;
-    }
-    if (pg->scope == SC_MODE) {                           /* HOME's MODE (step 5) */
-        mode_knob(slot, steps);
-        return;
-    }
-    if (pg->scope == SC_PERF) {                           /* PERFORM: MORPH SPACE FILTER DEPTH (ui_perform.c) */
-        perf_knob(slot, steps);
-        return;
-    }
-#if DUELL_TEST_MODE
-    if (pg->scope == SC_TEST) {                           /* MENU > SYSTEM > TEST (ui_menu.c menu_input) */
-        test_knob(slot, steps);
-        return;
-    }
-#endif
-    if (pg->scope == SC_SCALE) {                          /* the GLOBAL scale (core.h) */
-        scale_knob(slot, steps);
-        return;
-    }
-    if (pg->graph == GR_GLO) {                            /* GLO's MIXER page: LEVEL 1, LEVEL 2, PAN 1, PAN 2 (ui_layer.c glo_knob) */
-        glo_knob(slot, steps);
+    const scope_ops_t *op = scope_ops(pg->scope);
+    if (op && op->knob) {                                 /* a page with a controller of its own (ui.c SCOPE_OPS) */
+        op->knob(slot, steps);
         return;
     }
     uint32_t knob = slot;                                 /* (the knob turned; slot: the page's card it addresses) */
@@ -1206,24 +1183,12 @@ static void edit_param(uint32_t slot, int32_t steps)
         midi_knob(slot, steps);
         return;
     }
-    if (pg->scope == SC_MODS) {                           /* GLO's MODULES (0.2.14): the four switches */
-        mods_knob(slot, steps);
-        return;
-    }
-    if (pg->scope == SC_FXSUM) {                          /* FX's SEND FX (0.2.22): K1 / K2 / K3 jump to GLO's CHORUS / DELAY 1/2 / REVERB */
-        fxsum_knob(slot, steps);
-        return;
-    }
     if (slot == 3u && duck_midi_page(pg)) {               /* 0.2.22 DUCK 1/2 with SRC MIDI: K4 jumps to GLO > SIDECHAIN (the MIDI setup lives there) */
         schain_jump(knob, steps);
         return;
     }
     if (pg->graph == GR_EVENTS) {                         /* PARAMETER LOCKS (ui_events.c) */
         ev_knob(slot, steps);
-        return;
-    }
-    if (pg->scope == SC_STEP) {
-        step_edit(slot, steps);
         return;
     }
     if (pg->graph == GR_ENGINE && slot == 0u) {           /* EDIT's first page (SPEC 1.2; T0227): KNOB 1 the next / previous engine (the PRESETS order, as the PRESETS */
@@ -1441,81 +1406,83 @@ static int reset_say(const char *name)
     (void)name;
     return 1;
 }
+static int reset_morph(uint32_t k)
+{
+    if (cur_page()->graph == GR_MORPHSET)
+        return 0;
+    if (k == 0u) {                                      /* the fader to A, as PERFORM's MORPH */
+        morph_act(MQ_FADER, morph_mask(song.sel), 0u, song.sel);
+        return reset_say("MORPH");
+    }
+    if (k == 3u) {
+        morph_act(MQ_AMOUNT, morph_mask(song.sel), MORPH_AMOUNT_DEF, song.sel);
+        return reset_say("AMOUNT");
+    }
+    return 0;
+}
+static int reset_perf(uint32_t k)
+{
+    if (k == 0u) {
+        morph_act(MQ_FADER, morph_mask(song.sel), 0u, song.sel);
+        return reset_say("MORPH");
+    }
+    if (k == 1u) {
+        perf_space = 0;
+        return reset_say("SPACE");
+    }
+    if (k == 2u) {
+        perf_filt = 0;
+        return reset_say("KILL");
+    }
+    perf_depth = 100;
+    return reset_say("DEPTH");
+}
+static int reset_scale(uint32_t k)
+{
+    if (k == 0u) {
+        scale_g = SCALE_D.def;
+        return reset_say("SCALE");
+    }
+    if (k == 1u) {
+        root_g = ROOT_D.def;
+        return reset_say("ROOT");
+    }
+    return 0;
+}
+static int reset_midi(uint32_t k)                       /* SIDECHAIN: that channel or note to its default (channel 10, note C2) */
+{
+    if (cur_page()->graph != GR_SCHAIN || (mods_off & MODS_PFX))
+        return 0;
+    sc_put(k, (k & 1u) ? SC_NOTE_DEF : SC_CH_DEF);
+    return reset_say(k == 0u ? "P1 SC CH" : k == 1u ? "P1 SC NOTE" : k == 2u ? "P2 SC CH" : "P2 SC NOTE");
+}
+static int reset_mods(uint32_t k)                       /* GLO > MODULES: the switch to its default, ON */
+{
+    if ((k & 3u) < 2u)
+        mods_run_put(k & 3u, 1u);                       /* (ARP, SEQ: FOLLOWS PATCH) */
+    else
+        mods_put(1u << (k & 3u), 0u);
+    return 1;                                           /* (reset to ON, no "RESET .." message over the title) */
+}
+static int reset_glo(uint32_t k)                        /* GLO's MIXER: K1 LEVEL 1, K2 LEVEL 2, K3 PAN 1, K4 PAN 2 (PAN in DUEL: no card, no reset) */
+{
+    static const char *const GN[4] = {"LEVEL 1", "LEVEL 2", "PAN 1", "PAN 2"};
+    uint32_t id = (k >> 1) & 1u ? P_PAN : P_LEVEL;
+    track_t *t = &trk[k & 1u];
+    if (id == P_PAN && duell_mode_req == DM_SPLIT)
+        return 2;                                       /* (no card: the knob does nothing, OCT- was a modifier) */
+    return reset_desc(&TP[id], &t->p[id], t, GN[k & 3u]);
+}
 static int knob_reset(uint32_t k)
 {
     const page_t *pg = cur_page();
-    track_t *t;
-    int16_t *vp;
+    const scope_ops_t *op = scope_ops(pg->scope);
     const param_desc_t *d;
+    int16_t *vp;
     if (act_cols())
         return 0;
-    switch (pg->scope) {
-    TIDE_RESET_CASE                                     /* TIDE hook */
-    case SC_MORPH:
-        if (pg->graph == GR_MORPHSET)
-            return 0;
-        if (k == 0u) {                                  /* the fader to A, as PERFORM's MORPH */
-            morph_act(MQ_FADER, morph_mask(song.sel), 0u, song.sel);
-            return reset_say("MORPH");
-        }
-        if (k == 3u) {
-            morph_act(MQ_AMOUNT, morph_mask(song.sel), MORPH_AMOUNT_DEF, song.sel);
-            return reset_say("AMOUNT");
-        }
-        return 0;
-    case SC_MODE:                                       /* (item 157: KNOB 2's BALANCE and its reset are gone; nothing on the MODE page resets) */
-        return 0;
-    case SC_PERF:
-        if (k == 0u) {
-            morph_act(MQ_FADER, morph_mask(song.sel), 0u, song.sel);
-            return reset_say("MORPH");
-        }
-        if (k == 1u) {
-            perf_space = 0;
-            return reset_say("SPACE");
-        }
-        if (k == 2u) {
-            perf_filt = 0;
-            return reset_say("KILL");
-        }
-        perf_depth = 100;
-        return reset_say("DEPTH");
-    case SC_SCALE:
-        if (k == 0u) {
-            scale_g = SCALE_D.def;
-            return reset_say("SCALE");
-        }
-        if (k == 1u) {
-            root_g = ROOT_D.def;
-            return reset_say("ROOT");
-        }
-        return 0;
-    case SC_MIDI:                                       /* 0.2.22 SIDECHAIN: that channel or note to its default (channel 10, note C2) */
-        if (pg->graph != GR_SCHAIN || (mods_off & MODS_PFX))
-            return 0;
-        sc_put(k, (k & 1u) ? SC_NOTE_DEF : SC_CH_DEF);
-        return reset_say(k == 0u ? "P1 SC CH" : k == 1u ? "P1 SC NOTE" : k == 2u ? "P2 SC CH" : "P2 SC NOTE");
-    case SC_STEP:
-    case SC_TEST:
-    case SC_FXSUM:                                      /* (0.2.21: nothing to reset; the knob only jumps) */
-        return 0;
-    case SC_MODS:                                       /* 0.2.14 GLO > MODULES: the switch to its default, ON */
-        if ((k & 3u) < 2u)
-            mods_run_put(k & 3u, 1u);                   /* (ARP, SEQ: FOLLOWS PATCH) */
-        else
-            mods_put(1u << (k & 3u), 0u);
-        return 1;                                       /* (item 125: reset to ON, no "RESET .." message over the title) */
-    default:
-        break;
-    }
-    if (pg->graph == GR_GLO) {                          /* GLO's MIXER (0.2.25; the knobs as QUICK GLO's, 0.2.24; item 117, TEMPLATE 4): K1 LEVEL 1, K2 LEVEL 2, K3 PAN 1, K4 PAN 2 (PAN in DUEL: no card, no reset) */
-        static const char *const GN[4] = {"LEVEL 1", "LEVEL 2", "PAN 1", "PAN 2"};
-        uint32_t id = (k >> 1) & 1u ? P_PAN : P_LEVEL;
-        if (id == P_PAN && duell_mode_req == DM_SPLIT)
-            return 2;                                   /* (no card: the knob does nothing, OCT- was a modifier) */
-        t = &trk[k & 1u];
-        return reset_desc(&TP[id], &t->p[id], t, GN[k & 3u]);
-    }
+    if (op)                                             /* a page with a controller of its own (ui.c SCOPE_OPS) */
+        return op->reset ? op->reset(k) : 0;
     if (page_compacts(pg)) {                            /* T0227: knob k is the k-th card that shows (ui_draw.c page_cards); none: nothing to reset */
         k = knob_slot(pg, k);
         if (k > 3u)
@@ -2358,9 +2325,9 @@ static void ui_input(void)
             ui.hot_t = 40;
             continue;
         }
-        if (pg->scope == SC_STEP || page_desc(pg, k, &hv) ||
-            (pg->scope == SC_MORPH && !(pg->graph == GR_MORPHSET && k == 3u)) || TIDE_PAGE(pg) || pg->scope == SC_MODE || pg->scope == SC_MIDI || pg->scope == SC_TEST || pg->scope == SC_PERF || pg->scope == SC_MODS || pg->graph == GR_GLO ||
-            (k == 3u && duck_midi_page(pg)) || (pg->scope == SC_SCALE && k < 3u) || (pg->scope == SC_FXSUM && k < 3u) ||            /* (SCALE: K1 SCALE, K2 ROOT, K3 OFF-SCALE; K4 is an empty column) */
+        const scope_ops_t *op = scope_ops(pg->scope);
+        if ((op && ((op->hot >> k) & 1u) && !(pg->graph == GR_MORPHSET && k == 3u)) || page_desc(pg, k, &hv) ||
+            (k == 3u && duck_midi_page(pg)) ||
             (pg->graph == GR_TEMPO && k == TEMPO_TAP_SLOT) ||
             ((pg->graph == GR_MOD || pg->graph == GR_PATS) && k == 0u)
             || fop_page(pg->graph)) {   /* (not an empty

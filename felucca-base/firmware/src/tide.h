@@ -138,8 +138,7 @@ static int tide_foot_two(void);
 #define TIDE_MQ_ROUTE(kind, mask, v, pi) ((kind) >= MQ_GLIDE ? (tide_midi((kind), (mask), (v), (pi)), 1) : 0)   /* GLIDE, the SEQ fader */
 #define TIDE_MQ_KINDS , MQ_GLIDE, MQ_SEQF
 #define TIDE_MQ_MERGE(kind) || (kind) == MQ_SEQF
-#define TIDE_KNOB(pg, slot, steps) (TIDE_PAGE(pg) ? (tide_knob((slot), (steps)), 1) : 0)
-#define TIDE_RESET_CASE case SC_TIDE: return tide_reset(k);
+#define TIDE_SCOPE_OPS {SC_TIDE, 0x0Fu, 0, tide_knob, tide_reset},   /* (ui.c SCOPE_OPS) */
 #define TIDE_LIST_ON() tide_list_on()
 #define TIDE_LIST_OCT(oct) tide_list_oct(oct)
 #define TIDE_GRAPH_CASES
@@ -222,8 +221,7 @@ static int tide_foot_two(void);
 #define TIDE_MQ_ROUTE(kind, mask, v, pi) 0
 #define TIDE_MQ_KINDS
 #define TIDE_MQ_MERGE(kind)
-#define TIDE_KNOB(pg, slot, steps) 0
-#define TIDE_RESET_CASE
+#define TIDE_SCOPE_OPS
 #define TIDE_LIST_ON() 0
 #define TIDE_LIST_OCT(oct) ((void)0)
 #define TIDE_GRAPH_CASES
