@@ -603,7 +603,7 @@ static uint32_t autosave_sig(void)
         h = as_mix(h, fm6_patch[i], sizeof fm6_patch[i]);
     }
     for (i = 0; i < G_COUNT; i++)
-        if (i != G_SLOT && i != G_LOAD && i != G_SAVE)       /* (0.2.19: G_NAME is SHIM's MOD now) */
+        if (i != G_SLOT && i != G_LOAD && i != G_SAVE)       /* (G_SHMOD, SHIM's MOD since 0.2.19; was G_NAME) */
             h = as_mix(h, &song.g[i], sizeof song.g[i]);
     h = as_mix(h, &motion, sizeof motion);
     h = as_mix(h, &(uint32_t){morph_sig()}, 4u);        /* (cloud job G: End B's roll and the values set by hand are part of the music) */

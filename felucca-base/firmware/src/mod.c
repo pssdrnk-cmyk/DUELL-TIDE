@@ -346,23 +346,23 @@ static int32_t mod_tsrc(const track_t *t, uint32_t s, int32_t lfo)
     case MS_CYCLE:                                      /* the latest note's CYCLE, last block (mod_cycle_voice) */
         return t->m_cycle;
     case MS_VEL:
-        return t->m_vel * 258;
+        return Q15_FROM_127(t->m_vel);
     case MS_KEY:
         return mod_key(t->m_key);
     case MS_RAND:
         return t->m_rnd;
     case MS_MODW:
-        return t->mw * 258;
+        return Q15_FROM_127(t->mw);
     case MS_AT:
-        return t->at * 258;
+        return Q15_FROM_127(t->at);
     case MS_BREATH:                                     /* (DUELL 1.1: CC2 and CC4, the part's, in mod_cc below) */
-        return mod_cc[0][(uint32_t)(t - trk) % NTRK] * 258;
+        return Q15_FROM_127(mod_cc[0][(uint32_t)(t - trk) % NTRK]);
     case MS_FOOT:
-        return mod_cc[1][(uint32_t)(t - trk) % NTRK] * 258;
+        return Q15_FROM_127(mod_cc[1][(uint32_t)(t - trk) % NTRK]);
     case MS_DUCK:                                       /* (the ducked amount at the end of the last block) */
         return duck_st[(uint32_t)(t - trk) % NTRK].dn >> 1;
     default:                                            /* EXPR; (4b) MORPH: t->mf, the fader morph_begin set for this block */
-        return (s == MS_MORPH ? t->mf : 127 - t->ex_off) * 258;
+        return Q15_FROM_127(s == MS_MORPH ? t->mf : 127 - t->ex_off);
     }
 }
 
@@ -764,7 +764,7 @@ static __attribute__((noinline)) void mod_voice(track_t *t, voice_t *v, vmod_t *
     }
     for (k = 0; k < mod->nv; k++) {
         uint32_t s = mod->vsrc[k];
-        int32_t x = s == MS_ENV ? env : s == MS_ENV2 ? ((mod->byp & BY_ENV2) ? 0 : v->env2 >> 9) : s == MS_VEL ? v->mvel * 258 : s == MS_KEY ?
+        int32_t x = s == MS_ENV ? env : s == MS_ENV2 ? ((mod->byp & BY_ENV2) ? 0 : v->env2 >> 9) : s == MS_VEL ? Q15_FROM_127(v->mvel) : s == MS_KEY ?
                     mod_key(v->note) : v->mrnd;
         mod_voice_add(s, mod->vdst[k], x, mod->vamt[k], &pit, &cut, &shp, &gain);
     }
@@ -794,7 +794,7 @@ static __attribute__((noinline)) int32_t mod_f2_voice(track_t *t, voice_t *v)
     uint32_t m;
     for (m = t->f2m; m; m &= m - 1u) {
         uint32_t k = (uint32_t)__builtin_ctz(m), s = (uint32_t)p[MSLOT_ID(k)];
-        int32_t x = s == MS_ENV ? t->venv : s == MS_ENV2 ? E2Q(t, v) : s == MS_VEL ? v->mvel * 258 : s == MS_KEY ? mod_key(v->note) : s == MS_CYCLE ? cycle_value(t, v) : v->mrnd;
+        int32_t x = s == MS_ENV ? t->venv : s == MS_ENV2 ? E2Q(t, v) : s == MS_VEL ? Q15_FROM_127(v->mvel) : s == MS_KEY ? mod_key(v->note) : s == MS_CYCLE ? cycle_value(t, v) : v->mrnd;
         sum += (x * MX_AMT(p[MSLOT_ID(k) + 2u])) >> 7;
     }
     if (t->vrm & 1u)                                    /* DUELL 1.1: CYCLE ENV's TWIN CUTOFF card, the same sum as a CYCLE to TWIN CUTOFF slot */

@@ -71,7 +71,7 @@ assert PID["P_FREEA"] == 45 and PID["P_FREEC"] == 47 and PID["P_FREED"] == 48 an
 assert PID["P_VOICE"] == 37 and PID["P_AMODE"] == 17 and PID["P_LD_FLT"] == 14 and PID["P_E2FLT"] == 114 and PID["P_L2FLT"] == 117 and PID["P_ED_FLT"] == 5, "core.h P_ ids moved"
 assert GID["G_COUNT"] == 27 and XID["X_SUBLVL"] == 134 and XID["X_ROUTE"] == 128 and XID["X_STRUM"] == 155, "ids moved"
 assert MS["MS_CYCLE"] == 15 and MD["MD_PAN"] == 5 and AM["AM_CHORD"] == 14, "mod.c / seq.c enums moved"
-G_DMODE, G_RTYPE, G_SHPITCH, G_SHMOD = GID["G_INFO"], GID["G_RTYPE"], GID["G_FREE26"], GID["G_NAME"]    # core.h: G_DMODE = G_INFO, G_SHPITCH = G_FREE26, G_SHMOD = G_NAME
+G_DMODE, G_RTYPE, G_SHPITCH, G_SHMOD = GID["G_DMODE"], GID["G_RTYPE"], GID["G_SHPITCH"], GID["G_SHMOD"]    # core.h (the retired ids G_INFO, G_FREE26, G_NAME, re-named)
 assert (G_DMODE, G_RTYPE, G_SHPITCH, G_SHMOD) == (15, 24, 26, 17)
 TT = {"LP": 1, "BP": 2, "HP": 3, "NOTCH": 4, "LAD": 5, "COMB": 6}      # params.c: TT_OFF, TT_LP, TT_BP, TT_HP, TT_NOTCH, TT_LADDER, TT_COMB
 

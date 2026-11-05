@@ -180,9 +180,9 @@ enum {                          /* global parameters */
     G_BPM, G_SWING, G_CLOCK, G_TUNE,
     G_DTIME, G_DFDBK, G_DCOLOR, G_DMIX,
     G_RSIZE, G_RDAMP, G_CRATE, G_CDEPTH,
-    G_MIDI, G_SYNC, G_ROUTE, G_INFO,   /* G_ROUTE: MIDI IN, 0 PARTS (the parts' MIDI channels, GLO > MIDI; seq.c midi_pch), 1 SEL;
+    G_DMRATE, G_DMDEP, G_ROUTE, G_DMODE,   /* G_DMRATE / G_DMDEP / G_DMODE: the delay's modulation RATE and DEPTH and its MODE, on the retired ids of G_MIDI, G_SYNC and G_INFO (the old SYSTEM page's; U12: the stored ids do not move). G_ROUTE: MIDI IN, 0 PARTS (the parts' MIDI channels, GLO > MIDI; seq.c midi_pch), 1 SEL;
                                         * 2..4 (older: CH5-8 CH9-12 CH13-16) read as PARTS */
-    G_SLOT, G_NAME, G_LOAD, G_SAVE,
+    G_SLOT, G_SHMOD, G_LOAD, G_SAVE,   /* G_SHMOD: SHIM's MOD, on the retired id of G_NAME (a card NAME no page showed) */
     G_ENGSEL, G_RLOCUT,         /* G_ENGSEL: no page, the editor switches the engine with a SET of G_ENGSEL. G_RLOCUT (0.2.14, on the id of the unused
                                  * G_ENGGO, so G_COUNT and the formats do not move): the REVERB LOW CUT, K4 of the REVERB page. 0 OFF, 1..127 a one-pole
                                  * high-pass on the reverb bus's input, 20 Hz .. 450 Hz exponential (F_LOCUT; fx_bus.c rev_locut); default 61 (88 Hz).
@@ -192,7 +192,7 @@ enum {                          /* global parameters */
                                  * G_DRCH, the GM drum part's MIDI channel (inert since 1.0, never read) */
     G_PINGSPREAD,               /* DUELL: the PING-PONG's SPREAD (DLY 2), 0..100 %, stored directly, default 100 (GP def; 0 = the repeats
                                  * centred). Was G_DRLVL, the GM drum part's level (inert) */
-    G_FREE26,                   /* UNUSED since 0.2.16 (stored 0, read by nothing): was the delay's PING-PONG switch (0 OFF, 1 ON; before that G_DRREV, the GM
+    G_SHPITCH,                  /* SHIM's PITCH (0.2.19). The id was G_FREE26, unused since 0.2.16 (stored 0, read by nothing): was the delay's PING-PONG switch (0 OFF, 1 ON; before that G_DRREV, the GM
                                  * drum part's reverb send, inert since 1.0). PING-PONG is a MODE of the delay now (G_DMODE 1). The id stays so G_COUNT
                                  * and the formats do not move */
     G_COUNT
@@ -256,11 +256,7 @@ static uint32_t cmp_set;                                 /* the settings record'
  * in DUEL (its sides are the two parts). 0.2.25 (owner): the master saturator of 0.2.23 / 0.2.24 (G_SD, the DRIVE) is removed; its stored byte [20] is ignored */
 #define G_WD (G_COUNT + 5)
 #define WD_DEF 100
-#define G_SHPITCH G_FREE26
-#define G_SHMOD G_NAME
 enum { SHP_UP, SHP_DOWN, SHP_N };          /* 0.2.25 (owner): BOTH (2) is gone; a stored 2 (or any value out of range) reads UP (project.c, fx_bus.c rev_shimx) */
-#define G_DMDEP G_SYNC
-#define G_DMRATE G_MIDI
 /* DUELL 0.2.16 (owner, 2026-10-15): the DELAY's MODE, the first delay setting (DELAY 1/2 K1), on the id of the inert G_INFO (a "CPU" reading nothing wrote or read
  * since 1.2): 0 DIGITAL (the plain delay: clean repeats, low-passed feedback (COLR), the optional modulation; the old delay with PING off), 1 PING-PONG
  * (the repeats alternate left and right, the modulation too; the old PING ON), 2 RANDOM, 3 OCT UP (clock-synced events on the repeats, 0.2.14's RAND and OCT+);
@@ -268,7 +264,6 @@ enum { SHP_UP, SHP_DOWN, SHP_N };          /* 0.2.25 (owner): BOTH (2) is gone; 
  * PING-PONG switch on G_FREE26: those records are refused, MU_VER 4 / PROJ_REV 2.) In RANDOM and OCT UP the DELAY 2/2 card MDEPTH (G_DMDEP) is CHANCE, the share of
  * clock edges that fire an event, and RATE is faded (params.c dly_mode_why); SPREAD (G_PINGSPREAD) sets the width of PING-PONG and of the events and is
  * faded in DIGITAL. Only in STEREO and LAYER (SPLIT keeps the plain delay) */
-#define G_DMODE G_INFO
 enum { DMD_DIGITAL, DMD_PING, DMD_RAND, DMD_OCTUP, DMD_N };
 /* The CHANCE a switch of MODE into RANDOM / OCT UP starts with when the stored DEPTH / CHANCE is 0 (owner, 2026-10-15: "a reasonable level when switching modes"). The CHOMPI
  * TEMPO firmware has no such number: its randomness knob starts at 0 (granularDelay.h alt_control_ = 0) and an event fires on 0.5 x that share of the clock edges

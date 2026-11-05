@@ -147,7 +147,7 @@ static void phys_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     int32_t y[CTL], ax[CTL];
     int32_t sh = m->shape - (64 << 8);                    /* SHP (DUELL): STRC, SYMP's BUZZ */
     int32_t strc = (clamp((p[P_E1] << 8) + sh, 0, 127 << 8) * 516) >> 8, brit = clamp(p[P_E2] * 516, 0, 65536);   /* Q16 0..1 */
-    int32_t damp = p[P_E3] * 516, pos = p[P_E4], exc = p[P_E7] * 258;   /* exc Q15 */
+    int32_t damp = p[P_E3] * 516, pos = p[P_E4], exc = Q15_FROM_127(p[P_E7]);   /* exc Q15 */
     int32_t bow = p[P_E6] * 206;                         /* BOW: Dust at up to 0.4 (DaisySP's sustain: 1) */
     int32_t acc = clamp(p[P_E5] * v->vel * 4 + m->cutoff * 2, 0, 65536);   /* + the accent (velocity over 110): the model's own accent, up to 0.19 */   /* ACC at full velocity, Q16 */
     int32_t g = PHYS_GAIN[md];
