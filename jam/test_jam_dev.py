@@ -14,6 +14,7 @@ import io
 import json
 import random
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -501,6 +502,178 @@ class FlashTests(Base):
         self.assertFalse(self.fake.with_suffix(".ran").exists())
         rc, _, _ = run_main(["flash", str(self.dir / "nope.fwsc"), "--yes"])
         self.assertEqual(rc, 2)
+
+
+class MeasureTests(Base):
+    """`measure` (audit A01, Q14, T17): the whole flow with stand-ins for the build, the serial port, the bench runner, the installer and the keys; the report and the velocity session."""
+
+    def setUp(self):
+        super().setUp()
+        self.d = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.d, True)
+        self.addCleanup(jd.MEASURE_HOOKS.clear)
+        self.installs = self.d / "installs.txt"
+        self.installer = self.d / "fake_install.py"
+        self.installer.write_text("import sys\nopen(%r, 'a').write(' '.join(sys.argv[1:]) + '\\n')\nprint('fake installer', sys.argv[1])\n" % str(self.installs), encoding="utf-8")
+        self.sent: list = []
+        self.built: list = []
+
+        def build(env, label):
+            self.built.append(label)
+            pkg = self.d / f"{label.split()[0]}.fwsc"
+            pkg.write_bytes(b"\0")
+            return pkg
+
+        def bench_main(argv):
+            out = Path(argv[argv.index("--out") + 1])
+            out.mkdir(parents=True, exist_ok=True)
+            name = argv[argv.index("--suite") + 1]
+            T = 24.0
+            rows = []
+            if name == "TIDE-DSP":
+                rows = [dict(test="TIDE.VAL.P1", p1_vn=1000, p1_va=1000, p1_vs=int(10 * T * 1000), p1_vm=300, tc=2, verdict="PASS", status="DONE", avg=50, peak=55, rep=1),
+                        dict(test="TIDE.VAL.P2", p2_vn=1000, p2_va=1000, p2_vs=int(12 * T * 1000), p2_vm=320, tc=2, verdict="PASS", status="DONE", avg=50, peak=55, rep=1),
+                        dict(test="TIDE.HEAVY.BASE", avg=80, peak=90, tc=2, verdict="PASS", status="DONE", rep=1), dict(test="TIDE.HEAVY.ON", avg=82, peak=92, tc=2, verdict="PASS", status="DONE", rep=1)]
+            else:
+                for k, model, extra in ((0, "MODAL", 328), (3, "STRING", 160)):
+                    rows += [dict(test=f"PHYS.{k:02d}.{model}.K1", avg=40, tc=1, verdict="PASS", status="DONE", rep=1),
+                             dict(test=f"PHYS.{k:02d}.{model}.K3", avg=40 + 4 * extra / 32.8125, tc=1, verdict="PASS", status="DONE", rep=1)]
+            cols = sorted({c for r in rows for c in r})
+            import csv as _csv
+            with open(out / "results.csv", "w", newline="", encoding="utf-8") as fh:
+                w = _csv.DictWriter(fh, fieldnames=cols)
+                w.writeheader()
+                w.writerows(rows)
+            return 0
+
+        jd.MEASURE_HOOKS.update(build=build, ports=lambda: ["COM9"], bench_main=bench_main, serial_send=lambda port, line: self.sent.append((port, line)), sleep=lambda s: None, wait_s=0.05)
+
+    def run_measure(self, *args, ask=lambda p: True):
+        return run_main(["--mock", "measure", *args, "--out", str(self.d / "m"), "--out-backups", str(self.d / "bk"), "--installer", str(self.installer)], ask=ask)
+
+    def test_tide_flow(self):
+        rc, out, err = self.run_measure("tide", "--yes")
+        self.assertEqual(rc, 0, err + out)
+        self.assertEqual(self.built, ["bench", "normal (to put back)"])
+        lines = self.installs.read_text().splitlines()
+        self.assertEqual(len(lines), 2)
+        self.assertIn("bench.fwsc", lines[0])
+        self.assertIn("normal.fwsc", lines[1])
+        self.assertEqual(self.sent, [("COM9", "uboot yes")])
+        self.assertTrue(list((self.d / "bk").glob("DUELL-backup-*.json")), "a backup is made before the unit is touched")
+        text = (self.d / "m" / "report.md").read_text(encoding="utf-8")
+        self.assertIn("## A01", text)
+        self.assertIn("| valley, SPREAD off | 1 (core 0) |", text)
+        self.assertIn("| valley, SPREAD off | 2 (core 1) |", text)
+        self.assertIn("## Q14", text)
+        self.assertIn("back on DUELL", out)
+
+    def test_cancel_touches_nothing(self):
+        rc, out, err = self.run_measure("tide", ask=lambda p: False)
+        self.assertEqual(rc, 1)
+        self.assertFalse(self.installs.exists())
+        self.assertEqual(self.sent, [])
+
+    def test_no_restore_and_given_packages(self):
+        bench = self.d / "b.fwsc"
+        bench.write_bytes(b"\0")
+        rc, out, err = self.run_measure("tide", "--yes", "--bench", str(bench), "--no-restore", "--com", "COM9")
+        self.assertEqual(rc, 0, err + out)
+        self.assertEqual(self.built, [], "nothing is built when the bench package is given and nothing is put back")
+        self.assertEqual(len(self.installs.read_text().splitlines()), 1)
+        self.assertEqual(self.sent, [])
+        self.assertIn("the bench build stays installed", out)
+
+    def test_no_serial_port(self):
+        jd.MEASURE_HOOKS["ports"] = lambda: []
+        rc, out, err = self.run_measure("tide", "--yes")
+        self.assertEqual(rc, 3)
+        self.assertIn("no serial port of the unit", err)
+        self.assertEqual(len(self.installs.read_text().splitlines()), 1, "the normal firmware is not sent to a unit that never showed its console")
+
+    def test_two_ports_need_a_name(self):
+        jd.MEASURE_HOOKS["ports"] = lambda: ["COM9", "COM11"]
+        rc, out, err = self.run_measure("tide", "--yes")
+        self.assertNotEqual(rc, 0)
+        self.assertIn("--com", err)
+
+    def test_installer_failure_stops_before_the_unit_is_measured(self):
+        self.installer.write_text("import sys\nsys.exit(4)\n", encoding="utf-8")
+        rc, out, err = self.run_measure("tide", "--yes")
+        self.assertEqual(rc, 1)
+        self.assertIn("backup above holds", err)
+        self.assertEqual(self.sent, [])
+
+    def test_report_only_and_libcalls(self):
+        run = self.d / "r"
+        run.mkdir()
+        (run / "results.csv").write_text("test,rep,avg,peak,tc,verdict,status\nTIDE.BASE,1,50,55,2,PASS,DONE\n", encoding="utf-8")
+        dis = self.d / "f.dis"
+        dis.write_text("comp_stage:\n 1: 00 \tcall 5 <__muldi3 : 1 >\n", encoding="utf-8")
+        jd.MEASURE_HOOKS["dis"] = str(dis)
+        rc, out, err = run_main(["--mock", "measure", "report", str(run), "--out", str(self.d / "m2")])
+        self.assertEqual(rc, 0, err)
+        text = (self.d / "m2" / "report.md").read_text(encoding="utf-8")
+        self.assertIn("## R14", text)
+        self.assertIn("a library call on the per-sample path", text)
+        rc, _, err = run_main(["--mock", "measure", "report", "--out", str(self.d / "m3")])
+        self.assertEqual(rc, 2)
+
+    def test_velocity_session(self):
+        vm = kit_mod("velo_midi")
+        plan = vm.build_plan()
+        script = []
+        for step in plan:
+            for i in range(step["n"]):
+                if step["key"] >= vm.N_ANALOG:
+                    v = 100
+                else:
+                    v = {"hard": 112, "normal": 78, "soft": 36}[step["style"]] + i
+                script.append((0.0, vm.NOTE0 + step["key"], v))
+        self.assertEqual(len(plan), 6 * 3 + 3 * 2)
+        jd.MEASURE_HOOKS["source"] = ListSource(script)
+        rc, out, err = run_main(["measure", "velocity", "--yes", "--out", str(self.d / "v")])
+        self.assertEqual(rc, 0, err)
+        text = (self.d / "v" / "report.md").read_text(encoding="utf-8")
+        self.assertIn("## T17", text)
+        self.assertIn("in the right order (soft < normal < hard by the median) on 6 of 6 keys", text)
+        self.assertIn("All 100: confirmed", text)
+
+    def test_velocity_off_octave_and_strays(self):
+        vm = kit_mod("velo_midi")
+        plan = vm.build_plan(keys=(0,), presses=2, top=(20,), top_presses=1)
+        # the keyboard is one octave up (OCT+), KEY VELOCITY is OFF (everything 100), and a wrong key is pressed once
+        script = [(0.0, vm.NOTE0 + 12, 100), (0.0, vm.NOTE0 + 12, 100), (0.0, vm.NOTE0 + 99 % 20, 100), (0.0, vm.NOTE0 + 12, 100), (0.0, vm.NOTE0 + 12, 100), (0.0, vm.NOTE0 + 12, 100),
+                  (0.0, vm.NOTE0 + 12, 100), (0.0, vm.NOTE0 + 12 + 20, 100), (0.0, vm.NOTE0 + 12 + 20, 100)]
+        said: list = []
+        presses, stray = vm.run_session(ListSource(script), plan, said.append, step_timeout=0.1)
+        self.assertEqual(len(presses), 8)
+        self.assertEqual(stray, [vm.NOTE0 + 99 % 20])
+        an = vm.analyse(presses)
+        self.assertTrue(an["looks_off"])
+        self.assertIn("looks OFF", vm.report(an, stray))
+        self.assertTrue(any("octave" in x for x in said))
+
+    def test_velocity_no_presses(self):
+        vm = kit_mod("velo_midi")
+        self.assertIn("nothing to report", vm.report(vm.analyse([])))
+        presses, _ = vm.run_session(ListSource([]), vm.build_plan(keys=(0,), top=()), lambda t: None, step_timeout=0.01)
+        self.assertEqual(presses, [])
+
+
+def kit_mod(name):
+    return jd.kit()[name]
+
+
+class ListSource:
+    """A scripted keyboard: the notes in order, then silence."""
+
+    def __init__(self, events):
+        self.events = list(events)
+
+    def get(self, timeout):
+        return self.events.pop(0) if self.events else None
+
 
 
 class CliTests(unittest.TestCase):

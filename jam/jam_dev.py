@@ -6,11 +6,15 @@
   jam_dev.py [--mock] backup  [--out DIR] [--port NAME]
   jam_dev.py [--mock] restore FILE [--yes] [--include-raw] [--out DIR] [--port NAME]
   jam_dev.py [--mock] flash   PACKAGE.fwsc [--yes] [--out DIR] [--port NAME]
+  jam_dev.py measure [all|tide|velocity|report RUNDIR..] [--bench PKG] [--normal PKG] [--no-restore] [--com NAME] [--yes] [--out DIR]
 
 The backup file is the web editor's own ("duell-backup" version 5, felucca-base/web/editor/duellbackup.js), byte for byte, so the Backup page can
 restore it and this tool can restore the page's files. Only the editor protocol's INFO and BACKUP_LIST / GET / PUT are sent (cmds 1, 65, 66, 67);
 a firmware install is done by felucca-base/tools/fm1_install.py, run as a subprocess, never here. --mock talks to the editor's simulated unit
 (jam/mock_bridge.mjs, needs node) instead of MIDI.
+
+`measure` is the unit measurement of audit A01 (TIDE's audio DSP on both cores), Q14 (PHYS per model) and T17 (key velocity): it builds the bench package, backs the unit up, installs the bench
+build, runs the suites over the USB serial console, writes work/measure/<stamp>/report.md, puts the normal firmware back, then records a guided key-velocity session over USB MIDI (docs/TESTING.md).
 
 Exit codes: 0 ok, 1 failure (or cancelled), 2 bad arguments, 3 no DUELL unit found.
 """
@@ -1596,6 +1600,232 @@ def cmd_flash(a, conn: Conn, out, ask, opener: Opener) -> int:
 class UsageError(DuellError):
     """A bad argument found after parsing (exit code 2)."""
 
+# ------------------------------------------------------------------------------------------------------------------ measure (audit A01, Q14, T17, R14)
+TOOLS = BASE / "tools"
+MEASURE_TAG = "TDSP1"
+BENCH_ENV = {"DUELL_BENCH": "1", "DUELL_TEST_MODE": "1", "BENCH_TAG": MEASURE_TAG, "DUELL_TWOCORE": "1", "DUELL_RAMPLACE": "1", "DUELL_HOTRAM": "3",
+             "FELUCCA_UAC": "0", "FELUCCA_OTA": "0", "BENCH_BSS_MIN": "1024"}     # the bench build that fits the app slot with TIDE: no USB audio, no editor / updater (the way back is `uboot yes`)
+DEFAULT_MEASURE = Path(os.environ.get("JAM_WORK") or REPO.parent / "work") / "measure"
+MEASURE_HOOKS: dict = {}        # tests: build, ports, bench_main, serial_send, source, sleep, dis, wait_s (the seams of the real calls)
+
+
+def kit():
+    """The measurement kit of felucca-base/tools, loaded when `measure` runs (bench_run needs nothing but the standard library)."""
+    import importlib
+    if str(TOOLS) not in sys.path:
+        sys.path.insert(0, str(TOOLS))
+    return {n: importlib.import_module(n) for n in ("tide_measure", "velo_midi", "libcalls", "bench_run")}
+
+
+def build_package(extra_env: dict, label: str, out) -> Path:
+    """tools/build.py (the build the owner gets from a checkout) with these variables; the package it names last."""
+    if MEASURE_HOOKS.get("build"):
+        return Path(MEASURE_HOOKS["build"](extra_env, label))
+    env = {**os.environ, **extra_env}
+    print(f"building the {label} package (about 30 seconds) ...", file=out, flush=True)
+    r = subprocess.run([sys.executable, str(TOOLS / "build.py")], cwd=str(BASE), env=env, capture_output=True, text=True)   # (not -I: build.py imports the modules beside it)
+    m = re.findall(r"^package\s+(\S.*?)\s{2,}", r.stdout, re.M)
+    if r.returncode or not m:
+        tail = "\n".join((r.stdout + r.stderr).splitlines()[-12:])
+        raise DuellError(f"the {label} build failed (is the toolchain set up: . jam/env.sh?):\n{tail}")
+    for line in r.stdout.splitlines():
+        if line.lstrip().startswith("ok    image") or line.lstrip().startswith("ok    range X"):
+            print("  " + line.strip(), file=out)
+    return Path(m[-1])
+
+
+def serial_ports() -> list[str]:
+    if MEASURE_HOOKS.get("ports"):
+        return list(MEASURE_HOOKS["ports"]())
+    br = kit()["bench_run"]
+    return br.com_ports() if os.name == "nt" else sorted(__import__("glob").glob("/dev/cu.usbmodem*") + __import__("glob").glob("/dev/ttyACM*"))
+
+
+def wait_for_serial(secs: float, want: Optional[str] = None) -> Optional[str]:
+    """The bench build's console port, polled once a second after the install (the unit restarts and enumerates again)."""
+    end = time.monotonic() + secs
+    sleep = MEASURE_HOOKS.get("sleep", time.sleep)
+    while True:
+        ports = serial_ports()
+        if want and want in ports:
+            return want
+        if not want and len(ports) == 1:
+            return ports[0]
+        if len(ports) > 1 and not want:
+            raise DuellError(f"more than one serial port of the unit ({', '.join(ports)}): name it with --com")
+        if time.monotonic() >= end:
+            return None
+        sleep(1.0)
+
+
+def send_serial(port: str, line: str) -> None:
+    if MEASURE_HOOKS.get("serial_send"):
+        MEASURE_HOOKS["serial_send"](port, line)
+        return
+    br = kit()["bench_run"]
+    link = (br.WinSerialLink if os.name == "nt" else br.SerialLink)(port)
+    link.open()
+    try:
+        link.send(line)
+        link.read(0.5)
+    finally:
+        link.close()
+
+
+def install(pkg: Path, port: Optional[str], installer, out, mock: bool) -> int:
+    """fm1_install.py as a subprocess (cmd_flash's way): the unit must be on a firmware that starts the update (the normal one) or already in update mode (after `uboot yes`)."""
+    cmd = [sys.executable, "-I", str(installer or INSTALLER), str(pkg), "--yes"] + (["--port", port_base(port)] if port else [])
+    if mock and not installer:
+        print("mock: not installing; would run: " + " ".join(cmd), file=out)
+        return 0
+    return run_installer(cmd, out)
+
+
+class MidiNotes:
+    """The unit's note-ons over USB MIDI (mido with rtmidi): get(timeout) -> (t, note, velocity) or None. The port is the DUELL input (or --port); one program may hold it."""
+
+    def __init__(self, name: Optional[str]):
+        mido = _mido()
+        ins = list(dict.fromkeys(mido.get_input_names()))
+        cands = [n for n in ins if name.lower() in n.lower()] if name else [n for n in ins if PORT_RE.search(n)]
+        if not cands:
+            raise UnitNotFound("no DUELL MIDI input found (USB data cable? another program holding the port?): inputs " + (", ".join(ins) or "(none)"))
+        self.q: queue.Queue = queue.Queue()
+        self.port = mido.open_input(cands[0], callback=lambda m: self.q.put((time.monotonic(), m.note, m.velocity)) if m.type == "note_on" and m.velocity > 0 else None)
+        self.name = cands[0]
+
+    def get(self, timeout: float):
+        try:
+            return self.q.get(timeout=timeout)
+        except queue.Empty:
+            return None
+
+    def close(self) -> None:
+        self.port.close()
+
+
+def measure_tide(a, out_dir: Path, out, ask, opener: Opener) -> tuple[int, list[Path]]:
+    k = kit()
+    ok_dis = None
+    conn = opener(a.port)
+    try:
+        print(f"unit: DUELL {conn.info.duell} ({conn.info.version}) on {conn.t.port_name}", file=out)
+        bench = Path(a.bench) if a.bench else build_package(BENCH_ENV, "bench", out)
+        normal = None
+        if not a.no_restore:
+            normal = Path(a.normal) if a.normal else build_package({}, "normal (to put back)", out)
+        if not a.yes and not ask(f"Back up the unit, install the bench build {bench.name} and measure about 10 minutes (turn MASTER down, hands off the unit), then "
+                                 + (f"put {normal.name} back" if normal else "leave the bench build installed") + "? [y/N] "):
+            print("cancelled", file=out)
+            return EXIT_FAIL, []
+        do_backup(conn, DEFAULT_OUT if not a.out_backups else Path(a.out_backups), "DUELL-backup", out)
+    finally:
+        conn.t.close()
+    rc = install(bench, a.port, a.installer, out, a.mock)
+    if rc:
+        print(f"error: the installer exited with {rc}; the backup above holds the unit's data", file=sys.stderr)
+        return EXIT_FAIL, []
+    port = wait_for_serial(MEASURE_HOOKS.get("wait_s", 90.0), a.com)
+    if not port:
+        print("error: no serial port of the unit within 90 s of the install (is it the bench build? the unit prints BENCH on its screen; try --com NAME)", file=sys.stderr)
+        return EXIT_NOUNIT, []
+    print(f"bench build running on {port}", file=out)
+    runs = []
+    status = EXIT_OK
+    try:
+        bench_main = MEASURE_HOOKS.get("bench_main") or k["bench_run"].main
+        for name in ("TIDE-DSP", "PHYS-MODELS"):
+            d = out_dir / name
+            argv = ["--suite", name, "--port", port, "--out", str(d), "--runs", str(out_dir / "runs"), "--no-caffeinate"]
+            print(f"== {name}", file=out, flush=True)
+            r = bench_main(argv)
+            if (d / "results.csv").exists():
+                runs.append(d)
+            if r not in (0, None):
+                print(f"note: {name} reported failures (exit {r}); the report says which tests", file=out)
+    except SystemExit as e:
+        print(f"error: {e}", file=sys.stderr)
+        status = EXIT_FAIL
+    finally:
+        if not a.no_restore:
+            try:
+                send_serial(port, "uboot yes")
+                MEASURE_HOOKS.get("sleep", time.sleep)(3.0)
+            except Exception as e:
+                print(f"warning: could not send `uboot yes` ({e}); hold OCT- and OCT+ together for 5 s on the unit", file=sys.stderr)
+    if not a.no_restore and normal:
+        rc = install(normal, a.port, a.installer, out, a.mock)
+        if rc:
+            print(f"error: the normal firmware did not go back (installer exit {rc}). The unit is in update mode or on the bench build: run  jam_dev.py flash {normal}", file=sys.stderr)
+            return EXIT_FAIL, runs
+        back = wait_for_unit(opener, a.port, MEASURE_HOOKS.get("wait_s", 90.0))
+        if not back:
+            print("error: no DUELL unit answered after putting the normal firmware back (power-cycle it)", file=sys.stderr)
+            return EXIT_NOUNIT, runs
+        print(f"back on DUELL {back.info.duell} ({back.info.version})", file=out)
+        back.t.close()
+    else:
+        print(f"the bench build stays installed. To go back: the console word `uboot yes` (or OCT- and OCT+ for 5 s), then  jam_dev.py flash <the normal package>", file=out)
+    return status, runs
+
+
+def libcalls_section(k) -> Optional[str]:
+    dis = MEASURE_HOOKS.get("dis")
+    path = Path(dis) if dis else BASE / "build" / "felucca.dis"
+    if not path.exists():
+        return None
+    return k["libcalls"].report(path.read_text(errors="replace"), str(path))
+
+
+def measure_velocity(a, out, ask, source=None) -> tuple[int, str]:
+    k = kit()
+    vm = k["velo_midi"]
+    plan = vm.build_plan()
+    print("KEY VELOCITY session: the unit must run the normal firmware with MENU > CONTROL > KEY VELOCITY ON and the play screen showing; OCT at its middle.\n"
+          f"{len(plan)} steps, about {sum(s['n'] for s in plan)} presses. For each step press the key as asked; the next step begins by itself.", file=out)
+    if not a.yes and not ask("Start? [y/N] "):
+        print("cancelled", file=out)
+        return EXIT_FAIL, ""
+    src = source or MEASURE_HOOKS.get("source") or MidiNotes(a.port)
+    try:
+        presses, stray = vm.run_session(src, plan, lambda t: print(t, file=out, flush=True), step_timeout=a.step_timeout)
+    finally:
+        if hasattr(src, "close"):
+            src.close()
+    an = vm.analyse(presses)
+    text = vm.report(an, stray)
+    print(text, file=out)
+    return EXIT_OK, text
+
+
+def cmd_measure(a, out, ask, opener: Opener) -> int:
+    k = kit()
+    step = a.step or "all"
+    stamp = datetime.now().strftime("%Y-%m-%d-%H%M")
+    out_dir = Path(a.out) if a.out else DEFAULT_MEASURE / stamp
+    out_dir.mkdir(parents=True, exist_ok=True)
+    runs: list[Path] = []
+    status, velocity = EXIT_OK, None
+    if step == "report":
+        runs = [Path(p) for p in a.runs]
+        if not runs:
+            raise UsageError("measure report RUNDIR [RUNDIR ...]")
+    if step in ("all", "tide"):
+        status, runs = measure_tide(a, out_dir, out, ask, opener)
+        if status != EXIT_OK and not runs:
+            return status
+    if step in ("all", "velocity"):
+        st, velocity = measure_velocity(a, out, ask)
+        status = status or st
+    rows = k["tide_measure"].load([str(r) for r in runs]) if runs else []
+    text = k["tide_measure"].report_text(rows, stamp=stamp, build=f"bench {MEASURE_TAG}" if runs else "", libcalls=libcalls_section(k) if runs else None, velocity=velocity)
+    path = out_dir / "report.md"
+    path.write_text(text, encoding="utf-8", newline="\n")
+    print(text, file=out)
+    print(f"report: {path}", file=out)
+    return status
+
+
 
 def build_parser() -> argparse.ArgumentParser:
     common = argparse.ArgumentParser(add_help=False)
@@ -1618,6 +1848,19 @@ def build_parser() -> argparse.ArgumentParser:
     f.add_argument("--yes", action="store_true", help="do not ask (here and in fm1_install.py)")
     f.add_argument("--out", metavar="DIR", default=str(DEFAULT_OUT), help="where the backup goes")
     f.add_argument("--installer", default=None, help=argparse.SUPPRESS)   # (tests: a stand-in for fm1_install.py)
+    m = sub.add_parser("measure", parents=[common], help="the unit measurement of TIDE's audio DSP, PHYS per model and key velocity (audit A01, Q14, T17)")
+    m.add_argument("step", nargs="?", choices=("all", "tide", "velocity", "report"), default="all",
+                   help="all (default): bench measurement, then the normal firmware back, then the velocity session; tide: only the bench part; velocity: only the key session; report RUNDIR..: the report of runs made")
+    m.add_argument("runs", nargs="*", help="(report) the run folders (each holds results.csv)")
+    m.add_argument("--bench", metavar="PKG", help="a bench package already built (default: built here with tools/build.py)")
+    m.add_argument("--normal", metavar="PKG", help="the package to put back (default: the tree's normal build)")
+    m.add_argument("--no-restore", action="store_true", help="leave the bench build installed")
+    m.add_argument("--com", metavar="NAME", help="the bench build's serial port (default: found by itself)")
+    m.add_argument("--yes", action="store_true", help="do not ask")
+    m.add_argument("--out", metavar="DIR", default=None, help="the report and the runs (default: <work folder>/measure/<date>)")
+    m.add_argument("--out-backups", metavar="DIR", default=None, help=argparse.SUPPRESS)
+    m.add_argument("--step-timeout", type=float, default=90.0, help="(velocity) seconds to wait for a press")
+    m.add_argument("--installer", default=None, help=argparse.SUPPRESS)
     return ap
 
 
@@ -1633,6 +1876,8 @@ def main(argv: Optional[list[str]] = None, opener: Optional[Opener] = None, ask:
     a = build_parser().parse_args(argv)
     opener = opener or (open_mock if a.mock else open_midi)
     try:
+        if a.cmd == "measure":
+            return cmd_measure(a, out, ask, opener)    # (it opens the unit itself, and not at all for a report)
         if a.cmd == "restore":
             a.archive = load_archive(a.file)          # (a bad file is refused before the unit is touched)
         if a.cmd == "flash" and not Path(a.package).is_file():
