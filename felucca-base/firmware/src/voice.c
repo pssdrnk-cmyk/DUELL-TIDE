@@ -1351,9 +1351,9 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
         if (e == &ENG_NOISE)                            /* NOISE's DRFT wander of the cutoff, worked out by the block before (eng_noise.c): filter 1's, one block late */
             m.cutoff += v->s[0];
         m.acc1 = 0;
-        if (v->vel > 110 && (uf != 1u || ACCENT_BOTH(e)))   /* accent opens the filter with the env: filter 1 on the three engines whose own filter went (ACCENT_BOTH), the engine's own tone control on the others (below) */
+        if (ACCENT_VEL(v) > 110 && (uf != 1u || ACCENT_BOTH(e)))   /* accent opens the filter with the env: filter 1 on the three engines whose own filter went (ACCENT_BOTH), the engine's own tone control on the others (below) */
         {
-            int32_t al = accent_lift(v->vel, m.envq15);
+            int32_t al = accent_lift(ACCENT_VEL(v), m.envq15);
             if (ACCENT_BOTH(e))
                 al = m.acc1 = accent_dir(al, accent_dir_mode(p[P_FREEC]));   /* filter 1 opens the way its MODE opens (LP up, HP down, BP none) */
             m.cutoff += al;
@@ -1391,7 +1391,7 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
             uc = morph_xcut(t, uc); /* TIDE: the effective cutoff's crossing dip */
 #endif   /* the effective cut: the dial plus every route (and the key) */
             int32_t ucn = clamp(ucut0 + m.cutoff - m.acc1 + kt, 0, UF_TOP);   /* the same without the accent (filter 2 LINK, NOISE's make-up) */
-            m.cutoff = accent_lift(v->vel, m.envq15);   /* the routes are the filter's, whatever CUT is; the accent's lift stays the engine's own (its tone control, as ever) */
+            m.cutoff = accent_lift(ACCENT_VEL(v), m.envq15);   /* the routes are the filter's, whatever CUT is; the accent's lift stays the engine's own (its tone control, as ever) */
             m.ucut = uc;
             m.ucn = ucn;
 #if DUELL_TIDE
