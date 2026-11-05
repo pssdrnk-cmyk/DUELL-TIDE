@@ -1,6 +1,6 @@
 # VOICE controls: when each one is heard (DUELL 0.2.25)
 
-The owner asked which VOICE controls do something, and when. This table is read from the firmware (`firmware/src/voice.c`, `fx.c`), not assumed.
+OSCILL/R asked which VOICE controls do something, and when. This table is read from the firmware (`firmware/src/voice.c`, `fx.c`), not assumed.
 The editor hides a control that cannot be heard in the current setting and shows the reason in its place (`web/editor/layout.js` `voiceWhy`).
 The unit itself shows every VOICE card all the time; nothing on the unit changed.
 
@@ -16,7 +16,7 @@ The unit itself shows every VOICE card all the time; nothing on the unit changed
 
 The number of unison voices is not a control: UNISON uses every voice the engine allows, up to 8 (PHYS 3, VOICE 4), and fewer when the part's NOTES budget needs the time. On FM6 and PHYS velocity is timbre, so a unison note keeps the key's velocity and the level comes from the voice count instead; UNISON is then about as loud as POLY (within 1 dB). The other engines start the unison voices at part of the velocity (half, or 36 % with eight voices).
 
-## Findings for the owner (no change made; the owner decides)
+## Findings for OSCILL/R (no change made; the author decides)
 
 - **No VOICE control is dead in the firmware**: each one is read in the cases above.
 - **VOICE ALLOCATION is no control any more**: the stored byte is ignored. A new POLY note rotates through the free voices; with GLIDE above 0 it takes the free voice nearest in pitch (`voice.c` `voice_alloc`).

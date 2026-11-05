@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* Exercise assignable CCs through the actual map and queued main-loop dispatch. */
 #define UI_TEST_NO_MAIN 1
 #include "ui_test.c"

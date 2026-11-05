@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* Compare predictions with real seq_tick/arp_step MIDI note-on traces. */
 #define UI_TEST_NO_MAIN 1
 #include "ui_test.c"
