@@ -29,13 +29,13 @@ static int8_t mm_x = -1;                                 /* the end being rolled
 
 enum { MMR_BASS, MMR_LEAD, MMR_PAD, MMR_PLUCK, MMR_N };      /* the roles (KEYS, FX, OTHER play as LEAD: its bands are the widest) */
 enum { MB_CUT, MB_RES, MB_E2F, MB_ATK, MB_DEC, MB_REL, MB_LFO, MB_CHO, MB_DLY, MB_REV, MB_N };
-/* the bands, lo .. hi per role (SOUND_STUDY.md 2: the factory sounds' 10 .. 90 %; LEAD widened by KEYS') */
+/* the bands, lo .. hi per role (SOUND_STUDY.md 2: the factory sounds' 10 .. 90 %; LEAD widened by KEYS'; audit P07: RES in the exponential law's steps of the same damping) */
 static const int8_t MM_BAND[MMR_N][MB_N][2] = {
     /*            CUT       RES       E2>F     ATK      DEC        REL        LFO>F    CHO       DLY      REV */
-    /* BASS  */ {{27, 52}, {11, 53}, {0, 31}, {0, 10}, {70, 82},  {44, 60},  {0, 8}, {0, 0},   {0, 0},  {0, 6}},
-    /* LEAD  */ {{41, 82}, {0, 61},  {0, 37}, {0, 59}, {70, 109}, {44, 106}, {0, 7}, {0, 64},  {0, 32}, {15, 64}},
-    /* PAD   */ {{47, 61}, {7, 17},  {7, 17}, {69, 94}, {70, 105}, {92, 105}, {0, 5}, {32, 90}, {0, 19}, {42, 89}},
-    /* PLUCK */ {{43, 67}, {11, 21}, {7, 31}, {0, 10}, {70, 95},  {60, 76},  {0, 5}, {0, 28},  {0, 38}, {23, 51}},
+    /* BASS  */ {{27, 52}, {4, 24},  {0, 31}, {0, 10}, {70, 82},  {44, 60},  {0, 8}, {0, 0},   {0, 0},  {0, 6}},
+    /* LEAD  */ {{41, 82}, {0, 29},  {0, 37}, {0, 59}, {70, 109}, {44, 106}, {0, 7}, {0, 64},  {0, 32}, {15, 64}},
+    /* PAD   */ {{47, 61}, {3, 6},   {7, 17}, {69, 94}, {70, 105}, {92, 105}, {0, 5}, {32, 90}, {0, 19}, {42, 89}},
+    /* PLUCK */ {{43, 67}, {4, 8},   {7, 31}, {0, 10}, {70, 95},  {60, 76},  {0, 5}, {0, 28},  {0, 38}, {23, 51}},
 };
 
 /* the engines' own values a SOURCE move may take, with their bands (the factory sounds' 10 .. 90 %); eng: the engine's index (engines.c ENGINES[]) */
@@ -106,7 +106,7 @@ static void mm_apply(const int8_t *o, int8_t *end, const engine_t *e, const int3
     uint32_t i;
     if (e->ufilt) {                                      /* BRIGHT */
         mm_dial(end, e, o, P_FREEA, d[MDL_BRIGHT], 6, b[MB_CUT][0], b[MB_CUT][1], MM_MIN);
-        mm_dial(end, e, o, P_FREEB, -d[MDL_BRIGHT], 2, b[MB_RES][0], b[MB_RES][1], 12);
+        mm_dial(end, e, o, P_FREEB, -d[MDL_BRIGHT], 2, b[MB_RES][0], b[MB_RES][1], 4);   /* (audit P07: the least span 4, the damping change 12 steps made at the bands' low ends, RES 0 .. 11, under the linear law) */
         mm_dial(end, e, o, P_E2FLT, d[MDL_BRIGHT], 3, b[MB_E2F][0], b[MB_E2F][1], 12);
     }
     if (mm_filter_on(e, o)) {                            /* MOVE */

@@ -147,7 +147,7 @@ static const param_desc_t TP[P_COUNT] = {
     [P_ARATE] = PE("RATE", N_DIV, 2),
     [P_AOCT] = PD("OCT", F_INT, 1, 4, 1),
     [P_AGATE] = PD("GATE", F_PCT, 1, 127, 64),
-    [P_ASWING] = PD("SWG", F_PCT, 50, 75, 50),   /* owner 2026-10-28: 50 .. 75 %, 50 = straight; stored and shown as that percentage (seq.c sw_old turns it into the old 0..100 timing scale) */
+    [P_ASWING] = PD("SWG", F_PCT, 50, 75, 50),   /* owner 2026-10-28: 50 .. 75 %, 50 = straight; stored and shown as that percentage (the offbeat lands at that percentage of the pair: seq.c sw_ex / sw_len) */
     [P_APROB] = PD("PROB", F_PCT, 0, 127, 127),
     [P_AHOLD] = PE("HOLD", N_HOLD, 0),
     [P_AORDER] = PE("ORD", N_ORDER, 0),
@@ -351,7 +351,7 @@ static const param_desc_t GP[G_COUNT + 7u] = {
      * showed the USB state), SYNC was a placeholder, CPU a reading; the USB state and the CPU load are MENU > SYSTEM >
      * INFO's now (ui_menu.c). Kept: the ids and G_COUNT are fixed by the formats and the protocol (0.2.5: MIDI and SYNC carry the delay's modulation, below) */
     /* DUELL 0.2.5: the delay's MODULATION (SPEC 5c.2) on these two ids (core.h G_DMDEP, G_DMRATE): DEPTH 0 = off (the delay as before, bit for
-     * bit), 100 = the time swings +- 10 ms (never more than a quarter of the delay time); RATE as the chorus's, 0.05 .. 3.4 Hz, 0.51 Hz at power-on */
+     * bit), 100 = the time swings +- 4.6 ms, +- 25 cents from 0.51 Hz up (audit R07, fx_bus.c fx_swing; was +- 10 ms), never more than a quarter of the delay time; RATE as the chorus's, 0.05 .. 3.4 Hz, 0.51 Hz at power-on */
     [G_DMRATE] = PD("MRATE", F_LFOHZ, 0, 80, 44),
     [G_DMDEP] = PD("MDEPTH", F_PCT, 0, 100, 0),
     /* MIDI IN's routing, edited on GLO > MIDI K3 (DUELL 0.1; MENU > MIDI > MIDI IN in 1.2..1.5, up to 1.1.5 GLO > SYSTEM ROUT),

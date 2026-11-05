@@ -95,7 +95,23 @@ static int theory(void)
                  chord_is(64, (const uint8_t[]){64, 68, 71, 74}) && name_is(64, "E7") && name_is(68, "G#dim7") &&
                  name_is(69, "AmM7"));
     scale_g = 1; root_g = 3;                           /* Eb major */
-    bad += check("Eb major DIA7 on Bb: Bb D F Ab (A#7)", chord_is(58, (const uint8_t[]){58, 62, 65, 68}) && name_is(58, "A#7"));
+    bad += check("Eb major DIA7 on Bb: Bb D F Ab (A#7)", chord_is(58, (const uint8_t[]){58, 62, 65, 68}) && name_is(58, "Bb7"));
+    /* audit S13: flats in a flat key, sharps in a sharp one, a quartal stack named, a 6-note scale's DIA7 a triad */
+    scale_g = 2; root_g = 0; t->p[P_CHRD] = CH_DIA7;                       /* C minor */
+    bad += check("C minor DIA7: Ebmaj7 Abmaj7 Bb7 (not D#maj7 G#maj7 A#7)", name_is(63, "Ebmaj7") && name_is(68, "Abmaj7") && name_is(70, "Bb7"));
+    scale_g = 2; root_g = 4;                                               /* E minor: G major's F# */
+    bad += check("E minor DIA7 on F#: F#m7b5 (sharps in a sharp key)", name_is(66, "F#m7b5"));
+    scale_g = 1; root_g = 2;                                               /* D major */
+    bad += check("D major DIA7 on F#: F#m7", name_is(66, "F#m7"));
+    scale_g = 3; root_g = 0;                                               /* C dorian: Bb major's modes */
+    bad += check("C dorian DIA7 on Eb: Ebmaj7", name_is(63, "Ebmaj7"));
+    scale_g = 0; root_g = 10;                                              /* CHROMATIC, ROOT Bb */
+    bad += check("CHROMATIC with ROOT Bb: the plain MAJ7 on Db is Dbmaj7", name_is(61, "Dbmaj7"));
+    scale_g = 6; root_g = 9;                                               /* A minor pentatonic: A D G C, a stack of 4ths */
+    bad += check("A minor pentatonic DIA7 on A: A D G C, named Am7sus", chord_is(69, (const uint8_t[]){69, 74, 79, 84}) && name_is(69, "Am7sus"));
+    scale_g = 12; root_g = 0;                                              /* BLUES (6 notes) */
+    bad += check("BLUES DIA7 on C: a triad C F G, not 0-5-7-12", chord_is(60, (const uint8_t[]){60, 65, 67, 0}));
+    root_g = 0;
     scale_g = 3; root_g = 2; t->p[P_CHRD] = CH_DIA3;   /* D dorian */
     bad += check("D dorian DIA3 on D: Dm, on G: G (the major IV)", name_is(62, "Dm") && name_is(67, "G") &&
                  chord_is(67, (const uint8_t[]){67, 71, 74, 0}));
@@ -127,7 +143,7 @@ static int theory(void)
                     scale_g = (int16_t)s; root_g = (int16_t)r;
                     t->p[P_CHRD] = (int16_t)(note & 1u ? CH_DIA3 : CH_DIA7);
                     n = chord_build(t, note, out);
-                    ok &= n == (note & 1u ? 3u : 4u);
+                    ok &= n == (note & 1u || __builtin_popcount(scale_mask(t)) == 6 ? 3u : 4u);   /* (a 6-note scale: DIA7 stops at the triad) */
                     ok &= out[0] == note;                      /* the root is never moved */
                     if ((scale_mask(t) >> ((note + 120u - r) % 12u)) & 1u) {
                         for (k = 0; k < n; k++)

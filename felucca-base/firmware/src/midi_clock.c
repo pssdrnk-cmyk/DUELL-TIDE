@@ -12,6 +12,7 @@ static struct {
     uint8_t det_n[3];                              /* AUTO, unlocked: a port's plausible pulses in a row (det_t0: the first one's time) */
     uint32_t det_t0[3], det_last[3];
 } midi_clock;
+static uint8_t midi_bar;                           /* the pulses of the master's bar (0..95) counted so far, 0 after its Start; bit 7: this unit's PLAY waits for the next bar (audit S08) */
 
 /* DUELL 0.2.14, CLK AUTO (SPEC 4.2, MIDI clock): a port locks after AUTO_LOCK_N pulses AUTO_MIN_MS..AUTO_MAX_MS apart (24 ppqn at ~31..312 BPM)
  * within AUTO_LOCK_MS, or at once on its Start / Continue; the other port is ignored while locked; no pulse for AUTO_DROP_MS: back to the
@@ -54,7 +55,7 @@ static __attribute__((noinline)) void clock_rescale(uint32_t old_beat, uint32_t 
         if (trk[i].nd_early) trk[i].nd_early = midi_clock_scale(trk[i].nd_early - 1u, np, op) + 1u;
         div = (uint32_t)trk[i].p[P_ARATE];
         op = midi_clock_period(old_beat, div); np = midi_clock_period(new_beat, div);
-        if (trk[i].arp_pos < 0xFFFFFFFu)
+        if (trk[i].arp_pos < 0x8000000u)             /* (not a step still to wait for: seq.c arp_wait) */
             trk[i].arp_pos = midi_clock_scale_phase(trk[i].arp_pos, np, op, &midi_arp_grid[i], div);
         if (trk[i].arp_off) trk[i].arp_off = midi_clock_scale(trk[i].arp_off, np, op);
     }
@@ -66,6 +67,7 @@ static __attribute__((noinline)) void clock_rescale(uint32_t old_beat, uint32_t 
 static __attribute__((noinline)) void midi_clock_transport(uint32_t status, uint32_t ms)
 {
     if (status == 0xFAu) {                         /* Start: step zero */
+        midi_bar = 0;
         midi_clock.pos = midi_clock.rendered = midi_clock.rem = 0;
         midi_clock.have_pulse = midi_clock.tempo_valid = 0;
         midi_clock.interval_ms = 0;
@@ -84,6 +86,7 @@ static __attribute__((noinline)) void midi_clock_transport(uint32_t status, uint
         song.playing = 1;
     } else if (status == 0xFCu) {
         midi_clock.stopped = 1;                    /* (the arp waits for the next Start; the pulses are not counted) */
+        midi_bar &= 0x7Fu;
         seq_stop();
     }
 }
@@ -114,6 +117,9 @@ static __attribute__((noinline)) void midi_clock_pulse(uint32_t ms)
             song.g[G_BPM] = (int16_t)clamp((int32_t)((60000u * beats + dt / 2u) / dt), 40, 240);
         }
     }
+    if (midi_bar == 0x80u)                  /* this unit's PLAY, pressed under an external clock: it starts on the master's bar (96 pulses) */
+        midi_clock_transport(0xFAu, ms);
+    midi_bar = (uint8_t)((midi_bar & 0x80u) | ((midi_bar & 0x7Fu) < 95u ? (midi_bar & 0x7Fu) + 1u : 0u));
     midi_clock.seen = 1;
     if (song.playing || !midi_clock.stopped) {     /* (a clock running without a Start still steps the ARP: events_block) */
         if (song.playing && !midi_clock.have_pulse) {
@@ -171,6 +177,7 @@ static uint32_t midi_clock_advance(uint32_t now)
 static __attribute__((noinline)) void clock_lock(uint32_t src, uint32_t ms)
 {
     midi_grid_reset();
+    midi_bar = 0;
     midi_clock.lock = (uint8_t)src;
     midi_clock.pos = midi_clock.rendered = midi_clock.rem = 0;
     midi_clock.have_pulse = midi_clock.tempo_valid = midi_clock.tempo_n = 0;
@@ -256,6 +263,7 @@ static __attribute__((noinline)) void clock_choice(uint32_t mode)
         now = mode < CLK_AUTO ? mode : 0u;
     if (now != was) {
         seq_stop();
+        midi_bar = 0;
         memset(&midi_clock, 0, sizeof midi_clock);
         midi_beat_samples = 0;
     }

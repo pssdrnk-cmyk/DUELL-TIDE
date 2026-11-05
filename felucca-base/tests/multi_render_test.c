@@ -175,7 +175,9 @@ int main(int argc, char **argv)
                    "# jam11 adds TIDE's roll changes and PHYS tuning. (Not compared audio against 1.0: the 1.0 tree does not build this test on Linux, nor does stock 1.1 (scenes.h / mu_put_rec).)\n"
                    "# Audit P01 (2026-11-04), on purpose, 18 renders: GLIDE takes the time GLD shows (voice.c glide_set); the multis with a LEGATO part that glides between the held chord keys, M01 M08 M14 S01 S08 X08, re-made once; the others are unchanged.\n"
                    "# Audit P01: the factory multis' own GLD migrated as the sounds' (their old 7-semitone glide: M01 26/26 -> 61/61, M08 38/28 -> 61/61, M14 21/26 -> 51/61): M01 M08 M14 re-made once more.\n"
-                   "# Audit P03 (filter precision), on purpose: the SVF keeps its precision at low cutoffs (dsp.c tsvf_coef_k): 102 of the 108 renders (the multis and scenes whose parts run a filter) are re-made once.\n"
+                   "# Audit P07 (2026-11-05), on purpose, 92 of the 108: RES's damping is exponential (voice.c UF_K); the factory multis' RES, FILTER ENV MRES and FRES depths (A and End B) moved to the step of the same damping (tools/factory_multis/*.bin), every one of M01..M16 re-made; the test scenes S, X are not migrated (they play the new law).\n"
+                   "# Audit R07 (2026-11-05), on purpose, 27 of the 108: the chorus's and the delay modulation's sweep holds its pitch swing above CRT 40 / MRATE 44 (fx_bus.c fx_swing), MDEPTH 100 = +-25 cents; M02 M04 M06 M07 (MDEPTH migrated to the same swing) and M08 (its 18 Hz chorus: CDP 127) re-made, and the scenes with a delay modulation or a fast chorus, S02 S07 S17 X07; the others are unchanged.\n"
+                   "# Audit P03 (filter precision), on purpose: the SVF keeps its precision at low cutoffs (dsp.c tsvf_coef_k): 102 of the 110 renders (the multis and scenes whose parts run a filter) are re-made once.\n"
                    "# Audit P08 (CUT dial slewed, voice.c cut_slew), on purpose, 55 renders: the fader 63 / 127 renders of the multis and scenes whose MORPH moves the CUT dial.\n");
         for (m = 0; m < NR; m++)
             for (f = 0; f < 3u; f++)

@@ -439,8 +439,8 @@ static __attribute__((noinline)) void morph_xpost(track_t *t, uint32_t pi)
         /* the cutoff down toward 1.5 times the highest note: the effective one (morph_xcut): a filter envelope that opens a dark
          * patch's filter would otherwise keep it open */
         morph_cdd[pi] = (uint16_t)df;
-        if (p[P_FREEB] > 64)                             /* RES held to half while it closes: a switch through a resonant filter rings */
-            p[P_FREEB] = (int16_t)(p[P_FREEB] - (((p[P_FREEB] - 64) * df) >> 15));
+        if (p[P_FREEB] > 30)                             /* RES held to 30 while it closes (the damping of the old law's half, 64; audit P07): a switch through a resonant filter rings */
+            p[P_FREEB] = (int16_t)(p[P_FREEB] - (((p[P_FREEB] - 30) * df) >> 15));
     }
     if (x->dub) {                                        /* the swell: the delay and reverb sends, up to 3/4 of the way to full */
         p[P_DLY] = (int16_t)(p[P_DLY] + (((127 - p[P_DLY]) * (int32_t)x->dub * 3) >> 17));

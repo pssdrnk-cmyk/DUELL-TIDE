@@ -19,7 +19,7 @@ static uint64_t phrase_time(const track_t *t, uint32_t value, uint32_t rem, int 
 static uint32_t phrase_duration(const track_t *t, uint32_t idx, uint32_t period, int arp, int external)
 {
     if (!arp) return step_samples(t, period, idx);
-    int32_t sw = sw_old(t->p[P_ASWING]) * (int32_t)period / 250;
+    int32_t sw = sw_len(sw_ex(t->p[P_ASWING]), period);
     (void)external;   /* (the internal arp carries its overshoot too: seq.c arp_step) */
     return period + (uint32_t)((idx & 1u) ? -sw : sw);
 }

@@ -207,6 +207,7 @@ static int in_held(const track_t *t, uint32_t note)
     return 0;
 }
 
+static uint32_t arp_wait(const track_t *t);        /* (below) */
 static void arp_add(track_t *t, uint32_t note)
 {
     uint32_t i;
@@ -233,7 +234,7 @@ static void arp_add(track_t *t, uint32_t note)
         t->held[t->nheld++] = (uint8_t)note;
     }
     if (t->nheld == 1u) {
-        t->arp_pos = 0xFFFFFFF;                     /* fire on this block */
+        t->arp_pos = 0xFFFFFFFu - arp_wait(t);      /* the first step: at once, or while PLAY runs on the next RATE boundary of the transport */
         t->arp_idx = 0xFFFFFFFFu;
         t->atg_note = t->atg_vel = 0;               /* ARP TARGET: a new phrase starts on the root */
     }
@@ -590,9 +591,12 @@ static __attribute__((noinline)) void arp_fire(track_t *t, uint32_t period)
     }
 }
 
-/* SWING is stored and shown as 50 .. 75 % (50 = straight, owner 2026-10-28). The timing keeps its old 0 .. 100 scale: old v = (percent - 50) * 4,
- * so 50 % = 0, 75 % = 100, and every step of 1 % is 4 old units; the same sums as before (core.h track_swing / swing_step_len: / 250) */
-static inline int32_t sw_old(int32_t pct) { return pct <= 50 ? 0 : pct >= 75 ? 100 : (pct - 50) * 4; }
+/* SWING is stored and shown as 50 .. 75 % (50 = straight, owner 2026-10-28): the percentage of a pair of steps (two periods) that the first
+ * step takes, so the offbeat lands where the display says (audit S03; it used to land at 70 % for 75, 62.9 for 66).
+ * sw_ex: the part of a SWG over 50 (0 .. 25); sw_len: the samples the even step is longer by, the odd one shorter, for the sum of such parts
+ * (the track's SWG and the global one add, at most 25 = 75 %): the offbeat is at period + ex * period / 50 = (50 + 2 * ex) % of the pair */
+static inline int32_t sw_ex(int32_t pct) { return pct <= 50 ? 0 : pct >= 75 ? 25 : pct - 50; }
+static inline int32_t sw_len(int32_t ex, uint32_t period) { return (ex > 25 ? 25 : ex) * (int32_t)period / 50; }
 static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
 {
     uint32_t period, duration;
@@ -622,17 +626,26 @@ static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
         return;
     }
     period = div_samples((uint32_t)t->p[P_ARATE]);
-    sw = sw_old(t->p[P_ASWING]) * (int32_t)period / 250;
-    t->arp_pos += n;
-    duration = period + (uint32_t)((t->arp_idx & 1u) ? -sw : sw);   /* (after an even step the wait is longer: the offbeat lands late, as the sequencer's) */
-    if (t->arp_pos < duration && t->arp_pos != 0xFFFFFFF + n)
-        return;
-    if (t->arp_pos == 0xFFFFFFFu + n) {             /* a new phrase: its first step starts here */
+    sw = sw_len(sw_ex(t->p[P_ASWING]), period);
+    if (t->arp_pos >= 0x8000000u) {                 /* a new phrase waits for its first step (0xFFFFFFF less the samples still to wait) */
+        uint32_t w = 0xFFFFFFFu - t->arp_pos;
+        if (n < w) {
+            t->arp_pos += n;
+            return;
+        }
         if (clock_src()) midi_arp_grid[trk_index(t)].remainder = 0;
-        t->arp_pos = 0;
+        t->arp_pos = w ? n - w : 0u;                /* (the overshoot of a wait is carried: the next step stays on the grid) */
         arp_fire(t, period);
-    } else {                                        /* the overshoot is carried, so no step is rounded up to a block; on the external clock every step due fires */
-        do {
+        if (t->arp_pos && ARP_UP(t)) {
+            if (t->arp_off <= t->arp_pos) arp_off(t);
+            else t->arp_off -= t->arp_pos;
+        }
+    } else {
+        t->arp_pos += n;
+        duration = period + (uint32_t)((t->arp_idx & 1u) ? -sw : sw);   /* (after an even step the wait is longer: the offbeat lands late, as the sequencer's) */
+        if (t->arp_pos < duration)
+            return;
+        do {                                        /* the overshoot is carried, so no step is rounded up to a block; on the external clock every step due fires */
             t->arp_pos -= duration;
             arp_fire(t, period);
             duration = period + (uint32_t)((t->arp_idx & 1u) ? -sw : sw);
@@ -651,12 +664,11 @@ static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
 static void arp_tick(track_t *t, uint32_t n) { arp_step(t, n, n); }
 
 /* -------------------------------------------------------- note input --- */
-/* the length of step idx in samples: SWING (the track's + the global, at most 100) makes the even steps longer
+/* the length of step idx in samples: SWING (the track's + the global, at most 75 %) makes the even steps longer
  * and the odd ones shorter, so every odd step starts late */
 static uint32_t step_samples(const track_t *t, uint32_t period, uint32_t idx)
 {
-    int32_t sw = sw_old(t->p[P_SSWING]) + sw_old(song.g[G_SWING]);   /* the track's + the global, at most 100 (core.h track_swing / swing_step_len, same arithmetic) */
-    sw = (sw > 100 ? 100 : sw) * (int32_t)period / 250;
+    int32_t sw = sw_len(sw_ex(t->p[P_SSWING]) + sw_ex(song.g[G_SWING]), period);   /* the track's + the global, at most 75 % */
     return period + (uint32_t)((idx & 1u) ? -sw : sw);
 }
 
@@ -1515,6 +1527,17 @@ static __attribute__((noinline)) void cin_record(void)
         cin_n[i] = 0;
     }
 }
+/* the samples from now to the next boundary of the arp's RATE on the transport's grid (clk_pos / clk_step count its 1/16 steps; 0: PLAY is
+ * stopped or waiting for its first clock, or the transport is on one). A key that lands while PLAY runs starts the arp there (audit S07);
+ * arp_pos holds 0xFFFFFFF less this wait until arp_step has counted it down */
+static uint32_t arp_wait(const track_t *t)
+{
+    uint32_t p = div_samples((uint32_t)t->p[P_ARATE]), q = div_samples(2);
+    if (!song.playing || clk_pos == CLK_START || !p)
+        return 0;
+    p -= (clk_step * q + clk_pos) % p;
+    return p == div_samples((uint32_t)t->p[P_ARATE]) ? 0u : p;
+}
 /* the metronome's beat: adv samples on while the transport runs (click.c sounds it in this block) */
 static void click_tick(uint32_t adv)
 {
@@ -1671,9 +1694,12 @@ static void events_block(uint32_t n)
     if (cin_left && !clock_mode)
         cin_block(n);
     if (transport_req == 1u) {
-        if (clock_mode)
-            midi_clock_transport(0xFAu, fm1_ms);
-        else if (cin_left)
+        if (clock_mode) {                           /* an external clock arriving: PLAY waits for the master's bar (midi_clock_pulse), else it starts at once */
+            if (midi_clock.seen && !song.playing && (int32_t)(fm1_ms - midi_clock.last_ms) < 250)
+                midi_bar |= 0x80u;
+            else
+                midi_clock_transport(0xFAu, fm1_ms);
+        } else if (cin_left)
             ;                                       /* counting in already (the UI's PLAY stops it: seq_counting) */
         else if (cin_bars && song.rec && !song.playing)
             cin_begin();                            /* recording from stop: the count-in first */
@@ -1681,11 +1707,13 @@ static void events_block(uint32_t n)
             seq_start();
         transport_req = 0;
     } else if (transport_req == 2u) {
+        midi_bar &= 0x7Fu;
         if (clock_mode)
             midi_clock.stopped = 1;                 /* (an external clock: the arp waits for the next Start, as for 0xFC) */
         seq_stop();
         transport_req = 0;
     } else if (transport_req == 4u) {                 /* PLAY STOP twice or held: STOP ALL */
+        midi_bar &= 0x7Fu;
         stop_all();
         transport_req = 0;
     } else if (transport_req == 3u) {                 /* GLO + PLAY: from the top without stopping (INT clock) */

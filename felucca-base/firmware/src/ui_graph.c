@@ -450,7 +450,7 @@ static void chord_line(const track_t *t)
         for (i = 0; i < chord_last[k].n && i < CHORD_MAX; i++) {
             if (i)
                 str_cpy(b + str_len(b), " ", 2);
-            str_cpy(b + str_len(b), N_NOTE[chord_last[k].note[i] % 12u], 3);
+            note_str(b + str_len(b), chord_last[k].note[i]);
         }
         cv_text_on(UT_A_KB_X + UT_A_KB_W - text_w(&AF_S, b), y, &AF_S, b, T_MID, T_BG);
     }

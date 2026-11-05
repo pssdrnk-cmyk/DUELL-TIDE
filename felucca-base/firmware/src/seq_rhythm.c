@@ -135,7 +135,7 @@ static uint32_t tide_metric(const track_t *t, uint32_t idx)
     if (!per)
         return SM_NONE;
     p32 = (idx * per) % 8u;
-    if (p32 == 6u && sw_old(t->p[P_SSWING]) + sw_old(song.g[G_SWING]) >= 60)
+    if (p32 == 6u && sw_ex(t->p[P_SSWING]) + sw_ex(song.g[G_SWING]) >= 15)
         return SM_E;
     return p32 == 0u ? SM_BEAT : p32 == 4u ? SM_AND : p32 == 6u ? SM_A : p32 == 2u ? SM_E : SM_ODD;
 }

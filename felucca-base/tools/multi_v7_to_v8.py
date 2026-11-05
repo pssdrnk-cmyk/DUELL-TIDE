@@ -14,7 +14,7 @@ What changes (multi.c's record comment of 1.0 and of 1.1, params.c, ext.h):
               The NX extension values: no count byte; 16 -> 28 slots (1.1's X16..X27 get their defaults, up_xb.h XB_DEFS, as 1.0's reader gave a shorter list's rest)
               steps: 7 bytes each (ps_pack_step's bytes 0..5 and 8; 6 and 7, the old drum lane, must be 0)
               FM6 patch: 128 bytes -> 112 (7-bit values packed 8 to 7, upreset.c upf_pk_put)
-  SWING       G_SWING and each part's P_ASWING, P_SSWING: 0..100 -> 50..75 % (seq.c sw_old: old = (new - 50) * 4). An old value that is not a multiple of 4
+  SWING       G_SWING and each part's P_ASWING, P_SSWING: 0..100 -> 50..75 % (the old timing scale: old = (new - 50) * 4; since the swing fix the new value is the percentage itself). An old value that is not a multiple of 4
               goes to the nearest (reported). (1.1's own factory multis turned 15 and 17 into 50, straight; this keeps the swing as near as 1.1 can play it.)
   tail        the automation as it was, then XFADE, SPLIT: the BALANCE byte before them is gone (1.1 has no BALANCE; a non-zero one is reported)
 Everything else is copied byte for byte. A record already version 8 is left as it is; any other version, or one that does not parse to its own length, stops.

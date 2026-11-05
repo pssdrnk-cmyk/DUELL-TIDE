@@ -506,8 +506,7 @@ static void t_bypass_series(void)
 }
 
 /* ------------------------------------------------------------------ 4 RESPONSE --- */
-#define TAMP 16000.0
-static double tamp = TAMP;                          /* (uf_gain's input amplitude; t_lowcut lowers it: the RES 127 peak would reach the soft knee) */
+static double TAMP = 16000.0;                            /* (the RES LAW check measures at 2000: under the soft knee at full RES) */
 /* the gain of uf_run at frequency f (a sine, from rest: 0.3 s to settle, 0.3 s measured), CUT step c (Q8 any), MODE, RES, SLOPE; the
  * bypass (MODE LP at the open end): 1 */
 static double uf_gain(int32_t cq8, int32_t mode, int32_t res, int32_t slope, double f)
@@ -526,7 +525,7 @@ static double uf_gain(int32_t cq8, int32_t mode, int32_t res, int32_t slope, dou
     p[P_FREED] = (int16_t)slope;
     for (i = 0; i < N; i += CTL) {
         for (j = 0; j < CTL; j++)
-            in[j] = b[j] = (int32_t)lround(tamp * sin(2 * M_PI * f * (i + j) / FS));
+            in[j] = b[j] = (int32_t)lround(TAMP * sin(2 * M_PI * f * (i + j) / FS));
         uf_run(&v, b, CTL, cq8, p);
         if (i >= from)
             for (j = 0; j < CTL; j++) {
@@ -648,6 +647,31 @@ static void t_response(void)
     expect("BP (MODE 64) at CUT 41: the band round 690 Hz within 3.5 dB (24 dB: 4.5), 50 Hz and 10 kHz 12 dB down or more", ok_bp);
     expect("MODE 32 (LP>BP) and 96 (BP>HP): the blends, one end kept, the other 12 dB down, nothing above 0.5 dB", ok_blend);
     expect("RES 127 raises the cutoff by 12 dB or more over RES 0 (12 and 24 dB), below 24 dB", ok_res);
+    {   /* RES LAW (audit P07): the damping exponential in RES, so the whole knob is resonance: a peak from RES 32 on, about equal dB every 32 steps.
+         * The peak over the passband (LP at CUT 41: the largest gain from 0.6 to 1.4 x the cutoff against the gain at 1/8 of it).
+         * The linear law of before: 12 dB 0 / 0.9 / 5.7 / 16.8 dB at RES 32 / 64 / 96 / 127 (no peak at all up to RES 48) */
+        double pk[2][4], fc = uf_hz(41);
+        int ok_law = 1;
+        TAMP = 2000.0;
+        for (s = 1; s <= 2u; s++) {
+            for (q = 0; q < 4u; q++) {
+                int32_t rr = q < 3u ? 32 * (int32_t)(q + 1u) : 127;
+                double g0 = uf_gain(41 << 8, 0, rr, (int32_t)s, fc / 8), m = 0;
+                for (r = 0; r <= 16u; r++) {
+                    double g = uf_gain(41 << 8, 0, rr, (int32_t)s, fc * (0.6 + 0.05 * r));
+                    m = g > m ? g : m;
+                }
+                pk[s - 1u][q] = db_of(m / g0);
+            }
+            printf("uf:   RES law, %s: the peak over the passband at RES 32 / 64 / 96 / 127: %.1f / %.1f / %.1f / %.1f dB\n", s == 2u ? "24 dB" : "12 dB",
+                   pk[s - 1u][0], pk[s - 1u][1], pk[s - 1u][2], pk[s - 1u][3]);
+            ok_law &= pk[s - 1u][0] > 0.5;
+            for (q = 1; q < 4u; q++)
+                ok_law &= pk[s - 1u][q] - pk[s - 1u][q - 1u] > 3.0 && pk[s - 1u][q] - pk[s - 1u][q - 1u] < 8.0;
+        }
+        TAMP = 16000.0;
+        expect("RES LAW: a peak from RES 32 on and 3..8 dB more every 32 steps up to 127, 12 and 24 dB (the linear law gave none below 48)", ok_law);
+    }
 }
 
 /* ------------------------------------------------------------------ 4b BASS AT HIGH RES --- */
@@ -708,10 +732,11 @@ static void t_lowcut(void)
     for (q = 0; q < NELEM(HZ); q++) {
         int32_t cq = uf_q8_of_hz(HZ[q]);
         double fc = 30.0 * pow(16000.0 / 30.0, (40 + ((cq * 99) >> 6)) / 256.0 / 127.0), ideal = 20 * log10(4096.0 / (8192 - 7600)), dc;   /* (1 / k at the cutoff) */
-        double pk, st;
-        tamp = 1500.0;
+        double pk, st, t0;
+        t0 = TAMP;
+        TAMP = 1500.0;
         pk = db_of(uf_gain(cq, 0, 127, 1, fc));
-        tamp = TAMP;
+        TAMP = t0;
         st = db_of(uf_gain(cq, 0, 0, 1, 4 * fc));
         dc = uf_dc(cq, 0, 4 * fc);
         printf("uf:   CUT %.0f Hz: RES 127 peak %+.1f dB (ideal %+.1f), RES 0 at 4 x the cutoff %+.1f dB (ideal -24.6), DC %+.0f\n", fc, pk, ideal, st, dc);

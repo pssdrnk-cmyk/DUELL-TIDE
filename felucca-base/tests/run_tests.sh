@@ -264,7 +264,7 @@ if [ -f build/gen/felucca_tables.h ]; then
     run "1.5 sound items: ANALOG filter TYPE LP / BP / HP (responses, LP and other engines bit for bit), ENV SYNC (times at several tempi), cost, demos" \
         "$OUT/sound15_test" build/sound15_demo
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/swing_test" tests/swing_test.c -lm
-    run "SWING: track + global at most 100, sequencer step lengths, the SWG display" "$OUT/swing_test"
+    run "SWING: SWG 50..75 %, where the offbeat lands, track + global add, the SWG display" "$OUT/swing_test"
     mkdir -p build/fx_demo
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/reverb_test" tests/reverb_test.c -lm
     mkdir -p build/reverb_demo
