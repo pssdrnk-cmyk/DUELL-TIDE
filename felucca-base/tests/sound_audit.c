@@ -32,6 +32,8 @@
  * (hit level), no weighted-loudness rule. Risers allowed to take longer than 2 s to reach the plateau: WHITE OUT, MOOR WIND,
  * LESLIE STORM (a swell is their sound); nothing else.
  * Every sound must set LFO 1's and LFO 2's TRIG to FREE itself (DUELL 0.2.2; the pair is in the sound, not the default): else FAIL.
+ * Slow motion (2026-11-05): a PAD, KEYS or FX sound of the 128 syncs a LOOP CYCLE slower than 1 s and every LFO it uses at 1 Hz or slower: else FAIL.
+ * Aftertouch (2026-11-05): a sound of the 128 that is not FX or PERC sends AT to SATURATION (BASS) or to CUT / TWIN CUTOFF / SHAPE (the rest): else FAIL.
  *   build/host/sound_audit                   the table; exit 1 on a FAIL
  *   SOUND_TRIM=1 build/host/sound_audit      also the TRIM (until 0.2.18 "LEVEL") each sound would need for AUDIT_TARGET_DB (weighted, in its
  *                                            window), its peak at most AUDIT_PEAK_DB (TRIM: 0.5 dB a step,
@@ -86,8 +88,8 @@ static void au_setup(void *v)
         trk[0].p[P_CHRD] = 0;                 /* (chord keys of a pad: the audit's one note stays one note, as it was trimmed) */
     if (a->b) {
         morph_ready(0);                       /* (first use: the load's rebase rolls the factory End B) */
-        if (a->b == 2u)
-            morph_roll_cfg(0, 1u, a->seed, a->amt, a->mode != DM_SPLIT ? MC_STEREO : 0u);
+        if (a->b == 2u)                       /* (a candidate seed rolled as the load rolls a factory sound: with TIDE the MUSICAL roll at its AMOUNT, morph.c / tide.h) */
+            morph_roll_cfg(0, 1u, a->seed, TIDE_FACTORY_AMOUNT(a->amt), (a->mode != DM_SPLIT ? MC_STEREO : 0u) | TIDE_FACTORY_CFG());
         mph[0].fader = 127;
     }
 }
@@ -116,10 +118,62 @@ static int au_keep(const ds_sound_t *s)
  * (KNOWN), not failed, until the owner decides: trim or re-voice the sound, or move the rule */
 static int au_known(const ds_sound_t *s)
 {
-    static const char *const KNOWN[] = {"BEHIVE", "SINGING BOWL", "ARP PLUCK"};
+    static const char *const KNOWN[] = {"BEHIVE"};   /* (SINGING BOWL and ARP PLUCK re-voiced, 2026-11-05: they pass) */
     uint32_t i;
     for (i = 0; i < sizeof KNOWN / sizeof *KNOWN; i++)
         if (str_eq(s->name, KNOWN[i]))
+            return 1;
+    return 0;
+}
+/* one aftertouch convention per category (audit T09, 2026-11-05): a sound of the 128 that routes AT routes it to SATURATION (BASS) or to a filter / the
+ * engine's timbre (CUT, TWIN CUTOFF, SHAPE: LEAD PAD PLUCK KEYS); FX and PERC are free. 1 = keeps it */
+static int au_at_ok(const ds_sound_t *s, uint32_t n)
+{
+    uint32_t i;
+    if (n >= 128u || s->cat == CAT_FX || s->cat == CAT_PERC)
+        return 1;
+    for (i = 0; i < 8u; i++)
+        if (ds_value(s, MSLOT_ID(i), 0) == MS_AT) {
+            int32_t d = ds_value(s, MSLOT_ID(i) + 1u, 0);
+            return s->cat == CAT_BASS ? d == MD_DIST : d == MD_CUT || d == MD_CUT2 || d == MD_SHP;
+        }
+    return 1;
+}
+/* slow motion in step with the tempo (audit T08, 2026-11-05): a PAD, KEYS or FX sound of the 128 runs its LOOP CYCLE (read by a matrix slot) with CYCLE SYNC
+ * when it is slower than a second, and each LFO it uses (a DEST depth, the TWIN depth or a matrix slot) at 1 Hz or slower with its SYNC (bars). 1 = keeps it */
+static int au_src_used(const ds_sound_t *s, int32_t src)
+{
+    uint32_t i;
+    for (i = 0; i < 8u; i++)
+        if (ds_value(s, MSLOT_ID(i), 0) == src && ds_value(s, MSLOT_ID(i) + 1u, 0) && ds_value(s, MSLOT_ID(i) + 2u, 0))
+            return 1;
+    return 0;
+}
+static int au_sync_ok(const ds_sound_t *s, uint32_t n)
+{
+    double tr, tf;
+    if (n >= 128u || (s->cat != CAT_PAD && s->cat != CAT_KEYS && s->cat != CAT_FX))
+        return 1;
+    tr = pow(10000.0, ds_value(s, XWID(X_CYRISE), 10) / 127.0);
+    tf = pow(10000.0, ds_value(s, XWID(X_CYFALL), 70) / 127.0);
+    if (au_src_used(s, MS_CYCLE) && !ds_value(s, XWID(X_CYMODE), 0) && !ds_value(s, XWID(X_CYSYNC), 0) && tr + tf >= 1000.0)
+        return 0;
+    if ((ds_value(s, P_LD_PIT, 0) || ds_value(s, P_LD_FLT, 0) || ds_value(s, P_LD_SHP, 0) || ds_value(s, P_LD_AMP, 0) || ds_value(s, XWID(X_LFO1), 0) ||
+         au_src_used(s, MS_LFO)) && !ds_value(s, P_LSYNC, 0) && LFO_HZ_X100[ds_value(s, P_LRATE, 60) & 127] < 100u)
+        return 0;
+    if ((ds_value(s, P_L2PIT, 0) || ds_value(s, P_L2FLT, 0) || ds_value(s, P_L2SHP, 0) || ds_value(s, XWID(X_LFO2), 0) || au_src_used(s, MS_LFO2)) &&
+        !ds_value(s, P_L2SYNC, 0) && LFO_HZ_X100[ds_value(s, P_L2RATE, 60) & 127] < 100u)
+        return 0;
+    return 1;
+}
+/* (2026-11-05, audit G15) with TIDE no seed of 400 keeps these three FM6 sounds' MUSICAL End B within the window: the roll's SHAPE dial lengthens or shortens
+ * their decay by 4-8 dB either way (morph_music.c); reported, the roll's to change */
+static int au_known_b(const ds_sound_t *s)
+{
+    static const char *const KB[] = {"FRETLESS", "ISLAND STEEL", "MALLET WOOD"};
+    uint32_t i;
+    for (i = 0; i < sizeof KB / sizeof *KB; i++)
+        if (DUELL_TIDE && str_eq(s->name, KB[i]))
             return 1;
     return 0;
 }
@@ -255,6 +309,10 @@ int main(void)
             continue;
         if (ds_value(s, P_LTRIG, 0) != 1 || ds_value(s, P_L2TRIG, 0) != 1)   /* (def 0: a sound that leaves it out fails) */
             why = "FAIL (LFO TRIG not FREE)";   /* DUELL 0.2.2: every factory sound sets both LFOs FREE itself */
+        else if (!au_at_ok(s, n))
+            why = "FAIL (AT convention)";
+        else if (!au_sync_ok(s, n))
+            why = "FAIL (free slow motion)";
         else if (A->nan || T->nan)
             why = "FAIL (NaN / crash)";
         else if (A->loud < -60)
@@ -275,7 +333,10 @@ int main(void)
             why = "FAIL (quiet vs others)";
         else if (!hit && T->w05 < AUDIT_TAP_MIN)
             why = "FAIL (quiet tap)";
-        else if (!bok && !ds_endb(e, k))               /* (DUELL 1.1: an End B the owner made as values (sounds.c ds_endb, PT_VER 4) is his, not a seed's roll: not judged by the seed windows) */
+        else if (!bok && au_known_b(s))
+            why = "KNOWN (End B roll)";
+        else if (!bok && (DUELL_TIDE || !ds_endb(e, k)))   /* (DUELL 1.1: an End B the owner made as values (sounds.c ds_endb, PT_VER 4) is his, not a seed's roll: not judged by the seed windows.
+                                                         * With TIDE a factory sound's End B is always its seed's MUSICAL roll (morph.c, tide.h TIDE_FACTORY_CFG: the block is not read), so it is judged) */
             why = "FAIL (End B)";
         else if (!bok)                                  /* (an authored End B outside the window: reported, the owner's to keep or trim; a tide to it is a jump in level or tone) */
             why = "KNOWN (End B authored)";

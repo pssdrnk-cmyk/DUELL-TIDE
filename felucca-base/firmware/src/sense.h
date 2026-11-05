@@ -17,7 +17,7 @@
  * Threads: the tick and the event step are two interrupts of core 0 (the tick preempts the event step) and share no lock: every field has ONE
  * writer (sense.c: the tick's are in sk_t, the event step's in sn.asked / g_ask / g_seq / defer / vo). The event step reads a landing's velocity
  * only after the tick has counted it (sk_t.rseq, written last).
- * Settings KEY VELOCITY and AFTERTOUCH (DUELL 1.0: two lines, both OFF by default): both OFF, sense_gate returns its input, sense_vel returns 100, sense_want_drive returns 0,
+ * Settings KEY VELOCITY and AFTERTOUCH (DUELL 1.0: two lines; KEY VELOCITY OFF and AFTERTOUCH ON by default since 0.2.32, ui.c KEYVEL_ON_BIT): both OFF, sense_gate returns its input, sense_vel returns 100, sense_want_drive returns 0,
  * sense_update ignores everything: the build plays as one without the feature. AFTERTOUCH alone: the sensing runs for the pressure; sense_gate and sense_vel stay as OFF
  * (the velocity is the fixed 100, no key waits). KEY VELOCITY alone: no pressure (sense_at_value 0). */
 #pragma once
