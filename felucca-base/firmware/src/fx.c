@@ -407,6 +407,27 @@ static uint32_t delay_samples(void)
 /* HALL's helpers: m / 2^sh rounded towards zero (a product that feeds back must not floor: a loop of floors
  * holds an offset and a little noise for ever) */
 static inline int32_t sh_tz(int32_t m, uint32_t sh) { return (m + ((m >> 31) & ((1 << sh) - 1))) >> sh; }
+/* a * b (Q15) rounded to the nearest as mulq15r, but never a itself: where the rounding would give a back (|a| under 0.5 / (1 - b)) it takes one LSB off. The comb low-passes of ROOM and RESO
+ * (a one-pole, o + mulq15d(lp - o, k)) then fall to exact zero (audit R08: DAMP 124 up held 38 .. 64 LSB for ever); anywhere else it is mulq15r bit for bit, so the tunings do not move */
+static inline int32_t mulq15d(int32_t a, int32_t b)
+{
+    int32_t r = mulq15r(a, b);
+    return r == a && a ? r - (a > 0 ? 1 : -1) : r;
+}
+/* a * b (Q15) rounded towards zero (as HALL's sh_tz), for the delay loop's gain: rounded to the nearest, a loop gain of 0.84 holds 3 LSB for ever (audit R08), towards zero it falls to exact zero.
+ * mulq15u: the low-pass step towards a higher value, d x col floors to 0 for a small d; it moves at least one LSB */
+static inline int32_t mulq15t(int32_t a, int32_t b) { return sh_tz(a * b, 15); }
+static inline int32_t mulq15u(int32_t d, int32_t b)
+{
+    int32_t r = mulq15(d, b);
+    return r == 0 && d > 0 ? 1 : r;
+}
+/* the event modes' loop low-pass step, towards zero as before, but at least one LSB towards the tap */
+static inline int32_t sh_tzl(int32_t d, int32_t col)
+{
+    int32_t r = sh_tz(d * col, 15);
+    return r ? r : (d > 0) - (d < 0);
+}
 /* 2^-x, x Q16 (0 .. 16): Q15 (32768 at x = 0). 2^-x = 2^u / 2^(i + 1), u = 1 - frac(x); 2^u by a cubic (1e-4) */
 static uint32_t exp2_neg(uint32_t x)
 {
