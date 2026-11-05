@@ -15,9 +15,9 @@ Please read [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) before you report. Back
 
 ## Pull requests
 
-Small and focused, one thing at a time. Say what you changed and what you tested. If the change touches the firmware, say whether you tried it on a real FM-1, in the emulator, or on the computer only. By contributing you agree that your work is licensed under GPL-3.0-only; new source files carry the SPDX header (`SPDX-License-Identifier: GPL-3.0-only`).
+Small and focused, one thing at a time. Say what you changed and what you tested, and on what: a real FM-1, the emulator, or the computer only. A change to the sound, the sequencer or storage is best tried on a real FM-1, and comes with a host-test group that fails without it and passes with it (`./host_tests.sh group`). By contributing you agree that your work is licensed under GPL-3.0-only; new source files carry the SPDX header (`SPDX-License-Identifier: GPL-3.0-only`).
 
-**No pull requests go to OSCILL/R's DUELL or to Felucca from this fork,** and TIDE is not announced there. A fix that belongs in plain DUELL is described in an issue; the maintainer decides what to do with it.
+**Fixes that belong in plain DUELL.** A fix that is also right for DUELL 1.1 without TIDE (it changes the `DUELL_TIDE=0` build too, see the check_off rule below) is offered to OSCILL/R's DUELL as a small, device-tested pull request, made from a branch based on OSCILL/R's `main` and not on a TIDE branch. OSCILL/R welcomes small, device-tested pull requests, and the fork owner opens these ones: say in an issue here which change you mean. TIDE itself (everything behind `DUELL_TIDE`) stays in this fork.
 
 ## Build
 
