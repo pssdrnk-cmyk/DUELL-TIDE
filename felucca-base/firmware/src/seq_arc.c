@@ -106,7 +106,10 @@ static const char *tarc_drop_hand(void)
 static uint32_t tarc_sync(void) { return sqm_sync == 1u && sqm_arc && sqm_auto && tarc.t >= 160u && tarc.phase <= AP_PEAK ? 2u : sqm_sync; }
 static uint32_t tarc_cap(uint32_t base)                  /* the density bound: base/4 more, base/2 at the peak */
 {
-    uint32_t q = sqm_arc && sqm_auto && tarc.t >= 200u && tarc.phase <= AP_PEAK ? base / 2u : base / 4u;
+    uint32_t q;
+    if (base <= 2u)
+        return base;                                     /* (a sustained part, two chords a bar at most, gains no onset: the anchors already hold them) */
+    q = sqm_arc && sqm_auto && tarc.t >= 200u && tarc.phase <= AP_PEAK ? base / 2u : base / 4u;
     return base + (q ? q : 1u);
 }
 static uint32_t tarc_need(void)                          /* the phrase edits' cadence: every loop in the rise, every 4th in the breakdown, else every 2nd (M09) */

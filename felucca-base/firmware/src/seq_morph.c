@@ -117,7 +117,7 @@ static void sqm_build(const step_t *p, uint32_t len, const sqm_end_t *x, uint32_
     sqm_pitch_apply(p, len, x, out);
     for (i = 0; i < len; i++)
         hits += (uint32_t)sqm_hit(&p[i]);
-    if (!hits || len < 3u)
+    if (hits < 2u || len < 3u)                           /* (a drone or texture, one onset or none, is held still: R3, R7; tarc_cap does the same for the phrase edits) */
         return;
     n = sqm_cnt(d[SD_DENS], 2u);                         /* DENS */
     if (d[SD_DENS] < 0) {
