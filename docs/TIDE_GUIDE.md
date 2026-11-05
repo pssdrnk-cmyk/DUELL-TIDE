@@ -98,7 +98,7 @@ DUEL (part 1 left, part 2 right, effects separate), STEREO, LAYER. This is stock
 
 ## First start
 
-A new unit (or after ERASE DATA) comes up as multi **M02 DUB CHORD** with AUTO TIDE on JRNY and STYLE DUB. Its two 16-step patterns play on PLAY with no key held (ARP SEQ), from C4 plus the part's TRN (a part with TRN -12 plays an octave lower; a chord you played on the keys is played as you played it). Press PLAY.
+A new unit (or after ERASE DATA) comes up as multi **M02 DUB CHORD** with AUTO TIDE on JRNY and STYLE DUB. Its two 16-step patterns play on PLAY with no key held (ARP SEQ). Press PLAY.
 
 ## KEEP
 

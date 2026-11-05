@@ -67,7 +67,7 @@ static uint32_t tide_seq_chord(const track_t *t, uint32_t *list, uint32_t n)
         uint8_t o[CHORD_MAX];
         int32_t r;
         uint16_t mk;
-        n = chord_make(t, (uint32_t)clamp(60 + t->p[P_TRANS], 0, 127), o, &r, &mk);
+        n = chord_make(t, 60, o, &r, &mk);
         for (i = 0; i < n; i++)
             list[i] = o[i];
         return n;
