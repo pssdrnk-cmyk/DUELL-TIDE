@@ -6,9 +6,9 @@ by OSCILL/R
 
 Each release: a one-line summary, then New, Fixed, Compatibility, Install, Files.
 
-## DUELL 1.1 with TIDE (unreleased, pssdrnk's fork)
+## DUELL 1.1 with TIDE (pssdrnk's fork)
 
-Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrnk-cmyk/DUELL-TIDE>), adding TIDE, a morph that plays and evolves by itself. Add a line here for every build flashed to a unit: date, commit, what changed.
+Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrnk-cmyk/DUELL-TIDE>), adding TIDE, a morph that plays and evolves by itself. Two builds are released and installable from the [installer page](https://pssdrnk-cmyk.github.io/DUELL-TIDE/install/) and the [GitHub releases](https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases): **stable `stable-2026-11-03`** (`187e9d0`) and **beta `beta-2026-11-04`** (`77a6df2`). The entries below cover those builds and the work merged on `jam11` since; that later work is in no build yet (the release notes of each tag say what that build holds). Add a line here for every build flashed to a unit: date, commit, what changed.
 
 - **New:** AUTO TIDE in HOME's round, with the modes ONCE, LOOP, DRIFT, WNDR and JRNY (JRNY travels between factory sounds of the part's own engine, FM6 included, and never changes engine); where two unlike sounds cross, a short filter dip.
 - **New:** TIDE SETTINGS (first called MORPH SETTINGS) in HOME's round: TARGET (SOUND, SEQ or BOTH), VARY BARS, ROLL (MUSIC, the default, SMART, WILD), ARP, PITCH, WASH LEVEL (OFF by default).
