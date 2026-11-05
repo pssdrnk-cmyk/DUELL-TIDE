@@ -339,8 +339,8 @@ minor blues (BLUES), whole tone (WHOLE), half-whole diminished (DIMHW), and
 whole-half diminished (DIMWH).
 Drum kits keep their own note mapping (never snapped); incoming MIDI notes follow the same SNAP / PLAY rule as the keys.
 
-Press the scale button (**SEL**) again for the **CHORD** page: CHRD picks the chord keys (OFF, the scale's triads or
-sevenths, or a fixed shape) and VOIC the voicing.
+Press the scale button (**SEL**) again for the **CHORD** page: CHRD picks the chord keys (OFF, the scale's triads, sevenths or ninths
+(DIA3, DIA7, DIA9), or a fixed shape: MAJ, MIN, DOM7, MAJ7, MIN7, SUS4, POW, MIN9, MAJ9, SUS2, ADD9, MIN11) and VOIC the voicing.
 
 ## Layout
 
