@@ -4285,7 +4285,7 @@ static int test_large_face(void)
         for (s = i < NB ? B_NAME[i] : i < NB + NE ? E_NAME[i - NB] : FIXED[i - NB - NE]; *s; s++)
             missing += glyph_at(&AF_L, (uint8_t)*s) < 0;
     {   /* DUELL 1.1 (item 118): the five-page SETUP / GUIDE draws its headings and option names in L as literals (ui_guide.c guide_content, guide_option); no text table any more */
-        static const char *const GUIDE_L[] = {"LAYER", "STEREO", "DUEL", "PART MARKER", "PERFORM MODE", "QUICK EDIT", "STOP ALL", "RESET A KNOB", "SAVE OVER A PATCH", "PARAMETER LOCK", "LATER", "NOW"};
+        static const char *const GUIDE_L[] = {"LAYER", "STEREO", "DUEL", "PART MARKER", "PERFORM MODE", "QUICK EDIT", "STOP ALL", "RESET A KNOB", "SAVE OVER A PATCH", "PARAMETER LOCK", "SOUNDS AND MORPH", "LATER", "NOW"};
         for (i = 0; i < sizeof GUIDE_L / sizeof GUIDE_L[0]; i++)
             for (s = GUIDE_L[i]; *s; s++)
                 missing += glyph_at(&AF_L, (uint8_t)*s) < 0;
