@@ -520,19 +520,29 @@ static void head_cell_text(int32_t x, const char *s, uint16_t fg, uint16_t bg)
     GFX_HOOK_ALIGN(0, 0, 0, H_HEAD, AL_V, "header text on its middle");
     cv_text_x16(x * 16 + (UT_CAP_CELL * 16 - text_w16(&AF_S, s)) / 2, UT_CAP_BASE - AF_S_CAP_Y - AF_S_CAP_H + 1 - Y_HEAD, &AF_S, s, fg, bg);
 }
-static void head_capsule(int32_t x, uint32_t k, uint32_t lit, uint32_t b, int32_t voices, uint32_t hot)
+/* the part's marks (T12, T14): bit 0 MUTE (the number cell is hollow, the number in the part's colour), bit 1 HOLD (a bar under the letter) */
+static uint32_t head_marks(uint32_t k)
+{
+    return (trk[k].p[P_MUTE] != 0) | (arp_hold(&trk[k]) ? 2u : 0u);
+}
+static void head_capsule(int32_t x, uint32_t k, uint32_t lit, uint32_t b, int32_t voices, uint32_t mk)
 {
     uint16_t pc = lit ? T_PTHEME(k) : T_DIM, cell = lit ? ux_mix(T_BG, pc, UT_CAP_DIM_PCT) : ux_mix(T_BG, T_TEXT, UT_CAP_OFF_PCT);
     char n[8];
-    (void)hot;
     cv_rrect(x, UT_CAP_Y, UT_CAP_W, UT_CAP_H, UT_CAP_R, pc, T_BG);                          /* the outline and the number cell in the part colour (an unlit part: T_DIM) */
     cv_rrect(x + UT_CAP_CELL, UT_CAP_Y + 1, UT_CAP_W - UT_CAP_CELL - 1, UT_CAP_H - 2, UT_CAP_R - 1, cell, pc);   /* the dim part: the letter and the voices number */
     cv_rect(x + UT_CAP_CELL, UT_CAP_Y + 1, 4, UT_CAP_H - 2, cell);                          /* (its left side square) */
     n[0] = (char)('1' + k);
     n[1] = 0;
-    head_cell_text(x, n, ux_cr(T_TEXT, pc) >= 300u ? T_TEXT : ux_cr(T_BG, pc) >= ux_cr(T_TEXT, pc) ? T_BG : T_TEXT, pc);   /* the part number: T_TEXT (white; dark in the light palettes) where it reads 3:1 on the cell, else the better of BG / TEXT (ORANGE, GREY, MONO: dark) */
+    if (mk & 1u) {                                      /* MUTE: the number cell is hollow (its right side square, as the dim half's left) */
+        cv_rrect(x + 1, UT_CAP_Y + 1, UT_CAP_CELL - 1, UT_CAP_H - 2, UT_CAP_R - 1, cell, pc);
+        cv_rect(x + UT_CAP_CELL - 4, UT_CAP_Y + 1, 4, UT_CAP_H - 2, cell);
+    }
+    head_cell_text(x, n, mk & 1u ? (lit ? pc : T_MID) : ux_cr(T_TEXT, pc) >= 300u ? T_TEXT : ux_cr(T_BG, pc) >= ux_cr(T_TEXT, pc) ? T_BG : T_TEXT, mk & 1u ? cell : pc);   /* the part number: T_TEXT (white; dark in the light palettes) where it reads 3:1 on the cell, else the better of BG / TEXT (ORANGE, GREY, MONO: dark) */
     n[0] = b ? 'B' : 'A';
     head_cell_text(x + UT_CAP_CELL, n, ux_mix(T_BG, T_TEXT, UT_CAP_LETTER_PCT), cell);
+    if (mk & 2u)                                        /* HOLD: a line under the letter */
+        cv_rect(x + UT_CAP_CELL + 2, UT_CAP_Y + UT_CAP_H - 2, 8, 1, T_TEXT);
     if (voices < -1) {                                  /* item 153: a mode letter (the code is -voices: 'M', 'L', 'U') instead of the number */
         n[0] = (char)(-voices);
         n[1] = 0;
@@ -644,7 +654,7 @@ static void draw_head(void)
     char tb[40];
     uint32_t pi;
     int msg = ui.msg_t || ui.layer, glob = screen_global();
-    uint32_t sig, mut = 0;
+    uint32_t sig;
     uint8_t vn[2];
     uint32_t nv = 0;
     head_page_title(tb, &pi);
@@ -652,8 +662,7 @@ static void draw_head(void)
         nv = head_notes(vn);
     sig = song.sel * 13131u + (uint32_t)glob * 7u + (ui.msg_t ? str_hash(7u, ui.msg) : ui.layer * 7919u + (uint32_t)layer_locked() * 3u) +
           head_notes_sig() * 6007u + (uint32_t)head_mode_ch(0) * 53u + (uint32_t)head_mode_ch(1) * 59u + (uint32_t)(song.sel & 1u) * 61u + badge_lit() * 4093u + (uint32_t)duell_mode_req * 331u +
-          (msg ? 0u : str_hash(13u, tb) + pi * 31u) + (head_ab_b() ? 811u : 0u) + (morph_fader_of(1 - song.sel) >= 127u ? 1301u : 0u) + (uint32_t)(notes_show_on() ? 17u : 0u) + (uint32_t)nv * 41u;
-    (void)mut;
+          (msg ? 0u : str_hash(13u, tb) + pi * 31u) + (head_ab_b() ? 811u : 0u) + (morph_fader_of(1 - song.sel) >= 127u ? 1301u : 0u) + (uint32_t)(notes_show_on() ? 17u : 0u) + (uint32_t)nv * 41u + head_marks(0) * 3011u + head_marks(1) * 4421u;
     if (!ui.force && sig == ui.head_sig)
         return;
     ui.head_sig = sig;
@@ -675,8 +684,8 @@ static void draw_head(void)
                 v1 = -(int32_t)m1;
         }
         /* both parts' capsules in every mode (owner, test3): the selected part lit, the other dim; STEREO and LAYER show the one shared voices number in both */
-        head_capsule(CAP_X, 0, lit & 1u, morph_fader_of(0) >= 127u, v0, v0 == 0 || (nv == 2u && head_notes_cpu(0)) || (nv == 1u && (head_notes_cpu(0) || head_notes_cpu(1))));
-        head_capsule(240 - CAP_X - CAP_W, 1, (lit >> 1) & 1u, morph_fader_of(1) >= 127u, v1, v1 == 0 || (nv == 2u && head_notes_cpu(1)) || (nv == 1u && (head_notes_cpu(0) || head_notes_cpu(1))));
+        head_capsule(CAP_X, 0, lit & 1u, morph_fader_of(0) >= 127u, v0, head_marks(0));
+        head_capsule(240 - CAP_X - CAP_W, 1, (lit >> 1) & 1u, morph_fader_of(1) >= 127u, v1, head_marks(1));
     }
     if (ui.msg_t && (ui.msg[0] == MSG_PC1[0] || ui.msg[0] == MSG_PC2[0] || ui.msg[0] == MSG_TITLE[0])) {   /* item 157: a program change's load, as the title */
         head_title_msg(glob);
