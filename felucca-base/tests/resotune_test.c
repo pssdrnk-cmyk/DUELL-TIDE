@@ -15,9 +15,9 @@ static void check(const char *what, int ok)
     printf("resotune: %-110s %s\n", what, ok ? "ok" : "FAIL");
     bad += !ok;
 }
-#define LEN 16384u
+#define LEN 12288u   /* (0.28 s: audit R08 closed the loops' rounding dead bands, so the integer noise that follows the ring comes earlier at DAMP 120) */
 static float tail[LEN];
-/* an impulse through RESO; the next 0.37 s of the ring (later it falls to the integer noise of the loop) are kept */
+/* an impulse through RESO; the next 0.28 s of the ring (later it falls to the integer noise of the loop) are kept */
 static void run(int damp)
 {
     static int32_t c[CTL], d[CTL], r[CTL], w[CTL];

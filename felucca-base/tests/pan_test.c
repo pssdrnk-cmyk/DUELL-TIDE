@@ -13,7 +13,7 @@
 #include "ui_test.c"
 #include "mode_scn.h"
 
-#define MODE_STEREO_HASH 0x366B468DC2425A83ull   /* DUELL 1.1 item 148: the same re-based hash as mode_test.c (VS_MAX 2); was 0x9C13C6ADFCF3BC87. 0.2.32: re-based 0.2.32: re-based on purpose (the direct depth cards reach 100 % at +63, the merged line); was 0xC04494F53D46F0F0 */ /* older: */   /* 0.2.30: merged line (cloud wave 6 + click fixes), re-based on purpose, was 0x1CC6C8241C84C0DA; before:  0.2.29: re-based on purpose, the scenario runs the HALL and its quiet lines now round to the nearest (fx.c hall_end; 0.2.21..0.2.28: 0xC970174114DFD9BA) */        /* mode_test.c's (0.2.21) */
+#define MODE_STEREO_HASH 0x1E23D58DCF34873Cull   /* audit R08: the loops' rounding dead bands closed (fx.c mulq15d), re-based on purpose, was 0xD873D87A2ACCFF78 */ /* master soft knee instead of the always-on tanh (audit R05, owner D22): re-based on purpose, was 0x366B468DC2425A83 */   /* DUELL 1.1 item 148: the same re-based hash as mode_test.c (VS_MAX 2); was 0x9C13C6ADFCF3BC87. 0.2.32: re-based 0.2.32: re-based on purpose (the direct depth cards reach 100 % at +63, the merged line); was 0xC04494F53D46F0F0 */ /* older: */   /* 0.2.30: merged line (cloud wave 6 + click fixes), re-based on purpose, was 0x1CC6C8241C84C0DA; before:  0.2.29: re-based on purpose, the scenario runs the HALL and its quiet lines now round to the nearest (fx.c hall_end; 0.2.21..0.2.28: 0xC970174114DFD9BA) */        /* mode_test.c's (0.2.21) */
 static int bad, ncheck;
 static int expect(const char *what, int ok)
 {

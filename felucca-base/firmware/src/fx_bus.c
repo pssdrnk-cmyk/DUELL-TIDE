@@ -18,7 +18,7 @@ static __attribute__((noinline)) void BUS_FN(rev_room)(const int32_t *rev_in, in
         int32_t in = mulq15(rev_in[i], 2580);           /* 1/8 at -4 dB: level as before the allpass fix */
         for (k = 0; k < 4u; k++) {
             int32_t o = c[BUS_FX.comb_i[k]];
-            BUS_FX.comb_lp[k] = o + mulq15r(BUS_FX.comb_lp[k] - o, 32767 - damp);   /* (DUELL 1.1 REVERB_FIX: rounded to the nearest, no constant offset; the write below and the all-pass towards zero: a tail only gets smaller, and ends in exact silence) */
+            BUS_FX.comb_lp[k] = o + mulq15d(BUS_FX.comb_lp[k] - o, 32767 - damp);   /* (audit R08: mulq15d, the nearest but never stuck 1 LSB short of o. DUELL 1.1 REVERB_FIX: rounded to the nearest, no constant offset; the write below and the all-pass towards zero: a tail only gets smaller, and ends in exact silence) */
             c[BUS_FX.comb_i[k]] = (int16_t)clamp(in + sh_tz(BUS_FX.comb_lp[k] * size, 15), -32768, 32767);
             if (++BUS_FX.comb_i[k] >= REV_COMB[k])
                 BUS_FX.comb_i[k] = 0;
@@ -416,7 +416,7 @@ static __attribute__((noinline)) void BUS_FN(rev_reso)(const int32_t *rev_in, in
             int32_t x0 = c[(BUS_FX.rs_w - d) & (RS_LEN - 1u)], x1 = c[(BUS_FX.rs_w - d - 1u) & (RS_LEN - 1u)];
             int32_t o = x0 + (((x1 - x0) * (int32_t)f) >> 8);
             int32_t v;
-            BUS_FX.rs_lp[k] = o + mulq15r(BUS_FX.rs_lp[k] - o, 32767 - dk);   /* (DUELL 1.1 REVERB_FIX: rounded to the nearest; the write towards zero, so the tail ends in exact silence) */
+            BUS_FX.rs_lp[k] = o + mulq15d(BUS_FX.rs_lp[k] - o, 32767 - dk);   /* (audit R08: mulq15d, never stuck 1 LSB short of o. DUELL 1.1 REVERB_FIX: rounded to the nearest; the write towards zero, so the tail ends in exact silence) */
             v = in + sh_tz(BUS_FX.rs_lp[k] * fb, 15);
             v = v > RS_KNEE ? RS_KNEE + ((v - RS_KNEE) >> 3) : v < -RS_KNEE ? -RS_KNEE + ((v + RS_KNEE) >> 3) : v;   /* a soft limit: above the knee the loop's gain falls to an eighth, so a held chord at the longest SIZE can no longer reach the 16-bit end and clip hard inside its loop */
             c[BUS_FX.rs_w & (RS_LEN - 1u)] = (int16_t)clamp(v, -32768, 32767);
@@ -753,9 +753,9 @@ static __attribute__((noinline)) void BUS_FN(dly_mod)(uint32_t dmask, uint32_t d
             int32_t yl, yr;
             a = dly_tap(BUS_DLY, dmask, ppos);
             b = dly_tap(BUS_DLY, dmask, qpos);
-            BUS_FX.dly_lp += mulq15(b - BUS_FX.dly_lp, col);
-            r = mulq15(BUS_FX.dly_lp, fb);
-            BUS_DLY[w & dmask] = (int16_t)clamp((dly_in[i] >> 1) + mulq15r(r, fb), -32768, 32767);
+            BUS_FX.dly_lp += mulq15u(b - BUS_FX.dly_lp, col);
+            r = mulq15t(BUS_FX.dly_lp, fb);
+            BUS_DLY[w & dmask] = (int16_t)clamp((dly_in[i] >> 1) + mulq15t(r, fb), -32768, 32767);
             yl = mulq15(a * 2, dmix);
             yr = mulq15(r * 2, dmix);
             y += (yl + yr) >> 1;
@@ -764,16 +764,16 @@ static __attribute__((noinline)) void BUS_FN(dly_mod)(uint32_t dmask, uint32_t d
             a = dly_tap(BUS_DLY, dmask, ppos);
             b = dly_tap(BUS_DLY, dmask, qpos);
             x = (a + b) >> 1;
-            BUS_FX.dly_lp += mulq15(x - BUS_FX.dly_lp, col);
-            BUS_DLY[w & dmask] = (int16_t)clamp((dly_in[i] >> 1) + mulq15r(BUS_FX.dly_lp, fb), -32768, 32767);
+            BUS_FX.dly_lp += mulq15u(x - BUS_FX.dly_lp, col);
+            BUS_DLY[w & dmask] = (int16_t)clamp((dly_in[i] >> 1) + mulq15t(BUS_FX.dly_lp, fb), -32768, 32767);
             y += mulq15(x * 2, dmix);
             r = mulq15(a - b, dmix);
             mix_l[i] += r;
             mix_r[i] -= r;
         } else {                                        /* DUEL: the one tap */
             x = dly_tap(BUS_DLY, dmask, ppos);
-            BUS_FX.dly_lp += mulq15(x - BUS_FX.dly_lp, col);
-            BUS_DLY[w & dmask] = (int16_t)clamp((dly_in[i] >> 1) + mulq15r(BUS_FX.dly_lp, fb), -32768, 32767);
+            BUS_FX.dly_lp += mulq15u(x - BUS_FX.dly_lp, col);
+            BUS_DLY[w & dmask] = (int16_t)clamp((dly_in[i] >> 1) + mulq15t(BUS_FX.dly_lp, fb), -32768, 32767);
             y += mulq15(x * 2, dmix);
         }
         w++;
@@ -837,19 +837,19 @@ static inline void BUS_FN(fx_buses_m)(uint32_t dmask, uint32_t dl, const int32_t
         }
         if (pp) {
             int32_t yl, yr;
-            BUS_FX.dly_lp += mulq15(x2 - BUS_FX.dly_lp, col);
-            r = mulq15(BUS_FX.dly_lp, fb);              /* the right return: the loop's end, once round */
+            BUS_FX.dly_lp += mulq15u(x2 - BUS_FX.dly_lp, col);
+            r = mulq15t(BUS_FX.dly_lp, fb);              /* the right return: the loop's end, once round */
             BUS_DLY[BUS_FX.dly_w & dmask] =
-                (int16_t)clamp((dly_in[i] >> 1) + mulq15r(r, fb), -32768, 32767);
+                (int16_t)clamp((dly_in[i] >> 1) + mulq15t(r, fb), -32768, 32767);
             BUS_FX.dly_w++;
             yl = mulq15(x * 2, dmix);
             yr = mulq15(r * 2, dmix);
             y += (yl + yr) >> 1;
             dsd[i] = (yl - yr) >> 1;
         } else {
-            BUS_FX.dly_lp += mulq15(x - BUS_FX.dly_lp, col);
+            BUS_FX.dly_lp += mulq15u(x - BUS_FX.dly_lp, col);
             BUS_DLY[BUS_FX.dly_w & dmask] =
-                (int16_t)clamp((dly_in[i] >> 1) + mulq15r(BUS_FX.dly_lp, fb), -32768, 32767);
+                (int16_t)clamp((dly_in[i] >> 1) + mulq15t(BUS_FX.dly_lp, fb), -32768, 32767);
             BUS_FX.dly_w++;
             y += mulq15(x * 2, dmix);
         }
@@ -1146,7 +1146,7 @@ static __attribute__((noinline)) void BUS_FN(dly_ev)(uint32_t dlo, uint32_t dl, 
                     e->dl16 += (int32_t)(tgt16 - e->dl16) >> 10;
                 p = (w << 16) - e->dl16;
                 BUS_FN(dlyev_tap2)(p, &c, &r, dmask, mono);
-                e->lp += sh_tz((c - e->lp) * col, 15);
+                e->lp += sh_tzl(c - e->lp, col);
                 fe = clamp((dly_in[k] >> 1) + sh_tz(e->lp * fb, 15), -32768, 32767);
                 yl = mulq15(c << 1, dmix);
                 yr = mulq15(r * 2, dmix);
@@ -1183,7 +1183,7 @@ static __attribute__((noinline)) void BUS_FN(dly_ev)(uint32_t dlo, uint32_t dl, 
             BUS_FN(dlyev_read)(&e->v[0], w16, e->dl16, &c, &l, &r, dmask, mono);
             BUS_FN(dlyev_read)(&e->v[1], w16, e->dl16, &c, &l, &r, dmask, mono);
             c = clamp(c, -32768, 32767);
-            e->lp += sh_tz((c - e->lp) * col, 15);     /* (towards zero: the loop reaches exact silence) */
+            e->lp += sh_tzl(c - e->lp, col);     /* (towards zero: the loop reaches exact silence) */
             fe = clamp((dly_in[i] >> 1) + sh_tz(e->lp * fb, 15), -32768, 32767);
             yl = mulq15(l << 1, dmix);
             yr = mulq15(r * 2, dmix);
@@ -1196,16 +1196,16 @@ static __attribute__((noinline)) void BUS_FN(dly_ev)(uint32_t dlo, uint32_t dl, 
                 a = (int32_t)BUS_DLY[(w - dlo) & dmask];
                 if (pp) {
                     b = BUS_DLY[(w - 2u * dlo) & dmask];
-                    BUS_FX.dly_lp += mulq15(b - BUS_FX.dly_lp, col);
-                    xo = mulq15(BUS_FX.dly_lp, fb);
-                    fo = clamp((dly_in[i] >> 1) + mulq15r(xo, fb), -32768, 32767);
+                    BUS_FX.dly_lp += mulq15u(b - BUS_FX.dly_lp, col);
+                    xo = mulq15t(BUS_FX.dly_lp, fb);
+                    fo = clamp((dly_in[i] >> 1) + mulq15t(xo, fb), -32768, 32767);
                     yl = mulq15(a * 2, dmix);
                     yr = mulq15(xo << 1, dmix);
                     yo = (yl + yr) >> 1;
                     so = (yl - yr) >> 1;
                 } else {
-                    BUS_FX.dly_lp += mulq15(a - BUS_FX.dly_lp, col);
-                    fo = clamp((dly_in[i] >> 1) + mulq15r(BUS_FX.dly_lp, fb), -32768, 32767);
+                    BUS_FX.dly_lp += mulq15u(a - BUS_FX.dly_lp, col);
+                    fo = clamp((dly_in[i] >> 1) + mulq15t(BUS_FX.dly_lp, fb), -32768, 32767);
                     yo = mulq15(a * 2, dmix);
                     so = 0;
                 }

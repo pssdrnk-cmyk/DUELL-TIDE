@@ -161,7 +161,7 @@ static uint64_t pl_child(uint32_t m, uint32_t how, int32_t steps, int32_t l1, in
 }
 /* the renders of the tree BEFORE item 160 (old balance 0, the shipped state), how 0, by mode: built with -DPL_RECORD=1 against that tree */
 static const uint64_t PL_HASH[PM_N] = {
-    0xD60A01CCF705A4B9ull, 0x1FD88D10F5B987DAull, 0xF49F6F3CADC3896Full, 0x88D3570D3A4EC29Eull, 0x73B251DCBB68F496ull,   /* (item 160: the tree before it, 2026-10-28) */
+    0xC2F503A14B289389ull, 0xA337016B36C39A2Aull, 0xAB136CD077A628B1ull, 0x7F460E543C3B2773ull, 0x80DDA616C1A1C1CFull,   /* (audit R08, on purpose: the loops' dead bands closed; were 0x14F3B1973E0CBF3C, 0x849A20FED5E27553, 0xE0E12BF2823EE61C, 0xB7C26D36BEF222DB, 0x0DAE6363315F15FA)  (item 160: the tree before it, 2026-10-28; re-based on purpose for the master soft knee, audit R05 / D22: was 0xD60A01CCF705A4B9, 0x1FD88D10F5B987DA, 0xF49F6F3CADC3896F, 0x88D3570D3A4EC29E, 0x73B251DCBB68F496) */
 };
 static void t_audio(void)
 {
