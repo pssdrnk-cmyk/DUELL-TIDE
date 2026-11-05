@@ -19,7 +19,7 @@ CONVERT_TWIN = 1
 N_BASE = 128
 
 SOUNDS = [
-    dict(engine='ANALOG', idx=2, name='BEHIVE', cat='BASS', bseed=18967,  # #1
+    dict(engine='ANALOG', idx=2, name='BEHIVE', cat='BASS', bseed=58182,  # #1
          p={
             'ATK': 0, 'SUS': 127, 'REL': 44, 'LRATE': 51, 'LPHASE': 32, 'LD_FLT': 9, 'LD_AMP': 39, 'RES2': 33, 'DRV2': 61, 'KTRK': 13, 'TRANS': -12,
             'DIST': 19, 'VOICE': 2, 'GLIDE': 61, 'GLMODE': 1, 'TWTYPE': 2, 'FREEA': 46, 'FREEB': 28, 'FREED': 2, 'E2ATK': 0, 'E2DEC': 69, 'E2SUS': 0,
@@ -35,7 +35,7 @@ SOUNDS = [
             'SUB LEVEL': 101, 'CYCLE RISE': 4, 'CYCLE FALL': 64, 'CYCLE CURVE': -39, 'AMPENV SATN': 2, 'FILTERENV FBLND': 8, 'FILTERENV FDRV': -7,
             'FILTERENV MRES': 4, 'CYCLE TCUT': 7, 'CYCLE PAN': -4, 'LFO2 TRES': -3, 'LFO2 MMODE': 2, 'LFO2 FBLND': -3,
          }),
-    dict(engine='ANALOG', idx=16, name='FOLD BASS', cat='BASS', bseed=17953,  # #2
+    dict(engine='ANALOG', idx=16, name='FOLD BASS', cat='BASS', bseed=3697,  # #2
          p={
             'ATK': 0, 'DEC': 77, 'SUS': 114, 'REL': 51, 'RES2': 17, 'DRV2': 31, 'KTRK': 13, 'TRANS': -12, 'VOICE': 2, 'GLIDE': 46, 'GLMODE': 1,
             'TWTYPE': 1, 'FREEA': 44, 'FREEB': 10, 'FREED': 2, 'E2ATK': 0, 'E2DEC': 77, 'E2SUS': 44, 'E2REL': 56, 'L2RATE': 27, 'L2WAVE': 1,
@@ -66,7 +66,7 @@ SOUNDS = [
             'E4': 4, 'E7': 16, 'SUB LEVEL': 23, 'CYCLE RISE': 103, 'CYCLE FALL': 102, 'CYCLE CURVE': -3, 'AMPENV SATN': 5, 'FILTERENV MRES': -3,
             'CYCLE PAN': 2, 'LFO2 MMODE': 8,
          }),
-    dict(engine='ANALOG', idx=3, name='RUBBER BAND', cat='BASS', bseed=49167,  # #4
+    dict(engine='ANALOG', idx=3, name='RUBBER BAND', cat='BASS', bseed=46979,  # #4
          p={
             'ATK': 0, 'DEC': 82, 'SUS': 41, 'REL': 64, 'KTRK': 13, 'TRANS': -12, 'DIST': 22, 'REV': 6, 'VOICE': 2, 'FREEA': 27, 'FREEB': 20,
             'E2ATK': 0, 'E2DEC': 65, 'E2SUS': 0, 'E2REL': 65, 'L2RATE': 21, 'EQHG': -4, 'EQHF': -8, 'TRIM': 112, 'E2FLT': 37, 'L2FLT': 4, 'E1': 6,
@@ -80,7 +80,7 @@ SOUNDS = [
             'E7': 22, 'SUB LEVEL': 28, 'CYCLE RISE': 6, 'CYCLE FALL': 76, 'CYCLE CURVE': -2, 'AMPENV SATN': -3, 'FILTERENV MRES': -3, 'CYCLE PAN': 4,
             'LFO2 MMODE': 2,
          }),
-    dict(engine='ANALOG', idx=4, name='SQUELCH', cat='BASS', bseed=17703,  # #5
+    dict(engine='ANALOG', idx=4, name='SQUELCH', cat='BASS', bseed=57877,  # #5
          p={
             'ATK': 0, 'DEC': 86, 'SUS': 110, 'REL': 32, 'KTRK': 13, 'TRANS': -12, 'DIST': 25, 'DLY': 32, 'VOICE': 2, 'GLIDE': 61, 'GLMODE': 1,
             'FREEA': 26, 'FREEB': 69, 'FREED': 2, 'E2ATK': 0, 'E2DEC': 61, 'E2SUS': 0, 'E2REL': 0, 'L2RATE': 21, 'TRIM': 93, 'E2FLT': 27, 'L2FLT': 4,
@@ -94,7 +94,7 @@ SOUNDS = [
             'E4': 6, 'E7': 28, 'SUB LEVEL': 5, 'CYCLE RISE': 113, 'CYCLE FALL': 8, 'CYCLE CURVE': -7, 'AMPENV SATN': 1, 'FILTERENV MRES': 9,
             'CYCLE PAN': -8, 'LFO2 MMODE': -2,
          }),
-    dict(engine='ANALOG', idx=1, name='TIDAL SUB', cat='BASS', bseed=1207,  # #6
+    dict(engine='ANALOG', idx=1, name='TIDAL SUB', cat='BASS', bseed=42452,  # #6
          p={
             'ATK': 22, 'SUS': 127, 'KTRK': 13, 'TRANS': -12, 'DIST': 7, 'VOICE': 2, 'FREEA': 41, 'E2ATK': 0, 'E2DEC': 69, 'E2SUS': 0, 'L2RATE': 17,
             'L2WAVE': 1, 'TRIM': 88, 'E2FLT': 4, 'L2FLT': 4, 'E1': 3, 'E2': 0, 'E3': 0, 'E7': 16, 'MOD1': ('AT', 'SAT', 14),
@@ -107,7 +107,7 @@ SOUNDS = [
             'E7': 21, 'SUB LEVEL': 16, 'CYCLE RISE': 113, 'CYCLE FALL': 103, 'CYCLE CURVE': 3, 'AMPENV SATN': 6, 'FILTERENV MRES': -1, 'CYCLE PAN': -4,
             'LFO2 MMODE': -4,
          }),
-    dict(engine='FM6', idx=12, name='FM BASS 2', cat='BASS', bseed=17352,  # #7
+    dict(engine='FM6', idx=12, name='FM BASS 2', cat='BASS', bseed=13225,  # #7
          p={
             'LRATE': 30, 'LWAVE': 1, 'LD_FLT': 4, 'RES2': 21, 'KTRK': 0, 'TRANS': -12, 'REV': 6, 'VOICE': 2, 'TWTYPE': 1, 'FREEA': 51, 'FREEB': 4,
             'E2ATK': 0, 'E2DEC': 71, 'E2SUS': 0, 'E2REL': 61, 'ITYPE': 1, 'IA': 40, 'IB': 127, 'IC': 112, 'IMIX': 90, 'EQHG': -4, 'EQHF': -8,
@@ -145,7 +145,7 @@ SOUNDS = [
             97, 95, 94, 98, 93, 98, 94, 3, 5, 96, 96, 93, 95, 98, 98, 98, 0, 1, 60, 34, 29, 46, 78, 72, 58, 4, 35, 54, 35, 34, 51, 98, 93, 89, 0, 59,
             53, 31, 35, 54, 89, 86, 71, 5, 81, 52, 34, 31, 53, 98, 93, 89, 0, 98, 99, 99, 99, 99, 50, 50, 50, 41, 4, 0, 3,
          ]),
-    dict(engine='FM6', idx=0, name='SLAP DOCTOR', cat='BASS', bseed=45536,  # #9
+    dict(engine='FM6', idx=0, name='SLAP DOCTOR', cat='BASS', bseed=10865,  # #9
          p={
             'KTRK': 0, 'TRANS': -12, 'DIST': 7, 'VOICE': 2, 'FREEA': 41, 'FREEB': 6, 'E2ATK': 0, 'E2DEC': 59, 'E2SUS': 0, 'E2REL': 56, 'L2RATE': 27,
             'L2WAVE': 1, 'EQHG': -4, 'EQHF': -8, 'DKDEP': 16, 'TRIM': 116, 'DKSRC': 0, 'E2FLT': 21, 'L2FLT': 4, 'E2': 1, 'E3': 10, 'E5': 24, 'E6': 3,
@@ -163,7 +163,7 @@ SOUNDS = [
             98, 96, 95, 97, 98, 94, 94, 6, 4, 97, 95, 97, 97, 98, 98, 98, 0, 1, 93, 77, 54, 73, 95, 61, 41, 4, 73, 93, 51, 44, 72, 98, 93, 89, 0, 81,
             98, 64, 43, 77, 98, 68, 50, 4, 86, 97, 39, 26, 72, 98, 97, 93, 0, 98, 99, 99, 99, 99, 50, 50, 50, 34, 2, 0, 3,
          ]),
-    dict(engine='PHASE', idx=0, name='ELASTIC BASS', cat='BASS', bseed=60775, bamt=11,  # #10
+    dict(engine='PHASE', idx=0, name='ELASTIC BASS', cat='BASS', bseed=57458, bamt=11,  # #10
          p={
             'DEC': 76, 'SUS': 70, 'REL': 55, 'KTRK': 0, 'TRANS': -12, 'DIST': 13, 'VOICE': 2, 'GLIDE': 51, 'GLMODE': 1, 'FREEA': 37, 'FREEB': 15,
             'FREED': 2, 'E2ATK': 0, 'E2DEC': 71, 'E2SUS': 13, 'E2REL': 54, 'L2RATE': 27, 'L2WAVE': 1, 'EQHG': -4, 'EQHF': -8, 'DKDEP': 14, 'TRIM': 110,
@@ -177,7 +177,7 @@ SOUNDS = [
             'SUB LEVEL': 11, 'CYCLE RISE': 104, 'CYCLE FALL': 105, 'CYCLE CURVE': 13, 'AMPENV SATN': 2, 'FILTERENV MRES': -3, 'CYCLE PAN': -11,
             'LFO2 MMODE': 4,
          }),
-    dict(engine='PHASE', idx=9, name='FUZZ BASS', cat='BASS', bseed=57016,  # #11
+    dict(engine='PHASE', idx=9, name='FUZZ BASS', cat='BASS', bseed=62830,  # #11
          p={
             'DEC': 77, 'SUS': 112, 'REL': 52, 'KTRK': 0, 'TRANS': -12, 'VOICE': 2, 'GLIDE': 51, 'GLMODE': 1, 'FREEA': 41, 'FREEB': 8, 'FREED': 2,
             'E2ATK': 0, 'E2DEC': 71, 'E2SUS': 25, 'E2REL': 54, 'L2RATE': 21, 'ITYPE': 4, 'IA': 82, 'IB': 90, 'IC': 90, 'IMIX': 110, 'EQHG': -4,
@@ -205,7 +205,7 @@ SOUNDS = [
             'E5': 4, 'E6': 8, 'E8': 82, 'SUB LEVEL': 28, 'CYCLE RISE': 97, 'CYCLE FALL': 102, 'CYCLE CURVE': 5, 'AMPENV SATN': 1, 'FILTERENV MRES': -1,
             'CYCLE PAN': -8, 'LFO2 MMODE': 5,
          }),
-    dict(engine='LOFI', idx=0, name='CARTRIDGE', cat='BASS', bseed=28474,  # #13
+    dict(engine='LOFI', idx=0, name='CARTRIDGE', cat='BASS', bseed=21065,  # #13
          p={
             'DEC': 73, 'SUS': 102, 'REL': 51, 'KTRK': 0, 'TRANS': -12, 'VOICE': 2, 'FREEA': 47, 'FREEB': 6, 'E2ATK': 0, 'E2DEC': 69, 'E2SUS': 0,
             'E2REL': 51, 'L2RATE': 17, 'L2WAVE': 1, 'EQHG': -4, 'EQHF': -8, 'DKDEP': 15, 'TRIM': 99, 'DKSRC': 0, 'E2FLT': 17, 'L2FLT': 4, 'E2': 4,
@@ -219,7 +219,7 @@ SOUNDS = [
             'E5': 5, 'E6': 5, 'E8': 64, 'SUB LEVEL': 48, 'CYCLE RISE': 106, 'CYCLE FALL': 93, 'CYCLE CURVE': -3, 'AMPENV SATN': 1,
             'FILTERENV MRES': -2, 'CYCLE PAN': 8, 'LFO2 MMODE': -8,
          }),
-    dict(engine='VOICE', idx=0, name='BULLFROG', cat='BASS', bseed=36283,  # #14
+    dict(engine='VOICE', idx=0, name='BULLFROG', cat='BASS', bseed=40551,  # #14
          p={
             'ATK': 15, 'DEC': 79, 'SUS': 102, 'REL': 59, 'KTRK': 0, 'TRANS': -12, 'DIST': 24, 'VOICE': 2, 'GLIDE': 61, 'GLMODE': 1, 'FREEA': 52,
             'FREEB': 6, 'E2ATK': 0, 'E2DEC': 76, 'E2SUS': 0, 'L2RATE': 21, 'L2WAVE': 1, 'EQHG': -4, 'EQHF': -8, 'DKDEP': 15, 'TRIM': 94, 'DKSRC': 0,
@@ -248,7 +248,7 @@ SOUNDS = [
             'CYCLE FALL': 104, 'CYCLE CURVE': -6, 'AMPENV SATN': -1, 'FILTERENV FBLND': -2, 'FILTERENV FDRV': -1, 'FILTERENV MRES': -2,
             'CYCLE TCUT': 2, 'CYCLE PAN': -3, 'LFO2 TRES': -7, 'LFO2 MMODE': 3, 'LFO2 FBLND': 8,
          }),
-    dict(engine='TRIO', idx=11, name='SID BASS', cat='BASS', bseed=7135,  # #16
+    dict(engine='TRIO', idx=11, name='SID BASS', cat='BASS', bseed=47873,  # #16
          p={
             'DEC': 76, 'SUS': 108, 'REL': 54, 'RES2': 31, 'KTRK': 0, 'TRANS': -12, 'VOICE': 2, 'GLIDE': 51, 'GLMODE': 1, 'TWTYPE': 1, 'FREEA': 52,
             'FREEB': 4, 'E2ATK': 0, 'E2DEC': 74, 'E2SUS': 32, 'E2REL': 56, 'L2RATE': 59, 'L2WAVE': 1, 'EQHG': -4, 'EQHF': -8, 'CUT2': 46, 'TRIM': 93,
@@ -263,7 +263,7 @@ SOUNDS = [
             'CYCLE RISE': 107, 'CYCLE FALL': 94, 'CYCLE CURVE': -6, 'AMPENV SATN': -5, 'FILTERENV FBLND': -3, 'FILTERENV FDRV': -3,
             'FILTERENV MRES': -2, 'CYCLE TCUT': 3, 'CYCLE PAN': -7, 'LFO2 TRES': -5, 'LFO2 MMODE': 2, 'LFO2 FBLND': -2,
          }),
-    dict(engine='TRIO', idx=12, name='SYNC BASS', cat='BASS', bseed=43701,  # #17
+    dict(engine='TRIO', idx=12, name='SYNC BASS', cat='BASS', bseed=833,  # #17
          p={
             'DEC': 79, 'SUS': 102, 'REL': 44, 'RES2': 87, 'DRV2': 21, 'KTRK': 0, 'TRANS': -12, 'DIST': 31, 'VOICE': 2, 'GLIDE': 51, 'GLMODE': 1,
             'TWTYPE': 5, 'FREEA': 31, 'FREEB': 40, 'E2ATK': 0, 'E2SUS': 0, 'E2REL': 54, 'L2RATE': 30, 'L2WAVE': 1, 'EQHG': -4, 'EQHF': -8, 'CUT2': 40,
@@ -293,7 +293,7 @@ SOUNDS = [
             'E2FLT': 8, 'E3': -3, 'E4': -7, 'E6': 46, 'E7': 38, 'SUB LEVEL': 2, 'CYCLE RISE': 8, 'CYCLE FALL': 76, 'CYCLE CURVE': -15,
             'AMPENV SATN': -2, 'FILTERENV MRES': 3, 'CYCLE PAN': -4, 'LFO2 MMODE': 7,
          }),
-    dict(engine='PHYS', idx=11, name='PLUCK BASS', cat='BASS', bseed=13381,  # #19
+    dict(engine='PHYS', idx=11, name='PLUCK BASS', cat='BASS', bseed=26514,  # #19
          p={
             'ATK': 0, 'SUS': 127, 'REL': 65, 'KTRK': 0, 'TRANS': -12, 'REV': 9, 'FREEA': 36, 'FREEB': 8, 'FREED': 2, 'E2ATK': 0, 'E2DEC': 67,
             'E2SUS': 0, 'E2REL': 56, 'L2RATE': 27, 'L2WAVE': 1, 'ITYPE': 1, 'IA': 100, 'IB': 127, 'IC': 112, 'EQHG': -4, 'EQHF': -8, 'TRIM': 106,
@@ -307,7 +307,7 @@ SOUNDS = [
             'E2FLT': 28, 'E2': 59, 'E3': 49, 'E4': 112, 'E5': 34, 'E6': 120, 'E7': 2, 'E8': 19, 'SUB LEVEL': 7, 'CYCLE RISE': 98, 'CYCLE FALL': 105,
             'CYCLE CURVE': -2, 'AMPENV SATN': -5, 'FILTERENV MRES': 4, 'CYCLE PAN': -4, 'LFO2 MMODE': 5,
          }),
-    dict(engine='NOISE', idx=0, name='GEARBOX', cat='BASS', bseed=14165,  # #20
+    dict(engine='NOISE', idx=0, name='GEARBOX', cat='BASS', bseed=8726,  # #20
          p={
             'DEC': 73, 'SUS': 108, 'REL': 55, 'LWAVE': 3, 'LD_FLT': 7, 'RES2': 31, 'TRANS': -12, 'VOICE': 2, 'TWTYPE': 1, 'FREEA': 56, 'FREEB': 8,
             'E2ATK': 19, 'E2DEC': 76, 'E2SUS': 32, 'E2REL': 56, 'LSYNC': 8, 'EQHG': -4, 'EQHF': -8, 'CUT2': -11, 'DKDEP': 41, 'TRIM': 95, 'DKSRC': 0,
@@ -322,7 +322,7 @@ SOUNDS = [
             'SUB LEVEL': 35, 'CYCLE RISE': 99, 'CYCLE FALL': 94, 'CYCLE CURVE': 3, 'AMPENV SATN': 6, 'FILTERENV FBLND': 4, 'FILTERENV FDRV': 1,
             'FILTERENV MRES': -3, 'CYCLE TCUT': -1, 'CYCLE PAN': -7, 'LFO2 TRES': -2, 'LFO2 MMODE': 4, 'LFO2 FBLND': 4,
          }),
-    dict(engine='WAVE', idx=11, name='GROWL BASS', cat='BASS', bseed=20849,  # #21
+    dict(engine='WAVE', idx=11, name='GROWL BASS', cat='BASS', bseed=27870,  # #21
          p={
             'DEC': 79, 'SUS': 127, 'REL': 56, 'LRATE': 32, 'LWAVE': 1, 'LD_FLT': 8, 'RES2': 31, 'DRV2': 21, 'KTRK': 0, 'TRANS': -12, 'DIST': 25,
             'VOICE': 2, 'GLIDE': 51, 'GLMODE': 1, 'TWTYPE': 5, 'FREEA': 40, 'FREEB': 12, 'E2ATK': 0, 'E2DEC': 73, 'E2SUS': 0, 'E2REL': 56, 'L2SYNC': 4,
@@ -337,7 +337,7 @@ SOUNDS = [
             'TWIN LFO2': -4, 'SUB LEVEL': 67, 'CYCLE RISE': 94, 'CYCLE FALL': 105, 'CYCLE CURVE': 6, 'AMPENV SATN': 3, 'FILTERENV FBLND': -3,
             'FILTERENV FDRV': -2, 'FILTERENV MRES': 3, 'CYCLE TCUT': -5, 'CYCLE PAN': -2, 'LFO2 TRES': -1, 'LFO2 MMODE': -8, 'LFO2 FBLND': -8,
          }),
-    dict(engine='WAVE', idx=8, name='HARM BASS', cat='BASS', bseed=35823,  # #22
+    dict(engine='WAVE', idx=8, name='HARM BASS', cat='BASS', bseed=28664,  # #22
          p={
             'DEC': 79, 'SUS': 108, 'REL': 54, 'KTRK': 0, 'TRANS': -12, 'VOICE': 2, 'GLIDE': 51, 'GLMODE': 1, 'FREEA': 36, 'FREEB': 15, 'FREED': 2,
             'E2ATK': 0, 'E2DEC': 76, 'E2SUS': 25, 'E2REL': 56, 'L2RATE': 27, 'L2WAVE': 1, 'TRIM': 103, 'E2FLT': 21, 'E2SHP': 29, 'L2FLT': 4, 'E1': 2,
@@ -351,7 +351,7 @@ SOUNDS = [
             'E3': 5, 'E4': 7, 'E6': 2, 'SUB LEVEL': 67, 'CYCLE RISE': 102, 'CYCLE FALL': 104, 'CYCLE CURVE': -3, 'AMPENV SATN': -7,
             'FILTERENV MRES': 2, 'CYCLE PAN': -8, 'LFO2 MMODE': 2,
          }),
-    dict(engine='WAVE', idx=21, name='KICK BASS', cat='BASS', bseed=3922,  # #23
+    dict(engine='WAVE', idx=21, name='KICK BASS', cat='BASS', bseed=49890,  # #23
          p={
             'ATK': 0, 'DEC': 82, 'SUS': 70, 'REL': 56, 'KTRK': 0, 'TRANS': -12, 'DIST': 41, 'VOICE': 2, 'GLMODE': 1, 'E2ATK': 0, 'E2DEC': 63,
             'E2SUS': 0, 'E2REL': 47, 'ITYPE': 2, 'IA': 112, 'IB': 90, 'EQHG': -4, 'EQHF': -8, 'TRIM': 107, 'E1': 2, 'E2': 10,
@@ -365,7 +365,7 @@ SOUNDS = [
             'E3': 6, 'E4': 4, 'E6': 1, 'SUB LEVEL': 73, 'CYCLE RISE': 3, 'CYCLE FALL': 67, 'CYCLE CURVE': -4, 'AMPENV SATN': -1, 'FILTERENV MRES': -1,
             'CYCLE PAN': 4, 'LFO2 MMODE': 4,
          }),
-    dict(engine='WAVE', idx=12, name='REESE BASS', cat='BASS', bseed=5220,  # #24
+    dict(engine='WAVE', idx=12, name='REESE BASS', cat='BASS', bseed=2239,  # #24
          p={
             'ATK': 0, 'DEC': 79, 'SUS': 127, 'REL': 44, 'LRATE': 26, 'LWAVE': 1, 'LD_FLT': 8, 'LD_SHP': 13, 'RES2': 21, 'DRV2': 31, 'KTRK': 0,
             'TRANS': -12, 'DIST': 10, 'VOICE': 2, 'GLIDE': 61, 'GLMODE': 1, 'TWTYPE': 1, 'FREEA': 46, 'FREEB': 8, 'E2ATK': 0, 'E2DEC': 69, 'E2SUS': 0,
@@ -381,7 +381,7 @@ SOUNDS = [
             'TWIN LFO2': -4, 'SUB LEVEL': 67, 'CYCLE RISE': 93, 'CYCLE FALL': 94, 'CYCLE CURVE': 6, 'AMPENV SATN': -4, 'FILTERENV FBLND': -3,
             'FILTERENV FDRV': -4, 'FILTERENV MRES': 4, 'CYCLE TCUT': 6, 'CYCLE PAN': -4, 'LFO2 TRES': -5, 'LFO2 MMODE': 2, 'LFO2 FBLND': 7,
          }),
-    dict(engine='ANALOG', idx=19, name='DRIVEN SAW', cat='LEAD', bseed=64169,  # #25
+    dict(engine='ANALOG', idx=19, name='DRIVEN SAW', cat='LEAD', bseed=53638,  # #25
          p={
             'ATK': 0, 'DEC': 71, 'SUS': 127, 'REL': 51, 'RES2': 17, 'DRV2': 71, 'DLY': 17, 'REV': 21, 'VOICE': 2, 'GLIDE': 46, 'GLMODE': 1,
             'TWTYPE': 3, 'FREEA': 71, 'FREEB': 18, 'FREED': 2, 'E2ATK': 0, 'E2DEC': 71, 'E2SUS': 31, 'E2REL': 51, 'CUT2': 11, 'TRIM': 94, 'E2FLT': 47,
@@ -410,7 +410,7 @@ SOUNDS = [
             'E2FLT': 50, 'E2': 5, 'E3': 63, 'E4': 13, 'E7': 19, 'SUB LEVEL': 8, 'CYCLE RISE': 109, 'CYCLE FALL': 114, 'CYCLE CURVE': -10,
             'AMPENV SATN': -3, 'FILTERENV MRES': -4, 'CYCLE PAN': 20, 'LFO2 MMODE': 6,
          }),
-    dict(engine='ANALOG', idx=6, name='RAZORWIRE', cat='LEAD', bseed=61032,  # #27
+    dict(engine='ANALOG', idx=6, name='RAZORWIRE', cat='LEAD', bseed=22036,  # #27
          p={
             'ATK': 0, 'SUS': 127, 'REL': 69, 'LRATE': 40, 'LWAVE': 1, 'LD_FLT': 5, 'DRV2': 41, 'DLY': 18, 'VOICE': 2, 'GLIDE': 61, 'GLMODE': 1,
             'TWTYPE': 1, 'FREEA': 47, 'FREEB': 26, 'E2ATK': 0, 'E2DEC': 77, 'E2SUS': 0, 'E2REL': 69, 'L2RATE': 44, 'L2WAVE': 1, 'ITYPE': 6, 'IA': 44,
@@ -427,7 +427,7 @@ SOUNDS = [
             'FILTERENV FBLND': 17, 'FILTERENV FDRV': -16, 'FILTERENV MRES': 5, 'CYCLE TCUT': -15, 'CYCLE PAN': 9, 'LFO2 TRES': 12, 'LFO2 MMODE': 21,
             'LFO2 FBLND': 1,
          }),
-    dict(engine='ANALOG', idx=17, name='SQUARE LEAD', cat='LEAD', bseed=21704,  # #28
+    dict(engine='ANALOG', idx=17, name='SQUARE LEAD', cat='LEAD', bseed=64088,  # #28
          p={
             'ATK': 22, 'SUS': 127, 'REL': 73, 'LRATE': 40, 'LWAVE': 1, 'LD_FLT': 4, 'RES2': 107, 'DLY': 23, 'REV': 19, 'VOICE': 2, 'GLIDE': 61,
             'GLMODE': 1, 'TWTYPE': 1, 'FREEA': 44, 'FREEB': 40, 'E2ATK': 29, 'E2DEC': 86, 'E2SUS': 76, 'E2REL': 73, 'L2RATE': 30, 'L2WAVE': 1,
@@ -442,7 +442,7 @@ SOUNDS = [
             'SUB LEVEL': 3, 'CYCLE RISE': 113, 'CYCLE FALL': 95, 'CYCLE CURVE': -14, 'AMPENV SATN': -18, 'FILTERENV FBLND': 18, 'FILTERENV FDRV': -3,
             'FILTERENV MRES': 4, 'CYCLE TCUT': 12, 'CYCLE PAN': -3, 'LFO2 TRES': 4, 'LFO2 MMODE': 12, 'LFO2 FBLND': 20,
          }),
-    dict(engine='ANALOG', idx=5, name='TORCH SONG', cat='LEAD', bseed=58621,  # #29
+    dict(engine='ANALOG', idx=5, name='TORCH SONG', cat='LEAD', bseed=64073,  # #29
          p={
             'ATK': 44, 'SUS': 127, 'REL': 81, 'LRATE': 21, 'LWAVE': 1, 'LD_FLT': 4, 'DIST': 7, 'CHOR': 38, 'REV': 51, 'VOICE': 2, 'GLIDE': 61,
             'GLMODE': 1, 'FREEA': 49, 'FREEB': 5, 'FREED': 2, 'E2ATK': 56, 'E2DEC': 88, 'E2SUS': 89, 'E2REL': 79, 'L2RATE': 87, 'L2WAVE': 1,
@@ -456,7 +456,7 @@ SOUNDS = [
             'E7': 5, 'SUB LEVEL': 1, 'CYCLE RISE': 95, 'CYCLE FALL': 98, 'CYCLE CURVE': 13, 'AMPENV SATN': -13, 'FILTERENV MRES': -5, 'CYCLE PAN': -7,
             'LFO2 MMODE': -16,
          }),
-    dict(engine='ANALOG', idx=8, name='WALL OF SAW', cat='LEAD', bseed=21203, bamt=15,  # #30
+    dict(engine='ANALOG', idx=8, name='WALL OF SAW', cat='LEAD', bseed=10901, bamt=15,  # #30
          p={
             'ATK': 22, 'SUS': 127, 'REL': 76, 'LRATE': 17, 'LWAVE': 1, 'LD_FLT': 4, 'CHOR': 64, 'DLY': 32, 'REV': 44, 'TWTYPE': 3, 'FREEA': 47,
             'FREEB': 4, 'E2ATK': 0, 'E2DEC': 79, 'E2SUS': 0, 'E2REL': 76, 'L2RATE': 18, 'SPRD': 51, 'ITYPE': 1, 'IA': 80, 'IB': 127, 'IC': 112,
@@ -472,7 +472,7 @@ SOUNDS = [
             'FILTERENV FBLND': 1, 'FILTERENV FDRV': -18, 'FILTERENV MRES': 5, 'CYCLE TCUT': 3, 'CYCLE PAN': -17, 'LFO2 TRES': 18, 'LFO2 MMODE': -17,
             'LFO2 FBLND': -6,
          }),
-    dict(engine='FM6', idx=1, name='HAN SOLO', cat='LEAD', bseed=381,  # #31
+    dict(engine='FM6', idx=1, name='HAN SOLO', cat='LEAD', bseed=62342,  # #31
          p={
             'LRATE': 21, 'LWAVE': 1, 'LD_FLT': 4, 'DIST': 9, 'CHOR': 36, 'DLY': 28, 'REV': 19, 'VOICE': 2, 'GLIDE': 61, 'GLMODE': 1, 'FREEA': 50,
             'FREEB': 8, 'E2ATK': 66, 'E2DEC': 91, 'E2SUS': 110, 'E2REL': 69, 'L2RATE': 87, 'L2WAVE': 1, 'L2FADE': 83, 'TRIM': 115, 'E2FLT': 21,
@@ -490,7 +490,7 @@ SOUNDS = [
             50, 59, 45, 59, 96, 74, 75, 4, 68, 75, 51, 48, 47, 93, 82, 78, 5, 87, 61, 34, 34, 44, 92, 83, 77, 5, 70, 50, 44, 53, 76, 91, 99, 88, 9,
             88, 69, 55, 51, 72, 90, 85, 88, 8, 87, 56, 45, 39, 50, 98, 93, 91, 0, 97, 80, 60, 99, 60, 46, 50, 50, 21, 37, 6, 5,
          ]),
-    dict(engine='PHASE', idx=1, name='BRAZEN', cat='LEAD', bseed=1618,  # #32
+    dict(engine='PHASE', idx=1, name='BRAZEN', cat='LEAD', bseed=62170,  # #32
          p={
             'ATK': 43, 'DEC': 79, 'SUS': 108, 'REL': 66, 'LRATE': 17, 'LWAVE': 1, 'LD_FLT': 4, 'RES2': 21, 'CHOR': 28, 'DLY': 23, 'REV': 23,
             'VOICE': 2, 'GLIDE': 61, 'GLMODE': 1, 'TWTYPE': 1, 'FREEA': 52, 'FREEB': 6, 'E2ATK': 66, 'E2DEC': 81, 'E2SUS': 64, 'E2REL': 64,
@@ -505,7 +505,7 @@ SOUNDS = [
             'CYCLE RISE': 125, 'CYCLE FALL': 113, 'CYCLE CURVE': 10, 'AMPENV SATN': 2, 'FILTERENV FBLND': -20, 'FILTERENV FDRV': -17,
             'FILTERENV MRES': 7, 'CYCLE TCUT': 5, 'CYCLE PAN': -2, 'LFO2 TRES': -20, 'LFO2 MMODE': -6, 'LFO2 FBLND': 20,
          }),
-    dict(engine='LOFI', idx=1, name='PIXEL HERO', cat='LEAD', bseed=16641, bamt=21,  # #33
+    dict(engine='LOFI', idx=1, name='PIXEL HERO', cat='LEAD', bseed=33133, bamt=21,  # #33
          p={
             'ATK': 0, 'SUS': 127, 'REL': 47, 'LRATE': 21, 'LWAVE': 1, 'DLY': 28, 'REV': 15, 'VOICE': 2, 'GLIDE': 51, 'GLMODE': 1, 'TWTYPE': 4,
             'FREEA': 66, 'FREEB': 6, 'E2ATK': 0, 'E2DEC': 79, 'E2SUS': 0, 'E2REL': 56, 'L2RATE': 91, 'L2WAVE': 1, 'L2FADE': 79, 'CUT2': 56, 'TRIM': 91,
@@ -565,7 +565,7 @@ SOUNDS = [
             'E7': 68, 'SUB LEVEL': 9, 'CYCLE RISE': 105, 'CYCLE FALL': 112, 'CYCLE CURVE': 9, 'AMPENV SATN': -7, 'FILTERENV MRES': 1, 'CYCLE PAN': -10,
             'LFO2 MMODE': -13,
          }),
-    dict(engine='PHYS', idx=0, name='PAN WHISTLE', cat='LEAD', bseed=58847,  # #37
+    dict(engine='PHYS', idx=0, name='PAN WHISTLE', cat='LEAD', bseed=35051,  # #37
          p={
             'ATK': 56, 'SUS': 127, 'REL': 70, 'LRATE': 32, 'LD_FLT': 4, 'KTRK': 31, 'CHOR': 19, 'DLY': 25, 'REV': 38, 'VOICE': 2, 'GLIDE': 51,
             'GLMODE': 1, 'FREEA': 61, 'FREEB': 8, 'E2ATK': 51, 'E2DEC': 81, 'E2SUS': 89, 'E2REL': 69, 'L2RATE': 87, 'L2WAVE': 1, 'L2FADE': 86,
@@ -610,7 +610,7 @@ SOUNDS = [
             'FILTERENV FBLND': -14, 'FILTERENV FDRV': -1, 'FILTERENV MRES': -2, 'CYCLE TCUT': -19, 'CYCLE PAN': 19, 'LFO2 TRES': 13,
             'LFO2 MMODE': -18, 'LFO2 FBLND': -9,
          }),
-    dict(engine='WAVE', idx=19, name='LICORICE', cat='LEAD', bseed=46772,  # #40
+    dict(engine='WAVE', idx=19, name='LICORICE', cat='LEAD', bseed=14800,  # #40
          p={
             'ATK': 50, 'SUS': 127, 'REL': 65, 'LRATE': 21, 'LWAVE': 1, 'LD_FLT': 4, 'DLY': 14, 'REV': 34, 'VOICE': 2, 'GLIDE': 51, 'GLMODE': 1,
             'FREEA': 61, 'FREEB': 11, 'E2ATK': 0, 'E2DEC': 65, 'E2SUS': 0, 'E2REL': 59, 'TRIM': 101, 'E2FLT': 11, 'E1': 3, 'E2': 37,
@@ -624,7 +624,7 @@ SOUNDS = [
             'E4': 9, 'E6': 10, 'SUB LEVEL': 2, 'CYCLE RISE': 86, 'CYCLE FALL': 90, 'CYCLE CURVE': 18, 'AMPENV SATN': -10, 'FILTERENV MRES': 10,
             'CYCLE PAN': -15, 'LFO2 MMODE': -8,
          }),
-    dict(engine='WAVE', idx=18, name='PURPLE FLUTE', cat='LEAD', bseed=63290,  # #41
+    dict(engine='WAVE', idx=18, name='PURPLE FLUTE', cat='LEAD', bseed=29345,  # #41
          p={
             'ATK': 59, 'SUS': 127, 'REL': 71, 'LRATE': 17, 'LWAVE': 1, 'LD_SHP': 7, 'DLY': 27, 'REV': 39, 'VOICE': 2, 'GLIDE': 51, 'GLMODE': 1,
             'FREEA': 56, 'FREEB': 12, 'E2ATK': 0, 'E2DEC': 71, 'E2SUS': 0, 'E2REL': 59, 'L2RATE': 88, 'L2FADE': 86, 'TRIM': 101, 'E2FLT': 7,
@@ -638,7 +638,7 @@ SOUNDS = [
             'E4': 13, 'E6': 2, 'SUB LEVEL': 2, 'CYCLE RISE': 101, 'CYCLE FALL': 86, 'CYCLE CURVE': -20, 'AMPENV SATN': 18, 'FILTERENV MRES': -8,
             'CYCLE PAN': 5, 'LFO2 MMODE': 16,
          }),
-    dict(engine='WAVE', idx=22, name='SCREAMER', cat='LEAD', bseed=53917,  # #42
+    dict(engine='WAVE', idx=22, name='SCREAMER', cat='LEAD', bseed=63541,  # #42
          p={
             'ATK': 15, 'SUS': 127, 'REL': 68, 'LRATE': 40, 'LWAVE': 1, 'LD_FLT': 7, 'RES2': 21, 'DRV2': 77, 'DIST': 33, 'DLY': 20, 'REV': 18,
             'VOICE': 2, 'GLIDE': 61, 'GLMODE': 1, 'TWTYPE': 1, 'FREEA': 58, 'FREEB': 27, 'FREED': 2, 'E2ATK': 0, 'E2DEC': 83, 'E2SUS': 51, 'E2REL': 69,
@@ -653,7 +653,7 @@ SOUNDS = [
             'CYCLE RISE': 85, 'CYCLE FALL': 80, 'CYCLE CURVE': -12, 'AMPENV SATN': 16, 'FILTERENV FBLND': 14, 'FILTERENV FDRV': -3,
             'FILTERENV MRES': 18, 'CYCLE TCUT': -1, 'CYCLE PAN': -16, 'LFO2 TRES': -12, 'LFO2 MMODE': -11, 'LFO2 FBLND': 12,
          }),
-    dict(engine='WAVE', idx=7, name='SYNC LEAD', cat='LEAD', bseed=15854,  # #43
+    dict(engine='WAVE', idx=7, name='SYNC LEAD', cat='LEAD', bseed=18235,  # #43
          p={
             'ATK': 0, 'DEC': 79, 'SUS': 127, 'REL': 69, 'LRATE': 50, 'LWAVE': 1, 'LD_FLT': 7, 'DIST': 13, 'DLY': 32, 'REV': 19, 'VOICE': 2,
             'GLIDE': 61, 'GLMODE': 1, 'FREEA': 61, 'FREEB': 15, 'FREED': 2, 'E2ATK': 0, 'E2DEC': 86, 'E2SUS': 0, 'E2REL': 73, 'L2RATE': 87,
@@ -709,7 +709,7 @@ SOUNDS = [
             'M4AMT': 4, 'E2ATK': 65, 'E2DEC': 112, 'E2SUS': 92, 'E2REL': 108, 'L2RATE': 40, 'L2PHASE': 6, 'L2FADE': 31, 'E2FLT': 49, 'E2': 7, 'E3': 62,
             'E4': 3, 'E7': 22, 'SUB LEVEL': 17, 'CYCLE CURVE': 25, 'AMPENV SATN': -34, 'FILTERENV MRES': -5, 'CYCLE PAN': -19, 'LFO2 MMODE': 25,
          }),
-    dict(engine='FM6', idx=2, name='GLASS HALL', cat='PAD', bseed=28240,  # #47
+    dict(engine='FM6', idx=2, name='GLASS HALL', cat='PAD', bseed=1100,  # #47
          p={
             'LRATE': 17, 'LWAVE': 1, 'LD_FLT': 5, 'CHOR': 70, 'REV': 70, 'FREEA': 64, 'FREEB': 4, 'E2ATK': 101, 'E2DEC': 108, 'E2SUS': 70,
             'E2REL': 101, 'L2RATE': 34, 'L2WAVE': 1, 'CHRD': 6, 'VOIC': 1, 'ITYPE': 1, 'IA': 100, 'IB': 127, 'IC': 112, 'TRIM': 84, 'E2FLT': 11,
@@ -727,7 +727,7 @@ SOUNDS = [
             43, 25, 62, 41, 92, 93, 97, 4, 54, 57, 36, 38, 45, 98, 94, 91, 0, 78, 55, 42, 60, 26, 79, 84, 93, 8, 61, 63, 27, 32, 42, 98, 96, 89, 0,
             90, 28, 31, 14, 33, 76, 83, 87, 2, 72, 60, 26, 35, 48, 98, 96, 91, 0, 90, 99, 99, 99, 99, 50, 50, 50, 7, 74, 4, 11,
          ]),
-    dict(engine='PHASE', idx=2, name='LAMPLIGHT', cat='PAD', bseed=62877,  # #48
+    dict(engine='PHASE', idx=2, name='LAMPLIGHT', cat='PAD', bseed=8602,  # #48
          p={
             'ATK': 92, 'DEC': 103, 'SUS': 117, 'REL': 102, 'LRATE': 17, 'LWAVE': 1, 'LD_FLT': 5, 'RES2': 21, 'CHOR': 70, 'REV': 42, 'TWTYPE': 1,
             'FREEA': 57, 'FREEB': 4, 'E2ATK': 97, 'E2DEC': 105, 'E2SUS': 76, 'E2REL': 98, 'L2RATE': 37, 'L2WAVE': 1, 'CHRD': 2, 'SPRD': 38, 'ITYPE': 1,
@@ -743,7 +743,7 @@ SOUNDS = [
             'TWIN ENV2': -2, 'TWIN LFO1': 15, 'TWIN LFO2': -30, 'SUB LEVEL': 34, 'CYCLE CURVE': -7, 'AMPENV SATN': -24, 'FILTERENV FBLND': -13,
             'FILTERENV FDRV': -14, 'FILTERENV MRES': -1, 'CYCLE TCUT': 12, 'CYCLE PAN': 24, 'LFO2 TRES': 32, 'LFO2 MMODE': -18, 'LFO2 FBLND': -1,
          }),
-    dict(engine='LOFI', idx=2, name='WOW FLUTTER', cat='PAD', bseed=65413,  # #49
+    dict(engine='LOFI', idx=2, name='WOW FLUTTER', cat='PAD', bseed=13690,  # #49
          p={
             'ATK': 90, 'DEC': 101, 'SUS': 117, 'REL': 100, 'CHOR': 64, 'REV': 70, 'FREEA': 47, 'FREEB': 6, 'E2ATK': 97, 'E2DEC': 105, 'E2SUS': 76,
             'E2REL': 98, 'L2RATE': 34, 'L2WAVE': 1, 'CHRD': 7, 'VOIC': 1, 'SPRD': 38, 'ITYPE': 9, 'IA': 52, 'IB': 40, 'IC': 78, 'TRIM': 97,
@@ -757,7 +757,7 @@ SOUNDS = [
             'IB': 56, 'IC': 97, 'IMIX': 95, 'E2FLT': -5, 'E3': 68, 'E4': 21, 'E5': 11, 'E6': 28, 'E8': 86, 'SUB LEVEL': 29, 'CYCLE CURVE': 11,
             'AMPENV SATN': -27, 'FILTERENV MRES': -2, 'CYCLE PAN': -33, 'LFO2 MMODE': 11,
          }),
-    dict(engine='VOICE', idx=6, name='PLATE CHOIR', cat='PAD', bseed=64679,  # #50
+    dict(engine='VOICE', idx=6, name='PLATE CHOIR', cat='PAD', bseed=51347,  # #50
          p={
             'ATK': 94, 'DEC': 101, 'SUS': 117, 'REL': 101, 'LRATE': 17, 'LWAVE': 1, 'LD_FLT': 4, 'CHOR': 38, 'REV': 114, 'FREEA': 61, 'FREEB': 3,
             'E2ATK': 97, 'E2DEC': 105, 'E2SUS': 89, 'E2REL': 101, 'L2RATE': 27, 'L2WAVE': 1, 'CHRD': 1, 'VOIC': 1, 'SPRD': 51, 'TRIM': 95, 'E2FLT': 11,
@@ -771,7 +771,7 @@ SOUNDS = [
             'E3': 34, 'E4': -3, 'E5': 55, 'E6': 46, 'E7': 34, 'E8': 31, 'SUB LEVEL': 33, 'CYCLE CURVE': 23, 'AMPENV SATN': 18, 'FILTERENV MRES': 9,
             'CYCLE PAN': 30, 'LFO2 MMODE': 23,
          }),
-    dict(engine='VOICE', idx=1, name='VESPERS', cat='PAD', bseed=34110,  # #51
+    dict(engine='VOICE', idx=1, name='VESPERS', cat='PAD', bseed=55611,  # #51
          p={
             'ATK': 90, 'DEC': 101, 'SUS': 117, 'REL': 100, 'LRATE': 18, 'LWAVE': 1, 'LD_FLT': 4, 'CHOR': 57, 'REV': 89, 'FREEA': 57, 'FREEB': 4,
             'E2ATK': 100, 'E2DEC': 105, 'E2SUS': 76, 'E2REL': 95, 'L2RATE': 87, 'L2WAVE': 1, 'L2FADE': 94, 'CHRD': 1, 'VOIC': 1, 'SPRD': 51,
@@ -786,7 +786,7 @@ SOUNDS = [
             'E2': 114, 'E3': 17, 'E4': 1, 'E5': 56, 'E6': 49, 'E7': 65, 'E8': 33, 'SUB LEVEL': 19, 'CYCLE CURVE': -26, 'AMPENV SATN': -8,
             'FILTERENV MRES': 0, 'CYCLE PAN': 6, 'LFO2 MMODE': -27,
          }),
-    dict(engine='VOICE', idx=5, name='WHISPER PAD', cat='PAD', bseed=40791,  # #52
+    dict(engine='VOICE', idx=5, name='WHISPER PAD', cat='PAD', bseed=45800,  # #52
          p={
             'ATK': 92, 'DEC': 101, 'SUS': 110, 'REL': 101, 'LRATE': 21, 'LWAVE': 1, 'LD_FLT': 5, 'CHOR': 52, 'DLY': 22, 'REV': 90, 'FREEA': 61,
             'FREEB': 6, 'E2ATK': 98, 'E2DEC': 105, 'E2SUS': 89, 'E2REL': 101, 'L2RATE': 15, 'SPRD': 47, 'TRIM': 99, 'E2FLT': 11, 'E2': 95, 'E3': 88,
@@ -800,7 +800,7 @@ SOUNDS = [
             'E2': 106, 'E3': 82, 'E4': 2, 'E5': 80, 'E6': 105, 'E7': 59, 'E8': 19, 'SUB LEVEL': 15, 'CYCLE CURVE': 7, 'AMPENV SATN': -9,
             'FILTERENV MRES': -5, 'CYCLE PAN': -23, 'LFO2 MMODE': 3,
          }),
-    dict(engine='TRIO', idx=2, name='CHIP CHAPEL', cat='PAD', bseed=18034,  # #53
+    dict(engine='TRIO', idx=2, name='CHIP CHAPEL', cat='PAD', bseed=3614,  # #53
          p={
             'ATK': 94, 'DEC': 101, 'SUS': 117, 'REL': 101, 'LRATE': 35, 'LWAVE': 1, 'LD_FLT': 4, 'RES2': 85, 'KTRK': 0, 'CHOR': 57, 'REV': 70,
             'TWTYPE': 2, 'FREEA': 57, 'FREEB': 4, 'E2ATK': 98, 'E2DEC': 105, 'E2SUS': 76, 'E2REL': 98, 'L2RATE': 50, 'L2WAVE': 1, 'CHRD': 1, 'VOIC': 1,
@@ -816,7 +816,7 @@ SOUNDS = [
             'SUB LEVEL': 21, 'CYCLE CURVE': 26, 'AMPENV SATN': -3, 'FILTERENV FBLND': 28, 'FILTERENV FDRV': 32, 'FILTERENV MRES': -4,
             'CYCLE TCUT': -18, 'CYCLE PAN': 9, 'LFO2 TRES': 27, 'LFO2 MMODE': -24, 'LFO2 FBLND': 15,
          }),
-    dict(engine='TRIO', idx=9, name='STRING MACH', cat='PAD', bseed=52771,  # #54
+    dict(engine='TRIO', idx=9, name='STRING MACH', cat='PAD', bseed=29971,  # #54
          p={
             'ATK': 77, 'DEC': 101, 'SUS': 127, 'REL': 97, 'LRATE': 40, 'LWAVE': 1, 'LD_SHP': 12, 'KTRK': 0, 'CHOR': 90, 'REV': 52, 'TWTYPE': 3,
             'FREEA': 61, 'FREEB': 3, 'E2ATK': 85, 'E2DEC': 101, 'E2SUS': 89, 'E2REL': 94, 'L2RATE': 23, 'SPRD': 34, 'CUT2': 11, 'TRIM': 90, 'E2FLT': 7,
@@ -831,7 +831,7 @@ SOUNDS = [
             'SUB LEVEL': 32, 'CYCLE CURVE': 4, 'AMPENV SATN': 25, 'FILTERENV FBLND': -10, 'FILTERENV FDRV': -9, 'FILTERENV MRES': -1,
             'CYCLE TCUT': -11, 'CYCLE PAN': -10, 'LFO2 TRES': -30, 'LFO2 MMODE': -2, 'LFO2 FBLND': 27,
          }),
-    dict(engine='WHEEL', idx=2, name='CHOIR LOFT', cat='PAD', bseed=8609,  # #55
+    dict(engine='WHEEL', idx=2, name='CHOIR LOFT', cat='PAD', bseed=63541,  # #55
          p={
             'ATK': 90, 'SUS': 127, 'REL': 100, 'LRATE': 17, 'LWAVE': 1, 'LD_FLT': 4, 'CHOR': 51, 'REV': 70, 'FREEA': 47, 'FREEB': 4, 'E2ATK': 98,
             'E2DEC': 105, 'E2SUS': 76, 'E2REL': 98, 'L2RATE': 31, 'L2WAVE': 1, 'CHRD': 1, 'TRIM': 102, 'E2FLT': 14, 'E2SHP': 16, 'L2SHP': 3, 'E1': 12,
@@ -845,7 +845,7 @@ SOUNDS = [
             'E3': 1, 'E4': 4, 'E6': 21, 'E7': 19, 'SUB LEVEL': 5, 'CYCLE CURVE': 31, 'AMPENV SATN': 20, 'FILTERENV MRES': -1, 'CYCLE PAN': 6,
             'LFO2 MMODE': 20,
          }),
-    dict(engine='PHYS', idx=1, name='SINGING BOWL', cat='PAD', bseed=64412,  # #56
+    dict(engine='PHYS', idx=1, name='SINGING BOWL', cat='PAD', bseed=7821,  # #56
          p={
             'ATK': 69, 'SUS': 127, 'REL': 103, 'LRATE': 17, 'LWAVE': 1, 'LD_FLT': 4, 'CHOR': 38, 'DLY': 19, 'REV': 76, 'FREEA': 57, 'FREEB': 4,
             'E2ATK': 79, 'E2DEC': 108, 'E2SUS': 89, 'E2REL': 101, 'L2RATE': 21, 'L2WAVE': 1, 'CHRD': 9, 'VOIC': 1, 'TRIM': 124, 'E2FLT': 14,
@@ -859,7 +859,7 @@ SOUNDS = [
             'E3': 71, 'E4': 73, 'E5': 34, 'E6': 106, 'E7': 97, 'E8': 30, 'SUB LEVEL': 30, 'CYCLE CURVE': -26, 'AMPENV SATN': -33, 'FILTERENV MRES': 6,
             'CYCLE PAN': 17, 'LFO2 MMODE': -23,
          }),
-    dict(engine='NOISE', idx=2, name='SEA ORGAN', cat='PAD', bseed=1234,  # #57
+    dict(engine='NOISE', idx=2, name='SEA ORGAN', cat='PAD', bseed=12709,  # #57
          p={
             'ATK': 97, 'SUS': 127, 'REL': 108, 'LRATE': 27, 'RES2': 61, 'KTRK': 63, 'CHOR': 51, 'REV': 83, 'TWTYPE': 2, 'FREEA': 47, 'FREEB': 53,
             'FREEC': 64, 'E2ATK': 101, 'E2DEC': 105, 'E2SUS': 76, 'E2REL': 98, 'L2RATE': 23, 'L2WAVE': 1, 'CHRD': 1, 'VOIC': 1, 'SPRD': 51, 'CUT2': 41,
@@ -916,7 +916,7 @@ SOUNDS = [
             'E2': 36, 'E3': 21, 'E4': 18, 'E6': 13, 'SUB LEVEL': 31, 'CYCLE CURVE': 31, 'AMPENV SATN': 21, 'FILTERENV MRES': 14, 'CYCLE PAN': -3,
             'LFO2 MMODE': 18,
          }),
-    dict(engine='WAVE', idx=3, name='EVOLVING PAD', cat='PAD', bseed=42897,  # #61
+    dict(engine='WAVE', idx=3, name='EVOLVING PAD', cat='PAD', bseed=23462,  # #61
          p={
             'ATK': 105, 'DEC': 110, 'SUS': 127, 'REL': 117, 'LRATE': 6, 'LWAVE': 1, 'LD_SHP': 19, 'DLY': 32, 'REV': 76, 'FREEA': 61, 'FREEB': 4,
             'E2ATK': 108, 'E2DEC': 110, 'E2SUS': 89, 'E2REL': 110, 'L2RATE': 23, 'SPRD': 38, 'TRIM': 111, 'E2FLT': 11, 'L2FLT': 10, 'L2SHP': 13,
@@ -930,7 +930,7 @@ SOUNDS = [
             'E2': 73, 'E3': 19, 'E4': 28, 'E6': 13, 'SUB LEVEL': 19, 'CYCLE CURVE': -4, 'AMPENV SATN': -1, 'FILTERENV MRES': -3, 'CYCLE PAN': -2,
             'LFO2 MMODE': -13,
          }),
-    dict(engine='WAVE', idx=2, name='GLASS PAD', cat='PAD', bseed=55575,  # #62
+    dict(engine='WAVE', idx=2, name='GLASS PAD', cat='PAD', bseed=10501,  # #62
          p={
             'ATK': 90, 'DEC': 105, 'SUS': 127, 'REL': 105, 'LRATE': 17, 'LWAVE': 1, 'LD_FLT': 4, 'CHOR': 38, 'REV': 57, 'FREEA': 61, 'FREEB': 3,
             'E2ATK': 101, 'E2DEC': 108, 'E2SUS': 51, 'E2REL': 101, 'L2RATE': 32, 'L2POL': 1, 'SPRD': 32, 'TRIM': 103, 'E2FLT': 11, 'E2SHP': 13,
@@ -958,7 +958,7 @@ SOUNDS = [
             'E2FLT': 21, 'E2': 58, 'E3': 28, 'E4': 10, 'E6': 4, 'SUB LEVEL': 25, 'CYCLE CURVE': -4, 'AMPENV SATN': -21, 'FILTERENV MRES': 11,
             'CYCLE PAN': -29, 'LFO2 MMODE': 2,
          }),
-    dict(engine='WAVE', idx=1, name='VOWEL PAD', cat='PAD', bseed=38170,  # #64
+    dict(engine='WAVE', idx=1, name='VOWEL PAD', cat='PAD', bseed=40913,  # #64
          p={
             'ATK': 88, 'DEC': 101, 'SUS': 127, 'REL': 98, 'LRATE': 18, 'LWAVE': 1, 'CHOR': 51, 'REV': 76, 'FREEA': 57, 'FREEB': 4, 'E2ATK': 97,
             'E2DEC': 105, 'E2SUS': 89, 'E2REL': 98, 'L2RATE': 21, 'L2WAVE': 1, 'LPOL': 1, 'SPRD': 38, 'TRIM': 109, 'E2FLT': 11, 'L2SHP': 8, 'E1': 5,
@@ -972,7 +972,7 @@ SOUNDS = [
             'E3': 17, 'E4': 4, 'E6': 4, 'SUB LEVEL': 19, 'CYCLE CURVE': -31, 'AMPENV SATN': 1, 'FILTERENV MRES': -7, 'CYCLE PAN': 11,
             'LFO2 MMODE': -26,
          }),
-    dict(engine='ANALOG', idx=18, name='ARP PLUCK', cat='PLUCK', bseed=12417,  # #65
+    dict(engine='ANALOG', idx=18, name='ARP PLUCK', cat='PLUCK', bseed=60869,  # #65
          p={
             'ATK': 0, 'DEC': 77, 'SUS': 0, 'REL': 61, 'LRATE': 27, 'LWAVE': 1, 'LD_FLT': 5, 'AMODE': 1, 'AOCT': 2, 'AGATE': 76, 'RES2': 46, 'KTRK': 27,
             'CHOR': 18, 'DLY': 20, 'REV': 23, 'TWTYPE': 5, 'FREEA': 41, 'FREEB': 8, 'FREED': 2, 'E2ATK': 0, 'E2DEC': 61, 'E2SUS': 0, 'E2REL': 61,
@@ -988,7 +988,7 @@ SOUNDS = [
             'CYCLE RISE': 95, 'CYCLE FALL': 105, 'CYCLE CURVE': -1, 'AMPENV SATN': -5, 'FILTERENV FBLND': -10, 'FILTERENV FDRV': -12,
             'FILTERENV MRES': -1, 'CYCLE TCUT': 8, 'CYCLE PAN': 2, 'LFO2 TRES': -5, 'LFO2 MMODE': -1, 'LFO2 FBLND': -11,
          }),
-    dict(engine='ANALOG', idx=12, name='PIZZICATO', cat='PLUCK', bseed=65304,  # #66
+    dict(engine='ANALOG', idx=12, name='PIZZICATO', cat='PLUCK', bseed=46741,  # #66
          p={
             'ATK': 0, 'DEC': 95, 'SUS': 0, 'REL': 73, 'LRATE': 21, 'LWAVE': 1, 'LD_FLT': 4, 'KTRK': 27, 'CHOR': 38, 'REV': 32, 'FREEA': 43, 'FREEB': 5,
             'FREED': 2, 'E2ATK': 0, 'E2DEC': 71, 'E2SUS': 0, 'E2REL': 61, 'TRIM': 99, 'E2FLT': 31, 'E2': 0, 'E3': 0, 'MOD1': ('AT', 'CUT', 12),
@@ -1036,7 +1036,7 @@ SOUNDS = [
             98, 94, 93, 98, 96, 98, 96, 8, 4, 97, 95, 96, 93, 98, 98, 98, 0, 2, 93, 75, 45, 63, 96, 10, 4, 4, 52, 89, 73, 51, 54, 98, 1, 1, 0, 74,
             97, 65, 55, 58, 96, 4, 8, 4, 73, 97, 49, 43, 48, 98, 1, 1, 0, 97, 99, 99, 99, 99, 50, 50, 50, 31, 5, 0, 3,
          ]),
-    dict(engine='PHASE', idx=8, name='FAKE KOTO', cat='PLUCK', bseed=44371,  # #69
+    dict(engine='PHASE', idx=8, name='FAKE KOTO', cat='PLUCK', bseed=36321,  # #69
          p={
             'ATK': 0, 'DEC': 97, 'SUS': 0, 'REL': 77, 'LRATE': 21, 'LWAVE': 1, 'LD_SHP': 5, 'KTRK': 31, 'DLY': 14, 'REV': 34, 'FREEA': 64, 'FREEB': 8,
             'E2ATK': 0, 'E2DEC': 59, 'E2SUS': 0, 'E2REL': 47, 'L2RATE': 27, 'L2WAVE': 1, 'TRIM': 95, 'E2FLT': 11, 'L2FLT': 4, 'E3': 37, 'E4': 71,
@@ -1050,7 +1050,7 @@ SOUNDS = [
             'SUB LEVEL': 2, 'CYCLE RISE': 8, 'CYCLE FALL': 87, 'CYCLE CURVE': 11, 'AMPENV SATN': -13, 'FILTERENV MRES': 6, 'CYCLE PAN': 3,
             'LFO2 MMODE': -4,
          }),
-    dict(engine='PHASE', idx=3, name='WIRE HARP', cat='PLUCK', bseed=12692,  # #70
+    dict(engine='PHASE', idx=3, name='WIRE HARP', cat='PLUCK', bseed=24809,  # #70
          p={
             'ATK': 0, 'DEC': 86, 'SUS': 38, 'REL': 70, 'LRATE': 40, 'LWAVE': 1, 'LD_SHP': 4, 'AMODE': 1, 'ARATE': 1, 'AOCT': 2, 'AGATE': 76,
             'KTRK': 27, 'CHOR': 25, 'DLY': 25, 'REV': 51, 'FREEA': 60, 'FREEB': 6, 'E2ATK': 0, 'E2DEC': 71, 'E2SUS': 0, 'E2REL': 66, 'L2RATE': 17,
@@ -1064,7 +1064,7 @@ SOUNDS = [
             'SUB LEVEL': 5, 'CYCLE RISE': 98, 'CYCLE FALL': 109, 'CYCLE CURVE': -11, 'AMPENV SATN': 2, 'FILTERENV MRES': -2, 'CYCLE PAN': 11,
             'LFO2 MMODE': 8,
          }),
-    dict(engine='LOFI', idx=3, name='MARBLE RUN', cat='PLUCK', bseed=60893,  # #71
+    dict(engine='LOFI', idx=3, name='MARBLE RUN', cat='PLUCK', bseed=35800,  # #71
          p={
             'ATK': 0, 'DEC': 79, 'SUS': 0, 'REL': 69, 'EQLG': -3, 'AMODE': 1, 'ARATE': 1, 'AOCT': 2, 'AGATE': 57, 'DLY': 38, 'REV': 44, 'FREEB': 17,
             'E2ATK': 0, 'E2DEC': 74, 'E2SUS': 0, 'E2REL': 64, 'TRIM': 112, 'E2': 1, 'E8': 96, 'LTRIG': 1, 'L2TRIG': 1,
@@ -1076,7 +1076,7 @@ SOUNDS = [
             'SUB LEVEL': 1, 'CYCLE RISE': 4, 'CYCLE FALL': 66, 'CYCLE CURVE': -7, 'AMPENV SATN': 4, 'FILTERENV MRES': -3, 'CYCLE PAN': -9,
             'LFO2 MMODE': 9,
          }),
-    dict(engine='VOICE', idx=2, name='DOO WOP', cat='PLUCK', bseed=29492,  # #72
+    dict(engine='VOICE', idx=2, name='DOO WOP', cat='PLUCK', bseed=65208,  # #72
          p={
             'ATK': 0, 'DEC': 74, 'SUS': 0, 'REL': 69, 'LRATE': 21, 'LWAVE': 1, 'LD_FLT': 5, 'AMODE': 3, 'ARATE': 1, 'AOCT': 2, 'AGATE': 70, 'KTRK': 17,
             'CHOR': 23, 'DLY': 28, 'REV': 44, 'FREEA': 61, 'FREEB': 6, 'E2ATK': 0, 'E2DEC': 72, 'E2SUS': 0, 'E2REL': 64, 'L2RATE': 40, 'L2WAVE': 1,
@@ -1090,7 +1090,7 @@ SOUNDS = [
             'E4': 2, 'E5': 82, 'E6': 16, 'E7': 102, 'E8': 8, 'SUB LEVEL': 13, 'CYCLE RISE': 10, 'CYCLE FALL': 74, 'CYCLE CURVE': 2, 'AMPENV SATN': 13,
             'FILTERENV MRES': -1, 'CYCLE PAN': 13, 'LFO2 MMODE': -8,
          }),
-    dict(engine='TRIO', idx=4, name='PEBBLE POP', cat='PLUCK', bseed=63877,  # #73
+    dict(engine='TRIO', idx=4, name='PEBBLE POP', cat='PLUCK', bseed=3247,  # #73
          p={
             'ATK': 0, 'DEC': 71, 'SUS': 0, 'REL': 59, 'LRATE': 21, 'LWAVE': 1, 'LD_FLT': 5, 'AMODE': 1, 'AOCT': 2, 'AGATE': 70, 'RES2': 31, 'KTRK': 17,
             'DLY': 38, 'REV': 25, 'TWTYPE': 1, 'FREEA': 66, 'FREEB': 6, 'E2ATK': 0, 'E2SUS': 0, 'L2RATE': 40, 'L2WAVE': 1, 'CUT2': 47, 'TRIM': 102,
@@ -1106,7 +1106,7 @@ SOUNDS = [
             'SUB LEVEL': 8, 'CYCLE RISE': 95, 'CYCLE FALL': 116, 'CYCLE CURVE': -13, 'AMPENV SATN': -3, 'FILTERENV FBLND': 2, 'FILTERENV FDRV': -10,
             'FILTERENV MRES': 4, 'CYCLE TCUT': -5, 'CYCLE PAN': 12, 'LFO2 TRES': 2, 'LFO2 MMODE': 4, 'LFO2 FBLND': -10,
          }),
-    dict(engine='WHEEL', idx=4, name='NIGHT BOX', cat='PLUCK', bseed=32458,  # #74
+    dict(engine='WHEEL', idx=4, name='NIGHT BOX', cat='PLUCK', bseed=1503,  # #74
          p={
             'ATK': 0, 'DEC': 81, 'SUS': 0, 'REL': 72, 'EQLG': -6, 'LRATE': 27, 'LWAVE': 1, 'LD_FLT': 5, 'AMODE': 1, 'ARATE': 1, 'AOCT': 2, 'KTRK': 31,
             'DLY': 25, 'REV': 51, 'FREEA': 66, 'FREEB': 6, 'E2ATK': 0, 'E2DEC': 76, 'E2SUS': 0, 'E2REL': 64, 'L2RATE': 21, 'L2WAVE': 1, 'TRIM': 111,
@@ -1120,7 +1120,7 @@ SOUNDS = [
             'E6': 30, 'E7': 13, 'SUB LEVEL': 5, 'CYCLE RISE': 2, 'CYCLE FALL': 64, 'CYCLE CURVE': -5, 'AMPENV SATN': -8, 'FILTERENV MRES': -2,
             'CYCLE PAN': -5, 'LFO2 MMODE': 9,
          }),
-    dict(engine='PHYS', idx=2, name='GHOST HARP', cat='PLUCK', bseed=40612,  # #75
+    dict(engine='PHYS', idx=2, name='GHOST HARP', cat='PLUCK', bseed=10920,  # #75
          p={
             'ATK': 0, 'SUS': 127, 'REL': 76, 'LRATE': 17, 'LWAVE': 1, 'LD_FLT': 5, 'KTRK': 31, 'CHOR': 25, 'REV': 51, 'FREEA': 62, 'FREEB': 4,
             'E2ATK': 0, 'E2DEC': 79, 'E2SUS': 0, 'E2REL': 73, 'L2RATE': 10, 'L2WAVE': 1, 'TRIM': 92, 'E2FLT': 7, 'E1': 3, 'E2': 8, 'E3': 67, 'E4': 104,
@@ -1134,7 +1134,7 @@ SOUNDS = [
             'E6': 82, 'E7': 29, 'E8': 2, 'SUB LEVEL': 3, 'CYCLE RISE': 114, 'CYCLE FALL': 106, 'CYCLE CURVE': -2, 'AMPENV SATN': 12,
             'FILTERENV MRES': 4, 'CYCLE PAN': 9, 'LFO2 MMODE': -9,
          }),
-    dict(engine='PHYS', idx=9, name='NURSERY KEYS', cat='PLUCK', bseed=13705,  # #76
+    dict(engine='PHYS', idx=9, name='NURSERY KEYS', cat='PLUCK', bseed=26279,  # #76
          p={
             'ATK': 0, 'SUS': 127, 'REL': 71, 'LRATE': 27, 'LWAVE': 1, 'LD_FLT': 4, 'KTRK': 17, 'DLY': 14, 'REV': 27, 'FREEA': 67, 'FREEB': 6,
             'E2ATK': 0, 'E2DEC': 61, 'E2SUS': 0, 'E2REL': 51, 'L2RATE': 30, 'L2WAVE': 1, 'TRIM': 113, 'E2FLT': 11, 'E2': 124, 'E3': 91, 'E4': 71,
@@ -1148,7 +1148,7 @@ SOUNDS = [
             'E5': 7, 'E6': 114, 'E7': 13, 'E8': 11, 'SUB LEVEL': 3, 'CYCLE RISE': 9, 'CYCLE FALL': 82, 'CYCLE CURVE': -13, 'AMPENV SATN': 4,
             'FILTERENV MRES': 6, 'CYCLE PAN': 4, 'LFO2 MMODE': -7,
          }),
-    dict(engine='PHYS', idx=3, name='NYLON GUT', cat='PLUCK', bseed=53812,  # #77
+    dict(engine='PHYS', idx=3, name='NYLON GUT', cat='PLUCK', bseed=52646,  # #77
          p={
             'ATK': 0, 'SUS': 127, 'LRATE': 27, 'LWAVE': 1, 'LD_FLT': 5, 'AMODE': 1, 'AOCT': 2, 'AGATE': 108, 'KTRK': 31, 'CHOR': 23, 'REV': 32,
             'FREEA': 56, 'FREEB': 6, 'E2ATK': 0, 'E2DEC': 79, 'E2SUS': 0, 'E2REL': 69, 'L2RATE': 17, 'L2WAVE': 1, 'TRIM': 121, 'E2FLT': 11, 'E1': 1,
@@ -1162,7 +1162,7 @@ SOUNDS = [
             'E5': 53, 'E6': 109, 'E7': 13, 'E8': 5, 'SUB LEVEL': 11, 'CYCLE RISE': 7, 'CYCLE FALL': 79, 'CYCLE CURVE': 1, 'AMPENV SATN': 6,
             'FILTERENV MRES': 2, 'CYCLE PAN': 8, 'LFO2 MMODE': 2,
          }),
-    dict(engine='WAVE', idx=6, name='DIGI PLUCK', cat='PLUCK', bseed=63098,  # #78
+    dict(engine='WAVE', idx=6, name='DIGI PLUCK', cat='PLUCK', bseed=1732,  # #78
          p={
             'ATK': 0, 'DEC': 90, 'SUS': 0, 'REL': 76, 'ED_SHP': 51, 'LRATE': 27, 'LWAVE': 1, 'LD_SHP': 9, 'KTRK': 27, 'CHOR': 25, 'DLY': 23, 'REV': 32,
             'FREEA': 58, 'FREEB': 6, 'E2ATK': 0, 'E2DEC': 84, 'E2SUS': 0, 'E2REL': 69, 'L2RATE': 27, 'L2WAVE': 1, 'TRIM': 124, 'E2FLT': 11, 'L2FLT': 5,
@@ -1176,7 +1176,7 @@ SOUNDS = [
             'E3': 5, 'E4': 4, 'E6': 3, 'SUB LEVEL': 5, 'CYCLE RISE': 1, 'CYCLE FALL': 66, 'CYCLE CURVE': -5, 'AMPENV SATN': -7, 'FILTERENV MRES': -2,
             'CYCLE PAN': -2, 'LFO2 MMODE': -10,
          }),
-    dict(engine='ANALOG', idx=13, name='SFORZANDO', cat='KEYS', bseed=46167,  # #79
+    dict(engine='ANALOG', idx=13, name='SFORZANDO', cat='KEYS', bseed=50979,  # #79
          p={
             'ATK': 22, 'DEC': 79, 'SUS': 70, 'REL': 66, 'LRATE': 21, 'LWAVE': 1, 'LD_FLT': 4, 'KTRK': 17, 'CHOR': 32, 'REV': 25, 'FREEA': 31,
             'FREEB': 6, 'E2ATK': 32, 'E2DEC': 76, 'E2SUS': 57, 'E2REL': 66, 'TRIM': 101, 'E2FLT': 37, 'E2': 7, 'MOD1': ('AT', 'CUT', 12),
@@ -1189,7 +1189,7 @@ SOUNDS = [
             'E2ATK': 27, 'E2DEC': 71, 'E2SUS': 60, 'E2REL': 76, 'L2RATE': 63, 'L2PHASE': 7, 'L2FADE': 2, 'E2FLT': 38, 'E2': 4, 'E3': 73, 'E4': 9,
             'E7': 6, 'SUB LEVEL': 7, 'CYCLE CURVE': 11, 'AMPENV SATN': 1, 'FILTERENV MRES': 4, 'CYCLE PAN': 9, 'LFO2 MMODE': 10,
          }),
-    dict(engine='FM6', idx=5, name='BIG STAB', cat='KEYS', bseed=37822,  # #80
+    dict(engine='FM6', idx=5, name='BIG STAB', cat='KEYS', bseed=16934,  # #80
          p={
             'LRATE': 21, 'LWAVE': 1, 'LD_FLT': 5, 'KTRK': 17, 'DIST': 25, 'CHOR': 32, 'REV': 25, 'FREEA': 64, 'FREEB': 4, 'E2ATK': 22, 'E2DEC': 86,
             'E2SUS': 76, 'E2REL': 66, 'TRIM': 111, 'E2FLT': 17, 'E2': 1, 'E3': -8, 'E6': 4, 'E8': 3, 'MOD1': ('AT', 'CUT', 12),
@@ -1206,7 +1206,7 @@ SOUNDS = [
             61, 58, 35, 63, 97, 93, 80, 8, 78, 69, 54, 46, 57, 98, 91, 91, 0, 89, 41, 46, 38, 67, 97, 78, 80, 3, 73, 58, 53, 37, 62, 98, 91, 91, 0,
             90, 61, 45, 30, 50, 97, 87, 83, 8, 81, 74, 43, 48, 67, 98, 93, 91, 0, 96, 80, 60, 99, 60, 46, 50, 50, 34, 45, 6, 10,
          ]),
-    dict(engine='FM6', idx=6, name='FROST BELLS', cat='KEYS', bseed=48288,  # #81
+    dict(engine='FM6', idx=6, name='FROST BELLS', cat='KEYS', bseed=13613,  # #81
          p={
             'EQLG': -5, 'CHOR': 13, 'REV': 70, 'FREEB': 17, 'E2ATK': 0, 'E2DEC': 98, 'E2SUS': 0, 'E2REL': 88, 'ITYPE': 1, 'IA': 40, 'IB': 127,
             'IC': 112, 'TRIM': 97, 'E6': 2, 'E7': 13, 'E8': 1, 'MOD1': ('AT', 'SHP', 12), 'MOD2': ('CYCLE', 'E3', 4), 'LTRIG': 1, 'L2TRIG': 1,
@@ -1223,7 +1223,7 @@ SOUNDS = [
             95, 61, 44, 41, 90, 57, 1, 1, 53, 91, 58, 42, 53, 98, 51, 1, 0, 79, 93, 58, 38, 42, 94, 65, 8, 9, 74, 96, 47, 29, 48, 98, 71, 1, 0, 83,
             89, 36, 29, 34, 92, 69, 1, 9, 86, 89, 41, 28, 40, 98, 81, 1, 0, 97, 99, 99, 99, 99, 50, 50, 50, 28, 8, 0, 1,
          ]),
-    dict(engine='FM6', idx=10, name='SALOON KEYS', cat='KEYS', bseed=28718,  # #82
+    dict(engine='FM6', idx=10, name='SALOON KEYS', cat='KEYS', bseed=48523,  # #82
          p={
             'KTRK': 27, 'CHOR': 9, 'REV': 18, 'FREEA': 57, 'FREEB': 4, 'E2ATK': 0, 'E2DEC': 83, 'E2SUS': 0, 'E2REL': 71, 'L2RATE': 27, 'TRIM': 108,
             'E2FLT': 17, 'E3': 7, 'E6': 3, 'E7': 71, 'MOD1': ('AT', 'CUT', 12), 'MOD2': ('ENV2', 'E3', 7), 'MOD3': ('LFO2', 'E7', 5),
@@ -1256,7 +1256,7 @@ SOUNDS = [
             88, 43, 32, 62, 96, 87, 9, 6, 59, 92, 22, 15, 63, 98, 96, 91, 0, 76, 88, 61, 44, 62, 95, 55, 9, 3, 58, 89, 25, 23, 55, 98, 98, 93, 0, 89,
             85, 53, 43, 88, 95, 68, 1, 10, 49, 86, 32, 31, 64, 98, 97, 93, 0, 99, 99, 99, 99, 99, 50, 50, 50, 25, 34, 0, 2,
          ]),
-    dict(engine='FM6', idx=13, name='TUBE BELLS', cat='KEYS', bseed=22916,  # #84
+    dict(engine='FM6', idx=13, name='TUBE BELLS', cat='KEYS', bseed=52410,  # #84
          p={
             'CHOR': 8, 'REV': 38, 'FREEB': 17, 'TRIM': 107, 'E8': 42, 'MOD1': ('AT', 'SHP', 12), 'MOD2': ('CYCLE', 'E3', 4), 'LTRIG': 1, 'L2TRIG': 1,
             'SUB LEVEL': 41, 'SUB OCTAVE': 0, 'CYCLE MODE': 1, 'CYCLE RISE': 0, 'CYCLE FALL': 105, 'CYCLE CURVE': -31,
@@ -1272,7 +1272,7 @@ SOUNDS = [
             90, 53, 48, 46, 89, 44, 7, 5, 40, 98, 52, 30, 42, 98, 69, 1, 0, 64, 90, 54, 28, 51, 92, 57, 3, 6, 64, 97, 40, 23, 44, 98, 81, 1, 0, 75,
             90, 37, 21, 54, 89, 62, 5, 6, 85, 96, 30, 27, 54, 98, 89, 1, 0, 99, 99, 99, 99, 99, 50, 50, 50, 44, 7, 0, 7,
          ]),
-    dict(engine='PHASE', idx=4, name='CLAVICLE', cat='KEYS', bseed=5811,  # #85
+    dict(engine='PHASE', idx=4, name='CLAVICLE', cat='KEYS', bseed=61543,  # #85
          p={
             'ATK': 0, 'DEC': 75, 'SUS': 23, 'REL': 54, 'LRATE': 40, 'LD_SHP': 6, 'KTRK': 27, 'CHOR': 15, 'REV': 15, 'FREEA': 56, 'FREEB': 6,
             'E2ATK': 0, 'E2DEC': 66, 'E2SUS': 0, 'E2REL': 51, 'TRIM': 105, 'E2FLT': 31, 'E1': 1, 'E3': 50, 'E4': 61, 'MOD1': ('AT', 'CUT', 12),
@@ -1285,7 +1285,7 @@ SOUNDS = [
             'SUB LEVEL': 11, 'CYCLE RISE': 1, 'CYCLE FALL': 66, 'CYCLE CURVE': -7, 'AMPENV SATN': 5, 'FILTERENV MRES': 5, 'CYCLE PAN': -9,
             'LFO2 MMODE': 1,
          }),
-    dict(engine='TRIO', idx=3, name='TIN TOLL', cat='KEYS', bseed=43504,  # #86
+    dict(engine='TRIO', idx=3, name='TIN TOLL', cat='KEYS', bseed=30605,  # #86
          p={
             'ATK': 0, 'DEC': 99, 'SUS': 0, 'REL': 92, 'EQLG': -5, 'RES2': 22, 'KTRK': 0, 'CHOR': 13, 'REV': 64, 'TWTYPE': 1, 'FREEA': 56, 'FREEB': 6,
             'E2ATK': 0, 'E2DEC': 86, 'E2SUS': 0, 'E2REL': 79, 'L2RATE': 32, 'CUT2': 67, 'TRIM': 102, 'E2FLT': 17, 'L2FLT': 4, 'E1': 13, 'E3': 17,
@@ -1300,7 +1300,7 @@ SOUNDS = [
             'CYCLE RISE': 8, 'CYCLE FALL': 92, 'CYCLE CURVE': -16, 'AMPENV SATN': -4, 'FILTERENV FBLND': 12, 'FILTERENV FDRV': -7,
             'FILTERENV MRES': -2, 'CYCLE TCUT': 11, 'CYCLE PAN': 4, 'LFO2 TRES': -8, 'LFO2 MMODE': -3, 'LFO2 FBLND': 10,
          }),
-    dict(engine='WHEEL', idx=3, name='JAZZ CLUB', cat='KEYS', bseed=57778,  # #87
+    dict(engine='WHEEL', idx=3, name='JAZZ CLUB', cat='KEYS', bseed=33695,  # #87
          p={
             'SUS': 127, 'REL': 44, 'REV': 19, 'FREEA': 67, 'E2ATK': 0, 'E2DEC': 73, 'E2SUS': 0, 'E2REL': 47, 'L2RATE': 23, 'E2SHP': 8, 'E5': 2,
             'E6': 45, 'E7': 12, 'MOD1': ('AT', 'CUT', 12), 'MOD2': ('CYCLE', 'CUT', 7), 'MOD3': ('LFO2', 'SHP', 3), 'LTRIG': 1, 'L2TRIG': 1,
@@ -1312,7 +1312,7 @@ SOUNDS = [
             'M4AMT': -2, 'E2ATK': 8, 'E2DEC': 68, 'E2SUS': 6, 'E2REL': 58, 'L2RATE': 20, 'L2PHASE': 9, 'L2FADE': 7, 'E2FLT': -3, 'E3': 1, 'E4': 1,
             'E6': 42, 'E7': 19, 'SUB LEVEL': 3, 'CYCLE CURVE': 6, 'AMPENV SATN': -13, 'FILTERENV MRES': -2, 'CYCLE PAN': 2, 'LFO2 MMODE': -4,
          }),
-    dict(engine='PHYS', idx=10, name='FAUX HARPSI', cat='KEYS', bseed=48968,  # #88
+    dict(engine='PHYS', idx=10, name='FAUX HARPSI', cat='KEYS', bseed=5068,  # #88
          p={
             'ATK': 0, 'SUS': 127, 'REL': 59, 'KTRK': 27, 'REV': 22, 'FREEA': 64, 'FREEB': 4, 'E2ATK': 0, 'E2DEC': 71, 'E2SUS': 0, 'E2REL': 56,
             'L2RATE': 23, 'ITYPE': 1, 'IA': 100, 'IB': 127, 'IC': 112, 'TRIM': 111, 'E2FLT': 11, 'L2FLT': 4, 'E1': 1, 'E2': 71, 'E3': 107, 'E4': 44,
@@ -1326,7 +1326,7 @@ SOUNDS = [
             'E2FLT': 19, 'E2': 74, 'E3': 114, 'E4': 49, 'E5': 23, 'E6': 119, 'E7': 2, 'E8': 3, 'SUB LEVEL': 4, 'CYCLE RISE': 13, 'CYCLE FALL': 85,
             'CYCLE CURVE': -12, 'AMPENV SATN': -12, 'FILTERENV MRES': 0, 'CYCLE PAN': 13, 'LFO2 MMODE': -7,
          }),
-    dict(engine='PHYS', idx=5, name='MOTOR VIBES', cat='KEYS', bseed=34914,  # #89
+    dict(engine='PHYS', idx=5, name='MOTOR VIBES', cat='KEYS', bseed=33642,  # #89
          p={
             'ATK': 0, 'SUS': 127, 'REL': 83, 'EQLG': -4, 'KTRK': 27, 'DLY': 18, 'REV': 38, 'FREEA': 60, 'FREEB': 4, 'E2ATK': 0, 'E2DEC': 103,
             'E2SUS': 0, 'E2REL': 83, 'L2RATE': 89, 'TRIM': 120, 'E2FLT': 17, 'E2': 110, 'E3': 77, 'E4': 127, 'E5': 18, 'E6': 80, 'E8': 7,
@@ -1340,7 +1340,7 @@ SOUNDS = [
             'E5': 25, 'E6': 76, 'E7': 10, 'E8': 15, 'SUB LEVEL': 2, 'CYCLE CURVE': -9, 'AMPENV SATN': -4, 'FILTERENV MRES': -2, 'CYCLE PAN': -7,
             'LFO2 MMODE': 2,
          }),
-    dict(engine='PHYS', idx=4, name='ROSEWOOD', cat='KEYS', bseed=55371,  # #90
+    dict(engine='PHYS', idx=4, name='ROSEWOOD', cat='KEYS', bseed=18159,  # #90
          p={
             'ATK': 0, 'SUS': 127, 'REL': 59, 'LRATE': 40, 'LD_FLT': 4, 'RES2': 21, 'KTRK': 27, 'REV': 14, 'TWTYPE': 1, 'FREEA': 41, 'FREEB': 8,
             'FREED': 2, 'E2ATK': 0, 'E2DEC': 71, 'E2SUS': 0, 'E2REL': 56, 'L2RATE': 23, 'CUT2': 47, 'TRIM': 127, 'E2FLT': 31, 'E2': 116, 'E3': 47,
@@ -1356,7 +1356,7 @@ SOUNDS = [
             'FILTERENV FBLND': -10, 'FILTERENV FDRV': 1, 'FILTERENV MRES': 2, 'CYCLE TCUT': 3, 'CYCLE PAN': 12, 'LFO2 TRES': -8, 'LFO2 MMODE': 9,
             'LFO2 FBLND': 5,
          }),
-    dict(engine='WAVE', idx=4, name='DRAWBARS', cat='KEYS', bseed=57282,  # #91
+    dict(engine='WAVE', idx=4, name='DRAWBARS', cat='KEYS', bseed=64558,  # #91
          p={
             'DEC': 64, 'SUS': 127, 'REL': 44, 'LRATE': 32, 'LD_SHP': 6, 'DIST': 7, 'CHOR': 44, 'REV': 25, 'FREEA': 67, 'E2ATK': 0, 'E2DEC': 79,
             'E2SUS': 0, 'E2REL': 47, 'TRIM': 99, 'E2SHP': 16, 'E1': 4, 'E2': 32, 'MOD1': ('AT', 'CUT', 12), 'MOD2': ('ENV2', 'E3', 11),
@@ -1368,7 +1368,7 @@ SOUNDS = [
             'M4AMT': 9, 'E2ATK': 4, 'E2DEC': 70, 'E2SUS': 3, 'E2REL': 60, 'L2RATE': 71, 'L2PHASE': 11, 'L2FADE': 2, 'E2FLT': -9, 'E2': 22, 'E3': 2,
             'E4': 12, 'E6': 3, 'SUB LEVEL': 105, 'CYCLE CURVE': 6, 'AMPENV SATN': 4, 'FILTERENV MRES': -2, 'CYCLE PAN': -1, 'LFO2 MMODE': 4,
          }),
-    dict(engine='WAVE', idx=16, name='PLATE BELL', cat='KEYS', bseed=19014,  # #92
+    dict(engine='WAVE', idx=16, name='PLATE BELL', cat='KEYS', bseed=43471,  # #92
          p={
             'ATK': 0, 'DEC': 109, 'SUS': 0, 'REL': 106, 'ED_SHP': 45, 'KTRK': 27, 'CHOR': 15, 'REV': 64, 'FREEA': 55, 'FREEB': 4, 'E2ATK': 0,
             'E2DEC': 100, 'E2SUS': 0, 'E2REL': 88, 'L2RATE': 23, 'TRIM': 108, 'E2FLT': 21, 'L2SHP': 5, 'E1': 23, 'E2': 30, 'MOD1': ('AT', 'CUT', 12),
@@ -1382,7 +1382,7 @@ SOUNDS = [
             'E2': 18, 'E3': 6, 'E4': 3, 'E6': 9, 'SUB LEVEL': 7, 'CYCLE RISE': 8, 'CYCLE FALL': 110, 'CYCLE CURVE': -25, 'AMPENV SATN': 5,
             'FILTERENV MRES': -1, 'CYCLE PAN': 13, 'LFO2 MMODE': -3,
          }),
-    dict(engine='WAVE', idx=9, name='SYNTH BRASS', cat='KEYS', bseed=30305,  # #93
+    dict(engine='WAVE', idx=9, name='SYNTH BRASS', cat='KEYS', bseed=32560,  # #93
          p={
             'ATK': 44, 'DEC': 83, 'SUS': 114, 'REL': 64, 'LRATE': 27, 'LD_FLT': 4, 'KTRK': 27, 'CHOR': 32, 'REV': 25, 'FREEA': 44, 'FREEB': 4,
             'E2ATK': 56, 'E2DEC': 83, 'E2SUS': 64, 'E2REL': 69, 'L2RATE': 87, 'L2FADE': 100, 'TRIM': 111, 'E2FLT': 24, 'E2SHP': 32, 'L2PIT': 1,
@@ -1396,7 +1396,7 @@ SOUNDS = [
             'E4': 8, 'E6': 4, 'SUB LEVEL': 4, 'CYCLE RISE': 81, 'CYCLE FALL': 119, 'CYCLE CURVE': -4, 'AMPENV SATN': 3, 'FILTERENV MRES': 1,
             'CYCLE PAN': 1, 'LFO2 MMODE': 13,
          }),
-    dict(engine='WAVE', idx=5, name='WAVE CHIMES', cat='KEYS', bseed=28858,  # #94
+    dict(engine='WAVE', idx=5, name='WAVE CHIMES', cat='KEYS', bseed=22320,  # #94
          p={
             'ATK': 0, 'DEC': 109, 'SUS': 0, 'REL': 106, 'ED_SHP': 61, 'KTRK': 27, 'CHOR': 15, 'REV': 64, 'FREEA': 70, 'FREEB': 3, 'E2ATK': 0,
             'E2DEC': 100, 'E2SUS': 0, 'E2REL': 88, 'L2RATE': 27, 'TRIM': 105, 'E2FLT': 11, 'L2FLT': 5, 'E1': 12, 'E2': 30, 'MOD1': ('AT', 'CUT', 12),
@@ -1410,7 +1410,7 @@ SOUNDS = [
             'E3': 5, 'E4': 1, 'E6': 4, 'SUB LEVEL': 4, 'CYCLE RISE': 4, 'CYCLE FALL': 88, 'CYCLE CURVE': -7, 'AMPENV SATN': -1, 'FILTERENV MRES': 6,
             'CYCLE PAN': 2, 'LFO2 MMODE': -10,
          }),
-    dict(engine='PHASE', idx=6, name='DEEP KICK', cat='PERC', bseed=34356,  # #95
+    dict(engine='PHASE', idx=6, name='DEEP KICK', cat='PERC', bseed=55474,  # #95
          p={
             'ATK': 0, 'DEC': 84, 'SUS': 0, 'REL': 66, 'ED_PIT': 9, 'KTRK': 0, 'TRANS': -12, 'E2ATK': 0, 'E2DEC': 56, 'E2SUS': 0, 'E2REL': 41,
             'EQHG': -2, 'TRIM': 101, 'E3': 0, 'E4': 56, 'MOD1': ('AT', 'SHP', 13), 'MOD2': ('ENV2', 'PITCH', 63), 'MOD3': ('ENV2', 'PITCH', 20),
@@ -1435,7 +1435,7 @@ SOUNDS = [
             'E4': 9, 'E5': 6, 'SUB LEVEL': 8, 'CYCLE RISE': 12, 'CYCLE FALL': 80, 'CYCLE CURVE': 7, 'AMPENV SATN': -3, 'FILTERENV MRES': 6,
             'CYCLE PAN': -8, 'LFO2 MMODE': -13,
          }),
-    dict(engine='TRIO', idx=7, name='FIELD CLANK', cat='PERC', bseed=50175,  # #97
+    dict(engine='TRIO', idx=7, name='FIELD CLANK', cat='PERC', bseed=8464,  # #97
          p={
             'ATK': 0, 'DEC': 79, 'SUS': 0, 'REL': 66, 'RES2': 27, 'KTRK': 0, 'REV': 14, 'TWTYPE': 2, 'FREEA': 70, 'FREEB': 4, 'E2ATK': 0, 'E2DEC': 47,
             'E2SUS': 0, 'E2REL': 41, 'L2RATE': 27, 'L2WAVE': 1, 'CUT2': 59, 'TRIM': 124, 'E1': 1, 'E2': 6, 'E3': 0, 'E4': 0, 'MOD1': ('AT', 'E4', 17),
@@ -1491,7 +1491,7 @@ SOUNDS = [
             'CYCLE FALL': 76, 'CYCLE CURVE': 8, 'AMPENV SATN': -10, 'FILTERENV FBLND': -12, 'FILTERENV FDRV': 9, 'FILTERENV MRES': 9,
             'CYCLE TCUT': 12, 'CYCLE PAN': 12, 'LFO2 TRES': -13, 'LFO2 MMODE': 7, 'LFO2 FBLND': 8,
          }),
-    dict(engine='NOISE', idx=5, name='TIZZ HAT', cat='PERC', bseed=16914,  # #101
+    dict(engine='NOISE', idx=5, name='TIZZ HAT', cat='PERC', bseed=61611,  # #101
          p={
             'ATK': 0, 'DEC': 52, 'SUS': 0, 'REL': 47, 'EQLG': -6, 'RES2': 21, 'KTRK': 0, 'REV': 13, 'TWTYPE': 2, 'FREEA': 61, 'FREEB': 11,
             'FREEC': 127, 'E2ATK': 0, 'E2DEC': 51, 'E2SUS': 0, 'E2REL': 41, 'L2RATE': 32, 'L2WAVE': 1, 'CUT2': 74, 'TRIM': 117, 'E2FLT': 6, 'E2': 0,
@@ -1521,7 +1521,7 @@ SOUNDS = [
             'FILTERENV FBLND': 5, 'FILTERENV FDRV': -9, 'FILTERENV MRES': -7, 'CYCLE TCUT': 6, 'CYCLE PAN': 16, 'LFO2 TRES': 13, 'LFO2 MMODE': -17,
             'LFO2 FBLND': -1,
          }),
-    dict(engine='FM6', idx=7, name='ALIEN CHIMES', cat='FX', bseed=40225,  # #103
+    dict(engine='FM6', idx=7, name='ALIEN CHIMES', cat='FX', bseed=50400,  # #103
          p={
             'EQLG': -6, 'AMODE': 4, 'ARATE': 1, 'AOCT': 2, 'AGATE': 44, 'DLY': 64, 'REV': 76, 'TWTYPE': 4, 'FREEA': 67, 'FREEB': 8, 'E2ATK': 0,
             'E2DEC': 94, 'E2SUS': 0, 'E2REL': 86, 'L2RATE': 26, 'L2WAVE': 1, 'CUT2': 47, 'TRIM': 112, 'L2FLT': 4, 'E1': 4, 'E2': 2, 'E4': 5, 'E7': 70,
@@ -1540,7 +1540,7 @@ SOUNDS = [
             93, 53, 25, 32, 94, 58, 9, 9, 63, 77, 80, 36, 25, 88, 60, 2, 7, 76, 84, 51, 32, 66, 98, 61, 1, 0, 71, 82, 36, 36, 53, 94, 61, 11, 7, 78,
             95, 15, 16, 56, 96, 59, 4, 1, 81, 92, 39, 23, 61, 98, 81, 1, 0, 97, 99, 99, 99, 99, 50, 50, 50, 59, 25, 0, 23,
          ]),
-    dict(engine='PHASE', idx=5, name='CRYSTAL CAVE', cat='FX', bseed=36122,  # #104
+    dict(engine='PHASE', idx=5, name='CRYSTAL CAVE', cat='FX', bseed=51199,  # #104
          p={
             'ATK': 0, 'DEC': 101, 'SUS': 32, 'REL': 86, 'EQLG': -6, 'AMODE': 4, 'ARATE': 1, 'AOCT': 3, 'AGATE': 44, 'APROB': 108, 'RES2': 41,
             'DLY': 64, 'REV': 81, 'TWTYPE': 2, 'FREEA': 66, 'FREEB': 8, 'E2ATK': 0, 'E2DEC': 88, 'E2SUS': 0, 'E2REL': 79, 'L2RATE': 26, 'L2WAVE': 1,
@@ -1650,7 +1650,7 @@ SOUNDS = [
             'TWIN ENV2': 7, 'TWIN LFO1': 34, 'TWIN LFO2': -18, 'SUB LEVEL': 16, 'CYCLE CURVE': 11, 'AMPENV SATN': -28, 'FILTERENV FBLND': 16,
             'FILTERENV FDRV': -33, 'FILTERENV MRES': -8, 'CYCLE TCUT': -5, 'CYCLE PAN': -20, 'LFO2 TRES': -6, 'LFO2 MMODE': 15, 'LFO2 FBLND': -27,
          }),
-    dict(engine='WHEEL', idx=6, name='TAPE DRONE', cat='FX', bseed=63114,  # #111
+    dict(engine='WHEEL', idx=6, name='TAPE DRONE', cat='FX', bseed=58896,  # #111
          p={
             'ATK': 100, 'SUS': 127, 'REL': 105, 'LRATE': 17, 'LWAVE': 1, 'CHOR': 32, 'REV': 64, 'TWTYPE': 4, 'FREEA': 58, 'FREEB': 4, 'L2RATE': 21,
             'L2WAVE': 1, 'CHRD': 9, 'VOIC': 1, 'ITYPE': 9, 'IA': 50, 'IB': 71, 'IC': 110, 'CUT2': 52, 'TRIM': 102, 'L2FLT': 3, 'E1': 12, 'E6': 0,
@@ -1774,7 +1774,7 @@ SOUNDS = [
             'AMPENV SATN': -20, 'FILTERENV FBLND': -18, 'FILTERENV FDRV': 1, 'FILTERENV MRES': -7, 'CYCLE TCUT': -11, 'CYCLE PAN': 18,
             'LFO2 TRES': 12, 'LFO2 MMODE': -21, 'LFO2 FBLND': -16,
          }),
-    dict(engine='FM6', idx=8, name='TEMPLE BLOCK', cat='PERC', lcat='OTHER', bseed=28718,  # #119
+    dict(engine='FM6', idx=8, name='TEMPLE BLOCK', cat='PERC', lcat='OTHER', bseed=13064,  # #119
          p={
             'REV': 25, 'FREEB': 17, 'E2ATK': 0, 'E2DEC': 67, 'E2SUS': 0, 'E2REL': 56, 'TRIM': 120, 'E3': 22, 'E4': -2, 'E6': 3, 'E8': 5,
             'MOD1': ('EXPR', 'PITCH', 63), 'MOD2': ('EXPR', 'PITCH', 38), 'MOD3': ('ENV2', 'AMP', 63), 'LTRIG': 1, 'L2TRIG': 1,
@@ -1805,7 +1805,7 @@ SOUNDS = [
             'TWIN LFO2': 17, 'SUB LEVEL': 17, 'CYCLE RISE': 80, 'CYCLE FALL': 63, 'CYCLE CURVE': 12, 'AMPENV SATN': -4, 'FILTERENV FBLND': 17,
             'FILTERENV FDRV': 2, 'FILTERENV MRES': -2, 'CYCLE TCUT': -12, 'CYCLE PAN': 6, 'LFO2 TRES': -21, 'LFO2 MMODE': 19, 'LFO2 FBLND': -17,
          }),
-    dict(engine='LOFI', idx=7, name='DUSTY DRONE', cat='PAD', lcat='OTHER', bseed=63786,  # #121
+    dict(engine='LOFI', idx=7, name='DUSTY DRONE', cat='PAD', lcat='OTHER', bseed=40486,  # #121
          p={
             'ATK': 95, 'SUS': 127, 'REL': 103, 'EQLG': -3, 'LRATE': 17, 'LWAVE': 1, 'DLY': 34, 'REV': 47, 'TWTYPE': 4, 'FREEA': 57, 'FREEB': 6,
             'L2RATE': 32, 'L2WAVE': 1, 'ITYPE': 10, 'IA': 40, 'IB': 36, 'IC': 18, 'CUT2': 51, 'TRIM': 102, 'E1': 2, 'E2': 2, 'E4': 47, 'E8': 57,
@@ -1857,7 +1857,7 @@ SOUNDS = [
             'CYCLE FALL': 55, 'CYCLE CURVE': -4, 'AMPENV SATN': 19, 'FILTERENV FBLND': -4, 'FILTERENV FDRV': -21, 'FILTERENV MRES': -1,
             'CYCLE TCUT': -8, 'CYCLE PAN': 19, 'LFO2 TRES': 12, 'LFO2 MMODE': 11, 'LFO2 FBLND': -7,
          }),
-    dict(engine='TRIO', idx=6, name='GRAVEL SNARE', cat='PERC', lcat='OTHER', bseed=20254,  # #125
+    dict(engine='TRIO', idx=6, name='GRAVEL SNARE', cat='PERC', lcat='OTHER', bseed=7996,  # #125
          p={
             'ATK': 0, 'DEC': 71, 'SUS': 0, 'REL': 65, 'RES2': 30, 'KTRK': 0, 'REV': 23, 'TWTYPE': 1, 'E2ATK': 0, 'E2DEC': 67, 'E2SUS': 0, 'E2REL': 59,
             'CUT2': 65, 'E1': 7, 'E3': 24, 'E4': 0, 'E8': 50, 'MOD1': ('AT', 'CUT2', 8), 'MOD2': ('VEL', 'CUT2', 10), 'LTRIG': 1, 'L2TRIG': 1,
@@ -1920,7 +1920,7 @@ SOUNDS = [
          }),
     # DUB PACK: a square chord, closed filter, a little drive and tape wobble: the dark minor seventh that sits under a hat.
     # End B: the filter opens, the drive comes up, the delay and the reverb deepen (a lift into the break).
-    dict(engine='ANALOG', idx=21, name='DARK MIN7', cat='KEYS', bamt=20,  # #130
+    dict(engine='ANALOG', idx=21, name='DARK MIN7', cat='KEYS', bamt=20, bseed=40202,  # #130
          p={
             'ATK': 10, 'DEC': 78, 'SUS': 26, 'REL': 80, 'LRATE': 24, 'LWAVE': 1, 'LD_FLT': 4, 'KTRK': 16, 'CHOR': 36, 'DLY': 60, 'REV': 62,
             'DIST': 22, 'FREEA': 30, 'FREEB': 30, 'FREED': 2, 'E2DEC': 74, 'E2SUS': 0, 'E2REL': 72, 'E2FLT': 18, 'ITYPE': 9, 'IA': 50, 'IB': 71,
@@ -1978,7 +1978,7 @@ SOUNDS = [
          }),
     # DUB PACK: a sine pluck with the sub oscillator an octave below, mono legato with a short glide, a filter that pops and closes; play it low.
     # End B: rings longer, the filter and the sub open, the echo up (a held bass note in the break).
-    dict(engine='ANALOG', idx=24, name='SUB PLUCK', cat='PLUCK', bamt=20,  # #135
+    dict(engine='ANALOG', idx=24, name='SUB PLUCK', cat='PLUCK', bamt=20, bseed=35683,  # #135
          p={
             'ATK': 0, 'DEC': 68, 'SUS': 0, 'REL': 58, 'KTRK': 22, 'DIST': 30, 'DLY': 36, 'REV': 16, 'FREEA': 34, 'FREEB': 13, 'FREED': 2, 'E2ATK': 0,
             'E2DEC': 62, 'E2SUS': 0, 'E2REL': 56, 'E2FLT': 30, 'VOICE': 2, 'GLIDE': 42, 'GLMODE': 1, 'TRIM': 113, 'E1': 3, 'E2': 6, 'E7': 20,

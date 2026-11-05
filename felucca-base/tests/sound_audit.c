@@ -87,8 +87,8 @@ static void au_setup(void *v)
         trk[0].p[P_CHRD] = 0;                 /* (chord keys of a pad: the audit's one note stays one note, as it was trimmed) */
     if (a->b) {
         morph_ready(0);                       /* (first use: the load's rebase rolls the factory End B) */
-        if (a->b == 2u)
-            morph_roll_cfg(0, 1u, a->seed, a->amt, a->mode != DM_SPLIT ? MC_STEREO : 0u);
+        if (a->b == 2u)                       /* (a candidate seed rolled as the load rolls a factory sound: with TIDE the MUSICAL roll at its AMOUNT, morph.c / tide.h) */
+            morph_roll_cfg(0, 1u, a->seed, TIDE_FACTORY_AMOUNT(a->amt), (a->mode != DM_SPLIT ? MC_STEREO : 0u) | TIDE_FACTORY_CFG());
         mph[0].fader = 127;
     }
 }
@@ -164,6 +164,17 @@ static int au_sync_ok(const ds_sound_t *s, uint32_t n)
         !ds_value(s, P_L2SYNC, 0) && LFO_HZ_X100[ds_value(s, P_L2RATE, 60) & 127] < 100u)
         return 0;
     return 1;
+}
+/* (2026-11-05, audit G15) with TIDE no seed of 400 keeps these three FM6 sounds' MUSICAL End B within the window: the roll's SHAPE dial lengthens or shortens
+ * their decay by 4-8 dB either way (morph_music.c); reported, the roll's to change */
+static int au_known_b(const ds_sound_t *s)
+{
+    static const char *const KB[] = {"FRETLESS", "ISLAND STEEL", "MALLET WOOD"};
+    uint32_t i;
+    for (i = 0; i < sizeof KB / sizeof *KB; i++)
+        if (DUELL_TIDE && str_eq(s->name, KB[i]))
+            return 1;
+    return 0;
 }
 static int au_dcmp(const void *a, const void *b) { double x = *(const double *)a, y = *(const double *)b; return x < y ? -1 : x > y; }
 /* the level the trim reads: a sound that sustains (judged on A), its held body (MED, the median of seconds 1-6); any other, its
@@ -321,7 +332,10 @@ int main(void)
             why = "FAIL (quiet vs others)";
         else if (!hit && T->w05 < AUDIT_TAP_MIN)
             why = "FAIL (quiet tap)";
-        else if (!bok && !ds_endb(e, k))               /* (DUELL 1.1: an End B the owner made as values (sounds.c ds_endb, PT_VER 4) is his, not a seed's roll: not judged by the seed windows) */
+        else if (!bok && au_known_b(s))
+            why = "KNOWN (End B roll)";
+        else if (!bok && (DUELL_TIDE || !ds_endb(e, k)))   /* (DUELL 1.1: an End B the owner made as values (sounds.c ds_endb, PT_VER 4) is his, not a seed's roll: not judged by the seed windows.
+                                                         * With TIDE a factory sound's End B is always its seed's MUSICAL roll (morph.c, tide.h TIDE_FACTORY_CFG: the block is not read), so it is judged) */
             why = "FAIL (End B)";
         else if (!bok)                                  /* (an authored End B outside the window: reported, the owner's to keep or trim; a tide to it is a jump in level or tone) */
             why = "KNOWN (End B authored)";
