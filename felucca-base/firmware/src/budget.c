@@ -54,6 +54,9 @@ static const struct { const engine_t *e; uint16_t c; } BD_ENG[] = {   /* (cal) *
     {&ENG_ANALOG, 115}, {&ENG_FM6, 152}, {&ENG_PHASE, 99}, {&ENG_LOFI, 53}, {&ENG_FORMANT, 173},   /* (FORMANT is the engine VOICE) */
     {&ENG_TRIO, 105}, {&ENG_WHEEL, 154}, {&ENG_PHYS, 406}, {&ENG_NOISE, 87}, {&ENG_WAVE, 119},
 };
+/* PHYS is charged 406 for EVERY model (the unit's COST-CAL row, MODAL's dearest sound; audit Q14). On the host the other models cost less: STRING about 0.48 x, MEMB 0.72 x, SYMP 0.86 x (the dearest factory sound of
+ * each model against MODAL's; tests/phys_cost_probe.c, host_tests.sh physcost; the audit's wall-clock ratios were SYMP 0.65, a plain string 0.35 .. 0.5). Those are the EXPECTED values of the unit's per-model rows
+ * (tools/bench_suites/PHYS-MODELS.txt, jam_dev.py measure); the charge stays 406 until the unit has measured them. */
 #define BD_ENG_DEF 200u         /* an engine not in the table: above the dearest of the normal ones */
 #define BD_PART_ON 64u          /* the part's own work while it sounds, once whatever the number of notes (cal: the first note's extra over the next ones, 39 .. 64) */
 #define BD_MORPH 16u            /* the MORPH a voice (old: 0.5 %) */
