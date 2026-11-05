@@ -2192,7 +2192,7 @@ static void t_space(void)
     snprintf(what, sizeof what, "K2 SPACE (HALL, the song stopped at 1 s): the tail from 1.5 s %+.1f dB at -100, %+.1f dB at +100 against the middle",
              10 * log10(e[0] / e[1]), 10 * log10(e[2] / e[1]));
     expect(what, e[0] < e[1] / 8 && e[2] > e[1] * 2);
-    /* no runaway: every reverb at its largest SIZE, the delay at FDBK 127, the sends full, SPACE +100: the tail dies away (STEREO and DUEL) */
+    /* no runaway: every reverb at its largest SIZE, the delay at FDBK 100 (the largest below the dub runaway: 118 and up pass unity, audit E2), the sends full, SPACE +100: the tail dies away (STEREO and DUEL) */
     for (k = 0; k < 12u; k++) {
         int32_t p1, pk;
         double em, el;
@@ -2202,7 +2202,7 @@ static void t_space(void)
         song.g[G_RTYPE] = (int16_t)(k % 6u);
         song.g[G_RSIZE] = 127;
         song.g[G_RDAMP] = 0;
-        song.g[G_DFDBK] = 127;
+        song.g[G_DFDBK] = 100;
         song.g[G_DMIX] = 127;
         song.g[G_CDEPTH] = 127;
         trk[0].p[P_REV] = trk[1].p[P_REV] = 127;
@@ -2214,7 +2214,7 @@ static void t_space(void)
         pk = peak(sp_l, 0, n) > peak(sp_r, 0, n) ? peak(sp_l, 0, n) : peak(sp_r, 0, n);
         em = energy(sp_l, 8u * FS, 10u * FS) + energy(sp_r, 8u * FS, 10u * FS);
         el = energy(sp_l, n - 2u * FS, n) + energy(sp_r, n - 2u * FS, n);
-        snprintf(what, sizeof what, "  SPACE +100, %s %s, SIZE 127, FDBK 127, sends full: peak %d; 7 .. 9 s after the stop -> 21 .. 23 s: %.0f dB (it dies away), %d",
+        snprintf(what, sizeof what, "  SPACE +100, %s %s, SIZE 127, FDBK 100, sends full: peak %d; 7 .. 9 s after the stop -> 21 .. 23 s: %.0f dB (it dies away), %d",
                  k < 6u ? "STEREO" : "DUEL", RT[k % 6u], pk, 10 * log10(el / (em + 1) + 1e-12), p1);
         expect(what, pk <= 32767 && el < em / 4);
     }

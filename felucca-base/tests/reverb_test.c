@@ -68,14 +68,14 @@ static int32_t noise(int32_t amp)
 static int16_t ref_dly[DLY_LEN], ref_cho[CHO_LEN], ref_comb[1116 + 1188 + 1277 + 1356], ref_ap[556 + 441];
 static struct {
     uint32_t dly_w, cho_w, cho_ph;
-    int32_t dly_lp;
+    int32_t dly_lp, dh[2];
     uint16_t comb_i[4], ap_i[2];
     int32_t comb_lp[4];
 } rf;
 static void ref_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t *rev_in, int32_t *wet, uint32_t n)
 {
     uint32_t i, k, dl = delay_samples();
-    int32_t fb = song.g[G_DFDBK] * 230, col = 2000 + song.g[G_DCOLOR] * 240;
+    int32_t fb = DLY_FBQ(song.g[G_DFDBK]), col = 2000 + song.g[G_DCOLOR] * 240;
     int32_t dmix = song.g[G_DMIX] * 258;
     int32_t size = 25000 + song.g[G_RSIZE] * 50, damp = 32767 - song.g[G_RDAMP] * 200;
     int32_t cdepth = song.g[G_CDEPTH] * 6;
@@ -94,7 +94,7 @@ static void ref_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_
         rf.cho_w++;
         x = ref_dly[(rf.dly_w - dl) & (DLY_LEN - 1u)];
         rf.dly_lp += mulq15u(x - rf.dly_lp, col);
-        ref_dly[rf.dly_w & (DLY_LEN - 1u)] = (int16_t)clamp((dly_in[i] >> 1) + mulq15t(rf.dly_lp, fb), -32768, 32767);
+        ref_dly[rf.dly_w & (DLY_LEN - 1u)] = (int16_t)dly_wr(rf.dh, dly_in[i] >> 1, mulq15t(rf.dly_lp, fb));   /* (audit E2: the loop's low cut and knee) */
         rf.dly_w++;
         y += mulq15(x << 1, dmix);
         a = 0;

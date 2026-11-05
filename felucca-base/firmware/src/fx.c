@@ -24,6 +24,7 @@ static revu_t rev_u __attribute__((section(".pool")));
 typedef struct {
     uint32_t dly_w, cho_w, cho_ph;
     int32_t dly_lp;
+    int32_t dly_h[2];                    /* the delay loop's low cut (dly_wr): its low-pass (Q6) and the remainder of its step */
     uint32_t dm_pl, dm_pr;               /* the delay's modulation (fx_bus.c dly_mod): the two LFOs' phases (left, right tap) */
     int32_t dm_xl, dm_xr, dm_dev;        /* .. the two taps' offsets now (Q16 samples) and the depth reached (Q8 samples; glides, 0 = at rest) */
     int32_t cho_dq;                      /* the chorus's depth reached (Q8; fx_bus.c: it glides over a block, no jump of the read point) */
@@ -73,7 +74,7 @@ static struct {
     int32_t spc;                         /* SPACE now, Q8 (-25600 .. 25600: -100 .. 100), gliding to K2's (0.29 s over the range) */
     int32_t spc0;                        /* .. the last block's (the stereo width's ramp: space_width) */
     int32_t rsize;                       /* the reverb's SIZE as the models read it (past 127 to the right: the models cap their gains) */
-    int32_t dfb;                         /* the delay's feedback (Q15: FDBK x 230 as stored) */
+    int32_t dfb;                         /* the delay's feedback (Q15: DLY_FBQ of FDBK) */
     int32_t cdep;                        /* the chorus's depth (CDEPTH x 6 as stored) */
     int32_t sg, sg0;                     /* the sends' gain (Q15), this block's and the last one's (a ramp between them) */
     int32_t ac, ad, ar;                  /* the send floors to the right (0.2.9): every part's chorus, delay and reverb send at least this
@@ -92,7 +93,14 @@ static uint8_t sp_tap;                           /* this block the parts add the
 static uint8_t byp_blk;                          /* DUELL 1.1 BYPASS of the shared effects as this block saw them (mix_sends copies byp_sh once; BYS_*) */
 static int32_t byp_cg = 32768;                   /* .. the CHORUS's input gain (Q15), the same ramp */
 static int32_t byp_dg = 32768;                   /* .. the DELAY's return and feedback gain (Q15): ramps down to 0 and back over 8 blocks (mix_sends) */
-#define SV_DFB (sv.on ? sv.dfb : song.g[G_DFDBK] * 230)
+/* FDBK (0 .. 120) as the loop's gain (Q15): 230 a step as ever up to 100 (0.70), above it 570 a step to 34,400 at 120 (1.05: audit E2, owner D21, a controlled
+ * dub runaway; dly_wr's soft clip holds the loop; FDBK 118 and up pass unity). SPACE's own largest, 0.92, is below unity */
+static inline int32_t DLY_FBQ(int32_t v)               /* (a stored value above the knob's 120 plays as 120) */
+{
+    v = v > 120 ? 120 : v;
+    return v * 230 + (v > 100 ? (v - 100) * 340 : 0);
+}
+#define SV_DFB (sv.on ? sv.dfb : DLY_FBQ(song.g[G_DFDBK]))
 #define SV_CDEP (sv.on ? sv.cdep : song.g[G_CDEPTH] * 6)
 #define SV_CDEP_TOP (127 * 6)                    /* SPACE: the chorus's largest DEPTH to the right, the knob's own (0.2.9; 2x it, 0.2.5 .. 0.2.8, made
                                                   * a +-0.8 semitone wobble on ACID ETHER's chorus, M06 since 0.2.13); a stored depth above it is kept */
@@ -420,6 +428,17 @@ static inline int32_t mulq15u(int32_t d, int32_t b)
     int32_t r = mulq15(d, b);
     return r == 0 && d > 0 ? 1 : r;
 }
+/* The delay loop's write (audit E2, owner D21): the feedback fbk (the low-passed repeat times FDBK) through a low cut of about 165 Hz (a one-pole high-pass, 3/128 of the gap a sample
+ * to its low-pass h[0] (Q6), the product's remainder h[1] carried: the repeats thin out instead of piling up bass, and the tail still ends in exact silence), added to the input in,
+ * then a soft knee at 16384 (the line is 16 bit; with FDBK above unity the loop settles where the knee's loss is the surplus gain, about -3 dBFS). Below the knee and below 165 Hz
+ * the loop is as it was. Returns the sample for the line */
+static __attribute__((noinline)) int32_t dly_wr(int32_t *h, int32_t in, int32_t fbk)
+{
+    int32_t e = 3 * (fbk * 64 - h[0]) + h[1], d = e >> 7;
+    h[1] = e - d * 128;
+    h[0] += d;
+    return soft_knee(clamp(in + fbk - ((h[0] + 32) >> 6), -65536, 65535), 16384);
+}
 /* the event modes' loop low-pass step, towards zero as before, but at least one LSB towards the tap */
 static inline int32_t sh_tzl(int32_t d, int32_t col)
 {
@@ -587,6 +606,7 @@ typedef struct {
 typedef struct {
     uint32_t rng, dl16, ecnt;            /* the xorshift32, the delay time smoothed (Q16 samples), samples since the clock edge */
     int32_t lp, x;                       /* the events' feedback low-pass, the events' share (Q15) */
+    int32_t h[2];                        /* .. their loop's low cut (dly_wr) */
     uint8_t on, sync, cur, nxt, ev0, ev1, md, pend;   /* md: the event mode running (1 RAND, 2 OCT+; kept while the crossfade runs down); pend: a voice is yet to start for the last edge */
     dlyev_v_t v[2];
 } dlyev_t;
@@ -1310,7 +1330,7 @@ typedef struct {
 /* K2 SPACE a block (sv above): SPACE glides, its values from the stored ones; in the middle and at rest: off (the buses read song.g) */
 static __attribute__((noinline)) void space_vals(void)   /* SPACE's values from song.g's (space_step; DUEL's bus B again, split_buses) */
 {
-    int32_t s = sv.spc, a = s < 0 ? -s : s, r0 = song.g[G_RSIZE], f0 = song.g[G_DFDBK] * 230, c0 = song.g[G_CDEPTH] * 6;
+    int32_t s = sv.spc, a = s < 0 ? -s : s, r0 = song.g[G_RSIZE], f0 = DLY_FBQ(song.g[G_DFDBK]), c0 = song.g[G_CDEPTH] * 6;
     if (s < 0) {                                        /* shrink */
         sv.rsize = r0 - (r0 * 3 * a) / (4 * 25600);
         sv.dfb = f0 - (int32_t)(((int64_t)f0 * 3 * a) / (4 * 25600));
@@ -1833,7 +1853,7 @@ static __attribute__((noinline)) void dm_lines_clear(void)
     memset(cho_buf_b, 0, sizeof cho_buf_b);
     rev_clear();
     rev_clear_b();
-    fx.dly_lp = fx_b.dly_lp = 0;
+    fx.dly_lp = fx_b.dly_lp = fx.dly_h[0] = fx.dly_h[1] = fx_b.dly_h[0] = fx_b.dly_h[1] = 0;
     dlyev_clear();                                      /* (the delay's event modes from rest) */
     fx.lo_lp = fx.lo_k = fx.lo_g = fx_b.lo_lp = fx_b.lo_k = fx_b.lo_g = 0;   /* (the low cut from rest: no stale low-pass) */
     fx_b.rtype = fx.rtype;                              /* (B's lines are clear: no model fade to run) */
@@ -1957,7 +1977,7 @@ static __attribute__((noinline)) void snd_lines_clear(void)
     memset(cho_buf_b, 0, sizeof cho_buf_b);
     rev_clear();
     rev_clear_b();
-    fx.dly_lp = fx_b.dly_lp = 0;
+    fx.dly_lp = fx_b.dly_lp = fx.dly_h[0] = fx.dly_h[1] = fx_b.dly_h[0] = fx_b.dly_h[1] = 0;
     dlyev_clear();                                      /* (the delay's event modes from rest: voices, generator, clock, crossfade) */
     fx.lo_lp = fx.lo_k = fx.lo_g = fx_b.lo_lp = fx_b.lo_k = fx_b.lo_g = 0;   /* (SENDS ON again: the low cut from rest) */
     fx_b.rtype = fx.rtype;                              /* (B's lines are clear: no model fade to run) */
