@@ -194,7 +194,7 @@ static void test_math(void)
     slot(t, 0, MS_LFO, MD_PITCH, 63);
     unslew();                                      /* (0.2.25: a mapping probe: the value at once, not the source slew) */
     mod_begin(t);
-    check("LFO -> PITCH +63: +12 semitones (63 acts as 64, 1.0)", trk[0].mdw.pit == (lfo * 64 * 3) >> 15 && trk[0].mdw.pit == 191);
+    check("LFO -> PITCH +63: +12 semitones (63 acts as 64, 1.0)", trk[0].mdw.pit == (lfo * 64 * 3) >> 11 && trk[0].mdw.pit >> 4 == 191);
     mod_end(t);
     lfo_at(t, -32768);
     slot(t, 0, MS_LFO, MD_SHP, 63);
@@ -258,14 +258,14 @@ static void test_math(void)
     m.inc = pitch_inc(1000);
     m.amp1 = 20000;
     v = &t->v[0];
-    mod_voice(t, v, &m, 0);
+    mod_voice(t, v, &m);
     check("KEY -> CUT +63: an octave above C4 = +12 steps (key tracking 1:1; 63 acts as 64, 1.0)", m.cutoff == (12 * 512 * 64) >> 7 && m.cutoff / 256 == 12);
     check("VEL -> AMP +63: velocity 127 keeps the amplitude", m.amp1 == mulq15(20000, mulq15(32767, mod_gain(MS_VEL, 127 * 258, 64))) && m.amp1 > 19900 && v->env_out == m.amp1);
     check("ENV -> SHP +40: half the envelope = +20 steps", m.shape == (64 << 8) + ((16384 * 41) >> 7));   /* (+40 acts as 41, 1.0) */
-    check("RAND -> PITCH: the voice's own random offset", m.pitch16 == 1000 + ((v->mrnd * 20 * 3) >> 15) && m.inc == pitch_inc(m.pitch16));
+    check("RAND -> PITCH: the voice's own random offset", m.pitch16 == 1000 + ((v->mrnd * 20 * 3) >> 11 >> 4) && m.inc == pitch_inc(m.pitch16) + (uint32_t)((int32_t)(pitch_inc(m.pitch16) >> 12) * m.fine));
     memset(&m, 0, sizeof m);
     m.amp1 = 20000;
-    mod_voice(t, &t->v[1], &m, 0);
+    mod_voice(t, &t->v[1], &m);
     check("KEY below C4 negative, VEL 1 -> AMP almost closed", m.cutoff == -((12 * 512 * 64) >> 7) && m.amp1 < 600);
     mod_end(t);
 
@@ -281,7 +281,7 @@ static void test_math(void)
     memset(&m, 0, sizeof m);
     m.cutoff = 100 << 8;
     m.pitch16 = 1920;
-    mod_voice(t, &t->v[0], &m, 0);
+    mod_voice(t, &t->v[0], &m);
     check("CUT sums clamp to what the fixed routings reach (+150), PITCH to 2047", m.cutoff == 150 * 256 && m.pitch16 == 2047);
     mod_end(t);
 
