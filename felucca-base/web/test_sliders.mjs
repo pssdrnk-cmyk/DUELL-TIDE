@@ -10,7 +10,7 @@ import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { launch, CHROME } from "./cdp.mjs";
 
-if (!CHROME) { console.log("no Chrome found: slider test skipped"); process.exit(0); }
+if (!CHROME) { console.log("SKIP sliders: no Chrome found"); process.exit(0); }
 let fails = 0;
 const ok = (c, what) => { console.log(`${what.padEnd(112)} ${c ? "ok" : "FAIL"}`); if (!c) fails++; };
 const ROOT = fileURLToPath(new URL(".", import.meta.url));
