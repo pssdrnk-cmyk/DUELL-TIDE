@@ -174,6 +174,16 @@ static uint32_t ux_cr(uint16_t a, uint16_t b)
 }
 /* the colour for a text of part colour c on bg: c itself, or the primary text colour where c would be hard to read (< 3:1) */
 static uint16_t vt(uint16_t c, uint16_t bg) { return ux_cr(c, bg) >= 300u ? c : ux.text; }
+/* the stroke floor (T10): a part colour drawn as a curve, gauge or bar is moved toward the text colour in 10 % steps until it
+ * reaches 3:1 on the background and on the panel (the text floor of vt(); tools/gen_ui_palettes.py mirrors this) */
+static uint16_t ux_stroke(uint16_t c, uint16_t bg, uint16_t sf, uint16_t tx)
+{
+    uint16_t o = c;
+    int32_t p;
+    for (p = 0; p < 110 && (ux_cr(o, bg) < 300u || ux_cr(o, sf) < 300u); p += 10)
+        o = ux_mix(c, tx, p + 10);
+    return o;
+}
 
 /* The whole screen's theme follows the selected part: its background (LAYER mode: the layer one), its THEME / ACCENT, and
  * the colour travels A -> B with the part's MORPH fader (POLICE: a smooth blend like the others). Both parts' pth / psel /
@@ -212,6 +222,7 @@ static void part_theme(uint32_t part)
             ux.pfill[k] = ux_mix(p->c[i], p->c[i + 1u], pct);
             ux.pacc[k] = ux_mix(p->a[i], p->a[i + 1u], pct);
         }
+        ux.pth[k] = ux_stroke(ux.pth[k], ux.bg, ux.base, p->text);
         ux.psel[k] = ux_mix(ux.bg, ux.pth[k], UI_SEL_PCT);
         ux.ptint[k] = ux_mix(ux.bg, ux.pth[k], UI_TINT_PCT);
         ux.plane[k] = ux_mix(ux.base, ux.pth[k], 10);
@@ -226,7 +237,7 @@ static void part_theme(uint32_t part)
     }
     /* DUELL 1.1 (owner 2026-10-25, items 65b, 67, 78): a GLOBAL page's colour is the smooth gradient between the palette's two colours (part 1's and part 2's first colour: #DC38FF to #FF1F8E in
      * the violet palette), no third colour: gth is its middle (what a flat fill takes), gacc that lightened toward the text colour; grad_col(x) is the colour at a screen column */
-    ux.gth = ux_mix(p->r[0], p->r[2], 50);
+    ux.gth = ux_stroke(ux_mix(p->r[0], p->r[2], 50), ux.bg, ux.base, p->text);
     ux.gacc = ux_mix(ux.gth, p->text, 45);
     if (ux.bw)
         ux.gth = ux.gacc = p->text;

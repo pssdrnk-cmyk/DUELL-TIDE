@@ -494,19 +494,29 @@ static void head_cell_text(int32_t x, const char *s, uint16_t fg, uint16_t bg)
     GFX_HOOK_ALIGN(0, 0, 0, H_HEAD, AL_V, "header text on its middle");
     cv_text_x16(x * 16 + (UT_CAP_CELL * 16 - text_w16(&AF_S, s)) / 2, UT_CAP_BASE - AF_S_CAP_Y - AF_S_CAP_H + 1 - Y_HEAD, &AF_S, s, fg, bg);
 }
-static void head_capsule(int32_t x, uint32_t k, uint32_t lit, uint32_t b, int32_t voices, uint32_t hot)
+/* the part's marks (T12, T14): bit 0 MUTE (the number cell is hollow, the number in the part's colour), bit 1 HOLD (a bar under the letter) */
+static uint32_t head_marks(uint32_t k)
+{
+    return (trk[k].p[P_MUTE] != 0) | (arp_hold(&trk[k]) ? 2u : 0u);
+}
+static void head_capsule(int32_t x, uint32_t k, uint32_t lit, uint32_t b, int32_t voices, uint32_t mk)
 {
     uint16_t pc = lit ? T_PTHEME(k) : T_DIM, cell = lit ? ux_mix(T_BG, pc, UT_CAP_DIM_PCT) : ux_mix(T_BG, T_TEXT, UT_CAP_OFF_PCT);
     char n[8];
-    (void)hot;
     cv_rrect(x, UT_CAP_Y, UT_CAP_W, UT_CAP_H, UT_CAP_R, pc, T_BG);                          /* the outline and the number cell in the part colour (an unlit part: T_DIM) */
     cv_rrect(x + UT_CAP_CELL, UT_CAP_Y + 1, UT_CAP_W - UT_CAP_CELL - 1, UT_CAP_H - 2, UT_CAP_R - 1, cell, pc);   /* the dim part: the letter and the voices number */
     cv_rect(x + UT_CAP_CELL, UT_CAP_Y + 1, 4, UT_CAP_H - 2, cell);                          /* (its left side square) */
     n[0] = (char)('1' + k);
     n[1] = 0;
-    head_cell_text(x, n, ux_cr(T_TEXT, pc) >= 300u ? T_TEXT : ux_cr(T_BG, pc) >= ux_cr(T_TEXT, pc) ? T_BG : T_TEXT, pc);   /* the part number: T_TEXT (white; dark in the light palettes) where it reads 3:1 on the cell, else the better of BG / TEXT (ORANGE, GREY, MONO: dark) */
+    if (mk & 1u) {                                      /* MUTE: the number cell is hollow (its right side square, as the dim half's left) */
+        cv_rrect(x + 1, UT_CAP_Y + 1, UT_CAP_CELL - 1, UT_CAP_H - 2, UT_CAP_R - 1, cell, pc);
+        cv_rect(x + UT_CAP_CELL - 4, UT_CAP_Y + 1, 4, UT_CAP_H - 2, cell);
+    }
+    head_cell_text(x, n, mk & 1u ? (lit ? pc : T_MID) : ux_cr(T_TEXT, pc) >= 300u ? T_TEXT : ux_cr(T_BG, pc) >= ux_cr(T_TEXT, pc) ? T_BG : T_TEXT, mk & 1u ? cell : pc);   /* the part number: T_TEXT (white; dark in the light palettes) where it reads 3:1 on the cell, else the better of BG / TEXT (ORANGE, GREY, MONO: dark) */
     n[0] = b ? 'B' : 'A';
     head_cell_text(x + UT_CAP_CELL, n, ux_mix(T_BG, T_TEXT, UT_CAP_LETTER_PCT), cell);
+    if (mk & 2u)                                        /* HOLD: a line under the letter */
+        cv_rect(x + UT_CAP_CELL + 2, UT_CAP_Y + UT_CAP_H - 2, 8, 1, T_TEXT);
     if (voices < -1) {                                  /* item 153: a mode letter (the code is -voices: 'M', 'L', 'U') instead of the number */
         n[0] = (char)(-voices);
         n[1] = 0;
@@ -618,7 +628,7 @@ static void draw_head(void)
     char tb[40];
     uint32_t pi;
     int msg = ui.msg_t || ui.layer, glob = screen_global();
-    uint32_t sig, mut = 0;
+    uint32_t sig;
     uint8_t vn[2];
     uint32_t nv = 0;
     head_page_title(tb, &pi);
@@ -626,8 +636,7 @@ static void draw_head(void)
         nv = head_notes(vn);
     sig = song.sel * 13131u + (uint32_t)glob * 7u + (ui.msg_t ? str_hash(7u, ui.msg) : ui.layer * 7919u + (uint32_t)layer_locked() * 3u) +
           head_notes_sig() * 6007u + (uint32_t)head_mode_ch(0) * 53u + (uint32_t)head_mode_ch(1) * 59u + (uint32_t)(song.sel & 1u) * 61u + badge_lit() * 4093u + (uint32_t)duell_mode_req * 331u +
-          (msg ? 0u : str_hash(13u, tb) + pi * 31u) + (head_ab_b() ? 811u : 0u) + (morph_fader_of(1 - song.sel) >= 127u ? 1301u : 0u) + (uint32_t)(notes_show_on() ? 17u : 0u) + (uint32_t)nv * 41u;
-    (void)mut;
+          (msg ? 0u : str_hash(13u, tb) + pi * 31u) + (head_ab_b() ? 811u : 0u) + (morph_fader_of(1 - song.sel) >= 127u ? 1301u : 0u) + (uint32_t)(notes_show_on() ? 17u : 0u) + (uint32_t)nv * 41u + head_marks(0) * 3011u + head_marks(1) * 4421u;
     if (!ui.force && sig == ui.head_sig)
         return;
     ui.head_sig = sig;
@@ -649,8 +658,8 @@ static void draw_head(void)
                 v1 = -(int32_t)m1;
         }
         /* both parts' capsules in every mode (owner, test3): the selected part lit, the other dim; STEREO and LAYER show the one shared voices number in both */
-        head_capsule(CAP_X, 0, lit & 1u, morph_fader_of(0) >= 127u, v0, v0 == 0 || (nv == 2u && head_notes_cpu(0)) || (nv == 1u && (head_notes_cpu(0) || head_notes_cpu(1))));
-        head_capsule(240 - CAP_X - CAP_W, 1, (lit >> 1) & 1u, morph_fader_of(1) >= 127u, v1, v1 == 0 || (nv == 2u && head_notes_cpu(1)) || (nv == 1u && (head_notes_cpu(0) || head_notes_cpu(1))));
+        head_capsule(CAP_X, 0, lit & 1u, morph_fader_of(0) >= 127u, v0, head_marks(0));
+        head_capsule(240 - CAP_X - CAP_W, 1, (lit >> 1) & 1u, morph_fader_of(1) >= 127u, v1, head_marks(1));
     }
     if (ui.msg_t && (ui.msg[0] == MSG_PC1[0] || ui.msg[0] == MSG_PC2[0] || ui.msg[0] == MSG_TITLE[0])) {   /* item 157: a program change's load, as the title */
         head_title_msg(glob);
@@ -702,8 +711,8 @@ static void draw_frame(void)
 static uint32_t card_mot_mask[(P_COUNT + 31u) / 32u];
 static uint8_t card_mot_next, card_mot;
 /* An INAPPLICABLE card (owner rule, 2026-10-15, replacing the 2026-10-12 fade-with-reason rule): a control that does nothing for the current
- * selection is NOT DRAWN: its column stays empty (the panel's background, no card), the other cards keep their knobs K1..K4, and the hidden
- * card's knob does nothing and says nothing (ui_input.c: card_hidden_vp). ONE mechanism: draw_column_hide(c) (below draw_column); the
+ * selection is NOT DRAWN: no card, and its knob does nothing and says nothing (ui_input.c: card_hidden_vp). On a parameter page the cards that
+ * show then close the gap (CONTROLS MOVE LEFT, below: K1..Kn address the n-th card shown; the QUICK layers keep fixed knobs). ONE mechanism: draw_column_hide(c) (below draw_column); the
  * predicate for a parameter's card is card_hidden_vp (below). card_why_next is no reason any more: it is the CLK card's state line only
  * (the source an external or AUTO clock plays on, clock_why). */
 static const char *card_why_next;
@@ -1842,7 +1851,8 @@ static void sound_label(const track_t *t, char *b)
  *                 room is the patch name's); at the right, ending at x 232: the page's number "6/7". A page with no number (alone in
   *                 its family) shows none. PERFORM: as on every page (PRESETS changes the sound there)
   * A layer shows the same footer, its kind ("SET", "HOLD") where the page's number is. While any part is armed for recording, a red dot and "REC"
-  * stand in row 2 just left of that number (foot_rec_mark), on every page; the patch name gives way to it */
+  * stand in row 2 just left of that number (foot_rec_mark), on every page; the patch name gives way to it. The tempo (BPM; an external clock's measured one) stands left of
+  * the number, on every page (D26); while a part is armed the REC mark has its room */
 #define FT_R 232                                       /* the right margin (the left one is 8) */
 /* the footer's step strip (row 1: the 16 step bars, the playhead, the cursor) shows on the sequencer's pages only (0.2.9, the owner: "hide the
  * step strip except on sequencer pages"): SEQ's STEP and PARAMETER LOCKS pages and its TOOLS layer, and the ARP pages while the selected part's arp
@@ -1911,12 +1921,12 @@ static int32_t foot_scroll(const char *s, int32_t w)
 }
 static void draw_foot(void)
 {
-    char s[48], pn[20], ti[28], ct[8], ln[56], pfl[24], pfr[24];
+    char s[48], pn[20], ti[28], ct[8], ln[56], pfl[24], pfr[24], tp[6];
     const track_t *t = TSEL;
     uint32_t sig;
     const engine_t *e = ENGINES[TSEL->eng_req % NENGINES];
     const char *ename = e->name, *save_hint;
-    int32_t ctp, rdot;
+    int32_t ctp, rdot, tpen;
     uint32_t fnm;
     int foot_short;
     pfl[0] = pfr[0] = 0;
@@ -1964,7 +1974,7 @@ static void draw_foot(void)
     }
     if (pfl[0])
         sig = str_hash(str_hash(sig + 0x9E2Fu, pfl), pfr);
-    sig += (uint32_t)batt_shown() * 7777u;   /* (the battery and the CPU bar are in the footer) */
+    sig += (uint32_t)batt_shown() * 7777u;   /* (the battery and the tempo are in the footer) */
 #if DUELL_TIDE
     sig = str_hash(str_hash(sig + (uint32_t)TIDE_FOOT_PART(song.sel) * 0x2F1Bu, en1), pn1);   /* TIDE hook (row 1: part 1) */
 #endif
@@ -1972,9 +1982,14 @@ static void draw_foot(void)
     sig += fnm * 3571u;
     ctp = FOOT_CT_R * 16 - (ct[0] ? text_w16(&AF_S, ct) : 0);   /* the counter's pen, 1/16 px */
     rdot = foot_rec_dot(ctp);                          /* (the REC mark's left edge: the patch name ends before it) */
+    fmt_int(tp, song.g[G_BPM]);                                   /* T12 (D26): the tempo (an external clock's measured one) before the number, the patch name ends before it; REC armed: the REC mark has the room */
+    if (rdot)
+        tp[0] = 0;
+    tpen = tp[0] ? ctp - FT_GAP * 16 - text_w16(&AF_S, tp) : rdot ? rdot * 16 : ctp;
+    sig += (uint32_t)song.g[G_BPM] * 4003u;
     {   /* a patch name wider than its room scrolls: the offset it has now is part of the picture */
         int32_t pen = UT_FOOT_X * 16 + ((fnm & 1u) ? text_w16(&AF_S, eng_shown(ename)) + UT_FOOT_WORD_GAP * 16 : 0);
-        int32_t nw = (rdot ? rdot : (ctp >> 4)) - UT_FOOT_WORD_GAP - (pen >> 4);
+        int32_t nw = (tpen >> 4) - UT_FOOT_WORD_GAP - (pen >> 4);
         sig += (uint32_t)foot_scroll(pn, nw) * 131u;
     }
     if (!ui.force && sig == ui.foot_sig)
@@ -2024,9 +2039,9 @@ static void draw_foot(void)
         }
     }
     {   /* row 2 (item 111, FINAL_V1 pictures; ui_tokens.h UT_FOOT_*): face F, the capitals' last row UT_FOOT_BASE on every page. The engine's name in the part colour at x UT_FOOT_X, the patch's name
-         * UT_FOOT_WORD_GAP after it (alone at x UT_FOOT_X where the engine's is left out: foot_names), the page's number ending UT_FOOT_CT_R, REC before it, the battery (draw_battery) at the
+         * UT_FOOT_WORD_GAP after it (alone at x UT_FOOT_X where the engine's is left out: foot_names), the page's number ending UT_FOOT_CT_R, the tempo (or REC) before it, the battery (draw_battery) at the
          * right; a patch name that does not fit SCROLLS (the REC mark, the number and the battery stay still on top of it) */
-        int32_t fy = UT_FOOT_BASE - Y_FOOT - AF_S_CAP_Y - AF_S_CAP_H + 1, pen = UT_FOOT_X * 16, nr = rdot ? rdot : (ctp >> 4), nx, nw;
+        int32_t fy = UT_FOOT_BASE - Y_FOOT - AF_S_CAP_Y - AF_S_CAP_H + 1, pen = UT_FOOT_X * 16, nr = tpen >> 4, nx, nw;
         nr -= UT_FOOT_WORD_GAP;                        /* the patch name ends here (before the REC mark or the number) */
         if (fnm & 1u)
             pen += text_w16(&AF_S, eng_shown(ename)) + UT_FOOT_WORD_GAP * 16;   /* the patch name's pen: after the engine's name */
@@ -2042,6 +2057,7 @@ static void draw_foot(void)
         if (fnm & 1u)
             cv_text_x16(UT_FOOT_X * 16, fy, &AF_S, eng_shown(ename), vt(T_PTHEME(TIDE_FOOT_PART(song.sel)), T_BG), T_BG);   /* (the selected part's colour on a global page too, not the global gradient's; TIDE hook: on TIDE / TIDE SET part 2's) */
         foot_rec_mark(ctp);
+        cv_text_x16(tpen, fy, &AF_S, tp, T_MID, T_BG);
         if (ct[0])
             cv_text_x16(ctp, fy, &AF_S, ct, T_MID, T_BG);
         draw_battery();
@@ -2584,7 +2600,7 @@ static void draw_columns(void)
         }
         draw_column(1, "TYPE", list_name(list_mode()), "", VAL(1u), -1, ICON_X_FOLDER);
         cell_seg_n = cell_seg_i = 0;
-        draw_act_column(2, "SAVE", T_THEME, ICON_AUTO);
+        draw_column(2, "SAVE", "TURN >", "", T_THEME, -1, ICON_AUTO);   /* (K3 turned right opens the save window; OCT+ here is the octave, so no OCT+ pill: T04) */
         if (k < UP_SLOTS) {
             if (CARD_SEG_ON) {                         /* (TEMPLATE 9: a switch: OFF the left half, ON the right) */
                 cell_seg_n = 2;
