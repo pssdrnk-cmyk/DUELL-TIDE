@@ -18,7 +18,7 @@
 #ifndef REF_ROOM                    /* DUELL-TIDE T0: the DUELL 1.1 hashes (REVERB_FIX: ROOM / RESO / SHIM rounding, SHIM low-passes; was the 0.2.28 set, f8046c6). Against 1.0 the same
                                        * level and spectrum, residual -44.7 dB; the one large difference is a 1.0 tail stuck at -58 dBFS for ~10 s that 1.1 ends in exact zeros
                                        * (docs/JAM11_SOUND_REFERENCES.md). 0.2.28: ROOM 0x7e9433ad6aedb715, SPRING 0xf570c74dd5d108b0, SHIM 0x0cfd1b9eb116b228, RESO 0x2bcc24a058ad4255, PLATE 0x925195a27243ed9b */
-#define REF_ROOM 0x7329b4bfd7d53e43ull   /* audit R09: ROOM is the HALL's code with a short decay, re-made on purpose, was 0x02879802c2ff09d0 */
+#define REF_ROOM 0x4b07d5a1ada18c93ull   /* audit E4: the idle reverb is left out, re-made on purpose, was 0x7329b4bfd7d53e43. */ /* audit R09: ROOM is the HALL's code with a short decay, re-made on purpose, was 0x02879802c2ff09d0 */
 #define REF_SPRING 0x544264e2a2709943ull
 #define REF_SHIM 0xdd66869cca41988bull
 #define REF_RESO 0x00114e14faed010cull   /* (the combs' period takes off the damping low-pass's delay: audit R04; was 0x6552e1281ad58f56) */

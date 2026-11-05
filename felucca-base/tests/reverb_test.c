@@ -333,7 +333,7 @@ static void test_spring_identical(void)
     snprintf(what, sizeof what, "SPRING (and ROOM <-> SPRING) bit for bit as before HALL: 20 s of sends, hash 0x%08x", h);
     /* (0.2.14: the golden was 0xdd93d2f8 until SPRING's SIZE began to glide in 0.2.9, spring_glide: the settings change here every 700
      * blocks, so the render changed on purpose. Re-baselined 2026-10-15 at 0.2.14, with PLATE added: ROOM <-> SPRING unchanged by it) */
-    check(what, h == 0xa029e43bu);   /* audit R09: ROOM is the HALL's code with a short decay, re-made on purpose, was 0x2b2d4a33. Audit R08: the loops' rounding dead bands closed (fx.c mulq15d), re-made on purpose, was 0x90d8485f. DUELL-TIDE T0: DUELL 1.1's REVERB_FIX (ROOM's rounding, see above) re-made it; 1.0 gave 0x6490249a, within -53.5 dB of this, same level and spectrum, 100 ms envelope within 1.2 dB */
+    check(what, h == 0x81f9b1d4u);   /* audit E4: the idle reverb is left out (its LFO phases stand still), re-made on purpose, was 0xa029e43b. Audit R09: ROOM is the HALL's code with a short decay, re-made on purpose, was 0x2b2d4a33. Audit R08: the loops' rounding dead bands closed (fx.c mulq15d), re-made on purpose, was 0x90d8485f. DUELL-TIDE T0: DUELL 1.1's REVERB_FIX (ROOM's rounding, see above) re-made it; 1.0 gave 0x6490249a, within -53.5 dB of this, same level and spectrum, 100 ms envelope within 1.2 dB */
     song.g[G_RTYPE] = 0;
     rev_clear();
     fx.rtype = 0;
@@ -1085,6 +1085,64 @@ static void test_predelay(void)
     }
 }
 
+/* ------------------------------------------------------------ idle --- */
+/* The reverb is left out while it has nothing to do (audit E4): no send and exact silence out for REV_IDLE samples (0.37 s). A burst, 5 s of silence, the same burst again, every model
+ * (bus A, DAMP 60, SIZE 40: the tails of 1.5 s or less end in exact zeros): the model is skipped for most of the idle (rev_skipped counts the blocks), the idle is exact zeros after the tail
+ * (left plus HALL's side), and the second burst sounds as the first (the energy of its first 1.5 s within 0.5 dB: the slow LFO phases are where they were left, nothing else is different),
+ * with the skip switched off (rev_skip_off) as well */
+static double idle_run(int rt, int off, uint32_t *skipped, int *tail_zero)
+{
+    static int32_t c[CTL], d[CTL], r[CTL], w[CTL];
+    uint32_t b, i, nb = 12u * FS / CTL, t = 0;
+    double e1 = 0, e2 = 0;
+    int zero = 1;
+    host_tracks_init(), song.g[G_RLOCUT] = 0;
+    memset(dly_buf, 0, sizeof dly_buf);
+    memset(cho_buf, 0, sizeof cho_buf);
+    song.g[G_RTYPE] = (int16_t)rt, song.g[G_RSIZE] = 40, song.g[G_RDAMP] = 60, song.g[G_DMIX] = 0;
+    rev_clear();
+    fx.rtype = (uint8_t)rt;
+    hl.sz = 0;
+    xs = 4242;
+    rev_skipped = 0, rev_skip_off = (uint32_t)off;
+    for (b = 0; b < nb; b++) {
+        for (i = 0; i < CTL; i++, t++) {
+            int burst = (t < FS / 4u) || (t >= 7u * FS && t < 7u * FS + FS / 4u);
+            c[i] = d[i] = 0;
+            r[i] = burst ? noise(20000) : 0;
+        }
+        fx_buses(c, d, r, w, CTL);
+        for (i = 0; i < CTL; i++) {
+            double L = w[i] + (hl.side ? rev_side[i] : 0);
+            uint32_t tt = b * CTL + i;
+            if (tt < 3u * FS / 2u)
+                e1 += L * L;
+            else if (tt >= 7u * FS && tt < 7u * FS + 3u * FS / 2u)
+                e2 += L * L;
+            else if (tt >= 4u * FS && tt < 7u * FS && L != 0)
+                zero = 0;
+        }
+        if (b == 0)
+            xs = 4242;
+    }
+    *skipped = rev_skipped, *tail_zero = zero;
+    return 10 * log10((e2 + 1) / (e1 + 1));
+}
+static void test_idle(void)
+{
+    static const char *const NM[6] = {"ROOM", "SPRING", "HALL", "SHIM", "RESO", "PLATE"};
+    int rt;
+    for (rt = 0; rt < 6; rt++) {
+        uint32_t sk, sk0;
+        int z, z0;
+        double d = idle_run(rt, 0, &sk, &z), d0 = idle_run(rt, 1, &sk0, &z0);
+        char what[200];
+        snprintf(what, sizeof what, "idle (E4): %s: %u blocks left out (of %u in the 12 s), idle exactly 0: %s, the second burst %.2f dB from the first (skip off: %.2f)",
+                 NM[rt], sk, 12u * FS / CTL, z ? "yes" : "NO", d, d0);
+        check(what, sk > 5u * FS / CTL * 7u / 10u * 2u && z && sk0 == 0 && fabs(d) < 0.5 && fabs(d0) < 0.5);
+    }
+}
+
 int main(int argc, char **argv)
 {
     test_room_identical();
@@ -1092,6 +1150,7 @@ int main(int argc, char **argv)
     test_spring_identical();
     test_hall();
     test_predelay();
+    test_idle();
     test_clear();
     test_switch();
     test_cost();

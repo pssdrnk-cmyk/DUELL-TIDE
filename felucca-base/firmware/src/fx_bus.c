@@ -514,7 +514,7 @@ static __attribute__((noinline)) void BUS_FN(rev_plate)(const int32_t *rev_in, i
 }
 
 /* the model ty's block, added to out */
-static inline void BUS_FN(rev_run)(uint32_t ty, const int32_t *rev_in, int32_t *out, uint32_t n)
+static __attribute__((noinline)) void BUS_FN(rev_run)(uint32_t ty, const int32_t *rev_in, int32_t *out, uint32_t n)
 {
     switch (ty) {
     case 1: BUS_FN(rev_spring)(rev_in, out, n); break;
@@ -551,6 +551,7 @@ static void BUS_FN(rev_clear)(void)
     BUS_HL.x = BUS_HL.m = BUS_HL.s = BUS_HL.hp = BUS_HL.he = 0;
     memset(BUS_HL.pd, 0, sizeof BUS_HL.pd);             /* (the pre-delay line; its write count and delay from rest) */
     BUS_HL.pw = 0, BUS_HL.pdq = 0;
+    BUS_FX.rq = 0;
 }
 
 /* the model changed (to rt): the old one's block fades out (HALL's stereo difference with it), its buffers are
@@ -802,18 +803,53 @@ static __attribute__((noinline)) void BUS_FN(dly_mod)(uint32_t dmask, uint32_t d
 
 /* the reverb of a block, the same after every delay path (audit R13: it was written three times): the model from G_RTYPE (an unknown value: ROOM), its low cut (0.2.14: before every model),
  * DUELL 1.1 BYPASS of the REVERB, a model change fades the old one out (rev_switch), else the model's block, added to wet */
+#define REV_IDLE 16384u                                 /* samples of no input and exact silence out after which the reverb is left out (0.37 s: every line and comb is shorter, and R08 made the tails end in exact zeros) */
+#ifdef REV_SKIP_STATS
+static uint32_t BUS_FN(rev_skipped), BUS_FN(rev_skip_off);   /* (tests/reverb_test.c: the blocks rev_tail left the model out of; 1 in _off: never) */
+#endif
 static __attribute__((noinline)) void BUS_FN(rev_tail)(const int32_t *rev_in, int32_t *wet, uint32_t n)
 {
     int32_t rt = song.g[G_RTYPE];
+    uint32_t i, nz = 0;
     rt = rt >= 1 && rt <= 5 ? rt : 0;
     BUS_HL.side = 0;
     rev_in = BUS_FN(rev_locut)(rev_in, n);
     if (BUS_FN(rev_byp)(rev_in, wet, n))
         return;
-    if (rt != BUS_FX.rtype)
+    if (rt != BUS_FX.rtype) {
         BUS_FN(rev_switch)(rev_in, wet, n, rt);
-    else
+        return;
+    }
+    for (i = 0; i < n && !nz; i++)                      /* (a sounding send ends the scan at its first samples) */
+        nz = (uint32_t)rev_in[i];
+    if (nz) {
+        BUS_FX.rq = 0;
         BUS_FN(rev_run)((uint32_t)rt, rev_in, wet, n);
+        return;
+    }
+    /* audit E4: no send. The model runs into a scratch block until it has given exact silence (output and HALL's side) for REV_IDLE samples; from then on it is not run at all
+     * (its states stay as they are, all zero but the slow LFO phases: the next sound starts the model from silence) and costs the scan only */
+#ifdef REV_SKIP_STATS
+    if (BUS_FX.rq >= REV_IDLE && !BUS_FN(rev_skip_off)) {
+        BUS_FN(rev_skipped)++;
+        return;
+    }
+#else
+    if (BUS_FX.rq >= REV_IDLE)
+        return;
+#endif
+    {
+        int32_t *t = pscr[0].buf;                       /* (the parts are done: part 1's block scratch, as rev_switch) */
+        for (i = 0; i < n; i++)
+            t[i] = 0;
+        BUS_FN(rev_run)((uint32_t)rt, rev_in, t, n);
+        nz = 0;
+        for (i = 0; i < n; i++) {
+            nz |= (uint32_t)t[i] | (BUS_HL.side ? (uint32_t)BUS_HL.sd[i] : 0u);
+            wet[i] += t[i];
+        }
+        BUS_FX.rq = nz ? 0u : BUS_FX.rq + n;
+    }
 }
 
 /* process the three buses for one block (the delay line BUS_DLY[0 .. dmask], the delay dl); sends in, wet stereo-equal out.

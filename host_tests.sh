@@ -429,7 +429,7 @@ for t in $want; do case $t in
   modules) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/modules_test tests/modules_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run modules $OUT/modules_test ;;
   guide)   $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/guide_test tests/guide_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run guide $OUT/guide_test ;;
   guidesetup) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/guide_setup_test tests/guide_setup_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run guidesetup $OUT/guide_setup_test ;;
-  reverb)  mkdir -p build/fx_demo build/reverb_demo; $CC -O2 -o $OUT/reverb_test tests/reverb_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run reverb $OUT/reverb_test build/fx_demo build/reverb_demo ;;
+  reverb)  mkdir -p build/fx_demo build/reverb_demo; $CC -O2 -DREV_SKIP_STATS -o $OUT/reverb_test tests/reverb_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run reverb $OUT/reverb_test build/fx_demo build/reverb_demo ;;
   bassmono) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/bassmono_test tests/bassmono_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run bassmono $OUT/bassmono_test ;;
   sidechain) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/sidechain_test tests/sidechain_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run sidechain $OUT/sidechain_test ;;
   tune)    $CC -O1 -o $OUT/tune_test tests/tune_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run tune $OUT/tune_test ;;

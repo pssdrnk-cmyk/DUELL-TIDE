@@ -51,6 +51,7 @@ typedef struct {
                                              * length (Q8, glides) */
     uint32_t sp_ph;                      /* .. the output tap's wobble */
     uint16_t cho_z;                      /* 0.2.21 (fx_bus.c cho_zrun): the chorus line's run of zero samples written (saturates at CHO_LEN: the whole line is 0) */
+    uint32_t rq;                         /* the reverb has given exact silence for this many samples with no input (fx_bus.c rev_tail: past REV_IDLE it is not run; audit E4) */
     uint8_t byp;                         /* DUELL 1.1 BYPASS of the REVERB: 1 = skipped, its buffers cleared (fx_bus.c rev_byp) */
     uint8_t cho_zs;                      /* .. 1: this block's chorus input is all 0 and the whole line was 0 before it: fx_buses_m leaves the chorus out (its output is 0) */
     uint32_t dly_g;                      /* the plain delay's read offset now (Q15 samples; fx_bus.c fx_buses_m: a TIME or tempo change slides to it; 0 = not running, the next block takes the time at once) */
