@@ -428,6 +428,36 @@ static void test_seq_ghost(void)
     t->p[P_AMODE] = 0;
 }
 
+/* audit G08: the stand-in is the part's chord (CHRD MIN7: C Eb G Bb from C4), not a single C4; CHRD OFF stays the single note */
+static void test_seq_ghost_chord(void)
+{
+    track_t *t = &trk[0];
+    uint32_t i, root = 0, nch = 0, third = 0, fifth = 0, seventh = 0;
+    ui_power_on(); frame();
+    transport_req = 2u; run(48);
+    t->p[P_SLEN] = 4;
+    memset(t->step, 0, sizeof t->step);
+    for (i = 0; i < 4u; i++) { t->step[i].time = ST_NOTE; t->step[i].n = 1; t->step[i].note[0] = 60; t->step[i].vel = 100; }
+    t->p[P_AMODE] = AM_SEQ_ID; t->p[P_ARATE] = 5; t->p[P_APROB] = 127; t->p[P_AOCT] = 1;
+    t->p[P_VOICE] = V_POLY; t->p[P_CHRD] = 7; t->p[P_VOIC] = 0;                    /* MIN7, CLOSE */
+    memset(tide_chord_n, 0, sizeof tide_chord_n);
+    run(320);
+    transport_req = 1u;
+    for (i = 0; i < 60u; i++) {
+        run(16);
+        root |= t->arp_note == 60u;
+        nch += t->arp_ch[0] != 0u;
+        third |= t->arp_ch[0] == 63u;
+        fifth |= t->arp_ch[1] == 67u;
+        seventh |= t->arp_ch[2] == 70u;
+    }
+    printf("seq ghost chord: CHRD MIN7, PLAY, no key: root %u, third %u, fifth %u, seventh %u (blocks with a chord note: %u)\n", root, third, fifth, seventh, nch);
+    CHECK("seq ghost: CHRD MIN7, PLAY, no key: the stand-in is C Eb G Bb, not C4 alone", root && third && fifth && seventh);
+    t->p[P_CHRD] = 0;
+    transport_req = 2u; run(320);
+    t->p[P_AMODE] = 0;
+}
+
 /* owner 2026-11-01: TIDE SETTINGS flickered while playing: a glide moves the part colour, the page is drawn again, and the hidden
  * cards cleared the card row under the list each time */
 static void test_settings_flicker(void)
@@ -552,6 +582,7 @@ int main(void)
     test_takeover_routes();
     test_seq_rule();
     test_seq_ghost();
+    test_seq_ghost_chord();
     test_settings_flicker();
     printf("tidecontrols: %u checks, %u failures\n", checks, failures);
     return failures ? 1 : 0;

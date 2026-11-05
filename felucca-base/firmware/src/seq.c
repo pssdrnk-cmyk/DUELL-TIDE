@@ -362,19 +362,28 @@ static uint32_t arp_seq_notes(track_t *t, const uint32_t *list, uint32_t n, uint
     return m;
 }
 
+/* whether SEQ's step k is a TIE (it holds the note before it: arp_seq lengthens that note, arp_fire leaves it sounding) */
+static uint32_t arp_seq_tie(track_t *t, uint32_t k)
+{
+    uint32_t len = t->p[P_SLEN] > 0 ? (uint32_t)t->p[P_SLEN] : 1u;
+    return TIDE_PLAY_STEP(t, TIDE_ARP_IDX(t, k, len))->time == ST_TIE;
+}
+
 static __attribute__((noinline)) void arp_seq(track_t *t, const uint32_t *list, uint32_t n, uint32_t period)
 {
     uint8_t out[4];
-    uint32_t vel, i, m = arp_seq_notes(t, list, n, out, &vel);
+    uint32_t vel, i, ties = 0, m = arp_seq_notes(t, list, n, out, &vel);
     if (!m)
         return;                                     /* a rest */
+    while (ties < 31u && arp_seq_tie(t, t->arp_idx + ties + 1u))
+        ties++;                                     /* the TIE steps after it hold the note (audit G07: they were rests, every note a short stab) */
     for (i = 0; i < m; i++) {
         arp_put(t, i, out[i]);
         if (rec_on(t))
             rec_note(t, out[i], vel);
         arp_note_on(t, out[i], vel);
     }
-    t->arp_off = period * (uint32_t)t->p[P_AGATE] / 128u;
+    t->arp_off = period * ties + period * (uint32_t)t->p[P_AGATE] / 128u;
 }
 
 static void arp_silence(track_t *t)              /* the sounding arp note(s) end */
@@ -569,6 +578,8 @@ static __attribute__((noinline)) void arp_fire(track_t *t, uint32_t period)
     }
     t->atg_vel = 0;                                 /* (arp_off is the note's again) */
     if (t->p[P_AMODE] == AM_SEQ) {                  /* SEQ: the step pattern (chance: the arp's PROB) */
+        if (arp_seq_tie(t, t->arp_idx))
+            return;                                 /* a TIE: the note before it goes on (its length was set with it) */
         if (ARP_UP(t))
             arp_off(t);
         if (TIDE_APROB(t, arp_roll(t)))   /* TIDE hook (H3c) */

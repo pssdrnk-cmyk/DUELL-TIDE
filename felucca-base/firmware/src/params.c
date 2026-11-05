@@ -63,7 +63,7 @@ static uint32_t esync_idx(int32_t v) { return (uint32_t)(v & 127) * ESYNC_N >> 7
 /* P_KTRK (id 27, DUELL 0.2.21) took the id of the retired QNT (OFF / SNAP / WHITE / SEQ; owner 2026-10-12: the OFF-SCALE KEYS setting is global, core.h
  * offscale_g). Every store writes QNT 0 (up_def, project.c) and 0 is KEY TRK off, so no stored sound changes. Its labels are gone */
 /* chord keys (chord.c): OFF, the diatonic triad / seventh of the track's ROOT and SCALE on the key, fixed shapes */
-static const char *const N_CHRD[] = {"OFF", "DIA3", "DIA7", "MAJ", "MIN", "DOM7", "MAJ7", "MIN7", "SUS4", "POW"};
+static const char *const N_CHRD[] = {"OFF", "DIA3", "DIA7", "MAJ", "MIN", "DOM7", "MAJ7", "MIN7", "SUS4", "POW", "MIN9", "MAJ9", "SUS2", "ADD9", "MIN11", "DIA9"};
 static const char *const N_OFFSCALE[] = {"SNAP", "PLAY"};   /* core.h offscale_g: OS_SNAP, OS_PLAY (SCALE page K3) */
 static const char *const N_VOIC[] = {"CLOSE", "OPEN", "INV1", "INV2", "+OCT"};   /* VC_CLOSE .. VC_BASS */
 static const char *const N_VOICE[] = {"POLY", "MONO", "LEG", "UNI"};   /* V_POLY .. V_UNISON */
@@ -1249,7 +1249,8 @@ static const char *const VAL_SHOWN[][3] = {
     {"SCALE", "DIMHW", "DIMINISHED\nHALF-WHOLE"}, {"SCALE", "DIMWH", "DIMINISHED\nWHOLE-HALF"},
     /* the chord keys' TYPE list and the voicing (owner 2026-10-25) */
     {"CHRD", "DIA3", "DIATONIC\n3"}, {"CHRD", "DIA7", "DIATONIC\n7TH"}, {"CHRD", "MAJ", "MAJOR"}, {"CHRD", "MIN", "MINOR"}, {"CHRD", "DOM7", "DOMINANT\n7TH"},
-    {"CHRD", "MAJ7", "MAJOR\n7TH"}, {"CHRD", "MIN7", "MINOR\n7TH"}, {"CHRD", "SUS4", "SUSPENDED\n4TH"}, {"CHRD", "POW", "POWER\nCHORD"}, {"VOIC", "+OCT", "BASS\nNOTE"},
+    {"CHRD", "MAJ7", "MAJOR\n7TH"}, {"CHRD", "MIN7", "MINOR\n7TH"}, {"CHRD", "SUS4", "SUSPENDED\n4TH"}, {"CHRD", "POW", "POWER\nCHORD"},
+    {"CHRD", "MIN9", "MINOR\n9TH"}, {"CHRD", "MAJ9", "MAJOR\n9TH"}, {"CHRD", "SUS2", "SUSPENDED\n2ND"}, {"CHRD", "ADD9", "ADD\n9TH"}, {"CHRD", "MIN11", "MINOR\n11TH"}, {"CHRD", "DIA9", "DIATONIC\n9TH"}, {"VOIC", "+OCT", "BASS\nNOTE"},
     /* LOFI's BITS list and the other lists (owner 2026-10-25) */
     {"BITS", "4BIT", "4 BIT"}, {"BITS", "4B/2", "4 BIT\nHALF RATE"}, {"BITS", "8BIT", "8 BIT"}, {"BITS", "1BIT", "1 BIT"}, {"BITS", "STEP", "CHIP"},
     {"MODE", "UP+8", "UP AND\nOCTAVE"}, {"MODE", "ORD", "AS\nPLAYED"}, {"HOLD", "ARP", "ARP\nONLY"}, {"CLK", "TRS", "TRS MIDI"},

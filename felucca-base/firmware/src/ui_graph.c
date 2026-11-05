@@ -437,7 +437,7 @@ static void chord_kb(uint32_t lit, uint32_t root, uint16_t c)
 static void chord_line(const track_t *t)
 {
     int32_t ay, ah, base = UT_A_KB_Y + UT_A_KB_H + 14, y = UT_TY(S, base);
-    const char *why = trk_vmode(t) != V_POLY ? "NEEDS POLY" : t->p[P_CHRD] <= CH_DIA7 && scale_mask(t) == 0xFFFu ? "SET A SCALE" : 0;
+    const char *why = trk_vmode(t) != V_POLY ? "NEEDS POLY" : (t->p[P_CHRD] <= CH_DIA7 || t->p[P_CHRD] == CH_DIA9) && scale_mask(t) == 0xFFFu ? "SET A SCALE" : 0;
     uint32_t k = trk_index(t), i;
     area_rect(&ay, &ah);
     if (base >= ay + ah)
