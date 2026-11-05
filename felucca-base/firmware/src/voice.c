@@ -935,6 +935,37 @@ static __attribute__((noinline)) void esync2_coef(const track_t *t)
 }
 
 #include "cycle.c"                                      /* the CYCLE envelope (cloud job F): cycle_start, cycle_tick, cycle_value */
+/* the ADSR both envelopes run (ENV 1: env_tick; ENV 2: env2_tick; U06 of the audit: two copies had drifted, only ENV 1 had stage 4): one control tick of stage 1 attack (a step k[0]), 2 decay to the
+ * sustain, 3 release (a coefficient k[2]; a slow Q16 release can round its decrement to zero above the floor, so a zero decrement ends it too), anything else 0. Returns 1 when the release ended */
+static inline __attribute__((always_inline)) uint32_t adsr_step(int32_t *env, uint8_t *stage, int32_t sus, const uint32_t *k)
+{
+    switch (*stage) {
+    case 1:
+        *env += (int32_t)k[0];                          /* ATK's step (esync_coef: the table's, or ENV SYNC's) */
+        if (*env >= (1 << 24)) {
+            *env = 1 << 24;
+            *stage = 2;
+        }
+        break;
+    case 2:
+        *env += mulq16(sus - *env, k[1]);
+        break;
+    case 3: {
+        int32_t d = mulq16(*env, k[2]);
+        *env -= d;
+        if (!d || *env < (1 << 12)) {
+            *env = 0;
+            *stage = 0;
+            return 1;
+        }
+        break;
+    }
+    default:
+        *env = 0;
+        break;
+    }
+    return 0;
+}
 /* ENV 2 (DUELL, SPEC 2.4): a second ADSR per voice, ENV 1's stages and times (ENV SYNC too: esync2_coef): the filter
  * envelope of the classic arrangement (ENV 2 DEST: FLT, SHP, track_render) and a matrix source (mod.c MS_ENV2). It follows the gate: an attack as the voice starts (voice_start; a legato note keeps it), the
  * release from its level when the key is let go; at 0 it stays there. It never ends the voice (ENV 1 does). Ticked once
@@ -942,72 +973,21 @@ static __attribute__((noinline)) void esync2_coef(const track_t *t)
  * cost, no change to the sound */
 static void env2_tick(const track_t *t, voice_t *v)
 {
-    int32_t sus = (int32_t)t->p[P_E2SUS] << 17;         /* Q24 */
     if (!v->gate && v->stage2 && v->stage2 < 3u)
         v->stage2 = 3;
-    switch (v->stage2) {
-    case 1:
-        v->env2 += (int32_t)t->esk2[0];
-        if (v->env2 >= (1 << 24)) {
-            v->env2 = 1 << 24;
-            v->stage2 = 2;
-        }
-        break;
-    case 2:
-        v->env2 += mulq16(sus - v->env2, t->esk2[1]);
-        break;
-    case 3: {
-        int32_t d = mulq16(v->env2, t->esk2[2]);
-        v->env2 -= d;
-        /* A slow Q16 release can round its decrement to zero above the floor. */
-        if (!d || v->env2 < (1 << 12)) {
-            v->env2 = 0;
-            v->stage2 = 0;
-        }
-        break;
-    }
-    default:
-        v->env2 = 0;
-        break;
-    }
+    adsr_step(&v->env2, &v->stage2, (int32_t)t->p[P_E2SUS] << 17, t->esk2);   /* (sustain Q24) */
 }
 
 /* one control tick (CTL samples) of the amplitude envelope; returns Q15 */
 static int32_t env_tick(track_t *t, voice_t *v)
 {
-    const int16_t *p = t->p;
-    int32_t sus = (int32_t)p[P_SUS] << 17;              /* Q24 */
-    switch (v->stage) {
-    case 1:
-        v->env += (int32_t)t->esk[0];                  /* ATK's step (esync_coef: the table's, or ENV SYNC's) */
-        if (v->env >= (1 << 24)) {
-            v->env = 1 << 24;
-            v->stage = 2;
-        }
-        break;
-    case 2:
-        v->env += mulq16(sus - v->env, t->esk[1]);
-        break;
-    case 3: {
-        int32_t d = mulq16(v->env, t->esk[2]);
-        v->env -= d;
-        /* A slow Q16 release can round its decrement to zero above the floor. */
-        if (!d || v->env < (1 << 12)) {
-            v->env = 0;
-            v->stage = 0;
-            v->active = 0;
-        }
-        break;
-    }
-    case 4:                                             /* given up for another part: this block fades it */
+    int32_t sus = (int32_t)t->p[P_SUS] << 17;           /* Q24 */
+    if (v->stage == 4u) {                               /* given up for another part: this block fades it */
         v->env = 0;
         v->stage = 0;
         v->active = 0;
-        break;
-    default:
-        v->env = 0;
-        break;
-    }
+    } else if (adsr_step(&v->env, &v->stage, sus, t->esk))
+        v->active = 0;
     return v->env >> 9;
 }
 
