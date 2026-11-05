@@ -54,7 +54,7 @@ static __attribute__((noinline)) void atg_analog(const vmod_t *m, int32_t det, u
 
 /* DRV (E6): the saturation fades in over DRV 1..8 (audit P14). DRV 1 used to switch the full tanh on: the signal lost about 0.9 dB at once, a step in the knob's first notch.
  * (drive is 32768 + DRV x 512, up to 3x; the pre-shifts keep the product inside 32 bits; w - s is under 2^17 and the weight 4096 a step: no overflow) */
-static inline int32_t an_drive(int32_t s, int32_t drive, int32_t drv)
+static __attribute__((noinline)) int32_t an_drive(int32_t s, int32_t drive, int32_t drv)
 {
     int32_t w = softclip(((s >> 2) * (drive >> 2)) >> 11);
     return drv >= 8 ? w : s + (((w - s) * (drv * 4096)) >> 15);
