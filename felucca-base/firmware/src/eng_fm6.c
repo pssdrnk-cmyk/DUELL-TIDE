@@ -457,7 +457,7 @@ static void fm6_macros(uint8_t *p, const int16_t *e, uint8_t *alg_out, uint8_t *
 /* the patch through E0..E6 (audio ISR; cheap when nothing changed) */
 static void fm6_sync(const track_t *t)
 {
- #if DUELL_TIDE
+#if DUELL_TIDE
     uint32_t tr = (uint32_t)(t - trk), k;
     const int16_t *e = &t->p[P_E0];
     int32_t eoff[4];
