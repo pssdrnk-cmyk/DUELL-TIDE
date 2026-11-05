@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* JAM: Windows (llvm-mingw) stand-in for <sys/mman.h>. The host tests map anonymous shared memory to read back what a
  * fork()ed child wrote: MAP_SHARED is a pagefile-backed section view, which a cloned child (sys/wait.h) shares with its parent;
  * MAP_PRIVATE is plain zeroed memory. */

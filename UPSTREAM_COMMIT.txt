@@ -1,2 +1,3 @@
 129a4cf4e98e6ef06a4a89e97b65092247d69412
 hugelton/Felucca main, shallow clone, GPL-3.0-only
+DUELL 1.1 974d87509e7e89db0738c731c8a657968e60e498, oscillr/DUELL tag v1.1 (the base of DUELL with TIDE; its diff base for the fork)

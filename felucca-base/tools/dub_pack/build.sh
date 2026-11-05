@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-only
 # DUELL dub pack: build the renderer, resolve the sounds, store + render them, assemble the patch files (Git Bash on Windows, as jam/env.sh)
 #   sh tools/dub_pack/build.sh OUTDIR
 set -e
