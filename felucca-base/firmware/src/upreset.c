@@ -1054,7 +1054,7 @@ static void pt_boot(void)                      /* the directory from the chunks 
     uint32_t c;
     for (c = 0; c < PT_NCH; c++)
         pt_cur[c] = -1;
-    for (c = 0; c < 4u; c++)                     /* (.pool is not cleared at start: no read record yet) */
+    for (c = 0; c < 4u; c++)                     /* (the pool is cleared at start, main.c; this is the re-scan after a failed write: no read record yet) */
         pt_rver[c] = pt_rslot[c] = 0;
     pt_rn = 0;
     pt_rgen = 0;
@@ -1389,7 +1389,7 @@ __attribute__((unused)) static uint32_t up_count(void)                 /* slots 
  * (sounds.c ds_list_at: category, engine, name = the #NN numbers, #NN = k + 1). Nothing is written for the factory ones (a virtual
  * fallback). With fewer than 128 factory sounds the slots past them are INIT sounds (never in the product: a test checks the 128). */
 static uint8_t sl_te[UP_SLOTS + UP_NXTRA], sl_tk[UP_SLOTS + UP_NXTRA], sl_tn = 0xFFu;   /* the browse list as a table (engine, factory index per position), built once: the factory
-                                                                  * table is const, and the lists ask for a slot's sound in loops (plain .bss: the pool is not cleared) */
+                                                                  * table is const, and the lists ask for a slot's sound in loops (plain .data, not the pool: sl_tn starts at 0xFF and the pool is only zeroed at start) */
 static void sl_tab(void)
 {
     uint32_t i, n = ds_list_n(), k;
@@ -1402,7 +1402,7 @@ static void sl_tab(void)
     sl_tn = (uint8_t)(n < UP_SLOTS + UP_NXTRA ? n : UP_SLOTS + UP_NXTRA);
 }
 /* U1: slots UP_USER0.. (USER 1..) hold no factory sound: an empty one is empty, a record is the owner's. The factory sounds at the browse positions they stand
- * on are the read-only places UP_SLOTS.. (browse order: ..#123, U1..U4, #125..#128), never written. Nothing is stored for them */
+ * on are the read-only places UP_SLOTS.. (browse order: #1..#124, U1..U4, then these places, numbered #125..#128), never written. Nothing is stored for them */
 #if UP_NUSER
 static int sl_user(uint32_t k) { return k >= UP_USER0 && k < UP_SLOTS; }
 static int sl_empty_user(uint32_t k) { return sl_user(k) && !up_used(k); }

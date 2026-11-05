@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* DUELL_RAMPLACE=1 (two-core stage 1a, developer builds only; felucca.c includes this file only then). Part 2's voice code runs from two
+/* DUELL_RAMPLACE=1 (two-core stage 1a; the product build: tools/build.py sets it by default, felucca.c includes this file then; DUELL_RAMPLACE=0 in the environment gives the one-core reference build the host tests use). Part 2's voice code runs from two
  * unused RAM ranges instead of the flash: range X (0x01C00000.., the render side of seven engines, tools/ram_fns_x.py) and range Z
  * (after the pool, the rest of the voice path, tools/ram_fns_z.py), linked there by firmware/app_ram.ld, loaded from the flash image.
  * Still everything on core 0: this build proves that the code can live and run there with the same sound.

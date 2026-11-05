@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* DUELL pattern slots P01..P32 (SAVE > PATTERNS): ONE list of 32 patterns for the whole device (job F3, owner rule A8): independent
  * of the sounds and shared by both parts (any slot loads onto either part; the arp's SEQ mode plays the part's own steps, which came
- * from a slot like any other). NO slot is empty and none is protected: the 32 default patterns (engines.c PATTERNS[], PATTERNS_PROPOSAL.md)
+ * from a slot like any other). NO slot is empty and none is protected (DUELL with TIDE: P29..P32 are USER slots, USER EMPTY until saved, and the four default patterns they displace are read-only places after the 32: ps_def_rec): the 32 default patterns (engines.c PATTERNS[], PATTERNS_PROPOSAL.md)
  * are installed as ordinary slots on a first start, after ERASE DATA and when a stored object is not of this format; SAVE overwrites any
  * slot; ERASE of a slot gives its default back. A slot holds a part's step pattern only: all NSTEP (64) steps (notes, time, accent,
  * slide, RATCH, NUDGE, velocity, CHANCE) and the part's LEN, DIV, SWING, GATE and QUANTIZE, so the pattern plays back with its own

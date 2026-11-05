@@ -33,7 +33,7 @@
 #define FELUCCA_UART 1           /* TRS MIDI IN on UART1 / PH8 */
 #endif
 #ifndef DUELL_RAMPLACE
-#define DUELL_RAMPLACE 0         /* DUELL two-core stage 1a (developer builds, env DUELL_RAMPLACE=1 for build.py): part 2's voice code in RAM (ramplace.c) */
+#define DUELL_RAMPLACE 0         /* DUELL two-core stage 1a (tools/build.py sets DUELL_RAMPLACE=1 for the product; 0 here is the one-core reference of the host tests): part 2's voice code in RAM (ramplace.c) */
 #endif
 #ifndef FELUCCA_ID
 #define FELUCCA_ID "FM-1_900"    /* package identity (build.py: the .fwsc marker string) */

@@ -33,8 +33,8 @@ static uint32_t erase_at;                        /* fm1_ms | 1 when the restart 
 static int erase_busy(void) { return erase_at != 0u; }
 static int erase_restart_due(void) { return erase_at && (int32_t)(fm1_ms - (erase_at & ~1u)) >= 0; }
 
-/* 0 done (the restart follows), 3 stop playback first, 4 the flash failed (some objects may be gone already: run it again;
- * the settings were not touched, so the unit is not a new unit) */
+/* 0 done (the restart follows), 3 stop playback first, 4 the flash failed (at least one object could not be wiped, the others are:
+ * the unit restarts either way, the settings go last, and ERASE DATA from the menu repeats it) */
 static int erase_data_run(void)
 {
     static const uint8_t ORDER[] = {OBJ_AUTOSAVE, OBJ_PATSLOT0, OBJ_PATSLOT0 + 1, OBJ_PATSLOT0 + 2,
