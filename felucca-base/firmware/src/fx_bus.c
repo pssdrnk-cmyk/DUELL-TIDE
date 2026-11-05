@@ -153,6 +153,39 @@ static __attribute__((noinline)) void BUS_FN(hall_gains)(int32_t s, uint32_t roo
     BUS_HL.sz = (int16_t)(s + 1 + (room ? 256 : 0));
 }
 
+/* The pre-delay of HALL and PLATE (audit E3, owner D24: no new setting, it grows with SIZE): the block h->bx[0 .. n) (the send at half the rate, after its low cut) through a line h->pd read h->pdq behind
+ * the write point, 0 at SIZE 0 up to 7 samples a SIZE step (889 samples, 40 ms at SIZE 127), the delay moving a sample a block towards its SIZE's: the tail comes after the attack and
+ * leaves the drum machine room; SIZE 0 reads the sample just written (the same signal), ROOM (room 1) has none. In place */
+#ifndef PRE_DLY_ONCE                                    /* (this file is included twice, bus A and bus B: the function once, on the bus's hall_t) */
+#define PRE_DLY_ONCE
+/* the send of HALL (plate 0) or PLATE (plate 1) at half the rate into h->bx: every other sample, 1 2 1 (HALL: ROOM's level, then its low cut of ~110 Hz, its step's remainder kept; PLATE: towards 0, a floor is an
+ * offset its loops keep, held to 18 bits), then through the pre-delay line (audit E3: this was each model's own front, the pre-delay shares it) */
+static __attribute__((noinline)) void rev_front(hall_t *h, const int32_t *rev_in, uint32_t nc, uint32_t plate, int32_t t)
+{
+    uint32_t i, w = h->pw;
+    int32_t xp = h->x, hp = h->hp, he = h->he, d = h->pdq, *x = h->bx;
+    d = w ? d + clamp(t - d, -1, 1) : t;               /* (a fresh line (rev_clear) takes SIZE's delay at once; later the pre-delay moves a sample a block towards SIZE's: the send goes into the diffusers, a one-sample slip is smeared by them) */
+    for (i = 0; i < nc; i++, w++) {
+        int32_t s = xp + 2 * rev_in[2u * i] + rev_in[2u * i + 1u], v;
+        xp = rev_in[2u * i + 1u];
+        if (plate) {
+            v = sh_tz(s, 2);
+            v = clamp(v, -262143, 262143);
+        } else {
+            v = mulq15(clamp(s >> 2, -262143, 262143), 2580);
+            s = v - hp + he;
+            he = s & 31;
+            hp += s >> 5;
+            v -= hp;
+        }
+        h->pd[w & (PD_N - 1u)] = v;
+        x[i] = h->pd[(w - (uint32_t)d) & (PD_N - 1u)];
+    }
+    h->x = xp, h->hp = hp, h->he = he, h->pw = w, h->pdq = d;
+}
+#endif
+#define PD_T(room) ((room) ? 0 : clamp(SV_RSIZE, 0, 127) * 7)
+
 /* HALL (see the top): a block of the send (n = CTL samples: audio.c) -> the mid added to out, the side into
  * BUS_HL.sd. At half the rate (HL_NC samples) in passes over the block, each with few states (every line is
  * longer than a block: what the lines give in this block was written before it): the send, every other
@@ -163,20 +196,11 @@ static __attribute__((noinline)) void BUS_FN(rev_hall)(const int32_t *rev_in, in
     int16_t *b = BUS_COMB, *a = BUS_U.ap;
     uint32_t i, k, s, m, d;
     int32_t kd = HL_KD(song.g[G_RDAMP]);
-    int32_t xp = BUS_HL.x, hp = BUS_HL.hp, he = BUS_HL.he, mp = BUS_HL.m, sp = BUS_HL.s;
+    int32_t mp = BUS_HL.m, sp = BUS_HL.s;
     (void)n;
     if (BUS_HL.sz != SV_RSIZE + 1 + (room ? 256 : 0))
         BUS_FN(hall_gains)(SV_RSIZE, room);                   /* (SPACE: its SIZE; the lines' gains stay at most 0.99) */
-    for (i = 0; i < HL_NC; i++) {
-        int32_t x = (xp + 2 * rev_in[2u * i] + rev_in[2u * i + 1u]) >> 2, v;   /* every other sample, 1 2 1 */
-        xp = rev_in[2u * i + 1u];
-        x = mulq15(clamp(x, -262143, 262143), 2580);    /* (ROOM's level) */
-        v = x - hp + he;                                /* the low cut, its step's remainder kept */
-        he = v & 31;
-        hp += v >> 5;
-        BUS_HL.bx[i] = x - hp;
-    }
-    BUS_HL.x = xp, BUS_HL.hp = hp, BUS_HL.he = he;
+    rev_front(&BUS_HL, rev_in, HL_NC, 0u, PD_T(room));  /* (the send at half the rate, low cut, pre-delay) */
     for (k = 0; k < HL_NAP; k++) {                      /* the diffusers */
         d = BUS_HL.d[k];
         HL_RUNS(d, HL_AP[k], m, s, hall_ap(a + d, HL_APG[k], BUS_HL.bx + s, m));
@@ -431,12 +455,11 @@ static __attribute__((noinline)) void BUS_FN(rev_plate)(const int32_t *rev_in, i
     uint32_t i, ph1 = BUS_FX.pl_ph1, ph2 = BUS_FX.pl_ph2;
     int32_t krt = plate_gain(SV_RSIZE), klp = plate_damp(song.g[G_RDAMP]), kap = PL_KAP;
     int32_t lp1 = BUS_FX.pl_lp[0], lp2 = BUS_FX.pl_lp[1], le1 = BUS_FX.pl_le[0], le2 = BUS_FX.pl_le[1];
-    int32_t xp = BUS_HL.x, mp = BUS_HL.m, sp = BUS_HL.s;
+    int32_t mp = BUS_HL.m, sp = BUS_HL.s;
+    rev_front(&BUS_HL, rev_in, n / 2u, 1u, PD_T(0));                        /* the send at half the rate, 1 2 1, held to 18 bits, the pre-delay (audit E3) */
     for (i = 0; i < n / 2u; i++) {
-        int32_t x = sh_tz(xp + 2 * rev_in[2u * i] + rev_in[2u * i + 1u], 2), acc, ap, e, o1, o2, mm, ss;   /* (towards 0: a floor is an offset the loops keep) */
+        int32_t x = BUS_HL.bx[i], acc, ap, e, o1, o2, mm, ss;
         uint32_t q;
-        xp = rev_in[2u * i + 1u];
-        x = x < -262143 ? -262143 : x > 262143 ? 262143 : x;
         acc = pl_c16(sh_tz(x * PL_IN, 12));
         acc = pl_ap(b0, w0, PL_LEN[0], acc, kap, -kap);                     /* the four diffusers */
         acc = pl_ap(b1, w1, PL_LEN[1], acc, kap, -kap);
@@ -486,7 +509,7 @@ static __attribute__((noinline)) void BUS_FN(rev_plate)(const int32_t *rev_in, i
     BUS_FX.pl_w[5] = (uint16_t)w5, BUS_FX.pl_w[6] = (uint16_t)w6, BUS_FX.pl_w[7] = (uint16_t)w7, BUS_FX.pl_w[8] = (uint16_t)w8, BUS_FX.pl_w[9] = (uint16_t)w9;
     BUS_FX.pl_ph1 = ph1, BUS_FX.pl_ph2 = ph2;
     BUS_FX.pl_lp[0] = lp1, BUS_FX.pl_lp[1] = lp2, BUS_FX.pl_le[0] = le1, BUS_FX.pl_le[1] = le2;
-    BUS_HL.x = xp, BUS_HL.m = mp, BUS_HL.s = sp;
+    BUS_HL.m = mp, BUS_HL.s = sp;
     BUS_HL.side = 1;
 }
 
@@ -526,6 +549,8 @@ static void BUS_FN(rev_clear)(void)
     BUS_FX.pl_lp[0] = BUS_FX.pl_lp[1] = BUS_FX.pl_le[0] = BUS_FX.pl_le[1] = 0;
     BUS_FX.pl_ph1 = BUS_FX.pl_ph2 = 0;
     BUS_HL.x = BUS_HL.m = BUS_HL.s = BUS_HL.hp = BUS_HL.he = 0;
+    memset(BUS_HL.pd, 0, sizeof BUS_HL.pd);             /* (the pre-delay line; its write count and delay from rest) */
+    BUS_HL.pw = 0, BUS_HL.pdq = 0;
 }
 
 /* the model changed (to rt): the old one's block fades out (HALL's stereo difference with it), its buffers are

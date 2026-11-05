@@ -1041,12 +1041,57 @@ static void demo2(const char *dir, int src, int m, int size)
     printf("reverb: demo %s\n", path);
 }
 
+/* --------------------------------------------------------- pre-delay --- */
+/* HALL and PLATE (audit E3, owner D24): the pre-delay grows with SIZE, 0 at SIZE 0 to about 40 ms at 127, no setting. An impulse into the send of the bus (fx_buses, LOCUT off, DAMP 60): the first
+ * sample of the wet bus (left plus the stereo difference) over 5 % of the tail's peak, in ms, at SIZE 0 and 127. ROOM has none (it moves by the model's own decay only). */
+static double onset_ms(int rt, int size)
+{
+    static int32_t c[CTL], d[CTL], r[CTL], w[CTL];
+    uint32_t b, i, nb = FS / 2u / CTL, at = 0, n = 0;
+    static int32_t L[FS / 2u + CTL];
+    int32_t pk = 0;
+    host_tracks_init(), song.g[G_RLOCUT] = 0;
+    memset(dly_buf, 0, sizeof dly_buf);
+    memset(cho_buf, 0, sizeof cho_buf);
+    song.g[G_RTYPE] = (int16_t)rt, song.g[G_RSIZE] = (int16_t)size, song.g[G_RDAMP] = 60, song.g[G_DMIX] = 0;
+    rev_clear();
+    fx.rtype = (uint8_t)rt;
+    hl.sz = 0;
+    for (b = 0; b < nb; b++) {
+        for (i = 0; i < CTL; i++)
+            c[i] = d[i] = 0, r[i] = !b && !i ? 30000 : 0;
+        fx_buses(c, d, r, w, CTL);
+        for (i = 0; i < CTL; i++, n++)
+            L[n] = w[i] + (hl.side ? rev_side[i] : 0), pk = abs(L[n]) > pk ? abs(L[n]) : pk;
+    }
+    for (i = 0; i < n; i++)
+        if (abs(L[i]) * 20 > pk) {
+            at = i;
+            break;
+        }
+    return at * 1000.0 / FS;
+}
+static void test_predelay(void)
+{
+    static const int RT[3] = {5, 2, 0};
+    static const char *const NM[3] = {"PLATE", "HALL", "ROOM"};
+    int k;
+    for (k = 0; k < 3; k++) {
+        double a = onset_ms(RT[k], 0), z = onset_ms(RT[k], 127);
+        char what[200];
+        snprintf(what, sizeof what, "pre-delay (E3): %s, first sound at %.1f ms (SIZE 0) and %.1f ms (SIZE 127): %s", NM[k], a, z,
+                 k < 2 ? "the tail is 30 ms or more later at 127" : "no pre-delay, under 6 ms apart");
+        check(what, k < 2 ? z - a >= 30.0 && a < 25.0 : z - a < 6.0);
+    }
+}
+
 int main(int argc, char **argv)
 {
     test_room_identical();
     test_spring();
     test_spring_identical();
     test_hall();
+    test_predelay();
     test_clear();
     test_switch();
     test_cost();

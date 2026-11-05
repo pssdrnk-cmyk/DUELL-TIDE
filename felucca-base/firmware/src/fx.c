@@ -190,6 +190,7 @@ static const int16_t HL_APG[HL_NAP] = {11469, 10240};               /* Q14: 0.7,
 _Static_assert(467 + 509 + 547 + 593 + 631 + 673 + 709 + 743 + HL_NL <= sizeof rev_comb / 2u &&
                131 + 307 <= sizeof rev_u.ap / 2u, "HALL in ROOM's buffers");
 _Static_assert(CTL % 2u == 0u && HL_NC + 2u * HL_MOD + 2u < 467u && HL_NC <= 131u, "HALL: one wrap a block at most");
+#define PD_N 1024u                       /* HALL / PLATE pre-delay: up to 890 samples at half the rate (40 ms) in a power of two */
 typedef struct {                         /* HALL's state (in the pool: no .bss) */
     uint16_t i[HL_NL], d[HL_NAP];        /* the lines' write indices, the diffusers' */
     int32_t lp[HL_NL], le[HL_NL];        /* the low-passes and their steps' remainders */
@@ -201,6 +202,9 @@ typedef struct {                         /* HALL's state (in the pool: no .bss) 
     int32_t sd[CTL];                     /* the block's left minus right (mix_block: rev_side_mix) */
     int32_t bx[HL_NC], l[HL_NC], r[HL_NC];   /* the block at half the rate: the diffused send, left, right */
     int16_t y[HL_NL][HL_NC];             /* the lines' ends, then what goes back into them */
+    int32_t pd[PD_N];                    /* HALL / PLATE's pre-delay line (fx_bus.c pre_dly; audit E3), at half the rate */
+    uint32_t pw;                         /* .. its write count, */
+    int32_t pdq;                         /* .. and the delay it reads now (samples; moves a sample a block towards SIZE's) */
 } hall_t;
 static hall_t hl __attribute__((section(".pool")));
 static hall_t hl_b __attribute__((section(".pool")));   /* bus B's (SPLIT); its side is never mixed (folded: the mid only) */
