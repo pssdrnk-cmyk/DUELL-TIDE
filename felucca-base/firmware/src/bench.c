@@ -1360,7 +1360,7 @@ static BENCH_FN void bench_reset_phases(void)
                                                        * M08 after it did not repeat (benchsim); found by clearing the fx fields one at a time, join0233 */
     dlyev_clear();                                     /* the delay's RANDOM / OCT UP voices and generator */
     for (p = 0; p < NLIVE; p++)
-        memset(eqs[p].s, 0, sizeof eqs[p].s);
+        memset(&eqs[p], 0, sizeof eqs[p]);             /* the EQ whole, not only its states: a band left 'running' made the next test's first design glide from the test before's coefficients (R15, benchsim) */
     lim_env = lim_env_r = LIM_T;                       /* the master: limiters, SPACE's width, BASS MONO, the compressor, WIDTH, the DC blockers, PERFORM's lines */
     sw_a = 4096, sw_b = 0, sw_em = sw_es = 0, sw_g = 4096;
     memset(&bm, 0, sizeof bm);
