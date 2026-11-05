@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // DUELL 1.1 editor: builds ONE self-contained file (all JS, CSS, fonts and the logo inline) that opens by double click from the disk (Chrome does not load ES modules from file://).
-//   node build_demo.mjs [out.html]        (default out: ../../../../DUELL/working docs/ui_redesign/DUELL_EDITOR_DEMO.html)
+//   node build_demo.mjs [out.html]        (default out: ../build/DUELL_EDITOR_DEMO.html)
 // Needs esbuild (npm i esbuild somewhere; set ESBUILD=/path/to/node_modules/esbuild/lib/main.js when it is not installed next to this file).
 // The file starts in DEMO MODE (the simulated unit; no unit, no MIDI, no network). Add #nodemo to the address to use the real editor path (a real unit needs Chrome with MIDI and a secure page: use the served editor).
 import { readFileSync, writeFileSync } from "node:fs";
@@ -9,7 +9,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const esbuild = await import(process.env.ESBUILD ? pathToFileURL(process.env.ESBUILD).href : "esbuild");
-const out = resolve(process.argv[2] ?? join(here, "../../../../DUELL/working docs/ui_redesign/DUELL_EDITOR_DEMO.html"));
+const out = resolve(process.argv[2] ?? join(here, "../build/DUELL_EDITOR_DEMO.html"));
 const ed = (f) => join(here, "editor", f);
 
 const js = await esbuild.build({ entryPoints: [ed("app.js")], bundle: true, write: false, format: "iife", target: "chrome110", loader: { ".json": "json" }, logLevel: "warning", legalComments: "none" });

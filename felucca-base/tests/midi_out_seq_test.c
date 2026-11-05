@@ -169,6 +169,24 @@ int main(void)
     }
     clr();
 
+    /* 9. a note-on the ring dropped is not marked as sent (no stray note-off later); a note-off the ring dropped stays marked (the note is still on) */
+    reset();
+    t = &trk[0];
+    while (mo_w - mo_r < MQ - MO_RESERVE) midi_out_event(0x08u | 0x8Fu << 8 | 1u << 16);   /* the ring up to the note-offs' reserve: a note-on finds no room */
+    arp_note_on(t, 60, 100);
+    bad += check("a note-on the full ring dropped is not marked as sent", !((mo_bits[0][60 >> 5] >> (60 & 31u)) & 1u));
+    clr();
+    arp_note_off(t, 60);
+    bad += check("  its note-off then sends nothing", mo_w == mo_r);
+    arp_note_on(t, 62, 100); clr();                                                           /* (an On that went out, then the ring is filled to the top) */
+    while (mo_w - mo_r < MQ) midi_out_event(0x08u | 0x8Fu << 8 | 1u << 16);
+    arp_note_off(t, 62);
+    bad += check("a note-off the full ring dropped keeps its note marked", (mo_bits[0][62 >> 5] >> (62 & 31u)) & 1u);
+    clr();
+    arp_note_off(t, 62);
+    bad += check("  and the next try ends the note", mo_w - mo_r == 1u && !((mo_bits[0][62 >> 5] >> (62 & 31u)) & 1u));
+    clr();
+
     {   /* the width of the LAYER note on GLO > MIDI (ui_graph.c graph_midi, AF_S at x = 12, the screen is 240 wide) */
         int32_t w = text_w(&AF_S, "LAYER: PART 1 CHANNEL COUNTS");
         printf("  LAYER note width %d px (x 12 .. %d of 240)\n", (int)w, (int)(12 + w));

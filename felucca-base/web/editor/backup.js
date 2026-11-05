@@ -18,7 +18,7 @@ const isDuell = () => !!info && detectUnit(info.version).kind === "duell";
 const hasCaps = () => !!info && ((info.caps ?? 0) & CAPS_MULTI_PATTERN) === CAPS_MULTI_PATTERN;
 const hasPatchRecords = () => !!info && ((info.caps ?? 0) & CAPS_PATCH_RECORDS) !== 0;
 const objName = (id) => (isPatchKey(id) ? objectLabel(id) : String(id));
-const unitName = () => info.version.replace(/^FELUCCA /, "");
+const unitName = () => info.version.replace(/^FELUCCA /, "") + (info.tide ? " with TIDE" : "");
 
 function refresh() {
   $("connect").disabled = busy || !!link && isDuell();
@@ -111,6 +111,7 @@ function showContents(rootId, objects, engines, hasMulti, oldPatchChunks = 0, ha
       hasMulti ? "No stored multis (the factory multis show)." : "Made by firmware that cannot back up multis.");
   add(hasMulti ? `Pattern slots (${d.patterns.length})` : "Pattern slots (not in this file)", d.patterns.map((p) => `${p.label}  ${p.name || "(no name)"}  ${p.length} steps`),
       hasMulti ? "No stored patterns." : "Made by firmware that cannot back up pattern slots.");
+  if (d.fm6bank) add("FM6 voice bank", [`${d.fm6bank.name || "(no name)"}: ${plural(d.fm6bank.voices, "voice")}`], "");
   return d;
 }
 
@@ -127,7 +128,7 @@ async function backup() {
     $("saved").hidden = false;
     const raw = rawLines(a.problems, a.objects), warn = raw.length || a.notes.length;
     say("status-backup", warn ? "Done, with a warning." : "Done.", warn ? "warn" : "good");
-    say("result-backup", `Saved ${name} to your downloads: ${a.hasPatches ? plural(d.patches.length, "saved patch", "saved patches") : "no patches"}${a.objects.has(13) ? `, ${plural(d.multis.length, "multi")}, ${plural(d.patterns.length, "pattern slot")}` : " (this firmware cannot back up multis and pattern slots)"}, settings and the current music.${raw.length ? "\n" + raw.join("\n") : ""}${a.notes.length ? "\n" + a.notes.join("\n") : ""}`);
+    say("result-backup", `Saved ${name} to your downloads: ${a.hasPatches ? plural(d.patches.length, "saved patch", "saved patches") : "no patches"}${a.objects.has(13) ? `, ${plural(d.multis.length, "multi")}, ${plural(d.patterns.length, "pattern slot")}` : " (this firmware cannot back up multis and pattern slots)"}, ${d.fm6bank ? `the FM6 voice bank (${plural(d.fm6bank.voices, "voice")}), ` : ""}settings and the current music.${raw.length ? "\n" + raw.join("\n") : ""}${a.notes.length ? "\n" + a.notes.join("\n") : ""}`);
   } catch (e) { say("status-backup", "The backup failed. Nothing was saved.", "warn"); say("result-backup", e.message); }
   finally { bar("bar-backup", null); busy = false; refresh(); }
 }
@@ -139,6 +140,7 @@ function groupRows() {   // what each group would do, from the file and (when co
     const inFile = archive && (g.dynamic ? archive.hasPatches : g.ids.every((id) => archive.objects.has(id)));
     let off = null;
     if (!inFile) off = g.dynamic && archive?.oldPatchChunks ? "patches saved by an older firmware (physical chunks) are in this file but cannot be restored" : "not in this file";
+    else if (info && g.needs && !info[g.needs]) off = "this unit's firmware cannot restore it (it needs DUELL with TIDE)";
     else if (info && g.caps && ((info.caps ?? 0) & g.caps) !== g.caps) off = g.dynamic ? "this unit's firmware cannot restore patches one at a time (update it first)" : "this unit's firmware cannot restore them (update it first)";
     return { g, off };
   });
@@ -148,7 +150,7 @@ function renderGroups() {
   $("groups").hidden = !archive;
   if (!archive) return;
   const d = describe(new Map([...archive.objects].map(([id, o]) => [id, o.bytes])), archive.engines, archive.oldPatchChunks);
-  const counts = { patches: plural(d.patches.length, "saved patch", "saved patches"), multis: plural(d.multis.length, "multi"), patterns: plural(d.patterns.length, "pattern slot"), settings: "", music: "" };
+  const counts = { patches: plural(d.patches.length, "saved patch", "saved patches"), multis: plural(d.multis.length, "multi"), patterns: plural(d.patterns.length, "pattern slot"), fm6bank: d.fm6bank ? plural(d.fm6bank.voices, "voice") : "", settings: "", music: "" };
   for (const { g, off } of groupRows()) {
     if (off) sel.delete(g.key); else if (!touched.has(g.key)) sel.add(g.key);
     const label = document.createElement("label"), box = document.createElement("input");
@@ -185,7 +187,7 @@ async function restore() {
   let safetyName = null;
   try {
     unitList = await listUnit(request, info.caps);
-    const plan = planRestore(archive, unitList, info.caps, sel, { includeRaw: $("includeraw").checked, patchCap: info.patchCap });
+    const plan = planRestore(archive, unitList, info.caps, sel, { includeRaw: $("includeraw").checked, patchCap: info.patchCap, fvBank: info.fvBank });
     if (!plan.steps.length) { say("status-restore", "Nothing to restore.", "warn"); say("result-restore", plan.excluded.map((x) => `${x.label}: ${x.reason}`).join("\n")); return; }
     const kinds = [...new Set(plan.steps.map((s) => s.group))].map((k) => GROUPS.find((g) => g.key === k).label.toLowerCase());
     const pw = plan.steps.filter((s) => s.key !== undefined), put = pw.filter((s) => s.size).length, gone = pw.length - put;

@@ -589,6 +589,9 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         ed_b(0x4B); ed_b(1); ed_b(1);   /* DUELL: bit 0 = the MIDI MAP, MAP_GET .. MAP_RESET (cmds 85..88, editor_map.c) */
         ed_b(0x4F); ed_b(1); ed_b(1);   /* item 159: bit 0 = a part's values are read AS SHOWN at the MORPH fader (morph_view) and written as the knob writes (ed_put);
                                          * TRACK_DUMP's byte 1 and TRACK_PARAM's scope + 4 = the stored Original; WATCH bit 2 = TRACK_CHANGED for the other shown part */
+#if DUELL_TIDE
+        ed_b(0x44); ed_b(1); ed_b(3);   /* DUELL with TIDE: bit 0 = this firmware is the TIDE fork (the version string stays "DUELL 1.1"; plain DUELL sends no 44 tag); bit 1 = the backup can GET object 41, FM6's voice bank (editor_backup.c) */
+#endif
         break;
     case ED_GET:
     case ED_SET:

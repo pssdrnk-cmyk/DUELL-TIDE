@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // DUELL editor: the FM6 engine's voice format (the generic 6-operator voice) and the DX7 sysex files that carry it. A port of the FM6 object of the older
-// web/editor.html (eng_fm6.c fm6_pack / fm6_unpack are the reference), including wip/dx7fix's rule that only the corrupt voice of a bank is left out.
+// the retired web/editor.html (eng_fm6.c fm6_pack / fm6_unpack are the reference), including wip/dx7fix's rule that only the corrupt voice of a bank is left out.
 // voice: 155 bytes, 6 x 21 operator bytes (the sixth operator first, as the format has them), then 19 voice bytes and a 10-character name.
 // packed: the 128-byte record of a 32-voice bank (every byte 7-bit). SysEx files: a single voice (F0 43 0n 00 01 1B, 155 bytes, checksum, F7: 163 bytes) or 32 packed
 // voices (F0 43 0n 09 20 00, 4096 bytes, checksum, F7: 4104 bytes). No DOM, no I/O.

@@ -15,6 +15,9 @@
  *   GET 40 off count slot     (9 bytes: id, offset u32, count lo, count hi, slot) a piece of the record; the reply is the usual one with id 40
  *   PUT begin 40 size crc slot (13 bytes) / data / commit / abort as every object; the record goes in through up_put_raw (refused at commit, rc 2, when the store would not
  *                             read it: pt_rec_ok, the extension block's lengths included); size 0 = the slot's record removed (its factory sound is back, as RESTORE)
+ * DUELL with TIDE (INFO 44 01 bit 1): id 41 = FM6's voice bank B1..B32 (fm6_vbank.c), READ ONLY here: the stored payload (header and the 32 voices as stored, FVB_LEN bytes) and its CRC-32 after
+ *                             it (u32, little endian), 3620 bytes. It is NOT in the plain LIST (an older tool knows no such id): GET 41 off count reads it (rc 1 when the unit holds no bank: probe with count 1).
+ *                             A restore writes it with the editor's FM6B_BEGIN / WRITE / END (cmds 74..76), voice by voice; a PUT of 41 answers rc 1
  * Id 8 (the FM6 patch bank of 1.0..1.0.2) is listed empty and a PUT of it is accepted and dropped.
  * Ids 2..5 (Felucca's project slots A..D) are listed empty since DUELL's MULTI store took their flash (project.c multi.c);
  * a PUT of one from an older archive is accepted (whatever its length) and dropped.
@@ -37,6 +40,7 @@
 #define ED_BK_PAT0 21u
 #define ED_BK_WT0 24u
 #define ED_BK_PATCH 40u                         /* a patch record, with its slot (see the top) */
+#define ED_BK_FVB 41u                           /* TIDE: FM6's voice bank, read only (see the top) */
 #define ED_BK_PPAGE 32u                         /* patch records a LIST page lists (32 x 11 bytes fit the reply) */
 static const uint8_t ED_BK_IDS[24] = {0, 1, 2, 3, 4, 5, 8, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 32, 33, 34};
 static uint8_t ed_bk_slot;                      /* the slot of the patch record a PUT is staging */
@@ -139,6 +143,16 @@ static const uint8_t *ed_bk_object(uint32_t id, uint32_t *len)
         *len = b ? ps_used_len(o) : 0u;             /* (no slot is empty: the object is always there, defaults included; 0: the flash failed) */
         return b;
     }
+#if DUELL_TIDE
+    if (id == ED_BK_FVB) {                          /* the voice bank as stored (st_buf, which fvb_info fills) and its CRC after it; no bank: length 0 */
+        uint32_t c;
+        if (!fvb_info()) return ED_BK_RAW;
+        c = st_crc32(st_buf, FVB_LEN);
+        memcpy(st_buf + FVB_LEN, &c, 4);
+        *len = FVB_LEN + 4u;
+        return st_buf;
+    }
+#endif
     if (id == 0u) { *len = sizeof(project_store_t); return ED_BK_RAW; }
     if (id == 1u) { *len = sizeof(persist_t); return ed_bk_settings_rec(); }
     if (id >= 2u && id <= 5u)                       /* the retired project slots: always empty */

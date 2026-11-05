@@ -342,7 +342,7 @@ run "regression: target cost of the render loops (pi32v2 disassembly)" python3 t
 run "installer CLI (fm1_install.py) against a simulated FM-1" python3 tests/install_test.py
 
 if command -v node >/dev/null 2>&1; then
-    run "web pages: editor protocol + samples, package builder, update protocol" node web/test_web.mjs
+    run "web pages: package builder, update protocol" node web/test_ota.mjs
     run "web backup: capture, validation before writes, restore order" node web/test_backup.mjs
     run "web duell-backup: file, checks, restore plan / order / verify against a simulated unit" node web/test_duellbackup.mjs
     run "web wavetable: WAV converter (FFT, saw / square / Serum-like files, factory renders back), protocol client against a simulated unit" node web/test_wavetable.mjs

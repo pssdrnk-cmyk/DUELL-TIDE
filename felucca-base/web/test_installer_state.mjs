@@ -96,6 +96,8 @@ function smartDefault() {
   ok(detectUnit("FELUCCA DUELL 0.2.4 beta").kind === "duell" && detectUnit("DUELL 0.2.4").version === "0.2.4", "with the FELUCCA prefix, without 'beta'");
   for (const v of [null, undefined, "", "FELUCCA 1.5.2", "1.2", "FELUCCA 1.0", "M-VAVE", "DUELLX 0.2", 42, "DUELL"])
     ok(detectUnit(v).kind === "other", `not DUELL: ${JSON.stringify(v)}`);
+  const tide = detectUnit("FELUCCA DUELL 1.1 TIDE");
+  ok(tide.kind === "duell" && tide.version === "1.1" && tide.tide === true && duell.tide === false && eraseDecision({ detected: tide }).line === "Detected: DUELL 1.1 with TIDE running", "a TIDE unit (INFO tag 44) is DUELL and says so");
   let d = eraseDecision({ detected: duell });
   ok(d.checked === false && d.help === "Updating DUELL: your patches and settings are kept." && d.line === "Detected: DUELL 0.2.4 running", "DUELL answered: unticked, update text, detected line");
   d = eraseDecision({ detected: detectUnit(null) });

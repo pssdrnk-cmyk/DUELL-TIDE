@@ -776,7 +776,7 @@ function fill(i) {
   app.cells.slice(before).forEach((x) => { x.partBody = i; });
   c.body.scrollTop = 0;
   c.body.dataset.tab = tabKey(i);
-  const t = tabsOf(i).find((x) => x.key === tabKey(i)); document.title = `DUELL editor: ${i === 2 ? "GLOBAL " : "PART " + (i + 1) + " "}${TAB[t?.key] ?? t?.label ?? ""}`;
+  const t = tabsOf(i).find((x) => x.key === tabKey(i)); document.title = `DUELL with TIDE editor: ${i === 2 ? "GLOBAL " : "PART " + (i + 1) + " "}${TAB[t?.key] ?? t?.label ?? ""}`;
 }
 
 function renderMain() {
@@ -981,7 +981,7 @@ async function connect() {
       app.octave = 0; app.active = 0;
     }
     app.unit = u;
-    setStatus(DEMO ? "DEMO: a simulated DUELL, no unit connected" : `Connected: ${u.info.version.replace(/^FELUCCA /, "")}${MOCK ? " (simulated)" : ""}`, "good");
+    setStatus(DEMO ? "DEMO: a simulated DUELL, no unit connected" : `Connected: ${u.info.version.replace(/^FELUCCA /, "")}${u.info.tide ? " with TIDE" : ""}${MOCK ? " (simulated)" : ""}`, "good");
     $("connect").hidden = true; $("disconnect").hidden = DEMO;
     startTheme(u);
     renderMain();

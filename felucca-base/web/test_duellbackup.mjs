@@ -2,8 +2,8 @@
 // The Backup page's logic (editor/duellbackup.js) against a simulated unit (editor/mockunit.js): INFO, the "duell-backup" file round trip,
 // every refusal before a write, the restore order and what is reported, the safety backup, the verify, older firmware and older files.
 import { OLD_PATCH_IDS, PATCH_ID, VERSION, GROUPS, DUELL_IDS, RESTORE_ORDER, patchKey, patchSlot, isPatchKey, objectLabel, parseInfo, parseList, parsePage, readArchive, objectsToFile, captureBackup, planRestore, runRestore,
-         verifyRestore, describe, checkObject, listUnit, fileName, rawLines, MULTI_VERSION } from "./editor/duellbackup.js";
-import { MockUnit, buildPatchRecord, buildLegacyPatchChunk, buildMultiObject, buildPatternObject, MOCK_ENGINES } from "./editor/mockunit.js";
+         verifyRestore, describe, FVB_ID, FVB_OBJ, bankVoices, unpackVoice, packVoice, checkObject, listUnit, fileName, rawLines, MULTI_VERSION } from "./editor/duellbackup.js";
+import { MockUnit, buildBankObject, buildPatchRecord, buildLegacyPatchChunk, buildMultiObject, buildPatternObject, MOCK_ENGINES } from "./editor/mockunit.js";
 import { buildRecord, buildEndB, parseRecord, storeDefaults, engineIndex, PTF, XB_DEFS } from "./editor/patchrecord.js";
 import { CMD } from "./editor/proto.js";
 import { buildObject as wtObject, WT } from "./editor/wavetable.js";
@@ -28,6 +28,8 @@ const bytesOf = (a) => new Map([...a.objects].map(([id, o]) => [id, o.bytes]));
   const info = parseInfo(await u.request([1, []]));
   ok(info.version === "FELUCCA DUELL 0.2.25 bet" && info.engines.length === MOCK_ENGINES.length && info.caps === 63 && info.patchCap === 128, "INFO: version, engine names, backup caps 63 (bit 2: multis and patterns, bit 3: user wavetables, bit 4: 128 patches, bit 5: patch records), patch capacity 128");
   ok(parseInfo(await new MockUnit({ caps: 3 }).request([1, []])).caps === 3, "INFO: a unit without bit 2 reports caps 3");
+  ok(parseInfo(await new MockUnit({ tide: true }).request([1, []])).tide === true && parseInfo(await u.request([1, []])).tide === false && parseInfoInst(await new MockUnit({ tide: true }).request([1, []])).tide === true,
+     "INFO: tag 44 01 marks a TIDE unit (the editor's and the installer's readers); a plain DUELL unit sends none");
   const wire = await u.request([65, []]);
   ok(wire[0] === 1 && wire[1] === 0 && wire[2] === 24 && Array.from({ length: 24 }, (_, i) => wire[3 + 11 * i]).join() === "0,1,2,3,4,5,8,13,14,15,16,17,18,19,20,21,22,23,24,25,26,32,33,34", "LIST (caps 63): 24 ids, 0 1 2 3 4 5 8 13..26 32 33 34; the patch chunk ids 6 7 9..12 27..31 35..39 are not listed");
   const list = await listUnit((r, o) => u.request(r, o));
@@ -449,7 +451,7 @@ const KEYS = [1000, 1001, 1005, 1064];
      "file v5: a patch of size 0 or of 581 bytes is refused (only saved patches, 20 to 580 bytes)");
   const xb = readArchive(JSON.stringify(file));
   ok(throwsMsg(() => readArchive(bad((c) => rewrite(c, (r) => { r[4] |= 16; }))), /Patch #01: .*older DUELL version/), "file v5: a patch record of the older form (the extension flag, PT_VER 3) is refused with a plain message");
-  ok(throwsMsg(() => readArchive(bad((c) => { c.version = 5; c.objects.find((o) => o.id === 40).id = 41; })), /Unknown object id 41/), "file v5: an object id 41 is unknown");
+  ok(throwsMsg(() => readArchive(bad((c) => { c.version = 5; c.objects.find((o) => o.id === 40).id = 42; })), /Unknown object id 42/), "file v5: an object id 42 is unknown (41 is the FM6 voice bank)");
   ok(readArchive(JSON.stringify({ ...clone(file), objects: clone(file).objects.filter((o) => o.id !== 40) })).hasPatches === true && readArchive(JSON.stringify({ ...clone(file), patchRecords: undefined, objects: clone(file).objects.filter((o) => o.id !== 40) })).hasPatches === false, "file v5: patchRecords says a file without patches is the file of a unit with none; without the flag it leaves a unit's patches alone");
   ok(xb.objects.get(1000).size >= 20 && !xb.problems.length, "file v5: (no raw objects in the good file)");
 }
@@ -508,6 +510,37 @@ const KEYS = [1000, 1001, 1005, 1064];
 {   // what the installer's generic backup (fm1backup.js, out of scope here) still assumes: the manifests of 16 .. 40 ids with the patch chunks. A unit with caps bit 5 lists 24 ids.
   const N = new MockUnit();
   ok(await athrows(() => installerCapture((r, o) => N.request(r, o), "FELUCCA DUELL 0.2.26 bet"), /manifest/), "installer (still the old chunk model): a unit with caps 63 lists 24 ids, which no installer manifest has: its capture refuses (the Backup page is the way to back it up)");
+}
+{   // FM6's voice bank (INFO tag 44 01 bit 1, GET 41, restored with FM6B_BEGIN / WRITE / END)
+  const voice = (k) => Uint8Array.from({ length: 128 }, (_, i) => (i * 7 + k * 13 + 5) & 127);
+  ok(same([...unpackVoice(packVoice(voice(3)), 0)], [...voice(3)]), "voice bank: a record packs 8 to 7 and unpacks to the same 128 bytes");
+  const S = new MockUnit({ fvBank: true }), sq = (r, o) => S.request(r, o);
+  ok(parseInfo(await sq([1, []])).fvBank === true && parseInfo(await new MockUnit({ tide: true }).request([1, []])).fvBank === false, "voice bank: INFO tag 44 01 bit 1 says the unit can GET 41");
+  const noBank = await captureBackup(sq, parseInfo(await sq([1, []])));
+  ok(!noBank.objects.some((o) => o.id === FVB_ID) && !readArchive(noBank).objects.has(FVB_ID), "voice bank: a unit with none gives a file without object 41 (the probe answers rc 1)");
+  S.bank = buildBankObject("MY BANK", new Map([[0, voice(0)], [5, voice(5)], [31, voice(31)]]));
+  const fileB = await captureBackup(sq, parseInfo(await sq([1, []])));
+  const ob = fileB.objects.find((o) => o.id === FVB_ID), arch = readArchive(JSON.stringify(fileB));
+  ok(ob && ob.size === FVB_OBJ && arch.objects.has(FVB_ID) && fileB.objects.indexOf(ob) < fileB.objects.findIndex((o) => o.id === 0), "voice bank: the backup holds object 41 (3620 bytes), before the music");
+  const dsc = describe(bytesOf(arch)).fm6bank;
+  ok(dsc.name === "MY BANK" && dsc.voices === 3 && bankVoices(arch.objects.get(FVB_ID).bytes).voices.map((v) => v.index).join() === "0,5,31", "voice bank: describe names it and counts 3 voices");
+  const T = new MockUnit({ fvBank: true, seed: false }), tq = (r, o) => T.request(r, o);
+  const plan = planRestore(arch, await listUnit(tq, 63), 63, all, { fvBank: true });
+  ok(plan.steps.some((s) => s.id === FVB_ID) && plan.steps.findIndex((s) => s.id === FVB_ID) < plan.steps.findIndex((s) => s.id === 1), "voice bank: the plan restores it, before the settings and the music");
+  const res = await runRestore(tq, plan), ver = await verifyRestore(tq, plan);
+  ok(res.failed === null && T.bank && same([...T.bank], [...S.bank]) && ver.differ.length === 0 && ver.same.includes(FVB_ID), "voice bank: restored onto an empty unit through FM6B commands: the same bytes, verify reads it back equal");
+  const U = new MockUnit({ fvBank: true, seed: false }); U.bank = buildBankObject("KEEP ME", new Map([[2, voice(2)]]));
+  const keep = [...U.bank], noObj = readArchive(JSON.stringify(noBank));
+  await runRestore((r, o) => U.request(r, o), planRestore(noObj, await listUnit((r, o) => U.request(r, o), 63), 63, all, { fvBank: true }));
+  ok(same([...U.bank], keep), "voice bank: a file without object 41 leaves the unit's bank alone");
+  const Pl = new MockUnit({ seed: false }), pOld = planRestore(arch, await listUnit((r, o) => Pl.request(r, o), 63), 63, all, { fvBank: false });
+  ok(!pOld.steps.some((s) => s.id === FVB_ID) && pOld.excluded.some((x) => x.key === "fm6bank" && /cannot restore/.test(x.reason)), "voice bank: a unit without the flag is not sent object 41 (excluded, with the reason)");
+  const flip = clone(fileB); const bad = flip.objects.find((o) => o.id === FVB_ID); const raw = atob(bad.data).split(""); raw[40] = String.fromCharCode(raw[40].charCodeAt(0) ^ 1); bad.data = btoa(raw.join(""));
+  ok(throwsMsg(() => readArchive(flip), /checksum|damaged/), "voice bank: a file whose bank was changed fails its checksum and is refused");
+  const half = clone(fileB); const h = half.objects.find((o) => o.id === FVB_ID); const hb = Uint8Array.from(atob(h.data), (c) => c.charCodeAt(0)); hb[FVB_OBJ - 1] ^= 1; h.data = btoa(String.fromCharCode(...hb)); h.crc = bkCrc(hb);
+  ok(throwsMsg(() => readArchive(half), /voice bank/), "voice bank: a bank whose own CRC (last four bytes) is wrong is refused even when the file's CRC matches");
+  const playing = new MockUnit({ fvBank: true, playing: true }); playing.bank = S.bank;
+  ok(await athrows(() => runRestore((r, o) => playing.request(r, o), { steps: [{ id: FVB_ID, size: FVB_OBJ, bytes: S.bank, group: "fm6bank" }] }).then((x) => { if (x.failed) throw new Error("x"); }), /x/), "voice bank: a playing unit refuses the bank upload (reported as a failure)");
 }
 ok(/^DUELL-backup-\d{4}-\d\d-\d\d-\d{4}\.json$/.test(fileName("DUELL-backup")), "file name: DUELL-backup-YYYY-MM-DD-HHMM.json");
 

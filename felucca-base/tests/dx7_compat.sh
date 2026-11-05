@@ -10,6 +10,6 @@ cc -O2 -w -DDUELL_TEST_MODE=1 -Ibuild/gen -Ifirmware/src -Itests -o build/host/d
 cc -O2 -o build/host/dx7_ref tests/dx7_ref.c -lm || exit 1
 build/host/dx7_compat $OUT/render "$DX7_BANKS"/*.syx || exit 1
 build/host/dx7_ref $OUT/ref "$DX7_BANKS"/*.syx || exit 1
-"$NODE" tests/dx7_js_parse.mjs web/editor.html $OUT/js.tsv "$DX7_BANKS"/*.syx || exit 1
+"$NODE" tests/dx7_js_parse.mjs $OUT/js.tsv "$DX7_BANKS"/*.syx || exit 1
 python3 -I tests/dx7_analyze.py "$DX7_BANKS" $OUT/render $OUT/ref $OUT/js.tsv $OUT/results.json || exit 1
 echo "dx7compat: done, results in $OUT/results.json"

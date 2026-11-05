@@ -61,9 +61,15 @@ FORMAT, VERSION = "duell-backup", 5
 DUELL_IDS = [0, 1, *range(13, 27)]
 RESTORE_ORDER = [*range(13, 27), 1, 0]
 OLD_PATCH_IDS = [6, 7, 9, 10, 11, 12, 27, 28, 29, 30, 31, 35, 36, 37, 38, 39]
-KNOWN_IDS = set([0, 1, 2, 3, 4, 5, 8, *range(13, 27), 32, 33, 34, *OLD_PATCH_IDS])
+KNOWN_IDS = set([0, 1, 2, 3, 4, 5, 8, *range(13, 27), 41, 32, 33, 34, *OLD_PATCH_IDS])
+# FM6's voice bank (DUELL with TIDE, INFO tag 44 01 bit 1; duellbackup.js FVB_ID): object 41, read with GET (not in the plain LIST; rc 1 = the unit holds none), written back voice
+# by voice with FM6B_BEGIN / WRITE / END (cmds 74..76). The object is the stored payload (a 32 byte header: "FM6V", 1, 32, the used mask, a 12 character name; the 32 voices of 112 bytes,
+# a record's 128 7-bit bytes packed 8 to 7) and its CRC-32 (u32 little endian) after it.
+FVB_ID, FVB_LEN, FVB_N, FVB_REC, FVB_PK, FVB_HEAD, CAPS_FVBANK = 41, 3616, 32, 112, 128, 32, 2
+FVB_OBJ = FVB_LEN + 4
+CMD_FM6B_BEGIN, CMD_FM6B_WRITE, CMD_FM6B_END = 74, 75, 76
 TAG_LEN = {0x55: 3, 0x42: 3, 0x53: 3, 0x50: 3, 0x4E: 3, 0x52: 3, 0x4C: 3, 0x54: 3, 0x56: 3, 0x43: 3, 0x5A: 3, 0x59: 3, 0x4B: 3,
-           0x4D: 4, 0x46: 4, 0x41: 4, 0x58: 4}
+           0x4D: 4, 0x46: 4, 0x41: 4, 0x58: 4, 0x5B: 3, 0x4F: 3, 0x44: 3}
 DUELL_RE = re.compile(r"^(?:FELUCCA )?DUELL (\d+\.\d+(?:\.\d+)?)(?!\S)")
 PORT_RE = re.compile(r"duell", re.I)                     # the unit's USB product name; never probe other gear
 TIMEOUT_MSG = "Backup timed out. Keep the FM-1 connected and stopped."
@@ -319,6 +325,16 @@ class Info:
     patch_cap: Optional[int]
     p_count: int = 0
     tags: dict[int, list[int]] = field(default_factory=dict)
+
+    @property
+    def tide(self) -> bool:
+        """The unit is DUELL with TIDE (INFO tag 44 01, bit 0); a plain DUELL unit sends none."""
+        return bool(self.tags.get(0x44, [0])[0] & 1)
+
+    @property
+    def fv_bank(self) -> bool:
+        """The unit can GET object 41, FM6's voice bank (INFO tag 44 01, bit 1)."""
+        return bool(self.tags.get(0x44, [0])[0] & CAPS_FVBANK)
 
     @property
     def duell(self) -> Optional[str]:
@@ -749,6 +765,10 @@ def check_object(key: int, b: bytes) -> Optional[str]:
         if why and b[4] & (16 | 64):
             return "a patch record of an older DUELL version, which this firmware does not load; make a new backup with this version"   # (PT_VER 3: the extension block and bitmap flags, 16 and 64)
         return f"damaged patch record ({why})" if why else None
+    if key == FVB_ID:
+        if n != FVB_OBJ or _u32le(b, 0) != 0x56364D46 or _u16(b, 4) != 1 or _u16(b, 6) != FVB_N or not _printable0(b, 12, 12):
+            return "not an FM6 voice bank"
+        return None if crc32(b[:FVB_LEN]) == _u32le(b, FVB_LEN) else "the voice bank failed its checksum"
     g = group_key(key)
     if g == "multis":
         return multi_problem(b)
@@ -777,6 +797,8 @@ def object_label(key: int, b: Optional[bytes] = None) -> str:
         return f"pattern slots P{a:02d} to P{min(32, a + 10):02d}"
     if 24 <= key <= 26:
         return f"user wavetable {key - 23}"
+    if key == FVB_ID:
+        return "the FM6 voice bank"
     return "a chunk of the old patch store" if key in OLD_PATCH_IDS else f"object {key}"
 
 
@@ -788,10 +810,12 @@ class Group:
     ids: list[int]
     caps: int
     dynamic: bool = False
+    optional: bool = False                               # a file without it is no exclusion to report (the voice bank)
 
 
 GROUPS = [Group("patches", "Patches", [], CAPS_PATCH_RECORDS, True), Group("multis", "Multis", list(range(13, 21)), CAPS_MULTI_PATTERN),
           Group("patterns", "Pattern slots", [21, 22, 23], CAPS_MULTI_PATTERN), Group("wavetables", "User wavetables", [24, 25, 26], CAPS_WAVETABLES),
+          Group("fm6bank", "FM6 voice bank (B1 to B32)", [FVB_ID], 0, False, True),
           Group("settings", "Settings", [1], 0), Group("music", "Current music (both parts)", [0], 0)]
 
 
@@ -933,7 +957,7 @@ def _read_items(items: list) -> tuple[dict[int, Obj], int]:
         if not patch and oid not in KNOWN_IDS:
             raise DuellError(f"Unknown object id {oid} in this backup.")
         is_old = oid in OLD_PATCH_IDS
-        if not patch and not is_old and oid not in DUELL_IDS:
+        if not patch and not is_old and oid not in DUELL_IDS and oid != FVB_ID:
             if o.get("size"):
                 raise DuellError(f"Object {oid} is retired in DUELL and holds data: this is not a DUELL backup.")
             continue
@@ -1078,6 +1102,9 @@ def capture_backup(t: Transport, info: Info, progress: Optional[Progress] = None
     if 0 not in listed or 1 not in listed:
         raise DuellError("The unit does not list its music and settings: is it running DUELL?")
     keys = [i for i in DUELL_IDS if i in listed] + sorted(k for k in listed if is_patch_key(k))
+    if info.fv_bank and _has_bank(t):                    # not in the plain LIST; its own CRC is its last four bytes
+        listed[FVB_ID] = Listed(FVB_OBJ, 0)
+        keys.insert(keys.index(0), FVB_ID)
     total, done = sum(listed[k].size for k in keys), [0]
 
     def tick(n: int) -> None:
@@ -1093,6 +1120,21 @@ def capture_backup(t: Transport, info: Info, progress: Optional[Progress] = None
     return f
 
 
+def _has_bank(t: Transport) -> bool:
+    """GET 41, one byte (after the plain LIST): does the unit hold an FM6 voice bank? rc 1 = none; a playing unit stops the backup."""
+    a = t.request(CMD_GET, [FVB_ID, *u32(0), 1, 0], T_GET)
+    if len(a) < 2:
+        raise DuellError("Unexpected answer from the unit")
+    if a[1] == 3:
+        raise DuellError(RC_NOTES[3], rc=3, fatal=True)
+    return a[1] == 0
+
+
+def _read_bank(t: Transport) -> Optional[bytes]:
+    """The unit's voice bank as GET 41 gives it (None: it holds none)."""
+    return _read_object(t, FVB_ID, FVB_OBJ, lambda n: None) if _has_bank(t) else None
+
+
 def _capture_one(t: Transport, key: int, want: Listed, tick: Callable[[int], None]) -> Obj:
     try:
         b = _read_object(t, key, want.size, tick)
@@ -1100,7 +1142,7 @@ def _capture_one(t: Transport, key: int, want: Listed, tick: Callable[[int], Non
         if e.fatal:
             raise
         return Obj(key, b"", True, f"it could not be read ({e})")
-    if crc32(b) != want.crc:
+    if key != FVB_ID and crc32(b) != want.crc:
         return Obj(key, b, True, "it changed on the unit while it was read (checksum)")
     why = check_object(key, b)
     return Obj(key, b, True, f"this editor does not recognise it ({why})") if why else Obj(key, b)
@@ -1126,7 +1168,7 @@ class Plan:
     caps: Optional[int]
 
 
-def _group_reason(g: Group, a: Archive, listed: dict[int, Listed], caps: int, patch_cap: Optional[int] = None) -> Optional[str]:
+def _group_reason(g: Group, a: Archive, listed: dict[int, Listed], caps: int, patch_cap: Optional[int] = None, fv_bank: bool = False) -> Optional[str]:
     """Why a whole group cannot be restored (duellbackup.js planRestore), None when it can."""
     if g.key == "patches":
         if not a.has_patches:
@@ -1141,6 +1183,8 @@ def _group_reason(g: Group, a: Archive, listed: dict[int, Listed], caps: int, pa
         return "this unit's firmware cannot restore them (update it first)"
     if not all(i in a.objects for i in g.ids):
         return "not in this file"
+    if g.key == "fm6bank" and not fv_bank:
+        return "this unit's firmware cannot restore it (it needs DUELL with TIDE, a build with the FM6 voice bank in its backup)"
     if g.key in ("settings", "music") and (listed.get(g.ids[0]) or Listed(-1, 0)).size != a.objects[g.ids[0]].size:
         return "the file was made by another DUELL version (its size differs from the unit's)"
     return None
@@ -1178,21 +1222,21 @@ def _object_steps(g: Group, a: Archive, include_raw: bool, plan: Plan) -> None:
 
 
 def plan_restore(a: Archive, listed: dict[int, Listed], caps: Optional[int], include_raw: bool = False, sel: Optional[set[str]] = None,
-                 patch_cap: Optional[int] = None) -> Plan:
+                 patch_cap: Optional[int] = None, fv_bank: bool = False) -> Plan:
     """What a restore would send, nothing sent: the removals of saved patches the file lacks first (they free room), the patches by slot, then 13..20,
     21..23, 24..26, 1, and the live music last. patch_cap (INFO 58 01): a file with more patches than that leaves the patches out with the reason (D05)."""
     plan, c = Plan([], [], [], caps), caps or 0
     for g in GROUPS:
-        if sel is not None and g.key not in sel:
+        if (sel is not None and g.key not in sel) or (g.optional and not all(i in a.objects for i in g.ids)):
             continue
-        why = _group_reason(g, a, listed, c, patch_cap)
+        why = _group_reason(g, a, listed, c, patch_cap, fv_bank)
         if why:
             plan.excluded.append((g.label, why))
         elif g.dynamic:
             _patch_steps(a, listed, include_raw, plan)
         else:
             _object_steps(g, a, include_raw, plan)
-    plan.steps.sort(key=lambda s: (s.key - PATCH_KEY0 if s.data else s.key - PATCH_KEY0 - 200) if s.patch else 200 + RESTORE_ORDER.index(s.key))
+    plan.steps.sort(key=lambda s: (s.key - PATCH_KEY0 if s.data else s.key - PATCH_KEY0 - 200) if s.patch else 200 + (RESTORE_ORDER.index(1) - 0.5 if s.key == FVB_ID else RESTORE_ORDER.index(s.key)))   # (the voice bank just before the settings)
     return plan
 
 
@@ -1230,6 +1274,37 @@ def _put_object(t: Transport, s: Step, tick: Callable[[int], None]) -> None:
         raise
 
 
+def unpack_voice(b: bytes, at: int) -> list[int]:
+    """112 stored bytes -> a record's 128 7-bit bytes (upf_pk_get)."""
+    out, acc, n, o = [], 0, 0, at
+    for _ in range(FVB_PK):
+        while n < 7:
+            acc |= b[o] << n
+            o += 1
+            n += 8
+        out.append(acc & 127)
+        acc >>= 7
+        n -= 7
+    return out
+
+
+def _restore_bank(t: Transport, data: bytes, tick: Callable[[int], None]) -> None:
+    """FM6B_BEGIN, one WRITE a used voice (index + the 128 bytes), END with the name and the CRC-32 of the records in index order (the unit's own bank upload)."""
+    used = _u32le(data, 8)
+    recs = [(k, unpack_voice(data, FVB_HEAD + k * FVB_REC)) for k in range(FVB_N) if used >> k & 1]
+    a = t.request(CMD_FM6B_BEGIN, [], T_PUT)
+    rc_check(a[0] if a else 1)
+    for k, pk in recs:
+        a = t.request(CMD_FM6B_WRITE, [k, *pk], T_PUT)
+        if len(a) < 2 or a[0] != k:
+            raise DuellError("Unexpected answer from the unit")
+        rc_check(a[1])
+    name = data[12:22].decode("latin-1")
+    a = t.request(CMD_FM6B_END, [*(ord(c) & 127 for c in name.ljust(10)[:10]), *u32(zlib.crc32(b"".join(bytes(pk) for _, pk in recs)) & 0xFFFFFFFF)], T_PUT)
+    rc_check(a[0] if a else 1)
+    tick(len(data))
+
+
 def run_restore(t: Transport, plan: Plan, progress: Optional[Progress] = None) -> RestoreResult:
     """Send the steps one object at a time. An object that fails (a full store, a flash error) is reported and the others still go; only "the unit is
     playing" (rc 3) or no answer stops the run. Says what was written and every failure (duellbackup.js runRestore)."""
@@ -1241,7 +1316,10 @@ def run_restore(t: Transport, plan: Plan, progress: Optional[Progress] = None) -
             progress(done[0], total)
     for s in plan.steps:
         try:
-            _put_object(t, s, tick)
+            if s.key == FVB_ID:                          # the voice bank goes in through the bank upload commands, not through PUT
+                _restore_bank(t, s.data, tick)
+            else:
+                _put_object(t, s, tick)
         except DuellError as e:
             failures.append((s.key, str(e), e.rc))
             if e.rc is None or e.rc == 3:
@@ -1266,6 +1344,13 @@ def verify_restore(t: Transport, plan: Plan) -> Verify:
     for s in plan.steps:
         if s.key in (0, 1):
             v.not_compared.append(s.key)
+            continue
+        if s.key == FVB_ID:
+            try:
+                ok = _read_bank(t) == s.data
+            except DuellError:
+                ok = False
+            (v.same if ok else v.differ).append(s.key)
             continue
         now = listed.get(s.key)
         ok = now is None if s.patch and not s.data else bool(now and now.size == len(s.data) and now.crc == crc32(s.data))
@@ -1361,13 +1446,13 @@ def describe(a: Archive) -> str:
     patches = sum(1 for k in a.objects if is_patch_key(k))
     has = lambda ids: any(i in a.objects and a.objects[i].size for i in ids)
     parts = [f"{patches} saved patch{'es' if patches != 1 else ''}" if a.has_patches else "no patches"]
-    parts += [n for ids, n in ((range(13, 21), "multis"), ((21, 22, 23), "pattern slots"), ((24, 25, 26), "user wavetables")) if has(ids)]
+    parts += [n for ids, n in ((range(13, 21), "multis"), ((21, 22, 23), "pattern slots"), ((24, 25, 26), "user wavetables"), ((FVB_ID,), "the FM6 voice bank")) if has(ids)]
     return ", ".join(parts + ["settings", "the current music"])
 
 
 def cmd_info(a, conn: Conn, out, ask) -> int:
     i = conn.info
-    print(f"DUELL {i.duell}  ({i.version})", file=out)
+    print(f"DUELL {i.duell}{' with TIDE' if i.tide else ''}  ({i.version})", file=out)
     print(f"port:     {conn.t.port_name}", file=out)
     print(f"caps:     {caps_text(i.caps)}", file=out)
     print(f"patches:  {i.patch_cap if i.patch_cap is not None else 'unknown'} slots", file=out)
@@ -1421,7 +1506,7 @@ def cmd_restore(a, conn: Conn, out, ask) -> int:
     print(f"file: a backup of {arch.firmware.removeprefix('FELUCCA ') or 'a DUELL unit'}, made {arch.created or 'an unknown date'}: {describe(arch)}", file=out)
     for line in raw_lines(arch) + arch.notes:
         print(f"  warning: {line}", file=out)
-    plan = plan_restore(arch, list_unit(conn.t, conn.info.caps), conn.info.caps, a.include_raw, patch_cap=conn.info.patch_cap)
+    plan = plan_restore(arch, list_unit(conn.t, conn.info.caps), conn.info.caps, a.include_raw, patch_cap=conn.info.patch_cap, fv_bank=conn.info.fv_bank)
     if not plan.steps:
         print("Nothing to restore.", file=out)
         for lab, why in plan.excluded:

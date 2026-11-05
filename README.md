@@ -51,7 +51,7 @@ Two ways to put TIDE on an FM-1. Either way, [back up first](docs/RECOVERY.md) a
 
 While it writes, the unit shows the update screen (WRITING, a percent number, DO NOT SWITCH OFF). Don't unplug until the installer says it is done, then switch the unit off and on once.
 
-TIDE reports itself as DUELL 1.1; the AUTO TIDE page in HOME's round shows that TIDE is on the unit.
+TIDE keeps the version string DUELL 1.1 so every stock tool takes the unit for DUELL; the AUTO TIDE page in HOME's round shows that TIDE is on the unit, and the installer, the editor and `jam_dev.py info` read a TIDE flag in its INFO and say "with TIDE".
 
 **The way back:** install the original DUELL 1.1 package from [OSCILL/R's releases](https://github.com/oscillr/DUELL/releases) the same way (or with their installer page), or return to M-VAVE's official firmware (V15) as in [docs/INSTALL.md](docs/INSTALL.md). Your backup restores with `jam_dev.py restore` or the editor's Backup page.
 

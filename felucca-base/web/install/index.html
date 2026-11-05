@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- SPDX-License-Identifier: GPL-3.0-only
-     DUELL with TIDE installer page. Adapted from DUELL's installer, itself adapted from Felucca's installer (web/index_pkg.html):
+     DUELL with TIDE installer page. Adapted from DUELL's installer, itself adapted from Felucca's installer:
      Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments.
      It keeps Felucca's install method (fm1ota.js: the running firmware stages an update loader, the loader
      writes the package; fm1pkg.js: package checks; fm1backup.js: the complete backup).
@@ -141,6 +141,16 @@
       <p class="small">DUELL music and sounds cannot be opened by the official firmware.</p>
       <p class="small"><label><input id="stock-recovery" type="checkbox"> Resume an interrupted return: I already saved a complete backup to this computer</label></p>
       <p class="small" id="stockstate"></p>
+    </div>
+  </section>
+
+  <section class="step">
+    <h2>Go back to plain DUELL 1.1</h2>
+    <div class="card" id="card-plain">
+      <h2>PLAIN DUELL 1.1 (OSCILL/R)</h2>
+      <p>To leave TIDE and run the original DUELL 1.1, use the Install page on <a href="https://oscillr.github.io/DUELL/" target="_blank" rel="noopener">OSCILL/R's DUELL site</a>. This page does not host their package.
+      <b>Save a backup here first.</b> Plain DUELL does not read a patch whose End B morphs an FM6 sound (it shows the factory sound and drops that patch at its next save).
+      Details: <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/docs/RECOVERY.md">RECOVERY</a> and <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/docs/KNOWN_LIMITS.md">Known limits</a>.</p>
     </div>
   </section>
 
@@ -351,7 +361,7 @@ const progress = (card, total) => (k, a) => {
 // Asks the running unit for INFO (editor protocol, read-only, writes nothing). It never asks for MIDI permission on its own: at load it
 // only goes ahead when Chrome already allowed MIDI with SysEx for this page (earlier visit); otherwise the "Check the unit" button
 // asks (the same prompt the other buttons show). No answer, other firmware, or update mode all count as "not DUELL".
-const infoString = (a) => { const z = a.indexOf(0); return z < 0 ? "" : String.fromCharCode(...a.slice(0, z)); };
+const infoString = (a) => { const z = a.indexOf(0); if (z < 0) return ""; let tide = false; try { tide = parseInfo(a).tide; } catch { /* the version alone */ } return String.fromCharCode(...a.slice(0, z)) + (tide ? " TIDE" : ""); };
 async function probeUnit(midi) {
   const outs = [...midi.outputs.values()];
   let talked = false;
@@ -481,7 +491,7 @@ function saveArchive(archive, name) {
   document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 function archiveInfo(a) {
-  const { version, tags, caps, patchCap } = parseInfo(a);
+  const { version: v0, tags, caps, patchCap, tide } = parseInfo(a), version = v0 + (tide ? " TIDE" : "");   // (a TIDE unit: "DUELL 1.1 TIDE", which detectUnit reads)
   // the firmware reports "FELUCCA <version string>", DUELL's too. A complete backup needs the preferences, motion and backup tags
   // (the song-rows byte is not compared: Felucca sent 16, DUELL sends 0) and the backup tag's bit 0.
   const supported = /^FELUCCA /i.test(version) && tags.has(0x55) && tags.has(0x4d) && caps !== null && !!(caps & 1);
