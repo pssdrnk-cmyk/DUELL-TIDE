@@ -138,6 +138,7 @@ typedef struct {
 #endif
 } tcr_t;
 static tcr_t tcr TC_BSS;
+static uint32_t tcr_core1_holds(void) { return tcr.open != 0u; }   /* (morph_xfer.c morph_xreset: part 2's notes may be rendered by core 1 still) */
 
 #if TC_MEAS
 /* ---------------------------------------------------------------- BENCHT2: what the jobs measure (core 0 collects; developer bench builds only) ---
