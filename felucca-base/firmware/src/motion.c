@@ -22,6 +22,8 @@ static void motion_setp(track_t *t, uint32_t slot, int16_t v)
     uint32_t k, j;
     if (slot < EXT_P_LEN) {
         t->p[slot] = v;
+        if (slot == P_TRIM || slot == P_LEVEL || slot == P_CHOR || slot == P_DLY || slot == P_REV)   /* (audit S10) the plain mix steps its gains at the block seam: say the next block is one the matrix moves them in, so they ramp (fx.c mix_ramp) */
+            mx_was[trk_index(t) % NLIVE] |= 1u;
         return;
     }
     k = trk_index(t);
