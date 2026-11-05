@@ -619,8 +619,8 @@ static void midi_control(uint32_t ch, uint32_t cc, uint32_t value)
  * ignored; SEL: the selected part; LAYER: part 1's channel, SEL any).
  *   LAYER: bank 0, program 0..15 = MULTI M01..M16 (the MULTI page's LOAD; an empty slot nothing); any other bank / program
  *   ignored. SPLIT, STEREO: a SOUND for the channel's part only: program n = patch slot n, #n + 1 of the ONE list of 128 slots (0.2.17; ui.c pc_recall),
- *   bank 0 and bank 1 alike (they were two lists before); every slot holds a sound (its record, else its factory sound). Other banks and programs
- *   above 127 ignored. Dropped if PCQ_N recalls are already waiting */
+ *   bank 0 and bank 1 alike (they were two lists before); every slot holds a sound (its record, else its factory sound). Bank 2 (audit G13): program n =
+ *   the read-only place #129 + n, the factory sounds past the 128 (ui.c pc_recall checks the count). Other banks ignored. Dropped if PCQ_N recalls are already waiting */
 #define PCQ_N 8u
 #define PCQ_MULTI 0xFFu                                    /* (the entry's part: LAYER's multi) */
 static volatile uint32_t pcq_buf[PCQ_N];                   /* part | program << 8 | bank << 16 */
@@ -633,7 +633,7 @@ static void __attribute__((noinline)) midi_pc(uint32_t ch, uint32_t prog)
         if (bank || prog >= MU_SLOTS)
             return;
         pi = PCQ_MULTI;
-    } else if (pi >= NSHOWN || bank > 1u || (bank && prog >= UP_SLOTS)) {
+    } else if (pi >= NSHOWN || bank > 2u) {
         return;
     }
     if ((uint8_t)(w - pcq_r) >= PCQ_N)

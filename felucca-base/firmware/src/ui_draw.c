@@ -2603,7 +2603,7 @@ static void draw_columns(void)
         draw_column(1, "TYPE", list_name(list_mode()), "", VAL(1u), -1, ICON_X_FOLDER);
         cell_seg_n = cell_seg_i = 0;
         draw_column(2, "SAVE", "TURN >", "", T_THEME, -1, ICON_AUTO);   /* (K3 turned right opens the save window; OCT+ here is the octave, so no OCT+ pill: T04) */
-        if (k < UP_SLOTS) {
+        if (k < UP_VSLOTS) {
             if (CARD_SEG_ON) {                         /* (TEMPLATE 9: a switch: OFF the left half, ON the right) */
                 cell_seg_n = 2;
                 cell_seg_i = (uint8_t)(list_fav(k) != 0);

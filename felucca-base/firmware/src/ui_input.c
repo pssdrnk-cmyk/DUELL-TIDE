@@ -1246,7 +1246,7 @@ static void edit_param(uint32_t slot, int32_t steps)
         } else if (slot == 2u) {                          /* SAVE: the same window as the SAVE button held (rename, another slot, overwrite) */
             if (steps > 0)
                 patch_save_ask();
-        } else if (pl_cursor_slot() < UP_SLOTS) {         /* FAV (a place in no slot: no FAV card, the knob does nothing) */
+        } else if (pl_cursor_slot() < UP_VSLOTS) {        /* FAV (a place with no flag: no FAV card, the knob does nothing) */
             preset_mark(steps > 0);
         }
         return;
