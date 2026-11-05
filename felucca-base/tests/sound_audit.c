@@ -32,6 +32,7 @@
  * (hit level), no weighted-loudness rule. Risers allowed to take longer than 2 s to reach the plateau: WHITE OUT, MOOR WIND,
  * LESLIE STORM (a swell is their sound); nothing else.
  * Every sound must set LFO 1's and LFO 2's TRIG to FREE itself (DUELL 0.2.2; the pair is in the sound, not the default): else FAIL.
+ * Slow motion (2026-11-05): a PAD, KEYS or FX sound of the 128 syncs a LOOP CYCLE slower than 1 s and every LFO it uses at 1 Hz or slower: else FAIL.
  * Aftertouch (2026-11-05): a sound of the 128 that is not FX or PERC sends AT to SATURATION (BASS) or to CUT / TWIN CUTOFF / SHAPE (the rest): else FAIL.
  *   build/host/sound_audit                   the table; exit 1 on a FAIL
  *   SOUND_TRIM=1 build/host/sound_audit      also the TRIM (until 0.2.18 "LEVEL") each sound would need for AUDIT_TARGET_DB (weighted, in its
@@ -135,6 +136,33 @@ static int au_at_ok(const ds_sound_t *s, uint32_t n)
             int32_t d = ds_value(s, MSLOT_ID(i) + 1u, 0);
             return s->cat == CAT_BASS ? d == MD_DIST : d == MD_CUT || d == MD_CUT2 || d == MD_SHP;
         }
+    return 1;
+}
+/* slow motion in step with the tempo (audit T08, 2026-11-05): a PAD, KEYS or FX sound of the 128 runs its LOOP CYCLE (read by a matrix slot) with CYCLE SYNC
+ * when it is slower than a second, and each LFO it uses (a DEST depth, the TWIN depth or a matrix slot) at 1 Hz or slower with its SYNC (bars). 1 = keeps it */
+static int au_src_used(const ds_sound_t *s, int32_t src)
+{
+    uint32_t i;
+    for (i = 0; i < 8u; i++)
+        if (ds_value(s, MSLOT_ID(i), 0) == src && ds_value(s, MSLOT_ID(i) + 1u, 0) && ds_value(s, MSLOT_ID(i) + 2u, 0))
+            return 1;
+    return 0;
+}
+static int au_sync_ok(const ds_sound_t *s, uint32_t n)
+{
+    double tr, tf;
+    if (n >= 128u || (s->cat != CAT_PAD && s->cat != CAT_KEYS && s->cat != CAT_FX))
+        return 1;
+    tr = pow(10000.0, ds_value(s, XWID(X_CYRISE), 10) / 127.0);
+    tf = pow(10000.0, ds_value(s, XWID(X_CYFALL), 70) / 127.0);
+    if (au_src_used(s, MS_CYCLE) && !ds_value(s, XWID(X_CYMODE), 0) && !ds_value(s, XWID(X_CYSYNC), 0) && tr + tf >= 1000.0)
+        return 0;
+    if ((ds_value(s, P_LD_PIT, 0) || ds_value(s, P_LD_FLT, 0) || ds_value(s, P_LD_SHP, 0) || ds_value(s, P_LD_AMP, 0) || ds_value(s, XWID(X_LFO1), 0) ||
+         au_src_used(s, MS_LFO)) && !ds_value(s, P_LSYNC, 0) && LFO_HZ_X100[ds_value(s, P_LRATE, 60) & 127] < 100u)
+        return 0;
+    if ((ds_value(s, P_L2PIT, 0) || ds_value(s, P_L2FLT, 0) || ds_value(s, P_L2SHP, 0) || ds_value(s, XWID(X_LFO2), 0) || au_src_used(s, MS_LFO2)) &&
+        !ds_value(s, P_L2SYNC, 0) && LFO_HZ_X100[ds_value(s, P_L2RATE, 60) & 127] < 100u)
+        return 0;
     return 1;
 }
 static int au_dcmp(const void *a, const void *b) { double x = *(const double *)a, y = *(const double *)b; return x < y ? -1 : x > y; }
@@ -271,6 +299,8 @@ int main(void)
             why = "FAIL (LFO TRIG not FREE)";   /* DUELL 0.2.2: every factory sound sets both LFOs FREE itself */
         else if (!au_at_ok(s, n))
             why = "FAIL (AT convention)";
+        else if (!au_sync_ok(s, n))
+            why = "FAIL (free slow motion)";
         else if (A->nan || T->nan)
             why = "FAIL (NaN / crash)";
         else if (A->loud < -60)
