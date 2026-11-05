@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-only -->
 # Changelog of DUELL with TIDE
 
-What changed in the fork (pssdrnk's DUELL-TIDE),. Upstream's own history is in [CHANGELOG.md](CHANGELOG.md); the notes of DUELL 1.1 are in [RELEASE_NOTES.md](RELEASE_NOTES.md).
+What changed in the fork (pssdrnk's DUELL-TIDE). Upstream's own history is in [CHANGELOG.md](CHANGELOG.md); the notes of DUELL 1.1 are in [RELEASE_NOTES.md](RELEASE_NOTES.md).
 
 New lines for the fork go here, not into CHANGELOG.md.
 
