@@ -1909,7 +1909,7 @@ SOUNDS = [
          }),
     # DUB PACK (tools/dub_pack/pack.py, which reads these records): a saw chord through the 24 dB multimode filter, the filter envelope snapping it open and shut,
     # chorus + a long delay + a room behind it. End B: thrown into the echo: darker, more resonant, the snap gone, the delay and the reverb up.
-    dict(engine='ANALOG', idx=20, name='DUB CHORD', cat='KEYS', bamt=20,  # #148
+    dict(engine='ANALOG', idx=20, name='CHORD ECHO', cat='KEYS', bamt=20,  # #147
          p={
             'CHRD': 7, 'VOIC': 1, 'ATK': 3, 'DEC': 72, 'SUS': 34, 'REL': 70, 'LRATE': 30, 'LWAVE': 1, 'LD_FLT': 3, 'KTRK': 20, 'CHOR': 68, 'DLY': 70, 'REV': 48,
             'FREEA': 38, 'FREEB': 23, 'FREED': 2, 'E2ATK': 0, 'E2DEC': 68, 'E2SUS': 0, 'E2REL': 66, 'E2FLT': 26, 'TRIM': 107, 'E2': 24, 'E7': 18,
@@ -1920,7 +1920,7 @@ SOUNDS = [
          }),
     # DUB PACK: a square chord, closed filter, a little drive and tape wobble: the dark minor seventh that sits under a hat.
     # End B: the filter opens, the drive comes up, the delay and the reverb deepen (a lift into the break).
-    dict(engine='ANALOG', idx=21, name='DARK MIN7', cat='KEYS', bamt=20, bseed=40202,  # #147
+    dict(engine='ANALOG', idx=21, name='DARK MIN7', cat='KEYS', bamt=20, bseed=40202,  # #148
          p={
             'CHRD': 7, 'VOIC': 1, 'ATK': 10, 'DEC': 78, 'SUS': 26, 'REL': 80, 'LRATE': 24, 'LWAVE': 1, 'LD_FLT': 4, 'KTRK': 16, 'CHOR': 36, 'DLY': 60, 'REV': 62,
             'DIST': 22, 'FREEA': 30, 'FREEB': 30, 'FREED': 2, 'E2DEC': 74, 'E2SUS': 0, 'E2REL': 72, 'E2FLT': 18, 'ITYPE': 9, 'IA': 50, 'IB': 71,
@@ -1999,7 +1999,7 @@ SOUNDS = [
             'E2': 30, 'E6': 127, 'E8': 30, 'FREEA': 34, 'REV': 110, 'LRATE': 30,
          }),
     # ---- the sounds added for TIDE's JRNY (dub techno / deep house groups: pads, chords, stabs, plucks, textures), after the dub pack
-    # a bright saw chord for the house stab: the filter snapped open and shut fast, a short room, a little echo. Dry next to DUB CHORD.
+    # a bright saw chord for the house stab: the filter snapped open and shut fast, a short room, a little echo. Dry next to CHORD ECHO.
     # End B: the lift: the filter up, the drive up, the room opens a little.
     dict(engine='ANALOG', idx=25, name='SOUL STAB', cat='KEYS', bamt=20,  # #150
          p={
@@ -2158,7 +2158,7 @@ SOUNDS = [
          }),
     # a soft glassy phase-distortion electric piano: double-sine, a mellow bite, chorus and a room.
     # End B: a brighter, wider chime.
-    dict(engine='PHASE', idx=13, name='GLASS KEYS', cat='KEYS', bamt=20,  # #154
+    dict(engine='PHASE', idx=13, name='MELLOW EP', cat='KEYS', bamt=20,  # #155
          p={
             'ATK': 0, 'DEC': 92, 'SUS': 40, 'REL': 70, 'KTRK': 28, 'CHOR': 60, 'DLY': 30, 'REV': 50, 'FREEA': 66, 'FREEB': 4, 'FREED': 2, 'E2ATK': 0,
             'E2DEC': 76, 'E2SUS': 0, 'E2REL': 60, 'E2FLT': 14, 'TRIM': 102, 'E1': 3, 'E2': 0, 'E3': 36, 'E4': 70, 'MOD1': ('VEL', 'SHP', 10),
@@ -2169,7 +2169,7 @@ SOUNDS = [
          }),
     # a plucked comb wavetable: the position falls with the envelope, a plucked string without a body.
     # End B: the position higher, more echo.
-    dict(engine='WAVE', idx=23, name='COMB PLUCK', cat='PLUCK', bamt=20,  # #145
+    dict(engine='WAVE', idx=23, name='COMB PLUCK', cat='PLUCK', bamt=20,  # #146
          p={
             'ATK': 0, 'DEC': 98, 'SUS': 0, 'REL': 70, 'KTRK': 28, 'CHOR': 22, 'DLY': 40, 'REV': 38, 'FREEA': 74, 'FREEB': 5, 'FREED': 2, 'E2ATK': 0,
             'E2DEC': 70, 'E2SUS': 0, 'E2REL': 60, 'E2FLT': 14, 'TRIM': 112, 'E1': 9, 'E2': 20, 'MOD1': ('VEL', 'SHP', 16), 'MOD2': ('ENV2', 'E2', 20),
@@ -2214,7 +2214,7 @@ SOUNDS = [
          }),
     # a bright icy phase-distortion stab: resonant saw, the DCW wide open, a high filter, a long echo behind a short note.
     # End B: the DCW and the filter fall, the echo longer.
-    dict(engine='PHASE', idx=16, name='ICE STAB', cat='KEYS', bamt=20,  # #155
+    dict(engine='PHASE', idx=16, name='ICE STAB', cat='KEYS', bamt=20,  # #154
          p={
             'CHRD': 7, 'VOIC': 1, 'ATK': 0, 'DEC': 80, 'SUS': 0, 'REL': 56, 'KTRK': 30, 'CHOR': 30, 'DLY': 56, 'REV': 44, 'FREEA': 82, 'FREEB': 4, 'FREED': 2, 'E2ATK': 0,
             'E2DEC': 60, 'E2SUS': 0, 'E2REL': 50, 'E2FLT': 10, 'TRIM': 113, 'E1': 5, 'E2': 0, 'E3': 100, 'E4': 50, 'MOD1': ('VEL', 'SHP', 12),
@@ -2247,7 +2247,7 @@ SOUNDS = [
          }),
     # a glassy plucked table, bright and short with a long room: a bottle tapped in a hall.
     # End B: the position higher, the room larger, the chorus fuller.
-    dict(engine='WAVE', idx=25, name='GLASS POP', cat='PLUCK', bamt=20,  # #146
+    dict(engine='WAVE', idx=25, name='BOTTLE TAP', cat='PLUCK', bamt=20,  # #145
          p={
             'ATK': 0, 'DEC': 96, 'SUS': 0, 'REL': 76, 'KTRK': 30, 'CHOR': 24, 'DLY': 36, 'REV': 56, 'FREEA': 78, 'FREEB': 4, 'FREED': 2, 'E2ATK': 0,
             'E2DEC': 74, 'E2SUS': 0, 'E2REL': 62, 'E2FLT': 10, 'TRIM': 110, 'E1': 11, 'E2': 30, 'MOD1': ('ENV2', 'E2', 24),

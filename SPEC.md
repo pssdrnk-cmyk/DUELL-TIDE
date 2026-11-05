@@ -471,10 +471,10 @@ SAVE > PATTERNS is ONE list of 32 slots, P01..P32, for the whole device (no part
 | Slot | Name | Idiom |
 |---|---|---|
 | P01 | DUB CHORD | Dub techno chord: stabs on the off-beat 8ths, two of them held on ties for the echo to carry, the last a minor 3rd up. |
-| P02 | DEEP SHUFFLE | Deep house shuffle: the off-beat 8th and the swung 16th after it, the last hit a whole tone down (SWING 60). |
-| P03 | DUB OFFBEAT | Dub offbeat stabs: the off-beat 8ths only, accents on the 2nd and 4th (SWING 54). |
+| P02 | DEEP SHUFFLE | Deep house shuffle: the off-beat 8th and a swung 16th three steps on, the last hit a whole tone down (SWING 60). |
+| P03 | DUB OFFBEAT | Dub offbeat stabs: the off-beat 8ths only, accents on the 2nd and 4th (no SWING: every hit is on an even step, where swing does nothing). |
 | P04 | HOUSE STAB | House stabs: off-beat 8ths with a double hit before the 2nd beat and the 4th, accents on 7 and 15 (SWING 56). |
-| P05 | DOT DELAY | Dotted delay figure: hits every three 16ths, root C then down a major 3rd, a 5th and a 4th (SWING 52). |
+| P05 | DOT DELAY | Dotted delay figure: hits 3-4-3-4 sixteenths apart, root C then down a major 3rd, a 5th and a 4th (SWING 52). |
 | P06 | 8TH PULSE | Straight 8th-note pulse (new wave / driving rock bass), the last 8th on the 5th. |
 | P07 | GLASS LOOP | Minimal: a repeating cell where one upper note changes each bar. |
 | P08 | BERLIN RUN | Berlin school run: the root as a pedal on every other 16th, a figure climbing and falling between. |
@@ -482,18 +482,18 @@ SAVE > PATTERNS is ONE list of 32 slots, P01..P32, for the whole device (no part
 | P10 | MINIMAL 12 | Minimal 12: a three-beat loop for polymeter against a 16-step part, a drop of a whole tone held on a tie. |
 | P11 | DUB HALFTIME | Dub half-time: few long notes, the root, a 5th below after the space. |
 | P12 | SKANK | Reggae skank: the off-beat of beats 2 and 4, a bubbling 5th in between. |
-| P13 | DEEP 332 | House 3-3-2: the long-short-long comp, stabs on 1, a, & of 2, a of 3, & of 4 (SWING 54). |
+| P13 | DEEP 332 | House 3-3-5-3-2: the comp, stabs on 1, a, & of 2, a of 3, & of 4 (SWING 54). |
 | P14 | PENTA RIFF | Minor pentatonic riff: root, b3, 4, 5, b7 (and the b7 below), a slide into the 4th. |
 | P15 | PAD BREATH | Pad breath: two long tied chords a bar, the second a major 3rd down, a step of air before each (GATE 100). |
 | P16 | DOTTED HOOK | Synthpop hook on dotted rhythms. |
 | P17 | HALF PAD | Half-time pad: one chord a bar held on ties, a step of air, then a whole tone down (two bars, GATE 100). |
 | P18 | TUMBAO | Latin: the anticipated bass of salsa and son. |
 | P19 | MOTORIK | Krautrock: driving 8ths between root and octave. |
-| P20 | WALK LINE | Jazz: a walking bass in quarters up and down a minor scale. |
+| P20 | WALK LINE | Jazz: a walking bass in eight 8ths up and down a minor scale. |
 | P21 | 2-STEP SUB | UK garage: the skipping sub bass of 2-step. |
 | P22 | GHOST FUNK | Neo-soul: sparse low ghost notes with one accent. |
 | P23 | TRIPLET SWAY | Blues 12/8: a rolling triplet groove. |
-| P24 | DUB PROG | Dub progression: off-beat stabs over two bars, the root, then a major 3rd down, then a 4th (SWING 54). |
+| P24 | DUB PROG | Dub progression: off-beat stabs over two bars, the root, then a major 3rd down, then a 4th (no SWING, as P03). |
 | P25 | RAVE STABS | 90s rave: stabs on the one, the a of one and the and of two. |
 | P26 | EP COMP | Electric-piano comping: short chords on a 3-3-2 rhythm with ties. |
 | P27 | NEON HOOK | Synthwave lead hook. |

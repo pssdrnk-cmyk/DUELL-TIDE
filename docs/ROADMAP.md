@@ -35,28 +35,28 @@ Source boundaries: `morph_glide.c`, `tide_ui.c`, `seq_rhythm.c`, `seq_phrase.c`,
 
 **Current behaviour:** a MULTI recalls both parts' sounds, patterns, arp settings, mixer, effects and sound-morph End B. Every load replaces both working patterns, including with empty patterns, and clears the previous undo copy. Loading while playing keeps the transport running. Saved P01–P32 pattern slots are separate and are not erased by the load. **SEQ KEEPS RUNNING currently protects patch changes, not MULTI loads.** The owner reported M07 clearing the playing pattern; U2 below records the requested correction as planned, not implemented.
 
-This is the compiled factory set checked at `bee34f9`, not a device readback; saved user overwrites can differ. “Empty” means no stored note steps, even when a classic arp supplies repeating notes from played keys. “8 / 6” means an eight-step loop with six populated note steps. SEQ uses the stored pattern as the arp; where no arp is listed, it is off. Delay and reverb columns name the stored effect types; chorus and per-part sends are also stored.
+This is the compiled factory set, not a device readback (the pattern and arp columns come from the stored records, `revise_multis dump`, after U2 B; the delay / reverb column is as checked at `bee34f9`); saved user overwrites can differ. “Empty” means no stored note steps, even when a classic arp supplies repeating notes from played keys. “8 / 6” means an eight-step loop with six populated note steps. SEQ uses the stored pattern as the arp; where no arp is listed, it is off. Delay and reverb columns name the stored effect types; chorus and per-part sends are also stored.
 
 | Multi | BPM | Part 1: sound, pattern and arp | Part 2: sound, pattern and arp | Delay / reverb |
 |---|---:|---|---|---|
 | M01 REESE SWAMP | 124 | REESE BASS: empty | SQUELCH: 8 / 6; SEQ 1/16 | Digital / Room |
 | M02 NIGHT ORGAN | 121 | PEDAL BASS: 8 / 5; SEQ 1/8 | DRAWBARS: 8 / 2; SEQ 1/8 | Digital / Room |
-| M03 PAD SPLIT | 97 | EVOLVING PAD: empty | EMBER GLOW: empty | Random / Resonator |
+| M03 PAD SPLIT | 97 | EVOLVING PAD: empty | EMBER GLOW: 12 / 4; SEQ 1/4 | Random / Resonator |
 | M04 DUB CHORD | 117 | BIG STAB: 16 / 2; SEQ 1/16 | TIDAL SUB: 16 / 4; SEQ 1/16 | Digital / Plate |
-| M05 WHISPER TIDE | 77 | DIGITAL PAD: empty; notes latch | WHISPER PAD: empty; random arp 1/1, two octaves | Random / Plate |
-| M06 TINE STRINGS | 77 | STRING MACH: empty | TINE ROOM: empty | Digital / Plate |
-| M07 FINAL REEL | 71 | BRASS PAD: empty; power chords | STRING MACH: empty; transpose +12 | Ping-pong / Shimmer |
-| M08 HAZY TENSOR | 117 | LADDER BASS: empty | GEARBOX: empty; random arp 1/16 triplets | Octave-up / Plate |
+| M05 WHISPER TIDE | 77 | DIGITAL PAD: 8 / 4 on whole-note steps with ties; notes latch | WHISPER PAD: empty; random arp 1/1, two octaves | Random / Plate |
+| M06 TINE STRINGS | 77 | STRING MACH: 4 / 2 on whole-note steps with ties | TINE ROOM: 16 / 4; SEQ 1/8 | Digital / Plate |
+| M07 FINAL REEL | 71 | BRASS PAD: 8 / 4 on whole-note steps with ties; power chords | STRING MACH: 8 / 2; SEQ 1/2 | Ping-pong / Shimmer |
+| M08 HAZY TENSOR | 117 | LADDER BASS: 16 / 6; SEQ 1/16 | GEARBOX: empty; random arp 1/16 triplets | Octave-up / Plate |
 | M09 ACID ETHER | 120 | BREADBIN: empty; up/down arp 1/8, two octaves | LADDER BASS: 16 / 13; SEQ 1/16 | Ping-pong / Hall |
-| M10 WIRED SNAIL | 120 | SFORZANDO: empty; transpose -24 | GLASS SHARDS: 16 / 16 chromatic; also up/down arp 1/16, three octaves | Ping-pong / Hall |
-| M11 EERIE SIGNAL | 120 | VESPERS: empty; diatonic triads | JAZZ CLUB: 16 / 16 chromatic; also random arp 1/8 | Ping-pong / Hall |
-| M12 DEAD BUFFER | 120 | FROZEN AIR: empty; power chords | MODEM: 16 / 16 chromatic; also up/down arp 1/16, three octaves | Ping-pong / Hall |
-| M13 COLD CHAPEL | 71 | EVOLVING PAD: empty; notes latch | SINGING BOWL: empty; up arp 1/2; latched power chords | Random / Resonator |
+| M10 WIRED SNAIL | 120 | SFORZANDO: empty; transpose -24 | GLASS SHARDS: 16 / 6; up/down arp 1/16, three octaves | Ping-pong / Hall |
+| M11 EERIE SIGNAL | 120 | VESPERS: empty; diatonic triads | JAZZ CLUB: 16 / 5; random arp 1/8 | Ping-pong / Hall |
+| M12 DEAD BUFFER | 120 | FROZEN AIR: empty; power chords | MODEM: 16 / 6; up/down arp 1/16, three octaves | Ping-pong / Hall |
+| M13 COLD CHAPEL | 71 | EVOLVING PAD: 8 / 4 on whole-note steps with ties; notes latch | SINGING BOWL: empty; up arp 1/2; latched power chords | Random / Resonator |
 | M14 GARGLE ACID | 127 | GROWL BASS: empty; transpose -24 | SQUELCH: 16 / 10; SEQ 1/16 | Digital / Plate |
 | M15 WOOD & SKIN | 107 | MARBLE RUN: empty; up arp 1/8, two octaves | TABLA TALK: 16 / 9; SEQ 1/16 | Digital / Room |
-| M16 CELLAR TAPE (was STRESS TEST, U2 B) | 122 | PLUCK BASS: SEQ 1/16 offbeat line | CLAVICLE: 16 / 2 chord stabs | Digital 4D / Plate |
+| M16 CELLAR TAPE (was STRESS TEST, U2 B) | 122 | PLUCK BASS: 16 / 5 offbeat line; SEQ 1/16 | CLAVICLE: 16 / 2 chord stabs | Digital 4D / Plate |
 
-M03, M05, M06, M07, M08, M13 and M16 have empty patterns on both parts. M10–M12 each contain the same rising C4–D#5 chromatic pattern on part 2, accented every fourth step, alongside their classic arp settings. All sixteen records store LAYER mode, no keyboard split (including M03 despite its name), straight global swing (50%) and no automation/parameter-lock events. MODE RECALL controls whether stored mode/crossfade settings are applied.
+Since U2 B every multi carries a stored sequence on at least one part; an “empty” part is left to a classic arp, chords or the played keys on purpose. M10–M12 each have their own 16-step figure on part 2 (no shared chromatic line any more). All sixteen records store LAYER mode, no keyboard split (including M03 despite its name), straight global swing (50%) and no automation/parameter-lock events. MODE RECALL controls whether stored mode/crossfade settings are applied.
 
 **Evidence and limits:** `multi.c:mu_unpack` clears steps absent from the record's map; `project.c:project_restore_runtime` copies those steps into the live tracks and clears undo. The inventory loaded all sixteen records through the current host UI harness and independently compared all 32 parts' pattern data with `tools/factory_multis/M01.bin`–`M16.bin`. A focused M01 → M07 probe reproduced replacement with TIDE on/off and SEQ FOLLOWS PATCH/KEEPS RUNNING: both live patterns became empty, transport stayed playing, all host pattern-slot bytes stayed unchanged, and saved P32 reloaded its six notes. This verifies source/host behaviour, not physical flash, audio or clock timing. Workspace evidence: a workspace file outside this repository, `FACTORY_MULTIS.md`, `inventory.json` and the probe sources. No firmware correction or installation was performed in this investigation.
 

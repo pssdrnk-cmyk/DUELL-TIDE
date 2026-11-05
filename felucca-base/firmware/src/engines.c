@@ -168,16 +168,16 @@ static const struct {
     /* 1 dub techno chord: stabs on the off-beat 8ths, two of them held on ties for the echo to carry, the last a minor 3rd up */
     {"DUB CHORD", 16, 2, {0, 0, O(0), 0, 0, 0, O(0), 0, 0, 0, O(0), 0, 0, 0, O(3), 0},
      {0, 0, A_, T_, T_, 0, 0, 0, 0, 0, A_, T_, T_, 0, 0, 0}},
-    /* 2 deep house shuffle: the off-beat 8th and the swung 16th after it, the last hit a whole tone down (SWING 60) */
+    /* 2 deep house shuffle: the off-beat 8th and a swung 16th three steps on (the e of 2), the last hit a whole tone down (SWING 60) */
     {"DEEP SHUFFLE", 16, 2, {0, 0, O(0), 0, 0, O(0), 0, 0, 0, 0, O(0), 0, 0, O(-2), 0, 0},
      {0, 0, A_, 0, 0, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0}, 60, 36},
-    /* 3 dub offbeat stabs: the off-beat 8ths only, accents on the 2nd and 4th (SWING 54) */
+    /* 3 dub offbeat stabs: the off-beat 8ths only, accents on the 2nd and 4th (all hits on even steps, so no SWING) */
     {"DUB OFFBEAT", 16, 2, {0, 0, O(0), 0, 0, 0, O(0), 0, 0, 0, O(0), 0, 0, 0, O(0), 0},
-     {0, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0, 0, 0, A_, 0}, 54, 42},
+     {0, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0, 0, 0, A_, 0}, 0, 42},
     /* 4 house stabs: off-beat 8ths with a double hit before the 2nd beat and the 4th, accents on 7 and 15 (SWING 56) */
     {"HOUSE STAB", 16, 2, {0, 0, O(0), O(0), 0, 0, O(0), 0, 0, 0, O(0), O(0), 0, 0, O(0), 0},
      {0, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0, 0, 0, A_, 0}, 56, 30},
-    /* 5 dotted delay figure: hits every three 16ths, root C then down a major 3rd, a 5th and a 4th (SWING 52) */
+    /* 5 dotted delay figure: hits 3-4-3-4 sixteenths apart, root C then down a major 3rd, a 5th and a 4th (SWING 52) */
     {"DOT DELAY", 16, 2, {O(0), 0, 0, O(0), 0, 0, 0, O(-4), 0, 0, O(-7), 0, 0, 0, O(-5), 0},
      {A_, 0, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0, 0, 0, 0}, 52, 36},
     /* 6 straight 8th-note pulse (new wave / driving rock bass), the last 8th on the 5th */
@@ -201,7 +201,7 @@ static const struct {
     /* 12 reggae skank: the off-beat of beats 2 and 4, a bubbling 5th in between */
     {"SKANK", 16, 2, {0, 0, 0, 0, 0, 0, O(0), 0, 0, 0, 0, O(7), 0, 0, O(0), 0},
      {0, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0, 0, 0, A_, 0}},
-    /* 13 house 3-3-2: the long-short-long comp, stabs on 1, a, & of 2, a of 3, & of 4 (SWING 54) */
+    /* 13 house 3-3-5-3-2: the comp, stabs on 1, a, & of 2, a of 3, & of 4 (SWING 54) */
     {"DEEP 332", 16, 2, {O(0), 0, 0, O(0), 0, 0, O(0), 0, 0, 0, 0, O(3), 0, 0, O(0), 0},
      {A_, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 54, 40},
     /* 14 minor pentatonic riff: root, b3, 4, 5, b7 (and the b7 below), a slide into the 4th */
@@ -222,7 +222,7 @@ static const struct {
     /* 19 krautrock: driving 8ths between root and octave */
     {"MOTORIK", 16, 2, {O(0), 0, O(0), 0, O(12), 0, O(0), 0, O(0), 0, O(0), 0, O(12), 0, O(0), 0},
      {A_, 0, 0, 0, A_, 0, 0, 0, A_, 0, 0, 0, A_, 0, 0, 0}},
-    /* 20 jazz: a walking bass in quarters up and down a minor scale */
+    /* 20 jazz: a walking bass in eight 8ths up and down a minor scale */
     {"WALK LINE", 8, 1, {O(0), O(3), O(5), O(6), O(7), O(5), O(3), O(2)},
      {A_, 0, 0, 0, A_, 0, 0, 0}},
     /* 21 UK garage: the skipping sub bass of 2-step */
@@ -234,9 +234,9 @@ static const struct {
     /* 23 blues 12/8: a rolling triplet groove */
     {"TRIPLET SWAY", 12, 4, {O(0), 0, O(7), O(3), 0, O(7), O(0), 0, O(7), O(5), 0, O(7)},
      {A_, 0, 0, A_, 0, 0, A_, 0, 0, A_, 0, 0}},
-    /* 24 dub progression: off-beat stabs over two bars, the root, then a major 3rd down, then a 4th (SWING 54) */
+    /* 24 dub progression: off-beat stabs over two bars, the root, then a major 3rd down, then a 4th (all hits on even steps, so no SWING) */
     {"DUB PROG", 32, 2, {0, 0, O(0), 0, 0, 0, O(0), 0, 0, 0, O(0), 0, 0, 0, O(0), 0, 0, 0, O(-4), 0, 0, 0, O(-4), 0, 0, 0, O(-5), 0, 0, 0, O(-5), 0},
-     {0, 0, A_, 0, 0, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0}, 54, 42},
+     {0, 0, A_, 0, 0, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, 0}, 0, 42},
     /* 25 90s rave: stabs on the one, the a of one and the and of two */
     {"RAVE STABS", 16, 2, {O(7), 0, 0, O(7), 0, 0, 0, O(10), 0, 0, 0, 0, O(7), 0, 0, O(12)},
      {A_, 0, 0, 0, 0, 0, 0, A_, 0, 0, 0, 0, A_, 0, 0, A_}},
