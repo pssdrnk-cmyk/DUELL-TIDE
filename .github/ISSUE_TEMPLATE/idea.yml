@@ -32,4 +32,4 @@ body:
     id: build
     attributes:
       label: Build (optional)
-      description: The release tag you use (for example stable-2026-11-03), or the version in ABOUT (hold HOME).
+      description: The TIDE version you use (MENU > SYSTEM > ABOUT, for example 1.0.0 or 1.0.0-b2).

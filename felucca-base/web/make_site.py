@@ -12,8 +12,8 @@
   install/index.html          the installer page (web/install/index.html)
   install/channels.json       what the installer offers: {"channels": {"stable": {...} | null, "beta": {...} | null}}; per channel: tag,
                               date, commit, file, size, sha256, product, notes_url, summary, known_issues (from the release notes)
-  install/stable/duell-tide-stable-DATE.fwsc   the Stable package (+ .sha256), when there is one
-  install/beta/duell-tide-beta-DATE.fwsc       the Beta package (+ .sha256), when there is one
+  install/stable/duell-tide-stable-X.Y.Z.fwsc    the Stable package (+ .sha256), when there is one
+  install/beta/duell-tide-beta-X.Y.Z-bN.fwsc     the Beta package (+ .sha256), when there is one
                               (+ LICENSE, LICENSING.md, LICENSES/: the package holds JieLi SDK files under Apache-2.0, see LICENSING.md)
   fm1pkg.js fm1ota.js fm1backup.js installer_state.js installer_backup.js   imported by the installer page as "../fm1*.js" (installer_backup.js imports editor/duellbackup.js)
   cheatsheet/                 the printable one-page cheat sheet (web/cheatsheet/index.html)
@@ -24,8 +24,8 @@
   web/make_site.py [--stable-pkg FILE.fwsc [--stable-info FILE.json]] [--beta-pkg FILE.fwsc [--beta-info FILE.json]] [--emu DIR] [OUT_DIR]
 
   OUT_DIR       default: site/ at the repository root
-  --stable-pkg  the Stable package, named duell-tide-stable-YYYY-MM-DD[.N].fwsc
-  --beta-pkg    the Beta package, named duell-tide-beta-YYYY-MM-DD[.N].fwsc
+  --stable-pkg  the Stable package, named duell-tide-stable-X.Y.Z.fwsc (TIDE's version; the older duell-tide-stable-YYYY-MM-DD[.N].fwsc too)
+  --beta-pkg    the Beta package, named duell-tide-beta-X.Y.Z-bN.fwsc (the older duell-tide-beta-YYYY-MM-DD[.N].fwsc too)
   --*-info      the release data (web/releases.py writes it from the GitHub release): tag, commit, published_at, notes_url, body, sha256.
                 Without it the tag and date come from the file name, and there is no commit, notes link or known-issues list.
                 When it has a sha256, the package must match it, or the build stops.
@@ -56,7 +56,7 @@ def product_of(raw):
     return "".join(chr((m - i - 1) & 0xFF) for i in range(BLOCKS) if (m := raw[i * BLK + KEEP]) != 0x7D)
 
 
-PKG_NAME = re.compile(r"duell-tide-(stable|beta)-(\d{4}-\d{2}-\d{2})(?:\.(\d+))?\.fwsc")
+import releases                                   # (the package names and their order: web/releases.py)
 REPO = "pssdrnk-cmyk/DUELL-TIDE"
 
 
@@ -100,9 +100,10 @@ def check_package(pkg):
 
 def channel_entry(channel, pkg, info_path):
     """check one package and return (manifest entry, bytes). Stops the build on a wrong name, identity or SHA-256."""
-    m = PKG_NAME.fullmatch(pkg.name)
-    if not m or m[1] != channel:
-        raise SystemExit(f"{pkg.name}: the {channel} package must be named duell-tide-{channel}-YYYY-MM-DD[.N].fwsc")
+    m = releases.parse_package(pkg.name)
+    if not m or m["channel"] != channel:
+        raise SystemExit(f"{pkg.name}: the {channel} package must be named duell-tide-{channel}-" + ("X.Y.Z-bN" if channel == "beta" else "X.Y.Z") + ".fwsc")
+    tag_default = f"{channel}-{m['date']}" if m["date"] else f"tide-{m['version']}"      # (a name from before TIDE had versions: the tag is channel-date)
     raw, product = check_package(pkg)
     sha = hashlib.sha256(raw).hexdigest()
     info = json.loads(Path(info_path).read_text(encoding="utf-8")) if info_path else {}
@@ -114,9 +115,9 @@ def channel_entry(channel, pkg, info_path):
     body = info.get("body") or ""
     entry = {
         "channel": channel,
-        "tag": info.get("tag") or f"{channel}-{m[2]}",
-        "version": m[2],
-        "date": m[2],
+        "tag": info.get("tag") or tag_default,
+        "version": m["version"],
+        "date": m["date"] or (info.get("published_at") or "")[:10],
         "commit": info.get("commit") or "",
         "file": f"{channel}/{pkg.name}",
         "size": len(raw),
@@ -124,7 +125,7 @@ def channel_entry(channel, pkg, info_path):
         "sha256_from_release": bool(want),
         "product": product,
         "published_at": info.get("published_at") or "",
-        "notes_url": info.get("notes_url") or f"https://github.com/{REPO}/releases/tag/{info.get('tag') or channel + '-' + m[2]}",
+        "notes_url": info.get("notes_url") or f"https://github.com/{REPO}/releases/tag/{info.get('tag') or tag_default}",
         "summary": summary_of(body),
         "known_issues": known_issues_of(body),
     }
@@ -157,9 +158,8 @@ def main():
         if pkg:
             entries[channel], blobs[channel] = channel_entry(channel, Path(pkg), getattr(a, channel + "_info"))
     s_, b_ = entries["stable"], entries["beta"]
-    def build_key(e):                                  # the date and .N in the package name; the publishing time only breaks a tie
-        m = PKG_NAME.fullmatch(Path(e["file"]).name)
-        return (m[2], int(m[3] or 0), e.get("published_at") or "")
+    def build_key(e):                                  # the version (or date and .N) in the package name; the publishing time only breaks a tie
+        return (releases.parse_package(Path(e["file"]).name)["key"], e.get("published_at") or "")
     if s_ and b_ and build_key(b_) <= build_key(s_):
         notes.append(f"beta {b_['tag']} is not a newer build than stable {s_['tag']}: not offered")
         entries["beta"] = b_ = None

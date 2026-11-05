@@ -1,6 +1,6 @@
 # DUELL with TIDE: a player's guide
 
-Five minutes. This guide describes the development line, `jam11`, as the source has it. The published beta `beta-2026-11-04` is a little older; the list at the end says what came after it.
+Five minutes. This guide describes the development line, `jam11`, as the source has it. It is the beta `1.0.0-b1` and what is merged after it. The older beta `beta-2026-11-04` is a little different; the list at the end says what came after it. The version of your unit is in MENU > SYSTEM > ABOUT, beside the date.
 
 The stable build `stable-2026-11-03` has an earlier TIDE. Its TIDE SETTINGS page is still called MORPH SETTINGS. It lacks the STYLE, TURNS, POLY, SYNC and ARC rows, and it has no JRNY role families or memory. The [README](../README.md#builds-stable-and-beta) lists the builds.
 
@@ -108,7 +108,7 @@ In the SEQ tools, hold SEQ and press G4 (KEEP): what you hear now becomes the pa
 
 # New since the stable build
 
-In the beta, not in the stable build `stable-2026-11-03`.
+In the betas (`beta-2026-11-04`, `1.0.0-b1`), not in the stable build `stable-2026-11-03`.
 
 | Feature | What it does |
 |---|---|
@@ -123,9 +123,9 @@ In the beta, not in the stable build `stable-2026-11-03`.
 
 Settings that survive a power cycle stay compatible: an older saved record loads with the new rows at their defaults.
 
-# New since the published beta
+# New since the beta of 2026-11-04
 
-Merged on the development line, in no published build yet (the source is the reference).
+Merged on the development line, in `1.0.0-b1` and after it (the source is the reference).
 
 | Feature | What it does |
 |---|---|

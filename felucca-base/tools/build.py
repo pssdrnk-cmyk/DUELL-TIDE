@@ -10,7 +10,7 @@ felucca.fwsc (package). A release build (--release; the version is always the VE
 and a folder release-<VERSION>-beta/ with the package, the app, SHA256SUMS and the licence files (DUELL 0.2.9: no sample data, no sample
 attribution any more); the device
 shows the version of the VERSION file at the DUELL root ("DUELL 0.2.1 beta"); the package is duell-<VERSION>-beta.fwsc
-(identity FM-1_901; on a TIDE build, the default, ABOUT shows its short commit or DUELL_TIDE_ID). Every build also writes duell-latest.fwsc (the same bytes) and duell-version.json {"version": "0.2.1"}.
+(identity FM-1_901; on a TIDE build, the default, ABOUT shows the TIDE version from TIDE_VERSION, or DUELL_TIDE_ID). Every build also writes duell-latest.fwsc (the same bytes) and duell-version.json {"version": "0.2.1"}.
 See BUILDING.md for the toolchain and the SDK.
 
 The JieLi toolchain is Linux x86-64 only. JIELI_TOOLCHAIN points at it; on
@@ -104,19 +104,36 @@ def tide_on():
     return os.environ.get("DUELL_TIDE") != "0"      # (firmware/src/tide.h: on unless built with DUELL_TIDE=0)
 
 
+def tide_version():
+    """TIDE's own version: the one line of TIDE_VERSION at the repository root (1.0.0-b1 = a beta; 1.0.0 = a release)"""
+    p = SRC.parent / "TIDE_VERSION"
+    v = p.read_text().strip() if p.is_file() else ""
+    if not re.fullmatch(r"\d{1,2}\.\d{1,2}\.\d{1,2}(?:-b\d{1,2})?", v):
+        raise SystemExit(f"build: {p} must hold MAJOR.MINOR.PATCH or MAJOR.MINOR.PATCH-bN (1.0.0, 1.0.0-b1), found {v!r}")
+    return v
+
+
+def tide_is_release(v):
+    """True when this tree is exactly the release v: clean tracked files, and HEAD is the commit of the tag tide-<v>.
+    Anything else (changes, other commit, tag not made yet, no git, a snapshot inside another repository) is not."""
+    try:
+        git = lambda *c: subprocess.run(["git", *c], cwd=SRC, capture_output=True, text=True, check=True).stdout.strip()
+        if (Path(git("rev-parse", "--show-toplevel")) / "felucca-base").resolve() != SRC:
+            return False
+        return git("rev-parse", "HEAD") == git("rev-parse", "--verify", "-q", f"refs/tags/tide-{v}^{{commit}}") and not git("status", "--porcelain", "--untracked-files=no")
+    except Exception:
+        return False
+
+
 def tide_id():
-    """the build id ABOUT shows next to the version: DUELL_TIDE_ID (a release tag), else the short commit hash"""
+    """the build id ABOUT shows next to the version: DUELL_TIDE_ID (any text), else TIDE_VERSION, with a trailing "+" unless the tree is exactly that release"""
     v = os.environ.get("DUELL_TIDE_ID")
     if v is None:
-        try:
-            git = lambda *c: subprocess.run(["git", *c], cwd=SRC, capture_output=True, text=True, check=True).stdout.strip()
-            if (Path(git("rev-parse", "--show-toplevel")) / "felucca-base").resolve() != SRC:
-                return None                            # (a snapshot inside another repository: that one's commit is not this tree's)
-            v = git("rev-parse", "--short=7", "HEAD") + ("+" if git("status", "--porcelain", "--untracked-files=no") else "")
-        except Exception:
-            return None                                # (no git: no id)
+        v = tide_version()
+        if not tide_is_release(v):
+            v += "+"
     if not re.fullmatch(r"[A-Za-z0-9.+-]{1,10}", v):
-        raise SystemExit(f"build: DUELL_TIDE_ID must be 1 to 10 of A-Z a-z 0-9 . + - (ABOUT has room for that), found {v!r}")
+        raise SystemExit(f"build: the TIDE build id must be 1 to 10 of A-Z a-z 0-9 . + - (ABOUT has room for that), found {v!r}")
     return v
 
 
@@ -368,7 +385,7 @@ def build_app():
             v = None                          # (no git: the day of the build, as before)
     if v and re.fullmatch(r"[A-Z][a-z]{2} [ 123]\d \d{4}", v):
         flags.append(f'-DDUELL_BUILD_DATE="{v}"')
-    if tide_on():                            # ABOUT's build id (F-22): DUELL_TIDE_ID, else the short commit ("+" when the tree has changes)
+    if tide_on():                            # ABOUT's build id: DUELL_TIDE_ID, else the TIDE version ("+" when the tree is not exactly the tagged release)
         v = tide_id()
         if v:
             flags.append(f'-DDUELL_TIDE_ID="{v}"')
