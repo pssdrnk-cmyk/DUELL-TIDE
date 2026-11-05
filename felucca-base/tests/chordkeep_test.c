@@ -273,6 +273,9 @@ static void hints(void)   /* (K3 / K4: the VOICE card is MODE, only while a chor
     t->p[P_CHRD] = CH_DIA7;
     run(100);
     expect("  DIA7 too", line_has("SET A SCALE"));
+    t->p[P_CHRD] = CH_DIA9;
+    run(100);
+    expect("  DIA9 too", line_has("SET A SCALE"));
     t->p[P_CHRD] = CH_MAJ;
     run(100);
     expect("  not for a fixed shape (MAJ names its own tones)", !line_has("SET A SCALE"));
