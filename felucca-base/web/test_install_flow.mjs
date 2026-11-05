@@ -12,7 +12,7 @@ import { launch, CHROME } from "./cdp.mjs";
 
 const dir = process.argv[2] ? resolve(process.argv[2]) : "";
 if (!dir || !existsSync(join(dir, "install", "channels.json")) || !CHROME) {
-  console.log("install flow: skipped (needs a built site folder as the argument and Chrome)");
+  console.log("SKIP install flow: (needs a built site folder as the argument and Chrome)");
   process.exit(0);
 }
 let failed = 0;

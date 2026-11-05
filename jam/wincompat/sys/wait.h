@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* JAM: Windows (llvm-mingw) stand-in for <sys/wait.h> with a working fork(). Windows has no fork(), but ntdll's
  * RtlCloneUserProcess (what the NT "POSIX subsystem" used) clones the calling process copy-on-write: the child continues
  * right after the call with the parent's memory, open CRT descriptors (pipes, files) and the sections mapped by

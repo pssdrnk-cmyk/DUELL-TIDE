@@ -175,6 +175,23 @@ static int shapes_voicings(void)
     t->p[P_CHRD] = CH_MIN7; bad += check("MIN7: C Eb G Bb (Cm7)", chord_is(60, (const uint8_t[]){60, 63, 67, 70}) && name_is(60, "Cm7"));
     t->p[P_CHRD] = CH_SUS4; bad += check("SUS4: C F G (Csus4)", chord_is(60, (const uint8_t[]){60, 65, 67, 0}) && name_is(60, "Csus4"));
     t->p[P_CHRD] = CH_POW; bad += check("POW: C G C (C5)", chord_is(60, (const uint8_t[]){60, 67, 72, 0}) && name_is(60, "C5"));
+    /* the house / dub shapes (lane S extend): appended to the list, so a stored CHRD keeps its meaning */
+    bad += check("the old CHRD numbers stay (POW 9) and the new ones follow (MIN9 10 .. DIA9 15)", CH_POW == 9 && CH_MIN9 == 10 && CH_DIA9 == 15 && TP[P_CHRD].max == 15);
+    t->p[P_CHRD] = CH_MIN9; bad += check("MIN9: C Eb Bb D (Cm9)", chord_is(60, (const uint8_t[]){60, 63, 70, 74}) && name_is(60, "Cm9"));
+    t->p[P_CHRD] = CH_MAJ9; bad += check("MAJ9: C E B D (Cmaj9)", chord_is(60, (const uint8_t[]){60, 64, 71, 74}) && name_is(60, "Cmaj9"));
+    t->p[P_CHRD] = CH_SUS2; bad += check("SUS2: C D G (Csus2)", chord_is(60, (const uint8_t[]){60, 62, 67, 0}) && name_is(60, "Csus2"));
+    t->p[P_CHRD] = CH_ADD9; bad += check("ADD9: C E G D (Cadd9)", chord_is(60, (const uint8_t[]){60, 64, 67, 74}) && name_is(60, "Cadd9"));
+    t->p[P_CHRD] = CH_MIN11; bad += check("MIN11: the quartal C F Bb Eb (no fifth)", chord_is(60, (const uint8_t[]){60, 65, 70, 75}) && name_is(60, "Cm7sus"));
+    t->p[P_CHRD] = CH_MIN9; t->p[P_VOIC] = VC_BASS;
+    bad += check("+OCT of a ninth: C3 C Eb Bb (the 9th goes, the third and seventh stay)", chord_is(60, (const uint8_t[]){48, 60, 63, 70}));
+    t->p[P_VOIC] = VC_CLOSE;
+    scale_g = 2; root_g = 0; t->p[P_CHRD] = CH_DIA9;                         /* C minor: 1-3-7-9 of the scale */
+    bad += check("DIA9 in C minor on C: C Eb Bb D (Cm9)", chord_is(60, (const uint8_t[]){60, 63, 70, 74}) && name_is(60, "Cm9"));
+    bad += check("  on Eb: Eb G D F (Ebmaj9, every tone in the scale)", chord_is(63, (const uint8_t[]){63, 67, 74, 77}) && name_is(63, "Ebmaj9"));
+    bad += check("  on F: F Ab Eb G (Fm9)", chord_is(65, (const uint8_t[]){65, 68, 75, 79}) && name_is(65, "Fm9"));
+    scale_g = 4; bad += check("  Mixolydian on C: C E Bb D (C9)", chord_is(60, (const uint8_t[]){60, 64, 70, 74}) && name_is(60, "C9"));
+    scale_g = 0; bad += check("  CHROMATIC: the plain MAJ9 (no scale to stack)", chord_is(60, (const uint8_t[]){60, 64, 71, 74}));
+    scale_g = 13; bad += check("  WHOLE TONE (6 notes): a triad, the 9th would double the root", chord_is(60, (const uint8_t[]){60, 64, 68, 0}));
     t->p[P_CHRD] = CH_MIN; scale_g = 1;
     bad += check("a fixed shape ignores the scale (MIN on D# in C major: D# F# A#)", chord_is(63, (const uint8_t[]){63, 66, 70, 0}));
     t->p[P_CHRD] = CH_MAJ;

@@ -20,6 +20,8 @@ What changes (multi.c's record comment of 1.0 and of 1.1, params.c, ext.h):
 Everything else is copied byte for byte. A record already version 8 is left as it is; any other version, or one that does not parse to its own length, stops.
 The harness is built with the host test flags against build/gen and build/gen_test (host_tests.sh makes them), DUELL_TIDE=0: plain DUELL's roll, the one 1.0 and
 1.1 share (tools/multi_v7_to_v8_test.py checks it against 1.1's own converted factory multis).
+The harness rolls with 1.0's RES ceilings (-DMORPH_UF_RESBP=40 -DMORPH_UF_RES=60; the firmware's are 17 and 28 in the new RES law since audit P07): the record's own values are copied in the
+law they were stored in, so the End B rolled from them is the one 1.0 rolled. A converted record keeps its old RES values; it is not migrated to the new law.
 --check changes nothing: lists what would be converted, exit 1 if anything would."""
 import argparse
 import os
@@ -170,7 +172,7 @@ def compile_harness():
         if not (ROOT / h).exists():
             sys.exit("multi_v7_to_v8: %s missing (run the device build and host_tests.sh once: sh jam/check.sh <group>)" % h)
     cc = ["cc", "-O1", "-w", "-DHOST_MIX_FOLLOWS_MASTER=1", "-DDUELL_TEST_MODE=1", "-DDUELL_TIDE=0", "-Ibuild/gen_test", "-Ibuild/gen",
-          "-Ifirmware/src", "-Itests", '-DFELUCCA_VERSION="x"', "-o", str(HARNESS), "tests/multi_v7_endb.c", "-lm"]
+          "-Ifirmware/src", "-Itests", '-DFELUCCA_VERSION="x"', "-DMORPH_UF_RESBP=40", "-DMORPH_UF_RES=60", "-o", str(HARNESS), "tests/multi_v7_endb.c", "-lm"]
     if run_sh(cc):
         sys.exit("multi_v7_to_v8: tests/multi_v7_endb.c does not compile")
 

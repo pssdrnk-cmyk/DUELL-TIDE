@@ -159,15 +159,15 @@ int main(void)
         int32_t d;
         for (j = 0, okall = 1; j < 10u; j++) {
             uint32_t e = scn_eng(RM[j].e), k;
-            okall &= mod_dst_removed(e, MD_EQLO) && mod_dst_removed(e, MD_EQMID) && mod_dst_removed(e, MD_EQHI) && mod_dst_removed(e, MD_RSIZE) && mod_dst_removed(e, MD_DEPTH) && mod_dst_removed(e, MD_DEPTH2)
+            okall &= mod_dst_removed(e, MD_EQLO) && mod_dst_removed(e, MD_EQMID) && mod_dst_removed(e, MD_EQHI) && mod_dst_removed(e, MD_RSIZE) && !mod_dst_removed(e, MD_DEPTH) && !mod_dst_removed(e, MD_DEPTH2)
                      && mod_dst_removed(e, MD_E2SHP);   /* (DUELL-TIDE T0: DUELL 1.1 removed FILTER ENV's TIMBRE depth too, mod.c mod_dst_removed) */
             for (k = 0; k < 8u; k++)
                 okall &= mod_dst_removed(e, MD_E1 + (int32_t)k) == (int)((RM[j].m >> k) & 1u);
             for (d = 1; d < MD_N; d++)
-                if (!MD_ENGINE(d) && d != MD_EQLO && d != MD_EQMID && d != MD_EQHI && d != MD_RSIZE && d != MD_DEPTH && d != MD_DEPTH2 && d != MD_E2SHP)
+                if (!MD_ENGINE(d) && d != MD_EQLO && d != MD_EQMID && d != MD_EQHI && d != MD_RSIZE && d != MD_E2SHP)
                     okall &= !mod_dst_removed(e, d);
         }
-        expect("LIST: removed: the EQ gains, REVERB SIZE (T0229), the LFO depths DEPTH / DEPTH2 (1.0) and FILTER ENV TIMBRE (1.1) on every engine and exactly the list engine slots named (WHEEL REG and ROTR stay)", okall);
+        expect("LIST: removed: the EQ gains, REVERB SIZE (T0229) and FILTER ENV TIMBRE (1.1) on every engine, the LFO levels DEPTH / DEPTH2 offered again (audit S15) and exactly the list engine slots named (WHEEL REG and ROTR stay)", okall);
         expect("LIST: the slots named are the ones the engines call so", str_eq(ENGINES[scn_eng("PHASE")]->edit[5].label, "LINE") && str_eq(ENGINES[scn_eng("LOFI")]->edit[6].label, "ARP") &&
                str_eq(ENGINES[scn_eng("TRIO")]->edit[0].label, "WAVE") && str_eq(ENGINES[scn_eng("FM6")]->edit[0].label, "ALG") && str_eq(ENGINES[scn_eng("WHEEL")]->edit[7].label, "ROTR"));
     }

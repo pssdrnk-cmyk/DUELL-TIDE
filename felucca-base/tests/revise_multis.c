@@ -82,7 +82,7 @@ static void show(const char *tag)
         sound_name(t, nm);
         printf("  part %u %-12s TRN %d VCE %s arp %s %s hold %s oct %d gate %d chord %s %s LEN %d SDIV %s LVL %d\n    steps:", pi + 1u, nm, t->p[P_TRANS],
                N_VOICE[t->p[P_VOICE] % 4], N_AMODE[t->p[P_AMODE] % 16], N_DIV[t->p[P_ARATE] % 17], N_HOLD[t->p[P_AHOLD] % 3], t->p[P_AOCT], t->p[P_AGATE],
-               N_CHRD[t->p[P_CHRD] % 10], N_VOIC[t->p[P_VOIC] % 5], t->p[P_SLEN], N_DIV[t->p[P_SDIV] % 17], t->p[P_LEVEL]);
+               N_CHRD[t->p[P_CHRD] % 16], N_VOIC[t->p[P_VOIC] % 5], t->p[P_SLEN], N_DIV[t->p[P_SDIV] % 17], t->p[P_LEVEL]);
         for (i = 0; i < (uint32_t)t->p[P_SLEN]; i++) {
             const step_t *s = &t->step[i];
             if (s->time == ST_REST || (!s->n && s->time != ST_TIE)) { printf(" ."); continue; }
@@ -153,7 +153,7 @@ static void apply(const rv_t *r)
         if (c->amode) t->p[P_AMODE] = (int16_t)find(N_AMODE, 16, c->amode);
         if (c->arate) t->p[P_ARATE] = (int16_t)find(N_DIV, 17, c->arate);
         if (c->hold) t->p[P_AHOLD] = (int16_t)find(N_HOLD, 3, c->hold);
-        if (c->chrd) t->p[P_CHRD] = (int16_t)find(N_CHRD, 10, c->chrd);
+        if (c->chrd) t->p[P_CHRD] = (int16_t)find(N_CHRD, 16, c->chrd);
         if (c->voic) t->p[P_VOIC] = (int16_t)find(N_VOIC, 5, c->voic);
         if (c->sdiv) t->p[P_SDIV] = (int16_t)find(N_DIV, 17, c->sdiv);
         if (c->trans != KEEP) t->p[P_TRANS] = c->trans;

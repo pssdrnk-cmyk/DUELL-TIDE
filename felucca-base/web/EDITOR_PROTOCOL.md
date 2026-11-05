@@ -219,7 +219,7 @@ The chord keys (SEL > CHORD on the device, `firmware/src/chord.c`) are two track
 
 | id | label | values |
 | --- | --- | --- |
-| 81 | CHRD | enum: 0 OFF, 1 DIA3, 2 DIA7 (the triad / seventh of the instrument's global SCALE and ROOT on the key: every tone in key; plain MAJ / MAJ7 while the scale is CHROMATIC), 3 MAJ, 4 MIN, 5 DOM7, 6 MAJ7, 7 MIN7, 8 SUS4, 9 POW (fixed shapes) |
+| 81 | CHRD | enum: 0 OFF, 1 DIA3, 2 DIA7 (the triad / seventh of the instrument's global SCALE and ROOT on the key: every tone in key; plain MAJ / MAJ7 while the scale is CHROMATIC), 3 MAJ, 4 MIN, 5 DOM7, 6 MAJ7, 7 MIN7, 8 SUS4, 9 POW (fixed shapes), 10 MIN9, 11 MAJ9, 12 SUS2, 13 ADD9, 14 MIN11 (the quartal 1-4-b7-b3, no fifth; more fixed shapes), 15 DIA9 (1-3-7-9 of the scale, the fifth left out; the plain MAJ9 while the scale is CHROMATIC) |
 | 82 | VOIC | enum: 0 CLOSE, 1 OPEN (1-5-3), 2 INV1, 3 INV2, 4 +OCT (the root an octave down; a seventh drops its fifth) |
 
 With CHRD on, a key, a MIDI note of that track and so the arp's held notes play the chord (at most 4 notes),

@@ -164,7 +164,7 @@ static void dump(uint32_t k)
         printf("  part %u: %-6s #%-2u %-12s | End B seed %u AMOUNT %u | LVL %d | VCE %s TRN %d | arp %s hold %s | CHRD %s %s | "
                "CHO %d DLY %d REV %d | M8 %s>%s %d | LEN %d | ATK %d | ARP RATE %s GATE %d OCT %d | UF CUT %d SLOPE %d\n",
                pi + 1u, ENGINES[t->eng_req % NENGINES]->name, t->preset, nm, b[1] | b[2] << 8, morph_amount_of(pi), t->p[P_TRIM],
-               N_VOICE[t->p[P_VOICE] % 4], t->p[P_TRANS], N_AMODE[t->p[P_AMODE] % 16], N_HOLD[t->p[P_AHOLD] % 3], N_CHRD[t->p[P_CHRD] % 10],
+               N_VOICE[t->p[P_VOICE] % 4], t->p[P_TRANS], N_AMODE[t->p[P_AMODE] % 16], N_HOLD[t->p[P_AHOLD] % 3], N_CHRD[t->p[P_CHRD] % 16],
                N_VOIC[t->p[P_VOIC] % 5], t->p[P_CHOR], t->p[P_DLY], t->p[P_REV], N_MSRC[t->p[P_M8SRC] % 15], N_MDST[t->p[P_M8DST] % 23],
                t->p[P_M8AMT], t->p[P_SLEN], t->p[P_ATK], N_DIV[t->p[P_ARATE] % 17], t->p[P_AGATE], t->p[P_AOCT], t->p[P_FREEA], t->p[P_FREED]);
         printf("    steps:");

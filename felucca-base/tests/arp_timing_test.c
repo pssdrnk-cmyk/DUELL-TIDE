@@ -6,6 +6,7 @@
  *   SWING  ARP SWG 75: the offbeat of a pair lands after the middle (it used to land at 30 %); SWG 50 stays straight
  *   START  a key that lands while PLAY runs starts the arp on the next ARP RATE boundary of the transport (audit S07; it started in the block the key landed)
  *   PROB   ARP PROB 0 never plays a step (it played 1 in 128), PROB 127 plays every step
+ *   TIE    ARP SEQ holds a note through the TIE steps after it (audit G07: the chord / pad patterns P01, P15, P17)
  * Built and run by host_tests.sh (name: arptiming): the firmware sources against ui_test.c's stubs. */
 #define UI_TEST_NO_MAIN 1
 #include "ui_test.c"
@@ -121,13 +122,14 @@ static void test_drift(void)
 }
 
 /* the first 9 onsets of an UP arp over three keys with ARP SWG pct: where the offbeat lands in the pair, in % */
+static int off_rate = 2;                                  /* (the ARP RATE it measures: N_DIV index) */
 static double offbeat(int pct, double *whole)
 {
     track_t *t = &trk[0];
     uint32_t at[12], n = 0, last;
     fresh();
     t->p[P_AMODE] = AM_UP;
-    t->p[P_ARATE] = 2;
+    t->p[P_ARATE] = (int16_t)off_rate;
     t->p[P_AOCT] = 1;
     t->p[P_ASWING] = (int16_t)pct;
     t->p[P_APROB] = 127;
@@ -143,7 +145,7 @@ static double offbeat(int pct, double *whole)
             at[n++] = now_s - (t->arp_pos < CTL ? t->arp_pos : 0u);
         }
     }
-    *whole = (double)(at[8] - at[0]) / (8.0 * div_samples(2));
+    *whole = (double)(at[8] - at[0]) / (8.0 * div_samples((uint32_t)off_rate));
     return 100.0 * (double)(at[1] - at[0]) / (double)(at[2] - at[0]);
 }
 
@@ -157,6 +159,20 @@ static void test_swing(void)
     expect("ARP SWG 62: the offbeat lands at 62 % of the pair (audit S03)", p62 > 61.0 && p62 < 63.0);
     expect("ARP SWG 75: the offbeat lands at 75 % of the pair (audit S03; it was 70)", p75 > 74.0 && p75 < 76.0);
     expect("ARP SWG 75: the steps still add up (8 steps = 4 pairs of 2 sixteenths)", w > 0.998 && w < 1.002);
+    {   /* S14: a triplet RATE (8T, 16T, 4T) is not swung; the neighbouring straight ones (1/8, 1/16) still are */
+        static const int R[5] = {4, 5, 10, 0, 2};
+        uint32_t i;
+        double q[5];
+        for (i = 0; i < 5u; i++) {
+            off_rate = R[i];
+            q[i] = offbeat(75, &w);
+        }
+        off_rate = 2;
+        printf("arptiming: ARP SWG 75 at 8T / 16T / 4T / 1/4 / 1/16: the offbeat lands at %.1f / %.1f / %.1f / %.1f / %.1f %%\n", q[0], q[1], q[2], q[3], q[4]);
+        expect("ARP SWG 75 on a triplet RATE (8T, 16T, 4T): straight, the offbeat at 50 % (audit S14; it was 75)",
+               q[0] > 49.0 && q[0] < 51.0 && q[1] > 49.0 && q[1] < 51.0 && q[2] > 49.0 && q[2] < 51.0);
+        expect("ARP SWG 75 on 1/4 and 1/16: still swung to 75 %", q[3] > 74.0 && q[3] < 76.0 && q[4] > 74.0 && q[4] < 76.0);
+    }
 }
 
 /* steps played by an UP arp in `n` steps at ARP PROB p: an arp note sounding right after its step */
@@ -289,6 +305,54 @@ static void test_start(void)
     expect("PLAY stopped: the first arp note sounds in the block the key lands", t->arp_idx != last);
 }
 
+/* G07: ARP SEQ honours TIE. The tied steps of a pattern hold the note before them (the chord / pad patterns P01 DUB CHORD, P15 PAD BREATH,
+ * P17 HALF PAD used to play a short stab on each note step and a rest on each tie). Returns the longest sounding run in 1/16ths over two cycles
+ * of the pattern (k: its place in engines.c PATTERNS[]) with ARP GATE 64 (half a step); *runs: how many separate notes sounded */
+static double tie_longest(uint32_t k, uint32_t *runs)
+{
+    track_t *t = &trk[0];
+    uint32_t i, up, run = 0, best = 0, P = div_samples(PATTERNS[k].div), blocks;
+    fresh();
+    for (i = 0; i < NSTEP; i++) {
+        if (i < PATTERNS[k].len)
+            pat_make_step(&t->step[i], PATTERNS[k].note[i], PATTERNS[k].flags[i]);
+    }
+    t->p[P_SLEN] = PATTERNS[k].len;
+    t->p[P_SDIV] = PATTERNS[k].div;
+    t->p[P_AMODE] = AM_SEQ; t->p[P_ARATE] = PATTERNS[k].div; t->p[P_AOCT] = 1; t->p[P_AHOLD] = 0; t->p[P_AGATE] = 64; t->p[P_APROB] = 127;
+    input_on(t, 60, 100);
+    *runs = 0;
+    blocks = 2u * PATTERNS[k].len * P / CTL;
+    for (i = 0, up = 0; i < blocks; i++) {
+        blk();
+        if (ARP_UP(t)) {
+            if (!up)
+                (*runs)++;
+            run += CTL;
+        } else if (up)
+            run = 0;
+        up = ARP_UP(t) != 0;
+        if (i > 4u * P / CTL && run > best)         /* (the first cycle's start-up skipped: it may start mid-pattern) */
+            best = run;
+    }
+    return (double)best / P;
+}
+
+static void test_ties(void)
+{
+    static const uint32_t pat[3] = {0, 14, 16};     /* P01 DUB CHORD, P15 PAD BREATH, P17 HALF PAD */
+    uint32_t j, runs[3];
+    double len[3];
+    for (j = 0; j < 3u; j++) {
+        len[j] = tie_longest(pat[j], &runs[j]);
+        printf("arptiming: %-10s ARP SEQ: longest note %.2f sixteenths, %u notes in two cycles\n", PATTERNS[pat[j]].name, len[j], runs[j]);
+    }
+    expect("P01 DUB CHORD: a note with two tied steps sounds about 2.5 sixteenths (not a half-step stab)", len[0] > 2.4 && len[0] < 2.6);
+    expect("P15 PAD BREATH: the chord sounds through its 6 ties, about 6.5 sixteenths", len[1] > 6.4 && len[1] < 6.6);
+    expect("P17 HALF PAD: the chord sounds through its 14 ties, about 14.5 sixteenths", len[2] > 14.4 && len[2] < 14.6);
+    expect("a tied note is one note: PAD BREATH has 4 notes in two cycles (2 a cycle), not one per step", runs[1] == 4u);
+}
+
 int main(void)
 {
     test_drift();
@@ -296,6 +360,7 @@ int main(void)
     test_prob();
     test_velocity();
     test_start();
+    test_ties();
     printf("arptiming: %s\n", bad ? "FAILED" : "all ok");
     return bad ? 1 : 0;
 }

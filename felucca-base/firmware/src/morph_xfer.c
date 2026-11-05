@@ -357,7 +357,7 @@ static int32_t morph_xarc(uint32_t tp, uint32_t a, uint32_t b)
 }
 static int32_t morph_xdepth(uint32_t tp) { return morph_xarc(tp, XW0, XW1); }
 #define XBR_Q8 4634                                      /* GLIDE's breath at its deepest: two octaves of the dial (2317 Q8 steps an octave) */
-/* WASH LEVEL (TIDE LIST; tide_ui.c keeps it in the settings): 0 OFF (the default since 2026-11-01, owner), 1 LOW, 2 MID, 3 HIGH. It scales GLIDE's movement
+/* WASH (TIDE LIST; tide_ui.c keeps it in the settings): 0 OFF (the default since 2026-11-01, owner), 1 LOW, 2 MID, 3 HIGH. It scales GLIDE's movement
  * (the breath, the swell: XWL, x 0 .. 1.5), a transition's swell, and the wash's fill (15 dB under the part's level at rest at MID,
  * 3 dB a step: XWS). OFF: plain glides, a transition still smoothed (its filter dip, the INSERT's, FM6's valley) */
 static uint8_t morph_wlvl = 0u;
@@ -604,7 +604,7 @@ static __attribute__((noinline)) void morph_wash(uint32_t pp, int32_t *b, uint32
     int32_t g1 = 0, dg, wl, wh, al, ah, i;
     int move = x->snd && (x->motion || (x->need && x->tp > XW0 && x->tp < XW1));
     int32_t nz[64];
-    if (n > 64u)
+    if (n > 64u || (!morph_wlvl && !v->wg))             /* (WASH OFF, the default, and no wash left to fade: nothing to measure or make; switched on, the level at rest is learnt again in ~90 ms) */
         return;
     for (i = 0; i < (int32_t)n; i++)
         p += (int64_t)b[i] * b[i] >> 8;
@@ -628,7 +628,7 @@ static __attribute__((noinline)) void morph_wash(uint32_t pp, int32_t *b, uint32
         pn += (int64_t)nz[i] * nz[i] >> 8;
     }
     if (move && morph_wlvl) {
-        int64_t fill = (v->wref >> XWS[morph_wlvl & 3u]) - v->wnow;   /* (to 9 dB under the level at rest at MID: WASH LEVEL) */
+        int64_t fill = (v->wref >> XWS[morph_wlvl & 3u]) - v->wnow;   /* (to 9 dB under the level at rest at MID: WASH) */
         want = fill > 0 ? fill : 0;
         if (x->need)
             want += ((v->wref >> (XWS[morph_wlvl & 3u] + 3u)) * morph_xdepth(x->tp)) >> 15;   /* (a transition's floor: 24 dB under it at MID) */
@@ -636,7 +636,7 @@ static __attribute__((noinline)) void morph_wash(uint32_t pp, int32_t *b, uint32
     }
     if (want > 0 && pn > 0) {                            /* the gain: the noise's level to the wanted one, Q12, at most x 16 */
         int64_t r = (want << 10) / pn;                  /* (Q10 of the power ratio) */
-        r = r > ((int64_t)256 << 10) ? (int64_t)256 << 10 : r;
+        r = r > ((int64_t)256 << 10) - 1 ? ((int64_t)256 << 10) - 1 : r;   /* (just under x 16: r << 14 stays below 2^32, else it wraps to 0 and the wash fades out where it is most wanted) */
         g1 = (int32_t)xisqrt((uint32_t)(r << 14));      /* (sqrt of Q24: Q12) */
     }
     if (g1 != v->wg)                                     /* (in and out slowly, ~50 ms each way: a bed that comes and goes, not a burst) */

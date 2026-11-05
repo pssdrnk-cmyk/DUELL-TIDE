@@ -33,16 +33,16 @@
 #define FELUCCA_UART 1           /* TRS MIDI IN on UART1 / PH8 */
 #endif
 #ifndef DUELL_RAMPLACE
-#define DUELL_RAMPLACE 0         /* DUELL two-core stage 1a (tools/build.py sets DUELL_RAMPLACE=1 for the product; 0 here is the one-core reference of the host tests): part 2's voice code in RAM (ramplace.c) */
+#define DUELL_RAMPLACE 0         /* DUELL two-core stage 1a (on in every build.py build except DUELL_BENCH=1; env DUELL_RAMPLACE=0 turns it off): part 2's voice code in RAM (ramplace.c) */
 #endif
 #ifndef FELUCCA_ID
 #define FELUCCA_ID "FM-1_900"    /* package identity (build.py: the .fwsc marker string) */
 #endif
 #ifndef DUELL_TWOCORE
-#define DUELL_TWOCORE 0          /* DUELL: the second core plays part 2 (stage 1, developer builds only: docs/TWOCORE_STAGE1.md) */
+#define DUELL_TWOCORE 0          /* DUELL: the second core plays part 2 (on in every build.py build except DUELL_BENCH=1; env DUELL_TWOCORE=0 turns it off: docs/TWOCORE_STAGE1.md) */
 #endif
 #ifndef DUELL_VELO
-#define DUELL_VELO 0             /* DUELL: key velocity and aftertouch from the keys (sense.c, docs/design/VELO_STUDY.md; developer builds until the recording tunes sense_cal.h) */
+#define DUELL_VELO 0             /* DUELL: key velocity and aftertouch from the keys (sense.c, docs/design/VELO_STUDY.md; on in every build.py build; env DUELL_VELO=0 turns it off) */
 #endif
 #ifndef DUELL_VELO_CAPTURE
 #define DUELL_VELO_CAPTURE 0     /* DUELL developer build ONLY (tools/build.py: env DUELL_VELO_CAPTURE=1 with FELUCCA_CDC=1; never with --release): the raw key readings over the USB serial console (velocap.h, velocap.c, docs/VELO_CSV.md) */

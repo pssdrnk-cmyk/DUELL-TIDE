@@ -49,8 +49,8 @@ static __attribute__((noinline)) void click_render(int32_t *out, uint32_t n, uin
         env -= (env >> 8) + 1;
         if (env < 0)
             env = 0;
-        l = out[2u * i] + (v << sh);
-        r = out[2u * i + 1u] + (v << sh);
+        l = out[2u * i] + (int32_t)((uint32_t)v << sh);
+        r = out[2u * i + 1u] + (int32_t)((uint32_t)v << sh);
         out[2u * i] = (l >> (15u + sh)) != (l >> 31) ? (l >> 31) ^ hi : l;
         out[2u * i + 1u] = (r >> (15u + sh)) != (r >> 31) ? (r >> 31) ^ hi : r;
     }

@@ -514,7 +514,7 @@ static void sub_exact(void)
         cfg = w | 1u << 2;
         for (i = 0; i < CTL; i++)
             tmp[i] = (int32_t)i * 7;
-        sub_pass(tmp, cfg, ph, st, g0, g1, 0, 0, CTL);
+        sub_pass(tmp, cfg, ph, st, g0, g1, CTL);
         gq = g0 << 8;
         for (i = 0; i < CTL; i++) {
             uint32_t p = (ph << 1) + (st << 1) * i;
@@ -524,7 +524,7 @@ static void sub_exact(void)
         }
         ok &= !memcmp(tmp, ref, sizeof tmp);
     }
-    ck("HARMONICS 0: the wave times the gain's ramp, sample for sample (SINE, TRI, SQUARE at -1; sub_pass with no harmonics runs none)", ok);
+    ck("HARMONICS 0: the wave times the gain's ramp, sample for sample (SINE, TRI, SQUARE at -1)", ok);
 }
 static void sub_levels(void)
 {

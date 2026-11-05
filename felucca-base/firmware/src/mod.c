@@ -217,8 +217,8 @@ static __attribute__((noinline)) int mod_e_inert(const track_t *t, uint32_t k)
  * the engine slots that are a list of choices, every change a hard switch: ANALOG WAVE, PHASE WAVE 1 / WAVE 2 / LINE, LOFI BITS / WAVE / ARP, TRIO WAVE /
  * MODE, PHYS MODEL, NOISE MODE, FM6 ALG (WHEEL's REG and ROTR stay: the engine ramps them). The ids stay (append-only) and a stored route to one plays as
  * before: the unit and the editor only no longer offer it (mod_dst_offered).
- * 1.0 (owner, 2026-10-21): the LFO master depths DEPTH (DEP1) and DEPTH2 (DEP2) are removed the same way: invisible in the list, the engine keeps them
- * and the ids stay (LFO 1 / LFO 2 LEVEL knobs come on the LFO pages after the release). The factory sounds no longer route to them */
+ * 1.0 hid the LFO master depths DEPTH (DEP1) and DEPTH2 (DEP2) the same way; the engine always ran them and two factory patches route AT to DEP2, so (owner D20, audit S15)
+ * they are offered again as LFO 1 LEVEL and LFO 2 LEVEL, the names of the LFO pages' LEVEL knobs */
 static __attribute__((noinline)) int mod_dst_removed(uint32_t eng, int32_t d)
 {
     const engine_t *e = ENGINES[eng % NENGINES];
@@ -226,8 +226,6 @@ static __attribute__((noinline)) int mod_dst_removed(uint32_t eng, int32_t d)
     if (d == MD_EQLO || d == MD_EQMID || d == MD_EQHI || d == MD_RSIZE)   /* (T0229, owner: REVERB SIZE out for now: SPRING bends its pitch while SIZE moves) */
         return 1;
     if (d == MD_E2SHP)                                                    /* (DUELL 1.1: FILTER ENV's TIMBRE depth no longer acts: the card is gone, the stored id is never read) */
-        return 1;
-    if (d == MD_DEPTH || d == MD_DEPTH2)                                  /* (1.0, owner: the LFO depths are invisible; the code stays in the mod_depth readers) */
         return 1;
     if (!MD_ENGINE(d))
         return 0;
@@ -382,7 +380,7 @@ static void mod_voice_add(uint32_t s, uint32_t d, int32_t x, int32_t a, int32_t 
                           int32_t *gain)
 {
     if (d == MD_PITCH)
-        *pit += (x * a * 3) >> 15;
+        *pit += (x * a * 3) >> 11;               /* 1/256 st: whole 1/16 st to the pitch, the rest to the fine factor (mod_pit) */
     else if (d == MD_CUT)
         *cut += (x * a) >> 7;
     else if (d == MD_SHP)
@@ -742,10 +740,20 @@ static __attribute__((noinline)) void mod_end(track_t *t)
     mod->on = 0;
 }
 
+/* the matrix's pitch sum pit (1/256 st) onto m: whole 1/16 st in pitch16, the rest in the fine factor (14.8 per 1/16 st), the increment again */
+static void mod_pit(vmod_t *m, int32_t pit)
+{
+    m->pitch16 = clamp(m->pitch16 + (pit >> 4), 0, 2047);
+    m->fine += (pit & 15) * 947 >> 10;
+    m->inc = pitch_inc(m->pitch16);
+    if (m->fine)
+        m->inc += (uint32_t)((int32_t)(m->inc >> 12) * m->fine);
+}
+
 /* a voice's modulation (voice.c track_render, when the part's window mod is on), onto its vmod_t m as track_render made it:
- * pitch (the increment again, with the fine factor fine as there), cutoff and shape (clamped to what the
+ * pitch (mod_pit: the increment again, the sum's odd 1/256 st into the fine factor), cutoff and shape (clamped to what the
  * fixed routings can reach), the amplitude (and v->env_out, the next block's start). env: its envelope */
-static __attribute__((noinline)) void mod_voice(track_t *t, voice_t *v, vmod_t *m, int32_t fine)
+static __attribute__((noinline)) void mod_voice(track_t *t, voice_t *v, vmod_t *m)
 {
     const mod_win_t *mod = &MODW(t);
     int32_t pit = mod->pit, cut = mod->cut, shp = mod->shp, gain = mod->gain, env = m->envq15;
@@ -761,10 +769,7 @@ static __attribute__((noinline)) void mod_voice(track_t *t, voice_t *v, vmod_t *
         mod_voice_add(s, mod->vdst[k], x, mod->vamt[k], &pit, &cut, &shp, &gain);
     }
     if (pit) {
-        m->pitch16 = clamp(m->pitch16 + pit, 0, 2047);
-        m->inc = pitch_inc(m->pitch16);
-        if (fine)
-            m->inc += (uint32_t)((int32_t)(m->inc >> 12) * fine);
+        mod_pit(m, pit);
     }
     m->cutoff = clamp(m->cutoff + cut, -150 * 256, 150 * 256);
     m->shape = clamp(m->shape + shp, -62 * 256, 190 * 256);
@@ -799,7 +804,7 @@ static __attribute__((noinline)) int32_t mod_f2_voice(track_t *t, voice_t *v)
 /* mod_cycle_voice: the CYCLE-sourced slots with a per-note destination (PITCH, CUT, SHP, AMP) applied to voice v's vmod_t m after mod_voice has made its own, with the same sums and the same
  * re-computations (the pitch increment again with the fine factor, cutoff and shape clamped to what the fixed routings reach, the amplitude with v->env_out), and the latest note's CYCLE kept
  * for the per-block destinations (t->m_cycle, as ENV 2's m_env2). Called when an active slot reads CYCLE (t->cy), whatever its destination */
-static __attribute__((noinline)) void mod_cycle_voice(track_t *t, voice_t *v, vmod_t *m, int32_t fine)
+static __attribute__((noinline)) void mod_cycle_voice(track_t *t, voice_t *v, vmod_t *m)
 {
     const int16_t *p = t->p;
     int32_t pit = 0, cut = 0, shp = 0, gain = 32767, x = cycle_value(t, v);
@@ -816,10 +821,7 @@ static __attribute__((noinline)) void mod_cycle_voice(track_t *t, voice_t *v, vm
     if (!t->cym && !(t->vrm & 2u))
         return;
     if (pit) {
-        m->pitch16 = clamp(m->pitch16 + pit, 0, 2047);
-        m->inc = pitch_inc(m->pitch16);
-        if (fine)
-            m->inc += (uint32_t)((int32_t)(m->inc >> 12) * fine);
+        mod_pit(m, pit);
     }
     m->cutoff = clamp(m->cutoff + cut, -150 * 256, 150 * 256);
     m->shape = clamp(m->shape + shp, -62 * 256, 190 * 256);
@@ -894,7 +896,9 @@ static __attribute__((noinline)) const char *mod_dst_name(const track_t *t, int3
     case MD_RATE:   return "LFO 1\nRATE";
     case MD_VIB:    return "LFO 1\nDEPTH";      /* (change list 2026-10-28 D, owner's wording: under the category PITCH the item is LFO 1 DEPTH, was LFO 1 PITCH DEPTH) */
     case MD_RATE2:  return "LFO 2\nRATE";
-    case MD_IMIX:   return "INSERT\nMIX";
+    case MD_DEPTH:  return "LFO 1\nLEVEL";      /* (owner D20, audit S15: the LFO pages' LEVEL knob as a destination; was hidden, named DEPTH twice) */
+    case MD_DEPTH2: return "LFO 2\nLEVEL";
+    case MD_IMIX:  return "INSERT\nMIX";
     case MD_E2ATK:  return "FILTER ENV\nATTACK";
     case MD_E2DEC:  return "FILTER ENV\nDECAY";
     case MD_E2SUS:  return "FILTER ENV\nSUSTAIN";
@@ -1017,8 +1021,8 @@ static __attribute__((noinline)) void mod_dst_line(const track_t *t, int32_t v, 
     /* every destination's name in full, one after the other (none for E1..E8 and the INSERT's A B C: named by their owner) */
     static const char FULL[] =
         "NONE\0""PITCH\0""MULTI CUTOFF\0""TIMBRE\0""AMP LEVEL\0""PAN\0""SATURATION\0""CHORUS SEND\0"
-        "DELAY SEND\0""REVERB SEND\0""LFO 1 RATE\0""LFO 1 DEPTH\0""\0""\0""\0""\0""\0""\0""\0""\0""LFO 1 DEPTH\0"
-        "LFO 2 RATE\0""LFO 2 DEPTH\0""PATCH LEVEL\0""\0""\0""\0""INSERT MIX\0""EQ LOW GAIN\0""EQ MID GAIN\0""EQ HIGH GAIN\0"
+        "DELAY SEND\0""REVERB SEND\0""LFO 1 RATE\0""LFO 1 DEPTH\0""\0""\0""\0""\0""\0""\0""\0""\0""LFO 1 LEVEL\0"
+        "LFO 2 RATE\0""LFO 2 LEVEL\0""PATCH LEVEL\0""\0""\0""\0""INSERT MIX\0""EQ LOW GAIN\0""EQ MID GAIN\0""EQ HIGH GAIN\0"
         "DUCK DEPTH\0""FILTER ENV ATTACK\0""FILTER ENV DECAY\0""FILTER ENV SUSTAIN\0""FILTER ENV RELEASE\0""FILTER ENV MULTI CUTOFF\0"
         "FILTER ENV TIMBRE\0""MULTI RES\0""CHORUS RATE\0""CHORUS DEPTH\0""DELAY FEEDBACK\0""DELAY MOD DEPTH\0"
         "DELAY MOD RATE\0""REVERB SIZE\0""REVERB DAMPING\0""MULTI MODE\0"

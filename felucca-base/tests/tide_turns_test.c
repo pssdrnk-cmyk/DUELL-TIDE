@@ -444,26 +444,27 @@ static void sync_run(uint32_t mode, uint32_t div, uint32_t seed, uint32_t base, 
     *maxpush = pushes[0];
     (void)a;
 }
+#define NSEEDS 12u
 static void t_sync(void)
 {
     uint32_t mode, seed, sh[3] = {0, 0, 0}, ob[3] = {0, 0, 0}, mp[3] = {0, 0, 0}, s, o, m, same = 1, kept[3] = {0, 0, 0};
     CHECK("rows: TURNS / POLY / SYNC show their names", !strcmp(jl_vname(JL_TURNS, 1), "TAKE TURNS") && !strcmp(jl_vname(JL_TURNS, 0), "TOGETHER") &&
           !strcmp(jl_vname(JL_POLY, 2), "WIDE") && !strcmp(jl_vname(JL_SYNC, 1), "SOFT") && !strcmp(jl_vname(JL_SYNC, 2), "PUSH") && jl_n(JL_SYNC) == 3u);
     for (mode = 0; mode < 3u; mode++)
-        for (seed = 1; seed <= 12u; seed++) {
+        for (seed = 1; seed <= NSEEDS; seed++) {
             sync_run(mode, 2, seed, 0, &s, &o, &m);
             sh[mode] += s, ob[mode] += o, mp[mode] = m > mp[mode] ? m : mp[mode];
             sync_run(mode, 2, seed, 1, &s, &o, &m);
             kept[mode] += s;
         }
-    printf("  SYNC (12 seeds, 64 moves, E-position hits): hits on the and / push: OFF %u, SOFT %u, PUSH %u of 48; kept from 48 and-hits: OFF %u, SOFT %u, PUSH %u; beats hit by moved: %u %u %u\n",
-           sh[0], sh[1], sh[2], kept[0], kept[1], kept[2], ob[0], ob[1], ob[2]);
+    printf("  SYNC (%u seeds, 64 moves, E-position hits): hits on the and / push: OFF %u, SOFT %u, PUSH %u of %u; kept from %u and-hits: OFF %u, SOFT %u, PUSH %u; beats hit by moved: %u %u %u\n",
+           NSEEDS, sh[0], sh[1], sh[2], 4u * NSEEDS, 4u * NSEEDS, kept[0], kept[1], kept[2], ob[0], ob[1], ob[2]);
     CHECK("SYNC SOFT / PUSH: the and + push share rises over OFF, PUSH at least SOFT", sh[1] > sh[0] && sh[2] >= sh[1]);
     CHECK("  .. no moved hit lands on a beat", ob[1] == 0u && ob[2] == 0u);
     CHECK("  .. the push cap: at most 1 (SOFT) / 2 (PUSH) in the bar", mp[1] <= 1u && mp[2] <= 2u);
-    CHECK("  .. a pattern already on the and keeps most of it (SOFT 75 %)", kept[1] * 4u >= 48u * 3u);
+    CHECK("  .. a pattern already on the and keeps most of it (SOFT 75 %)", kept[1] * 4u >= 4u * NSEEDS * 3u);
     CHECK("  .. and keeps more than OFF does", kept[1] >= kept[0]);
-    for (seed = 1; seed <= 12u; seed++) {                  /* triplets (SDIV 4): not a supported grid, SYNC behaves as OFF */
+    for (seed = 1; seed <= NSEEDS; seed++) {                  /* triplets (SDIV 4): not a supported grid, SYNC behaves as OFF */
         uint32_t s0, o0, m0, s1, o1, m1;
         sync_run(0, 4, seed, 0, &s0, &o0, &m0);
         sync_run(2, 4, seed, 0, &s1, &o1, &m1);
@@ -577,13 +578,13 @@ static void t_answer(void)
             uint32_t b = (bar + turn) & 3u;
             sqm_bar = (uint8_t)bar, sqm_bar_turn = (uint8_t)turn;
             for (p = 0; p < 2u; p++) {
-                uint32_t lead = b < 2u ? 1u : 0u, masked = 0, any = 0;
+                uint32_t eb = (uint32_t)(uint8_t)bar + turn, lead = (b < 2u ? 1u : 0u) ^ (sqm_hash((uint32_t)morph.seed, eb >> 3, 0x4Cu) & 1u), masked = 0, any = 0;   /* (the opener swaps by the seed: M04) */
                 for (i = 0; i < 16u; i++)
                     if (thin_bit(p, i)) {
                         any = 1;
                         masked |= seq_play_step(&trk[p], i, &buf) == &SQM_REST;
                     }
-                wrong += any && (p == lead ? masked : !masked);
+                wrong += any && (p == lead || ((eb + 2u * p) & 3u) == 3u ? masked : !masked);
             }
         }
     }
@@ -594,7 +595,7 @@ static void t_answer(void)
         for (bar = 0; bar < 8u; bar++) {
             sqm_bar = (uint8_t)bar, sqm_bar_turn = 0;
             for (p = 0; p < 2u; p++) {
-                uint32_t varies = ((bar + 2u * p) & 3u) == 3u, lead = (bar & 1u) ? 0u : 1u, masked = 0;
+                uint32_t varies = ((bar + 2u * p) & 3u) == 3u, lead = ((bar & 1u) ? 0u : 1u) ^ (sqm_hash((uint32_t)morph.seed, bar >> 3, 0x4Cu) & 1u), masked = 0;
                 for (i = 0; i < 16u; i++)
                     if (thin_bit(p, i))
                         masked |= seq_play_step(&trk[p], i, &buf) == &SQM_REST;
@@ -608,6 +609,10 @@ static void t_answer(void)
     sqm_bar = 0, sqm_bar_turn = 0;
     {   uint32_t m0 = 0;
         for (i = 0; i < 16u; i++)
+            m0 += seq_play_step(&trk[0], i, &buf)->time == ST_NOTE;
+        while (sqm_hash((uint32_t)morph.seed, 0u, 0x4Cu) & 1u)   /* (a seed whose opener is not swapped in bar 0) */
+            morph.seed++;
+        for (i = 0, m0 = 0; i < 16u; i++)
             m0 += seq_play_step(&trk[0], i, &buf)->time == ST_NOTE;
         sqm_turns = 1;
         for (i = 0, n = 0; i < 16u; i++)
@@ -795,7 +800,7 @@ static void t_arc(void)
     CHECK("hand: ARC OFF says so and arms nothing", !strcmp(tarc_drop_hand(), "ARC OFF") && tarc_dropphr == 0xFFu);
     sqm_arc = 1, sqm_auto = 3, tarc.run = 1, tarc.phase = AP_RISE, tarc.len = tarc.left = 5, tarc.hand = 0;
     CHECK("gesture: OCT- + K2 (tide_reset(1)) arms the drop; K1 / K3 / K4 resets are unchanged", tide_reset(1u) == 1 && tarc.hand == 1u && tarc.next == AP_DROP &&
-          (gl.time = 5, tide_reset(2u), gl.time == 3u) && (gl.wait = 2, tide_reset(3u), gl.wait == 0u));
+          (tide_style = STY_MINIMAL, gl.time = 5, tide_reset(2u), gl.time == 3u) && (gl.wait = 2, tide_reset(3u), gl.wait == 0u));   /* (audit C9: to the STYLE's TIME and WAIT; MINIMAL: 8 bars, OFF) */
     tarc.hand = 0;
     /* brightness lean per phase */
     sqm_arc = 2;
@@ -879,9 +884,10 @@ static void t_style(void)
     jl_put(JL_STYLE, 3);
     tide_settings();
     gl.time = 5;
-    tide_reset(2u);                                               /* OCT- + K3: TIME 8 bars */
     tide_settings();
-    CHECK("  .. also OCT- + K3 (the reset)", tide_style == STY_CUSTOM && gl.time == 3u);
+    tide_reset(2u);                                               /* OCT- + K3: back to the style's TIME (AMBIENT: 64 bars), the style stays CUSTOM */
+    tide_settings();
+    CHECK("  .. also OCT- + K3 (the reset goes back to the style it came from)", tide_style == STY_CUSTOM && gl.time == 6u);
     jl_put(JL_STYLE, 3);
     tide_settings();
     jl_put(JL_TARGET, GT_SEQ);
@@ -1014,7 +1020,7 @@ static void t_store(void)
     put_rec(rec, 5 + TS_N);
     tide_seen_ok = 0;
     tide_settings();
-    CHECK("a full record: ARC read back", sqm_arc == 0u || sqm_arc == 2u);
+    CHECK("a full record: ARC read back", sqm_arc == 2u);
 }
 
 /* audit C4: the AUTO TIDE page's redraw hash changes when any one of its settings changes, whatever TURNS is (TAKE TURNS' factor masked VARY BARS) */
@@ -1064,8 +1070,55 @@ static void t_sig(void)
     sqm_turns = 0;
 }
 
+/* B04: the SEQ fader moved after an edit plays the edited ends at once (not up to 20 ms on) */
+static void t_fader_edit(void)
+{
+    step_t keep[NSTEP];
+    setup(16, 16, 2, 2, 0);
+    seqm_set_fader(0, 0);
+    trk[0].step[0].note[0] = 30;
+    seqm_set_fader(0, 127);
+    memcpy(keep, sqm_pat[0][1], sizeof keep);
+    sqm_refresh(0, 1);
+    CHECK("SEQ fader moved after an edit: the ends are rebuilt at once", !memcmp(keep, sqm_pat[0][1], sizeof keep) && sqm_pat[0][1][0].note[0] == 30);
+}
+
+/* B05: an ARP SEQ part's phrase clock is the arp's loop (ARATE), not the sequencer's (SDIV) */
+static uint32_t loops_in(uint32_t arp, uint32_t sdiv, uint32_t arate)
+{
+    uint32_t a, b, n0;
+    setup(16, 16, sdiv, sdiv, arp);
+    trk[0].p[P_ARATE] = (int16_t)arate;
+    n0 = tide_seq_loops[0];
+    run_turns(16, INTERNAL, &a, &b);
+    return (uint32_t)(uint8_t)(tide_seq_loops[0] - n0);
+}
+static void t_arp_clock(void)
+{
+    uint32_t arp = loops_in(1, 2, 3), plain = loops_in(0, 3, 3), sdiv = loops_in(0, 2, 2);
+    printf("   ARP SEQ SDIV 2 ARATE 3: %u loops in 16 bars; a plain part at DIV 3: %u; at DIV 2: %u\n", arp, plain, sdiv);
+    CHECK("ARP SEQ part: the phrase clock counts the arp's loops (ARATE), not the sequencer's (SDIV)",
+          arp + 1u >= plain && plain + 1u >= arp && (arp > sdiv + 1u || sdiv > arp + 1u));
+}
+
+/* M09: the phrase edits' cadence follows ARC (every loop in the rise, every 4th in the breakdown, else every 2nd) */
+static void t_cadence(void)
+{
+    uint32_t rise, brk, peak, off;
+    sqm_arc = 1, sqm_auto = 3, tarc.run = 1;
+    tarc.phase = AP_RISE, rise = tarc_need();
+    tarc.phase = AP_BREAK, brk = tarc_need();
+    tarc.phase = AP_PEAK, peak = tarc_need();
+    sqm_arc = 0, off = tarc_need();
+    sqm_arc = 1;
+    CHECK("phrase edit cadence: rise 1 loop, breakdown 4, peak 2, ARC off 2", rise == 1u && brk == 4u && peak == 2u && off == 2u);
+}
+
 int main(void)
 {
+    t_cadence();
+    t_arp_clock();
+    t_fader_edit();
     t_turns();
     t_sig();
     t_poly();
