@@ -14,7 +14,7 @@
  *   DRIFT    the end left is rolled again from the Original: the sound and the pattern vary around themselves.
  *   WANDER   the end left walks on from the end reached (morph_music.c mm_walk; seq_morph.c seqm_wander_gen): always computed
  *            from the Original, within AMOUNT / SEQ AMT, nothing pulls it home.
- *   JOURNEY  the end left becomes the next target (ui_jam.c tide_journey): a sound of the same engine and kind, never the
+ *   JOURNEY  the end left becomes the next target (tide_ui.c tide_journey): a sound of the same engine and kind, never the
  *            other part's; the pattern a WANDER generation, each part its own.
  * WAIT holds each arrival that many bars before the next trip. WANDER and JOURNEY follow the phrase grid: the bars run (gl.wbars)
  * give each generation the tier of the largest boundary crossed since the last (morph_music.c mm_tier: 16, 32, 64, 128 bars).
@@ -23,7 +23,7 @@
  * interrupt changes. */
 
 enum { GT_SOUND, GT_SEQ, GT_BOTH };                      /* TARGET */
-enum { GM_ONCE, GM_LOOP, GM_DRIFT, GM_WANDER, GM_JOURNEY };   /* MODE (JOURNEY: each arrival, the end left the next target, ui_jam.c tide_journey) */
+enum { GM_ONCE, GM_LOOP, GM_DRIFT, GM_WANDER, GM_JOURNEY };   /* MODE (JOURNEY: each arrival, the end left the next target, tide_ui.c tide_journey) */
 #define GLIDE_WAITS 6u
 static const uint8_t GLIDE_WAIT_BARS[GLIDE_WAITS] = {0, 1, 2, 4, 8, 16};
 #define GLIDE_TIMES 7u

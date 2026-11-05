@@ -500,7 +500,7 @@ static void put_hits(uint32_t p, const uint8_t *at, uint32_t n)
         trk[p].step[at[k]] = (step_t){{(uint8_t)(60 + k)}, 1, ST_NOTE, 0, 100, 0};
 }
 static int thin_bit(uint32_t p, uint32_t i) { return (int)((sqm_thin[p][i >> 5] >> (i & 31u)) & 1u); }
-/* D2: LEAD and ECHO answer with a lead or pluck line (the Original's category): part p on its engine's first LEAD sound */
+/* D2: LEAD answers with a lead or pluck line (the Original's category): part p on its engine's first LEAD sound */
 static void lead_sound(uint32_t p)
 {
     uint32_t e = trk[p].eng_req, j;
@@ -512,9 +512,9 @@ static void lead_sound(uint32_t p)
 static void t_answer(void)
 {
     static const uint8_t H[] = {0, 2, 3, 4, 6, 7, 8, 10, 11, 12, 14, 15};
-    uint32_t i, p, bar, drops, cand, nbad = 0, wrong = 0, sh[2] = {0, 0}, n, seed;
+    uint32_t i, p, bar, drops, cand, nbad = 0, wrong = 0, n;
     step_t buf;
-    CHECK("TURNS shows its four values", !strcmp(jl_vname(JL_TURNS, 2), "LEAD") && !strcmp(jl_vname(JL_TURNS, 3), "ECHO") && jl_n(JL_TURNS) == 4u);
+    CHECK("TURNS shows its three values (ECHO folded into LEAD: D7)", !strcmp(jl_vname(JL_TURNS, 2), "LEAD") && jl_n(JL_TURNS) == 3u);
     setup(16, 16, 2, 2, 0), lead_sound(0), lead_sound(1);
     put_hits(0, H, 12);
     put_hits(1, H, 12);
@@ -628,26 +628,6 @@ static void t_answer(void)
         poly_len[0] = 0;
         CHECK("  .. a part in a POLY stretch is never thinned", n == 12u);
     }
-    /* ECHO: part 1's movable hits lean into the places part 2 thinned away */
-    for (n = 0; n < 2u; n++)
-        for (seed = 1; seed <= 12u; seed++) {
-            uint32_t k, m;
-            setup(16, 16, 2, 2, 0), lead_sound(0), lead_sound(1);
-            put_hits(1, H, 12);
-            put_hits(0, (const uint8_t[]){0, 4, 8, 12, 1, 5, 9, 13}, 8);
-            sqm_auto = 3, sqm_turns = n ? 3u : 2u, sqm_sync = 0;
-            seqm_poll();
-            sqm_refresh(0, 1), sqm_refresh(1, 1);
-            sqm_thin_build();
-            memset(&rhythm, 0, sizeof rhythm);
-            for (m = 0; m < 48u; m++) {
-                rhythm_mutate(0, seed * 7919u + m * 104729u);
-                sqm_refresh(0, 1);
-            }
-            for (k = 0; k < 16u; k++)
-                if (sqm_hit(&trk[0].step[k]) && thin_bit(1, (uint32_t)((int32_t)k + rhythm_offset(0, k))))
-                    sh[n]++;
-        }
     {   /* audit C9: the masks are built when what they read changes, not every frame */
         uint32_t m0, m1, ok1, ok2, ok3;
         setup(16, 16, 2, 2, 0), lead_sound(0), lead_sound(1);
@@ -659,7 +639,7 @@ static void t_answer(void)
         sqm_thin[0][0] = 0x5A5A5A5Au;                     /* (a marker a rebuild would overwrite) */
         tide_poll(), tide_poll();
         ok1 = sqm_thin[0][0] == 0x5A5A5A5Au && m0 != 0u;
-        sqm_turns = 3;                                   /* ECHO: rebuilt at once */
+        sqm_turns = 1;                                   /* TAKE TURNS: rebuilt at once */
         tide_poll();
         ok2 = sqm_thin[0][0] != 0x5A5A5A5Au;
         sqm_turns = 2;
@@ -670,8 +650,6 @@ static void t_answer(void)
         seqm_poll(), tide_poll(), tide_poll();
         CHECK("  .. a new length rebuilds them (no bit past the loop)", !(sqm_thin[0][0] >> 12) && sqm_thin[0][0] != m0);
     }
-    printf("  ECHO (12 seeds, 48 moves): part 1 hits on part 2's thinned places: LEAD %u, ECHO %u\n", sh[0], sh[1]);
-    CHECK("ECHO: more of part 1's hits sit on part 2's thinned places than with LEAD", sh[1] > sh[0]);
     sqm_turns = 1, sqm_sync = 1, sqm_auto = 0;
     sqm_thin_build();
 }
@@ -938,8 +916,8 @@ static void t_style(void)
             tide_seen_ok = 0;
             tide_style = STY_DUB;
             tide_settings();
-            CHECK(k == 0 ? "a 7-byte record: CUSTOM, its values kept" : k == 1 ? "a 9-byte record: CUSTOM, its values kept" : "an 11-byte record: CUSTOM, its values kept",
-                  tide_style == STY_CUSTOM && gl.mode == GM_LOOP && gl.time == 2u && gl.wait == 1u && morph_wlvl == 2u && (L[k] < 9u || (sqm_turns == 3u && sqm_poly == 2u)) &&
+            CHECK(k == 0 ? "a 7-byte record: CUSTOM, its values kept" : k == 1 ? "a 9-byte record: CUSTOM, its values kept (a stored ECHO reads as LEAD: D7)" : "an 11-byte record: CUSTOM, its values kept",
+                  tide_style == STY_CUSTOM && gl.mode == GM_LOOP && gl.time == 2u && gl.wait == 1u && morph_wlvl == 2u && (L[k] < 9u || (sqm_turns == 2u && sqm_poly == 2u)) &&
                   (L[k] < 11u || (sqm_sync == 0u && sqm_arc == 2u)));
         }
     }

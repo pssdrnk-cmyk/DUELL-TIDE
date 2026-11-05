@@ -134,7 +134,7 @@ static void test_style_custom(void)
     transport_req = 2u; frame(); frame();
     gl.on = gl.armed = 0;
     tide_style_apply(STY_DUB);
-    gl.mode = GM_WANDER; gl.time = 2; gl.wait = 1; sqm_vary_all = 1; sqm_turns = 3; sqm_poly = 2; sqm_sync = 2; sqm_arc = 2; morph_wlvl = 3;
+    gl.mode = GM_WANDER; gl.time = 2; gl.wait = 1; sqm_vary_all = 1; sqm_turns = 2; sqm_poly = 2; sqm_sync = 2; sqm_arc = 2; morph_wlvl = 3;
     frame();
     CHECK("CUSTOM: a hand edit turns STYLE to CUSTOM", tide_style == STY_CUSTOM);
     jl_sel = JL_STYLE;
@@ -142,7 +142,7 @@ static void test_style_custom(void)
     CHECK("CUSTOM: OCT- picks PEAK and applies it", tide_style == STY_PEAK && gl.mode == GM_JOURNEY && gl.time == 3u && sqm_poly == 1u);
     tide_list_oct(2u);                                       /* OCT+: back onto CUSTOM */
     CHECK("CUSTOM: OCT+ is CUSTOM again", tide_style == STY_CUSTOM);
-    CHECK("CUSTOM:   with the player's nine values back", gl.mode == GM_WANDER && gl.time == 2u && gl.wait == 1u && sqm_vary_all == 1u && sqm_turns == 3u &&
+    CHECK("CUSTOM:   with the player's nine values back", gl.mode == GM_WANDER && gl.time == 2u && gl.wait == 1u && sqm_vary_all == 1u && sqm_turns == 2u &&
                                                         sqm_poly == 2u && sqm_sync == 2u && sqm_arc == 2u && (morph_wlvl & 3u) == 3u);
     tide_list_oct(1u); tide_list_oct(1u); tide_list_oct(2u); tide_list_oct(2u);   /* PEAK, AMBIENT, PEAK, CUSTOM */
     CHECK("CUSTOM: and again after two presets in between", tide_style == STY_CUSTOM && gl.mode == GM_WANDER && sqm_poly == 2u && sqm_arc == 2u && (morph_wlvl & 3u) == 3u);
