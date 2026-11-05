@@ -92,7 +92,7 @@ MULTIS = [
     dict(slot=4, name="DUB CHORD", mode="LAYER",
          g=dict(G_BPM=117, G_DTIME="8D", G_DFDBK=71, G_DCOLOR=47, G_DMIX=97, G_DMODE="DIGI", G_DMDEP=17, G_RTYPE="SPRING", G_RSIZE=77, G_RDAMP=71),
          parts=[dict(sound="BIG STAB", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=37, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="CLOSE",
-                                                 P_FREEA="u_uf(1700)", P_FREEB=17, P_DLY=77, P_REV=37, P_CHOR=0,
+                                                 P_FREEA="u_uf(1700)", P_FREEB=6, P_DLY=77, P_REV=37, P_CHOR=0,
                                                  P_DKSRC="PUMP", P_DKRATE="1/4", P_DKDEP=37, P_LEVEL=109),
                      steps=". . 0 . . . . . . . 0 . . . . ."),
                 dict(sound="TIDAL SUB", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=120, P_AHOLD="OFF", P_VOICE="LEG", P_LEVEL=117),

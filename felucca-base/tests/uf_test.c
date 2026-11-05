@@ -502,7 +502,7 @@ static void t_bypass_series(void)
 }
 
 /* ------------------------------------------------------------------ 4 RESPONSE --- */
-#define TAMP 16000.0
+static double TAMP = 16000.0;                            /* (the RES LAW check measures at 2000: under the soft knee at full RES) */
 /* the gain of uf_run at frequency f (a sine, from rest: 0.3 s to settle, 0.3 s measured), CUT step c (Q8 any), MODE, RES, SLOPE; the
  * bypass (MODE LP at the open end): 1 */
 static double uf_gain(int32_t cq8, int32_t mode, int32_t res, int32_t slope, double f)
@@ -643,6 +643,31 @@ static void t_response(void)
     expect("BP (MODE 64) at CUT 41: the band round 690 Hz within 3.5 dB (24 dB: 4.5), 50 Hz and 10 kHz 12 dB down or more", ok_bp);
     expect("MODE 32 (LP>BP) and 96 (BP>HP): the blends, one end kept, the other 12 dB down, nothing above 0.5 dB", ok_blend);
     expect("RES 127 raises the cutoff by 12 dB or more over RES 0 (12 and 24 dB), below 24 dB", ok_res);
+    {   /* RES LAW (audit P07): the damping exponential in RES, so the whole knob is resonance: a peak from RES 32 on, about equal dB every 32 steps.
+         * The peak over the passband (LP at CUT 41: the largest gain from 0.6 to 1.4 x the cutoff against the gain at 1/8 of it).
+         * The linear law of before: 12 dB 0 / 0.9 / 5.7 / 16.8 dB at RES 32 / 64 / 96 / 127 (no peak at all up to RES 48) */
+        double pk[2][4], fc = uf_hz(41);
+        int ok_law = 1;
+        TAMP = 2000.0;
+        for (s = 1; s <= 2u; s++) {
+            for (q = 0; q < 4u; q++) {
+                int32_t rr = q < 3u ? 32 * (int32_t)(q + 1u) : 127;
+                double g0 = uf_gain(41 << 8, 0, rr, (int32_t)s, fc / 8), m = 0;
+                for (r = 0; r <= 16u; r++) {
+                    double g = uf_gain(41 << 8, 0, rr, (int32_t)s, fc * (0.6 + 0.05 * r));
+                    m = g > m ? g : m;
+                }
+                pk[s - 1u][q] = db_of(m / g0);
+            }
+            printf("uf:   RES law, %s: the peak over the passband at RES 32 / 64 / 96 / 127: %.1f / %.1f / %.1f / %.1f dB\n", s == 2u ? "24 dB" : "12 dB",
+                   pk[s - 1u][0], pk[s - 1u][1], pk[s - 1u][2], pk[s - 1u][3]);
+            ok_law &= pk[s - 1u][0] > 0.5;
+            for (q = 1; q < 4u; q++)
+                ok_law &= pk[s - 1u][q] - pk[s - 1u][q - 1u] > 3.0 && pk[s - 1u][q] - pk[s - 1u][q - 1u] < 8.0;
+        }
+        TAMP = 16000.0;
+        expect("RES LAW: a peak from RES 32 on and 3..8 dB more every 32 steps up to 127, 12 and 24 dB (the linear law gave none below 48)", ok_law);
+    }
 }
 
 /* ------------------------------------------------------------------ 4b BASS AT HIGH RES --- */
