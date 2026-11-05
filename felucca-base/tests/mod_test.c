@@ -773,7 +773,7 @@ static void test_part2_modes(void)
     part2_run(DM_LAYER, MS_LFO2, MD_PAN, -64, &lo, &hi, &r, 0);
     check("LAYER: part 2's LFO 2 -> PAN -64 swings both ways too", lo < -80 && hi > 80);
     part2_run(DM_SPLIT, MS_LFO, MD_PAN, 63, &lo, &hi, &r, 0);
-    check("SPLIT: part 2 stays hard right (PAN and its modulation are not heard, by design)", lo == 100 && hi == 100);
+    check("SPLIT: part 2 stays hard right (PAN and its modulation are not heard, by design; the left may hold a LSB of the DC blocker: the master knee is linear, the old tanh squashed it to 0)", lo >= 98 && hi >= 99);
     for (k = 0, ok = 1; k < 5u; k++) {             /* every destination class: part 2's sound changes in LAYER */
         double d = 0, e = 0;
         uint32_t i;

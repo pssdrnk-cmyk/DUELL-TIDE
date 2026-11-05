@@ -19,9 +19,9 @@
 /* what 0.2.20 rendered (build this file on c755ca0 with -DSC_BASE=1 to print them) */
 /* DUELL-TIDE T0: the three re-made with DUELL 1.1 (its delay feedback rounding, mulq15r, and the 1.1 level stages); against 1.0: same level, spectrum and 100 ms envelope,
  * residual -66 dB (docs/JAM11_SOUND_REFERENCES.md). 1.0: 0x95e535e6638a3a73, 0xb8a39b104ccea803, 0xec69d9e302f65abd */
-#define H_ST_SEND0 0x2d06d9a773c2f0dbull
-#define H_ST_DEPTH0 0x63211e1720e2b2c3ull
-#define H_DUEL_CHO 0x966eb25d94c84fefull
+#define H_ST_SEND0 0x085fb15db6c60f57ull   /* master soft knee (audit R05, D22): re-based on purpose, was 0x2d06d9a773c2f0db */
+#define H_ST_DEPTH0 0xd5674bd9b999ce4full   /* master soft knee (audit R05, D22): re-based on purpose, was 0x63211e1720e2b2c3 */
+#define H_DUEL_CHO 0xc2b8b9f439234575ull   /* master soft knee (audit R05, D22): re-based on purpose, was 0x966eb25d94c84fef */
 
 static uint64_t sc_fnv(const int32_t *x, uint32_t n, uint64_t h)
 {

@@ -30,11 +30,11 @@ static int mapm(int m) { return m == 0 ? (t_pp ? DMD_PING : DMD_DIGITAL) : m == 
 /* the hashes of the delay before the modes (build this file on the base commit with -DDLYEV_BASE=1 to print them) */
 /* DUELL-TIDE T0: re-made with DUELL 1.1 (the delay feedback rounded to the nearest, fx_bus.c mulq15r); against 1.0: same level, spectrum and 100 ms envelope, residual -61 dB
  * (docs/JAM11_SOUND_REFERENCES.md). 1.0: plain / LAYER 0xa6ed282e79e1eb73, PING-PONG 0x66f304e16ff4684d, + DEPTH 0x2d1f57efffb7d6ea, DUEL 0x88f81196f4b235b6 */
-#define H_PLAIN 0x07c7f62034d7a649ull
-#define H_PP 0x35359c7d06e2cf1eull
-#define H_PPMOD 0xf6cf76a96437bd62ull
-#define H_LAYER 0x07c7f62034d7a649ull
-#define H_DUEL 0xa0ad17f248d529e1ull
+#define H_PLAIN 0xb5d3f37293326a69ull   /* master soft knee (audit R05, D22): re-based on purpose, was 0x07c7f62034d7a649 */
+#define H_PP 0x93f4fdf040b43352ull   /* .. was 0x35359c7d06e2cf1e */
+#define H_PPMOD 0x15ba0ede361679d8ull   /* .. was 0xf6cf76a96437bd62 */
+#define H_LAYER 0xb5d3f37293326a69ull   /* .. was 0x07c7f62034d7a649 */
+#define H_DUEL 0x7d404682f08f7422ull   /* .. was 0xa0ad17f248d529e1 */
 
 static uint64_t hash_of(const int32_t *l, const int32_t *r, uint32_t n)
 {

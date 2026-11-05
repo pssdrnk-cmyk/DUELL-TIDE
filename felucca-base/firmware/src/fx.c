@@ -60,7 +60,7 @@ static int32_t lo_buf[CTL];             /* the reverb low cut's output block (fx
  * the patch's and the multi's, is never written). While SPACE is off its middle (or gliding back to it: sv.on) the buses read these
  * instead of song.g's (fx_bus.c SV_*); in the middle (sv.on 0) every bus reads song.g as ever: bit for bit. space_step (below, after
  * perform.c) makes them a block at a time; s = SPACE / 100 (-1 .. 1), each value from the stored one:
- *   the sends into the chorus, the delay and the reverb (every part's, both buses in DUEL)   x (1 - 0.85 |s|) left .. x (1 + 0.6 s) right
+ *   the sends into the chorus, the delay and the reverb (every part's, both buses in DUEL)   x (1 - 0.85 |s|) left .. x (1 + 0.13 s) right
  *   the reverb's SIZE (its decay; ROOM, SPRING, HALL, SHIM, RESO each read it as ever)       r - 0.75 r |s| left .. r + (150 - r) s right
  *   the delay's FDBK                                                                        x (1 - 0.75 |s|) left .. up to 0.92 right
  *   the chorus's DEPTH                                                                      x (1 - 0.8 |s|) left .. up to the knob's largest right
@@ -79,9 +79,9 @@ static struct {
     int32_t ac, ad, ar;                  /* the send floors to the right (0.2.9): every part's chorus, delay and reverb send at least this
                                           * (Q15 of a send's range, 32766 = send 127; space_tap) */
 } sv;
-#define SV_ADD_C 7864                            /* SPACE +100's send floor (every send at least this): chorus 24 % of a send's range (send 30 of 127) */
-#define SV_ADD_D 11796                           /* .. delay 36 % (send 46) */
-#define SV_ADD_R 19661                           /* .. reverb 60 % (send 76) */
+#define SV_ADD_C 5568                            /* SPACE +100's send floor (every send at least this): chorus 17 % of a send's range (send 22 of 127; 3 dB under the first values, audit R06 / D22) */
+#define SV_ADD_D 8352                            /* .. delay 25.5 % (send 32) */
+#define SV_ADD_R 13922                           /* .. reverb 42.5 % (send 54) */
 #define SV_RESO_ADD 43                           /* .. RESO's reverb floor: 43 / 256 of it (10 %, send 13): its tuned combs rang into their int16 limit */
 #define SV_SHIM_ADD 128                          /* .. SHIM's: 128 / 256 (30 %, send 38): with the part's own send on top its ROOM combs did */
 static int32_t sp_fc[CTL], sp_fd[CTL], sp_fr[CTL];   /* SPACE to the right: what the parts' send floors add to the chorus, delay, reverb */
@@ -234,10 +234,27 @@ static void track_dist(track_t *t, int32_t *b, uint32_t n)
     }
 }
 
-/* master: peak limiter in front of the soft clipper. Fast attack (~0.1 ms),
- * ~150 ms release, threshold where tanh is still nearly linear, so chords
+/* master: peak limiter in front of the soft knee. Fast attack (~0.1 ms),
+ * ~150 ms release, threshold well inside the knee's linear part, so chords
  * get quieter instead of crushed. */
 #define LIM_T 18000
+/* the master's soft knee (audit R05, owner D22): linear (exact) up to the limiter's threshold LIM_T (-5.2 dBFS), above it (only the limiter's attack overshoot gets there) a tanh into the 16-bit
+ * ceiling with the slope 1 at the knee; a tanh over the whole range, as before, bent a loud chord at 1 .. 3 % THD even below the limiter's threshold. 2272 / 1024 = 32768 / (32767 - LIM_T):
+ * the tanh's scale; the input is held to 2^16 past the knee (the table is flat there) so the product fits 32 bits */
+#define MK_K LIM_T
+static __attribute__((noinline)) int32_t master_knee(int32_t x)
+{
+    int32_t a = x < 0 ? -x : x;
+    if (a > MK_K) {
+        a -= MK_K;
+        if (a > 65535)
+            a = 65535;
+        a = MK_K + ((softclip((a * 2272) >> 10) * (32767 - MK_K)) >> 15);
+    }
+    return x < 0 ? -a : a;
+}
+/* the limiter's gain g (Q15, < 32768) on x, which may be far above Q15, in two halves: every bit of x is kept (the old (x >> 4) * g >> 11 rounded to 16 LSB while it limited) */
+static inline int32_t lim_mul(int32_t x, int32_t g) { return (x >> 15) * g + (((x & 32767) * g) >> 15); }
 static int32_t lim_env = LIM_T;
 /* The mix is always made at the reference level MASTER_USB_REF (the default knob position, song.master_q12 = 2048, gain 0.5), whatever the MASTER
  * knob says: the limiter and the soft clip see the same signal, and USB audio takes it (audio.c uac_tap) at that fixed level. MASTER is a volume on what
@@ -310,11 +327,11 @@ static inline void master_out(int32_t *l, int32_t *r)
         lim_env -= ((lim_env - LIM_T) >> 12) + 1;
     if (lim_env > LIM_T) {
         int32_t g = (int32_t)(((uint32_t)LIM_T << 15) / (uint32_t)lim_env);   /* < 32768 */
-        *l = ((*l >> 4) * g) >> 11;                      /* >> 4 first: |l| may be far above Q15 */
-        *r = ((*r >> 4) * g) >> 11;
+        *l = lim_mul(*l, g);
+        *r = lim_mul(*r, g);
     }
-    *l = softclip(*l);
-    *r = softclip(*r);
+    *l = master_knee(*l);
+    *r = master_knee(*r);
 }
 
 /* SPLIT (DUELL step 5): master_out with each channel its own limiter (a linked one would duck part 2 on part 1's peaks: part 1's
@@ -329,7 +346,7 @@ static inline int32_t lim_one(int32_t x, int32_t *env)
         *env -= ((*env - LIM_T) >> 12) + 1;
     if (*env > LIM_T) {
         int32_t g = (int32_t)(((uint32_t)LIM_T << 15) / (uint32_t)*env);
-        x = ((x >> 4) * g) >> 11;
+        x = lim_mul(x, g);
     }
     return x;
 }
@@ -337,8 +354,8 @@ static inline void master_out_split(int32_t *l, int32_t *r)
 {
     *l = dc_block(*l, &dc_l, &dce_l);
     *r = dc_block(*r, &dc_r, &dce_r);
-    *l = softclip(lim_one(*l, &lim_env));
-    *r = softclip(lim_one(*r, &lim_env_r));
+    *l = master_knee(lim_one(*l, &lim_env));
+    *r = master_knee(lim_one(*r, &lim_env_r));
 }
 
 /* length of one division (N_DIV order) in samples at the song tempo */
@@ -1262,7 +1279,7 @@ static __attribute__((noinline)) void space_vals(void)   /* SPACE's values from 
         sv.rsize = r0 + ((top - r0) * a) / 25600;
         sv.dfb = f0 + (int32_t)(((int64_t)(f0 > 30150 ? 0 : 30150 - f0) * a) / 25600);
         sv.cdep = c0 + (((c0 > SV_CDEP_TOP ? c0 : SV_CDEP_TOP) - c0) * a) / 25600;   /* (the knob's largest: SV_CDEP_TOP) */
-        sv.sg = 32768 + (int32_t)((19661LL * a) / 25600);   /* x 1.6 at the end */
+        sv.sg = 32768 + (int32_t)((4260LL * a) / 25600);    /* x 1.13 at the end (was x 1.6: 3 dB less push, audit R06 / D22) */
         sv.ac = SV_ADD_C * a / 25600;                   /* the send floor: 0 in the middle .. SV_ADD_* at +100 */
         sv.ad = SV_ADD_D * a / 25600;
         sv.ar = SV_ADD_R * a / 25600;
@@ -2018,7 +2035,7 @@ static void duck_run(track_t *t, int32_t *b, int32_t *d, uint32_t n);
 /* SPACE to the right (sp_tap; 0.2.9, the owner: SPACE adds space also when the sends are 0): each send of the part at least its floor. The
  * effective send is a soft max of the part's own (x SPACE's gain) and the floor (sv.ac / ad / ar, SV_ADD_*: SHIM's reverb SV_SHIM_ADD of it,
  * RESO's SV_RESO_ADD): the floor adds max(0, floor - send) with a quadratic knee of SV_KNEE either side (no kink); a send above floor + knee
- * gets nothing added (SPACE's x 1.6 as before), a send of 0 gets the floor. Its dry signal at its level x that, into the part's accumulators fc / fd / fr (pacc). The
+ * gets nothing added (SPACE's x 1.13, was 1.6), a send of 0 gets the floor. Its dry signal at its level x that, into the part's accumulators fc / fd / fr (pacc). The
  * values are the last block's (SPACE glides 0.25 % a block: a step under -50 dB), as a send's knob */
 static int32_t sp_knee(int32_t dd)
 {

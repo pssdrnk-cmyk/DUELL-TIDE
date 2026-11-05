@@ -20,7 +20,7 @@
 #include <sys/resource.h>
 #endif
 
-#define MODE_STEREO_HASH 0x366B468DC2425A83ull   /* DUELL-TIDE T0: mode_test.c's DUELL 1.1 value (its items 127 / 144 / 148: the 1.1 reverb and feedback rounding, VS_MAX); against 1.0 the render keeps level, spectrum and 100 ms envelope, residual -43 dB (docs/JAM11_SOUND_REFERENCES.md); was 0xC04494F53D46F0F0 */ /* 0.2.30: merged line (cloud wave 6 + click fixes), re-based on purpose, was 0x1CC6C8241C84C0DA; before:  0.2.29: re-based on purpose, the scenario runs the HALL and its quiet lines now round to the nearest (fx.c hall_end; 0.2.21..0.2.28: 0xC970174114DFD9BA) */   /* the same constant as mode_test.c, bassmono_test.c and comp_test.c */
+#define MODE_STEREO_HASH 0xD873D87A2ACCFF78ull   /* master soft knee instead of the always-on tanh (audit R05, owner D22): re-based on purpose, was 0x366B468DC2425A83 */   /* DUELL-TIDE T0: mode_test.c's DUELL 1.1 value (its items 127 / 144 / 148: the 1.1 reverb and feedback rounding, VS_MAX); against 1.0 the render keeps level, spectrum and 100 ms envelope, residual -43 dB (docs/JAM11_SOUND_REFERENCES.md); was 0xC04494F53D46F0F0 */ /* 0.2.30: merged line (cloud wave 6 + click fixes), re-based on purpose, was 0x1CC6C8241C84C0DA; before:  0.2.29: re-based on purpose, the scenario runs the HALL and its quiet lines now round to the nearest (fx.c hall_end; 0.2.21..0.2.28: 0xC970174114DFD9BA) */   /* the same constant as mode_test.c, bassmono_test.c and comp_test.c */
 
 static uint8_t nor[0x100000];
 static int st_read(uint32_t off, void *dst, uint32_t n) { memcpy(dst, nor + off, n); return 0; }
@@ -695,6 +695,69 @@ static void test_cost(void)
     wd_rest(100);
 }
 
+/* ---- the master soft knee (audit R05 / R06, owner D22): linear below the limiter's threshold, a tanh into the ceiling above it; SPACE +100 pushes 3 dB less */
+/* total harmonic distortion (dB re the fundamental) of master_out on a 100 Hz sine of `peak`, 20 whole cycles after the limiter and the DC blocker settled */
+static double knee_thd(double peak)
+{
+    enum { CYC = 441, NC = 20 };
+    static double y[CYC * NC];
+    double h1 = 0, hs = 0;
+    uint32_t t, k;
+    lim_env = LIM_T;
+    lim_env_r = LIM_T;
+    dc_l = dc_r = dce_l = dce_r = 0;
+    for (t = 0; t < 3u * CYC * NC; t++) {
+        int32_t l = (int32_t)lrint(peak * sin(6.283185307179586 * 100.0 * t / FS)), r = l;
+        master_out(&l, &r);
+        if (t >= 2u * CYC * NC)
+            y[t - 2u * CYC * NC] = l;
+    }
+    for (k = 1; k < 12u; k++) {
+        double re = 0, im = 0, p;
+        for (t = 0; t < CYC * NC; t++) {
+            re += y[t] * cos(6.283185307179586 * k * t / CYC);
+            im += y[t] * sin(6.283185307179586 * k * t / CYC);
+        }
+        p = re * re + im * im;
+        if (k == 1)
+            h1 = p;
+        else
+            hs += p;
+    }
+    return 10.0 * log10(hs / h1 + 1e-30);
+}
+static void test_knee(void)
+{
+    int32_t x, prev = 0, bigger = 0, mono = 1, lin = 1;
+    double d8 = knee_thd(32768.0 * pow(10.0, -8.0 / 20.0)), d0 = knee_thd(32768.0), d6 = knee_thd(65536.0);
+    printf("master: knee: THD of a 100 Hz sine: -8 dBFS %.1f dB, 0 dBFS (limited) %.1f dB, +6 dB (limited) %.1f dB\n", d8, d0, d6);
+    expect("the master soft knee: a 100 Hz sine at -8 dBFS (under the limiter's threshold) comes out undistorted: THD under -70 dB (the always-on tanh gave -38 dB)", d8 < -70.0);
+    expect("  .. limited at 0 and +6 dBFS the distortion stays under -38 dB (the always-on tanh gave -31 and -31 dB)", d0 < -38.0 && d6 < -35.0);
+    for (x = 0; x <= 400000; x += 7) {
+        int32_t y = master_knee(x);
+        mono &= y >= prev && y <= 32767 && master_knee(-x) == -y;
+        if (x <= LIM_T)
+            lin &= y == x;
+        prev = y;
+        bigger |= y > 32767;
+    }
+    expect("  .. master_knee is exactly linear up to the limiter's threshold, never decreases, is odd and never passes the 16-bit ceiling", lin && mono && !bigger);
+    expect("  .. the slope is 1 at the knee (no kink): 100 units past it give 98 .. 100", master_knee(LIM_T + 100) - master_knee(LIM_T) >= 98 && master_knee(LIM_T + 100) - master_knee(LIM_T) <= 100);
+    {   /* SPACE +100 (audit R06): the sends' gain x 1.13 (it was x 1.6) and the send floors 3 dB under the first values (5568 / 8352 / 13922 of 7864 / 11796 / 19661) */
+        double g = (double)sv.sg / 32768.0;
+        sv.spc = 25600;
+        sv.on = 1;
+        space_vals();
+        g = (double)sv.sg / 32768.0;
+        printf("master: SPACE +100: sends x %.3f (was 1.600), floors %d / %d / %d (were 7864 / 11796 / 19661)\n", g, sv.ac, sv.ad, sv.ar);
+        expect("SPACE +100 pushes the sends 3 dB less than it did (x 1.13 against x 1.6) and its send floors 3 dB lower", fabs(20.0 * log10(1.6 / g) - 3.0) < 0.15 &&
+               fabs(20.0 * log10(7864.0 / sv.ac) - 3.0) < 0.15 && fabs(20.0 * log10(11796.0 / sv.ad) - 3.0) < 0.15 && fabs(20.0 * log10(19661.0 / sv.ar) - 3.0) < 0.15);
+        sv.spc = 0;
+        sv.on = 0;
+        space_vals();
+    }
+}
+
 #ifndef MASTER_TEST_NO_MAIN
 int main(void)
 {
@@ -704,6 +767,7 @@ int main(void)
     test_width();
     test_mix();
     test_control();
+    test_knee();
     test_cost();
     printf("master: %d checks, %d failed\n", ncheck, bad);
     return bad ? 1 : 0;

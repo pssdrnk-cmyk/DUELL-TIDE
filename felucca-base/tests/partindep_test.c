@@ -65,8 +65,8 @@ static int expect(const char *what, int ok)
 /* audit P01 (2026-11-04), on purpose: scenes 9, 10, 11 re-made (part 2 glides, GLIDE 30 in UNISON / LEGATO: voice.c glide_set now takes the time GLD shows);
  * they were 0x10031248d54636c9, 0x00ba6a225b5a3f8f, 0xc6c4863685dfc21c. */
 static const uint64_t OLD_HASH[NSCENE] = {
-    0xf0d0572743238854ull, 0x1c363ab4f36aa258ull, 0x1152deb454944111ull, 0xd3a928aa44ee293eull, 0xb4ae75f1f096399bull, 0x65fc43887280e3c0ull, 0xebc9d9e8cfc07603ull, 0x1c310e660d84eb87ull, 0x4373d86bea4d679full,
-    0x2c5bc2c71a3c612dull, 0xd4b7de585e4eccb4ull, 0x675cf3b5383f9d0bull};   /* 0.2.31: re-based on purpose (SUB HARMONICS is disabled: the scenes' HARM values play as 0), were 0x57241fc736950a76, 0xae179d4cb7f62068, 0x653c0c9666564fdf. Scenes 9, 10, 11 (cloud job F: SUB, CYCLE, STEPS) have no commit before: pinned at the commit that made them, from the old combined path (the feature is in track_render, which it shares) */
+    0x581b68dc2790eaedull, 0x068f407fca6d6075ull, 0xc98f42081aba1e35ull, 0xfe0d8124a8c1fc71ull, 0xa48793caa18b1ea4ull, 0x15547bb434dde11dull, 0x743534cc6193a473ull, 0x541c2a3a4cee63f5ull, 0xe927d457aa0e5dcbull,
+    0x3a70f617b9547958ull, 0xf258ada476cc31baull, 0xa579978844e45ca1ull};   /* master soft knee instead of the always-on tanh (audit R05, owner D22): re-based on purpose, were 0xf0d0572743238854, 0x1c363ab4f36aa258, 0x1152deb454944111, 0xd3a928aa44ee293e, 0xb4ae75f1f096399b, 0x65fc43887280e3c0, 0xebc9d9e8cfc07603, 0x1c310e660d84eb87, 0x4373d86bea4d679f, 0x2c5bc2c71a3c612d, 0xd4b7de585e4eccb4, 0x675cf3b5383f9d0b. Older history: /* 0.2.31: re-based on purpose (SUB HARMONICS is disabled: the scenes' HARM values play as 0), were 0x57241fc736950a76, 0xae179d4cb7f62068, 0x653c0c9666564fdf. Scenes 9, 10, 11 (cloud job F: SUB, CYCLE, STEPS) have no commit before: pinned at the commit that made them, from the old combined path (the feature is in track_render, which it shares) */
 
 /* ---- the schedules */
 enum { SV, SF, SM, SE };                                /* the steps: voice (+ morph_begin), effects / silent way out, mix + end, morph_end */
