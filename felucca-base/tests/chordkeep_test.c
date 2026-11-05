@@ -5,6 +5,7 @@
  *   NAMED    the five chord-named dub pack sounds (CHORD ECHO, DARK MIN7, SOUL STAB, LOW STAB, ICE STAB) set CHRD MIN7, VOIC OPEN
  *   FIRST    the first start's factory multi (M04 DUB CHORD, TIDE on): K1 turns TYPE with the MORPH fader at A, mid way, at B and while a glide runs; a TIDE JRNY of many trips
  *            and its arrivals leave CHRD / VOIC / VOICE alone; the sound loads on the parts keep the player's TYPE
+ *   GHOST    PLAY alone (ARP SEQ, no key held) plays the ghost chord from C4 plus the part's TRN (roles spec C5); a chord remembered from the keys is played as it was
  *   HINTS    the CHORD page (K4 = the part's VOICE): "NEEDS POLY" with a chord on and the part not POLY, "SET A SCALE" with DIA3 / DIA7 on the CHROMATIC scale, the last
  *            chord's note names; the keyboard and the K1 line as before; what the page showed before is still there
  * Built and run by host_tests.sh (name: chordkeep): the UI sources against ui_test.c's stub display and knobs; PPMs of the page go to the directory in argv[1] (the pictures of the report). */
@@ -148,6 +149,43 @@ static void keep(void)
 static void show_parts(char *b, size_t n)
 {
     snprintf(b, n, "CHRD %d/%d VOIC %d/%d VOICE %d/%d", trk[0].p[P_CHRD], trk[1].p[P_CHRD], trk[0].p[P_VOIC], trk[1].p[P_VOIC], trk[0].p[P_VOICE], trk[1].p[P_VOICE]);
+}
+/* C5 (roles spec): PLAY alone plays the ghost chord from C4 plus the part's TRN (a chord remembered from the keys carries TRN already) */
+static void ghost_trn(void)
+{
+    uint32_t a[CHORD_MAX], b[CHORD_MAX], c[CHORD_MAX], d[CHORD_MAX], na, nb, nc, nd, i, same = 1;
+    int16_t trn = trk[0].p[P_TRANS];
+    uint8_t keep_n = tide_chord_n[0];
+    int ghost;
+    first_start();
+    tide_chord_n[0] = 0;
+    song.playing = 1;
+    song.rec = 0;
+    ghost = tide_seq_ghost(&trk[0]);
+    trk[0].p[P_TRANS] = 0;
+    na = tide_seq_chord(&trk[0], a, 0);
+    trk[0].p[P_TRANS] = -12;
+    nb = tide_seq_chord(&trk[0], b, 0);
+    trk[0].p[P_TRANS] = 24;
+    nc = tide_seq_chord(&trk[0], c, 0);
+    trk[0].p[P_TRANS] = 100;
+    nd = tide_seq_chord(&trk[0], d, 0);
+    expect("ghost chord: part 1 of the first start is an ARP SEQ part and PLAY alone gives it a ghost", ghost && na >= 1u);
+    for (i = 0; i < na && i < nb; i++)
+        same &= (b[i] + 12u == a[i]);
+    expect("  TRN -12 plays the ghost one octave lower (same chord, every note 12 down)", nb == na && same);
+    for (i = 0, same = 1; i < na && i < nc; i++)
+        same &= (c[i] == a[i] + 24u);
+    expect("  TRN +24 plays it two octaves higher", nc == na && same);
+    expect("  a TRN that would leave MIDI range is clamped (root at most 127)", nd >= 1u && d[0] <= 127u);
+    trk[0].p[P_TRANS] = -12;
+    tide_chord[0][0] = 70;
+    tide_chord_n[0] = 1;
+    nb = tide_seq_chord(&trk[0], b, 0);
+    expect("  a chord remembered from the keys is played as it was (TRN not applied twice)", nb == 1u && b[0] == 70u);
+    tide_chord_n[0] = keep_n;
+    trk[0].p[P_TRANS] = trn;
+    song.playing = 0;
 }
 static void first(void)
 {
@@ -354,6 +392,7 @@ int main(int argc, char **argv)
     keep();
     named_chords();
     first();
+    ghost_trn();
     hints();
     voicings();
     printf(bad ? "chordkeep: %d FAILED of %d\n" : "chordkeep: all %d passed\n", bad ? bad : ncheck, ncheck);
