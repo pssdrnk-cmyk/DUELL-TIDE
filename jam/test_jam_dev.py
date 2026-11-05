@@ -530,6 +530,9 @@ class CliTests(unittest.TestCase):
     def test_no_unit(self):
         """Without --mock and with a port name no gear has: exit 3 (MIDI is only listed, nothing is sent)."""
         r = self.run_cli("info", "--port", "NO-SUCH-PORT-XYZ")
+        if "needs mido and python-rtmidi" in r.stderr:   # a machine without the MIDI packages (CI's jam-tools job): exit 1 with that message
+            self.assertEqual(r.returncode, 1, r.stderr)
+            return
         self.assertEqual(r.returncode, 3, r.stderr)
         self.assertIn("no DUELL unit found", r.stderr)
 
