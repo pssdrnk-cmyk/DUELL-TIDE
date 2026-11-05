@@ -9,7 +9,7 @@
  * Setups: the factory multis under TIDE (STYLE DUB: JRNY, WAIT 2, LEAD, POLY GENTLE, SYNC SOFT, ARC RISE; PEAK: ARC DROP, LEAD; 1 and 16 bar trips; TIDE idle),
  * stopped at many moments after PLAY (mid step, mid glide, in WAIT, on the bar line), by a plain STOP and by STOP ALL. The failing cases are counted by
  * cause. STOPHANG_V=1 lists every failing case; STOPHANG_CASES=n sets the stop moments per setup (10); STOPHANG_MULTIS=0 skips the sweep of all sixteen multis.
- * Keys: a chord played and lifted with the PLAY STOP press (M04, M02: HOLD ARP latches it on a SEQ arp). */
+ * Keys: a chord played and lifted with the PLAY STOP press (M02, M04: HOLD ARP latches it on a SEQ arp; M14 EERIE SIGNAL: a latched pad). */
 #define UI_TEST_NO_MAIN 1
 #define FELUCCA_FLASH 1
 #include "ui_test.c"
@@ -342,10 +342,10 @@ static void report(const setup_t *s, uint32_t stop_ms, int all, const res_t *r, 
 int main(void)
 {
     static const setup_t S[] = {
-        {3, ST_DUB, 4, "M04 DUB 16bar"}, {3, ST_DUB, 0, "M04 DUB 1bar"}, {3, ST_PEAK, 0, "M04 PEAK 1bar"}, {3, ST_PEAK, 3, "M04 PEAK 8bar"}, {3, ST_IDLE, 0, "M04 TIDE idle"},
-        {15, ST_DUB, 4, "M16 DUB 16bar"}, {15, ST_DUB, 0, "M16 DUB 1bar"}, {15, ST_PEAK, 0, "M16 PEAK 1bar"}, {15, ST_IDLE, 0, "M16 TIDE idle"},
-        {3, ST_DUB, 0, "M04 DUB keys lifted", 1}, {3, ST_DUB, 0, "M04 DUB keys to STOP", 2}, {3, ST_IDLE, 0, "M04 idle keys", 2}, {15, ST_DUB, 0, "M16 DUB keys to STOP", 2}, {15, ST_PEAK, 0, "M16 PEAK keys lifted", 1},
-        {1, ST_DUB, 0, "M02 DUB keys to STOP", 2}, {10, ST_DUB, 0, "M11 DUB keys to STOP", 2},
+        {1, ST_DUB, 4, "M02 DUB 16bar"}, {1, ST_DUB, 0, "M02 DUB 1bar"}, {1, ST_PEAK, 0, "M02 PEAK 1bar"}, {1, ST_PEAK, 3, "M02 PEAK 8bar"}, {1, ST_IDLE, 0, "M02 TIDE idle"},
+        {2, ST_DUB, 4, "M03 DUB 16bar"}, {2, ST_DUB, 0, "M03 DUB 1bar"}, {2, ST_PEAK, 0, "M03 PEAK 1bar"}, {2, ST_IDLE, 0, "M03 TIDE idle"},
+        {1, ST_DUB, 0, "M02 DUB keys lifted", 1}, {1, ST_DUB, 0, "M02 DUB keys to STOP", 2}, {1, ST_IDLE, 0, "M02 idle keys", 2}, {2, ST_DUB, 0, "M03 DUB keys to STOP", 2}, {2, ST_PEAK, 0, "M03 PEAK keys lifted", 1},
+        {3, ST_DUB, 0, "M04 DUB keys to STOP", 2}, {13, ST_DUB, 0, "M14 DUB keys to STOP", 2}, {4, ST_DUB, 0, "M05 DUB keys to STOP", 2}, {8, ST_DUB, 0, "M09 DUB keys to STOP", 2},
     };
     static const char *const NAMES[16] = {"M01", "M02", "M03", "M04", "M05", "M06", "M07", "M08", "M09", "M10", "M11", "M12", "M13", "M14", "M15", "M16"};
     static setup_t all16[16];

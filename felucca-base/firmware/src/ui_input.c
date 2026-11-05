@@ -1975,7 +1975,7 @@ static void ui_input(void)
     mode_settings();                                    /* DUELL step 5: the MODE and its settings byte */
     scale_sync();                                       /* DUELL: the global SCALE / ROOT / OFF-SCALE <-> their settings bytes (ui.c) */
     midi_ch_sync();                                     /* DUELL step 6: GLO > MIDI' parts' channels and their settings bytes */
-    first_boot_poll();                                  /* DUELL 0.1: a new unit starts in LAYER with M01 (TIDE: M04) */
+    first_boot_poll();                                  /* DUELL 0.1: a new unit starts in LAYER with M01 (TIDE: M02) */
     clock_poll();                                       /* DUELL 0.2.14: CLK AUTO's switch said in the header */
 #if DUELL_VELO
     sense_enable(keyvel_on());

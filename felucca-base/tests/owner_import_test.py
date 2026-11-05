@@ -128,12 +128,12 @@ rc, out = run("--out", str(o4), str(tmp / "backup.json"))
 ok(rc == 0 and "1 multis edited" in out and (o4 / "factory_multis" / "M03.bin").read_bytes() == bytes(m3x) and not (o4 / "factory_multis" / "M04.bin").exists(),
    "a backup file with a changed M03 and an unchanged M04: M03's record is kept byte for byte, M04 is not touched")
 om = load(o4 / "owner_multis.py", "om4").OWNER_MULTIS
-ok(len(om) == 1 and om[0]["slot"] == 3 and om[0]["name"] == "PAD SPLIT" and [p["sound"] for p in om[0]["parts"]] == ["EVOLVING PAD", "EMBER GLOW"] and om[0]["mode"] == "LAYER",
-   "owner_multis.py lists M03 PAD SPLIT, LAYER, #61 EVOLVING PAD + #44 EMBER GLOW")
+ok(len(om) == 1 and om[0]["slot"] == 3 and om[0]["name"] == "CELLAR TAPE" and [p["sound"] for p in om[0]["parts"]] == ["PLUCK BASS", "CLAVICLE"] and om[0]["mode"] == "LAYER",
+   "owner_multis.py lists M03 CELLAR TAPE, LAYER, #19 PLUCK BASS + #85 CLAVICLE (the factory M03 since D31)")
 
 # 4b: the editor's own multi file (duell-multis, stored.js multiFile): export-format file -> importer -> the same record bytes
 mf = {"format": "duell-multis", "version": 1, "firmware": FV, "created": "2026-01-01T00:00:00.000Z",
-      "multis": [{"slot": 3, "label": "M03", "name": "PAD SPLIT", "version": m3x[0], "size": len(m3x), "crc": zlib.crc32(bytes(m3x)), "data": base64.b64encode(bytes(m3x)).decode()}]}
+      "multis": [{"slot": 3, "label": "M03", "name": "CELLAR TAPE", "version": m3x[0], "size": len(m3x), "crc": zlib.crc32(bytes(m3x)), "data": base64.b64encode(bytes(m3x)).decode()}]}
 (tmp / "m.duell-multis.json").write_text(json.dumps(mf))
 o4b = tmp / "o4b"
 o4b.mkdir()

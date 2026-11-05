@@ -60,71 +60,75 @@ def note(s):
 # Units are the stored ones (params.c): sends / SAT / RES 0..127, LEVEL / TRIM 0..127 (112 = 0 dB), PAN -64..63, EQ dB -12..12,
 # DUCK DEPTH 0..100, arp GATE 1..127, the lists by name. Owner rules (0.2.23): at most 2 or 3 tributes (none in the sixteen since 0.2.25: BASILDON is spare),
 # no Moroder multi (it is a pattern), classic honest names, no two multis alike (check_similar). Owner (0.2.24): his own multis
-# (COLD CHAPEL, ACID ETHER, GARGLE ACID of 0.2.22; DEAD BUFFER holds his edits) are never dropped: `owner`.
+# (COLD CHAPEL, ACID ETHER, GARGLE ACID of 0.2.22; DEAD BUFFER holds his edits) are never dropped: `owner` (D31, 2026-11-05: the owner took ACID ETHER, GARGLE ACID, DEAD BUFFER, WIRED SNAIL, REESE SWAMP and WOOD & SKIN out of the sixteen himself).
 # In LAYER each part maps a played key with its own TRN (seq.c key_on, 0.2.23: until 0.2.22 part 2 got part 1's note and the split compared it),
 # so an octave between the parts can be set with either part's TRN.
-# Order (0.2.24): 1-4 bass grooves and splits, 5-8 pads, layers and the dry pair, 9-12 the four multis of 0.2.1 as made (the owner's),
-# U2 B (1.1): M03 M05 M06 M07 M08 M13 M16 got sequenced arrangements and M10 M11 M12 their own line (tests/revise_multis.c + revise_table.h from tools/factory_multis/original/Mnn.bin, the records as they were); the records here are those, kept
-# 13-15 for performing (0.2.25: 13 is the owner's original COLD CHAPEL, in the slot of BASILDON, the multi least different from the rest), 16 the stress test.
+# Order (D31, audit G14, 2026-11-05): the curated dub / house order, a background layer for a Volca Bass and a drum machine. 1-9 are the grooves
+# of the set (BASIC CHORD, DUB CHORD, CELLAR TAPE, NIGHT ORGAN: chords and a sparse bass part where there is one; ORGAN SKANK, WARM ECHO, MINIMAL 12,
+# TINE DUB, DEEP 332: the six new ones, built here), 10-16 the colour (the owner's pads and textures, kept byte for byte). The rules of the new
+# ones: no part below C3 (its first note, the arps' stand-in C4 with the steps as written), the reverb LOW CUT at the unit's default (299 Hz), the
+# rhythmic part six hits a bar or fewer and the other sustained or sparse, no part above C6, the chord and pad sounds from the dub pack (centroid
+# under about 1 kHz, so the hats keep 4-10 kHz). The patterns are the factory patterns' steps (engines.c PATTERNS: P03 DUB OFFBEAT, P04 HOUSE STAB,
+# P05 DOT DELAY, P10 MINIMAL 12, P11 DUB HALFTIME, P13 DEEP 332, P15 PAD BREATH, P17 HALF PAD, P01 DUB CHORD, P29 TIED ROOTS), written here as the arps' offsets
+# from the held key ("-" is a tie, which the SEQ arp honours). Left the sixteen: the three acid multis (REESE SWAMP, ACID ETHER, GARGLE ACID), WIRED SNAIL and
+# DEAD BUFFER (FX arps up to C8), WOOD & SKIN (a percussion demo); their records are in the git history (integ bb730b0, tools/factory_multis/M01 M09 M10 M12 M14 M15.bin)
+# and the older scenes in tests/scenes. The records kept move to their new slot byte for byte: DUB CHORD (was M04; its TIDAL SUB line moved up an octave, C2 to C3,
+# and its LEVEL down 4 so that the sub does not sit on the Volca Bass), CELLAR TAPE (was M16), NIGHT ORGAN (M02), PAD SPLIT (M03), WHISPER TIDE (M05),
+# TINE STRINGS (M06), COLD CHAPEL (M13), EERIE SIGNAL (M11), HAZY TENSOR (M08), FINAL REEL (M07); the first start loads M02 DUB CHORD (D5, tide.h TIDE_FIRST_MULTI).
 SEND = ("P_CHOR", "P_DLY", "P_REV")
 MULTIS = [
-    # ---- 1-4: bass grooves and splits ----
-    dict(slot=1, name="REESE SWAMP", kept=True, mode="LAYER", parts=[dict(sound="REESE BASS"), dict(sound="SQUELCH")],
-         what="Reese bass wobbling at 1/4 under a 1/16 acid loop (0.2.11, M01 since 0.2.13: the first start's multi)"),
-    dict(slot=2, name="NIGHT ORGAN", mode="LAYER", split="F4",
-         g=dict(G_BPM=121, G_SWING=17, G_DTIME="8D", G_DFDBK=31, G_DMIX=90, G_RTYPE="ROOM", G_RSIZE=71, G_DMODE="DIGI"),
-         parts=[dict(sound="PEDAL BASS", set=dict(P_AMODE="SEQ", P_ARATE="1/8", P_AGATE=80, P_AHOLD="OFF", P_TRANS=-12, P_VOICE="LEG", P_LEVEL=112),
-                     steps=". 0 . 0 . 0 . +12"),
-                dict(sound="DRAWBARS", set=dict(P_AMODE="SEQ", P_ARATE="1/8", P_AGATE=100, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="CLOSE",
-                                                 P_DLY=17, P_REV=21, P_DKSRC="PUMP", P_DKRATE="1/4", P_DKDEP=21, P_LEVEL=104),
-                     steps=". 0 . . . 0A . .")]),
-    # M03 (0.2.24, owner: the pad sounded dark): the pad's own CUT opened in the multi from the sound's 55 (about 460 Hz) to 71 (about 1 kHz);
-    # measured on the pad alone, keys E4 / A4 / C5: spectral centroid 528 / 652 / 760 Hz -> 653 / 808 / 925 Hz, the 2-4 kHz band +3 dB, 4-8 kHz
-    # +6 dB, level the same within 0.4 dB. #44 EMBER GLOW itself is unchanged (the override lives in this record only). End B rolled again
-    # (seed 23709 at 27 %): the sound's own End B (seed 44167) closed the pad in this multi (its roll took AMP ENV -> FLT to -26: the pad alone
-    # -14.2 dB at End B on C4 E4 G4, `gen_factory_multis eval 3`), against the promise "MORPH opens the pad"; the new seed keeps the level
-    # (+0.2 dB) and is brighter (739 -> 1117 Hz, `search 3 2 27 40`).
-    dict(slot=3, name="PAD SPLIT", mode="LAYER", split="F4",
-         g=dict(G_BPM=97, G_DTIME="4D", G_DFDBK=37, G_DMIX=71, G_RTYPE="HALL", G_RSIZE=97, G_RDAMP=61, G_DMODE="DIGI"),
-         parts=[dict(sound="PLUCK BASS", set=dict(P_TRANS=-12, P_VOICE="LEG", P_LEVEL=112)),
-                dict(sound="EMBER GLOW", set={"E:CUT": 71, "P_DLY": 17, "P_REV": 57, "P_M8SRC": "MORPH", "P_M8DST": "CUT", "P_M8AMT": 21, "P_LEVEL": 101},
-                     bseed=23709, amt=27)]),
-    dict(slot=4, name="DUB CHORD", mode="LAYER",
-         g=dict(G_BPM=117, G_DTIME="8D", G_DFDBK=71, G_DCOLOR=47, G_DMIX=97, G_DMODE="DIGI", G_DMDEP=37, G_RTYPE="SPRING", G_RSIZE=77, G_RDAMP=71),
-         parts=[dict(sound="BIG STAB", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=37, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="CLOSE",
-                                                 P_FREEA="u_uf(1700)", P_FREEB=6, P_DLY=77, P_REV=37, P_CHOR=0,
-                                                 P_DKSRC="PUMP", P_DKRATE="1/4", P_DKDEP=37, P_LEVEL=109),
-                     steps=". . 0 . . . . . . . 0 . . . . ."),
-                dict(sound="TIDAL SUB", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=120, P_AHOLD="OFF", P_VOICE="LEG", P_LEVEL=117),
-                     steps="-24A . . . . . . . -24 . . -24 . . -19 .")]),
-    # ---- 5-8: pads and layers (0.2.25: the dry pair MONO DUEL is spare) ----
-    dict(slot=5, name="WHISPER TIDE", kept=True, mode="LAYER", parts=[dict(sound="DIGITAL PAD"), dict(sound="WHISPER PAD")]),
-    # slot 6: the owner's TINE STRINGS (0.2.25), from tools/owner_multis.py; his COLD CHAPEL, which was here until 0.2.24, is M13 since 0.2.25
-    # slot 7: the owner's refined FINAL REEL (0.2.25), from tools/owner_multis.py (his file duell-multi-M07-FINAL_REEL.duell-multis.json); the old kept record was the 0.2.11 one
-    # slot 8: the owner's HAZY TENSOR (0.2.25), from tools/owner_multis.py (his file duell-multi-M08-HAZY_TENSOR.duell-multis.json); MONO DUEL, which was here, is spare (below)
-    # ---- 9-12: the four multis of 0.2.1, kept as made (the owner's) ----
-    dict(slot=9, name="ACID ETHER", kept=True, owner=True, mode="LAYER", parts=[dict(sound="RUBBER BAND"), dict(sound="LADDER BASS")],
-         what="an acid line over a Moog-style bass, the chorus wobbling it (the owner's, 0.2.1: M04, M06 in 0.2.13 .. 0.2.22; back in 0.2.24)"),
-    dict(slot=10, name="WIRED SNAIL", kept=True, mode="LAYER", parts=[dict(sound="SFORZANDO"), dict(sound="GLASS SHARDS")],
-         what="brass stab in unison two octaves down under a three-octave glass arp (kept as made in 0.2.1)"),
-    dict(slot=11, name="EERIE SIGNAL", kept=True, mode="LAYER", parts=[dict(sound="VESPERS"), dict(sound="JAZZ CLUB")],
-         what="choir in diatonic triads, an organ picking notes at random at 1/8 (kept as made in 0.2.1)"),
-    dict(slot=12, name="DEAD BUFFER", kept=True, owner=True, mode="LAYER", parts=[dict(sound="FROZEN AIR"), dict(sound="MODEM")],
-         what="frozen wavetable texture under a modem-noise arp (kept as made in 0.2.1, with the owner's own edits)"),
-    # ---- 13-15: performance (one tribute, the owner's fast acid groove, a percussive pair) ----
-    dict(slot=13, name="COLD CHAPEL", kept=True, owner=True, mode="LAYER", parts=[dict(sound="EVOLVING PAD"), dict(sound="SINGING BOWL")],
-         what="evolving pad latched, a singing bowl walking up the chord a half note each, ping-pong delay in a large hall (the owner's original, 0.2.11 .. 0.2.22: M07; M06 in 0.2.24; M13 since 0.2.25, byte for byte)"),
-    dict(slot=14, name="GARGLE ACID", kept=True, owner=True, mode="LAYER", parts=[dict(sound="GROWL BASS"), dict(sound="SQUELCH")],
-         what="a growl bass two octaves down holding the key, a 16-step acid riff on it at 127 BPM (the owner's, 0.2.11 .. 0.2.22: M08; back in 0.2.24)"),
-    # slot 15: the owner's WOOD & SKIN (0.2.31), from tools/owner_multis.py (his file duell-multi-M15-WOOD_SKIN.duell-multis.json, record v7, 487 B, crc32 975420133); the 0.2.23 record built here differed in one byte (index 52)
-    # ---- 16: CELLAR TAPE (U2 B follow-up, owner: the stress test is no longer a factory multi; its record is the test scene tests/scenes/M16_STRESS_TEST.bin) ----
-    dict(slot=16, name="CELLAR TAPE", mode="LAYER",
-         what="deep dub techno: an offbeat plucked sub line under minor-ninth chord stabs, dotted-eighth delay and a plate (PLAY alone plays both; a held key transposes the bass and plays the stabs' chord)",
-         g=dict(G_BPM=122, G_DTIME="4D", G_DFDBK=58, G_DMIX=84, G_DMODE="DIGI", G_RTYPE="PLATE", G_RSIZE=84, G_RDAMP=61),
-         parts=[dict(sound="PLUCK BASS", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=55, P_AHOLD="OFF", P_VOICE="LEG", P_DLY=0, P_REV=0, P_LEVEL=112),
-                     steps=". . -24A . . . -24 . . . -22 . . -24 -19 ."),
-                dict(sound="CLAVICLE", set=dict(P_CHRD="MIN7", P_VOIC="CLOSE", P_SGATE=30, P_DLY=77, P_REV=44, P_LEVEL=104),
-                     steps=". . . n63+67+70+74A . . . . . . . n65+68+72+75 . . . .")]),
+    # ---- 1-9: the grooves of the set ----
+    dict(slot=1, name="BASIC CHORD", mode="LAYER",
+         what="dub techno chords with nothing in the bass: off-beat minor-seventh stabs through a dotted echo and a plate, ducked on the quarters, a crackle bed under them (the first multi to try)",
+         g=dict(G_BPM=122, G_DTIME="8D", G_DFDBK=70, G_DMIX=84, G_DMODE="DIGI", G_RTYPE="PLATE", G_RSIZE=80, G_RDAMP=61),
+         parts=[dict(sound="CHORD ECHO", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=45, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="OPEN",
+                                                   P_DKSRC="PUMP", P_DKRATE="1/4", P_DKDEP=30, P_LEVEL=102),
+                     steps=". . 0 . . . 0A . . . 0 . . . 0A ."),
+                dict(sound="DUST BED", set=dict(P_AHOLD="ALL", P_EQLG=-12, P_LEVEL=94))]),
+    dict(slot=2, name="DUB CHORD", kept=True, owner=True, mode="LAYER", parts=[dict(sound="BIG STAB"), dict(sound="TIDAL SUB")],
+         what="off-beat minor-seventh stabs through a long dotted echo over a sparse sub line (the owner's; the sub an octave up since D31; the first start's multi)"),
+    dict(slot=3, name="CELLAR TAPE", kept=True, mode="LAYER", parts=[dict(sound="PLUCK BASS"), dict(sound="CLAVICLE")],
+         what="deep dub techno: an offbeat plucked sub line under minor-ninth chord stabs, dotted-eighth delay and a plate (PLAY alone plays both; a held key transposes the bass and plays the stabs' chord)"),
+    dict(slot=4, name="NIGHT ORGAN", kept=True, owner=True, mode="LAYER", parts=[dict(sound="PEDAL BASS"), dict(sound="DRAWBARS")],
+         what="a house organ on the off-beats over a pedal-organ line (the owner's)"),
+    dict(slot=5, name="ORGAN SKANK", mode="LAYER",
+         what="reggae-house organ stabs on the off-beats, a spring and a dotted echo, a breathing shimmer pad an octave up holding two chords a bar",
+         g=dict(G_BPM=123, G_DTIME="8D", G_DFDBK=55, G_DMIX=77, G_DMODE="DIGI", G_RTYPE="SPRING", G_RSIZE=71, G_RDAMP=71),
+         parts=[dict(sound="ORGAN SKANK", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=30, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="CLOSE", P_LEVEL=104),
+                     steps=". . 0 0 . . 0A . . . 0 0 . . 0A ."),
+                dict(sound="AIR SHIMMER", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=100, P_AHOLD="ARP", P_CHRD="MIN7", P_VOIC="CLOSE",
+                                                    P_DLY=30, P_REV=64, P_LEVEL=86),
+                     steps="12A - - - - - - . 8A - - - - - - .")]),
+    dict(slot=6, name="WARM ECHO", mode="LAYER",
+         what="a warm detuned wash in open fifths under a slow dotted-delay pluck figure ping-ponging in the echo (118 BPM)",
+         g=dict(G_BPM=118, G_DTIME="8D", G_DFDBK=58, G_DMIX=84, G_DMODE="PING", G_RTYPE="HALL", G_RSIZE=84, G_RDAMP=61),
+         parts=[dict(sound="WARM WASH", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=100, P_AHOLD="OFF", P_CHRD="POW", P_VOIC="CLOSE", P_REV=60, P_LEVEL=89),
+                     steps="0A - - - - - - - - - - - - - - . -2A - - - - - - - - - - - - - - ."),
+                dict(sound="TAPE PLUCK", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=36, P_AHOLD="OFF", P_DLY=77, P_REV=40, P_LEVEL=111),
+                     steps="12A . . 12 . . . 8A . . 5 . . . 7 .")]),
+    dict(slot=7, name="MINIMAL 12", mode="LAYER",
+         what="a twelve-step blip cell against a sixteen-step pad: the two loops drift (polymeter) while the echo carries the blip",
+         g=dict(G_BPM=124, G_DTIME="8D", G_DFDBK=50, G_DMIX=77, G_DMODE="DIGI", G_RTYPE="ROOM", G_RSIZE=77, G_RDAMP=61),
+         parts=[dict(sound="DUB BLIP", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=40, P_AHOLD="OFF", P_DLY=70, P_REV=34, P_LEVEL=106),
+                     steps="12A . . 12 . . 12 . . 10 - ."),
+                dict(sound="DEEP BLUE", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=100, P_AHOLD="OFF", P_CHRD="MIN", P_VOIC="CLOSE", P_DLY=0, P_REV=50, P_LEVEL=98),
+                     steps="0A - - - - - - . . . . . -5 - - .")]),
+    dict(slot=8, name="TINE DUB", mode="LAYER",
+         what="FM electric-piano tines stabbing a dub chord through a tape echo, a slow-moving analog pad holding open fifths under them (the FM voice of the set, 120 BPM)",
+         g=dict(G_BPM=120, G_DTIME="8D", G_DFDBK=60, G_DMIX=84, G_DMODE="DIGI", G_RTYPE="PLATE", G_RSIZE=77, G_RDAMP=61),
+         parts=[dict(sound="TINE ROOM", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=50, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="CLOSE", P_DLY=64, P_REV=30, P_LEVEL=98),
+                     steps=". . 0A - - . 0 . . . 0A - - . 3 ."),
+                dict(sound="SLOW TIDE", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=100, P_AHOLD="OFF", P_CHRD="POW", P_VOIC="CLOSE", P_REV=50, P_LEVEL=85),
+                     steps="0A - - - - - - - 7A - - - - - - -")]),
+    dict(slot=9, name="DEEP 332", mode="LAYER",
+         what="a deep-house soul stab comping a 3-3-5-3-2 rhythm with a touch of swing, a dark fog holding the root and the fifth underneath (124 BPM)",
+         g=dict(G_BPM=124, G_DTIME="8D", G_DFDBK=45, G_DMIX=71, G_DMODE="DIGI", G_RTYPE="ROOM", G_RSIZE=71, G_RDAMP=61),
+         parts=[dict(sound="SOUL STAB", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=40, P_ASWING=54, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="OPEN", P_LEVEL=101),
+                     steps="0A . . 0 . . 0A . . . . 3 . . 0 ."),
+                dict(sound="FOG BANK", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=100, P_AHOLD="OFF", P_REV=55, P_LEVEL=98),
+                     steps="0A - - - - - - - 7A - - - - - - -")]),
+    # ---- 10-16: colour: the owner's pads and textures, kept byte for byte (tools/owner_multis.py; their old slots in brackets) ----
+    # 10 PAD SPLIT (M03), 11 WHISPER TIDE (M05), 12 TINE STRINGS (M06), 13 COLD CHAPEL (M13), 14 EERIE SIGNAL (M11), 15 HAZY TENSOR (M08), 16 FINAL REEL (M07)
 ]
 
 # ---- spare multis (0.2.24): made for 0.2.23, out of the sixteen so the owner's COLD CHAPEL, ACID ETHER and GARGLE ACID could come back.
@@ -443,10 +447,10 @@ def check(snd=None):
         err.append("two multis share a slot or a name (the spare ones counted)")
     if sum(1 for m in MULTIS if m.get("tribute")) > 3:
         err.append("more than three tribute multis (owner: at most 2 or 3)")
-    for m in MULTIS:                                  # (a pattern is 8 or 16 steps: one token short drifts a 16th a bar against the other part, M16 had 15)
+    for m in MULTIS:                                  # (a pattern is 8 or 16 steps, or the 12 of MINIMAL 12 (a polymeter on purpose) or the 32 of HALF PAD (two bars): one token short drifts a 16th a bar against the other part, M16 had 15)
         for t, p in enumerate(m["parts"]):
-            if p.get("steps") and len(p["steps"].split()) not in (8, 16):
-                err.append("M%02d part %d: the pattern has %d steps, not 8 or 16" % (m["slot"], t + 1, len(p["steps"].split())))
+            if p.get("steps") and len(p["steps"].split()) not in (8, 12, 16, 32):
+                err.append("M%02d part %d: the pattern has %d steps, not 8, 12, 16 or 32" % (m["slot"], t + 1, len(p["steps"].split())))
     for m in MULTIS:
         f = DIR / ("M%02d.bin" % m["slot"])
         if not f.exists():

@@ -35,26 +35,26 @@ Source boundaries: `morph_glide.c`, `tide_ui.c`, `seq_rhythm.c`, `seq_phrase.c`,
 
 **Current behaviour:** a MULTI recalls both parts' sounds, patterns, arp settings, mixer, effects and sound-morph End B. Every load replaces both working patterns, including with empty patterns, and clears the previous undo copy. Loading while playing keeps the transport running. Saved P01–P32 pattern slots are separate and are not erased by the load. **SEQ KEEPS RUNNING currently protects patch changes, not MULTI loads.** The owner reported M07 clearing the playing pattern; U2 below records the requested correction as planned, not implemented.
 
-This is the compiled factory set, not a device readback (the pattern and arp columns come from the stored records, `revise_multis dump`, after U2 B; the delay / reverb column is as checked at `bee34f9`); saved user overwrites can differ. “Empty” means no stored note steps, even when a classic arp supplies repeating notes from played keys. “8 / 6” means an eight-step loop with six populated note steps. SEQ uses the stored pattern as the arp; where no arp is listed, it is off. Delay and reverb columns name the stored effect types; chorus and per-part sends are also stored.
+This is the compiled factory set in the curated dub / house order of D31 (2026-11-05: the three acid multis, WIRED SNAIL, DEAD BUFFER and WOOD & SKIN left the sixteen; six new ones; the first start loads M02 DUB CHORD), not a device readback (the pattern and arp columns come from the stored records, `revise_multis dump`, after U2 B; the delay / reverb column is as checked at `bee34f9`); saved user overwrites can differ. “Empty” means no stored note steps, even when a classic arp supplies repeating notes from played keys. “8 / 6” means an eight-step loop with six populated note steps. SEQ uses the stored pattern as the arp; where no arp is listed, it is off. Delay and reverb columns name the stored effect types; chorus and per-part sends are also stored.
 
 | Multi | BPM | Part 1: sound, pattern and arp | Part 2: sound, pattern and arp | Delay / reverb |
 |---|---:|---|---|---|
-| M01 REESE SWAMP | 124 | REESE BASS: empty | SQUELCH: 8 / 6; SEQ 1/16 | Digital / Room |
-| M02 NIGHT ORGAN | 121 | PEDAL BASS: 8 / 5; SEQ 1/8 | DRAWBARS: 8 / 2; SEQ 1/8 | Digital / Room |
-| M03 PAD SPLIT | 97 | EVOLVING PAD: empty | EMBER GLOW: 12 / 4; SEQ 1/4 | Random / Resonator |
-| M04 DUB CHORD | 117 | BIG STAB: 16 / 2; SEQ 1/16 | TIDAL SUB: 16 / 4; SEQ 1/16 | Digital / Plate |
-| M05 WHISPER TIDE | 77 | DIGITAL PAD: 8 / 4 on whole-note steps with ties; notes latch | WHISPER PAD: empty; random arp 1/1, two octaves | Random / Plate |
-| M06 TINE STRINGS | 77 | STRING MACH: 4 / 2 on whole-note steps with ties | TINE ROOM: 16 / 4; SEQ 1/8 | Digital / Plate |
-| M07 FINAL REEL | 71 | BRASS PAD: 8 / 4 on whole-note steps with ties; power chords | STRING MACH: 8 / 2; SEQ 1/2 | Ping-pong / Shimmer |
-| M08 HAZY TENSOR | 117 | LADDER BASS: 16 / 6; SEQ 1/16 | GEARBOX: empty; random arp 1/16 triplets | Octave-up / Plate |
-| M09 ACID ETHER | 120 | BREADBIN: empty; up/down arp 1/8, two octaves | LADDER BASS: 16 / 13; SEQ 1/16 | Ping-pong / Hall |
-| M10 WIRED SNAIL | 120 | SFORZANDO: empty; transpose -24 | GLASS SHARDS: 16 / 6; up/down arp 1/16, three octaves | Ping-pong / Hall |
-| M11 EERIE SIGNAL | 120 | VESPERS: empty; diatonic triads | JAZZ CLUB: 16 / 5; random arp 1/8 | Ping-pong / Hall |
-| M12 DEAD BUFFER | 120 | FROZEN AIR: empty; power chords | MODEM: 16 / 6; up/down arp 1/16, three octaves | Ping-pong / Hall |
+| M01 BASIC CHORD | 122 | CHORD ECHO: 16 / 4; SEQ 1/16; minor sevenths, ducked on the quarters | DUST BED: empty; latched, played live | Digital / Plate |
+| M02 DUB CHORD | 117 | BIG STAB: 16 / 2; SEQ 1/16 | TIDAL SUB: 16 / 4; SEQ 1/16, an octave up since D31 | Digital / Plate |
+| M03 CELLAR TAPE | 122 | PLUCK BASS: 16 / 5 offbeat line; SEQ 1/16 | CLAVICLE: 16 / 2 chord stabs | Digital 4D / Plate |
+| M04 NIGHT ORGAN | 121 | PEDAL BASS: 8 / 5; SEQ 1/8 | DRAWBARS: 8 / 2; SEQ 1/8 | Digital / Room |
+| M05 ORGAN SKANK | 123 | ORGAN SKANK: 16 / 6; SEQ 1/16; minor sevenths | AIR SHIMMER: 16 / 2 on ties; SEQ 1/16; latched, an octave up | Digital / Spring |
+| M06 WARM ECHO | 118 | WARM WASH: 32 / 2 on ties; SEQ 1/16; power chords | TAPE PLUCK: 16 / 5; SEQ 1/16 | Ping-pong / Hall |
+| M07 MINIMAL 12 | 124 | DUB BLIP: 12 / 4; SEQ 1/16 | DEEP BLUE: 16 / 2 on ties; SEQ 1/16; minor triads (12 against 16) | Digital / Room |
+| M08 TINE DUB | 120 | TINE ROOM: 16 / 4 on ties; SEQ 1/16; minor sevenths | SLOW TIDE: 16 / 2 on ties; SEQ 1/16; power chords | Digital / Plate |
+| M09 DEEP 332 | 124 | SOUL STAB: 16 / 5; SEQ 1/16, swing 54; minor sevenths | FOG BANK: 16 / 2 on ties; SEQ 1/16 | Digital / Room |
+| M10 PAD SPLIT | 97 | EVOLVING PAD: empty | EMBER GLOW: 12 / 4; SEQ 1/4 | Random / Resonator |
+| M11 WHISPER TIDE | 77 | DIGITAL PAD: 8 / 4 on whole-note steps with ties; notes latch | WHISPER PAD: empty; random arp 1/1, two octaves | Random / Plate |
+| M12 TINE STRINGS | 77 | STRING MACH: 4 / 2 on whole-note steps with ties | TINE ROOM: 16 / 4; SEQ 1/8 | Digital / Plate |
 | M13 COLD CHAPEL | 71 | EVOLVING PAD: 8 / 4 on whole-note steps with ties; notes latch | SINGING BOWL: empty; up arp 1/2; latched power chords | Random / Resonator |
-| M14 GARGLE ACID | 127 | GROWL BASS: empty; transpose -24 | SQUELCH: 16 / 10; SEQ 1/16 | Digital / Plate |
-| M15 WOOD & SKIN | 107 | MARBLE RUN: empty; up arp 1/8, two octaves | TABLA TALK: 16 / 9; SEQ 1/16 | Digital / Room |
-| M16 CELLAR TAPE (was STRESS TEST, U2 B) | 122 | PLUCK BASS: 16 / 5 offbeat line; SEQ 1/16 | CLAVICLE: 16 / 2 chord stabs | Digital 4D / Plate |
+| M14 EERIE SIGNAL | 120 | VESPERS: empty; diatonic triads | JAZZ CLUB: 16 / 5; random arp 1/8 | Ping-pong / Hall |
+| M15 HAZY TENSOR | 117 | LADDER BASS: 16 / 6; SEQ 1/16 | GEARBOX: empty; random arp 1/16 triplets | Octave-up / Plate |
+| M16 FINAL REEL | 71 | BRASS PAD: 8 / 4 on whole-note steps with ties; power chords | STRING MACH: 8 / 2; SEQ 1/2 | Ping-pong / Shimmer |
 
 Since U2 B every multi carries a stored sequence on at least one part; an “empty” part is left to a classic arp, chords or the played keys on purpose. M10–M12 each have their own 16-step figure on part 2 (no shared chromatic line any more). All sixteen records store LAYER mode, no keyboard split (including M03 despite its name), straight global swing (50%) and no automation/parameter-lock events. MODE RECALL controls whether stored mode/crossfade settings are applied.
 
@@ -172,7 +172,7 @@ Each runs on its own branch until it is reviewed and merged. Crossed-out rows ar
 | ~~Bass and PITCH~~ | ~~With PITCH ON the bass never walks.~~ No note under C3 and no BASS-category sound is walked, and nothing moves on SCALE CHR. Merged, not yet in a build. |
 | ~~Velocity shape~~ | ~~Automatic, with no setting: RISE louder, BREAK and the followers softer.~~ Merged, not yet in a build. |
 | ARP SEQ ties | ARP SEQ honours ties (about 40 B). Real chord steps are not planned. |
-| Factory multis | About half of the factory multis leave the bass to external gear. First start loads DUB CHORD (as it does now). Which acid multi stays is settled when the factory set is curated, after the release candidate. |
+| ~~Factory multis~~ | ~~About half of the factory multis leave the bass to external gear. First start loads DUB CHORD (as it does now). No acid multi stays.~~ The 16 multis are in the curated dub / house order with six replacements (D31); only four carry a bass part, the first start loads M02 DUB CHORD. Merged, not yet in a build. |
 | ~~Loads~~ | ~~A multi or pattern loaded mid-session starts as written: the TIDE generation does not carry over a load.~~ Merged, not yet in a build. |
 | ~~ARC and transport~~ | ~~ARC resumes where it was on STOP and PLAY (STOP and PLAY are used live to resync with other gear, and a restart would throw the tide back to its opening stage). It restarts only on a load or a K1 stop.~~ Merged, not yet in a build. |
 | ~~ECHO~~ | ~~ECHO folds into LEAD: TURNS becomes TOGETHER, TAKE TURNS and LEAD; the PEAK style uses LEAD; a stored ECHO reads as LEAD.~~ Merged, not yet in a build. |

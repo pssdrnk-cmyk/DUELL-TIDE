@@ -261,9 +261,14 @@ static void lv_multi(void)
     trk[0].p[P_LEVEL] = 0; trk[1].p[P_LEVEL] = 127;
     project_load(10u);
     ck("  MULTI LOAD over LEVEL 0 and 127 (GLO K3 / K4): the multi's 77 / 33, not the unit's", trk[0].p[P_LEVEL] == 77 && trk[1].p[P_LEVEL] == 33);
-    trk[0].p[P_LEVEL] = 9; trk[1].p[P_LEVEL] = 9;
-    project_load(0u);
-    ck("  a factory multi over LEVEL 9 / 9: both at unity (112, 0 dB)", trk[0].p[P_LEVEL] == 112 && trk[1].p[P_LEVEL] == 112);
+    {   /* (D31: M01 BASIC CHORD sets its own balance, 102 / 94; until then REESE SWAMP's was unity: the check is that the multi's own comes back, whatever the unit had) */
+        int32_t l0, l1;
+        project_load(0u);
+        l0 = trk[0].p[P_LEVEL]; l1 = trk[1].p[P_LEVEL];
+        trk[0].p[P_LEVEL] = 9; trk[1].p[P_LEVEL] = 9;
+        project_load(0u);
+        ck("  a factory multi over LEVEL 9 / 9: both at the multi's own mixer level, not the unit's", trk[0].p[P_LEVEL] == l0 && trk[1].p[P_LEVEL] == l1 && l0 >= 80 && l1 >= 80);
+    }
     cycle();
     trk[0].p[P_LEVEL] = 1; trk[1].p[P_LEVEL] = 2;
     project_load(10u);
@@ -283,7 +288,7 @@ static void lv_multi(void)
     }
     ck("  a project of revision 2 (one level) is refused", !proj_import(&back, &st, sizeof st));
     ck("multi version 8", MU_VER == 8u);
-    int32_t m01_trim[2] = {-1, -1};
+    int32_t m01_trim[2] = {-1, -1}, m01_lvl[2] = {-1, -1};
     /* the factory multis: a mixer level of their own (unity up to 0.2.22; 0.2.23: each multi's balance, -16 .. +4 dB), the trim the sound's */
     for (i = 0; i < DF_N; i++) {
         const uint8_t *b = DM_REC + DM_AT[i];
@@ -294,8 +299,10 @@ static void lv_multi(void)
             uint32_t fl = b[pos + 3], nb = b[pos + 4];
             const uint8_t *v = b + pos + 5u + nb;
             ok &= v[P_LEVEL] - 64 >= 80 && v[P_LEVEL] - 64 <= 120 && v[P_TRIM] - 64 >= 30;   /* (0.2.23: the new multis set their own mix, -16 .. +4 dB) */
-            if (i == 0u)
-                m01_trim[t] = v[P_TRIM] - 64;             /* (M01's: its sounds' trims, REESE BASS and SQUELCH) */
+            if (i == 0u) {
+                m01_trim[t] = v[P_TRIM] - 64;             /* (M01's: its sounds' trims, CHORD ECHO and DUST BED) */
+                m01_lvl[t] = v[P_LEVEL] - 64;             /* (and its own mixer levels) */
+            }
             n++;
             pos += 5u + nb + P_COUNT + NX;
             for (k = ns = 0; k < 8u; k++)
@@ -308,7 +315,7 @@ static void lv_multi(void)
     fresh();
     trk[0].p[P_LEVEL] = 20;
     project_load(0u);
-    ck("a factory multi (M01) loaded: the mixer back at its stored unity, a trim", trk[0].p[P_LEVEL] == 112 && trk[1].p[P_LEVEL] == 112 && trk[0].p[P_TRIM] == m01_trim[0] && trk[1].p[P_TRIM] == m01_trim[1]);   /* (1.1's bank: 125 and 99) */
+    ck("a factory multi (M01) loaded: the mixer back at its stored levels, a trim", trk[0].p[P_LEVEL] == m01_lvl[0] && trk[1].p[P_LEVEL] == m01_lvl[1] && trk[0].p[P_TRIM] == m01_trim[0] && trk[1].p[P_TRIM] == m01_trim[1]);   /* (1.1's bank: 125 and 99) */
 }
 
 /* ------------------------------------------------------------------------------------------ 5. MIDI */

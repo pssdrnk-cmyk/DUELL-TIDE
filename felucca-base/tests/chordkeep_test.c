@@ -45,7 +45,7 @@ static uint32_t sound_named(uint32_t eng, const char *name)
             return j;
     return 0xFFFFu;
 }
-static uint32_t first_start(void)                       /* the unit as a new one starts: LAYER, M04 DUB CHORD (TIDE_FIRST_MULTI) */
+static uint32_t first_start(void)                       /* the unit as a new one starts: LAYER, M02 DUB CHORD (TIDE_FIRST_MULTI) */
 {
     ui_power_on();
     frame();

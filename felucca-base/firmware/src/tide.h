@@ -160,10 +160,10 @@ static int tide_foot_two(void);
 #define TIDE_LIVE_STRIP(pg, t) live_strip((pg), (t))
 #define TIDE_LIVE_CHORD(t) live_chord(t)
 #define TIDE_AMPDEST_FM6(pg, t) ((pg)->graph == GR_ADSR && (pg)->id[0] == P_ED_PIT && (t)->eng_req % NENGINES == ENGI_FM6 && fop_ok())
-/* H18 (ui_input.c first_boot_poll): the factory multi a new unit (or one after ERASE DATA, and the emulator) starts with: M04 DUB CHORD,
+/* H18 (ui_input.c first_boot_poll): the factory multi a new unit (or one after ERASE DATA, and the emulator) starts with: M02 DUB CHORD (M04 until D31, 2026-11-05: BASIC CHORD took M01 and the curated order moved it),
  * the TIDE showcase (owner, 2026-11-01): its two 16-step SEQUENCER arps play on PLAY with no key held (ARP SEQ), AUTO TIDE set to JRNY.
- * (M02 NIGHT ORGAN before: 8 steps, "not a great showcase") */
-#define TIDE_FIRST_MULTI 3u
+ * (NIGHT ORGAN, now M04, before: 8 steps, "not a great showcase") */
+#define TIDE_FIRST_MULTI 1u
 
 #else
 
