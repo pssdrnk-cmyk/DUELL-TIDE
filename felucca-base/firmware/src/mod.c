@@ -217,8 +217,8 @@ static __attribute__((noinline)) int mod_e_inert(const track_t *t, uint32_t k)
  * the engine slots that are a list of choices, every change a hard switch: ANALOG WAVE, PHASE WAVE 1 / WAVE 2 / LINE, LOFI BITS / WAVE / ARP, TRIO WAVE /
  * MODE, PHYS MODEL, NOISE MODE, FM6 ALG (WHEEL's REG and ROTR stay: the engine ramps them). The ids stay (append-only) and a stored route to one plays as
  * before: the unit and the editor only no longer offer it (mod_dst_offered).
- * 1.0 (owner, 2026-10-21): the LFO master depths DEPTH (DEP1) and DEPTH2 (DEP2) are removed the same way: invisible in the list, the engine keeps them
- * and the ids stay (LFO 1 / LFO 2 LEVEL knobs come on the LFO pages after the release). The factory sounds no longer route to them */
+ * 1.0 hid the LFO master depths DEPTH (DEP1) and DEPTH2 (DEP2) the same way; the engine always ran them and two factory patches route AT to DEP2, so (owner D20, audit S15)
+ * they are offered again as LFO 1 LEVEL and LFO 2 LEVEL, the names of the LFO pages' LEVEL knobs */
 static __attribute__((noinline)) int mod_dst_removed(uint32_t eng, int32_t d)
 {
     const engine_t *e = ENGINES[eng % NENGINES];
@@ -226,8 +226,6 @@ static __attribute__((noinline)) int mod_dst_removed(uint32_t eng, int32_t d)
     if (d == MD_EQLO || d == MD_EQMID || d == MD_EQHI || d == MD_RSIZE)   /* (T0229, owner: REVERB SIZE out for now: SPRING bends its pitch while SIZE moves) */
         return 1;
     if (d == MD_E2SHP)                                                    /* (DUELL 1.1: FILTER ENV's TIMBRE depth no longer acts: the card is gone, the stored id is never read) */
-        return 1;
-    if (d == MD_DEPTH || d == MD_DEPTH2)                                  /* (1.0, owner: the LFO depths are invisible; the code stays in the mod_depth readers) */
         return 1;
     if (!MD_ENGINE(d))
         return 0;
@@ -898,7 +896,9 @@ static __attribute__((noinline)) const char *mod_dst_name(const track_t *t, int3
     case MD_RATE:   return "LFO 1\nRATE";
     case MD_VIB:    return "LFO 1\nDEPTH";      /* (change list 2026-10-28 D, owner's wording: under the category PITCH the item is LFO 1 DEPTH, was LFO 1 PITCH DEPTH) */
     case MD_RATE2:  return "LFO 2\nRATE";
-    case MD_IMIX:   return "INSERT\nMIX";
+    case MD_DEPTH:  return "LFO 1\nLEVEL";      /* (owner D20, audit S15: the LFO pages' LEVEL knob as a destination; was hidden, named DEPTH twice) */
+    case MD_DEPTH2: return "LFO 2\nLEVEL";
+    case MD_IMIX:  return "INSERT\nMIX";
     case MD_E2ATK:  return "FILTER ENV\nATTACK";
     case MD_E2DEC:  return "FILTER ENV\nDECAY";
     case MD_E2SUS:  return "FILTER ENV\nSUSTAIN";
@@ -1021,8 +1021,8 @@ static __attribute__((noinline)) void mod_dst_line(const track_t *t, int32_t v, 
     /* every destination's name in full, one after the other (none for E1..E8 and the INSERT's A B C: named by their owner) */
     static const char FULL[] =
         "NONE\0""PITCH\0""MULTI CUTOFF\0""TIMBRE\0""AMP LEVEL\0""PAN\0""SATURATION\0""CHORUS SEND\0"
-        "DELAY SEND\0""REVERB SEND\0""LFO 1 RATE\0""LFO 1 DEPTH\0""\0""\0""\0""\0""\0""\0""\0""\0""LFO 1 DEPTH\0"
-        "LFO 2 RATE\0""LFO 2 DEPTH\0""PATCH LEVEL\0""\0""\0""\0""INSERT MIX\0""EQ LOW GAIN\0""EQ MID GAIN\0""EQ HIGH GAIN\0"
+        "DELAY SEND\0""REVERB SEND\0""LFO 1 RATE\0""LFO 1 DEPTH\0""\0""\0""\0""\0""\0""\0""\0""\0""LFO 1 LEVEL\0"
+        "LFO 2 RATE\0""LFO 2 LEVEL\0""PATCH LEVEL\0""\0""\0""\0""INSERT MIX\0""EQ LOW GAIN\0""EQ MID GAIN\0""EQ HIGH GAIN\0"
         "DUCK DEPTH\0""FILTER ENV ATTACK\0""FILTER ENV DECAY\0""FILTER ENV SUSTAIN\0""FILTER ENV RELEASE\0""FILTER ENV MULTI CUTOFF\0"
         "FILTER ENV TIMBRE\0""MULTI RES\0""CHORUS RATE\0""CHORUS DEPTH\0""DELAY FEEDBACK\0""DELAY MOD DEPTH\0"
         "DELAY MOD RATE\0""REVERB SIZE\0""REVERB DAMPING\0""MULTI MODE\0"

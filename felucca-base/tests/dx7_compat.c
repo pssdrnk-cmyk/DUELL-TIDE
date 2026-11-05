@@ -22,6 +22,7 @@
 #define main hostsim_main
 #include "hostsim.c"
 #undef main
+#include "mkdirs.h"
 
 #define SECS_TOTAL 2.0
 #define SECS_HOLD 1.5
@@ -129,8 +130,7 @@ int main(int argc, char **argv)
                 bank[i] = '_';
         if (n < 4104 || d[0] != 0xF0 || d[1] != 0x43 || d[3] != 9) { fprintf(stderr, "%s: not a 32-voice bank\n", argv[a]); continue; }
         snprintf(dir, sizeof dir, "%s/%s", argv[1], bank);
-        snprintf(path, sizeof path, "mkdir -p '%s'", dir);
-        if (system(path)) return 1;
+        if (mkdirs(dir)) { fprintf(stderr, "cannot create %s\n", dir); return 1; }
         snprintf(path, sizeof path, "%s/unpacked.tsv", dir); ut = fopen(path, "w");
         snprintf(path, sizeof path, "%s/render.tsv", dir); rt = fopen(path, "w");
         for (k = 0; k < 32u; k++) {

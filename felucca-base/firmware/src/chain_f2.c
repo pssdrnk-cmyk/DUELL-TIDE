@@ -361,7 +361,7 @@ static __attribute__((noinline)) void f2_cut(track_t *t, voice_t *v, const vmod_
     if (mod->on)
         ms += mod_f2_voice(t, v);
     q->tune = clamp((clamp(p[P_CUT2], -24, 24) * 16) + ((ms * 2711) >> 15), -768, 768);
-    ac = accent_dir(accent_lift(v->vel, m->envq15), accent_dir_type(q->ty));   /* the accent's lift, the way filter 2's TYPE opens (LP up, HP down, BP / NOTCH / COMB none); uc is filter 1's cutoff WITHOUT its own lift (voice_chain.c passes m->ucn) */
+    ac = accent_dir(accent_lift(ACCENT_VEL(v), m->envq15), accent_dir_type(q->ty));   /* the accent's lift, the way filter 2's TYPE opens (LP up, HP down, BP / NOTCH / COMB none); uc is filter 1's cutoff WITHOUT its own lift (voice_chain.c passes m->ucn) */
     c = link ? uc + TW_OFF_Q8(clamp(p[P_CUT2], -TW_OFF_MAX, TW_OFF_MAX)) + ac : clamp(p[P_CUT2], 0, UF_STEPS) * 256 + (ACCENT_BOTH(ENGINES[t->engine]) ? ac : 0);   /* LINK off: the lift only on ANALOG, TRIO, NOISE, as before */
     if (XV(t, X_KTRK2))
         c += UF_KT(XV(t, X_KTRK2), v->pitch_cur);

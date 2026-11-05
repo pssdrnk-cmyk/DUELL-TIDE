@@ -921,7 +921,9 @@ static void test_dest027(void)
         mod_dst_line(&trk[0], MD_LEVEL, b, &more);
         ok &= str_eq(b, "DEST: PATCH LEVEL");   /* (0.2.25 layout round: TRIM is shown PATCH LEVEL) */
         mod_dst_line(&trk[0], MD_DEPTH, b, &more);
-        ok &= str_eq(b, "DEST: LFO 1 DEPTH");
+        ok &= str_eq(b, "DEST: LFO 1 LEVEL");   /* (D20, audit S15: DEP1 is the LFO 1 LEVEL knob, not a second LFO 1 DEPTH) */
+        mod_dst_line(&trk[0], MD_DEPTH2, b, &more);
+        ok &= str_eq(b, "DEST: LFO 2 LEVEL");
         mod_dst_line(&trk[0], MD_E1 + 2, b, &more);
         ok &= str_eq(b, "DEST: ANALOG ") == 0 && b[13] != 0;
         duell_mode_req = DM_SPLIT;
