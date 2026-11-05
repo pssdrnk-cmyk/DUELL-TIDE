@@ -3,8 +3,8 @@
 # DUELL JAM: the whole check in one command (Git Bash on Windows; also Linux / macOS).
 #   sh jam/check.sh [test ...]        (default: the device build, every host test group, the patcher's tests)
 # Each host test group runs on its own with a time limit, so a slow or stuck one cannot stall the rest. On Windows a group
-# that needs fork() (jam/wincompat/sys/wait.h) or another POSIX-only part stops there with "... which Windows does not have: skipped" and is reported SKIP, not FAIL, unless a check failed before it. The summary and every
-# group's output land in ../work/check/ (outside the repository).
+# that needs fork() (jam/wincompat/sys/wait.h) or another POSIX-only part stops there with exit code 77 and "skipped" in its output; host_tests.sh turns that into a "   SKIP" line and this script reports SKIP, never PASS.
+# Any other non-zero exit is a FAIL even without a FAIL line. Each line ends with the group's seconds. The summary and every group's output land in the log folder (outside the repository).
 set -u
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 . "$REPO/jam/env.sh"
@@ -35,29 +35,23 @@ for g in $groups; do
         fi
     fi
     out="$LOG/$g.log"
+    t0=$(date +%s)
     timeout "$LIMIT" sh host_tests.sh "$g" > "$out" 2>&1
     rc=$?
-    # a check that failed before the group reached a part it cannot run here is a failure, not a skip: the group's own FAIL lines
-    # (not the runner's "   FAIL" summary, which a fork stop also prints, and not a "   PASS (detected ... first: x: FAIL ...)" line: a mutation test names the check that caught it) and failed assertions come first
-    real=$(grep -E "FAIL|Assertion failed" "$out" | grep -vE "^   FAIL|^   PASS|which Windows does not have: skipped|(^|[^0-9])0 FAIL" | head -1)
+    secs=$(( $(date +%s) - t0 ))
+    # The exit code decides first: host_tests.sh exits non-zero for any failed group (a crash included, even with no FAIL line, or right after a "0 FAIL" summary),
+    # and reports a Windows "needs fork()" stop (exit 77 from the shim) as a "   SKIP" line with exit 0. So: timeout, non-zero = FAIL, then a FAIL line that
+    # slipped past a zero exit (not the runner's "   FAIL", not a "   PASS (detected ... first: x: FAIL ...)" mutation line, not a "0 FAIL" summary), then SKIP, else PASS.
+    real=$(grep -E "FAIL|Assertion failed" "$out" | grep -vE "^   FAIL|^   PASS|(^|[^0-9])0 FAIL" | head -1)
     if [ $rc -eq 124 ]; then
         echo "TIMEOUT $g (over ${LIMIT} s)"; fail=$((fail + 1)); failed="$failed $g"
-    elif [ -n "$real" ]; then
-        if grep -q "which Windows does not have: skipped" "$out"; then
-            echo "FAIL    $g (a check failed before the part Windows cannot run)"
-        else
-            echo "FAIL    $g"
-        fi
-        fail=$((fail + 1)); failed="$failed $g"
-    elif grep -q "which Windows does not have: skipped" "$out"; then
-        echo "SKIP    $g ($(grep -m1 -o "needs [^,]*, which Windows" "$out" | sed "s/, which Windows//"))"; skip=$((skip + 1))
-    elif [ $rc -eq 0 ] && grep -q "^   SKIP" "$out"; then
-        # a group whose checks could not run here (no Chrome, no update package, no banks ...) says "   SKIP <why>": never PASS
-        echo "SKIP    $g ($(grep -m1 "^   SKIP" "$out" | sed 's/^   SKIP //'))"; skip=$((skip + 1))
-    elif grep -q "^   FAIL" "$out" || [ $rc -ne 0 ]; then
-        echo "FAIL    $g"; fail=$((fail + 1)); failed="$failed $g"
+    elif [ $rc -ne 0 ] || [ -n "$real" ] || grep -q "^   FAIL" "$out"; then
+        echo "FAIL    $g (${secs} s)"; fail=$((fail + 1)); failed="$failed $g"
+    elif grep -q "^   SKIP" "$out"; then
+        # a group whose checks could not run here (no Chrome, no update package, no banks, no fork() ...) says "   SKIP <why>": never PASS
+        echo "SKIP    $g ($(grep -m1 "^   SKIP" "$out" | sed 's/^   SKIP //')) (${secs} s)"; skip=$((skip + 1))
     else
-        echo "PASS    $g"; pass=$((pass + 1))
+        echo "PASS    $g (${secs} s)"; pass=$((pass + 1))
     fi
 done
 
