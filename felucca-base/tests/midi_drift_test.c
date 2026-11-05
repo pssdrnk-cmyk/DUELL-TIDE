@@ -177,11 +177,37 @@ static int drift_start_arms(uint32_t source)
     return bad;
 }
 
+/* S08: this unit's PLAY under an external clock waits for the master's next bar (96 pulses after its Start) */
+static int drift_play_waits(uint32_t source)
+{
+    int bad=0, early=0; uint32_t i;
+    drift_setup(source,120);                        /* the master's Start, then its pulse 0 */
+    for(uint32_t k=0;k<NSTEP;k++) { trk[0].step[k].time=ST_NOTE; trk[0].step[k].n=1; trk[0].step[k].note[0]=60; }
+    transport_req=2; events_block(CTL);             /* this unit's STOP */
+    for(i=1;i<=30u;i++) drift_packet(source,0xF8,10u+(uint32_t)((uint64_t)i*60000u/(120u*24u)));
+    transport_req=1; events_block(CTL);             /* PLAY, 30 pulses into the master's bar */
+    bad+=check("PLAY 30 pulses into the master's bar: not playing yet",!song.playing);
+    for(i=31;i<96u;i++) {
+        drift_packet(source,0xF8,10u+(uint32_t)((uint64_t)i*60000u/(120u*24u)));
+        early+=song.playing;
+    }
+    bad+=check("pulses 31..95: still waiting",!early);
+    drift_packet(source,0xF8,10u+(uint32_t)((uint64_t)96u*60000u/(120u*24u)));
+    bad+=check("the master's next bar (pulse 96): playing, step 0 and the click start on it",song.playing && clk_pos!=CLK_START && trk[0].seq_idx==0u);
+    transport_req=2; events_block(CTL);
+    for(i=97;i<=140u;i++) drift_packet(source,0xF8,10u+(uint32_t)((uint64_t)i*60000u/(120u*24u)));
+    transport_req=1; events_block(CTL);
+    drift_packet(source,0xFC,3000u);
+    for(i=141;i<=240u;i++) drift_packet(source,0xF8,3000u+i);
+    bad+=check("the master's Stop cancels a waiting PLAY",!song.playing);
+    return bad;
+}
+
 int main(void)
 {
     int bad=drift_run(2,120,0,0)+drift_run(1,120,1,1)+drift_run(2,97,1,1)+
             drift_run(1,240,1,1)+drift_run(2,40,0,0);
-    bad+=drift_tempo_edges(1)+drift_tempo_edges(2)+drift_start_and_wrap(1)+drift_start_and_wrap(2)+drift_start_arms(1)+drift_start_arms(2);
+    bad+=drift_tempo_edges(1)+drift_tempo_edges(2)+drift_start_and_wrap(1)+drift_start_and_wrap(2)+drift_start_arms(1)+drift_start_arms(2)+drift_play_waits(1)+drift_play_waits(2);
     bad+=drift_tempo_steady(1,120)+drift_tempo_steady(2,97)+drift_tempo_steady(1,124)+drift_tempo_steady(2,140)+drift_tempo_steady(1,180)+drift_tempo_steady(2,40)+drift_tempo_steady(1,240)+drift_tempo_response();
     printf("MIDI LONG-RUN PHASE: %s\n",bad?"FAIL":"PASS");
     return bad!=0;

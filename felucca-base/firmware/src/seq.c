@@ -1694,9 +1694,12 @@ static void events_block(uint32_t n)
     if (cin_left && !clock_mode)
         cin_block(n);
     if (transport_req == 1u) {
-        if (clock_mode)
-            midi_clock_transport(0xFAu, fm1_ms);
-        else if (cin_left)
+        if (clock_mode) {                           /* an external clock arriving: PLAY waits for the master's bar (midi_clock_pulse), else it starts at once */
+            if (midi_clock.seen && !song.playing && (int32_t)(fm1_ms - midi_clock.last_ms) < 250)
+                midi_bar |= 0x80u;
+            else
+                midi_clock_transport(0xFAu, fm1_ms);
+        } else if (cin_left)
             ;                                       /* counting in already (the UI's PLAY stops it: seq_counting) */
         else if (cin_bars && song.rec && !song.playing)
             cin_begin();                            /* recording from stop: the count-in first */
@@ -1704,11 +1707,13 @@ static void events_block(uint32_t n)
             seq_start();
         transport_req = 0;
     } else if (transport_req == 2u) {
+        midi_bar &= 0x7Fu;
         if (clock_mode)
             midi_clock.stopped = 1;                 /* (an external clock: the arp waits for the next Start, as for 0xFC) */
         seq_stop();
         transport_req = 0;
     } else if (transport_req == 4u) {                 /* PLAY STOP twice or held: STOP ALL */
+        midi_bar &= 0x7Fu;
         stop_all();
         transport_req = 0;
     } else if (transport_req == 3u) {                 /* GLO + PLAY: from the top without stopping (INT clock) */
