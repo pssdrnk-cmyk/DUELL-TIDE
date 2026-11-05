@@ -187,6 +187,8 @@ static void chain_dip(void)
     t->p[P_KTRK]=0; t->p[P_FREEC]=0;
     t->mwon=1; t->mwpi=0; morph_cdd[0]=16384;
     REQUIRE("chain path: filter 1's cutoff takes the crossing dip", morph_xcut(t,mid)<mid && chain_uc(e,t,&v,&m,mid,0)==morph_xcut(t,mid));
+    m.acc1=3000; chain_uc(e,t,&v,&m,mid,0);
+    REQUIRE("crossing dip: filter 2 LINK's and NOISE's cutoff (ucn) takes the dip too", m.ucn<mid-3000 && m.ucn==morph_xcut(t,mid-3000));
     memset(&m,0,sizeof m);
     REQUIRE("chain path: a dip under the open end runs filter 1", chain_f1_on(e,t,&v,&m,UF_TOP));
     morph_cdd[0]=0; t->mwon=0;
