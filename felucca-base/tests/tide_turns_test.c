@@ -1015,7 +1015,7 @@ static void t_store(void)
     put_rec(rec, 5 + TS_N);
     tide_seen_ok = 0;
     tide_settings();
-    CHECK("a full record: ARC read back", sqm_arc == 0u || sqm_arc == 2u);
+    CHECK("a full record: ARC read back", sqm_arc == 2u);
 }
 
 /* audit C4: the AUTO TIDE page's redraw hash changes when any one of its settings changes, whatever TURNS is (TAKE TURNS' factor masked VARY BARS) */
