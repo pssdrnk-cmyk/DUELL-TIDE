@@ -74,7 +74,7 @@ JRNY never changes a part's engine. It picks within the starting sound's role fa
 
 ### New: TIDE SETTINGS (in HOME's round)
 
-How the tide behaves. **Knob 1** picks the row, **OCT+ / OCT-** change it. The rows, top to bottom:
+How the tide behaves. **Knob 1** picks the row, **OCT+ / OCT-** (or knobs 2 to 4) change it. The rows, top to bottom:
 
 | Row | Values (**default**) | What it does |
 |---|---|---|

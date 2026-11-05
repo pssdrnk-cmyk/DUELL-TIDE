@@ -263,9 +263,11 @@ static void tide_knob(uint32_t slot, int32_t s)
 {
     uint32_t pi = song.sel, mask = morph_mask(pi);
     int32_t d;
-    if (cur_page()->graph == GR_TIDELIST) {               /* K1 the row; K2..K4 nothing (no card) */
+    if (cur_page()->graph == GR_TIDELIST) {               /* K1 the row; K2..K4 the picked row's value, a step an event as OCT+ / OCT- (audit C12: every other page has a knob a value) */
         if (slot == 0u)
             jl_sel = (uint8_t)clamp((int32_t)jl_sel + s, 0, JL_N - 1);
+        else
+            tide_list_oct(s > 0 ? 2u : 1u);
         return;
     }
     switch (slot) {
@@ -799,6 +801,11 @@ static void graph_tidelist(void)
             cv_rrect(on ? x + 14 : x + 2, sy + 2, 10, 10, -5, knob, track);
         } else
             cv_text_r(xr, ty, &AF_M, v, sel ? T_INK : nd && r >= JL_TURNS ? T_DIM : T_THEME, bg);   /* (a row that does nothing now: dim) */
+    }
+    if (JL_N > JL_VIS) {                                 /* where the window is in the list: a 2 px mark at the right (audit C12) */
+        int32_t hh = UT_L5_PITCH * (int32_t)JL_VIS, th = hh * (int32_t)JL_VIS / (int32_t)JL_N;
+        cv_rect(236, UT_L5_Y0, 2, hh, T_RAISE);
+        cv_rect(236, UT_L5_Y0 + (hh - th) * (int32_t)top / (int32_t)(JL_N - JL_VIS), 2, th, T_MID);
     }
     cv_oy = 0;
     cv_blit(0, (uint32_t)y0);

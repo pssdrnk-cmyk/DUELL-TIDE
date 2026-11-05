@@ -44,7 +44,7 @@ Where two very different sounds cross, a short filter dip hides the change (WASH
 
 ## 3. TIDE SETTINGS (set and forget)
 
-K1 picks the row. **OCT+** the next value, **OCT-** the one before. Saved over a power cycle (after about 2 s, while stopped).
+K1 picks the row. **OCT+** the next value, **OCT-** the one before (knobs 2 to 4 turn it too, one step a click). A mark at the right edge shows where the six visible rows are in the list. Saved over a power cycle (after about 2 s, while stopped).
 
 | Row | Values (default first) | What it does | Start |
 |---|---|---|---|

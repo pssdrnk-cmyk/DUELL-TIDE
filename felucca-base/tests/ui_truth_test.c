@@ -179,6 +179,29 @@ static void test_inert_rows(void)
     gl.target = GT_BOTH;
 }
 
+/* ---- TIDE SETTINGS: knobs 2 .. 4 turn the picked row's value, a mark shows where the window is in the list (audit C12) ---- */
+static void test_list_knobs(void)
+{
+    ui_power_on(); frame();
+    go_title("TIDE SETTINGS");
+    gl.target = GT_SOUND;
+    jl_sel = JL_TARGET;
+    tide_knob(1u, 1);
+    CHECK("LIST: knob 2 right is the next value", gl.target == GT_SEQ);
+    tide_knob(3u, 7);
+    CHECK("LIST: knob 4 right, a step an event", gl.target == GT_BOTH);
+    tide_knob(2u, 1);
+    CHECK("LIST: it stops at the last value", gl.target == GT_BOTH);
+    tide_knob(2u, -3);
+    CHECK("LIST: knob 3 left is the one before", gl.target == GT_SEQ && jl_sel == JL_TARGET);
+    jl_sel = JL_STYLE;
+    ui.force = 1; ui_draw();
+    CHECK("LIST: the scroll mark is at the top with the first row picked", px_is(236, UT_L5_Y0 + 2, T_MID) && px_is(236, UT_L5_Y0 + 6 * UT_L5_PITCH - 2, T_RAISE));
+    jl_sel = JL_N - 1;
+    ui.force = 1; ui_draw();
+    CHECK("LIST:   and at the bottom with the last", px_is(236, UT_L5_Y0 + 6 * UT_L5_PITCH - 2, T_MID) && px_is(236, UT_L5_Y0 + 2, T_RAISE));
+}
+
 /* ---- AUTO TIDE: the ARC line keeps the trip ---- */
 static void test_arc_trip(void)
 {
@@ -234,6 +257,7 @@ int main(void)
     test_roll_poly_dim();
     test_style_custom();
     test_inert_rows();
+    test_list_knobs();
     test_arc_trip();
     test_footer_number();
     printf("uitruth: %u checks, %u failed\n", checks, failures);
