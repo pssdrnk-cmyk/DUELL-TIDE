@@ -606,6 +606,8 @@ static __attribute__((noinline)) void arp_fire(track_t *t, uint32_t period)
  * step takes, so the offbeat lands where the display says (audit S03; it used to land at 70 % for 75, 62.9 for 66).
  * sw_ex: the part of a SWG over 50 (0 .. 25); sw_len: the samples the even step is longer by, the odd one shorter, for the sum of such parts
  * (the track's SWG and the global one add, at most 25 = 75 %): the offbeat is at period + ex * period / 50 = (50 + 2 * ex) % of the pair */
+/* a triplet division (N_DIV 4 = 8T, 5 = 16T, 10 = 4T, 11 = 2T, 12 = 32T) is not swung: its steps are already the third of a beat, and a swung pair measured 70 % (audit S14; MPC and Elektron leave triplets straight) */
+#define DIV_TRIPLET(d) ((0x1C30u >> ((d) & 31u)) & 1u)
 static inline int32_t sw_ex(int32_t pct) { return pct <= 50 ? 0 : pct >= 75 ? 25 : pct - 50; }
 static inline int32_t sw_len(int32_t ex, uint32_t period) { return (ex > 25 ? 25 : ex) * (int32_t)period / 50; }
 static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
@@ -637,7 +639,7 @@ static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
         return;
     }
     period = div_samples((uint32_t)t->p[P_ARATE]);
-    sw = sw_len(sw_ex(t->p[P_ASWING]), period);
+    sw = DIV_TRIPLET(t->p[P_ARATE]) ? 0 : sw_len(sw_ex(t->p[P_ASWING]), period);
     if (t->arp_pos >= 0x8000000u) {                 /* a new phrase waits for its first step (0xFFFFFFF less the samples still to wait) */
         uint32_t w = 0xFFFFFFFu - t->arp_pos;
         if (n < w) {
@@ -679,7 +681,7 @@ static void arp_tick(track_t *t, uint32_t n) { arp_step(t, n, n); }
  * and the odd ones shorter, so every odd step starts late */
 static uint32_t step_samples(const track_t *t, uint32_t period, uint32_t idx)
 {
-    int32_t sw = sw_len(sw_ex(t->p[P_SSWING]) + sw_ex(song.g[G_SWING]), period);   /* the track's + the global, at most 75 % */
+    int32_t sw = DIV_TRIPLET(t->p[P_SDIV]) ? 0 : sw_len(sw_ex(t->p[P_SSWING]) + sw_ex(song.g[G_SWING]), period);   /* the track's + the global, at most 75 % (not on a triplet) */
     return period + (uint32_t)((idx & 1u) ? -sw : sw);
 }
 
