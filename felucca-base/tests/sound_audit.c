@@ -115,7 +115,7 @@ static int au_keep(const ds_sound_t *s)
  * (KNOWN), not failed, until the owner decides: trim or re-voice the sound, or move the rule */
 static int au_known(const ds_sound_t *s)
 {
-    static const char *const KNOWN[] = {"BEHIVE", "SINGING BOWL", "ARP PLUCK"};
+    static const char *const KNOWN[] = {"BEHIVE"};   /* (SINGING BOWL and ARP PLUCK re-voiced, 2026-11-05: they pass) */
     uint32_t i;
     for (i = 0; i < sizeof KNOWN / sizeof *KNOWN; i++)
         if (str_eq(s->name, KNOWN[i]))

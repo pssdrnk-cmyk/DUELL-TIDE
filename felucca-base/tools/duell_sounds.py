@@ -852,8 +852,8 @@ SOUNDS = [
     dict(engine='PHYS', idx=1, name='SINGING BOWL', cat='PAD', bseed=64412,  # #56
          p={
             'ATK': 69, 'SUS': 127, 'REL': 103, 'LRATE': 17, 'LWAVE': 1, 'LD_FLT': 4, 'CHOR': 38, 'DLY': 19, 'REV': 76, 'FREEA': 57, 'FREEB': 4,
-            'E2ATK': 79, 'E2DEC': 108, 'E2SUS': 89, 'E2REL': 101, 'L2RATE': 21, 'L2WAVE': 1, 'CHRD': 9, 'VOIC': 1, 'TRIM': 127, 'E2FLT': 14,
-            'L2FLT': 4, 'E2': 92, 'E3': 66, 'E4': 92, 'E5': 10, 'E6': 80, 'E7': 100, 'MOD1': ('AT', 'E7', 10), 'MOD2': ('CYCLE', 'CUT', 7),
+            'E2ATK': 79, 'E2DEC': 108, 'E2SUS': 89, 'E2REL': 101, 'L2RATE': 21, 'L2WAVE': 1, 'CHRD': 9, 'VOIC': 1, 'TRIM': 124, 'E2FLT': 14,
+            'L2FLT': 4, 'E2': 92, 'E3': 66, 'E4': 105, 'E5': 10, 'E6': 80, 'E7': 120, 'MOD1': ('AT', 'E7', 10), 'MOD2': ('CYCLE', 'CUT', 7),
             'MOD3': ('LFO2', 'E3', 4), 'LTRIG': 1, 'L2TRIG': 1, 'CYCLE RISE': 112, 'CYCLE FALL': 112,
          },
          bend={
@@ -979,11 +979,11 @@ SOUNDS = [
          }),
     dict(engine='ANALOG', idx=18, name='ARP PLUCK', cat='PLUCK', bseed=12417,  # #65
          p={
-            'ATK': 0, 'DEC': 77, 'SUS': 0, 'REL': 61, 'LRATE': 27, 'LWAVE': 1, 'LD_FLT': 5, 'AMODE': 1, 'AOCT': 2, 'AGATE': 76, 'RES2': 71, 'KTRK': 27,
-            'CHOR': 28, 'DLY': 30, 'REV': 23, 'TWTYPE': 5, 'FREEA': 41, 'FREEB': 8, 'FREED': 2, 'E2ATK': 0, 'E2DEC': 61, 'E2SUS': 0, 'E2REL': 61,
-            'L2RATE': 17, 'L2WAVE': 1, 'CUT2': 40, 'TRIM': 103, 'E2FLT': 31, 'E2': 17, 'MOD1': ('AT', 'FRES', 10), 'MOD2': ('VEL', 'CUT', 8),
-            'MOD3': ('CYCLE', 'CUT', 7), 'LTRIG': 1, 'L2TRIG': 1, 'TWIN LINK': 0, 'TWIN ENV2': 37, 'TWIN LFO2': 7, 'CYCLE RISE': 103,
-            'CYCLE FALL': 103,
+            'ATK': 0, 'DEC': 77, 'SUS': 0, 'REL': 61, 'LRATE': 27, 'LWAVE': 1, 'LD_FLT': 5, 'AMODE': 1, 'AOCT': 2, 'AGATE': 76, 'RES2': 46, 'KTRK': 27,
+            'CHOR': 18, 'DLY': 20, 'REV': 23, 'TWTYPE': 5, 'FREEA': 41, 'FREEB': 8, 'FREED': 2, 'E2ATK': 0, 'E2DEC': 61, 'E2SUS': 0, 'E2REL': 61,
+            'L2RATE': 17, 'L2WAVE': 1, 'CUT2': 40, 'TRIM': 117, 'E2FLT': 31, 'E2': 17, 'MOD1': ('AT', 'FRES', 10), 'MOD2': ('VEL', 'CUT', 8),
+            'MOD3': ('CYCLE', 'CUT', 7), 'LTRIG': 1, 'L2TRIG': 1, 'TWIN LINK': 0, 'TWIN ENV2': 26, 'TWIN LFO2': 7, 'CYCLE RISE': 103,
+            'CYCLE FALL': 103, 'DIST': 24,
          },
          bend={
             'ATK': 13, 'DEC': 80, 'SUS': 2, 'REL': 70, 'ED_SHP': 3, 'LRATE': 15, 'LPHASE': 12, 'LFADE': 9, 'LD_FLT': 14, 'LD_SHP': -5, 'LD_AMP': 7,

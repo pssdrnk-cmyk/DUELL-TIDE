@@ -1,5 +1,6 @@
 # FELUCCA golden renders (tests/regress.c): name, FNV-1a 64 of the output samples.
 # Rewritten by GOLDEN_UPDATE=1 tests/run_tests.sh -- only for an intended change of the sound.
+# Bank content (audit G06), on purpose, 2 renders: ANALOG/18_ARP_PLUCK (the ladder resonance and its envelope sweep tamed, louder) and PHYS/01_SINGING_BOWL (longer bow, less damping, louder).
 # ARP timing (audit S01 / S02 / S11), on purpose, 14 of the 242: the internal-clock arp keeps the overshoot of each step instead of rounding it up to a block,
 # so its notes start on the exact grid:
 # ANALOG/15_GLASS_SHARDS, ANALOG/18_ARP_PLUCK, PHASE/03_WIRE_HARP, PHASE/05_CRYSTAL_CAVE, LOFI/03_MARBLE_RUN, LOFI/05_DEAD_BATTERY, VOICE/02_DOO_WOP,
@@ -115,7 +116,7 @@ sound/ANALOG/14_STORM_FRONT 14f241eadc0858cc
 sound/ANALOG/15_GLASS_SHARDS 47940d524e8c07d8
 sound/ANALOG/16_FOLD_BASS 9e2e6b24aecb2130
 sound/ANALOG/17_SQUARE_LEAD 09745a19b3235334
-sound/ANALOG/18_ARP_PLUCK b7c9bc8c5b274fee
+sound/ANALOG/18_ARP_PLUCK 20fc892f2651d39b
 sound/ANALOG/19_DRIVEN_SAW 9409b41238341048
 sound/PHASE/00_ELASTIC_BASS 3d728996d1820b38
 sound/PHASE/01_BRAZEN ffc614b53383dadb
@@ -166,7 +167,7 @@ sound/WHEEL/04_NIGHT_BOX 580b29f6c3c1b978
 sound/WHEEL/05_LESLIE_STORM a780d31a36264344
 sound/WHEEL/06_TAPE_DRONE 8fa09d30fad5671e
 sound/PHYS/00_PAN_WHISTLE a61902ab23b8ba45
-sound/PHYS/01_SINGING_BOWL 18a2d793e3ea7f1e
+sound/PHYS/01_SINGING_BOWL 613bf6cb71a323b3
 sound/PHYS/02_GHOST_HARP a2a30746cbb73025
 sound/PHYS/03_NYLON_GUT 8b94e0e41a68e9aa
 sound/PHYS/04_ROSEWOOD 5a5b04cc3489e9a8
