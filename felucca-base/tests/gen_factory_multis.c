@@ -28,7 +28,7 @@ typedef struct {
     const char *sound;                           /* its name (checked) */
     int16_t set[96];                             /* (P_ id, value) pairs after the load, END-terminated */
     const char *steps;                           /* the SEQUENCER arp's pattern (space separated): "." rest, a signed offset in
-                                                  * semitones from the held key, suffix A accent; 0: no pattern */
+                                                  * semitones from the held key, "-" a tie, suffix A accent; 0: no pattern */
     uint8_t len;
     uint16_t bseed;                              /* End B: 0 the sound's own; else rolled again with this seed (the sound's AMOUNT) */
     uint8_t amt;                                 /* 0.2.13: 0 the sound's AMOUNT; else End B rolled at this AMOUNT (%) and the part's AMOUNT set to it */
@@ -61,6 +61,7 @@ static int parse_steps(track_t *t, const char *s, uint32_t len)
         step_t *st = &t->step[i];
         while (*s == ' ') s++;
         if (*s == '.') { st->time = ST_REST; s++; }
+        else if (*s == '-' && (s[1] == ' ' || !s[1])) { st->time = ST_TIE; st->n = 0; s++; }   /* a bare "-": a tie (the patterns' T_ flag: holds the note before) */
         else if (*s == 'n') {                    /* U2 B: "n60+64+67" a plain pattern's step, up to four absolute notes (C4 = 60), suffix A an accent */
             s++;
             st->time = ST_NOTE;

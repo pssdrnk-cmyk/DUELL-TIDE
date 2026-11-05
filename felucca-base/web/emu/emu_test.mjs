@@ -89,7 +89,7 @@ a.ex.web_midi(0x90, 64, 100);                                  // Web MIDI: E4 o
 a.render(300);
 a.ex.web_midi(0x80, 64, 0);
 a.render(300);
-a.ex.web_midi(0xB0, 123, 0);                                   // all notes off (1.1 + TIDE: the first start is M04, whose chord a key leaves sounding; the settings write waits for no voice)
+a.ex.web_midi(0xB0, 123, 0);                                   // all notes off (1.1 + TIDE: the first start is M02, whose chord a key leaves sounding; the settings write waits for no voice)
 a.render(300);
 check(`a MIDI note in (USB-MIDI's queue) sounds (peak ${a.peak.toFixed(3)})`, a.peak > 0.01);
 { // DUELL 0.2.11: the keys and MIDI above played under the GUIDE; SELECT turns its page, HOME leaves it and the settings are written once

@@ -1120,7 +1120,7 @@ static void test_dist(void)
 /* ------------------------------------------------------- BITS curve, old stores --- */
 /* DUELL 0.2.14: INS A of CRUSH is the detent of 1 .. 16 bits (ins_bits.h). What was stored before held A as (A >> 3) + 1 bits; those stores
  * (a project of revision 0, a multi of version 2, a patch without PTF_CB) are no longer read, nothing converts them: here they are refused.
- * The factory multis are rewritten as version 3, then 4 (tools/factory_multis): WIRED SNAIL's CRUSH part (M04 until 0.2.22, M10 since 0.2.23, the record kept)
+ * The factory multis are rewritten as version 3, then 4 (tools/factory_multis): WIRED SNAIL's CRUSH part (M04 until 0.2.22, M10 since 0.2.23, the record kept; out of the sixteen since D31)
  * holds the detent of the bit count it always played. */
 static int32_t old_crush(int32_t v, int32_t a)       /* the quantiser of before 0.2.14 */
 {
@@ -1193,7 +1193,7 @@ static void test_bits_migrate(void)
                     crush_parts++;
                 }
         }
-        ck("multi: the factory multis (version 6) load; WIRED SNAIL's CRUSH part (M10) is the 8-bit detent it played before", ok && crush_parts == 1u);
+        ck("multi: the factory multis (version 8) load; a CRUSH part among them (WIRED SNAIL's, M10, was the only one; it left the sixteen in D31) is the 8-bit detent it played before", ok && crush_parts <= 1u);
     }
     /* 4. a stored patch: written now it carries PTF_CB; one without (before 0.2.14) is no record */
     {

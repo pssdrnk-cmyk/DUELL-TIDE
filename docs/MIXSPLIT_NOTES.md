@@ -222,26 +222,26 @@ The task asked for `floor((limit - global - other fixed - this fixed - other voi
 
 The old VOICE CAP code is kept and still applies, as the stricter of the two. It was NOT removed: in the 16 factory multis the budget is stricter or equal in all 32 parts (table below), so it could go, but its tests (`cpuscen` section C, the P table) need the Mac's instruction counter and could not be run here. Remove it after `./host_tests.sh cpuscen` runs on the Mac with the budget in `ui_test.c`'s frame.
 
-### 8.4 NOTES a part, the 16 factory multis (default effects as loaded; and in cpuscen's state, MORPH on End B)
+### 8.4 NOTES a part, the 16 factory multis (default effects as loaded; and in cpuscen's state, MORPH on End B; re-made 2026-11-05 for the curated order of D31 and with TIDE's DSP items of audit A01 in the charge)
 
 | multi | parts | mode | as loaded | MORPH on | old cap |
 |---|---|---|---|---|---|
-| M01 REESE SWAMP | WAVE / ANALOG | LAYER | 3 / 3 (UNISON: one note) | 3 / 3 | 8 / 8 |
-| M02 NIGHT ORGAN | WHEEL / WAVE | LAYER | 3 / 3 | 2 / 2 | 8 / 8 |
-| M03 PAD SPLIT | WAVE / ANALOG | LAYER | 3 / 3 | 2 / 2 | 8 / 8 |
-| M04 DUB CHORD | FM6 / ANALOG | LAYER | 3 / 3 | 2 / 2 | 6 / 8 |
-| M05 WHISPER TIDE | WAVE / VOICE | LAYER | 2 / 2 | 2 / 2 | 8 / 4 |
-| M06 TINE STRINGS | TRIO / FM6 | LAYER | 3 / 3 | 2 / 2 | 8 / 6 |
-| M07 FINAL REEL | WAVE / TRIO | LAYER | 8 / 8 | 3 / 3 | 8 / 8 |
-| M08 MONO DUEL | TRIO / ANALOG | DUEL | 3 / 3 (mono) | 3 / 3 | 8 / 8 |
-| M09 ACID ETHER | ANALOG / ANALOG | LAYER | 3 / 3 (mono) | 2 / 2 | 8 / 8 |
-| M10 WIRED SNAIL | ANALOG / ANALOG | LAYER | 2 / 2 | 2 / 2 | 8 / 8 |
-| M11 EERIE SIGNAL | VOICE / WHEEL | LAYER | 3 / 3 | 3 / 3 | 4 / 8 |
-| M12 DEAD BUFFER | WAVE / NOISE | LAYER | 8 / 8 | 3 / 3 | 8 / 8 |
-| M13 COLD CHAPEL | WAVE / PHYS | LAYER | 2 / 2 | 2 / 2 | 8 / 3 |
-| M14 GARGLE ACID | WAVE / ANALOG | LAYER | 3 / 3 (mono) | 3 / 3 | 8 / 8 |
-| M15 WOOD & SKIN | LOFI / PHYS | LAYER | 2 / 2 | 2 / 2 | 8 / 3 |
-| M16 STRESS TEST | PHYS / WAVE | LAYER | 1 / 1 | 1 / 1 | 3 / 8 |
+| M01 BASIC CHORD | ANALOG / NOISE | LAYER | 3 / 3 | 3 / 3 | 8 / 8 |
+| M02 DUB CHORD | FM6 / ANALOG | LAYER | 2 / 2 | 2 / 2 | 8 / 8 |
+| M03 CELLAR TAPE | PHYS / PHASE | LAYER | 2 / 2 | 2 / 2 | 3 / 8 |
+| M04 NIGHT ORGAN | WHEEL / WAVE | LAYER | 2 / 2 | 1 / 1 | 8 / 8 |
+| M05 ORGAN SKANK | WHEEL / PHASE | LAYER | 3 / 3 | 3 / 3 | 8 / 8 |
+| M06 WARM ECHO | ANALOG / ANALOG | LAYER | 3 / 3 | 3 / 3 | 8 / 8 |
+| M07 MINIMAL 12 | ANALOG / PHASE | LAYER | 3 / 3 | 3 / 3 | 8 / 8 |
+| M08 TINE DUB | FM6 / ANALOG | LAYER | 2 / 2 | 2 / 2 | 8 / 8 |
+| M09 DEEP 332 | ANALOG / ANALOG | LAYER | 3 / 3 | 3 / 3 | 8 / 8 |
+| M10 PAD SPLIT | WAVE / ANALOG | LAYER | 2 / 2 | 1 / 1 | 8 / 8 |
+| M11 WHISPER TIDE | WAVE / VOICE | LAYER | 2 / 2 | 1 / 1 | 8 / 4 |
+| M12 TINE STRINGS | TRIO / FM6 | LAYER | 3 / 3 | 2 / 2 | 8 / 8 |
+| M13 COLD CHAPEL | WAVE / PHYS | LAYER | 1 / 1 | 1 / 1 | 8 / 3 |
+| M14 EERIE SIGNAL | VOICE / WHEEL | LAYER | 2 / 2 | 1 / 1 | 4 / 8 |
+| M15 HAZY TENSOR | ANALOG / NOISE | LAYER | 2 / 2 | 2 / 2 | 8 / 8 |
+| M16 FINAL REEL | PHYS / WAVE | LAYER | 1 / 1 | 1 / 1 | 3 / 8 |
 
 (`./host_tests.sh budget` prints the full table with the global and part costs and the reasons.) One core with a margin of 1.15 and a limit of 80 % gives 2 to 3 notes a part for most multis, as CPU_PLAN section 3 (one core) said; M07 and M12 as loaded fit 8 + 8 (pool-limited). The MORPH column is lower because an End B that switches a filter on or changes the slope costs every voice (the 0.2.11 cap counted it too).
 

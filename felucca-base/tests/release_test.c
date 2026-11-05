@@ -33,9 +33,9 @@ static void ck(const char *what, int ok)
 
 int main(void)
 {
-    static const char *const FN[16] = {"REESE SWAMP", "NIGHT ORGAN", "PAD SPLIT", "DUB CHORD", "WHISPER TIDE", "TINE STRINGS", "FINAL REEL",
-                                       "HAZY TENSOR", "ACID ETHER", "WIRED SNAIL", "EERIE SIGNAL", "DEAD BUFFER", "COLD CHAPEL", "GARGLE ACID",
-                                       "WOOD & SKIN", "CELLAR TAPE"};   /* (the 0.2.24 order, tools/factory_multis.py) */
+    static const char *const FN[16] = {"BASIC CHORD", "DUB CHORD", "CELLAR TAPE", "NIGHT ORGAN", "ORGAN SKANK", "WARM ECHO", "MINIMAL 12",
+                                       "TINE DUB", "DEEP 332", "PAD SPLIT", "WHISPER TIDE", "TINE STRINGS", "COLD CHAPEL", "EERIE SIGNAL",
+                                       "HAZY TENSOR", "FINAL REEL"};   /* (the curated dub / house order of D31, tools/factory_multis.py) */
     uint32_t k, ok, test_rows = 0, sys_rows = 0;
     memset(nor, 0xFF, sizeof nor);
     ui_power_on();
@@ -66,9 +66,9 @@ int main(void)
     ck("no page is called TEST (the GLO round is untouched)", ok);
     for (k = 0, ok = 1; k < MU_SLOTS; k++)
         ok &= project_used(k) && project_factory(k) && str_eq(mu_names[k], FN[k]);
-    ck("M01..M16 are the factory multis (0.2.24 order: REESE SWAMP, NIGHT ORGAN .. WOOD & SKIN, M16 CELLAR TAPE), as in the test mode", ok);
-    project_load(15);
-    ck("LOAD of M16 loads CELLAR TAPE (PHYS + PHASE)", proj_cur == 15u && trk[0].eng_req == ENGI_PHYS && str_eq(ENGINES[trk[1].eng_req]->name, "PHASE"));
+    ck("M01..M16 are the factory multis (D31 order: BASIC CHORD, DUB CHORD, CELLAR TAPE .. HAZY TENSOR, M16 FINAL REEL), as in the test mode", ok);
+    project_load(2);
+    ck("LOAD of M03 loads CELLAR TAPE (PHYS + PHASE)", proj_cur == 2u && trk[0].eng_req == ENGI_PHYS && str_eq(ENGINES[trk[1].eng_req]->name, "PHASE"));
     printf(bad ? "release: FAILED (%d)\n" : "release: all ok\n", bad);
     return bad ? 1 : 0;
 }
