@@ -13,3 +13,4 @@ baff39b9177e0066a47cf6d6fb9cf3805d43abafd793a75ca1f5e6b3a10686c4duell-1.1.fwsc (
 - 2026-11-05, `963364d2` (integ after audit wave 11): A08 PHYS loop-lag cache (same samples, ENG_MEM_PART +60 B), P09 ANALOG PW card (shown with PWM only), T02 first-start guide strings, U07/U12 renames (bit-exact).
 - 2026-11-05, `b0681972` (integ after audit wave 12): U05 shared isqrt/xorshift helpers, T16 SCOPE_OPS page table, G13 bank-2 program change and FAV past the 128, A01 TIDE DSP budget charge.
 - 2026-11-05, `79b3986b` (integ after audit wave 13): G14 factory multis in the curated order, six new (D31; the multi records are shared with the plain image).
+- 2026-11-05, `29c4f8b2` (wave 14, W14): MULTIS opens with LOAD picked (act_col in ui.c, OCT- on MULTIS goes HOME as on PATTERNS in ui_input.c), as PATTERNS already did; owner request, shared UI code.

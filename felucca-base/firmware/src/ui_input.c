@@ -2249,7 +2249,7 @@ static void ui_input(void)
     if (act_cols() && (oct & 2u)) {                     /* action pages: OCT+ does the picked action, */
         act_do();
     } else if (act_cols() && (oct & 1u)) {              /* OCT- drops it, or (none picked) goes HOME */
-        if (cur_page()->graph != GR_PATS && ui.act)
+        if (cur_page()->graph != GR_PATS && cur_page()->graph != GR_SLOTS && ui.act)   /* (PATTERNS, MULTIS: LOAD is always picked: OCT- goes HOME) */
             ui.act = 0;
         else
             go_main();

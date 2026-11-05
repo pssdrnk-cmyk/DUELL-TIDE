@@ -7524,6 +7524,53 @@ static int test_fm6_ops(void)
     return bad;
 }
 
+/* W14 (owner): a browser page whose OCT+ does a K2-picked action opens with LOAD picked, so one OCT+ loads the highlighted item */
+static int test_load_default(void)
+{
+    int bad = 0;
+    track_t *t = &trk[0];
+    (void)t;
+    ui_power_on();
+    /* W14: every browser page whose OCT+ does a picked action opens with LOAD picked (no K2 first), from whatever came before */
+    {
+        uint32_t pg_i, pat_ok = 1, mu_ok = 1;
+        for (pg_i = 0; pg_i < NPAGES; pg_i++) {          /* (every page: PATTERNS and MULTIS are the browsers; TOOLS, PARAMETER LOCKS have no LOAD) */
+            if (PAGES[pg_i].graph != GR_PATS && PAGES[pg_i].graph != GR_SLOTS)
+                continue;
+            ui.act = 3;                                  /* (a SAVE left picked by the visit before) */
+            ui.page = (uint8_t)pg_i;
+            page_entered();
+            if (!(act_col() == 2u && ui.act == 0u && ((act_cols() >> 1) & 1u)))
+            {
+                if (PAGES[pg_i].graph == GR_PATS) pat_ok = 0; else mu_ok = 0;
+            }
+        }
+        bad += check("PATTERNS, MULTIS: on entry the action is LOAD (K2's, column 2), whatever was picked before", pat_ok && mu_ok);
+    }
+    ui_power_on();
+    go_title("MULTIS");
+    song.g[G_SLOT] = 3;
+    project_save_as(2, "LOADME");
+    proj_name[0] = 0;
+    bad += check("MULTIS: opened, LOAD is shown picked (OCT+ keycap on K2) before any knob", act_col() == 2u && ui.act == 0u);
+    press(B_OCTUP);
+    bad += check("MULTIS: one OCT+ loads the highlighted multi, no K2 first", project_cur_slot() == 2u && str_eq(proj_name, "LOADME") && !ui.confirm);
+    bad += check("..and LOAD stays picked (browse and load again)", act_col() == 2u);
+    turn(EN_K3, 1);
+    bad += check("MULTIS: K3 still picks SAVE", act_col() == 3u);
+    press(B_OCTDN);
+    bad += check("..OCT- from MULTIS goes HOME as from PATTERNS", at_home());
+    go_title("MULTIS");
+    bad += check("..back on MULTIS: LOAD again, not SAVE", act_col() == 2u && ui.act == 0u);
+    go_title("PATTERNS");
+    song.sel = 0;
+    turn(EN_K3, 1);
+    go_title("MULTIS");
+    go_title("PATTERNS");
+    bad += check("PATTERNS: back on the page: LOAD", act_col() == 2u && ui.act == 0u);
+    return bad;
+}
+
 /* DUELL 0.2.2: a short press of SAVE opens the page that fits: PATTERNS from the sequencer (SEQ's pages), else by the output MODE
  * (LAYER: MULTIS; SPLIT, STEREO: PATCHES); TOOLS never; hold SAVE on PATTERNS / MULTIS saves over the slot picked */
 static int test_save_opens(void)
@@ -9956,6 +10003,7 @@ int main(void)
     bad += test_menu_tabs();                        /* (0.2.14: ported, run again: rows, names, pages, fit) */
     bad += test_flat_only();
     bad += test_save_opens();
+    bad += test_load_default();                     /* (W14: LOAD preselected on PATTERNS, MULTIS) */
     bad += test_usb_level();
 #if FELUCCA_CDC
     bad += test_usb_serial();
