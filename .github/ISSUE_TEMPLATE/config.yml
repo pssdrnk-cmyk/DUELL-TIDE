@@ -1,19 +1,19 @@
 blank_issues_enabled: false
 contact_links:
   - name: Quick start (how to play DUELL with TIDE)
-    url: https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/docs/QUICKSTART.md
+    url: https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/QUICKSTART.md
     about: A short tour of the parts, modes, morph, effects and MIDI.
   - name: TIDE guide (AUTO TIDE and TIDE SETTINGS)
     url: https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/docs/TIDE_GUIDE.md
     about: Every control and value of TIDE, and when each row acts.
   - name: Known issues (read before reporting)
-    url: https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/docs/KNOWN_ISSUES.md
+    url: https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/KNOWN_ISSUES.md
     about: What is already known to be broken or untested.
   - name: Troubleshooting
-    url: https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/docs/TROUBLESHOOTING.md
+    url: https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/TROUBLESHOOTING.md
     about: Common problems with the installer, the emulator and the device.
   - name: Recovery (a flash failed or stopped)
-    url: https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/docs/RECOVERY.md
+    url: https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/RECOVERY.md
     about: What to try, in order, if the unit does not start after a flash.
   - name: A problem in plain DUELL? Report it to OSCILL/R
     url: https://github.com/oscillr/DUELL/issues/new/choose
