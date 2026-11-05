@@ -51,6 +51,7 @@
 # Audit R07 (2026-11-05), on purpose, 27 of the 108: the chorus's and the delay modulation's sweep holds its pitch swing above CRT 40 / MRATE 44 (fx_bus.c fx_swing), MDEPTH 100 = +-25 cents; M02 M04 M06 M07 (MDEPTH migrated to the same swing) and M08 (its 18 Hz chorus: CDP 127) re-made, and the scenes with a delay modulation or a fast chorus, S02 S07 S17 X07; the others are unchanged.
 # Audit P03 (filter precision), on purpose: the SVF keeps its precision at low cutoffs (dsp.c tsvf_coef_k): 102 of the 110 renders (the multis and scenes whose parts run a filter) are re-made once.
 # Audit P08 (CUT dial slewed, voice.c cut_slew), on purpose, 55 renders: the fader 63 / 127 renders of the multis and scenes whose MORPH moves the CUT dial.
+# Audit P09, on purpose, 9 renders: ANALOG's PW card is E4, the slot that held the old VCF's CUT; the test scenes S13, S14 and the spare X06 still store a CUT value there on a PWM part, which now sets its width.
 M01 f0 63e8bee48850abe3
 M01 f63 8eac13da07722eee
 M01 f127 f10415779d106644
@@ -129,21 +130,21 @@ S09_NIGHT_ORGAN f127 6f2c6ae6c1b18727
 S10_FINAL_REEL f0 40a64eeb910d1c26
 S10_FINAL_REEL f63 ad6319adc5700a9b
 S10_FINAL_REEL f127 430cd98bdabbd2b8
-S13_TEST_1_BASE f0 8d15841a4860acfc
-S13_TEST_1_BASE f63 92fac8be409a88a6
-S13_TEST_1_BASE f127 8bc7dc319b5d1ec7
-S14_TEST_2_PHASE f0 1eb6dfe018cafc15
-S14_TEST_2_PHASE f63 e50331bce7ac3937
-S14_TEST_2_PHASE f127 c83b7bd3fe4e39bf
+S13_TEST_1_BASE f0 7c7cd81c1ec25af0
+S13_TEST_1_BASE f63 ff10a36fb49bdcdc
+S13_TEST_1_BASE f127 f7f4049940cc5d21
+S14_TEST_2_PHASE f0 a19d2d60287203f8
+S14_TEST_2_PHASE f63 f74f0415183f2bc6
+S14_TEST_2_PHASE f127 f2267dcc91e98370
 S15_TEST_3_HEAVY f0 5725484f6b36c0a9
 S15_TEST_3_HEAVY f63 6a54d1595b5d866c
 S15_TEST_3_HEAVY f127 b909365b44f141ad
 S16_TEST_4_MIX f0 13531cae324f7def
 S16_TEST_4_MIX f63 267dbcce7591fd91
 S16_TEST_4_MIX f127 47346f11d9636f26
-X06_TINE_STRINGS f0 d1ca77632a9955f8
-X06_TINE_STRINGS f63 fe802637d3f74a3a
-X06_TINE_STRINGS f127 7c9c020a0936238e
+X06_TINE_STRINGS f0 8b9863bac10b36e3
+X06_TINE_STRINGS f63 a14e1251ccb19c33
+X06_TINE_STRINGS f127 382094b4a93f9e43
 X07_BOWL_AND_WIND f0 3664bc71311ac4f5
 X07_BOWL_AND_WIND f63 68d85908027e234f
 X07_BOWL_AND_WIND f127 5c2ac52bd4a9777f

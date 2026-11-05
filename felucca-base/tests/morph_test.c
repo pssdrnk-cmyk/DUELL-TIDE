@@ -1823,8 +1823,8 @@ static void test_editb(void)
     int8_t be[EXT_P_LEN], b2[EXT_P_LEN];
     uint32_t ids[EXT_P_LEN], nid, i, ok, n0, s1, s2, follow = 0;
     xb_edit_t ed[XB_MAX + 1];
-    check("the rolled End B of stored seeds is what the merged line rolls (hash of 13 engines x 3 presets x 6 seeds x 3 AMOUNTs x 4 settings; re-based 2026-10-21 on purpose and again for 1.0 (OFFSET is whole semitones, -36..+36: a rolled CUTOFF 2 clamps there; was 0xee93227e) and again for 1.1 (LOFI's WAVE is one list of 15, 0..14, and its PULSE WIDTH K4: the LOFI rolls change; was 0x9713594e); was 0x6cbffe82 (cloud/base3-wave3, then wave 6 = same) until ANALOG and TRIO got filter 1's cutoff steering back in morph.c; one value on Linux (gcc) and Windows (llvm-mingw), checked both: no platform-dependent alternative is accepted)",
-          (s1 = seeds_hash()) == 0xdd49dc9cu);   /* (audit P07, re-based on purpose: MORPH's RES ceilings in the exponential law's steps, morph.c MORPH_UF_RES 28 / MORPH_UF_RESBP 17; was 0x11db29c9, or 0x2f8cb758 on Windows before the two hosts agreed) */
+    check("the rolled End B of stored seeds is what the merged line rolls (hash of 13 engines x 3 presets x 6 seeds x 3 AMOUNTs x 4 settings; re-based 2026-10-21 on purpose and again for 1.0 (OFFSET is whole semitones, -36..+36: a rolled CUTOFF 2 clamps there; was 0xee93227e) and again for 1.1 (LOFI's WAVE is one list of 15, 0..14, and its PULSE WIDTH K4: the LOFI rolls change; was 0x9713594e); was 0x6cbffe82 (cloud/base3-wave3, then wave 6 = same) until ANALOG and TRIO got filter 1's cutoff steering back in morph.c; TIDE T0: 1.1's own 974d875 gives 0x2f8cb758 on Windows / llvm-mingw, the same as jam11: two hosts, one source)",
+          (s1 = seeds_hash()) == 0x21ae99bbu);   /* (audit P09, re-based on purpose: ANALOG's new PW card (E4) is rolled like any card, so its seeds draw it; was 0xdd49dc9c) (audit P07, re-based on purpose: MORPH's RES ceilings in the exponential law's steps, morph.c MORPH_UF_RES 28 / MORPH_UF_RESBP 17; was 0x11db29c9 / 0x2f8cb758) */
     fresh(0, 1);
     busy(t);
     morph_set_amount(40);

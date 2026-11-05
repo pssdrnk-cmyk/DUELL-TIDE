@@ -178,7 +178,8 @@ int main(int argc, char **argv)
                    "# Audit P07 (2026-11-05), on purpose, 92 of the 108: RES's damping is exponential (voice.c UF_K); the factory multis' RES, FILTER ENV MRES and FRES depths (A and End B) moved to the step of the same damping (tools/factory_multis/*.bin), every one of M01..M16 re-made; the test scenes S, X are not migrated (they play the new law).\n"
                    "# Audit R07 (2026-11-05), on purpose, 27 of the 108: the chorus's and the delay modulation's sweep holds its pitch swing above CRT 40 / MRATE 44 (fx_bus.c fx_swing), MDEPTH 100 = +-25 cents; M02 M04 M06 M07 (MDEPTH migrated to the same swing) and M08 (its 18 Hz chorus: CDP 127) re-made, and the scenes with a delay modulation or a fast chorus, S02 S07 S17 X07; the others are unchanged.\n"
                    "# Audit P03 (filter precision), on purpose: the SVF keeps its precision at low cutoffs (dsp.c tsvf_coef_k): 102 of the 110 renders (the multis and scenes whose parts run a filter) are re-made once.\n"
-                   "# Audit P08 (CUT dial slewed, voice.c cut_slew), on purpose, 55 renders: the fader 63 / 127 renders of the multis and scenes whose MORPH moves the CUT dial.\n");
+                   "# Audit P08 (CUT dial slewed, voice.c cut_slew), on purpose, 55 renders: the fader 63 / 127 renders of the multis and scenes whose MORPH moves the CUT dial.\n"
+                   "# Audit P09, on purpose, 9 renders: ANALOG's PW card is E4, the slot that held the old VCF's CUT; the test scenes S13, S14 and the spare X06 still store a CUT value there on a PWM part, which now sets its width.\n");
         for (m = 0; m < NR; m++)
             for (f = 0; f < 3u; f++)
                 fprintf(g, "%s f%u %016llx\n", RN[m].name, FAD[f], (unsigned long long)got[m * 3 + f]);

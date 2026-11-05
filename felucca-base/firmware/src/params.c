@@ -1307,6 +1307,8 @@ static const char *desc_shown(const param_desc_t *d)
         return "PITCH\nDROP";
     if (d == &ENG_WAVE.edit[2])                       /* WAVE's BEND is a bend of the phase (owner 2026-10-25); PHYSICAL's DRUM BEND is PITCH DROP above */
         return "PHASE\nBEND";
+    if (d == &ENG_ANALOG.edit[4])                     /* ANALOG's PW (PWM's width, audit P09): PULSE WIDTH is too wide for the AUTOMATION list and MIDI LEARN's line; LOFI's and TRIO's keep it */
+        return "PWM";
     if (d == &ENG_WAVE.edit[3])                       /* WAVE's SYNC is a hard sync of the table's phase */
         return "HARD\nSYNC";
     if (d == &GP[G_SHMOD])
