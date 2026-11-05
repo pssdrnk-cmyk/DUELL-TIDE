@@ -100,7 +100,7 @@ static void test_time_mid_trip(void)
     run(4000);                                           /* (about 2 bars of 4) */
     p0 = glide_progress(); f0 = morph_fader_of(0);
     CHECK("TIME mid-trip: the 4-bar trip is under way", gl.on && !gl.armed && p0 > (1u << GLIDE_Q) / 4u && p0 < (3u << GLIDE_Q) / 4u);
-    tide_knob(2u, -2);                                   /* (TIME 1 bar) */
+    tide_knob(2u, -1); tide_knob(2u, -1);                /* (TIME 1 bar) */
     p1 = glide_progress();
     gl.time = 6u;                                        /* (64 bars: MIDI, a STYLE) */
     p2 = glide_progress();
@@ -333,6 +333,20 @@ static void test_twist_stop(void)
     transport_req = 2u; run(48);
 }
 
+/* audit C17: MODE, TIME and WAIT move one step an event however fast the knob turns (a turn of 5 used to skip 16 bars -> 64) */
+static void test_knob_steps(void)
+{
+    uint32_t pg = 0, pages = sizeof PAGES / sizeof PAGES[0];
+    ui_power_on(); frame();
+    while (pg < pages && PAGES[pg].graph != GR_TIDE) pg++;
+    ui.page = pg; ui.cursor = ui.bank = 0; page_entered();
+    gl.mode = GM_ONCE; gl.time = 1; gl.wait = 1;
+    tide_knob(1u, 5); tide_knob(2u, 3); tide_knob(3u, 4);
+    CHECK("knob steps: a fast turn moves MODE, TIME and WAIT by one", gl.mode == GM_LOOP && gl.time == 2u && gl.wait == 2u);
+    tide_knob(1u, -4); tide_knob(2u, -6); tide_knob(3u, -9);
+    CHECK("knob steps:   and back by one", gl.mode == GM_ONCE && gl.time == 1u && gl.wait == 1u);
+}
+
 /* audit C9 (D9): on AUTO TIDE OCT- + K3 / K4 go back to the STYLE's TIME and WAIT (the style a hand edit left), K1 says BACK TO ORIGINAL; the TIDE SETTINGS list has no reset */
 static void test_oct_reset_style(void)
 {
@@ -527,6 +541,7 @@ int main(void)
     test_glide_transport();
     test_twist_stop();
     test_oct_reset_style();
+    test_knob_steps();
     test_wait_off_in_hold();
     test_time_mid_trip();
     test_wait_off_paused();

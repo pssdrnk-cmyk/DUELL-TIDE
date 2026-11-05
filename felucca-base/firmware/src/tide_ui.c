@@ -279,10 +279,10 @@ static void tide_knob(uint32_t slot, int32_t s)
         }
         break;
     case 1:
-        gl.mode = (uint8_t)clamp((int32_t)gl.mode + s, GM_ONCE, GM_JOURNEY);
+        gl.mode = (uint8_t)clamp((int32_t)gl.mode + (s > 0 ? 1 : -1), GM_ONCE, GM_JOURNEY);   /* (one step an event on all three cards: a fast turn skipped 16 -> 64 bars; audit C17) */
         break;
     case 2:
-        gl.time = (uint8_t)clamp((int32_t)gl.time + s, 0, (int32_t)GLIDE_TIMES - 1);
+        gl.time = (uint8_t)clamp((int32_t)gl.time + (s > 0 ? 1 : -1), 0, (int32_t)GLIDE_TIMES - 1);
         break;
     default:
         gl.wait = (uint8_t)clamp((int32_t)gl.wait + (s > 0 ? 1 : -1), 0, (int32_t)GLIDE_WAITS - 1);
