@@ -37,7 +37,7 @@ Audiences: **player** (uses the unit), **installer** (flashes it), **contributor
 | Document | Audience | Status | Purpose |
 |---|---|---|---|
 | [SPEC.md](../SPEC.md) | contributor, player | reference | OSCILL/R's full specification of DUELL, with a note at the top for what this fork changes. |
-| [docs/PATCH_NUMBERS.md](PATCH_NUMBERS.md) | player | current | The 160 factory sounds in PATCHES order (a host test reads this table). |
+| [docs/PATCH_NUMBERS.md](PATCH_NUMBERS.md) | player | current | The 163 factory sounds in PATCHES order (a host test reads this table). |
 | [docs/MIDI_MAP_DEFAULTS.csv](MIDI_MAP_DEFAULTS.csv) | player, contributor | current | The shipped MIDI CC map (the README table is generated from it). |
 | [docs/VOICE_CONTROLS.md](VOICE_CONTROLS.md) | player | reference | When each VOICE control is heard. |
 | [docs/MOD_INERT_TABLE.md](MOD_INERT_TABLE.md) | player, contributor | reference | Which modulation depths do nothing on which engine. |

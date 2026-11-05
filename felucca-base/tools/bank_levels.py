@@ -4,7 +4,7 @@
 
     tools/bank_levels.py [--passes N] [--md FILE] [--write]
 
-Every sound of tools/duell_sounds.py (the 128 of the bank and the ones after them, #129-#160), measured, compared with its category's median over all of them.
+Every sound of tools/duell_sounds.py (the 128 of the bank and the ones after them, #129 on), measured, compared with its category's median over all of them.
 Without --write it proposes (the TRIMs are tried in tools/duell_sounds.py and put back at the end); with --write the new TRIMs stay there.
 
 Measures with the recipe's level audit (tools/refine_audit.sh all: C3, velocity 100, held 10 s, ear-weighted, before MASTER), takes per kind (the category)

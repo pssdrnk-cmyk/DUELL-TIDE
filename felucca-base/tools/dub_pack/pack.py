@@ -11,7 +11,7 @@ The sounds use the form of tools/duell_sounds.py (p = values off INIT by label, 
 records themselves are written by the firmware's own store (render.c: up_store_trk), never by hand; tools/dub_pack/assemble.mjs turns them
 into the editor's "duell-patches" files and checks them with the editor's own reader. tools/dub_pack/build.sh runs the three.
 
-Since the 8 voices joined the factory bank (#129-#160), tools/duell_sounds.py is their one source: all_sounds() takes each voice's category, values
+Since the 8 voices joined the factory bank (places #129 on), tools/duell_sounds.py is their one source: all_sounds() takes each voice's category, values
 and End B from there by name. The p / bend written in SOUNDS below are the pack as first auditioned (2026-11-03), kept as history; the bank's
 TRIMs, DUST BED's filter and End B and SUB PLUCK's SAT have moved on since.
 

@@ -101,7 +101,7 @@ In the beta, not in the stable build `stable-2026-11-03`.
 | Feature | What it does |
 |---|---|
 | **JRNY families and memory** | JRNY stays on the part's engine, picks within a role family (pads and keys; bass; lead and pluck; hits; FX and textures; a USER record uses its own category) and skips the part's last four destinations where it can. |
-| **32 more factory sounds** | #129 to #160 (dub, deep house: pads, chords, stabs, plucks, textures), so JRNY has more to travel between. They are read-only places after the 128 in PATCHES. |
+| **35 more factory sounds** | #129 to #163 (dub, deep house: pads, chords, stabs, plucks, textures; three of them FM6), so JRNY has more to travel between. They are read-only places after the 128 in PATCHES. |
 | **Factory patterns and multis** | Ten patterns are now chords and pads for dub techno and deep house (some with their own swing and gate); seven factory multis that had no sequence have one; M16 is CELLAR TAPE. A pattern slot you never saved over takes the new pattern at power-on. |
 | **USER slots** | The last 4 patch slots and 4 pattern slots (P29 to P32) are USER slots (U1 to U4), `USER EMPTY` until you save into them. The factory sounds and patterns they stand in for stay listed after them, read-only; SAVE offers USER 1 for a read-only place. |
 | **MULTIS / PATTERNS previews** | On the SAVE pages: three list rows with the picked entry opened, showing both parts (sound names, ARP / SEQ / OFF, the first 16 steps) before you load. A broken record reads DAMAGED. |

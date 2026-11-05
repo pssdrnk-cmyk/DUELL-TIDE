@@ -1,10 +1,10 @@
 # DUELL factory sounds: PATCHES numbers (DUELL 1.1 with TIDE)
 
-The 160 factory sounds in the order the device lists them in PATCHES (TYPE ALL): by category (BASS, LEAD, PAD, PLUCK, KEYS, PERC, FX, OTHER), then engine, then name. **A number up to 128 is a patch slot**: slot #NN holds the factory sound of this list at position NN until you save a sound there (RESTORE brings it back); MIDI program change n loads slot n, #n + 1. Generated from `felucca-base/tools/duell_sounds.py` with the sort in `felucca-base/tools/gen_duell_sounds.py` (`gen_duell_sounds.py --check` prints the same list).
+The 163 factory sounds in the order the device lists them in PATCHES (TYPE ALL): by category (BASS, LEAD, PAD, PLUCK, KEYS, PERC, FX, OTHER), then engine, then name. **A number up to 128 is a patch slot**: slot #NN holds the factory sound of this list at position NN until you save a sound there (RESTORE brings it back); MIDI program change n loads slot n, #n + 1. Generated from `felucca-base/tools/duell_sounds.py` with the sort in `felucca-base/tools/gen_duell_sounds.py` (`gen_duell_sounds.py --check` prints the same list).
 
 **1.0: the factory bank is the owner's bank** (`felucca-base/tools/factory_bank.duell-patches.json`, imported by `tools/import_bank.py`; each patch exactly as exported, only its TRIM balanced). YO YA is new (marked NEW), CARNIVAL is not in the bank, so #108 to #125 moved by one. The Old column is the number in 0.2.31.
 
-**Past the 128 (1.1 with TIDE):** #129 to #160 are 32 more factory sounds (the 8 of the dub pack and 24 for TIDE's JRNY: pads, chords, stabs, plucks, textures), listed after the 128 so no number of the 128 moves. They are read-only places in PATCHES, not slots: a number past #128 holds no saved sound, has no FAV and no MIDI program change, and SAVE offers USER 1 for it. Their order is the same one: category, engine, name. (With the USER slots, U1 to U4 stand at the places of #125 to #128, which stay listed after the slots.) The Old column says "new".
+**Past the 128 (1.1 with TIDE):** #129 to #163 are 35 more factory sounds (the 8 of the dub pack, 24 for TIDE's JRNY: pads, chords, stabs, plucks, textures, and 3 FM6 dub voices: FM HAZE, DUB DRAWBAR, BELL STAB), listed after the 128 so no number of the 128 moves. They are read-only places in PATCHES, not slots: a number past #128 holds no saved sound, has no FAV and no MIDI program change, and SAVE offers USER 1 for it. Their order is the same one: category, engine, name. (With the USER slots, U1 to U4 stand at the places of #125 to #128, which stay listed after the slots.) The Old column says "new". Adding sounds can move the numbers past #128 (they keep the category order); no number of the 128 moves.
 
 | PATCHES # | Name | Old (0.2.31) |
 |---|---|---|
@@ -140,31 +140,34 @@ The 160 factory sounds in the order the device lists them in PATCHES (TYPE ALL):
 | 130 | NEON DRIFT | new |
 | 131 | SLOW TIDE | new |
 | 132 | WARM WASH | new |
-| 133 | AIR SHIMMER | new |
-| 134 | DEEP BLUE | new |
-| 135 | STAR FIELD | new |
-| 136 | TAPE CLOUD | new |
-| 137 | ORGAN WASH | new |
-| 138 | ROTOR HAZE | new |
-| 139 | DUB BLIP | new |
-| 140 | HOLLOW POP | new |
-| 141 | SUB PLUCK | new |
-| 142 | TAPE PLUCK | new |
-| 143 | AIR POP | new |
-| 144 | COMB PLUCK | new |
-| 145 | GLASS POP | new |
-| 146 | DARK MIN7 | new |
-| 147 | DUB CHORD | new |
-| 148 | LOW STAB | new |
-| 149 | SOUL STAB | new |
-| 150 | SUNDAY KEYS | new |
-| 151 | GLASS KEYS | new |
-| 152 | ICE STAB | new |
-| 153 | SOFT EP | new |
-| 154 | DEEP ORGAN | new |
-| 155 | HOUSE ORGAN | new |
-| 156 | ORGAN SKANK | new |
-| 157 | SOFT ORGAN | new |
-| 158 | NIGHT DRONE | new |
-| 159 | DUST BED | new |
-| 160 | TAPE HISS | new |
+| 133 | FM HAZE | new (FM6) |
+| 134 | AIR SHIMMER | new |
+| 135 | DEEP BLUE | new |
+| 136 | STAR FIELD | new |
+| 137 | TAPE CLOUD | new |
+| 138 | ORGAN WASH | new |
+| 139 | ROTOR HAZE | new |
+| 140 | DUB BLIP | new |
+| 141 | HOLLOW POP | new |
+| 142 | SUB PLUCK | new |
+| 143 | TAPE PLUCK | new |
+| 144 | AIR POP | new |
+| 145 | COMB PLUCK | new |
+| 146 | GLASS POP | new |
+| 147 | DARK MIN7 | new |
+| 148 | DUB CHORD | new |
+| 149 | LOW STAB | new |
+| 150 | SOUL STAB | new |
+| 151 | SUNDAY KEYS | new |
+| 152 | BELL STAB | new (FM6) |
+| 153 | DUB DRAWBAR | new (FM6) |
+| 154 | GLASS KEYS | new |
+| 155 | ICE STAB | new |
+| 156 | SOFT EP | new |
+| 157 | DEEP ORGAN | new |
+| 158 | HOUSE ORGAN | new |
+| 159 | ORGAN SKANK | new |
+| 160 | SOFT ORGAN | new |
+| 161 | NIGHT DRONE | new |
+| 162 | DUST BED | new |
+| 163 | TAPE HISS | new |
