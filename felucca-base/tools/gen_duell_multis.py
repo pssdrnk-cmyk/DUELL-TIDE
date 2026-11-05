@@ -6,11 +6,10 @@
     DUELL_TEST_MODE=1 tools/gen_duell_multis.py ...  (or --test-mode)   the same sixteen multis; the header says DF_TEST_MULTIS 1
 
 The records and what each must hold come from tools/factory_multis.py (MULTIS: the slot, the name, the two sounds, the MODE, the
-split; `tools/factory_multis.py build` makes them). Checked here as there: version 7 (multi.c MU_VER, the only one it loads), the
+split; `tools/factory_multis.py build` makes them). Checked here as there: version 8 (multi.c MU_VER, the only one it loads), the
 expected name (ASCII, at most 12), each part's engine + factory index naming the intended sound of tools/duell_sounds.py (a changed
 sound list stops the build), the MODE byte, the reverb LOW CUT at its default, at most MU_REC_MAX (1916) bytes.
-DUELL 0.2.23: all sixteen slots hold a factory multi in every build, M16 STRESS TEST included (a CPU test the owner plays on the
-unit; free to overwrite). The CPU TEST multis of developer builds (M13..M16 until 0.2.22) are test scenes now (tests/scenes/,
+DUELL 0.2.23: all sixteen slots hold a factory multi in every build, M16 CELLAR TAPE (was STRESS TEST) included (free to overwrite). The CPU TEST multis of developer builds (M13..M16 until 0.2.22) are test scenes now (tests/scenes/,
 tests/scenes.h), not factory multis, so the release and the test mode hold the same records; DF_TEST_MULTIS only says which switch
 the header was made with (multi.c checks it against DUELL_TEST_MODE).
 Output: DF_N, DF_SLOT[] (the slot of each), DM_LEN[], DM_REC[] (one concatenated const array) and DM_AT[] (offsets).
