@@ -38,9 +38,9 @@
 #include "ui_test.c"
 #include "scenes.h"
 
-#define DL_REF 0x16fbf57e4a8345f2ull                    /* RE-BASED 2026-11-05 on integ 202400b: 793f41f fix/fx-extend (audit R09: ROOM charged as HALL, budget.c BD_REV; moves M01, M02 and M15) and 9aaac54 fix/bank-content (audit G06, G10, G12, G15: the factory sounds re-voiced / re-ordered, three FM6 dub voices added; items of the same kind, no cost model change); was 0xe2d0569e4ca5f697; the pre-item-132 sources (BUDGET_LIMIT 80, BUDGET_HO charged), this test, 2026-10-26 (item 142: with the 1.15 limit as worked out here; re-based 2026-11-03: U2 B, ten factory multis hold sequences / other arps, was 0xb8db0653a8dfc654) */
-#define DL_REF2 0x1f20de1d06f657f3ull                   /* RE-BASED 2026-11-05 on integ 202400b: 793f41f fix/fx-extend (audit R09: ROOM charged as HALL, budget.c BD_REV; moves M01, M02 and M15) and 9aaac54 fix/bank-content (audit G06, G10, G12, G15: the factory sounds re-voiced / re-ordered, three FM6 dub voices added; items of the same kind, no cost model change); was 0xc0af709a3883c486; item 142: the posted deadlines (tcr_post_deadline) at 16 post moments with the new wait limit (item 137's was 0xccfd48c6e1c8ecc7; re-based 2026-11-03: U2 B, ten factory multis hold sequences / other arps, was 0x40924773c6c4fbf0) */
-#define DL_REF3 0x5a319bd6ae893342ull                   /* RE-BASED 2026-11-05 on integ 202400b: 793f41f fix/fx-extend (audit R09: ROOM charged as HALL, budget.c BD_REV; moves M01, M02 and M15) and 9aaac54 fix/bank-content (audit G06, G10, G12, G15: the factory sounds re-voiced / re-ordered, three FM6 dub voices added; items of the same kind, no cost model change); was 0x05a0318a41d71b48; item 142: the new wait limits (recorded on the item 142 sources, 2026-10-27; re-based 2026-11-03: U2 B, ten factory multis hold sequences / other arps, was 0x70d45c7084c0d110) */
+#define DL_REF 0x7c9f17ff34b5a9bcull                    /* RE-BASED 2026-11-05 (audit A01: TIDE's DSP items, budget.c BD_TIDE_*, are in the parts of the 16 factory multis, the only setups here with a MORPH; was 0x16fbf57e4a8345f2). RE-BASED 2026-11-05 on integ 202400b: 793f41f fix/fx-extend (audit R09: ROOM charged as HALL, budget.c BD_REV; moves M01, M02 and M15) and 9aaac54 fix/bank-content (audit G06, G10, G12, G15: the factory sounds re-voiced / re-ordered, three FM6 dub voices added; items of the same kind, no cost model change); was 0xe2d0569e4ca5f697; the pre-item-132 sources (BUDGET_LIMIT 80, BUDGET_HO charged), this test, 2026-10-26 (item 142: with the 1.15 limit as worked out here; re-based 2026-11-03: U2 B, ten factory multis hold sequences / other arps, was 0xb8db0653a8dfc654) */
+#define DL_REF2 0x4b7848a52aa8bdddull                   /* RE-BASED 2026-11-05 (audit A01: TIDE's DSP items in the multis' parts; was 0x1f20de1d06f657f3). RE-BASED 2026-11-05 on integ 202400b: 793f41f fix/fx-extend (audit R09: ROOM charged as HALL, budget.c BD_REV; moves M01, M02 and M15) and 9aaac54 fix/bank-content (audit G06, G10, G12, G15: the factory sounds re-voiced / re-ordered, three FM6 dub voices added; items of the same kind, no cost model change); was 0xc0af709a3883c486; item 142: the posted deadlines (tcr_post_deadline) at 16 post moments with the new wait limit (item 137's was 0xccfd48c6e1c8ecc7; re-based 2026-11-03: U2 B, ten factory multis hold sequences / other arps, was 0x40924773c6c4fbf0) */
+#define DL_REF3 0x400bc7ef6465b408ull                   /* RE-BASED 2026-11-05 (audit A01: TIDE's DSP items in the multis' parts; was 0x5a319bd6ae893342). RE-BASED 2026-11-05 on integ 202400b: 793f41f fix/fx-extend (audit R09: ROOM charged as HALL, budget.c BD_REV; moves M01, M02 and M15) and 9aaac54 fix/bank-content (audit G06, G10, G12, G15: the factory sounds re-voiced / re-ordered, three FM6 dub voices added; items of the same kind, no cost model change); was 0x05a0318a41d71b48; item 142: the new wait limits (recorded on the item 142 sources, 2026-10-27; re-based 2026-11-03: U2 B, ten factory multis hold sequences / other arps, was 0x70d45c7084c0d110) */
 static uint64_t h3 = 1469598103934665603ull;
 static uint64_t n_lim_chg[4], bad_wltrue, bad_wllater, bad_wlsafe, n_lim;
 static int32_t lim_chg_max;
@@ -249,6 +249,85 @@ static void sweep(void)                                 /* every rule, block and
     tcr.paused = 0, tc.up = 0, tcr.cost_ok = 0;
     setups++;
 }
+/* A01 (audit 2026-11-04): TIDE's audio DSP is in the model (budget.c BD_TIDE_*: an estimate from the host's time ratios, until the unit measures it). A scene with all four stages: a factory
+ * multi with FM6 on a part (the bridge), a live MORPH on both parts (the valley and the voices' dip), WASH MID (the wash), both parts at their two-core caps with the TIDE items in. Checks, per
+ * mode (LAYER, DUEL): the items are in the deadline's figures (part_dl: WASH adds exactly BD_UDL(BD_TIDE_WASH) to a part's fixed cost, FM6 pays BD_TIDE_FM6 a voice more than the dip alone);
+ * the wait limit with WASH MID is not later than with WASH OFF, and the CORE 1 check of the caps (core 1's job posted 0.27 block + k periods, +6 points) still ends before the limit. The hashes
+ * above are not touched by this scene (they are saved and put back); a failure here adds to c1_bad. */
+static double tide_slack = 1e9;
+static uint32_t tide_scenes, tide_bad;
+static void tide_scene(void)
+{
+    uint64_t sh = h, sh2 = h2, sh3 = h3, snv = n_val;
+    uint32_t i, m, k, found = 0;
+    for (i = 0; i < UP_VSLOTS && tide_scenes < 8u; i++)
+        for (m = 0; m < 2u; m++) {
+            uint32_t p, w0f[2], w0v[2], w2f[2], w2v[2], wl0, wl2, d0, d2, spin;
+            int nofit;
+            if (i >= UP_USER0 && i < UP_SLOTS)
+                continue;
+            boot();
+            duell_mode_force(m ? DM_SPLIT : DM_LAYER);
+            pc_recall(0, i, 0);                       /* part 1: factory sound i (its MORPH End B rolled by the load) */
+            if (ENGINES[eng_idx(trk[0].eng_req)] != &ENG_FM6)
+                continue;
+            pc_recall(1, 0, 0);                       /* part 2: #01 BEHIVE, ANALOG */
+            for (spin = 0; spin < 40u; spin++) {
+                int32_t o[2 * CTL];
+                mix_block(o, CTL);
+                frame();
+            }
+            if (!(mph[0].nid || mph[0].fnid) || !(mph[1].nid || mph[1].fnid) || morph_stale(&trk[0], &mph[0]) || morph_stale(&trk[1], &mph[1]) || trk[0].p[P_MUTE] || trk[1].p[P_MUTE])
+                continue;
+            trk[1].p[P_FREEC] = 40;                   /* part 2's filter MODE is no low-pass (a band-pass patch): its voices' filter cannot carry the dip, the valley after them does */
+            {   /* all four stages: the valley is possible on a part too */
+                bd_part_t r0, r1;
+                morph_wlvl = 2;
+                bd_part(&trk[0], &r0);
+                bd_part(&trk[1], &r1);
+                morph_wlvl = 0;
+                if (r0.tide < BD_TIDE_VALLEY + BD_TIDE_WASH && r1.tide < BD_TIDE_VALLEY + BD_TIDE_WASH)
+                    continue;
+            }
+            found++;
+            tide_scenes++;
+            tc.up = 1, tc.failed = 0, tcr.paused = 0, tcr.cost_ok = 0, tcr.t0 = 1000000u, tcr.blk = 0;
+            set_active(&trk[0], 4u);
+            set_active(&trk[1], 4u);
+            morph_wlvl = 0;
+            for (p = 0; p < 2u; p++)
+                part_dl(&trk[p], &w0f[p], &w0v[p]);
+            d0 = tcr_deadline(tcr.t0, &nofit);
+            wl0 = tcr.lim;
+            morph_wlvl = 2;
+            for (p = 0; p < 2u; p++)
+                part_dl(&trk[p], &w2f[p], &w2v[p]);
+            d2 = tcr_deadline(tcr.t0, &nofit);
+            wl2 = tcr.lim;
+            for (p = 0; p < 2u; p++) {
+                bd_part_t r;
+                bd_part(&trk[p], &r);
+                tide_bad += w2f[p] + 1u < w0f[p] + BD_UDL(BD_TIDE_WASH) || w2f[p] > w0f[p] + BD_UDL(BD_TIDE_WASH) + 1u || w2v[p] != w0v[p];   /* (WASH MID adds the wash to the fixed cost, rounding aside) */
+                tide_bad += r.misc < r.tide || r.tide < BD_TIDE_WASH || r.ext < BD_MORPH + BD_TIDE_DIP + (ENGINES[eng_idx(trk[p].eng_req)] == &ENG_FM6 ? BD_TIDE_FM6 : 0u);
+            }
+            tide_bad += (int32_t)(wl2 - wl0) > 0 || (int32_t)(d2 - d0) > 0;     /* the dearer scene never gets a later deadline or wait limit */
+            {   /* the CORE 1 check of these caps (core1_slack at BUDGET_LIMIT, WASH MID in the items) */
+                double keep = c1_min[BUDGET_LIMIT - 80u];
+                uint32_t bad0 = c1_bad;
+                c1_min[BUDGET_LIMIT - 80u] = 1e9;
+                core1_slack();
+                if (c1_min[BUDGET_LIMIT - 80u] < tide_slack)
+                    tide_slack = c1_min[BUDGET_LIMIT - 80u];
+                tide_bad += c1_bad != bad0;
+                if (keep < c1_min[BUDGET_LIMIT - 80u])
+                    c1_min[BUDGET_LIMIT - 80u] = keep;
+            }
+            morph_wlvl = 0;
+            tc.up = 0, tcr.cost_ok = 0;
+        }
+    h = sh, h2 = sh2, h3 = sh3, n_val = snv;
+    tide_bad += !found;
+}
 int main(void)
 {
     static const int MODES[3] = {DM_LAYER, DM_STEREO, DM_SPLIT};
@@ -301,6 +380,7 @@ int main(void)
         frame();
         sweep();
     }
+    tide_scene();
     printf("deadline: %u setups, %llu values, hash 0x%016llx (reference 0x%016llx)\n", setups, (unsigned long long)n_val, (unsigned long long)h, (unsigned long long)DL_REF);
     printf("deadline: %s the runner's deadline, wait limit and cost items are the same as before item 132 for every setup\n", h == DL_REF ? "ok  " : "FAIL");
     printf("deadline: item 137, posted deadlines: %llu (setup x rule x block x voices x 16 post moments); 1.15 deadline past under the two-core rule: %llu, of them given a take-over deadline: %llu\n",
@@ -334,7 +414,9 @@ int main(void)
            "by block 0..3: %.1f %.1f %.1f %.1f; after 13 points %.1f; %u under 6)\n",
            c1_bad ? "FAIL" : "ok  ", BUDGET_LIMIT, BUDGET_MARGIN, c1_min[BUDGET_LIMIT - 80u], c1_where, c1_blk[0], c1_blk[1], c1_blk[2], c1_blk[3], c1_min13, c1_bad);
     printf("deadline:   (the same caps against the 1.15 wait limit of before item 142: least slack after 6 points %.1f, %u setup x blocks under 6)\n", c1_old_min, c1_old_n6);
+    printf("deadline: %s TIDE (A01, an estimate until the unit measures it): %u scenes (an FM6 factory sound on part 1, BEHIVE with a band-pass filter MODE on part 2, LAYER and DUEL) with FM6 (bridge), a live MORPH on both parts (valley, dip) and WASH MID: the TIDE items are in the figures, the dearer scene never gets a later deadline, and core 1's job at the two-core caps ends before the wait limit (least slack after 6 points %.1f)\n",
+           tide_bad ? "FAIL" : "ok  ", tide_scenes, tide_slack);
     printf("deadline: %s CORE 0: BUDGET_LIMIT %u + 6 points of peak <= 90 %%\n", BUDGET_LIMIT + 6u <= 90u ? "ok  " : "FAIL", BUDGET_LIMIT);
-    return h != DL_REF || bad_same || bad_later || bad_inside || bad_true || bad_kept || h2 != DL_REF2 || c1_bad || bad_wltrue || bad_wllater || bad_wlsafe || h3 != DL_REF3 ||
+    return tide_bad || h != DL_REF || bad_same || bad_later || bad_inside || bad_true || bad_kept || h2 != DL_REF2 || c1_bad || bad_wltrue || bad_wllater || bad_wlsafe || h3 != DL_REF3 ||
            BUDGET_LIMIT + 6u > 90u || BUDGET_LIMIT < 80u || BUDGET_LIMIT >= 80u + NL;
 }
