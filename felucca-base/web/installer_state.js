@@ -97,6 +97,15 @@ export function uiState(s) {
   };
 }
 
+// The install saves a backup of a DUELL unit first (the page: backupBeforeInstall). A unit that runs no DUELL (the official firmware, or no answer) has nothing to save.
+export const BACKUP_FIRST = {
+  looking: "Backing up the unit first (nothing is written yet)",
+  saved: "Backup saved to your downloads. Writing the firmware ...",
+  failed: (why) => `The backup failed (${why}). Nothing was written to the unit: the install did not start. Keep the cable connected, stop the unit if it plays, and press Install again.`,
+  cannot: "This DUELL build cannot make a complete backup, so your sounds and settings cannot be saved first. Install anyway?",
+  declined: "Nothing was written: the install did not start.",
+};
+
 // texts per card
 export const SWITCH_OFF_ON = "Switch the unit off and on once.";
 export const TEXT = {
