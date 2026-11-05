@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* FELUCCA memory map for DUELL_RAMPLACE=1 (two-core stage 1a, developer builds only; tools/build.py uses this file instead of app_hot.ld
+/* FELUCCA memory map for DUELL_RAMPLACE=1 (two-core stage 1a, on in every build.py build except DUELL_BENCH=1; tools/build.py uses this file instead of app_hot.ld
  * then). Everything is as in app_hot.ld (the hot block, .data, .bss, the pool, the stacks, .noinit keep their addresses) plus two ranges
  * of RAM code, loaded from the flash image and copied by main.c fm1_cstart (after the boot guard) before anything can run them:
  *   .ramx  range X, RAMX = 0x01C00000..0x01C07F00 (app.ld's old RAMTEXT; 0x01C07F00.. stays crt0's debug area): the render side of seven
