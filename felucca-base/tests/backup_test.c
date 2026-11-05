@@ -611,6 +611,43 @@ int BACKUP_TEST_MAIN(void)
         reset();
     }
 
+#if DUELL_TIDE
+    {   /* D06: FM6's voice bank is object 41 (INFO 44 01 bit 1): read only, not in the plain LIST, the stored payload and its CRC */
+        static uint8_t pk[FM6_PACKED], whole[FVB_LEN + 8u], one[FM6_PACKED];
+        uint32_t k, c = 0xFFFFFFFFu, i, off, ok = 1, ids41 = 0;
+        reset();
+        list(0, &len, &crc);
+        for (i = 0; i < rep[2]; i++)
+            ids41 += rep[3 + i * 11u] == ED_BK_FVB;
+        bad += check("voice bank: the plain LIST does not list id 41; GET 41 with no bank on the unit is rc 1 (the editor's probe)", ids41 == 0 && get(41, 0, 1) == 1u);
+        ok = fvb_begin() == 0;
+        for (k = 0; k < 2u; k++) {
+            for (i = 0; i < FM6_PACKED; i++)
+                pk[i] = (uint8_t)((i * 3u + k * 41u) & 127u);
+            ok &= fvb_write(k * 7u, pk) == 0;
+            c = st_crc32_add(c, pk, FM6_PACKED);
+        }
+        ok &= fvb_end((const uint8_t *)"TESTBANK  ", ~c) == 0;
+        list(0, &len, &crc);
+        bad += check("voice bank: a bank written as the editor writes it (voices 0 and 7)", ok && fm6_bank_used == (1u | 1u << 7));
+        bad += check("voice bank: GET 41 probe with one byte is rc 0 now; the last byte is rc 0, one past the end is rc 1", get(41, 0, 1) == 0u && get(41, FVB_LEN + 3u, 1) == 0u && get(41, FVB_LEN + 3u, 2) == 1u);
+        for (off = 0, ok = 1; off < FVB_LEN + 4u; off += 256u) {
+            uint32_t n = FVB_LEN + 4u - off > 256u ? 256u : FVB_LEN + 4u - off;
+            ok &= get(41, off, n) == 0u && rep[0] == 41u && ed_bk_r32(rep + 2) == off && ed_unpack7(rep + 9, rep_n - 9u, whole + off, 256u) == n;
+        }
+        {
+            uint32_t tail = (uint32_t)whole[FVB_LEN] | (uint32_t)whole[FVB_LEN + 1u] << 8 | (uint32_t)whole[FVB_LEN + 2u] << 16 | (uint32_t)whole[FVB_LEN + 3u] << 24;
+            bad += check("voice bank: GET 41 gives the payload as stored (header and 32 voices, FVB_LEN) and its CRC-32 after it",
+                         ok && !memcmp(whole, nor + FVB_HOME + FVB_INFO, FVB_LEN) && tail == st_crc32(whole, FVB_LEN) && !memcmp(whole, "FM6V", 4) && !memcmp(whole + 12, "TESTBANK  ", 10));
+            upf_pk_get(whole + (FVB_VOICES - FVB_INFO) + 7u * UPF_PK, one);
+            for (i = 0; i < FM6_PACKED; i++)
+                pk[i] = (uint8_t)((i * 3u + 1u * 41u) & 127u);
+            bad += check("voice bank: voice 7 of the object unpacks to the record that was written", !memcmp(one, pk, FM6_PACKED));
+        }
+        bad += check("voice bank: it is read only here (PUT begin of id 41 answers rc 1: the restore is FM6B_BEGIN / WRITE / END)", put_begin(41, FVB_LEN + 4u, 0) == 1u);
+        reset();
+    }
+#endif
     printf("backup test %s\n", bad ? "FAILED" : "passed");
     return bad != 0;
 }

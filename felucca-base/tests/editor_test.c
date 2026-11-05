@@ -222,8 +222,8 @@ static int preferences(void)
         host_wire[e - 7] == 0x4B && host_wire[e - 6] == 1 && host_wire[e - 5] == 1 &&
         host_wire[e - 10] == 0x5B && host_wire[e - 9] == 1 && host_wire[e - 8] == 1 &&   /* 1.1: BYPASS (cmd 89) */
         host_wire[e - 4] == 0x4F && host_wire[e - 3] == 1 && host_wire[e - 2] == 1);   /* DUELL: the MIDI MAP (cmds 85..88) */   /* DUELL 0.2.19: PATCH_RAW */   /* DUELL 0.2.15: the patch capacity, 128 as two 7-bit bytes */   /* 1.5: MIDI LEARN */
-    bad += check("INFO of a TIDE build ends with the TIDE tag 44 01 1; plain DUELL sends none",
-        DUELL_TIDE ? host_wire[n - 4] == 0x44 && host_wire[n - 3] == 1 && host_wire[n - 2] == 1 : host_wire[n - 4] == 0x4F);
+    bad += check("INFO of a TIDE build ends with the TIDE tag 44 01 3 (bit 0 TIDE, bit 1 the voice bank object); plain DUELL sends none",
+        DUELL_TIDE ? host_wire[n - 4] == 0x44 && host_wire[n - 3] == 1 && host_wire[n - 2] == 3 : host_wire[n - 4] == 0x4F);
     request(ED_UI_SET, a, 2);
     bad += check("UI_SET updates the actual palette and reports RAM-only saving",
         host_wire[5] == 3 && settings.palette == 3 && T_BG == UI_PALETTES[3].bg[ux.part]);

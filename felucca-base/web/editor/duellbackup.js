@@ -37,17 +37,42 @@ export const isPatchKey = (key) => Number.isInteger(key) && key >= PATCH_KEY0 &&
 export const patchSlot = (key) => key - PATCH_KEY0;
 export const OLD_PATCH_IDS = [6, 7, 9, 10, 11, 12, 27, 28, 29, 30, 31, 35, 36, 37, 38, 39];   // the physical chunks of before (not a wire id of a unit with caps bit 5; a v1..v4 file may carry them)
 
+// FM6's voice bank B1..B32 (fm6_vbank.c; INFO tag 44 01 bit 1, DUELL with TIDE): object 41 is the bank as the unit stores it, FVB_LEN bytes (a 32 byte header: magic "FM6V", version 1, 32, the used mask u32,
+// the 12 character name, then the 32 voices of 112 bytes, each the 128 7-bit bytes of a record packed 8 to 7) and its CRC-32 (u32, little endian). Read with GET 41 (not in the plain LIST); a unit
+// without a bank answers rc 1. It is written back voice by voice with FM6B_BEGIN / WRITE / END (cmds 74..76), the way the unit's own bank upload goes: a bank cannot be erased, so a file
+// without the object leaves the unit's bank alone.
+export const FVB_ID = 41, FVB_LEN = 3616, FVB_OBJ = FVB_LEN + 4, FVB_N = 32, FVB_REC = 112, FVB_PK = 128, FVB_HEAD = 32;
+export const CAPS_FVBANK = 2;                  // INFO tag 44 01 bit 1
+export const FM6B_CMD = { BEGIN: 74, WRITE: 75, END: 76 };
+export function unpackVoice(b, at) {           // 112 stored bytes at b[at] -> the record's 128 7-bit bytes (upf_pk_get)
+  const pk = new Uint8Array(FVB_PK); let acc = 0, n = 0, o = at;
+  for (let i = 0; i < FVB_PK; i++) { while (n < 7) { acc |= b[o++] << n; n += 8; } pk[i] = acc & 127; acc >>>= 7; n -= 7; }
+  return pk;
+}
+export function packVoice(pk) {                // the reverse (upf_pk_put)
+  const d = new Uint8Array(FVB_REC); let acc = 0, n = 0, o = 0;
+  for (let i = 0; i < FVB_PK; i++) { acc |= (pk[i] & 127) << n; n += 7; while (n >= 8) { d[o++] = acc & 255; acc >>>= 8; n -= 8; } }
+  return d;
+}
+// the bank object -> { name, used (mask), voices: [{index, pk}] } (checkObject has accepted it)
+export function bankVoices(b) {
+  const used = u32(b, 8), voices = [];
+  for (let k = 0; k < FVB_N; k++) if (used >>> k & 1) voices.push({ index: k, pk: unpackVoice(b, FVB_HEAD + k * FVB_REC) });
+  return { name: text(b, 12, 12).trim(), used, voices };
+}
+
 export const GROUPS = [
   { key: "patches", label: "Patches", ids: [], dynamic: true, caps: CAPS_PATCH_RECORDS },   // the patch keys the file holds: any subset, even none (no group-completeness rule)
   { key: "multis", label: "Multis", ids: [13, 14, 15, 16, 17, 18, 19, 20], caps: CAPS_MULTI_PATTERN },
   { key: "patterns", label: "Pattern slots", ids: [21, 22, 23], caps: CAPS_MULTI_PATTERN },
   { key: "wavetables", label: "User wavetables", ids: [24, 25, 26], caps: CAPS_WAVETABLES },
+  { key: "fm6bank", label: "FM6 voice bank (B1 to B32)", ids: [FVB_ID], caps: 0, needs: "fvBank", optional: true },   // optional: a file or a unit without a bank is no exclusion to report   // needs: the INFO flag of the unit (parseInfo) it can be restored to
   { key: "settings", label: "Settings", ids: [1], caps: 0 },
   { key: "music", label: "Current music (both parts)", ids: [0], caps: 0 },
 ];
-export const DUELL_IDS = [0, 1, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26];   // the objects other than the patches
-export const RESTORE_ORDER = [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 1, 0];   // after the patches (by slot); live music last
-const KNOWN_IDS = [0, 1, 2, 3, 4, 5, 8, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 32, 33, 34, ...OLD_PATCH_IDS];   // what a unit lists (the plain LIST): the chunk ids only an older firmware lists, and they are ignored
+export const DUELL_IDS = [0, 1, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26];   // the objects other than the patches (the voice bank, FVB_ID, is not in the plain LIST)
+export const RESTORE_ORDER = [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 1, 0];   // (the voice bank goes just before the settings: planRestore)   // after the patches (by slot); live music last
+const KNOWN_IDS = [0, 1, 2, 3, 4, 5, 8, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, FVB_ID, 32, 33, 34, ...OLD_PATCH_IDS];   // what a unit lists (the plain LIST): the chunk ids only an older firmware lists, and they are ignored
 const MAX_OBJ = 3840;
 const MUSIC_PARTS = 2, MUSIC_REV = 8;               // the music object: NPART 2 (byte 63) and the revision 8 (byte 67: memory trim 1 two parts, job A extension slots, ROLL CHAINED storage: End B as values, project.c PROJ_REV 8); anything else is refused
 const MUL_HDR = 8, MUL_REC_MAX = (MAX_OBJ - MUL_HDR) / 2, MUL_VER = 8, MUL_NAME = 8, MUL_G_AT = 20, P_COUNT = 127;
@@ -94,6 +119,10 @@ export function checkObject(id, b) {
     if (!n) return null;
     return parsePatObject(id - 21, b).error ?? null;       // PTS3: the compact object of patslot.js (a PTS2 object of the 16-slot firmware is refused)
   }
+  if (id === FVB_ID) {                                 // the voice bank: size, magic "FM6V", version 1, 32 voices, a printable name, the CRC at the end
+    if (n !== FVB_OBJ || u32(b, 0) !== 0x56364D46 || u16(b, 4) !== 1 || u16(b, 6) !== FVB_N || !printable(b, 12, 12)) return "not an FM6 voice bank";
+    return bkCrc(b.subarray(0, FVB_LEN)) === u32(b, FVB_LEN) ? null : "the voice bank failed its checksum";
+  }
   if (groupOf(id)?.key === "wavetables") {
     if (!n) return null;
     const why = wtCheck(b);
@@ -136,6 +165,7 @@ export function objectLabel(id, bytes = null) {
   if (id >= 13 && id <= 20) { const a = 2 * (id - 13) + 1; return `multis M${String(a).padStart(2, "0")} and M${String(a + 1).padStart(2, "0")}`; }
   if (id >= 21 && id <= 23) { const a = 11 * (id - 21) + 1, b = Math.min(32, a + 10); return `pattern slots P${String(a).padStart(2, "0")} to P${String(b).padStart(2, "0")}`; }
   if (id >= 24 && id <= 26) return `user wavetable ${id - 23}`;
+  if (id === FVB_ID) return "the FM6 voice bank";
   return OLD_PATCH_IDS.includes(id) ? "a chunk of the old patch store" : `object ${id}`;
 }
 // pattern objects (index = id - 21) -> [{label: "P01", name, length}]
@@ -161,6 +191,7 @@ export function describe(objects, engines = [], oldPatchChunks = 0) {
     multis: decodeMultis(get(GROUPS[1].ids)),
     patterns: decodePatterns(get(GROUPS[2].ids)),
     wavetables: decodeWavetables(get(GROUPS[3].ids)),
+    fm6bank: objects.get(FVB_ID)?.length === FVB_OBJ ? (({ name, voices }) => ({ name, voices: voices.length }))(bankVoices(objects.get(FVB_ID))) : null,
     has: Object.fromEntries(GROUPS.map((g) => [g.key, idsOf(g, objects).some((id) => objects.has(id) && objects.get(id).length > 0)])),
     notes: oldPatchChunks ? [OLD_CHUNKS_NOTE] : [],
   };
@@ -181,14 +212,14 @@ export function parseInfo(a) {
     engines.push(String.fromCharCode(...a.slice(pos, end))); pos = end + 1;
   }
   pos += 2;                                            // NTRK, song rows
-  let caps = null, patchCap = null, tide = false;
+  let caps = null, patchCap = null, tide = false, fvBank = false;
   while (pos < a.length && TAG_LEN[a[pos]]) {
     if (a[pos] === 0x42 && a[pos + 1] === 1) caps = a[pos + 2];
-    if (a[pos] === 0x44 && a[pos + 1] === 1) tide = (a[pos + 2] & 1) !== 0;   // DUELL with TIDE
+    if (a[pos] === 0x44 && a[pos + 1] === 1) { tide = (a[pos + 2] & 1) !== 0; fvBank = (a[pos + 2] & CAPS_FVBANK) !== 0; }   // DUELL with TIDE; bit 1: GET 41, the FM6 voice bank
     if (a[pos] === 0x58 && a[pos + 1] === 1) patchCap = a[pos + 2] | a[pos + 3] << 7;   // the patch capacity (DUELL 0.2.15)
     pos += TAG_LEN[a[pos]];
   }
-  return { version, engines, caps, patchCap, tide };
+  return { version, engines, caps, patchCap, tide, fvBank };
 }
 
 // ---- the file
@@ -234,7 +265,7 @@ export function readArchive(file) {
     const key = patch ? patchKey(o.slot) : o.id, name = patch ? `Patch ${objectLabel(key).slice(6)}` : `Object ${o.id}`;   // (the message names)
     if (!patch && !KNOWN_IDS.includes(o.id)) throw new Error(`Unknown object id ${o.id} in this backup.`);
     const old = OLD_PATCH_IDS.includes(o.id);
-    if (!patch && !old && !DUELL_IDS.includes(o.id)) {   // a retired object: must be empty, then it is left out
+    if (!patch && !old && !DUELL_IDS.includes(o.id) && o.id !== FVB_ID) {   // a retired object: must be empty, then it is left out
       if (o.size) throw new Error(`Object ${o.id} is retired in DUELL and holds data: this is not a DUELL backup.`);
       continue;
     }
@@ -315,6 +346,38 @@ export async function listUnit(request, caps = null) {
   return list;
 }
 
+// GET 41 (not in the plain LIST, so the LIST before is needed): does the unit hold an FM6 voice bank? The probe reads one byte; rc 1 = no bank. A playing unit stops the backup, as for any object.
+async function hasBank(request) {
+  const a = await request([BACKUP_CMD.GET, [FVB_ID, ...bkU32(0), 1, 0]], { timeout: 1500, retries: 1 });
+  if (a[1] === 3) throw Object.assign(new Error(NOTES[3]), { rc: 3, fatal: true });
+  return a[1] === 0;
+}
+// the bank on the unit now, whole (null: none); used by the verify
+async function readBank(request) {
+  if (!await hasBank(request)) return null;
+  const bytes = new Uint8Array(FVB_OBJ);
+  for (let off = 0; off < FVB_OBJ; off += CHUNK) {
+    const n = Math.min(CHUNK, FVB_OBJ - off), a = await request([BACKUP_CMD.GET, [FVB_ID, ...bkU32(off), n & 127, n >>> 7]], { timeout: 1500, retries: 1 });
+    rcCheck(a[1]);
+    if (a[0] !== FVB_ID || bkR32(a, 2) !== off || (a[7] | a[8] << 7) !== n) throw new Error("Unexpected answer from the unit");
+    bytes.set(bkUnpack(a.slice(9), n), off);
+  }
+  return bytes;
+}
+// Write a bank the way the unit's own bank upload does (FM6B_BEGIN, one WRITE a voice, END with the name and the CRC-32 of the records in index order). Allow a second for BEGIN and END (flash).
+async function restoreBank(request, bytes) {
+  const { name, voices } = bankVoices(bytes), recs = [];
+  rcCheck((await request([FM6B_CMD.BEGIN, []], { timeout: 6000, retries: 0 }))[0]);
+  for (const v of voices) {
+    const a = await request([FM6B_CMD.WRITE, [v.index, ...v.pk]], { timeout: 3000, retries: 0 });
+    if (a[0] !== v.index) throw new Error("Unexpected answer from the unit");
+    rcCheck(a[1]); recs.push(v.pk);
+  }
+  const all = new Uint8Array(recs.length * FVB_PK); recs.forEach((r, i) => all.set(r, i * FVB_PK));
+  const nm = [...name.padEnd(10, " ").slice(0, 10)].map((c) => c.charCodeAt(0) & 127);
+  rcCheck((await request([FM6B_CMD.END, [...nm, ...bkU32(all.length ? bkCrc(all) : 0)]], { timeout: 6000, retries: 0 }))[0]);
+}
+
 // Read everything the unit lists (multis and patterns only when its firmware has them; the patches one by one, from the pages, when it has caps bit 5). 0.2.25 (owner: one multi
 // object the editor did not accept stopped the whole backup): an object that cannot be read whole, changes while it is read or fails the editor's check is NOT a reason to
 // stop. Its bytes (as far as they were read) go into the file flagged raw, with the reason in the file's `problems`; everything else is saved
@@ -322,6 +385,7 @@ export async function listUnit(request, caps = null) {
 export async function captureBackup(request, info, onProgress = () => {}) {
   const list = await listUnit(request, info.caps), ids = [...DUELL_IDS.filter((id) => list.has(id)), ...[...list.keys()].filter(isPatchKey).sort((a, b) => a - b)];
   if (!list.has(0) || !list.has(1)) throw new Error("The unit does not list its music and settings: is it running DUELL?");
+  if (info.fvBank && await hasBank(request)) { list.set(FVB_ID, { size: FVB_OBJ, crc: 0 }); ids.splice(ids.indexOf(0), 0, FVB_ID); }   // the voice bank is not in the plain LIST; its own CRC is its last four bytes
   const total = ids.reduce((n, id) => n + list.get(id).size, 0); let done = 0; const got = [];
   const readOne = async (id, size) => {
     const bytes = new Uint8Array(size), patch = isPatchKey(id), wire = patch ? PATCH_ID : id;
@@ -341,7 +405,7 @@ export async function captureBackup(request, info, onProgress = () => {}) {
     let bytes = null, problem = null;
     try {
       bytes = await readOne(id, size);
-      if ((size ? bkCrc(bytes) : 0) !== crc) problem = "it changed on the unit while it was read (checksum)";
+      if (id !== FVB_ID && (size ? bkCrc(bytes) : 0) !== crc) problem = "it changed on the unit while it was read (checksum)";
       else { const why = checkObject(id, bytes); if (why) problem = `this editor does not recognise it (${why})`; }
     } catch (e) {
       if (e.fatal) throw e;
@@ -369,7 +433,7 @@ export const rawLines = (problems, objects = null) => (problems || []).map((p) =
 export function planRestore(archive, list, caps, sel, opt = {}) {
   const steps = [], excluded = [], skipped = [];
   for (const g of GROUPS) {
-    if (!sel.has(g.key)) continue;
+    if (!sel.has(g.key) || (g.optional && !g.ids.every((id) => archive.objects.has(id)))) continue;
     let reason = null;
     if (g.key === "patches") {
       if (!archive.hasPatches) reason = archive.oldPatchChunks ? OLD_CHUNKS_NOTE.replace(/^P/, "p").replace(/\.$/, "") : "not in this file";
@@ -377,6 +441,7 @@ export function planRestore(archive, list, caps, sel, opt = {}) {
       else if (opt.patchCap && idsOf(g, archive.objects).length > opt.patchCap) reason = `the file holds ${idsOf(g, archive.objects).length} patches and this unit stores at most ${opt.patchCap} (STORE FULL); remove some from the file or restore them later in parts`;
     } else if (g.caps && ((caps ?? 0) & g.caps) !== g.caps) reason = "this unit's firmware cannot restore them (update it first)";
     else if (!g.ids.every((id) => archive.objects.has(id))) reason = "not in this file";
+    else if (g.needs && !opt[g.needs]) reason = "this unit's firmware cannot restore it (it needs DUELL with TIDE, a build with the FM6 voice bank in its backup)";
     else if ((g.key === "settings" || g.key === "music") && list.get(g.ids[0])?.size !== archive.objects.get(g.ids[0]).size) reason = "the file was made by another DUELL version (its size differs from the unit's)";
     if (reason) { excluded.push({ key: g.key, label: g.label, reason }); continue; }
     if (g.dynamic) {
@@ -400,7 +465,7 @@ export function planRestore(archive, list, caps, sel, opt = {}) {
       steps.push({ id, size: o.size, crc: o.crc, bytes: o.bytes, group: g.key });
     }
   }
-  const rank = (s) => (s.key !== undefined ? (s.size ? s.slot : s.slot - 200) : 200 + RESTORE_ORDER.indexOf(s.id));   // the removals first (they free room), then the patches by slot, then the rest
+  const rank = (s) => (s.key !== undefined ? (s.size ? s.slot : s.slot - 200) : 200 + (s.id === FVB_ID ? RESTORE_ORDER.indexOf(1) - 0.5 : RESTORE_ORDER.indexOf(s.id)));   // the removals first (they free room), then the patches by slot, then the rest
   steps.sort((a, b) => rank(a) - rank(b));
   return { steps, excluded, skipped, caps };
 }
@@ -414,6 +479,11 @@ export async function runRestore(request, plan, onProgress = () => {}) {
   for (const s of plan.steps) {
     const at = s.key ?? s.id;
     let failure = null;
+    if (s.id === FVB_ID) {                             // the voice bank goes in through the bank upload commands, not through PUT
+      try { await restoreBank(request, s.bytes); done += s.size; onProgress(done, total); written.push(at); }
+      catch (e) { failures.push({ id: at, message: e.message, rc: e.rc }); if (e.rc === undefined || e.rc === 3) { stopped = true; break; } }
+      continue;
+    }
     try {
       await put([0, s.id, ...bkU32(s.size), ...bkU32(s.crc), ...(s.key !== undefined ? [s.slot] : [])]);
     } catch (e) { failure = { id: at, message: e.message, rc: e.rc }; }
@@ -441,6 +511,7 @@ export async function verifyRestore(request, plan) {
   const list = await listUnit(request, plan.caps), same = [], differ = [], notCompared = [];
   for (const s of plan.steps) {
     if (s.id === 0 || s.id === 1) { notCompared.push(s.id); continue; }
+    if (s.id === FVB_ID) { const now = await readBank(request).catch(() => null); (now && now.length === s.bytes.length && now.every((v, i) => v === s.bytes[i]) ? same : differ).push(s.id); continue; }
     const at = s.key ?? s.id, now = list.get(at);
     ((s.key !== undefined && !s.size ? !now : now && now.size === s.size && now.crc === s.crc) ? same : differ).push(at);
   }
