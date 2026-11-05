@@ -1868,7 +1868,8 @@ static void sound_label(const track_t *t, char *b)
  *                 room is the patch name's); at the right, ending at x 232: the page's number "6/7". A page with no number (alone in
   *                 its family) shows none. PERFORM: as on every page (PRESETS changes the sound there)
   * A layer shows the same footer, its kind ("SET", "HOLD") where the page's number is. While any part is armed for recording, a red dot and "REC"
-  * stand in row 2 just left of that number (foot_rec_mark), on every page; the patch name gives way to it */
+  * stand in row 2 just left of that number (foot_rec_mark), on every page; the patch name gives way to it. The tempo (BPM; an external clock's measured one) stands left of
+  * the number, on every page (D26); while a part is armed the REC mark has its room */
 #define FT_R 232                                       /* the right margin (the left one is 8) */
 /* the footer's step strip (row 1: the 16 step bars, the playhead, the cursor) shows on the sequencer's pages only (0.2.9, the owner: "hide the
  * step strip except on sequencer pages"): SEQ's STEP and PARAMETER LOCKS pages and its TOOLS layer, and the ARP pages while the selected part's arp
@@ -1937,12 +1938,12 @@ static int32_t foot_scroll(const char *s, int32_t w)
 }
 static void draw_foot(void)
 {
-    char s[48], pn[20], ti[28], ct[8], ln[56], pfl[24], pfr[24];
+    char s[48], pn[20], ti[28], ct[8], ln[56], pfl[24], pfr[24], tp[6];
     const track_t *t = TSEL;
     uint32_t sig;
     const engine_t *e = ENGINES[TSEL->eng_req % NENGINES];
     const char *ename = e->name, *save_hint;
-    int32_t ctp, rdot;
+    int32_t ctp, rdot, tpen;
     uint32_t fnm;
     int foot_short;
     pfl[0] = pfr[0] = 0;
@@ -1998,9 +1999,14 @@ static void draw_foot(void)
     sig += fnm * 3571u;
     ctp = FOOT_CT_R * 16 - (ct[0] ? text_w16(&AF_S, ct) : 0);   /* the counter's pen, 1/16 px */
     rdot = foot_rec_dot(ctp);                          /* (the REC mark's left edge: the patch name ends before it) */
+    fmt_int(tp, song.g[G_BPM]);                                   /* T12 (D26): the tempo (an external clock's measured one) before the number, the patch name ends before it; REC armed: the REC mark has the room */
+    if (rdot)
+        tp[0] = 0;
+    tpen = tp[0] ? ctp - FT_GAP * 16 - text_w16(&AF_S, tp) : rdot ? rdot * 16 : ctp;
+    sig += (uint32_t)song.g[G_BPM] * 4003u;
     {   /* a patch name wider than its room scrolls: the offset it has now is part of the picture */
         int32_t pen = UT_FOOT_X * 16 + ((fnm & 1u) ? text_w16(&AF_S, eng_shown(ename)) + UT_FOOT_WORD_GAP * 16 : 0);
-        int32_t nw = (rdot ? rdot : (ctp >> 4)) - UT_FOOT_WORD_GAP - (pen >> 4);
+        int32_t nw = (tpen >> 4) - UT_FOOT_WORD_GAP - (pen >> 4);
         sig += (uint32_t)foot_scroll(pn, nw) * 131u;
     }
     if (!ui.force && sig == ui.foot_sig)
@@ -2050,9 +2056,9 @@ static void draw_foot(void)
         }
     }
     {   /* row 2 (item 111, FINAL_V1 pictures; ui_tokens.h UT_FOOT_*): face F, the capitals' last row UT_FOOT_BASE on every page. The engine's name in the part colour at x UT_FOOT_X, the patch's name
-         * UT_FOOT_WORD_GAP after it (alone at x UT_FOOT_X where the engine's is left out: foot_names), the page's number ending UT_FOOT_CT_R, REC before it, the battery (draw_battery) at the
+         * UT_FOOT_WORD_GAP after it (alone at x UT_FOOT_X where the engine's is left out: foot_names), the page's number ending UT_FOOT_CT_R, the tempo (or REC) before it, the battery (draw_battery) at the
          * right; a patch name that does not fit SCROLLS (the REC mark, the number and the battery stay still on top of it) */
-        int32_t fy = UT_FOOT_BASE - Y_FOOT - AF_S_CAP_Y - AF_S_CAP_H + 1, pen = UT_FOOT_X * 16, nr = rdot ? rdot : (ctp >> 4), nx, nw;
+        int32_t fy = UT_FOOT_BASE - Y_FOOT - AF_S_CAP_Y - AF_S_CAP_H + 1, pen = UT_FOOT_X * 16, nr = tpen >> 4, nx, nw;
         nr -= UT_FOOT_WORD_GAP;                        /* the patch name ends here (before the REC mark or the number) */
         if (fnm & 1u)
             pen += text_w16(&AF_S, eng_shown(ename)) + UT_FOOT_WORD_GAP * 16;   /* the patch name's pen: after the engine's name */
@@ -2068,6 +2074,7 @@ static void draw_foot(void)
         if (fnm & 1u)
             cv_text_x16(UT_FOOT_X * 16, fy, &AF_S, eng_shown(ename), vt(T_PTHEME(TIDE_FOOT_PART(song.sel)), T_BG), T_BG);   /* (the selected part's colour on a global page too, not the global gradient's; TIDE hook: on TIDE / TIDE SET part 2's) */
         foot_rec_mark(ctp);
+        cv_text_x16(tpen, fy, &AF_S, tp, T_MID, T_BG);
         if (ct[0])
             cv_text_x16(ctp, fy, &AF_S, ct, T_MID, T_BG);
         draw_battery();
