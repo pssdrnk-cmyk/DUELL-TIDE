@@ -85,7 +85,7 @@ static void lfo_tick(track_t *t, lfo_t *l, uint32_t r, uint32_t s, int lfo1)
     {                                                   /* DUELL 1.1 LFO LEVEL (X_LFO1LVL / X_LFO2LVL, 0..127, 127 = full): the LFO's master depth, applied where the value is made so that every reader (the DEST depths, the matrix source, the TWIN depth, the meter) sees it; 127 skips this, the value as before */
         int32_t lv = XV(t, lfo1 ? X_LFO1LVL : X_LFO2LVL);
         if (lv < 127)
-            l->val = mulq15(l->val, lv < 0 ? 0 : lv * 258);
+            l->val = mulq15(l->val, lv < 0 ? 0 : Q15_FROM_127(lv));
     }
     if (BYP(t, lfo1 ? BY_LFO1 : BY_LFO2))               /* DUELL 1.1 BYPASS: the LFO keeps running (in step when it comes back) but sends 0 */
         l->val = 0;
@@ -525,7 +525,7 @@ static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int
     t->m_vi = (uint8_t)(v - t->v);
     glide_set(t, v, glide);
     v->apitch = (t->atg_note ? (int32_t)t->atg_note * 16 : v->pitch16) * 65536;   /* ARP TARGET: at the arp's note now */
-    v->again = t->atg_vel * 258;
+    v->again = Q15_FROM_127(t->atg_vel);
     v->stage2 = 1;                                      /* ENV 2 (DUELL): an attack, from where it is (as ENV) */
     v->offn = 0;                                        /* (hunt3: a step still being cancelled ends with the old note) */
     v->offp = (uint8_t)(sounding || ((VOICE_OWN_START >> t->engine) & 1u));
@@ -1021,7 +1021,7 @@ static __attribute__((noinline)) void atg_voice(const track_t *t, voice_t *v, vm
         v->apitch += d > 0 ? (d < st ? d : st) : (-d < st ? d : -st);
     }
     m->adelta = (v->apitch >> 16) - v->pitch_cur;
-    g = t->atg_vel * 258 - v->again;
+    g = Q15_FROM_127(t->atg_vel) - v->again;
     v->again += g > -4 && g < 4 ? g : g / 4;
     m->again = v->again;
 }
@@ -1298,11 +1298,11 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
             if (e->amp)                                 /* the engine's own amplitude curve */
                 env = e->amp(t, v, env);
             m.envq15 = e->ownenv ? 0 : env;
-            m.amp1 = e->ownenv ? env : mulq15(env, v->vel * 258);
+            m.amp1 = e->ownenv ? env : mulq15(env, Q15_FROM_127(v->vel));
             if (v->xg)                                  /* LAYER XFADE (core.h mix_xf): the note's share between the parts */
                 m.amp1 = mulq15(m.amp1, v->xg);
             if (p[P_LD_AMP] && !BYP(t, BY_LFO1))
-                m.amp1 = mulq15(m.amp1, 32767 - mulq15(p[P_LPOL] ? lfo : (lfo + 32768) >> 1, p[P_LD_AMP] * 258));
+                m.amp1 = mulq15(m.amp1, 32767 - mulq15(p[P_LPOL] ? lfo : (lfo + 32768) >> 1, Q15_FROM_127(p[P_LD_AMP])));
             if (fade)                                   /* linear to 0 over the fade */
                 m.amp1 = m.amp1 * (int32_t)(t->xf - 1u) / (int32_t)XF_BLOCKS;
             m.amp0 = v->env_out;

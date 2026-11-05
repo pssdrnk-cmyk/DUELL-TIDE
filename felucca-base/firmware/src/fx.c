@@ -811,7 +811,7 @@ typedef struct {
 } ins_t;
 static ins_t ins[NLIVE] __attribute__((section(".pool")));
 
-static inline int32_t ins_mixq(int32_t m) { return m >= 127 ? 32768 : m <= 0 ? 0 : m * 258; }   /* MIX -> Q15 */
+static inline int32_t ins_mixq(int32_t m) { return m >= 127 ? 32768 : m <= 0 ? 0 : Q15_FROM_127(m); }   /* MIX -> Q15 */
 /* the one-pole low-pass (topology-preserving) coefficient of cutoff index c, Q16: G = g / (1 + g), g = tan(pi fc / FS) */
 static int32_t ins_lpk(int32_t c)
 {
@@ -2485,7 +2485,7 @@ static __attribute__((noinline)) void mix_spread(track_t *t, int32_t *b, uint32_
     int32_t gla = 4096 - (pa > 0 ? pa >> 2 : 0), gra = 4096 + (pa < 0 ? pa >> 2 : 0);
     int32_t glb = 4096 - (pb > 0 ? pb >> 2 : 0), grb = 4096 + (pb < 0 ? pb >> 2 : 0);
     int32_t glm = (gla + glb) >> 1, grm = (gra + grb) >> 1, gld = (gla - glb) >> 1, grd = (gra - grb) >> 1;
-    int32_t c = t->p[P_CHOR] * 258, dl = t->p[P_DLY] * 258, r = t->p[P_REV] * 258, pk = t->peak;
+    int32_t c = Q15_FROM_127(t->p[P_CHOR]), dl = Q15_FROM_127(t->p[P_DLY]), r = Q15_FROM_127(t->p[P_REV]), pk = t->peak;
     int32_t xmax;
     if (bs->snd_st == SND_OFF || (byp_m[m->pp] & BY_SEND))
         c = dl = r = 0;                                 /* (0.2.14 MODULES SENDS OFF: nothing sent; DUELL 1.1 BYPASS of the part's SENDS likewise) */
@@ -2579,7 +2579,7 @@ static void spread_gains(uint32_t pp, const int32_t *q, int32_t *g)
     int32_t glb = 4096 - (pb > 0 ? pb >> 2 : 0), grb = 4096 + (pb < 0 ? pb >> 2 : 0);
     (void)pp;                                           /* (item 160: the part no longer matters here: BALANCE's cut is gone) */
     g[0] = lvl_of(q[0], q[1]);
-    g[1] = q[7] ? 0 : q[2] * 258, g[2] = q[7] ? 0 : q[3] * 258, g[3] = q[7] ? 0 : q[4] * 258;
+    g[1] = q[7] ? 0 : Q15_FROM_127(q[2]), g[2] = q[7] ? 0 : Q15_FROM_127(q[3]), g[3] = q[7] ? 0 : Q15_FROM_127(q[4]);
     g[4] = (gla + glb) >> 1, g[5] = (gra + grb) >> 1, g[6] = (gla - glb) >> 1, g[7] = (gra - grb) >> 1;
 }
 /* core 0, flash (mix_gather): see the comment above. At rest (the notes equal the block before's, or no route and no morph window) this is a comparison of nine words and a copy */
@@ -2997,7 +2997,7 @@ static __attribute__((noinline)) void part_mix(const mixpart_t *m)
                                                          * them, no spill in the loop: the ISR's cost as before 1.5) */
         int32_t lvl = part_lvl(t);
         int32_t gl = 4096 - (pq > 0 ? pq >> 2 : 0), gr = 4096 + (pq < 0 ? pq >> 2 : 0);   /* (pq Q8: pq >> 2 = pan x 64, the gains of before) */
-        int32_t c = t->p[P_CHOR] * 258, d = t->p[P_DLY] * 258, r = t->p[P_REV] * 258, pk = t->peak;
+        int32_t c = Q15_FROM_127(t->p[P_CHOR]), d = Q15_FROM_127(t->p[P_DLY]), r = Q15_FROM_127(t->p[P_REV]), pk = t->peak;
         int ramp = 0;
         if (bs->snd_st == SND_OFF || (byp_m[pp] & BY_SEND))
             c = d = r = 0;                              /* (0.2.14 MODULES SENDS OFF: nothing sent; DUELL 1.1 BYPASS of the part's SENDS likewise) */

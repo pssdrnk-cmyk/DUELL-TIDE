@@ -126,8 +126,8 @@ static void formant_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, con
     }
     {   /* RAND: both vowels move towards this note's random vowel (0 = off, 127 = fully random) */
         int32_t rv = (int32_t)(((uint32_t)v->s[7] >> 25) << 8), v0 = p[P_E0] << 8, v1 = p[P_E1] << 8;
-        v0 += ((rv - v0) * p[P_E7] * 258) >> 15;
-        v1 += ((rv - v1) * p[P_E7] * 258) >> 15;
+        v0 += ((rv - v0) * Q15_FROM_127(p[P_E7])) >> 15;
+        v1 += ((rv - v1) * Q15_FROM_127(p[P_E7])) >> 15;
         vowel_at(v0, fa, ba);      /* (the accent no longer moves the vowel: another vowel is another level) */
         vowel_at(v1, fb, bb);
     }
@@ -161,7 +161,7 @@ static void formant_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, con
     rp = (1u << 30) / ((tp >> 16) | 1u);
     rn = (1u << 30) / (((te - tp) >> 16) | 1u);
     gv = 32767 - p[P_E5] * p[P_E5] * 2;                 /* BREATH: voicing fades at the top */
-    gn = p[P_E5] * 258;                                 /* noise: Q15, up to 1.0 */
+    gn = Q15_FROM_127(p[P_E5]);                                 /* noise: Q15, up to 1.0 */
     og = 13000 - ((p[P_E6] - 64) * 50);                 /* output: narrower bands ring louder */
     og = (int32_t)(((int64_t)og * fmt_ratio((60 * 16 - v->pitch_cur) / 4)) >> 16);   /* 1.5 dB / oct: low notes are sparse pulses */
     ogk = (og >> 2) * (4 + (buzz >> 10) + (m->cutoff >> 11));   /* the accent (velocity over 110) opens the presence, up to k + 3 */               /* presence k = 1 .. 4.9 */

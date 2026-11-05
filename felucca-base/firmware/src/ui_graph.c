@@ -595,7 +595,7 @@ static void pic_draw(uint32_t kind, uint32_t pw, uint16_t c)
 static int32_t pic_analog_at(const track_t *t, uint64_t ph)
 {
     uint32_t w = (uint32_t)clamp(t->p[P_E0], 0, 6), p0 = (uint32_t)ph, i1 = pitch_inc(PIC_NOTE16);
-    int32_t m2 = clamp(t->p[P_E2], 0, 127) * 258, m1 = 32767 - m2, det = clamp(t->p[P_E1], 0, 127), shape = 64 << 8, s;
+    int32_t m2 = Q15_FROM_127(clamp(t->p[P_E2], 0, 127)), m1 = 32767 - m2, det = clamp(t->p[P_E1], 0, 127), shape = 64 << 8, s;
     if (w == 4u)                                                        /* PWM (analog_osc case 4) */
         return osc_pulse(p0, 0u, 0x80000000u + (uint32_t)((shape - (64 << 8)) << 15)) * 2 * 1000 / 32768;
     if (w == 5u) {                                                      /* SYNC (analog_render_x, sub = 0) */
