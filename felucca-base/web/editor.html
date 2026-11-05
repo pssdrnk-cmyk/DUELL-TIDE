@@ -1838,7 +1838,7 @@ function makeMockDevice(opt = {}) {
   ];
   TP.push(D("ATK2", F.TIME, 0, 127, 10), D("DEC2", F.TIME, 0, 127, 70), D("SUS2", F.PCT, 0, 127, 90), D("REL2", F.TIME, 0, 127, 60),   /* DUELL: ENV 2 (73..76) */
     D("RATE2", F.LFOHZ, 0, 127, 60), E("WAVE2", ["SIN", "TRI", "SAW", "SQR", "S&H"], 0), D("PHS2", F.INT, 0, 127, 0), D("FADE2", F.TIME, 0, 127, 0));   /* LFO 2 (77..80) */
-  TP.push(E("CHRD", ["OFF", "DIA3", "DIA7", "MAJ", "MIN", "DOM7", "MAJ7", "MIN7", "SUS4", "POW"], 0),   /* the chord keys 81, 82 */
+  TP.push(E("CHRD", ["OFF", "DIA3", "DIA7", "MAJ", "MIN", "DOM7", "MAJ7", "MIN7", "SUS4", "POW", "MIN9", "MAJ9", "SUS2", "ADD9", "MIN11", "DIA9"], 0),   /* the chord keys 81, 82 */
     E("VOIC", ["CLOSE", "OPEN", "INV1", "INV2", "+OCT"], 0));
   TP.push(E("SYNC2", ["OFF", "4BAR", "2BAR", "1/1", "1/2", "1/4", "1/8", "8T", "1/16", "16T", "1/32"], 0), E("TRIG2", ["NOTE", "FREE"], 1),
     E("POL2", ["BI", "UNI"], 0), FREE(), FREE(), FREE(), FREE(), FREE());   /* DUELL: LFO 2's SYNC TRIG POL (83..85), free 86..90 (were the DRUM lanes) */

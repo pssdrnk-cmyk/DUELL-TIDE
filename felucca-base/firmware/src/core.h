@@ -75,6 +75,9 @@ static inline int32_t accent_lift(uint32_t vel, int32_t envq15)
         vel = ACCENT_V1;
     return (envq15 * ACCENT_MAX * (int32_t)(((vel - ACCENT_V0) * 256u + 8u) / (ACCENT_V1 - ACCENT_V0))) >> 15;   /* weight Q8: 256 at 127, so the top is the old lift exactly (envq15 <= 32768: below 2^31) */
 }
+/* the velocity the accent reads: the key's (mvel), not the voice's own vel, which UNISON lowers to keep the level (vel * 36 / 100 or / 2: it never reached 111). A LEGATO
+ * key under a harder held one keeps the harder (vel is the larger there); everywhere else the two are the same */
+#define ACCENT_VEL(v) ((v)->mvel > (v)->vel ? (v)->mvel : (v)->vel)
 /* which way a filter opens, Q7 of the lift: MODE 0 (LP) +127 .. 64 (BP) 0 .. 127 (HP) -127; filter 2's TYPE (params.c TT_*: OFF 0, LP 1, BP 2, HP 3, NOTCH 4, LADDER 5, COMB 6): LP, LADDER +127, HP -127, rest 0 */
 static inline int32_t accent_dir_mode(int32_t mode) { return 127 - 2 * (mode < 0 ? 0 : mode > 127 ? 127 : mode); }
 static inline int32_t accent_dir_type(uint32_t ty) { return (ty == 1u || ty == 5u) ? 127 : ty == 3u ? -127 : 0; }
@@ -100,7 +103,9 @@ enum {
     F_CREL,                                /* .. RELEASE, 0..12: CMP_REL_MS, shown in ms, from 1000 in s */
     F_TUNEHZ,                              /* DUELL 0.2.22: MASTER TUNE, the value is the frequency of A4 in 0.1 Hz (TUNE_MIN .. TUNE_MAX), shown "440.0" Hz */
     F_DSEMI,                               /* TWIN FILTER (ext.h, cloud job B): filter 2's OFFSET, whole dial steps shown as semitones with one decimal (a dial step is 0.1103 octave: 1.3236 st), "+1.3" "-83.4" st */
-    F_N99                                  /* DUELL 1.1 (owner 2026-10-25): FM6's AMP ENV knobs, 0..127 shown as the DX7 number 0..99 of the loudest carrier ((v * 99 + 63) / 127), no unit (appended: the fmt numbers are in the protocol) */
+    F_N99,                                 /* DUELL 1.1 (owner 2026-10-25): FM6's AMP ENV knobs, 0..127 shown as the DX7 number 0..99 of the loudest carrier ((v * 99 + 63) / 127), no unit (appended: the fmt numbers are in the protocol) */
+    F_DEG,                                 /* a phase 0..127 shown as 0..357 degrees ("deg": the LFO's start PHS; appended) */
+    F_VOWL                                 /* VOICE's vowel position 0..127 shown as A E I O U with ">" between two ("A>E"; appended) */
 };
 
 typedef struct {

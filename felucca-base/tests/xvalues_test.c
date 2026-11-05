@@ -539,7 +539,7 @@ static void t_matrix(void)
     uint64_t base = scene_hash(0);
     track_t *t;
     uint32_t ok;
-    ck("a busy two-part matrix render (every per-note destination from ENV, ENV 2, VEL, KEY, RAND, the LFOs; PAN, sends, E5, RES, FMODE) is cloud/base3's hash: mod_voice runs as it did", hash_c(matrix_child) == 0x00793912d67b9b7bull /* (audit P03, on purpose: the SVF keeps its precision at low cutoffs, dsp.c tsvf_coef_k; was 0xf12f1b34e77ffced) /* (audit R05 / R08: the master soft knee and the loops' dead bands closed; re-based on purpose, was 0xc2cc680e10ff0b9c) */);   /* (audit P07, re-based on purpose 2026-11-05: the scene routes to RES, filter 1's damping is exponential now (voice.c UF_K); was 0xf543d5abd1c7de69) (re-based 2026-11-03 on Linux for 1.1 / jam11 (stock 1.1 gives the same): item 144's note-start stagger (VS_MAX 2; the chords of the scene start 2 voices a block: -DVS_MAX=99 gives 0xd10b49bf6d83837b), BIT DEPTH and the reverb fix; was 0xc3a35d49b4be06fd) /* (re-based on purpose 2026-10-21: the click fixes of hunt1..hunt4 (LFO / matrix slew, SAT, PHASE seam); was cloud/base3's 0xec458fefd57d01b4; and for 1.0: the matrix amount +63 acts as a true 100 %, mod.c MX_AMT; was 0x4396c17e8041202e; DUELL 1.1: the smooth accent ramp (core.h accent_dir_*, voice.c, voice_chain.c) moved it from 0x8c526ee5e3c74750; with those edits put back to the 1.0 files the old hash comes out) */
+    ck("a busy two-part matrix render (every per-note destination from ENV, ENV 2, VEL, KEY, RAND, the LFOs; PAN, sends, E5, RES, FMODE) is cloud/base3's hash: mod_voice runs as it did", hash_c(matrix_child) == 0x2be8c7d84992e1f9ull /* (audit P02, on purpose: pitch modulation below the 1/16 semitone reaches the oscillator; was 0x00793912d67b9b7b) /* (audit P03, on purpose: the SVF keeps its precision at low cutoffs, dsp.c tsvf_coef_k; was 0xf12f1b34e77ffced) /* (audit R05 / R08: the master soft knee and the loops' dead bands closed; re-based on purpose, was 0xc2cc680e10ff0b9c) */);   /* (audit P07, re-based on purpose 2026-11-05: the scene routes to RES, filter 1's damping is exponential now (voice.c UF_K); was 0xf543d5abd1c7de69) (re-based 2026-11-03 on Linux for 1.1 / jam11 (stock 1.1 gives the same): item 144's note-start stagger (VS_MAX 2; the chords of the scene start 2 voices a block: -DVS_MAX=99 gives 0xd10b49bf6d83837b), BIT DEPTH and the reverb fix; was 0xc3a35d49b4be06fd) /* (re-based on purpose 2026-10-21: the click fixes of hunt1..hunt4 (LFO / matrix slew, SAT, PHASE seam); was cloud/base3's 0xec458fefd57d01b4; and for 1.0: the matrix amount +63 acts as a true 100 %, mod.c MX_AMT; was 0x4396c17e8041202e; DUELL 1.1: the smooth accent ramp (core.h accent_dir_*, voice.c, voice_chain.c) moved it from 0x8c526ee5e3c74750; with those edits put back to the 1.0 files the old hash comes out) */
     ck("CUTOFF 2 routes (ENV VEL KEY RAND ENV 2 CYCLE LFO) change no sample of the product: the second list is read by the chain only", second_hash(prep_f2routes) == base);
     ck("CYCLE to CUT, SHP, PITCH (per note) and PAN (per block): a working source since job F (cycle.c): it moves the sound (job B's stub at rest changed no sample)", second_hash(prep_cycleroutes) != base);
     /* the lists */
@@ -573,7 +573,6 @@ static void t_matrix(void)
     {
         vmod_t m0, m1;
         voice_t v;
-        int32_t fine = 5;
         track_t tt;
         memset(&tt, 0, sizeof tt);
         memset(&v, 0, sizeof v);
@@ -588,7 +587,7 @@ static void t_matrix(void)
         memset(&m0, 0, sizeof m0);
         m0.pitch16 = 960; m0.inc = pitch_inc(960); m0.cutoff = 1000; m0.shape = 64 << 8; m0.amp0 = 20000; m0.amp1 = 30000;
         m1 = m0;
-        mod_cycle_voice(&tt, &tt.v[0], &m1, fine);
+        mod_cycle_voice(&tt, &tt.v[0], &m1);
         ok = m1.cutoff == m0.cutoff && m1.shape == m0.shape && m1.pitch16 == m0.pitch16 && m1.amp1 == mulq15(m0.amp1, mulq15(32767, mod_gain(MS_CYCLE, 0, 20))) && tt.v[0].env_out == m1.amp1 && tt.m_cycle == 0;
         ck("mod_cycle_voice: a CYCLE at rest adds 0 to cutoff, shape, pitch and closes an AMP route by mod_gain; env_out follows; t->m_cycle kept", ok);
         if (!ok)
@@ -596,7 +595,7 @@ static void t_matrix(void)
         tt.cym = 0;
         m1 = m0;
         v = tt.v[0];
-        mod_cycle_voice(&tt, &tt.v[0], &m1, fine);
+        mod_cycle_voice(&tt, &tt.v[0], &m1);
         ck("  .. with the list empty it changes nothing", !memcmp(&m1, &m0, sizeof m0));
         (void)v;
     }

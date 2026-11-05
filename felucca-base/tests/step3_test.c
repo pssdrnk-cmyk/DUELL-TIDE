@@ -298,7 +298,7 @@ static void snap(track_t *t, uint32_t k, uint32_t s, uint32_t d, snap_t *o)
     memset(&m, 0, sizeof m);
     m.envq15 = 20000; m.shape = 64 << 8; m.pitch16 = 1000; m.inc = pitch_inc(1000); m.amp1 = 20000;
     if (trk[0].mdw.on)
-        mod_voice(t, &t->v[0], &m, 0);
+        mod_voice(t, &t->v[0], &m);
     o->m = m;
     if (trk[0].mdw.on)
         mod_end(t);

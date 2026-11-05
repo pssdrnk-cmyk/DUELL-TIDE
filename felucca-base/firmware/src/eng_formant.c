@@ -226,8 +226,8 @@ static const engine_t ENG_FORMANT = {
     .name = "VOICE",
     .page_title = {"VOWL", "TONE"},
     .edit = {
-        {"VOWL 1", F_INT, 0, 127, 0, 0, 0},
-        {"VOWL 2", F_INT, 0, 127, 64, 0, 0},
+        {"VOWL 1", F_VOWL, 0, 127, 0, 0, 0},
+        {"VOWL 2", F_VOWL, 0, 127, 64, 0, 0},
         {"TALK", F_TIME, 0, 127, 0, 0, 0},
         {"SHIFT", F_SEMI, -12, 12, 0, 0, 0},
         {"BUZZ", F_PCT, 0, 127, 64, 0, 0},

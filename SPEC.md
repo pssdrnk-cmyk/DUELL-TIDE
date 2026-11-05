@@ -179,8 +179,8 @@ Every destination is stored as its number in the slot's DST value (`mod.c` MD_*,
 | 1 2 3 4 | PITCH CUT SHP AMP | PITCH, MULTI FILTER CUTOFF, SHAPE (TIMBRE), VOICE AMP (TREMOLO) | per voice | as before (PITCH +-11.8 st at 63; CUT / SHP +-63 steps; AMP a gain <= 1) |
 | 5 | PAN | PAN | per block | the PAN card is not shown in DUEL (each part on its own side) |
 | 6 7 8 9 | SAT CHO DLY REV | SATURATION, CHORUS / DELAY / REVERB SEND | per block | the part's |
-| 10 11 20 | RAT1 VIB DEP1 | LFO 1 RATE, LFO 1 PITCH DEPTH, LFO 1 DEPTH | per block | |
-| 21 22 | RAT2 DEP2 | LFO 2 RATE, LFO 2 DEPTH | per block | |
+| 10 11 20 | RAT1 VIB DEP1 | LFO 1 RATE, LFO 1 PITCH DEPTH, LFO 1 LEVEL | per block | |
+| 21 22 | RAT2 DEP2 | LFO 2 RATE, LFO 2 LEVEL | per block | |
 | 12..19 | the engine's own label (POS, SYNC, ...) | "DEST: WAVE POS": the engine's name and label | per block | E1..E8 = the engine's eight stored slots in the order of its table (EDIT 1 KNOB 1..4, EDIT 2 KNOB 1..4 of the part's CURRENT engine, except FM6, whose cards show SLOT first since 0.2.18: its E1 is ALG as ever), named at draw time (the engine's descriptor, its mode-dependent one where it has one). Faded with a reason and doing nothing: **UNUSED** (a "-" slot; the line says where: "DEST: WAVE EDIT 2 KNOB 3", NOT USED BY THIS ENGINE), **REBUILD** (WAVE's TABLE: a table change builds a new table, the notes silent meanwhile, not a modulation; `mod_begin` skips it), **LOADS** (FM6's SLOT: loading a patch is the main loop's), **AT NOTE** (values an engine reads only as a note starts: SAMPLE SET; SLICE SRC, DIV, START, REV; none since 0.2.9 retired both engines: a retired engine's slots read UNUSED) |
 | 23 | TRIM | PATCH TRIM | per block | the sound's TRIM (0.2.19; the destination was LEVEL, the part's one level; before BAL), so a route moves the patch's own loudness and not the player's mixer level; for smooth tremolo use AMP |
 | 24 25 26 | the INSERT TYPE's labels (DRIVE TONE LEVEL / BITS RATE LPF / RATE DEPTH FDBK) | "DEST: INSERT DRIVE" | per block | its cards are not shown while TYPE is OFF; the DEST card shows it dim and the panel line says INS OFF ("INS A" .. then) |

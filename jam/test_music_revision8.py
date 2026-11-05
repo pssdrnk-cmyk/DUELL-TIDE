@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Offline current-music validation and restore-planning regressions; no MIDI."""
 import unittest
 import jam_dev as jd

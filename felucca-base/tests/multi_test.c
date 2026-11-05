@@ -71,7 +71,7 @@ static void power_cycle(void)                        /* the RAM is gone; the fla
     cut_bytes = -1;
 #if DUELL_TIDE
     {   /* (TIDE's SEQ MORPH is RAM only: after a power cycle it starts as on a new unit, not from an earlier section's ends and fader) */
-        static const sqm_part_t SQM0 = {.notes = SQM_AMT_DEF};
+        static const sqm_part_t SQM0 = {0};
         for (k = 0; k < NSHOWN; k++)
             sqm[k] = SQM0;
         memset(sqm_pat, 0, sizeof sqm_pat);

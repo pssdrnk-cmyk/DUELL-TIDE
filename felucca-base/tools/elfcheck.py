@@ -109,6 +109,9 @@ def check(elf, declared, probe=False, image_size=None, region=None):
     size = image_size if image_size is not None else elf["image_end"] - APP_XIP
     if size > APP_SLOT:
         errors.append(f"image {size} B exceeds the app slot ({APP_SLOT} B)")
+    et = [a for n, a, sz, sec in elf["symbols"] if n == "_etext"]   # the linker script's XIP region is longer than the slot with DUELL_RAMPLACE: .text itself must end inside it
+    if et and et[0] - APP_XIP > APP_SLOT:
+        errors.append(f".text ends {et[0] - APP_XIP} B after the start of the XIP image, beyond the app slot ({APP_SLOT} B)")
     for n in sorted(set(declared) - set(NOINIT_OBJECTS)):
         errors.append(f".noinit object {n} ({declared[n]}) is not in tools/elfcheck.py NOINIT_OBJECTS: add it with its sizeof")
     syms = noinit_table(elf)

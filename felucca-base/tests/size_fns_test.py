@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-only
 """Protect cold-code selection when an ISR dispatches through global tables."""
 import importlib.util
 from pathlib import Path

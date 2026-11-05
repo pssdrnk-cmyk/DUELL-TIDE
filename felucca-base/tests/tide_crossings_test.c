@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* Uses the existing firmware/UI host harness; no simulated DSP replacement. */
 #define UI_TEST_NO_MAIN 1
 #define CROSSINGS 1

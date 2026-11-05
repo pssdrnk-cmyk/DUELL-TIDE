@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-only
 # DUELL JAM: the whole check in one command (Git Bash on Windows; also Linux / macOS).
 #   sh jam/check.sh [test ...]        (default: the device build, every host test group, the patcher's tests)
 # Each host test group runs on its own with a time limit, so a slow or stuck one cannot stall the rest. On Windows a group
@@ -50,6 +51,9 @@ for g in $groups; do
         fail=$((fail + 1)); failed="$failed $g"
     elif grep -q "which Windows does not have: skipped" "$out"; then
         echo "SKIP    $g ($(grep -m1 -o "needs [^,]*, which Windows" "$out" | sed "s/, which Windows//"))"; skip=$((skip + 1))
+    elif [ $rc -eq 0 ] && grep -q "^   SKIP" "$out"; then
+        # a group whose checks could not run here (no Chrome, no update package, no banks ...) says "   SKIP <why>": never PASS
+        echo "SKIP    $g ($(grep -m1 "^   SKIP" "$out" | sed 's/^   SKIP //'))"; skip=$((skip + 1))
     elif grep -q "^   FAIL" "$out" || [ $rc -ne 0 ]; then
         echo "FAIL    $g"; fail=$((fail + 1)); failed="$failed $g"
     else

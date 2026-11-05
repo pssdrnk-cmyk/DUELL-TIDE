@@ -84,6 +84,20 @@ static int test_seq(void)
     bad += check("step_samples at 75 + 75: 1.5 x and 0.5 x of the straight step",
                  step_samples(&trk[0], 6000, 0) == (uint32_t)(2.0 * play_pct(75, 75) * 60.0) &&
                  step_samples(&trk[0], 6000, 1) == 12000u - (uint32_t)(2.0 * play_pct(75, 75) * 60.0));
+    /* S14: a triplet DIV (8T 4, 16T 5, 4T 10, 2T 11, 32T 12) is not swung, even at 75 + 75; 1/8 (1) and 1/16 (2) still are */
+    {
+        static const int D[] = {4, 5, 10, 11, 12, 1, 2};
+        uint32_t i;
+        for (i = 0; i < sizeof D / sizeof D[0]; i++) {
+            int trip = i < 5u;
+            host_tracks_init();
+            trk[0].p[P_SDIV] = (int16_t)D[i];
+            set_swing(&trk[0], 75, 75);
+            snprintf(what, sizeof what, "step_samples at 75 + 75 on DIV %d (%s): %s", D[i], trip ? "a triplet" : "straight", trip ? "not swung" : "swung");
+            bad += check(what, trip ? step_samples(&trk[0], 6000, 0) == 6000u && step_samples(&trk[0], 6000, 1) == 6000u
+                                    : step_samples(&trk[0], 6000, 0) == 9000u);
+        }
+    }
     return bad;
 }
 
