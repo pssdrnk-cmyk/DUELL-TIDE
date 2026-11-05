@@ -5,7 +5,8 @@ DUELL 1.0 (owner, 2026-10-21): the 128 factory sounds are the owner's bank, the 
 no retuning, the names of the file), written here by tools/import_bank.py. The earlier recipe list (SOUND_RECIPES.md, the refinement passes) is in git history.
 Every sound: engine, idx (its factory index within the engine: the identity favourites and the shadows use; APPEND-ONLY per engine), name, cat, p: the
 parameters that differ from INIT (params.c TP defaults and the engine's EDIT defaults; E1..E8 are the engine's eight; MOD1..MOD8 are (SRC, DST, AMT)
-matrix slots; extension slots as "<group> <label>"), bseed / bamt: End B (the roll's seed and the AMOUNT %). Do not edit by hand: import again.
+matrix slots; extension slots as "<group> <label>"), bseed / bamt: End B (the roll's seed and the AMOUNT %). Edited here since End B became exact values
+(tools/import_bank.py --write is switched off: it would rebuild only the 128 from the bank file and drop #129-#160). The sounds after N_BASE are the fork's (#129-#160).
 End B as exact values (2026-10-29, tools/convert_endb.py; the format is tools/endb.py's = the patch record's End B block): bend {label: End B value} (where it differs from the Original),
 bpin [labels] (marks of values set by hand), bfm [65 FM6 bytes of End B]. The seeds stay until the firmware reads the blocks.
 """
@@ -1919,7 +1920,7 @@ SOUNDS = [
             'E2DEC': 68, 'E2SUS': 11, 'E2REL': 54, 'L2RATE': 77, 'L2PHASE': 3, 'L2FADE': 12, 'E2FLT': 29, 'E2': 5, 'E7': 20, 'SUB LEVEL': 10,
             'CYCLE RISE': 26, 'CYCLE FALL': 50, 'CYCLE CURVE': 1, 'AMPENV SATN': 8, 'FILTERENV MRES': -7, 'CYCLE PAN': 7, 'LFO2 MMODE': -13,
          }),
-    # DUB PACK (tools/dub_pack/pack.py; docs: work/outputs/dub-pack-2026-11-03): a saw chord through the 24 dB multimode filter, the filter envelope snapping it open and shut,
+    # DUB PACK (tools/dub_pack/pack.py, which reads these records): a saw chord through the 24 dB multimode filter, the filter envelope snapping it open and shut,
     # chorus + a long delay + a room behind it. End B: thrown into the echo: darker, more resonant, the snap gone, the delay and the reverb up.
     dict(engine='ANALOG', idx=20, name='DUB CHORD', cat='KEYS', bamt=20,  # #129
          p={

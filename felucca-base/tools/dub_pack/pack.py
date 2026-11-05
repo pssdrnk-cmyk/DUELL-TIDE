@@ -11,8 +11,13 @@ The sounds use the form of tools/duell_sounds.py (p = values off INIT by label, 
 records themselves are written by the firmware's own store (render.c: up_store_trk), never by hand; tools/dub_pack/assemble.mjs turns them
 into the editor's "duell-patches" files and checks them with the editor's own reader. tools/dub_pack/build.sh runs the three.
 
+Since the 8 voices joined the factory bank (#129-#160), tools/duell_sounds.py is their one source: all_sounds() takes each voice's category, values
+and End B from there by name. The p / bend written in SOUNDS below are the pack as first auditioned (2026-11-03), kept as history; the bank's
+TRIMs, DUST BED's filter and End B and SUB PLUCK's SAT have moved on since.
+
 The 4 PATTERNS are pattern slots (the editor's "duell-patterns" file): 16 steps of absolute chord notes, with ties, accents and chances.
 """
+import importlib.util
 import json
 import sys
 import types
@@ -136,9 +141,21 @@ def pattern_json():
     return out
 
 
+def factory_sounds():
+    """name -> the factory record of tools/duell_sounds.py (the one source of the 8 voices since they joined the bank as #129-#160)"""
+    spec = importlib.util.spec_from_file_location("duell_sounds", HERE.parent / "duell_sounds.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return {s["name"]: s for s in mod.SOUNDS}
+
+
 def all_sounds():
-    """-> the 8 voice dicts in pack order"""
-    out = [dict(s) for s in SOUNDS]
+    """-> the 8 voice dicts in pack order: the audition (kind) from here, the sound itself (cat, p, bend, bamt) from tools/duell_sounds.py"""
+    fac = factory_sounds()
+    out = []
+    for s in SOUNDS:
+        f = fac[s["name"]]
+        out.append(dict(s, cat=f["cat"], p=dict(f["p"]), bend=dict(f.get("bend", {})), bamt=f.get("bamt", s.get("bamt"))))
     seen = {}
     for s in out:                                          # factory idx within an engine: any distinct numbers (the sound list is not written)
         s["idx"] = seen.get(s["engine"], 0)
