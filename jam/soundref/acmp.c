@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* acmp ref.bin new.bin : segment-wise audio comparison of two DMP dumps (records: int32 id, int32 sample) */
 #include <stdio.h>
 #include <stdlib.h>

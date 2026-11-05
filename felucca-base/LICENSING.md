@@ -7,10 +7,15 @@ texts are in `LICENSES/`.
 
 Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
 Copyright (C) 2026 OSCILL/R (DUELL)
+Copyright (C) 2026 pssdrnk (DUELL with TIDE, the fork at <https://github.com/pssdrnk-cmyk/DUELL-TIDE>)
 
 DUELL is a modified version of Felucca. It is licensed under the same terms, GPL-3.0-only, and
 carries Felucca's copyright notices above. The changes that make Felucca into DUELL are by
 OSCILL/R. DUELL's source is at <https://github.com/oscillr/DUELL>.
+
+DUELL with TIDE is a modified version of DUELL 1.1 by pssdrnk (the TIDE pages, the glide and SEQ MORPH, added
+sounds and patterns, fixes and tests), under the same terms, GPL-3.0-only. Files the fork added carry the
+SPDX header; the fork's changes to existing files are in the git history.
 
 ## What is GPL-3.0-only
 
