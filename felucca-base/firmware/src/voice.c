@@ -1339,10 +1339,10 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
             v->lastc = v->lastd = 0;
             continue;
         }                                   /* held at a silent sustain (SUS 0): nothing to render */
-        pitch = v->pitch_cur + tune + bend16 + ((lfo * DEP_AMT(p[P_LD_PIT]) * 3) >> 15) + ((m.envq15 * DEP_AMT(p[P_ED_PIT]) * 3) >> 15);
-        m.pitch16 = clamp(pitch, 0, 2047);
+        pitch = (lfo * DEP_AMT(p[P_LD_PIT]) * 3 >> 11) + (m.envq15 * DEP_AMT(p[P_ED_PIT]) * 3 >> 11);   /* LFO and ENV PIT in 1/256 st: the 1/16 st below it goes to the fine factor, not lost */
+        m.pitch16 = clamp(v->pitch_cur + tune + bend16 + (pitch >> 4), 0, 2047);
         m.inc = pitch_inc(m.pitch16);
-        vf = v->fine + tune_fine + bend_fine + ((v->gfrac * 947) >> 22);   /* (gfrac: 1/65536 of 1/16 st = 14.8 fine) */
+        vf = v->fine + tune_fine + bend_fine + ((v->gfrac * 947) >> 22) + ((pitch & 15) * 947 >> 10);   /* (gfrac: 1/65536 of 1/16 st = 14.8 fine) */
         m.fine = vf;
         if (vf)                                         /* residual below 1/16 semitone */
             m.inc += (uint32_t)((int32_t)(m.inc >> 12) * vf);
@@ -1363,9 +1363,9 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
         if (abits)
             atg_voice(t, v, &m);
         if (mod->on) {                                   /* the modulation matrix (mod.c) */
-            mod_voice(t, v, &m, vf);
+            mod_voice(t, v, &m);
             if (t->cy)                                   /* its second list (cloud job B, mod.c): CYCLE's per-note routes, after mod_voice .. */
-                mod_cycle_voice(t, v, &m, vf);
+                mod_cycle_voice(t, v, &m);
             t->venv = m.envq15;                          /* .. and this voice's ENV for filter 2's sum (mod_f2_voice, called by the chain) */
         }
         if (e == &ENG_WAVE && p[P_E6])                  /* WAVE STEPS (eng_wave.c): POS lands on one of STEPS places; the block ramp is the cross-fade between two steps */
