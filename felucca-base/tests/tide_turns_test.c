@@ -1077,8 +1077,27 @@ static void t_fader_edit(void)
     CHECK("SEQ fader moved after an edit: the ends are rebuilt at once", !memcmp(keep, sqm_pat[0][1], sizeof keep) && sqm_pat[0][1][0].note[0] == 30);
 }
 
+/* B05: an ARP SEQ part's phrase clock is the arp's loop (ARATE), not the sequencer's (SDIV) */
+static uint32_t loops_in(uint32_t arp, uint32_t sdiv, uint32_t arate)
+{
+    uint32_t a, b, n0;
+    setup(16, 16, sdiv, sdiv, arp);
+    trk[0].p[P_ARATE] = (int16_t)arate;
+    n0 = tide_seq_loops[0];
+    run_turns(16, INTERNAL, &a, &b);
+    return (uint32_t)(uint8_t)(tide_seq_loops[0] - n0);
+}
+static void t_arp_clock(void)
+{
+    uint32_t arp = loops_in(1, 2, 3), plain = loops_in(0, 3, 3), sdiv = loops_in(0, 2, 2);
+    printf("   ARP SEQ SDIV 2 ARATE 3: %u loops in 16 bars; a plain part at DIV 3: %u; at DIV 2: %u\n", arp, plain, sdiv);
+    CHECK("ARP SEQ part: the phrase clock counts the arp's loops (ARATE), not the sequencer's (SDIV)",
+          arp + 1u >= plain && plain + 1u >= arp && (arp > sdiv + 1u || sdiv > arp + 1u));
+}
+
 int main(void)
 {
+    t_arp_clock();
     t_fader_edit();
     t_turns();
     t_sig();
