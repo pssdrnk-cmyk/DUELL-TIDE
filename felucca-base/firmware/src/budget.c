@@ -77,7 +77,7 @@ static const uint16_t BD_IDLE[2] = {317, 319};                                 /
 static const uint16_t BD_BUS[2] = {238, 496};                                   /* nothing fed, HALL + DIGITAL (the power-on) */
 static const uint16_t BD_CHO[2] = {305, 553};                                   /* + the chorus fed */
 static const uint16_t BD_DLY[2][4] = {{295, 320, 365, 413}, {539, 537, 673, 712}};   /* DIGITAL PING-PONG RANDOM OCT UP, fed */
-static const uint16_t BD_REV[2][6] = {{246, 272, 295, 289, 299, 312}, {463, 516, 535, 590, 555, 565}};   /* ROOM SPRING HALL SHIM(UP) RESO PLATE, fed */
+static const uint16_t BD_REV[2][6] = {{295, 272, 295, 289, 299, 312}, {535, 516, 535, 590, 555, 565}};   /* ROOM SPRING HALL SHIM(UP) RESO PLATE, fed */
 static const uint16_t BD_SHD[2] = {386, 752};                                   /* SHIM PITCH DOWN */
 static const uint16_t BD_SHM[2] = {390, 758};                                   /* SHIM PITCH UP + MOD 50 */
 #define BD_SHDM 387u            /* SHIM PITCH DOWN + MOD 50, STEREO / LAYER (measured 386.8, GOOD; the DUEL row was not measured: its two extras are added) */

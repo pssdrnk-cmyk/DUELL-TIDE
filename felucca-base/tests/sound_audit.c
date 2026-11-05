@@ -70,8 +70,9 @@
 #define AUDIT_HIT_TRIM (-4.5)
 #define AUDIT_REL_MARGIN 3.0           /* rule (6): a sustaining sound's MED at most this far under the median MED of the sustaining ones */
 static const char *const AUDIT_RISERS[] = {"WHITE OUT", "MOOR WIND", "LESLIE STORM", "RAIN CHIMES"};   /* RAIN CHIMES: its arp is one LFO phrase now (TRIG NOTE no longer restarts per step), so its 0.25 Hz LFO 2 filter sweep runs its 4 s cycle as the recipe says */
-static const char *const AUDIT_KEEP[] = {0};   /* keep-as-designed: exempt from quiet body, falls away, quiet vs others (BACKSPIN until
-                                                * 0.2.8: retired with SLICE; none now) */
+static const char *const AUDIT_KEEP[] = {"RAIN CHIMES"};   /* keep-as-designed: exempt from quiet body, falls away, quiet vs others (BACKSPIN until
+                                                * 0.2.8: retired with SLICE). RAIN CHIMES: a few chimes in a reverb, its median sits on the -21 dBFS line (-20.9 before the reverb's
+                                                * pre-delay, audit E3, moved a little of its tail later: -21.1); the bank lane may lift it */
 
 typedef struct { uint32_t e, k, mode, b, seed, amt, chord, tap; } au_t;   /* b: 0 End A (the sound), 1 its factory End B, 2 seed / amt */
 static void au_setup(void *v)

@@ -321,7 +321,7 @@ PIANO HD); 1.5 brings the full piano back.
 
 **Reverb** (GLO > REVERB, TYPE): **HALL** (since 1.4, the default on a fresh start: eight delay lines feeding each
 other with slowly drifting taps, stereo, SIZE the decay up to about 4.5 s, DAMP how fast the highs die), **ROOM** (the
-default up to 1.1.5), **SPRING**, **SHIM** (ROOM with an octave-up shimmer fed back into it) and **RESO** (four combs tuned to the part's scale; both ported from JIANT, see LICENSING.md). **PLATE** (DUELL 0.2.14: a plate reverb, stereo, smooth and dense; based on the reverb of the CHOMPI firmware, MIT, see LICENSING.md). A project plays the TYPE it was saved with.
+default up to 1.1.5), **SPRING**, **SHIM** (the old four-comb room with an octave-up shimmer fed back into it) and **RESO** (four combs tuned to the part's scale; both ported from JIANT, see LICENSING.md). **PLATE** (DUELL 0.2.14: a plate reverb, stereo, smooth and dense; based on the reverb of the CHOMPI firmware, MIT, see LICENSING.md). A project plays the TYPE it was saved with.
 
 ## Scale keyboard
 

@@ -217,7 +217,7 @@ enum {                          /* global parameters */
 #define BM_DEF 8                                         /* 0.2.24 (owner): ON at 200 Hz on a new unit (BM_HZ[7]); a DEVICE setting since 0.2.24: the settings record's byte [15][21] (ui.c ms_sync, stored + 1: 0 = the default), not the project's or a multi's */
 static const uint16_t BM_HZ[BM_N] = {40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400};   /* the corners in Hz (fx.c bass_mono's table BM_C is computed for these) */
 /* DUELL 0.2.21 (owner, 2026-10-16): the MASTER COMPRESSOR, the page COMP (GLO, after BASS MONO). Four more pseudo ids past the stored globals, like G_BM: G_CT THRESH (0..40 = -40 .. 0 dB),
- * G_CR RATIO (0 = 1:1, the stage is not run; 1.5 2 3 4 6 10 20 INF), G_CA ATTACK (0.1 .. 100 ms), G_CL RELEASE (20 ms .. 2 s). They live in song.cp[0..3] and are a DEVICE setting (not in a multi, not in the
+ * G_CR RATIO (0 = 1:1, the stage is not run; 1.5 2 3 4 6 8 12 INF), G_CA ATTACK (0.1 .. 100 ms), G_CL RELEASE (20 ms .. 2 s). They live in song.cp[0..3] and are a DEVICE setting (not in a multi, not in the
  * project): packed in the settings record's retired `rsv` word (settings_persist.c; cmp_set). The tables below are the nominal times; fx.c holds the shift triples that realise them (comp_stage) */
 /* DUELL 0.2.22 (owner, 2026-10-16): the sidechain's MIDI SETUP is a DEVICE setting, not part of a sound. GLO > SIDECHAIN: per part (K1 P1 CH, K2 P1 NOTE, K3 P2 CH, K4 P2 NOTE) the MIDI channel and the note
  * that start the DUCK of a part whose DUCK SRC is MIDI (fx.c duck_note, sc_midi[]). Kept in the settings record (favorites.factory[15][14..17], 0 = the default; ui.c ui_sc_set), never in a patch, a multi or the
@@ -786,7 +786,8 @@ static volatile uint8_t mods_off;
 #define BYS_MST  8u
 #define BYS_CMP  16u
 #define BYS_ALL  31u
-static volatile uint16_t byp_m[NLIVE];
+static volatile uint16_t byp_m[NLIVE];                 /* (audit U09: by part, NLIVE of them: a host rig built with NPART=4 indexed [2] and [3]) */
+_Static_assert(sizeof byp_m / sizeof byp_m[0] >= NLIVE, "core.h: byp_m is indexed by part");
 static volatile uint8_t byp_sh;
 #define BYP(t, bit) ((MODW(t).byp & (bit)) != 0u)   /* (the block's copy, set by mod.c mod_begin before the part's voices render) */
 #define E2Q(t, v) (BYP(t, BY_ENV2) ? 0 : (v)->env2 >> 9)   /* FILTER ENV's output, Q15 (0 while bypassed: it keeps running) */

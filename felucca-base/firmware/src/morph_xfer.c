@@ -110,7 +110,8 @@ typedef struct {
     uint32_t esig;                                       /* (.. the ends it was made for: morph_xesig) */
     uint8_t follow;                                      /* GLIDE moves this part's sound (morph_glide.c glide_motion): tp is the fader itself */
 } mxs_t;
-static mxs_t mxs[NSHOWN];
+static mxs_t mxs[NLIVE];                                 /* (audit U09: morph_wash and morph_valley are called for every part that renders, NLIVE, not only the shown ones: a host rig built with NPART=4 indexed [3]) */
+_Static_assert(sizeof mxs / sizeof mxs[0] >= NLIVE, "morph_xfer.c: mxs is indexed by part");
 
 /* ---------------------------------------------------------------- the curves (Q15) --- */
 static const uint16_t XCOS[17] = {32767, 32610, 32138, 31357, 30274, 28898, 27246, 25330, 23170, 20788, 18205, 15447, 12540,
