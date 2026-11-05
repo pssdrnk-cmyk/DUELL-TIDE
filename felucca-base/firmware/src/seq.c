@@ -406,14 +406,12 @@ static void arp_off(track_t *t)                  /* the sounding arp note(s) end
     t->arp_nz &= (uint8_t)~1u;
 }
 
-/* the place in the note list (len notes) the step arp_idx plays (not inlined, as arp_chord); UP+8 adds its note */
-static __attribute__((noinline)) uint32_t arp_pick(track_t *t, uint32_t *list, uint32_t len)
+/* the place in a note list of len notes that step i of an arp in MODE m plays (i counts from 0, the first note played); walk: WALK's place (kept between calls, any start); rnd: the source of
+ * RANDOM's and WALK's numbers. One copy for the arp (arp_pick: rng) and for the ARP pages' picture (ui_graph.c graph_arp: a fixed sequence), so a new MODE added here shows in the picture
+ * (audit U06: the picture had its own copy, which had drifted: it started at step 1, so the first column showed the second note) */
+static __attribute__((noinline)) uint32_t arp_index(uint32_t m, uint32_t i, uint32_t len, uint32_t *walk, uint32_t (*rnd)(void))
 {
-    uint32_t i = t->arp_idx, m = (uint32_t)t->p[P_AMODE], cyc, k, w;
-    if (m == AM_UP8 && len < 64u)                   /* UP+8: the first note again over the top */
-        list[len++] = (uint32_t)clamp((int32_t)list[0] + 12 * t->p[P_AOCT], 0, 127);
-    cyc = len > 1u ? 2u * len - 2u : 1u;
-    k = i % cyc;
+    uint32_t cyc = len > 1u ? 2u * len - 2u : 1u, k = i % cyc, w;
     switch (m) {
     case AM_DN:
         return len - 1u - i % len;
@@ -422,7 +420,7 @@ static __attribute__((noinline)) uint32_t arp_pick(track_t *t, uint32_t *list, u
     case AM_DNUP:
         return k < len ? len - 1u - k : k - (len - 1u);
     case AM_RND:
-        return rng() % len;
+        return rnd() % len;
     case AM_CONV:
     case AM_DIVG:
         k = i % len;
@@ -434,18 +432,28 @@ static __attribute__((noinline)) uint32_t arp_pick(track_t *t, uint32_t *list, u
     case AM_THUMB:
         return len < 2u ? 0u : (k & 1u) ? 1u + k / 2u : 0u;
     case AM_WALK:
-        w = t->arp_walk;
+        w = *walk;
         if (!i)
             w = 0;                                  /* (from the bottom) */
         else if (w >= len)
             w = len - 1u;                           /* (notes let go) */
         else if (len > 1u)
-            w = !w ? 1u : w == len - 1u ? w - 1u : (rng() >> 7) & 1u ? w + 1u : w - 1u;
-        t->arp_walk = (uint8_t)w;
+            w = !w ? 1u : w == len - 1u ? w - 1u : (rnd() >> 7) & 1u ? w + 1u : w - 1u;
+        *walk = w;
         return w;
     default:
         return i % len;
     }
+}
+/* the place in the note list (len notes) the step arp_idx plays (not inlined, as arp_chord); UP+8 adds its note */
+static __attribute__((noinline)) uint32_t arp_pick(track_t *t, uint32_t *list, uint32_t len)
+{
+    uint32_t w = t->arp_walk, r;
+    if (t->p[P_AMODE] == AM_UP8 && len < 64u)       /* UP+8: the first note again over the top */
+        list[len++] = (uint32_t)clamp((int32_t)list[0] + 12 * t->p[P_AOCT], 0, 127);
+    r = arp_index((uint32_t)t->p[P_AMODE], t->arp_idx, len, &w, rng);
+    t->arp_walk = (uint8_t)w;
+    return r;
 }
 
 /* n: samples the arp advances by (the external clock's while it runs, 0 stopped); gate_n: samples its
@@ -531,7 +539,7 @@ static __attribute__((noinline)) int arp_roll(const track_t *t)
  * units stay on the last note */
 static __attribute__((noinline)) void atg_fire(track_t *t, uint32_t *list, uint32_t cnt, uint32_t len, uint32_t period)
 {
-    uint32_t nt = 128, vel = arp_vel(t), i, m, o;
+    uint32_t nt = 128, vel = arp_vel(t), i, m, o, ties = 0;
     uint8_t out[4];
     if (ARP_UP(t))
         arp_off(t);                                 /* (a classic step's note: the mask just changed) */
@@ -557,7 +565,7 @@ static __attribute__((noinline)) void atg_fire(track_t *t, uint32_t *list, uint3
     }
     t->atg_note = (uint8_t)nt;
     t->atg_vel = (uint8_t)vel;
-    t->arp_off = period * (uint32_t)t->p[P_AGATE] / 128u;
+    t->arp_off = period * ties + period * (uint32_t)t->p[P_AGATE] / 128u;
 }
 
 /* an arp step starts (period: its length): the next note of the list. Not inlined: once a step, kept out of the audio

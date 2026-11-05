@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* Small engine fixes of lane P / Q / S of the 2026-11-04 audit that need no test of their own. build/host/engleft_test (host_tests.sh engleft):
+ *   U06  the ARP pages' picture and the arp share one note order (seq.c arp_index): every MODE gives the same places from the first step as arp_pick, WALK and RANDOM stay in range
  *   S10  a motion lock (or any automation) on PATCH TRIM and the CHORUS / DELAY / REVERB sends is ramped across the block like a matrix route's move (mod.c motion_mix,
  *        fx.c mix_ramp): a lock that doubles TRIM on a held sine leaves no step at the block seam (the first difference at the seam under 10 x the steady maximum, a step gave 76 .. 124)
  *   P14  ANALOG's DRV 0 -> 1 is not a step (eng_analog.c an_drive): the level of a held saw changes by less than 0.4 dB (it was 0.9 dB), DRV 8 and up as before
@@ -105,6 +106,25 @@ static double seam_ratio(uint32_t id, int v, int32_t base)
     return dmax ? (double)dseam / dmax : 0;
 }
 
+/* U06: the places of every MODE from the first step (index 0) over a list of 3, and RANDOM / WALK in range over many steps; the picture (ui_graph.c graph_arp) calls the same arp_index with
+ * step i for its column i, so its first column is the first note the arp plays (it used to start at step 1: the first column showed the second note) */
+static uint32_t one_rnd(void) { return 0x5555u; }
+static void arp_modes(void)
+{
+    static const struct { uint32_t m; uint32_t want[6]; } W[] = {
+        {AM_UP, {0, 1, 2, 0, 1, 2}}, {AM_DN, {2, 1, 0, 2, 1, 0}}, {AM_UPDN, {0, 1, 2, 1, 0, 1}}, {AM_DNUP, {2, 1, 0, 1, 2, 1}},
+    };
+    uint32_t j, i, ok = 1, walk = 0, inr = 1;
+    for (j = 0; j < NELEM(W); j++)
+        for (i = 0, walk = 0; i < 6u; i++)
+            ok &= arp_index(W[j].m, i, 3, &walk, one_rnd) == W[j].want[i];
+    for (i = 0, walk = 0; i < 40u; i++)
+        inr &= arp_index(AM_WALK, i, 4, &walk, one_rnd) < 4u && (i != 0 || walk == 0);
+    for (i = 0; i < 40u; i++)
+        inr &= arp_index(AM_RND, i, 4, &walk, one_rnd) < 4u;
+    check("U06 ARP MODE places from step 0 (UP 0 1 2, DOWN 2 1 0, UP-DN 0 1 2 1, DN-UP 2 1 0 1); WALK starts at 0; RANDOM and WALK in range", ok && inr);
+}
+
 int main(void)
 {
     uint32_t own, v;
@@ -132,6 +152,7 @@ int main(void)
         snprintf(s, sizeof s, "P14 ANALOG DRV 0 / 1 / 4 / 8 / 9: %.2f / %.2f / %.2f / %.2f / %.2f dB; the first notch moves the level by under 0.4 dB", d0, d1, d4, d8, d9);
         check(s, fabs(d1 - d0) < 0.4 && fabs(d8 - d4) > fabs(d1 - d0) && fabs(d9 - d8) < 1.5);
     }
+    arp_modes();
     printf("engleft: %s\n", bad ? "FAILED" : "all ok");
     return bad != 0;
 }

@@ -1779,7 +1779,7 @@ static void comp_meter(void)
 }
 
 /* ARP 1/3, 2/3: the MODE's pattern, 16 steps as dots in a small piano roll: the keys held (else a C major chord, C E G from C4; "EXAMPLE: C E G" is said on the knob-1 line, ui_draw.c
- * k1_after_of) over OCT octaves in the MODE's order (seq.c arp_list, arp_pick: the same list and order; RANDOM and WALK as an example, a fixed seed), CHORD every step all the notes an octave
+ * k1_after_of) over OCT octaves in the MODE's order (seq.c arp_list, arp_index: the same list and order; RANDOM and WALK as an example, a fixed seed), CHORD every step all the notes an octave
  * up a step; GATE the dots' length, SWING the off-steps later, CHANCE under 100 % the dots DIM. OFF and SEQ: the calm flat baseline (draw_graph's area; no pattern of their own).
  * TEMPLATE 9 (NEW_LAYOUT_SHEET_V2.png, ARP 2/3): drawn in SCREEN rows into the big area, the dots between rows ARP_TOP and ARP_BOT (the picture's dots, rows 68 .. 127) */
 #define ARP_TOP (UT_A_GR_Y + 10)                     /* rows 58 .. 136: the old panel's rows 8 .. 86, 50 rows down (measured on the picture) */
@@ -1806,33 +1806,10 @@ static uint32_t arp_view_sig(const track_t *t)
         h = (h ^ t->held[i]) * 16777619u;
     return h;
 }
-static uint32_t arp_view_pick(uint32_t m, uint32_t i, uint32_t len, uint32_t *walk)   /* seq.c arp_pick, step i (from 1), RANDOM / WALK from a fixed seed */
+static uint32_t arp_view_n;
+static uint32_t arp_view_rnd(void)                   /* RANDOM and WALK in the picture: a fixed sequence (graph_arp restarts it, so the picture is the same every time it is drawn) */
 {
-    uint32_t cyc = len > 1u ? 2u * len - 2u : 1u, k = i % cyc, h = (i * 2654435761u) >> 16, w = *walk;
-    switch (m) {
-    case AM_DN: return len - 1u - i % len;
-    case AM_UPDN: return k < len ? k : cyc - k;
-    case AM_DNUP: return k < len ? len - 1u - k : k - (len - 1u);
-    case AM_RND: return h % len;
-    case AM_CONV:
-    case AM_DIVG:
-        k = i % len;
-        if (m == AM_DIVG)
-            k = len - 1u - k;
-        return (k & 1u) ? len - 1u - k / 2u : k / 2u;
-    case AM_PINKY: return len < 2u ? 0u : (k & 1u) ? len - 1u : k / 2u;
-    case AM_THUMB: return len < 2u ? 0u : (k & 1u) ? 1u + k / 2u : 0u;
-    case AM_WALK:
-        if (i == 1u)
-            w = 0;
-        else if (w >= len)
-            w = len - 1u;
-        else if (len > 1u)
-            w = !w ? 1u : w == len - 1u ? w - 1u : (h >> 7) & 1u ? w + 1u : w - 1u;
-        *walk = w;
-        return w;
-    default: return i % len;
-    }
+    return (++arp_view_n * 2654435761u) >> 12;
 }
 static void graph_arp(const track_t *t, uint16_t c)
 {
@@ -1842,6 +1819,7 @@ static void graph_arp(const track_t *t, uint16_t c)
     uint8_t nt[16][4], nn[16];
     if (!len)
         return;
+    arp_view_n = 0;
     if (m == AM_UP8 && len < 64u)                    /* UP+8: the first note again over the top (arp_pick) */
         list[len++] = (uint32_t)clamp((int32_t)list[0] + 12 * t->p[P_AOCT], 0, 127);
     for (i = 0; i < 16u; i++) {
@@ -1851,7 +1829,7 @@ static void graph_arp(const track_t *t, uint16_t c)
             for (j = 0; j < cnt && j < 4u; j++)
                 nt[i][nn[i]++] = (uint8_t)clamp((int32_t)list[j] + 12 * (int32_t)o, 0, 127);
         } else {
-            nt[i][nn[i]++] = (uint8_t)list[arp_view_pick(m, i + 1u, len, &walk) % len];
+            nt[i][nn[i]++] = (uint8_t)list[arp_index(m, i, len, &walk, arp_view_rnd) % len];
         }
         for (j = 0; j < nn[i]; j++) {
             lo = nt[i][j] < lo ? nt[i][j] : lo;
