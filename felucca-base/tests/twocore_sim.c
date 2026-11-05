@@ -91,6 +91,46 @@ static int expect_t(const char *what, int ok)
 
 /* Exercise the real policy functions with a fixed sequence, independent of thread scheduling.
  * These checks also keep the policy mutations meaningful when scene timing counts are diagnostic only. */
+/* A new Original drains the FM6 stand-ins (morph_xreset). While core 1 still holds part 2's job (an overrun) it may be rendering those notes, so
+ * core 0's main loop must not touch them: the drain is left to the render side's next block (fm6_block). Synthetic state, no threads, in a child.
+ * Fails on the unfixed code: the notes' stand-in bits are cleared at once, from the main loop, under a job core 1 still holds. */
+static int xreset_child(void)
+{
+    track_t *t = &trk[1];
+    fm6_note_t *n;
+    int ok = 1;
+    ui_power_on();
+    frame();
+    host_preset(t, ENGI_FM6, 0);
+    fm6_sync(t);
+    n = (fm6_note_t *)ENG_MEM(1);
+    memset(&fm6_xt[1], 0, sizeof fm6_xt[1]);
+    n->live = 1;
+    n->xs = 1u;                                         /* a stand-in held on operator 0 */
+    fm6_xt[1].sfor[0] = 1u;
+    memset(&tcr, 0, sizeof tcr);
+    tcr.open = 7u;                                      /* core 1 still holds the job with part 2 */
+    morph_xreset(1);
+    ok &= n->xs == 1u;                                  /* (not touched from core 0's main loop) */
+    ok &= fm6_xt[1].drain == 1u;
+    tcr.open = 0;
+    fm6_block(t);                                       /* the render side's next block drains */
+    ok &= n->xs == 0u && n->xr == 0u && !fm6_xt[1].drain && !fm6_xt[1].dirty && !fm6_xt[1].mute;
+    n->xs = 1u;                                         /* with no job open the drain is at once, as before */
+    morph_xreset(1);
+    ok &= n->xs == 0u && !fm6_xt[1].drain;
+    return ok ? 0 : 1;
+}
+static void xreset_check(void)
+{
+    int st = 0;
+    pid_t pid = fork();
+    if (pid == 0)
+        _exit(xreset_child());
+    waitpid(pid, &st, 0);
+    expect("morph_xreset leaves the FM6 stand-ins of part 2 to the render side while core 1 holds its job", WIFEXITED(st) && WEXITSTATUS(st) == 0);
+}
+
 static void policy_checks(void)
 {
     tcr_t saved_run = tcr;
@@ -777,6 +817,7 @@ int main(int argc, char **argv)
     memset(ntot, 0, sizeof ntot);
     strict = getenv("TC_STRICT") != NULL && getenv("TC_STRICT")[0] == '1';
     policy_checks();
+    xreset_check();
     for (s = s0; s < s1; s++) {
         char what[240];
         uint64_t hr;

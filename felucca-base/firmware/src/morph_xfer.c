@@ -330,6 +330,12 @@ static __attribute__((noinline)) void morph_xrest(uint32_t pi)
         fm6_eff[pi].ok = 0;
     }
 }
+#if DUELL_TWOCORE
+static uint32_t tcr_core1_holds(void);                   /* twocore_run.c: core 1 still holds the job with part 2 */
+#define XBUSY(pi) ((pi) == 1u && tcr_core1_holds())
+#else
+#define XBUSY(pi) 0
+#endif
 /* A new Original owns a new plan. Drain stand-ins before another plan may
  * reuse their mapping; the caller holds MORPH_LOCK, outside the audio ISR. */
 static void morph_xreset(uint32_t pi)
@@ -343,6 +349,11 @@ static void morph_xreset(uint32_t pi)
         x->tune = x->glide = 0;
         x->mute = 63u;
         if (trk[pi].engine == ENGI_FM6) {
+            if (XBUSY(pi)) {           /* core 1 still holds part 2's job (an overrun): it may be rendering these notes, so the render side drains next block (fm6_block) */
+                x->drain = x->dirty = 1;
+                fm6_eff[pi].ok = 0;
+                return;
+            }
             fm6_xblock(&trk[pi], pi);  /* release borrowed slots */
             fm6_xblock(&trk[pi], pi);  /* restore their saved states */
         }
