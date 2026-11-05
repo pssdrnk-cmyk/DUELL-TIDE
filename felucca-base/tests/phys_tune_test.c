@@ -62,6 +62,36 @@ static int bent(const preset_t *pr)                      /* a curved bridge (px_
 {
     return (pr->e[0] == PM_STRING && pr->e[1] * 516 < 15729) || (pr->e[0] == PM_SYMP && 16384 - pr->e[6] * 129 < 15729);
 }
+/* the loop-lag cache of px_string_block (audit A08): a string worked block after block (repeated and changing pitch, STRUCTURE,
+ * BRIGHT, DAMP; curved, straight and dispersive) gets the same lag, all-pass delay and filter as one whose state is fresh every block */
+static px_string_t cache_s1, cache_s2;
+static uint32_t lag_cache_check(void)
+{
+    static const uint32_t fs[] = {2800000u, 5600000u, 11200000u, 22400000u, 45000000u, 90000000u, 180000000u};
+    static const int32_t st[] = {5000, 15000, 16384, 17100, 22000, 32768, 60000, 65536}, br[] = {0, 20000, 40000, 65536};
+    uint32_t r = 12345u, i, bad = 0, f = fs[0];
+    int32_t s = st[0], b = br[0], d = 30000;
+    memset(&cache_s1, 0, sizeof cache_s1);
+    for (i = 0; i < 4000u; i++) {
+        px_string_blk_t B1, B2;
+        r = r * 1664525u + 1013904223u;
+        if (!((r >> 24) & 3u))                             /* a change now and then, mostly a held pitch */
+            f = fs[(r >> 8) % 7u] + ((r >> 5) & 1u ? 0u : (r & 0xFFu) * 977u);
+        if (!((r >> 20) & 7u))
+            s = st[(r >> 4) % 8u];
+        if (!((r >> 16) & 7u))
+            b = br[(r >> 10) % 4u];
+        if (!((r >> 12) & 15u))
+            d = (int32_t)((r >> 3) % 65536u);
+        memset(&cache_s2, 0, sizeof cache_s2);
+        px_string_block(&B1, &cache_s1, f, s, b, d, 20000, 0, 0);
+        px_string_block(&B2, &cache_s2, f, s, b, d, 20000, 0, 0);
+        if (B1.dl != B2.dl || B1.ap != B2.ap || B1.mn != B2.mn || B1.G != B2.G || B1.ap_gain != B2.ap_gain)
+            bad++;
+    }
+    printf("phys_tune: lag cache, 4000 blocks against a fresh string each: %u differ\n", bad);
+    return bad;
+}
 int main(void)
 {
     static int32_t o[CTL * 2];
@@ -69,6 +99,8 @@ int main(void)
     double tol = getenv("TOL") ? atof(getenv("TOL")) : 5.0, btol = getenv("BENDTOL") ? atof(getenv("BENDTOL")) : 20.0;
     uint32_t pi, n, i, b, k, fails = 0;
     host_tracks_init();
+    if (!getenv("SELF"))
+        fails += lag_cache_check();
     if (getenv("SELF")) {                                  /* the estimator on a decaying 3-partial tone */
         for (n = 28; n <= 100; n += 4) {
             double fe = 440 * pow(2, ((int)n - 69) / 12.0), ft = fe * pow(2, atof(getenv("SELF")) / 1200);

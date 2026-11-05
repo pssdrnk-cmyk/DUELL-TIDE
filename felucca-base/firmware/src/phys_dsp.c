@@ -483,6 +483,7 @@ typedef struct {
     int32_t out0, out1;                                  /* the last two outputs */
     px_csvf_st_t ex;                                     /* exciter Svf */
     px_csvf_t exc;
+    uint32_t lk_delay, lk_df, lk_nl, lk_dl, lk_mn;       /* the loop lag's inputs (delay, df, |nl|) and results (dl, mn): kept while unchanged */
     uint32_t bk, bn, bd;                                 /* burst: sample, length (a period), comb delay */
     uint32_t nz_a, nz_b;                                 /* burst noise, and the same noise bd samples later */
     uint32_t rng;
@@ -595,26 +596,36 @@ static __attribute__((noinline)) void px_string_block(px_string_blk_t *B, px_str
          * of its OnePole: the compensation of Rings' two-pole Svf) and shortens the line for the dispersion all-pass
          * by a rule of thumb that grows with the delay: the strings were sharp, by up to +20 cents high and +100 below
          * F2. Here: the OnePole's lag atan(tan(pi f) / g), the DcBlock's lead, the all-pass's lag at its integer
-         * delay and the linear read's at its fraction, exactly; turns Q32, per block */
-        uint32_t ph = (uint32_t)(((uint64_t)1 << 48) / delay);   /* the fundamental, turns per string step, Q32 */
-        int32_t sn = px_sin(ph), cs = px_sin(ph + 0x40000000u);
-        int32_t s = px_sin(df >> 1), c = px_sin((df >> 1) + 0x40000000u);   /* sin, cos (pi df) */
-        int64_t lag = px_atan2t(px_m(px_sin(ph >> 1), c, 30), px_m(px_sin((ph >> 1) + 0x40000000u), s, 30))
-                      - ((1 << 30) - (int64_t)(ph >> 1)
-                         - px_atan2t(px_m(1073498345, sn, 30), (1 << 30) - px_m(1073498345, cs, 30)));   /* - DcBlock */
+         * delay and the linear read's at its fraction, exactly; turns Q32, per block (kept while delay, df and the non-linearity hold) */
         uint32_t ap = (uint32_t)(((uint64_t)delay * (uint32_t)sp) >> 16), mn;
-        B->dl = delay - (uint32_t)((lag * delay) >> 32);
-        if (ap >= 4u << 16) {
-            uint32_t psi = (ap >> 16) * ph, a;              /* the all-pass: lag psi + 2 atan2(g sin, 1 - g cos) */
-            int64_t lap = psi + 2 * px_atan2t(px_m(B->ap_gain, px_sin(psi), 30),
-                                              (1 << 30) - px_m(B->ap_gain, px_sin(psi + 0x40000000u), 30));
-            mn = delay - (uint32_t)(((lag + lap) * delay) >> 32);
-            a = (mn & 0xFFFFu) << 14;                       /* the linear read: lag atan2(a sin, 1 - a + a cos) */
-            lap = px_atan2t(px_m((int32_t)a, sn, 30), (1 << 30) - (int32_t)a + px_m((int32_t)a, cs, 30)) -
-                  (int64_t)(((uint64_t)(mn & 0xFFFFu) * ph) >> 16);
-            mn -= (uint32_t)((lap * delay) >> 32);
+        if (S->lk_delay == delay && S->lk_df == df && S->lk_nl == (uint32_t)nl) {   /* a held pitch: the same lag, no divisions */
+            B->dl = S->lk_dl;
+            mn = S->lk_mn;
         } else {
-            mn = 0;
+            uint32_t ph = (uint32_t)(((uint64_t)1 << 48) / delay);   /* the fundamental, turns per string step, Q32 */
+            int32_t sn = px_sin(ph), cs = px_sin(ph + 0x40000000u);
+            int32_t s = px_sin(df >> 1), c = px_sin((df >> 1) + 0x40000000u);   /* sin, cos (pi df) */
+            int64_t lag = px_atan2t(px_m(px_sin(ph >> 1), c, 30), px_m(px_sin((ph >> 1) + 0x40000000u), s, 30))
+                          - ((1 << 30) - (int64_t)(ph >> 1)
+                             - px_atan2t(px_m(1073498345, sn, 30), (1 << 30) - px_m(1073498345, cs, 30)));   /* - DcBlock */
+            B->dl = delay - (uint32_t)((lag * delay) >> 32);
+            if (ap >= 4u << 16) {
+                uint32_t psi = (ap >> 16) * ph, a;          /* the all-pass: lag psi + 2 atan2(g sin, 1 - g cos) */
+                int64_t lap = psi + 2 * px_atan2t(px_m(B->ap_gain, px_sin(psi), 30),
+                                                  (1 << 30) - px_m(B->ap_gain, px_sin(psi + 0x40000000u), 30));
+                mn = delay - (uint32_t)(((lag + lap) * delay) >> 32);
+                a = (mn & 0xFFFFu) << 14;                   /* the linear read: lag atan2(a sin, 1 - a + a cos) */
+                lap = px_atan2t(px_m((int32_t)a, sn, 30), (1 << 30) - (int32_t)a + px_m((int32_t)a, cs, 30)) -
+                      (int64_t)(((uint64_t)(mn & 0xFFFFu) * ph) >> 16);
+                mn -= (uint32_t)((lap * delay) >> 32);
+            } else {
+                mn = 0;
+            }
+            S->lk_delay = delay;
+            S->lk_df = df;
+            S->lk_nl = (uint32_t)nl;
+            S->lk_dl = B->dl;
+            S->lk_mn = mn;
         }
         B->ap = ap;
         B->mn = mn;

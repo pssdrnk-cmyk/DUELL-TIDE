@@ -12,7 +12,7 @@
  * that runs on across notes and switches stays outside (WHEEL's wheels).
  * Sized by the largest, PHYS (3 x SYMP's slot); an engine that needs more than ENG_MEM_PART grows it for
  * every part (x NPART of the pool). Zero-initialised pool section: main.c fm1_cstart clears it. */
-#define ENG_MEM_PART 12888u
+#define ENG_MEM_PART 12948u
 static union {
     uint64_t align;
     uint8_t b[ENG_MEM_PART];
