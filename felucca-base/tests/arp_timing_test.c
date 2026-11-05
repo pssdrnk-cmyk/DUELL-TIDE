@@ -153,8 +153,8 @@ static void test_swing(void)
     p62 = offbeat(62, &w);
     p75 = offbeat(75, &w);
     printf("arptiming: ARP SWG 50 / 62 / 75: the offbeat lands at %.1f %% / %.1f %% / %.1f %% of the pair\n", p50, p62, p75);
-    expect("ARP SWG 62: the offbeat lands after the middle", p62 > 55.0);
-    expect("ARP SWG 75: the offbeat lands after the middle (70 %)", p75 > 65.0 && p75 < 75.0);
+    expect("ARP SWG 62: the offbeat lands at 62 % of the pair (audit S03)", p62 > 61.0 && p62 < 63.0);
+    expect("ARP SWG 75: the offbeat lands at 75 % of the pair (audit S03; it was 70)", p75 > 74.0 && p75 < 76.0);
     expect("ARP SWG 75: the steps still add up (8 steps = 4 pairs of 2 sixteenths)", w > 0.998 && w < 1.002);
 }
 

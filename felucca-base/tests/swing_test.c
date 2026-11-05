@@ -22,7 +22,7 @@ static void set_swing(track_t *t, int own, int global)
     song.g[G_SWING] = (int16_t)global;
 }
 
-#define SWING_SCALE 0.8          /* percent of the pair the offbeat moves per percent of SWG over 50 (S03 makes it 2) */
+#define SWING_SCALE 1.0          /* percent of the pair the offbeat moves per percent of SWG over 50 */
 
 /* where the offbeat of a pair lands, in percent of the pair, for a track SWG and a global SWG (50 = straight) */
 static double play_pct(int own, int global)
@@ -78,10 +78,10 @@ static int test_seq(void)
                  mid / 8.0, play_pct(C[c][0], C[c][1]));
         bad += check(what, got == 17 && !err);
     }
-    /* the extreme: 75 % (the offbeat at 70 %: 1.4 x and 0.6 x), never past, even with both at 75 */
+    /* the extreme: 75 % (the offbeat at 75 %: 1.5 x and 0.5 x), never past, even with both at 75 */
     host_tracks_init();
     set_swing(&trk[0], 75, 75);
-    bad += check("step_samples at 75 + 75: 1.4 x and 0.6 x of the straight step",
+    bad += check("step_samples at 75 + 75: 1.5 x and 0.5 x of the straight step",
                  step_samples(&trk[0], 6000, 0) == (uint32_t)(2.0 * play_pct(75, 75) * 60.0) &&
                  step_samples(&trk[0], 6000, 1) == 12000u - (uint32_t)(2.0 * play_pct(75, 75) * 60.0));
     return bad;

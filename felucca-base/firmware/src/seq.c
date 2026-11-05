@@ -590,9 +590,12 @@ static __attribute__((noinline)) void arp_fire(track_t *t, uint32_t period)
     }
 }
 
-/* SWING is stored and shown as 50 .. 75 % (50 = straight, owner 2026-10-28). The timing keeps its old 0 .. 100 scale: old v = (percent - 50) * 4,
- * so 50 % = 0, 75 % = 100, and every step of 1 % is 4 old units; the sums are these ones, below (the SWG of the track and the global add, at most 100) */
-static inline int32_t sw_old(int32_t pct) { return pct <= 50 ? 0 : pct >= 75 ? 100 : (pct - 50) * 4; }
+/* SWING is stored and shown as 50 .. 75 % (50 = straight, owner 2026-10-28): the percentage of a pair of steps (two periods) that the first
+ * step takes, so the offbeat lands where the display says (audit S03; it used to land at 70 % for 75, 62.9 for 66).
+ * sw_ex: the part of a SWG over 50 (0 .. 25); sw_len: the samples the even step is longer by, the odd one shorter, for the sum of such parts
+ * (the track's SWG and the global one add, at most 25 = 75 %): the offbeat is at period + ex * period / 50 = (50 + 2 * ex) % of the pair */
+static inline int32_t sw_ex(int32_t pct) { return pct <= 50 ? 0 : pct >= 75 ? 25 : pct - 50; }
+static inline int32_t sw_len(int32_t ex, uint32_t period) { return (ex > 25 ? 25 : ex) * (int32_t)period / 50; }
 static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
 {
     uint32_t period, duration;
@@ -622,7 +625,7 @@ static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
         return;
     }
     period = div_samples((uint32_t)t->p[P_ARATE]);
-    sw = sw_old(t->p[P_ASWING]) * (int32_t)period / 250;
+    sw = sw_len(sw_ex(t->p[P_ASWING]), period);
     t->arp_pos += n;
     duration = period + (uint32_t)((t->arp_idx & 1u) ? -sw : sw);   /* (after an even step the wait is longer: the offbeat lands late, as the sequencer's) */
     if (t->arp_pos < duration && t->arp_pos != 0xFFFFFFF + n)
@@ -651,12 +654,11 @@ static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
 static void arp_tick(track_t *t, uint32_t n) { arp_step(t, n, n); }
 
 /* -------------------------------------------------------- note input --- */
-/* the length of step idx in samples: SWING (the track's + the global, at most 100) makes the even steps longer
+/* the length of step idx in samples: SWING (the track's + the global, at most 75 %) makes the even steps longer
  * and the odd ones shorter, so every odd step starts late */
 static uint32_t step_samples(const track_t *t, uint32_t period, uint32_t idx)
 {
-    int32_t sw = sw_old(t->p[P_SSWING]) + sw_old(song.g[G_SWING]);   /* the track's + the global, at most 100 */
-    sw = (sw > 100 ? 100 : sw) * (int32_t)period / 250;
+    int32_t sw = sw_len(sw_ex(t->p[P_SSWING]) + sw_ex(song.g[G_SWING]), period);   /* the track's + the global, at most 75 % */
     return period + (uint32_t)((idx & 1u) ? -sw : sw);
 }
 

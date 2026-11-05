@@ -147,7 +147,7 @@ static const param_desc_t TP[P_COUNT] = {
     [P_ARATE] = PE("RATE", N_DIV, 2),
     [P_AOCT] = PD("OCT", F_INT, 1, 4, 1),
     [P_AGATE] = PD("GATE", F_PCT, 1, 127, 64),
-    [P_ASWING] = PD("SWG", F_PCT, 50, 75, 50),   /* owner 2026-10-28: 50 .. 75 %, 50 = straight; stored and shown as that percentage (seq.c sw_old turns it into the old 0..100 timing scale) */
+    [P_ASWING] = PD("SWG", F_PCT, 50, 75, 50),   /* owner 2026-10-28: 50 .. 75 %, 50 = straight; stored and shown as that percentage (the offbeat lands at that percentage of the pair: seq.c sw_ex / sw_len) */
     [P_APROB] = PD("PROB", F_PCT, 0, 127, 127),
     [P_AHOLD] = PE("HOLD", N_HOLD, 0),
     [P_AORDER] = PE("ORD", N_ORDER, 0),

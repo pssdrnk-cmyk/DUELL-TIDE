@@ -111,7 +111,7 @@ static void traces(unsigned a, unsigned b, unsigned bpm, unsigned swing, unsigne
 static void offset_trace(unsigned detail, unsigned external)
 {
     static uint8_t note[2][BLOCKS], ask[2][BLOCKS], target[2][BLOCKS];
-    setup(detail == 3, detail == 3, 128, 67);
+    setup(detail == 3, detail == 3, 128, 64);
     song.g[G_CLOCK] = external;
     midi_beat_samples = (uint32_t)FS * 60u / 128u;
     memset(note,0,sizeof note); memset(target,0,sizeof target);
@@ -244,12 +244,12 @@ int main(void)
 {
     for (unsigned bpm = 120; bpm <= 128; bpm += 8)
         for (unsigned a = 0; a < 2; a++) for (unsigned b = 0; b < 2; b++)
-            for (unsigned e = 0; e < 2; e++) traces(a,b,bpm, a == b ? 67 : 50,e);
+            for (unsigned e = 0; e < 2; e++) traces(a,b,bpm, a == b ? 64 : 50,e);   /* (SWG 64 lands the offbeat where 67 did before the display told the truth, audit S03) */
     traces(1,1,240,75,0);
     traces(1,1,240,75,1);
     traces(0,1,120,50,2);
-    traces(1,0,128,67,3);
-    traces(1,1,128,67,2);
+    traces(1,0,128,64,3);
+    traces(1,1,128,64,2);
     for (unsigned d=1;d<=3;d++) for(unsigned e=0;e<2;e++) offset_trace(d,e);
     dialogue_choices();
     guards();
