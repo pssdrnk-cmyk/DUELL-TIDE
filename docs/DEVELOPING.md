@@ -13,7 +13,7 @@ How to build the generated files, run the tests and what CI runs. The hardware c
 
 Python packages: `sh jam/bootstrap.sh` makes a `.venv` from [../requirements-dev.txt](../requirements-dev.txt) (Pillow 12.3.0 and fontTools 4.65.0 are pinned: with another version, or without Raqm, the generated fonts differ and some tests fail). The device toolchain is JieLi's and is not redistributed here; CI never builds the device image.
 
-**Windows layout.** `. jam/env.sh` expects one shared work folder next to the main checkout (`../work`, or two levels above a worktree in `work/wt/<name>`) holding: `duell-win-venv` (the Python environment of requirements-dev.txt), `tools/llvm-mingw` (the host `cc`), `tools/fribidi` (the DLL Pillow's text layout needs), `jieli-target` (toolchain and SDK) and `shims` (a `cc` and `python3` wrapper). Nothing in the repository creates it; `jam/env.sh` says what each folder is for. On Windows 25 groups skip (they need `fork()`, termios or `select()` on pipes); `wsl.exe -d Ubuntu -- sh jam/wsl.sh <group>` runs them in WSL ([../jam/wsl.sh](../jam/wsl.sh)).
+**Windows layout.** `. jam/env.sh` expects one shared work folder next to the main checkout (`../work`, or two levels above a worktree kept in its `wt/<name>` subfolder) holding: `duell-win-venv` (the Python environment of requirements-dev.txt), `tools/llvm-mingw` (the host `cc`), `tools/fribidi` (the DLL Pillow's text layout needs), `jieli-target` (toolchain and SDK) and `shims` (a `cc` and `python3` wrapper). Nothing in the repository creates it; `jam/env.sh` says what each folder is for. On Windows 25 groups skip (they need `fork()`, termios or `select()` on pipes); `wsl.exe -d Ubuntu -- sh jam/wsl.sh <group>` runs them in WSL ([../jam/wsl.sh](../jam/wsl.sh)).
 
 ## Run tests
 
