@@ -444,26 +444,27 @@ static void sync_run(uint32_t mode, uint32_t div, uint32_t seed, uint32_t base, 
     *maxpush = pushes[0];
     (void)a;
 }
+#define NSEEDS 12u
 static void t_sync(void)
 {
     uint32_t mode, seed, sh[3] = {0, 0, 0}, ob[3] = {0, 0, 0}, mp[3] = {0, 0, 0}, s, o, m, same = 1, kept[3] = {0, 0, 0};
     CHECK("rows: TURNS / POLY / SYNC show their names", !strcmp(jl_vname(JL_TURNS, 1), "TAKE TURNS") && !strcmp(jl_vname(JL_TURNS, 0), "TOGETHER") &&
           !strcmp(jl_vname(JL_POLY, 2), "WIDE") && !strcmp(jl_vname(JL_SYNC, 1), "SOFT") && !strcmp(jl_vname(JL_SYNC, 2), "PUSH") && jl_n(JL_SYNC) == 3u);
     for (mode = 0; mode < 3u; mode++)
-        for (seed = 1; seed <= 12u; seed++) {
+        for (seed = 1; seed <= NSEEDS; seed++) {
             sync_run(mode, 2, seed, 0, &s, &o, &m);
             sh[mode] += s, ob[mode] += o, mp[mode] = m > mp[mode] ? m : mp[mode];
             sync_run(mode, 2, seed, 1, &s, &o, &m);
             kept[mode] += s;
         }
-    printf("  SYNC (12 seeds, 64 moves, E-position hits): hits on the and / push: OFF %u, SOFT %u, PUSH %u of 48; kept from 48 and-hits: OFF %u, SOFT %u, PUSH %u; beats hit by moved: %u %u %u\n",
-           sh[0], sh[1], sh[2], kept[0], kept[1], kept[2], ob[0], ob[1], ob[2]);
+    printf("  SYNC (%u seeds, 64 moves, E-position hits): hits on the and / push: OFF %u, SOFT %u, PUSH %u of %u; kept from %u and-hits: OFF %u, SOFT %u, PUSH %u; beats hit by moved: %u %u %u\n",
+           NSEEDS, sh[0], sh[1], sh[2], 4u * NSEEDS, 4u * NSEEDS, kept[0], kept[1], kept[2], ob[0], ob[1], ob[2]);
     CHECK("SYNC SOFT / PUSH: the and + push share rises over OFF, PUSH at least SOFT", sh[1] > sh[0] && sh[2] >= sh[1]);
     CHECK("  .. no moved hit lands on a beat", ob[1] == 0u && ob[2] == 0u);
     CHECK("  .. the push cap: at most 1 (SOFT) / 2 (PUSH) in the bar", mp[1] <= 1u && mp[2] <= 2u);
-    CHECK("  .. a pattern already on the and keeps most of it (SOFT 75 %)", kept[1] * 4u >= 48u * 3u);
+    CHECK("  .. a pattern already on the and keeps most of it (SOFT 75 %)", kept[1] * 4u >= 4u * NSEEDS * 3u);
     CHECK("  .. and keeps more than OFF does", kept[1] >= kept[0]);
-    for (seed = 1; seed <= 12u; seed++) {                  /* triplets (SDIV 4): not a supported grid, SYNC behaves as OFF */
+    for (seed = 1; seed <= NSEEDS; seed++) {                  /* triplets (SDIV 4): not a supported grid, SYNC behaves as OFF */
         uint32_t s0, o0, m0, s1, o1, m1;
         sync_run(0, 4, seed, 0, &s0, &o0, &m0);
         sync_run(2, 4, seed, 0, &s1, &o1, &m1);

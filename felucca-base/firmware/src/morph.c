@@ -2567,7 +2567,10 @@ static uint32_t morph_parts(uint32_t *first)
 static uint32_t morph_new_seed(void)
 {
     uint32_t s;
-    morph.gen = morph.gen * 1664525u + 1013904223u + fm1_ms;
+    static uint32_t sess;                                /* the session seed: the player's timing at the first draw, then fixed; every draw follows from it, so a set replays (B16) */
+    if (!sess)
+        sess = fm1_ms | 1u;
+    morph.gen = morph.gen * 1664525u + 1013904223u + sess;
     s = (morph.gen >> 16) & 0xFFFFu;
     return s ? s : 1u;
 }

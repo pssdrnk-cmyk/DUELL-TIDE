@@ -147,6 +147,15 @@ int main(void)
         glide_start(1u, 3u, 0u);
         CHECK("jrny: a start with part 2 already targeted still targets part 1 (B18)", keep >= 0 && morph_to_of(0, 1) >= 0 && morph_to_of(1, 1) == keep);
     }
+    /* B16: the draws follow from the session seed alone, whenever they are made */
+    {
+        uint32_t s1, s2, s3, s4;
+        morph.gen = 77; fm1_ms = 1;      s1 = morph_new_seed();
+        fm1_ms = 999999;                 s2 = morph_new_seed();
+        morph.gen = 77; fm1_ms = 5;      s3 = morph_new_seed();
+        fm1_ms = 12345;                  s4 = morph_new_seed();
+        CHECK("seeds: the same session seed gives the same draws at any time (B16)", s1 == s3 && s2 == s4 && s1 != s2);
+    }
     printf("%u checks, %u failed\n", checks, failures);
     return failures != 0;
 }
