@@ -30,7 +30,7 @@ Plain version: **DUELL has run on two FM-1 units (the author's) and more than 10
 ## Hardware recovery: a unit that no longer starts
 This is the one recovery that has been done on a real unit. On 2026-10-21 the fork owner's FM-1 stopped during an install of another custom firmware (not DUELL or TIDE): black screen, and no USB device on the computer. It was brought back to M-VAVE's official V15 with the community **FM-1 Transporter** firmware on a **Raspberry Pi Pico H**, using the **MvaveFM1Unbricker** scripts by Quixotic7 to talk to it. It worked once, on one unit; treat it as a method to try, not a promise, and read those tools' own pages first ([FM-1-transporter](https://github.com/kurogedelic/FM-1-transporter)).
 
-What the owner did:
+What the fork owner did:
 1. **Wiring.** Cut one end off a USB-A to USB-C cable and strip it. Tape off the **red** wire (VBUS; it stays unconnected). Connect **translucent (GND)** to Pico pin 3, **white** to pin 1 (GP0) and **green** to pin 2 (GP1). Dupont jumper wires wrapped onto the cable wires were enough.
 2. **Charge the FM-1 first.** A flat battery makes every later step look like a failure.
 3. **Dump before you fix.** Let the toolkit read the whole flash into a `.bin` file and keep it before it writes anything.
