@@ -159,8 +159,8 @@ static uint32_t scale_mask(const track_t *t);           /* seq.c */
  * samples, between samples; 0.37 or 0.74 Hz, each in its own phase): the resonances drift instead of ringing.
  * Lines 0, 3, 5, 6, read at their ends, go through a one-pole low-pass (DAMP: the mixing takes every echo
  * through them); every
- * line through its gain (from its length: all decay alike; RT60 below the damping 0.5 s at SIZE 0, 4 s at
- * 90, 9 s at 127; ~2.4 s heard at 90 with DAMP 60); then the 8 x 8 mixing: a conference matrix (Paley,
+ * line through its gain (from its length: all decay alike; RT60 measured at DAMP 60: 0.5 s at SIZE 0, 1.8 s at 64,
+ * 3.2 s at 90, 5.6 s at 127; 6.4 s at DAMP 0, audit R11); then the 8 x 8 mixing: a conference matrix (Paley,
  * order 8: every line feeds the 7 others, +-1 each, none itself: no flutter at a line's own length), with
  * the send added. Stereo: left lines 0 3 4 -7, right 1 2 5 6 (sums spread over the matrix's rows); the wet
  * bus (mono) gets left + right, rev_side left - right, which mix_block adds to the left and takes from the
