@@ -316,10 +316,7 @@ static duck_t duck_st[NTRK];
 static uint32_t mod_seed = 0x2545F491u;
 static int16_t mod_rand(void)    /* RAND of a note-on: xorshift32, bipolar */
 {
-    mod_seed ^= mod_seed << 13;
-    mod_seed ^= mod_seed >> 17;
-    mod_seed ^= mod_seed << 5;
-    return (int16_t)(mod_seed >> 16);
+    return (int16_t)(xs32(&mod_seed) >> 16);
 }
 
 static int32_t mod_key(uint32_t note) { return clamp(((int32_t)note - 60) * 512, -32767, 32767); }

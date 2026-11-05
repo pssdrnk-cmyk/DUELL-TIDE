@@ -6,6 +6,50 @@
 void *memset(void *d, int c, unsigned n) { return mf_memset(d, c, n); }
 void *memcpy(void *d, const void *s, unsigned n) { return mf_memcpy(d, s, n); }
 
+/* xorshift32 (13, 17, 5): steps the generator at *s and returns the new state. Every random stream keeps its own state word and steps it here */
+static inline uint32_t xs32(uint32_t *s)
+{
+    uint32_t x = *s;
+    x ^= x << 13;
+    x ^= x >> 17;
+    x ^= x << 5;
+    return *s = x;
+}
+
+/* floor(sqrt(v)) a bit pair at a time. One copy each (not inlined: range Z holds them, tools/ram_fns_z.py), for the flash, range X and the hot block */
+__attribute__((noinline)) static uint32_t isqrt32(uint32_t v)
+{
+    uint32_t r = 0, b = 1u << 30;
+    while (b > v)
+        b >>= 2;
+    while (b) {
+        if (v >= r + b) {
+            v -= r + b;
+            r = (r >> 1) + b;
+        } else {
+            r >>= 1;
+        }
+        b >>= 2;
+    }
+    return r;
+}
+__attribute__((noinline)) static uint32_t isqrt64(uint64_t v)
+{
+    uint64_t r = 0, b = (uint64_t)1 << 62;
+    while (b > v)
+        b >>= 2;
+    while (b) {
+        if (v >= r + b) {
+            v -= r + b;
+            r = (r >> 1) + b;
+        } else {
+            r >>= 1;
+        }
+        b >>= 2;
+    }
+    return (uint32_t)r;
+}
+
 /* 64-bit division (the EQ coefficients, fx.c: 7 divisions a band, 21 a part, every time a value of the EQ moves): the firmware links no
  * compiler runtime. The first version shifted and subtracted 64 times (about 1050 pi32 instructions a division, 44 k for both parts'
  * EQs at once, in the audio interrupt). Now Hacker's Delight divlu / udivdi3: the pi32 divides 32 by 32 in hardware, so a 64-bit
@@ -150,8 +194,5 @@ static void fmt_int(char *b, int32_t v) { fmt_fix(b, v, 0); }
 static uint32_t rng_state = 0x1234567u;
 static uint32_t rng(void)
 {
-    rng_state ^= rng_state << 13;
-    rng_state ^= rng_state >> 17;
-    rng_state ^= rng_state << 5;
-    return rng_state;
+    return xs32(&rng_state);
 }

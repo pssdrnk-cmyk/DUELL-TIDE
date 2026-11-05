@@ -586,22 +586,6 @@ static int32_t xexp2(int32_t x)                          /* 2^x, x Q12 (-24 .. 7
     int32_t i = x >> 12, f = x & 4095, m = 65536 + ((f * (2690 + ((1407 * f) >> 12))) >> 8);   /* 2^f ~ 1 + f (0.6565 + 0.3435 f) */
     return i >= 0 ? m << i : m >> -i;
 }
-static uint32_t xisqrt(uint32_t v)
-{
-    uint32_t r = 0, b = 1u << 30;
-    while (b > v)
-        b >>= 2;
-    while (b) {
-        if (v >= r + b) {
-            v -= r + b;
-            r = (r >> 1) + b;
-        } else {
-            r >>= 1;
-        }
-        b >>= 2;
-    }
-    return r;
-}
 /* part pp's voices (b, and SPREAD's side buffer s or 0) through the valley at its depth now; at depth 0 and after it, untouched */
 /* TIDE: the wash. While a part moves (GLIDE's movement, a transition) and its notes sound, a soft noise bed in the sound's own
  * register (one-poles from 1.5 times the highest note to two octaves above it, 12 dB / octave above) fills what the movement takes: the level it
@@ -631,7 +615,7 @@ static __attribute__((noinline)) void morph_wash(uint32_t pp, int32_t *b, uint32
     al = (int32_t)(((int64_t)wl << 15) / (65536 + wl)), ah = (int32_t)(((int64_t)wh << 15) / (65536 + wh));
     for (i = 0; i < (int32_t)n; i++) {                   /* white (xorshift32), low-passed at the top, the low part taken away */
         int32_t w;
-        v->wr ^= v->wr << 13, v->wr ^= v->wr >> 17, v->wr ^= v->wr << 5;
+        xs32(&v->wr);
         w = (int32_t)(v->wr >> 16) - 32768;
         v->wy[0] += (int32_t)(((int64_t)ah * (w - v->wy[0])) >> 15);
         v->wy[2] += (int32_t)(((int64_t)ah * (v->wy[0] - v->wy[2])) >> 15);   /* (12 dB / octave above the band: no edge) */
@@ -649,7 +633,7 @@ static __attribute__((noinline)) void morph_wash(uint32_t pp, int32_t *b, uint32
     if (want > 0 && pn > 0) {                            /* the gain: the noise's level to the wanted one, Q12, at most x 16 */
         int64_t r = (want << 10) / pn;                  /* (Q10 of the power ratio) */
         r = r > ((int64_t)256 << 10) - 1 ? ((int64_t)256 << 10) - 1 : r;   /* (just under x 16: r << 14 stays below 2^32, else it wraps to 0 and the wash fades out where it is most wanted) */
-        g1 = (int32_t)xisqrt((uint32_t)(r << 14));      /* (sqrt of Q24: Q12) */
+        g1 = (int32_t)isqrt32((uint32_t)(r << 14));      /* (sqrt of Q24: Q12) */
     }
     if (g1 != v->wg)                                     /* (in and out slowly, ~50 ms each way: a bed that comes and goes, not a burst) */
         g1 = v->wg + (g1 - v->wg) / 64 + (g1 > v->wg ? 1 : -1);
@@ -742,7 +726,7 @@ static __attribute__((noinline)) void morph_valley(uint32_t pp, int32_t *b, int3
         while (pi_ >= (int64_t)1 << 38)                  /* (the ratio's numerator in range) */
             pi_ >>= 1, po >>= 1;
         r = po > 0 ? (pi_ << 24) / po : (int64_t)8 << 24;
-        g1 = (int32_t)xisqrt((uint32_t)(r > (int64_t)8 << 24 ? (int64_t)8 << 24 : r));
+        g1 = (int32_t)isqrt32((uint32_t)(r > (int64_t)8 << 24 ? (int64_t)8 << 24 : r));
         g1 = g1 > 11585 ? 11585 : g1;
     }
     g1 = 4096 + (int32_t)(((int64_t)(g1 - 4096) * m1) >> 15);

@@ -78,31 +78,24 @@ static inline int32_t softclip(int32_t x)
     return x < 0 ? -y : y;
 }
 
-/* xorshift32 */
+/* xorshift32 on a signed state word */
 static inline uint32_t noise32(int32_t *st)
 {
     uint32_t s = (uint32_t)*st;
-    s ^= s << 13;
-    s ^= s >> 17;
-    s ^= s << 5;
+    xs32(&s);
     *st = (int32_t)s;
     return s;
 }
 
-/* Random draws of the VOICE stage (job 3: the two parts' stages must not touch the same state). Part 1 draws from the shared generator (libc.c rng(), the one the
- * events, the arp and the note-on seeds use: its sequence is what it always was while part 1 alone draws in the voice stage); the other parts (part 2, hidden 3 and 4)
- * have a generator of their own and do not touch rng(). LFO_SHARED_RNG parts draw shared. Before, parts 1..3 all drew from rng() in whatever order they ran */
+/* Random draws of the VOICE stage. The first LFO_SHARED_RNG parts draw from the shared generator (libc.c rng(), the one the events, the arp and the
+ * note-on seeds use); the other parts keep a generator of their own in *st (seeded on first use), so that no two parts' stages touch the same state */
 #define LFO_SHARED_RNG 1u
 static uint32_t part_rand(track_t *t, uint32_t *st)
 {
     uint32_t s = *st ? *st : 0x9E3779B9u;
     if ((uint32_t)(t - trk) < LFO_SHARED_RNG)
         return rng();
-    s ^= s << 13;
-    s ^= s >> 17;
-    s ^= s << 5;
-    *st = s;
-    return s;
+    return *st = xs32(&s);
 }
 
 /* Trapezoidal SVF (A. Simper), unconditionally stable. Coefficients per block: the state update is

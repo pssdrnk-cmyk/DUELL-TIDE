@@ -168,22 +168,6 @@ static void wt_changed(uint32_t u)
         wvj.on = 0;
 }
 
-static uint64_t wv_isqrt(uint64_t v)
-{
-    uint64_t r = 0, b = (uint64_t)1 << 62;
-    while (b > v)
-        b >>= 2;
-    while (b) {
-        if (v >= r + b) {
-            v -= r + b;
-            r = (r >> 1) + b;
-        } else {
-            r >>= 1;
-        }
-        b >>= 2;
-    }
-    return r;
-}
 /* the levels of the drawbars 0..8 (Q16): -3 dB a step, 8 = 1 */
 static const uint16_t WV_DB[9] = {0, 5843, 8250, 11654, 16462, 23253, 32846, 46395, 65535};
 /* ORGAN: the drawbars 8' 4' 2 2/3' 2' 1 3/5' 1 1/3' 1' (the harmonics 1 2 3 4 5 6 8; the 16' is the SUB LAYER's, SINE OCTAVE -1, chain_sub.c),
@@ -333,7 +317,7 @@ static void wv_recipe(uint32_t tb, int32_t x, int32_t *a)
         case 8: {                                            /* RESO: a saw through a resonant low-pass (Q 6) swept from */
             int64_t c = wv_exp2(65536 + x * 5), r = ((int64_t)k << 32) / c, om = 65536 - ((r * r) >> 16);   /* harmonic 2 to 64 */
             int64_t den = om * om + (r / 6) * (r / 6);
-            uint64_t sq = wv_isqrt((uint64_t)den);
+            uint64_t sq = isqrt64((uint64_t)den);
             v = (int32_t)((((int64_t)1 << 32) / (int64_t)(sq ? sq : 1)) / (int32_t)k);
             break;
         }
@@ -345,7 +329,7 @@ static void wv_recipe(uint32_t tb, int32_t x, int32_t *a)
         }
         case 13: {                                           /* ROUGH: saw -> random levels and signs, k^-1/2 (a fixed draw: */
             uint32_t h = k * 2654435761u, r = 13107u + (((h >> 16) * 52429u) >> 16);   /* the same on every build) */
-            int64_t is = ((int64_t)1 << 32) / (int64_t)wv_isqrt((uint64_t)k << 32);
+            int64_t is = ((int64_t)1 << 32) / (int64_t)isqrt64((uint64_t)k << 32);
             int32_t rnd = (int32_t)((((int64_t)x * r >> 16) * is) >> 16);
             v = (int32_t)(((int64_t)v * (65536 - x)) >> 16) + ((h >> 15) & 1u ? -rnd : rnd);
             break;
@@ -408,7 +392,7 @@ static void wv_recipe(uint32_t tb, int32_t x, int32_t *a)
         }
         default: {                                           /* AIR: a soft flute (harmonics 1 2 3) and a breath growing in: */
             uint32_t h = (k * 2654435761u) ^ (k * 2246822507u >> 13), r;   /* the harmonics from 4 up at random levels */
-            int64_t is = ((int64_t)1 << 33) / (int64_t)wv_isqrt((uint64_t)k << 32);    /* and signs (a fixed draw), (4 / k)^1/2, */
+            int64_t is = ((int64_t)1 << 33) / (int64_t)isqrt64((uint64_t)k << 32);    /* and signs (a fixed draw), (4 / k)^1/2, */
             int32_t g = 3277 + (int32_t)(((int64_t)x * 36045) >> 16), rnd;   /* 0.05 -> 0.6 */
             h *= 2246822507u;
             r = 19661u + (((h >> 16) * 45875u) >> 16);
@@ -480,7 +464,7 @@ static void wv_frame(uint32_t tb, uint32_t f, int8_t *out)
     }
     /* the gain (Q32): RMS to WV_RMS / 100 (the level-0 RMS: 32767 x sqrt(sum a^2 / 2) in the sums' units), the peak at most 127 */
     {
-        uint64_t rms = wv_isqrt(ss * 32767ull * 32767ull / 2u);
+        uint64_t rms = isqrt64(ss * 32767ull * 32767ull / 2u);
         g = rms ? ((uint64_t)WV_RMS << 32) / (rms * 100u) : 0;
         if (pk && (uint64_t)127 << 32 < g * pk)
             g = ((uint64_t)127 << 32) / pk;

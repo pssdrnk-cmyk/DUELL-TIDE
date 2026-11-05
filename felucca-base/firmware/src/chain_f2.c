@@ -218,14 +218,13 @@ static void f2_start(const track_t *t, const voice_t *v, f2s_t *s, f2k_t *k, uin
 /* DRIVE d 0..127 (TWIN_FILTER_DESIGN 2.5): 0 is not run. SOFT, the curve of ANALOG's DRV and SAT and TAPE's SAT (fx.c ins_tape_sat): tanh of the signal times the gain g (Q12, 1x .. 8.9x, 4096 + 2 d^2),
  * the level kept by g^-0.75 (c, Q12: fx.c ins_tape_comp's law); 1 .. 11 blend the dry and the driven signal as SAT does since 0.2.14 (dry + (wet - dry) x d / 12; w, Q12). g, c and w glide
  * in a line from last block's d0 to this block's d1: no zipper, and 0 -> 1 starts from the dry signal */
-static uint32_t ins_isqrt(uint32_t v);                  /* (fx.c) */
 static int32_t f2_comp(uint32_t d)                      /* 4096 x gain^-0.75 of g = 4096 + 2 d^2 (fx.c ins_tape_comp's law): two integer roots, worked out when d changes (the state keeps the last) */
 {
     uint32_t q, q4;
     if (!d)
         return 4096;
-    q = ins_isqrt((4096u + d * d * 2u) << 16);          /* 256 x sqrt(g) */
-    q4 = ins_isqrt(q << 8);                             /* 256 x g^0.25 */
+    q = isqrt32((4096u + d * d * 2u) << 16);          /* 256 x sqrt(g) */
+    q4 = isqrt32(q << 8);                             /* 256 x g^0.25 */
     return (int32_t)(0x80000000u / ((q * q4) >> 6));
 }
 #ifdef DUELL_TWIN_COUNT                                 /* (tests/twin_test.c: how often DRIVE runs; DRIVE 0 must not) */

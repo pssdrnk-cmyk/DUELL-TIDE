@@ -393,22 +393,14 @@ static const param_desc_t *morph_desc(const engine_t *e, uint32_t id) { return i
 static const param_desc_t MORPH_E7_OLD = {"-", F_INT, 0, 0, 0, 0, 0};   /* WAVE's E7 as it was before STEPS (an unused slot, range 0..0): a WILD roll draws it as it did, so the End B of every stored seed is what it was, and never turns STEPS on */
 
 /* ----------------------------------------------------------------- the roll (pure) --- */
-static uint32_t mr_next(uint32_t *s)                    /* xorshift32 */
-{
-    uint32_t x = *s;
-    x ^= x << 13;
-    x ^= x >> 17;
-    x ^= x << 5;
-    return *s = x;
-}
-static uint32_t mr_below(uint32_t *s, uint32_t n) { return (uint32_t)(((uint64_t)mr_next(s) * n) >> 32); }
+static uint32_t mr_below(uint32_t *s, uint32_t n) { return (uint32_t)(((uint64_t)xs32(s) * n) >> 32); }
 /* a continuous move from v (one draw; owner, 2026-10-11): |offset| uniform over 1 .. maxoff (= AMOUNT % of the range: a
  * uniform 0..AMOUNT rounded up to a step, so a value that is rolled moves), random sign; the end stays in [alo, ahi]
  * (which holds v): a move that leaves it goes the other way by as much, and only when neither way fits does it stop at
  * the bound with more room. |end - v| <= maxoff always */
 static int32_t morph_move(uint32_t *s, int32_t v, int32_t maxoff, int32_t alo, int32_t ahi)
 {
-    uint32_t r = mr_next(s);
+    uint32_t r = xs32(s);
     int32_t m, x;
     if (maxoff <= 0)
         return v;
@@ -477,7 +469,7 @@ static int32_t morph_cont(uint32_t *rs, mtag_t g, const param_desc_t *pd, int32_
     v = clamp(v, lo, hi);
     o = clamp(o, lo, hi);
     if ((g.flags & MF_ZERO) && !o) {
-        (void)mr_next(rs);                              /* (a pitch item reaching here is never zero-locked: PITCH lifts MF_ZERO; kept as a guard) */
+        (void)xs32(rs);                              /* (a pitch item reaching here is never zero-locked: PITCH lifts MF_ZERO; kept as a guard) */
         return v;
     }
     if (g.flags & MF_CAP) {
@@ -540,7 +532,7 @@ static void morph_slot(uint32_t *rs, uint32_t *rz, const engine_t *e, const int8
         end[id] = (int8_t)s;                            /* destination the roll does not move (BOW 0, a pitch item, PAN, ..); SRC, DST stay */
         end[id + 1u] = (int8_t)d;
         if ((d == MD_PITCH || d == MD_VIB) && !(mrc & MC_PIT)) {   /* owner: pitch stays while the PITCH roll is OFF: the amount too */
-            (void)mr_next(rs);
+            (void)xs32(rs);
             end[id + 2u] = (int8_t)a;
             return;
         }
@@ -554,7 +546,7 @@ static void morph_slot(uint32_t *rs, uint32_t *rz, const engine_t *e, const int8
     if (MD_ENGINE(d) && morph_tag(e, o, P_E0 + d - MD_E1, 1).kind != MK_CONT)
         return;                                         /* into a parameter the morph does not move: left alone */
     if ((d == MD_PITCH || d == MD_VIB) && !(mrc & MC_PIT)) {
-        (void)mr_next(rs);                              /* v2: PITCH OFF: pitch modulation is left as it is (the draw it had) */
+        (void)xs32(rs);                              /* v2: PITCH OFF: pitch modulation is left as it is (the draw it had) */
         return;
     }
     if (!morph_route_fixed(e, o, s, d)) {
@@ -767,7 +759,7 @@ static void morph_fm_roll(const uint8_t *bo, const uint8_t *bs, uint32_t car, ui
         if (g.ex && !g.pg)
             continue;
         if (g.ex || (g.zero && !o)) {
-            (void)mr_next(&rs);                         /* (the draw it had) */
+            (void)xs32(&rs);                         /* (the draw it had) */
             continue;
         }
         if (maxoff > g.cap)
@@ -1092,7 +1084,7 @@ static void morph_old_draw(uint32_t *r, const engine_t *e, uint32_t id, uint32_t
 {
     uint32_t step = id == P_RES2 || id == P_DRV2 ? (mrc & MC_PIT) : id == P_TWTYPE ? (mrc & MC_WILD) : id == P_BLEND ? e == &ENG_ANALOG : 0u;
     if (step && mr_below(r, 100u) < amount)
-        (void)mr_next(r);
+        (void)xs32(r);
 }
 
 /* The TWIN FILTER's five ids and the extension slots (ext.h) roll from a stream of their own (part + 40), in id order and then slot order, after every other value: the draws of every
@@ -1113,7 +1105,7 @@ static void morph_twin_roll(const int8_t *o, const int8_t *st, const int8_t *org
                 end[id] = (int8_t)(id == P_TWTYPE ? morph_other(&rsx, TT_LP, (e == &ENG_WAVE || e == &ENG_PHYS ? TT_LADDER : TT_COMB) + 1, st[id])
                                                   : morph_other(&rsx, pd->min, pd->max + 1, st[id]));
         } else if (g.kind == MK_EX && (g.flags & MF_DRAW)) {
-            (void)mr_next(&rsx);
+            (void)xs32(&rsx);
         }
     }
     comb = end[P_TWTYPE] == TT_COMB;                    /* each value in the range of its meaning at this end (CUTOFF 2: OFFSET / CUTOFF / TUNE, RES 2: RES / FDBK) */
@@ -1200,9 +1192,9 @@ static void morph_roll_step(const int8_t *org, const int8_t *st, int8_t *end, co
         }
         if (id >= P_FREEA && id <= P_FREED && e->ufilt) {   /* DUELL 0.2.2: the filter's CUT, RES (0.2.9: MODE, SLOPE): rs3 (so a seed of before draws every */
             if (id == P_FREED)                           /* other value as it did); the SLICER's draws they had stay on rs */
-                (void)mr_next(r);
+                (void)xs32(r);
             else if ((mrc & MC_WILD) && mr_below(r, 100u) < amount)
-                (void)mr_next(r);
+                (void)xs32(r);
             if (g.kind == MK_CONT)
                 end[id] = (int8_t)morph_cont(&rs3, g, pd, st[id], org[id], amount);
             else if (g.kind == MK_FADE && mr_below(&rs3, 100u) < amount) {
@@ -1221,12 +1213,12 @@ static void morph_roll_step(const int8_t *org, const int8_t *st, int8_t *end, co
                     end[id] = (int8_t)v;
             }
         } else if (g.kind == MK_EX && (g.flags & MF_DRAW)) {
-            (void)mr_next(r);                           /* (v2: a pitch item PITCH OFF leaves alone: the draw it had) */
+            (void)xs32(r);                           /* (v2: a pitch item PITCH OFF leaves alone: the draw it had) */
         } else if (g.kind == MK_EX && (g.flags & MF_GONE)) {   /* the SLICER's retired ids: the draws they had, nothing set */
             if (g.lim)
-                (void)mr_next(r);                       /* DEPTH (continuous): its move, SMART and WILD */
+                (void)xs32(r);                       /* DEPTH (continuous): its move, SMART and WILD */
             else if ((mrc & MC_WILD) && mr_below(r, 100u) < amount)
-                (void)mr_next(r);                       /* SLCR PAT RATE (WILD: a switch that flips, the pick's draw) */
+                (void)xs32(r);                       /* SLCR PAT RATE (WILD: a switch that flips, the pick's draw) */
         } else if (g.kind == MK_STEP) {                 /* v2: a choice that flips (WILD, PITCH, ARP) */
             if (mr_below(r, 100u) < amount && !(id == P_AMODE && (!org[id] || TIDE_AMODE_KEEP(org[id])))) {   /* (an arp that is off in the saved patch stays off; TIDE hook: SEQ too) */
                 int32_t v = morph_other(r, id == P_AMODE ? 1 : pd->min, id == P_AMODE ? TIDE_AMODE_END(pd->max + 1) : pd->max + 1, st[id]);

@@ -929,7 +929,16 @@ typedef struct {
     const char *title;
     uint8_t fam, scope, graph;
     uint8_t id[4];               /* param ids; 0xFF = empty slot */
+    uint8_t vis;                 /* VIS_*: when the page is in the page order (ui.c page_visible); 0 = always */
 } page_t;
+/* The page order skips a page unless its rule holds (ui.c page_visible). A new conditional page names its rule here, in its row of PAGES */
+enum { VIS_ALWAYS, VIS_SHIM,        /* SHIMMER: the reverb TYPE is SHIM */
+       VIS_UFILT,                   /* the multimode filter's pages: the engine has it (engine_t.ufilt) */
+       VIS_TWIN,                    /* filter 2's TWIN MOD, TWIN CHAIN: its TYPE is not OFF */
+       VIS_E7,                      /* EDIT 2: the engine has an eighth card */
+       VIS_ATGT,                    /* ARP 3/3: the engine has more than ALL (its atgt kind) */
+       VIS_FM6,                     /* FM6's operator pages */
+       VIS_M5 };                    /* MATRIX 5-8: slots 1..4 are all in use */
 
 #define TEMPO_TAP_SLOT 2u        /* TEMPO's TAP card: the knob that is no parameter (ui_input.c edit_param, tempo_tap; ui_draw.c) */
 
@@ -951,7 +960,7 @@ static const page_t PAGES[] = {
     {"LFO 2 TRIG", FAM_LFO, SC_TRACK, GR_LFO, {P_L2TRIG, P_L2PHASE, P_L2POL, XW_BASE + X_LFO2LVL}},   /* DUELL 1.1: K4 LEVEL, the LFO's master depth */
     {"LFO 2 DEST", FAM_LFO, SC_TRACK, GR_LFO, {XW_BASE + X_LFO2, XW_BASE + X_L2RES2, XW_BASE + X_L2FMODE, XW_BASE + X_L2BLD}},   /* DUELL 1.1 (owner): TWIN CUTOFF (the stored X_LFO2, also on TWIN MOD), TWIN RES, MULTI MODE, FILTER BLEND. The old PITCH / MULTI CUTOFF / TIMBRE cards are gone and no longer act (P_L2PIT / P_L2FLT / P_L2SHP stay stored ids, never read; the matrix reaches the same destinations) */
     {"MATRIX 1-4", FAM_LFO, SC_TRACK, GR_MOD, {0xFF, P_M1SRC, P_M1DST, P_M1AMT}},   /* KNOB 1: the slot (mod_ui_slot) */
-    {"MATRIX 5-8", FAM_LFO, SC_TRACK, GR_MOD, {0xFF, P_M5SRC, P_M5DST, P_M5AMT}}, /* DUELL: slots 5..8, the same layout */
+    {"MATRIX 5-8", FAM_LFO, SC_TRACK, GR_MOD, {0xFF, P_M5SRC, P_M5DST, P_M5AMT}, VIS_M5}, /* DUELL: slots 5..8, the same layout */
     /* FAM_FX (0.2.21: only the PART's own pages) in the order the sound flows (fx.c mix_part): the part's DIST (FX page, KNOB 1) -> INSERT -> EQ -> DUCK -> level, pan and the
      * sends (FX page KNOBS 2-4); the global buses (CHORUS, the delay, the REVERB) are GLO's pages now, and the second page here, SEND FX, shows the part's three sends beside them */
     {"FX", FAM_FX, SC_TRACK, GR_FX, {P_DIST, P_CHOR, P_DLY, P_REV}},
@@ -974,24 +983,24 @@ static const page_t PAGES[] = {
      * on an engine that has one (ui.c page_visible). (Was: K1 ENGINE, K2 SOUND, K3 FAV, K4 INIT; EDIT 1 positions 0..3, EDIT 2 4..7) */
     {"ENGINE", FAM_EDIT, SC_ENGINE, GR_ENGINE, {0xFF, P_E0, P_E1, P_E2}},
     {"EDIT 1", FAM_EDIT, SC_ENGINE, GR_NONE, {P_E3, P_E4, P_E5, P_E6}},
-    {"EDIT 2", FAM_EDIT, SC_ENGINE, GR_NONE, {P_E7, 0xFF, 0xFF, 0xFF}},
+    {"EDIT 2", FAM_EDIT, SC_ENGINE, GR_NONE, {P_E7, 0xFF, 0xFF, 0xFF}, VIS_E7},
     /* the filters in signal order (0.2.21, owner): the SUB OSC, then the MULTIMODE filter (voice.c uf_run), on every engine (engine_t.ufilt); the engines' own filter pages (VCF on ANALOG, TRIO FILTER,
      * NOISE FILT) are gone since cloud job J: ANALOG's VCF and NOISE's filter are the MULTI FILTER, TRIO's is the TWIN FILTER's LP BP HP NOTCH */
     {"SUB OSC", FAM_EDIT, SC_TRACK, GR_SUB, {XW_BASE + X_SUBWAVE, XW_BASE + X_SUBOCT, XW_BASE + X_SUBLVL, 0xFF}},   /* SUB HARMONICS is disabled (owner, 2026-10-21): no HARM card, the page is WAVE, OCTAVE, LEVEL (X_SUBHARM stays reserved, its stored value is never played); cloud job H (owner-approved 2026-10-19): the SUB LAYER (job F), after the engine's own pages and before filter 1 (the voice chain's order: engine, SUB, filter 1, filter 2):
                                                                              * K1 WAVE (the type first), K2 OCTAVE, K3 HARM, K4 LEVEL (the mix last). Values in the extension slots (ext.h XV): no MIDI LEARN or parameter lock on these cards (their wide ids are not 7-bit) */
-    {"MULTI FILTER 1/2", FAM_EDIT, SC_TRACK, GR_FILT, {P_FREEA, P_FREEB, P_FREEC, P_FREED}},   /* the MULTIMODE filter (DUELL 0.2.9): K1 CUT K2 RES K3 MODE K4 SLOPE (0.2.20, owner: back to this order);
+    {"MULTI FILTER 1/2", FAM_EDIT, SC_TRACK, GR_FILT, {P_FREEA, P_FREEB, P_FREEC, P_FREED}, VIS_UFILT},   /* the MULTIMODE filter (DUELL 0.2.9): K1 CUT K2 RES K3 MODE K4 SLOPE (0.2.20, owner: back to this order);
                                                                              * the generic cutoff routes (on the engines with no filter of their own), CC74 / CC71 and the matrix's CUT / FRES drive it */
-    {"MULTI FILTER 2/2", FAM_EDIT, SC_TRACK, GR_FILT, {P_KTRK, P_E2FLT, P_LD_FLT, 0xFF}},   /* (DUELL 1.1: K4, the LFO 2 cutoff depth, is gone with the LFO 2 DEST card: it no longer acts) */   /* 0.2.21: K1 KEY TRK (voice.c: the cutoff follows the note); 0.2.22: K2 ENV 2, K3 LFO 1, K4 LFO 2 (owner: no AMP ENV card) -> the cutoff:
+    {"MULTI FILTER 2/2", FAM_EDIT, SC_TRACK, GR_FILT, {P_KTRK, P_E2FLT, P_LD_FLT, 0xFF}, VIS_UFILT},   /* (DUELL 1.1: K4, the LFO 2 cutoff depth, is gone with the LFO 2 DEST card: it no longer acts) */   /* 0.2.21: K1 KEY TRK (voice.c: the cutoff follows the note); 0.2.22: K2 ENV 2, K3 LFO 1, K4 LFO 2 (owner: no AMP ENV card) -> the cutoff:
                                                                              * the SAME stored values as the DEST pages' FLT cards (P_E2FLT, P_LD_FLT, P_L2FLT; page_desc gives them their names here). A depth connects two modules, so it is
                                                                              * reachable at both: on the multimode filter's page and on its source's DEST page (owner 2026-10-16). All four cards show on every engine since cloud job J */
     /* cloud job H (owner-approved 2026-10-19, FILTER_PAGES_PROPOSAL Option B): filter 2, the TWIN FILTER, after filter 1 in the order the sound flows. TWIN FILTER: K1 TYPE, K2 LINK, K3 OFFSET / CUTOFF / TUNE (tw_desc), K4 RES / FDBK;
      * TWIN MOD (skipped while TYPE is OFF: ui.c page_visible): KEY TRACK FILTER ENV LFO 1 LFO 2 as MULTI FILTER 2/2; TWIN CHAIN (skipped while TYPE is OFF): ROUTE, DRIVE, BLEND, K4 empty. What hides: ui_draw.c card_hidden_vp */
     {"TWIN FILTER", FAM_EDIT, SC_TRACK, GR_FILT, {P_TWTYPE, XW_BASE + X_LINK, P_CUT2, P_RES2}},
-    {"TWIN MOD", FAM_EDIT, SC_TRACK, GR_FILT, {XW_BASE + X_KTRK2, XW_BASE + X_ENV2, XW_BASE + X_LFO1, XW_BASE + X_LFO2}},
-    {"TWIN CHAIN", FAM_EDIT, SC_TRACK, GR_FILT, {XW_BASE + X_ROUTE, P_DRV2, P_BLEND, 0xFF}},
-    {"OP TUNE", FAM_EDIT, SC_TRACK, GR_FMOP, {0xFF, 0xFF, 0xFF, 0xFF}},    /* FM6 only: KNOB 1 the operator, then its */
-    {"OP ENV", FAM_EDIT, SC_TRACK, GR_FMENV, {0xFF, 0xFF, 0xFF, 0xFF}},     /* bytes of the track's patch (ui_fm6op.c): */
-    {"OP MODE", FAM_EDIT, SC_TRACK, GR_FMOP2, {0xFF, 0xFF, 0xFF, 0xFF}}, /* CRS FINE LEVEL / STG RATE LEVEL / MODE DTUN VEL */
+    {"TWIN MOD", FAM_EDIT, SC_TRACK, GR_FILT, {XW_BASE + X_KTRK2, XW_BASE + X_ENV2, XW_BASE + X_LFO1, XW_BASE + X_LFO2}, VIS_TWIN},
+    {"TWIN CHAIN", FAM_EDIT, SC_TRACK, GR_FILT, {XW_BASE + X_ROUTE, P_DRV2, P_BLEND, 0xFF}, VIS_TWIN},
+    {"OP TUNE", FAM_EDIT, SC_TRACK, GR_FMOP, {0xFF, 0xFF, 0xFF, 0xFF}, VIS_FM6},    /* FM6 only: KNOB 1 the operator, then its */
+    {"OP ENV", FAM_EDIT, SC_TRACK, GR_FMENV, {0xFF, 0xFF, 0xFF, 0xFF}, VIS_FM6},     /* bytes of the track's patch (ui_fm6op.c): */
+    {"OP MODE", FAM_EDIT, SC_TRACK, GR_FMOP2, {0xFF, 0xFF, 0xFF, 0xFF}, VIS_FM6}, /* CRS FINE LEVEL / STG RATE LEVEL / MODE DTUN VEL */
     {"VOICE 1/2", FAM_EDIT, SC_TRACK, GR_NONE, {P_VOICE, P_PRIO, P_DETUNE, P_TRANS}},   /* 0.2.18, top-down: how the voices are used (MODE, PRIORITY, DETUNE); DUELL 1.1 (owner 2026-10-27): K4 TRANSPOSE,
                                                                              * -24..+24 semitones, STORED WITH THE PATCH (ui.c param_kept no longer keeps it: a bass patch recalls at -24, a lead at 0; was the part's, on the CHORD page). T0227 (owner): VOICE ALLOCATION is no
                                                                              * control any more: the voices always rotate (voice.c voice_alloc; the stored P_ALLOC byte stays in the formats, ignored) */
@@ -1011,7 +1020,7 @@ static const page_t PAGES[] = {
     {"DELAY 1/2", FAM_GLO, SC_GLOBAL, GR_NONE, {G_DMODE, G_DTIME, G_DFDBK, G_DCOLOR}},   /* 0.2.16, top-down: MODE first (DIGITAL, PING-PONG, RANDOM, OCT UP: fx_bus.c; in DUEL all mono, PING-PONG as DIGITAL), then the loop: TIME, FDBK, COLR */
     {"DELAY 2/2", FAM_GLO, SC_GLOBAL, GR_NONE, {G_PINGSPREAD, G_DMRATE, G_DMDEP, G_DMIX}},   /* SPREAD (PING-PONG, RANDOM, OCT UP), the delay's MODULATION RATE, DEPTH (CHANCE in RANDOM / OCT UP), MIX last */
     {"REVERB", FAM_GLO, SC_GLOBAL, GR_NONE, {G_RTYPE, G_RSIZE, G_RDAMP, G_RLOCUT}},   /* K4 LOCUT (0.2.14); TYPE: ROOM / SPRING / HALL / SHIM / RESO / PLATE */
-    {"SHIMMER", FAM_GLO, SC_GLOBAL, GR_NONE, {G_SHPITCH, G_SHMOD, 0xFF, 0xFF}},   /* 0.2.19: SHIM's own page (ui.c page_visible: skipped by the page buttons and SELECT unless TYPE is SHIM): PITCH (UP, DOWN, BOTH), MOD */
+    {"SHIMMER", FAM_GLO, SC_GLOBAL, GR_NONE, {G_SHPITCH, G_SHMOD, 0xFF, 0xFF}, VIS_SHIM},   /* 0.2.19: SHIM's own page (ui.c page_visible: skipped by the page buttons and SELECT unless TYPE is SHIM): PITCH (UP, DOWN, BOTH), MOD */
     {MASTER_PAGE_TITLE, FAM_GLO, SC_GLOBAL, GR_MSTG, {G_BM, G_WD, 0xFF, 0xFF}},   /* 0.2.25 layout round (owner): STEREO MASTER, one page for the master stereo stages where WIDTH and MASTER were: K1 BASS MONO (where the low end goes mono:
                                                                              * BASS / MONO, two lines), K2 WIDTH (0..200 %, 100 = as it is; fx.c width_stage runs first, BASS MONO has the last word below its corner); the panel pictures the mono
                                                                              * region and the widening (ui_graph.c graph_mstg); not in DUEL (no cards, the panel says why) */
@@ -1033,7 +1042,7 @@ static const page_t PAGES[] = {
     {"TOOLS", FAM_SAVE, SC_GLOBAL, GR_TOOLS, {G_CLRSEQ, G_INITSND, 0xFF, 0xFF}},
     {"ARP 1/3", FAM_ARP, SC_TRACK, GR_ARP, {P_AMODE, P_AHOLD, P_AORDER, P_AOCT}},   /* 0.2.18, top-down: what it plays: MODE, HOLD (also REC outside the sequencer), ORD, OCT */
     {"ARP 2/3", FAM_ARP, SC_TRACK, GR_ARP, {P_ARATE, P_AGATE, P_ASWING, P_APROB}},   /* 0.2.25 layout round (owner): ARP 1/3 and 2/3 draw the MODE's pattern (ui_graph.c graph_arp) */   /* .. then when: RATE, GATE, SWG, PROB */
-    {"ARP 3/3", FAM_ARP, SC_TRACK, GR_NONE, {P_ATGT, 0xFF, 0xFF, 0xFF}},   /* DUELL: ARP TARGET (SPEC 2.3) */
+    {"ARP 3/3", FAM_ARP, SC_TRACK, GR_NONE, {P_ATGT, 0xFF, 0xFF, 0xFF}, VIS_ATGT},   /* DUELL: ARP TARGET (SPEC 2.3) */
     {"STEP", FAM_SEQ, SC_STEP, GR_ROLL, {0, 1, 2, 3}},
     {"SEQUENCER HELP", FAM_SEQ, SC_TRACK, GR_SEQHELP, {0xFF, 0xFF, 0xFF, 0xFF}},   /* item 118 (FINAL_V1_07b_sequencer_help): page 2 of the STEP family, the symbols of the piano roll in words; the knobs do nothing here */
     {"PARAMETER LOCKS", FAM_SEQ, SC_TRACK, GR_EVENTS, {0xFF, 0xFF, 0xFF, 0xFF}},  /* the locks, events, CHANCE and RATCH as a
@@ -1063,7 +1072,7 @@ static const page_t PAGES[] = {
     {"CYCLE ENV 1/2", FAM_ENV, SC_TRACK, GR_CYCLE, {XW_BASE + X_CYMODE, XW_BASE + X_CYSYNC, XW_BASE + X_CYRISE, XW_BASE + X_CYFALL}},
     {"CYCLE ENV 2/2", FAM_ENV, SC_TRACK, GR_CYCLE, {XW_BASE + X_CYCURVE, XW_BASE + X_CYCUT2, XW_BASE + X_CYPAN, XW_BASE + X_CYPIT}},   /* DUELL 1.1 (owner): CURVE, TWIN CUTOFF, PAN, PITCH */
     {"MATRIX 1-4", FAM_ENV, SC_TRACK, GR_MOD, {0xFF, P_M1SRC, P_M1DST, P_M1AMT}},
-    {"MATRIX 5-8", FAM_ENV, SC_TRACK, GR_MOD, {0xFF, P_M5SRC, P_M5DST, P_M5AMT}},
+    {"MATRIX 5-8", FAM_ENV, SC_TRACK, GR_MOD, {0xFF, P_M5SRC, P_M5DST, P_M5AMT}, VIS_M5},
 };
 #define NPAGES (sizeof(PAGES) / sizeof(PAGES[0]))
 /* The CPU TEST screen (DUELL 0.2.2): on no button and in no family's round (not in PAGES: the GLO group is MIXER, TEMPO, CHORUS, DELAY 1/2, 2/2, REVERB, SHIMMER, STEREO MASTER, COMPRESSOR, MODULES, SIDECHAIN, MIDI, MIDI LEARN).
