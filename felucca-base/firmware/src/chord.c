@@ -71,7 +71,7 @@ static uint32_t chord_tones(const track_t *t, uint32_t mode, int32_t *root, int3
                     at = c;
                 deg[c++] = i;
             }
-        for (i = 0; i < (mode == CH_DIA7 ? 4u : 3u); i++) {   /* every other note of the scale */
+        for (i = 0; i < (mode == CH_DIA7 && c != 6u ? 4u : 3u); i++) {   /* every other note of the scale (a 6-note scale: a triad, the 7th would double the root) */
             uint32_t k = at + 2u * i;
             iv[n++] = (int32_t)deg[k % c] + 12 * (int32_t)(k / c) - (int32_t)deg[at];
         }
@@ -169,6 +169,19 @@ static uint32_t chord_build(track_t *t, uint32_t root, uint8_t *out)
     return m;
 }
 
+/* the name of pitch class pc into b (3 bytes): flats in a flat key (the scale's relative major, or ROOT for a scale that has none: F Bb Eb Ab Db),
+ * else sharps (audit S13: C minor's Eb Ab Bb were D# G# A#) */
+static void note_str(char *b, uint32_t pc)
+{
+    uint32_t m = scale_mask(&trk[0]), k = 0, r = (uint32_t)root_of(&trk[0]) % 12u;
+    str_cpy(b, N_NOTE[pc % 12u], 3);
+    while (k < 12u && (((m >> k) | (m << (12u - k))) & 0xFFFu) != 0xAB5u)
+        k++;
+    if (b[1] && ((0x52Au >> ((r + (k < 12u ? k : 0u)) % 12u)) & 1u)) {
+        b[0] = b[0] == 'G' ? 'A' : (char)(b[0] + 1);
+        b[1] = 'b';
+    }
+}
 /* a chord's name from its root and tones (bit i: i semitones above the root): "C", "Cm7", "F#m7b5", "Gsus4",
  * "A5" -> b (12 bytes) */
 static void chord_name(char *b, uint32_t root, uint32_t mask)
@@ -176,13 +189,15 @@ static void chord_name(char *b, uint32_t root, uint32_t mask)
     uint32_t mi = (mask >> 3) & 1u, ma = (mask >> 4) & 1u, b5 = (mask >> 6) & 1u, p5 = (mask >> 7) & 1u;
     uint32_t s5 = (mask >> 8) & 1u, d7 = (mask >> 9) & 1u, m7 = (mask >> 10) & 1u, M7 = (mask >> 11) & 1u;
     const char *q, *x = "";
-    str_cpy(b, N_NOTE[root % 12u], 12);
+    note_str(b, root);
     if (mi && !ma && b5 && !p5)
         q = d7 ? "dim7" : m7 ? "m7b5" : "dim";
     else if (ma && !mi && s5 && !p5)
         q = m7 ? "+7" : M7 ? "+M7" : "aug";
     else if (ma && !mi)
         q = m7 ? "7" : M7 ? "maj7" : d7 ? "6" : "";
+    else if (mi && ((mask >> 5) & 1u) && !p5)           /* a stack of 4ths (A D G C): no fifth, the fourth */
+        q = m7 ? "m7" : "m", x = "sus";
     else if (mi)
         q = m7 ? "m7" : M7 ? "mM7" : d7 ? "m6" : "m";
     else if ((mask >> 5) & 1u) {                        /* no third: suspended */
