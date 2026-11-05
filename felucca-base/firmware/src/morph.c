@@ -2677,11 +2677,6 @@ static uint32_t morph_seed_of(uint32_t pi, uint32_t e)  /* end e's seed, 0: no r
     const morph_part_t *mp = &mph[pi < NSHOWN ? pi : 0u];
     return mp->n[0] ? mp->seed[e & 1u][mp->top[e & 1u]] : 0u;
 }
-static uint32_t morph_hist_of(uint32_t pi, uint32_t e)  /* end e's rolls UNDO can go back over */
-{
-    const morph_part_t *mp = &mph[pi < NSHOWN ? pi : 0u];
-    return mp->n[e & 1u] > 1u ? mp->n[e & 1u] - 1u : 0u;
-}
 
 /* an action on the parts of mask, main loop. MQ_ROLL / MQ_UNDO v: the end (0 A, 1 B); returns the seed (UNDO: 1 = some part
  * went back). MQ_FADER 0..127, MQ_AMOUNT 0..100 %, MQ_TARGET 0 PART 1 / 1 PART 2 / 2 BOTH (ui_input.c morph_act picks the part),

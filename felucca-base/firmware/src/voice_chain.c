@@ -90,20 +90,34 @@ static __attribute__((noinline)) void chain_voice(const engine_t *e, track_t *t,
     chain_stages(e, t, v, tmp, dst, n, m, uc);
 }
 
-/* filter 1's effective cutoff as track_render's `if (uf)` block makes it (the same lines), and what it does to the voice's modulation m on the way (uf 1: the cutoff routes are the filter's) */
-static int32_t chain_uc(const engine_t *e, track_t *t, voice_t *v, vmod_t *m, int32_t ucut0, uint32_t msl)
+/* filter 1's effective cutoff, made in this one place for track_render's plain path, chain_uc and chain_f1_on: the dial, every route (m->cutoff) and the key (KEY TRK, 0.2.21: the note's pitch
+ * around C3, an octave of cutoff per octave at +100 %; 0: nothing added, nothing computed); TIDE: through the crossing dip. *ucn, when given, gets the same without the accent (filter 2 LINK,
+ * NOISE's make-up), dipped the same, so a LINKed filter 2 closes with filter 1 in a crossing (audit A04, owner D8) */
+static inline int32_t uc_eff(const track_t *t, const voice_t *v, const vmod_t *m, int32_t ucut0, int32_t *ucn)
 {
     const int16_t *p = t->p;
-    int32_t kt, uc;
+    int32_t kt = p[P_KTRK] ? UF_KT(p[P_KTRK], v->pitch_cur) : 0;
+    int32_t uc = clamp(ucut0 + m->cutoff + kt, 0, UF_TOP);
+    int32_t un = ucn ? clamp(ucut0 + m->cutoff - m->acc1 + kt, 0, UF_TOP) : 0;
+#if DUELL_TIDE
+    int32_t ud = morph_xcut(t, uc);                     /* TIDE: the crossing dip */
+    if (ucn)
+        un = un == uc ? ud : morph_xcut(t, un);
+    uc = ud;
+#endif
+    if (ucn)
+        *ucn = un;
+    return uc;
+}
+
+/* filter 1's effective cutoff as track_render's `if (uf)` block makes it (the same call), and what it does to the voice's modulation m on the way (uf 1: the cutoff routes are the filter's) */
+static int32_t chain_uc(const engine_t *e, track_t *t, voice_t *v, vmod_t *m, int32_t ucut0, uint32_t msl)
+{
+    int32_t uc;
     if (!e->ufilt)
         return UF_TOP;
     v->msl = (uint16_t)msl;
-    kt = p[P_KTRK] ? UF_KT(p[P_KTRK], v->pitch_cur) : 0;
-    uc = clamp(ucut0 + m->cutoff + kt, 0, UF_TOP);
-#if DUELL_TIDE
-    uc = morph_xcut(t, uc);                             /* TIDE: the effective cutoff's crossing dip, as track_render's plain path */
-#endif
-    m->ucn = clamp(ucut0 + m->cutoff - m->acc1 + kt, 0, UF_TOP);
+    uc = uc_eff(t, v, m, ucut0, &m->ucn);
     m->cutoff = accent_lift(ACCENT_VEL(v), m->envq15);
     m->ucut = uc;                                       /* (NOISE's loudness make-up reads it) */
 #if DUELL_TIDE
@@ -130,11 +144,7 @@ static inline uint32_t chain_f1_on(const engine_t *e, const track_t *t, const vo
         return 0;                                       /* (DUELL 1.1 BYPASS: the filter does not run) */
     if (p[P_FREEC] > 0)
         return 1;
-#if DUELL_TIDE
-    return morph_xcut(t, clamp(ucut0 + m->cutoff + (p[P_KTRK] ? UF_KT(p[P_KTRK], v->pitch_cur) : 0), 0, UF_TOP)) < UF_TOP;   /* TIDE: the crossing dip runs the filter */
-#else
-    return clamp(ucut0 + m->cutoff + (p[P_KTRK] ? UF_KT(p[P_KTRK], v->pitch_cur) : 0), 0, UF_TOP) < UF_TOP;
-#endif
+    return uc_eff(t, v, m, ucut0, 0) < UF_TOP;          /* (TIDE: the crossing dip runs the filter) */
 }
 
 /* voice v this block: in the chain (it was last block, or it enters now). On the one block where it enters or leaves, the engine renders ONCE (at unity: the engine's own state moves once, whatever

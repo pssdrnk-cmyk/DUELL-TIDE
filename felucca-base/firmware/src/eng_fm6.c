@@ -59,7 +59,7 @@ static struct {                                  /* the patch through the macros
     uint8_t gen, alg, fb, ok;
     int16_t e[7];                                /* P_E0..P_E6 it was made with */
     int16_t env[4];                              /* the AMP ENV knobs (P_ATK, P_DEC, P_SUS, P_REL) it was made with (fm6_env_derive) */
-    uint16_t ug;                                 /* the UNISON amplitude for the voices running now (unison_gain.c, once a block) */
+    uint16_t ug, ugp;                            /* the UNISON amplitude for the voices running now (unison_gain.c, once a block) and the block before's: the voices ramp from one to the other */
     uint32_t mk;                                 /* the morph's key it was made with (fm6_morph: 0 = none) */
     int32_t dt[6];                               /* DTUN: per operator, Q24 log2 */
 } fm6_eff[NLIVE];                              /* (DUELL: the shown parts; a hidden part never sounds) */
@@ -457,7 +457,7 @@ static void fm6_macros(uint8_t *p, const int16_t *e, uint8_t *alg_out, uint8_t *
 /* the patch through E0..E6 (audio ISR; cheap when nothing changed) */
 static void fm6_sync(const track_t *t)
 {
- #if DUELL_TIDE
+#if DUELL_TIDE
     uint32_t tr = (uint32_t)(t - trk), k;
     const int16_t *e = &t->p[P_E0];
     int32_t eoff[4];
@@ -524,141 +524,7 @@ static void fm6_sync(const track_t *t)
 
 /* --------------------------------------------------------------- voice --- */
 #if DUELL_TIDE
-#define FM6_XTOL (1 << 24) / 48                         /* a quarter of a semitone (Q24 log2) */
-static void fm6_xphase(fm6_note_t *n, uint32_t k, uint32_t skip, uint32_t mute)
-{
-    uint32_t j, m, pass, best = 6u, bm = 0;
-    for (pass = 0; pass < 2u && best >= 6u; pass++)
-        for (j = 0; j < 6u; j++) {
-            int32_t d = n->base[k] - n->base[j];
-            if (j == k || ((skip >> j) & 1u) || (!pass && ((mute >> j) & 1u)) || d < -FM6_XTOL ||
-                ((n->fixed >> j) & 1u) != ((n->fixed >> k) & 1u) || (best < 6u && n->base[j] >= n->base[best]))
-                continue;
-            for (m = 1; m < 32u && (d < FM6_COARSE[m] - FM6_XTOL || d > FM6_COARSE[m] + FM6_XTOL); m++)
-                ;
-            if (m < 32u && (m == 1u || !((n->fixed >> k) & 1u)))
-                best = j, bm = m;
-        }
-    if (best < 6u)
-        n->op[k].phase = (int32_t)((uint32_t)n->op[best].phase * bm);
-}
-
-/* Main-loop snapshot, published under MORPH_LOCK by morph_xplan. */
-static void fm6_xpitch_pack(fm6_xpitch_t *d, const uint8_t *p)
-{
-    uint32_t k;
-    for (k = 0; k < 6u; k++)
-        memcpy(d->op[k], p + k * FP_OP + FP_MODE, 4u);
-    d->transpose = p[FP_TRNSP];
-}
-
-static __attribute__((noinline)) void fm6_xtune(const track_t *t, uint32_t tr, fm6_note_t *n, const voice_t *v, uint32_t mask)
-{
-    const fm6_xt_t *x = &fm6_xt[tr];
-    uint32_t k;
-    (void)t;
-    for (k = 0; k < 6u; k++) {
-        uint32_t b = (x->tune >> k) & 1u, g = (x->glide >> k) & 1u;
-        const fm6_xpitch_t *p = b ? &x->pb : &x->pa;
-        const uint8_t *op = p->op[k];
-        int32_t note = clamp((int32_t)v->note + p->transpose - 24, 0, 127);
-        if (!((mask >> k) & 1u) || ((n->xs | n->xr) >> k) & 1u || (!g && ((n->xb >> k) & 1u) == b))
-            continue;
-        if (g) {                                       /* (same mode, coarse and fine: only DET differs, a few cents) */
-            int32_t a0 = fm6_osc_base4(x->pa.op[k], note, 0), b0 = fm6_osc_base4(x->pb.op[k], note, 0);
-            n->base[k] = a0 + (int32_t)(((int64_t)(b0 - a0) * x->gv) >> 15);
-            continue;
-        }
-        n->base[k] = fm6_osc_base4(op, note, 0);
-        n->fixed = (uint8_t)((n->fixed & ~(1u << k)) | ((op[0] & 1u) << k));
-        n->xb = (uint8_t)((n->xb & ~(1u << k)) | (b << k));
-        fm6_xphase(n, k, 0u, x->mute);
-    }
-}
-
-static void fm6_xcopy(fm6_note_t *n, uint32_t d, uint32_t s)
-{
-    n->env[d] = n->env[s];
-    n->ol0[d] = n->ol0[s];
-    n->base[d] = n->base[s];
-    n->fixed = (uint8_t)((n->fixed & ~(1u << d)) | (((n->fixed >> s) & 1u) << d));
-    n->op[d].phase = n->op[s].phase;
-}
-
-static __attribute__((noinline)) void fm6_xblock(track_t *t, uint32_t tr)
-{
-    fm6_xt_t *x = &fm6_xt[tr];
-    fm6_xsave_t *sv0 = (fm6_xsave_t *)((fm6_note_t *)ENG_MEM(tr) + FM6_POLY);
-    uint32_t i, s, dirty = 0;
-    for (i = 0; i < FM6_POLY; i++) {
-        fm6_note_t *n = (fm6_note_t *)ENG_MEM(tr) + i;
-        uint32_t want = x->on ? x->xs : 0u;
-        if (!n->live) {
-            n->xs = n->xr = 0;
-            continue;
-        }
-        for (s = 0; s < 6u; s++) {
-            fm6_xsave_t *sv = sv0 + i * 6u + s;
-            uint32_t r = x->sfor[s] - 1u, bit = 1u << s;
-            if (n->xr & bit) {                          /* the stand-in's own state back (silent since the last block) */
-                n->env[s] = sv->env;
-                n->ol0[s] = sv->ol0;
-                n->base[s] = sv->base;
-                n->op[s].phase = sv->phase;
-                n->fixed = (uint8_t)((n->fixed & ~bit) | ((uint32_t)sv->fixed << s));
-                n->xr = (uint8_t)(n->xr & ~bit);
-                fm6_xphase(n, s, n->xs, x->mute);
-            }
-            if (r >= 6u)
-                continue;
-            if ((want & bit) && !(n->xs & bit)) {       /* take: the copy of the carrier, at its B frequency */
-                const uint8_t *op = x->pb.op[r];
-                sv->env = n->env[s];
-                sv->ol0 = n->ol0[s];
-                sv->base = n->base[s];
-                sv->phase = n->op[s].phase;
-                sv->fixed = (uint8_t)((n->fixed >> s) & 1u);
-                fm6_xcopy(n, s, r);
-                n->base[s] = fm6_osc_base4(op, clamp((int32_t)t->v[i].note + x->pb.transpose - 24, 0, 127), 0);
-                n->fixed = (uint8_t)((n->fixed & ~bit) | ((op[0] & 1u) << s));
-                if (!((n->xb >> r) & 1u))               /* (going back the carrier plays this frequency: the copy keeps its phase) */
-                    fm6_xphase(n, s, 1u << r, x->mute);
-                n->xs = (uint8_t)(n->xs | bit);
-            } else if (!(want & bit) && (n->xs & bit)) {   /* give: on the bridge's B side the carrier takes the copy */
-                if (((x->tune >> r) & 1u) && !((n->xb >> r) & 1u)) {
-                    fm6_xcopy(n, r, s);
-                    n->xb = (uint8_t)(n->xb | (1u << r));
-                }
-                n->xs = (uint8_t)(n->xs & ~bit);
-                n->xr = (uint8_t)(n->xr | bit);
-            }
-        }
-        dirty |= n->xs | n->xr;
-        if (x->on)
-            fm6_xtune(t, tr, n, &t->v[i], x->mute | x->glide);
-    }
-    x->dirty = (uint8_t)(dirty != 0u);
-}
-
-static __attribute__((noinline)) void fm6_xapply(uint32_t tr)
-{
-    const fm6_xt_t *x = &fm6_xt[tr];
-    uint8_t *p = fm6_eff[tr].p;
-    uint32_t k;
-    fm6_eff[tr].alg = x->alg;
-    fm6_eff[tr].fb = x->fb;
-    for (k = 0; k < 6u; k++)                            /* (a stand-in plays with its carrier's levels and EG) */
-        if ((x->xs >> k) & 1u && x->sfor[k])
-            memcpy(p + k * FP_OP, p + (x->sfor[k] - 1u) * FP_OP, FP_OP);
-}
-
-static __attribute__((noinline)) void fm6_xlv(const int32_t *dt, int32_t *ul)
-{
-    uint32_t k, tr = (uint32_t)(((const uint8_t *)dt - (const uint8_t *)fm6_eff[0].dt) / sizeof fm6_eff[0]);
-    if (tr < NLIVE && fm6_xt[tr].on)
-        for (k = 0; k < 6u; k++)
-            ul[k] += fm6_xt[tr].lv[k];
-}
+#include "fm6_xfer.c"                              /* the crossing bridge: stand-ins, retuning, phase alignment, the macros (audit A10) */
 #endif
 
 static fm6_note_t *fm6_note_of(track_t *t, voice_t *v)
@@ -791,7 +657,7 @@ static void fm6_render(track_t *t, voice_t *v, int32_t *out, uint32_t len, const
     }
     /* the voice's amplitude ramp x VOICE_FS (one carrier at full: VOICE_FS / 2), the voices running in unison ~ one */
     k = fm6_eff[tr].ug;                               /* (UNISON: by the voices running, unison_gain.c; else VOICE_FS) */
-    a = mulq15(m->amp0, k);
+    a = mulq15(m->amp0, fm6_eff[tr].ugp);             /* (from the block before's, so a voice that stops or starts does not step the others) */
     da = (mulq15(m->amp1, k) - a) >> FM6_LG_N;
     for (i = 0; i < FM6_N; i++) {
         int32_t x = bus[i] - n->dc;
@@ -858,35 +724,3 @@ static const engine_t ENG_FM6 = {
     .ufilt = 1,                 /* no filter of its own: the multimode filter (DUELL 0.2.9; voice.c uf_run: CUT RES MODE SLOPE, P_FREEA..D) */
 };
 
-#if DUELL_TIDE
-static __attribute__((noinline)) void fm6_macros(uint8_t *p, const int16_t *e, uint8_t *alg_out, uint8_t *fb_out, int32_t *dt, const int32_t *eoff)
-{
-    uint32_t alg = e[0] >= 1 && e[0] <= 32 ? (uint32_t)e[0] - 1u : p[FP_ALG] & 31u, car = fm6_carriers(alg), k, j, n = 0;
-    int32_t meg = clamp(e[4], -64, 63) * 40 / 64;              /* MEG: rate steps (+ slower) */
-    int32_t step = clamp(e[6], 0, 127) * (12 * 13981) / 127;   /* DTUN: up to 12 cents a step (1 cent = 13981) */
-    *alg_out = (uint8_t)alg;
-    *fb_out = (uint8_t)clamp(p[FP_FB] + e[1], 0, 7);
-    for (k = 0; k < 6u; k++) {
-        uint8_t *op = p + (5u - k) * FP_OP;                     /* OP1 first: carriers in their order */
-        uint32_t ki = 5u - k;
-        dt[ki] = 0;
-        if ((car >> ki) & 1u) {                                 /* the carriers a step apart, centred on the note */
-            dt[ki] = (2 * (int32_t)n++ - (int32_t)__builtin_popcount(car) + 1) * step / 2;
-            if (eoff) fm6_env_apply(op, eoff);
-            continue;
-        }
-        if (!op[FP_MODE])
-            op[FP_FC] = (uint8_t)clamp(op[FP_FC] + e[3], 0, 31);
-        for (j = 0; j < 4u; j++)
-            op[FP_R1 + j] = (uint8_t)clamp(op[FP_R1 + j] - meg, 0, 99);
-        op[FP_KVS] = (uint8_t)clamp(op[FP_KVS] + e[5], 0, 7);
-    }
-}
-
-static void fm6_cross_macros(uint32_t tr, uint8_t *p, const int16_t *a, uint8_t *alg, uint8_t *fb, int32_t *dt)
-{
-    int16_t env[4]; int32_t eoff[4];
-    uint32_t on = fm6_env_offsets(env, fm6_patch[tr], a[P_E0] >= 1 && a[P_E0] <= 32 ? (uint32_t)a[P_E0] - 1u : fm6_patch[tr][FP_ALG] & 31u, &a[P_ATK], eoff);
-    fm6_macros(p, &a[P_E0], alg, fb, dt, on ? eoff : 0);
-}
-#endif

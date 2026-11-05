@@ -919,8 +919,8 @@ static __attribute__((noinline)) void ins_swept(ins_t *s, const track_t *t, int3
             v = s->line[r0] + (((s->line[r1] - s->line[r0]) * fr) >> 15);
             s->line[s->wp] = (int16_t)clamp((x >> 2) + softclip(mulq15(v, fbk)), -32767, 32767);
             s->wp = (uint16_t)((s->wp + 1u) & (IL_LEN - 1u));
-            v <<= 1;                                    /* (v: at a quarter) */
-            s->dc += ((v << 8) - s->dc) >> 9;           /* DC blocker (the line's clip on a loud lopsided wave) */
+            v *= 2;                                     /* (v: at a quarter) */
+            s->dc += ((v * 256) - s->dc) >> 9;           /* DC blocker (the line's clip on a loud lopsided wave) */
             b[i] = pf_mix(x, (x >> 1) + v - (s->dc >> 8), s->w);   /* (dry + delayed) / 2 */
         }
     }
@@ -1014,8 +1014,8 @@ static __attribute__((noinline)) void ins_lofi(ins_t *s, const track_t *t, int32
         } else {
             uint32_t r = (uint32_t)noise32(&s->u.lo.rng);   /* (the top bits: a click; the low 16: the dust) */
             int32_t nz;
-            y = v << 3;
-            s->hp += ((y << 8) - s->hp) >> 6;           /* the band: ~110 Hz high-pass .. */
+            y = v * 8;
+            s->hp += ((y * 256) - s->hp) >> 6;           /* the band: ~110 Hz high-pass .. */
             y -= s->hp >> 8;
             y *= 16;
             v = mulq16(y - s->lp1, (uint32_t)k);        /* .. ~6 kHz low-pass */
@@ -1029,7 +1029,7 @@ static __attribute__((noinline)) void ins_lofi(ins_t *s, const track_t *t, int32
                 s->cnt = (uint8_t)(2u + ((r2 >> 9) & 3u));
             }
             if (s->u.lo.env | s->u.lo.ep) {
-                s->u.lo.ep += ((s->u.lo.env << 4) - s->u.lo.ep) >> 3;
+                s->u.lo.ep += ((s->u.lo.env * 16) - s->u.lo.ep) >> 3;
                 y += s->u.lo.env - (s->u.lo.ep >> 4);   /* (the click less its own low-pass: no area) */
                 if (s->u.lo.env) {                      /* its tail: the level falls by 1 / 2^cnt, always to 0 */
                     int32_t m = s->u.lo.env < 0 ? -s->u.lo.env : s->u.lo.env;
@@ -1038,7 +1038,7 @@ static __attribute__((noinline)) void ins_lofi(ins_t *s, const track_t *t, int32
                 }
             }
             nz = (((int32_t)(int16_t)r) * namp) >> 15;
-            s->lp2 += ((nz << 4) - s->lp2) >> 3;
+            s->lp2 += ((nz * 16) - s->lp2) >> 3;
             y += nz - (s->lp2 >> 4);                    /* dust: the noise through a ~880 Hz high-pass */
         }
         s->dc += ((y * 256) - s->dc) >> 9;               /* DC blocker, ~14 Hz */
@@ -1501,7 +1501,7 @@ static __attribute__((noinline)) void bass_mono(uint32_t n)
     if (a == 32768 && at == 32768 && !(d1 | d2 | d3)) {  /* steady: the one loop */
         for (i = 0; i < n; i++) {
             x = mix_l[i] - mix_r[i];
-            x = clamp(x, -BM_XMAX, BM_XMAX) << BM_SH;
+            x = clamp(x, -BM_XMAX, BM_XMAX) * (1 << BM_SH);
             BM_STEP;
             low >>= 1;
             mix_l[i] -= low;
@@ -1512,7 +1512,7 @@ static __attribute__((noinline)) void bass_mono(uint32_t n)
             a1 += d1, a2 += d2, a3 += d3;
             a += clamp(at - a, -BM_FADE, BM_FADE);
             x = mix_l[i] - mix_r[i];
-            x = clamp(x, -BM_XMAX, BM_XMAX) << BM_SH;
+            x = clamp(x, -BM_XMAX, BM_XMAX) * (1 << BM_SH);
             BM_STEP;
             low = mulq16(low, (uint32_t)a);              /* (half of low x a / 32768) */
             mix_l[i] -= low;
@@ -2443,7 +2443,7 @@ static __attribute__((noinline)) void mix_spread(track_t *t, int32_t *b, uint32_
     xmax = c > dl ? c : dl;
     xmax = 0x7FFFFFFF / ((xmax > r ? xmax : r) | 1);
     for (i = 0; i < n; i++)
-        d[i] = (d[i] << 1) - b[i];                      /* left - right */
+        d[i] = (d[i] * 2) - b[i];                      /* left - right */
     if (fxm == PFX_FADE) {                              /* (0.2.14 MODULES PART FX: the dry block kept for the crossfade) */
         memcpy(sc->dry, b, n * sizeof b[0]);
         memcpy(sc->dryd, d, n * sizeof d[0]);
@@ -2556,10 +2556,10 @@ static __attribute__((noinline)) void spread_post(uint32_t pp, uint32_t n, const
             part_acc_t *ac = &pacc[pp];
             const int32_t *b = pscr[pp].buf, *d = pscr[pp].sbuf;
             int32_t ni = (int32_t)n, xmax = 1, i, pm;
-            int32_t lq = prv[0] << 8, dlq = ((cur[0] - prv[0]) * 256) / ni;   /* the level, the three sends (Q8), the four pan gains (Q16): each a line from the block before's to this block's */
-            int32_t cq = prv[1] << 8, dcq = ((cur[1] - prv[1]) * 256) / ni, eq = prv[2] << 8, deq = ((cur[2] - prv[2]) * 256) / ni, rq = prv[3] << 8, drq = ((cur[3] - prv[3]) * 256) / ni;
-            int32_t aq = prv[4] << 16, daq = ((cur[4] - prv[4]) * 65536) / ni, bq = prv[5] << 16, dbq = ((cur[5] - prv[5]) * 65536) / ni;
-            int32_t gq = prv[6] << 16, dgq = ((cur[6] - prv[6]) * 65536) / ni, hq = prv[7] << 16, dhq = ((cur[7] - prv[7]) * 65536) / ni;
+            int32_t lq = prv[0] * 256, dlq = ((cur[0] - prv[0]) * 256) / ni;   /* the level, the three sends (Q8), the four pan gains (Q16): each a line from the block before's to this block's */
+            int32_t cq = prv[1] * 256, dcq = ((cur[1] - prv[1]) * 256) / ni, eq = prv[2] * 256, deq = ((cur[2] - prv[2]) * 256) / ni, rq = prv[3] * 256, drq = ((cur[3] - prv[3]) * 256) / ni;
+            int32_t aq = prv[4] * 65536, daq = ((cur[4] - prv[4]) * 65536) / ni, bq = prv[5] * 65536, dbq = ((cur[5] - prv[5]) * 65536) / ni;
+            int32_t gq = prv[6] * 65536, dgq = ((cur[6] - prv[6]) * 65536) / ni, hq = prv[7] * 65536, dhq = ((cur[7] - prv[7]) * 65536) / ni;
             uint32_t on = pacc_on[pp] | (prv[1] ? 2u : 0u) | (prv[2] ? 4u : 0u) | (prv[3] ? 8u : 0u);   /* (a send ramping down to 0 still has samples to write) */
             for (k = 1; k < 4u; k++) {
                 xmax = prv[k] > xmax ? prv[k] : xmax;
@@ -2578,7 +2578,7 @@ static __attribute__((noinline)) void spread_post(uint32_t pp, uint32_t n, const
                         ga = aq >> 16, gb = bq >> 16, gc = gq >> 16, gd = hq >> 16;
                     }
                 } else {
-                    cq = cur[1] << 8, eq = cur[2] << 8, rq = cur[3] << 8;
+                    cq = cur[1] * 256, eq = cur[2] * 256, rq = cur[3] * 256;
                 }
                 x = (b[i] * (l >> 2)) >> 10;
                 y = (d[i] * LV4(l)) >> 10;
@@ -2808,7 +2808,7 @@ static __attribute__((noinline)) int part_voice(mixpart_t *m, track_t *t, uint32
                                                          * mix_spread; SPLIT: none, the part is mono on its side) */
 #if DUELL_TIDE
     uint32_t sounding = track_render(t, b, n);
-    if (m->pp < NLIVE) {
+    if (m->pp < NSHOWN) {                               /* (the valley and the wash keep the shown parts' state: mxs[NSHOWN]; the host rig's NPART=4 has more) */
         if (sounding) morph_valley(m->pp, b, m->spread ? pscr[m->pp].sbuf : 0, n);
         else morph_vrest(m->pp);
     }

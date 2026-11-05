@@ -604,7 +604,7 @@ static __attribute__((noinline)) void morph_wash(uint32_t pp, int32_t *b, uint32
     int32_t g1 = 0, dg, wl, wh, al, ah, i;
     int move = x->snd && (x->motion || (x->need && x->tp > XW0 && x->tp < XW1));
     int32_t nz[64];
-    if (n > 64u)
+    if (n > 64u || (!morph_wlvl && !v->wg))             /* (WASH OFF, the default, and no wash left to fade: nothing to measure or make; switched on, the level at rest is learnt again in ~90 ms) */
         return;
     for (i = 0; i < (int32_t)n; i++)
         p += (int64_t)b[i] * b[i] >> 8;
@@ -636,7 +636,7 @@ static __attribute__((noinline)) void morph_wash(uint32_t pp, int32_t *b, uint32
     }
     if (want > 0 && pn > 0) {                            /* the gain: the noise's level to the wanted one, Q12, at most x 16 */
         int64_t r = (want << 10) / pn;                  /* (Q10 of the power ratio) */
-        r = r > ((int64_t)256 << 10) ? (int64_t)256 << 10 : r;
+        r = r > ((int64_t)256 << 10) - 1 ? ((int64_t)256 << 10) - 1 : r;   /* (just under x 16: r << 14 stays below 2^32, else it wraps to 0 and the wash fades out where it is most wanted) */
         g1 = (int32_t)xisqrt((uint32_t)(r << 14));      /* (sqrt of Q24: Q12) */
     }
     if (g1 != v->wg)                                     /* (in and out slowly, ~50 ms each way: a bed that comes and goes, not a burst) */
