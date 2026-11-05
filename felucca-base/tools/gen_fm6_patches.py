@@ -125,12 +125,13 @@ PATCHES = [
 # SLOT values of F1..F8, OWN (8) and B1..B32 (9..40) keep their meaning. TUBE BELLS is our own (a tubular bell by FM: Chowning's 1973
 # bell, carrier : modulator = 1 : 1.4 = 5 : 7, the index and the amplitude both falling); FM BASS 2 is a voice of the CC0 collection
 # of aquanodemusic (Aquanode Soundscapes, CC0 1.0 Universal, https://github.com/aquanodemusic/aquanode-soundscapes), imported from its
-# DX7 voice file (Aquanode Aquazone Dexed Presets, voice 12) as the packed 128-byte record; changed: the name bytes and the level 3 of the two carriers (below).
+# DX7 voice file (Aquanode Aquazone Dexed Presets, voice 12) as the packed 128-byte record; changed: the name bytes, the level 3 of the two carriers and OKS on (below).
 FM_BASS_2 = [99, 99, 32, 99, 99, 99, 0, 0, 0, 0, 0, 3, 3, 28, 73, 0, 0, 99, 99, 46, 73, 99, 94, 99, 0, 41, 0, 0, 0, 58, 24, 0, 2, 0,
              99, 99, 68, 99, 99, 99, 51, 0, 34, 0, 0, 0, 57, 24, 0, 0, 0, 99, 99, 27, 99, 99, 97, 0, 0, 0, 0, 0, 0, 57, 4, 99, 0, 0,
              99, 99, 31, 30, 99, 99, 0, 0, 0, 0, 0, 0, 9, 4, 72, 0, 0, 99, 39, 17, 43, 99, 99, 0, 0, 0, 0, 0, 0, 2, 4, 90, 0, 0,
              99, 67, 95, 60, 50, 50, 50, 50, 21, 7, 30, 0, 0, 0, 56, 26, 68, 88, 32, 66, 97, 115, 115, 32, 49, 32]
 assert len(FM_BASS_2) == 128
+FM_BASS_2[111] |= 8   # OKS on (byte 111 bit 3; the CC0 voice has it off): the factory bass keeps its attack, now that FM6 honours OKS off (fm6_core.c fm6_note_init)
 FM_BASS_2[118:128] = [ord(c) for c in "FM BASS 2 "]
 # the two carriers (OP1, OP3) of the voice fall to nothing under a held key (level 3 = 0: a plucked bass); a factory BASS holds its note, so
 # their level 3 is raised (OP1 90, OP3 85) and the strike's bright decay is the voice's own
