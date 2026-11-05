@@ -1581,7 +1581,18 @@ static uint32_t slot_place(const track_t *t)
     r = t->user ? UP_SLOTS : ds_list_rank(t->eng_req % NENGINES, t->preset);
     return r >= UP_USER0 && r < UP_SLOTS + UP_NXTRA ? r + UP_NUSER : UP_VSLOTS;
 }
-/* where SAVE offers to write part t's sound: its slot; else the slot its factory sound belongs to (even if that holds a record now; a displaced one: USER 1); else #1 */
+/* where SAVE offers to write part t's sound: its slot; else the slot its factory sound belongs to (even if that holds a record now; a displaced one: the first
+ * empty USER slot, else USER 1); else #1 */
+#if UP_NUSER
+static uint32_t slot_user(void)
+{
+    uint32_t k;
+    for (k = UP_USER0; k < UP_USER0 + UP_NUSER; k++)
+        if (!up_used(k))
+            return k;
+    return UP_USER0;
+}
+#endif
 static uint32_t slot_home(const track_t *t)
 {
     uint32_t r;
@@ -1589,7 +1600,7 @@ static uint32_t slot_home(const track_t *t)
         return slot_of(t);
     r = ds_list_rank(t->eng_req % NENGINES, t->preset);
 #if UP_NUSER
-    return r < UP_USER0 ? r : r < UP_SLOTS + UP_NXTRA ? UP_USER0 : 0u;
+    return r < UP_USER0 ? r : r < UP_SLOTS + UP_NXTRA ? slot_user() : 0u;
 #else
     return r < UP_SLOTS ? r : 0u;
 #endif

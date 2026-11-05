@@ -71,6 +71,7 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 - **Install:** packages are attached to the [GitHub releases](https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases) (Stable and Beta), and the [web installer](https://pssdrnk-cmyk.github.io/DUELL-TIDE/install/) offers both with a SHA-256 check; back up first ([docs/RECOVERY.md](docs/RECOVERY.md)).
 - **New (TIDE):** the editor and the installer can tell a TIDE unit: its INFO carries the tag `44 01 1` (the version string stays "DUELL 1.1", so every stock tool still takes the unit for DUELL). The installer's detected line, the editor's and the Backup page's "Connected" lines and `jam_dev.py info` say "with TIDE". A plain DUELL build sends no such tag. Image +4 B.
 - **New (TIDE):** the backup holds FM6's voice bank (SLOT B1 to B32): the editor's Backup page, the installer's backup and `jam_dev.py` save it as object 41 and restore it with the bank upload; a file without it (every older backup) leaves the unit's bank alone. Image +164 B (the INFO flag 44 01 bit 1 and GET 41).
+- **Fixed (TIDE):** SAVE of a factory sound that has no slot of its own (#125 to #160) offers the first empty USER slot instead of always USER 1, so a second save no longer lands on the first one by default. Image +36 B.
 
 ## DUELL 1.1
 
