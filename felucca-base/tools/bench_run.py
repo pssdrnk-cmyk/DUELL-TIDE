@@ -27,7 +27,7 @@ words `bench ...` (firmware/src/bench.c), the unit plays the test itself on its 
 A suite is a plain text file (tools/bench_suites/*.txt), one test after another, times in seconds from the test's start:
 
   test    NAME   text                       a test (NAME has no spaces)           cycle NAME period S  .. end     a block, never run alone
-  load    multi 7 "FINAL REEL"              a multi (the name is checked on the unit; a wrong name: the test is SKIPPED)
+  load    multi 16 "FINAL REEL"             a multi (the name is checked on the unit; a wrong name: the test is SKIPPED)
   load    patch 1 #61 "EVOLVING PAD"        patch slot #NN to part 1 or 2
   mode    DUEL|STEREO|LAYER                 scene "HVY DUEL 8+8"   a row of the bench list (the NOTES budget held open)
   set     1 CUT 60   /  set g BPM 120       any part or global value (the unit's label or id; enum names too)
