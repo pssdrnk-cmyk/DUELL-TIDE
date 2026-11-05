@@ -121,7 +121,8 @@ const BROWSE = factoryBrowse();
 
 const twRound = (x) => (x < 0 ? -Math.floor(-x + 0.5) : Math.floor(x + 0.5));   // C's (x * m + 2048) / 4096 for the sign-symmetric rounding
 export class MockUnit {
-  constructor({ caps = 63, playing = false, version = "FELUCCA DUELL 0.2.25 bet", seed = true, savedFlags = true, patchRaw = true, scope2 = true, pat32 = false, bypassCap = true, locksCap = true, morphView = false, storeMax = 128 } = {}) {
+  constructor({ caps = 63, playing = false, version = "FELUCCA DUELL 0.2.25 bet", seed = true, savedFlags = true, patchRaw = true, scope2 = true, pat32 = false, bypassCap = true, locksCap = true, morphView = false, storeMax = 128, tide = false } = {}) {
+    this.tide = tide;                    // INFO 44 01 bit 0: the unit is DUELL with TIDE
     this.storeMax = storeMax;            // the patch records the store takes (INFO 58 01): 126 on DUELL with TIDE; a new record past it is rc 6 (STORE FULL)
     this.morphView = morphView; this.shift = [new Map(), new Map()];   // item 159 (INFO 4F 01): the values read AS SHOWN at the MORPH fader; shift: a part's fader offset per id (shown = stored + offset)
     this.locksCap = locksCap; this.motion = []; this.bypassCap = bypassCap; this.pat32 = pat32; this.scope2 = scope2; this.savedFlags = savedFlags; this.patchRaw = patchRaw; this.prStage = null; this.version = version; this.caps = caps; this.playing = playing;
@@ -189,7 +190,7 @@ export class MockUnit {
   info() {
     const s = (t) => [...t].map((c) => c.charCodeAt(0)).concat(0);
     return [...s(this.version), MOCK_ENGINES.length, L.P_COUNT, L.G_COUNT, L.NSTEP, L.P_E0, ...MOCK_ENGINES.flatMap(s), 4, 0, 0x55, 1, 9, 0x4d, 1, 64, 1, 0x42, 1, this.caps,
-      0x46, 1, 8, 0, 0x53, 1, 3, 0x50, 1, 3, 0x4e, 1, this.menu.length, 0x43, 1, 16, ...(this.caps & 16 ? [0x58, 1, this.capacity & 127, this.capacity >> 7] : []), ...(this.patchRaw ? [0x5a, 1, 1] : []), ...(this.scope2 ? [0x59, 1, NX] : []), ...(this.locksCap ? [0x4c, 1, 3, 0x41, 1, 0, 1] : []), ...(this.bypassCap ? [0x5b, 1, 1] : []), ...(this.morphView ? [0x4f, 1, 1] : [])];
+      0x46, 1, 8, 0, 0x53, 1, 3, 0x50, 1, 3, 0x4e, 1, this.menu.length, 0x43, 1, 16, ...(this.caps & 16 ? [0x58, 1, this.capacity & 127, this.capacity >> 7] : []), ...(this.patchRaw ? [0x5a, 1, 1] : []), ...(this.scope2 ? [0x59, 1, NX] : []), ...(this.locksCap ? [0x4c, 1, 3, 0x41, 1, 0, 1] : []), ...(this.bypassCap ? [0x5b, 1, 1] : []), ...(this.morphView ? [0x4f, 1, 1] : []), ...(this.tide ? [0x44, 1, 1] : [])];
   }
   shown(t, id) { return this.parts[t].p[id] + (this.morphView ? this.shift[t].get(id) ?? 0 : 0); }   // part t's value as its card shows it (item 159)
   // the unit's MORPH fader moved (item 159): part t's shown values are its stored ones + offs ({id: offset}); pushed as the unit does (CHANGED for the selected part, TRACK_CHANGED with WATCH bit 2 for the other)

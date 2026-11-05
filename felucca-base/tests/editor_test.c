@@ -197,30 +197,33 @@ static int preferences(void)
     uint8_t a[4] = {0, 3, 0, 0};          /* (palette 3: a colour theme; DUELL's 7 is GREY, whose T_BG is the neutral one) */
     reset();
     uint32_t n = request(ED_INFO, a, 0);
+    uint32_t e = n - (DUELL_TIDE ? 3u : 0u);   /* (the TIDE tag 44 01 1 is the last block of a TIDE build) */
     bad += check("INFO explicitly tags display capabilities (song rows 0 since DUELL, the SONG lanes tag gone) without changing command 33",
         ED_SONG_RETIRED == 33 && ED_UI_STATE == 34 && ED_FAV_SET == 38 &&
-        host_wire[n - 63] == 0 && host_wire[n - 62] == 0x55 &&
-        host_wire[n - 61] == 1 && host_wire[n - 60] == 9 &&
-        host_wire[n - 59] == 0x4d && host_wire[n - 58] == 1 &&
-        host_wire[n - 57] == 64u && host_wire[n - 56] == 1 &&   /* (64 kept: 41 01 says 128) */
-        host_wire[n - 55] == 0x42 && host_wire[n - 54] == 1 && host_wire[n - 53] == 63 &&   /* (the cloud plan's job A: bit 5, the patch store as logical records, object 40 + a slot; DUELL 0.2.15: bit 4, the patch store's chunks 6..15 as backup ids 27..31 and 35..39; DUELL 0.2.14: bit 2, multis and pattern slots in the backup; bit 3, the user wavetables 24..26 and cmds 81..83) */
-        host_wire[n - 52] == 0x46 && host_wire[n - 51] == 1 && host_wire[n - 50] == FM6_NFACTORY &&
-        host_wire[n - 49] == 0 &&                        /* (no bank since 1.0.3) */
-        host_wire[n - 48] == 0x53 && host_wire[n - 47] == 1 && host_wire[n - 46] == 3 &&
-        host_wire[n - 45] == 0x50 && host_wire[n - 44] == 1 && host_wire[n - 43] == 3 &&   /* FM6 v2: no bank, preset patches */
-        host_wire[n - 42] == 0x4E && host_wire[n - 41] == 1 && host_wire[n - 40] == 32 &&   /* MENU settings: 33 items (0.2.25 hunt4: USB LEVEL, id 10, removed); was 34 items (0.2.25: DRIVE, id 43, removed; 0.2.23: + WIDTH, DRIVE, ids 42, 43; 0.2.22: + SIDECHAIN P1 CH, P1 NOTE, P2 CH, P2 NOTE, ids 38..41; 0.2.21: + COMP's THRESH, RATIO, ATTACK, RELEASE, ids 34..37; 0.2.19: OUTPUT EQ, id 9, retired; + BASS MONO, id 33; 0.2.14: + PERF LEAVE, id 32); (DUELL 0.2.2: STYLE, LARGE, FX LATCH, HELP retired too; 0.2.9: CPU METER, id 26; 0.2.11: MODE RECALL, id 27; 0.2.14: SCOPE, OVERVIEW retired, GLO > MODULES' four, ids 28..31) */
-        host_wire[n - 39] == 0x52 && host_wire[n - 38] == 1 && host_wire[n - 37] == 4 &&   /* RATCH */
-        host_wire[n - 36] == 0x4C && host_wire[n - 35] == 1 && host_wire[n - 34] == 3 &&   /* 1.1 parameter locks */
-        host_wire[n - 33] == 0x41 && host_wire[n - 32] == 1 && host_wire[n - 31] == 0 && host_wire[n - 30] == 1 &&   /* 1.2: 128 */
-        host_wire[n - 29] == 0x54 && host_wire[n - 28] == 1 && host_wire[n - 27] == NUDGE_DIV &&   /* 1.2: NUDGE */
-        host_wire[n - 26] == 0x56 && host_wire[n - 25] == 1 && host_wire[n - 24] == 32 &&   /* 1.4.1: FM6 voice bank */
-        host_wire[n - 23] == 0x43 && host_wire[n - 22] == 1 && host_wire[n - 21] == ML_N &&
-        host_wire[n - 20] == 0x58 && host_wire[n - 19] == 1 && host_wire[n - 18] == (PCAP & 127) && host_wire[n - 17] == (PCAP >> 7) &&
-        host_wire[n - 16] == 0x5A && host_wire[n - 15] == 1 && host_wire[n - 14] == 1 &&
-        host_wire[n - 13] == 0x59 && host_wire[n - 12] == 1 && host_wire[n - 11] == NX &&   /* cloud plan job I: scope 2, the extension slots (NX) */   /* DUELL 0.2.19: PATCH_RAW */   /* DUELL 0.2.15: the patch capacity, 128 as two 7-bit bytes */   /* 1.5: MIDI LEARN */
-        host_wire[n - 7] == 0x4B && host_wire[n - 6] == 1 && host_wire[n - 5] == 1 &&
-        host_wire[n - 10] == 0x5B && host_wire[n - 9] == 1 && host_wire[n - 8] == 1 &&   /* 1.1: BYPASS (cmd 89) */
-        host_wire[n - 4] == 0x4F && host_wire[n - 3] == 1 && host_wire[n - 2] == 1);   /* DUELL: the MIDI MAP (cmds 85..88) */   /* DUELL 0.2.19: PATCH_RAW */   /* DUELL 0.2.15: the patch capacity, 128 as two 7-bit bytes */   /* 1.5: MIDI LEARN */
+        host_wire[e - 63] == 0 && host_wire[e - 62] == 0x55 &&
+        host_wire[e - 61] == 1 && host_wire[e - 60] == 9 &&
+        host_wire[e - 59] == 0x4d && host_wire[e - 58] == 1 &&
+        host_wire[e - 57] == 64u && host_wire[e - 56] == 1 &&   /* (64 kept: 41 01 says 128) */
+        host_wire[e - 55] == 0x42 && host_wire[e - 54] == 1 && host_wire[e - 53] == 63 &&   /* (the cloud plan's job A: bit 5, the patch store as logical records, object 40 + a slot; DUELL 0.2.15: bit 4, the patch store's chunks 6..15 as backup ids 27..31 and 35..39; DUELL 0.2.14: bit 2, multis and pattern slots in the backup; bit 3, the user wavetables 24..26 and cmds 81..83) */
+        host_wire[e - 52] == 0x46 && host_wire[e - 51] == 1 && host_wire[e - 50] == FM6_NFACTORY &&
+        host_wire[e - 49] == 0 &&                        /* (no bank since 1.0.3) */
+        host_wire[e - 48] == 0x53 && host_wire[e - 47] == 1 && host_wire[e - 46] == 3 &&
+        host_wire[e - 45] == 0x50 && host_wire[e - 44] == 1 && host_wire[e - 43] == 3 &&   /* FM6 v2: no bank, preset patches */
+        host_wire[e - 42] == 0x4E && host_wire[e - 41] == 1 && host_wire[e - 40] == 32 &&   /* MENU settings: 33 items (0.2.25 hunt4: USB LEVEL, id 10, removed); was 34 items (0.2.25: DRIVE, id 43, removed; 0.2.23: + WIDTH, DRIVE, ids 42, 43; 0.2.22: + SIDECHAIN P1 CH, P1 NOTE, P2 CH, P2 NOTE, ids 38..41; 0.2.21: + COMP's THRESH, RATIO, ATTACK, RELEASE, ids 34..37; 0.2.19: OUTPUT EQ, id 9, retired; + BASS MONO, id 33; 0.2.14: + PERF LEAVE, id 32); (DUELL 0.2.2: STYLE, LARGE, FX LATCH, HELP retired too; 0.2.9: CPU METER, id 26; 0.2.11: MODE RECALL, id 27; 0.2.14: SCOPE, OVERVIEW retired, GLO > MODULES' four, ids 28..31) */
+        host_wire[e - 39] == 0x52 && host_wire[e - 38] == 1 && host_wire[e - 37] == 4 &&   /* RATCH */
+        host_wire[e - 36] == 0x4C && host_wire[e - 35] == 1 && host_wire[e - 34] == 3 &&   /* 1.1 parameter locks */
+        host_wire[e - 33] == 0x41 && host_wire[e - 32] == 1 && host_wire[e - 31] == 0 && host_wire[e - 30] == 1 &&   /* 1.2: 128 */
+        host_wire[e - 29] == 0x54 && host_wire[e - 28] == 1 && host_wire[e - 27] == NUDGE_DIV &&   /* 1.2: NUDGE */
+        host_wire[e - 26] == 0x56 && host_wire[e - 25] == 1 && host_wire[e - 24] == 32 &&   /* 1.4.1: FM6 voice bank */
+        host_wire[e - 23] == 0x43 && host_wire[e - 22] == 1 && host_wire[e - 21] == ML_N &&
+        host_wire[e - 20] == 0x58 && host_wire[e - 19] == 1 && host_wire[e - 18] == (PCAP & 127) && host_wire[e - 17] == (PCAP >> 7) &&
+        host_wire[e - 16] == 0x5A && host_wire[e - 15] == 1 && host_wire[e - 14] == 1 &&
+        host_wire[e - 13] == 0x59 && host_wire[e - 12] == 1 && host_wire[e - 11] == NX &&   /* cloud plan job I: scope 2, the extension slots (NX) */   /* DUELL 0.2.19: PATCH_RAW */   /* DUELL 0.2.15: the patch capacity, 128 as two 7-bit bytes */   /* 1.5: MIDI LEARN */
+        host_wire[e - 7] == 0x4B && host_wire[e - 6] == 1 && host_wire[e - 5] == 1 &&
+        host_wire[e - 10] == 0x5B && host_wire[e - 9] == 1 && host_wire[e - 8] == 1 &&   /* 1.1: BYPASS (cmd 89) */
+        host_wire[e - 4] == 0x4F && host_wire[e - 3] == 1 && host_wire[e - 2] == 1);   /* DUELL: the MIDI MAP (cmds 85..88) */   /* DUELL 0.2.19: PATCH_RAW */   /* DUELL 0.2.15: the patch capacity, 128 as two 7-bit bytes */   /* 1.5: MIDI LEARN */
+    bad += check("INFO of a TIDE build ends with the TIDE tag 44 01 1; plain DUELL sends none",
+        DUELL_TIDE ? host_wire[n - 4] == 0x44 && host_wire[n - 3] == 1 && host_wire[n - 2] == 1 : host_wire[n - 4] == 0x4F);
     request(ED_UI_SET, a, 2);
     bad += check("UI_SET updates the actual palette and reports RAM-only saving",
         host_wire[5] == 3 && settings.palette == 3 && T_BG == UI_PALETTES[3].bg[ux.part]);

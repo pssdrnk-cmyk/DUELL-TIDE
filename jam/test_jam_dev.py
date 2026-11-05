@@ -154,6 +154,9 @@ class InfoTests(Base):
         i = jd.parse_info(a)
         self.assertEqual((i.duell, i.caps, i.patch_cap, i.engines), ("1.0", 63, 128, ["ANALOG", "-"]))
         self.assertEqual((i.tags[0x59], i.tags[0x4B], i.tags[0x41]), ([16], [1], [0, 1]))
+        self.assertFalse(i.tide)
+        j = jd.parse_info([*a, 0x5B, 1, 1, 0x4F, 1, 1, 0x44, 1, 1])      # the tags after 0x4B: BYPASS, the MORPH view, TIDE (this firmware sends them last)
+        self.assertTrue(j.tide and j.tags[0x44] == [1] and j.tags[0x4F] == [1])
         for bad in ([], [0, 1], [*s("DUELL 1.0"), 3, 1, 1, 1, 1, *s("A")]):
             with self.assertRaises(jd.DuellError):
                 jd.parse_info(bad)

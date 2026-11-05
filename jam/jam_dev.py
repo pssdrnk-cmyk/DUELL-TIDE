@@ -63,7 +63,7 @@ RESTORE_ORDER = [*range(13, 27), 1, 0]
 OLD_PATCH_IDS = [6, 7, 9, 10, 11, 12, 27, 28, 29, 30, 31, 35, 36, 37, 38, 39]
 KNOWN_IDS = set([0, 1, 2, 3, 4, 5, 8, *range(13, 27), 32, 33, 34, *OLD_PATCH_IDS])
 TAG_LEN = {0x55: 3, 0x42: 3, 0x53: 3, 0x50: 3, 0x4E: 3, 0x52: 3, 0x4C: 3, 0x54: 3, 0x56: 3, 0x43: 3, 0x5A: 3, 0x59: 3, 0x4B: 3,
-           0x4D: 4, 0x46: 4, 0x41: 4, 0x58: 4}
+           0x4D: 4, 0x46: 4, 0x41: 4, 0x58: 4, 0x5B: 3, 0x4F: 3, 0x44: 3}
 DUELL_RE = re.compile(r"^(?:FELUCCA )?DUELL (\d+\.\d+(?:\.\d+)?)(?!\S)")
 PORT_RE = re.compile(r"duell", re.I)                     # the unit's USB product name; never probe other gear
 TIMEOUT_MSG = "Backup timed out. Keep the FM-1 connected and stopped."
@@ -319,6 +319,11 @@ class Info:
     patch_cap: Optional[int]
     p_count: int = 0
     tags: dict[int, list[int]] = field(default_factory=dict)
+
+    @property
+    def tide(self) -> bool:
+        """The unit is DUELL with TIDE (INFO tag 44 01, bit 0); a plain DUELL unit sends none."""
+        return bool(self.tags.get(0x44, [0])[0] & 1)
 
     @property
     def duell(self) -> Optional[str]:
@@ -1367,7 +1372,7 @@ def describe(a: Archive) -> str:
 
 def cmd_info(a, conn: Conn, out, ask) -> int:
     i = conn.info
-    print(f"DUELL {i.duell}  ({i.version})", file=out)
+    print(f"DUELL {i.duell}{' with TIDE' if i.tide else ''}  ({i.version})", file=out)
     print(f"port:     {conn.t.port_name}", file=out)
     print(f"caps:     {caps_text(i.caps)}", file=out)
     print(f"patches:  {i.patch_cap if i.patch_cap is not None else 'unknown'} slots", file=out)

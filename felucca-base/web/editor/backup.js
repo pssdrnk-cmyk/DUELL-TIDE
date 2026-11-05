@@ -18,7 +18,7 @@ const isDuell = () => !!info && detectUnit(info.version).kind === "duell";
 const hasCaps = () => !!info && ((info.caps ?? 0) & CAPS_MULTI_PATTERN) === CAPS_MULTI_PATTERN;
 const hasPatchRecords = () => !!info && ((info.caps ?? 0) & CAPS_PATCH_RECORDS) !== 0;
 const objName = (id) => (isPatchKey(id) ? objectLabel(id) : String(id));
-const unitName = () => info.version.replace(/^FELUCCA /, "");
+const unitName = () => info.version.replace(/^FELUCCA /, "") + (info.tide ? " with TIDE" : "");
 
 function refresh() {
   $("connect").disabled = busy || !!link && isDuell();

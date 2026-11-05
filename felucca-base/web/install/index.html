@@ -351,7 +351,7 @@ const progress = (card, total) => (k, a) => {
 // Asks the running unit for INFO (editor protocol, read-only, writes nothing). It never asks for MIDI permission on its own: at load it
 // only goes ahead when Chrome already allowed MIDI with SysEx for this page (earlier visit); otherwise the "Check the unit" button
 // asks (the same prompt the other buttons show). No answer, other firmware, or update mode all count as "not DUELL".
-const infoString = (a) => { const z = a.indexOf(0); return z < 0 ? "" : String.fromCharCode(...a.slice(0, z)); };
+const infoString = (a) => { const z = a.indexOf(0); if (z < 0) return ""; let tide = false; try { tide = parseInfo(a).tide; } catch { /* the version alone */ } return String.fromCharCode(...a.slice(0, z)) + (tide ? " TIDE" : ""); };
 async function probeUnit(midi) {
   const outs = [...midi.outputs.values()];
   let talked = false;
@@ -481,7 +481,7 @@ function saveArchive(archive, name) {
   document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 function archiveInfo(a) {
-  const { version, tags, caps, patchCap } = parseInfo(a);
+  const { version: v0, tags, caps, patchCap, tide } = parseInfo(a), version = v0 + (tide ? " TIDE" : "");   // (a TIDE unit: "DUELL 1.1 TIDE", which detectUnit reads)
   // the firmware reports "FELUCCA <version string>", DUELL's too. A complete backup needs the preferences, motion and backup tags
   // (the song-rows byte is not compared: Felucca sent 16, DUELL sends 0) and the backup tag's bit 0.
   const supported = /^FELUCCA /i.test(version) && tags.has(0x55) && tags.has(0x4d) && caps !== null && !!(caps & 1);

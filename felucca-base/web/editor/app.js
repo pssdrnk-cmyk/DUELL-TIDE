@@ -981,7 +981,7 @@ async function connect() {
       app.octave = 0; app.active = 0;
     }
     app.unit = u;
-    setStatus(DEMO ? "DEMO: a simulated DUELL, no unit connected" : `Connected: ${u.info.version.replace(/^FELUCCA /, "")}${MOCK ? " (simulated)" : ""}`, "good");
+    setStatus(DEMO ? "DEMO: a simulated DUELL, no unit connected" : `Connected: ${u.info.version.replace(/^FELUCCA /, "")}${u.info.tide ? " with TIDE" : ""}${MOCK ? " (simulated)" : ""}`, "good");
     $("connect").hidden = true; $("disconnect").hidden = DEMO;
     startTheme(u);
     renderMain();

@@ -28,6 +28,8 @@ const bytesOf = (a) => new Map([...a.objects].map(([id, o]) => [id, o.bytes]));
   const info = parseInfo(await u.request([1, []]));
   ok(info.version === "FELUCCA DUELL 0.2.25 bet" && info.engines.length === MOCK_ENGINES.length && info.caps === 63 && info.patchCap === 128, "INFO: version, engine names, backup caps 63 (bit 2: multis and patterns, bit 3: user wavetables, bit 4: 128 patches, bit 5: patch records), patch capacity 128");
   ok(parseInfo(await new MockUnit({ caps: 3 }).request([1, []])).caps === 3, "INFO: a unit without bit 2 reports caps 3");
+  ok(parseInfo(await new MockUnit({ tide: true }).request([1, []])).tide === true && parseInfo(await u.request([1, []])).tide === false && parseInfoInst(await new MockUnit({ tide: true }).request([1, []])).tide === true,
+     "INFO: tag 44 01 marks a TIDE unit (the editor's and the installer's readers); a plain DUELL unit sends none");
   const wire = await u.request([65, []]);
   ok(wire[0] === 1 && wire[1] === 0 && wire[2] === 24 && Array.from({ length: 24 }, (_, i) => wire[3 + 11 * i]).join() === "0,1,2,3,4,5,8,13,14,15,16,17,18,19,20,21,22,23,24,25,26,32,33,34", "LIST (caps 63): 24 ids, 0 1 2 3 4 5 8 13..26 32 33 34; the patch chunk ids 6 7 9..12 27..31 35..39 are not listed");
   const list = await listUnit((r, o) => u.request(r, o));

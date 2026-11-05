@@ -168,7 +168,7 @@ export function describe(objects, engines = [], oldPatchChunks = 0) {
 export const OLD_CHUNKS_NOTE = "Patches saved by an older firmware (physical chunks) are in this file but cannot be restored.";
 
 // ---- INFO (cmd 1): version, engine names, and the capability tags. caps: the `42 01 caps` tag (null: a unit without it)
-const TAG_LEN = { 0x55: 3, 0x4d: 4, 0x42: 3, 0x46: 4, 0x53: 3, 0x50: 3, 0x4e: 3, 0x52: 3, 0x4c: 3, 0x41: 4, 0x54: 3, 0x56: 3, 0x43: 3, 0x58: 4, 0x5a: 3 };
+const TAG_LEN = { 0x55: 3, 0x4d: 4, 0x42: 3, 0x46: 4, 0x53: 3, 0x50: 3, 0x4e: 3, 0x52: 3, 0x4c: 3, 0x41: 4, 0x54: 3, 0x56: 3, 0x43: 3, 0x58: 4, 0x59: 3, 0x5a: 3, 0x5b: 3, 0x4b: 3, 0x4f: 3, 0x44: 3 };
 export function parseInfo(a) {
   let pos = a.indexOf(0);
   if (pos < 1) throw new Error("The unit sent an unreadable INFO");
@@ -181,13 +181,14 @@ export function parseInfo(a) {
     engines.push(String.fromCharCode(...a.slice(pos, end))); pos = end + 1;
   }
   pos += 2;                                            // NTRK, song rows
-  let caps = null, patchCap = null;
+  let caps = null, patchCap = null, tide = false;
   while (pos < a.length && TAG_LEN[a[pos]]) {
     if (a[pos] === 0x42 && a[pos + 1] === 1) caps = a[pos + 2];
+    if (a[pos] === 0x44 && a[pos + 1] === 1) tide = (a[pos + 2] & 1) !== 0;   // DUELL with TIDE
     if (a[pos] === 0x58 && a[pos + 1] === 1) patchCap = a[pos + 2] | a[pos + 3] << 7;   // the patch capacity (DUELL 0.2.15)
     pos += TAG_LEN[a[pos]];
   }
-  return { version, engines, caps, patchCap };
+  return { version, engines, caps, patchCap, tide };
 }
 
 // ---- the file

@@ -47,21 +47,22 @@ export const SMART = {
   hint:    "Connect the FM-1 to check.",
   keepOwn: "You chose to keep the data: anything an older firmware left on the unit stays.",
   eraseOwn: "You chose to erase: your patches and settings will be erased after the install.",
-  detected: { duell: (v) => `Detected: DUELL ${v} running`, other: "Detected: not DUELL (or no answer)", none: "Not checked yet. Connect the FM-1 and press \"Check the unit\"." },
+  detected: { duell: (v, tide = false) => `Detected: DUELL ${v}${tide ? " with TIDE" : ""} running`, other: "Detected: not DUELL (or no answer)", none: "Not checked yet. Connect the FM-1 and press \"Check the unit\"." },
   checking: "Checking the unit ...",
 };
 // info: the version string from INFO (a string), or null/undefined/anything else when the unit gave no usable answer.
 // Returns { kind: "duell", version } or { kind: "other" }. (Not having asked at all is `null` for the caller, never this.)
+// A TIDE unit's INFO has the tag 44 01 1 (its version string stays "DUELL 1.1"); the page passes "DUELL 1.1 TIDE" then, and { tide: true } comes back.
 export function detectUnit(info) {      // (item 91: a test build "DUELL 1.1.0-test3" is DUELL too; before, it read as "not DUELL" and the erase box came up ticked)
-  const m = typeof info === "string" ? /^(?:FELUCCA )?DUELL (\d+\.\d+(?:\.\d+)?(?:-test\d+)?)(?!\S)/.exec(info.trim()) : null;
-  return m ? { kind: "duell", version: m[1] } : { kind: "other" };
+  const m = typeof info === "string" ? /^(?:FELUCCA )?DUELL (\d+\.\d+(?:\.\d+)?(?:-test\d+)?)( TIDE)?(?!\S)/.exec(info.trim()) : null;
+  return m ? { kind: "duell", version: m[1], tide: !!m[2] } : { kind: "other" };
 }
 // The erase box: detected = detectUnit(...) or null (not asked / could not talk yet); touched = the user clicked the box;
 // current = the box as it stands. Once touched the box is never changed. Returns what the page shows.
 export function eraseDecision({ detected = null, touched = false, current = false } = {}) {
   const isDuell = !!detected && detected.kind === "duell";
   const checked = touched ? !!current : !isDuell;
-  const line = !detected ? SMART.detected.none : isDuell ? SMART.detected.duell(detected.version) : SMART.detected.other;
+  const line = !detected ? SMART.detected.none : isDuell ? SMART.detected.duell(detected.version, detected.tide) : SMART.detected.other;
   let help = isDuell ? SMART.duell : SMART.clean;
   if (touched && checked && isDuell) help = SMART.eraseOwn;
   else if (touched && !checked && !isDuell) help = SMART.keepOwn;
