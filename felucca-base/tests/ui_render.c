@@ -2357,8 +2357,8 @@ int main(int argc, char **argv)
         boxf = fopen(ap, "w");
     }
     {   /* TIDE's header messages: each must fit the title room (a long one wrapped onto a second line and overlapped the first) */
-        static const char *const M[] = {"PARTS LEAD IN TURNS", "PARTS VARY TOGETHER", "GLIDE SOUND + SEQ", "NO AUTO TIDE YET",
-            "DROP CANCELLED", "VARY BARS 4 + 8", "VARY EVERY BAR", "STYLE AMBIENT", "STYLE MINIMAL", "GLIDE STOPPED", "NOTHING TO KEEP", "PARTS TAKE TURNS", "GLIDE TO B", "WASH HIGH", "SEQ KEPT", "SOUND KEPT"};
+        static const char *const M[] = {"BACK TO ORIGINAL", "PARTS LEAD IN TURNS", "PARTS VARY TOGETHER", "GLIDE SOUND + SEQ", "DROP NEEDS WNDR/JRNY",
+            "DROP CANCELLED", "VARY EVERY 4TH", "VARY EVERY BAR", "STYLE AMBIENT", "STYLE MINIMAL", "GLIDE STOPPED", "NOTHING TO KEEP", "PARTS TAKE TURNS", "GLIDE TO B", "WASH HIGH", "SEQ KEPT", "SOUND KEPT"};
         uint32_t m;
         for (m = 0; m < sizeof M / sizeof M[0]; m++) {
             setup(S_HOME); pal(UI_DEFAULT_INDEX); song.rec = 0; usb.config = 0;
@@ -2370,7 +2370,7 @@ int main(int argc, char **argv)
     {   /* AUTO TIDE / TIDE SETTINGS in the states the page sweep does not reach (audit 2026-11-04 lane C, C8): BOTH parts, gliding, armed, ARC, WAIT, POLY, 32 steps, the list's last rows,
          * the ARC trip line, the list with inert rows */
         static const char *const NM[] = {"at_single_rest", "at_both_rest", "at_both_glide", "at_both_armed_stopped", "at_both_arc_recover_dropnext",
-                                         "at_both_waiting16", "at_single_glide_32steps", "ts_bottom", "at_both_poly", "at_both_minimal_text", "at_both_arc_trip", "ts_inert", "ts_inert_dim"};
+                                         "at_both_waiting16", "at_single_glide_32steps", "ts_bottom", "at_both_poly", "at_both_minimal_text", "at_both_arc_trip", "ts_inert", "ts_inert_dim", "ts_top"};
         uint32_t pi, sc, k, i;
         for (pi = 0; pi < NPAGES && strcmp(PAGES[pi].title, "AUTO TIDE"); pi++) ;
         for (sc = 0; sc < sizeof NM / sizeof NM[0]; sc++) {
@@ -2395,8 +2395,9 @@ int main(int argc, char **argv)
             if (sc == 5) { gl.hold = 1; gl.wait = 5; gl.prog = (1u << GLIDE_Q) - 1u; }
             if (sc == 8) { poly_len[0] = 12; }
             if (sc == 9) { gl.on = 0; gl.mode = GM_DRIFT; }
-            if (sc == 7 || sc >= 11) { for (pg = 0; pg < NPAGES && strcmp(PAGES[pg].title, "TIDE SETTINGS"); pg++) ; jl_sel = (uint8_t)(sc == 11 ? JL_TURNS : JL_N - 1); }
-            if (sc >= 11) { gl.mode = sc == 11 ? GM_ONCE : GM_JOURNEY; morph_musical = sc == 12; gl.target = GT_SOUND; }
+            if (sc == 7 || sc >= 11) { for (pg = 0; pg < NPAGES && strcmp(PAGES[pg].title, "TIDE SETTINGS"); pg++) ; jl_sel = (uint8_t)(sc == 11 ? JL_TURNS : sc == 13 ? JL_STYLE : JL_N - 1); }
+            if (sc == 13) { tide_style = STY_CUSTOM; gl.target = GT_BOTH; morph_musical = 1; sqm_vary_all = 0; }   /* (the README's TIDE SETTINGS picture: the top of the list) */
+            if (sc == 11 || sc == 12) { gl.mode = sc == 11 ? GM_ONCE : GM_JOURNEY; morph_musical = sc == 12; gl.target = GT_SOUND; }
             ui.page = (uint8_t)pg;
             ui.force = 1;
             cur_name = NM[sc];
@@ -2405,7 +2406,7 @@ int main(int argc, char **argv)
             write_ppm(out, "VIOLET", NM[sc]);
             pal(UI_GREY_INDEX); ui.force = 1; draw(-1); lint(); write_ppm(out, "GREY", NM[sc]);
         }
-        song.playing = 0; gl.on = 0; gl.armed = 0; gl.hold = 0; sqm_arc = 0; tarc.run = 0; tarc.hand = 0; poly_len[0] = 0; jl_sel = 0; morph_musical = 1; sqm_auto = 0;
+        song.playing = 0; gl.on = 0; gl.armed = 0; gl.hold = 0; sqm_arc = 0; tarc.run = 0; tarc.hand = 0; poly_len[0] = 0; jl_sel = 0; morph_musical = 1; sqm_auto = 0; tide_style = STY_DUB;
     }
     if (audf) fprintf(audf, "screen\ttexts\ttext_px\ticons\ticon_px\tkeycaps\tkeycap_px\tellipsised\ttight\twords\ttight_list\n");
     {   /* the lint itself: an overlap, a value too wide for its column, a text past its canvas, one past its cell */

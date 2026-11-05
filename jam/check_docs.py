@@ -18,7 +18,7 @@ bad = []
 MODE = {"GM_ONCE": "ONCE", "GM_LOOP": "LOOP", "GM_DRIFT": "DRIFT", "GM_WANDER": "WNDR", "GM_JOURNEY": "JRNY"}
 TIME = ["1", "2", "4", "8", "16", "32", "64"]
 WAIT = ["OFF", "1", "2", "4", "8", "16"]
-VARY = ["4 + 8", "ALL"]
+VARY = ["EVERY 4TH", "EVERY BAR"]
 TURNS = ["TOGETHER", "TAKE TURNS", "LEAD"]
 POLY = ["OFF", "GENTLE", "WIDE"]
 SYNC = ["OFF", "SOFT", "PUSH"]
@@ -54,8 +54,7 @@ def doc_styles(path):
             continue
         vals = cells[1:]
         if len(vals) == 1:
-            vals = [norm(c) for c in vals[0].replace("4 + 8", "4+8").split(", ")]
-            vals = [("4 + 8" if c == "4+8" else c) for c in vals]
+            vals = [norm(c) for c in vals[0].split(", ")]
         found[cells[0]] = vals
     return found
 

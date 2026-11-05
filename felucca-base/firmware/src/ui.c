@@ -391,7 +391,6 @@ static void mods_run_put(uint32_t k, uint32_t v)       /* k 0 ARP, 1 SEQ; v as m
  * is the header's line for the PLAY button, which still runs the clock */
 static const char *const MODS_NAME[4] = {"ARP", "SEQ", "SENDS", "PART FX"};
 static const char *const MODS_FULL[4] = {"MODULES: ARP OFF", "MODULES: SEQ OFF", "MODULES: SENDS OFF", "MODULES: PART FX OFF"};
-static uint32_t mods_idx(uint32_t bit) { return bit == MODS_ARP ? 0u : bit == MODS_SEQ ? 1u : bit == MODS_SENDS ? 2u : 3u; }
 /* the module a parameter belongs to (MODS_*; 0: none): glob a song.g id, else a part's. SENDS: the three sends and the CHORUS, DELAY 1/2,
  * 2/2 and REVERB pages' globals; PART FX: DIST, INSERT, EQ, DUCK (its MIDI channel and note are the device's: GLO > SIDECHAIN); ARP: the arp's nine; SEQ: the
  * steps' DIV and SWING (they only time the playback; LEN and GATE also serve the editing and STEP PREVIEW) */

@@ -179,6 +179,34 @@ static void test_inert_rows(void)
     gl.target = GT_BOTH;
 }
 
+/* ---- TIDE SETTINGS: knobs 2 .. 4 turn the picked row's value, a mark shows where the window is in the list (audit C12) ---- */
+static void test_list_knobs(void)
+{
+    ui_power_on(); frame();
+    go_title("TIDE SETTINGS");
+    gl.target = GT_SOUND;
+    jl_sel = JL_TARGET;
+    tide_knob(1u, 1);
+    CHECK("LIST: knob 2 right is the next value", gl.target == GT_SEQ);
+    tide_knob(3u, 7);
+    CHECK("LIST: knob 4 right, a step an event", gl.target == GT_BOTH);
+    tide_knob(2u, 1);
+    CHECK("LIST: it stops at the last value", gl.target == GT_BOTH);
+    tide_knob(2u, -3);
+    CHECK("LIST: knob 3 left is the one before", gl.target == GT_SEQ && jl_sel == JL_TARGET);
+    CHECK("LIST: the row names say what they do (D9)", !strcmp(JL_NAME[JL_ARP], "ROLL ARP") && !strcmp(JL_NAME[JL_PITCH], "ROLL PITCH") && !strcmp(JL_NAME[JL_WASH], "WASH") &&
+          !strcmp(jl_vname(JL_TARGET, 2), "SND+SEQ") && !strcmp(jl_vname(JL_VARY, 0), "EVERY 4TH") && !strcmp(jl_vname(JL_VARY, 1), "EVERY BAR"));
+    sqm_arc = 1; sqm_auto = 0;
+    CHECK("LIST: a hand drop with no automatic tide says what it needs", !strcmp(tarc_drop_hand(), "DROP NEEDS WNDR/JRNY"));
+    sqm_arc = 0;
+    jl_sel = JL_STYLE;
+    ui.force = 1; ui_draw();
+    CHECK("LIST: the scroll mark is at the top with the first row picked", px_is(236, UT_L5_Y0 + 2, T_MID) && px_is(236, UT_L5_Y0 + 6 * UT_L5_PITCH - 2, T_RAISE));
+    jl_sel = JL_N - 1;
+    ui.force = 1; ui_draw();
+    CHECK("LIST:   and at the bottom with the last", px_is(236, UT_L5_Y0 + 6 * UT_L5_PITCH - 2, T_MID) && px_is(236, UT_L5_Y0 + 2, T_RAISE));
+}
+
 /* ---- AUTO TIDE: the ARC line keeps the trip ---- */
 static void test_arc_trip(void)
 {
@@ -203,13 +231,40 @@ static void test_arc_trip(void)
     song.playing = 0; gl.on = 0;
 }
 
+/* ---- the footer: a JRNY / MORPH TO destination keeps the "#NN" of the Original's label (audit C11) ---- */
+static void test_footer_number(void)
+{
+    char a[20], b[20], want[20];
+    uint32_t e, j, r;
+    ui_power_on(); frame();
+    e = trk[0].eng_req % NENGINES;
+    j = (trk[0].preset + 1u) % ds_count(e);
+    morph_ready(0);
+    CHECK("footer: the destination can be set", morph_to_sound(0, 1u, j));
+    tide_part_name(0, a);
+    CHECK("footer: at A the part's own label has its number", a[0] == '#');
+    morph_do(MQ_FADER, 1u, 127u);
+    frame();
+    tide_part_name(0, b);
+    r = ds_list_rank(e, j);
+    want[0] = 0;
+    if (r < UP_USER0 && !up_used(r)) {
+        up_slot_label(want, r);
+        str_cpy(want + str_len(want), " ", 2);
+    }
+    str_cpy(want + str_len(want), ds_name(e, j), 16);
+    CHECK("footer: at B the destination shows its number and name", !strcmp(b, want) && strcmp(a, b));
+}
+
 int main(void)
 {
     test_roll_playhead();
     test_roll_poly_dim();
     test_style_custom();
     test_inert_rows();
+    test_list_knobs();
     test_arc_trip();
+    test_footer_number();
     printf("uitruth: %u checks, %u failed\n", checks, failures);
     return failures ? 1 : 0;
 }
