@@ -139,7 +139,7 @@ export const NOT_RELEASED = {
 };
 export const HASH_TEXT = {
   checking: "Checking the SHA-256 in your browser ...",
-  ok: "SHA-256 checked in this browser: it matches the release.",
+  ok: "SHA-256 checked in this browser: it matches the release data of this site. The release notes on GitHub print the same value: compare them.",
   nohash: "The release data has no SHA-256 for this build, so it cannot be checked. Nothing will be written.",
   size: "The downloaded file has another size than the release says. It was not accepted. Nothing will be written.",
   bad: (want, got) => `The downloaded file does not match the release's SHA-256 (release ${want}, file ${got}). ` +
