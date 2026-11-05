@@ -38,8 +38,8 @@ for g in $groups; do
     timeout "$LIMIT" sh host_tests.sh "$g" > "$out" 2>&1
     rc=$?
     # a check that failed before the group reached a part it cannot run here is a failure, not a skip: the group's own FAIL lines
-    # (not the runner's "   FAIL" summary, which a fork stop also prints) and failed assertions come first
-    real=$(grep -E "FAIL|Assertion failed" "$out" | grep -vE "^   FAIL|which Windows does not have: skipped|(^|[^0-9])0 FAIL" | head -1)
+    # (not the runner's "   FAIL" summary, which a fork stop also prints, and not a "   PASS (detected ... first: x: FAIL ...)" line: a mutation test names the check that caught it) and failed assertions come first
+    real=$(grep -E "FAIL|Assertion failed" "$out" | grep -vE "^   FAIL|^   PASS|which Windows does not have: skipped|(^|[^0-9])0 FAIL" | head -1)
     if [ $rc -eq 124 ]; then
         echo "TIMEOUT $g (over ${LIMIT} s)"; fail=$((fail + 1)); failed="$failed $g"
     elif [ -n "$real" ]; then
