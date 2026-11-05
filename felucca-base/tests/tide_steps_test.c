@@ -323,6 +323,58 @@ static void run_scn(const scn_t *c, uint32_t id)
     frame();
 }
 
+/* C5 (roles spec): PLAY alone, no key held. An ARP SEQ part's ghost chord is built from C4 plus the part's TRN, so a part with TRN -12 plays
+ * its first step from 48 (the step is no offset) and the same part with TRN 0 from 60. Channel 1, the first note-on after PLAY. */
+static int ghost_first_note(int trn)
+{
+    uint32_t blk, found = 0xFFFFu;
+    ui_power_on();
+    frame();
+    gl.on = gl.armed = 0;
+    transport_req = 2u;
+    frame();
+    frame();
+    build(3);
+    memset(trk[0].step, 0, sizeof trk[0].step);
+    trk[0].step[0] = hit(60u, 100u);
+    trk[0].p[P_SLEN] = 16;
+    trk[0].p[P_CHRD] = 0;                                    /* (CHRD OFF: the ghost is one note) */
+    trk[0].p[P_TRANS] = (int16_t)trn;
+    trk[0].p[P_SQNT] = 1;
+    trk[0].p[P_MUTE] = 0;
+    trk[0].nheld = 0;
+    trk[0].seq_active = 1;
+    trk[1].p[P_MUTE] = 1;
+    song.g[G_BPM] = 240;
+    song.g[G_CLOCK] = 0;
+    song.g[G_SWING] = 50;
+    midi_pch[0] = 0;
+    midi_pch[1] = 1;
+    usb.config = 1;
+    mo_w = mo_r = 0;
+    glide_launch(1u, 3u, 0);
+    for (blk = 0; blk < 400u && found == 0xFFFFu; blk++) {
+        events_block(CTL);
+        while (mo_r != mo_w) {
+            uint32_t e = midi_out_q[mo_r % MQ];
+            mo_r++;
+            if (((e >> 8) & 0xFFu) == 0x90u && found == 0xFFFFu)
+                found = (e >> 16) & 0x7Fu;
+        }
+    }
+    transport_req = 2u;
+    frame();
+    frame();
+    return (int)found;
+}
+static void ghost_register(void)
+{
+    int n0 = ghost_first_note(0), n12 = ghost_first_note(-12);
+    printf("tidesteps: the ghost's first note: TRN 0 -> %d, TRN -12 -> %d\n", n0, n12);
+    CHECK("PLAY alone: an ARP SEQ part with TRN 0 plays its ghost from C4 (60)", n0 == 60);
+    CHECK("PLAY alone: an ARP SEQ part with TRN -12 plays its ghost from 48 (C5 spec: the ghost applies TRN)", n12 == 48);
+}
+
 int main(void)
 {
     static const scn_t S[] = {

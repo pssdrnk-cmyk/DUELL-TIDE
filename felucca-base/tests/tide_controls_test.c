@@ -408,6 +408,7 @@ static void test_seq_ghost(void)
     memset(t->step, 0, sizeof t->step);
     for (i = 0; i < 4u; i++) { t->step[i].time = ST_NOTE; t->step[i].n = 1; t->step[i].note[0] = (uint8_t)(60 + 2 * i); t->step[i].vel = 100; }
     t->p[P_AMODE] = AM_SEQ_ID; t->p[P_ARATE] = 5; t->p[P_APROB] = 127; t->p[P_AOCT] = 1;
+    t->p[P_TRANS] = 0;                                       /* (the ghost is C4 plus TRN since roles spec C5; the first start's part 1 carries its own TRN) */
     memset(tide_chord_n, 0, sizeof tide_chord_n);
     run(320);
     CHECK("seq ghost: stopped, no key: silent as before", !t->arp_note);
@@ -440,6 +441,7 @@ static void test_seq_ghost_chord(void)
     for (i = 0; i < 4u; i++) { t->step[i].time = ST_NOTE; t->step[i].n = 1; t->step[i].note[0] = 60; t->step[i].vel = 100; }
     t->p[P_AMODE] = AM_SEQ_ID; t->p[P_ARATE] = 5; t->p[P_APROB] = 127; t->p[P_AOCT] = 1;
     t->p[P_VOICE] = V_POLY; t->p[P_CHRD] = 7; t->p[P_VOIC] = 0;                    /* MIN7, CLOSE */
+    t->p[P_TRANS] = 0;
     memset(tide_chord_n, 0, sizeof tide_chord_n);
     run(320);
     transport_req = 1u;
