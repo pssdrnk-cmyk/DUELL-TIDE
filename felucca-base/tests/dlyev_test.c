@@ -32,7 +32,7 @@ static int mapm(int m) { return m == 0 ? (t_pp ? DMD_PING : DMD_DIGITAL) : m == 
  * (docs/JAM11_SOUND_REFERENCES.md). 1.0: plain / LAYER 0xa6ed282e79e1eb73, PING-PONG 0x66f304e16ff4684d, + DEPTH 0x2d1f57efffb7d6ea, DUEL 0x88f81196f4b235b6 */
 #define H_PLAIN 0x07c7f62034d7a649ull
 #define H_PP 0x35359c7d06e2cf1eull
-#define H_PPMOD 0xf6cf76a96437bd62ull
+#define H_PPMOD 0x6df48582eb36fe46ull   /* (audit R07: re-made, MDEPTH 60 is about +-15 cents now, 0.46 of the old sweep; was 0xf6cf76a96437bd62ull) */
 #define H_LAYER 0x07c7f62034d7a649ull
 #define H_DUEL 0xa0ad17f248d529e1ull
 
