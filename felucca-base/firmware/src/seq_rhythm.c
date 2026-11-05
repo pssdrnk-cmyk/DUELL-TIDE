@@ -195,8 +195,10 @@ static int rhythm_mutate(uint32_t pi, uint32_t seed)
     }
     return 0;
 }
+static uint32_t tarc_need(void);                      /* (seq_arc.c: the loops a part plays between its phrase edits) */
 static void rhythm_poll(uint32_t mask)
 {
+    uint32_t need = tarc_need();
     uint32_t boundary = 0;
     for (uint32_t pi = 0; pi < NSHOWN; pi++) {
         uint8_t now = tide_seq_loops[pi], d = (uint8_t)(now - rhythm.seen[pi]);
@@ -204,11 +206,11 @@ static void rhythm_poll(uint32_t mask)
         if (!((mask >> pi) & 1u) || !SQM_AMT(&sqm[pi])) { rhythm.repeats[pi] = 0; continue; }
         if (d) boundary |= 1u << pi;
         uint32_t n = rhythm.repeats[pi] + d;
-        rhythm.repeats[pi] = (uint8_t)(n > 2u ? 2u : n);
+        rhythm.repeats[pi] = (uint8_t)(n > need ? need : n);
     }
     for (uint32_t n = 0; n < NSHOWN; n++) {
         uint32_t pi = (rhythm.turn + n) % NSHOWN;
-        if (!((boundary >> pi) & 1u) || rhythm.repeats[pi] < 2u) continue;
+        if (!((boundary >> pi) & 1u) || rhythm.repeats[pi] < need) continue;
         if (phrase_mutate(pi, morph_new_seed())) {
             rhythm.turn = (uint8_t)(pi ^ 1u);
             for (uint32_t k = 0; k < NSHOWN; k++) rhythm.repeats[k] = 0;

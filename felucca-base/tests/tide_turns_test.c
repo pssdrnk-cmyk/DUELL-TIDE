@@ -1100,8 +1100,22 @@ static void t_arp_clock(void)
           arp + 1u >= plain && plain + 1u >= arp && (arp > sdiv + 1u || sdiv > arp + 1u));
 }
 
+/* M09: the phrase edits' cadence follows ARC (every loop in the rise, every 4th in the breakdown, else every 2nd) */
+static void t_cadence(void)
+{
+    uint32_t rise, brk, peak, off;
+    sqm_arc = 1, sqm_auto = 3, tarc.run = 1;
+    tarc.phase = AP_RISE, rise = tarc_need();
+    tarc.phase = AP_BREAK, brk = tarc_need();
+    tarc.phase = AP_PEAK, peak = tarc_need();
+    sqm_arc = 0, off = tarc_need();
+    sqm_arc = 1;
+    CHECK("phrase edit cadence: rise 1 loop, breakdown 4, peak 2, ARC off 2", rise == 1u && brk == 4u && peak == 2u && off == 2u);
+}
+
 int main(void)
 {
+    t_cadence();
     t_arp_clock();
     t_fader_edit();
     t_turns();
