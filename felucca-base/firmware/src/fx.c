@@ -39,8 +39,8 @@ typedef struct {
     int32_t sh_hp, sh_he;                /* .. its output's low cut (~14 Hz) and that step's remainder */
     uint32_t sh_pu, sh_pd;               /* .. 0.2.19 PITCH / MOD (fx_bus.c rev_shimx): the up and the down grains' phase (Q16 of SH_LEN), */
     uint32_t sh_l1, sh_l2;               /* .. the MOD's two sines, */
-    int32_t sh_z1, sh_z2, sh_z3, sh_z4;  /* DUELL 1.1 REVERB_FIX: SHIM's input low-pass (fx_bus.c sh_lp): the two samples before of each of its two stages */
-    int32_t sh_q1, sh_q2, sh_q3, sh_q4;  /* .. DUELL 1.1 (owner 2026-10-25, SHIM whistle): the return's low-pass (fx_bus.c sh_rlp), the same two stages */
+    int32_t sh_z[4];                     /* DUELL 1.1 REVERB_FIX: SHIM's input low-pass (fx_bus.c sh_lp2): the two samples before of each of its two stages */
+    int32_t sh_q[4];                     /* .. DUELL 1.1 (owner 2026-10-25, SHIM whistle): the return's low-pass (fx_bus.c sh_lp2), the same two stages */
     int32_t sh_g;                        /* .. the return's gain (Q15: it fades out and in over a change of PITCH), */
     uint8_t sh_x, sh_cfg;                /* .. sh_x 1: rev_shimx runs (0: the plain loop, the state above is from rest), sh_cfg the PITCH it plays (SHP_*) */
     int32_t rs_lp[4];                    /* RESO (ported from JIANT): the combs' loop low-passes */
@@ -313,20 +313,26 @@ static inline int32_t dc_block(int32_t x, int32_t *dc, int32_t *err)
     return x - ((*dc + 32) >> 6);
 }
 
+/* the limiter's envelope follower for a peak a (attack a quarter of the way, release 1 / 4096 of the way to LIM_T, at least 1): the gain (Q15, < 32768) the envelope asks, or 0
+ * for none (audit R13: master_out and the SPLIT limiter each had this) */
+static inline int32_t lim_gain(int32_t a, int32_t *env)
+{
+    if (a > *env)
+        *env += (a - *env) >> 2;
+    else if (*env > LIM_T)
+        *env -= ((*env - LIM_T) >> 12) + 1;
+    return *env > LIM_T ? (int32_t)(((uint32_t)LIM_T << 15) / (uint32_t)*env) : 0;
+}
+
 static inline void master_out(int32_t *l, int32_t *r)
 {
-    int32_t al, ar, a;
+    int32_t al, ar, g;
     *l = dc_block(*l, &dc_l, &dce_l);
     *r = dc_block(*r, &dc_r, &dce_r);
     al = *l < 0 ? -*l : *l;
     ar = *r < 0 ? -*r : *r;
-    a = al > ar ? al : ar;
-    if (a > lim_env)
-        lim_env += (a - lim_env) >> 2;
-    else if (lim_env > LIM_T)
-        lim_env -= ((lim_env - LIM_T) >> 12) + 1;
-    if (lim_env > LIM_T) {
-        int32_t g = (int32_t)(((uint32_t)LIM_T << 15) / (uint32_t)lim_env);   /* < 32768 */
+    g = lim_gain(al > ar ? al : ar, &lim_env);
+    if (g) {
         *l = lim_mul(*l, g);
         *r = lim_mul(*r, g);
     }
@@ -339,16 +345,8 @@ static inline void master_out(int32_t *l, int32_t *r)
 static int32_t lim_env_r = LIM_T;
 static inline int32_t lim_one(int32_t x, int32_t *env)
 {
-    int32_t a = x < 0 ? -x : x;
-    if (a > *env)
-        *env += (a - *env) >> 2;
-    else if (*env > LIM_T)
-        *env -= ((*env - LIM_T) >> 12) + 1;
-    if (*env > LIM_T) {
-        int32_t g = (int32_t)(((uint32_t)LIM_T << 15) / (uint32_t)*env);
-        x = lim_mul(x, g);
-    }
-    return x;
+    int32_t g = lim_gain(x < 0 ? -x : x, env);
+    return g ? lim_mul(x, g) : x;
 }
 static inline void master_out_split(int32_t *l, int32_t *r)
 {

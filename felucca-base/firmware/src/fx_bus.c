@@ -270,27 +270,16 @@ static inline __attribute__((always_inline)) int32_t sh_grain(const int16_t *b, 
 #endif
 /* DUELL 1.1 REVERB_FIX: SHIM's octave-up line is read at two samples a step, so what is above a quarter of the sample rate folded back into the audible range as whistles (15.3, 9.6, 7.7 kHz in the audit). The sample that goes into the line is first
  * run through a 1 2 1 low-pass (zero at half the sample rate, -6 dB at a quarter, unity at DC); its two past inputs are the bus's own state.
- * DUELL 1.1 (owner 2026-10-25, the whistle still heard): two such stages one after the other (1 4 6 4 1 over 16: -5.5 dB at 7.7 kHz, -12 dB at a quarter of the sample rate), and the same two stages on the return (sh_rlp). Both are plain
+ * DUELL 1.1 (owner 2026-10-25, the whistle still heard): two such stages one after the other (1 4 6 4 1 over 16: -5.5 dB at 7.7 kHz, -12 dB at a quarter of the sample rate), and the same two stages on the return (sh_q). Both are plain
  * averages of the last samples: no recursion, so they add no ringing of their own and the tail still ends in exact silence */
-static inline int32_t BUS_FN(sh_lp)(int32_t r)
+static inline int32_t BUS_FN(sh_lp2)(int32_t r, int32_t *z)   /* (audit R13: sh_lp and sh_rlp were the same body on two sets of states) */
 {
-    int32_t y = (r + 2 * BUS_FX.sh_z1 + BUS_FX.sh_z2 + 2) >> 2, y2;
-    BUS_FX.sh_z2 = BUS_FX.sh_z1;
-    BUS_FX.sh_z1 = r;
-    y2 = (y + 2 * BUS_FX.sh_z3 + BUS_FX.sh_z4 + 2) >> 2;
-    BUS_FX.sh_z4 = BUS_FX.sh_z3;
-    BUS_FX.sh_z3 = y;
-    return y2;
-}
-/* the octave-up return, before it goes back into ROOM: the highs it has gained by being shifted up an octave are taken off again, so a resonance of ROOM near 7.7 kHz cannot climb to 15.3 kHz and ring there */
-static inline int32_t BUS_FN(sh_rlp)(int32_t x)
-{
-    int32_t y = (x + 2 * BUS_FX.sh_q1 + BUS_FX.sh_q2 + 2) >> 2, y2;
-    BUS_FX.sh_q2 = BUS_FX.sh_q1;
-    BUS_FX.sh_q1 = x;
-    y2 = (y + 2 * BUS_FX.sh_q3 + BUS_FX.sh_q4 + 2) >> 2;
-    BUS_FX.sh_q4 = BUS_FX.sh_q3;
-    BUS_FX.sh_q3 = y;
+    int32_t y = (r + 2 * z[0] + z[1] + 2) >> 2, y2;
+    z[1] = z[0];
+    z[0] = r;
+    y2 = (y + 2 * z[2] + z[3] + 2) >> 2;
+    z[3] = z[2];
+    z[2] = y;
     return y2;
 }
 static __attribute__((noinline)) uint32_t BUS_FN(rev_shimx)(const int32_t *t, int32_t *out, uint32_t n)
@@ -321,7 +310,7 @@ static __attribute__((noinline)) uint32_t BUS_FN(rev_shimx)(const int32_t *t, in
         ti -= BUS_FX.sh_hp;
         ti = ti > SH_OGATE ? ti - SH_OGATE : ti < -SH_OGATE ? ti + SH_OGATE : 0;
         out[i] += ti;
-        BUS_SHIM.buf[w & (SH_LEN - 1u)] = (int16_t)clamp(BUS_FN(sh_lp)(ti >> 1), -32768, 32767);   /* (DUELL 1.1 REVERB_FIX: low-passed before it is read at double speed) */
+        BUS_SHIM.buf[w & (SH_LEN - 1u)] = (int16_t)clamp(BUS_FN(sh_lp2)(ti >> 1, BUS_FX.sh_z), -32768, 32767);   /* (DUELL 1.1 REVERB_FIX: low-passed before it is read at double speed) */
         if (want != cfg) {                              /* PITCH changed: out, restart, in */
             g -= SH_FADE;
             if (g <= 0)
@@ -342,7 +331,7 @@ static __attribute__((noinline)) uint32_t BUS_FN(rev_shimx)(const int32_t *t, in
         pu += (uint32_t)su, pd += (uint32_t)sd;
         pu &= wrap, pd &= wrap;
         w++;
-        x = BUS_FN(sh_rlp)(x);
+        x = BUS_FN(sh_lp2)(x, BUS_FX.sh_q);   /* (the octave-up return, before it goes back into ROOM: the highs it gained by being shifted up an octave come off again, so a resonance of ROOM near 7.7 kHz cannot climb to 15.3 kHz and ring there) */
         x = x > SH_GATE ? x - SH_GATE : x < -SH_GATE ? x + SH_GATE : 0;   /* a soft gate: no halo sustained by rounding */
         BUS_SHIM.fb[i] = x;
     }
@@ -370,7 +359,7 @@ static __attribute__((noinline)) void BUS_FN(rev_shim)(const int32_t *rev_in, in
         t[i] -= BUS_FX.sh_hp;
         t[i] = t[i] > SH_OGATE ? t[i] - SH_OGATE : t[i] < -SH_OGATE ? t[i] + SH_OGATE : 0;   /* (ROOM's rounding cycles) */
         out[i] += t[i];
-        BUS_SHIM.buf[BUS_FX.sh_w & (SH_LEN - 1u)] = (int16_t)clamp(BUS_FN(sh_lp)(t[i] >> 1), -32768, 32767);   /* (DUELL 1.1 REVERB_FIX: low-passed before it is read at double speed) */
+        BUS_SHIM.buf[BUS_FX.sh_w & (SH_LEN - 1u)] = (int16_t)clamp(BUS_FN(sh_lp2)(t[i] >> 1, BUS_FX.sh_z), -32768, 32767);   /* (DUELL 1.1 REVERB_FIX: low-passed before it is read at double speed) */
         for (j = 0; j < 2u; j++) {                      /* the delay falls a sample a sample: read at twice the speed */
             uint32_t ph = (BUS_FX.sh_ph + j * (SH_LEN / 2u)) & (SH_LEN - 1u), d = SH_LEN - 1u - ph;
             int32_t w = (int32_t)(ph < SH_LEN / 2u ? ph : SH_LEN - 1u - ph);   /* the triangles: their sum flat */
@@ -378,7 +367,7 @@ static __attribute__((noinline)) void BUS_FN(rev_shim)(const int32_t *rev_in, in
         }
         BUS_FX.sh_ph++;
         BUS_FX.sh_w++;
-        x = BUS_FN(sh_rlp)(x);
+        x = BUS_FN(sh_lp2)(x, BUS_FX.sh_q);   /* (the octave-up return, before it goes back into ROOM: the highs it gained by being shifted up an octave come off again, so a resonance of ROOM near 7.7 kHz cannot climb to 15.3 kHz and ring there) */
         x = x > SH_GATE ? x - SH_GATE : x < -SH_GATE ? x + SH_GATE : 0;   /* a soft gate: no halo sustained by rounding */
         BUS_SHIM.fb[i] = x;                             /* (into the next block's input) */
     }
@@ -523,7 +512,8 @@ static void BUS_FN(rev_clear)(void)
     BUS_FX.sh_hp = BUS_FX.sh_he = 0;
     BUS_FX.sh_pu = BUS_FX.sh_pd = BUS_FX.sh_l1 = BUS_FX.sh_l2 = 0;     /* (0.2.19: rev_shimx from rest: its plain loop's phase is taken over at its first block) */
     BUS_FX.sh_g = 0, BUS_FX.sh_x = BUS_FX.sh_cfg = 0;
-    BUS_FX.sh_z1 = BUS_FX.sh_z2 = BUS_FX.sh_z3 = BUS_FX.sh_z4 = BUS_FX.sh_q1 = BUS_FX.sh_q2 = BUS_FX.sh_q3 = BUS_FX.sh_q4 = 0;
+    for (i = 0; i < 4u; i++)
+        BUS_FX.sh_z[i] = BUS_FX.sh_q[i] = 0;
     memset(BUS_SHIM.buf, 0, sizeof BUS_SHIM.buf);       /* SHIM's line and its return */
     memset(BUS_SHIM.fb, 0, sizeof BUS_SHIM.fb);
     for (i = 0; i < HL_NL; i++)
@@ -538,7 +528,7 @@ static void BUS_FN(rev_clear)(void)
 
 /* the model changed (to rt): the old one's block fades out (HALL's stereo difference with it), its buffers are
  * cleared, the new one starts from silence */
-static __attribute__((noinline)) void BUS_FN(rev_switch)(const int32_t *rev_in, int32_t *wet, uint32_t n, int32_t rt)
+static __attribute__((noinline)) void BUS_FN(rev_fadeout)(const int32_t *rev_in, int32_t *wet, uint32_t n)
 {
     int32_t *t = pscr[0].buf, g = 65536, d = 65536 / (int32_t)n;   /* (the parts are done: part 1's block scratch) */
     uint32_t i;
@@ -550,6 +540,10 @@ static __attribute__((noinline)) void BUS_FN(rev_switch)(const int32_t *rev_in, 
         BUS_HL.sd[i] = mulq16(BUS_HL.sd[i], (uint32_t)g);   /* (HALL only: BUS_HL.side set) */
     }
     BUS_FN(rev_clear)();
+}
+static __attribute__((noinline)) void BUS_FN(rev_switch)(const int32_t *rev_in, int32_t *wet, uint32_t n, int32_t rt)
+{
+    BUS_FN(rev_fadeout)(rev_in, wet, n);
     BUS_FX.rtype = (uint8_t)rt;
 }
 
@@ -562,16 +556,7 @@ static __attribute__((noinline)) uint32_t BUS_FN(rev_byp)(const int32_t *rev_in,
         return 0;
     }
     if (!BUS_FX.byp) {
-        int32_t *t = pscr[0].buf, g = 65536, d = 65536 / (int32_t)n;
-        uint32_t i;
-        for (i = 0; i < n; i++)
-            t[i] = 0;
-        BUS_FN(rev_run)(BUS_FX.rtype, rev_in, t, n);
-        for (i = 0; i < n; i++, g -= d) {
-            wet[i] += mulq16(t[i], (uint32_t)g);
-            BUS_HL.sd[i] = mulq16(BUS_HL.sd[i], (uint32_t)g);
-        }
-        BUS_FN(rev_clear)();
+        BUS_FN(rev_fadeout)(rev_in, wet, n);
         BUS_FX.byp = 1;
     }
     BUS_HL.side = 0;
@@ -788,6 +773,22 @@ static __attribute__((noinline)) void BUS_FN(dly_mod)(uint32_t dmask, uint32_t d
     BUS_FX.dm_xr = xr + sr * (int32_t)n;
 }
 
+/* the reverb of a block, the same after every delay path (audit R13: it was written three times): the model from G_RTYPE (an unknown value: ROOM), its low cut (0.2.14: before every model),
+ * DUELL 1.1 BYPASS of the REVERB, a model change fades the old one out (rev_switch), else the model's block, added to wet */
+static __attribute__((noinline)) void BUS_FN(rev_tail)(const int32_t *rev_in, int32_t *wet, uint32_t n)
+{
+    int32_t rt = song.g[G_RTYPE];
+    rt = rt >= 1 && rt <= 5 ? rt : 0;
+    BUS_HL.side = 0;
+    rev_in = BUS_FN(rev_locut)(rev_in, n);
+    if (BUS_FN(rev_byp)(rev_in, wet, n))
+        return;
+    if (rt != BUS_FX.rtype)
+        BUS_FN(rev_switch)(rev_in, wet, n, rt);
+    else
+        BUS_FN(rev_run)((uint32_t)rt, rev_in, wet, n);
+}
+
 /* process the three buses for one block (the delay line BUS_DLY[0 .. dmask], the delay dl); sends in, wet stereo-equal out.
  * pp (DUELL, SPEC 5c.2; STEREO and LAYER only, the callers of SPLIT pass 0 and the branch is gone): the delay PING-PONGs. The
  * mono send goes into one line of 2 x dl that feeds back from its end with the square of the feedback (the same decay in
@@ -803,7 +804,7 @@ static inline void BUS_FN(fx_buses_m)(uint32_t dmask, uint32_t dl, const int32_t
     uint32_t i;
     int32_t fb = mulq15(SV_DFB, byp_dg), col = 2000 + song.g[G_DCOLOR] * 240;   /* (SV_*: song.g's, or PERFORM's SPACE: fx.c sv; byp_dg: the BYPASS of the DELAY) */
     int32_t dmix = mulq15(song.g[G_DMIX] * 258, byp_dg);
-    int32_t cdepth = SV_CDEP, rt, cdq, cst;
+    int32_t cdepth = SV_CDEP, cdq, cst;
     uint32_t cinc = LFO_INC[song.g[G_CRATE] & 127] / CTL, st = dsd != 0;   /* (st: STEREO / LAYER, the chorus has a side) */
     uint32_t cw = BUS_FX.cho_w, cph = BUS_FX.cho_ph, cz = BUS_FX.cho_zs;
     int32_t gx[2];
@@ -866,16 +867,7 @@ static inline void BUS_FN(fx_buses_m)(uint32_t dmask, uint32_t dl, const int32_t
     BUS_FX.cho_zs = 0;                                  /* (the flag is for one block: a call that did not come through cho_zrun never skips) */
     BUS_FX.cho_w = cw;
     BUS_FX.cho_ph = cph;
-    rt = song.g[G_RTYPE];
-    rt = rt >= 1 && rt <= 5 ? rt : 0;                   /* (an unknown value: ROOM) */
-    BUS_HL.side = 0;
-    rev_in = BUS_FN(rev_locut)(rev_in, n);              /* (0.2.14: the reverb's low cut, before every model) */
-    if (BUS_FN(rev_byp)(rev_in, wet, n))
-        return;                                         /* (DUELL 1.1 BYPASS of the REVERB) */
-    if (rt != BUS_FX.rtype)
-        BUS_FN(rev_switch)(rev_in, wet, n, rt);
-    else
-        BUS_FN(rev_run)((uint32_t)rt, rev_in, wet, n);
+    BUS_FN(rev_tail)(rev_in, wet, n);
 }
 
 /* the same as fx_buses_m while the delay's MODULATION runs (dly_mod for the chorus and the delay, then the reverb as fx_buses_m's tail): a
@@ -883,18 +875,8 @@ static inline void BUS_FN(fx_buses_m)(uint32_t dmask, uint32_t dl, const int32_t
 static __attribute__((noinline)) void BUS_FN(fx_buses_mod)(uint32_t dmask, uint32_t dl, const int32_t *cho_in, const int32_t *dly_in,
                                                            const int32_t *rev_in, int32_t *wet, uint32_t n, uint32_t pp, int32_t *dsd)
 {
-    int32_t rt;
     BUS_FN(dly_mod)(dmask, dl, cho_in, dly_in, wet, n, pp, dsd);
-    rt = song.g[G_RTYPE];
-    rt = rt >= 1 && rt <= 5 ? rt : 0;
-    BUS_HL.side = 0;
-    rev_in = BUS_FN(rev_locut)(rev_in, n);              /* (0.2.14: the reverb's low cut, before every model) */
-    if (BUS_FN(rev_byp)(rev_in, wet, n))
-        return;                                         /* (DUELL 1.1 BYPASS of the REVERB) */
-    if (rt != BUS_FX.rtype)
-        BUS_FN(rev_switch)(rev_in, wet, n, rt);
-    else
-        BUS_FN(rev_run)((uint32_t)rt, rev_in, wet, n);
+    BUS_FN(rev_tail)(rev_in, wet, n);
 }
 
 /* The delay's EVENT modes (DUELL 0.2.14, owner 2026-10-15; core.h G_DMODE 2 RANDOM, 3 OCT UP since 0.2.16; this code's own mode argument is 1 RANDOM, 2 OCT UP, 0 back to the plain delay). A tempo-synced delay that bends its own repeats on a random
@@ -1228,16 +1210,6 @@ static __attribute__((noinline)) void BUS_FN(dly_ev)(uint32_t dlo, uint32_t dl, 
 static __attribute__((noinline)) void BUS_FN(fx_buses_ev)(uint32_t dlo, uint32_t dl, const int32_t *cho_in, const int32_t *dly_in, const int32_t *rev_in,
                                                   int32_t *wet, uint32_t n, uint32_t mode, uint32_t pp, int32_t *dsd, uint32_t dlen)
 {
-    int32_t rt;
     BUS_FN(dly_ev)(dlo, dl, cho_in, dly_in, wet, n, mode, pp, dsd, dlen);
-    rt = song.g[G_RTYPE];
-    rt = rt >= 1 && rt <= 5 ? rt : 0;
-    BUS_HL.side = 0;
-    rev_in = BUS_FN(rev_locut)(rev_in, n);              /* (0.2.14: the reverb's low cut, before every model) */
-    if (BUS_FN(rev_byp)(rev_in, wet, n))
-        return;                                         /* (DUELL 1.1 BYPASS of the REVERB) */
-    if (rt != BUS_FX.rtype)
-        BUS_FN(rev_switch)(rev_in, wet, n, rt);
-    else
-        BUS_FN(rev_run)((uint32_t)rt, rev_in, wet, n);
+    BUS_FN(rev_tail)(rev_in, wet, n);
 }
