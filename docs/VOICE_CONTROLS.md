@@ -14,7 +14,7 @@ The unit itself shows every VOICE card all the time; nothing on the unit changed
 | STEREO SPREAD (SPRD) | The voices alternate left and right around PAN (`fx.c` `spread_on`) | POLY and UNISON (not in the output MODE DUEL, where the unit hides it too) | VOICES is MONO or LEGATO |
 | PATCH LEVEL (TRIM) | The sound's own loudness, saved with the patch | always | never |
 
-The number of unison voices is not a control: UNISON uses every voice the engine has (its voice cap; FM6 and other heavy engines fewer).
+The number of unison voices is not a control: UNISON uses every voice the engine allows, up to 8 (PHYS 3, VOICE 4), and fewer when the part's NOTES budget needs the time. On FM6 and PHYS velocity is timbre, so a unison note keeps the key's velocity and the level comes from the voice count instead; UNISON is then about as loud as POLY (within 1 dB). The other engines start the unison voices at part of the velocity (half, or 36 % with eight voices).
 
 ## Findings for the owner (no change made; the owner decides)
 

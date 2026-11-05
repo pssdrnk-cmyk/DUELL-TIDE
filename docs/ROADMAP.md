@@ -1,6 +1,6 @@
 # DUELL with TIDE roadmap
 
-Updated 4 November 2026. This is the current delivery and status document. The [musical proposals](design/TIDE_MUSICAL_DESIGN.md) and the [historical roadmap and receipts](history/TIDE_ROADMAP_2026-11-02.md) are references; the earlier baseline and evidence tables are kept in [history/ROADMAP_BASELINE_2026-11-03.md](history/ROADMAP_BASELINE_2026-11-03.md).
+Updated 5 November 2026. This is the current delivery and status document. The [musical proposals](design/TIDE_MUSICAL_DESIGN.md) and the [historical roadmap and receipts](history/TIDE_ROADMAP_2026-11-02.md) are references; the earlier baseline and evidence tables are kept in [history/ROADMAP_BASELINE_2026-11-03.md](history/ROADMAP_BASELINE_2026-11-03.md).
 
 ## Status
 
@@ -8,10 +8,10 @@ Updated 4 November 2026. This is the current delivery and status document. The [
 |---|---|
 | **Stable** | `stable-2026-11-03` (`187e9d0`): validated by the fork owner on the unit. Package SHA-256 `7795e777…1b30`. |
 | **Beta (published)** | `beta-2026-11-04` (`77a6df2`): flashed to the owner's unit 2026-11-04, under test. U1–U3, the 32 extra sounds, new patterns and multi sequences, JRNY role families, live graphs, the TIDE SETTINGS rows STYLE, TURNS (LEAD / ECHO), POLY, SYNC and ARC. Package SHA-256 `d94ac77c…5d7c`. |
-| **Next beta (release candidate)** | On `jam11`, staged as a draft release for the owner's test: the TIDE step bars show what plays (`tidesteps`), STOP ends a latched arp (`stophang`), an FM6 voice under MORPH ends after its release (also in plain DUELL), the audit fixes C1–C12 (a TIME change lands at the next turn, ARC 32–64 bars, PATTERNS preview = LOAD, …), the SAVE > MULTIS / PATTERNS redesign and a UI polish pass, and the rebuilt installer site with Stable / Beta channels. |
-| **In progress** | The arp timing, TIDE page truth, FM6 re-strike and JRNY roles fixes are on the owner's unit (`6fbd939`, 4 November 2026). The delay-time glide with a steadier clock tempo is merged, not yet in a build. On their own branches: CI, the ENV SYNC release end, glide that follows its display, delay times on the grid with RESO in tune, and MIDI Start on the first clock with arp velocity. They are reviewed and merged one by one. |
-| **Tests** | Full `sh jam/check.sh` on the candidate: **143 pass / 0 fail / 1 skip** (benchrun needs termios; it runs in the Linux CI). Web: installer state, site build, install flow (headless, fake unit), editor web tests pass. `jam/check_off.sh`: DUELL_TIDE=0 matches `jam/off.sha256` (`f0254580…`, changed on purpose by the FM6 fix). |
-| **Flash** | Candidate image 577,464 B of the 581,564 B slot: **4,100 B free**. RAM .data+.bss 68,480 of 73,728 B. Keep 0xEA000..0xFBFFF for future pattern / multi slots. |
+| **Next beta (release candidate)** | On `jam11`, staged as a draft release for the owner's test: the TIDE step bars show what plays (`tidesteps`), STOP ends a latched arp (`stophang`), an FM6 voice under MORPH ends after its release (also in plain DUELL), the review fixes (a TIME change lands at the next turn, ARC 32–64 bars, PATTERNS preview = LOAD, …), the SAVE > MULTIS / PATTERNS redesign and a UI polish pass, and the rebuilt installer site with Stable / Beta channels. |
+| **In progress** | The arp timing, TIDE page truth, FM6 re-strike and JRNY roles fixes are on the owner's unit (`6fbd939`, 4 November 2026). Merged since, not yet in any build: the delay-time glide and steadier clock tempo; the ENV SYNC release end; the load undo and list acceleration; guide and QUICKSTART corrections; MIDI Start on the first clock, arp velocity, the arp on the grid, truthful swing and PLAY waiting for the master's bar; the TIDE motif, resets and velocity shape; TIDE settings in every backup and STORE FULL; delay times on the grid and RESO in tune; GLIDE that follows its display; ECHO folded into LEAD; FM6 with 8 voices, UNISON level, DTUN and OKS; RES over the whole knob and chorus in chorus range; flat chord names; the master soft knee, SPACE 3 dB gentler, COMP, silent tails, the SVF low end and the CUT slew; dead code out and the TIDE core simplified; CI. Still to do: the rest of the planned tables below. |
+| **Tests** | The last full `sh jam/check.sh` recorded here ran on the release candidate before the merges above: **143 pass / 0 fail / 1 skip** (benchrun needs termios; it runs in the Linux CI). Web: installer state, site build, install flow (headless, fake unit), editor web tests pass. `jam/check_off.sh`: DUELL_TIDE=0 matches `jam/off.sha256`, which every shared-code change re-pins on purpose (now `baff39b9…`). |
+| **Flash** | Development line (5 November 2026) 576,204 B of the 581,564 B slot: **5,360 B free**. RAM .data+.bss 68,432 of 73,728 B; pool 322,880 of 368,640 B. Keep 0xEA000..0xFBFFF for future pattern / multi slots. |
 | **CPU (host proxy)** | Within +116 basic blocks a half of the 3 November measurement on the worst scene (DUEL, 3 keys, both sequencers); the threshold for a closer look is about +1,000. Check ABOUT on the unit after flashing: code layout can move the device figure. |
 | **Development branch** | `jam11` (integration happens on a local `integ` branch and is pushed when it passes). Feature work runs in its own branches. Planned: rename `jam11` to `tide` (see [Planned work after the 4 November decisions](#planned-work-after-the-4-november-2026-decisions)). |
 | **Parked as its own rollout** | U4, 24 multi slots: a tested implementation waits on branch `wip-24-multis` (see the engineering table). It follows the release candidate. |
@@ -24,7 +24,7 @@ Every flashed build is listed in the [CHANGELOG](../CHANGELOG.md); the README's 
 |---|---|
 | Timed evolution | ONCE, LOOP, DRIFT, WNDR and JRNY move SOUND, SEQ or BOTH over 1–64 bars, with endpoint WAIT and manual takeover. WNDR develops bounded variations of the source. |
 | Two-part coordination | Peer-attack prediction uses playback timing; phrase edits alternate between parts; sound choices favour contrast. This is timing/parameter-based coordination, without sustained-harmony or effects-tail analysis. Purposeful shared attacks remain musically useful. |
-| JRNY palette | Factory destinations within the part's own engine, in the starting sound's role family (pads and keys; bass; lead and pluck; hits; FX and textures), with a roll of the same sound when the family has no other, and exclusions for the current/peer targets and the part's last four destinations (on `integ`, not flashed). No cross-engine journey. |
+| JRNY palette | Factory destinations within the part's own engine, in the starting sound's role family (pads and keys; bass; lead and pluck; hits; FX and textures), with a roll of the same sound when the family has no other, and exclusions for the current/peer targets and the part's last four destinations. No cross-engine journey. |
 | Chord movement | M2a improves whole-loop upper-voice movement in ordinary chord sequences. It does not rewrite ARP SEQ's held chord, infer a chord progression or coordinate harmony between parts. Listening comparison remains open. |
 | Polymeter | Per-part lengths already drive ordinary and ARP SEQ playback. Try owner-set 12/16 and 15/16 cycles against a steady 4/4 reference before adding automatic length changes. Physical clock/listening acceptance remains open. |
 | Capture | KEEP rebases the heard sound/pattern for subsequent saving. Factory fallbacks obscure unused USER addresses; U1 should expose a few clear save destinations while retaining factory access. Stopped saving is sufficient. Exact live-session morph restart continuity is outside the owner's requirements. |
@@ -78,9 +78,9 @@ Crossed-out tasks are completed: built, and in a build or merged, with no open c
 | ID | Work | State and completion condition |
 |---|---|---|
 | ~~A0~~ | ~~Full firmware source audit~~ | Complete: three review agents plus the coordinator reviewed all 164 tracked firmware files / 66,036 lines; reconciled 2,867 function/macro/assembly units. Reports, exact coverage and findings are retained in a workspace file outside this repository. Four isolated host probes verify narrow source conditions; no firmware build/test-tree/device change or physical acceptance. |
-| A1 | Correct verified control/note/persistence edges | F01–F04 done and flashed 3 November 2026 19:42 as `polish-all` `187e9d0` (not yet on `jam11`): F01 extended editor lock operations (MOTION ops 9..11) no longer swallowed by a query guard (`61d3551`); F02 ARP note 0 no longer collides with the empty sentinel (`f0fa950`); F03 the last 16 USB MIDI-out slots are reserved for note-offs and CCs (`1cf1bbb`); F04 failed TIDE preference writes are paced (`ddb6b09`). F05, the rarer core-job wrap/sentinel issue, is not done. Lower-priority undo/developer-parser/UI-consistency items remain in the audit, not a broad refactor queue. |
+| A1 | Correct verified control/note/persistence edges | Four edges done and flashed 3 November 2026 19:42 as `polish-all` `187e9d0` (not yet on `jam11`): extended editor lock operations (MOTION ops 9..11) no longer swallowed by a query guard (`61d3551`); ARP note 0 no longer collides with the empty sentinel (`f0fa950`); the last 16 USB MIDI-out slots are reserved for note-offs and CCs (`1cf1bbb`); failed TIDE preference writes are paced (`ddb6b09`). The rarer core-job wrap/sentinel issue is not done. Lower-priority undo/developer-parser/UI-consistency items remain in the audit, not a broad refactor queue. |
 | ~~E0~~ | ~~Consolidate administration~~ | Documentation reorganization completed in this pass: one current roadmap; musical concepts and historical receipts separated. No firmware cleanup is implied. |
-| E1 | Find useful memory savings | First flash-saving milestone achieved. Select another bounded candidate when U1 or a chosen musical slice needs measured space; factory-multi packing is an unmeasured follow-up. Distinguish flash from RAM and estimates from linked savings. |
+| E1 | Find useful memory savings | First flash-saving milestone achieved; two more merged, not yet in a build: dead code out (the 0.2.11 VOICE CAP outside bench builds, cross-part stealing, Felucca's engine preset tables: 3,372 B back) and the TIDE core's tables and helpers shared (1,444 B back, no musical change). Select another bounded candidate when U1 or a chosen musical slice needs measured space; factory-multi packing is an unmeasured follow-up. Distinguish flash from RAM and estimates from linked savings. |
 | E2 | Simplify inherited code in focused pieces | First local slice complete: three knob-navigation paths share the GLO page/history/detent-suppression transition; target selection and ordering stay at their callers. Focused input checks pass and the combined build saves another 48 B. Further cleanup remains evidence-led. |
 | ~~E3~~ | ~~Check the code being changed (former T0)~~ | Done: the test-tree cleanup is complete (full check 112 pass / 0 fail / 25 skip; see [the baseline](JAM11_TEST_BASELINE.md)). Use the affected checks for each firmware change and keep any new failure visible. |
 | E4 | Implement the best supported memory reduction | First local slice complete: lossless factory-pair packing saves 1,888 B net application flash; combined with E2, 1,936 B. No persistent RAM increase or approximation. OTA staging now shares one 1 KiB pool space for the UFW header and the two 512 B blocks: pool -1,024 B, image +36 B (host group `otareuse`; project and storage staging not touched). Compare further candidates separately. |
@@ -90,7 +90,7 @@ Crossed-out tasks are completed: built, and in a build or merged, with no open c
 | U3 | Show sounds and patterns while browsing MULTIS | Owner-requested. **In `beta-2026-11-04` (`d5e6178`, `893ab9a`); redesigned for the next beta after the owner's device check (`4a568ff`: a plain list, the preview in a bottom panel).** Three list rows above a two-part preview based on HOME page 3, with sound names, ARP/SEQ indicators and explicit NO SEQUENCE states. Preview the highlighted record without loading it. Locate the exact design reference, verify layout and browsing flows, and measure memory before integration; physical readability/playback acceptance remains required. |
 | U4 | MULTIS: 24 multi slots (from 16) | **Planned, a separate rollout; not part of the current build.** A tested implementation is parked on local branch `wip-24-multis` (`21ca3a7`), to review and ship as its own build. Owner decision 2026-11-04: extend the multi slots to 24 as its own rollout. It changes the stored multi/backup format, so it needs a format version bump. Loading old 16-slot backups stays unchanged: slots 17–24 come up as factory content and nothing the user saved is overwritten. Also needed: support in `jam/jam_dev.py` backup/restore, in the web editor's reader and in the mock unit; `DUELL_TIDE=0` byte-identical (`jam/check_off.sh`); the flash cost measured first (the slot has about 6 KB free; keep at least 3 KB headroom); a MULTIS selector and preview that handle 24 entries; and tests. |
 
-The latest full run is **112 pass / 0 fail / 25 skip** (`sh jam/check.sh` on Windows; the 25 skips run in the Linux host-test CI), recorded in [the baseline](JAM11_TEST_BASELINE.md). Earlier snapshots (80/34/22 at `4443c13`, and the `bd339c9`/S0 figures below) are history. The totals are revision-specific.
+The Status table gives the latest full run; [the baseline](JAM11_TEST_BASELINE.md) records the earlier **112 pass / 0 fail / 25 skip** run (`sh jam/check.sh` on Windows; the 25 skips run in the Linux host-test CI). Earlier snapshots (80/34/22 at `4443c13`, and the `bd339c9`/S0 figures below) are history. The totals are revision-specific.
 
 ### Memory and inherited-code review: first findings
 
@@ -121,8 +121,8 @@ P4's earlier FACTORY/USER browsing proposal is a reference, not a requirement fo
 |---|---|---|
 | Live End B restart preservation | Earlier readback found part 2's live destination changed after restart; raw evidence is retained | Parked by the owner: no requirement to preserve exact ongoing morph state or add complex session capture. Do not make it a prerequisite. Ordinary intentional saved-record integrity still applies. |
 | Saved End B during record rewrites | `dd2acd5` already repairs rename/recategorization and editor FM6 PUT; newer than last recorded installation | Source-complete bookkeeping, not a new feature queue. Retain the existing fix and stopped-save restrictions; no live-save workflow or additional project is requested. |
-| TIDE preferences backup | Settings already persist between boots in object 48; the editor archive omits that object | Useful bounded follow-up: archive/restore the TIDE configuration between flashes, accept older archives without it, and preserve existing fields. Do not turn this into a full live-morph/session capture. **Decided 2026-11-04, built on `fix/prefs-backup`:** TIDE's 12 setting bytes moved into the settings record's reserved tail (map_tail bytes 32..63), so every backup holds them, and an earlier build's object 48 is read once; going back to plain DUELL is documented as unsupported rather than made to work; the FM6 voice bank is added to backups. |
-| Settings record growth | Current seven-field record works; the loader rejects a record shorter than a future requested count | Treat as compatibility bugfixing when adding fields: preserve stored fields and default only missing new fields. Cover old/current/malformed/unsupported records. No record redesign or new settings fields are requested now. The 12 TIDE bytes live in this record's reserved tail (decided 2026-11-04, built on `fix/prefs-backup`): fields past the ones a build knows are kept as read. |
+| TIDE preferences backup | Settings already persist between boots in object 48; the editor archive omits that object | Useful bounded follow-up: archive/restore the TIDE configuration between flashes, accept older archives without it, and preserve existing fields. Do not turn this into a full live-morph/session capture. **Decided 2026-11-04, merged, not yet in a build:** TIDE's 12 setting bytes moved into the settings record's reserved tail (map_tail bytes 32..63), so every backup holds them, and an earlier build's object 48 is read once; going back to plain DUELL is documented as unsupported rather than made to work. Still planned: the FM6 voice bank in backups. |
+| Settings record growth | Current seven-field record works; the loader rejects a record shorter than a future requested count | Treat as compatibility bugfixing when adding fields: preserve stored fields and default only missing new fields. Cover old/current/malformed/unsupported records. No record redesign or new settings fields are requested now. The 12 TIDE bytes live in this record's reserved tail (decided 2026-11-04, merged, not yet in a build): fields past the ones a build knows are kept as read. |
 | Logical versus physical patch capacity | INFO advertises 128 slots; TIDE uses 21 chunks × 6 worst-case records = 126 guaranteed records | Reconcile actual capacity/failure behavior and documentation. Keep the accepted format/layout unless a separate change is justified; remove blanket "every slot always fits" claims only with precise replacement wording. |
 | Pattern save entry points | Panel code distinguishes pattern SAVE from MULTI SAVE; MULTI SAVE is disabled while playing. Owner reports their sequence-save workflow requires stopping. S0's lower storage layer handles pending saves independently | Document the exact visible entry point before prescribing a live test. Cover stopped save/load and lower-layer pending-write integrity in software; do not require an inaccessible panel action for acceptance. |
 
@@ -140,11 +140,11 @@ Relevant source: `patslot.c` (one object buffer + metadata; three 11/11/10-slot 
 
 ## Planned work after the 4 November 2026 decisions
 
-On 4 November 2026 the owner decided the open questions left by a full code and functional review of the release candidate and of the inherited DUELL 1.1 base. This section is the plan that follows. **Planned means decided and not built.** Nothing in the tables below is in a build; the user guides still describe what the firmware does today. Sound changes are heard on the unit before they are accepted. Flash is tight (about 4 KB free), so every firmware item is measured on its own and the simplifications pay for the additions. Nothing is pushed or flashed without the owner's go-ahead.
+On 4 November 2026 the owner decided the open questions left by a full code and functional review of the release candidate and of the inherited DUELL 1.1 base. This section is the plan that follows. **Planned means decided and not built.** Crossed-out rows are merged on the integration branch and in no build yet; nothing in the tables below is in a published build. The user guides describe the firmware on the integration branch. Sound changes are heard on the unit before they are accepted. Flash is tight (about 5 KB free), so every firmware item is measured on its own and the simplifications pay for the additions. Nothing is pushed or flashed without the owner's go-ahead.
 
 ### In progress
 
-Each runs on its own branch until it is reviewed and merged. Crossed-out rows are merged.
+Each runs on its own branch until it is reviewed and merged. Crossed-out rows are merged on the integration branch.
 
 | Fix | What changes |
 |---|---|
@@ -152,22 +152,30 @@ Each runs on its own branch until it is reviewed and merged. Crossed-out rows ar
 | ~~Arp timing and swing direction~~ | ~~The arp stays on the grid for a whole set, and swing swings the right way.~~ Merged, not yet in a build. |
 | ~~Delay-time glide, steadier clock tempo~~ | ~~TIME and TEMPO moves bend instead of clicking; the tempo and a synced delay stay steadier under an external clock.~~ Merged, not yet in a build. |
 | ~~JRNY roles and level data~~ | ~~The sounds that fall in no role get one, FX are split from PERC, USER records honour the families, and level data for GHOST HARP and a few other sounds is corrected.~~ Merged, not yet in a build. |
-| CI | Green and honest: the two-core simulation checks invariants only, the runner shows the real failing line, the two unlisted JRNY groups run, the runner image and actions are pinned. |
+| ~~CI~~ | ~~Green and honest: the two-core simulation checks invariants only, the runner shows the real failing line, the two unlisted JRNY groups run, the runner image and actions are pinned.~~ Merged, not yet in a build. Pages now publishes only a tested, green commit. |
+| ~~ENV SYNC release end~~ | ~~A long synced release (4 bars at 69 BPM or slower) ends instead of holding a voice at -71 dB.~~ Merged, not yet in a build. |
+| ~~MIDI Start and arp velocity~~ | ~~MIDI Start plays step 0 on the first clock pulse; the arp plays the key's velocity.~~ Merged, not yet in a build. |
+| ~~Delay times on the grid, RESO in tune~~ | ~~A delay TIME too long for the line halves until it fits in every mode and the card shows what plays; RESO's combs are tuned for DAMP.~~ Merged, not yet in a build. |
+| ~~Load undo~~ | ~~OCT- held plus a PRESETS turn undoes the last sound load; PRESETS steps like PATCHES' knob 1; long lists accelerate.~~ Merged, not yet in a build. |
+| ~~Dead code and TIDE core clean-up~~ | ~~The VOICE CAP outside bench builds, cross-part stealing and Felucca's engine preset tables leave the unit's image (3,372 B); the TIDE core's tables and helpers are shared (1,444 B). No behaviour change.~~ Merged, not yet in a build. |
+| ~~Filters~~ | ~~The state-variable filter keeps its precision below 100 Hz (resonance and no DC offset at a low cutoff); the CUT dial is slewed, so a sweep no longer zippers.~~ Merged, not yet in a build. |
+| ~~Silent tails~~ | ~~The ROOM, RESO and delay loops fall to exact zero.~~ Merged, not yet in a build. |
+| ~~Chord names~~ | ~~Flats in a flat key; a stack of 4ths is named; DIA7 on a six-note scale is a triad.~~ Merged, not yet in a build. |
 | ~~TIDE page truth~~ | ~~The pages and rows show what plays: step position and length, rows that do nothing in the current mode, the CUSTOM snapshot, the ARC status text.~~ Merged, not yet in a build. |
 
 ### Planned: TIDE musical behaviour
 
 | Item | Decision |
 |---|---|
-| Skank drift | A skank hit may drift at most two 16ths from its origin. |
-| LEAD roles | Call and response applies to lead and pluck roles only, never to chord skanks. |
-| Bass and PITCH | With PITCH ON the bass never walks. |
-| Velocity shape | Automatic, with no setting: RISE louder, BREAK and the followers softer. |
+| ~~Skank drift~~ | ~~A skank hit may drift at most two 16ths from its origin.~~ Merged, not yet in a build. |
+| ~~LEAD roles~~ | ~~Call and response applies to lead and pluck roles only, never to chord skanks.~~ Merged, not yet in a build. |
+| ~~Bass and PITCH~~ | ~~With PITCH ON the bass never walks.~~ No note under C3 and no BASS-category sound is walked, and nothing moves on SCALE CHR. Merged, not yet in a build. |
+| ~~Velocity shape~~ | ~~Automatic, with no setting: RISE louder, BREAK and the followers softer.~~ Merged, not yet in a build. |
 | ARP SEQ ties | ARP SEQ honours ties (about 40 B). Real chord steps are not planned. |
 | Factory multis | About half of the factory multis leave the bass to external gear. First start loads DUB CHORD (as it does now). Which acid multi stays is settled when the factory set is curated, after the release candidate. |
-| Loads | A multi or pattern loaded mid-session starts as written: the TIDE generation does not carry over a load. |
-| ARC and transport | ARC resumes where it was on STOP and PLAY (STOP and PLAY are used live to resync with other gear, and a restart would throw the tide back to its opening stage). It restarts only on a load or a K1 stop. |
-| ECHO | ECHO folds into LEAD: TURNS becomes TOGETHER, TAKE TURNS and LEAD; the PEAK style uses LEAD; a stored ECHO reads as LEAD. |
+| ~~Loads~~ | ~~A multi or pattern loaded mid-session starts as written: the TIDE generation does not carry over a load.~~ Merged, not yet in a build. |
+| ~~ARC and transport~~ | ~~ARC resumes where it was on STOP and PLAY (STOP and PLAY are used live to resync with other gear, and a restart would throw the tide back to its opening stage). It restarts only on a load or a K1 stop.~~ Merged, not yet in a build. |
+| ~~ECHO~~ | ~~ECHO folds into LEAD: TURNS becomes TOGETHER, TAKE TURNS and LEAD; the PEAK style uses LEAD; a stored ECHO reads as LEAD.~~ Merged, not yet in a build. |
 | Crossings | A LINKed filter 2 closes with filter 1 during a crossing. WASH stays. |
 
 ### Planned: TIDE interface and product
@@ -177,14 +185,14 @@ Each runs on its own branch until it is reviewed and merged. Crossed-out rows ar
 | K1 stop | K1 needs two detents to stop a running tide. The header messages stay. |
 | OCT- reset | OCT- plus a knob resets to the STYLE's values, on the TIDE pages only. |
 | Installer and INFO | The installer backs up before every install. INFO shows a TIDE flag. The cheat sheet is finished. |
-| Settings in backups | The 12 TIDE setting bytes now live in the settings record's reserved tail, so every backup holds them (done). The FM6 voice bank still goes into backups (not built yet: an archive object and a restore through the FM6B commands). Going back to plain DUELL is documented, not supported. |
+| Settings in backups | ~~The 12 TIDE setting bytes live in the settings record's reserved tail, so every backup holds them; a full patch store reports STORE FULL end to end; a restore reports every failure.~~ Merged, not yet in a build. The FM6 voice bank still goes into backups (not built yet: an archive object and a restore through the FM6B commands). Going back to plain DUELL is documented, not supported. |
 
 ### Planned: repository
 
 | Item | Decision |
 |---|---|
 | Name | Rename `jam11` to `tide`. Replace OSCILL/R's wordmark on the cover until the author agrees. No Firmware Hub entry yet. Remove the internal brief files from the public repository. |
-| CI | Green CI gates Pages and the channels. Device builds stay an owner step. Two-core checks in CI are invariant-only. |
+| CI | ~~Green CI gates Pages.~~ Merged, not yet in a build. Gating the channels is still to do. Device builds stay an owner step. Two-core checks in CI are invariant-only (done). |
 | Branches | Fast-forward `jam11` after the current fix batch (the push needs the owner's OK at that moment). Merge upstream's emulator commits. The 24 multis (U4) come after the release candidate. |
 
 ### Planned: inherited DUELL 1.1 engines
@@ -193,11 +201,11 @@ Done in the fork first. Items that help plain DUELL are offered upstream later, 
 
 | Area | Decision |
 |---|---|
-| Glide | GLIDE RATE and TIME do what the display says, up to 10 s. |
-| RES | Remap RES so the whole knob is useful. Stored sounds are migrated to sound the same, to within a few percent; the owner judges them on the unit. LADDER's bass loss, filter 1 without self-oscillation and LOFI's aliasing stay as character. |
+| ~~Glide~~ | ~~GLIDE RATE and TIME do what the display says, up to 10 s.~~ Factory sounds and multis keep the glide they had; patches you saved yourself now glide for the time they show. Merged, not yet in a build. |
+| ~~RES~~ | ~~Remap RES so the whole knob is useful.~~ The factory sounds, multis and the bank file are migrated to sound the same, to within a few percent; patches you saved yourself are not. The owner judges the result on the unit. LADDER's bass loss, filter 1 without self-oscillation and LOFI's aliasing stay as character. Merged, not yet in a build. |
 | WAVE | Table quality stays as it is (flash is too tight). |
-| FM6 | The engine cap goes to 8 voices. DTUN is centred. UNISON detune stays about plus or minus 24 cents; the comments are corrected, the range is not widened. |
-| Swing and clock | The displayed swing % becomes truthful. The arp starts on the transport grid. A local PLAY under an external clock waits for the master's bar. |
+| ~~FM6~~ | ~~The engine cap goes to 8 voices. DTUN is centred. UNISON detune stays about plus or minus 24 cents; the comments are corrected, the range is not widened.~~ UNISON also keeps its level and velocity on FM6 and PHYS, OKS is honoured (a patch with oscillator key sync off free-runs), and an overload sheds the quietest FM6 tail. Merged, not yet in a build. |
+| ~~Swing and clock~~ | ~~The displayed swing % becomes truthful. The arp starts on the transport grid. A local PLAY under an external clock waits for the master's bar.~~ Merged, not yet in a build. |
 | LFO DEPTH | The destinations are shown as "LFO1/2 LVL" (not removed). The mod wheel keeps driving MORPH. |
 
 ### Planned: effects
@@ -205,17 +213,17 @@ Done in the fork first. Items that help plain DUELL are offered upstream later, 
 | Area | Decision |
 |---|---|
 | Delay | A feedback low cut (about 150 Hz) and controlled dub runaway: FDBK up to about 105 % with a soft clip in the loop. |
-| Master | A clean soft knee replaces the always-on tanh. This changes every golden render, so it is its own change, with the golden update in the same commit and nothing else riding on it. SPACE +100 then pushes about 3 dB less. |
-| Modulation ranges | Chorus and delay modulation ranges are remapped to chorus territory; stored sounds are migrated (to within a few percent). |
+| ~~Master~~ | ~~A clean soft knee replaces the always-on tanh. This changes every golden render, so it is its own change, with the golden update in the same commit and nothing else riding on it. SPACE +100 then pushes about 3 dB less.~~ The knee is exact up to the limiter's threshold (-5.2 dBFS). Merged, not yet in a build. |
+| ~~Modulation ranges~~ | ~~Chorus and delay modulation ranges are remapped to chorus territory; stored sounds are migrated (to within a few percent).~~ The sweep holds its pitch swing above CRT 40 (chorus) and MRATE 44 (delay); the factory multis are migrated, patches and multis you saved are not. Merged, not yet in a build. |
 | Reverb | SHIM's PITCH DOWN and MOD stay: it is a working base feature, and it is cut only if a TIDE feature really fails to fit, and then the owner is asked first. ROOM becomes a short diffuse room built on the HALL code. HALL and PLATE get a pre-delay that grows with SIZE (no new setting). |
-| COMP | The automatic makeup is halved. |
+| ~~COMP~~ | ~~The automatic makeup is halved.~~ Its ATTACK and RELEASE also follow the printed times. Merged, not yet in a build. |
 
 ### Planned: stock user experience and upstream
 
 | Item | Decision |
 |---|---|
-| Knob columns | Fix the documents rather than the knob columns. |
-| Load undo | A load undo on OCT- plus a PRESETS turn. OCT- then also means the STYLE reset, which is allowed only if each is strictly page-scoped (STYLE reset on the TIDE pages, load undo where PRESETS loads). If that gets messy, the PRESETS turn alone gets the load undo and OCT- stays with TIDE. Saving at stop stays as it is. Tempo goes into the footer. |
+| ~~Knob columns~~ | ~~Fix the documents rather than the knob columns.~~ QUICKSTART, VOICE_CONTROLS, the TIDE guide and the first-start guide follow the firmware. Merged, not yet in a build. |
+| Load undo | ~~A load undo on OCT- plus a PRESETS turn.~~ Built page-scoped: Merged, not yet in a build. OCT- held and a PRESETS turn undoes the last load where PRESETS loads, and not on the TIDE pages, where OCT- plus a knob keeps TIDE's reset; the STYLE reset itself is not built. Saving at stop stays as it is. Tempo goes into the footer (still planned). |
 | Factory bank | Re-author the 128-voice bank's End Bs and sync the slow motion, in the fork first; offer it upstream later. |
 | Upstream changes | Prepared as small single-finding changes, in order of value to plain DUELL users: FM6 re-strike; arp grid and swing direction; delay clicks; glide; a steady tempo; then the smaller fixes, the PHYS tuning fix and the document corrections. The owner opens every pull request. Before any code is written, the owner raises three items with the author: the voice and render restructuring, fixed knob columns, and the bus B pointers. |
 
@@ -231,8 +239,8 @@ This is the rationalized plan, not a claim that new musical firmware is implemen
 | First musical candidate: M8a | **In `beta-2026-11-04` as the TURNS row.** Alternating variation turnarounds in MUSIC WNDR/JRNY with VARY 4 + 8. Small scope, but code size is unmeasured. | Keep VARY ALL and manual/ONCE/LOOP behaviour. Retain only if alternating bars improve interplay in listening. |
 | ~~Next: M7a/b~~ | **In `beta-2026-11-04` as the SYNC row.** Soft offbeat/anticipation weighting for eligible movable notes. Use actual musical phase; explicitly leave unsupported grids unchanged in an initial slice. | Preserve anchors/continuations and useful shared attacks. An anchor-only pattern cannot be made syncopated by a move-only policy. |
 | ~~Conditional: M3~~ | **In `beta-2026-11-04` (JRNY memory and role families).** Four-target ephemeral history with bounded relaxation for small palettes. | Count eligible destinations first. 61 of the 128-sound bank's 66 engine/category groups have at most four sounds (99/128 voices; 55 of 66 with the 32 added sounds), before endpoint/peer exclusions; history cannot promise broad exploration there. |
-| Conditional: M8b, then rhythmic M8c | **In `beta-2026-11-04` as TURNS LEAD / ECHO.** Main-loop follower masks, with cheap playback lookup; rhythmic echoes only after turn-taking proves useful. | Hear a leader and an audible relationship while retaining drive, live keys, held notes and tails. Scale-root/fifth pitch cadences stay deferred without chord context. **Decided 2026-11-04 (planned):** ECHO folds into LEAD, so TURNS has three values; LEAD applies to lead and pluck roles only, never to chord skanks. |
-| Later: one M4/M9 policy | **In `beta-2026-11-04` as the ARC row (RISE / DROP, with the hand drop).** Combine longer-form development/recovery into one musical-time planner. Preserve the requested harshness/busyness link as a bounded, scene-calibrated bias. | Begin with gradual development/recovery. Full stops need an explicit performance policy, audible benefit and a measured flash/CPU budget. No second competing scheduler. **Decided 2026-11-04 (planned):** ARC resumes where it was on STOP and PLAY and restarts only on a load or a K1 stop; a velocity shape comes with it, with no setting (RISE louder, BREAK and the followers softer). |
+| Conditional: M8b, then rhythmic M8c | **In `beta-2026-11-04` as TURNS LEAD / ECHO.** Main-loop follower masks, with cheap playback lookup; rhythmic echoes only after turn-taking proves useful. | Hear a leader and an audible relationship while retaining drive, live keys, held notes and tails. Scale-root/fifth pitch cadences stay deferred without chord context. **Decided 2026-11-04, merged, not yet in a build:** ECHO folds into LEAD, so TURNS has three values; LEAD applies to lead and pluck roles only, never to chord skanks. |
+| Later: one M4/M9 policy | **In `beta-2026-11-04` as the ARC row (RISE / DROP, with the hand drop).** Combine longer-form development/recovery into one musical-time planner. Preserve the requested harshness/busyness link as a bounded, scene-calibrated bias. | Begin with gradual development/recovery. Full stops need an explicit performance policy, audible benefit and a measured flash/CPU budget. No second competing scheduler. **Decided 2026-11-04, merged, not yet in a build:** ARC resumes where it was on STOP and PLAY and restarts only on a load or a K1 stop; a velocity shape comes with it, with no setting (louder late in the rise and at the peak, softer in the drop, the breakdown and on the followers' bars). |
 | Alongside accepted behaviour: CHANGE / ENERGY / ARC | CHANGE controls sequence development amount/rate; ENERGY biases character; ARC enables longer form. ROLL selects generation policies. | Add rows only with their useful behaviour and compatible settings loading/backup. Current behaviour remains the reference; drop ownership and exact ARC default remain open. |
 | M6 | Combined acceptance for the behaviour actually changed | Keep source tests, emulator results, installation/data readback and physical clock/audio observations distinct. |
 
