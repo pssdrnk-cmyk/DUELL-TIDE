@@ -20,6 +20,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The CPU cost groups compare instruction counts, and the counter exists only on macOS (regress.c proc_pid_rusage; Linux and Windows
+  # report "not compared"). One macOS machine runs them. It does not gate the Pages deploy (continue-on-error): the hosted VM may
+  # read 0 instructions, and the summary says so. A red line here is a cost regression to look at, not a test of behaviour.
+  cost-macos:
+    runs-on: macos-14
+    timeout-minutes: 40
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262   # v4.4.0
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065   # v5.6.0
+        with:
+          python-version: "3.12"
+
+      - name: Packages (the generators)
+        run: |
+          brew install fribidi libraqm
+          python3 -m pip install --quiet -r requirements-dev.txt
+
+      - name: Generated headers
+        run: cd felucca-base && python3 tools/build.py --gen-only
+
+      - name: "CPU cost groups (regress, benchsim, cpuscen)"
+        shell: bash
+        run: |
+          set -o pipefail
+          sh host_tests.sh regress benchsim cpuscen 2>&1 | tee cost.out
+          {
+            echo "### CPU cost (macOS)"
+            if grep -q "no instruction counter" cost.out; then echo "The instruction counter read nothing on this VM: the cost parts compared nothing."; else echo "The instruction counter works here; the cost parts compared against tests/cpu_baseline.txt."; fi
+            echo '```'; grep -E "^== |^   (PASS|FAIL|SKIP)|CPU entries over budget" cost.out; echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
   host-tests:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
