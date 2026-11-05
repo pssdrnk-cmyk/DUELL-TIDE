@@ -89,9 +89,8 @@ static void mo_flush(track_t *t)
         return;
     for (w = 0; w < 4u; w++) {
         for (b = 0; mo_bits[i][w] && b < 32u; b++)
-            if ((mo_bits[i][w] >> b) & 1u)
-                midi_out_event(0x08u | (0x80u | mo_ch[i]) << 8 | (w * 32u + b) << 16);
-        mo_bits[i][w] = 0;
+            if (((mo_bits[i][w] >> b) & 1u) && midi_out_event(0x08u | (0x80u | mo_ch[i]) << 8 | (w * 32u + b) << 16))
+                mo_bits[i][w] &= ~(1u << b);        /* (an Off the ring dropped stays marked: the note is still on) */
     }
 }
 static void mo_on(track_t *t, uint32_t note, uint32_t vel)
@@ -104,18 +103,20 @@ static void mo_on(track_t *t, uint32_t note, uint32_t vel)
         mo_flush(t);
         mo_ch[i] = (uint8_t)mc;
     }
-    if ((mo_bits[i][note >> 5] >> (note & 31u)) & 1u)
-        midi_out_event(0x08u | (0x80u | mc) << 8 | note << 16);
-    mo_bits[i][note >> 5] |= 1u << (note & 31u);
-    midi_out_event(0x09u | (0x90u | mc) << 8 | note << 16 | (vel < 1u ? 1u : vel > 127u ? 127u : vel) << 24);
+    if (((mo_bits[i][note >> 5] >> (note & 31u)) & 1u) && !midi_out_event(0x08u | (0x80u | mc) << 8 | note << 16))
+        return;                                     /* (the sounding note cannot be ended: the ring is full) */
+    if (midi_out_event(0x09u | (0x90u | mc) << 8 | note << 16 | (vel < 1u ? 1u : vel > 127u ? 127u : vel) << 24))
+        mo_bits[i][note >> 5] |= 1u << (note & 31u);   /* (marked only when the On went out: a dropped On gets no Off later) */
+    else
+        mo_bits[i][note >> 5] &= ~(1u << (note & 31u));
 }
 static void mo_off(track_t *t, uint32_t note)
 {
     uint32_t i = (uint32_t)(t - trk);
     if (i >= NSHOWN || note > 127u || !((mo_bits[i][note >> 5] >> (note & 31u)) & 1u))
         return;
-    mo_bits[i][note >> 5] &= ~(1u << (note & 31u));
-    midi_out_event(0x08u | (0x80u | mo_ch[i]) << 8 | note << 16);
+    if (midi_out_event(0x08u | (0x80u | mo_ch[i]) << 8 | note << 16))
+        mo_bits[i][note >> 5] &= ~(1u << (note & 31u));   /* (an Off the ring dropped keeps the note marked) */
 }
 /* the arp's / sequencer's own notes: the voice and MIDI out together */
 static void arp_note_on(track_t *t, uint32_t note, uint32_t vel) { trk_note_on(t, note, vel); mo_on(t, note, vel); }

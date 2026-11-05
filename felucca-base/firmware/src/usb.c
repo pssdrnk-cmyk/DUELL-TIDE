@@ -197,13 +197,15 @@ static int midi_enqueue(uint32_t pkt, uint32_t source)
 }
 
 #define MO_RESERVE 16u                              /* the last slots belong to note-offs and CCs (release, panic): a note-on never takes the slot its off needs */
-static void midi_out_event(uint32_t pkt)            /* from the audio ISR, never blocks: a full ring drops the event */
+static uint32_t midi_out_event(uint32_t pkt)        /* from the audio ISR, never blocks: a full ring drops the event (0), else 1 */
 {
     if (usb.config && mo_w - mo_r < ((pkt & 0x0Fu) == 0x09u ? MQ - MO_RESERVE : MQ)) {
         midi_out_q[mo_w % MQ] = pkt;
         RING_PUBLISH();
         mo_w++;
+        return 1;
     }
+    return 0;
 }
 
 /* ------------------------------------------------------- descriptors --- */
