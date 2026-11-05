@@ -651,8 +651,8 @@ PY
            sc_mut "the SUB runs at LEVEL 0 (chain_sub.c chain_sub_on)" subcyc_test.c firmware/src/chain_sub.c 'return XV(t, X_SUBLVL) > 0 && (t->p[P_VOICE] != V_UNISON || v == t->v);' 'return t->p[P_VOICE] != V_UNISON || v == t->v;'
            sc_mut "the 4-block cross-fade of a WAVE / OCTAVE switch removed (chain_sub.c)" subcyc_test.c firmware/src/chain_sub.c 'c = g0 ? SUB_XFB : 0;' 'c = 0;'
            sc_mut "the CYCLE tick moved into mod_voice (hot RAM): ticked whenever the matrix is on, read or not (mod.c, voice.c)" subcyc_test.c \
-              firmware/src/mod.c 'static __attribute__((noinline)) void mod_voice(track_t *t, voice_t *v, vmod_t *m, int32_t fine)' 'static void cycle_tick(track_t *t, voice_t *v);
-static __attribute__((noinline)) void mod_voice(track_t *t, voice_t *v, vmod_t *m, int32_t fine)' \
+              firmware/src/mod.c 'static __attribute__((noinline)) void mod_voice(track_t *t, voice_t *v, vmod_t *m)' 'static void cycle_tick(track_t *t, voice_t *v);
+static __attribute__((noinline)) void mod_voice(track_t *t, voice_t *v, vmod_t *m)' \
               firmware/src/mod.c 'int32_t pit = mod->pit, cut = mod->cut, shp = mod->shp, gain = mod->gain, env = m->envq15;' 'int32_t pit = mod->pit, cut = mod->cut, shp = mod->shp, gain = mod->gain, env = m->envq15;
     cycle_tick(t, v);' \
               firmware/src/voice.c '            if (t->cy)                                  /* CYCLE (cycle.c), read by an active matrix slot: ticked here, not in mod_voice (hot RAM) */
