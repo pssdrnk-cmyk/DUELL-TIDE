@@ -14,7 +14,7 @@
  * End A is the Original until a WANDER or JOURNEY glide makes it a generation: each arrival rolls the end left as the next one, its
  * dials a step on from the end reached (momentum, the step by the phrase tier), so every trip goes from one generation to the
  * next. The fader brings End B in a beat at a time (each beat its own threshold): monotone and reversible.
- * VARY BARS (TIDE LIST): 4 + 8 (the default) plays the variation only on every 4th bar since PLAY (bars 4 and 8 of each 8-bar
+ * VARY BARS (TIDE LIST): EVERY 4TH (the default) plays the variation only on every 4th bar since PLAY (bars 4 and 8 of each 8-bar
  * phrase; the others play End A), as a dub techno loop holds and changes at the turnaround (after DUB-1, sbegueria/fm1-dub);
  * ALL plays it on every bar. A bar is 4 beats of the clock (seq.c sqm_bar), whatever the pattern's length or DIV.
  * Contexts: the ends are built in the main loop into sqm_pat (seqm_poll, and every control); seq_play_step() runs in the audio
@@ -31,15 +31,15 @@ typedef struct {
     sqm_end_t a;                                         /* End A while aon (a WANDER / JOURNEY generation), else the Original */
     uint8_t aon, top, n;                                 /* n: rolls kept (0: none yet, the part's default comes first) */
     uint8_t fader;                                       /* 0 End A .. 127 End B */
-    uint8_t notes;                                       /* SEQ AMT 0..100 (no knob: SQM_AMT_DEF; tests set it) */
+    uint8_t amt_x;                                       /* SEQ AMT 0..100 as SQM_AMT_DEF ^ it (no knob; 0 = the default, so the table is .bss, not 504 B of flash; tests set it) */
     int8_t dir[SD_N];                                    /* WANDER: each dial's way */
     uint8_t ok;                                          /* sqm_pat holds the ends of sig */
     uint8_t hold;                                        /* WNDR+BOTH: minimum note span of the heard FM6 shape */
     uint32_t sig, tseed;                                 /* .. its key; the beats' thresholds */
 } sqm_part_t;
 #define SQM_AMT_DEF 50u                                  /* SEQ AMT (40 left most generations alike) */
-static sqm_part_t sqm[NSHOWN] = { {.notes = SQM_AMT_DEF}, {.notes = SQM_AMT_DEF} };
-_Static_assert(NSHOWN == 2, "seq_morph.c: one initialiser per shown part");
+#define SQM_AMT(q) ((uint32_t)((q)->amt_x ^ SQM_AMT_DEF))
+static sqm_part_t sqm[NSHOWN];
 static step_t sqm_pat[NSHOWN][2][NSTEP];               /* the two ends as played (.bss: the audio interrupt reads it) */
 static step_t sqm_buf[NSTEP] __attribute__((section(".pool")));   /* an end being built, KEEP's copy (main loop; the pool: .bss is the tighter, plan §4.9.2) */
 static uint32_t sqm_poll_ms;
@@ -213,7 +213,7 @@ static uint32_t sqm_sig(const track_t *t, const sqm_part_t *q, uint32_t len)
     for (k = 0; k < 2u; k++)
         h = fnv((h ^ e[k]->seed) * 16777619u, e[k]->d, SD_N + SQM_PITCH_BYTES);
     h = (h ^ (uint32_t)scale_g ^ ((uint32_t)root_g << 8) ^ ((morph.cfg & MC_PIT) << 16) ^ ((uint32_t)morph_musical << 24)) * 16777619u;
-    return (h ^ (len | (uint32_t)q->aon << 7 | (uint32_t)q->notes << 8)) * 16777619u;
+    return (h ^ (len | (uint32_t)q->aon << 7 | (uint32_t)SQM_AMT(q) << 8)) * 16777619u;
 }
 /* the ends of part pi as they play now (main loop): built again when anything they depend on changed (force: always) */
 /* WNDR+BOTH on FM6 (glide_shape_follow): a hit holds into the free cells after it, span - 1 of them, as 1.1's ties (a whole-chord
@@ -241,7 +241,7 @@ static void sqm_refresh(uint32_t pi, int force)
     const track_t *t = &trk[pi];
     uint32_t len = sqm_len(t), sig, src = rhythm.source[pi];
     if (!q->n) {                                         /* the part's default End B, the first entry UNDO can go back to */
-        sqm_rand(&q->b[0], 0x5EEDu + 0x2F1u * pi, q->notes);
+        sqm_rand(&q->b[0], 0x5EEDu + 0x2F1u * pi, SQM_AMT(q));
         q->n = 1, q->top = 0;
     }
     rhythm_validate(pi, len);
@@ -251,7 +251,7 @@ static void sqm_refresh(uint32_t pi, int force)
     if (!force && q->ok && sig == q->sig)
         return;
     if (q->aon)
-        sqm_build(t->step, len, &q->a, q->notes, sqm_buf);
+        sqm_build(t->step, len, &q->a, SQM_AMT(q), sqm_buf);
     else
         memcpy(sqm_buf, t->step, len * sizeof sqm_buf[0]);
     rhythm_apply(pi, len, sqm_buf);
@@ -259,7 +259,7 @@ static void sqm_refresh(uint32_t pi, int force)
     MORPH_LOCK();
     memcpy(sqm_pat[pi][0], sqm_buf, len * sizeof sqm_buf[0]);
     MORPH_UNLOCK();
-    sqm_build(t->step, len, &q->b[q->top], q->notes, sqm_buf);
+    sqm_build(t->step, len, &q->b[q->top], SQM_AMT(q), sqm_buf);
     rhythm_apply(pi, len, sqm_buf);
     sqm_shape_hold(sqm_buf, len, q->hold);
     MORPH_LOCK();
@@ -270,7 +270,7 @@ static void sqm_refresh(uint32_t pi, int force)
     MORPH_UNLOCK();
 }
 
-static volatile uint8_t sqm_vary_all;                   /* VARY BARS: 0 4 + 8, 1 ALL (tide_ui.c, the TIDE LIST) */
+static volatile uint8_t sqm_vary_all;                   /* VARY BARS: 0 EVERY 4TH, 1 EVERY BAR (tide_ui.c, the TIDE LIST) */
 static volatile uint8_t sqm_poly = 1;                   /* POLY: 0 OFF, 1 GENTLE, 2 WIDE (tide_ui.c, the TIDE LIST; seq_poly.c) */
 static volatile uint8_t poly_len[NSHOWN];                /* POLY (seq_poly.c): the loop's length now, 0: the stored one (audio path writes; a part in a stretch is never thinned) */
 static const step_t SQM_REST = {{0}, 0, ST_REST, 0, 0, 0};
@@ -288,14 +288,14 @@ static const step_t *sqm_step(const track_t *t, uint32_t idx, uint32_t vary)
         return q->aon || q->hold || (rhythm.active & (1u << pi)) ? &sqm_pat[pi][0][idx] : &t->step[idx];
     return &sqm_pat[pi][q->fader >= 1u + sqm_hash(q->tseed, idx / 4u, 9u) % 127u][idx];
 }
-/* LEAD: part pi follows in this bar (part 2 leads bars 1-2 of 4, part 1 bars 3-4; ARC's fast turns: a bar each): a lead or pluck
- * line only (D2), and never on its own variation bar (audit C7: the ARC's 1-bar turns put part 2's bar 2 on part 1) */
+/* LEAD: part pi follows in this bar (part 2 leads bars 1-2 of 4, part 1 bars 3-4; ARC's fast turns: a bar each; the opener swaps now and then,
+ * by the seed, per 8 bars: M04): a lead or pluck line only (D2), and never on its own variation bar (audit C7: the ARC's 1-bar turns put part 2's bar 2 on part 1) */
 static int sqm_follows(uint32_t pi, uint32_t bar)
 {
     return sqm_turns >= 2u && sqm_auto == 3u && ((sqm_lead >> pi) & 1u) && ((bar + 2u * pi) & 3u) != 3u &&
-           pi != (~bar >> !tarc_fast & 1u);           /* (the leader: part 2 on bars 1-2 of 4, ARC's fast turns: on the odd bars) */
+           pi != ((~bar >> !tarc_fast ^ sqm_hash((uint32_t)morph.seed, bar >> 3, 0x4Cu)) & 1u);   /* (the leader: part 2 on bars 1-2 of 4, ARC's fast turns: on the odd bars; swapped on some 8-bar phrases) */
 }
-/* the step the sequencer plays (audio interrupt): with VARY BARS 4 + 8, while playing, End A but on every 4th bar (TAKE TURNS, both parts in automatic WNDR / JRNY: part 2 on bars 2 and 6) */
+/* the step the sequencer plays (audio interrupt): with VARY BARS EVERY 4TH, while playing, End A but on every 4th bar (TAKE TURNS, both parts in automatic WNDR / JRNY: part 2 on bars 2 and 6) */
 static const step_t *seq_play_step_at(const track_t *t, uint32_t idx, uint32_t bar)
 {
     uint32_t pi = (uint32_t)(t - trk), off = sqm_turns && sqm_auto == 3u && pi == 1u;   /* TAKE TURNS: part 2 two bars on, in the shared bars (bars 2 and 6) */
@@ -332,23 +332,21 @@ static const step_t *seq_play_step(const track_t *t, uint32_t idx, step_t *buf)
 
 /* ------------------------------------------------------------------ the controls (main loop) --- */
 static uint32_t seqm_fader_of(uint32_t pi) { return pi < NSHOWN ? sqm[pi].fader : 0u; }
-static uint32_t seqm_notes_of(uint32_t pi) { return pi < NSHOWN ? sqm[pi].notes : 0u; }
-static uint32_t seqm_hist_of(uint32_t pi) { return pi < NSHOWN && sqm[pi].n > 1u ? sqm[pi].n - 1u : 0u; }
+static uint32_t seqm_notes_of(uint32_t pi) { return pi < NSHOWN ? SQM_AMT(&sqm[pi]) : 0u; }
 static int seqm_active(uint32_t pi) { return pi < NSHOWN && (sqm[pi].fader || sqm[pi].aon || (rhythm.active & (1u << pi))); }
 
 static void seqm_set_fader(uint32_t pi, uint32_t v)
 {
     if (pi >= NSHOWN)
         return;
-    if (!sqm[pi].ok)
-        sqm_refresh(pi, 1);
+    sqm_refresh(pi, 0);                                  /* (the signature check: ends built before an edit are rebuilt now, not up to 20 ms on; B04) */
     sqm[pi].fader = (uint8_t)(v > 127u ? 127u : v);
 }
 static void seqm_set_amount(uint32_t pi, uint32_t amt)   /* SEQ AMT */
 {
     if (pi >= NSHOWN)
         return;
-    sqm[pi].notes = (uint8_t)(amt > 100u ? 100u : amt);
+    sqm[pi].amt_x = (uint8_t)((amt > 100u ? 100u : amt) ^ SQM_AMT_DEF);
     sqm_refresh(pi, 1);
 }
 /* main loop, every pass: the ends built again when the pattern was edited (every 20 ms at most) */
@@ -373,24 +371,11 @@ static uint32_t seqm_roll(uint32_t pi)
     q = &sqm[pi];
     sqm_refresh(pi, 0);                                  /* (the default entry first) */
     q->top = (uint8_t)((q->top + 1u) % SQM_HIST);
-    sqm_rand(&q->b[q->top], seed, q->notes);
+    sqm_rand(&q->b[q->top], seed, SQM_AMT(q));
     q->n = (uint8_t)(q->n < SQM_HIST ? q->n + 1u : SQM_HIST);
     sqm_refresh(pi, 1);
     return seed;
 }
-/* back to the roll before; 0 = none left */
-static int seqm_undo(uint32_t pi)
-{
-    sqm_part_t *q;
-    if (pi >= NSHOWN || sqm[pi].n < 2u)
-        return 0;
-    q = &sqm[pi];
-    q->top = (uint8_t)((q->top + SQM_HIST - 1u) % SQM_HIST);
-    q->n--;
-    sqm_refresh(pi, 1);
-    return 1;
-}
-
 /* WANDER (glide_arrive): end x becomes the next generation, its dials a step on from the other end's (the end reached; the
  * Original's are 0), each its own way, turning now and then and at SEQ AMT's edges; the step grows with the phrase tier (0 ..
  * 4: 16 .. 128 bars), and from 64 bars (sometimes at 32) other steps are taken (a new seed). JOURNEY's pattern side too: each part
@@ -407,7 +392,7 @@ static void seqm_wander_gen(uint32_t pi, uint32_t x, uint32_t tier)
     q = &sqm[pi];
     sqm_refresh(pi, 0);
     tier = tier > 4u ? 4u : tier;
-    amt = q->notes;
+    amt = SQM_AMT(q);
     step = 1 + amt * TF[tier] / 16;
     if (!x)
         nx = q->b[q->top];
@@ -424,7 +409,7 @@ static void seqm_wander_gen(uint32_t pi, uint32_t x, uint32_t tier)
             q->dir[k] = (int8_t)((r >> 30) & 1u ? 1 : -1);
         nx.d[k] = (int8_t)tide_walk(nx.d[k], &q->dir[k], q->dir[k], step, amt);   /* (morph_music.c: the sound's dials walk the same way) */
     }
-    sqm_pitch_mutate(&trk[pi], &nx, r, tier, q->notes);
+    sqm_pitch_mutate(&trk[pi], &nx, r, tier, SQM_AMT(q));
     if (tier >= 3u || (tier == 2u && (r >> 8) & 1u))
         nx.seed = (uint16_t)(morph_new_seed() | 1u);
     if (x) {
@@ -450,7 +435,7 @@ static void seqm_home(uint32_t pi)
     sqm_refresh(pi, 1);
 }
 
-/* KEEP: the variation as it plays (on a varied bar, VARY BARS 4 + 8) becomes the stored pattern (the caller takes the undo copy
+/* KEEP: the variation as it plays (on a varied bar, VARY BARS EVERY 4TH) becomes the stored pattern (the caller takes the undo copy
  * first); End A the Original (the new one), the fader at 0, and End B a variation of the new Original. 0 = nothing to keep */
 static int seqm_keep(track_t *t)
 {

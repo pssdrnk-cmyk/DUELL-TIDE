@@ -8,9 +8,10 @@ Audiences: **player** (uses the unit), **installer** (flashes it), **contributor
 
 | Document | Audience | Status | Purpose |
 |---|---|---|---|
-| [README.md](../README.md) | player, installer | current | What DUELL with TIDE is, the stable and beta builds, how TIDE works, install, and DUELL 1.1's reference. |
+| [README.md](../README.md) | player, installer | current | What DUELL with TIDE is, how to play a tide, how to install it, the stable and beta builds and what changed. |
 | [docs/QUICKSTART.md](QUICKSTART.md) | player | current | A short tour of the controls, saving, effects and MIDI. |
 | [docs/TIDE_GUIDE.md](TIDE_GUIDE.md) | player | current | A five-minute guide to AUTO TIDE and TIDE SETTINGS. |
+| [docs/DUELL_1_1_REFERENCE.md](DUELL_1_1_REFERENCE.md) | player | reference | DUELL 1.1 by OSCILL/R: parts and modes, engines, factory content, effects, MIDI and the CC map. |
 | [docs/INSTALL.md](INSTALL.md) | installer | current | Installing with the web installer (Stable or Beta), erasing data, going back to M-VAVE's firmware. |
 | [docs/TROUBLESHOOTING.md](TROUBLESHOOTING.md) | player, installer | current | Symptom and fix for the installer, the emulator, the unit and TIDE. |
 | [docs/RECOVERY.md](RECOVERY.md) | installer | current | What to try if a flash stops or fails. |

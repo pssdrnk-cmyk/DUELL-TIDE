@@ -6,10 +6,6 @@
 #define BD_SUB_PLS 72u          /* SQUARE and PULSE (polyBLEP at the edges): COST-CAL item 116, SQ 71.9 (GOOD, 8 runs), PULSE 67.4 */
 #define BD_SUB_SINE 51u         /* COST-CAL item 116: measured 50.9 (GOOD) */
 #define BD_SUB_TRI 46u          /* COST-CAL item 116: measured 46.0 (GOOD) */
-#define BD_SUB_H1_S 8u          /* est.: HARMONICS up to 64 (one octave above), SINE / TRI: +8 .. 18; SQUARE / PULSE: +18 .. 36 */
-#define BD_SUB_H2_S 18u         /* .. above 64 (two octaves) */
-#define BD_SUB_H1_Q 18u
-#define BD_SUB_H2_Q 36u
 #define BD_SUB_BLK 1u           /* the per-block work (the step, the unison rule, the FM6 follow): under 1 */
 /* CYCLE (job F): est.: 15 to 30 host instructions a block and voice while an active slot reads it (the tick, the curve, one multiply-add) = 0.5 to 0.9 a sample, rounded up */
 #define BD_CYCLE 6u              /* COST-CAL item 116: a slot reading CYCLE 5.7 a voice (GOOD) */
@@ -69,9 +65,7 @@ static void bd_feat(const track_t *t, bd_part_t *r, const bd_tw_t *wm)
 
     /* SUB (job F): the SUB LAYER by WAVE and HARMONICS, a voice; UNISON plays one sub a key (voice 0 only): the part's fixed cost */
     if (XV(t, X_SUBLVL) > 0) {
-        uint32_t sw = (uint32_t)XV(t, X_SUBWAVE) & 3u, h = 0u /* SUB HARMONICS disabled (owner, 2026-10-21) */, q = sw >= 2u, c = sw == 0u ? BD_SUB_SINE : sw == 1u ? BD_SUB_TRI : BD_SUB_PLS;
-        if (h)
-            c += h > 64u ? (q ? BD_SUB_H2_Q : BD_SUB_H2_S) : (q ? BD_SUB_H1_Q : BD_SUB_H1_S);
+        uint32_t sw = (uint32_t)XV(t, X_SUBWAVE) & 3u, c = sw == 0u ? BD_SUB_SINE : sw == 1u ? BD_SUB_TRI : BD_SUB_PLS;
         c += BD_SUB_BLK;
         if (p[P_VOICE] == V_UNISON)
             r->misc += c;

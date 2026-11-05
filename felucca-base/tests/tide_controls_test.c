@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* Exercise assignable CCs through the actual map and queued main-loop dispatch. */
 #define UI_TEST_NO_MAIN 1
 #include "ui_test.c"
@@ -100,7 +101,7 @@ static void test_time_mid_trip(void)
     run(4000);                                           /* (about 2 bars of 4) */
     p0 = glide_progress(); f0 = morph_fader_of(0);
     CHECK("TIME mid-trip: the 4-bar trip is under way", gl.on && !gl.armed && p0 > (1u << GLIDE_Q) / 4u && p0 < (3u << GLIDE_Q) / 4u);
-    tide_knob(2u, -2);                                   /* (TIME 1 bar) */
+    tide_knob(2u, -1); tide_knob(2u, -1);                /* (TIME 1 bar) */
     p1 = glide_progress();
     gl.time = 6u;                                        /* (64 bars: MIDI, a STYLE) */
     p2 = glide_progress();
@@ -138,6 +139,7 @@ static void test_wait_off_paused(void)
         for (i = 0; i < 400u && !gl.hold; i++) run(16);
         CHECK("paused WAIT: reaches endpoint hold", gl.on && gl.hold && morph_fader_of(0) == 127u);
         transport_req = 2u; run(48);
+        tide_style = STY_MINIMAL;                        /* (WAIT OFF: what OCT- + K4 goes back to) */
         if (reset) tide_reset(3u); else tide_knob(3u, -1);
         run(48);
         CHECK("paused WAIT: OFF removes hold at the endpoint", !gl.hold && gl.on && gl.to == 0u && !song.playing && morph_fader_of(0) == 127u);
@@ -202,6 +204,7 @@ static void test_wait_edit_running(void)
         n0 = mph[0].n[0]; s0 = mph[0].seed[0][mph[0].top[0]];
         tide_knob(3u, 1); run(48);
         CHECK("running WAIT: WAIT up keeps the hold", gl.on && gl.hold && gl.to == 0u && morph_fader_of(0) == 127u);
+        tide_style = STY_MINIMAL;
         if (reset) tide_reset(3u); else { tide_knob(3u, -1); tide_knob(3u, -1); }
         run(32);
         n1 = mph[0].n[0]; s1 = mph[0].seed[0][mph[0].top[0]];
@@ -316,9 +319,11 @@ static void test_twist_stop(void)
     f = morph_fader_of(0);
     CHECK("twist:   it is moving", song.playing && gl.on && f > 0u && f < 127u);
     run(480);
+    tide_knob(0, 1);                                     /* (audit C4, D9: one detent is a nudge, two stop a running tide) */
+    CHECK("twist: one detent while gliding does not stop it", glide_running() && song.playing);
     tide_knob(0, 1);
     f = morph_fader_of(0);
-    CHECK("twist: a twist while gliding stops it, PLAY goes on", !glide_running() && song.playing);
+    CHECK("twist: two detents while gliding stop it, PLAY goes on", !glide_running() && song.playing);
     tide_knob(0, 1); tide_knob(0, 1);
     CHECK("twist:   the rest of the same twist does nothing", !glide_running());
     run(1200);
@@ -327,6 +332,43 @@ static void test_twist_stop(void)
     CHECK("twist: the next twist launches again", gl.on && gl.to == 0u);
     gl.on = gl.armed = 0;
     transport_req = 2u; run(48);
+}
+
+/* audit C17: MODE, TIME and WAIT move one step an event however fast the knob turns (a turn of 5 used to skip 16 bars -> 64) */
+static void test_knob_steps(void)
+{
+    uint32_t pg = 0, pages = sizeof PAGES / sizeof PAGES[0];
+    ui_power_on(); frame();
+    while (pg < pages && PAGES[pg].graph != GR_TIDE) pg++;
+    ui.page = pg; ui.cursor = ui.bank = 0; page_entered();
+    gl.mode = GM_ONCE; gl.time = 1; gl.wait = 1;
+    tide_knob(1u, 5); tide_knob(2u, 3); tide_knob(3u, 4);
+    CHECK("knob steps: a fast turn moves MODE, TIME and WAIT by one", gl.mode == GM_LOOP && gl.time == 2u && gl.wait == 2u);
+    tide_knob(1u, -4); tide_knob(2u, -6); tide_knob(3u, -9);
+    CHECK("knob steps:   and back by one", gl.mode == GM_ONCE && gl.time == 1u && gl.wait == 1u);
+}
+
+/* audit C9 (D9): on AUTO TIDE OCT- + K3 / K4 go back to the STYLE's TIME and WAIT (the style a hand edit left), K1 says BACK TO ORIGINAL; the TIDE SETTINGS list has no reset */
+static void test_oct_reset_style(void)
+{
+    uint32_t pg = 0, pages = sizeof PAGES / sizeof PAGES[0];
+    ui_power_on(); frame();
+    while (pg < pages && PAGES[pg].graph != GR_TIDE) pg++;
+    ui.page = pg; ui.cursor = ui.bank = 0; page_entered();
+    jl_put(JL_STYLE, STY_AMBIENT); tide_settings();
+    gl.time = 0; gl.wait = 0;
+    CHECK("OCT- reset: K3 goes to the style's TIME (AMBIENT: 64 bars)", tide_reset(2u) == 1 && gl.time == 6u);
+    CHECK("OCT- reset: K4 goes to the style's WAIT (AMBIENT: 8 bars)", tide_reset(3u) == 1 && gl.wait == 4u);
+    gl.time = 1; tide_settings();                        /* (a hand edit: CUSTOM, the style it came from is kept) */
+    CHECK("OCT- reset: the edit made it CUSTOM", tide_style == STY_CUSTOM);
+    tide_reset(2u);
+    CHECK("OCT- reset:   from CUSTOM, K3 still goes back to AMBIENT's TIME", gl.time == 6u);
+    jl_put(JL_STYLE, STY_PEAK); tide_settings();
+    gl.time = 0; gl.wait = 5;
+    tide_reset(2u); tide_reset(3u);
+    CHECK("OCT- reset: PEAK's TIME and WAIT (8 bars, OFF)", gl.time == 3u && gl.wait == 0u);
+    tide_reset(0u);
+    CHECK("OCT- reset: K1 says BACK TO ORIGINAL", !strcmp(ui.msg, "BACK TO ORIGINAL"));
 }
 
 /* a WILD roll with ARP ON keeps a SEQ Original on SEQ and never draws SEQ for another (morph.c, TIDE_AMODE_KEEP / _END) */
@@ -383,6 +425,36 @@ static void test_seq_ghost(void)
     song.rec = 0;
     transport_req = 2u; run(320);
     CHECK("seq ghost: STOP: silent", !song.playing && !t->arp_note);
+    t->p[P_AMODE] = 0;
+}
+
+/* audit G08: the stand-in is the part's chord (CHRD MIN7: C Eb G Bb from C4), not a single C4; CHRD OFF stays the single note */
+static void test_seq_ghost_chord(void)
+{
+    track_t *t = &trk[0];
+    uint32_t i, root = 0, nch = 0, third = 0, fifth = 0, seventh = 0;
+    ui_power_on(); frame();
+    transport_req = 2u; run(48);
+    t->p[P_SLEN] = 4;
+    memset(t->step, 0, sizeof t->step);
+    for (i = 0; i < 4u; i++) { t->step[i].time = ST_NOTE; t->step[i].n = 1; t->step[i].note[0] = 60; t->step[i].vel = 100; }
+    t->p[P_AMODE] = AM_SEQ_ID; t->p[P_ARATE] = 5; t->p[P_APROB] = 127; t->p[P_AOCT] = 1;
+    t->p[P_VOICE] = V_POLY; t->p[P_CHRD] = 7; t->p[P_VOIC] = 0;                    /* MIN7, CLOSE */
+    memset(tide_chord_n, 0, sizeof tide_chord_n);
+    run(320);
+    transport_req = 1u;
+    for (i = 0; i < 60u; i++) {
+        run(16);
+        root |= t->arp_note == 60u;
+        nch += t->arp_ch[0] != 0u;
+        third |= t->arp_ch[0] == 63u;
+        fifth |= t->arp_ch[1] == 67u;
+        seventh |= t->arp_ch[2] == 70u;
+    }
+    printf("seq ghost chord: CHRD MIN7, PLAY, no key: root %u, third %u, fifth %u, seventh %u (blocks with a chord note: %u)\n", root, third, fifth, seventh, nch);
+    CHECK("seq ghost: CHRD MIN7, PLAY, no key: the stand-in is C Eb G Bb, not C4 alone", root && third && fifth && seventh);
+    t->p[P_CHRD] = 0;
+    transport_req = 2u; run(320);
     t->p[P_AMODE] = 0;
 }
 
@@ -499,6 +571,8 @@ int main(void)
     }
     test_glide_transport();
     test_twist_stop();
+    test_oct_reset_style();
+    test_knob_steps();
     test_wait_off_in_hold();
     test_time_mid_trip();
     test_wait_off_paused();
@@ -508,6 +582,7 @@ int main(void)
     test_takeover_routes();
     test_seq_rule();
     test_seq_ghost();
+    test_seq_ghost_chord();
     test_settings_flicker();
     printf("tidecontrols: %u checks, %u failures\n", checks, failures);
     return failures ? 1 : 0;

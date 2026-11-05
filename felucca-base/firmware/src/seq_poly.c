@@ -80,11 +80,13 @@ static uint32_t tide_seq_next(track_t *t)
     cur = tide_slen(t);
     return ((uint32_t)t->seq_idx + 1u) % cur;
 }
-/* a pass of the sequencer's loop ends (the phrase lifecycle counts the full loops) */
+/* a pass of the sequencer's loop ends (the phrase lifecycle counts the full loops; an ARP SEQ part's are the arp's) */
 static int tide_seq_wrapping(const track_t *t, uint32_t len)
 {
     uint32_t pi = trk_index(t);
-    if (pi < NSHOWN && poly_len[pi] && arp_mode(t) != AM_SEQ_ID)
+    if (arp_mode(t) == AM_SEQ_ID)
+        return 0;                                        /* (ARP SEQ: the arp's own loop counts, tide_arp_tick; B05) */
+    if (pi < NSHOWN && poly_len[pi])
         return poly_ref[pi] + 1u == tide_poly_full(t);
     return (uint32_t)t->seq_idx + 1u == len;
 }
@@ -111,6 +113,7 @@ static void tide_arp_tick(track_t *t)
     if (pi >= NSHOWN || arp_mode(t) != AM_SEQ_ID || t->arp_idx % len)
         return;
     was = poly_len[pi];
+    tide_seq_loops[pi]++;                                /* (the phrase lifecycle's loop: the arp's, as POLY's) */
     tide_poly_wrap(pi, len);
     if (poly_len[pi] && !was)
         poly_base[pi] = t->arp_idx;

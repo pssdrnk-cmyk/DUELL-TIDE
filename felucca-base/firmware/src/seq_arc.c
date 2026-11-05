@@ -85,7 +85,7 @@ static void tarc_poll(void)
 static const char *tarc_drop_hand(void)
 {
     if (!sqm_arc || !sqm_auto)
-        return sqm_arc ? "NO AUTO TIDE YET" : "ARC OFF";
+        return sqm_arc ? "DROP NEEDS WNDR/JRNY" : "ARC OFF";
     if (tarc.hand && tarc.phase != AP_DROP) {
         tarc.hand = 0;
         tarc_dropphr = 0xFFu;
@@ -108,6 +108,12 @@ static uint32_t tarc_cap(uint32_t base)                  /* the density bound: b
 {
     uint32_t q = sqm_arc && sqm_auto && tarc.t >= 200u && tarc.phase <= AP_PEAK ? base / 2u : base / 4u;
     return base + (q ? q : 1u);
+}
+static uint32_t tarc_need(void)                          /* the phrase edits' cadence: every loop in the rise, every 4th in the breakdown, else every 2nd (M09) */
+{
+    if (!sqm_arc || !sqm_auto || !tarc.run)
+        return 2u;
+    return tarc.phase == AP_RISE ? 1u : tarc.phase == AP_BREAK || tarc.phase == AP_DROP ? 4u : 2u;
 }
 static int32_t tarc_bright(void)                         /* +1 brighter, -1 softer, 0 neither */
 {

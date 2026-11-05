@@ -264,7 +264,7 @@ static void roll_end(uint32_t pi, uint32_t x, uint32_t seed, uint32_t amount, ui
 
 static void t_morph_old(void)
 {
-    ck("the End B of every id but the five from a stored seed: cloud/base3's hash (24 seeds x 3 AMOUNTs x SMART / WILD x PITCH / ARP x both streams x 13 engines)", hash_c(roll_child) == 0x6de4d97765dbcb0aull /* (audit P07, re-based on purpose: MORPH's RES ceilings in the exponential law's steps; was 0x51c5d094e26b775a) */);   /* (re-based 2026-11-03 on Linux for jam11: 1.1's reworked SMART / WILD rolls (stock 1.1 gives 0x2b371d1574e4edda), and TIDE's: a WILD roll with ARP ON keeps the arp mode, MORPH TO / MUSICAL roll, UNISON and FM6 edits; was 0x93396a7983cefeb4) /* (re-based 2026-10-28, item 154: ANALOG and TRIO give back less of a rolled ENV / ENV 2 / LFO 1 / LFO 2 -> FLT depth when the band-pass window is exceeded (morph.c morph_uf_open: together, the largest first, or the other way); only those four ids (5, 14, 114, 117) moved, the hash without them is the same as before (0x1b84c7b5a0ae32a5); was 0xa929659621e83d4f) (re-based 2026-10-28, item 152: WILD also rolls the AMOUNT of an assigned matrix route that is at 0 (morph.c morph_slot, its own stream): only matrix amounts moved, the hash without the matrix ids is the same as before (33ac50046660cb9a); was 0xf1c026d493b49c3d) (re-based again 2026-10-28: SMART also sets no LFO shape, ARP RATE, whole-number pitch value (PITCH on), the draws stay; was 0xb429a4835a7674ae) (2026-10-27: SMART no longer sets a switch (SLOPE, an engine's choice, ARP MODE / OCTAVES), the draws stay; was 0xb1e053d0900cfbc1) (re-based on purpose 2026-10-21: ANALOG and TRIO rolls keep filter 1's cutoff steering; was cloud/base3's 0x8ac190ea492b678f; re-based again for DUELL 1.1: LOFI's WAVE is one list, 0..14, and K4 is PULSE WIDTH, so the LOFI rolls change; was 0x03e34858cc8b1a21) */
+    ck("the End B of every id but the five from a stored seed: cloud/base3's hash (24 seeds x 3 AMOUNTs x SMART / WILD x PITCH / ARP x both streams x 13 engines)", hash_c(roll_child) == 0x17fbec4c3477ee76ull /* (six chord types appended, 980a8bf: P_CHRD's range grew from 0..9 to 0..15 and this scenario's random Original draws CHRD from it; CHRD is never rolled (T_NEV); with its range held at 9 the hash is 0x6de4d97765dbcb0a as before) /* (audit P07, re-based on purpose: MORPH's RES ceilings in the exponential law's steps; was 0x51c5d094e26b775a) */);   /* (re-based 2026-11-03 on Linux for jam11: 1.1's reworked SMART / WILD rolls (stock 1.1 gives 0x2b371d1574e4edda), and TIDE's: a WILD roll with ARP ON keeps the arp mode, MORPH TO / MUSICAL roll, UNISON and FM6 edits; was 0x93396a7983cefeb4) /* (re-based 2026-10-28, item 154: ANALOG and TRIO give back less of a rolled ENV / ENV 2 / LFO 1 / LFO 2 -> FLT depth when the band-pass window is exceeded (morph.c morph_uf_open: together, the largest first, or the other way); only those four ids (5, 14, 114, 117) moved, the hash without them is the same as before (0x1b84c7b5a0ae32a5); was 0xa929659621e83d4f) (re-based 2026-10-28, item 152: WILD also rolls the AMOUNT of an assigned matrix route that is at 0 (morph.c morph_slot, its own stream): only matrix amounts moved, the hash without the matrix ids is the same as before (33ac50046660cb9a); was 0xf1c026d493b49c3d) (re-based again 2026-10-28: SMART also sets no LFO shape, ARP RATE, whole-number pitch value (PITCH on), the draws stay; was 0xb429a4835a7674ae) (2026-10-27: SMART no longer sets a switch (SLOPE, an engine's choice, ARP MODE / OCTAVES), the draws stay; was 0xb1e053d0900cfbc1) (re-based on purpose 2026-10-21: ANALOG and TRIO rolls keep filter 1's cutoff steering; was cloud/base3's 0x8ac190ea492b678f; re-based again for DUELL 1.1: LOFI's WAVE is one list, 0..14, and K4 is PULSE WIDTH, so the LOFI rolls change; was 0x03e34858cc8b1a21) */
     {   /* the draws of the five ids' old tags are kept: ROOT / SCALE a pitch item, ALLOC a hard switch, the TYPE a fade on ANALOG */
         uint32_t seed, ok = 1, moved = 0;
         for (seed = 1; seed <= 300u; seed++) {
@@ -539,7 +539,7 @@ static void t_matrix(void)
     uint64_t base = scene_hash(0);
     track_t *t;
     uint32_t ok;
-    ck("a busy two-part matrix render (every per-note destination from ENV, ENV 2, VEL, KEY, RAND, the LFOs; PAN, sends, E5, RES, FMODE) is cloud/base3's hash: mod_voice runs as it did", hash_c(matrix_child) == 0x00793912d67b9b7bull /* (audit P03, on purpose: the SVF keeps its precision at low cutoffs, dsp.c tsvf_coef_k; was 0xf12f1b34e77ffced) /* (audit R05 / R08: the master soft knee and the loops' dead bands closed; re-based on purpose, was 0xc2cc680e10ff0b9c) */);   /* (audit P07, re-based on purpose 2026-11-05: the scene routes to RES, filter 1's damping is exponential now (voice.c UF_K); was 0xf543d5abd1c7de69) (re-based 2026-11-03 on Linux for 1.1 / jam11 (stock 1.1 gives the same): item 144's note-start stagger (VS_MAX 2; the chords of the scene start 2 voices a block: -DVS_MAX=99 gives 0xd10b49bf6d83837b), BIT DEPTH and the reverb fix; was 0xc3a35d49b4be06fd) /* (re-based on purpose 2026-10-21: the click fixes of hunt1..hunt4 (LFO / matrix slew, SAT, PHASE seam); was cloud/base3's 0xec458fefd57d01b4; and for 1.0: the matrix amount +63 acts as a true 100 %, mod.c MX_AMT; was 0x4396c17e8041202e; DUELL 1.1: the smooth accent ramp (core.h accent_dir_*, voice.c, voice_chain.c) moved it from 0x8c526ee5e3c74750; with those edits put back to the 1.0 files the old hash comes out) */
+    ck("a busy two-part matrix render (every per-note destination from ENV, ENV 2, VEL, KEY, RAND, the LFOs; PAN, sends, E5, RES, FMODE) is cloud/base3's hash: mod_voice runs as it did", hash_c(matrix_child) == 0x2be8c7d84992e1f9ull /* (audit P02, on purpose: pitch modulation below the 1/16 semitone reaches the oscillator; was 0x00793912d67b9b7b) /* (audit P03, on purpose: the SVF keeps its precision at low cutoffs, dsp.c tsvf_coef_k; was 0xf12f1b34e77ffced) /* (audit R05 / R08: the master soft knee and the loops' dead bands closed; re-based on purpose, was 0xc2cc680e10ff0b9c) */);   /* (audit P07, re-based on purpose 2026-11-05: the scene routes to RES, filter 1's damping is exponential now (voice.c UF_K); was 0xf543d5abd1c7de69) (re-based 2026-11-03 on Linux for 1.1 / jam11 (stock 1.1 gives the same): item 144's note-start stagger (VS_MAX 2; the chords of the scene start 2 voices a block: -DVS_MAX=99 gives 0xd10b49bf6d83837b), BIT DEPTH and the reverb fix; was 0xc3a35d49b4be06fd) /* (re-based on purpose 2026-10-21: the click fixes of hunt1..hunt4 (LFO / matrix slew, SAT, PHASE seam); was cloud/base3's 0xec458fefd57d01b4; and for 1.0: the matrix amount +63 acts as a true 100 %, mod.c MX_AMT; was 0x4396c17e8041202e; DUELL 1.1: the smooth accent ramp (core.h accent_dir_*, voice.c, voice_chain.c) moved it from 0x8c526ee5e3c74750; with those edits put back to the 1.0 files the old hash comes out) */
     ck("CUTOFF 2 routes (ENV VEL KEY RAND ENV 2 CYCLE LFO) change no sample of the product: the second list is read by the chain only", second_hash(prep_f2routes) == base);
     ck("CYCLE to CUT, SHP, PITCH (per note) and PAN (per block): a working source since job F (cycle.c): it moves the sound (job B's stub at rest changed no sample)", second_hash(prep_cycleroutes) != base);
     /* the lists */
@@ -573,7 +573,6 @@ static void t_matrix(void)
     {
         vmod_t m0, m1;
         voice_t v;
-        int32_t fine = 5;
         track_t tt;
         memset(&tt, 0, sizeof tt);
         memset(&v, 0, sizeof v);
@@ -588,7 +587,7 @@ static void t_matrix(void)
         memset(&m0, 0, sizeof m0);
         m0.pitch16 = 960; m0.inc = pitch_inc(960); m0.cutoff = 1000; m0.shape = 64 << 8; m0.amp0 = 20000; m0.amp1 = 30000;
         m1 = m0;
-        mod_cycle_voice(&tt, &tt.v[0], &m1, fine);
+        mod_cycle_voice(&tt, &tt.v[0], &m1);
         ok = m1.cutoff == m0.cutoff && m1.shape == m0.shape && m1.pitch16 == m0.pitch16 && m1.amp1 == mulq15(m0.amp1, mulq15(32767, mod_gain(MS_CYCLE, 0, 20))) && tt.v[0].env_out == m1.amp1 && tt.m_cycle == 0;
         ck("mod_cycle_voice: a CYCLE at rest adds 0 to cutoff, shape, pitch and closes an AMP route by mod_gain; env_out follows; t->m_cycle kept", ok);
         if (!ok)
@@ -596,7 +595,7 @@ static void t_matrix(void)
         tt.cym = 0;
         m1 = m0;
         v = tt.v[0];
-        mod_cycle_voice(&tt, &tt.v[0], &m1, fine);
+        mod_cycle_voice(&tt, &tt.v[0], &m1);
         ck("  .. with the list empty it changes nothing", !memcmp(&m1, &m0, sizeof m0));
         (void)v;
     }

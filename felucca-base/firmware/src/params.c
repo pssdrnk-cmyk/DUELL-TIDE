@@ -63,7 +63,7 @@ static uint32_t esync_idx(int32_t v) { return (uint32_t)(v & 127) * ESYNC_N >> 7
 /* P_KTRK (id 27, DUELL 0.2.21) took the id of the retired QNT (OFF / SNAP / WHITE / SEQ; owner 2026-10-12: the OFF-SCALE KEYS setting is global, core.h
  * offscale_g). Every store writes QNT 0 (up_def, project.c) and 0 is KEY TRK off, so no stored sound changes. Its labels are gone */
 /* chord keys (chord.c): OFF, the diatonic triad / seventh of the track's ROOT and SCALE on the key, fixed shapes */
-static const char *const N_CHRD[] = {"OFF", "DIA3", "DIA7", "MAJ", "MIN", "DOM7", "MAJ7", "MIN7", "SUS4", "POW"};
+static const char *const N_CHRD[] = {"OFF", "DIA3", "DIA7", "MAJ", "MIN", "DOM7", "MAJ7", "MIN7", "SUS4", "POW", "MIN9", "MAJ9", "SUS2", "ADD9", "MIN11", "DIA9"};
 static const char *const N_OFFSCALE[] = {"SNAP", "PLAY"};   /* core.h offscale_g: OS_SNAP, OS_PLAY (SCALE page K3) */
 static const char *const N_VOIC[] = {"CLOSE", "OPEN", "INV1", "INV2", "+OCT"};   /* VC_CLOSE .. VC_BASS */
 static const char *const N_VOICE[] = {"POLY", "MONO", "LEG", "UNI"};   /* V_POLY .. V_UNISON */
@@ -137,7 +137,7 @@ static const param_desc_t TP[P_COUNT] = {
     [P_EQLG] = PD("LOW", F_EQDB, -12, 12, 0),      /* DUELL EQ (fx.c track_eq): all 0 = off, bit for bit as before */
     [P_LRATE] = PD("RATE", F_LFOHZ, 0, 127, 60),
     [P_LWAVE] = PE("WAVE", N_LWAVE, 0),
-    [P_LPHASE] = PD("PHS", F_INT, 0, 127, 0),
+    [P_LPHASE] = PD("PHS", F_DEG, 0, 127, 0),
     [P_LFADE] = PD("FADE", F_TIME, 0, 127, 0),
     [P_LD_PIT] = PD("PIT", F_BIPCT, -64, 63, 0),
     [P_LD_FLT] = PD("FLT", F_BIPCT, -64, 63, 0),
@@ -193,7 +193,7 @@ static const param_desc_t TP[P_COUNT] = {
     /* DUELL: LFO 2 (voice.c lfo_tick, LFO 1's code), its ranges and defaults; routed only through the matrix (MS_LFO2) */
     [P_L2RATE] = PD("RATE2", F_LFOHZ, 0, 127, 60),
     [P_L2WAVE] = PE("WAVE2", N_LWAVE, 0),
-    [P_L2PHASE] = PD("PHS2", F_INT, 0, 127, 0),
+    [P_L2PHASE] = PD("PHS2", F_DEG, 0, 127, 0),
     [P_L2FADE] = PD("FADE2", F_TIME, 0, 127, 0),
     [P_CHRD] = PE("CHRD", N_CHRD, 0),
     [P_VOIC] = PE("VOIC", N_VOIC, 0),
@@ -389,8 +389,6 @@ static uint32_t dly_mode_ui(void)
     uint32_t m = (uint32_t)song.g[G_DMODE];
     return m >= DMD_N ? (uint32_t)DMD_DIGITAL : m;
 }
-/* 1: the delay has its MODE card in the output mode now (0.2.22: every mode, DUEL too; the FX summary asks it, ui_draw.c) */
-static uint32_t dly_modes_here(void) { return 1; }
 /* 1 while the delay RUNS in an event mode (RANDOM, OCT UP) as the UI knows it */
 static uint32_t dly_ev_ui(void) { uint32_t m = dly_mode_ui(); return m == DMD_RAND || m == DMD_OCTUP; }
 /* in RANDOM and OCT UP the MDEPTH card (G_DMDEP, the delay's modulation depth) is CHANCE: the share of the clock edges that fire an event (stored in the same
@@ -770,6 +768,20 @@ static void param_format(const param_desc_t *d, int32_t v, char *val, const char
         }
         *unit = "%";
         break;
+    case F_DEG:                                     /* a phase: 128 steps of 2.8125 degrees */
+        fmt_int(val, (v * 360 + 64) / 128);
+        *unit = "deg";
+        break;
+    case F_VOWL: {                                  /* VOICE's vowel: A E I O U at 0 / 32 / 64 / 95 / 127, the two nearest letters between */
+        int32_t k = v * 4, i = k / 127, r = k - i * 127;
+        val[0] = "AEIOU"[i + (r > 118)];
+        val[1] = r > 8 && r <= 118 ? '>' : 0;
+        val[2] = "AEIOU"[i + 1 > 4 ? 4 : i + 1];
+        val[3] = 0;
+        if (!val[1])
+            val[2] = 0;
+        break;
+    }
     case F_FMODE:                                   /* .. its MODE: the ends and the middle by name, a blend as the two */
         str_cpy(val, v <= 0 ? "LP" : v < 64 ? "LP>BP" : v == 64 ? "BP" : v < UF_HP ? "BP>HP" : "HP", 6);
         break;
@@ -1032,7 +1044,7 @@ static const page_t PAGES[] = {
      * SMART, 2 ARP, 3 PITCH, 4 empty: 0.2.9, TARGET is ALGORITHM's BOTH), the output MODE (SPEC 5b.1: KNOB 1 SPLIT / STEREO / LAYER; core.h duell_mode, kept with
      * the settings: ui_input.c mode_knob, mode_settings), the MIXER (MUTE PAN SPACE LEVEL: the mixer level). No P_* id: the morph is not a
      * parameter */
-#if DUELL_TIDE                                           /* TIDE hook (H10): HOME round: MORPH, MORPH MODES, TIDE, MODE (owner 2026-11-01) */
+#if DUELL_TIDE                                           /* TIDE hook (H10): HOME round: MORPH, TIDE SETTINGS, AUTO TIDE, MODE (owner 2026-11-01) */
     {"MORPH", FAM_TRK, SC_MORPH, GR_MORPH, {0xFF, 0xFF, 0xFF, 0xFF}},
     {"TIDE SETTINGS", FAM_TRK, SC_TIDE, GR_TIDELIST, {0xFF, 0xFF, 0xFF, 0xFF}},
     {"AUTO TIDE", FAM_TRK, SC_TIDE, GR_TIDE, {0xFF, 0xFF, 0xFF, 0xFF}},
@@ -1237,7 +1249,8 @@ static const char *const VAL_SHOWN[][3] = {
     {"SCALE", "DIMHW", "DIMINISHED\nHALF-WHOLE"}, {"SCALE", "DIMWH", "DIMINISHED\nWHOLE-HALF"},
     /* the chord keys' TYPE list and the voicing (owner 2026-10-25) */
     {"CHRD", "DIA3", "DIATONIC\n3"}, {"CHRD", "DIA7", "DIATONIC\n7TH"}, {"CHRD", "MAJ", "MAJOR"}, {"CHRD", "MIN", "MINOR"}, {"CHRD", "DOM7", "DOMINANT\n7TH"},
-    {"CHRD", "MAJ7", "MAJOR\n7TH"}, {"CHRD", "MIN7", "MINOR\n7TH"}, {"CHRD", "SUS4", "SUSPENDED\n4TH"}, {"CHRD", "POW", "POWER\nCHORD"}, {"VOIC", "+OCT", "BASS\nNOTE"},
+    {"CHRD", "MAJ7", "MAJOR\n7TH"}, {"CHRD", "MIN7", "MINOR\n7TH"}, {"CHRD", "SUS4", "SUSPENDED\n4TH"}, {"CHRD", "POW", "POWER\nCHORD"},
+    {"CHRD", "MIN9", "MINOR\n9TH"}, {"CHRD", "MAJ9", "MAJOR\n9TH"}, {"CHRD", "SUS2", "SUSPENDED\n2ND"}, {"CHRD", "ADD9", "ADD\n9TH"}, {"CHRD", "MIN11", "MINOR\n11TH"}, {"CHRD", "DIA9", "DIATONIC\n9TH"}, {"VOIC", "+OCT", "BASS\nNOTE"},
     /* LOFI's BITS list and the other lists (owner 2026-10-25) */
     {"BITS", "4BIT", "4 BIT"}, {"BITS", "4B/2", "4 BIT\nHALF RATE"}, {"BITS", "8BIT", "8 BIT"}, {"BITS", "1BIT", "1 BIT"}, {"BITS", "STEP", "CHIP"},
     {"MODE", "UP+8", "UP AND\nOCTAVE"}, {"MODE", "ORD", "AS\nPLAYED"}, {"HOLD", "ARP", "ARP\nONLY"}, {"CLK", "TRS", "TRS MIDI"},

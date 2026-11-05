@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* i32rec out.bin file.i32 ... : int32 L/R pair dumps (MULTI_DUMP, SOUND_DUMP) -> the records acmp reads (id 100000 + file number, sample), one segment a file */
 #include <stdio.h>
 #include <stdint.h>

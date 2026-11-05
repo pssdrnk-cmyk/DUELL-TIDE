@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-only
 # TIDE's separability check: DUELL_TIDE=0 must build plain DUELL (1.1 + the always-on fixes) byte for byte.
 #   sh jam/check_off.sh            build with DUELL_TIDE=0 and compare the package with jam/off.sha256
 # off.sha256 holds the package hash of the last commit that changed DUELL's own behaviour (the fixes). A TIDE change

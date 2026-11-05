@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-only
 # CPU budget proxy (host, WSL/Linux): the per-block cost of the STRESS TEST scene (tests/scenes/M16_STRESS_TEST.bin, no longer a factory multi), alone (Z) and with TIDE's sequencers playing in automatic MUSIC WNDR/JRNY (T).
 # Usage (from Git Bash/PowerShell):  wsl.exe -d Ubuntu --cd <worktree> -- sh felucca-base/tools/cpu_budget.sh [TREE] [SECTIONS]
 #   TREE      the checkout to measure (default: this one); SECTIONS default "ZT"; env BARS (16), TURNS (1), POLY (1), JRNY (0: WANDER, 1: JOURNEY)

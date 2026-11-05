@@ -401,7 +401,7 @@ static void t_knobs(void)
     turn(EN_K3, -MORPH_DET);
     expect("KNOB 3 left: UNDO A, B stays; no KEEP", rolls(0, 0) == 1u && msg_is("UNDO A") && rolls(0, 1) == 2u);
 #if DUELL_TIDE
-    /* TIDE: TIDE SETTINGS, the list in MORPH SET's place: ROLL SMART -> WILD, ARP ON, PITCH ON (the same settings bits); K2..K4 do nothing; ALGORITHM is the
+    /* TIDE: TIDE SETTINGS, the list in MORPH SET's place: ROLL SMART -> WILD, ARP ON, PITCH ON (the same settings bits); K2..K4 turn the picked row (C12); ALGORITHM is the
      * morph's selector there (PART 1, BOTH, PART 2: tide_ui.c) */
     go_title(MORPH_SET_TITLE);
     frames(32);
@@ -410,9 +410,10 @@ static void t_knobs(void)
            morph.cfg == (MC_WILD | MC_ARP | MC_PIT) && favorites.factory[15][8] == 7u);
     {
         uint32_t c = morph.cfg, t = morph.target;
+        jl_sel = JL_VARY;                                /* (audit C12: K2..K4 turn the picked row's value, here one that is not the morph's) */
         turn(EN_K2, 1); turn(EN_K3, -1); turn(EN_K4, 1); turn(EN_K4, -1);
         frame();
-        expect("  .. KNOB 2..4: nothing (no card on the list)", morph.cfg == c && morph.target == t);
+        expect("  .. KNOB 2..4: the picked row's value, not the morph's (no card on the list)", morph.cfg == c && morph.target == t);
     }
     turn(EN_ALGO, 1);
     expect("  .. ALGORITHM on TIDE SETTINGS: BOTH next (TIDE: the morph's selector, as on MORPH)", song.sel == 0u && morph.target == MT_BOTH);

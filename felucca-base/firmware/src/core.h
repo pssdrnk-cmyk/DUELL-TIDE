@@ -75,6 +75,9 @@ static inline int32_t accent_lift(uint32_t vel, int32_t envq15)
         vel = ACCENT_V1;
     return (envq15 * ACCENT_MAX * (int32_t)(((vel - ACCENT_V0) * 256u + 8u) / (ACCENT_V1 - ACCENT_V0))) >> 15;   /* weight Q8: 256 at 127, so the top is the old lift exactly (envq15 <= 32768: below 2^31) */
 }
+/* the velocity the accent reads: the key's (mvel), not the voice's own vel, which UNISON lowers to keep the level (vel * 36 / 100 or / 2: it never reached 111). A LEGATO
+ * key under a harder held one keeps the harder (vel is the larger there); everywhere else the two are the same */
+#define ACCENT_VEL(v) ((v)->mvel > (v)->vel ? (v)->mvel : (v)->vel)
 /* which way a filter opens, Q7 of the lift: MODE 0 (LP) +127 .. 64 (BP) 0 .. 127 (HP) -127; filter 2's TYPE (params.c TT_*: OFF 0, LP 1, BP 2, HP 3, NOTCH 4, LADDER 5, COMB 6): LP, LADDER +127, HP -127, rest 0 */
 static inline int32_t accent_dir_mode(int32_t mode) { return 127 - 2 * (mode < 0 ? 0 : mode > 127 ? 127 : mode); }
 static inline int32_t accent_dir_type(uint32_t ty) { return (ty == 1u || ty == 5u) ? 127 : ty == 3u ? -127 : 0; }
@@ -100,7 +103,9 @@ enum {
     F_CREL,                                /* .. RELEASE, 0..12: CMP_REL_MS, shown in ms, from 1000 in s */
     F_TUNEHZ,                              /* DUELL 0.2.22: MASTER TUNE, the value is the frequency of A4 in 0.1 Hz (TUNE_MIN .. TUNE_MAX), shown "440.0" Hz */
     F_DSEMI,                               /* TWIN FILTER (ext.h, cloud job B): filter 2's OFFSET, whole dial steps shown as semitones with one decimal (a dial step is 0.1103 octave: 1.3236 st), "+1.3" "-83.4" st */
-    F_N99                                  /* DUELL 1.1 (owner 2026-10-25): FM6's AMP ENV knobs, 0..127 shown as the DX7 number 0..99 of the loudest carrier ((v * 99 + 63) / 127), no unit (appended: the fmt numbers are in the protocol) */
+    F_N99,                                 /* DUELL 1.1 (owner 2026-10-25): FM6's AMP ENV knobs, 0..127 shown as the DX7 number 0..99 of the loudest carrier ((v * 99 + 63) / 127), no unit (appended: the fmt numbers are in the protocol) */
+    F_DEG,                                 /* a phase 0..127 shown as 0..357 degrees ("deg": the LFO's start PHS; appended) */
+    F_VOWL                                 /* VOICE's vowel position 0..127 shown as A E I O U with ">" between two ("A>E"; appended) */
 };
 
 typedef struct {
@@ -212,7 +217,7 @@ enum {                          /* global parameters */
 #define BM_DEF 8                                         /* 0.2.24 (owner): ON at 200 Hz on a new unit (BM_HZ[7]); a DEVICE setting since 0.2.24: the settings record's byte [15][21] (ui.c ms_sync, stored + 1: 0 = the default), not the project's or a multi's */
 static const uint16_t BM_HZ[BM_N] = {40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400};   /* the corners in Hz (fx.c bass_mono's table BM_C is computed for these) */
 /* DUELL 0.2.21 (owner, 2026-10-16): the MASTER COMPRESSOR, the page COMP (GLO, after BASS MONO). Four more pseudo ids past the stored globals, like G_BM: G_CT THRESH (0..40 = -40 .. 0 dB),
- * G_CR RATIO (0 = 1:1, the stage is not run; 1.5 2 3 4 6 10 20 INF), G_CA ATTACK (0.1 .. 100 ms), G_CL RELEASE (20 ms .. 2 s). They live in song.cp[0..3] and are a DEVICE setting (not in a multi, not in the
+ * G_CR RATIO (0 = 1:1, the stage is not run; 1.5 2 3 4 6 8 12 INF), G_CA ATTACK (0.1 .. 100 ms), G_CL RELEASE (20 ms .. 2 s). They live in song.cp[0..3] and are a DEVICE setting (not in a multi, not in the
  * project): packed in the settings record's retired `rsv` word (settings_persist.c; cmp_set). The tables below are the nominal times; fx.c holds the shift triples that realise them (comp_stage) */
 /* DUELL 0.2.22 (owner, 2026-10-16): the sidechain's MIDI SETUP is a DEVICE setting, not part of a sound. GLO > SIDECHAIN: per part (K1 P1 CH, K2 P1 NOTE, K3 P2 CH, K4 P2 NOTE) the MIDI channel and the note
  * that start the DUCK of a part whose DUCK SRC is MIDI (fx.c duck_note, sc_midi[]). Kept in the settings record (favorites.factory[15][14..17], 0 = the default; ui.c ui_sc_set), never in a patch, a multi or the
@@ -781,7 +786,8 @@ static volatile uint8_t mods_off;
 #define BYS_MST  8u
 #define BYS_CMP  16u
 #define BYS_ALL  31u
-static volatile uint16_t byp_m[2];
+static volatile uint16_t byp_m[NLIVE];                 /* (audit U09: by part, NLIVE of them: a host rig built with NPART=4 indexed [2] and [3]) */
+_Static_assert(sizeof byp_m / sizeof byp_m[0] >= NLIVE, "core.h: byp_m is indexed by part");
 static volatile uint8_t byp_sh;
 #define BYP(t, bit) ((MODW(t).byp & (bit)) != 0u)   /* (the block's copy, set by mod.c mod_begin before the part's voices render) */
 #define E2Q(t, v) (BYP(t, BY_ENV2) ? 0 : (v)->env2 >> 9)   /* FILTER ENV's output, Q15 (0 while bypassed: it keeps running) */

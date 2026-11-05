@@ -209,9 +209,39 @@ static void pd_line_gen(const pdw_t *const *wp, uint32_t *php, uint32_t inc, uin
     PD_LINE_END
 }
 
+/* A cycle that does not end where the next one starts (RESONANT SAW restarts at full height; a bent wave meets a RESONANCE one) steps at each wrap and aliased (-32 dB of
+ * inharmonic power at C3, -26 at C5). After the line is rendered, each wrap in the block gets the polyBLEP of dsp.c scaled by that step, on the sample either side; the
+ * loops above stay branch-free. ph is the phase of sample 0 and tg its toggle (a wrap just before it: ph < inc, tg already flipped); a wrap just after the last sample is
+ * corrected there (its other half is the next block's sample 0) */
+static __attribute__((noinline)) void pd_edge(const pdw_t *const *wp, uint32_t ph, uint32_t inc, uint32_t tg, int32_t *dst, uint32_t n)
+{
+    uint32_t j = 0, o = tg ^ 1u;
+    if (!inc)
+        return;
+    for (;;) {
+        int32_t s;
+        if (ph >= inc) {                                     /* the next wrap: sample j has the phase ph < inc */
+            uint32_t k = (0xFFFFFFFFu - ph) / inc + 1u;
+            j += k;
+            ph += k * inc;
+            o = tg;
+            tg ^= 1u;
+        }
+        if (j > n)
+            break;
+        s = pd_wave(wp[tg], 0) - pd_wave(wp[o], 65535u);    /* (the new cycle's first value minus the old one's last) */
+        if (j)
+            dst[j - 1u] += (s * blep(ph - inc, inc)) >> 16;
+        if (j < n)
+            dst[j] += (s * blep(ph, inc)) >> 16;
+        ph += inc;
+        j++;
+    }
+}
+
 static void pd_line(const pdw_t *const *wp, uint32_t *php, uint32_t inc, uint32_t *tgp, int32_t *dst, uint32_t n)
 {
-    uint32_t a = wp[0]->w, b = wp[1]->w;
+    uint32_t a = wp[0]->w, b = wp[1]->w, ph = *php, tg = *tgp;
     if (a < 5u && b < 5u) {
         if ((1u << a | 1u << b) & ~13u)                      /* (13: the waves 0, 2, 3 have one break point) */
             pd_line_bent(wp, php, inc, tgp, dst, n);
@@ -227,6 +257,8 @@ static void pd_line(const pdw_t *const *wp, uint32_t *php, uint32_t inc, uint32_
         pd_line_r6(wp, php, inc, tgp, dst, n);
     else
         pd_line_r7(wp, php, inc, tgp, dst, n);
+    if ((a > 4u || b > 4u) && (a != b || a == 5u))
+        pd_edge(wp, ph, inc, tg, dst, n);
 }
 
 /* the lines (s1, s2) mixed (L 1) or ring-modulated (L 2) or line 1 alone (L 0), and the amplitude ramp (dsp.c amp_at, voice_amp, by adding the step instead of multiplying) */

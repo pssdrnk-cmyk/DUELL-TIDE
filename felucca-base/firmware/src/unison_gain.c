@@ -15,5 +15,9 @@ static __attribute__((always_inline)) inline uint16_t fm6_unison_gain(const trac
 static __attribute__((noinline)) void fm6_unison_sync(const track_t *t)
 {
     uint32_t tr = (uint32_t)(t - trk);
-    if (tr < NLIVE) fm6_eff[tr].ug = fm6_unison_gain(t);
+    uint16_t g;
+    if (tr >= NLIVE) return;
+    g = fm6_unison_gain(t);
+    fm6_eff[tr].ugp = fm6_eff[tr].ug ? fm6_eff[tr].ug : g;   /* (the block before's, the voices ramp from it; the first block: no ramp from 0) */
+    fm6_eff[tr].ug = g;
 }

@@ -140,41 +140,67 @@ static __attribute__((noinline)) void BUS_FN(rev_spring)(const int32_t *rev_in, 
 
 /* the lines' gains for SIZE s: RT60 = 0.5 s * 2^(s / 30); a line of D samples (22.05 kHz) loses 60 dB in
  * RT60 * 22050 / D passes: g = 2^(-D * 3 log2(10) / (22050 * RT60)) = 2^(-D * 59.2 / 65536 * 2^(-s / 30)),
- * at most 0.99, over sqrt(7) (the matrix's rows have 7 entries of +-1: / sqrt(7) makes it orthogonal) */
-static __attribute__((noinline)) void BUS_FN(hall_gains)(int32_t s)
+ * at most 0.99, over sqrt(7) (the matrix's rows have 7 entries of +-1: / sqrt(7) makes it orthogonal).
+ * ROOM (audit R09, owner D24: a short diffuse room on this code): RT60 = 0.25 s * 2^(s / 48), 0.25 s at SIZE 0, 0.6 s at 64, 0.9 s at 90, 1.6 s at 127 (twice the exponent, half the SIZE slope).
+ * The gains are kept for SIZE and the model (BUS_HL.sz: s + 1, + 256 for ROOM) */
+static __attribute__((noinline)) void BUS_FN(hall_gains)(int32_t s, uint32_t room)
 {
-    uint32_t q = exp2_neg((uint32_t)s * 65536u / 30u), k, g;
+    uint32_t q = exp2_neg((uint32_t)s * 65536u / (room ? 48u : 30u)), k, g;
     for (k = 0; k < HL_NL; k++) {
-        g = exp2_neg((HL_LEN[k] * 59u * q) >> 15);
+        g = exp2_neg((HL_LEN[k] * 59u * q) >> (room ? 14 : 15));
         BUS_HL.g[k] = (int16_t)(((g > 32440u ? 32440u : g) * 6193u) >> 15);
     }
-    BUS_HL.sz = (int16_t)(s + 1);
+    BUS_HL.sz = (int16_t)(s + 1 + (room ? 256 : 0));
 }
+
+/* The pre-delay of HALL and PLATE (audit E3, owner D24: no new setting, it grows with SIZE): the block h->bx[0 .. n) (the send at half the rate, after its low cut) through a line h->pd read h->pdq behind
+ * the write point, 0 at SIZE 0 up to 7 samples a SIZE step (889 samples, 40 ms at SIZE 127), the delay moving a sample a block towards its SIZE's: the tail comes after the attack and
+ * leaves the drum machine room; SIZE 0 reads the sample just written (the same signal), ROOM (room 1) has none. In place */
+#ifndef PRE_DLY_ONCE                                    /* (this file is included twice, bus A and bus B: the function once, on the bus's hall_t) */
+#define PRE_DLY_ONCE
+/* the send of HALL (plate 0) or PLATE (plate 1) at half the rate into h->bx: every other sample, 1 2 1 (HALL: ROOM's level, then its low cut of ~110 Hz, its step's remainder kept; PLATE: towards 0, a floor is an
+ * offset its loops keep, held to 18 bits), then through the pre-delay line (audit E3: this was each model's own front, the pre-delay shares it) */
+static __attribute__((noinline)) void rev_front(hall_t *h, const int32_t *rev_in, uint32_t nc, uint32_t plate, int32_t t)
+{
+    uint32_t i, w = h->pw;
+    int32_t xp = h->x, hp = h->hp, he = h->he, d = h->pdq, *x = h->bx;
+    d = w ? d + clamp(t - d, -1, 1) : t;               /* (a fresh line (rev_clear) takes SIZE's delay at once; later the pre-delay moves a sample a block towards SIZE's: the send goes into the diffusers, a one-sample slip is smeared by them) */
+    for (i = 0; i < nc; i++, w++) {
+        int32_t s = xp + 2 * rev_in[2u * i] + rev_in[2u * i + 1u], v;
+        xp = rev_in[2u * i + 1u];
+        if (plate) {
+            v = sh_tz(s, 2);
+            v = clamp(v, -262143, 262143);
+        } else {
+            v = mulq15(clamp(s >> 2, -262143, 262143), 2580);
+            s = v - hp + he;
+            he = s & 31;
+            hp += s >> 5;
+            v -= hp;
+        }
+        h->pd[w & (PD_N - 1u)] = v;
+        x[i] = h->pd[(w - (uint32_t)d) & (PD_N - 1u)];
+    }
+    h->x = xp, h->hp = hp, h->he = he, h->pw = w, h->pdq = d;
+}
+#endif
+#define PD_T(room) ((room) ? 0 : clamp(SV_RSIZE, 0, 127) * 7)
 
 /* HALL (see the top): a block of the send (n = CTL samples: audio.c) -> the mid added to out, the side into
  * BUS_HL.sd. At half the rate (HL_NC samples) in passes over the block, each with few states (every line is
  * longer than a block: what the lines give in this block was written before it): the send, every other
  * sample, low cut, diffusers (BUS_HL.bx); the lines' ends at their drifting taps, low-passed, scaled (BUS_HL.y); the
  * outputs and the matrix; back into the lines; the outputs back to 44.1 kHz. */
-static __attribute__((noinline)) void BUS_FN(rev_hall)(const int32_t *rev_in, int32_t *out, uint32_t n)
+static __attribute__((noinline)) void BUS_FN(rev_hall)(const int32_t *rev_in, int32_t *out, uint32_t n, uint32_t room)
 {
     int16_t *b = BUS_COMB, *a = BUS_U.ap;
     uint32_t i, k, s, m, d;
     int32_t kd = HL_KD(song.g[G_RDAMP]);
-    int32_t xp = BUS_HL.x, hp = BUS_HL.hp, he = BUS_HL.he, mp = BUS_HL.m, sp = BUS_HL.s;
+    int32_t mp = BUS_HL.m, sp = BUS_HL.s;
     (void)n;
-    if (BUS_HL.sz != SV_RSIZE + 1)
-        BUS_FN(hall_gains)(SV_RSIZE);                   /* (SPACE: its SIZE; the lines' gains stay at most 0.99) */
-    for (i = 0; i < HL_NC; i++) {
-        int32_t x = (xp + 2 * rev_in[2u * i] + rev_in[2u * i + 1u]) >> 2, v;   /* every other sample, 1 2 1 */
-        xp = rev_in[2u * i + 1u];
-        x = mulq15(clamp(x, -262143, 262143), 2580);    /* (ROOM's level) */
-        v = x - hp + he;                                /* the low cut, its step's remainder kept */
-        he = v & 31;
-        hp += v >> 5;
-        BUS_HL.bx[i] = x - hp;
-    }
-    BUS_HL.x = xp, BUS_HL.hp = hp, BUS_HL.he = he;
+    if (BUS_HL.sz != SV_RSIZE + 1 + (room ? 256 : 0))
+        BUS_FN(hall_gains)(SV_RSIZE, room);                   /* (SPACE: its SIZE; the lines' gains stay at most 0.99) */
+    rev_front(&BUS_HL, rev_in, HL_NC, 0u, PD_T(room));  /* (the send at half the rate, low cut, pre-delay) */
     for (k = 0; k < HL_NAP; k++) {                      /* the diffusers */
         d = BUS_HL.d[k];
         HL_RUNS(d, HL_AP[k], m, s, hall_ap(a + d, HL_APG[k], BUS_HL.bx + s, m));
@@ -270,27 +296,16 @@ static inline __attribute__((always_inline)) int32_t sh_grain(const int16_t *b, 
 #endif
 /* DUELL 1.1 REVERB_FIX: SHIM's octave-up line is read at two samples a step, so what is above a quarter of the sample rate folded back into the audible range as whistles (15.3, 9.6, 7.7 kHz in the audit). The sample that goes into the line is first
  * run through a 1 2 1 low-pass (zero at half the sample rate, -6 dB at a quarter, unity at DC); its two past inputs are the bus's own state.
- * DUELL 1.1 (owner 2026-10-25, the whistle still heard): two such stages one after the other (1 4 6 4 1 over 16: -5.5 dB at 7.7 kHz, -12 dB at a quarter of the sample rate), and the same two stages on the return (sh_rlp). Both are plain
+ * DUELL 1.1 (owner 2026-10-25, the whistle still heard): two such stages one after the other (1 4 6 4 1 over 16: -5.5 dB at 7.7 kHz, -12 dB at a quarter of the sample rate), and the same two stages on the return (sh_q). Both are plain
  * averages of the last samples: no recursion, so they add no ringing of their own and the tail still ends in exact silence */
-static inline int32_t BUS_FN(sh_lp)(int32_t r)
+static inline int32_t BUS_FN(sh_lp2)(int32_t r, int32_t *z)   /* (audit R13: sh_lp and sh_rlp were the same body on two sets of states) */
 {
-    int32_t y = (r + 2 * BUS_FX.sh_z1 + BUS_FX.sh_z2 + 2) >> 2, y2;
-    BUS_FX.sh_z2 = BUS_FX.sh_z1;
-    BUS_FX.sh_z1 = r;
-    y2 = (y + 2 * BUS_FX.sh_z3 + BUS_FX.sh_z4 + 2) >> 2;
-    BUS_FX.sh_z4 = BUS_FX.sh_z3;
-    BUS_FX.sh_z3 = y;
-    return y2;
-}
-/* the octave-up return, before it goes back into ROOM: the highs it has gained by being shifted up an octave are taken off again, so a resonance of ROOM near 7.7 kHz cannot climb to 15.3 kHz and ring there */
-static inline int32_t BUS_FN(sh_rlp)(int32_t x)
-{
-    int32_t y = (x + 2 * BUS_FX.sh_q1 + BUS_FX.sh_q2 + 2) >> 2, y2;
-    BUS_FX.sh_q2 = BUS_FX.sh_q1;
-    BUS_FX.sh_q1 = x;
-    y2 = (y + 2 * BUS_FX.sh_q3 + BUS_FX.sh_q4 + 2) >> 2;
-    BUS_FX.sh_q4 = BUS_FX.sh_q3;
-    BUS_FX.sh_q3 = y;
+    int32_t y = (r + 2 * z[0] + z[1] + 2) >> 2, y2;
+    z[1] = z[0];
+    z[0] = r;
+    y2 = (y + 2 * z[2] + z[3] + 2) >> 2;
+    z[3] = z[2];
+    z[2] = y;
     return y2;
 }
 static __attribute__((noinline)) uint32_t BUS_FN(rev_shimx)(const int32_t *t, int32_t *out, uint32_t n)
@@ -321,7 +336,7 @@ static __attribute__((noinline)) uint32_t BUS_FN(rev_shimx)(const int32_t *t, in
         ti -= BUS_FX.sh_hp;
         ti = ti > SH_OGATE ? ti - SH_OGATE : ti < -SH_OGATE ? ti + SH_OGATE : 0;
         out[i] += ti;
-        BUS_SHIM.buf[w & (SH_LEN - 1u)] = (int16_t)clamp(BUS_FN(sh_lp)(ti >> 1), -32768, 32767);   /* (DUELL 1.1 REVERB_FIX: low-passed before it is read at double speed) */
+        BUS_SHIM.buf[w & (SH_LEN - 1u)] = (int16_t)clamp(BUS_FN(sh_lp2)(ti >> 1, BUS_FX.sh_z), -32768, 32767);   /* (DUELL 1.1 REVERB_FIX: low-passed before it is read at double speed) */
         if (want != cfg) {                              /* PITCH changed: out, restart, in */
             g -= SH_FADE;
             if (g <= 0)
@@ -342,7 +357,7 @@ static __attribute__((noinline)) uint32_t BUS_FN(rev_shimx)(const int32_t *t, in
         pu += (uint32_t)su, pd += (uint32_t)sd;
         pu &= wrap, pd &= wrap;
         w++;
-        x = BUS_FN(sh_rlp)(x);
+        x = BUS_FN(sh_lp2)(x, BUS_FX.sh_q);   /* (the octave-up return, before it goes back into ROOM: the highs it gained by being shifted up an octave come off again, so a resonance of ROOM near 7.7 kHz cannot climb to 15.3 kHz and ring there) */
         x = x > SH_GATE ? x - SH_GATE : x < -SH_GATE ? x + SH_GATE : 0;   /* a soft gate: no halo sustained by rounding */
         BUS_SHIM.fb[i] = x;
     }
@@ -370,7 +385,7 @@ static __attribute__((noinline)) void BUS_FN(rev_shim)(const int32_t *rev_in, in
         t[i] -= BUS_FX.sh_hp;
         t[i] = t[i] > SH_OGATE ? t[i] - SH_OGATE : t[i] < -SH_OGATE ? t[i] + SH_OGATE : 0;   /* (ROOM's rounding cycles) */
         out[i] += t[i];
-        BUS_SHIM.buf[BUS_FX.sh_w & (SH_LEN - 1u)] = (int16_t)clamp(BUS_FN(sh_lp)(t[i] >> 1), -32768, 32767);   /* (DUELL 1.1 REVERB_FIX: low-passed before it is read at double speed) */
+        BUS_SHIM.buf[BUS_FX.sh_w & (SH_LEN - 1u)] = (int16_t)clamp(BUS_FN(sh_lp2)(t[i] >> 1, BUS_FX.sh_z), -32768, 32767);   /* (DUELL 1.1 REVERB_FIX: low-passed before it is read at double speed) */
         for (j = 0; j < 2u; j++) {                      /* the delay falls a sample a sample: read at twice the speed */
             uint32_t ph = (BUS_FX.sh_ph + j * (SH_LEN / 2u)) & (SH_LEN - 1u), d = SH_LEN - 1u - ph;
             int32_t w = (int32_t)(ph < SH_LEN / 2u ? ph : SH_LEN - 1u - ph);   /* the triangles: their sum flat */
@@ -378,7 +393,7 @@ static __attribute__((noinline)) void BUS_FN(rev_shim)(const int32_t *rev_in, in
         }
         BUS_FX.sh_ph++;
         BUS_FX.sh_w++;
-        x = BUS_FN(sh_rlp)(x);
+        x = BUS_FN(sh_lp2)(x, BUS_FX.sh_q);   /* (the octave-up return, before it goes back into ROOM: the highs it gained by being shifted up an octave come off again, so a resonance of ROOM near 7.7 kHz cannot climb to 15.3 kHz and ring there) */
         x = x > SH_GATE ? x - SH_GATE : x < -SH_GATE ? x + SH_GATE : 0;   /* a soft gate: no halo sustained by rounding */
         BUS_SHIM.fb[i] = x;                             /* (into the next block's input) */
     }
@@ -440,12 +455,11 @@ static __attribute__((noinline)) void BUS_FN(rev_plate)(const int32_t *rev_in, i
     uint32_t i, ph1 = BUS_FX.pl_ph1, ph2 = BUS_FX.pl_ph2;
     int32_t krt = plate_gain(SV_RSIZE), klp = plate_damp(song.g[G_RDAMP]), kap = PL_KAP;
     int32_t lp1 = BUS_FX.pl_lp[0], lp2 = BUS_FX.pl_lp[1], le1 = BUS_FX.pl_le[0], le2 = BUS_FX.pl_le[1];
-    int32_t xp = BUS_HL.x, mp = BUS_HL.m, sp = BUS_HL.s;
+    int32_t mp = BUS_HL.m, sp = BUS_HL.s;
+    rev_front(&BUS_HL, rev_in, n / 2u, 1u, PD_T(0));                        /* the send at half the rate, 1 2 1, held to 18 bits, the pre-delay (audit E3) */
     for (i = 0; i < n / 2u; i++) {
-        int32_t x = sh_tz(xp + 2 * rev_in[2u * i] + rev_in[2u * i + 1u], 2), acc, ap, e, o1, o2, mm, ss;   /* (towards 0: a floor is an offset the loops keep) */
+        int32_t x = BUS_HL.bx[i], acc, ap, e, o1, o2, mm, ss;
         uint32_t q;
-        xp = rev_in[2u * i + 1u];
-        x = x < -262143 ? -262143 : x > 262143 ? 262143 : x;
         acc = pl_c16(sh_tz(x * PL_IN, 12));
         acc = pl_ap(b0, w0, PL_LEN[0], acc, kap, -kap);                     /* the four diffusers */
         acc = pl_ap(b1, w1, PL_LEN[1], acc, kap, -kap);
@@ -495,20 +509,20 @@ static __attribute__((noinline)) void BUS_FN(rev_plate)(const int32_t *rev_in, i
     BUS_FX.pl_w[5] = (uint16_t)w5, BUS_FX.pl_w[6] = (uint16_t)w6, BUS_FX.pl_w[7] = (uint16_t)w7, BUS_FX.pl_w[8] = (uint16_t)w8, BUS_FX.pl_w[9] = (uint16_t)w9;
     BUS_FX.pl_ph1 = ph1, BUS_FX.pl_ph2 = ph2;
     BUS_FX.pl_lp[0] = lp1, BUS_FX.pl_lp[1] = lp2, BUS_FX.pl_le[0] = le1, BUS_FX.pl_le[1] = le2;
-    BUS_HL.x = xp, BUS_HL.m = mp, BUS_HL.s = sp;
+    BUS_HL.m = mp, BUS_HL.s = sp;
     BUS_HL.side = 1;
 }
 
 /* the model ty's block, added to out */
-static inline void BUS_FN(rev_run)(uint32_t ty, const int32_t *rev_in, int32_t *out, uint32_t n)
+static __attribute__((noinline)) void BUS_FN(rev_run)(uint32_t ty, const int32_t *rev_in, int32_t *out, uint32_t n)
 {
     switch (ty) {
     case 1: BUS_FN(rev_spring)(rev_in, out, n); break;
-    case 2: BUS_FN(rev_hall)(rev_in, out, n); break;
+    case 2: BUS_FN(rev_hall)(rev_in, out, n, 0u); break;
     case 3: BUS_FN(rev_shim)(rev_in, out, n); break;
     case 4: BUS_FN(rev_reso)(rev_in, out, n); break;
     case 5: BUS_FN(rev_plate)(rev_in, out, n); break;
-    default: BUS_FN(rev_room)(rev_in, out, n); break;
+    default: BUS_FN(rev_hall)(rev_in, out, n, 1u); break;   /* ROOM (audit R09): the HALL's code with a short decay; rev_room is SHIM's */
     }
 }
 
@@ -523,7 +537,8 @@ static void BUS_FN(rev_clear)(void)
     BUS_FX.sh_hp = BUS_FX.sh_he = 0;
     BUS_FX.sh_pu = BUS_FX.sh_pd = BUS_FX.sh_l1 = BUS_FX.sh_l2 = 0;     /* (0.2.19: rev_shimx from rest: its plain loop's phase is taken over at its first block) */
     BUS_FX.sh_g = 0, BUS_FX.sh_x = BUS_FX.sh_cfg = 0;
-    BUS_FX.sh_z1 = BUS_FX.sh_z2 = BUS_FX.sh_z3 = BUS_FX.sh_z4 = BUS_FX.sh_q1 = BUS_FX.sh_q2 = BUS_FX.sh_q3 = BUS_FX.sh_q4 = 0;
+    for (i = 0; i < 4u; i++)
+        BUS_FX.sh_z[i] = BUS_FX.sh_q[i] = 0;
     memset(BUS_SHIM.buf, 0, sizeof BUS_SHIM.buf);       /* SHIM's line and its return */
     memset(BUS_SHIM.fb, 0, sizeof BUS_SHIM.fb);
     for (i = 0; i < HL_NL; i++)
@@ -534,11 +549,14 @@ static void BUS_FN(rev_clear)(void)
     BUS_FX.pl_lp[0] = BUS_FX.pl_lp[1] = BUS_FX.pl_le[0] = BUS_FX.pl_le[1] = 0;
     BUS_FX.pl_ph1 = BUS_FX.pl_ph2 = 0;
     BUS_HL.x = BUS_HL.m = BUS_HL.s = BUS_HL.hp = BUS_HL.he = 0;
+    memset(BUS_HL.pd, 0, sizeof BUS_HL.pd);             /* (the pre-delay line; its write count and delay from rest) */
+    BUS_HL.pw = 0, BUS_HL.pdq = 0;
+    BUS_FX.rq = 0;
 }
 
 /* the model changed (to rt): the old one's block fades out (HALL's stereo difference with it), its buffers are
  * cleared, the new one starts from silence */
-static __attribute__((noinline)) void BUS_FN(rev_switch)(const int32_t *rev_in, int32_t *wet, uint32_t n, int32_t rt)
+static __attribute__((noinline)) void BUS_FN(rev_fadeout)(const int32_t *rev_in, int32_t *wet, uint32_t n)
 {
     int32_t *t = pscr[0].buf, g = 65536, d = 65536 / (int32_t)n;   /* (the parts are done: part 1's block scratch) */
     uint32_t i;
@@ -550,6 +568,10 @@ static __attribute__((noinline)) void BUS_FN(rev_switch)(const int32_t *rev_in, 
         BUS_HL.sd[i] = mulq16(BUS_HL.sd[i], (uint32_t)g);   /* (HALL only: BUS_HL.side set) */
     }
     BUS_FN(rev_clear)();
+}
+static __attribute__((noinline)) void BUS_FN(rev_switch)(const int32_t *rev_in, int32_t *wet, uint32_t n, int32_t rt)
+{
+    BUS_FN(rev_fadeout)(rev_in, wet, n);
     BUS_FX.rtype = (uint8_t)rt;
 }
 
@@ -562,16 +584,7 @@ static __attribute__((noinline)) uint32_t BUS_FN(rev_byp)(const int32_t *rev_in,
         return 0;
     }
     if (!BUS_FX.byp) {
-        int32_t *t = pscr[0].buf, g = 65536, d = 65536 / (int32_t)n;
-        uint32_t i;
-        for (i = 0; i < n; i++)
-            t[i] = 0;
-        BUS_FN(rev_run)(BUS_FX.rtype, rev_in, t, n);
-        for (i = 0; i < n; i++, g -= d) {
-            wet[i] += mulq16(t[i], (uint32_t)g);
-            BUS_HL.sd[i] = mulq16(BUS_HL.sd[i], (uint32_t)g);
-        }
-        BUS_FN(rev_clear)();
+        BUS_FN(rev_fadeout)(rev_in, wet, n);
         BUS_FX.byp = 1;
     }
     BUS_HL.side = 0;
@@ -755,7 +768,7 @@ static __attribute__((noinline)) void BUS_FN(dly_mod)(uint32_t dmask, uint32_t d
             b = dly_tap(BUS_DLY, dmask, qpos);
             BUS_FX.dly_lp += mulq15u(b - BUS_FX.dly_lp, col);
             r = mulq15t(BUS_FX.dly_lp, fb);
-            BUS_DLY[w & dmask] = (int16_t)clamp((dly_in[i] >> 1) + mulq15t(r, fb), -32768, 32767);
+            BUS_DLY[w & dmask] = (int16_t)dly_wr(BUS_FX.dly_h, dly_in[i] >> 1, mulq15t(r, fb));
             yl = mulq15(a * 2, dmix);
             yr = mulq15(r * 2, dmix);
             y += (yl + yr) >> 1;
@@ -765,7 +778,7 @@ static __attribute__((noinline)) void BUS_FN(dly_mod)(uint32_t dmask, uint32_t d
             b = dly_tap(BUS_DLY, dmask, qpos);
             x = (a + b) >> 1;
             BUS_FX.dly_lp += mulq15u(x - BUS_FX.dly_lp, col);
-            BUS_DLY[w & dmask] = (int16_t)clamp((dly_in[i] >> 1) + mulq15t(BUS_FX.dly_lp, fb), -32768, 32767);
+            BUS_DLY[w & dmask] = (int16_t)dly_wr(BUS_FX.dly_h, dly_in[i] >> 1, mulq15t(BUS_FX.dly_lp, fb));
             y += mulq15(x * 2, dmix);
             r = mulq15(a - b, dmix);
             mix_l[i] += r;
@@ -773,7 +786,7 @@ static __attribute__((noinline)) void BUS_FN(dly_mod)(uint32_t dmask, uint32_t d
         } else {                                        /* DUEL: the one tap */
             x = dly_tap(BUS_DLY, dmask, ppos);
             BUS_FX.dly_lp += mulq15u(x - BUS_FX.dly_lp, col);
-            BUS_DLY[w & dmask] = (int16_t)clamp((dly_in[i] >> 1) + mulq15t(BUS_FX.dly_lp, fb), -32768, 32767);
+            BUS_DLY[w & dmask] = (int16_t)dly_wr(BUS_FX.dly_h, dly_in[i] >> 1, mulq15t(BUS_FX.dly_lp, fb));
             y += mulq15(x * 2, dmix);
         }
         w++;
@@ -786,6 +799,57 @@ static __attribute__((noinline)) void BUS_FN(dly_mod)(uint32_t dmask, uint32_t d
     BUS_FX.dly_w = w;
     BUS_FX.dm_xl = xl + sl * (int32_t)n;
     BUS_FX.dm_xr = xr + sr * (int32_t)n;
+}
+
+/* the reverb of a block, the same after every delay path (audit R13: it was written three times): the model from G_RTYPE (an unknown value: ROOM), its low cut (0.2.14: before every model),
+ * DUELL 1.1 BYPASS of the REVERB, a model change fades the old one out (rev_switch), else the model's block, added to wet */
+#define REV_IDLE 16384u                                 /* samples of no input and exact silence out after which the reverb is left out (0.37 s: every line and comb is shorter, and R08 made the tails end in exact zeros) */
+#ifdef REV_SKIP_STATS
+static uint32_t BUS_FN(rev_skipped), BUS_FN(rev_skip_off);   /* (tests/reverb_test.c: the blocks rev_tail left the model out of; 1 in _off: never) */
+#endif
+static __attribute__((noinline)) void BUS_FN(rev_tail)(const int32_t *rev_in, int32_t *wet, uint32_t n)
+{
+    int32_t rt = song.g[G_RTYPE];
+    uint32_t i, nz = 0;
+    rt = rt >= 1 && rt <= 5 ? rt : 0;
+    BUS_HL.side = 0;
+    rev_in = BUS_FN(rev_locut)(rev_in, n);
+    if (BUS_FN(rev_byp)(rev_in, wet, n))
+        return;
+    if (rt != BUS_FX.rtype) {
+        BUS_FN(rev_switch)(rev_in, wet, n, rt);
+        return;
+    }
+    for (i = 0; i < n && !nz; i++)                      /* (a sounding send ends the scan at its first samples) */
+        nz = (uint32_t)rev_in[i];
+    if (nz) {
+        BUS_FX.rq = 0;
+        BUS_FN(rev_run)((uint32_t)rt, rev_in, wet, n);
+        return;
+    }
+    /* audit E4: no send. The model runs into a scratch block until it has given exact silence (output and HALL's side) for REV_IDLE samples; from then on it is not run at all
+     * (its states stay as they are, all zero but the slow LFO phases: the next sound starts the model from silence) and costs the scan only */
+#ifdef REV_SKIP_STATS
+    if (BUS_FX.rq >= REV_IDLE && !BUS_FN(rev_skip_off)) {
+        BUS_FN(rev_skipped)++;
+        return;
+    }
+#else
+    if (BUS_FX.rq >= REV_IDLE)
+        return;
+#endif
+    {
+        int32_t *t = pscr[0].buf;                       /* (the parts are done: part 1's block scratch, as rev_switch) */
+        for (i = 0; i < n; i++)
+            t[i] = 0;
+        BUS_FN(rev_run)((uint32_t)rt, rev_in, t, n);
+        nz = 0;
+        for (i = 0; i < n; i++) {
+            nz |= (uint32_t)t[i] | (BUS_HL.side ? (uint32_t)BUS_HL.sd[i] : 0u);
+            wet[i] += t[i];
+        }
+        BUS_FX.rq = nz ? 0u : BUS_FX.rq + n;
+    }
 }
 
 /* process the three buses for one block (the delay line BUS_DLY[0 .. dmask], the delay dl); sends in, wet stereo-equal out.
@@ -803,7 +867,7 @@ static inline void BUS_FN(fx_buses_m)(uint32_t dmask, uint32_t dl, const int32_t
     uint32_t i;
     int32_t fb = mulq15(SV_DFB, byp_dg), col = 2000 + song.g[G_DCOLOR] * 240;   /* (SV_*: song.g's, or PERFORM's SPACE: fx.c sv; byp_dg: the BYPASS of the DELAY) */
     int32_t dmix = mulq15(song.g[G_DMIX] * 258, byp_dg);
-    int32_t cdepth = SV_CDEP, rt, cdq, cst;
+    int32_t cdepth = SV_CDEP, cdq, cst;
     uint32_t cinc = LFO_INC[song.g[G_CRATE] & 127] / CTL, st = dsd != 0;   /* (st: STEREO / LAYER, the chorus has a side) */
     uint32_t cw = BUS_FX.cho_w, cph = BUS_FX.cho_ph, cz = BUS_FX.cho_zs;
     int32_t gx[2];
@@ -840,7 +904,7 @@ static inline void BUS_FN(fx_buses_m)(uint32_t dmask, uint32_t dl, const int32_t
             BUS_FX.dly_lp += mulq15u(x2 - BUS_FX.dly_lp, col);
             r = mulq15t(BUS_FX.dly_lp, fb);              /* the right return: the loop's end, once round */
             BUS_DLY[BUS_FX.dly_w & dmask] =
-                (int16_t)clamp((dly_in[i] >> 1) + mulq15t(r, fb), -32768, 32767);
+                (int16_t)dly_wr(BUS_FX.dly_h, dly_in[i] >> 1, mulq15t(r, fb));
             BUS_FX.dly_w++;
             yl = mulq15(x * 2, dmix);
             yr = mulq15(r * 2, dmix);
@@ -849,7 +913,7 @@ static inline void BUS_FN(fx_buses_m)(uint32_t dmask, uint32_t dl, const int32_t
         } else {
             BUS_FX.dly_lp += mulq15u(x - BUS_FX.dly_lp, col);
             BUS_DLY[BUS_FX.dly_w & dmask] =
-                (int16_t)clamp((dly_in[i] >> 1) + mulq15t(BUS_FX.dly_lp, fb), -32768, 32767);
+                (int16_t)dly_wr(BUS_FX.dly_h, dly_in[i] >> 1, mulq15t(BUS_FX.dly_lp, fb));
             BUS_FX.dly_w++;
             y += mulq15(x * 2, dmix);
         }
@@ -866,16 +930,7 @@ static inline void BUS_FN(fx_buses_m)(uint32_t dmask, uint32_t dl, const int32_t
     BUS_FX.cho_zs = 0;                                  /* (the flag is for one block: a call that did not come through cho_zrun never skips) */
     BUS_FX.cho_w = cw;
     BUS_FX.cho_ph = cph;
-    rt = song.g[G_RTYPE];
-    rt = rt >= 1 && rt <= 5 ? rt : 0;                   /* (an unknown value: ROOM) */
-    BUS_HL.side = 0;
-    rev_in = BUS_FN(rev_locut)(rev_in, n);              /* (0.2.14: the reverb's low cut, before every model) */
-    if (BUS_FN(rev_byp)(rev_in, wet, n))
-        return;                                         /* (DUELL 1.1 BYPASS of the REVERB) */
-    if (rt != BUS_FX.rtype)
-        BUS_FN(rev_switch)(rev_in, wet, n, rt);
-    else
-        BUS_FN(rev_run)((uint32_t)rt, rev_in, wet, n);
+    BUS_FN(rev_tail)(rev_in, wet, n);
 }
 
 /* the same as fx_buses_m while the delay's MODULATION runs (dly_mod for the chorus and the delay, then the reverb as fx_buses_m's tail): a
@@ -883,18 +938,8 @@ static inline void BUS_FN(fx_buses_m)(uint32_t dmask, uint32_t dl, const int32_t
 static __attribute__((noinline)) void BUS_FN(fx_buses_mod)(uint32_t dmask, uint32_t dl, const int32_t *cho_in, const int32_t *dly_in,
                                                            const int32_t *rev_in, int32_t *wet, uint32_t n, uint32_t pp, int32_t *dsd)
 {
-    int32_t rt;
     BUS_FN(dly_mod)(dmask, dl, cho_in, dly_in, wet, n, pp, dsd);
-    rt = song.g[G_RTYPE];
-    rt = rt >= 1 && rt <= 5 ? rt : 0;
-    BUS_HL.side = 0;
-    rev_in = BUS_FN(rev_locut)(rev_in, n);              /* (0.2.14: the reverb's low cut, before every model) */
-    if (BUS_FN(rev_byp)(rev_in, wet, n))
-        return;                                         /* (DUELL 1.1 BYPASS of the REVERB) */
-    if (rt != BUS_FX.rtype)
-        BUS_FN(rev_switch)(rev_in, wet, n, rt);
-    else
-        BUS_FN(rev_run)((uint32_t)rt, rev_in, wet, n);
+    BUS_FN(rev_tail)(rev_in, wet, n);
 }
 
 /* The delay's EVENT modes (DUELL 0.2.14, owner 2026-10-15; core.h G_DMODE 2 RANDOM, 3 OCT UP since 0.2.16; this code's own mode argument is 1 RANDOM, 2 OCT UP, 0 back to the plain delay). A tempo-synced delay that bends its own repeats on a random
@@ -1100,6 +1145,7 @@ static __attribute__((noinline)) void BUS_FN(dly_ev)(uint32_t dlo, uint32_t dl, 
         e->nxt = 1;
         e->dl16 = tgt16;
         e->lp = BUS_FX.dly_lp;
+        e->h[0] = BUS_FX.dly_h[0], e->h[1] = BUS_FX.dly_h[1];
         e->v[0].act = 1;
         e->v[0].ev = e->v[0].nev = e->v[1].ev = e->v[1].nev = DE_NONE;
         e->v[0].gl = e->v[0].gr = e->v[1].gl = e->v[1].gr = 32768;
@@ -1147,8 +1193,8 @@ static __attribute__((noinline)) void BUS_FN(dly_ev)(uint32_t dlo, uint32_t dl, 
                 p = (w << 16) - e->dl16;
                 BUS_FN(dlyev_tap2)(p, &c, &r, dmask, mono);
                 e->lp += sh_tzl(c - e->lp, col);
-                fe = clamp((dly_in[k] >> 1) + sh_tz(e->lp * fb, 15), -32768, 32767);
-                yl = mulq15(c << 1, dmix);
+                fe = dly_wr(e->h, dly_in[k] >> 1, sh_tz(e->lp * fb, 15));
+                yl = mulq15(c * 2, dmix);
                 yr = mulq15(r * 2, dmix);
                 wet[k] += (yl + yr) >> 1;
                 if (!mono)
@@ -1184,8 +1230,8 @@ static __attribute__((noinline)) void BUS_FN(dly_ev)(uint32_t dlo, uint32_t dl, 
             BUS_FN(dlyev_read)(&e->v[1], w16, e->dl16, &c, &l, &r, dmask, mono);
             c = clamp(c, -32768, 32767);
             e->lp += sh_tzl(c - e->lp, col);     /* (towards zero: the loop reaches exact silence) */
-            fe = clamp((dly_in[i] >> 1) + sh_tz(e->lp * fb, 15), -32768, 32767);
-            yl = mulq15(l << 1, dmix);
+            fe = dly_wr(e->h, dly_in[i] >> 1, sh_tz(e->lp * fb, 15));
+            yl = mulq15(l * 2, dmix);
             yr = mulq15(r * 2, dmix);
             ye = (yl + yr) >> 1;
             sd = (yl - yr) >> 1;
@@ -1198,14 +1244,14 @@ static __attribute__((noinline)) void BUS_FN(dly_ev)(uint32_t dlo, uint32_t dl, 
                     b = BUS_DLY[(w - 2u * dlo) & dmask];
                     BUS_FX.dly_lp += mulq15u(b - BUS_FX.dly_lp, col);
                     xo = mulq15t(BUS_FX.dly_lp, fb);
-                    fo = clamp((dly_in[i] >> 1) + mulq15t(xo, fb), -32768, 32767);
+                    fo = dly_wr(BUS_FX.dly_h, dly_in[i] >> 1, mulq15t(xo, fb));
                     yl = mulq15(a * 2, dmix);
-                    yr = mulq15(xo << 1, dmix);
+                    yr = mulq15(xo * 2, dmix);
                     yo = (yl + yr) >> 1;
                     so = (yl - yr) >> 1;
                 } else {
                     BUS_FX.dly_lp += mulq15u(a - BUS_FX.dly_lp, col);
-                    fo = clamp((dly_in[i] >> 1) + mulq15t(BUS_FX.dly_lp, fb), -32768, 32767);
+                    fo = dly_wr(BUS_FX.dly_h, dly_in[i] >> 1, mulq15t(BUS_FX.dly_lp, fb));
                     yo = mulq15(a * 2, dmix);
                     so = 0;
                 }
@@ -1228,16 +1274,6 @@ static __attribute__((noinline)) void BUS_FN(dly_ev)(uint32_t dlo, uint32_t dl, 
 static __attribute__((noinline)) void BUS_FN(fx_buses_ev)(uint32_t dlo, uint32_t dl, const int32_t *cho_in, const int32_t *dly_in, const int32_t *rev_in,
                                                   int32_t *wet, uint32_t n, uint32_t mode, uint32_t pp, int32_t *dsd, uint32_t dlen)
 {
-    int32_t rt;
     BUS_FN(dly_ev)(dlo, dl, cho_in, dly_in, wet, n, mode, pp, dsd, dlen);
-    rt = song.g[G_RTYPE];
-    rt = rt >= 1 && rt <= 5 ? rt : 0;
-    BUS_HL.side = 0;
-    rev_in = BUS_FN(rev_locut)(rev_in, n);              /* (0.2.14: the reverb's low cut, before every model) */
-    if (BUS_FN(rev_byp)(rev_in, wet, n))
-        return;                                         /* (DUELL 1.1 BYPASS of the REVERB) */
-    if (rt != BUS_FX.rtype)
-        BUS_FN(rev_switch)(rev_in, wet, n, rt);
-    else
-        BUS_FN(rev_run)((uint32_t)rt, rev_in, wet, n);
+    BUS_FN(rev_tail)(rev_in, wet, n);
 }

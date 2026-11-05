@@ -77,6 +77,8 @@ LOADER_LOAD = 0x01C0A800
 LOADER_NAME = b"usb_hid_ota.bin"    # the file name the SPL looks for
 DOCKER_IMAGE = os.environ.get("JIELI_DOCKER_IMAGE", "debian:bookworm-slim")
 CFLAGS = ["-Os", "-ffunction-sections", "-fno-builtin", "-Wall", "-Wno-unused-function"]
+if os.environ.get("DUELL_WERROR") == "1":   # DUELL_WERROR=1: a compiler warning fails the build (a gate for CI; the default build only prints them)
+    CFLAGS.append("-Werror")
 LINE = re.compile(r"^\s*([0-9a-f]+):\s+((?:[0-9a-f]{2} )+)\s*\t(.*)$")
 
 # SDK files of AC79NN_SDK_V1.2.1_2023-12-13 (the tested version)
@@ -338,6 +340,12 @@ def build_app():
     if v in ("0", "1", "2", "3"):
         flags.append(f"-DFELUCCA_USB_LAYOUT={v}")
     v = os.environ.get("DUELL_BUILD_DATE")   # ABOUT's date ("Nov  1 2026", __DATE__'s form): unset, the day of the build
+    if not v and "--release" in sys.argv:    # a release carries the date of its commit, so a rebuild of the same commit is byte-identical
+        try:
+            d = subprocess.run(["git", "log", "-1", "--format=%cd", "--date=format:%Y %m %d"], cwd=SRC, capture_output=True, text=True, check=True).stdout.split()
+            v = "%s %2d %s" % ("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split()[int(d[1]) - 1], int(d[2]), d[0])
+        except Exception:
+            v = None                          # (no git: the day of the build, as before)
     if v and re.fullmatch(r"[A-Z][a-z]{2} [ 123]\d \d{4}", v):
         flags.append(f'-DDUELL_BUILD_DATE="{v}"')
     flags.append(f'-DFELUCCA_ID="{PRODUCT}"')

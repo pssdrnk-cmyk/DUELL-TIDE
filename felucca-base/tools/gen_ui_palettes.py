@@ -24,8 +24,10 @@ with fixed blends (the same integer maths as mix() here), from the background in
   TINT = mix(BG, THEME, 12 %)   a faint area
   KEY  = mix(BG, TEXT, 78 %)    a keycap's fill (its label INK)
   INK  = BG: text on a selection or THEME fill
-The brief's colours are used exactly (THEME = the blend of A, B); the contrast checks of the themes are informational
-(--report prints the misses, nothing is altered or failed). ACCENT is the other end's colour (the pair swapped).
+The brief's colours are used exactly (THEME = the blend of A, B), except that a curve, gauge or bar is moved toward the text
+colour until it reaches 3:1 on the background and the panel (gfx.c ux_stroke, mirrored here by stroke()); the other contrast
+checks are informational (--report prints the misses). The stroke check (theme/bg, theme/surf) fails below 2.5 on any theme.
+ACCENT is the other end's colour (the pair swapped).
 Where a part colour is hard to read as text the firmware draws that text in the primary text colour (gfx.c vt()).
 GREY is pure grayscale; MONO is black and white (set, not blended: src/gfx.c palette_set). Neither morphs.
 Saved settings name palettes by a tagged id (PAL_TAG + index); an untagged one (older firmware saved an index into its 20
@@ -141,6 +143,7 @@ def contrast(a, b):
 
 ACC_PCT = 30
 VAL_MIN = 3.0
+STROKE_MIN = 2.5     # the hard floor for a curve, gauge or bar on the background and the panel (the firmware aims for 3 in its own metric)
 
 
 def fit(col, toward, against, lim):
@@ -210,10 +213,33 @@ def build_legacy(p):
     return d
 
 
+def fw_cr(a, b):
+    """src/gfx.c ux_cr: the firmware's integer contrast x100 (gamma-2 luminance)"""
+    def y(c):
+        r, g, b_ = (c >> 11) * 255 // 31, ((c >> 5) & 63) * 255 // 63, (c & 31) * 255 // 31
+        return (54 * r * r + 183 * g * g + 19 * b_ * b_) >> 8
+    x, z = y(a), y(b)
+    if x < z:
+        x, z = z, x
+    return (x + 3251) * 100 // (z + 3251)
+
+
+def stroke(c, bg, sf, tx, mono=False):
+    """src/gfx.c ux_stroke (T10): a part colour drawn as a curve or gauge is moved toward the text colour in 10 % steps
+    until it reaches 3:1 on the background and the panel"""
+    o = c
+    for p in range(0, 110, 10):
+        if fw_cr(o, bg) >= 300 and fw_cr(o, sf) >= 300:
+            break
+        o = mix(c, tx, p + 10, mono)
+    return o
+
+
 def tokens(d, bg, k, e):
     """the tokens for part k at its end e (0 A, 1 B) on background bg (what src/gfx.c part_theme derives)"""
     mono = d.get("mono", False)
     th, ac = d["r"][2 * k + e], d["a"][2 * k + e]
+    th = stroke(th, bg, d["surf"][k], d["text"], d.get("mono", False))   # (the firmware floors the blended colour; the ends are the worst case)
     t = dict(bg=bg, surf=d["surf"][k], text=d["text"], mid=d["mid"], line=d["line"][k], raise_=d["raise_"][k], theme=th, accent=ac,
              dim=mix(bg, d["text"], PCT["DIM"], mono), sel=mix(bg, th, PCT["SEL"], mono), key=mix(bg, d["text"], PCT["KEY"], mono),
              ink=bg)
@@ -275,6 +301,8 @@ def main():
                         c = contrast(t[f], t[b])
                         key = (f, b)
                         worst[key] = min(worst.get(key, 99), c)
+                        if f == "theme" and b in ("bg", "surf") and c < STROKE_MIN:
+                            fails.append(f"{name} {bgn} part{k + 1}{'AB'[e]}: {f}/{b} {c:.2f} < {STROKE_MIN} (curves, gauges, bars)")
                         if c < lim and not d["fixed"]:
                             d["dep"].append(f"info {bgn} part{k + 1}{'AB'[e]}: {f}/{b} {c:.2f} < {lim} ({why})") if (f, b, bgn, k, e) not in seen else None
                             seen.add((f, b, bgn, k, e))

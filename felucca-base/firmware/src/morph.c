@@ -798,10 +798,14 @@ static int32_t reflect_floor(int32_t x, int32_t o, int32_t fl)
 #define MORPH_CUT_DOWN 32                                /* a roll's net cutoff closing at most (morph_cut_steer) */
 #define MORPH_UF_LO 45                                   /* the multimode filter: a low-pass / band-pass share never below this dial step (~1.3 kHz) ... */
 #define MORPH_UF_HI 25                                   /* ... a high-pass / band-pass one never above this (~210 Hz); a pure band-pass up to MORPH_UF_BP */
+#ifndef MORPH_UF_RESBP                                   /* (tools/multi_v7_to_v8.py defines the old ceilings, 40 and 60, to roll the End B that 1.0 rolled) */
 #define MORPH_UF_RESBP 17                                /* the band-pass side: RES at most this (or the original's); audit P07: 17 has the damping 40 had under the linear RES law */
+#endif
 #define MORPH_UF_BP0 36                                  /* the band-pass side's CUT window */
 #define MORPH_UF_BP1 50
+#ifndef MORPH_UF_RES
 #define MORPH_UF_RES 28                                  /* the multimode filter's RES: a roll never above max(original, this) (SMART); audit P07: the old 60's damping */
+#endif
 #define MORPH_RES_CEIL 108                               /* ANALOG RES: a roll never above max(original, this) (SMART) */
 /* "no dead path": a band-pass / high-pass end keeps its band where the notes are over the sweeps of ENV -> FLT and LFO -> FLT
  * (each moves the cutoff up to +-63; the LFO's counted half: it passes, a wah is no dead path): CUT + those inside the window, else ENV depth, LFO depth, then CUT go back toward the
@@ -2567,7 +2571,10 @@ static uint32_t morph_parts(uint32_t *first)
 static uint32_t morph_new_seed(void)
 {
     uint32_t s;
-    morph.gen = morph.gen * 1664525u + 1013904223u + fm1_ms;
+    static uint32_t sess;                                /* the session seed: the player's timing at the first draw, then fixed; every draw follows from it, so a set replays (B16) */
+    if (!sess)
+        sess = fm1_ms | 1u;
+    morph.gen = morph.gen * 1664525u + 1013904223u + sess;
     s = (morph.gen >> 16) & 0xFFFFu;
     return s ? s : 1u;
 }
@@ -2669,11 +2676,6 @@ static uint32_t morph_seed_of(uint32_t pi, uint32_t e)  /* end e's seed, 0: no r
 {
     const morph_part_t *mp = &mph[pi < NSHOWN ? pi : 0u];
     return mp->n[0] ? mp->seed[e & 1u][mp->top[e & 1u]] : 0u;
-}
-static uint32_t morph_hist_of(uint32_t pi, uint32_t e)  /* end e's rolls UNDO can go back over */
-{
-    const morph_part_t *mp = &mph[pi < NSHOWN ? pi : 0u];
-    return mp->n[e & 1u] > 1u ? mp->n[e & 1u] - 1u : 0u;
 }
 
 /* an action on the parts of mask, main loop. MQ_ROLL / MQ_UNDO v: the end (0 A, 1 B); returns the seed (UNDO: 1 = some part

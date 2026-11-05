@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-only
 """Make the CPU-budget harness: tests/cpu_scenarios_test.c plus a basic-block counter and sections Z (M16 as the owner runs it) and T (M16 with TIDE's
 sequencers playing in automatic MUSIC WNDR/JRNY). Usage: cpu_budget_patch.py SRC.c OUT.c   (see cpu_budget.sh)"""
 import sys

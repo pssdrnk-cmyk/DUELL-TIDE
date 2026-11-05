@@ -165,8 +165,10 @@ static void glide_start(uint32_t to, uint32_t mask, uint32_t pi)
             if ((mask >> k) & 1u)
                 jh_clear(k);
     }
-    if (gl.mode == GM_JOURNEY && !gl.on && (to & 1u))   /* (JOURNEY starts as it goes on: End B a target too) */
-        tide_journey(mask, 1u, ((glide_lanes_of(gl.target) >> GT_SOUND) & 1u) && morph_to_of(pi, 1u) < 0, 0u);
+    if (gl.mode == GM_JOURNEY && !gl.on && (to & 1u))   /* (JOURNEY starts as it goes on: End B a target too; each part by its own End B, B18) */
+        for (uint32_t k = 0; k < NSHOWN; k++)
+            if ((mask >> k) & 1u)
+                tide_journey(1u << k, 1u, ((glide_lanes_of(gl.target) >> GT_SOUND) & 1u) && morph_to_of(k, 1u) < 0, 0u);
     if (gl.mode >= GM_WANDER && morph_musical && (glide_lanes_of(gl.target) & (1u << GT_SEQ)))
         rhythm_begin(mask);
     gl.to = (uint8_t)(to & 1u);
@@ -248,7 +250,7 @@ static void glide_motion(int on)
         p = p > 32768u ? 32768u : p;
         m = (uint32_t)xrise((int32_t)(p <= 16384u ? p * 2u : (32768u - p) * 2u));
         m = (m * DEPTH[gl.tt < GLIDE_TIMES ? gl.tt : 3u]) >> 15;
-        m = (m * XWL[morph_wlvl & 3u]) >> 15;            /* (WASH LEVEL: x 0, 0.5, 1, 1.5) */
+        m = (m * XWL[morph_wlvl & 3u]) >> 15;            /* (WASH: x 0, 0.5, 1, 1.5) */
     }
     for (k = 0; k < NSHOWN; k++) {
         mxs[k].motion = (uint16_t)(on && ((gl.mask >> k) & 1u) ? m : 0u);
