@@ -119,7 +119,7 @@ static int play(void)
 
     t = one_step(2, 0);                               /* swing: a step's parts stay inside its swung length */
     t->p[P_SLEN] = 2;
-    t->p[P_SSWING] = SWING_MAX;
+    t->p[P_SSWING] = 75;
     t->step[1] = t->step[0];
     seq_start();
     n = run(t, (step_len(t, 0) + step_len(t, 1)) / CTL - 1u, at, 8, 0);
