@@ -6,7 +6,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DUELL with TIDE web emulator - TIDE by pssdrnk, built on DUELL by OSCILL/R</title>
+<title>DUELL with TIDE web emulator@PREVIEW@ - TIDE by pssdrnk, built on DUELL by OSCILL/R</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 rx=%223%22/%3E%3Crect x=%224%22 y=%224%22 width=%228%22 height=%228%22 fill=%22%23fff%22/%3E%3C/svg%3E">
 <meta name="description" content="DUELL with TIDE, pssdrnk's fork of DUELL (MultiMorphing Bitimbral Synthesizer by OSCILL/R) that lets the FM-1 play itself, running in your browser: the firmware's own code compiled to WebAssembly.">
 <style>
@@ -95,10 +95,6 @@ header.title .version { margin-top: 6px; font-size: 14px; color: var(--p2); font
 .start p { margin: 0; max-width: 32em; text-align: center; color: #fff; }
 .keys, footer { margin: 16px 0 0; color: var(--dim); text-align: center; }
 section.info { max-width: 720px; margin: 24px auto 0; color: var(--fg); }
-section.info h2 { font-size: 20px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--p1); margin: 0 0 4px; }
-section.info h2 + ul li::marker { color: var(--p1); }
-section.info h2.p2 { color: var(--p2); }
-section.info h2.p2 + ul li::marker { color: var(--p2); }
 section.info ul { margin: 0 0 16px; padding-left: 20px; }
 section.info li { margin: 2px 0; }
 .keys span { white-space: nowrap; margin: 0 8px; }
@@ -108,6 +104,8 @@ footer nav a { margin: 0 6px; }
 footer nav button { font: inherit; color: var(--p1); background: none; border: 0; padding: 0; margin: 0 6px; cursor: pointer; text-decoration: underline; }
 footer small { font-size: 12px; opacity: .8; }
 footer small.version { color: var(--p2); font-weight: 700; opacity: 1; }
+.install { display: inline-block; margin-top: 12px; padding: 12px 30px; background: var(--p1); color: var(--bg); font-weight: 700; font-size: 20px; line-height: 1; letter-spacing: .04em; border-radius: 8px; text-decoration: none; }
+.install:hover { background: var(--p2); color: var(--bg); }
 </style>
 </head>
 <body>
@@ -115,13 +113,14 @@ footer small.version { color: var(--p2); font-weight: 700; opacity: 1; }
 <header class="title">
   <h1>DUELL <small class="with">with</small> <span>TIDE</span></h1>
   <p class="tag">TIDE by pssdrnk, built on DUELL, MultiMorphing Bitimbral Synthesizer by OSCILL/R</p>
-  <p class="version">@VERSION@ with TIDE web emulator</p>
+  <p class="version">@VERSION@@PREVIEW@ with TIDE web emulator</p>
   <p class="tag note">Not made or endorsed by OSCILL/R or M-VAVE. The original DUELL is at <a href="https://oscillr.github.io/DUELL/">oscillr.github.io/DUELL</a>.</p>
+  <a class="install" href="../install/">Install DUELL with TIDE on your FM-1</a>
 </header>
 <div class="device" id="device">
   <svg id="panel" viewBox="0 0 1000 624" aria-hidden="true"></svg>
   <canvas id="screen" width="240" height="240" role="img" aria-label="The screen"></canvas>
-  <div class="start" id="start"><button id="go" type="button">Click to start audio</button><p id="hint">Sound starts after you click. Turn your volume down first.</p><p id="status" hidden></p></div>
+  <div class="start" id="start"><button id="go" type="button">Switch on</button><p id="status" hidden></p></div>
 </div>
 
 <p class="keys">
@@ -133,30 +132,18 @@ footer small.version { color: var(--p2); font-weight: 700; opacity: 1; }
   <span><kbd>Shift</kbd>-click holds a button</span>
 </p>
 
-<section class="info" aria-labelledby="how">
-  <h2 id="how">How to play</h2>
+<section class="info" aria-label="TIDE">
   <ul>
-    <li>Play the on-screen keys with the mouse or touch, or the computer keyboard (keys above).</li>
-    <li>MIDI keyboard: Chrome or Edge only. Allow MIDI access when the browser asks. Part 1 listens on channel 1, part 2 on channel 2. Pitch bend, mod wheel (CC1, moves the MORPH fader) and aftertouch are passed on to the firmware.</li>
-    <li>Turn a knob by dragging it up or down, with the mouse wheel over it, or with the arrow keys after you tab to it. Press PRESETS and turn it to load one of the 128 patches. ALGORITHM picks part 1 or part 2. HOME opens the MORPH page. Hold HOME for the menu.</li>
     <li>TIDE: the first start loads DUB CHORD. Press HOME until AUTO TIDE, then twist KNOB 1: PLAY starts and the sound travels by itself. Twist KNOB 1 again to stop it where it is.</li>
-    <li>The unit's own guide opens on the screen at the first start. The full tour is the <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/docs/QUICKSTART.md">quick start</a>, and the <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/docs/TIDE_GUIDE.md">TIDE guide</a> explains the tide pages.</li>
-  </ul>
-  <h2 class="p2">What is different from the real FM-1</h2>
-  <ul>
-    <li>Single core. The unit plays part 2 on the chip's second core. Here both parts run on one core.</li>
-    <li>No USB. No firmware update, no USB audio, no editor connection. MIDI comes in through your browser (Web MIDI).</li>
-    <li>No flash storage. Patches and settings you save are kept in this browser only. Clearing the site data erases them. Use "Download saved data" to keep a copy of what the emulator saved. It is not a unit backup.</li>
-    <li>The sound can differ slightly from the unit. The firmware code is the same and its renders match the project's host test renders bit for bit. The unit's DAC, analog output and speaker are not modelled, and your browser may resample to your sound card's rate.</li>
-    <li>No TRS MIDI, no battery. The CPU meter is an estimate.</li>
+    <li>The full tour is the <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/docs/QUICKSTART.md">quick start</a>, and the <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/docs/TIDE_GUIDE.md">TIDE guide</a> explains the tide pages.</li>
   </ul>
 </section>
 
 <footer>
-  <small class="version">@VERSION@ with TIDE web emulator</small><br>
+  <small class="version">@VERSION@@PREVIEW@ with TIDE web emulator</small><br>
   DUELL with TIDE is pssdrnk's fork of DUELL by OSCILL/R, which is a fork of Felucca. Free software under the GPL-3.0, with no warranty<br>
   Felucca by Leo Kuroshita, Hügelton Instruments · browser build after charlesvestal's <a href="https://github.com/charlesvestal/fm1-x0x">X0X</a> · DotGothic16 and Barlow Semi Condensed fonts, <a href="fonts/OFL.txt">SIL OFL 1.1</a> (<a href="fonts/OFL-Barlow.txt">Barlow</a>)<br>
-  <nav><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE">Source code (GPL-3.0)</a><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/LICENSE">Licence</a><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/CREDITS.md">Credits</a><a href="https://github.com/oscillr/DUELL">Original DUELL</a><a href="https://github.com/hugelton/Felucca">Based on Felucca</a><button type="button" id="dl">Download saved data</button><button type="button" id="ul">Load saved data</button><input type="file" id="ulfile" accept=".bin" hidden></nav>
+  <nav><a href="../install/">Install</a><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE">Source code (GPL-3.0)</a><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/LICENSE">Licence</a><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/CREDITS.md">Credits</a><a href="https://github.com/oscillr/DUELL">Original DUELL</a><a href="https://github.com/hugelton/Felucca">Based on Felucca</a><button type="button" id="dl">Download saved data</button><button type="button" id="ul">Load saved data</button><input type="file" id="ulfile" accept=".bin" hidden></nav>
   <small>M-VAVE and FM-1 are trademarks of their respective owners. DUELL with TIDE, DUELL and Felucca are not affiliated with or endorsed by them.</small>
 </footer>
 </main>
@@ -425,7 +412,7 @@ addEventListener("blur", () => {
 // ------------------------------------------------------------------ screen and lights
 const ctx = document.getElementById("screen").getContext("2d");
 const img = ctx.createImageData(240, 240);
-// The device's clock is the audio clock, so nothing is drawn before the click on "Click to start audio": a poster (the AUTO TIDE page, the site's own screenshot) fills the screen until the first frame arrives.
+// The device's clock is the audio clock, so nothing is drawn before the click on "Switch on": a poster (the AUTO TIDE page, the site's own screenshot) fills the screen until the first frame arrives.
 let framed = false;
 const poster = new Image();
 poster.onload = () => { if (!framed) ctx.drawImage(poster, 0, 0, 240, 240); };
@@ -616,17 +603,17 @@ async function switchOn() {
     await Promise.race([ac.resume(), new Promise((r) => setTimeout(r, 1500))]);
     if (ac.state === "running") {
       document.getElementById("start").hidden = true;
-      go.textContent = "Audio on";
+      go.textContent = "On";
     } else {
       go.disabled = false;
-      go.textContent = "Click to start audio";
+      go.textContent = "Switch on";
       say("The browser is holding the audio back, so the screen waits. Click the button again.");
       resumeHeld = () => ac.resume();
       ac.addEventListener("statechange", () => {
         if (ac.state !== "running") return;
         say("");
         document.getElementById("start").hidden = true;
-        go.textContent = "Audio on";
+        go.textContent = "On";
       });
     }
     if (ac.sampleRate !== 44100) console.warn(`DUELL: the browser plays at ${ac.sampleRate} Hz, the pitch is off by ${(1200 * Math.log2(ac.sampleRate / 44100)).toFixed(0)} cents.`);
@@ -637,7 +624,7 @@ async function switchOn() {
   } catch (err) {
     node = null;
     go.disabled = false;
-    go.textContent = "Click to start audio";
+    go.textContent = "Switch on";
     say("Could not start: " + (err && err.message || err) + ". A current Chrome, Edge, Firefox or Safari should work.");
   }
 }

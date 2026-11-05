@@ -28,4 +28,5 @@ BUILD_ID=$(cat build/emu/felucca.wasm web/emu/worklet.js | sha256sum | cut -c1-1
 sed -e "s/@BUILD@/$BUILD_ID/g" -e "s/@VERSION@/$VERSION/g" -e "s/@PREVIEW@/$PREVIEW/g" web/emu/index.html > build/emu/index.html
 cp web/emu/worklet.js build/emu/
 cp web/emu/fonts/DotGothic16-subset.woff web/emu/fonts/OFL.txt web/emu/fonts/BarlowSemiCondensed-*-subset.woff web/emu/fonts/OFL-Barlow.txt build/emu/fonts/
+mkdir -p build/emu/img && cp web/emu/img/*.png build/emu/img/
 echo "emu: build/emu ($(wc -c < build/emu/felucca.wasm | tr -d ' ') B wasm, $VERSION)"
