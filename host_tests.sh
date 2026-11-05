@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-only
 # DUELL host tests that run on a Mac without the JieLi toolchain (subset of felucca-base/tests/run_tests.sh).
 # Usage: ./host_tests.sh [name ...]   names: midiout level benchsim benchrun benchaudio stereochorus chorusskip bassmono comp master bench shimmer locut duck dlymod regress chord chordkeep strum mod mxstep modinert halltail perform performcap ui select step3 engine morph morphui mode dlymod stereochorus dlyev hang atgt patslot multi release patch patchraw dx7import dx7compat splash knobjump sounds mrender fmbass fm6 physintune unisonlevel clockguard clockdrift arptiming swing uartdma uarttimer fm6liveol tidekeep tidecrossings tidecontrols tideturns tidesteps stophang slopehandoff loadcost cpuscen uf wave hold guide guidesetup wtab wavetable sidechain otareuse uitruth
 #   mixsplit partindep duckpart twocore tcmeas tcstage1 bootguard tcbench poolrule budget modules uitest project fun10 motion persist backup tidestore editor editorjson midictl audio erase flashled usb insert rollbrowser xvalues twin subcyc pages scope2 editb velo midimap midimapmut emu   (default: all; emu only when ~/emsdk exists)
