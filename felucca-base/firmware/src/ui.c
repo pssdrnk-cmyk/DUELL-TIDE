@@ -2045,11 +2045,11 @@ static uint32_t act_cols(void)                   /* the columns that are actions
     return m;
 }
 
-/* the action OCT+ does: its column + 1, 0 = none picked yet (PATTERNS: LOAD until another is picked) */
+/* the action OCT+ does: its column + 1, 0 = none picked yet (PATTERNS, MULTIS: LOAD until another is picked; page_entered drops the pick on every entry) */
 static uint32_t act_col(void)
 {
     if (cur_page()->graph == GR_EVENTS) return 5u;
-    return cur_page()->graph == GR_PATS && !ui.act ? 2u : ui.act;
+    return (cur_page()->graph == GR_PATS || cur_page()->graph == GR_SLOTS) && !ui.act ? 2u : ui.act;
 }
 
 static const char *act_name(uint32_t c)          /* column c's action (the footer hint) */
