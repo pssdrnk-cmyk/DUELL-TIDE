@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* JAM: force-included by work/shims/cc on Windows (llvm-mingw). The few POSIX calls the host tests use that
  * MinGW spells differently, and POSIX text I/O: files and stdout in binary mode, so "\n" stays "\n" (generated files and
  * golden lists compare byte for byte with the ones made on Linux and macOS). Nothing here changes what the firmware

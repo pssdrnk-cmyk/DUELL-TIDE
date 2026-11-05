@@ -795,7 +795,7 @@ static void t_arc(void)
     CHECK("hand: ARC OFF says so and arms nothing", !strcmp(tarc_drop_hand(), "ARC OFF") && tarc_dropphr == 0xFFu);
     sqm_arc = 1, sqm_auto = 3, tarc.run = 1, tarc.phase = AP_RISE, tarc.len = tarc.left = 5, tarc.hand = 0;
     CHECK("gesture: OCT- + K2 (tide_reset(1)) arms the drop; K1 / K3 / K4 resets are unchanged", tide_reset(1u) == 1 && tarc.hand == 1u && tarc.next == AP_DROP &&
-          (gl.time = 5, tide_reset(2u), gl.time == 3u) && (gl.wait = 2, tide_reset(3u), gl.wait == 0u));
+          (tide_style = STY_MINIMAL, gl.time = 5, tide_reset(2u), gl.time == 3u) && (gl.wait = 2, tide_reset(3u), gl.wait == 0u));   /* (audit C9: to the STYLE's TIME and WAIT; MINIMAL: 8 bars, OFF) */
     tarc.hand = 0;
     /* brightness lean per phase */
     sqm_arc = 2;
@@ -879,9 +879,10 @@ static void t_style(void)
     jl_put(JL_STYLE, 3);
     tide_settings();
     gl.time = 5;
-    tide_reset(2u);                                               /* OCT- + K3: TIME 8 bars */
     tide_settings();
-    CHECK("  .. also OCT- + K3 (the reset)", tide_style == STY_CUSTOM && gl.time == 3u);
+    tide_reset(2u);                                               /* OCT- + K3: back to the style's TIME (AMBIENT: 64 bars), the style stays CUSTOM */
+    tide_settings();
+    CHECK("  .. also OCT- + K3 (the reset goes back to the style it came from)", tide_style == STY_CUSTOM && gl.time == 6u);
     jl_put(JL_STYLE, 3);
     tide_settings();
     jl_put(JL_TARGET, GT_SEQ);

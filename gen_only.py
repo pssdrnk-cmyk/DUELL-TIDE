@@ -1,18 +1,8 @@
 #!/usr/bin/env python3
-"""Emulator-only: run Felucca's generators (no JieLi toolchain / Docker). Run with the Python of requirements-dev.txt (sh jam/bootstrap.sh); felucca-base/tools/build.py --gen-only is the version for the fork's tests."""
+"""Emulator-only: run Felucca's generators (no JieLi toolchain / Docker). Same as `python felucca-base/tools/build.py --gen-only`
+(one list of generator jobs, in tools/build.py generate()). Run with the Python of requirements-dev.txt (sh jam/bootstrap.sh)."""
 import os, subprocess, sys
 from pathlib import Path
-root = Path(__file__).resolve().parent
-base = root / "felucca-base"
+base = Path(__file__).resolve().parent / "felucca-base"
 env = dict(os.environ, DYLD_FALLBACK_LIBRARY_PATH="/opt/homebrew/lib")  # libraqm for Pillow
-(base / "build/gen").mkdir(parents=True, exist_ok=True)
-jobs = [("gen_version.py", "duell_version.h"), ("gen_aa_font.py", "ui_fonts.h", "--preset", "barlow"), ("gen_aa_icons.py", "ui_icons.h"),
-        ("gen_aa_keycaps.py", "ui_keycaps.h"), ("gen_ui_palettes.py", "ui_palettes.h"), ("gen_splash_logo.py", "splash_logo.h"),
-        ("gen_tables.py", "felucca_tables.h"), ("gen_fm6_patches.py", "felucca_fm6.h"),
-        ("gen_duell_sounds.py", "duell_sounds.h"),
-        ("gen_duell_multis.py", "duell_multis.h"), ("gen_midi_map.py", "midi_map_defaults.h")]
-for script, out, *extra in jobs:
-    r = subprocess.run([sys.executable, f"tools/{script}", f"build/gen/{out}", *extra], cwd=base, env=env)
-    if r.returncode:
-        sys.exit(f"FAILED: {script}")
-print("generated:", *sorted(p.name for p in (base / "build/gen").iterdir()))
+sys.exit(subprocess.run([sys.executable, "tools/build.py", "--gen-only"], cwd=base, env=env).returncode)

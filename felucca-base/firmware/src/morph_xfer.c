@@ -357,7 +357,7 @@ static int32_t morph_xarc(uint32_t tp, uint32_t a, uint32_t b)
 }
 static int32_t morph_xdepth(uint32_t tp) { return morph_xarc(tp, XW0, XW1); }
 #define XBR_Q8 4634                                      /* GLIDE's breath at its deepest: two octaves of the dial (2317 Q8 steps an octave) */
-/* WASH LEVEL (TIDE LIST; tide_ui.c keeps it in the settings): 0 OFF (the default since 2026-11-01, owner), 1 LOW, 2 MID, 3 HIGH. It scales GLIDE's movement
+/* WASH (TIDE LIST; tide_ui.c keeps it in the settings): 0 OFF (the default since 2026-11-01, owner), 1 LOW, 2 MID, 3 HIGH. It scales GLIDE's movement
  * (the breath, the swell: XWL, x 0 .. 1.5), a transition's swell, and the wash's fill (15 dB under the part's level at rest at MID,
  * 3 dB a step: XWS). OFF: plain glides, a transition still smoothed (its filter dip, the INSERT's, FM6's valley) */
 static uint8_t morph_wlvl = 0u;
@@ -628,7 +628,7 @@ static __attribute__((noinline)) void morph_wash(uint32_t pp, int32_t *b, uint32
         pn += (int64_t)nz[i] * nz[i] >> 8;
     }
     if (move && morph_wlvl) {
-        int64_t fill = (v->wref >> XWS[morph_wlvl & 3u]) - v->wnow;   /* (to 9 dB under the level at rest at MID: WASH LEVEL) */
+        int64_t fill = (v->wref >> XWS[morph_wlvl & 3u]) - v->wnow;   /* (to 9 dB under the level at rest at MID: WASH) */
         want = fill > 0 ? fill : 0;
         if (x->need)
             want += ((v->wref >> (XWS[morph_wlvl & 3u] + 3u)) * morph_xdepth(x->tp)) >> 15;   /* (a transition's floor: 24 dB under it at MID) */

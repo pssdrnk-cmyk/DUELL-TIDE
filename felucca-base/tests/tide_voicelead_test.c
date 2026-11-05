@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* M2a: MUSIC voicing over the loop join. The second walk from the last chord is kept only when the
  * whole cycle moves less; bass, chord tones, note count, range and held/slid chords stay. */
 #define UI_TEST_NO_MAIN 1

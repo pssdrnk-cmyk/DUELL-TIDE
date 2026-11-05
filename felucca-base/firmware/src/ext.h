@@ -58,7 +58,7 @@ enum {                          /* slot numbers (the wide id is 128 + slot) */
 };
 _Static_assert(X_CYSYNC == 14 && X_LFO2LVL == 26 && X_STRUM == NX - 1 && XWID(X_ROUTE) == 128 && XWID(X_STRUM) == 155, "ext slots: X0..X27 used (X27 STRUM), wide ids 128..155");
 
-/* --- the matrix: new destinations 51..55 and source 15 (mod.c keeps its own lists until job B appends them; append-only) --------- */
+/* --- the matrix: new destinations 51..55 and source 15 (mod.c holds the lists and a _Static_assert ties them to these numbers; append-only) --------- */
 #define EXT_MD_CUT2   51        /* destination CUTOFF 2 (per note) */
 #define EXT_MD_RES2   52        /* destination RES 2 */
 #define EXT_MD_DRIVE  53        /* destination DRIVE */
@@ -67,7 +67,7 @@ _Static_assert(X_CYSYNC == 14 && X_LFO2LVL == 26 && X_STRUM == NX - 1 && XWID(X_
 #define EXT_MS_CYCLE  15        /* source CYCLE (the CYCLE envelope) */
 #endif /* DUELL_EXT_H_CONST */
 
-/* --- hooks (names declared; nothing defines them yet: job B stubs, jobs E and F fill) -------------------------------------------- */
+/* --- hooks (declared here; cycle.c, chain_f2.c and chain_sub.c define them) -------------------------------------------- */
 #if defined(DUELL_EXT_TYPES_DONE) && !defined(DUELL_EXT_H_HOOKS)
 #define DUELL_EXT_H_HOOKS
 
@@ -78,7 +78,7 @@ _Static_assert(X_CYSYNC == 14 && X_LFO2LVL == 26 && X_STRUM == NX - 1 && XWID(X_
  * gave the ids their new names in the P_ enum itself (core.h): P_TWTYPE 43, P_CUT2 106, P_RES2 25, P_DRV2 26, P_BLEND 101; the old names
  * (P_ALLOC, P_DKNOTE, P_ROOT, P_SCALE, P_FTYPE) no longer exist, so nothing can read a retired meaning by mistake. */
 _Static_assert(P_TWTYPE == 43 && P_CUT2 == 106 && P_RES2 == 25 && P_DRV2 == 26 && P_BLEND == 101, "ext.h: the five TWIN ids");
-int32_t cycle_value(track_t *t, voice_t *v);   /* the CYCLE source for voice v (job F fills it; job B's stub returns 0) */
+int32_t cycle_value(track_t *t, voice_t *v);   /* the CYCLE source for voice v (cycle.c) */
 int twin_on(const track_t *t);                                   /* TWIN FILTER (job E, chain_f2.c) for the pages: TYPE is not OFF */
 void twin_link_set(track_t *t, int on);                          /* LINK on / off, keeping the sound (CUTOFF 2 converted between OFFSET and CUTOFF with filter 1's knob) */
 void twin_type_set(track_t *t, int type);                        /* TYPE (TT_*): refuses COMB on WAVE / PHYS; resets RES 2 and CUTOFF 2 to the new kind's defaults on entering or leaving COMB */

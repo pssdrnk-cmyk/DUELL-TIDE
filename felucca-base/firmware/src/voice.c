@@ -935,6 +935,37 @@ static __attribute__((noinline)) void esync2_coef(const track_t *t)
 }
 
 #include "cycle.c"                                      /* the CYCLE envelope (cloud job F): cycle_start, cycle_tick, cycle_value */
+/* the ADSR both envelopes run (ENV 1: env_tick; ENV 2: env2_tick; U06 of the audit: two copies had drifted, only ENV 1 had stage 4): one control tick of stage 1 attack (a step k[0]), 2 decay to the
+ * sustain, 3 release (a coefficient k[2]; a slow Q16 release can round its decrement to zero above the floor, so a zero decrement ends it too), anything else 0. Returns 1 when the release ended */
+static inline __attribute__((always_inline)) uint32_t adsr_step(int32_t *env, uint8_t *stage, int32_t sus, const uint32_t *k)
+{
+    switch (*stage) {
+    case 1:
+        *env += (int32_t)k[0];                          /* ATK's step (esync_coef: the table's, or ENV SYNC's) */
+        if (*env >= (1 << 24)) {
+            *env = 1 << 24;
+            *stage = 2;
+        }
+        break;
+    case 2:
+        *env += mulq16(sus - *env, k[1]);
+        break;
+    case 3: {
+        int32_t d = mulq16(*env, k[2]);
+        *env -= d;
+        if (!d || *env < (1 << 12)) {
+            *env = 0;
+            *stage = 0;
+            return 1;
+        }
+        break;
+    }
+    default:
+        *env = 0;
+        break;
+    }
+    return 0;
+}
 /* ENV 2 (DUELL, SPEC 2.4): a second ADSR per voice, ENV 1's stages and times (ENV SYNC too: esync2_coef): the filter
  * envelope of the classic arrangement (ENV 2 DEST: FLT, SHP, track_render) and a matrix source (mod.c MS_ENV2). It follows the gate: an attack as the voice starts (voice_start; a legato note keeps it), the
  * release from its level when the key is let go; at 0 it stays there. It never ends the voice (ENV 1 does). Ticked once
@@ -942,72 +973,21 @@ static __attribute__((noinline)) void esync2_coef(const track_t *t)
  * cost, no change to the sound */
 static void env2_tick(const track_t *t, voice_t *v)
 {
-    int32_t sus = (int32_t)t->p[P_E2SUS] << 17;         /* Q24 */
     if (!v->gate && v->stage2 && v->stage2 < 3u)
         v->stage2 = 3;
-    switch (v->stage2) {
-    case 1:
-        v->env2 += (int32_t)t->esk2[0];
-        if (v->env2 >= (1 << 24)) {
-            v->env2 = 1 << 24;
-            v->stage2 = 2;
-        }
-        break;
-    case 2:
-        v->env2 += mulq16(sus - v->env2, t->esk2[1]);
-        break;
-    case 3: {
-        int32_t d = mulq16(v->env2, t->esk2[2]);
-        v->env2 -= d;
-        /* A slow Q16 release can round its decrement to zero above the floor. */
-        if (!d || v->env2 < (1 << 12)) {
-            v->env2 = 0;
-            v->stage2 = 0;
-        }
-        break;
-    }
-    default:
-        v->env2 = 0;
-        break;
-    }
+    adsr_step(&v->env2, &v->stage2, (int32_t)t->p[P_E2SUS] << 17, t->esk2);   /* (sustain Q24) */
 }
 
 /* one control tick (CTL samples) of the amplitude envelope; returns Q15 */
 static int32_t env_tick(track_t *t, voice_t *v)
 {
-    const int16_t *p = t->p;
-    int32_t sus = (int32_t)p[P_SUS] << 17;              /* Q24 */
-    switch (v->stage) {
-    case 1:
-        v->env += (int32_t)t->esk[0];                  /* ATK's step (esync_coef: the table's, or ENV SYNC's) */
-        if (v->env >= (1 << 24)) {
-            v->env = 1 << 24;
-            v->stage = 2;
-        }
-        break;
-    case 2:
-        v->env += mulq16(sus - v->env, t->esk[1]);
-        break;
-    case 3: {
-        int32_t d = mulq16(v->env, t->esk[2]);
-        v->env -= d;
-        /* A slow Q16 release can round its decrement to zero above the floor. */
-        if (!d || v->env < (1 << 12)) {
-            v->env = 0;
-            v->stage = 0;
-            v->active = 0;
-        }
-        break;
-    }
-    case 4:                                             /* given up for another part: this block fades it */
+    int32_t sus = (int32_t)t->p[P_SUS] << 17;           /* Q24 */
+    if (v->stage == 4u) {                               /* given up for another part: this block fades it */
         v->env = 0;
         v->stage = 0;
         v->active = 0;
-        break;
-    default:
-        v->env = 0;
-        break;
-    }
+    } else if (adsr_step(&v->env, &v->stage, sus, t->esk))
+        v->active = 0;
     return v->env >> 9;
 }
 
@@ -1339,10 +1319,10 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
             v->lastc = v->lastd = 0;
             continue;
         }                                   /* held at a silent sustain (SUS 0): nothing to render */
-        pitch = v->pitch_cur + tune + bend16 + ((lfo * DEP_AMT(p[P_LD_PIT]) * 3) >> 15) + ((m.envq15 * DEP_AMT(p[P_ED_PIT]) * 3) >> 15);
-        m.pitch16 = clamp(pitch, 0, 2047);
+        pitch = (lfo * DEP_AMT(p[P_LD_PIT]) * 3 >> 11) + (m.envq15 * DEP_AMT(p[P_ED_PIT]) * 3 >> 11);   /* LFO and ENV PIT in 1/256 st: the 1/16 st below it goes to the fine factor, not lost */
+        m.pitch16 = clamp(v->pitch_cur + tune + bend16 + (pitch >> 4), 0, 2047);
         m.inc = pitch_inc(m.pitch16);
-        vf = v->fine + tune_fine + bend_fine + ((v->gfrac * 947) >> 22);   /* (gfrac: 1/65536 of 1/16 st = 14.8 fine) */
+        vf = v->fine + tune_fine + bend_fine + ((v->gfrac * 947) >> 22) + ((pitch & 15) * 947 >> 10);   /* (gfrac: 1/65536 of 1/16 st = 14.8 fine) */
         m.fine = vf;
         if (vf)                                         /* residual below 1/16 semitone */
             m.inc += (uint32_t)((int32_t)(m.inc >> 12) * vf);
@@ -1351,9 +1331,9 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
         if (e == &ENG_NOISE)                            /* NOISE's DRFT wander of the cutoff, worked out by the block before (eng_noise.c): filter 1's, one block late */
             m.cutoff += v->s[0];
         m.acc1 = 0;
-        if (v->vel > 110 && (uf != 1u || ACCENT_BOTH(e)))   /* accent opens the filter with the env: filter 1 on the three engines whose own filter went (ACCENT_BOTH), the engine's own tone control on the others (below) */
+        if (ACCENT_VEL(v) > 110 && (uf != 1u || ACCENT_BOTH(e)))   /* accent opens the filter with the env: filter 1 on the three engines whose own filter went (ACCENT_BOTH), the engine's own tone control on the others (below) */
         {
-            int32_t al = accent_lift(v->vel, m.envq15);
+            int32_t al = accent_lift(ACCENT_VEL(v), m.envq15);
             if (ACCENT_BOTH(e))
                 al = m.acc1 = accent_dir(al, accent_dir_mode(p[P_FREEC]));   /* filter 1 opens the way its MODE opens (LP up, HP down, BP none) */
             m.cutoff += al;
@@ -1363,9 +1343,9 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
         if (abits)
             atg_voice(t, v, &m);
         if (mod->on) {                                   /* the modulation matrix (mod.c) */
-            mod_voice(t, v, &m, vf);
+            mod_voice(t, v, &m);
             if (t->cy)                                   /* its second list (cloud job B, mod.c): CYCLE's per-note routes, after mod_voice .. */
-                mod_cycle_voice(t, v, &m, vf);
+                mod_cycle_voice(t, v, &m);
             t->venv = m.envq15;                          /* .. and this voice's ENV for filter 2's sum (mod_f2_voice, called by the chain) */
         }
         if (e == &ENG_WAVE && p[P_E6])                  /* WAVE STEPS (eng_wave.c): POS lands on one of STEPS places; the block ramp is the cross-fade between two steps */
@@ -1391,7 +1371,7 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
             uc = morph_xcut(t, uc); /* TIDE: the effective cutoff's crossing dip */
 #endif   /* the effective cut: the dial plus every route (and the key) */
             int32_t ucn = clamp(ucut0 + m.cutoff - m.acc1 + kt, 0, UF_TOP);   /* the same without the accent (filter 2 LINK, NOISE's make-up) */
-            m.cutoff = accent_lift(v->vel, m.envq15);   /* the routes are the filter's, whatever CUT is; the accent's lift stays the engine's own (its tone control, as ever) */
+            m.cutoff = accent_lift(ACCENT_VEL(v), m.envq15);   /* the routes are the filter's, whatever CUT is; the accent's lift stays the engine's own (its tone control, as ever) */
             m.ucut = uc;
             m.ucn = ucn;
 #if DUELL_TIDE

@@ -32,7 +32,7 @@
  * Held past HOLD alone: the map (a peek), letting go does nothing. A key, a knob or a button meanwhile: a combo,
  * the map at once, no tap. Keys pressed with the button down are the layer's (seq.c keyboard_block): silent, no
  * MIDI, never recorded; keys held before stay notes. Only one layer at a time: a second layer button is ignored.
- * PLAY and REC work in every layer (GLO held + PLAY: RESTART; GLO's lock: PLAY as always, #183); SAVE, HOME, SEQ and
+ * PLAY and REC work in every layer (PLAY is PLAY in GLO's layer too, locked or held, #183); SAVE, HOME, SEQ and
  * the other page buttons are swallowed. In SET layers OCT± do not shift the octave: OCT- (on release, not with OCT+)
  * puts back what the layer changed since it opened. A HOLD key's effect lasts until the key is let go, the map with
  * it. No layer in the menu, a dialog, NAME or the UPDATE MODE countdown. After a tap, until the layer has been opened
@@ -40,7 +40,7 @@
  * The lock (Discussion #83): a double tap (the second press within LY_DTAP_MS of the first tap, both let go before
  * HOLD, nothing else touched) opens the map and keeps it open with no button held (ui.lock): ly_down() counts the lock
  * as the button held, so the keys (seq.c keyboard_block: kb_lock), KNOB 1..4, OCT- act exactly as held (PLAY starts
- * and stops: GLO's RESTART needs GLO held, layer_play). A tap of its button closes it (the press hands it back to the
+ * and stops: there is no GLO + PLAY restart any more). A tap of its button closes it (the press hands it back to the
  * button: held on, a peek; let go, closed; never a tap), so do another page button, HOME, SAVE, SEQ (each then acts as
  * always), the menu, a dialog, NAME. The first tap is not deferred (a single tap opens its page at once, no lag): it
  * opens the page and remembers the page it left (lys.nv); the second tap locks the layer over that page, put back, so
@@ -70,7 +70,7 @@ static const page_t LY_SEQ = {"PATTERN", FAM_SEQ, SC_TRACK, GR_STEPS, {P_SLEN, P
 /* DUELL 0.2.9, the QUICK EDIT layers' knobs, the selected part's (EDIT, LFO, ENV, ARP: LY_Q[q], q = ly_q(l)): the same parameters, cards
  * (names, values, greying), motion and MIDI LEARN as on their pages. QUICK FILTER's K1..K3 are the MULTIMODE filter's CUT RES MODE (ids 45..47)
  * on every engine, K4 the AMP ENV's REL (0.2.14, owner: up to 0.2.13 ANALOG TRIO NOISE showed their own filter here, and ANALOG's TYPE
- * switched that one, not the multimode filter he meant; their own filters stay on their EDIT pages VCF, TRIO FILTER, NOISE FILT; all ten
+ * switched that one, not the multimode filter he meant; those pages are gone since; all ten
  * shown engines have the multimode filter, ufilt 1 or 2; SLOPE stays on the FILTER page). QUICK LFO: a synced LFO's RATE does nothing (its
  * card is faded on the LFO page), so its knob is the active one, SYNC (to OFF: RATE again) */
 static const page_t LY_Q[4] = {
@@ -175,7 +175,7 @@ static int layer_set_open(void)
 }
 static uint32_t layer_held(void) { return ui.ly && ly_down(ui.ly) && layer_allowed(); }
 /* GLO's MIXER page shown (no menu, dialog or NAME over it): drawn by draw_layer, as the hold-GLO QUICK layer. 0.2.25 layout round (owner): the MIXER is GLO's first page again
- * (graph GR_GLO, scope SC_GMIX); the old RESTART of GLO held + PLAY on that page is not revived (layer_play) */
+ * (graph GR_GLO, scope SC_GMIX); the old RESTART of GLO held + PLAY on that page is not revived */
 static int glo_pg(void) { return layer_allowed() && cur_page()->graph == GR_GLO; }
 
 /* each pass, before the keys: what the ISR (seq.c keyboard_block) gives to a layer. Armed: its button; none
@@ -549,13 +549,6 @@ static int layer_glo_oct(uint32_t b)
     ui_say(k ? "PART 2: " : "PART 1: ", m ? "MUTE" : "UNMUTE");   /* (0.2.25: the action's word; no MUTED / LIVE state words) */
     ui.force = 1;
     return 1;
-}
-
-/* PLAY with GLO held open: RESTART (from the top, playing on); stopped: PLAY. 1 = done here. GLO's lock is not
- * held: PLAY starts and stops there as in every layer (#183: locked, PLAY restarted and never stopped) */
-static int layer_play(void)
-{
-    return 0;                                           /* (0.2.25: PLAY is PLAY on the MIXER page too: the restart gesture of the old GLO page is not part of the MIXER's return) */
 }
 
 /* OCT- / OCT+ pressed with a SET layer's button down before it opened: a combo, so it opens now,
