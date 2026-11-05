@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* TIDE: the motif under automatic MUSIC WNDR (lane M: M01-M04, M08; owner decisions D1, D2, D4). Two scenes, a dub skank (chords on
  * the "and"s) over a bass, and house stabs (the "and"s plus two pushes) over an offbeat bass, each 128 bars at 120 BPM with STYLE DUB's
- * rows (LEAD, SYNC SOFT, ARC RISE, POLY GENTLE) and PEAK's (ECHO, PUSH, ARC DROP):
+ * rows (LEAD, SYNC SOFT, ARC RISE, POLY GENTLE) and PEAK's (LEAD, PUSH, ARC DROP):
  *   anchors  every bar but a drop's keeps at least max(2, 3/5) of the Original's hits where they were (one identity floor across
  *            DENS-, phrase gaps, moves, LEAD and ARC thinning); an offbeat skank keeps all four of its "and"s
  *   drift    no hit is ever more than two 16ths from its stored step (D1)
@@ -172,7 +172,7 @@ static uint32_t floor_of(uint32_t hits) { uint32_t f = (hits * 3u + 4u) / 5u; re
 static void t_motif(void)
 {
     static const struct { uint32_t scene, turns, sync, arc; const char *name; } C[4] = {
-        {0, 2, 1, 1, "dub, STYLE DUB"}, {0, 3, 2, 2, "dub, STYLE PEAK"}, {1, 2, 1, 1, "house, STYLE DUB"}, {1, 3, 2, 2, "house, STYLE PEAK"}};
+        {0, 2, 1, 1, "dub, STYLE DUB"}, {0, 2, 2, 2, "dub, STYLE PEAK"}, {1, 2, 1, 1, "house, STYLE DUB"}, {1, 2, 2, 2, "house, STYLE PEAK"}};
     uint32_t c, p;
     char msg[160];
     for (c = 0; c < 4u; c++)

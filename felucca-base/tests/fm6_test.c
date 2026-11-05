@@ -584,6 +584,58 @@ static void macros(void)
         printf("fm6: DTUN 0 / 127 (3 carriers): level swing over 50 ms windows %.3f / %.3f\n", v0, v1);
         check("DTUN: the carriers apart: they beat", v1 > v0 * 1.05);
     }
+    {   /* DTUN is centred (audit Q05, D18): on every algorithm the carriers' offsets average 0 and the outer ones are (n - 1) steps of up to 12 cents apart */
+        uint32_t alg, k, bad = 0, one = 0;
+        double worst = 0, wspan = 0;
+        for (alg = 0; alg < 32u; alg++) {
+            uint32_t car = fm6_carriers(alg), nc = 0;
+            double sum = 0, lo = 1e9, hi = -1e9;
+            memcpy(e, E0, sizeof e); e[0] = (int16_t)(alg + 1u); e[6] = 127;
+            setup(base, e);
+            fm6_sync(&trk[0]);
+            for (k = 0; k < 6u; k++) {
+                double c = fm6_eff[0].dt[k] / 13981.0;       /* cents */
+                if (!(car >> k & 1u)) {
+                    bad += fm6_eff[0].dt[k] != 0;
+                    continue;
+                }
+                nc++, sum += c;
+                lo = c < lo ? c : lo, hi = c > hi ? c : hi;
+            }
+            if (fabs(sum / nc) > worst)
+                worst = fabs(sum / nc);
+            if (nc > 1u && fabs((hi - lo) - 12.0 * (nc - 1u)) > 0.1)
+                bad++, wspan = hi - lo;
+            one += nc == 1u;
+        }
+        printf("fm6: DTUN 127 on the 32 algorithms: the carriers' mean offset at most %.2f cents (was +6 on the two-carrier ones), %u algorithms with one carrier (nothing to spread)\n", worst, one);
+        check("DTUN: centred (mean offset 0 on every algorithm), the outer carriers (n - 1) x 12 cents apart, modulators untouched", worst < 0.1 && !bad);
+        (void)wspan;
+    }
+    {   /* OKS (audit Q10): ON syncs the operators' phases to the key (every fresh note starts alike); OFF starts them anywhere (a DX7 free-runs them) */
+        static double y[2][2048];
+        static const int R[4] = {99, 99, 99, 99}, L[4] = {99, 99, 99, 0};
+        uint8_t v[FP_SIZE + 1u];
+        uint32_t k, o, same[2], nok = 0;
+        double d, r;
+        init_patch(v);                                  /* algorithm 32: six carriers, OP1..OP3 sound */
+        for (k = 1; k <= 6u; k++)
+            op_set(v, k, R, L, k <= 3u ? 90 : 0, k);
+        v[FP_ALG] = 31;
+        for (o = 0; o < 2u; o++) {                      /* OKS 1, then 0: two fresh notes each */
+            v[FP_OKS] = (uint8_t)(1u - o);
+            for (k = 0; k < 2u; k++) {
+                setup(v, 0);
+                voice_render(48, 100, y[k], 2048, 0);
+            }
+            for (d = 0, r = 0, k = 0; k < 2048u; k++)
+                d += (y[0][k] - y[1][k]) * (y[0][k] - y[1][k]), r += y[0][k] * y[0][k];
+            same[o] = d < r * 1e-9;
+            printf("fm6: OKS %u: two fresh notes differ by %.1f %% of the first (rms of the difference)\n", 1u - o, 100.0 * sqrt(d / (r + 1)));
+            nok += o ? d > r * 0.01 : 0;
+        }
+        check("OKS: on, every fresh note is the same (synced); off, the notes start their oscillators apart", same[0] && !same[1] && nok);
+    }
     {   /* SLOT: the main loop loads a factory patch; OWN keeps (and brings back) the track's own */
         uint8_t own[FP_SIZE + 1u];
         setup(base, 0);
@@ -722,7 +774,8 @@ static void voices(void)
     track_render(&trk[0], b, CTL);
     for (i = 0; i < NVOICE; i++)
         n += trk[0].v[i].active;
-    check("voices: 8 keys in POLY: 6 voices (the engine's cap)", n == FM6_POLY && ENG_FM6.poly == FM6_POLY);
+    check("voices: 8 keys in POLY: 8 voices (the engine's cap, D18: the NOTES budget sets the number)", n == 8u && FM6_POLY == 8u && ENG_FM6.poly == FM6_POLY);
+    check("memory: eight notes (and TIDE's saves) fit the part's engine memory and leave the COMB 500+ samples a voice", FM6_MEM <= ENG_MEM_PART && (ENG_MEM_PART - ((FM6_MEM + 3u) & ~3u)) / (2u * NVOICE) >= 500u);
     for (i = 0; i < 8u; i++)
         trk_note_off(&trk[0], 48 + 2 * i);
     for (i = 0; i < FS * 8u / CTL; i++)
@@ -777,7 +830,7 @@ static void cost(void)
     heavy[FP_ALG] = 31;
     heavy[FP_FB] = 7;
     idle = mix_cost(heavy, 0);
-    printf("fm6: cost, host instructions per sample and voice (6 voices held; device estimate 1.7 %% per 100):\n");
+    printf("fm6: cost, host instructions per sample and voice (6 voices held of 8; device estimate 1.7 %% per 100):\n");
     for (pi = 0; pi <= FM6_NFACTORY; pi++) {
         uint8_t v[FP_SIZE + 1u];
         if (pi < FM6_NFACTORY)
