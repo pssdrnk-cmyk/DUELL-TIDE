@@ -305,9 +305,11 @@ def build(data):
         for key in ("engine", "idx", "name", "cat", "p"):
             if key not in s:
                 die(f"{where}: no '{key}'")
-        unknown = set(s) - {"engine", "idx", "name", "cat", "p", "mono", "recipe", "bamt", "bseed", "bend", "bpin", "bfm", "lcat"}
+        unknown = set(s) - {"engine", "idx", "name", "cat", "p", "mono", "recipe", "bamt", "bseed", "bend", "bpin", "bfm", "lcat", "text"}
         if unknown:
             die(f"{where}: unknown keys {sorted(unknown)}")
+        if "text" in s and (s["text"] is not True or s["cat"] != "FX"):
+            die(f"{where}: 'text' is True and only on an FX sound (a texture or drone; TIDE's JOURNEY family TEXT, the DSF_TEXT flag)")
         name = s["name"]
         if not 0 < len(name) <= 12 or not all(32 <= ord(c) < 127 for c in name) or '"' in name or "\\" in name:
             die(f"{where}: the name must be 1..12 plain characters")
@@ -432,7 +434,7 @@ def build(data):
             except ValueError as x:
                 die(f"{where}: {x}")
         sounds.append({"e": e, "idx": idx, "name": name, "cat": s["cat"], "lcat": s.get("lcat", s["cat"]), "mono": bool(s.get("mono")), "arp": arp, "late": n >= getattr(data, "N_BASE", 1 << 30),
-                       "keys": keys, "pairs": sorted(pairs.items()), "recipe": s.get("recipe", ""), "bamt": bamt,
+                       "keys": keys, "text": bool(s.get("text")), "pairs": sorted(pairs.items()), "recipe": s.get("recipe", ""), "bamt": bamt,
                        "bseed": bseed, "endb": block})
     for e in {x["e"] for x in sounds}:
         got = sorted(x["idx"] for x in sounds if x["e"] == e)
@@ -494,7 +496,7 @@ def emit(path, sounds, lst, engines, cats, idname):
     L += ["};", "", "/* engine-major: sound k of engine e = DS_SOUNDS[DS_ENG_AT[e] + k] (k: the factory index) */",
           "static const ds_sound_t DS_SOUNDS[DS_N ? DS_N : 1u] = {"]
     for s in sounds:
-        fl = " | ".join(f for f, on in (("DSF_MONO", s["mono"]), ("DSF_ARP", s["arp"]), ("DSF_KEYS", s["keys"])) if on) or "0"
+        fl = " | ".join(f for f, on in (("DSF_MONO", s["mono"]), ("DSF_ARP", s["arp"]), ("DSF_KEYS", s["keys"]), ("DSF_TEXT", s["text"])) if on) or "0"
         L.append(f"    {{\"{s['name']}\", {s['e']}, {cats[s['cat']]}, {fl}, {len(s['pairs'])}, {s['at']}u, "
                  f"{s['bseed']}u, {s['bamt']}}},"
                  f"   /* {s['cat']}; {s['recipe']} */")
@@ -536,11 +538,13 @@ def emit(path, sounds, lst, engines, cats, idname):
 
 
 def table(sounds, lst, engines):
-    print(f"{'#':>3} {'NAME':<13}{'CAT':<6} {'ENGINE':<7}{'IDX':>4} {'PAIRS':>5}  ARP MONO BAMT BSEED")
+    print(f"{'#':>3} {'NAME':<13}{'CAT':<6} {'ENGINE':<7}{'IDX':>4} {'PAIRS':>5}  ARP MONO TEXT BAMT BSEED")
     for n, g in enumerate(lst):
         s = sounds[g]
         print(f"{n + 1:>3} {s['name']:<13}{s['cat']:<6} {engines[s['e']]['name']:<7}{s['idx']:>4} {len(s['pairs']):>5}"
-              f"  {'ON ' if s['arp'] else '-  '} {'Y' if s['mono'] else '-'}    {s['bamt']:>4} {s['bseed'] or 'hash':>5}")
+              f"  {'ON ' if s['arp'] else '-  '} {'Y' if s['mono'] else '-'}    {'Y' if s['text'] else '-'}    {s['bamt']:>4} {s['bseed'] or 'hash':>5}")
+    flagged = [sounds[g]["name"] for g in lst if sounds[g]["text"]]
+    print(f"TEXT (DSF_TEXT, TIDE's JOURNEY texture family): {len(flagged)} sounds: {', '.join(flagged)}")
 
 
 def main(argv):

@@ -5,7 +5,7 @@ DUELL 1.0 (owner, 2026-10-21): the 128 factory sounds are the owner's bank, the 
 no retuning, the names of the file), written here by tools/import_bank.py. The earlier recipe list (SOUND_RECIPES.md, the refinement passes) is in git history.
 Every sound: engine, idx (its factory index within the engine: the identity favourites and the shadows use; APPEND-ONLY per engine), name, cat, p: the
 parameters that differ from INIT (params.c TP defaults and the engine's EDIT defaults; E1..E8 are the engine's eight; MOD1..MOD8 are (SRC, DST, AMT)
-matrix slots; extension slots as "<group> <label>"), bseed / bamt: End B (the roll's seed and the AMOUNT %). Edited here since End B became exact values
+matrix slots; extension slots as "<group> <label>"), bseed / bamt: End B (the roll's seed and the AMOUNT %). text=True (FX only): a texture or drone, TIDE's JOURNEY family TEXT (an FX without it is a one-shot). Edited here since End B became exact values
 (tools/import_bank.py --write is switched off: it would rebuild only the 128 from the bank file and drop the sounds after it). The sounds after N_BASE are the fork's (#129 on).
 End B as exact values (2026-10-29, tools/convert_endb.py; the format is tools/endb.py's = the patch record's End B block): bend {label: End B value} (where it differs from the Original),
 bpin [labels] (marks of values set by hand), bfm [65 FM6 bytes of End B]. The seeds stay until the firmware reads the blocks.
@@ -1505,7 +1505,7 @@ SOUNDS = [
             'SUB LEVEL': 5, 'CYCLE RISE': 5, 'CYCLE FALL': 66, 'CYCLE CURVE': -12, 'AMPENV SATN': 6, 'FILTERENV FBLND': -3, 'FILTERENV FDRV': -13,
             'FILTERENV MRES': 2, 'CYCLE TCUT': -10, 'CYCLE PAN': -10, 'LFO2 TRES': -7, 'LFO2 MMODE': -10, 'LFO2 FBLND': 7,
          }),
-    dict(engine='ANALOG', idx=14, name='STORM FRONT', cat='FX', bseed=36047, bamt=14,  # #102
+    dict(engine='ANALOG', idx=14, name='STORM FRONT', cat='FX', text=True, bseed=36047, bamt=14,  # #102
          p={
             'ATK': 97, 'SUS': 127, 'REL': 79, 'LRATE': 23, 'LWAVE': 1, 'LD_FLT': 2, 'RES2': 41, 'KTRK': 0, 'DIST': 7, 'DLY': 20, 'REV': 25,
             'TWTYPE': 2, 'FREEA': 37, 'FREEB': 12, 'E2ATK': 111, 'E2DEC': 0, 'E2SUS': 127, 'E2REL': 79, 'ITYPE': 1, 'IA': 40, 'IB': 127, 'IC': 112,
@@ -1650,7 +1650,7 @@ SOUNDS = [
             'TWIN ENV2': 7, 'TWIN LFO1': 34, 'TWIN LFO2': -18, 'SUB LEVEL': 16, 'CYCLE CURVE': 11, 'AMPENV SATN': -28, 'FILTERENV FBLND': 16,
             'FILTERENV FDRV': -33, 'FILTERENV MRES': -8, 'CYCLE TCUT': -5, 'CYCLE PAN': -20, 'LFO2 TRES': -6, 'LFO2 MMODE': 15, 'LFO2 FBLND': -27,
          }),
-    dict(engine='WHEEL', idx=6, name='TAPE DRONE', cat='FX', bseed=58896,  # #111
+    dict(engine='WHEEL', idx=6, name='TAPE DRONE', cat='FX', text=True, bseed=58896,  # #111
          p={
             'ATK': 100, 'SUS': 127, 'REL': 105, 'LRATE': 17, 'LWAVE': 1, 'CHOR': 32, 'REV': 64, 'TWTYPE': 4, 'FREEA': 58, 'FREEB': 4, 'L2RATE': 21,
             'L2WAVE': 1, 'CHRD': 9, 'VOIC': 1, 'ITYPE': 9, 'IA': 50, 'IB': 71, 'IC': 110, 'CUT2': 52, 'TRIM': 102, 'L2FLT': 3, 'E1': 12, 'E6': 0,
@@ -1681,7 +1681,7 @@ SOUNDS = [
             'TWIN LFO1': -1, 'TWIN LFO2': 4, 'SUB LEVEL': 28, 'CYCLE CURVE': -6, 'AMPENV SATN': 1, 'FILTERENV FBLND': -28, 'FILTERENV FDRV': -16,
             'FILTERENV MRES': -5, 'CYCLE TCUT': -1, 'CYCLE PAN': -23, 'LFO2 TRES': -22, 'LFO2 MMODE': -31, 'LFO2 FBLND': -20,
          }),
-    dict(engine='NOISE', idx=4, name='MOOR WIND', cat='FX', bseed=31000, bamt=27,  # #113
+    dict(engine='NOISE', idx=4, name='MOOR WIND', cat='FX', text=True, bseed=31000, bamt=27,  # #113
          p={
             'ATK': 99, 'SUS': 127, 'REL': 110, 'EQLG': -4, 'LRATE': 23, 'RES2': 51, 'KTRK': 0, 'DLY': 11, 'REV': 53, 'TWTYPE': 2, 'FREEA': 31,
             'FREEB': 35, 'FREEC': 35, 'E2ATK': 105, 'E2DEC': 108, 'E2SUS': 89, 'E2REL': 101, 'L2RATE': 15, 'L2WAVE': 1, 'ITYPE': 6, 'IA': 18, 'IB': 90,
@@ -1712,7 +1712,7 @@ SOUNDS = [
             'CYCLE RISE': 76, 'CYCLE FALL': 43, 'CYCLE CURVE': 7, 'AMPENV SATN': -29, 'FILTERENV FBLND': 13, 'FILTERENV FDRV': -10,
             'FILTERENV MRES': 9, 'CYCLE TCUT': 4, 'CYCLE PAN': -15, 'LFO2 TRES': -8, 'LFO2 MMODE': -6, 'LFO2 FBLND': -31,
          }),
-    dict(engine='NOISE', idx=3, name='WHITE OUT', cat='FX', bseed=38918, bamt=12,  # #115
+    dict(engine='NOISE', idx=3, name='WHITE OUT', cat='FX', text=True, bseed=38918, bamt=12,  # #115
          p={
             'ATK': 94, 'SUS': 127, 'REL': 83, 'EQLG': -4, 'KTRK': 0, 'DLY': 20, 'REV': 30, 'FREEA': 21, 'FREEB': 27, 'FREEC': 20, 'FREED': 2,
             'E2ATK': 100, 'E2DEC': 0, 'E2SUS': 127, 'E2REL': 79, 'L2RATE': 27, 'L2WAVE': 1, 'ITYPE': 1, 'IA': 100, 'IB': 127, 'IC': 112, 'TRIM': 81,
@@ -1725,7 +1725,7 @@ SOUNDS = [
             'IC': 122, 'IMIX': 124, 'E2FLT': 37, 'E2': 8, 'E6': 12, 'E7': 7, 'E8': 11, 'SUB LEVEL': 13, 'CYCLE RISE': 0, 'CYCLE FALL': 68,
             'CYCLE CURVE': 11, 'AMPENV SATN': 12, 'FILTERENV MRES': 2, 'CYCLE PAN': -11, 'LFO2 MMODE': -3,
          }),
-    dict(engine='WAVE', idx=17, name='FROZEN AIR', cat='FX', bseed=26635, bamt=17,  # #116
+    dict(engine='WAVE', idx=17, name='FROZEN AIR', cat='FX', text=True, bseed=26635, bamt=17,  # #116
          p={
             'ATK': 88, 'SUS': 127, 'REL': 113, 'EQLG': -3, 'LRATE': 18, 'LWAVE': 1, 'RES2': 41, 'DLY': 32, 'REV': 102, 'TWTYPE': 2, 'FREEA': 57,
             'FREEB': 12, 'E2ATK': 114, 'E2DEC': 0, 'E2SUS': 127, 'E2REL': 86, 'L2RATE': 11, 'L2WAVE': 1, 'BLEND': -17, 'CUT2': 63, 'TRIM': 114,
@@ -1989,7 +1989,7 @@ SOUNDS = [
          }),
     # DUB PACK: crackle (DUST) through a drifting band-pass, vinyl insert, a long room and an echo: a bed to lay under the chords. Any key starts it.
     # End B: denser and darker, the crush up, the room fuller.
-    dict(engine='NOISE', idx=11, name='DUST BED', cat='FX', bamt=25,  # #162
+    dict(engine='NOISE', idx=11, name='DUST BED', cat='FX', text=True, bamt=25,  # #162
          p={
             'ATK': 100, 'DEC': 100, 'SUS': 127, 'REL': 104, 'LRATE': 12, 'LWAVE': 1, 'LD_FLT': 8, 'KTRK': 0, 'CHOR': 48, 'DLY': 56, 'REV': 94,
             'RES2': 20, 'TWTYPE': 2, 'FREEA': 44, 'FREEB': 28, 'FREED': 1, 'ITYPE': 10, 'IA': 60, 'IB': 80, 'IC': 70, 'CUT2': 24, 'TRIM': 123,
@@ -2091,7 +2091,7 @@ SOUNDS = [
          }),
     # a slow dark drone: two saws wide-detuned an octave down, a low filter that breathes, drive and a long room. Hold a key and leave it.
     # End B: the filter breathes faster and higher, the room as big as it goes.
-    dict(engine='ANALOG', idx=33, name='NIGHT DRONE', cat='FX', bamt=25,  # #161
+    dict(engine='ANALOG', idx=33, name='NIGHT DRONE', cat='FX', text=True, bamt=25,  # #161
          p={
             'ATK': 100, 'DEC': 100, 'SUS': 127, 'REL': 110, 'LRATE': 6, 'LWAVE': 1, 'LD_FLT': 10, 'L2RATE': 9, 'KTRK': 0, 'TRANS': -12, 'DIST': 20,
             'CHOR': 60, 'DLY': 40, 'REV': 110, 'FREEA': 24, 'FREEB': 15, 'FREED': 2, 'E2ATK': 100, 'E2DEC': 100, 'E2SUS': 90, 'E2REL': 100,
@@ -2180,7 +2180,7 @@ SOUNDS = [
          }),
     # tape hiss: brownish noise through a soft low-pass, a few clicks, the cutoff drifting; a quiet floor to lay under the chords.
     # End B: darker and denser, more drift, the room fuller.
-    dict(engine='NOISE', idx=12, name='TAPE HISS', cat='FX', bamt=25,  # #163
+    dict(engine='NOISE', idx=12, name='TAPE HISS', cat='FX', text=True, bamt=25,  # #163
          p={
             'ATK': 92, 'DEC': 100, 'SUS': 127, 'REL': 104, 'LRATE': 10, 'LWAVE': 1, 'KTRK': 0, 'CHOR': 30, 'DLY': 20, 'REV': 80, 'FREEA': 62,
             'FREEB': 6, 'FREED': 1, 'TRIM': 104, 'E1': 0, 'E2': 30, 'E6': 14, 'E7': 40, 'E8': 0, 'LTRIG': 1, 'L2TRIG': 1,

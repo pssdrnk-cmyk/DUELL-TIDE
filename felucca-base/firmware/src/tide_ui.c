@@ -347,15 +347,24 @@ static int tide_taken(uint32_t k, uint32_t e, uint32_t j)   /* 1: the other part
         return 0;
     return (!UP_REC_USER(t) && t->preset == j) || morph_to_of(o, 0u) == (int32_t)j || morph_to_of(o, 1u) == (int32_t)j;
 }
-/* JOURNEY roams a role family, not one category: HARMONIC (pads, keys), BASS, LEAD / PLUCK, PERC (hits), FX (textures, drones;
- * OTHER, a user record's catch-all, too: a texture is the quietest place for a sound that says nothing of its role). Every
- * category is mapped here; a new one stops the build until it is placed (a category past the table counts as HARMONIC) */
-enum { FAM_HARM, FAM_BASS, FAM_LEAD, FAM_PERC, FAM_TEXT };
+/* JOURNEY roams a role family, not one category: HARMONIC (pads, keys), BASS, LEAD / PLUCK, PERC (hits), TEXT (textures, drones;
+ * OTHER, a user record's catch-all, too: a texture is the quietest place for a sound that says nothing of its role) and NOISE
+ * (the one-shot FX: pings, sweeps, bursts). Every category is mapped here; a new one stops the build until it is placed (a category
+ * past the table counts as HARMONIC). A factory FX sound is TEXT only with the DSF_TEXT flag (duell_sounds.py text=True; C3 of
+ * TIDE_ROLES_AND_MULTIS_SPEC.md, D39: a hidden flag, no PATCHES category); a USER record has no flag, so its FX reads as NOISE */
+enum { FAM_HARM, FAM_BASS, FAM_LEAD, FAM_PERC, FAM_TEXT, FAM_NOISE, FAM_N };
 static const uint8_t JFAM[CAT_N] = {
     [CAT_NONE] = FAM_HARM, [CAT_BASS] = FAM_BASS, [CAT_LEAD] = FAM_LEAD, [CAT_PAD] = FAM_HARM, [CAT_PLUCK] = FAM_LEAD,
-    [CAT_KEYS] = FAM_HARM, [CAT_PERC] = FAM_PERC, [CAT_FX] = FAM_TEXT, [CAT_OTHER] = FAM_TEXT};
+    [CAT_KEYS] = FAM_HARM, [CAT_PERC] = FAM_PERC, [CAT_FX] = FAM_NOISE, [CAT_OTHER] = FAM_TEXT};
 typedef char jfam_covers_every_category[CAT_N == 9 ? 1 : -1];
 static uint32_t fam_of(uint32_t cat) { return cat < CAT_N ? JFAM[cat] : FAM_HARM; }
+/* the family of factory sound k of engine e: its category's, except an FX sound with the TEXT flag, which is a texture or drone */
+static uint32_t fam_of_sound(uint32_t e, uint32_t k)
+{
+    const ds_sound_t *s = ds_get(e, k);
+    uint32_t c = ds_cat_of(e, k);
+    return c == CAT_FX && s && (s->flags & DSF_TEXT) ? (uint32_t)FAM_TEXT : fam_of(c);
+}
 /* the part's sound is in the BASS family (a factory sound's category, or the USER record's): the pitch walk leaves it alone (seq_evolve.c) */
 static int tide_bass_part(const track_t *t)
 {
@@ -401,13 +410,13 @@ static void tide_journey(uint32_t mask, uint32_t x, uint32_t snd, uint32_t seq)
         if (!((mask >> k) & 1u))
             continue;
         if (snd) {
-            uint32_t e = t->eng_req, fam = fam_of(UP_REC_USER(t) ? sl_cat((uint32_t)t->user - 1u) : ds_cat_of(e, t->preset));
+            uint32_t e = t->eng_req, fam = UP_REC_USER(t) ? fam_of(sl_cat((uint32_t)t->user - 1u)) : fam_of_sound(e, t->preset);
             int32_t at = morph_to_of(k, x ^ 1u), was = morph_to_of(k, x);
             if (at < 0 && !UP_REC_USER(t))                      /* (the end reached is the Original or a roll: not the Original's own sound) */
                 at = (int32_t)t->preset;
             for (pass = n = 0; pass < 2u && !n; pass++)   /* (0: the family, neither end's; 1: the one left allowed) */
                 for (j = 0; j < ds_count(e) && n < 64u; j++)
-                    if (fam_of(ds_cat_of(e, j)) == fam && (int32_t)j != at && (pass || (int32_t)j != was) &&
+                    if (fam_of_sound(e, j) == fam && (int32_t)j != at && (pass || (int32_t)j != was) &&
                         !tide_taken(k, e, j))
                         pick[n++] = j;
             n = jh_filter(k, e, pick, n);
