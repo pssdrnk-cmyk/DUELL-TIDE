@@ -51,6 +51,14 @@ static inline int32_t osc_pulse(uint32_t ph, uint32_t inc, uint32_t pw)
     return (osc_saw(ph, inc) - osc_saw(ph + pw, inc)) >> 1;
 }
 
+/* ANALOG PWM's width (audit P09): 50 % at rest, the TIMBRE routings (shape, Q8: 64 << 8 = rest) move it +-25 %, and the PW card (pwk 0..127) adds up to 40 % (to 90 % duty; 0 = the 50 %
+ * every stored sound has). Saturates below 100 % where the two together would wrap */
+static inline uint32_t pulse_pw(int32_t shape, int32_t pwk)
+{
+    uint32_t b = (uint32_t)pwk * 13631488u, a = 0x80000000u + (uint32_t)((shape - (64 << 8)) * 32768) + b;
+    return a < b ? 0xFF000000u : a;
+}
+
 static inline int32_t osc_tri(uint32_t ph)
 {
     int32_t s = (int32_t)(ph >> 15);                 /* 0..131071 */

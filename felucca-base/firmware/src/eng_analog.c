@@ -133,7 +133,7 @@ static inline __attribute__((always_inline)) void analog_osc(track_t *t, voice_t
     /* DTN in cents. OSC B carries the voice's fine factor (unison detune, TUNE, bend) as OSC A does (SPEC 2.3: it
      * dropped it before DUELL) */
     uint32_t inc2 = det ? cents_inc(m->pitch16, det, m->fine) : inc1;
-    uint32_t pw = 0x80000000u + (uint32_t)((m->shape - (64 << 8)) * 32768);
+    uint32_t pw = pulse_pw(m->shape, p[P_E4]);
     int32_t m2 = mix * 258, m1 = 32767 - m2;                    /* osc mix Q15 */
     if (m->amask)                                               /* ARP TARGET: the units on the arp (SPEC 2.3) */
         atg_analog(m, det, &inc1, &inc2, &m1, &m2);
@@ -204,7 +204,7 @@ static __attribute__((noinline)) void analog_render_m(track_t *t, voice_t *v, in
     int32_t drive = 32768 + p[P_E6] * 512;
     uint32_t inc1 = m->inc;
     uint32_t inc2 = det ? cents_inc(m->pitch16, det, m->fine) : inc1;
-    uint32_t pw = 0x80000000u + (uint32_t)((m->shape - (64 << 8)) << 15);
+    uint32_t pw = pulse_pw(m->shape, p[P_E4]);
     int32_t m2 = mix * 258, m1 = 32767 - m2;
     if (m->amask)
         atg_analog(m, det, &inc1, &inc2, &m1, &m2);
@@ -241,7 +241,7 @@ static void analog_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, cons
         analog_osc(t, v, out, n, m);
 }
 
-/* {WAVE, DTN, MIX, NOIS, -, -, DRV, -}: the filter's three slots are unused (CUT RES KTR were filter 1's since cloud job J) */
+/* {WAVE, DTN, MIX, NOIS, PW, -, DRV, -}: the filter's three slots are unused (CUT RES KTR were filter 1's since cloud job J) */
 #if DUELL_PRESETS                                     /* (Felucca's engine presets: no firmware code reads them since the factory sounds of sounds.c; the host tests do: core.h) */
 static const preset_t ANALOG_PRESETS[] = {
     {"SAW LEAD", {0, 12, 64, 0, 0, 0, 10, 0}, {4, 70, 100, 50}, 20, 1, FX(0, 10, 45, 30), PAT(4)},
@@ -269,7 +269,7 @@ static const engine_t ENG_ANALOG = {
         {"DTN", F_INT, 0, 127, 10, 0, "ct"},
         {"MIX", F_PCT, 0, 127, 64, 0, 0},
         {"NOIS", F_PCT, 0, 127, 0, 0, 0},
-        {"-", F_INT, 0, 0, 0, 0, 0},                 /* was CUT: filter 1 (voice.c uf_run) */
+        {"PW", F_PCT, 0, 127, 0, 0, 0},              /* was CUT: filter 1 (voice.c uf_run). PWM's static width (P09): 0 = 50 %, 127 = 90 % duty (dsp.c pulse_pw); every stored sound has 0 */
         {"-", F_INT, 0, 0, 0, 0, 0},                 /* was RES */
         {"DRV", F_PCT, 0, 127, 0, 0, 0},
         {"-", F_INT, 0, 0, 0, 0, 0},                 /* was KTR (filter 1's KEY TRK) */

@@ -8326,7 +8326,7 @@ static int test_item156_cells(void)
         {"DUCK 2/2", -1, -1, 0, -1, -1, 0, 3},          /* (item 158: DUCK 2/2 with SOURCE OFF has no card: it is out of the page order, test_item158_pages) */
         {"VOICE 1/2", -1, V_POLY, -1, -1, -1, 0, 2}, {"VOICE 1/2", -1, V_MONO, -1, -1, -1, 0, 3}, {"VOICE 1/2", -1, V_LEGATO, -1, -1, -1, 0, 3}, {"VOICE 1/2", -1, V_UNISON, -1, -1, -1, 0, 4},
         {"VOICE 2/2", -1, V_POLY, -1, -1, -1, 0, 4}, {"VOICE 2/2", -1, V_MONO, -1, -1, -1, 0, 3}, {"VOICE 2/2", -1, V_UNISON, -1, -1, -1, 0, 4}, {"VOICE 2/2", -1, V_POLY, -1, -1, -1, 1, 3},
-        {"EDIT 1", 0, -1, -1, -1, -1, 0, 2}, {"EDIT 1", 2, -1, -1, -1, -1, 0, 3}, {"EDIT 1", 3, -1, -1, -1, -1, 0, 4}, {"EDIT 1", 5, -1, -1, -1, -1, 0, 4}, {"EDIT 1", 6, -1, -1, -1, -1, 0, 2},
+        {"EDIT 1", 0, -1, -1, -1, -1, 0, 3}, {"EDIT 1", 2, -1, -1, -1, -1, 0, 3}, {"EDIT 1", 3, -1, -1, -1, -1, 0, 4}, {"EDIT 1", 5, -1, -1, -1, -1, 0, 4}, {"EDIT 1", 6, -1, -1, -1, -1, 0, 2},
         {"EDIT 1", 9, -1, -1, -1, -1, 0, 4}, {"EDIT 1", 11, -1, -1, -1, -1, 0, 2}, {"EDIT 1", 14, -1, -1, -1, -1, 0, 3},
         {"EDIT 2", 3, -1, -1, -1, -1, 0, 1}, {"EDIT 2", 5, -1, -1, -1, -1, 0, 1}, {"EDIT 2", 9, -1, -1, -1, -1, 0, 1},
     };
@@ -9545,6 +9545,32 @@ static int test_item165(void)
         printf("    item 165 A (info): ANALOG PWM / SYNC / SUB, 17 settings: %u samples compared, the picture within %.2f per mille of the engine's output (steps skipped); PWM width: engine %.1f %%, picture %.1f %%;"
                " SYNC 10: OSC 2 / OSC 1 measured %.4f, picture %.4f\n", ncmp, worst, duty[0], duty[1], sync[0], sync[1]);
         bad += check("item 165 A: ANALOG's picture of PWM, SYNC and SUB is the engine's own output (every sample within 6 per mille away from the steps; PWM 50 % wide at rest; SYNC's restart ratio)", ok && ncmp > 3000u && fabs(duty[0] - 50.0) < 1.0 && fabs(duty[1] - 50.0) < 1.0 && fabs(sync[0] - sync[1]) < 0.01);
+    }
+    {   /* P09: the PW card widens PWM's pulse (E4 0 = the 50 % every stored sound has, 127 = 90 %), engine and picture alike: the share of the longer level over two cycles */
+        static const struct { int16_t pw; double lo, hi; } PW[] = {{0, 49.0, 51.0}, {64, 69.0, 71.5}, {127, 89.0, 91.0}};
+        static int32_t pbuf[1400];
+        uint32_t inc = pitch_inc(PIC_NOTE16), per = (uint32_t)(4294967296.0 / inc) + 1u, n, x, hi_e, hi_p;
+        int ok = 1, j;
+        for (j = 0; j < 3; j++) {
+            voice_t v;
+            ui_power_on();
+            memset(&MXF(TSEL), 0, sizeof MXF(TSEL));
+            TSEL->p[P_E0] = 4; TSEL->p[P_E1] = 0; TSEL->p[P_E2] = 0; TSEL->p[P_E3] = 0; TSEL->p[P_E6] = 0; TSEL->p[P_E4] = PW[j].pw;
+            memset(&v, 0, sizeof v);
+            v.vel = 100;
+            ENG_ANALOG.note_on(TSEL, &v);
+            c165_render(&ENG_ANALOG, &v, pbuf, 4u * per);
+            for (n = 0, hi_e = 0; n < 2u * per; n++) hi_e += pbuf[n] > 0;
+            for (x = 0, hi_p = 0; x < 220u; x++) hi_p += pic_analog_at(TSEL, (uint64_t)x * (0xFFFFFFFFu / 110u)) > 0;
+            {
+                double e = 100.0 * hi_e / (2.0 * per), p = 100.0 * hi_p / 220.0;
+                if (e < 50.0) e = 100.0 - e;
+                if (p < 50.0) p = 100.0 - p;
+                printf("    item 165 A (info): PW %d: PWM duty engine %.1f %%, picture %.1f %%\n", PW[j].pw, e, p);
+                ok &= e >= PW[j].lo && e <= PW[j].hi && p >= PW[j].lo - 1.0 && p <= PW[j].hi + 1.0;
+            }
+        }
+        bad += check("P09: ANALOG's PW card widens PWM (0 = 50 %, 64 = about 70 %, 127 = about 90 %), and the picture follows", ok);
     }
     {   /* .. and on the page: the picture drawn from it (PWM a pulse, not a saw: the old picture's half-way column is the saw's middle, the pulse's is its edge) */
         c156_case_t st = {"ENGINE", (int8_t)eA, -1, -1, -1, -1, 0, 0};

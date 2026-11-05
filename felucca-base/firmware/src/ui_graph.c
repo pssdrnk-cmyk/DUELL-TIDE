@@ -587,7 +587,7 @@ static void pic_draw(uint32_t kind, uint32_t pw, uint16_t c)
 }
 /* item 165 (owner: the ANALOG picture true): PWM, SYNC and SUB with the engine's own maths (eng_analog.c), at the pictures' note (middle C, PIC_NOTE16) and the modulation at rest (no ENV / LFO /
  * matrix on TIMBRE: m->shape = 64 << 8, voice.c). ph: OSC 1's phase, Q32 a cycle, not wrapped (the picture: two cycles). -> -1000 .. 1000 of the saw's full scale (+-32768).
- *   PWM   OSC 1's pulse, osc_pulse at the engine's width pw = 0x80000000 + ((shape - 64 << 8) << 15): 50 % at rest (low the first half, as the engine), drawn as tall as SQR (x 2)
+ *   PWM   OSC 1's pulse, osc_pulse at the engine's width pw = pulse_pw (dsp.c: 0x80000000 + ((shape - 64 << 8) << 15) + PW): 50 % at rest (low the first half, as the engine), drawn as tall as SQR (x 2)
  *   SYNC  the engine's output of the pair (analog_render_x): OSC 1's saw and OSC 2's saw restarted where OSC 1 starts a cycle, OSC 2 at pitch_inc(note + SYNC x 3) (3/16 semitone a step),
  *         mixed by MIX (m2 = MIX x 258, m1 = 32767 - m2); the steady cycles (from OSC 1's second cycle on: before its first restart OSC 2 runs from note-on's quarter turn)
  *   SUB   the engine's output of the pair: OSC 1's saw and the square an octave below it (osc_pulse 50 %, at (DETUNE ? cents_inc(note, DETUNE) : OSC 1's increment) / 2), mixed by SUB
@@ -597,7 +597,7 @@ static int32_t pic_analog_at(const track_t *t, uint64_t ph)
     uint32_t w = (uint32_t)clamp(t->p[P_E0], 0, 6), p0 = (uint32_t)ph, i1 = pitch_inc(PIC_NOTE16);
     int32_t m2 = clamp(t->p[P_E2], 0, 127) * 258, m1 = 32767 - m2, det = clamp(t->p[P_E1], 0, 127), shape = 64 << 8, s;
     if (w == 4u)                                                        /* PWM (analog_osc case 4) */
-        return osc_pulse(p0, 0u, 0x80000000u + (uint32_t)((shape - (64 << 8)) << 15)) * 2 * 1000 / 32768;
+        return osc_pulse(p0, 0u, pulse_pw(shape, t->p[P_E4])) * 2 * 1000 / 32768;
     if (w == 5u) {                                                      /* SYNC (analog_render_x, sub = 0) */
         uint32_t i2 = pitch_inc((uint32_t)clamp(PIC_NOTE16 + det * 3 + (((shape - (64 << 8)) * 3) >> 8), 0, 2047));
         uint32_t p1 = (uint32_t)((uint64_t)p0 * i2 / i1);
