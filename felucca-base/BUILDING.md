@@ -89,6 +89,8 @@ MIDI out, the editor, updates) and TRS MIDI. A build of it is on the site:
 
 ## Tests
 
+> **DUELL with TIDE.** This fork runs its host tests with `host_tests.sh` in the repository root (`sh host_tests.sh <group> ...`; see [../docs/DEVELOPING.md](../docs/DEVELOPING.md) for the prerequisites, Windows and what CI runs). `tests/run_tests.sh` below is upstream Felucca's runner and is not used by the fork.
+
 ```
 tests/run_tests.sh
 ```

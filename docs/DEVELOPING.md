@@ -1,0 +1,38 @@
+# Developing DUELL with TIDE
+
+How to build the generated files, run the tests and what CI runs. The hardware checklist is [TESTING.md](TESTING.md); how to send a change is [../CONTRIBUTING.md](../CONTRIBUTING.md).
+
+## What you need
+
+| | Host tests (most of the work) | Device build (the `.fwsc` package) |
+|---|---|---|
+| Needs | a C compiler (`cc`: gcc or clang), `sh`, Python 3.12, Node 22 | the same, plus the JieLi pi32v2 toolchain and three files of the AC79 SDK |
+| Linux | `sudo apt-get install build-essential libfribidi0 libraqm0 nodejs` | native; [../felucca-base/BUILDING.md](../felucca-base/BUILDING.md) |
+| macOS | Xcode command line tools, `brew install fribidi libraqm node` | Docker (BUILDING.md) |
+| Windows | Git Bash, llvm-mingw (the `cc`), the layout below | the JieLi Windows toolchain, same layout |
+
+Python packages: `sh jam/bootstrap.sh` makes a `.venv` from [../requirements-dev.txt](../requirements-dev.txt) (Pillow 12.3.0 and fontTools 4.65.0 are pinned: with another version, or without Raqm, the generated fonts differ and some tests fail). The device toolchain is JieLi's and is not redistributed here; CI never builds the device image.
+
+**Windows layout.** `. jam/env.sh` expects one shared work folder next to the main checkout (`../work`, or two levels above a worktree in `work/wt/<name>`) holding: `duell-win-venv` (the Python environment of requirements-dev.txt), `tools/llvm-mingw` (the host `cc`), `tools/fribidi` (the DLL Pillow's text layout needs), `jieli-target` (toolchain and SDK) and `shims` (a `cc` and `python3` wrapper). Nothing in the repository creates it; `jam/env.sh` says what each folder is for. On Windows 25 groups skip (they need `fork()`, termios or `select()` on pipes); `wsl.exe -d Ubuntu -- sh jam/wsl.sh <group>` runs them in WSL ([../jam/wsl.sh](../jam/wsl.sh)).
+
+## Run tests
+
+```
+. jam/env.sh                                   # Windows only: PATH for cc, python3, node
+cd felucca-base && python3 tools/build.py --gen-only && cd ..    # the generated headers (build/gen), no device toolchain needed
+sh host_tests.sh chord mode                    # named groups; no names: every group (about 140; the list is `want=` in host_tests.sh)
+sh jam/check.sh                                # the device build, every group with a time limit, jam_dev's tests; logs outside the repository
+sh jam/check_off.sh                            # DUELL_TIDE=0 must still build plain DUELL, byte for byte (needs the device toolchain)
+```
+
+Each group prints `== name` and then `PASS`, `FAIL` or `SKIP <why>` (a group that could not run its checks: no Chrome, no update package, no DX7 banks). The sources are in `felucca-base/tests/`; the comment block at the top of `host_tests.sh` says what each group covers. The `tideoff` group builds the firmware with `DUELL_TIDE=0` and runs seven tests on it.
+
+## What CI runs
+
+[`.github/workflows/host-tests.yml`](../.github/workflows/host-tests.yml) runs on every push to `jam11` (and by hand): the generators with the pinned packages, then every group of the default list, dealt to 8 machines, with `REQUIRE_CHROME=1` (a missing browser fails the browser tests). Each machine writes a PASS / FAIL / SKIP table to its job summary and keeps its log. [`pages.yml`](../.github/workflows/pages.yml) publishes the site only after that workflow is green on the same commit. The device build, `jam/check_off.sh` and the flashing are the owner's steps.
+
+## Rules that save time
+
+- One build or test run at a time in a checkout (they share `felucca-base/build/`).
+- A change that alters plain DUELL (the `DUELL_TIDE=0` image) changes the hash in `jam/off.sha256`: update it in the same commit and say why (`jam/off.history.md` keeps what it covers).
+- Test files are LF, new files carry `SPDX-License-Identifier: GPL-3.0-only`.

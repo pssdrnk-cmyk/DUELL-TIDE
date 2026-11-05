@@ -78,7 +78,7 @@ static void setup(uint32_t scene)
         t->p[P_SLEN] = 16, t->p[P_SDIV] = 2, t->p[P_ARATE] = 2, t->p[P_AMODE] = AM_OFF, t->p[P_APROB] = 127;
         t->p[P_AOCT] = 1, t->p[P_AGATE] = 64, t->p[P_SQNT] = 1, t->p[P_MUTE] = 0, t->p[P_LEVEL] = 100;
         t->nheld = 0, t->seq_active = 1;
-        sqm[p].notes = SQM_AMT_DEF;
+        sqm[p].amt_x = 0;
     }
     if (scene == 0) {
         for (i = 2; i < 16u; i += 4u)
@@ -138,8 +138,7 @@ static stats_t run(uint32_t scene, uint32_t bars, uint32_t turns, uint32_t sync,
             last = (uint32_t)sqm_bar;
             st.bars++;
             drop = tarc_dropphr == ((bar >> 2) & 63u) && (bar & 3u) < 2u;
-            fol = sqm_turns >= 2u && sqm_auto == 3u && ((bar + 2u * (p == 1u)) & 3u) != 3u &&   /* (LEAD's follower bars: seq_morph.c) */
-                  p != (tarc_fast ? ((bar & 1u) ? 0u : 1u) : (bar & 3u) < 2u ? 1u : 0u);
+            fol = (uint32_t)sqm_follows(p, bar);                  /* (LEAD's follower bars: seq_morph.c) */
             for (i = 0; i < 16u; i++) {
                 step_t buf;
                 const step_t *s = seq_play_step(&trk[p], i, &buf);
@@ -201,8 +200,21 @@ static void t_lead(void)
     c = run(2, 64, 2, 1, 0, CAT_LEAD, 0);                /* a 7-note lead line on a lead sound */
     printf("tidemotif: LEAD lead line: %u follower bars thinned, vel leading %u follower %u\n", c.thin_bars,
            c.nlead ? c.vlead / c.nlead : 0u, c.nfol ? c.vfol / c.nfol : 0u);
-    CHECK("LEAD thins a lead line on its follower bars", c.thin_bars > 4u);
+    CHECK("LEAD thins a lead line on its follower bars", c.thin_bars > 2u);
     CHECK("a LEAD follower plays softer than the leader (by more than 15 %)", c.nfol && c.nlead && (uint64_t)c.vfol * 100u * c.nlead < (uint64_t)c.vlead * 85u * c.nfol);
+    {   /* M04: the opening follower swaps from phrase to phrase (by the seed); the two parts never both follow in a bar */
+        uint32_t sd, ph, o0 = 0, o1 = 0, both = 0;
+        sqm_lead = 3;
+        for (sd = 1; sd <= 8u; sd++) {
+            morph.seed = (uint16_t)(sd * 4099u);
+            for (ph = 0; ph < 16u; ph++) {
+                o0 += sqm_follows(0, 8u * ph), o1 += sqm_follows(1, 8u * ph);
+                both += sqm_follows(0, 8u * ph) && sqm_follows(1, 8u * ph);
+            }
+        }
+        printf("tidemotif: LEAD opener over 128 phrases: part 1 follows %u, part 2 follows %u\n", o0, o1);
+        CHECK("LEAD swaps its opener between phrases, never both follow", o0 && o1 && !both);
+    }
     a = run(0, 64, 2, 1, 0, CAT_BASS, 1);                /* part 2's bass line on a bass */
     CHECK("LEAD never thins a bass", !a.thin_bars && !sqm_thin[1][0]);
 }

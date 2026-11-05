@@ -39,7 +39,7 @@ static const step_t *tide_play_step(const track_t *t, uint32_t idx, step_t *buf)
 }
 
 /* ARP SEQ on PLAY with no key held (owner, 2026-11-01: it was silent; the steps are offsets on held keys): the arp plays from a
- * stand-in, the part's last chord held on the SEQ arp, else C4, the steps as written. Not while recording (it would record its
+ * stand-in, the part's last chord held on the SEQ arp, else C4 as the part's CHRD builds it (audit G08: always one note), the steps as written. Not while recording (it would record its
  * own pattern), nor stopped. A key held plays as ever */
 static uint8_t tide_chord[NSHOWN][4], tide_chord_n[NSHOWN];
 static int tide_seq_ghost(const track_t *t)
@@ -63,9 +63,14 @@ static uint32_t tide_seq_chord(const track_t *t, uint32_t *list, uint32_t n)
     }
     if (!tide_seq_ghost(t))
         return 0;
-    if (!tide_chord_n[pi]) {
-        list[0] = 60;
-        return 1;
+    if (!tide_chord_n[pi]) {                         /* no chord yet: C4, as the part's CHRD builds it (one note with CHRD OFF) */
+        uint8_t o[CHORD_MAX];
+        int32_t r;
+        uint16_t mk;
+        n = chord_make(t, 60, o, &r, &mk);
+        for (i = 0; i < n; i++)
+            list[i] = o[i];
+        return n;
     }
     for (i = 0; i < tide_chord_n[pi]; i++)
         list[i] = tide_chord[pi][i];

@@ -29,6 +29,5 @@ static inline int tc_is_strike(uint32_t r)
 #endif
 #endif
 enum { TCW_NOT, TCW_ONESHOT, TCW_AUTO };               /* how the start was armed this power-on (tc.armed) */
-static inline int tc_auto_arm_ok(uint32_t last) { return !tc_is_strike(last); }
 
 #endif

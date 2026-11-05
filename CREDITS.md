@@ -23,6 +23,7 @@ Thank you. Each line names the source, the link, the licence and what DUELL uses
 - **CrispyZebra** by Leo Kuroshita (Hügelton Instruments), <https://github.com/hugelton/CrispyZebra>, GPL-3.0. The PHASE engine's oscillator.
 - **klattsch** by Tony Gies, <https://github.com/tgies/klattsch>, MIT. A design reference for the VOICE engine; no code copied.
 - **aquanodemusic** (Aquanode Soundscapes), <https://github.com/aquanodemusic/aquanode-soundscapes>, CC0 1.0. One FM bass voice (the sound FM BASS 2).
+- **Igor Pavlov** (7-Zip, LZMA), public domain. The LZMA decoder in `ramplace.c` is written after his `LzmaSpec.cpp`; no credit is required, it is given.
 - **J. W. Cooley and J. W. Tukey** (the fast Fourier transform, 1965) and the wavetable file convention of **Xfer Serum**, also used by Vital and Surge: ideas for the WAVE user tables; no code of anyone else.
 
 **Fonts, icons and the packages**
