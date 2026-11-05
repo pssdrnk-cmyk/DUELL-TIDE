@@ -102,6 +102,8 @@ Two ways to put TIDE on an FM-1. Either way, [back up first](docs/RECOVERY.md) a
 2. Build the package as in [felucca-base/BUILDING.md](felucca-base/BUILDING.md): `python3 tools/build.py` in `felucca-base`. TIDE is on by default. The result is `felucca-base/build/duell-1.1.fwsc`.
 3. Install it with `python3 ../jam/jam_dev.py flash build/duell-1.1.fwsc` (needs `pip install mido python-rtmidi`). It saves a backup of the unit first, then writes the package with `tools/fm1_install.py`. Keep the computer awake.
 
+**Branches.** `jam11` is the development line (the name is the project's old code name). `stable` is the build the fork owner has validated; the tags `stable-2026-11-03` and `beta-2026-11-04` mark the published builds. `main` is meant to mirror OSCILL/R's DUELL, the base of a pull request that belongs to plain DUELL, and carries no TIDE.
+
 While it writes, the unit shows the update screen (WRITING, a percent number, DO NOT SWITCH OFF). Don't unplug until the installer says it is done, then switch the unit off and on once.
 
 TIDE reports itself as DUELL 1.1; the AUTO TIDE page in HOME's round shows that TIDE is on the unit.
