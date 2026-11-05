@@ -146,7 +146,7 @@ static const uint8_t STY[5][9] = {
     {GM_WANDER, 3, 0, 1, 2, 2, 2, 0, 0},                 /* MINIMAL */
     {GM_JOURNEY, 6, 4, 0, 0, 1, 0, 0, 3},                /* AMBIENT */
     {GM_JOURNEY, 3, 0, 1, 2, 1, 2, 2, 0}};               /* PEAK: ARC DROP and LEAD (ECHO before: D7) */
-static uint8_t tide_style = STY_DUB;
+static uint8_t tide_style = STY_DUB, tide_style_last = STY_DUB;   /* (the style a hand edit left: OCT- + K3 / K4 go back to its TIME and WAIT) */
 static volatile uint8_t *const TIDE_ROW[9] = {&gl.mode, &gl.time, &gl.wait, &sqm_vary_all, &sqm_turns, &sqm_poly, &sqm_sync, &sqm_arc, &morph_wlvl};   /* (STY's order) */
 static __attribute__((noinline)) void tide_rows_set(const uint8_t *t)
 {
@@ -222,6 +222,8 @@ static void jl_put(uint32_t r, uint32_t v)
         } else {
             if (tide_custom_ok)
                 tide_rows_set(tide_custom);
+            if (tide_style < STY_CUSTOM)
+                tide_style_last = tide_style;
             tide_style = STY_CUSTOM;
         }
     } else if (r == JL_ROLL) {                           /* (MUSIC and SMART are SMART's tags with or without the dials; WILD drops them) */
@@ -302,14 +304,16 @@ static void tide_midi(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi)
     }
 }
 
-/* OCT- held + a knob on JAM: K1 home (the Original sound and pattern), K3 TIME 8 bars, K4 WAIT off; MODE and the list have none */
+/* OCT- held + a knob on AUTO TIDE (audit C9, D9): K1 back to the Original sound and pattern, K2 drops the ARC, K3 TIME and K4 WAIT to the STYLE's values
+ * (the style a hand edit left, DUB when none: 16 bars, 2 bars); MODE has none */
 static int tide_reset(uint32_t k)
 {
+    const uint8_t *sty = STY[(tide_style < STY_CUSTOM ? tide_style : tide_style_last) % 5u];
     if (cur_page()->graph == GR_TIDELIST)
         return 0;
     if (k == 0u) {
         tide_home(morph_mask(song.sel));
-        ui_message("HOME");
+        ui_message("BACK TO ORIGINAL");
         return 1;
     }
     if (k == 1u) {                                       /* MODE has no reset: OCT- + K2 drops (ARC) at the next phrase */
@@ -317,11 +321,11 @@ static int tide_reset(uint32_t k)
         return 1;
     }
     if (k == 2u) {
-        gl.time = 3u;
+        gl.time = sty[1];
         return reset_say("TIME");
     }
     if (k == 3u) {
-        gl.wait = 0;
+        gl.wait = sty[2];
         return reset_say("WAIT");
     }
     return 0;
@@ -882,8 +886,10 @@ static void tide_settings(void)
         } else
             tide_style_apply(STY_DUB);                   /* (no record: the DUB showcase) */
     }
-    if (tide_style < STY_CUSTOM && !tide_style_holds())
+    if (tide_style < STY_CUSTOM && !tide_style_holds()) {
+        tide_style_last = tide_style;
         tide_style = STY_CUSTOM;                         /* a hand edit of any of the nine rows (knobs, rows, resets, MIDI) */
+    }
     for (i = 0; i < TS_N; i++)
         w[i] = *TS_VAR[i];
     w[TS_WASH] &= 3u;

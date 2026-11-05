@@ -138,6 +138,7 @@ static void test_wait_off_paused(void)
         for (i = 0; i < 400u && !gl.hold; i++) run(16);
         CHECK("paused WAIT: reaches endpoint hold", gl.on && gl.hold && morph_fader_of(0) == 127u);
         transport_req = 2u; run(48);
+        tide_style = STY_MINIMAL;                        /* (WAIT OFF: what OCT- + K4 goes back to) */
         if (reset) tide_reset(3u); else tide_knob(3u, -1);
         run(48);
         CHECK("paused WAIT: OFF removes hold at the endpoint", !gl.hold && gl.on && gl.to == 0u && !song.playing && morph_fader_of(0) == 127u);
@@ -202,6 +203,7 @@ static void test_wait_edit_running(void)
         n0 = mph[0].n[0]; s0 = mph[0].seed[0][mph[0].top[0]];
         tide_knob(3u, 1); run(48);
         CHECK("running WAIT: WAIT up keeps the hold", gl.on && gl.hold && gl.to == 0u && morph_fader_of(0) == 127u);
+        tide_style = STY_MINIMAL;
         if (reset) tide_reset(3u); else { tide_knob(3u, -1); tide_knob(3u, -1); }
         run(32);
         n1 = mph[0].n[0]; s1 = mph[0].seed[0][mph[0].top[0]];
@@ -329,6 +331,29 @@ static void test_twist_stop(void)
     CHECK("twist: the next twist launches again", gl.on && gl.to == 0u);
     gl.on = gl.armed = 0;
     transport_req = 2u; run(48);
+}
+
+/* audit C9 (D9): on AUTO TIDE OCT- + K3 / K4 go back to the STYLE's TIME and WAIT (the style a hand edit left), K1 says BACK TO ORIGINAL; the TIDE SETTINGS list has no reset */
+static void test_oct_reset_style(void)
+{
+    uint32_t pg = 0, pages = sizeof PAGES / sizeof PAGES[0];
+    ui_power_on(); frame();
+    while (pg < pages && PAGES[pg].graph != GR_TIDE) pg++;
+    ui.page = pg; ui.cursor = ui.bank = 0; page_entered();
+    jl_put(JL_STYLE, STY_AMBIENT); tide_settings();
+    gl.time = 0; gl.wait = 0;
+    CHECK("OCT- reset: K3 goes to the style's TIME (AMBIENT: 64 bars)", tide_reset(2u) == 1 && gl.time == 6u);
+    CHECK("OCT- reset: K4 goes to the style's WAIT (AMBIENT: 8 bars)", tide_reset(3u) == 1 && gl.wait == 4u);
+    gl.time = 1; tide_settings();                        /* (a hand edit: CUSTOM, the style it came from is kept) */
+    CHECK("OCT- reset: the edit made it CUSTOM", tide_style == STY_CUSTOM);
+    tide_reset(2u);
+    CHECK("OCT- reset:   from CUSTOM, K3 still goes back to AMBIENT's TIME", gl.time == 6u);
+    jl_put(JL_STYLE, STY_PEAK); tide_settings();
+    gl.time = 0; gl.wait = 5;
+    tide_reset(2u); tide_reset(3u);
+    CHECK("OCT- reset: PEAK's TIME and WAIT (8 bars, OFF)", gl.time == 3u && gl.wait == 0u);
+    tide_reset(0u);
+    CHECK("OCT- reset: K1 says BACK TO ORIGINAL", !strcmp(ui.msg, "BACK TO ORIGINAL"));
 }
 
 /* a WILD roll with ARP ON keeps a SEQ Original on SEQ and never draws SEQ for another (morph.c, TIDE_AMODE_KEEP / _END) */
@@ -501,6 +526,7 @@ int main(void)
     }
     test_glide_transport();
     test_twist_stop();
+    test_oct_reset_style();
     test_wait_off_in_hold();
     test_time_mid_trip();
     test_wait_off_paused();
