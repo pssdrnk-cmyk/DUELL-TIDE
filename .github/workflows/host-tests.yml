@@ -44,7 +44,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq libfribidi0 libraqm0      # (Pillow's text layout: without Raqm the fonts are drawn differently)
-          python3 -m pip install --quiet pillow==12.3.0 fonttools==4.65.0 numpy
+          python3 -m pip install --quiet -r requirements-dev.txt     # (the pins are in that file)
 
       - name: Browser version (startup failures are reported by the browser tests)
         run: google-chrome --version
