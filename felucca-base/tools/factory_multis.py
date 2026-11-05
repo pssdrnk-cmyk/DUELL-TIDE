@@ -90,7 +90,7 @@ MULTIS = [
                 dict(sound="EMBER GLOW", set={"E:CUT": 71, "P_DLY": 17, "P_REV": 57, "P_M8SRC": "MORPH", "P_M8DST": "CUT", "P_M8AMT": 21, "P_LEVEL": 101},
                      bseed=23709, amt=27)]),
     dict(slot=4, name="DUB CHORD", mode="LAYER",
-         g=dict(G_BPM=117, G_DTIME="8D", G_DFDBK=71, G_DCOLOR=47, G_DMIX=97, G_DMODE="DIGI", G_DMDEP=17, G_RTYPE="SPRING", G_RSIZE=77, G_RDAMP=71),
+         g=dict(G_BPM=117, G_DTIME="8D", G_DFDBK=71, G_DCOLOR=47, G_DMIX=97, G_DMODE="DIGI", G_DMDEP=37, G_RTYPE="SPRING", G_RSIZE=77, G_RDAMP=71),
          parts=[dict(sound="BIG STAB", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=37, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="CLOSE",
                                                  P_FREEA="u_uf(1700)", P_FREEB=6, P_DLY=77, P_REV=37, P_CHOR=0,
                                                  P_DKSRC="PUMP", P_DKRATE="1/4", P_DKDEP=37, P_LEVEL=109),
