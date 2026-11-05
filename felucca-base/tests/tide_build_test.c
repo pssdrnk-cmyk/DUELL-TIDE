@@ -4,6 +4,8 @@
  * firmware/src/morph_complement.c sound_complement_pick (the second part's sound leaves the first one room):
  *   density   an end has at least one hit and never more than two hits more or fewer than the Original; a dial at 0 changes nothing; the same
  *             end built twice is the same (nothing accumulates); the anchors (downbeats, the motif's identity floor) stay hits
+ *   still     (C4, roles spec) an Original of no hit or one hit builds to itself for every seed and every dial, and tarc_cap(0..2) is the count itself
+ *             in every ARC phase, so a drone, a texture or a two-chord pad gains no onset; three hits and more still have room
  *   register  no dial moves a note to another pitch class; VOIC moves a note an octave at most, so every note stays within an octave of
  *             the Original's lowest and highest and inside 24..108
  *   room      sound_complement_pick: with the peer muted, WILD, or the musical rolls off, it keeps the first sound; it only ever returns one
@@ -117,6 +119,49 @@ static void t_build(void)
     CHECK("register: every note stays within an octave of the Original's range and inside 24..108", !range_bad);
 }
 
+/* ---- still (C4): a sustained part holds still */
+static void t_still(void)
+{
+    uint32_t k, hits, ph, t, arc, bad_build = 0, bad_cap = 0, bad_room = 0, builds = 0, i;
+    morph.cfg &= ~(uint32_t)MC_PIT;
+    for (hits = 0; hits <= 1u; hits++)
+        for (k = 0; k < 300u; k++) {
+            step_t p[LEN], o[LEN];
+            sqm_end_t x;
+            uint32_t amt = 25u + 25u * rnd(4u);
+            memset(p, 0, sizeof p);
+            if (hits) {                                /* one chord, or one note, on any step (a held pad often has its tie after it) */
+                i = rnd(LEN);
+                p[i].time = ST_NOTE;
+                p[i].n = rnd(2u) ? 1u : 3u;
+                p[i].vel = 100;
+                p[i].note[0] = (uint8_t)(48u + rnd(24u)), p[i].note[1] = (uint8_t)(p[i].note[0] + 3u), p[i].note[2] = (uint8_t)(p[i].note[0] + 7u);
+                if (rnd(2u))
+                    p[(i + 1u) % LEN].time = ST_TIE;
+            }
+            morph_musical = (int)rnd(2u);
+            sqm_rand(&x, 1u + rnd(65535u), amt);
+            for (i = 0; i < SD_N; i++)
+                x.d[i] = (int8_t)(rnd(2u) ? (int)amt : -(int)amt);   /* every dial at its full amt, either way: the hardest case */
+            sqm_build(p, LEN, &x, amt, o);
+            builds++;
+            bad_build += memcmp(o, p, sizeof o) != 0;
+        }
+    for (arc = 0; arc <= 2u; arc++)
+        for (ph = AP_RISE; ph <= AP_RECOVER; ph++)
+            for (t = 0; t <= 255u; t += 5u) {
+                sqm_arc = (uint8_t)arc, sqm_auto = 1, tarc.phase = (uint8_t)ph, tarc.t = (uint8_t)t;
+                for (hits = 0; hits <= 2u; hits++)
+                    bad_cap += tarc_cap(hits) != hits;
+                bad_room += tarc_cap(3u) <= 3u || tarc_cap(8u) <= 8u;
+            }
+    sqm_arc = 0;
+    printf("still: %u builds of an Original with 0 or 1 hit, %u changed; tarc_cap(0..2) off %u, tarc_cap(3) and (8) without room %u\n", builds, bad_build, bad_cap, bad_room);
+    CHECK("still: an Original of 0 or 1 hit builds to itself for every seed and dial (C4)", !bad_build);
+    CHECK("still: tarc_cap(0), (1), (2) is the count itself in every arc phase (C4)", !bad_cap);
+    CHECK("still: three hits and more keep the room above them", !bad_room);
+}
+
 /* ---- room */
 static void t_room(void)
 {
@@ -179,6 +224,7 @@ static void t_room(void)
 int main(void)
 {
     t_build();
+    t_still();
     t_room();
     printf("tidebuild: %d checks, %d failed\n", checks, bad);
     return bad != 0;
