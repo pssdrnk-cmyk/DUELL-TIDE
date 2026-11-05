@@ -431,15 +431,21 @@ static void tide_journey(uint32_t mask, uint32_t x, uint32_t snd, uint32_t seq)
 
 /* ---------------------------------------------------------------- the footer --- */
 /* the sound part pi plays now by name (b holds 20): the end its fader is nearer, the factory sound MORPH TO or JRNY put there
- * by its name; else (the Original, or a roll of it) the part's own label, "#24 REESE BASS" */
+ * by its label ("#31 DEEP PAD", as the Original's "#24 REESE BASS"); else (the Original, or a roll of it) the part's own label */
 static void tide_part_name(uint32_t pi, char *b)
 {
     const morph_part_t *mp = &mph[pi % NSHOWN];
     const track_t *t = &trk[pi % NSHOWN];
     int32_t k = mp->n[0] && !morph_stale(t, mp) ? morph_to_of(pi, mp->fader >= 64u) : -1;
-    if (k >= 0)
-        str_cpy(b, ds_name(t->eng_req % NENGINES, (uint32_t)k), 16);
-    else
+    if (k >= 0) {                                        /* (the destination keeps the number its slot has: audit C11) */
+        uint32_t e = t->eng_req % NENGINES, r = ds_list_rank(e, (uint32_t)k);
+        b[0] = 0;
+        if (r < UP_USER0 && !up_used(r)) {
+            up_slot_label(b, r);
+            str_cpy(b + str_len(b), " ", 2);
+        }
+        str_cpy(b + str_len(b), ds_name(e, (uint32_t)k), 16);
+    } else
         sound_label(t, b);
 }
 /* HOME's four pages (JAM, TIDE LIST, MODE, MORPH) show both parts in the footer, part 1 in row 1, part 2 in row 2 (ui_draw.c draw_foot), each as the sound it

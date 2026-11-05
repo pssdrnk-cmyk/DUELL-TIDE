@@ -203,6 +203,31 @@ static void test_arc_trip(void)
     song.playing = 0; gl.on = 0;
 }
 
+/* ---- the footer: a JRNY / MORPH TO destination keeps the "#NN" of the Original's label (audit C11) ---- */
+static void test_footer_number(void)
+{
+    char a[20], b[20], want[20];
+    uint32_t e, j, r;
+    ui_power_on(); frame();
+    e = trk[0].eng_req % NENGINES;
+    j = (trk[0].preset + 1u) % ds_count(e);
+    morph_ready(0);
+    CHECK("footer: the destination can be set", morph_to_sound(0, 1u, j));
+    tide_part_name(0, a);
+    CHECK("footer: at A the part's own label has its number", a[0] == '#');
+    morph_do(MQ_FADER, 1u, 127u);
+    frame();
+    tide_part_name(0, b);
+    r = ds_list_rank(e, j);
+    want[0] = 0;
+    if (r < UP_USER0 && !up_used(r)) {
+        up_slot_label(want, r);
+        str_cpy(want + str_len(want), " ", 2);
+    }
+    str_cpy(want + str_len(want), ds_name(e, j), 16);
+    CHECK("footer: at B the destination shows its number and name", !strcmp(b, want) && strcmp(a, b));
+}
+
 int main(void)
 {
     test_roll_playhead();
@@ -210,6 +235,7 @@ int main(void)
     test_style_custom();
     test_inert_rows();
     test_arc_trip();
+    test_footer_number();
     printf("uitruth: %u checks, %u failed\n", checks, failures);
     return failures ? 1 : 0;
 }
