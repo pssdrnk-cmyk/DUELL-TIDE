@@ -48,7 +48,7 @@ static uint64_t instr_now(void)
 #endif
     return 0;
 }
-static uint64_t fnv(const void *p, size_t n)
+static uint64_t tfnv(const void *p, size_t n)
 {
     const uint8_t *b = p;
     uint64_t h = 0xcbf29ce484222325ull;
@@ -986,7 +986,7 @@ static double z_ratio(uint32_t table, int id, int a, int b, uint32_t at, int old
             st = d > st ? d : st;
     }
     if (hash)
-        *hash = fnv(zrec, sizeof zrec);
+        *hash = tfnv(zrec, sizeof zrec);
     return (double)c / st;
 }
 static uint64_t z_hash(uint32_t table, int id, int a, int old)   /* (in a child: every state as at boot, as sub_run) */
