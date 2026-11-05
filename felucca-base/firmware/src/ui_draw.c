@@ -1785,6 +1785,8 @@ static int card_hidden_vp(const int16_t *vp)
         return 1;
     if (ENGINES[t->eng_req % NENGINES] == &ENG_LOFI && vp == &t->p[P_E2] && t->p[P_E1] != RW_PLS)   /* DUELL 1.1: LOFI's PULSE WIDTH (K4) is the pulse's only; every other WAVE hides it */
         return 1;
+    if (ENGINES[t->eng_req % NENGINES] == &ENG_ANALOG && vp == &t->p[P_E4] && t->p[P_E0] != 4)   /* ANALOG's PW (audit P09) is PWM's width only: every other WAVE hides it */
+        return 1;
     return (vp == &t->p[P_LRATE] && t->p[P_LSYNC]) || (vp == &t->p[P_L2RATE] && t->p[P_L2SYNC]);
 }
 

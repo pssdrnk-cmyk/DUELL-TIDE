@@ -199,7 +199,7 @@ static __attribute__((noinline)) int mod_shp_inert(const track_t *t)
     return 0;
 }
 /* engine slot k (P_E0 + k) with no effect for the current wave: TRIO's INT2 with no oscillator 2 (P+N NOIS RING RING3), INT3 with no oscillator 3 that
- * sounds or rings (NOIS SYNC SYNCP), DTN with neither (NOIS), PW with no pulse; LOFI's PULSE WIDTH with any WAVE but PLS */
+ * sounds or rings (NOIS SYNC SYNCP), DTN with neither (NOIS), PW with no pulse; LOFI's PULSE WIDTH with any WAVE but PLS; ANALOG's PW with any WAVE but PWM */
 static __attribute__((noinline)) int mod_e_inert(const track_t *t, uint32_t k)
 {
     const engine_t *e = ENGINES[eng_idx(t->eng_req)];
@@ -211,6 +211,8 @@ static __attribute__((noinline)) int mod_e_inert(const track_t *t, uint32_t k)
     }
     if (e == &ENG_LOFI)
         return k == 2u && p[P_E1] != RW_PLS;
+    if (e == &ENG_ANALOG)
+        return k == 4u && p[P_E0] != 4;                 /* PW (E4) sets PWM's width only (audit P09) */
     return 0;
 }
 /* REMOVED from the destination list (owner, 2026-10-18; the study: release_drafts/MATRIX_DESTINATIONS.md): the EQ's three gains (EQ HIGH clicks badly) and
