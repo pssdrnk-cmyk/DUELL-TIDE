@@ -541,12 +541,16 @@ static __attribute__((noinline)) void atg_fire(track_t *t, uint32_t *list, uint3
 {
     uint32_t nt = 128, vel = arp_vel(t), i, m, o, ties = 0;
     uint8_t out[4];
+    if (t->p[P_AMODE] == AM_SEQ && arp_seq_tie(t, t->arp_idx))
+        return;                                     /* a TIE: the step before goes on (its gate was lengthened with it; audit G07, as arp_fire) */
     if (ARP_UP(t))
         arp_off(t);                                 /* (a classic step's note: the mask just changed) */
     if (t->p[P_AMODE] == AM_SEQ) {
         if (arp_roll(t))
             for (i = 0, m = arp_seq_notes(t, list, cnt, out, &vel); i < m; i++)
                 nt = out[i] < nt ? out[i] : nt;
+        while (ties < 31u && arp_seq_tie(t, t->arp_idx + ties + 1u))
+            ties++;                                 /* the TIE steps after it hold it */
     } else if (t->p[P_AMODE] == AM_CHORD) {         /* CHORD: its lowest note, an octave up each step through OCT */
         o = t->arp_idx % (uint32_t)(t->p[P_AOCT] > 0 ? t->p[P_AOCT] : 1);
         for (i = 0; i < cnt; i++)
