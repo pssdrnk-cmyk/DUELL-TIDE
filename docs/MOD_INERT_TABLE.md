@@ -29,9 +29,9 @@ A stored route to an inert destination stays and still plays (it just does nothi
 | FM6 | feedback | never | SLOT (it loads a voice, as before) | ALG |
 | WAVE | table position (POS) | never | TABLE (a rebuild, as before), slots 7 and 8 (unused, as before) | none |
 
-On every engine the EQ gains (EQLOW, EQMID, EQHI) and, since T0229, REVERB SIZE (RSIZE: the SPRING bends its pitch while SIZE moves) are removed from the DEST list as well.
+On every engine the EQ gains (EQLOW, EQMID, EQHI) and REVERB SIZE (RSIZE: the SPRING bends its pitch while SIZE moves) are removed from the DEST list as well.
 
-T0229: four new destinations, the AMP ENV times (AATK, ADEC, ASUS, AREL; shown AMP / ATTACK .. on two lines). They do nothing on FM6 (its operators have their own envelopes): not offered there (reason OWN ENV).
+Four more destinations, the AMP ENV times (AATK, ADEC, ASUS, AREL; shown AMP / ATTACK .. on two lines). They do nothing on FM6 (its operators have their own envelopes): not offered there (reason OWN ENV).
 
 ## PITCH and CUTOFF depths
 
@@ -40,11 +40,11 @@ T0229: four new destinations, the AMP ENV times (AATK, ADEC, ASUS, AREL; shown A
   - On the seven other engines it moves the multimode filter.
   - On PHASE it also moves DCW, and on LOFI its TONE.
   - Nothing to hide.
-- **PITCH** always does something, with one value-dependent exception: NOISE in mode ANLG or DUST with TRK 0. There the key does not reach FREQ, so pitch modulation has no effect. This is not hidden, because a value is never a reason to hide (owner rule).
+- **PITCH** always does something, with one value-dependent exception: NOISE in mode ANLG or DUST with TRK 0. There the key does not reach FREQ, so pitch modulation has no effect. This is not hidden, because a value is never a reason to hide (OSCILL/R's rule).
 
 ## Shown dim, not hidden (the reason is a value)
 
-- **FILTER RES (was FRES) on ANALOG, TRIO and NOISE** (T0229, owner): shown normally, never dimmed or hidden, also while CUT is open (the cutoff must not hide or fade the resonance). The unit shows it as FILTER / RES on two lines, the DEST line says FILTER RESONANCE.
+- **FILTER RES (was FRES) on ANALOG, TRIO and NOISE** (OSCILL/R's rule): shown normally, never dimmed or hidden, also while CUT is open (the cutoff must not hide or fade the resonance). The unit shows it as FILTER / RES on two lines, the DEST line says FILTER RESONANCE.
 - **VOICE VOWL 2** does nothing while TALK is 0.
 - **PHASE LINE** does nothing while DTN is 0 and LINE is MIX.
 
@@ -53,5 +53,5 @@ These are values, not selections, so they stay offered.
 ## Factory data
 
 - No factory sound has a route to a removed or inert destination.
-- **M08 HAZY TENSOR** (the owner's), part 1 #3 LADDER BASS, slot 3: LFO 2 -> ANALOG WAVE, -45 %. ANALOG WAVE is now removed from the list. The route stays and plays as he made it, but the DEST knob no longer offers ANALOG WAVE.
-- **M03 PAD SPLIT** (the owner's), part 2 #44 EMBER GLOW (ANALOG, not PWM or SYNC): LFO 2 DEST SHP is 6. That card is hidden now, and its value did nothing before either.
+- **M08 HAZY TENSOR** (OSCILL/R's multi), part 1 #3 LADDER BASS, slot 3: LFO 2 -> ANALOG WAVE, -45 %. ANALOG WAVE is now removed from the list. The route stays and plays as he made it, but the DEST knob no longer offers ANALOG WAVE.
+- **M03 PAD SPLIT** (OSCILL/R's multi), part 2 #44 EMBER GLOW (ANALOG, not PWM or SYNC): LFO 2 DEST SHP is 6. That card is hidden now, and its value did nothing before either.

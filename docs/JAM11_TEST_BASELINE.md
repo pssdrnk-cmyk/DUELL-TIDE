@@ -51,7 +51,7 @@ Current maintenance priorities: [roadmap](ROADMAP.md). Totals below describe the
 
 ## Full run: 3 November 2026, `0d66b59` (t0-sound: the 12 sound groups)
 
-`sh jam/check.sh` in the `t0-sound` checkout (logs `work/check-duell-t0-sound/`). **92 passed, 22 failed, 22 skipped** (before: 80 / 34 / 22). No new failures. No firmware change, so `check_off.sh` is unchanged.
+`sh jam/check.sh` in the `t0-sound` checkout. **92 passed, 22 failed, 22 skipped** (before: 80 / 34 / 22). No new failures. No firmware change, so `check_off.sh` is unchanged.
 
 - Now PASS: reverb halltail locut shimmer stereochorus comp master bassmono eqon dlyev mxstep modinert. Stock 1.1 and jam11 hash these renders the same. Each 1.0 -> 1.1 difference was dumped and compared as audio (`jam/soundref`) and traced to an intended 1.1 change. No firmware bug was found. The new references and measurements are in [JAM11_SOUND_REFERENCES.md](JAM11_SOUND_REFERENCES.md).
 
@@ -65,7 +65,7 @@ Now PASS: `ownerimport` (tool: `import_owner_edits.py` drops 1.1's preselected m
 
 Also PASS now: `editorjson` (its 16 web-editor expectations, and the librarian / backup tests behind it, follow 1.1: 32 menu items, ARP / SEQ three-way, NX 28, 1.1's names, record limit 580) and `jam_dev` (the tool's record check is the PT_VER 4 layout with layout.json's ranges, multis are MU_VER 8, the mock builds a valid revision 8 music object and a real End B block).
 
-Full `sh jam/check.sh` after rebasing on the UI groups: **110 passed, 1 failed (`ui`: real screens, owner / firmware decisions), 25 skipped** (logs `work/check-t0-tools-full7/`). Note: the device build intermittently fails with Errno 22 on `build/gen/*.h` when two checks or builds run in one checkout at once; run one at a time.
+Full `sh jam/check.sh` after rebasing on the UI groups: **110 passed, 1 failed (`ui`: real screens, owner / firmware decisions), 25 skipped**. Note: the device build intermittently fails with Errno 22 on `build/gen/*.h` when two checks or builds run in one checkout at once; run one at a time.
 
 ## Full run: 3 November 2026, t0-ui2 (`ui` repaired): 111 passed, 0 failed, 25 skipped
 
@@ -86,11 +86,11 @@ Full `sh jam/check.sh` after rebasing on the UI groups: **110 passed, 1 failed (
 
 ## Full run: 2 November 2026, `4443c13` (T0 branches merged, morph fixed)
 
-`sh jam/check.sh`, 600 s per group, in a `git archive` snapshot (logs `work/check-full-4443c13/`), then re-run in the checkout for the groups the snapshot or the old `cc` shim got wrong (`work/check-full-4443c13-rerun/`). **80 passed, 34 failed, 22 skipped** (before: 65 / 58 / 11). `check_off.sh` PASS (`ade430c7…`).
+`sh jam/check.sh`, 600 s per group, in a `git archive` snapshot, then re-run in the checkout for the groups the snapshot or the old `cc` shim got wrong. **80 passed, 34 failed, 22 skipped** (before: 65 / 58 / 11). `check_off.sh` PASS (`ade430c7…`).
 
 - `morph` now runs to its `fork()` with no failed check (SKIP here). Its two roll checks were test-side: the seeds hash is `0x2f8cb758` on Windows / llvm-mingw for 1.1's own `974d875` too (both values accepted), and TIDE rolls a factory sound's B, so ROLL chained to depth 2 (the save check rolls from the Original now; a new check covers SAVE of a MUSICAL B).
 - `multiv8` needs the tags `v1.0` / `v1.1`: it fails in a `git archive` snapshot, passes in a checkout.
-- The shared `work/shims/cc` took the POSIX stand-ins from `DUELL/` (1.0, no `sys/mman.h`); it now takes the tested checkout's `jam/wincompat` first. `twin`, `twocore`, `subcyc`, `xvalues`, `velaccent`, `tcmeas` then SKIP at `fork()` instead of failing to compile.
+- The shared `cc` shim took the POSIX stand-ins from `DUELL/` (1.0, no `sys/mman.h`); it now takes the tested checkout's `jam/wincompat` first. `twin`, `twocore`, `subcyc`, `xvalues`, `velaccent`, `tcmeas` then SKIP at `fork()` instead of failing to compile.
 - Still FAIL, as the t0-win notes say: `ownerimport` (tool fix), `benchsim` (stale model, macOS counter), `emu` (no first-start GUIDE, silent heavy song).
 
 FAIL: perform ui step3 engine dlyev dx7import fm6 uf pan mxstep modinert eqon modules uitest editor editorjson reverb halltail locut shimmer panic bassmono comp master stereochorus benchsim ownerimport pages scope2 editb velo emu converttwin jam_dev
@@ -124,7 +124,7 @@ Real bug found and fixed: RENAME / recategorise and the editor's FM6 PUT dropped
 
 ### Windows and tools groups (branch `t0-win`)
 
-`jam/wincompat/sys/mman.h` (anonymous shared maps as plain memory: the child they share with is never forked here). `jam/check.sh` reports any "... which Windows does not have: skipped" stop as SKIP, not only fork. Note: `work/shims/cc` points at the main checkout's `jam/wincompat`, so the new header counts once it is there.
+`jam/wincompat/sys/mman.h` (anonymous shared maps as plain memory: the child they share with is never forked here). `jam/check.sh` reports any "... which Windows does not have: skipped" stop as SKIP, not only fork.
 
 | Group | Now | Why |
 |---|---|---|
@@ -166,7 +166,7 @@ SKIP: regress perflevel morph mode sounds fmbass wave mixsplit partindep duckpar
 ## Later focused evidence — 2 November 2026
 
 - S0 merge `254a501` reports 65 passed / 58 failed / 11 skipped. Its commit records an FM6 timeout and two existing morph-roll failures exposed by the improved runner. Keep that run separate from `bd339c9`'s totals.
-- `backup` passed at `e176f6e` against 1.1 + TIDE + S0a (`work/check-duell-jam11/backup.log`, reviewed during installation). The older FAIL list above is the broad-run snapshot, not the status of this repaired group.
+- `backup` passed at `e176f6e` against 1.1 + TIDE + S0a. The older FAIL list above is the broad-run snapshot, not the status of this repaired group.
 - Five revision-8 backup-helper tests and the installed package's pinned CPU-emulator smoke passed during the S0/DSP installation. Retained logs: a workspace file outside this repository.
 - `patch` repair exposed the End B preservation bug fixed in `dd2acd5`. Subsequent commits record `patch` passing at `379e844` and `patchraw` passing at `52c6604` against 1.1 + TIDE. These commit-recorded focused results do not imply a new full-suite run. Other test repair continues independently.
 

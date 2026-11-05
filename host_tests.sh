@@ -195,6 +195,8 @@
 #   without learned CCs): identical parameter writes; the shipped map writes the same for each of today's 24 targets on its NEW number; the morph's triggers follow the target; a taken number is refused / forced; learn
 #   writes a line (16 at most); the settings record at its exact size (cloud/base3's size is no record); the extension values, the effects block, map_target_info. Built twice: the tests' power-on map is the legacy list
 #   (tests/midimap_legacy.csv), and once with the shipped list as the firmware's own (the two must pass); midimapgen: the generator's failures (tests/midimap_gen_test.py)
+# tideoff (audit E11): the firmware built with -DDUELL_TIDE=0 (plain DUELL, the same switch as jam/check_off.sh) and run through the tests that do not state a TIDE feature: regress (242 golden renders),
+#   perform, mode, select, hang, menuproduct, bank. It guards that the OFF code compiles and still sounds and behaves as before; the byte-for-byte package check needs the JieLi toolchain (jam/check_off.sh, the owner's PC)
 # perflevel: tests/perf_level_test.c (item 160): PERFORM's SELECT = BALANCE moves the MIXER's LEVEL 1 against LEVEL 2 (push-pull, 0.5 dB a step, never above 0 dB, never into OFF, no memory); the old balance stage
 #   (mix_bal, fx.c bal_lvl) gone: every mode's render bit for bit as the tree before with the old balance 0; the knob mid-render = the same levels written straight; the owner's worked example both ways
 # perflevelmut: its mutations, run once each (perflevel must FAIL): a boost allowed, the direction swapped, the total not kept, a memory of its own (the MIXER's writes between the steps ignored)
@@ -215,7 +217,7 @@ python3 tools/gen_midi_map.py --sym MIDI_MAP_SHIPPED build/gen_test/midi_map_shi
 python3 tools/gen_version.py build/gen/duell_version.h || exit 1   # VERSION file -> build/gen/duell_version.h
 FV=$(sed -n 's/^#define DUELL_VERSION_STR "\(.*\)"/\1/p' build/gen/duell_version.h)
 [ -f "$HOME/emsdk/emsdk_env.sh" ] && EMU=emu || EMU=
-want="${*:-midiout velaccent regress chord chordkeep strum mod perform perflevel perflevelmut performcap ui select step3 engine morph morphui mode dlymod dlyev dlyglide hang atgt patslot multi release menuproduct patch patchraw bank dx7import dx7compat splash knobjump sounds mrender fmbass fm6 physintune unisonlevel clockguard clockdrift arptiming uartdma uarttimer fm6liveol tidekeep tidecrossings tidecontrols livegraph tideturns tidesteps stophang tidedialogue tidevoicelead tidemotif slopehandoff loadcost cpuscen uf wave hold reset resetwalk pan mixsplit partindep duckpart twocore tcmeas tcstage1 bootguard bootpack tcbench poolrule budget polylimits deadline velomono sat mxstep modinert eqon eq32 ovlguard matrixpack engswitch level guide guidesetup wtab wavetable modules uitest project fun10 motion persist backup editor editorjson midictl audio erase flashled usb elfcheck reverb halltail plate locut shimmer panic insert bassmono comp master stereochorus chorusskip sidechain tune bench benchsim benchrun benchaudio ownerimport rollbrowser sliders xb xbmut fuzz xvalues twin subcyc pages scope2 editb velo midimap midimapmut ldrscreen otareuse lcdboot tidejrnymemory tidejrnyfamily $EMU converttwin multiv8 uitruth tidestore resotune dctail glide}"
+want="${*:-midiout velaccent regress chord chordkeep strum mod perform perflevel perflevelmut performcap ui select step3 engine morph morphui mode dlymod dlyev dlyglide hang atgt patslot multi release menuproduct patch patchraw bank dx7import dx7compat splash knobjump sounds mrender fmbass fm6 physintune unisonlevel clockguard clockdrift arptiming uartdma uarttimer fm6liveol tidekeep tidecrossings tidecontrols livegraph tideturns tidesteps stophang tidedialogue tidevoicelead tidemotif slopehandoff loadcost cpuscen uf wave hold reset resetwalk pan mixsplit partindep duckpart twocore tcmeas tcstage1 bootguard bootpack tcbench poolrule budget polylimits deadline velomono sat mxstep modinert eqon eq32 ovlguard matrixpack engswitch level guide guidesetup wtab wavetable modules uitest project fun10 motion persist backup editor editorjson midictl audio erase flashled usb elfcheck reverb halltail plate locut shimmer panic insert bassmono comp master stereochorus chorusskip sidechain tune bench benchsim benchrun benchaudio ownerimport rollbrowser sliders xb xbmut fuzz xvalues twin subcyc pages scope2 editb velo midimap midimapmut ldrscreen otareuse lcdboot tidejrnymemory tidejrnyfamily $EMU converttwin multiv8 uitruth tidestore resotune dctail glide tideoff}"
 fail=0
 # mxstep's PHASE self-check (hunt4): tests/mx_step_test.c built against a COPY of firmware/ and tests/ in which eng_phase.c's bridge of a moved DCW is switched off (the bend steps at
 # every block seam again); the PHASE check must FAIL, a pass means it cannot see the seam
@@ -267,7 +269,7 @@ twocore_mut() {
     if $OUT/twocore_mut 0 -nomut > $OUT/last.log 2>&1; then echo "   FAIL (the mutation was NOT detected)"; fail=1; else echo "   PASS (detected by the scene-0 faults: $(grep -c 'twocore: FAIL' $OUT/last.log) checks failed; first: $(grep -m1 'twocore: FAIL' $OUT/last.log | cut -c1-170))"; fi
   else echo "   PASS (detected by the invariant audit: $(grep -c 'twocore: FAIL' $OUT/last.log) checks failed; first: $(grep -m1 'twocore: FAIL' $OUT/last.log | cut -c1-170))"; fi
 }
-run() { echo "== $1"; shift; "$@" > "$OUT/last.log" 2>&1 && echo "   PASS" || { echo "   FAIL"; grep -E "FAIL|Assertion" "$OUT/last.log" | grep -vE "(^|[^0-9])0 FAIL" | head -60; tail -15 "$OUT/last.log"; fail=1; }; }   # (every failed check first: the tail alone hid most of them; the tests print "twocore: FAIL <text>", "FAIL: <text>", "xyz: FAIL <text>", almost never FAIL at the end of a line; a summary "0 FAIL" is not one)
+run() { echo "== $1"; shift; "$@" > "$OUT/last.log" 2>&1 && { if grep -q '^SKIP ' "$OUT/last.log"; then echo "   $(grep -m1 '^SKIP ' "$OUT/last.log")"; else echo "   PASS"; fi; } || { echo "   FAIL"; grep -E "FAIL|Assertion" "$OUT/last.log" | grep -vE "(^|[^0-9])0 FAIL" | head -60; tail -15 "$OUT/last.log"; fail=1; }; }   # (every failed check first: the tail alone hid most of them; the tests print "twocore: FAIL <text>", "FAIL: <text>", "xyz: FAIL <text>", almost never FAIL at the end of a line; a summary "0 FAIL" is not one; a test that could not run its checks prints a line "SKIP <why>": the group then reports "   SKIP <why>", never PASS)
 for t in $want; do case $t in
   regress) $CC -DNPART=4 -o $OUT/regress tests/regress.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run regress $OUT/regress tests/golden.txt tests/cpu_baseline.txt ;;
   midiout) $CC -o $OUT/midi_out_seq_test tests/midi_out_seq_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run midiout $OUT/midi_out_seq_test ;;
@@ -433,7 +435,7 @@ for t in $want; do case $t in
            run benchrun python3 tests/bench_run_test.py ;;
   benchaudio) $CC -O1 -fno-builtin -D_FORTIFY_SOURCE=0 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/bench_sim tests/bench_sim.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } &&
            PYN=$(for p in python3 /opt/homebrew/bin/python3 /usr/local/bin/python3 /Library/Frameworks/Python.framework/Versions/Current/bin/python3; do "$p" -c 'import numpy' 2>/dev/null && { command -v "$p" || echo "$p"; break; }; done)
-           if [ -n "$PYN" ]; then run benchaudio "$PYN" tests/bench_analyze_test.py; else run benchaudio echo "skipped: no python3 with numpy on this machine (the DUELL venv has none; tools/bench_analyze.py needs it)"; fi ;;
+           if [ -n "$PYN" ]; then run benchaudio "$PYN" tests/bench_analyze_test.py; else run benchaudio echo "SKIP no python3 with numpy on this machine (the DUELL venv has none; tools/bench_analyze.py needs it)"; fi ;;
   comp) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/comp_test tests/comp_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run comp $OUT/comp_test ;;
   bench) $CC -O1 -fno-builtin -D_FORTIFY_SOURCE=0 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/cpu_bench tests/cpu_bench.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } &&
          { echo "== bench (report only: fails when a figure grows > 10 % over tests/bench_baseline.txt)"; $OUT/cpu_bench > $OUT/bench.log 2>&1 && { sed 's/^bench: /   /' $OUT/bench.log; echo "   PASS"; } || { echo "   FAIL"; grep -i 'fail' $OUT/bench.log; fail=1; }; } ;;
@@ -475,7 +477,9 @@ for t in $want; do case $t in
            if git -C .. show "${OTA_BASE:-1df6207}:felucca-base/firmware/src/ota.c" > $OUT/ota_base.c 2>/dev/null; then
              $CC -O1 -DOTA_SRC='"../'$OUT'/ota_base.c"' -o $OUT/ota_reuse_base tests/ota_reuse_test.c &&
              { $OUT/ota_reuse_test > $OUT/ota_reuse_new.txt; $OUT/ota_reuse_base > $OUT/ota_reuse_old.txt; cmp -s $OUT/ota_reuse_old.txt $OUT/ota_reuse_new.txt && echo "   PASS (identical: $(wc -l < $OUT/ota_reuse_new.txt) lines)" || { echo "   FAIL (differs from the separate-buffer ota.c)"; diff $OUT/ota_reuse_old.txt $OUT/ota_reuse_new.txt | head; fail=1; }; }
-           else echo "   skipped: OTA_BASE not in this clone"; fi ;;
+           else echo "   SKIP OTA_BASE not in this clone"; fi ;;
+  tideoff) CT="$CC -O1 -DDUELL_TIDE=0"; toff() { n=$1; s=$2; shift 2; $CT "-DFELUCCA_VERSION=\"$FV\"" $NP -o $OUT/off_$n tests/$s.c -lm || { echo "== tideoff_$n"; echo "   FAIL (does not compile with DUELL_TIDE=0)"; fail=1; return; }; run tideoff_$n $OUT/off_$n "$@"; }
+           NP=-DNPART=4 toff regress regress tests/golden.txt tests/cpu_baseline.txt; NP= ; toff perform perform_test; toff mode mode_test; toff select select_test; toff hang hang_test; toff menuproduct menu_product_test; toff bank bank_test tests/factory_bank_records.txt ;;
   elfcheck) run elfcheck python3 -I tests/elfcheck_test.py ;;
   flashled) $CC -o $OUT/flash_led_test tests/flash_led_test.c || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run flashled $OUT/flash_led_test ;;
   usb)     echo "== usb"; ub=0
@@ -726,7 +730,7 @@ static void midi_cc_set(track_t *t, uint32_t id, uint32_t value)
            velo_mut "the calibration made one-way (the floor only down, the ceiling only up)" firmware/src/sense.c 's#: lo + eta \* SC_Q_LO / 1000u;#: lo;#' firmware/src/sense.c 's#: hi - eta \* SC_Q_HI / 1000u;#: hi;#'
            echo "== velo: flag-off preprocessor output of felucca.c equals the tree before KEY SENSE (VELO_BASE)"
            pb=; [ -n "$VELO_BASE" ] && pb=$(git rev-parse --verify -q "$VELO_BASE")
-           if [ -z "$pb" ]; then echo "   skipped: VELO_BASE not set (e.g. VELO_BASE=cloud/base3-wave4 on the merge commit of KEY SENSE)"; else
+           if [ -z "$pb" ]; then echo "   (optional part) skipped: VELO_BASE not set (e.g. VELO_BASE=cloud/base3-wave4 on the merge commit of KEY SENSE)"; else
              rm -rf build/velo_base; mkdir -p build/velo_base
              git -C .. archive $pb felucca-base/firmware | tar -x -C build/velo_base && vb=0
              for m in "" "-DDUELL_TEST_MODE=1"; do
@@ -737,7 +741,7 @@ static void midi_cc_set(track_t *t, uint32_t id, uint32_t value)
              [ "$vb" = 0 ] && echo "   PASS" || { echo "   FAIL"; fail=1; }
            fi ;;
   ldrscreen) P=$(ls -t build/duell-*.fwsc 2>/dev/null); O=${LDR_OLD:-$(echo "$P" | sed -n 2p)}; N=${LDR_NEW:-$(echo "$P" | sed -n 1p)}; [ -n "$O" ] || O=$N   # (LDR_OLD and LDR_NEW, else the newest two packages in build/; one package is used as both)
-           if [ -z "$N" ]; then run ldrscreen echo "skipped: no update package (build/duell-*.fwsc, or LDR_OLD / LDR_NEW): fm1pkg_make.py needs the JieLi SDK of a device build"; else
+           if [ -z "$N" ]; then run ldrscreen echo "SKIP no update package (build/duell-*.fwsc, or LDR_OLD / LDR_NEW): fm1pkg_make.py needs the JieLi SDK of a device build"; else
            $CC -O1 -DLDR_SCREEN_TEST=1 -o $OUT/ldr_test_screen tests/ldr_test.c -lm && $CC -O1 -o $OUT/ldr_test_plain tests/ldr_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } &&
            run ldrscreen sh -c "$OUT/ldr_test_screen $O $N > $OUT/ldr_s.log && $OUT/ldr_test_plain $O $N > $OUT/ldr_p.log && [ \"\$(grep FINAL $OUT/ldr_s.log)\" = \"\$(grep FINAL $OUT/ldr_p.log)\" ] && grep -q 'loader test passed' $OUT/ldr_s.log && grep -q 'loader test passed' $OUT/ldr_p.log || { grep -E 'FAIL|FINAL' $OUT/ldr_s.log $OUT/ldr_p.log; exit 1; }"; fi ;;
   lcdboot) cc -O1 -w -Ifirmware/hal -Ifirmware/src -o $OUT/lcd_boot_late -DFM1_LCD_BL_LATE=1 tests/lcd_boot_test.c && cc -O1 -w -Ifirmware/hal -Ifirmware/src -o $OUT/lcd_boot_ldr tests/lcd_boot_test.c || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } &&

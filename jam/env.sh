@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 # DUELL JAM build environment for Git Bash on Windows (no WSL, no Docker). Source it:
 #   . jam/env.sh
 # Everything lives in portable folders under ../work: the JieLi Windows toolchain and SDK files (jieli-target), the

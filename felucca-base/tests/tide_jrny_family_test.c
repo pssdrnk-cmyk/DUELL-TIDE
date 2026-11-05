@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* JOURNEY's role families (tide_ui.c JFAM): a pad roams the pads and keys and never a bass, a hit or a texture; a sound alone in its
  * family stays in its role (a roll of itself); a USER record roams its own category's family; every category is mapped; no factory
  * sound sits in OTHER (the junk drawer that made pads reach hits). Prints eligible destinations per engine and family, the walk of

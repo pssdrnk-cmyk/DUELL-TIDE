@@ -1,4 +1,4 @@
-<!-- Thanks. Keep it small and focused. This fork does not send pull requests to OSCILL/R or Felucca. -->
+<!-- Thanks. Keep it small and focused. A fix that plain DUELL needs too is offered to OSCILL/R's DUELL separately, as a small device-tested pull request from a branch based on their main; the fork owner opens that one. TIDE stays in this fork. -->
 
 ## What and why
 

@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-only
 # regress golden audio dump: sh regress_dmp.sh <felucca-base dir> <out.bin>   (a patched copy of tests/regress.c; one job at a time, each render its own segment)
 set -e
 D=$1; O=$2; SR=$(cd "$(dirname "$0")" && pwd)

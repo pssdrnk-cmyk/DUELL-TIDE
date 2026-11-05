@@ -1,6 +1,10 @@
 # DUELL with TIDE: a player's guide
 
-Five minutes. Written from the firmware source (pages and rows as they are in the code). It describes the firmware on the development line, `jam11`, as it is in the source; the published beta `beta-2026-11-04` is a little older, and the list at the end says what came after it. The stable build `stable-2026-11-03` has an earlier TIDE: its TIDE SETTINGS page is still called MORPH SETTINGS and lacks the STYLE, TURNS, POLY, SYNC and ARC rows, and it has no JRNY role families or memory (see the end; [README](../README.md#builds-stable-and-beta) lists the builds). Values marked *start* are suggestions for dub and house techno backgrounds, not defaults. Defaults are named as such.
+Five minutes. This guide describes the development line, `jam11`, as the source has it. The published beta `beta-2026-11-04` is a little older; the list at the end says what came after it.
+
+The stable build `stable-2026-11-03` has an earlier TIDE. Its TIDE SETTINGS page is still called MORPH SETTINGS. It lacks the STYLE, TURNS, POLY, SYNC and ARC rows, and it has no JRNY role families or memory. The [README](../README.md#builds-stable-and-beta) lists the builds.
+
+Values marked *start* are suggestions for dub and house techno backgrounds, not defaults. Defaults are named as such.
 
 ## The idea
 
@@ -48,12 +52,12 @@ K1 picks the row. **OCT+** the next value, **OCT-** the one before. Saved over a
 
 | Row | Values (default first) | What it does | Start |
 |---|---|---|---|
-| **STYLE** | DUB, DEEP, MINIMAL, AMBIENT, PEAK, CUSTOM | The top row. One pick sets MODE, TIME, WAIT and the rows VARY BARS, TURNS, POLY, SYNC, ARC and WASH LEVEL together (TARGET, ROLL, ARP and PITCH stay yours). Changing any of those nine by hand turns it into CUSTOM and keeps your values; step off CUSTOM onto a style and back, and CUSTOM brings those values back (until a power cycle). TURNS, POLY, SYNC and ARC act only in automatic MUSIC WNDR / JRNY with SEQ in TARGET: otherwise their values are dim and knob 1's line says what is missing. Table below. | DUB |
+| **STYLE** | DUB, DEEP, MINIMAL, AMBIENT, PEAK, CUSTOM | The top row. One pick sets MODE, TIME, WAIT and the rows VARY BARS, TURNS, POLY, SYNC, ARC and WASH LEVEL together. TARGET, ROLL, ARP and PITCH stay yours. Changing any of those nine by hand turns STYLE into CUSTOM and keeps your values. Step onto a style and back to CUSTOM, and CUSTOM brings your values back (until a power cycle). TURNS, POLY, SYNC and ARC act only in automatic MUSIC WNDR / JRNY with SEQ in TARGET. Otherwise their values are dim, and knob 1's line says what is missing. The presets are in the table below. | DUB |
 | **TARGET** | BOTH, SOUND, SEQ | What the glide moves: the sound, the pattern, or both together. BOTH links the two faders; the MORPH fader moved by hand drags the SEQ fader with it. | BOTH |
 | **VARY BARS** | 4 + 8, ALL | When the pattern plays its variation: on every 4th bar of the phrase (4 + 8), or every bar. | 4 + 8 |
 | **ROLL** | MUSIC, SMART, WILD | How a new End B is made. MUSIC turns five dials (bright, movement, shape, space, character) inside the ranges where that kind of sound actually lives, so a brighter end is not a louder one. SMART is DUELL's own safe roll. WILD drops the safety rules. | MUSIC |
 | **ARP** | OFF, ON | OFF: rolls leave the arp's rate, gate and mode alone. ON: they may move them (never turning the arp into SEQ, so a TIDE part is never silenced). | OFF |
-| **PITCH** | OFF, ON | OFF: nothing that moves pitch changes. ON: small detune and, on TRIO, interval jumps. Keeps drones in tune when OFF. Only ON lets the automatic pattern edits walk a note one scale step: the top note of a chord or a lead note, never a bass note under C3 or in a part whose sound is in the BASS category, and nothing on SCALE CHR. The chord voicing of VOIC does not need PITCH. | OFF |
+| **PITCH** | OFF, ON | OFF: nothing that moves pitch changes, which keeps drones in tune. ON: small detune and, on TRIO, interval jumps. Only ON lets the automatic pattern edits walk a note one scale step. They walk the top note of a chord or a lead note, never a bass note under C3 or in a part whose sound is in the BASS category, and nothing on SCALE CHR. The chord voicing of VOIC does not need PITCH. | OFF |
 | **WASH LEVEL** | OFF, LOW, MID, HIGH (default OFF) | The breath of a trip: filter dip, send swell and a wash where sounds cross. LOW is half, MID is full, HIGH one and a half. | LOW (try it; OFF is the default) |
 | **TURNS** | TOGETHER, TAKE TURNS, LEAD | Only in automatic WNDR / JRNY with both parts. TOGETHER: both parts vary on bars 4 and 8. TAKE TURNS: part 2 varies on bars 2 and 6, part 1 on 4 and 8, so each variation is answered two bars later. LEAD: part 2 leads bars 1-2 of every 4 and part 1 bars 3-4; a lead or pluck line answers by playing thinner and softer on the other part's bars (beats, held notes, the motif's own hits and about half of the rest stay), while a pad, a bass or a chord part keeps its pattern whole. Playback only: KEEP stores the whole pattern. A stored older ECHO value reads as LEAD. | LEAD |
 | **POLY** | OFF, GENTLE, WIDE | In automatic WNDR / JRNY one part's loop is now and then shorter, so its motif drifts against the beat, then plays whole again at a phrase. GENTLE: 15 or 14 of 16 steps, rarely. WIDE: 12 to 15, more often. Your stored pattern is never changed. | GENTLE |
@@ -65,6 +69,14 @@ K1 picks the row. **OCT+** the next value, **OCT-** the one before. Saved over a
 **The motif is kept.** The automatic pattern edits never drop or move the pattern's anchors: its beats, the hits on the place in the beat most of its hits take (an offbeat skank's "and"s), and more of its hits in order until three fifths are anchored (at least two). A hit never sits more than two 16ths from its stored step, so a skank keeps its own shape. The phrase gaps and moves, SYNC, LEAD and ARC's thinning all leave the anchors alone.
 
 **Loading.** A multi, project or pattern load starts as written: both loaded parts go back to End A with no variation and no pitch edits from before, ARC starts again at RISE, and a running trip begins again from A (MODE and the auto state stay).
+
+**Changing settings while a tide plays.** There is no need to stop it; each change lands at its own moment:
+
+| When | Settings |
+|---|---|
+| At once (next step or bar) | VARY BARS, WASH LEVEL, TURNS, POLY, SYNC. ARC switched on starts a RISE; switched off it ends the arc. |
+| At the next turn (when the trip arrives) | MODE, WAIT, TIME (also when a STYLE sets it; the page shows the new TIME at once, the bar count goes on with the trip that runs), and ROLL, ARP and PITCH (they shape the next end that is rolled or picked). |
+| At the next start (knob 1) | TARGET: what the tide moves is fixed when a glide starts. |
 
 Defaults with no saved settings (a new unit, or after ERASE DATA): STYLE DUB, that is MODE JRNY, TIME 16, WAIT 2, VARY 4 + 8, TURNS LEAD, POLY GENTLE, SYNC SOFT, ARC RISE, WASH OFF; and TARGET BOTH, ROLL MUSIC, ARP OFF, PITCH OFF. An older saved record loads as STYLE CUSTOM with its values kept and the rows it lacks at TURNS TAKE TURNS, POLY GENTLE, SYNC SOFT, ARC OFF.
 
