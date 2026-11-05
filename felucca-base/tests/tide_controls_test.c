@@ -316,9 +316,11 @@ static void test_twist_stop(void)
     f = morph_fader_of(0);
     CHECK("twist:   it is moving", song.playing && gl.on && f > 0u && f < 127u);
     run(480);
+    tide_knob(0, 1);                                     /* (audit C4, D9: one detent is a nudge, two stop a running tide) */
+    CHECK("twist: one detent while gliding does not stop it", glide_running() && song.playing);
     tide_knob(0, 1);
     f = morph_fader_of(0);
-    CHECK("twist: a twist while gliding stops it, PLAY goes on", !glide_running() && song.playing);
+    CHECK("twist: two detents while gliding stop it, PLAY goes on", !glide_running() && song.playing);
     tide_knob(0, 1); tide_knob(0, 1);
     CHECK("twist:   the rest of the same twist does nothing", !glide_running());
     run(1200);

@@ -23,7 +23,7 @@ The screen shows the SOUND and SEQ faders with the glide's path, the 16 steps as
 
 | Knob | Name | What it does to the sound | Start |
 |---|---|---|---|
-| 1 | **GLIDE** | Twist right: go to B. Twist left: go to A. It starts on the next bar. **Twist again while it runs and it stops where it is**; the sound stays as it is. | Right |
+| 1 | **GLIDE** | Twist right: go to B. Twist left: go to A. It starts on the next bar. **Twist two detents again while it runs and it stops where it is**; the sound stays as it is. | Right |
 | 2 | **MODE** | What happens at each arrival (below). | JRNY (default) |
 | 3 | **TIME** | How many bars one trip takes: 1, 2, 4, 8, 16, 32 or 64. Longer trips also breathe more: the filter dips and the sends swell more over a long trip (full depth from 16 bars). Default 16. | 16 or 32 |
 | 4 | **WAIT** | Bars to hold at each arrival before the next trip: OFF, 1, 2, 4, 8 or 16. Default 2. | 2 to 8 |

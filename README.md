@@ -43,7 +43,7 @@ It is made for playing the FM-1 as a **background**: set a tide going, then play
 1. Press **HOME** until **AUTO TIDE** shows. HOME's round is now **MORPH → TIDE SETTINGS → AUTO TIDE → MODE**.
 2. Pick a **MODE** with knob 2, a trip length (**TIME**, in bars) with knob 3 and a rest at each end (**WAIT**) with knob 4. Turn **ALGORITHM** to BOTH to glide both parts at once.
 3. Twist **knob 1** right (to B) or left (to A) and press **PLAY**. While the music plays, the glide starts on the next bar.
-4. Play over it. **STOP** pauses the glide and PLAY goes on from there. Twist knob 1 while it glides and it stops where it is; the sound stays.
+4. Play over it. **STOP** pauses the glide and PLAY goes on from there. Twist knob 1 two detents while it glides and it stops where it is; the sound stays.
 
 On the very first start TIDE comes up ready: multi **M04 DUB CHORD**, AUTO TIDE on **JRNY**, both parts, 16 bars, WAIT 2. Just press PLAY.
 
@@ -55,7 +55,7 @@ The page that runs the tide. **ALGORITHM** picks the part it moves: PART 1, PART
 
 | Control | Values | What it does |
 |---|---|---|
-| **Knob 1** | twist right / left | Starts a glide to B (right) or to A (left); with the music playing it starts on the next bar. Twisted while gliding, it stops the glide where it is. |
+| **Knob 1** | twist right / left | Starts a glide to B (right) or to A (left); with the music playing it starts on the next bar. Twisted two detents while gliding, it stops the glide where it is (one detent is a nudge). |
 | **Knob 2: MODE** | ONCE · LOOP · DRIFT · WNDR · JRNY | What happens when a trip arrives (table below). |
 | **Knob 3: TIME** | 1 · 2 · 4 · 8 · 16 · 32 · 64 bars | How long one trip from one end to the other takes. With WASH LEVEL on, longer trips also breathe deeper. |
 | **Knob 4: WAIT** | OFF · 1 · 2 · 4 · 8 · 16 bars | A rest at each end before the next trip (the screen says WAITING). |
