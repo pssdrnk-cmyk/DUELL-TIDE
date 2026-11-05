@@ -56,16 +56,17 @@ __attribute__((noinline)) int chain_f2_on(track_t *t, voice_t *v)
 static __attribute__((noinline)) void f2_svf(f2k_t *s, const int32_t *in, int32_t *out, uint32_t n, int32_t idx, int32_t k, uint32_t mode)
 {
     tsvf_t f;
-    int32_t ic1 = s->s[0], ic2 = s->s[1], ma = TRIO_MIX[mode][0], mb = TRIO_MIX[mode][1], mc = TRIO_MIX[mode][2], mba, dmb;
+    int32_t rn, ic1 = s->s[0], ic2 = s->s[1], ma = TRIO_MIX[mode][0], mb = TRIO_MIX[mode][1], mc = TRIO_MIX[mode][2], mba, dmb;
     uint32_t i;
     if (mode >= 2u)
         mb = -(k >> 2);                                 /* HP / notch: in - k bp (- lp) */
     mba = s->s[2] * 32;                                 /* (k * bp in the output moves in a line from last block's k: a step of RES would step the output) */
     dmb = mb - s->s[2];
     tsvf_coef_k(&f, idx, k);
+    rn = 1 << (f.sh - 1);
     for (i = 0; i < n; i++) {
         int32_t x = soft_knee(mulq15(in[i], 22369), 16000) >> 1;   /* (the input saturates above half scale) */
-        int32_t v3 = x - ic2, v1 = (f.a1 * ic1 + f.a2 * v3 + 4096) >> 13, v2 = ic2 + ((f.a2 * ic1 + f.a3 * v3 + 4096) >> 13), a, y;   /* (rounded: a truncated shift leaves a DC offset of 0.5 / g) */
+        int32_t v3 = x - ic2, v1 = ic1 + ((f.b1 * ic1 + f.a2 * v3 + rn) >> f.sh), v2 = ic2 + ((f.a2 * ic1 + f.a3 * v3 + rn) >> f.sh), a, y;   /* (rounded: a truncated shift leaves a DC offset of 0.5 / g) */
         ic1 = 2 * v1 - ic1;
         ic2 = clamp(2 * v2 - ic2, -150000, 150000);
         a = clamp(ic1, -49152, 49152);                  /* beyond +-49152 a quarter of the excess */
@@ -78,15 +79,15 @@ static __attribute__((noinline)) void f2_svf(f2k_t *s, const int32_t *in, int32_
     s->s[1] = ic2;
     s->s[2] = mb;
 }
-/* the SVF table's g (Q12, tan of the cutoff) at the table index idx (Q8), as tsvf_coef_k reads it */
+/* the SVF table's g (Q12, tan of the cutoff) at the table index idx (Q8) */
 static inline int32_t f2_g(int32_t idx)
 {
     int32_t i, g;
     idx = clamp(idx, 0, 127 << 8);
     i = idx >> 8;
-    g = SVF_G[i];
+    g = SVF_G[i] >> 2;
     if (i < 127)
-        g += ((SVF_G[i + 1] - g) * (idx & 255)) >> 8;
+        g += (((SVF_G[i + 1] >> 2) - g) * (idx & 255)) >> 8;
     return g;
 }
 /* LADDER: G the one-pole's coefficient g / (1 + g) (Q16), kf the feedback (Q12, 0 .. 4.4): the loop is one sample late, tanh on the sum that enters the cascade bounds it. The stages keep 6 more

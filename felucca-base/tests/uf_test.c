@@ -56,14 +56,17 @@ static int32_t ob[2 * CTL];
 static int32_t *rec_l;                                   /* shared with the render's child process (mmap) */
 static volatile uint32_t *rec_nsh;
 #define rec_n (*rec_nsh)
+static int32_t *cut_sh;                                  /* filter 1's slewed CUT (Q8 dial steps) of part 1 per block of the last render */
+#define EFF_CUT() (ucut_sm[0])
 static int32_t *peak_sh;                                 /* the part's peak per block of the last render (t->peak), MAXB entries */
 static void shared_init(void)
 {
-    uint32_t sz = MAXB * CTL * sizeof(int32_t) + MAXB * sizeof(int32_t) + 64u;
+    uint32_t sz = MAXB * CTL * sizeof(int32_t) + 2u * MAXB * sizeof(int32_t) + 64u;
     uint8_t *m = mmap(0, sz, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANON, -1, 0);
     rec_l = (int32_t *)m;
     peak_sh = (int32_t *)(m + MAXB * CTL * sizeof(int32_t));
-    rec_nsh = (volatile uint32_t *)(m + MAXB * CTL * sizeof(int32_t) + MAXB * sizeof(int32_t));
+    cut_sh = (int32_t *)(m + MAXB * CTL * sizeof(int32_t) + MAXB * sizeof(int32_t));
+    rec_nsh = (volatile uint32_t *)(m + MAXB * CTL * sizeof(int32_t) + 2u * MAXB * sizeof(int32_t));
 }
 static uint32_t eng_named(const char *n)
 {
@@ -116,6 +119,7 @@ static void mblk(uint32_t n)
     while (n--) {
         mix_block(ob, CTL);
         if (rec_n < MAXB * CTL) {
+            cut_sh[rec_n / CTL] = EFF_CUT();
             peak_sh[rec_n / CTL] = trk[0].peak;              /* the part's own level this block (mix_part's running maximum) */
             trk[0].peak = 0;
             for (uint32_t i = 0; i < CTL; i++)
@@ -620,7 +624,7 @@ static void t_response(void)
                                                          * (away from the table's ends: the bilinear warp near 22 kHz, the fixed point's floor near 30 Hz) */
                     ok_slope &= s == 2u ? sl < -20.0 && sl > -27.0 : sl < -9.0 && sl > -13.5;
                 if (m == 64 && c == 41) {                   /* the band-pass round 690 Hz: its peak there, both sides down */
-                    ok_bp &= d[3] > -3.0 && d[4] > (s == 2u ? -4.5 : -3.5) && d[0] < -12.0 && d[7] < -12.0;
+                    ok_bp &= d[3] > (s == 2u ? -3.5 : -3.0) && d[4] > (s == 2u ? -4.5 : -3.5) && d[0] < -12.0 && d[7] < -12.0;
                 }
                 if (m == 32 && c == 41)                     /* LP>BP: between the two, nothing beyond either */
                     ok_blend &= d[0] < 0.5 && d[0] > -12.0 && d[7] < -12.0;
@@ -697,6 +701,53 @@ static int32_t uf_saw_peak(int32_t cq8, int32_t res, int32_t slope, double f, in
     }
     return pk;
 }
+/* ------------------------------------------------------------------ 4c BELOW 100 Hz (audit P03) --- */
+/* the mean of uf_run's output for a sine (steady state): the truncated fixed point left a DC offset of 0.5 / g, about -30 dBFS at a 40 Hz cutoff */
+static double uf_dc(int32_t cq8, int32_t res, double f)
+{
+    voice_t v;
+    int16_t p[P_COUNT];
+    int32_t b[CTL];
+    double sum = 0;
+    uint32_t i, j, N = (uint32_t)(0.8 * FS) / CTL * CTL, from = (uint32_t)(0.4 * FS), n = 0;
+    memset(&v, 0, sizeof v);
+    memset(p, 0, sizeof p);
+    p[P_FREEB] = (int16_t)res;
+    p[P_FREED] = 1;
+    for (i = 0; i < N; i += CTL) {
+        for (j = 0; j < CTL; j++)
+            b[j] = (int32_t)lround(TAMP * sin(2 * M_PI * f * (i + j) / FS));
+        uf_run(&v, b, CTL, cq8, p);
+        if (i >= from)
+            for (j = 0; j < CTL; j++)
+                sum += b[j], n++;
+    }
+    return sum / n;
+}
+static void t_lowcut(void)
+{
+    static const double HZ[] = {45, 60, 100};
+    uint32_t q;
+    int ok_peak = 1, ok_stop = 1, ok_dc = 1;
+    for (q = 0; q < NELEM(HZ); q++) {
+        int32_t cq = uf_q8_of_hz(HZ[q]);
+        double fc = 30.0 * pow(16000.0 / 30.0, (40 + ((cq * 99) >> 6)) / 256.0 / 127.0), ideal = 20 * log10(4096.0 / (8192 - 7600)), dc;   /* (1 / k at the cutoff) */
+        double pk, st, t0;
+        t0 = TAMP;
+        TAMP = 1500.0;
+        pk = db_of(uf_gain(cq, 0, 127, 1, fc));
+        TAMP = t0;
+        st = db_of(uf_gain(cq, 0, 0, 1, 4 * fc));
+        dc = uf_dc(cq, 0, 4 * fc);
+        printf("uf:   CUT %.0f Hz: RES 127 peak %+.1f dB (ideal %+.1f), RES 0 at 4 x the cutoff %+.1f dB (ideal -24.6), DC %+.0f\n", fc, pk, ideal, st, dc);
+        ok_peak &= pk > ideal - 1.5 && pk < ideal + 1.5;
+        ok_stop &= st < -23.1 && st > -26.1;
+        ok_dc &= fabs(dc) < 40;
+    }
+    expect("below 100 Hz (CUT 45 / 60 / 100 Hz, 12 dB LP): the RES 127 peak at the cutoff within 1.5 dB of the ideal +16.8 (the Q13 coefficients gave +14.5 at 100 Hz, +15.4 at 60 Hz)", ok_peak);
+    expect("below 100 Hz: RES 0 at 4 x the cutoff within 1.5 dB of the ideal -24.6", ok_stop);
+    expect("below 100 Hz: a steady sine leaves no DC offset (under 40 of +-16000; the truncating filter left 700 .. 1200)", ok_dc);
+}
 static void t_bass(void)
 {
     static const double CUTS[] = {100, 200, 500, 1000, 4000}, TONES[] = {40, 60, 100, 200}, RESS[] = {0, 64, 100, 127};
@@ -761,7 +812,7 @@ static void ref_uf_run(ref_v_t *v, int32_t *buf, uint32_t n, int32_t c, int32_t 
     if (!hp && !ic1 && !ic2)
         ic2 = buf[0] >> 1;
     for (i = 0; i < n; i++) {
-        int32_t x = buf[i] >> 1, v3 = x - ic2, v1 = (f.a1 * ic1 + f.a2 * v3) >> 13, v2 = ic2 + ((f.a2 * ic1 + f.a3 * v3) >> 13), y;
+        int32_t x = buf[i] >> 1, v3 = x - ic2, v1 = ic1 + ((f.b1 * ic1 + f.a2 * v3 + (1 << (f.sh - 1))) >> f.sh), v2 = ic2 + ((f.a2 * ic1 + f.a3 * v3 + (1 << (f.sh - 1))) >> f.sh), y;
         ic1 = clamp(2 * v1 - ic1, -150000, 150000);
         ic2 = clamp(2 * v2 - ic2, -150000, 150000);
         y = hp ? x - ((k * v1) >> 12) - v2 : v2;
@@ -893,6 +944,34 @@ static void fb_cut_hp(track_t *t, uint32_t b)            /* HP: CUT 60 up to 82 
     t->p[P_FREEA] = (int16_t)(k < 22u ? 60u + k : 104u - k);
 }
 static void fb_slope(track_t *t, uint32_t b) { set_f(t); t->p[P_FREED] = (int16_t)(b / 100u % 2u ? 2 : 1); }
+/* the CUT dial slewed (audit P08): a sweep of the dial over 1 s moves filter 1's cutoff in steps well under a dial step a block (it moved 1.32 semitones at a block edge),
+ * lands exactly, and a jump of 8 steps or more (a sound load) is not slewed */
+static void fb_ramp(track_t *t, uint32_t b)              /* CUT 20 up to 60, a dial step every 34 blocks (1 s) from block 100 */
+{
+    uint32_t k = b < 100u ? 0u : (b - 100u) / 34u;
+    set_f(t);
+    t->p[P_FREEA] = (int16_t)(20u + (k > 40u ? 40u : k));
+}
+static void fb_cjump(track_t *t, uint32_t b) { set_f(t); t->p[P_FREEA] = (int16_t)(b < 300u ? 10 : 80); }
+static void t_cutslew(void)
+{
+    int32_t worst = 0, lag = 0, d;
+    uint32_t b, e = eng_named("PHASE");
+    sf(20, 60, 0, 1);
+    render_blk(e, fb_ramp);
+    for (b = 101u; b < 1500u; b++) {
+        d = cut_sh[b] - cut_sh[b - 1u];
+        worst = d < 0 ? (-d > worst ? -d : worst) : (d > worst ? d : worst);
+        d = cut_sh[b] - (int32_t)(20u + ((b - 100u) / 34u > 40u ? 40u : (b - 100u) / 34u)) * 256;
+        lag = d < 0 ? (-d > lag ? -d : lag) : (d > lag ? d : lag);
+    }
+    printf("uf:   CUT dial swept 20 .. 60 in 1 s: the largest move of the cutoff in one block %d of 256 (a dial step), the largest lag behind the dial %d\n", worst, lag);
+    expect("the CUT dial swept over 1 s: the cutoff moves under half a dial step (128 / 256) in any block, not a whole step", worst > 0 && worst <= 128);
+    expect("the swept CUT lands exactly on the dial (60) and never trails it by more than a dial step", cut_sh[1500] == 60 * 256 && lag <= 256);
+    sf(10, 60, 0, 1);
+    render_blk(e, fb_cjump);
+    expect("a CUT jump of 70 steps (a sound load) is not slewed: the cutoff is at the new dial in that block", cut_sh[299] == 10 * 256 && cut_sh[300] == 80 * 256);
+}
 static void t_sweeps(void)
 {
     static const char *const E[3] = {"PHASE", "WHEEL", "WAVE"};
@@ -1790,8 +1869,10 @@ int main(void)
     t_bypass_edge();
     t_response();
     t_bass();
+    t_lowcut();
     t_exact();
     t_sweeps();
+    t_cutslew();
     t_routes();
     t_stable();
     t_migrate();

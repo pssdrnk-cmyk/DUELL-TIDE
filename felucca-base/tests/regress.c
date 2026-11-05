@@ -1133,6 +1133,8 @@ int main(int argc, char **argv)
                    "# hunt4 (release_drafts/HUNT4.md), on purpose, 17 of the 210 (every PHASE preset and sound): PHASE's bend is built once a block, so a moving DCW (the envelope's sweep) stepped at the\n"
                    "# block seams; eng_phase.c phase_render_0 carries the step as an offset that dies away in 8 samples (a buzz at 1,378 Hz and its harmonics, -62 .. -77 dBFS above 3 kHz, #31 BRAZEN's\n"
                    "# whistle). A glitch removal: the peak of every one of the 17 moves by at most 0.1 dB.\n"
+                   "# filter precision (audit P03), on purpose, 123 of the 210 (the sounds that run the multimode filter at a cutoff the old coefficients truncated, or filter 2): the trapezoidal SVF\n"
+                   "# keeps its coefficients with up to 7 more bits at low cutoffs and rounds its state update (dsp.c tsvf_coef_k, SVF_G in Q14), so a low cutoff, its resonance and its stopband are exact.\n"
                    "# DUELL 1.1 / jam11, on purpose, all 210 (docs/JAM11_TEST_BASELINE.md; 1.0's hashes pass on Linux unchanged). The audio of every render was dumped from 1.0 and from jam11 and\n"
                    "# compared (jam/soundref/regress_dmp.sh, acmp). (1) NOTE-START STAGGER (item 144, VS_MAX 2): a chord's voices start 1..3 blocks apart; built with -DVS_MAX=8 the presets of ANALOG FM6\n"
                    "# LOFI NOISE TRIO WAVE WHEEL, the sends and the 4-track mix fall to -40 .. -52 dB residual, which is (2) BIT DEPTH (the level stages keep the two low bits), REVERB_FIX (comb damping and\n"

@@ -790,7 +790,7 @@ static inline int32_t ins_mixq(int32_t m) { return m >= 127 ? 32768 : m <= 0 ? 0
 /* the one-pole low-pass (topology-preserving) coefficient of cutoff index c, Q16: G = g / (1 + g), g = tan(pi fc / FS) */
 static int32_t ins_lpk(int32_t c)
 {
-    uint32_t g = SVF_G[clamp(c, 0, 127)];
+    uint32_t g = SVF_G[clamp(c, 0, 127)] >> 2;   /* (Q12) */
     return (int32_t)((g << 16) / (4096u + g));
 }
 /* the drives' and CRUSH's shape of v (a voice's full scale 32768; v already through DRIVE): the curve the INSERT

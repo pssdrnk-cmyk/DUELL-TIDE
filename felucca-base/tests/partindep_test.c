@@ -62,13 +62,17 @@ static int expect(const char *what, int ok)
 /* 0.2.32, on purpose: scenes 3, 5, 6 re-made (the direct depth cards reach 100 % at +63: DEP_AMT in voice.c / chain_f2.c; with DEP_AMT(a) = (a) the old pins hold). */
 /* 1.0 (job F1), on purpose: scenes 0, 2, 3, 5, 6, 7, 8, 9, 11 re-made (TWIN OFFSET in whole semitones, the matrix amount +63 acts as 64). */
 /* DUELL 1.1 (lx-parts), on purpose: all 12 scenes re-made. 1.1's DSP changes since 1.0 are in the old path (tests/mixsplit_ref.h: BIT_DEPTH's LV4 level stages, item 135's tail, item 160's BALANCE gone, the SPACE matrix offset) and in the helpers it calls (SAT's drive, DUCK, REVERB, ...). The paths still equal each other bit for bit in every scene. */
+/* audit P08 (CUT dial slewed, voice.c cut_slew), on purpose: scenes 3, 4, 5 re-made again (their MORPH fader moves the CUT dial); they were 0x62c27d30fa7faaf4, 0xc02e7f3ce083226e, 0xea6f4025b291c912. */
+/* audit P03 (filter precision), on purpose: scenes 3, 4, 5 re-made (the SVF keeps its precision at low cutoffs, dsp.c tsvf_coef_k); they were 0xd3a928aa44ee293e, 0xb4ae75f1f096399b, 0x65fc43887280e3c0. */
+/* audit P03 + P08 (filter precision, CUT dial slewed), on purpose: scenes 3, 4, 5 re-made on top of the RES law (their filters; the MORPH fader moves the CUT dial); they were 0xfe41050db7b9c15a, 0xad558b64ed584b09, 0xfedca3ba20a904ca. */
 /* audit P01 (2026-11-04), on purpose: scenes 9, 10, 11 re-made (part 2 glides, GLIDE 30 in UNISON / LEGATO: voice.c glide_set now takes the time GLD shows);
  * they were 0x10031248d54636c9, 0x00ba6a225b5a3f8f, 0xc6c4863685dfc21c. */
 /* audit P07 (2026-11-05), on purpose: scenes 3, 4, 5 re-made (MORPH on both parts: the rolled End B moves filter 1's RES, whose damping is exponential now, voice.c UF_K);
  * they were 0xd3a928aa44ee293e, 0xb4ae75f1f096399b, 0x65fc43887280e3c0; and again for MORPH's RES ceilings in the new law's steps (morph.c MORPH_UF_RES 28, MORPH_UF_RESBP 17,
  * morph_music.c MM_BAND), were 0x6053b27ccd4ca6eb, 0x1527808e8a7232d1, 0xacaf5351d569d877. */
+/* audit P03 + P08 (filter precision, CUT dial slewed), on purpose: scenes 3, 4, 5 re-made on top of the RES law and the master soft knee (their filters; the MORPH fader moves the CUT dial); they were 0x75d39aecdc6ba3c0, 0xdc93ed691e3cdb94, 0xa731ee2b791c3072. */
 static const uint64_t OLD_HASH[NSCENE] = {
-    0x77b3e3109b6cd2abull, 0x95ceb119a5176d35ull, 0x8e764828bff9f2eaull, 0x75d39aecdc6ba3c0ull, 0xdc93ed691e3cdb94ull, 0xa731ee2b791c3072ull, 0xc9ea3ddf035374bfull, 0xc750c718aaa20585ull, 0xe9e7b63c14f6f40full,
+    0x77b3e3109b6cd2abull, 0x95ceb119a5176d35ull, 0x8e764828bff9f2eaull, 0xb784777d3882b350ull, 0x7cc5d367eddbca3cull, 0x7635bd16a2348e4cull, 0xc9ea3ddf035374bfull, 0xc750c718aaa20585ull, 0xe9e7b63c14f6f40full,
     0x589bbe2fc0aebbc0ull, 0x20e21af2ea2ff6f6ull, 0x1842ac8200c94147ull};   /* (audit R05 / R08, on purpose: the master soft knee and the loops' dead bands closed; were 0xf0d0572743238854, 0x1c363ab4f36aa258, 0x1152deb454944111, 0xfe41050db7b9c15a, 0xad558b64ed584b09, 0xfedca3ba20a904ca, 0xebc9d9e8cfc07603, 0x1c310e660d84eb87, 0x4373d86bea4d679f, 0x2c5bc2c71a3c612d, 0xd4b7de585e4eccb4, 0x675cf3b5383f9d0b) */   /* 0.2.31: re-based on purpose (SUB HARMONICS is disabled: the scenes' HARM values play as 0), were 0x57241fc736950a76, 0xae179d4cb7f62068, 0x653c0c9666564fdf. Scenes 9, 10, 11 (cloud job F: SUB, CYCLE, STEPS) have no commit before: pinned at the commit that made them, from the old combined path (the feature is in track_render, which it shares) */
 
 /* ---- the schedules */
