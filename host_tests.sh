@@ -481,8 +481,9 @@ for t in $want; do case $t in
   tidestore) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/tide_store_test tests/tide_store_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run tidestore $OUT/tide_store_test ;;
   editor)  $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/editor_test tests/editor_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run editor $OUT/editor_test ;;
   editorjson) NODE=node; for n in "$HOME"/emsdk/node/*/bin/node; do [ -x "$n" ] && NODE=$n; done
-           $CCR -o $OUT/editordump tests/editordump.c -lm && $CCR -o $OUT/descdump tests/descdump.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } &&
+           $CCR -o $OUT/editordump tests/editordump.c -lm && $CCR -o $OUT/descdump tests/descdump.c -lm && $CCR -o $OUT/rangedump tests/rangedump.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } &&
            run editorjson sh -c "$OUT/editordump > $OUT/layout.json && { cmp -s $OUT/layout.json web/editor/layout.json || { echo 'web/editor/layout.json is stale: cp build/host/layout.json web/editor/layout.json'; exit 1; }; } &&
+             $OUT/rangedump > $OUT/patch_ranges.txt && { cmp -s $OUT/patch_ranges.txt web/fixtures/patch_ranges.txt || { echo 'web/fixtures/patch_ranges.txt is stale: cp build/host/patch_ranges.txt web/fixtures/patch_ranges.txt'; exit 1; }; } &&
              $OUT/descdump > $OUT/desc.json && FELUCCA_DESC=$OUT/desc.json $NODE web/test_layout.mjs && $NODE web/test_editor.mjs && $NODE web/test_editor_0225.mjs && $NODE web/test_duellbackup.mjs && $NODE web/test_backup.mjs && $NODE web/test_installer_state.mjs && $NODE web/test_ranges.mjs && $NODE web/test_ota.mjs && python3 web/test_site_build.py && $NODE web/test_librarian.mjs && $NODE web/test_roll.mjs" ;;
   rollbrowser) NODE=node; for n in "$HOME"/emsdk/node/*/bin/node; do [ -x "$n" ] && NODE=$n; done
            run rollbrowser "$NODE" web/test_rollbrowser.mjs ;;   # (skips itself when no Chrome is installed)

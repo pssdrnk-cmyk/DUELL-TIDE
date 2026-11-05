@@ -108,6 +108,7 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 - **New:** the cheat sheet is finished: it says DUELL with TIDE (TIDE by pssdrnk, not by OSCILL/R), carries a TIDE half (HOME's round, AUTO TIDE, TIDE SETTINGS), loads no fonts from other servers (Barlow Semi Condensed is served from the site) and is linked from the landing page.
 - **Under the hood:** the editor and the Backup page are titled DUELL with TIDE (the header picture keeps OSCILL/R's wordmark until the author agrees); the Backup page says the TIDE pages are not editable and their settings are in the backup.
 - **Under the hood:** the two task briefs for coding agents in `docs/history/` (the maintenance action plan and the UI compaction hand-off) are removed from the repository; the work they describe is merged and flashed.
+- **Fixed:** the editor's patch range table fixture (`web/fixtures/patch_ranges.txt`) knew only the 10 chord shapes; it is regenerated, and `editorjson` now fails when it is stale, as it does for `layout.json`.
 
 ## DUELL 1.1
 
