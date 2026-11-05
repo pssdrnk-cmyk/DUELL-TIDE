@@ -333,7 +333,6 @@ static const step_t *seq_play_step(const track_t *t, uint32_t idx, step_t *buf)
 /* ------------------------------------------------------------------ the controls (main loop) --- */
 static uint32_t seqm_fader_of(uint32_t pi) { return pi < NSHOWN ? sqm[pi].fader : 0u; }
 static uint32_t seqm_notes_of(uint32_t pi) { return pi < NSHOWN ? sqm[pi].notes : 0u; }
-static uint32_t seqm_hist_of(uint32_t pi) { return pi < NSHOWN && sqm[pi].n > 1u ? sqm[pi].n - 1u : 0u; }
 static int seqm_active(uint32_t pi) { return pi < NSHOWN && (sqm[pi].fader || sqm[pi].aon || (rhythm.active & (1u << pi))); }
 
 static void seqm_set_fader(uint32_t pi, uint32_t v)
@@ -378,19 +377,6 @@ static uint32_t seqm_roll(uint32_t pi)
     sqm_refresh(pi, 1);
     return seed;
 }
-/* back to the roll before; 0 = none left */
-static int seqm_undo(uint32_t pi)
-{
-    sqm_part_t *q;
-    if (pi >= NSHOWN || sqm[pi].n < 2u)
-        return 0;
-    q = &sqm[pi];
-    q->top = (uint8_t)((q->top + SQM_HIST - 1u) % SQM_HIST);
-    q->n--;
-    sqm_refresh(pi, 1);
-    return 1;
-}
-
 /* WANDER (glide_arrive): end x becomes the next generation, its dials a step on from the other end's (the end reached; the
  * Original's are 0), each its own way, turning now and then and at SEQ AMT's edges; the step grows with the phrase tier (0 ..
  * 4: 16 .. 128 bars), and from 64 bars (sometimes at 32) other steps are taken (a new seed). JOURNEY's pattern side too: each part

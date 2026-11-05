@@ -8,7 +8,7 @@
  *   OCTAVE  -2 -1 0 (stored 0..2): one phase accumulator at m->inc >> 2 (the pitch the engine gets once a block: glide, bend, vibrato, master tune, every PITCH route); the octave's phase is the
  *           accumulator << 0 / 1 / 2, so every octave is locked to the others (a switch of OCTAVE keeps the phase)
  *   WAVE    SINE sine_i, TRI osc_tri (a quarter cycle on: its zero crossing where the sine's is), SQUARE osc_pulse (polyBLEP at the sub's own increment), PULSE the same at width 1/4 (x 4/3: its high level is a full-scale pulse)
- *   HARM    0..127: the same wave an octave above the sub mixed in (0 to 64: up to half the sub's level), then two octaves above (64 to 127: up to half); an octave above Nyquist is left out. 0 = not run
+ *   HARM    (X_SUBHARM: the id is kept for the stored format; nothing reads or shows it since 2026-10-21, and the octave-copy code is gone)
  *   LEVEL   0..127, 0 = not run. A curve (SUB_CURVE: the owner sets it by ear) to a gain in the engine's own units, 127 = a full-scale engine oscillator (VOICE_FS); the gain glides per sample
  *           from the block before's (no zipper); a sub that is silent and stays silent is not run
  *   UNISON  only voice 0 plays it, undetuned (its step is made from the pitch without the voice's detune v->fine), at the velocity of the key, not of the unison share: one centred sub a key
@@ -52,14 +52,10 @@ static uint32_t sub_step(const track_t *t, const voice_t *v, const vmod_t *m)
     return inc >> 2;
 }
 /* the wave cfg (WAVE | OCTAVE << 2) at the accumulator ph (step st) added into tmp with the gain gliding from g0 to g1 (VOICE_FS units; Q8 steps, the sample's share is (s * gain / 2) >> 14: s
- * reaches 2 x 32768 with both harmonics, gain / 2 at most 32767: 2^31 not passed). h1 / h2 (Q15) the octaves above */
+ * is at most 32768, gain / 2 at most 32767: 2^31 not passed) */
 #define SUB_LOOP(WAVE)                                                                      \
     for (i = 0; i < n; i++) {                                                               \
         int32_t s = WAVE(ph, inc);                                                          \
-        if (h1)                                                                             \
-            s += mulq15(WAVE(ph << 1, inc << 1), h1);                                       \
-        if (h2)                                                                             \
-            s += mulq15(WAVE(ph << 2, inc << 2), h2);                                       \
         gq += dg;                                                                           \
         tmp[i] += (s * (gq >> 9)) >> 14;                                                    \
         ph += inc;                                                                          \
@@ -67,15 +63,11 @@ static uint32_t sub_step(const track_t *t, const voice_t *v, const vmod_t *m)
 #define SUB_SIN(p, inc) sine_i(p)
 #define SUB_TRI(p, inc) osc_tri((p) + 0x40000000u)     /* (a quarter cycle on: it starts at its zero crossing, as the sine does) */
 #define SUB_PLS(p, inc) ((osc_pulse(p, inc, pw) * pk) >> 14)
-static __attribute__((noinline)) void sub_pass(int32_t *tmp, uint32_t cfg, uint32_t ph, uint32_t st, int32_t g0, int32_t g1, int32_t h1, int32_t h2, uint32_t n)
+static __attribute__((noinline)) void sub_pass(int32_t *tmp, uint32_t cfg, uint32_t ph, uint32_t st, int32_t g0, int32_t g1, uint32_t n)
 {
     uint32_t o = cfg >> 2 & 3u, w = cfg & 3u, inc = st << o, i, pw = w == 3u ? 0x40000000u : 0x80000000u;
     int32_t gq = g0 * 256, dg = n ? ((g1 - g0) * 256) / (int32_t)n : 0, pk = w == 3u ? 21845 : 32768;
     ph <<= o;
-    if (inc >= 0x40000000u)                             /* no octave above the Nyquist rate (the 2x step would wrap) */
-        h1 = 0;
-    if (inc >= 0x20000000u)
-        h2 = 0;
     if (!w)
         SUB_LOOP(SUB_SIN)
     else if (w == 1u)
@@ -87,7 +79,7 @@ static __attribute__((noinline)) void sub_pass(int32_t *tmp, uint32_t cfg, uint3
 __attribute__((noinline)) void chain_sub(track_t *t, voice_t *v, int32_t *tmp, uint32_t n, const vmod_t *m)
 {
     uint32_t ti = (uint32_t)(t - trk), vi = (uint32_t)(v - t->v), cur, last, old, c, st;
-    int32_t g0, g1, h1, h2;
+    int32_t g0, g1;
     if (ti >= NLIVE || vi >= NVOICE)
         return;
     cur = ((uint32_t)XV(t, X_SUBWAVE) & 3u) | ((uint32_t)XV(t, X_SUBOCT) % 3u) << 2;
@@ -113,13 +105,12 @@ __attribute__((noinline)) void chain_sub(track_t *t, voice_t *v, int32_t *tmp, u
         return;
     }
     st = sub_step(t, v, m);
-    h1 = h2 = 0;                                        /* SUB HARMONICS is disabled (owner, 2026-10-21): the stored X_SUBHARM (id reserved) is never read, so no octave copies and no glitch */
     if (c) {                                            /* the old one's share falls c / SUB_XFB -> (c - 1) / SUB_XFB, the new one's rises to match */
-        sub_pass(tmp, old, sub_ph[ti][vi], st, g0 * (int32_t)c / (int32_t)SUB_XFB, g1 * ((int32_t)c - 1) / (int32_t)SUB_XFB, h1, h2, n);
-        sub_pass(tmp, last, sub_ph[ti][vi], st, g0 * ((int32_t)SUB_XFB - (int32_t)c) / (int32_t)SUB_XFB, g1 * ((int32_t)SUB_XFB + 1 - (int32_t)c) / (int32_t)SUB_XFB, h1, h2, n);
+        sub_pass(tmp, old, sub_ph[ti][vi], st, g0 * (int32_t)c / (int32_t)SUB_XFB, g1 * ((int32_t)c - 1) / (int32_t)SUB_XFB, n);
+        sub_pass(tmp, last, sub_ph[ti][vi], st, g0 * ((int32_t)SUB_XFB - (int32_t)c) / (int32_t)SUB_XFB, g1 * ((int32_t)SUB_XFB + 1 - (int32_t)c) / (int32_t)SUB_XFB, n);
         c--;
     } else {
-        sub_pass(tmp, last, sub_ph[ti][vi], st, g0, g1, h1, h2, n);
+        sub_pass(tmp, last, sub_ph[ti][vi], st, g0, g1, n);
     }
     sub_ph[ti][vi] += st * n;
     sub_g[ti][vi] = (uint16_t)g1;

@@ -81,11 +81,6 @@ _Static_assert(P_COUNT <= UP_MB_AT, "user preset record: P_COUNT leaves the morp
 #define UP_SH_AT (UP_MB_AT - 2u)
 _Static_assert(P_COUNT <= UP_SH_AT, "user preset record: P_COUNT leaves the shadow marker its room");
 #include "category.c"
-static uint32_t up_cat_of(const up_rec_t *r)
-{
-    uint32_t c = r->np <= UP_CAT_AT ? r->packed[UP_CAT_AT] : 0u;
-    return c && c < CAT_N ? c : cat_of_engine(r->engine);
-}
 static void up_set_cat(up_rec_t *r, uint32_t c)  /* c CAT_BASS..CAT_OTHER */
 {
     if (c && c < CAT_N)

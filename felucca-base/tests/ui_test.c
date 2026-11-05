@@ -40,7 +40,7 @@
 #define DUELL_VCAP 1                                     /* (the tests built on this file keep the 0.2.11 VOICE CAP in frame(), as they always did: their goldens were made with it; the unit has the NOTES budget instead, core.h) */
 #endif
 #ifndef FELUCCA_CDC
-#define FELUCCA_CDC 1                                    /* (as src/felucca.c: the console built in, MENU > USB SERIAL) */
+#define FELUCCA_CDC 1                                    /* (unlike src/felucca.c, whose default is 0: the console built in, MENU > USB SERIAL) */
 #endif
 #include <stddef.h>
 #include <stdint.h>

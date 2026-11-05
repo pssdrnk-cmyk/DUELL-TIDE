@@ -389,8 +389,6 @@ static uint32_t dly_mode_ui(void)
     uint32_t m = (uint32_t)song.g[G_DMODE];
     return m >= DMD_N ? (uint32_t)DMD_DIGITAL : m;
 }
-/* 1: the delay has its MODE card in the output mode now (0.2.22: every mode, DUEL too; the FX summary asks it, ui_draw.c) */
-static uint32_t dly_modes_here(void) { return 1; }
 /* 1 while the delay RUNS in an event mode (RANDOM, OCT UP) as the UI knows it */
 static uint32_t dly_ev_ui(void) { uint32_t m = dly_mode_ui(); return m == DMD_RAND || m == DMD_OCTUP; }
 /* in RANDOM and OCT UP the MDEPTH card (G_DMDEP, the delay's modulation depth) is CHANCE: the share of the clock edges that fire an event (stored in the same
