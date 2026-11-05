@@ -78,7 +78,7 @@ static void setup(uint32_t scene)
         t->p[P_SLEN] = 16, t->p[P_SDIV] = 2, t->p[P_ARATE] = 2, t->p[P_AMODE] = AM_OFF, t->p[P_APROB] = 127;
         t->p[P_AOCT] = 1, t->p[P_AGATE] = 64, t->p[P_SQNT] = 1, t->p[P_MUTE] = 0, t->p[P_LEVEL] = 100;
         t->nheld = 0, t->seq_active = 1;
-        sqm[p].notes = SQM_AMT_DEF;
+        sqm[p].amt_x = 0;
     }
     if (scene == 0) {
         for (i = 2; i < 16u; i += 4u)

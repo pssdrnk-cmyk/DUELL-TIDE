@@ -81,7 +81,7 @@ static void rhythm_validate(uint32_t pi, uint32_t len)
 {
     const track_t *t = &trk[pi];
     uint32_t h = fnv((len ^ ((uint32_t)t->p[P_SDIV] << 8)) * 16777619u, t->step, len * (uint32_t)sizeof(step_t));
-    if (rhythm.source[pi] != h || !sqm[pi].notes) {
+    if (rhythm.source[pi] != h || !SQM_AMT(&sqm[pi])) {
         rhythm_reset(pi);
         rhythm.source[pi] = h;
     }
@@ -201,7 +201,7 @@ static void rhythm_poll(uint32_t mask)
     for (uint32_t pi = 0; pi < NSHOWN; pi++) {
         uint8_t now = tide_seq_loops[pi], d = (uint8_t)(now - rhythm.seen[pi]);
         rhythm.seen[pi] = now;
-        if (!((mask >> pi) & 1u) || !sqm[pi].notes) { rhythm.repeats[pi] = 0; continue; }
+        if (!((mask >> pi) & 1u) || !SQM_AMT(&sqm[pi])) { rhythm.repeats[pi] = 0; continue; }
         if (d) boundary |= 1u << pi;
         uint32_t n = rhythm.repeats[pi] + d;
         rhythm.repeats[pi] = (uint8_t)(n > 2u ? 2u : n);

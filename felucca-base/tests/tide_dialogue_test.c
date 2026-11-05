@@ -176,7 +176,7 @@ static void dialogue_choices(void)
             for(unsigned i=0;i<16;i++) if(!(i%4) || i%4==(p==pi?2u:3u)) {
                 t->step[i].time=ST_NOTE; t->step[i].n=1; t->step[i].note[0]=60;
             }
-            sqm[p].notes=50; sqm_refresh(p,1);
+            sqm_refresh(p,1);
             rhythm_reset(p);
         }
         rhythm.dir[pi]=1;
