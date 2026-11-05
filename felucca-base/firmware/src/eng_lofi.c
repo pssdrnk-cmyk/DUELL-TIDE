@@ -206,7 +206,7 @@ static inline __attribute__((always_inline)) void lofi_body(track_t *t, voice_t 
                                                         /* (64 bit: a narrow pulse minus its mean against a saw is up to ~90000 apart, x the weight
                                                          * overflowed 32 bits from a weight of ~0.73: the cliff the owner heard near 80 %) */
             if (q)                                      /* rounded, not floored (floor = DC) */
-                s = ((s + (1 << (15 - bits))) >> (16 - bits)) << (16 - bits);
+                s = (int32_t)((uint32_t)((s + (1 << (15 - bits))) >> (16 - bits)) << (16 - bits));
             if (crush > 64)
                 s = (s >> 12) << 12;
             held = s;

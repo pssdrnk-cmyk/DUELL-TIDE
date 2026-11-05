@@ -314,7 +314,7 @@ static void trio_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     for (i = 0; i < n; i++) {
         int32_t x = cur + cr[i];                        /* one sample late: its corrections are complete */
         cur = mix[i];
-        out[i] += voice_amp(x, m, i) << 1;
+        out[i] += voice_amp(x, m, i) * 2;
     }
     prev = cur + cr[n];
     v->ph[0] = ph0;

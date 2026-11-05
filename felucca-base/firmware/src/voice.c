@@ -1131,7 +1131,7 @@ static __attribute__((noinline)) void uf_run(voice_t *v, int32_t *buf, uint32_t 
     rf = 1 << (f.sh - 1);
     if (run2)
         uf_coef(&g, idx, k2), rg = 1 << (g.sh - 1);
-    ax = v->ufw[0] << 5; ab = v->ufw[1] << 5; al = v->ufw[2] << 5;   /* (CTL 32: the weights ramp, Q15, exactly onto this block's) */
+    ax = v->ufw[0] * 32; ab = v->ufw[1] * 32; al = v->ufw[2] * 32;   /* (CTL 32: the weights ramp, Q15, exactly onto this block's) */
     dx = cx - v->ufw[0]; db = cb - v->ufw[1]; dl = cl - v->ufw[2];
     lp = !(dx | db | dl | cx | cb) && cl == 1024;      /* a steady low-pass: its output is the low-pass itself (0.2.2's loop's cost) */
     for (i = 0; i < n; i++) {

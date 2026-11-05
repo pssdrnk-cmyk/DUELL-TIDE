@@ -781,7 +781,7 @@ static volatile uint8_t mods_off;
 #define BYS_MST  8u
 #define BYS_CMP  16u
 #define BYS_ALL  31u
-static volatile uint16_t byp_m[2];
+static volatile uint16_t byp_m[NLIVE];
 static volatile uint8_t byp_sh;
 #define BYP(t, bit) ((MODW(t).byp & (bit)) != 0u)   /* (the block's copy, set by mod.c mod_begin before the part's voices render) */
 #define E2Q(t, v) (BYP(t, BY_ENV2) ? 0 : (v)->env2 >> 9)   /* FILTER ENV's output, Q15 (0 while bypassed: it keeps running) */
