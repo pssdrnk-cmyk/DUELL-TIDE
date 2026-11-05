@@ -2000,7 +2000,7 @@ static void draw_foot(void)
     }
     if (pfl[0])
         sig = str_hash(str_hash(sig + 0x9E2Fu, pfl), pfr);
-    sig += (uint32_t)batt_shown() * 7777u;   /* (the battery and the CPU bar are in the footer) */
+    sig += (uint32_t)batt_shown() * 7777u;   /* (the battery and the tempo are in the footer) */
 #if DUELL_TIDE
     sig = str_hash(str_hash(sig + (uint32_t)TIDE_FOOT_PART(song.sel) * 0x2F1Bu, en1), pn1);   /* TIDE hook (row 1: part 1) */
 #endif

@@ -70,7 +70,7 @@ static const page_t LY_SEQ = {"PATTERN", FAM_SEQ, SC_TRACK, GR_STEPS, {P_SLEN, P
 /* DUELL 0.2.9, the QUICK EDIT layers' knobs, the selected part's (EDIT, LFO, ENV, ARP: LY_Q[q], q = ly_q(l)): the same parameters, cards
  * (names, values, greying), motion and MIDI LEARN as on their pages. QUICK FILTER's K1..K3 are the MULTIMODE filter's CUT RES MODE (ids 45..47)
  * on every engine, K4 the AMP ENV's REL (0.2.14, owner: up to 0.2.13 ANALOG TRIO NOISE showed their own filter here, and ANALOG's TYPE
- * switched that one, not the multimode filter he meant; their own filters stay on their EDIT pages VCF, TRIO FILTER, NOISE FILT; all ten
+ * switched that one, not the multimode filter he meant; those pages are gone since; all ten
  * shown engines have the multimode filter, ufilt 1 or 2; SLOPE stays on the FILTER page). QUICK LFO: a synced LFO's RATE does nothing (its
  * card is faded on the LFO page), so its knob is the active one, SYNC (to OFF: RATE again) */
 static const page_t LY_Q[4] = {
