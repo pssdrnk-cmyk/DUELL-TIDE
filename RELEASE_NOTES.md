@@ -1,6 +1,6 @@
 # DUELL 1.1
 
-> These are OSCILL/R's release notes for DUELL 1.1, the base of this fork, kept as written; their links point to OSCILL/R's project. What this fork changed is in [CHANGELOG.md](CHANGELOG.md) and the [README](README.md).
+> These are OSCILL/R's release notes for DUELL 1.1, the base of this fork, kept as written; their links point to OSCILL/R's project. What this fork changed is in [CHANGELOG-TIDE.md](CHANGELOG-TIDE.md) and the [README](README.md).
 
 **DUELL**
 **MultiMorphing Bitimbral Synthesizer**

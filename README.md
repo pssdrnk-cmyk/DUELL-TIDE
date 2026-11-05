@@ -98,7 +98,7 @@ Building a device image is described in [felucca-base/BUILDING.md](felucca-base/
 | Fix a problem | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) |
 | Recover from a failed flash | [docs/RECOVERY.md](docs/RECOVERY.md) |
 | Know the limits | [docs/KNOWN_LIMITS.md](docs/KNOWN_LIMITS.md), [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) |
-| See what changed | [CHANGELOG.md](CHANGELOG.md), [RELEASE_NOTES.md](RELEASE_NOTES.md) (DUELL 1.1's own notes, by OSCILL/R) |
+| See what changed | [CHANGELOG-TIDE.md](CHANGELOG-TIDE.md), [RELEASE_NOTES.md](RELEASE_NOTES.md) (DUELL 1.1's own notes, by OSCILL/R) |
 | Read the full design | [SPEC.md](SPEC.md) |
 | Find any other document | [docs/DOCS_INDEX.md](docs/DOCS_INDEX.md) (every document, its audience and whether it is current) |
 | Help build it | [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md) |
@@ -108,4 +108,4 @@ Building a device image is described in [felucca-base/BUILDING.md](felucca-base/
 
 DUELL is a fork of **Felucca** by Leo Kuroshita (@kurogedelic), Hügelton Instruments, and is licensed under the **GPL-3.0-only** ([LICENSE](LICENSE)). The whole list of thanks and of third-party parts is in [CREDITS.md](CREDITS.md), [NOTICE.md](NOTICE.md) and [felucca-base/LICENSING.md](felucca-base/LICENSING.md); the upstream commit is in [UPSTREAM_COMMIT.txt](UPSTREAM_COMMIT.txt). The DUELL logo and artwork are the work of OSCILL/R and are not part of the GPL licence; the code and the splash graphic as shipped in the firmware are GPL-3.0-only. DUELL is an independent project and is not affiliated with M-VAVE.
 
-DUELL with TIDE (the TIDE pages, the glide and SEQ MORPH, and the fixes listed in the [CHANGELOG](CHANGELOG.md)) is a fork of DUELL 1.1 under the same GPL-3.0-only licence. It is not affiliated with OSCILL/R or M-VAVE.
+DUELL with TIDE (the TIDE pages, the glide and SEQ MORPH, and the fixes listed in the [CHANGELOG](CHANGELOG-TIDE.md)) is a fork of DUELL 1.1 under the same GPL-3.0-only licence. It is not affiliated with OSCILL/R or M-VAVE.

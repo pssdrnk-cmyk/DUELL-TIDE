@@ -23,7 +23,8 @@ Audiences: **player** (uses the unit), **installer** (flashes it), **contributor
 
 | Document | Audience | Status | Purpose |
 |---|---|---|---|
-| [CHANGELOG.md](../CHANGELOG.md) | all | current | What changed, and the builds flashed to the fork owner's unit. |
+| [CHANGELOG-TIDE.md](../CHANGELOG-TIDE.md) | all | current | What the fork changed, and the builds flashed to the fork owner's unit. |
+| [CHANGELOG.md](../CHANGELOG.md) | all | current | DUELL's own history (OSCILL/R); points to CHANGELOG-TIDE.md for the fork. |
 | [RELEASE_NOTES.md](../RELEASE_NOTES.md) | player | reference | OSCILL/R's release notes for DUELL 1.1, the base of this fork. |
 | [docs/ROADMAP.md](ROADMAP.md) | maintainer, contributor | current | Delivery status, memory budget, engineering and musical plan. |
 | [CONTRIBUTING.md](../CONTRIBUTING.md) | contributor | current | Where things go, how to build and test, the check_off rule, commit style. |
@@ -95,7 +96,7 @@ Superseded documents, each with a one-line header saying by what.
 | Document | Status | Superseded by |
 |---|---|---|
 | [TIDE_ROADMAP_2026-11-02.md](history/TIDE_ROADMAP_2026-11-02.md) | historical | [ROADMAP.md](ROADMAP.md) |
-| [FEATURE_LIST.md](history/FEATURE_LIST.md) | historical | [ROADMAP.md](ROADMAP.md), [CHANGELOG.md](../CHANGELOG.md) |
+| [FEATURE_LIST.md](history/FEATURE_LIST.md) | historical | [ROADMAP.md](ROADMAP.md), [CHANGELOG-TIDE.md](../CHANGELOG-TIDE.md) |
 | [BETA_CALL.md](history/BETA_CALL.md) | historical | [INSTALL.md](INSTALL.md) |
 | [TWOCORE_DIAG.md](history/TWOCORE_DIAG.md), [TWOCORE_JOB5_REACH.txt](history/TWOCORE_JOB5_REACH.txt), [RAMPLACE_NOTES.md](history/RAMPLACE_NOTES.md) | historical | [TWOCORE_STAGE1.md](TWOCORE_STAGE1.md) |
 | [SUBCYC_BUILD_NOTES.md](history/SUBCYC_BUILD_NOTES.md) | historical | [SPEC.md](../SPEC.md) |

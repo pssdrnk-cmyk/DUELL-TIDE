@@ -16,7 +16,7 @@ Updated 5 November 2026. This is the current delivery and status document. The [
 | **Development branch** | `jam11` (integration happens on a local `integ` branch and is pushed when it passes). Feature work runs in its own branches. Planned: rename `jam11` to `tide` (see [Planned work after the 4 November decisions](#planned-work-after-the-4-november-2026-decisions)). |
 | **Parked as its own rollout** | U4, 24 multi slots: a tested implementation waits on branch `wip-24-multis` (see the engineering table). It follows the release candidate. |
 
-Every flashed build is listed in the [CHANGELOG](../CHANGELOG.md); the README's [Builds](../README.md#builds-stable-and-beta) table says which is stable and which is beta.
+Every flashed build is listed in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md); the README's [Builds](../README.md#builds-stable-and-beta) table says which is stable and which is beta.
 
 ## What the instrument already supports
 
