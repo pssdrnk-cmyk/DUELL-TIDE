@@ -66,6 +66,14 @@ K1 picks the row. **OCT+** the next value, **OCT-** the one before. Saved over a
 
 **Loading.** A multi, project or pattern load starts as written: both loaded parts go back to End A with no variation and no pitch edits from before, ARC starts again at RISE, and a running trip begins again from A (MODE and the auto state stay).
 
+**Changing settings while a tide plays.** There is no need to stop it; each change lands at its own moment:
+
+| When | Settings |
+|---|---|
+| At once (next step or bar) | VARY BARS, WASH LEVEL, TURNS, POLY, SYNC. ARC switched on starts a RISE; switched off it ends the arc. |
+| At the next turn (when the trip arrives) | MODE, WAIT, TIME (also when a STYLE sets it; the page shows the new TIME at once, the bar count goes on with the trip that runs), and ROLL, ARP and PITCH (they shape the next end that is rolled or picked). |
+| At the next start (knob 1) | TARGET: what the tide moves is fixed when a glide starts. |
+
 Defaults with no saved settings (a new unit, or after ERASE DATA): STYLE DUB, that is MODE JRNY, TIME 16, WAIT 2, VARY 4 + 8, TURNS LEAD, POLY GENTLE, SYNC SOFT, ARC RISE, WASH OFF; and TARGET BOTH, ROLL MUSIC, ARP OFF, PITCH OFF. An older saved record loads as STYLE CUSTOM with its values kept and the rows it lacks at TURNS TAKE TURNS, POLY GENTLE, SYNC SOFT, ARC OFF.
 
 **STYLE sets** (MODE, TIME, WAIT, VARY BARS, TURNS, POLY, SYNC, ARC, WASH LEVEL):
