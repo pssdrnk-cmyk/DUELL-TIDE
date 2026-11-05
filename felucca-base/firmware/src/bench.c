@@ -768,11 +768,17 @@ static BENCH_FN void bench_notes_off(void)
 /* A console session runs the UI's frame (ui_input.c: mods_apply, cmp_sync, ms_sync, the sense settings are read every frame), so the audio side's words (mods_off, cmp_cfg, wd_sel,
  * bm_sel, sense_enable) cannot be written here: the settings they come from are. The session's own values are kept at its start and put back by `bench reset` and at its end. The
  * BYPASS switches (byp_m, byp_sh) are plain RAM flags (editor_bypass.c): they start every test at 0. */
-static struct { uint8_t mods, ks; int16_t cp1, ms0, bm; } bench_xk BENCH_BSS;
+static struct { uint8_t mods, ks, wash; int16_t cp1, ms0, bm; } bench_xk BENCH_BSS;
+#if DUELL_TIDE
+static struct { uint8_t pending, time; uint32_t after_h; } bench_tg BENCH_BSS;   /* `tide glide on TIME AFTER_MS`: GLIDE starts that long after the run's start (the held notes have been heard a while: the wash has learnt its level) */
+#endif
 static BENCH_FN void bench_extras_keep(void)
 {
     bench_xk.mods = (uint8_t)mods_get();
     bench_xk.cp1 = song.cp[1], bench_xk.ms0 = song.ms[0], bench_xk.bm = song.bm;
+#if DUELL_TIDE
+    bench_xk.wash = morph_wlvl;
+#endif
 #if DUELL_VELO
     bench_xk.ks = (uint8_t)(ui_idle & (KEYVEL_ON_BIT | AFTERT_OFF_BIT));
 #endif
@@ -785,6 +791,13 @@ static BENCH_FN void bench_extras_back(void)
     song.cp[1] = bench_xk.cp1, song.ms[0] = bench_xk.ms0, song.bm = bench_xk.bm;
     byp_m[0] = byp_m[1] = 0;
     byp_sh = 0;
+#if DUELL_TIDE
+    morph_wlvl = bench_xk.wash;                        /* (TIDE: WASH as the session began; GLIDE stopped; the forced valley off, the stage timers cleared: `tide` words) */
+    glide_stop();
+    memset(mxf, 0, sizeof mxf);
+    memset(mxt, 0, sizeof mxt);
+    bench_tg.pending = 0;
+#endif
 #if DUELL_VELO
     ui_idle = (uint8_t)((ui_idle & ~(KEYVEL_ON_BIT | AFTERT_OFF_BIT)) | bench_xk.ks);
 #endif
@@ -1650,6 +1663,13 @@ static BENCH_FN void bench_tl_tick(void)  /* every ui_input pass (bench_main_tic
 {
     if (!btl.sess)
         return;
+#if DUELL_TIDE
+    if (bench_tg.pending && btl.state == TS_RUN && btl.h >= bench_tg.after_h) {
+        bench_tg.pending = 0;
+        gl.mode = GM_ONCE, gl.target = GT_SOUND, gl.wait = 0, gl.time = bench_tg.time;
+        glide_launch(1u, 3u, 0u);
+    }
+#endif
     kb_boot_hold = 1;                                  /* (as a row: the keys silent, the screen awake, nothing reaches the flash) */
     scrn.idle = fm1_ms;
     ui.mset_dirty = 0;
@@ -2053,13 +2073,124 @@ static BENCH_FN void bench_con_cal(const char *w, const char *p)   /* mods, bypa
 #endif
     }
 }
+#if DUELL_TIDE
+/* tide wash 0..3 | glide on [TIME 0..6 [AFTER_MS]] | glide off | force PART VALLEY MOTION | force off | reset | state     (TIDE's audio DSP: tools/tide_measure.py, tools/bench_suites/TIDE-DSP.txt)
+ *   wash        TIDE LIST's WASH (0 OFF, 1 LOW, 2 MID, 3 HIGH): the session's value is put back by `bench reset` and `bench end`
+ *   glide on    GLIDE once from End A to End B on both parts, the sound lane (TIME: 0 = 1 bar .. 6 = 64 bars; the transport starts with it); with AFTER_MS it starts that long after the
+ *               next run's start, from the main loop; glide off stops it
+ *   force       holds part PART's valley depth (VALLEY %) and GLIDE's movement (MOTION %) at those values, whatever the plan says, and lets the wash learn a high level at rest so it
+ *               makes its noise (the stages' cost at a fixed load: a real crossing needs two sounds that differ in the right values); `force off` ends it
+ *   reset       the stage timers cleared (the run's start does it through `bench reset`)
+ *   state       BENCH,TIDE,... one line, then BENCH,TIDEP,... a line a part: calls, calls that did the work, the work's ticks (sum, longest) of the valley (with the wash in it), the wash and FM6's bridge
+ *               block (fm6_xblock), and the plan (need, valley depth, movement, place) */
+static BENCH_FN void bench_con_tide(const char *p)
+{
+    char x[16], b[320], *d;
+    int32_t n = 0, v = 0, m = 0;
+    uint32_t i;
+    if (!bench_tok(&p, x, sizeof x)) {
+        bench_err("usage: tide wash 0..3 | glide on [0..6] | glide off | force PART VALLEY% MOTION% | force off | reset | state");
+        return;
+    }
+    if (bench_ieq(x, "wash")) {
+        if (!bench_arg(&p, &n) || n < 0 || n > 3) {
+            bench_err("usage: tide wash 0..3");
+            return;
+        }
+        morph_wlvl = (uint8_t)n;
+        bench_say("OK tide wash", 0, 0);
+    } else if (bench_ieq(x, "glide")) {
+        char y[8];
+        if (!bench_tok(&p, y, sizeof y) || !(bench_ieq(y, "on") || bench_ieq(y, "off"))) {
+            bench_err("usage: tide glide on [0..6] | off");
+            return;
+        }
+        if (bench_ieq(y, "off")) {
+            glide_stop();
+            bench_tg.pending = 0;
+            bench_say("OK tide glide off", 0, 0);
+            return;
+        }
+        n = 0;
+        if (bench_arg(&p, &n) && (n < 0 || n > 6)) {
+            bench_err("tide glide on: TIME 0..6 [AFTER_MS]");
+            return;
+        }
+        if (bench_arg(&p, &m) && m > 0) {              /* (AFTER_MS: from the next run's start) */
+            bench_tg.pending = 1, bench_tg.time = (uint8_t)n, bench_tg.after_h = bench_ms_to_h((uint32_t)m);
+            bench_say("OK tide glide armed", 0, 0);
+            return;
+        }
+        gl.mode = GM_ONCE, gl.target = GT_SOUND, gl.wait = 0, gl.time = (uint8_t)n;
+        glide_launch(1u, 3u, 0u);
+        bench_say("OK tide glide on", 0, 0);
+    } else if (bench_ieq(x, "force")) {
+        char y[8];
+        if (bench_tok(&p, y, sizeof y) && bench_ieq(y, "off")) {
+            memset(mxf, 0, sizeof mxf);
+            bench_say("OK tide force off", 0, 0);
+            return;
+        }
+        if (!bench_int(y, &n) || !bench_arg(&p, &v) || !bench_arg(&p, &m) || n < 1 || n > 2 || v < 0 || v > 100 || m < 0 || m > 100) {
+            bench_err("usage: tide force PART VALLEY% MOTION% | force off");
+            return;
+        }
+        i = (uint32_t)n - 1u;
+        mxf[i].d = (uint16_t)(v * 32767 / 100), mxf[i].motion = (uint16_t)(m * 32767 / 100), mxf[i].on = 1;
+        mxv[i].wref = (int64_t)1 << 40;                /* (a high level at rest: the wash has something to fill, so its whole path runs) */
+        bench_say("OK tide force", 0, 0);
+    } else if (bench_ieq(x, "reset")) {
+        memset(mxt, 0, sizeof mxt);
+        bench_say("OK tide reset", 0, 0);
+    } else if (bench_ieq(x, "state")) {
+        d = bench_put(b, "BENCH,TIDE,ticks_per_us ");
+        d = bench_num(d, 24);
+        d = bench_put(d, ",wash ");
+        d = bench_num(d, morph_wlvl & 3u);
+        d = bench_put(d, ",glide ");
+        d = bench_num(d, gl.on);
+        d = bench_put(d, ",two ");
+        d = bench_num(d, bd_two_now());
+        bench_put(d, "\r\n");
+        BENCH_REPLY(b);
+        for (i = 0; i < NSHOWN; i++) {
+            const mxt_stage_t *s[3] = {&mxt[i].valley, &mxt[i].wash, &mxt[i].fm6};
+            uint32_t k;
+            d = bench_put(b, "BENCH,TIDEP,");
+            d = bench_num(d, (int32_t)i + 1);
+            for (k = 0; k < 3u; k++) {
+                d = bench_put(d, ",");
+                d = bench_num(d, (int32_t)s[k]->n);
+                d = bench_put(d, ",");
+                d = bench_num(d, (int32_t)s[k]->act);
+                d = bench_put(d, ",");
+                d = bench_num(d, (int32_t)s[k]->sum);
+                d = bench_put(d, ",");
+                d = bench_num(d, (int32_t)s[k]->max);
+            }
+            d = bench_put(d, ",");
+            d = bench_num(d, mxs[i].need);
+            d = bench_put(d, ",");
+            d = bench_num(d, mxs[i].d);
+            d = bench_put(d, ",");
+            d = bench_num(d, mxs[i].motion);
+            d = bench_put(d, ",");
+            d = bench_num(d, mxs[i].tp);
+            bench_put(d, "\r\n");
+            BENCH_REPLY(b);
+        }
+        bench_say("OK tide state", 0, 0);
+    } else
+        bench_err("tide: wash glide force reset state");
+}
+#endif
 static BENCH_FN void bench_con(const char *p)
 {
     char w[16], x[24];
     int32_t n = 0, m = 0;
     btl.last_cmd = fm1_ms;
     if (!bench_tok(&p, w, sizeof w)) {
-        bench_say("ERR", "bench info reset end load mode set sound mods bypass master morph keysense scene budget ev measure run stop save-test slack calm pause lrun vrun vwin floor tcm", 0);
+        bench_say("ERR", "bench info reset end load mode set sound mods bypass master morph keysense tide scene budget ev measure run stop save-test slack calm pause lrun vrun vwin floor tcm", 0);
         return;
     }
     if (bench_ieq(w, "info") || bench_ieq(w, "state")) {
@@ -2268,6 +2399,14 @@ static BENCH_FN void bench_con(const char *p)
     }
     if (bench_ieq(w, "mods") || bench_ieq(w, "bypass") || bench_ieq(w, "master") || bench_ieq(w, "morph") || bench_ieq(w, "keysense")) {
         bench_con_cal(w, p);
+        return;
+    }
+    if (bench_ieq(w, "tide")) {
+#if DUELL_TIDE
+        bench_con_tide(p);
+#else
+        bench_err("this build has no TIDE");
+#endif
         return;
     }
     if (bench_ieq(w, "set")) {
