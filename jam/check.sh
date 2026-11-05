@@ -56,11 +56,13 @@ for g in $groups; do
 done
 
 if [ -z "${*:-}" ]; then
-    if python3 jam/test_jam_dev.py > "$LOG/jam_dev.log" 2>&1; then
-        echo "PASS    jam_dev"; pass=$((pass + 1))
-    else
-        echo "FAIL    jam_dev"; fail=$((fail + 1)); failed="$failed jam_dev"
-    fi
+    for t in jam_dev music_revision8; do          # (jam/test_jam_dev.py, jam/test_music_revision8.py: the flash / backup / restore tool and its music checks; CI runs both too)
+        if python3 "jam/test_$t.py" > "$LOG/$t.log" 2>&1; then
+            echo "PASS    $t"; pass=$((pass + 1))
+        else
+            echo "FAIL    $t"; fail=$((fail + 1)); failed="$failed $t"
+        fi
+    done
 fi
 
 echo "== $pass passed, $fail failed, $skip skipped (logs: $LOG)"
