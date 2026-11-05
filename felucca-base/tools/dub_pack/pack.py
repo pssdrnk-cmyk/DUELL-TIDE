@@ -117,7 +117,7 @@ SOUNDS = [
 # A step is (index, [notes], length in steps, accent, chance %). The notes are C minor: Cm7 48 51 55 58, Abmaj7 56 60 63 67, Fm7 53 56 60 63, Gm7 55 58 62 65.
 CM7, CM9, ABM7, FM7, GM7 = [48, 51, 55, 58], [51, 55, 58, 62], [56, 60, 63, 67], [53, 56, 60, 63], [55, 58, 62, 65]
 PATTERNS = [
-    dict(name="DUB OFFBEAT", voice="DUB CHORD", bpm=122, div=2, swing=54, gate=42, len=16,
+    dict(name="DUB OFFBEAT", voice="DUB CHORD", bpm=122, div=2, swing=50, gate=42, len=16,
          steps=[(2, CM7, 1, 0, 100), (6, CM7, 1, 1, 100), (10, CM7, 1, 0, 100), (14, CM7, 1, 1, 100)]),
     dict(name="DOT DELAY", voice="DARK MIN7", bpm=120, div=2, swing=52, gate=36, len=16,
          steps=[(0, CM7, 1, 1, 100), (3, CM7, 1, 0, 100), (7, ABM7, 1, 1, 100), (10, FM7, 1, 0, 100), (14, GM7, 1, 0, 70)]),

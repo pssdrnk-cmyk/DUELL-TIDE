@@ -172,13 +172,14 @@ int main(void)
             uint32_t q, bad_set = 0, bad_sw = 0;
             for (q = 0; q < sizeof SET; q++) {
                 const uint32_t m = SET[q];
-                uint32_t hits = 0, movable = 0, ties = 0, lo = 99, hi = 0, j;
+                uint32_t hits = 0, movable = 0, ties = 0, lo = 99, hi = 0, j, odd = 0;
                 for (j = 0; j < PATTERNS[m].len; j++) {
                     uint32_t nt = PATTERNS[m].note[j];
                     ties += (PATTERNS[m].flags[j] & 4u) != 0;
                     if (!nt)
                         continue;
                     hits++;
+                    odd += j & 1u;
                     movable += j % 4u != 0;
                     lo = nt < lo ? nt : lo;
                     hi = nt > hi ? nt : hi;
@@ -188,9 +189,11 @@ int main(void)
                     bad_set = 1;                                    /* room (at most half the steps), movable hits (TIDE keeps i % 4 == 0; the two pads hold on ties instead), offsets a chord can move by */
                 if ((PATTERNS[m].swing && (PATTERNS[m].swing < 50u || PATTERNS[m].swing > 75u)) || PATTERNS[m].gate > 127u)
                     bad_sw = 1;
+                if (PATTERNS[m].swing && !odd)          /* swing only delays odd steps: a swung pattern needs a hit on one */
+                    bad_sw = 1;
             }
             ck("  the ten chord / pad patterns: 2 hits at least, at most half the steps, 2 movable hits at least (not on a beat; the pads: half the steps tied), offsets within an octave, LEN 8 or more", !bad_set);
-            ck("  their SWING (50..75) and GATE (1..127) are in the sequencer's range", !bad_sw && PATTERNS[1].swing == 60 && PATTERNS[2].swing == 54 &&
+            ck("  their SWING (50..75) and GATE (1..127) are in the sequencer's range", !bad_sw && PATTERNS[1].swing == 60 && PATTERNS[2].swing == 0 && PATTERNS[23].swing == 0 &&
                PATTERNS[3].swing == 56 && PATTERNS[4].swing == 52 && PATTERNS[14].gate == 100 && PATTERNS[0].swing == 0 && PATTERNS[0].gate == 0);
         }
         {
