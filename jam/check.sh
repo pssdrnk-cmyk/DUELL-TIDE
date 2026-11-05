@@ -4,14 +4,18 @@
 #   sh jam/check.sh [test ...]        (default: the device build, every host test group, the patcher's tests)
 # Each host test group runs on its own with a time limit, so a slow or stuck one cannot stall the rest. On Windows a group
 # that needs fork() (jam/wincompat/sys/wait.h) or another POSIX-only part stops there with exit code 77 and "skipped" in its output; host_tests.sh turns that into a "   SKIP" line and this script reports SKIP, never PASS.
-# Any other non-zero exit is a FAIL even without a FAIL line. Each line ends with the group's seconds. The summary and every group's output land in the log folder (outside the repository).
+# Any other non-zero exit is a FAIL even without a FAIL line. Each line ends with the group's seconds. The summary and every group's output land in the log folder (felucca-base/build/check/<sha>, git-ignored).
 set -u
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 . "$REPO/jam/env.sh"
-LOG="${JAM_CHECK_LOG:-$JAM_WORK/check-$(basename "$REPO")}"   # (one log folder per checkout: work/check-DUELL, work/check-duell-jam11)
+# one log folder per commit inside the checkout's build/ (felucca-base/build/check/<short sha>); the three newest are kept, the rest removed (sh jam/prune.sh clears more)
+LOG="${JAM_CHECK_LOG:-$REPO/felucca-base/build/check/$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo nogit)}"
 LIMIT="${JAM_TEST_LIMIT:-900}"
 mkdir -p "$LOG"
 cd "$REPO" || exit 1
+if [ -z "${JAM_CHECK_LOG:-}" ]; then
+    ls -dt "$REPO"/felucca-base/build/check/*/ 2>/dev/null | tail -n +4 | while read -r d; do rm -rf "$d"; done
+fi
 
 groups="${*:-$(sed -n 's/^want="\${\*:-\([^"]*\)}"$/\1/p' host_tests.sh)}"
 pass=0 fail=0 skip=0 failed=""

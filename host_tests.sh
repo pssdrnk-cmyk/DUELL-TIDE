@@ -816,4 +816,6 @@ static void midi_cc_set(track_t *t, uint32_t id, uint32_t value)
                firmware/src/midi_control.c 's/b = 1u << (code - MAP_T_ROLL_A);/b = 1u << (cc - 21u);/'
            mmm "ROLL's halves moved (End B from 64 instead of 85: the middle rolls)" firmware/src/midi_control.c 's/if (value < 85u)$/if (value < 64u)/' ;;
 esac; done
+# the self-checks' copies of firmware/ and tests/ (build/*_mut, a few MB each) are kept only when something failed, to look at
+[ "$fail" -eq 0 ] && rm -rf build/*_mut
 exit $fail
