@@ -1,0 +1,24 @@
+# Test sources that no group of host_tests.sh runs (audit U02), one per line: the file, then why. The `orphans` group fails for a *_test.* that is neither named
+# in host_tests.sh nor listed here. Repair one and move it into a group, or delete it with its line.
+compat_old_test.c          needs an old multi file as its argument (the 1.0 / 1.1 fixtures); not in a group yet
+compat_old_write_test.c    same
+erase_reset_test.c         needs the installer's erase frames as its argument
+erase_via_ed_test.c        does not build: ED_HDR0 is gone from the editor protocol; repair or delete
+graindelay_test.c          does not build on Windows (mkdir arity); runs on Linux/macOS; a Felucca CHOMPI reverb/delay comparison, not wired to a group
+revcompare_test.c          same
+poly_probe_test.c          a probe for POLY (needs fork(), so not on Windows); not in a group
+ota_test.c                 needs a .fwsc package as its argument
+click_test.c               does not build (uses the removed `chain`); Felucca's, stale
+fm6bank_test.c             same
+robust_test.c              does not build (project_v5_t is gone); stale
+scale_test.c               does not build (P_SCALE is now a global); stale
+settings_test.c            does not build (gfx.c needs str_eq from a header the test lacks); stale
+theme_test.c               same
+text_ref_test.c            same
+sound14_test.c             does not build (spread_run conflicts); stale
+sound15_test.c             builds, 4 checks fail (filter slopes of Felucca 1.5 against today's filters); stale expectations
+noise_test.c               builds, 2 checks fail (filter tracking of the NOISE engine); stale expectations
+phys_test.c                builds, STABILITY checks fail (DC in PHYS strings); look before deleting: may be a real finding
+ratchet_test.c             builds, 7 checks fail (ratchet counts in chords); stale or a real change of RATCHET
+storage_test.c             builds, fails at once: it saves OBJ_PROJECT0, which is retired; needs another object id
+text_spacing_test.py       fails (index out of range in its reference table)

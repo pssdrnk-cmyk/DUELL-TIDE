@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Emulator-only: run Felucca's generators (no JieLi toolchain / Docker). Same as `python felucca-base/tools/build.py --gen-only`
-(one list of generator jobs, in tools/build.py generate()). Run with DUELL/.venv/bin/python."""
+(one list of generator jobs, in tools/build.py generate()). Run with the Python of requirements-dev.txt (sh jam/bootstrap.sh)."""
 import os, subprocess, sys
 from pathlib import Path
 base = Path(__file__).resolve().parent / "felucca-base"

@@ -340,6 +340,12 @@ def build_app():
     if v in ("0", "1", "2", "3"):
         flags.append(f"-DFELUCCA_USB_LAYOUT={v}")
     v = os.environ.get("DUELL_BUILD_DATE")   # ABOUT's date ("Nov  1 2026", __DATE__'s form): unset, the day of the build
+    if not v and "--release" in sys.argv:    # a release carries the date of its commit, so a rebuild of the same commit is byte-identical
+        try:
+            d = subprocess.run(["git", "log", "-1", "--format=%cd", "--date=format:%Y %m %d"], cwd=SRC, capture_output=True, text=True, check=True).stdout.split()
+            v = "%s %2d %s" % ("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split()[int(d[1]) - 1], int(d[2]), d[0])
+        except Exception:
+            v = None                          # (no git: the day of the build, as before)
     if v and re.fullmatch(r"[A-Z][a-z]{2} [ 123]\d \d{4}", v):
         flags.append(f'-DDUELL_BUILD_DATE="{v}"')
     flags.append(f'-DFELUCCA_ID="{PRODUCT}"')

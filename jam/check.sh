@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-only
 # DUELL JAM: the whole check in one command (Git Bash on Windows; also Linux / macOS).
 #   sh jam/check.sh [test ...]        (default: the device build, every host test group, the patcher's tests)
 # Each host test group runs on its own with a time limit, so a slow or stuck one cannot stall the rest. On Windows a group

@@ -22,7 +22,7 @@ Pull requests are welcome, including AI-assisted ones, with the same bar for all
 - keep it small and focused on one thing;
 - make sure you understand the change and can explain it;
 - test it on a real FM-1;
-- run `tests/run_tests.sh` (see [BUILDING.md](BUILDING.md));
+- run `tests/run_tests.sh` (see [BUILDING.md](BUILDING.md); in the DUELL with TIDE fork: `sh host_tests.sh <group>`, see [../docs/DEVELOPING.md](../docs/DEVELOPING.md));
 - new files carry the GPL-3.0-only SPDX header.
 
 By contributing you agree that your contribution is licensed under GPL-3.0-only.
