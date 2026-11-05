@@ -25,11 +25,21 @@ static void wash_cap(void)
     REQUIRE("wash: at the gain cap (ratio of 24 dB or more) the wash still comes in",mxv[0].wg>0);
     morph_wlvl=0;
 }
+/* WASH OFF (the default): nothing measured, nothing generated, the block untouched, the states idle */
+static void wash_off(void)
+{
+    int32_t b[CTL];
+    for(unsigned i=0;i<CTL;i++) b[i]=(int32_t)(i*997u%20001u)-10000;
+    wash_setup(); morph_wlvl=0;
+    morph_wash(0,b,CTL);
+    REQUIRE("wash OFF: no power measured",mxv[0].wnow==0 && mxv[0].wref==((int64_t)1<<44));
+    REQUIRE("wash OFF: no noise generated",mxv[0].wr==0 && mxv[0].wy[0]==0);
+}
 int main(void)
 {
     setvbuf(stdout, 0, _IONBF, 0);
     ui_power_on(); frame();
-    wash_cap();
+    wash_cap(); wash_off();
     printf("audiopolish: %u checks, %u failures\n",checks,failures);
     return failures?1:0;
 }

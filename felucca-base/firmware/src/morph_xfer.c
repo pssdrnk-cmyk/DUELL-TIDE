@@ -604,7 +604,7 @@ static __attribute__((noinline)) void morph_wash(uint32_t pp, int32_t *b, uint32
     int32_t g1 = 0, dg, wl, wh, al, ah, i;
     int move = x->snd && (x->motion || (x->need && x->tp > XW0 && x->tp < XW1));
     int32_t nz[64];
-    if (n > 64u)
+    if (n > 64u || (!morph_wlvl && !v->wg))             /* (WASH OFF, the default, and no wash left to fade: nothing to measure or make; switched on, the level at rest is learnt again in ~90 ms) */
         return;
     for (i = 0; i < (int32_t)n; i++)
         p += (int64_t)b[i] * b[i] >> 8;
