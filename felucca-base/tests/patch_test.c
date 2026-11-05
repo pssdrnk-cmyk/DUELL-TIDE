@@ -1116,6 +1116,24 @@ int main(void)
         pc_recall(0u, 5u, 3u);
         pc_recall(0u, UP_VSLOTS - UP_SLOTS - UP_NUSER, 2u);
         ck("  a program past the slots, past the last extra place, or another bank (3): ignored", trk[0].user == 21u);
+        {   /* audit G13: bank 2 = the read-only places past the 128, #129 + n, and FAV works on them through the factory sound's own flag (no slot bit, no new field) */
+            uint32_t fe2, fk2, pl = UP_SLOTS + UP_NUSER + 3u;
+            uint8_t before[14][32];
+            pc_recall(0u, 3u, 2u);
+            ck("bank 2, program 3 = #132: that factory sound, no slot, its place #132",
+               sl_fac(pl, &fe2, &fk2) && trk[0].eng_req == fe2 && trk[0].preset == fk2 && !trk[0].user && slot_of(&trk[0]) == UP_SLOTS && slot_place(&trk[0]) == pl);
+            ck("  and it is not a favourite yet", !preset_favorite() && !list_fav(pl));
+            memcpy(before, favorites.factory, sizeof before);   /* (rows 0..13: the factory flags; 14 and 15 are the MIDI map and the settings bytes) */
+            preset_mark(1);
+            ck("  FAV on a place past the 128 stars it (the factory flag of its engine and index), no slot bit moves",
+               preset_favorite() && list_fav(pl) && favorite_has(fe2, fk2) && !list_fav(pl + 1u) && favorite_has(NENGINES, 0u) == 0 && favorites.user == 0u);
+            sl_load(8u);
+            ck("  it stays starred when another sound is loaded, and a slot's FAV is as before", list_fav(pl) && !preset_favorite() && !list_fav(8u));
+            pc_recall(0u, 3u, 2u);
+            preset_mark(0);
+            ck("  FAV off clears it, back to the bytes before",
+               !preset_favorite() && !list_fav(pl) && !memcmp(before, favorites.factory, sizeof before));
+        }
         song.sel = 0;
         sl_load(8u);
         favorite_set(NENGINES, 8u, 1);
