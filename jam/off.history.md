@@ -10,4 +10,4 @@ baff39b9177e0066a47cf6d6fb9cf3805d43abafd793a75ca1f5e6b3a10686c4duell-1.1.fwsc (
 ```
 
 - 2026-11-05, `919dc429` (integ after the audit waves 8-10): the shared fixes merged since `baff39b9` change the plain image on purpose: P02 pitch-mod fine part, P06 PHASE polyBLEP, P13/P14 accent and DRV, S10 lock ramps, S14 triplets, R09-R15 and E2-E4 effects, A04-A07 audio, D11 MIDI-out marks, B16 session seed, chord types (G07, D5), factory sound data (G06, T08, T09, G10, G16-G18).
-- 2026-11-05, `484c1d18` (integ after audit wave 11): A08 PHYS loop-lag cache (same samples, ENG_MEM_PART +60 B), P09 ANALOG PW card, T02 first-start guide strings, U07/U12 renames (bit-exact).
+- 2026-11-05, `963364d2` (integ after audit wave 11): A08 PHYS loop-lag cache (same samples, ENG_MEM_PART +60 B), P09 ANALOG PW card (shown with PWM only), T02 first-start guide strings, U07/U12 renames (bit-exact).
