@@ -5,7 +5,7 @@
     tools/factory_multis.py build      the records tools/factory_multis/M01.bin..M16.bin (needs build/gen from DUELL/gen_only.py)
     tools/factory_multis.py check      the records against this list (version, name, sounds, MODE, split) and the similarity check
     tools/factory_multis.py list       the list as text (slot, name, mode, parts '#NN NAME', owner / mine)
-    tools/factory_multis.py selftest   the similarity check catches each kind of pair (and lets an owner pair through, reported)
+    tools/factory_multis.py selftest   the similarity check catches each kind of pair (and lets an owner pair through, reported); the step grammar's rules (T1)
 
 How a record is made: MULTIS below says, per slot, the two parts' factory sounds (by name), what the multi sets on top of each sound
 (raw parameter values, core.h P_* ids; an engine EDIT value as "E:LABEL", e.g. "E:CUT" on an ANALOG part), the SEQUENCER arp patterns,
@@ -53,7 +53,9 @@ def note(s):
 
 # ---- the multis ---------------------------------------------------------------------------------------------------------------
 # A part: sound (factory sound name), set {P_id: value or 'NAME' of the parameter's list; "E:LABEL": the engine's EDIT value}, steps (the
-# SEQUENCER arp's pattern: offsets in semitones from the held key, '.' a rest, suffix A an accent; LEN = its length), bseed / amt (End B rolled
+# SEQUENCER arp's pattern: offsets in semitones from the held key, '.' a rest, '-' a tie (holds the note before it; after a rest or at step 0 it is
+# an error), "vNN" after the note or offset a velocity 1..127 (default 100; order: notes, v, A), suffix A an accent; LEN = its length: 8 or 16
+# steps, or 12 on a part with poly=True (a polymeter on purpose), or 32 on a part with bars=2 (two bars); any other count fails `check`), bseed / amt (End B rolled
 # again with this seed / at this AMOUNT %; 0 the sound's own). A multi: g {G_id: value}, mode, xf (0..100), split (a note:
 # below it part 1, at or above part 2; compared with the key as played, before any TRN: F3 is the lowest key at octave 0, so F4 is the middle
 # of the keyboard), what (one line, the character).
@@ -103,14 +105,14 @@ MULTIS = [
          what="a warm detuned wash in open fifths under a slow dotted-delay pluck figure ping-ponging in the echo (118 BPM)",
          g=dict(G_BPM=118, G_DTIME="8D", G_DFDBK=58, G_DMIX=84, G_DMODE="PING", G_RTYPE="HALL", G_RSIZE=84, G_RDAMP=61),
          parts=[dict(sound="WARM WASH", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=100, P_AHOLD="OFF", P_CHRD="POW", P_VOIC="CLOSE", P_REV=60, P_LEVEL=89),
-                     steps="0A - - - - - - - - - - - - - - . -2A - - - - - - - - - - - - - - ."),
+                     steps="0A - - - - - - - - - - - - - - . -2A - - - - - - - - - - - - - - .", bars=2),
                 dict(sound="TAPE PLUCK", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=36, P_AHOLD="OFF", P_DLY=77, P_REV=40, P_LEVEL=111),
                      steps="12A . . 12 . . . 8A . . 5 . . . 7 .")]),
     dict(slot=7, name="MINIMAL 12", mode="LAYER",
          what="a twelve-step blip cell against a sixteen-step pad: the two loops drift (polymeter) while the echo carries the blip",
          g=dict(G_BPM=124, G_DTIME="8D", G_DFDBK=50, G_DMIX=77, G_DMODE="DIGI", G_RTYPE="ROOM", G_RSIZE=77, G_RDAMP=61),
          parts=[dict(sound="DUB BLIP", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=40, P_AHOLD="OFF", P_DLY=70, P_REV=34, P_LEVEL=106),
-                     steps="12A . . 12 . . 12 . . 10 - ."),
+                     steps="12A . . 12 . . 12 . . 10 - .", poly=True),
                 dict(sound="DEEP BLUE", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=100, P_AHOLD="OFF", P_CHRD="MIN", P_VOIC="CLOSE", P_DLY=0, P_REV=50, P_LEVEL=98),
                      steps="0A - - - - - - . . . . . -5 - - .")]),
     dict(slot=8, name="TINE DUB", mode="LAYER",
@@ -280,6 +282,8 @@ def emit(path):
                 else:
                     st += [k, str(value(P_LIST, k, v))]
             steps = p.get("steps")
+            if steps and check_steps(steps, bool(p.get("poly")), p.get("bars", 1)):
+                sys.exit("factory_multis: %s: %s" % (m["name"], "; ".join(check_steps(steps, bool(p.get("poly")), p.get("bars", 1)))))
             n = len(steps.split()) if steps else 16
             lines.append('        {%d, %d, "%s", {%s}, %s, %d, %d, %d},' % (p["eng"], p["idx"], p["sound"], ", ".join(st + ["END"]),
                                                                        '"%s"' % steps if steps else "0", n, p.get("bseed", 0), p.get("amt", 0)))
@@ -396,6 +400,32 @@ def p_ids():
     return {n: i for i, n in enumerate(names)}
 
 
+STEP_TOKEN = re.compile(r"(?P<rest>\.)|(?P<tie>-)|(?:n\d+(?:\+\d+){0,3}|[+-]?\d+)(?:v(?P<vel>\d+))?A*")
+
+
+def check_steps(steps, poly=False, bars=1):
+    """T1: the problems of a SEQUENCER arp pattern as text (an empty list: it is fine): every token is a rest '.', a tie '-', a note
+    ('+7', '-5', '0', or 'n60+64' absolute) with an optional 'vNN' velocity 1..127 then any 'A' accents; a tie needs a note before it
+    (not a rest, not step 0); the step count is 8 or 16, or 12 with poly, or 32 with bars=2"""
+    err, prev = [], None
+    toks = steps.split()
+    for i, tok in enumerate(toks):
+        m = STEP_TOKEN.fullmatch(tok)
+        if not m:
+            err.append("step %d '%s': not a rest, a tie, or a note with an optional vNN then A" % (i + 1, tok))
+            prev = "bad"
+            continue
+        if m.group("vel") is not None and not 1 <= int(m.group("vel")) <= 127:
+            err.append("step %d '%s': velocity %s is not 1..127" % (i + 1, tok, m.group("vel")))
+        if m.group("tie") and prev in (None, "rest"):
+            err.append("step %d: tie without a note" % (i + 1))
+        prev = "rest" if m.group("rest") else "note"
+    allowed = [8, 16] + ([12] if poly else []) + ([32] if bars == 2 else [])
+    if len(toks) not in allowed:
+        err.append("the pattern has %d steps, not %s (12 needs poly=True, 32 needs bars=2)" % (len(toks), " or ".join(str(n) for n in allowed)))
+    return err
+
+
 def check_similar(entries):
     """No two multis alike (owner, 0.2.23: "no two multis near-duplicates"). entries: (slot, name, mode, (sound 1, sound 2), split,
     ((engine, category) of part 1, of part 2), owner). Alike: the same two sounds (either order); one sound in the same place with the same
@@ -433,7 +463,30 @@ def selftest():
         bad, allowed = check_similar([base, e])
         ok &= len(bad) == want_bad and len(allowed) == want_allowed
     print("factory_multis: selftest of the similarity check %s" % ("ok" if ok else "FAILED"))
-    return ok
+    ok_steps = True
+    n16 = lambda head: head + " ." * (16 - len(head.split()))
+    step_cases = [(n16("0A - - 3v90A"), {}, 0),                       # a tie after a note, a velocity before the accent
+                  (n16("0 . - 3"), {}, 1),                            # a tie after a rest
+                  (n16("- 0"), {}, 1),                                # a tie at step 0
+                  (n16("0 - -"), {}, 0),                              # a chain of ties
+                  (n16("0v0"), {}, 1),                                # velocity under 1
+                  (n16("0v128"), {}, 1),                              # velocity over 127
+                  (n16("0v127 +7v1A n60+64v64A"), {}, 0),             # the bounds, offsets, absolute notes
+                  (n16("0Av90"), {}, 1),                              # the accent before the velocity
+                  (n16("0v"), {}, 1),                                 # a velocity without a number
+                  (" ".join(["0"] * 8), {}, 0),                       # LEN 8
+                  (" ".join(["0"] * 12), {}, 1),                      # LEN 12 without poly
+                  (" ".join(["0"] * 12), dict(poly=True), 0),         # LEN 12 with poly
+                  (" ".join(["0"] * 32), {}, 1),                      # LEN 32 without bars
+                  (" ".join(["0"] * 32), dict(bars=2), 0),            # LEN 32 with bars=2
+                  (" ".join(["0"] * 15), dict(poly=True, bars=2), 1)] # any other count
+    for pat, kw, want in step_cases:
+        got = len(check_steps(pat, **kw))
+        if bool(got) != bool(want):
+            print("factory_multis: selftest step case %r %r: %d problems, wanted %s" % (pat, kw, got, "some" if want else "none"))
+            ok_steps = False
+    print("factory_multis: selftest of the step rules %s" % ("ok" if ok_steps else "FAILED"))
+    return ok and ok_steps
 
 
 def check(snd=None):
@@ -447,10 +500,10 @@ def check(snd=None):
         err.append("two multis share a slot or a name (the spare ones counted)")
     if sum(1 for m in MULTIS if m.get("tribute")) > 3:
         err.append("more than three tribute multis (owner: at most 2 or 3)")
-    for m in MULTIS:                                  # (a pattern is 8 or 16 steps, or the 12 of MINIMAL 12 (a polymeter on purpose) or the 32 of HALF PAD (two bars): one token short drifts a 16th a bar against the other part, M16 had 15)
+    for m in MULTIS:                                  # (T1: a pattern is 8 or 16 steps, or 12 on a part with poly=True (a polymeter on purpose), or 32 on a part with bars=2 (two bars): one token short drifts a 16th a bar against the other part, M16 had 15; and the step grammar: ties, velocities)
         for t, p in enumerate(m["parts"]):
-            if p.get("steps") and len(p["steps"].split()) not in (8, 12, 16, 32):
-                err.append("M%02d part %d: the pattern has %d steps, not 8, 12, 16 or 32" % (m["slot"], t + 1, len(p["steps"].split())))
+            if p.get("steps"):
+                err += ["M%02d part %d: %s" % (m["slot"], t + 1, e) for e in check_steps(p["steps"], bool(p.get("poly")), p.get("bars", 1))]
     for m in MULTIS:
         f = DIR / ("M%02d.bin" % m["slot"])
         if not f.exists():
@@ -462,6 +515,9 @@ def check(snd=None):
             snds = (m["parts"][0]["sound"], m["parts"][1]["sound"])
             entries.append((m["slot"], m["name"], b[4], snds, b[-1], (cat[snds[0]], cat[snds[1]]), bool(m.get("owner"))))
     for m in SPARE:                                   # (the spare records exist and name their sounds)
+        for t, p in enumerate(m["parts"]):
+            if p.get("steps"):
+                err += ["spare %s part %d: %s" % (m["name"], t + 1, e) for e in check_steps(p["steps"], bool(p.get("poly")), p.get("bars", 1))]
         f = ROOT / "tests" / "scenes" / (m["scene"] + ".bin")
         if not f.exists():
             err.append("spare %s: %s missing" % (m["name"], f.name))

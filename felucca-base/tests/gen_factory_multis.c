@@ -28,7 +28,7 @@ typedef struct {
     const char *sound;                           /* its name (checked) */
     int16_t set[96];                             /* (P_ id, value) pairs after the load, END-terminated */
     const char *steps;                           /* the SEQUENCER arp's pattern (space separated): "." rest, a signed offset in
-                                                  * semitones from the held key, "-" a tie, suffix A accent; 0: no pattern */
+                                                  * semitones from the held key, "-" a tie (after a note), "vNN" the velocity, suffix A accent; 0: no pattern */
     uint8_t len;
     uint16_t bseed;                              /* End B: 0 the sound's own; else rolled again with this seed (the sound's AMOUNT) */
     uint8_t amt;                                 /* 0.2.13: 0 the sound's AMOUNT; else End B rolled at this AMOUNT (%) and the part's AMOUNT set to it */
@@ -48,6 +48,22 @@ typedef struct {
 #include "factory_multis_def.h"
 #define NM (sizeof MM / sizeof *MM)
 
+/* T1: what follows a step's notes: "vNN" its velocity 1..127 (default 100), then any "A" accent: "12v90A" */
+static const char *step_tail(step_t *st, const char *s)
+{
+    if (*s == 'v') {
+        int32_t v = 0;
+        s++;
+        if (*s < '0' || *s > '9') { fprintf(stderr, "velocity without a number\n"); exit(1); }
+        while (*s >= '0' && *s <= '9' && v < 1000) v = v * 10 + (*s++ - '0');
+        if (v < 1 || v > 127) { fprintf(stderr, "velocity %d out of 1..127\n", (int)v); exit(1); }
+        st->vel = (uint8_t)v;
+    }
+    for (; *s == 'A'; s++)
+        st->flags |= SF_ACCENT;
+    return s;
+}
+
 static int parse_steps(track_t *t, const char *s, uint32_t len)
 {
     uint32_t i = 0;
@@ -61,7 +77,13 @@ static int parse_steps(track_t *t, const char *s, uint32_t len)
         step_t *st = &t->step[i];
         while (*s == ' ') s++;
         if (*s == '.') { st->time = ST_REST; s++; }
-        else if (*s == '-' && (s[1] == ' ' || !s[1])) { st->time = ST_TIE; st->n = 0; s++; }   /* a bare "-": a tie (the patterns' T_ flag: holds the note before) */
+        else if (*s == '-' && (s[1] == ' ' || !s[1])) {                 /* a bare "-": a tie (the patterns' T_ flag: holds the note before) */
+            if (!i || t->step[i - 1u].time == ST_REST) {                /* (T1: a tie holds a note, so it needs one before it) */
+                fprintf(stderr, "tie without a note (step %u)\n", i + 1u);
+                exit(1);
+            }
+            st->time = ST_TIE; st->n = 0; s++;
+        }
         else if (*s == 'n') {                    /* U2 B: "n60+64+67" a plain pattern's step, up to four absolute notes (C4 = 60), suffix A an accent */
             s++;
             st->time = ST_NOTE;
@@ -74,8 +96,7 @@ static int parse_steps(track_t *t, const char *s, uint32_t len)
                 if (*s != '+') break;
                 s++;
             }
-            for (; *s == 'A'; s++)
-                st->flags |= SF_ACCENT;
+            s = step_tail(st, s);
         }
         else {
             int32_t sg = 1, v = 0;
@@ -90,8 +111,11 @@ static int parse_steps(track_t *t, const char *s, uint32_t len)
             st->n = 1;
             st->vel = 100;
             st->note[0] = (uint8_t)(60 + sg * v);
-            for (; *s == 'A'; s++)
-                st->flags |= SF_ACCENT;
+            s = step_tail(st, s);
+        }
+        if (*s && *s != ' ') {
+            fprintf(stderr, "bad step '%s'\n", s);
+            exit(1);
         }
         while (*s == ' ') s++;
     }
@@ -182,6 +206,7 @@ static void dump(uint32_t k)
                 printf("-");
             for (j = 0; j < s->n && s->time != ST_TIE; j++)
                 printf("%s%u", j ? "+" : "", s->note[j]);
+            if (s->vel && s->vel != 100) printf("v%u", s->vel);
             if (s->flags & SF_ACCENT) printf("A");
             if (s->flags & SF_SLIDE) printf("S");
         }
