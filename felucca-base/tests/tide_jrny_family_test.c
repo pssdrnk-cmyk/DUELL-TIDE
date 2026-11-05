@@ -3,7 +3,8 @@
  * family stays in its role (a roll of itself); a USER record roams its own category's family; every category is mapped; no factory
  * sound sits in OTHER (the junk drawer that made pads reach hits); the texture family (C3, D39) is the FX sounds with the DSF_TEXT flag, every
  * other FX a one-shot (family NOISE). Prints eligible destinations per engine and family, the walk of
- * tide_jrny_memory_test.c (before: the sound's own category, after: its family). */
+ * tide_jrny_memory_test.c (before: the sound's own category, after: its family). Metric 4.6 (C2, TIDE_ROLES_AND_MULTIS_SPEC.md): the walk also keeps the
+ * Original's attack class (PAD, STAB, KEYS by ATK and SUS), and a family with no other sound of the class still turns (any class). */
 #define UI_TEST_NO_MAIN 1
 #include "ui_test.c"
 
@@ -33,6 +34,30 @@ static int find_sound(const char *name, uint32_t *pe, uint32_t *pj)
                 return 1;
             }
     return 0;
+}
+/* factory sound j of engine e: its attack class (tide_ui.c tide_cls: 2 PAD, 1 STAB, 0 KEYS) */
+static uint32_t cls_of(uint32_t e, uint32_t j)
+{
+    const ds_sound_t *s = ds_get(e, j);
+    return tide_cls(ds_value(s, P_ATK, TP[P_ATK].def), ds_value(s, P_SUS, TP[P_SUS].def));
+}
+/* `n` JOURNEY arrivals from factory sound (e, j); the targets that are not of class `cls` or not in the family of the start go to *off, the arrivals that
+ * reached any target to *got */
+static void walk_cls(uint32_t e, uint32_t j, uint32_t n, uint32_t cls, uint32_t *off, uint32_t *got)
+{
+    uint32_t i, x = 1u;
+    *off = *got = 0;
+    setup(e, j);
+    morph.gen = 5150u + e * 64u + j; fm1_ms = 0;
+    for (i = 0; i < n; i++, x ^= 1u) {
+        int32_t t;
+        tide_journey(1u, x, 1u, 0u);
+        t = morph_to_of(0, x);
+        if (t < 0 || (uint32_t)t >= ds_count(e))
+            continue;
+        (*got)++;
+        *off += cls_of(e, (uint32_t)t) != cls || fam_of_sound(e, (uint32_t)t) != fam_of_sound(e, j);
+    }
 }
 /* 32 JOURNEY arrivals from factory sound `name`; counts the targets that are flagged (the TEXT family) and the distinct targets */
 static void walk32(const char *name, uint32_t *flagged, uint32_t *unflagged, uint32_t *distinct)
@@ -182,6 +207,50 @@ int main(void)
         CHECK("texture: a one-shot (MODEM) never reaches a flagged sound", !fl && un > 0u);
         walk32("NIGHT DRONE", &fl, &un, &di);
         CHECK("texture: a drone (NIGHT DRONE) never reaches a one-shot", !un);
+    }
+    /* C2, metric 4.6: JOURNEY keeps the Original's attack class. A KEYS part (CHORD ECHO: ATK 3, SUS 34) reaches only keys (ATK under 60, SUS over 20), a PAD part
+     * (FOG BANK) only sounds with ATK 60 or more; from every sound of every engine, 12 arrivals stay in the class and the family, except where the family has no
+     * other sound of the class: there the part still turns (pass 2: any class of the family) */
+    {
+        uint32_t off, got, be, bj, sw = 0, swoff = 0, lone = 0, lone_turn = 0, nsnd = 0, g;
+        static const char *const NAMES[2] = {"CHORD ECHO", "FOG BANK"};
+        for (g = 0; g < 2u; g++) {
+            if (!find_sound(NAMES[g], &be, &bj))
+                continue;
+            walk_cls(be, bj, 32u, cls_of(be, bj), &off, &got);
+            printf("%s (class %u): 32 arrivals, %u reached, %u outside its class or family\n", NAMES[g], cls_of(be, bj), got, off);
+            if (!g) {
+                CHECK("4.6: from a KEYS part (CHORD ECHO, ATK 3) 32 arrivals reach only keys, none with ATK 60 or more", cls_of(be, bj) == 0u && got > 24u && !off);
+            } else
+                CHECK("4.6: from a PAD part (FOG BANK) 32 arrivals reach only pads", cls_of(be, bj) == 2u && got > 24u && !off);
+        }
+        for (e = 0; e < NENGINES; e++) {
+            uint32_t cnt[FAM_N][3] = {{0}};
+            if (!eng_ok(e) || ds_count(e) < 2u)
+                continue;
+            for (j = 0; j < ds_count(e); j++)
+                cnt[fam_of_sound(e, j)][cls_of(e, j)]++;
+            for (j = 0; j < ds_count(e); j++) {
+                uint32_t fm = fam_of_sound(e, j), cl = cls_of(e, j), fsum = cnt[fm][0] + cnt[fm][1] + cnt[fm][2];
+                if (fsum < 2u)
+                    continue;                              /* (alone in its family: a roll of itself, the family tests above) */
+                walk_cls(e, j, 12u, cl, &off, &got);
+                nsnd++;
+                if (cnt[fm][cl] > 1u) {                    /* (another sound of its class: the class holds) */
+                    sw += got;
+                    swoff += off;
+                } else {                                   /* (the only one of its class in the family: pass 2, any class) */
+                    lone++;
+                    lone_turn += got > 0u;
+                    if (!got)
+                        printf("lone class sound does not turn: engine %u %s\n", e, ds_name(e, j));
+                }
+            }
+        }
+        printf("class walks from %u sounds: %u arrivals, %u outside the class; %u sounds alone in their class, %u of them turn\n",
+               nsnd, sw, swoff, lone, lone_turn);
+        CHECK("4.6: from every sound with a classmate the walk stays in its class and its family", sw > 500u && !swoff);
+        CHECK("4.6: a sound alone in its class still turns (any class of the family)", lone > 0u && lone_turn == lone);
     }
     /* AUTO TIDE reaches the fork's own factory sounds (audit E12): #129..#160 are places 128..159 of the browse list (DS_LIST); walk JOURNEY from every
      * sound of every engine, 24 hops each, and count which of them were ever the target. A sound whose family on its engine has no other member can only

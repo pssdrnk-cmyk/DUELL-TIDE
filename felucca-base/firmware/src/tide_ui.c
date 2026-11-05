@@ -335,7 +335,8 @@ static int tide_reset(uint32_t k)
 }
 
 /* JOURNEY (glide_arrive, glide_start): end x of the parts of mask the next target. The sound: a factory sound of the part's engine
- * and the Original's role family (a USER record's own category), not the one just reached nor (when there is another) the one left,
+ * and the Original's role family (a USER record's own category) and attack class (PAD, STAB or KEYS by ATK and SUS: a stab never
+ * turns into a slow pad nor a pad into a stab; a family with none of the class still turns, any class, C2), not the one just reached nor (when there is another) the one left,
  * and never one the other part is on or heading to (its Original and both its ends, when it plays the same engine); nothing left
  * (a sound alone in its family too), or an engine without a list: a roll of the sound, which keeps its role. The pattern: a WNDR generation, each part from its own seed, so the two
  * parts never play the same (seq_morph.c) */
@@ -402,23 +403,31 @@ static void jh_push(uint32_t k, uint32_t c)
 {
     jh[k][3] = jh[k][2], jh[k][2] = jh[k][1], jh[k][1] = jh[k][0], jh[k][0] = (uint8_t)(c + 1u);
 }
+/* a sound's attack class from its ATK and SUS: 2 PAD (ATK 60 or more), 1 STAB (SUS 20 or less), 0 KEYS (C2 of TIDE_ROLES_AND_MULTIS_SPEC.md) */
+static uint32_t tide_cls(int32_t atk, int32_t sus) { return atk >= 60 ? 2u : sus <= 20 ? 1u : 0u; }
 static void tide_journey(uint32_t mask, uint32_t x, uint32_t snd, uint32_t seq)
 {
-    uint32_t k, j, n, c, pass, pick[64], r = morph_new_seed();
+    uint32_t k, j, n, c, cls, pass, pick[64], r = morph_new_seed();
     for (k = 0; k < NSHOWN; k++) {
         const track_t *t = &trk[k];
         if (!((mask >> k) & 1u))
             continue;
         if (snd) {
+            const morph_part_t *mp = morph_ready(k);
             uint32_t e = t->eng_req, fam = UP_REC_USER(t) ? fam_of(sl_cat((uint32_t)t->user - 1u)) : fam_of_sound(e, t->preset);
             int32_t at = morph_to_of(k, x ^ 1u), was = morph_to_of(k, x);
             if (at < 0 && !UP_REC_USER(t))                      /* (the end reached is the Original or a roll: not the Original's own sound) */
                 at = (int32_t)t->preset;
-            for (pass = n = 0; pass < 2u && !n; pass++)   /* (0: the family, neither end's; 1: the one left allowed) */
-                for (j = 0; j < ds_count(e) && n < 64u; j++)
-                    if (fam_of_sound(e, j) == fam && (int32_t)j != at && (pass || (int32_t)j != was) &&
-                        !tide_taken(k, e, j))
-                        pick[n++] = j;
+            cls = tide_cls(mp->base[P_ATK], mp->base[P_SUS]);
+            for (pass = n = 0; pass < 3u && !n; pass++)   /* (0: the family and the class, neither end's; 1: the one left allowed; 2: any class) */
+                for (j = 0; j < ds_count(e) && n < 64u; j++) {
+                    const ds_sound_t *s = ds_get(e, j);
+                    if (fam_of_sound(e, j) != fam || (int32_t)j == at || (!pass && (int32_t)j == was) || tide_taken(k, e, j))
+                        continue;
+                    if (pass < 2u && tide_cls(ds_value(s, P_ATK, TP[P_ATK].def), ds_value(s, P_SUS, TP[P_SUS].def)) != cls)
+                        continue;
+                    pick[n++] = j;
+                }
             n = jh_filter(k, e, pick, n);
             c = n ? pick[(r >> 8) % n] : 0u;
             if (n > 1u)
