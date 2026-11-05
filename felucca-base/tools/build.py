@@ -110,6 +110,8 @@ def tide_id():
     if v is None:
         try:
             git = lambda *c: subprocess.run(["git", *c], cwd=SRC, capture_output=True, text=True, check=True).stdout.strip()
+            if (Path(git("rev-parse", "--show-toplevel")) / "felucca-base").resolve() != SRC:
+                return None                            # (a snapshot inside another repository: that one's commit is not this tree's)
             v = git("rev-parse", "--short=7", "HEAD") + ("+" if git("status", "--porcelain", "--untracked-files=no") else "")
         except Exception:
             return None                                # (no git: no id)
