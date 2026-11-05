@@ -737,8 +737,8 @@ static void draw_frame(void)
 static uint32_t card_mot_mask[(P_COUNT + 31u) / 32u];
 static uint8_t card_mot_next, card_mot;
 /* An INAPPLICABLE card (owner rule, 2026-10-15, replacing the 2026-10-12 fade-with-reason rule): a control that does nothing for the current
- * selection is NOT DRAWN: its column stays empty (the panel's background, no card), the other cards keep their knobs K1..K4, and the hidden
- * card's knob does nothing and says nothing (ui_input.c: card_hidden_vp). ONE mechanism: draw_column_hide(c) (below draw_column); the
+ * selection is NOT DRAWN: no card, and its knob does nothing and says nothing (ui_input.c: card_hidden_vp). On a parameter page the cards that
+ * show then close the gap (CONTROLS MOVE LEFT, below: K1..Kn address the n-th card shown; the QUICK layers keep fixed knobs). ONE mechanism: draw_column_hide(c) (below draw_column); the
  * predicate for a parameter's card is card_hidden_vp (below). card_why_next is no reason any more: it is the CLK card's state line only
  * (the source an external or AUTO clock plays on, clock_why). */
 static const char *card_why_next;
