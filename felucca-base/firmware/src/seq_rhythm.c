@@ -75,17 +75,12 @@ static void rhythm_reset(uint32_t pi)
 }
 static uint32_t rhythm_hash(uint32_t pi)
 {
-    uint32_t h = 0;
-    for (uint32_t j = 0; j < sizeof rhythm_map[pi]; j++)
-        h = (h ^ rhythm_map[pi][j]) * 16777619u;
-    return h;
+    return fnv(0, rhythm_map[pi], sizeof rhythm_map[pi]);
 }
 static void rhythm_validate(uint32_t pi, uint32_t len)
 {
     const track_t *t = &trk[pi];
-    uint32_t h = (len ^ ((uint32_t)t->p[P_SDIV] << 8)) * 16777619u;
-    const uint8_t *p = (const uint8_t *)t->step;
-    for (uint32_t j = 0; j < len * sizeof(step_t); j++) h = (h ^ p[j]) * 16777619u;
+    uint32_t h = fnv((len ^ ((uint32_t)t->p[P_SDIV] << 8)) * 16777619u, t->step, len * (uint32_t)sizeof(step_t));
     if (rhythm.source[pi] != h || !sqm[pi].notes) {
         rhythm_reset(pi);
         rhythm.source[pi] = h;

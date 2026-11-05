@@ -44,6 +44,7 @@ static step_t sqm_pat[NSHOWN][2][NSTEP];               /* the two ends as played
 static step_t sqm_buf[NSTEP] __attribute__((section(".pool")));   /* an end being built, KEEP's copy (main loop; the pool: .bss is the tighter, plan §4.9.2) */
 static uint32_t sqm_poll_ms;
 static uint32_t sqm_len(const track_t *t);
+static uint32_t fnv(uint32_t h, const void *p, uint32_t n);   /* (ui.c: FNV-1a over n bytes, the TIDE keys' hash too) */
 
 static uint32_t sqm_key(const sqm_part_t *q) { return q->sig ^ q->tseed; }   /* (the UI's redraw key: changes with what the ends play) */
 static uint32_t sqm_hash(uint32_t seed, uint32_t idx, uint32_t salt)
@@ -206,17 +207,11 @@ static void sqm_rand(sqm_end_t *x, uint32_t seed, uint32_t amt)
 static uint32_t sqm_len(const track_t *t) { return (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP); }
 static uint32_t sqm_sig(const track_t *t, const sqm_part_t *q, uint32_t len)
 {
-    const uint8_t *b = (const uint8_t *)t->step;
     const sqm_end_t *e[2] = {&q->a, &q->b[q->top]};
-    uint32_t h = 2166136261u, i, k;
-    for (i = 0; i < len * (uint32_t)sizeof(step_t); i++)
-        h = (h ^ b[i]) * 16777619u;
-    for (k = 0; k < 2u; k++) {
-        h = (h ^ e[k]->seed) * 16777619u;
-        for (i = 0; i < SD_N; i++)
-            h = (h ^ (uint8_t)e[k]->d[i]) * 16777619u;
-        for (i = 0; i < SQM_PITCH_BYTES; i++) h = (h ^ e[k]->pitch[i]) * 16777619u;
-    }
+    uint32_t h = fnv(2166136261u, t->step, len * (uint32_t)sizeof(step_t)), k;
+    _Static_assert(__builtin_offsetof(sqm_end_t, pitch) == __builtin_offsetof(sqm_end_t, d) + SD_N, "sqm_sig: the dials and the pitch bytes in one run");
+    for (k = 0; k < 2u; k++)
+        h = fnv((h ^ e[k]->seed) * 16777619u, e[k]->d, SD_N + SQM_PITCH_BYTES);
     h = (h ^ (uint32_t)scale_g ^ ((uint32_t)root_g << 8) ^ ((morph.cfg & MC_PIT) << 16) ^ ((uint32_t)morph_musical << 24)) * 16777619u;
     return (h ^ (len | (uint32_t)q->aon << 7 | (uint32_t)q->notes << 8)) * 16777619u;
 }
