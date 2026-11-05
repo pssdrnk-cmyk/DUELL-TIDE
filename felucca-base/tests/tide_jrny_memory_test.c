@@ -138,6 +138,25 @@ int main(void)
     tide_journey(1u, 1u, 1u, 0u);
     tide_home(1u);
     CHECK("jrny memory: HOME clears it", !jh[0][0]);
+    /* B18: a JRNY start gives End B a target on each part that has none, decided per part (part 2 already has one) */
+    setup(e, fam_of(ds_cat_of(e, 0)));
+    set_engine_of(&trk[1], e); apply_preset_to(&trk[1], 0); frame();
+    morph_to_sound(1, 1, 1);
+    {
+        int32_t keep = morph_to_of(1, 1);
+        gl.mode = GM_JOURNEY; gl.on = gl.armed = 0; gl.target = GT_SOUND;
+        glide_start(1u, 3u, 0u);
+        CHECK("jrny: a start with part 2 already targeted still targets part 1 (B18)", keep >= 0 && morph_to_of(0, 1) >= 0 && morph_to_of(1, 1) == keep);
+    }
+    /* B16: the draws follow from the session seed alone, whenever they are made */
+    {
+        uint32_t s1, s2, s3, s4;
+        morph.gen = 77; fm1_ms = 1;      s1 = morph_new_seed();
+        fm1_ms = 999999;                 s2 = morph_new_seed();
+        morph.gen = 77; fm1_ms = 5;      s3 = morph_new_seed();
+        fm1_ms = 12345;                  s4 = morph_new_seed();
+        CHECK("seeds: the same session seed gives the same draws at any time (B16)", s1 == s3 && s2 == s4 && s1 != s2);
+    }
     printf("%u checks, %u failed\n", checks, failures);
     return failures != 0;
 }

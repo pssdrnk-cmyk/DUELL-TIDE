@@ -153,7 +153,7 @@ static void gen_setup(void)
     ui_power_on(); frame();
     gl.on = gl.armed = 0; transport_req = 0; song.playing = song.rec = 0;
     song.g[G_CLOCK] = 0; song.g[G_BPM] = 240;
-    memset(sqm, 0, sizeof sqm); sqm[0].notes = sqm[1].notes = 50u; memset(&rhythm, 0, sizeof rhythm);
+    memset(sqm, 0, sizeof sqm);  memset(&rhythm, 0, sizeof rhythm);
     memset(&tarc, 0, sizeof tarc); tarc_clear();
     for (uint32_t p = 0; p < 2u; p++) {
         track_t *t = &trk[p];
