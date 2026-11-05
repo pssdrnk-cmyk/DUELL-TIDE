@@ -425,7 +425,13 @@ addEventListener("blur", () => {
 // ------------------------------------------------------------------ screen and lights
 const ctx = document.getElementById("screen").getContext("2d");
 const img = ctx.createImageData(240, 240);
+// The device's clock is the audio clock, so nothing is drawn before the click on "Click to start audio": a poster (the AUTO TIDE page, the site's own screenshot) fills the screen until the first frame arrives.
+let framed = false;
+const poster = new Image();
+poster.onload = () => { if (!framed) ctx.drawImage(poster, 0, 0, 240, 240); };
+poster.src = "../img/auto-tide-both-parts.png";
 function drawScreen(fb) {
+  framed = true;
   const d = img.data;
   for (let i = 0; i < 240 * 240; i++) {
     const v = fb[i], p = ((v >> 8) | (v << 8)) & 0xFFFF;          // the panel's byte order -> RGB565

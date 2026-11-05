@@ -77,6 +77,7 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 - **Under the hood:** the retired single-file editor (`web/editor.html`, 5,100 lines), Felucca's `index_pkg.html` and the old `test_web.mjs` that tested them are deleted (about 440 KB); the package and update checks live on in `web/test_ota.mjs`, the DX7 compatibility harness reads `web/editor/fm6voice.js`, and the site no longer publishes the librarian's test WAV (262 KB).
 - **Under the hood:** the `editorjson` host test group also runs the installer's web tests that no job ran before (`test_ranges.mjs`, `test_ota.mjs`, `test_site_build.py`; `test_backup.mjs` and `test_installer_state.mjs` were already in it).
 - **New:** the installer page has a third card, "Go back to plain DUELL 1.1" (a link to OSCILL/R's site, a backup reminder and the one thing plain DUELL cannot read), and says after the SHA-256 check that the release notes print the same value.
+- **New:** the emulator page shows the AUTO TIDE screen (the site's own screenshot) instead of a black square until the first frame arrives after "Click to start audio".
 
 ## DUELL 1.1
 
