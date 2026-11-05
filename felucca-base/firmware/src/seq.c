@@ -207,6 +207,7 @@ static int in_held(const track_t *t, uint32_t note)
     return 0;
 }
 
+static uint32_t arp_wait(const track_t *t);        /* (below) */
 static void arp_add(track_t *t, uint32_t note)
 {
     uint32_t i;
@@ -233,7 +234,7 @@ static void arp_add(track_t *t, uint32_t note)
         t->held[t->nheld++] = (uint8_t)note;
     }
     if (t->nheld == 1u) {
-        t->arp_pos = 0xFFFFFFF;                     /* fire on this block */
+        t->arp_pos = 0xFFFFFFFu - arp_wait(t);      /* the first step: at once, or while PLAY runs on the next RATE boundary of the transport */
         t->arp_idx = 0xFFFFFFFFu;
         t->atg_note = t->atg_vel = 0;               /* ARP TARGET: a new phrase starts on the root */
     }
@@ -626,16 +627,25 @@ static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
     }
     period = div_samples((uint32_t)t->p[P_ARATE]);
     sw = sw_len(sw_ex(t->p[P_ASWING]), period);
-    t->arp_pos += n;
-    duration = period + (uint32_t)((t->arp_idx & 1u) ? -sw : sw);   /* (after an even step the wait is longer: the offbeat lands late, as the sequencer's) */
-    if (t->arp_pos < duration && t->arp_pos != 0xFFFFFFF + n)
-        return;
-    if (t->arp_pos == 0xFFFFFFFu + n) {             /* a new phrase: its first step starts here */
+    if (t->arp_pos >= 0x8000000u) {                 /* a new phrase waits for its first step (0xFFFFFFF less the samples still to wait) */
+        uint32_t w = 0xFFFFFFFu - t->arp_pos;
+        if (n < w) {
+            t->arp_pos += n;
+            return;
+        }
         if (clock_src()) midi_arp_grid[trk_index(t)].remainder = 0;
-        t->arp_pos = 0;
+        t->arp_pos = w ? n - w : 0u;                /* (the overshoot of a wait is carried: the next step stays on the grid) */
         arp_fire(t, period);
-    } else {                                        /* the overshoot is carried, so no step is rounded up to a block; on the external clock every step due fires */
-        do {
+        if (t->arp_pos && ARP_UP(t)) {
+            if (t->arp_off <= t->arp_pos) arp_off(t);
+            else t->arp_off -= t->arp_pos;
+        }
+    } else {
+        t->arp_pos += n;
+        duration = period + (uint32_t)((t->arp_idx & 1u) ? -sw : sw);   /* (after an even step the wait is longer: the offbeat lands late, as the sequencer's) */
+        if (t->arp_pos < duration)
+            return;
+        do {                                        /* the overshoot is carried, so no step is rounded up to a block; on the external clock every step due fires */
             t->arp_pos -= duration;
             arp_fire(t, period);
             duration = period + (uint32_t)((t->arp_idx & 1u) ? -sw : sw);
@@ -1516,6 +1526,17 @@ static __attribute__((noinline)) void cin_record(void)
             }
         cin_n[i] = 0;
     }
+}
+/* the samples from now to the next boundary of the arp's RATE on the transport's grid (clk_pos / clk_step count its 1/16 steps; 0: PLAY is
+ * stopped or waiting for its first clock, or the transport is on one). A key that lands while PLAY runs starts the arp there (audit S07);
+ * arp_pos holds 0xFFFFFFF less this wait until arp_step has counted it down */
+static uint32_t arp_wait(const track_t *t)
+{
+    uint32_t p = div_samples((uint32_t)t->p[P_ARATE]), q = div_samples(2);
+    if (!song.playing || clk_pos == CLK_START || !p)
+        return 0;
+    p -= (clk_step * q + clk_pos) % p;
+    return p == div_samples((uint32_t)t->p[P_ARATE]) ? 0u : p;
 }
 /* the metronome's beat: adv samples on while the transport runs (click.c sounds it in this block) */
 static void click_tick(uint32_t adv)

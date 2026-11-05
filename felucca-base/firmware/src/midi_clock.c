@@ -54,7 +54,7 @@ static __attribute__((noinline)) void clock_rescale(uint32_t old_beat, uint32_t 
         if (trk[i].nd_early) trk[i].nd_early = midi_clock_scale(trk[i].nd_early - 1u, np, op) + 1u;
         div = (uint32_t)trk[i].p[P_ARATE];
         op = midi_clock_period(old_beat, div); np = midi_clock_period(new_beat, div);
-        if (trk[i].arp_pos < 0xFFFFFFFu)
+        if (trk[i].arp_pos < 0x8000000u)             /* (not a step still to wait for: seq.c arp_wait) */
             trk[i].arp_pos = midi_clock_scale_phase(trk[i].arp_pos, np, op, &midi_arp_grid[i], div);
         if (trk[i].arp_off) trk[i].arp_off = midi_clock_scale(trk[i].arp_off, np, op);
     }

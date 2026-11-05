@@ -4,6 +4,7 @@
  *          the sum of the step lengths, within 1 sample, and keeps a constant distance from the sequencer's grid (an arp
  *          step used to round up to a whole block and throw the overshoot away: 8 steps took 8.04 sixteenths)
  *   SWING  ARP SWG 75: the offbeat of a pair lands after the middle (it used to land at 30 %); SWG 50 stays straight
+ *   START  a key that lands while PLAY runs starts the arp on the next ARP RATE boundary of the transport (audit S07; it started in the block the key landed)
  *   PROB   ARP PROB 0 never plays a step (it played 1 in 128), PROB 127 plays every step
  * Built and run by host_tests.sh (name: arptiming): the firmware sources against ui_test.c's stubs. */
 #define UI_TEST_NO_MAIN 1
@@ -239,12 +240,62 @@ static void test_velocity(void)
     expect("ARP SEQ plays the key's velocity (55), an ACCENT step 127", v_sq == 55u && v_acc == 127u);
 }
 
+/* S07: a key that lands while PLAY runs starts the arp on the next boundary of the ARP RATE on the transport (1/8, 1/16, 1/32); stopped it starts at once */
+static void test_start(void)
+{
+    static const uint32_t rate[3] = {1, 2, 3};
+    track_t *t = &trk[0];
+    uint32_t r, i, k, seq0 = 0, last, key_at, at = 0;   /* (i: the next note) */
+    char what[120];
+    for (r = 0; r < 3u; r++) {
+        uint32_t P;
+        fresh();
+        for (i = 0; i < 16; i++) {
+            t->step[i].time = ST_NOTE;
+            t->step[i].n = 1;
+            t->step[i].note[0] = 60;
+        }
+        t->p[P_SLEN] = 16; t->p[P_SDIV] = 2; t->p[P_SSWING] = 50;
+        t->p[P_AMODE] = AM_UP; t->p[P_ARATE] = (int16_t)rate[r]; t->p[P_AOCT] = 1; t->p[P_ASWING] = 50; t->p[P_APROB] = 127; t->p[P_AHOLD] = 0;
+        P = div_samples(rate[r]);
+        transport_req = 1;
+        last = 0xFFFFu;
+        for (k = 0; k < 1000u + 7u * r; k++) {          /* a key lands part way through a step, a different part for each rate */
+            blk();
+            if (t->seq_idx != last && last == 0xFFFFu)
+                seq0 = now_s - (t->seq_pos < CTL ? t->seq_pos : 0u);
+            last = t->seq_idx;
+        }
+        input_on(t, 60, 100);
+        key_at = now_s;
+        last = t->arp_idx;
+        for (k = 0; k < 1500u && t->arp_idx == last; k++)
+            blk();
+        at = now_s - (t->arp_pos < CTL ? t->arp_pos : 0u);
+        snprintf(what, sizeof what, "PLAY running, ARP RATE %u: the first arp note lands on the transport's grid (%u samples after its step, key %u in)",
+                 rate[r], (at - seq0) % P, (key_at - seq0) % P);
+        expect(what, t->arp_idx != last && ((at - seq0) % P <= 2u || (at - seq0) % P >= P - 2u) && at > key_at);
+        last = t->arp_idx;
+        for (k = 0; k < 1500u && t->arp_idx == last; k++)
+            blk();
+        i = now_s - (t->arp_pos < CTL ? t->arp_pos : 0u);
+        expect("  .. and the next one a full RATE later", t->arp_idx != last && i - at + 2u >= P && i - at <= P + 2u);
+    }
+    fresh();
+    t->p[P_AMODE] = AM_UP; t->p[P_ARATE] = 2; t->p[P_AOCT] = 1; t->p[P_AHOLD] = 0;
+    input_on(t, 60, 100);
+    last = t->arp_idx;
+    blk();
+    expect("PLAY stopped: the first arp note sounds in the block the key lands", t->arp_idx != last);
+}
+
 int main(void)
 {
     test_drift();
     test_swing();
     test_prob();
     test_velocity();
+    test_start();
     printf("arptiming: %s\n", bad ? "FAILED" : "all ok");
     return bad ? 1 : 0;
 }
