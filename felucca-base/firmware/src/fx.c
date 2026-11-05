@@ -1093,8 +1093,8 @@ static __attribute__((noinline)) void track_insert(track_t *t, int32_t *b, uint3
  * with 8 more bits into the feedback. 0.2.25: the loop multiplies in 32 bit only (eq_run: the chip has a 32 x 32 -> 64
  * multiply-accumulate, no 64 x 64 multiply) and carries the output's rounding remainder into the next sample, so a quiet tail
  * comes back to exactly 0 (no stuck DC, no limit cycle). A band switched on starts from rest; all switched off, or the part silent and its
- * tail run out (eq_rest), the states are cleared. Changing a value moves the coefficients at once (no glide: a click is possible
- * on a loud, low band). */
+ * tail run out (eq_rest), the states are cleared. Changing a value of a running band glides the coefficients from the old to the new over
+ * the block (eq_band, audit R15: at once, a loud low tone clicked). */
 typedef struct {
     int32_t b0, b1, b2, a1, a2;          /* Q28, divided by a0 (0.2.25: 32 bit; every setting fits, the largest is |b1| 5.94: tests/eq32_test.c) */
 } eqc_t;
@@ -1103,6 +1103,8 @@ typedef struct {
     uint8_t on;                          /* bit k: band k runs (gain not 0) */
     uint8_t dr[3];                       /* 0.2.25, per band: blocks run flat since its gain read 0 (the switch OFF, or the gain turned to 0) while its states held a signal: they ring out through the band's own poles, then the band rests (0.2.24: all three at once, when the last gain read 0) */
     eqc_t c[3];
+    eqc_t pc[3];                         /* R15: the coefficients before the last redesign, the glide's start */
+    uint8_t gl[3];                       /* .. bit 0: the part's signal (side 0), bit 1: SPREAD's side still glides from pc (a redesign of a running band) */
     int64_t s[2][3][2];                  /* the states (Q36): [0] the part's signal, [1] SPREAD's side; band; s1 s2 */
 } eq_t;
 static eq_t eqs[NLIVE];
@@ -1196,6 +1198,27 @@ static __attribute__((noinline)) void eq_run(const eqc_t *c, int64_t *s, int32_t
     s[0] = s1, s[1] = s2;
 }
 
+/* band k of part e over a block: eq_run, or after a redesign of a running band (R15: MORPH and TIDE step a gain in whole dB; the new coefficients at once
+ * put a step into the filter, MID -43 dB under a loud 60 Hz tone) the coefficients move a sample's share of the way, from the old to the new over the block (a block of CTL samples; any other length takes them at once) */
+static void eq_band(eq_t *e, uint32_t k, uint32_t side, int32_t *b, uint32_t n)
+{
+    if (n != CTL || !((e->gl[k] >> side) & 1u)) {
+        eq_run(&e->c[k], e->s[side][k], b, n);
+        return;
+    }
+    e->gl[k] &= (uint8_t)~(1u << side);
+    {
+        uint32_t j, i;
+        const int32_t *o = (const int32_t *)&e->pc[k], *c = (const int32_t *)&e->c[k];
+        for (j = 1; j <= CTL; j++) {
+            eqc_t m;
+            for (i = 0; i < 5u; i++)
+                ((int32_t *)&m)[i] = o[i] + (int32_t)(((int64_t)c[i] - o[i]) * (int32_t)j >> CTL_LOG2);
+            eq_run(&m, e->s[side][k], b + (j - 1u), 1u);
+        }
+    }
+}
+
 /* part t's EQ on its block b (side 0: the part's signal; 1: SPREAD's side signal); not called while all three gains are 0
  * and no state is live. 0.2.25: each band on its own: a band whose gain is 0 is not run (it costs nothing; one band set: that band only),
  * a band turned to 0 rings out flat (EQ_DRAIN blocks) and then rests, a band whose values moved is designed again (the others are not).
@@ -1219,6 +1242,7 @@ static __attribute__((noinline)) void track_eq(track_t *t, int32_t *b, uint32_t 
             if (!was)                                   /* (newly on: from rest) */
                 memset(e->s[0][k], 0, sizeof e->s[0][k]), memset(e->s[1][k], 0, sizeof e->s[1][k]);
             if (!was || e->dr[k] || memcmp(key + gk, e->key + gk, EQ_KN[k])) {
+                e->pc[k] = e->c[k], e->gl[k] = was ? 3u : 0u;   /* (R15: a running band glides from the old coefficients over this block, each side once) */
                 eq_design(&e->c[k], k, key[gk], key[gk + 1u], k == 1u ? key[4] : 0);
                 memcpy(e->key + gk, key + gk, EQ_KN[k]);
             }
@@ -1246,7 +1270,7 @@ static __attribute__((noinline)) void track_eq(track_t *t, int32_t *b, uint32_t 
     t->eqlv = 1;
     for (k = 0; k < 3u; k++)
         if ((on >> k) & 1u)
-            eq_run(&e->c[k], e->s[side][k], b, n);
+            eq_band(e, k, side, b, n);
 }
 
 /* the part is silent and its tail has run out: the states to rest (nothing sounds; a note after starts clean) */
