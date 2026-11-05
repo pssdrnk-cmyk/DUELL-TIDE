@@ -1279,14 +1279,21 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
         {
             env = env_tick(t, v);
             if (e->ownenv && v->active) {               /* the engine's envelopes (FM6): they end the voice */
-                if (e->done(t, v)) {
+                int d = e->done(t, v);
+                if (d == 1) {
                     v->active = v->gate = 0;
                     v->stage = 0;
                     v->env = v->env_out = 0;
                     continue;
                 }
-                v->env = 1 << 24;                       /* (the ADSR's release never ends it) */
-                env = 32767;
+                if (d) {                                /* 2: the cull of an inaudible tail (fm6_core.c): fade it over this block and end it, as the one-block fade of a voice_kill */
+                    v->active = v->gate = 0;
+                    v->stage = 0;
+                    v->env = env = 0;
+                } else {
+                    v->env = 1 << 24;                   /* (the ADSR's release never ends it) */
+                    env = 32767;
+                }
             }
             if (e2on)                                   /* DUELL: ENV 2 (read by the matrix or ENV 2 DEST) */
                 env2_tick(t, v);

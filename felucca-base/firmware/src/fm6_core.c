@@ -328,6 +328,9 @@ typedef struct {                 /* msfa FmOpParams */
 } fm6_op_t;
 
 #define FM6_THRESH 1120          /* msfa kLevelThresh: an operator below it on both block ends is skipped */
+#ifndef FM6_CULL                 /* (tests/cull_test.c builds the reference without the cull with -DFM6_CULL=1120, the threshold above) */
+#define FM6_CULL 16384           /* the CULL (fm6_note_done): a released note whose loudest carrier is below it (2^-11 of a full carrier, -66 dB) ends */
+#endif
 
 /* one operator over the block: modulated by in (0: none), into out (add: += else =). Four loops, so none
  * tests a flag per sample */
@@ -603,16 +606,19 @@ static int fm6_note_compute(fm6_note_t *n, const uint8_t *p, int32_t *out, int32
 }
 
 /* the note can be dropped: every carrier silent for good (released and done, or held at a silent
- * sustain whose release can only fall) */
+ * sustain whose release can only fall). Returns 1 for that (the voice ends at once, below msfa's threshold, -89 dB), 2 for the CULL: the note is released and its carriers together
+ * (the sum of their gains: an upper bound of the output, six carriers add up) are below FM6_CULL (-66 dB of one carrier at full level), so the rest of the tail is inaudible and the voice
+ * fades out over its last block (voice.c: as a voice_kill) instead of running its operators for seconds more. A held note (n->down) is never culled */
 static int fm6_note_done(const fm6_note_t *n, const uint8_t *p, uint32_t alg)
 {
-    uint32_t car = fm6_carriers(alg), k;
+    uint32_t car = fm6_carriers(alg), k, quiet = 1, sum = 0;
     for (k = 0; k < 6u; k++) {
         const fm6_env_t *e = &n->env[k];
         if (!((car >> k) & 1u))
             continue;
-        if (n->op[k].gain_out >= FM6_THRESH)
+        if (n->op[k].gain_out >= FM6_THRESH && n->down)
             return 0;
+        sum += (uint32_t)n->op[k].gain_out;
         if (e->ix < 3u)
             return 0;
         if (e->ix == 3u && !e->down && e->rising)
@@ -622,6 +628,9 @@ static int fm6_note_done(const fm6_note_t *n, const uint8_t *p, uint32_t alg)
             if ((a < 16 ? 16 : a) << 16 > e->level)
                 return 0;
         }
+        quiet &= n->op[k].gain_out < FM6_THRESH;
     }
-    return 1;
+    if (!n->down && sum >= FM6_CULL && !quiet)
+        return 0;
+    return quiet ? 1 : 2;
 }

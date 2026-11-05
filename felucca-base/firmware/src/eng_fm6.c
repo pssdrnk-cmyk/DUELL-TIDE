@@ -594,17 +594,19 @@ static __attribute__((noinline)) int32_t fm6_sub_follow(track_t *t, voice_t *v)
     return g >= (1 << 25) ? 32767 : g >> 10;
 }
 
-/* every carrier has gone silent for good: the voice ends (voice.c, engine_t.done) */
+/* every carrier has gone silent for good: the voice ends (voice.c, engine_t.done): 1 at once, 2 the CULL of a released tail below -66 dB (fm6_core.c fm6_note_done):
+ * voice.c fades it over this block and ends it (the note stays live: this block still renders it, as a voice_kill's block does) */
 static int fm6_done(track_t *t, voice_t *v)
 {
     fm6_note_t *n = fm6_note_of(t, v);
     uint32_t tr = (uint32_t)(t - trk);
+    int d;
     if (!n || !n->live)
         return 1;
-    if (!fm6_note_done(n, fm6_eff[tr].p, fm6_eff[tr].alg))
-        return 0;
-    n->live = 0;
-    return 1;
+    d = fm6_note_done(n, fm6_eff[tr].p, fm6_eff[tr].alg);
+    if (d == 1)
+        n->live = 0;
+    return d;
 }
 
 /* DUELL ARP TARGET (SPEC 2.3): the masked operators (bit k: the patch's operator k, OP6 = 0) a pitch offset of the arp's
