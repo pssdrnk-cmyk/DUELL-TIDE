@@ -137,6 +137,16 @@ int main(void)
     tide_journey(1u, 1u, 1u, 0u);
     tide_home(1u);
     CHECK("jrny memory: HOME clears it", !jh[0][0]);
+    /* B18: a JRNY start gives End B a target on each part that has none, decided per part (part 2 already has one) */
+    setup(e, fam_of(ds_cat_of(e, 0)));
+    set_engine_of(&trk[1], e); apply_preset_to(&trk[1], 0); frame();
+    morph_to_sound(1, 1, 1);
+    {
+        int32_t keep = morph_to_of(1, 1);
+        gl.mode = GM_JOURNEY; gl.on = gl.armed = 0; gl.target = GT_SOUND;
+        glide_start(1u, 3u, 0u);
+        CHECK("jrny: a start with part 2 already targeted still targets part 1 (B18)", keep >= 0 && morph_to_of(0, 1) >= 0 && morph_to_of(1, 1) == keep);
+    }
     printf("%u checks, %u failed\n", checks, failures);
     return failures != 0;
 }
