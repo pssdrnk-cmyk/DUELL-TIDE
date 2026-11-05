@@ -29,10 +29,10 @@ static uint32_t sqm_pitch_voice(const step_t *s, uint32_t idx)
     }
     return (step_cont(s) & (1u << hi)) || (s->n > 1u && hi == lo) || s->note[hi] < 48u ? 4u : hi;   /* (nothing under C3: the bass never walks) */
 }
-static int sqm_pitch_ok(const track_t *t, const step_t *s, uint32_t k, int32_t n)
+static int sqm_pitch_ok(const track_t *t, const step_t *s, uint32_t k, int32_t n, int32_t lo, int32_t hi)
 {
     uint32_t i;
-    if (n < 24 || n > 108 || n < (int32_t)s->note[k] - 12 || n > (int32_t)s->note[k] + 12) return 0;
+    if (!sqm_in_lane(n, lo, hi) || n < (int32_t)s->note[k] - 12 || n > (int32_t)s->note[k] + 12) return 0;
     if (!((scale_mask(t) >> (uint32_t)((n - root_g + 240) % 12)) & 1u)) return 0;
     for (i = 0; i < s->n; i++) if (i != k && note_snap_to(t, s->note[i], 1u) == n) return 0;
     return 1;
@@ -40,7 +40,9 @@ static int sqm_pitch_ok(const track_t *t, const step_t *s, uint32_t k, int32_t n
 static int sqm_pitch_chain_ok(const track_t *t, const step_t *p, uint32_t len, uint32_t at, uint32_t k, int32_t n)
 {
     uint32_t raw = p[at].note[k];
-    if (!sqm_pitch_ok(t, &p[at], k, n)) return 0;
+    int32_t lo, hi;
+    sqm_lane(p, len, &lo, &hi);                     /* (C1: the Original's lane; p is the Original in both callers) */
+    if (!sqm_pitch_ok(t, &p[at], k, n, lo, hi)) return 0;
     for (uint32_t d = 1; d < len; d++) {
         const step_t *st = &p[(at + d) % len];
         if (st->time == ST_TIE) continue;

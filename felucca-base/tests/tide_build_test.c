@@ -8,6 +8,9 @@
  *             in every ARC phase, so a drone, a texture or a two-chord pad gains no onset; three hits and more still have room
  *   register  no dial moves a note to another pitch class; VOIC moves a note an octave at most, so every note stays within an octave of
  *             the Original's lowest and highest and inside 24..108
+ *   lane      (C1, roles spec) whatever the dials, VOIC (both paths) and the PITCH moves do, every note of every end lies in the Original's lane: from its
+ *             lowest hit note (but not above C3, 48: a pad, a skank, a lead never gets a note under C3) to its highest plus an octave; a bass scene at 36..43 never
+ *             goes under 36, a scene at 60..70 never under 48; each lane scene must move notes, and reach the lane's edge, so the bound is not met by doing nothing
  *   room      sound_complement_pick: with the peer muted, WILD, or the musical rolls off, it keeps the first sound; it only ever returns one
  *             of the two candidates, the one with the higher contrast score against the other part (and across many pairs it
  *             picks both); under ARC's peak or breakdown it returns the brighter or the softer of the two */
@@ -119,6 +122,74 @@ static void t_build(void)
     CHECK("register: every note stays within an octave of the Original's range and inside 24..108", !range_bad);
 }
 
+/* ---- lane (C1): the Original's register is the bound of every generated note */
+/* kind 0: a skank, triads and dyads at 60..70 (lane 48..82); 1: a bass at 36..43 (lane 36..55); 2: a pad / lead from 50 to 62 (lane 48..74) */
+static void make_lane_pat(step_t *p, uint32_t kind)
+{
+    static const uint8_t SK[7] = { 60, 62, 64, 65, 67, 69, 70 }, BS[5] = { 36, 38, 40, 41, 43 }, PD[8] = { 50, 52, 53, 55, 57, 59, 60, 62 };
+    uint32_t i, k, hits = 5u + rnd(7u);
+    memset(p, 0, LEN * sizeof *p);
+    for (k = 0; k < hits; k++) {
+        i = k ? rnd(LEN) : 0u;                        /* (the first hit is on step 0 and on the scene's lowest note, so the lane's floor is known) */
+        p[i].time = ST_NOTE;
+        p[i].vel = 100;
+        if (kind == 0u) {
+            p[i].n = 2u + rnd(2u), p[i].note[0] = SK[k ? rnd(7u) : 0u], p[i].note[1] = (uint8_t)(p[i].note[0] + 3u + rnd(2u)), p[i].note[2] = (uint8_t)(p[i].note[0] + 7u);
+        } else if (kind == 1u) {
+            p[i].n = rnd(3u) ? 1u : 2u, p[i].note[0] = BS[k ? rnd(5u) : 0u], p[i].note[1] = (uint8_t)(p[i].note[0] + 7u);
+        } else {
+            p[i].n = rnd(2u) ? 1u : 3u, p[i].note[0] = PD[k ? rnd(8u) : 0u], p[i].note[1] = (uint8_t)(p[i].note[0] + 4u), p[i].note[2] = (uint8_t)(p[i].note[0] + 7u);
+        }
+    }
+}
+static void t_lane(void)
+{
+    uint32_t kind, k, i, m, builds = 0, moved = 0, edge = 0, out_of_lane = 0, under_floor = 0, pit_runs = 0;
+    static const int32_t floor_of[3] = { 48, 36, 48 };      /* (the scenes' lowest notes 60, 36, 50; a lane starting above C3 reaches down to 48) */
+    ui_power_on();
+    frame();
+    scale_g = 1;
+    root_g = 0;
+    for (kind = 0; kind < 3u; kind++)
+        for (k = 0; k < 1200u; k++) {
+            step_t p[LEN], a[LEN];
+            sqm_end_t x;
+            uint32_t amt = 25u + 25u * rnd(4u), pit = k & 1u;
+            int32_t top = 0;
+            make_lane_pat(p, kind);
+            for (i = 0; i < LEN; i++)
+                for (m = 0; sqm_hit(&p[i]) && m < p[i].n; m++)
+                    top = p[i].note[m] > top ? p[i].note[m] : top;
+            top += 12;
+            morph_musical = (int)((k >> 1) & 1u);
+            if (pit) morph.cfg |= MC_PIT; else morph.cfg &= ~(uint32_t)MC_PIT;
+            sqm_rand(&x, 1u + rnd(65535u), amt);
+            for (i = 0; i < SD_N; i++)
+                x.d[i] = (int8_t)(rnd(2u) ? (int)amt : -(int)amt);   /* every dial at its full amt, either way */
+            for (i = 0; i < LEN; i++)
+                sqm_pitch_set(&x, i, pit ? (int32_t)rnd(25u) - 12 : 0);
+            sqm_build(p, LEN, &x, amt, a);
+            builds++, pit_runs += pit;
+            for (i = 0; i < LEN; i++) {
+                if (!sqm_hit(&a[i]))
+                    continue;
+                for (m = 0; m < a[i].n && m < 4u; m++) {
+                    int32_t nn = a[i].note[m];
+                    out_of_lane += nn < floor_of[kind] || nn > top;
+                    under_floor += kind == 0u && nn < 48;
+                    edge += nn == floor_of[kind] || nn == top;
+                    moved += a[i].note[m] != p[i].note[m];
+                }
+            }
+        }
+    printf("lane: %u builds (%u with PITCH moves), %u notes moved, %u at the lane's edge, outside the lane %u, a skank under C3 %u\n", builds, pit_runs, moved, edge, out_of_lane, under_floor);
+    morph.cfg &= ~(uint32_t)MC_PIT;
+    CHECK("lane: no note of any end lies outside [the Original's lowest (not above 48), its highest + 12]", !out_of_lane);
+    CHECK("lane: a skank at 60..70 never gets a note under C3", !under_floor);
+    CHECK("lane: the dials and the pitch moves do change notes in the lane scenes", moved > builds);
+    CHECK("lane: notes reach the lane's edge (the bound is tested, not avoided)", edge > 50u);
+}
+
 /* ---- still (C4): a sustained part holds still */
 static void t_still(void)
 {
@@ -224,6 +295,7 @@ static void t_room(void)
 int main(void)
 {
     t_build();
+    t_lane();
     t_still();
     t_room();
     printf("tidebuild: %d checks, %d failed\n", checks, bad);
