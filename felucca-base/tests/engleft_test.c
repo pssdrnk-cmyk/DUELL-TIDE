@@ -1,5 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* Small engine fixes of lane P / Q / S of the 2026-11-04 audit that need no test of their own. build/host/engleft_test (host_tests.sh engleft):
+ *   G07x ARP TARGET with ARP SEQ honours a TIE like the note arp does (seq.c atg_fire): the gate of a note followed by two TIEs is three steps and a bit, and the TIE steps
+ *        leave it open (they used to close it: a rest)
+ *   U06  the ARP pages' picture and the arp share one note order (seq.c arp_index): every MODE gives the same places from the first step as arp_pick, WALK and RANDOM stay in range
  *   S10  a motion lock (or any automation) on PATCH TRIM and the CHORUS / DELAY / REVERB sends is ramped across the block like a matrix route's move (mod.c motion_mix,
  *        fx.c mix_ramp): a lock that doubles TRIM on a held sine leaves no step at the block seam (the first difference at the seam under 10 x the steady maximum, a step gave 76 .. 124)
  *   P14  ANALOG's DRV 0 -> 1 is not a step (eng_analog.c an_drive): the level of a held saw changes by less than 0.4 dB (it was 0.9 dB), DRV 8 and up as before
@@ -105,6 +108,55 @@ static double seam_ratio(uint32_t id, int v, int32_t base)
     return dmax ? (double)dseam / dmax : 0;
 }
 
+/* ARP TARGET + ARP SEQ with a note, two TIEs and a rest: the gate the first step sets, and that the TIE steps keep it */
+static void atg_tie(void)
+{
+    track_t *t = fresh("ANALOG");
+    uint32_t period = 6000, i;
+    int ok_gate, ok_hold = 1;
+    t->p[P_AMODE] = AM_SEQ;
+    t->p[P_ATGT] = 2;
+    t->p[P_SLEN] = 4;
+    t->p[P_AGATE] = 64;
+    t->p[P_APROB] = 127;
+    for (i = 0; i < 16u; i++)
+        t->step[i] = (step_t){{0}, 0, ST_REST, 0, 100};
+    t->step[0] = (step_t){{64}, 1, ST_NOTE, 0, 100};
+    t->step[1] = (step_t){{0}, 0, ST_TIE, 0, 100};
+    t->step[2] = (step_t){{0}, 0, ST_TIE, 0, 100};
+    input_on(t, 60, 100);
+    t->arp_idx = 0xFFFFFFFFu;
+    arp_fire(t, period);                                 /* step 0: the note */
+    ok_gate = t->atg_vel != 0 && t->atg_note == 64 && t->arp_off == 2u * period + period * 64u / 128u;
+    arp_fire(t, period);                                 /* step 1: a TIE */
+    ok_hold &= t->atg_vel != 0 && t->atg_note == 64;
+    arp_fire(t, period);                                 /* step 2: a TIE */
+    ok_hold &= t->atg_vel != 0 && t->atg_note == 64;
+    arp_fire(t, period);                                 /* step 3: a rest closes the gate */
+    check("G07x ARP TARGET + SEQ: a note with two TIEs after it holds the gate for 2 steps + GATE", ok_gate);
+    check("G07x ARP TARGET + SEQ: the TIE steps leave the gate open (a rest closed it)", ok_hold);
+    check("G07x ARP TARGET + SEQ: the rest after them closes it", t->atg_vel == 0);
+}
+
+/* U06: the places of every MODE from the first step (index 0) over a list of 3, and RANDOM / WALK in range over many steps; the picture (ui_graph.c graph_arp) calls the same arp_index with
+ * step i for its column i, so its first column is the first note the arp plays (it used to start at step 1: the first column showed the second note) */
+static uint32_t one_rnd(void) { return 0x5555u; }
+static void arp_modes(void)
+{
+    static const struct { uint32_t m; uint32_t want[6]; } W[] = {
+        {AM_UP, {0, 1, 2, 0, 1, 2}}, {AM_DN, {2, 1, 0, 2, 1, 0}}, {AM_UPDN, {0, 1, 2, 1, 0, 1}}, {AM_DNUP, {2, 1, 0, 1, 2, 1}},
+    };
+    uint32_t j, i, ok = 1, walk = 0, inr = 1;
+    for (j = 0; j < NELEM(W); j++)
+        for (i = 0, walk = 0; i < 6u; i++)
+            ok &= arp_index(W[j].m, i, 3, &walk, one_rnd) == W[j].want[i];
+    for (i = 0, walk = 0; i < 40u; i++)
+        inr &= arp_index(AM_WALK, i, 4, &walk, one_rnd) < 4u && (i != 0 || walk == 0);
+    for (i = 0; i < 40u; i++)
+        inr &= arp_index(AM_RND, i, 4, &walk, one_rnd) < 4u;
+    check("U06 ARP MODE places from step 0 (UP 0 1 2, DOWN 2 1 0, UP-DN 0 1 2 1, DN-UP 2 1 0 1); WALK starts at 0; RANDOM and WALK in range", ok && inr);
+}
+
 int main(void)
 {
     uint32_t own, v;
@@ -132,6 +184,8 @@ int main(void)
         snprintf(s, sizeof s, "P14 ANALOG DRV 0 / 1 / 4 / 8 / 9: %.2f / %.2f / %.2f / %.2f / %.2f dB; the first notch moves the level by under 0.4 dB", d0, d1, d4, d8, d9);
         check(s, fabs(d1 - d0) < 0.4 && fabs(d8 - d4) > fabs(d1 - d0) && fabs(d9 - d8) < 1.5);
     }
+    atg_tie();
+    arp_modes();
     printf("engleft: %s\n", bad ? "FAILED" : "all ok");
     return bad != 0;
 }

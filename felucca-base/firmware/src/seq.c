@@ -406,14 +406,12 @@ static void arp_off(track_t *t)                  /* the sounding arp note(s) end
     t->arp_nz &= (uint8_t)~1u;
 }
 
-/* the place in the note list (len notes) the step arp_idx plays (not inlined, as arp_chord); UP+8 adds its note */
-static __attribute__((noinline)) uint32_t arp_pick(track_t *t, uint32_t *list, uint32_t len)
+/* the place in a note list of len notes that step i of an arp in MODE m plays (i counts from 0, the first note played); walk: WALK's place (kept between calls, any start); rnd: the source of
+ * RANDOM's and WALK's numbers. One copy for the arp (arp_pick: rng) and for the ARP pages' picture (ui_graph.c graph_arp: a fixed sequence), so a new MODE added here shows in the picture
+ * (audit U06: the picture had its own copy, which had drifted: it started at step 1, so the first column showed the second note) */
+static __attribute__((noinline)) uint32_t arp_index(uint32_t m, uint32_t i, uint32_t len, uint32_t *walk, uint32_t (*rnd)(void))
 {
-    uint32_t i = t->arp_idx, m = (uint32_t)t->p[P_AMODE], cyc, k, w;
-    if (m == AM_UP8 && len < 64u)                   /* UP+8: the first note again over the top */
-        list[len++] = (uint32_t)clamp((int32_t)list[0] + 12 * t->p[P_AOCT], 0, 127);
-    cyc = len > 1u ? 2u * len - 2u : 1u;
-    k = i % cyc;
+    uint32_t cyc = len > 1u ? 2u * len - 2u : 1u, k = i % cyc, w;
     switch (m) {
     case AM_DN:
         return len - 1u - i % len;
@@ -422,7 +420,7 @@ static __attribute__((noinline)) uint32_t arp_pick(track_t *t, uint32_t *list, u
     case AM_DNUP:
         return k < len ? len - 1u - k : k - (len - 1u);
     case AM_RND:
-        return rng() % len;
+        return rnd() % len;
     case AM_CONV:
     case AM_DIVG:
         k = i % len;
@@ -434,18 +432,28 @@ static __attribute__((noinline)) uint32_t arp_pick(track_t *t, uint32_t *list, u
     case AM_THUMB:
         return len < 2u ? 0u : (k & 1u) ? 1u + k / 2u : 0u;
     case AM_WALK:
-        w = t->arp_walk;
+        w = *walk;
         if (!i)
             w = 0;                                  /* (from the bottom) */
         else if (w >= len)
             w = len - 1u;                           /* (notes let go) */
         else if (len > 1u)
-            w = !w ? 1u : w == len - 1u ? w - 1u : (rng() >> 7) & 1u ? w + 1u : w - 1u;
-        t->arp_walk = (uint8_t)w;
+            w = !w ? 1u : w == len - 1u ? w - 1u : (rnd() >> 7) & 1u ? w + 1u : w - 1u;
+        *walk = w;
         return w;
     default:
         return i % len;
     }
+}
+/* the place in the note list (len notes) the step arp_idx plays (not inlined, as arp_chord); UP+8 adds its note */
+static __attribute__((noinline)) uint32_t arp_pick(track_t *t, uint32_t *list, uint32_t len)
+{
+    uint32_t w = t->arp_walk, r;
+    if (t->p[P_AMODE] == AM_UP8 && len < 64u)       /* UP+8: the first note again over the top */
+        list[len++] = (uint32_t)clamp((int32_t)list[0] + 12 * t->p[P_AOCT], 0, 127);
+    r = arp_index((uint32_t)t->p[P_AMODE], t->arp_idx, len, &w, rng);
+    t->arp_walk = (uint8_t)w;
+    return r;
 }
 
 /* n: samples the arp advances by (the external clock's while it runs, 0 stopped); gate_n: samples its
@@ -531,14 +539,18 @@ static __attribute__((noinline)) int arp_roll(const track_t *t)
  * units stay on the last note */
 static __attribute__((noinline)) void atg_fire(track_t *t, uint32_t *list, uint32_t cnt, uint32_t len, uint32_t period)
 {
-    uint32_t nt = 128, vel = arp_vel(t), i, m, o;
+    uint32_t nt = 128, vel = arp_vel(t), i, m, o, ties = 0;
     uint8_t out[4];
+    if (t->p[P_AMODE] == AM_SEQ && arp_seq_tie(t, t->arp_idx))
+        return;                                     /* a TIE: the step before goes on (its gate was lengthened with it; audit G07, as arp_fire) */
     if (ARP_UP(t))
         arp_off(t);                                 /* (a classic step's note: the mask just changed) */
     if (t->p[P_AMODE] == AM_SEQ) {
         if (arp_roll(t))
             for (i = 0, m = arp_seq_notes(t, list, cnt, out, &vel); i < m; i++)
                 nt = out[i] < nt ? out[i] : nt;
+        while (ties < 31u && arp_seq_tie(t, t->arp_idx + ties + 1u))
+            ties++;                                 /* the TIE steps after it hold it */
     } else if (t->p[P_AMODE] == AM_CHORD) {         /* CHORD: its lowest note, an octave up each step through OCT */
         o = t->arp_idx % (uint32_t)(t->p[P_AOCT] > 0 ? t->p[P_AOCT] : 1);
         for (i = 0; i < cnt; i++)
@@ -557,7 +569,7 @@ static __attribute__((noinline)) void atg_fire(track_t *t, uint32_t *list, uint3
     }
     t->atg_note = (uint8_t)nt;
     t->atg_vel = (uint8_t)vel;
-    t->arp_off = period * (uint32_t)t->p[P_AGATE] / 128u;
+    t->arp_off = period * ties + period * (uint32_t)t->p[P_AGATE] / 128u;
 }
 
 /* an arp step starts (period: its length): the next note of the list. Not inlined: once a step, kept out of the audio
@@ -606,6 +618,8 @@ static __attribute__((noinline)) void arp_fire(track_t *t, uint32_t period)
  * step takes, so the offbeat lands where the display says (audit S03; it used to land at 70 % for 75, 62.9 for 66).
  * sw_ex: the part of a SWG over 50 (0 .. 25); sw_len: the samples the even step is longer by, the odd one shorter, for the sum of such parts
  * (the track's SWG and the global one add, at most 25 = 75 %): the offbeat is at period + ex * period / 50 = (50 + 2 * ex) % of the pair */
+/* a triplet division (N_DIV 4 = 8T, 5 = 16T, 10 = 4T, 11 = 2T, 12 = 32T) is not swung: its steps are already the third of a beat, and a swung pair measured 70 % (audit S14; MPC and Elektron leave triplets straight) */
+#define DIV_TRIPLET(d) ((0x1C30u >> ((d) & 31u)) & 1u)
 static inline int32_t sw_ex(int32_t pct) { return pct <= 50 ? 0 : pct >= 75 ? 25 : pct - 50; }
 static inline int32_t sw_len(int32_t ex, uint32_t period) { return (ex > 25 ? 25 : ex) * (int32_t)period / 50; }
 static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
@@ -637,7 +651,7 @@ static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
         return;
     }
     period = div_samples((uint32_t)t->p[P_ARATE]);
-    sw = sw_len(sw_ex(t->p[P_ASWING]), period);
+    sw = DIV_TRIPLET(t->p[P_ARATE]) ? 0 : sw_len(sw_ex(t->p[P_ASWING]), period);
     if (t->arp_pos >= 0x8000000u) {                 /* a new phrase waits for its first step (0xFFFFFFF less the samples still to wait) */
         uint32_t w = 0xFFFFFFFu - t->arp_pos;
         if (n < w) {
@@ -679,7 +693,7 @@ static void arp_tick(track_t *t, uint32_t n) { arp_step(t, n, n); }
  * and the odd ones shorter, so every odd step starts late */
 static uint32_t step_samples(const track_t *t, uint32_t period, uint32_t idx)
 {
-    int32_t sw = sw_len(sw_ex(t->p[P_SSWING]) + sw_ex(song.g[G_SWING]), period);   /* the track's + the global, at most 75 % */
+    int32_t sw = DIV_TRIPLET(t->p[P_SDIV]) ? 0 : sw_len(sw_ex(t->p[P_SSWING]) + sw_ex(song.g[G_SWING]), period);   /* the track's + the global, at most 75 % (not on a triplet) */
     return period + (uint32_t)((idx & 1u) ? -sw : sw);
 }
 
