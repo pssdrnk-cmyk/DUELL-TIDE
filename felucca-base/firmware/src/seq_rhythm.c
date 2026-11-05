@@ -55,6 +55,15 @@ static void rhythm_put(uint32_t pi, uint32_t i, int32_t d)
     rhythm_map[pi][i] = d ? (uint8_t)((int32_t)i + d + 1) : 0;
     rhythm_mark(pi);
 }
+/* another stored attack of part pi than skip lands on place at as reached (rep: or repeats at its own place there) */
+static int rhythm_lands(uint32_t pi, uint32_t skip, int32_t at, uint32_t len, int rep)
+{
+    for (uint32_t k = 0; k < len; k++)
+        if (k != skip && sqm_hit(&trk[pi].step[k]) && rhythm_map[pi][k] != RHYTHM_REST &&
+            ((int32_t)k + rhythm_offset(pi, k) == at || (rep && (rhythm_map[pi][k] & RHYTHM_REPEAT) && (int32_t)k == at)))
+            return 1;
+    return 0;
+}
 static void rhythm_reset(uint32_t pi)
 {
     memset(rhythm_map[pi], 0, sizeof rhythm_map[pi]);
@@ -175,11 +184,7 @@ static int rhythm_mutate(uint32_t pi, uint32_t seed)
                 if (m == SM_BEAT || (m == SM_A && (tide_pushes(pi, (uint32_t)dest, i, len) >= (tarc_sync() == 2u ? 2u : 1u) ||
                                                    sqm_hit(&t->step[((uint32_t)dest + 1u) % len])))) continue;
             }
-            int ok = 1;
-            for (uint32_t k = 0; k < len; k++)
-                if (k != i && sqm_hit(&t->step[k]) && rhythm_map[pi][k] != RHYTHM_REST &&
-                    ((int32_t)k + rhythm_offset(pi, k) == dest ||
-                     ((rhythm_map[pi][k] & RHYTHM_REPEAT) && (int32_t)k == dest))) ok = 0;
+            int ok = !rhythm_lands(pi, i, dest, len, 1);
             for (uint32_t e = 0; e < 2u; e++) {
                 const step_t *p = sqm_pat[pi][e];
                 if (!sqm_hit(&p[cur]) || sqm_held(p, (uint32_t)cur, len) ||
