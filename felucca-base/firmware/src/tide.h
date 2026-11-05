@@ -3,7 +3,7 @@
  * Every place where a DUELL file calls into TIDE is a hook below, marked "TIDE hook" at its call site, so the next
  * upstream merge finds them all with one grep. DUELL_TIDE=0 (env DUELL_TIDE=0 for tools/build.py) builds plain DUELL:
  * each hook expands to exactly the code that stood there before, and no TIDE file is compiled. That build is checked against
- * the hash in jam/off.sha256 (jam/check_off.sh; it carries the fork's shared fixes and data, see that file). Included once, at the end of core.h. */
+ * the hash in jam/off.sha256 (jam/check_off.sh; jam/off.history.md says what it covers). Included once, at the end of core.h. */
 #ifndef TIDE_H
 #define TIDE_H
 
