@@ -137,7 +137,7 @@ static const param_desc_t TP[P_COUNT] = {
     [P_EQLG] = PD("LOW", F_EQDB, -12, 12, 0),      /* DUELL EQ (fx.c track_eq): all 0 = off, bit for bit as before */
     [P_LRATE] = PD("RATE", F_LFOHZ, 0, 127, 60),
     [P_LWAVE] = PE("WAVE", N_LWAVE, 0),
-    [P_LPHASE] = PD("PHS", F_INT, 0, 127, 0),
+    [P_LPHASE] = PD("PHS", F_DEG, 0, 127, 0),
     [P_LFADE] = PD("FADE", F_TIME, 0, 127, 0),
     [P_LD_PIT] = PD("PIT", F_BIPCT, -64, 63, 0),
     [P_LD_FLT] = PD("FLT", F_BIPCT, -64, 63, 0),
@@ -193,7 +193,7 @@ static const param_desc_t TP[P_COUNT] = {
     /* DUELL: LFO 2 (voice.c lfo_tick, LFO 1's code), its ranges and defaults; routed only through the matrix (MS_LFO2) */
     [P_L2RATE] = PD("RATE2", F_LFOHZ, 0, 127, 60),
     [P_L2WAVE] = PE("WAVE2", N_LWAVE, 0),
-    [P_L2PHASE] = PD("PHS2", F_INT, 0, 127, 0),
+    [P_L2PHASE] = PD("PHS2", F_DEG, 0, 127, 0),
     [P_L2FADE] = PD("FADE2", F_TIME, 0, 127, 0),
     [P_CHRD] = PE("CHRD", N_CHRD, 0),
     [P_VOIC] = PE("VOIC", N_VOIC, 0),
@@ -770,6 +770,20 @@ static void param_format(const param_desc_t *d, int32_t v, char *val, const char
         }
         *unit = "%";
         break;
+    case F_DEG:                                     /* a phase: 128 steps of 2.8125 degrees */
+        fmt_int(val, (v * 360 + 64) / 128);
+        *unit = "deg";
+        break;
+    case F_VOWL: {                                  /* VOICE's vowel: A E I O U at 0 / 32 / 64 / 95 / 127, the two nearest letters between */
+        int32_t k = v * 4, i = k / 127, r = k - i * 127;
+        val[0] = "AEIOU"[i + (r > 118)];
+        val[1] = r > 8 && r <= 118 ? '>' : 0;
+        val[2] = "AEIOU"[i + 1 > 4 ? 4 : i + 1];
+        val[3] = 0;
+        if (!val[1])
+            val[2] = 0;
+        break;
+    }
     case F_FMODE:                                   /* .. its MODE: the ends and the middle by name, a blend as the two */
         str_cpy(val, v <= 0 ? "LP" : v < 64 ? "LP>BP" : v == 64 ? "BP" : v < UF_HP ? "BP>HP" : "HP", 6);
         break;

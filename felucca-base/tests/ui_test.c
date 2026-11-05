@@ -7254,6 +7254,58 @@ static int test_head_rec_foot(void)
     return bad;
 }
 
+/* audit lane T (D26): the tempo in every footer (T12), the capsule's MUTE and HOLD marks (T14), units for a phase and a vowel (T15) */
+static void cap_cell(uint32_t part, uint16_t *out);
+static int test_ui_t(void)
+{
+    int bad = 0, tempo_ok, mark_ok, unit_ok;
+    static uint16_t c0[H_HEAD * 40], c1[H_HEAD * 40], c2[H_HEAD * 40];
+    char v[PV_LEN];
+    const char *u;
+    uint32_t pg;
+    ui_power_on();
+    settings.palette = 0; palette_set(0);
+    go_main_to(HP_MORPH);
+    song.g[G_BPM] = 137;
+    song.rec = 0;
+    tempo_ok = rows_has(215, 240, "137");
+    for (pg = 0; pg < 2u; pg++) {                        /* (another page, another family: the same footer) */
+        open_family(pg ? FAM_EDIT : FAM_SEQ);
+        tempo_ok &= rows_has(215, 240, "137");
+    }
+    song.g[G_BPM] = 98;
+    tempo_ok &= rows_has(215, 240, "98");
+    go_main_to(HP_MORPH);
+    memset(host_screen, 0, sizeof host_screen);
+    ui.force = 1; draw_head(); ui.force = 0;
+    cap_cell(0, c0);
+    trk[0].p[P_MUTE] = 1;
+    memset(host_screen, 0, sizeof host_screen);
+    ui.force = 1; draw_head(); ui.force = 0;
+    cap_cell(0, c1);
+    trk[0].p[P_MUTE] = 0; trk[0].p[P_AMODE] = 1; trk[0].p[P_AHOLD] = 1;
+    memset(host_screen, 0, sizeof host_screen);
+    ui.force = 1; draw_head(); ui.force = 0;
+    cap_cell(0, c2);
+    mark_ok = memcmp(c0, c1, sizeof c0) && memcmp(c0, c2, sizeof c0) && memcmp(c1, c2, sizeof c0);
+    trk[0].p[P_AHOLD] = 0;
+    param_format(&TP[P_LPHASE], 64, v, &u);
+    unit_ok = !strcmp(v, "180") && !strcmp(u, "deg");
+    param_format(&ENG_FORMANT.edit[0], 0, v, &u);
+    unit_ok &= !strcmp(v, "A");
+    param_format(&ENG_FORMANT.edit[0], 16, v, &u);
+    unit_ok &= !strcmp(v, "A>E");
+    param_format(&ENG_FORMANT.edit[1], 64, v, &u);
+    unit_ok &= !strcmp(v, "I");
+    param_format(&ENG_FORMANT.edit[1], 127, v, &u);
+    unit_ok &= !strcmp(v, "U");
+    bad += check("footer: the tempo (BPM, the clock's measured one included) stands in row 2 on every page", tempo_ok);
+    bad += check("capsule: a muted part has a hollow number cell, a held arp a line under its letter (three different pictures)", mark_ok);
+    bad += check("units: the LFO's PHS in degrees (64 = 180 deg), VOICE's vowels as A E I O U with > between", unit_ok);
+    ui_power_on();
+    return bad;
+}
+
 /* FM6's operator pages (EDIT > OPERATOR, OP ENV, OPERATOR 2: ui_fm6op.c, Discussion #76): in an FM6 track's EDIT cycle
  * only; KNOB 1 the operator (shared by the three pages), KNOB 2..4 one byte each of the track's patch: every operator's
  * 14 bytes, each detent exactly that byte, SLOT OWN; the sound follows (a modulator's LEVEL brightens, a carrier's
@@ -9893,6 +9945,7 @@ int main(void)
     bad += test_cpu_bar();                          /* (DUELL 0.2.9: the CPU bar under the battery) */
     bad += test_head_ab_fit();                      /* (cloud job G: the A / B letter's room)
     bad += test_head_rec_foot();                    /* (DUELL 0.2.10: no number / REC mark in the header; the footer's armed mark) */
+    bad += test_ui_t();                             /* (audit lane T: footer tempo, capsule marks, units) */
     bad += test_patch_accel();                      /* (DUELL 0.2.16: PATCHES' K1 with KNOB ACCEL ON) */
     bad += test_transpose_patch();                  /* (DUELL 1.1, item 141: TRANSPOSE is the patch's, VOICE 1/2 K4; no KEY OFFSET) */
     bad += test_item152_flicker();                  /* (item 152: no blank frame on a change, PATCHES' title) */
