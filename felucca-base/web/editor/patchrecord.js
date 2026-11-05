@@ -131,6 +131,18 @@ function layout(b) {                                // where the parts start (up
   if (f & PTF.AK) { if (o + 2 > rl) return { at, total: o + 65536 }; o += 2 + rd16(b, o); }
   return { at, total: o };
 }
+// A record for a unit without TIDE (plain DUELL 1.1 refuses MBV_FMT and would drop the record at the chunk's next write): End B's flag 4 and its 3 bytes taken out, the
+// length field made right; End B keeps its blended bytes (D02). Any other record, or one this editor cannot lay out, comes back as it is (the same array).
+export function stripEndBFmt(bytes) {
+  const b = bytes instanceof Uint8Array ? bytes : Uint8Array.from(bytes);
+  if (b.length < FIX + VB || rd16(b, 0) !== b.length || !(b[4] & PTF.MB) || b[5] >= L.NENGINES) return bytes;
+  const { at, total } = layout(b);
+  if (total !== b.length || !(b[at.mb] & 4)) return bytes;
+  const out = new Uint8Array(b.length - 3);
+  out.set(b.subarray(0, at.pat - 3)); out.set(b.subarray(at.pat), at.pat - 3);   // (the 3 bytes are the last of End B's block)
+  out[at.mb] &= ~4; out[0] = out.length & 255; out[1] = out.length >> 8;
+  return out;
+}
 const nameOf = (b, o) => { let s = ""; for (let i = 0; i < 12 && b[o + i]; i++) s += String.fromCharCode(b[o + i]); return s; };
 
 // bytes -> { ok, error } or the record decoded: { ok, len, slot, rev, flags, engine, cat, name, values[P_COUNT], pairs, xv[NX] (the extension slots, their defaults where the record does not name them), mb (End B's block bytes) | null, pat, fm6 (128 bytes) | null, ak | null }
