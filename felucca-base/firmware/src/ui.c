@@ -1884,6 +1884,7 @@ static void preset_go(uint32_t n)                    /* load place n of the list
 /* DUELL (SPEC 4.2a): a PROGRAM CHANGE midi_control.c midi_pc queued, run here in the main loop. A multi: the MULTI page's
  * LOAD (project_load: both parts, each MORPH at A with its End B, every note off, playing goes on), an empty slot nothing.
  * A sound for part pi: program n = patch slot n (#n + 1), bank 0 and bank 1 alike (0.2.17: one list of slots; the banks were two lists before);
+ * bank 2 (audit G13): program n = the read-only place #129 + n (the factory sounds past the 128; none past the last);
  * whatever TYPE the PATCHES page shows (a program number must not move with a browsing filter); loaded as the PRESETS knob loads it
  * (load_begin / load_end: the part's notes off, an engine change fades, the MORPH at A from the new sound), the part's other settings kept,
  * the selection too (the load's functions work on the selected part: it is pointed at pi for the load only).
@@ -1903,7 +1904,9 @@ static void pc_recall(uint32_t pi, uint32_t prog, uint32_t bank)
         }
         return;
     }
-    if (pi >= NSHOWN || bank > 1u || prog >= UP_SLOTS)
+    if (bank == 2u)                                  /* audit G13: bank 2, program n = the read-only place past the 128 (#129 + n; sl_load: 0 for none) */
+        prog += UP_SLOTS + UP_NUSER;
+    if (pi >= NSHOWN || bank > 2u || prog >= (bank == 2u ? UP_VSLOTS : UP_SLOTS))
         return;
     song.sel = (uint8_t)pi;
     if (sl_load(prog)) {

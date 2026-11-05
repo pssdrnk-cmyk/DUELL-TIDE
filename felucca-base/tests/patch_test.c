@@ -1113,8 +1113,9 @@ int main(void)
         pc_recall(0u, 20u, 0u);
         ck("  a saved slot loads its record by program change too", trk[0].user == 21u && trk[0].p[P_REL] == 33);
         pc_recall(0u, 128u, 0u);
-        pc_recall(0u, 5u, 2u);
-        ck("  a program past the slots or another bank: ignored", trk[0].user == 21u);
+        pc_recall(0u, 5u, 3u);
+        pc_recall(0u, UP_VSLOTS - UP_SLOTS - UP_NUSER, 2u);
+        ck("  a program past the slots, past the last extra place, or another bank (3): ignored", trk[0].user == 21u);
         song.sel = 0;
         sl_load(8u);
         favorite_set(NENGINES, 8u, 1);

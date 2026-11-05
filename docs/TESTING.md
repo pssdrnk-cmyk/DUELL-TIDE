@@ -29,7 +29,7 @@ Hardware checklist:
 
 - [ ] **Install** (INSTALL.md): did it finish, did the unit restart, does ABOUT show DUELL?
 - [ ] **MIDI channels**: part 1 on channel 1, part 2 on channel 2; no stuck notes.
-- [ ] **MIDI program change and bank select**: bank 0 and bank 1; in LAYER, program 0 to 15 recalls MULTIs.
+- [ ] **MIDI program change and bank select**: bank 0 and bank 1; bank 2 (CC0 = 0, CC32 = 2) + program 0 loads #129; in LAYER, program 0 to 15 recalls MULTIs.
 - [ ] **MIDI clock**: arp, LFO and delay follow an external clock; start/stop.
 - [ ] **CLK AUTO** (GLO > TEMPO, KNOB 4): start and stop a DAW or a Circuit Tracks clock on USB, then on TRS: does DUELL switch (header CLOCK USB / TRS), follow, and go back to its own tempo about 1 s after the clock stops, without stopping or stumbling?
 - [ ] **USB audio input** (0.2.14): on macOS 15 or older (and on Windows, Linux, iOS if you have them), with MENU > SYSTEM > USB SERIAL OFF, is DUELL listed as an audio input and does it record? MIDI still there? (The computer may set the unit up as a new device once.)
