@@ -14,7 +14,7 @@ projects with such a track keep the number as stored and play silent, or, for `G
 (lane hits, accents, their bit 7) are still sent and accepted, always 0 and ignored; `UP_GET` answers kind 0, and `UP_PUT` with kind 1 (a
 drum grid) is refused as bad arguments; a stored grid record reads as empty. Ids 83..90 are DUELL's parameters, there are no lane levels. A
 project, a patch or a multi keeps its two lane bytes per step in the file (written 0). The web editor's own DRUM / DIGITAL tables,
-grid view and library-file converters (`web/editor.html`, `web/editor/mockunit.js`) were not changed in 0.2.14 and are out of date.
+grid view and library-file converters (`web/editor/mockunit.js`; the old single-file `web/editor.html` is gone) were not changed in 0.2.14 and are out of date.
 
 **DUELL 0.2.14, the old stored formats are no longer read (Removed: loading of saves from before 0.2.14).** The device loads a stored
 object only in the form it writes now; any other is refused (a `BACKUP_PUT` answers rc 1 at begin or rc 2 at commit) or read as empty, and
@@ -194,7 +194,7 @@ reads it, a project keeps it): `SET` of `G_ENGSEL` = 1 (DIGITAL's first preset),
 `UP_LOAD` of a slot stored with engine 1 (`UP_PUT` still takes engine 1: the record keeps the DIGITAL values, every
 load converts them), projects with DIGITAL tracks (their motion on E1..E8 and ids 61..80 is dropped). The track
 reports engine 12 (FM6) and the FM6 preset that covers the sound. The editor converts DIGITAL patches of library
-files the same way (it equals the firmware's, `test_web.mjs`).
+files the same way (it equals the firmware's).
 
 (DUELL: the next two paragraphs describe Felucca's layout, as stores of Felucca hold it; on a DUELL device ids 61..80
 and 83..90 are DUELL's, see "DUELL step 3" above.) The four FM operator envelopes (the DIGITAL engine's OP1..OP4 ENV

@@ -74,6 +74,7 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 - **Fixed (TIDE):** SAVE of a factory sound that has no slot of its own (#125 to #160) offers the first empty USER slot instead of always USER 1, so a second save no longer lands on the first one by default. Image +36 B.
 - **Under the hood (TIDE):** stale comments corrected (RAM placement is the product build, the pool is cleared at start, USER slots in the pattern and patch headers, the erase order), the editor protocol notes the USER slots and STORE FULL, `flash_dump.py` labels patch chunk 21 and the settings tail, KNOWN_LIMITS says what program change reaches. Comments and docs only, no change to the image.
 - **Fixed (also with `DUELL_TIDE=0`):** with the USB MIDI out ring full, a note-on that was dropped is no longer marked as sent (no stray note-off later) and a note-off that was dropped keeps its note marked so the next one ends it. Image +16 B.
+- **Under the hood:** the retired single-file editor (`web/editor.html`, 5,100 lines), Felucca's `index_pkg.html` and the old `test_web.mjs` that tested them are deleted (about 440 KB); the package and update checks live on in `web/test_ota.mjs`, the DX7 compatibility harness reads `web/editor/fm6voice.js`, and the site no longer publishes the librarian's test WAV (262 KB).
 
 ## DUELL 1.1
 

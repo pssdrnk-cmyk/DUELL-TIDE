@@ -6,7 +6,7 @@
  *   cc -O2 -w -DDUELL_TEST_MODE=1 -Ibuild/gen -Ifirmware/src -Itests -o build/host/dx7_compat tests/dx7_compat.c -lm
  *   cc -O2 -o build/host/dx7_ref tests/dx7_ref.c -lm
  *   build/host/dx7_compat OUT/render BANKS/*.syx ; build/host/dx7_ref OUT/ref BANKS/*.syx
- *   node tests/dx7_js_parse.mjs web/editor.html OUT/js.tsv BANKS/*.syx          (the editor's own FM6.parseSysex)
+ *   node tests/dx7_js_parse.mjs OUT/js.tsv BANKS/*.syx          (the editor's own FM6.parseSysex, web/editor/fm6voice.js)
  *   python3 -I tests/dx7_analyze.py BANKS OUT/render OUT/ref OUT/js.tsv OUT/results.json
  *   DX7_LFO=1 build/host/dx7_compat x y                                          (the engine's LFO speed / delay as numbers)
  *   build/host/dx7_compat OUTROOT FILE.syx [FILE.syx ...]

@@ -181,7 +181,7 @@ def main(path):
 
 
 def js():
-    """the same patches as the web editor's mock device holds them (web/editor.html FM6 INIT_PK, FACTORY_PK)"""
+    """the same patches as the web editor's mock device holds them (web/editor/fm6voice.js FM6 INIT_PK)"""
     a = lambda b: "[" + ",".join(str(x) for x in b) + "]"
     print("  const INIT_PK = " + a(pack(INIT)) + ";")
     print("  const FACTORY_PK = [")
