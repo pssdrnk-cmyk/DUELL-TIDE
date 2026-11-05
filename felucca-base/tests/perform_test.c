@@ -2108,6 +2108,7 @@ static void t_space_glitch(void)
         for (sp = 0; sp < 2u; sp++) {
             song_setup();
             space_clear();
+            song.g[G_RTYPE] = 2;                        /* HALL, the default: the tail is read at 1.5 s, and ROOM (since audit R09 a short room, RT60 0.8 s) has mostly gone by then */
             duell_mode_force(m ? DM_SPLIT : DM_STEREO);
             for (k = 0; k < 2u; k++)
                 trk[k].p[P_REV] = trk[k].p[P_DLY] = trk[k].p[P_CHOR] = 0;

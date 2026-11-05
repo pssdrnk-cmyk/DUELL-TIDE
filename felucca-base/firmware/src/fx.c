@@ -174,7 +174,9 @@ static uint32_t scale_mask(const track_t *t);           /* seq.c */
  * bus (mono) gets left + right, rev_side left - right, which mix_block adds to the left and takes from the
  * right (rev_side_mix). Back to 44.1 kHz between samples. Rounding: the lines' gains round to the nearest (0.2.29: the
  * quiet lines too, hall_end: the tail decays as it should down to the lines' last LSB and then ends in exact silence),
- * and the low-passes keep their steps' remainders (no offset). */
+ * and the low-passes keep their steps' remainders (no offset).
+ * ROOM (G_RTYPE 0; audit R09, owner D24) runs this same code with a short decay (fx_bus.c hall_gains, room: RT60 0.25 s at SIZE 0, 0.6 s at 64, 1.6 s at 127): a short, diffuse, stereo room.
+ * The 4-comb mono model (fx_bus.c rev_room) is SHIM's base now. */
 #define HL_NL 8u                         /* lines */
 #define HL_NAP 2u                        /* diffusers */
 #define HL_NC (CTL / 2u)                 /* a block at half the rate */

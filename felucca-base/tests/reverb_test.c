@@ -148,13 +148,14 @@ static void test_room_identical(void)
             c[i] = on ? noise(60000) : 0;
             d[i] = on ? noise(60000) : 0;
             r[i] = on ? noise(b % 2000u < 1000u ? 90000 : 4000) : 0;
+            r[i] = 0;                                           /* (audit R09: ROOM is the HALL's code now; the comb model below is SHIM's base, tested direct: here the chorus and the delay, bit for bit, with the reverb send silent) */
         }
         fx_buses_m(DLY_LEN - 1u, delay_samples(), c, d, r, w0, CTL, 0u, 0);   /* (0.2.21: the chorus of a bus without a side, DUEL's: the one tap, as it was; STEREO's is stereochorus_test.c) */
         ref_buses(c, d, r, w1, CTL);
         for (i = 0; i < CTL; i++)
             diff += w0[i] != w1[i];
     }
-    check("ROOM: the buses bit for bit as before SPRING (30 s of noise sends, reverb/feedback swept; time/depth held)", !diff && !fx.rtype);
+    check("ROOM: the chorus and delay of the buses bit for bit as before SPRING (30 s of noise sends, silent reverb send, feedback swept; time/depth held)", !diff && !fx.rtype);
 }
 
 /* ------------------------------------------------------------- SPRING --- */
@@ -332,7 +333,7 @@ static void test_spring_identical(void)
     snprintf(what, sizeof what, "SPRING (and ROOM <-> SPRING) bit for bit as before HALL: 20 s of sends, hash 0x%08x", h);
     /* (0.2.14: the golden was 0xdd93d2f8 until SPRING's SIZE began to glide in 0.2.9, spring_glide: the settings change here every 700
      * blocks, so the render changed on purpose. Re-baselined 2026-10-15 at 0.2.14, with PLATE added: ROOM <-> SPRING unchanged by it) */
-    check(what, h == 0x2b2d4a33u);   /* audit R08: the loops' rounding dead bands closed (fx.c mulq15d), re-made on purpose, was 0x90d8485f. DUELL-TIDE T0: DUELL 1.1's REVERB_FIX (ROOM's rounding, see above) re-made it; 1.0 gave 0x6490249a, within -53.5 dB of this, same level and spectrum, 100 ms envelope within 1.2 dB */
+    check(what, h == 0xa029e43bu);   /* audit R09: ROOM is the HALL's code with a short decay, re-made on purpose, was 0x2b2d4a33. Audit R08: the loops' rounding dead bands closed (fx.c mulq15d), re-made on purpose, was 0x90d8485f. DUELL-TIDE T0: DUELL 1.1's REVERB_FIX (ROOM's rounding, see above) re-made it; 1.0 gave 0x6490249a, within -53.5 dB of this, same level and spectrum, 100 ms envelope within 1.2 dB */
     song.g[G_RTYPE] = 0;
     rev_clear();
     fx.rtype = 0;
@@ -375,11 +376,11 @@ static void comb8(const int32_t *rev_in, int32_t *out, uint32_t n)
     }
 }
 
-enum { M_ROOM, M_SPRING, M_HALL, M_COMB8 };
-static const char *const M_NAME[4] = {"ROOM", "SPRING", "HALL", "COMB8"};
+enum { M_ROOM, M_SPRING, M_HALL, M_COMB8, M_ROOM2 };   /* (M_ROOM: the 4-comb model rev_room, SHIM's base; M_ROOM2: the ROOM of the REVERB TYPE since audit R09, the HALL's code with a short decay) */
+static const char *const M_NAME[5] = {"ROOM", "SPRING", "HALL", "COMB8", "ROOM2"};
 static void model_reset(int m, int32_t size, int32_t damp)
 {
-    song.g[G_RTYPE] = (int16_t)(m == M_COMB8 ? 0 : m);
+    song.g[G_RTYPE] = (int16_t)(m == M_COMB8 || m == M_ROOM2 ? 0 : m);
     song.g[G_RSIZE] = (int16_t)size;
     song.g[G_RDAMP] = (int16_t)damp;
     rev_clear();
@@ -397,8 +398,8 @@ static void model_block(int m, const int32_t *in, int32_t *out, int32_t *side, u
 {
     uint32_t i;
     hl.side = 0;
-    if (m == M_HALL)
-        rev_hall(in, out, n);
+    if (m == M_HALL || m == M_ROOM2)
+        rev_hall(in, out, n, m == M_ROOM2);
     else if (m == M_SPRING)
         rev_spring(in, out, n);
     else if (m == M_COMB8)
@@ -603,7 +604,7 @@ static void test_hall(void)
     static int32_t imp[1] = {200000}, burst[2u * FS];
     static const int32_t SZ[4] = {0, 64, 90, 127};
     double r[4];
-    quality_t qa[4];
+    quality_t qa[5];
     char what[240];
     uint32_t k, i, m;
     host_tracks_init(), song.g[G_RLOCUT] = 0;   /* (0.2.14: these tests are of the models; the low cut is locut_test.c) */
@@ -744,6 +745,40 @@ static void test_hall(void)
     check("HALL: as dense as ROOM, less ringing than ROOM and COMB8, less flutter than ROOM",
           qa[M_HALL].ned >= qa[M_ROOM].ned - 0.02 && qa[M_HALL].ring < 0.5 * qa[M_ROOM].ring &&
           qa[M_HALL].ring < qa[M_COMB8].ring && qa[M_HALL].flut < qa[M_ROOM].flut);
+    {   /* the new ROOM (audit R09, owner D24): a short, diffuse, stereo room on the HALL's code */
+        static int32_t in[CTL], o[CTL], sd[CTL];
+        double lr = 0, ll = 0, rr = 0, r0, r64, r127;
+        uint32_t t;
+        qa[M_ROOM2] = quality(M_ROOM2, 90, 60);
+        snprintf(what, sizeof what, "  %-6s: echo density %.2f (50 .. 300 ms; 0.9 at %3.0f ms), RT60 %.2f s, ringing %.2f dB RMS (peak %4.1f), flutter %.2f",
+                 M_NAME[M_ROOM2], qa[M_ROOM2].ned, qa[M_ROOM2].t90, qa[M_ROOM2].rt, qa[M_ROOM2].ring, qa[M_ROOM2].pk, qa[M_ROOM2].flut);
+        check(what, 1);
+        check("ROOM (R09): as dense as the old ROOM, under half its ringing and flutter, a shorter decay than HALL's",
+              qa[M_ROOM2].ned >= qa[M_ROOM].ned && qa[M_ROOM2].ring < 0.5 * qa[M_ROOM].ring && qa[M_ROOM2].flut < qa[M_ROOM].flut && qa[M_ROOM2].rt < 0.6 * qa[M_HALL].rt);
+        r0 = quality(M_ROOM2, 0, 60).rt, r64 = quality(M_ROOM2, 64, 60).rt, r127 = quality(M_ROOM2, 127, 60).rt;
+        snprintf(what, sizeof what, "ROOM (R09): RT60 %.2f s at SIZE 0, %.2f at 64, %.2f at 127 (a short room: under 0.5, 1.0 and 2.2 s, growing with SIZE)", r0, r64, r127);
+        check(what, r0 < 0.5 && r64 < 1.0 && r127 < 2.2 && r0 < r64 && r64 < r127);
+        model_reset(M_ROOM2, 90, 60);
+        xs = 99;
+        for (t = 0; t < 2u * FS; t += CTL) {
+            uint32_t i2;
+            for (i2 = 0; i2 < CTL; i2++) {
+                in[i2] = t < FS / 4u ? noise(20000) : 0;
+                o[i2] = 0;
+            }
+            model_block(M_ROOM2, in, o, sd, CTL);
+            for (i2 = 0; i2 < CTL; i2++) {
+                double L = o[i2] + sd[i2], R = o[i2] - sd[i2];
+                if (t >= FS / 4u) {
+                    lr += L * R;
+                    ll += L * L;
+                    rr += R * R;
+                }
+            }
+        }
+        snprintf(what, sizeof what, "ROOM (R09): stereo, left / right correlation of the tail %.2f (the old ROOM was mono: 1.00)", lr / sqrt(ll * rr));
+        check(what, fabs(lr / sqrt(ll * rr)) < 0.5);
+    }
     model_reset(M_ROOM, 90, 60);
     host_tracks_init(), song.g[G_RLOCUT] = 0;   /* (0.2.14: these tests are of the models; the low cut is locut_test.c) */
 }
@@ -812,7 +847,7 @@ static void test_switch(void)
         }
     song.g[G_RTYPE] = 0;
     fx_buses(c, d, r, w, CTL);
-    check("  and back to ROOM", fx.rtype == 0 && !hl.side);
+    check("  and back to ROOM (stereo since audit R09: the HALL's code, a short decay)", fx.rtype == 0 && hl.side);
 }
 
 /* ---------------------------------------------------------------- cost --- */
@@ -837,7 +872,7 @@ static double cost_of(int m, int bus)        /* model m alone (rev_room, rev_spr
             if (hl.side)
                 rev_side_mix(c, d, CTL);                /* (as mix_block: HALL's stereo) */
         } else if (m == M_HALL)
-            rev_hall(r, w, CTL);
+            rev_hall(r, w, CTL, 0u);
         else if (m == M_SPRING)
             rev_spring(r, w, CTL);
         else

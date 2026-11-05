@@ -140,15 +140,17 @@ static __attribute__((noinline)) void BUS_FN(rev_spring)(const int32_t *rev_in, 
 
 /* the lines' gains for SIZE s: RT60 = 0.5 s * 2^(s / 30); a line of D samples (22.05 kHz) loses 60 dB in
  * RT60 * 22050 / D passes: g = 2^(-D * 3 log2(10) / (22050 * RT60)) = 2^(-D * 59.2 / 65536 * 2^(-s / 30)),
- * at most 0.99, over sqrt(7) (the matrix's rows have 7 entries of +-1: / sqrt(7) makes it orthogonal) */
-static __attribute__((noinline)) void BUS_FN(hall_gains)(int32_t s)
+ * at most 0.99, over sqrt(7) (the matrix's rows have 7 entries of +-1: / sqrt(7) makes it orthogonal).
+ * ROOM (audit R09, owner D24: a short diffuse room on this code): RT60 = 0.25 s * 2^(s / 48), 0.25 s at SIZE 0, 0.6 s at 64, 0.9 s at 90, 1.6 s at 127 (twice the exponent, half the SIZE slope).
+ * The gains are kept for SIZE and the model (BUS_HL.sz: s + 1, + 256 for ROOM) */
+static __attribute__((noinline)) void BUS_FN(hall_gains)(int32_t s, uint32_t room)
 {
-    uint32_t q = exp2_neg((uint32_t)s * 65536u / 30u), k, g;
+    uint32_t q = exp2_neg((uint32_t)s * 65536u / (room ? 48u : 30u)), k, g;
     for (k = 0; k < HL_NL; k++) {
-        g = exp2_neg((HL_LEN[k] * 59u * q) >> 15);
+        g = exp2_neg((HL_LEN[k] * 59u * q) >> (room ? 14 : 15));
         BUS_HL.g[k] = (int16_t)(((g > 32440u ? 32440u : g) * 6193u) >> 15);
     }
-    BUS_HL.sz = (int16_t)(s + 1);
+    BUS_HL.sz = (int16_t)(s + 1 + (room ? 256 : 0));
 }
 
 /* HALL (see the top): a block of the send (n = CTL samples: audio.c) -> the mid added to out, the side into
@@ -156,15 +158,15 @@ static __attribute__((noinline)) void BUS_FN(hall_gains)(int32_t s)
  * longer than a block: what the lines give in this block was written before it): the send, every other
  * sample, low cut, diffusers (BUS_HL.bx); the lines' ends at their drifting taps, low-passed, scaled (BUS_HL.y); the
  * outputs and the matrix; back into the lines; the outputs back to 44.1 kHz. */
-static __attribute__((noinline)) void BUS_FN(rev_hall)(const int32_t *rev_in, int32_t *out, uint32_t n)
+static __attribute__((noinline)) void BUS_FN(rev_hall)(const int32_t *rev_in, int32_t *out, uint32_t n, uint32_t room)
 {
     int16_t *b = BUS_COMB, *a = BUS_U.ap;
     uint32_t i, k, s, m, d;
     int32_t kd = HL_KD(song.g[G_RDAMP]);
     int32_t xp = BUS_HL.x, hp = BUS_HL.hp, he = BUS_HL.he, mp = BUS_HL.m, sp = BUS_HL.s;
     (void)n;
-    if (BUS_HL.sz != SV_RSIZE + 1)
-        BUS_FN(hall_gains)(SV_RSIZE);                   /* (SPACE: its SIZE; the lines' gains stay at most 0.99) */
+    if (BUS_HL.sz != SV_RSIZE + 1 + (room ? 256 : 0))
+        BUS_FN(hall_gains)(SV_RSIZE, room);                   /* (SPACE: its SIZE; the lines' gains stay at most 0.99) */
     for (i = 0; i < HL_NC; i++) {
         int32_t x = (xp + 2 * rev_in[2u * i] + rev_in[2u * i + 1u]) >> 2, v;   /* every other sample, 1 2 1 */
         xp = rev_in[2u * i + 1u];
@@ -493,11 +495,11 @@ static inline void BUS_FN(rev_run)(uint32_t ty, const int32_t *rev_in, int32_t *
 {
     switch (ty) {
     case 1: BUS_FN(rev_spring)(rev_in, out, n); break;
-    case 2: BUS_FN(rev_hall)(rev_in, out, n); break;
+    case 2: BUS_FN(rev_hall)(rev_in, out, n, 0u); break;
     case 3: BUS_FN(rev_shim)(rev_in, out, n); break;
     case 4: BUS_FN(rev_reso)(rev_in, out, n); break;
     case 5: BUS_FN(rev_plate)(rev_in, out, n); break;
-    default: BUS_FN(rev_room)(rev_in, out, n); break;
+    default: BUS_FN(rev_hall)(rev_in, out, n, 1u); break;   /* ROOM (audit R09): the HALL's code with a short decay; rev_room is SHIM's */
     }
 }
 

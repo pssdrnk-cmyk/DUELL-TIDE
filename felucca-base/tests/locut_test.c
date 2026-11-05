@@ -91,8 +91,8 @@ static void rev_locut_inplace(int32_t *x, uint32_t n)
  * fx.c hall_end; with LOCUT 0 it is the 0.2.29 HALL bit for bit; before: A 0x2aba341d, B 0xe38e0e45) */
 /* DUELL-TIDE T0: ROOM, SHIM and RESO (the first, fourth, fifth) re-made with DUELL 1.1 (REVERB_FIX; before: 0x54f891f4, 0x145eae7c, 0x23eaefba on both buses); against 1.0:
  * same level (-0.04 dB) and spectrum (0.1 dB per band), SHIM and RESO differ most (1.1's SHIM low-passes and softer feedback, RESO's soft limit): docs/JAM11_SOUND_REFERENCES.md */ /* R04: RESO re-made again (the combs' period takes off the damping low-pass's delay; was 0x4bca3662) */
-static const uint32_t REF_A[6] = { 0xc5b2dd93u, 0xb9dbb185u, 0x7964e0edu, 0xc51a9df0u, 0xa9d8af66u, 0x5213a10bu, };
-static const uint32_t REF_B[6] = { 0xc5b2dd93u, 0xb9dbb185u, 0x15be3bf1u, 0xc51a9df0u, 0xa9d8af66u, 0xb0f3473cu, };
+static const uint32_t REF_A[6] = { 0x07e25b41u /* (audit R09: ROOM is the HALL's code now, was 0xc5b2dd93) */, 0xb9dbb185u, 0x7964e0edu, 0xc51a9df0u, 0xa9d8af66u, 0x5213a10bu, };
+static const uint32_t REF_B[6] = { 0xfaff0bf1u /* (audit R09, was 0xc5b2dd93) */, 0xb9dbb185u, 0x15be3bf1u, 0xc51a9df0u, 0xa9d8af66u, 0xb0f3473cu, };
 #endif
 static uint32_t run_hash(int model, int bus_b, uint32_t secs)
 {
