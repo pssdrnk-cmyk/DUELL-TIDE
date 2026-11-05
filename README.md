@@ -46,8 +46,8 @@ Two ways to put TIDE on an FM-1. Either way, [back up first](docs/RECOVERY.md) a
 
 **2. Build it yourself:**
 1. Pick the build: `git checkout stable` for the validated one, or stay on `jam11` for the beta ([Builds](#builds-stable-and-beta)).
-2. Build the package as in [felucca-base/BUILDING.md](felucca-base/BUILDING.md): `python3 tools/build.py` in `felucca-base`. TIDE is on by default. The result is `felucca-base/build/duell-1.1.fwsc`.
-3. Install it with `python3 ../jam/jam_dev.py flash build/duell-1.1.fwsc` (needs `pip install mido python-rtmidi`). It saves a backup of the unit first, then writes the package with `tools/fm1_install.py`. Keep the computer awake.
+2. Build the package as in [felucca-base/BUILDING.md](felucca-base/BUILDING.md): `python3 tools/build.py` in `felucca-base`. TIDE is on by default. The result is `felucca-base/build/duell-tide-1.1.fwsc`; MENU > ABOUT shows the short commit it was built from next to the version.
+3. Install it with `python3 ../jam/jam_dev.py flash build/duell-tide-1.1.fwsc` (needs `pip install mido python-rtmidi`). It saves a backup of the unit first, then writes the package with `tools/fm1_install.py`. Keep the computer awake.
 
 While it writes, the unit shows the update screen (WRITING, a percent number, DO NOT SWITCH OFF). Don't unplug until the installer says it is done, then switch the unit off and on once.
 

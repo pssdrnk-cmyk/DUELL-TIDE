@@ -27,7 +27,7 @@ The firmware builds with the JieLi toolchain, which runs on Linux x86-64, or in 
 python3 tools/build.py
 ```
 
-TIDE is on by default. The package is `felucca-base/build/duell-1.1.fwsc`. `DUELL_TIDE=0` builds plain DUELL 1.1. On Windows, use Git Bash and `. jam/env.sh` (it expects a work folder with the toolchain next to the repository).
+TIDE is on by default. The package is `felucca-base/build/duell-tide-1.1.fwsc`, and MENU > ABOUT shows the short commit (`DUELL_TIDE_ID` sets another id, up to 10 characters; a `+` means uncommitted changes). `DUELL_TIDE=0` builds plain DUELL 1.1, named `duell-1.1.fwsc`. On Windows, use Git Bash and `. jam/env.sh` (it expects a work folder with the toolchain next to the repository).
 
 ## Test
 

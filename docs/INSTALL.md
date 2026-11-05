@@ -24,7 +24,7 @@ The installer page is `felucca-base/web/install/index.html`. It keeps Felucca's 
 
 | Command | File written to `felucca-base/build/` |
 |---|---|
-| `tools/build.py --release` (recommended) | `duell-<VERSION>.fwsc` (`duell-1.1.fwsc`; the version is the `VERSION` file; a 0.x.y test version is named `duell-<VERSION>-beta.fwsc`), plus a folder `release-<VERSION>/` with the package, the app, `SHA256SUMS`, licences |
+| `tools/build.py --release` (recommended) | `duell-tide-<VERSION>.fwsc` (`duell-tide-1.1.fwsc`; plain DUELL with `DUELL_TIDE=0` is `duell-1.1.fwsc`; the version is the `VERSION` file; a 0.x.y test version is named `duell-<VERSION>-beta.fwsc`), plus a folder `release-<VERSION>/` with the package, the app, `SHA256SUMS`, licences |
 | `tools/build.py` (no flag) | the same package, without the release folder |
 
 Every build also writes `duell-latest.fwsc` (the same file) and `duell-version.json` next to it.
@@ -49,7 +49,7 @@ While one of them runs, a coloured banner at the top says which ("BACKING UP", "
 3. **The channel.** Pick **Stable** (the build the fork owner has validated; the one to take unless you want to help test) or **Beta** (the newest build, under test). The page loads that channel's package from the release; you do not choose a file. (Only the official M-VAVE file for the way back is chosen by hand.)
 4. **Connect** the FM-1 and allow MIDI/SysEx in the browser.
 5. **Install.** On a unit that runs DUELL the page first saves a backup file to your downloads, and stops with nothing written if the backup fails (stop the unit if it plays, then press Install again). A unit on the official firmware has nothing to save. Wait for "Done".
-6. **Switch the unit off and on**, then hold HOME and open ABOUT to see the version (DUELL 1.1). While the firmware is written the unit shows the update screen (DUELL, WRITING, the percent, a bar and DO NOT SWITCH OFF); a dark screen does not mean the write has stopped.
+6. **Switch the unit off and on**, then hold HOME and open ABOUT to see the version (DUELL 1.1) and, beside it, the short commit of a TIDE build. While the firmware is written the unit shows the update screen (DUELL, WRITING, the percent, a bar and DO NOT SWITCH OFF); a dark screen does not mean the write has stopped.
 
 If anything stops: replug the cable and press Install again. The device stays in update mode until the write is finished. See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) and [RECOVERY.md](RECOVERY.md).
 

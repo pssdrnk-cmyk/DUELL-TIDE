@@ -10,7 +10,7 @@ felucca.fwsc (package). A release build (--release; the version is always the VE
 and a folder release-<VERSION>-beta/ with the package, the app, SHA256SUMS and the licence files (DUELL 0.2.9: no sample data, no sample
 attribution any more); the device
 shows the version of the VERSION file at the DUELL root ("DUELL 0.2.1 beta"); the package is duell-<VERSION>-beta.fwsc
-(identity FM-1_901). Every build also writes duell-latest.fwsc (the same bytes) and duell-version.json {"version": "0.2.1"}.
+(identity FM-1_901; a TIDE build, the default, is named duell-tide-<VERSION>.fwsc and ABOUT shows its short commit or DUELL_TIDE_ID). Every build also writes duell-latest.fwsc (the same bytes) and duell-version.json {"version": "0.2.1"}.
 See BUILDING.md for the toolchain and the SDK.
 
 The JieLi toolchain is Linux x86-64 only. JIELI_TOOLCHAIN points at it; on
@@ -97,6 +97,24 @@ def read_version():
     v = (SRC.parent / "VERSION").read_text().strip()
     if not re.fullmatch(r"0\.\d+\.\d+|[1-9]\d*\.\d+|[1-9]\d*\.\d+\.\d+-(?:test|velocapture)\d+", v):   # DUELL 1.1: 1.1.0-testN, N counts up with each distinct build
         raise SystemExit(f"build: {SRC.parent / 'VERSION'} must hold 0.MINOR.BUILD or MAJOR.MINOR (1.0), found {v!r}")
+    return v
+
+
+def tide_on():
+    return os.environ.get("DUELL_TIDE") != "0"      # (firmware/src/tide.h: on unless built with DUELL_TIDE=0)
+
+
+def tide_id():
+    """the build id ABOUT shows next to the version: DUELL_TIDE_ID (a release tag), else the short commit hash"""
+    v = os.environ.get("DUELL_TIDE_ID")
+    if v is None:
+        try:
+            git = lambda *c: subprocess.run(["git", *c], cwd=SRC, capture_output=True, text=True, check=True).stdout.strip()
+            v = git("rev-parse", "--short=7", "HEAD") + ("+" if git("status", "--porcelain", "--untracked-files=no") else "")
+        except Exception:
+            return None                                # (no git: no id)
+    if not re.fullmatch(r"[A-Za-z0-9.+-]{1,10}", v):
+        raise SystemExit(f"build: DUELL_TIDE_ID must be 1 to 10 of A-Z a-z 0-9 . + - (ABOUT has room for that), found {v!r}")
     return v
 
 
@@ -348,6 +366,10 @@ def build_app():
             v = None                          # (no git: the day of the build, as before)
     if v and re.fullmatch(r"[A-Z][a-z]{2} [ 123]\d \d{4}", v):
         flags.append(f'-DDUELL_BUILD_DATE="{v}"')
+    if tide_on():                            # ABOUT's build id (F-22): DUELL_TIDE_ID, else the short commit ("+" when the tree has changes)
+        v = tide_id()
+        if v:
+            flags.append(f'-DDUELL_TIDE_ID="{v}"')
     flags.append(f'-DFELUCCA_ID="{PRODUCT}"')
     # felucca.c goes to LLVM IR without the optimizer, the main-loop functions (UI, stores, editor) are
     # marked minsize (tools/size_fns.py), then the IR is compiled at -Os. FELUCCA_SIZE=0: -Os everywhere
@@ -580,6 +602,8 @@ def main():
     if btag and a.release:
         raise SystemExit("build: a bench build (BENCH_TAG) is never a release")
     name = f"duell-{ver}-bench-{btag}.fwsc" if btag else f"duell-{tag}.fwsc"   # the package of the VERSION file, release or not
+    if tide_on() and not btag:
+        name = name.replace("duell-", "duell-tide-", 1)   # (F-22: a TIDE package never has the name of upstream's duell-1.1.fwsc; DUELL_TIDE=0 keeps it)
     if not ldr_screen():
         name = name.replace(".fwsc", "-noscreen.fwsc")
     PRODUCT = "FM-1_901"                        # package identity (one digit each: the identity has room for two)

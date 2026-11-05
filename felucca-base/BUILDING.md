@@ -1,6 +1,6 @@
 # Building Felucca (DUELL with TIDE)
 
-> **DUELL with TIDE.** This is Felucca's build guide, with DUELL's changes. TIDE is built in by default; `DUELL_TIDE=0` builds plain DUELL 1.1 (`jam/check_off.sh` checks that it stays byte for byte the same). The package is `build/duell-1.1.fwsc`, named from the `VERSION` file. `python3 tools/build.py` does the same as `./build.sh` where the toolchain is installed. On Windows, `. jam/env.sh` in Git Bash points the build at a local toolchain folder (no Docker or WSL); see [../CONTRIBUTING.md](../CONTRIBUTING.md).
+> **DUELL with TIDE.** This is Felucca's build guide, with DUELL's changes. TIDE is built in by default; `DUELL_TIDE=0` builds plain DUELL 1.1 (`jam/check_off.sh` checks that it stays byte for byte the same). The package is `build/duell-tide-1.1.fwsc` (`build/duell-1.1.fwsc` with `DUELL_TIDE=0`), named from the `VERSION` file; ABOUT shows the short commit of the build (`DUELL_TIDE_ID=<id>` sets another, up to 10 characters). `python3 tools/build.py` does the same as `./build.sh` where the toolchain is installed. On Windows, `. jam/env.sh` in Git Bash points the build at a local toolchain folder (no Docker or WSL); see [../CONTRIBUTING.md](../CONTRIBUTING.md).
 
 The build makes three files in `build/`:
 
@@ -46,7 +46,7 @@ On Linux x86-64 the toolchain runs natively and Docker is not needed.
 (`~/.jieli/toolchain`, `~/fw-AC79_AIoT_SDK`).
 
 The version comes from the `VERSION` file at the repository root (1.1, shown as "DUELL 1.1"; a `0.x.y` test version
-is named `...-beta`). Every build writes `build/duell-<VERSION>.fwsc` (identity `FM-1_901`), `build/duell-latest.fwsc` and
+is named `...-beta`). Every build writes `build/duell-tide-<VERSION>.fwsc` (`duell-<VERSION>.fwsc` with `DUELL_TIDE=0`) (identity `FM-1_901`), `build/duell-latest.fwsc` and
 `build/duell-version.json`. `./build.sh --release` also makes `build/release-<VERSION>/`, which holds what a
 release ships: the package, the app (`duell-<VERSION>-app.bin`), `SHA256SUMS`, `LICENSE`, `LICENSING.md` and
 `LICENSES/` (the package contains Apache-2.0 SDK files, so the licence texts travel with it).
