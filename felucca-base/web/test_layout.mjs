@@ -10,7 +10,7 @@ const dj = process.env.FELUCCA_DESC || join(HERE, "../build/host/desc.json");
 const L = JSON.parse(readFileSync(join(HERE, "editor/layout.json"), "utf8"));
 let fails = 0;
 const ok = (c, what) => { console.log(`${what.padEnd(104)} ${c ? "ok" : "FAIL"}`); if (!c) fails++; };
-if (!existsSync(dj)) console.log("layout vs desc.json: no build/host/desc.json (run host_tests.sh editorjson)   skip");
+if (!existsSync(dj)) console.log("SKIP layout vs desc.json: no build/host/desc.json (run host_tests.sh editorjson)");
 else {
 const D = JSON.parse(readFileSync(dj, "utf8"));
 const same = (a, b) => a.label === b.label && a.fmt === b.fmt && a.min === b.min && a.max === b.max && a.def === b.def && JSON.stringify(a.names) === JSON.stringify(b.names) && (a.unit || "") === (b.unit || "");
@@ -78,7 +78,7 @@ process.exit(fails ? 1 : 0);
 
 async function spacing() {
   const { launch, CHROME } = await import("./cdp.mjs");
-  if (!CHROME) { console.log("spacing / overflow: no Chrome found   skip"); return; }
+  if (!CHROME) { console.log("SKIP spacing / overflow: no Chrome found"); return; }
   const http = await import("node:http"), { readFile } = await import("node:fs/promises"), { extname, normalize } = await import("node:path");
   const MIME = { ".js": "text/javascript", ".json": "application/json", ".html": "text/html", ".css": "text/css", ".png": "image/png", ".svg": "image/svg+xml" };
   const server = http.createServer(async (req, res) => { try { let p = decodeURIComponent(new URL(req.url, "http://x").pathname); if (p.endsWith("/")) p += "index.html"; const f = normalize(join(HERE, p)); if (!f.startsWith(HERE)) throw 0; const b = await readFile(f); res.writeHead(200, { "content-type": MIME[extname(f)] || "application/octet-stream" }); res.end(b); } catch { res.writeHead(404); res.end(); } });
@@ -319,7 +319,7 @@ async function spacing() {
 // Headless Chrome, both ANALOG and FM6, the three sizes; the report lines are printed, the checks fail the run
 async function structure() {
   const { launch, CHROME } = await import("./cdp.mjs");
-  if (!CHROME) { console.log("structure: no Chrome found   skip"); return; }
+  if (!CHROME) { console.log("SKIP structure: no Chrome found"); return; }
   const http = await import("node:http"), { readFile } = await import("node:fs/promises"), { extname, normalize } = await import("node:path");
   const MIME = { ".js": "text/javascript", ".json": "application/json", ".html": "text/html", ".css": "text/css", ".png": "image/png", ".svg": "image/svg+xml" };
   const server = http.createServer(async (req, res) => { try { let p = decodeURIComponent(new URL(req.url, "http://x").pathname); if (p.endsWith("/")) p += "index.html"; const f = normalize(join(HERE, p)); if (!f.startsWith(HERE)) throw 0; const b = await readFile(f); res.writeHead(200, { "content-type": MIME[extname(f)] || "application/octet-stream" }); res.end(b); } catch { res.writeHead(404); res.end(); } });
@@ -411,7 +411,7 @@ async function structure() {
 // preset slot, each row has its own buttons and a confirmation)
 async function lists() {
   const { launch, CHROME } = await import("./cdp.mjs");
-  if (!CHROME) { console.log("lists: no Chrome found   skip"); return; }
+  if (!CHROME) { console.log("SKIP lists: no Chrome found"); return; }
   const http = await import("node:http"), { readFile } = await import("node:fs/promises"), { extname, normalize } = await import("node:path");
   const MIME = { ".js": "text/javascript", ".json": "application/json", ".html": "text/html", ".css": "text/css", ".png": "image/png", ".svg": "image/svg+xml" };
   const server = http.createServer(async (req, res) => { try { let p = decodeURIComponent(new URL(req.url, "http://x").pathname); if (p.endsWith("/")) p += "index.html"; const f = normalize(join(HERE, p)); if (!f.startsWith(HERE)) throw 0; const b = await readFile(f); res.writeHead(200, { "content-type": MIME[extname(f)] || "application/octet-stream" }); res.end(b); } catch { res.writeHead(404); res.end(); } });
@@ -478,7 +478,7 @@ async function lists() {
 // source's own tab (ENV / LFO): one stored value, so a change made on one tab is what the other shows
 async function linked() {
   const { launch, CHROME } = await import("./cdp.mjs");
-  if (!CHROME) { console.log("linked: no Chrome found   skip"); return; }
+  if (!CHROME) { console.log("SKIP linked: no Chrome found"); return; }
   const http = await import("node:http"), { readFile } = await import("node:fs/promises"), { extname, normalize } = await import("node:path");
   const MIME = { ".js": "text/javascript", ".json": "application/json", ".html": "text/html", ".css": "text/css", ".png": "image/png", ".svg": "image/svg+xml" };
   const server = http.createServer(async (req, res) => { try { let p = decodeURIComponent(new URL(req.url, "http://x").pathname); if (p.endsWith("/")) p += "index.html"; const f = normalize(join(HERE, p)); if (!f.startsWith(HERE)) throw 0; const b = await readFile(f); res.writeHead(200, { "content-type": MIME[extname(f)] || "application/octet-stream" }); res.end(b); } catch { res.writeHead(404); res.end(); } });

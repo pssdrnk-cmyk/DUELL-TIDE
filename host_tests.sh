@@ -267,7 +267,7 @@ twocore_mut() {
     if $OUT/twocore_mut 0 -nomut > $OUT/last.log 2>&1; then echo "   FAIL (the mutation was NOT detected)"; fail=1; else echo "   PASS (detected by the scene-0 faults: $(grep -c 'twocore: FAIL' $OUT/last.log) checks failed; first: $(grep -m1 'twocore: FAIL' $OUT/last.log | cut -c1-170))"; fi
   else echo "   PASS (detected by the invariant audit: $(grep -c 'twocore: FAIL' $OUT/last.log) checks failed; first: $(grep -m1 'twocore: FAIL' $OUT/last.log | cut -c1-170))"; fi
 }
-run() { echo "== $1"; shift; "$@" > "$OUT/last.log" 2>&1 && echo "   PASS" || { echo "   FAIL"; grep -E "FAIL|Assertion" "$OUT/last.log" | grep -vE "(^|[^0-9])0 FAIL" | head -60; tail -15 "$OUT/last.log"; fail=1; }; }   # (every failed check first: the tail alone hid most of them; the tests print "twocore: FAIL <text>", "FAIL: <text>", "xyz: FAIL <text>", almost never FAIL at the end of a line; a summary "0 FAIL" is not one)
+run() { echo "== $1"; shift; "$@" > "$OUT/last.log" 2>&1 && { if grep -q '^SKIP ' "$OUT/last.log"; then echo "   $(grep -m1 '^SKIP ' "$OUT/last.log")"; else echo "   PASS"; fi; } || { echo "   FAIL"; grep -E "FAIL|Assertion" "$OUT/last.log" | grep -vE "(^|[^0-9])0 FAIL" | head -60; tail -15 "$OUT/last.log"; fail=1; }; }   # (every failed check first: the tail alone hid most of them; the tests print "twocore: FAIL <text>", "FAIL: <text>", "xyz: FAIL <text>", almost never FAIL at the end of a line; a summary "0 FAIL" is not one; a test that could not run its checks prints a line "SKIP <why>": the group then reports "   SKIP <why>", never PASS)
 for t in $want; do case $t in
   regress) $CC -DNPART=4 -o $OUT/regress tests/regress.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run regress $OUT/regress tests/golden.txt tests/cpu_baseline.txt ;;
   midiout) $CC -o $OUT/midi_out_seq_test tests/midi_out_seq_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run midiout $OUT/midi_out_seq_test ;;
@@ -433,7 +433,7 @@ for t in $want; do case $t in
            run benchrun python3 tests/bench_run_test.py ;;
   benchaudio) $CC -O1 -fno-builtin -D_FORTIFY_SOURCE=0 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/bench_sim tests/bench_sim.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } &&
            PYN=$(for p in python3 /opt/homebrew/bin/python3 /usr/local/bin/python3 /Library/Frameworks/Python.framework/Versions/Current/bin/python3; do "$p" -c 'import numpy' 2>/dev/null && { command -v "$p" || echo "$p"; break; }; done)
-           if [ -n "$PYN" ]; then run benchaudio "$PYN" tests/bench_analyze_test.py; else run benchaudio echo "skipped: no python3 with numpy on this machine (the DUELL venv has none; tools/bench_analyze.py needs it)"; fi ;;
+           if [ -n "$PYN" ]; then run benchaudio "$PYN" tests/bench_analyze_test.py; else run benchaudio echo "SKIP no python3 with numpy on this machine (the DUELL venv has none; tools/bench_analyze.py needs it)"; fi ;;
   comp) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/comp_test tests/comp_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run comp $OUT/comp_test ;;
   bench) $CC -O1 -fno-builtin -D_FORTIFY_SOURCE=0 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/cpu_bench tests/cpu_bench.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } &&
          { echo "== bench (report only: fails when a figure grows > 10 % over tests/bench_baseline.txt)"; $OUT/cpu_bench > $OUT/bench.log 2>&1 && { sed 's/^bench: /   /' $OUT/bench.log; echo "   PASS"; } || { echo "   FAIL"; grep -i 'fail' $OUT/bench.log; fail=1; }; } ;;
@@ -475,7 +475,7 @@ for t in $want; do case $t in
            if git -C .. show "${OTA_BASE:-1df6207}:felucca-base/firmware/src/ota.c" > $OUT/ota_base.c 2>/dev/null; then
              $CC -O1 -DOTA_SRC='"../'$OUT'/ota_base.c"' -o $OUT/ota_reuse_base tests/ota_reuse_test.c &&
              { $OUT/ota_reuse_test > $OUT/ota_reuse_new.txt; $OUT/ota_reuse_base > $OUT/ota_reuse_old.txt; cmp -s $OUT/ota_reuse_old.txt $OUT/ota_reuse_new.txt && echo "   PASS (identical: $(wc -l < $OUT/ota_reuse_new.txt) lines)" || { echo "   FAIL (differs from the separate-buffer ota.c)"; diff $OUT/ota_reuse_old.txt $OUT/ota_reuse_new.txt | head; fail=1; }; }
-           else echo "   skipped: OTA_BASE not in this clone"; fi ;;
+           else echo "   SKIP OTA_BASE not in this clone"; fi ;;
   elfcheck) run elfcheck python3 -I tests/elfcheck_test.py ;;
   flashled) $CC -o $OUT/flash_led_test tests/flash_led_test.c || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run flashled $OUT/flash_led_test ;;
   usb)     echo "== usb"; ub=0
@@ -726,7 +726,7 @@ static void midi_cc_set(track_t *t, uint32_t id, uint32_t value)
            velo_mut "the calibration made one-way (the floor only down, the ceiling only up)" firmware/src/sense.c 's#: lo + eta \* SC_Q_LO / 1000u;#: lo;#' firmware/src/sense.c 's#: hi - eta \* SC_Q_HI / 1000u;#: hi;#'
            echo "== velo: flag-off preprocessor output of felucca.c equals the tree before KEY SENSE (VELO_BASE)"
            pb=; [ -n "$VELO_BASE" ] && pb=$(git rev-parse --verify -q "$VELO_BASE")
-           if [ -z "$pb" ]; then echo "   skipped: VELO_BASE not set (e.g. VELO_BASE=cloud/base3-wave4 on the merge commit of KEY SENSE)"; else
+           if [ -z "$pb" ]; then echo "   (optional part) skipped: VELO_BASE not set (e.g. VELO_BASE=cloud/base3-wave4 on the merge commit of KEY SENSE)"; else
              rm -rf build/velo_base; mkdir -p build/velo_base
              git -C .. archive $pb felucca-base/firmware | tar -x -C build/velo_base && vb=0
              for m in "" "-DDUELL_TEST_MODE=1"; do
@@ -737,7 +737,7 @@ static void midi_cc_set(track_t *t, uint32_t id, uint32_t value)
              [ "$vb" = 0 ] && echo "   PASS" || { echo "   FAIL"; fail=1; }
            fi ;;
   ldrscreen) P=$(ls -t build/duell-*.fwsc 2>/dev/null); O=${LDR_OLD:-$(echo "$P" | sed -n 2p)}; N=${LDR_NEW:-$(echo "$P" | sed -n 1p)}; [ -n "$O" ] || O=$N   # (LDR_OLD and LDR_NEW, else the newest two packages in build/; one package is used as both)
-           if [ -z "$N" ]; then run ldrscreen echo "skipped: no update package (build/duell-*.fwsc, or LDR_OLD / LDR_NEW): fm1pkg_make.py needs the JieLi SDK of a device build"; else
+           if [ -z "$N" ]; then run ldrscreen echo "SKIP no update package (build/duell-*.fwsc, or LDR_OLD / LDR_NEW): fm1pkg_make.py needs the JieLi SDK of a device build"; else
            $CC -O1 -DLDR_SCREEN_TEST=1 -o $OUT/ldr_test_screen tests/ldr_test.c -lm && $CC -O1 -o $OUT/ldr_test_plain tests/ldr_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } &&
            run ldrscreen sh -c "$OUT/ldr_test_screen $O $N > $OUT/ldr_s.log && $OUT/ldr_test_plain $O $N > $OUT/ldr_p.log && [ \"\$(grep FINAL $OUT/ldr_s.log)\" = \"\$(grep FINAL $OUT/ldr_p.log)\" ] && grep -q 'loader test passed' $OUT/ldr_s.log && grep -q 'loader test passed' $OUT/ldr_p.log || { grep -E 'FAIL|FINAL' $OUT/ldr_s.log $OUT/ldr_p.log; exit 1; }"; fi ;;
   lcdboot) cc -O1 -w -Ifirmware/hal -Ifirmware/src -o $OUT/lcd_boot_late -DFM1_LCD_BL_LATE=1 tests/lcd_boot_test.c && cc -O1 -w -Ifirmware/hal -Ifirmware/src -o $OUT/lcd_boot_ldr tests/lcd_boot_test.c || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } &&

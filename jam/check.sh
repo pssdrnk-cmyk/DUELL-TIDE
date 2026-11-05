@@ -50,6 +50,9 @@ for g in $groups; do
         fail=$((fail + 1)); failed="$failed $g"
     elif grep -q "which Windows does not have: skipped" "$out"; then
         echo "SKIP    $g ($(grep -m1 -o "needs [^,]*, which Windows" "$out" | sed "s/, which Windows//"))"; skip=$((skip + 1))
+    elif [ $rc -eq 0 ] && grep -q "^   SKIP" "$out"; then
+        # a group whose checks could not run here (no Chrome, no update package, no banks ...) says "   SKIP <why>": never PASS
+        echo "SKIP    $g ($(grep -m1 "^   SKIP" "$out" | sed 's/^   SKIP //'))"; skip=$((skip + 1))
     elif grep -q "^   FAIL" "$out" || [ $rc -ne 0 ]; then
         echo "FAIL    $g"; fail=$((fail + 1)); failed="$failed $g"
     else

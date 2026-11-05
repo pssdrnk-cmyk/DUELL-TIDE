@@ -70,7 +70,7 @@ jobs:
             echo "### Shard ${{ matrix.shard }}"
             echo "| group | result |"
             echo "|---|---|"
-            awk '/^== /{g=substr($0, 4)} /^   PASS/{print "| " g " | PASS |"} /^   FAIL/{print "| " g " | **FAIL** |"}' host-tests.out
+            awk '/^== /{g=substr($0, 4)} /^   PASS/{print "| " g " | PASS |"} /^   SKIP/{print "| " g " | SKIP " substr($0, 9) " |"} /^   FAIL/{print "| " g " | **FAIL** |"}' host-tests.out
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Failures as annotations (readable without signing in, unlike the log)
