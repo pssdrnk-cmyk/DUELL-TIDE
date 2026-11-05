@@ -1707,6 +1707,9 @@ class MidiNotes:
 def measure_tide(a, out_dir: Path, out, ask, opener: Opener) -> tuple[int, list[Path]]:
     k = kit()
     ok_dis = None
+    if getattr(a, "bench_running", False):              # (an earlier run installed it and stopped: measure, then put the normal one back)
+        normal = None if a.no_restore else (Path(a.normal) if a.normal else build_package({}, "normal (to put back)", out))
+        return bench_suites(a, out_dir, out, k, normal, opener)
     conn = opener(a.port)
     found = conn.t.port_name                             # the installer must be told it: by itself it looks for "FM-1"
     try:
@@ -1723,9 +1726,16 @@ def measure_tide(a, out_dir: Path, out, ask, opener: Opener) -> tuple[int, list[
     finally:
         conn.t.close()
     rc = install(bench, a.port or found, a.installer, out, a.mock)
-    if rc:
+    if rc == 5:                                          # written and restarted: the bench build does not answer the installer's identity check
+        print("note: the installer saw no identity after the restart; the bench build gives none, so its serial console is looked for next", file=out)
+    elif rc:
         print(f"error: the installer exited with {rc}; the backup above holds the unit's data", file=sys.stderr)
         return EXIT_FAIL, []
+    return bench_suites(a, out_dir, out, k, normal, opener)
+
+
+def bench_suites(a, out_dir: Path, out, k, normal, opener: Opener) -> tuple[int, list[Path]]:
+    """On the bench build: the suites over its serial console, then `uboot yes` and the normal package back (unless --no-restore)."""
     port = wait_for_serial(MEASURE_HOOKS.get("wait_s", 90.0), a.com)
     if not port:
         print("error: no serial port of the unit within 90 s of the install (is it the bench build? the unit prints BENCH on its screen; try --com NAME)", file=sys.stderr)
@@ -1856,6 +1866,7 @@ def build_parser() -> argparse.ArgumentParser:
     m.add_argument("--bench", metavar="PKG", help="a bench package already built (default: built here with tools/build.py)")
     m.add_argument("--normal", metavar="PKG", help="the package to put back (default: the tree's normal build)")
     m.add_argument("--no-restore", action="store_true", help="leave the bench build installed")
+    m.add_argument("--bench-running", action="store_true", help="the bench build is already installed (an earlier run stopped): no backup or install, measure and put the normal one back")
     m.add_argument("--com", metavar="NAME", help="the bench build's serial port (default: found by itself)")
     m.add_argument("--yes", action="store_true", help="do not ask")
     m.add_argument("--out", metavar="DIR", default=None, help="the report and the runs (default: <work folder>/measure/<date>)")
