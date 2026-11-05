@@ -32,6 +32,7 @@
  * (hit level), no weighted-loudness rule. Risers allowed to take longer than 2 s to reach the plateau: WHITE OUT, MOOR WIND,
  * LESLIE STORM (a swell is their sound); nothing else.
  * Every sound must set LFO 1's and LFO 2's TRIG to FREE itself (DUELL 0.2.2; the pair is in the sound, not the default): else FAIL.
+ * Aftertouch (2026-11-05): a sound of the 128 that is not FX or PERC sends AT to SATURATION (BASS) or to CUT / TWIN CUTOFF / SHAPE (the rest): else FAIL.
  *   build/host/sound_audit                   the table; exit 1 on a FAIL
  *   SOUND_TRIM=1 build/host/sound_audit      also the TRIM (until 0.2.18 "LEVEL") each sound would need for AUDIT_TARGET_DB (weighted, in its
  *                                            window), its peak at most AUDIT_PEAK_DB (TRIM: 0.5 dB a step,
@@ -121,6 +122,20 @@ static int au_known(const ds_sound_t *s)
         if (str_eq(s->name, KNOWN[i]))
             return 1;
     return 0;
+}
+/* one aftertouch convention per category (audit T09, 2026-11-05): a sound of the 128 that routes AT routes it to SATURATION (BASS) or to a filter / the
+ * engine's timbre (CUT, TWIN CUTOFF, SHAPE: LEAD PAD PLUCK KEYS); FX and PERC are free. 1 = keeps it */
+static int au_at_ok(const ds_sound_t *s, uint32_t n)
+{
+    uint32_t i;
+    if (n >= 128u || s->cat == CAT_FX || s->cat == CAT_PERC)
+        return 1;
+    for (i = 0; i < 8u; i++)
+        if (ds_value(s, MSLOT_ID(i), 0) == MS_AT) {
+            int32_t d = ds_value(s, MSLOT_ID(i) + 1u, 0);
+            return s->cat == CAT_BASS ? d == MD_DIST : d == MD_CUT || d == MD_CUT2 || d == MD_SHP;
+        }
+    return 1;
 }
 static int au_dcmp(const void *a, const void *b) { double x = *(const double *)a, y = *(const double *)b; return x < y ? -1 : x > y; }
 /* the level the trim reads: a sound that sustains (judged on A), its held body (MED, the median of seconds 1-6); any other, its
@@ -254,6 +269,8 @@ int main(void)
             continue;
         if (ds_value(s, P_LTRIG, 0) != 1 || ds_value(s, P_L2TRIG, 0) != 1)   /* (def 0: a sound that leaves it out fails) */
             why = "FAIL (LFO TRIG not FREE)";   /* DUELL 0.2.2: every factory sound sets both LFOs FREE itself */
+        else if (!au_at_ok(s, n))
+            why = "FAIL (AT convention)";
         else if (A->nan || T->nan)
             why = "FAIL (NaN / crash)";
         else if (A->loud < -60)
