@@ -64,6 +64,8 @@ TIDE keeps the version string DUELL 1.1 so every stock tool takes the unit for D
 | **Stable** | [`stable-2026-11-03`](https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/stable-2026-11-03) (`187e9d0`), branch [`stable`](https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/stable) | 2026-11-03 | **Tested and validated** on the fork owner's FM-1. Build this one unless you want to help test. |
 | **Beta** | [`beta-2026-11-04`](https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/beta-2026-11-04) (`77a6df2`), on branch `jam11` | 2026-11-04 | **Under test.** Adds STYLE, ARC, SYNC, TURNS LEAD / ECHO, POLY, the USER slots, 32 more sounds, new patterns and multi sequences, list previews, JRNY role families and live graphs. Known issues in this build: the SAVE > MULTIS page layout, the TIDE page step bars not always matching what plays, and a latched arp playing on after STOP (use STOP ALL). All three are fixed on `jam11` for the next beta. |
 
+Links from the project's pages (installer, emulator, issue forms) to the guides point at the `stable` branch, so they describe the firmware you can install; only the development documents stay on `jam11`.
+
 `jam11` (this page) is the development line: everything on this page describes the **beta**. A build becomes stable only after the fork owner has played and validated it on the unit. To build the stable one, check out the `stable` branch first (see [Install](#install)).
 
 ## What changed from DUELL 1.1

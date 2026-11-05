@@ -8,8 +8,8 @@ body:
       value: |
         **DUELL with TIDE** is pssdrnk's fork of DUELL 1.1 by OSCILL/R. Report TIDE problems and problems with this fork's installer, emulator and editor here.
         A problem that plain DUELL has too (it happens without TIDE, on OSCILL/R's own build) goes to [OSCILL/R](https://github.com/oscillr/DUELL/issues/new/choose).
-        Please read [Known issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/docs/KNOWN_ISSUES.md) first. Do not paste private information.
-        Flashing is at your own risk and there is no warranty (GPL-3.0). If a flash failed, see [Recovery](https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/docs/RECOVERY.md).
+        Please read [Known issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/KNOWN_ISSUES.md) first. Do not paste private information.
+        Flashing is at your own risk and there is no warranty (GPL-3.0). If a flash failed, see [Recovery](https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/RECOVERY.md).
   - type: dropdown
     id: channel
     attributes:
