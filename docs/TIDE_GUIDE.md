@@ -40,7 +40,7 @@ The screen shows the SOUND and SEQ faders with the glide's path, the 16 steps as
 | LOOP | Back and forth between A and B. |
 | DRIFT | The end it left is rolled again from your sound: new twists around the same centre. |
 | WNDR | Walks away from your sound, a little further each trip; the steps grow with the phrase (16, 32, 64, 128 bars). Always computed from your original, so it can't run away. |
-| JRNY | Travels through factory sounds of the part's own engine (FM6 too); it never changes engine. It stays in the starting sound's role family: pads and keys; bass; lead and pluck; hits (PERC); FX and textures. A sound with no other in its family rolls a new End B of itself, it does not leave its role. Never the other part's sound, and it skips the last 4 destinations where it can. Each part also gets its own pattern wander. |
+| JRNY | Travels through factory sounds of the part's own engine (FM6 too); it never changes engine. It stays in the starting sound's role family: pads and keys; bass; lead and pluck; hits (PERC); textures and drones (eight marked sounds); the other FX, one-shots (a USER record in FX counts as one). A sound with no other in its family rolls a new End B of itself, it does not leave its role. Never the other part's sound, and it skips the last 4 destinations where it can. Each part also gets its own pattern wander. |
 
 Where two very different sounds cross, a short filter dip hides the change (WASH, below).
 
@@ -112,7 +112,7 @@ In the beta, not in the stable build `stable-2026-11-03`.
 
 | Feature | What it does |
 |---|---|
-| **JRNY families and memory** | JRNY stays on the part's engine, picks within a role family (pads and keys; bass; lead and pluck; hits; FX and textures; a USER record uses its own category) and skips the part's last four destinations where it can. |
+| **JRNY families and memory** | JRNY stays on the part's engine, picks within a role family (pads and keys; bass; lead and pluck; hits; textures and drones; one-shot FX; a USER record uses its own category) and skips the part's last four destinations where it can. |
 | **35 more factory sounds** | #129 to #163 (dub, deep house: pads, chords, stabs, plucks, textures; three of them FM6), so JRNY has more to travel between. They are read-only places after the 128 in PATCHES. |
 | **Factory patterns and multis** | Ten patterns are now chords and pads for dub techno and deep house (some with their own swing and gate); seven factory multis that had no sequence have one; M16 is CELLAR TAPE. A pattern slot you never saved over takes the new pattern at power-on. |
 | **USER slots** | The last 4 patch slots and 4 pattern slots (P29 to P32) are USER slots (U1 to U4), `USER EMPTY` until you save into them. The factory sounds and patterns they stand in for stay listed after them, read-only; SAVE offers USER 1 for a read-only place. |

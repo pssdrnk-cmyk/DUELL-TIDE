@@ -39,6 +39,11 @@ typedef struct {
 #define DSF_MONO 1u              /* (informative: the generator wrote VOICE LEG) */
 #define DSF_ARP 2u               /* sets the arp (a pair in P_AMODE .. P_AORDER) */
 #define DSF_KEYS 4u              /* sets the chord keys (a pair in P_CHRD, P_VOIC; never a scale: it is the instrument's, core.h): lent like the arp (ui.c ds_keys) */
+#if DUELL_TIDE
+#define DSF_TEXT 8u              /* an FX sound that is a texture or a drone (duell_sounds.py text=True): TIDE's JOURNEY family TEXT (tide_ui.c fam_of_sound); an FX without it is a one-shot */
+#else
+#define DSF_TEXT 0u              /* (plain DUELL: no JOURNEY, so the flag is not stored and the table stays byte for byte) */
+#endif
 #include "duell_sounds.h"
 _Static_assert(DS_NENG >= NENGINES && DS_N <= 255u, "duell_sounds.h: DS_ENG_AT covers every engine, DS_LIST bytes");
 _Static_assert(DS_PACKED_BITS <= 0xFFFFFFu, "duell_sounds.h: packed sound bit offsets fit ds_sound_t.at");
