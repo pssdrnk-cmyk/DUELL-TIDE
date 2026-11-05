@@ -104,6 +104,25 @@ static void overload(void)
     lead->env = 10000; extra->env = 10;
     shed_voice();
     check("released voices shed the quieter tail first", extra->stage == 4u && lead->stage != 4u);
+
+    {   /* FM6 (audit Q09): its voices' env is forced to full, the shed ranks them by the loudest carrier: the later-scanned voice has the quieter tail */
+        voice_t *loud, *quiet;
+        uint32_t k;
+        fresh();
+        host_preset(&trk[0], ENGI_FM6, 0);
+        trk[0].p[P_VOICE] = V_POLY;
+        trk[0].p[P_CHOR] = trk[0].p[P_DLY] = trk[0].p[P_REV] = 0;
+        trk_note_on(&trk[0], 60, 100); vs_block(); trk_note_on(&trk[0], 64, 100);
+        for (k = 0; k < 20u; k++) mix_block(out, CTL);
+        loud = held(&trk[0], 60); quiet = held(&trk[0], 64);
+        trk_note_off(&trk[0], 64);
+        for (k = 0; k < 150u; k++) mix_block(out, CTL);        /* 64's tail falls */
+        trk_note_off(&trk[0], 60);                             /* 60 has just been released: loud */
+        for (k = 0; k < 2u; k++) mix_block(out, CTL);
+        printf("audio: FM6 tails: voice %u (note 60, just released) %d, voice %u (note 64, 150 blocks ago) %d\n", (unsigned)(loud - trk[0].v), (int)fm6_sub_follow(&trk[0], loud), (unsigned)(quiet - trk[0].v), (int)fm6_sub_follow(&trk[0], quiet));
+        shed_voice();
+        check("FM6 released voices shed the quieter tail first (not the first scanned)", loud->active && loud->stage != 4u && quiet->stage == 4u);
+    }
 }
 static void dma(void)
 {
