@@ -1708,8 +1708,9 @@ def measure_tide(a, out_dir: Path, out, ask, opener: Opener) -> tuple[int, list[
     k = kit()
     ok_dis = None
     conn = opener(a.port)
+    found = conn.t.port_name                             # the installer must be told it: by itself it looks for "FM-1"
     try:
-        print(f"unit: DUELL {conn.info.duell} ({conn.info.version}) on {conn.t.port_name}", file=out)
+        print(f"unit: DUELL {conn.info.duell} ({conn.info.version}) on {found}", file=out)
         bench = Path(a.bench) if a.bench else build_package(BENCH_ENV, "bench", out)
         normal = None
         if not a.no_restore:
@@ -1721,7 +1722,7 @@ def measure_tide(a, out_dir: Path, out, ask, opener: Opener) -> tuple[int, list[
         do_backup(conn, DEFAULT_OUT if not a.out_backups else Path(a.out_backups), "DUELL-backup", out)
     finally:
         conn.t.close()
-    rc = install(bench, a.port, a.installer, out, a.mock)
+    rc = install(bench, a.port or found, a.installer, out, a.mock)
     if rc:
         print(f"error: the installer exited with {rc}; the backup above holds the unit's data", file=sys.stderr)
         return EXIT_FAIL, []
