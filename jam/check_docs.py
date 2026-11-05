@@ -3,7 +3,9 @@
 """Document checks that need no build: python3 jam/check_docs.py (from the repository root).
 
 1. The STYLE tables of README.md and docs/TIDE_GUIDE.md equal STY[] in tide_ui.c (the new-unit default is STY[0]).
+2. No document that ships names a workspace path (`work/...`) or a local drive path.
 Exit 0 when all hold; each failure is one line."""
+import glob
 import os
 import re
 import sys
@@ -66,6 +68,15 @@ for path in ("README.md", "docs/TIDE_GUIDE.md"):
             bad.append("%s: no STYLE row for %s" % (path, name))
         elif got[name] != want[i]:
             bad.append("%s: STYLE %s is %s, tide_ui.c says %s" % (path, name, got[name], want[i]))
+
+# no workspace or local paths in the documents that ship (history pages are exempt)
+for path in glob.glob(os.path.join(ROOT, "**", "*.md"), recursive=True):
+    rel = os.path.relpath(path, ROOT).replace(os.sep, "/")
+    if rel.startswith(("work/", "felucca-base/build", "felucca-base/node_modules")) or "/history/" in rel:
+        continue
+    for n, line in enumerate(open(path, encoding="utf-8", errors="replace"), 1):
+        if re.search(r"`work/|[(]work/|C:[/]Users|C:[^/a-z ]Users", line):
+            bad.append("%s:%d: names a workspace or local path" % (rel, n))
 
 for b in bad:
     print("FAIL", b)
