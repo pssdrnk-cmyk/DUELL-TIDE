@@ -1,7 +1,10 @@
 # Runs every host test group on Linux. On the owner's Windows machine 25 groups SKIP (they need fork(), or termios
 # and select() on pipes: jam/wincompat); here they run. Nothing is built for the device and nothing is published.
 # The groups are dealt round-robin to 8 machines that run at once (one machine took over 30 minutes); each keeps its log
-# as an artifact (host-tests-log-<shard>).
+# as an artifact (host-tests-log-<shard>), and every shard writes a PASS / FAIL table per group to its job summary.
+# The runner uses a named Ubuntu release to avoid ubuntu-latest transitions; hosted image updates still apply.
+# Every action is pinned to a full commit, with its version in the comment. The Pages workflow publishes only after
+# this one has passed (it runs on this workflow's completion).
 name: Host tests
 
 on:
@@ -18,50 +21,68 @@ concurrency:
 
 jobs:
   host-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
         shard: [0, 1, 2, 3, 4, 5, 6, 7]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262   # v4.4.0
         with:
           fetch-depth: 0          # multiv8 reads the v1.0 / v1.1 files from git (the tags if there are any, else their commits)
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065   # v5.6.0
         with:
           python-version: "3.12"
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020   # v4.4.0
         with:
           node-version: "22"          # (WebSocket is a global from Node 22: editorjson, rollbrowser, sliders)
 
       - name: "Python packages (the generators: Pillow, fontTools; benchaudio: numpy)"
         run: |
+          sudo apt-get update -qq
           sudo apt-get install -y -qq libfribidi0 libraqm0      # (Pillow's text layout: without Raqm the fonts are drawn differently)
           python3 -m pip install --quiet pillow==12.3.0 fonttools==4.65.0 numpy
+
+      - name: Browser version (startup failures are reported by the browser tests)
+        run: google-chrome --version
 
       - name: Generated headers (the device build's, without its toolchain)
         run: cd felucca-base && python3 tools/build.py --gen-only
 
       - name: "Host tests (shard ${{ matrix.shard }} of 8)"
         shell: bash               # (an explicit bash runs with pipefail: tee keeps the runner's exit code)
+        env:
+          REQUIRE_CHROME: "1"     # (rollbrowser, sliders, editorjson: a missing browser fails, it no longer reports PASS)
         run: |
           # host_tests.sh's own default list (emu needs ~/emsdk: not here), every 8th group from this shard's place
           groups=$(sed -n 's/^want="\${\*:-\([^"]*\)}"$/\1/p' host_tests.sh | tr ' ' '\n' | grep -v '^\$' | awk -v s=${{ matrix.shard }} 'NF && (NR - 1) % 8 == s' | tr '\n' ' ')
           echo "groups: $groups"
           sh host_tests.sh $groups 2>&1 | tee host-tests.out
 
+      - name: Per-group result table (job summary)
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "### Shard ${{ matrix.shard }}"
+            echo "| group | result |"
+            echo "|---|---|"
+            awk '/^== /{g=substr($0, 4)} /^   PASS/{print "| " g " | PASS |"} /^   FAIL/{print "| " g " | **FAIL** |"}' host-tests.out
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Failures as annotations (readable without signing in, unlike the log)
         if: failure()
         run: |
-          # each failing line with the group's header and the 6 lines before it (a runner's "   FAIL" alone says nothing)
-          awk '/^== /{g=$0; n=0} {b[n%6]=$0; n++} /FAIL|rror:|failed/ && index($0, "PASS (detected") == 0{s=""; for (i=(n>6?n-6:0); i<n; i++) s=s " / " b[i%6]; print g " |" s}' host-tests.out | sed 's/%/%25/g' | head -40 | while IFS= read -r l; do echo "::error title=shard ${{ matrix.shard }}::$l"; done
+          # only the lines that name a failure (the tests print "twocore: FAIL <what>", "FAIL: <what>", "xyz: FAIL <what>", node prints "Error: ..."), each with its group
+          # and the 3 lines before it; a table row that merely contains "failed 0" and a summary "0 FAIL" are not failures
+          awk '/^== /{g=$0; n=0} {b[n%4]=$0; n++} (/FAIL|Assertion|rror:/ && !/(^|[^0-9])0 FAIL/ && !/^   FAIL$/ && index($0, "PASS (detected") == 0){s=""; for (i=(n>4?n-4:0); i<n-1; i++) s=s " / " b[i%4]; print g " | " $0 " |" s}' host-tests.out | sed 's/%/%25/g' | head -40 | while IFS= read -r l; do echo "::error title=shard ${{ matrix.shard }}::$l"; done
 
       - name: Keep the log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02   # v4.6.2
         with:
           name: host-tests-log-${{ matrix.shard }}
           path: |
