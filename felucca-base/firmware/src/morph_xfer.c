@@ -592,7 +592,7 @@ static int32_t xexp2(int32_t x)                          /* 2^x, x Q12 (-24 .. 7
  * would fall below (15 dB under the part's level at rest at MID: a bed, not a second sound), and a little more through a transition's floor (24 dB under it at
  * the floor) where a structural change is made. It goes where the part goes: through its sends, the reverb and delay carry it.
  * Silent at rest and between notes (a rest is a rest, a release is the note going): it comes and goes over ~50 ms */
-static __attribute__((noinline)) void morph_wash(uint32_t pp, int32_t *b, uint32_t n)
+static __attribute__((noinline)) void MXT_BODY(morph_wash)(uint32_t pp, int32_t *b, uint32_t n)
 {
     mxv_t *v = &mxv[pp];
     const mxs_t *x = &mxs[pp];
@@ -644,6 +644,14 @@ static __attribute__((noinline)) void morph_wash(uint32_t pp, int32_t *b, uint32
     }
     v->wg = g1;
 }
+#if DUELL_BENCH
+static __attribute__((noinline)) void morph_wash(uint32_t pp, int32_t *b, uint32_t n)   /* (bench builds: the same stage, timed) */
+{
+    uint32_t act = morph_wlvl || mxv[pp].wg, t0 = MXT_TICKS();   /* (past the early exit: the power meter at least; the noise too while the part moves) */
+    morph_wash_body(pp, b, n);
+    mxt_add(&mxt[pp].wash, MXT_TICKS() - t0, act);
+}
+#endif
 /* the part rendered nothing this block (fx.c part_voice): the valley and the wash at rest, from silence next time */
 static __attribute__((noinline)) void morph_vrest(uint32_t pp)
 {
@@ -654,7 +662,7 @@ static __attribute__((noinline)) void morph_vrest(uint32_t pp)
     v->wg = 0;
     v->wy[0] = v->wy[1] = v->wy[2] = 0;
 }
-static __attribute__((noinline)) void morph_valley(uint32_t pp, int32_t *b, int32_t *s, uint32_t n)
+static __attribute__((noinline)) void MXT_BODY(morph_valley)(uint32_t pp, int32_t *b, int32_t *s, uint32_t n)
 {
     mxv_t *v = &mxv[pp];
     const mxs_t *x = &mxs[pp];
@@ -743,3 +751,15 @@ static __attribute__((noinline)) void morph_valley(uint32_t pp, int32_t *b, int3
     v->m = m1, v->a = a1, v->g = g1;
     morph_wash(pp, b, n);
 }
+#if DUELL_BENCH
+static __attribute__((noinline)) void morph_valley(uint32_t pp, int32_t *b, int32_t *s, uint32_t n)   /* (bench builds: the same stage, timed; `tide force` holds the plan's depth and movement) */
+{
+    uint32_t t0, act;
+    if (mxf[pp].on)
+        mxs[pp].d = mxf[pp].d, mxs[pp].bv = 0, mxs[pp].motion = mxf[pp].motion, mxs[pp].snd = 1, mxs[pp].lfloor = 4096 * 9;
+    act = mxs[pp].d || mxs[pp].bv || mxv[pp].m;       /* (the valley's own work, not its early exit into the wash) */
+    t0 = MXT_TICKS();
+    morph_valley_body(pp, b, s, n);
+    mxt_add(&mxt[pp].valley, MXT_TICKS() - t0, act);
+}
+#endif

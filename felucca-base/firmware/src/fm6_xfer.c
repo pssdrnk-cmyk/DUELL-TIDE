@@ -4,6 +4,33 @@
  * these functions had in it, so the generated code is the same; eng_fm6.c keeps the types it needs earlier (fm6_xt_t, fm6_xsave_t) and the
  * few hooks (fm6_sync, fm6_note_on, fm6_render, fm6_block). fm6_macros is the macro body of fm6_sync, which the OFF build keeps inline. */
 #define FM6_XTOL (1 << 24) / 48                         /* a quarter of a semitone (Q24 log2) */
+#if DUELL_BENCH
+/* Bench builds only (bench.c `tide` words, tools/tide_measure.py; a normal build has none of this and its functions keep their names and code): the time of TIDE's audio
+ * stages as the part's own core runs them, in TC_TICKS (24 a us, the free-running clock either core reads). A stage is timed by a wrapper of the same name around the body
+ * (MXT_BODY renames the body); `act` counts the calls that really did the stage's work, `sum` and `max` are of those calls. One writer a part (the core that renders it). */
+typedef struct { uint32_t n, act, sum, max; } mxt_stage_t;
+static struct { mxt_stage_t valley, wash, fm6; } mxt[NLIVE];
+static struct { uint8_t on; uint16_t d, motion; } mxf[NLIVE];   /* `tide force`: the valley's depth and the movement held at these values (Q15), whatever the plan says */
+#ifdef TC_TICKS
+#define MXT_TICKS() TC_TICKS()
+#else
+static uint32_t fm1_ticks(void);                         /* (the host rigs: tests/ui_test.c's counter, defined after this file) */
+#define MXT_TICKS() fm1_ticks()
+#endif
+static inline void mxt_add(mxt_stage_t *s, uint32_t dt, uint32_t act)
+{
+    s->n++;
+    if (act) {
+        s->act++;
+        s->sum += dt;
+        if (dt > s->max)
+            s->max = dt;
+    }
+}
+#define MXT_BODY(f) f##_body
+#else
+#define MXT_BODY(f) f
+#endif
 static void fm6_xphase(fm6_note_t *n, uint32_t k, uint32_t skip, uint32_t mute)
 {
     uint32_t j, m, pass, best = 6u, bm = 0;
@@ -64,7 +91,7 @@ static void fm6_xcopy(fm6_note_t *n, uint32_t d, uint32_t s)
     n->op[d].phase = n->op[s].phase;
 }
 
-static __attribute__((noinline)) void fm6_xblock(track_t *t, uint32_t tr)
+static __attribute__((noinline)) void MXT_BODY(fm6_xblock)(track_t *t, uint32_t tr)
 {
     fm6_xt_t *x = &fm6_xt[tr];
     fm6_xsave_t *sv0 = (fm6_xsave_t *)((fm6_note_t *)ENG_MEM(tr) + FM6_POLY);
@@ -118,6 +145,15 @@ static __attribute__((noinline)) void fm6_xblock(track_t *t, uint32_t tr)
     }
     x->dirty = (uint8_t)(dirty != 0u);
 }
+#if DUELL_BENCH
+static __attribute__((noinline)) void fm6_xblock(track_t *t, uint32_t tr)
+{
+    uint32_t t0 = MXT_TICKS(), act = tr < NLIVE && (fm6_xt[tr].on || fm6_xt[tr].dirty);
+    fm6_xblock_body(t, tr);
+    if (tr < NLIVE)
+        mxt_add(&mxt[tr].fm6, MXT_TICKS() - t0, act);
+}
+#endif
 
 static __attribute__((noinline)) void fm6_xapply(uint32_t tr)
 {

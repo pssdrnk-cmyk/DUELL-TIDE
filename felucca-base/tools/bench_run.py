@@ -22,7 +22,7 @@
 
 The unit is driven over its USB serial console (bench builds present it whatever MENU > USB SERIAL says): the runner sends the console
 words `bench ...` (firmware/src/bench.c), the unit plays the test itself on its own audio clock and answers with one result line
-("BT,..."). Standard library only (termios), macOS or Linux. Hands off the unit while it runs; turn MASTER down.
+("BT,..."). Standard library only (termios on macOS / Linux, the COM driver through ctypes on Windows). Hands off the unit while it runs; turn MASTER down.
 
 A suite is a plain text file (tools/bench_suites/*.txt), one test after another, times in seconds from the test's start:
 
@@ -38,6 +38,8 @@ A suite is a plain text file (tools/bench_suites/*.txt), one test after another,
   expect  exact|close|report         how a later comparison judges it (stage 3; recorded only)
   soak    600 repeat M07-CYCLE       the block repeated for 600 s            check 60     the RAM check and counters every 60 s
   sound 1 ANALOG DEAR|N / mods SENDS OFF / bypass g REV ON / master COMP 4 / morph 1 OFF|ON|ROLL S A|FADER N / keysense OFF|VEL|AT|BOTH   (item 105, the COST-CAL words: bench.c bench_con_cal)
+  tide wash 2 / tide force 2 60 0 / tide glide on 0   (audit A01, TIDE's audio DSP: bench.c bench_con_tide, tools/bench_suites/TIDE-DSP.txt) and, in a test, `report tide`: after the result the stage timers
+                                     of `tide state` are read into the p1_* / p2_* columns (what tools/tide_measure.py reads)
   tune    slack 10443 | calm 2500 | pause off | lrun 4 | vrun 1 | vwin 8 2000 | floor 0 | core1 off|on     (BENCHT2 and later; vwin and floor BENCHT3; core1 BENCHV3: core 1 treated as down, core 0 plays part 2, the budget has the one-core numbers, tc column 1, no power-cycle) the runner's margin settings for this test (`bench slack ...`); the unit puts them back at the next `bench reset`
   ref     41.8 62.2                  (BENCHT3) the CPU average and peak the same test gave in an earlier build; the summary prints them beside this run's
   onecore-of NAME                    (inside a test, with --record) this test is the ONE-CORE REFERENCE of the test NAME: it must play the same scene with core 1 given no jobs
@@ -58,8 +60,11 @@ import select
 import shlex
 import subprocess
 import sys
-import termios
 import time
+try:                                   # macOS / Linux: the serial port through termios. Windows (the owner's PC): WinSerialLink below, through the system's COM driver, no extra package
+    import termios
+except ImportError:                    # (the parser, SimLink and the analysis need none)
+    termios = None
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_SUITE = os.path.join(HERE, "bench_suites", "OWNER-1.txt")
@@ -108,6 +113,7 @@ class Test:
         self.ref = None            # (avg, peak) of an earlier build, for the summary
         self.repeat = 1            # (BENCHR2) how many times the test is run back to back
         self.onecore_of = None     # (RECORD-1) the name of the two-core test this test is the one-core reference of
+        self.report_tide = False   # (audit A01) `report tide`: the TIDE stage timers are read after the result
 
     def add(self, t, line, dur=0.0):
         self.events.append((int(round(t * 1000)), len(self.events), line))
@@ -224,8 +230,12 @@ def parse_suite(text):
                 cur.setup.append(("scene", " ".join(tok[1:])))
             elif k == "budget":
                 cur.setup.append(("budget", tok[1].upper()))
-            elif k in ("sound", "mods", "bypass", "master", "morph", "keysense"):   # DUELL 1.1 item 105 (COST-CAL, tools/gen_cost_suite.py): console words passed on as they are
+            elif k in ("sound", "mods", "bypass", "master", "morph", "keysense", "tide"):   # DUELL 1.1 item 105 (COST-CAL, tools/gen_cost_suite.py), audit A01 (tide): console words passed on as they are
                 cur.setup.append(("raw", " ".join(tok)))
+            elif k == "report":
+                if tok[1:] != ["tide"]:
+                    raise SuiteError("report tide")
+                cur.report_tide = True
             elif k == "set":
                 cur.setup.append(("set", tok[1:]))
             elif k == "tune":
@@ -362,6 +372,8 @@ class SerialLink:
         self.port, self.fd, self.buf = port, None, b""
 
     def open(self):
+        if termios is None:
+            raise OSError("this system has no termios: on Windows the runner uses WinSerialLink")
         self.fd = os.open(self.port, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
         a = termios.tcgetattr(self.fd)
         a[0], a[1], a[2], a[3] = 0, 0, termios.CS8 | termios.CREAD | termios.CLOCAL, 0
@@ -410,12 +422,79 @@ class SerialLink:
         return self.read(secs)
 
 
+class WinSerialLink(SerialLink):
+    """the unit's console on Windows: the COM port through kernel32 (ctypes), no package. The port is opened for reads that return at once (the timeouts), DTR is raised (the unit
+    answers only a host that has the port open: usb.c cdc.dtr), and read() polls every 10 ms. pyserial, if it is installed, is not needed and not used."""
+
+    def open(self):
+        import ctypes
+        from ctypes import wintypes
+        k32 = ctypes.windll.kernel32
+        k32.CreateFileW.restype = wintypes.HANDLE
+        path = self.port if self.port.startswith("\\\\.\\") else "\\\\.\\" + self.port       # COM10 and up need the \\.\ form, the others take it too
+        h = k32.CreateFileW(path, 0xC0000000, 0, None, 3, 0, None)                           # GENERIC_READ | GENERIC_WRITE, OPEN_EXISTING
+        if h in (None, wintypes.HANDLE(-1).value):
+            raise OSError(f"cannot open {self.port}: error {ctypes.GetLastError()} (another program using the port?)")
+
+        class DCB(ctypes.Structure):
+            _fields_ = [("DCBlength", wintypes.DWORD), ("BaudRate", wintypes.DWORD), ("flags", wintypes.DWORD), ("wReserved", wintypes.WORD), ("XonLim", wintypes.WORD),
+                        ("XoffLim", wintypes.WORD), ("ByteSize", ctypes.c_ubyte), ("Parity", ctypes.c_ubyte), ("StopBits", ctypes.c_ubyte), ("XonChar", ctypes.c_char),
+                        ("XoffChar", ctypes.c_char), ("ErrorChar", ctypes.c_char), ("EofChar", ctypes.c_char), ("EvtChar", ctypes.c_char), ("wReserved1", wintypes.WORD)]
+
+        class TO(ctypes.Structure):
+            _fields_ = [(n, wintypes.DWORD) for n in ("ReadInterval", "ReadMult", "ReadConst", "WriteMult", "WriteConst")]
+        dcb = DCB()
+        dcb.DCBlength = ctypes.sizeof(DCB)
+        k32.GetCommState(h, ctypes.byref(dcb))
+        dcb.BaudRate, dcb.ByteSize, dcb.Parity, dcb.StopBits = 115200, 8, 0, 0     # (the unit ignores the rate)
+        dcb.flags = 0x0001 | (1 << 4)                                              # fBinary, fDtrControl = ENABLE; no flow control
+        k32.SetCommState(h, ctypes.byref(dcb))
+        k32.SetCommTimeouts(h, ctypes.byref(TO(0xFFFFFFFF, 0, 0, 0, 100)))         # a read returns at once with what there is
+        k32.EscapeCommFunction(h, 5)                                               # SETDTR
+        self.fd, self.k32, self.ct, self.buf = h, k32, ctypes, b""
+
+    def close(self):
+        if self.fd is not None:
+            try:
+                self.k32.CloseHandle(self.fd)
+            except OSError:
+                pass
+        self.fd = None
+
+    def send(self, line):
+        data = line.encode("ascii") + b"\r"
+        n = self.ct.c_ulong(0)
+        if not self.k32.WriteFile(self.fd, data, len(data), self.ct.byref(n), None):
+            raise LinkDown(f"write failed ({self.ct.GetLastError()})")
+
+    def read(self, secs):
+        out, end = [], time.monotonic() + secs
+        buf = self.ct.create_string_buffer(4096)
+        while True:
+            n = self.ct.c_ulong(0)
+            if not self.k32.ReadFile(self.fd, buf, 4096, self.ct.byref(n), None):
+                raise LinkDown(f"read failed ({self.ct.GetLastError()})")
+            if n.value:
+                self.buf += buf.raw[:n.value]
+            while b"\n" in self.buf:
+                ln, self.buf = self.buf.split(b"\n", 1)
+                out.append(ln.decode("ascii", "replace").strip("\r "))
+            left = end - time.monotonic()
+            if left <= 0:
+                return out
+            if not n.value:
+                time.sleep(min(0.01, left))
+
+
 class SimLink:
     """the Mac twin (tests/bench_sim.c --serve) as the unit: its time moves only when the runner waits"""
 
     synchronous = True
 
     def __init__(self, exe, boots=3):
+        if not os.path.exists(exe) and os.path.exists(exe + ".exe"):      # (Windows: the twin is bench_sim.exe)
+            exe += ".exe"
+        exe = os.path.abspath(exe)                                          # (Windows does not find a relative path with slashes)
         self.exe, self.boots, self.p, self.clock, self.pending = exe, boots, None, 0.0, []
 
     def open(self):
@@ -736,6 +815,26 @@ COUNTER_KEYS = ("uac_underruns", "uac_overruns", "uac_missed", "uac_stalls")
 RUN_KEYS = (("run_late", "audio_late"), ("run_shed", "voices_shed"), ("run_lfx", "fx_light_count"))   # item 142, --onset: result column, the unit's `status` key (console.c con_status)
 
 
+TIDE_FIELDS = ("vn", "va", "vs", "vm", "wn", "wa", "ws", "wm", "fn", "fa", "fs", "fm", "need", "d", "motion", "tp")   # BENCH,TIDEP: the valley (calls, calls that worked, ticks, longest), the wash, FM6's bridge, the plan
+TIDE_COLS = ["tide_wash", "tide_glide", "tide_two", *[f"p{p}_{k}" for p in (1, 2) for k in TIDE_FIELDS]]
+
+
+def tide_report(unit):
+    """(audit A01, a test with `report tide`) the unit's TIDE stage timers right after the result: the columns of TIDE_COLS (bench.c bench_con_tide `state`)"""
+    out = {}
+    for ln in unit.lines_of("bench tide state"):
+        f = ln.strip().split(",")
+        if f[:2] == ["BENCH", "TIDE"]:
+            for kv in f[2:]:
+                m = re.fullmatch(r"(wash|glide|two) (-?\d+)", kv)
+                if m:
+                    out["tide_" + m.group(1)] = int(m.group(2))
+        elif f[:2] == ["BENCH", "TIDEP"] and len(f) == 3 + len(TIDE_FIELDS) and all(re.fullmatch(r"-?\d+", x) for x in f[2:]):
+            for k, v in zip(TIDE_FIELDS, f[3:]):
+                out[f"p{f[2]}_{k}"] = int(v)
+    return out
+
+
 def run_counters(unit):
     """(item 142) the unit's own counters since power-on that cover every half: missed halves (the DMA overtook the render), shed voices, LIGHT FX engagements; None if absent"""
     st = {}
@@ -873,6 +972,8 @@ def run_test(unit, test, soak_override, base, after_run=None, recorder=None, out
             f = ln.strip().split(",")
             if len(f) == 9 and f[0] == "BENCH" and f[1] == "TCM" and all(re.fullmatch(r"-?\d+", x) for x in f[2:]):
                 res["vlate_ev"].append(f[2:])
+    if test.report_tide:
+        res.update(tide_report(unit))
     res["late_events"] = late
     res["checks"] = checks
     res["verdict"], res["why"] = verdict(row, tbase, test)
@@ -907,10 +1008,35 @@ def run_test(unit, test, soak_override, base, after_run=None, recorder=None, out
 
 
 # ------------------------------------------------------------------------------------------------ the run
+def com_ports():
+    """Windows: the COM ports of the unit's CDC function (USB 1209:0001, a composite device: the port sits on an interface of it), from the registry; only ports present now"""
+    import winreg
+    present, found = set(), []
+    try:
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"HARDWARE\DEVICEMAP\SERIALCOMM") as k:
+            for i in range(winreg.QueryInfoKey(k)[1]):
+                present.add(str(winreg.EnumValue(k, i)[1]))
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Enum\USB") as usb:
+            for i in range(winreg.QueryInfoKey(usb)[0]):
+                dev = winreg.EnumKey(usb, i)
+                if not dev.upper().startswith("VID_1209&PID_0001"):
+                    continue
+                with winreg.OpenKey(usb, dev) as dk:
+                    for j in range(winreg.QueryInfoKey(dk)[0]):
+                        try:
+                            with winreg.OpenKey(dk, winreg.EnumKey(dk, j) + r"\Device Parameters") as pk:
+                                found.append(str(winreg.QueryValueEx(pk, "PortName")[0]))
+                        except OSError:
+                            continue
+    except OSError:
+        return []
+    return sorted(set(found) & present)
+
+
 def pick_port(a):
     if a.port:
         return a.port
-    ports = sorted(glob.glob("/dev/cu.usbmodem*") + glob.glob("/dev/ttyACM*"))
+    ports = com_ports() if os.name == "nt" else sorted(glob.glob("/dev/cu.usbmodem*") + glob.glob("/dev/ttyACM*"))
     if len(ports) != 1:
         raise SystemExit(("no serial port of the unit found" if not ports else f"more than one port ({', '.join(ports)}): use --port") +
                          ": is it plugged in? bench builds present the console by themselves")
@@ -1176,7 +1302,7 @@ def fmt_summary(name, build, tests, results, cores=None):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0], formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--suite", default=DEFAULT_SUITE, help="the suite file, or a name in tools/bench_suites (default OWNER-1)")
-    ap.add_argument("--port", help="the unit's serial port (default: the only /dev/cu.usbmodem*)")
+    ap.add_argument("--port", help="the unit's serial port (default: the only /dev/cu.usbmodem* or /dev/ttyACM*; Windows: the only COM port of USB 1209:0001)")
     ap.add_argument("--out", help="the folder for this run (default: bench_runs/<date>-<build>/ )")
     ap.add_argument("--runs", default=os.environ.get("DUELL_BENCH_RUNS", RUNS_DEFAULT), help="the bench_runs folder (default as the owner's decision 10)")
     ap.add_argument("--only", help="test names, comma separated (a * matches any)")
@@ -1250,7 +1376,7 @@ def main(argv=None):
     if a.sim:
         link = SimLink(a.sim)
     else:
-        link = SerialLink(pick_port(a))
+        link = (WinSerialLink if os.name == "nt" else SerialLink)(pick_port(a))
     os.makedirs(a.runs, exist_ok=True)
     stamp = datetime.date.today().isoformat()
     tmp_out = a.out or os.path.join(a.runs, f"{stamp}-run")
@@ -1421,7 +1547,7 @@ def run_all(a, link, log, sname, sel, text, out):
     except (LinkDown, OSError):
         pass
     cols = ["test", "rep", "reps", "text", "verdict", "why", "status", "dur_s", "avg", "peak", "miss", "shed", "lfx", "vox", "halves", "notes1", "notes2", "why1", "why2",
-            "budget", "ramcode", "boots", "lost", "flashes", "uac_hz", "uac_under", "uac_over", "uac_missed", "uac_stalls", "erase_max_us", "c1", "c1pk", "c1late", "c1over", "c1holds", *TC_COLS, *TM_COLS, "info", "late_events", "expect"]
+            "budget", "ramcode", "boots", "lost", "flashes", "uac_hz", "uac_under", "uac_over", "uac_missed", "uac_stalls", "erase_max_us", "c1", "c1pk", "c1late", "c1over", "c1holds", *TC_COLS, *TM_COLS, "info", "late_events", "expect", *TIDE_COLS]
     if a.rc.onset:
         cols += [c for c, _ in RUN_KEYS]                     # (item 142, --onset)
     if recorder:

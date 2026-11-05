@@ -909,7 +909,7 @@ static void t_pure(void)
 }
 
 /* ---- DUELL 1.1 item 142 (HANDOFF_V2 item 140): the morph ends charged as they SOUND (budget.c bd_end: morph_apply on the live values), not as stored ---- */
-#define LOADED_REF 0x1663cf4cccc3982eull  /* RE-BASED 2026-11-05 on integ 202400b, two content merges, no cost model moved: 9aaac54 fix/bank-content (audit G06, G10, G12, G15: ARP PLUCK / SINGING BOWL re-voiced, three FM6 dub voices inserted among #129-#163 so 505 loads not 496 and the places after them shift, the sounds' SAT / insert / extra items move with their new positions; was 0x5939e5cf85fd3753) and 3cdfd21 fix/bank-tail (audit G16-G18: two places swapped and renamed, #147 / #148 and #145 / #146 / #154 / #155; was 0x70b2cc96010324ee). Per-load comparison: the same items, in new places, +9 loads. */ /* RE-BASED 2026-11-05 (audit R09: ROOM runs the HALL's code, budget.c BD_REV charges it as HALL; was 0x8d8f9d7d6e7bf6a6) */ /* RE-BASED 2026-11-05 (D18, fix/fm6-voices: FM6's engine cap 6 -> 8 moves the caps hashed for the FM6 loads, no item or cost moved; was 0xc49b4d760eb50a42). RE-BASED 2026-11-04 on integ 81db7db: the loads now cover every factory place (UP_VSLOTS: the 124 before the USER slots, the 4 displaced ones and the 32 added sounds #129-#160 = 160, times 3 modes) and the 16 multis = 496 loads. Content only: the same loads limited to the first 128 places + 16 multis (400) give 0x3aca82b7860fa0e3, the value before the factory sounds / patterns merges, so no charge moved; was 0x49103b27c8056c73. */ /* RE-BASED 2026-11-04 on integ f3a6007 + U2 B (integ alone gives 0x4e7ee632ae102deb: its factory sounds / patterns moved the hash; was 0x3aca82b7860fa0e3 before that merge). RE-BASED 2026-11-03 (U2 B: ten factory multis hold sequences / other arps now, M03 M05 M06 M07 M08 M10 M11 M12 M13 M16; was 0x727755da7c33f13b). RE-BASED 2026-11-03 on Linux for jam11 (DUELL 1.1 stock gives 0xe127c9153f522b4b): the factory sounds now load their End B as exact values (owner 2026-10-29, sounds.c ds_endb, PT_VER 4) and the multis' End B is rolled by 1.1's reworked ROLL B (jam11: TIDE's roll changes too); was 0x94a8602e9043143f. */              /* RE-BASED 2026-10-27 (item 147: SAT charged from the played ends, so the sat item of the patches with SAT on at End B only moves; was 0x066513d172b83ac7). Earlier: RE-BASED (item 146: SMART no longer rolls a switch, so 16 factory patches' and 4 multis' End B differ; was 0xcea8e1e6db6eb3b7): the hash below on the sources BEFORE item 142 (scratch copy of 2026-10-27 01:10, bd_slope8 / morph_cur), this test */
+#define LOADED_REF 0xe7fbeb090fbff946ull  /* RE-BASED 2026-11-05 (audit A01: TIDE's DSP items, budget.c BD_TIDE_*: the valley where the voices' filter cannot carry the crossing's dip, the dip a voice and FM6's bridge a voice, on every part with a MORPH; 62 of 1010 factory part-loads lose one note, none more; was 0x1663cf4cccc3982e). RE-BASED 2026-11-05 on integ 202400b, two content merges, no cost model moved: 9aaac54 fix/bank-content (audit G06, G10, G12, G15: ARP PLUCK / SINGING BOWL re-voiced, three FM6 dub voices inserted among #129-#163 so 505 loads not 496 and the places after them shift, the sounds' SAT / insert / extra items move with their new positions; was 0x5939e5cf85fd3753) and 3cdfd21 fix/bank-tail (audit G16-G18: two places swapped and renamed, #147 / #148 and #145 / #146 / #154 / #155; was 0x70b2cc96010324ee). Per-load comparison: the same items, in new places, +9 loads. */ /* RE-BASED 2026-11-05 (audit R09: ROOM runs the HALL's code, budget.c BD_REV charges it as HALL; was 0x8d8f9d7d6e7bf6a6) */ /* RE-BASED 2026-11-05 (D18, fix/fm6-voices: FM6's engine cap 6 -> 8 moves the caps hashed for the FM6 loads, no item or cost moved; was 0xc49b4d760eb50a42). RE-BASED 2026-11-04 on integ 81db7db: the loads now cover every factory place (UP_VSLOTS: the 124 before the USER slots, the 4 displaced ones and the 32 added sounds #129-#160 = 160, times 3 modes) and the 16 multis = 496 loads. Content only: the same loads limited to the first 128 places + 16 multis (400) give 0x3aca82b7860fa0e3, the value before the factory sounds / patterns merges, so no charge moved; was 0x49103b27c8056c73. */ /* RE-BASED 2026-11-04 on integ f3a6007 + U2 B (integ alone gives 0x4e7ee632ae102deb: its factory sounds / patterns moved the hash; was 0x3aca82b7860fa0e3 before that merge). RE-BASED 2026-11-03 (U2 B: ten factory multis hold sequences / other arps now, M03 M05 M06 M07 M08 M10 M11 M12 M13 M16; was 0x727755da7c33f13b). RE-BASED 2026-11-03 on Linux for jam11 (DUELL 1.1 stock gives 0xe127c9153f522b4b): the factory sounds now load their End B as exact values (owner 2026-10-29, sounds.c ds_endb, PT_VER 4) and the multis' End B is rolled by 1.1's reworked ROLL B (jam11: TIDE's roll changes too); was 0x94a8602e9043143f. */              /* RE-BASED 2026-10-27 (item 147: SAT charged from the played ends, so the sat item of the patches with SAT on at End B only moves; was 0x066513d172b83ac7). Earlier: RE-BASED (item 146: SMART no longer rolls a switch, so 16 factory patches' and 4 multis' End B differ; was 0xcea8e1e6db6eb3b7): the hash below on the sources BEFORE item 142 (scratch copy of 2026-10-27 01:10, bd_slope8 / morph_cur), this test */
 static uint64_t lh = 1469598103934665603ull;
 static void lput(uint32_t v)
 {
@@ -969,11 +969,37 @@ static uint32_t eng_of_slot_named(const char *nm)       /* (a check that the slo
 {
     return str_eq(ENGINES[eng_idx(trk[0].eng_req)]->name, nm);
 }
+static uint32_t tide_bad_caps;
+/* A01: the caps of the parts as loaded with and without TIDE's DSP items (BD_TIDE_*): the same loads, the items taken out again, both rules */
+static void tide_count(const bd_t *b, uint32_t n[2][4], uint32_t *parts, uint32_t *valley)
+{
+    bd_t q = *b;
+    uint32_t p, with[2], without[2], rule;
+    for (p = 0; p < 2u; p++)
+        if (q.p[p].on && (mph[p].nid || mph[p].fnid) && !morph_stale(&trk[p], &mph[p])) {
+            *valley += q.p[p].tide >= BD_TIDE_VALLEY;
+            q.p[p].misc -= q.p[p].tide;
+            q.p[p].ext -= q.p[p].tide_v;
+            (*parts)++;
+        }
+    for (rule = 0; rule < 2u; rule++) {
+        budget_solve2(b, with, rule);
+        budget_solve2(&q, without, rule);
+        for (p = 0; p < 2u; p++)
+            tide_bad_caps += with[p] > without[p] || without[p] - with[p] > 1u;   /* (the items only ever take away, and at most one note, on the factory sounds) */
+        for (p = 0; p < 2u; p++)
+            if (b->p[p].on && without[p] > with[p])
+                n[rule][without[p] - with[p] > 3u ? 3u : without[p] - with[p]]++;
+            else if (b->p[p].on)
+                n[rule][0]++;
+    }
+}
 static void t_loaded(void)
 {
     static const uint32_t MODES[3] = {DM_LAYER, DM_STEREO, DM_SPLIT};
     uint32_t m, s, nl = 0, nm = 0;
     bd_t b, bo;
+    uint32_t tide_n[2][4] = {{0}}, tide_parts = 0, tide_valley = 0;      /* A01: parts whose cap TIDE's items lower, by 0, 1, 2, 3+ notes: [rule][drop] (rule 0 one core, 1 two cores) */
     printf("budget: --- item 142: every factory patch AS LOADED (both parts, LAYER / STEREO / DUEL; its MORPH End B rolled by the load): the items, the caps and the deadline items as before\n");
     for (m = 0; m < 3u; m++)
         for (s = 0; s < UP_VSLOTS; s++) {
@@ -983,6 +1009,7 @@ static void t_loaded(void)
             nm += (mph[0].nid || mph[0].fnid) && (mph[1].nid || mph[1].fnid) && !morph_stale(&trk[0], &mph[0]) && !morph_stale(&trk[1], &mph[1]);
             bd_build(&b);
             items_put(&b);
+            tide_count(&b, tide_n, &tide_parts, &tide_valley);
             nl++;
         }
     for (s = 1; s <= MU_SLOTS; s++) {                   /* and the 16 factory multis (MODE RECALL) */
@@ -991,10 +1018,14 @@ static void t_loaded(void)
         nm += (mph[0].nid || mph[0].fnid) && (mph[1].nid || mph[1].fnid) && !morph_stale(&trk[0], &mph[0]) && !morph_stale(&trk[1], &mph[1]);
         bd_build(&b);
         items_put(&b);
+        tide_count(&b, tide_n, &tide_parts, &tide_valley);
         nl++;
     }
+    printf("budget:     TIDE's items (A01, an estimate) lower the cap of a part, of %u parts with a morph (%u of them can run the valley: their voices' filter cannot carry the dip): one core by 0 / 1 / 2 / 3+ notes: %u / %u / %u / %u; two cores: %u / %u / %u / %u\n", tide_parts, tide_valley,
+           tide_n[0][0], tide_n[0][1], tide_n[0][2], tide_n[0][3], tide_n[1][0], tide_n[1][1], tide_n[1][2], tide_n[1][3]);
     printf("budget:     %u loads (%u with a live morph on both parts), items hash 0x%016llx (before item 142: 0x%016llx)\n", nl, nm, (unsigned long long)lh, (unsigned long long)LOADED_REF);
     bchk("item 142 (a): every factory patch and multi as loaded gives the items of the reference (every factory place and multi; re-based for item 147: SAT from the played ends)", lh == LOADED_REF && nm > 100u);
+    bchk("A01: TIDE's DSP items only ever lower a factory sound's cap, by one note at most (a conservative estimate: the unit's measurement replaces BD_TIDE_*)", !tide_bad_caps && tide_parts == 1010u);
 
     /* (b) #01 BEHIVE edited after the load: TWIN OFF, SLOPE 12 dB. Its morph ends hold the Original's TWIN BP and 24 dB, which can never sound now: the charge equals the same
      *     state with the morph switched off, plus BD_MORPH a voice */
@@ -1011,12 +1042,12 @@ static void t_loaded(void)
             mph[k].nid = mph[k].fnid = 0;               /* (the bench's `morph 1 OFF`: no morph list) */
         bd_build(&bo);
         for (k = 0; k < 2u; k++)
-            bo.p[k].ext += 16u;                         /* + BD_MORPH */
+            bo.p[k].ext += 16u + b.p[k].tide_v, bo.p[k].misc += b.p[k].tide;   /* + BD_MORPH, and TIDE's items of a part with a morph (A01) */
         no = two_of(&bo);
         printf("budget:     #01 BEHIVE, TWIN OFF + 12 dB after the load: voice %u + %u + %u (morph off + 16: %u + %u + %u), two cores %u a part (morph off + 16: %u; item 140: was 4)\n",
                b.p[0].eng, b.p[0].filt, b.p[0].ext, bo.p[0].eng, bo.p[0].filt, bo.p[0].ext, n, no);
         bchk("item 142 (b): #01 BEHIVE with TWIN OFF and 12 dB after the load is charged as the same state with the morph off plus BD_MORPH (two cores 6 at limit 84, was 4 at 81 before the fix)",
-             ok && b.p[0].eng == bo.p[0].eng && b.p[0].filt == bo.p[0].filt && b.p[0].ext == bo.p[0].ext && n == no && n == 6u);
+             ok && b.p[0].eng == bo.p[0].eng && b.p[0].filt == bo.p[0].filt && b.p[0].ext == bo.p[0].ext && b.p[0].misc == bo.p[0].misc && n == no && n == 6u);
     }
     /* (c) a choice set by hand at End B (EDITABLE B, pinned) is End B's whatever the live value: TWIN LP pinned at B, live TWIN OFF -> TWIN charged; not pinned -> not */
     {
@@ -1127,6 +1158,58 @@ static void t_loaded(void)
     }
 }
 
+/* A01 (audit 2026-11-04): TIDE's audio DSP in the model. A part with a MORPH is charged the valley (only where its voices' own filter cannot carry the crossing's dip or GLIDE's breath: the filter is not a
+ * running low-pass, or the ends differ in a value of the filters), the wash (while WASH is not OFF), the dip a voice and FM6's bridge a voice; a part without a MORPH, or a muted one, nothing. The figures
+ * are estimates (budget.c BD_TIDE_*; tests/tide_cost_probe.c prints their basis), so what is pinned here is the rule, not the numbers. */
+static void t_tide(void)
+{
+    bd_t b, b0;
+    uint32_t ok = 1, k, p;
+    load_both(DM_LAYER, 0);                             /* #01 BEHIVE on both parts (ANALOG, the multimode filter running) */
+    morph_wlvl = 0;
+    bd_build(&b0);
+    ok &= eng_of_slot_named("ANALOG") && b0.p[0].tide_v == BD_TIDE_DIP && b0.p[1].tide_v == BD_TIDE_DIP;
+    ok &= b0.p[0].misc >= b0.p[0].tide && b0.p[0].ext >= b0.p[0].tide_v;
+    /* the wash: WASH MID adds BD_TIDE_WASH to the fixed cost of each part with a morph, nothing else moves */
+    morph_wlvl = 2;
+    bd_build(&b);
+    for (p = 0; p < 2u; p++)
+        ok &= b.p[p].tide == b0.p[p].tide + BD_TIDE_WASH && b.p[p].misc == b0.p[p].misc + BD_TIDE_WASH && b.p[p].ext == b0.p[p].ext && b.p[p].eng == b0.p[p].eng;
+    morph_wlvl = 0;
+    /* the valley: a filter MODE that is no low-pass cannot carry the dip in the voices' filter (x->lp), so the valley is charged; the running low-pass above is not (or, if End B differs in a value of the filters, is) */
+    for (k = 0; k < 2u; k++)
+        trk[k].p[P_FREEC] = 40;
+    bd_build(&b);
+    for (p = 0; p < 2u; p++)
+        ok &= b.p[p].tide >= BD_TIDE_VALLEY && b.p[p].misc >= b0.p[p].misc - b0.p[p].tide + BD_TIDE_VALLEY;
+    printf("budget:     TIDE: #01 BEHIVE x 2, WASH OFF: the valley %u + the wash 0 (filter MODE not a low-pass: %u + 0), the dip %u a voice; WASH MID adds %u\n", b0.p[0].tide, b.p[0].tide, b0.p[0].tide_v, BD_TIDE_WASH);
+    /* no morph, or muted: nothing */
+    load_both(DM_LAYER, 0);
+    for (k = 0; k < 2u; k++)
+        mph[k].nid = mph[k].fnid = 0;
+    trk[1].p[P_MUTE] = 1;
+    morph_wlvl = 2;
+    bd_build(&b);
+    ok &= b.p[0].tide == 0u && b.p[0].tide_v == 0u && b.p[1].tide == 0u && b.p[1].tide_v == 0u && b.p[1].misc == 0u && b.p[1].ext == 0u;
+    morph_wlvl = 0;
+    /* FM6 pays its bridge a voice on top of the dip: a factory FM6 sound with a live morph */
+    {
+        uint32_t s, found = 0;
+        for (s = 0; s < UP_VSLOTS && !found; s++) {
+            if (s >= UP_USER0 && s < UP_SLOTS)
+                continue;
+            load_both(DM_LAYER, s);
+            if (ENGINES[eng_idx(trk[0].eng_req)] == &ENG_FM6 && (mph[0].nid || mph[0].fnid) && !morph_stale(&trk[0], &mph[0])) {
+                bd_build(&b);
+                ok &= b.p[0].tide_v == BD_TIDE_DIP + BD_TIDE_FM6 && b.p[0].ext >= BD_MORPH + b.p[0].tide_v;
+                found = 1;
+            }
+        }
+        ok &= found;
+    }
+    bchk("A01: the TIDE items by rule: valley only where the voices' filter cannot carry the dip, the wash with WASH on, the dip and FM6's bridge a voice; nothing without a MORPH or when muted", ok);
+}
+
 int main(void)
 {
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -1139,6 +1222,7 @@ int main(void)
     t_bits();
     t_pure();
     t_loaded();
+    t_tide();
     printf("budget: %s\n", fails ? "FAIL" : "ok");
     return fails != 0;
 }
