@@ -1596,9 +1596,9 @@ static int32_t sub_wave(uint32_t wave, uint32_t ph)    /* one cycle at phase ph 
 }
 static void graph_sub(const track_t *t, uint16_t c)
 {
-    int32_t cy = graph_ht / 2, lv = clamp(XV(t, X_SUBLVL), 0, 127), h = 0 /* SUB HARMONICS disabled (owner, 2026-10-21) */, oct = clamp(XV(t, X_SUBOCT), 0, 2), amp = 4 + lv * 36 / 127;
+    int32_t cy = graph_ht / 2, lv = clamp(XV(t, X_SUBLVL), 0, 127), oct = clamp(XV(t, X_SUBOCT), 0, 2), amp = 4 + lv * 36 / 127;
     uint32_t wave = (uint32_t)XV(t, X_SUBWAVE), cyc = 1u << (uint32_t)oct, i, k;      /* cycles of the sub over four of the note: 1, 2, 4 */
-    int32_t a1 = lv ? amp * (h < 64 ? h : 64) / 128 : 0, a2 = lv && h > 64 ? amp * (h - 64) / 126 : 0, px[3] = {0, 0, 0}, py[3] = {0, 0, 0};
+    int32_t a1 = 0, a2 = 0 /* SUB HARMONICS disabled (owner, 2026-10-21): no harmonic terms */, px[3] = {0, 0, 0}, py[3] = {0, 0, 0};
     cv_rect(PANEL_X0, cy, PANEL_W, 1, T_RAISE);
     for (i = 0; i <= 110u; i++) {
         int32_t x = PANEL_X0 + 2 * (int32_t)i, y[3], sum;
@@ -2413,11 +2413,11 @@ static void list_panel(int pats)
             ps_preview(cur, &gpp_pv);
         }
         if (gpp_pv.state != 1u)
-            cv_text_in(0, UT_TY(S, LP_Y + 38), 240, &AF_S, "DAMAGED", T_MID, T_BG);
+            cv_text_on(UT_L5_NAME_X, UT_TY(S, LP_Y + 38), &AF_S, "DAMAGED", T_MID, T_BG);   /* (audit C14: from the name column, no centred body text) */
         else if (gpp_pv.has)
-            pv_bars(17, LP_Y + 8, 52, 13, 10, gpp_pv.bar, T_THEME);
+            pv_bars(UT_L5_NAME_X, LP_Y + 8, 52, 11, 8, gpp_pv.bar, T_THEME);   /* (the name column to x 225, inside the rows' pill) */
         else
-            cv_text_in(0, UT_TY(S, LP_Y + 38), 240, &AF_S, "NO SEQUENCE", T_MID, T_BG);
+            cv_text_on(UT_L5_NAME_X, UT_TY(S, LP_Y + 38), &AF_S, "NO SEQUENCE", T_MID, T_BG);
     } else {
         uint32_t cur = (uint32_t)(song.g[G_SLOT] - 1) % MU_SLOTS;
         if (gsl_key != (cur | multi_gen() << 8)) {       /* the highlighted record changed: decode it once */
@@ -2425,7 +2425,7 @@ static void list_panel(int pats)
             multi_preview(cur, &gsl_pv);
         }
         if (gsl_pv.state != 1u) {
-            cv_text_in(0, UT_TY(S, LP_Y + 38), 240, &AF_S, gsl_pv.state ? "DAMAGED" : "EMPTY SLOT", T_MID, T_BG);
+            cv_text_on(UT_L5_NAME_X, UT_TY(S, LP_Y + 38), &AF_S, gsl_pv.state ? "DAMAGED" : "EMPTY SLOT", T_MID, T_BG);
         } else {
             for (t = 0; t < NSHOWN; t++) {
                 int32_t y = LP_Y + 5 + LP_BAND * (int32_t)t;
@@ -2437,7 +2437,7 @@ static void list_panel(int pats)
                 cv_free_text(UT_L5_NAME_X, UT_TY(M, y + 11), &AF_M, ds_name(gsl_pv.p[t].eng % NENGINES, gsl_pv.p[t].preset), c, T_BG, LR_R - 30 - UT_L5_NAME_X);   /* (in the list's name column) */
                 lr_chip(LR_R, y, md, t, T_BG);
                 if (gsl_pv.p[t].has)
-                    pv_bars(UT_L5_NAME_X, y + 15, 12, 9, 7, gsl_pv.p[t].bar, md == 2u ? c : T_MID);   /* (only a SEQ part plays them: under an arp they are dimmed) */
+                    pv_bars(UT_L5_NAME_X, y + 15, 12, 11, 8, gsl_pv.p[t].bar, md == 2u ? c : T_MID);   /* (only a SEQ part plays them: under an arp they are dimmed) */
                 else
                     cv_text_on(UT_L5_NAME_X, UT_TY(S, y + 26), &AF_S, "NO SEQUENCE", T_MID, T_BG);
             }
@@ -2476,16 +2476,6 @@ static struct {
     uint8_t meter[NTRK];
 } ts;
 
-static int32_t meter_px(int32_t a)                   /* |sample| (Q15) -> px: 60 dB over the slot */
-{
-    int32_t lg = 0, v;
-    if (a < 64)
-        return 0;
-    while ((a >> lg) > 1)
-        lg++;
-    v = lg * 8 + (((a << 3) >> lg) & 7);             /* 8 log2(a): 48 (-54 dB) .. 128 (+6 dB) */
-    return clamp((v - 48) * (TS_MH - 2) / 80, 0, TS_MH - 2);
-}
 
 /* a knob's ring: 270 degrees (7:30 .. 4:30 o'clock), 2 px, anti-aliased, from the quadrant mask of its size
  * (tools/gen_aa_keycaps.py: coverage and angle; the other three quadrants mirror it, no trigonometry here).
@@ -2528,19 +2518,7 @@ static void knob(int32_t x, int32_t y, int32_t r, const uint8_t *cov, const uint
     knob_arc(x, y, r, cov, ang, a0, a1, T_RAISE, vc, T_BG);
 }
 
-static uint32_t trk_level(uint32_t c) { return (uint32_t)trk[c].p[P_LEVEL] & 127u; }   /* LEVEL 0..127 */
 
-static void trk_short_name(uint32_t c, char *b)      /* the track's sound, b holds 13 */
-{
-    const track_t *t = &trk[c];
-    const engine_t *e = ENGINES[t->eng_req % NENGINES];
-    if (UP_REC_USER(t))
-        sl_name((uint32_t)t->user - 1u, b);
-    else if (ds_count(t->eng_req % NENGINES))
-        str_cpy(b, ds_name(t->eng_req % NENGINES, t->preset), 13);
-    else
-        str_cpy(b, eng_shown(e->name), 13);
-}
 
 
 /* HOME's MORPH (4b; v5 2026-10-11, SPEC 3.5): the morph as a picture: a field of thin wave lines across the whole width of
@@ -2789,14 +2767,6 @@ static void graph_morph(void)
     cv_key_row(12, 228, MV_KY, kh, 3, 7u, T_BG);
     GFX_HOOK_ALIGN(0, 0, 240, 0, AL_H, "morph save line centred");
     cv_text_in(0, MV_SY, 240, &AF_S, "HOLD SAVE = SAVE PATCH", T_DIM, T_BG);
-}
-/* HOME's MODE (step 5, SPEC 5b.1): the mode large, then XFADE and SPLIT each in a plain line with its value (XFADE and
- * SPLIT work in LAYER only: DIM in the other modes); the voices: LAYER takes a voice of each part a note, so half as many notes */
-static void mode_line(int32_t y, const char *name, const char *val, const char *what, uint32_t on)
-{
-    cv_text_on(12, y, &AF_S, name, on ? T_TEXT : T_DIM, T_BG);
-    cv_text_r(228, y, &AF_S, val, on ? T_TEXT : T_DIM, T_BG);
-    cv_text_on(12, y + 13, &AF_S, what, on ? T_MID : T_DIM, T_BG);
 }
 static void graph_mode(void)
 {   /* DUELL 1.1 (PAGES_V2_home-modes.png), item 118: the three modes as a list in the order LAYER, STEREO, DUEL (the SETUP page's), the picked one on a box of the selected part's colour (ui_tokens.h TEMPLATE 6: the selection style of

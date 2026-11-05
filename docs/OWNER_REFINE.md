@@ -6,7 +6,7 @@
 MultiMorphing Bitimbral Synthesizer
 by OSCILL/R
 
-This is the owner's way to go through all 128 patches and 16 multis in the web editor, change what he wants, and make his versions the **factory set**: after it, RESTORE on the unit brings his versions back, and every new firmware contains them. Nothing here changes the firmware by itself; he hands two files to the developer, who imports them (step 6).
+This is OSCILL/R's way, from the DUELL 1.0 work, to go through all 128 patches and 16 multis in the web editor, change what he wants, and make his versions the **factory set**: after it, RESTORE on the unit brings his versions back, and every new firmware contains them. Nothing here changes the firmware by itself; he hands two files to the developer, who imports them (step 6).
 
 ## Before you start
 

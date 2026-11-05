@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* The chain's filter 2 and DRIVE (cloud job B's stub, filled by job E: TWIN_FILTER_DESIGN.md, TWIN_FILTER_DESIGN_2.md 2 and 3).
+/* The chain's filter 2 and DRIVE (TWIN_FILTER_DESIGN.md, TWIN_FILTER_DESIGN_2.md 2 and 3).
  * chain_f2_on: 1 when filter 2 runs for voice v this block (TYPE not OFF); chain_f2: the stage, called by voice_chain.c chain_stages after filter 1 on the voice's scratch block tmp (n samples, the
  * engine's signal at full level, before the amp), m the voice's modulation, uc filter 1's effective cutoff (Q8 dial steps). The stage keeps its state per voice (start from rest when v->chn ==
  * VCH_NEW, or when TYPE comes on while the voice is in the chain).

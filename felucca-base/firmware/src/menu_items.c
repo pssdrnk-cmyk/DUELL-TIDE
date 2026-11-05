@@ -86,7 +86,7 @@ static const char *menu_label(uint32_t row)
 {
     return row >= MI_COUNT ? "" : MI_LABEL[row] ? MI_LABEL[row] : MI_NAME[row];
 }
-/* 1.0.5: the MENU's tabs (ui_menu.c: ALGORITHM steps between them, PRESETS among one tab's rows; the editor gets a
+/* 1.0.5: the MENU's tabs (ui_menu.c: SELECT moves through the rows and over the tabs, ALGORITHM and PRESETS do nothing in the menu; the editor gets a
  * row's tab after its MENU_DESC reply). A tab's rows follow each other in MI order (tests/ui_test.c checks it). DUELL 0.2.14:
  * a row is one unit (21 px and a 1 px rule) or two (a two-line label); a page holds MPAGE_UNITS units; a tab with more goes on
  * on a page 2 (menu_place), its pill then reads "CONTROL 1/2". Tabs are in the order the device shows them; a tab's index is what

@@ -230,7 +230,7 @@ static struct {
     uint32_t menu_sig, home_t0;  /* HOME press time (btn_hold) */
     uint8_t force;               /* full redraw pending */
     uint8_t msg_t;               /* transient message frames */
-    uint8_t bpm_t;               /* frames after GLO + F4 TAP set the tempo (ui_input.c; the header shows no tempo any more) */
+    uint8_t bpm_t;               /* frames after GLO + F4 TAP set the tempo (ui_input.c; the tempo is in the footer, ui_draw.c draw_foot) */
     uint8_t act;                 /* action pages: the column whose action OCT+ does, + 1; 0 = none (act_col) */
     uint32_t rec_t0;             /* REC press time: a tap arms (btn_hold, no hold: held, REC opens its layer) */
     uint32_t save_t0;           /* SAVE press time (btn_hold: held = UNDO) */
@@ -391,7 +391,6 @@ static void mods_run_put(uint32_t k, uint32_t v)       /* k 0 ARP, 1 SEQ; v as m
  * is the header's line for the PLAY button, which still runs the clock */
 static const char *const MODS_NAME[4] = {"ARP", "SEQ", "SENDS", "PART FX"};
 static const char *const MODS_FULL[4] = {"MODULES: ARP OFF", "MODULES: SEQ OFF", "MODULES: SENDS OFF", "MODULES: PART FX OFF"};
-static uint32_t mods_idx(uint32_t bit) { return bit == MODS_ARP ? 0u : bit == MODS_SEQ ? 1u : bit == MODS_SENDS ? 2u : 3u; }
 /* the module a parameter belongs to (MODS_*; 0: none): glob a song.g id, else a part's. SENDS: the three sends and the CHORUS, DELAY 1/2,
  * 2/2 and REVERB pages' globals; PART FX: DIST, INSERT, EQ, DUCK (its MIDI channel and note are the device's: GLO > SIDECHAIN); ARP: the arp's nine; SEQ: the
  * steps' DIV and SWING (they only time the playback; LEN and GATE also serve the editing and STEP PREVIEW) */
@@ -708,7 +707,7 @@ static uint32_t page_first(uint32_t fam)
     return 0;
 }
 
-/* transient message in the top bar, right of the transport and the BPM: a + b */
+/* transient message in the top bar, over the page title: a + b */
 static void ui_say(const char *a, const char *b)
 {
     uint32_t n;
@@ -1708,7 +1707,7 @@ static void select_engine(uint32_t e)
     ui_refresh();
 }
 
-/* PATCHES (SPEC 3.6, 0.2.17): ONE list of 128 SLOTS, in slot order #1..#128. A slot is its saved record, else the factory sound at that
+/* PATCHES (SPEC 3.6, 0.2.17): ONE list of the places: the 128 SLOTS in slot order #1..#128 (with TIDE the 32 read-only factory sounds #129..#160 after them). A slot is its saved record, else the factory sound at that
  * browse position (upreset.c, the slot layer sl_*): there is no other kind of entry, no empty place and no tail. The PRESETS knob, the
  * PATCHES page and MIDI program change all step this list. A part whose sound is in no slot (an engine
  * change, a multi, the editor; or its slot was overwritten) is at no place of it: total is returned (the browser shows "--", a step goes

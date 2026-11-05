@@ -1853,7 +1853,6 @@ static void layer_knob(uint32_t k, int32_t s);
 static void fx_map_sync(void);
 static void fx_assign(int32_t s);
 static void fx_default(void);
-static int layer_play(void);
 static int layer_set_open(void);
 static uint32_t layer_oct(uint32_t pressed, uint32_t oct);
 static int layer_glo_oct(uint32_t b);                   /* (0.2.24: OCT- / OCT+ with GLO held: MUTE 1 / MUTE 2) */
@@ -2235,8 +2234,7 @@ static void ui_input(void)
         b = panel_btn_of(id);
         switch (b) {
         case B_PLAY:
-            if (!layer_play())                          /* (GLO held: RESTART) */
-                play_press(now);
+            play_press(now);
             break;
         case B_SEQ:
         case B_REC:                                     /* tap: above; held, its layer (ui_layer.c) */

@@ -380,7 +380,7 @@ static void mod_voice_add(uint32_t s, uint32_t d, int32_t x, int32_t a, int32_t 
                           int32_t *gain)
 {
     if (d == MD_PITCH)
-        *pit += (x * a * 3) >> 15;
+        *pit += (x * a * 3) >> 11;               /* 1/256 st: whole 1/16 st to the pitch, the rest to the fine factor (mod_pit) */
     else if (d == MD_CUT)
         *cut += (x * a) >> 7;
     else if (d == MD_SHP)
@@ -740,10 +740,20 @@ static __attribute__((noinline)) void mod_end(track_t *t)
     mod->on = 0;
 }
 
+/* the matrix's pitch sum pit (1/256 st) onto m: whole 1/16 st in pitch16, the rest in the fine factor (14.8 per 1/16 st), the increment again */
+static void mod_pit(vmod_t *m, int32_t pit)
+{
+    m->pitch16 = clamp(m->pitch16 + (pit >> 4), 0, 2047);
+    m->fine += (pit & 15) * 947 >> 10;
+    m->inc = pitch_inc(m->pitch16);
+    if (m->fine)
+        m->inc += (uint32_t)((int32_t)(m->inc >> 12) * m->fine);
+}
+
 /* a voice's modulation (voice.c track_render, when the part's window mod is on), onto its vmod_t m as track_render made it:
- * pitch (the increment again, with the fine factor fine as there), cutoff and shape (clamped to what the
+ * pitch (mod_pit: the increment again, the sum's odd 1/256 st into the fine factor), cutoff and shape (clamped to what the
  * fixed routings can reach), the amplitude (and v->env_out, the next block's start). env: its envelope */
-static __attribute__((noinline)) void mod_voice(track_t *t, voice_t *v, vmod_t *m, int32_t fine)
+static __attribute__((noinline)) void mod_voice(track_t *t, voice_t *v, vmod_t *m)
 {
     const mod_win_t *mod = &MODW(t);
     int32_t pit = mod->pit, cut = mod->cut, shp = mod->shp, gain = mod->gain, env = m->envq15;
@@ -759,10 +769,7 @@ static __attribute__((noinline)) void mod_voice(track_t *t, voice_t *v, vmod_t *
         mod_voice_add(s, mod->vdst[k], x, mod->vamt[k], &pit, &cut, &shp, &gain);
     }
     if (pit) {
-        m->pitch16 = clamp(m->pitch16 + pit, 0, 2047);
-        m->inc = pitch_inc(m->pitch16);
-        if (fine)
-            m->inc += (uint32_t)((int32_t)(m->inc >> 12) * fine);
+        mod_pit(m, pit);
     }
     m->cutoff = clamp(m->cutoff + cut, -150 * 256, 150 * 256);
     m->shape = clamp(m->shape + shp, -62 * 256, 190 * 256);
@@ -797,7 +804,7 @@ static __attribute__((noinline)) int32_t mod_f2_voice(track_t *t, voice_t *v)
 /* mod_cycle_voice: the CYCLE-sourced slots with a per-note destination (PITCH, CUT, SHP, AMP) applied to voice v's vmod_t m after mod_voice has made its own, with the same sums and the same
  * re-computations (the pitch increment again with the fine factor, cutoff and shape clamped to what the fixed routings reach, the amplitude with v->env_out), and the latest note's CYCLE kept
  * for the per-block destinations (t->m_cycle, as ENV 2's m_env2). Called when an active slot reads CYCLE (t->cy), whatever its destination */
-static __attribute__((noinline)) void mod_cycle_voice(track_t *t, voice_t *v, vmod_t *m, int32_t fine)
+static __attribute__((noinline)) void mod_cycle_voice(track_t *t, voice_t *v, vmod_t *m)
 {
     const int16_t *p = t->p;
     int32_t pit = 0, cut = 0, shp = 0, gain = 32767, x = cycle_value(t, v);
@@ -814,10 +821,7 @@ static __attribute__((noinline)) void mod_cycle_voice(track_t *t, voice_t *v, vm
     if (!t->cym && !(t->vrm & 2u))
         return;
     if (pit) {
-        m->pitch16 = clamp(m->pitch16 + pit, 0, 2047);
-        m->inc = pitch_inc(m->pitch16);
-        if (fine)
-            m->inc += (uint32_t)((int32_t)(m->inc >> 12) * fine);
+        mod_pit(m, pit);
     }
     m->cutoff = clamp(m->cutoff + cut, -150 * 256, 150 * 256);
     m->shape = clamp(m->shape + shp, -62 * 256, 190 * 256);

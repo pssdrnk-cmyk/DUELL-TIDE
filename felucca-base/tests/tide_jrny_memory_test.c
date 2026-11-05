@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* M3: JOURNEY's destination memory (tide_ui.c jh_*): the last four targets of a part are avoided where the group has others,
  * relaxed oldest first where it has not; RAM only; cleared when a session starts and on HOME. */
 #define UI_TEST_NO_MAIN 1

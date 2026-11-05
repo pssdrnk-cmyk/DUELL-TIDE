@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* DUELL 1.1 (ROLL CHAINED storage, PT_VER 4): a patch record carries End B as its values (morph.c MBV, flag PTF_MB) with the marks of the
  * values set by hand; the 1.0 extension block (PTF_XB, up_xb_in, its own edit list) is gone. For the tests that store patches with End B:
  * include after upreset.c and morph.c. */
