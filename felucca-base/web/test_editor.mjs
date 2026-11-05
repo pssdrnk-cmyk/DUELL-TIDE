@@ -159,9 +159,11 @@ async function connect(opt = {}) { const m = new MockUnit(opt), u = new Unit(new
   {   // the factory fallback: slot i is the factory sound at browse position i, the order of docs/PATCH_NUMBERS.md (category, engine, name)
     const doc = (await readFile(new URL("../../docs/PATCH_NUMBERS.md", import.meta.url), "utf8")).split("\n")
       .map((l) => /^\| (\d+) \| ([^|]+?)( \(NEW\))? \|/.exec(l)).filter(Boolean).map((r) => [+r[1], r[2]]);
-    const fb = factoryBrowse();
+    const fb = factoryBrowse().filter((f) => !f.user);   // (without the four USER places a TIDE build has at 125 to 128)
     ok(doc.length >= 128 && doc.length === fb.length && doc.every(([n, name], i) => n === i + 1 && fb[i].name === name), "patches: the browse order (category, engine, name) is the numbering of docs/PATCH_NUMBERS.md: the 128 of the slots, #1 .. #128, then the read-only places past them");
-    ok(list.every((s, i) => s.saved || (s.name === fb[i].name && s.eng === fb[i].eng && s.cat === fb[i].cat)), "patches: every slot that is not saved lists its browse position's factory sound (name, engine, category)");
+    const places = factoryBrowse();
+    ok(list.every((s, i) => s.saved || (s.name === places[i].name && s.eng === places[i].eng && s.cat === places[i].cat)), "patches: every slot that is not saved lists its browse place's factory sound (name, engine, category)");
+    ok(list.slice(124).every((s) => s.name === "USER EMPTY") && list[123].name === fb[123].name && places[128].name === fb[124].name, "patches: slots 125 to 128 are USER EMPTY (U1 to U4, layout.json BROWSE null); the sounds they displace follow the 128 slots as places (I06)");
   }
   ok((await u.factoryNames(0)).join() === L.ENG[0].sounds.map((s) => s[0]).join(), "patches: the factory sounds of an engine come from NAMES");
   await u.loadSlot(1, 40); { const f = factoryBrowse()[40]; ok(u.parts[1].eng === f.eng && u.parts[1].preset === f.idx && m.selected === 1, "patches: loading a slot that holds its factory sound loads that sound into the chosen part"); }

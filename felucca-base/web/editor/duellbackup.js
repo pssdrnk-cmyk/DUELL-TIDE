@@ -20,7 +20,7 @@
 // Ids 2..5, 8 and 32..34 are retired (always empty: Felucca's project slots and FM6 bank, the user sample slots) and are not in the file.
 import { BACKUP_CMD, bkU32, bkR32, bkPack, bkUnpack, bkCrc, readBackup } from "../fm1backup.js";
 import { checkObject as wtCheck, parseObject as wtParse } from "./wavetable.js";
-import { recordProblem, WORST, FIX as REC_FIX } from "./patchrecord.js";
+import { recordProblem, stripEndBFmt, WORST, FIX as REC_FIX } from "./patchrecord.js";
 import { PS, parsePatObject } from "./patslot.js";
 
 export const FORMAT = "duell-backup";
@@ -427,6 +427,7 @@ export const rawLines = (problems, objects = null) => (problems || []).map((p) =
 // {id: 40, slot, key, size, crc, bytes, group: "patches"}: a PUT of the record, or (size 0) of nothing, which removes the slot's record. The patches are made EXACTLY the file's: one PUT
 // for each patch whose size or CRC differs on the unit (an identical one is not written again) and a removal for each slot the unit has saved and the file has not.
 // opt.includeRaw (0.2.25): also send the objects the backup could not check (the unit checks them at commit and refuses what it cannot load).
+// opt.tide (INFO tag 44 01): false = the unit is plain DUELL, so a patch's FM6 MORPH TO target (End B flag 4) is taken out before the PUT (patchrecord.js stripEndBFmt); undefined = unknown, nothing is changed.
 // opt.patchCap (INFO tag 58 01, the patch records the store takes: 126 with TIDE): a file with more patches than that cannot be restored whole, so the patches are left out
 // with that reason and the other groups still go (D05). The removals of the slots the file does not have come BEFORE the patches that are written, so a nearly full store has the room.
 // A multi object whose records are of another version than this editor's firmware writes is left out unless includeRaw (the unit would refuse it).
@@ -449,9 +450,11 @@ export function planRestore(archive, list, caps, sel, opt = {}) {
       for (const key of inFile) {
         const o = archive.objects.get(key), label = `${g.label}: ${objectLabel(key, o.bytes)}`;
         if (o.raw && (!opt.includeRaw || !o.size)) { excluded.push({ key: g.key, id: key, label, reason: `it could not be checked when the backup was made (${o.problem}); the unit keeps what it holds there` }); continue; }
+        let { size, crc, bytes } = o;
+        if (opt.tide === false && !o.raw) { const t = stripEndBFmt(bytes); if (t !== bytes) { bytes = t; size = t.length; crc = bkCrc(t); } }   // (plain DUELL 1.1 would drop an FM6 MORPH TO target's record: D02)
         const now = list.get(key);
-        if (now && now.size === o.size && now.crc === o.crc) { skipped.push(key); continue; }
-        steps.push({ id: PATCH_ID, slot: patchSlot(key), key, size: o.size, crc: o.crc, bytes: o.bytes, group: g.key });
+        if (now && now.size === size && now.crc === crc) { skipped.push(key); continue; }
+        steps.push({ id: PATCH_ID, slot: patchSlot(key), key, size, crc, bytes, group: g.key });
       }
       for (const key of [...list.keys()].filter(isPatchKey))
         if (!archive.objects.has(key)) steps.push({ id: PATCH_ID, slot: patchSlot(key), key, size: 0, crc: 0, bytes: new Uint8Array(0), group: g.key });

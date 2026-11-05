@@ -4,7 +4,7 @@
 import { OLD_PATCH_IDS, PATCH_ID, VERSION, GROUPS, DUELL_IDS, RESTORE_ORDER, patchKey, patchSlot, isPatchKey, objectLabel, parseInfo, parseList, parsePage, readArchive, objectsToFile, captureBackup, planRestore, runRestore,
          verifyRestore, describe, FVB_ID, FVB_OBJ, bankVoices, unpackVoice, packVoice, checkObject, listUnit, fileName, rawLines, MULTI_VERSION } from "./editor/duellbackup.js";
 import { MockUnit, buildBankObject, buildPatchRecord, buildLegacyPatchChunk, buildMultiObject, buildPatternObject, MOCK_ENGINES } from "./editor/mockunit.js";
-import { buildRecord, buildEndB, parseRecord, storeDefaults, engineIndex, PTF, XB_DEFS } from "./editor/patchrecord.js";
+import { buildRecord, buildEndB, stripEndBFmt, parseRecord, storeDefaults, engineIndex, PTF, XB_DEFS } from "./editor/patchrecord.js";
 import { CMD } from "./editor/proto.js";
 import { buildObject as wtObject, WT } from "./editor/wavetable.js";
 import { readFileSync } from "node:fs";
@@ -541,6 +541,23 @@ const KEYS = [1000, 1001, 1005, 1064];
   ok(throwsMsg(() => readArchive(half), /voice bank/), "voice bank: a bank whose own CRC (last four bytes) is wrong is refused even when the file's CRC matches");
   const playing = new MockUnit({ fvBank: true, playing: true }); playing.bank = S.bank;
   ok(await athrows(() => runRestore((r, o) => playing.request(r, o), { steps: [{ id: FVB_ID, size: FVB_OBJ, bytes: S.bank, group: "fm6bank" }] }).then((x) => { if (x.failed) throw new Error("x"); }), /x/), "voice bank: a playing unit refuses the bank upload (reported as a failure)");
+}
+{   // D02: a patch whose End B is an FM6 MORPH TO target (MBV_FMT, flag 4) is taken to a unit without TIDE with the flag and its 3 bytes removed; a TIDE unit gets it as it is
+  const fm = engineIndex("FM6"), eb = buildEndB({ engine: fm, amount: 7, values: { 6: 5 }, fm6: Array.from({ length: 65 }, (_, i) => i) }), ebf = Uint8Array.from([...eb, 9, 0x5a, 0x3c]);
+  ebf[0] |= 4;                                           // (End B + the target 9 and its check sum: TIDE's MBV_FMT)
+  const patch128 = Array.from({ length: 128 }, (_, i) => i), withFmt = buildRecord({ engine: fm, name: "MORPH TO", values: storeDefaults(fm), mb: ebf, patch128 }), plain = buildRecord({ engine: fm, name: "NO TARGET", values: storeDefaults(fm), mb: eb, patch128 });
+  const cut = stripEndBFmt(withFmt), pr = parseRecord(cut), po = parseRecord(withFmt);
+  ok(po.ok && cut !== withFmt && cut.length === withFmt.length - 3 && pr.ok && pr.name === "MORPH TO" && pr.fm6.every((v, i) => v === patch128[i]) && same(pr.mb, eb) && same(pr.values, po.values) && stripEndBFmt(plain) === plain,
+     "strip: End B's MORPH TO target (flag 4 and its 3 bytes) is removed, the rest of the record stays; a record without it comes back as it is");
+  const T = new MockUnit({ seed: false, tide: true }); T.setRecord(2, withFmt); T.setRecord(3, plain); T.rebuild();
+  const arch = readArchive(JSON.stringify(await captureBackup((r, o) => T.request(r, o), parseInfo(await T.request([1, []])))));
+  const P = new MockUnit({ seed: false }), rq = (r, o) => P.request(r, o), list = await listUnit(rq, 63);
+  const pn = planRestore(arch, list, 63, new Set(["patches"]), { tide: false }), pt = planRestore(arch, list, 63, new Set(["patches"]), { tide: true }), pu = planRestore(arch, list, 63, new Set(["patches"]));
+  const st = pn.steps.find((x) => x.slot === 2), ot = pt.steps.find((x) => x.slot === 2);
+  ok(st.size === withFmt.length - 3 && st.crc === bkCrc(st.bytes) && same(st.bytes, cut) && ot.size === withFmt.length && same(ot.bytes, withFmt) && same(pu.steps.find((x) => x.slot === 2).bytes, withFmt) && same(pn.steps.find((x) => x.slot === 3).bytes, plain),
+     "plan: a unit without TIDE gets the record without MBV_FMT (size, CRC of what is sent); a TIDE unit and an unknown one get it as it is");
+  const r = await runRestore(rq, pn);
+  ok(r.failed === null && same(P.patchBytes(2), cut) && parseRecord(P.patchBytes(2)).ok, "restore: the stripped record is what the unit holds");
 }
 ok(/^DUELL-backup-\d{4}-\d\d-\d\d-\d{4}\.json$/.test(fileName("DUELL-backup")), "file name: DUELL-backup-YYYY-MM-DD-HHMM.json");
 

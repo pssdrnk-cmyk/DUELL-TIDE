@@ -4,7 +4,7 @@
 
   python3 tests/owner_import_test.py        (from felucca-base; needs build/gen from DUELL/gen_only.py; host_tests.sh runs it as `ownerimport`)
 
-1. round trip: all 128 factory sounds (126 with TIDE: what its patch store takes) saved and read back as PATCH_RAW reads them, imported: 128 equal to the recipe sounds, nothing written;
+1. round trip: all 128 factory sounds (124 with TIDE: the last four slots are USER slots) saved and read back as PATCH_RAW reads them, imported: 128 equal to the recipe sounds, nothing written;
 2. three knobs turned in three slots: exactly three sounds change in the resulting factory data (and only the turned values), everything else identical;
 3. the same import twice: the files are byte for byte the same; the unchanged export afterwards drops the entries again (undo);
 4b. the editor's duell-multis file: same record bytes out as in; a wrong CRC is skipped;
@@ -59,8 +59,8 @@ ok(subprocess.run(cc, cwd=ROOT).returncode == 0, "tests/owner_export_gen.c compi
 tmp = Path(tempfile.mkdtemp(prefix="owner_import_"))
 P = ctx.ids
 base = {}
-# the records the export holds: every slot, or with TIDE (firmware/src/tide.h DUELL_TIDE) the 126 its patch store always takes (chunk 21 holds its settings, plan 4.5)
-NREC = 126 if re.search(r"^#define DUELL_TIDE 1", (ROOT / "firmware/src/tide.h").read_text(), re.M) else 128
+# the records the export holds: every slot, or with TIDE (firmware/src/tide.h DUELL_TIDE) the 124 that hold a factory sound (the last four are USER slots)
+NREC = 124 if re.search(r"^#define DUELL_TIDE 1", (ROOT / "firmware/src/tide.h").read_text(), re.M) else 128
 
 
 def build(lst):

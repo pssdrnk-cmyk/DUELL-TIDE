@@ -113,9 +113,10 @@ export function preselectMatrix(p) {
 const storedDesc = (q, id) => (id === ID.P_CUT2 || id === ID.P_RES2 ? L.TP[id] : descOf(q, id));
 
 // DUELL 0.2.17: slot i holds its saved record or else the factory sound at browse position i. The browse order is the firmware's (layout.json BROWSE, from
-// sounds.c DS_LIST: category, then engine in the order of L.ORDER, then name; the numbers of docs/PATCH_NUMBERS.md are position + 1)
+// sounds.c DS_LIST: category, then engine in the order of L.ORDER, then name; the numbers of docs/PATCH_NUMBERS.md are position + 1). A TIDE build's last four slots are USER slots
+// (U1; layout.json BROWSE null): "USER EMPTY" until saved; the places after the 128 slots are the factory sounds they displace and the ones past the bank's 128 (read-only, not slots here)
 export function factoryBrowse() {
-  return L.BROWSE.map(([eng, idx]) => ({ eng, idx, name: L.ENG[eng].sounds[idx][0], cat: L.ENG[eng].sounds[idx][1] }));
+  return L.BROWSE.map((b) => (b ? { eng: b[0], idx: b[1], name: L.ENG[b[0]].sounds[b[1]][0], cat: L.ENG[b[0]].sounds[b[1]][1] } : { eng: 0, idx: 0, name: "USER EMPTY", cat: 0, user: true }));
 }
 const BROWSE = factoryBrowse();
 
@@ -362,6 +363,7 @@ export class MockUnit {
       case CMD.UP_LOAD: {                              // the slot's record, else its factory sound
         if (a[0] > 127) return [a[0], 1];
         const v = this.patches.get(a[0]);
+        if (!v && BROWSE[a[0]].user) return [a[0], 0];   // (an empty USER slot loads nothing: the sound stays)
         if (!v) { const f = BROWSE[a[0]], q = defaultPart(f.eng, part()); q.preset = f.idx; this.demoTwinOn(q); this.parts[this.selected] = q; return [a[0], 0]; }
         // a record: every parameter but the part's own (ui.c param_kept: the mixer LEVEL (0.2.19), PAN, MUTE, the arp and sequencer ids 17..32, CHRD, VOIC, QNT); the sound's loudness is its TRIM
         const cur = part(), kept = (i) => i === 0 || i === 39 || i === 40 || (i >= 17 && i <= 32 && i !== 28) || i === 81 || i === 82 || i === 94;   // (DUELL 1.1: TRANSPOSE, id 28, comes with the patch)

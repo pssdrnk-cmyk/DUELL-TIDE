@@ -73,6 +73,11 @@ if (!ONLY) await spacing();
 if (!ONLY || ONLY === "structure") await structure();
 if (!ONLY || ONLY === "lists") await lists();
 if (!ONLY || ONLY === "linked") await linked();
+{   // the browse places as the unit numbers them (I06): the 128 slots, the last four USER (null), then the factory sounds those displace and the ones past the bank's 128 (read-only places)
+  const B = L.BROWSE, u = B.slice(124, 128), n = L.ENG.reduce((k, e) => k + e.sounds.length, 0);
+  ok(L.SLOTS === 128 && u.length === 4 && u.every((x) => x === null) && B.filter((x) => x === null).length === 4 && B.length > 128 + 4 && B[128] && B[123] && B[128] !== B[124], "layout: BROWSE has the USER slots U1-U4 at 124..127 and the displaced and extra factory sounds after the 128 slots");
+  ok(new Set(B.filter(Boolean).map(([e, i]) => e + "/" + i)).size === B.length - 4 && B.length - 4 <= n, "layout: BROWSE lists every factory sound once (the four USER places aside)");
+}
 console.log(fails ? `\nLAYOUT TESTS FAILED (${fails})` : "\nlayout tests passed");
 process.exit(fails ? 1 : 0);
 
