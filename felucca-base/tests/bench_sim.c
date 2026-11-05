@@ -842,6 +842,13 @@ static int serve(void)
         sim_tc_set(getenv("BENCH_SIM_TC"));
     sim_power_on();
     bench_resolve();
+    if (getenv("BENCH_SIM_MIDI")) {                       /* "P1 P2 ROUTE": an owner's unit whose parts listen on other MIDI channels (the first unit run, 2026-11-05: parts on 3 and 4, nothing sounded) */
+        int a, b, c;
+        if (sscanf(getenv("BENCH_SIM_MIDI"), "%d %d %d", &a, &b, &c) == 3) {
+            ui_midi_p1 = (uint8_t)a, ui_midi_p2 = (uint8_t)b, song.g[G_ROUTE] = (int16_t)c;
+            midi_ch_sync();
+        }
+    }
     while (fgets(ln, sizeof ln, stdin)) {
         size_t n = strlen(ln);
         while (n && (ln[n - 1] == '\n' || ln[n - 1] == '\r'))
@@ -858,6 +865,15 @@ static int serve(void)
             snprintf(b, sizeof b, "OK frames %u\r\n", rec_frames);
             rec_close();
             host_out(b);
+        } else if (!strncmp(ln, "@midi", 5) && (ln[5] == ' ' || !ln[5])) {   /* "@midi P1 P2 ROUTE": GLO > MIDI as an owner has it (the settings bytes, 0 = the default; ROUT 0 PARTS, 1 SEL); "@midi": what it is now */
+            int a, b, c;
+            char o[96];
+            if (ln[5] && sscanf(ln + 6, "%d %d %d", &a, &b, &c) == 3) {
+                ui_midi_p1 = (uint8_t)a, ui_midi_p2 = (uint8_t)b, song.g[G_ROUTE] = (int16_t)c;
+                midi_ch_sync();
+            }
+            snprintf(o, sizeof o, "midi bytes %u %u route %d channels %u %u\r\n", ui_midi_p1, ui_midi_p2, song.g[G_ROUTE], (unsigned)midi_pch[0] + 1u, (unsigned)midi_pch[1] + 1u);
+            host_out(o);
         } else if (!strcmp(ln, "@crash")) {
             return 3;
         } else if (!strcmp(ln, "@quit")) {

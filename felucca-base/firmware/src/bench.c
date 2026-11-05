@@ -41,6 +41,8 @@
 #define BENCH_BSS
 #endif
 #include "bench_model.h"                               /* the host model's figure of every row, the dearest sounds (tests/bench_sim.c writes it) */
+#define BU_FN static BENCH_FN
+#include "bench_updl.c"                                /* `bench updl`: the way back from this build to the normal firmware (the update loader the normal firmware staged) */
 #ifndef BENCH_TAG
 #define BENCH_TAG "DEV"
 #endif
@@ -768,7 +770,7 @@ static BENCH_FN void bench_notes_off(void)
 /* A console session runs the UI's frame (ui_input.c: mods_apply, cmp_sync, ms_sync, the sense settings are read every frame), so the audio side's words (mods_off, cmp_cfg, wd_sel,
  * bm_sel, sense_enable) cannot be written here: the settings they come from are. The session's own values are kept at its start and put back by `bench reset` and at its end. The
  * BYPASS switches (byp_m, byp_sh) are plain RAM flags (editor_bypass.c): they start every test at 0. */
-static struct { uint8_t mods, ks, wash; int16_t cp1, ms0, bm; } bench_xk BENCH_BSS;
+static struct { uint8_t mods, ks, wash, mp1, mp2, route; int16_t cp1, ms0, bm; } bench_xk BENCH_BSS;   /* (mp1, mp2, route: GLO > MIDI as the owner has it: the console tests play on channels 1 and 2, see bench_midi_std) */
 #if DUELL_TIDE
 static struct { uint8_t pending, time; uint32_t after_h; } bench_tg BENCH_BSS;   /* `tide glide on TIME AFTER_MS`: GLIDE starts that long after the run's start (the held notes have been heard a while: the wash has learnt its level) */
 #endif
@@ -776,6 +778,7 @@ static BENCH_FN void bench_extras_keep(void)
 {
     bench_xk.mods = (uint8_t)mods_get();
     bench_xk.cp1 = song.cp[1], bench_xk.ms0 = song.ms[0], bench_xk.bm = song.bm;
+    bench_xk.mp1 = ui_midi_p1, bench_xk.mp2 = ui_midi_p2, bench_xk.route = (uint8_t)song.g[G_ROUTE];
 #if DUELL_TIDE
     bench_xk.wash = morph_wlvl;
 #endif
@@ -789,6 +792,8 @@ static BENCH_FN void bench_extras_back(void)
     for (b = 0; b < 4u; b++)
         mods_put(1u << b, (uint32_t)(bench_xk.mods >> b) & 1u);
     song.cp[1] = bench_xk.cp1, song.ms[0] = bench_xk.ms0, song.bm = bench_xk.bm;
+    ui_midi_p1 = bench_xk.mp1, ui_midi_p2 = bench_xk.mp2, song.g[G_ROUTE] = bench_xk.route;   /* (the owner's MIDI channels and MIDI IN back) */
+    midi_ch_sync();
     byp_m[0] = byp_m[1] = 0;
     byp_sh = 0;
 #if DUELL_TIDE
@@ -801,6 +806,16 @@ static BENCH_FN void bench_extras_back(void)
 #if DUELL_VELO
     ui_idle = (uint8_t)((ui_idle & ~(KEYVEL_ON_BIT | AFTERT_OFF_BIT)) | bench_xk.ks);
 #endif
+}
+/* A console test plays its notes on channels 1 and 2 (`ev .. on 1 ..`, the suites: part 1, part 2) and the unit's MIDI IN listens only to the channels GLO > MIDI gives the parts (ROUT PARTS; in LAYER
+ * only part 1's): on a unit whose parts are on other channels (the owner's: 3 and 4) not one note of a test sounded, and every cost, stage timer and PHYS figure of the first measurement
+ * (2026-11-05) was the idle unit's. A session (`bench reset`) puts the parts on channels 1 and 2 and MIDI IN on PARTS; the owner's settings come back with bench_extras_back (a
+ * session's end, the next `bench reset` first). Nothing here reaches the flash: the settings' save is held while a session runs (bench_tl_tick) */
+static BENCH_FN void bench_midi_std(void)
+{
+    ui_midi_p1 = ui_midi_p2 = 0;                       /* (0 = the default: channel 1 for part 1, 2 for part 2) */
+    song.g[G_ROUTE] = 0;
+    midi_ch_sync();
 }
 /* ------------------------------------------------------------------ the run --- */
 static BENCH_FN void bench_keep_session(void)
@@ -2184,13 +2199,62 @@ static BENCH_FN void bench_con_tide(const char *p)
         bench_err("tide: wash glide force reset state");
 }
 #endif
+/* updl CRC16 yes     the way back (bench_updl.c): the update loader the normal firmware staged at 0xE0000 (the bench build has no updater of its own, and never erases it) is checked against CRC16, the data
+ *                    CRC of the package's loader (tools/tide_measure.py sends it; the unit needs the loader of the package that was just installed), the same UPDATA_PARM record ota.c writes goes
+ *                    to the flash (when its place is blank) and the RAM, and the core resets into the loader: fm1_install.py then finishes the install of the normal package ("in update mode: the write
+ *                    will be finished"). Refused (ERR, nothing changed) when the loader is not whole. This is the ONLY word that leaves the bench build, and unlike `uboot yes` (the chip's mask ROM,
+ *                    which only fm1_unbrick.py, an Administrator PowerShell and the unit's USB disk can talk to) it ends in the update loader */
+#if FELUCCA_FLASH && FELUCCA_CDC && !defined(BENCH_HOST)
+static BENCH_FN int bench_updl_read(uint32_t off, void *p, uint32_t n) { return st_read(off, p, n); }
+static BENCH_FN void bench_con_updl(const char *p)
+{
+    int32_t crc = 0;
+    char y[8];
+    uint8_t parm[BU_PARM_LEN], back[BU_PARM_LEN];
+    uint32_t i, blank = 1;
+    int rc;
+    if (!bench_arg(&p, &crc) || crc < 0 || crc > 0xFFFF || !bench_tok(&p, y, sizeof y) || !bench_ieq(y, "yes")) {
+        bench_err("usage: updl CRC16 yes   (decimal: the data CRC16 of the package's update loader; this leaves the bench build for the update loader)");
+        return;
+    }
+    rc = bu_check(bench_updl_read, (uint32_t)crc);
+    if (rc) {
+        bench_err(rc == BU_E_READ ? "updl: the flash did not read; nothing changed" : rc == BU_E_HEAD ? "updl: no LOADER.BIN head at 0xE0000 (the loader is not staged); nothing changed" :
+                  rc == BU_E_LEN ? "updl: the staged loader's length is wrong; nothing changed" : rc == BU_E_CRC ? "updl: the staged loader is not the package's (CRC16 differs); nothing changed" :
+                  "updl: the staged loader is not Felucca's own; nothing changed");
+        return;
+    }
+    bu_parm(parm);
+    bench_say("OK updl the loader is whole, entering it (USB goes away; the install finishes the write)", 0, 0);
+    fm1_delay_ms(300);                                 /* (the reply leaves) */
+#if DUELL_TWOCORE
+    tc_hold_clean();                                   /* (core 1 held before an update, as main.c does) */
+#endif
+    if (!bench_updl_read(BU_RES, back, BU_PARM_LEN))   /* the flash copy of the record (the loader resumes from it after a power loss), as ota_session writes it: only into a blank place */
+        for (i = 0; i < BU_PARM_LEN; i++)
+            blank &= back[i] == 0xFFu;
+    else
+        blank = 0;
+    if (blank) {
+        audio_silence();
+        if (!fl_write(BU_RES, parm, BU_PARM_LEN) && !bench_updl_read(BU_RES, back, BU_PARM_LEN))
+            for (i = 0; i < BU_PARM_LEN; i++)
+                if (back[i] != parm[i])
+                    blank = 0;                         /* (a record that did not verify has a bad CRC: the SPL ignores it, the RAM record starts the loader) */
+    }
+    bootguard.pending = 0;                             /* intentional reset */
+    usb_detach();
+    fm1_delay_ms(30);
+    fm1_enter_update(parm);                            /* the record into RAM, core reset (never returns) */
+}
+#endif
 static BENCH_FN void bench_con(const char *p)
 {
     char w[16], x[24];
     int32_t n = 0, m = 0;
     btl.last_cmd = fm1_ms;
     if (!bench_tok(&p, w, sizeof w)) {
-        bench_say("ERR", "bench info reset end load mode set sound mods bypass master morph keysense tide scene budget ev measure run stop save-test slack calm pause lrun vrun vwin floor tcm", 0);
+        bench_say("ERR", "bench info reset end load mode set sound mods bypass master morph keysense tide scene budget ev measure run stop save-test slack calm pause lrun vrun vwin floor tcm updl", 0);
         return;
     }
     if (bench_ieq(w, "info") || bench_ieq(w, "state")) {
@@ -2222,6 +2286,14 @@ static BENCH_FN void bench_con(const char *p)
         bench_err("a BENCH run is going (OCT - stops it)");
         return;
     }
+    if (bench_ieq(w, "updl")) {
+#if FELUCCA_FLASH && FELUCCA_CDC && !defined(BENCH_HOST)
+        bench_con_updl(p);
+#else
+        bench_err("this build has no way into the update loader");
+#endif
+        return;
+    }
     if (bench_ieq(w, "reset")) {
         bench_tl_on = 0;
         btl.state = TS_IDLE;
@@ -2236,6 +2308,7 @@ static BENCH_FN void bench_con(const char *p)
         bench_set(&BENCH_SCN[0]);
         bench_bopen = 0;                               /* (the NOTES budget as the owner plays it; `scene` and `budget` hold it open) */
         bench_extras_back();                           /* (item 105: MODULES, COMP, WIDTH, BASS MONO, KEY SENSE as the session began, the BYPASS switches off) */
+        bench_midi_std();                              /* (.. and the parts on MIDI channels 1 and 2, MIDI IN on PARTS: what the tests play on) */
 #if BENCH_TM
         for (n = 0; n < 8; n++)                        /* (the margin settings back to the build's: slack, calm, late run, very late run, window K and ms, floor, core 1 on) */
             bench_tm_set((uint32_t)n, 0xFFFFFFFFu);
