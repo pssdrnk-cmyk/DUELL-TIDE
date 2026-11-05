@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* Small engine fixes of lane P / Q / S of the 2026-11-04 audit that need no test of their own. build/host/engleft_test (host_tests.sh engleft):
+ *   P14  ANALOG's DRV 0 -> 1 is not a step (eng_analog.c an_drive): the level of a held saw changes by less than 0.4 dB (it was 0.9 dB), DRV 8 and up as before
  *   P13  the velocity accent in UNISON (core.h ACCENT_VEL): the accent reads the key's velocity; UNISON lowers the voice's own velocity (vel * 36 / 100), which never
  *        reached the accent's 111, so a hard key never opened the filter there */
 #define main hostsim_main
@@ -49,6 +50,29 @@ static uint32_t accent_vel(uint32_t mode, uint32_t vel, uint32_t *own)
     return ACCENT_VEL(&t->v[0]);
 }
 
+/* P14: the RMS (dB) of a held ANALOG saw (OSC 2 off) at DRV drv */
+static double drive_db(int drv)
+{
+    int32_t o[2 * CTL];
+    track_t *t = fresh("ANALOG");
+    double e = 0;
+    uint32_t b, k;
+    t->p[P_E0] = 0;
+    t->p[P_E2] = 0;
+    t->p[P_E3] = 0;
+    t->p[P_E6] = (int16_t)drv;
+    t->p[P_SUS] = 127;
+    t->p[P_FREEA] = 82;
+    trk_note_on(t, 48, 127);
+    for (b = 0; b < 120u; b++) {
+        mix_block(o, CTL);
+        if (b >= 60u)
+            for (k = 0; k < CTL; k++)
+                e += (double)o[2u * k] * o[2u * k];
+    }
+    return 10 * log10(e / (60.0 * CTL) + 1e-9);
+}
+
 int main(void)
 {
     uint32_t own, v;
@@ -62,6 +86,11 @@ int main(void)
     v = accent_vel(V_UNISON, 100, &own);
     snprintf(s, sizeof s, "P13 UNISON, key 100: the accent reads %u (no accent)", v);
     check(s, v == 100u);
+    {
+        double d0 = drive_db(0), d1 = drive_db(1), d4 = drive_db(4), d8 = drive_db(8), d9 = drive_db(9);
+        snprintf(s, sizeof s, "P14 ANALOG DRV 0 / 1 / 4 / 8 / 9: %.2f / %.2f / %.2f / %.2f / %.2f dB; the first notch moves the level by under 0.4 dB", d0, d1, d4, d8, d9);
+        check(s, fabs(d1 - d0) < 0.4 && fabs(d8 - d4) > fabs(d1 - d0) && fabs(d9 - d8) < 1.5);
+    }
     printf("engleft: %s\n", bad ? "FAILED" : "all ok");
     return bad != 0;
 }

@@ -52,6 +52,14 @@ static __attribute__((noinline)) void atg_analog(const vmod_t *m, int32_t det, u
         *m2 = mulq15(*m2, m->again);
 }
 
+/* DRV (E6): the saturation fades in over DRV 1..8 (audit P14). DRV 1 used to switch the full tanh on: the signal lost about 0.9 dB at once, a step in the knob's first notch.
+ * (drive is 32768 + DRV x 512, up to 3x; the pre-shifts keep the product inside 32 bits; w - s is under 2^17 and the weight 4096 a step: no overflow) */
+static inline int32_t an_drive(int32_t s, int32_t drive, int32_t drv)
+{
+    int32_t w = softclip(((s >> 2) * (drive >> 2)) >> 11);
+    return drv >= 8 ? w : s + (((w - s) * (drv * 4096)) >> 15);
+}
+
 /* WAVE SYNC / SUB: OSC 1 a saw, OSC 2 the synced saw / the sub square; then noise and drive as
  * analog_render. Its own function: analog_render's loop stays what it was */
 static __attribute__((noinline)) void analog_render_x(track_t *t, voice_t *v, int32_t *out, uint32_t n,
@@ -104,7 +112,7 @@ static __attribute__((noinline)) void analog_render_x(track_t *t, voice_t *v, in
         if (nz)
             s += mulq15((int32_t)(noise32(&nst) >> 17) - 16384, nz);
         if (drv)
-            s = softclip(((s >> 2) * (drive >> 2)) >> 11);
+            s = an_drive(s, drive, drv);
         out[i] += voice_amp(s, m, i) * 2;
     }
     v->ph[0] = ph0;
@@ -162,7 +170,7 @@ static inline __attribute__((always_inline)) void analog_osc(track_t *t, voice_t
         if (nz)
             s += mulq15((int32_t)(noise32(&nst) >> 17) - 16384, nz);
         if (drv)
-            s = softclip(((s >> 2) * (drive >> 2)) >> 11);   /* pre-shifts: drive is up to 3x, no overflow */
+            s = an_drive(s, drive, drv);
         out[i] += voice_amp(s, m, i) * 2;
     }
     v->ph[0] = ph0;
@@ -215,7 +223,7 @@ static __attribute__((noinline)) void analog_render_m(track_t *t, voice_t *v, in
         if (nz)
             s += mulq15((int32_t)(noise32(&nst) >> 17) - 16384, nz);
         if (drv)
-            s = softclip(((s >> 2) * (drive >> 2)) >> 11);
+            s = an_drive(s, drive, drv);
         out[i] += voice_amp(s, m, i) * 2;
     }
     v->ph[0] = ph0;
