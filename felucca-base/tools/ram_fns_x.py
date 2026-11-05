@@ -20,7 +20,7 @@ ENGINES = {
              "phys_symp_pitches", "px_sin", "px_modal_q", "px_isqrt64", "px_atan2t", "px_atan"],
     "ANALOG": ["analog_render", "analog_render_m", "analog_render_x", "atg_analog", "atg_osc_b"],
     "TRIO": ["trio_render", "trio_pass", "trio_naive"],
-    "PHASE": ["phase_render", "phase_render_m", "pd_line", "pd_setup", "pd_wave", "pd_sl", "pd_pair", "pd_gap"],
+    "PHASE": ["phase_render", "phase_render_m", "pd_line", "pd_edge", "pd_setup", "pd_wave", "pd_sl", "pd_pair", "pd_gap"],
     "LOFI": ["lofi_render", "lofi_render_m", "lofi_amp"],
     "VOICE": ["formant_render", "fres_coef", "vowel_at", "fmt_ratio"],
     "NOISE": ["noise_render", "noise_inc"],
