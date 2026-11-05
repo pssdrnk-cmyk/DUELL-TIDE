@@ -29,28 +29,28 @@ static int8_t mm_x = -1;                                 /* the end being rolled
 
 enum { MMR_BASS, MMR_LEAD, MMR_PAD, MMR_PLUCK, MMR_N };      /* the roles (KEYS, FX, OTHER play as LEAD: its bands are the widest) */
 enum { MB_CUT, MB_RES, MB_E2F, MB_ATK, MB_DEC, MB_REL, MB_LFO, MB_CHO, MB_DLY, MB_REV, MB_N };
-/* the bands, lo .. hi per role (SOUND_STUDY.md 2: the factory sounds' 10 .. 90 %; LEAD widened by KEYS') */
+/* the bands, lo .. hi per role (SOUND_STUDY.md 2: the factory sounds' 10 .. 90 %; LEAD widened by KEYS'; audit P07: RES in the exponential law's steps of the same damping) */
 static const int8_t MM_BAND[MMR_N][MB_N][2] = {
     /*            CUT       RES       E2>F     ATK      DEC        REL        LFO>F    CHO       DLY      REV */
-    /* BASS  */ {{27, 52}, {11, 53}, {0, 31}, {0, 10}, {70, 82},  {44, 60},  {0, 8}, {0, 0},   {0, 0},  {0, 6}},
-    /* LEAD  */ {{41, 82}, {0, 61},  {0, 37}, {0, 59}, {70, 109}, {44, 106}, {0, 7}, {0, 64},  {0, 32}, {15, 64}},
-    /* PAD   */ {{47, 61}, {7, 17},  {7, 17}, {69, 94}, {70, 105}, {92, 105}, {0, 5}, {32, 90}, {0, 19}, {42, 89}},
-    /* PLUCK */ {{43, 67}, {11, 21}, {7, 31}, {0, 10}, {70, 95},  {60, 76},  {0, 5}, {0, 28},  {0, 38}, {23, 51}},
+    /* BASS  */ {{27, 52}, {4, 24},  {0, 31}, {0, 10}, {70, 82},  {44, 60},  {0, 8}, {0, 0},   {0, 0},  {0, 6}},
+    /* LEAD  */ {{41, 82}, {0, 29},  {0, 37}, {0, 59}, {70, 109}, {44, 106}, {0, 7}, {0, 64},  {0, 32}, {15, 64}},
+    /* PAD   */ {{47, 61}, {3, 6},   {7, 17}, {69, 94}, {70, 105}, {92, 105}, {0, 5}, {32, 90}, {0, 19}, {42, 89}},
+    /* PLUCK */ {{43, 67}, {4, 8},   {7, 31}, {0, 10}, {70, 95},  {60, 76},  {0, 5}, {0, 28},  {0, 38}, {23, 51}},
 };
 
-/* the engines' own values a SOURCE move may take, with their bands (the factory sounds' 10 .. 90 %); bright: 1 when up brightens */
-typedef struct { const char *eng; uint8_t e; int8_t lo, hi, bright, pit; } mm_src_t;   /* bright: up brightens (or turns metallic); pit: a pitch value */
-static const mm_src_t MM_ENG[] = {
-    {"ANALOG", 1, 0, 37, 0, 1}, {"ANALOG", 2, 0, 102, 0, 0},
-    {"PHASE", 2, 0, 50, 1, 0}, {"PHASE", 3, 14, 71, 1, 0}, {"PHASE", 4, 0, 13, 0, 1},
-    {"LOFI", 2, 40, 92, 0, 0}, {"LOFI", 7, 52, 110, 1, 0},
-    {"VOICE", 0, 0, 95, 0, 0}, {"VOICE", 1, 0, 127, 0, 0}, {"VOICE", 2, 20, 100, 0, 0}, {"VOICE", 4, 30, 96, 1, 0}, {"VOICE", 6, 50, 110, 1, 0},
-    {"TRIO", 3, 0, 9, 0, 1}, {"TRIO", 7, 17, 64, 0, 0},
-    {"WHEEL", 2, -4, 0, 0, 0}, {"WHEEL", 3, -8, 2, 1, 0}, {"WHEEL", 5, 0, 50, 1, 0},
-    {"PHYS", 1, 8, 116, 1, 0}, {"PHYS", 2, 47, 100, 1, 0}, {"PHYS", 3, 56, 120, 0, 0}, {"PHYS", 4, 10, 44, 0, 0},
-    {"NOISE", 1, 0, 64, 1, 0}, {"NOISE", 6, 0, 47, 0, 0},
-    {"FM6", 2, -8, 14, 1, 0}, {"FM6", 4, 0, 25, 1, 0}, {"FM6", 6, 0, 70, 1, 1},
-    {"WAVE", 1, 10, 50, 0, 0}, {"WAVE", 5, 0, 10, 0, 1},
+/* the engines' own values a SOURCE move may take, with their bands (the factory sounds' 10 .. 90 %); eng: the engine's index (engines.c ENGINES[]) */
+typedef struct { uint8_t eng, e; int8_t lo, hi, bright, pit; } mm_src_t;   /* bright: up brightens (or turns metallic); pit: a pitch value */
+static const mm_src_t MM_ENG[] = {                     /* 0 ANALOG, 2 PHASE, 3 LOFI, 5 VOICE, 6 TRIO, 7 WHEEL, 9 PHYS, 11 NOISE, 12 FM6, 14 WAVE */
+    {0, 1, 0, 37, 0, 1}, {0, 2, 0, 102, 0, 0},
+    {2, 2, 0, 50, 1, 0}, {2, 3, 14, 71, 1, 0}, {2, 4, 0, 13, 0, 1},
+    {3, 2, 40, 92, 0, 0}, {3, 7, 52, 110, 1, 0},
+    {5, 0, 0, 95, 0, 0}, {5, 1, 0, 127, 0, 0}, {5, 2, 20, 100, 0, 0}, {5, 4, 30, 96, 1, 0}, {5, 6, 50, 110, 1, 0},
+    {6, 3, 0, 9, 0, 1}, {6, 7, 17, 64, 0, 0},
+    {7, 2, -4, 0, 0, 0}, {7, 3, -8, 2, 1, 0}, {7, 5, 0, 50, 1, 0},
+    {9, 1, 8, 116, 1, 0}, {9, 2, 47, 100, 1, 0}, {9, 3, 56, 120, 0, 0}, {9, 4, 10, 44, 0, 0},
+    {11, 1, 0, 64, 1, 0}, {11, 6, 0, 47, 0, 0},
+    {12, 2, -8, 14, 1, 0}, {12, 4, 0, 25, 1, 0}, {12, 6, 0, 70, 1, 1},
+    {14, 1, 10, 50, 0, 0}, {14, 5, 0, 10, 0, 1},
 };
 
 static int mm_role(const int8_t *o)
@@ -78,6 +78,18 @@ static int16_t mm_dv[NSHOWN][2][MDL_N];                   /* each end's dials (W
 static int8_t mm_dir[NSHOWN][MDL_N];                      /* WANDER: each dial's way */
 static uint8_t mm_loads[NSHOWN];                          /* each part's sound loads (morph_rebase_part): GLIDE sees a load that left the fader as it was */
 
+/* WANDER's dial walk, one for the sound's dials (morph_roll_musical) and the pattern's (seq_morph.c seqm_wander_gen): dial v a step of
+ * move (+1 / -1) on, bouncing at lim (its way, *dir, turns there) */
+static int32_t tide_walk(int32_t v, int8_t *dir, int32_t move, int32_t step, int32_t lim)
+{
+    v += move * step;
+    if (v > lim)
+        v = lim, *dir = -1;
+    else if (v < -lim)
+        v = -lim, *dir = 1;
+    return v;
+}
+
 /* value id at dial d (-1000..1000, times w/6): toward hi at +1000, lo at -1000; the reach either way at least min */
 static void mm_dial(int8_t *end, const engine_t *e, const int8_t *o, uint32_t id, int32_t d, int32_t w, int32_t lo, int32_t hi, int32_t min)
 {
@@ -94,7 +106,7 @@ static void mm_apply(const int8_t *o, int8_t *end, const engine_t *e, const int3
     uint32_t i;
     if (e->ufilt) {                                      /* BRIGHT */
         mm_dial(end, e, o, P_FREEA, d[MDL_BRIGHT], 6, b[MB_CUT][0], b[MB_CUT][1], MM_MIN);
-        mm_dial(end, e, o, P_FREEB, -d[MDL_BRIGHT], 2, b[MB_RES][0], b[MB_RES][1], 12);
+        mm_dial(end, e, o, P_FREEB, -d[MDL_BRIGHT], 2, b[MB_RES][0], b[MB_RES][1], 4);   /* (audit P07: the least span 4, the damping change 12 steps made at the bands' low ends, RES 0 .. 11, under the linear law) */
         mm_dial(end, e, o, P_E2FLT, d[MDL_BRIGHT], 3, b[MB_E2F][0], b[MB_E2F][1], 12);
     }
     if (mm_filter_on(e, o)) {                            /* MOVE */
@@ -112,7 +124,7 @@ static void mm_apply(const int8_t *o, int8_t *end, const engine_t *e, const int3
         const mm_src_t *q = &MM_ENG[i];
         uint32_t id = P_E0 + q->e;
         int32_t w = (q->hi - q->lo) / 3 + 1, lo, hi;
-        if (!str_eq(q->eng, e->name))
+        if (ENGINES[q->eng] != e)
             continue;
         lo = o[id] - w > q->lo ? o[id] - w : q->lo;
         hi = o[id] + w < q->hi ? o[id] + w : q->hi;
@@ -120,7 +132,7 @@ static void mm_apply(const int8_t *o, int8_t *end, const engine_t *e, const int3
         if (q->pit) {
             if (!(mrc & MC_PIT) || !d[MDL_PITCH])
                 continue;
-            if (str_eq(e->name, "TRIO")) {               /* (an interval an octave, past 600) */
+            if (e == &ENG_TRIO) {               /* (an interval an octave, past 600) */
                 if (d[MDL_PITCH] > 600 || d[MDL_PITCH] < -600)
                     mm_put(end, e, id, o[id] + (d[MDL_PITCH] > 0 ? 12 : -12));
             } else {
@@ -169,11 +181,7 @@ static void morph_roll_musical(const int8_t *o, int8_t *end, const engine_t *e, 
             }
             if (i == MDL_BRIGHT && tarc_bright())            /* ARC: brighter towards the peak, softer in the breakdown */
                 move = tarc_bright();
-            d[i] += move * step;
-            if (d[i] > lim)
-                d[i] = lim, *dr = -1;
-            else if (d[i] < -lim)
-                d[i] = -lim, *dr = 1;
+            d[i] = tide_walk(d[i], dr, move, step, lim);
         }
     } else {                                             /* a roll: each dial half to all of AMOUNT, either way */
         for (i = 0; i < MDL_N; i++) {

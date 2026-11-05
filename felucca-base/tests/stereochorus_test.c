@@ -12,6 +12,7 @@
  *            DUEL render bit for bit what 0.2.20 rendered (hashes printed by this file built on that commit with -DSC_BASE=1), exact silence after the tails
  *   CLICK    RATE and DEPTH changed in jumps: no sample step above the steady chorus's own
  *   SPACE    PERFORM's SPACE +100 with the stereo chorus: bounded, the level within 1.5 dB of the mono chorus's
+ *   SWING    audit R07: the chorus's and the delay modulation's pitch swing, measured, held above their anchor rates (CRT 40, MRATE 44)
  *   COST     host instructions per sample of the bus stage, mono (DUEL's tap) against stereo */
 #define MODE_TEST_NO_MAIN 1
 #include "mode_test.c"
@@ -19,9 +20,9 @@
 /* what 0.2.20 rendered (build this file on c755ca0 with -DSC_BASE=1 to print them) */
 /* DUELL-TIDE T0: the three re-made with DUELL 1.1 (its delay feedback rounding, mulq15r, and the 1.1 level stages); against 1.0: same level, spectrum and 100 ms envelope,
  * residual -66 dB (docs/JAM11_SOUND_REFERENCES.md). 1.0: 0x95e535e6638a3a73, 0xb8a39b104ccea803, 0xec69d9e302f65abd */
-#define H_ST_SEND0 0x085fb15db6c60f57ull   /* master soft knee (audit R05, D22): re-based on purpose, was 0x2d06d9a773c2f0db */
-#define H_ST_DEPTH0 0xd5674bd9b999ce4full   /* master soft knee (audit R05, D22): re-based on purpose, was 0x63211e1720e2b2c3 */
-#define H_DUEL_CHO 0xc2b8b9f439234575ull   /* master soft knee (audit R05, D22): re-based on purpose, was 0x966eb25d94c84fef */
+#define H_ST_SEND0 0x085fb15db6c60f57ull /* (audit R05 / R08: the master soft knee and the loops' dead bands closed; re-based on purpose, was 0x2d06d9a773c2f0db) */
+#define H_ST_DEPTH0 0xd5674bd9b999ce4full /* (audit R05 / R08: the master soft knee and the loops' dead bands closed; re-based on purpose, was 0x63211e1720e2b2c3) */
+#define H_DUEL_CHO 0x8abc330bba8e0745ull /* (audit R05 / R08: the master soft knee and the loops' dead bands closed; re-based on purpose, was 0x6ce4bea22e4e92a9) */               /* (audit R07: re-made; its CRT 44 is above the swing's anchor CRT 40, the sweep 0.81 of before; was 0x966eb25d94c84fefull) */
 
 static uint64_t sc_fnv(const int32_t *x, uint32_t n, uint64_t h)
 {
@@ -603,6 +604,76 @@ static void sc_demo(const char *dir, const char *tag)
         }
 }
 
+/* ----------------------------------------------------- SWING (audit R07) --- */
+/* the pitch swing of the chorus's tap and of the delay modulation's (the one tap of a bus without a side, as DUEL's), measured: a 1 kHz sine
+ * through the bus, the frequency of every period (upward zero crossings, interpolated) over 2 s; +- half the ratio of the largest to the smallest, in cents */
+static int sw_cmp(const void *a, const void *b) { double x = *(const double *)a, y = *(const double *)b; return x < y ? -1 : x > y; }
+static double sw_cents(uint32_t dly, int depth, int rate)
+{
+    static int32_t z[CTL], w[CTL];
+    static double fr[BN / 40u];
+    uint32_t t, i, k, nf = 0, from = dly ? FS : FS / 2u;
+    double last = -1, fmin = 1e9, fmax = 0;
+    bus_cfg(DM_STEREO, dly ? 0 : depth, dly ? 40 : rate);
+    sv.spc = 0;                                         /* (SPACE in the middle: the buses read song.g; sc_space left it on) */
+    sv.on = 0;
+    if (dly) {
+        song.g[G_DMDEP] = (int16_t)depth;
+        song.g[G_DMRATE] = (int16_t)rate;
+        song.g[G_DMIX] = 127;
+        song.g[G_DTIME] = 0;                            /* (1/4 at 120 BPM: 0.5 s, a quarter of it never caps the swing) */
+    }
+    for (i = 0; i < BN; i++)
+        bin[i] = (int32_t)(9000.0 * sin(6.283185307 * 1000.0 * (double)i / 44100.0));
+    memset(z, 0, sizeof z);
+    for (t = 0; t + CTL <= BN; t += CTL) {
+        for (i = 0; i < CTL; i++)
+            mix_l[i] = mix_r[i] = w[i] = 0;
+        if (dly)                                        /* (the one tap: no side, dsd 0) */
+            fx_buses_mod(DLY_LEN - 1u, delay_samples(), z, bin + t, z, w, CTL, 0u, 0);
+        else
+            fx_buses_m(DLY_LEN - 1u, delay_samples(), bin + t, z, z, w, CTL, 0u, 0);
+        for (i = 0; i < CTL; i++)
+            bL[t + i] = w[i];
+    }
+    for (i = from; i + 1u < BN; i++)
+        if (bL[i] < 0 && bL[i + 1u] >= 0) {
+            double x = i + (double)-bL[i] / (double)(bL[i + 1u] - bL[i]);
+            if (last >= 0 && nf < BN / 40u)
+                fr[nf++] = FS / (x - last);
+            last = x;
+        }
+    for (k = 2; k + 2u < nf; k++) {                     /* (the median of 5 periods: an odd period at the line's first samples does not count) */
+        double m[5];
+        memcpy(m, fr + k - 2u, sizeof m);
+        qsort(m, 5, sizeof m[0], sw_cmp);
+        fmin = m[2] < fmin ? m[2] : fmin;
+        fmax = m[2] > fmax ? m[2] : fmax;
+    }
+    return fmax > 0 ? 600.0 * log2(fmax / fmin) : 0;
+}
+static void sc_swing(void)
+{
+    static const int CR[4] = {40, 64, 90, 110};
+    double c[4], top, m[3];
+    int ok = 1;
+    for (uint32_t k = 0; k < 4u; k++) {
+        c[k] = sw_cents(0, 60, CR[k]);
+        ok &= c[k] > 15.0 && c[k] < 21.0;
+    }
+    top = sw_cents(0, 127, 90);
+    printf("stereochorus: SWING, the chorus at CDP 60: CRT 40 / 64 / 90 / 110 (0.41 / 1.4 / 5.4 / 16 Hz) +-%.1f / %.1f / %.1f / %.1f cents; CDP 127 at CRT 90 +-%.1f cents\n",
+           c[0], c[1], c[2], c[3], top);
+    expect("SWING: the chorus's pitch swing holds above CRT 40: CDP 60 gives +-15..21 cents at 0.41, 1.4, 5.4 and 16 Hz (was +-18 c, 64 c, 2.5 st, 7.6 st), CDP 127 at 5.4 Hz under +-45 c",
+           ok && top > 30.0 && top < 45.0);
+    m[0] = sw_cents(1, 25, 44);
+    m[1] = sw_cents(1, 100, 44);
+    m[2] = sw_cents(1, 100, 80);
+    printf("stereochorus: SWING, the delay modulation: MDEPTH 25 / 100 at MRATE 44 (0.51 Hz) +-%.1f / %.1f cents, MDEPTH 100 at MRATE 80 (3.4 Hz) +-%.1f cents\n", m[0], m[1], m[2]);
+    expect("SWING: the delay modulation's MDEPTH 100 swings +-20..30 cents at 0.51 and 3.4 Hz (was +-55 c and 3.7 st), MDEPTH 25 a quarter of it",
+           m[1] > 20.0 && m[1] < 30.0 && m[2] > 20.0 && m[2] < 30.0 && m[0] > 0.2 * m[1] && m[0] < 0.3 * m[1]);
+}
+
 int main(int argc, char **argv)
 {
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -619,6 +690,7 @@ int main(int argc, char **argv)
     sc_mix();
     sc_click();
     sc_space();
+    sc_swing();
     sc_cost();
     printf("stereochorus: %d checks, %d failed\n", ncheck, bad);
     return bad ? 1 : 0;

@@ -623,6 +623,20 @@ static __attribute__((noinline)) const int32_t *BUS_FN(rev_locut)(const int32_t 
     return x;
 }
 
+#ifndef FX_SWING
+#define FX_SWING
+/* audit R07: the chorus's and the delay modulation's DEPTH hold their PITCH swing once the rate is above the anchor (at and below it the sweep
+ * in samples as before, bit for bit). The swing is depth x rate, so the sweep shrinks as 1 / rate there: LFO_INC's 0.05 .. 40 Hz law is 800^(step / 127),
+ * 2^-(log2 800 / 127) = 2^-(4977 / 65536) a step. The chorus is anchored at CRT 40 (0.41 Hz: CDP 60 +-18 cents, 127 +-38 cents at any rate from there;
+ * CRT 90 at CDP 60 was +-2.5 semitones), the delay's at MRATE 44 (0.51 Hz: MDEPTH 100 +-25 cents, DM_PCT). d the depth in Q8 samples */
+#define CHO_SWING_AT 40
+#define DM_SWING_AT 44
+#define DM_PCT 521                                      /* the delay's MDEPTH, Q8 samples a percent: 100 % = 203 samples (4.6 ms; +-25 cents at 0.51 Hz; was 1129, 10 ms, +-55 cents) */
+static __attribute__((noinline)) int32_t fx_swing(int32_t d, int32_t rate, int32_t at)
+{
+    return rate > at ? (int32_t)(((int64_t)d * exp2_neg((uint32_t)(rate - at) * 4977u)) >> 15) : d;
+}
+#endif
 /* the chorus's DEPTH over a block (0.2.9): from the depth the last block reached (*cdq, Q8) to this block's (cdepth), *cst a sample
  * (the read point's sweep is (sine + 1) x depth: a depth that jumped at a block's start jumped the read point, up to ~3 samples a block
  * while PERFORM's SPACE or the matrix moved it: a click a block, a buzz at 1.4 kHz). The loops read (sine + 32768) x (cdq >> 4) >> 12: a
@@ -630,7 +644,7 @@ static __attribute__((noinline)) const int32_t *BUS_FN(rev_locut)(const int32_t 
  * reach (under 32 / 256 of a sample of depth) the next one starts from */
 static inline void BUS_FN(cho_glide)(int32_t cdepth, int32_t *cdq, int32_t *cst)
 {
-    int32_t t = cdepth << 8, q = BUS_FX.cho_on ? BUS_FX.cho_dq : t;
+    int32_t t = fx_swing(cdepth << 8, song.g[G_CRATE] & 127, CHO_SWING_AT), q = BUS_FX.cho_on ? BUS_FX.cho_dq : t;   /* (R07: the swing held above CRT 40) */
     *cdq = q;
     *cst = (t - q) >> CTL_LOG2;
     BUS_FX.cho_dq = t;
@@ -678,8 +692,8 @@ static __attribute__((noinline)) void BUS_FN(cho_zrun)(const int32_t *cho_in, ui
 }
 
 /* The delay's MODULATION (DUELL 0.2.5, SPEC 5c.2): the delay time wobbles, a tape / chorus-like movement, with its own small LFO (not
- * LFO 1 / 2, not the matrix): G_DMDEP DEPTH (0 off .. 100: the time swings +- 10 ms, never more than a quarter of the delay time, so a short
- * delay keeps its feel) and G_DMRATE RATE (the chorus's rates, 0.05 .. 3.4 Hz). DEPTH 0 and at rest: fx_buses_m runs the loop below it
+ * LFO 1 / 2, not the matrix): G_DMDEP DEPTH (0 off .. 100: the time swings +- 4.6 ms up to MRATE 0.51 Hz, +-25 cents above it (fx_swing, audit R07),
+ * never more than a quarter of the delay time, so a short delay keeps its feel) and G_DMRATE RATE (the chorus's rates, 0.05 .. 3.4 Hz). DEPTH 0 and at rest: fx_buses_m runs the loop below it
  * as ever (bit for bit, no cost); this runs while DEPTH > 0 and while the depth glides back to 0.
  * Two taps read the line at dl + oL and dl + oR (linear interpolation, dly_tap): oL = dev sin(pl), oR = dev sin(pr + 1/2 turn), pr
  * running 1/16 faster than pl, so they start in opposite phase and drift: the two channels never wobble together. In STEREO and LAYER
@@ -698,12 +712,12 @@ static __attribute__((noinline)) void BUS_FN(dly_mod)(uint32_t dmask, uint32_t d
     uint32_t i, st = dsd != 0, pl = BUS_FX.dm_pl + (BUS_SPLITB ? 0x40000000u : 0u), pr = BUS_FX.dm_pr + 0x80000000u;
     uint32_t inc = LFO_INC[clamp(song.g[G_DMRATE], 0, 127)], w = BUS_FX.dly_w, ppos, qpos, pstep, qstep;
     int32_t fb = mulq15(SV_DFB, byp_dg), col = 2000 + song.g[G_DCOLOR] * 240, dmix = mulq15(song.g[G_DMIX] * 258, byp_dg);   /* (byp_dg: the BYPASS of the DELAY, 32768 = on) */
-    int32_t cdepth = SV_CDEP, dev = clamp(song.g[G_DMDEP], 0, 100) * 1129, cap = (int32_t)(dl << 6);
+    int32_t cdepth = SV_CDEP, dev = fx_swing(clamp(song.g[G_DMDEP], 0, 100) * DM_PCT, clamp(song.g[G_DMRATE], 0, 127), DM_SWING_AT), cap = (int32_t)(dl << 6);
     int32_t xl = BUS_FX.dm_xl, xr = BUS_FX.dm_xr, el, er, sl, sr, cdq, cst;
     uint32_t cinc = LFO_INC[song.g[G_CRATE] & 127] / CTL, cw = BUS_FX.cho_w, cph = BUS_FX.cho_ph;
     int32_t room = (int32_t)(dmask - 2u - (pp ? dl << 1 : dl)) << 8;   /* the line's end: a tap never reads past the oldest sample */
     cap = cap > room ? (room > 0 ? room : 0) : cap;
-    dev = dev > cap ? cap : dev;                        /* (the target, Q8 samples: 100 % = 441 samples = 10 ms, 1129 a percent) */
+    dev = dev > cap ? cap : dev;                        /* (the target, Q8 samples: DM_PCT a percent, held to the swing above MRATE 44) */
     BUS_FX.dm_dev += clamp(dev - BUS_FX.dm_dev, -DM_DEV_STEP, DM_DEV_STEP);
     dev = BUS_FX.dm_dev > cap ? cap : BUS_FX.dm_dev;
     BUS_FX.dm_dev = dev;
@@ -797,7 +811,7 @@ static inline void BUS_FN(fx_buses_m)(uint32_t dmask, uint32_t dl, const int32_t
     BUS_FN(cho_glide)(cdepth, &cdq, &cst);
     for (i = 0; i < n; i++) {
         int32_t y = 0, x, x2, r;
-        /* chorus: modulated short delay, 5..15 ms (cz: the line and this block's input are 0, the chorus gives 0: see cho_zrun) */
+        /* chorus: modulated short delay, 9 .. 26 ms (400 + 0 .. 762 samples; above CRT 40 less, fx_swing) (cz: the line and this block's input are 0, the chorus gives 0: see cho_zrun) */
         if (!cz) {
             BUS_CHO[cw & (CHO_LEN - 1u)] = (int16_t)clamp(cho_in[i] >> 1, -32768, 32767);
             cph += cinc;

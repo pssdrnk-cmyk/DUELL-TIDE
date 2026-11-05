@@ -572,19 +572,21 @@ static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int
 static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int glide)
 {
     uint32_t mode = (uint32_t)t->p[P_VOICE], nv = mode == V_UNISON ? trk_nvoice(t) : 1u, i;
+    const engine_t *en = ENGINES[t->engine];
+    uint32_t vt = en == &ENG_FM6 || en == &ENG_PHYS;    /* the velocity is timbre there (KVS, ACC): UNISON keeps it and lowers the amplitude instead (FM6: unison_gain.c; PHYS: xg below) */
     voice_trim(t);
     for (i = 0; i < nv; i++) {
         voice_t *v = &t->v[i];
         int32_t k = 2 * (int32_t)i - (int32_t)(nv - 1u);   /* -7 .. 7 */
         if (nv > 1u && nv < NVOICE)
             k = k * (NVOICE - 1) / (int32_t)(nv - 1u);      /* fewer voices: the outer ones as wide */
-        v->fine = nv > 1u ? k * t->p[P_DETUNE] * 56 / 889 : 0;   /* up to ~±40 cents */
+        v->fine = nv > 1u ? k * t->p[P_DETUNE] * 56 / 889 : 0;   /* up to ~±24 cents: 56/4096 of the pitch at DTUNE 127 (D18: the range stays) */
         if (retrig || !v->active || !v->gate) {
             if ((!v->active || v->stage == 4u) && !voice_room(t, i > 0))
                 continue;                                   /* no room for this extra UNISON voice */
             int was_sounding = v->active && v->stage != 0;  /* (a sounding voice keeps its phase on a re-strike) */
             /* level: about the same sum for 8 or 4 voices at random phases */
-            voice_start(t, v, note, nv >= NVOICE ? vel * 36u / 100u : nv > 1u ? vel / 2u : vel, glide);
+            voice_start(t, v, note, vt ? vel : nv >= NVOICE ? vel * 36u / 100u : nv > 1u ? vel / 2u : vel, glide);
             v->side = (uint8_t)(i & 1u);                    /* SPREAD: the detuned voices alternate */
             if (nv > 1u && i && !was_sounding && !ENGINES[t->engine]->sampled) {   /* random start phases: */
 #if DUELL_BENCH
@@ -606,6 +608,8 @@ static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int g
                 v->vel = (uint8_t)vel;
             glide_set(t, v, glide);
         }
+        if (en == &ENG_PHYS && nv > 1u)                     /* (this note's share between the parts, times UNISON's amplitude) */
+            v->xg = (uint16_t)mulq15(t->lay_xg ? t->lay_xg : 32767, unison_amp[nv] * 11u >> 3);   /* (VOICE_FS 24000 -> Q15, 32768 / 24000 = 1.365 ~ 11 / 8) */
     }
     t->mono_note = (uint8_t)note;
 }
@@ -1044,7 +1048,7 @@ static __attribute__((noinline)) void atg_voice(const track_t *t, voice_t *v, vm
 
 /* DUELL 0.2.9 MULTIMODE FILTER (SPEC 2.5; 0.2.2's universal filter): a per-voice state-variable filter on the engines with no filter of
  * their own (engine_t.ufilt 1: all of them since cloud job J; ANALOG's VCF and NOISE's filter ARE this filter, TRIO's lives on as filter 2). FILTER page: K1 CUT (P_FREEA, 0..UF_STEPS: 30 Hz .. 16 kHz, core.h),
- * K2 RES (P_FREEB: the damping from 2.0, Q 0.5, to 0.145, Q 6.9; the 24 dB path is unchanged), K3 MODE (P_FREEC: 0 LP, 64 BP, 127 HP and every blend between:
+ * K2 RES (P_FREEB: the damping from 2.0, Q 0.5, to 0.145, Q 6.9, exponential in RES: about equal dB of peak a step; the 24 dB second stage's the same way), K3 MODE (P_FREEC: 0 LP, 64 BP, 127 HP and every blend between:
  * the SVF's low-pass, band-pass and high-pass outputs summed with weights), K4 SLOPE (P_FREED: 12 dB, or 24 dB: a second stage of
  * the same MODE, the two dampings a 4th-order Butterworth's, 1.848 and 0.765, RES narrowing the second down to 0.10).
  * The EFFECTIVE cut = CUT + every cutoff route (ENV 1 / ENV 2 / LFO 1 / LFO 2 FLT, the matrix's CUT; 1/256 dial steps, 63 steps = the
@@ -1069,9 +1073,13 @@ static __attribute__((noinline)) void atg_voice(const track_t *t, voice_t *v, vm
  * (in its effective cutoff) and filter 2 even with LINK off (chain_f2.c f2_cut); on the other engines the lift stays the engine's own tone control and filter 2's linked cutoff */
 #define ACCENT_BOTH(e) ((e) == &ENG_ANALOG || (e) == &ENG_TRIO || (e) == &ENG_NOISE)
 #define UF_KZ (4 << 8)                                  /* the kill zones: 4 dial steps (= 1.0 in Q10, the weights' unit) */
-#define UF_K(res) (8192 - (res) * 7600 / 127)           /* damping, Q12: 12 dB. 2.0 down to 0.145 (the law of dsp.c tsvf_coef, ANALOG's VCF's: TWIN_FILTER_DESIGN_2 question 2a; until the engine filters left it was 1.414 down to 0.145: 5793 - res * 5200 / 127) */
+static uint32_t exp2_neg(uint32_t x);                 /* (fx.c: 2^-x, x Q16, Q15) */
+/* RES (audit P07): the damping falls exponentially, 2^-(RES x 3.79 / 127), so every step narrows it by the same ratio (about equal dB of peak a step;
+ * the linear law of before, 8192 - res * 7600 / 127, gave no peak at all below RES 48 and spent its resonance in the top 30 steps). The same ends: 2.0 down to
+ * 0.145 (Q 0.5 .. 6.9); the factory sounds' RES were moved to the step of the same damping (tools/duell_sounds.py) */
+#define UF_K(res) ((int32_t)(exp2_neg((uint32_t)(res) * 1956u) >> 2))   /* damping, Q12: 12 dB, 8192 (2.0) down to 592 (0.145) */
 #define UF_K24A 7568                                    /* 24 dB: the first stage's (1.848), the second's from 0.765 down with RES */
-#define UF_K24B(res) (3135 - (((res) * 2731) >> 7))   /* (0.765 down to 0.104) */
+#define UF_K24B(res) ((int32_t)((exp2_neg((uint32_t)(res) * 1486u) * 3135u) >> 15))   /* (0.765 down to 0.104, 3135 .. 425, the same way: 2^-(RES x 2.88 / 127)) */
 #define UF_KNEE 48000
 static __attribute__((noinline)) void uf_coef(tsvf_t *f, int32_t idx, int32_t k) { tsvf_coef_k(f, idx, k); }   /* (one copy: a divide) */
 /* one voice's block through the filter, in place: uc the effective cut (Q8 dial steps), p the part's values (RES MODE SLOPE) */

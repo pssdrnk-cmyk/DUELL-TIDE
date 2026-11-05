@@ -1,15 +1,10 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* ANSWER (TURNS = LEAD, ECHO; M8b/c, docs/design/TIDE_NEXT_PROPOSALS.md step 2). Included by tide_seq.c after seq_poly.c.
+/* ANSWER (TURNS = LEAD; M8b, docs/design/TIDE_NEXT_PROPOSALS.md step 2). Included by tide_seq.c after seq_poly.c.
  * Per 4 shared bars, part 2 leads bars 1-2 and part 1 bars 3-4 (seq_play_step); the other part plays a thinned End A: the mask
  * sqm_thin (main loop, a bit per stored step) drops half of its optional hits, a playback mask only (KEEP stores sqm_step, never
  * the mask). A beat, an anchor (sqm_anchor), a held hit, a hit before a tie are never dropped, and a pattern of 2 hits or fewer is left whole.
  * Only a lead or pluck sound's single-note line answers (D2, sqm_lead): a pad's, a bass's or any chord part's pattern plays whole.
- * ECHO ranks the hits on the peer's thinned-away places first in the mask, and the phrase edits lean a hit into them. */
-static int tide_echo(uint32_t pi, uint32_t idx)
-{
-    const track_t *a = &trk[pi], *b = &trk[pi ^ 1u];
-    return sqm_turns == 3u && idx < NSTEP && a->p[P_SDIV] == b->p[P_SDIV] && sqm_len(a) == sqm_len(b) && ((sqm_thin[pi ^ 1u][idx >> 5] >> (idx & 31u)) & 1u);
-}
+ * (ECHO, a fourth TURNS value that only re-ranked the mask, folded into LEAD: D7, audit M05.) */
 static uint32_t sl_cat(uint32_t k);
 static int sqm_thin_build(void)                          /* 1: a mask changed */
 {
@@ -35,8 +30,6 @@ static int sqm_thin_build(void)                          /* 1: a mask changed */
                 if (!sqm_hit(&p[i]) || mt == SM_BEAT || sqm_held(p, i, len) || sqm_anchor(t->step, len, i) ||
                     (sqm_vary_all && (!sqm_hit(&pb[i]) || sqm_held(pb, i, len))))   /* (audit C8: VARY ALL: a hit both ends may drop) */
                     continue;
-                if (tide_echo(pi, i))
-                    pref = 4u;                           /* (the answer sounds where the call left room) */
                 score[i] = sqm_score(sqm[pi].tseed ^ 0x71A5u, i, 0x73u, pref);
                 cand++;
             }
@@ -57,12 +50,11 @@ static int sqm_thin_build(void)                          /* 1: a mask changed */
     return ch != 0u;
 }
 /* main loop, every pass (tide_ui.c tide_poll): the masks again only when what they are built from changed (audit C9: not every frame):
- * the ends played (sqm sig / tseed / ok), the lengths, the grids and swings tide_metric reads, TURNS, the ARC's thinning and VARY BARS.
- * ECHO reads the peer's mask: built again until it settles (at most 3 passes) */
+ * the ends played (sqm sig / tseed / ok), the lengths, the grids and swings tide_metric reads, TURNS, the ARC's thinning and VARY BARS */
 static uint32_t sqm_thin_k, sqm_thin_kok;
 static void sqm_thin_poll(void)
 {
-    uint32_t pi, n, h = 2166136261u;
+    uint32_t pi, h = 2166136261u;
     for (pi = 0; pi < NSHOWN; pi++) {
         const track_t *t = &trk[pi];
         h = (h ^ sqm[pi].sig) * 16777619u;
@@ -76,6 +68,5 @@ static void sqm_thin_poll(void)
     if (sqm_thin_kok && h == sqm_thin_k)
         return;
     sqm_thin_k = h, sqm_thin_kok = 1;
-    for (n = 0; n < 3u && sqm_thin_build(); n++)
-        ;
+    sqm_thin_build();
 }

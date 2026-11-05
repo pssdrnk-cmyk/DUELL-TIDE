@@ -30,11 +30,11 @@ static int mapm(int m) { return m == 0 ? (t_pp ? DMD_PING : DMD_DIGITAL) : m == 
 /* the hashes of the delay before the modes (build this file on the base commit with -DDLYEV_BASE=1 to print them) */
 /* DUELL-TIDE T0: re-made with DUELL 1.1 (the delay feedback rounded to the nearest, fx_bus.c mulq15r); against 1.0: same level, spectrum and 100 ms envelope, residual -61 dB
  * (docs/JAM11_SOUND_REFERENCES.md). 1.0: plain / LAYER 0xa6ed282e79e1eb73, PING-PONG 0x66f304e16ff4684d, + DEPTH 0x2d1f57efffb7d6ea, DUEL 0x88f81196f4b235b6 */
-#define H_PLAIN 0x84e5dd5704d59859ull   /* audit R08: re-based on purpose, was 0xb5d3f37293326a69;  */
-#define H_PP 0xbdb5b1ae14b39c40ull   /* audit R08: re-based on purpose, was 0x93f4fdf040b43352;  */
-#define H_PPMOD 0xa61cc94d1b617b79ull   /* audit R08: re-based on purpose, was 0x15ba0ede361679d8;  */
-#define H_LAYER 0x84e5dd5704d59859ull   /* audit R08: re-based on purpose, was 0xb5d3f37293326a69;  */
-#define H_DUEL 0x42191b43ad8558e8ull   /* audit R08: re-based on purpose, was 0x7d404682f08f7422;  */
+#define H_PLAIN 0x84e5dd5704d59859ull /* (audit R05 / R08: the master soft knee and the loops' dead bands closed; re-based on purpose, was 0x07c7f62034d7a649) */
+#define H_PP 0xbdb5b1ae14b39c40ull /* (audit R05 / R08: the master soft knee and the loops' dead bands closed; re-based on purpose, was 0x35359c7d06e2cf1e) */
+#define H_PPMOD 0x3afa099721b9ff49ull /* (audit R05 / R08: the master soft knee and the loops' dead bands closed; re-based on purpose, was 0x6df48582eb36fe46) */   /* (audit R07: re-made, MDEPTH 60 is about +-15 cents now, 0.46 of the old sweep; was 0xf6cf76a96437bd62ull) */
+#define H_LAYER 0x84e5dd5704d59859ull /* (audit R05 / R08: the master soft knee and the loops' dead bands closed; re-based on purpose, was 0x07c7f62034d7a649) */
+#define H_DUEL 0x42191b43ad8558e8ull /* (audit R05 / R08: the master soft knee and the loops' dead bands closed; re-based on purpose, was 0xa0ad17f248d529e1) */
 
 static uint64_t hash_of(const int32_t *l, const int32_t *r, uint32_t n)
 {

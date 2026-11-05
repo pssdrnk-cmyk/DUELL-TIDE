@@ -9,7 +9,8 @@
  * timbre, as they were); SAMPLE starts a voice up to four periods later (at most 256 source samples).
  * For every preset of every engine, notes 36 and 60 (velocity 100, chorus, delay, reverb off): the rms over
  * 0.05 .. 0.55 s in UNISON (the preset's DETUNE) against POLY. Fails when a render is more than +8 dB over POLY or an
- * engine's mean over +5 dB. Exit status: failed checks. (The same file as Clipper's, which also plays UNI4.) */
+ * engine's mean over +5 dB, or an engine's mean more than 3 dB under POLY (audit Q02: FM6 and PHYS lost 2.5 and 3.3 dB because UNISON
+ * halved the velocity, which is their timbre). On FM6 and PHYS the voices keep the played velocity. Exit status: failed checks. (The same file as Clipper's, which also plays UNI4.) */
 #define main hostsim_main
 #include "hostsim.c"
 #undef main
@@ -84,8 +85,8 @@ static void engine(uint32_t e, int *fails)
     for (m = 0; n && m < NM; m++) {
         mean = (sum[m][0] + sum[m][1]) / (2 * n);
         printf("unison: %-7s %-6s mean %+5.1f dB over POLY (note 36 %+5.1f, 60 %+5.1f; %3u presets; the most %+5.1f, %s)%s\n",
-               en->name, MN[m], mean, sum[m][0] / n, sum[m][1] / n, n, worst[m], wn[m], mean > 5.0 ? "  FAIL" : "");
-        if (mean > 5.0)
+               en->name, MN[m], mean, sum[m][0] / n, sum[m][1] / n, n, worst[m], wn[m], mean > 5.0 || mean < -3.0 ? "  FAIL" : "");
+        if (mean > 5.0 || mean < -3.0)
             ++*fails;
     }
 }
@@ -96,6 +97,13 @@ int main(void)
     host_tracks_init();
     for (e = 0; e < NENGINES; e++)
         engine(e, &fails);
+    for (e = 0; e < NENGINES; e++)                   /* velocity is timbre on FM6 (KVS) and PHYS (ACC): UNISON must not halve it */
+        if (ENGINES[e] == &ENG_FM6 || ENGINES[e] == &ENG_PHYS) {
+            play(e, 0, V_UNISON, 60);
+            int ok = trk[0].v[0].vel == 100 && trk[0].v[1].vel == 100;
+            printf("unison: %-7s the voices keep the played velocity (100): %u, %u  %s\n", ENGINES[e]->name, trk[0].v[0].vel, trk[0].v[1].vel, ok ? "ok" : "FAIL");
+            fails += !ok;
+        }
     printf("unison: %d failed\n", fails);
     return fails;
 }

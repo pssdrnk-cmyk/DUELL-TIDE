@@ -12,7 +12,6 @@
  * or two phrases (WIDE 4 loops, GENTLE 8) followed by 8 or 16 full loops. STOP / PLAY starts every part full. POLY OFF, a recording, a
  * hand taking over (the glide stops) or a loop under 8 steps bring the part back at the next full-loop start. ARP SEQ is covered
  * (arp_idx), the peer prediction (M1) is blind to a shortened part. */
-static uint8_t poly_len[NSHOWN];                         /* the loop's length now, 0: the stored one */
 static uint8_t poly_ref[NSHOWN];                         /* sequencer: the full loop's step */
 static uint32_t poly_lc[NSHOWN], poly_end[NSHOWN], poly_free[NSHOWN];   /* full loops since PLAY; the stretch's end; the earliest next start (audit C11: 32 bits, no wrap) */
 static uint32_t poly_base[NSHOWN];                       /* ARP SEQ: arp_idx at the stretch's start */
