@@ -2,7 +2,7 @@
 /* The player's chord keys (SCL > CHORD: TYPE = CHRD, VOICING = VOIC) in the unit's real situations (owner: "I can't seem to enable auto chord").
  *   KEEP     a sound load leaves the part's CHRD / VOIC alone unless the sound sets a chord of its own (the pads and BEHIVE: DSF_KEYS; a stored patch saved with a chord on);
  *            a chord a sound lent goes back with the next load, unless the player changed it since; a patch saved with the chord keys OFF leaves the player's
- *   NAMED    the five chord-named dub pack sounds (DUB CHORD, DARK MIN7, SOUL STAB, LOW STAB, ICE STAB) set CHRD MIN7, VOIC OPEN
+ *   NAMED    the five chord-named dub pack sounds (CHORD ECHO, DARK MIN7, SOUL STAB, LOW STAB, ICE STAB) set CHRD MIN7, VOIC OPEN
  *   FIRST    the first start's factory multi (M04 DUB CHORD, TIDE on): K1 turns TYPE with the MORPH fader at A, mid way, at B and while a glide runs; a TIDE JRNY of many trips
  *            and its arrivals leave CHRD / VOIC / VOICE alone; the sound loads on the parts keep the player's TYPE
  *   HINTS    the CHORD page (K4 = the part's VOICE): "NEEDS POLY" with a chord on and the part not POLY, "SET A SCALE" with DIA3 / DIA7 on the CHROMATIC scale, the last
@@ -60,7 +60,7 @@ static uint32_t first_start(void)                       /* the unit as a new one
 /* audit G11: the chord-named sounds of the dub pack set their chord keys (MIN7, OPEN), as their audition was made with held Cm7 chords */
 static void named_chords(void)
 {
-    static const char *const nm[5] = {"DUB CHORD", "DARK MIN7", "SOUL STAB", "LOW STAB", "ICE STAB"};
+    static const char *const nm[5] = {"CHORD ECHO", "DARK MIN7", "SOUL STAB", "LOW STAB", "ICE STAB"};
     uint32_t e, k, found = 0, set = 0;
     ui_power_on();
     for (k = 0; k < 5u; k++)
@@ -77,7 +77,7 @@ static void named_chords(void)
             if (trk[0].p[P_CHRD] != CH_MIN7)
                 printf("  %s: CHRD %d VOIC %d\n", nm[k], trk[0].p[P_CHRD], trk[0].p[P_VOIC]);
         }
-    expect("DUB CHORD, DARK MIN7, SOUL STAB, LOW STAB and ICE STAB each set CHRD MIN7 and VOIC OPEN", found == 5u && set == 5u);
+    expect("CHORD ECHO, DARK MIN7, SOUL STAB, LOW STAB and ICE STAB each set CHRD MIN7 and VOIC OPEN", found == 5u && set == 5u);
 }
 
 /* --- KEEP: a sound load and the player's chord keys --- */

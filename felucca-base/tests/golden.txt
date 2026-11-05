@@ -1,5 +1,6 @@
 # FELUCCA golden renders (tests/regress.c): name, FNV-1a 64 of the output samples.
 # Rewritten by GOLDEN_UPDATE=1 tests/run_tests.sh -- only for an intended change of the sound.
+# Name hygiene (audit G17): three renames, no sound changed (same hashes): ANALOG/20 DUB CHORD to CHORD ECHO, PHASE/13 GLASS KEYS to MELLOW EP, WAVE/25 GLASS POP to BOTTLE TAP.
 # Bank content (audit T08), on purpose, 45 renders: the PAD, KEYS and FX sounds of the 128 run their slow CYCLE and LFOs (1 Hz or slower) in bars (CYCLE SYNC, LFO SYNC 1/1, 2BAR, 4BAR).
 # Bank content (audit G06), on purpose, 2 renders: ANALOG/18_ARP_PLUCK (the ladder resonance and its envelope sweep tamed, louder) and PHYS/01_SINGING_BOWL (longer bow, less damping, louder).
 # ARP timing (audit S01 / S02 / S11), on purpose, 14 of the 242: the internal-clock arp keeps the overshoot of each step instead of rounding it up to a block,
@@ -119,7 +120,7 @@ sound/ANALOG/16_FOLD_BASS 9e2e6b24aecb2130
 sound/ANALOG/17_SQUARE_LEAD 6f7ce56700ff2195
 sound/ANALOG/18_ARP_PLUCK 31dcc9caea53cfc0
 sound/ANALOG/19_DRIVEN_SAW a0048628c919b25c
-sound/ANALOG/20_DUB_CHORD bca8bcbd421d225f
+sound/ANALOG/20_CHORD_ECHO bca8bcbd421d225f
 sound/ANALOG/21_DARK_MIN7 c549b084500afbb2
 sound/ANALOG/22_WARM_WASH 22148a88d8c9d473
 sound/ANALOG/23_SLOW_TIDE 635b5e7c66b4ccbf
@@ -146,7 +147,7 @@ sound/PHASE/09_FUZZ_BASS 646354bbd7dadbf8
 sound/PHASE/10_HARD_KICK 07dfb94f898e1394
 sound/PHASE/11_AIR_SHIMMER 5cc2f4f914c1a058
 sound/PHASE/12_STAR_FIELD 57320ba4f4075282
-sound/PHASE/13_GLASS_KEYS 03718d5f8143cfd9
+sound/PHASE/13_MELLOW_EP 03718d5f8143cfd9
 sound/PHASE/14_DEEP_BLUE bc1273d50ff3d22b
 sound/PHASE/15_TAPE_CLOUD 7184f2c4d25e1616
 sound/PHASE/16_ICE_STAB b29ff32b2174ce37
@@ -258,7 +259,7 @@ sound/WAVE/21_KICK_BASS ed554534c5b67d74
 sound/WAVE/22_SCREAMER 291d8df4982b0dc6
 sound/WAVE/23_COMB_PLUCK 38b7822b48cf635c
 sound/WAVE/24_AIR_POP ac0f66b7d45698db
-sound/WAVE/25_GLASS_POP 34a014348a65dc8d
+sound/WAVE/25_BOTTLE_TAP 34a014348a65dc8d
 mode/ANALOG/POLY 312226efed030ce6
 mode/ANALOG/MONO 10d69238ddc9dec3
 mode/ANALOG/LEGATO a89c14adfdcb1201

@@ -152,17 +152,17 @@ The 163 factory sounds in the order the device lists them in PATCHES (TYPE ALL):
 | 142 | SUB PLUCK | new |
 | 143 | TAPE PLUCK | new |
 | 144 | AIR POP | new |
-| 145 | COMB PLUCK | new |
-| 146 | GLASS POP | new |
-| 147 | DARK MIN7 | new |
-| 148 | DUB CHORD | new |
+| 145 | BOTTLE TAP | new |
+| 146 | COMB PLUCK | new |
+| 147 | CHORD ECHO | new |
+| 148 | DARK MIN7 | new |
 | 149 | LOW STAB | new |
 | 150 | SOUL STAB | new |
 | 151 | SUNDAY KEYS | new |
 | 152 | BELL STAB | new (FM6) |
 | 153 | DUB DRAWBAR | new (FM6) |
-| 154 | GLASS KEYS | new |
-| 155 | ICE STAB | new |
+| 154 | ICE STAB | new |
+| 155 | MELLOW EP | new |
 | 156 | SOFT EP | new |
 | 157 | DEEP ORGAN | new |
 | 158 | HOUSE ORGAN | new |
