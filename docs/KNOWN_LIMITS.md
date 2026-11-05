@@ -29,4 +29,5 @@ The fork's own limits are listed first, then the inherited DUELL 1.1 limits. [KN
 - **No menu switch and no notice for the second core.** The fallback to one core is automatic and silent.
 - **No error screen in the update loader.** The update screen shows progress only; if a write fails the installer page tells you.
 - **MIDI** is not tested with many devices.
+- **The audio clock is not exactly 44,100 Hz.** The output runs from a 24 MHz timer divided by 544: 44,117.6 Hz. The tempo, pitch and time constants assume 44,100 Hz. By that arithmetic the pitch is about 0.7 cent sharp and the internal tempo about 0.04 % fast (a bar of 2 s drifts 0.8 ms). The 24 MHz clock itself has not been measured on a unit. Nothing compensates for it.
 - **Heavy multis** can miss an audio block very rarely (a short click). The NOTES budget limits the notes per part to avoid it; the CPU figures in the documents are a computer model, the unit can read higher.
