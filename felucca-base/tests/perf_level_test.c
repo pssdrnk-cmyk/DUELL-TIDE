@@ -161,7 +161,7 @@ static uint64_t pl_child(uint32_t m, uint32_t how, int32_t steps, int32_t l1, in
 }
 /* the renders of the tree BEFORE item 160 (old balance 0, the shipped state), how 0, by mode: built with -DPL_RECORD=1 against that tree */
 static const uint64_t PL_HASH[PM_N] = {
-    0xC2F503A14B289389ull, 0xA337016B36C39A2Aull, 0xAB136CD077A628B1ull, 0x7F460E543C3B2773ull, 0x80DDA616C1A1C1CFull,   /* (audit R08, on purpose: the loops' dead bands closed; were 0x14F3B1973E0CBF3C, 0x849A20FED5E27553, 0xE0E12BF2823EE61C, 0xB7C26D36BEF222DB, 0x0DAE6363315F15FA)  (item 160: the tree before it, 2026-10-28; re-based on purpose for the master soft knee, audit R05 / D22: was 0xD60A01CCF705A4B9, 0x1FD88D10F5B987DA, 0xF49F6F3CADC3896F, 0x88D3570D3A4EC29E, 0x73B251DCBB68F496) */
+    0x895CE8A03A366F4Eull, 0xBF33CC568290F6E8ull, 0x08D638A559B56213ull, 0x74FD1E781F01A47Dull, 0xB03262537719E68Aull,   /* (audit R09 / E2 / E3, on purpose: the scene runs HALL and the delay: ROOM on the HALL code, the delay loop's low cut and soft knee, HALL's pre-delay from SIZE (fx-extend merge 793f41f); were 0xC2F503A14B289389, 0xA337016B36C39A2A, 0xAB136CD077A628B1, 0x7F460E543C3B2773, 0x80DDA616C1A1C1CF); (audit R08, on purpose: the loops' dead bands closed; were 0x14F3B1973E0CBF3C, 0x849A20FED5E27553, 0xE0E12BF2823EE61C, 0xB7C26D36BEF222DB, 0x0DAE6363315F15FA)  (item 160: the tree before it, 2026-10-28; re-based on purpose for the master soft knee, audit R05 / D22: was 0xD60A01CCF705A4B9, 0x1FD88D10F5B987DA, 0xF49F6F3CADC3896F, 0x88D3570D3A4EC29E, 0x73B251DCBB68F496) */
 };
 static void t_audio(void)
 {
