@@ -33,8 +33,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 MU_G_AT, MB_N, PS_STEP, MU_STEP, FM6_PACKED, NSHOWN, NX7, NG7, NP = 20, 7, 9, 7, 128, 2, 16, 27, 127
-# core.h's global ids that multi.c MU_GLOBAL stores: BPM SWING, DTIME..CDEPTH, DMRATE (G_MIDI) DMDEP (G_SYNC), DMODE (G_INFO), SHMOD (G_NAME), RLOCUT, RTYPE,
-# PINGSPREAD, SHPITCH (G_FREE26)
+# core.h's global ids that multi.c MU_GLOBAL stores: BPM SWING, DTIME..CDEPTH, DMRATE DMDEP, DMODE, SHMOD, RLOCUT, RTYPE,
+# PINGSPREAD, SHPITCH (the ids once G_MIDI, G_SYNC, G_INFO, G_NAME, G_FREE26: core.h)
 MU_GLOBALS = (0, 1, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 17, 21, 24, 25, 26)
 G_SWING, P_ASWING, P_SSWING = 1, 21, 31
 HARNESS = ROOT / "build" / "host" / "multi_v7_endb"
