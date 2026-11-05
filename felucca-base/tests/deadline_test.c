@@ -29,6 +29,9 @@
  *            true cost) and running part 2's true cost, + 6 points of a block (the peak allowance) ends before the wait limit (least slack printed, also with 13 points: the measured
  *            worst single job, item 139); CORE 0: BUDGET_LIMIT + 6 <= 90. The least slack by limit 80 .. 88 is printed (caps worked out here at each limit)
  *   and SAME / LATER / INSIDE / TRUE / KEPT above against the new limit, the new hashes DL_REF2 (posted deadlines) and DL_REF3 (the new limits), the limits changed by block
+ * CPU fix (wave 14, 2026-11-05): BUDGET_LIMIT 84 -> 72 with BUDGET_PEAK 18 (budget.h: the unit's per-second peaks against the model), so CORE 0 is BUDGET_LIMIT + BUDGET_PEAK = 90 and CORE 1 keeps
+ * the allowance in points of a block as BUDGET_PEAK too (58.9 points of slack after 6, 46.9 after 18 at limit 72; the table of limits now runs 64 .. 88). The deadline and the wait limit read neither:
+ * DL_REF, DL_REF2 and DL_REF3 hold unchanged.
  * Build: cc -O1 -w -DHOST_MIX_FOLLOWS_MASTER=1 -DDUELL_TEST_MODE=1 -Ibuild/gen_test -Ibuild/gen -Ifirmware/src -Itests -fno-builtin -D_FORTIFY_SOURCE=0
  *        -o build/host/deadline_test tests/deadline_test.c -lm -lpthread   (host_tests.sh name: deadline) */
 #define DUELL_TWOCORE 1
@@ -110,7 +113,9 @@ static void clean(track_t *t, int va)
 }
 /* CORE 1 (item 137, extended by item 142): both parts at their two-core caps at limit L (KEY SENSE +57 as on the unit): core 1's job k is posted at S + k P (S = 0.27 block, the polymax median
  * of item 139; P = the globals + the dearer of part 1 and the job, true cost) and runs part 2's true cost; its slack to the runner's wait limit of block k, points of a block */
-#define NL 9u                                           /* limits 80 .. 88 */
+#define LMIN 64u                                        /* the limits worked out: LMIN .. LMIN + NL - 1 (wave 14: BUDGET_LIMIT 72, was 80 .. 88 for 81 / 84) */
+#define NL 25u
+#define PKA ((double)BUDGET_PEAK)                      /* the peak allowance of the CORE 1 check, points of a block (wave 14: 18, was the 6 of items 137 / 142) */
 static double c1_min[NL], c1_min13 = 1e9, c1_old_min = 1e9;   /* (c1_old: the same check against the 1.15 limit: what the change is for) */
 static uint32_t c1_old_n6;
 static uint32_t c1_n6[NL], c1_bad, c1_blk_min;
@@ -132,7 +137,7 @@ static void core1_slack(void)
     b.fx += 57u;                                        /* (KEY SENSE: device builds) */
     if (!b.p[1].on)
         return;
-    for (L = 80u; L < 80u + NL; L++) {
+    for (L = LMIN; L < LMIN + NL; L++) {
         uint32_t gu = BD_U(b.idle + b.fx);
         uint32_t f1 = BD_UDL(b.p[0].ins + b.p[0].sat + b.p[0].eq + b.p[0].misc + b.p[0].base), v1 = BD_UDL(b.p[0].eng + b.p[0].filt + b.p[0].ext);
         uint32_t f2 = BD_UDL(b.p[1].ins + b.p[1].sat + b.p[1].eq + b.p[1].misc + b.p[1].base), v2 = BD_UDL(b.p[1].eng + b.p[1].filt + b.p[1].ext), g = BD_UDL(b.idle + b.fx);
@@ -151,9 +156,9 @@ static void core1_slack(void)
         for (k = 0; k < TCR_BLOCKS; k++) {
             int32_t old, lim = lim_of(f1, v1, f2, v2, g, k, n[0], n[1], 1u, &old);
             double sl = (lim * 10000.0 / TCR_BLOCK_TICKS - (2700.0 + k * per + job)) / 100.0;   /* points of a block before the allowance */
-            if (sl - 6.0 < c1_min[L - 80u])
-                c1_min[L - 80u] = sl - 6.0;
-            c1_n6[L - 80u] += sl < 6.0;
+            if (sl - PKA < c1_min[L - LMIN])
+                c1_min[L - LMIN] = sl - PKA;
+            c1_n6[L - LMIN] += sl < PKA;
             if (L != BUDGET_LIMIT)
                 continue;
             {
@@ -162,12 +167,12 @@ static void core1_slack(void)
                     c1_old_min = so - 6.0;
                 c1_old_n6 += so < 6.0;
             }
-            if (sl - 6.0 < c1_blk[k])
-                c1_blk[k] = sl - 6.0;
+            if (sl - PKA < c1_blk[k])
+                c1_blk[k] = sl - PKA;
             if (sl - 13.0 < c1_min13)
                 c1_min13 = sl - 13.0;
-            c1_bad += sl < 6.0;
-            if (sl - 6.0 <= c1_min[L - 80u])
+            c1_bad += sl < PKA;
+            if (sl - PKA <= c1_min[L - LMIN])
                 snprintf(c1_where, sizeof c1_where, "mode %d, %s %u + %s %u notes, block %u", duell_mode_req, ENGINES[eng_idx(trk[0].eng_req)]->name, n[0],
                          ENGINES[eng_idx(trk[1].eng_req)]->name, n[1], k);
         }
@@ -312,15 +317,15 @@ static void tide_scene(void)
             }
             tide_bad += (int32_t)(wl2 - wl0) > 0 || (int32_t)(d2 - d0) > 0;     /* the dearer scene never gets a later deadline or wait limit */
             {   /* the CORE 1 check of these caps (core1_slack at BUDGET_LIMIT, WASH MID in the items) */
-                double keep = c1_min[BUDGET_LIMIT - 80u];
+                double keep = c1_min[BUDGET_LIMIT - LMIN];
                 uint32_t bad0 = c1_bad;
-                c1_min[BUDGET_LIMIT - 80u] = 1e9;
+                c1_min[BUDGET_LIMIT - LMIN] = 1e9;
                 core1_slack();
-                if (c1_min[BUDGET_LIMIT - 80u] < tide_slack)
-                    tide_slack = c1_min[BUDGET_LIMIT - 80u];
+                if (c1_min[BUDGET_LIMIT - LMIN] < tide_slack)
+                    tide_slack = c1_min[BUDGET_LIMIT - LMIN];
                 tide_bad += c1_bad != bad0;
-                if (keep < c1_min[BUDGET_LIMIT - 80u])
-                    c1_min[BUDGET_LIMIT - 80u] = keep;
+                if (keep < c1_min[BUDGET_LIMIT - LMIN])
+                    c1_min[BUDGET_LIMIT - LMIN] = keep;
             }
             morph_wlvl = 0;
             tc.up = 0, tcr.cost_ok = 0;
@@ -406,17 +411,17 @@ int main(void)
     printf("deadline: %s WL-LATER: never earlier than the 1.15 limit, never after the half's end (%llu wrong)\n", bad_wllater ? "FAIL" : "ok  ", (unsigned long long)bad_wllater);
     printf("deadline: %s WL-SAFE: a moved limit + the exact true rest (1.00 items) <= t0 + H - TCR_SLACK (%llu wrong)\n", bad_wlsafe ? "FAIL" : "ok  ", (unsigned long long)bad_wlsafe);
     printf("deadline: %s the new-limit hash equals DL_REF3\n", h3 == DL_REF3 ? "ok  " : "FAIL");
-    printf("deadline:   CORE 1 by BUDGET_LIMIT (caps worked out at each limit, least slack after 6 points / setup x blocks under 6):");
+    printf("deadline:   CORE 1 by BUDGET_LIMIT (caps worked out at each limit, least slack after BUDGET_PEAK points / setup x blocks under BUDGET_PEAK):");
     for (i = 0; i < NL; i++)
-        printf(" %u: %.1f/%u", 80u + i, c1_min[i], c1_n6[i]);
+        printf(" %u: %.1f/%u", LMIN + i, c1_min[i], c1_n6[i]);
     printf("\n");
-    printf("deadline: %s CORE 1 at the caps of BUDGET_LIMIT %u / margin %u %%: every block's job (posted 0.27 block + k periods) + 6 points ends before the wait limit (least slack after 6 points %.1f: %s; "
-           "by block 0..3: %.1f %.1f %.1f %.1f; after 13 points %.1f; %u under 6)\n",
-           c1_bad ? "FAIL" : "ok  ", BUDGET_LIMIT, BUDGET_MARGIN, c1_min[BUDGET_LIMIT - 80u], c1_where, c1_blk[0], c1_blk[1], c1_blk[2], c1_blk[3], c1_min13, c1_bad);
+    printf("deadline: %s CORE 1 at the caps of BUDGET_LIMIT %u / margin %u %%: every block's job (posted 0.27 block + k periods) + BUDGET_PEAK points ends before the wait limit (least slack after BUDGET_PEAK points %.1f: %s; "
+           "by block 0..3: %.1f %.1f %.1f %.1f; after 13 points %.1f; %u under BUDGET_PEAK)\n",
+           c1_bad ? "FAIL" : "ok  ", BUDGET_LIMIT, BUDGET_MARGIN, c1_min[BUDGET_LIMIT - LMIN], c1_where, c1_blk[0], c1_blk[1], c1_blk[2], c1_blk[3], c1_min13, c1_bad);
     printf("deadline:   (the same caps against the 1.15 wait limit of before item 142: least slack after 6 points %.1f, %u setup x blocks under 6)\n", c1_old_min, c1_old_n6);
     printf("deadline: %s TIDE (A01, an estimate until the unit measures it): %u scenes (an FM6 factory sound on part 1, BEHIVE with a band-pass filter MODE on part 2, LAYER and DUEL) with FM6 (bridge), a live MORPH on both parts (valley, dip) and WASH MID: the TIDE items are in the figures, the dearer scene never gets a later deadline, and core 1's job at the two-core caps ends before the wait limit (least slack after 6 points %.1f)\n",
            tide_bad ? "FAIL" : "ok  ", tide_scenes, tide_slack);
-    printf("deadline: %s CORE 0: BUDGET_LIMIT %u + 6 points of peak <= 90 %%\n", BUDGET_LIMIT + 6u <= 90u ? "ok  " : "FAIL", BUDGET_LIMIT);
+    printf("deadline: %s CORE 0: BUDGET_LIMIT %u + BUDGET_PEAK %u points of peak = 90 %%\n", BUDGET_LIMIT + BUDGET_PEAK == 90u ? "ok  " : "FAIL", BUDGET_LIMIT, BUDGET_PEAK);
     return tide_bad || h != DL_REF || bad_same || bad_later || bad_inside || bad_true || bad_kept || h2 != DL_REF2 || c1_bad || bad_wltrue || bad_wllater || bad_wlsafe || h3 != DL_REF3 ||
-           BUDGET_LIMIT + 6u > 90u || BUDGET_LIMIT < 80u || BUDGET_LIMIT >= 80u + NL;
+           BUDGET_LIMIT + BUDGET_PEAK != 90u || BUDGET_LIMIT < LMIN || BUDGET_LIMIT >= LMIN + NL;
 }

@@ -7,7 +7,14 @@
 #ifndef DUELL_BUDGET_H
 #define DUELL_BUDGET_H
 
-#define BUDGET_LIMIT 84u        /* the share of the time budget the worst case may use (percent), the margin below applied to every cost (DUELL 1.1 item 132, owner: 80 -> 90; item 133: 88 with the
+#define BUDGET_PEAK 18u         /* CPU fix (wave 14, 2026-11-05; owner: "gotta conserve the cpu"): the points of a half's time the real per-second PEAK runs above the model's worst case, so that the peak stays under
+                                 * about 90 % (BUDGET_LIMIT + BUDGET_PEAK = 90; it was 6). Calibration, the unit's own numbers (work/measure/cpu-multis/sweep_k0.jsonl and sweep_k1.jsonl: the 16 factory multis of
+                                 * bb730b0, PLAY alone and a held Cm7, the console's `cpu` = the longest half of each second, 12 s each) against this model at the same voices (the busier core): the per-second peak
+                                 * max = 30 + 0.74 x the model's peak, rms 9 points over 23 runs (the model's voices cost 0.74, the rest of the audio interrupt 30 more); the one outlier is FM6 BIG STAB (DUB CHORD, +24:
+                                 * a chord hit costs its voices a second time, the note-on and the attack). At the old limit (84) the multis whose voices filled caps of 76 .. 80 ran peaks of 85 .. 109 % with 1 .. 8
+                                 * missed halves and 2 .. 33 voices shed in 15 s (DUB CHORD, WHISPER TIDE, FINAL REEL, EERIE SIGNAL, DEAD BUFFER). At 72 the fitted peak of every factory multi is 83 or less. A part has
+                                 * 1 or 2 notes fewer than at 84 (tests/budget_test.c prints them) */
+#define BUDGET_LIMIT 72u        /* (was 84, with an allowance of 6; 81 and 88 before) the share of the time budget the worst case may use (percent), the margin below applied to every cost (DUELL 1.1 item 132, owner: 80 -> 90; item 133: 88 with the
                                  * margin 1.15). DUELL 1.1 item 137 (owner: the model charges the true measured cost, margin 1.00; cap = the most notes whose true model load + 6 points of measured
                                  * steady peak over the average (HANDOFF_V2 item 130) fits, for core 0 and core 1): core 0 / one core: 90 - 6 = 84; core 1: block 0's job (posted ~0.27 block into
                                  * the half, the part's true cost) + 6 points must end before the runner's wait limit, which keeps its 1.15 table (BUDGET_DL_MARGIN): over the 19,472 setups of

@@ -190,7 +190,7 @@ Core 0 (the main thread): `mix_events`, PERFORM's begin, the snapshot, part 1's 
 
 ### 8.1 The model
 
-One table (top of `budget.c`), in the units of `tests/bench_baseline.txt` (host instructions a sample), turned into 1/100 of a percent of the time budget by `BD_U` with `BUDGET_MARGIN` 115 %. `BUDGET_LIMIT` is 80 (percent), `NOTES_MAX` 10, the voice pool `NVOICE` 8 (so 8 is the most a part gets until the pool grows). All three are named constants.
+One table (top of `budget.c`), in the units of `tests/bench_baseline.txt` (host instructions a sample), turned into 1/100 of a percent of the time budget by `BD_U` with `BUDGET_MARGIN` 115 %. `BUDGET_LIMIT` is 72 (percent; it was 80, later 81 and 84: the CPU fix of wave 14 measured the real per-second peak on the unit at about 30 + 0.74 x the model, so the allowance over the model is `BUDGET_PEAK` 18 points and the two make 90), `NOTES_MAX` 10, the voice pool `NVOICE` 8 (so 8 is the most a part gets until the pool grows). All three are named constants.
 
 | item | % of the time budget, margin applied | source |
 |---|---|---|

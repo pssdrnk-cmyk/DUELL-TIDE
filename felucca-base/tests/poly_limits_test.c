@@ -111,7 +111,7 @@ int main(void)
                 c = BD_U(b.p[0].eng + b.p[0].filt + b.p[0].ext), f = BD_U(b.p[0].ins + b.p[0].sat + b.p[0].eq + b.p[0].misc + b.p[0].base), g = BD_U(b.idle + b.fx);
                 for (n = b.p[0].cap; n > 1u && g + f + n * c > BUDGET_LIMIT * 100u; n--)
                     ;
-                okho &= BUDGET_LIMIT == 84u && BUDGET_MARGIN == 100u && two[0] == n;
+                okho &= BUDGET_LIMIT + BUDGET_PEAK == 90u && BUDGET_MARGIN == 100u && two[0] == n;
             }
 #endif
             if (two[0])
@@ -173,7 +173,7 @@ int main(void)
 #ifndef OLD
     chk("(D18) FM6's own cap is 8: with the budget open (state B, MULTI off) two cores give it 8 notes, 2 more than the cap of 6 it had", ENG_FM6.poly == 8u && fm6_two == 8u);
 #endif
-    chk("(item 132/137/142) the two-core number = the most notes within BUDGET_LIMIT 84 % at margin 1.00 with no hand-over charged (every cell of both tables)", okho);
+    chk("(item 132/137/142) the two-core number = the most notes within BUDGET_LIMIT (72 %, wave 14; 84 before) at margin 1.00 with no hand-over charged (every cell of both tables)", okho);
 #endif
     /* (a) erased unit, WAVE both, POLY, LAYER */
     boot();

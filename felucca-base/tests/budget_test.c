@@ -1046,8 +1046,8 @@ static void t_loaded(void)
         no = two_of(&bo);
         printf("budget:     #01 BEHIVE, TWIN OFF + 12 dB after the load: voice %u + %u + %u (morph off + 16: %u + %u + %u), two cores %u a part (morph off + 16: %u; item 140: was 4)\n",
                b.p[0].eng, b.p[0].filt, b.p[0].ext, bo.p[0].eng, bo.p[0].filt, bo.p[0].ext, n, no);
-        bchk("item 142 (b): #01 BEHIVE with TWIN OFF and 12 dB after the load is charged as the same state with the morph off plus BD_MORPH (two cores 6 at limit 84, was 4 at 81 before the fix)",
-             ok && b.p[0].eng == bo.p[0].eng && b.p[0].filt == bo.p[0].filt && b.p[0].ext == bo.p[0].ext && b.p[0].misc == bo.p[0].misc && n == no && n == 6u);
+        bchk("item 142 (b): #01 BEHIVE with TWIN OFF and 12 dB after the load is charged as the same state with the morph off plus BD_MORPH (two cores 5 at limit 72, was 6 at 84 and 4 at 81 before the fix)",
+             ok && b.p[0].eng == bo.p[0].eng && b.p[0].filt == bo.p[0].filt && b.p[0].ext == bo.p[0].ext && b.p[0].misc == bo.p[0].misc && n == no && n == 5u);
     }
     /* (c) a choice set by hand at End B (EDITABLE B, pinned) is End B's whatever the live value: TWIN LP pinned at B, live TWIN OFF -> TWIN charged; not pinned -> not */
     {

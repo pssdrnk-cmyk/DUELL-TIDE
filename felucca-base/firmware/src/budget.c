@@ -35,7 +35,9 @@
  * after a load (TWIN OFF, 24 -> 12 dB) is no longer charged at both ends; every factory patch and multi as loaded gives the same items as before (tests/budget_test.c). BUDGET_LIMIT
  * 81 -> 84 with the runner's wait limit at true cost (twocore_run.c tcr_deadline, budget.h).
  * DUELL 1.1 item 147 (owner): SAT is charged like the filters and the TWIN, from its played value at the morph's ends (live on, or on at either end as it sounds), not from the live value only;
- * the cap may differ for a patch whose SAT is on at End B only (tests/budget_test.c item 147 (f)). */
+ * the cap may differ for a patch whose SAT is on at End B only (tests/budget_test.c item 147 (f)).
+ * CPU fix (wave 14, 2026-11-05; owner: "gotta conserve the cpu"): BUDGET_LIMIT 84 -> 72, BUDGET_PEAK (the allowance for the real per-second peak over the model) 6 -> 18, from the unit's own per-second
+ * peaks of the 16 factory multis against this model (budget.h). The table and the margin are unchanged; the caps are 1 or 2 notes lower on most multis, and the runner's deadline reads neither. */
 
 #include "budget.h"
 
@@ -114,6 +116,7 @@ typedef struct {                /* one part's items, host instructions a sample 
 typedef struct { uint32_t idle, fx; bd_part_t p[2]; } bd_t;   /* the global items too */
 #define BD_N 2u                  /* the parts the budget covers (the two shown ones; a test rig may have more live tracks) */
 _Static_assert(NLIVE >= BD_N, "budget.c: two parts");
+_Static_assert(BUDGET_LIMIT + BUDGET_PEAK == 90u, "budget.c: the limit and the peak allowance make 90 %");
 #include "budget_feat.h"        /* the new features' items: TWIN FILTER, SUB, CYCLE (cloud job B's stub; jobs E, F fill budget_feat.c) */
 
 static uint32_t bd_slope(const engine_t *e, const int16_t *p)  /* filter 1, the multimode filter, on every engine since cloud job J: 0 bypassed or none, 1 12 dB, 2 24 dB */
