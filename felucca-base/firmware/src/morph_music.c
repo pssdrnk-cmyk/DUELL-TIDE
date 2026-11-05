@@ -106,7 +106,7 @@ static void mm_apply(const int8_t *o, int8_t *end, const engine_t *e, const int3
     uint32_t i;
     if (e->ufilt) {                                      /* BRIGHT */
         mm_dial(end, e, o, P_FREEA, d[MDL_BRIGHT], 6, b[MB_CUT][0], b[MB_CUT][1], MM_MIN);
-        mm_dial(end, e, o, P_FREEB, -d[MDL_BRIGHT], 2, b[MB_RES][0], b[MB_RES][1], 12);
+        mm_dial(end, e, o, P_FREEB, -d[MDL_BRIGHT], 2, b[MB_RES][0], b[MB_RES][1], 4);   /* (audit P07: the least span 4, the damping change 12 steps made at the bands' low ends, RES 0 .. 11, under the linear law) */
         mm_dial(end, e, o, P_E2FLT, d[MDL_BRIGHT], 3, b[MB_E2F][0], b[MB_E2F][1], 12);
     }
     if (mm_filter_on(e, o)) {                            /* MOVE */
