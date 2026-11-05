@@ -1559,14 +1559,14 @@ static __attribute__((noinline)) void width_stage(uint32_t n)
  * the DC blocker, the limiter and the soft clip. It works on the mix as it is before MASTER, and its dB are those of the OUTPUT at the default MASTER (gain 0.5: 0 dB = a pre-MASTER amplitude of 65536); turning MASTER is a volume after it and never changes what is compressed; the wet bus's mono return is folded
  * into the mix when the stage runs.
  *   detector   every 8th sample (a hop, 0.18 ms): the peak of the hop's L and R (max(|L|, |R|): the link, both channels get one gain), held: the peak of the last 8 blocks of 64 samples and the one running
- *              (the hold, 11.6 .. 13 ms: a bass does not ripple the gain). pk (Q12 of the amplitude) moves toward the hold with the ATTACK's coefficient up and the RELEASE's down: pk += d x m >> sh, a product of the
+ *              (the hold, 11.6 .. 13 ms: a bass does not ripple the gain). pk (Q12 of the level in Q8 octaves, i.e. in dB: since the release is in the log domain, audit R12) moves toward the hold's level with the ATTACK's coefficient up and the RELEASE's down: pk += d x m >> sh, a product of the
  *              step and a coefficient of 8 bits shifted down (m / 2^sh, nearest to the printed time: core.h CMP_ATK_US / CMP_REL_MS; tools/comp_tables.py), a state with 12 fractional bits, so it does not
- *              stall short of its target (a Q16 coefficient on a small state does: about 2 dB). RELEASE is the time to cover 63 % of a fall, the hold included (so the 20 ms setting is a 12 ms hold and a pole of 8).
- *   gain       at each hop: the level in Q8 octaves of amplitude (256 = 6.02 dB; a leading-zero count and a 128-entry table); over = level - threshold;
+ *              stall short of its target (a Q16 coefficient on a small state does: about 2 dB). RELEASE is the time to cover 63 % of a fall, the hold included (so the 20 ms setting is a 12 ms hold and a pole of 8), and ATTACK 63 % of a rise: both of the dB step, as printed (smoothed in amplitude, the printed 200 ms took 370 ms to cover 63 % of a 20 dB recovery).
+ *   gain       at each hop: the level in Q8 octaves of amplitude (256 = 6.02 dB; the detector's own state pk >> 12; cmp_lg, a leading-zero count and a 128-entry table, makes it from the hold); over = level - threshold;
  *              gain reduction gr = slope x over above the knee, slope x (over + knee / 2)^2 / (2 knee) inside it (the knee fixed at 6.02 dB), slope = 1 - 1 / ratio; the gain 2^((makeup - gr) / 256)
  *              (a table, a half step of interpolation), a straight line over the hop's 8 samples. An upward branch for an OTT mode would go in cmp_gr (a second, lower threshold): not built.
- *   makeup     fixed, from the threshold and the ratio: the gain reduction the same curve gives a level of -8 dB (CMP_REF), at most +12 dB. A level of -8 dB leaves the stage as loud as it came in,
- *              quieter signals are raised by the makeup, louder ones are brought down by what the curve takes less the makeup.
+ *   makeup     fixed, from the threshold and the ratio: half the gain reduction the same curve gives a level of -8 dB (CMP_REF, owner D25: the whole of it lifted every tail and noise under the threshold by up to +12 dB), at most +6 dB.
+ *              A level of -8 dB comes out a little quieter than it came in, quieter signals are raised by the makeup, louder ones are brought down by what the curve takes less the makeup.
  *   knobs      threshold and slope glide to a new setting (8 and 1024 a hop: a 40 dB threshold sweep in 38 ms; the makeup is made from the gliding pair, so it is always one setting's curve); the effect's share `a`
  *              (Q15) fades in or out over 15 ms (CMP_A_STEP a hop): RATIO 1:1 is no code at all (cmp_cfg's ratio 0 with the share at 0 is mix_block's whole gate: the mix is bit for bit what it was)
  *              and 1:1 <-> a ratio is no click.
@@ -1575,7 +1575,7 @@ static __attribute__((noinline)) void width_stage(uint32_t n)
 #define CMP_KNEE 256                                    /* the knee, Q8 octaves (6.02 dB) */
 #define CMP_AMAX 262144                                 /* the detector's ceiling (8 x full scale: pk <= 2^30) */
 #define CMP_REF 3756                                    /* -8 dB in Q8 octaves (4096 - 8 x 42.52): the level the makeup keeps at unity */
-#define CMP_MKMAX 510                                   /* the makeup's ceiling: +12 dB */
+#define CMP_MKMAX 510                                   /* the curve's reduction at CMP_REF is held to this (+12 dB) before it is halved: the makeup's ceiling is +6 dB */
 #define CMP_A_STEP 384                                  /* the share's step a hop: 85 hops, 15.5 ms */
 static const uint32_t CMP_SLOPE[CMP_RATIOS] = {0, 21845, 32768, 43691, 49152, 54613, 57344, 60075, 65536};   /* 1 - 1 / ratio, Q16 */
 static const uint8_t CMP_LG[128] = {   /* 256 log2(1 + (i + 1/2) / 128): the fraction of an octave of an amplitude, i = the top 7 bits after the leading 1 */
@@ -1629,7 +1629,7 @@ static uint32_t cmp_rel_coef(uint32_t i)
 }
 static volatile uint32_t cmp_cfg;                       /* the setting (ui_input copies it every frame): threshold index 0..40 | ratio << 8 | attack << 16 | release << 24 */
 static struct {
-    int32_t pk;                                         /* the smoothed level, Q12 of the amplitude */
+    int32_t pk;                                         /* the smoothed level: Q8 octaves of amplitude (6.02 dB = 256) with 12 more fraction bits */
     int32_t sm, hr, ring[8];                            /* the peak of this block of 64 samples so far, of the last 8 whole ones, and each of those */
     int32_t g, st;                                      /* the gain now and its step a sample, Q16 */
     int32_t a;                                          /* the effect's share, Q15 (0: at rest, the stage is not run) */
@@ -1663,11 +1663,11 @@ static inline int32_t cmp_gr(int32_t over, int32_t slope)
     over += CMP_KNEE / 2;
     return (((over * over) >> 9) * slope) >> 16;
 }
-/* the makeup of a threshold and a slope: the reduction at CMP_REF, at most CMP_MKMAX */
+/* the makeup of a threshold and a slope: half the reduction at CMP_REF (D25), that held to CMP_MKMAX first */
 static inline int32_t cmp_mk(int32_t thr, int32_t slope)
 {
     int32_t m = cmp_gr(CMP_REF - thr, slope);
-    return m > CMP_MKMAX ? CMP_MKMAX : m;
+    return (m > CMP_MKMAX ? CMP_MKMAX : m) >> 1;
 }
 /* the threshold index 0..40 = -40 .. 0 dB in Q8 octaves (10886 / 256 = 42.52 per dB; 4096 = 0 dB: a pre-MASTER amplitude of 65536, the output's full scale at the default MASTER) */
 static inline int32_t cmp_thr_q8(uint32_t ti) { return 4096 - (int32_t)((40u - (ti > 40u ? 40u : ti)) * 10886u >> 8); }
@@ -1706,14 +1706,14 @@ static __attribute__((noinline)) void comp_stage(uint32_t n, int32_t poff)
         }
         m = m > CMP_AMAX ? CMP_AMAX : m;
         cmp.thr = tthr, cmp.slope = tslope, cmp.mk = cmp_mk(tthr, tslope);
-        pk = m << 12, sm = 0, hr = m, g = 65536;
+        pk = cmp_lg((uint32_t)m + 1u) << 12, sm = 0, hr = m, g = 65536;
         for (j = 0; j < 8u; j++)
             cmp.ring[j] = m;
     }
     thr = cmp.thr, slope = cmp.slope, mk = cmp.mk, hc = cmp.hc;
     am = cmp.am, as = cmp.as, rm = cmp.rm, rs = cmp.rs;
     for (hop = 0; hop < n; hop += 8u) {
-        int32_t gt = cmp_exp2(cmp_gr(cmp_lg((uint32_t)(pk >> 12) + 1u) + poff - thr, slope) - mk), hm = 0, d;   /* the gain computer */
+        int32_t gt = cmp_exp2(cmp_gr((pk >> 12) + poff - thr, slope) - mk), hm = 0, d;   /* the gain computer */
         a += clamp(at - a, -CMP_A_STEP, CMP_A_STEP);
         if (a != 32768)
             gt = 65536 + ((((gt - 65536) >> 3) * a) >> 12);
@@ -1744,7 +1744,7 @@ static __attribute__((noinline)) void comp_stage(uint32_t n, int32_t poff)
             for (j = 1; j < 8u; j++)
                 hr = cmp.ring[j] > hr ? cmp.ring[j] : hr;
         }
-        d = ((sm > hr ? sm : hr) << 12) - pk;
+        d = (cmp_lg((uint32_t)(sm > hr ? sm : hr) + 1u) << 12) - pk;   /* (the hold's level in Q8 octaves, Q12 again: the one-pole runs in dB) */
         if (d > 0)
             pk += (int32_t)(((int64_t)d * am) >> as);
         else

@@ -1763,8 +1763,7 @@ static void comp_meter(void)
     if (duell_mode == DM_SPLIT || !song.cp[1])
         return;
     if (cmp.a > 0) {                                 /* (the stage runs: what its gain computer takes now, the detector's level as comp_stage reads it, PERFORM idle) */
-        int32_t pk = cmp.pk;
-        gr = cmp_gr(cmp_lg((uint32_t)(pk >> 12) + 1u) - cmp.thr, cmp.slope) * (cmp.a >> 7) >> 8;
+        gr = cmp_gr((cmp.pk >> 12) - cmp.thr, cmp.slope) * (cmp.a >> 7) >> 8;
     }
     px = clamp(gr * 64 / 511, 0, 64);                /* 0 .. 12 dB (511 Q8 octaves) over 64 px */
     sig = (uint32_t)px * 31u + ux.gen * 4099u + (uint32_t)T_BG * 131u + 1u;

@@ -5,7 +5,7 @@
  * 1. RATIO 1:1 is bit for bit what it was: a busy two-part render (mode_scn.h, the process's first render) hashes to MODE_STEREO_HASH, the hash the sources before COMP gave; the other
  *    settings changed at 1:1 change nothing; a render that had a ratio on and then 1:1 is, after the 15 ms fade, sample for sample the render that never had it. Zero cost: the stage is not called.
  * 2. the static curve: steady 1 kHz tones at many levels, 8 ratios x 5 thresholds, against the ideal curve (6 dB soft knee, the automatic makeup) within 0.1 dB; the makeup rule (unity at
- *    -11 dB, at most +12 dB); a sweep of frequencies.
+ *    -8 dB passes 3.4 dB down at 4:1 / thr -17, the makeup is half the curve's reduction, at most +6 dB, D25); a sweep of frequencies.
  * 3. the times: ATTACK (19 settings, 0.1 ms .. 100 ms) and RELEASE (13, 20 ms .. 2 s) measured on the detector's step response (a DC step; the release also on a tone) against the printed times, within 15 %.
  * 4. the stereo link (an L-only loud tone lowers R by the same gain), silence (exact zeros, the detector falls to nothing, the gain returns to the makeup), no overshoot (loud bursts through the stage and the
  *    master stays inside the limiter; at a level of -11 dB and above the stage never makes a steady tone louder), a clamp for off-scale input.
@@ -135,7 +135,7 @@ static const double RATIO_X[9] = {1.0, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 1e9};
 static double ideal_makeup(double thr_db, double slope)
 {
     double m = ideal_gr(REF_DB - thr_db, slope);
-    return m > 12.0 ? 12.0 : m;                         /* (the cap is 510/256 octaves = 11.995 dB) */
+    return (m > 12.0 ? 12.0 : m) / 2.0;                 /* (the curve's reduction is held to 510/256 octaves = 11.995 dB, then halved: owner D25) */
 }
 static double ideal_gain_db(double in_db, double thr_db, uint32_t rat)
 {
@@ -208,16 +208,16 @@ static void test_curve(void)
     ncheck++;
     printf("comp: %-124s %s\n", "the gain of 480 steady tones (8 ratios x 5 thresholds x 12 levels, -45 .. -0.2 dB) is within 0.1 dB of the ideal curve (soft knee, makeup)", worst <= 0 ? "ok" : "FAIL");
     printf("comp:   (%u runs)\n", nruns);
-    {   /* the makeup rule: unity at -8 dB for thresholds under it (4:1, thr -17: +6.75 dB below the knee), capped at +12 dB */
+    {   /* the makeup rule (D25): half the curve's reduction at -8 dB, so -8 dB passes 3.4 dB down (4:1, thr -17: the reduction is 6.75 dB, the makeup +3.375 dB below the knee), capped at +6 dB */
         tone_t t = tone_run(CFG(23, 4, 10, 6), 1000.0, FSC * pow(10.0, -8.0 / 20.0), 0, SEC / 2u, SEC / 10u);
         double g8 = t.gl;
-        int ok = fabs(t.gl) < 0.1;
+        int ok = fabs(t.gl - ideal_gain_db(-8.0, -17.0, 4u)) < 0.1 && t.gl < -3.2 && t.gl > -3.6;
         t = tone_run(CFG(23, 4, 10, 6), 1000.0, FSC * pow(10.0, -50.0 / 20.0), 0, SEC / 2u, SEC / 10u);
-        ok &= fabs(t.gl - ideal_makeup(-17.0, 0.75)) < 0.1 && t.gl > 6.5 && t.gl < 7.0;
+        ok &= fabs(t.gl - ideal_makeup(-17.0, 0.75)) < 0.1 && t.gl > 3.2 && t.gl < 3.6;
         t = tone_run(CFG(0, 8, 10, 6), 1000.0, FSC * pow(10.0, -50.0 / 20.0), 0, SEC / 2u, SEC / 10u);
-        ok &= fabs(t.gl - 11.995) < 0.1;
-        printf("comp:   (4:1 thr -17: -8 dB passes at %.2f dB, -50 dB is raised by %.2f dB; INF thr -40: the makeup caps at %.2f dB)\n", g8, ideal_makeup(-17.0, 0.75), t.gl);
-        expect("the makeup rule: the curve's own gain reduction at -8 dB (unity there), quiet signals raised by it, at most +12 dB", ok);
+        ok &= fabs(t.gl - 5.9975) < 0.1;
+        printf("comp:   (4:1 thr -17: -8 dB passes at %.2f dB, -50 dB is raised by %.2f dB; INF thr -40: the makeup caps at %.2f dB, half of 12)\n", g8, ideal_makeup(-17.0, 0.75), t.gl);
+        expect("the makeup rule: half the curve's own gain reduction at -8 dB (-8 dB passes 3.4 dB down at 4:1 thr -17), quiet signals raised by it, at most +6 dB", ok);
     }
     {   /* a loud steady tone is never made louder than it came in (the makeup is the reduction at -11 dB, the curve takes more above it) */
         int ok = 1;
@@ -263,7 +263,7 @@ static void test_curve(void)
 }
 
 /* ------------------------------------------------------------------ the times --- */
-/* the detector's response (cmp.pk, Q12) to a DC step, sampled every hop of 8: n = 8 calls. Returns the time (samples) of the 63 % point from the step. */
+/* the detector's response (cmp.pk: the level in Q8 octaves with 12 fraction bits; the one-pole runs in dB, audit R12) to a DC step, sampled every hop of 8: n = 8 calls. Returns the time (samples) of the 63 % point from the step. */
 static double dc_block_run(int32_t v, uint32_t nblk)
 {
     uint32_t b, k;
@@ -276,7 +276,7 @@ static double dc_block_run(int32_t v, uint32_t nblk)
 }
 static double attack_tau(uint32_t ai)
 {
-    double p0, p, tgt = 30000.0;
+    double p0, p, tgt = (double)cmp_lg(30001u);
     uint32_t b, k;
     stage_rest(CFG(0, 2, ai, 6));
     p0 = dc_block_run(3000, 700u);
@@ -292,7 +292,7 @@ static double attack_tau(uint32_t ai)
 }
 static double release_t63(uint32_t ri, uint32_t phase, int tone)
 {
-    double p0, p, prev, tgt = 3000.0, thr;
+    double p0, p, prev, tgt = (double)cmp_lg(3001u), thr;
     uint32_t b, k, t = 0;
     stage_rest(CFG(0, 2, 0, ri));
     for (b = 0; b < 4000u + (ri > 8u ? 12000u : 0u); b++) {   /* settle at 30000 */
@@ -316,6 +316,39 @@ static double release_t63(uint32_t ri, uint32_t phase, int tone)
             return 8.0 * (b - 1) + 8.0 * (prev - thr) / (prev - p);
         prev = p;
     }
+    return -1;
+}
+/* the release as heard (audit R12): a 1 kHz tone steps from -4 dB to -24 dB (4:1, THRESH -40: both well above the knee, the gain reduction is linear in dB); the gain (output peak / input peak over 7
+ * blocks) goes up by 11.25 dB; the time to cover 63 % of that is the printed RELEASE. Smoothed in amplitude it took 370 ms for the printed 200 ms */
+static double gain_release_t63(uint32_t ri)
+{
+    enum { WB = 7, NW = 4000 };
+    static double gw[NW];
+    uint32_t i, k, w = 0, t = 0, step_w = 0;
+    double g0, gf, th;
+    stage_rest(CFG(0, 4, 80, ri));
+    for (w = 0; w < NW; w++) {
+        double ip = 1, op = 0;
+        for (i = 0; i < WB; i++) {
+            int loud = w < 1000u + (ri > 50u ? 2000u : 0u);
+            for (k = 0; k < CTL; k++, t++)
+                mix_l[k] = mix_r[k] = (int32_t)lrint((loud ? 41000.0 : 4100.0) * sin(6.283185307179586 * 1000.0 * (double)t / FS));
+            for (k = 0; k < CTL; k++)
+                ip = fabs((double)mix_l[k]) > ip ? fabs((double)mix_l[k]) : ip;
+            stage_block(CTL);
+            for (k = 0; k < CTL; k++)
+                op = fabs((double)mix_l[k]) > op ? fabs((double)mix_l[k]) : op;
+        }
+        gw[w] = db(op, ip);
+        if (!step_w && w == 1000u + (ri > 50u ? 2000u : 0u))
+            step_w = w;
+    }
+    g0 = gw[step_w - 1u];
+    gf = gw[NW - 1u];
+    th = g0 + 0.632 * (gf - g0);
+    for (w = step_w; w < NW; w++)
+        if (gw[w] >= th)
+            return (double)(w - step_w) * WB * CTL + (double)WB * CTL * (th - gw[w - 1u]) / (gw[w] - gw[w - 1u]);
     return -1;
 }
 static void test_times(void)
@@ -356,6 +389,17 @@ static void test_times(void)
     }
     printf("comp:   (RELEASE 70 ms .. 2 s on a 1 kHz tone: worst %+.1f %%)\n", worst_t * 100.0);
     expect("RELEASE on a 1 kHz tone, 70 ms .. 2 s: within 15 % too", nbad == 0);
+    {   /* the release as heard: the GAIN covers 63 % of a 20 dB recovery in the printed time (audit R12) */
+        static const uint32_t RI[3] = {20, 40, 60};
+        double worst_g = 0;
+        for (i = 0; i < 3u; i++) {
+            double t = gain_release_t63(RI[i]), want = CMP_REL_MS(RI[i]) * 1e-3 * FS, e = t / want - 1.0;
+            printf("comp:   RELEASE %5u ms as heard on the gain: %8.2f ms (%+5.1f %%)\n", CMP_REL_MS(RI[i]), t / FS * 1000.0, e * 100.0);
+            if (fabs(e) > fabs(worst_g))
+                worst_g = e;
+        }
+        expect("RELEASE as heard: the gain covers 63 % of a 20 dB recovery in the printed time (63 ms, 200 ms, 632 ms), within 15 % (amplitude smoothing took 370 ms for 200)", fabs(worst_g) < 0.15);
+    }
     {   /* 0.2.24: the defaults sound as before: the coefficients of ATTACK 10 ms and RELEASE 200 ms against the old table's {147, 13} and {253, 18} (m / 2^sh of a hop), within 1 % */
         double a_old = 147.0 / 8192.0, r_old = 253.0 / 262144.0, a_new = cmp_atk_coef(CMP_ATK_DEF) / 16777216.0, r_new = cmp_rel_coef(CMP_REL_DEF) / 16777216.0;
         printf("comp:   defaults: ATTACK k %.6f (was %.6f), RELEASE k %.7f (was %.7f)\n", a_new, a_old, r_new, r_old);
@@ -381,7 +425,7 @@ static void test_link(void)
     c = tone_run(CFG(23, 4, 10, 6), 1000.0, 0.0, 2000.0, SEC / 2u, SEC / 10u);      /* R alone: it is below the threshold (the makeup) */
     printf("comp:   L only 40000: L gain %.3f dB; L 40000 + R 2000: L %.3f, R %.3f dB; R 2000 alone: %.3f dB\n", a.gl, b.gl, b.gr, c.gr);
     expect("stereo link: an L-only loud tone and a quiet R: both channels get the same gain (within 0.02 dB), and it is the loud channel's", fabs(b.gl - b.gr) < 0.02 && fabs(a.gl - b.gl) < 0.02);
-    expect("  .. the same quiet R alone is raised by the makeup instead (the loud L is what reduces it)", c.gr > 6.0 && c.gr - b.gr > 6.0);
+    expect("  .. the same quiet R alone is raised by the makeup instead (the loud L is what reduces it)", c.gr > 3.0 && c.gr - b.gr > 3.0);   /* (half the makeup, D25: +3.4 dB) */
     {   /* an R-only loud signal lowers L alike */
         tone_t d = tone_run(CFG(23, 4, 10, 6), 1000.0, 2000.0, 40000.0, SEC / 2u, SEC / 10u);
         expect("  .. and an R-only loud tone lowers a quiet L equally", fabs(d.gl - d.gr) < 0.02 && d.gl < 0.0);
@@ -428,7 +472,7 @@ static void test_link(void)
     m = 0;
     {
         uint32_t r, cfgs[4];
-        cfgs[0] = CFG(0, 8, 18, 12);                    /* INF, thr -40, attack 100 ms: the worst for a burst (the makeup +12 dB at the first sound) */
+        cfgs[0] = CFG(0, 8, 18, 12);                    /* INF, thr -40, attack 100 ms: the worst for a burst (the makeup +6 dB at the first sound) */
         cfgs[1] = CFG(40, 2, 0, 0);
         cfgs[2] = CFG(23, 4, 9, 6);
         cfgs[3] = CFG(10, 6, 12, 8);
@@ -456,10 +500,10 @@ static void test_link(void)
                 }
             }
             printf("comp:   (setting %u: the stage's largest output sample %d for an input of 30000 + noise; through the master all within +-32767)\n", r, (int)big);
-            ok &= big <= 4 * 33000;                     /* (the makeup is at most +12 dB: x3.98) */
+            ok &= big <= 2 * 33000 + 2000;              /* (the makeup is at most +6 dB: x2) */
         }
     }
-    expect("loud bursts after quiet (slow attack, the largest makeup): the stage never gives more than 4 x the input, and the limiter and soft clip keep the master inside +-32767", ok);
+    expect("loud bursts after quiet (slow attack, the largest makeup): the stage never gives more than 2 x the input, and the limiter and soft clip keep the master inside +-32767", ok);
     {   /* an off-scale input (far beyond 8 x full scale): no overflow, a bounded output */
         int32_t mx = 0;
         stage_rest(CFG(10, 4, 0, 0));
