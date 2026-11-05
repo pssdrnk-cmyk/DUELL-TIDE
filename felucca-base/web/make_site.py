@@ -178,7 +178,7 @@ def main():
     for src in [ROOT / "docs" / "duell-tide-cover.jpg", *sorted((ROOT / "docs" / "tide").glob("*.png"))]:
         shutil.copy(src, img / src.name)
 
-    shutil.copytree(HERE / "editor", out / "editor", ignore=shutil.ignore_patterns(".DS_Store"))
+    shutil.copytree(HERE / "editor", out / "editor", ignore=shutil.ignore_patterns(".DS_Store", "*.wav"))   # (a test WAV of the librarian is not part of the site)
     shutil.copytree(HERE / "cheatsheet", out / "cheatsheet", ignore=shutil.ignore_patterns(".DS_Store"))
 
     # installer page, the packages and the manifest the page reads

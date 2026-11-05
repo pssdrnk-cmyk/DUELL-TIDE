@@ -4,7 +4,7 @@
 // editor/?mock=1 (try the page without a unit). It is NOT the firmware: the C tests (tests/backup_test.c) cover that.
 import { BACKUP_CMD, bkU32, bkR32, bkPack, bkUnpack, bkCrc } from "../fm1backup.js";
 import { PS as PATS, buildPatObject, nslotOf } from "./patslot.js";
-import { checkObject, DUELL_IDS, decodeMultis, OLD_PATCH_IDS, CAPS_PATCH_RECORDS, PATCH_ID, PATCH_PAGE, PATCH_PAGES, PATCH_MAX } from "./duellbackup.js";
+import { checkObject, DUELL_IDS, decodeMultis, OLD_PATCH_IDS, CAPS_PATCH_RECORDS, PATCH_ID, PATCH_PAGE, PATCH_PAGES, PATCH_MAX, FVB_ID, FVB_LEN, FVB_OBJ, FVB_N, FVB_REC, FVB_PK, FVB_HEAD, FM6B_CMD, packVoice } from "./duellbackup.js";
 import { WT, buildObject, parseObject, cleanName, ampToByte } from "./wavetable.js";
 import { CMD, v14, rv14, cstr, rstr } from "./proto.js";
 import { L, ID, X, NX, descOf, xdescOf, xDefaults, clampTo, P_E0 } from "./layout.js";
@@ -119,9 +119,23 @@ export function factoryBrowse() {
 }
 const BROWSE = factoryBrowse();
 
+// an FM6 voice bank object as the unit's GET 41 gives it: voices = Map index -> the 128 7-bit bytes of a record
+export function buildBankObject(name, voices) {
+  const b = new Uint8Array(FVB_OBJ).fill(0xff), dv = new DataView(b.buffer);
+  b.fill(0, 0, FVB_HEAD);
+  dv.setUint32(0, 0x56364D46, true); dv.setUint16(4, 1, true); dv.setUint16(6, FVB_N, true);
+  let used = 0; for (const k of voices.keys()) used |= 1 << k;
+  dv.setUint32(8, used >>> 0, true);
+  for (let i = 0; i < 12; i++) b[12 + i] = i < 10 ? name.padEnd(10, " ").charCodeAt(i) : 0;
+  for (const [k, pk] of voices) b.set(packVoice(pk), FVB_HEAD + k * FVB_REC);
+  dv.setUint32(FVB_LEN, bkCrc(b.subarray(0, FVB_LEN)), true);
+  return b;
+}
 const twRound = (x) => (x < 0 ? -Math.floor(-x + 0.5) : Math.floor(x + 0.5));   // C's (x * m + 2048) / 4096 for the sign-symmetric rounding
 export class MockUnit {
-  constructor({ caps = 63, playing = false, version = "FELUCCA DUELL 0.2.25 bet", seed = true, savedFlags = true, patchRaw = true, scope2 = true, pat32 = false, bypassCap = true, locksCap = true, morphView = false, storeMax = 128 } = {}) {
+  constructor({ caps = 63, playing = false, version = "FELUCCA DUELL 0.2.25 bet", seed = true, savedFlags = true, patchRaw = true, scope2 = true, pat32 = false, bypassCap = true, locksCap = true, morphView = false, storeMax = 128, tide = false, fvBank = false } = {}) {
+    this.fvBank = fvBank; this.bank = null; this.bankTx = null;   // INFO 44 01 bit 1: GET 41 and FM6B_BEGIN / WRITE / END (the FM6 voice bank, this.bank: the object as the unit stores it, or null)
+    this.tide = tide || fvBank;                    // INFO 44 01 bit 0: the unit is DUELL with TIDE
     this.storeMax = storeMax;            // the patch records the store takes (INFO 58 01): 126 on DUELL with TIDE; a new record past it is rc 6 (STORE FULL)
     this.morphView = morphView; this.shift = [new Map(), new Map()];   // item 159 (INFO 4F 01): the values read AS SHOWN at the MORPH fader; shift: a part's fader offset per id (shown = stored + offset)
     this.locksCap = locksCap; this.motion = []; this.bypassCap = bypassCap; this.pat32 = pat32; this.scope2 = scope2; this.savedFlags = savedFlags; this.patchRaw = patchRaw; this.prStage = null; this.version = version; this.caps = caps; this.playing = playing;
@@ -189,7 +203,7 @@ export class MockUnit {
   info() {
     const s = (t) => [...t].map((c) => c.charCodeAt(0)).concat(0);
     return [...s(this.version), MOCK_ENGINES.length, L.P_COUNT, L.G_COUNT, L.NSTEP, L.P_E0, ...MOCK_ENGINES.flatMap(s), 4, 0, 0x55, 1, 9, 0x4d, 1, 64, 1, 0x42, 1, this.caps,
-      0x46, 1, 8, 0, 0x53, 1, 3, 0x50, 1, 3, 0x4e, 1, this.menu.length, 0x43, 1, 16, ...(this.caps & 16 ? [0x58, 1, this.capacity & 127, this.capacity >> 7] : []), ...(this.patchRaw ? [0x5a, 1, 1] : []), ...(this.scope2 ? [0x59, 1, NX] : []), ...(this.locksCap ? [0x4c, 1, 3, 0x41, 1, 0, 1] : []), ...(this.bypassCap ? [0x5b, 1, 1] : []), ...(this.morphView ? [0x4f, 1, 1] : [])];
+      0x46, 1, 8, 0, 0x53, 1, 3, 0x50, 1, 3, 0x4e, 1, this.menu.length, 0x43, 1, 16, ...(this.caps & 16 ? [0x58, 1, this.capacity & 127, this.capacity >> 7] : []), ...(this.patchRaw ? [0x5a, 1, 1] : []), ...(this.scope2 ? [0x59, 1, NX] : []), ...(this.locksCap ? [0x4c, 1, 3, 0x41, 1, 0, 1] : []), ...(this.bypassCap ? [0x5b, 1, 1] : []), ...(this.morphView ? [0x4f, 1, 1] : []), ...(this.tide ? [0x44, 1, 1 | (this.fvBank ? 2 : 0)] : [])];
   }
   shown(t, id) { return this.parts[t].p[id] + (this.morphView ? this.shift[t].get(id) ?? 0 : 0); }   // part t's value as its card shows it (item 159)
   // the unit's MORPH fader moved (item 159): part t's shown values are its stored ones + offs ({id: offset}); pushed as the unit does (CHANGED for the selected part, TRACK_CHANGED with WATCH bit 2 for the other)
@@ -229,6 +243,7 @@ export class MockUnit {
   async request([cmd, a], opt = {}) {
     this.log.push(`cmd ${cmd}`);
     if (cmd >= WT.CMD.LIST && cmd <= WT.CMD.PUT && (this.caps & 8)) return this.wavetable(cmd, a);
+    if (this.fvBank && cmd >= FM6B_CMD.BEGIN && cmd <= FM6B_CMD.END) return this.bankCmd(cmd, a);
     if (cmd <= 100 && cmd !== 65 && cmd !== 66 && cmd !== 67) { const r = this.edit(cmd, a); if (r !== undefined) return r; }
     if (cmd === 1) return this.info();
     if (cmd === BACKUP_CMD.LIST && a.length === 1) {   // a page of the saved patches (caps bit 5); the plain LIST before, else rc 5
@@ -246,13 +261,29 @@ export class MockUnit {
     }
     if (cmd === BACKUP_CMD.GET) {
       const patch = a[0] === PATCH_ID, id = a[0], off = bkR32(a, 1), n = a[6] | a[7] << 7;
-      const v = patch ? (a.length === 9 && this.records ? this.patchBytes(a[8]) : null) ?? new Uint8Array(0) : this.objs.get(id) || new Uint8Array(0);
-      const rc = !this.listed ? 5 : this.playing ? 3 : a.length !== (patch ? 9 : 8) || (patch ? !this.records : !this.has(id)) || !n || n > 256 || off > v.length || n > v.length - off ? 1 : 0;
+      const v = patch ? (a.length === 9 && this.records ? this.patchBytes(a[8]) : null) ?? new Uint8Array(0) : id === FVB_ID ? this.bank ?? new Uint8Array(0) : this.objs.get(id) || new Uint8Array(0);
+      const rc = !this.listed ? 5 : this.playing ? 3 : a.length !== (patch ? 9 : 8) || (patch ? !this.records : id === FVB_ID ? !this.fvBank : !this.has(id)) || !n || n > 256 || off > v.length || n > v.length - off ? 1 : 0;
       return [id, rc, ...bkU32(off), rc ? 0 : n & 127, rc ? 0 : n >> 7, ...(rc ? [] : bkPack(v.subarray(off, off + n)))];
     }
     if (cmd === BACKUP_CMD.PUT) return this.put(a);
     if (cmd >= 11 && cmd <= 14) return cmd === 12 ? [a[0], a[1], a[2], a[3], 6] : [a[0], cmd === 14 ? 0 : 6];   // the retired sample slots (editor.c: ERASE rc 0, BEGIN / WRITE / END rc 6)
     throw new Error(`mock unit: unexpected command ${cmd}`);
+  }
+  // FM6B_BEGIN / WRITE / END (editor_fm6.c, fm6_vbank.c): a bank written whole; the stored object is built as fvb_end builds it (voices packed 112 bytes each, unused ones erased 0xFF)
+  bankCmd(cmd, a) {
+    if (this.playing) return cmd === FM6B_CMD.WRITE ? [a[0], 3] : [3];
+    if (cmd === FM6B_CMD.BEGIN) { this.bankTx = new Map(); return [0]; }
+    if (cmd === FM6B_CMD.WRITE) {
+      if (!this.bankTx) return [a[0], 5];
+      if (a.length !== 1 + FVB_PK || a[0] >= FVB_N || this.bankTx.has(a[0])) return [a[0], 1];
+      this.bankTx.set(a[0], Uint8Array.from(a.slice(1))); return [a[0], 0];
+    }
+    if (!this.bankTx) return [5, 0];
+    const voices = [...this.bankTx].sort((x, y) => x[0] - y[0]); this.bankTx = null;
+    const recs = new Uint8Array(voices.length * FVB_PK); voices.forEach(([, pk], i) => recs.set(pk, i * FVB_PK));
+    if (a.length !== 15 || bkR32(a, 10) !== (recs.length ? bkCrc(recs) : 0)) return [2, 0];
+    this.bank = buildBankObject(String.fromCharCode(...a.slice(0, 10)), new Map(voices));
+    return [0, voices.length];
   }
   // MOTION (64), the parameter locks (EDITOR_PROTOCOL.md "Parameter locks", "LOCK TARGETS past 127"): this.motion = [{ track, step, tid, v, lock }], 128 records shared by the tracks (rc 2 when they are used).
   // Ops 1 (play on / off), 2 (clear), 3 / 5 / 9 / 11 (set an event / a lock), 4 / 10 (delete), 6 (clear a step's locks), 7 (query with the kinds, the first 64), 8 (every record). The set ops answer as op 7.

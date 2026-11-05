@@ -1440,6 +1440,8 @@ int main(void)
            sl_fac(UP_SLOTS + 1u, &fe2, &fk2) && fk2 == snd && !sl_empty_user(UP_USER0) && sl_empty_user(UP_USER0 + 1u));
         power_cycle();
         ck("  after a power cycle USER 1 is still there; USER 2..4 still empty", up_used(UP_USER0) && !up_used(UP_USER0 + 1u) && up_count() == 1u);
+        sl_load(UP_SLOTS + 2u);
+        ck("  with USER 1 taken, a displaced place offers the first empty USER slot (USER 2), not USER 1 over the owner's sound", slot_home(&trk[0]) == UP_USER0 + 1u);
         sl_load(UP_USER0);
         (void)pl_cursor(&total);
         ck("  the record is the browse list's place, label U1, in all the places", up_used(UP_USER0) && total == UP_VSLOTS && preset_at(pl_cursor(&total)) == UP_USER0);
@@ -1463,9 +1465,9 @@ int main(void)
         }
         ck("  each is a read-only place #129.. with its name, engine and a label, never a slot", !bad4 && !sl_fac(UP_VSLOTS, &fe3, &fk3));
         sl_load(UP_VSLOTS - 1u);
-        ck("  loading the last plays that sound, in no slot to save over (SAVE offers USER 1), its place is found again",
+        ck("  loading the last plays that sound, in no slot to save over (SAVE offers the first empty USER slot: USER 2, USER 1 holds a record), its place is found again",
            trk[0].eng_req == ds_list_at(ds_list_n() - 1u, &k3) && trk[0].preset == k3 && !trk[0].user && slot_of(&trk[0]) == UP_SLOTS && slot_place(&trk[0]) == UP_VSLOTS - 1u &&
-           slot_home(&trk[0]) == UP_USER0);
+           slot_home(&trk[0]) == UP_USER0 + 1u && up_used(UP_USER0));
     }
 
     {   /* U1: the factory multis hold engine + factory index, never a browse slot: loading them gives the factory sound whatever the USER slots hold; a part pointed at an empty USER slot still plays a factory sound */

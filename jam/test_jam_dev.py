@@ -154,6 +154,9 @@ class InfoTests(Base):
         i = jd.parse_info(a)
         self.assertEqual((i.duell, i.caps, i.patch_cap, i.engines), ("1.0", 63, 128, ["ANALOG", "-"]))
         self.assertEqual((i.tags[0x59], i.tags[0x4B], i.tags[0x41]), ([16], [1], [0, 1]))
+        self.assertFalse(i.tide)
+        j = jd.parse_info([*a, 0x5B, 1, 1, 0x4F, 1, 1, 0x44, 1, 1])      # the tags after 0x4B: BYPASS, the MORPH view, TIDE (this firmware sends them last)
+        self.assertTrue(j.tide and j.tags[0x44] == [1] and j.tags[0x4F] == [1])
         for bad in ([], [0, 1], [*s("DUELL 1.0"), 3, 1, 1, 1, 1, *s("A")]):
             with self.assertRaises(jd.DuellError):
                 jd.parse_info(bad)
@@ -291,6 +294,70 @@ class RetryTests(Base):
         self.assertIn("stopped at object 14: " + jd.TIMEOUT_MSG, err)
         sent = state()["sent"]
         self.assertEqual([s[:2] for s in sent], [[0, 13], [2, 13], [0, 14], [1, 14], [3, 14]])   # the lost piece is not sent again: abort, nothing after
+
+
+class BankTests(Base):
+    """FM6's voice bank (INFO tag 44 01 bit 1) in the archive: object 41, read with GET, written back with FM6B_BEGIN / WRITE / END."""
+
+    def objs41(self, f):
+        return [o for o in f["objects"] if o["id"] == 41]
+
+    def test_round_trip(self):
+        ctl("reset", options={"fvBank": True})
+        self.assertTrue(capture()["objects"] and not self.objs41(capture()))               # a unit with no bank: no object 41
+        ctl("setBank", name="MY BANK", voices=[0, 5, 31])
+        before = state()["bank"]
+        self.assertIsNotNone(before)
+        f = capture()
+        self.assertEqual(len(self.objs41(f)), 1)
+        self.assertEqual(self.objs41(f)[0]["size"], 3620)
+        self.assertTrue(ctl("readArchive", text=jd.file_text(f))["accepted"])               # the web editor's reader takes the file
+        web = json.loads(ctl("captureJs")["text"])
+        self.assertEqual(self.objs41(web), self.objs41(f))                                  # byte for byte what the web page makes
+        p = self.dir / "bank.json"
+        p.write_text(jd.file_text(f), encoding="utf-8", newline="\n")
+        ctl("setBank", name="OTHER", voices=[2])
+        self.assertNotEqual(state()["bank"], before)
+        rc, out, err = run_main(["restore", str(p), "--yes", "--out", str(self.dir)])
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(state()["bank"], before)
+        self.assertIn("FM6 voice bank", out)
+        self.assertTrue(ctl("readArchive", text=next(self.dir.glob("DUELL-safety-backup-*.json")).read_text())["accepted"])   # (the safety backup was made first)
+
+    def test_no_bank_in_file_leaves_the_unit_alone(self):
+        ctl("reset", options={"fvBank": True})
+        p = self.dir / "nobank.json"
+        p.write_text(jd.file_text(capture()), encoding="utf-8", newline="\n")
+        ctl("setBank", name="KEEP ME", voices=[3])
+        keep = state()["bank"]
+        rc, out, err = run_main(["restore", str(p), "--yes", "--out", str(self.dir)])
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(state()["bank"], keep)
+
+    def test_unit_without_the_flag_is_not_sent_the_bank(self):
+        ctl("reset", options={"fvBank": True})
+        ctl("setBank", name="A BANK", voices=[1, 2])
+        p = self.dir / "bank.json"
+        p.write_text(jd.file_text(capture()), encoding="utf-8", newline="\n")
+        ctl("reset")                                                                        # a unit with no INFO tag 44
+        rc, out, err = run_main(["restore", str(p), "--yes", "--out", str(self.dir)])
+        self.assertEqual(rc, 0, err)
+        self.assertIn("cannot restore it", out)
+        self.assertNotIn("cmd 74", " ".join(state()["log"]))
+        self.assertIsNone(state()["bank"])
+
+    def test_damaged_bank_is_refused(self):
+        ctl("reset", options={"fvBank": True})
+        ctl("setBank", name="A BANK", voices=[1])
+        f = capture()
+        o = self.objs41(f)[0]
+        raw = bytearray(base64.b64decode(o["data"]))
+        raw[3620 - 1] ^= 1                                                                  # its own CRC (the last four bytes)
+        o["data"] = base64.b64encode(bytes(raw)).decode()
+        o["crc"] = jd.crc32(bytes(raw))
+        with self.assertRaises(jd.DuellError) as cm:
+            jd.read_archive(f)
+        self.assertIn("voice bank", str(cm.exception))
 
 
 class RestoreTests(Base):

@@ -8,7 +8,7 @@
 //                                                         on every request; a reply the test asked to drop is left out (the host then times out)
 //   {"op": "control", "action": ..., "args": {...}}    -> {"ok": true, ...} or {"ok": false, "error": "..."}   test hooks: see CONTROL below
 import { createInterface } from "node:readline";
-import { MockUnit, buildPatchRecord, buildMultiObject } from "../felucca-base/web/editor/mockunit.js";
+import { MockUnit, buildPatchRecord, buildMultiObject, buildBankObject } from "../felucca-base/web/editor/mockunit.js";
 import { readArchive, captureBackup, parseInfo, checkObject, DUELL_IDS } from "../felucca-base/web/editor/duellbackup.js";
 import { bkCrc } from "../felucca-base/web/fm1backup.js";
 import { storeDefaults, engineIndex, XB_DEFS, buildEndB } from "../felucca-base/web/editor/patchrecord.js";
@@ -43,7 +43,8 @@ const crcOf = (b) => (b && b.length ? bkCrc(b) : 0);
 function state() {
   const objs = Object.fromEntries(DUELL_IDS.map((id) => { const b = unit.objs.get(id); return [id, `${b ? b.length : 0}:${crcOf(b)}`]; }));
   const patches = Object.fromEntries([...unit.patches.keys()].sort((a, b) => a - b).map((k) => [k, `${unit.patchBytes(k).length}:${crcOf(unit.patchBytes(k))}`]));
-  return { objs, patches, staged: unit.staged !== null, playing: unit.playing, log: unit.log.filter((x) => !x.startsWith("cmd ")), counts: { ...counts }, sent };
+  const bank = unit.bank ? `${unit.bank.length}:${crcOf(unit.bank.subarray(0, unit.bank.length - 4))}` : null;   // FM6's voice bank (INFO 44 01 bit 1)
+  return { objs, bank, patches, staged: unit.staged !== null, playing: unit.playing, log: unit.log.filter((x) => !x.startsWith("cmd ")), counts: { ...counts }, sent };
 }
 
 const CONTROL = {
@@ -63,6 +64,8 @@ const CONTROL = {
   },
   alterPatch: (m) => { const b = unit.patchBytes(m.slot); b[6] = (b[6] + 1) % 9; unit.setRecord(m.slot, b); unit.rebuild(); return {}; },   // (its category: still a good record)
   deletePatch: (m) => { unit.patches.delete(m.slot); unit.rebuild(); return {}; },
+  // an FM6 voice bank (a unit made with options {fvBank: true}): name and the voice indices (each a record of 128 bytes derived from its index); none: no bank
+  setBank: (m) => { unit.bank = m.voices ? buildBankObject(m.name ?? "BANK", new Map(m.voices.map((k) => [k, Uint8Array.from({ length: 128 }, (_, i) => (i * 5 + k * 11 + 3) & 127)]))) : null; return {}; },
   setMulti: (m) => { unit.objs.set(m.id, buildMultiObject(m.names)); unit.fromObjects(m.id); return {}; },
   // the web editor's own object check (duellbackup.js checkObject) on [{key, data: base64}]: the reference for jam_dev.py's port of it
   checkObjects: (m) => ({ reasons: m.items.map((it) => checkObject(it.key, Uint8Array.from(Buffer.from(it.data, "base64")))) }),

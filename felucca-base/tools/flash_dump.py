@@ -133,7 +133,9 @@ def main():
     args = ap.parse_args()
     flash = read_file(args.file)
     print("%s: %d sectors" % (args.file, len(flash)))
-    names = {OBJ_SETTINGS: "settings", OBJ_AUTOSAVE: "autosave", OBJ_UPFM6: "user presets' FM6 patches (retired)", OBJ_VELO: "velocity calibration"}
+    # object 48 is patch chunk 21 of a plain DUELL store; earlier TIDE builds kept their settings there (read once by a later build, never written). TIDE's settings now live in the
+    # settings record (its reserved tail), which this tool lists as "settings" without decoding it
+    names = {OBJ_SETTINGS: "settings (TIDE's settings are in its tail)", OBJ_PATCHX0 + 15: "chunk 21 (older TIDE settings, or patches)", OBJ_AUTOSAVE: "autosave", OBJ_UPFM6: "user presets' FM6 patches (retired)", OBJ_VELO: "velocity calibration"}
     for obj in range(OBJ_COUNT):
         if OBJ_MULTI0 <= obj < OBJ_PATCH0 or 1 <= obj <= 4 or obj == 7 or OBJ_WTAB0 + 3 <= obj < OBJ_PATCHX0:
             continue

@@ -86,6 +86,7 @@ typedef struct {
     uint8_t xs;                                  /* bit s: operator s stands in now (a copy of operator sfor[s] - 1 at that carrier's B frequency) */
     uint8_t sfor[6];                             /* .. the carrier each stand-in stands for + 1 (0: none) */
     uint8_t dirty;                               /* a held note still holds a stand-in (fm6_xblock runs on after the transition) */
+    uint8_t drain;                               /* morph_xreset left the drain to the next block (core 1 may still render this part): fm6_block does it */
     fm6_xpitch_t pa, pb;                         /* endpoint tuning with macros applied */
 } fm6_xt_t;
 static fm6_xt_t fm6_xt[NLIVE] __attribute__((section(".pool"))); /* zeroed at startup before audio */
@@ -563,7 +564,13 @@ static void fm6_block(track_t *t)       /* once a block and part: the macros, th
         return;
     fm6_sync(t);
 #if DUELL_TIDE
-    if (tr < NLIVE && (fm6_xt[tr].on || fm6_xt[tr].dirty)) fm6_xblock(t, tr);
+    if (tr < NLIVE && (fm6_xt[tr].on || fm6_xt[tr].dirty)) {
+        fm6_xblock(t, tr);
+        if (fm6_xt[tr].drain) {                  /* a new Original's drain that morph_xreset left to the render side (core 1 held part 2's job): give back, then restore */
+            fm6_xblock(t, tr);
+            fm6_xt[tr].drain = fm6_xt[tr].mute = fm6_xt[tr].dirty = 0;
+        }
+    }
 #endif
     fm6_unison_sync(t);
     fm6_lfo_v[tr] = fm6_lfo_sample(&fm6_lfo[tr]);

@@ -283,6 +283,9 @@ static int32_t menu_document(int32_t y, int draw)
         cv_text(6, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 20, &AF_M, "by OSCILL/R", T_TEXT);
         cv_text_grad(6, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 44, &AF_M, ver, 6);
         cv_text_r(222, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 47, &AF_S, DUELL_BUILD_DATE, T_MID, T_BG);
+#if defined(DUELL_TIDE_ID) && !DUELL_TEST_MODE                                  /* TIDE: the build's short commit (or tag), build.py DUELL_TIDE_ID: stable and beta units differ here */
+        cv_text(72, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 47, &AF_S, DUELL_TIDE_ID, T_MID);
+#endif
         cv_text(6, y + 96, &AF_S, "CPU", T_MID);                 /* the meter: the 1 s average, the held peak, the misses */
         cpu_pct(b, cpum.avg);
         cv_text(34, y + 96, &AF_S, b, col);

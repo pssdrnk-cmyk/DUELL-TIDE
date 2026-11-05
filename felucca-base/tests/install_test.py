@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
 """tools/fm1_install.py against a simulated FM-1 (no hardware, no mido).
-The fake device is the one in web/test_web.mjs: identity on the handshake,
+The fake device is the one in web/test_ota.mjs: identity on the handshake,
 then "device asks, host answers" reads of the logical image. Run from the repo root:
   python3 tests/install_test.py
 Also checks logical_image/product_of against web/fm1pkg.js (needs node and
