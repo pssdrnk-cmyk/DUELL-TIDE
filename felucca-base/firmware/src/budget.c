@@ -71,6 +71,7 @@ static const struct { const engine_t *e; uint16_t c; } BD_ENG[] = {   /* (cal) *
 #define BD_TIDE_VALLEY 66u      /* the valley after the part's voices (the part, once; SPREAD's second buffer included): 43 x 1.5 */
 #define BD_TIDE_WASH 60u        /* the wash, only while WASH is not OFF (the default is OFF): 39 x 1.5 */
 #define BD_TIDE_DIP 1u          /* the filter dip, a voice: 0.45 x 1.5 */
+#define BD_TIDE_FM6_IDLE 7u     /* .. the same part while no crossing runs (fm6_xt[].on 0): the bridge's state only, as before 2026-11-06 */
 #define BD_TIDE_FM6 76u         /* FM6's bridge, a voice: during a crossing both sounds' operators run (unit 2026-11-06, 9178086 probe: part 1's voice stage +35..45 % with the bridge on); half an FM6 voice */
 #endif
 #define BD_FADE 66u             /* .. an engine choice cross-faded, both shapes made (old: 2 %) */
@@ -133,6 +134,13 @@ static uint32_t bd_slope(const engine_t *e, const int16_t *p)  /* filter 1, the 
  * and no ramp (= morph_effective_x). A continuous value is live + (end - Original); a choice the player changed (live != Original, not pinned at End B) stays the player's and is never
  * faded; a value End B holds by hand (pinned) is End B's. Before item 142 the budget read the ends' STORED values (morph_cur): a loaded patch edited to TWIN OFF / 12 dB was
  * still charged its Original's TWIN and 24 dB at both ends, which can never sound. q: EXT_P_LEN values */
+#if DUELL_TIDE
+/* the FM6 bridge's charge (owner 2026-11-06: the notes thin while a crossing runs): from the moment the part's fader moves with a plan that will bridge
+ * (mxs need XN_FM), held ~1 s after it stops, so the NOTES number is down before the fader reaches the bridge (budget_poll runs once a frame) */
+static int glide_running(void);                  /* (morph_glide.c, later in this unit) */
+static uint8_t bd_mv[NLIVE], bd_mvf[NLIVE];
+static uint16_t bd_mvc[NLIVE];
+#endif
 static void bd_end(const track_t *t, const morph_part_t *mp, uint32_t e, int16_t *q)
 {
     mxf_t xf;
@@ -196,7 +204,7 @@ static void bd_part(const track_t *t, bd_part_t *r)
 #if DUELL_TIDE
         /* TIDE's valley (morph_xfer.c morph_xstep: x->d, x->bv) runs only where the voices' own filter cannot carry the dip: the filter is not a low-pass that runs (x->lp, x->vf: here sl, as the plan reads it),
          * or a value of the filters themselves differs between the ends (SLOPE, MODE, filter 2's TYPE: XN_FILT). The dip in the voices' filter (morph_xcut) is BD_TIDE_DIP a voice. The wash runs whenever WASH is on */
-        tide_v = BD_TIDE_DIP + (e == &ENG_FM6 ? BD_TIDE_FM6 : 0u);
+        tide_v = BD_TIDE_DIP + (e == &ENG_FM6 ? (pi < NLIVE && (fm6_xt[pi].on || (bd_mv[pi] && (mxs[pi].need & XN_FM))) ? BD_TIDE_FM6 : BD_TIDE_FM6_IDLE) : 0u);   /* (owner 2026-11-06: the notes thin only while a crossing runs) */
         tide = ((p[P_FREEC] <= 32 && e->ufilt && sl) && s1 == s0 && d0 == q[P_FREED] && m0 == q[P_FREEC] && w0 == q[P_TWTYPE] ? 0u : BD_TIDE_VALLEY) + (morph_wlvl ? BD_TIDE_WASH : 0u);   /* (the part's fixed cost below) */
         r->ext += tide_v;
 #endif
@@ -419,6 +427,16 @@ static void budget_poll(void)                           /* main loop, every fram
         for (p = 0; p < BD_N; p++)
             bnotes[p] = bnotes1[p] = 0;
         return;
+    }
+#endif
+#if DUELL_TIDE
+    for (p = 0; p < NLIVE; p++) {                       /* (the fader moving: see bd_mv) */
+        uint8_t f = (uint8_t)mph[p].fader;               /* (0 .. 127) */
+        if (f != bd_mvf[p])
+            bd_mvf[p] = f, bd_mvc[p] = 60u;
+        else if (bd_mvc[p])
+            bd_mvc[p]--;
+        bd_mv[p] = bd_mvc[p] != 0 || glide_running();   /* (a running GLIDE waits at its ends: the number stays down for the whole glide) */
     }
 #endif
     bd_build(&b);

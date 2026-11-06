@@ -398,6 +398,12 @@ static void con_cpu(void)                              /* (probe) cpu: the longe
             con_kv(k ? "fm6_bridge1" : "fm6_bridge0", (int32_t)fm6_xt[k].on);
             con_kv(k ? "valley1" : "valley0", (int32_t)mxs[k].d);
             con_kv(k ? "motion1" : "motion0", (int32_t)mxs[k].motion);
+#if DUELL_PROBE_STAGES
+            con_kv(k ? "bnotes1" : "bnotes0", (int32_t)bnotes[k]);
+            con_kv(k ? "bdmv1" : "bdmv0", (int32_t)bd_mv[k]);
+            con_kv(k ? "need1" : "need0", (int32_t)mxs[k].need);
+            con_kv(k ? "fader1" : "fader0", (int32_t)mph[k].fader);
+#endif
         }
     }
 #endif
