@@ -1261,11 +1261,11 @@ int main(void)
     }
     press(B_OCTUP);
     ck("  OCT+: SAVED #13: that slot holds the sound now, the part plays it, one record, the list is still 128 slots, the cursor on it", up_used(12) && up_count() == 1u &&
-       trk[0].user == 13u && !strncmp(ui.msg, "SAVED", 5) && pl_cursor(&total) == 12u && total == UP_VSLOTS && up_rec(12)->engine == trk[0].eng_req);
+       trk[0].user == 13u && !strncmp(ui.msg, "SAVED", 5) && pl_cursor(&total) == total - 1u - UP_NUSER && preset_at(pl_cursor(&total)) == 12u && total == UP_VSLOTS && up_rec(12)->engine == trk[0].eng_req);   /* (a saved sound follows the factory sounds, whatever its slot; the four empty USER slots are after it) */
     kk = 12u;
     turn(EN_K4, 1);
     ck("K4 on a saved slot: FAV too, no dialog; the record, the part and the cursor stay (1.1: RESTORE ALL in SAVE > TOOLS is the only restore)",
-       !ui.confirm && favorite_has(NENGINES, 12u) && up_used(12) && up_count() == 1u && trk[0].user == 13u && pl_cursor(&total) == 12u);
+       !ui.confirm && favorite_has(NENGINES, 12u) && up_used(12) && up_count() == 1u && trk[0].user == 13u && pl_cursor(&total) == total - 1u - UP_NUSER && preset_at(pl_cursor(&total)) == 12u);
     turn(EN_K4, -1);
     (void)sl_restore(12u);                              /* (the record out of the way for the checks below) */
     {
@@ -1487,6 +1487,146 @@ int main(void)
         ck("  loading the last plays that sound, in no slot to save over (SAVE offers the first empty USER slot: USER 2, USER 1 holds a record), its place is found again",
            trk[0].eng_req == ds_list_at(ds_list_n() - 1u, &k3) && trk[0].preset == k3 && !trk[0].user && slot_of(&trk[0]) == UP_SLOTS && slot_place(&trk[0]) == UP_VSLOTS - 1u &&
            slot_home(&trk[0]) == UP_USER0 + 1u && up_used(UP_USER0));
+    }
+
+    {   /* THE ORDER (owner, 2026-11-05: "the user ones aren't the last ones"; 2026-11-08: "empty user ones go to the end of the list"): in every list the factory sounds (the slots, then the read-only
+         * #125.. #NNN) come first, then every saved sound (a record in any slot), then the empty USER slots; counting nothing (UP_NXTRA may grow). Numbers unchanged: the labels, the slots, the FAV
+         * flags, MIDI program change */
+        uint32_t m, i, k, tot, cat, fac_seen, bad = 0, last_fac_pos, nrec, nemp, ok;
+        char tg[6];
+        memset(nor, 0xFF, sizeof nor);
+        power_cycle();
+        song.playing = 0;
+        song.sel = 0;
+        set_engine_of(&trk[0], 0u);
+        apply_preset_to(&trk[0], 1u);
+        list_set(0);
+        (void)preset_pos(&tot);
+        ok = tot == UP_VSLOTS;
+        for (i = 0; i < tot - UP_NUSER; i++)             /* nothing saved: the factory sounds in browse order, then U1..U4 empty */
+            ok &= !sl_empty_user(preset_at(i)) && (i < UP_USER0 ? preset_at(i) == i : preset_at(i) == (i < UP_USER0 + UP_NXTRA + UP_NUSER ? i - UP_USER0 + UP_SLOTS : i));
+        for (i = 0; i < UP_NUSER; i++)
+            ok &= preset_at(tot - UP_NUSER + i) == UP_USER0 + i && sl_empty_user(preset_at(tot - UP_NUSER + i));
+        ck("order, nothing saved: ALL is the factory sounds (#1..#124, then #125.. up to the last, the places past the slots), then U1..U4 empty at the end", ok && preset_at(UP_USER0) == UP_SLOTS &&
+           preset_at(tot - UP_NUSER - 1u) == UP_VSLOTS - 1u);
+        /* save over USER 1 and over #13 (slot 12), then over USER 3 */
+        song.sel = 0;
+        sl_load(7u);
+        ui.svs = (uint8_t)UP_USER0;
+        patch_save_do(0);
+        sl_load(30u);
+        ui.svs = 12u;
+        patch_save_do(0);
+        sl_load(40u);
+        ui.svs = (uint8_t)(UP_USER0 + 2u);
+        patch_save_do(0);
+        ck("  three saved: USER 1, #13, USER 3", up_used(UP_USER0) && up_used(12) && up_used(UP_USER0 + 2u) && up_count() == 3u);
+        list_set(0);
+        (void)preset_pos(&tot);
+        fac_seen = 0;
+        last_fac_pos = 0;
+        nrec = nemp = 0;
+        for (i = 0; i < tot; i++) {
+            k = preset_at(i);
+            if (k >= UP_SLOTS || (k < UP_USER0 && !up_used(k))) {
+                bad |= nrec || nemp;                      /* (a factory sound after a saved sound or an empty USER slot) */
+                fac_seen++;
+                last_fac_pos = i;
+            } else if (up_used(k)) {
+                bad |= nemp;                              /* (a saved sound after an empty USER slot) */
+                nrec++;
+            } else {
+                nemp++;
+            }
+        }
+        ck("  ALL: every factory sound (the places past the slots included) before the saved sounds, which are before the empty USER slots; nothing missing, nothing twice",
+           !bad && tot == UP_VSLOTS && nrec == 3u && nemp == 2u && fac_seen == UP_VSLOTS - UP_NUSER - 1u && last_fac_pos == fac_seen - 1u);
+        ck("  ALL: the saved sounds follow the factory sounds, in slot order (#13, U1, U3), and the empty U2, U4 are the last places; the last factory place is the last #NNN",
+           preset_at(tot - 5u) == 12u && preset_at(tot - 4u) == UP_USER0 && preset_at(tot - 3u) == UP_USER0 + 2u && preset_at(tot - 2u) == UP_USER0 + 1u && preset_at(tot - 1u) == UP_USER0 + 3u &&
+           preset_at(last_fac_pos) == UP_VSLOTS - 1u && preset_at(last_fac_pos + 1u) == 12u);
+        up_slot_label(tg, preset_at(tot - 5u));
+        ok = str_eq(tg, "#13");
+        up_slot_label(tg, preset_at(tot - 4u));
+        ok &= str_eq(tg, "U1");
+        up_slot_label(tg, preset_at(last_fac_pos));
+        ok &= tg[0] == '#' && tg[1] == '1' && tg[2] >= '2';
+        ck("  the labels keep their numbers (#13, U1; the last factory place is #NNN of 120 up)", ok);
+        /* the part's own place: it plays the saved #13 now; the cursor is the last but two, K1 steps on from there */
+        go_title("PATCHES");
+        sl_load(12u);
+        frame();
+        (void)pl_cursor(&tot);
+        ck("  a part that plays a saved sound has the cursor on its place among the saved sounds", pl_cursor(&tot) == tot - 5u && preset_pos(&tot) == tot - 5u);
+        turn(EN_K1, 1);
+        ok = preset_at(pl_cursor(&tot)) == UP_USER0;
+        turn(EN_K1, 1);
+        ok &= preset_at(pl_cursor(&tot)) == UP_USER0 + 2u;
+        ck("  K1 steps on from #13 to U1, then U3; the empty U2 is the next place", ok && preset_at(pl_cursor(&tot) + 1u) == UP_USER0 + 1u);
+        /* every category: the saved sounds are the list's last places; likewise one engine; likewise FAV */
+        ok = 1;
+        for (m = 2u; m < LIST_N; m++) {
+            uint32_t n, seen_saved = 0, seen_empty = 0;
+            list_set(m);
+            (void)preset_pos(&n);
+            for (i = 0; i < n; i++) {
+                k = preset_at(i);
+                if (k < UP_SLOTS && up_used(k)) {
+                    ok &= !seen_empty;                    /* (no saved sound after an empty USER slot) */
+                    seen_saved++;
+                } else if (k < UP_SLOTS && sl_empty_user(k))
+                    seen_empty++;
+                else
+                    ok &= !seen_saved && !seen_empty;     /* (no factory sound after a saved sound or an empty USER slot) */
+            }
+            for (i = 0; i < 3u; i++) {                    /* (each saved sound is in the list of its own category / engine, at the end of it) */
+                static const uint8_t SV[3] = {UP_USER0, 12u, UP_USER0 + 2u};
+                uint32_t kk = SV[i], in = m > CAT_N ? sl_engine(kk) == eng_vis(m - CAT_N - 1u) : sl_cat(kk) == m - 1u, found = 0, j;
+                for (j = 0; j < n; j++)
+                    found |= preset_at(j) == kk;
+                ok &= found == in;
+            }
+        }
+        list_set(0);
+        ck("  every category and every engine: its factory sounds, then its saved sounds, then the empty USER slots", ok);
+        cat = sl_cat(UP_USER0);
+        list_set(cat + 1u);
+        (void)preset_pos(&tot);
+        for (i = tot; i && sl_empty_user(preset_at(i - 1u)); i--)
+            ;
+        ck("  a category: the saved sound of it is its last place before the empty USER slots U2, U4", i >= 1u && tot - i == 2u && sl_cat(preset_at(i - 1u)) == cat && up_used(preset_at(i - 1u)));
+        list_set(0);
+        trk[0].user = 0;
+        sl_load(UP_USER0);
+        preset_mark(1);                                   /* FAV on U1, and on a read-only place past the slots */
+        sl_load(UP_VSLOTS - 1u);
+        preset_mark(1);
+        list_set(1u);
+        (void)preset_pos(&tot);
+        ck("  FAV: the read-only place (#NNN) first, the saved U1 last", tot == 2u && preset_at(0) == UP_VSLOTS - 1u && preset_at(1) == UP_USER0);
+        list_set(0);
+        pc_recall(0u, 12u, 0u);
+        ok = trk[0].user == 13u;
+        pc_recall(0u, UP_USER0, 1u);
+        ok &= trk[0].user == UP_USER0 + 1u;
+        pc_recall(0u, 0u, 2u);
+        ok &= !trk[0].user && slot_place(&trk[0]) == UP_SLOTS + UP_NUSER;
+        ck("  MIDI program change keeps its numbers: bank 0 program 12 is #13, bank 1 program 124 is U1, bank 2 program 0 is #129 (the list's order is another matter)", ok);
+        {   /* (owner, 2026-11-08: "why are some of the predefined sounds non numbered?") the footer numbers a factory sound past the slots too: #129 here, #125 for the first displaced place */
+            char lb[24];
+            sound_label(&trk[0], lb);
+            ok = !strncmp(lb, "#129 ", 5);
+            sl_load(UP_SLOTS);
+            sound_label(&trk[0], lb);
+            ok &= !strncmp(lb, "#125 ", 5);
+            sl_load(UP_VSLOTS - 1u);
+            sound_label(&trk[0], lb);
+            {
+                char tg2[6];
+                up_slot_label(tg2, UP_VSLOTS - 1u);
+                ok &= tg2[0] == '#' && !strncmp(lb, tg2, str_len(tg2)) && lb[str_len(tg2)] == ' ';
+            }
+            ck("  the footer numbers the factory sounds past the slots: #129, #125 (a displaced place), the last one (#171 today)", ok);
+        }
     }
 
     {   /* U1: the factory multis hold engine + factory index, never a browse slot: loading them gives the factory sound whatever the USER slots hold; a part pointed at an empty USER slot still plays a factory sound */

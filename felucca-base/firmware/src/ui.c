@@ -1756,7 +1756,7 @@ static void select_engine(uint32_t e)
     ui_refresh();
 }
 
-/* PATCHES (SPEC 3.6, 0.2.17): ONE list of the places: the 128 SLOTS in slot order #1..#128 (with TIDE the 32 read-only factory sounds #129..#160 after them). A slot is its saved record, else the factory sound at that
+/* PATCHES (SPEC 3.6, 0.2.17): ONE list of the places: the 128 SLOTS in slot order #1..#128 (with TIDE the read-only factory sounds past the slots, #125..#NNN, come before the USER slots and the saved sounds: list_tier below). A slot is its saved record, else the factory sound at that
  * browse position (upreset.c, the slot layer sl_*): there is no other kind of entry, no empty place and no tail. The PRESETS knob, the
  * PATCHES page and MIDI program change all step this list. A part whose sound is in no slot (an engine
  * change, a multi, the editor; or its slot was overwritten) is at no place of it: total is returned (the browser shows "--", a step goes
@@ -1804,11 +1804,25 @@ static uint32_t track_cat(const track_t *t)
     return s < UP_SLOTS ? sl_cat(s) : preset_cat(t->eng_req % NENGINES, t->preset);
 }
 
+/* THE ORDER of the list (owner, 2026-11-05: "the user ones aren't the last ones"; 2026-11-08: "empty user ones go to the end of the list"): the factory sounds first, in browse order (the slots
+ * with no record #1..#124, then the read-only places the USER slots displaced and the sounds past the 128: #125.. #NNN, however many there are), then every SAVED sound (its record, in slot
+ * order; also one saved over #12 or into U1), then the empty USER slots (U1.. USER EMPTY) last. Only the order of the places is this: the slot number, its "#NN" / "U1" label, its FAV flag, its record, the editor's slot id and
+ * MIDI program change (bank 0 / 1: slot n + 1; bank 2: #129 + n) stay as they were. Nothing counts the factory sounds: the list is walked tier by tier. DUELL_TIDE=0: slot order */
+#if UP_NUSER
+static uint32_t list_tier(uint32_t k) { return k >= UP_SLOTS ? 0u : up_used(k) ? 1u : UP_EMPTY_USER(k) ? 2u : 0u; }
+#define LIST_DECL uint32_t lt;
+#define LIST_EACH(k, lt) for (lt = 0; lt < 3u; lt++) for (k = 0; k < UP_VSLOTS; k++) if (list_tier(k) == lt)
+#else
+#define LIST_DECL
+#define LIST_EACH(k, lt) for (k = 0; k < UP_VSLOTS; k++)
+#endif
+
 /* place of the selected part's slot in the list shown (*total its length); total when its sound is in no slot or not in this TYPE */
 static uint32_t preset_pos(uint32_t *total)
 {
     uint32_t s = slot_place(TSEL), k, n = 0, pos = 0xFFFFFFFFu;
-    for (k = 0; k < UP_VSLOTS; k++) {
+    LIST_DECL
+    LIST_EACH(k, lt) {
         if (!list_keep(k)) continue;
         if (k == s) pos = n;
         n++;
@@ -1819,7 +1833,8 @@ static uint32_t preset_pos(uint32_t *total)
 static uint32_t preset_at(uint32_t n)                    /* place n of the list shown -> its slot; UP_SLOTS past the end */
 {
     uint32_t k;
-    for (k = 0; k < UP_VSLOTS; k++)
+    LIST_DECL
+    LIST_EACH(k, lt)
         if (list_keep(k) && !n--) return k;
     return UP_VSLOTS;
 }

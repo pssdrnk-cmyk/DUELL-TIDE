@@ -464,6 +464,9 @@ static void tide_part_name(uint32_t pi, char *b)
         if (r < UP_USER0 && !up_used(r)) {
             up_slot_label(b, r);
             str_cpy(b + str_len(b), " ", 2);
+        } else if (r >= UP_USER0 && r < UP_SLOTS + UP_NXTRA) {   /* (a read-only place past the slots: #125 .. #171, as PATCHES numbers it) */
+            up_slot_label(b, r + UP_NUSER);
+            str_cpy(b + str_len(b), " ", 2);
         }
         str_cpy(b + str_len(b), ds_name(e, (uint32_t)k), 16);
     } else
