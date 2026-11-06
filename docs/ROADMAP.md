@@ -207,6 +207,7 @@ Each runs on its own branch until it is reviewed and merged. Crossed-out rows ar
 
 | Item | Decision |
 |---|---|
+| HOME without MODE (owner, 6 November) | Remove the MODE page, currently page 4/4 of the HOME round. Its three controls move elsewhere: the output MODE (STEREO / LAYER / DUEL), XFADE and SPLIT. Where they go is still open (not decided yet). They keep their values in the settings and in each MULTI. Every piece of information the page shows stays reachable. |
 | K1 stop | K1 needs two detents to stop a running tide. The header messages stay. |
 | OCT- reset | OCT- plus a knob resets to the STYLE's values, on the TIDE pages only. |
 | Installer and INFO | The installer backs up before every install. INFO shows a TIDE flag. The cheat sheet is finished. |
