@@ -17,6 +17,7 @@ CONVERT_TWIN = 1
 # N_BASE: the first 128 sounds are the bank (the patch slots' factory places); the sounds after them are LISTED after those (gen_duell_sounds.py, upreset.c UP_NXTRA):
 # no browse place of the 128 moves when sounds are appended (the identity of a sound is still (engine, idx), append-only per engine)
 N_BASE = 128
+N_LATE = 163  # (2026-11-06) the sounds from this one on (#164 ..) are listed after every earlier one, in file order: an added sound never moves #125 .. #163 (MIDI bank 2 programs)
 
 SOUNDS = [
     dict(engine='ANALOG', idx=2, name='BEHIVE', cat='BASS', bseed=58182,  # #1
@@ -2287,5 +2288,119 @@ SOUNDS = [
          p={
             'KTRK': 22, 'CHOR': 12, 'DLY': 70, 'REV': 44, 'EQLG': -6, 'FREEA': 64, 'FREEB': 4, 'FREED': 2, 'TRIM': 113, 'E3': -8, 'E8': 1,
             'MOD1': ('AT', 'CUT', 12), 'MOD2': ('VEL', 'CUT', 10), 'LTRIG': 1, 'L2TRIG': 1,
+         }),
+    # ---- W15 DRONES (owner, 2026-11-05: "dune, blade runner, and space related drones. big fat ones", a fourth theme cyberpunk): eight drones for the
+    # background layer under a drum machine and an external bass. Hold one key or a 2-3 note chord around C3 (the DRONE lane 48-67) for minutes. Fat in the low
+    # mids (130-400 Hz), the 30-60 Hz band left to the bass gear (a sub only where the theme asks for it: SAND THROAT and GRID HUM, an octave under the key, so
+    # from C3 up); every one moves by itself over tens of seconds (a LOOP CYCLE and a free LFO on different periods, so the pattern repeats only after minutes);
+    # chorus, delay and the room do the width, no UNISON (one voice a note: a 3-note chord stays inside the NOTES budget, each part alone and in a LAYER with a pad).
+    # The pitched ones are PAD (JRNY travels among the engine's pads); the two textures are FX TEXT (SOLAR WIND among ANALOG's drones, GRID HUM alone on LOFI).
+    # DESERT 1: the throat. A saw under a man's vowels (WAVE GROWL), the vowel drifting U -> AH over a 14 s cycle, a sine sub an octave under the key (the weight),
+    # a 24 dB low-pass at ~400 Hz breathing on a 13 s LFO, saturation for the grit, a deep room. Ominous, dry, close.
+    # End B: the throat opens into a roar: the vowel further (AE), the filter up, more saturation, less sub, the room as big as it goes.
+    dict(engine='WAVE', idx=26, name='SAND THROAT', cat='PAD', bseed=37388, bamt=25,  # #164
+         p={
+            'ATK': 84, 'DEC': 100, 'SUS': 127, 'REL': 108, 'L2RATE': 8, 'L2WAVE': 1, 'LRATE': 5, 'LWAVE': 1, 'KTRK': 12, 'DIST': 28, 'CHOR': 40,
+            'DLY': 30, 'REV': 96, 'SPRD': 50, 'FREEA': 40, 'FREEB': 24, 'FREED': 2, 'E2ATK': 100, 'E2DEC': 100, 'E2SUS': 90, 'E2REL': 100,
+            'E2FLT': 10, 'TRIM': 110, 'E1': 20, 'E2': 16, 'E6': 4, 'MOD1': ('CYCLE', 'E2', 18), 'MOD2': ('LFO2', 'CUT', 8), 'MOD3': ('LFO1', 'SUBLV', 6),
+            'MOD4': ('AT', 'CUT', 12), 'SUB LEVEL': 46, 'SUB WAVE': 0, 'SUB OCTAVE': 1, 'CYCLE RISE': 120, 'CYCLE FALL': 124, 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'FREEA': 48, 'DIST': 46, 'E2': 56, 'SUB LEVEL': 30, 'REV': 112, 'M1AMT': 14,
+         }),
+    # DESERT 2: the horns. An FM brass section (F4), its carriers spread 36 cents apart (the ensemble), the modulators held dark and swelled by a 12 s cycle that
+    # lingers low and then blooms (CURVE +): the brass grows its growl every cycle, as a braam-like body does, under a 12 dB low-pass breathing on a 14 s LFO;
+    # saturation for the rasp, the lows shelved for the bass gear, a long room.
+    # End B: the horns bare their teeth: the modulators at full, more saturation, the filter up, the carriers wider, the room larger.
+    dict(engine='FM6', idx=17, name='HORN SWELL', cat='PAD', bseed=48240, bamt=27,  # #165
+         p={
+            'L2RATE': 7, 'L2WAVE': 1, 'KTRK': 16, 'DIST': 24, 'CHOR': 50, 'DLY': 30, 'REV': 100,
+            'SPRD': 40, 'EQLG': -4, 'FREEA': 50, 'FREEB': 10, 'FREED': 1, 'TRIM': 117, 'E3': 0, 'E5': 0, 'E7': 48, 'E8': 3,
+            'MOD1': ('CYCLE', 'E3', 10), 'MOD2': ('LFO2', 'CUT', 10), 'MOD3': ('AT', 'CUT', 12), 'CYCLE RISE': 118, 'CYCLE FALL': 122, 'CYCLE CURVE': 10,
+            'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'E3': 4, 'DIST': 40, 'FREEA': 54, 'E7': 70, 'REV': 115,
+         }),
+    # NEON CITY 1: the brass-string pad of the 80s polysynth. Two pulse-width oscillators 14 cents apart, the width wandering on a 7 s LFO, the mixer driven a
+    # little; a resonant 24 dB low-pass that blooms with a slow filter envelope and keeps swelling on a 12 s LFO; a wide chorus, a late echo, a long dark room.
+    # End B: the swell deeper and faster, more resonance and detune, the width wider, the room and the chorus as full as they go.
+    dict(engine='ANALOG', idx=34, name='NEON BRASS', cat='PAD', bseed=37388, bamt=27,  # #166
+         p={
+            'ATK': 88, 'DEC': 100, 'SUS': 127, 'REL': 108, 'LRATE': 9, 'LWAVE': 1, 'L2RATE': 20, 'L2WAVE': 1, 'KTRK': 24, 'CHOR': 100, 'DLY': 44,
+            'REV': 112, 'SPRD': 64, 'EQHG': -3, 'FREEA': 36, 'FREEB': 30, 'FREED': 2, 'E2ATK': 104, 'E2DEC': 110, 'E2SUS': 70, 'E2REL': 100,
+            'E2FLT': 22, 'TRIM': 90, 'E1': 4, 'E2': 14, 'E5': 40, 'E7': 20, 'MOD1': ('LFO1', 'CUT', 14), 'MOD2': ('LFO2', 'SHP', 12),
+            'MOD3': ('AT', 'CUT', 12), 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'FREEA': 48, 'FREEB': 44, 'E2': 24, 'E5': 60, 'CHOR': 118, 'REV': 124, 'LRATE': 16, 'M1AMT': 16,
+         }),
+    # NEON CITY 2: the string machine in the rain. Three saws in one voice (TRIO), the third an octave down for the body, 9 cents apart; a 24 dB low-pass
+    # at ~640 Hz swelling on a 9 s cycle and a 14 s LFO, a very wide chorus (the ensemble), a late echo, the deepest room. Warm and lush, nothing above 3 kHz.
+    # End B: the filter opens, the detune doubles, the swell deeper, the chorus and the room fill the space.
+    dict(engine='TRIO', idx=13, name='RAIN STRINGS', cat='PAD', bseed=17523, bamt=27,  # #167
+         p={
+            'ATK': 92, 'DEC': 100, 'SUS': 127, 'REL': 110, 'L2RATE': 6, 'L2WAVE': 1, 'KTRK': 24, 'CHOR': 110, 'DLY': 36, 'REV': 108, 'SPRD': 70,
+            'EQHG': -2, 'EQLG': -3, 'FREEA': 42, 'FREEB': 16, 'FREED': 2, 'E2ATK': 100, 'E2DEC': 100, 'E2SUS': 90, 'E2REL': 100, 'E2FLT': 12,
+            'TRIM': 93, 'E1': 0, 'E2': 0, 'E3': 0, 'E4': 11, 'MOD1': ('CYCLE', 'CUT', 10), 'MOD2': ('LFO2', 'CUT', 6), 'MOD3': ('AT', 'CUT', 12),
+            'CYCLE RISE': 116, 'CYCLE FALL': 116, 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'FREEA': 50, 'E4': 16, 'CHOR': 124, 'REV': 120, 'M1AMT': 18,
+         }),
+    # SPACE 1: shimmer in the void. The GLASS table (FM 1:7: a near sine that grows sparse high partials as the position rises), scanned by a 20 s cycle, a second
+    # read 2 cents off (a beat every 7 s or so, its rate wandering on a 20 s LFO), a 12 dB low-pass with a soft resonant peak near 1 kHz breathing on a 17 s LFO;
+    # the widest spread, a long echo, the room at full. Vast, slow, nothing repeats for minutes.
+    # End B: more partials and brighter, the beat faster, the echo as long as it goes, the chorus fuller.
+    dict(engine='WAVE', idx=27, name='VOID SHIMMER', cat='PAD', bseed=37388, bamt=27,  # #168
+         p={
+            'ATK': 80, 'DEC': 100, 'SUS': 127, 'REL': 118, 'LRATE': 0, 'LWAVE': 1, 'L2RATE': 3, 'L2WAVE': 1, 'KTRK': 20, 'CHOR': 80, 'DLY': 60,
+            'REV': 127, 'SPRD': 100, 'FREEA': 46, 'FREEB': 20, 'FREED': 1, 'TRIM': 102, 'E1': 11, 'E2': 18, 'E6': 7, 'MOD1': ('CYCLE', 'E2', 24),
+            'MOD2': ('LFO2', 'CUT', 12), 'MOD3': ('LFO1', 'E6', 4), 'MOD4': ('AT', 'CUT', 12), 'SUB LEVEL': 64, 'SUB WAVE': 0, 'SUB OCTAVE': 2,
+            'CYCLE RISE': 127, 'CYCLE FALL': 127, 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'E2': 32, 'FREEA': 54, 'DLY': 90, 'E6': 9, 'CHOR': 100,
+         }),
+    # SPACE 2: the solar wind. Two triangles 3 cents apart (a slow beat under everything; a chord beats at three rates) and a loud noise in the same voice,
+    # through a 12 dB filter between low-pass and band-pass whose cutoff rides an 18 s LFO and whose resonance breathes with a 14 s cycle: the wind swells and
+    # thins over the soft beating tone; the widest spread, a long echo, the room at full, the lows shelved. A texture (JRNY: with NIGHT DRONE and STORM FRONT).
+    # End B: the wind takes over: more noise, the filter higher and more band-pass, faster, the beat wider, the room as big as it goes.
+    dict(engine='ANALOG', idx=35, name='SOLAR WIND', cat='FX', text=True, bseed=37592, bamt=25,  # #170
+         p={
+            'ATK': 88, 'DEC': 100, 'SUS': 127, 'REL': 118, 'LRATE': 2, 'LWAVE': 1, 'KTRK': 0, 'CHOR': 50, 'DLY': 56, 'REV': 120, 'SPRD': 90, 'EQLG': -3,
+            'FREEA': 46, 'FREEB': 30, 'FREEC': 40, 'FREED': 1, 'TRIM': 116, 'E1': 2, 'E2': 4, 'E4': 52, 'MOD1': ('LFO1', 'CUT', 8), 'MOD2': ('CYCLE', 'FRES', 8),
+            'MOD3': ('AT', 'CUT', 12), 'CYCLE RISE': 124, 'CYCLE FALL': 118, 'LTRIG': 1, 'L2TRIG': 1, 'LPHASE': 32, 'E3': 40,
+         },
+         bend={
+            'FREEA': 50, 'E4': 80, 'LRATE': 8, 'E2': 6, 'REV': 127,
+         }),
+    # CYBERPUNK 1: the hum of the grid. A 4-bit chip buzz (LOFI BUZZ: a spike and a ring) with a sample-and-hold crush that wanders on an 11 s LFO, a square sub an
+    # octave under the key (the mains hum), through a resonant 24 dB low-pass whose cutoff steps to a new random place every 4 s (a sample-and-hold LFO: the glitch)
+    # while the resonance breathes with a 10 s cycle; a FUZZ insert and saturation on top, a short room. Industrial, digital, close. A texture (alone on LOFI).
+    # End B: the aggressive filter: the cutoff up and the resonance screaming, the steps twice as fast and wider, the crush and the fuzz up.
+    dict(engine='LOFI', idx=9, name='GRID HUM', cat='FX', text=True, bseed=11709, bamt=25,  # #171
+         p={
+            'ATK': 80, 'DEC': 100, 'SUS': 127, 'REL': 96, 'LRATE': 30, 'LWAVE': 4, 'L2RATE': 10, 'L2WAVE': 1, 'KTRK': 8, 'DIST': 30, 'CHOR': 24, 'DLY': 44,
+            'REV': 70, 'SPRD': 30, 'FREEA': 40, 'FREEB': 40, 'FREED': 2, 'ITYPE': 4, 'IA': 40, 'IB': 100, 'IC': 100, 'IMIX': 70, 'TRIM': 116, 'E1': 0, 'E2': 13,
+            'E4': 30, 'E8': 90, 'MOD1': ('LFO1', 'CUT', 10), 'MOD2': ('CYCLE', 'FRES', 10), 'MOD3': ('LFO2', 'E4', 14), 'MOD4': ('AT', 'CUT', 12),
+            'SUB LEVEL': 56, 'SUB WAVE': 2, 'SUB OCTAVE': 1, 'CYCLE RISE': 118, 'CYCLE FALL': 118, 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'FREEA': 48, 'FREEB': 56, 'LRATE': 48, 'M1AMT': 16, 'E4': 70, 'IA': 50, 'REV': 90,
+         }),
+    # CYBERPUNK 2: the iron works. TRIO's ring modulation (RING + 2 x TRI): a triangle rung by a third oscillator a tritone up (inharmonic sidebands: the clang)
+    # over a second triangle an octave down (the body), 14 cents apart; a BIT CRUSHER insert for the digital grit, saturation, a resonant 24 dB low-pass whose
+    # cutoff steps to a random place every 5 s (the glitch) and opens slowly with the filter envelope; a long echo, a mid room. Metallic, hard, held. A texture (alone on TRIO).
+    # End B: the aggressive filter: the cutoff up and the resonance high, the steps faster and wider, more saturation and crush, the echo as long as it goes.
+    dict(engine='TRIO', idx=14, name='IRON WORKS', cat='FX', text=True, bseed=37388, bamt=25,  # #172
+         p={
+            'ATK': 84, 'DEC': 100, 'SUS': 127, 'REL': 100, 'LRATE': 26, 'LWAVE': 4, 'KTRK': 10, 'DIST': 36, 'CHOR': 30, 'DLY': 60, 'REV': 80, 'SPRD': 50,
+            'FREEA': 50, 'FREEB': 30, 'FREED': 2, 'E2ATK': 104, 'E2DEC': 100, 'E2SUS': 90, 'E2REL': 100, 'E2FLT': 16, 'ITYPE': 5, 'IA': 30, 'IB': 70, 'IC': 110,
+            'IMIX': 60, 'TRIM': 90, 'E1': 15, 'E2': 0, 'E3': 18, 'E4': 14, 'MOD1': ('LFO1', 'CUT', 12), 'MOD2': ('CYCLE', 'E4', 20), 'MOD3': ('AT', 'CUT', 12),
+            'CYCLE RISE': 122, 'CYCLE FALL': 122, 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={
+            'FREEA': 58, 'FREEB': 72, 'FREEC': 44, 'LRATE': 44, 'M1AMT': 24, 'E3': 19, 'IA': 50, 'DLY': 90,
          }),
 ]

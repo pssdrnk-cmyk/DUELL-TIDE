@@ -359,6 +359,24 @@ static void con_mload(const char *p)                   /* (probe) mload N: load 
     project_load((uint32_t)(n - 1));
     con_kv("multi", (int32_t)project_cur_slot() + 1);
 }
+static void con_pload(const char *p)                   /* (probe) pload N: part 1 loads sound #N (1..), as a PROGRAM CHANGE on its channel would outside LAYER (midi_control.c midi_pc's queue) */
+{
+    int32_t n = 0;
+    uint32_t w = pcq_w, prog, bank;
+    while (*p == ' ')
+        p++;
+    while (*p >= '0' && *p <= '9')
+        n = n * 10 + (*p++ - '0');
+    if (n < 1 || n > 256 || (uint8_t)(w - pcq_r) >= PCQ_N) {
+        con_puts("pload 1..\r\n");
+        return;
+    }
+    bank = n > 128 ? 2u : 0u;
+    prog = n > 128 ? (uint32_t)n - 129u : (uint32_t)n - 1u;
+    pcq_buf[w % PCQ_N] = 0u | prog << 8 | bank << 16;
+    pcq_w = (uint8_t)(w + 1u);
+    con_kv("pload", n);
+}
 static void con_cpu(void)                              /* (probe) cpu: the longest half since the last `cpu` (us; cleared) and the misses since power-on */
 {
     uint32_t pk, raw;
@@ -473,6 +491,8 @@ static void con_exec(const char *p)
 #if DUELL_TEST_MODE
     else if (con_word(&p, "mload"))
         con_mload(p);
+    else if (con_word(&p, "pload"))
+        con_pload(p);
     else if (con_word(&p, "cpu"))
         con_cpu();
 #if DUELL_TIDE
