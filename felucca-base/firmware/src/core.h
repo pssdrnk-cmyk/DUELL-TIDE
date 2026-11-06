@@ -837,4 +837,10 @@ struct { uint32_t magic, failed, pending; } bootguard __attribute__((section(".n
 #if DUELL_TIDE
 static uint8_t tide_lvc2[NLIVE];  /* TIDE live graphs: the latest note's effective cutoff of filter 2, Q8 dial steps >> 7 (chain_f2.c writes it, ui_live.c reads it; the pad bytes of track_t are used up) */
 #define LVC2(t) (tide_lvc2[(uint32_t)((t) - trk) % NLIVE])
+/* the per-stage timing of the console probe `cpu` (fx.c, eng_fm6.c, console.c): the unit's test-mode build only (the host tests have no TIMER4) */
+#if DUELL_TEST_MODE && !defined(__x86_64__) && !defined(__i386__) && !defined(__aarch64__)
+#define DUELL_PROBE_STAGES 1
+#else
+#define DUELL_PROBE_STAGES 0
+#endif
 #endif

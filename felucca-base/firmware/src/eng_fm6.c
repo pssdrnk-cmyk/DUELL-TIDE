@@ -565,7 +565,7 @@ static void fm6_block(track_t *t)       /* once a block and part: the macros, th
     fm6_sync(t);
 #if DUELL_TIDE
     if (tr < NLIVE && (fm6_xt[tr].on || fm6_xt[tr].dirty)) {
-#if DUELL_TEST_MODE
+#if DUELL_PROBE_STAGES
         extern volatile uint32_t prb_stage_pk[5];
         uint32_t x0 = fm1_ticks();
         fm6_xblock(t, tr);
