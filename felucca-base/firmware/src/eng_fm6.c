@@ -652,14 +652,16 @@ static void fm6_render(track_t *t, voice_t *v, int32_t *out, uint32_t len, const
     lf = fm6_note_logfreq(m->pitch16 + (p[FP_TRNSP] - 24) * 16, m->fine);
     fb = clamp(fm6_eff[tr].fb + ((m->shape - (64 << 8)) >> 11), 0, 7);
     lvl = clamp(t->p[P_E2], -64, 63) * 24 + clamp(m->cutoff >> 8, -150, 150) * 16;   /* microsteps */
-    if (m->amask
-#if DUELL_TIDE
-               || (tr < NLIVE && fm6_xt[tr].on)
-#endif
-              ) {                                     /* DUELL ARP TARGET (SPEC 2.3): operators on the arp's pitch */
+    if (m->amask) {                                     /* DUELL ARP TARGET (SPEC 2.3): operators on the arp's pitch */
         if (!fm6_note_compute(n, p, bus, fm6_lfo_v[tr], fm6_lfo_d[tr], lf, fm6_eff[tr].alg, fb,
                               atg_fm6(m, fm6_eff[tr].dt, dt2, ul), lvl * 65536, ul))
             return;
+#if DUELL_TIDE
+    } else if (fm6_xt[tr].on) {                         /* No ARP: the bridge's offsets are already shared by the part; no per-voice pitch/gate preparation. */
+        if (!fm6_note_compute(n, p, bus, fm6_lfo_v[tr], fm6_lfo_d[tr], lf, fm6_eff[tr].alg, fb, fm6_eff[tr].dt,
+                              lvl * 65536, fm6_xt[tr].lv))
+            return;
+#endif
     } else if (!fm6_note_compute(n, p, bus, fm6_lfo_v[tr], fm6_lfo_d[tr], lf, fm6_eff[tr].alg, fb, fm6_eff[tr].dt,
                                  lvl * 65536, 0)) {
         return;                                         /* every carrier below the threshold */

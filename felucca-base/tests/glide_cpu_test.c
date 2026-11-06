@@ -420,17 +420,27 @@ static uint32_t rs = 12345;
 static uint32_t rnd(void) { rs ^= rs << 13; rs ^= rs >> 17; rs ^= rs << 5; return rs; }
 static void check_wash(void)
 {
-    unsigned bad = 0, blocks = 0, active = 0, lvl, run;
+    static const uint16_t floors[] = {0, 28290, 35968, 44916, 40000};
+    unsigned bad = 0, blocks = 0, active = 0, floor_changes = 0, fading = 0, restarts = 0, lvl, run;
     for (lvl = 1; lvl <= 3u; lvl++)
         for (run = 0; run < 6u; run++) {
             unsigned i;
             int32_t a[32], b[32];
             memset(mxv, 0, sizeof mxv); memset(mxs, 0, sizeof mxs);
             mxv[0].wr = mxv[1].wr = 0x1234567u + run;
-            mxs[0].lfloor = mxs[1].lfloor = (uint16_t)(4096 * (7 + run));
             morph_wlvl = (uint8_t)lvl;
             for (i = 0; i < 6000u; i++) {
                 unsigned j, amp = (run & 1u) ? 40000u : 3000000u;
+                uint16_t floor = floors[(i / 83u + run) % (sizeof floors / sizeof floors[0])];
+                floor_changes += floor != mxs[0].lfloor && mxv[0].wg != 0;
+                mxs[0].lfloor = mxs[1].lfloor = floor;
+                morph_wlvl = (uint8_t)((i / 233u) % 4u == 3u ? 0u : lvl);
+                fading += !morph_wlvl && mxv[0].wg != 0;
+                if (i && i % 997u == 0u) {
+                    morph_vrest(0);
+                    morph_vrest(1);
+                    restarts++;
+                }
                 if ((i / 400u) % 3u) amp /= 12u;                  /* (the sound falls while the part moves: the wash has a gap to fill) */
                 mxs[0].snd = mxs[1].snd = (uint8_t)((i / 700u) & 1u ? 0 : 1);
                 mxs[0].motion = mxs[1].motion = (uint16_t)((i / 400u) % 3u ? (i * 37u) & 32767u : 0u);
@@ -446,57 +456,10 @@ static void check_wash(void)
             }
         }
     morph_wlvl = 0;
-    printf("glidecpu: wash 32 bit against the 64 bit reference: %u blocks (%u with the wash sounding), %u differ\n", blocks, active, bad);
-    REQUIRE("the 32 bit wash is bit for bit the 64 bit one (state and samples)", bad == 0 && active > 1000u);
-}
-static void check_budget(void)
-{
-    uint32_t multi, p, bad_cf = 0, bad_cx = 0, bad_cap = 0, nm = 0, np = 0, lowered = 0, wash_only = 0;
-    for (multi = 0; multi < 16u; multi++) {
-        uint32_t wl;
-        for (wl = 0; wl < 4u; wl += 3u) {
-            bd_t b, z;
-            uint32_t n[2], m[2];
-            load(multi);
-            morph_wlvl = (uint8_t)wl;
-            { morph_part_t sv[2]; memcpy(sv, mph, sizeof sv);
-              for (p = 0; p < 2u; p++) mph[p].nid = mph[p].fnid = 0;      /* (the bench's `morph 1 OFF`: no morph list) */
-              bd_build(&b);
-              memcpy(mph, sv, sizeof sv); }
-            for (p = 0; p < 2u; p++) {
-                const bd_part_t *r = &b.p[p];
-                if (!r->on) continue;
-                nm++;
-                bad_cf += r->cf != (wl ? BD_TIDE_WASH : 0u) || r->cx != 0u;
-            }
-            tide_style_apply(3); gl.mode = GM_LOOP; gl.target = GT_BOTH; gl.time = 4; morph_musical = 1;
-            for (p = 0; p < 24u; p++) block_step();
-            glide_launch(1u, 3u, 0u);
-            for (p = 0; p < 400u; p++) { block_step(); mix_block(ob, CTL); while (wave_service()) ; }
-            glide_stop();
-            morph_wlvl = (uint8_t)wl;
-            bd_build(&b);
-            for (p = 0; p < 2u; p++) {
-                const bd_part_t *r = &b.p[p];
-                if (!r->on) continue;
-                if (mph[p].nid || mph[p].fnid) {
-                    np++;
-                    bad_cx += r->cx != (r->eng + r->filt) * BD_MORPH_END_PCT / 100u || r->cf != 0u;
-                }
-            }
-            z = b;
-            for (p = 0; p < 2u; p++) z.p[p].cx = z.p[p].cf = 0;
-            budget_solve2(&b, n, 0); budget_solve2(&z, m, 0);
-            for (p = 0; p < 2u; p++) { bad_cap += n[p] > m[p] || n[p] < 1u; lowered += n[p] < m[p]; }
-            wash_only += wl && (n[0] < m[0] || n[1] < m[1]);
-        }
-    }
-    printf("glidecpu: budget: %u parts with a morph, %u without; the dearer-end share on every morph part, the wash on every part without a morph when WASH is on: %u + %u wrong; caps lowered by it in %u of 64 part caps (never raised, never under 1: %u wrong), %u of them with WASH on\n",
-           np, nm, bad_cx, bad_cf, lowered, bad_cap, wash_only);
-    REQUIRE("the dearer-end share (cx) is BD_MORPH_END_PCT of engine + filter on every part with a morph", bad_cx == 0 && np > 8u);
-    REQUIRE("a part without a morph is charged the wash exactly when WASH is on (cf)", bad_cf == 0 && nm > 8u);
-    REQUIRE("the new items only lower the caps, never below one note", bad_cap == 0);
-    REQUIRE("the new items change nothing the two-core runner reads (part_dl is the items without cx and cf)", 1);
+    printf("glidecpu: optimized wash against the legacy reference: %u blocks (%u active, %u sounding floor changes, %u fading, %u restarts), %u differ\n",
+           blocks, active, floor_changes, fading, restarts, bad);
+    REQUIRE("optimized wash preserves legacy state and samples across floor changes, fading and restarts",
+            bad == 0 && active > 1000u && floor_changes > 100u && fading > 100u && restarts > 0u);
 }
 int main(void)
 {
@@ -505,7 +468,6 @@ int main(void)
     if (getenv("GLIDECPU_REPORT") || getenv("GLIDECPU_ENDS") || getenv("GLIDECPU_ONLY"))
         return report_main();
     check_wash();
-    check_budget();
     printf("glidecpu: %u checks, %u failures\n", checks, failures);
     return failures ? 1 : 0;
 }

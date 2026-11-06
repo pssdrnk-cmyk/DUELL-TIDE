@@ -574,6 +574,9 @@ typedef struct {
     int64_t wref, wnow;                                  /* the wash: the part's level at rest (~90 ms) and now (~10 ms), mean squares */
     int32_t wg, wy[3];                                   /* .. its gain (Q12) and its noise's three one-poles (two at the top, one below) */
     uint32_t wr;                                         /* .. its noise's state (xorshift) */
+    int32_t wal, wah;                                    /* wash coefficients: only the note-derived floor changes them */
+    uint16_t wfloor;
+    uint8_t wvalid;
     int64_t qin, qout;                                   /* the mean squares before and after, smoothed (~6 ms: the hold's) */
     uint8_t run;                                         /* the states are this part's last block's */
 } mxv_t;
@@ -617,8 +620,14 @@ static __attribute__((noinline)) void MXT_BODY(morph_wash)(uint32_t pp, int32_t 
         return;
     if (!v->wr)
         v->wr = 0x9E3779B9u ^ pp;
-    wl = xexp2(x->lfloor + XV_LW), wh = xexp2(x->lfloor + 2 * 4096 + XV_LW);   /* (two octaves wide: a soft band, not a hiss) */
-    al = (int32_t)(((int64_t)wl << 15) / (65536 + wl)), ah = (int32_t)(((int64_t)wh << 15) / (65536 + wh));
+    if (!v->wvalid || v->wfloor != x->lfloor) {
+        wl = xexp2(x->lfloor + XV_LW), wh = xexp2(x->lfloor + 2 * 4096 + XV_LW);   /* two octaves wide; independent of this block's samples and gain */
+        v->wal = (int32_t)(((int64_t)wl << 15) / (65536 + wl));
+        v->wah = (int32_t)(((int64_t)wh << 15) / (65536 + wh));
+        v->wfloor = x->lfloor;
+        v->wvalid = 1;
+    }
+    al = v->wal, ah = v->wah;
     for (i = 0; i < (int32_t)n; i++) {                   /* white (xorshift32), low-passed at the top, the low part taken away */
         int32_t w;
         xs32(&v->wr);
@@ -671,6 +680,7 @@ static __attribute__((noinline)) void morph_vrest(uint32_t pp)
     v->run = 0;
     v->m = 0;
     v->wg = 0;
+    v->wvalid = 0;
     v->wy[0] = v->wy[1] = v->wy[2] = 0;
 }
 static __attribute__((noinline)) void MXT_BODY(morph_valley)(uint32_t pp, int32_t *b, int32_t *s, uint32_t n)
