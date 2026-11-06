@@ -624,7 +624,7 @@ static __attribute__((noinline)) void MXT_BODY(morph_wash)(uint32_t pp, int32_t 
         xs32(&v->wr);
         w = (int32_t)(v->wr >> 16) - 32768;
         /* (32 bit multiplies, bit for bit the 64 bit ones they were: w and the three states stay in -32768 .. 32767 (a one-pole of such values, the floor of each step keeps it so), so a difference is
-         * at most 65535 in size and a coefficient is under 32768: the product is under 2^31. The device has no 64 bit multiply: wave 16, GLIDE's wash ran six of them a sample and a part) */
+         * at most 65535 in size and a coefficient is under 32768: the product is under 2^31. Wave 16: GLIDE's wash ran six wide multiplies a sample and a part, one now (the power meter); what that saves on the device is not measured, the host does not show it) */
         v->wy[0] += (al_s(ah, w - v->wy[0]));
         v->wy[2] += (al_s(ah, v->wy[0] - v->wy[2]));   /* (12 dB / octave above the band: no edge) */
         v->wy[1] += (al_s(al, v->wy[2] - v->wy[1]));

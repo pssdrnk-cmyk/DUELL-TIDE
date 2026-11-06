@@ -361,13 +361,32 @@ static void con_mload(const char *p)                   /* (probe) mload N: load 
 }
 static void con_cpu(void)                              /* (probe) cpu: the longest half since the last `cpu` (us; cleared) and the misses since power-on */
 {
-    uint32_t pk = cpu_pk;
+    uint32_t pk, raw;
+    fm1_irq_off();                                     /* (read and clear together: an ISR peak between the two would be lost; the TEST / ABOUT meter also clears cpu_pk) */
+    pk = cpu_pk;
+    raw = cpu_raw_pk;
     cpu_pk = 0;
+    cpu_raw_pk = 0;
+    fm1_irq_on();
     con_kv("cpu_pk_us", (int32_t)pk);
+    con_kv("cpu_raw_pk_us", (int32_t)raw);               /* (before the nested TIMER5 / USB work is subtracted: what the half's deadline saw) */
     con_kv("cpu_budget_us", (int32_t)CPU_BUDGET_US);
     con_kv("cpu_miss", (int32_t)cpu_miss);
     con_kv("cpu_sum_us", (int32_t)cpu_sum);
     con_kv("cpu_n", (int32_t)cpu_n);
+#if DUELL_TIDE
+    {                                                  /* (what the glide is doing at this moment, to be sure the probe saw the stages it means to: voices sounding, the FM6 bridge on, the valley's depth, the wash/breath movement) */
+        uint32_t k, i, nv;
+        for (k = 0; k < 2u; k++) {
+            for (i = 0, nv = 0; i < NVOICE; i++)
+                nv += trk[k].v[i].active != 0;
+            con_kv(k ? "voices1" : "voices0", (int32_t)nv);
+            con_kv(k ? "fm6_bridge1" : "fm6_bridge0", (int32_t)fm6_xt[k].on);
+            con_kv(k ? "valley1" : "valley0", (int32_t)mxs[k].d);
+            con_kv(k ? "motion1" : "motion0", (int32_t)mxs[k].motion);
+        }
+    }
+#endif
 }
 #endif
 
