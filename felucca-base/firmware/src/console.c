@@ -342,6 +342,67 @@ static void con_params(void)
     }
 }
 
+#if DUELL_TEST_MODE
+static void project_load(uint32_t slot);
+static uint32_t project_cur_slot(void);
+static void con_mload(const char *p)                   /* (probe) mload N: load factory multi N (1..16) as the MULTI page does */
+{
+    int32_t n = 0;
+    while (*p == ' ')
+        p++;
+    while (*p >= '0' && *p <= '9')
+        n = n * 10 + (*p++ - '0');
+    if (n < 1 || n > (int32_t)MU_SLOTS) {
+        con_puts("mload 1..16\r\n");
+        return;
+    }
+    project_load((uint32_t)(n - 1));
+    con_kv("multi", (int32_t)project_cur_slot() + 1);
+}
+static void con_cpu(void)                              /* (probe) cpu: the longest half since the last `cpu` (us; cleared) and the misses since power-on */
+{
+    uint32_t pk = cpu_pk;
+    cpu_pk = 0;
+    con_kv("cpu_pk_us", (int32_t)pk);
+    con_kv("cpu_budget_us", (int32_t)CPU_BUDGET_US);
+    con_kv("cpu_miss", (int32_t)cpu_miss);
+    con_kv("cpu_sum_us", (int32_t)cpu_sum);
+    con_kv("cpu_n", (int32_t)cpu_n);
+}
+#endif
+
+#if DUELL_TEST_MODE && DUELL_TIDE
+static void con_glide(const char *p)                   /* (probe) glide M [T]: M 1 = the TIDE page's K1 twist with MODE BACK AND FORTH (LOOP): launch towards B on the selected part's morph target, PLAY starts
+                                                        * with it (glide_launch); M 0 = stop it where it is; T (0..6) = the trip's TIME index (1 .. 64 bars, default: as set). No reply but the state: glide running to */
+{
+    int32_t m = -1, t = -1;
+    while (*p == ' ')
+        p++;
+    if (*p >= '0' && *p <= '9')
+        m = *p++ - '0';
+    while (*p == ' ')
+        p++;
+    if (*p >= '0' && *p <= '9')
+        t = *p - '0';
+    if (m == 1) {
+        if (t >= 0 && t < (int32_t)GLIDE_TIMES)
+            gl.time = (uint8_t)t;
+        gl.mode = GM_LOOP;
+        if (!glide_running())
+            glide_launch(1u, morph_mask(song.sel), song.sel);
+    } else if (m == 0) {
+        glide_stop();
+    } else {
+        con_puts("glide 0|1 [TIME 0..6]\r\n");
+        return;
+    }
+    con_kv("glide", glide_running() ? 1 : 0);
+    con_kv("glide_mode", (int32_t)gl.mode);
+    con_kv("glide_time", (int32_t)gl.time);
+    con_kv("playing", song.playing ? 1 : 0);
+}
+#endif
+
 static void con_exec(const char *p)
 {
     if (con_word(&p, "help") || con_word(&p, "?"))
@@ -369,6 +430,16 @@ static void con_exec(const char *p)
 #if DUELL_BENCH
     else if (con_word(&p, "bench"))
         bench_con(p);                                  /* (bench builds only: src/bench.c, the bench suite's words) */
+#endif
+#if DUELL_TEST_MODE
+    else if (con_word(&p, "mload"))
+        con_mload(p);
+    else if (con_word(&p, "cpu"))
+        con_cpu();
+#if DUELL_TIDE
+    else if (con_word(&p, "glide"))
+        con_glide(p);
+#endif
 #endif
     else if (con_word(&p, "uboot")) {
         if (con_word(&p, "yes")) {
