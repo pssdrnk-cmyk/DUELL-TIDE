@@ -1633,7 +1633,23 @@ static int morph_begin(track_t *t, int adv)
 #endif
     t->mwon = 1;
     t->mwpi = (uint8_t)pi;
+#if DUELL_TIDE
+    {                                                   /* GLIDE CPU (unit 2026-11-06: a blend every block of a moving fader cost ~70 us a block on part 1): while the
+                                                         * fader moves, blend every other block and write the last blend in between (the fader one block, 0.73 ms, behind) */
+        static uint8_t rskip[NSHOWN];
+        if (mp->cvalid && mp->cst == duell_stereo && mp->cfader != mp->fader && adv) {
+            if (!rskip[pi]) {
+                rskip[pi] = 1;
+                goto cached;
+            }
+        }
+        rskip[pi] = 0;
+    }
+#endif
     if (mp->cvalid && mp->cfader == mp->fader && mp->cst == duell_stereo) {   /* as the block before: write the values */
+#if DUELL_TIDE
+cached:
+#endif
         n = mp->cn;
         for (j = 0; j < n; j++) {
             uint32_t id = mp->cid[j];

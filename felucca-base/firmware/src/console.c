@@ -374,6 +374,18 @@ static void con_cpu(void)                              /* (probe) cpu: the longe
     con_kv("cpu_miss", (int32_t)cpu_miss);
     con_kv("cpu_sum_us", (int32_t)cpu_sum);
     con_kv("cpu_n", (int32_t)cpu_n);
+    {
+        extern volatile uint32_t prb_stage_pk[5];
+        uint32_t st[5], k;
+        fm1_irq_off();
+        for (k = 0; k < 5u; k++) st[k] = prb_stage_pk[k], prb_stage_pk[k] = 0;
+        fm1_irq_on();
+        con_kv("st_morph_us", (int32_t)(st[0] / 24u));
+        con_kv("st_part1_us", (int32_t)(st[1] / 24u));
+        con_kv("st_part2wait_us", (int32_t)(st[2] / 24u));
+        con_kv("st_xblock_us", (int32_t)(st[3] / 24u));
+        con_kv("st_voices1_us", (int32_t)(st[4] / 24u));
+    }
 #if DUELL_TIDE
     {                                                  /* (what the glide is doing at this moment, to be sure the probe saw the stages it means to: voices sounding, the FM6 bridge on, the valley's depth, the wash/breath movement) */
         uint32_t k, i, nv;

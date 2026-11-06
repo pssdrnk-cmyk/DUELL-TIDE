@@ -71,7 +71,7 @@ static const struct { const engine_t *e; uint16_t c; } BD_ENG[] = {   /* (cal) *
 #define BD_TIDE_VALLEY 66u      /* the valley after the part's voices (the part, once; SPREAD's second buffer included): 43 x 1.5 */
 #define BD_TIDE_WASH 60u        /* the wash, only while WASH is not OFF (the default is OFF): 39 x 1.5 */
 #define BD_TIDE_DIP 1u          /* the filter dip, a voice: 0.45 x 1.5 */
-#define BD_TIDE_FM6 7u          /* FM6's bridge, a voice (stand-ins, retuning): 4.7 x 1.5 */
+#define BD_TIDE_FM6 76u         /* FM6's bridge, a voice: during a crossing both sounds' operators run (unit 2026-11-06, 9178086 probe: part 1's voice stage +35..45 % with the bridge on); half an FM6 voice */
 #endif
 #define BD_FADE 66u             /* .. an engine choice cross-faded, both shapes made (old: 2 %) */
 /* the part's own stages */
