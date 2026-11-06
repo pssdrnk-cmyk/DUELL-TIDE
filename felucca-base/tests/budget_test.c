@@ -1042,12 +1042,12 @@ static void t_loaded(void)
             mph[k].nid = mph[k].fnid = 0;               /* (the bench's `morph 1 OFF`: no morph list) */
         bd_build(&bo);
         for (k = 0; k < 2u; k++)
-            bo.p[k].ext += 16u + b.p[k].tide_v, bo.p[k].misc += b.p[k].tide;   /* + BD_MORPH, and TIDE's items of a part with a morph (A01) */
+            bo.p[k].ext += 16u + b.p[k].tide_v, bo.p[k].misc += b.p[k].tide, bo.p[k].cx = b.p[k].cx;   /* + BD_MORPH, TIDE's items of a part with a morph (A01), and the dearer end of the morph (wave 16: the same share of the same voice) */
         no = two_of(&bo);
         printf("budget:     #01 BEHIVE, TWIN OFF + 12 dB after the load: voice %u + %u + %u (morph off + 16: %u + %u + %u), two cores %u a part (morph off + 16: %u; item 140: was 4)\n",
                b.p[0].eng, b.p[0].filt, b.p[0].ext, bo.p[0].eng, bo.p[0].filt, bo.p[0].ext, n, no);
-        bchk("item 142 (b): #01 BEHIVE with TWIN OFF and 12 dB after the load is charged as the same state with the morph off plus BD_MORPH (two cores 5 at limit 72, was 6 at 84 and 4 at 81 before the fix)",
-             ok && b.p[0].eng == bo.p[0].eng && b.p[0].filt == bo.p[0].filt && b.p[0].ext == bo.p[0].ext && b.p[0].misc == bo.p[0].misc && n == no && n == 5u);
+        bchk("item 142 (b): #01 BEHIVE with TWIN OFF and 12 dB after the load is charged as the same state with the morph off plus BD_MORPH (two cores 4 at limit 72 with wave 16's dearer-end share, 5 before it, was 6 at 84 and 4 at 81 before the fix)",
+             ok && b.p[0].eng == bo.p[0].eng && b.p[0].filt == bo.p[0].filt && b.p[0].ext == bo.p[0].ext && b.p[0].misc == bo.p[0].misc && n == no && n == 4u);
     }
     /* (c) a choice set by hand at End B (EDITABLE B, pinned) is End B's whatever the live value: TWIN LP pinned at B, live TWIN OFF -> TWIN charged; not pinned -> not */
     {

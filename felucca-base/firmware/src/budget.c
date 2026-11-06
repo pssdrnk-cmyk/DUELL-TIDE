@@ -73,6 +73,17 @@ static const struct { const engine_t *e; uint16_t c; } BD_ENG[] = {   /* (cal) *
 #define BD_TIDE_DIP 1u          /* the filter dip, a voice: 0.45 x 1.5 */
 #define BD_TIDE_FM6 7u          /* FM6's bridge, a voice (stand-ins, retuning): 4.7 x 1.5 */
 #endif
+#if DUELL_TIDE
+/* Wave 16 (the GLIDE overrun, owner: AUTO TIDE, MODE LOOP "BACK AND FORTH": the CPU readout past 100 % and missed blocks; tests/glide_cpu_test.c). The caps of wave 14 were validated with the faders at End A and the
+ * sound still. On the unit (DUB CHORD, PLAY on, the glide going) the per-second peak went from 78 .. 85 % to 92 .. 118 % with the mean up only 5 points: single blocks 15 .. 30 % of a half dearer, and none of it
+ * without notes (PLAY stopped: 34 % -> 36 .. 40 %). Measured on the host with the same notes (WSL, the time stamp counter, 16 factory multis, tests/glide_cpu_test.c): (1) the glide's own movement (the wash
+ * and the breath) +2 .. 3 points of a half; (2) the sound at End B, a rolled one, +11 .. 17 points on WHISPER TIDE (7 voices) against the sound at A at the same notes, 10 .. 25 % more a voice than the table
+ * says (the table is the dearest FACTORY sound of an engine; a rolled B end switches on what none of them has); (3) the blocks in which the fader has stepped and the blend is made again cost 4 .. 23 points
+ * more than the others (WHISPER TIDE 96 % against 73 %, DUB CHORD 66 against 57, MINIMAL 12 48 against 44), 127 times a trip. The host could not say which stage of (2) and (3) it is (the figures spread over the
+ * engines and the filters, no function above 15 %); so a part with a MORPH is charged a quarter of its engine and filter a voice more (about half of it for the dearer end, half for the blend's block), and a
+ * part WITHOUT a morph the wash. For the NOTES caps only (the two-core runner's deadline, part_dl, does not read them). 10 of the 64 part caps of the 16 factory multis go down by a note. */
+#define BD_MORPH_END_PCT 25u    /* percent of a voice's engine + filter cost: the dearer end of a MORPH over the table's figure */
+#endif
 #define BD_FADE 66u             /* .. an engine choice cross-faded, both shapes made (old: 2 %) */
 /* the part's own stages */
 static const uint8_t BD_INS[] = {0, 69, 65, 65, 70, 52, 68, 62, 65, 75, 88};   /* COST-CAL item 116 (rounded up; HARD CLIP .. VINYL slope -2 a voice: the mean over the key counts),  P_ITYPE order (N_ITYPE): OFF SOFT CLIP, HARD CLIP, FOLD, FUZZ, BIT CRUSHER, PHASER, FLANGER, CHORUS TAPE VINYL */
@@ -108,11 +119,26 @@ typedef struct {                /* one part's items, host instructions a sample 
     uint32_t ins, sat, eq, misc;/* fixed: INSERT, SAT, EQ, the rest (ducker, KEY TRK, matrix, LFOs, arp) */
     uint32_t base;              /* fixed: the part's own work while it sounds (BD_PART_ON; no ablation removes it) */
 #if DUELL_TIDE
+    uint32_t cx, cf;            /* wave 16, the NOTES caps only (the two-core runner's deadline, part_dl, does not read them): a voice, and fixed, that the sounds'
+                                 * ends cost over what the items above say (BD_MORPH_END_PCT; the wash of a part without a MORPH). Zero outside TIDE */
+#endif
+#if DUELL_TIDE
     uint32_t tide, tide_v;      /* what TIDE's DSP adds (A01; already inside misc and ext): fixed (valley, wash), and a voice (dip, FM6's bridge); the tests read them */
 #endif
     uint32_t cap;               /* the most notes it can have: NOTES_MAX, the pool, the engine's own limit */
     uint32_t on;                /* sounds at all (not muted) */
 } bd_part_t;
+#if DUELL_TIDE
+#define BD_CX(r) ((r)->cx)
+#define BD_CF(r) ((r)->cf)
+#define BD_CXCLEAR(r) ((r)->cx = 0)
+#define BD_CLEAR(r) ((r)->cx = (r)->cf = 0)
+#else
+#define BD_CX(r) 0u
+#define BD_CF(r) 0u
+#define BD_CXCLEAR(r) ((void)0)
+#define BD_CLEAR(r) ((void)0)
+#endif
 typedef struct { uint32_t idle, fx; bd_part_t p[2]; } bd_t;   /* the global items too */
 #define BD_N 2u                  /* the parts the budget covers (the two shown ones; a test rig may have more live tracks) */
 _Static_assert(NLIVE >= BD_N, "budget.c: two parts");
@@ -148,7 +174,7 @@ static void bd_part(const track_t *t, bd_part_t *r)
     const int16_t *p = t->p;
     uint32_t i, sl, bands, pi = (uint32_t)(t - trk), lf = 0, by = pi < 2u ? byp_m[pi] : 0u;   /* by: the BYPASS switches of the part (item 116: SAT, INSERT and EQ bypassed measured as not running) */
 #if DUELL_TIDE
-    uint32_t tide = 0, tide_v = 0;                      /* TIDE's DSP items of the part (BD_TIDE_*) */
+    uint32_t tide = 0, tide_v = 0, morphed = 0;         /* TIDE's DSP items of the part (BD_TIDE_*); the part has a MORPH on */
 #endif
     uint32_t sat = p[P_DIST] != 0;                      /* SAT on in the live values or at either morph end as it sounds (item 147) */
     bd_tw_t w = {0, 0, 0, 0};                           /* item 142: the TWIN FILTER of the morph's two ends as they sound (budget_feat.c adds the live one) */
@@ -199,9 +225,16 @@ static void bd_part(const track_t *t, bd_part_t *r)
         tide_v = BD_TIDE_DIP + (e == &ENG_FM6 ? BD_TIDE_FM6 : 0u);
         tide = ((p[P_FREEC] <= 32 && e->ufilt && sl) && s1 == s0 && d0 == q[P_FREED] && m0 == q[P_FREEC] && w0 == q[P_TWTYPE] ? 0u : BD_TIDE_VALLEY) + (morph_wlvl ? BD_TIDE_WASH : 0u);   /* (the part's fixed cost below) */
         r->ext += tide_v;
+        morphed = 1;
 #endif
     }
     r->filt = sl == 2u ? BD_F24 : sl ? BD_F12 : 0;
+#if DUELL_TIDE
+    if (morphed)
+        r->cx = (r->eng + r->filt) * BD_MORPH_END_PCT / 100u;   /* (the dearer end of the morph: BD_MORPH_END_PCT) */
+    else if (pi < NSHOWN && morph_wlvl)
+        r->cf = BD_TIDE_WASH;                           /* a GLIDE moves every part its TARGET names, whether or not it has a MORPH yet: the wash (GLIDE's breath) runs on it as well (wave 16) */
+#endif
     if (mods_off & MODS_PFX)                            /* (item 125: GLO > MODULES, PART FX OFF: the part's DIST, INSERT, EQ and DUCK are skipped, fx.c: they cost nothing; was charged as if on) */
         by |= BY_INS | BY_SAT | BY_EQ;
     i = (uint32_t)p[P_ITYPE];
@@ -319,8 +352,8 @@ static void budget_solve2(const bd_t *b, uint32_t *out, uint32_t two)
     uint32_t c[2], fx[2], g = BD_U(b->idle + b->fx), lim = BUDGET_LIMIT * 100u, p;
     for (p = 0; p < 2u; p++) {
         const bd_part_t *r = &b->p[p];
-        c[p] = r->on ? BD_U(r->eng + r->filt + r->ext) : 0;
-        fx[p] = r->on ? BD_U(r->ins + r->sat + r->eq + r->misc + r->base) : 0;
+        c[p] = r->on ? BD_U(r->eng + r->filt + r->ext + BD_CX(r)) : 0;
+        fx[p] = r->on ? BD_U(r->ins + r->sat + r->eq + r->misc + r->base + BD_CF(r)) : 0;
     }
     if (two) {                                          /* the two-core rule: each part on its own core, the globals on both paths (item 132, owner: the hand-over BUDGET_HO is not charged:
                                                          * COST-CAL's estimate of it was -28, nothing) */
@@ -390,8 +423,8 @@ static uint8_t part_notes_reason(int part)
         case 2: cost = q.p[part].sat, q.p[part].sat = 0; break;
         case 3: cost = q.p[part].eq, q.p[part].eq = 0; break;
         case 4: cost = q.fx, q.fx = 0; break;
-        case 5: cost = q.p[o].eng + q.p[o].filt + q.p[o].ext, q.p[o].eng = q.p[o].filt = q.p[o].ext = 0; break;
-        default: cost = q.p[part].misc + q.p[part].ext, q.p[part].misc = q.p[part].ext = 0; break;
+        case 5: cost = q.p[o].eng + q.p[o].filt + q.p[o].ext + BD_CX(&q.p[o]), q.p[o].eng = q.p[o].filt = q.p[o].ext = 0; BD_CXCLEAR(&q.p[o]); break;
+        default: cost = q.p[part].misc + q.p[part].ext + BD_CX(&q.p[part]) + BD_CF(&q.p[part]), q.p[part].misc = q.p[part].ext = 0; BD_CLEAR(&q.p[part]); break;
         }
         if (!cost)
             continue;

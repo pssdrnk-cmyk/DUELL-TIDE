@@ -7,6 +7,13 @@ New lines for the fork go here, not into CHANGELOG.md.
 
 Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrnk-cmyk/DUELL-TIDE>), adding TIDE, a morph that plays and evolves by itself. TIDE has its own version, `MAJOR.MINOR.PATCH`, kept in the file `TIDE_VERSION` and shown in MENU > SYSTEM > ABOUT beside the DUELL version (1.1). A build flashed for testing is a beta, `1.0.0-b1`, `1.0.0-b2`, ...; the first build the fork owner has validated on the unit is `1.0.0`; a fix is `1.0.1`, a feature `1.1.0`. The git tag is `tide-` and the version (`tide-1.0.0-b1`); the GitHub release has the same name. Each version has a section below, `## 1.0.0-b1`, newest first; the lines for the build not yet flashed go under the top heading. The commit stays in the release notes, not in the name. The installer page offers the stable and the beta build of the [GitHub releases](https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases); the [README](README.md#builds-stable-and-beta) says which they are.
 
+## 1.0.0-b2
+
+Not flashed yet.
+
+- **Fixed:** a GLIDE in MODE BACK AND FORTH (LOOP) on a multi with notes sounding could push the audio past 100 % of a block (the unit: DUB CHORD, per-second peaks of 92 to 118 % against 78 to 85 % without the glide, about a missed block a second). The caps of 1.0.0-b1 were checked with the faders at End A. Now a part with a MORPH is charged a quarter of its engine and filter a voice more (the sound at End B, a rolled one, costs 10 to 25 % more a voice than the table says, and the blocks in which the fader steps and the blend is made again cost more than the others), and a part without a MORPH is charged the wash while WASH is on (a GLIDE moves every part its TARGET names). 10 of the 64 part caps of the 16 factory multis go down by one note; nothing else changes in what you hear. GLIDE's wash itself runs in 32 bit multiplies (bit for bit the same noise; the chip has no 64 bit multiply). Host group `glidecpu` (`tests/glide_cpu_test.c`).
+- **New (developer tool, test-mode builds only):** the console word `glide 1 [T]` (launch the back-and-forth glide on the selected part's morph target, as knob 1 of the TIDE page does; PLAY starts with it; T is the TIME index 0 to 6) and `glide 0` (stop it), next to `mload N` and `cpu`; `cpu_multis.py --glide [--gtime T]` loads each multi, launches the glide and samples `cpu` once a second.
+
 ## 1.0.0-b1
 
 The first versioned build, not flashed yet. It holds everything below, from DUELL 1.1 on: the entries of the dated builds listed at the end are not split out.
