@@ -19,15 +19,17 @@
 static const char *const GL_TARGET_NAME[3] = {"SOUND", "SEQ", "BOTH"};
 static const char *const GL_MODE_NAME[5] = {"ONCE", "LOOP", "DRIFT", "WNDR", "JRNY"};
 
-static void tide_wait_text(char *val, uint32_t n, const char **unit)
+static void tide_wait_text(char *val, uint32_t n, const char **unit)   /* unit may be NULL */
 {
     uint32_t b = GLIDE_WAIT_BARS[gl.wait % GLIDE_WAITS];
     if (!b) {
         str_cpy(val, "OFF", n);
-        *unit = "";
+        if (unit)
+            *unit = "";
     } else {
         fmt_int(val, (int32_t)b);
-        *unit = b == 1u ? "BAR" : "BARS";
+        if (unit)
+            *unit = b == 1u ? "BAR" : "BARS";
     }
 }
 
@@ -349,7 +351,6 @@ static int tide_reset(uint32_t k)
 {
     const uint8_t *sty = STY[(tide_style < STY_CUSTOM ? tide_style : tide_style_last) % 5u];
     char v[12];
-    const char *u;
     if (cur_page()->graph == GR_TIDELIST)
         return 0;
     if (k == 0u) {
@@ -369,7 +370,7 @@ static int tide_reset(uint32_t k)
     }
     if (k == 3u) {
         gl.wait = sty[2];
-        tide_wait_text(v, sizeof v, &u);
+        tide_wait_text(v, sizeof v, 0);
         ui_say("WAIT ", v);
         return 1;
     }
