@@ -1061,15 +1061,10 @@ static const page_t PAGES[] = {
     {"MODE", FAM_TRK, SC_MODE, GR_MODE, {0xFF, 0xFF, 0xFF, 0xFF}},
 #endif
     /* (0.2.25 layout round, owner: HOME's MIXER page is gone: the mixer is GLO's first page, MIXER, and the hold-GLO layer; SPACE is PERFORM's K2) */
-    /* the matrix pages again as the ENV family's last two (after AMP ENV, AMP DEST, ENV 2, ENV 2 DEST): the same title, graph and ids as the LFO
-     * family's MOD 1 / MOD 2, so ENV 2 is routable without the LFO button. Appended here so no earlier PAGES index moves; the family
-     * order, the counter and the remembered page work by index + family, the help by title (the same hint), mod_ui_slot is shared */
-    /* cloud job H (owner-approved 2026-10-19): the CYCLE envelope (job F) in the ENV family after ENV 2 DEST and before the matrix pages (the family goes round in table order, so the pages are put here and no earlier index moves).
+    /* cloud job H (owner-approved 2026-10-19): the CYCLE envelope (job F) in the ENV family after ENV 2 DEST (the family goes round in table order; the matrix pages are the LFO round's only).
      * CYCLE has five stored values: 1/2 MODE (LOOP, ONCE), SYNC (OFF / ON), RISE, FALL; 2/2 CURVE alone on K1 */
     {"CYCLE ENV 1/2", FAM_ENV, SC_TRACK, GR_CYCLE, {XW_BASE + X_CYMODE, XW_BASE + X_CYSYNC, XW_BASE + X_CYRISE, XW_BASE + X_CYFALL}},
     {"CYCLE ENV 2/2", FAM_ENV, SC_TRACK, GR_CYCLE, {XW_BASE + X_CYCURVE, XW_BASE + X_CYCUT2, XW_BASE + X_CYPAN, XW_BASE + X_CYPIT}},   /* DUELL 1.1 (owner): CURVE, TWIN CUTOFF, PAN, PITCH */
-    {"MATRIX 1-4", FAM_ENV, SC_TRACK, GR_MOD, {0xFF, P_M1SRC, P_M1DST, P_M1AMT}},
-    {"MATRIX 5-8", FAM_ENV, SC_TRACK, GR_MOD, {0xFF, P_M5SRC, P_M5DST, P_M5AMT}, VIS_M5},
 };
 #define NPAGES (sizeof(PAGES) / sizeof(PAGES[0]))
 /* The CPU TEST screen (DUELL 0.2.2): on no button and in no family's round (not in PAGES: the GLO group is MIXER, TEMPO, CHORUS, DELAY 1/2, 2/2, REVERB, SHIMMER, STEREO MASTER, COMPRESSOR, MODULES, SIDECHAIN, MIDI, MIDI LEARN).

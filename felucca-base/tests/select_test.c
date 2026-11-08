@@ -240,23 +240,8 @@ static void sweep_home(void)
         duell_mode_force(m0); ui_mode_set = ui.mode_seen = m0; mix_split = s0;
         enter(p0);
     }
-    {   /* ENV's last two pages are the matrix pages again (MOD 1 / MOD 2): the same slots and graph as LFO's */
-        uint32_t e = 0, l = 0, n = 0, i, j;
-        for (i = 0; i < NPAGES; i++) {
-            n += PAGES[i].fam == FAM_ENV;
-            if (PAGES[i].fam == FAM_ENV && PAGES[i].graph == GR_MOD) {
-                for (j = 0; j < NPAGES; j++)
-                    if (PAGES[j].fam == FAM_LFO && str_eq(PAGES[j].title, PAGES[i].title)) l = j;
-                e = i;
-                ok = PAGES[l].graph == GR_MOD && !memcmp(PAGES[e].id, PAGES[l].id, 4) &&
-                     (PAGES[e].id[1] == P_M1SRC || PAGES[e].id[1] == P_M5SRC);
-                expect(PAGES[e].id[1] == P_M1SRC ? "ENV's MOD 1 edits LFO's MOD 1 slots" : "ENV's MOD 2 edits LFO's MOD 2 slots", ok);
-            }
-        }
-        expect("ENV family: AMP ENV, AMP DEST, ENV 2, ENV 2 DEST, CYCLE ENV 1/2, 2/2, MOD 1, MOD 2 (the last two MOD pages)", n == 8u && str_eq(PAGES[fam_step(e, -1)].title, "MATRIX 1-4"));
-    }
     {   /* the classic arrangement (SPEC 2.4): each family's pages in this order (index order, the button's round) */
-        static const char *const EF[] = {"AMP ENV", "AMP DEST", "ENV 2", "ENV 2 DEST", "CYCLE ENV 1/2", "CYCLE ENV 2/2", "MATRIX 1-4", "MATRIX 5-8"};   /* (cloud job H: the CYCLE pages after ENV 2 DEST) */
+        static const char *const EF[] = {"AMP ENV", "AMP DEST", "ENV 2", "ENV 2 DEST", "CYCLE ENV 1/2", "CYCLE ENV 2/2"};   /* (cloud job H: the CYCLE pages after ENV 2 DEST) */
         static const char *const LF[] = {"LFO 1", "LFO 1 TRIG", "LFO 1 DEST", "LFO 2", "LFO 2 TRIG", "LFO 2 DEST", "MATRIX 1-4", "MATRIX 5-8"};
         uint32_t i, ne = 0, nl = 0, e2 = 0, l2 = 0;
         ok = 1;
@@ -264,13 +249,13 @@ static void sweep_home(void)
             e2 = str_eq(PAGES[i].title, "ENV 2 DEST") ? i : e2;
             l2 = str_eq(PAGES[i].title, "LFO 2 DEST") ? i : l2;
             if (PAGES[i].fam == FAM_ENV)
-                ok &= ne < 8u && str_eq(PAGES[i].title, EF[ne++]);
+                ok &= ne < 6u && str_eq(PAGES[i].title, EF[ne++]);
             if (PAGES[i].fam == FAM_LFO)
                 ok &= nl < 8u && str_eq(PAGES[i].title, LF[nl++]);
         }
-        ok &= ne == 8u && nl == 8u && PAGES[e2].id[0] == P_E2FLT && PAGES[e2].id[1] == XW_BASE + X_E2BLD && PAGES[e2].id[2] == XW_BASE + X_E2DRV && PAGES[e2].id[3] == XW_BASE + X_E2RES &&
+        ok &= ne == 6u && nl == 8u && PAGES[e2].id[0] == P_E2FLT && PAGES[e2].id[1] == XW_BASE + X_E2BLD && PAGES[e2].id[2] == XW_BASE + X_E2DRV && PAGES[e2].id[3] == XW_BASE + X_E2RES &&
               PAGES[l2].id[0] == XW_BASE + X_LFO2 && PAGES[l2].id[1] == XW_BASE + X_L2RES2 && PAGES[l2].id[2] == XW_BASE + X_L2FMODE && PAGES[l2].id[3] == XW_BASE + X_L2BLD;   /* (DUELL 1.1: the DEST pages carry the second filter's cards) */
-        expect("ENV: AMP ENV, AMP DEST, ENV 2, ENV 2 DEST, CYCLE ENV 1/2, 2/2, MOD 1, MOD 2; LFO: LFO 1, 1 TRIG, 1 DEST, LFO 2, 2 TRIG, 2 DEST, MOD 1, MOD 2", ok);
+        expect("ENV: AMP ENV, AMP DEST, ENV 2, ENV 2 DEST, CYCLE ENV 1/2, 2/2; LFO: LFO 1, 1 TRIG, 1 DEST, LFO 2, 2 TRIG, 2 DEST, MOD 1, MOD 2", ok);
     }
     expect("the harness starts on HOME OPENS' page: MORPH, the round's first", where() == r[0] && at_home());
     ok = 1;
