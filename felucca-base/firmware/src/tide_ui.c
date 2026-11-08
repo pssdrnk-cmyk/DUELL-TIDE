@@ -630,7 +630,7 @@ static int32_t tide_x(int32_t x0, int32_t x1, uint32_t f) { return x0 + (int32_t
  * in a filled pill (the cue that works on MONO and GREY too) and a 2 px bar stands beside its steps row */
 static uint16_t tide_pc(uint32_t k)
 {
-    return k == song.sel ? T_PTHEME(k) : ux.bw ? T_DIM : ux_mix(T_BG, T_PTHEME(k), 40);
+    return ui_part_col(k, k == song.sel);              /* (ui_scope.c: the MORPH page's and this page's one tag) */
 }
 /* fader c (0 SOUND, 1 SEQ) of part `part` on screen row y (its track's middle), x x0 .. x1: the track (a 3 px rounded bar, as the cards' bars), the glide's way on it (from where it
  * started to the end it goes to, the tint; MONO's white), the knob (5 x 9, the part's colour) and its labels: part 1's draws the column's head 10 rows up (A, the name centred, B);
@@ -640,19 +640,15 @@ static void tide_track(int32_t y, int32_t x0, int32_t x1, uint32_t c, uint32_t p
     static const char *const LN[2] = {"SOUND", "SEQ"};
     uint32_t f = c ? seqm_fader_of(part) : morph_fader_of(part);
     uint16_t kc = tide_pc(part);
-    int32_t x = tide_x(x0, x1, f), ty = UT_TY(S, y + AF_S_CAP_H / 2);
+    int32_t x = tide_x(x0, x1, f);
     if (!part) {
         int32_t hy = UT_TY(S, y - 10);
         cv_text_on(x0, hy, &AF_S, "A", T_DIM, T_BG);
         cv_text_in(x0, hy, x1 - x0, &AF_S, LN[c], T_MID, T_BG);
         cv_text_r(x1 + 1, hy, &AF_S, "B", T_DIM, T_BG);
     }
-    if (!c) {
-        int sel = part == song.sel;
-        if (sel)
-            cv_rrect(UT_A_K1_DOT_X - 4, y - 5, 14, 11, 2, T_PTHEME(part), T_BG);
-        cv_text_on(UT_A_K1_DOT_X, ty, &AF_S, part ? "2" : "1", sel ? T_INK : kc, sel ? T_PTHEME(part) : T_BG);
-    }
+    if (!c)
+        ui_part_tag(part, y, part == song.sel);
     cv_rrect(x0, y - 1, x1 - x0 + 1, 3, 1, T_RAISE, T_BG);
     if (glide_running() && ((gl.on >> c) & 1u) && ((gl.mask >> part) & 1u)) {
         int32_t a = tide_x(x0, x1, gl.from[c]), b = gl.to ? x1 : x0;

@@ -272,6 +272,19 @@ static void wl_line(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint16_t c, 
         }
     }
 }
+/* A part's tag, shared by the MORPH page and AUTO TIDE: its number at the knob-1 dot's x, centred on row y. The selected part (hot) in full colour, its number in a filled pill
+ * (the cue that works on MONO and GREY too); the other plain and dimmed (its colour mixed 40 % into the background; MONO: its grey). ui_part_col is that colour */
+static uint16_t ui_part_col(uint32_t k, int hot)
+{
+    return hot ? T_PTHEME(k) : ux.bw ? T_DIM : ux_mix(T_BG, T_PTHEME(k), 40);
+}
+static void ui_part_tag(uint32_t k, int32_t y, int hot)
+{
+    const uint16_t kc = ui_part_col(k, hot);
+    if (hot)
+        cv_rrect(UT_A_K1_DOT_X - 4, y - 5, 14, 11, 2, kc, T_BG);
+    cv_text_on(UT_A_K1_DOT_X, UT_TY(S, y + AF_S_CAP_H / 2), &AF_S, k ? "2" : "1", hot ? T_INK : kc, hot ? kc : T_BG);
+}
 /* part k's ridges in rows y0 .. y1 - 1: the newest in front (lowest), each older one a step higher and fainter, every line hiding what is under it; the block of ridges is centred, one ridge (silence: a flat line)
  * is the middle. The selected part (song.sel) is in full brightness with a bar at the half's left edge (a second cue that needs no colour: POLICE has one colour a part, GREY little); the other is dimmed */
 static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
@@ -281,15 +294,9 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
     int32_t amp = hs * 2 / 5, nr, nf, step, i, p, nd;
     if (hs < 4)
         return;
-    {   /* the selected part: a bar at the half's edge and its number in a filled pill (AUTO TIDE's cue: it works on MONO and GREY too); the other part's number plain, dimmed */
-        const int32_t ty = (y0 + y1) / 2;
-        const uint16_t kc = hot ? T_PTHEME(k) : ux.bw ? T_DIM : ux_mix(T_BG, T_PTHEME(k), 40);
-        if (hot) {
-            cv_rect(1, y0 + 1, 3, y1 - y0 - 2, T_PFILL(k));
-            cv_rrect(UT_A_K1_DOT_X - 4, ty - 5, 14, 11, 2, kc, T_BG);
-        }
-        cv_text_on(UT_A_K1_DOT_X, UT_TY(S, ty + AF_S_CAP_H / 2), &AF_S, k ? "2" : "1", hot ? T_INK : kc, hot ? kc : T_BG);
-    }
+    if (hot)                                         /* the selected part: a bar at the half's edge, and the part's tag */
+        cv_rect(1, y0 + 1, 3, y1 - y0 - 2, T_PFILL(k));
+    ui_part_tag(k, (y0 + y1) / 2, hot);
     if (hs > 30)                                     /* (the old non-grid box) */
         amp = hs * 3 / 5;
     step = (y1 - y0 - 2 * amp - 3) / ((int32_t)WL_HN - 1);
