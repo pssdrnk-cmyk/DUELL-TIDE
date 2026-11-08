@@ -1029,7 +1029,7 @@ static void setup(int s)
     case S_PATCH_SAVE: song.playing = 0; up_store(5, "A VERY LONG SOUND NAME"); sl_load(2); go_page(GR_BROWSE); ui.svs = 5; confirm_open(CF_SAVE_OVER, 0); break;   /* SAVE held: OVERWRITE #6 over a saved slot, the K1 hint */
     case S_PATCH_SAVE_NAMED: song.playing = 0; up_store(5, "A VERY LONG SOUND NAME"); sl_load(2); go_page(GR_BROWSE); ui.svs = 5; str_cpy(save_nm, "A VERY LONG NEW NAME", sizeof save_nm); confirm_open(CF_SAVE_OVER, 0); break;   /* 0.2.21: after RENAME */
     case S_NAME_SAVE_PATCH: song.playing = 0; up_store(5, "A VERY LONG SOUND NAME"); sl_load(2); go_page(GR_BROWSE); ui.svs = 5; name_open(NK_SAVE_NAME, 0); break;   /* 0.2.21: the dialog's RENAME */
-    case S_PATCH_SAVE_BOTH: song.playing = 0; sl_load(2); go_page(GR_MORPH); morph.target = MT_BOTH; confirm_open(CF_SAVE_OVER, 2); break;   /* MORPH TARGET BOTH: each part over its own slot */
+    case S_PATCH_SAVE_BOTH: song.playing = 0; sl_load(2); go_page(GR_MORPH); song.both = 1; confirm_open(CF_SAVE_OVER, 2); break;   /* MORPH TARGET BOTH: each part over its own slot */
     case S_TOOLS_RESTORE: song.playing = 0; up_store(3, "MY LONG BASS NAME"); go_page(GR_TOOLS); ui.act = 3; break;   /* RESTORE ALL picked (a saved slot exists) */
     case S_CONFIRM_RESTORE_ALL: song.playing = 0; up_store(6, "A VERY LONG SOUND NAME"); ui.confirm = CF_RESTORE_ALL; ui.confirm_trk = 0; break;
     case S_PHRASES: go_page(GR_PATS); break;
@@ -1132,7 +1132,7 @@ static void setup(int s)
         go_home(); guide_open(0); ui.guide = (uint8_t)(1 + s - S_GUIDE1); break;
     case S_GUIDE_MSG: go_home(); guide_open(0); ui.guide = 4; ui_message("HOLD ON"); break;
     case S_GUIDE_KNOB: go_home(); guide_open(0); ui.guide = 2; ui_message(GUIDE_KNOB_MSG); break;   /* (a knob turned: why nothing happens) */
-    case S_GUIDE_OCT: go_title("MORPH"); morph.target = MT_BOTH; song.octave = -3; guide_open(1); ui.guide = 4; break;   /* (the MENU's GUIDE has pages 2..4, counter "3/3": GUIDE_N is SETUP's) */
+    case S_GUIDE_OCT: go_title("MORPH"); song.both = 1; song.octave = -3; guide_open(1); ui.guide = 4; break;   /* (the MENU's GUIDE has pages 2..4, counter "3/3": GUIDE_N is SETUP's) */
     case S_GUIDE_ROW: ui.menu = 1; ui.menu_sel = MI_GUIDE; break;
     case S_MOD_RETIRED: eng_retired(13); mslot_ui(4, MS_RAND, MD_E1, 30); mslot_ui(5, MS_LFO, MD_E1 + 7, 30); mod_ui_slot = 0;
         go_title("MATRIX 5-8"); break;
@@ -1349,7 +1349,7 @@ static void setup(int s)
                 }
             trk[k].seq_idx = 5u + k;
         }
-        if (both) morph_set_target(1);
+        if (both) song.both = 1;
         gl.mode = s == S_TIDE ? GM_LOOP : GM_WANDER; gl.on = gl.armed = gl.hold = 0;
         go_title("AUTO TIDE");
         if (run) {
@@ -1420,7 +1420,7 @@ static void setup(int s)
      * (PUMP greyed), FILTER all the way left; in LAYER with part 2, the fader at B */
     case S_PERFORM: go_title("AMP ENV"); perf_enter(); break;
     case S_PERFORM_HELD:
-        go_title("AMP ENV"); perf_enter(); morph_set_target(1);   /* (item 160: no balance value: SELECT moves the MIXER LEVELs) */
+        go_title("AMP ENV"); perf_enter(); song.both = 1;   /* (item 160: no balance value: SELECT moves the MIXER LEVELs) */
         kb_perf = 1u << key_at(0, PF_R16) | 1u << key_at(0, PF_FLG) | 1u << key_at(0, PF_M2);
         perf_held = perf_act = PF_BIT(PF_R16) | PF_BIT(PF_FLG) | PF_BIT(PF_M2);
         perf_space = -40; perf_filt = 60; perf_depth = 75; ui.hot_col = 2; ui.hot_t = 30;
@@ -1432,14 +1432,14 @@ static void setup(int s)
         morph_do(MQ_AMOUNT, 1u, 100u); morph_roll_seed(0, 0, 65535u); morph_roll_seed(0, 1, 12345u); morph_roll_seed(0, 1, 4242u);
         morph_do(MQ_FADER, 1u, 40u); go_title("MORPH"); ui.hot_col = 0; ui.hot_t = 30; break;
     case S_MORPH_BOTH:
-        song.sel = 1; morph_set_target(1); morph_do(MQ_AMOUNT, 3u, 7u); morph_roll_seed(0, 0, 101u); morph_roll_seed(1, 0, 101u);
+        song.sel = 1; song.both = 1; morph_do(MQ_AMOUNT, 3u, 7u); morph_roll_seed(0, 0, 101u); morph_roll_seed(1, 0, 101u);
         morph_do(MQ_FADER, 3u, 127u); go_title("MORPH"); break;
     case S_MORPH_TWIST:
         go_title("MORPH"); ui.mg.acc[0] = -2; ui.mg.acc[1] = 2; ui.mg.t[0] = ui.mg.t[1] = fm1_ms; ui.hot_col = 3; ui.hot_t = 30;
         morph_do(MQ_FADER, 1u, 64u); break;
     case S_MORPH_SET: go_title(MORPH_SET_TITLE); break;
-    case S_MORPH_SET_BOTH: morph_set_target(1); go_title(MORPH_SET_TITLE); ui.hot_col = 0; ui.hot_t = 30; break;
-    case S_MORPH_SET_WILD: morph_set_cfg(MC_WILD | MC_ARP | MC_PIT, 1); morph_set_target(1); go_title(MORPH_SET_TITLE); ui.hot_col = 1; ui.hot_t = 30; 
+    case S_MORPH_SET_BOTH: song.both = 1; go_title(MORPH_SET_TITLE); ui.hot_col = 0; ui.hot_t = 30; break;
+    case S_MORPH_SET_WILD: morph_set_cfg(MC_WILD | MC_ARP | MC_PIT, 1); song.both = 1; go_title(MORPH_SET_TITLE); ui.hot_col = 1; ui.hot_t = 30; 
 #if DUELL_TIDE
         cpuh.hold = 138; cpu_snap.miss = 999;   /* (K2: the widest readout: 138 and 999, red) */
 #endif
@@ -1449,7 +1449,7 @@ static void setup(int s)
     case S_MORPH_MID: morph_do(MQ_FADER, 1u, 64u); go_title("MORPH"); trk[0].peak = 5000; break;
     case S_MORPH_B: morph_do(MQ_FADER, 1u, 127u); go_title("MORPH"); trk[0].peak = 14000; break;
     case S_MORPH_BOTH_MID:
-        morph_set_target(1); morph_do(MQ_FADER, 3u, 64u); go_title("MORPH"); trk[0].peak = 9000; trk[1].peak = 3000; break;
+        song.both = 1; morph_do(MQ_FADER, 3u, 64u); go_title("MORPH"); trk[0].peak = 9000; trk[1].peak = 3000; break;
     /* DUELL step 5: HOME's MODE (HOME tapped three times from OVERVIEW: SPLIT, the power-on default), STEREO, LAYER (KNOB 1 just turned); the
      * MIXER in SPLIT (each part's PAN fixed: LEFT / RIGHT, DIM), part 2 selected and KNOB 2 turned (the message) */
 #if DUELL_TIDE                                           /* (TIDE: no MODE page; MODE is a row of TIDE SETTINGS, owner 2026-11-08) */
@@ -2378,9 +2378,72 @@ static int about_tide_main(const char *out)
     return 0;
 #endif
 }
+#if DUELL_TIDE
+/* the MORPH page's wave, for looking at: --wave-study DIR writes DIR/ppm/<PAL>_<kind>_<sel>.ppm (VIOLET, GREY, MONO; held note, chord, sweep; PART 1, PART 2, BOTH selected) with the rings fed as the tap would
+ * leave them (part 1 a saw, part 2 a sine). */
+static int32_t wstudy_v(uint32_t kind, uint32_t q, uint32_t st, uint32_t t)
+{
+    double ph1 = (double)(t % 100u) / 100.0, ph2 = (double)(t % 127u) / 127.0, sn = sin(6.283185307179586 * (t % 128u) / 128.0);
+    if (kind == 0u)                                  /* a held note: a saw on part 1, a sine on part 2 */
+        return q ? (int32_t)(40.0 * sn) : (int32_t)((ph1 - 0.5) * 90.0);
+    if (kind == 1u)                                  /* a chord: two saws a little apart beat on part 1, two sines on part 2 */
+        return q ? (int32_t)(26.0 * sn + 22.0 * sin(6.283185307179586 * (t % 81u) / 81.0)) : (int32_t)((ph1 + ph2 - 1.0) * 45.0);
+    {                                                /* a sweep: the saw rounds into a sine and back; part 2 swells */
+        double m = 0.5 + 0.5 * sin(st * 0.22);
+        return q ? (int32_t)((30.0 + 18.0 * sin(st * 0.15)) * sn) : (int32_t)((1.0 - m) * (ph1 - 0.5) * 100.0 + m * 48.0 * sin(6.283185307179586 * ph1));
+    }
+}
+static int wave_study_main(const char *out)
+{
+    static const char *const PALS[] = {"VIOLET", "GREY", "MONO"}, *const KN[] = {"held", "chord", "sweep"}, *const SN[] = {"p1", "p2", "both"};
+    uint32_t j, k, sel, st, q, p, i;
+    char rp[600], nm[48];
+    snprintf(rp, sizeof rp, "%s/study_report.txt", out);
+    rep = fopen(rp, "w");
+    for (j = 0; j < 3u; j++)
+        for (p = 0; p < NPALETTES; p++)
+            if (!strcmp(UI_PALETTES[p].name, PALS[j]))
+                for (k = 0; k < 3u; k++)
+                    for (sel = 0; sel < 3u; sel++) {
+                        cur_name = "wave_study";
+                        setup(S_MORPH_MID);
+                        pal(p);
+                        song.sel = sel == 1u ? 1u : 0u;
+                        song.both = sel == 2u;
+                        memset(wl, 0, sizeof wl);
+                        wl_tk = 0xFFFFFFFFu;
+                        wv_want = wv_blk + 256u;
+                        for (st = 0; st < 70u; st++) {
+                            for (q = 0; q < 2u; q++) {
+                                uint32_t cnt = 20000u + (st + 1u) * 1366u;
+                                for (i = 0; i < WVR_N; i++) {
+                                    uint32_t t = cnt - WVR_N + i;
+                                    int32_t v = wstudy_v(k, q, st, t);
+                                    wv_m[q][t & (WVR_N - 1u)] = wvr_code(v * 32);   /* (the signal in the old 1/128 steps: 32 of the tap's) */
+                                }
+                                wv_cnt[q] = cnt;
+                                wv_gap[q] = 0;
+                                wv_sil[q] = 0;
+                                if (st == 0u)
+                                    wl[q].base = cnt - 1366u;
+                            }
+                            ui.frame += 2u;
+                            draw(S_MORPH_MID);
+                            ui.frame += 2u;
+                            draw(S_MORPH_MID);
+                        }
+                        snprintf(nm, sizeof nm, "%s_%s", KN[k], SN[sel]);
+                        write_ppm(out, PALS[j], nm);
+                    }
+    return 0;
+}
+#endif
 int main(int argc, char **argv)
 {
     if (argc > 2 && !strcmp(argv[1], "--target")) return target_main(argv[2]);
+#if DUELL_TIDE
+    if (argc > 2 && !strcmp(argv[1], "--wave-study")) return wave_study_main(argv[2]);
+#endif
     if (argc > 2 && !strcmp(argv[1], "--about-tide")) return about_tide_main(argv[2]);
     const char *out = argc > 1 ? argv[1] : "build/ui_new";
     char path[600];
@@ -2440,7 +2503,7 @@ int main(int argc, char **argv)
             setup(S_HOME);
             pal(UI_DEFAULT_INDEX);
             song.rec = 0; usb.config = 0; ui.perf = 0;
-            morph.target = sc == 0 || sc == 6 ? MT_SELECTED : MT_BOTH;
+            song.both = !(sc == 0 || sc == 6);
             song.sel = sc == 6 || sc == 9 || sc == 16 ? 1 : 0;   /* (the page always shows both parts: the selected one in full, the other dimmed; 6, 9, 16: part 2 selected) */
             for (k = 0; k < NSHOWN; k++) {
                 track_t *t = &trk[k];
@@ -2759,7 +2822,7 @@ int main(int argc, char **argv)
                                     for (i = 0; i < WVR_N; i++) {
                                         uint32_t t = cnt - WVR_N + i;
                                         int32_t v = q ? (int32_t)(amp * sin(6.283185307179586 * (t % 128u) / 128.0)) : (int32_t)(t % 100u) * amp / 100 - amp / 2;
-                                        wv_m[q][t & (WVR_N - 1u)] = (int8_t)(pl ? v : 0);
+                                        wv_m[q][t & (WVR_N - 1u)] = wvr_code(pl ? v * 32 : 0);
                                     }
                                     wv_cnt[q] = cnt;
                                     wv_gap[q] = 0;

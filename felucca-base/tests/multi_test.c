@@ -470,7 +470,7 @@ int main(void)
     song.g[G_SHMOD] = 37;
     frame();
     duell_mode_req = DM_LAYER;
-    morph_set_target(1);
+    song.both = 1;
     morph_set_cfg(MC_WILD, 1);                       /* WILD */
     frames(100);
     morph_roll(1);                                   /* End B rolled (both parts: TARGET BOTH) */
@@ -595,9 +595,9 @@ int main(void)
        !ui.confirm && msg_is("LOADED M11") && ok);
     ck("  part 2's FM6 patch (edited) equal; the automation lock equal", !memcmp(fm6_patch[1], patch, sizeof patch) &&
        motion.count == mref.count && !memcmp(&motion.event[0], &mref.event[0], sizeof mref.event[0]) && motion.on == mref.on);
-    ck("  TEMPO, DLY TIME, PING-PONG, DLY MODULATION DEPTH / RATE, REVERB TYPE; MODE LAYER; WILD; the saved TARGET BOTH not loaded (0.2.9: ALGORITHM's, not saved)",
+    ck("  TEMPO, DLY TIME, PING-PONG, DLY MODULATION DEPTH / RATE, REVERB TYPE; MODE LAYER; WILD; the saved TARGET BOTH loaded as the selection BOTH (1.0.0-b5)",
        song.g[G_BPM] == 137 && song.g[G_DTIME] == 5 && song.g[G_DMODE] == DMD_PING && song.g[G_DMDEP] == 37 && song.g[G_DMRATE] == 51 && song.g[G_RTYPE] == 3 && song.g[G_RLOCUT] == 77 &&
-       duell_mode_req == DM_LAYER && morph.target == MT_SELECTED && (morph.cfg & MC_WILD));
+       duell_mode_req == DM_LAYER && song.both && (morph.cfg & MC_WILD));
     ck("  SHIM's PITCH DOWN and MOD 37 (0.2.19: the ids of the old PING-PONG switch and NAME card) are back", song.g[G_SHPITCH] == SHP_DOWN && song.g[G_SHMOD] == 37);
     ok = 1;
     for (pi = 0; pi < NSHOWN; pi++)
@@ -857,7 +857,7 @@ int main(void)
             midi_in_event(0x0Bu | 0xB1u << 8 | 32u << 16 | 0u << 24);   /* back to bank 0 for the rest */
         }
 
-        morph_set_target(0);
+        song.both = 0;
         midi_in_event(0x0Bu | 0xB0u << 8 | 1u << 16 | 127u << 24);  /* the wheel on ch 1 */
         events_block(CTL); frame();
         ok = mph[0].fader == 127u && mph[1].fader == 0u && trk[0].mw == 127u && trk[1].mw == 0u;
@@ -1047,11 +1047,11 @@ int main(void)
         /* K1 MORPH, K2 ROLL: the MORPH page's */
         project_load(13);
         ck("  (still on the TEST screen after a load)", ui.menu == 3u);
-        morph_set_target(0);
+        song.both = 0;
         song.sel = 0;
         turn(EN_K1, 20);
         ck("K1 MORPH: the selected part's fader moves (MORPH TARGET: selected)", morph_fader_of(0) > 0u && morph_fader_of(1) == 0u);
-        morph_set_target(2);
+        song.both = 1;
         f0 = morph_fader_of(0);
         turn(EN_K1, -5);
         ck("  MORPH TARGET BOTH: both parts' faders", morph_fader_of(0) < f0 && morph_fader_of(1) == morph_fader_of(0));

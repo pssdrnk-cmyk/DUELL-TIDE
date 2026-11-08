@@ -1,11 +1,14 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* scope_test: the MORPH page's wave (fx.c's scope tap wv_tap, ui_scope.c's reader wl_step / wl_stack; docs/design/WAVE_DISPLAY_PLAN.md 3 and 4, reduced to 512 mono entries of 8 bits) on synthetic ring contents.
- * The ridge wl_step makes (wl[k].dy[0]: px from its middle, one per point) is the picture: its pixels are a function of it.
+ * The newest ridge wl_step makes (wl[k].rd[0], read back by front_of: px from its middle, one per point) is the picture: its pixels are a function of it.
+ * The rings are written as the tap writes them (fx.c wvr_code), the signals given in the old 1/128 steps of the half scale (32 of the tap's 1/4,096 steps each).
+ *   code         wvr_code / wl_dec: every value -4,095 .. 4,095 comes back within half a step, in order, 0 as 0
  *   trigger      the same signal at 10 starting offsets gives the same picture (within 1 px as drawn: the two sets of pixels, each to the nearest of the other; a saw, a resonant saw, a resonant saw at
  *                100.37 entries a cycle, a sine); the same signal as 10 pictures in a row: 0 changed points (all but the 100.37 one)
  *   beat         two sines 3 Hz apart: the height of the ridge swings at least 4 : 1 over 60 pictures
- *   soft         a sine 26 dB down is drawn small, not blown up to the full height
- *   silence      the part's silent flag, a ring of zeros, a wave under a pixel high: one flat ridge (the history restarts)
+ *   soft         right after a loud sine, the same sine 26 dB down is drawn small (the gain falls by 1/4 a picture, not at once); a quiet held sine (-37 dB of the half scale) on its own still
+ *                shows its shape at nearly the full height (the floor of the gain)
+ *   silence      the part's silent flag: a flat ridge in front, the stack runs out (all flat after WL_HN pictures); a ring of zeros, the tap's dither: one flat ridge
  *   stack        a held note builds up WL_HN ridges, no more
  *   wrap         the ring's free-running counter past 2^32 gives the picture it gives below it
  *   torn         the writer moves on past what the ring leaves between the read and the second look at the counter: once = one retry and a picture, twice = the old picture stays
@@ -41,16 +44,29 @@ typedef int32_t (*wsig_t)(uint32_t t);                   /* the ring's entry (8-
 static wsig_t sig_m;
 static const double PI2 = 6.283185307179586;
 /* the ring as the writer leaves it when its counter is cnt: the last WVR_N entries of sig at the entries' own counter values */
+static int32_t ring_scale = 32;                         /* the tap's steps a signal step is (32: the old 1/128 of the half scale) */
 static void ring(uint32_t k, uint32_t cnt)
 {
     uint32_t i;
     for (i = 0; i < WVR_N; i++) {
         uint32_t t = cnt - WVR_N + i;
         int32_t v = sig_m ? sig_m(t) : 0;
-        wv_m[k][t & (WVR_N - 1u)] = (int8_t)(v > 127 ? 127 : v < -128 ? -128 : v);
+        wv_m[k][t & (WVR_N - 1u)] = wvr_code(v * ring_scale);
     }
     wv_cnt[k] = cnt;
 }
+/* the newest ridge of part k as px, one per point (a rotating copy, so two can be compared) */
+static int8_t *front_of(uint32_t k)
+{
+    static int8_t buf[4][WL_NP];
+    static uint32_t at;
+    int8_t *b = buf[at++ & 3u];
+    uint32_t p;
+    for (p = 0; p < WL_NP; p++)
+        b[p] = (int8_t)wl_rp(&wl[k], 0, p);
+    return b;
+}
+static void set_pt7(uint32_t k, int32_t v) { wl[k].rd[0][3] = (uint8_t)((wl[k].rd[0][3] & 15u) | (uint32_t)(v & 15) << 4); }   /* (point 7 of the newest ridge) */
 static void fresh(uint32_t k)                            /* a part with no history: the gate opened long ago, no gap, no flag */
 {
     memset(&wl[k], 0, sizeof wl[k]);
@@ -58,7 +74,7 @@ static void fresh(uint32_t k)                            /* a part with no histo
     wv_gap[k] = wv_cnt[k] - 100000u;
     wv_sil[k] = 0;
 }
-#define HS 21                                            /* the half height of the old card's box (45 rows) */
+#define HS WL_AMAX                                       /* the ridges' half height on the page */
 static int32_t saw100(uint32_t t) { return (int32_t)(t % 100u) * 120 / 100 - 60; }
 static int32_t saw128(uint32_t t) { return (int32_t)(t % 128u) * 120 / 128 - 60; }
 /* a resonant saw: the saw and a 7.3 x ring that decays in each cycle (several zero crossings a cycle) */
@@ -77,9 +93,9 @@ static int32_t zero(uint32_t t) { (void)t; return 0; }
 static int inside(const wl_t *s, int32_t hs)
 {
     uint32_t i, r;
-    for (r = 0; r < WL_HN; r++)
+    for (r = 0; r < WL_HN; r++)                          /* (every ridge kept) */
         for (i = 0; i < WL_NP; i++)
-            if (s->dy[r][i] > hs || s->dy[r][i] < -hs)
+            if (wl_rp(s, r, i) > hs || wl_rp(s, r, i) < -hs)
                 return 0;
     return 1;
 }
@@ -88,8 +104,8 @@ static int32_t height(const wl_t *s)                     /* the newest ridge's p
     int32_t mx = -127, mn = 127;
     uint32_t i;
     for (i = 0; i < WL_NP; i++) {
-        mx = s->dy[0][i] > mx ? s->dy[0][i] : mx;
-        mn = s->dy[0][i] < mn ? s->dy[0][i] : mn;
+        mx = wl_rp(s, 0, i) > mx ? wl_rp(s, 0, i) : mx;
+        mn = wl_rp(s, 0, i) < mn ? wl_rp(s, 0, i) : mn;
     }
     return mx - mn;
 }
@@ -156,7 +172,7 @@ static void trigger_offsets(const char *name, wsig_t f, int32_t tol)
         ring(0, cnt);
         fresh(0);
         wl_step(0, HS);
-        memcpy(pic[o], wl[0].dy[0], WL_NP);
+        memcpy(pic[o], front_of(0), WL_NP);
     }
     for (o = 1; o < 10u; o++) {
         int32_t d = picdist(pic[0], pic[o]);
@@ -180,14 +196,14 @@ static void trigger_frames(const char *name, wsig_t f)
     cnt += 1366u;                                        /* (the first picture of a sound has no history to match against: it settles in the second) */
     ring(0, cnt);
     wl_step(0, HS);
-    memcpy(prev, wl[0].dy[0], WL_NP);
+    memcpy(prev, front_of(0), WL_NP);
     for (j = 0; j < 10u; j++) {
         cnt += 1366u;
         ring(0, cnt);
         wl_step(0, HS);
         for (i = 0; i < WL_NP; i++)
-            changed += wl[0].dy[0][i] != prev[i];
-        memcpy(prev, wl[0].dy[0], WL_NP);
+            changed += front_of(0)[i] != prev[i];
+        memcpy(prev, front_of(0), WL_NP);
     }
     {
         char w[160];
@@ -219,6 +235,18 @@ int main(void)
     int32_t hmax = 0, hmin = 1000;
     wsig_t sigs[3] = {saw100, ressaw, sine128};
     const char *names[3] = {"a saw (100 entries a cycle)", "a resonant saw", "a sine (128 entries a cycle)"};
+    {   /* the tap's code: every value back within half a step (the step of its segment), in order; 0 is 0 */
+        int32_t v, worst = 0, order = 1, prev = -100000;
+        for (v = -4095; v <= 4095; v++) {
+            int32_t c = wvr_code(v), d = wl_dec(c), m = v < 0 ? -v : v, step = m < 64 ? 2 : 1 << (31 - __builtin_clz((uint32_t)m) - 4);
+            int32_t e = (d > v ? d - v : v - d) * 2 - step;
+            worst = e > worst ? e : worst;
+            order &= d >= prev;
+            prev = d;
+        }
+        ok("code: -4,095 .. 4,095 back within half a step of its segment, in order", worst <= 2 && order);
+        ok("code: 0 is 0, the clamp is +-127", wvr_code(0) == 0 && wl_dec(0) == 0 && wvr_code(9999) == 127 && wvr_code(-9999) == -127);
+    }
     for (j = 0; j < 3u; j++) {
         trigger_offsets(names[j], sigs[j], 1);
         trigger_frames(names[j], sigs[j]);
@@ -246,7 +274,7 @@ int main(void)
         ok(w, hmax >= 4 * (hmin ? hmin : 1));
     }
 
-    /* soft against loud */
+    /* soft against loud: the next picture (the gain falls by 1/4 a picture) */
     sig_m = sine128;
     ring(0, 8000u);
     fresh(0);
@@ -254,52 +282,72 @@ int main(void)
     {
         int32_t h1 = height(&wl[0]);
         sig_m = sine_q;                                  /* the same shape, 26 dB down: smaller, not blown up to full height */
-        ring(0, 8000u);
-        fresh(0);
+        ring(0, 8000u + 1366u);
         wl_step(0, HS);
         {
             char w[160];
-            snprintf(w, sizeof w, "soft: a sine 26 dB down is drawn %d px, the loud one %d px (not blown up)", height(&wl[0]), h1);
+            snprintf(w, sizeof w, "soft: right after a loud sine, the same 26 dB down is drawn %d px, the loud one %d px (not blown up)", height(&wl[0]), h1);
             ok(w, height(&wl[0]) * 3 < h1);
         }
+    }
+    /* quiet: a held sine at -37 dB of the half scale (+-60 of the tap's 4,096 steps: under two of the old 8-bit tap's steps), on its own: its shape at the gain's floor */
+    sig_m = sine128;
+    ring_scale = 1;
+    ring(0, 8000u);
+    fresh(0);
+    for (j = 0; j < 4u; j++) {
+        ring(0, 8000u + j * 1366u);
+        wl_step(0, HS);
+    }
+    ring_scale = 32;
+    {
+        char w[160];
+        snprintf(w, sizeof w, "quiet: a held sine at -37 dB of the half scale shows its shape, %d px of %d", height(&wl[0]), 2 * HS);
+        ok(w, height(&wl[0]) >= 2 * HS - 4);
     }
 
     /* silence */
     sig_m = sine128;
     ring(0, 8000u);
     fresh(0);
-    for (j = 0; j < 6u; j++) {
+    for (j = 0; j < WL_HN + 4u; j++) {
         ring(0, 8000u + (j + 1u) * 1366u);
         wl_step(0, HS);
     }
-    ok("stack: a held note builds up WL_HN ridges, no more", wl[0].hn == WL_HN);
+    ok("stack: a held note builds up WL_HN ridges, no more, none flat", wl[0].hn == WL_HN && wl[0].flat == 0);
     wv_sil[0] = 1;
     wl_step(0, HS);
     {
         uint32_t i, flat = 1;
         for (i = 0; i < WL_NP; i++)
-            flat &= wl[0].dy[0][i] == 0;
-        ok("silence (the part's flag): one flat ridge, the history restarts", flat && wl[0].hn == 1);
+            flat &= front_of(0)[i] == 0;
+        ok("silence (the part's flag): a flat ridge in front, the older ridges move back", flat && (wl[0].flat & 1u) && !(wl[0].flat & 2u) && height(&wl[0]) == 0);
+        for (i = 1; i < WL_HN; i++)
+            wl_step(0, HS);
+        ok("silence (the part's flag): after WL_HN pictures the stack has run out, every ridge flat", wl[0].flat == (uint16_t)((1u << WL_HN) - 1u));
     }
+    wv_sil[0] = 0;
     sig_m = zero;
     ring(0, 8000u);
     fresh(0);
     wl_step(0, HS);
-    ok("silence (a ring of zeros): one flat ridge", wl[0].hn == 1 && height(&wl[0]) == 0);
-    sig_m = dither;                                      /* a wave under a pixel high (one step of dither: the tail of a decay) */
+    ok("silence (a ring of zeros): one flat ridge", wl[0].hn == 1 && wl[0].flat == 1u && height(&wl[0]) == 0);
+    sig_m = dither;                                      /* one step of the tap's dither (the tail of a decay) */
+    ring_scale = 1;
     ring(0, 8000u);
     fresh(0);
     wl_step(0, HS);
-    ok("silence (a step of dither, under a pixel at the gain's floor): one flat ridge, not a stack of them", wl[0].hn == 1 && height(&wl[0]) == 0);
+    ring_scale = 32;
+    ok("silence (a step of the tap's dither): one flat ridge, not a stack of them", wl[0].hn == 1 && wl[0].flat == 1u && height(&wl[0]) == 0);
     sig_m = sine128;                                     /* waking: the hole's gap says where; entries from before it are not used */
     ring(0, 9000u);
     fresh(0);
     wv_gap[0] = 9000u - 100u;                            /* only 100 entries since it woke: not enough, the picture stays as it was */
-    wl[0].h = HS;
+    wl[0].a = HS;
     wl[0].got = 1;
-    wl[0].dy[0][7] = 5;
+    set_pt7(0, 5);
     wl_step(0, HS);
-    ok("waking from silence: under 200 entries since it woke, nothing is made from older ones", wl[0].dy[0][7] == 5);
+    ok("waking from silence: under 200 entries since it woke, nothing is made from older ones", wl_rp(&wl[0], 0, 7) == 5);
 
     /* the counter past 2^32 (a signal with 128 entries a cycle, so that its phase is the same at counters 128 apart, and 2^32 is a whole number of them) */
     {
@@ -308,13 +356,13 @@ int main(void)
         ring(0, 128u * 20u + 17u);
         fresh(0);
         wl_step(0, HS);
-        memcpy(lo, wl[0].dy[0], WL_NP);
+        memcpy(lo, front_of(0), WL_NP);
         ring(0, 128u * 5u + 17u);                         /* the newest entry 657 past 2^32: the entries before it straddle the wrap */
         fresh(0);
         wl_step(0, HS);
         {
             char w[160];
-            int32_t d = picdist(lo, wl[0].dy[0]);
+            int32_t d = picdist(lo, front_of(0));
             snprintf(w, sizeof w, "wrap: the counter just past 2^32 draws the picture it draws below it (%d px apart, need 1)", d);
             ok(w, d <= 1);
         }
@@ -335,14 +383,14 @@ int main(void)
         ring(0, 9000u + 1366u);                          /* (the first picture of a sound has no history to match against: it settles in the second) */
         wl_step(0, HS);
         before = wl[0];
-        memcpy(keep, wl[0].dy[0], WL_NP);
+        memcpy(keep, front_of(0), WL_NP);
         tear_left = 1;                                   /* torn once: the retry reads clean and makes the picture */
         ring(0, 9000u + 2u * 1366u);
         wl_step(0, HS);
         {
             char w[200];
-            snprintf(w, sizeof w, "torn once: the reader retries and makes the picture (tear_left %d, ridges %u after %u, %d px from the one before)", tear_left, wl[0].hn, before.hn, picdist(keep, wl[0].dy[0]));
-            ok(w, tear_left == 0 && wl[0].hn == before.hn + 1u && picdist(keep, wl[0].dy[0]) <= 1);
+            snprintf(w, sizeof w, "torn once: the reader retries and makes the picture (tear_left %d, ridges %u after %u, %d px from the one before)", tear_left, wl[0].hn, before.hn, picdist(keep, front_of(0)));
+            ok(w, tear_left == 0 && wl[0].hn == before.hn + 1u && picdist(keep, front_of(0)) <= 1);
         }
         before = wl[0];
         tear_left = 2;                                   /* torn on the retry too: nothing is drawn, the last picture stays */
@@ -356,7 +404,7 @@ int main(void)
     {
         wsig_t all[4] = {square_fs, noise, ressaw, beat};
         const char *nm[4] = {"a full-scale square", "noise", "a resonant saw", "a beat"};
-        int32_t hss[4] = {HS, 10, 36, 29};               /* the card's old box, a BOTH half of it, the old non-grid box, the page's area */
+        int32_t hss[4] = {HS, 2, 4, 6};                  /* the page's ridges, and smaller boxes' */
         uint32_t i, q, f;
         for (i = 0; i < 4u; i++) {
             int allin = 1;
@@ -393,24 +441,24 @@ int main(void)
         pacc_on[1] = 1;
         wv_cnt[1] = wv_gap[1] = wv_last[1] = 0;
         wv_sil[1] = 0;
-        {   /* the entry: the mean of four frames, half scale, 1/128 steps: 16384 on both channels (half of a full-scale mix) is 127 steps, a full-scale mix 128 (clamped), -32768 is -128 */
+        {   /* the entry: the mean of four frames at half scale in 1/4,096 steps, companded: 16384 on both channels is 2,048 steps (code 0x70), past the half scale clamps (127, -127) */
             uint32_t i;
             for (i = 0; i < CTL; i++)
                 pacc[1].l[i] = pacc[1].r[i] = 16384;
             bsx.wv_blk = ++blk;
             bsx.wv_on = 1;
             wv_tap(&m);
-            ok("tap: 16384 on both channels (a quarter of a full-scale mix) is entry 64", wv_m[1][0] == 64);
+            ok("tap: 16384 on both channels (a quarter of a full-scale mix) is 2,048 steps, code 0x70", wv_m[1][0] == 0x70 && wl_dec(wv_m[1][0]) >= 2048 && wl_dec(wv_m[1][0]) < 2048 + 128);
             for (i = 0; i < CTL; i++)
                 pacc[1].l[i] = pacc[1].r[i] = 100000;
             bsx.wv_blk = ++blk;
             wv_tap(&m);
-            ok("tap: a mix past full scale clamps at 127", wv_m[1][16] == 127);
+            ok("tap: a mix past the half scale clamps at code 127", wv_m[1][16] == 127);
             for (i = 0; i < CTL; i++)
                 pacc[1].l[i] = pacc[1].r[i] = -100000;
             bsx.wv_blk = ++blk;
             wv_tap(&m);
-            ok("tap: and at -128", wv_m[1][32] == -128);
+            ok("tap: and at -127", wv_m[1][32] == -127);
         }
         wv_cnt[1] = wv_gap[1] = wv_last[1] = 0;
         blk = 0;
@@ -426,16 +474,16 @@ int main(void)
         fresh(1);
         wl[1].base = 0;
         wv_gap[1] = real_gap;
-        wl[1].h = HS;
+        wl[1].a = HS;
         wl[1].got = 1;
-        wl[1].dy[0][7] = 5;
+        set_pt7(1, 5);
         wl_step(1, HS);
-        ok("tap: right after the hole (16 entries since it) the reader makes no picture and draws no seam", wl[1].dy[0][7] == 5);
+        ok("tap: right after the hole (16 entries since it) the reader makes no picture and draws no seam", wl_rp(&wl[1], 0, 7) == 5);
         for (j = 0; j < 40u; j++)
             tap_block(&m, &bsx, &blk, &ts, 0, 1, 16384);
         ok("tap: forty more blocks leave the gap where it was", wv_gap[1] == real_gap);
         wl_step(1, HS);
-        memcpy(skipped, wl[1].dy[0], WL_NP);
+        memcpy(skipped, front_of(1), WL_NP);
         /* the same sound without the hole (every block there, the same time): the picture must be the same within 1 px */
         wv_cnt[1] = wv_gap[1] = wv_last[1] = 0;
         blk = 0;
@@ -444,7 +492,7 @@ int main(void)
             tap_block(&m, &bsx, &blk, &ts, 0, 1, 16384);
         fresh(1);
         wl_step(1, HS);
-        memcpy(clean, wl[1].dy[0], WL_NP);
+        memcpy(clean, front_of(1), WL_NP);
         {
             char w[160];
             int32_t d = picdist(clean, skipped);

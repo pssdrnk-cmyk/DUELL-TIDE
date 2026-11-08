@@ -409,8 +409,8 @@ static uint32_t badge_lit(void)
         return ui.layer == LAYER_GLO ? (1u << NSHOWN) - 1u : lit;   /* GLO's cards are per part: both (QUICK SCALE, whose three were global, is removed: change list A.7) */
     if (page_global(pg) || TIDE_MODE_PG(pg))   /* (a GLOBAL page: the SCALE page's, GLO's; the MODE page counts as global as in screen_global and ui_input.c algo_input, item 138: one rule. A global screen draws no capsules, so nothing on the screen changes) */
         return (1u << NSHOWN) - 1u;
-    if ((pg->graph == GR_MORPH || TIDE_PAGE(pg) || pg->scope == SC_TEST || pg->scope == SC_PERF))   /* TIDE hook */
-        lit |= morph_mask(song.sel);                    /* (ALGORITHM's PART 1 / BOTH / PART 2 there: the morph's target) */
+    if (song.both && HOME_BOTH_PAGE(pg))                /* 1.0.0-b5: the part selection on BOTH lights both capsules on the HOME pages (and PERFORM); every other page shows and edits song.sel alone, as before */
+        lit = (1u << NSHOWN) - 1u;
     return lit;
 }
 
@@ -2497,7 +2497,7 @@ static void draw_columns(void)
         grid_big = (uint8_t)(grid_on != 0);                /* (HOME's grid: the big value, PAGES_V1_home.png) */
 #endif
 #if DUELL_TIDE
-        if (AREA_ON && morph.target == MT_BOTH && morph_fader_of(1u - pi) != f) {   /* the page shows both parts: with ALGORITHM on BOTH and the faders apart, the other part's value after this one's (the old track's tick) */
+        if (AREA_ON && song.both && morph_fader_of(1u - pi) != f) {   /* the page shows both parts: with ALGORITHM on BOTH and the faders apart, the other part's value after this one's (the old track's tick) */
             static char other[8];
             uint32_t of = morph_fader_of(1u - pi);
             other[0] = 'P';

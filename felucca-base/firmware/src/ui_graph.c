@@ -1939,9 +1939,9 @@ static uint32_t graph_signature(void)
 #endif
     if (pg->scope == SC_MORPH) {                     /* 4b: the faders, AMOUNT, TARGET; MORPH: the animation step */
         uint32_t pi = song.sel;
-        h = (h ^ (morph_fader_of(pi) | morph_amount_of(pi) << 8 | (uint32_t)morph.target << 16 | (uint32_t)morph.cfg << 20)) * 16777619u;
+        h = (h ^ (morph_fader_of(pi) | morph_amount_of(pi) << 8 | (uint32_t)song.both << 16 | (uint32_t)morph.cfg << 20)) * 16777619u;
         h = (h ^ morph_fader_of(1u - pi)) * 16777619u;
-        if (pg->graph == GR_MORPH)                   /* v4: the picture's motion, a step every 4th frame (~16 /s; TIDE: the part's real sound; MENU > ANIM OFF: still) */
+        if (pg->graph == GR_MORPH)                   /* v4: the picture's motion, a step every 4th frame (~16 /s; TIDE: the parts' real sound, ui_scope.c) */
             h = (h ^ (mv_tick() + 1u) * 2654435761u) * 16777619u;
     }
     if (pg->graph == GR_SLOTS) {                     /* (a checksum over each slot) */
@@ -2696,9 +2696,9 @@ static void graph_morph(void)
 {
     const ui_pal_t *pl = &UI_PALETTES[ux.pal % NPALETTES];
 #if DUELL_TIDE
-    uint32_t pi = song.sel, f = morph_fader_of(pi), both = morph.target == MT_BOTH;
+    uint32_t pi = song.sel, f = morph_fader_of(pi), both = song.both;
 #else
-    uint32_t pi = song.sel, f = morph_fader_of(pi), tk = mv_tick(), both = morph.target == MT_BOTH, n;
+    uint32_t pi = song.sel, f = morph_fader_of(pi), tk = mv_tick(), both = song.both, n;
 #endif
     int32_t cx = MV_TX0 + (int32_t)(f * (uint32_t)(MV_TX1 - MV_TX0) / 127u), i;
     char b[8];
@@ -2930,7 +2930,7 @@ static void graph_mlearn(void)
 static void graph_morphset(void)
 {   /* DUELL 1.1 (TEXT_STRUCTURE_V1_A.png, MORPH SET): the four facts as a table, the cards SMART, ARP, PITCH under it */
     uint32_t pi = song.sel;
-    const char *t = morph.target == MT_BOTH ? "Moves both" : pi ? "Moves part 2" : "Moves part 1";
+    const char *t = song.both ? "Moves both" : pi ? "Moves part 2" : "Moves part 1";
     static const char *const K[4] = {"MORPH", "SMART", "ARP", "PITCH"};
     const char *v[4];
     uint32_t i;

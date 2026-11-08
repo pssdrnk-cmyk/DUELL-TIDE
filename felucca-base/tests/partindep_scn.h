@@ -136,7 +136,7 @@ static uint64_t scene(uint32_t id, blk_t blk)
         trk[1].p[P_DIST] = 60;
     }
     if (id == 3u || id == 4u || id == 5u) {             /* MORPH on both parts: ends rolled, the fader moved in the loop below */
-        morph_set_target(1);
+        song.both = 1;
         morph_set_amount(id == 4u ? 55u : 70u);
         morph_set_fader(30);
         morph_roll(0);

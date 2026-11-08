@@ -575,7 +575,6 @@ static void tide_columns(void)
 }
 
 /* ---------------------------------------------------------------- the panels --- */
-static int tide_both(void) { return morph.target == MT_BOTH; }   /* ALGORITHM on BOTH: the knobs act on both parts (the status line names it) */
 
 /* "a/b" appended to l */
 static __attribute__((noinline)) void tide_frac(char *l, uint32_t a, uint32_t b)
@@ -592,7 +591,7 @@ static void tide_status(char *l)
     static const char *const ST[5] = {"GLIDING", "LOOPING", "DRIFTING", "WANDERING", "JOURNEY"};
     uint32_t bars = gl.hold ? GLIDE_WAIT_BARS[gl.wait % GLIDE_WAITS] : glide_trip_bars(), at = ((gl.prog * bars) >> GLIDE_Q) + 1u;
     if (!glide_running())
-        str_cpy(l, tide_both() ? "BOTH PARTS" : song.sel ? "PART 2" : "PART 1", 40);
+        str_cpy(l, song.both ? "BOTH PARTS" : song.sel ? "PART 2" : "PART 1", 40);
     else if (gl.armed)
         str_cpy(l, song.playing || transport_req == 1u ? "GLIDE ON THE NEXT BAR" : "GLIDE STARTS WITH PLAY", 40);
     else if (!song.playing)
@@ -626,11 +625,11 @@ static void tide_status(char *l)
 #define JB_DX 116
 static int32_t tide_x(int32_t x0, int32_t x1, uint32_t f) { return x0 + (int32_t)f * (x1 - x0) / 127; }
 
-/* The selected part (song.sel) is shown in full, the other dimmed (the colour mixed 60 % into the background; MONO: its grey), and the selected part's number sits
+/* The selected part (song.sel; with BOTH both parts: ui_part_hot) is shown in full, the other dimmed (the colour mixed 60 % into the background; MONO: its grey), and the selected part's number sits
  * in a filled pill (the cue that works on MONO and GREY too) and a 2 px bar stands beside its steps row */
 static uint16_t tide_pc(uint32_t k)
 {
-    return ui_part_col(k, k == song.sel);              /* (ui_scope.c: the MORPH page's and this page's one tag) */
+    return ui_part_col(k, ui_part_hot(k));             /* (ui_scope.c: the MORPH page's and this page's one tag; BOTH: both in full) */
 }
 /* fader c (0 SOUND, 1 SEQ) of part `part` on screen row y (its track's middle), x x0 .. x1: the track (a 3 px rounded bar, as the cards' bars), the glide's way on it (from where it
  * started to the end it goes to, the tint; MONO's white), the knob (5 x 9, the part's colour) and its labels: part 1's draws the column's head 10 rows up (A, the name centred, B);
@@ -648,7 +647,7 @@ static void tide_track(int32_t y, int32_t x0, int32_t x1, uint32_t c, uint32_t p
         cv_text_r(x1 + 1, hy, &AF_S, "B", T_DIM, T_BG);
     }
     if (!c)
-        ui_part_tag(part, y, part == song.sel);
+        ui_part_tag(part, y, ui_part_hot(part));
     cv_rrect(x0, y - 1, x1 - x0 + 1, 3, 1, T_RAISE, T_BG);
     if (glide_running() && ((gl.on >> c) & 1u) && ((gl.mask >> part) & 1u)) {
         int32_t a = tide_x(x0, x1, gl.from[c]), b = gl.to ? x1 : x0;
@@ -816,7 +815,7 @@ static void graph_tide(void)
         tide_track(70 + 14 * (int32_t)k, JB_X0, JB_X0 + JB_W, GT_SOUND, k);
         tide_track(70 + 14 * (int32_t)k, JB_X0 + JB_DX, JB_X0 + JB_DX + JB_W, GT_SEQ, k);
         tide_steps(&trk[k], sy, 9, tide_pc(k));
-        if (k == song.sel)
+        if (ui_part_hot(k))
             cv_rect(5, sy - 9, 2, 10, T_PTHEME(k));      /* (the steps row's mark of the selected part) */
     }
     cv_text_in(0, UT_TY(S, 104), 240, &AF_S, GL_MODE_WHAT[gl.mode % 5u], T_MID, T_BG);   /* (between the faders and the steps' tallest bars) */

@@ -396,8 +396,8 @@ static volatile uint8_t *const ml_io;       /* ui.ml.io (midi_learn.c) */
 
 /* DUELL 4b, SPEC 4.4 / 3.4a: the MORPH's actions, on each part's channel (the part the channel plays, as its notes: ROUT CH1-4 channel 1
  * part 1, channel 2 part 2, the hidden parts' channels ignored; SEL the selected part):
- *   MORPH the fader 0..127; AMOUNT 0..127 -> 0..100 %; TARGET 0-42 PART 1, 43-85 PART 2, 86-127 BOTH (global; 0.2.9:
- *   ALGORITHM's selector, ui_input.c algo_step: BOTH keeps the selected part as the edit target);
+ *   MORPH the fader 0..127; AMOUNT 0..127 -> 0..100 %; TARGET 0-42 PART 1, 43-85 PART 2, 86-127 BOTH (global; 1.0.0-b5:
+ *   the one part selection, ui_input.c part_select: BOTH keeps the last single part as the edit pages' part);
  *   ROLL (one CC, centred like the knob): 0..42 rolls End A, 43..84 nothing, 85..127 rolls End B; a roll fires when the value ENTERS its zone and again
  *   only after the value has left it. ROLL A, ROLL B (typed lines only): a value >= 64 fires once; the channel's CC re-arms below 64 (UNDO, 1.0.0-b5: gone,
  *   its code is a spare). SMART, ARP, PITCH: 0-63 off, 64-127 on (global).

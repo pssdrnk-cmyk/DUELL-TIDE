@@ -428,14 +428,14 @@ static void op_roll(uint32_t a)                         /* a 0: ROLL B; 1: ROLL 
 static void pre_morph(uint32_t a)
 {
     (void)a;
-    morph_set_target(1);
+    song.both = 1;
     morph_roll(1);
     morph_set_amount(100);
 }
 static void pre_morph_sel(uint32_t a)
 {
     (void)a;
-    morph_set_target(0);
+    song.both = 0;
     morph_roll(1);
     morph_set_amount(100);
 }

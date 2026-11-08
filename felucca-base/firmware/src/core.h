@@ -697,6 +697,7 @@ typedef struct {
     uint8_t grid;                /* 2: NAME (ui_name.c): no key plays (0 otherwise; 1 was the DRUM grid, gone in 0.2.14) */
     uint8_t rec;                 /* live recording armed: bit per track */
     uint8_t sel;                 /* selected track 0..NTRK-1: keys, pages, editor */
+    uint8_t both;                /* 1.0.0-b5: the selection is BOTH parts (PART 1 / PART 2 / BOTH, ALGORITHM): the keys, the morph and the glide act on both, as the PLAY MODE says; sel stays the last single part, the one the edit pages edit */
     int8_t octave;
     uint32_t tick;               /* sub-blocks since play */
     uint32_t cpu_q8;             /* audio ISR load, 1/256 */

@@ -1381,7 +1381,7 @@ static int item159(void)
     usb.resets = 0;
     a[0] = 0; a[1] = 3; request(ED_PRESET, a, 2);       /* part 1: ANALOG #4 */
     track_select(1); a[0] = 2; a[1] = 1; request(ED_PRESET, a, 2); track_select(0);
-    morph_set_target(1);                                  /* BOTH: a roll and the fader act on both parts */
+    song.both = 1;                                  /* BOTH: a roll and the fader act on both parts */
     morph_set_cfg(MC_WILD, 1);                            /* (WILD: more values move, the extension slots too) */
     morph_set_amount(60);
     morph_roll(0);
@@ -1493,7 +1493,7 @@ static int item159(void)
         bad += check("item 159: an editor save (UP_STORE) with the fader in the middle (shown values differ) = the unit's own save, byte for byte; its values are the stored Original",
                      differ > 0u && up_used(5) && up_used(6) && !memcmp(up_rec(5), up_rec(6), sizeof(up_rec_t)));
     }
-    morph_set_fader(0); morph_set_target(0); morph_set_cfg(MC_WILD, 0);
+    morph_set_fader(0); song.both = 0; morph_set_cfg(MC_WILD, 0);
     reset();
     return bad;
 }

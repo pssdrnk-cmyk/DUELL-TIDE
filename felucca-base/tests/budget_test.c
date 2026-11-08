@@ -427,7 +427,7 @@ static void frow_child(uint32_t i, frow_t *rows)
         while (wave_service())
             ;
     }
-    morph_set_target(1);
+    song.both = 1;
     morph_set_fader(64);
     frow_get(&rows[1]);
 }
@@ -752,7 +752,7 @@ static uint64_t render_child(uint32_t i, int which, int budget, uint32_t *kills,
         while (wave_service())
             ;
     }
-    morph_set_target(1);
+    song.both = 1;
     morph_set_fader(64);
     n[0] = which ? 4u : part_notes(0);                              /* (in cpuscen's state: the MORPH on, the fader in the middle) */
     n[1] = which ? 4u : part_notes(1);

@@ -1,39 +1,54 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* The MORPH page's picture (DUELL_TIDE): the part's real sound, from fx.c's scope tap (wv_m, 512 mono entries of 8 bits a part at 22.05 kHz), drawn as a stack of ridges (docs/design/WAVE_DISPLAY_PLAN.md 3.2,
- * reduced to the RAM there is; the owner's pick from the WAVE LAB preview on plan/wave-displays). Included by ui_graph.c before graph_morph. Core 0, main loop, nothing in the audio path.
+/* The MORPH page's picture (DUELL_TIDE): the part's real sound, from fx.c's scope tap (wv_m, 512 mono entries a part at 22.05 kHz, each a companded 8-bit code: wvr_code), drawn as a stack of ridges
+ * (docs/design/WAVE_DISPLAY_PLAN.md 3.2, reduced to the RAM there is; the look is the owner's pick from the WAVE LAB preview on plan/wave-displays, WAVE STACK). Included by ui_graph.c before graph_morph.
+ * Core 0, main loop, nothing in the audio path.
  * Per part and picture step (about 16 a second, the page's step: mv_tick):
  *   1 gate    wv_want = "wanted until block N", 256 blocks (190 ms) ahead; MENU > ANIM OFF shuts it: no tap, the last picture stays (a flat line before there was one)
- *   2 read    the newest 400 entries or fewer, only those written since the gate opened and since the part's last hole (wv_gap); read IN PLACE, the counter looked at again afterwards:
- *             if the writer went on by more than the ring leaves (512 less 400, less a block) the picture is made again, once, else the last one stays
+ *   2 read    the newest 400 entries or fewer, only those written since the gate opened and since the part's last hole (wv_gap); read IN PLACE (wl_dec on each read), the counter looked at again
+ *             afterwards: if the writer went on by more than the ring leaves (512 less 400, less a block) the picture is made again, once, else the last one stays
  *   3 trigger the ring smoothed (a 10-point kernel); rising crossings of its middle that come after a clear dip (the Pico scope's hysteresis), found to 1/16 of an entry; of those in the last 3.5
  *             periods the steepest (70 % of the steepest), and of those the one whose first 16 points match the last picture's best
  *   4 window  2.5 periods of the median crossing distance when it is steady (160 .. 360 entries), else the last one
  *   5 ridge   72 points (1 to 5 linear samples across each point's share of the window), smoothed over neighbours twice, the middle of the line's range taken out
- *   6 gain    the peak of the window: a rise of more than 6 % at once, a fall of more than 12 % by 1/16 a step (about a second), never under WL_FLOOR: soft is small, loud fills, a beat stays a beat
- *   7 stack   the last 4 ridges, the newest in front, each older one a step higher and fainter, every line hiding what is under it; silence: one flat line in the middle
- * Samples inside are the ring's 8-bit steps times 16 (the interpolation's fraction), so a crossing keeps its 1/16 entry on a quiet note. */
+ *   6 gain    the peak of the window: a rise of more than 6 % at once, a fall of more than 12 % by 1/4 a step (a decaying note keeps a readable shape while it fades, a held note does not breathe), never under WL_FLOOR
+ *             (-36 dB of the half scale: a quiet held note still shows its shape; quieter is smaller), a ridge under 2 px high is flat (a tail, not a line of dither)
+ *   7 stack   the last WL_HN ridges, the newest in front (lowest), each older one 2 rows higher and fainter, every ridge hiding what is behind it (the WAVE STACK look); a new picture moves the
+ *             whole stack up a step, so a moving sound flows. Silence pushes flat ridges in front: the stack runs out as the sound does, then one calm line stays
+ * Samples inside are the tap's steps (1/4,096 of the half scale) times 16 (the interpolation's fraction). The ridges are kept as px from their middle, 4 bits a point (WL_AMAX: the half height of
+ * a ridge is at most 7 px, so a nibble is exact). */
 #define WL_NP 72                                     /* points of a ridge: x = WL_X0 + 3 p (22 .. 235: the bar and the part's number stand to the left) */
 #define WL_X0 22
-#define WL_HN 4                                      /* ridges kept */
+#define WL_HN 16                                     /* ridges kept */
+#define WL_AMAX 7                                    /* the largest half height of a ridge, px (a signed nibble) */
+#define WL_STEP 2                                    /* rows between two ridges */
 #define WL_R 400u                                    /* entries read (ring 512) */
 #define WL_MINW 160u
 #define WL_MAXW 360u
 #define WL_DEFW 300u
-#define WL_FLOOR 192                                 /* the smallest peak the gain scales to: 12 steps of the ring (1,500 of a half-scale mix) */
+#define WL_FLOOR (64 * 16)                           /* the smallest peak the gain scales to: 64 of the tap's 4,096 steps (-36 dB of the half scale), times 16 */
 #define WL_NC 24
 typedef struct {
     uint32_t base;                                   /* wv_cnt where the gate last opened */
     uint32_t gpk;                                    /* the slow gain's peak */
-    int16_t first[16];                               /* the last picture's first 16 points (the match) */
-    int8_t dy[WL_HN][WL_NP];                         /* the ridges as drawn, px from their middle: the newest first */
+    int16_t first[16];                               /* the last picture's first 16 points, in the tap's steps (the match) */
+    uint8_t rd[WL_HN][WL_NP / 2];                    /* the ridges, the newest first: two points a byte, signed nibbles, px from the ridge's middle */
+    uint16_t flat;                                   /* bit r: ridge r is flat (silence, a note's tail) */
     uint16_t w;                                      /* the window */
-    uint8_t got, have, h, hn;                        /* a picture exists since the last reset; one with a trigger to match; the half height it was made for; ridges kept */
+    uint8_t got, have, a, hn;                        /* a picture exists since the last reset; one with a trigger to match; the half height the ridges were made for; ridges kept */
 } wl_t;
 static wl_t wl[2];
 static uint32_t wl_tk = 0xFFFFFFFFu;
 _Static_assert(NLIVE == 2, "ui_scope.c keeps one reader state for each of the two parts");
+_Static_assert(WL_HN <= 16, "wl_t.flat has a bit a ridge");
 static uint32_t wl_k, wl_b;                          /* the ring being read, and the counter value of its entry 0 */
-#define WLR(i) ((int32_t)wv_m[wl_k][(wl_b + (uint32_t)(i)) & (WVR_N - 1u)])
+/* an entry back from wvr_code's sign and 7 bits: the middle of its step, in 1/4,096 of the half scale (0 stays 0) */
+static int32_t wl_dec(int32_t c)
+{
+    uint32_t a = (uint32_t)(c < 0 ? -c : c), e = a >> 4, m = a & 15u;
+    int32_t v = (int32_t)(e ? ((16u | m) << e) + (1u << (e - 1u)) : 2u * m);
+    return c < 0 ? -v : v;
+}
+#define WLR(i) wl_dec(wv_m[wl_k][(wl_b + (uint32_t)(i)) & (WVR_N - 1u)])
 
 static int32_t wl_abs(int32_t v) { return v < 0 ? -v : v; }
 /* the ring smoothed for the trigger, entry i of n, times 32 (a 10-point kernel: 3 points, then 8: a ring on a resonant wave no longer moves the crossing) */
@@ -62,10 +77,10 @@ static int32_t wl_pt(uint32_t cq, uint32_t w, uint32_t p)
         sum += wl_at(cq + (p * w * 16u) / WL_NP + (2u * m + 1u) * span / (2u * k));
     return sum / (int32_t)k;
 }
-/* one picture of the part wl_k from the n newest entries: the ridge into nd, the next first[] into nf, the window into *nw, the gain into *ng. 1: made, 0: nothing there but dither (flat) */
-static int wl_pic(const wl_t *s, int32_t n, int32_t hs, int8_t *nd, int16_t *nf, uint32_t *nw, uint32_t *ng)
+/* one picture of the part wl_k from the n newest entries: the ridge into nd (px, -a .. a), the next first[] into nf, the window into *nw, the gain into *ng. 1: made, 0: nothing there (flat) */
+static int wl_pic(const wl_t *s, int32_t n, int32_t a, int8_t *nd, int16_t *nf, uint32_t *nw, uint32_t *ng)
 {
-    int32_t cand[WL_NC], slope[WL_NC], mx = -32768, mn = 32767, rmx = -128, rmn = 127, mid, thr, i, j, pk = 0, rm, last, maxs = 0, g, hh = hs * 15 / 16;
+    int32_t cand[WL_NC], slope[WL_NC], mx = -0x7FFFFFFF, mn = 0x7FFFFFFF, rmx = -32768, rmn = 32767, mid, thr, i, j, pk = 0, rm, last, maxs = 0, g;
     uint32_t nc = 0, armed = 0, per = 0, w, span, cq, np = 0, pool[WL_NC], best = 0, sel = 0, p;
     int32_t v[WL_NP], prev, cur;
     for (i = 0; i < n; i++) {                        /* the range of the raw ring, and of the trigger's line without the ends of the copy (the smoothing there leans on one side) */
@@ -141,9 +156,9 @@ static int wl_pic(const wl_t *s, int32_t n, int32_t hs, int8_t *nd, int16_t *nf,
             int32_t sad = 0;
             if (s->have) {
                 for (p = 0; p < 16u; p++)
-                    sad += wl_abs(wl_pt((uint32_t)cand[pool[j]], w, p) - s->first[p]);
+                    sad += wl_abs((wl_pt((uint32_t)cand[pool[j]], w, p) >> 4) - s->first[p]);
             } else {
-                sad = 1000000 - slope[pool[j]];
+                sad = 0x3FFFFFFF - slope[pool[j]];
             }
             if (sad < bs) {
                 bs = sad;
@@ -155,7 +170,7 @@ static int wl_pic(const wl_t *s, int32_t n, int32_t hs, int8_t *nd, int16_t *nf,
     cq = sel ? sel - 1u : (uint32_t)(n - (int32_t)w - 6) * 16u;   /* no crossing at all (noise, a drone): the newest window, free */
     *nw = w;
     for (p = 0; p < 16u; p++)
-        nf[p] = (int16_t)wl_pt(cq, w, p);
+        nf[p] = (int16_t)(wl_pt(cq, w, p) >> 4);
     rm = (rmx + rmn) * 8;                            /* AC coupled: the middle of the line's range over everything read (times 16) */
     for (p = 0; p < WL_NP; p++)
         v[p] = wl_pt(cq, w, p) - rm;
@@ -169,33 +184,44 @@ static int wl_pic(const wl_t *s, int32_t n, int32_t hs, int8_t *nd, int16_t *nf,
     }
     for (p = 0; p < WL_NP; p++)
         pk = wl_abs(v[p]) > pk ? wl_abs(v[p]) : pk;
-    if (pk < 8)                                      /* under half a step: nothing there but dither */
+    if (pk < 16)                                     /* under a step of the tap: nothing there */
         return 0;
     g = (int32_t)*ng;
     if ((uint32_t)pk > *ng + (*ng >> 4))             /* the gain: a rise of more than 6 % at once, */
         g = pk;
-    else if ((uint32_t)pk + (*ng >> 3) < *ng)        /* a fall of more than 12 %: 1/16 a step, */
-        g -= g >> 4;                                 /* otherwise it stays: a steady note does not breathe */
+    else if ((uint32_t)pk + (*ng >> 3) < *ng)        /* a fall of more than 12 %: 1/4 a step (a decay shrinks, the shape stays readable), */
+        g -= g >> 2;                                 /* otherwise it stays: a steady note does not breathe */
     *ng = (uint32_t)g;
     g = g > WL_FLOOR ? g : WL_FLOOR;
-    if (pk * hh < g)                                 /* under a pixel high: a flat line, not a stack of them */
+    if (pk * a < 2 * g)                              /* under 2 px high: a flat ridge (the stack shows sound, not the last pixel of a tail) */
         return 0;
-    for (p = 0; p < WL_NP; p++)
-        nd[p] = (int8_t)clamp(-(v[p] * hh / g), -hs, hs);
+    for (p = 0; p < WL_NP; p++) {
+        int32_t q = -v[p] * a * 2;                   /* (rounded to the nearest px) */
+        nd[p] = (int8_t)clamp((q + (q < 0 ? -g : g)) / (2 * g), -a, a);
+    }
     return 1;
 }
-/* a picture becomes the newest ridge, the others move back */
+/* point p of ridge r, px from its middle */
+static int32_t wl_rp(const wl_t *s, uint32_t r, uint32_t p)
+{
+    uint32_t b = s->rd[r][p >> 1];
+    int32_t q = (int32_t)((p & 1u ? b >> 4 : b) & 15u);
+    return q > 7 ? q - 16 : q;
+}
+/* a picture becomes the newest ridge (nd 0: a flat one), the others move back */
 static void wl_push(wl_t *s, const int8_t *nd)
 {
-    uint32_t i;
-    for (i = sizeof s->dy - 1u; i >= sizeof s->dy[0]; i--)   /* (backwards: the ridges overlap) */
-        ((int8_t *)s->dy)[i] = ((int8_t *)s->dy)[i - sizeof s->dy[0]];
-    memcpy(s->dy[0], nd, sizeof s->dy[0]);
+    uint32_t p;
+    for (p = WL_HN - 1u; p > 0; p--)                 /* (row by row from the oldest: the firmware has no memmove) */
+        memcpy(s->rd[p], s->rd[p - 1u], sizeof s->rd[0]);
+    for (p = 0; p < WL_NP; p += 2u)
+        s->rd[0][p >> 1] = nd ? (uint8_t)((nd[p] & 15) | (nd[p + 1u] & 15) << 4) : 0u;
+    s->flat = (uint16_t)(s->flat << 1 | (nd ? 0u : 1u));
     s->hn = s->hn < WL_HN ? s->hn + 1u : WL_HN;
     s->got = 1;
 }
-/* one part's picture step. hs: the half height in px that the lines may use */
-static void wl_step(uint32_t k, int32_t hs)
+/* one part's picture step. a: the ridges' half height in px */
+static void wl_step(uint32_t k, int32_t a)
 {
     wl_t *s = &wl[k];
     uint32_t c0, c1, vs, avail, tries, nw = s->w, ng = s->gpk;
@@ -203,17 +229,17 @@ static void wl_step(uint32_t k, int32_t hs)
     int8_t nd[WL_NP];
     int16_t nf[16];
     int r = 0;
-    memset(nd, 0, sizeof nd);
-    if (s->h != (uint8_t)hs) {                       /* the box changed (BOTH, the layout): start over */
-        memset(s->dy, 0, sizeof s->dy);
-        s->h = (uint8_t)hs;
+    a = clamp(a, 1, WL_AMAX);
+    if (s->a != (uint8_t)a) {                        /* the box changed (the layout): start over */
+        memset(s->rd, 0, sizeof s->rd);
+        s->a = (uint8_t)a;
         s->have = s->hn = s->got = 0;
+        s->flat = 0;
     }
-    if (wv_sil[k]) {                                 /* the part is silent: one flat line */
-        s->hn = 0;
-        wl_push(s, nd);
+    if (wv_sil[k]) {                                 /* the part is silent: a flat ridge in front, the stack runs out */
+        wl_push(s, 0);
         s->have = 0;
-        s->gpk -= s->gpk >> 4;
+        s->gpk -= s->gpk >> 3;
         return;
     }
     for (tries = 0; tries < 2u; tries++) {           /* read in place, and look at the counter again */
@@ -227,7 +253,7 @@ static void wl_step(uint32_t k, int32_t hs)
         wl_b = c0 - (uint32_t)n;
         nw = s->w;
         ng = s->gpk;
-        r = wl_pic(s, n, hs, nd, nf, &nw, &ng);
+        r = wl_pic(s, n, a, nd, nf, &nw, &ng);
 #ifdef WL_TEST_AFTER_COPY
         WL_TEST_AFTER_COPY(k);                       /* (host test: the writer moves on while the reader reads) */
 #endif
@@ -240,10 +266,8 @@ static void wl_step(uint32_t k, int32_t hs)
     }
     s->w = (uint16_t)nw;
     s->gpk = ng;
-    if (!r) {                                        /* nothing there but dither: one flat line */
-        s->hn = 0;
-        s->gpk -= s->gpk >> 4;
-        wl_push(s, nd);
+    if (!r) {                                        /* nothing there (a note's tail): a flat ridge in front, the stack runs out as the sound does */
+        wl_push(s, 0);
         s->have = 0;
         return;
     }
@@ -273,7 +297,9 @@ static void wl_line(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint16_t c, 
     }
 }
 /* A part's tag, shared by the MORPH page and AUTO TIDE: its number at the knob-1 dot's x, centred on row y. The selected part (hot) in full colour, its number in a filled pill
- * (the cue that works on MONO and GREY too); the other plain and dimmed (its colour mixed 40 % into the background; MONO: its grey). ui_part_col is that colour */
+ * (the cue that works on MONO and GREY too); the other plain and dimmed (its colour mixed 40 % into the background; MONO: its grey). ui_part_col is that colour, ui_part_hot says which:
+ * the selected part, or both with the part selection on BOTH (ui_input.c part_select) */
+static int ui_part_hot(uint32_t k) { return song.both || k == song.sel; }
 static uint16_t ui_part_col(uint32_t k, int hot)
 {
     return hot ? T_PTHEME(k) : ux.bw ? T_DIM : ux_mix(T_BG, T_PTHEME(k), 40);
@@ -285,38 +311,60 @@ static void ui_part_tag(uint32_t k, int32_t y, int hot)
         cv_rrect(UT_A_K1_DOT_X - 4, y - 5, 14, 11, 2, kc, T_BG);
     cv_text_on(UT_A_K1_DOT_X, UT_TY(S, y + AF_S_CAP_H / 2), &AF_S, k ? "2" : "1", hot ? T_INK : kc, hot ? kc : T_BG);
 }
-/* part k's ridges in rows y0 .. y1 - 1: the newest in front (lowest), each older one a step higher and fainter, every line hiding what is under it; the block of ridges is centred, one ridge (silence: a flat line)
- * is the middle. The selected part (song.sel) is in full brightness with a bar at the half's left edge (a second cue that needs no colour: POLICE has one colour a part, GREY little); the other is dimmed */
+/* a box h rows high: the ridges' half height (*a) and how many of them fit WL_STEP rows apart (the return) */
+static int32_t wl_fit(int32_t h, int32_t *a)
+{
+    const int32_t aa = clamp(h / 5, 2, WL_AMAX);
+    *a = aa;
+    return clamp((h - 3 - 2 * aa) / WL_STEP + 1, 1, WL_HN);
+}
+/* part k's picture in rows y0 .. y1 - 1, a landscape seen from the front: the ridges, the oldest first and the newest (the front, at the foot) last, each WL_STEP rows higher than the one after
+ * it and, with depth, lower (its height 12 / (12 + r) of the front's) and narrower (to 5/8 of the width at the back, about the middle), so the stack recedes; every ridge clears what is under its
+ * line down to its own lowest row, so it hides the older ones behind it. Colour: the part's, along its A..B gradient at the fader (mv_col), the front in full and 2 px thick with a soft glow
+ * under it, each older one fainter. The part the controls act on (ui_part_hot) in full colour with a bar at the half's edge, the other dimmed. Flat ridges (silence, a tail) are not drawn,
+ * except the front: silence is one calm line */
+#define WL_XC (WL_X0 + 3 * (WL_NP - 1) / 2)          /* the middle the ridges narrow to */
 static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
 {
     const wl_t *s = &wl[k];
-    const int32_t hot = k == song.sel, pct = (int32_t)morph_fader_of(k) * 100 / 127, hs = (y1 - y0) / 2 - 1;
-    int32_t amp = hs * 2 / 5, nr, nf, step, i, p, nd;
-    if (hs < 4)
+    const int hot = ui_part_hot(k);
+    const int32_t pct = (int32_t)morph_fader_of(k) * 100 / 127;
+    const uint16_t base = mv_col(k, pct, 0);
+    int32_t a, nf = wl_fit(y1 - y0, &a), nr = s->hn < (uint32_t)nf ? (int32_t)s->hn : nf, yf = y1 - 2 - a, r, p;
+    if (y1 - y0 < 8)
         return;
-    if (hot)                                         /* the selected part: a bar at the half's edge, and the part's tag */
+    if (hot)                                         /* the selected part (both with BOTH): a bar at the half's edge, and the part's tag */
         cv_rect(1, y0 + 1, 3, y1 - y0 - 2, T_PFILL(k));
     ui_part_tag(k, (y0 + y1) / 2, hot);
-    if (hs > 30)                                     /* (the old non-grid box) */
-        amp = hs * 3 / 5;
-    step = (y1 - y0 - 2 * amp - 3) / ((int32_t)WL_HN - 1);
-    step = step < 2 ? 2 : step;                      /* (a ridge every 2 rows at least: closer, they fill the box solid) */
-    nr = (y1 - y0 - 2 * amp - 3) / step + 1;         /* the ridges that fit */
-    nr = nr < 1 ? 1 : nr;
-    nf = nr > 1 ? nr : 2;                            /* (the fade runs over all that fit, so a ridge keeps its colour while the history fills) */
-    nd = (int32_t)s->hn;                             /* ridges to draw: none yet is a flat line */
-    nr = nr > nd ? nd : nr;
-    nr = nr < 1 ? 1 : nr;
-    for (i = nr - 1; i >= 0; i--) {
-        int32_t yb = (y0 + y1 - 1) / 2 + ((nr - 1) - 2 * i) * step / 2, py = 0;
-        uint16_t col = mv_col(k, pct, i * 90 / nf + (hot ? 0 : 45));
+    if (nr < 1 || s->a != (uint8_t)a)               /* nothing yet (or made for another box): one calm line */
+        nr = 0;
+    for (r = nr ? nr - 1 : 0; r >= 0; r--) {
+        const int flat = !nr || ((s->flat >> r) & 1u), front = !r && !flat;
+        const int32_t yb = yf - WL_STEP * r, ar = a * 12 / (12 + r), w64 = 64 - (nf > 1 ? r * 24 / (nf - 1) : 0);
+        const int32_t fade = (nf > 1 ? r * 80 / (nf - 1) : 0) + (hot ? 0 : 48) + (flat ? 36 : 0);
+        const uint16_t col = ux_mix(base, T_BG, clamp(fade, 0, 92));
+        int32_t px = 0, py = yb;
+        if (r && flat)
+            continue;
         for (p = 0; p < WL_NP; p++) {
-            int32_t x = WL_X0 + 3 * p, y = yb + (s->hn ? s->dy[i][p] * amp / hs : 0);
-            y = clamp(y, y0, y1 - 1);
-            if (y + 1 < y1)
-                cv_rect(x, y + 1, 3, y1 - y - 1, T_BG);
-            if (p)
-                wl_line(x - 3, py, x, y, col, y0, y1 - 1);
+            const int32_t x = WL_XC + (3 * p - 3 * (WL_NP - 1) / 2) * w64 / 64, y = flat ? yb : yb + wl_rp(s, (uint32_t)r, (uint32_t)p) * ar / a;
+            int32_t c;
+            for (c = p ? px + 1 : x; c <= x; c++) {  /* (the columns of the segment: cleared under the line down to the ridge's lowest row) */
+                const int32_t yc = p && x > px ? py + (y - py) * (c - px) / (x - px) : y;
+                if (yc + 1 <= yb + ar + 1)
+                    cv_rect(c, yc + 1, 1, yb + ar + 2 - yc, T_BG);
+                if (front) {                        /* the front's glow, under its two rows */
+                    cv_pset(c, yc + 2, ux_mix(T_BG, col, 34));
+                    cv_pset(c, yc + 3, ux_mix(T_BG, col, 14));
+                }
+            }
+            if (p) {
+                wl_line(px, py, x, y, col, y0, y1 - 1);
+                if (front)
+                    wl_line(px, py + 1, x, y + 1, col, y0, y1 - 1);
+            } else
+                cv_pset(x, y, col);
+            px = x;
             py = y;
         }
     }
@@ -340,13 +388,16 @@ static int wl_tick(void)
     }
     return stepit;
 }
-/* the picture in rows y0 .. y1 - 1: always both parts, part 1 in the upper half and part 2 in the lower, whatever ALGORITHM is set to (it decides what the fader moves, not the picture) */
+/* the picture in rows y0 .. y1 - 1: always both parts, part 1 in the upper half and part 2 in the lower (the part selection decides which of them the controls act on, and the highlight shows it) */
 static void wl_card(int32_t y0, int32_t y1)
 {
     const int32_t ym = (y0 + y1) / 2;
+    int32_t a0, a1;
+    wl_fit(ym - y0, &a0);
+    wl_fit(y1 - ym, &a1);
     if (wl_tick()) {
-        wl_step(0, (ym - y0) / 2 - 1);
-        wl_step(1, (y1 - ym) / 2 - 1);
+        wl_step(0, a0);
+        wl_step(1, a1);
     }
     wl_stack(0, y0, ym);
     wl_stack(1, ym, y1);

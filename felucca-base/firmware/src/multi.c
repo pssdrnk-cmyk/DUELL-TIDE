@@ -205,7 +205,7 @@ static uint32_t mu_pack(uint8_t *b, const project_t *p, uint32_t *cut)
     b[2] = MU_NG;
     b[3] = (uint8_t)(p->sel < NSHOWN ? p->sel : 0u);
     b[4] = (uint8_t)(duell_mode_req < DM_N ? duell_mode_req : DM_SPLIT);
-    b[5] = (uint8_t)(morph.target == MT_BOTH);       /* bit 0 TARGET (reserved); bits 1..4 were BASS MONO (0.2.19), a device setting since 0.2.21: written 0, ignored on read */
+    b[5] = (uint8_t)(song.both);                     /* bit 0 the part selection's BOTH (TARGET; read back since 1.0.0-b5); bits 1..4 were BASS MONO (0.2.19), a device setting since 0.2.21: written 0, ignored on read */
     b[6] = (uint8_t)(morph.cfg & MC_SET);
     b[7] = (uint8_t)(p->motion.on & ((1u << NSHOWN) - 1u));
     memcpy(b + MU_NAME_AT, nm, proj_name_get(nm, (const uint8_t *)p->name));
@@ -708,7 +708,7 @@ static void project_load(uint32_t slot)
         mix_split = set[5];
         duell_mode_req = set[0];                       /* (the audio takes it at its next block: seq.c mode_apply) */
     }
-    /* set[1] TARGET: reserved (0.2.9: ALGORITHM's BOTH is the player's, a load keeps it) */
+    song.both = (uint8_t)set[1];                       /* set[1] TARGET: the selection's BOTH (1.0.0-b5: a stored BOTH loads as the selection BOTH; before it was reserved and never read) */
     morph.cfg = set[2];
     for (pi = 0; pi < NSHOWN; pi++)                    /* MU_VER 8: End B as its values, the multi's AMOUNT; no block: a fresh B at that AMOUNT (a patch load's rule) */
         if (proj_scratch.bvn[pi]) {

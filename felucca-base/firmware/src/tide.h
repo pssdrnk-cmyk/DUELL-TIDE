@@ -151,7 +151,7 @@ static int tide_foot_two(void);
 #define TIDE_CARD_LIFT() (tide_foot_two() ? TIDE_LIFT : 0)
 #define TIDE_FOOT_FULL() tide_foot_two()
 #define TIDE_GRAPH_SIG(pg, h) do { if ((pg)->graph == GR_TIDELIST) return ((h) ^ tide_list_sig()) * 16777619u; \
-                                   if (TIDE_PAGE(pg)) (h) = ((h) ^ tide_sig() ^ (uint32_t)morph.target * 0x85EBCA77u) * 16777619u; } while (0)
+                                   if (TIDE_PAGE(pg)) (h) = ((h) ^ tide_sig() ^ (uint32_t)song.both * 0x85EBCA77u) * 16777619u; } while (0)
 #define TIDE_COLUMNS() do { if (TIDE_PAGE(cur_page())) { tide_columns(); return; } } while (0)
 #define TIDE_HOME_NAME "MORPH"                           /* MENU > CONTROL > HOME OPENS: the first page of the round (MORPH, as stock; AUTO TIDE is the round's 3rd) */
 #define TIDE_HOME_MODE_NAME "SETTINGS"                  /* (b4, UI audit 9: HOME OPENS' second value names the page it opens, TIDE SETTINGS; MULTI LOAD keeps or sets the PLAY MODE row) */
@@ -269,3 +269,6 @@ static int tide_foot_two(void);
 #define PS_USER0 (PS_SLOTS - PS_NUSER)
 #define PS_VSLOTS (PS_SLOTS + PS_NUSER)
 #endif
+/* the pages where the part selection has its third position, BOTH (owner 2026-11-08): HOME's MORPH page, TIDE SETTINGS and AUTO TIDE, and PERFORM, whose K1 MORPH and ROLL are the MORPH page's
+ * controls (and the test build's CPU TEST page). Everywhere else the selector picks PART 1 or PART 2 and the page shows and edits that part alone, as before; BOTH stays set for these pages */
+#define HOME_BOTH_PAGE(pg) ((pg)->graph == GR_MORPH || TIDE_PAGE(pg) || (pg)->scope == SC_TEST || (pg)->scope == SC_PERF)
