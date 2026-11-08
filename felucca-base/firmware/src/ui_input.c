@@ -413,6 +413,11 @@ static int roll_on(void)
  * on every page */
 static int rec_is_hold(void)
 {
+#if DUELL_TIDE
+    if ((song.rec >> song.sel) & 1u)                    /* TIDE (audit liverec L6): the selected part is armed: REC disarms it on EVERY page and leaves HOLD alone
+                                                         * (it could not be turned off from HOME, and the tap flipped HOLD by accident) */
+        return 0;
+#endif
     return !(ui.layer == LAYER_SEQ || (!ui.perf && !page_over && cur_page()->fam == FAM_SEQ));
 }
 /* the parts the keys play (0.2.11): LAYER both (seq.c key_on), DUEL and STEREO the selected part only. REC as HOLD acts on all of them */
@@ -439,6 +444,11 @@ static void rec_hold_tap(void)
                                                          * now, so with MODULES' ARP OFF the keys latch: OFF <-> ALL) */
         motion_capture(t, P_AHOLD, t->p[P_AHOLD]);
     }
+#if DUELL_TIDE
+    if (cur_page()->fam == FAM_TRK)                     /* TIDE (audit liverec L5): on HOME the tap is HOLD, so say how to record */
+        ui_message(off ? "HOLD OFF: SEQ+REC=REC" : "HOLD ON: SEQ+REC=REC");
+    else
+#endif
     ui_message(off ? "HOLD OFF" : "HOLD ON");
     ui.force = 1;
 }
@@ -451,6 +461,10 @@ static int rec_tap(void)                                /* 1: the arming changed
     }
     song.rec ^= bit;
     ui.force = 1;                                     /* also refresh the status on MENU / ABOUT */
+#if DUELL_TIDE
+    if (!(song.rec & bit))
+        ui_message("REC OFF");                          /* (audit liverec L6: said on every page, HOME included, where the header ring is small) */
+#endif
     if ((song.rec & bit) && !song.playing && !seq_counting() && roll_on()) {
         ui_message(ui_prefs2 & (PREF_CHORD_ADD >> 16) ? "KEYS ADD TO STEP" : "KEYS WRITE STEPS");   /* step recording:
                                                          * stopped, at the cursor (CHORD ENTRY ADD: adding) */
@@ -460,6 +474,10 @@ static int rec_tap(void)                                /* 1: the arming changed
         transport_req = 1;
     if ((song.rec & bit) && cur_page()->graph == GR_ROLL)
         ui_message("KEYS RECORD LIVE");               /* (seq_entry pauses while armed and playing) */
+#if DUELL_TIDE
+    if ((song.rec & bit) && trk[song.sel].p[P_AMODE] == AM_SEQ_ID)   /* TIDE (audit liverec L2): keys only transpose an ARP SEQ pattern, the knobs record */
+        ui_message("ARP SEQ: KNOBS RECORD");
+#endif
     return 1;
 }
 
@@ -1717,7 +1735,14 @@ static void seq_entry(uint32_t pressed)
 static int presets_loads(const page_t *pg)
 {
     uint32_t g = pg->graph;
+#if DUELL_TIDE
+    /* TIDE (owner, 2026-11-08, "in SEQ mode I can't change the preset patch"): STEP and PARAMETER LOCKS load too. The reasons above are gone: the held-step
+     * NUDGE on PRESETS no longer exists (NUDGE is PARAMETER LOCKS' rows) and a sound load keeps the motion that still means the same
+     * (ui.c load_motion_hold, motion_sound_loaded), as on HOME. The list / action pages stay out */
+    return !(g == GR_SLOTS || g == GR_PATS || g == GR_TOOLS);
+#else
     return !(g == GR_ROLL || g == GR_SLOTS || g == GR_PATS || g == GR_EVENTS || g == GR_TOOLS);
+#endif
 }
 static void presets_turn(int32_t s)
 {

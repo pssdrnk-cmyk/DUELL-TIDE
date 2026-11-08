@@ -7,6 +7,12 @@ New lines for the fork go here, not into CHANGELOG.md.
 
 Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrnk-cmyk/DUELL-TIDE>), adding TIDE, a morph that plays and evolves by itself. TIDE has its own version, `MAJOR.MINOR.PATCH`, kept in the file `TIDE_VERSION` and shown in MENU > SYSTEM > ABOUT beside the DUELL version (1.1). A build flashed for testing is a beta, `1.0.0-b1`, `1.0.0-b2`, ...; the first build the fork owner has validated on the unit is `1.0.0`; a fix is `1.0.1`, a feature `1.1.0`. The git tag is `tide-` and the version (`tide-1.0.0-b1`); the GitHub release has the same name. Each version has a section below, `## 1.0.0-b1`, newest first; a section heading names the tag and, once known, the commit and the date it was flashed. The commit stays in the release notes, not in the name. The installer page offers the stable and the beta build of the [GitHub releases](https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases); the [README](README.md#builds-stable-and-beta) says which they are.
 
+## 1.0.0-b3 (in progress)
+
+- **Fixed (live recording, audit 2026-11-08):** REC no longer stops the sequences, and no longer rewrites an ARP SEQ pattern from the arp's own notes (a held key climbed a MONO pattern to note 127 in three loops, a firm key accented every step). On an ARP SEQ part the keys transpose as when not armed and record nothing; knob moves still record parameter locks, and tapping REC on such a part says ARP SEQ: KNOBS RECORD. Arp OFF and classic arps record as before.
+- **Fixed:** once the selected part is armed, a tap of REC disarms it on every page, HOME included, and no longer flips HOLD (it could not be turned off from HOME); the toast says REC OFF. Unarmed on HOME the tap is still the HOLD switch, and its toast now says how to record: HOLD ON: SEQ+REC=REC (hold SEQ, tap REC).
+- **Fixed:** the PRESETS knob loads sounds on STEP and PARAMETER LOCKS too (owner: "in SEQ mode I can't change the preset patch"); steps and parameter locks stay. OCT- held + PRESETS (load undo) works there. PATTERNS, MULTIS and TOOLS still ignore it.
+
 ## 1.0.0-b2
 
 Tag `tide-1.0.0-b2` (integ merge commit 0d2fcb9). The owner's unit runs the pre-tag build 36f03cd (flashed 2026-11-06), whose ABOUT reads `1.0.0-b2+`. The tagged build differs from it only by 069c65e (the every-other-block blend only while a GLIDE runs; a fader jump over 12 steps is not a move) plus tests and docs; it is not flashed yet, and its ABOUT will read `1.0.0-b2`.

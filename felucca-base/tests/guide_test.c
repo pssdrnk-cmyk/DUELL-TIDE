@@ -203,7 +203,7 @@ int main(void)
         tails_over();
         trk[0].p[P_AHOLD] = trk[1].p[P_AHOLD] = 0;      /* (both parts: REC's HOLD is one direction for all, and TIDE's first multi holds part 2) */
         press(B_REC);
-        expect("REC: the HOLD switch (HOLD ON), still in the guide", TSEL->p[P_AHOLD] != 0 && ui.guide == 3u && str_eq(ui.msg, "HOLD ON"));
+        expect("REC: the HOLD switch (HOLD ON), still in the guide", TSEL->p[P_AHOLD] != 0 && ui.guide == 3u && (str_eq(ui.msg, "HOLD ON") || str_eq(ui.msg, "HOLD ON: SEQ+REC=REC")));
         press(B_REC);
         expect("  .. again: HOLD OFF", TSEL->p[P_AHOLD] == 0 && ui.guide == 3u);
         ui.msg_t = 0;

@@ -263,6 +263,13 @@ static void arp_remove(track_t *t, uint32_t note)
 static void rec_note(track_t *t, uint32_t note, uint32_t vel);
 static void rec_release(track_t *t, uint32_t note);
 static int rec_on(const track_t *t) { return ((song.rec >> trk_index(t)) & 1u) && song.playing; }
+/* the arp records what it plays, except on an ARP SEQ part: there it plays the pattern recording would write into (it climbed to 127 in
+ * three loops, audit liverec L2). Raw P_AMODE, as seq_play reads it, so MODULES' SEQ OFF does not change which path records */
+#if DUELL_TIDE
+static int rec_arp_on(const track_t *t) { return rec_on(t) && t->p[P_AMODE] != AM_SEQ_ID; }
+#else
+#define rec_arp_on(t) rec_on(t)                         /* (plain DUELL: the arp records what it plays, ARP SEQ included) */
+#endif
 
 static uint32_t step_samples(const track_t *t, uint32_t period, uint32_t idx);   /* (below; motion.c) */
 #include "motion.c"
@@ -331,7 +338,7 @@ static __attribute__((noinline)) void arp_chord(track_t *t, const uint32_t *list
         if (nt == 127u && top++)
             continue;                               /* (notes clamped onto the top one: once) */
         arp_put(t, i, nt);
-        if (rec_on(t))
+        if (rec_arp_on(t))
             rec_note(t, nt, arp_vel(t));
         arp_note_on(t, nt, arp_vel(t));
     }
@@ -380,7 +387,7 @@ static __attribute__((noinline)) void arp_seq(track_t *t, const uint32_t *list, 
         ties++;                                     /* the TIE steps after it hold the note (audit G07: they were rests, every note a short stab) */
     for (i = 0; i < m; i++) {
         arp_put(t, i, out[i]);
-        if (rec_on(t))
+        if (rec_arp_on(t))
             rec_note(t, out[i], vel);
         arp_note_on(t, out[i], vel);
     }
@@ -399,9 +406,9 @@ static void arp_silence(track_t *t)              /* the sounding arp note(s) end
 static void arp_off(track_t *t)                  /* the sounding arp note(s) end (a recorded one too) */
 {
     if (ARP_CH_UP(t))
-        arp_chord_off(t, rec_on(t));
+        arp_chord_off(t, rec_arp_on(t));
     arp_note_off(t, t->arp_note);
-    if (rec_on(t))
+    if (rec_arp_on(t))
         rec_release(t, t->arp_note);
     t->arp_note = 0;
     t->arp_nz &= (uint8_t)~1u;
@@ -609,7 +616,7 @@ static __attribute__((noinline)) void arp_fire(track_t *t, uint32_t period)
             return;
         }
         arp_put(t, 0, list[j]);
-        if (rec_on(t))
+        if (rec_arp_on(t))
             rec_note(t, t->arp_note, arp_vel(t));    /* recording: what the arp plays */
         arp_note_on(t, t->arp_note, arp_vel(t));
     }
