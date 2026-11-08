@@ -716,6 +716,9 @@ static uint32_t clock_src(void);
 /* the CPU load meter's counters (audio.c writes them per I2S half, ui_menu.c cpu_meter_poll reads them) and the half's time */
 #define CPU_BUDGET_US (HALF_FRAMES * 1000000u / FS)
 static volatile uint32_t cpu_sum, cpu_n, cpu_pk, cpu_miss;
+#if DUELL_TEST_MODE
+static volatile uint32_t cpu_raw_pk;                    /* (probe) the longest half's elapsed time (us) BEFORE the nested TIMER5 ticks are taken off: what the deadline saw; read and cleared by the console's `cpu` */
+#endif
 #if DUELL_BENCH
 #define C0_STK_FILL 0xC0C0C0C0u                                              /* main.c c0_stack_paint, bench.c c0_stack_peak: core 0's stack marks, developer builds only */
 static void c0_stack_bounds(uint32_t **b);                                   /* b[0..3] = the user stack's bottom and top, the exception stack's bottom and top (main.c; a host test names its own) */
@@ -834,4 +837,10 @@ struct { uint32_t magic, failed, pending; } bootguard __attribute__((section(".n
 #if DUELL_TIDE
 static uint8_t tide_lvc2[NLIVE];  /* TIDE live graphs: the latest note's effective cutoff of filter 2, Q8 dial steps >> 7 (chain_f2.c writes it, ui_live.c reads it; the pad bytes of track_t are used up) */
 #define LVC2(t) (tide_lvc2[(uint32_t)((t) - trk) % NLIVE])
+/* the per-stage timing of the console probe `cpu` (fx.c, eng_fm6.c, console.c): the unit's test-mode build only (the host tests have no TIMER4) */
+#if DUELL_TEST_MODE && !defined(__x86_64__) && !defined(__i386__) && !defined(__aarch64__)
+#define DUELL_PROBE_STAGES 1
+#else
+#define DUELL_PROBE_STAGES 0
+#endif
 #endif

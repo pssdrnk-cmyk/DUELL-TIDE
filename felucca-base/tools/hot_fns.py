@@ -70,7 +70,8 @@ GROUPS = {
     2: ["eq_run", "ins_swept", "track_dist", "duck_run", "mix_spread", "track_insert",
         "rev_room", "rev_shim", "dly_mod", "fx_buses_mod"],
     3: ["fm6_note_compute", "fm6_render", "fm6_carriers", "fm6_note_of", "wv_line", "sine_i", "osc_sine",
-        "uf_coef", "spread_clear", "mod_voice", "mod_voice_add", "morph_end", "perf_flanger", "perf_drive"],
+        "uf_coef", "spread_clear", "mod_voice", "mod_voice_add", "morph_end", "perf_flanger", "perf_drive",
+        "fm6_xblock", "fm6_xtune", "fm6_osc_base4"],   # TIDE: the FM6 bridge of a GLIDE (fm6_xfer.c), per note x operator while a crossing runs (unit 2026-11-06: from the flash it spiked the half to 102 %); absent without TIDE
 }
 # The two-core layout has spare range-X RAM. Keep these leaf loops in RAM while
 # releasing room in the top hot block; ram_place validates their call closure.

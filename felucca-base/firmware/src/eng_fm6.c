@@ -565,7 +565,14 @@ static void fm6_block(track_t *t)       /* once a block and part: the macros, th
     fm6_sync(t);
 #if DUELL_TIDE
     if (tr < NLIVE && (fm6_xt[tr].on || fm6_xt[tr].dirty)) {
+#if DUELL_PROBE_STAGES
+        extern volatile uint32_t prb_stage_pk[5];
+        uint32_t x0 = fm1_ticks();
         fm6_xblock(t, tr);
+        if (!tr && fm1_ticks() - x0 > prb_stage_pk[3]) prb_stage_pk[3] = fm1_ticks() - x0;
+#else
+        fm6_xblock(t, tr);
+#endif
         if (fm6_xt[tr].drain) {                  /* a new Original's drain that morph_xreset left to the render side (core 1 held part 2's job): give back, then restore */
             fm6_xblock(t, tr);
             fm6_xt[tr].drain = fm6_xt[tr].mute = fm6_xt[tr].dirty = 0;
@@ -652,14 +659,16 @@ static void fm6_render(track_t *t, voice_t *v, int32_t *out, uint32_t len, const
     lf = fm6_note_logfreq(m->pitch16 + (p[FP_TRNSP] - 24) * 16, m->fine);
     fb = clamp(fm6_eff[tr].fb + ((m->shape - (64 << 8)) >> 11), 0, 7);
     lvl = clamp(t->p[P_E2], -64, 63) * 24 + clamp(m->cutoff >> 8, -150, 150) * 16;   /* microsteps */
-    if (m->amask
-#if DUELL_TIDE
-               || (tr < NLIVE && fm6_xt[tr].on)
-#endif
-              ) {                                     /* DUELL ARP TARGET (SPEC 2.3): operators on the arp's pitch */
+    if (m->amask) {                                     /* DUELL ARP TARGET (SPEC 2.3): operators on the arp's pitch */
         if (!fm6_note_compute(n, p, bus, fm6_lfo_v[tr], fm6_lfo_d[tr], lf, fm6_eff[tr].alg, fb,
                               atg_fm6(m, fm6_eff[tr].dt, dt2, ul), lvl * 65536, ul))
             return;
+#if DUELL_TIDE
+    } else if (fm6_xt[tr].on) {                         /* No ARP: the bridge's offsets are already shared by the part; no per-voice pitch/gate preparation. */
+        if (!fm6_note_compute(n, p, bus, fm6_lfo_v[tr], fm6_lfo_d[tr], lf, fm6_eff[tr].alg, fb, fm6_eff[tr].dt,
+                              lvl * 65536, fm6_xt[tr].lv))
+            return;
+#endif
     } else if (!fm6_note_compute(n, p, bus, fm6_lfo_v[tr], fm6_lfo_d[tr], lf, fm6_eff[tr].alg, fb, fm6_eff[tr].dt,
                                  lvl * 65536, 0)) {
         return;                                         /* every carrier below the threshold */

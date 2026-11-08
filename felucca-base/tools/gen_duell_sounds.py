@@ -433,7 +433,7 @@ def build(data):
                 block = endb.encode(e, bamt + 1, vals, None, marks, fm)   # (no Original here: the firmware adds routes at a load, mod.c; tools/convert_endb.py checks against the firmware's own)
             except ValueError as x:
                 die(f"{where}: {x}")
-        sounds.append({"e": e, "idx": idx, "name": name, "cat": s["cat"], "lcat": s.get("lcat", s["cat"]), "mono": bool(s.get("mono")), "arp": arp, "late": n >= getattr(data, "N_BASE", 1 << 30),
+        sounds.append({"e": e, "idx": idx, "name": name, "cat": s["cat"], "lcat": s.get("lcat", s["cat"]), "mono": bool(s.get("mono")), "arp": arp, "late": n >= getattr(data, "N_BASE", 1 << 30), "tail": (n - getattr(data, "N_LATE", 1 << 30)) if n >= getattr(data, "N_LATE", 1 << 30) else -1,
                        "keys": keys, "text": bool(s.get("text")), "pairs": sorted(pairs.items()), "recipe": s.get("recipe", ""), "bamt": bamt,
                        "bseed": bseed, "endb": block})
     for e in {x["e"] for x in sounds}:
@@ -444,7 +444,7 @@ def build(data):
         die("more than 255 sounds: widen DS_LIST / DS_ENG_AT")
     sounds.sort(key=lambda x: (x["e"], x["idx"]))
     rank = {e: i for i, e in enumerate(order)}
-    lst = sorted(range(len(sounds)), key=lambda g: (sounds[g]["late"], CATS.index(sounds[g]["lcat"]), rank.get(sounds[g]["e"], 99),
+    lst = sorted(range(len(sounds)), key=lambda g: (sounds[g]["late"], sounds[g]["tail"], CATS.index(sounds[g]["lcat"]), rank.get(sounds[g]["e"], 99),
                                                     sounds[g]["name"]))
     idname = {v: k for k, v in ids.items()}
     for xn, (wid, *_rest) in xtp.items():

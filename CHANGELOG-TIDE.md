@@ -7,6 +7,14 @@ New lines for the fork go here, not into CHANGELOG.md.
 
 Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrnk-cmyk/DUELL-TIDE>), adding TIDE, a morph that plays and evolves by itself. TIDE has its own version, `MAJOR.MINOR.PATCH`, kept in the file `TIDE_VERSION` and shown in MENU > SYSTEM > ABOUT beside the DUELL version (1.1). A build flashed for testing is a beta, `1.0.0-b1`, `1.0.0-b2`, ...; the first build the fork owner has validated on the unit is `1.0.0`; a fix is `1.0.1`, a feature `1.1.0`. The git tag is `tide-` and the version (`tide-1.0.0-b1`); the GitHub release has the same name. Each version has a section below, `## 1.0.0-b1`, newest first; the lines for the build not yet flashed go under the top heading. The commit stays in the release notes, not in the name. The installer page offers the stable and the beta build of the [GitHub releases](https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases); the [README](README.md#builds-stable-and-beta) says which they are.
 
+## 1.0.0-b2
+- Eight drones, #164 to #171, two per theme. Desert: SAND THROAT, HORN SWELL. Neon city: NEON BRASS, RAIN STRINGS. Space: VOID SHIMMER, SOLAR WIND. Cyberpunk: GRID HUM, IRON WORKS. Each holds a 3-note chord on the unit with 0 misses (raw peak 77 to 91 %). Sounds added from #164 on are listed in file order after #163, so #125 to #163 and their bank-2 MIDI programs never move.
+
+Not flashed yet.
+
+- **Changed (CPU candidate, device validation pending):** the real TIDE morph blender now runs from SRAM; the earlier placement list moved only its wrapper. WASH retains its filter coefficients until the note-derived floor changes, and FM6 bridge-only rendering skips unused ARP preparation. The wash arithmetic remains sample-identical to the legacy reference. The unmeasured extra 25% voice-budget margin and the accompanying capacity changes were removed: the calibrated `1.0.0-b1` NOTES limits and release behavior remain the comparison baseline. Host equivalence, target placement and image checks establish the software change; the owner's GLIDE sweep must establish the skip fix on the unit.
+- **New (developer tool, test-mode builds only):** the console word `glide 1 [T]` (launch the back-and-forth glide on the selected part's morph target, as knob 1 of the TIDE page does; PLAY starts with it; T is the TIME index 0 to 6) and `glide 0` (stop it), next to `mload N` and `cpu`; `cpu_multis.py --glide [--gtime T]` loads each multi, launches the glide and samples `cpu` once a second.
+
 ## 1.0.0-b1
 
 The first versioned build, not flashed yet. It holds everything below, from DUELL 1.1 on: the entries of the dated builds listed at the end are not split out.

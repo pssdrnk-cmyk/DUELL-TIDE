@@ -261,6 +261,7 @@ static void glide_motion(int on)
 static uint32_t glide_tide_on(void) { return (gl.on & (1u << GT_SEQ)) && gl.mode >= GM_WANDER && morph_musical && (gl.mask & 3u); }
 static void glide_poll(void)
 {
+    morph_gliding = gl.on != 0;                      /* (morph.c: the blend every other block, budget.c: the FM6 crossing's charge) */
     uint32_t l, k, e, end;
     uint8_t b = perf_beat;
     if (sqm_restart) {                                   /* a load (tide_loaded) put the SEQ fader at A: a running trip starts again from there, towards B */

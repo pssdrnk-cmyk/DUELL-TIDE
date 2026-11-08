@@ -574,6 +574,9 @@ typedef struct {
     int64_t wref, wnow;                                  /* the wash: the part's level at rest (~90 ms) and now (~10 ms), mean squares */
     int32_t wg, wy[3];                                   /* .. its gain (Q12) and its noise's three one-poles (two at the top, one below) */
     uint32_t wr;                                         /* .. its noise's state (xorshift) */
+    int32_t wal, wah;                                    /* wash coefficients: only the note-derived floor changes them */
+    uint16_t wfloor;
+    uint8_t wvalid;
     int64_t qin, qout;                                   /* the mean squares before and after, smoothed (~6 ms: the hold's) */
     uint8_t run;                                         /* the states are this part's last block's */
 } mxv_t;
@@ -592,6 +595,12 @@ static int32_t xexp2(int32_t x)                          /* 2^x, x Q12 (-24 .. 7
  * would fall below (15 dB under the part's level at rest at MID: a bed, not a second sound), and a little more through a transition's floor (24 dB under it at
  * the floor) where a structural change is made. It goes where the part goes: through its sends, the reverb and delay carry it.
  * Silent at rest and between notes (a rest is a rest, a release is the note going): it comes and goes over ~50 ms */
+static inline int32_t al_s(int32_t a, int32_t d) { return (a * d) >> 15; }   /* a one-pole step: a in 0 .. 32767, d in -65535 .. 65535 (the product is under 2^31) */
+static inline int32_t wash_gain(int32_t nz, int32_t wg)   /* (nz * wg) >> 12 exactly, in 32 bits: wg (Q12, 0 .. 65536) is split into whole units and the Q12 rest, nz is within 65535 in size */
+{
+    int32_t hi = wg >> 12, lo = wg & 4095;
+    return nz * hi + ((nz * lo) >> 12);
+}
 static __attribute__((noinline)) void MXT_BODY(morph_wash)(uint32_t pp, int32_t *b, uint32_t n)
 {
     mxv_t *v = &mxv[pp];
@@ -611,17 +620,28 @@ static __attribute__((noinline)) void MXT_BODY(morph_wash)(uint32_t pp, int32_t 
         return;
     if (!v->wr)
         v->wr = 0x9E3779B9u ^ pp;
-    wl = xexp2(x->lfloor + XV_LW), wh = xexp2(x->lfloor + 2 * 4096 + XV_LW);   /* (two octaves wide: a soft band, not a hiss) */
-    al = (int32_t)(((int64_t)wl << 15) / (65536 + wl)), ah = (int32_t)(((int64_t)wh << 15) / (65536 + wh));
+    if (!v->wvalid || v->wfloor != x->lfloor) {
+        wl = xexp2(x->lfloor + XV_LW), wh = xexp2(x->lfloor + 2 * 4096 + XV_LW);   /* two octaves wide; independent of this block's samples and gain */
+        v->wal = (int32_t)(((int64_t)wl << 15) / (65536 + wl));
+        v->wah = (int32_t)(((int64_t)wh << 15) / (65536 + wh));
+        v->wfloor = x->lfloor;
+        v->wvalid = 1;
+    }
+    al = v->wal, ah = v->wah;
     for (i = 0; i < (int32_t)n; i++) {                   /* white (xorshift32), low-passed at the top, the low part taken away */
         int32_t w;
         xs32(&v->wr);
         w = (int32_t)(v->wr >> 16) - 32768;
-        v->wy[0] += (int32_t)(((int64_t)ah * (w - v->wy[0])) >> 15);
-        v->wy[2] += (int32_t)(((int64_t)ah * (v->wy[0] - v->wy[2])) >> 15);   /* (12 dB / octave above the band: no edge) */
-        v->wy[1] += (int32_t)(((int64_t)al * (v->wy[2] - v->wy[1])) >> 15);
+        /* (32 bit multiplies, bit for bit the 64 bit ones they were: w and the three states stay in -32768 .. 32767 (a one-pole of such values, the floor of each step keeps it so), so a difference is
+         * at most 65535 in size and a coefficient is under 32768: the product is under 2^31. Wave 16: GLIDE's wash ran six wide multiplies a sample and a part, one now (the power meter); what that saves on the device is not measured, the host does not show it) */
+        v->wy[0] += (al_s(ah, w - v->wy[0]));
+        v->wy[2] += (al_s(ah, v->wy[0] - v->wy[2]));   /* (12 dB / octave above the band: no edge) */
+        v->wy[1] += (al_s(al, v->wy[2] - v->wy[1]));
         nz[i] = v->wy[2] - v->wy[1];
-        pn += (int64_t)nz[i] * nz[i] >> 8;
+        {
+            uint32_t m = (uint32_t)(nz[i] < 0 ? -nz[i] : nz[i]);   /* (at most 65535: its square fits 32 bits) */
+            pn += (int64_t)((m * m) >> 8);
+        }
     }
     if (move && morph_wlvl) {
         int64_t fill = (v->wref >> XWS[morph_wlvl & 3u]) - v->wnow;   /* (to 9 dB under the level at rest at MID: WASH) */
@@ -640,7 +660,7 @@ static __attribute__((noinline)) void MXT_BODY(morph_wash)(uint32_t pp, int32_t 
     dg = (g1 - v->wg) / (int32_t)n;
     for (i = 0; i < (int32_t)n; i++) {
         v->wg += dg;
-        b[i] += (int32_t)(((int64_t)nz[i] * v->wg) >> 12);
+        b[i] += wash_gain(nz[i], v->wg);
     }
     v->wg = g1;
 }
@@ -660,6 +680,7 @@ static __attribute__((noinline)) void morph_vrest(uint32_t pp)
     v->run = 0;
     v->m = 0;
     v->wg = 0;
+    v->wvalid = 0;
     v->wy[0] = v->wy[1] = v->wy[2] = 0;
 }
 static __attribute__((noinline)) void MXT_BODY(morph_valley)(uint32_t pp, int32_t *b, int32_t *s, uint32_t n)

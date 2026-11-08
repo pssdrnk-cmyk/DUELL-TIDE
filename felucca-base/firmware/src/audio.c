@@ -273,6 +273,13 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
         fm1_audio_ack_half();
         audio_halves++;
         us = shed_check(fm1_ticks() - t0);
+#if DUELL_TEST_MODE
+        {
+            uint32_t raw = (fm1_ticks() - t0) / FM1_TICKS_PER_US;
+            if (raw > cpu_raw_pk)
+                cpu_raw_pk = raw;
+        }
+#endif
 #ifdef FELUCCA_METER_EST
         us = meter_est_us();
 #endif

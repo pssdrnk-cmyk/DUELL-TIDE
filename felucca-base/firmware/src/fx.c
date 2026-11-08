@@ -3038,13 +3038,22 @@ static inline void part_end(const mixpart_t *m)
 
 /* one synth part into the dry mix and the sends: its stages in order (a part with no voice sounding costs the LFO tick and a cleared buffer only).
  * The callers' morph_begin / morph_end bracket it (mix_block); this function is the one place that fixes the order of a part's stages */
+#if DUELL_PROBE_STAGES
+volatile uint32_t prb_stage_pk[5];                  /* (probe) the longest block's morph_begin, part 1, part 2 wait (TIMER4 ticks) */
+#endif
 static void mix_part(track_t *t, uint32_t n, const blockstate_t *bs)
 {
     mixpart_t m;
+#if DUELL_PROBE_STAGES
+    uint32_t v0 = fm1_ticks();
+#endif
     if (!part_voice(&m, t, n, bs)) {
         part_rest(&m);
         return;
     }
+#if DUELL_PROBE_STAGES
+    if (t == &trk[0] && fm1_ticks() - v0 > prb_stage_pk[4]) prb_stage_pk[4] = fm1_ticks() - v0;
+#endif
     part_fx(&m);
     part_mix(&m);
     part_end(&m);
@@ -3463,12 +3472,29 @@ static void mix_block(int32_t *out, uint32_t n)
 #if DUELL_TWOCORE
     tcr_begin(&bs, n);                                  /* DUELL TWO-CORE stage 1: part 2 goes to core 1 (twocore_run.c), part 1 stays here */
     {
+#if DUELL_PROBE_STAGES
+        uint32_t s0 = fm1_ticks(), s1, s2;              /* (probe: console `cpu` prints each stage's longest block, ticks; cleared there) */
+#endif
         int mo = morph_begin(&trk[0], 1);
+#if DUELL_PROBE_STAGES
+        s1 = fm1_ticks();
+#endif
         mix_part(&trk[0], n, &bs);
         if (mo)
             morph_end(&trk[0]);
+#if DUELL_PROBE_STAGES
+        s2 = fm1_ticks();
+        tcr_part2(&bs, n);
+        {
+            uint32_t s3 = fm1_ticks(), d[3] = {s1 - s0, s2 - s1, s3 - s2}, k;
+            for (k = 0; k < 3u; k++)
+                if (d[k] > prb_stage_pk[k]) prb_stage_pk[k] = d[k];
+        }
+#endif
     }
+#if !DUELL_PROBE_STAGES
     tcr_part2(&bs, n);                                  /* (core 1's part 2 awaited, or core 0 plays it, or it is silent) */
+#endif
 #else
     for (i = 0; i < NLIVE; i++) {                      /* (DUELL: tracks 3..4 do not render) */
         int mo = morph_begin(&trk[i], 1);               /* DUELL MORPH: the fader's values into t->p (morph.c) */

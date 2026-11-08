@@ -36,6 +36,9 @@ GROUPS = {
     "HELPERS": ["__udivdi3", "memcpy", "div_divlu", "memset", "div_samples", "beat_samples", "part_rand", "div_nlz32", "isqrt32", "isqrt64",
                 "phys_slot_of", "phys_reset"],
 }
+if os.environ.get("DUELL_TIDE") != "0":
+    # TIDE split the blend body from morph_apply; keep the audio body in RAM with its wrapper.
+    GROUPS["MORPH"].append("morph_apply_at")
 NAMES = [f for fs in GROUPS.values() for f in fs]
 # DUELL_TWOCORE=1 (two-core stage 1, the merge of cloud/job5 with this line): what core 1 runs beyond the list above. The real call graph of the job (tc_job_run,
 # fm1_c1_main: the relocations of the compiled object, tools/ram_reach.py, docs/TWOCORE_REACH_REAL.md) reaches 153 functions; 109 are placed already (hot 22, X 39, Z 48), 44 are not:
