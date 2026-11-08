@@ -622,7 +622,7 @@ static dlyev_t dlyev_b __attribute__((section(".pool")));                  /* 0.
 /* DUELL 0.2.25 OVERLOAD GUARD (SPEC 6.3; automatic, always on, nothing stored). When the audio is near its limit, by the voice shedding's own
  * measure (audio.c shed_check: two halves in a row over 85 % of their time), the delay's RANDOM / OCT UP runs as the plain delay it
  * cross-fades from (fx_buses, split_buses: the events' ~11.6 ms crossfade; the delay's modulation is not run in their place). (The other
- * dear effect it was built for, SHIM's PITCH BOTH, was removed in 0.2.25 by the owner.) Back after the meter's load (song.cpu_q8, the CPU bar's figure) has stayed under 70 % for ~3 s,
+ * dear effect it was built for, SHIM's PITCH BOTH, was removed in 0.2.25 by the owner.) Back after the meter's load (song.cpu_q8, the meter's average) has stayed under 70 % for ~3 s,
  * the same way. Nothing changes while it is not engaged: the stored values are never touched, ovl_lite only steers the delay's switches below
  * (tests/ovl_test.c renders bit for bit with it compiled out, -DOVL_NOGUARD). Shown on ABOUT (LIGHT FX); flash code only */
 static uint8_t ovl_lite;                 /* 1: the guard is engaged */

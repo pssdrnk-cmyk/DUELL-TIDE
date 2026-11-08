@@ -721,12 +721,18 @@ static song_t song HOTG_BSS;
  * source, 0 INT, 1 USB, 2 TRS (a fixed choice: itself; AUTO: the port it locked onto, else 0) */
 #define CLK_AUTO 3
 static uint32_t clock_src(void);
-/* the CPU load meter's counters (audio.c writes them per I2S half, ui_menu.c cpu_meter_poll reads them) and the half's time */
+/* the CPU load meter's counters (audio.c writes them per I2S half, ui_menu.c cpu_snap_poll reads them) and the half's time */
 #define CPU_BUDGET_US (HALF_FRAMES * 1000000u / FS)
-static volatile uint32_t cpu_sum, cpu_n, cpu_pk, cpu_miss;
-#if DUELL_TEST_MODE
-static volatile uint32_t cpu_raw_pk;                    /* (probe) the longest half's elapsed time (us) BEFORE the nested TIMER5 ticks are taken off: what the deadline saw; read and cleared by the console's `cpu` */
-#endif
+static volatile uint32_t cpu_sum, cpu_n, cpu_pk, cpu_el_pk, cpu_miss;   /* cpu_pk: the longest half's render time (us); cpu_el_pk: its ELAPSED time (us, the nested TIMER5 / USB work included: what the DMA deadline sees), every build; the ISR writes both and ui_menu.c cpu_snap_poll alone clears them; cpu_miss: DMA periods missed (audio.c) */
+/* K2: ONE owner of the counters. cpu_snap_poll (ui_menu.c) alone reads cpu_pk / cpu_el_pk and clears them (the counters under fm1_irq_off), fills cpu_snap (sum, n, miss as of now: the ISR's
+ * own running counters, never cleared) and folds the elapsed peak into every reader's own window (CPU_W_*). A reader takes its window with cpu_win_take: it gets the longest elapsed half (us) since
+ * ITS last take and starts again, so no reader can take another's peak away. Console, bench, ABOUT, TEST and the header read; none clears. Main loop only, not reentrant (the audio interrupt never calls them) */
+typedef struct { uint32_t sum, n, miss; } cpu_snap_t;
+enum { CPU_W_MENU, CPU_W_HEAD, CPU_W_CON, CPU_W_BENCH, CPU_NW };
+static cpu_snap_t cpu_snap;
+static volatile uint32_t cpu_el_last;                   /* the last half's elapsed time (us; the ISR writes it: the bench's timeline window is read inside the interrupt) */
+static void cpu_snap_poll(void);
+static uint32_t cpu_win_take(uint32_t k);
 #if DUELL_BENCH
 #define C0_STK_FILL 0xC0C0C0C0u                                              /* main.c c0_stack_paint, bench.c c0_stack_peak: core 0's stack marks, developer builds only */
 static void c0_stack_bounds(uint32_t **b);                                   /* b[0..3] = the user stack's bottom and top, the exception stack's bottom and top (main.c; a host test names its own) */

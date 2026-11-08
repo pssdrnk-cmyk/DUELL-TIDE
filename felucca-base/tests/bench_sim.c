@@ -314,6 +314,9 @@ static void sim_half(void)
     cpu_n++;
     if (us > cpu_pk)
         cpu_pk = us;
+    if (us > cpu_el_pk)
+        cpu_el_pk = us;
+    cpu_el_last = us;
     cpu_miss += us > CPU_BUDGET_US;
     audio_halves++;
     sim_tc_half();
