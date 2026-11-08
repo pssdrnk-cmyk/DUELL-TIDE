@@ -3011,7 +3011,7 @@ static void graph_mlearn(void)
         ml_name(a);
         cv_text_grad(12, 8, &AF_L, a, 12);
         cv_text(12, 38, &AF_M, "Send a CC", T_TEXT);
-        cv_free_hint(12, 60, "[OCT+] Done", T_TEXT, T_BG, 200);
+        cv_free_hint(12, 60, "[OCT+] DONE", T_TEXT, T_BG, 200);
         cv_free_hint(12, 80, "[OCT-] Clears its CC", T_TEXT, T_BG, 200);
     }
 }

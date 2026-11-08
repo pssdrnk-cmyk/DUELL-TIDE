@@ -2572,7 +2572,8 @@ static void draw_columns(void)
                     str_cpy(ds, "Duck source: ", sizeof ds);
                     str_cpy(ds + str_len(ds), val_shown(&TP[P_DKSRC], N_DKSRC[(uint32_t)clamp(trk[c >> 1].p[P_DKSRC], 0, 3)]), (uint32_t)sizeof ds - str_len(ds));
                     for (n = 13; ds[n]; n++)
-                        ds[n] = (char)(ds[n] >= 'A' && ds[n] <= 'Z' ? ds[n] + 32 : ds[n] == '\n' ? ' ' : ds[n]);
+                        if (ds[n] == '\n')                   /* (b4, UI audit 8: the value in its own capitals, as the card shows it; no lower-casing) */
+                            ds[n] = ' ';
                     grid_d = ds;
                     n = sc_midi[c];
                 }
