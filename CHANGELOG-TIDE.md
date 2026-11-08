@@ -23,7 +23,7 @@ Not flashed yet.
 
 ## 1.0.0-b3
 
-Not flashed yet.
+Tag `tide-1.0.0-b3`, 8 November 2026 (jam11 after PRs #1 to #5). Measured on the unit before the tag (the b3 candidate, 16-multi GLIDE sweep): 1 missed audio block and 17 voices cut over the sweep, worst block 101 %; `1.0.0-b4`'s ease ladder takes that to none.
 
 - **Fixed (ARP pages, POLY):** while a POLY stretch shortens an ARP SEQ part's loop, the footer step marker on the ARP pages now follows the step that plays (it counted the full loop and drifted off the sound).
 - **Fixed (live recording, audit 2026-11-08):** REC no longer stops the sequences, and no longer rewrites an ARP SEQ pattern from the arp's own notes (a held key climbed a MONO pattern to note 127 in three loops, a firm key accented every step). Arp OFF and classic arps record as before.
