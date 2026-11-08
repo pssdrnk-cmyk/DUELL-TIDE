@@ -11,7 +11,8 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 
 Not flashed yet.
 
-- **Removed (owner, 2026-11-08: RAM for the planned wave picture on the MORPH page):** MORPH UNDO. A roll (by hand, by MIDI, or TIDE's own WNDR and JRNY rolls) now replaces its end; the morph keeps no history of earlier rolls. Knob 3 on the MORPH page is an empty card and does nothing for now. The UNDO target is gone from MIDI LEARN and typed MIDI lines: its code stays reserved, so every other CC and the shipped map are unchanged, and a line on UNDO saved by an earlier build is dropped when the settings load. Saved patches, multis, the project, the settings and backups never held the history, so they load as before. Also with `DUELL_TIDE=0`. About 1.9 KB of RAM freed (1,888 B) and about 1 KB of flash.
+- **Removed (owner, 2026-11-08: RAM for the planned wave picture on the MORPH page):** MORPH UNDO. A roll (by hand, by MIDI, or TIDE's own WANDER and JOURNEY rolls) now replaces its end; the morph keeps no history of earlier rolls. Knob 3 on the MORPH page is an empty card and does nothing for now. The UNDO target is gone from MIDI LEARN and typed MIDI lines: its code stays reserved, so every other CC and the shipped map are unchanged, and a line on UNDO saved by an earlier build is dropped when the settings load. Saved patches, multis, the project, the settings and backups never held the history, so they load as before. Also with `DUELL_TIDE=0`. About 1.9 KB of RAM freed (1,888 B) and about 1 KB of flash.
+- **Changed (owner, 2026-11-08):** AUTO TIDE always shows both parts (the one-part view is gone); the selected part is full colour with a number pill and a steps-row bar, the other dimmed, so it reads on GREY and MONO too.
 
 ## 1.0.0-b4
 

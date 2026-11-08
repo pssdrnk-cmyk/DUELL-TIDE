@@ -2432,7 +2432,7 @@ int main(int argc, char **argv)
     {   /* AUTO TIDE / TIDE SETTINGS in the states the page sweep does not reach (audit 2026-11-04 lane C, C8): BOTH parts, gliding, armed, ARC, WAIT, POLY, 32 steps, the list's last rows,
          * the ARC trip line, the list with inert rows */
         static const char *const NM[] = {"at_single_rest", "at_both_rest", "at_both_glide", "at_both_armed_stopped", "at_both_arc_recover_dropnext",
-                                         "at_both_waiting16", "at_single_glide_32steps", "ts_bottom", "at_both_poly", "at_both_minimal_text", "at_both_arc_trip", "ts_inert", "ts_inert_dim", "ts_top", "ts_xfade_layer", "ts_split_duel"};
+                                         "at_both_waiting16", "at_single_glide_32steps", "ts_bottom", "at_both_poly", "at_both_minimal_text", "at_both_arc_trip", "ts_inert", "ts_inert_dim", "ts_top", "ts_xfade_layer", "ts_split_duel", "at_one_part_gliding"};
         uint32_t pi, sc, k, i;
         for (pi = 0; pi < NPAGES && strcmp(PAGES[pi].title, "AUTO TIDE"); pi++) ;
         for (sc = 0; sc < sizeof NM / sizeof NM[0]; sc++) {
@@ -2441,6 +2441,7 @@ int main(int argc, char **argv)
             pal(UI_DEFAULT_INDEX);
             song.rec = 0; usb.config = 0; ui.perf = 0;
             morph.target = sc == 0 || sc == 6 ? MT_SELECTED : MT_BOTH;
+            song.sel = sc == 6 || sc == 9 || sc == 16 ? 1 : 0;   /* (the page always shows both parts: the selected one in full, the other dimmed; 6, 9, 16: part 2 selected) */
             for (k = 0; k < NSHOWN; k++) {
                 track_t *t = &trk[k];
                 t->p[P_SLEN] = (int16_t)(sc == 6 ? 32 : 16);
@@ -2449,16 +2450,16 @@ int main(int argc, char **argv)
                 t->step[5].time = ST_TIE;
                 t->seq_idx = (uint16_t)(7u + 4u * k);
             }
-            song.playing = sc >= 2 && sc != 3 && sc != 7 && sc < 11;
+            song.playing = sc >= 2 && sc != 3 && sc != 7 && (sc < 11 || sc == 16);
             gl.on = 0; gl.armed = 0; gl.hold = 0; gl.wait = 2; sqm_arc = 0; tarc.run = 0; tarc.hand = 0; poly_len[0] = 0;
-            if (sc >= 2 && sc != 7 && sc < 11) { gl.on = 3; gl.mask = 3; gl.to = 1; gl.prog = 1u << (GLIDE_Q - 1); gl.mode = GM_JOURNEY; gl.time = 6; }
+            if (sc >= 2 && sc != 7 && (sc < 11 || sc == 16)) { gl.on = 3; gl.mask = (uint8_t)(sc == 16 ? 1 : 3); gl.to = 1; gl.prog = 1u << (GLIDE_Q - 1); gl.mode = GM_JOURNEY; gl.time = 6; }
             if (sc == 3) gl.armed = 1;
             if (sc == 4 || sc == 10) { sqm_arc = 2; sqm_auto = 3; tarc.run = 1; tarc.phase = 4; tarc.len = 2; tarc.left = 1; tarc.hand = sc == 4; }
             if (sc == 5) { gl.hold = 1; gl.wait = 5; gl.prog = (1u << GLIDE_Q) - 1u; }
             if (sc == 8) { poly_len[0] = 12; }
             if (sc == 9) { gl.on = 0; gl.mode = GM_DRIFT; }
-            if (sc == 7 || sc >= 11) { for (pg = 0; pg < NPAGES && strcmp(PAGES[pg].title, "TIDE SETTINGS"); pg++) ; jl_sel = (uint8_t)(sc == 11 ? JL_TURNS : sc == 13 ? JL_STYLE : sc == 14 ? JL_XFADE : JL_SPLIT);   /* (7 ts_bottom, 15 ts_split_duel: the SPLIT row) */ }
-            if (sc >= 14) { duell_mode_req = sc == 14 ? DM_LAYER : DM_SPLIT; mix_xf = 50; mix_split = 67; }   /* (the last rows, MODE XFADE SPLIT: in LAYER they act, in DUEL the XFADE and SPLIT values dim and knob 1's line says LAYER ONLY) */
+            if (sc == 7 || (sc >= 11 && sc < 16)) { for (pg = 0; pg < NPAGES && strcmp(PAGES[pg].title, "TIDE SETTINGS"); pg++) ; jl_sel = (uint8_t)(sc == 11 ? JL_TURNS : sc == 13 ? JL_STYLE : sc == 14 ? JL_XFADE : JL_SPLIT);   /* (7 ts_bottom, 15 ts_split_duel: the SPLIT row) */ }
+            if (sc == 14 || sc == 15) { duell_mode_req = sc == 14 ? DM_LAYER : DM_SPLIT; mix_xf = 50; mix_split = 67; }   /* (the last rows, MODE XFADE SPLIT: in LAYER they act, in DUEL the XFADE and SPLIT values dim and knob 1's line says LAYER ONLY) */
             if (sc == 13) { tide_style = STY_CUSTOM; gl.target = GT_BOTH; morph_musical = 1; sqm_vary_all = 0; }   /* (the README's TIDE SETTINGS picture: the top of the list) */
             if (sc == 11 || sc == 12) { gl.mode = sc == 11 ? GM_ONCE : GM_JOURNEY; morph_musical = sc == 12; gl.target = GT_SOUND; }
             ui.page = (uint8_t)pg;
@@ -2468,6 +2469,7 @@ int main(int argc, char **argv)
             lint();
             write_ppm(out, "VIOLET", NM[sc]);
             pal(UI_GREY_INDEX); ui.force = 1; draw(-1); lint(); write_ppm(out, "GREY", NM[sc]);
+            if (sc < 2u || sc == 6u || sc == 9u || sc == 16u) { pal(UI_BW_INDEX); ui.force = 1; draw(-1); lint(); write_ppm(out, "MONO", NM[sc]); }
         }
         song.playing = 0; gl.on = 0; gl.armed = 0; gl.hold = 0; sqm_arc = 0; tarc.run = 0; tarc.hand = 0; poly_len[0] = 0; jl_sel = 0; morph_musical = 1; sqm_auto = 0; tide_style = STY_DUB;
     }
