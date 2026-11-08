@@ -69,7 +69,7 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 - Code nits with no measured effect (finding 35): `DUELL_PROBE_STAGES` defined outside `#if DUELL_TIDE`; `morph_xside` into RAM only if the unit shows its cost; `glide_stop` lags one poll.
 
 **TIDE interface**
-- HOME without the MODE page: MODE (STEREO / LAYER / DUEL), XFADE and SPLIT move elsewhere, values kept in settings and multis. Where they go waits on the owner (see "Waiting on the owner").
+- HOME without the MODE page: built in b3. PLAY MODE (LAYER / STEREO / DUEL), XFADE and SPLIT are the last three rows of TIDE SETTINGS, values kept where they were (settings and multis); HOME's round is MORPH, TIDE SETTINGS, AUTO TIDE. Owner decision 2026-11-08.
 - LFO DEPTH destinations shown as "LFO1/2 LVL"; the mod wheel keeps driving MORPH.
 - A legend while OCT- is held on the TIDE page (C9, not built).
 
@@ -118,7 +118,6 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 
 | Question | Default if you don't mind |
 |---|---|
-| HOME without MODE: where do MODE, XFADE and SPLIT go? | Proposals with screen mock-ups come first. |
 | D43: when a crossing starts under a held chord, the chord stays whole (the budget plans for it from the start). | Stays whole; decided after the drones are measured under a GLIDE. |
 | D46: the multis that are too loud or too quiet are trimmed by ear on the unit. | Trim M15, M16 up and M10 down by the numbers, then listen. |
 | Live REC Q1: on a part that plays its pattern by itself (ARP SEQ), should your keys add notes to it while recording, or should only the knobs record? | Knobs only until you choose. |

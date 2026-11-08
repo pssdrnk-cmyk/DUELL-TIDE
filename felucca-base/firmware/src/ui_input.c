@@ -812,7 +812,7 @@ static void morph_poll(void)
 }
 
 /* ------------------------------------------------------- MODE (step 5) --- */
-/* HOME's MODE page (SPEC 5b.1): KNOB 1 the output MODE, a detent a mode (SPLIT, STEREO, LAYER from left to right; the
+/* HOME's MODE page (SPEC 5b.1; TIDE: the MODE, XFADE and SPLIT rows of TIDE SETTINGS reach this through tide_ui.c jl_put / tide_knob / tide_list_oct, slot 0, 1, 2): KNOB 1 the output MODE, a detent a mode (SPLIT, STEREO, LAYER from left to right; the
  * detents of one read at once: SPLIT -> LAYER in one change, one dip); KNOB 2 XFADE, KNOB 3 SPLIT, KNOB 4 nothing (item 157: BALANCE gone; item 158, owner: the cards
  * line up to the left, no gap in the knobs) (core.h mix_*).
  * The audio ISR takes it at its next block (seq.c mode_apply: every note let go; fx.c the mix's ~50 ms dip). A learned MIDI CC
@@ -850,7 +850,7 @@ static void mode_knob(uint32_t slot, int32_t s)
     if (m == duell_mode_req)
         return;
     duell_mode_req = (uint8_t)m;
-    ui_say("MODE ", DM_NAME[m]);
+    ui_say(TIDE_MODE_SAY, DM_NAME[m]);
 }
 /* PERFORM's SELECT = BALANCE (item 160, owner 2026-10-29, third rule: a position, not steps). SELECT moves a position p between -1 (part 2 only) and +1 (part 1 only);
  * 0 is the middle. It changes only the two MIXER levels, LEVEL 1 and LEVEL 2 (P_LEVEL), nothing else: no limiter, no audio stage. The position is stored as a whole

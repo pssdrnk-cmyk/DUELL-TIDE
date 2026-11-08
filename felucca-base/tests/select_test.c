@@ -171,7 +171,7 @@ static void sweep_buttons(void)
 static void sweep_home(void)
 {
 #if DUELL_TIDE                                           /* (TIDE: TIDE SETTINGS in MORPH SET's place, then AUTO TIDE) */
-    static const char *const ORDER[] = {"MORPH", "TIDE SETTINGS", "AUTO TIDE", "MODE"};
+    static const char *const ORDER[] = {"MORPH", "TIDE SETTINGS", "AUTO TIDE"};   /* (MODE, XFADE and SPLIT are the last rows of TIDE SETTINGS) */
 #else
     static const char *const ORDER[] = {"MORPH", "MORPH SET", "MODE"};   /* (0.2.25 layout round: the MIXER is GLO's first page) */
 #endif
@@ -184,12 +184,17 @@ static void sweep_home(void)
     ok = m == sizeof ORDER / sizeof ORDER[0];
     for (k = 0; ok && k < m; k++)
         ok &= str_eq(PAGES[r[k]].title, ORDER[k]);
-    expect("HOME's round: MORPH, MORPH SET (TIDE: TIDE SETTINGS, AUTO TIDE), MODE (0.2.14: no OVERVIEW; 0.2.25: no MIXER)", ok);
+    expect("HOME's round: MORPH, MORPH SET, MODE (TIDE: MORPH, TIDE SETTINGS, AUTO TIDE) (0.2.14: no OVERVIEW; 0.2.25: no MIXER)", ok);
     {   /* item 155: MODE SPLIT in LAYER (item 158: on K3, the cards line up to the left): OFF, the first turn right starts at the middle key F#4 (stored 67), then goes on; the bottom is OFF again and stays */
         uint8_t m0 = duell_mode_req, s0 = mix_split;
         int ok2;
         uint8_t p0 = ui.page;
+#if DUELL_TIDE
+        enter(r[1]);                                              /* (the SPLIT row: every knob 2 .. 4 turns it) */
+        jl_sel = JL_SPLIT;
+#else
         enter(r[m - 1u]);                                 /* (MODE, the round's last) */
+#endif
         duell_mode_force(DM_LAYER); ui_mode_set = ui.mode_seen = DM_LAYER;
         mix_split = 0;  turn(EN_K3, 1);
         ok2 = mix_split == 67u;
@@ -249,7 +254,7 @@ static void sweep_home(void)
         turn(EN_SELECT, 1);
         ok &= where() == r[(c + k) % m];
     }
-    expect("SELECT right: MORPH SET, MODE, MIXER, MORPH", ok);
+    expect("SELECT right: the round, then MORPH", ok);
     for (ok = 1, k = 1; k <= m; k++) {
         turn(EN_SELECT, -1);
         ok &= where() == r[(c + m * 2u - k) % m];
@@ -824,7 +829,11 @@ static void sweep_readonly(void)
  * 0.2.14: MORPH, MODE, MIXER (OVERVIEW is gone with its page; a stored 3, OVERVIEW up to 0.2.13, reads as MORPH) */
 static void sweep_homepg(void)
 {
+#if DUELL_TIDE                                           /* (TIDE: MODE is a row of TIDE SETTINGS, which opens with that row picked) */
+    static const char *const T[3] = {"MORPH", "TIDE SETTINGS", "MIXER"};
+#else
     static const char *const T[3] = {"MORPH", "MODE", "MIXER"};
+#endif
     uint32_t v, ok;
     expect("HOME OPENS: two values, MORPH MODE (0.2.25 layout round: the MIXER is GLO's)", HP_COUNT == 2 && menu_n(MI_HOMEPG) == 2u && str_eq(menu_vname(MI_HOMEPG, 1), "MODE"));
     for (v = 0; v < HP_COUNT; v++) {
@@ -838,6 +847,9 @@ static void sweep_homepg(void)
         hold(B_HOME); frames(16);                         /* the menu, then HOME closes it: the same page */
         press(B_HOME); frames(32);
         ok &= !ui.menu && str_eq(cur_page()->title, T[v]);
+#if DUELL_TIDE
+        if (v == HP_MODE) { jl_sel = JL_STYLE; go_main(); frames(8); ok &= jl_sel == JL_MODE; }
+#endif
         expect(T[v], ok);
     }
     ui_power_on();

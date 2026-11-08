@@ -175,7 +175,7 @@ static void map_target_info(uint32_t code, const track_t *t, map_info_t *r)
             r->automation = 1;
             r->inert = !(MIDI_CC_ENG[eng_idx(t->eng_req)] >> (code == MAP_T_CUTOFF_SMART ? 4 : 0) & 15u);
         } else if (code == MAP_T_XFADE || code == MAP_T_SPLIT) {
-            r->inert = duell_mode != DM_LAYER;       /* (LAYER's only: the MODE page) */
+            r->inert = duell_mode != DM_LAYER;       /* (LAYER's only: the MODE page; TIDE: the XFADE and SPLIT rows) */
         }
     }
 }

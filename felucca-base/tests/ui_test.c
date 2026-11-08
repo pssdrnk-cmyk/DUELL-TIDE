@@ -8193,7 +8193,11 @@ static int test_item158_pc(void)
     for (glob = 0; glob < 2; glob++) {
         ui_power_on();
         settings.palette = 0; palette_set(0);
+#if DUELL_TIDE
+        if (glob) go_title("MIXER"); else go_main_to(HP_MORPH);   /* (a global screen, no capsules: GLO's MIXER; TIDE has no MODE page) */
+#else
         go_main_to(glob ? HP_MODE : HP_MORPH);          /* (MODE: a global screen, no capsules) */
+#endif
         frames(160);
         for (part = 0; part < 2u; part++)
             for (i = 0; i < UP_SLOTS; i++) {
@@ -9277,6 +9281,7 @@ static int test_item158_pages(void)
         ok_m &= ui.page != co && page_visible(ui.page);
         bad += check("item 158 S3:   .. DUEL: STEREO MASTER and COMPRESSOR (every card hidden: nothing to adjust) out of GLO's order; STEREO / LAYER keep both; on COMPRESSOR, DUEL moves off it", ok_m);
     }
+#if !DUELL_TIDE                                          /* (TIDE: no MODE page, its rows are TIDE SETTINGS') */
     {   /* owner: no gap in the knobs, the cards line up to the left: the MODE page in LAYER shows K1 (the list), K2 XFADE, K3 SPLIT, K4 nothing */
         uint32_t k, dots = 0;
         int x2 = 0, s3 = 0;
@@ -9294,6 +9299,34 @@ static int test_item158_pages(void)
         }
         bad += check("item 158: MODE page in LAYER: the cards line up to the left: K1 the list, K2 XFADE, K3 SPLIT, K4 empty (no gap before a shown card)", dots == 7u && x2 && s3);
     }
+#else
+    {   /* TIDE (the MODE page's cards, now rows of TIDE SETTINGS): K1 is the page's one card (SETTING + the row picked, left), K2 .. K4 turn the picked row's value and draw no card;
+         * XFADE and SPLIT say LAYER ONLY outside LAYER, MODE never does */
+        uint32_t k, row, lay, has_set, has_row, has_need, k24;
+        static const char *const NAME[3] = {"PLAY MODE", "XFADE", "SPLIT"};
+        ui_power_on();
+        settings.palette = 0; palette_set(0);
+        for (row = 0; row < 3u; row++)
+            for (lay = 0; lay < 2u; lay++) {
+                char m[120];
+                ui_mode_set = duell_mode_req = duell_mode = lay ? DM_LAYER : DM_SPLIT;
+                go_title("TIDE SETTINGS");
+                jl_sel = (uint8_t)(JL_MODE + row);
+                frames(64);
+                screen_read();
+                has_set = has_row = has_need = k24 = 0;
+                for (k = 0; k < txt_n; k++) {
+                    has_set |= !strcmp(txt_log[k].s, "SETTING") && txt_log[k].x0 < 78;
+                    has_row |= !strcmp(txt_log[k].s, NAME[row]) && txt_log[k].x0 < 78 && txt_log[k].y0 > 24;
+                    has_need |= !strcmp(txt_log[k].s, "LAYER ONLY");
+                    k24 |= (!strcmp(txt_log[k].s, "SETTING") || !strcmp(txt_log[k].s, "VALUE")) && txt_log[k].x0 >= 82;
+                }
+                snprintf(m, sizeof m, "TIDE SETTINGS, %s row picked, %s: K1 card SETTING + %s on the left, K2 .. K4 draw no card, 'LAYER ONLY' %s", NAME[row], lay ? "LAYER" : "DUEL", NAME[row],
+                         row && !lay ? "shown" : "not shown");
+                bad += check(m, has_set && has_row && !k24 && has_need == (row && !lay));
+            }
+    }
+#endif
     ui_power_on();
     return bad;
 }

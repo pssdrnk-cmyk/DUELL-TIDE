@@ -101,7 +101,7 @@ static void fresh(void)
 static void t_round(void)
 {
 #if DUELL_TIDE
-    static const char *const T[] = {"MORPH", "TIDE SETTINGS", "AUTO TIDE", "MODE"};   /* (TIDE: TIDE SETTINGS in MORPH SET's place, then AUTO TIDE) */
+    static const char *const T[] = {"MORPH", "TIDE SETTINGS", "AUTO TIDE"};   /* (TIDE: TIDE SETTINGS in MORPH SET's place, then AUTO TIDE; MODE is rows of TIDE SETTINGS, owner 2026-11-08) */
 #else
     static const char *const T[] = {"MORPH", "MORPH SET", "MODE"};   /* (0.2.25 layout round: the MIXER is GLO's first page, not HOME's) */
 #endif
@@ -116,7 +116,7 @@ static void t_round(void)
     }
     press(B_HOME);
     frames(64);
-    expect("HOME tapped: MORPH, MORPH SET, MODE, then MORPH again (0.2.14: no OVERVIEW; 0.2.25: no MIXER)", ok && str_eq(PAGES[ui.page].title, "MORPH"));
+    expect("HOME tapped: MORPH, MORPH SET (TIDE: TIDE SETTINGS, AUTO TIDE), MODE (plain DUELL), then MORPH again (0.2.14: no OVERVIEW; 0.2.25: no MIXER)", ok && str_eq(PAGES[ui.page].title, "MORPH"));
     press(B_HOME);
     frames(64);
     expect("  .. and MORPH SET; from another page HOME opens MORPH", str_eq(PAGES[ui.page].title, T[1]));
@@ -128,14 +128,14 @@ static void t_round(void)
         turn(EN_SELECT, 1);
         ok &= where() == page_of(T[k % NT]);
     }
-    expect("SELECT right: the same round (MODE, then MORPH)", ok);
+    expect("SELECT right: the same round (then MORPH)", ok);
     turn(EN_SELECT, -1);
-    expect("SELECT left from MORPH: MODE (the round backwards)", where() == page_of("MODE"));
+    expect("SELECT left from MORPH: the round's last page (the round backwards)", where() == page_of(T[NT - 1u]));
     morph_page();
     {
         char nm[20], ct[12];
         page_parts(nm, ct);
-        expect("footer title: MORPH 1/3 (TIDE: 1/4)", str_eq(nm, "MORPH") && str_eq(ct, NT == 4u ? "1/4" : "1/3"));
+        expect("footer title: MORPH 1/3", str_eq(nm, "MORPH") && str_eq(ct, "1/3"));
     }
 }
 

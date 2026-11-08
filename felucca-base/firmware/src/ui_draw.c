@@ -985,7 +985,7 @@ static int card_figure(const char *s)                  /* only the figures the N
  * an action's key pill on the row pill_base) */
 typedef struct { int16_t pad, lbl_base, lbl_dx, lbl_pad_r, val_base, val2_b1, val2_b2, unit_gap, bar_y, pill_base; uint8_t num, cut, seg, bold, area; } card_geo_t;
 static const card_geo_t CG1 = {UT_CARD_PAD, UT_CARD_LBL_BASE, UT_CARD_LBL_DX, UT_CARD_LBL_PAD_R, UT_CARD_VAL_BASE, UT_CARD_VAL2_BASE1, UT_CARD_VAL2_BASE2, UT_CARD_UNIT_GAP, UT_CARD_BAR_Y, 0, 0, 0, 0, 0, 0};
-/* item 120: the MODE page's K2..K4 (76 x 54): template 1's rows and sizes, a value cut by the card's edge like template 2's, never ellipsised */
+/* item 120: the MODE page's (plain DUELL; TIDE has no such page) K2..K4 (76 x 54): template 1's rows and sizes, a value cut by the card's edge like template 2's, never ellipsised */
 static const card_geo_t CG3 = {UT_CARD_PAD, UT_CARD_LBL_BASE, UT_CARD_LBL_DX, UT_CARD_LBL_PAD_R, UT_CARD_VAL_BASE, UT_CARD_VAL2_BASE1, UT_CARD_VAL2_BASE2, UT_CARD_UNIT_GAP, UT_CARD_BAR_Y, 0, 0, 1, 0, 0, 0};
 /* item 156: TEMPLATE 8's cells (the CELL pages): template 2's rows in 116 / 234 x 92 cells */
 static const card_geo_t CG8 = {UT_T8_PAD, UT_T8_LBL_BASE, UT_T8_LBL_DX, UT_T8_LBL_PAD_R, UT_T8_VAL_BASE, UT_T8_VAL2_BASE1, UT_T8_VAL2_BASE2, UT_T8_UNIT_GAP, UT_T8_BAR_Y, 0, 1, 1, 1, 1, 0};
@@ -2578,6 +2578,7 @@ static void draw_columns(void)
         draw_column(3, "", "", "", T_THEME, -1, ICON_NONE);
         return;
     }
+#if !DUELL_TIDE                                        /* TIDE hook: no MODE page (its rows are in TIDE SETTINGS) */
     if (cur_page()->scope == SC_MODE) {                /* step 5: MODE (SPLIT / STEREO / LAYER); the rest nothing */
         uint32_t m = duell_mode_req < DM_N ? duell_mode_req : DM_SPLIT;
         draw_column(0, "MODE", DM_NAME[m], "", VAL(0u), (int32_t)m * 500, ICON_MIX);
@@ -2597,6 +2598,7 @@ static void draw_columns(void)
         draw_column_hide(3);
         return;
     }
+#endif
     if (cur_page()->graph == GR_BROWSE) {              /* PATCHES (change list A.9, PATCHES_MULTIS_NEW_LAYOUT_V3): K1 PATCH (the slot's number), K2 TYPE, K3 SAVE (the save window), K4 FAV; RESTORE is gone */
         uint32_t total, cur = pl_cursor(&total), k = pl_cursor_slot();
         char sl[6];

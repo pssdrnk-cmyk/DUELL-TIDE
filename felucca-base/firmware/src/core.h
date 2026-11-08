@@ -399,7 +399,7 @@ typedef struct {                 /* per-voice control-rate modulation, computed 
  * of a part to its side); STEREO: Felucca's mix (free PAN, SPREAD, the shared stereo buses); LAYER: STEREO's mix, and every note
  * played (keys, MIDI channel 1) reaches both parts as input, each handling it by its own arp / chord (seq.c key_on, midi_control.c midi_play). The values are stored (the settings byte, ui.c
  * ui_mode_set; a learned MIDI CC, MODE has no shipped number): append-only.
- * duell_mode_req: what the UI (MODE page, the settings) or a learned MODE CC asks for; duell_mode: the mode the notes are routed by (the
+ * duell_mode_req: what the UI (MODE page; TIDE: the MODE row of TIDE SETTINGS; the settings) or a learned MODE CC asks for; duell_mode: the mode the notes are routed by (the
  * audio ISR takes the request at a block start: seq.c mode_apply, every note let go); the mix follows it through a ~50 ms
  * dip (fx.c dm_step). The product's default is SPLIT: the settings byte 0 (ui_input.c mode_settings) and every power-on
  * (ui_power_on / the boot path). The bare DSP (hostsim, regress, the goldens) starts in STEREO, Felucca's mix bit for bit */
@@ -408,7 +408,7 @@ static volatile uint8_t duell_mode_req = DM_STEREO;
 static uint8_t duell_mode = DM_STEREO;
 /* the morph's flag (rule 3b): PAN and SPREAD morph only while they are heard, in STEREO and LAYER (not in SPLIT) */
 #define duell_stereo (duell_mode != DM_SPLIT)
-/* the MODE page's other two (KNOB 3..4), kept with the settings ([15][6..7], ui.c) and in each MULTI; XFADE and SPLIT have no shipped CC number (MIDI_MAP_DEFAULTS.csv: typed lines only).
+/* the MODE page's other two (KNOB 3..4; TIDE: the XFADE and SPLIT rows of TIDE SETTINGS), kept with the settings ([15][6..7], ui.c) and in each MULTI; XFADE and SPLIT have no shipped CC number (MIDI_MAP_DEFAULTS.csv: typed lines only).
  * (item 160: mix_bal, the old BALANCE, and its audio stage fx.c bal_lvl are gone; PERFORM's SELECT = BALANCE moves the two MIXER LEVELs, ui_input.c perf_balance);
  * mix_xf: XFADE 0..100 % (0 = off; LAYER only: a note's velocity shares its level between the parts, seq.c xf_gain);
  * mix_split: SPLIT 0 = OFF, else the note + 1 (LAYER only: below it part 1 plays alone, at or above it part 2) */
