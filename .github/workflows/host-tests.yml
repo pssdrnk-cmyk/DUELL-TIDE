@@ -1,5 +1,5 @@
-# Runs every host test group on Linux. On the owner's Windows machine 25 groups SKIP (they need fork(), or termios
-# and select() on pipes: jam/wincompat); here they run. Nothing is built for the device and nothing is published.
+# Runs every host test group on Linux. On the owner's Windows machine 3 groups SKIP (dx7compat: no .syx banks; benchrun: termios and select() on pipes;
+# benchaudio: no numpy; the fork() groups run through jam/wincompat, and in a snapshot without history otareuse and multiv8 SKIP too); here they run. Nothing is built for the device and nothing is published.
 # The groups are dealt round-robin to 8 machines that run at once (one machine took over 30 minutes); each keeps its log
 # as an artifact (host-tests-log-<shard>), and every shard writes a PASS / FAIL table per group to its job summary.
 # The runner uses a named Ubuntu release to avoid ubuntu-latest transitions; hosted image updates still apply.
@@ -9,6 +9,8 @@ name: Host tests
 
 on:
   push:
+    branches: [jam11]
+  pull_request:           # (a pull request against jam11 gets the same run; Pages starts only from a push to jam11, see pages.yml)
     branches: [jam11]
   workflow_dispatch:
 
@@ -70,10 +72,59 @@ jobs:
         with:
           node-version: "22"
 
-      - name: jam_dev and music_revision8 tests
+      - name: jam_dev and music_revision8 tests, document checks
         run: |
           python3 jam/test_jam_dev.py
           python3 jam/test_music_revision8.py
+          python3 jam/check_docs.py
+
+  # The emulator (WebAssembly) against the native build: the same samples (web/emu/native_check.c, emu_test.mjs). The emsdk setup is pages.yml's (same version, same cache key).
+  emu:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0   # v7.1.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Emscripten SDK (cached; 6.0.13 is the pinned version, as in pages.yml)
+        id: emsdk
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9   # v6.1.0
+        with:
+          path: ~/emsdk
+          key: emsdk-6.0.13-ubuntu-24.04
+
+      - name: Install the SDK and the generators' packages
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libfribidi0 libraqm0
+          python3 -m pip install --quiet -r requirements-dev.txt
+          if [ "${{ steps.emsdk.outputs.cache-hit }}" != "true" ]; then
+            git clone --depth 1 https://github.com/emscripten-core/emsdk.git "$HOME/emsdk"
+            "$HOME/emsdk/emsdk" install 6.0.13
+          fi
+          "$HOME/emsdk/emsdk" activate 6.0.13
+
+      - name: Generated headers
+        run: cd felucca-base && python3 tools/build.py --gen-only
+
+      - name: Emulator against native (host_tests.sh emu)
+        shell: bash
+        run: sh host_tests.sh emu 2>&1 | tee emu.out      # (the runner's exit code: bash runs with pipefail)
+
+      - name: Keep the log
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9   # v7.0.2
+        with:
+          name: host-tests-log-emu
+          path: |
+            emu.out
+            felucca-base/build/host/emu_build.log
+          if-no-files-found: ignore
 
   host-tests:
     runs-on: ubuntu-24.04

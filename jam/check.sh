@@ -82,6 +82,15 @@ if [ -z "${*:-}" ]; then
     done
 fi
 
+if [ -z "${*:-}" ]; then
+    if python3 jam/check_docs.py > "$LOG/check_docs.log" 2>&1; then          # (the STYLE tables against tide_ui.c, no workspace paths in shipped documents; CI jam-tools runs it too)
+        echo "PASS    check_docs"; pass=$((pass + 1))
+    else
+        head -5 "$LOG/check_docs.log"
+        echo "FAIL    check_docs"; fail=$((fail + 1)); failed="$failed check_docs"
+    fi
+fi
+
 echo "== $pass passed, $fail failed, $skip skipped (logs: $LOG)"
 [ -n "$failed" ] && echo "   failed:$failed"
 [ "$fail" -eq 0 ]
