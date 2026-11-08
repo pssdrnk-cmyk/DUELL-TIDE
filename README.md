@@ -101,6 +101,7 @@ Building a device image is described in [felucca-base/BUILDING.md](felucca-base/
 | Install or update | [docs/INSTALL.md](docs/INSTALL.md) |
 | Play it | [docs/QUICKSTART.md](docs/QUICKSTART.md) |
 | Play TIDE | [docs/TIDE_GUIDE.md](docs/TIDE_GUIDE.md) |
+| TIDE settings in one page | [docs/TIDE_QUICK_TABLE.md](docs/TIDE_QUICK_TABLE.md) |
 | Fix a problem | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) |
 | Recover from a failed flash | [docs/RECOVERY.md](docs/RECOVERY.md) |
 | Know the limits | [docs/KNOWN_LIMITS.md](docs/KNOWN_LIMITS.md), [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) |

@@ -82,7 +82,7 @@ jobs:
   emu:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    continue-on-error: true     # (new on 2026-11-08 and not yet run on GitHub: it does not gate Pages until it has been green; ROADMAP row "Test list hygiene")
+    # (gating since 2026-11-08: green on GitHub once emsdk was sourced under bash, PR #4; a red emu run stops the Pages deploy)
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
 
@@ -115,7 +115,11 @@ jobs:
 
       - name: Emulator against native (host_tests.sh emu)
         shell: bash
-        run: sh host_tests.sh emu 2>&1 | tee emu.out      # (the runner's exit code: bash runs with pipefail)
+        run: |
+          # emsdk_env.sh must be sourced by bash: host_tests.sh runs under sh (dash here), where the script cannot find its own directory, found no emcc, and the group failed "no emcc"
+          . "$HOME/emsdk/emsdk_env.sh"
+          command -v emcc && echo "node: $EMSDK_NODE"
+          sh host_tests.sh emu 2>&1 | tee emu.out      # (the runner's exit code: bash runs with pipefail)
 
       - name: Keep the log
         if: always()

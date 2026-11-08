@@ -160,6 +160,32 @@ int main(void)
         cpum.base = cpu_snap.miss; cpuh.base = cpu_snap.miss;   /* (TEST > RESET: test_reset) */
         cpu_head(l, r, &c);
         expect("baseline: after TEST > RESET the count is 0 and dim again", !strcmp(r, "0") && c == T_DIM);
+        /* the badge clears by itself: a minute with no new miss */
+        memset(&cpuh, 0, sizeof cpuh);
+        cpu_miss = cpu_snap.miss = 0; fm1_ms = 20000u; cpuh.armed = 1; cpuh.t = fm1_ms;
+        cpu_head(l, r, &c);
+        cpu_miss = 1u; cpu_snap_poll(); fm1_ms += 1000u;
+        cpu_head(l, r, &c);
+        expect("badge: a miss shows it (1), red", !strcmp(r, "1") && c == T_REC);
+        fm1_ms += 59000u;
+        cpu_head(l, r, &c);
+        expect("badge: 59 s with no new miss, still shown", !strcmp(r, "1") && c == T_REC);
+        fm1_ms += 2000u;
+        cpu_head(l, r, &c);
+        expect("badge: 61 s, gone (count since the baseline 0), dim", !strcmp(r, "0") && c == T_DIM && cpuh.base == 1u);
+        expect("badge: ABOUT / TEST still have the raw count", cpu_snap.miss == 1u);
+        cpu_miss = 2u; cpu_snap_poll(); fm1_ms += 1000u;
+        cpu_head(l, r, &c);
+        expect("badge: after it cleared, a new miss shows 1", !strcmp(r, "1") && c == T_REC);
+        fm1_ms += 30000u; cpu_miss = 3u; cpu_snap_poll();
+        cpu_head(l, r, &c);
+        expect("badge: a miss at 30 s counts on (2)", !strcmp(r, "2"));
+        fm1_ms += 59000u;
+        cpu_head(l, r, &c);
+        expect("badge: 59 s after that miss it is still shown (the minute restarted)", !strcmp(r, "2") && c == T_REC);
+        fm1_ms += 2000u;
+        cpu_head(l, r, &c);
+        expect("badge: 61 s after it, gone", !strcmp(r, "0") && c == T_DIM);
     }
 #else
     {   /* DUELL_TIDE=0: the plain DUELL header has no readout: the code (cpu_head, cpuh, the draw) is not there, the meter's owner and windows are (above) */

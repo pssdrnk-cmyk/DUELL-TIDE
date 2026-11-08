@@ -106,9 +106,10 @@ static void cpu_meter_poll(void)                       /* once a window, and onl
 }
 #if DUELL_TIDE
 /* K2, TIDE: the CPU truth in the header of HOME's three pages (MORPH, TIDE SETTINGS, AUTO TIDE), in the two gaps beside the page title: at the left the ELAPSED peak (cpu_el_pk: what the DMA deadline sees,
- * the key scan nested in it included) in % of the half's time, the longest of the last 4 s (the window is read every 4 s), at the right the DMA periods missed since the baseline (CPU_HEAD_SETTLE_MS after power-on, so the start's own misses are left out; TEST > RESET sets it again). Drawn by ui_draw.c draw_head: the peak in a dim outlined pill beside part 1's capsule, the misses in a REC red badge beside part 2's, only when there are any (the colour output c is no longer used there). Read-only: its own window (CPU_W_HEAD), read every 4 s, nothing is cleared for anyone else */
+ * the key scan nested in it included) in % of the half's time, the longest of the last 4 s (the window is read every 4 s), at the right the DMA periods missed recently (since the baseline, which moves up after CPU_MISS_SHOW_MS with no new miss; first CPU_HEAD_SETTLE_MS after power-on, so the start's own misses are left out; TEST > RESET sets it again). Drawn by ui_draw.c draw_head: the peak in a dim outlined pill beside part 1's capsule, the misses in a REC red badge beside part 2's, only when there are any (the colour output c is no longer used there). Read-only: its own window (CPU_W_HEAD), read every 4 s, nothing is cleared for anyone else */
 #define CPU_HEAD_SETTLE_MS 8000u                       /* the count starts from the misses at this time after power-on: the start (flash loads, USB enumerating, the first frames) is over then */
-static struct { uint32_t hold, armed, t, base; } cpuh;
+#define CPU_MISS_SHOW_MS 60000u                        /* the badge goes after this long with no new miss; the baseline then moves up to the count */
+static struct { uint32_t hold, armed, t, base, seen, mt; } cpuh;   /* (seen: the count last drawn, mt: when it last changed) */
 static void cpu_head_arm(void)                         /* every header frame: once the start is over, the count's zero is the misses so far (ABOUT and TEST keep the raw count) */
 {
     if (!cpuh.armed && fm1_ms >= CPU_HEAD_SETTLE_MS) {
@@ -131,6 +132,13 @@ static __attribute__((noinline)) uint32_t cpu_head(char *l, char *r, uint16_t *c
         cpuh.hold = el;
     }
     m = cpuh.armed ? cpu_snap.miss - cpuh.base : 0u;
+    if (m != cpuh.seen) {                              /* a new miss (or a reset): the minute starts again */
+        cpuh.seen = m;
+        cpuh.mt = fm1_ms;
+    } else if (m && fm1_ms - cpuh.mt >= CPU_MISS_SHOW_MS) {   /* a minute with no new miss: the badge goes, the next miss shows 1 */
+        cpuh.base = cpu_snap.miss;
+        cpuh.seen = m = 0;
+    }
     m = m > 999u ? 999u : m;
     fmt_int(l, cpuh.hold);
     fmt_int(r, (int32_t)m);

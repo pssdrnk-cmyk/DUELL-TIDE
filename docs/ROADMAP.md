@@ -2,6 +2,8 @@
 
 Updated 8 November 2026. This page says where TIDE stands, what comes next, in which order, and what waits on a decision. What is already built is in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md), one section per build. The roadmap before this reorganisation, with its full evidence and receipts, is [history/ROADMAP_2026-11-08.md](history/ROADMAP_2026-11-08.md); older ones are in [history/](history/). The audits of 8 November are in [audits/2026-11-08/](audits/2026-11-08/): the [live-record audit](audits/2026-11-08/liverec/LIVEREC_AUDIT.md), the [CPU audit](audits/2026-11-08/cpu/CPU_AUDIT.md) with its task briefs K1 to K12 ([TASKS.md](audits/2026-11-08/cpu/TASKS.md)), and the [round-2 code audit](audits/2026-11-08/full/AUDIT_REPORT.md) with its findings 1 to 39.
 
+**Quick reference:** [TIDE settings at a glance](TIDE_QUICK_TABLE.md): the tide modes, STYLE, VARY BARS, ROLL, TURNS, POLY, SYNC and ARC in one page.
+
 ## Where things stand
 
 | | |
