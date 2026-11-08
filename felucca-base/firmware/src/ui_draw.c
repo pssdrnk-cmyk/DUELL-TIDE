@@ -2061,8 +2061,9 @@ static void draw_foot(void)
     if (ui.ml.on) {                               /* row 1: MIDI LEARN's line, OCT+ DONE at the right (the one way out) */
         khint_t kh = {KC_OCTUP, "DONE"};
         int32_t kw = kh_w(KC_OCTUP, "DONE");
-        cv_free_text(8, 2, &AF_S, ln, T_ACCENT, T_BG, 232 - kw - 8 - 8);
-        cv_key_row(232 - kw, 232, 2, &kh, 1, 1u, T_BG);
+        int32_t f1 = UT_FOOT_BASE - 15 - Y_FOOT - AF_S_CAP_Y - AF_S_CAP_H + 1;   /* (b4, UI audit 3: row 1's baseline, as TIDE's part-1 row; at row 2 the capitals' last two rows were under row 2's names) */
+        cv_free_text(8, f1, &AF_S, ln, T_ACCENT, T_BG, 232 - kw - 8 - 8);
+        cv_key_row(232 - kw, 232, f1, &kh, 1, 1u, T_BG);
     } else if (pfl[0]) {                               /* PERFORM: SELECT = BALANCE and */
         cv_oy = 0;                                    /* (item 120: one line each, left aligned: both on one row are 265 px of 224) */
         cv_text(8, 0, &AF_S, pfl, T_MID);             /* ALGORITHM = the part(s) MORPH and ROLL act on (the steps are not the page's) */
