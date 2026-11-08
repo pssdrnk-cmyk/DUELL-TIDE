@@ -20,4 +20,8 @@ eq("DUELL_BENCH=0 with a tag", build.pool_tail_min({"DUELL_BENCH": "0", "BENCH_T
 eq("bench developer build", build.pool_tail_min({"DUELL_BENCH": "1", "BENCH_TAG": "BENCHT1"}), build.POOL_TAIL_MIN_BENCH)
 eq("bench constant", build.POOL_TAIL_MIN_BENCH, 4096)
 eq("constant", build.POOL_TAIL_MIN, 8192)
+eq("test-mode measurement build", build.pool_tail_min({"DUELL_TEST_MODE": "1"}), build.POOL_TAIL_MIN_TEST)
+eq("test constant", build.POOL_TAIL_MIN_TEST, 7936)
+eq("DUELL_TEST_MODE=0", build.pool_tail_min({"DUELL_TEST_MODE": "0"}), 8192)
+eq("bench wins over test mode", build.pool_tail_min({"DUELL_TEST_MODE": "1", "DUELL_BENCH": "1", "BENCH_TAG": "B"}), build.POOL_TAIL_MIN_BENCH)
 sys.exit(0 if ok else 1)

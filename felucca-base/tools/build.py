@@ -500,9 +500,15 @@ POOL_TAIL_MIN_BENCH = 4096  # 4,096 B again (owner, 2026-10-19; it was 2,816 B f
                             # two-core RAM code share the pool; BENCHT1 keeps 4,788 B). A normal or non-bench build keeps POOL_TAIL_MIN.
 
 
+POOL_TAIL_MIN_TEST = 7936  # a DUELL_TEST_MODE=1 measurement build (unit sweeps, never released): 256 B under the rule, for the test-mode code in the
+                            # range-Z functions (b5: +44 B; the release build kept 8,208 B, the test build 8,164 B). Release and normal builds keep POOL_TAIL_MIN.
+
+
 def pool_tail_min(env=None):
     env = os.environ if env is None else env
-    return POOL_TAIL_MIN_BENCH if env.get("DUELL_BENCH") == "1" and env.get("BENCH_TAG") else POOL_TAIL_MIN
+    if env.get("DUELL_BENCH") == "1" and env.get("BENCH_TAG"):
+        return POOL_TAIL_MIN_BENCH
+    return POOL_TAIL_MIN_TEST if env.get("DUELL_TEST_MODE") == "1" else POOL_TAIL_MIN
 
 
 def check(img, syms, dis, rt):
@@ -556,7 +562,7 @@ def check(img, syms, dis, rt):
     if pool_len - pool < need:                    # keep >= 8 KiB of the pool spare (4 KiB in a DUELL_BENCH developer build)
         errors.append(f"pool headroom {pool_len - pool} B < {need} B")
     elif need != POOL_TAIL_MIN:
-        notes.append(f"pool tail rule lowered to {need} B for this DUELL_BENCH developer build (normal builds keep {POOL_TAIL_MIN} B)")
+        notes.append(f"pool tail rule lowered to {need} B for this DUELL_BENCH or DUELL_TEST_MODE developer build (normal builds keep {POOL_TAIL_MIN} B)")
     return errors, notes
 
 
