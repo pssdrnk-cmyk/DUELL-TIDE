@@ -212,14 +212,16 @@ export function parseInfo(a) {
     engines.push(String.fromCharCode(...a.slice(pos, end))); pos = end + 1;
   }
   pos += 2;                                            // NTRK, song rows
-  let caps = null, patchCap = null, tide = false, fvBank = false;
+  let caps = null, patchCap = null, tide = false, tideAnswer, fvBank = false;
   while (pos < a.length && TAG_LEN[a[pos]]) {
     if (a[pos] === 0x42 && a[pos + 1] === 1) caps = a[pos + 2];
-    if (a[pos] === 0x44 && a[pos + 1] === 1) { tide = (a[pos + 2] & 1) !== 0; fvBank = (a[pos + 2] & CAPS_FVBANK) !== 0; }   // DUELL with TIDE; bit 1: GET 41, the FM6 voice bank
+    if (a[pos] === 0x44 && a[pos + 1] === 1) { tide = (a[pos + 2] & 1) !== 0; tideAnswer = tide; fvBank = (a[pos + 2] & CAPS_FVBANK) !== 0; }   // DUELL with TIDE; bit 1: GET 41, the FM6 voice bank
     if (a[pos] === 0x58 && a[pos + 1] === 1) patchCap = a[pos + 2] | a[pos + 3] << 7;   // the patch capacity (DUELL 0.2.15)
     pos += TAG_LEN[a[pos]];
   }
-  return { version, engines, caps, patchCap, tide, fvBank };
+  // tide: for the display (no tag = false). tideAnswer: what the unit SAID: true / false = tag 44 01 present with bit 0 set / clear; undefined = no tag 44 (plain DUELL 1.1 and the TIDE builds before the tag, stable-2026-11-03 and
+  // beta-2026-11-04, look the same: the restore planner must not take it for plain DUELL)
+  return { version, engines, caps, patchCap, tide, tideAnswer, fvBank };
 }
 
 // ---- the file
@@ -427,12 +429,13 @@ export const rawLines = (problems, objects = null) => (problems || []).map((p) =
 // {id: 40, slot, key, size, crc, bytes, group: "patches"}: a PUT of the record, or (size 0) of nothing, which removes the slot's record. The patches are made EXACTLY the file's: one PUT
 // for each patch whose size or CRC differs on the unit (an identical one is not written again) and a removal for each slot the unit has saved and the file has not.
 // opt.includeRaw (0.2.25): also send the objects the backup could not check (the unit checks them at commit and refuses what it cannot load).
-// opt.tide (INFO tag 44 01): false = the unit is plain DUELL, so a patch's FM6 MORPH TO target (End B flag 4) is taken out before the PUT (patchrecord.js stripEndBFmt); undefined = unknown, nothing is changed.
+// opt.tide (INFO tag 44 01, info.tideAnswer): true = the unit says it is DUELL with TIDE: a patch's FM6 MORPH TO target (End B flag 4) is kept. false (tag 44 present, bit 0 clear) or undefined (no tag 44: plain DUELL 1.1 and the TIDE builds before the tag look the same) = the target is taken out before the PUT (patchrecord.js stripEndBFmt; plain DUELL 1.1 would drop the whole record, D02); plan.stripped counts those patches, the confirm text says so.
 // opt.patchCap (INFO tag 58 01, the patch records the store takes: 126 with TIDE): a file with more patches than that cannot be restored whole, so the patches are left out
 // with that reason and the other groups still go (D05). The removals of the slots the file does not have come BEFORE the patches that are written, so a nearly full store has the room.
 // A multi object whose records are of another version than this editor's firmware writes is left out unless includeRaw (the unit would refuse it).
 export function planRestore(archive, list, caps, sel, opt = {}) {
   const steps = [], excluded = [], skipped = [];
+  let stripped = 0;
   for (const g of GROUPS) {
     if (!sel.has(g.key) || (g.optional && !g.ids.every((id) => archive.objects.has(id)))) continue;
     let reason = null;
@@ -451,7 +454,7 @@ export function planRestore(archive, list, caps, sel, opt = {}) {
         const o = archive.objects.get(key), label = `${g.label}: ${objectLabel(key, o.bytes)}`;
         if (o.raw && (!opt.includeRaw || !o.size)) { excluded.push({ key: g.key, id: key, label, reason: `it could not be checked when the backup was made (${o.problem}); the unit keeps what it holds there` }); continue; }
         let { size, crc, bytes } = o;
-        if (opt.tide === false && !o.raw) { const t = stripEndBFmt(bytes); if (t !== bytes) { bytes = t; size = t.length; crc = bkCrc(t); } }   // (plain DUELL 1.1 would drop an FM6 MORPH TO target's record: D02)
+        if (opt.tide !== true && !o.raw) { const t = stripEndBFmt(bytes); if (t !== bytes) { bytes = t; size = t.length; crc = bkCrc(t); stripped++; } }   // (plain DUELL 1.1 would drop an FM6 MORPH TO target's record: D02)
         const now = list.get(key);
         if (now && now.size === size && now.crc === crc) { skipped.push(key); continue; }
         steps.push({ id: PATCH_ID, slot: patchSlot(key), key, size, crc, bytes, group: g.key });
@@ -470,7 +473,7 @@ export function planRestore(archive, list, caps, sel, opt = {}) {
   }
   const rank = (s) => (s.key !== undefined ? (s.size ? s.slot : s.slot - 200) : 200 + (s.id === FVB_ID ? RESTORE_ORDER.indexOf(1) - 0.5 : RESTORE_ORDER.indexOf(s.id)));   // the removals first (they free room), then the patches by slot, then the rest
   steps.sort((a, b) => rank(a) - rank(b));
-  return { steps, excluded, skipped, caps };
+  return { steps, excluded, skipped, caps, stripped };
 }
 // Send the steps, one object at a time (begin, 256-byte pieces, commit: the unit checks the CRC and the content, then writes; the old copy
 // stays valid until the new one is complete). A patch is a PUT of id 40 with its slot byte at the begin; every patch is its own atomic sequence. An object that fails (a full

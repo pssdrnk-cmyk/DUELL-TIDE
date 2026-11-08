@@ -1001,7 +1001,11 @@ static void sweep_rec_hold(void)
     song.rec = 1u << song.sel;
     press(B_REC);
     frames(600);
+#if DUELL_TIDE
+    expect("  .. an armed recording: REC disarms it on this page too and leaves HOLD alone (audit liverec L6)", song.rec == 0u && TSEL->p[P_AHOLD] == 0);
+#else
     expect("  .. an armed recording stays armed while REC switches HOLD", song.rec == (1u << song.sel) && TSEL->p[P_AHOLD] == 2);
+#endif
     press(B_REC);
     frames(600);
     song.rec = 0; song.playing = 0; transport_req = 0;
@@ -1449,7 +1453,11 @@ static void sweep_leds_play_rec(void)
     song.rec = 1u << song.sel;
     TSEL->p[P_AHOLD] = 0;
     ui_leds();
+#if DUELL_TIDE
+    expect("  .. armed recording shows on REC's LED here: REC disarms it, not HOLD (audit liverec L6)", !!(fm1_led[qr >> 3] >> (qr & 7u) & 1u));
+#else
     expect("  .. armed recording is not shown on REC's LED here (HOLD is)", !(fm1_led[qr >> 3] >> (qr & 7u) & 1u));
+#endif
     song.playing = 1;
     ui_leds();
     expect("PLAY running: red lit, green dark", !(fm1_led[LED_PLAY_GREEN >> 3] >> (LED_PLAY_GREEN & 7u) & 1u) && (fm1_led[qp >> 3] >> (qp & 7u) & 1u));

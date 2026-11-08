@@ -27,12 +27,8 @@ static int phrase_available(const track_t *t, const phrase_clock_t *c, int arp)
 {
     if (!arp) return !arp_mode(t) && t->p[P_AMODE] != AM_SEQ;
     if (atgt_bits(t)) return 0; /* modulation-target arp has no note onset */
-    if (!song.rec) return 1; /* TIDE's remembered chord / C4 stand-in */
-    for (uint32_t i = 0; i < c->nheld && i < 16u; i++) {
-        uint32_t k = c->key[i];
-        if (!k || kb_pitch(t, (k & 31u) - 1u, (int32_t)(k >> 5) - 3) != KB_SILENT) return 1;
-    }
-    return 0;
+    (void)c;
+    return 1; /* TIDE's remembered chord / C4 stand-in plays while playing, armed or not (audit liverec L1) */
 }
 static int phrase_peer_attack(uint32_t pi, uint32_t dest)
 {

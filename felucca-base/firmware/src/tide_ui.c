@@ -312,6 +312,8 @@ static void tide_midi(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi)
 static int tide_reset(uint32_t k)
 {
     const uint8_t *sty = STY[(tide_style < STY_CUSTOM ? tide_style : tide_style_last) % 5u];
+    char v[12];
+    const char *u;
     if (cur_page()->graph == GR_TIDELIST)
         return 0;
     if (k == 0u) {
@@ -325,11 +327,15 @@ static int tide_reset(uint32_t k)
     }
     if (k == 2u) {
         gl.time = sty[1];
-        return reset_say("TIME");
+        fmt_int(v, (int32_t)glide_bars());
+        ui_say("TIME ", v);                              /* (what the TIME row shows; the plain reset_say says nothing) */
+        return 1;
     }
     if (k == 3u) {
         gl.wait = sty[2];
-        return reset_say("WAIT");
+        tide_wait_text(v, sizeof v, &u);
+        ui_say("WAIT ", v);
+        return 1;
     }
     return 0;
 }
@@ -463,6 +469,9 @@ static void tide_part_name(uint32_t pi, char *b)
         b[0] = 0;
         if (r < UP_USER0 && !up_used(r)) {
             up_slot_label(b, r);
+            str_cpy(b + str_len(b), " ", 2);
+        } else if (r >= UP_USER0 && r < UP_SLOTS + UP_NXTRA) {   /* (a read-only place past the slots: #125 .. #171, as PATCHES numbers it) */
+            up_slot_label(b, r + UP_NUSER);
             str_cpy(b + str_len(b), " ", 2);
         }
         str_cpy(b + str_len(b), ds_name(e, (uint32_t)k), 16);

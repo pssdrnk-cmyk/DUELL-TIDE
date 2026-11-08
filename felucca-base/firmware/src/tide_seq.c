@@ -39,12 +39,12 @@ static const step_t *tide_play_step(const track_t *t, uint32_t idx, step_t *buf)
 }
 
 /* ARP SEQ on PLAY with no key held (owner, 2026-11-01: it was silent; the steps are offsets on held keys): the arp plays from a
- * stand-in, the part's last chord held on the SEQ arp, else C4 as the part's CHRD builds it (audit G08: always one note), the steps as written. Not while recording (it would record its
- * own pattern), nor stopped. A key held plays as ever */
+ * stand-in, the part's last chord held on the SEQ arp, else C4 as the part's CHRD builds it (audit G08: always one note), the steps as written.
+ * Also while recording (an ARP SEQ part's arp never records: seq.c rec_arp_on), not stopped. A key held plays as ever */
 static uint8_t tide_chord[NSHOWN][4], tide_chord_n[NSHOWN];
 static int tide_seq_ghost(const track_t *t)
 {
-    return song.playing && !song.rec && trk_index(t) < NSHOWN && arp_mode(t) == AM_SEQ_ID;
+    return song.playing && trk_index(t) < NSHOWN && arp_mode(t) == AM_SEQ_ID;
 }
 static int tide_arp_paused(const track_t *t)
 {

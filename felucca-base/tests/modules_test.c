@@ -331,10 +331,10 @@ static void test_arp(void)
     go_main_to(HP_MORPH);
     frame();
     press(B_REC);
-    expect("REC (HOLD) with ARP OFF on an arp part: HOLD ALL (the keys latch), HOLD ON said", trk[0].p[P_AHOLD] == 2 && msg_is("HOLD ON"));
+    expect("REC (HOLD) with ARP OFF on an arp part: HOLD ALL (the keys latch), HOLD ON said", trk[0].p[P_AHOLD] == 2 && (msg_is("HOLD ON") || msg_is("HOLD ON: SEQ+REC=REC")));
     frames(600);
     press(B_REC);
-    expect("  .. again: HOLD OFF", trk[0].p[P_AHOLD] == 0 && msg_is("HOLD OFF"));
+    expect("  .. again: HOLD OFF", trk[0].p[P_AHOLD] == 0 && (msg_is("HOLD OFF") || msg_is("HOLD OFF: SEQ+REC=REC")));
     trk[0].p[P_AHOLD] = 1;
     frames(600);
     press(B_REC);

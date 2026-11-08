@@ -187,12 +187,15 @@ async function restore() {
   let safetyName = null;
   try {
     unitList = await listUnit(request, info.caps);
-    const plan = planRestore(archive, unitList, info.caps, sel, { includeRaw: $("includeraw").checked, patchCap: info.patchCap, fvBank: info.fvBank, tide: info.tide });
+    const plan = planRestore(archive, unitList, info.caps, sel, { includeRaw: $("includeraw").checked, patchCap: info.patchCap, fvBank: info.fvBank, tide: info.tideAnswer });
     if (!plan.steps.length) { say("status-restore", "Nothing to restore.", "warn"); say("result-restore", plan.excluded.map((x) => `${x.label}: ${x.reason}`).join("\n")); return; }
     const kinds = [...new Set(plan.steps.map((s) => s.group))].map((k) => GROUPS.find((g) => g.key === k).label.toLowerCase());
     const pw = plan.steps.filter((s) => s.key !== undefined), put = pw.filter((s) => s.size).length, gone = pw.length - put;
     const text = `Replace on ${unitName()}: ${kinds.join(", ")}.\n\n` +
       (pw.length || plan.skipped.length ? `Patches: ${plural(put, "patch", "patches")} written, ${plural(gone, "saved patch", "saved patches")} on the unit that the file does not have removed, ${plural(plan.skipped.length, "patch", "patches")} already identical.\n\n` : "") +
+      (plan.stripped ? `${plural(plan.stripped, "patch", "patches").toUpperCase()} LOSE${plan.stripped === 1 ? "S" : ""} the FM6 MORPH TO target${info.tideAnswer === false ? " (this unit says it is plain DUELL)" : " (this unit may be plain DUELL; an older TIDE build would keep it)"}.
+
+` : "") +
       (plan.excluded.length ? `Not restored: ${plan.excluded.map((x) => `${x.label.toLowerCase()} (${x.reason})`).join("; ")}.\n\n` : "") +
       "What the unit holds of these kinds is overwritten, empty slots in the file included. Playback on the unit is stopped. " +
       "A safety backup of the unit is saved to your downloads first; the restore does not start without it.\n\nRestore now?";

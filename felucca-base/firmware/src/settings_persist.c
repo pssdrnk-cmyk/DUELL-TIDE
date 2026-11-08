@@ -77,7 +77,8 @@ _Static_assert(sizeof(persist_t) == sizeof(persist_head_t) + 2u * MAP_N + 64u, "
 /* TIDE's settings (tide_store.c) ride in the second half of `map_tail`, bytes 32..63 (D11: every backup holds them; the first 32 stay upstream's reserve): "TIDE", the field count n,
  * then the fields (tide_ui.c TS_*, 27 at most). tide_tail is the record as it stands now (settings_export writes it, settings_import reads it, a record without the tag leaves it
  * as it is: an older backup or a unit of plain DUELL 1.1 keeps what the unit has), tide_tail_saved the one in the flash (persist_note). Plain DUELL 1.1 reads the tail as zero
- * and writes zero at its next settings save: TIDE then starts from DUB again. Older TIDE builds kept the fields in the patch chunk 21 (object 48): tide_store_load_min reads it once */
+ * and writes zero at its next settings save. Older TIDE builds kept the fields in the patch chunk 21 (object 48): tide_store_load_min reads it whenever the tail has no tag, and nothing erases
+ * object 48 (D48). So a unit that was migrated and then ran plain DUELL 1.1 gets the OLD values of before the migration back, not DUB; only a unit that never had object 48 starts from DUB */
 #define TIDE_TAIL_AT 32u
 #define TIDE_TAIL_N 32u
 static uint8_t tide_tail[TIDE_TAIL_N] __attribute__((section(".pool")));

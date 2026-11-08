@@ -1927,7 +1927,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("info", parents=[common], help="the unit's identity")
     b = sub.add_parser("backup", parents=[common], help="a full backup the web editor can restore")
     b.add_argument("--out", metavar="DIR", default=str(DEFAULT_OUT))
-    r = sub.add_parser("restore", parents=[common], help="restore a backup file as the web Backup page does")
+    r = sub.add_parser("restore", parents=[common], help="restore a backup file as the web Backup page does (it does not strip anything from the patches, unlike the web page, which takes out FM6 MORPH TO targets unless the unit says it is TIDE)")
     r.add_argument("file")
     r.add_argument("--yes", action="store_true", help="do not ask")
     r.add_argument("--include-raw", action="store_true", help="also send objects the backup could not check")

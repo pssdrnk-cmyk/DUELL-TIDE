@@ -66,6 +66,7 @@ LDR = OUT / "loader"
 sys.path.insert(0, str(SRC / "tools"))
 import bootpack  # noqa: E402
 import elfcheck  # noqa: E402
+import hot_reach  # noqa: E402
 import hot_fns  # noqa: E402
 import ram_place  # noqa: E402
 import fm1pkg_make  # noqa: E402
@@ -646,6 +647,9 @@ def main():
         rp_err, rp_notes = elfcheck.check_ramplace(elf, img, dis, APP_XIP)
         lay_err += rp_err
         notes += rp_notes
+        hp_err, hp_notes = hot_reach.check(dis)     # the audio path runs from RAM, not the flash, unless tools/ram_allow.py says why (CPU audit K6)
+        lay_err += hp_err
+        notes += hp_notes
     if exact:                       # every call / goto relocation of the link at its address (tools/ram_place.py, elfcheck.py check_calls)
         sites, s_err = ram_place.call_sites([(o.name, o.read_bytes()) for o in app_objs()], elf)
         c_err, c_note = elfcheck.check_calls(elf, sites, dis, APP_SLOT - len(img))

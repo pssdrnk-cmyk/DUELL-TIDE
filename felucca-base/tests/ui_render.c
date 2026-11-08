@@ -566,6 +566,8 @@ static void lint(void)
         }
         for (j = i + 1u; j < nscr; j++) {
             const rbox_t *o = &scr[j];
+            if (((b->flags | o->flags) & 32u) && b->y0 >= 180 && o->y0 >= 180)
+                continue;                              /* item 120: the footer's scrolling patch name runs under the tempo, the REC mark and the counter by design (draw_foot clears their margins and draws them over it) */
             if (b->x0 < o->x1 && o->x0 < b->x1 && b->y0 < o->y1 && o->y0 < b->y1) finding("overlaps", b, o);
         }
         for (j = 0; j < nrules; j++) {               /* a divider is a cell edge: nothing on it */
@@ -851,7 +853,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_GUIDE1, S_GUIDE2, S_GUIDE3, S_GUIDE4, S_GUIDE5, S_GUIDE6, S_GUIDE_MSG, S_GUIDE_KNOB, S_GUIDE_OCT, S_GUIDE_ROW,
        S_QUICK_FILTER, S_QUICK_GLO, S_MULTIS, S_MULTIS2, S_MULTIS3, S_PSLOT_NOSEQ, S_MODULES, S_MODULES_OFF, S_MODS_FX, S_MODS_ARP, S_MODS_ARP_SEQ,
        S_MODS_MIXER, S_MODS_PERFORM, S_MODS_SCHAIN, S_MODS_AUTO, S_MODS_QUICK_ARP, S_MODS_MSG, S_TOOLS_RESTORE, S_PATCH_SAVE_BOTH, S_CONFIRM_RESTORE_ALL, S_PATCH_SAVE_NAMED, S_NAME_SAVE_PATCH, S_FXSUM, S_FXSUM_DUEL,
-       S_EQ_CURVE, S_EQ_CURVE2, S_COMP_CURVE, S_COMP_OFF, S_SMASTER, S_SMASTER_WIDE, S_FILT_MULTI, S_FILT_MULTI24, S_FILT_VCF, S_ARP_PATTERN, S_ARP_CHORD, S_SIDECHAIN_PARTS, S_VOICE_PATCH, S_OCTAVE, S_SPLASH_FIRST, S_GUIDE_MENU, S_ENGINE_LOFI, S_ENGINE_PHASE, S_ENGINE_VOICE, S_ENGINE_TRIO, S_ENGINE_PHYS, S_ENGINE_NOISE, S_ENGINE_WAVE, S_ENGINE_WHEEL, S_CAPSULES, S_STEREO_HOME, S_ENGINE_LIST, S_MODE_DUEL, S_SUB, S_EDIT_WAVE1, S_EDIT_VOICE1, S_CYCLE, S_TWIN, S_ABOUT_TOP, S_CYCLE2, S_CYCLE2_ALL, S_MIXER4, S_MOD_LONG, S_CONFIRM_ERASE_ALL, S_OFF_ARP, S_OFF_SEQ, S_OFF_SENDS, S_OFF_PFX, S_OFF_QARP, S_OFF_QSEQ, S_TIDE, S_TIDE_GLIDE, S_TIDE_BOTH, S_TIDE_BOTH_GLIDE, S_TIDE_WAIT, S_HEAD_MARKS, S_COUNT };
+       S_EQ_CURVE, S_EQ_CURVE2, S_COMP_CURVE, S_COMP_OFF, S_SMASTER, S_SMASTER_WIDE, S_FILT_MULTI, S_FILT_MULTI24, S_FILT_VCF, S_ARP_PATTERN, S_ARP_CHORD, S_SIDECHAIN_PARTS, S_VOICE_PATCH, S_OCTAVE, S_SPLASH_FIRST, S_GUIDE_MENU, S_ENGINE_LOFI, S_ENGINE_PHASE, S_ENGINE_VOICE, S_ENGINE_TRIO, S_ENGINE_PHYS, S_ENGINE_NOISE, S_ENGINE_WAVE, S_ENGINE_WHEEL, S_CAPSULES, S_STEREO_HOME, S_ENGINE_LIST, S_MODE_DUEL, S_SUB, S_EDIT_WAVE1, S_EDIT_VOICE1, S_CYCLE, S_TWIN, S_ABOUT_TOP, S_CYCLE2, S_CYCLE2_ALL, S_MIXER4, S_MOD_LONG, S_CONFIRM_ERASE_ALL, S_OFF_ARP, S_OFF_SEQ, S_OFF_SENDS, S_OFF_PFX, S_OFF_QARP, S_OFF_QSEQ, S_TIDE, S_TIDE_GLIDE, S_TIDE_BOTH, S_TIDE_BOTH_GLIDE, S_TIDE_WAIT, S_HEAD_MARKS, S_MULTIS_DAMAGED, S_PATCHES_DRONE, S_COUNT };
 static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "message_key", "message_nofile", "presets",
     "presets_nofav", "user", "phrases", "project", "tools", "pslot_empty", "pslot", "step", "auto_steps", "auto_add_chance",
     "automation", "mixer", "mixer_from_home", "mixer_pan", "env", "env_dest", "lfo", "mod", "fx", "dly", "scl", "chord", "chord_wide",
@@ -882,7 +884,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
     "mod_pan_duel", "mod_retired", "guide_1", "guide_2", "guide_3", "guide_4", "guide_5", "guide_6", "guide_message", "guide_knob",
     "guide_octave", "menu_guide_row", "layer_quick_filter", "quick_glo", "multis", "multis_2", "multis_3", "pslot_noseq", "modules", "modules_off", "mods_fx",
     "mods_arp", "mods_arp_seq", "mods_mixer", "mods_perform", "mods_schain", "mods_auto", "mods_quick_arp", "mods_msg", "tools_restore", "patches_save_both", "confirm_restore_all", "patches_save_named", "name_save_patch", "fxsum", "fxsum_duel",
-    "eq_curve", "eq_curve2", "comp_curve", "comp_off", "stereo_master", "stereo_master_wide", "filt_multi", "filt_multi24", "filt_vcf", "arp_pattern", "arp_chord", "sidechain_parts", "voice_patch", "octave", "splash_first", "guide_menu", "engine_lofi", "engine_phase", "engine_voice", "engine_trio", "engine_phys", "engine_noise", "engine_wave", "engine_wheel", "capsules", "stereo_home", "engine_list", "mode_duel", "sub", "edit_wave1", "edit_voice1", "cycle", "twin", "about_top", "cycle2", "cycle2_all", "mixer4", "mod_long", "confirm_erase_all", "off_arp", "off_seq", "off_sends", "off_pfx", "off_quick_arp", "off_quick_seq", "tide", "tide_glide", "tide_both", "tide_both_glide", "tide_wait", "head_marks"};
+    "eq_curve", "eq_curve2", "comp_curve", "comp_off", "stereo_master", "stereo_master_wide", "filt_multi", "filt_multi24", "filt_vcf", "arp_pattern", "arp_chord", "sidechain_parts", "voice_patch", "octave", "splash_first", "guide_menu", "engine_lofi", "engine_phase", "engine_voice", "engine_trio", "engine_phys", "engine_noise", "engine_wave", "engine_wheel", "capsules", "stereo_home", "engine_list", "mode_duel", "sub", "edit_wave1", "edit_voice1", "cycle", "twin", "about_top", "cycle2", "cycle2_all", "mixer4", "mod_long", "confirm_erase_all", "off_arp", "off_seq", "off_sends", "off_pfx", "off_quick_arp", "off_quick_seq", "tide", "tide_glide", "tide_both", "tide_both_glide", "tide_wait", "head_marks", "multis_damaged", "patches_drone"};
 
 /* the STEP page's piano roll (ui_graph.c graph_roll) on track 1, stopped unless said: an empty pattern; ACID in
  * A minor; POLY chords (Am7 F C G, tied); a line with ties, slides and accents in C major; LEN 32 on its second
@@ -996,6 +998,7 @@ static void setup(int s)
 {
     memset(kb_chn, 0, sizeof kb_chn);               /* no key held (roll_playing holds one) */
     state();
+    mu_bad = 0;                                     /* (multis_damaged sets a bit; no other scene holds a damaged record) */
     scale_g = 0; root_g = 0; offscale_g = OS_SNAP;   /* the global scale: CHROMATIC, C, SNAP (a scene sets its own) */
     switch (s) {
     case S_HOME: song.octave = 2; song.rec = 1; usb.config = 1; break;
@@ -1141,6 +1144,9 @@ static void setup(int s)
     case S_GUIDE_MENU: go_home(); ui.menu = 1; guide_open(1); break;
     case S_CAPSULES: go_home(); break;
     case S_HEAD_MARKS: trk[0].p[P_AMODE] = 1; trk[0].p[P_AHOLD] = 1; trk[1].p[P_MUTE] = 1; go_home(); break;   /* T12 / T14: part 1 HOLD, part 2 MUTE */
+    case S_MULTIS_DAMAGED:                        /* audit 2026-11-08 finding 31: SAVE > MULTIS, M02 holds a record this firmware does not load: DAMAGED in its row and in the preview panel */
+        song.playing = 0; song.g[G_SLOT] = 2; mu_bad |= 1u << 1; gsl_key = 0xFFFFFFFFu; go_page(GR_SLOTS); ui.act = 2; ui.msg_t = 0; break;
+    case S_PATCHES_DRONE: song.playing = 0; sl_load(170); go_page(GR_BROWSE); break;   /* finding 31: PATCHES with the list past #163 (k 170 is the factory sound whose list rows show #165 .. #169) */
     case S_SUB: go_title("SUB OSC"); break;
     case S_ABOUT_TOP: ui.menu = 2; ui.menu_scroll = 1; break;
     case S_EDIT_WAVE1: eng(14); go_title("EDIT 1"); { uint32_t k; wv_mem_t *wm = (wv_mem_t *)ENG_MEM(0); eng_mem_owner[0] = ENGI_WAVE + 1u; wm->h.want = 12; for (k = 0; k < 4000u; k++) (void)wave_service(); } break;
@@ -2318,9 +2324,46 @@ static void off_check(void)
     printf("ui_render: OFF notice walks: %u, %u failures\n", walks, bad);
 }
 
+/* finding 31: ABOUT with the TIDE id (ui_menu.c: only in a build without DUELL_TEST_MODE that has DUELL_TIDE_ID; the main run is test mode, so host_tests.sh builds this
+ * file a second time as the release with -DDUELL_TIDE_ID="1.0.0-b2+" and runs only this scene): the id is drawn and the lint finds nothing, on every palette */
+static int about_tide_main(const char *out)
+{
+    uint32_t p;
+    char rp[600];
+    snprintf(rp, sizeof rp, "%s/about_tide_report.txt", out);
+    rep = fopen(rp, "w");
+    if (!rep) { fprintf(stderr, "cannot write %s\n", rp); return 1; }
+#if defined(DUELL_TIDE_ID) && !DUELL_TEST_MODE
+    for (p = 0; p < NPALETTES; p++) {
+        uint32_t sc, seen = 0, mx;
+        setup(S_ABOUT);
+        mx = (uint32_t)menu_scroll_max();
+        for (sc = 0; sc <= mx; sc += 2u) {            /* (ABOUT scrolls: the version line, the date and the id are below the logo) */
+            uint32_t i;
+            setup(S_ABOUT);
+            ui.menu_scroll = (uint16_t)sc;
+            pal(p);
+            ui.force = 1;
+            cur_name = "about_tide";
+            draw(-1);
+            for (i = 0; i < nscr; i++) if (!strcmp(scr[i].s, DUELL_TIDE_ID)) seen++;
+            lint();
+        }
+        if (!seen) { fprintf(stderr, "ui_render: ABOUT (%s) never draws the TIDE id %s\n", UI_PALETTES[p].name, DUELL_TIDE_ID); nfind++; }
+    }
+    fclose(rep);
+    printf("ui_render: ABOUT with the TIDE id %s on %u palettes: %u lint findings\n", DUELL_TIDE_ID, (unsigned)NPALETTES, nfind);
+    return nfind ? 1 : 0;
+#else
+    (void)p; fclose(rep);
+    printf("SKIP ui_render --about-tide needs a release build with -DDUELL_TIDE_ID\n");
+    return 0;
+#endif
+}
 int main(int argc, char **argv)
 {
     if (argc > 2 && !strcmp(argv[1], "--target")) return target_main(argv[2]);
+    if (argc > 2 && !strcmp(argv[1], "--about-tide")) return about_tide_main(argv[2]);
     const char *out = argc > 1 ? argv[1] : "build/ui_new";
     char path[600];
     uint32_t p, s;

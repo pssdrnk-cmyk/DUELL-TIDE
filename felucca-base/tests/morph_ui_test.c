@@ -297,10 +297,10 @@ static void t_editb(void)
     }
     memcpy(pa, trk[0].p, sizeof pa);
     ok = up_used(sl) && !strncmp(ui.msg, "SAVED", 5) && n == 2u && (pt_raw(sl)[4] & PTF_MB);   /* (PT_VER 4: End B and its marks in the record's MBV block) */
-    turn(EN_PRESET, 1);
+    turn(EN_PRESET, -1);                                /* (back to the factory sound before it: the place after a saved sound is an empty USER slot, which loads nothing) */
     frames(32);
     expect("(control) another sound: no hand-set values", morph_edits(0, ed) == 0u);
-    turn(EN_PRESET, -1);
+    turn(EN_PRESET, 1);                                 /* (on again: the saved slot) */
     frames(32);
     expect("a patch saved with values set by hand: loading it gives A as saved, End B exactly as saved and the same two values, the fader at A",
            ok && trk[0].user == sl + 1u && mph[0].fader == 0u && !memcmp(pa, trk[0].p, sizeof pa) && endb_same(mph[0].eng, b0, endp(0, 1)) && morph_edits(0, ed) == 2u &&
@@ -887,19 +887,19 @@ static void t_save(void)
     expect("  OCT+: SAVED #NN, still on MORPH; one record, in that slot; the part plays that slot now",
            up_count() == 1u && up_used(sl) && !strncmp(ui.msg, "SAVED", 5) && str_eq(cur_page()->title, "MORPH") && trk[0].user == sl + 1u &&
            up_rec(sl)->engine == e && up_value(up_rec(sl), P_REL) == trk[0].p[P_REL]);
-    expect("the browser: the slot stays in its place (same position, same length 132)", preset_pos(&t2) == pos && t2 == UP_VSLOTS && preset_at(pos) == sl);
+    expect("the browser: the saved slot follows the factory sounds now, the empty USER slots after it (same length, the slot's number and the part's place unchanged)", preset_pos(&t2) == t2 - 1u - UP_NUSER && t2 == UP_VSLOTS && preset_at(t2 - 1u - UP_NUSER) == sl);
     turn(EN_K4, -30);                                   /* AMOUNT 15, another B, another sound */
-    turn(EN_PRESET, 1);
+    turn(EN_PRESET, -1);                                /* (the factory sound before it: the place after a saved sound is an empty USER slot) */
     frames(32);
     expect("(control) another sound: End B is another roll", memcmp(endp(0, 1), b0, P_COUNT) != 0);
-    turn(EN_PRESET, -1);
+    turn(EN_PRESET, 1);                                 /* (on again: the saved slot) */
     frames(32);
-    expect("PRESETS back one: the saved slot loads: fader at A, the saved sound, End B exactly as saved (PT_VER 4: its values, no seed; AMOUNT)",
+    expect("PRESETS on one: the saved slot loads: fader at A, the saved sound, End B exactly as saved (PT_VER 4: its values, no seed; AMOUNT)",
            trk[0].user == sl + 1u && mph[0].fader == 0u && end_is_base(0, 0) && trk[0].p[P_REL] != fac[P_REL] &&
            endb_same(mph[0].eng, endp(0, 1), b0) && seed_now(0, 1) == 0u && sd != 0u && mph[0].amount == am);
     hold(B_SAVE);
     press(B_OCTUP);
-    expect("SAVE held over it again: the same slot (no second one)", up_count() == 1u && up_used(sl) && !strncmp(ui.msg, "SAVED", 5) && preset_pos(&t2) == pos);
+    expect("SAVE held over it again: the same slot (no second one)", up_count() == 1u && up_used(sl) && !strncmp(ui.msg, "SAVED", 5) && preset_pos(&t2) == t2 - 1u - UP_NUSER);
     up_ui(1u, sl);                                      /* RESTORE */
     preset_go(pos);
     frames(32);
