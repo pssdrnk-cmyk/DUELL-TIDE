@@ -60,6 +60,7 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 ## Planned, not yet scheduled
 
 **CPU and audio engine**
+- Effect code from slow flash: the K6 check lists 116 reverb, delay, compressor and other mix-stage functions that the audio path reaches but run from XIP flash (`tools/ram_allow.py`, "not yet reviewed"). Review which run per sample and whether range Z (568 B above its reserve) or freed hot-block space can take the dearest: a possible CPU gain with no sound change.
 - K8: the next fader position's blended parameters prepared outside the audio interrupt (main loop or idle core 1) and swapped in by pointer. Large; needs one-writer rules.
 - K10: the dearer part (by measured cost) on core 1, not always part 2.
 - K11: a TIDE-only 5.8 ms half for background use, costed first (keyboard play keeps 2.9 ms).
@@ -98,6 +99,7 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 
 **Upstream (plain DUELL)**
 - Small single-finding pull requests, in order of value: FM6 re-strike, arp grid and swing direction, delay clicks, glide, steady tempo, then the smaller fixes, the PHYS tuning fix and the doc corrections. The owner opens every pull request.
+- Live REC on an ARP SEQ part (live-record audit R1) has the same bug in plain DUELL; the b3 fix is TIDE-only. Offer it upstream as its own change.
 - First the owner raises three items with the author: the voice and render restructuring, fixed knob columns, the bus B pointers.
 - Felucca's "return to official V15" installer path (with a backup first).
 - When merging Felucca code: its engines are now MIT (Felucca-Engines) and its hardware layer MPL-2.0 (felucca-bsp); check our headers. Their second core is a different design: read it for K4 / K10, don't swap it in.
