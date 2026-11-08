@@ -11,6 +11,7 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 
 Not flashed yet.
 
+- **Changed (screen audit, 2026-11-08):** the ENV round no longer repeats MATRIX 1-4 / 5-8 (they are one LFO press away; ENV is 6 pages), SIDECHAIN shows the PART FX OFF notice instead of a blank page, the PART FX and SENDS OFF notices fit on one line, the hold-EDIT layer is titled QUICK EDIT (was QUICK MULTI), and the MORPH page draws no placeholder rules under its title. Plain DUELL gets the same page, notice and title changes.
 - **New (owner, 2026-11-08):** STYLE DRONE, after PEAK, for the eight factory drone sounds (#164 to #171) played as a held chord (HOLD latches the notes): WNDR, TIME 64, WAIT OFF, VARY EVERY 4TH, TURNS TOGETHER, POLY OFF, SYNC OFF, ARC OFF, WASH HIGH. A saved STYLE loads as before (CUSTOM is now 6; an old CUSTOM stored as 5 still loads as CUSTOM). About 4 B of flash. A file pack of eight drone multis, one per drone, is in `packs/drones/`.
 
 - **Changed (owner, 2026-11-08: room in flash for the wave picture):** the SEQUENCER HELP page is gone, so a tap of SEQ goes STEP, then PARAMETER LOCKS. The MORPH page shows its fader value (A, 1 to 126, B) in knob 1's card like every other page, and its moving lines are gone; the top of the page keeps a quiet line until the planned wave picture takes that place. The four knobs, ALGORITHM, Hold SAVE and the OCT- shortcuts work as before. About 4.9 KB of flash freed.
