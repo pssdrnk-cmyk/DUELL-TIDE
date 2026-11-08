@@ -24,7 +24,7 @@ jobs:
   # report "not compared"). One macOS machine runs them. It does not gate the Pages deploy (continue-on-error): the hosted VM may
   # read 0 instructions, and the summary says so. A red line here is a cost regression to look at, not a test of behaviour.
   cost-macos:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 40
     continue-on-error: true
     steps:
