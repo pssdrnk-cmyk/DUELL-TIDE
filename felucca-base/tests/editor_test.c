@@ -1153,7 +1153,7 @@ static int learn_protocol(void)
              host_wire[6] == ML_N && !memcmp(&host_wire[7], (const uint8_t[]){1, 26, 1, P_E0 + 2}, 4);   /* (rc, then GET's) */
         request(ED_LEARN_SET, b, 4);
         n = request(ED_LEARN_SET, c, 4);                 /* (CC27 again: T2 PAN, but the number is T1 LEVEL's: refused, rc 6, the owner after the list) */
-        ok &= host_wire[5] == 6u && n == 6u + 2u + 4u * ML_N + 9u && !memcmp(&host_wire[6u + 1u + 4u * ML_N], "T1 LEVEL", 9);
+        ok &= host_wire[5] == 6u && n == 6u + 2u + 4u * ML_N + 13u && !memcmp(&host_wire[6u + 1u + 4u * ML_N], "PART 1 LEVEL", 13);
         n = request(ED_LEARN_GET, 0, 0);
         ok &= learn_entry(0, 1, 26, 1, P_E0 + 2) && learn_entry(1, 1, 27, 0, P_LEVEL) && learn_entry(2, 0, 0, 0, 0);
         n = request(ED_LEARN_SET, cf, 5);                /* (with force: the new editor takes it) */

@@ -2582,7 +2582,7 @@ static void draw_columns(void)
         }
         {
             uint32_t sel = song.g[G_ROUTE] == 1, k, n = midi_cards(vis), mm = duell_mode_req < DM_N ? duell_mode_req : DM_SPLIT;
-            static const char *const WH[3][2] = {{"Duel: left output", "Duel: right output"}, {"Stereo output", "Stereo output"}, {"Layer: plays both parts", "Layer: not heard, use P1 CH"}};
+            static const char *const WH[3][2] = {{"Duel: left output", "Duel: right output"}, {"Stereo output", "Stereo output"}, {"Layer: plays both parts", "Layer: not heard, use PART 1"}};
             grid_wide = 1;
             for (c = 0; c < 4u; c++) {                 /* the parts' channels (not shown when SELECTED listens on one channel; part 2 in LAYER), MIDI IN; T0227: moved left */
                 k = c < n ? vis[c] : 0xFFu;
@@ -3126,8 +3126,8 @@ static void confirm_text(char *a, char *b)          /* a, b hold 32 */
     b[0] = 0;
     switch (ui.confirm) {
     case CF_CLEAR_TRK:
-        str_cpy(a, "CLEAR TRACK 1?", 24);
-        a[12] = (char)('1' + k % NTRK);
+        str_cpy(a, "CLEAR PART 1?", 32);
+        a[11] = (char)('1' + k % NTRK);
         break;
     case CF_OVR_PROJ:                                   /* MULTI: SAVE over a used multi */
         str_cpy(a, "OVERWRITE ", 24);
@@ -3200,7 +3200,8 @@ static void confirm_text(char *a, char *b)          /* a, b hold 32 */
         break;
     }
     case CF_CLEAR_MOTION:
-        str_cpy(a, "CLEAR T1 PARAMETER LOCKS?", 32); a[7] = (char)('1' + k % NTRK);
+        str_cpy(a, "CLEAR PARAMETER LOCKS?", 32);     /* (the part on the second line: "CLEAR PART 2 PARAMETER LOCKS?" is wider than the dialog) */
+        str_cpy(b, "PART 1", 32); b[5] = (char)('1' + k % NTRK);
         break;
     case CF_RESTORE_ALL:                            /* SAVE > TOOLS: every slot back to its factory sound */
         str_cpy(a, "RESTORE ALL PATCHES?", 32);
@@ -3208,8 +3209,8 @@ static void confirm_text(char *a, char *b)          /* a, b hold 32 */
         break;
     case CF_LOAD_PAT: {
         char tag[4];
-        str_cpy(a, "REPLACE T1 SEQUENCE?", 24);
-        a[9] = (char)('1' + k % NTRK);
+        str_cpy(a, "REPLACE PART 1 SEQUENCE?", 32);
+        a[13] = (char)('1' + k % NTRK);
         pat_label(pat_pick(), tag, b);               /* with the slot picked ("MELODY", "SAVED") */
         {
             char nm[13];
@@ -3221,8 +3222,8 @@ static void confirm_text(char *a, char *b)          /* a, b hold 32 */
         break;
     }
     default:
-        str_cpy(a, "CLEAR T1 SEQUENCE?", 24);     /* the header (T1..T4) is hidden */
-        a[7] = (char)('1' + k % NTRK);
+        str_cpy(a, "CLEAR PART 1 SEQUENCE?", 32);     /* the header is hidden (b4, UI audit 5: the part is "PART n" everywhere) */
+        a[11] = (char)('1' + k % NTRK);
         break;
     }
 }
