@@ -1110,7 +1110,7 @@ static void sweep_quick(void)
 {
     static const uint8_t QB[4] = {B_EDIT, B_LFO, B_ENV, B_ARP}, QL[4] = {LAYER_EDIT, LAYER_LFO, LAYER_ENV, LAYER_ARP};
     static const uint8_t QF[4] = {FAM_EDIT, FAM_LFO, FAM_ENV, FAM_ARP};
-    static const char *const QH[4] = {"QUICK MULTI", "QUICK LFO", "QUICK ENV", "QUICK ARP"};
+    static const char *const QH[4] = {"QUICK EDIT", "QUICK LFO", "QUICK ENV", "QUICK ARP"};
     static const uint16_t QID[4][4] = {{P_FREEA, P_FREEB, P_FREEC, P_REL}, {P_LRATE, P_LD_FLT, P_L2RATE, XW_BASE + X_LFO2},   /* (DUELL 1.1: QUICK LFO K4 is LFO 2's TWIN CUTOFF depth) */
                                       {P_ATK, P_REL, P_E2FLT, P_E2DEC}, {P_AMODE, P_ARATE, P_AGATE, P_AOCT}};
     uint32_t q, k, l;
@@ -1120,7 +1120,7 @@ static void sweep_quick(void)
         uint32_t pg, first;
         ui_power_on();
         set_engine_of(TSEL, 2u);                         /* PHASE: the multimode filter (ufilt) */
-        TSEL->p[P_TWTYPE] = 0;                           /* (0.2.31: the power-on sound runs filter 2, QUICK MULTI then shows its cutoff on K3; this test wants the one-filter mapping) */
+        TSEL->p[P_TWTYPE] = 0;                           /* (0.2.31: the power-on sound runs filter 2, QUICK EDIT then shows its cutoff on K3; this test wants the one-filter mapping) */
         go_title("MIXER");
         pg = ui.page;
         /* a tap: the family's page, as before; the second tap soon after: its next page (no lock) */

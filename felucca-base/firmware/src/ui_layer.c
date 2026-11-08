@@ -57,7 +57,7 @@ static const layer_t LAYERS[LAYER_N] = {
     {0, 0, 0, "", "", ""},
     {0, 0, 0, "", "", ""},                                  /* (LAYER_RES: the FX hold layer, removed in 0.2.2) */
     {B_GLO, LK_QUICK, FAM_HOME, "QUICK GLO", "GLO", ""},
-    {B_EDIT, LK_SET, FAM_EDIT, "QUICK MULTI", "EDIT", "SET"},   /* (0.2.9: every layer's header is QUICK and the page, the bolt before it in the accent: ui_draw.c head_msg; QUICK SCALE removed, owner 2026-10-28: SCL is a plain page button) */
+    {B_EDIT, LK_SET, FAM_EDIT, "QUICK EDIT", "EDIT", "SET"},   /* (0.2.9: every layer's header is QUICK and the page, the bolt before it in the accent: ui_draw.c head_msg; QUICK SCALE removed, owner 2026-10-28: SCL is a plain page button) */
     {B_SEQ, LK_SET, FAM_SEQ, "QUICK SEQ", "SEQ", "TOOLS"},
     {B_REC, LK_SET, FAM_HOME, "QUICK REC", "REC", "SET"},
     {B_LFO, LK_QUICK, FAM_LFO, "QUICK LFO", "LFO", ""},
@@ -87,7 +87,7 @@ static const page_t *ly_page(uint32_t l)
     if (q > 3u)
         return l == LAYER_SEQ ? &LY_SEQ : 0;
     ly_qp = LY_Q[q];                                    /* (QUICK FILTER: the multimode filter on every engine, 0.2.14) */
-    if (q == 0u && twin_on(TSEL)) {                     /* QUICK MULTI with filter 2 on (cloud job H, decided 2026-10-19): LINKED (and COMB, which follows the key by itself): CUT RES DRIVE AMP REL; UNLINKED: CUT 1 RES 1 CUT 2 RES 2 (the absolute CUTOFF 2) */
+    if (q == 0u && twin_on(TSEL)) {                     /* QUICK EDIT with filter 2 on (cloud job H, decided 2026-10-19): LINKED (and COMB, which follows the key by itself): CUT RES DRIVE AMP REL; UNLINKED: CUT 1 RES 1 CUT 2 RES 2 (the absolute CUTOFF 2) */
         if (XV(TSEL, X_LINK) || TSEL->p[P_TWTYPE] == TT_COMB) {
             ly_qp.id[2] = P_DRV2;
         } else {
@@ -103,8 +103,8 @@ static const page_t *ly_page(uint32_t l)
     }
     return &ly_qp;
 }
-static int ly_two(void) { return twin_on(TSEL) && !XV(TSEL, X_LINK) && TSEL->p[P_TWTYPE] != TT_COMB; }   /* QUICK MULTI shows both filters' cutoffs and resonances (ly_page) */
-/* the name a QUICK card shows where the generic one does not say which filter: QUICK MULTI with both filters on (ui_draw.c draw_columns), MULTI CUTOFF / MULTI RES / TWIN CUTOFF / TWIN RES in
+static int ly_two(void) { return twin_on(TSEL) && !XV(TSEL, X_LINK) && TSEL->p[P_TWTYPE] != TT_COMB; }   /* QUICK EDIT shows both filters' cutoffs and resonances (ly_page) */
+/* the name a QUICK card shows where the generic one does not say which filter: QUICK EDIT with both filters on (ui_draw.c draw_columns), MULTI CUTOFF / MULTI RES / TWIN CUTOFF / TWIN RES in
  * two lines (DUELL 1.1, owner; the group cells above say MULTI FILTER and TWIN FILTER; the page keeps its name); QUICK LFO's K2 and K4 (each LFO's cutoff depth) MULTI CUTOFF; 0: the card's own */
 static const char *quick_label(const page_t *pg, uint32_t s)
 {
@@ -134,7 +134,7 @@ static struct {
                                         * it opened (SEQ: a tool used); OCT- / OCT+ pressed in a SET layer (bits) */
     uint8_t cook;                      /* SEQ: COOK pressed since it opened */
     uint8_t rp_dirty;                  /* REC: a setting changed (settings_save when the layer lets go) */
-    uint8_t qid[4];                    /* QUICK MULTI: the ids of its four when it opened (OCT-: put back) */
+    uint8_t qid[4];                    /* QUICK EDIT: the ids of its four when it opened (OCT-: put back) */
     int16_t v[9];                      /* the values when it opened: SEQ LEN DIV SWING GATE; REC the settings
                                         * (ui_rec_prefs); EDIT its four (4 .. 7); the tempo (8) */
     uint8_t quiet;                     /* #39: a layer closed after it opened: KNOB 1..4 do nothing until quiet_t + */

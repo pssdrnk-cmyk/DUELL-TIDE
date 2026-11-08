@@ -758,7 +758,7 @@ static uint8_t card_mot_next, card_mot;
  * (the source an external or AUTO clock plays on, clock_why). */
 static const char *card_why_next;
 static uint8_t card_hide_next;
-static const char *quick_label(const page_t *pg, uint32_t s);   /* (ui_layer.c: QUICK MULTI's CUT 1 RES 1 CUT 2 RES 2) */
+static const char *quick_label(const page_t *pg, uint32_t s);   /* (ui_layer.c: QUICK EDIT's CUT 1 RES 1 CUT 2 RES 2) */
 static uint8_t card_ctr_next;                           /* the next draw_column's gauge fills from the CENTRE (a true bipolar value: OFFSET, TUNE, FDBK, BLEND; ratio 0..1000 with 500 = zero); cloud job H */
 /* MORPH on the cards: the value a track parameter's card shows is what the fader sounds like (morph.c morph_view), and the card
  * the morph is moving (shown != stored Original) carries a mark. card_mk_next (ui_fm6op.c): set by card_vv, taken by the next draw_column */
