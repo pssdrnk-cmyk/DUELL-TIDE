@@ -855,7 +855,7 @@ static void graph_tidelist(void)
             cv_rrect(x, sy, 26, 14, -7, track, bg);
             cv_rrect(on ? x + 14 : x + 2, sy + 2, 10, 10, -5, knob, track);
         } else
-            cv_text_r(xr, ty, &AF_M, v, sel ? T_INK : (r >= JL_XFADE ? jl_needs(r) : r >= JL_TURNS && nd) ? T_DIM : T_THEME, bg);   /* (a row that does nothing now: dim) */
+            cv_text_r(xr, ty, &AF_M, v, sel ? T_INK : (r == JL_MODE ? 0 : r >= JL_XFADE ? jl_needs(r) : r >= JL_TURNS && nd) ? T_DIM : T_THEME, bg);   /* (a row that does nothing now: dim; MODE always acts) */
     }
     if (JL_N > JL_VIS) {                                 /* where the window is in the list: a 2 px mark at the right (audit C12) */
         int32_t hh = UT_L5_PITCH * (int32_t)JL_VIS, th = hh * (int32_t)JL_VIS / (int32_t)JL_N;
