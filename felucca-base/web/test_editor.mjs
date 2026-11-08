@@ -120,7 +120,7 @@ async function connect(opt = {}) { const m = new MockUnit(opt), u = new Unit(new
      && inertReason(dp, ID.P_DKSRC) === null && (dp.p[ID.P_DKSRC] = 0, inertReason(dp, ID.P_DKDEP) === null),
      "page: DUCK SRC OFF (0.2.24): no second knob, DEPTH ATK RLS CURVE hidden (DUCK OFF), SRC itself shown; PUMP shows them again");
   ok(L.TP[ID.P_DKSRC].names.join() === "PUMP,PART,MIDI,OFF" && L.TP[ID.P_DKSRC].def === 3 && L.TP[ID.P_CUT2].label === "CUTOFF" && pageByTitle("SIDECHAIN").scope === "MIDI" && pageByTitle("SIDECHAIN").global === 1 && pageByTitle("SIDECHAIN").ids.every((i) => i < 0)
-     && pageByTitle("SEND FX").global === 0 && pageByTitle("SEND FX").scope === "FXSUM" && !L.PAGES.some((p) => p.title === "GLOBAL FX"), "pages: DUCK SRC is PUMP, PART, MIDI, OFF (0.2.24: OFF the new-sound default; the retired NOTE id, 0.2.24's EQ switch, is free again: 0.2.25 layout round); SIDECHAIN is the device's MIDI setup (global, no parameter ids); SEND FX is the part's (not global)");
+     && !L.PAGES.some((p) => p.title === "SEND FX" || p.title === "GLOBAL FX"), "pages: DUCK SRC is PUMP, PART, MIDI, OFF (0.2.24: OFF the new-sound default; the retired NOTE id, 0.2.24's EQ switch, is free again: 0.2.25 layout round); SIDECHAIN is the device's MIDI setup (global, no parameter ids); SEND FX is the part's (not global)");
 }
 // ---- connect, read, live edit with WATCH
 {

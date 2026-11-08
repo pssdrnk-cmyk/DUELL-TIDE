@@ -791,13 +791,11 @@ static void t_pages(void)
             ok &= k2 + j < NPAGES && str_eq(PAGES[k2 + j].title, L[j]) && PAGES[k2 + j].fam == FAM_LFO;
         for (j = 0; j < NPAGES; j++)
             for (k2 = j + 1u; k2 < NPAGES; k2++)
-                ok &= !str_eq(PAGES[j].title, PAGES[k2].title) ||    /* (MOD 1 / MOD 2 are in ENV's family too: the same page twice) */
-                      (PAGES[j].graph == GR_MOD && PAGES[k2].graph == GR_MOD && PAGES[j].fam == FAM_LFO && PAGES[k2].fam == FAM_ENV &&
-                       !memcmp(PAGES[j].id, PAGES[k2].id, 4)) ||
+                ok &= !str_eq(PAGES[j].title, PAGES[k2].title) ||    /* (every title is unique, MATRIX 1-4 / 5-8 are LFO's only) */
                       0;   /* (0.2.9: the multimode FILTER and ANALOG's VCF are two pages; every title is unique) */
         ok &= PAGES[l2].graph == GR_LFO && PAGES[l2].id[0] == P_L2WAVE && PAGES[l2].id[1] == P_L2RATE && PAGES[l2].id[2] == P_L2SYNC && PAGES[l2].id[3] == P_L2FADE &&
               PAGES[l2s].id[0] == P_L2TRIG && PAGES[l2s].id[1] == P_L2PHASE && PAGES[l2s].id[2] == P_L2POL;
-        ck("pages: LFO, LFO TRIG, LFO DEST, LFO 2, LFO 2 TRIG, MOD, MOD 2 (LFO's family); every title unique (but MOD 1 / MOD 2 again in ENV's)", ok);
+        ck("pages: LFO, LFO TRIG, LFO DEST, LFO 2, LFO 2 TRIG, MOD, MOD 2 (LFO's family); every title unique", ok);
         ui_power_on();
         go_title("LFO 1 DEST");
         press(B_LFO);

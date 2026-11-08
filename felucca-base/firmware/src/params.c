@@ -961,9 +961,8 @@ static const page_t PAGES[] = {
     {"MATRIX 1-4", FAM_LFO, SC_TRACK, GR_MOD, {0xFF, P_M1SRC, P_M1DST, P_M1AMT}},   /* KNOB 1: the slot (mod_ui_slot) */
     {"MATRIX 5-8", FAM_LFO, SC_TRACK, GR_MOD, {0xFF, P_M5SRC, P_M5DST, P_M5AMT}, VIS_M5}, /* DUELL: slots 5..8, the same layout */
     /* FAM_FX (0.2.21: only the PART's own pages) in the order the sound flows (fx.c mix_part): the part's DIST (FX page, KNOB 1) -> INSERT -> EQ -> DUCK -> level, pan and the
-     * sends (FX page KNOBS 2-4); the global buses (CHORUS, the delay, the REVERB) are GLO's pages now, and the second page here, SEND FX, shows the part's three sends beside them */
+     * sends (FX page KNOBS 2-4); the global buses (CHORUS, the delay, the REVERB) are GLO's pages now */
     {"FX", FAM_FX, SC_TRACK, GR_FX, {P_DIST, P_CHOR, P_DLY, P_REV}},
-    {"SEND FX", FAM_FX, SC_FXSUM, GR_FXSUM, {0xFF, 0xFF, 0xFF, 0xFF}},   /* 0.2.22 (owner): the FX family's SECOND page (after FX, before INSERT 1/2), part-scoped (only the selected part's badge): K1 CHORUS, K2 DELAY, K3 REVERB show THIS part's send level (P_CHOR, P_DLY, P_REV: the FX page edits them) and what the global effect is (delay mode and time, reverb type and size); K4 no card. A twist of K1 / K2 / K3 jumps to GLO's CHORUS / DELAY 1/2 / REVERB (ui_input.c fxsum_knob), no value changes */
     {"INSERT 1/2", FAM_FX, SC_TRACK, GR_INS, {P_ITYPE, P_IA, P_IB, P_IC}},   /* 1.5: the track's INSERT (fx.c) */
     {"INSERT 2/2", FAM_FX, SC_TRACK, GR_INS, {P_IMIX, 0xFF, 0xFF, 0xFF}},  /* .. its dry / wet */
     {"EQ 1/2", FAM_FX, SC_TRACK, GR_EQ, {P_EQLF, P_EQLG, P_EQMF, P_EQMG}},   /* DUELL (SPEC 5c.3): the part's EQ after its INSERT. 0.2.25 layout round (owner): no ON / OFF switch, each band's frequency then its gain:
@@ -1038,7 +1037,7 @@ static const page_t PAGES[] = {
     {"PATTERNS", FAM_SAVE, SC_GLOBAL, GR_PATS, {0xFF, 0xFF, 0xFF, 0xFF}},   /* SLOT, LOAD SAVE (ui.c pat_load; the 16 slots
                                                                              * patslot.c); the tap after PRESETS */
     {"MULTIS", FAM_SAVE, SC_GLOBAL, GR_SLOTS, {G_SLOT, G_LOAD, G_SAVE, 0xFF}},   /* KNOB 1 the multi, K2 LOAD, K3 SAVE */
-    {"TOOLS", FAM_SAVE, SC_GLOBAL, GR_TOOLS, {G_CLRSEQ, G_INITSND, 0xFF, 0xFF}},
+    {"TOOLS", FAM_SAVE, SC_GLOBAL, GR_TOOLS, {G_INITSND, 0xFF, 0xFF, 0xFF}},   /* b4 UI round 2: K1 INIT, K2 RESTORE ALL; CLEAR PATTERN is gone (QUICK SEQ and QUICK REC clear); G_CLRSEQ stays an id */
     {"ARP 1/3", FAM_ARP, SC_TRACK, GR_ARP, {P_AMODE, P_AHOLD, P_AORDER, P_AOCT}},   /* 0.2.18, top-down: what it plays: MODE, HOLD (also REC outside the sequencer), ORD, OCT */
     {"ARP 2/3", FAM_ARP, SC_TRACK, GR_ARP, {P_ARATE, P_AGATE, P_ASWING, P_APROB}},   /* 0.2.25 layout round (owner): ARP 1/3 and 2/3 draw the MODE's pattern (ui_graph.c graph_arp) */   /* .. then when: RATE, GATE, SWG, PROB */
     {"ARP 3/3", FAM_ARP, SC_TRACK, GR_NONE, {P_ATGT, 0xFF, 0xFF, 0xFF}, VIS_ATGT},   /* DUELL: ARP TARGET (SPEC 2.3) */
@@ -1061,15 +1060,10 @@ static const page_t PAGES[] = {
     {"MODE", FAM_TRK, SC_MODE, GR_MODE, {0xFF, 0xFF, 0xFF, 0xFF}},
 #endif
     /* (0.2.25 layout round, owner: HOME's MIXER page is gone: the mixer is GLO's first page, MIXER, and the hold-GLO layer; SPACE is PERFORM's K2) */
-    /* the matrix pages again as the ENV family's last two (after AMP ENV, AMP DEST, ENV 2, ENV 2 DEST): the same title, graph and ids as the LFO
-     * family's MOD 1 / MOD 2, so ENV 2 is routable without the LFO button. Appended here so no earlier PAGES index moves; the family
-     * order, the counter and the remembered page work by index + family, the help by title (the same hint), mod_ui_slot is shared */
-    /* cloud job H (owner-approved 2026-10-19): the CYCLE envelope (job F) in the ENV family after ENV 2 DEST and before the matrix pages (the family goes round in table order, so the pages are put here and no earlier index moves).
+    /* cloud job H (owner-approved 2026-10-19): the CYCLE envelope (job F) in the ENV family after ENV 2 DEST (the family goes round in table order; the matrix pages are the LFO round's only).
      * CYCLE has five stored values: 1/2 MODE (LOOP, ONCE), SYNC (OFF / ON), RISE, FALL; 2/2 CURVE alone on K1 */
     {"CYCLE ENV 1/2", FAM_ENV, SC_TRACK, GR_CYCLE, {XW_BASE + X_CYMODE, XW_BASE + X_CYSYNC, XW_BASE + X_CYRISE, XW_BASE + X_CYFALL}},
     {"CYCLE ENV 2/2", FAM_ENV, SC_TRACK, GR_CYCLE, {XW_BASE + X_CYCURVE, XW_BASE + X_CYCUT2, XW_BASE + X_CYPAN, XW_BASE + X_CYPIT}},   /* DUELL 1.1 (owner): CURVE, TWIN CUTOFF, PAN, PITCH */
-    {"MATRIX 1-4", FAM_ENV, SC_TRACK, GR_MOD, {0xFF, P_M1SRC, P_M1DST, P_M1AMT}},
-    {"MATRIX 5-8", FAM_ENV, SC_TRACK, GR_MOD, {0xFF, P_M5SRC, P_M5DST, P_M5AMT}, VIS_M5},
 };
 #define NPAGES (sizeof(PAGES) / sizeof(PAGES[0]))
 /* The CPU TEST screen (DUELL 0.2.2): on no button and in no family's round (not in PAGES: the GLO group is MIXER, TEMPO, CHORUS, DELAY 1/2, 2/2, REVERB, SHIMMER, STEREO MASTER, COMPRESSOR, MODULES, SIDECHAIN, MIDI, MIDI LEARN).
@@ -1094,9 +1088,6 @@ static uint8_t mod_ui_slot;      /* the MOD pages: the matrix slot of the page (
 /* a MOD page's first slot (0: MOD, 4: MOD 2) */
 static uint32_t mod_page_base(const page_t *pg) { return (uint32_t)(pg->id[1] - P_M1SRC) / 3u; }
 
-/* SEND FX (0.2.22): card k's stored send level (the selected part's) and the GLO page its twist jumps to (the page whose first card is that id) */
-static const uint8_t FXSUM_ID[3] = {P_CHOR, P_DLY, P_REV};
-static const uint8_t FXSUM_TO[3] = {G_CRATE, G_DMODE, G_RTYPE};
 /* GLO > SIDECHAIN's NOTE card (0.2.22): the note that ducks the part, 0 = ANY, else the note (F_DKNOTE names it); the default is the GM kick */
 static const param_desc_t SC_NOTE_D = PD("NOTE", F_DKNOTE, 0, 127, SC_NOTE_DEF);
 
@@ -1162,7 +1153,7 @@ static const param_desc_t *page_desc(const page_t *pg, uint32_t slot, int16_t **
         return 0;
     }
     if (pg->scope == SC_STEP || pg->scope == SC_TRK || pg->scope == SC_MORPH || TIDE_MODE_PG(pg) || pg->scope == SC_TEST ||
-        pg->scope == SC_SCALE || pg->scope == SC_PERF || pg->scope == SC_MODS || pg->scope == SC_FXSUM) {
+        pg->scope == SC_SCALE || pg->scope == SC_PERF || pg->scope == SC_MODS) {
         *valp = 0;
         return 0;
     }
@@ -1352,7 +1343,7 @@ static const char *eng_shown(const char *name)
 static const char *title_shown(const char *t)
 {
     static const char *const TT[][2] = {
-        {"STEP", "SEQUENCER"}, {"ENV 2", "FILTER ENV"}, {"ENV 2 DEST", "FILTER ENV DEST"}, {"AMP DEST", "AMP ENV DEST"}, {"TWIN MOD", "TWIN CUTOFF MOD"}, {"SEND FX", "SENDS"},   /* (DUELL 1.1, owner: the DEST pages say ENV; the header picks the font that fits: ui_draw.c head) */
+        {"STEP", "SEQUENCER"}, {"ENV 2", "FILTER ENV"}, {"ENV 2 DEST", "FILTER ENV DEST"}, {"AMP DEST", "AMP ENV DEST"}, {"TWIN MOD", "TWIN CUTOFF MOD"},   /* (DUELL 1.1, owner: the DEST pages say ENV; the header picks the font that fits: ui_draw.c head) */
         /* the engines' EDIT 1 / EDIT 2 titles */
         {"FLT", "FILTER"}, {"OP TUNE", "OPERATOR TUNE"}, {"OP ENV", "OPERATOR ENV"}, {"OP MODE", "OPERATOR MODE"},
         {"PHS", "OSC"}, {"MOTN", "MOTION"}, {"VOWL", "SPEECH"}, {"BARS", "DRAWBARS"}, {"EXCT", "EXCITER"}, {"SRC", "SOURCE"}, {"MOVE", "MOTION"},

@@ -240,23 +240,8 @@ static void sweep_home(void)
         duell_mode_force(m0); ui_mode_set = ui.mode_seen = m0; mix_split = s0;
         enter(p0);
     }
-    {   /* ENV's last two pages are the matrix pages again (MOD 1 / MOD 2): the same slots and graph as LFO's */
-        uint32_t e = 0, l = 0, n = 0, i, j;
-        for (i = 0; i < NPAGES; i++) {
-            n += PAGES[i].fam == FAM_ENV;
-            if (PAGES[i].fam == FAM_ENV && PAGES[i].graph == GR_MOD) {
-                for (j = 0; j < NPAGES; j++)
-                    if (PAGES[j].fam == FAM_LFO && str_eq(PAGES[j].title, PAGES[i].title)) l = j;
-                e = i;
-                ok = PAGES[l].graph == GR_MOD && !memcmp(PAGES[e].id, PAGES[l].id, 4) &&
-                     (PAGES[e].id[1] == P_M1SRC || PAGES[e].id[1] == P_M5SRC);
-                expect(PAGES[e].id[1] == P_M1SRC ? "ENV's MOD 1 edits LFO's MOD 1 slots" : "ENV's MOD 2 edits LFO's MOD 2 slots", ok);
-            }
-        }
-        expect("ENV family: AMP ENV, AMP DEST, ENV 2, ENV 2 DEST, CYCLE ENV 1/2, 2/2, MOD 1, MOD 2 (the last two MOD pages)", n == 8u && str_eq(PAGES[fam_step(e, -1)].title, "MATRIX 1-4"));
-    }
     {   /* the classic arrangement (SPEC 2.4): each family's pages in this order (index order, the button's round) */
-        static const char *const EF[] = {"AMP ENV", "AMP DEST", "ENV 2", "ENV 2 DEST", "CYCLE ENV 1/2", "CYCLE ENV 2/2", "MATRIX 1-4", "MATRIX 5-8"};   /* (cloud job H: the CYCLE pages after ENV 2 DEST) */
+        static const char *const EF[] = {"AMP ENV", "AMP DEST", "ENV 2", "ENV 2 DEST", "CYCLE ENV 1/2", "CYCLE ENV 2/2"};   /* (cloud job H: the CYCLE pages after ENV 2 DEST) */
         static const char *const LF[] = {"LFO 1", "LFO 1 TRIG", "LFO 1 DEST", "LFO 2", "LFO 2 TRIG", "LFO 2 DEST", "MATRIX 1-4", "MATRIX 5-8"};
         uint32_t i, ne = 0, nl = 0, e2 = 0, l2 = 0;
         ok = 1;
@@ -264,13 +249,13 @@ static void sweep_home(void)
             e2 = str_eq(PAGES[i].title, "ENV 2 DEST") ? i : e2;
             l2 = str_eq(PAGES[i].title, "LFO 2 DEST") ? i : l2;
             if (PAGES[i].fam == FAM_ENV)
-                ok &= ne < 8u && str_eq(PAGES[i].title, EF[ne++]);
+                ok &= ne < 6u && str_eq(PAGES[i].title, EF[ne++]);
             if (PAGES[i].fam == FAM_LFO)
                 ok &= nl < 8u && str_eq(PAGES[i].title, LF[nl++]);
         }
-        ok &= ne == 8u && nl == 8u && PAGES[e2].id[0] == P_E2FLT && PAGES[e2].id[1] == XW_BASE + X_E2BLD && PAGES[e2].id[2] == XW_BASE + X_E2DRV && PAGES[e2].id[3] == XW_BASE + X_E2RES &&
+        ok &= ne == 6u && nl == 8u && PAGES[e2].id[0] == P_E2FLT && PAGES[e2].id[1] == XW_BASE + X_E2BLD && PAGES[e2].id[2] == XW_BASE + X_E2DRV && PAGES[e2].id[3] == XW_BASE + X_E2RES &&
               PAGES[l2].id[0] == XW_BASE + X_LFO2 && PAGES[l2].id[1] == XW_BASE + X_L2RES2 && PAGES[l2].id[2] == XW_BASE + X_L2FMODE && PAGES[l2].id[3] == XW_BASE + X_L2BLD;   /* (DUELL 1.1: the DEST pages carry the second filter's cards) */
-        expect("ENV: AMP ENV, AMP DEST, ENV 2, ENV 2 DEST, CYCLE ENV 1/2, 2/2, MOD 1, MOD 2; LFO: LFO 1, 1 TRIG, 1 DEST, LFO 2, 2 TRIG, 2 DEST, MOD 1, MOD 2", ok);
+        expect("ENV: AMP ENV, AMP DEST, ENV 2, ENV 2 DEST, CYCLE ENV 1/2, 2/2; LFO: LFO 1, 1 TRIG, 1 DEST, LFO 2, 2 TRIG, 2 DEST, MOD 1, MOD 2", ok);
     }
     expect("the harness starts on HOME OPENS' page: MORPH, the round's first", where() == r[0] && at_home());
     ok = 1;
@@ -704,7 +689,10 @@ static void test_glo_page(void)
         memcpy(ui_sc_set, b1, 4);
         mods_put(MODS_PFX, 1u);
         frames(48);
-        expect("  .. PART FX OFF: the ducker is skipped, no cards, the knobs do nothing", str_eq(ui.col[0], "\x7f") && str_eq(ui.col[3], "\x7f") && (turn(EN_K1, 1), ui_sc_set[0] == b1[0]));
+        expect("  .. PART FX OFF: the page is the PART FX OFF notice (off_module, b4 UI round 2: was a blank page)", off_module(cur_page()) == MODS_PFX);
+        turn(EN_K1, 1);
+        expect("  .. a knob jumps to GLO > MODULES and moves no setup value", str_eq(cur_page()->title, "MODULES") && ui_sc_set[0] == b1[0]);
+        go_title("SIDECHAIN");
         mods_put(MODS_PFX, 0u);
         frames(48);
         sc_put(0, SC_CH_DEF); sc_put(1, SC_NOTE_DEF); sc_put(2, SC_CH_DEF); sc_put(3, SC_NOTE_DEF);
@@ -1122,7 +1110,7 @@ static void sweep_quick(void)
 {
     static const uint8_t QB[4] = {B_EDIT, B_LFO, B_ENV, B_ARP}, QL[4] = {LAYER_EDIT, LAYER_LFO, LAYER_ENV, LAYER_ARP};
     static const uint8_t QF[4] = {FAM_EDIT, FAM_LFO, FAM_ENV, FAM_ARP};
-    static const char *const QH[4] = {"QUICK MULTI", "QUICK LFO", "QUICK ENV", "QUICK ARP"};
+    static const char *const QH[4] = {"QUICK EDIT", "QUICK LFO", "QUICK ENV", "QUICK ARP"};
     static const uint16_t QID[4][4] = {{P_FREEA, P_FREEB, P_FREEC, P_REL}, {P_LRATE, P_LD_FLT, P_L2RATE, XW_BASE + X_LFO2},   /* (DUELL 1.1: QUICK LFO K4 is LFO 2's TWIN CUTOFF depth) */
                                       {P_ATK, P_REL, P_E2FLT, P_E2DEC}, {P_AMODE, P_ARATE, P_AGATE, P_AOCT}};
     uint32_t q, k, l;
@@ -1132,7 +1120,7 @@ static void sweep_quick(void)
         uint32_t pg, first;
         ui_power_on();
         set_engine_of(TSEL, 2u);                         /* PHASE: the multimode filter (ufilt) */
-        TSEL->p[P_TWTYPE] = 0;                           /* (0.2.31: the power-on sound runs filter 2, QUICK MULTI then shows its cutoff on K3; this test wants the one-filter mapping) */
+        TSEL->p[P_TWTYPE] = 0;                           /* (0.2.31: the power-on sound runs filter 2, QUICK EDIT then shows its cutoff on K3; this test wants the one-filter mapping) */
         go_title("MIXER");
         pg = ui.page;
         /* a tap: the family's page, as before; the second tap soon after: its next page (no lock) */
@@ -1566,142 +1554,34 @@ static void test_page_order(void)
     }
 }
 
-/* DUELL 0.2.22: FX's pages are the part's own; its second page, SEND FX, shows the SELECTED part's three send levels (K1 CHORUS, K2 DELAY, K3 REVERB: the FX page's P_CHOR, P_DLY, P_REV) with the effect beside them
- * (the delay's mode and time, the reverb's type and size); a twist of K1 / K2 / K3 only jumps to GLO's CHORUS / DELAY 1/2 / REVERB. Part-scoped: only the selected part's badge */
+/* DUELL 0.2.22: FX's pages are the part's own (b4 UI round 2: the SEND FX page between FX and INSERT 1/2 is gone: every value on it is on the FX page and GLO's effect pages) */
 #define SETMODE(m) do { duell_mode_force(m); ui_mode_set = ui.mode_seen = (m); } while (0)
 static void test_fxsum(void)
 {
-    static const char *const R[] = {"FX", "SEND FX", "INSERT 1/2", "INSERT 2/2", "EQ 1/2", "EQ 2/2", "DUCK 1/2", "DUCK 2/2"};
-    uint32_t i, n = 0, ok = 1, fx1 = page_first(FAM_FX), glob = 0, last = 0;
-    int16_t g[G_COUNT], bpm0, p0[P_COUNT], p1[P_COUNT];
-    char k0[40], k1[40], k2[40];
+    static const char *const R[] = {"FX", "INSERT 1/2", "INSERT 2/2", "EQ 1/2", "EQ 2/2", "DUCK 1/2", "DUCK 2/2"};
+    uint32_t i, n = 0, ok = 1, glob = 0;
     for (i = 0; i < NPAGES; i++) {
-        if (PAGES[i].fam == FAM_FX && n < 8u)
+        if (PAGES[i].fam == FAM_FX && n < 7u)
             ok &= (uint32_t)str_eq(PAGES[i].title, R[n]);
         n += PAGES[i].fam == FAM_FX;
         glob += PAGES[i].fam == FAM_FX && PAGES[i].scope == SC_GLOBAL;
     }
-    expect("FX's pages: FX, SEND FX, INSERT 1/2, 2/2, EQ 1/2, 2/2, DUCK 1/2, 2/2 (8 in all, none of the global effects' own)", n == 8u && ok && glob == 0u && PAGES[fx1 + 1u].scope == SC_FXSUM);
+    expect("FX's pages: FX, INSERT 1/2, 2/2, EQ 1/2, 2/2, DUCK 1/2, 2/2 (7 in all, none of the global effects' own, no SEND FX)", n == 7u && ok && glob == 0u);
     ui_power_on();
     SETMODE(DM_STEREO);
-    bpm0 = song.g[G_BPM];
-    song.g[G_DMODE] = DMD_RAND; song.g[G_DTIME] = 1; song.g[G_RTYPE] = 5; song.g[G_RSIZE] = 90;
-    song.sel = 0;
-    trk[0].p[P_CHOR] = 20; trk[0].p[P_DLY] = 40; trk[0].p[P_REV] = 60;
-    trk[1].p[P_CHOR] = 21; trk[1].p[P_DLY] = 41; trk[1].p[P_REV] = 61;
-    enter(fx1 + 1u);
-    frames(48);
-#define FXS_STATE 30, 62                                /* ui_graph.c graph_fxsum: the state line, the DELAY row, the REVERB row and the knob labels (rows of the body, screen y) */
-#define FXS_DELAY 76, 100
-#define FXS_REVERB 108, 132
-#define FXS_LABELS 190, 214
-    /* DUELL 1.1 item 117 (TEMPLATE 5, FINAL_V1_04): SEND FX has no cards: the state line top left, DELAY (mode, TIME) and REVERB (type, SIZE) rows, a grey note, the three knob labels CHORUS DELAY REVERB under them; read from the texts drawn */
-    expect("SEND FX (STEREO, part 1; TEMPLATE 5): the state ALL THREE ACTIVE, DELAY RANDOM TIME 1/8, REVERB PLATE SIZE 71%, the knob labels CHORUS DELAY REVERB, the note that a twist jumps",
-           rows_has(FXS_STATE, "ALL THREE ACTIVE") && rows_has(FXS_DELAY, "DELAY") && rows_has(FXS_DELAY, "RANDOM") && rows_has(FXS_DELAY, "TIME") && rows_has(FXS_DELAY, "1/8") &&
-           rows_has(FXS_REVERB, "REVERB") && rows_has(FXS_REVERB, "PLATE") && rows_has(FXS_REVERB, "SIZE") && rows_has(FXS_REVERB, "71") &&
-           rows_has(FXS_LABELS, "CHORUS") && rows_has(FXS_LABELS, "DELAY") && rows_has(FXS_LABELS, "REVERB") && rows_has(140, 190, "TURN A KNOB: JUMP TO GLOBAL"));
-    k0[0] = 0;
-    expect("  .. only the selected part's badge", badge_lit() == 1u);
-    song.sel = 1;
-    frames(48);
-    expect("  .. part 2 selected: its badge alone (the page shows no levels)", badge_lit() == 2u);
-    song.sel = 0;
-    frames(48);
-    {
-        uint32_t s0 = rows_sig(FXS_STATE), s1 = rows_sig(FXS_DELAY), s2 = rows_sig(FXS_REVERB);
-        trk[0].p[P_DLY] = 0;
-        frames(48);
-        expect("  .. part 1's delay send 0: the state line says DELAY INACTIVE (the DELAY row stays, drawn dim); the DELAY and REVERB rows keep their words",
-               rows_sig(FXS_STATE) != s0 && rows_has(FXS_STATE, "DELAY INACTIVE") && rows_sig(FXS_DELAY) == s1 && rows_sig(FXS_REVERB) == s2);
-        trk[0].p[P_DLY] = 40;
-        frames(48);
-        s0 = rows_sig(FXS_STATE);
-        song.g[G_DMODE] = DMD_DIGITAL; song.g[G_DTIME] = 0; song.g[G_RTYPE] = 2; song.g[G_RSIZE] = 90;
-        frames(48);
-        s1 = rows_sig(FXS_DELAY); s2 = rows_sig(FXS_REVERB);
-        song.g[G_DTIME] = 1; song.g[G_RSIZE] = 100;
-        frames(48);
-        expect("  .. the delay time and the reverb size change their rows: the DELAY and REVERB rows are redrawn, the state line is not changed",
-               rows_sig(FXS_DELAY) != s1 && rows_sig(FXS_REVERB) != s2 && rows_sig(FXS_STATE) == s0);
-        song.g[G_DMODE] = DMD_RAND; song.g[G_RTYPE] = 5; song.g[G_DTIME] = 1; song.g[G_RSIZE] = 90;
-        frames(48);
-        s1 = rows_sig(FXS_DELAY);
-        song.g[G_DTIME] = 2;
-        frames(48);
-        expect("  .. the time is on the DELAY row in RAND too: the row changes with it", rows_sig(FXS_DELAY) != s1);
-        song.g[G_DTIME] = 1;
-        frames(48);
-        s0 = rows_sig(FXS_STATE); s1 = rows_sig(FXS_DELAY); s2 = rows_sig(FXS_REVERB);
-        trk[0].p[P_CHOR] = 22;
-        frames(48);
-        expect("  .. a send level changed on the FX page does not show here (no levels on this page)", rows_sig(FXS_STATE) == s0 && rows_sig(FXS_DELAY) == s1 && rows_sig(FXS_REVERB) == s2);
-        trk[0].p[P_CHOR] = 0;
-        frames(48);
-        expect("  .. a chorus send of 0: the state line says CHORUS INACTIVE", rows_sig(FXS_STATE) != s0 && rows_has(FXS_STATE, "CHORUS INACTIVE"));
-        trk[0].p[P_CHOR] = 20;
-        s1 = rows_sig(FXS_DELAY); s2 = rows_sig(FXS_REVERB);
-        song.g[G_DMODE] = DMD_DIGITAL; song.g[G_RTYPE] = 1;
-        frames(48);
-        expect("  .. the rows follow the mode and the type", rows_sig(FXS_DELAY) != s1 && rows_sig(FXS_REVERB) != s2);
-        s1 = rows_sig(FXS_DELAY);
-        SETMODE(DM_SPLIT);
-        song.g[G_DMODE] = DMD_RAND;
-        frames(48);
-        expect("  .. DUEL (0.2.22: every mode works there, mono): the DELAY row carries the mode (RANDOM); the part's sends are real (no INACTIVE)", rows_sig(FXS_DELAY) != s1 && rows_has(FXS_DELAY, "RANDOM") && rows_has(FXS_STATE, "ALL THREE ACTIVE"));
-        s1 = rows_sig(FXS_DELAY);
-        song.g[G_DMODE] = DMD_PING;
-        frames(48);
-        expect("  .. DUEL, PING (the plain delay in mono): the row says PING-PONG, not RANDOM", rows_sig(FXS_DELAY) != s1 && !rows_has(FXS_DELAY, "RANDOM"));
-    }
-    SETMODE(DM_STEREO);
-    song.g[G_DMODE] = DMD_RAND; song.g[G_RTYPE] = 2;
-    frames(48);
-    memcpy(g, song.g, sizeof g);
-    memcpy(p0, trk[0].p, sizeof p0); memcpy(p1, trk[1].p, sizeof p1);
-    turn(EN_K4, -3);
-    expect("  .. K4: nothing (no page change, no value changes)", ui.page == fx1 + 1u && !memcmp(g, song.g, sizeof g));
-    for (i = 0; i < 6u; i++) {
-        static const int8_t KN[6] = {1, -1, 1, -1, 1, -1};
-        static const char *const T[3] = {"CHORUS", "DELAY 1/2", "REVERB"};
-        uint32_t k = i / 2u;
-        char msg[96];
-        enter(fx1 + 1u);
-        frames(48);
-        turn(EN_K1 + k, KN[i]);
-        frames(8);
-        snprintf(msg, sizeof msg, "K%u %s: the %s page of GLO, an explicit jump; no value changed", k + 1u, KN[i] > 0 ? "right" : "left", T[k]);
-        expect(msg, str_eq(cur_page()->title, T[k]) && cur_page()->fam == FAM_GLO && !memcmp(g, song.g, sizeof g) && !memcmp(p0, trk[0].p, sizeof p0) && !memcmp(p1, trk[1].p, sizeof p1));
-        if (!(i & 1u)) {
-            turn(EN_K1 + k, 1); turn(EN_K1 + k, 1);
-            expect("  .. the rest of that twist does not move the new page's first card", !memcmp(g, song.g, sizeof g) && !memcmp(p0, trk[0].p, sizeof p0));
-        }
-        if (i == 2u)
-            expect("  .. GLO remembers it (a tap of FX then GLO comes back to it)", ui.fam_last[FAM_GLO] == ui.page);
-        frames(600);
-        last = ui.page;
-    }
-    (void)last;
-    press(B_FX);
-    frames(48);
-    expect("  .. a tap of FX: back to the FX family's last page", cur_page()->fam == FAM_FX);
-    /* SENDS OFF (item 125): the page is the SENDS notice, a knob jumps to MODULES */
-    enter(fx1 + 1u);
+    /* SENDS OFF (item 125): GLO's CHORUS is the SENDS notice, a knob jumps to MODULES */
+    go_title("CHORUS");
     mods_put(MODS_SENDS, 1u);
     frames(48);
-    expect("SENDS OFF (item 125): SEND FX is a SENDS notice page, no rows (the notice itself and the jump are ui_render.c off_check's)", off_module(cur_page()) == MODS_SENDS && !rows_has(FXS_DELAY, "RANDOM") && !rows_has(FXS_LABELS, "CHORUS"));
+    expect("SENDS OFF (item 125): GLO's CHORUS is a SENDS notice page", off_module(cur_page()) == MODS_SENDS);
     turn(EN_K2, 1);
     frames(8);
-    expect("  .. a twist of K2 jumps to GLO > MODULES (item 125: was DELAY 1/2)", str_eq(cur_page()->title, "MODULES"));
+    expect("  .. a twist of K2 jumps to GLO > MODULES (item 125)", str_eq(cur_page()->title, "MODULES"));
     mods_put(MODS_SENDS, 0u);
     /* the GLO family's pages keep both badges */
-    enter(page_first(FAM_GLO) + 1u);
+    go_title("CHORUS");
     frames(8);
     expect("GLO's CHORUS page: both badges (global scope)", badge_lit() == 3u);
-    /* SELECT: round the FX family and onwards to the first page */
-    enter(fx1 + 1u);
-    turn(EN_SELECT, 1);
-    frames(48);
-    expect("SELECT right from SEND FX: on to INSERT 1/2", ui.page == fx1 + 2u && song.g[G_BPM] == bpm0);
 }
 
 /* T0227 (owner): CONTROLS MOVE LEFT. A page with a hidden card in the middle: the cards that show take K1, K2, .. in the page's order, the columns after

@@ -732,10 +732,10 @@ static __attribute__((noinline)) void mod_voice(track_t *t, voice_t *v, vmod_t *
 ' ''
            sc_mut "STEPS' hysteresis removed (eng_wave.c wave_steps: the nearest place every block)" wave_test.c firmware/src/eng_wave.c 'if (wv_stn[ti][vi] != n1 || 4 * (d < 0 ? -d : d) > 3 * (127 << 8)) {' 'if (1) {'
            [ $sc = 0 ] && echo "   PASS" || fail=1 ;;
-  # ---- cloud job H: the pages of the TWIN FILTER (TWIN FILTER, TWIN MOD, TWIN CHAIN), SUB OSC and CYCLE ENV 1/2, 2/2, the graphs of both filters, QUICK MULTI's four cards (docs/design/FILTER_PAGES_PROPOSAL.md Option B,
+  # ---- cloud job H: the pages of the TWIN FILTER (TWIN FILTER, TWIN MOD, TWIN CHAIN), SUB OSC and CYCLE ENV 1/2, 2/2, the graphs of both filters, QUICK EDIT's four cards (docs/design/FILTER_PAGES_PROPOSAL.md Option B,
   # SUB_AND_CYCLE_DESIGN.md A4 / B4 / C3; the owner's answers of 2026-10-19). tests/pages_test.c: (a) every label and value of every new card in every state against the unit's font table (labels 50 px, values 49 px) and the
   # titles in the header, (b) the pages: skipped while TYPE is OFF, the footer's count, the fall back when the page vanishes (a write, a multi load, INIT SOUND, the knob), COMB not offered on WAVE and PHYS, LINK and TYPE through
-  # twin_link_set / twin_type_set, (c) which cards show and where (hide-inert, moved left), the centre-filled gauges, DRIVE OFF, BLEND's ends, WAVE's STEPS card, (d) QUICK MULTI for filter 2 OFF / LINKED / UNLINKED / COMB, (e) the
+  # twin_link_set / twin_type_set, (c) which cards show and where (hide-inert, moved left), the centre-filled gauges, DRIVE OFF, BLEND's ends, WAVE's STEPS card, (d) QUICK EDIT for filter 2 OFF / LINKED / UNLINKED / COMB, (e) the
   # matrix names, (f) the pictures, (g) the SUB OSC and CYCLE ENV cards. (The layout lint over the new pages in both shapes of filter 2 is in `ui`: tests/ui_render.c twin_pass.) The existing UI renders: tests/pages_fp.c draws every
   # page of every family on every engine and the QUICK layers in four parts (header, cards, panel, footer) and hashes them; the base (git ref cloud/base3-wave3, or PAGES_BASE_REF) is built the same way from `git archive`, and
   # tests/pages_fp_diff.py lists what differs: by design only the footer's page counter on the EDIT and ENV pages and the new pages (never regenerated: it only prints; exit 1 on anything else)

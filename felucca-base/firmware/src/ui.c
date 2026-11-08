@@ -450,17 +450,15 @@ static uint32_t mods_fade_vp(const int16_t *vp)
 }
 /* DUELL 1.1 item 125: the module (MODS_*) whose switch in GLO > MODULES is OFF and whose function page pg is: such a page shows only a notice (ui_graph.c graph_off) and every knob of it jumps to MODULES
  * (ui_input.c off_knob); 0 for every other page and while the module is on. ARP: the ARP pages; SEQ: STEP, PARAMETER LOCKS, PATTERNS; SENDS: CHORUS, DELAY 1/2, 2/2, REVERB, SHIMMER,
- * the part's SEND FX; PART FX: the part's FX, INSERT, EQ, DUCK pages (the quick layers ARP and SEQ: off_layer, ui_draw.c) */
+ * the part's SEND FX; PART FX: the part's FX, INSERT, EQ, DUCK pages and GLO's SIDECHAIN (the quick layers ARP and SEQ: off_layer, ui_draw.c) */
 static uint32_t off_module(const page_t *pg)
 {
     uint32_t b = 0;
     if (pg->scope == SC_PERF)
         return 0;
-    if (pg->scope == SC_FXSUM)
-        b = MODS_SENDS;
-    else if (pg->fam == FAM_GLO && pg->scope == SC_GLOBAL)
+    if (pg->fam == FAM_GLO && pg->scope == SC_GLOBAL)
         b = mods_of(1, pg->id[0]) == MODS_SENDS ? MODS_SENDS : 0u;
-    else if (pg->fam == FAM_FX && pg->scope == SC_TRACK)
+    else if ((pg->fam == FAM_FX && pg->scope == SC_TRACK) || pg->graph == GR_SCHAIN)
         b = MODS_PFX;
     else if (pg->fam == FAM_ARP)
         b = MODS_ARP;
@@ -711,7 +709,6 @@ static void mode_knob(uint32_t slot, int32_t s);
 static void test_knob(uint32_t slot, int32_t s);
 static void scale_knob(uint32_t slot, int32_t steps);
 static void mods_knob(uint32_t slot, int32_t steps);
-static void fxsum_knob(uint32_t slot, int32_t steps);
 static void step_edit(uint32_t slot, int32_t steps);
 static void glo_knob(uint32_t k, int32_t s);
 static int reset_morph(uint32_t k);
@@ -735,7 +732,6 @@ static const scope_ops_t SCOPE_OPS[] = {
     {SC_SCALE, 0x07u, 1, scale_knob, reset_scale},     /* K1 SCALE, K2 ROOT, K3 OFF-SCALE; K4 is an empty column */
     {SC_MIDI, 0x0Fu, 0, 0, reset_midi},                /* (its knobs: the page's id slots decide, edit_param) */
     {SC_MODS, 0x0Fu, 12, mods_knob, reset_mods},
-    {SC_FXSUM, 0x07u, 9, fxsum_knob, 0},
     {SC_GMIX, 0x0Fu, 0, glo_knob, reset_glo},          /* GLO's MIXER: LEVEL 1, LEVEL 2, PAN 1, PAN 2 */
     {SC_STEP, 0x0Fu, 0, step_edit, 0},
     TIDE_SCOPE_OPS                                     /* TIDE hook (TIDE, TIDE LIST) */
@@ -2044,14 +2040,14 @@ static void track_select(uint32_t i)
 /* Pages whose purpose is an action (SAVE > USER, PATTERNS, PROJECT, TOOLS, SEQ > PARAMETER LOCKS): the knobs pick,
  * OCT+ does it, OCT- cancels the picked action or goes HOME (ui_input.c). There OCT- / OCT+ do not
  * shift the octave */
-static int go_id(uint32_t id) { return id == G_LOAD || id == G_SAVE || id == G_CLRSEQ || id == G_INITSND; }
+static int go_id(uint32_t id) { return id == G_LOAD || id == G_SAVE || id == G_INITSND; }
 
 static uint32_t act_cols(void)                   /* the columns that are actions, a bit each; 0 = not such a page */
 {
     const page_t *pg = cur_page();
     uint32_t c, m = 0;
     if (pg->graph == GR_EVENTS) return 16u;     /* PARAMETER LOCKS: no knob is an action; OCT+ by the row (ev_oct) */
-    if (pg->graph == GR_TOOLS) return up_count() ? 7u : 3u;   /* CLEAR (the pattern), INIT (the sound), RESTORE (all slots; none when none holds a saved sound) */
+    if (pg->graph == GR_TOOLS) return up_count() ? 3u : 1u;   /* INIT (the sound), RESTORE (all slots; none when none holds a saved sound) */
     if (pg->graph == GR_PATS)
         return 6u;                               /* LOAD SAVE (K2, K3: a pattern slot P1..P16) */
     if (pg->graph == GR_SLOTS)
@@ -2075,12 +2071,12 @@ static const char *act_name(uint32_t c)          /* column c's action (the foote
     uint32_t id = cur_page()->id[c & 3u];
     if (cur_page()->graph == GR_EVENTS) return ev_act_name();
     if (cur_page()->graph == GR_TOOLS) {
-        static const char *const actions[] = {"CLEAR", "INIT", "RESTORE", ""};
+        static const char *const actions[] = {"INIT", "RESTORE", "", ""};
         return actions[c & 3u];
     }
     if (cur_page()->graph == GR_PATS || cur_page()->graph == GR_SLOTS)
         return c == 2u ? "SAVE" : "ON";   /* K2 LOAD, K3 SAVE */
-    return id == G_CLRSEQ ? "CLEAR" : id == G_INITSND ? "INIT" : id == G_LOAD ? "ON" : "SAVE";
+    return id == G_INITSND ? "INIT" : id == G_LOAD ? "ON" : "SAVE";
 }
 
 /* the picked action would do something now (OCT+ breathes): another pattern, a saved slot, stopped for
@@ -2091,8 +2087,8 @@ static int act_ready(void)
     if (!c--)
         return 0;
     if (cur_page()->graph == GR_EVENTS) return ev_act_ready();
-    if (cur_page()->graph == GR_TOOLS)                  /* one case per column: CLEAR PAT, INIT, RESTORE ALL */
-        return c == 0u ? !seq_is_empty(TSEL) || motion_count(TSEL) : c == 1u ? 1 : up_count() > 0u;
+    if (cur_page()->graph == GR_TOOLS)                  /* one case per column: INIT, RESTORE ALL */
+        return c == 0u ? 1 : up_count() > 0u;
     if (cur_page()->graph == GR_PATS) {                 /* LOAD: another pattern; SAVE: any slot */
         if (c == 2u) return 1;
         return pat_last[s] != pat_pick() + 1u || steps_sig(TSEL) != pat_sig[s];
@@ -2104,7 +2100,5 @@ static int act_ready(void)
         return project_used((uint32_t)song.g[G_SLOT] - 1u);
     if (id == G_SAVE)
         return !song.playing;
-    if (id == G_CLRSEQ)
-        return !seq_is_empty(TSEL);
     return 1;
 }

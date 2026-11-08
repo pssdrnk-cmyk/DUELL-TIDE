@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* Cloud job H, the pages of the TWIN FILTER, SUB OSC, CYCLE ENV and the QUICK MULTI layer (docs/design/FILTER_PAGES_PROPOSAL.md Option B with the owner's answers, SUB_AND_CYCLE_DESIGN.md A4 / B4 / C3).
+/* Cloud job H, the pages of the TWIN FILTER, SUB OSC, CYCLE ENV and the QUICK EDIT layer (docs/design/FILTER_PAGES_PROPOSAL.md Option B with the owner's answers, SUB_AND_CYCLE_DESIGN.md A4 / B4 / C3).
  *   (a) fit      every label and value of every new card in every state against the unit's font table (labels 50 px in the small font, values 49 px: medium, then small), and the page titles in the
  *                header (about 150 px): the worst widths are printed
  *   (b) pages    visibility: TWIN MOD and TWIN CHAIN skipped while TYPE is OFF (page buttons, SELECT), the footer's page count, the fall back when the page under the cursor vanishes (TYPE set to OFF
  *                by a direct write as MIDI and the editor do, by a multi load, by INIT SOUND, by the knob); COMB is not offered on WAVE and PHYS; LINK and TYPE go through twin_link_set / twin_type_set
  *   (c) cards    which cards show, in which column (hide-inert and the move to the left), for every TYPE, LINK on and off, COMB; the knob addresses the card that shows; filter 1's cards never hide;
  *                the centre-filled gauge of OFFSET, TUNE, FDBK and BLEND (pixels); DRIVE OFF; BLEND's ends; the STEPS card of WAVE
- *   (d) quick    QUICK MULTI's four cards for filter 2 OFF, ON and LINKED (and COMB), ON and UNLINKED
+ *   (d) quick    QUICK EDIT's four cards for filter 2 OFF, ON and LINKED (and COMB), ON and UNLINKED
  *   (e) names    the matrix destination names of the new rows (names only: job B made the rows)
  *   (f) graphs   the three new graph kinds draw something, the TWIN pages' pictures follow the state, the signature follows the extension slots
  * Built and run by DUELL/host_tests.sh (name: pages): the UI sources against ui_test.c's stub display and knobs. */
@@ -479,7 +479,7 @@ static void test_quick(void)
     open_quick();
     qp = ly_page(LAYER_EDIT);
     ok = ui.layer == LAYER_EDIT && qp->id[0] == P_FREEA && qp->id[1] == P_FREEB && qp->id[2] == P_FREEC && qp->id[3] == P_REL;
-    expect("(d) QUICK MULTI, filter 2 OFF: CUT, RES, MODE, AMP REL (as today)", ok);
+    expect("(d) QUICK EDIT, filter 2 OFF: CUT, RES, MODE, AMP REL (as today)", ok);
     expect("(d) .. its cards", cards_are("CUTOFF|", "RES|", "MODE|", "RELEASE|") || cards_are("CUTOFF|", "RES|", "MODE|", "REL"));
     close_quick();
 

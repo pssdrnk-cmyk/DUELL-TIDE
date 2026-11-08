@@ -48,25 +48,8 @@ static int transition_ok(uint32_t page, uint32_t knob)
 int main(void)
 {
     int bad = 0;
-    uint32_t from = knob_test_page("SEND FX");
-    uint32_t fx = glo_page(SC_GLOBAL, UINT32_MAX, FXSUM_TO[0]);
     uint32_t sidechain = glo_page(UINT32_MAX, GR_SCHAIN, UINT32_MAX);
     uint32_t modules = glo_page(SC_MODS, UINT32_MAX, UINT32_MAX);
-
-    ui_power_on();
-    ui.page = (uint8_t)from;
-    page_entered();
-    turn(EN_K1, 1);
-    bad += check("panel K1 from SEND FX commits the mapped GLO page and detent quiet state",
-                 ui.page == fx && ui.fam_last[FAM_GLO] == fx && kr_on[0] && kr_t[0] == fm1_ms);
-    {
-        int16_t chorus = song.g[G_CRATE];
-        turn(EN_K1, 1);
-        bad += check("the in-flight K1 detent is swallowed on the new page", song.g[G_CRATE] == chorus && kr_on[0]);
-        frames(KR_QUIET_MS + 32u);
-        turn(EN_K1, 1);
-        bad += check("K1 edits the GLO page after the quiet interval", song.g[G_CRATE] != chorus);
-    }
 
     prepare_jump(knob_test_page("DUCK 1/2"));
     schain_jump(3u, 1);
@@ -75,10 +58,6 @@ int main(void)
     prepare_jump(knob_test_page("FX"));
     off_knob(2u, 1);
     bad += check("OFF-module link commits MODULES and suppresses the initiating knob tail", transition_ok(modules, 2u));
-
-    prepare_jump(from);
-    fxsum_knob(1u, 0);
-    bad += check("zero-step SEND FX input remains a no-op", ui.page == from && !kr_on[1]);
 
     printf(bad ? "knob jump: %d FAILED\n" : "knob jump: all passed\n", bad);
     return bad ? 1 : 0;
