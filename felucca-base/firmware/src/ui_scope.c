@@ -8,11 +8,12 @@
  *   3 trigger the ring smoothed (a 10-point kernel); rising crossings of its middle that come after a clear dip (the Pico scope's hysteresis), found to 1/16 of an entry; of those in the last 3.5
  *             periods the steepest (70 % of the steepest), and of those the one whose first 16 points match the last picture's best
  *   4 window  2.5 periods of the median crossing distance when it is steady (160 .. 360 entries), else the last one
- *   5 ridge   76 points (1 to 5 linear samples across each point's share of the window), smoothed over neighbours twice, the middle of the line's range taken out
+ *   5 ridge   72 points (1 to 5 linear samples across each point's share of the window), smoothed over neighbours twice, the middle of the line's range taken out
  *   6 gain    the peak of the window: a rise of more than 6 % at once, a fall of more than 12 % by 1/16 a step (about a second), never under WL_FLOOR: soft is small, loud fills, a beat stays a beat
  *   7 stack   the last 4 ridges, the newest in front, each older one a step higher and fainter, every line hiding what is under it; silence: one flat line in the middle
  * Samples inside are the ring's 8-bit steps times 16 (the interpolation's fraction), so a crossing keeps its 1/16 entry on a quiet note. */
-#define WL_NP 76                                     /* points of a ridge: x = MV_BX0 + 3 p */
+#define WL_NP 72                                     /* points of a ridge: x = WL_X0 + 3 p (22 .. 235: the bar and the part's number stand to the left) */
+#define WL_X0 22
 #define WL_HN 4                                      /* ridges kept */
 #define WL_R 400u                                    /* entries read (ring 512) */
 #define WL_MINW 160u
@@ -280,8 +281,15 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
     int32_t amp = hs * 2 / 5, nr, nf, step, i, p, nd;
     if (hs < 4)
         return;
-    if (hot)
-        cv_rect(1, y0 + 1, 3, y1 - y0 - 2, T_PFILL(k));
+    {   /* the selected part: a bar at the half's edge and its number in a filled pill (AUTO TIDE's cue: it works on MONO and GREY too); the other part's number plain, dimmed */
+        const int32_t ty = (y0 + y1) / 2;
+        const uint16_t kc = hot ? T_PTHEME(k) : ux.bw ? T_DIM : ux_mix(T_BG, T_PTHEME(k), 40);
+        if (hot) {
+            cv_rect(1, y0 + 1, 3, y1 - y0 - 2, T_PFILL(k));
+            cv_rrect(UT_A_K1_DOT_X - 4, ty - 5, 14, 11, 2, kc, T_BG);
+        }
+        cv_text_on(UT_A_K1_DOT_X, UT_TY(S, ty + AF_S_CAP_H / 2), &AF_S, k ? "2" : "1", hot ? T_INK : kc, hot ? kc : T_BG);
+    }
     if (hs > 30)                                     /* (the old non-grid box) */
         amp = hs * 3 / 5;
     step = (y1 - y0 - 2 * amp - 3) / ((int32_t)WL_HN - 1);
@@ -296,7 +304,7 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
         int32_t yb = (y0 + y1 - 1) / 2 + ((nr - 1) - 2 * i) * step / 2, py = 0;
         uint16_t col = mv_col(k, pct, i * 90 / nf + (hot ? 0 : 45));
         for (p = 0; p < WL_NP; p++) {
-            int32_t x = MV_BX0 + 3 * p, y = yb + (s->hn ? s->dy[i][p] * amp / hs : 0);
+            int32_t x = WL_X0 + 3 * p, y = yb + (s->hn ? s->dy[i][p] * amp / hs : 0);
             y = clamp(y, y0, y1 - 1);
             if (y + 1 < y1)
                 cv_rect(x, y + 1, 3, y1 - y - 1, T_BG);
