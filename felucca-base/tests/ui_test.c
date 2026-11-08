@@ -9301,8 +9301,8 @@ static int test_item158_pages(void)
     }
 #else
     {   /* TIDE (the MODE page's cards, now rows of TIDE SETTINGS): K1 is the page's one card (SETTING + the row picked, left), K2 .. K4 turn the picked row's value and draw no card;
-         * XFADE and SPLIT say LAYER ONLY outside LAYER, MODE never does */
-        uint32_t k, row, lay, has_set, has_row, has_need, k24;
+         * XFADE and SPLIT say LAYER ONLY outside LAYER, PLAY MODE never does. The K1 card is found by its label SETTING and the name after it on the same line (not the list row's name, lower down) */
+        uint32_t k, row, lay, has_set, has_row, has_need, k24, set_k;
         static const char *const NAME[3] = {"PLAY MODE", "XFADE", "SPLIT"};
         ui_power_on();
         settings.palette = 0; palette_set(0);
@@ -9315,15 +9315,49 @@ static int test_item158_pages(void)
                 frames(64);
                 screen_read();
                 has_set = has_row = has_need = k24 = 0;
+                set_k = txt_n;
+                for (k = 0; k < txt_n; k++)
+                    if (!strcmp(txt_log[k].s, "SETTING") && txt_log[k].x0 < 78) {
+                        has_set = 1;
+                        set_k = k;
+                    }
                 for (k = 0; k < txt_n; k++) {
-                    has_set |= !strcmp(txt_log[k].s, "SETTING") && txt_log[k].x0 < 78;
-                    has_row |= !strcmp(txt_log[k].s, NAME[row]) && txt_log[k].x0 < 78 && txt_log[k].y0 > 24;
+                    has_row |= has_set && !strcmp(txt_log[k].s, NAME[row]) && txt_log[k].x0 > txt_log[set_k].x1 && abs(txt_log[k].y0 - txt_log[set_k].y0) <= 3;   /* (the card's line: the label, then the name on the same line; the list's row is lower) */
                     has_need |= !strcmp(txt_log[k].s, "LAYER ONLY");
                     k24 |= (!strcmp(txt_log[k].s, "SETTING") || !strcmp(txt_log[k].s, "VALUE")) && txt_log[k].x0 >= 82;
                 }
-                snprintf(m, sizeof m, "TIDE SETTINGS, %s row picked, %s: K1 card SETTING + %s on the left, K2 .. K4 draw no card, 'LAYER ONLY' %s", NAME[row], lay ? "LAYER" : "DUEL", NAME[row],
+                snprintf(m, sizeof m, "TIDE SETTINGS, %s row picked, %s: K1 card SETTING + %s, K2 .. K4 draw no card, 'LAYER ONLY' %s", NAME[row], lay ? "LAYER" : "DUEL", NAME[row],
                          row && !lay ? "shown" : "not shown");
                 bad += check(m, has_set && has_row && !k24 && has_need == (row && !lay));
+            }
+    }
+    {   /* the drawn colour of the list's values (the b613526 bug: the MODE value drew dim): K1 on the last row, so PLAY MODE and XFADE are unpicked rows; their value text's pixels */
+        uint32_t k, lay, row;
+        for (lay = 0; lay < 2u; lay++)
+            for (row = 0; row < 2u; row++) {
+                char m[120], want[12];
+                uint32_t ndim = 0, ntheme = 0, found = 0;
+                ui_power_on();
+                settings.palette = 0; palette_set(0);
+                ui_mode_set = duell_mode_req = duell_mode = lay ? DM_LAYER : DM_SPLIT;
+                mix_xf = 50;
+                go_title("TIDE SETTINGS");
+                jl_sel = JL_SPLIT;
+                frames(64);
+                snprintf(want, sizeof want, "%s", row ? "%" : lay ? "LAYER" : "DUEL");   /* (XFADE: the text ending in %) */
+                screen_read();
+                for (k = 0; k < txt_n; k++)
+                    if (txt_log[k].x0 > 120 && (row ? txt_log[k].s[strlen(txt_log[k].s) - 1u] == '%' : !strcmp(txt_log[k].s, want))) {
+                        int32_t x, y;
+                        found = 1;
+                        for (y = txt_log[k].y0; y <= txt_log[k].y1; y++)
+                            for (x = txt_log[k].x0; x <= txt_log[k].x1; x++) {
+                                ndim += host_screen[y * 240 + x] == I157_PX(T_DIM);
+                                ntheme += host_screen[y * 240 + x] == I157_PX(T_THEME);
+                            }
+                    }
+                snprintf(m, sizeof m, "TIDE SETTINGS drawn: the %s value (%s) is %s", row ? "XFADE" : "PLAY MODE", lay ? "LAYER" : "DUEL", row && !lay ? "dim" : "in the theme colour");
+                bad += check(m, found && (row && !lay ? ndim > 0u && ntheme == 0u : ntheme > 0u && ndim == 0u));
             }
     }
 #endif

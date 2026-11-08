@@ -475,8 +475,8 @@ static int rec_tap(void)                                /* 1: the arming changed
     if ((song.rec & bit) && cur_page()->graph == GR_ROLL)
         ui_message("KEYS RECORD LIVE");               /* (seq_entry pauses while armed and playing) */
 #if DUELL_TIDE
-    if ((song.rec & bit) && trk[song.sel].p[P_AMODE] == AM_SEQ_ID)   /* TIDE (audit liverec L2): keys only transpose an ARP SEQ pattern, the knobs record */
-        ui_message("ARP SEQ: KNOBS RECORD");
+    if ((song.rec & bit) && trk[song.sel].p[P_AMODE] == AM_SEQ_ID)   /* TIDE (audit liverec L2): keys record into an ARP SEQ pattern (R2) */
+        ui_message("ARP SEQ: KEYS RECORD");
 #endif
     return 1;
 }

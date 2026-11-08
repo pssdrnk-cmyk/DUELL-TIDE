@@ -5,7 +5,7 @@
  *                  left: glide to A, right: to B, two detents to stop a running glide), K2 MODE (ONCE / LOOP / DRIFT / WNDR / JRNY), K3 TIME
  *                  (bars), K4 WAIT; OCT- + K1 back to the Original, + K2 an ARC drop, + K3 / K4 TIME and WAIT to the STYLE's   ... play
  *   TIDE SETTINGS  (GR_TIDELIST) the settings in a list, as the MENU's: K1 picks the row, OCT+ or K2..K4 the next value, OCT- the one before.
- *                  STYLE, TARGET, VARY BARS, ROLL, ROLL ARP, ROLL PITCH, WASH, TURNS, POLY, SYNC, ARC, PLAY MODE, XFADE, SPLIT (JL_NAME)             ... set and forget
+ *                  STYLE, TARGET, VARY BARS, ROLL, ROLL ARP, ROLL PITCH, WASH, TURNS, POLY, SYNC, ARC, REC, PLAY MODE, XFADE, SPLIT (JL_NAME)        ... set and forget
  * LINK: TARGET SND+SEQ links the two faders: GLIDE moves both, and the MORPH fader moved by hand (the MORPH page, the mod wheel, CC 70:
  * ui_input.c morph_act) moves the SEQ fader with it (tide_link). ALGORITHM is the morph's selector here too: PART 1, BOTH, PART 2
  * (morph_mask). The panel shows both faders with the glide on them, and the selected part's 16 steps as they play: varied ones
@@ -133,8 +133,8 @@ static void tide_link(uint32_t mask, uint32_t v)
 }
 
 /* ---------------------------------------------------------------- TIDE SETTINGS --- */
-enum { JL_STYLE, JL_TARGET, JL_VARY, JL_ROLL, JL_ARP, JL_PITCH, JL_WASH, JL_TURNS, JL_POLY, JL_SYNC, JL_ARC, JL_MODE, JL_XFADE, JL_SPLIT, JL_N };   /* (MODE, XFADE, SPLIT: the output mode's own settings, not part of STYLE; they go through ui_input.c mode_knob, whose header describes the old MODE page: TIDE's rows are these three) */
-static const char *const JL_NAME[JL_N] = {"STYLE", "TARGET", "VARY BARS", "ROLL", "ROLL ARP", "ROLL PITCH", "WASH", "TURNS", "POLY", "SYNC", "ARC", "PLAY MODE", "XFADE", "SPLIT"};
+enum { JL_STYLE, JL_TARGET, JL_VARY, JL_ROLL, JL_ARP, JL_PITCH, JL_WASH, JL_TURNS, JL_POLY, JL_SYNC, JL_ARC, JL_REC, JL_MODE, JL_XFADE, JL_SPLIT, JL_N };   /* (REC: live recording's; MODE, XFADE, SPLIT, the last three: the output mode's own settings; none part of STYLE; they go through ui_input.c mode_knob, whose header describes the old MODE page: TIDE's rows are these three) */
+static const char *const JL_NAME[JL_N] = {"STYLE", "TARGET", "VARY BARS", "ROLL", "ROLL ARP", "ROLL PITCH", "WASH", "TURNS", "POLY", "SYNC", "ARC", "REC", "PLAY MODE", "XFADE", "SPLIT"};
 static uint8_t jl_sel;                                   /* the row picked (K1) */
 static void morph_act(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi);   /* (ui_input.c) */
 static void tide_pick_mode(void) { jl_sel = JL_MODE; }   /* HOME OPENS = MODE (ui.c go_main_to): TIDE SETTINGS with the MODE row picked */
@@ -182,7 +182,7 @@ static void tide_custom_take(void)
 /* TURNS, POLY, SYNC and ARC act only in automatic MUSIC WNDR / JRNY with the SEQ gliding (glide_poll: sqm_auto): what row r lacks now (0: it acts) */
 static __attribute__((noinline)) const char *jl_needs(uint32_t r)
 {
-    if (r < JL_TURNS || r == JL_MODE)
+    if (r < JL_TURNS || r == JL_REC || r == JL_MODE)   /* (REC acts whatever the mode: it is live recording's) */
         return 0;
     if (r >= JL_XFADE)                                   /* XFADE and SPLIT are LAYER's only */
         return duell_mode_req == DM_LAYER ? 0 : "LAYER ONLY";
@@ -191,18 +191,18 @@ static __attribute__((noinline)) const char *jl_needs(uint32_t r)
 /* does row r's value draw dim (it does nothing now)? nd: jl_needs(JL_TURNS). MODE always acts; XFADE and SPLIT need LAYER; TURNS .. ARC need nd (tests/mode_test.c checks this) */
 static int jl_dimmed(uint32_t r, const char *nd)
 {
-    return r == JL_MODE ? 0 : r >= JL_XFADE ? jl_needs(r) != 0 : r >= JL_TURNS && nd != 0;
+    return r >= JL_REC ? jl_needs(r) != 0 : r >= JL_TURNS && nd != 0;   /* (REC, MODE: jl_needs says 0) */
 }
 /* the rows as tables: how many values each has, its byte (STYLE, TARGET and the plain rows; ROLL, ARP and PITCH are the morph's), the values'
  * names, and the header message a change shows: the prefix + the value's name, or a message of its own (TARGET, VARY BARS, TURNS) */
-static const uint8_t JL_NV[JL_N] = {6, 3, 2, 3, 2, 2, 4, 3, 3, 3, 3, 3, 101, 129};   /* (XFADE 101: mix_xf 0..100 %; SPLIT 129: mix_split 0 = OFF, then note + 1 up to 128) */
+static const uint8_t JL_NV[JL_N] = {6, 3, 2, 3, 2, 2, 4, 3, 3, 3, 3, 2, 3, 101, 129};   /* (XFADE 101: mix_xf 0..100 %; SPLIT 129: mix_split 0 = OFF, then note + 1 up to 128) */
 static volatile uint8_t *const JL_VAR[JL_N] = {[JL_STYLE] = &tide_style, [JL_TARGET] = &gl.target, [JL_VARY] = &sqm_vary_all, [JL_WASH] = &morph_wlvl,
-                                               [JL_TURNS] = &sqm_turns, [JL_POLY] = &sqm_poly, [JL_SYNC] = &sqm_sync, [JL_ARC] = &sqm_arc};
+                                               [JL_TURNS] = &sqm_turns, [JL_POLY] = &sqm_poly, [JL_SYNC] = &sqm_sync, [JL_ARC] = &sqm_arc, [JL_REC] = &tide_rec_replace};   /* (REC is no part of a STYLE: seq.c, live recording) */
 static const char *const JL_V[] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK", "CUSTOM", "SOUND", "SEQ", "SND+SEQ", "EVERY 4TH", "EVERY BAR", "MUSIC", "SMART", "WILD",
                                    "OFF", "ON", "OFF", "ON", "OFF", "LOW", "MID", "HIGH", "TOGETHER", "TAKE TURNS", "LEAD", "OFF", "GENTLE", "WIDE",
-                                   "OFF", "SOFT", "PUSH", "OFF", "RISE", "DROP", "LAYER", "STEREO", "DUEL"};
-static const uint8_t JL_V0[JL_N] = {0, 6, 9, 11, 14, 16, 18, 22, 25, 28, 31, 34, 0, 0};   /* (each row's first name in JL_V) */
-static const char *const JL_SAY[JL_N] = {"STYLE ", 0, 0, "", "", "", "WASH ", 0, "POLY ", "SYNC ", "ARC ", 0, 0, 0};
+                                   "OFF", "SOFT", "PUSH", "OFF", "RISE", "DROP", "LAYER", "STEREO", "DUEL", "ADD", "REPLACE"};
+static const uint8_t JL_V0[JL_N] = {0, 6, 9, 11, 14, 16, 18, 22, 25, 28, 31, 37, 34, 0, 0};   /* (each row's first name in JL_V) */
+static const char *const JL_SAY[JL_N] = {"STYLE ", 0, 0, "", "", "", "WASH ", 0, "POLY ", "SYNC ", "ARC ", "REC ", 0, 0, 0};
 static const char *const JL_OWN[8] = {"GLIDE SOUND", "GLIDE SEQ", "GLIDE SOUND + SEQ", "VARY EVERY 4TH", "VARY EVERY BAR",
                                       "PARTS VARY TOGETHER", "PARTS TAKE TURNS", "PARTS LEAD IN TURNS"};
 static uint32_t jl_n(uint32_t r) { return JL_NV[r % JL_N]; }
@@ -241,7 +241,7 @@ static void jl_put(uint32_t r, uint32_t v)
     uint32_t pi = song.sel, mask = morph_mask(pi);
     const char *say;
     r %= JL_N, v %= JL_NV[r];
-    if (r >= JL_MODE) {                                  /* the old MODE page's knobs, by steps from where the value is (mode_knob: its message, its limits, SPLIT's middle-key start) */
+    if (r >= JL_MODE) {                               /* the old MODE page's knobs, by steps from where the value is (mode_knob: its message, its limits, SPLIT's middle-key start) */
         mode_knob(r - JL_MODE, (int32_t)v - (int32_t)jl_get(r));
         return;
     }
@@ -301,7 +301,7 @@ static void tide_knob(uint32_t slot, int32_t s)
     if (cur_page()->graph == GR_TIDELIST) {               /* K1 the row; K2..K4 the picked row's value, a step an event as OCT+ / OCT- (audit C12: every other page has a knob a value) */
         if (slot == 0u)
             jl_sel = (uint8_t)clamp((int32_t)jl_sel + s, 0, JL_N - 1);
-        else if (jl_sel % JL_N >= JL_MODE)               /* MODE, XFADE, SPLIT: the detents turned, as the old knobs (a turn moved XFADE and SPLIT by many) */
+        else if (jl_sel % JL_N >= JL_MODE)            /* MODE, XFADE, SPLIT: the detents turned, as the old knobs (a turn moved XFADE and SPLIT by many) */
             mode_knob(jl_sel % JL_N - JL_MODE, s);
         else
             tide_list_oct(s > 0 ? 2u : 1u);
@@ -939,13 +939,13 @@ static uint32_t tide_sig(void)
  * every backup holds it; an earlier build's object 48 is read once; plan §4.5), not in the bytes the first build used (1.1 uses them). ARP, PITCH and WILD are the morph's own byte
  * (ui.c ui_morph_cfg). The record is read once at power-on and after a settings restore (none or damaged: the defaults; neither is written back); a change is saved ~2 s after the last one,
  * while stopped and not during ERASE DATA (tide_store_poll) */
-enum { TS_MODE, TS_TIME, TS_TARGET, TS_WAIT, TS_VARY, TS_MUSIC, TS_WASH, TS_OLD, TS_TURNS = TS_OLD, TS_POLY, TS_SYNC, TS_ARC, TS_STYLE, TS_N };   /* (TS_OLD: the fields of the first record; a record of that length loads, the later fields at their defaults) */
+enum { TS_MODE, TS_TIME, TS_TARGET, TS_WAIT, TS_VARY, TS_MUSIC, TS_WASH, TS_OLD, TS_TURNS = TS_OLD, TS_POLY, TS_SYNC, TS_ARC, TS_STYLE, TS_REC, TS_N };   /* (TS_OLD: the fields of the first record; a record of that length loads, the later fields at their defaults) */
 static uint8_t tide_seen[TS_N], tide_seen_ok;
 /* each field's byte; read back: a value under TS_LIM kept, else TS_DEF (TS_LIM 0: masked with TS_DEF) */
 static volatile uint8_t *const TS_VAR[TS_N] = {&gl.mode, &gl.time, &gl.target, &gl.wait, &sqm_vary_all, &morph_musical, &morph_wlvl, &sqm_turns, &sqm_poly,
-                                               &sqm_sync, &sqm_arc, &tide_style};
-static const uint8_t TS_LIM[TS_N] = {GM_JOURNEY + 1u, GLIDE_TIMES, GT_BOTH + 1u, GLIDE_WAITS, 0, 0, 0, 3, 3, 3, 3, STY_CUSTOM},
-                     TS_DEF[TS_N] = {GM_ONCE, 3, GT_SOUND, 0, 1, 1, 3, 1, 1, 1, 0, STY_CUSTOM};
+                                               &sqm_sync, &sqm_arc, &tide_style, &tide_rec_replace};
+static const uint8_t TS_LIM[TS_N] = {GM_JOURNEY + 1u, GLIDE_TIMES, GT_BOTH + 1u, GLIDE_WAITS, 0, 0, 0, 3, 3, 3, 3, STY_CUSTOM, 2},
+                     TS_DEF[TS_N] = {GM_ONCE, 3, GT_SOUND, 0, 1, 1, 3, 1, 1, 1, 0, STY_CUSTOM, 0};
 static void tide_settings(void)
 {
     uint8_t w[TS_N];
@@ -955,13 +955,15 @@ static void tide_settings(void)
         tide_seen_ok = 0;
     }
     if (!tide_seen_ok) {
-        uint8_t b[TS_N] = {[TS_TURNS] = 1u, [TS_POLY] = 1u, [TS_SYNC] = 1u, [TS_ARC] = 0u, [TS_STYLE] = STY_CUSTOM};   /* (the defaults of the fields an older record lacks) */
+        uint8_t b[TS_N] = {[TS_TURNS] = 1u, [TS_POLY] = 1u, [TS_SYNC] = 1u, [TS_ARC] = 0u, [TS_STYLE] = STY_CUSTOM, [TS_REC] = 0u};   /* (the defaults of the fields an older record lacks) */
         uint32_t have = tide_store_load_min(b, TS_N, TS_OLD);
         if (have) {                                      /* (an older record: STYLE CUSTOM, its values kept; a stored ECHO reads as LEAD: D7) */
             for (i = 0; i < TS_N; i++)
                 *TS_VAR[i] = (uint8_t)(!TS_LIM[i] ? b[i] & TS_DEF[i] : b[i] < TS_LIM[i] ? b[i] : i == TS_TURNS && b[i] == 3u ? 2u : TS_DEF[i]);
-        } else
-            tide_style_apply(STY_DUB);                   /* (no record: the DUB showcase) */
+        } else {
+            tide_style_apply(STY_DUB);                   /* (no record: the DUB showcase; REC ADD) */
+            tide_rec_replace = 0;
+        }
     }
     if (tide_style < STY_CUSTOM && !tide_style_holds()) {
         tide_style_last = tide_style;
