@@ -453,10 +453,11 @@ export function planRestore(archive, list, caps, sel, opt = {}) {
       for (const key of inFile) {
         const o = archive.objects.get(key), label = `${g.label}: ${objectLabel(key, o.bytes)}`;
         if (o.raw && (!opt.includeRaw || !o.size)) { excluded.push({ key: g.key, id: key, label, reason: `it could not be checked when the backup was made (${o.problem}); the unit keeps what it holds there` }); continue; }
-        let { size, crc, bytes } = o;
-        if (opt.tide !== true && !o.raw) { const t = stripEndBFmt(bytes); if (t !== bytes) { bytes = t; size = t.length; crc = bkCrc(t); stripped++; } }   // (plain DUELL 1.1 would drop an FM6 MORPH TO target's record: D02)
+        let { size, crc, bytes } = o, cut = false;
+        if (opt.tide !== true && !o.raw) { const t = stripEndBFmt(bytes); if (t !== bytes) { bytes = t; size = t.length; crc = bkCrc(t); cut = true; } }   // (plain DUELL 1.1 would drop an FM6 MORPH TO target's record: D02)
         const now = list.get(key);
         if (now && now.size === size && now.crc === crc) { skipped.push(key); continue; }
+        if (cut) stripped++;                           // counted only when it is written: a patch that is identical on the unit is skipped and loses nothing
         steps.push({ id: PATCH_ID, slot: patchSlot(key), key, size, crc, bytes, group: g.key });
       }
       for (const key of [...list.keys()].filter(isPatchKey))
@@ -474,6 +475,14 @@ export function planRestore(archive, list, caps, sel, opt = {}) {
   const rank = (s) => (s.key !== undefined ? (s.size ? s.slot : s.slot - 200) : 200 + (s.id === FVB_ID ? RESTORE_ORDER.indexOf(1) - 0.5 : RESTORE_ORDER.indexOf(s.id)));   // the removals first (they free room), then the patches by slot, then the rest
   steps.sort((a, b) => rank(a) - rank(b));
   return { steps, excluded, skipped, caps, stripped };
+}
+// The confirm line for the patches that lose their FM6 MORPH TO target ("" when none). tideAnswer: true TIDE, false plain DUELL, undefined no tag 44 (unknown).
+export function strippedNote(stripped, tideAnswer) {
+  if (!stripped) return "";
+  const n = stripped === 1 ? "1 PATCH LOSES" : `${stripped} PATCHES LOSE`;
+  return `${n} the FM6 MORPH TO target ${tideAnswer === false ? "(this unit says it is plain DUELL, which has no such target)" : "(this unit does not say it is TIDE, so it may be plain DUELL or an older TIDE build; the target is taken out of the patches before they are written)"}.
+
+`;
 }
 // Send the steps, one object at a time (begin, 256-byte pieces, commit: the unit checks the CRC and the content, then writes; the old copy
 // stays valid until the new one is complete). A patch is a PUT of id 40 with its slot byte at the begin; every patch is its own atomic sequence. An object that fails (a full

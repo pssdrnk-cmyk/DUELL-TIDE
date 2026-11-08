@@ -100,6 +100,10 @@ static void draw_battery(void)
 #define CPU_BAR_HOT 85u
 #define CPU_BAR_STEPS 8u
 static uint16_t cpu_col(uint32_t lvl, uint16_t bg);   /* (ui_menu.c) */
+#if DUELL_TIDE
+static uint32_t cpu_head(char *l, char *r, uint16_t *c);   /* (ui_menu.c K2: the header's CPU readout on TIDE's pages) */
+static void cpu_head_arm(void);
+#endif
 static struct { uint32_t t, n0, sum0, miss0; uint8_t ok, step, lvl; } cpub;   /* lvl 0 theme, 1 amber, 2 red */
 static void cpu_bar_set(uint32_t pct, uint32_t flash) /* the load in % of the last window, and a missed half in it */
 {
@@ -623,6 +627,25 @@ static void head_title_msg(int glob)
         cv_rect(k ? ax + aw - 1 - i : ax + i, top + (ah - h) / 2, 1, h, ink);
     }
 }
+#if DUELL_TIDE
+static int cpu_head_on(int glob, int msg)              /* K2: HOME's three pages, a part page with no message, layer, menu, guide or dialog over the title */
+{
+    return !glob && !msg && tide_foot_parts() && !ui.menu && !ui.guide && !ui.confirm;
+}
+/* K2: the header's CPU readout as a pill of the capsules' rows, outline and radius holding a small number (S, its ink centred, on the capsules' baseline), 7 px a figure + 9
+ * (one figure 16 px: as wide as tall; three 30 px: the room between a capsule and TIDE SETTINGS less 2 px each side); x < 0: it ends at -x */
+static void k2_pill(int32_t x, const char *s, uint16_t edge, uint16_t fill, uint16_t ink)
+{
+    int32_t w = (int32_t)str_len(s) * 7 + 9;
+    if (x < 0)
+        x = -x - w;
+    cv_rrect(x, UT_CAP_Y, w, UT_CAP_H, UT_CAP_R, edge, T_BG);
+    if (fill != edge)
+        cv_rrect(x + 1, UT_CAP_Y + 1, w - 2, UT_CAP_H - 2, UT_CAP_R - 1, fill, edge);
+    GFX_HOOK_ALIGN(0, 0, 0, H_HEAD, AL_V, "header text on its middle");
+    cv_text_in(x, UT_CAP_BASE - AF_S_CAP_Y - AF_S_CAP_H + 1 - Y_HEAD, w, &AF_S, s, ink, fill);
+}
+#endif
 static void draw_head(void)
 {
     char tb[40];
@@ -637,6 +660,15 @@ static void draw_head(void)
     sig = song.sel * 13131u + (uint32_t)glob * 7u + (ui.msg_t ? str_hash(7u, ui.msg) : ui.layer * 7919u + (uint32_t)layer_locked() * 3u) +
           head_notes_sig() * 6007u + (uint32_t)head_mode_ch(0) * 53u + (uint32_t)head_mode_ch(1) * 59u + (uint32_t)(song.sel & 1u) * 61u + badge_lit() * 4093u + (uint32_t)duell_mode_req * 331u +
           (msg ? 0u : str_hash(13u, tb) + pi * 31u) + (head_ab_b() ? 811u : 0u) + (morph_fader_of(1 - song.sel) >= 127u ? 1301u : 0u) + (uint32_t)(notes_show_on() ? 17u : 0u) + (uint32_t)nv * 41u + head_marks(0) * 3011u + head_marks(1) * 4421u;
+#if DUELL_TIDE                                         /* TIDE hook (K2): HOME's three pages show the CPU's elapsed peak and the missed blocks beside the title (ui_menu.c cpu_head) */
+    char cps[8], cms[8];
+    uint16_t cpc = 0;
+    uint32_t cpk = 0;
+    cpu_head_arm();
+    if (cpu_head_on(glob, msg))
+        cpk = cpu_head(cps, cms, &cpc);
+    sig += cpk * 6397u;
+#endif
     if (!ui.force && sig == ui.head_sig)
         return;
     ui.head_sig = sig;
@@ -668,6 +700,13 @@ static void draw_head(void)
     } else {
         head_title_draw(tb, glob);
     }
+#if DUELL_TIDE
+    if (cpk) {                                         /* K2: the elapsed peak in a dim outlined pill 2 px right of part 1's capsule; the missed periods, only when there are any, in a REC red badge 2 px left of part 2's */
+        k2_pill(CAP_X + CAP_W + 2, cps, T_DIM, T_BG, T_MID);
+        if (cms[0] != '0')
+            k2_pill(-(240 - CAP_X - CAP_W - 2), cms, T_REC, T_REC, T_BG);
+    }
+#endif
     /* (owner V9: no rule under any title; the gradient stays on the title text, values and bars) */
     cv_blit(0, Y_HEAD);
 }
@@ -1898,7 +1937,7 @@ static uint32_t foot_playhead(const track_t *t)
         uint32_t len = t->p[P_SLEN] > 0 ? (uint32_t)t->p[P_SLEN] : 1u;
         if (!t->nheld || t->arp_idx == 0xFFFFFFFFu)
             return 0xFFu;
-        k = t->arp_idx % len;
+        k = TIDE_ARP_IDX(t, t->arp_idx, len);   /* (TIDE: a POLY stretch shortens the loop) */
     } else {
         if (!song.playing)
             return 0xFFu;

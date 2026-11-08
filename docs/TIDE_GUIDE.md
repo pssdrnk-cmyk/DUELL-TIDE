@@ -1,6 +1,6 @@
 # DUELL with TIDE: a player's guide
 
-Five minutes. This guide describes the development line, `jam11`, as the source has it. It is the betas `1.0.0-b1` and `1.0.0-b2` and what is merged after them. The older beta `beta-2026-11-04` is a little different; the list at the end says what came after it. The version of your unit is in MENU > SYSTEM > ABOUT, beside the date.
+Five minutes. This guide describes the development line, `jam11`, as the source has it. It is the betas `1.0.0-b1` and `1.0.0-b2`, `1.0.0-b3` (in development) and what is merged after them. The older beta `beta-2026-11-04` is a little different; the list at the end says what came after it. The version of your unit is in MENU > SYSTEM > ABOUT, beside the date.
 
 The stable build `stable-2026-11-03` has an earlier TIDE. Its TIDE SETTINGS page is still called MORPH SETTINGS. It lacks the STYLE, TURNS, POLY, SYNC and ARC rows, and it has no JRNY role families or memory. The [README](../README.md#builds-stable-and-beta) lists the builds.
 
@@ -11,6 +11,8 @@ Values marked *start* are suggestions for dub and house techno backgrounds, not 
 Every sound has two ends, **A** (your sound) and **B** (a variation of it), and a fader between them. TIDE moves that fader by itself, bar by bar, while the music plays, and also moves the pattern the same way. Over minutes the part evolves; nothing needs your hands. You can touch it whenever you like.
 
 HOME's round, one tap of **HOME** each: **MORPH → TIDE SETTINGS → AUTO TIDE**. **ALGORITHM** picks PART 1, BOTH or PART 2 on all of them.
+
+On these three pages a small dim pill beside part 1's capsule shows the busiest audio block of the last 4 seconds, in % of its time. A red badge beside part 2's capsule shows audio blocks missed recently (a click or dropout was possible); it goes away after a minute with no new miss.
 
 ## 1. MORPH (the hand page)
 
@@ -112,7 +114,7 @@ In the SEQ tools, hold SEQ and press G4 (KEEP): what you hear now becomes the pa
 
 # New since the stable build
 
-In the betas (`beta-2026-11-04`, `1.0.0-b1`, `1.0.0-b2`), not in the stable build `stable-2026-11-03`.
+In the betas (`beta-2026-11-04`, `1.0.0-b1`, `1.0.0-b2`, and `1.0.0-b3` in development), not in the stable build `stable-2026-11-03`.
 
 | Feature | What it does |
 |---|---|

@@ -23,7 +23,7 @@ for num in [int(x) for x in sys.argv[2].split(",")]:
     pk = []; bn = []; v = []
     t0 = time.time()
     while time.time() - t0 < 12:
-        time.sleep(0.6); c = kv("cpu"); pk.append(round(100 * c.get("cpu_raw_pk_us", 0) / 2902)); bn.append(c.get("bnotes0")); v.append(c.get("voices0"))
+        time.sleep(0.6); c = kv("cpu"); pk.append(round(100 * c.get("cpu_el_pk_us", 0) / 2902)); bn.append(c.get("bnotes0")); v.append(c.get("voices0"))
     for n in (48, 51, 55): out.send(mido.Message("note_off", channel=ch, note=n, velocity=0))
     s = kv("status"); m1 = kv("cpu").get("cpu_miss", 0); time.sleep(2.5)
     print(json.dumps(dict(num=num, preset=s.get("preset"), raw_max=max(pk), bnotes=min(x for x in bn if x is not None), voices=max(x for x in v if x is not None), miss=m1 - m0)), flush=True)

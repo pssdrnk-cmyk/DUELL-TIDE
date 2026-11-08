@@ -287,7 +287,7 @@ static void bd_global(uint32_t *idle, uint32_t *fx)     /* host instructions a s
         t += bm_sel && !(byp_sh & BYS_MST) ? (int32_t)BD_BMONO : 0;
     }
 #if DUELL_VELO
-    t += sense_running() ? 57 : 0;                      /* KEY SENSE (after Velo's method; est.: the key scan is not on the CPU bar): a fixed core-0 load of 2 % after the margin, 57 host instructions a sample, not measured */
+    t += sense_running() ? 57 : 0;                      /* KEY SENSE (after Velo's method; est.: the key scan is not in the meter's average): a fixed core-0 load of 2 % after the margin, 57 host instructions a sample, not measured */
 #endif
     *fx = (uint32_t)t;
 }

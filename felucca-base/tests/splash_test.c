@@ -25,7 +25,7 @@ static void window(uint32_t halves, uint32_t pct, uint32_t peak_pct, uint32_t mi
 {
     cpu_n += halves;
     cpu_sum += halves * (CPU_BUDGET_US * pct / 100u);
-    cpu_pk = CPU_BUDGET_US * peak_pct / 100u;
+    cpu_pk = cpu_el_pk = CPU_BUDGET_US * peak_pct / 100u;
     cpu_miss += miss;
     fm1_ms += CPU_WIN_MS;
     cpu_meter_poll();
@@ -72,7 +72,7 @@ int main(void)
     (void)page0;
 
     /* the meter */
-    cpu_n = cpu_sum = cpu_pk = cpu_miss = 0;
+    cpu_n = cpu_sum = cpu_pk = cpu_el_pk = cpu_miss = 0;
     cpu_meter_open();
     window(344, 50, 70, 0);
     expect("meter: 50 % average, 70 % peak after one window", near(cpum.avg, 50) && near(cpum.peak, 70) && near(cpum.hold, 70) && cpu_level() == 0);
