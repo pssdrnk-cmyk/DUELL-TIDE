@@ -187,7 +187,7 @@ async function restore() {
   let safetyName = null;
   try {
     unitList = await listUnit(request, info.caps);
-    const plan = planRestore(archive, unitList, info.caps, sel, { includeRaw: $("includeraw").checked, patchCap: info.patchCap, fvBank: info.fvBank, tide: info.tide });
+    const plan = planRestore(archive, unitList, info.caps, sel, { includeRaw: $("includeraw").checked, patchCap: info.patchCap, fvBank: info.fvBank, tide: info.tideAnswer });
     if (!plan.steps.length) { say("status-restore", "Nothing to restore.", "warn"); say("result-restore", plan.excluded.map((x) => `${x.label}: ${x.reason}`).join("\n")); return; }
     const kinds = [...new Set(plan.steps.map((s) => s.group))].map((k) => GROUPS.find((g) => g.key === k).label.toLowerCase());
     const pw = plan.steps.filter((s) => s.key !== undefined), put = pw.filter((s) => s.size).length, gone = pw.length - put;

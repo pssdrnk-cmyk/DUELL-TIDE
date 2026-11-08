@@ -212,14 +212,16 @@ export function parseInfo(a) {
     engines.push(String.fromCharCode(...a.slice(pos, end))); pos = end + 1;
   }
   pos += 2;                                            // NTRK, song rows
-  let caps = null, patchCap = null, tide = false, fvBank = false;
+  let caps = null, patchCap = null, tide = false, tideAnswer, fvBank = false;
   while (pos < a.length && TAG_LEN[a[pos]]) {
     if (a[pos] === 0x42 && a[pos + 1] === 1) caps = a[pos + 2];
-    if (a[pos] === 0x44 && a[pos + 1] === 1) { tide = (a[pos + 2] & 1) !== 0; fvBank = (a[pos + 2] & CAPS_FVBANK) !== 0; }   // DUELL with TIDE; bit 1: GET 41, the FM6 voice bank
+    if (a[pos] === 0x44 && a[pos + 1] === 1) { tide = (a[pos + 2] & 1) !== 0; tideAnswer = tide; fvBank = (a[pos + 2] & CAPS_FVBANK) !== 0; }   // DUELL with TIDE; bit 1: GET 41, the FM6 voice bank
     if (a[pos] === 0x58 && a[pos + 1] === 1) patchCap = a[pos + 2] | a[pos + 3] << 7;   // the patch capacity (DUELL 0.2.15)
     pos += TAG_LEN[a[pos]];
   }
-  return { version, engines, caps, patchCap, tide, fvBank };
+  // tide: for the display (no tag = false). tideAnswer: what the unit SAID: true / false = tag 44 01 present with bit 0 set / clear; undefined = no tag 44 (plain DUELL 1.1 and the TIDE builds before the tag, stable-2026-11-03 and
+  // beta-2026-11-04, look the same: the restore planner must not take it for plain DUELL)
+  return { version, engines, caps, patchCap, tide, tideAnswer, fvBank };
 }
 
 // ---- the file
@@ -427,7 +429,7 @@ export const rawLines = (problems, objects = null) => (problems || []).map((p) =
 // {id: 40, slot, key, size, crc, bytes, group: "patches"}: a PUT of the record, or (size 0) of nothing, which removes the slot's record. The patches are made EXACTLY the file's: one PUT
 // for each patch whose size or CRC differs on the unit (an identical one is not written again) and a removal for each slot the unit has saved and the file has not.
 // opt.includeRaw (0.2.25): also send the objects the backup could not check (the unit checks them at commit and refuses what it cannot load).
-// opt.tide (INFO tag 44 01): false = the unit is plain DUELL, so a patch's FM6 MORPH TO target (End B flag 4) is taken out before the PUT (patchrecord.js stripEndBFmt); undefined = unknown, nothing is changed.
+// opt.tide (INFO tag 44 01, info.tideAnswer): false = the unit SAID it is plain DUELL (tag 44 present, bit 0 clear; no firmware sends that yet), so a patch's FM6 MORPH TO target (End B flag 4) is taken out before the PUT (patchrecord.js stripEndBFmt); undefined = unknown (no tag 44: plain DUELL 1.1 or a TIDE build before the tag, both accept the flag or cannot be told apart), nothing is changed.
 // opt.patchCap (INFO tag 58 01, the patch records the store takes: 126 with TIDE): a file with more patches than that cannot be restored whole, so the patches are left out
 // with that reason and the other groups still go (D05). The removals of the slots the file does not have come BEFORE the patches that are written, so a nearly full store has the room.
 // A multi object whose records are of another version than this editor's firmware writes is left out unless includeRaw (the unit would refuse it).

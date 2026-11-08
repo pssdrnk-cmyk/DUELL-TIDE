@@ -552,10 +552,13 @@ const KEYS = [1000, 1001, 1005, 1064];
   const T = new MockUnit({ seed: false, tide: true }); T.setRecord(2, withFmt); T.setRecord(3, plain); T.rebuild();
   const arch = readArchive(JSON.stringify(await captureBackup((r, o) => T.request(r, o), parseInfo(await T.request([1, []])))));
   const P = new MockUnit({ seed: false }), rq = (r, o) => P.request(r, o), list = await listUnit(rq, 63);
-  const pn = planRestore(arch, list, 63, new Set(["patches"]), { tide: false }), pt = planRestore(arch, list, 63, new Set(["patches"]), { tide: true }), pu = planRestore(arch, list, 63, new Set(["patches"]));
+  const noTag = parseInfo(await P.request([1, []])), plainSaid = parseInfo(await new MockUnit({ plainTag: true }).request([1, []])), tideSaid = parseInfo(await T.request([1, []]));
+  ok(noTag.tideAnswer === undefined && plainSaid.tideAnswer === false && plainSaid.tide === false && tideSaid.tideAnswer === true,
+     "INFO: no tag 44 is an unknown answer (tideAnswer undefined: plain DUELL 1.1 and TIDE builds before the tag look the same); tag 44 with bit 0 clear says plain DUELL");
+  const pn = planRestore(arch, list, 63, new Set(["patches"]), { tide: plainSaid.tideAnswer }), pk = planRestore(arch, list, 63, new Set(["patches"]), { tide: noTag.tideAnswer }), pt = planRestore(arch, list, 63, new Set(["patches"]), { tide: true }), pu = planRestore(arch, list, 63, new Set(["patches"]));
   const st = pn.steps.find((x) => x.slot === 2), ot = pt.steps.find((x) => x.slot === 2);
-  ok(st.size === withFmt.length - 3 && st.crc === bkCrc(st.bytes) && same(st.bytes, cut) && ot.size === withFmt.length && same(ot.bytes, withFmt) && same(pu.steps.find((x) => x.slot === 2).bytes, withFmt) && same(pn.steps.find((x) => x.slot === 3).bytes, plain),
-     "plan: a unit without TIDE gets the record without MBV_FMT (size, CRC of what is sent); a TIDE unit and an unknown one get it as it is");
+  ok(st.size === withFmt.length - 3 && st.crc === bkCrc(st.bytes) && same(st.bytes, cut) && ot.size === withFmt.length && same(ot.bytes, withFmt) && same(pu.steps.find((x) => x.slot === 2).bytes, withFmt) && same(pk.steps.find((x) => x.slot === 2).bytes, withFmt) && same(pn.steps.find((x) => x.slot === 3).bytes, plain),
+     "plan: a unit without TIDE gets the record without MBV_FMT (size, CRC of what is sent); a TIDE unit, an unknown one and one without tag 44 get it as it is");
   const r = await runRestore(rq, pn);
   ok(r.failed === null && same(P.patchBytes(2), cut) && parseRecord(P.patchBytes(2)).ok, "restore: the stripped record is what the unit holds");
 }
