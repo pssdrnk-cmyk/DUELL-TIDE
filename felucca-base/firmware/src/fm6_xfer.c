@@ -95,7 +95,7 @@ static __attribute__((noinline)) void MXT_BODY(fm6_xblock)(track_t *t, uint32_t 
 {
     fm6_xt_t *x = &fm6_xt[tr];
     fm6_xsave_t *sv0 = (fm6_xsave_t *)((fm6_note_t *)ENG_MEM(tr) + FM6_POLY);
-    uint32_t i, s, dirty = 0;
+    uint32_t i, s, dirty = 0, tune = x->on && !(EASE && (x->ez ^= 1u));   /* (K3 ease level 1: the retune every other block; between, the notes keep the last one) */
     for (i = 0; i < FM6_POLY; i++) {
         fm6_note_t *n = (fm6_note_t *)ENG_MEM(tr) + i;
         uint32_t want = x->on ? x->xs : 0u;
@@ -140,7 +140,7 @@ static __attribute__((noinline)) void MXT_BODY(fm6_xblock)(track_t *t, uint32_t 
             }
         }
         dirty |= n->xs | n->xr;
-        if (x->on)
+        if (tune)
             fm6_xtune(t, tr, n, &t->v[i], x->mute | x->glide);
     }
     x->dirty = (uint8_t)(dirty != 0u);

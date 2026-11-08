@@ -102,6 +102,10 @@ Dub-techno recipe: STYLE DUB, ALGORITHM BOTH (by hand: **AUTO TIDE** JRNY or WND
 
 DUEL (part 1 left, part 2 right, effects separate), STEREO, LAYER. This is stock DUELL, not TIDE. With TIDE there is no MODE page: PLAY MODE, XFADE and SPLIT are the last three rows of TIDE SETTINGS (REC sits between ARC and PLAY MODE). PLAY MODE is LAYER, STEREO or DUEL. XFADE (0 to 100 %) and SPLIT (OFF, then a note) act only in LAYER: in DUEL and STEREO their values are dim, knob 1's line says LAYER ONLY, and turning does nothing. The first turn right out of SPLIT OFF starts at the middle key. They are not part of STYLE (changing them does not turn it into CUSTOM), and they are kept as before (settings and multis). MENU > CONTROL > HOME OPENS = MODE now opens TIDE SETTINGS with the PLAY MODE row picked. The AUTO TIDE page's K2 is still called MODE (ONCE, LOOP, DRIFT, WNDR, JRNY); it is a different setting. Dub chords on two parts: DUEL if you mix outside, STEREO for a single stereo out.
 
+## When the unit is busy
+
+With heavy sounds and a moving morph the audio can get close to its limit. TIDE then backs off by itself, in small steps, before it cuts anything: a glide or a crossing moves in slightly coarser steps, a new note may take over a note that is already fading instead of adding one, and the delay's RANDOM / OCT UP play plain (ABOUT shows LIGHT FX). Only if that is not enough do fading notes end early, and a held note only after the audio really missed a block. About 3 s after the load falls it steps back. Nothing is stored and there is nothing to set.
+
 ## First start
 
 A new unit (or after ERASE DATA) comes up as multi **M02 DUB CHORD** with AUTO TIDE on JRNY and STYLE DUB. Its two 16-step patterns play on PLAY with no key held (ARP SEQ). Press PLAY. With REC armed the pattern keeps playing; the keys sound as you play them and go into the pattern (the REC row of TIDE SETTINGS chooses ADD or REPLACE for ordinary parts).

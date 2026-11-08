@@ -733,6 +733,18 @@ static cpu_snap_t cpu_snap;
 static volatile uint32_t cpu_el_last;                   /* the last half's elapsed time (us; the ISR writes it: the bench's timeline window is read inside the interrupt) */
 static void cpu_snap_poll(void);
 static uint32_t cpu_win_take(uint32_t k);
+#if DUELL_TIDE
+/* K3 the EASE LADDER (TIDE 1.0.0-b4; audio.c ease_step, once a half): 0 = nothing eased; 1 the transitions at a lower rate (morph.c blend every 4th block, fm6_xfer.c retune
+ * and morph_xfer.c the valley's and wash's coefficients every other block); 2 a new POLY note takes over a fading note before it takes a free voice (voice.c); 3 LIGHT FX
+ * (fx.c ovl_lite); 4 released tails fade (audio.c shed_released); 5 a held note fades, only after a half that missed. The audio reads it as EASE: 0 in tests/ovl_test.c's
+ * reference build (-DOVL_NOGUARD), so its renders are those of a build without the ladder */
+static uint8_t ease;
+#ifdef OVL_NOGUARD
+#define EASE 0u
+#else
+#define EASE ease
+#endif
+#endif
 #if DUELL_BENCH
 #define C0_STK_FILL 0xC0C0C0C0u                                              /* main.c c0_stack_paint, bench.c c0_stack_peak: core 0's stack marks, developer builds only */
 static void c0_stack_bounds(uint32_t **b);                                   /* b[0..3] = the user stack's bottom and top, the exception stack's bottom and top (main.c; a host test names its own) */

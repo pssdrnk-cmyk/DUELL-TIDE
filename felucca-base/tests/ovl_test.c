@@ -100,7 +100,10 @@ static void scene(uint32_t mode, int pitch, int smod, int dm)
     audio_cpu_rem = 0;
     host_clock = host_nest = 0;
     host_us = US_OF(30u);
-#ifndef OVL_NOGUARD
+#if DUELL_TIDE
+    ovl_lite = 0, ease = 0, ease_calm = 0;              /* (TIDE 1.0.0-b4, K3: the guard is the ease ladder's level 3; ovl_count is its entry count) */
+    memset(ease_n, 0, sizeof ease_n);
+#elif !defined(OVL_NOGUARD)
     ovl_lite = 0, ovl_calm = 0, ovl_count = 0;
 #endif
     song.g[G_BPM] = 120;
@@ -199,8 +202,15 @@ static const uint32_t MODES[3] = {DM_STEREO, DM_LAYER, DM_SPLIT};
 static const char *const MNAME[3] = {"STEREO", "LAYER", "DUEL"};
 
 #ifndef OVL_NOGUARD
+#if DUELL_TIDE
+static void engage(void) { ease_set(3u); }             /* the test hook: the ease ladder at LIGHT FX's level (K3: levels 1 and 2 with it, as on the unit) */
+static void release(void) { ease_set(0u); }
+#define OVL_HALVES_ON 4u                                /* (K3: two halves over 85 % are level 1; LIGHT FX is level 3: the fourth half in a row) */
+#else
 static void engage(void) { ovl_step(1u, 255u); }      /* the test hook: the load measure as two halves over 85 % report it */
 static void release(void) { uint32_t i; for (i = 0; i < OVL_CALM_HALVES; i++) ovl_step(0u, 0u); }   /* .. and 3 s under 70 % */
+#define OVL_HALVES_ON 2u
+#endif
 #endif
 
 int main(void)
@@ -213,11 +223,12 @@ int main(void)
         uint32_t ok1, ok2, held, n, rel;
         scene(DM_STEREO, SHP_DOWN, 0, DMD_RAND);
         halves(HALVES_OF_MS(500), 30u);
-        halves(1, 93u);
+        halves(OVL_HALVES_ON - 1u, 93u);
         ok1 = !ovl_lite;
         halves(1, 93u);
         ok2 = ovl_lite && ovl_count == 1u;
-        expect("MEASURE: one half over 85 % does not engage the guard, the second in a row does (the voice shedding's rule)", ok1 && ok2);
+        expect(DUELL_TIDE ? "MEASURE: three halves over 85 % do not engage the guard, the fourth in a row does (K3: the ease ladder's level 3)"
+                          : "MEASURE: one half over 85 % does not engage the guard, the second in a row does (the voice shedding's rule)", ok1 && ok2);
         halves(HALVES_OF_MS(6000), 76u);
         held = ovl_lite;
         expect("  .. 6 s at 76 % (between 70 and 85 %): it stays engaged (hysteresis)", held);

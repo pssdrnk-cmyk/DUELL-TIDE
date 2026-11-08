@@ -626,8 +626,12 @@ static dlyev_t dlyev_b __attribute__((section(".pool")));                  /* 0.
  * the same way. Nothing changes while it is not engaged: the stored values are never touched, ovl_lite only steers the delay's switches below
  * (tests/ovl_test.c renders bit for bit with it compiled out, -DOVL_NOGUARD). Shown on ABOUT (LIGHT FX); flash code only */
 static uint8_t ovl_lite;                 /* 1: the guard is engaged */
+#if DUELL_TIDE
+#define ovl_count ease_n[2]              /* (TIDE 1.0.0-b4, K3: the guard is the ease ladder's level 3, audio.c ease_set; it counts the entries into that level) */
+#else
 static uint16_t ovl_calm;                /* halves in a row with the meter's load under 70 % while engaged */
 static uint32_t ovl_count;               /* times it engaged since power-on (the console) */
+#endif
 #ifdef OVL_NOGUARD
 #define OVL_LITE 0u                      /* (the test's reference build: the guard compiled out) */
 #else
@@ -635,6 +639,7 @@ static uint32_t ovl_count;               /* times it engaged since power-on (the
 #endif
 #define OVL_CALM_Q8 179u                 /* 70 % in the meter's Q8 (256 = the whole half): the bar's amber */
 #define OVL_CALM_HALVES ((3u * FS + HALF_FRAMES / 2u) / HALF_FRAMES)   /* ~3 s of halves (1034) */
+#if !DUELL_TIDE
 /* once a half (audio.c shed_check): over = the 85 % rule held (two halves in a row), q8 = the meter's load */
 static __attribute__((noinline)) void ovl_step(uint32_t over, uint32_t q8)
 {
@@ -650,6 +655,7 @@ static __attribute__((noinline)) void ovl_step(uint32_t over, uint32_t q8)
     if (ovl_calm >= OVL_CALM_HALVES)
         ovl_lite = 0, ovl_calm = 0;
 }
+#endif
 static void dlyev_clear(void) { memset(&dlyev, 0, sizeof dlyev); memset(&dlyev_b, 0, sizeof dlyev_b); fx.dly_g = fx_b.dly_g = 0; }   /* the lines are cleared (SENDS OFF, STOP ALL, a mode change of the mix): from rest, both buses */
 static void dlyev_start(void) { dlyev.sync = 1; dlyev_b.sync = 1; }  /* PLAY: the clock edges count from the top (seq.c seq_start, as the DUCK's PUMP) */
 static struct { int32_t r[CTL], l[CTL]; } mixlr HOTG_BSS;   /* the pair in one pinned object (core.h HOTG_BSS): the hot PERFORM / delay code reaches the left as the right + 128 */

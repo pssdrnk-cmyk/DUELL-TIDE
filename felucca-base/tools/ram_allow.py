@@ -309,6 +309,8 @@ ALLOW = {
     "rev_tail": "mix or effect stage in flash at the K6 baseline (~212 B, 2026-11-08); not yet reviewed for range Z (CPU audit section 5 F); reached from fx_buses_mod",
     "rev_tail_b": "mix or effect stage in flash at the K6 baseline (~212 B, 2026-11-08); not yet reviewed for range Z (CPU audit section 5 F); reached from split_buses",
     "shed_check": "mix or effect stage in flash at the K6 baseline (~104 B, 2026-11-08); not yet reviewed for range Z (CPU audit section 5 F); reached from fm1_alnk0_irq",
+    "ease_set": "event rate: the ease ladder changes level (K3, 1.0.0-b4: at most once a half, rarely; ~40 B), not per sample; reached from ease_step",
+    "ease_tail": "event rate: a POLY note-on while the ease ladder is at level 2 or above (K3, 1.0.0-b4; ~70 B), not per sample; reached from voice_alloc",
     "snd_fade": "mix or effect stage in flash at the K6 baseline (~166 B, 2026-11-08); not yet reviewed for range Z (CPU audit section 5 F); reached from mix_sends",
     "snd_step": "mix or effect stage in flash at the K6 baseline (~170 B, 2026-11-08); not yet reviewed for range Z (CPU audit section 5 F); reached from mix_events",
     "space_goal": "mix or effect stage in flash at the K6 baseline (~54 B, 2026-11-08); not yet reviewed for range Z (CPU audit section 5 F); reached from mix_sends",

@@ -579,6 +579,7 @@ typedef struct {
     uint8_t wvalid;
     int64_t qin, qout;                                   /* the mean squares before and after, smoothed (~6 ms: the hold's) */
     uint8_t run;                                         /* the states are this part's last block's */
+    uint8_t ez, wez;                                     /* K3 ease level 1: the valley's and the wash's coefficients on every other block (the struct's padding) */
 } mxv_t;
 static mxv_t mxv[NLIVE];
 #define XV_LTOP 57207                                    /* log2 16 kHz, Q12: where the sweep begins */
@@ -643,20 +644,24 @@ static __attribute__((noinline)) void MXT_BODY(morph_wash)(uint32_t pp, int32_t 
             pn += (int64_t)((m * m) >> 8);
         }
     }
-    if (move && morph_wlvl) {
-        int64_t fill = (v->wref >> XWS[morph_wlvl & 3u]) - v->wnow;   /* (to 9 dB under the level at rest at MID: WASH) */
-        want = fill > 0 ? fill : 0;
-        if (x->need)
-            want += ((v->wref >> (XWS[morph_wlvl & 3u] + 3u)) * morph_xdepth(x->tp)) >> 15;   /* (a transition's floor: 24 dB under it at MID) */
-        want = want > (v->wref >> XWS[morph_wlvl & 3u]) ? v->wref >> XWS[morph_wlvl & 3u] : want;
+    if (EASE && v->wg && (v->wez ^= 1u))              /* (K3 ease level 1: the gain held this block, its fade half as fast; the noise and the meters run on) */
+        g1 = v->wg;
+    else {
+        if (move && morph_wlvl) {
+            int64_t fill = (v->wref >> XWS[morph_wlvl & 3u]) - v->wnow;   /* (to 9 dB under the level at rest at MID: WASH) */
+            want = fill > 0 ? fill : 0;
+            if (x->need)
+                want += ((v->wref >> (XWS[morph_wlvl & 3u] + 3u)) * morph_xdepth(x->tp)) >> 15;   /* (a transition's floor: 24 dB under it at MID) */
+            want = want > (v->wref >> XWS[morph_wlvl & 3u]) ? v->wref >> XWS[morph_wlvl & 3u] : want;
+        }
+        if (want > 0 && pn > 0) {                            /* the gain: the noise's level to the wanted one, Q12, at most x 16 */
+            int64_t r = (want << 10) / pn;                  /* (Q10 of the power ratio) */
+            r = r > ((int64_t)256 << 10) - 1 ? ((int64_t)256 << 10) - 1 : r;   /* (just under x 16: r << 14 stays below 2^32, else it wraps to 0 and the wash fades out where it is most wanted) */
+            g1 = (int32_t)isqrt32((uint32_t)(r << 14));      /* (sqrt of Q24: Q12) */
+        }
+        if (g1 != v->wg)                                     /* (in and out slowly, ~50 ms each way: a bed that comes and goes, not a burst) */
+            g1 = v->wg + (g1 - v->wg) / 64 + (g1 > v->wg ? 1 : -1);
     }
-    if (want > 0 && pn > 0) {                            /* the gain: the noise's level to the wanted one, Q12, at most x 16 */
-        int64_t r = (want << 10) / pn;                  /* (Q10 of the power ratio) */
-        r = r > ((int64_t)256 << 10) - 1 ? ((int64_t)256 << 10) - 1 : r;   /* (just under x 16: r << 14 stays below 2^32, else it wraps to 0 and the wash fades out where it is most wanted) */
-        g1 = (int32_t)isqrt32((uint32_t)(r << 14));      /* (sqrt of Q24: Q12) */
-    }
-    if (g1 != v->wg)                                     /* (in and out slowly, ~50 ms each way: a bed that comes and goes, not a burst) */
-        g1 = v->wg + (g1 - v->wg) / 64 + (g1 > v->wg ? 1 : -1);
     dg = (g1 - v->wg) / (int32_t)n;
     for (i = 0; i < (int32_t)n; i++) {
         v->wg += dg;
@@ -689,7 +694,7 @@ static __attribute__((noinline)) void MXT_BODY(morph_valley)(uint32_t pp, int32_
     const mxs_t *x = &mxs[pp];
     int32_t d = x->d, dd = d > x->bv ? d : x->bv, m1, a1, w, g1, dm, da, dg, m, a, g;
     int64_t pin = 0, pout = 0;
-    uint32_t i, c;
+    uint32_t i, c, hold;
     if (!dd && !v->m) {
         v->run = 0;
         morph_wash(pp, b, n);
@@ -698,6 +703,7 @@ static __attribute__((noinline)) void MXT_BODY(morph_valley)(uint32_t pp, int32_
     m1 = dd * 3 > 32768 ? 32768 : dd * 3;                /* (the filtered share comes in first, then the sweep goes down) */
     if (!v->run)
         v->lc = XV_LTOP;
+    hold = v->run && EASE && (v->ez ^= 1u);           /* (K3 ease level 1: the filter's coefficient and the make-up held this block; the sweep and the meters run on) */
     /* the cutoff: the sweep's (from 16 kHz down to the floor and back, by d), but it goes down only while the filter takes
      * less than 6 dB, within what the make-up can give back (9 dB; a sound whose energy lies well above its notes, noise or a bright pluck,
      * stops higher: a switch inside such a sound is masked by its own high band, and boosting a rumble 15 dB would be a jump
@@ -714,8 +720,12 @@ static __attribute__((noinline)) void MXT_BODY(morph_valley)(uint32_t pp, int32_
         v->lc = v->qin > v->qout * 8 && v->lc + 171 < XV_LTOP ? v->lc + 171 : v->lc;
     else
         v->lc = v->lc - w > 171 ? v->lc - 171 : w;
-    w = xexp2(v->lc + XV_LW);                            /* 2 pi fc / FS, Q16 */
-    a1 = (int32_t)(((int64_t)w << 15) / (65536 + w));   /* a one-pole's coefficient ~ 1 - e^-w, Q15 */
+    if (hold)
+        a1 = v->a;
+    else {
+        w = xexp2(v->lc + XV_LW);                        /* 2 pi fc / FS, Q16 */
+        a1 = (int32_t)(((int64_t)w << 15) / (65536 + w));   /* a one-pole's coefficient ~ 1 - e^-w, Q15 */
+    }
     if (!v->run) {                                       /* starting: from the signal, no transient; the make-up at unity */
         for (c = 0; c < 2u; c++)
             v->y[c][0] = v->y[c][1] = c ? (s ? s[0] : 0) : b[0];
@@ -749,8 +759,8 @@ static __attribute__((noinline)) void MXT_BODY(morph_valley)(uint32_t pp, int32_
     v->pout += (pout - v->pout) >> 5;
     v->qin += (pin - v->qin) >> 3;                       /* (~6 ms) */
     v->qout += (pout - v->qout) >> 3;
-    g1 = 4096;
-    if (v->qout > 0 && v->qin > v->qout) {               /* RMS make-up, as much as the filter took, at most +9 dB (x 2.82) */
+    g1 = hold ? v->g : 4096;
+    if (!hold && v->qout > 0 && v->qin > v->qout) {               /* RMS make-up, as much as the filter took, at most +9 dB (x 2.82) */
         int64_t pi_ = v->qin, po = v->qout, r;
         while (pi_ >= (int64_t)1 << 38)                  /* (the ratio's numerator in range) */
             pi_ >>= 1, po >>= 1;
@@ -758,7 +768,8 @@ static __attribute__((noinline)) void MXT_BODY(morph_valley)(uint32_t pp, int32_
         g1 = (int32_t)isqrt32((uint32_t)(r > (int64_t)8 << 24 ? (int64_t)8 << 24 : r));
         g1 = g1 > 11585 ? 11585 : g1;
     }
-    g1 = 4096 + (int32_t)(((int64_t)(g1 - 4096) * m1) >> 15);
+    if (!hold)
+        g1 = 4096 + (int32_t)(((int64_t)(g1 - 4096) * m1) >> 15);
     dg = (g1 - g) / (int32_t)n;
     for (c = 0; c < 2u; c++) {
         int32_t *p = c ? s : b, gg = g;

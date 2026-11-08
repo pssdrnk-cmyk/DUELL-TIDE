@@ -160,6 +160,48 @@ static uint8_t shed_over;                              /* bit k: the half k halv
 #define SHED_FULL_TICKS ((HALF_FRAMES * 1000000u / FS) * FM1_TICKS_PER_US)                 /* the whole half */
 static uint32_t shed_count;
 
+#if DUELL_TIDE
+/* K3 THE EASE LADDER (TIDE 1.0.0-b4, CPU audit K3; core.h ease): in place of the two rules below (kill a voice after two halves over 85 %, LIGHT FX the same),
+ * one level that eases the cheapest, least audible work first and cuts sound only when a half really missed. Driven by the ELAPSED half (all: TIMER5's
+ * nested work included, what the DMA deadline sees), released by the meter's load:
+ *  - up: two halves in a row over 85 %: one level up (at most one a half); a half over its whole time (a miss): to level 4 at least;
+ *  - down: the meter's load (song.cpu_q8) under 70 % for ~3 s in a row (OVL_CALM_HALVES): one level down, and the 3 s start again;
+ *  - level 4 fades the SHED_FAST_N oldest released tails on the half it is entered from below and on each half the overload lasts; level 5 fades a held note
+ *    (shed_voice) only on a half that missed. Levels 1 .. 3 fade nothing. The ISR's own shedding code (shed_req) is unchanged.
+ * ease_step runs every half (range Z: tools/ram_fns_z.py); ease_set, a level change, is in the flash */
+static uint16_t ease_calm;                             /* halves in a row with the meter's load under 70 % while eased */
+static uint32_t ease_n[5];                             /* entries into levels 1 .. 5 since power-on (the console's `cpu`); [2] is LIGHT FX's count */
+static __attribute__((noinline)) void ease_set(uint32_t n)
+{
+    uint32_t e;
+    for (e = ease; e < n; e++)                          /* (each level includes the ones below it: a jump enters each) */
+        ease_n[e]++;
+    ovl_lite = n >= 3u;
+    ease = (uint8_t)n;
+}
+static __attribute__((noinline)) uint32_t ease_step(uint32_t all)
+{
+    uint32_t e = ease, n = e, miss = all > SHED_FULL_TICKS, over;
+    shed_over = (uint8_t)(shed_over << 1 | (all > SHED_TICKS));
+    over = (shed_over & 3u) == 3u;
+    if (over | miss) {
+        ease_calm = 0;
+        n += over && n < 5u;
+        n = miss && n < 4u ? 4u : n;
+        if (n >= 4u)
+            shed_req |= SHED_FAST;
+        if (miss && n == 5u)
+            shed_req |= SHED_HELD;
+    } else if (e) {
+        ease_calm = song.cpu_q8 < OVL_CALM_Q8 ? (uint16_t)(ease_calm + 1u) : 0u;
+        if (ease_calm >= OVL_CALM_HALVES)
+            n = e - 1u, ease_calm = 0;
+    }
+    if (n != e)
+        ease_set(n);
+    return (all - t5_nested_ticks) / FM1_TICKS_PER_US;
+}
+#else
 /* end of a half: all = its ticks, TIMER5 nested in it included -> the render alone in us. The deadline sees
  * both; shed after 2 overloaded halves in a row (out of line: keeps the ISR's render loops as they were) */
 static __attribute__((noinline)) uint32_t shed_check(uint32_t all)
@@ -172,6 +214,8 @@ static __attribute__((noinline)) uint32_t shed_check(uint32_t all)
     ovl_step((shed_over & 3u) == 3u, song.cpu_q8);     /* (0.2.25: the overload guard, fx.c: the same rule; the meter's load lets it go) */
     return (all - t5_nested_ticks) / FM1_TICKS_PER_US;
 }
+#define ease_step shed_check                         /* (plain DUELL: the two rules as they were) */
+#endif
 
 static uint32_t shed_released(uint32_t n)             /* the n oldest released voices fade out; returns how many */
 {
@@ -274,7 +318,7 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
         fm1_audio_ack_half();
         audio_halves++;
         all = fm1_ticks() - t0;
-        us = shed_check(all);
+        us = ease_step(all);
         el = all / FM1_TICKS_PER_US;                    /* (K2: what the deadline saw, TIMER5 nested in it included) */
 #if DUELL_BENCH
         cpu_el_last = el;                               /* (the bench's timeline window) */
