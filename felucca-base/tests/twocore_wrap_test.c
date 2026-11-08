@@ -36,10 +36,10 @@ static void host_job(uint32_t arg)
 }
 static tc_c1_t c1;
 static const uint32_t *f_word;
-static uint32_t f_xor, f_count;
+static uint32_t f_xor, f_count, f_hit;
 static uint32_t hook(const uint32_t *p, uint32_t v)
 {
-    if (p == f_word && f_count) { f_count--; return v ^ f_xor; }
+    if (p == f_word && f_count) { f_count--; f_hit++; return v ^ f_xor; }
     return v;
 }
 
@@ -82,17 +82,34 @@ int main(void)
                 expect("done after a late take", tc_answer(j) == TCA_DONE && tc_closed() && runs == r0 + 1u, j);
                 break;
             default:                                    /* check value stays wrong: refused */
-                f_word = &tc_mb.chk; f_xor = 1u; f_count = 8u; tc_host_ld_hook = hook;
+                f_word = &tc_mb.chk; f_xor = 1u; f_count = 8u; f_hit = 0; tc_host_ld_hook = hook;
                 tc_c1_step(&c1);
                 tc_host_ld_hook = 0;
-                expect("refused, not run", tc_answer(j) == TCA_REFUSED && runs == r0, j);
+                expect("refused, not run (every read of the check word wrong: it was read, and not all 8 allowed were needed)", tc_answer(j) == TCA_REFUSED && runs == r0 && f_hit >= 1u && f_hit <= 8u, j);
                 tc_mb.done = j;                         /* (the runner would play it itself; mark the slot closed for the next post) */
                 break;
             }
-            expect("a step after the answer runs nothing", (tc_c1_step(&c1), runs) == runs, j);
+            r0 = runs;
+            tc_c1_step(&c1);
+            expect("a step after the answer runs nothing", runs == r0, j);
             expect("core 1's last follows", c1.last == j, j);
             /* a done word one behind and one ahead of the head must classify across the wrap */
             expect("old done is not BAD", ((int32_t)(tc_mb.done - tc.job)) <= 0, j);
+            /* a word truly ahead of the head is BAD, also when the head is at the wrap (done / yld / claim, one ahead; and 1 ahead of 0xFFFFFFFF) */
+            {
+                uint32_t sj = tc.job, sd = tc_mb.done, sy = tc_mb.yld, sc = tc_mb.claim, ahead = j + 1u ? j + 1u : 1u;
+                tc_mb.done = ahead;
+                expect("done ahead of the head is BAD", tc_answer(j) == TCA_BAD, j);
+                tc_mb.done = sd; tc_mb.yld = ahead;
+                expect("yld ahead of the head is BAD", tc_answer(j) == TCA_BAD, j);
+                tc_mb.yld = sy; tc_mb.claim = ahead;
+                expect("claim ahead of the head is BAD", tc_answer(j) == TCA_BAD, j);
+                tc_mb.claim = sc;
+                tc.job = 0xFFFFFFFFu; tc_mb.done = 1u;
+                expect("1 is ahead of 0xFFFFFFFF: BAD across the wrap", tc_answer(0xFFFFFFFFu) == TCA_BAD, j);
+                tc.job = sj; tc_mb.done = sd;
+                expect("the words are back and not BAD", tc_answer(j) != TCA_BAD, j);
+            }
             prev = j;
         }
         expect("crossed the wrap", prev < 0x80u, prev);

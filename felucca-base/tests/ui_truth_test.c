@@ -256,6 +256,38 @@ static void test_footer_number(void)
     CHECK("footer: at B the destination shows its number and name", !strcmp(b, want) && strcmp(a, b));
 }
 
+/* the footer numbers a destination past the 124 slots too (#125 .. the last read-only place, as PATCHES numbers it): audit PR 1 T1. The expected text is
+ * built from the numbers PATCHES shows (rank + 1: #125 for rank 124), not from tide_part_name's own branch */
+static void test_footer_number_past_slots(void)
+{
+    char b[20], want[20], num[8];
+    uint32_t n, e = 0, j = 0, ranks = 0, last = UP_SLOTS + UP_NXTRA - 1u;
+    ui_power_on(); frame();
+    for (n = UP_USER0; n <= last; n++) {                 /* ranks 124 .. : the first and the last are tried */
+        uint32_t ee, jj = 0;
+        ee = ds_list_at(n, &jj);
+        if (ds_list_rank(ee, jj) != n)
+            continue;
+        e = ee; j = jj; ranks++;
+        trk[0].engine = trk[0].eng_req = (uint8_t)e; trk[0].user = 0;
+        trk[0].preset = (uint8_t)((j + 1u) % ds_count(e));   /* (the part plays another sound: the label must come from the destination) */
+        morph_ready(0);
+        CHECK("footer past the slots: the destination can be set", morph_to_sound(0, 1u, j));
+        morph_do(MQ_FADER, 1u, 127u);
+        frame();
+        tide_part_name(0, b);
+        fmt_int(num, (int32_t)(n + 1u));
+        want[0] = '#'; want[1] = 0;
+        str_cpy(want + 1, num, 8);
+        str_cpy(want + str_len(want), " ", 2);
+        str_cpy(want + str_len(want), ds_name(e, j), 16);
+        CHECK("footer past the slots: the destination shows #NNN and its name", !strcmp(b, want));
+        if (n > UP_USER0 && n < last)
+            n = last - 1u;                               /* (the first and the last place) */
+    }
+    CHECK("footer past the slots: the list has places there to try", ranks >= 2u);
+}
+
 int main(void)
 {
     test_roll_playhead();
@@ -265,6 +297,7 @@ int main(void)
     test_list_knobs();
     test_arc_trip();
     test_footer_number();
+    test_footer_number_past_slots();
     printf("uitruth: %u checks, %u failed\n", checks, failures);
     return failures ? 1 : 0;
 }

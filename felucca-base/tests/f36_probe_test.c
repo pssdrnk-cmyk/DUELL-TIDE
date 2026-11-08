@@ -72,10 +72,53 @@ int main(void)
         CHECK("footer playhead = the step that plays", foot_playhead(t) == tide_play_idx(t));
     }
     t->arp_idx = 0xFFFFFFFFu;
+    CHECK("footer playhead: arp not started (arp_idx none): no mark", foot_playhead(t) == 0xFFu);
+    t->arp_idx = 64; t->nheld = 0;
+    CHECK("footer playhead: no key held: no mark", foot_playhead(t) == 0xFFu);
+    t->nheld = 1;
+    CHECK("footer playhead: with a key held it marks the step again", foot_playhead(t) == tide_play_idx(t) && foot_playhead(t) != 0xFFu);
+    t->arp_idx = 0xFFFFFFFFu;
     CHECK("play_idx: none yet", tide_play_idx(t) == 0xFFFFFFFFu);
     CHECK("play_len is the stretch", tide_play_len(t) == 14u);
     /* peer prediction (seq_dialogue) is blind to a shortened part: it declines while a stretch is on */
     CHECK("dialogue declines in a stretch", tide_poly_on(t));
+    /* and phrase_peer_attack itself declines (its tide_poly_on guard): a SEQ part 0 against an ARP SEQ part 1 that predicts an attack, then each part stretched */
+    {
+        uint32_t p;
+        ui_power_on(); frame();
+        gl.on = gl.armed = 0; transport_req = 0; song.playing = song.rec = 0;
+        mods_off = 0; duell_mode = DM_STEREO; usb.config = 1;
+        memset(&midi_clock, 0, sizeof midi_clock);
+        song.g[G_CLOCK] = 0; song.g[G_BPM] = 120; song.g[G_SWING] = 50;
+        midi_pch[0] = 0; midi_pch[1] = 1;
+        memset(sqm, 0, sizeof sqm); memset(&rhythm, 0, sizeof rhythm);
+        for (p = 0; p < 2u; p++) {
+            track_t *q = &trk[p];
+            uint32_t i;
+            memset(q->step, 0, sizeof q->step);
+            q->p[P_SLEN] = p ? 7 : 9; q->p[P_AMODE] = p ? AM_SEQ : AM_OFF;
+            q->p[P_ARATE] = p ? 3 : 2; q->p[P_SDIV] = p ? 2 : 3;
+            q->p[P_ASWING] = 50; q->p[P_SSWING] = 50;
+            q->p[P_APROB] = 127; q->p[P_AOCT] = 1; q->p[P_AGATE] = 64;
+            q->p[P_SQNT] = 1; q->p[P_MUTE] = 0; q->p[P_LEVEL] = 100;
+            q->nheld = 0; q->seq_active = 1;
+            for (i = 0; i < (uint32_t)q->p[P_SLEN]; i++) {
+                q->step[i].time = i % 3 == 1 ? ST_REST : ST_NOTE;
+                q->step[i].n = q->step[i].time == ST_NOTE;
+                q->step[i].note[0] = (uint8_t)(60 + i);
+            }
+            poly_len[p] = 0; poly_base[p] = 0; poly_free[p] = 1000;
+        }
+        seq_start();
+        trk[0].seq_idx = trk[1].arp_idx = 0; trk[0].seq_pos = trk[1].arp_pos = 0;
+        CHECK("phrase_peer_attack: control (no stretch) predicts the attack", phrase_peer_attack(0, 0));
+        poly_len[0] = 6;
+        CHECK("phrase_peer_attack: the asking part stretched: no prediction", !phrase_peer_attack(0, 0));
+        poly_len[0] = 0; poly_len[1] = 5;
+        CHECK("phrase_peer_attack: the peer stretched: no prediction", !phrase_peer_attack(0, 0));
+        poly_len[1] = 0;
+        CHECK("phrase_peer_attack: back to no stretch it predicts again", phrase_peer_attack(0, 0));
+    }
     printf("f36: %d checks, %d failed\n", checks, bad);
     return bad ? 1 : 0;
 }
