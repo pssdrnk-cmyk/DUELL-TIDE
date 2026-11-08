@@ -115,6 +115,6 @@ static void tide_arp_tick(track_t *t)
     was = poly_len[pi];
     tide_seq_loops[pi]++;                                /* (the phrase lifecycle's loop: the arp's, as POLY's) */
     tide_poly_wrap(pi, len);
-    if (poly_len[pi] && !was)
+    if (poly_len[pi] && (!was || t->arp_idx == 0))      /* (a restart at arp_idx 0 inside a stretch, keys released then pressed: the short loop counts from its first step; audit 36) */
         poly_base[pi] = t->arp_idx;
 }
