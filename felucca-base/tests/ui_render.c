@@ -2722,26 +2722,52 @@ int main(int argc, char **argv)
                 (!strcmp(UI_PALETTES[p].name, "VIOLET") || !strcmp(UI_PALETTES[p].name, "POLICE") || !strcmp(UI_PALETTES[p].name, "PALE")))   /* VIOLET (the default) and POLICE */
                 write_ppm(out, UI_PALETTES[p].name, S_NAME[s]);
         }
-    {   /* MORPH v4 stills: the fader at A, 64, B and BOTH (64, B), each silent and playing (40 steps of a part sounding:
-         * notes every 8 steps, its level, envelope, LFO 1 and 2 moving), as OUTDIR/ppm/<PAL>_mv_<fader>_<silent|play>.ppm */
+    {   /* MORPH stills: the fader at A, 64, B and BOTH (64, B), each silent and playing (40 steps: TIDE: the part's real sound as the tap would leave it, part 1 a saw whose level falls and rises, part 2 a sine at another
+         * pitch; plain DUELL: a part sounding, notes every 8 steps, its level, envelope, LFO 1 and 2 moving), as OUTDIR/ppm/<PAL>_mv_<fader>_<silent|play>.ppm; TIDE also with part 2 selected: ..._play_part2.ppm */
         static const int MS[] = {S_MORPH, S_MORPH_MID, S_MORPH_B, S_MORPH_BOTH_MID, S_MORPH_BOTH};
         static const char *const MN[] = {"A", "64", "B", "both64", "bothB"};
-        static const char *const MP[] = {"VIOLET", "COBALT", "ORANGE", "MINT", "PALE", "GREY", "POLICE"};
+        static const char *const MP[] = {"VIOLET", "COBALT", "ORANGE", "MINT", "PALE", "OCEAN", "GREY", "MONO", "POLICE"};
         uint32_t k, j, pl, st, q;
+#if DUELL_TIDE
+        uint32_t sel;
+#endif
         for (p = 0; p < NPALETTES; p++)
             for (j = 0; j < sizeof MP / sizeof MP[0]; j++)
                 if (!strcmp(UI_PALETTES[p].name, MP[j]))
                     for (k = 0; k < sizeof MS / sizeof MS[0]; k++)
+#if DUELL_TIDE
+                        for (pl = 0; pl < 3u; pl++) {
+#else
                         for (pl = 0; pl < 2u; pl++) {
+#endif
                             char nm[48];
                             cur_name = "morph_v4";
                             setup(MS[k]);
-#if DUELL_TIDE
-                            if (MS[k] == S_MORPH)                     /* (TIDE: S_MORPH's second HOME tap lands on TIDE SETTINGS; this still is the MORPH page at A) */
-                                go_title("MORPH");
-#endif
                             pal(p);
+#if DUELL_TIDE
+                            sel = pl == 2u ? 1u : 0u;
+                            song.sel = (uint8_t)sel;
+                            memset(wl, 0, sizeof wl);
+                            wl_tk = 0xFFFFFFFFu;
+                            wv_want = wv_blk + 256u;
+#endif
                             for (st = 0; st < 40u; st++) {
+#if DUELL_TIDE
+                                for (q = 0; q < 2u; q++) {
+                                    uint32_t cnt = 20000u + (st + 1u) * 1366u, i;
+                                    int32_t amp = q ? 40 : 30 + (int32_t)(st % 8u) * 4;
+                                    for (i = 0; i < WVR_N; i++) {
+                                        uint32_t t = cnt - WVR_N + i;
+                                        int32_t v = q ? (int32_t)(amp * sin(6.283185307179586 * (t % 128u) / 128.0)) : (int32_t)(t % 100u) * amp / 100 - amp / 2;
+                                        wv_m[q][t & (WVR_N - 1u)] = (int8_t)(pl ? v : 0);
+                                    }
+                                    wv_cnt[q] = cnt;
+                                    wv_gap[q] = 0;
+                                    wv_sil[q] = pl ? 0 : 1;
+                                    if (st == 0u)
+                                        wl[q].base = cnt - 1366u;
+                                }
+#else
                                 for (q = 0; q < 2u; q++) {
                                     uint32_t ph = st % 8u, d = q ? 3u : 0u;
                                     trk[q].peak = pl ? (int32_t)(q ? 6000 : 12000) * (int32_t)(8u - (ph + d) % 8u) / 8 : 0;
@@ -2753,10 +2779,11 @@ int main(int argc, char **argv)
                                     trk[q].lfo2.val = pl ? sine_i(st * 0x05000000u) : 0;
                                     trk[q].lfo2.fade = 32767;
                                 }
+#endif
                                 ui.frame += 4u;
                                 draw(MS[k]);
                             }
-                            snprintf(nm, sizeof nm, "mv_%s_%s", MN[k], pl ? "play" : "silent");
+                            snprintf(nm, sizeof nm, "mv_%s_%s", MN[k], pl == 2u ? "play_part2" : pl ? "play" : "silent");
                             write_ppm(out, MP[j], nm);
                             for (q = 0; q < 2u; q++) {
                                 trk[q].v[0].active = 0;

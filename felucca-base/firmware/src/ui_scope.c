@@ -29,7 +29,7 @@ typedef struct {
     uint8_t got, have, h, hn;                        /* a picture exists since the last reset; one with a trigger to match; the half height it was made for; ridges kept */
 } wl_t;
 static wl_t wl[2];
-static uint32_t wl_tk = 0xFFFFFFFFu, wl_pi;
+static uint32_t wl_tk = 0xFFFFFFFFu;
 _Static_assert(NLIVE == 2, "ui_scope.c keeps one reader state for each of the two parts");
 static uint32_t wl_k, wl_b;                          /* the ring being read, and the counter value of its entry 0 */
 #define WLR(i) ((int32_t)wv_m[wl_k][(wl_b + (uint32_t)(i)) & (WVR_N - 1u)])
@@ -271,14 +271,18 @@ static void wl_line(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint16_t c, 
         }
     }
 }
-/* part k's ridges in rows y0 .. y1 - 1: the newest in front (lowest), each older one a step higher and fainter, every line hiding what is under it; the block of ridges is centred, one ridge (silence: a flat line) is the middle */
+/* part k's ridges in rows y0 .. y1 - 1: the newest in front (lowest), each older one a step higher and fainter, every line hiding what is under it; the block of ridges is centred, one ridge (silence: a flat line)
+ * is the middle. The selected part (song.sel) is in full brightness with a bar at the half's left edge (a second cue that needs no colour: POLICE has one colour a part, GREY little); the other is dimmed */
 static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
 {
     const wl_t *s = &wl[k];
-    int32_t pct = (int32_t)morph_fader_of(k) * 100 / 127, hs = (y1 - y0) / 2 - 1, amp = hs * 2 / 5, nr, nf, step, i, p, nd;
+    const int32_t hot = k == song.sel, pct = (int32_t)morph_fader_of(k) * 100 / 127, hs = (y1 - y0) / 2 - 1;
+    int32_t amp = hs * 2 / 5, nr, nf, step, i, p, nd;
     if (hs < 4)
         return;
-    if (hs > 30)                                     /* (the big area) */
+    if (hot)
+        cv_rect(1, y0 + 1, 3, y1 - y0 - 2, T_PFILL(k));
+    if (hs > 30)                                     /* (the old non-grid box) */
         amp = hs * 3 / 5;
     step = (y1 - y0 - 2 * amp - 3) / ((int32_t)WL_HN - 1);
     step = step < 2 ? 2 : step;                      /* (a ridge every 2 rows at least: closer, they fill the box solid) */
@@ -290,7 +294,7 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
     nr = nr < 1 ? 1 : nr;
     for (i = nr - 1; i >= 0; i--) {
         int32_t yb = (y0 + y1 - 1) / 2 + ((nr - 1) - 2 * i) * step / 2, py = 0;
-        uint16_t col = mv_col(k, pct, i * 90 / nf);
+        uint16_t col = mv_col(k, pct, i * 90 / nf + (hot ? 0 : 45));
         for (p = 0; p < WL_NP; p++) {
             int32_t x = MV_BX0 + 3 * p, y = yb + (s->hn ? s->dy[i][p] * amp / hs : 0);
             y = clamp(y, y0, y1 - 1);
@@ -303,43 +307,34 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
     }
 }
 /* the page's clock: arms the gate and says whether this draw makes a new picture (never with ANIM OFF: the tap stays shut) */
-static int wl_tick(uint32_t pi)
+static int wl_tick(void)
 {
     uint32_t tk = mv_tick();
     int stepit;
     if (ui_prefs & PREF_ANIM_OFF)
         return 0;
-    stepit = tk != wl_tk || !wl[pi].got;
+    stepit = tk != wl_tk || !(wl[0].got && wl[1].got);
     if (stepit) {
-        if ((int32_t)(wv_want - wv_blk) <= 0 || pi != wl_pi) {   /* the gate was shut (the page was left), or the other part is shown: the pictures start over, what the rings hold is not fresh */
+        if ((int32_t)(wv_want - wv_blk) <= 0) {      /* the gate was shut (the page was left): the pictures start over, what the rings hold is not fresh */
             memset(wl, 0, sizeof wl);
             wl[0].base = wv_cnt[0];
             wl[1].base = wv_cnt[1];
         }
-        wl_pi = pi;
         wv_want = wv_blk + 256u;                     /* the one word the UI writes */
         wl_tk = tk;
     }
     return stepit;
 }
-/* the picture in rows y0 .. y1 - 1: the selected part, or with TARGET BOTH part 1 in the upper half and part 2 in the lower */
+/* the picture in rows y0 .. y1 - 1: always both parts, part 1 in the upper half and part 2 in the lower, whatever ALGORITHM is set to (it decides what the fader moves, not the picture) */
 static void wl_card(int32_t y0, int32_t y1)
 {
-    const uint32_t pi = song.sel, both = morph.target == MT_BOTH;
     const int32_t ym = (y0 + y1) / 2;
-    int stepit = wl_tick(pi);
-    if (both) {
-        if (stepit) {
-            wl_step(0, (ym - y0) / 2 - 1);
-            wl_step(1, (y1 - ym) / 2 - 1);
-        }
-        wl_stack(0, y0, ym);
-        wl_stack(1, ym, y1);
-    } else {
-        if (stepit)
-            wl_step(pi, (y1 - y0) / 2 - 1);
-        wl_stack(pi, y0, y1);
+    if (wl_tick()) {
+        wl_step(0, (ym - y0) / 2 - 1);
+        wl_step(1, (y1 - ym) / 2 - 1);
     }
+    wl_stack(0, y0, ym);
+    wl_stack(1, ym, y1);
 }
 /* TEMPLATE 9: the picture in the big area (screen rows ay .. ay + ah - 1, drawn on the area's canvas by ui_graph.c draw_graph); HOLD SAVE = SAVE PATCH keeps its place on the last line */
 static void wl_area(int32_t ay, int32_t ah)

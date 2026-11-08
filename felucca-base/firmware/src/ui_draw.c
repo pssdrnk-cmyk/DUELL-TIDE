@@ -2496,7 +2496,28 @@ static void draw_columns(void)
 #if !DUELL_TIDE
         grid_big = (uint8_t)(grid_on != 0);                /* (HOME's grid: the big value, PAGES_V1_home.png) */
 #endif
+#if DUELL_TIDE
+        if (AREA_ON && morph.target == MT_BOTH && morph_fader_of(1u - pi) != f) {   /* the page shows both parts: with ALGORITHM on BOTH and the faders apart, the other part's value after this one's (the old track's tick) */
+            static char other[8];
+            uint32_t of = morph_fader_of(1u - pi);
+            other[0] = 'P';
+            other[1] = (char)('1' + (1u - pi));
+            other[2] = ' ';
+            if (of == 0u || of == 127u) {
+                other[3] = of ? 'B' : 'A';
+                other[4] = 0;
+            } else {
+                fmt_int(other + 3, (int32_t)of);
+            }
+            k1_after_next = other;
+            k1_after_col = T_PFILL(1u - pi);
+            k1_after_r = 0;
+        }
+#endif
         draw_column(0, "MORPH", val, "", VAL(0u), (int32_t)f * 1000 / 127, ICON_MIX);   /* (TIDE 1.0.0-b4: a plain card, its label, value and bar as every K1 card) */
+#if DUELL_TIDE
+        k1_after_next = 0;
+#endif
 #if !DUELL_TIDE
         grid_big = 0;
 #endif

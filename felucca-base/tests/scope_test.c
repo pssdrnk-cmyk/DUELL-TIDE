@@ -477,26 +477,27 @@ int main(void)
         ring(0, 9000u);
         ring(1, 9000u);
         wl_tk = 0xFFFFFFFFu;
-        wl[0].got = 0;
+        wl[0].got = wl[1].got = 0;
         wv_want = wv_blk;                                /* shut */
         ui_prefs &= ~PREF_ANIM_OFF;
-        st = wl_tick(0);
+        st = wl_tick();
         ok("gate: on the page the gate opens 256 blocks ahead and a picture is due", st == 1 && (int32_t)(wv_want - wv_blk) == 256);
         wv_want = wv_blk;
         ui_prefs |= PREF_ANIM_OFF;
-        st = wl_tick(0);
+        st = wl_tick();
         ok("gate: with ANIM OFF the gate stays shut and no picture is made (the last one stays)", st == 0 && (int32_t)(wv_want - wv_blk) <= 0);
         ui_prefs &= ~PREF_ANIM_OFF;
-        wl[0].got = 1;
+        wl[0].got = wl[1].got = 1;
         wl[0].hn = 3;
         wv_want = wv_blk;                                /* the page was left: the gate lapsed */
         wl_tk = 0xFFFFFFFFu;
-        wl_tick(0);
+        wl_tick();
         ok("gate: back on the page after the gate lapsed, the pictures start over", wl[0].hn == 0);
         wl[0].hn = 3;
-        wl_tk = 0xFFFFFFFFu;
-        wl_tick(1);
-        ok("gate: the other part shown: the pictures start over", wl[0].hn == 0);
+        wl[0].got = wl[1].got = 1;
+        wl_tk = mv_tick();
+        st = wl_tick();
+        ok("gate: a part change does not start the pictures over (both parts are always drawn)", st == 0 && wl[0].hn == 3);
     }
 
     printf("scope: %d checks, %d failed\n", ncheck, bad);
