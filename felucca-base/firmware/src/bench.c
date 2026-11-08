@@ -20,9 +20,9 @@
  *   SETTLE 700 ms (and until a WAVE table build is done): the engine fades, the mode's dip, the tables
  *   NOTES  the row's notes from an internal generator (USB-MIDI events into the MIDI-in ring, on the parts' own channels; LAYER: part 1's
  *          channel, both parts sound them), 500 ms for the attacks
- *   MEASURE 3 s: the audio interrupt's own time per half (audio.c fm1_alnk0_irq: TIMER4 across the half less TIMER5 nested in it, the same
- *          figure as the CPU bar, ABOUT and the TEST screen: cpu_sum / cpu_n / cpu_pk / cpu_miss), as a share of the half's time (CPU_BUDGET_US):
- *          the average, the peak, the halves missed (over the half's time or overtaken by the DMA); the voices sounding (the average); the
+ *   MEASURE 3 s: the audio interrupt's own time per half (audio.c fm1_alnk0_irq: the average is TIMER4 across the half less TIMER5 nested in it, the peak the ELAPSED time of the longest half (TIMER5 included: what the DMA
+ *          deadline sees), the same figures as ABOUT and the TEST screen: cpu_sum / cpu_n / cpu_el_pk / cpu_miss), as a share of the half's time (CPU_BUDGET_US):
+ *          the average, the peak, the DMA periods missed (K2: a half over 2 budgets counts 2); the voices sounding (the average); the
  *          voices the overload rule cut (audio.c shed_count) and the overload guard's LIGHT FX (fx.c ovl_lite): the audio path is the normal
  *          build's, nothing of it is held off for the bench. At its end the budget's numbers (part_notes_shown, part_notes_reason: what the
  *          budget gives this setting, also when it was held open) and, in RAMPLACE builds, the RAM code compared with its flash image (ramplace.c)
@@ -903,7 +903,7 @@ static BENCH_FN uint32_t bench_voices(void)
 }
 static BENCH_FN void bench_measure_begin(void)
 {
-    cpu_win_take(CPU_W_BENCH, 0, 0);                   /* (K2: the bench's own peak window starts; the snapshot's counters are the window's start) */
+    (void)cpu_win_take(CPU_W_BENCH);                    /* (K2: the bench's own peak window starts; the snapshot's counters are the window's start) */
     bench.n0 = cpu_snap.n;
     bench.s0 = cpu_snap.sum;
     bench.m0 = cpu_snap.miss;
@@ -912,8 +912,7 @@ static BENCH_FN void bench_measure_begin(void)
 }
 static BENCH_FN void bench_measure_end(bench_res_t *r)
 {
-    uint32_t n, sum, pk;
-    cpu_win_take(CPU_W_BENCH, &pk, 0);
+    uint32_t n, sum, pk = cpu_win_take(CPU_W_BENCH);   /* (the elapsed peak: the figure ABOUT and TEST show) */
     n = cpu_snap.n - bench.n0;
     sum = cpu_snap.sum - bench.s0;
     r->avg = (uint16_t)(n ? bench_clamp((int32_t)((uint64_t)sum * 1000u / ((uint64_t)n * CPU_BUDGET_US)), 0, 9999) : 0);
@@ -1431,8 +1430,8 @@ static BENCH_FN void bench_half(void)
     } else
         btl.h++;
     h = btl.h;
-    if (btl.win && felucca_dbg.last_us > btl.pk1)       /* (K2: the window's longest half is kept here from the last half's own time: cpu_pk belongs to the snapshot's owner, which clears it) */
-        btl.pk1 = felucca_dbg.last_us;
+    if (btl.win && cpu_el_last > btl.pk1)              /* (K2: the window's longest elapsed half is kept here from the last half's own time: the peaks belong to the snapshot's owner, which clears them; read inside the interrupt, so no window of its own) */
+        btl.pk1 = cpu_el_last;
     if (h == btl.m0) {                                  /* the CPU window opens: the meter's counters as they are at the start of this half */
         btl.n0 = cpu_n, btl.s0 = cpu_sum, btl.c0 = cpu_miss, btl.d0 = shed_count;
         btl.pk1 = 0;

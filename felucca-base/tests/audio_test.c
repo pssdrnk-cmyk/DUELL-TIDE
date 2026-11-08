@@ -211,6 +211,18 @@ static void dma(void)
     host_us = 3u * (HALF_FRAMES * 1000000u / FS) + 10u;
     fm1_alnk0_irq();
     check("meter K2: a half over three periods is 3 misses (5 in all)", cpu_miss == 5u);
+    cpu_miss = 0;
+    host_us = 5u * (HALF_FRAMES * 1000000u / FS) + 10u;
+    fm1_alnk0_irq();
+    check("meter K2: a half over five periods counts 3 (the cap)", cpu_miss == 3u);
+    cpu_miss = 0; host_us = (HALF_FRAMES * 1000000u / FS) + 10u; host_half_reads = 0; host_dma_advanced = 1;
+    fm1_alnk0_irq();
+    check("meter K2: a half over one period that the DMA also overtook counts 1, not 2", cpu_miss == 1u);
+    host_dma_advanced = 0;
+    host_us = 2u * (HALF_FRAMES * 1000000u / FS) + 10u; host_half_reads = 0; host_dma_advanced = 1; cpu_miss = 0;
+    fm1_alnk0_irq();
+    check("meter K2: a half over two periods that the DMA overtook counts 2 (the late flag adds nothing)", cpu_miss == 2u);
+    host_dma_advanced = 0;
     cpu_miss = 0; cpu_pk = cpu_el_pk = 0;
     host_us = HALF_FRAMES * 1000000u / FS - 100u; host_nest = 0;
     fm1_alnk0_irq();

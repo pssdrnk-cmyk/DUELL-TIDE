@@ -276,6 +276,9 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
         all = fm1_ticks() - t0;
         us = shed_check(all);
         el = all / FM1_TICKS_PER_US;                    /* (K2: what the deadline saw, TIMER5 nested in it included) */
+#if DUELL_BENCH
+        cpu_el_last = el;                               /* (the bench's timeline window) */
+#endif
         if (el > cpu_el_pk)
             cpu_el_pk = el;
 #ifdef FELUCCA_METER_EST
@@ -285,8 +288,10 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
             audio_max_us = us;
         cpu_sum += us;                                  /* the meter: no division here */
         cpu_n++;
-        if (us > cpu_pk)
+#if DUELL_TEST_MODE
+        if (us > cpu_pk)                                /* (the console's probe only) */
             cpu_pk = us;
+#endif
         {
             uint32_t load = song.cpu_q8 * (CPU_AVG - 1u) + (us * 256u) / (HALF_FRAMES * 1000000u / FS) + audio_cpu_rem;
             song.cpu_q8 = load / CPU_AVG;

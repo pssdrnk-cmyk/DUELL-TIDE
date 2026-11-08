@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* DUELL 0.2.25: the OVERLOAD GUARD (fx.c ovl_step, audio.c shed_check; SPEC 6.3). When the audio is near its limit (the 85 % rule of the voice
  * shedding: two halves in a row over 85 % of their time), the dearest effect fades to its lighter version through its own crossfade: the
- * delay's RANDOM / OCT UP plays as the plain delay (its ~11.6 ms crossfade); after the meter's load (the CPU bar's figure) has stayed under 70 %
+ * delay's RANDOM / OCT UP plays as the plain delay (its ~11.6 ms crossfade); after the meter's load (the meter's average) has stayed under 70 %
  * for ~3 s it comes back the same way. Automatic, always on, nothing stored. (Built for SHIM's PITCH BOTH too, which the owner removed in 0.2.25.)
  * The real audio ISR with a simulated clock (as tests/audio_test.c), the measure forced by the render time it reports (host_us):
  *   MEASURE   one slow half does not engage it, two in a row do; a load between 70 and 85 % holds it (hysteresis); under 70 % it lets go after

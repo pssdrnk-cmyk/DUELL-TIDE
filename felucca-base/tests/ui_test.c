@@ -185,7 +185,7 @@ static void lcd_blit(uint32_t x, uint32_t y, uint32_t w, uint32_t h, const uint1
     for (j = 0; j < h && y + j < 240u; j++)
         for (i = 0; i < w && x + i < 240u; i++) host_put((y + j) * 240u + x + i, p[j * w + i]);
 }
-static struct { uint32_t stage, erase_max_us, last_us; } felucca_dbg;   /* (audio.c's; erase_max_us: the TEST screen, 0.2.11) */
+static struct { uint32_t stage, erase_max_us; } felucca_dbg;   /* (audio.c's; erase_max_us: the TEST screen, 0.2.11) */
 #ifndef FELUCCA_FLASH
 #define FELUCCA_FLASH 0
 #endif

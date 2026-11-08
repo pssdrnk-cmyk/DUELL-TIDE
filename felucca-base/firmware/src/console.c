@@ -379,8 +379,9 @@ static void con_pload(const char *p)                   /* (probe) pload N: part 
 }
 static void con_cpu(void)                              /* (probe) cpu: the longest half since the last `cpu` (us: render, and elapsed = what the DMA deadline saw) and the DMA periods missed since power-on; reads the snapshot, clears nothing of anybody else's (K2) */
 {
-    uint32_t pk, el;
-    cpu_win_take(CPU_W_CON, &pk, &el);                 /* (the console's own window: the snapshot owner, ui_menu.c, has cleared the ISR's peaks) */
+    uint32_t pk, el = cpu_win_take(CPU_W_CON);
+    pk = cpu_wpk_con;
+    cpu_wpk_con = 0;
     con_kv("cpu_pk_us", (int32_t)pk);
     con_kv("cpu_el_pk_us", (int32_t)el);               /* (the render time plus the nested TIMER5 / USB work: what the half's deadline saw) */
     con_kv("cpu_budget_us", (int32_t)CPU_BUDGET_US);

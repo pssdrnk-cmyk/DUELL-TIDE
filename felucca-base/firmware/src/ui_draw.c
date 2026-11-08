@@ -102,6 +102,7 @@ static void draw_battery(void)
 static uint16_t cpu_col(uint32_t lvl, uint16_t bg);   /* (ui_menu.c) */
 #if DUELL_TIDE
 static uint32_t cpu_head(char *l, char *r, uint16_t *c);   /* (ui_menu.c K2: the header's CPU readout on TIDE's pages) */
+static void cpu_head_arm(void);
 #endif
 static struct { uint32_t t, n0, sum0, miss0; uint8_t ok, step, lvl; } cpub;   /* lvl 0 theme, 1 amber, 2 red */
 static void cpu_bar_set(uint32_t pct, uint32_t flash) /* the load in % of the last window, and a missed half in it */
@@ -626,6 +627,12 @@ static void head_title_msg(int glob)
         cv_rect(k ? ax + aw - 1 - i : ax + i, top + (ah - h) / 2, 1, h, ink);
     }
 }
+#if DUELL_TIDE
+static int cpu_head_on(int glob, int msg)              /* K2: HOME's three pages, a part page with no message, layer, menu, guide or dialog over the title */
+{
+    return !glob && !msg && tide_foot_parts() && !ui.menu && !ui.guide && !ui.confirm;
+}
+#endif
 static void draw_head(void)
 {
     char tb[40];
@@ -644,7 +651,8 @@ static void draw_head(void)
     char cps[8], cms[8];
     uint16_t cpc = 0;
     uint32_t cpk = 0;
-    if (!glob && !msg && tide_foot_parts() && !ui.menu && !ui.guide && !ui.confirm)
+    cpu_head_arm();
+    if (cpu_head_on(glob, msg))
         cpk = cpu_head(cps, cms, &cpc);
     sig += cpk * 6397u;
 #endif

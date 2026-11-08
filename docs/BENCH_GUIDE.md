@@ -60,8 +60,8 @@ It finds the unit, then listens. Either start it before the bench (it records th
 | Column | Meaning |
 |---|---|
 | ROW | the setting (list below) |
-| AVG | the audio's average time per half buffer (2.9 ms) over the 3 s of the row, in %: the same figure as the CPU bar and ABOUT |
-| PEAK | the longest single half of those 3 s, in %. Above 100 a half was late |
+| AVG | the audio's average time per half buffer (2.9 ms) over the 3 s of the row, in %: the same figure as ABOUT |
+| PEAK | the longest single half of those 3 s, in %, as its elapsed time (the same figure as ABOUT's PEAK). Above 100 a half was late |
 | MISS | halves that were late (a click or a dropout is possible) |
 | MDL | what the host model (the Mac) predicts for exactly this row |
 | X | AVG / MDL: the unit against the model (1.12 = the unit needs 12 % more than the model says) |
@@ -87,7 +87,7 @@ The CSV has more: the voices that sounded (`vox`), the voices cut (`shed`), the 
 
 ## What the numbers are (and are not)
 
-- AVG / PEAK / MISS are measured on your unit, by the audio interrupt itself, exactly as the CPU bar does it. Nothing of the audio is held off for the bench: if the unit cuts voices or engages LIGHT FX, that is what it really does (the name turns amber).
+- AVG / PEAK / MISS are measured on your unit, by the audio interrupt itself, as ABOUT does it (the average is the render time, the peak the elapsed time of the longest half, a miss a missed DMA period). Nothing of the audio is held off for the bench: if the unit cuts voices or engages LIGHT FX, that is what it really does (the name turns amber).
 - MDL is the Mac's instruction count for the same row (the scale of `./host_tests.sh bench`: 33 instructions a sample = 1 %). X is the calibration you asked for.
 - The bench build is not byte-identical to T0225 (it cannot be: it has the bench in it). The audio code is the same code, the hot code is identical, every audio function has the same size; in BENCH-A1 the engines' render code sits 18 to 96 bytes later in the flash than in T0225 (the bench's two hooks in the UI code). That can move the readings by a little (a cache effect, expected small, not measured); the differences between rows (a stage's cost) are not affected. BENCH-B1 moves the code a little more (its safety hooks), so compare B1's rows with B1's own C1 IDLE rows, not with BENCH-A1.
 

@@ -31,38 +31,47 @@ static struct {
     uint32_t base;                                     /* TEST's RESET: the misses counted from here (ABOUT: since power-on) */
     uint8_t seen;                                      /* a miss was ever seen (miss_t valid) */
 } cpum;
-static uint32_t cpu_wpk[CPU_NW], cpu_wel[CPU_NW];       /* each reader's own longest half since its last take (us) */
-static void cpu_snap_poll(void)                        /* THE owner (K2): read and clear the ISR's peaks together, fold them into every window */
+static uint32_t cpu_wel[CPU_NW];                       /* each reader's own longest elapsed half since its last take (us) */
+#if DUELL_TEST_MODE
+static uint32_t cpu_wpk_con;                           /* the console's render peak (its `cpu` prints both) */
+#endif
+/* THE owner (K2): read and clear the ISR's peaks together, fold them into every window. Main loop only and not reentrant: neither this nor cpu_win_take may be called from an interrupt */
+static void cpu_snap_poll(void)
 {
-    uint32_t k;
+    uint32_t k, el;
+#if DUELL_TEST_MODE
+    uint32_t pk;
+#endif
     fm1_irq_off();
     cpu_snap.sum = cpu_sum;
     cpu_snap.n = cpu_n;
     cpu_snap.miss = cpu_miss;
-    cpu_snap.pk = cpu_pk;
-    cpu_snap.el_pk = cpu_el_pk;
-    cpu_pk = cpu_el_pk = 0;
+#if DUELL_TEST_MODE
+    pk = cpu_pk;
+    cpu_pk = 0;
+#endif
+    el = cpu_el_pk;
+    cpu_el_pk = 0;
     fm1_irq_on();
-    cpu_snap.seq++;
-    for (k = 0; k < CPU_NW; k++) {
-        if (cpu_snap.pk > cpu_wpk[k])
-            cpu_wpk[k] = cpu_snap.pk;
-        if (cpu_snap.el_pk > cpu_wel[k])
-            cpu_wel[k] = cpu_snap.el_pk;
-    }
+    for (k = 0; k < CPU_NW; k++)
+        if (el > cpu_wel[k])
+            cpu_wel[k] = el;
+#if DUELL_TEST_MODE
+    if (pk > cpu_wpk_con)
+        cpu_wpk_con = pk;
+#endif
 }
-static void cpu_win_take(uint32_t k, uint32_t *pk, uint32_t *el_pk)   /* reader k's longest half (render, elapsed: us) since its last take; the window starts again */
+static uint32_t cpu_win_take(uint32_t k)               /* reader k's longest elapsed half (us) since its last take; the window starts again */
 {
+    uint32_t el;
     cpu_snap_poll();
-    if (pk)
-        *pk = cpu_wpk[k];
-    if (el_pk)
-        *el_pk = cpu_wel[k];
-    cpu_wpk[k] = cpu_wel[k] = 0;
+    el = cpu_wel[k];
+    cpu_wel[k] = 0;
+    return el;
 }
 static void cpu_meter_open(void)                       /* TEST / ABOUT opened: a fresh window (the IIR load until it is over) */
 {
-    cpu_win_take(CPU_W_MENU, 0, 0);
+    (void)cpu_win_take(CPU_W_MENU);
     cpum.n0 = cpu_snap.n;
     cpum.sum0 = cpu_snap.sum;
     cpum.t = fm1_ms;
@@ -76,7 +85,7 @@ static void cpu_meter_poll(void)                       /* once a window, and onl
     uint32_t n, sum, el;
     if (fm1_ms - cpum.t < CPU_WIN_MS)
         return;
-    cpu_win_take(CPU_W_MENU, 0, &el);
+    el = cpu_win_take(CPU_W_MENU);
     n = cpu_snap.n;
     sum = cpu_snap.sum;
     cpum.t = fm1_ms;
@@ -97,21 +106,32 @@ static void cpu_meter_poll(void)                       /* once a window, and onl
 }
 #if DUELL_TIDE
 /* K2, TIDE: the CPU truth in the header of HOME's three pages (MORPH, TIDE SETTINGS, AUTO TIDE), in the two gaps beside the page title: at the left the ELAPSED peak (cpu_el_pk: what the DMA deadline sees,
- * the key scan nested in it included) in % of the half's time, the longest of the last 4 s (the window is read every 4 s), at the right the DMA periods missed since power-on or the last TEST > RESET (cpu_miss - cpum.base: the one
- * clear there is). Dim (T_DIM) until one period was missed since the clear, then both in REC red. Read-only: its own window (CPU_W_HEAD), once a second, nothing is cleared for anyone else */
-static struct { uint16_t hold; uint32_t t; } cpuh;
+ * the key scan nested in it included) in % of the half's time, the longest of the last 4 s (the window is read every 4 s), at the right the DMA periods missed since the baseline (CPU_HEAD_SETTLE_MS after power-on, so the start's own misses are left out; TEST > RESET sets it again). Dim (T_DIM) until one period was missed, then both in REC red. Read-only: its own window (CPU_W_HEAD), read every 4 s, nothing is cleared for anyone else */
+#define CPU_HEAD_SETTLE_MS 8000u                       /* the count starts from the misses at this time after power-on: the start (flash loads, USB enumerating, the first frames) is over then */
+static struct { uint32_t hold, armed, t, base; } cpuh;
+static void cpu_head_arm(void)                         /* every header frame: once the start is over, the count's zero is the misses so far (ABOUT and TEST keep the raw count) */
+{
+    if (!cpuh.armed && fm1_ms >= CPU_HEAD_SETTLE_MS) {
+        cpu_snap_poll();
+        cpuh.base = cpu_snap.miss;
+        cpuh.armed = 1;
+    }
+}
 static __attribute__((noinline)) uint32_t cpu_head(char *l, char *r, uint16_t *c)   /* the two texts and their colour -> what a redraw depends on */
 {
     uint32_t el, m, d = fm1_ms - cpuh.t;
     if (d >= CPU_HOLD_MS) {                            /* the window: the longest elapsed half of the last 4 s, kept 4 s */
-        cpu_win_take(CPU_W_HEAD, 0, &el);
+        el = cpu_win_take(CPU_W_HEAD);
         cpuh.t = fm1_ms;
-        el = d > 2u * CPU_HOLD_MS ? 0u : el * 100u / CPU_BUDGET_US;   /* (not looked at for a while: the window is older than that: left out) */
-        cpuh.hold = (uint16_t)(el > 999u ? 999u : el);
+        if (d > 2u * CPU_HOLD_MS) {                    /* not looked at for a while: that window is old, left out; the next look is in a second (a fresh 1 s peak, not 4 s of nothing) */
+            el = 0;
+            cpuh.t = fm1_ms - CPU_HOLD_MS + CPU_WIN_MS;
+        }
+        el = el > 10u * CPU_BUDGET_US ? 999u : el * 100u / CPU_BUDGET_US;   /* (no overflow: el is under 10 budgets) */
+        cpuh.hold = el;
     }
-    m = cpu_snap.miss - cpum.base;
-    if (m > 999u)
-        m = 999u;
+    m = cpuh.armed ? cpu_snap.miss - cpuh.base : 0u;
+    m = m > 999u ? 999u : m;
     fmt_int(l, cpuh.hold);
     fmt_int(r, (int32_t)m);
     *c = m ? T_REC : T_DIM;
@@ -652,6 +672,10 @@ static void test_reset(void)                           /* K4: peak hold, missed 
 {
     cpu_meter_open();
     cpum.base = cpu_snap.miss;
+#if DUELL_TIDE
+    cpuh.base = cpu_snap.miss;                          /* (the header's count too) */
+    cpuh.armed = 1;
+#endif
     test_t = fm1_ms ? fm1_ms : 1u;
 }
 static uint8_t test_pick = 0xFFu;                      /* K3's multi (0..15): the last one stepped to or loaded */
