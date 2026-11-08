@@ -241,13 +241,13 @@ int main(void)
         expect("  .. at 20 %: released after 3 s with no half over 80 % (EASE_DOWN_HALVES_FX, K3), not before", rel && n == EASE_DOWN_HALVES_FX);
         halves(1, 93u), halves(1, 93u);                 /* (from level 2: two halves over 85 % are level 3 again, at once: its peak release now waits 9 s) */
         halves(HALVES_OF_MS(600), 20u);
-        halves(HALVES_OF_MS(500), 76u);                 /* the meter's figure over 70 %: the average rule's 3 s start again */
-        for (n = 0, rel = 0; n < HALVES_OF_MS(5000) && !rel; n++) {
+        halves(HALVES_OF_MS(500), 76u);                 /* the meter's figure over 70 %: the average rule's count starts again */
+        for (n = 0, rel = 0; n < HALVES_OF_MS(12000) && !rel; n++) {
             halves(1, 20u);
             rel = !ovl_lite;
         }
-        expect("  .. back at once, 0.6 s calm, 0.5 s at 76 %, then 20 %: released by the average rule 3 s after the 76 % ended (the meter's ~93 ms included)",
-               rel && n >= OVL_CALM_HALVES && n <= OVL_CALM_HALVES + HALVES_OF_MS(300) && ovl_count == 2u);
+        expect("  .. back at once, 0.6 s calm, 0.5 s at 76 %, then 20 %: not released by the plain 3 s average (the back-off holds it too): the 9 s peak hold from the quick return ends it, 9 s after it (7.9 s after the 76 %)",
+               rel && n > OVL_CALM_HALVES + HALVES_OF_MS(300) && n >= 3u * EASE_DOWN_HALVES_FX - HALVES_OF_MS(1100) - 2u && n <= 3u * EASE_DOWN_HALVES_FX - HALVES_OF_MS(1100) + 2u && ovl_count == 2u);
 #else
         halves(HALVES_OF_MS(6000), 76u);
         held = ovl_lite;

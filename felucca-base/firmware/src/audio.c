@@ -217,7 +217,7 @@ static __attribute__((noinline)) uint32_t ease_step(uint32_t all)
     } else if (n) {
         ease_calm = all > EASE_DOWN_TICKS ? 0u : (uint16_t)(ease_calm + 1u);
         ease_avg = song.cpu_q8 >= OVL_CALM_Q8 ? 0u : (uint16_t)(ease_avg + 1u);
-        if (ease_calm >= (n < EASE_LIGHT ? EASE_DOWN_HALVES : ease_fxl ? 3u * EASE_DOWN_HALVES_FX : EASE_DOWN_HALVES_FX) || ease_avg >= OVL_CALM_HALVES)
+        if (ease_calm >= (n < EASE_LIGHT ? EASE_DOWN_HALVES : ease_fxl ? 3u * EASE_DOWN_HALVES_FX : EASE_DOWN_HALVES_FX) || ease_avg >= (n >= EASE_LIGHT && ease_fxl ? 3u * OVL_CALM_HALVES : OVL_CALM_HALVES))   /* the quick-return back-off holds the average rule too */
             n--;
     }
     if (n != e)
