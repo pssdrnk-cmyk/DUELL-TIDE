@@ -39,6 +39,11 @@ def git_show(ref, path):
     r = subprocess.run(["git", "show", "%s:felucca-base/%s" % (ref, path)], cwd=ROOT, capture_output=True)
     if r.returncode:
         r = subprocess.run(["git", "show", "%s:felucca-base/%s" % (TAG_COMMIT[ref], path)], cwd=ROOT, capture_output=True)
+    if r.returncode and not any(subprocess.run(["git", "cat-file", "-e", x + "^{commit}"], cwd=ROOT, capture_output=True).returncode == 0
+                                for x in (ref, TAG_COMMIT[ref])):
+        # a snapshot checkout (git archive, a download) has no history: nothing to compare with, not a failure (host_tests.sh run(): exit 77 + "skipped")
+        print("multi_v7_to_v8_test: skipped (no git history with the tag %s or its commit: a snapshot checkout)" % ref)
+        sys.exit(77)
     if r.returncode:
         sys.exit("multi_v7_to_v8_test: git show %s:%s failed (the tags v1.0 and v1.1, or their commits, are needed)" % (ref, path))
     return r.stdout
