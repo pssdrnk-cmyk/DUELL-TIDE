@@ -450,7 +450,7 @@ static uint32_t mods_fade_vp(const int16_t *vp)
 }
 /* DUELL 1.1 item 125: the module (MODS_*) whose switch in GLO > MODULES is OFF and whose function page pg is: such a page shows only a notice (ui_graph.c graph_off) and every knob of it jumps to MODULES
  * (ui_input.c off_knob); 0 for every other page and while the module is on. ARP: the ARP pages; SEQ: STEP, PARAMETER LOCKS, PATTERNS; SENDS: CHORUS, DELAY 1/2, 2/2, REVERB, SHIMMER,
- * the part's SEND FX; PART FX: the part's FX, INSERT, EQ, DUCK pages (the quick layers ARP and SEQ: off_layer, ui_draw.c) */
+ * the part's SEND FX; PART FX: the part's FX, INSERT, EQ, DUCK pages and GLO's SIDECHAIN (the quick layers ARP and SEQ: off_layer, ui_draw.c) */
 static uint32_t off_module(const page_t *pg)
 {
     uint32_t b = 0;
@@ -460,7 +460,7 @@ static uint32_t off_module(const page_t *pg)
         b = MODS_SENDS;
     else if (pg->fam == FAM_GLO && pg->scope == SC_GLOBAL)
         b = mods_of(1, pg->id[0]) == MODS_SENDS ? MODS_SENDS : 0u;
-    else if (pg->fam == FAM_FX && pg->scope == SC_TRACK)
+    else if ((pg->fam == FAM_FX && pg->scope == SC_TRACK) || pg->graph == GR_SCHAIN)
         b = MODS_PFX;
     else if (pg->fam == FAM_ARP)
         b = MODS_ARP;

@@ -689,7 +689,10 @@ static void test_glo_page(void)
         memcpy(ui_sc_set, b1, 4);
         mods_put(MODS_PFX, 1u);
         frames(48);
-        expect("  .. PART FX OFF: the ducker is skipped, no cards, the knobs do nothing", str_eq(ui.col[0], "\x7f") && str_eq(ui.col[3], "\x7f") && (turn(EN_K1, 1), ui_sc_set[0] == b1[0]));
+        expect("  .. PART FX OFF: the page is the PART FX OFF notice (off_module, b4 UI round 2: was a blank page)", off_module(cur_page()) == MODS_PFX);
+        turn(EN_K1, 1);
+        expect("  .. a knob jumps to GLO > MODULES and moves no setup value", str_eq(cur_page()->title, "MODULES") && ui_sc_set[0] == b1[0]);
+        go_title("SIDECHAIN");
         mods_put(MODS_PFX, 0u);
         frames(48);
         sc_put(0, SC_CH_DEF); sc_put(1, SC_NOTE_DEF); sc_put(2, SC_CH_DEF); sc_put(3, SC_NOTE_DEF);

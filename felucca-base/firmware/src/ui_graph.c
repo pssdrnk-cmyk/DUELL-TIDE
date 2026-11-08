@@ -2974,16 +2974,14 @@ static void graph_off(uint32_t bit)
  * ("PART 1  PUMP", "PART 2  MIDI", "PART 2  OFF": the part the setup applies to is the one on MIDI); the cards above hold the channels and notes themselves */
 static void graph_schain(void)
 {
-    uint32_t k, on = (mods_off & MODS_PFX) ? 0u : 1u;
-    cv_text_on(12, 4, &AF_M, "MIDI SETTINGS", on ? T_TEXT : T_DIM, T_BG);
-    cv_text_on(12, 22, &AF_S, "USED ONLY WHEN A PATCH USES MIDI", on ? T_MID : T_DIM, T_BG);
+    uint32_t k;   /* (PART FX OFF: ui.c off_module gives the page the notice, this is not drawn) */
+    cv_text_on(12, 4, &AF_M, "MIDI SETTINGS", T_TEXT, T_BG);
+    cv_text_on(12, 22, &AF_S, "USED ONLY WHEN A PATCH USES MIDI", T_MID, T_BG);
     for (k = 0; k < NSHOWN; k++) {
         char sn[16];
         one_line(sn, sizeof sn, val_shown(&TP[P_DKSRC], N_DKSRC[(uint32_t)clamp(trk[k].p[P_DKSRC], 0, 3)]));   /* (owner 2026-10-25: TEMPO PUMP, OTHER PART, MIDI NOTE) */
-        big_line(46 + 26 * (int32_t)k, k ? "PART 2" : "PART 1", sn, on && trk[k].p[P_DKSRC] == 2);
+        big_line(46 + 26 * (int32_t)k, k ? "PART 2" : "PART 1", sn, trk[k].p[P_DKSRC] == 2);
     }
-    if (!on)
-        cv_text_on(12, 102, &AF_S, "PART FX OFF (MODULES): NO DUCK", T_DIM, T_BG);
 }
 /* MIDI LEARN (step 6, midi_learn.c): its state in words: OFF, ON (turn a knob), a parameter picked (move a CC) */
 /* DUELL 1.1 MIDI LEARN (PAGES_V2_glo-b.png): the two cards above (grid_on 6), the steps under them as plain lines with the knob marks; panel rows from y 86 */
