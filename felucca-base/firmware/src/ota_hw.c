@@ -27,14 +27,23 @@ static int ota_prog(uint32_t off, const void *p, uint32_t n)
     return fl_write(off, p, n);
 }
 static int ota_fread(uint32_t off, void *p, uint32_t n) { return st_read(off, p, n); }
+#if DUELL_TIDE   /* TIDE 1.0.0-b5: the loader's screen layout (firmware/loader/ldr_screen_tide.c): UPDATE as the page title, the step where the loader shows WRITING */
+#define OTA_TITLE_Y UT_TY(T, UT_TITLE_BASE)
+#define OTA_TITLE_F AF_T
+#define OTA_STEP_Y UT_TY(S, 74)
+#else
+#define OTA_TITLE_Y 92
+#define OTA_TITLE_F AF_M
+#define OTA_STEP_Y 124
+#endif
 static void ota_show(uint32_t step, int32_t code)
 {
     static const char *const STEP[] = {"", "PACKAGE", "CHECK HEAD", "LOADER", "CONFIRM", "RESTART"};
     char b[24];
     lcd_fill(0, 0, 240, 240, T_BG);
-    draw_text_box(0, 92, 240, &AF_M, "UPDATE", T_TEXT, 1);
+    draw_text_box(0, OTA_TITLE_Y, 240, &OTA_TITLE_F, "UPDATE", T_TEXT, 1);
     if (step < 9u) {
-        draw_text_box(0, 124, 240, &AF_S, STEP[step < 6u ? step : 0], T_THEME, 1);
+        draw_text_box(0, OTA_STEP_Y, 240, &AF_S, STEP[step < 6u ? step : 0], T_THEME, 1);
         return;
     }
     if (code == 1)
@@ -49,7 +58,7 @@ static void ota_show(uint32_t step, int32_t code)
         b[k++] = (char)('0' + v % 10u);
         b[k] = 0;
     }
-    draw_text_box(0, 124, 240, &AF_S, b, T_THEME, 1);
+    draw_text_box(0, OTA_STEP_Y, 240, &AF_S, b, T_THEME, 1);
     fm1_delay_ms(1500);
 }
 static void ota_commit(const uint8_t *parm)

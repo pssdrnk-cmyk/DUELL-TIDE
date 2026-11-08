@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 OSCILL/R (DUELL) */
-/* The update loader's screen (DUELL 1.0): while the firmware is written the panel shows the DUELL word over the splash's wave lines, WRITING and the percent, a segmented
+/* The update loader's screen (DUELL 1.0; TIDE builds draw it in TIDE's look: ldr_screen_tide.c, the same rules below): while the firmware is written the panel shows the DUELL word over the splash's wave lines, WRITING and the percent, a segmented
  * bar (20 segments of 5 percent) and DO NOT SWITCH OFF, as in release_drafts/LOADER_SCREEN_DESIGN.png (tools/loader_screen_design.py is the same picture).
  *
  * The write comes first, always. The screen is a guest of the loader:
@@ -15,8 +15,14 @@
 #ifndef LDR_SCREEN
 #define LDR_SCREEN 1
 #endif
+#ifndef DUELL_TIDE
+#define DUELL_TIDE 1                            /* (firmware/src/tide.h: on unless built with DUELL_TIDE=0; tools/build.py passes it to the loader) */
+#endif
 
 #if LDR_SCREEN
+#if DUELL_TIDE
+#include "ldr_screen_tide.c"                    /* TIDE 1.0.0-b5: the same screen in TIDE's look (drawing only: the guest rules below are the same) */
+#else
 #include "ldr_screen_data.h"
 
 #define LS_BAND_H 40u                           /* the strip: 240 x 40 pixels, 19,200 B */
@@ -25,6 +31,8 @@
 #define LS_NP 120                               /* a point every 2 px */
 #define LS_BUDGET_MS 400u                       /* a draw longer than this: the screen gives up */
 #define LS_STEP 12u                             /* the splash's animation step shown (a still frame) */
+#define LS_BAND_TAB 0, 40, 80, 104, 144, 184, 224, 240
+#define LS_NB 7u
 
 static uint16_t ls_buf[240u * LS_BAND_H];       /* byte-swapped RGB565, the order the panel takes */
 static int16_t ls_y[LS_NL][LS_NP];              /* the wave lines' heights */
@@ -185,6 +193,7 @@ static void ls_band(uint32_t y0, uint32_t h, uint32_t pct)   /* render rows y0 .
     lcd_blit(0, y0, 240, h, ls_buf);
     lcd_sync();                                   /* the strip is sent before anything else runs (and before the next one is drawn into it) */
 }
+#endif
 
 static void ls_give_up(void) { ls_on = 0; }
 
@@ -198,15 +207,17 @@ static void ls_check(uint32_t timeouts0)         /* one failure ends the screen 
 /* before usb_start(): the panel's init and the whole screen at 0 percent */
 static void ldr_screen_init(void)
 {
-    static const uint8_t BAND[8] = {0, 40, 80, 104, 144, 184, 224, 240};
+    static const uint8_t BAND[LS_NB + 1u] = {LS_BAND_TAB};
     uint32_t t0 = fm1_lcd_timeouts, b;
     ls_t0 = fm1_ticks();
     lcd_init();
     fm1_lcd_backlight(1);
     fm1_wdt_feed();
+#if !DUELL_TIDE
     ls_wave_points();
+#endif
     ls_on = 1;
-    for (b = 0; b < 7u && ls_on; b++) {
+    for (b = 0; b < LS_NB && ls_on; b++) {
         fm1_wdt_feed();
         ls_band(BAND[b], (uint32_t)(BAND[b + 1u] - BAND[b]), 0u);
         if (fm1_lcd_timeouts != t0)

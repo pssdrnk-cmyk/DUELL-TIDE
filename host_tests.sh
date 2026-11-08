@@ -216,7 +216,7 @@
 # suggested LEVEL per sound (copy into felucca-base/tools/duell_sounds.py). Needs build/gen/duell_sounds.h (DUELL/gen_only.py)
 #   0.2.23: then the factory multis (tools/factory_multis.py check: the sixteen records against the list, version, names, sounds, MODE, split, LOW CUT, and the multi
 #   similarity check: no two multis with the same two sounds, or one sound in the same place with the same MODE and split; selftest: the check catches such pairs)
-# ldrscreen: tests/ldr_test.c (the update loader against a fake host and flash) built twice, plain and with -DLDR_SCREEN_TEST=1 (the loader's screen, firmware/loader/ldr_screen.c, drawing on a fake
+# ldrscreen: tests/ldr_test.c (the update loader against a fake host and flash) built twice (and once more with -DDUELL_TIDE=0: DUELL's own screen, its own layout checks; the TIDE look: firmware/loader/ldr_screen_tide.c), plain and with -DLDR_SCREEN_TEST=1 (the loader's screen, firmware/loader/ldr_screen.c, drawing on a fake
 #   ST7789): the same checks pass both ways, the flash after the whole test hashes the same (the write is bit for bit the same with the screen on and off), the percent goes 0 -> 100 without
 #   going back, the bar has the right segments at 0 / 45 / 100 percent (PPMs in build/host/ldr_screen_*.ppm), a failing or a very slow panel switches the screen off for good and the install
 #   is still the package's, bit for bit. Needs two packages: LDR_OLD and LDR_NEW (default: the newest two .fwsc under build/ or the bench site)
@@ -851,8 +851,8 @@ static void midi_cc_set(track_t *t, uint32_t id, uint32_t value)
            fi ;;
   ldrscreen) P=$(ls -t build/duell-*.fwsc 2>/dev/null); O=${LDR_OLD:-$(echo "$P" | sed -n 2p)}; N=${LDR_NEW:-$(echo "$P" | sed -n 1p)}; [ -n "$O" ] || O=$N   # (LDR_OLD and LDR_NEW, else the newest two packages in build/; one package is used as both)
            if [ -z "$N" ]; then run ldrscreen echo "SKIP no update package (build/duell-*.fwsc, or LDR_OLD / LDR_NEW): fm1pkg_make.py needs the JieLi SDK of a device build"; else
-           $CC -O1 -DLDR_SCREEN_TEST=1 -o $OUT/ldr_test_screen tests/ldr_test.c -lm && $CC -O1 -o $OUT/ldr_test_plain tests/ldr_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } &&
-           run ldrscreen sh -c "$OUT/ldr_test_screen $O $N > $OUT/ldr_s.log && $OUT/ldr_test_plain $O $N > $OUT/ldr_p.log && [ \"\$(grep FINAL $OUT/ldr_s.log)\" = \"\$(grep FINAL $OUT/ldr_p.log)\" ] && grep -q 'loader test passed' $OUT/ldr_s.log && grep -q 'loader test passed' $OUT/ldr_p.log || { grep -E 'FAIL|FINAL' $OUT/ldr_s.log $OUT/ldr_p.log; exit 1; }"; fi ;;
+           $CC -O1 -DLDR_SCREEN_TEST=1 -o $OUT/ldr_test_screen tests/ldr_test.c -lm && $CC -O1 -o $OUT/ldr_test_plain tests/ldr_test.c -lm && $CC -O1 -DLDR_SCREEN_TEST=1 -DDUELL_TIDE=0 -o $OUT/ldr_test_screen_off tests/ldr_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } &&
+           run ldrscreen sh -c "$OUT/ldr_test_screen_off $O $N > $OUT/ldr_o.log && grep -q 'loader test passed' $OUT/ldr_o.log && $OUT/ldr_test_screen $O $N > $OUT/ldr_s.log && $OUT/ldr_test_plain $O $N > $OUT/ldr_p.log && [ \"\$(grep FINAL $OUT/ldr_s.log)\" = \"\$(grep FINAL $OUT/ldr_p.log)\" ] && grep -q 'loader test passed' $OUT/ldr_s.log && grep -q 'loader test passed' $OUT/ldr_p.log || { grep -E 'FAIL|FINAL' $OUT/ldr_o.log $OUT/ldr_s.log $OUT/ldr_p.log; exit 1; }"; fi ;;
   lcdboot) cc -O1 -w -Ifirmware/hal -Ifirmware/src -o $OUT/lcd_boot_late -DFM1_LCD_BL_LATE=1 tests/lcd_boot_test.c && cc -O1 -w -Ifirmware/hal -Ifirmware/src -o $OUT/lcd_boot_ldr tests/lcd_boot_test.c || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } &&
            { run lcdboot_main $OUT/lcd_boot_late; run lcdboot_loader $OUT/lcd_boot_ldr
              run lcdboot_sources sh -c 'li() { awk "/^static void lcd_init\\(void\\)/,/^}/" | grep -c fm1_lcd_backlight; }
