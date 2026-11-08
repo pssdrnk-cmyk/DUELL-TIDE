@@ -2283,7 +2283,7 @@ static int area_plan(const page_t *pg, uint32_t g)
     int two = 0, moved;
     if (g == 16u && (pg->scope == SC_SCALE || pg->graph == GR_PATS || pg->graph == GR_SLOTS))
         cols = 2u;
-    else if (g == 16u && (pg->graph == GR_EVENTS || pg->graph == GR_ROLL || pg->graph == GR_BROWSE || pg->scope == SC_PERF || TIDE_PAGE(pg)))   /* TIDE hook */
+    else if (g == 16u && (pg->graph == GR_EVENTS || pg->graph == GR_ROLL || pg->graph == GR_BROWSE || pg->scope == SC_PERF || TIDE_PAGE(pg) || TIDE_WAVE_PAGE(pg)))   /* TIDE hook */
         cols = 3u;
     else {                                              /* a page of parameter cards (ARP 1/3, ARP 2/3, CHORD; the ENGINE page): its slots 2 .. 4 that hold a card at all; their labels */
         for (s = 1; s < 4u; s++)
@@ -3503,7 +3503,7 @@ static void ui_draw_page(uint32_t counting)
             g = 4;
         if (!ui.perf && !page_over && gp->graph == GR_ENGINE)
             g = eng_cells(gp) ? 15 : 5;                 /* (item 165: LOFI and NOISE have no picture: cells under the K1 row) */
-        if (!ui.perf && !page_over && (area_page(gp) || TIDE_PAGE(gp)))   /* TIDE hook; TEMPLATE 9 (block C): the AREA pages (over the ARP / list / STEP exceptions above: ARP 1/3, ARP 2/3, PARAMETER LOCKS, SEQUENCER, GLOBAL SCALE, CHORD, PATCHES, MULTIS, PATTERNS) */
+        if (!ui.perf && !page_over && (area_page(gp) || TIDE_PAGE(gp) || TIDE_WAVE_PAGE(gp)))   /* TIDE hook; TEMPLATE 9 (block C): the AREA pages (over the ARP / list / STEP exceptions above: ARP 1/3, ARP 2/3, PARAMETER LOCKS, SEQUENCER, GLOBAL SCALE, CHORD, PATCHES, MULTIS, PATTERNS) */
             g = 16;
         if (perf_pg)                                    /* TEMPLATE 9: the PERFORM page (PERFORM_NEW_LAYOUT_V4: knob 1's line with SELECT = BALANCE, the 4 x 4 boxes in the area, three cards) */
             g = 16;

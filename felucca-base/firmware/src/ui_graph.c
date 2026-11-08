@@ -1847,9 +1847,7 @@ static void graph_arp(const track_t *t, uint16_t c)
     }
 }
 
-#if !DUELL_TIDE
 static uint32_t mv_tick(void);                       /* (the MORPH page's animation step, below) */
-#endif
 /* DUELL 1.1 GENERAL RULE (owner, test3: "the knob does not show the new setting until I switch to another page"): a panel is drawn again whenever ANY value it could show changed, so its signature
  * holds all of them, not the few its author thought of: every stored value of the part (P_*), every extension slot (X*) and every global (G_*). Cards are cached by the text they show
  * (ui_draw.c draw_column's key), the menu by every row's value (ui_menu.c), so a shown value never lags behind the stored one */
@@ -1948,10 +1946,8 @@ static uint32_t graph_signature(void)
         uint32_t pi = song.sel;
         h = (h ^ (morph_fader_of(pi) | morph_amount_of(pi) << 8 | (uint32_t)morph.target << 16 | (uint32_t)morph.cfg << 20)) * 16777619u;
         h = (h ^ morph_fader_of(1u - pi)) * 16777619u;
-#if !DUELL_TIDE                                      /* (TIDE: no motion field, the picture is still) */
-        if (pg->graph == GR_MORPH)                   /* v4: the picture's motion, a step every 4th frame (~16 /s) */
+        if (pg->graph == GR_MORPH)                   /* v4: the picture's motion, a step every 4th frame (~16 /s; TIDE: the part's real sound; MENU > ANIM OFF: still) */
             h = (h ^ (mv_tick() + 1u) * 2654435761u) * 16777619u;
-#endif
     }
     if (pg->graph == GR_SLOTS) {                     /* (a checksum over each slot) */
         for (i = 0; i < MU_SLOTS; i++)
@@ -2549,7 +2545,9 @@ static void mv_reset(void)
     memset(mv_lvl, 0, sizeof mv_lvl);
     mv_step = 0xFFFFFFFFu;
 }
+#endif
 static uint32_t mv_tick(void) { return (ui_prefs & PREF_ANIM_OFF) ? 0u : ui.frame >> 2; }
+#if !DUELL_TIDE
 static void mv_levels(uint32_t tk)                  /* the parts' peaks since the last step (read and cleared, as the meters) */
 {
     uint32_t k;
@@ -2603,6 +2601,7 @@ static int32_t mv_fold(int32_t v, int32_t lo, int32_t hi)   /* v folded back int
         t += 2 * l;
     return lo + (t <= l ? t : 2 * l - t);
 }
+#endif
 static void mv_line(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint16_t c)   /* 1 px (the box's rows) */
 {
     int32_t dx = x1 > x0 ? x1 - x0 : x0 - x1, sx = x0 < x1 ? 1 : -1, dy = y1 > y0 ? y0 - y1 : y1 - y0, sy = y0 < y1 ? 1 : -1;
@@ -2632,6 +2631,9 @@ static uint16_t mv_col(uint32_t k, int32_t pct, int32_t fade)
         return pl->c[2u * k + (pct >= 50)];
     return ux_mix(ux_mix(pl->c[2u * k], pl->c[2u * k + 1u], pct), T_BG, clamp(fade, 0, 92));
 }
+#if DUELL_TIDE
+#include "ui_scope.c"                                 /* the MORPH page's picture: the scope tap's stack of ridges */
+#else
 /* the front's position for fader c: past the right edge at A, past the left at B (px) */
 static int32_t mv_front(uint32_t c)
 {
@@ -2708,19 +2710,7 @@ static void graph_morph(void)
     char b[8];
     khint_t kh[3];
 #if DUELL_TIDE
-    if (grid_on) {   /* TIDE (1.0.0-b4): the wave card's place (planned), for now a calm flat rule across the middle of each part's rows, the panel's width (ARP's empty
-                      * picture: T_RAISE, 1 px, x 10..229, as every picture's zero line); BOTH: part 1's above, part 2's below, as the field had them. No title: MORPH is K1's card label (ui_draw.c), so the rows start at the
-                      * picture's top. HOLD SAVE = SAVE PATCH left aligned at the bottom, as before (ui_tokens.h UT_GR_NOTE_*) */
-        const int32_t y0 = 2, y1 = 62;
-        if (both) {
-            cv_rect(PANEL_X0, (3 * y0 + y1) / 4, PANEL_W, 1, T_RAISE);
-            cv_rect(PANEL_X0, (y0 + 3 * y1) / 4, PANEL_W, 1, T_RAISE);
-        } else {
-            cv_rect(PANEL_X0, (y0 + y1) / 2, PANEL_W, 1, T_RAISE);
-        }
-        cv_text_on(UT_GR_NOTE_X, UT_TY(S, UT_GR_NOTE_BASE - UT_GR_Y), &AF_S, "HOLD SAVE = SAVE PATCH", T_DIM, T_BG);
-        return;
-    }
+    wl_card(MV_BY0, MV_BY1);                         /* (the other layouts, a layer or the menu over the page: the picture alone in the old box; the page itself is template 9, ui_draw.c) */
 #else
     mv_levels(tk);
     n = mv_step == 0xFFFFFFFFu ? 0u : tk - mv_step;   /* (steps since the last: the motion moves on by as many) */
@@ -3114,6 +3104,8 @@ static void draw_graph(void)
             graph_pats();
         else if (pg->graph == GR_SLOTS)
             graph_slots();
+        else if (TIDE_WAVE_PAGE(pg))
+            wl_area(ay, ah);                         /* (the MORPH page: the part's real sound, ui_scope.c) */
         cv_oy = 0;
         cv_blit(0, (uint32_t)ay);
 #if DUELL_TIDE

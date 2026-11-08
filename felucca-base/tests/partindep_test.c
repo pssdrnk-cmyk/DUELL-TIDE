@@ -132,6 +132,11 @@ static void sched_block(int32_t *out, uint32_t n)
         perf = perf_begin(n);
     }
     blk_snap(&bs, sp_tap);
+#if DUELL_TIDE
+    wv_blk++;                                           /* (mix_block's own lines: the scope tap's block count and gate) */
+    bs.wv_blk = wv_blk;
+    bs.wv_on = (uint32_t)((int32_t)(wv_want - wv_blk) > 0);
+#endif
     for (i = 0; i < 8u; i++)
         do_step(&SCHED[cur][i], n);
     mix_gather(n, &bs);
@@ -152,6 +157,47 @@ static uint64_t sched_run(uint32_t id, uint32_t sc)
     cur = sc;
     return scene_run(id, sched_block);
 }
+
+#if DUELL_TIDE
+/* the MORPH page's scope tap (fx.c wv_tap): after a scene the part's rings, counters, gap marks and silent flags must be the same in every schedule and in mix_block (the tap is as part-independent as the sound) */
+static uint64_t ring_hash(void)
+{
+    uint64_t h = 1469598103934665603ull;
+    const uint8_t *p;
+    uint32_t k, i;
+    for (k = 0; k < NLIVE; k++) {
+        uint32_t w[4] = {wv_cnt[k], wv_gap[k], wv_sil[k], wv_last[k]};
+        for (i = 0; i < sizeof w; i++)
+            h = (h ^ ((const uint8_t *)w)[i]) * 1099511628211ull;
+        for (p = (const uint8_t *)wv_m[k], i = 0; i < sizeof wv_m[k]; i++)
+            h = (h ^ p[i]) * 1099511628211ull;
+    }
+    return h;
+}
+static uint64_t ring_run(uint32_t id, blk_t blk)
+{
+    int fd[2];
+    pid_t pid;
+    uint64_t h = 0;
+    int st = 0;
+    fflush(stdout);
+    if (pipe(fd))
+        return 0;
+    pid = fork();
+    if (pid == 0) {
+        uint64_t r;
+        scene(id, blk);
+        r = ring_hash();
+        _exit(write(fd[1], &r, sizeof r) == (ssize_t)sizeof r ? 0 : 3);
+    }
+    close(fd[1]);
+    if (read(fd[0], &h, sizeof h) != (ssize_t)sizeof h)
+        h = 0;
+    close(fd[0]);
+    waitpid(pid, &st, 0);
+    return WIFEXITED(st) && WEXITSTATUS(st) == 0 ? h : 0;
+}
+#endif
 
 /* the scenes must exercise what they claim: each scene runs once more through mix_block with a probe that records, after every block, which of the paths
  * below have been taken (the bits), and the scene must have taken all of those it names in NEED */
@@ -212,6 +258,9 @@ static uint32_t probe(uint32_t id)
 int main(void)
 {
     uint32_t s, k, got;
+#if DUELL_TIDE
+    wv_want = 0x40000000u;                              /* (the gate open for every block of every scene, in the children too) */
+#endif
     for (s = 0; s < NSCENE; s++) {
         uint64_t hr = scene_run(s, ref_mix_block), hf = scene_run(s, mix_block), hs[6];
         char what[200];
@@ -231,6 +280,20 @@ int main(void)
             snprintf(what, sizeof what, "scene %u: schedule %c equals the old combined path (%016llx)", s, SNAME[k], (unsigned long long)hs[k]);
             expect(what, hs[k] == hr);
         }
+#if DUELL_TIDE
+        {
+            uint64_t rf = ring_run(s, mix_block);
+            snprintf(what, sizeof what, "scene %u: the scope rings are written (not the empty ones)", s);
+            expect(what, rf != 0 && rf != ring_hash());   /* (the parent never taps: its rings are the empty ones) */
+            for (k = 0; k < 6u; k++) {
+                uint64_t rk;
+                cur = k;
+                rk = ring_run(s, sched_block);
+                snprintf(what, sizeof what, "scene %u: schedule %c leaves the scope rings of mix_block (%016llx)", s, SNAME[k], (unsigned long long)rf);
+                expect(what, rk == rf);
+            }
+        }
+#endif
     }
     printf("partindep: %d checks, %d failed\n", ncheck, bad);
     return bad ? 1 : 0;
