@@ -854,7 +854,9 @@ static void card_label_line(uint32_t c, int32_t lx, int32_t ly, const char *txt,
 }
 /* ---- the GRID layout (grid_on 1: the picture on top, four cards 115 x 52 under it; grid_on 2: no picture, four cards 115 x 84 with a line of text under the value, MODULES, MIDI, SIDECHAIN): K1 K2 over K3 K4, the knob's
  * number in a circle, the label, the value big (Bold 23, Medium or small when it is too wide), its unit small, the gauge ---- */
+#if !DUELL_TIDE                                        /* (TIDE 1.0.0-b4: MORPH's K1 is a plain card, no big value and no X font) */
 static uint8_t grid_big;                               /* the next grid card is HOME's big MORPH value: no label, no mark, no bar, the value in X (38 px) */
+#endif
 static const char *grid_d;                             /* the text under the value of the next card (grid_on 2) */
 static uint8_t grid_wide;                              /* grid_on 2: card 3 is as wide as the screen (MIDI IN) */
 static uint8_t grid_mot;                               /* the next grid card's parameter is driven by MOTION (item 120) */
@@ -1105,6 +1107,9 @@ static void card_paint(const card_geo_t *g, uint32_t c, int32_t gx, int32_t gw, 
     if (ux.glob && !ux.bw && vc == T_THEME)           /* a GLOBAL page: the value in the gradient's colour at this card */
         vc = grad_col(gx + gw / 2);
     col = vt(vc, T_BG);
+#if DUELL_TIDE
+    big = 0;                                            /* (TIDE: no big value, every card is the plain one) */
+#else
     if (big) {
         int ok = vb[0] != 0;
         for (i = 0; vb[i]; i++)
@@ -1116,6 +1121,7 @@ static void card_paint(const card_geo_t *g, uint32_t c, int32_t gx, int32_t gw, 
         } else
             big = 0;
     }
+#endif
     if (!big) {
         uint16_t lc = hot ? T_ACCENT : grid_mot ? T_THEME : T_MID;
         int32_t lroom = gw - pad - g->lbl_dx - g->lbl_pad_r;
@@ -1307,10 +1313,15 @@ static void draw_card_grid(uint32_t c, const char *label, const char *val, const
     const aafont_t *vf = &AF_L;
     int32_t x, uw = unit[0] ? text_w(&AF_S, unit) : 0, vy, gx, gy, gw, gh, vcy = grid_on == 2 ? 36 : grid_on == 5 ? 38 : 30;
     const char *desc = grid_d;
+#if DUELL_TIDE
+    const int big1 = 0;                                 /* (TIDE 1.0.0-b4: no big value) */
+    grid_d = 0;
+#else
     int big1 = grid_on == 1 && grid_big;                /* (template 1: taken at once, so that a card drawn from the cache never leaves it set for the next) */
     grid_d = 0;
     if (grid_on == 1)
         grid_big = 0;
+#endif
     if (grid_on == 2 && grid_wide && c == 3u)
         return;
     char ab[24];
@@ -1383,6 +1394,7 @@ static void draw_card_grid(uint32_t c, const char *label, const char *val, const
         cv_blit((uint32_t)gx, (uint32_t)gy);
         return;
     }
+#if !DUELL_TIDE
     if (grid_big) {
         int ok = 1;
         grid_big = 0;
@@ -1394,6 +1406,7 @@ static void draw_card_grid(uint32_t c, const char *label, const char *val, const
             return;
         }
     }
+#endif
     if (label[0]) {
         uint16_t mk = hot ? T_ACCENT : T_TEXT;
         dg[0] = (char)('1' + c);
@@ -2477,9 +2490,13 @@ static void draw_columns(void)
             str_cpy(val, f ? "B" : "A", sizeof val);
         else
             fmt_int(val, (int32_t)f);
+#if !DUELL_TIDE
         grid_big = (uint8_t)(grid_on != 0);                /* (HOME's grid: the big value, PAGES_V1_home.png) */
-        draw_column(0, "MORPH", val, "", VAL(0u), (int32_t)f * 1000 / 127, ICON_MIX);
+#endif
+        draw_column(0, "MORPH", val, "", VAL(0u), (int32_t)f * 1000 / 127, ICON_MIX);   /* (TIDE 1.0.0-b4: a plain card, its label, value and bar as every K1 card) */
+#if !DUELL_TIDE
         grid_big = 0;
+#endif
         g = morph_pending(0);                          /* ROLL: A left, B right; a twist building up: its way */
         draw_column(1, "ROLL", g < 0 ? "<A" : g > 0 ? "B>" : "A<>B", "", g ? T_ACCENT : VAL(1u), -1, ICON_NONE);
         g = morph_pending(1);                          /* UNDO: A left, B right, like ROLL; a twist building up: its way */

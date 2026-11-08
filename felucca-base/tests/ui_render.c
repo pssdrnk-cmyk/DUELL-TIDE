@@ -2736,6 +2736,10 @@ int main(int argc, char **argv)
                             char nm[48];
                             cur_name = "morph_v4";
                             setup(MS[k]);
+#if DUELL_TIDE
+                            if (MS[k] == S_MORPH)                     /* (TIDE: S_MORPH's second HOME tap lands on TIDE SETTINGS; this still is the MORPH page at A) */
+                                go_title("MORPH");
+#endif
                             pal(p);
                             for (st = 0; st < 40u; st++) {
                                 for (q = 0; q < 2u; q++) {

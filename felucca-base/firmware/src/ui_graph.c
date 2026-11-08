@@ -2700,30 +2700,35 @@ static void mv_field(uint32_t k, int32_t y0, int32_t y1, uint32_t nl)
 static void graph_morph(void)
 {
     const ui_pal_t *pl = &UI_PALETTES[ux.pal % NPALETTES];
+#if DUELL_TIDE
     uint32_t pi = song.sel, f = morph_fader_of(pi), both = morph.target == MT_BOTH;
+#else
+    uint32_t pi = song.sel, f = morph_fader_of(pi), tk = mv_tick(), both = morph.target == MT_BOTH, n;
+#endif
     int32_t cx = MV_TX0 + (int32_t)(f * (uint32_t)(MV_TX1 - MV_TX0) / 127u), i;
     char b[8];
     khint_t kh[3];
-#if !DUELL_TIDE
-    uint32_t tk = mv_tick(), n;
-    mv_levels(tk);
-    n = mv_step == 0xFFFFFFFFu ? 0u : tk - mv_step;   /* (steps since the last: the motion moves on by as many) */
-    mv_listen(0, n > 4u ? 4u : n);
-    mv_listen(1, n > 4u ? 4u : n);
-    mv_step = tk;
-#endif
-    if (grid_on) {   /* DUELL 1.1 HOME (PAGES_V1_home.png / PALETTES_V3_1.png): the knob mark and MORPH top left, the motion field under it, HOLD SAVE = SAVE PATCH at the bottom of the same area; no track, no thumb, no key row (the cards under are the controls) */
 #if DUELL_TIDE
-        /* TIDE: the wave card's place (planned), for now a calm flat rule across the middle of each part's rows (ARP's empty picture: T_RAISE, 1 px), the field's width;
-         * BOTH: part 1's above, part 2's below, as the field had them */
-        const int32_t y0 = 17, y1 = 62;
+    if (grid_on) {   /* TIDE (1.0.0-b4): the wave card's place (planned), for now a calm flat rule across the middle of each part's rows (ARP's empty picture: T_RAISE, 1 px)
+                      * the field's width; BOTH: part 1's above, part 2's below, as the field had them. No title: MORPH is K1's card label (ui_draw.c), so the rows start at the
+                      * picture's top. HOLD SAVE = SAVE PATCH left aligned at the bottom, as before (ui_tokens.h UT_GR_NOTE_*) */
+        const int32_t y0 = 2, y1 = 62;
         if (both) {
             cv_rect(MV_BX0, (3 * y0 + y1) / 4, MV_BX1 - MV_BX0, 1, T_RAISE);
             cv_rect(MV_BX0, (y0 + 3 * y1) / 4, MV_BX1 - MV_BX0, 1, T_RAISE);
         } else {
             cv_rect(MV_BX0, (y0 + y1) / 2, MV_BX1 - MV_BX0, 1, T_RAISE);
         }
+        cv_text_on(UT_GR_NOTE_X, UT_TY(S, UT_GR_NOTE_BASE - UT_GR_Y), &AF_S, "HOLD SAVE = SAVE PATCH", T_DIM, T_BG);
+        return;
+    }
 #else
+    mv_levels(tk);
+    n = mv_step == 0xFFFFFFFFu ? 0u : tk - mv_step;   /* (steps since the last: the motion moves on by as many) */
+    mv_listen(0, n > 4u ? 4u : n);
+    mv_listen(1, n > 4u ? 4u : n);
+    mv_step = tk;
+    if (grid_on) {   /* DUELL 1.1 HOME (PAGES_V1_home.png / PALETTES_V3_1.png): the knob mark and MORPH top left, the motion field under it, HOLD SAVE = SAVE PATCH at the bottom of the same area; no track, no thumb, no key row (the cards under are the controls) */
         const int32_t y0 = 17, y1 = 62;
         if (both) {
             mv_field(0, y0, (y0 + y1) / 2, 3u);
@@ -2731,7 +2736,6 @@ static void graph_morph(void)
         } else {
             mv_field(pi, y0, y1, 5u);
         }
-#endif
         {   /* the knob-1 dot and MORPH on one baseline, the note left aligned at the bottom (item 114, ui_tokens.h UT_GR_*; the dot is the label's cap height, as on every card) */
             const int32_t by = UT_GR_TITLE_BASE - UT_GR_Y, dy = by - AF_S_CAP_H + 1;
             cv_rrect(UT_GR_TITLE_X, dy, AF_S_CAP_H, AF_S_CAP_H, AF_S_CAP_H / 2, T_MID, T_BG);
@@ -2741,7 +2745,6 @@ static void graph_morph(void)
         }
         return;
     }
-#if !DUELL_TIDE
     if (both) {                                      /* part 1 above, part 2 below */
         mv_field(0, MV_BY0, (MV_BY0 + MV_BY1) / 2, 3u);
         mv_field(1, (MV_BY0 + MV_BY1) / 2, MV_BY1, 3u);
