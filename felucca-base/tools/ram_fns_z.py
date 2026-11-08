@@ -68,4 +68,6 @@ TWOCORE = os.environ.get("DUELL_TWOCORE") == "1"
 if TWOCORE:
     NAMES = NAMES + [f for fs in TWOCORE_GROUPS.values() for f in fs]
     NAMES = [f for f in NAMES if f not in ("mod_tsrc", "mod_part_put")]   # hunt3: these two are in range X in TWOCORE builds (ram_fns_x.py X_FROM_Z)
+    if os.environ.get("DUELL_TIDE") != "0" and os.environ.get("DUELL_K4") != "0":
+        NAMES = NAMES + ["tcb_c1_rev"]   # TIDE K4 (twocore_run.c): core 1's reverb job, a tail call from core 1's loop in range X to rev_tail in the flash, which X cannot reach by a direct call; Z can
 HI = 0x01C74000                                 # the stack guard (app_ram.ld _guard0): Z ends below it

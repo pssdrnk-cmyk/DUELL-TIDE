@@ -558,7 +558,7 @@ static void BUS_FN(rev_clear)(void)
  * cleared, the new one starts from silence */
 static __attribute__((noinline)) void BUS_FN(rev_fadeout)(const int32_t *rev_in, int32_t *wet, uint32_t n)
 {
-    int32_t *t = pscr[0].buf, g = 65536, d = 65536 / (int32_t)n;   /* (the parts are done: part 1's block scratch) */
+    int32_t *t = BUS_RSCR, g = 65536, d = 65536 / (int32_t)n;   /* (the parts are done: part 1's block scratch; TIDE K4: bus A has its own, fx.c BUS_RSCR) */
     uint32_t i;
     for (i = 0; i < n; i++)
         t[i] = 0;
@@ -843,7 +843,7 @@ static __attribute__((noinline)) void BUS_FN(rev_tail)(const int32_t *rev_in, in
         return;
 #endif
     {
-        int32_t *t = pscr[0].buf;                       /* (the parts are done: part 1's block scratch, as rev_switch) */
+        int32_t *t = BUS_RSCR;                          /* (the parts are done: part 1's block scratch, as rev_switch; TIDE K4: bus A has its own, fx.c BUS_RSCR) */
         for (i = 0; i < n; i++)
             t[i] = 0;
         BUS_FN(rev_run)((uint32_t)rt, rev_in, t, n);
@@ -947,7 +947,7 @@ static inline void BUS_FN(fx_buses_m)(uint32_t dmask, uint32_t dl, const int32_t
     BUS_FX.cho_zs = 0;                                  /* (the flag is for one block: a call that did not come through cho_zrun never skips) */
     BUS_FX.cho_w = cw;
     BUS_FX.cho_ph = cph;
-    BUS_FN(rev_tail)(rev_in, wet, n);
+    BUS_REV(rev_in, wet, n);                            /* (rev_tail; TIDE K4: bus A's may have run on core 1 meanwhile, fx.c BUS_REV) */
 }
 
 /* the same as fx_buses_m while the delay's MODULATION runs (dly_mod for the chorus and the delay, then the reverb as fx_buses_m's tail): a
@@ -956,7 +956,7 @@ static __attribute__((noinline)) void BUS_FN(fx_buses_mod)(uint32_t dmask, uint3
                                                            const int32_t *rev_in, int32_t *wet, uint32_t n, uint32_t pp, int32_t *dsd)
 {
     BUS_FN(dly_mod)(dmask, dl, cho_in, dly_in, wet, n, pp, dsd);
-    BUS_FN(rev_tail)(rev_in, wet, n);
+    BUS_REV(rev_in, wet, n);                            /* (rev_tail; TIDE K4: bus A's may have run on core 1 meanwhile, fx.c BUS_REV) */
 }
 
 /* The delay's EVENT modes (DUELL 0.2.14, owner 2026-10-15; core.h G_DMODE 2 RANDOM, 3 OCT UP since 0.2.16; this code's own mode argument is 1 RANDOM, 2 OCT UP, 0 back to the plain delay). A tempo-synced delay that bends its own repeats on a random
@@ -1272,5 +1272,5 @@ static __attribute__((noinline)) void BUS_FN(fx_buses_ev)(uint32_t dlo, uint32_t
                                                   int32_t *wet, uint32_t n, uint32_t mode, uint32_t pp, int32_t *dsd, uint32_t dlen)
 {
     BUS_FN(dly_ev)(dlo, dl, cho_in, dly_in, wet, n, mode, pp, dsd, dlen);
-    BUS_FN(rev_tail)(rev_in, wet, n);
+    BUS_REV(rev_in, wet, n);                            /* (rev_tail; TIDE K4: bus A's may have run on core 1 meanwhile, fx.c BUS_REV) */
 }

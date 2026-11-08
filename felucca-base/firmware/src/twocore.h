@@ -57,6 +57,17 @@
 #endif
 #endif
 
+/* TIDE K4 (1.0.0-b6; docs/TWOCORE_STAGE1.md section 9): a second job kind, "the reverb of this block", that core 1 runs while core 0 runs the chorus and the delay
+ * (twocore_run.c tcb_*). TIDE builds only (DUELL_TIDE, which core.h sets to 1 when it is not given; this file is read before core.h, hence the test of "not defined"),
+ * and not with DUELL_K4=0 (tools/build.py: env DUELL_K4=0). Without it every line below is the plain DUELL one (jam/check_off.sh) */
+#ifndef TCB_ON
+#if (!defined(DUELL_TIDE) || DUELL_TIDE) && (!defined(DUELL_K4) || DUELL_K4)
+#define TCB_ON 1
+#else
+#define TCB_ON 0
+#endif
+#endif
+
 #define TC_MAGIC 0x5EA1C0DEu
 #define TC_CHECK(job, arg) ((uint32_t)(job) * 0x9E3779B1u ^ (uint32_t)(arg) * 0x85EBCA6Bu ^ TC_MAGIC)   /* one bit wrong in job, arg or chk: no fit */
 #define TC_IDLE_BEAT 4096u          /* waiting-loop polls a beat (a power of 2) */
@@ -75,9 +86,19 @@ typedef struct {
     uint32_t reread;
 #if TC_MEAS
     uint32_t t_seen, t_end, mj;                         /* core 1's clock when it saw job mj, and when its job returned (written before done) */
+#if TCB_ON
+    uint32_t brt;                                       /* TIDE K4: core 1's run time (ticks) of its last reverb job, written before done (twocore_run.c tcb_*) */
+    uint32_t pad1[3];
+#else
     uint32_t pad1[4];
+#endif
+#else
+#if TCB_ON
+    uint32_t brt;
+    uint32_t pad1[6];
 #else
     uint32_t pad1[7];
+#endif
 #endif
 } tc_mb_t;
 _Static_assert(sizeof(tc_mb_t) == 128, "twocore.h: two 64-byte lines");

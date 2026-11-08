@@ -233,3 +233,54 @@ RAM with the flag on, added by job 5: `tcs` 48 B, `tcr` 52 B (both `.bss`), `tc_
 - Core 1's stack: the deepest chain found is `tc_job_run` > `part_voice` > `track_render` > `wave_render` > `wv_line` > `wv_osc` > `wv_lvl` > `wv_read_sine` > `sine_i`, 1,680 B on the host (x86-64 frames); about 1.1 to 1.3 KB on the device, in the 4 KB user stack of `fm1_c1_stack`. Read `tc_stack_peak` on the unit.
 - New objects: `tc_ctx` (64 B, `TC_CTX_SECT`) in `.pool.ztwocore` after `tc_mb` (the pool's tail needs 64 B more), `tcs` and `tcr` in `.bss` (100 B); no new `.noinit` object (`tc_nv` as before); no new section (`.c1_text` as in section 6).
 - The developer page's rows: the counters `tcs` (blocks, in time, late, very late, silent, refused, pauses, resumes) and `tc.parks`.
+
+## 9. TIDE K4 (1.0.0-b6, branch `fix/b6-k4`): the reverb as a second job of the block
+
+TIDE builds only (`twocore.h` `TCB_ON`: `DUELL_TIDE` and not `DUELL_K4=0`); with `DUELL_TIDE=0` every line is the plain one (`jam/check_off.sh`). The code: `src/twocore_run.c` (`tcb_*`), the hooks in `src/fx.c` (`tcb_post` at the start of `fx_buses`, `BUS_REV` / `BUS_RSCR` for bus A's include of `fx_bus.c`, the side mix's `TCB_SIDE_OK`, core 0's bus-stage timer in `mix_sends`), the console word `k4` (`src/console.c`, test mode).
+
+### 9.1 Why the reverb, and not "the buses"
+
+The brief (CPU audit TASKS.md K4) posts all the buses to core 1 after gather and lets the master wait. That chain is serial: the sends come from gather, the buses give wet, the HALL and PING-PONG sides and the chorus's side into the dry mix, and the master reads all of it. Core 0 would wait exactly as long as core 1 works: no saving. Running the buses a block late beside the next block's part 1 would race the next block's events (MIDI into `song.g`, `snd_step` / `dm_step` clearing the lines, `mod_bus`'s temporary writes) and is not bit-exact. So the bus stage is split: core 1 runs the reverb (`rev_tail`: the low cut, the bypass, a model change, the model) while core 0 runs the chorus and the delay loop, then core 0 adds core 1's block into wet.
+
+Bit for bit: every reverb model only adds into its output (`out[i] += ...`; `rev_fadeout` adds a faded block), and the chorus / delay loop and the reverb share no state: the loop never touches the reverb's fields of `fx`, `hl`, `rev_comb`, `rev_u`, `shim` or `lo_buf`, and the reverb never touches the loop's (checked every job in the simulation, 9.4). So `wet = y + R` in either order. The reverb's block scratch is its own (`tcb_scr`): the one-core path lent it part 1's `pscr[0].buf`, which a late job would race with core 0's next block.
+
+The saving is the smaller of the two halves, about 120 to 175 of the bus section's ~295 host instructions a sample (`budget.c`: HALL fed 295, the reverb bypassed 121): about 3 to 4 % of a half on core 0 in STEREO / LAYER. DUEL (bus B) keeps everything on core 0, as the brief asks. The NOTES budget is not changed (brief step 4 left out on purpose): core 0 still pays the longer of the chorus / delay and core 1's reverb, so the saving stays headroom.
+
+### 9.2 The job and the fit
+
+`arg = CTL | TCJ_REV` (0x8000): core 1's `tc_job_run` runs `tcb_c1_rev` (range Z: a tail call into `rev_tail` in the flash, which core 1's loop in range X cannot reach by a direct call) into `tcb_wr`, which core 0 zeroed, and writes its run time to `tc_mb.brt` before done. Any other arg with the kind bit is refused by the old check (`n != CTL`).
+
+Posted by `tcb_post` when core 1 is up, not parked, not paused, part 2's job is closed and no reverb job is open, the cost items of the half are known, and core 1's recent largest reverb time (two buckets of 128 blocks; a bucket with no job keeps the one before) ends before the take-over deadline: the half's end less this block's globals (`tcr.g`, the reverb and the master inside it), the blocks still to come (core 0's own share under the two-core rule, else the whole one-core cost) and `TCR_SLACK`; the wait limit is the same without the slack. Otherwise core 0 runs the reverb itself (counted as no fit).
+
+### 9.3 The take-back (`tcb_rev`, where the one-core path calls `rev_tail`)
+
+| Core 1's answer | What core 0 does | Counted |
+|---|---|---|
+| done by the deadline | adds `tcb_wr` | in time |
+| not started (`yld` after the take) | runs `rev_tail` itself: the same samples | late |
+| claimed, done by the wait limit | adds `tcb_wr` | very late (no pause) |
+| claimed, not done by the limit | the reverb silent for the block: its last sample (and HALL's side) fades to 0 over the block, no step; the job stays open (no job of either kind is posted while it is: core 0 plays part 2); a fault pause; the next reverb block fades in | silent |
+| refused, a word ahead | `tc_fail` (a strike); core 0 runs the reverb (cleared first and faded in if core 1 may have run it) | refused |
+| core 1 stopped while it held a reverb job (the heartbeat watch) | `rev_clear`, then core 0's reverb faded in | (the open job's silent blocks) |
+
+### 9.4 Tests
+
+- `twocore` (`tests/twocore_sim.c`): the runs aimed at part 2's job numbers keep the reverb on core 0 (`tcb.off`); none, torn1, park, unarmed, noanswer, shared, busb and tcmclr run with it, and five new runs: `k4_late_pre`, `k4_late_post`, `k4_badchk` (output equal), `k4_vlong` and `k4_hang` (equal up to the first silent reverb block; no click: the dry path is the reference's sample for sample, so run - reference is the reverb alone; at every entry into and return from a silent run its step is at most 1.0 x the reference's largest step of the 0.25 s before (measured: the fades up to 0.53 x, a cut 1.36 x, an unfaded return 2.21 x); never a job left open). In `none` every reverb job is audited: what the job writes (only the reverb's state) and what core 0 writes beside it (nothing of the reverb's). Mutations in `twocore_mut`.
+- `k4multis` (`tests/k4_multis_test.c`): the 16 factory multis on two cores with the reverb job equal the one-core render bit for bit; the reverb on core 1 in every STEREO / LAYER multi, every job in time; no reverb job in DUEL.
+
+### 9.5 RAM and code (device build, 1.0.0-b5 base b556cfd)
+
+| | before | with K4 | K4 |
+|---|---|---|---|
+| range Z | 29,232 B (8,208 B to the stack guard) | 29,248 B (8,192 B) | +16 B: `tcb_c1_rev` 14 B and its alignment; the pool-tail rule (8,192 B) holds with 0 B to spare |
+| range X (core 1's loop) | 32,204 B (308 B free) | 32,216 B (296 B free) | +12 B |
+| .data + .bss | 68,624 B | 69,000 B | +376 B: `tcb_scr` 128, `tcb_wr` 128, `tcbs` 80, `tcb` 40 (section `.bss.tidek4`, so the compiler's merged block of the old objects keeps its offsets) |
+| image | 574,232 B | 575,944 B | +1,712 B of flash: the core-0 side (`tcb_rev`, `tcb_own`, `tcb_silent`, `tcb_fadein`; on the K6 allow-list: per block, beside `mix_sends` and `rev_tail`, which are flash code too) and the console word |
+| pool | 331,200 B | 331,200 B | 0 |
+
+### 9.6 What only the unit can say
+
+- Core 1 fetches the reverb's code from the flash (XIP): `rev_tail`, `rev_hall` (1.4 KB), `rev_plate` and the others are flash code today (only `rev_room` and `rev_shim` are in the hot block), and there is no room in range Z for them. Core 1 already reads flash tables (the reason for the flash park); no build has had it fetch instructions from the flash. Both cores fetching at once may slow core 0's own flash code. The measured fit stops the posting if core 1 is slow; a fault stops core 1 (a strike, one core for the session).
+- The A/B: the test-mode console's `k4 0` / `k4 1` (and `cpu_multis.py --k4 off|on`) switches the reverb job at run time; `k4` prints the jobs and three times in us, each mean and longest: core 1's reverb run, core 0's wait for it, and core 0's whole bus stage (`fx_buses`, with that wait). The sweep with `--k4 on` against `--k4 off` shows what core 0 saves and what it waits.
+- `DUELL_K4=0` builds TIDE without it.
+- Not covered by the simulation (as 8.8 for part 2): while a reverb job is open after a silent block, core 0's next blocks gather into `send_r` and may run `mix_sends`' `mod_bus` / `mod_bus_end` or a SENDS / MODE line clear while core 1 still reads or writes the reverb. Nothing crashes; at worst that late block's reverb state is off (a remnant of tail or one garbled block of reverb input). It is a fault path (the block already went silent and the jobs pause); the simulation's `k4_vlong` lets the late job finish before the next block's sends.

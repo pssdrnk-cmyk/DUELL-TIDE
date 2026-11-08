@@ -714,7 +714,26 @@ static uint8_t dm_split;                /* (below: the mix runs SPLIT; RESO read
 #define BUS_CHO cho_buf
 #define BUS_DLY dly_buf
 #define BUS_FN(f) f
+#if TCB_ON
+/* TIDE K4 (twocore_run.c tcb_*): bus A's reverb may run on core 1 beside the chorus and the delay. Its block scratch is its own (part 1's pscr[0].buf, which the one-core
+ * path lends it, would be raced by core 0's next block if a late job still ran), and the reverb call at the end of the bus paths goes through tcb_rev: the job's block added
+ * in, or the one-core rev_tail. Bit for bit: the scratch is written before every read, and every reverb model only adds into its output */
+#define TCB_SECT __attribute__((section(".bss.tidek4")))   /* (K4's objects in a section of their own: the compiler then leaves them out of its merged block of the old .bss objects, whose offsets stay as they were) */
+static int32_t tcb_scr[CTL] TCB_SECT;
+static void tcb_rev(const int32_t *rev_in, int32_t *wet, uint32_t n);
+static void tcb_post(const int32_t *rev_in, uint32_t n);
+static void tcb_c0(uint32_t t);
+#define BUS_RSCR tcb_scr
+#define BUS_REV tcb_rev
+#define TCB_SIDE_OK && !tcb.rsil              /* (the reverb silent this block: HALL's side is core 1's, twocore_run.c tcb_silent) */
+#else
+#define BUS_RSCR pscr[0].buf
+#define BUS_REV rev_tail
+#define TCB_SIDE_OK                     /* (nothing: the plain source text) */
+#endif
 #include "fx_bus.c"
+#undef BUS_RSCR
+#undef BUS_REV
 #undef BUS_FX
 #undef BUS_EV
 #undef BUS_SHIM
@@ -735,7 +754,11 @@ static uint8_t dm_split;                /* (below: the mix runs SPLIT; RESO read
 #define BUS_CHO cho_buf_b
 #define BUS_DLY (dly_buf + DLY_HALF)
 #define BUS_FN(f) f##_b
+#define BUS_RSCR pscr[0].buf
+#define BUS_REV rev_tail_b
 #include "fx_bus.c"
+#undef BUS_RSCR
+#undef BUS_REV
 #undef BUS_FX
 #undef BUS_EV
 #undef BUS_SHIM
@@ -758,6 +781,9 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
     uint32_t evm = dm == DMD_RAND || dm == DMD_OCTUP;   /* (the mode is an event mode) */
     uint32_t ev = evm && !OVL_LITE;                     /* (0.2.25: the overload guard runs it as the plain delay it cross-fades from) */
     uint32_t pp = dm == DMD_PING;                       /* (DUELL, SPEC 5c.2: the repeats alternate left and right) */
+#if TCB_ON
+    tcb_post(rev_in, n);                                /* TIDE K4: this block's reverb to core 1 when it fits (twocore_run.c); the chorus and the delay below run here meanwhile */
+#endif
     cho_zrun(cho_in, n);                                /* (0.2.21: the chorus line's zero run, before any path writes it) */
     if (!evm)
         dly_plain_pp = (uint8_t)pp;                     /* (the plain delay the events cross-fade from: the last one that ran) */
@@ -3466,8 +3492,14 @@ static __attribute__((noinline)) void mix_sends(uint32_t n)
     } else if (dm_split) {
         split_buses(n);
     } else {
+#if TCB_ON
+        uint32_t tb = TC_TICKS();                       /* (TIDE K4: core 0's bus stage, with what it waits for core 1's reverb: console k4) */
         fx_buses(send_c, send_d, send_r, wet, n);
-        if (hl.side)
+        tcb_c0(TC_TICKS() - tb);
+#else
+        fx_buses(send_c, send_d, send_r, wet, n);
+#endif
+        if (hl.side TCB_SIDE_OK)
             rev_side_mix(mix_l, mix_r, n);              /* HALL: stereo */
         if (dly_side)
             dly_side_mix(mix_l, mix_r, n);              /* PING-PONG: the repeats left and right */

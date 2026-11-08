@@ -377,6 +377,45 @@ static void con_pload(const char *p)                   /* (probe) pload N: part 
     pcq_w = (uint8_t)(w + 1u);
     con_kv("pload", n);
 }
+#if TCB_ON
+/* TIDE K4 (twocore_run.c tcb_*): `k4` prints the reverb job's figures since the last `k4 clr` (or power-on); `k4 0` / `k4 1` keep the reverb on core 0 / let core 1
+ * take it again (the A/B of the unit sweep: jam/measure/cpu_multis.py --k4); `k4 clr` asks the audio interrupt to clear the figures at its next block. Times in us:
+ * core 1's reverb run, what core 0 waited for it, and core 0's whole bus stage (fx_buses, with that wait), each the mean and the longest */
+static uint32_t con_us(uint64_t sum, uint32_t n) { return n ? (uint32_t)(sum / n) / TC_TICKS_PER_US : 0u; }
+static void con_k4(const char *p)
+{
+    tcb_stat_t s;
+    if (con_word(&p, "0")) {
+        tcb.off = 1;
+    } else if (con_word(&p, "1")) {
+        tcb.off = 0;
+    } else if (con_word(&p, "clr")) {
+        tcb.sclr = 1;
+        con_puts("k4 clr
+");
+        return;
+    }
+    fm1_irq_off();
+    s = tcbs;
+    fm1_irq_on();
+    con_kv("k4_on", (int32_t)!tcb.off);
+    con_kv("k4_posted", (int32_t)s.posted);
+    con_kv("k4_in_time", (int32_t)s.in_time);
+    con_kv("k4_late", (int32_t)s.late);
+    con_kv("k4_vlate", (int32_t)s.vlate);
+    con_kv("k4_silent", (int32_t)s.silent);
+    con_kv("k4_refused", (int32_t)s.refused);
+    con_kv("k4_nofit", (int32_t)s.nofit);
+    con_kv("k4_off_blocks", (int32_t)s.off);
+    con_kv("k4_c1_rev_avg_us", (int32_t)con_us(s.rt_sum, s.nm));
+    con_kv("k4_c1_rev_max_us", (int32_t)(s.rt_max / TC_TICKS_PER_US));
+    con_kv("k4_c0_wait_avg_us", (int32_t)con_us(s.wt_sum, s.nm));
+    con_kv("k4_c0_wait_max_us", (int32_t)(s.wt_max / TC_TICKS_PER_US));
+    con_kv("k4_c0_bus_avg_us", (int32_t)con_us(s.c0_sum, s.c0_n));
+    con_kv("k4_c0_bus_max_us", (int32_t)(s.c0_max / TC_TICKS_PER_US));
+    con_kv("k4_c0_bus_blocks", (int32_t)s.c0_n);
+}
+#endif
 static void con_cpu(void)                              /* (probe) cpu: the longest half since the last `cpu` (us: render, and elapsed = what the DMA deadline saw) and the DMA periods missed since power-on; reads the snapshot, clears nothing of anybody else's (K2) */
 {
     uint32_t pk, el = cpu_win_take(CPU_W_CON);
@@ -502,6 +541,10 @@ static void con_exec(const char *p)
         con_pload(p);
     else if (con_word(&p, "cpu"))
         con_cpu();
+#if TCB_ON
+    else if (con_word(&p, "k4"))
+        con_k4(p);
+#endif
 #if DUELL_TIDE
     else if (con_word(&p, "glide"))
         con_glide(p);

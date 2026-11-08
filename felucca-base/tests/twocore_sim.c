@@ -44,6 +44,8 @@
 #define TC_JOB_RUN sim_job
 #include <stdint.h>
 static void sim_job(uint32_t arg);
+static void tcb_test_posted(void);
+#define TCB_TEST_POSTED() tcb_test_posted()             /* (twocore_run.c tcb_post: the K4 audit's hash of the reverb at the post) */
 #define UI_TEST_NO_MAIN 1
 #include "ui_test.c"
 #include "mode_scn.h"                                   /* (scn_eng) */
@@ -206,10 +208,27 @@ static void policy_checks(void)
 }
 
 enum { F_NONE, F_TORN1, F_TORNP, F_LATE_PRE, F_LATE_POST, F_LATE_RUN, F_BADCHK, F_STALE, F_AHEAD, F_BADSNAP, F_HANG_PRE, F_HANG_POST, F_PARK, F_PARK_STUCK, F_SILENT_LATE,
-       F_UNARMED, F_NOANSWER, F_SHARED, F_BUSB, F_TCMCLR, F_VRUN, F_VWIN, F_FLOOR, F_FLOORX, F_NOFLOOR, F_VOFF, F_NOANS, F_VLONG, F_N };
+       F_UNARMED, F_NOANSWER, F_SHARED, F_BUSB, F_TCMCLR, F_VRUN, F_VWIN, F_FLOOR, F_FLOORX, F_NOFLOOR, F_VOFF, F_NOANS, F_VLONG,
+       F_K4_LATE_PRE, F_K4_LATE_POST, F_K4_VLONG, F_K4_BADCHK, F_K4_HANG, F_N };
 #define F_TRIMSTOP 100                                  /* (the fade run that stops core 1: not one of the scene runs) */
 static const char *const FNAME[F_N] = {"none", "torn1", "tornp", "late_pre", "late_post", "late_run", "badchk", "stale", "ahead", "badsnap", "hang_pre", "hang_post", "park",
-                                       "park_stuck", "silent_late", "unarmed", "noanswer", "shared", "busb", "tcmclr", "vrun", "vwin", "floor", "floorx", "nofloor", "voff", "noans", "vlong"};
+                                       "park_stuck", "silent_late", "unarmed", "noanswer", "shared", "busb", "tcmclr", "vrun", "vwin", "floor", "floorx", "nofloor", "voff", "noans", "vlong",
+                                       "k4_late_pre", "k4_late_post", "k4_vlong", "k4_badchk", "k4_hang"};
+/* TIDE K4 (twocore_run.c tcb_*: the reverb of bus A as a second job of the block). The runs whose faults are aimed at part 2's jobs by their job NUMBER keep the reverb on core 0
+ * (tcb.off: the stage-1 job sequence, so every fault lands on the job it always did); the runs that do not depend on which job is which, and the k4_* runs, have it on.
+ *   none (and torn1, park, unarmed, noanswer, shared, busb, tcmclr) with the reverb job on: the output equals the old combined path; in "none" the reverb job writes nothing
+ *     of core 0's (the chorus / delay state, wet, the dry mix, both parts' state) and core 0's chorus / delay writes nothing of the reverb's (both audited every job)
+ *   k4_late_pre   core 1 sleeps before it looks at a reverb job: take, yld, core 0 runs the reverb itself ("late")          output equal
+ *   k4_late_post  core 1 sleeps after its claim of a reverb job, done before the wait limit ("very late")                 output equal
+ *   k4_vlong      (from the 400th reverb job: a calm 0.25 s before it) core 1 sleeps past the reverb's wait limit: the reverb silent for the block (its last sample faded out), a fault pause, the reverb back with a fade-in;
+ *                 equal up to that block; at its boundaries the reverb's step (run - reference) at most 1.0 x the reference's largest step of the 0.25 s before (no click)
+ *   k4_badchk     core 0's check value of a reverb job written wrong: refused, a strike, core 0 runs the reverb (never touched by core 1)   output equal
+ *   k4_hang       core 1 hangs in a claimed reverb job: the reverb silent (faded) until the heartbeat watch stops core 1, then cleared and faded in on core 0; part 2 on core 0
+ *                 meanwhile; never stuck (core 0's reverb runs again), no click */
+static int k4_run(int f)
+{
+    return f == F_NONE || f == F_TORN1 || f == F_PARK || f == F_UNARMED || f == F_NOANSWER || f == F_SHARED || f == F_BUSB || f == F_TCMCLR || f >= F_K4_LATE_PRE;
+}
 
 /* what a run reports (shared memory: the runs are child processes) */
 typedef struct {
@@ -226,13 +245,19 @@ typedef struct {
     uint32_t nott;                                      /* posted jobs of blocks where core 0 could no longer take part 2 back in time (item 90, tcr.nott: the job is posted with the wait limit as its deadline, no take-over) */
     uint32_t noans_nott;                                /* .. of them the jobs core 1 gives no answer to (the noans fault): each must end as a silent block, whichever blocks the host timing makes no-take-over blocks */
     uint64_t lim_sum[TCR_BLOCKS];                       /* the wait limits of the posted jobs, ticks after the half's start, summed per block of the half */
+    tcb_stat_t k4;                                      /* TIDE K4: the reverb job's counters at the end */
+    uint32_t k4_open;                                   /* .. a reverb job still open at the end */
+    uint32_t rv_checks, rv_c1_writes, rv_c0_writes;     /* .. the audit (none): reverb jobs audited; jobs that wrote core 0's state; posts after which core 0 wrote the reverb's */
+    uint8_t rsil[MAXB];                                 /* .. the reverb was silent in this block (tcb.rsil) */
+    int32_t L[MAXB * CTL];                              /* the left channel (the click check of k4_vlong / k4_hang) */
 #if TC_MEAS
     tcm_t m;                                            /* BENCHT2's timing figures at the end (tcm: twocore_run.c) */
 #endif
 } res_t;
 static res_t *R;                                        /* the child writes here */
 
-static int fault;                                       /* the run's injected fault (the child's) */
+/* (fault: the run's injected fault, the child's; declared with the K4 audit below) */
+static int fault;
 static uint32_t nblk;                                   /* blocks so far */
 static uint32_t clk_jump;                               /* ticks added to the half starts (the calm periods skipped) */
 static uint32_t jumps;                                  /* pauses already followed by a jump */
@@ -292,6 +317,8 @@ static void hang(void)                                  /* hung: until core 0 st
 
 /* ------------------------------------------------------------ the fault plan: which job gets what --- */
 static __thread uint32_t c1_job, c1_seen, torn_left, prev_arg, prev_chk;   /* core 1's: the job it is looking at, the torn reads left */
+static __thread uint32_t c1_rev, c1_rord;              /* .. TIDE K4: it is a reverb job; reverb jobs seen */
+static uint32_t c0_rord, c0_rarg;                       /* core 0's: reverb jobs posted; the last arg it stored was a reverb job's */
 static uint32_t trim_job, ahead_left;
 static volatile uint32_t c0_wait;                       /* the ownership audit's gate: the job core 0 is waiting for (set when it loads the done word) */
 static int stale_on;                  /* (the fade runs name their own job) */
@@ -324,6 +351,13 @@ static uint32_t ld_hook(const uint32_t *p, uint32_t v)
     if (tc_host_is_c1) {
         if (p == &tc_mb.job && v != c1_seen) {          /* core 1 looks at a new job: what happens first (delays before it looks, a hang, torn reads, a misread snapshot) */
             c1_seen = c1_job = v;
+            c1_rev = __atomic_load_n(&tc_mb.arg, __ATOMIC_ACQUIRE) == (CTL | TCJ_REV);   /* (TIDE K4: a reverb job; its own count picks the k4_* faults) */
+            if (c1_rev) {
+                c1_rord++;
+                if (fault == F_K4_LATE_PRE && c1_rord % 37u == 5u)
+                    wait_clock(tcb.dl + 1000u);         /* late to wake: core 0 takes the reverb back at its deadline, core 1 yields */
+                return v;
+            }
             if (pl_noans(v))
                 wait_clock(tcr.dl + 2600u);             /* later than the 100 us (2,400 ticks) core 0 waits for the answer to its take, earlier than the wait limit: "no answer", then yld */
             else if (pl_late_pre(v))
@@ -363,6 +397,12 @@ static uint32_t ld_hook(const uint32_t *p, uint32_t v)
 /* every store of a shared word */
 static uint32_t st_hook(uint32_t *p, uint32_t v)
 {
+    if (!tc_host_is_c1 && p == &tc_mb.arg) {
+        c0_rarg = v == (CTL | TCJ_REV);
+        c0_rord += c0_rarg;
+    }
+    if (!tc_host_is_c1 && p == &tc_mb.chk && fault == F_K4_BADCHK && c0_rarg && c0_rord == 50u)
+        return v ^ 0x40u;                               /* (TIDE K4: the 50th reverb job's check value written wrong) */
     if (!tc_host_is_c1 && p == &tc_mb.chk && ((fault == F_BADCHK && tc.job + 1u == 200u) || (fault == F_TRIMSTOP && tc.job + 1u == trim_job)))
         return v ^ 0x40u;                               /* core 0's check value written wrong */
     return v;
@@ -418,6 +458,58 @@ static int own_gate(uint32_t j)                         /* wait for core 0 to be
     return 1;
 }
 
+/* TIDE K4's audit (none): the reverb job writes only the reverb's state, core 0's chorus / delay loop writes nothing of it. rev_hash: what core 1 may write; c0bus_hash: what
+ * core 0 writes in the same window (and both parts' state, done before the post) */
+static uint64_t hbytes(uint64_t h, const void *p, uint32_t n)
+{
+    const uint8_t *q = p;
+    uint32_t i;
+    for (i = 0; i < n; i++)
+        h = (h ^ q[i]) * 0x100000001B3ull;
+    return h;
+}
+#define HF(f) h = hbytes(h, &fx.f, (uint32_t)sizeof fx.f)
+static uint64_t rev_hash(void)
+{
+    uint64_t h = 0xCBF29CE484222325ull;
+    HF(comb_i); HF(ap_i); HF(comb_lp); HF(lo_lp); HF(lo_k); HF(lo_g); HF(rtype); HF(pl_w); HF(pl_lp); HF(pl_le); HF(pl_ph1); HF(pl_ph2); HF(sh_w); HF(sh_ph);
+    HF(sh_hp); HF(sh_he); HF(sh_pu); HF(sh_pd); HF(sh_l1); HF(sh_l2); HF(sh_z); HF(sh_q); HF(sh_g); HF(sh_x); HF(sh_cfg); HF(rs_lp); HF(rs_w); HF(sp_w); HF(sp_lp);
+    HF(sp_hp); HF(sp_he); HF(sp_size); HF(sp_ph); HF(rq); HF(byp);
+    h = hbytes(h, &hl, (uint32_t)sizeof hl);
+    h = hbytes(h, rev_comb, (uint32_t)sizeof rev_comb);
+    h = hbytes(h, &rev_u, (uint32_t)sizeof rev_u);
+    h = hbytes(h, &shim, (uint32_t)sizeof shim);
+    h = hbytes(h, lo_buf, (uint32_t)sizeof lo_buf);
+    h = hbytes(h, tcb_scr, (uint32_t)sizeof tcb_scr);
+    return hbytes(h, tcb_wr, (uint32_t)sizeof tcb_wr);
+}
+static uint64_t c0bus_hash(void)
+{
+    uint64_t h = 0xCBF29CE484222325ull;
+    HF(dly_w); HF(cho_w); HF(cho_ph); HF(dly_lp); HF(dly_h); HF(dm_pl); HF(dm_pr); HF(dm_xl); HF(dm_xr); HF(dm_dev); HF(cho_dq); HF(cho_on); HF(cho_z); HF(cho_zs); HF(dly_g);
+    HF(dz); HF(dz_w);
+    h = hbytes(h, wet, (uint32_t)sizeof wet);
+    h = hbytes(h, &mixlr, (uint32_t)sizeof mixlr);
+    h = hbytes(h, dly_sd, (uint32_t)sizeof dly_sd);
+    h = hbytes(h, cho_buf, (uint32_t)sizeof cho_buf);
+    h = hbytes(h, dly_buf, (uint32_t)sizeof dly_buf);
+    h = hbytes(h, &dlyev, (uint32_t)sizeof dlyev);
+    h = hbytes(h, send_c, (uint32_t)sizeof send_c);
+    h = hbytes(h, send_d, (uint32_t)sizeof send_d);
+    h = hbytes(h, send_r, (uint32_t)sizeof send_r);
+    h = hbytes(h, trk, (uint32_t)sizeof trk);
+    h = hbytes(h, pscr, (uint32_t)sizeof pscr);
+    return hbytes(h, pacc, (uint32_t)sizeof pacc);
+}
+#undef HF
+static uint64_t rv_h0;                                  /* the reverb's state at the post (twocore_run.c TCB_TEST_POSTED) */
+static uint32_t rv_checks, rv_c1_writes, rv_c0_writes;
+static void tcb_test_posted(void)
+{
+    if (fault == F_NONE)
+        rv_h0 = rev_hash();
+}
+
 /* ------------------------------------------------------------ core 1 --- */
 /* the job as core 1 runs it: delays, the bus B check around the real job */
 static uint32_t c1_jobs, c1_busb, c1_checks;
@@ -425,6 +517,41 @@ static void sim_job(uint32_t arg)
 {
     uint32_t j = c1_job;
     uint64_t s0, s1;
+    if (c1_rev) {                                       /* TIDE K4: a reverb job */
+        if (fault == F_K4_LATE_POST && c1_rord % 41u == 7u)
+            wait_clock(tcb.dl + 1000u);                 /* slow after its claim: core 0 takes it back, then waits for done (before the wait limit) */
+        if (fault == F_K4_VLONG && c1_rord >= 400u && c1_rord % 97u == 11u)
+            wait_clock(tcb.lim + 60u);                  /* slower than core 0 may wait: the reverb silent for the block */
+        if (fault == F_K4_HANG && c1_rord == 400u) {
+            hang();                                     /* hung after its claim: the reverb is core 1's until the heartbeat watch stops it */
+            return;
+        }
+        if (!c1_live())
+            return;
+        if (fault == F_NONE) {                          /* (the bus B check only here, after the gate: in STEREO core 0's delay loop writes the whole line, its half B too, beside the job) */
+            uint64_t c0a = 0, c0b, ra;
+            int gated = own_gate(j);
+            s0 = busb_sum();
+            if (gated) {
+                c0a = c0bus_hash();
+                ra = rev_hash();
+                rv_c0_writes += ra != rv_h0;            /* (core 0 ran the chorus and the delay since the post: nothing of the reverb's may have changed) */
+            } else
+                own_timeouts++;
+            tc_job_run(arg);
+            if (gated) {
+                c0b = c0bus_hash();
+                rv_checks++;
+                rv_c1_writes += c0b != c0a;
+                s1 = busb_sum();
+                c1_checks++;
+                c1_busb += s0 != s1;
+            }
+        } else
+            tc_job_run(arg);
+        c1_jobs++;
+        return;
+    }
     if (pl_vlong(j))
         wait_clock(tcr.lim + 60u);                      /* slower than core 0 may wait: it stops at the wait limit, part 2 silent for the block */
     else if (pl_late_post(j))
@@ -508,8 +635,12 @@ static uint64_t blk_hash(const int32_t *o, uint32_t n)
 static void record(const int32_t *out, uint32_t skip)
 {
     if (nblk < MAXB) {
+        uint32_t i;
         R->bh[nblk] = blk_hash(out, 2u * CTL);
         R->skip[nblk] = (uint8_t)skip;
+        R->rsil[nblk] = tcb.rsil;
+        for (i = 0; i < CTL; i++)
+            R->L[nblk * CTL + i] = out[2u * i];
     }
     nblk++;
 }
@@ -582,7 +713,15 @@ static void sim_block(int32_t *out, uint32_t n)
             while (c1_live() && !tc_closed())
                 cpu_relax();
         }
-        if ((fault == F_LATE_POST || fault == F_LATE_RUN || fault == F_LATE_PRE || fault == F_STALE || fault == F_VRUN || fault == F_VWIN || fault == F_NOANS || fault == F_VLONG) && tcs.pauses > jumps) {
+        if (fault == F_K4_VLONG && tcs.pauses > jumps && tcb.open) {   /* (the same for the late reverb job) */
+            uint32_t want = tcb.lim + 100u;
+            if ((int32_t)(want - raw_ticks()) > 0)
+                __atomic_store_n(&tc_host_ticks, want, __ATOMIC_RELAXED);
+            while (c1_live() && !tc_closed())
+                cpu_relax();
+        }
+        if ((fault == F_LATE_POST || fault == F_LATE_RUN || fault == F_LATE_PRE || fault == F_STALE || fault == F_VRUN || fault == F_VWIN || fault == F_NOANS || fault == F_VLONG ||
+             fault == F_K4_VLONG) && tcs.pauses > jumps) {
             jumps = tcs.pauses;
             clk_jump += TCR_CALM_TICKS;                 /* the calm period passes */
             t += TCR_CALM_TICKS;
@@ -594,7 +733,7 @@ static void sim_block(int32_t *out, uint32_t n)
             while (c1_live() && !tc_closed())
                 cpu_relax();
         }
-        if (thr_on && tc.up && fault != F_HANG_PRE && fault != F_HANG_POST && fault != F_PARK_STUCK) {   /* the heartbeat watch reads this clock as real time: a healthy core 1 has beaten by now */
+        if (thr_on && tc.up && fault != F_HANG_PRE && fault != F_HANG_POST && fault != F_PARK_STUCK && fault != F_K4_HANG) {   /* the heartbeat watch reads this clock as real time: a healthy core 1 has beaten by now */
             uint32_t ms = raw_ticks() / MS_TICKS, bt = __atomic_load_n(&tc_mb.beat, __ATOMIC_RELAXED);
             if (bt != beat_seen) {
                 beat_seen = bt;
@@ -673,6 +812,9 @@ static void fill_res(uint64_t h)
     R->own_timeouts = own_timeouts;
     R->nblk = nblk;
     R->park_us = (park_t1 - park_t0) / TC_TICKS_PER_US;
+    R->k4 = tcbs;
+    R->k4_open = tcb.open != 0u;
+    R->rv_checks = rv_checks, R->rv_c1_writes = rv_c1_writes, R->rv_c0_writes = rv_c0_writes;
 }
 /* one run in a child process: kind -1 the old combined path, -2 the one-core path with the blocks of ref_skip skipped, else the injected fault; div the clock's divider */
 static void child_run(uint32_t id, int kind)
@@ -689,6 +831,7 @@ static void child_run(uint32_t id, int kind)
         return;
     }
     fault = kind;
+    tcb.off = (uint8_t)!k4_run(kind);                   /* (TIDE K4: the runs aimed at part 2's job numbers keep the reverb on core 0) */
 #if TC_MEAS
     if (kind == F_VRUN || kind == F_VWIN)
         tcm_cfg.vrun = 4u, tcm_cfg.vwin_k = 8u;         /* (BENCHT3's two rules switched on, as `bench vrun 4` and `bench vwin 8` do; the BENCHT4 defaults have them off) */
@@ -745,6 +888,7 @@ static int trim_child(int how)
     trk[0].p[P_MUTE] = 1;
     bnotes[0] = bnotes[1] = bnotes1[0] = bnotes1[1] = 0;
     fault = how ? F_TRIMSTOP : F_NONE;
+    tcb.off = 1;                                        /* (the trim names its job by number: the stage-1 sequence) */
     tc_host_ld_hook = ld_hook;
     tc_host_st_hook = st_hook;
     time_adj(0);
@@ -801,6 +945,7 @@ int main(int argc, char **argv)
     int nomut = 0, tsan = 0, audit = 0, k;
     static res_t ref, r, rs;
     tc_stat_t tot[F_N];
+    static tcb_stat_t k4tot[F_N];
     uint32_t ntot[F_N];
     for (k = 1; k < argc; k++) {
         if (argv[k][0] != '-')
@@ -827,7 +972,7 @@ int main(int argc, char **argv)
         expect(what, hr != 0);
         printf("twocore: scene %u (%s): reference %016llx, %u blocks\n", s, SCN[s], (unsigned long long)hr, ref.nblk);
         for (f = 0; f < F_N; f++) {
-            int equal_ref = f != F_HANG_PRE && f != F_HANG_POST && f != F_PARK_STUCK && f != F_SILENT_LATE && f != F_SHARED && f != F_BUSB && f != F_VLONG;
+            int equal_ref = f != F_HANG_PRE && f != F_HANG_POST && f != F_PARK_STUCK && f != F_SILENT_LATE && f != F_SHARED && f != F_BUSB && f != F_VLONG && f != F_K4_VLONG && f != F_K4_HANG;
             const tc_stat_t *c;
             uint32_t sum;
             if (audit && f != F_NONE)
@@ -965,8 +1110,88 @@ int main(int argc, char **argv)
                 snprintf(what, sizeof what, "scene %u %s: an unanswered take or a silent job pauses as a fault", s, FNAME[f]);
                 expect(what, !(c->noanswer || c->silent) || (c->pauses > 0 && c->pause_fault > 0));
             }
+            if (k4_run((int)f)) {                       /* TIDE K4: every reverb job posted ended exactly one way */
+                const tcb_stat_t *k = &r.k4;
+                snprintf(what, sizeof what, "scene %u %s: K4, every reverb job counted once (posted %u = in time %u + late %u + very late %u + silent %u + refused %u); no fit %u", s, FNAME[f],
+                         k->posted, k->in_time, k->late, k->vlate, k->silent, k->refused, k->nofit);
+                expect(what, k->posted == k->in_time + k->late + k->vlate + k->silent + k->refused);
+                k4tot[f].posted += k->posted, k4tot[f].in_time += k->in_time, k4tot[f].late += k->late, k4tot[f].vlate += k->vlate, k4tot[f].silent += k->silent,
+                    k4tot[f].refused += k->refused, k4tot[f].nofit += k->nofit;
+                printf("twocore:   %-11s K4 reverb jobs %u: in time %u late %u very late %u silent %u refused %u, no fit %u; core 1 %u..%u us, core 0 waited %u..%u us\n", FNAME[f], k->posted,
+                       k->in_time, k->late, k->vlate, k->silent, k->refused, k->nofit, k->nm ? (uint32_t)(k->rt_sum / k->nm) / TC_TICKS_PER_US : 0u, k->rt_max / TC_TICKS_PER_US,
+                       k->nm ? (uint32_t)(k->wt_sum / k->nm) / TC_TICKS_PER_US : 0u, k->wt_max / TC_TICKS_PER_US);
+            }
+            if (f == F_K4_VLONG || f == F_K4_HANG) {    /* the reverb silent in some blocks: equal up to the first, no click around any, never stuck */
+                uint32_t i, first = MAXB, nsil = 0, last = 0, same = 1u;
+                for (i = 0; i < r.nblk && i < MAXB; i++)
+                    if (r.rsil[i]) {
+                        first = first < i ? first : i;
+                        last = i;
+                        nsil++;
+                    }
+                for (i = 0; i < first && i < r.nblk && i < MAXB; i++)
+                    same &= r.bh[i] == ref.bh[i];
+                snprintf(what, sizeof what, "scene %u %s: the output equals the reference up to the first silent reverb block (%u; %u silent blocks)", s, FNAME[f], first, nsil);
+                expect(what, same);
+                /* No click. The dry path, the chorus and the delay are the reference's sample for sample in every block (only the reverb differs after a silent block), so the
+                 * difference run - reference is the reverb alone, and a boundary of a silent run shows in it: going silent the reverb's last sample fades out (a cut steps by the
+                 * reverb's whole level), coming back it fades in (an unfaded start steps by it too). At every entry into a silent run and every return, the difference's largest step
+                 * over the boundary's first samples against the reference's largest step of the 0.25 s before (budget_test (d)'s calm) stays at most K4_CLICK */
+#define K4_CLICK 1.0                                    /* (measured over the 12 scenes: the real fades up to 0.53 x (scene 7, a noise voice: the reverb's own step); a cut 1.36 x, an unfaded return 2.21 x (scene 0): twocore_mut) */
+                {
+                    double rin = 0, rout = 0;
+                    uint32_t bin = 0, bout = 0;
+                    for (i = 1; i < r.nblk && i < MAXB; i++)
+                        if (r.rsil[i] != r.rsil[i - 1u] && i * CTL >= FS / 4u + CTL) {
+                            uint32_t a0 = i * CTL, k;
+                            int32_t mr = 1, md = 0;
+                            double q;
+                            for (k = a0 - FS / 4u; k < a0; k++) {
+                                int32_t dr = abs(ref.L[k] - ref.L[k - 1u]);
+                                mr = dr > mr ? dr : mr;
+                            }
+                            for (k = a0; k < a0 + 4u; k++) {
+                                int32_t dd = abs((r.L[k] - ref.L[k]) - (r.L[k - 1u] - ref.L[k - 1u]));
+                                md = dd > md ? dd : md;
+                            }
+                            q = (double)md / mr;
+                            if (r.rsil[i] && q > rin)
+                                rin = q, bin = i;
+                            if (!r.rsil[i] && q > rout)
+                                rout = q, bout = i;
+                        }
+                    printf("twocore:   %-11s the reverb's step at a silent run's boundary against the calm before: going silent %.3f x (block %u), coming back %.3f x (block %u)\n", FNAME[f], rin, bin, rout, bout);
+                    snprintf(what, sizeof what, "scene %u %s: no click: at every boundary of a silent reverb run the reverb's step (run - reference) is at most %.2f x the reference's largest step of the 0.25 s before (going silent %.3f x at block %u, coming back %.3f x at block %u)",
+                             s, FNAME[f], K4_CLICK, rin, bin, rout, bout);
+                    expect(what, rin <= K4_CLICK && rout <= K4_CLICK);
+                }
+                if (f == F_K4_VLONG) {
+                    snprintf(what, sizeof what, "scene %u k4_vlong: a reverb job not done by its wait limit is a silent block (%u) and a fault pause (%u of %u pauses), the reverb back afterwards (jobs in time %u), never a stuck job (open at the end %u), no strike", s,
+                             r.k4.silent, c->pause_fault, c->pauses, r.k4.in_time, r.k4_open, r.strike);
+                    expect_t(what, r.k4.silent > 0 && nsil >= r.k4.silent && c->pause_fault > 0 && r.k4.in_time > r.k4.silent && !r.strike && r.up);
+                } else {
+                    snprintf(what, sizeof what, "scene %u k4_hang: core 1 hung in a reverb job: the reverb silent (%u blocks) until the heartbeat watch stopped core 1 (HANG %u, strike %u, up %u), then core 0's reverb again (last silent block %u of %u), no job open at the end (%u)", s,
+                             nsil, r.failed == TCR_HANG, r.strike, r.up, last, r.nblk, r.k4_open);
+                    expect(what, (r.k4.posted < 400u) || (nsil > 0 && r.failed == TCR_HANG && r.strike && !r.up && last + 10u < r.nblk && !r.k4_open));
+                }
+            }
             switch (f) {
+            case F_K4_LATE_PRE:
+                snprintf(what, sizeof what, "scene %u k4_late_pre: a reverb job core 1 had not started by its deadline was taken back (late %u) and played by core 0, no silent block, no strike", s, r.k4.late);
+                expect_t(what, (r.k4.posted < 5u || r.k4.late > 0) && r.k4.silent == 0 && !r.strike && r.up);
+                break;
+            case F_K4_LATE_POST:
+                snprintf(what, sizeof what, "scene %u k4_late_post: a reverb job done after its deadline but before its wait limit is very late (%u), added, no pause (%u), no strike", s, r.k4.vlate, c->pauses);
+                expect_t(what, (r.k4.posted < 7u || r.k4.vlate > 0) && r.k4.silent == 0 && c->pauses == 0 && !r.strike && r.up);
+                break;
+            case F_K4_BADCHK:
+                snprintf(what, sizeof what, "scene %u k4_badchk: the reverb job with a wrong check value is refused (%u), a strike (BADJOB), core 0 runs the reverb and part 2 from then on", s, r.k4.refused);
+                expect(what, r.k4.posted < 50u || (r.k4.refused == 1u && r.failed == TCR_BADJOB && r.strike && !r.up));
+                break;
             case F_NONE:
+                snprintf(what, sizeof what, "scene %u none: K4, every reverb job in time (%u of %u); the audit: %u jobs, %u wrote core 0's state, %u posts after which core 0 wrote the reverb's", s, r.k4.in_time, r.k4.posted,
+                         r.rv_checks, r.rv_c1_writes, r.rv_c0_writes);
+                expect(what, r.k4.in_time == r.k4.posted && r.rv_c1_writes == 0 && r.rv_c0_writes == 0 && r.rv_checks == r.k4.posted);
                 snprintf(what, sizeof what, "scene %u none: no fault, no late block, no refusal, no strike", s);
                 expect(what, c->late == 0 && c->vlate == 0 && c->refused == 0 && !r.strike && r.up && !r.failed && c->pauses == 0);
                 /* (DUELL 1.1 item 142: the wait limit at true cost (twocore_run.c tcr_deadline) is later, so scene 11's blocks of no take-over (305 a run before) now get the true-cost
@@ -1144,6 +1369,17 @@ int main(int argc, char **argv)
     if (!audit)
         expect("the late path was taken and counted in some blocks (late_pre)", tot[F_LATE_PRE].late > 0);
     expect("several hundred blocks per scene went through the hand-over (none)", tot[F_NONE].in_time >= 300u * (s1 - s0));
+    printf("twocore: K4 reverb jobs over %u scenes (posted, in time, late, very late, silent, refused, no fit):\n", s1 - s0);
+    for (f = 0; f < F_N; f++)
+        if (k4tot[f].posted || k4tot[f].nofit)
+            printf("twocore:   %-12s %6u %6u %5u %5u %5u %3u %6u\n", FNAME[f], k4tot[f].posted, k4tot[f].in_time, k4tot[f].late, k4tot[f].vlate, k4tot[f].silent, k4tot[f].refused, k4tot[f].nofit);
+    if (s1 - s0 == NSCENE && !audit)
+        expect("K4: the reverb went to core 1 in the STEREO / LAYER scenes (none: several hundred jobs a scene on average)", k4tot[F_NONE].posted >= 300u * 6u);
+    if (!tsan && !audit && s1 - s0 == NSCENE) {
+        expect("K4: the late path of the reverb job was taken (k4_late_pre)", k4tot[F_K4_LATE_PRE].late > 0);
+        expect("K4: a very late reverb job was waited for (k4_late_post)", k4tot[F_K4_LATE_POST].vlate > 0);
+        expect("K4: a reverb job past its wait limit went silent (k4_vlong)", k4tot[F_K4_VLONG].silent > 0);
+    }
     if (!tsan && !audit) {
         /* the fallback fade (item 11) */
         int how;

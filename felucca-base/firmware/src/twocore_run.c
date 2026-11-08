@@ -249,6 +249,52 @@ static void tcm_clear(void)
 }
 #endif
 
+#if TCB_ON
+/* ---------------------------------------------------------------- TIDE K4: the reverb job (docs/TWOCORE_STAGE1.md section 9) ---
+ * Bus A only (STEREO, LAYER; DUEL's two buses stay on core 0). fx_buses posts "the reverb of this block" (tcb_post) after the sends are final (SPACE, the bypass ramps,
+ * the matrix's bus values in song.g) and runs the chorus and the delay itself; at the point where the one-core path calls rev_tail, tcb_rev waits for the job and adds
+ * core 1's block into wet. Bit for bit: every reverb model only adds into its output, and the chorus / delay loop and the reverb share no state (their own fields of fx,
+ * their own lines; rev_locut's lo_buf, HALL's hl and the scratch tcb_scr are the reverb's). Core 1 writes: tcb_wr, tcb_scr, lo_buf, hl, rev_comb, rev_u, shim, the
+ * reverb's fields of fx. Core 0 does not touch them until the job is closed.
+ * The take-back rules are part 2's (tcr_part2): done by the deadline -> added; not done -> take; yld -> core 0 runs rev_tail itself (the same samples, "late");
+ * claimed and done by the wait limit -> added ("very late", no pause); not done by the limit -> the reverb is SILENT this block: its last sample fades to 0 over the
+ * block (no step), the job stays open (no job is posted while it is: core 0 plays part 2 itself), the jobs pause; the reverb comes back with a one-block fade-in.
+ * A refused job or a word ahead: tc_fail (a strike); core 0 runs the reverb (cleared first and faded in if core 1 had claimed it: it may be half written).
+ * The fit: core 1's own run time (tc_mb.brt, written before done) is kept as the largest of two buckets of TCR_FLOOR_BLOCKS blocks; a bucket with no measured job
+ * keeps the one before (no fading to "free" without a measurement). A job is posted only when now + that time is before the take-over deadline. */
+#define TCJ_REV 0x8000u                 /* the job kind in arg's low half: n | TCJ_REV (part 2's job: n | hash << 16) */
+typedef struct {
+    uint32_t posted, in_time, late, vlate, silent, refused, nofit, off;   /* reverb jobs posted, and how they ended; blocks it did not fit (core 0 ran it), blocks with the switch off */
+    uint32_t nm, rt_max, wt_max, c0_max, c0_n;   /* jobs measured; core 1's longest reverb run, core 0's longest wait for it, core 0's longest bus stage (fx_buses), blocks of that */
+    uint64_t rt_sum, wt_sum, c0_sum;    /* (ticks) */
+} tcb_stat_t;
+static tcb_stat_t tcbs TCB_SECT;          /* (console `k4`; cleared there through tcb.clr) */
+static struct {
+    uint32_t job;                       /* the reverb job of this block (0: none) */
+    uint32_t open;                      /* a reverb job not known to be closed (core 1 may still write the reverb) */
+    uint32_t dl, lim;                   /* its take-over deadline and its wait limit */
+    uint32_t rm_cur, rm_prev;           /* core 1's longest reverb run (ticks) in the current and the last bucket */
+    uint16_t rm_n;                      /* blocks in the current bucket */
+    uint8_t later;                      /* blocks after this one in the half (tcr_begin) */
+    uint8_t off;                        /* 1: the reverb stays on core 0 (console `k4 0`; the sim's old scenes) */
+    uint8_t fin;                        /* the next reverb block fades in (after a silent one) */
+    uint8_t clr;                        /* the reverb may be half written (core 1 stopped in a claimed job): cleared before core 0 runs it */
+    uint8_t sclr;                       /* the console asks for the figures to be cleared (taken by the audio interrupt) */
+    uint8_t rsil;                       /* the reverb is silent this block (core 1 still holds it): mix_sends does not read HALL's side */
+    int32_t rl, sl;                     /* the reverb's last sample of the block before (its share of wet) and HALL's side's: a silent block fades from these */
+} tcb TCB_SECT;
+static int32_t tcb_wr[CTL] TCB_SECT;             /* core 1's reverb block (zeroed by core 0 before the post) */
+/* core 1 (range Z, tools/ram_fns_z.py CORE 1: core 1's loop in range X cannot reach the flash by a direct call, Z can): the reverb into tcb_wr. A tail call */
+static __attribute__((noinline)) void tcb_c1_rev(const int32_t *rev_in, int32_t *out, uint32_t n)
+{
+    rev_tail(rev_in, out, n);
+}
+static void tcb_settle(void);
+#define TCB_OR_OPEN || tcb.open
+#else
+#define TCB_OR_OPEN
+#endif
+
 /* ---------------------------------------------------------------- the job (core 1) --- */
 #ifndef TC_CTX_SECT
 #define TC_CTX_SECT                     /* (the unit: the pool's tail beside tc_mb, hal/fm1_core1.h) */
@@ -281,6 +327,14 @@ static void tc_job_run(uint32_t arg)
     uint32_t n = arg & 0xFFFFu;
     mixpart_t m;
     int mo;
+#if TCB_ON
+    if (arg == (CTL | TCJ_REV)) {                       /* TIDE K4: the reverb of the block (its inputs: the globals core 0 made final before the post) */
+        uint32_t t0 = TC_TICKS();
+        tcb_c1_rev(send_r, tcb_wr, CTL);
+        TC_ST(&tc_mb.brt, TC_TICKS() - t0);             /* (before done: tc_c1_step syncs, then writes done) */
+        return;
+    }
+#endif
     if (tc_ctx_hash(&tc_ctx.bs) != arg >> 16 || n != CTL) {   /* (a block is always CTL frames; the stages get the constant CTL, not n: with a variable n the compiler stops folding the block length in the hot filter code (uf_run, uf_voice) and the hot block grows by 68 B) */
         tc_job_refuse();
         return;
@@ -562,6 +616,10 @@ static void tcr_begin(const blockstate_t *bs, uint32_t n)
         tcr.fl_n = 0, tcr.fl_prev = tcr.fl_cur, tcr.fl_cur = 0;
 #endif
     tcr_settle();
+#if TCB_ON
+    tcb.later = (uint8_t)(TCR_BLOCKS - 1u - tcr.blk);
+    tcb_settle();
+#endif
     {   /* DUELL 1.1 item 90: both parts on core 0 from this block (core 1 down, paused, or a flash park): the one-core numbers hold at once (trk_nvoice reads bnotes1), and the
          * notes above them fade now (voice_trim_now: the one-block fade), not at the main loop's next pass */
         uint8_t one = (uint8_t)(!tc.up || tc.park || tcr.paused TCR_OR_NOCORE1);
@@ -579,7 +637,7 @@ static void tcr_begin(const blockstate_t *bs, uint32_t n)
         tcr.vw_n = 0;
         tcs.resumes++;
     }
-    if (!tc.up || tc.park || tcr.paused || tcr.open TCR_OR_NOCORE1) {
+    if (!tc.up || tc.park || tcr.paused || tcr.open TCR_OR_NOCORE1 TCB_OR_OPEN) {   /* (TIDE K4: a late reverb job still open: core 1 is busy, core 0 plays part 2) */
 #if TC_MEAS
         tcr.own_why = !tc.up || TCR_NOCORE1_NOW ? TCM_OWN_DOWN : tc.park ? TCM_OWN_PARK : TCM_OWN_PAUSE;
 #endif
@@ -718,3 +776,210 @@ static void tcr_part2(const blockstate_t *bs, uint32_t n)
         tcs.vlate--;                                    /* (counted as refused, once) */
     tcr_fault(a == TCA_BAD ? TCR_BADWORD : TCR_BADJOB, bs, n);   /* refused (a check value, a snapshot), or a word ahead */
 }
+
+#if TCB_ON
+/* ---------------------------------------------------------------- TIDE K4: the reverb job, core 0's side (see the comment at tcb_stat_t) --- */
+/* an open reverb job at a block's start (tcr_begin): closed now (its late run time counts for the fit), or core 1 was stopped (a claimed job may have left the reverb half
+ * written: it is cleared before core 0 runs it again) */
+static void tcb_settle(void)
+{
+    if (tcb.sclr) {
+        tcb.sclr = 0;
+        memset(&tcbs, 0, sizeof tcbs);
+    }
+    if (++tcb.rm_n >= TCR_FLOOR_BLOCKS) {               /* (the buckets turn over by blocks; one with no measured job keeps the old maximum) */
+        tcb.rm_n = 0;
+        if (tcb.rm_cur)
+            tcb.rm_prev = tcb.rm_cur, tcb.rm_cur = 0;
+    }
+    if (!tcb.open)
+        return;
+    if (!tc.up) {
+        uint32_t a = tc_answer(tcb.open);
+        if (a == TCA_CLAIMED || a == TCA_BAD)
+            tcb.clr = 1;
+        tcb.open = 0;
+    } else if (tc_closed()) {
+        uint32_t rt = TC_LD(&tc_mb.brt);
+        if (rt > tcb.rm_cur)
+            tcb.rm_cur = rt;
+        tcb.open = 0;
+    }
+}
+
+/* fx_buses, bus A, before the chorus: post this block's reverb when core 1 may take it and its measured time fits before the take-over deadline. The deadline is
+ * tcr_deadline's with the reverb in place of part 2: the half's end less this block's globals (the reverb and the master: inside tcr.g), the blocks still to come
+ * (core 0's own share under the two-core rule, else the whole one-core cost) and the slack; the wait limit is the same without the slack. tcr's cost items are
+ * the ones tcr_deadline read at this half's first block (or a block before: still a sound estimate) */
+static void tcb_post(const int32_t *rev_in, uint32_t n)
+{
+    uint32_t now, c1, c2, need, cap, rm, i, l = tcb.later;
+    tcb.job = 0;
+    if (tcb.off) {
+        tcbs.off++;
+        return;
+    }
+    if (!tc.up || tc.park || tcr.paused || tcr.open || tcb.open || !tcr.cost_ok || !tcr.t0_ok || rev_in != send_r || n != CTL TCR_OR_NOCORE1 || !tc_closed())
+        return;                                         /* (core 1 not free, or not this bus's own call: core 0 runs the reverb, the one-core path) */
+    c1 = tcr.c1f + tcr_active(&trk[0]) * tcr.c1v;
+    c2 = tcr.c2f + tcr_active(&trk[1]) * tcr.c2v;
+    need = tcr.g + l * (tcr.two ? c1 + tcr.g : c1 + c2 + tcr.g);
+    if (need > TCR_NEED_MAX)
+        need = TCR_NEED_MAX;
+    cap = tcr.t0 + TCR_HALF_TICKS - need * TCR_BLOCK_TICKS / 10000u;
+    rm = tcb.rm_cur > tcb.rm_prev ? tcb.rm_cur : tcb.rm_prev;
+    now = TC_TICKS();
+    if ((int32_t)(now + rm - (cap - TCR_SLACK_NOW)) >= 0) {
+        tcbs.nofit++;                                   /* (core 1's measured time would end past the deadline: core 0 runs it, nothing is lost) */
+        return;
+    }
+    for (i = 0; i < CTL; i++)
+        tcb_wr[i] = 0;
+    tcb.dl = cap - TCR_SLACK_NOW;
+    tcb.lim = cap;
+    tcbs.posted++;
+    tcb.job = tcb.open = tc_post(CTL | TCJ_REV);
+#ifdef TCB_TEST_POSTED
+    TCB_TEST_POSTED();                                  /* (tests/twocore_sim.c: the audit of what core 0 writes beside the job) */
+#endif
+}
+
+/* the reverb's block added into wet with a fade-in (g = (i + 1) / n), and HALL's side the same: after a silent block */
+static void tcb_fadein(int32_t *wet, int32_t *r, uint32_t n)
+{
+    uint32_t i, d = 65536u / n, g = d;
+    for (i = 0; i < n; i++, g += d) {
+        r[i] = mulq16(r[i], g);
+        wet[i] += r[i];
+        if (hl.side)
+            hl.sd[i] = mulq16(hl.sd[i], g);
+    }
+}
+/* the reverb on core 0 (the one-core path; after a fault or a silent block the clear and the fade-in first). Keeps the last samples for a later silent block */
+static void tcb_own(const int32_t *rev_in, int32_t *wet, uint32_t n)
+{
+    uint32_t i;
+    int32_t w;
+    if (tcb.clr) {
+        tcb.clr = 0;
+        rev_clear();                                    /* (core 1 stopped in the middle of it: from silence, faded in) */
+        tcb.fin = 1;
+    }
+    if (tcb.fin) {
+        tcb.fin = 0;
+        for (i = 0; i < n; i++)
+            tcb_wr[i] = 0;
+        rev_tail(rev_in, tcb_wr, n);
+        tcb_fadein(wet, tcb_wr, n);
+        tcb.rl = tcb_wr[n - 1u];
+    } else {
+        w = wet[n - 1u];
+        rev_tail(rev_in, wet, n);                       /* (the one-core path, bit for bit) */
+        tcb.rl = wet[n - 1u] - w;
+    }
+    tcb.sl = hl.side ? hl.sd[n - 1u] : 0;
+}
+/* the reverb silent this block (core 1 still holds it): its last sample and HALL's side fade to 0 over the block, so nothing steps; it fades in when it is back */
+static void tcb_silent(int32_t *wet, uint32_t n)
+{
+    uint32_t i, d = 65536u / n, g = 65536u;
+    for (i = 0; i < n; i++) {
+        g -= d;
+        wet[i] += mulq16(tcb.rl, g);
+        mix_l[i] += mulq16(tcb.sl, g);
+        mix_r[i] -= mulq16(tcb.sl, g);
+    }
+    tcb.rl = tcb.sl = 0;
+    tcb.fin = 1;
+    tcb.rsil = 1;
+}
+
+/* the end of the bus paths (fx_bus.c BUS_REV, bus A): the job's block added, or the take-back, or the one-core rev_tail */
+static void tcb_rev(const int32_t *rev_in, int32_t *wet, uint32_t n)
+{
+    uint32_t j = tcb.job, a, t1, tw, i;
+    int vl = 0, noans = 0;
+    tcb.rsil = 0;
+    if (!j) {
+        if (tcb.open)
+            tcb_silent(wet, n);                         /* (an older job still runs: the reverb is core 1's) */
+        else
+            tcb_own(rev_in, wet, n);
+        return;
+    }
+    tcb.job = 0;
+    tw = TC_TICKS();
+    while ((a = tc_answer(j)) == TCA_NONE || a == TCA_CLAIMED)
+        if ((int32_t)(TC_TICKS() - tcb.dl) >= 0)
+            break;
+    if (a == TCA_NONE || a == TCA_CLAIMED) {            /* not done by the deadline: take it back and see what core 1 says */
+        tc_take(j);
+        t1 = TC_TICKS() + TCR_ANSWER_TICKS;
+        if ((int32_t)(t1 - tcb.lim) > 0)
+            t1 = tcb.lim;
+        while ((a = tc_answer(j)) == TCA_NONE && (int32_t)(TC_TICKS() - t1) < 0)
+            ;
+        if (a == TCA_CLAIMED || a == TCA_NONE) {        /* it is on it (or stuck): wait for done, not past the wait limit */
+            noans = a == TCA_NONE;
+            while ((a = tc_answer(j)) == TCA_CLAIMED || a == TCA_NONE)
+                if ((int32_t)(TC_TICKS() - tcb.lim) >= 0)
+                    break;
+            if (a == TCA_CLAIMED || a == TCA_NONE) {    /* not done by the wait limit: silent this block, the job stays open, a fault pause */
+                tcbs.silent++;
+                tcr_pause(TC_TICKS(), TCR_PW_FAULT);
+                tcb_silent(wet, n);
+                return;
+            }
+            vl = a != TCA_YIELD;
+        }
+        if (a == TCA_YIELD) {                           /* it had not started: core 0 runs the reverb, the same samples */
+            tcbs.late++;
+            tcb.open = 0;
+            if (noans)
+                tcr_pause(TC_TICKS(), TCR_PW_FAULT);
+            tcb_own(rev_in, wet, n);
+            return;
+        }
+    }
+    if (a == TCA_DONE && !TC_LD(&tc_mb.bad)) {
+        uint32_t rt = TC_LD(&tc_mb.brt), wt = TC_TICKS() - tw;
+        if (vl)
+            tcbs.vlate++;
+        else
+            tcbs.in_time++;
+        if (noans)
+            tcr_pause(TC_TICKS(), TCR_PW_FAULT);
+        if (rt > tcb.rm_cur)
+            tcb.rm_cur = rt;
+        tcbs.nm++;
+        tcbs.rt_sum += rt, tcbs.wt_sum += wt;
+        tcbs.rt_max = rt > tcbs.rt_max ? rt : tcbs.rt_max;
+        tcbs.wt_max = wt > tcbs.wt_max ? wt : tcbs.wt_max;
+        tcb.open = 0;
+        if (tcb.fin) {
+            tcb.fin = 0;
+            tcb_fadein(wet, tcb_wr, n);
+        } else {
+            for (i = 0; i < n; i++)
+                wet[i] += tcb_wr[i];
+        }
+        tcb.rl = tcb_wr[n - 1u];
+        tcb.sl = hl.side ? hl.sd[n - 1u] : 0;
+        return;
+    }
+    /* refused (a check value: core 1 never ran it; or inside the job, done with bad: it ran nothing), or a word ahead: a strike, core 0 runs the reverb */
+    tcbs.refused++;
+    tc_fail(a == TCA_BAD ? TCR_BADWORD : TCR_BADJOB);
+    tcb.open = 0;
+    if (a == TCA_BAD)
+        tcb.clr = 1;                                    /* (the words do not say whether core 1 ran it: from silence) */
+    tcb_own(rev_in, wet, n);
+}
+/* mix_sends: core 0's bus stage (fx_buses, with what core 0 waited in it), for the console's A/B of the switch */
+static void tcb_c0(uint32_t t)
+{
+    tcbs.c0_n++;
+    tcbs.c0_sum += t;
+    tcbs.c0_max = t > tcbs.c0_max ? t : tcbs.c0_max;
+}
+#endif

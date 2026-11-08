@@ -7,6 +7,12 @@ New lines for the fork go here, not into CHANGELOG.md.
 
 Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrnk-cmyk/DUELL-TIDE>), adding TIDE, a morph that plays and evolves by itself. TIDE has its own version, `MAJOR.MINOR.PATCH`, kept in the file `TIDE_VERSION` and shown in MENU > SYSTEM > ABOUT beside the DUELL version (1.1). A build flashed for testing is a beta, `1.0.0-b1`, `1.0.0-b2`, ...; the first build the fork owner has validated on the unit is `1.0.0`; a fix is `1.0.1`, a feature `1.1.0`. The git tag is `tide-` and the version (`tide-1.0.0-b1`); the GitHub release has the same name. Each version has a section below, `## 1.0.0-b1`, newest first; a section heading names the tag and, once known, the commit and the date it was flashed. The commit stays in the release notes, not in the name. The installer page offers the stable and the beta build of the [GitHub releases](https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases); the [README](README.md#builds-stable-and-beta) says which they are.
 
+## 1.0.0-b6
+
+Not released yet.
+
+- **Changed (CPU audit K4):** the second core now also plays the reverb (STEREO and LAYER), while the first core plays the chorus and the delay of the same moment; before, the first core played all three after the parts. The sound is the same sample for sample. Only when the second core's own measured time fits; otherwise the reverb stays on the first core as before. In DUEL nothing changes. If the second core is ever too late with the reverb, the reverb dips out for a moment and fades back in instead of clicking. Plain DUELL is unchanged. Not yet measured on the unit.
+
 ## 1.0.0-b5
 
 Tag `tide-1.0.0-b5` (jam11 after the b5 PR).
