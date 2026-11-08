@@ -632,6 +632,19 @@ static int cpu_head_on(int glob, int msg)              /* K2: HOME's three pages
 {
     return !glob && !msg && tide_foot_parts() && !ui.menu && !ui.guide && !ui.confirm;
 }
+/* K2: the header's CPU readout as a pill of the capsules' rows, outline and radius holding a small number (S, its ink centred, on the capsules' baseline), 7 px a figure + 9
+ * (one figure 16 px: as wide as tall; three 30 px: the room between a capsule and TIDE SETTINGS less 2 px each side); x < 0: it ends at -x */
+static void k2_pill(int32_t x, const char *s, uint16_t edge, uint16_t fill, uint16_t ink)
+{
+    int32_t w = (int32_t)str_len(s) * 7 + 9;
+    if (x < 0)
+        x = -x - w;
+    cv_rrect(x, UT_CAP_Y, w, UT_CAP_H, UT_CAP_R, edge, T_BG);
+    if (fill != edge)
+        cv_rrect(x + 1, UT_CAP_Y + 1, w - 2, UT_CAP_H - 2, UT_CAP_R - 1, fill, edge);
+    GFX_HOOK_ALIGN(0, 0, 0, H_HEAD, AL_V, "header text on its middle");
+    cv_text_in(x, UT_CAP_BASE - AF_S_CAP_Y - AF_S_CAP_H + 1 - Y_HEAD, w, &AF_S, s, ink, fill);
+}
 #endif
 static void draw_head(void)
 {
@@ -688,11 +701,10 @@ static void draw_head(void)
         head_title_draw(tb, glob);
     }
 #if DUELL_TIDE
-    if (cpk) {                                         /* K2: the elapsed peak at the left of the title, the missed periods at the right, small and dim (T_DIM), on the capsules' baseline */
-        int32_t cy = UT_CAP_BASE - AF_S_CAP_Y - AF_S_CAP_H + 1 - Y_HEAD;
-        GFX_HOOK_ALIGN(0, 0, 0, H_HEAD, AL_V, "header text on its middle");
-        cv_text(CAP_X + CAP_W + 5, cy, &AF_S, cps, cpc);
-        cv_text_r(240 - CAP_X - CAP_W - 5, cy, &AF_S, cms, cpc, T_BG);
+    if (cpk) {                                         /* K2: the elapsed peak in a dim outlined pill 2 px right of part 1's capsule; the missed periods, only when there are any, in a REC red badge 2 px left of part 2's */
+        k2_pill(CAP_X + CAP_W + 2, cps, T_DIM, T_BG, T_MID);
+        if (cms[0] != '0')
+            k2_pill(-(240 - CAP_X - CAP_W - 2), cms, T_REC, T_REC, T_BG);
     }
 #endif
     /* (owner V9: no rule under any title; the gradient stays on the title text, values and bars) */

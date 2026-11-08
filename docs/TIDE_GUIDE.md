@@ -12,7 +12,7 @@ Every sound has two ends, **A** (your sound) and **B** (a variation of it), and 
 
 HOME's round, one tap of **HOME** each: **MORPH → TIDE SETTINGS → AUTO TIDE**. **ALGORITHM** picks PART 1, BOTH or PART 2 on all of them.
 
-On these three pages two small numbers sit beside the page title. Left: the busiest audio block of the last 4 seconds, in % of its time. Right: audio blocks missed since startup. Both are dim and turn red once a block was missed (a click or dropout was possible). A restart sets the count to 0.
+On these three pages a small dim pill beside part 1's capsule shows the busiest audio block of the last 4 seconds, in % of its time. When an audio block was missed since startup (a click or dropout was possible), a red badge beside part 2's capsule shows how many. A restart sets the count to 0.
 
 ## 1. MORPH (the hand page)
 

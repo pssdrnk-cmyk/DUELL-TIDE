@@ -764,7 +764,7 @@ static void state(void)                          /* a playing song with steps on
     memset(&cpub, 0, sizeof cpub);                   /* (DUELL 0.2.9: the CPU bar under the battery in every scene: 5 of 8 steps, amber) */
     cpub.ok = 1; cpub.t = fm1_ms; cpub.step = 5; cpub.lvl = 1;
 #if DUELL_TIDE
-    memset(&cpuh, 0, sizeof cpuh);                   /* (K2: TIDE's header readout on HOME's three pages: a 92 % elapsed peak, 3 periods missed: both numbers red) */
+    memset(&cpuh, 0, sizeof cpuh);                   /* (K2: TIDE's header readout on HOME's three pages: a 92 % elapsed peak in the dim pill, 3 periods missed in the red badge) */
     cpuh.t = fm1_ms; cpuh.hold = 92; cpu_snap.miss = 3; cpum.base = 0; cpum.miss = 0;
 #endif
     memset(&gm, 0, sizeof gm);                       /* (GLO's level meters from silence) */
