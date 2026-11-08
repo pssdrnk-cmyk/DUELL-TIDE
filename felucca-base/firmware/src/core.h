@@ -568,9 +568,6 @@ typedef struct {                 /* the part in mix_part, its window: one per pa
 #ifndef DUELL_TIDE
 #define DUELL_TIDE 1                /* (tide.h sets it too, after this: track_t has TIDE's live-recording fields, seq.c rec_fresh, arp_rec_fire) */
 #endif
-#ifndef DUELL_TIDE
-#define DUELL_TIDE 1                /* (tide.h sets it too, after this: track_t has TIDE's live-recording fields, seq.c rec_fresh, arp_rec_fire) */
-#endif
 typedef struct track {
     int16_t p[EXT_P_LEN];        /* P_COUNT ids, a gap at 127, then the NX extension slots (ext.h XV); every store and format still counts P_COUNT */
     uint8_t engine, preset;      /* engine: what the audio ISR renders */
