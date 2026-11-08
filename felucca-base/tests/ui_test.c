@@ -8193,7 +8193,11 @@ static int test_item158_pc(void)
     for (glob = 0; glob < 2; glob++) {
         ui_power_on();
         settings.palette = 0; palette_set(0);
+#if DUELL_TIDE
+        if (glob) go_title("MIXER"); else go_main_to(HP_MORPH);   /* (a global screen, no capsules: GLO's MIXER; TIDE has no MODE page) */
+#else
         go_main_to(glob ? HP_MODE : HP_MORPH);          /* (MODE: a global screen, no capsules) */
+#endif
         frames(160);
         for (part = 0; part < 2u; part++)
             for (i = 0; i < UP_SLOTS; i++) {
@@ -9277,6 +9281,7 @@ static int test_item158_pages(void)
         ok_m &= ui.page != co && page_visible(ui.page);
         bad += check("item 158 S3:   .. DUEL: STEREO MASTER and COMPRESSOR (every card hidden: nothing to adjust) out of GLO's order; STEREO / LAYER keep both; on COMPRESSOR, DUEL moves off it", ok_m);
     }
+#if !DUELL_TIDE                                          /* (TIDE: no MODE page, its rows are TIDE SETTINGS') */
     {   /* owner: no gap in the knobs, the cards line up to the left: the MODE page in LAYER shows K1 (the list), K2 XFADE, K3 SPLIT, K4 nothing */
         uint32_t k, dots = 0;
         int x2 = 0, s3 = 0;
@@ -9294,6 +9299,7 @@ static int test_item158_pages(void)
         }
         bad += check("item 158: MODE page in LAYER: the cards line up to the left: K1 the list, K2 XFADE, K3 SPLIT, K4 empty (no gap before a shown card)", dots == 7u && x2 && s3);
     }
+#endif
     ui_power_on();
     return bad;
 }

@@ -2578,6 +2578,7 @@ static void draw_columns(void)
         draw_column(3, "", "", "", T_THEME, -1, ICON_NONE);
         return;
     }
+#if !DUELL_TIDE                                        /* TIDE hook: no MODE page (its rows are in TIDE SETTINGS) */
     if (cur_page()->scope == SC_MODE) {                /* step 5: MODE (SPLIT / STEREO / LAYER); the rest nothing */
         uint32_t m = duell_mode_req < DM_N ? duell_mode_req : DM_SPLIT;
         draw_column(0, "MODE", DM_NAME[m], "", VAL(0u), (int32_t)m * 500, ICON_MIX);
@@ -2597,6 +2598,7 @@ static void draw_columns(void)
         draw_column_hide(3);
         return;
     }
+#endif
     if (cur_page()->graph == GR_BROWSE) {              /* PATCHES (change list A.9, PATCHES_MULTIS_NEW_LAYOUT_V3): K1 PATCH (the slot's number), K2 TYPE, K3 SAVE (the save window), K4 FAV; RESTORE is gone */
         uint32_t total, cur = pl_cursor(&total), k = pl_cursor_slot();
         char sl[6];

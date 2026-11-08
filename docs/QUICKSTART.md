@@ -6,10 +6,10 @@ DUELL turns the FM-1 into two synths in one box. This page is the short tour; [S
 
 ## The idea
 - **Two parts**, 1 and 2. Each has its own sound, effects, EQ, ducker and arp. The **ALGORITHM** knob picks which part you are editing.
-- **Three modes** (on the MODE page, first knob: MODE. It is the third page of HOME's round, and the fourth with TIDE: MORPH, TIDE SETTINGS, AUTO TIDE, MODE):
+- **Three modes** (on the MODE page, first knob: MODE. It is the third page of HOME's round: MORPH, MORPH SET, MODE. With TIDE there is no MODE page: MODE, XFADE and SPLIT are the last three rows of TIDE SETTINGS):
   - **DUEL**: part 1 hard left, part 2 hard right, kept apart, effects included. For playing two sounds into two channels.
   - **STEREO**: both parts in one stereo field, for headphones.
-  - **LAYER** (default): both parts play on the keys together. The MODE page has XFADE (velocity crossfade) and SPLIT (a key split point) for it; DUEL and STEREO have neither.
+  - **LAYER** (default): both parts play on the keys together. The MODE page (with TIDE: the XFADE and SPLIT rows of TIDE SETTINGS) has XFADE (velocity crossfade) and SPLIT (a key split point) for it; DUEL and STEREO have neither.
 - **MORPH**: every sound has two ends, A and B, and one fader between them.
 
 ## The first-start guide
@@ -18,7 +18,7 @@ The first time DUELL starts (and once after an update from an older build) a sho
 ## The controls in one minute
 - **SELECT** switches sub-pages (and moves rows in lists). It never changes the tempo. **Knobs 1 to 4** adjust the four columns on screen. Every control does what its label says.
 - **PRESETS** loads sounds for the selected part, on the sequencer pages (STEP, PARAMETER LOCKS) too: the steps and parameter locks stay. It steps the list the way PATCHES' knob 1 does: with KNOB ACCELERATION on, a fast turn loads only the sound where it stops. **Hold OCT- and turn PRESETS to undo the last load** (the same again puts it back; "NOTHING TO UNDO" says there is none). It works on the pages where PRESETS loads a sound, not in PERFORM, a dialog or the menu, not on the SAVE list and action pages (PATTERNS, MULTIS, TOOLS), and not on the TIDE pages, where OCT- plus a knob is TIDE's own reset. A sound brings its own loudness (its **PATCH LEVEL**, saved with the patch, on EDIT > VOICE 2/2 knob 4); your volume on the mixer (the **LEVEL** cards of the GLO MIXER page, and MIDI CC7) is yours: loading a sound never changes it, and a multi remembers it. The part plays at the patch level and the level together.
-- **HOME** opens the MORPH page; each tap goes on to the next page of HOME's round (MORPH, MORPH SET, MODE; with TIDE MORPH, TIDE SETTINGS, AUTO TIDE, MODE). Hold HOME for the menu (ABOUT shows the version and credits).
+- **HOME** opens the MORPH page; each tap goes on to the next page of HOME's round (MORPH, MORPH SET, MODE; with TIDE MORPH, TIDE SETTINGS, AUTO TIDE). Hold HOME for the menu (ABOUT shows the version and credits).
 - **MIXER** (GLO's first page since the 0.2.25 layout round): both parts side by side, part 1 left and part 2 right, with the level meters between them. Knob 1 is LEVEL 1, knob 2 LEVEL 2, knob 3 PAN 1, knob 4 PAN 2 (in DUEL the pans are fixed and not shown). Each part's cell reads MUTE and is lit in the part's colour while the part is muted; hold GLO and press **OCT-** or **OCT+** to mute or unmute part 1 or part 2. SPACE is on the PERFORM page.
 - **TEMPO** is on the GLO TEMPO page, the one after MIXER (a tap of GLO opens MIXER first). To set the levels and pans of both parts from any page hold GLO: the keys play notes, knob 1 is LEVEL 1, knob 2 LEVEL 2, knob 3 PAN 1, knob 4 PAN 2 (in DUEL the pans are fixed and not shown). With GLO held, **OCT-** mutes or unmutes part 1 and **OCT+** part 2; each cell reads MUTE, lit in the part's colour while muted (the mutes moved to these keys in 0.2.24; before, knobs 1 and 2 were the mutes).
 - **OCT-/OCT+** change octave when you let go of them; in dialogs OCT- means back and OCT+ means do it. Hold **OCT-** and turn a knob to reset that knob's card to its default (the octave then does not change).
@@ -29,7 +29,7 @@ Hold **HOME**. Four tabs: **DISPLAY** (COLOR, LIGHTS, SCALE LIGHTS, ANIMATION, S
 
 ## Make a first sound
 1. Turn **PRESETS** to hear sounds. Turn **ALGORITHM** to select part 2 and load another.
-2. Go to the MODE page and try DUEL, STEREO, LAYER.
+2. Go to the MODE page (with TIDE: TIDE SETTINGS, last rows) and try DUEL, STEREO, LAYER.
 3. Press **HOME** for the MORPH page. Knob 1 moves the morph from A to B. Knob 2 rolls a new random end with one click (turn left = A, right = B). Knob 3 undoes the last roll of A or B. Knob 4 is AMOUNT, the one percentage: how far a roll may go. On this page **ALGORITHM** has three positions, PART 1, BOTH and PART 2: with BOTH the morph moves both parts and both part numbers in the header light up.
 4. Press **SAVE**. The first page is **PATCHES**: 128 slots, #1 to #128, and the factory sounds fill them; with TIDE the last four are empty USER slots (U1 to U4) for new sounds, and the factory sounds go to #171 (#129 and up are read-only places). The list shows the factory sounds first, then your saved sounds, then the empty USER slots last. **Hold SAVE** asks "OVERWRITE #12 <name>?" (the slot your sound came from); turn **knob 1** in the dialog to pick another slot, turn **knob 2 (RENAME)** to give the sound a new name first (the NAME screen opens; OCT+ there brings you back to the dialog with the new name), OCT+ says yes. Whatever was in that slot is replaced. Knob 4 **RESTORE** takes your sound out of the slot again and the factory sound comes back.
    **Tip:** a short press of SAVE opens the page that fits where you are: PATTERNS when you are on a sequencer page (STEP, SEQUENCER HELP, PARAMETER LOCKS), otherwise MULTIS in LAYER and PATCHES in DUEL and STEREO. SELECT moves between PATCHES, PATTERNS, MULTIS and TOOLS. Hold SAVE on PATTERNS or MULTIS saves over the slot you picked ("SAVE OVER <name>?", OCT+ yes); an empty multi slot asks for a name first.

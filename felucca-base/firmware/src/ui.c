@@ -691,6 +691,10 @@ static int page_visible(uint32_t i)
         return TSEL->eng_req % NENGINES == ENGI_FM6;
     case VIS_M5:
         return TSEL->p[P_M4SRC] != 0;
+#if DUELL_TIDE
+    case VIS_NOTIDE:
+        return 0;                                     /* (TIDE: the MODE page is TIDE SETTINGS' last three rows) */
+#endif
     default:
         return 1;
     }
@@ -921,8 +925,9 @@ static void go_main_to(uint32_t want)
     uint32_t i;
     ui.page = (uint8_t)page_first(FAM_TRK);
     for (i = 0; want == HP_MODE && i < NPAGES; i++)
-        if (PAGES[i].fam == FAM_TRK && page_visible(i) && PAGES[i].scope == SC_MODE) {
+        if (PAGES[i].fam == FAM_TRK && page_visible(i) && TIDE_HOME_MODE(&PAGES[i])) {   /* TIDE hook */
             ui.page = (uint8_t)i;
+            TIDE_PICK_MODE();
             break;
         }
     ui.fam_last[FAM_TRK] = ui.page;

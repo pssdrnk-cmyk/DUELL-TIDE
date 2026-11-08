@@ -1938,8 +1938,10 @@ static uint32_t graph_signature(void)
     h = (h ^ (mods_get() + 1u + mods_keep_get() * 64u) * 0x85EBCA6Bu) * 16777619u;   /* (0.2.14 GLO > MODULES: the switches; the cards they fade elsewhere) */
     if (pg->scope == SC_PERF)                        /* PERFORM: the keys held and running, what can run, the knobs, the part(s) */
         h = (h ^ perf_sig()) * 16777619u;
+#if !DUELL_TIDE
     if (pg->scope == SC_MODE)                        /* step 5: the MODE asked for */
         h = (h ^ (duell_mode_req + 1u) * 0x2545F491u ^ ((uint32_t)mix_xf << 8 | (uint32_t)mix_split << 16) * 0x9E3779B1u) * 16777619u;
+#endif
     if (pg->scope == SC_MORPH) {                     /* 4b: the faders, AMOUNT, TARGET; MORPH: the animation step */
         uint32_t pi = song.sel;
         h = (h ^ (morph_fader_of(pi) | morph_amount_of(pi) << 8 | (uint32_t)morph.target << 16 | (uint32_t)morph.cfg << 20)) * 16777619u;
@@ -2746,6 +2748,7 @@ static void graph_morph(void)
     GFX_HOOK_ALIGN(0, 0, 240, 0, AL_H, "morph save line centred");
     cv_text_in(0, MV_SY, 240, &AF_S, "HOLD SAVE = SAVE PATCH", T_DIM, T_BG);
 }
+#if !DUELL_TIDE                                      /* TIDE hook: no MODE page */
 static void graph_mode(void)
 {   /* DUELL 1.1 (PAGES_V2_home-modes.png), item 118: the three modes as a list in the order LAYER, STEREO, DUEL (the SETUP page's), the picked one on a box of the selected part's colour (ui_tokens.h TEMPLATE 6: the selection style of
      * FINAL_V1_08_setup) with the same room above and below its text, never overlapping the next row; what it means under the list; the knob mark in front of everything */
@@ -2766,6 +2769,7 @@ static void graph_mode(void)
     cv_text_in(8, RY + HALF_UP(RH - 11) + HALF_UP(11 - AF_D_CAP_H) - AF_D_CAP_Y, 11, &AF_DOT, "1", T_BG, T_TEXT);
     cv_oy = o;
 }
+#endif
 /* a GLO page's line in M (0.2.24, owner: less tiny text, bigger labels): the name left, the value right, in the primary text colour; dim: both dim */
 static void big_line(int32_t y, const char *name, const char *val, uint32_t on)
 {
@@ -3188,10 +3192,12 @@ static void draw_graph(void)
         graph_morphset();
         break;
 #endif
+#if !DUELL_TIDE
     case GR_MODE:
         cv_oy = 0;
         graph_mode();
         break;
+#endif
     TIDE_GRAPH_CASES                                 /* TIDE hook */
     case GR_MIDI:
         cv_oy = 0;

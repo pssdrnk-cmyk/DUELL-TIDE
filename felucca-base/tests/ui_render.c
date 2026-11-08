@@ -820,6 +820,13 @@ static void pslot_scene(uint32_t v)
 #else
 #define MORPH_SET_TITLE "MORPH SET"
 #endif
+#if DUELL_TIDE                                           /* (MODE: with TIDE a row of TIDE SETTINGS, owner 2026-11-08) */
+#define MODE_GO() (go_title("TIDE SETTINGS"), jl_sel = JL_MODE)
+#define MODE_PAGE_TITLE "TIDE SETTINGS"
+#else
+#define MODE_GO() go_title("MODE")
+#define MODE_PAGE_TITLE "MODE"
+#endif
 /* the FM engine of the FM screens: FM6 (DIGITAL is gone in 0.2.14) */
 #define E_FM ENGI_FM6
 #define go_home() go_main_to(HP_MORPH)           /* (HOME is MORPH, the main page, since 0.2.14: the OVERVIEW screen is gone) */
@@ -1160,7 +1167,7 @@ static void setup(int s)
         mod_ui_slot = 0; go_title("MATRIX 1-4"); break;
     case S_CYCLE2: go_title("CYCLE ENV 2/2"); break;                                   /* (TWIN FILTER off, DUEL mode: TWIN CUTOFF and PAN are hidden) */
     case S_CYCLE2_ALL: duell_mode_req = DM_STEREO; TSEL->p[P_TWTYPE] = 1; go_title("CYCLE ENV 2/2"); break;   /* (all four cards) */
-    case S_MODE_DUEL: duell_mode_req = DM_SPLIT; go_title("MODE"); break;
+    case S_MODE_DUEL: duell_mode_req = DM_SPLIT; MODE_GO(); break;
     case S_ENGINE_LIST: go_title("ENGINE"); ui.hot_col = 0; ui.hot_t = 30; break;
     case S_STEREO_HOME: duell_mode_req = DM_STEREO; go_home(); break;
     case S_ENGINE_PHASE: eng(2); TSEL->p[P_E0] = 3; TSEL->p[P_E1] = 6; TSEL->p[P_E2] = 60; go_title("ENGINE"); break;
@@ -1437,9 +1444,13 @@ static void setup(int s)
         morph_set_target(1); morph_do(MQ_FADER, 3u, 64u); go_title("MORPH"); trk[0].peak = 9000; trk[1].peak = 3000; break;
     /* DUELL step 5: HOME's MODE (HOME tapped three times from OVERVIEW: SPLIT, the power-on default), STEREO, LAYER (KNOB 1 just turned); the
      * MIXER in SPLIT (each part's PAN fixed: LEFT / RIGHT, DIM), part 2 selected and KNOB 2 turned (the message) */
+#if DUELL_TIDE                                           /* (TIDE: no MODE page; MODE is a row of TIDE SETTINGS, owner 2026-11-08) */
+    case S_MODE: go_home(); MODE_GO(); break;
+#else
     case S_MODE: go_home(); home_tap(); home_tap(); home_tap(); break;
-    case S_MODE_STEREO: ui_mode_set = DM_STEREO; duell_mode_req = DM_STEREO; go_title("MODE"); break;
-    case S_MODE_LAYER: ui_mode_set = DM_LAYER; duell_mode_req = DM_LAYER; go_title("MODE"); ui.hot_col = 0; ui.hot_t = 30; break;
+#endif
+    case S_MODE_STEREO: ui_mode_set = DM_STEREO; duell_mode_req = DM_STEREO; MODE_GO(); break;
+    case S_MODE_LAYER: ui_mode_set = DM_LAYER; duell_mode_req = DM_LAYER; MODE_GO(); ui.hot_col = 0; ui.hot_t = 30; break;
     case S_MIXER_SPLIT:
         go_page(GR_GLO); trk[0].p[P_PAN] = 20; trk[1].p[P_PAN] = -30; trk[1].p[P_REV] = 60; trk[0].peak = 9000; break;
     case S_MIXER_SPLIT_TURNED: go_page(GR_GLO); song.sel = 1; turn(EN_K2, 1); break;
@@ -2414,7 +2425,7 @@ int main(int argc, char **argv)
     {   /* AUTO TIDE / TIDE SETTINGS in the states the page sweep does not reach (audit 2026-11-04 lane C, C8): BOTH parts, gliding, armed, ARC, WAIT, POLY, 32 steps, the list's last rows,
          * the ARC trip line, the list with inert rows */
         static const char *const NM[] = {"at_single_rest", "at_both_rest", "at_both_glide", "at_both_armed_stopped", "at_both_arc_recover_dropnext",
-                                         "at_both_waiting16", "at_single_glide_32steps", "ts_bottom", "at_both_poly", "at_both_minimal_text", "at_both_arc_trip", "ts_inert", "ts_inert_dim", "ts_top"};
+                                         "at_both_waiting16", "at_single_glide_32steps", "ts_bottom", "at_both_poly", "at_both_minimal_text", "at_both_arc_trip", "ts_inert", "ts_inert_dim", "ts_top", "ts_xfade_layer", "ts_split_duel"};
         uint32_t pi, sc, k, i;
         for (pi = 0; pi < NPAGES && strcmp(PAGES[pi].title, "AUTO TIDE"); pi++) ;
         for (sc = 0; sc < sizeof NM / sizeof NM[0]; sc++) {
@@ -2439,7 +2450,8 @@ int main(int argc, char **argv)
             if (sc == 5) { gl.hold = 1; gl.wait = 5; gl.prog = (1u << GLIDE_Q) - 1u; }
             if (sc == 8) { poly_len[0] = 12; }
             if (sc == 9) { gl.on = 0; gl.mode = GM_DRIFT; }
-            if (sc == 7 || sc >= 11) { for (pg = 0; pg < NPAGES && strcmp(PAGES[pg].title, "TIDE SETTINGS"); pg++) ; jl_sel = (uint8_t)(sc == 11 ? JL_TURNS : sc == 13 ? JL_STYLE : JL_N - 1); }
+            if (sc == 7 || sc >= 11) { for (pg = 0; pg < NPAGES && strcmp(PAGES[pg].title, "TIDE SETTINGS"); pg++) ; jl_sel = (uint8_t)(sc == 11 ? JL_TURNS : sc == 13 ? JL_STYLE : sc == 14 ? JL_XFADE : JL_N - 1); }
+            if (sc >= 14) { duell_mode_req = sc == 14 ? DM_LAYER : DM_SPLIT; mix_xf = 50; mix_split = 67; }   /* (the last rows, MODE XFADE SPLIT: in LAYER they act, in DUEL the XFADE and SPLIT values dim and knob 1's line says LAYER ONLY) */
             if (sc == 13) { tide_style = STY_CUSTOM; gl.target = GT_BOTH; morph_musical = 1; sqm_vary_all = 0; }   /* (the README's TIDE SETTINGS picture: the top of the list) */
             if (sc == 11 || sc == 12) { gl.mode = sc == 11 ? GM_ONCE : GM_JOURNEY; morph_musical = sc == 12; gl.target = GT_SOUND; }
             ui.page = (uint8_t)pg;
@@ -2872,7 +2884,7 @@ int main(int argc, char **argv)
     round_check();
     off_check();
     {   /* 0.2.19: the header names the page the way its PAGES entry does: MIXER says MIXER (never the engine: "ENGINE ANALOG") */
-        static const struct { int scene; const char *title; } HT[] = {{S_MIXER, "MIXER"}, {S_MIXER_SPLIT, "MIXER"}, {S_MODE_STEREO, "MODE"}, {S_MODULES, "MODULES"}, {S_MODULES_OFF, "MODULES"}};
+        static const struct { int scene; const char *title; } HT[] = {{S_MIXER, "MIXER"}, {S_MIXER_SPLIT, "MIXER"}, {S_MODE_STEREO, MODE_PAGE_TITLE}, {S_MODULES, "MODULES"}, {S_MODULES_OFF, "MODULES"}};
         uint32_t k;
         for (k = 0; k < sizeof HT / sizeof HT[0]; k++) {
             char tb[24];

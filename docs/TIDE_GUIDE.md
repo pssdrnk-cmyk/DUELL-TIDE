@@ -10,7 +10,7 @@ Values marked *start* are suggestions for dub and house techno backgrounds, not 
 
 Every sound has two ends, **A** (your sound) and **B** (a variation of it), and a fader between them. TIDE moves that fader by itself, bar by bar, while the music plays, and also moves the pattern the same way. Over minutes the part evolves; nothing needs your hands. You can touch it whenever you like.
 
-HOME's round, one tap of **HOME** each: **MORPH → TIDE SETTINGS → AUTO TIDE → MODE**. **ALGORITHM** picks PART 1, BOTH or PART 2 on all of them.
+HOME's round, one tap of **HOME** each: **MORPH → TIDE SETTINGS → AUTO TIDE**. **ALGORITHM** picks PART 1, BOTH or PART 2 on all of them.
 
 ## 1. MORPH (the hand page)
 
@@ -48,7 +48,7 @@ Where two very different sounds cross, a short filter dip hides the change (WASH
 
 ## 3. TIDE SETTINGS (set and forget)
 
-K1 picks the row. **OCT+** the next value, **OCT-** the one before (knobs 2 to 4 turn it too, one step a click). A mark at the right edge shows where the six visible rows are in the list. Saved over a power cycle (about 2 s after the change while stopped; changes made during a running set are written at its next STOP, so switching the unit off mid-set loses them).
+K1 picks the row. **OCT+** the next value, **OCT-** the one before (knobs 2 to 4 turn it too, one step a click; on MODE, XFADE and SPLIT they move by the clicks you turn, as the old MODE page did). A mark at the right edge shows where the six visible rows are in the list. Saved over a power cycle (about 2 s after the change while stopped; changes made during a running set are written at its next STOP, so switching the unit off mid-set loses them).
 
 | Row | Values (default first) | What it does | Start |
 |---|---|---|---|
@@ -63,6 +63,9 @@ K1 picks the row. **OCT+** the next value, **OCT-** the one before (knobs 2 to 4
 | **POLY** | OFF, GENTLE, WIDE | In automatic WNDR / JRNY one part's loop is now and then shorter, so its motif drifts against the beat, then plays whole again at a phrase. GENTLE: 15 or 14 of 16 steps, rarely. WIDE: 12 to 15, more often. Your stored pattern is never changed. | GENTLE |
 | **SYNC** | OFF, SOFT, PUSH | In automatic WNDR / JRNY the pattern edits that move a hit by a 16th lean towards the "and" (the off-beat 8th) and allow an occasional push into the beat (SOFT one a bar, PUSH two). The beats never move and a hit never lands on one. With any SYNC a hit stays within two 16ths of its place, and the motif's own hits (an offbeat skank's "and"s) are never moved or dropped. | SOFT |
 | **ARC** | OFF, RISE, DROP | In automatic WNDR / JRNY the tide follows a shape of 32 to 64 bars: it rises (more syncopation and repeats, faster turns, brighter sounds), holds a peak, then eases into a thinned breakdown with softer sounds and recovers. DROP also drops by itself on about half of the arcs (both parts start no notes for two bars). The status line shows the phase. STOP and PLAY only pause the arc: PLAY goes on where it was. A load (multi, project, pattern) or a K1 stop starts it again at RISE. **Hand drop:** hold OCT- and turn K2 on the AUTO TIDE page; the drop lands at the next 4-bar phrase (a second turn cancels it). | RISE |
+| **MODE** | LAYER, STEREO, DUEL | The output mode, as the old MODE page's knob 1 (the same names, order and message). | LAYER |
+| **XFADE** | 0 to 100 % | The velocity crossfade between the parts. LAYER only. | 0 |
+| **SPLIT** | OFF, then a note | The key split point. LAYER only. The first turn right out of OFF starts at the middle key (F#4). | OFF |
 
 **Dynamics.** No setting: in automatic WNDR / JRNY the hits play an eighth louder late in ARC's rise and at its peak and a quarter softer in its drop and breakdown (ARC on), and a quarter softer on a LEAD answer's bars (the two together: softer still). An accent counts as velocity 127 there and loses its accent. Playback only: KEEP stores the pattern's own velocities.
 
@@ -94,7 +97,7 @@ Dub-techno recipe: STYLE DUB, ALGORITHM BOTH (by hand: **AUTO TIDE** JRNY or WND
 
 ## 4. MODE (output)
 
-DUEL (part 1 left, part 2 right, effects separate), STEREO, LAYER. This is stock DUELL, not TIDE. Dub chords on two parts: DUEL if you mix outside, STEREO for a single stereo out.
+DUEL (part 1 left, part 2 right, effects separate), STEREO, LAYER. This is stock DUELL, not TIDE. With TIDE there is no MODE page: MODE, XFADE and SPLIT are the last three rows of TIDE SETTINGS, after ARC. MODE works as it did (LAYER, STEREO, DUEL). XFADE (0 to 100 %) and SPLIT (OFF, then a note) act only in LAYER: in DUEL and STEREO their values are dim, knob 1's line says LAYER ONLY, and turning does nothing. The first turn right out of SPLIT OFF starts at the middle key. They are not part of STYLE (changing them does not turn it into CUSTOM), and they are kept as before (settings and multis). MENU > CONTROL > HOME OPENS = MODE now opens TIDE SETTINGS with the MODE row picked. Dub chords on two parts: DUEL if you mix outside, STEREO for a single stereo out.
 
 ## First start
 

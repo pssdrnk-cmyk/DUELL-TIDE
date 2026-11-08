@@ -13,7 +13,7 @@ Current maintenance priorities: [roadmap](ROADMAP.md). Totals below describe the
 - **Stale expectations fixed in the tests:**
   - `regress`: the voice pool is 16 (item 90), and a chord starts VS_MAX 2 voices a block (item 144), so the voice checks fill 16 voices and let the chords start; the full-cap check lets POLY part 3 lose one voice.
   - `mod`, `xvalues`: 57 destinations (SPACE), 18 sources, names PULSE WIDTH / REVERB DAMPING / WAVE POSITION / TWIN FEEDBACK. SUB HARMONICS has no card and never rolls.
-  - `mode`: with TIDE the MODE page is HOME's fourth (4/4).
+  - `mode`: with TIDE the MODE page is HOME's fourth (4/4). (Since b3 TIDE has no MODE page: its rows are in TIDE SETTINGS, and the test follows.)
   - `wave`: SMART rolls WAVE SYNC also from 0 (owner 2026-10-28).
   - `subcyc`: the harness runs `vs_block()` per block; the REF scenes now compare the scene with and without the SUB / CYCLE values (the frozen cloud/base3-wave2 hashes predate the stagger and BIT DEPTH).
   - `velaccent`: ANALOG factory 4 allowance 0.95 -> 1.10 dB (1.05 measured, stock 1.1 the same).

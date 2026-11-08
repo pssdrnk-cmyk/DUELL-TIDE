@@ -106,6 +106,7 @@ static int tide_reset(uint32_t k);
 static void tide_link(uint32_t mask, uint32_t v);
 static void tide_midi(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi);
 static int tide_list_on(void);
+static void tide_pick_mode(void);
 static void tide_list_oct(uint32_t oct);
 static int tide_store_load(uint8_t *b, uint32_t n);
 static uint32_t tide_store_load_min(uint8_t *b, uint32_t n, uint32_t min);
@@ -153,6 +154,8 @@ static int tide_foot_two(void);
                                    if (TIDE_PAGE(pg)) (h) = ((h) ^ tide_sig() ^ (uint32_t)morph.target * 0x85EBCA77u) * 16777619u; } while (0)
 #define TIDE_COLUMNS() do { if (TIDE_PAGE(cur_page())) { tide_columns(); return; } } while (0)
 #define TIDE_HOME_NAME "MORPH"                           /* MENU > CONTROL > HOME OPENS: the first page of the round (MORPH, as stock; AUTO TIDE is the round's 3rd) */
+#define TIDE_HOME_MODE(pg) ((pg)->graph == GR_TIDELIST)   /* HOME OPENS = MODE: TIDE has no MODE page (hidden, VIS_NOTIDE); its MODE is a row of TIDE SETTINGS, which opens with that row picked */
+#define TIDE_PICK_MODE() tide_pick_mode()
 /* LIVE GRAPHS (ui_live.c, included by ui_graph.c; the animation of the envelope, LFO, CYCLE, filter, insert, matrix and chord pictures; MENU > ANIM OFF takes it away). FM6 AMP DEST shows the operator envelope (OP ENV's picture) so that it can follow it */
 #define TIDE_LIVE_SIG(pg, t, h) ((h) = ((h) ^ live_sig((pg), (t))) * 16777619u)
 #define TIDE_LIVE_DRAW(pg, t) live_draw((pg), (t))
@@ -231,6 +234,8 @@ static int tide_foot_two(void);
 #define TIDE_GRAPH_SIG(pg, h) ((void)0)
 #define TIDE_COLUMNS() ((void)0)
 #define TIDE_HOME_NAME "MORPH"
+#define TIDE_HOME_MODE(pg) ((pg)->scope == SC_MODE)
+#define TIDE_PICK_MODE() ((void)0)
 #define TIDE_LIVE_SIG(pg, t, h) ((void)0)
 #define TIDE_LIVE_DRAW(pg, t) ((void)0)
 #define TIDE_LIVE_MOD(t, y0) ((void)0)
