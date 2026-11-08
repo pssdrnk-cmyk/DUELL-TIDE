@@ -1925,7 +1925,7 @@ static uint32_t foot_playhead(const track_t *t)
         uint32_t len = t->p[P_SLEN] > 0 ? (uint32_t)t->p[P_SLEN] : 1u;
         if (!t->nheld || t->arp_idx == 0xFFFFFFFFu)
             return 0xFFu;
-        k = t->arp_idx % len;
+        k = TIDE_ARP_IDX(t, t->arp_idx, len);   /* (TIDE: a POLY stretch shortens the loop) */
     } else {
         if (!song.playing)
             return 0xFFu;

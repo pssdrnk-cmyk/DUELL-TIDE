@@ -61,6 +61,21 @@ int main(void)
     CHECK("no stretch: still none after a restart", poly_len[pi] == 0);
     for (k = 0; k < 20; k++)
         CHECK("no stretch: arp_idx k plays k % 16", tide_arp_idx(t, k, 16) == k % 16u);
+    /* audit follow-up (b4-arpidx): the footer's playhead on the ARP pages reads the stretch too (foot_playhead), and tide_play_idx agrees with it */
+    poly_len[pi] = 14; poly_base[pi] = 64; poly_lc[pi] = 5; poly_end[pi] = 13; poly_free[pi] = 0;
+    t->nheld = 1; ui.layer = 0; ui.perf = 0; ui.bank = 0; page_over = 0; song.sel = (uint8_t)pi;
+    for (k = 0; k < 64; k++) { ui.page = k; if (cur_page()->fam == FAM_ARP) break; }
+    CHECK("an ARP page exists", foot_arp_page());
+    for (k = 64; k < 80; k++) {
+        t->arp_idx = k;
+        CHECK("play_idx follows the stretch", tide_play_idx(t) == tide_arp_idx(t, k, 16));
+        CHECK("footer playhead = the step that plays", foot_playhead(t) == tide_play_idx(t));
+    }
+    t->arp_idx = 0xFFFFFFFFu;
+    CHECK("play_idx: none yet", tide_play_idx(t) == 0xFFFFFFFFu);
+    CHECK("play_len is the stretch", tide_play_len(t) == 14u);
+    /* peer prediction (seq_dialogue) is blind to a shortened part: it declines while a stretch is on */
+    CHECK("dialogue declines in a stretch", tide_poly_on(t));
     printf("f36: %d checks, %d failed\n", checks, bad);
     return bad ? 1 : 0;
 }
