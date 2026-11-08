@@ -35,6 +35,7 @@ ALLOW = {
     "arp_list": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~528 B); reached from arp_fire",
     "arp_note_off": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~104 B); reached from arp_silence",
     "arp_note_on": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~202 B); reached from seq_step",
+    "rec_arp_on": "event rate: what the arp records, asked when the arp plays or ends a note (live-record audit R1, 1.0.0-b3), not per sample; ~60 B; reached from arp_off, arp_fire, arp_chord, arp_seq",
     "arp_off": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~152 B); reached from seq_stop",
     "arp_pick": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~86 B); reached from arp_fire",
     "arp_put": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~54 B); reached from arp_fire",
