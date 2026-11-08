@@ -1924,7 +1924,7 @@ static int foot_steps(void)
         return ui.layer == LAYER_SEQ;
     if (ui.perf || page_over || ui.guide)
         return 0;
-    if (cur_page()->graph == GR_ROLL || cur_page()->graph == GR_SEQHELP)   /* item 118 (FINAL_V1_07): the roll shows its steps itself, the footer is the shared one (no step strip) */
+    if (cur_page()->graph == GR_ROLL)                 /* item 118 (FINAL_V1_07): the roll shows its steps itself, the footer is the shared one (no step strip) */
         return 0;
     return cur_page()->fam == FAM_SEQ || (cur_page()->fam == FAM_ARP && arp_mode(TSEL) == AM_SEQ);   /* (0.2.14: as it plays now: MODULES) */
 }
@@ -2042,7 +2042,7 @@ static void draw_foot(void)
     if (!ui.force && sig == ui.foot_sig)
         return;
     ui.foot_sig = sig;
-    foot_short = (grid_on == 1 || TIDE_GRID3 || grid_on == 4 || grid_on == 5 || grid_on == 7 || grid_on == 9 || grid_on == 11 || grid_on == 12 || grid_on == 13 || grid_on == 14 || grid_on == 15 || grid_on == 16 || grid_on == 17 || ui.guide) && !ui.ml.on && !pfl[0] && !save_hint && !foot_steps() && !TIDE_FOOT_FULL();   /* TIDE hook: TIDE / TIDE SET keep both rows */   /* (DUELL 1.1 grid pages: row 1 is empty, the cards use its rows) */
+    foot_short = (grid_on == 1 || TIDE_GRID3 || grid_on == 4 || grid_on == 5 || grid_on == 7 || grid_on == 9 || grid_on == 12 || grid_on == 13 || grid_on == 14 || grid_on == 15 || grid_on == 16 || grid_on == 17 || ui.guide) && !ui.ml.on && !pfl[0] && !save_hint && !foot_steps() && !TIDE_FOOT_FULL();   /* TIDE hook: TIDE / TIDE SET keep both rows */   /* (DUELL 1.1 grid pages: row 1 is empty, the cards use its rows) */
     cv_begin(240, foot_short ? H_FOOT - 15 : pfl[0] ? H_FOOT + 15 : H_FOOT, T_BG);   /* (item 120: PERFORM's footer is 15 rows taller, its two hint lines on top) */
     cv_oy = foot_short ? -15 : pfl[0] ? 15 : 0;
     if (ui.ml.on) {                               /* row 1: MIDI LEARN's line, OCT+ DONE at the right (the one way out) */
@@ -2218,13 +2218,13 @@ static int cells_page(const page_t *pg)
 }
 /* item 158 (owner, "no empty pages" / "nothing to adjust = no page"): a page of parameter cards whose cards all hide or are blank has nothing to show or adjust: it is not in the page order
  * (ui.c page_visible), also when it keeps a picture (owner: INSERT 2/2 with INSERT OFF; STEREO MASTER and COMPRESSOR in DUEL, where every card hides). A page with its module OFF shows the
- * notice instead (template 13): not this rule. Pages that draw their own controls (the lists, the MATRIX, the roll, the ENGINE list, the MIXER, SEQUENCER HELP's legend ..) are never empty by it */
+ * notice instead (template 13): not this rule. Pages that draw their own controls (the lists, the MATRIX, the roll, the ENGINE list, the MIXER ..) are never empty by it */
 static int page_empty(const page_t *pg)
 {
     uint32_t s, g = pg->graph;
     if (off_module(pg) || (pg->scope != SC_TRACK && pg->scope != SC_GLOBAL && pg->scope != SC_ENGINE))
         return 0;
-    if (g == GR_EVENTS || g == GR_TOOLS || g == GR_ENGINE || g == GR_BROWSE || g == GR_PATS || g == GR_SLOTS || g == GR_MOD || g == GR_ROLL || g == GR_GLO || g == GR_SEQHELP || fop_page(g))
+    if (g == GR_EVENTS || g == GR_TOOLS || g == GR_ENGINE || g == GR_BROWSE || g == GR_PATS || g == GR_SLOTS || g == GR_MOD || g == GR_ROLL || g == GR_GLO || fop_page(g))
         return 0;
     for (s = 0; s < 4u; s++)
         if (!slot_blank(pg, s) && !slot_hidden(pg, s))
@@ -2251,8 +2251,7 @@ static int cells_plan(const page_t *pg)
     return moved;
 }
 /* TEMPLATE 9 (grid_on 16, LAYOUT_IMPLEMENTATION_PLAN.md block C): the AREA pages, knob 1 a line, the big area for the page's picture, knobs 2 .. 4 in the card row: ARP 1/3, ARP 2/3, PARAMETER LOCKS,
- * SEQUENCER (its roll in the area), GLOBAL SCALE, CHORD, PATCHES, MULTIS, PATTERNS (PERFORM and the QUICK SEQ layer are chosen by ui_draw_page: PERFORM through perf_pg, the layer through `want`).
- * Not SEQUENCER HELP (its legend page, grid_on 11) */
+ * SEQUENCER (its roll in the area), GLOBAL SCALE, CHORD, PATCHES, MULTIS, PATTERNS (PERFORM and the QUICK SEQ layer are chosen by ui_draw_page: PERFORM through perf_pg, the layer through `want`) */
 static int area_page(const page_t *pg)
 {
     uint32_t g = pg->graph;
@@ -2354,8 +2353,6 @@ static void draw_columns(void)
     grid_wide = 0;
     (void)motion_mask(song.sel, card_mot_mask);       /* (PLAY OFF: no scan) */
     if (off_module(cur_page()))                        /* item 125: its module is OFF in GLO > MODULES: no cards, only the notice (ui_graph.c graph_off) */
-        return;
-    if (cur_page()->graph == GR_SEQHELP)               /* SEQUENCER HELP (item 118): no cards, the legend is the page (ui_graph.c graph_seqhelp) */
         return;
     if (cur_page()->graph == GR_EVENTS) {              /* PARAMETER LOCKS (ui_events.c): ROW STEP PARAM VALUE */
         const track_t *t = TSEL;
@@ -3480,8 +3477,6 @@ static void ui_draw_page(uint32_t counting)
             if (gp->scope == SC_GLOBAL && gp->fam == FAM_GLO && gk != GR_GLO)
                 g = 1;
         }
-        if (!ui.perf && !page_over && gp->graph == GR_SEQHELP)   /* SEQUENCER HELP (item 118): the legend page, drawn whole by ui_graph.c */
-            g = 11;
         if (!ui.perf && !page_over && gp->scope == SC_TRACK && gp->graph == GR_MOD)
             g = 4;
         if (!ui.perf && !page_over && gp->graph == GR_ENGINE)

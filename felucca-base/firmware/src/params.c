@@ -918,12 +918,11 @@ enum { GR_NONE, GR_ADSR, GR_LFO, GR_STEPS, GR_ARP, GR_SCALE, GR_FX, GR_ROLL, GR_
        GR_COMP,                      /* .. COMPRESSOR's transfer curve and gain reduction (graph_comp) */
        GR_FILT,                      /* .. the filter's response: MULTI FILTER 1/2, 2/2 and the TWIN FILTER's three pages: both filters in one picture (graph_filt, twin_graph.c) */
        GR_SUB,                       /* .. SUB OSC: the sub's wave small, with its octave copies when HARM is up (ui_graph.c graph_sub) */
-       GR_CYCLE,                     /* .. CYCLE ENV 1/2, 2/2: the cycle's shapes, the curve (ui_graph.c graph_cycle) */
-       GR_SEQHELP
+       GR_CYCLE                      /* .. CYCLE ENV 1/2, 2/2: the cycle's shapes, the curve (ui_graph.c graph_cycle) */
 #if DUELL_TIDE
        , GR_TIDE, GR_TIDELIST            /* TIDE hook (H10): HOME's TIDE and TIDE LIST (tide_ui.c) */
 #endif
-       };                 /* item 118: SEQUENCER HELP, the legend of the STEP page's symbols (ui_graph.c graph_seqhelp; no knob does anything there) */                   /* DUELL 0.2.24: FX's SEND FX (the hint that a twist jumps to the effect's GLO page, and which effect is inactive for this part: ui_graph.c graph_fxsum) */
+       };                   /* DUELL 0.2.24: FX's SEND FX (the hint that a twist jumps to the effect's GLO page, and which effect is inactive for this part: ui_graph.c graph_fxsum) */
 
 typedef struct {
     const char *title;
@@ -1045,7 +1044,6 @@ static const page_t PAGES[] = {
     {"ARP 2/3", FAM_ARP, SC_TRACK, GR_ARP, {P_ARATE, P_AGATE, P_ASWING, P_APROB}},   /* 0.2.25 layout round (owner): ARP 1/3 and 2/3 draw the MODE's pattern (ui_graph.c graph_arp) */   /* .. then when: RATE, GATE, SWG, PROB */
     {"ARP 3/3", FAM_ARP, SC_TRACK, GR_NONE, {P_ATGT, 0xFF, 0xFF, 0xFF}, VIS_ATGT},   /* DUELL: ARP TARGET (SPEC 2.3) */
     {"STEP", FAM_SEQ, SC_STEP, GR_ROLL, {0, 1, 2, 3}},
-    {"SEQUENCER HELP", FAM_SEQ, SC_TRACK, GR_SEQHELP, {0xFF, 0xFF, 0xFF, 0xFF}},   /* item 118 (FINAL_V1_07b_sequencer_help): page 2 of the STEP family, the symbols of the piano roll in words; the knobs do nothing here */
     {"PARAMETER LOCKS", FAM_SEQ, SC_TRACK, GR_EVENTS, {0xFF, 0xFF, 0xFF, 0xFF}},  /* the locks, events, CHANCE and RATCH as a
                                                                              * list, PLAY and CLEAR (ui_events.c) */
     /* HOME's pages, in this order, a tap of HOME (or a SELECT detent) each, then

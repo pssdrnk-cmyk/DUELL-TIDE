@@ -291,7 +291,6 @@ export const NOT_EDITABLE = [
   ["SCALE", "SCALE, ROOT and OFF-SCALE are the instrument's, not parameters: the editor protocol has no command for them"],
   ["MIDI", "the parts' MIDI channels (PART 1 CHANNEL, PART 2 CHANNEL) are not reachable by the protocol; MIDI IN is on the MIDI tab"],
   ["TOOLS", "CLEAR SEQ is the SEQ tab's Clear; INITIALIZE SOUND is the Init patch... button of each part; RESTORE ALL is on the PATCHES tab"],
-  ["SEQUENCER HELP", "the legend of the STEP page's symbols on the unit (page 2 of the STEP family, item 118): no controls, nothing to edit"],
   ["PARAMETER LOCKS", "recorded motion and locks: not in this version (the protocol has MOTION; 1.1.0-test2: a lock can name every matrix destination, see lockTarget)"],
   ["MORPH", "the MORPH fader, ROLL and UNDO have no protocol command; a saved patch or multi keeps End B as exact values, and PATCH_RAW and the backup carry it (see below)"],
   ["MORPH SET", "SMART, ARP and PITCH of the morph have no protocol command"],

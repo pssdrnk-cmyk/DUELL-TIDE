@@ -3006,38 +3006,6 @@ static void graph_morphset(void)
     }
 }
 
-/* SEQUENCER HELP (item 118, FINAL_V1_07b_sequencer_help): eight rows of the roll's symbols with their words and plain meanings, on the background; two strips (rows 24 .. 140, 140 .. 217).
- * The symbol is drawn with the roll's own colours (the notes dim, the accent white, the lock mark and the cursor as the roll draws them) */
-static void graph_seqhelp(void)
-{
-    static const char *const NAME[8] = {"PLAYS", "ACCENT", "TIE", "SLIDE", "LOCKED", "CURSOR", "SCALE", "KEYS"};
-    static const char *const MEAN[8] = {"SOUNDS A PITCH", "PLAYED LOUDER", "HOLDS ON LONGER", "GLIDES INTO NEXT", "HAS ITS OWN VALUES", "WHERE YOU EDIT", "ROWS IN THE KEY", "LIKE A PIANO"};
-    uint32_t p, k;
-    uint16_t grey = ux_mix(T_BG, T_TEXT, UT_GREY_PCT), note = ux_mix(T_BASE, T_THEME, UT_T7_NOTE_PCT);
-    for (p = 0; p < 2u; p++) {
-        int32_t y0 = p ? 140 : H_HEAD, y1 = p ? 217 : 140;
-        cv_begin(240, (uint32_t)(y1 - y0), T_BG);
-        cv_bg = T_BG;
-        cv_oy = -y0;
-        for (k = 0; k < 8u; k++) {
-            int32_t top = UT_T7_HELP_Y0 + UT_T7_HELP_PITCH * (int32_t)k, cy = top + 5, x0 = UT_T7_HELP_SYM_X, base = top + 11;
-            switch (k) {
-            case 0: cv_rect(x0, cy - 2, 12, 5, note); break;                               /* PLAYS: a note's bar */
-            case 1: cv_rect(x0, cy - 3, 12, 7, T_TEXT); break;                             /* ACCENT: the row's whole height, white */
-            case 2: cv_rect(x0, cy - 2, 12, 5, note); cv_rect(x0 + 12, cy - 2, 3, 5, note); break;   /* TIE: the bar carried on */
-            case 3: cv_line(x0, cy + 4, x0 + 12, cy - 4, T_TEXT); break;                   /* SLIDE: the diagonal */
-            case 4: cv_rect(x0 + 1, cy - 1, 9, 3, T_THEME); break;                         /* LOCKED: the lock mark */
-            case 5: cv_frame(x0, cy - 5, 12, 11, T_TEXT); break;                           /* CURSOR: the frame */
-            case 6: cv_rect(x0, cy - 3, 14, 7, PR_LANE); break;                             /* SCALE: a lit row */
-            default: cv_rect(x0, cy - 4, 12, 4, PR_KEYW); cv_rect(x0, cy + 1, 7, 4, PR_KEYB); break;   /* KEYS: a white and a black key */
-            }
-            cv_text_on(UT_T7_HELP_WORD_X, UT_TY(S, base), &AF_S, NAME[k], T_MID, T_BG);
-            cv_text_on(UT_T7_HELP_MEAN_X, UT_TY(M, base), &AF_M, MEAN[k], grey, T_BG);
-        }
-        cv_oy = 0;
-        cv_blit(0, (uint32_t)y0);
-    }
-}
 /* the ENGINE page's list while K1 turns: the engine before, the engine, the engine after (template 3's rows); grid_on 5 in the picture's place, 15 (item 165) in the top cell's */
 static void graph_eng_list(const track_t *t)
 {
@@ -3125,10 +3093,6 @@ static void draw_graph(void)
         if (pg->graph == GR_PATS || pg->graph == GR_SLOTS)   /* (SAVE > PATTERNS / MULTIS: the picked entry's preview under the cards) */
             list_panel(pg->graph == GR_PATS);
 #endif
-        return;
-    }
-    if (pg->graph == GR_SEQHELP) {                   /* SEQUENCER HELP (item 118): the legend, on the background */
-        graph_seqhelp();
         return;
     }
     if (pg->graph == GR_FXSUM) {                     /* TEMPLATE 5 (item 117): the SENDS page, text on the background in two strips */

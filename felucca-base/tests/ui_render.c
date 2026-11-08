@@ -2172,12 +2172,12 @@ static void target_save(const char *dir, const char *name)
 }
 static int target_main(const char *out)
 {
-    static const char *const NM[] = {"01_morph", "02_engine", "03_patches", "04_fx-send", "05_env", "06_lfo", "07_sequencer", "08_setup", "09_mixer", "07b_sequencer_help", "11_modules"};
+    static const char *const NM[] = {"01_morph", "02_engine", "03_patches", "04_fx-send", "05_env", "06_lfo", "07_sequencer", "08_setup", "09_mixer", "11_modules"};
     int t;
     char rp[600];
     snprintf(rp, sizeof rp, "%s/target_report.txt", out);
     rep = fopen(rp, "w");                            /* (the hooks of the lint write here; nothing reads it) */
-    for (t = 0; t < 11; t++) {
+    for (t = 0; t < 10; t++) {
         target_prelude();
         switch (t) {
         case 0: song.rec = 1; go_home(); break;
@@ -2203,12 +2203,11 @@ static int target_main(const char *out)
             break; }
         case 7: go_home(); guide_open(0); ui.guide = 1; break;
         case 8: go_title("MIXER"); trk[0].p[P_LEVEL] = trk[1].p[P_LEVEL] = 100; break;   /* (the picture shows -6.0 dB) */
-        case 9: go_title("SEQUENCER HELP"); break;                                       /* (item 118: FINAL_V1_07b_sequencer_help, page 2 of the STEP family) */
         default: mods_put(MODS_ALL, 0u); mods_put(MODS_SEQ, 1u); go_title("MODULES"); break;   /* (item 124: GLO > MODULES, SEQ off, the others on) */
         }
         target_draw();
         target_save(out, NM[t]);
-        if (t == 10) mods_put(MODS_ALL, 0u);
+        if (t == 9) mods_put(MODS_ALL, 0u);
     }
     {   /* 10: the firmware has no battery sheet: the three states (empty, full, charging) are each footer's battery, set onto one
          * frame at the picture's three rows (73 / 123 / 173 + 0), nothing else drawn (the picture's EMPTY / FULL / CHARGING words are

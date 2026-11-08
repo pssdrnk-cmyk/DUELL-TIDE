@@ -207,7 +207,7 @@ static uint8_t sync_reload;                  /* engine / preset / project / user
 #define CARD_X(c) (3 + 59 * (int32_t)(c))
 /* DUELL 1.1 GRID layout (PAGES_V1_filter.png, env-lfo, engine; grid_on, ui_draw.c): the picture on top (rows 28..105), the four cards as a 2 x 2 grid of big values under it (rows 108..213),
  * the footer's second row only below them. The old layout (the pages not redrawn yet) keeps the four small cards and the tall panel. */
-static uint8_t grid_on;                       /* 1 template 1 (part pages), 2 MODULES / MIDI, 3 MODE, 4 MATRIX, 5 template 2 (ENGINE), 6 MIDI LEARN, 7 template 4 (MIXER), 8 unused (template 3, the list pages, is removed: they are template 9 area pages), 9 template 5 (SENDS), 10 template 7 (STEP: the big roll and four compact cards), 11 SEQUENCER HELP (item 118), 12 MODULES, 13 a module switched OFF, 14 template 8 (the CELL pages, item 156), 15 the ENGINE page of LOFI / NOISE: template 2's K1 row and template 8's cells (item 165), 16 template 9 (the AREA page: the knob-1 line, the big area rows 48 .. 149, one card row; ui_tokens.h UT_A_*, ui_draw.c area_rect; PERFORM through perf_pg, the QUICK SEQ layer, ARP 1/3 and 2/3, PARAMETER LOCKS, SEQUENCER, GLOBAL SCALE, CHORD, PATCHES, MULTIS, PATTERNS), 17 TOOLS (no cards, three rows drawn whole by ui_graph.c graph_tools in their own strips in screen rows) */
+static uint8_t grid_on;                       /* 1 template 1 (part pages), 2 MODULES / MIDI, 3 MODE, 4 MATRIX, 5 template 2 (ENGINE), 6 MIDI LEARN, 7 template 4 (MIXER), 8 unused (template 3, the list pages, is removed: they are template 9 area pages), 9 template 5 (SENDS), 10 template 7 (STEP: the big roll and four compact cards), 11 unused (SEQUENCER HELP, removed in TIDE 1.0.0-b4), 12 MODULES, 13 a module switched OFF, 14 template 8 (the CELL pages, item 156), 15 the ENGINE page of LOFI / NOISE: template 2's K1 row and template 8's cells (item 165), 16 template 9 (the AREA page: the knob-1 line, the big area rows 48 .. 149, one card row; ui_tokens.h UT_A_*, ui_draw.c area_rect; PERFORM through perf_pg, the QUICK SEQ layer, ARP 1/3 and 2/3, PARAMETER LOCKS, SEQUENCER, GLOBAL SCALE, CHORD, PATCHES, MULTIS, PATTERNS), 17 TOOLS (no cards, three rows drawn whole by ui_graph.c graph_tools in their own strips in screen rows) */
 static uint8_t perf_pg;                       /* item 120: the PERFORM page is on screen (set by ui_draw_page): its map starts at row 74 and is 112 rows tall, the footer's two hint lines take the rows under it */
 #define Y_GRAPH (grid_on == 16 ? UT_A_GR_Y : perf_pg ? 74 : grid_on == 6 ? 86 : grid_on == 5 || grid_on == 15 ? UT_T2_GR_Y : grid_on ? 27 : 76)   /* the panel (15: the engine list in the top cell's place, item 165; 16: the area page's big area, tested before perf_pg: PERFORM is an area page now) */
 #define H_GRAPH (grid_on == 16 ? UT_A_GR_H : perf_pg ? 112 : grid_on == 7 ? UT_T4_MUTE_Y + UT_T4_MUTE_H - 27 : grid_on == 6 ? 112 : grid_on == 5 ? UT_T2_GR_H : grid_on == 15 ? UT_T8E_H : TIDE_GRID3 ? 120 : grid_on ? 76 : 122)
@@ -449,7 +449,7 @@ static uint32_t mods_fade_vp(const int16_t *vp)
     return 0;
 }
 /* DUELL 1.1 item 125: the module (MODS_*) whose switch in GLO > MODULES is OFF and whose function page pg is: such a page shows only a notice (ui_graph.c graph_off) and every knob of it jumps to MODULES
- * (ui_input.c off_knob); 0 for every other page and while the module is on. ARP: the ARP pages; SEQ: STEP, PARAMETER LOCKS, PATTERNS (SEQUENCER HELP stays); SENDS: CHORUS, DELAY 1/2, 2/2, REVERB, SHIMMER,
+ * (ui_input.c off_knob); 0 for every other page and while the module is on. ARP: the ARP pages; SEQ: STEP, PARAMETER LOCKS, PATTERNS; SENDS: CHORUS, DELAY 1/2, 2/2, REVERB, SHIMMER,
  * the part's SEND FX; PART FX: the part's FX, INSERT, EQ, DUCK pages (the quick layers ARP and SEQ: off_layer, ui_draw.c) */
 static uint32_t off_module(const page_t *pg)
 {
@@ -464,7 +464,7 @@ static uint32_t off_module(const page_t *pg)
         b = MODS_PFX;
     else if (pg->fam == FAM_ARP)
         b = MODS_ARP;
-    else if (pg->fam == FAM_SEQ && pg->graph != GR_SEQHELP)
+    else if (pg->fam == FAM_SEQ)
         b = MODS_SEQ;
     else if (pg->graph == GR_PATS)
         b = MODS_SEQ;

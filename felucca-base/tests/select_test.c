@@ -866,7 +866,7 @@ static void sweep_homepg(void)
 
 /* 0.2.9 (the owner: "hide the step strip except on sequencer pages"): the footer's step bars only on SEQ's pages (STEP, AUTOMATION) and the SEQ TOOLS
  * layer; elsewhere the footer is not redrawn for a changed step or the playhead */
-#define SEQ_STRIP(pg) (PAGES[pg].fam == FAM_SEQ && PAGES[pg].graph != GR_ROLL && PAGES[pg].graph != GR_SEQHELP)
+#define SEQ_STRIP(pg) (PAGES[pg].fam == FAM_SEQ && PAGES[pg].graph != GR_ROLL)
 static void sweep_footstrip(void)
 {
     uint32_t pg, ok = 1, seq = 0;
@@ -881,7 +881,7 @@ static void sweep_footstrip(void)
     ui.layer = LAYER_SEQ;
     ok &= foot_steps() != 0;
     ui.layer = 0;
-    expect("footer: the step strip on SEQ's PARAMETER LOCKS page only (item 118: not on STEP, whose roll shows its steps, nor SEQUENCER HELP) and SEQ TOOLS; not on HOME, not on any other page", ok && seq == 1u);
+    expect("footer: the step strip on SEQ's PARAMETER LOCKS page only (item 118: not on STEP, whose roll shows its steps) and SEQ TOOLS; not on HOME, not on any other page", ok && seq == 1u);
     {   /* 0.2.9: the ARP pages show it too, while the part's arp MODE is SEQUENCER (AM_SEQ); the playhead is the arp's own step */
         uint32_t arp = 0, none = 1, five = 1;
         TSEL->p[P_AMODE] = AM_SEQ;
