@@ -131,7 +131,7 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 | Question | Default if you don't mind |
 |---|---|
 | D43: when a crossing starts under a held chord, the chord stays whole (the budget plans for it from the start). | Stays whole; decided after the drones are measured under a GLIDE. |
-| MORPH UNDO: drop it (2 steps, and TIDE's own rolls fill it) to free about 1.9 KB of RAM, which the wave card needs? | Drop it, then retry the wave card. |
+| ~~MORPH UNDO: drop it to free about 1.9 KB of RAM for the wave card?~~ Dropped on `fix/b5-noundo` (1.0.0-b5, 1,888 B of RAM freed; not merged or flashed yet). | Merge it, then retry the wave card. |
 | D46: the multis that are too loud or too quiet are trimmed by ear on the unit. | Trim M15, M16 up and M10 down by the numbers, then listen. |
 | Try on the unit: keys recording into an ARP SEQ part, and REC ADD / REPLACE (b3). | Nothing to decide; say if the nearest-step rule feels wrong. |
 | Merge PRs #1 to #4 once GitHub is green. | Merge in order #1, #2, #3, #4, then the three waiting branches. |

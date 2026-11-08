@@ -200,7 +200,8 @@ static int shipped_equivalence(void)
         for (j = 0; j < MAP_N; j++)
             if (!MAP_IS_EMPTY(MIDI_MAP_SHIPPED[j]) && MAP_TARGET(MIDI_MAP_SHIPPED[j]) == MAP_TARGET(old) && MAP_RULE(MIDI_MAP_SHIPPED[j]) == MAP_RULE(old))
                 nw = j;
-        if (nw == MAP_N) {                  /* (MIDI_MAP_FINAL: 10 of today's 24 have no number any more: ROLL A / B (one centred ROLL on CC102 now), UNDO, the four morph switches, MODE, XFADE, SPLIT: learn-only; BALANCE, CC 116, is no target since item 157: the legacy csv says REMOVED, no line) */
+        if (nw == MAP_N) {                  /* (MIDI_MAP_FINAL: 9 of today's 24 have no number any more: ROLL A / B (one centred ROLL on CC102 now), the four morph switches, MODE, XFADE, SPLIT: learn-only; BALANCE, CC 116, is no target since item 157
+                                             * and UNDO, CC 23, since 1.0.0-b5: the legacy csv says REMOVED, no line) */
             gone += i == 21u || i == 22u || i == 23u || (i >= 111u && i <= 118u);
             if (!(i == 21u || i == 22u || i == 23u || (i >= 111u && i <= 118u))) {
                 printf("midimap: the target of CC %u is nowhere in the shipped map\n", i);
@@ -228,7 +229,7 @@ static int shipped_equivalence(void)
                     }
                 }
     }
-    bad += check("the shipped map: each of today's targets that still has a number, sent on its NEW number, writes what cloud/base3 writes on the old one (13 of 13; 10 others are learn-only: no line; BALANCE is gone, item 157)", ok && pairs == 13u && gone == 10u);
+    bad += check("the shipped map: each of today's targets that still has a number, sent on its NEW number, writes what cloud/base3 writes on the old one (13 of 13; 9 others are learn-only: no line; BALANCE is gone, item 157, UNDO 1.0.0-b5)", ok && pairs == 13u && gone == 9u);
     return bad;
 }
 
@@ -239,35 +240,48 @@ static int morph_rearm(void)
     uint32_t a, b, u, q0;
     scen_reset(0, DM_SPLIT, 0, 6);
     load_table(MIDI_MAP_SHIPPED);
-    ok = map_set(104, MAP_T_ROLL_A, MAP_R_CHANNEL, MAP_W_TYPED, 0, 0) == MAP_OK && map_set(105, MAP_T_ROLL_B, MAP_R_CHANNEL, MAP_W_TYPED, 0, 0) == MAP_OK &&
-         map_set(106, MAP_T_UNDO, MAP_R_CHANNEL, MAP_W_TYPED, 0, 0) == MAP_OK;     /* (no shipped line has them any more: typed ones) */
-    for (a = 0; a < 3u; a++) {                              /* 104 ROLL A, 105 ROLL B, 106 UNDO: typed */
+    ok = map_set(104, MAP_T_ROLL_A, MAP_R_CHANNEL, MAP_W_TYPED, 0, 0) == MAP_OK && map_set(105, MAP_T_ROLL_B, MAP_R_CHANNEL, MAP_W_TYPED, 0, 0) == MAP_OK;   /* (no shipped line has them any more: typed ones) */
+    for (a = 0; a < 2u; a++) {                              /* 104 ROLL A, 105 ROLL B: typed */
         uint32_t cc = 104u + a;
         mq_r = mq_w = 0;
         ev(0, 0, cc, 127); ok &= qn() == 1u;
         ev(0, 0, cc, 127); ok &= qn() == 1u;                /* held high: once */
-        ev(0, 0, cc, 64);  ok &= qn() == 1u;                /* (64 is still high; UNDO: still non-zero) */
-        ev(0, 0, a == 2u ? 0u : 63u, 0);                    /* (a CC of nothing: nothing) */
-        ev(0, 0, cc, a == 2u ? 0u : 63u); ok &= qn() == 1u;   /* released: re-armed (a roll: below 64; UNDO: 0) */
-        ev(0, 0, cc, a == 2u ? 1u : 100u); ok &= qn() == 2u;
+        ev(0, 0, cc, 64);  ok &= qn() == 1u;                /* (64 is still high) */
+        ev(0, 0, 63u, 0);                                   /* (a CC of nothing: nothing) */
+        ev(0, 0, cc, 63u); ok &= qn() == 1u;                /* released: re-armed below 64 */
+        ev(0, 0, cc, 100u); ok &= qn() == 2u;
         ev(0, 1, cc, 127); ok &= qn() == 3u;                /* the other channel keeps its own memory */
     }
-    bad += check("morph triggers on typed lines 104 / 105 / 106: once while held, re-armed below 64 (UNDO: at 0), each channel its own", ok);
+    bad += check("morph triggers on typed lines 104 / 105: once while held, re-armed below 64, each channel its own", ok);
     mq_r = mq_w = 0;
     memset(midi_morph_fired, 0, sizeof midi_morph_fired);
-    ev(0, 0, 104, 127); ev(0, 0, 105, 127); ev(0, 0, 106, 127);
-    ok = qn() == 3u;
-    ev(0, 0, 121, 0); ev(0, 0, 104, 127); ev(0, 0, 105, 127); ev(0, 0, 106, 127);
-    ok &= qn() == 6u;
-    bad += check("  ROLL A, ROLL B and UNDO do not share a trigger; CC121 re-arms all three", ok);
-    /* the kinds the queue holds: ROLL A end 0, ROLL B end 1, UNDO End A below 64 / End B from 64 */
+    ev(0, 0, 104, 127); ev(0, 0, 105, 127);
+    ok = qn() == 2u;
+    ev(0, 0, 121, 0); ev(0, 0, 104, 127); ev(0, 0, 105, 127);
+    ok &= qn() == 4u;
+    bad += check("  ROLL A and ROLL B do not share a trigger; CC121 re-arms both", ok);
+    /* the kinds the queue holds: ROLL A end 0, ROLL B end 1 */
     mq_r = mq_w = 0;
     memset(midi_morph_fired, 0, sizeof midi_morph_fired);
     ev(0, 0, 104, 127); ok = (qlast() & 0xFFu) == MQ_ROLL && (qlast() >> 16) == 0u;
     ev(0, 0, 105, 127); ok &= (qlast() & 0xFFu) == MQ_ROLL && (qlast() >> 16) == 1u;
-    ev(0, 0, 106, 30); ok &= (qlast() & 0xFFu) == MQ_UNDO && (qlast() >> 16) == 0u;
-    ev(0, 0, 106, 0); ev(0, 0, 106, 90); ok &= (qlast() & 0xFFu) == MQ_UNDO && (qlast() >> 16) == 1u;
-    bad += check("  the queue gets the roll's end (A 0, B 1) and UNDO's (End A below 64, End B from 64)", ok);
+    bad += check("  the queue gets the roll's end (A 0, B 1)", ok);
+    {   /* 1.0.0-b5: MORPH UNDO is no target. Its code (MAP_T_SPARE_UNDO, 259) stays a spare so no later code moves: a typed line on it is refused, a stored
+         * line holding it (a map saved before b5 with UNDO learned or typed) is dropped by the sanitizer, its name is "-", the codes after it are where they were */
+        uint16_t keep = midi_map[106];
+        ok = map_set(106, MAP_T_SPARE_UNDO, MAP_R_CHANNEL, MAP_W_TYPED, 0, 0) == MAP_E_BAD && !map_code_ok(MAP_T_SPARE_UNDO);
+        ok &= MAP_T_SPARE_UNDO == 259 && MAP_T_ROLL == 260 && MAP_T_AMOUNT == 261 && MAP_T_TARGET == 262;
+        midi_map[106] = (uint16_t)MAP_LINE(MAP_T_SPARE_UNDO, MAP_R_CHANNEL, MAP_W_TYPED);
+        map_sanitize();
+        ok &= MAP_IS_EMPTY(midi_map[106]);
+        midi_map[106] = (uint16_t)MAP_LINE(MAP_T_SPARE_UNDO, MAP_R_CHANNEL, MAP_W_TYPED);   /* (unsanitized: a CC on it still queues nothing) */
+        mq_r = mq_w = 0;
+        ev(0, 0, 106, 127); ev(0, 0, 106, 30);
+        ok &= qn() == 0u;
+        midi_map[106] = keep;
+        map_sanitize();
+        bad += check("UNDO's code (259) is a spare: refused, dropped from a stored map, a CC on it queues nothing; ROLL .. TARGET keep 260 .. 262", ok);
+    }
     /* the number moves: the trigger is the target's */
     scen_reset(0, DM_SPLIT, 0, 6);
     load_table(MIDI_MAP_SHIPPED);
@@ -277,12 +291,12 @@ static int morph_rearm(void)
     ev(0, 0, 69, 127); ok &= qn() == 1u;
     ev(0, 0, 69, 127); ok &= qn() == 1u;
     ev(0, 0, 69, 0); ev(0, 0, 69, 127); ok &= qn() == 2u;
-    ok &= map_set(1 + 1 + 1, MAP_T_UNDO, MAP_R_CHANNEL, MAP_W_TYPED, 0, 0) == MAP_OK;     /* UNDO to CC3: any number */
+    ok &= map_set(1 + 1 + 1, MAP_T_ROLL_B, MAP_R_CHANNEL, MAP_W_TYPED, 0, 0) == MAP_OK;   /* ROLL B to CC3: any number */
     q0 = qn();
     ev(0, 0, 3, 127); ev(0, 0, 3, 127); u = qn() - q0;
-    ev(0, 0, 3, 0); ev(0, 0, 3, 127); b = qn() - q0;
+    ev(0, 0, 3, 0); ev(0, 0, 3, 127); b = qn() - q0;   /* (released at 0: below 64) */
     ok &= u == 1u && b == 2u;
-    bad += check("morph triggers follow the target when its number moves (ROLL A to CC69, UNDO to CC3): once, re-armed, the old number silent", ok);
+    bad += check("morph triggers follow the target when its number moves (ROLL A to CC69, ROLL B to CC3): once, re-armed, the old number silent", ok);
     return bad;
 }
 

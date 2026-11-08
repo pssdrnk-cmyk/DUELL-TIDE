@@ -652,7 +652,7 @@ EOF2
            { ASAN_OPTIONS=detect_leaks=0 run "fuzz_ed: SysEx, raw packets, patch record sessions (60000, seed 7)" $OUT/fuzz_ed 60000 7
              ASAN_OPTIONS=detect_leaks=0 run "fuzz_ed: only patch record sessions through PATCH_RAW and the backup's object 40 (30000, seed 11)" $OUT/fuzz_ed 30000 11 1
              ASAN_OPTIONS=detect_leaks=0 run "fuzz_proj: project stores and multi records with the slots and the edit list (8000, seed 13)" $OUT/fuzz_proj 8000 13; } ;;
-  xvalues) # cloud job B (the values, the extension slots, the chain stub): tests/xvalues_test.c at the default XH and at XH 3; the loader: tools/gen_duell_sounds.py makes a header from the factory list plus one sound that names slots (build/gen_xv), the test reads it back
+  xvalues) # cloud job B (the values, the extension slots, the chain stub): tests/xvalues_test.c (XH 1 since 1.0.0-b5: no morph history); the loader: tools/gen_duell_sounds.py makes a header from the factory list plus one sound that names slots (build/gen_xv), the test reads it back
            echo "== xvalues"; xb=0
            mkdir -p build/gen_xv
            python3 -I - <<'PY' || { echo "   FAIL (loader: gen_duell_sounds)"; xb=1; }
@@ -673,8 +673,8 @@ for bad in ({"SUB LEVEL": 128}, {"SUB NOPE": 1}, {"CYCLE MODE": "SPIN"}):      #
         assert e.code not in (0, None) and "accepted" not in str(e.code), e.code
 print("xvalues: loader: the generator takes slot labels (SUB LEVEL, CYCLE RISE, TWIN LINK, CYCLE MODE) and refuses a bad one")
 PY
-           for xh in 3; do   # (XH 3 = MORPH_HIST; XH 1 compiles but the rebase check expects two ring entries: not run)
-               $CC -O1 -DXH=$xh "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/xvalues_test_$xh tests/xvalues_test.c -lm && $OUT/xvalues_test_$xh > "$OUT/last.log" 2>&1 || { echo "   FAIL (XH $xh)"; grep -v " ok$" "$OUT/last.log" | tail -25; xb=1; }
+           for xh in 1; do   # (1.0.0-b5: XH = MORPH_HIST = 1, fixed in morph.c; the name keeps the binary's suffix)
+               $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/xvalues_test_$xh tests/xvalues_test.c -lm && $OUT/xvalues_test_$xh > "$OUT/last.log" 2>&1 || { echo "   FAIL (XH $xh)"; grep -v " ok$" "$OUT/last.log" | tail -25; xb=1; }
            done
            cc -Ibuild/gen_xv ${CC#cc } -O1 -DXV_LOADER "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/xvalues_loader tests/xvalues_test.c -lm && $OUT/xvalues_loader > "$OUT/last.log" 2>&1 || { echo "   FAIL (loader)"; grep -v " ok$" "$OUT/last.log" | tail -25; xb=1; }
            [ $xb = 0 ] && echo "   PASS" || fail=1 ;;

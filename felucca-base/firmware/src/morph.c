@@ -70,9 +70,9 @@
  * Nothing rolled (both ends equal the Original), AMOUNT 0, or the ends equal to it: the part's list is empty and
  * morph_begin returns at once: the sound is bit-identical (golden renders).
  *
- * Controls (SPEC 3.4, 3.5): ROLL A / ROLL B roll that end one step on from what it is (ROLL CHAINED); history of MORPH_HIST - 1 = 2 earlier rolls per
- * end (9 deep up to memory trim 1); UNDO goes back one roll of the end it is given (knob: left A, right B). There is no KEEP (v2). Replacing an end that is heard (ROLL,
- * UNDO) ramps over ~50 ms: continuous values glide, a changed choice / route dips its end's weight to 0 and back
+ * Controls (SPEC 3.4, 3.5): ROLL A / ROLL B roll that end one step on from what it is (ROLL CHAINED). No history: a roll replaces the end (1.0.0-b5,
+ * owner: MORPH UNDO dropped for the RAM a wave picture needs; 9 deep up to memory trim 1, 3 deep up to 1.0.0-b4). There is no KEEP (v2). Replacing an end that is heard (ROLL)
+ * ramps over ~50 ms: continuous values glide, a changed choice / route dips its end's weight to 0 and back
  * (the other end's value in the middle: two values at a time, continuous). One ramp per part: an action while one runs
  * completes it at once (a roll of the other end). TARGET SELECTED (the part ALGORITHM picked) or
  * BOTH (one fader, each part its own independent ends, the same AMOUNT). 0.2.9: TARGET is ALGORITHM's position on the MORPH page
@@ -95,24 +95,22 @@
  * (project.c PROJ_REV 8) carry End B as its VALUES (morph_bv_make / morph_bv_load, the MBV block); a MULTI still carries the seed block + the values set by hand
  * (morph_blk_make, multi.c: the next step). */
 
-#define MORPH_HIST 3u                /* the current end + 2 earlier rolls, per end (memory trim 1: was 9, +8: 6,224 B of ordinary RAM; the owner: one UNDO is enough, 3 deep at most) */
-#ifndef XH
-#define XH 3u                        /* the roll history of the extension slots (ext.h XV), per end: the current end + XH - 1 earlier rolls. 3 = the ids' depth (memory trim 1: MORPH_HIST 3). XH 1 is the lean setting:
-                                      * an UNDO past XH rolls brings the ids' older end back with the slots at the Original (morph_undo_part). Must divide MORPH_HIST (the ring index of a slot is the ids' index mod XH) */
+#define MORPH_HIST 1u                /* entries per end: the end itself (1.0.0-b5: no UNDO, about 940 B a part; 3 up to 1.0.0-b4, 9 up to memory trim 1). The arrays keep the
+                                      * [MORPH_HIST] index and the pushes their ring code (index (top + 1) % 1 = 0): a roll writes the end in place */
+#define XH 1u                        /* the extension slots' entries per end (ext.h XV): as MORPH_HIST */
+_Static_assert(MORPH_HIST == 1u && XH == 1u, "no morph history (1.0.0-b5)");
+#ifndef MORPH_TEST_NEW
+#define MORPH_TEST_NEW(pi, e, reset) ((void)0)   /* (tests only: morph_ui_test.c, perform_test.c count an end's new values since its sound's load (reset 1), the count n[] gave while
+                                                  * the morph kept a history; nothing in the firmware) */
 #endif
-_Static_assert(XH >= 1u && XH <= MORPH_HIST && MORPH_HIST % XH == 0u, "XH: 1 or 3");
 #define MORPH_AMOUNT_DEF 15u          /* the player's AMOUNT at first use (owner, 2026-10-11: 25 before) */
 #define MORPH_RAMP_N (FS / 20u)      /* 50 ms */
 #define MORPH_RAMP_STEP ((32768u * CTL + MORPH_RAMP_N / 2u) / MORPH_RAMP_N)   /* Q15 a block */
 enum { MT_SELECTED, MT_BOTH };
 /* cloud job G, EDITABLE B (docs/design/EDITABLE_B_DESIGN.md): at the fader's B end (127) a knob on a value the morph can move sets End B's value for good ("set by hand", pinned): the value is kept as
- * an absolute number in End B's current history entry and marked in pin[] (a bit per wide id). A pinned value ignores the Original's later edits (the other B values follow them as before); a roll drops
- * the marks (its new entry has none), UNDO brings them back with the entry. EDITB_PINH: how many of End B's history entries keep their marks (MORPH_HIST = all; 1 = only the current one: 36 bytes
- * a part less, but an UNDO then leaves the earlier entries' hand-set values without their marks, they follow the Original like rolled ones and a SAVE after such an UNDO does not keep them) */
-#ifndef EDITB_PINH
-#define EDITB_PINH MORPH_HIST
-#endif
-_Static_assert(EDITB_PINH >= 1u && EDITB_PINH <= MORPH_HIST && MORPH_HIST % EDITB_PINH == 0u, "EDITB_PINH: 1 or 3");
+ * an absolute number in End B and marked in pin[] (a bit per wide id). A pinned value ignores the Original's later edits (the other B values follow them as before); a roll drops the marks.
+ * EDITB_PINH: End B's entries that keep marks (1: the end itself, MORPH_HIST) */
+#define EDITB_PINH 1u
 #define PIN_BYTES ((EXT_P_LEN + 7) / 8)                  /* 20: a bit for each wide id (DUELL 1.1: EXT_P_LEN 156) */
 #define MK_PIN 0x40u                                     /* ment_t.kind: the value is End B's by hand (MK_STEREO 0x80 is the other flag) */
 
@@ -1272,17 +1270,15 @@ typedef struct {
     int8_t base[EXT_P_LEN];                              /* the Original the ends belong to (by wide id: the ids, a gap at 127, the extension slots) */
     int8_t h[2][MORPH_HIST][P_COUNT];                    /* each end's rolls; h[e][top[e]] is the end */
     int8_t hx[2][XH][NX];                                /* the extension slots' (XH deep, ring index = the ids' index mod XH): hx[e][top[e] % XH] is the end's */
-    uint8_t xv[2];                                       /* .. how many of the entries ending at top[e] hold a roll's slots (1 .. XH; fewer after an UNDO past XH rolls: the slots at the Original) */
     uint16_t seed[2][MORPH_HIST];                        /* .. their seeds (0: not a roll: the Original) */
     uint8_t rcfg[2][MORPH_HIST], ramt[2][MORPH_HIST];    /* v2: .. the MC_* bits and the AMOUNT each was rolled with */
     TIDE_PART_FIELDS                                     /* TIDE hook */
     uint8_t rdep[2][MORPH_HIST];                         /* ROLL CHAINED: .. how many rolls from the Original each is (0: the Original, 1: its seed makes it again from the Original, 2..255: a chain the seed alone does not) */
-    uint8_t top[2], n[2];                                /* n: entries kept (1 .. MORPH_HIST) */
+    uint8_t top[2], n[2];                                /* top: the end's entry (0: MORPH_HIST 1); n: 1 once the part is ready, 0 never used */
     uint8_t fader, amount;                               /* 0..127, 0..100 */
     uint8_t aset;                                        /* the AMOUNT the player last chose (knob, MIDI, settings): what the settings keep; a patch load changes mp->amount only */
     uint8_t apre;                                        /* v2: amount was set from the settings before the first use */
     uint8_t pin[EDITB_PINH][PIN_BYTES];                  /* EDITABLE B: End B's values set by hand, a bit per wide id, for each of its history entries (index = the entry's index mod EDITB_PINH) */
-    uint8_t bstay;                                       /* .. End B's current entry was made by a stay at the B end (the edits since arriving go into it; a roll, UNDO or leaving 127 ends it) */
     uint8_t eng, preset, user;                           /* the sound base came from (t->eng_req, preset, user) */
     uint8_t nid;                                         /* the values the fader moves (ent): 0 = idle */
     uint8_t fb[NFM];                                     /* FM6: the Original's patch bytes (fm_byte order) the ends belong to */
@@ -1839,15 +1835,14 @@ static void morph_rebase_part(uint32_t pi)               /* ends = the Original,
         memcpy(mp->fh[e][0], mp->fb, NFM);
         memcpy(mp->h[e][0], mp->base, P_COUNT);
         memcpy(mp->hx[e][0], mp->base + XW_BASE, NX);
-        mp->xv[e] = 1;
         mp->seed[e][0] = 0;
         mp->rcfg[e][0] = mp->ramt[e][0] = mp->rdep[e][0] = 0;
         TIDE_REBASE_END(pi, mp, e);                      /* TIDE hook */
         mp->top[e] = 0;
         mp->n[e] = 1;
+        MORPH_TEST_NEW(pi, e, 1);
     }
     memset(mp->pin, 0, sizeof mp->pin);                  /* (EDITABLE B: a new sound has no values set by hand) */
-    mp->bstay = 0;
     mb_said = 0;
     mp->eng = t->eng_req;
     mp->preset = t->preset;
@@ -2065,7 +2060,6 @@ static void morph_roll_from(uint32_t pi, uint32_t x, uint32_t seed, uint32_t amo
     k = (mp->top[x] + 1u) % MORPH_HIST;
     memcpy(mp->h[x][k], end, P_COUNT);
     memcpy(mp->hx[x][k % XH], end + XW_BASE, NX);
-    mp->xv[x] = (uint8_t)(mp->xv[x] < XH ? mp->xv[x] + 1u : XH);
     memcpy(mp->fh[x][k], fend, NFM);
     mp->seed[x][k] = (uint16_t)seed;
     mp->rcfg[x][k] = (uint8_t)cfg;
@@ -2075,10 +2069,9 @@ static void morph_roll_from(uint32_t pi, uint32_t x, uint32_t seed, uint32_t amo
     mp->top[x] = (uint8_t)k;
     if (mp->n[x] < MORPH_HIST)
         mp->n[x]++;
-    if (x) {                                             /* EDITABLE B: a new B has nothing set by hand (UNDO brings the earlier entry's back) */
+    MORPH_TEST_NEW(pi, x, 0);
+    if (x)                                               /* EDITABLE B: a new B has nothing set by hand */
         memset(mp->pin[k % EDITB_PINH], 0, PIN_BYTES);
-        mp->bstay = 0;
-    }
     morph_build(mp);
     MORPH_UNLOCK();
 }
@@ -2152,27 +2145,6 @@ static uint32_t morph_b_say(uint32_t kind, uint32_t wid)   /* 1 = say it now (no
     return 1;
 }
 
-/* a stay at the B end begins: End B's current entry is copied into a new one (the edits of the stay go into it; UNDO takes them all back in one step). Called locked */
-static void morph_b_stay(morph_part_t *mp)
-{
-    uint32_t t = mp->top[1], k = (t + 1u) % MORPH_HIST;
-    memcpy(mp->h[1][k], mp->h[1][t], P_COUNT);
-    if (k % XH != t % XH)                                /* (the device's libc has no memmove; the two rows are the same row only at XH 1) */
-        memcpy(mp->hx[1][k % XH], mp->hx[1][t % XH], NX);
-    memcpy(mp->fh[1][k], mp->fh[1][t], NFM);
-    mp->seed[1][k] = mp->seed[1][t];
-    mp->rcfg[1][k] = mp->rcfg[1][t];
-    mp->ramt[1][k] = mp->ramt[1][t];
-    mp->rdep[1][k] = mp->rdep[1][t];
-    TIDE_TOK_COPY(mp, 1, k, t);                          /* TIDE hook */
-    if (k % EDITB_PINH != t % EDITB_PINH)
-        memcpy(mp->pin[k % EDITB_PINH], mp->pin[t % EDITB_PINH], PIN_BYTES);
-    mp->xv[1] = (uint8_t)(mp->xv[1] < XH ? mp->xv[1] + 1u : XH);
-    mp->top[1] = (uint8_t)k;
-    if (mp->n[1] < MORPH_HIST)
-        mp->n[1]++;
-    mp->bstay = 1;
-}
 /* End B's value of wide id wid := v, set by hand. 0 = done; 1 = the list is full (XB_MAX values, the id not one of them: nothing changed). The caller checked morph_b_mode == 1 */
 static int morph_b_set(uint32_t pi, uint32_t wid, int32_t v)
 {
@@ -2181,8 +2153,6 @@ static int morph_b_set(uint32_t pi, uint32_t wid, int32_t v)
     if (!pin_get(morph_pins(mp), wid) && pin_count(morph_pins(mp)) >= XB_MAX)
         return 1;
     MORPH_LOCK();
-    if (!mp->bstay)
-        morph_b_stay(mp);
     *morph_bval(mp, wid) = (int8_t)clamp(v, d->min, d->max);
     morph_pins(mp)[wid >> 3] |= (uint8_t)(1u << (wid & 7u));
     morph_build(mp);
@@ -2419,8 +2389,7 @@ static uint32_t morph_bv_make(uint32_t pi, const int16_t *ref, uint8_t *out)
     }
     return TIDE_MBV_MAKE(pi, out, (at + 7u) / 8u);       /* TIDE hook (H9) */
 }
-/* a loaded sound's End B from its block b (morph_rebase_part, after the rebase: base = the Original just loaded): a new End B entry (UNDO goes back to the
- * Original as after any loaded B), the marks of the values set by hand, the part's AMOUNT. A damaged block: nothing (End B stays the Original) */
+/* a loaded sound's End B from its block b (morph_rebase_part, after the rebase: base = the Original just loaded): End B, the marks of the values set by hand, the part's AMOUNT. A damaged block: nothing (End B stays the Original) */
 static void morph_bv_load(uint32_t pi, const uint8_t *b)
 {
     morph_part_t *mp = &mph[pi];
@@ -2440,7 +2409,6 @@ static void morph_bv_load(uint32_t pi, const uint8_t *b)
     k = (mp->top[1] + 1u) % MORPH_HIST;
     memcpy(mp->h[1][k], end, P_COUNT);
     memcpy(mp->hx[1][k % XH], end + XW_BASE, NX);
-    mp->xv[1] = (uint8_t)(mp->xv[1] < XH ? mp->xv[1] + 1u : XH);
     memcpy(mp->fh[1][k], mp->fb, NFM);
     memset(mp->pin[k % EDITB_PINH], 0, PIN_BYTES);
     if (b[0] & MBV_PINS) {
@@ -2457,7 +2425,7 @@ static void morph_bv_load(uint32_t pi, const uint8_t *b)
     mp->top[1] = (uint8_t)k;
     if (mp->n[1] < MORPH_HIST)
         mp->n[1]++;
-    mp->bstay = 0;
+    MORPH_TEST_NEW(pi, 1, 0);
     morph_build(mp);
     MORPH_UNLOCK();
     TIDE_MBV_LOAD(pi, b, len);                           /* TIDE hook (H9) */
@@ -2500,7 +2468,7 @@ static int morph_blk_peek(uint32_t pi, uint8_t *b)
 
 /* v2: part pi's End B as a record block (MB_N bytes) for SAVE held (the patch saved). It is re-rolled first when it is not what its seed
  * regenerates from the Original as it is now (edits since the roll folded into it): then what is heard is what a load will
- * give. 0 = no block (End B is no roll: UNDO went back to the Original) */
+ * give. 0 = no block (End B is no roll: the Original) */
 static int morph_blk_make(uint32_t pi, uint8_t *b)
 {
     morph_part_t *mp = morph_ready(pi);
@@ -2602,53 +2570,14 @@ static uint32_t morph_roll(uint32_t x)
     return seed;
 }
 
-/* UNDO on part pi: end x's (0 A, 1 B) previous roll. 0 = nothing to go back to */
-static int morph_undo_part(uint32_t pi, uint32_t x)
-{
-    morph_part_t *mp;
-    if (pi >= NSHOWN)
-        return 0;
-    x &= 1u;
-    mp = morph_ready(pi);
-    if (mp->n[x] <= 1u)
-        return 0;
-    MORPH_LOCK();
-    morph_ramp(mp, x);
-    mp->top[x] = (uint8_t)((mp->top[x] + MORPH_HIST - 1u) % MORPH_HIST);
-    mp->n[x]--;
-    if (x) {
-        mp->bstay = 0;
-        if (EDITB_PINH == 1u)                            /* (the lean setting keeps one entry's marks: the earlier entries' are not known) */
-            memset(mp->pin, 0, sizeof mp->pin);
-    }
-    if (mp->xv[x] > 1u)
-        mp->xv[x]--;
-    else
-        memcpy(mp->hx[x][mp->top[x] % XH], mp->base + XW_BASE, NX);   /* (XH under 9: the roll's slots are gone from the ring: at the Original) */
-    morph_build(mp);
-    MORPH_UNLOCK();
-    TIDE_UNDO(pi, x);                                    /* TIDE hook (MORPH TO's FM6 target of the entry come back to) */
-    return 1;
-}
-
-static int morph_undo(uint32_t x)
-{
-    uint32_t pi, end = morph_parts(&pi);
-    int r = 0;
-    for (; pi < end; pi++)
-        r |= morph_undo_part(pi, x);
-    return r;
-}
 static void morph_set_fader(uint32_t f)                  /* the MORPH fader, 0..127 (CC 70 on the part's channel, MIDI_MAP_DEFAULTS.csv) */
 {
     uint32_t pi, end = morph_parts(&pi);
     for (; pi < end; pi++) {
         morph_part_t *mp = morph_ready(pi);
         mp->fader = (uint8_t)(f > 127u ? 127u : f);
-        if (mp->fader != 127u) {
-            mp->bstay = 0;                               /* (EDITABLE B: the next arrival at the B end starts a new stay) */
+        if (mp->fader != 127u)
             mb_said = 0;
-        }
     }
 }
 static void morph_set_amount(uint32_t a)                 /* AMOUNT 0..100 % */
@@ -2672,7 +2601,7 @@ static void morph_set_cfg(uint32_t bit, uint32_t on)      /* v2: SMART (on = bit
  * part from MIDI), BOTH every shown part (morph_mask). MIDI arrives in the audio ISR (events_block): a roll is too
  * heavy for it and the actions take the lock, so the ISR only queues (morph_push) and the main loop runs the queue in
  * order (morph_pop, ui_input.c morph_poll). */
-enum { MQ_FADER, MQ_AMOUNT, MQ_TARGET, MQ_ROLL, MQ_UNDO, MQ_SMART, MQ_ARP, MQ_PITCH  TIDE_MQ_KINDS };   /* (v2: no KEEP) */
+enum { MQ_FADER, MQ_AMOUNT, MQ_TARGET, MQ_ROLL, MQ_SMART, MQ_ARP, MQ_PITCH  TIDE_MQ_KINDS };   /* (v2: no KEEP; 1.0.0-b5: no UNDO. RAM only, never stored) */
 #define MQ_N 16u
 static uint32_t mq_buf[MQ_N];                            /* kind | part << 8 | value << 16 */
 static volatile uint8_t mq_w, mq_r;                      /* (the ISR writes mq_w, the main loop mq_r) */
@@ -2691,12 +2620,11 @@ static uint32_t morph_seed_of(uint32_t pi, uint32_t e)  /* end e's seed, 0: no r
     return mp->n[0] ? mp->seed[e & 1u][mp->top[e & 1u]] : 0u;
 }
 
-/* an action on the parts of mask, main loop. MQ_ROLL / MQ_UNDO v: the end (0 A, 1 B); returns the seed (UNDO: 1 = some part
- * went back). MQ_FADER 0..127, MQ_AMOUNT 0..100 %, MQ_TARGET 0 PART 1 / 1 PART 2 / 2 BOTH (ui_input.c morph_act picks the part),
+/* an action on the parts of mask, main loop. MQ_ROLL v: the end (0 A, 1 B); returns the seed. MQ_FADER 0..127, MQ_AMOUNT 0..100 %, MQ_TARGET 0 PART 1 / 1 PART 2 / 2 BOTH (ui_input.c morph_act picks the part),
  * MQ_SMART / MQ_ARP / MQ_PITCH 0 / 1 */
 static uint32_t morph_do(uint32_t kind, uint32_t mask, uint32_t v)
 {
-    uint32_t pi, r = 0, seed = 0;
+    uint32_t pi, seed = 0;
     if (kind == MQ_TARGET) {                             /* v2: 0 PART 1, 1 PART 2, 2 BOTH */
         morph_set_target(v >= 2u);
         return 0;
@@ -2713,21 +2641,16 @@ static uint32_t morph_do(uint32_t kind, uint32_t mask, uint32_t v)
         switch (kind) {
         case MQ_FADER:
             morph_ready(pi)->fader = (uint8_t)(v > 127u ? 127u : v);
-            if (mph[pi].fader != 127u) {
-                mph[pi].bstay = 0;                       /* (EDITABLE B: the next arrival at the B end starts a new stay) */
+            if (mph[pi].fader != 127u)
                 mb_said = 0;
-            }
             break;
         case MQ_AMOUNT: morph_ready(pi)->aset = morph_ready(pi)->amount = (uint8_t)(v > 100u ? 100u : v); break;
-        case MQ_ROLL: morph_roll_seed(pi, v & 1u, seed); break;
-        default: r |= (uint32_t)morph_undo_part(pi, v); break;   /* MQ_UNDO */
+        default: morph_roll_seed(pi, v & 1u, seed); break;   /* MQ_ROLL */
         }
     }
-    if (kind == MQ_ROLL) {
+    if (kind == MQ_ROLL)
         morph.seed = (uint16_t)seed;
-        return seed;
-    }
-    return r;
+    return seed;
 }
 
 /* audio ISR (MIDI): queue an action of part pi (its channel's). A fader or AMOUNT right after the same one of the same
@@ -2806,7 +2729,7 @@ static int morph_unpack(const uint8_t *b, uint32_t n)
         for (e = 0; e < 2u; e++) {
             mp->top[e] = 0;                              /* (v2: the rebase rolled a B: back to one entry) */
             mp->n[e] = 1;
-            mp->xv[e] = 1;
+            MORPH_TEST_NEW(pi, e, 1);
             memcpy(mp->hx[e][0], mp->base + XW_BASE, NX);   /* (the pack holds the ids: the slots at the Original) */
             mp->rcfg[e][0] = 0;
             mp->ramt[e][0] = mp->amount;

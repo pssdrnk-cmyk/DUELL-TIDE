@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* DUELL build step 4b: the MORPH's page, its MIDI CCs, the matrix source, its settings (SPEC 3.4, 3.4a, 3.5, 4.4).
  *   ROUND      MORPH, MORPH SET, MODE, MIXER (v2, SPEC 3.5; 0.2.14: no OVERVIEW): HOME's taps and SELECT; MORPH is the main page
- *   KNOBS      MORPH (v3): KNOB 1 the fader, 2 ROLL A (left) / B (right), 3 UNDO A (left) / B (right) (no KEEP), 4 AMOUNT;
+ *   KNOBS      MORPH (v3): KNOB 1 the fader, 2 ROLL A (left) / B (right), 3 nothing (1.0.0-b5: no UNDO; no KEEP), 4 AMOUNT;
  *              MORPH SET: KNOB 1 SMART, 2 ARP, 3 PITCH, 4 empty (0.2.9: TARGET is ALGORITHM's BOTH on the MORPH page). Each drives
  *              its morph call on the parts TARGET says (SELECTED: the part ALGORITHM picked; BOTH: both)
  *   GESTURE    a nudge below the detent never acts (rested, reversed); one twist past it acts exactly once, however far
- *   UNDO END   the UNDO card shows A<>B (<A / B> while a twist builds); left undoes A, right B, whatever the fader
- *   MIDI       CC 20-23, 25, 111 and 113-115 (CC 24 unassigned) through the real input path (USB packets and TRS bytes into the queue, events_block,
+ *   KNOB 3     an empty card (1.0.0-b5: no UNDO, the morph keeps no history); a twist either way at any fader changes no end
+ *   MIDI       CC 20-22, 25, 111 and 113-115 (CC 23, UNDO's until 1.0.0-b5, and 24 unassigned) through the real input path (USB packets and TRS bytes into the queue, events_block,
  *              then the main loop): each part's channel, SELECTED and BOTH, the >= 64 triggers and their re-arm, a hidden
  *              part's channel ignored, ROUT SEL, a learned CC the user's
  *   MATRIX     the MORPH source (fader / 127), no feedback (a roll never makes a route from MORPH nor changes one)
@@ -16,6 +16,8 @@
  * Built and run by DUELL/host_tests.sh (name: morphui): the UI sources against ui_test.c's stub display and knobs. */
 #define UI_TEST_NO_MAIN 1
 #define UI_TEXT_CAPTURE 1                                 /* (a card read from the texts drawn: ui_test.c card_match; ui.col is a hash since 1.1) */
+static unsigned char mtn[4][2];                                   /* each end's new values since its sound's load, 1 = the Original only (morph.c MORPH_TEST_NEW: the count n[] gave up to 1.0.0-b4) */
+#define MORPH_TEST_NEW(pi, e, reset) (mtn[(pi) & 3u][(e) & 1u] = (unsigned char)((reset) ? 1u : mtn[(pi) & 3u][(e) & 1u] + 1u))
 #include "ui_test.c"
 
 static int bad, ncheck;
@@ -40,7 +42,7 @@ static uint32_t page_of(const char *title)
 static void morph_page(void) { ui.menu = 0; go_title("MORPH"); frames(32); }
 /* a factory sound's AMOUNT as a load sets it (TIDE: MUSIC's own while ROLL is MUSIC, tide.h TIDE_FACTORY_AMOUNT) */
 static uint32_t snd_amount(uint32_t e, uint32_t k) { return (uint32_t)TIDE_FACTORY_AMOUNT(ds_amount(e, k)); }
-static uint32_t rolls(uint32_t pi, uint32_t e) { return mph[pi].n[e]; }   /* the end's entries (1: the Original only) */
+static uint32_t rolls(uint32_t pi, uint32_t e) { return mtn[pi & 3u][e & 1u]; }   /* 1 + the end's new values since the load (1: the Original only) */
 static uint32_t seed_now(uint32_t pi, uint32_t e) { return mph[pi].seed[e][mph[pi].top[e]]; }
 static const int8_t *endp(uint32_t pi, uint32_t e) { return mph[pi].h[e][mph[pi].top[e]]; }
 static int end_is_base(uint32_t pi, uint32_t e) { return !memcmp(mph[pi].h[e][mph[pi].top[e]], mph[pi].base, P_COUNT); }
@@ -370,8 +372,8 @@ static void t_knobs(void)
     expect("KNOB 4: AMOUNT of the selected part (+5), the other part's stays", mph[0].amount == a0 + 5u && mph[1].amount == a1 &&
            a0 == snd_amount(trk[0].eng_req, trk[0].preset));
     frame();
-    expect("  .. the cards in v3's order: MORPH, ROLL, UNDO, AMOUNT (KNOB 4)", card_is(0, "MORPH", "A") && card_is(1, "ROLL", "A<>B") &&
-           card_is(2, "UNDO", "A<>B") && card_is(3, "AMOUNT", amt_txt));
+    expect("  .. the cards in v3's order: MORPH, ROLL, an empty KNOB 3 (1.0.0-b5: no UNDO), AMOUNT (KNOB 4)", card_is(0, "MORPH", "A") && card_is(1, "ROLL", "A<>B") &&
+           card_is(2, "", "") && card_is(3, "AMOUNT", amt_txt));
     {   /* the picture (TIDE: the part's real sound, ui_scope.c): a new one every 4th frame (signature), none with MENU > ANIM OFF */
         uint32_t s0 = graph_signature(), s1;
         ui.frame += 4u;
@@ -395,15 +397,17 @@ static void t_knobs(void)
     expect("KNOB 2 right past the detent: ROLL B", rolls(0, 1) == 3u && rolls(0, 0) == 2u && msg_is("ROLLED B"));
     settle();
     turn(EN_K2, MORPH_DET);
-    expect("ROLL B again: B's history is full at MORPH_HIST = 3 entries (the oldest goes; UNDO can go back 2)", rolls(0, 1) == MORPH_HIST);
+    expect("ROLL B again: End B replaced in place (no history: one entry, MORPH_HIST 1)", rolls(0, 1) == 4u && mph[0].n[1] == 1u && MORPH_HIST == 1u);
     settle();
-    s = seed_now(0, 1);
-    turn(EN_K3, MORPH_DET);
-    expect("KNOB 3 right: UNDO B, A stays", rolls(0, 1) == 2u && seed_now(0, 1) != s &&
-           rolls(0, 0) == 2u && msg_is("UNDO B"));
-    settle();
-    turn(EN_K3, -MORPH_DET);
-    expect("KNOB 3 left: UNDO A, B stays; no KEEP", rolls(0, 0) == 1u && msg_is("UNDO A") && rolls(0, 1) == 2u);
+    {
+        uint32_t sa = seed_now(0, 0);
+        s = seed_now(0, 1);
+        ui.msg[0] = 0;
+        turn(EN_K3, MORPH_DET); settle();
+        turn(EN_K3, -MORPH_DET);
+        expect("KNOB 3 either way: nothing (1.0.0-b5: no UNDO), both ends as they were, no message", rolls(0, 1) == 4u && rolls(0, 0) == 2u &&
+               seed_now(0, 1) == s && seed_now(0, 0) == sa && !msg_is("ROLLED A") && !msg_is("ROLLED B"));
+    }
 #if DUELL_TIDE
     /* TIDE: TIDE SETTINGS, the list in MORPH SET's place: ROLL SMART -> WILD, ARP ON, PITCH ON (the same settings bits); K2..K4 turn the picked row (C12); ALGORITHM is the
      * morph's selector there (PART 1, BOTH, PART 2: tide_ui.c) */
@@ -457,7 +461,7 @@ static void t_gesture(void)
     morph_page();
     turn(EN_K3, -2);
     turn(EN_K3, 2);
-    expect("KNOB 3: no UNDO below the detent", rolls(0, 1) == 2u && !msg_is("NO UNDO B") && !msg_is("UNDO B") && !msg_is("UNDO A"));
+    expect("KNOB 3 (no job since 1.0.0-b5): no roll of either end", rolls(0, 1) == 2u && rolls(0, 0) == 1u);
     settle();
     turn(EN_K2, -1);
     expect("KNOB 2 ROLL: ONE detent left rolls A at once", rolls(0, 0) == 2u && rolls(0, 1) == 2u && msg_is("ROLLED A"));
@@ -472,39 +476,29 @@ static void t_gesture(void)
     expect("ONE detent right rolls B at once", rolls(0, 1) == 3u && rolls(0, 0) == 3u && msg_is("ROLLED B"));
 }
 
-/* ---------------------------------------------------------------- FAR END --- */
-static void t_far(void)
+/* ---------------------------------------------------------------- KNOB 3 --- */
+static void t_far(void)                                  /* (1.0.0-b5: UNDO's checks, the card and the far end, are gone with it: KNOB 3 is an empty card at any fader) */
 {
+    uint32_t sa, sb;
     fresh();
     morph_page();
-    turn(EN_K2, -MORPH_DET); settle();
-    turn(EN_K2, MORPH_DET); settle();
     turn(EN_K2, -MORPH_DET); settle();
     turn(EN_K2, MORPH_DET); settle();
     turn(EN_K1, 63);
     frame();
     frame();
-    expect("UNDO card at rest: UNDO A<>B", card_is(2, "UNDO", "A<>B"));
+    expect("KNOB 3's card at rest: empty", card_is(2, "", ""));
     turn(EN_K3, -1);
     frame();
-    expect("a twist left building up: <A", card_is(2, "UNDO", "<A"));
+    expect("a twist left building up: still empty", card_is(2, "", ""));
     settle();
-    turn(EN_K3, 1);
-    frame();
-    expect("a twist right building up: B>", card_is(2, "UNDO", "B>"));
-    settle();
+    sa = seed_now(0, 0);
+    sb = seed_now(0, 1);
     turn(EN_K1, 100);
-    turn(EN_K3, -MORPH_DET);
-    expect("fader 100: left still undoes A, B stays", rolls(0, 0) == 2u && rolls(0, 1) == MORPH_HIST && msg_is("UNDO A"));
-    settle();
+    turn(EN_K3, -MORPH_DET); settle();
     turn(EN_K1, -100);
-    turn(EN_K3, MORPH_DET);
-    expect("fader 0: right still undoes B, A stays", rolls(0, 1) == 2u && rolls(0, 0) == 2u && msg_is("UNDO B"));
-    settle();
     turn(EN_K3, MORPH_DET); settle();
-    turn(EN_K3, MORPH_DET); settle();
-    turn(EN_K3, MORPH_DET);
-    expect("UNDO with nothing left: says so, nothing changes", rolls(0, 1) == 1u && msg_is("NO UNDO B"));
+    expect("fader 100 and fader 0: a twist of KNOB 3 either way changes neither end", seed_now(0, 0) == sa && seed_now(0, 1) == sb && rolls(0, 0) == 2u && rolls(0, 1) == 3u);
 }
 
 /* ------------------------------------------------------- SELECTED / BOTH --- */
@@ -542,8 +536,6 @@ static void t_target(void)
         turn(EN_K4, -5);
         expect("BOTH: KNOB 4 sets both parts' AMOUNT", mph[0].amount == b0 - 5u && mph[1].amount == b0 - 5u);
     }
-    turn(EN_K3, MORPH_DET);
-    expect("BOTH: UNDO B acts on both parts", rolls(0, 1) == 2u && rolls(1, 1) == 1u);
     go_title(MORPH_SET_TITLE); frames(32);
     expect("BOTH, then MORPH SET: one badge (the selected part; TIDE's TIDE SETTINGS: both, as MORPH), BOTH kept", morph.target == MT_BOTH && badge_lit() == (DUELL_TIDE ? 3u : 1u));
     morph_page();
@@ -583,15 +575,12 @@ static void t_midi(void)
     expect("CC 21 released below 64, then 64: rolls again", rolls(0, 0) == 3u);
     cc(1, 22, 127); cc(1, 22, 0); run();
     expect("CC 22 ch 2: ROLL B on part 2 only", rolls(1, 1) == 3u && rolls(0, 1) == 2u);
-    cc(1, 22, 127); cc(1, 22, 0); run();
-    cc(1, 23, 127); cc(1, 23, 0); run();
-    expect("CC 23 ch 2 >= 64: UNDO on part 2's B", rolls(1, 1) == 2u && msg_is("UNDO B"));
-    cc(1, 23, 30); cc(1, 23, 100); run();
-    expect("CC 23 1..63: UNDO A (nothing there), fires once (100 without a release: no second)", rolls(1, 1) == 2u &&
-           msg_is("NO UNDO A"));
-    cc(1, 23, 0); cc(1, 20, 0); run();
+    s = seed_now(1, 1);
+    cc(1, 23, 127); cc(1, 23, 0); cc(1, 23, 30); run();
+    expect("CC 23 ch 2: unassigned since 1.0.0-b5 (UNDO's), ignored", rolls(1, 1) == 3u && seed_now(1, 1) == s && rolls(1, 0) == 1u);
+    cc(1, 20, 0); run();
     cc(1, 24, 127); run();
-    expect("CC 24 ch 2: unassigned, ignored (no KEEP any more)", rolls(1, 1) == 2u && !msg_is("KEPT >B") && !msg_is("UNDO B"));
+    expect("CC 24 ch 2: unassigned, ignored (no KEEP any more)", rolls(1, 1) == 3u && !msg_is("KEPT >B"));
     cc(1, 24, 10); run();
     cc(1, 111, 127); run();
     expect("CC 111 86..127: TARGET BOTH", morph.target == MT_BOTH && msg_is("BOTH"));
@@ -600,7 +589,7 @@ static void t_midi(void)
     cc(1, 20, 12); run();
     expect("BOTH: CC 20 on ch 2 moves both faders", mph[0].fader == 12u && mph[1].fader == 12u);
     cc(1, 21, 0); cc(1, 21, 127); run();
-    expect("BOTH: CC 21 on ch 2 rolls A on both parts", rolls(0, 0) == MORPH_HIST && rolls(1, 0) == 2u && seed_now(0, 0) == seed_now(1, 0));
+    expect("BOTH: CC 21 on ch 2 rolls A on both parts", rolls(0, 0) == 4u && rolls(1, 0) == 2u && seed_now(0, 0) == seed_now(1, 0));
     cc(0, 25, 127); run();
     expect("BOTH: CC 25 sets both parts' AMOUNT", mph[0].amount == 100u && mph[1].amount == 100u);
     cc(0, 111, 63); run();
@@ -628,7 +617,7 @@ static void t_midi(void)
     song.g[G_ROUTE] = 0;
     song.sel = 0;
     cc(0, 121, 0); cc(0, 21, 127); run();
-    expect("CC 121 re-arms the triggers (CC 21 held at 127 before it: a roll now)", rolls(0, 0) == MORPH_HIST);
+    expect("CC 121 re-arms the triggers (CC 21 held at 127 before it: a roll now)", rolls(0, 0) == 5u);
     cc(0, 21, 0); run();
     {   /* MIDI LEARN: a CC learned is the user's (as for the standard map): CC 20 learned to part 1's LEVEL */
         ml_learn_f(20, 0, P_LEVEL, 1, 0);               /* (CC 20 is the fader's: the learn takes it only forced now) */

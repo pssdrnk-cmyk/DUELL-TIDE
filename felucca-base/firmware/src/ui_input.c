@@ -581,15 +581,15 @@ static void step_edit(uint32_t slot, int32_t steps)
 
 /* ------------------------------------------------------- MORPH (4b) --- */
 /* HOME's MORPH pages (SPEC 3.4, 3.4a, 3.5; morph.c). MORPH (v3, 2026-10-11): KNOB 1 the fader 0..127 (A .. B), 2 ROLL
- * (a turn left past the detent rolls end A, right end B), 3 UNDO (a turn left past the detent undoes end A's last roll, right end B's),
+ * (a turn left past the detent rolls end A, right end B), 3 nothing (UNDO until 1.0.0-b5: the morph keeps no history),
  * 4 AMOUNT 0..100 %; SAVE held saves the patch (patch_save_ask; a
  * press of SAVE opens the SAVE pages as everywhere). MORPH SET: KNOB 1 SMART (right ON, left WILD), 2 ARP, 3 PITCH,
  * KNOB 4 an empty column (0.2.9: TARGET left the page, ALGORITHM's BOTH is it: algo_step below). Each control acts on the parts of
  * morph_mask: the selected part (ALGORITHM), or with BOTH both parts. MIDI's CCs (midi_control.c midi_morph) do the same
  * through the queue morph_poll runs, with the same messages */
-#define MORPH_DET 3                                     /* detents a twist needs: one or two are a nudge, nothing */
+#define MORPH_DET 3                                     /* detents a twist needs: one or two are a nudge, nothing (the tests' turn; ROLL fires on one) */
 #define MORPH_REST_MS 400u                              /* .. a knob at rest this long: the gesture is over */
-/* the gesture of KNOB 2 ROLL (g 0) / KNOB 3 UNDO (g 1) / GLO's KNOB 1 MUTE 1 (g 2) / KNOB 2 MUTE 2 (g 3) turned s now: -1 / +1 when it fires (once), 0 not (yet). A nudge below the
+/* the gesture of KNOB 2 ROLL (g 0) / (g 1 spare: UNDO until 1.0.0-b5) / GLO's KNOB 1 MUTE 1 (g 2) / KNOB 2 MUTE 2 (g 3) turned s now: -1 / +1 when it fires (once), 0 not (yet). A nudge below the
  * detent left alone fades (the rest); a reversal starts anew; a gesture that fired swallows its further detents until
  * the knob rests, so one twist is one action however far it turns */
 static int32_t gesture_det(uint32_t g, int32_t s, int32_t det)
@@ -611,7 +611,6 @@ static int32_t gesture_det(uint32_t g, int32_t s, int32_t det)
     ui.mg.acc[g] = 0;
     return s < 0 ? -1 : 1;
 }
-static int32_t morph_gesture(uint32_t g, int32_t s) { return gesture_det(g, s, MORPH_DET); }
 /* the way a gesture is going (the card shows it): -1 / +1 while it builds up, 0 at rest or once it fired */
 static int32_t morph_pending(uint32_t g)
 {
@@ -623,15 +622,12 @@ static void morph_say_end(const char *a, uint32_t e) { ui_say(a, e ? "B" : "A");
 /* an action on the parts of mask its message; from the page or MIDI */
 static void morph_act(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi)
 {
-    uint32_t r;
     if (kind == MQ_TARGET && v < 2u)
         track_select(v);                                /* (a learned CC for MORPH TARGET, which has no shipped number: PART 1 / PART 2; BOTH keeps the part the other pages edit) */
-    r = morph_do(kind, mask, v);
+    morph_do(kind, mask, v);
     TIDE_LINK(kind, mask, v);                           /* TIDE hook (LINK: TARGET BOTH moves the SEQ fader with it) */
     if (kind == MQ_ROLL)
         morph_say_end("ROLLED ", v);
-    else if (kind == MQ_UNDO)
-        morph_say_end(r ? "UNDO " : "NO UNDO ", v);
     else if (kind == MQ_TARGET)                         /* (ALGORITHM's words: a learned MORPH TARGET CC is the same selector) */
         ui_message(v >= 2u ? "BOTH" : v ? "PART 2" : "PART 1");
     else if (kind == MQ_SMART)
@@ -695,13 +691,11 @@ static void morph_knob(uint32_t slot, int32_t s)
     case 0:
         morph_act(MQ_FADER, mask, (uint32_t)clamp((int32_t)morph_fader_of(pi) + accel(EN_K1, s, 127), 0, 127), pi);
         break;
-    case 1:                                             /* (v3: ROLL on KNOB 2, UNDO on 3, AMOUNT on 4) */
+    case 1:                                             /* (v3: ROLL on KNOB 2, AMOUNT on 4; KNOB 3 nothing since UNDO left, 1.0.0-b5) */
         if ((d = gesture_det(0, s, 1)) != 0)           /* (one detent: a roll is instant) */
             morph_act(MQ_ROLL, mask, d > 0, pi);
         break;
     case 2:
-        if ((d = morph_gesture(1, s)) != 0)
-            morph_act(MQ_UNDO, mask, d > 0, pi);
         break;
     default:
         morph_act(MQ_AMOUNT, mask, (uint32_t)clamp((int32_t)morph_amount_of(pi) + accel(EN_K4, s, 100), 0, 100), pi);

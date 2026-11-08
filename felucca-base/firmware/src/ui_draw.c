@@ -12,7 +12,7 @@
 #include "ui_tokens.h"                                /* DUELL 1.1 item 111: the shared header / footer / battery numbers, one set */
 static void draw_menu(void);
 static int name_on(void);                              /* NAME (ui_name.c) */
-static int32_t morph_pending(uint32_t g);              /* the twists building up: MORPH's ROLL, UNDO, GLO's MUTE 1, MUTE 2 (ui_input.c, 4b) */
+static int32_t morph_pending(uint32_t g);              /* the twists building up: MORPH's ROLL, GLO's MUTE 1, MUTE 2 (ui_input.c, 4b) */
 static void name_draw(void);
 static int guide_seen(void);                          /* DUELL 0.2.11: the first-start GUIDE (ui_guide.c, included with ui_layer.c) */
 static void guide_open(uint32_t from_menu);
@@ -2479,7 +2479,7 @@ static void draw_columns(void)
         return;
     }
     TIDE_COLUMNS();                                    /* TIDE hook (TIDE, TIDE LIST) */
-    if (cur_page()->scope == SC_MORPH) {               /* MORPH (fader, ROLL, UNDO, AMOUNT: v3), MORPH SET (SMART ARP PITCH; 0.2.9: TARGET is ALGORITHM's BOTH) */
+    if (cur_page()->scope == SC_MORPH) {               /* MORPH (fader, ROLL, -, AMOUNT: v3; 1.0.0-b5: no UNDO), MORPH SET (SMART ARP PITCH; 0.2.9: TARGET is ALGORITHM's BOTH) */
         uint32_t pi = song.sel, f = morph_fader_of(pi);
         int32_t g;
         if (cur_page()->graph == GR_MORPHSET) {
@@ -2523,8 +2523,7 @@ static void draw_columns(void)
 #endif
         g = morph_pending(0);                          /* ROLL: A left, B right; a twist building up: its way */
         draw_column(1, "ROLL", g < 0 ? "<A" : g > 0 ? "B>" : "A<>B", "", g ? T_ACCENT : VAL(1u), -1, ICON_NONE);
-        g = morph_pending(1);                          /* UNDO: A left, B right, like ROLL; a twist building up: its way */
-        draw_column(2, "UNDO", g < 0 ? "<A" : g > 0 ? "B>" : "A<>B", "", g ? T_ACCENT : VAL(2u), -1, ICON_NONE);
+        draw_column(2, "", "", "", T_THEME, -1, ICON_NONE);   /* (an empty column: KNOB 3 does nothing here since UNDO left, 1.0.0-b5) */
         fmt_int(val, (int32_t)morph_amount_of(pi));
         draw_column(3, "AMOUNT", val, "%", VAL(3u), (int32_t)morph_amount_of(pi) * 10, ICON_PROB);
         return;

@@ -268,7 +268,7 @@ static struct {
         int8_t dir;              /* +1: it went up (the old digit leaves upward), -1: down */
         uint8_t sig;             /* a card: what its value is of (label, unit, track, engine, palette) */
     } roll[5];
-    struct {                     /* DUELL 4b, the twist gestures (ui_input.c morph_gesture): 0 MORPH ROLL, 1 UNDO, 2 GLO MUTE 1, 3 GLO MUTE 2 */
+    struct {                     /* DUELL 4b, the twist gestures (ui_input.c gesture_det): 0 MORPH ROLL, 1 spare (UNDO until 1.0.0-b5), 2 GLO MUTE 1, 3 GLO MUTE 2 */
         int8_t acc[TIDE_MG_N];   /* detents turned in this gesture, signed (a reversal starts anew); TIDE hook: 4 + GLIDE's */
         uint8_t fired[TIDE_MG_N];  /* the gesture fired: its further detents do nothing until the knob rests */
         uint32_t t[TIDE_MG_N];   /* fm1_ms of its last detent */

@@ -11,7 +11,7 @@
 
 static uint8_t morph_fmto[NSHOWN][2][FP_SIZE];          /* MORPH TO on FM6: the target's whole patch per end */
 static uint8_t morph_fmto_k[NSHOWN][2];                  /* .. the tok it is of (0: none) */
-/* main-loop scratch shared by morph_to_sound, morph_fmto_sync, tide_mbv_load and tide_ui.c tide_keep_sound (RAM: .data + .bss is
+/* main-loop scratch shared by morph_to_sound, tide_mbv_load and tide_ui.c tide_keep_sound (RAM: .data + .bss is
  * tight). Lifetimes checked: none of them calls another while it holds these (tide_keep_sound is done with both before its
  * morph_rebase_part, which may reach tide_mbv_load); never from the audio ISR */
 static int16_t tide_v[EXT_P_LEN];
@@ -149,7 +149,6 @@ static int morph_to_sound(uint32_t pi, uint32_t x, uint32_t k)
     j = (mp->top[x] + 1u) % MORPH_HIST;
     memcpy(mp->h[x][j], end, P_COUNT);
     memcpy(mp->hx[x][j % XH], end + XW_BASE, NX);
-    mp->xv[x] = (uint8_t)(mp->xv[x] < XH ? mp->xv[x] + 1u : XH);
     memcpy(mp->fh[x][j], fm ? fend : mp->fb, NFM);
     if (fm)
         tide_fmto_put(pi, x, k + 1u, fv);
@@ -160,29 +159,12 @@ static int morph_to_sound(uint32_t pi, uint32_t x, uint32_t k)
     mp->top[x] = (uint8_t)j;
     if (mp->n[x] < MORPH_HIST)
         mp->n[x]++;
-    if (x) {
+    MORPH_TEST_NEW(pi, x, 0);
+    if (x)
         memset(mp->pin[j % EDITB_PINH], 0, PIN_BYTES);
-        mp->bstay = 0;
-    }
     morph_build(mp);
     MORPH_UNLOCK();
     return 1;
-}
-
-/* the cached target patch of end x again when an UNDO came back to another MORPH TO entry (FM6) */
-static void morph_fmto_sync(uint32_t pi, uint32_t x)
-{
-    uint8_t *fv = tide_fv;
-    morph_part_t *mp = &mph[pi % NSHOWN];
-    uint32_t tk = mp->tok[x & 1u][mp->top[x & 1u]];
-    const ds_sound_t *s;
-    if (!morph_isfm(mp) || !tk || tk == morph_fmto_k[pi % NSHOWN][x & 1u] || !(s = ds_get(eng_idx(mp->eng), tk - 1u)) ||
-        fm6_slot_patch((uint32_t)clamp(ds_value(s, P_E7, 0), 0, 255), fv))
-        return;
-    MORPH_LOCK();
-    tide_fmto_put(pi % NSHOWN, x & 1u, tk, fv);
-    mp->fser++;
-    MORPH_UNLOCK();
 }
 
 /* the factory sound end x of part pi is (MORPH TO), -1 none */

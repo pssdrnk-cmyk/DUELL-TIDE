@@ -68,7 +68,7 @@ static void tide_poll(void);
 #define TIDE_POLL() tide_poll()
 /* H4-H8 (morph.c, main loop unless marked): morph_music.c, morph_fm_shape.c, morph_complement.c and morph_tide.c are included
  * by morph.c; these are the lines morph.c runs for them */
-#define TIDE_PART_FIELDS uint8_t tok[2][MORPH_HIST];    /* MORPH TO: the factory sound each history entry is (index + 1), 0 not one */
+#define TIDE_PART_FIELDS uint8_t tok[2][MORPH_HIST];    /* MORPH TO: the factory sound each end is (index + 1), 0 not one */
 #define TIDE_CFG_BITS() (morph_musical && !(morph.cfg & MC_WILD) ? MC_MUSIC : 0u)   /* the next roll MUSICAL (TIDE LIST's ROLL) */
 #define TIDE_BLK_CFG_OK(c) (!((c) & ~(MC_SET | MC_STEREO | MC_PART | MC_MUSIC)))   /* a saved roll's cfg byte: MUSICAL too */
 #define TIDE_ROLL(mp, pi, x, end, fend, seed, amount, cfg, ndep) tide_roll((mp), (pi), (x), (end), (fend), (seed), (amount), (cfg), (ndep))
@@ -82,7 +82,6 @@ static void tide_poll(void);
                                               (kind) = MK_CONT; } while (0)   /* (MORPH TO: two sounds' loudness blends, no step halfway) */
 #define TIDE_BUILD_FNID(mp) ((mp)->fnid |= (uint8_t)((mp)->tok[0][(mp)->top[0]] | (mp)->tok[1][(mp)->top[1]]))   /* (MORPH TO's FM6 flip) */
 #define TIDE_FM6_TARGET(mp, tr, p, w) tide_fm6_target((mp), (tr), (p), (w))   /* (audio ISR) */
-#define TIDE_UNDO(pi, x) morph_fmto_sync((pi), (x))
 /* ARP ON (WILD): a roll never turns the arp into SEQ, nor a SEQ arp into another mode. SEQ is not an arp's flavour: it decides whether
  * PLAY sounds the part at all (seq.c: the steps only as offsets on held keys), so a roll there silenced a TIDE part (owner, 2026-11-01) */
 #define TIDE_AMODE_KEEP(v) ((v) == AM_SEQ_ID)
@@ -207,7 +206,6 @@ static int tide_foot_two(void);
 #define TIDE_BUILD_KIND(mp, id, kind) ((void)0)
 #define TIDE_BUILD_FNID(mp) ((void)0)
 #define TIDE_FM6_TARGET(mp, tr, p, w) ((void)0)
-#define TIDE_UNDO(pi, x) ((void)0)
 #define TIDE_AMODE_KEEP(v) 0
 #define TIDE_AMODE_END(n) (n)
 #define TIDE_MORPH_PROTOS

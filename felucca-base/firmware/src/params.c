@@ -904,7 +904,7 @@ enum { GR_NONE, GR_ADSR, GR_LFO, GR_STEPS, GR_ARP, GR_SCALE, GR_FX, GR_ROLL, GR_
        GR_SLCR /* (retired: no page, no graph; kept so the ids after it hold) */, GR_MOD, GR_PATS, GR_TOOLS, GR_CHORD, GR_SLICES /* (retired with SLICE, 0.2.9: no page) */, GR_EVENTS,
        GR_FMOP, GR_FMOP2, GR_FMENV, GR_INS,
        GR_ENGINE,        /* GR_ENGINE: EDIT's first page: ENGINE, SOUND, FAV, INIT (SPEC 1.2) */   /* (GR_STEPS: SEQ TOOLS' knobs; GR_FMOP..: FM6's operator pages, ui_fm6op.c) */
-       GR_MORPH, GR_MORPHSET,     /* DUELL 4b: HOME's MORPH (fader, AMOUNT, ROLL, UNDO) and MORPH SET (SMART ARP PITCH; 0.2.9: TARGET is ALGORITHM's BOTH) */
+       GR_MORPH, GR_MORPHSET,     /* DUELL 4b: HOME's MORPH (fader, ROLL, AMOUNT; 1.0.0-b5: no UNDO) and MORPH SET (SMART ARP PITCH; 0.2.9: TARGET is ALGORITHM's BOTH) */
        GR_MODE,                   /* DUELL step 5: HOME's MODE (SPLIT / STEREO / LAYER, SPEC 5b.1) */
        GR_GLO, GR_MIDI, GR_MLEARN,   /* DUELL step 6: GLO (MUTE 1, MUTE 2, the parts' LEVELs and the level meters), MIDI (GR_MIDI: channels, MIDI IN), MIDI LEARN */
        GR_SCHAIN,                    /* DUELL 0.1: SIDECHAIN (the selected part's DUCK SRC / NOTE; was KNOB 3, 4 of the MIDI page) */
@@ -1046,7 +1046,7 @@ static const page_t PAGES[] = {
                                                                              * list, PLAY and CLEAR (ui_events.c) */
     /* HOME's pages, in this order, a tap of HOME (or a SELECT detent) each, then
      * the round again (0.2.14: no OVERVIEW) (ui.c home_tap, page_select). DUELL 3.5 (SPEC 3.5): MORPH is the main page (KNOB 1 the fader A..B, 2
-     * ROLL A / B, 3 UNDO of the far end, 4 AMOUNT: twist gestures past a detent, ui_input.c morph_knob), then MORPH SET (KNOB 1
+     * ROLL A / B, 3 nothing (1.0.0-b5: no UNDO), 4 AMOUNT: a twist past a detent, ui_input.c morph_knob), then MORPH SET (KNOB 1
      * SMART, 2 ARP, 3 PITCH, 4 empty: 0.2.9, TARGET is ALGORITHM's BOTH), the output MODE (SPEC 5b.1: KNOB 1 SPLIT / STEREO / LAYER; core.h duell_mode, kept with
      * the settings: ui_input.c mode_knob, mode_settings), the MIXER (MUTE PAN SPACE LEVEL: the mixer level). No P_* id: the morph is not a
      * parameter */

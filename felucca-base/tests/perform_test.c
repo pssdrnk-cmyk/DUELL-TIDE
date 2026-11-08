@@ -30,6 +30,8 @@
  *   COST      the song's instructions a sample, idle and with each effect (proc_pid_rusage) */
 #define UI_TEST_NO_MAIN 1
 #define UI_TEXT_CAPTURE 1                                 /* (a card read from the texts drawn: ui_test.c card_match) */
+static unsigned char mtn[4][2];                                   /* each end's new values since its sound's load (morph.c MORPH_TEST_NEW; no history to count since 1.0.0-b5) */
+#define MORPH_TEST_NEW(pi, e, reset) (mtn[(pi) & 3u][(e) & 1u] = (unsigned char)((reset) ? 1u : mtn[(pi) & 3u][(e) & 1u] + 1u))
 #define CHO_NOSKIP 1   /* 0.2.21: the plain bus leaves the chorus out of silent blocks (fx_bus.c cho_zrun); the cost checks here measure PERFORM's own stages against an idle mix, and SPACE's send floors would switch the chorus on in it (the always-running chorus of before is what they were set against; chorusskip_test.c proves the skip invisible) */
 #include "ui_test.c"
 #include <sys/wait.h>
@@ -378,10 +380,10 @@ static void t_multiload(void)
 
 
 /* ----------------------------------------------------------------- ROLL --- */
-static uint32_t rolls(uint32_t pi, uint32_t e) { return mph[pi].n[e]; }
+static uint32_t rolls(uint32_t pi, uint32_t e) { return mtn[pi & 3u][e & 1u]; }
 static void t_roll(void)
 {
-    uint32_t a0, a1, b0, b1, k, t0, t1;
+    uint32_t a0, a1, b0, b1, k;
     fresh();
     go_title("AMP ENV");
     perform_on();
@@ -405,8 +407,6 @@ static void t_roll(void)
     turn(EN_ALGO, 1);                                   /* BOTH (0.2.9: the middle) */
     b0 = rolls(0, 1);
     b1 = rolls(1, 1);
-    t0 = mph[0].top[1];                                 /* (the roll count n[] stops at MORPH_HIST since memory trim 1, so two rolls are counted by how far the ring's top moved) */
-    t1 = mph[1].top[1];
     k = wkey(PF_ROLLB);
     key_down(k);
     key_up(k);
@@ -416,9 +416,7 @@ static void t_roll(void)
 #if DUELL_TIDE
     expect("GLIDE TO B (TIDE's ROLL B key, BOTH, pressed twice): the message, no roll on either part", rolls(0, 1) == b0 && rolls(1, 1) == b1 && msg_is("GLIDE TO B"));
 #else
-    expect("ROLL B with BOTH, pressed twice: both parts' end B rolled twice", rolls(0, 1) == (b0 + 2u > MORPH_HIST ? MORPH_HIST : b0 + 2u) && rolls(1, 1) == (b1 + 2u > MORPH_HIST ? MORPH_HIST : b1 + 2u) &&
-                                                                                                    (uint32_t)(mph[0].top[1] - t0 + MORPH_HIST) % MORPH_HIST == 2u % MORPH_HIST &&
-                                                                                                    (uint32_t)(mph[1].top[1] - t1 + MORPH_HIST) % MORPH_HIST == 2u % MORPH_HIST);
+    expect("ROLL B with BOTH, pressed twice: both parts' end B rolled twice", rolls(0, 1) == b0 + 2u && rolls(1, 1) == b1 + 2u);
 #endif
 }
 
