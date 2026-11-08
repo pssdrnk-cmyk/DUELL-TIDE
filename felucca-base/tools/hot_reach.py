@@ -11,7 +11,9 @@ How it knows what the audio block reaches: the disassembly of the linked ELF (bu
 and goto (a tail call) from the roots. The roots are the audio interrupt (fm1_alnk0_irq: audio_block, mix_block and the event dispatch are
 inlined into it), core 1's entry (fm1_c1_main: tc_job_run is inlined into it) and every function already placed in RAM (hot block, X, Z:
 whoever put it there meant it for the audio path, and the engines are called through pointers that a call graph cannot follow). Not
-followed: calls through a function pointer. A function reached only that way and not placed in RAM is invisible to this check.
+followed: calls through a function pointer, and any function whose address is only taken (a dispatch table, a literal-pool word, inline asm,
+a computed jump). A function reached only that way and not placed in RAM is invisible to this check (review finding H1: a new engine voice
+function left in flash and reached only through the engine table passes silently; ROADMAP: K6 follow-up). tests: tools/test_hot_reach.py (host group hotreach).
 
 The graph also reaches note-on, MIDI and sequencer code, because the interrupt dispatches the events: those functions run once per event,
 not per sample, and are in tools/ram_allow.py with that reason. The check cannot tell the two apart; the allow-list can."""
@@ -98,8 +100,9 @@ def check(dis, allow=None):
     allowed = [n for n in flash if n in allow]
     notes.append(f"hot placement: {len(parent)} functions reached from the audio interrupt, core 1 and the RAM-placed code; "
                  f"{len(flash)} in flash, {len(allowed)} allow-listed ({sum(size[n] for n in allowed)} B), {len(flash) - len(allowed)} not")
-    if ram_now:
-        notes.append(f"hot placement: {len(ram_now)} allow-list entries are in RAM now (remove them from tools/ram_allow.py): {', '.join(ram_now[:6])}")
+    if ram_now:                                          # stale: it was moved to RAM, the line no longer says anything true (a hard error so the list cannot rot)
+        errors.append(f"hot placement: {len(ram_now)} allow-list entries are in RAM now, remove them from tools/ram_allow.py: {', '.join(ram_now[:6])}"
+                      + (" ..." if len(ram_now) > 6 else ""))
     if gone:
         notes.append(f"hot placement: {len(gone)} allow-list entries are not in this build (another variant, or gone): {', '.join(gone[:6])}"
                      + (" ..." if len(gone) > 6 else ""))
