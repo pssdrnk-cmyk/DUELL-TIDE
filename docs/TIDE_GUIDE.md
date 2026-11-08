@@ -23,6 +23,8 @@ On these three pages a small dim pill beside part 1's capsule shows the busiest 
 | 3 | UNDO the last roll of the end you rolled. |
 | 4 | AMOUNT: how far a roll may go. *Start: leave it.* The musical roll has its own sensible scale. |
 
+The fader's position (A, 1 to 126, B) is in knob 1's card, like the first value on every other page. The top of the page is kept empty for now, with a quiet line (two with ALGORITHM on BOTH): a picture of the sound's wave is planned there. **Hold SAVE** saves the patch; with ALGORITHM on BOTH each part goes over its own slot.
+
 ## 2. AUTO TIDE (the page you live on)
 
 The screen shows the SOUND and SEQ faders with the glide's path, the 16 steps as they play, and a status line. With both parts the faders sit in two columns, SOUND and SEQ, a row per part. In the steps a hit is a bar (a chord taller), a varied hit is in the accent colour, a hit the variation drops is a dim outline, a tie is a short bar, and a chance step is striped until it has rolled, then solid if it sounded or an outline if it did not. The glide only moves while the transport plays. STOP pauses it; PLAY carries on from there.
