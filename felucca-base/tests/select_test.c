@@ -1570,7 +1570,7 @@ static void test_fxsum(void)
     ui_power_on();
     SETMODE(DM_STEREO);
     /* SENDS OFF (item 125): GLO's CHORUS is the SENDS notice, a knob jumps to MODULES */
-    enter(page_first(FAM_GLO) + 1u);
+    go_title("CHORUS");
     mods_put(MODS_SENDS, 1u);
     frames(48);
     expect("SENDS OFF (item 125): GLO's CHORUS is a SENDS notice page", off_module(cur_page()) == MODS_SENDS);
@@ -1579,7 +1579,7 @@ static void test_fxsum(void)
     expect("  .. a twist of K2 jumps to GLO > MODULES (item 125)", str_eq(cur_page()->title, "MODULES"));
     mods_put(MODS_SENDS, 0u);
     /* the GLO family's pages keep both badges */
-    enter(page_first(FAM_GLO) + 1u);
+    go_title("CHORUS");
     frames(8);
     expect("GLO's CHORUS page: both badges (global scope)", badge_lit() == 3u);
 }
