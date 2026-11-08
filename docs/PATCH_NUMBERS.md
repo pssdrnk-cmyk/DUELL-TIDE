@@ -1,10 +1,10 @@
 # DUELL factory sounds: PATCHES numbers (DUELL 1.1 with TIDE)
 
-The 163 factory sounds in the order the device lists them in PATCHES (TYPE ALL): by category (BASS, LEAD, PAD, PLUCK, KEYS, PERC, FX, OTHER), then engine, then name. **A number up to 128 is a patch slot**: slot #NN holds the factory sound of this list at position NN until you save a sound there (RESTORE brings it back); MIDI program change n loads slot n, #n + 1. Generated from `felucca-base/tools/duell_sounds.py` with the sort in `felucca-base/tools/gen_duell_sounds.py` (`gen_duell_sounds.py --check` prints the same list).
+The 171 factory sounds in the order the device lists them in PATCHES (TYPE ALL): by category (BASS, LEAD, PAD, PLUCK, KEYS, PERC, FX, OTHER), then engine, then name. **A number up to 128 is a patch slot**: slot #NN holds the factory sound of this list at position NN until you save a sound there (RESTORE brings it back); MIDI program change n loads slot n, #n + 1. Generated from `felucca-base/tools/duell_sounds.py` with the sort in `felucca-base/tools/gen_duell_sounds.py` (`gen_duell_sounds.py --check` prints the same list).
 
 **1.0: the factory bank is OSCILL/R's bank** (`felucca-base/tools/factory_bank.duell-patches.json`, imported by `tools/import_bank.py`; each patch exactly as exported, only its TRIM balanced). YO YA is new and CARNIVAL is not in the bank, so #108 to #125 moved by one against 0.2.31.
 
-**Past the 128 (1.1 with TIDE):** #129 to #163 are 35 more factory sounds (the 8 of the dub pack, 24 for TIDE's JRNY: pads, chords, stabs, plucks, textures, and 3 FM6 dub voices: FM HAZE, DUB DRAWBAR, BELL STAB), listed after the 128 so no number of the 128 moves. They are read-only places in PATCHES, not slots: a number past #128 holds no saved sound and SAVE offers USER 1 for it. They can be marked FAV (the star belongs to the sound, not to a slot) and MIDI program change reaches them in bank 2 (bank select CC0 = 0, CC32 = 2): program 0 is #129, program 34 is #163. The same holds for the displaced #125 to #128 for FAV; program change cannot call those four. Their order is the same one: category, engine, name. (With the USER slots, U1 to U4 stand at the places of #125 to #128, which stay listed after the slots.) Adding sounds can move the numbers past #128 (they keep the category order); no number of the 128 moves.
+**Past the 128 (1.1 with TIDE):** #129 to #163 are 35 more factory sounds (the 8 of the dub pack, 24 for TIDE's JRNY: pads, chords, stabs, plucks, textures, and 3 FM6 dub voices: FM HAZE, DUB DRAWBAR, BELL STAB), listed after the 128 so no number of the 128 moves. They are read-only places in PATCHES, not slots: a number past #128 holds no saved sound and SAVE offers USER 1 for it. They can be marked FAV (the star belongs to the sound, not to a slot) and MIDI program change reaches them in bank 2 (bank select CC0 = 0, CC32 = 2): program 0 is #129, program 34 is #163. The same holds for the displaced #125 to #128 for FAV; program change cannot call those four. Their order is the same one: category, engine, name. (With the USER slots, U1 to U4 stand at the places of #125 to #128, which stay listed after the slots.) From #164 on (1.0.0-b2: the eight drones, #164 to #171, MIDI bank 2 programs 35 to 42) a sound is added at the end, in the order it was added, so no number up to #163 moves either.
 
 | PATCHES # | Name |
 |---|---|
@@ -171,3 +171,11 @@ The 163 factory sounds in the order the device lists them in PATCHES (TYPE ALL):
 | 161 | NIGHT DRONE |
 | 162 | DUST BED |
 | 163 | TAPE HISS |
+| 164 | SAND THROAT |
+| 165 | HORN SWELL |
+| 166 | NEON BRASS |
+| 167 | RAIN STRINGS |
+| 168 | VOID SHIMMER |
+| 169 | SOLAR WIND |
+| 170 | GRID HUM |
+| 171 | IRON WORKS |
