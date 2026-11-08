@@ -566,6 +566,8 @@ static void lint(void)
         }
         for (j = i + 1u; j < nscr; j++) {
             const rbox_t *o = &scr[j];
+            if (((b->flags | o->flags) & 32u) && b->y0 >= 180 && o->y0 >= 180)
+                continue;                              /* item 120: the footer's scrolling patch name runs under the tempo, the REC mark and the counter by design (draw_foot clears their margins and draws them over it) */
             if (b->x0 < o->x1 && o->x0 < b->x1 && b->y0 < o->y1 && o->y0 < b->y1) finding("overlaps", b, o);
         }
         for (j = 0; j < nrules; j++) {               /* a divider is a cell edge: nothing on it */
