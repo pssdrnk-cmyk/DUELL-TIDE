@@ -2381,15 +2381,14 @@ static void graph_pats(void)
         list_row1(UT_L5_Y0 + UT_L5_PITCH * (int32_t)e, e == pk, tag, nm, T_TEXT, ln, T_MID, "", T_MID, pat_last[song.sel % NTRK] == s + 1u, 0);
     }
 }
-/* the panel under the cards: the picked entry's preview, a canvas of rows LP_Y .. LP_Y + LP_H - 1, a hairline on its top row. A multi: the part bands (the part's number on its colour chip, the sound's name, the
+/* the panel under the cards: the picked entry's preview, a canvas of rows LP_Y .. LP_Y + LP_H - 1 (b4, UI audit 4: no hairline over it, no rules). A multi: the part bands (the part's number on its colour chip, the sound's name, the
  * mode box, the 16 bars or NO SEQUENCE); a pattern: the tall bars */
-static void list_panel(int pats)
+static __attribute__((noinline)) void list_panel(int pats)   /* (out of line: inlined into draw_graph it cost ~270 B of flash once its hairline went, b4 UI audit 4) */
 {
     uint32_t t;
     cv_begin(240, LP_H, T_BG);
     cv_bg = T_BG;
     cv_oy = -LP_Y;
-    cv_rect(UT_L5_X, LP_Y, UT_L5_W, 1, T_LINE);
     if (pats) {
         uint32_t cur = pat_pick();
         if (gpp_key != (cur | ps_gen() << 8)) {
@@ -2709,15 +2708,15 @@ static void graph_morph(void)
     char b[8];
     khint_t kh[3];
 #if DUELL_TIDE
-    if (grid_on) {   /* TIDE (1.0.0-b4): the wave card's place (planned), for now a calm flat rule across the middle of each part's rows, the full width (ARP's empty
-                      * picture: T_RAISE, 1 px, x 0..239); BOTH: part 1's above, part 2's below, as the field had them. No title: MORPH is K1's card label (ui_draw.c), so the rows start at the
+    if (grid_on) {   /* TIDE (1.0.0-b4): the wave card's place (planned), for now a calm flat rule across the middle of each part's rows, the panel's width (ARP's empty
+                      * picture: T_RAISE, 1 px, x 10..229, as every picture's zero line); BOTH: part 1's above, part 2's below, as the field had them. No title: MORPH is K1's card label (ui_draw.c), so the rows start at the
                       * picture's top. HOLD SAVE = SAVE PATCH left aligned at the bottom, as before (ui_tokens.h UT_GR_NOTE_*) */
         const int32_t y0 = 2, y1 = 62;
         if (both) {
-            cv_rect(0, (3 * y0 + y1) / 4, 240, 1, T_RAISE);
-            cv_rect(0, (y0 + 3 * y1) / 4, 240, 1, T_RAISE);
+            cv_rect(PANEL_X0, (3 * y0 + y1) / 4, PANEL_W, 1, T_RAISE);
+            cv_rect(PANEL_X0, (y0 + 3 * y1) / 4, PANEL_W, 1, T_RAISE);
         } else {
-            cv_rect(0, (y0 + y1) / 2, 240, 1, T_RAISE);
+            cv_rect(PANEL_X0, (y0 + y1) / 2, PANEL_W, 1, T_RAISE);
         }
         cv_text_on(UT_GR_NOTE_X, UT_TY(S, UT_GR_NOTE_BASE - UT_GR_Y), &AF_S, "HOLD SAVE = SAVE PATCH", T_DIM, T_BG);
         return;
@@ -3012,7 +3011,7 @@ static void graph_mlearn(void)
         ml_name(a);
         cv_text_grad(12, 8, &AF_L, a, 12);
         cv_text(12, 38, &AF_M, "Send a CC", T_TEXT);
-        cv_free_hint(12, 60, "[OCT+] Done", T_TEXT, T_BG, 200);
+        cv_free_hint(12, 60, "[OCT+] DONE", T_TEXT, T_BG, 200);
         cv_free_hint(12, 80, "[OCT-] Clears its CC", T_TEXT, T_BG, 200);
     }
 }
@@ -3099,7 +3098,7 @@ static void draw_graph(void)
             if (arp_drawn(t))
                 graph_arp(t, c);
             else                                     /* MODE OFF or SEQ: the calm flat baseline across the area's middle (the picture), not the live output scope */
-                cv_rect(0, ay + ah / 2, 240, 1, T_RAISE);
+                cv_rect(PANEL_X0, ay + ah / 2, PANEL_W, 1, T_RAISE);   /* (b4, UI audit 4: the panel's width, as every picture's zero line and MORPH's placeholder; no full-bleed rule) */
         } else if (pg->graph == GR_EVENTS)
             graph_events();
         else if (pg->graph == GR_ROLL)

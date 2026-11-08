@@ -17,7 +17,7 @@
 #define TIDE_G_GLIDE 4u                                  /* ui.mg gestures: 0..3 are MORPH's and GLO's (ui.c: TIDE_MG_N of them) */
 
 static const char *const GL_TARGET_NAME[3] = {"SOUND", "SEQ", "BOTH"};
-static const char *const GL_MODE_NAME[5] = {"ONCE", "LOOP", "DRIFT", "WNDR", "JRNY"};
+static const char *const GL_MODE_NAME[5] = {"ONCE", "LOOP", "DRIFT", "WANDER", "JOURNEY"}   /* (b4, UI audit 6: the full words, as the guide; the card falls back to the small face) */;
 
 static void tide_wait_text(char *val, uint32_t n, const char **unit)   /* unit may be NULL */
 {
@@ -189,7 +189,7 @@ static __attribute__((noinline)) const char *jl_needs(uint32_t r)
         return 0;
     if (r >= JL_XFADE)                                   /* XFADE and SPLIT are LAYER's only */
         return duell_mode_req == DM_LAYER ? 0 : "LAYER ONLY";
-    return gl.mode < GM_WANDER ? "WNDR OR JRNY" : !morph_musical ? "ROLL MUSIC" : gl.target == GT_SOUND ? "TARGET SEQ" : 0;   /* (what the row needs, short: knob 1's line has 91 px after "SETTING TURNS") */
+    return gl.mode < GM_WANDER ? "WNDR OR JRNY" : !morph_musical ? "ROLL MUSIC" : gl.target == GT_SOUND ? "TARGET SEQ" : 0;   /* (what the row needs, short: knob 1's line has 91 px after "SETTING TURNS"; WANDER / JOURNEY in full do not fit, so the short names stay here only) */
 }
 /* does row r's value draw dim (it does nothing now)? nd: jl_needs(JL_TURNS). MODE always acts; XFADE and SPLIT need LAYER; TURNS .. ARC need nd (tests/mode_test.c checks this) */
 static int jl_dimmed(uint32_t r, const char *nd)
@@ -201,12 +201,12 @@ static int jl_dimmed(uint32_t r, const char *nd)
 static const uint8_t JL_NV[JL_N] = {7, 3, 2, 3, 2, 2, 4, 3, 3, 3, 3, 2, 3, 101, 129};   /* (XFADE 101: mix_xf 0..100 %; SPLIT 129: mix_split 0 = OFF, then note + 1 up to 128) */
 static volatile uint8_t *const JL_VAR[JL_N] = {[JL_STYLE] = &tide_style, [JL_TARGET] = &gl.target, [JL_VARY] = &sqm_vary_all, [JL_WASH] = &morph_wlvl,
                                                [JL_TURNS] = &sqm_turns, [JL_POLY] = &sqm_poly, [JL_SYNC] = &sqm_sync, [JL_ARC] = &sqm_arc, [JL_REC] = &tide_rec_replace};   /* (REC is no part of a STYLE: seq.c, live recording) */
-static const char *const JL_V[] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK", "DRONE", "CUSTOM", "SOUND", "SEQ", "SND+SEQ", "EVERY 4TH", "EVERY BAR", "MUSIC", "SMART", "WILD",
+static const char *const JL_V[] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK", "DRONE", "CUSTOM", "SOUND", "SEQ", "BOTH", "EVERY 4TH", "EVERY BAR", "MUSIC", "SMART", "WILD",
                                    "OFF", "ON", "OFF", "ON", "OFF", "LOW", "MID", "HIGH", "TOGETHER", "TAKE TURNS", "LEAD", "OFF", "GENTLE", "WIDE",
                                    "OFF", "SOFT", "PUSH", "OFF", "RISE", "DROP", "LAYER", "STEREO", "DUEL", "ADD", "REPLACE"};
 static const uint8_t JL_V0[JL_N] = {0, 7, 10, 12, 15, 17, 19, 23, 26, 29, 32, 38, 35, 0, 0};   /* (each row's first name in JL_V) */
 static const char *const JL_SAY[JL_N] = {"STYLE ", 0, 0, "", "", "", "WASH ", 0, "POLY ", "SYNC ", "ARC ", "REC ", 0, 0, 0};
-static const char *const JL_OWN[8] = {"GLIDE SOUND", "GLIDE SEQ", "GLIDE SOUND + SEQ", "VARY EVERY 4TH", "VARY EVERY BAR",
+static const char *const JL_OWN[8] = {"GLIDE SOUND", "GLIDE SEQ", "GLIDE BOTH", "VARY EVERY 4TH", "VARY EVERY BAR",
                                       "PARTS VARY TOGETHER", "PARTS TAKE TURNS", "PARTS LEAD IN TURNS"};
 static uint32_t jl_n(uint32_t r) { return JL_NV[r % JL_N]; }
 static uint32_t jl_get(uint32_t r)
@@ -585,7 +585,7 @@ static __attribute__((noinline)) void tide_frac(char *l, uint32_t a, uint32_t b)
 /* AUTO TIDE's status line: what the glide does now, with its bar ("WNDR TO B  3/8", "WAITING  1/4"); stopped, the part(s) */
 static void tide_status(char *l)
 {
-    static const char *const ST[5] = {"GLIDING", "LOOPING", "DRIFTING", "WNDR", "JRNY"};
+    static const char *const ST[5] = {"GLIDING", "LOOPING", "DRIFTING", "WANDERING", "JOURNEY"};
     uint32_t bars = gl.hold ? GLIDE_WAIT_BARS[gl.wait % GLIDE_WAITS] : glide_trip_bars(), at = ((gl.prog * bars) >> GLIDE_Q) + 1u;
     if (!glide_running())
         str_cpy(l, tide_both() ? "BOTH PARTS" : song.sel ? "PART 2" : "PART 1", 40);

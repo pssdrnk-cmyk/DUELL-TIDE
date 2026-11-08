@@ -632,11 +632,13 @@ static int cpu_head_on(int glob, int msg)              /* K2: HOME's three pages
 {
     return !glob && !msg && tide_foot_parts() && !ui.menu && !ui.guide && !ui.confirm;
 }
-/* K2: the header's CPU readout as a pill of the capsules' rows, outline and radius holding a small number (S, its ink centred, on the capsules' baseline), 7 px a figure + 9
- * (one figure 16 px: as wide as tall; three 30 px: the room between a capsule and TIDE SETTINGS less 2 px each side); x < 0: it ends at -x */
+/* K2: the header's CPU readout as a pill of the capsules' rows and radius holding a small number (S, its ink centred, on the capsules' baseline), 7 px a figure + 5, at least
+ * as wide as tall (b4, UI audit 22: UT_TITLE_GAP from the capsule, no outline, so it is no third cell of it; three figures 26 px: x 47 .. 72, 3 px before TIDE SETTINGS); x < 0: it ends at -x */
 static void k2_pill(int32_t x, const char *s, uint16_t edge, uint16_t fill, uint16_t ink)
 {
-    int32_t w = (int32_t)str_len(s) * 7 + 9;
+    int32_t w = (int32_t)str_len(s) * 7 + 5;
+    if (w < UT_CAP_H)
+        w = UT_CAP_H;
     if (x < 0)
         x = -x - w;
     cv_rrect(x, UT_CAP_Y, w, UT_CAP_H, UT_CAP_R, edge, T_BG);
@@ -701,10 +703,10 @@ static void draw_head(void)
         head_title_draw(tb, glob);
     }
 #if DUELL_TIDE
-    if (cpk) {                                         /* K2: the elapsed peak in a dim outlined pill 2 px right of part 1's capsule; the missed periods, only when there are any, in a REC red badge 2 px left of part 2's */
-        k2_pill(CAP_X + CAP_W + 2, cps, T_DIM, T_BG, T_MID);
+    if (cpk) {                                         /* K2: the elapsed peak in a T_RAISE pill UT_TITLE_GAP right of part 1's capsule; the missed periods, only when there are any, in a REC red badge UT_TITLE_GAP left of part 2's */
+        k2_pill(CAP_X + CAP_W + UT_TITLE_GAP, cps, T_RAISE, T_RAISE, T_MID);
         if (cms[0] != '0')
-            k2_pill(-(240 - CAP_X - CAP_W - 2), cms, T_REC, T_REC, T_BG);
+            k2_pill(-(240 - CAP_X - CAP_W - UT_TITLE_GAP), cms, T_REC, T_REC, T_BG);
     }
 #endif
     /* (owner V9: no rule under any title; the gradient stays on the title text, values and bars) */
@@ -2061,8 +2063,9 @@ static void draw_foot(void)
     if (ui.ml.on) {                               /* row 1: MIDI LEARN's line, OCT+ DONE at the right (the one way out) */
         khint_t kh = {KC_OCTUP, "DONE"};
         int32_t kw = kh_w(KC_OCTUP, "DONE");
-        cv_free_text(8, 2, &AF_S, ln, T_ACCENT, T_BG, 232 - kw - 8 - 8);
-        cv_key_row(232 - kw, 232, 2, &kh, 1, 1u, T_BG);
+        int32_t f1 = UT_FOOT_BASE - 15 - Y_FOOT - AF_S_CAP_Y - AF_S_CAP_H + 1;   /* (b4, UI audit 3: row 1's baseline, as TIDE's part-1 row; at row 2 the capitals' last two rows were under row 2's names) */
+        cv_free_text(8, f1, &AF_S, ln, T_ACCENT, T_BG, 232 - kw - 8 - 8);
+        cv_key_row(232 - kw, 232, f1, &kh, 1, 1u, T_BG);
     } else if (pfl[0]) {                               /* PERFORM: SELECT = BALANCE and */
         cv_oy = 0;                                    /* (item 120: one line each, left aligned: both on one row are 265 px of 224) */
         cv_text(8, 0, &AF_S, pfl, T_MID);             /* ALGORITHM = the part(s) MORPH and ROLL act on (the steps are not the page's) */
@@ -2571,7 +2574,8 @@ static void draw_columns(void)
                     str_cpy(ds, "Duck source: ", sizeof ds);
                     str_cpy(ds + str_len(ds), val_shown(&TP[P_DKSRC], N_DKSRC[(uint32_t)clamp(trk[c >> 1].p[P_DKSRC], 0, 3)]), (uint32_t)sizeof ds - str_len(ds));
                     for (n = 13; ds[n]; n++)
-                        ds[n] = (char)(ds[n] >= 'A' && ds[n] <= 'Z' ? ds[n] + 32 : ds[n] == '\n' ? ' ' : ds[n]);
+                        if (ds[n] == '\n')                   /* (b4, UI audit 8: the value in its own capitals, as the card shows it; no lower-casing) */
+                            ds[n] = ' ';
                     grid_d = ds;
                     n = sc_midi[c];
                 }
@@ -2581,7 +2585,7 @@ static void draw_columns(void)
         }
         {
             uint32_t sel = song.g[G_ROUTE] == 1, k, n = midi_cards(vis), mm = duell_mode_req < DM_N ? duell_mode_req : DM_SPLIT;
-            static const char *const WH[3][2] = {{"Duel: left output", "Duel: right output"}, {"Stereo output", "Stereo output"}, {"Layer: plays both parts", "Layer: not heard, use P1 CH"}};
+            static const char *const WH[3][2] = {{"Duel: left output", "Duel: right output"}, {"Stereo output", "Stereo output"}, {"Layer: plays both parts", "Layer: not heard, use PART 1"}};
             grid_wide = 1;
             for (c = 0; c < 4u; c++) {                 /* the parts' channels (not shown when SELECTED listens on one channel; part 2 in LAYER), MIDI IN; T0227: moved left */
                 k = c < n ? vis[c] : 0xFFu;
@@ -3125,8 +3129,8 @@ static void confirm_text(char *a, char *b)          /* a, b hold 32 */
     b[0] = 0;
     switch (ui.confirm) {
     case CF_CLEAR_TRK:
-        str_cpy(a, "CLEAR TRACK 1?", 24);
-        a[12] = (char)('1' + k % NTRK);
+        str_cpy(a, "CLEAR PART 1?", 32);
+        a[11] = (char)('1' + k % NTRK);
         break;
     case CF_OVR_PROJ:                                   /* MULTI: SAVE over a used multi */
         str_cpy(a, "OVERWRITE ", 24);
@@ -3199,7 +3203,8 @@ static void confirm_text(char *a, char *b)          /* a, b hold 32 */
         break;
     }
     case CF_CLEAR_MOTION:
-        str_cpy(a, "CLEAR T1 PARAMETER LOCKS?", 32); a[7] = (char)('1' + k % NTRK);
+        str_cpy(a, "CLEAR PARAMETER LOCKS?", 32);     /* (the part on the second line: "CLEAR PART 2 PARAMETER LOCKS?" is wider than the dialog) */
+        str_cpy(b, "PART 1", 32); b[5] = (char)('1' + k % NTRK);
         break;
     case CF_RESTORE_ALL:                            /* SAVE > TOOLS: every slot back to its factory sound */
         str_cpy(a, "RESTORE ALL PATCHES?", 32);
@@ -3207,8 +3212,8 @@ static void confirm_text(char *a, char *b)          /* a, b hold 32 */
         break;
     case CF_LOAD_PAT: {
         char tag[4];
-        str_cpy(a, "REPLACE T1 SEQUENCE?", 24);
-        a[9] = (char)('1' + k % NTRK);
+        str_cpy(a, "REPLACE PART 1 SEQUENCE?", 32);
+        a[13] = (char)('1' + k % NTRK);
         pat_label(pat_pick(), tag, b);               /* with the slot picked ("MELODY", "SAVED") */
         {
             char nm[13];
@@ -3220,8 +3225,8 @@ static void confirm_text(char *a, char *b)          /* a, b hold 32 */
         break;
     }
     default:
-        str_cpy(a, "CLEAR T1 SEQUENCE?", 24);     /* the header (T1..T4) is hidden */
-        a[7] = (char)('1' + k % NTRK);
+        str_cpy(a, "CLEAR PART 1 SEQUENCE?", 32);     /* the header is hidden (b4, UI audit 5: the part is "PART n" everywhere) */
+        a[11] = (char)('1' + k % NTRK);
         break;
     }
 }

@@ -177,7 +177,7 @@ static const menu_flag_t MENU_FLAGS[] = {
                                                        /* (1.2's SCOPE OUT / MIX, ui_prefs2 bit 0: removed in DUELL 0.2.14, the bit ignored) */
     {MI_PREVIEW, PREF_PREVIEW, {"OFF", "ON"}},         /* 1.2, Discussion #169: ON, the cursor's step sounds (ui_input.c) */
     {MI_CPU, PREF_CPU_OFF, {"ON", "OFF"}},             /* DUELL 0.2.9: OFF, no CPU bar under the header's battery (ui_draw.c); bit clear = ON, as every older setting */
-    {MI_MODERECALL, PREF_MODE_RECALL, {"KEEPS MODE", "SETS MODE"}},   /* DUELL 0.2.11 MODE RECALL, 0.2.14 MULTI LOAD: KEEPS MODE (default, bit clear) a multi load
+    {MI_MODERECALL, PREF_MODE_RECALL, TIDE_MLOAD_NAMES},   /* TIDE hook */   /* DUELL 0.2.11 MODE RECALL, 0.2.14 MULTI LOAD: KEEPS MODE (default, bit clear) a multi load
                                                        * leaves MODE, XFADE and SPLIT (the MODE page; TIDE: their TIDE SETTINGS rows) as they are; SETS MODE, it sets the ones saved in the multi (multi.c) */
     {MI_CHADD, PREF_CHORD_ADD, {"WRITE", "ADD"}},      /* 1.2, #155 CHORD ENTRY HOLD / ADD, 0.2.14 STEP KEYS WRITE / ADD: ADD, keys add to the cursor step (ui_input.c) */
 };
@@ -198,7 +198,7 @@ static const uint8_t ANIM_ORD[3] = {1, 0, 2};          /* (a value's place in th
  * its byte [15][26] kept as stored) */
 /* HOME OPENS (DUELL): the page the HOME button opens from another page, power-on and leaving the menu (ui.c go_main): MORPH (the
  * default, stored 0), MODE, MIXER; ui_home_pg (ui.c), an unknown stored code reads as MORPH (0.2.14: OVERVIEW's 3 too) */
-static const char *const HOMEPG_N[HP_COUNT] = {TIDE_HOME_NAME, "MODE"};   /* TIDE hook */   /* (0.2.25: MIXER left HOME for GLO; a stored MIXER reads MORPH) */
+static const char *const HOMEPG_N[HP_COUNT] = {TIDE_HOME_NAME, TIDE_HOME_MODE_NAME};   /* TIDE hooks */   /* (0.2.25: MIXER left HOME for GLO; a stored MIXER reads MORPH) */
 /* (SCALE LINK, a CONTROL row of 0.2.1 builds before the global scale, is RETIRED: the scale is the instrument's, core.h; the editor protocol never
  * listed it, so no id is lost) */
 

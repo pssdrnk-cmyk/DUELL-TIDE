@@ -11,8 +11,8 @@ One page: what each TIDE setting does, in short. The full detail is in the [TIDE
 | ONCE | One trip from A to B, then it stays. | A single build or transition. |
 | LOOP | Back and forth between the same A and B. | A steady two-state groove. |
 | DRIFT | The end it just left is rolled anew around your sound. | Small, endless variations of one sound. |
-| WNDR (wander) | Walks a little further from your sound each trip, always measured from your original, so it can't run away. | Slow evolution that stays recognisable. |
-| JRNY (journey) | Travels through other factory sounds of the same engine and the same role (pad stays pad, bass stays bass). | Long sets that change sound over time. **Default.** |
+| WANDER | Walks a little further from your sound each trip, always measured from your original, so it can't run away. | Slow evolution that stays recognisable. |
+| JOURNEY | Travels through other factory sounds of the same engine and the same role (pad stays pad, bass stays bass). | Long sets that change sound over time. **Default.** |
 
 TIME (K3) is how many bars one trip takes; WAIT (K4) is how many bars it rests at each arrival.
 
@@ -28,15 +28,15 @@ TIME (K3) is how many bars one trip takes; WAIT (K4) is how many bars it rests a
 | **SYNC** | OFF, **SOFT**, PUSH | Pattern edits lean hits towards the off-beat 8th, with an occasional push into the beat (SOFT one a bar, PUSH two). Beats never move. |
 | **ARC** | OFF, **RISE**, DROP | A 32 to 64 bar shape: builds up (more syncopation, brighter), peaks, eases into a breakdown, recovers. DROP also drops out (no new notes for two bars) on about half of the arcs. Hand drop: hold OCT- and turn K2 on AUTO TIDE. |
 
-TURNS, POLY, SYNC and ARC work only while the tide runs in WNDR or JRNY with ROLL MUSIC and the pattern in TARGET (SND+SEQ or SEQ). Otherwise their values are dim and the top line says what's missing.
+TURNS, POLY, SYNC and ARC work only while the tide runs in WANDER or JOURNEY with ROLL MUSIC and the pattern in TARGET (BOTH or SEQ). Otherwise their values are dim and the top line says what's missing.
 
 ## The six STYLEs
 
 | Style | Mode | TIME | WAIT | VARY | TURNS | POLY | SYNC | ARC | WASH | Feel |
 |---|---|---|---|---|---|---|---|---|---|---|
-| DUB | JRNY | 16 | 2 | 4TH | LEAD | GENTLE | SOFT | RISE | OFF | Dub-techno: slow journey, call and answer. |
-| DEEP | WNDR | 32 | 4 | 4TH | TAKE TURNS | OFF | SOFT | RISE | LOW | Long, deep, stays close to your sound. |
-| MINIMAL | WNDR | 8 | OFF | BAR | LEAD | WIDE | PUSH | OFF | OFF | Busy, shifting, polymetric. |
-| AMBIENT | JRNY | 64 | 8 | 4TH | TOGETHER | GENTLE | OFF | OFF | HIGH | Very slow, washy, no groove tricks. |
-| PEAK | JRNY | 8 | OFF | BAR | LEAD | GENTLE | PUSH | DROP | OFF | Fast changes, pushes, drops. |
-| DRONE | WNDR | 64 | OFF | 4TH | TOGETHER | OFF | OFF | OFF | HIGH | For a held drone chord: always moving, slowly, around your own sound; nothing rhythmic. Since 1.0.0-b4. |
+| DUB | JOURNEY | 16 | 2 | 4TH | LEAD | GENTLE | SOFT | RISE | OFF | Dub-techno: slow journey, call and answer. |
+| DEEP | WANDER | 32 | 4 | 4TH | TAKE TURNS | OFF | SOFT | RISE | LOW | Long, deep, stays close to your sound. |
+| MINIMAL | WANDER | 8 | OFF | BAR | LEAD | WIDE | PUSH | OFF | OFF | Busy, shifting, polymetric. |
+| AMBIENT | JOURNEY | 64 | 8 | 4TH | TOGETHER | GENTLE | OFF | OFF | HIGH | Very slow, washy, no groove tricks. |
+| PEAK | JOURNEY | 8 | OFF | BAR | LEAD | GENTLE | PUSH | DROP | OFF | Fast changes, pushes, drops. |
+| DRONE | WANDER | 64 | OFF | 4TH | TOGETHER | OFF | OFF | OFF | HIGH | For a held drone chord: always moving, slowly, around your own sound; nothing rhythmic. Since 1.0.0-b4. |

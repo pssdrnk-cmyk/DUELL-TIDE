@@ -173,7 +173,7 @@ static uint32_t ux_cr(uint16_t a, uint16_t b)
     return (x + 3251u) * 100u / (y + 3251u);
 }
 /* the colour for a text of part colour c on bg: c itself, or the primary text colour where c would be hard to read (< 3:1) */
-static uint16_t vt(uint16_t c, uint16_t bg) { return ux_cr(c, bg) >= 300u ? c : ux.text; }
+static uint16_t vt(uint16_t c, uint16_t bg) { return ux_cr(c, bg) >= 300u ? c : c == ux.dim ? ux.mid : ux.text; }   /* (a dim value stays secondary: the label grey, not the full text colour; audit UI 1) */
 /* the stroke floor (T10): a part colour drawn as a curve, gauge or bar is moved toward the text colour in 10 % steps until it
  * reaches 3:1 on the background and on the panel (the text floor of vt(); tools/gen_ui_palettes.py mirrors this) */
 static uint16_t ux_stroke(uint16_t c, uint16_t bg, uint16_t sf, uint16_t tx)

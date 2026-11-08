@@ -863,7 +863,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_MIDI_LEARN_ON, S_MIDI_LEARN_PICK, S_MIDI_LEARN_CC, S_ABOUT_SCROLL, S_TEST, S_TEST_ALARM, S_SCL_CHROM, S_SCL_CHROM_PLAY,
        S_CHORD_NOSCALE, S_CHORD_NOSCALE7, S_PERFORM, S_PERFORM_HELD, S_PERFORM_SLOW, S_PERFORM_NOCLK, S_PERFORM_LAYER, S_MOD_WAVE,
        S_MOD_WAVE_SYNC, S_MOD_WAVE_E7, S_MOD_BUS, S_MOD_BUS_STEREO, S_MOD_INS_OFF, S_MOD_INS_FUZZ, S_MOD_PAN_DUEL, S_MOD_RETIRED,
-       S_GUIDE1, S_GUIDE2, S_GUIDE3, S_GUIDE4, S_GUIDE5, S_GUIDE6, S_GUIDE_MSG, S_GUIDE_KNOB, S_GUIDE_OCT, S_GUIDE_ROW,
+       S_GUIDE1, S_GUIDE2, S_GUIDE3, S_GUIDE4, S_GUIDE5, S_GUIDE_MSG, S_GUIDE_KNOB, S_GUIDE_OCT, S_GUIDE_ROW,
        S_QUICK_FILTER, S_QUICK_GLO, S_MULTIS, S_MULTIS2, S_MULTIS3, S_PSLOT_NOSEQ, S_MODULES, S_MODULES_OFF, S_MODS_FX, S_MODS_ARP, S_MODS_ARP_SEQ,
        S_MODS_MIXER, S_MODS_PERFORM, S_MODS_SCHAIN, S_MODS_AUTO, S_MODS_QUICK_ARP, S_MODS_MSG, S_TOOLS_RESTORE, S_PATCH_SAVE_BOTH, S_CONFIRM_RESTORE_ALL, S_PATCH_SAVE_NAMED, S_NAME_SAVE_PATCH, S_FXSUM, S_FXSUM_DUEL,
        S_EQ_CURVE, S_EQ_CURVE2, S_COMP_CURVE, S_COMP_OFF, S_SMASTER, S_SMASTER_WIDE, S_FILT_MULTI, S_FILT_MULTI24, S_FILT_VCF, S_ARP_PATTERN, S_ARP_CHORD, S_SIDECHAIN_PARTS, S_VOICE_PATCH, S_OCTAVE, S_SPLASH_FIRST, S_GUIDE_MENU, S_ENGINE_LOFI, S_ENGINE_PHASE, S_ENGINE_VOICE, S_ENGINE_TRIO, S_ENGINE_PHYS, S_ENGINE_NOISE, S_ENGINE_WAVE, S_ENGINE_WHEEL, S_CAPSULES, S_STEREO_HOME, S_ENGINE_LIST, S_MODE_DUEL, S_SUB, S_EDIT_WAVE1, S_EDIT_VOICE1, S_CYCLE, S_TWIN, S_ABOUT_TOP, S_CYCLE2, S_CYCLE2_ALL, S_MIXER4, S_MOD_LONG, S_CONFIRM_ERASE_ALL, S_OFF_ARP, S_OFF_SEQ, S_OFF_SENDS, S_OFF_PFX, S_OFF_QARP, S_OFF_QSEQ, S_TIDE, S_TIDE_GLIDE, S_TIDE_BOTH, S_TIDE_BOTH_GLIDE, S_TIDE_WAIT, S_HEAD_MARKS, S_MULTIS_DAMAGED, S_PATCHES_DRONE, S_COUNT };
@@ -894,7 +894,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
     "midi_learn_off", "midi_learn_on", "midi_learn_pick", "midi_learn_cc", "about_scroll", "test", "test_alarm", "scl_chromatic",
     "scl_chromatic_play", "chord_noscale", "chord_noscale7", "perform", "perform_held", "perform_slow", "perform_noclock",
     "perform_layer", "mod_wave", "mod_wave_sync", "mod_wave_e7", "mod_bus", "mod_bus_stereo", "mod_ins_off", "mod_ins_fuzz",
-    "mod_pan_duel", "mod_retired", "guide_1", "guide_2", "guide_3", "guide_4", "guide_5", "guide_6", "guide_message", "guide_knob",
+    "mod_pan_duel", "mod_retired", "guide_1", "guide_2", "guide_3", "guide_4", "guide_5", "guide_message", "guide_knob",
     "guide_octave", "menu_guide_row", "layer_quick_filter", "quick_glo", "multis", "multis_2", "multis_3", "pslot_noseq", "modules", "modules_off", "mods_fx",
     "mods_arp", "mods_arp_seq", "mods_mixer", "mods_perform", "mods_schain", "mods_auto", "mods_quick_arp", "mods_msg", "tools_restore", "patches_save_both", "confirm_restore_all", "patches_save_named", "name_save_patch", "fxsum", "fxsum_duel",
     "eq_curve", "eq_curve2", "comp_curve", "comp_off", "stereo_master", "stereo_master_wide", "filt_multi", "filt_multi24", "filt_vcf", "arp_pattern", "arp_chord", "sidechain_parts", "voice_patch", "octave", "splash_first", "guide_menu", "engine_lofi", "engine_phase", "engine_voice", "engine_trio", "engine_phys", "engine_noise", "engine_wave", "engine_wheel", "capsules", "stereo_home", "engine_list", "mode_duel", "sub", "edit_wave1", "edit_voice1", "cycle", "twin", "about_top", "cycle2", "cycle2_all", "mixer4", "mod_long", "confirm_erase_all", "off_arp", "off_seq", "off_sends", "off_pfx", "off_quick_arp", "off_quick_seq", "tide", "tide_glide", "tide_both", "tide_both_glide", "tide_wait", "head_marks", "multis_damaged", "patches_drone"};
@@ -1128,7 +1128,7 @@ static void setup(int s)
     case S_MOD_PAN_DUEL: mslot_ui(0, MS_LFO, MD_PAN, 63); mslot_ui(1, MS_LFO, MD_LEVEL, 20); mod_ui_slot = 0; go_title("MATRIX 1-4"); break;
     /* DUELL 0.2.11: the first-start GUIDE's pages (ui_guide.c) over HOME's page, a message in its header (REC: HOLD ON), the octave beside its
      * title with BOTH lit (over the MORPH page), the MENU's GUIDE row */
-    case S_GUIDE1: case S_GUIDE2: case S_GUIDE3: case S_GUIDE4: case S_GUIDE5: case S_GUIDE6:
+    case S_GUIDE1: case S_GUIDE2: case S_GUIDE3: case S_GUIDE4: case S_GUIDE5:   /* (GUIDE_N 5: no sixth page; b4, UI audit 10) */
         go_home(); guide_open(0); ui.guide = (uint8_t)(1 + s - S_GUIDE1); break;
     case S_GUIDE_MSG: go_home(); guide_open(0); ui.guide = 4; ui_message("HOLD ON"); break;
     case S_GUIDE_KNOB: go_home(); guide_open(0); ui.guide = 2; ui_message(GUIDE_KNOB_MSG); break;   /* (a knob turned: why nothing happens) */
@@ -1469,7 +1469,7 @@ static void setup(int s)
         ui.hot_col = 0; ui.hot_t = 30; break;
     case S_EDIT_USER: song.playing = 0; eng(6); up_store(6, "MY LONG TRIO NAME"); up_load(6); favorite_set(NENGINES, 6, 1);
         go_home(); ui.layer = LAYER_EDIT; break;
-    case S_LAYER_HINT: go_page(GR_GLO); ui.msg_t = 0; layer_tap(LAYER_SCL); break;
+    case S_LAYER_HINT: go_page(GR_GLO); ui.msg_t = 0; layer_tap(LAYER_GLO); break;   /* (b4, UI audit 10: LAYER_GLO; the SCALE layer is retired) */
     /* #83: locked open by a double tap (the lock after the header's name): EDIT */
     case S_LAYER_LOCK: go_title("AMP ENV"); ui.layer = ui.lock = LAYER_EDIT; break;
     /* 1.2 SEQ TOOLS (SEQ held on STEP): the sequence's tools, a song playing (every tool dimmed: STOP TO EDIT) */
@@ -2421,7 +2421,7 @@ int main(int argc, char **argv)
         boxf = fopen(ap, "w");
     }
     {   /* TIDE's header messages: each must fit the title room (a long one wrapped onto a second line and overlapped the first) */
-        static const char *const M[] = {"BACK TO ORIGINAL", "PARTS LEAD IN TURNS", "PARTS VARY TOGETHER", "GLIDE SOUND + SEQ", "DROP NEEDS WNDR/JRNY",
+        static const char *const M[] = {"BACK TO ORIGINAL", "PARTS LEAD IN TURNS", "PARTS VARY TOGETHER", "GLIDE BOTH", "DROP NEEDS WANDER/JOURNEY",
             "DROP CANCELLED", "VARY EVERY 4TH", "VARY EVERY BAR", "STYLE AMBIENT", "STYLE MINIMAL", "GLIDE STOPPED", "NOTHING TO KEEP", "PARTS TAKE TURNS", "GLIDE TO B", "WASH HIGH", "SEQ KEPT", "SOUND KEPT"};
         uint32_t m;
         for (m = 0; m < sizeof M / sizeof M[0]; m++) {
@@ -2711,7 +2711,7 @@ int main(int argc, char **argv)
             if (!strcmp(UI_PALETTES[p].name, "VIOLET")) {   /* 0.2.10 deck: the presentation's screens (docs/presentation/screens_0210; 0.2.13: screens_0213), VIOLET */
                 static const char *const DECK[] = {"home", "fx", "dly", "env", "lfo2", "mod", "glo_page", "midi", "midi_duck", "midi_layer", "mixer_split", "mode_layer",
                                                    "morph_rolled", "patches_save", "layer_edit_active", "layer_quick_filter", "layer_quick_lfo", "perform", "splash",
-                                                   "quick_glo", "multis", "multis_2", "guide_1", "guide_2", "guide_3", "guide_4", "guide_5", "guide_6",   /* (0.2.13 deck: + these) */
+                                                   "quick_glo", "multis", "multis_2", "guide_1", "guide_2", "guide_3", "guide_4", "guide_5",   /* (0.2.13 deck: + these) */
                                                    "user", "patches_factory", "patches_restore", "patches_save", "patches_save_both", "tools", "tools_restore", "confirm_restore_all"};   /* (0.2.17: the one list of patch slots) */
                 for (k = 0; k < sizeof DECK / sizeof DECK[0]; k++)
                     if (!strcmp(S_NAME[s], DECK[k])) write_ppm(out, "VIOLET", S_NAME[s]);
