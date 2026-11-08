@@ -11,6 +11,7 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 
 Not flashed yet.
 
+- **Fixed (TIDE POLY):** after you release all keys and play again during a shortened loop, the loop restarts from its first step (it started part-way in).
 - **Fixed (live recording, audit 2026-11-08):** REC no longer stops the sequences, and no longer rewrites an ARP SEQ pattern from the arp's own notes (a held key climbed a MONO pattern to note 127 in three loops, a firm key accented every step). On an ARP SEQ part the keys transpose as when not armed and record nothing; knob moves still record parameter locks, and tapping REC on such a part says ARP SEQ: KNOBS RECORD. Arp OFF and classic arps record as before.
 - **Changed (owner, 2026-11-08):** with TIDE, HOME has no MODE page: its round is MORPH, TIDE SETTINGS, AUTO TIDE. MODE (LAYER, STEREO, DUEL), XFADE and SPLIT are now the last three rows of TIDE SETTINGS, after ARC. They work as before (XFADE and SPLIT only in LAYER; elsewhere their values are dim and knob 1's line says LAYER ONLY) and are kept where they were; they are not part of STYLE. HOME OPENS = MODE opens TIDE SETTINGS on the MODE row. Plain DUELL is unchanged.
 - **Fixed:** once the selected part is armed, a tap of REC disarms it on every page, HOME included, and no longer flips HOLD (it could not be turned off from HOME); the toast says REC OFF. Unarmed on HOME the tap is still the HOLD switch, and its toast now says how to record: HOLD ON: SEQ+REC=REC (hold SEQ, tap REC).

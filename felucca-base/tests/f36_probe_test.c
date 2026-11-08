@@ -3,7 +3,7 @@
  * shortened stretch is on. tide_arp_idx = (k - poly_base) % poly_len with unsigned k; arp_remove / arp_add set arp_idx back to 0 but
  * poly_base keeps the old arp_idx of the stretch's start, so the subtraction wraps and the phase is arbitrary.
  * Expected: the first step of the restarted arp (arp_idx 0) plays step 0, then 1, 2, ... (the short loop's own count).
- * KNOWN FAILING while finding 36 is open; not in host_tests.sh's default list (run: sh host_tests.sh f36). */
+ * Fixed in tide_arp_tick (poly_base reset at arp_idx 0). Also: a restart with no stretch changes nothing. Group f36. */
 #define UI_TEST_NO_MAIN 1
 #include "ui_test.c"
 
@@ -36,6 +36,13 @@ int main(void)
     printf("f36: steps for arp_idx 0..5 = %u %u %u %u %u %u (want 0 1 2 3 4 5)\n", got[0], got[1], got[2], got[3], got[4], got[5]);
     CHECK("arp_idx 0 after the restart plays step 0", got[0] == 0);
     CHECK("arp_idx 1..5 play steps 1..5", got[1] == 1 && got[2] == 2 && got[3] == 3 && got[4] == 4 && got[5] == 5);
+    /* the other direction: no stretch, a restart changes nothing (steps 0..n) */
+    poly_len[pi] = 0; poly_base[pi] = 0; poly_lc[pi] = 5; poly_end[pi] = 0; poly_free[pi] = 1000;   /* (poly_free far: no new stretch starts) */
+    t->arp_idx = 0;
+    tide_arp_tick(t);
+    CHECK("no stretch: still none after a restart", poly_len[pi] == 0);
+    for (k = 0; k < 20; k++)
+        CHECK("no stretch: arp_idx k plays k % 16", tide_arp_idx(t, k, 16) == k % 16u);
     printf("f36: %d checks, %d failed\n", checks, bad);
     return bad ? 1 : 0;
 }
