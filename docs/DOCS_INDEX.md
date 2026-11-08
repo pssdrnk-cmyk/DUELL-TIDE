@@ -39,7 +39,7 @@ Audiences: **player** (uses the unit), **installer** (flashes it), **contributor
 | Document | Audience | Status | Purpose |
 |---|---|---|---|
 | [SPEC.md](../SPEC.md) | contributor, player | reference | OSCILL/R's full specification of DUELL, with a note at the top for what this fork changes. |
-| [docs/PATCH_NUMBERS.md](PATCH_NUMBERS.md) | player | current | The 163 factory sounds in PATCHES order (a host test reads this table). |
+| [docs/PATCH_NUMBERS.md](PATCH_NUMBERS.md) | player | current | The 171 factory sounds in PATCHES order (a host test reads this table). |
 | [docs/MIDI_MAP_DEFAULTS.csv](MIDI_MAP_DEFAULTS.csv) | player, contributor | current | The shipped MIDI CC map (the README table is generated from it). |
 | [docs/VOICE_CONTROLS.md](VOICE_CONTROLS.md) | player | reference | When each VOICE control is heard. |
 | [docs/MOD_INERT_TABLE.md](MOD_INERT_TABLE.md) | player, contributor | reference | Which modulation depths do nothing on which engine. |
@@ -49,7 +49,7 @@ Audiences: **player** (uses the unit), **installer** (flashes it), **contributor
 
 | Document | Audience | Status | Purpose |
 |---|---|---|---|
-| [docs/EDITOR_LIBRARIAN.md](EDITOR_LIBRARIAN.md) | player | current | The patch library, import and export, DX7 voices, and what the editor shows for USER slots and sounds 129 to 160. |
+| [docs/EDITOR_LIBRARIAN.md](EDITOR_LIBRARIAN.md) | player | current | The patch library, import and export, DX7 voices, and what the editor shows for USER slots and sounds 129 to 171. |
 | [docs/EDITOR_ROLL.md](EDITOR_ROLL.md) | player | current | The piano roll for the step pattern. |
 | [felucca-base/web/EDITOR_PROTOCOL.md](../felucca-base/web/EDITOR_PROTOCOL.md) | contributor | reference | The SysEx protocol between the unit and the editor. |
 

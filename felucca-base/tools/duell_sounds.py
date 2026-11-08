@@ -2366,7 +2366,7 @@ SOUNDS = [
     # through a 12 dB filter between low-pass and band-pass whose cutoff rides an 18 s LFO and whose resonance breathes with a 14 s cycle: the wind swells and
     # thins over the soft beating tone; the widest spread, a long echo, the room at full, the lows shelved. A texture (JRNY: with NIGHT DRONE and STORM FRONT).
     # End B: the wind takes over: more noise, the filter higher and more band-pass, faster, the beat wider, the room as big as it goes.
-    dict(engine='ANALOG', idx=35, name='SOLAR WIND', cat='FX', text=True, bseed=37592, bamt=25,  # #170
+    dict(engine='ANALOG', idx=35, name='SOLAR WIND', cat='FX', text=True, bseed=37592, bamt=25,  # #169
          p={
             'ATK': 88, 'DEC': 100, 'SUS': 127, 'REL': 118, 'LRATE': 2, 'LWAVE': 1, 'KTRK': 0, 'CHOR': 50, 'DLY': 56, 'REV': 120, 'SPRD': 90, 'EQLG': -3,
             'FREEA': 46, 'FREEB': 30, 'FREEC': 40, 'FREED': 1, 'TRIM': 116, 'E1': 2, 'E2': 4, 'E4': 52, 'MOD1': ('LFO1', 'CUT', 8), 'MOD2': ('CYCLE', 'FRES', 8),
@@ -2379,7 +2379,7 @@ SOUNDS = [
     # octave under the key (the mains hum), through a resonant 24 dB low-pass whose cutoff steps to a new random place every 4 s (a sample-and-hold LFO: the glitch)
     # while the resonance breathes with a 10 s cycle; a FUZZ insert and saturation on top, a short room. Industrial, digital, close. A texture (alone on LOFI).
     # End B: the aggressive filter: the cutoff up and the resonance screaming, the steps twice as fast and wider, the crush and the fuzz up.
-    dict(engine='LOFI', idx=9, name='GRID HUM', cat='FX', text=True, bseed=11709, bamt=25,  # #171
+    dict(engine='LOFI', idx=9, name='GRID HUM', cat='FX', text=True, bseed=11709, bamt=25,  # #170
          p={
             'ATK': 80, 'DEC': 100, 'SUS': 127, 'REL': 96, 'LRATE': 30, 'LWAVE': 4, 'L2RATE': 10, 'L2WAVE': 1, 'KTRK': 8, 'DIST': 30, 'CHOR': 24, 'DLY': 44,
             'REV': 70, 'SPRD': 30, 'FREEA': 40, 'FREEB': 40, 'FREED': 2, 'ITYPE': 4, 'IA': 40, 'IB': 100, 'IC': 100, 'IMIX': 70, 'TRIM': 116, 'E1': 0, 'E2': 13,
@@ -2393,7 +2393,7 @@ SOUNDS = [
     # over a second triangle an octave down (the body), 14 cents apart; a BIT CRUSHER insert for the digital grit, saturation, a resonant 24 dB low-pass whose
     # cutoff steps to a random place every 5 s (the glitch) and opens slowly with the filter envelope; a long echo, a mid room. Metallic, hard, held. A texture (alone on TRIO).
     # End B: the aggressive filter: the cutoff up and the resonance high, the steps faster and wider, more saturation and crush, the echo as long as it goes.
-    dict(engine='TRIO', idx=14, name='IRON WORKS', cat='FX', text=True, bseed=37388, bamt=25,  # #172
+    dict(engine='TRIO', idx=14, name='IRON WORKS', cat='FX', text=True, bseed=37388, bamt=25,  # #171
          p={
             'ATK': 84, 'DEC': 100, 'SUS': 127, 'REL': 100, 'LRATE': 26, 'LWAVE': 4, 'KTRK': 10, 'DIST': 36, 'CHOR': 30, 'DLY': 60, 'REV': 80, 'SPRD': 50,
             'FREEA': 50, 'FREEB': 30, 'FREED': 2, 'E2ATK': 104, 'E2DEC': 100, 'E2SUS': 90, 'E2REL': 100, 'E2FLT': 16, 'ITYPE': 5, 'IA': 30, 'IB': 70, 'IC': 110,

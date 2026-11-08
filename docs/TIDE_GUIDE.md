@@ -1,6 +1,6 @@
 # DUELL with TIDE: a player's guide
 
-Five minutes. This guide describes the development line, `jam11`, as the source has it. It is the beta `1.0.0-b1` and what is merged after it. The older beta `beta-2026-11-04` is a little different; the list at the end says what came after it. The version of your unit is in MENU > SYSTEM > ABOUT, beside the date.
+Five minutes. This guide describes the development line, `jam11`, as the source has it. It is the betas `1.0.0-b1` and `1.0.0-b2` and what is merged after them. The older beta `beta-2026-11-04` is a little different; the list at the end says what came after it. The version of your unit is in MENU > SYSTEM > ABOUT, beside the date.
 
 The stable build `stable-2026-11-03` has an earlier TIDE. Its TIDE SETTINGS page is still called MORPH SETTINGS. It lacks the STYLE, TURNS, POLY, SYNC and ARC rows, and it has no JRNY role families or memory. The [README](../README.md#builds-stable-and-beta) lists the builds.
 
@@ -44,7 +44,7 @@ The screen shows the SOUND and SEQ faders with the glide's path, the 16 steps as
 
 Where two very different sounds cross, a short filter dip hides the change (WASH, below).
 
-**OCT- + knob**: K1 goes back to your original sound and pattern (the glide stops), K3 and K4 reset TIME and WAIT to the values of the STYLE on TIDE SETTINGS (the style you last chose, DUB if none: 16 bars, 2 bars).
+**OCT- + knob**: K1 goes back to your original sound and pattern (the glide stops), K2 drops the ARC at the next phrase (see ARC), K3 and K4 reset TIME and WAIT to the values of the STYLE on TIDE SETTINGS (the style you last chose, DUB if none: 16 bars, 2 bars).
 
 ## 3. TIDE SETTINGS (set and forget)
 
@@ -59,7 +59,7 @@ K1 picks the row. **OCT+** the next value, **OCT-** the one before (knobs 2 to 4
 | **ROLL ARP** | OFF, ON | OFF: rolls leave the arp's rate, gate and mode alone. ON: they may move them (never turning the arp into SEQ, so a TIDE part is never silenced). | OFF |
 | **ROLL PITCH** | OFF, ON | OFF: nothing that moves pitch changes, which keeps drones in tune. ON: small detune and, on TRIO, interval jumps. Only ON lets the automatic pattern edits walk a note one scale step. They walk the top note of a chord or a lead note, never a bass note under C3 or in a part whose sound is in the BASS category, and nothing on SCALE CHR. The chord voicing of VOIC does not need PITCH. | OFF |
 | **WASH** | OFF, LOW, MID, HIGH (default OFF) | The breath of a trip: filter dip, send swell and a wash where sounds cross. LOW is half, MID is full, HIGH one and a half. | LOW (try it; OFF is the default) |
-| **TURNS** | TOGETHER, TAKE TURNS, LEAD | Only in automatic WNDR / JRNY with both parts. TOGETHER: both parts vary on bars 4 and 8. TAKE TURNS: part 2 varies on bars 2 and 6, part 1 on 4 and 8, so each variation is answered two bars later. LEAD: part 2 leads bars 1-2 of every 4 and part 1 bars 3-4 (on some 8-bar phrases the two swap); a lead or pluck line answers by playing thinner and softer on the other part's bars (beats, held notes, the motif's own hits and about half of the rest stay), while a pad, a bass or a chord part keeps its pattern whole. Playback only: KEEP stores the whole pattern. A stored older ECHO value reads as LEAD. With VARY BARS ALL, TAKE TURNS plays like TOGETHER (every bar varies); LEAD keeps TAKE TURNS' two-bar offset for part 2's variation bars. | LEAD |
+| **TURNS** | TOGETHER, TAKE TURNS, LEAD | Only in automatic WNDR / JRNY with both parts. TOGETHER: both parts vary on bars 4 and 8. TAKE TURNS: part 2 varies on bars 2 and 6, part 1 on 4 and 8, so each variation is answered two bars later. LEAD: part 2 leads bars 1-2 of every 4 and part 1 bars 3-4 (on some 8-bar phrases the two swap); a lead or pluck line answers by playing thinner and softer on the other part's bars (beats, held notes, the motif's own hits and about half of the rest stay), while a pad, a bass or a chord part keeps its pattern whole. Playback only: KEEP stores the whole pattern. A stored older ECHO value reads as LEAD. With VARY BARS on EVERY BAR, TAKE TURNS plays like TOGETHER (every bar varies); LEAD keeps TAKE TURNS' two-bar offset for part 2's variation bars. | LEAD |
 | **POLY** | OFF, GENTLE, WIDE | In automatic WNDR / JRNY one part's loop is now and then shorter, so its motif drifts against the beat, then plays whole again at a phrase. GENTLE: 15 or 14 of 16 steps, rarely. WIDE: 12 to 15, more often. Your stored pattern is never changed. | GENTLE |
 | **SYNC** | OFF, SOFT, PUSH | In automatic WNDR / JRNY the pattern edits that move a hit by a 16th lean towards the "and" (the off-beat 8th) and allow an occasional push into the beat (SOFT one a bar, PUSH two). The beats never move and a hit never lands on one. With any SYNC a hit stays within two 16ths of its place, and the motif's own hits (an offbeat skank's "and"s) are never moved or dropped. | SOFT |
 | **ARC** | OFF, RISE, DROP | In automatic WNDR / JRNY the tide follows a shape of 32 to 64 bars: it rises (more syncopation and repeats, faster turns, brighter sounds), holds a peak, then eases into a thinned breakdown with softer sounds and recovers. DROP also drops by itself on about half of the arcs (both parts start no notes for two bars). The status line shows the phase. STOP and PLAY only pause the arc: PLAY goes on where it was. A load (multi, project, pattern) or a K1 stop starts it again at RISE. **Hand drop:** hold OCT- and turn K2 on the AUTO TIDE page; the drop lands at the next 4-bar phrase (a second turn cancels it). | RISE |
@@ -108,13 +108,13 @@ In the SEQ tools, hold SEQ and press G4 (KEEP): what you hear now becomes the pa
 
 # New since the stable build
 
-In the betas (`beta-2026-11-04`, `1.0.0-b1`), not in the stable build `stable-2026-11-03`.
+In the betas (`beta-2026-11-04`, `1.0.0-b1`, `1.0.0-b2`), not in the stable build `stable-2026-11-03`.
 
 | Feature | What it does |
 |---|---|
 | **JRNY families and memory** | JRNY stays on the part's engine, picks within a role family and the starting sound's attack (pad, stab or keys; families: pads and keys; bass; lead and pluck; hits; textures and drones; one-shot FX; a USER record uses its own category) and skips the part's last four destinations where it can. |
-| **35 more factory sounds** | #129 to #163 (dub, deep house: pads, chords, stabs, plucks, textures; three of them FM6), so JRNY has more to travel between. They are read-only places after the 128 in PATCHES. |
-| **Factory patterns and multis** | Ten patterns are now chords and pads for dub techno and deep house (some with their own swing and gate); seven factory multis that had no sequence have one; M16 is CELLAR TAPE. A pattern slot you never saved over takes the new pattern at power-on. |
+| **43 more factory sounds** | #129 to #171 (dub, deep house: pads, chords, stabs, plucks, textures; three of them FM6; the last eight, #164 to #171, are drones, new in `1.0.0-b2`), so JRNY has more to travel between. They are read-only places after the 128 in PATCHES; the names are in [PATCH_NUMBERS](PATCH_NUMBERS.md). |
+| **Factory patterns and multis** | Ten patterns are now chords and pads for dub techno and deep house (some with their own swing and gate); seven factory multis that had no sequence have one; CELLAR TAPE is M03. A pattern slot you never saved over takes the new pattern at power-on. |
 | **USER slots** | The last 4 patch slots and 4 pattern slots (P29 to P32) are USER slots (U1 to U4), `USER EMPTY` until you save into them. The factory sounds and patterns they stand in for stay listed after them, read-only; SAVE offers USER 1 for a read-only place. |
 | **MULTIS / PATTERNS previews** | On the SAVE pages: three list rows with the picked entry opened, showing both parts (sound names, ARP / SEQ / OFF, the first 16 steps) before you load. LOAD is already picked when the page opens, so OCT+ loads the picked entry (K3 picks SAVE). A broken record reads DAMAGED. |
 | **Live graphs** | ENV, LFO, CYCLE, filter, INSERT, MATRIX and CHORD pages show a moving marker (about 15 a second, paused above 80 % CPU; MENU > ANIMATION OFF keeps them still). An LFO 2 or CYCLE nothing reads is captioned PREVIEW. |
