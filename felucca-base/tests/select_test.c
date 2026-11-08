@@ -847,7 +847,11 @@ static void sweep_homepg(void)
     static const char *const T[3] = {"MORPH", "MODE", "MIXER"};
 #endif
     uint32_t v, ok;
+#if DUELL_TIDE                                           /* (b4, UI audit 9: the second value names the page it opens) */
+    expect("HOME OPENS: two values, MORPH SETTINGS (0.2.25 layout round: the MIXER is GLO's)", HP_COUNT == 2 && menu_n(MI_HOMEPG) == 2u && str_eq(menu_vname(MI_HOMEPG, 1), TIDE_HOME_MODE_NAME));
+#else
     expect("HOME OPENS: two values, MORPH MODE (0.2.25 layout round: the MIXER is GLO's)", HP_COUNT == 2 && menu_n(MI_HOMEPG) == 2u && str_eq(menu_vname(MI_HOMEPG, 1), "MODE"));
+#endif
     for (v = 0; v < HP_COUNT; v++) {
         ui_power_on();
         menu_put(MI_HOMEPG, v);
