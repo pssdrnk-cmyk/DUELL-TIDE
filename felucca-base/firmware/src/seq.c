@@ -11,7 +11,8 @@
  * A note into an armed track (song.rec) while
  * the transport runs is recorded into its pattern, quantised to its (swung) steps, with its
  * held length as TIE steps (rec_note, rec_hold, rec_release). With the ARP on, the notes the arp
- * plays are recorded, not the keys held (what plays back is what was heard). A key or MIDI note plays a
+ * plays are recorded, not the keys held (what plays back is what was heard); TIDE's ARP SEQ part is the exception: its keys sound as played and are
+ * recorded into the pattern the arp plays (rec_arp_note). A key or MIDI note plays a
  * chord when the track's CHRD is on (chord.c): its notes go through the same input as so many keys. */
 static const uint16_t SCALE_MASK[] = {
     0xFFF,                                   /* CHR */
@@ -736,14 +737,15 @@ static uint32_t arp_dur(const track_t *t)           /* the samples of the arp st
 }
 /* the note `stored` into step idx, `note` the key held (tie bookkeeping). The step starts afresh (its old notes go) when it has no notes, on a part that
  * keeps one note per step (MONO / LEGATO / UNISON), or (REC = REPLACE) for the first note recorded into it in this pass: a chord played together, and the
- * notes of a hold, add. The pass: rec_wr marks the steps written, the playhead clears the mark two steps behind it (rec_hold), so a pattern of 1 or 2
- * steps replaces a chord note by note. REC = ADD (the default, and plain DUELL's rec_note) is today's rule. A note is added unless it is there, the last of
+ * notes of a hold, add. An ARP SEQ part (R3) always starts afresh: its arp plays note[0] only, so a key sets the step's note whatever REC says (a step holds one
+ * note there). The pass: rec_wr marks the steps written, the playhead clears the mark two steps behind it (rec_hold), so a pattern of 1 or 2
+ * steps replaces a chord note by note. REC = ADD (the default; plain DUELL's rec_note) is the rule before REPLACE. A note is added unless it is there, the last of
  * 4 replaced; the accent and the loudest velocity; a new hold (one in another step ends), a chord held until its last key is up */
 static void rec_put(track_t *t, uint32_t idx, uint32_t stored, uint32_t vel, int32_t off, uint32_t note)
 {
     step_t *s = &t->step[idx];
     uint32_t *w = &t->rec_wr[(idx >> 5) & 1u], bit = 1u << (idx & 31u), k;
-    if (s->time != ST_NOTE || !s->n || trk_vmode(t) != V_POLY || (tide_rec_replace && !(*w & bit))) {
+    if (s->time != ST_NOTE || !s->n || trk_vmode(t) != V_POLY || arp_mode(t) == AM_SEQ_ID || (tide_rec_replace && !(*w & bit))) {
         s->n = 0;                                   /* a fresh step */
         s->flags = 0;
         s->vel = 0;
@@ -898,7 +900,7 @@ static void rec_release(track_t *t, uint32_t note)
 /* ARP SEQ, live recording (audit liverec L2, R2; owner 2026-11-08): the pattern keeps playing from its stand-in, a key sounds directly (no transpose, the arp
  * does not hear it) and goes into the arp's step nearest to it, as a step offset from the stand-in's root, so the pattern plays it back as played.
  * The step is the one the arp plays (tide_arp_idx), the next one when the key came past the middle of the playing one. REC = ADD / REPLACE as rec_note;
- * a MONO / LEGATO / UNISON part keeps one note per step; POLY appends (ARP SEQ plays note[0] only: the others are inert, as ever) */
+ * a key always sets the step's note, in both modes and in POLY too (ARP SEQ plays note[0] only: a step holds one note, rec_put) */
 static int rec_arp_keys(const track_t *t)
 {
     return rec_on(t) && !cin_left && trk_index(t) < NSHOWN && arp_mode(t) == AM_SEQ_ID;
@@ -935,7 +937,7 @@ static __attribute__((noinline)) int arp_rec_fire(track_t *t)
     uint32_t len = t->p[P_SLEN] > 0 ? (uint32_t)t->p[P_SLEN] : 1u, idx = TIDE_ARP_IDX(t, t->arp_idx, len), hit = t->arp_skip == t->arp_idx + 1u;
     if (t->arp_skip && (t->arp_skip <= t->arp_idx + 1u || !rec_on(t)))   /* (the step it was put into has come, or is past, or REC is off) */
         t->arp_skip = 0;
-    rec_hold(t, idx, len);                          /* (seq_tick leaves an ARP SEQ part's hold to the arp) */
+    rec_hold(t, idx, tide_play_len(t));             /* (seq_tick leaves an ARP SEQ part's hold to the arp; the loop it walks is POLY's, when a stretch shortens it) */
     if (!hit)
         return 0;
     if (ARP_UP(t))
@@ -1061,7 +1063,11 @@ static void key_tone(uint32_t k, track_t *t, uint32_t i, uint32_t vel)
         lay_input(t, x, vel);
     else
         input_on(t, x, vel);
+    #if DUELL_TIDE
+    if (!(arp_mode(t) && !atgt_bits(t)) || rec_arp_keys(t)) {   /* (ARP on: the arp's notes are what sounds and goes out: arp_note_on; but an armed ARP SEQ part's key went to the voices by input_on, so it goes out here, and kb_mo ends it) */
+#else
     if (!(arp_mode(t) && !atgt_bits(t))) {          /* (ARP on: the arp's notes are what sounds and goes out: arp_note_on) */
+#endif
         midi_out_event(0x09u | (0x90u | mc) << 8 | x << 16 | vel << 24);
         kb_mo |= 1u << k;
     }
@@ -1321,6 +1327,8 @@ static void seq_start(void)
         t->rh_n = 0;
 #if DUELL_TIDE
         t->rec_wr[0] = t->rec_wr[1] = t->arp_skip = 0;
+        if (i < NSHOWN)
+            memset(rec_key[i], 0, sizeof rec_key[i]);   /* (a key still held: its key-up takes the normal way and ends the voice) */
 #endif
         t->rat_left = 0;
         t->nd_late = t->nd_early = ND_NONE;
@@ -1934,6 +1942,8 @@ static void events_block(uint32_t n)
             trk[i].rh_n = trk[i].rskip_n = 0;
 #if DUELL_TIDE
             trk[i].rec_wr[0] = trk[i].rec_wr[1] = trk[i].arp_skip = 0;
+            if (i < NSHOWN)
+                memset(rec_key[i], 0, sizeof rec_key[i]);
 #endif
             trk[i].seq_n = trk[i].seq_hold = trk[i].slide_glide = trk[i].rat_left = 0;
         }

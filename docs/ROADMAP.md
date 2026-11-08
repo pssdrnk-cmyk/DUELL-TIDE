@@ -9,8 +9,8 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 | **Stable** | `stable-2026-11-03` (`187e9d0`), validated by the fork owner. The first versioned stable will be `1.0.0`. |
 | **Newest beta** | `1.0.0-b2` (tag `tide-1.0.0-b2`, `0d2fcb9`), a GitHub pre-release since 8 November: the GLIDE CPU fix and eight drones (#164 to #171). The owner's unit runs the build just before the tag (`36f03cd`, ABOUT `1.0.0-b2+`); the tagged build adds only the every-block blend for a hand-moved morph. |
 | **Older betas** | `1.0.0-b1` (`817658d`) and `beta-2026-11-04` (`77a6df2`), both GitHub pre-releases. |
-| **Development** | `jam11` = `integ`: the b3 baseline. Docs match the firmware, the full suite is 174 pass / 0 fail / 3 skip on Windows, plain DUELL (`DUELL_TIDE=0`) is byte-identical to `jam/off.sha256`, the device image is the same as the tagged b2's. CI is green on GitHub. |
-| **Flash** | 579,196 B of the 581,564 B slot: **2,368 B free**. Every addition is measured; simplifications pay for features. Keep 0xEA000..0xFBFFF for future pattern / multi slots. |
+| **Development** | `jam11` = `integ`: the b3 baseline. Docs match the firmware, the full suite is 174 pass / 0 fail / 3 skip on Windows, plain DUELL (`DUELL_TIDE=0`) is byte-identical to `jam/off.sha256`, the device image is 580,204 B (the b2 tag's was smaller by the PATCHES order, PLAY MODE rows and live recording). The suite count is pending a full run. CI is green on GitHub. |
+| **Flash** | 580,204 B of the 581,564 B slot (build of `fix/b3-rec-modes`): **1,360 B free**. Every addition is measured; simplifications pay for features. Keep 0xEA000..0xFBFFF for future pattern / multi slots. |
 | **CPU** | About 3 missed audio blocks per FM6 crossing during a GLIDE, accepted for the betas. Five multis peak at raw 91 to 101 % in the 16-multi GLIDE sweep. `1.0.0` needs 0 missed blocks over that sweep. |
 
 ## How we work
@@ -39,6 +39,8 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 | 6 | Felucca 1.7.0 check | Already in our tree (checked 8 November): the TRS clock read during the audio render (Felucca #258) and exact clock progress with no drift (#269), both in `820e533` (1 November); the guard against a briefly invalid tempo (Felucca #282) in `fx.c` `beat_samples`. Left: compare our TRS receive (`hal/fm1_uart.h` `fm1_uart1_rx_take`) with Felucca #264's diff to confirm it; optionally port Felucca's `timer5_midi_test.c` (a clock-under-CC-flood test, no firmware change). | Planned. |
 | 7 | Small fixes with no sound change | `settings_persist.c` comment on object 48 (finding 33, D48: object 48 stays); the restore confirm says how many patches lose their FM6 MORPH TO target when the unit may be plain DUELL, since INFO cannot tell it from an older TIDE build (finding 14), plus one line in `jam_dev.py restore`'s help; three UI lint scenes (DAMAGED record, ABOUT with the TIDE id, a PATCHES row past #163; finding 31). | Built (`fix/b3`). |
 | 7a | Live recording (live-record audit R1, R4, R5) | REC no longer silences the ARP SEQ parts, and an ARP SEQ part's arp no longer records its own notes into its pattern; once armed, a REC tap disarms on every page (on HOME, unarmed, REC stays HOLD and says how to record: owner, 8 November); PRESETS loads sounds on STEP and PARAMETER LOCKS. Host group `liverec`. | Done: `integ` `455e2bb`. |
+| 7b | HOME without the MODE page | PLAY MODE, XFADE and SPLIT are the last three rows of TIDE SETTINGS; HOME's round is MORPH, TIDE SETTINGS, AUTO TIDE (owner, 8 November). | Built (`fix/b3-mode-rows`). |
+| 7c | Keys record into ARP SEQ patterns; REC row | Keys sound as played and go into the pattern the part plays (a key sets the step's note); REC row ADD / REPLACE on TIDE SETTINGS. | Built (`fix/b3-rec-modes`); waits for the unit test. |
 | 8 | Unit measurements | The 16-multi GLIDE sweep reading both `cpu_pk_us` and `cpu_raw_pk_us`; each drone with its 3-note chord held while `glide 1 0` runs. Sets the acceptance numbers for b4. | Needs the unit on USB. |
 | 9 | Cut b3 | `TIDE_VERSION` 1.0.0-b3, CHANGELOG section, tag, build, flash, GitHub pre-release. | After 2 to 8. |
 
@@ -69,7 +71,6 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 - Code nits with no measured effect (finding 35): `DUELL_PROBE_STAGES` defined outside `#if DUELL_TIDE`; `morph_xside` into RAM only if the unit shows its cost; `glide_stop` lags one poll.
 
 **TIDE interface**
-- HOME without the MODE page: built in b3. PLAY MODE (LAYER / STEREO / DUEL), XFADE and SPLIT are the last three rows of TIDE SETTINGS, values kept where they were (settings and multis); HOME's round is MORPH, TIDE SETTINGS, AUTO TIDE. Owner decision 2026-11-08.
 - LFO DEPTH destinations shown as "LFO1/2 LVL"; the mod wheel keeps driving MORPH.
 - A legend while OCT- is held on the TIDE page (C9, not built).
 
@@ -80,8 +81,11 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 - Factory bank: offer the re-authored End Bs and tempo-synced slow motion upstream.
 
 **Live recording** ([audit](audits/2026-11-08/liverec/LIVEREC_AUDIT.md))
-- Keys record into an ARP SEQ pattern as played, stored as offsets on the arp's root at its step: **built** on `fix/b3-rec-modes` (owner, 8 November: answer A), with the REC row ADD / REPLACE on TIDE SETTINGS that works on ordinary parts and ARP SEQ parts alike. Waiting for the unit test. [Brief R2](audits/2026-11-08/liverec/TASKS.md#r2)
-- A `liverec` host test group from the audit's probe, and QUICKSTART / TIDE_GUIDE say what REC does on ARP SEQ parts. [Brief R3](audits/2026-11-08/liverec/TASKS.md#r3)
+- Keys record into an ARP SEQ pattern: built, see b3 row 7c (R2). Documented limits: a 2-step pattern in REPLACE splits a chord across the step boundary, and the key's step is predicted from the POLY stretch before the next arp step runs (it can land one step off at a stretch change). [Brief R2](audits/2026-11-08/liverec/TASKS.md#r2)
+- Plain DUELL's `rec_note` stays under `#else`: deliberate, a shared `rec_put` would change the `DUELL_TIDE=0` binary.
+- Named `tide.h` hooks for the raw `#if DUELL_TIDE` blocks in `seq.c`; a `seq_len()` helper; one "past half step" helper.
+- Dead `SC_MODE` code under TIDE (flash to buy back, with the MODE page's `CG3` cards).
+- A small per-row kind table for TIDE SETTINGS (replaces the row comparisons in `tide_ui.c`).
 
 **Storage and backups**
 - U4, 24 multi slots: tested on `wip-24-multis` (`21ca3a7`), its own rollout with a format bump. At the rebase: renumber its backup ids (41 is now the FM6 voice bank), archive VERSION 6 against 5, update `erase_test.c` and `xb_test.c`, measure the flash first (keep 3 KB headroom; only 2.4 KB is free today, so it needs savings first).
@@ -120,13 +124,14 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 |---|---|
 | D43: when a crossing starts under a held chord, the chord stays whole (the budget plans for it from the start). | Stays whole; decided after the drones are measured under a GLIDE. |
 | D46: the multis that are too loud or too quiet are trimmed by ear on the unit. | Trim M15, M16 up and M10 down by the numbers, then listen. |
+| Try on the unit: keys recording into an ARP SEQ part, and REC ADD / REPLACE (b3). | Nothing to decide; say if the nearest-step rule feels wrong. |
 | Which of the ideas below, if any. | None until chosen. |
 
 **By ear or eye on the unit** (no homework: noted when the owner meets them in use): the drones; the U2 multi sequences; the MULTIS / PATTERNS preview's readability; polymeter (12 / 16, 15 / 16) against a steady 4 / 4; whether TURNS' alternating bars improve the interplay.
 
 ## Ideas, not decided
 
-- **MORPH card waves.** The moving lines on the MORPH card (HOME 1/4) are synthetic. Draw the part's real output instead, like an oscilloscope: a held note stands still, a chord beats, L and R as two lines that drift apart on a wide sound, faint trails when the sound moves. Costs less flash than today's field (~0.7 KB against ~1.5 KB) and ~0.1 % CPU while the card shows. Full sketch in the [archived roadmap](history/ROADMAP_2026-11-08.md); mock-ups in the owner's workspace.
+- **MORPH card waves.** The moving lines on the MORPH card (HOME 1/3 with TIDE) are synthetic. Draw the part's real output instead, like an oscilloscope: a held note stands still, a chord beats, L and R as two lines that drift apart on a wide sound, faint trails when the sound moves. Costs less flash than today's field (~0.7 KB against ~1.5 KB) and ~0.1 % CPU while the card shows. Full sketch in the [archived roadmap](history/ROADMAP_2026-11-08.md); mock-ups in the owner's workspace.
 - **From Niagara Drift** (an FM-1 drone firmware; checked against our code 8 November, estimates until built): **reverb FREEZE** on HALL / ROOM (the tail holds and the notes can stop; a block-rate gain change with a limiter, ~200-400 B, no CPU while off; risks: fixed-point overflow and the release click) and a **DRONE row** (one switch for the existing HOLD ALL latch, restoring the player's own HOLD on exit, ~100-250 B) fit best. **AGE** (slow tape-like wear, ~300-600 B) needs an offset layer on top of the saved sound, not checked yet. Gesture keys and a free-time motion loop do not fit the flash, the keys or the no-new-pages rule.
 - **Drone scenes:** multis built around the eight drones, one per theme.
 - **Keep current patterns on MULTI load** (U2 route A): an explicit load that keeps both playing patterns.

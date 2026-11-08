@@ -40,6 +40,8 @@ ALLOW = {
     "arp_rec_fire": "event rate: an ARP SEQ part's arp step starts: its recording marks and ties (live recording R2 / REC row, 1.0.0-b3), not per sample; reached from a note or a sequencer / arp step",
     "rec_arp_note": "event rate: a key recorded into an ARP SEQ pattern (live recording R2 / REC row, 1.0.0-b3), not per sample; reached from a note or a sequencer / arp step",
     "rec_key_set": "event rate: a key of an armed ARP SEQ part is marked on its key-down and key-up (live recording R2, 1.0.0-b3), not per sample; reached from a note",
+    "rec_arp_keys": "event rate: asked when a key goes down or its MIDI OUT note is decided (live recording R4, 1.0.0-b3), not per sample; reached from key_tone and input_on",
+    "tide_play_len": "event rate: the loop length POLY plays, asked when an ARP SEQ part's arp step starts (live recording R2, 1.0.0-b3), not per sample; reached from arp_rec_fire",
     "rec_put": "event rate: a note recorded into a step (live recording R2 / REC row, 1.0.0-b3), not per sample; reached from a note",
     "rec_hold": "event rate: a held recorded note ties the step the playhead enters (live recording R2 / REC row, 1.0.0-b3), not per sample; reached from a note or a sequencer / arp step",
     "arp_off": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~152 B); reached from seq_stop",

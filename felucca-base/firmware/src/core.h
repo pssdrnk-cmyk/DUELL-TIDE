@@ -566,7 +566,7 @@ typedef struct {                 /* the part in mix_part, its window: one per pa
 } mod_win_t;
 
 #ifndef DUELL_TIDE
-#define DUELL_TIDE 1                /* (tide.h sets it too, after this: track_t has TIDE's live-recording fields, seq.c rec_fresh, arp_rec_fire) */
+#define DUELL_TIDE 1                /* (needed here: track_t below has TIDE's live-recording fields before tide.h, included at the end of this file, sets it too) */
 #endif
 typedef struct track {
     int16_t p[EXT_P_LEN];        /* P_COUNT ids, a gap at 127, then the NX extension slots (ext.h XV); every store and format still counts P_COUNT */
@@ -627,7 +627,7 @@ typedef struct track {
     uint8_t rh_last;             /* the last of them; rh_bak: what it held (an early release puts it back) */
     step_t rh_bak;
 #if DUELL_TIDE
-    uint32_t rec_wr[2];          /* TIDE REC = REPLACE: the steps live recording wrote into this pass (bit idx), cleared two steps after the playhead (seq.c rec_fresh) */
+    uint32_t rec_wr[2];          /* TIDE REC = REPLACE: the steps live recording wrote into this pass (bit idx), cleared two steps after the playhead (seq.c rec_put) */
     uint32_t arp_skip;           /* ARP SEQ live recording: the arp step (arp_idx + 1) a key was recorded into ahead; the arp leaves it out (0: none; seq.c rec_arp_note, arp_fire) */
     uint32_t rec_rsv;            /* (keeps track_t a multiple of 16 bytes) */
 #endif
