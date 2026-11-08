@@ -1613,6 +1613,9 @@ static int morph_stale(const track_t *t, const morph_part_t *mp)   /* another so
 }
 
 /* before part t's block (adv: a block passes, the ramp moves) or note-on: the blend into t->p. 1 = applied */
+#if DUELL_TIDE
+static uint8_t morph_gliding;                            /* a GLIDE runs (morph_glide.c glide_poll writes it; 0 in a build without it): budget.c and the blend below read it */
+#endif
 static int morph_begin(track_t *t, int adv)
 {
     uint32_t pi = (uint32_t)(t - trk), j, q, m = 0, n;
@@ -1637,7 +1640,7 @@ static int morph_begin(track_t *t, int adv)
     {                                                   /* GLIDE CPU (unit 2026-11-06: a blend every block of a moving fader cost ~70 us a block on part 1): while the
                                                          * fader moves, blend every other block and write the last blend in between (the fader one block, 0.73 ms, behind) */
         static uint8_t rskip[NSHOWN];
-        if (mp->cvalid && mp->cst == duell_stereo && mp->cfader != mp->fader && adv) {
+        if (mp->cvalid && mp->cst == duell_stereo && mp->cfader != mp->fader && adv && morph_gliding) {   /* (a GLIDE only: a hand on the fader blends every block, as before) */
             if (!rskip[pi]) {
                 rskip[pi] = 1;
                 goto cached;

@@ -137,7 +137,6 @@ static uint32_t bd_slope(const engine_t *e, const int16_t *p)  /* filter 1, the 
 #if DUELL_TIDE
 /* the FM6 bridge's charge (owner 2026-11-06: the notes thin while a crossing runs): from the moment the part's fader moves with a plan that will bridge
  * (mxs need XN_FM), held ~1 s after it stops, so the NOTES number is down before the fader reaches the bridge (budget_poll runs once a frame) */
-static int glide_running(void);                  /* (morph_glide.c, later in this unit) */
 static uint8_t bd_mv[NLIVE], bd_mvf[NLIVE];
 static uint16_t bd_mvc[NLIVE];
 #endif
@@ -432,11 +431,14 @@ static void budget_poll(void)                           /* main loop, every fram
 #if DUELL_TIDE
     for (p = 0; p < NLIVE; p++) {                       /* (the fader moving: see bd_mv) */
         uint8_t f = (uint8_t)mph[p].fader;               /* (0 .. 127) */
-        if (f != bd_mvf[p])
-            bd_mvf[p] = f, bd_mvc[p] = 60u;
+        if (f != bd_mvf[p]) {                            /* (a step of the fader moving; a jump, as a load or the first poll, is not a move) */
+            if ((f > bd_mvf[p] ? f - bd_mvf[p] : bd_mvf[p] - f) <= 12u)
+                bd_mvc[p] = 60u;
+            bd_mvf[p] = f;
+        }
         else if (bd_mvc[p])
             bd_mvc[p]--;
-        bd_mv[p] = bd_mvc[p] != 0 || glide_running();   /* (a running GLIDE waits at its ends: the number stays down for the whole glide) */
+        bd_mv[p] = bd_mvc[p] != 0 || morph_gliding;   /* (a running GLIDE waits at its ends: the number stays down for the whole glide) */
     }
 #endif
     bd_build(&b);

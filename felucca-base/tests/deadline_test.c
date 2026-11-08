@@ -313,7 +313,7 @@ static void tide_scene(void)
                 bd_part_t r;
                 bd_part(&trk[p], &r);
                 tide_bad += w2f[p] + 1u < w0f[p] + BD_UDL(BD_TIDE_WASH) || w2f[p] > w0f[p] + BD_UDL(BD_TIDE_WASH) + 1u || w2v[p] != w0v[p];   /* (WASH MID adds the wash to the fixed cost, rounding aside) */
-                tide_bad += r.misc < r.tide || r.tide < BD_TIDE_WASH || r.ext < BD_MORPH + BD_TIDE_DIP + (ENGINES[eng_idx(trk[p].eng_req)] == &ENG_FM6 ? BD_TIDE_FM6 : 0u);
+                tide_bad += r.misc < r.tide || r.tide < BD_TIDE_WASH || r.ext < BD_MORPH + BD_TIDE_DIP + (ENGINES[eng_idx(trk[p].eng_req)] == &ENG_FM6 ? BD_TIDE_FM6_IDLE : 0u);   /* (the bridge's full charge only while a glide / the fader moves: budget.c bd_mv) */
             }
             tide_bad += (int32_t)(wl2 - wl0) > 0 || (int32_t)(d2 - d0) > 0;     /* the dearer scene never gets a later deadline or wait limit */
             {   /* the CORE 1 check of these caps (core1_slack at BUDGET_LIMIT, WASH MID in the items) */
