@@ -378,10 +378,10 @@ For every parameter that is allowed to be randomised:
 | AMOUNT | The one percentage. |
 | ROLL A | Roll a new random end A from the original. |
 | ROLL B | Roll a new random end B from the original. |
-| UNDO | Step back to the previous roll of End A or End B, chosen like ROLL (knob: twist left = A, twist right = B; no CC number). History of 2 earlier rolls per end (memory trim 1: the owner, one UNDO is enough; it was 8), so repeated UNDO walks back that far. |
+| ~~UNDO~~ | Removed in TIDE 1.0.0-b5 (owner, 2026-11-08: the RAM for a wave picture): a roll replaces its end, there is no history. It stepped back up to 2 rolls of End A or End B. |
 | ~~KEEP~~ | Removed in v2 (3.5): the ends simply stay; saving is SAVE held (3.5). |
 
-**End choice** (owner's revision, supersedes the old far-end rule): UNDO names its end exactly like ROLL (left = A, right = B); it no longer depends on the fader. Rolling or undoing the end you are hearing is smoothed over about 50 ms so it does not click.
+**End choice:** ROLL names its end (left = A, right = B), whatever the fader. Rolling the end you are hearing is smoothed over about 50 ms so it does not click.
 
 ### 3.4a MORPH TARGET (owner's addition)
 **0.2.9 (owner, 2026-10-14, "option A", a first step): the target is ALGORITHM's position on the MORPH page and in PERFORM.** There ALGORITHM has three positions, PART 1, BOTH, PART 2 (left to right, a detent a step, clamped at the ends, no wrap); PART 1 / PART 2 select that part and the morph works on it (SELECTED), BOTH is the BOTH below. It is one state, shared by the MORPH page, PERFORM and the TEST screen's MORPH: leaving the page keeps it, coming back finds it as left. On **every other page** ALGORITHM selects PART 1 or PART 2 only (no BOTH there, the header shows that part's badge alone: "if it shows both it should edit both"); turning it there does not clear BOTH. The selected part (`song.sel`) is always the last single part chosen: what the other pages edit and show, the screen's part colour, the keys' part (unchanged: the keys and MIDI IN SELECTED play the selected part, LAYER both, as before); turning ALGORITHM from PART 1 to BOTH keeps part 1 selected, from PART 2 to BOTH part 2. **Not saved:** power-on is a single part (SELECTED; which part is the autosave's selected part, as before); a multi load and a settings import never set BOTH. Formats unchanged: the settings bit (`favorites.factory[15][12]` bit 7) is reserved, kept as stored and neither read nor written (no flash write for ALGORITHM); a multi's TARGET byte (record byte 5) is still written (BOTH when saved in BOTH) and never loaded; the morph block (`morph_pack`) the same. MORPH SET's TARGET knob is gone (section 3.5). Code: `ui_input.c algo_step / algo_input`, `ui_draw.c badge_lit`.
@@ -413,7 +413,7 @@ What the target does:
 | --- | --- |
 | KNOB 1 | MORPH, the fader A<>B |
 | KNOB 2 | ROLL: twist left = ROLL A, twist right = ROLL B (as built) |
-| KNOB 3 | UNDO A<>B: twist left = undo End A's last roll, twist right = undo End B's (as ROLL); the card shows "A<>B" at rest and "<A" / "B>" while a twist builds up. There is **no KEEP**: both ends simply stay as they are until you roll them again or load a sound. |
+| KNOB 3 | Nothing (an empty card; UNDO until TIDE 1.0.0-b5, a wave picture is planned). There is **no KEEP**: both ends simply stay as they are until you roll them again or load a sound. |
 | KNOB 4 | AMOUNT, the one percentage; **each patch carries its own** (see "AMOUNT follows the patch" below) |
 
 (v3, owner 2026-10-11: ROLL and UNDO moved to KNOB 2 / 3, AMOUNT to KNOB 4; the MIDI CCs are unchanged.) **The panel (v3)** is an animated picture of the morph instead of the old A..B bar, seed numbers and UNDO counts: layered ribbon waveforms that get wilder as the fader moves from A to B (2 ribbons growing to 6, larger, faster, from smooth sines into angular, stepped, glitchy shapes), coloured from the part's A colour to its B colour (High Contrast: each ribbon solid A or B, no blends), breathing with the part's output level (a slow gentle motion in silence); a cursor line at the fader with its value in a thumb on an A<>B track, "A" and "B" at the ends; TARGET BOTH: one ribbon set per part in its colours (part 2 phase-shifted). About 16 frames/s while the page is shown, still with MENU > ANIM OFF. "HOLD SAVE = SAVE PATCH" stays as a small dim line at the bottom.
@@ -544,7 +544,7 @@ DUELL block (all 0-127, never 14-bit in the first build):
 | 70 | MORPH fader | 103 | AMOUNT |
 | 102 | ROLL (0..42 rolls End A, 43..84 nothing, 85..127 rolls End B) | 114-118 | CYCLE MODE, RISE, FALL, CURVE, SYNC |
 
-As built (2026-10-11, firmware midi_control.c): 0 / 32 bank select; 1 MODW + MORPH fader; 70 MORPH fader; 102 ROLL; 103 AMOUNT; 114-118 CYCLE; UNDO, TARGET, SMART, ARP, PITCH, MODE, XFADE and SPLIT have no CC number; the full list is docs/MIDI_MAP_DEFAULTS.csv. Program change: 4.2a.
+As built (2026-10-11, firmware midi_control.c): 0 / 32 bank select; 1 MODW + MORPH fader; 70 MORPH fader; 102 ROLL; 103 AMOUNT; 114-118 CYCLE; TARGET, SMART, ARP, PITCH, MODE, XFADE and SPLIT have no CC number; the full list is docs/MIDI_MAP_DEFAULTS.csv. Program change: 4.2a.
 
 Page knobs give every parameter a CC through the page structure: a controller's "page" can follow a DUELL page. **[verify]** against Felucca's `midi_control.c` and the parameter table; numbers may shift if they clash with Felucca's learn defaults.
 

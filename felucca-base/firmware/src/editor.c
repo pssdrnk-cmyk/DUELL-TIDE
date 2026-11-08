@@ -239,7 +239,7 @@ static void ed_sync(void)                                /* main loop */
         n++;
     }
     int16_t sv[EXT_P_LEN], ov[EXT_P_LEN];
-    ed_view(song.sel, sv);                               /* item 159: the values as shown (a fader move, a roll, AMOUNT, an UNDO push what they change) */
+    ed_view(song.sel, sv);                               /* item 159: the values as shown (a fader move, a roll, AMOUNT push what they change) */
     ed_view(ed_other(), ov);
     for (i = 0; i < ED_NV && n < ED_PUSH_MAX; i++) {    /* round robin: nothing starves */
         uint32_t k = (ed_w.pos + i) % ED_NV;

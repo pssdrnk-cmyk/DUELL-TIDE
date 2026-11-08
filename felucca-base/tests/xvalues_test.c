@@ -4,8 +4,8 @@
  *   TABLES    every slot has a descriptor (params.c XTP) and a morph tag (morph.c MTX); ranges, defaults, names as the plan has them; every label fits a card (50 px) and every name a value (49 px, the
  *             unit's own font table); the five ids' descriptors, the meanings of CUTOFF 2 (OFFSET / CUTOFF / TUNE) and RES 2 (RES / FDBK) by LINK and TYPE; F_DSEMI's text
  *   NOTHING   the values at any setting change nothing while they are not read: a two-part render with the five ids and all 15 slots off their defaults (TYPE OFF) is bit for bit the one without
- *   MORPH     the old ids' End B from a stored seed is the one cloud/base3 rolled (a hash made on cloud/base3: xvalues_ref.h), except the five; the ends and the history of the slots (XH deep: the
- *             report runs this test at 9 and at 3), the blend of the continuous ones, the switches that flip at the middle of the fader, UNDO; the rules of TWIN_FILTER_DESIGN 3.3 (TYPE never
+ *   MORPH     the old ids' End B from a stored seed is the one cloud/base3 rolled (a hash made on cloud/base3: xvalues_ref.h), except the five; the ends of the slots (1.0.0-b5: no history, a roll
+ *             replaces the end), the blend of the continuous ones, the switches that flip at the middle of the fader; the rules of TWIN_FILTER_DESIGN 3.3 (TYPE never
  *             rolled in SMART, never switched on, never COMB on WAVE / PHYS; no dead cutoff 2; RES 2 above 100 never with more DRIVE; DRIVE never far above; a sub never switched on; the amounts and
  *             TWIN stay put while TYPE is OFF), the draws of the five ids' old tags kept
  *   MATRIX    mod_voice and mod_voice_add untouched: a busy two-part matrix render is the hash cloud/base3 made (the second list empty); the new destinations 51..55 and source 15, their names,
@@ -13,7 +13,7 @@
  *             (mod_cycle_voice, t->cy, t->m_cycle), routes into the second list changing no sample of the product
  *   CHAIN     the voice chain (voice_chain.c) with the stages empty: forced on (DUELL_CHAIN_FORCE) it is the plain path within rounding on every engine, with filter 1 bypassed, SPREAD, and across the
  *             one-block cross-fade when a sounding voice enters and leaves it; v->chn; the product leaves chain_on at 0
- * Built twice by host_tests.sh (xvalues: the default XH 3, and -DXH=1), run once each */
+ * Built by host_tests.sh (xvalues; XH is 1 since 1.0.0-b5: no morph history) */
 #define DUELL_CHAIN_FORCE 1
 #define UI_TEST_NO_MAIN 1
 #include "ui_test.c"
@@ -300,8 +300,8 @@ static void t_morph_slots(void)
     t = &trk[pi];
     a = hx_of(pi, 0);
     b = hx_of(pi, 1);
-    ck("rebase: End A's slots are the Original (the base holds the wide ids), End B is the load's roll (two entries); the rings XH deep", !memcmp(a, mph[pi].base + XW_BASE, NX) && mph[pi].xv[0] == 1 &&
-       mph[pi].xv[1] == 2 && mph[pi].n[1] == 2 && XH <= MORPH_HIST && !memcmp(mph[pi].base, t->p, P_COUNT * 0 + 1) && mph[pi].base[XW_BASE + X_SUBLVL] == 60 && mph[pi].base[P_CUT2] == -8);
+    ck("rebase: End A's slots are the Original (the base holds the wide ids), End B is the load's roll (one entry each: no history since 1.0.0-b5)", !memcmp(a, mph[pi].base + XW_BASE, NX) &&
+       mph[pi].n[1] == 1 && XH == 1u && MORPH_HIST == 1u && !memcmp(mph[pi].base, t->p, P_COUNT * 0 + 1) && mph[pi].base[XW_BASE + X_SUBLVL] == 60 && mph[pi].base[P_CUT2] == -8);
     memcpy(h_of(pi, 1), mph[pi].base, P_COUNT);                /* End B: the Original again, then the differences set by hand */
     memcpy(b, mph[pi].base + XW_BASE, NX);
     a[X_SUBLVL] = 20; b[X_SUBLVL] = 100;                    /* continuous: blend */
@@ -367,43 +367,17 @@ static void t_morph_slots(void)
     (void)k; (void)ok2;
 }
 
-/* the History: XH deep */
+/* no history (1.0.0-b5): a roll replaces the end, the ids and the slots together */
 static void t_morph_hist(void)
 {
-    uint32_t pi = 0, n, ok = 1, i;
-    int8_t hist[12], hid[12];
+    uint32_t pi = 0, n, ok = 1, moved = 0;
     twin_part(pi, "ANALOG", TT_LP);
-    hist[0] = hx_of(pi, 1)[X_ENV2];
-    hid[0] = h_of(pi, 1)[P_DRV2];
-    for (n = 1; n <= MORPH_HIST - 1u; n++) {
+    for (n = 1; n <= 4u; n++) {
         roll_end(pi, 1, 100u + 37u * n, 60, 0);
-        hist[n] = hx_of(pi, 1)[X_ENV2];
-        hid[n] = h_of(pi, 1)[P_DRV2];
+        ok &= mph[pi].n[1] == 1u && mph[pi].top[1] == 0u && hx_of(pi, 1) == mph[pi].hx[1][0] && h_of(pi, 1) == mph[pi].h[1][0];
+        moved += hx_of(pi, 1)[X_ENV2] != 30;
     }
-    ok = mph[pi].n[1] == MORPH_HIST && mph[pi].xv[1] == XH;
-    {   /* the ends differ from the Original (SMART rolls the continuous slots) */
-        uint32_t moved = 0;
-        for (n = 1; n <= MORPH_HIST - 1u; n++)
-            moved += hist[n] != 30;
-        ok &= moved > 0u;
-    }
-    ck("rolls (SMART, AMOUNT 60) move the slots' ends (ENV 2 and the rest), kept XH deep: xv", ok);
-    for (n = MORPH_HIST - 1u; n >= 1u; n--) {
-        ok = morph_undo_part(pi, 1) == 1;
-        {
-            uint32_t depth = MORPH_HIST - n;                        /* undos so far */
-            int8_t want = depth <= XH - 1u ? hist[n - 1u] : 30;     /* beyond XH rolls: the slots at the Original (XH 3) */
-            if (hx_of(pi, 1)[X_ENV2] != want || h_of(pi, 1)[P_DRV2] != hid[n - 1u])
-                ok = 0;
-        }
-        if (!ok)
-            break;
-    }
-    ck("UNDO walks the ends back: the ids always, the slots as far as XH reaches (then the Original's)", ok && mph[pi].n[1] == 1u);
-    ck("  .. nothing more to undo", morph_undo_part(pi, 1) == 0);
-    for (i = 0; i < 10u; i++)
-        roll_end(pi, 0, 5u + i, 40, 0);
-    ck("  .. rolls past MORPH_HIST wrap the rings together (slot index = id index mod XH)", mph[pi].n[0] == MORPH_HIST && mph[pi].top[0] == 1u && mph[pi].xv[0] == XH);
+    ck("rolls (SMART, AMOUNT 60) move the slots' ends (ENV 2 and the rest), each replacing End B in place (one entry)", ok && moved > 0u);
     printf("xvalues: morph_part_t %u bytes (XH %u), mwork_t %u, track_t %u, voice_t %u\n", (unsigned)sizeof(morph_part_t), (unsigned)XH, (unsigned)sizeof(mwork_t), (unsigned)sizeof(track_t), (unsigned)sizeof(voice_t));
 }
 

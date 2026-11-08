@@ -2769,9 +2769,8 @@ static void graph_morph(void)
     GFX_HOOK_ALIGN(cx - 14, MV_TY - 7, cx + 15, MV_TY + 8, AL_HV, "morph value in its thumb");
     cv_text_in(cx - 14, MV_TY - 7 + CAP_IN(S, 15), 29, &AF_S, b, T_INK, T_PFILL(pi));
     kh[0] = (khint_t){KC_K2, "ROLL A|B"};
-    kh[1] = (khint_t){KC_K3, "UNDO A|B"};
-    kh[2] = (khint_t){KC_K4, "AMT"};             /* (AMOUNT: 5 px too wide for the row) */
-    cv_key_row(12, 228, MV_KY, kh, 3, 7u, T_BG);
+    kh[1] = (khint_t){KC_K4, "AMT"};             /* (AMOUNT: 5 px too wide for the row; 1.0.0-b5: KNOB 3 has no job, no UNDO) */
+    cv_key_row(12, 228, MV_KY, kh, 2, 7u, T_BG);
     GFX_HOOK_ALIGN(0, 0, 240, 0, AL_H, "morph save line centred");
     cv_text_in(0, MV_SY, 240, &AF_S, "HOLD SAVE = SAVE PATCH", T_DIM, T_BG);
 }

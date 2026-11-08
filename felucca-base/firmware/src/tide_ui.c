@@ -53,10 +53,14 @@ static void tide_home(uint32_t mask)
         seqm_home(k);
     }
 }
-/* part pi sounds other than its Original: the fader off A, or End A itself moved (a roll or MORPH TO of A) */
+/* part pi sounds other than its Original: the fader off A, or End A itself moved (a roll or MORPH TO of A: End A is not the Original; 1.0.0-b5: no
+ * history, so this compares the values instead of asking whether End A's ring moved) */
 static int tide_sound_moved(uint32_t pi)
 {
-    return pi < NSHOWN && morph_view_on(pi) && (mph[pi].fader || mph[pi].top[0]);
+    const morph_part_t *mp = &mph[pi % NSHOWN];
+    return pi < NSHOWN && morph_view_on(pi) &&
+           (mp->fader || mp->tok[0][0] || memcmp(mp->h[0][0], mp->base, P_COUNT) || memcmp(mp->hx[0][0], mp->base + XW_BASE, NX) ||
+            (morph_isfm(mp) && memcmp(mp->fh[0][0], mp->fb, NFM)));
 }
 /* KEEP's sound half: what part pi sounds like now becomes its Original (then the ends rebased on it, End B a new roll). The values
  * as the fader blends them (morph_view_all); on FM6 the patch as it sounds (morph_tide.c tide_fm6_effective: the blend and a

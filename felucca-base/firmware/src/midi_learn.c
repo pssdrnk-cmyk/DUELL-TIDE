@@ -79,7 +79,7 @@ static void map_unmap(uint32_t cc, uint32_t restore)
 
 /* --- the names ---------------------------------------------------------------------------------------------------------- */
 static const char *const MAP_ACT_NAME[MAP_T_ACT_END - MAP_T_MORPH] = {
-    "MORPH", "ROLL A", "ROLL B", "UNDO", "ROLL", "MORPH AMOUNT", "MORPH TARGET", "MORPH SMART", "MORPH ARP", "MORPH PITCH", "MODE", "-", "XFADE",
+    "MORPH", "ROLL A", "ROLL B", "-", "ROLL", "MORPH AMOUNT", "MORPH TARGET", "MORPH SMART", "MORPH ARP", "MORPH PITCH", "MODE", "-", "XFADE",
     "SPLIT NOTE", "CUTOFF", "RESONANCE"
 #if DUELL_TIDE
     , "GLIDE", "SEQ MORPH"
@@ -120,7 +120,7 @@ static void map_name(uint32_t l, char *b)
 /* 1: a target code the table may hold (a part value, an extension slot, an action, a global value) */
 static int map_code_ok(uint32_t code)
 {
-    return code < P_COUNT || (code >= XW_BASE && code < XW_BASE + NX) || (code >= MAP_T_MORPH && code < MAP_T_ACT_END && code != MAP_T_SPARE_BAL) ||   /* (item 144: every slot, X27 STRUM too, as CHRD / VOIC are; item 157: BALANCE's code is a spare) */
+    return code < P_COUNT || (code >= XW_BASE && code < XW_BASE + NX) || (code >= MAP_T_MORPH && code < MAP_T_ACT_END && code != MAP_T_SPARE_BAL && code != MAP_T_SPARE_UNDO) ||   /* (item 144: every slot, X27 STRUM too, as CHRD / VOIC are; item 157: BALANCE's code is a spare; 1.0.0-b5: UNDO's too) */
            (code >= MAP_T_G0 && code < MAP_T_G0 + G_COUNT);
 }
 /* the part rules the target may have: the generator's table (tools/gen_midi_map.py) */
@@ -162,7 +162,7 @@ static void map_target_info(uint32_t code, const track_t *t, map_info_t *r)
         r->inert = (uint8_t)card_hidden_vp(&song.g[code - MAP_T_G0]);
     } else {
         r->saved = code >= MAP_T_TARGET && code <= MAP_T_PITCH ? MAP_S_DEVICE : MAP_S_MULTI;
-        r->kind = code == MAP_T_ROLL_A || code == MAP_T_ROLL_B || code == MAP_T_UNDO || code == MAP_T_ROLL
+        r->kind = code == MAP_T_ROLL_A || code == MAP_T_ROLL_B || code == MAP_T_ROLL
 #if DUELL_TIDE
                   || code == MAP_T_GLIDE
 #endif
