@@ -1,6 +1,6 @@
 # DUELL with TIDE roadmap
 
-Updated 8 November 2026. This page says where TIDE stands, what comes next, in which order, and what waits on a decision. What is already built is in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md), one section per build. The roadmap before this reorganisation, with its full evidence and receipts, is [history/ROADMAP_2026-11-08.md](history/ROADMAP_2026-11-08.md); older ones are in [history/](history/). The audits of 8 November are in [audits/2026-11-08/](audits/2026-11-08/): the [CPU audit](audits/2026-11-08/cpu/CPU_AUDIT.md) with its task briefs K1 to K12 ([TASKS.md](audits/2026-11-08/cpu/TASKS.md)), and the [round-2 code audit](audits/2026-11-08/full/AUDIT_REPORT.md) with its findings 1 to 39.
+Updated 8 November 2026. This page says where TIDE stands, what comes next, in which order, and what waits on a decision. What is already built is in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md), one section per build. The roadmap before this reorganisation, with its full evidence and receipts, is [history/ROADMAP_2026-11-08.md](history/ROADMAP_2026-11-08.md); older ones are in [history/](history/). The audits of 8 November are in [audits/2026-11-08/](audits/2026-11-08/): the [live-record audit](audits/2026-11-08/liverec/LIVEREC_AUDIT.md), the [CPU audit](audits/2026-11-08/cpu/CPU_AUDIT.md) with its task briefs K1 to K12 ([TASKS.md](audits/2026-11-08/cpu/TASKS.md)), and the [round-2 code audit](audits/2026-11-08/full/AUDIT_REPORT.md) with its findings 1 to 39.
 
 ## Where things stand
 
@@ -38,6 +38,8 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 | 5 | Patch order | Your saved sounds listed last in PATCHES; MIDI numbers unchanged. Built on `fix/w15-patch-order` (`01289dc`, +84 B), not merged. | Waits on the owner's answer (see "Waiting on the owner"). |
 | 6 | Felucca 1.7.0 check | Already in our tree (checked 8 November): the TRS clock read during the audio render (Felucca #258) and exact clock progress with no drift (#269), both in `820e533` (1 November); the guard against a briefly invalid tempo (Felucca #282) in `fx.c` `beat_samples`. Left: compare our TRS receive (`hal/fm1_uart.h` `fm1_uart1_rx_take`) with Felucca #264's diff to confirm it; optionally port Felucca's `timer5_midi_test.c` (a clock-under-CC-flood test, no firmware change). | Planned. |
 | 7 | Small fixes with no sound change | `settings_persist.c` comment on object 48 (finding 33, D48: object 48 stays); the restore planner treats an older TIDE unit as unknown instead of plain DUELL and no longer strips FM6 MORPH TO (finding 14), plus one line in `jam_dev.py restore`'s help; three UI lint scenes (DAMAGED record, ABOUT with the TIDE id, a PATCHES row past #163; finding 31). | Planned. |
+| 7a | Live REC fix (live-record audit R1) | Arming REC no longer silences the ARP SEQ parts, and an ARP SEQ part's arp no longer records its own notes into its pattern (today MONO climbs to note 127 in 3 loops). Arp-off recording is unchanged. | Planned. [Brief R1](audits/2026-11-08/liverec/TASKS.md#r1) |
+| 7b | REC on HOME (R4) | On HOME a REC tap is HOLD, so recording seems not to work: either a hint says SEQ + REC records, or REC records on HOME. | Waits on the owner (Q2). [Brief R4](audits/2026-11-08/liverec/TASKS.md#r4) |
 | 8 | Unit measurements | The 16-multi GLIDE sweep reading both `cpu_pk_us` and `cpu_raw_pk_us`; each drone with its 3-note chord held while `glide 1 0` runs. Sets the acceptance numbers for b4. | Needs the unit on USB. |
 | 9 | Cut b3 | `TIDE_VERSION` 1.0.0-b3, CHANGELOG section, tag, build, flash, GitHub pre-release. | After 2 to 8. |
 
@@ -77,6 +79,10 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 - Roles spec T8 to T10: the new reel of multis, together with the `tideroles` levels (43 of 338 checks red: M04 +3.8, M10 +5.3, M12 -3.1, M15 -7.2, M16 -9.2 dB from the median; finding 25, D46).
 - Factory bank: offer the re-authored End Bs and tempo-synced slow motion upstream.
 
+**Live recording** ([audit](audits/2026-11-08/liverec/LIVEREC_AUDIT.md))
+- Keys record into an ARP SEQ pattern as played, stored as offsets on the arp's root at its step: after R1, only if the owner answers A to Q1. [Brief R2](audits/2026-11-08/liverec/TASKS.md#r2)
+- A `liverec` host test group from the audit's probe, and QUICKSTART / TIDE_GUIDE say what REC does on ARP SEQ parts. [Brief R3](audits/2026-11-08/liverec/TASKS.md#r3)
+
 **Storage and backups**
 - U4, 24 multi slots: tested on `wip-24-multis` (`21ca3a7`), its own rollout with a format bump. At the rebase: renumber its backup ids (41 is now the FM6 voice bank), archive VERSION 6 against 5, update `erase_test.c` and `xb_test.c`, measure the flash first (keep 3 KB headroom; only 2.4 KB is free today, so it needs savings first).
 - Patch capacity in the docs: INFO says 128 slots, TIDE guarantees 126 worst-case records; replace "every slot always fits" with exact wording.
@@ -115,6 +121,8 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 | HOME without MODE: where do MODE, XFADE and SPLIT go? | Proposals with screen mock-ups come first. |
 | D43: when a crossing starts under a held chord, the chord stays whole (the budget plans for it from the start). | Stays whole; decided after the drones are measured under a GLIDE. |
 | D46: the multis that are too loud or too quiet are trimmed by ear on the unit. | Trim M15, M16 up and M10 down by the numbers, then listen. |
+| Live REC Q1: on a part that plays its pattern by itself (ARP SEQ), should your keys add notes to it while recording, or should only the knobs record? | Knobs only until you choose. |
+| Live REC Q2: on HOME, should REC start recording, or stay HOLD with a hint that SEQ + REC records? | Stays HOLD, with the hint. |
 | Which of the ideas below, if any. | None until chosen. |
 
 **By ear or eye on the unit** (no homework: noted when the owner meets them in use): the drones; the U2 multi sequences; the MULTIS / PATTERNS preview's readability; polymeter (12 / 16, 15 / 16) against a steady 4 / 4; whether TURNS' alternating bars improve the interplay.
