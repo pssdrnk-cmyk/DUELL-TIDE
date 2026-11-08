@@ -2,15 +2,17 @@
 /* K3 THE EASE LADDER (TIDE 1.0.0-b4; audio.c ease_step / ease_set, core.h ease; CPU audit docs/audits/2026-11-08/cpu/TASKS.md#k3). The real audio ISR with a
  * simulated clock (as tests/audio_test.c): each half reports the elapsed time the test sets (host_us; TIMER5 nested: 0, so render = elapsed).
  *   SEQUENCE  30 halves at 60 %, 2 at 90 %, 10 at 60 %, 1 at 110 %, then 50 %: the level after every half against the rule (up one after two halves in a row over
- *             85 %, at least 4 after a miss, down one after 1034 halves (~3 s) with the meter under 70 %, the count starting again), every change at its half
+ *             85 %, at least 4 after a miss, down one after 345 halves (~1 s) with no half over 80 %, the count starting again), every change at its half; 82 %
+ *             holds a level, a steady 75 % steps down to 0 (the old 70 %-average rule never let go there), one half over 80 % a second holds it
  *   COUNTERS  ease_n (entries into each level, a jump enters each level on the way), LIGHT FX (ovl_lite) exactly at levels 3 .. 5, ovl_count = entries into 3
- *   NOKILL    held and released voices through levels 1 .. 3 (four halves at 90 %, then 80 % for 2 s): no voice faded (shed_count, voice_kills), all still sounding
+ *   NOKILL    held and released voices through levels 1 .. 3 (four halves at 90 %, then 82 % for 2 s): no voice faded (shed_count, voice_kills), all still sounding
  *   ADMIT     level 2: a new POLY note takes over the oldest released voice instead of a free one when the part sounds np - 1 voices; with no released voice it
- *             takes a free one (no held note cut); level 0 and 1: a free one as ever
+ *             takes a free one (no held note cut); level 0 and 1: a free one as ever; MONO, LEGATO, UNISON bit for bit as at level 0; the other part untouched
  *   LEVEL4/5  level 4 fades the two oldest released tails, never a held note, however long 90 % lasts (level 5 reached, no miss); level 5 and a half that misses:
  *             one held note fades (not the bass)
  *   LEVEL1    the valley and the wash with their coefficients every other block (level 1) against every block (level 0): the same input, the output within
- *             -30 dB of the level-0 render (a one-block lag of the coefficients) and no step over the level-0 render's own largest step (the coefficients still glide inside the block)
+ *             -30 dB of the level-0 render (a one-block lag of the coefficients), no step over the level-0 render's own, and really different (it holds);
+ *             the valley's depth falling to 0 and the wash's movement stopping on any block: no step in what the stage adds over level 0's
  * Built and run by DUELL/host_tests.sh (name: ease) */
 #define main hostsim_main
 #include "hostsim.c"
@@ -73,20 +75,18 @@ static void sequence(void)
     fresh();
     for (s = 0; s < sizeof SEQ / sizeof SEQ[0]; s++)
         for (k = 0; k < SEQ[s].n; k++, h++) {
-            uint32_t over = US_OF(SEQ[s].pct) > SHED_TICKS, miss = US_OF(SEQ[s].pct) > SHED_FULL_TICKS, two = over && prev;
+            uint32_t us = US_OF(SEQ[s].pct), over = us > HALF_US * 85u / 100u, miss = us > HALF_US, two = over && prev;
             half(SEQ[s].pct);
-            if (two || miss) {                          /* (the rule as the brief states it, written out again) */
-                calm = 0;
+            if (two || miss) {                          /* (the rule as the brief states it, written out again: up) */
                 model += two && model < 5u;
                 model = miss && model < 4u ? 4u : model;
-            } else if (model) {
-                calm = song.cpu_q8 < OVL_CALM_Q8 ? calm + 1u : 0u;
-                if (calm >= OVL_CALM_HALVES)
-                    model--, calm = 0;
             }
+            calm = us > HALF_US * 80u / 100u || !model ? 0u : calm + 1u;   /* (down: ~1 s, 345 halves, with no half over 80 %) */
+            if (calm >= 345u)
+                model--, calm = 0;
             prev = over;
             mism += ease != model;
-            lite_ok &= ovl_lite == (ease >= 3u);
+            lite_ok &= ovl_lite == (ease >= EASE_LIGHT);
             if (ease != (changes ? lv[changes - 1u] : 0u) && changes < 8u)
                 at[changes] = h, lv[changes++] = ease;
         }
@@ -94,12 +94,13 @@ static void sequence(void)
     for (k = 0; k < changes; k++)
         printf(" %u:%u", at[k], lv[k]);
     printf("\n");
-    expect("SEQUENCE: the level after every one of 5043 halves is the rule's (up after two halves over 85 %, 4 after a miss, down after ~3 s calm)", !mism);
+    expect("SEQUENCE: the level after every one of 5043 halves is the rule's (up after two halves over 85 %, 4 after a miss, down after ~1 s with no half over 80 %)", !mism);
+    expect("  .. EASE_DOWN_HALVES is 345 (1.0 s of halves), the thresholds 85 and 80 %", EASE_DOWN_HALVES == 345u && EASE_UP_PCT == 85u && EASE_DOWN_PCT == 80u);
     expect("  .. 0 for 30 halves at 60 %, 1 after the second half at 90 % (half 31), still 1 through 10 halves at 60 %", changes >= 1u && at[0] == 31u && lv[0] == 1u);
     expect("  .. the half at 110 % (a miss, half 42): straight to 4", changes >= 2u && at[1] == 42u && lv[1] == 4u);
-    expect("  .. at 50 %: one level down every 1034 halves (3.0 s): 3 at half 1076, 2 at 2110, 1 at 3144, 0 at 4178, and nothing after",
-           changes == 6u && at[2] == 42u + OVL_CALM_HALVES && lv[2] == 3u && at[3] == 42u + 2u * OVL_CALM_HALVES && lv[3] == 2u &&
-           at[4] == 42u + 3u * OVL_CALM_HALVES && lv[4] == 1u && at[5] == 42u + 4u * OVL_CALM_HALVES && lv[5] == 0u);
+    expect("  .. at 50 %: one level down every 345 halves (1.0 s): 3 at half 387, 2 at 732, 1 at 1077, 0 at 1422 (4 s from the miss), and nothing after",
+           changes == 6u && at[2] == 42u + 345u && lv[2] == 3u && at[3] == 42u + 2u * 345u && lv[3] == 2u &&
+           at[4] == 42u + 3u * 345u && lv[4] == 1u && at[5] == 42u + 4u * 345u && lv[5] == 0u);
     expect("COUNTERS: ease_n = 1, 1, 1, 1, 0 (the jump 1 -> 4 entered 2, 3 and 4), LIGHT FX exactly at levels 3 .. 5, ovl_count 1",
            ease_n[0] == 1u && ease_n[1] == 1u && ease_n[2] == 1u && ease_n[3] == 1u && ease_n[4] == 0u && lite_ok && ovl_count == 1u);
     expect("  .. no voice faded on the way (nothing was sounding: shed_count 0)", shed_count == 0u);
@@ -107,15 +108,27 @@ static void sequence(void)
     for (k = 0; k < 2000u; k++)
         half(k % 7u ? 70u : 97u);
     expect("  .. single halves at 97 % among 70 % ones (never two in a row) leave the level at 0", ease == 0u && !ease_n[0]);
-    fresh();                                            /* 80 % (between 70 and 85) holds a level: no step up, no release */
+    fresh();                                            /* 82 % (between 80 and 85) holds a level: no step up, no release */
     for (k = 0; k < 4u; k++)
         half(90u);
     for (k = 0; k < 4000u; k++)
-        half(80u);
-    expect("  .. four halves at 90 % reach 3; 80 % (the meter over 70 %) holds it for 11 s, no step up, no release", ease == 3u && ovl_lite && ease_n[3] == 0u);
+        half(82u);
+    expect("  .. four halves at 90 % reach 3; 82 % (over 80 %, under 85 %) holds it for 11 s, no step up, no release", ease == 3u && ovl_lite && ease_n[3] == 0u);
     for (k = 0; k < 20u; k++)
         half(90u);
-    expect("  .. 90 % on: 4, then 5 (one level a half at most), and there it stays", ease == 5u && ease_n[3] == 1u && ease_n[4] == 1u);
+    expect("  .. 90 % on: 4, then 5 (one level a half at most), and there it stays; ease_n = 1, 1, 1, 1, 1", ease == 5u &&
+           ease_n[0] == 1u && ease_n[1] == 1u && ease_n[2] == 1u && ease_n[3] == 1u && ease_n[4] == 1u);
+    for (k = 0; k < 5u * 345u - 1u; k++)
+        half(75u);
+    expect("  .. a steady 75 % (the meter's average over 70 %: the old rule never let go) steps down one level a second: 1 after 5 s less a half", ease == 1u);
+    half(75u);
+    expect("  .. and 0 at 5 s", ease == 0u);
+    fresh();
+    for (k = 0; k < 4u; k++)
+        half(90u);
+    for (k = 0; k < 2000u; k++)
+        half(k % 300u ? 70u : 83u);                     /* (one half over 80 % every 300: the second never comes) */
+    expect("  .. a half over 80 % starts the 1 s again: one every 300 halves holds the level", ease == 3u);
 }
 
 /* ------------------------------------------------------------------ the voices --- */
@@ -139,8 +152,8 @@ static void voices(void)
     for (k = 0; k < 4u; k++)
         half(90u);
     for (k = 0; k < 700u; k++)
-        half(80u);
-    expect("NOKILL: through levels 1, 2, 3 (4 halves at 90 %, 2 s at 80 %): no voice faded (shed_count 0, voice_kills 0), the 6 voices still sound",
+        half(82u);
+    expect("NOKILL: through levels 1, 2, 3 (4 halves at 90 %, 2 s at 82 %): no voice faded (shed_count 0, voice_kills 0), the 6 voices still sound",
            ease == 3u && ease_n[0] == 1u && ease_n[1] == 1u && ease_n[2] == 1u && shed_count == 0u && voice_kills == 0u && s0 == 6u && sounding(&trk[0]) == 6u && h0 == 3u && held_n(&trk[0]) == 3u);
 
     {                                                   /* ADMIT */
@@ -200,17 +213,17 @@ static void voices(void)
 /* ------------------------------------------------------------------ LEVEL 1: the valley and the wash --- */
 static void level1(void)
 {
-    static int32_t ya[2][64], yb[2][64];
+    static int32_t ya[3][64], yb[3][64];
     uint32_t blk, i, ph = 0, run;
-    double e2 = 0, s2 = 0, er[2] = {0, 0}, sr[2] = {0, 0};
+    double e2 = 0, s2 = 0, er[3] = {0, 0, 0}, sr[3] = {0, 0, 0};
     int32_t st0 = 0, st1 = 0, la = 0, lb = 0;
-    for (run = 0; run < 2u; run++) {                    /* run 0: the valley alone (WASH OFF); 1: with the wash */
+    for (run = 0; run < 3u; run++) {                    /* run 0: the valley alone (WASH OFF); 1: with the wash; 2: the wash alone */
         memset(mxv, 0, sizeof mxv); memset(mxs, 0, sizeof mxs);
         mxv[0].wr = mxv[1].wr = 0x2468ACEu;
         morph_wlvl = (uint8_t)(run ? 2u : 0u);
         for (blk = 0; blk < 4000u; blk++) {
             uint32_t p;
-            int32_t amp = (blk / 300u) % 2u ? 2000000 : 400000;
+            int32_t amp = (blk / 300u) % 2u ? 2000000 : run == 2u ? 30000 : 400000;   /* (the wash alone: a fall of 36 dB while it moves, a gap for it to fill) */
             for (p = 0; p < 2u; p++) {
                 mxs[p].d = (uint16_t)((blk * 41u) % 65536u > 32767u ? 65535u - (blk * 41u) % 65536u : (blk * 41u) % 65536u);   /* (a slow triangle of depth) */
                 mxs[p].lfloor = 4096u * 9u;
@@ -221,9 +234,11 @@ static void level1(void)
                 int32_t x = (int32_t)(amp * sin(ph * 0.031) + amp / 3 * sin(ph * 0.47));
                 ya[run][i] = yb[run][i] = x;
             }
+            if (run == 2u)
+                mxs[0].d = mxs[1].d = 0;                /* (run 2: the wash alone: the valley at rest hands the block to it) */
             ease = 0;
             morph_valley(0, ya[run], 0, 32u);
-            ease = 1;
+            ease = EASE_RATE;
             morph_valley(1, yb[run], 0, 32u);
             for (i = 0; i < 32u; i++) {
                 double d = (double)ya[run][i] - yb[run][i];
@@ -239,11 +254,139 @@ static void level1(void)
     }
     ease = 0;
     morph_wlvl = 0;
-    e2 = er[0] + er[1], s2 = sr[0] + sr[1];
-    printf("ease: LEVEL1 the valley alone %.1f dB under the signal, with the wash %.1f dB\n", 10.0 * log10(sr[0] / (er[0] + 1e-9)), 10.0 * log10(sr[1] / (er[1] + 1e-9)));
+    e2 = er[0] + er[1] + er[2], s2 = sr[0] + sr[1] + sr[2];
+    printf("ease: LEVEL1 the valley alone %.1f dB under the signal, with the wash %.1f dB, the wash alone %.1f dB\n", 10.0 * log10(sr[0] / (er[0] + 1e-9)),
+           10.0 * log10(sr[1] / (er[1] + 1e-9)), 10.0 * log10(sr[2] / (er[2] + 1e-9)));
+    expect("LEVEL1: level 1 really holds: the valley's, the valley-and-wash's and the wash's renders differ from level 0's (e2 > 0 each)", er[0] > 0 && er[1] > 0 && er[2] > 0);
     printf("ease: LEVEL1 the valley and the wash, coefficients every other block against every block: difference %.1f dB under the signal, largest step %d (every block: %d)\n",
            10.0 * log10(s2 / (e2 + 1e-9)), st1, st0);
     expect("LEVEL1: the valley and the wash at level 1 within -30 dB of level 0's render (coefficients a block late), no step over level 0's largest + 1 %", s2 > 0 && e2 < s2 * 1e-3 && st1 <= st0 + st0 / 100);
+}
+
+/* ------------------------------------------------------------------ LEVEL 1: a depth (valley) or a movement (wash) that stops on any block --- */
+/* part 0 alone through morph_valley, from rest: the valley at full depth (wash 0) or the wash moving (depth 0), stopped at block j; the largest step of what the
+ * stage adds (out - in) from a block before the stop to 40 after it */
+static int32_t jump_case(uint32_t wash, uint32_t j, uint32_t lvl)
+{
+    static int32_t y[32];
+    uint32_t blk, i, ph = 0;
+    int32_t m = 0, last = 0;
+    memset(mxv, 0, sizeof mxv); memset(mxs, 0, sizeof mxs);
+    mxv[0].wr = 0x13579BDu;
+    morph_wlvl = (uint8_t)(wash ? 2u : 0u);
+    for (blk = 0; blk < j + 40u; blk++) {
+        int32_t x[32];
+        mxs[0].d = (uint16_t)(!wash && blk < j ? 32767u : 0u);
+        mxs[0].lfloor = 4096u * 9u;
+        mxs[0].snd = 1;
+        mxs[0].motion = (uint16_t)(wash && blk >= 200u && blk < j ? 20000u : 0u);   /* (the wash: 200 blocks at rest learn the level, then it moves while the sound falls) */
+        for (i = 0; i < 32u; i++, ph++) {
+            double a = wash && blk >= 200u ? 0.02 : 1.0;
+            x[i] = y[i] = (int32_t)(a * (1500000.0 * sin(ph * 0.021) + 300000.0 * sin(ph * 0.33)));
+        }
+        ease = (uint8_t)(blk >= 20u ? lvl : 0u);
+        morph_valley(0, y, 0, 32u);
+        for (i = 0; i < 32u; i++) {
+            int32_t d = y[i] - x[i], s = d - last;
+            s = s < 0 ? -s : s;
+            if (blk + 1u >= j)
+                m = s > m ? s : m;
+            last = d;
+        }
+    }
+    ease = 0;
+    morph_wlvl = 0;
+    return m;
+}
+static void level1_jump(void)
+{
+    uint32_t w, j;
+    for (w = 0; w < 2u; w++) {
+        int32_t worst0 = 0, worst1 = 0, ok = 1;
+        for (j = 400u; j < 408u; j++) {                 /* (the stop on eight blocks in a row: held and computed blocks alike) */
+            int32_t s0 = jump_case(w, j, 0), s1 = jump_case(w, j, EASE_RATE);
+            worst0 = s0 > worst0 ? s0 : worst0, worst1 = s1 > worst1 ? s1 : worst1;
+            ok &= s1 <= s0 + s0 / 20 + 2;
+        }
+        printf("ease: LEVEL1 JUMP %s stops: the largest step of what it adds, level 1 %d, level 0 %d\n", w ? "the wash's movement" : "the valley's depth", worst1, worst0);
+        expect(w ? "LEVEL1 JUMP: the wash's movement stopping on any block: no step in what it adds over level 0's (+ 5 %)"
+                 : "LEVEL1 JUMP: the valley's depth falling from full to 0 on any block: no step in what it adds over level 0's + 5 % (its filter a block behind; a held +9 dB make-up would be x 2 .. 3)", ok && worst0 > 0);
+    }
+}
+
+/* ------------------------------------------------------------------ LEVEL 2: MONO, LEGATO, UNISON untouched; the other part untouched --- */
+static uint64_t mode_hash(uint32_t mode, uint32_t lvl)  /* a phrase on part 1 in this voice mode, rendered at this level (in a child: the same start every time) */
+{
+    int fd[2];
+    pid_t pid;
+    uint64_t h = 0;
+    int st = 0;
+    fflush(stdout);
+    if (pipe(fd))
+        return 0;
+    pid = fork();
+    if (!pid) {
+        static int32_t out[2 * CTL];
+        uint32_t b, i;
+        fresh();
+        memset(mxv, 0, sizeof mxv); memset(mxs, 0, sizeof mxs);   /* (no morph, no valley or wash: what levels 2 and 3 change on a part that does not move) */
+        morph_wlvl = 0;
+        trk[0].p[P_VOICE] = (int8_t)mode;
+        trk[0].p[P_REL] = 90;
+        ease = (uint8_t)lvl, ovl_lite = lvl >= EASE_LIGHT;
+        h = 1469598103934665603ull;
+        for (b = 0; b < 3000u; b++) {
+            if (b % 37u == 0u) trk_note_on(&trk[0], 48u + (b / 37u) % 12u, 100);
+            if (b % 37u == 20u) trk_note_off(&trk[0], 48u + (b / 37u) % 12u);
+            if (b % 111u == 5u) trk_note_on(&trk[0], 60u, 90);
+            if (b % 111u == 70u) trk_note_off(&trk[0], 60u);
+            mix_block(out, CTL);
+            for (i = 0; i < 2u * CTL; i++)
+                h = (h ^ (uint32_t)out[i]) * 1099511628211ull;
+        }
+        _exit(write(fd[1], &h, sizeof h) == (ssize_t)sizeof h ? 0 : 3);
+    }
+    close(fd[1]);
+    if (read(fd[0], &h, sizeof h) != (ssize_t)sizeof h)
+        h = 0;
+    close(fd[0]);
+    if (pid > 0)
+        waitpid(pid, &st, 0);
+    return h;
+}
+static void level2_modes(void)
+{
+    static const uint32_t M[3] = {V_MONO, V_LEGATO, V_UNISON};
+    static const char *const MN[3] = {"MONO", "LEGATO", "UNISON"};
+    uint32_t k, ok = 1;
+    for (k = 0; k < 3u; k++) {
+        uint64_t h0 = mode_hash(M[k], 0), h2 = mode_hash(M[k], EASE_ADMIT), h3 = mode_hash(M[k], EASE_LIGHT);
+        printf("ease: LEVEL2 %s: level 0 %016llx, level 2 %016llx, level 3 %016llx\n", MN[k], (unsigned long long)h0, (unsigned long long)h2, (unsigned long long)h3);
+        ok &= h0 && h0 == h2 && h0 == h3;
+    }
+    expect("LEVEL2: MONO, LEGATO and UNISON render bit for bit the same at levels 2 and 3 as at 0 (the takeover is POLY's; no morph, no delay events in the scene)", ok);
+    {
+        uint32_t np;
+        voice_t keep[NVOICE];
+        scene();                                        /* part 1 as in NOKILL; part 2 POLY with its own held and released voices */
+        trk[1].p[P_VOICE] = V_POLY;
+        trk[1].p[P_REL] = 120;
+        for (k = 0; k < 7u; k++) trk_note_on(&trk[1], 40u + 2u * k, 100);
+        half(30u);
+        trk_note_off(&trk[1], 42); trk_note_off(&trk[1], 46);
+        half(30u);
+        np = trk_nvoice(&trk[0]);
+        for (k = 0; sounding(&trk[0]) + 1u < np && k < NVOICE; k++)
+            trk_note_on(&trk[0], 60u + 2u * k, 100);
+        memcpy(keep, trk[1].v, sizeof keep);
+        ease = EASE_ADMIT;
+        {
+            voice_t *v = voice_alloc(&trk[0], 80u);
+            expect("LEVEL2: part 1's takeover (its oldest released voice) leaves part 2's voices, held and released, untouched", v >= trk[0].v && v < trk[0].v + NVOICE &&
+                   v->note == 50u && !memcmp(keep, trk[1].v, sizeof keep));
+        }
+        ease = 0;
+    }
 }
 
 int main(void)
@@ -252,6 +395,8 @@ int main(void)
     sequence();
     voices();
     level1();
+    level1_jump();
+    level2_modes();
     printf("ease: %d checks, %d failed\n", ncheck, bad);
     return bad ? 1 : 0;
 }

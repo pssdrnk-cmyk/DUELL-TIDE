@@ -95,7 +95,13 @@ static __attribute__((noinline)) void MXT_BODY(fm6_xblock)(track_t *t, uint32_t 
 {
     fm6_xt_t *x = &fm6_xt[tr];
     fm6_xsave_t *sv0 = (fm6_xsave_t *)((fm6_note_t *)ENG_MEM(tr) + FM6_POLY);
-    uint32_t i, s, dirty = 0, tune = x->on && !(EASE && (x->ez ^= 1u));   /* (K3 ease level 1: the retune every other block; between, the notes keep the last one) */
+    /* K3 ease level 1: the retune every other block; between, the notes keep the last one. ZERO MARGIN: an operator is retuned click-free only on a block it
+     * was silent in, and the block before too (fm6_xtune's mask: mute = now & before); morph_xfer.c XTP_MAX = XZ / 3 makes a silent operator's plateau three
+     * blocks long at least, so it has two such blocks in a row, and one of any two blocks in a row is a retune block here. A plateau shorter than three blocks
+     * (a larger XTP_MAX, a coarser fader step) could miss its retune at level 1: change both together */
+    uint32_t i, s, dirty = 0, tune = x->on && !(EASE >= EASE_RATE && (x->ez ^= 1u));
+    if (tune)
+        EASE_PROBE(1);
     for (i = 0; i < FM6_POLY; i++) {
         fm6_note_t *n = (fm6_note_t *)ENG_MEM(tr) + i;
         uint32_t want = x->on ? x->xs : 0u;

@@ -382,11 +382,11 @@ static __attribute__((noinline)) uint32_t ease_tail(const track_t *t, uint32_t n
 {
     uint32_t i, n = 0, best = np;
     for (i = 0; i < NVOICE; i++)
-        n += t->v[i].active && t->v[i].stage != 4u;
+        n += t->v[i].active && t->v[i].stage != VSTAGE_FADE;
     if (n + 1u < np)
         return np;
     for (i = 0; i < np; i++)
-        if (t->v[i].active && !t->v[i].gate && t->v[i].stage != 4u && (best == np || t->v[i].age < t->v[best].age))
+        if (t->v[i].active && !t->v[i].gate && t->v[i].stage != VSTAGE_FADE && (best == np || t->v[i].age < t->v[best].age))
             best = i;
     return best;
 }
@@ -416,7 +416,7 @@ static voice_t *voice_alloc(track_t *t, uint32_t note)
 #endif
     }
 #if DUELL_TIDE
-    if (EASE >= 2u && (i = ease_tail(t, np)) < np)    /* (K3 ease level 2: no new voice while eased, if a released one can take the note) */
+    if (EASE >= EASE_ADMIT && (i = ease_tail(t, np)) < np)    /* (K3 ease level 2: no new voice while eased, if a released one can take the note) */
         return voice_reuse(t, &t->v[i]);
 #endif
 #if NPART > 2

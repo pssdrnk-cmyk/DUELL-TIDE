@@ -1640,8 +1640,8 @@ static int morph_begin(track_t *t, int adv)
     {                                                   /* GLIDE CPU (unit 2026-11-06: a blend every block of a moving fader cost ~70 us a block on part 1): while the
                                                          * fader moves, blend every other block and write the last blend in between (the fader one block, 0.73 ms, behind) */
         static uint8_t rskip[NSHOWN];                   /* (K3 ease level 1: a GLIDE or a hand on the fader blends every 4th block, 3 written from the last blend) */
-        if (mp->cvalid && mp->cst == duell_stereo && mp->cfader != mp->fader && adv && (morph_gliding || EASE)) {   /* (a GLIDE only: a hand on the fader blends every block, as before) */
-            if (rskip[pi] < (EASE ? 3u : 1u)) {
+        if (mp->cvalid && mp->cst == duell_stereo && mp->cfader != mp->fader && adv && (morph_gliding || EASE >= EASE_RATE)) {   /* (level 0: a GLIDE only, a hand on the fader blends every block, as before) */
+            if (rskip[pi] < (EASE >= EASE_RATE ? 3u : 1u)) {
                 rskip[pi]++;
                 goto cached;
             }
@@ -1683,6 +1683,8 @@ cached:
         }
 #if DUELL_TIDE
         m = morph_xreg(pi, t->p, tid, chk, tlive, m);
+        if (adv)
+            EASE_PROBE(0);                              /* (tests: a block's blend) */
         morph_apply_at(mp, t->p, morph_wb(mp->fader), 1, mxp, 1);
         morph_xpost(t, pi);
 #else

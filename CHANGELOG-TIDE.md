@@ -11,7 +11,7 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 
 Not flashed yet.
 
-- **Changed (CPU, audit K3):** when the audio gets close to its limit, the unit now backs off gently before it cuts any sound: first it updates a moving morph, an FM6 crossing and the valley and wash less often, then a new note takes over a fading note instead of adding a voice, then LIGHT FX; only after that do fading tails stop early, and a held note only if an audio block was really missed. It steps back about 3 s after the load falls. Plain DUELL is unchanged.
+- **Changed (CPU, audit K3):** near its limit the audio now backs off in steps before it cuts sound. After two audio blocks in a row over 85 % of their time it goes up one step: first a moving morph, an FM6 crossing and the valley and wash update less often; then a new note takes over a fading note (the old tail stops when the new note starts) instead of adding a voice; then LIGHT FX. Only after that do fading tails stop early, and a held note only after a block was really missed. A missed block jumps straight to the tails step. It steps down one step after about 1 s in which no block went over 80 %. Not proven until measured on the unit (the 16-multi GLIDE sweep). Plain DUELL is unchanged.
 
 ## 1.0.0-b3
 

@@ -330,7 +330,7 @@ static uint32_t eq_hz_q8(uint32_t band, int32_t r)
 enum { V_POLY, V_MONO, V_LEGATO, V_UNISON };   /* P_VOICE */
 typedef struct {
     uint8_t note, vel, gate, active;
-    uint8_t stage;               /* env: 0 off, 1 attack, 2 decay/sustain, 3 release */
+    uint8_t stage;               /* env: 0 off, 1 attack, 2 decay/sustain, 3 release, VSTAGE_FADE (4) voice_kill's one-block fade */
     uint8_t side;                /* SPREAD (fx.c mix_spread): 0 left of PAN, 1 right; set as the voice starts */
     uint8_t stage2;              /* ENV 2 (DUELL, voice.c env2_tick): 0 off, 1 attack, 2 decay/sustain, 3 release */
     uint8_t chn;                 /* the voice chain (cloud job B, voice_chain.h): where the voice was last block, VCH_OFF / VCH_RUN, VCH_FRESH for a note that has not rendered, VCH_NEW seen by the stage hooks on a first block (in the pad byte before env: voice_t keeps its size) */
@@ -357,6 +357,7 @@ typedef struct {
     uint8_t offn, offp;          /* .. the samples of that step's decay left; 1: voice_start asks for the step to be measured in the next block */
     uint16_t msl;                /* MORPH (voice.c uf_run): the multimode filter's SLOPE cross-fade of the part, weight Q15 | 0x8000 when the other end is 24 dB; 0 = none */
 } voice_t;
+#define VSTAGE_FADE 4u                  /* voice_t stage: fading out over this block (voice.c voice_kill) */
 enum { VCH_OFF, VCH_NEW, VCH_RUN, VCH_FRESH };   /* voice_t.chn (voice_chain.h): last block on the plain path / the first block in the chain (stages start from rest) / in the chain / a note that has not rendered yet */
 
 typedef struct {                 /* an LFO's state (voice.c lfo_tick): track_t's LFO 1 (its lfo_* fields) and LFO 2 */
@@ -739,6 +740,15 @@ static uint32_t cpu_win_take(uint32_t k);
  * (fx.c ovl_lite); 4 released tails fade (audio.c shed_released); 5 a held note fades, only after a half that missed. The audio reads it as EASE: 0 in tests/ovl_test.c's
  * reference build (-DOVL_NOGUARD), so its renders are those of a build without the ladder */
 static uint8_t ease;
+#define EASE_RATE 1u                    /* the levels: 1 the transitions at a lower rate */
+#define EASE_ADMIT 2u                   /* .. 2 a new note takes over a fading one */
+#define EASE_LIGHT 3u                   /* .. 3 LIGHT FX */
+#define EASE_TAILS 4u                   /* .. 4 released tails fade (and where a miss lands at least) */
+#define EASE_HELD 5u                    /* .. 5 a held note fades after a missed half */
+#define EASE_MAX 5u
+#ifndef EASE_PROBE
+#define EASE_PROBE(k) ((void)0)         /* (tests/ease_test.c counts the eased work here: 0 a morph blend, 1 a block of FM6 retunes) */
+#endif
 #ifdef OVL_NOGUARD
 #define EASE 0u
 #else

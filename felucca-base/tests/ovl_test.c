@@ -203,7 +203,7 @@ static const char *const MNAME[3] = {"STEREO", "LAYER", "DUEL"};
 
 #ifndef OVL_NOGUARD
 #if DUELL_TIDE
-static void engage(void) { ease_set(3u); }             /* the test hook: the ease ladder at LIGHT FX's level (K3: levels 1 and 2 with it, as on the unit) */
+static void engage(void) { ease_set(EASE_LIGHT); }             /* the test hook: the ease ladder at LIGHT FX's level (K3: levels 1 and 2 with it, as on the unit) */
 static void release(void) { ease_set(0u); }
 #define OVL_HALVES_ON 4u                                /* (K3: two halves over 85 % are level 1; LIGHT FX is level 3: the fourth half in a row) */
 #else
@@ -229,6 +229,25 @@ int main(void)
         ok2 = ovl_lite && ovl_count == 1u;
         expect(DUELL_TIDE ? "MEASURE: three halves over 85 % do not engage the guard, the fourth in a row does (K3: the ease ladder's level 3)"
                           : "MEASURE: one half over 85 % does not engage the guard, the second in a row does (the voice shedding's rule)", ok1 && ok2);
+#if DUELL_TIDE
+        halves(HALVES_OF_MS(6000), 82u);
+        held = ovl_lite;
+        expect("  .. 6 s at 82 % (between 80 and 85 %): it stays engaged (hysteresis; K3)", held);
+        for (n = 0, rel = 0; n < HALVES_OF_MS(5000) && !rel; n++) {
+            halves(1, 20u);
+            rel = !ovl_lite;
+        }
+        printf("ovlguard: MEASURE released %u halves (%.2f s) after the load fell from 82 to 20 %%\n", n, n * (double)HALF_FRAMES / FS);
+        expect("  .. at 20 %: released after 1 s with no half over 80 % (EASE_DOWN_HALVES, K3), not before", rel && n == EASE_DOWN_HALVES);
+        halves(1, 93u), halves(1, 93u);                 /* (from level 2: two halves over 85 % are level 3 again) */
+        halves(HALVES_OF_MS(600), 20u);
+        halves(1, 83u);                                 /* a half over 80 %: the 1 s starts again */
+        for (n = 0, rel = 0; n < HALVES_OF_MS(5000) && !rel; n++) {
+            halves(1, 20u);
+            rel = !ovl_lite;
+        }
+        expect("  .. 0.6 s calm, then one half at 83 %, then 20 %: released 1 s after that half (the count starts again)", rel && n == EASE_DOWN_HALVES && ovl_count == 2u);
+#else
         halves(HALVES_OF_MS(6000), 76u);
         held = ovl_lite;
         expect("  .. 6 s at 76 % (between 70 and 85 %): it stays engaged (hysteresis)", held);
@@ -246,6 +265,7 @@ int main(void)
             rel = !ovl_lite;
         }
         expect("  .. 2 s calm, then 0.5 s at 76 %, then 20 %: released only 3 s after the 76 % ended (the count starts again)", rel && n >= OVL_CALM_HALVES - HALVES_OF_MS(100) && ovl_count == 2u);
+#endif
         for (i = 0; i < 40u; i++) {
             halves(1, 97u);
             halves(HALVES_OF_MS(50), 30u);
