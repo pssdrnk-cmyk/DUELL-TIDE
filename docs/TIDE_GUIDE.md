@@ -66,6 +66,7 @@ K1 picks the row. **OCT+** the next value, **OCT-** the one before (knobs 2 to 4
 | **PLAY MODE** | LAYER, STEREO, DUEL | The output mode. LAYER: both parts on the keys. STEREO: both parts, one stereo field. DUEL: part 1 left, part 2 right. The header says PLAY MODE and the value. | LAYER |
 | **XFADE** | 0 to 100 % | The velocity crossfade between the parts. LAYER only. | 0 |
 | **SPLIT** | OFF, then a note | The key split point. LAYER only. The first turn right out of OFF starts at the middle key (F#4). | OFF |
+| **REC** | ADD, REPLACE | Live recording (REC armed while PLAY runs), not part of any STYLE: a STYLE pick leaves it and changing it does not turn STYLE into CUSTOM. ADD: a note you play into a step that already holds notes is added to them (a chord of up to 4; a MONO, LEGATO or UNISON part keeps one note per step). REPLACE: the first note you play into a step in a pass clears that step's old notes and takes their place; more notes played into the same step in that pass (a chord played together) are added; steps you do not play into stay as they are (nothing is erased as the playhead passes). A held note still ties the following steps in both. On an ARP SEQ part the keys record into its pattern, heard as played, in both modes. Saved with the other settings. | ADD |
 
 **Dynamics.** No setting: in automatic WNDR / JRNY the hits play an eighth louder late in ARC's rise and at its peak and a quarter softer in its drop and breakdown (ARC on), and a quarter softer on a LEAD answer's bars (the two together: softer still). An accent counts as velocity 127 there and loses its accent. Playback only: KEEP stores the pattern's own velocities.
 
@@ -77,11 +78,11 @@ K1 picks the row. **OCT+** the next value, **OCT-** the one before (knobs 2 to 4
 
 | When | Settings |
 |---|---|
-| At once (next step or bar) | VARY BARS, WASH, TURNS, POLY, SYNC. ARC switched on starts a RISE; switched off it ends the arc. |
+| At once (next step or bar) | VARY BARS, WASH, TURNS, POLY, SYNC, REC (the next note you record). ARC switched on starts a RISE; switched off it ends the arc. |
 | At the next turn (when the trip arrives) | the AUTO TIDE mode (K2), WAIT, TIME (also when a STYLE sets it; the page shows the new TIME at once, the bar count goes on with the trip that runs), and ROLL, ROLL ARP and ROLL PITCH (they shape the next end that is rolled or picked). |
 | At the next start (knob 1) | TARGET: what the tide moves is fixed when a glide starts. |
 
-Defaults with no saved settings (a new unit, or after ERASE DATA): STYLE DUB, that is the AUTO TIDE mode JRNY, TIME 16, WAIT 2, VARY EVERY 4TH, TURNS LEAD, POLY GENTLE, SYNC SOFT, ARC RISE, WASH OFF; and TARGET SND+SEQ, ROLL MUSIC, ROLL ARP OFF, ROLL PITCH OFF. An older saved record loads as STYLE CUSTOM with its values kept and the rows it lacks at TURNS TAKE TURNS, POLY GENTLE, SYNC SOFT, ARC OFF.
+Defaults with no saved settings (a new unit, or after ERASE DATA): STYLE DUB, that is the AUTO TIDE mode JRNY, TIME 16, WAIT 2, VARY EVERY 4TH, TURNS LEAD, POLY GENTLE, SYNC SOFT, ARC RISE, WASH OFF; and TARGET SND+SEQ, ROLL MUSIC, ROLL ARP OFF, ROLL PITCH OFF, REC ADD. An older saved record loads as STYLE CUSTOM with its values kept and the rows it lacks at TURNS TAKE TURNS, POLY GENTLE, SYNC SOFT, ARC OFF, REC ADD.
 
 **STYLE sets** (AUTO TIDE mode, TIME, WAIT, VARY BARS, TURNS, POLY, SYNC, ARC, WASH):
 

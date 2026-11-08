@@ -1,9 +1,8 @@
 /* Live recording (audit liverec 2026-11-08, work/audit/liverec-audit-2026-11-08): REC armed while PLAY runs.
  *   H1   both ARP SEQ parts keep playing while REC is armed (L1)
- *   H2   POLY, a key held a loop: the pattern is as it was (L2)
- *   H2b  a firm key (velocity 120) sets no accent on any step (L2)
- *   H3   MONO, a key held three loops: no climb to 127 (L2)
- *   H4   a key pressed mid-pattern: no rotated copy (L2)
+ *   R2   keys record into an ARP SEQ pattern, heard as played (L2, owner 2026-11-08): tap, stand-in chord, next step, hold, ARATE, no drift, POLY
+ *        (the earlier H2 / H2b / H3 / H4 asked for no change at all: they are answered by these)
+ *   REC  ADD / REPLACE on an ordinary part, and the REC row of TIDE SETTINGS (default, STYLE, saved, an older record)
  *   H5   arp OFF (the plain path): a tap at step 5 adds the note to step 5 (control; L3: a long hold ties)
  *   R4   REC on HOME: armed, a tap disarms and leaves HOLD alone (L6); unarmed it stays HOLD and says how to record (L5)
  * Built from the probe work/audit/liverec-audit-2026-11-08/probe/liverec_probe.c (same harness as ui_test.c). */
@@ -74,65 +73,215 @@ static void h1(void)
     song.rec = 0;
     stop();
 }
-static void h2(void)
+/* ---- R2: keys record into an ARP SEQ pattern (owner 2026-11-08), REC = ADD / REPLACE ---- */
+static void wait_arp(track_t *t, uint32_t k)             /* the arp starts step k (of 16), early in it */
+{
+    uint32_t n = 0;
+    while (!(t->arp_idx != 0xFFFFFFFFu && t->arp_idx % 16u == k && t->arp_pos < arp_dur(t) / 4u) && n++ < 2000u) run(16);
+}
+static void wait_mid(track_t *t, uint32_t k)             /* ... past the middle of step k (60 .. 90 % of it) */
+{
+    uint32_t n = 0;
+    while (!(t->arp_idx != 0xFFFFFFFFu && t->arp_idx % 16u == k && t->arp_pos > arp_dur(t) * 6u / 10u && t->arp_pos < arp_dur(t) * 9u / 10u) && n++ < 2000u) run(16);
+}
+static uint32_t plays(track_t *t, uint32_t k)            /* the note the arp plays at step k, as the next pass starts it */
+{
+    wait_arp(t, k); run(16);
+    return t->arp_note;
+}
+static int only(const track_t *t, const step_t *was, uint32_t a, uint32_t b)   /* every step but a and b as it was */
+{
+    uint32_t i;
+    for (i = 0; i < 16u; i++)
+        if (i != a && i != b && memcmp(&t->step[i], &was[i], sizeof was[i])) return 0;
+    return 1;
+}
+static void tap(track_t *t, uint32_t note, uint32_t ms) { input_on(t, note, 100); run(ms); input_off(t, note); }
+static void arm_arp(uint32_t part, int voice)
+{
+    boot(); tide_rec_replace = 0; setup(part, AM_SEQ_ID, voice);
+    start();
+    song.rec = 1u << part; run(100);
+}
+
+static void r2(void)
 {
     track_t *t = &trk[0];
     step_t was[NSTEP];
-    boot(); setup(0, AM_SEQ_ID, V_POLY);
-    start();
-    memcpy(was, t->step, sizeof was);
-    song.rec = 1; run(100);
+    uint32_t i, l, ok, seen;
+
+    /* ADD, MONO: a tap at step 5 */
+    arm_arp(0, V_MONO);
+    wait_arp(t, 5); memcpy(was, t->step, sizeof was);
+    tap(t, 64, 40);
+    CHECK("R2: MONO, E4 tapped at arp step 5: step 5 holds 64 alone", t->step[5].n == 1u && t->step[5].note[0] == 64u && t->step[5].time == ST_NOTE);
+    CHECK("R2: ... and no other step changed", only(t, was, 5, 99));
+    CHECK("R2: ... the stand-in plays 64 there afterwards (heard as played)", plays(t, 5) == 64u);
+    CHECK("R2: ... and step 4 and 6 still play theirs", plays(t, 4) == PAT[4] && plays(t, 6) == PAT[6]);
+    song.rec = 0; stop();
+
+    /* the stand-in from a remembered chord (E4): the stored offset is relative to its root */
+    arm_arp(0, V_MONO);
+    tide_chord[0][0] = 64; tide_chord_n[0] = 1;
+    wait_arp(t, 5);
+    tap(t, 67, 40);
+    CHECK("R2: stand-in chord E4 (root 64): G4 is stored as 63", t->step[5].note[0] == 63u);
+    CHECK("R2: ... and the stand-in plays 67 there", plays(t, 5) == 67u);
+    song.rec = 0; stop();
+
+    /* past the middle of a step: the next step, played once */
+    arm_arp(0, V_MONO);
+    wait_mid(t, 5); memcpy(was, t->step, sizeof was);
     input_on(t, 64, 100);
-    run(LOOP_MS);
-    input_off(t, 64); run(200); song.rec = 0;
-    CHECK("H2: POLY, E4 held a loop while armed: the pattern is as it was", same(t, was));
-    stop();
-}
-static void h2b(void)
-{
-    track_t *t = &trk[0];
-    uint32_t i, acc = 0;
-    boot(); setup(0, AM_SEQ_ID, V_POLY);
-    start();
-    song.rec = 1; run(100);
-    input_on(t, 64, 120);
-    run(LOOP_MS);
-    input_off(t, 64); run(200); song.rec = 0;
-    for (i = 0; i < 16u; i++) acc += !!(t->step[i].flags & SF_ACCENT);
-    CHECK("H2b: velocity 120 held a loop: no step accented", acc == 0u);
-    stop();
-}
-static void h3(void)
-{
-    track_t *t = &trk[0];
-    step_t was[NSTEP];
-    uint32_t l, ok = 1;
-    boot(); setup(0, AM_SEQ_ID, V_MONO);
-    start();
-    memcpy(was, t->step, sizeof was);
-    song.rec = 1; run(100);
+    CHECK("R2: tapped past the middle of arp step 5: it goes into step 6", t->step[6].note[0] == 64u && t->step[5].note[0] == PAT[5]);
+    seen = 0;
+    for (i = 0; i < 40u; i++) { run(16); if (t->arp_idx % 16u == 6u && t->arp_note == 64u) seen = 1; }   /* (the key sounds on its own voice: the arp must not fire it too) */
+    input_off(t, 64);
+    CHECK("R2: ... and the arp does not fire it again in this pass", !seen);
+    CHECK("R2: ... it plays there in the next pass", plays(t, 6) == 64u);
+    song.rec = 0; stop();
+
+    /* a hold: 3 steps */
+    arm_arp(0, V_MONO);
+    wait_arp(t, 5); memcpy(was, t->step, sizeof was);
     input_on(t, 64, 100);
-    for (l = 0; l < 3u; l++) { run(LOOP_MS); ok &= same(t, was); }
-    input_off(t, 64); run(200); song.rec = 0;
-    CHECK("H3: MONO, E4 held three loops: every step's note unchanged after each loop (no climb)", ok);
-    CHECK("H3: ... and after release", same(t, was));
-    stop();
+    wait_arp(t, 8); run(16);
+    CHECK("R2: E4 held from step 5 into 8: steps 6 and 7 are TIES", t->step[6].time == ST_TIE && t->step[7].time == ST_TIE && t->step[5].note[0] == 64u);
+    input_off(t, 64); run(16);
+    CHECK("R2: ... released early in step 8: that step is put back", !memcmp(&t->step[8], &was[8], sizeof was[8]));
+    CHECK("R2: ... and nothing else changed", only(t, was, 5, 99) == 0 && !memcmp(&t->step[9], &was[9], sizeof was[9]) && !memcmp(&t->step[4], &was[4], sizeof was[4]));
+    song.rec = 0; stop();
+
+    /* ARATE 1/8 with SDIV 1/16: the arp's grid decides */
+    arm_arp(0, V_MONO);
+    t->p[P_ARATE] = 1;
+    run(1000);
+    wait_arp(t, 3); memcpy(was, t->step, sizeof was);
+    ok = t->seq_idx % 16u != 3u;                         /* (the sequencer's cursor is elsewhere: it runs twice as fast) */
+    tap(t, 64, 40);
+    CHECK("R2: ARATE 1/8, SDIV 1/16: the key goes into the arp's step 3", t->step[3].note[0] == 64u && ok);
+    CHECK("R2: ... and into no step of the sequencer's cursor", only(t, was, 3, 99));
+    song.rec = 0; stop();
+
+    /* MONO, a key held three loops: no drift */
+    arm_arp(0, V_MONO);
+    input_on(t, 64, 100);
+    {
+        step_t snap[3][NSTEP];
+        run(LOOP_MS + 200); memcpy(snap[0], t->step, sizeof snap[0]);
+        run(LOOP_MS); memcpy(snap[1], t->step, sizeof snap[1]);
+        run(LOOP_MS); memcpy(snap[2], t->step, sizeof snap[2]);
+        CHECK("R2: MONO, E4 held three loops: the steps are the same after loop 1, 2 and 3", !memcmp(snap[0], snap[1], sizeof snap[0]) && !memcmp(snap[1], snap[2], sizeof snap[0]));
+    }
+    input_off(t, 64); song.rec = 0; stop();
+
+    /* POLY, ADD: an empty step takes it as note[0], a filled one appends (inert) */
+    arm_arp(0, V_POLY);
+    memset(&t->step[5], 0, sizeof t->step[5]);
+    wait_arp(t, 5); memcpy(was, t->step, sizeof was);
+    tap(t, 64, 40);
+    CHECK("R2: POLY ADD: an empty step 5 gets 64 as note[0]", t->step[5].n == 1u && t->step[5].note[0] == 64u && t->step[5].time == ST_NOTE);
+    wait_arp(t, 9);
+    tap(t, 64, 40);
+    CHECK("R2: POLY ADD: a filled step 9 keeps its note[0] and appends 64", t->step[9].n == 2u && t->step[9].note[0] == PAT[9] && t->step[9].note[1] == 64u);
+    song.rec = 0; stop();
+
+    /* POLY, REPLACE: the first note of the pass replaces, a chord played together adds, the next pass replaces again */
+    arm_arp(0, V_POLY); tide_rec_replace = 1;
+    wait_arp(t, 5); memcpy(was, t->step, sizeof was);
+    tap(t, 64, 40);
+    CHECK("R2: POLY REPLACE: E4 at step 5 replaces its note", t->step[5].n == 1u && t->step[5].note[0] == 64u);
+    CHECK("R2: ... no other step changed", only(t, was, 5, 99));
+    wait_arp(t, 5);
+    input_on(t, 64, 100); input_on(t, 67, 100); run(40); input_off(t, 64); input_off(t, 67);
+    CHECK("R2: ... the next pass E4+G4 together: both (G4 added to the first)", t->step[5].n == 2u && t->step[5].note[0] == 64u && t->step[5].note[1] == 67u);
+    wait_arp(t, 5);
+    tap(t, 72, 40);
+    CHECK("R2: ... and the pass after, one key replaces the chord", t->step[5].n == 1u && t->step[5].note[0] == 72u);
+    song.rec = 0; stop();
+    (void)l;
 }
-static void h4(void)
+
+/* ---- REC = ADD / REPLACE on an ordinary part (owner 2026-11-08) ---- */
+static void two_notes(track_t *t, uint32_t k) { t->step[k].n = 2; t->step[k].note[0] = 60; t->step[k].note[1] = 64; }
+static void rec_modes(void)
 {
     track_t *t = &trk[0];
     step_t was[NSTEP];
-    boot(); setup(0, AM_SEQ_ID, V_POLY);
-    start();
-    song.rec = 1;
+    uint32_t has;
+
+    boot(); tide_rec_replace = 0; setup(0, 0, V_POLY); two_notes(t, 5); two_notes(t, 9);
+    start(); song.rec = 1;
     while (t->seq_idx != 5u) run(16);
     memcpy(was, t->step, sizeof was);
-    input_on(t, 64, 100);
-    run(LOOP_MS);
-    input_off(t, 64); run(200); song.rec = 0;
-    CHECK("H4: a key pressed at step 5 of an ARP SEQ pattern: no rotated copy of the arp's notes", same(t, was));
-    stop();
+    tap(t, 67, 30);
+    CHECK("REC ADD: G4 recorded into a step holding C4+E4: C4+E4+G4", t->step[5].n == 3u && t->step[5].note[0] == 60u && t->step[5].note[1] == 64u && t->step[5].note[2] == 67u);
+    CHECK("REC ADD: ... an untouched step keeps its notes", t->step[9].n == 2u);
+    song.rec = 0; stop();
+
+    boot(); tide_rec_replace = 1; setup(0, 0, V_POLY); two_notes(t, 5); two_notes(t, 9);
+    start(); song.rec = 1;
+    while (t->seq_idx != 5u) run(16);
+    tap(t, 67, 30);
+    CHECK("REC REPLACE: G4 recorded into a step holding C4+E4: G4 alone", t->step[5].n == 1u && t->step[5].note[0] == 67u);
+    CHECK("REC REPLACE: ... a step nobody plays into keeps its notes (the playhead erases nothing)", t->step[9].n == 2u && t->step[9].note[0] == 60u && t->step[9].note[1] == 64u);
+    while (t->seq_idx == 5u) run(16);                    /* (the next pass) */
+    while (t->seq_idx != 5u) run(16);
+    input_on(t, 67, 100); input_on(t, 71, 100); run(30); input_off(t, 67); input_off(t, 71);
+    has = t->step[5].n == 2u && t->step[5].note[0] == 67u && t->step[5].note[1] == 71u;
+    CHECK("REC REPLACE: G4+B4 played together: both, in place of what was there", has);
+    while (t->seq_idx == 5u) run(16);
+    while (t->seq_idx != 5u) run(16);
+    tap(t, 72, 30);
+    CHECK("REC REPLACE: the next pass, one key replaces the chord again", t->step[5].n == 1u && t->step[5].note[0] == 72u);
+    CHECK("REC REPLACE: ... a step still untouched keeps its notes", t->step[9].n == 2u);
+    song.rec = 0; stop();
+
+    /* MONO keeps one note per step in both modes */
+    boot(); tide_rec_replace = 1; setup(0, 0, V_MONO); two_notes(t, 5);
+    start(); song.rec = 1;
+    while (t->seq_idx != 5u) run(16);
+    tap(t, 67, 30);
+    CHECK("REC REPLACE, MONO: one note", t->step[5].n == 1u && t->step[5].note[0] == 67u);
+    song.rec = 0; stop();
+    tide_rec_replace = 0;
 }
+
+/* ---- the REC row of TIDE SETTINGS ---- */
+static void rec_row(void)
+{
+    uint32_t i;
+    boot();
+    tide_seen_ok = 0; tide_rec_replace = 1;
+    memset(tide_tail, 0, TIDE_TAIL_N); tide_tail_new = 0;
+    tide_settings();                                     /* no record: the defaults */
+    CHECK("REC row: with no record it is ADD", tide_rec_replace == 0u && jl_get(JL_REC) == 0u && !strcmp(jl_vname(JL_REC, 0), "ADD") && !strcmp(jl_vname(JL_REC, 1), "REPLACE"));
+    CHECK("REC row: it is the last row, with two values", JL_REC == JL_N - 1u && jl_n(JL_REC) == 2u && !strcmp(JL_NAME[JL_REC], "REC"));
+    jl_put(JL_STYLE, STY_PEAK); tide_settings();
+    jl_put(JL_REC, 1); tide_settings();
+    CHECK("REC row: set to REPLACE, the STYLE stays PEAK (not CUSTOM)", tide_rec_replace == 1u && tide_style == STY_PEAK);
+    for (i = 0; i < 5u; i++) { jl_put(JL_STYLE, i); tide_settings(); }
+    CHECK("REC row: picking a STYLE leaves REC as it is", tide_rec_replace == 1u);
+    jl_put(JL_STYLE, STY_CUSTOM); tide_settings();
+    CHECK("REC row: ... and CUSTOM too", tide_rec_replace == 1u);
+    jl_put(JL_REC, 0); tide_settings();
+    CHECK("REC row: back to ADD, the STYLE is not touched", tide_rec_replace == 0u && tide_style == STY_CUSTOM);
+    jl_put(JL_REC, 1); tide_settings();
+    CHECK("REC row: kept in TIDE's record (field count 13, the last byte 1)", tide_tail[4] == TS_N && tide_tail[5 + TS_REC] == 1u && TS_N == 13);
+    tide_rec_replace = 0; tide_seen_ok = 0;
+    tide_settings();
+    CHECK("REC row: survives a save and a load (power-on)", tide_rec_replace == 1u);
+    {   /* an older record, 12 fields (before REC) */
+        uint8_t keep = tide_tail[5 + TS_REC];
+        (void)keep;
+        tide_tail[4] = 12; tide_tail[5 + TS_REC] = 1;    /* (the byte past the count is not read) */
+        tide_rec_replace = 1; tide_seen_ok = 0;
+        tide_settings();
+        CHECK("REC row: an older record without the field loads as ADD", tide_rec_replace == 0u);
+    }
+    tide_rec_replace = 0;
+}
+
 static void h5(void)
 {
     track_t *t = &trk[0];
@@ -173,7 +322,7 @@ static void r4(void)
     start();                                             /* (stopped, STEP arms step recording and says KEYS WRITE STEPS) */
     press(B_REC); frames(600);
     CHECK("R4: REC on STEP arms the selected part", song.rec == 1u);
-    CHECK("R4: ... on an ARP SEQ part the toast says the knobs record", msg_is("ARP SEQ: KNOBS RECORD"));
+    CHECK("R4: ... on an ARP SEQ part the toast says the keys record", msg_is("ARP SEQ: KEYS RECORD"));
     to_home();
     CHECK("R4: HOME is where the test is", at_home());
     t->p[P_AHOLD] = 0;
@@ -189,10 +338,10 @@ static void r4(void)
     CHECK("R4 (L5): ... and the toast says how to record", msg_is("HOLD ON: SEQ+REC=REC"));
     press(B_REC); frames(600);
     CHECK("R4: the next tap: HOLD OFF", t->p[P_AHOLD] == 0 && msg_is("HOLD OFF: SEQ+REC=REC"));
-    CHECK("R4 (L5): the toasts fit the header (message font, or the smaller one)", text_w(&AF_M, "HOLD OFF: SEQ+REC=REC") <= 150 && text_w(&AF_M, "ARP SEQ: KNOBS RECORD") <= 150);
-    printf("liverec: toast widths  M %d / S %d px (HOLD OFF: SEQ+REC=REC), M %d / S %d px (ARP SEQ: KNOBS RECORD), header 150 px\n",
+    CHECK("R4 (L5): the toasts fit the header (message font, or the smaller one)", text_w(&AF_M, "HOLD OFF: SEQ+REC=REC") <= 150 && text_w(&AF_M, "ARP SEQ: KEYS RECORD") <= 150);
+    printf("liverec: toast widths  M %d / S %d px (HOLD OFF: SEQ+REC=REC), M %d / S %d px (ARP SEQ: KEYS RECORD), header 150 px\n",
            text_w(&AF_M, "HOLD OFF: SEQ+REC=REC"), text_w(&AF_S, "HOLD OFF: SEQ+REC=REC"),
-           text_w(&AF_M, "ARP SEQ: KNOBS RECORD"), text_w(&AF_S, "ARP SEQ: KNOBS RECORD"));
+           text_w(&AF_M, "ARP SEQ: KEYS RECORD"), text_w(&AF_S, "ARP SEQ: KEYS RECORD"));
     /* another part armed, not the selected one: the tap behaves as unarmed (the header ring shows the other part) */
     song.rec = 2u; song.sel = 0; t->p[P_AHOLD] = 0;
     press(B_REC); frames(600);
@@ -249,7 +398,7 @@ static void r5(void)
 
 int main(void)
 {
-    h1(); h2(); h2b(); h3(); h4(); h5(); r4(); r5();
+    h1(); r2(); h5(); rec_modes(); rec_row(); r4(); r5();
     printf("liverec: %u checks, %u FAIL\n", checks, failures);
     return failures ? 1 : 0;
 }

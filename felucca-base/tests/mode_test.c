@@ -1076,7 +1076,7 @@ static void t_mode_rows(void)
     frames(64);
     mode_page();
     frames(32);
-    expect("TIDE SETTINGS: MODE, XFADE, SPLIT are its last three rows, after ARC", JL_MODE == JL_ARC + 1u && JL_XFADE == JL_ARC + 2u && JL_SPLIT == JL_ARC + 3u && JL_N == JL_SPLIT + 1u &&
+    expect("TIDE SETTINGS: MODE, XFADE, SPLIT are three rows after ARC, REC the last", JL_MODE == JL_ARC + 1u && JL_XFADE == JL_ARC + 2u && JL_SPLIT == JL_ARC + 3u && JL_REC == JL_SPLIT + 1u && JL_N == JL_REC + 1u &&
            str_eq(JL_NAME[JL_MODE], "PLAY MODE") && str_eq(JL_NAME[JL_XFADE], "XFADE") && str_eq(JL_NAME[JL_SPLIT], "SPLIT"));
     expect("  .. HOME's round has no MODE page (hidden), PAGES keeps its entry", !page_visible(page_of("MODE")) && page_of("MODE") < NPAGES);
     for (i = 0; i < 5u; i++) {

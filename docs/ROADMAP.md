@@ -80,7 +80,7 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 - Factory bank: offer the re-authored End Bs and tempo-synced slow motion upstream.
 
 **Live recording** ([audit](audits/2026-11-08/liverec/LIVEREC_AUDIT.md))
-- Keys record into an ARP SEQ pattern as played, stored as offsets on the arp's root at its step: after R1, only if the owner answers A to Q1. [Brief R2](audits/2026-11-08/liverec/TASKS.md#r2)
+- Keys record into an ARP SEQ pattern as played, stored as offsets on the arp's root at its step: **built** on `fix/b3-rec-modes` (owner, 8 November: answer A), with the REC row ADD / REPLACE on TIDE SETTINGS that works on ordinary parts and ARP SEQ parts alike. Waiting for the unit test. [Brief R2](audits/2026-11-08/liverec/TASKS.md#r2)
 - A `liverec` host test group from the audit's probe, and QUICKSTART / TIDE_GUIDE say what REC does on ARP SEQ parts. [Brief R3](audits/2026-11-08/liverec/TASKS.md#r3)
 
 **Storage and backups**
@@ -120,7 +120,6 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 |---|---|
 | D43: when a crossing starts under a held chord, the chord stays whole (the budget plans for it from the start). | Stays whole; decided after the drones are measured under a GLIDE. |
 | D46: the multis that are too loud or too quiet are trimmed by ear on the unit. | Trim M15, M16 up and M10 down by the numbers, then listen. |
-| Live REC Q1: on a part that plays its pattern by itself (ARP SEQ), should your keys add notes to it while recording, or should only the knobs record? | Knobs only until you choose. |
 | Which of the ideas below, if any. | None until chosen. |
 
 **By ear or eye on the unit** (no homework: noted when the owner meets them in use): the drones; the U2 multi sequences; the MULTIS / PATTERNS preview's readability; polymeter (12 / 16, 15 / 16) against a steady 4 / 4; whether TURNS' alternating bars improve the interplay.
