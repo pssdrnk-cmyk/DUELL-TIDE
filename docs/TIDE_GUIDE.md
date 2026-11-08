@@ -27,7 +27,7 @@ The fader's position (A, 1 to 126, B) is in knob 1's card, like the first value 
 
 ## 2. AUTO TIDE (the page you live on)
 
-The screen shows the SOUND and SEQ faders with the glide's path, the 16 steps as they play, and a status line. With both parts the faders sit in two columns, SOUND and SEQ, a row per part. In the steps a hit is a bar (a chord taller), a varied hit is in the accent colour, a hit the variation drops is a dim outline, a tie is a short bar, and a chance step is striped until it has rolled, then solid if it sounded or an outline if it did not. The glide only moves while the transport plays. STOP pauses it; PLAY carries on from there.
+The screen shows the SOUND and SEQ faders with the glide's path, the 16 steps as they play, and a status line. The page always shows both parts: the faders sit in two columns, SOUND and SEQ, a row per part, and the steps in two rows. The part the knobs act on (the selected part) is drawn in full colour with its number in a filled pill and a small bar beside its steps; the other part is dimmed. In the steps a hit is a bar (a chord taller), a varied hit is in the accent colour, a hit the variation drops is a dim outline, a tie is a short bar, and a chance step is striped until it has rolled, then solid if it sounded or an outline if it did not. The glide only moves while the transport plays. STOP pauses it; PLAY carries on from there.
 
 | Knob | Name | What it does to the sound | Start |
 |---|---|---|---|
