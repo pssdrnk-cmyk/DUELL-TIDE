@@ -11,7 +11,7 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 
 Not flashed yet.
 
-- **Changed (CPU audit K5):** when nothing sounds, the delay and the master's limiter rest: the delay once its whole line has been silent (about 1.5 s; 0.7 s per part in DUEL), the DC blocker, limiter and soft clip once the mix and their own states are at zero. The audio is the same sample for sample; only the CPU load at idle drops. Plain DUELL is unchanged.
+- **Changed (CPU audit K5):** when nothing sounds, two stages rest: the delay loop, once its whole line has been silent (about 1.5 s; 0.7 s per part in DUEL), and the master's DC blocker, limiter and knee, once the mix and their own states are at zero. The audio is the same sample for sample; only the CPU load at idle drops (host-measured saving only; not yet measured on the unit). Plain DUELL is unchanged.
 
 ## 1.0.0-b3
 

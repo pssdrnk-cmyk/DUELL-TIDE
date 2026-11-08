@@ -13,8 +13,11 @@
  *             with every send (chorus, delay with FDBK 90, HALL) and its tails into silence, a note the block after the skip took over, a loud chord that drives the
  *             limiter then silence (the envelope's release, then the rest), a low note (the DC blocker's tail), a TIME change during the rest (the slide), the
  *             delay's modulation and RANDOM (the other paths, then back), SENDS OFF and ON, a MODE change, short notes with gaps either side of the line's length
+ *             RANDOM and back (PING-PONG's own, DUEL per bus: bus B must rest again), COMP + WIDTH + BASS MONO on through a tail and the rest; the states hashed
+ *             include the delay modulation's LFO phases, the RANDOM state, COMP's, WIDTH's and BASS MONO's
  *   FUZZ      8 s of random events per mode with gaps up to 3 s
- *   COST      the host's wall clock of 60 s of rest, printed (not compared: the unit's own meter is the measure) */
+ *   COST      the host's wall clock of a busy block and of 60 s of rest, printed (not compared: the unit's own meter is the measure); in the rest both
+ *             stages must rest in more than 90 % of the blocks */
 #define MODE_TEST_NO_MAIN 1
 #define SIL_SKIP_STATS 1
 #include "mode_test.c"
@@ -28,6 +31,12 @@ static uint64_t ss_fnv(const void *p, uint32_t bytes, uint64_t h)
         h *= 1099511628211ull;
     }
     return h;
+}
+static double ss_now(void)                              /* the host's clock, us (timespec_get: finer than clock()) */
+{
+    struct timespec t;
+    timespec_get(&t, TIME_UTC);
+    return (double)t.tv_sec * 1e6 + (double)t.tv_nsec / 1e3;
 }
 static uint32_t ss_xs = 0x9E3779B9u;
 static uint32_t ss_rnd(uint32_t n)
@@ -59,10 +68,19 @@ static void ss_state(void)
     ss_hs = ss_fnv(&fx_b.dly_g, sizeof fx_b.dly_g, ss_hs);
     ss_hs = ss_fnv(&fx_b.cho_w, sizeof fx_b.cho_w, ss_hs);
     ss_hs = ss_fnv(&fx_b.cho_ph, sizeof fx_b.cho_ph, ss_hs);
+    ss_hs = ss_fnv(&fx.dm_pl, sizeof fx.dm_pl, ss_hs);  /* (the delay modulation's LFO phases, both buses) */
+    ss_hs = ss_fnv(&fx.dm_pr, sizeof fx.dm_pr, ss_hs);
+    ss_hs = ss_fnv(&fx_b.dm_pl, sizeof fx_b.dm_pl, ss_hs);
+    ss_hs = ss_fnv(&fx_b.dm_pr, sizeof fx_b.dm_pr, ss_hs);
+    ss_hs = ss_fnv(&dlyev, sizeof dlyev, ss_hs);        /* (RANDOM / OCT UP: voices, generator, clock, crossfade) */
+    ss_hs = ss_fnv(&dlyev_b, sizeof dlyev_b, ss_hs);
     {
-        int32_t m[6] = {dc_l, dc_r, dce_l, dce_r, lim_env, lim_env_r};
+        int32_t m[9] = {dc_l, dc_r, dce_l, dce_r, lim_env, lim_env_r, cmp.a, wdn.k, bm.a};   /* (the master's states; COMP's, WIDTH's and BASS MONO's shares) */
         ss_hs = ss_fnv(m, sizeof m, ss_hs);
     }
+    ss_hs = ss_fnv(&cmp, sizeof cmp, ss_hs);
+    ss_hs = ss_fnv(&wdn, sizeof wdn, ss_hs);
+    ss_hs = ss_fnv(&bm, sizeof bm, ss_hs);
 }
 static void ss_blk(uint32_t n)                           /* n blocks: every output sample to the file and the hash, the tail marks */
 {
@@ -201,16 +219,28 @@ static void ss_scenes(uint32_t mode, uint32_t ping)
     ss_blk(SS_1S);
     song.g[G_DMDEP] = 0;
     ss_tail("7 modulation, back to the plain loop", SS_1S * 8u);
-    if (!ping && mode != DM_SPLIT) {
-        song.g[G_DMODE] = DMD_RAND;                             /*  .. RANDOM (dly_ev), then back */
+    {                                                           /*  .. RANDOM (dly_ev; in DUEL per bus, part 2 on bus B), then back to the mode's plain delay */
+        uint32_t b0;
+        song.g[G_DMODE] = DMD_RAND;
         song.g[G_DMDEP] = 60;
+        trk[1].p[P_DLY] = 110;
         ss_notes(0, 1, 2, 100);
+        ss_notes(1, 1, 9, 100);
         ss_blk(SS_1S / 4u);
         ss_notes(0, 0, 2, 0);
+        ss_notes(1, 0, 9, 0);
         ss_blk(SS_1S);
-        song.g[G_DMODE] = DMD_DIGITAL;
+        song.g[G_DMODE] = ping ? DMD_PING : DMD_DIGITAL;
         song.g[G_DMDEP] = 0;
-        ss_tail("7b RANDOM, back to DIGITAL", SS_1S * 8u);
+        b0 = dly_skipped_b;
+        ss_tail(ping ? "7b RANDOM, back to PING-PONG" : "7b RANDOM, back to DIGITAL", SS_1S * 8u);
+        trk[1].p[P_DLY] = 0;
+#ifndef SIL_NOSKIP
+        if (mode == DM_SPLIT)
+            expect("DUEL: after RANDOM on part 2, bus B's delay loop rests again", dly_skipped_b - b0 > SS_1S * 2u);
+#else
+        (void)b0;
+#endif
     }
     trk[0].p[P_REV] = trk[1].p[P_REV] = 90;                     /* 8 SENDS OFF during a tail and ON again */
     trk[0].p[P_CHOR] = 60;
@@ -245,6 +275,29 @@ static void ss_scenes(uint32_t mode, uint32_t ping)
     for (k = 0; k < 2u; k++)
         ss_blk(SS_1S);
     ss_tail("10 MODE change and back", SS_1S * 8u);
+    {                                                           /* 11 COMP, WIDTH and BASS MONO on through a tail and the rest (STEREO / LAYER; DUEL bypasses them), then off */
+        uint32_t m0;
+        cmp_cfg = (uint32_t)23u | 4u << 8 | 12u << 16 | 6u << 24;   /* (threshold index 23, RATIO 4:1, ATTACK 12, RELEASE 6: comp_test's CFG) */
+        wd_sel = 150;
+        bm_sel = 5;
+        trk[0].p[P_DLY] = trk[0].p[P_REV] = trk[0].p[P_CHOR] = 90;
+        ss_notes(0, 1, 0, 120);
+        ss_notes(1, 1, 7, 120);
+        ss_blk(SS_1S / 2u);
+        ss_notes(0, 0, 0, 0);
+        ss_notes(1, 0, 7, 0);
+        m0 = mst_skipped;
+        ss_tail("11 COMP + WIDTH + BASS MONO on", SS_1S * 9u);
+#ifndef SIL_NOSKIP
+        expect("COMP, WIDTH and BASS MONO on: the master still rests after the tail", mst_skipped - m0 > SS_1S);
+#else
+        (void)m0;
+#endif
+        cmp_cfg = 0;
+        wd_sel = 100;
+        bm_sel = 0;
+        ss_tail("11b COMP, WIDTH, BASS MONO off in the rest", SS_1S * 2u);
+    }
     ss_state();
 }
 static void ss_fuzz(uint32_t mode, uint32_t seconds)
@@ -310,17 +363,38 @@ int main(int argc, char **argv)
         sm += mst_skipped;
         blocks += ss_blocks;
     }
+    {                                                           /* COST: a busy block (a held chord, every send up, the delay and HALL ringing), the host's clock: the best of 7 runs of 10 s */
+        uint32_t b, r;
+        double best = 1e9, us;
+        ss_setup(DM_STEREO);
+        ss_notes(0, 1, 0, 100);
+        ss_notes(1, 1, 7, 100);
+        ss_blk(SS_1S);
+        for (r = 0; r < 7u; r++) {
+            us = ss_now();
+            for (b = 0; b < SS_1S * 10u; b++)
+                mix_block(ob, CTL);
+            us = (ss_now() - us) / (SS_1S * 10u);
+            best = us < best ? us : best;
+        }
+        printf("COST busy STEREO (two held chords, every send up): %.3f host us a block, best of 7 (%s)\n", best,
+#ifdef SIL_NOSKIP
+               "reference, no skip"
+#else
+               "skip"
+#endif
+        );
+    }
     {                                                           /* COST: 60 s of rest (STEREO, power-on sends), the host's clock */
-        clock_t c0;
         double us;
         uint32_t b, d0, m0;
         ss_setup(DM_STEREO);
         ss_blk(SS_1S * 3u);
         d0 = dly_skipped, m0 = mst_skipped;
-        c0 = clock();
+        us = ss_now();
         for (b = 0; b < SS_1S * 60u; b++)
             mix_block(ob, CTL);                                 /* (the mix alone: no hash, no file) */
-        us = (double)(clock() - c0) * 1e6 / CLOCKS_PER_SEC / (SS_1S * 60u);
+        us = (ss_now() - us) / (SS_1S * 60u);
         printf("COST idle STEREO (HALL, DIGITAL, every send up, nothing playing; delay rests %u, master %u of %u blocks): %.2f host us a block (%s)\n",
                dly_skipped - d0, mst_skipped - m0, SS_1S * 60u, us,
 #ifdef SIL_NOSKIP
@@ -329,6 +403,9 @@ int main(int argc, char **argv)
                "skip"
 #endif
         );
+#ifndef SIL_NOSKIP
+        expect("idle: the delay loop and the master rest in more than 90 % of the blocks", (dly_skipped - d0) * 10u > SS_1S * 60u * 9u && (mst_skipped - m0) * 10u > SS_1S * 60u * 9u);
+#endif
     }
     if (ss_raw)
         fclose(ss_raw);

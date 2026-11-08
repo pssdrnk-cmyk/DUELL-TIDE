@@ -693,6 +693,7 @@ static uint32_t BUS_FN(dly_skipped);                    /* (tests/silentskip_tes
 #ifdef CHO_SKIP_STATS
 static uint32_t BUS_FN(cho_skipped);                    /* (tests/chorusskip_test.c: the blocks fx_buses_m left the chorus out of) */
 #endif
+/* (see also fx.c sil_dly: the plain delay loop's rest, TIDE K5, which needs this one's cho_zs) */
 static __attribute__((noinline)) void BUS_FN(cho_zrun)(const int32_t *cho_in, uint32_t n)
 {
     uint32_t i, nz = 0, z = BUS_FX.cho_z;
@@ -872,12 +873,13 @@ static inline void BUS_FN(fx_buses_m)(uint32_t dmask, uint32_t dl, const int32_t
     int32_t dmix = mulq15(Q15_FROM_127(song.g[G_DMIX]), byp_dg);
     int32_t cdepth = SV_CDEP, cdq, cst;
     uint32_t cinc = LFO_INC[song.g[G_CRATE] & 127] / CTL, st = dsd != 0;   /* (st: STEREO / LAYER, the chorus has a side) */
-    uint32_t cw = BUS_FX.cho_w, cph = BUS_FX.cho_ph, cz = BUS_FX.cho_zs;
+    uint32_t cw = BUS_FX.cho_w, cph = BUS_FX.cho_ph, cz = BUS_FX.cho_zs, sk = 0;   /* (sk: TIDE K5, the delay loop at rest: not run) */
     int32_t gx[2];
     uint32_t tg = dl << 15, g = BUS_FX.dly_g ? BUS_FX.dly_g : tg;   /* (g: the read offset now, Q15; it slides to tg, a TIME / tempo change bends the repeats: no jump of the read head) */
     BUS_FN(cho_glide)(cdepth, &cdq, &cst);
 #if SIL_SKIP
-    if (sil_dly(&BUS_FX, BUS_DLY, dly_in, n, dmask) && cz && g == tg) {   /* (TIDE K5, fx.c sil_dly: the line, the loop and this block's input at 0, the chorus left out, no TIME slide: the loop gives 0) */
+    sk = sil_dly(&BUS_FX, BUS_DLY, dly_in, n, dmask) && cz && g == tg;   /* (TIDE K5, fx.c sil_dly: the line, the loop and this block's input at 0, the chorus left out, no TIME slide: the loop gives 0) */
+    if (sk) {
         memset(wet, 0, n * sizeof wet[0]);
         if (pp)
             memset(dsd, 0, n * sizeof dsd[0]);          /* (PING-PONG's side: 0) */
@@ -885,8 +887,9 @@ static inline void BUS_FN(fx_buses_m)(uint32_t dmask, uint32_t dl, const int32_t
 #ifdef SIL_SKIP_STATS
         BUS_FN(dly_skipped)++;
 #endif
-    } else
+    }
 #endif
+    if (!sk)                                            /* (the loop, as ever) */
     for (i = 0; i < n; i++) {
         int32_t y = 0, x, x2, r;
         /* chorus: modulated short delay, 9 .. 26 ms (400 + 0 .. 762 samples; above CRT 40 less, fx_swing) (cz: the line and this block's input are 0, the chorus gives 0: see cho_zrun) */

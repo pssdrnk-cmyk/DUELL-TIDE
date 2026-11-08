@@ -670,22 +670,30 @@ static struct { int32_t r[CTL], l[CTL]; } mixlr HOTG_BSS;   /* the pair in one p
 #define mix_l (mixlr.l)   /* (the dry mix: defined here for the delay's modulation, which adds its side to it) */
 
 #if SIL_SKIP
-/* TIDE K5: the plain delay loop's rest (fx_bus.c fx_buses_m, both buses; range Z). The samples written into the line since the last call (the window behind the write
- * head, whoever wrote them: every writer writes at the head) are read back; while they are 0, the input is 0 and the loop's low-pass and low cut are at 0, the run of
- * zeros dz grows by the block, anything else (a sample not 0, an input, a state, a window that is not one block long: another path ran, or none) sets it to 0. Past the
- * line's length the whole line is 0: every read and every write of the loop is then 0 (h[1], the low cut's remainder, is not moved by an input of 0 while h[0] is 0), and 1
- * is returned. Called every block the plain loop runs; line: bus A dly_buf (STEREO / LAYER all of it, SPLIT its first half), bus B the second half */
+/* TIDE K5: the plain delay loop's rest (fx_bus.c fx_buses_m, both buses; range Z; see also fx_bus.c cho_zrun, the chorus's own rest, which this one waits for: cho_zs).
+ * The run of zeros dz grows by the block while the loop's low-pass and low cut are at 0, the block's input is 0 and the samples written into the line since the last
+ * call (the window behind the write head, whoever wrote them: every writer writes at the head) read back 0; anything else (a state, an input, a sample not 0, a window
+ * that is not one block long: another path ran, or none) sets it to 0. Cheap while it sounds: the states first (a ringing loop: two loads), then each scan stops at its
+ * first sample not 0. Past the line's length the whole line is 0: every read and every write of the loop is then 0 (h[1], the low cut's remainder, is not moved by an
+ * input of 0 while h[0] is 0), and 1 is returned. Called every block the plain loop runs; line: bus A dly_buf (STEREO / LAYER all of it, SPLIT its first half), bus B
+ * the second half */
 static __attribute__((noinline)) uint32_t sil_dly(fxs_t *f, const int16_t *line, const int32_t *in, uint32_t n, uint32_t dmask)
 {
-    uint32_t i, w = f->dly_w, nz = w - f->dz_w != n;     /* (the window is not one block: another path ran, none, or a block of another size) */
-    for (i = w - n; i != w; i++)
-        nz |= (uint32_t)line[i & dmask];
-    for (i = 0; i < n; i++)
-        nz |= (uint32_t)(in[i] >> 1);                   /* (what the loop writes in: 0 for an input of 0 or 1) */
-    nz |= (uint32_t)(f->dly_lp | f->dly_h[0]);
-    f->dz = nz ? 0u : f->dz + n;
+    uint32_t i, w = f->dly_w, j = f->dz_w;
     f->dz_w = w;
-    return f->dz > dmask;
+    if (w - j != n || (f->dly_lp | f->dly_h[0]))      /* (the window not one block: another path ran, none, or a block of another size; the loop rings) */
+        goto busy;
+    for (i = 0; i < n; i++)
+        if (in[i] >> 1)                                 /* (what the loop writes in: 0 for an input of 0 or 1) */
+            goto busy;
+    for (; j != w; j++)
+        if (line[j & dmask])
+            goto busy;
+    f->dz += n;
+    return f->dz > dmask;                               /* (full: the whole line) */
+busy:
+    f->dz = 0;
+    return 0;
 }
 #endif
 /* the buses (fx_bus.c): bus A on the globals they always had, bus B (SPLIT, part 2) on its own */
@@ -3421,19 +3429,16 @@ static uint32_t mst_skipped;                            /* (tests/silentskip_tes
 #endif
 #if SIL_SKIP
 /* TIDE K5 (mix_master; range Z): the mix is 0 (after every master stage), the DC blockers at 0 (their remainders stay: with the state 0 an input of 0 does not move them) and
- * the limiters' envelopes back at LIM_T (no gain): the DC blocker, the limiter and the knee would give exactly 0 and leave their states as they are. Then out is set to 0,
- * returns 1 (the master loop is not run) */
-static __attribute__((noinline)) uint32_t sil_mst(int32_t *out, uint32_t n)
+ * the limiters' envelopes back at LIM_T (no gain): the DC blocker, the limiter and the knee would give exactly 0 and leave their states as they are. Returns 1 then (mix_master
+ * sets out to 0 and does not run its loop). Stops at the first state or sample not 0 */
+static __attribute__((noinline)) uint32_t sil_mst(uint32_t n)
 {
-    uint32_t i, nz = (uint32_t)(dc_l | dc_r | (lim_env + lim_env_r - 2 * LIM_T));   /* (an envelope is never under LIM_T: the sum is 2 LIM_T only with both at LIM_T; lim_env_r: SPLIT's right, LIM_T outside SPLIT, dm_lines_clear) */
-    for (i = 0; i < n && !nz; i++)
-        nz = (uint32_t)(mix_l[i] | mix_r[i] | wet[i]);
-    if (nz)
+    uint32_t i;
+    if (dc_l | dc_r | (lim_env + lim_env_r - 2 * LIM_T))   /* (an envelope is never under LIM_T: the sum is 2 LIM_T only with both at LIM_T; lim_env_r: SPLIT's right, LIM_T outside SPLIT, dm_lines_clear) */
         return 0;
-    memset(out, 0, 2u * n * sizeof out[0]);
-#ifdef SIL_SKIP_STATS
-    mst_skipped++;
-#endif
+    for (i = 0; i < n; i++)
+        if (mix_l[i] | mix_r[i] | wet[i])
+            return 0;
     return 1;
 }
 #endif
@@ -3466,8 +3471,13 @@ static __attribute__((noinline)) void mix_master(int32_t *out, uint32_t n, int p
     bm_sel = (uint8_t)bms;
     cmp_cfg = ccf;
 #if SIL_SKIP
-    if (sil_mst(out, n))
-        return;                                         /* (TIDE K5: the mix and the master's states at rest, out is 0) */
+    if (sil_mst(n)) {                                   /* (TIDE K5: the mix and the master's states at rest: out is 0, the loop not run) */
+        memset(out, 0, 2u * n * sizeof out[0]);
+#ifdef SIL_SKIP_STATS
+        mst_skipped++;
+#endif
+        return;
+    }
 #endif
     if (dm_split) {
         split_master(out, n, mg);
