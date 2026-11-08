@@ -393,7 +393,7 @@ static void con_cpu(void)                              /* (probe) cpu: the longe
         char k[] = "ease_n1";
         uint32_t l;
         con_kv("ease", (int32_t)ease);
-        for (l = 0; l < 5u; l++) {
+        for (l = 0; l < EASE_MAX; l++) {
             k[6] = (char)('1' + l);
             con_kv(k, (int32_t)ease_n[l]);
         }

@@ -541,7 +541,7 @@ static void ease_fork(uint32_t slot, uint32_t lvl, uint32_t kind, int32_t *rec, 
     ez_xon = ez_stuck = 0, ease_probe[0] = ease_probe[1] = 0;
     if (!ez_sh)
         return;
-    memset(ez_sh, 0, sizeof *ez_sh - sizeof ez_sh->rec);
+    memset(ez_sh, 0, sizeof *ez_sh);                    /* (the record too: a child that dies leaves zeros, never the run before's samples) */
     fflush(stdout);
     pid = fork();
     if (!pid) {
@@ -551,6 +551,7 @@ static void ease_fork(uint32_t slot, uint32_t lvl, uint32_t kind, int32_t *rec, 
     }
     if (pid > 0)
         waitpid(pid, &st, 0);
+    REQUIRE("EASE: the scene's child ran to its end (exit status 0)", pid > 0 && WIFEXITED(st) && WEXITSTATUS(st) == 0);
     ease_probe[0] = ez_sh->probe[0], ease_probe[1] = ez_sh->probe[1], ez_xon = ez_sh->xon, ez_stuck = ez_sh->stuck;
     if (rec)
         memcpy(rec, ez_sh->rec, nblk * 2u * CTL * sizeof rec[0]);
@@ -628,7 +629,7 @@ static void check_ease(void)
             d0 = ez_step(ez_df, n);
             printf("glidecpu: EASE %s (M%02u) level %u: largest step %d (level 0: %d), the difference %.1f dB under the signal, its largest step %d\n",
                    KN[kind], sl + 1u, lv, st, st0, 10.0 * log10((s2 + 1) / (e2 + 1)), d0);
-            REQUIRE("EASE: no click at level 1 or 3: the largest sample step within 1.3 x level 0's + 50", st <= 13 * st0 / 10 + 50);
+            REQUIRE("EASE: no click at level 1 or 3: the largest sample step within 5 % of level 0's + 50 (the level-1 click check proper: ease_test LEVEL1 JUMP)", st <= st0 + st0 / 20 + 50);
             REQUIRE("EASE: the difference to level 0 steps no more than level 0's own largest step", d0 <= st0);
         }
     }

@@ -2,8 +2,9 @@
 /* K3 THE EASE LADDER (TIDE 1.0.0-b4; audio.c ease_step / ease_set, core.h ease; CPU audit docs/audits/2026-11-08/cpu/TASKS.md#k3). The real audio ISR with a
  * simulated clock (as tests/audio_test.c): each half reports the elapsed time the test sets (host_us; TIMER5 nested: 0, so render = elapsed).
  *   SEQUENCE  30 halves at 60 %, 2 at 90 %, 10 at 60 %, 1 at 110 %, then 50 %: the level after every half against the rule (up one after two halves in a row over
- *             85 %, at least 4 after a miss, down one after 345 halves (~1 s) with no half over 80 %, the count starting again), every change at its half; 82 %
- *             holds a level, a steady 75 % steps down to 0 (the old 70 %-average rule never let go there), one half over 80 % a second holds it
+ *             85 %, at least 4 after a miss; down one after 345 halves (~1 s; 1034, ~3 s, from LIGHT FX up, 3 x after a quick return) with no half over
+ *             80 %, or after 1034 halves with the meter under 70 %), every change at its half; 82 % holds a level, a steady 75 % steps down to 0, one half
+ *             over 80 % a second holds a level at a ~72 % average but not at ~50 %; FLAP: 87 % at level 2 / 78 % at level 3 releases LIGHT FX once in 10 s at most
  *   COUNTERS  ease_n (entries into each level, a jump enters each level on the way), LIGHT FX (ovl_lite) exactly at levels 3 .. 5, ovl_count = entries into 3
  *   NOKILL    held and released voices through levels 1 .. 3 (four halves at 90 %, then 82 % for 2 s): no voice faded (shed_count, voice_kills), all still sounding
  *   ADMIT     level 2: a new POLY note takes over the oldest released voice instead of a free one when the part sounds np - 1 voices; with no released voice it
@@ -60,7 +61,7 @@ static void fresh(void)
     memset(&felucca_dbg, 0, sizeof felucca_dbg);
     audio_cpu_rem = audio_halves = audio_max_us = 0;
     shed_req = 0; shed_count = 0; shed_over = 0; voice_kills = 0;
-    ease = 0; ease_calm = 0; memset(ease_n, 0, sizeof ease_n); ovl_lite = 0;
+    ease = 0; ease_calm = ease_avg = 0; ease_since = 0xFFFFu; ease_fxl = 0; memset(ease_n, 0, sizeof ease_n); ovl_lite = 0;
     host_clock = host_us = 0;
 }
 static void half(uint32_t pct) { host_us = US_OF(pct); fm1_alnk0_irq(); }
@@ -71,19 +72,30 @@ static uint32_t held_n(const track_t *t) { uint32_t i, n = 0; for (i = 0; i < NV
 static void sequence(void)
 {
     static const struct { uint32_t n, pct; } SEQ[] = {{30, 60}, {2, 90}, {10, 60}, {1, 110}, {5000, 50}};
-    uint32_t s, k, h = 0, model = 0, calm = 0, prev = 0, mism = 0, changes = 0, lite_ok = 1, at[8] = {0}, lv[8] = {0};
+    uint32_t s, k, h = 0, model = 0, calm = 0, avg = 0, since = 0xFFFFu, fxl = 0, prev = 0, mism = 0, changes = 0, lite_ok = 1, at[8] = {0}, lv[8] = {0};
     fresh();
     for (s = 0; s < sizeof SEQ / sizeof SEQ[0]; s++)
         for (k = 0; k < SEQ[s].n; k++, h++) {
-            uint32_t us = US_OF(SEQ[s].pct), over = us > HALF_US * 85u / 100u, miss = us > HALF_US, two = over && prev;
+            uint32_t us = US_OF(SEQ[s].pct), over = us > HALF_US * 85u / 100u, miss = us > HALF_US, two = over && prev, q8 = song.cpu_q8, m0 = model;
             half(SEQ[s].pct);
-            if (two || miss) {                          /* (the rule as the brief states it, written out again: up) */
+            since += since != 0xFFFFu;                  /* (the rule as the brief states it, written out again) */
+            if (two || miss) {                          /* up */
+                calm = avg = 0;
                 model += two && model < 5u;
                 model = miss && model < 4u ? 4u : model;
+            } else if (model) {                         /* down: no half over 80 % for 1 s (3 s from LIGHT FX up, 9 s after a quick return), or the meter under 70 % for 3 s */
+                calm = us > HALF_US * 80u / 100u ? 0u : calm + 1u;
+                avg = q8 >= 179u ? 0u : avg + 1u;
+                if (calm >= (model < 3u ? 345u : fxl ? 3u * 1034u : 1034u) || avg >= 1034u)
+                    model--;
             }
-            calm = us > HALF_US * 80u / 100u || !model ? 0u : calm + 1u;   /* (down: ~1 s, 345 halves, with no half over 80 %) */
-            if (calm >= 345u)
-                model--, calm = 0;
+            if (model != m0) {
+                if (model >= 3u && m0 < 3u)
+                    fxl = since < 1034u;
+                if (model < 3u && m0 >= 3u)
+                    since = 0;
+                calm = avg = 0;
+            }
             prev = over;
             mism += ease != model;
             lite_ok &= ovl_lite == (ease >= EASE_LIGHT);
@@ -94,13 +106,14 @@ static void sequence(void)
     for (k = 0; k < changes; k++)
         printf(" %u:%u", at[k], lv[k]);
     printf("\n");
-    expect("SEQUENCE: the level after every one of 5043 halves is the rule's (up after two halves over 85 %, 4 after a miss, down after ~1 s with no half over 80 %)", !mism);
-    expect("  .. EASE_DOWN_HALVES is 345 (1.0 s of halves), the thresholds 85 and 80 %", EASE_DOWN_HALVES == 345u && EASE_UP_PCT == 85u && EASE_DOWN_PCT == 80u);
+    expect("SEQUENCE: the level after every one of 5043 halves is the rule's (up: two halves over 85 %, 4 after a miss; down: 1 s / 3 s with no half over 80 %, or 3 s under 70 %)", !mism);
+    expect("  .. EASE_DOWN_HALVES 345 (1 s), EASE_DOWN_HALVES_FX 1034 (3 s), the thresholds 85 and 80 %", EASE_DOWN_HALVES == 345u && EASE_DOWN_HALVES_FX == 1034u &&
+           EASE_UP_PCT == 85u && EASE_DOWN_PCT == 80u);
     expect("  .. 0 for 30 halves at 60 %, 1 after the second half at 90 % (half 31), still 1 through 10 halves at 60 %", changes >= 1u && at[0] == 31u && lv[0] == 1u);
     expect("  .. the half at 110 % (a miss, half 42): straight to 4", changes >= 2u && at[1] == 42u && lv[1] == 4u);
-    expect("  .. at 50 %: one level down every 345 halves (1.0 s): 3 at half 387, 2 at 732, 1 at 1077, 0 at 1422 (4 s from the miss), and nothing after",
-           changes == 6u && at[2] == 42u + 345u && lv[2] == 3u && at[3] == 42u + 2u * 345u && lv[3] == 2u &&
-           at[4] == 42u + 3u * 345u && lv[4] == 1u && at[5] == 42u + 4u * 345u && lv[5] == 0u);
+    expect("  .. at 50 %: 3 s a step from 4 and 3, then 1 s a step: 3 at half 1076, 2 at 2110, 1 at 2455, 0 at 2800 (8 s from the miss), and nothing after",
+           changes == 6u && at[2] == 42u + 1034u && lv[2] == 3u && at[3] == 42u + 2u * 1034u && lv[3] == 2u &&
+           at[4] == 42u + 2u * 1034u + 345u && lv[4] == 1u && at[5] == 42u + 2u * 1034u + 2u * 345u && lv[5] == 0u);
     expect("COUNTERS: ease_n = 1, 1, 1, 1, 0 (the jump 1 -> 4 entered 2, 3 and 4), LIGHT FX exactly at levels 3 .. 5, ovl_count 1",
            ease_n[0] == 1u && ease_n[1] == 1u && ease_n[2] == 1u && ease_n[3] == 1u && ease_n[4] == 0u && lite_ok && ovl_count == 1u);
     expect("  .. no voice faded on the way (nothing was sounding: shed_count 0)", shed_count == 0u);
@@ -113,22 +126,43 @@ static void sequence(void)
         half(90u);
     for (k = 0; k < 4000u; k++)
         half(82u);
-    expect("  .. four halves at 90 % reach 3; 82 % (over 80 %, under 85 %) holds it for 11 s, no step up, no release", ease == 3u && ovl_lite && ease_n[3] == 0u);
+    expect("  .. four halves at 90 % reach 3; 82 % (over 80 %, under 85 %; the meter over 70 %) holds it for 11 s, no step up, no release", ease == 3u && ovl_lite && ease_n[3] == 0u);
     for (k = 0; k < 20u; k++)
         half(90u);
     expect("  .. 90 % on: 4, then 5 (one level a half at most), and there it stays; ease_n = 1, 1, 1, 1, 1", ease == 5u &&
            ease_n[0] == 1u && ease_n[1] == 1u && ease_n[2] == 1u && ease_n[3] == 1u && ease_n[4] == 1u);
-    for (k = 0; k < 5u * 345u - 1u; k++)
+    for (k = 0; k < 3u * 1034u + 2u * 345u - 1u; k++)
         half(75u);
-    expect("  .. a steady 75 % (the meter's average over 70 %: the old rule never let go) steps down one level a second: 1 after 5 s less a half", ease == 1u);
+    expect("  .. a steady 75 % (the meter's average over 70 %: the average rule alone never lets go) steps down: 3 s a step from 5, 4, 3, then 1 s: 1 after 11 s less a half", ease == 1u);
     half(75u);
-    expect("  .. and 0 at 5 s", ease == 0u);
+    expect("  .. and 0 at 11 s", ease == 0u);
     fresh();
     for (k = 0; k < 4u; k++)
         half(90u);
-    for (k = 0; k < 2000u; k++)
-        half(k % 300u ? 70u : 83u);                     /* (one half over 80 % every 300: the second never comes) */
-    expect("  .. a half over 80 % starts the 1 s again: one every 300 halves holds the level", ease == 3u);
+    for (k = 0; k < 4000u; k++)
+        half(k % 300u ? 72u : 83u);                     /* (one half over 80 % every 300: the 1 s never comes; the meter at ~72 %) */
+    expect("  .. at a ~72 % average one half over 80 % every 300 holds the level (neither rule lets go)", ease == 3u);
+    fresh();
+    for (k = 0; k < 4u; k++)
+        half(90u);
+    for (k = 0; k < 3u * 1034u - 1u; k++)
+        half(k % 300u ? 50u : 83u);
+    expect("  .. at a ~50 % average the same bursts do not pin it: the average rule steps down every 3 s (1 at 9 s less a half)", ease == 1u);
+    half(50u);
+    expect("  .. and 0 at 9 s", ease == 0u);
+    {                                                   /* FLAP: a scene that needs LIGHT FX: 87 % without it (level 2), 78 % with it (level 3) */
+        uint32_t drops = 0, e0;
+        fresh();
+        for (k = 0; k < 3u; k++)
+            half(90u);
+        for (k = 0; k < 3446u; k++) {                   /* (10 s) */
+            e0 = ease;
+            half(ease >= EASE_LIGHT ? 78u : 87u);
+            drops += e0 >= EASE_LIGHT && ease < EASE_LIGHT;
+        }
+        printf("ease: FLAP 87 %% at level 2, 78 %% at level 3: %u releases of LIGHT FX in 10 s, %u entries\n", drops, ease_n[EASE_LIGHT - 1u]);
+        expect("FLAP: 87 % at level 2, 78 % at level 3: LIGHT FX released at most once in 10 s (3 s, then 9 s after a quick return)", drops <= 1u && ease >= EASE_LIGHT);
+    }
 }
 
 /* ------------------------------------------------------------------ the voices --- */
@@ -310,7 +344,7 @@ static void level1_jump(void)
         }
         printf("ease: LEVEL1 JUMP %s stops: the largest step of what it adds, level 1 %d, level 0 %d\n", w ? "the wash's movement" : "the valley's depth", worst1, worst0);
         expect(w ? "LEVEL1 JUMP: the wash's movement stopping on any block: no step in what it adds over level 0's (+ 5 %)"
-                 : "LEVEL1 JUMP: the valley's depth falling from full to 0 on any block: no step in what it adds over level 0's + 5 % (its filter a block behind; a held +9 dB make-up would be x 2 .. 3)", ok && worst0 > 0);
+                 : "LEVEL1 JUMP: the valley's depth falling from full to 0 on any block: no step in what it adds over level 0's + 5 % (its filter a block behind; the held make-up of before, about +1 dB here, measured x 1.6)", ok && worst0 > 0);
     }
 }
 

@@ -238,15 +238,16 @@ int main(void)
             rel = !ovl_lite;
         }
         printf("ovlguard: MEASURE released %u halves (%.2f s) after the load fell from 82 to 20 %%\n", n, n * (double)HALF_FRAMES / FS);
-        expect("  .. at 20 %: released after 1 s with no half over 80 % (EASE_DOWN_HALVES, K3), not before", rel && n == EASE_DOWN_HALVES);
-        halves(1, 93u), halves(1, 93u);                 /* (from level 2: two halves over 85 % are level 3 again) */
+        expect("  .. at 20 %: released after 3 s with no half over 80 % (EASE_DOWN_HALVES_FX, K3), not before", rel && n == EASE_DOWN_HALVES_FX);
+        halves(1, 93u), halves(1, 93u);                 /* (from level 2: two halves over 85 % are level 3 again, at once: its peak release now waits 9 s) */
         halves(HALVES_OF_MS(600), 20u);
-        halves(1, 83u);                                 /* a half over 80 %: the 1 s starts again */
+        halves(HALVES_OF_MS(500), 76u);                 /* the meter's figure over 70 %: the average rule's 3 s start again */
         for (n = 0, rel = 0; n < HALVES_OF_MS(5000) && !rel; n++) {
             halves(1, 20u);
             rel = !ovl_lite;
         }
-        expect("  .. 0.6 s calm, then one half at 83 %, then 20 %: released 1 s after that half (the count starts again)", rel && n == EASE_DOWN_HALVES && ovl_count == 2u);
+        expect("  .. back at once, 0.6 s calm, 0.5 s at 76 %, then 20 %: released by the average rule 3 s after the 76 % ended (the meter's ~93 ms included)",
+               rel && n >= OVL_CALM_HALVES && n <= OVL_CALM_HALVES + HALVES_OF_MS(300) && ovl_count == 2u);
 #else
         halves(HALVES_OF_MS(6000), 76u);
         held = ovl_lite;

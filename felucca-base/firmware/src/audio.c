@@ -163,47 +163,63 @@ static uint32_t shed_count;
 #if DUELL_TIDE
 /* K3 THE EASE LADDER (TIDE 1.0.0-b4, CPU audit K3; core.h ease, EASE_*): in place of the two rules below (kill a voice after two halves over 85 %, LIGHT FX the
  * same), one level that eases the cheapest, least audible work first and cuts sound only when a half really missed. Driven by the ELAPSED half (all: TIMER5's
- * nested work included, what the DMA deadline sees), both ways:
+ * nested work included, what the DMA deadline sees):
  *  - up: two halves in a row over EASE_UP_PCT (85 %): one level up (at most one a half); a half over its whole time (a miss): to EASE_TAILS at least;
- *  - down: EASE_DOWN_HALVES (~1 s) in a row with no half over EASE_DOWN_PCT (80 %): one level down, and the count starts again; any half over 80 % restarts it.
- *    Why not the meter's average under 70 % for 3 s (the LIGHT FX rule of 0.2.25): the NOTES budget plans up to 72 % on average, so a scene that sits at
- *    70 .. 85 % would never step down; a peak rule is what the deadline cares about, and 80 .. 85 % is the band that holds a level. From a single miss (level
- *    4) back to 0 then takes ~4 s, not 12;
+ *  - down, one level, the first of two rules to hold (both counts then start again; an up step restarts them too):
+ *    a) PEAK: no half over EASE_DOWN_PCT (80 %) for EASE_DOWN_HALVES (~1 s) below LIGHT FX, for EASE_DOWN_HALVES_FX (~3 s) from LIGHT FX up. The meter's
+ *       average alone would not do: the NOTES budget plans up to 72 % on average, so a scene that sits at 70 .. 85 % would never step down. LIGHT FX saves
+ *       5.5 .. 8.8 points, more than the 5-point gap between 85 and 80 %, so leaving it takes longer; and if level 3 is entered again within those 3 s
+ *       of leaving it (a scene that needs it: 87 % without, 78 % with), the next release from 3 up waits 3 x as long (ease_fxl): at most one LIGHT FX
+ *       blip in ~10 s instead of one every 3 s;
+ *    b) AVERAGE: the meter's load (song.cpu_q8) under 70 % for ~3 s (OVL_CALM_HALVES, 0.2.25's LIGHT FX rule): a single half over 80 % every second
+ *       would otherwise hold a level for good at a 50 % average;
  *  - EASE_TAILS fades the SHED_FAST_N oldest released tails on the half it is entered from below and on each half the overload lasts; EASE_HELD fades a held
  *    note (shed_voice) only on a half that missed. Levels 1 .. 3 fade nothing. The ISR's own shedding code (shed_req) is unchanged.
  * ease_step runs every half (range Z: tools/ram_fns_z.py); ease_set, a level change, is in the flash */
 #define EASE_UP_PCT 85u
 #define EASE_DOWN_PCT 80u
 #define EASE_DOWN_HALVES ((FS + HALF_FRAMES / 2u) / HALF_FRAMES)   /* ~1 s of halves (345) */
+#define EASE_DOWN_HALVES_FX OVL_CALM_HALVES            /* ~3 s (1034): from LIGHT FX up */
 #define EASE_UP_TICKS SHED_TICKS                       /* (= EASE_UP_PCT of a half: the shedding rule's own threshold) */
 #define EASE_DOWN_TICKS ((HALF_FRAMES * 1000000u / FS) * EASE_DOWN_PCT / 100u * FM1_TICKS_PER_US)
 _Static_assert(EASE_UP_PCT == 85u, "audio.c: SHED_TICKS is 85 % of a half");
-static uint16_t ease_calm;                             /* halves in a row with no half over EASE_DOWN_PCT while eased */
+static uint16_t ease_calm, ease_avg;                   /* halves in a row with no half over EASE_DOWN_PCT, and with the meter under 70 %, while eased */
+static uint16_t ease_since = 0xFFFFu;                  /* halves since the level last fell below LIGHT FX (saturating) */
+static uint8_t ease_fxl;                               /* LIGHT FX was entered again within EASE_DOWN_HALVES_FX of leaving it: its peak release waits 3 x */
 static uint32_t ease_n[EASE_MAX];                      /* entries into levels 1 .. 5 since power-on (the console's `cpu`); [EASE_LIGHT - 1] is LIGHT FX's count */
 static __attribute__((noinline)) void ease_set(uint32_t n)
 {
     uint32_t e;
+    if (n >= EASE_LIGHT && ease < EASE_LIGHT)
+        ease_fxl = ease_since < EASE_DOWN_HALVES_FX;
+    if (n < EASE_LIGHT && ease >= EASE_LIGHT)
+        ease_since = 0;
     for (e = ease; e < n; e++)                          /* (each level includes the ones below it: a jump enters each) */
         ease_n[e]++;
     ovl_lite = n >= EASE_LIGHT;
     ease = (uint8_t)n;
+    ease_calm = ease_avg = 0;
 }
 static __attribute__((noinline)) uint32_t ease_step(uint32_t all)
 {
     uint32_t e = ease, n = e, miss = all > SHED_FULL_TICKS, over;
     shed_over = (uint8_t)(shed_over << 1 | (all > EASE_UP_TICKS));
     over = (shed_over & 3u) == 3u;
+    ease_since += ease_since != 0xFFFFu;
     if (over | miss) {
+        ease_calm = ease_avg = 0;
         n += over && n < EASE_MAX;
         n = miss && n < EASE_TAILS ? EASE_TAILS : n;
         if (n >= EASE_TAILS)
             shed_req |= SHED_FAST;
         if (miss && n == EASE_HELD)
             shed_req |= SHED_HELD;
+    } else if (n) {
+        ease_calm = all > EASE_DOWN_TICKS ? 0u : (uint16_t)(ease_calm + 1u);
+        ease_avg = song.cpu_q8 >= OVL_CALM_Q8 ? 0u : (uint16_t)(ease_avg + 1u);
+        if (ease_calm >= (n < EASE_LIGHT ? EASE_DOWN_HALVES : ease_fxl ? 3u * EASE_DOWN_HALVES_FX : EASE_DOWN_HALVES_FX) || ease_avg >= OVL_CALM_HALVES)
+            n--;
     }
-    ease_calm = all > EASE_DOWN_TICKS || !n ? 0u : (uint16_t)(ease_calm + 1u);   /* (a half over 80 % starts the count again; an up step is one) */
-    if (ease_calm >= EASE_DOWN_HALVES)
-        n--, ease_calm = 0;
     if (n != e)
         ease_set(n);
     return (all - t5_nested_ticks) / FM1_TICKS_PER_US;
