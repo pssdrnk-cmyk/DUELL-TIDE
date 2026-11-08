@@ -15,7 +15,7 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 
 ## How we work
 
-- **One audio change per beta.** A change that can alter the sound gets a beta of its own, so a problem points at one change.
+- **Betas carry what is ready.** Several audio changes may ship in one beta (owner, 8 November: delivery first); each one is still measured on the unit before it ships.
 - **Measure before and after.** An audio-path change is measured on the unit before and after, with the same script, against a pass mark written down first.
 - **Builder and four reviewers.** Each change is built by one agent on its own branch, then read by separate reviewers: correctness, quality and cohesion, tests, docs. The coordinator decides the fixes; a verification review checks them.
 - **Pull requests.** Every change goes to GitHub as a pull request against `jam11`; GitHub runs the full host suite on it. Locally only the device build (size, hot-code check), `jam/check_off.sh` and `check_docs.py`. Builders work in parallel; merges go one at a time, with the owner's OK.
@@ -45,7 +45,7 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 | 8 | Unit measurements | The 16-multi GLIDE sweep reading both `cpu_pk_us` and `cpu_el_pk_us` (K2); each drone with its 3-note chord held while `glide 1 0` runs. Sets the acceptance numbers for b4. | Needs the unit on USB. |
 | 9 | Cut b3 | `TIDE_VERSION` 1.0.0-b3, CHANGELOG section, tag, build, flash, GitHub pre-release. | After 2 to 8 and the merges. |
 
-## After b3, one audio change per beta
+## After b3
 
 | Beta | Item | What it does | Spec |
 |---|---|---|---|
