@@ -1,6 +1,6 @@
 # TIDE settings at a glance
 
-One page: what each TIDE setting does, in short. The full detail is in the [TIDE guide](TIDE_GUIDE.md), section 2 (AUTO TIDE) and 3 (TIDE SETTINGS). These rows work the same on 1.0.0-b2 and b3.
+One page: what each TIDE setting does, in short. The full detail is in the [TIDE guide](TIDE_GUIDE.md), section 2 (AUTO TIDE) and 3 (TIDE SETTINGS). These rows work the same on 1.0.0-b2 and later; DRONE is new in b4.
 
 **Where:** HOME's round is MORPH → TIDE SETTINGS → AUTO TIDE. On AUTO TIDE, K1 starts or stops the glide and K2 is the mode. On TIDE SETTINGS, K1 picks a row and OCT+ / OCT- (or K2..K4) change it.
 
@@ -20,7 +20,7 @@ TIME (K3) is how many bars one trip takes; WAIT (K4) is how many bars it rests a
 
 | Row | Values (default **bold**) | In short |
 |---|---|---|
-| **STYLE** | **DUB**, DEEP, MINIMAL, AMBIENT, PEAK, CUSTOM | A preset for the whole tide: sets the mode, TIME, WAIT, VARY BARS, TURNS, POLY, SYNC, ARC and WASH in one go. Change any of those by hand and STYLE reads CUSTOM. |
+| **STYLE** | **DUB**, DEEP, MINIMAL, AMBIENT, PEAK, DRONE, CUSTOM | A preset for the whole tide: sets the mode, TIME, WAIT, VARY BARS, TURNS, POLY, SYNC, ARC and WASH in one go. Change any of those by hand and STYLE reads CUSTOM. |
 | **VARY BARS** | **EVERY 4TH**, EVERY BAR | How often the pattern plays its variation: every 4th bar of the phrase, or every bar. |
 | **ROLL** | **MUSIC**, SMART, WILD | How a new destination sound (End B) is made. MUSIC: musical dials inside the range that sound lives in. SMART: DUELL's own safe roll. WILD: no safety rules. |
 | **TURNS** | TOGETHER, TAKE TURNS, **LEAD** | How the two parts share the variations. TOGETHER: both vary on the same bars. TAKE TURNS: one varies, the other answers two bars later. LEAD: the parts take turns leading, the other plays thinner and softer meanwhile. |
@@ -30,7 +30,7 @@ TIME (K3) is how many bars one trip takes; WAIT (K4) is how many bars it rests a
 
 TURNS, POLY, SYNC and ARC work only while the tide runs in WNDR or JRNY with ROLL MUSIC and the pattern in TARGET (SND+SEQ or SEQ). Otherwise their values are dim and the top line says what's missing.
 
-## The five STYLEs
+## The six STYLEs
 
 | Style | Mode | TIME | WAIT | VARY | TURNS | POLY | SYNC | ARC | WASH | Feel |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -39,3 +39,4 @@ TURNS, POLY, SYNC and ARC work only while the tide runs in WNDR or JRNY with ROL
 | MINIMAL | WNDR | 8 | OFF | BAR | LEAD | WIDE | PUSH | OFF | OFF | Busy, shifting, polymetric. |
 | AMBIENT | JRNY | 64 | 8 | 4TH | TOGETHER | GENTLE | OFF | OFF | HIGH | Very slow, washy, no groove tricks. |
 | PEAK | JRNY | 8 | OFF | BAR | LEAD | GENTLE | PUSH | DROP | OFF | Fast changes, pushes, drops. |
+| DRONE | WNDR | 64 | OFF | 4TH | TOGETHER | OFF | OFF | OFF | HIGH | For a held drone chord: always moving, slowly, around your own sound; nothing rhythmic. Since 1.0.0-b4. |
