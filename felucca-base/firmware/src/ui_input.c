@@ -466,7 +466,7 @@ static int rec_tap(void)                                /* 1: the arming changed
         ui_message("REC OFF");                          /* (audit liverec L6: said on every page, HOME included, where the header ring is small) */
 #endif
     if ((song.rec & bit) && !song.playing && !seq_counting() && roll_on()) {
-        ui_message(ui_prefs2 & (PREF_CHORD_ADD >> 16) ? "KEYS ADD TO STEP" : "KEYS WRITE STEPS");   /* step recording:
+        ui_message(ui_prefs2 & (PREF_CHORD_ADD >> 16) ? "KEYS ADD TO STEP" : "KEYS REPLACE STEPS");   /* step recording:
                                                          * stopped, at the cursor (CHORD ENTRY ADD: adding) */
         return 1;
     }
@@ -1150,7 +1150,6 @@ static void scale_knob(uint32_t slot, int32_t steps)
     }
 }
 
-static void fxsum_knob(uint32_t slot, int32_t steps);     /* (below, after the knobs' quiet-time state) */
 static void schain_jump(uint32_t knob, int32_t steps);
 /* the matrix's DEST knob (0.2.25, owner: the hide rule for modulation; release_drafts/MATRIX_DESTINATIONS.md): from `was`, the turn param_turn made to v
  * goes on in its direction past every destination the selected part does not offer now (mod.c mod_dst_offered: the removed EQ gains and list engine slots,
@@ -1333,23 +1332,6 @@ static void glo_knob_jump(uint32_t page, uint32_t knob)
     kr_on[knob] = 1;
     kr_t[knob] = fm1_ms;
     page_entered();
-}
-
-/* FX's second page, SEND FX (0.2.22; the sends are shown, not edited): a twist of K1 (CHORUS), K2 (DELAY) or K3 (REVERB) either way jumps to GLO's CHORUS, DELAY 1/2 or REVERB: the page change
- * only, no value changes (the sends are the FX page's), and the knob does not stick or snap to anything. The rest of that twist is swallowed (kr_on: the same quiet time as after a reset), so it
- * does not move the new page's first card. K4 has no card. SENDS OFF: the cards are not drawn and the knobs do nothing (card_hidden_vp). The GLO family remembers the page (the next tap of GLO comes back to it) */
-static void fxsum_knob(uint32_t slot, int32_t steps)
-{
-    uint32_t i, want;
-    if (!steps || slot > 2u)
-        return;
-    want = FXSUM_TO[slot];
-    for (i = 0; i < NPAGES; i++)
-        if (PAGES[i].fam == FAM_GLO && PAGES[i].scope == SC_GLOBAL && PAGES[i].id[0] == want)
-            break;
-    if (i >= NPAGES)
-        return;
-    glo_knob_jump(i, slot);
 }
 
 /* DUCK 1/2 (FX) while the part's SRC is MIDI: K4 is a link card to GLO > SIDECHAIN (params.c duck_midi_page) */
@@ -1559,16 +1541,16 @@ static void act_do(void)
         return;
     }
     if (cur_page()->graph == GR_TOOLS) {
-        if (c > 2u)
+        if (c > 1u)
             return;
-        if (!act_ready()) {                               /* nothing there to clear */
-            ui_message(c == 2u ? "ALL FACTORY" : "NOTHING TO CLEAR");
+        if (!act_ready()) {                               /* RESTORE with nothing to restore */
+            ui_message("ALL FACTORY");
             return;
         }
-        if (c == 2u && transport_busy())                  /* (RESTORE ALL writes flash) */
+        if (c == 1u && transport_busy())                  /* (RESTORE ALL writes flash) */
             ui_message("STOP TO SAVE");
         else
-            confirm_open(c == 0u ? CF_CLEAR_SEQ : c == 1u ? CF_INIT_SOUND : CF_RESTORE_ALL, song.sel);
+            confirm_open(c == 0u ? CF_INIT_SOUND : CF_RESTORE_ALL, song.sel);
         return;
     }
     if (cur_page()->graph == GR_PATS) {                   /* LOAD (1), SAVE (2): the slot picked */
@@ -1604,9 +1586,6 @@ static void act_do(void)
     id = cur_page()->id[c & 3u];
     ui.act = 0;
     switch (id) {
-    case G_CLRSEQ:
-        confirm_open(CF_CLEAR_SEQ, song.sel);
-        break;
     default:                                              /* G_INITSND */
         init_sound();                                     /* engine defaults + its first preset (the steps stay), KEY TRK at its new-sound default */
         ui_message("SOUND INIT");

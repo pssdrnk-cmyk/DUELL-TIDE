@@ -101,6 +101,26 @@ static int test_seq(void)
     return bad;
 }
 
+/* ---------------------------------------------- 1b. the arp's swing --- */
+/* b4 UI round 2 (R4): the arp adds the global TEMPO SWING to its own ARP SWING, as the sequencer adds it to the track's (at most 75 %, none on a triplet) */
+static int test_arp(void)
+{
+    int bad = 0;
+    host_tracks_init();
+    trk[0].p[P_ARATE] = 2;                                   /* 1/16: straight */
+    trk[0].p[P_ASWING] = 50; song.g[G_SWING] = 50;
+    bad += check("arp swing: ARP SWING 50 + TEMPO SWING 50: straight", arp_sw(&trk[0], 6000) == 0);
+    song.g[G_SWING] = 62;
+    bad += check("arp swing: TEMPO SWING 62 alone swings the arp (1440 of 6000)", arp_sw(&trk[0], 6000) == 1440);
+    trk[0].p[P_ASWING] = 58;
+    bad += check("arp swing: ARP SWING 58 + TEMPO SWING 62 add (20 over 50: 2400 of 6000)", arp_sw(&trk[0], 6000) == 2400);
+    trk[0].p[P_ASWING] = 75; song.g[G_SWING] = 75;
+    bad += check("arp swing: 75 + 75 stops at 75 % (3000 of 6000), as the sequencer", arp_sw(&trk[0], 6000) == 3000);
+    trk[0].p[P_ARATE] = 4;                                   /* 8T: a triplet */
+    bad += check("arp swing: a triplet rate is not swung", arp_sw(&trk[0], 6000) == 0);
+    return bad;
+}
+
 /* -------------------------------------------------------- 2. display --- */
 static const char *shown(const param_desc_t *d, int32_t v)
 {
@@ -125,7 +145,7 @@ static int test_display(void)
 
 int main(void)
 {
-    int bad = test_seq() + test_display();
+    int bad = test_seq() + test_arp() + test_display();
     printf("swing: %s\n", bad ? "FAILED" : "all ok");
     return bad ? 1 : 0;
 }

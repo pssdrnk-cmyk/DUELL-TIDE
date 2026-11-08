@@ -319,7 +319,7 @@ static void r4(void)
     boot(); setup(0, AM_SEQ_ID, V_POLY);
     song.sel = 0;
     go_page(GR_ROLL); frame();                           /* STEP */
-    start();                                             /* (stopped, STEP arms step recording and says KEYS WRITE STEPS) */
+    start();                                             /* (stopped, STEP arms step recording and says KEYS REPLACE STEPS) */
     press(B_REC); frames(600);
     CHECK("R4: REC on STEP arms the selected part", song.rec == 1u);
     CHECK("R4: ... on an ARP SEQ part the toast says the keys record", msg_is("ARP SEQ: KEYS RECORD"));

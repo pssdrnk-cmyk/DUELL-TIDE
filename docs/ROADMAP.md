@@ -9,9 +9,9 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 | | |
 |---|---|
 | **Stable** | `stable-2026-11-03` (`187e9d0`), validated by the fork owner. The first versioned stable will be `1.0.0`. |
-| **Newest beta** | `1.0.0-b2` (tag `tide-1.0.0-b2`, `0d2fcb9`), a GitHub pre-release since 8 November: the GLIDE CPU fix and eight drones (#164 to #171). The owner's unit runs the build just before the tag (`36f03cd`, ABOUT `1.0.0-b2+`); the tagged build adds only the every-block blend for a hand-moved morph. |
-| **Older betas** | `1.0.0-b1` (`817658d`) and `beta-2026-11-04` (`77a6df2`), both GitHub pre-releases. |
-| **Development** | b3 is in pull requests against `jam11`, not merged yet (#1 to #4, then a cleanup PR from `fix/b3-cleanup`): [#1](https://github.com/pssdrnk-cmyk/DUELL-TIDE/pull/1) b3 part 1, [#2](https://github.com/pssdrnk-cmyk/DUELL-TIDE/pull/2) PLAY MODE / XFADE / SPLIT rows, [#3](https://github.com/pssdrnk-cmyk/DUELL-TIDE/pull/3) REC ADD / REPLACE and ARP SEQ keys, [#4](https://github.com/pssdrnk-cmyk/DUELL-TIDE/pull/4) the `emu` CI job. Each PR runs every host test group on GitHub. Built and reviewed, waiting for #1 to #3: the POLY restart fix (`fix/b3-f36`), the `uartflood` test (`fix/b3-felucca264`), the `tcwrap` test (`probe/a1`). In its review round: the CPU meter (`fix/b3-k2`). |
+| **Newest beta** | `1.0.0-b4` (tag `tide-1.0.0-b4`): the ease ladder (no missed blocks or cut voices on the unit's GLIDE sweep), the silent-bus skip, STYLE DRONE and the drone pack, the pages and screen cleanups. |
+| **Older betas** | `1.0.0-b3` (`c124935`), `1.0.0-b2` (`0d2fcb9`), `1.0.0-b1` (`817658d`) and `beta-2026-11-04` (`77a6df2`), all GitHub pre-releases. |
+| **Development** | `1.0.0-b5`: MORPH UNDO dropped for RAM, the wave picture taking over the MORPH page, AUTO TIDE and the wave page showing both parts always. |
 | **Flash** | 580,808 B of the 581,564 B slot (build of `fix/b3-cleanup`, 8 November): **756 B free**. Every addition is measured; simplifications pay for features. Keep 0xEA000..0xFBFFF for future pattern / multi slots. |
 | **CPU** | About 3 missed audio blocks per FM6 crossing during a GLIDE, accepted for the betas. Five multis peak at raw 91 to 101 % in the 16-multi GLIDE sweep. `1.0.0` needs 0 missed blocks over that sweep. |
 
@@ -29,7 +29,7 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 - **Anything unfinished gets a row here at once.**
 - **Pushes and releases need the owner's OK.**
 
-## Next: 1.0.0-b3, changes that cannot alter the sound
+## 1.0.0-b3 (released 8 November): changes that cannot alter the sound
 
 | # | Item | What it does | State |
 |---|---|---|---|
@@ -66,6 +66,8 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 **Screens** (redundancy audit 8 November, all 433 screens rendered)
 - b4: drop the ENV round's copy of the MATRIX pages (the LFO round keeps them); SIDECHAIN shows the PART FX OFF notice instead of a blank page; the MIDI LEARN line no longer cut under the footer's engine name; no placeholder rule on MORPH; the hold-EDIT layer is QUICK EDIT; one-line OFF notices.
 - Owner's call: drop SEND FX (every value is on FX and GLO) and TOOLS CLEAR PATTERN (QUICK SEQ and QUICK REC clear too), about 0.8 KB; the arp follows TEMPO SWING like the sequencer; TIDE rows SYNC and ROLL renamed so they don't share words with tempo sync and MORPH's ROLL.
+
+**One view for both parts** (owner, 8 November): AUTO TIDE and the MORPH / wave page always show both parts, with the selected part clearly marked (full colour, the other dimmed, plus a cue that works on MONO and GREY). The wave page does it in b5 (Wave Lab); AUTO TIDE follows the second screen round.
 
 **MORPH** ([review](audits/2026-11-08/morph/REPORT.md): keep the core and the page, no big rework)
 - c3: factory loads stop resetting AMOUNT; K4 dim in JRNY, where it does nothing (about 50 B).

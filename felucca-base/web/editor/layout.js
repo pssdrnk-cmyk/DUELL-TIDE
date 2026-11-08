@@ -285,7 +285,6 @@ export const DUPLICATE = {
   "CYCLE ENV 1/2": "the ENV tab's CYCLE ENV card (MODE, SYNC, RISE, FALL, CURVE)",
   "CYCLE ENV 2/2": "the ENV tab's CYCLE ENV card",
   MIXER: "the unit's GLO > MIXER page (0.2.25 layout round: GLO's first page; item 117 order: K1 LEVEL 1, K2 LEVEL 2, K3 PAN 1, K4 PAN 2, the MUTE cells): each part column's MIXER block (LEVEL, PAN, MUTE)",
-  "SEND FX": "the unit's SEND FX page (FX's second page) shows the selected part's three sends (the FX tab's CHO DLY REV cards) beside the effects they feed (the GLOBAL tab's cards); its twists only jump to those pages (item 117: the page says so, TURN A KNOB: JUMP TO GLOBAL EFFECT SETTINGS, and names the effects that are inactive for the part)",
 };
 export const NOT_EDITABLE = [
   ["SCALE", "SCALE, ROOT and OFF-SCALE are the instrument's, not parameters: the editor protocol has no command for them"],

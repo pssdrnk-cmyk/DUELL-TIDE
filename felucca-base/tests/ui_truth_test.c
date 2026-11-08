@@ -162,14 +162,14 @@ static void test_inert_rows(void)
     gl.mode = GM_JOURNEY; morph_musical = 1; gl.target = GT_BOTH;
     ui.force = 1; ui_draw();
     CHECK("INERT: JRNY, MUSIC, SEQ: POLY's value in the theme colour", dots(x0, x1, y, y + UT_L5_H, T_THEME) > 0);
-    CHECK("INERT:   and knob 1's line names nothing", !rows_has(0, 80, "WNDR OR JRNY") && !rows_has(0, 80, "ROLL MUSIC") && !rows_has(0, 80, "TARGET SEQ"));
+    CHECK("INERT:   and knob 1's line names nothing", !rows_has(0, 80, "WNDR OR JRNY") && !rows_has(0, 80, "ROLL TYPE MUSIC") && !rows_has(0, 80, "TARGET SEQ"));
     gl.mode = GM_ONCE;
     ui.force = 1; ui_draw();
     CHECK("INERT: MODE ONCE: POLY's value is dim, not the theme colour", dots(x0, x1, y, y + UT_L5_H, T_DIM) > 0 && dots(x0, x1, y, y + UT_L5_H, T_THEME) == 0);
     CHECK("INERT:   knob 1's line says WNDR OR JRNY", rows_has(0, 80, "WNDR OR JRNY"));
     gl.mode = GM_WANDER; morph_musical = 0;
     ui.force = 1; ui_draw();
-    CHECK("INERT: ROLL SMART: ROLL MUSIC is named", rows_has(0, 80, "ROLL MUSIC") && dots(x0, x1, y, y + UT_L5_H, T_DIM) > 0);
+    CHECK("INERT: ROLL TYPE SMART: ROLL TYPE MUSIC is named", rows_has(0, 80, "ROLL TYPE MUSIC") && dots(x0, x1, y, y + UT_L5_H, T_DIM) > 0);
     morph_musical = 1; gl.target = GT_SOUND;
     ui.force = 1; ui_draw();
     CHECK("INERT: TARGET SOUND: TARGET SEQ is named", rows_has(0, 80, "TARGET SEQ") && dots(x0, x1, y, y + UT_L5_H, T_DIM) > 0);

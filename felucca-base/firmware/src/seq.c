@@ -643,8 +643,8 @@ static __attribute__((noinline)) void arp_fire(track_t *t, uint32_t period)
 #define DIV_TRIPLET(d) ((0x1C30u >> ((d) & 31u)) & 1u)
 static inline int32_t sw_ex(int32_t pct) { return pct <= 50 ? 0 : pct >= 75 ? 25 : pct - 50; }
 static inline int32_t sw_len(int32_t ex, uint32_t period) { return (ex > 25 ? 25 : ex) * (int32_t)period / 50; }
-/* the arp's swing in samples for a step of `period` (ARP RATE, the part's ARP SWING; none on a triplet): the one formula, arp_step's and arp_dur's */
-static inline int32_t arp_sw(const track_t *t, uint32_t period) { return DIV_TRIPLET(t->p[P_ARATE]) ? 0 : sw_len(sw_ex(t->p[P_ASWING]), period); }
+/* the arp's swing in samples for a step of `period` (ARP RATE, the part's ARP SWING + the global TEMPO SWING as the sequencer adds them (b4 UI round 2, R4); none on a triplet): the one formula, arp_step's and arp_dur's */
+static inline int32_t arp_sw(const track_t *t, uint32_t period) { return DIV_TRIPLET(t->p[P_ARATE]) ? 0 : sw_len(sw_ex(t->p[P_ASWING]) + sw_ex(song.g[G_SWING]), period); }
 static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
 {
     uint32_t period, duration;

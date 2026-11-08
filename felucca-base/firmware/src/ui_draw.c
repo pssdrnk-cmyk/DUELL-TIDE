@@ -758,7 +758,7 @@ static uint8_t card_mot_next, card_mot;
  * (the source an external or AUTO clock plays on, clock_why). */
 static const char *card_why_next;
 static uint8_t card_hide_next;
-static const char *quick_label(const page_t *pg, uint32_t s);   /* (ui_layer.c: QUICK MULTI's CUT 1 RES 1 CUT 2 RES 2) */
+static const char *quick_label(const page_t *pg, uint32_t s);   /* (ui_layer.c: QUICK EDIT's CUT 1 RES 1 CUT 2 RES 2) */
 static uint8_t card_ctr_next;                           /* the next draw_column's gauge fills from the CENTRE (a true bipolar value: OFFSET, TUNE, FDBK, BLEND; ratio 0..1000 with 500 = zero); cloud job H */
 /* MORPH on the cards: the value a track parameter's card shows is what the fader sounds like (morph.c morph_view), and the card
  * the morph is moving (shown != stored Original) carries a mark. card_mk_next (ui_fm6op.c): set by card_vv, taken by the next draw_column */
@@ -1855,7 +1855,7 @@ static int byp_card(const page_t *pg, const int16_t *vp)
         {"LFO 2", BY_LFO2, 0}, {"LFO 2 TRIG", BY_LFO2, 0}, {"LFO 2 DEST", BY_LFO2, 0},
         {"ENV 2", BY_ENV2, 0}, {"ENV 2 DEST", BY_ENV2, 0}, {"CYCLE ENV 1/2", BY_CYC, 0}, {"CYCLE ENV 2/2", BY_CYC, 0},
         {"INSERT 1/2", BY_INS, 0}, {"INSERT 2/2", BY_INS, 0}, {"EQ 1/2", BY_EQ, 0}, {"EQ 2/2", BY_EQ, 0},
-        {"DUCK 1/2", BY_DUCK, 0}, {"DUCK 2/2", BY_DUCK, 0}, {"SEND FX", BY_SEND, 0},
+        {"DUCK 1/2", BY_DUCK, 0}, {"DUCK 2/2", BY_DUCK, 0},
         {"CHORUS", 0, BYS_CHO}, {"DELAY 1/2", 0, BYS_DLY}, {"DELAY 2/2", 0, BYS_DLY}, {"REVERB", 0, BYS_REV}, {"SHIMMER", 0, BYS_REV},
         {MASTER_PAGE_TITLE, 0, BYS_MST}, {"COMPRESSOR", 0, BYS_CMP}};
     uint32_t i;
@@ -2560,9 +2560,6 @@ static void draw_columns(void)
         }
         return;
     }
-    if (cur_page()->scope == SC_FXSUM)                 /* FX's SEND FX (0.2.22; item 117, TEMPLATE 5): no cards, the page is text on the background drawn by ui_graph.c graph_fxsum (state, delay and reverb info, note,
-                                                        * the three knob labels); a twist of K1 / K2 / K3 still jumps to GLO's page of that effect (ui_input.c fxsum_knob) */
-        return;
     if (cur_page()->scope == SC_MIDI) {                /* GLO's MIDI pages: MIDI (P1 CH, P2 CH, MIDI IN; CLK is on TEMPO), SIDECHAIN (SC SRC, SC NOTE), MIDI LEARN (LEARN, CLEAR) */
         if (cur_page()->graph == GR_MLEARN) {
             char n[10] = "NONE";
