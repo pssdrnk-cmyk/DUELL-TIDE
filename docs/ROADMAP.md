@@ -1,6 +1,6 @@
 # DUELL with TIDE roadmap
 
-Updated 5 November 2026. This is the current delivery and status document. The [musical proposals](design/TIDE_MUSICAL_DESIGN.md) and the [historical roadmap and receipts](history/TIDE_ROADMAP_2026-11-02.md) are references; the earlier baseline and evidence tables are kept in [history/ROADMAP_BASELINE_2026-11-03.md](history/ROADMAP_BASELINE_2026-11-03.md).
+Updated 8 November 2026. This is the current delivery and status document. The [musical proposals](design/TIDE_MUSICAL_DESIGN.md) and the [historical roadmap and receipts](history/TIDE_ROADMAP_2026-11-02.md) are references; the earlier baseline and evidence tables are kept in [history/ROADMAP_BASELINE_2026-11-03.md](history/ROADMAP_BASELINE_2026-11-03.md).
 
 ## Status
 
@@ -173,43 +173,43 @@ Each runs on its own branch until it is reviewed and merged. Crossed-out rows ar
 
 | Fix | What changes |
 |---|---|
-| ~~FM6 re-strike~~ | ~~FM6 pads and keys stop clicking and dipping about 20 dB on re-strike, arp and held chords. Also true for plain DUELL.~~ Merged, not yet in a build. |
-| ~~Arp timing and swing direction~~ | ~~The arp stays on the grid for a whole set, and swing swings the right way.~~ Merged, not yet in a build. |
-| ~~Delay-time glide, steadier clock tempo~~ | ~~TIME and TEMPO moves bend instead of clicking; the tempo and a synced delay stay steadier under an external clock.~~ Merged, not yet in a build. |
-| ~~JRNY roles and level data~~ | ~~The sounds that fall in no role get one, FX are split from PERC, USER records honour the families, and level data for GHOST HARP and a few other sounds is corrected.~~ Merged, not yet in a build. |
-| ~~CI~~ | ~~Green and honest: the two-core simulation checks invariants only, the runner shows the real failing line, the two unlisted JRNY groups run, the runner image and actions are pinned.~~ Merged, not yet in a build. Pages now publishes only a tested, green commit. |
-| ~~ENV SYNC release end~~ | ~~A long synced release (4 bars at 69 BPM or slower) ends instead of holding a voice at -71 dB.~~ Merged, not yet in a build. |
-| ~~MIDI Start and arp velocity~~ | ~~MIDI Start plays step 0 on the first clock pulse; the arp plays the key's velocity.~~ Merged, not yet in a build. |
-| ~~Delay times on the grid, RESO in tune~~ | ~~A delay TIME too long for the line halves until it fits in every mode and the card shows what plays; RESO's combs are tuned for DAMP.~~ Merged, not yet in a build. |
-| ~~Load undo~~ | ~~OCT- held plus a PRESETS turn undoes the last sound load; PRESETS steps like PATCHES' knob 1; long lists accelerate.~~ Merged, not yet in a build. |
-| ~~Dead code and TIDE core clean-up~~ | ~~The VOICE CAP outside bench builds, cross-part stealing and Felucca's engine preset tables leave the unit's image (3,372 B); the TIDE core's tables and helpers are shared (1,444 B). No behaviour change.~~ Merged, not yet in a build. |
-| ~~Filters~~ | ~~The state-variable filter keeps its precision below 100 Hz (resonance and no DC offset at a low cutoff); the CUT dial is slewed, so a sweep no longer zippers.~~ Merged, not yet in a build. |
-| ~~Silent tails~~ | ~~The ROOM, RESO and delay loops fall to exact zero.~~ Merged, not yet in a build. |
-| ~~Chord names~~ | ~~Flats in a flat key; a stack of 4ths is named; DIA7 on a six-note scale is a triad.~~ Merged, not yet in a build. |
-| ~~TIDE page truth~~ | ~~The pages and rows show what plays: step position and length, rows that do nothing in the current mode, the CUSTOM snapshot, the ARC status text.~~ Merged, not yet in a build. |
+| ~~FM6 re-strike~~ | ~~FM6 pads and keys stop clicking and dipping about 20 dB on re-strike, arp and held chords. Also true for plain DUELL.~~ Shipped in 1.0.0-b1. |
+| ~~Arp timing and swing direction~~ | ~~The arp stays on the grid for a whole set, and swing swings the right way.~~ Shipped in 1.0.0-b1. |
+| ~~Delay-time glide, steadier clock tempo~~ | ~~TIME and TEMPO moves bend instead of clicking; the tempo and a synced delay stay steadier under an external clock.~~ Shipped in 1.0.0-b1. |
+| ~~JRNY roles and level data~~ | ~~The sounds that fall in no role get one, FX are split from PERC, USER records honour the families, and level data for GHOST HARP and a few other sounds is corrected.~~ Shipped in 1.0.0-b1. |
+| ~~CI~~ | ~~Green and honest: the two-core simulation checks invariants only, the runner shows the real failing line, the two unlisted JRNY groups run, the runner image and actions are pinned.~~ Shipped in 1.0.0-b1. Pages now publishes only a tested, green commit. |
+| ~~ENV SYNC release end~~ | ~~A long synced release (4 bars at 69 BPM or slower) ends instead of holding a voice at -71 dB.~~ Shipped in 1.0.0-b1. |
+| ~~MIDI Start and arp velocity~~ | ~~MIDI Start plays step 0 on the first clock pulse; the arp plays the key's velocity.~~ Shipped in 1.0.0-b1. |
+| ~~Delay times on the grid, RESO in tune~~ | ~~A delay TIME too long for the line halves until it fits in every mode and the card shows what plays; RESO's combs are tuned for DAMP.~~ Shipped in 1.0.0-b1. |
+| ~~Load undo~~ | ~~OCT- held plus a PRESETS turn undoes the last sound load; PRESETS steps like PATCHES' knob 1; long lists accelerate.~~ Shipped in 1.0.0-b1. |
+| ~~Dead code and TIDE core clean-up~~ | ~~The VOICE CAP outside bench builds, cross-part stealing and Felucca's engine preset tables leave the unit's image (3,372 B); the TIDE core's tables and helpers are shared (1,444 B). No behaviour change.~~ Shipped in 1.0.0-b1. |
+| ~~Filters~~ | ~~The state-variable filter keeps its precision below 100 Hz (resonance and no DC offset at a low cutoff); the CUT dial is slewed, so a sweep no longer zippers.~~ Shipped in 1.0.0-b1. |
+| ~~Silent tails~~ | ~~The ROOM, RESO and delay loops fall to exact zero.~~ Shipped in 1.0.0-b1. |
+| ~~Chord names~~ | ~~Flats in a flat key; a stack of 4ths is named; DIA7 on a six-note scale is a triad.~~ Shipped in 1.0.0-b1. |
+| ~~TIDE page truth~~ | ~~The pages and rows show what plays: step position and length, rows that do nothing in the current mode, the CUSTOM snapshot, the ARC status text.~~ Shipped in 1.0.0-b1. |
 
 ### Planned: TIDE musical behaviour
 
 | Item | Decision |
 |---|---|
-| ~~Skank drift~~ | ~~A skank hit may drift at most two 16ths from its origin.~~ Merged, not yet in a build. |
-| ~~LEAD roles~~ | ~~Call and response applies to lead and pluck roles only, never to chord skanks.~~ Merged, not yet in a build. |
-| ~~Bass and PITCH~~ | ~~With PITCH ON the bass never walks.~~ No note under C3 and no BASS-category sound is walked, and nothing moves on SCALE CHR. Merged, not yet in a build. |
-| ~~Velocity shape~~ | ~~Automatic, with no setting: RISE louder, BREAK and the followers softer.~~ Merged, not yet in a build. |
+| ~~Skank drift~~ | ~~A skank hit may drift at most two 16ths from its origin.~~ Shipped in 1.0.0-b1. |
+| ~~LEAD roles~~ | ~~Call and response applies to lead and pluck roles only, never to chord skanks.~~ Shipped in 1.0.0-b1. |
+| ~~Bass and PITCH~~ | ~~With PITCH ON the bass never walks.~~ No note under C3 and no BASS-category sound is walked, and nothing moves on SCALE CHR. Shipped in 1.0.0-b1. |
+| ~~Velocity shape~~ | ~~Automatic, with no setting: RISE louder, BREAK and the followers softer.~~ Shipped in 1.0.0-b1. |
 | ARP SEQ ties | ARP SEQ honours ties (about 40 B). Real chord steps are not planned. |
-| ~~Factory multis~~ | ~~About half of the factory multis leave the bass to external gear. First start loads DUB CHORD (as it does now). No acid multi stays.~~ The 16 multis are in the curated dub / house order with six replacements (D31); only four carry a bass part, the first start loads M02 DUB CHORD. Merged, not yet in a build. |
-| ~~Loads~~ | ~~A multi or pattern loaded mid-session starts as written: the TIDE generation does not carry over a load.~~ Merged, not yet in a build. |
-| ~~ARC and transport~~ | ~~ARC resumes where it was on STOP and PLAY (STOP and PLAY are used live to resync with other gear, and a restart would throw the tide back to its opening stage). It restarts only on a load or a K1 stop.~~ Merged, not yet in a build. |
-| ~~ECHO~~ | ~~ECHO folds into LEAD: TURNS becomes TOGETHER, TAKE TURNS and LEAD; the PEAK style uses LEAD; a stored ECHO reads as LEAD.~~ Merged, not yet in a build. |
+| ~~Factory multis~~ | ~~About half of the factory multis leave the bass to external gear. First start loads DUB CHORD (as it does now). No acid multi stays.~~ The 16 multis are in the curated dub / house order with six replacements (D31); only four carry a bass part, the first start loads M02 DUB CHORD. Shipped in 1.0.0-b1. |
+| ~~Loads~~ | ~~A multi or pattern loaded mid-session starts as written: the TIDE generation does not carry over a load.~~ Shipped in 1.0.0-b1. |
+| ~~ARC and transport~~ | ~~ARC resumes where it was on STOP and PLAY (STOP and PLAY are used live to resync with other gear, and a restart would throw the tide back to its opening stage). It restarts only on a load or a K1 stop.~~ Shipped in 1.0.0-b1. |
+| ~~ECHO~~ | ~~ECHO folds into LEAD: TURNS becomes TOGETHER, TAKE TURNS and LEAD; the PEAK style uses LEAD; a stored ECHO reads as LEAD.~~ Shipped in 1.0.0-b1. |
 | Crossings | A LINKed filter 2 closes with filter 1 during a crossing. WASH stays. |
 
 ### Planned: TIDE interface and product
 
 | Item | Decision |
 |---|---|
-| Drones (owner, 5 November) | Built and on the unit since 6 November (36f03cd): #164 to #171, two per theme. Desert: SAND THROAT, HORN SWELL. Neon city: NEON BRASS, RAIN STRINGS. Space: VOID SHIMMER, SOLAR WIND. Cyberpunk: GRID HUM, IRON WORKS. A 3-note chord gives 0 misses (raw 77 to 91 %). Left: the owner's listening on the unit, PATCH_NUMBERS and QUICKSTART lists, and the full host suite (the `sounds` group). |
+| ~~Drones (owner, 5 November)~~ | ~~Eight curated drones, two per theme.~~ Shipped in 1.0.0-b2: #164 to #171. Desert: SAND THROAT, HORN SWELL. Neon city: NEON BRASS, RAIN STRINGS. Space: VOID SHIMMER, SOLAR WIND. Cyberpunk: GRID HUM, IRON WORKS. Each holds a 3-note chord on the unit with 0 misses. Left: QUICKSTART's list. |
 | Patch order (built, not merged) | User-saved sounds go last in PATCHES, MIDI numbers unchanged: `fix/w15-patch-order` 01289dc (+84 B, its groups pass). Open question for the owner: should a sound saved over a factory slot (for example #13) also move to the end, as built, or only U1 to U4? |
-| b2 follow-ups (6 November) | Four host groups still expect the pre-b2 behaviour: budget A01, deadline TIDE, partindep, wave. The fix: the every-other-block blend only while a GLIDE runs, and the FM6 charge expectations. Then the full suite, the merge into `integ`, tag `tide-1.0.0-b2`, and the fork push (the owner's OK). The CPU probe (test mode): one owner of the peak window, so ABOUT and the console do not clear each other's peak. |
+| ~~b2 follow-ups (6 November)~~ | ~~The four stale host groups, the full suite, the merge, the tag, the push.~~ Done 8 November: integ 0d2fcb9 = tag `tide-1.0.0-b2`, pushed. Still open: one owner of the CPU peak window (see CPU truth below). |
 | Roles and multis spec (T4, T8 to T10) | T4's register lane (`fix/roles-T4-lane` 7f6bbb9, +288 B) is not merged. T7 was reverted (CELLAR TAPE bass); it comes back with rewritten records. T8 to T10: the new reel (work/measure/cpu-multis/for_T8_T9_builders_w14.txt). |
 | Felucca 1.7.0 fixes to port (6 November; not started) | From hugelton/Felucca v1.7.0. Check each against our tree, then port it with its own test:<br>- #258: the TRS MIDI clock no longer bunches under heavy CC (incoming MIDI is timestamped during the render).<br>- #269: the sequencers and the arp no longer drift on a long external clock (compare with our b1 clock work).<br>- #264: the TRS UART is read only on real receive events.<br>- #265: signed DSP arithmetic and the FM6 phase wrap without undefined behaviour, bit-exact.<br>- #281: a divide by zero when BPM is briefly 0.<br>- The "return to official V15" path in the installer, with a backup first.<br>Licence note: the engines moved to Felucca-Engines (MIT), the hardware layer to felucca-bsp (MPL-2.0); check our headers when merging. Their second core (Melodee's, BETA, off by default) is a different design from our runner: read it for the balancing work, don't swap it in. |
 | Ideas from Niagara Drift (owner, 6 November; not decided) | Niagara Drift (github.com/evanyerburgh/niagara-drift) is an FM-1 drone firmware: two always-on drones, tuned and moved rather than played. Ideas for TIDE and the new drones: (1) a DRONE HOLD so a drone sounds with no key held (Ravel's WEFT ALWAYS is the same idea); (2) AGE, tape-like wear that grows slowly; (3) a reverb FREEZE; (4) gesture keys, one key for a set of coordinated changes (close to TIDE's TURNS); (5) a motion loop that records knob moves. It is the owner's choice which of these, if any. Each must fit the flash, the CPU budget and the "no new pages" rule. |
@@ -220,13 +220,13 @@ Each runs on its own branch until it is reviewed and merged. Crossed-out rows ar
 | Bursts out of the audio ISR (audit K7, K8; briefs `work/audit/cpu-audit-2026-11-08/TASKS.md#k7`, `#k8`) | The GLIDE cost is a transient (a morph rebuild on a fader step, an FM6 crossing running both operator sets), paid today inside the ISR on core 0 and charged in the budget as if it were steady (`BD_TIDE_FM6` 76 while moving). K7: the FM6 crossing's shared modulation once per part per block (Codex C), retune every other block under ease level 1. K8 (larger): the next fader position's blended parameters prepared outside the render (main loop, or core 1 while it waits) as a snapshot with a generation number; the ISR swaps a pointer (Codex D). Needs one-writer rules for live edits and a fallback to the current snapshot. |
 | Hot code placement check (audit K6; brief `work/audit/cpu-audit-2026-11-08/TASKS.md#k6`) | Every function reachable from `audio_block` per block or per sample must be in range Z or on an allow-list with a reason; `build.py check()` fails on a new per-block function in XIP flash (`morph_apply_at`, `fm6_xblock`, `morph_xstep`, `morph_wash`, `morph_valley` were in flash at b1). The 8 KB reserve stays. |
 | Silent bus and master skip (audit K5; brief `work/audit/cpu-audit-2026-11-08/TASKS.md#k5`) | After R08 (exact-zero tails, merged 4 November): a bus whose input and state are at zero is not run, the master's limiter and EQ rest when the mix is at rest, after ~1 s of zero (Ravel 1.19 rests its BED after 4 s). ~6 % idle, more in TIDE's valleys. |
-| Merge the flashed b2 (audit K1; brief `work/audit/cpu-audit-2026-11-08/TASKS.md#k1`) | The unit runs fb0848c (TIDE 1.0.0-b2); it is in neither `integ` nor `jam11`, and the test fixes 069c65e, d399a72 and the ROADMAP rows sit after it on fix/w16-glide-cpu. Merge into integ and jam11, push the fork, tag `tide-1.0.0-b2`. Rule from now on: the flashed commit is merged and pushed the same day. |
+| ~~Merge the flashed b2 (audit K1; brief `work/audit/cpu-audit-2026-11-08/TASKS.md#k1`)~~ | Done 8 November: merged as integ 0d2fcb9, tag `tide-1.0.0-b2`, pushed to `jam11`. |
 | Transition costs only while moving (owner, 6 November) | Use the b2 FM6 rule for the other morph costs too. The engine-choice cross-fade (BD_FADE) and TIDE's valley and wash are charged all the time while a part has a MORPH. Charge them only while a transition runs: more notes while still, thinner while moving. |
 | HOME without MODE (owner, 6 November) | Remove the MODE page, currently page 4/4 of the HOME round. Its three controls move elsewhere: the output MODE (STEREO / LAYER / DUEL), XFADE and SPLIT. Where they go is still open (not decided yet). They keep their values in the settings and in each MULTI. Every piece of information the page shows stays reachable. |
 | K1 stop | K1 needs two detents to stop a running tide. The header messages stay. |
 | OCT- reset | OCT- plus a knob resets to the STYLE's values, on the TIDE pages only. |
 | Installer and INFO | The installer backs up before every install. INFO shows a TIDE flag. The cheat sheet is finished. |
-| Settings in backups | ~~The 12 TIDE setting bytes live in the settings record's reserved tail, so every backup holds them; a full patch store reports STORE FULL end to end; a restore reports every failure.~~ Merged, not yet in a build. The FM6 voice bank still goes into backups (not built yet: an archive object and a restore through the FM6B commands). Going back to plain DUELL is documented, not supported. |
+| Settings in backups | ~~The 12 TIDE setting bytes live in the settings record's reserved tail, so every backup holds them; a full patch store reports STORE FULL end to end; a restore reports every failure.~~ Shipped in 1.0.0-b1. The FM6 voice bank still goes into backups (not built yet: an archive object and a restore through the FM6B commands). Going back to plain DUELL is documented, not supported. |
 | MORPH card waves (idea, 2026-11-06) | The owner finds the MORPH card's moving waves (HOME 1/4, `ui_graph.c` mv_field; the splash and ABOUT reuse the look) unlike sound waves: they are 5 to 9 synthetic sine lines spread by level, folded and rippled, not the audio. Idea, brainstormed with a sketch, not scheduled: draw the part's real output instead, oscilloscope-style, and keep a multi-line look where the sound earns it. Each line has a reason: the base is the part's own waveform (taken after PATCH LEVEL, before the pan), triggered at a rising zero crossing so a held note stands still and a chord shows its beating, the window following the highest note so 2 to 3 cycles span the width; L and R drawn as two lines, so mono gives one line and UNISON, SPREAD, chorus or a wide pad give two that drift apart; the last two or three looks drawn fainter behind the live one, so a sweep, an LFO or a morph in motion smears into a ribbon while a still sound stays one crisp line; a fainter low-band line when the lows dominate (sub, bass). One to five lines in all. Colour blends A to B with the fader as now, BOTH keeps part 1 above and part 2 below, silence is a flat line; the card, its label, HOLD SAVE note, track and key hints stay. The A-left, B-right front of the old picture goes (the fader shows as colour). Later, if chords feel thin: one line per voice (a tap in the voice loop, hot code: the first four voices, only while the card is shown). The splash and ABOUT ribbon can stay decorative or take the same look later. Budget, measured against 1.0.0-b1 (2,900 B of flash free): the current field code is about 1.5 KB, the scope about 0.7 KB, so it frees flash; the audio side copies 32 samples a block a part only while the card is shown (about 0.1 % CPU); 2 KB ring a part in the pool (38 KB free), a few KB more for the trails; the UI draws fewer lines than today. Sketches: the owner's workspace `work/ideas/morph-scope-2026-11-05/` (two mock-ups and their scripts, synthetic audio). |
 
 ### Planned: repository
@@ -234,7 +234,7 @@ Each runs on its own branch until it is reviewed and merged. Crossed-out rows ar
 | Item | Decision |
 |---|---|
 | Name | Rename `jam11` to `tide`. Replace OSCILL/R's wordmark on the cover until the author agrees. No Firmware Hub entry yet. Remove the internal brief files from the public repository. |
-| CI | ~~Green CI gates Pages.~~ Merged, not yet in a build. Gating the channels is still to do. Device builds stay an owner step. Two-core checks in CI are invariant-only (done). |
+| CI | ~~Green CI gates Pages.~~ Shipped in 1.0.0-b1. Gating the channels is still to do. Device builds stay an owner step. Two-core checks in CI are invariant-only (done). |
 | Branches | Fast-forward `jam11` after the current fix batch (the push needs the owner's OK at that moment). Merge upstream's emulator commits. The 24 multis (U4) come after the release candidate. |
 
 ### Planned: inherited DUELL 1.1 engines
@@ -243,11 +243,11 @@ Done in the fork first. Items that help plain DUELL are offered upstream later, 
 
 | Area | Decision |
 |---|---|
-| ~~Glide~~ | ~~GLIDE RATE and TIME do what the display says, up to 10 s.~~ Factory sounds and multis keep the glide they had; patches you saved yourself now glide for the time they show. Merged, not yet in a build. |
-| ~~RES~~ | ~~Remap RES so the whole knob is useful.~~ The factory sounds, multis and the bank file are migrated to sound the same, to within a few percent; patches you saved yourself are not. The owner judges the result on the unit. LADDER's bass loss, filter 1 without self-oscillation and LOFI's aliasing stay as character. Merged, not yet in a build. |
+| ~~Glide~~ | ~~GLIDE RATE and TIME do what the display says, up to 10 s.~~ Factory sounds and multis keep the glide they had; patches you saved yourself now glide for the time they show. Shipped in 1.0.0-b1. |
+| ~~RES~~ | ~~Remap RES so the whole knob is useful.~~ The factory sounds, multis and the bank file are migrated to sound the same, to within a few percent; patches you saved yourself are not. The owner judges the result on the unit. LADDER's bass loss, filter 1 without self-oscillation and LOFI's aliasing stay as character. Shipped in 1.0.0-b1. |
 | WAVE | Table quality stays as it is (flash is too tight). |
-| ~~FM6~~ | ~~The engine cap goes to 8 voices. DTUN is centred. UNISON detune stays about plus or minus 24 cents; the comments are corrected, the range is not widened.~~ UNISON also keeps its level and velocity on FM6 and PHYS, OKS is honoured (a patch with oscillator key sync off free-runs), and an overload sheds the quietest FM6 tail. Merged, not yet in a build. |
-| ~~Swing and clock~~ | ~~The displayed swing % becomes truthful. The arp starts on the transport grid. A local PLAY under an external clock waits for the master's bar.~~ Merged, not yet in a build. |
+| ~~FM6~~ | ~~The engine cap goes to 8 voices. DTUN is centred. UNISON detune stays about plus or minus 24 cents; the comments are corrected, the range is not widened.~~ UNISON also keeps its level and velocity on FM6 and PHYS, OKS is honoured (a patch with oscillator key sync off free-runs), and an overload sheds the quietest FM6 tail. Shipped in 1.0.0-b1. |
+| ~~Swing and clock~~ | ~~The displayed swing % becomes truthful. The arp starts on the transport grid. A local PLAY under an external clock waits for the master's bar.~~ Shipped in 1.0.0-b1. |
 | LFO DEPTH | The destinations are shown as "LFO1/2 LVL" (not removed). The mod wheel keeps driving MORPH. |
 
 ### Planned: effects
@@ -255,17 +255,17 @@ Done in the fork first. Items that help plain DUELL are offered upstream later, 
 | Area | Decision |
 |---|---|
 | Delay | A feedback low cut (about 150 Hz) and controlled dub runaway: FDBK up to about 105 % with a soft clip in the loop. |
-| ~~Master~~ | ~~A clean soft knee replaces the always-on tanh. This changes every golden render, so it is its own change, with the golden update in the same commit and nothing else riding on it. SPACE +100 then pushes about 3 dB less.~~ The knee is exact up to the limiter's threshold (-5.2 dBFS). Merged, not yet in a build. |
-| ~~Modulation ranges~~ | ~~Chorus and delay modulation ranges are remapped to chorus territory; stored sounds are migrated (to within a few percent).~~ The sweep holds its pitch swing above CRT 40 (chorus) and MRATE 44 (delay); the factory multis are migrated, patches and multis you saved are not. Merged, not yet in a build. |
+| ~~Master~~ | ~~A clean soft knee replaces the always-on tanh. This changes every golden render, so it is its own change, with the golden update in the same commit and nothing else riding on it. SPACE +100 then pushes about 3 dB less.~~ The knee is exact up to the limiter's threshold (-5.2 dBFS). Shipped in 1.0.0-b1. |
+| ~~Modulation ranges~~ | ~~Chorus and delay modulation ranges are remapped to chorus territory; stored sounds are migrated (to within a few percent).~~ The sweep holds its pitch swing above CRT 40 (chorus) and MRATE 44 (delay); the factory multis are migrated, patches and multis you saved are not. Shipped in 1.0.0-b1. |
 | Reverb | SHIM's PITCH DOWN and MOD stay: it is a working base feature, and it is cut only if a TIDE feature really fails to fit, and then the owner is asked first. ROOM becomes a short diffuse room built on the HALL code. HALL and PLATE get a pre-delay that grows with SIZE (no new setting). |
-| ~~COMP~~ | ~~The automatic makeup is halved.~~ Its ATTACK and RELEASE also follow the printed times. Merged, not yet in a build. |
+| ~~COMP~~ | ~~The automatic makeup is halved.~~ Its ATTACK and RELEASE also follow the printed times. Shipped in 1.0.0-b1. |
 
 ### Planned: stock user experience and upstream
 
 | Item | Decision |
 |---|---|
-| ~~Knob columns~~ | ~~Fix the documents rather than the knob columns.~~ QUICKSTART, VOICE_CONTROLS, the TIDE guide and the first-start guide follow the firmware. Merged, not yet in a build. |
-| Load undo | ~~A load undo on OCT- plus a PRESETS turn.~~ Built page-scoped: Merged, not yet in a build. OCT- held and a PRESETS turn undoes the last load where PRESETS loads, and not on the TIDE pages, where OCT- plus a knob keeps TIDE's reset; the STYLE reset itself is not built. Saving at stop stays as it is. Tempo goes into the footer (still planned). |
+| ~~Knob columns~~ | ~~Fix the documents rather than the knob columns.~~ QUICKSTART, VOICE_CONTROLS, the TIDE guide and the first-start guide follow the firmware. Shipped in 1.0.0-b1. |
+| Load undo | ~~A load undo on OCT- plus a PRESETS turn.~~ Built page-scoped: Shipped in 1.0.0-b1. OCT- held and a PRESETS turn undoes the last load where PRESETS loads, and not on the TIDE pages, where OCT- plus a knob keeps TIDE's reset; the STYLE reset itself is not built. Saving at stop stays as it is. Tempo goes into the footer (still planned). |
 | Factory bank | Re-author the 128-voice bank's End Bs and sync the slow motion, in the fork first; offer it upstream later. |
 | Upstream changes | Prepared as small single-finding changes, in order of value to plain DUELL users: FM6 re-strike; arp grid and swing direction; delay clicks; glide; a steady tempo; then the smaller fixes, the PHYS tuning fix and the document corrections. The owner opens every pull request. Before any code is written, the owner raises three items with the author: the voice and render restructuring, fixed knob columns, and the bus B pointers. |
 
