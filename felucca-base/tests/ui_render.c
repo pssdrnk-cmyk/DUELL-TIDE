@@ -865,7 +865,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_MOD_WAVE_SYNC, S_MOD_WAVE_E7, S_MOD_BUS, S_MOD_BUS_STEREO, S_MOD_INS_OFF, S_MOD_INS_FUZZ, S_MOD_PAN_DUEL, S_MOD_RETIRED,
        S_GUIDE1, S_GUIDE2, S_GUIDE3, S_GUIDE4, S_GUIDE5, S_GUIDE_MSG, S_GUIDE_KNOB, S_GUIDE_OCT, S_GUIDE_ROW,
        S_QUICK_FILTER, S_QUICK_GLO, S_MULTIS, S_MULTIS2, S_MULTIS3, S_PSLOT_NOSEQ, S_MODULES, S_MODULES_OFF, S_MODS_FX, S_MODS_ARP, S_MODS_ARP_SEQ,
-       S_MODS_MIXER, S_MODS_PERFORM, S_MODS_SCHAIN, S_MODS_AUTO, S_MODS_QUICK_ARP, S_MODS_MSG, S_TOOLS_RESTORE, S_PATCH_SAVE_BOTH, S_CONFIRM_RESTORE_ALL, S_PATCH_SAVE_NAMED, S_NAME_SAVE_PATCH, S_FXSUM, S_FXSUM_DUEL,
+       S_MODS_MIXER, S_MODS_PERFORM, S_MODS_SCHAIN, S_MODS_AUTO, S_MODS_QUICK_ARP, S_MODS_MSG, S_TOOLS_RESTORE, S_PATCH_SAVE_BOTH, S_CONFIRM_RESTORE_ALL, S_PATCH_SAVE_NAMED, S_NAME_SAVE_PATCH,
        S_EQ_CURVE, S_EQ_CURVE2, S_COMP_CURVE, S_COMP_OFF, S_SMASTER, S_SMASTER_WIDE, S_FILT_MULTI, S_FILT_MULTI24, S_FILT_VCF, S_ARP_PATTERN, S_ARP_CHORD, S_SIDECHAIN_PARTS, S_VOICE_PATCH, S_OCTAVE, S_SPLASH_FIRST, S_GUIDE_MENU, S_ENGINE_LOFI, S_ENGINE_PHASE, S_ENGINE_VOICE, S_ENGINE_TRIO, S_ENGINE_PHYS, S_ENGINE_NOISE, S_ENGINE_WAVE, S_ENGINE_WHEEL, S_CAPSULES, S_STEREO_HOME, S_ENGINE_LIST, S_MODE_DUEL, S_SUB, S_EDIT_WAVE1, S_EDIT_VOICE1, S_CYCLE, S_TWIN, S_ABOUT_TOP, S_CYCLE2, S_CYCLE2_ALL, S_MIXER4, S_MOD_LONG, S_CONFIRM_ERASE_ALL, S_OFF_ARP, S_OFF_SEQ, S_OFF_SENDS, S_OFF_PFX, S_OFF_QARP, S_OFF_QSEQ, S_TIDE, S_TIDE_GLIDE, S_TIDE_BOTH, S_TIDE_BOTH_GLIDE, S_TIDE_WAIT, S_HEAD_MARKS, S_MULTIS_DAMAGED, S_PATCHES_DRONE, S_COUNT };
 static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "message_key", "message_nofile", "presets",
     "presets_nofav", "user", "phrases", "project", "tools", "pslot_empty", "pslot", "step", "auto_steps", "auto_add_chance",
@@ -896,7 +896,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
     "perform_layer", "mod_wave", "mod_wave_sync", "mod_wave_e7", "mod_bus", "mod_bus_stereo", "mod_ins_off", "mod_ins_fuzz",
     "mod_pan_duel", "mod_retired", "guide_1", "guide_2", "guide_3", "guide_4", "guide_5", "guide_message", "guide_knob",
     "guide_octave", "menu_guide_row", "layer_quick_filter", "quick_glo", "multis", "multis_2", "multis_3", "pslot_noseq", "modules", "modules_off", "mods_fx",
-    "mods_arp", "mods_arp_seq", "mods_mixer", "mods_perform", "mods_schain", "mods_auto", "mods_quick_arp", "mods_msg", "tools_restore", "patches_save_both", "confirm_restore_all", "patches_save_named", "name_save_patch", "fxsum", "fxsum_duel",
+    "mods_arp", "mods_arp_seq", "mods_mixer", "mods_perform", "mods_schain", "mods_auto", "mods_quick_arp", "mods_msg", "tools_restore", "patches_save_both", "confirm_restore_all", "patches_save_named", "name_save_patch",
     "eq_curve", "eq_curve2", "comp_curve", "comp_off", "stereo_master", "stereo_master_wide", "filt_multi", "filt_multi24", "filt_vcf", "arp_pattern", "arp_chord", "sidechain_parts", "voice_patch", "octave", "splash_first", "guide_menu", "engine_lofi", "engine_phase", "engine_voice", "engine_trio", "engine_phys", "engine_noise", "engine_wave", "engine_wheel", "capsules", "stereo_home", "engine_list", "mode_duel", "sub", "edit_wave1", "edit_voice1", "cycle", "twin", "about_top", "cycle2", "cycle2_all", "mixer4", "mod_long", "confirm_erase_all", "off_arp", "off_seq", "off_sends", "off_pfx", "off_quick_arp", "off_quick_seq", "tide", "tide_glide", "tide_both", "tide_both_glide", "tide_wait", "head_marks", "multis_damaged", "patches_drone"};
 
 /* the STEP page's piano roll (ui_graph.c graph_roll) on track 1, stopped unless said: an empty pattern; ACID in
@@ -1138,7 +1138,6 @@ static void setup(int s)
         go_title("MATRIX 5-8"); break;
     case S_FX: go_title("FX"); break;
     case S_DLY: go_title("DELAY 1/2"); break;
-    case S_FXSUM: go_title("SEND FX"); duell_mode_req = DM_STEREO; song.g[G_DMODE] = DMD_RAND; song.g[G_DTIME] = 1; song.g[G_RTYPE] = 5; song.g[G_RSIZE] = 90; TSEL->p[P_CHOR] = 41; TSEL->p[P_DLY] = 71; TSEL->p[P_REV] = 101; break;   /* 0.2.22: FX's last page, the selected part's sends: RAND 1/8, PLATE 71 % */
     /* 0.2.25 layout round: the pictures (EQ curve, compressor, STEREO MASTER, the filters, the arp pattern), the two-line labels */
     case S_EQ_CURVE: TSEL->p[P_EQLG] = 6; TSEL->p[P_EQLF] = -6; TSEL->p[P_EQMG] = -5; TSEL->p[P_EQMF] = 4; TSEL->p[P_EQHG] = 3; go_title("EQ 1/2"); ui.hot_col = 1; ui.hot_t = 30; break;
     case S_EQ_CURVE2: TSEL->p[P_EQLG] = -12; TSEL->p[P_EQMG] = 12; TSEL->p[P_EQMQ] = 12; TSEL->p[P_EQHG] = 12; TSEL->p[P_EQHF] = 12; TSEL->p[P_EQLF] = -24; go_title("EQ 2/2"); break;
@@ -1185,7 +1184,6 @@ static void setup(int s)
     case S_ENGINE_WHEEL: eng(7); go_title("ENGINE"); break;
     case S_ENGINE_LOFI: eng(3); go_title("ENGINE"); break;
     case S_VOICE_PATCH: TSEL->p[P_VOICE] = 3; go_title("VOICE 2/2"); ui.hot_col = 3; ui.hot_t = 30; break;
-    case S_FXSUM_DUEL: go_title("SEND FX"); TSEL->p[P_CHOR] = 127; TSEL->p[P_DLY] = 127; TSEL->p[P_REV] = 127; duell_mode_req = DM_SPLIT; song.g[G_DMODE] = DMD_RAND; song.g[G_DTIME] = 2; song.g[G_RTYPE] = 1; song.g[G_RSIZE] = 127; break;   /* DUEL: no delay modes (the time alone), the widest reverb card */
     case S_SCL: scale_g = 2; go_title("SCALE"); break;                 /* GLOBAL: SCALE ROOT OFF-SCALE */
     case S_SCL_CHROM: go_title("SCALE"); break;                      /* CHROMATIC: OFF-SCALE not drawn */
     case S_SCL_CHROM_PLAY: offscale_g = OS_PLAY; go_title("SCALE"); ui.hot_col = 2; ui.hot_t = 30; break;
@@ -2185,7 +2183,7 @@ static int target_main(const char *out)
         case 0: song.rec = 1; go_home(); break;
         case 1: go_title("ENGINE"); break;
         case 2: favorite_set(NENGINES, 2, 1); go_page(GR_BROWSE); break;
-        case 3: go_title("SEND FX"); TSEL->p[P_CHOR] = TSEL->p[P_DLY] = TSEL->p[P_REV] = 40; song.g[G_DMODE] = DMD_DIGITAL; song.g[G_DTIME] = 1; song.g[G_RTYPE] = 0; song.g[G_RSIZE] = 64;   /* (64 of 127 = 50 %, the picture's) */ break;
+        case 3: go_title("CHORUS"); TSEL->p[P_CHOR] = TSEL->p[P_DLY] = TSEL->p[P_REV] = 40; song.g[G_DMODE] = DMD_DIGITAL; song.g[G_DTIME] = 1; song.g[G_RTYPE] = 0; song.g[G_RSIZE] = 64;   /* (64 of 127 = 50 %, the picture's) */ break;
         case 4: go_title("AMP ENV"); break;
         case 5: go_title("LFO 1"); break;
         case 6: {
@@ -2283,8 +2281,8 @@ static void off_check(void)
     static const struct { uint32_t bit; const char *name; const char *pages[12]; } M[4] = {
         {MODS_ARP, "ARP", {"ARP 1/3", "ARP 2/3", "ARP 3/3", 0}},
         {MODS_SEQ, "SEQ", {"STEP", "PARAMETER LOCKS", "PATTERNS", 0}},
-        {MODS_SENDS, "SENDS", {"CHORUS", "DELAY 1/2", "DELAY 2/2", "REVERB", "SEND FX", 0}},
-        {MODS_PFX, "PART FX", {"FX", "INSERT 1/2", "INSERT 2/2", "EQ 1/2", "EQ 2/2", "DUCK 1/2", "DUCK 2/2", 0}},
+        {MODS_SENDS, "SENDS", {"CHORUS", "DELAY 1/2", "DELAY 2/2", "REVERB", 0}},
+        {MODS_PFX, "PART FX", {"FX", "INSERT 1/2", "INSERT 2/2", "EQ 1/2", "EQ 2/2", "DUCK 1/2", "DUCK 2/2", "SIDECHAIN", 0}},
     };
     uint32_t m, i, k, on, walks = 0, bad = 0;
     for (m = 0; m < 4u; m++)
@@ -2306,7 +2304,7 @@ static void off_check(void)
                     walks++;
                     if (!on) {
                         if (grid_on != 13 || off_module(cur_page()) != M[m].bit) { fprintf(stderr, "ui_render: %s OFF: page %s does not show the notice (grid %u)\n", M[m].name, M[m].pages[i], (unsigned)grid_on); nfind++; bad++; continue; }
-                        if (strcmp(tb, !strcmp(M[m].pages[i], "SEND FX") ? "SENDS" : M[m].pages[i]) && strcmp(M[m].pages[i], "STEP")) { fprintf(stderr, "ui_render: %s OFF: page %s header says '%s'\n", M[m].name, M[m].pages[i], tb); nfind++; bad++; }
+                        if (strcmp(tb, M[m].pages[i]) && strcmp(M[m].pages[i], "STEP")) { fprintf(stderr, "ui_render: %s OFF: page %s header says '%s'\n", M[m].name, M[m].pages[i], tb); nfind++; bad++; }
                         fm1_ms += 1000u;                    /* (the quiet time of the knob's last jump: kr_on) */
                         turn(EN_K1 + k, 1);
                         { char nm[28], ct[8]; (void)page_parts(nm, ct);

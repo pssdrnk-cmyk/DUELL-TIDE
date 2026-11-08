@@ -1150,7 +1150,6 @@ static void scale_knob(uint32_t slot, int32_t steps)
     }
 }
 
-static void fxsum_knob(uint32_t slot, int32_t steps);     /* (below, after the knobs' quiet-time state) */
 static void schain_jump(uint32_t knob, int32_t steps);
 /* the matrix's DEST knob (0.2.25, owner: the hide rule for modulation; release_drafts/MATRIX_DESTINATIONS.md): from `was`, the turn param_turn made to v
  * goes on in its direction past every destination the selected part does not offer now (mod.c mod_dst_offered: the removed EQ gains and list engine slots,
@@ -1333,23 +1332,6 @@ static void glo_knob_jump(uint32_t page, uint32_t knob)
     kr_on[knob] = 1;
     kr_t[knob] = fm1_ms;
     page_entered();
-}
-
-/* FX's second page, SEND FX (0.2.22; the sends are shown, not edited): a twist of K1 (CHORUS), K2 (DELAY) or K3 (REVERB) either way jumps to GLO's CHORUS, DELAY 1/2 or REVERB: the page change
- * only, no value changes (the sends are the FX page's), and the knob does not stick or snap to anything. The rest of that twist is swallowed (kr_on: the same quiet time as after a reset), so it
- * does not move the new page's first card. K4 has no card. SENDS OFF: the cards are not drawn and the knobs do nothing (card_hidden_vp). The GLO family remembers the page (the next tap of GLO comes back to it) */
-static void fxsum_knob(uint32_t slot, int32_t steps)
-{
-    uint32_t i, want;
-    if (!steps || slot > 2u)
-        return;
-    want = FXSUM_TO[slot];
-    for (i = 0; i < NPAGES; i++)
-        if (PAGES[i].fam == FAM_GLO && PAGES[i].scope == SC_GLOBAL && PAGES[i].id[0] == want)
-            break;
-    if (i >= NPAGES)
-        return;
-    glo_knob_jump(i, slot);
 }
 
 /* DUCK 1/2 (FX) while the part's SRC is MIDI: K4 is a link card to GLO > SIDECHAIN (params.c duck_midi_page) */

@@ -9187,9 +9187,6 @@ static int test_item158_pages(void)
                 open_family(f);
                 ok_jump &= page_visible(ui.page);
             }
-            go_title("SEND FX");
-            fxsum_knob(1, 1);
-            ok_jump &= page_visible(ui.page);
             ui.perf = 1;
             frames(32);
             ui.perf = 0;
@@ -9198,7 +9195,7 @@ static int test_item158_pages(void)
             guide_to_midi();
             ok_jump &= page_visible(ui.page);
         }
-    bad += check("item 158 S3:   .. every family button (FX remembering a hidden DUCK page), SEND FX's jump, PERFORM's way back, the guide's NOW: a page in the order", ok_jump);
+    bad += check("item 158 S3:   .. every family button (FX remembering a hidden DUCK page), PERFORM's way back, the guide's NOW: a page in the order", ok_jump);
     /* every state: a visible CELL page has at least one card; an empty one is not visible */
     for (a = 0; a < 4u; a++)
         for (b = 0; b < 4u; b++)

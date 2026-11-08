@@ -1923,13 +1923,8 @@ static uint32_t graph_signature(void)
                   (uint32_t)ui.ml.on << 11 | (uint32_t)ui.ml.pick << 12 | ml_count() << 13 | (uint32_t)ui.ml.id << 19 | (uint32_t)ui.ml.trk << 27) * 0x9E3779B1u) * 16777619u;
     if (pg->graph == GR_SCHAIN)                      /* (0.2.22: both parts' DUCK SRC are in the panel's words) */
         h = (h ^ ((uint32_t)trk[0].p[P_DKSRC] + 1u + 7u * ((uint32_t)trk[1].p[P_DKSRC] + 1u)) * 2654435761u) * 16777619u;
-    if (pg->graph == GR_FXSUM)                       /* (0.2.24: which sends of the selected part are 0; item 117: the page shows the delay's mode and time and the reverb's type and size live, and the SENDS switch) */
-        h = (h ^ ((uint32_t)(TSEL->p[P_CHOR] <= 0) | (uint32_t)(TSEL->p[P_DLY] <= 0) << 1 | (uint32_t)(TSEL->p[P_REV] <= 0) << 2 | 8u | (uint32_t)(mods_off & MODS_SENDS) << 4 |
-                  dly_mode_ui() << 8) * 2654435761u) * 16777619u;
     if (pg->graph == GR_MODS)                        /* (item 124: the knob just turned has the accent dot; the states are in mods_get / mods_keep_get below) */
         h = (h ^ (ui.hot_t ? ui.hot_col + 1u : 0u) * 2654435761u) * 16777619u;
-    if (pg->graph == GR_FXSUM)
-        h = (h ^ ((uint32_t)(uint8_t)song.g[G_DTIME] | (uint32_t)(uint8_t)song.g[G_RTYPE] << 8 | (uint32_t)(uint8_t)song.g[G_RSIZE] << 16 | 0x01000000u | delay_div_shown() << 25) * 40503u) * 16777619u;
     h = (h ^ (clock_state() + 1u + clock_src() * 4u) * 3266489917u) * 16777619u;   /* (CLK: EXT / NO CLOCK, AUTO's source, on the TEMPO and MIDI pages) */
     if (pg->graph == GR_TEMPO)                       /* TEMPO's TAP card: the taps counted, over for good after 2 s */
         h = (h ^ (tempo_tapping() + 1u + (uint32_t)song.g[G_BPM] * 7u) * 2246822519u) * 16777619u;
@@ -2843,76 +2838,6 @@ static void graph_mods(void)
         cv_blit(0, (uint32_t)y0);
     }
 }
-/* FX > SEND FX, TEMPLATE 5 (item 117; FINAL_V1_04_fx-send, ui_tokens.h UT_T5_*): text on the background, no card, box or bar, left aligned, every row on its own baseline: the state (ALL THREE ACTIVE, or the effects this part
- * sends nothing to, or SENDS OFF) top left; DELAY: the mode and TIME, REVERB: the type and SIZE (labels small grey, values in the part's colour, dim for an effect this part does not feed: the real settings, live);
- * a grey note that a twist jumps to the effect's GLO page (ui_input.c fxsum_knob); at the bottom the three knob labels with their numbered dots. No chorus line: the chorus has no setting here. Two strips (the canvas
- * holds 124 rows, the page 189): rows 27 .. 143 and 144 .. 215; the signature (graph_signature) holds the sends, the modules switch and the four settings shown */
-#define FXS_Y0 27
-#define FXS_Y1 144
-#define FXS_END 216
-static void graph_fxsum(void)
-{
-    static const char *const NM[3] = {"CHORUS", "DELAY", "REVERB"};
-    uint32_t c, n = 0, off[3], sends_off = (mods_off & MODS_SENDS) != 0u;
-    char st[40], tm[PV_LEN], sz[PV_LEN];
-    const char *unit2, *u1, *u2, *dm, *rt;
-    uint16_t grey = ux_mix(T_BG, T_TEXT, UT_GREY_PCT);
-    for (c = 0; c < 3u; c++) {
-        off[c] = sends_off || morph_view(song.sel, FXSUM_ID[c]) <= 0;   /* the send as the fader sounds it (as the FX page's cards show it), not the stored Original */
-        n += off[c];
-    }
-    if (sends_off) {
-        str_cpy(st, "SENDS OFF (MODULES)", sizeof st);
-    } else if (!n) {
-        str_cpy(st, "ALL THREE ACTIVE", sizeof st);
-    } else if (n == 3u) {
-        str_cpy(st, "ALL THREE INACTIVE", sizeof st);
-    } else {                                            /* "CHORUS INACTIVE", "CHORUS, REVERB INACTIVE": the effects this part's send of 0 leaves out */
-        st[0] = 0;
-        for (c = 0; c < 3u; c++)
-            if (off[c]) {
-                if (st[0])
-                    str_cpy(st + str_len(st), ", ", 3);
-                str_cpy(st + str_len(st), NM[c], 8);
-            }
-        str_cpy(st + str_len(st), " INACTIVE", 10);
-    }
-    dm = N_DMODE_FULL[dly_mode_ui() & 3u];             /* (DUELL 1.1: the full word, not DIGI PING RAND OCT+) */
-    param_format(glob_desc(G_DTIME), song.g[G_DTIME], tm, &unit2);
-    if (delay_div_shown() != (uint32_t)song.g[G_DTIME])   /* (a time that does not fit the line plays halved: the card shows what plays) */
-        str_cpy(tm, N_DIV[delay_div_shown()], sizeof tm);
-    u1 = unit2 + (unit2[0] == ' ');                     /* (the unit is drawn small after the value, no gap, no space) */
-    rt = val_shown(glob_desc(G_RTYPE), N_RTYPE[(uint32_t)clamp(song.g[G_RTYPE], 0, 5)]);   /* (SHIMMER, RESONATOR in full) */
-    param_format(glob_desc(G_RSIZE), song.g[G_RSIZE], sz, &unit2);
-    u2 = unit2 + (unit2[0] == ' ');
-    cv_begin(240, FXS_Y1 - FXS_Y0, T_BG);
-    cv_bg = T_BG;
-    cv_oy = 0;
-    cv_text_on(UT_T5_X, UT_TY(M, UT_T5_STATE_BASE - FXS_Y0), &AF_M, st, T_MID, T_BG);
-    for (c = 1; c < 3u; c++) {                          /* DELAY (K2) and REVERB (K3): label, value, label, value */
-        int32_t b = (c == 1u ? UT_T5_ROW1_BASE : UT_T5_ROW2_BASE) - FXS_Y0;
-        uint16_t vc = off[c] ? T_DIM : vt(T_THEME, T_BG);
-        int32_t x;
-        const char *u = c == 1u ? u1 : u2;
-        cv_text_on(UT_T5_X, UT_TY(S, b), &AF_S, NM[c], T_MID, T_BG);
-        cv_text_on(UT_T5_VAL_X, UT_TY(T, b), &AF_T, c == 1u ? dm : rt, vc, T_BG);   /* mode / type: one size for every name (rule C2: the same Bold, smaller; RESONATOR 74 px of the 82) */
-        cv_text_on(UT_T5_LBL2_X, UT_TY(S, b), &AF_S, c == 1u ? "TIME" : "SIZE", T_MID, T_BG);
-        x = cv_text_on(UT_T5_VAL2_X, UT_TY(L, b), &AF_L, c == 1u ? tm : sz, vc, T_BG);
-        if (u[0])
-            cv_text_on(x, UT_TY(M, b), &AF_M, u, off[c] ? T_DIM : T_MID, T_BG);   /* the unit: the cells' unit face and colour, no gap */
-    }
-    cv_blit(0, FXS_Y0);
-    cv_begin(240, FXS_END - FXS_Y1, T_BG);
-    cv_bg = T_BG;
-    cv_oy = 0;
-    cv_text_on(UT_T5_X, UT_TY(S, UT_T5_NOTE_BASE1 - FXS_Y1), &AF_S, "TURN A KNOB: JUMP TO GLOBAL", grey, T_BG);
-    cv_text_on(UT_T5_X, UT_TY(S, UT_T5_NOTE_BASE2 - FXS_Y1), &AF_S, "EFFECT SETTINGS", grey, T_BG);
-    for (c = 0; c < 3u; c++) {
-        int32_t dx = UT_T5_KNOB_X0 + UT_T5_KNOB_DX * (int32_t)c;
-        dot_label(c, dx, dx + UT_T5_KNOB_LBL_DX, UT_T5_KNOB_BASE - FXS_Y1, NM[c], T_TEXT, T_MID, 240 - 2 - dx - UT_T5_KNOB_LBL_DX, T_BG);
-    }
-    cv_blit(0, FXS_Y1);
-}
 /* A page of a function GLO > MODULES has switched OFF (item 125; ui.c off_module): the message in M, under it the grey note in S, top left on the background, wrapped at spaces to UT_OFF_W, left aligned
  * (ui_tokens.h UT_OFF_*). bit: the MODS_* that is off. Used by draw_graph (the page) and draw_layer (QUICK ARP, QUICK SEQ) */
 static uint32_t off_wrap(const aafont_t *f, const char *s, char out[4][48])
@@ -3110,10 +3035,6 @@ static void draw_graph(void)
         if (pg->graph == GR_PATS || pg->graph == GR_SLOTS)   /* (SAVE > PATTERNS / MULTIS: the picked entry's preview under the cards) */
             list_panel(pg->graph == GR_PATS);
 #endif
-        return;
-    }
-    if (pg->graph == GR_FXSUM) {                     /* TEMPLATE 5 (item 117): the SENDS page, text on the background in two strips */
-        graph_fxsum();
         return;
     }
     cv_begin(240, H_GRAPH, T_BG);

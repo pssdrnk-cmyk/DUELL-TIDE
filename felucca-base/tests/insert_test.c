@@ -392,7 +392,7 @@ static void test_stored(void)
     up_values(&r, v);
     ok = v[P_ITYPE] == 3 && v[P_IA] == 11 && v[P_IMIX] == 101;
     ck("user presets: the INSERT's values kept", ok);
-    /* the pages: INSERT and INSERT 2 after FX and SEND FX (0.2.22) (DUELL: the SLICER is removed), then EQ 1, the labels and values per TYPE */
+    /* the pages: INSERT and INSERT 2 after FX (SEND FX is gone, b4 UI round 2) (DUELL: the SLICER is removed), then EQ 1, the labels and values per TYPE */
     {
         uint32_t p, ps = 0, pi = 0, pi2 = 0, pd = 0;
         char val[16];
@@ -404,7 +404,7 @@ static void test_stored(void)
             if (str_eq(PAGES[p].title, "INSERT 2/2")) pi2 = p;
             if (str_eq(PAGES[p].title, "EQ 1/2")) pd = p;
         }
-        ok = pi == ps + 2u && str_eq(PAGES[ps + 1u].title, "SEND FX") && pi2 == pi + 1u && pd == pi2 + 1u && PAGES[pi].fam == FAM_FX && PAGES[pi].id[0] == P_ITYPE &&
+        ok = pi == ps + 1u && pi2 == pi + 1u && pd == pi2 + 1u && PAGES[pi].fam == FAM_FX && PAGES[pi].id[0] == P_ITYPE &&
              PAGES[pi2].id[0] == P_IMIX;
         set_ins(t, IT_CRUSH, 99, 96, 96, 127);
         ok &= str_eq(track_desc(t, P_IA)->label, "BITS") && track_desc(t, P_IA)->def == 99 && str_eq(track_desc(t, P_IB)->label, "RATE") &&

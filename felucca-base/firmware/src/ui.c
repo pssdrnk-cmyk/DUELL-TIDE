@@ -456,9 +456,7 @@ static uint32_t off_module(const page_t *pg)
     uint32_t b = 0;
     if (pg->scope == SC_PERF)
         return 0;
-    if (pg->scope == SC_FXSUM)
-        b = MODS_SENDS;
-    else if (pg->fam == FAM_GLO && pg->scope == SC_GLOBAL)
+    if (pg->fam == FAM_GLO && pg->scope == SC_GLOBAL)
         b = mods_of(1, pg->id[0]) == MODS_SENDS ? MODS_SENDS : 0u;
     else if ((pg->fam == FAM_FX && pg->scope == SC_TRACK) || pg->graph == GR_SCHAIN)
         b = MODS_PFX;
@@ -711,7 +709,6 @@ static void mode_knob(uint32_t slot, int32_t s);
 static void test_knob(uint32_t slot, int32_t s);
 static void scale_knob(uint32_t slot, int32_t steps);
 static void mods_knob(uint32_t slot, int32_t steps);
-static void fxsum_knob(uint32_t slot, int32_t steps);
 static void step_edit(uint32_t slot, int32_t steps);
 static void glo_knob(uint32_t k, int32_t s);
 static int reset_morph(uint32_t k);
@@ -735,7 +732,6 @@ static const scope_ops_t SCOPE_OPS[] = {
     {SC_SCALE, 0x07u, 1, scale_knob, reset_scale},     /* K1 SCALE, K2 ROOT, K3 OFF-SCALE; K4 is an empty column */
     {SC_MIDI, 0x0Fu, 0, 0, reset_midi},                /* (its knobs: the page's id slots decide, edit_param) */
     {SC_MODS, 0x0Fu, 12, mods_knob, reset_mods},
-    {SC_FXSUM, 0x07u, 9, fxsum_knob, 0},
     {SC_GMIX, 0x0Fu, 0, glo_knob, reset_glo},          /* GLO's MIXER: LEVEL 1, LEVEL 2, PAN 1, PAN 2 */
     {SC_STEP, 0x0Fu, 0, step_edit, 0},
     TIDE_SCOPE_OPS                                     /* TIDE hook (TIDE, TIDE LIST) */
