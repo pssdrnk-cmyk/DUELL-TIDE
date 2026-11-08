@@ -367,6 +367,16 @@ static void test_oct_reset_style(void)
     gl.time = 0; gl.wait = 5;
     tide_reset(2u); tide_reset(3u);
     CHECK("OCT- reset: PEAK's TIME and WAIT (8 bars, OFF)", gl.time == 3u && gl.wait == 0u);
+    tide_reset(2u);
+    CHECK("OCT- reset: K3 says the TIME it set (PEAK: TIME 8)", !strcmp(ui.msg, "TIME 8"));
+    tide_reset(3u);
+    CHECK("OCT- reset: K4 says the WAIT it set (PEAK: WAIT OFF)", !strcmp(ui.msg, "WAIT OFF"));
+    jl_put(JL_STYLE, STY_DUB); tide_settings();
+    gl.time = 0; gl.wait = 5;
+    tide_reset(2u);
+    CHECK("OCT- reset: K3 says TIME 16 for DUB", !strcmp(ui.msg, "TIME 16") && ui.msg_t > 0u);
+    tide_reset(3u);
+    CHECK("OCT- reset: K4 says WAIT 2 for DUB", !strcmp(ui.msg, "WAIT 2") && gl.wait == 2u);
     tide_reset(0u);
     CHECK("OCT- reset: K1 says BACK TO ORIGINAL", !strcmp(ui.msg, "BACK TO ORIGINAL"));
 }
