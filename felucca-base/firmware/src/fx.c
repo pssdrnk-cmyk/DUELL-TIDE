@@ -9,6 +9,16 @@
 #define DLY_LEN 65536u           /* 1.49 s: 1/4 at 40 BPM does not fit (1.5 s); it halves to 1/8 (delay_samples) */
 #define DLY_HALF (DLY_LEN / 2u)  /* SPLIT: each part's delay (0.74 s; a longer time halves until it fits: delay_split) */
 #define CHO_LEN 2048u
+/* TIDE 1.0.0-b5 (CPU audit K5): a silent bus and a silent master are not run. The plain delay loop (fx_bus.c fx_buses_m) is left out of a block whose delay
+ * input is 0 while the whole line has been written with zeros (dz) and its loop states are 0 (the chorus skipping too: cho_zs); the master's DC blocker, limiter
+ * and knee (mix_master) are left out of a block whose mix is 0 while the DC blocker is at 0 and the limiter's envelope is back at its threshold. Each gives
+ * then exactly the zeros the loop would have given and leaves its state as the loop would have left it (tests/silentskip_test.c, built with -DSIL_NOSKIP for the
+ * firmware without the skip). Plain DUELL (DUELL_TIDE 0) is not changed */
+#if DUELL_TIDE && !defined(SIL_NOSKIP)
+#define SIL_SKIP 1
+#else
+#define SIL_SKIP 0
+#endif
 static int16_t dly_buf[DLY_LEN] __attribute__((section(".pool")));
 static int16_t cho_buf[CHO_LEN] __attribute__((section(".pool")));
 static const uint16_t REV_COMB[4] = {1116, 1188, 1277, 1356};
@@ -55,6 +65,9 @@ typedef struct {
     uint8_t byp;                         /* DUELL 1.1 BYPASS of the REVERB: 1 = skipped, its buffers cleared (fx_bus.c rev_byp) */
     uint8_t cho_zs;                      /* .. 1: this block's chorus input is all 0 and the whole line was 0 before it: fx_buses_m leaves the chorus out (its output is 0) */
     uint32_t dly_g;                      /* the plain delay's read offset now (Q15 samples; fx_bus.c fx_buses_m: a TIME or tempo change slides to it; 0 = not running, the next block takes the time at once) */
+#if DUELL_TIDE
+    uint32_t dz, dz_w;                   /* TIDE K5 (fx.c sil_dly): the samples behind the delay's write head read back as 0 in a row (past the line's length: all of it is 0), and the write index at sil_dly's last call */
+#endif
 } fxs_t;
 static fxs_t fx;
 static int32_t lo_buf[CTL];             /* the reverb low cut's output block (fx_bus.c rev_locut; bus A and B run one after the other) */
@@ -656,6 +669,25 @@ static struct { int32_t r[CTL], l[CTL]; } mixlr HOTG_BSS;   /* the pair in one p
 #define mix_r (mixlr.r)
 #define mix_l (mixlr.l)   /* (the dry mix: defined here for the delay's modulation, which adds its side to it) */
 
+#if SIL_SKIP
+/* TIDE K5: the plain delay loop's rest (fx_bus.c fx_buses_m, both buses; range Z). The samples written into the line since the last call (the window behind the write
+ * head, whoever wrote them: every writer writes at the head) are read back; while they are 0, the input is 0 and the loop's low-pass and low cut are at 0, the run of
+ * zeros dz grows by the block, anything else (a sample not 0, an input, a state, a window that is not one block long: another path ran, or none) sets it to 0. Past the
+ * line's length the whole line is 0: every read and every write of the loop is then 0 (h[1], the low cut's remainder, is not moved by an input of 0 while h[0] is 0), and 1
+ * is returned. Called every block the plain loop runs; line: bus A dly_buf (STEREO / LAYER all of it, SPLIT its first half), bus B the second half */
+static __attribute__((noinline)) uint32_t sil_dly(fxs_t *f, const int16_t *line, const int32_t *in, uint32_t n, uint32_t dmask)
+{
+    uint32_t i, w = f->dly_w, nz = w - f->dz_w != n;     /* (the window is not one block: another path ran, none, or a block of another size) */
+    for (i = w - n; i != w; i++)
+        nz |= (uint32_t)line[i & dmask];
+    for (i = 0; i < n; i++)
+        nz |= (uint32_t)(in[i] >> 1);                   /* (what the loop writes in: 0 for an input of 0 or 1) */
+    nz |= (uint32_t)(f->dly_lp | f->dly_h[0]);
+    f->dz = nz ? 0u : f->dz + n;
+    f->dz_w = w;
+    return f->dz > dmask;
+}
+#endif
 /* the buses (fx_bus.c): bus A on the globals they always had, bus B (SPLIT, part 2) on its own */
 static uint8_t dm_split;                /* (below: the mix runs SPLIT; RESO reads the part its bus carries) */
 #define BUS_FX fx
@@ -3384,6 +3416,27 @@ static __attribute__((noinline)) void mix_sends(uint32_t n)
  * perf: PERFORM at work this block. Reads: song.* (master, WIDTH, BASS MONO, COMP settings), the pf.* / sv.* / dm_* state. Writes: mix_l, mix_r,
  * wet (PERFORM's stage), the stages' own states (bm, wdn, cmp, the limiter's envelope and DC states: only these stages touch them) and out.
  * Nothing of the parts' states is touched, so this is the one stage that must see the sum of both parts */
+#ifdef SIL_SKIP_STATS
+static uint32_t mst_skipped;                            /* (tests/silentskip_test.c: the blocks mix_master left the DC blocker, limiter and knee out of) */
+#endif
+#if SIL_SKIP
+/* TIDE K5 (mix_master; range Z): the mix is 0 (after every master stage), the DC blockers at 0 (their remainders stay: with the state 0 an input of 0 does not move them) and
+ * the limiters' envelopes back at LIM_T (no gain): the DC blocker, the limiter and the knee would give exactly 0 and leave their states as they are. Then out is set to 0,
+ * returns 1 (the master loop is not run) */
+static __attribute__((noinline)) uint32_t sil_mst(int32_t *out, uint32_t n)
+{
+    uint32_t i, nz = (uint32_t)(dc_l | dc_r | (lim_env + lim_env_r - 2 * LIM_T));   /* (an envelope is never under LIM_T: the sum is 2 LIM_T only with both at LIM_T; lim_env_r: SPLIT's right, LIM_T outside SPLIT, dm_lines_clear) */
+    for (i = 0; i < n && !nz; i++)
+        nz = (uint32_t)(mix_l[i] | mix_r[i] | wet[i]);
+    if (nz)
+        return 0;
+    memset(out, 0, 2u * n * sizeof out[0]);
+#ifdef SIL_SKIP_STATS
+    mst_skipped++;
+#endif
+    return 1;
+}
+#endif
 static __attribute__((noinline)) void mix_master(int32_t *out, uint32_t n, int perf, int32_t mg)
 {
     uint32_t i;
@@ -3412,6 +3465,10 @@ static __attribute__((noinline)) void mix_master(int32_t *out, uint32_t n, int p
     wd_sel = (uint8_t)wds;                              /* (BYPASS: the settings back) */
     bm_sel = (uint8_t)bms;
     cmp_cfg = ccf;
+#if SIL_SKIP
+    if (sil_mst(out, n))
+        return;                                         /* (TIDE K5: the mix and the master's states at rest, out is 0) */
+#endif
     if (dm_split) {
         split_master(out, n, mg);
         return;

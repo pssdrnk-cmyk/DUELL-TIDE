@@ -687,6 +687,9 @@ static inline int32_t BUS_FN(cho_tap)(uint32_t ph, int32_t cdq, uint32_t cw)
  * whatever the depth, so the chorus adds exactly 0 to the bus and to the dry mix: fx_buses_m (the plain bus) then leaves the chorus out (cho_zs), only its
  * state moving on (write index, LFO phase; the depth glide's state in cho_glide), the same values as the loop leaves; nothing else changes (bit for bit:
  * tests/chorusskip_test.c, built with -DCHO_NOSKIP for the loop as it was). dly_mod and dly_ev (hot RAM / rare paths) run the chorus always. */
+#ifdef SIL_SKIP_STATS
+static uint32_t BUS_FN(dly_skipped);                    /* (tests/silentskip_test.c: the blocks fx_buses_m left the delay loop out of) */
+#endif
 #ifdef CHO_SKIP_STATS
 static uint32_t BUS_FN(cho_skipped);                    /* (tests/chorusskip_test.c: the blocks fx_buses_m left the chorus out of) */
 #endif
@@ -873,6 +876,17 @@ static inline void BUS_FN(fx_buses_m)(uint32_t dmask, uint32_t dl, const int32_t
     int32_t gx[2];
     uint32_t tg = dl << 15, g = BUS_FX.dly_g ? BUS_FX.dly_g : tg;   /* (g: the read offset now, Q15; it slides to tg, a TIME / tempo change bends the repeats: no jump of the read head) */
     BUS_FN(cho_glide)(cdepth, &cdq, &cst);
+#if SIL_SKIP
+    if (sil_dly(&BUS_FX, BUS_DLY, dly_in, n, dmask) && cz && g == tg) {   /* (TIDE K5, fx.c sil_dly: the line, the loop and this block's input at 0, the chorus left out, no TIME slide: the loop gives 0) */
+        memset(wet, 0, n * sizeof wet[0]);
+        if (pp)
+            memset(dsd, 0, n * sizeof dsd[0]);          /* (PING-PONG's side: 0) */
+        BUS_FX.dly_w += n;
+#ifdef SIL_SKIP_STATS
+        BUS_FN(dly_skipped)++;
+#endif
+    } else
+#endif
     for (i = 0; i < n; i++) {
         int32_t y = 0, x, x2, r;
         /* chorus: modulated short delay, 9 .. 26 ms (400 + 0 .. 762 samples; above CRT 40 less, fx_swing) (cz: the line and this block's input are 0, the chorus gives 0: see cho_zrun) */
