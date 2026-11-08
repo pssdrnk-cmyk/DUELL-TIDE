@@ -2709,15 +2709,15 @@ static void graph_morph(void)
     char b[8];
     khint_t kh[3];
 #if DUELL_TIDE
-    if (grid_on) {   /* TIDE (1.0.0-b4): the wave card's place (planned), for now a calm flat rule across the middle of each part's rows (ARP's empty picture: T_RAISE, 1 px)
-                      * the field's width; BOTH: part 1's above, part 2's below, as the field had them. No title: MORPH is K1's card label (ui_draw.c), so the rows start at the
+    if (grid_on) {   /* TIDE (1.0.0-b4): the wave card's place (planned), for now a calm flat rule across the middle of each part's rows, the full width (ARP's empty
+                      * picture: T_RAISE, 1 px, x 0..239); BOTH: part 1's above, part 2's below, as the field had them. No title: MORPH is K1's card label (ui_draw.c), so the rows start at the
                       * picture's top. HOLD SAVE = SAVE PATCH left aligned at the bottom, as before (ui_tokens.h UT_GR_NOTE_*) */
         const int32_t y0 = 2, y1 = 62;
         if (both) {
-            cv_rect(MV_BX0, (3 * y0 + y1) / 4, MV_BX1 - MV_BX0, 1, T_RAISE);
-            cv_rect(MV_BX0, (y0 + 3 * y1) / 4, MV_BX1 - MV_BX0, 1, T_RAISE);
+            cv_rect(0, (3 * y0 + y1) / 4, 240, 1, T_RAISE);
+            cv_rect(0, (y0 + 3 * y1) / 4, 240, 1, T_RAISE);
         } else {
-            cv_rect(MV_BX0, (y0 + y1) / 2, MV_BX1 - MV_BX0, 1, T_RAISE);
+            cv_rect(0, (y0 + y1) / 2, 240, 1, T_RAISE);
         }
         cv_text_on(UT_GR_NOTE_X, UT_TY(S, UT_GR_NOTE_BASE - UT_GR_Y), &AF_S, "HOLD SAVE = SAVE PATCH", T_DIM, T_BG);
         return;

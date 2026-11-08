@@ -166,6 +166,30 @@ static void sweep_buttons(void)
         }
 }
 
+/* 1.0.0-b4 (SEQUENCER HELP removed): SEQ's round is two pages, STEP 1/2, a tap of SEQ PARAMETER LOCKS 2/2, again STEP */
+static void sweep_seq_round(void)
+{
+    char nm[24], c1[12], c2[12], c3[12];
+    uint32_t i, p1, p2, p3;
+    ui_power_on();
+    for (i = 0; i < NPAGES && !str_eq(PAGES[i].title, "STEP"); i++)
+        ;
+    enter(i);
+    p1 = ui.page;
+    page_parts(nm, c1);
+    press(B_SEQ);
+    settle();
+    p2 = ui.page;
+    page_parts(nm, c2);
+    press(B_SEQ);
+    settle();
+    p3 = ui.page;
+    page_parts(nm, c3);
+    expect("SEQ round: STEP (footer 1/2) -> PARAMETER LOCKS (2/2) -> STEP again; two pages, no SEQUENCER HELP",
+           fam_count(FAM_SEQ) == 2u && str_eq(PAGES[p1].title, "STEP") && str_eq(c1, "1/2") && str_eq(PAGES[p2].title, "PARAMETER LOCKS") && str_eq(c2, "2/2") &&
+           p3 == p1 && str_eq(c3, "1/2"));
+}
+
 /* HOME has its own round (SPEC 3.5): MORPH, MORPH SET, MODE, MIXER, MORPH again (0.2.14: OVERVIEW, the old HOME screen, is no
  * longer on it); SELECT right and HOME's taps go round it the same way, SELECT left backwards */
 static void sweep_home(void)
@@ -1805,6 +1829,7 @@ int main(void)
     sweep_readonly();
     sweep_pages();
     sweep_buttons();
+    sweep_seq_round();
     sweep_home();
     sweep_other();
     sweep_menu();

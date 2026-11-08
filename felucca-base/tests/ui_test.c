@@ -1072,7 +1072,10 @@ static void go_title(const char *title)
     uint32_t i;
     for (i = 0; i < NPAGES && !str_eq(PAGES[i].title, title); i++)
         ;
-    if (i >= NPAGES) fprintf(stderr, "go_title: no page titled \"%s\"\n", title);   /* (a scene on a renamed page) */
+    if (i >= NPAGES) {                                  /* (a scene on a renamed or removed page: stop loudly, ui.page = NPAGES would read past PAGES) */
+        fprintf(stderr, "go_title: no page titled \"%s\"\n", title);
+        abort();
+    }
     ui.page = (uint8_t)i;
     page_entered();
 }
@@ -2550,7 +2553,7 @@ static int test_product_ux(void)
     ok &= cur_page()->graph == GR_TRK;
     go_title("AMP ENV"); press(B_HOME);
     ok &= at_home();
-    go_title("CLOCK"); press(B_HOME);
+    go_title("LFO 1"); press(B_HOME);                  /* (was CLOCK: no such page since 1.1, the lookup read past PAGES) */
     ok &= at_home();
     bad += check("1.2: HOME cycles HOME > MIXER > CLOCK > HOME (CLOCK: BPM SWG CLK, HOME's LED); from any other page HOME", ok);
     hold(B_HOME);
@@ -2559,7 +2562,7 @@ static int test_product_ux(void)
     frames(320);                                       /* (taps further apart than a double tap: #83) */
     press(B_GLO); frames(320); ok = cur_page()->fam == FAM_GLO && str_eq(cur_page()->title, "SONG");
     press(B_GLO); frames(320); ok &= str_eq(cur_page()->title, "SONG") && cur_page()->fam == FAM_GLO && !at_home();
-    go_title("CLOCK"); press(B_GLO); frames(320); ok &= str_eq(cur_page()->title, "SONG");
+    go_title("LFO 1"); press(B_GLO); frames(320); ok &= str_eq(cur_page()->title, "SONG");
     bad += check("1.2: GLO opens SONG directly, again SONG (no GLOBAL, no SYSTEM, no MIXER)", ok);
     go_main_to(HP_MORPH); btn_down(B_SEQ); frames(500);
     ok = ui.layer == LAYER_SEQ && at_home();

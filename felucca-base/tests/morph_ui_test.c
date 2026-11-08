@@ -52,8 +52,12 @@ static int card_is(uint32_t c, const char *label, const char *val)   /* the card
     snprintf(want, sizeof want, "%s|%s", label, val);
     if (card_match(c, want))
         return 1;
+#if DUELL_TIDE
+    return 0;                                 /* (TIDE 1.0.0-b4: MORPH's K1 is a labelled card, "MORPH|A"; no big-value fallback) */
+#else
     return c == 0u && card_match(0, val) &&   /* (MORPH since 1.1: K1's label is on the knob-1 line above its big value) */
            rows_has(UT_A_K1_Y, UT_A_K1_Y + UT_A_K1_H, label);
+#endif
 }
 #if DUELL_TIDE
 /* TIDE: TIDE SETTINGS is in MORPH SET's place, a list (tide_ui.c): K1 the row, OCT+ the next value, OCT- the one before; SMART / ARP / PITCH are its ROLL, ARP, PITCH */
