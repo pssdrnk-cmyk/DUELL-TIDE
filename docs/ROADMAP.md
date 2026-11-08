@@ -61,6 +61,10 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 
 ## Planned, not yet scheduled
 
+**MORPH** ([review](audits/2026-11-08/morph/REPORT.md): keep the core and the page, no big rework)
+- c3: factory loads stop resetting AMOUNT; K4 dim in JRNY, where it does nothing (about 50 B).
+- c2: a hand fader resting in the middle (40-60 %) between ends that differ in a switch stays dulled, FM6 on pure sines: after about 1 s at rest, settle onto the nearer side (about 100 B, audio interrupt; listen on the unit first).
+
 **CPU and audio engine**
 - Effect code from slow flash: [analysis](audits/2026-11-08/flash-hot/REPORT.md) done. Of the 116 functions, 50 run per sample. Plan: first a test-mode probe that times one function from flash and from RAM (no sound change); only if it shows at least 0.5 % of a half, move ~0.9 KB (`dly_wr`, `master_knee`, `acc_sum`, `cho_zrun`, `fx_swing`, `rev_front`, `hall_gains`) and later ~1 KB more, as its own beta measured on the unit. Expected gain 1 to 3 %, not enough alone for `1.0.0`.
 - The budget model (`bd_part`, `bd_global`, `bd_slope`, `part_dl`, 2.1 KB) runs from flash at the start of every half: run it only when its inputs change. Larger gain than the above, but it changes behaviour; needs its own design and test.
@@ -119,6 +123,7 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 | Question | Default if you don't mind |
 |---|---|
 | D43: when a crossing starts under a held chord, the chord stays whole (the budget plans for it from the start). | Stays whole; decided after the drones are measured under a GLIDE. |
+| MORPH UNDO: drop it (2 steps, and TIDE's own rolls fill it) to free about 1.9 KB of RAM, which the wave card needs? | Drop it, then retry the wave card. |
 | D46: the multis that are too loud or too quiet are trimmed by ear on the unit. | Trim M15, M16 up and M10 down by the numbers, then listen. |
 | Try on the unit: keys recording into an ARP SEQ part, and REC ADD / REPLACE (b3). | Nothing to decide; say if the nearest-step rule feels wrong. |
 | Merge PRs #1 to #4 once GitHub is green. | Merge in order #1, #2, #3, #4, then the three waiting branches. |
