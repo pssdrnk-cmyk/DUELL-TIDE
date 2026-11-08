@@ -547,9 +547,33 @@ def table(sounds, lst, engines):
     print(f"TEXT (DSF_TEXT, TIDE's JOURNEY texture family): {len(flagged)} sounds: {', '.join(flagged)}")
 
 
+PIN = Path(__file__).resolve().parent / "sound_numbering.pin"
+N_PIN = 163                       # #1 .. #163: shipped (the 128 of the bank, MIDI bank 2 programs, favourites): append-only, never renumbered
+
+
+def pin_lines(sounds, lst, engines):
+    return [f"{n + 1} {engines[sounds[g]['e']]['name']} {sounds[g]['idx']} {sounds[g]['name']}" for n, g in enumerate(lst[:N_PIN])]
+
+
+def check_pin(sounds, lst, engines):
+    """Finding 10 (audit 2026-11-08): the browse numbers #1..#163 (n, engine, idx, name) equal tools/sound_numbering.pin. A new sound
+    goes at the END of duell_sounds.py (a later number, the next idx of its engine); changing the pin is a change of what a user has stored."""
+    got = pin_lines(sounds, lst, engines)
+    want = PIN.read_text().splitlines()
+    want = [x for x in want if x and not x.startswith("#")]
+    bad = [(w, g) for w, g in zip(want, got) if w != g]
+    if len(got) != len(want) or bad:
+        die(f"sound numbering #1..#{N_PIN} differs from {PIN.name} (append-only): " + (f"first: pinned {bad[0][0]!r}, now {bad[0][1]!r}" if bad else f"{len(got)} sounds, {len(want)} pinned"))
+
+
 def main(argv):
     data = load_data(Path(__file__).resolve().parent / "duell_sounds.py")
     sounds, lst, engines, cats, idname = build(data)
+    if len(argv) > 1 and argv[1] == "--print-pin":
+        for line in pin_lines(sounds, lst, engines):
+            print(line)
+        return
+    check_pin(sounds, lst, engines)
     if len(argv) > 1 and argv[1] != "--check":
         n, packed_bytes = emit(argv[1], sounds, lst, engines, cats, idname)
         size = packed_bytes + len(sounds) * (12 + 4) + sum(len(s["name"]) + 1 for s in sounds) + NENG_TABLE + 1

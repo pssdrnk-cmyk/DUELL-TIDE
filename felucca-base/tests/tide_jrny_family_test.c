@@ -183,20 +183,21 @@ int main(void)
     CHECK("families: a sound alone in its family stays in its role (a roll of itself, never another family)", !fb_out);
     CHECK("families: a USER record walks its own category's family", user_walks && !user_out);
     CHECK("families: no family outgrows the pick list", longest <= 64u);
-    /* C3, the texture family: eight FX sounds carry the DSF_TEXT flag (gen_duell_sounds.py --check lists the same eight); a texture roams the
+    /* C3, the texture family: eight FX sounds carry the DSF_TEXT flag (gen_duell_sounds.py --check lists the same sounds); a texture roams the
      * textures of its engine, a one-shot never reaches one */
     {
-        static const char *const TEXTS[11] = {"DUST BED", "TAPE HISS", "MOOR WIND", "WHITE OUT", "NIGHT DRONE", "STORM FRONT", "TAPE DRONE", "FROZEN AIR",
+        static const char *const TEXTS[] = {"DUST BED", "TAPE HISS", "MOOR WIND", "WHITE OUT", "NIGHT DRONE", "STORM FRONT", "TAPE DRONE", "FROZEN AIR",
                                               "SOLAR WIND", "GRID HUM", "IRON WORKS"};   /* (+ three of the b2 drones, #169-#171, 2026-11-08) */
         uint32_t g, nflag = 0, nonfx = 0, named = 0, fl, un, di, te, tj;
+        const uint32_t NT = (uint32_t)(sizeof TEXTS / sizeof TEXTS[0]);   /* the names listed above: the flagged count is derived from them */
         for (g = 0; g < DS_N; g++) {
             nflag += (DS_SOUNDS[g].flags & DSF_TEXT) != 0u;
             nonfx += (DS_SOUNDS[g].flags & DSF_TEXT) && DS_SOUNDS[g].cat != CAT_FX;
         }
-        for (g = 0; g < 11u; g++)
+        for (g = 0; g < NT; g++)
             named += find_sound(TEXTS[g], &te, &tj) && (ds_get(te, tj)->flags & DSF_TEXT) && fam_of_sound(te, tj) == FAM_TEXT;
-        printf("texture flag: %u sounds flagged, %u of the 8 named ones found and flagged\n", nflag, named);
-        CHECK("texture: eleven sounds carry the TEXT flag, all of them FX", nflag == 11u && !nonfx && named == 11u);
+        printf("texture flag: %u sounds flagged, %u of the %u named ones found and flagged\n", nflag, named, NT);
+        CHECK("texture: exactly the listed sounds carry the TEXT flag, all of them FX", nflag == NT && !nonfx && named == NT);
         CHECK("texture: an unflagged FX is a one-shot (NOISE), a flagged one a TEXT", find_sound("MODEM", &te, &tj) && fam_of_sound(te, tj) == FAM_NOISE &&
               find_sound("DUST BED", &te, &tj) && fam_of_sound(te, tj) == FAM_TEXT && fam_of(CAT_FX) == FAM_NOISE && fam_of(CAT_OTHER) == FAM_TEXT);
         walk32("DUST BED", &fl, &un, &di);
