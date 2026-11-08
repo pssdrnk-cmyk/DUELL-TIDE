@@ -12,6 +12,7 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 Not flashed yet.
 
 - **Changed (owner, 2026-11-08: room in flash for the wave picture):** the SEQUENCER HELP page is gone, so a tap of SEQ goes STEP, then PARAMETER LOCKS. The MORPH page shows its fader value (A, 1 to 126, B) in knob 1's card like every other page, and its moving lines are gone; the top of the page keeps a quiet line until the planned wave picture takes that place. The four knobs, ALGORITHM, Hold SAVE and the OCT- shortcuts work as before. About 4.9 KB of flash freed.
+- **Changed (screen wording and look, UI audit 2026-11-08):** the part is PART 1 / PART 2 everywhere (CONFIRM dialogs, MIDI LEARN); AUTO TIDE says WANDER / JOURNEY (status WANDERING / JOURNEY) and TARGET says BOTH; the LFOs' WAVE reads SINE, TRIANGLE, SQUARE; MENU says HOME OPENS SETTINGS and MULTI LOAD KEEPS / SETS PLAY MODE. Muted values stay grey on PALE, part 2 on GREY no longer looks disabled, MIDI LEARN's footer line is no longer cut, no divider rules, the empty ARP and MORPH pictures share one line, and the CPU pill no longer looks like part of the capsule.
 
 ## 1.0.0-b3
 
