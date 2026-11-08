@@ -557,8 +557,8 @@ const KEYS = [1000, 1001, 1005, 1064];
      "INFO: no tag 44 is an unknown answer (tideAnswer undefined: plain DUELL 1.1 and TIDE builds before the tag look the same); tag 44 with bit 0 clear says plain DUELL");
   const pn = planRestore(arch, list, 63, new Set(["patches"]), { tide: plainSaid.tideAnswer }), pk = planRestore(arch, list, 63, new Set(["patches"]), { tide: noTag.tideAnswer }), pt = planRestore(arch, list, 63, new Set(["patches"]), { tide: true }), pu = planRestore(arch, list, 63, new Set(["patches"]));
   const st = pn.steps.find((x) => x.slot === 2), ot = pt.steps.find((x) => x.slot === 2);
-  ok(st.size === withFmt.length - 3 && st.crc === bkCrc(st.bytes) && same(st.bytes, cut) && ot.size === withFmt.length && same(ot.bytes, withFmt) && same(pu.steps.find((x) => x.slot === 2).bytes, withFmt) && same(pk.steps.find((x) => x.slot === 2).bytes, withFmt) && same(pn.steps.find((x) => x.slot === 3).bytes, plain),
-     "plan: a unit without TIDE gets the record without MBV_FMT (size, CRC of what is sent); a TIDE unit, an unknown one and one without tag 44 get it as it is");
+  ok(st.size === withFmt.length - 3 && st.crc === bkCrc(st.bytes) && same(st.bytes, cut) && ot.size === withFmt.length && same(ot.bytes, withFmt) && same(pu.steps.find((x) => x.slot === 2).bytes, cut) && same(pk.steps.find((x) => x.slot === 2).bytes, cut) && pk.stripped === 1 && pn.stripped === 1 && pt.stripped === 0 && pu.stripped === 1 && same(pt.steps.find((x) => x.slot === 2).bytes, withFmt) && same(pn.steps.find((x) => x.slot === 3).bytes, plain),
+     "plan: a unit that says plain DUELL and one without tag 44 (unknown) get the record without MBV_FMT (size, CRC of what is sent) and plan.stripped counts it; a unit that says TIDE gets it as it is");
   const r = await runRestore(rq, pn);
   ok(r.failed === null && same(P.patchBytes(2), cut) && parseRecord(P.patchBytes(2)).ok, "restore: the stripped record is what the unit holds");
 }
