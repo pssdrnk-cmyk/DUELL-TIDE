@@ -83,10 +83,10 @@ static void sequence(void)
                 calm = avg = 0;
                 model += two && model < 5u;
                 model = miss && model < 4u ? 4u : model;
-            } else if (model) {                         /* down: no half over 80 % for 1 s (3 s from LIGHT FX up, 9 s after a quick return), or the meter under 70 % for 3 s */
+            } else if (model) {                         /* down: no half over 80 % for 1 s (3 s from LIGHT FX up, 9 s after a quick return), or the meter under 70 % for 3 s (9 s from LIGHT FX up after a quick return) */
                 calm = us > HALF_US * 80u / 100u ? 0u : calm + 1u;
                 avg = q8 >= 179u ? 0u : avg + 1u;
-                if (calm >= (model < 3u ? 345u : fxl ? 3u * 1034u : 1034u) || avg >= 1034u)
+                if (calm >= (model < 3u ? 345u : fxl ? 3u * 1034u : 1034u) || avg >= (model >= 3u && fxl ? 3u * 1034u : 1034u))
                     model--;
             }
             if (model != m0) {
