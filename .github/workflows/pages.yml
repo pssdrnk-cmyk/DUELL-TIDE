@@ -42,7 +42,8 @@ concurrency:
 jobs:
   build:
     # Only a successful run from this repository's publishing branch can publish.
-    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'jam11' && github.event.workflow_run.head_repository.full_name == github.repository
+    # (the event check: a pull_request run of Host tests never publishes, even from a branch that happens to be named jam11)
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'jam11' && github.event.workflow_run.head_repository.full_name == github.repository && contains(fromJSON('["push", "workflow_dispatch"]'), github.event.workflow_run.event)
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1

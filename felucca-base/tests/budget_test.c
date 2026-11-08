@@ -1025,7 +1025,7 @@ static void t_loaded(void)
            tide_n[0][0], tide_n[0][1], tide_n[0][2], tide_n[0][3], tide_n[1][0], tide_n[1][1], tide_n[1][2], tide_n[1][3]);
     printf("budget:     %u loads (%u with a live morph on both parts), items hash 0x%016llx (before item 142: 0x%016llx)\n", nl, nm, (unsigned long long)lh, (unsigned long long)LOADED_REF);
     bchk("item 142 (a): every factory patch and multi as loaded gives the items of the reference (every factory place and multi; re-based for item 147: SAT from the played ends)", lh == LOADED_REF && nm > 100u);
-    bchk("A01: TIDE's DSP items only ever lower a factory sound's cap, by one note at most (a conservative estimate: the unit's measurement replaces BD_TIDE_*)", !tide_bad_caps && tide_parts == 1058u);   /* (1010 + the 8 drones: 24 loads x 2 parts, 2026-11-08) */
+    bchk("A01: TIDE's DSP items only ever lower a factory sound's cap, by one note at most (a conservative estimate: the unit's measurement replaces BD_TIDE_*)", !tide_bad_caps && tide_parts == 2u * nl);   /* (both parts of every load carry a morph: 2 x the loads, 1058 for 529 loads at 2026-11-08; derived, a new sound moves it) */
 
     /* (b) #01 BEHIVE edited after the load: TWIN OFF, SLOPE 12 dB. Its morph ends hold the Original's TWIN BP and 24 dB, which can never sound now: the charge equals the same
      *     state with the morph switched off, plus BD_MORPH a voice */

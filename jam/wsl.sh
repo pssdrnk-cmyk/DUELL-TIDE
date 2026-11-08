@@ -1,6 +1,6 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-only
-# DUELL JAM: host test groups in the owner's WSL Ubuntu, where fork(), termios and the rest exist (on Windows 25 groups SKIP).
+# DUELL JAM: host test groups in the owner's WSL Ubuntu, where fork(), termios and the rest exist (on Windows 3 groups SKIP: dx7compat, benchrun, benchaudio).
 # From Git Bash or PowerShell, in any checkout:
 #   wsl.exe -d Ubuntu -- sh jam/wsl.sh [group ...]        (default: every group; the log is felucca-base/build/host/wsl.out)
 # Ubuntu needs once: sudo apt-get install build-essential python3-venv nodejs libfribidi0 libraqm0, and a venv at ~/venv with
