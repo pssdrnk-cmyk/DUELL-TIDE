@@ -1847,7 +1847,9 @@ static void graph_arp(const track_t *t, uint16_t c)
     }
 }
 
+#if !DUELL_TIDE
 static uint32_t mv_tick(void);                       /* (the MORPH page's animation step, below) */
+#endif
 /* DUELL 1.1 GENERAL RULE (owner, test3: "the knob does not show the new setting until I switch to another page"): a panel is drawn again whenever ANY value it could show changed, so its signature
  * holds all of them, not the few its author thought of: every stored value of the part (P_*), every extension slot (X*) and every global (G_*). Cards are cached by the text they show
  * (ui_draw.c draw_column's key), the menu by every row's value (ui_menu.c), so a shown value never lags behind the stored one */
@@ -1946,8 +1948,10 @@ static uint32_t graph_signature(void)
         uint32_t pi = song.sel;
         h = (h ^ (morph_fader_of(pi) | morph_amount_of(pi) << 8 | (uint32_t)morph.target << 16 | (uint32_t)morph.cfg << 20)) * 16777619u;
         h = (h ^ morph_fader_of(1u - pi)) * 16777619u;
+#if !DUELL_TIDE                                      /* (TIDE: no motion field, the picture is still) */
         if (pg->graph == GR_MORPH)                   /* v4: the picture's motion, a step every 4th frame (~16 /s) */
             h = (h ^ (mv_tick() + 1u) * 2654435761u) * 16777619u;
+#endif
     }
     if (pg->graph == GR_SLOTS) {                     /* (a checksum over each slot) */
         for (i = 0; i < MU_SLOTS; i++)
@@ -2515,7 +2519,9 @@ static void knob(int32_t x, int32_t y, int32_t r, const uint8_t *cov, const uint
  * move the most, the outer ones less and fainter. POLICE: each line solid A or B (its half). TARGET BOTH: part 1's
  * field in the upper half, part 2's in the lower, each with its own front and colours.
  * Under it the A..B track with the value in its thumb (BOTH: the other part's fader a tick), the key hints, "HOLD SAVE =
- * SAVE PATCH". Integer only; the motion is integrated a step every 4th UI frame (~16 /s, ui.frame; MENU > ANIM OFF: still) */
+ * SAVE PATCH". Integer only; the motion is integrated a step every 4th UI frame (~16 /s, ui.frame; MENU > ANIM OFF: still).
+ * TIDE (1.0.0-b4, owner 2026-11-08): no motion field (flash for the planned wave card, which takes this place): the picture keeps a calm
+ * flat rule per part across the field's rows (as ARP's empty picture) and HOLD SAVE = SAVE PATCH; the value is K1's own card (ui_draw.c) */
 #define MV_BX0 6                                     /* the picture's box: x 6..233, y 2..75 */
 #define MV_BX1 234
 #define MV_BY0 2
@@ -2527,6 +2533,7 @@ static void knob(int32_t x, int32_t y, int32_t r, const uint8_t *cov, const uint
 #define MV_KY 95                                     /* the key hints' row */
 #define MV_SY 108                                    /* "HOLD SAVE = SAVE PATCH" (its 15 px cell) */
 #define MV_SOFT 30                                   /* the front's half width (px) */
+#if !DUELL_TIDE
 static uint8_t mv_lvl[2];                            /* each part's level 0..255 (attack at once, fall 10 a step) */
 static uint32_t mv_step = 0xFFFFFFFFu;               /* (the step the levels last fell at) */
 typedef struct {
@@ -2689,19 +2696,34 @@ static void mv_field(uint32_t k, int32_t y0, int32_t y1, uint32_t nl)
         }
     }
 }
+#endif
 static void graph_morph(void)
 {
     const ui_pal_t *pl = &UI_PALETTES[ux.pal % NPALETTES];
-    uint32_t pi = song.sel, f = morph_fader_of(pi), tk = mv_tick(), both = morph.target == MT_BOTH, n;
+    uint32_t pi = song.sel, f = morph_fader_of(pi), both = morph.target == MT_BOTH;
     int32_t cx = MV_TX0 + (int32_t)(f * (uint32_t)(MV_TX1 - MV_TX0) / 127u), i;
     char b[8];
     khint_t kh[3];
+#if !DUELL_TIDE
+    uint32_t tk = mv_tick(), n;
     mv_levels(tk);
     n = mv_step == 0xFFFFFFFFu ? 0u : tk - mv_step;   /* (steps since the last: the motion moves on by as many) */
     mv_listen(0, n > 4u ? 4u : n);
     mv_listen(1, n > 4u ? 4u : n);
     mv_step = tk;
+#endif
     if (grid_on) {   /* DUELL 1.1 HOME (PAGES_V1_home.png / PALETTES_V3_1.png): the knob mark and MORPH top left, the motion field under it, HOLD SAVE = SAVE PATCH at the bottom of the same area; no track, no thumb, no key row (the cards under are the controls) */
+#if DUELL_TIDE
+        /* TIDE: the wave card's place (planned), for now a calm flat rule across the middle of each part's rows (ARP's empty picture: T_RAISE, 1 px), the field's width;
+         * BOTH: part 1's above, part 2's below, as the field had them */
+        const int32_t y0 = 17, y1 = 62;
+        if (both) {
+            cv_rect(MV_BX0, (3 * y0 + y1) / 4, MV_BX1 - MV_BX0, 1, T_RAISE);
+            cv_rect(MV_BX0, (y0 + 3 * y1) / 4, MV_BX1 - MV_BX0, 1, T_RAISE);
+        } else {
+            cv_rect(MV_BX0, (y0 + y1) / 2, MV_BX1 - MV_BX0, 1, T_RAISE);
+        }
+#else
         const int32_t y0 = 17, y1 = 62;
         if (both) {
             mv_field(0, y0, (y0 + y1) / 2, 3u);
@@ -2709,6 +2731,7 @@ static void graph_morph(void)
         } else {
             mv_field(pi, y0, y1, 5u);
         }
+#endif
         {   /* the knob-1 dot and MORPH on one baseline, the note left aligned at the bottom (item 114, ui_tokens.h UT_GR_*; the dot is the label's cap height, as on every card) */
             const int32_t by = UT_GR_TITLE_BASE - UT_GR_Y, dy = by - AF_S_CAP_H + 1;
             cv_rrect(UT_GR_TITLE_X, dy, AF_S_CAP_H, AF_S_CAP_H, AF_S_CAP_H / 2, T_MID, T_BG);
@@ -2718,12 +2741,14 @@ static void graph_morph(void)
         }
         return;
     }
+#if !DUELL_TIDE
     if (both) {                                      /* part 1 above, part 2 below */
         mv_field(0, MV_BY0, (MV_BY0 + MV_BY1) / 2, 3u);
         mv_field(1, (MV_BY0 + MV_BY1) / 2, MV_BY1, 3u);
     } else {
         mv_field(pi, MV_BY0, MV_BY1, 5u);
     }
+#endif
     for (i = MV_TX0; i <= MV_TX1; i++) {             /* the A..B track (POLICE: two solid halves) */
         int32_t p = (i - MV_TX0) * 100 / (MV_TX1 - MV_TX0);
         uint16_t col = pl->hc ? pl->c[2u * pi + (p >= 50)] : ux_mix(ux_mix(pl->c[2u * pi], pl->c[2u * pi + 1u], p), T_BG, 45);

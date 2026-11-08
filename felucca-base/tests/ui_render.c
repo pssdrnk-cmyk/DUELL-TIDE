@@ -769,7 +769,9 @@ static void state(void)                          /* a playing song with steps on
 #endif
     memset(&gm, 0, sizeof gm);                       /* (GLO's level meters from silence) */
     midi_pch[0] = 0; midi_pch[1] = 1; meter_bus[0] = meter_bus[1] = 0;
+#if !DUELL_TIDE
     mv_reset();                                      /* (MORPH v4: the picture's motion and levels from silence) */
+#endif
     song.playing = 1;
     song.g[G_BPM] = 124;
     clk_pos = 0; clk_step = 8; cin_total = cin_left = 0;   /* (the bar's 3rd beat) */

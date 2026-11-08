@@ -368,6 +368,13 @@ static void t_knobs(void)
     frame();
     expect("  .. the cards in v3's order: MORPH, ROLL, UNDO, AMOUNT (KNOB 4)", card_is(0, "MORPH", "A") && card_is(1, "ROLL", "A<>B") &&
            card_is(2, "UNDO", "A<>B") && card_is(3, "AMOUNT", amt_txt));
+#if DUELL_TIDE
+    {   /* TIDE (1.0.0-b4): no motion field, the picture is still (the planned wave card's place): the same signature frame after frame */
+        uint32_t s0 = graph_signature();
+        ui.frame += 4u;
+        expect("TIDE: the MORPH picture is still (no motion field: the same signature 4 and 8 frames on)", s0 == graph_signature() && (ui.frame += 4u, s0 == graph_signature()));
+    }
+#else
     {   /* the panel's ribbons: a new picture every 4th frame (signature), none with MENU > ANIM OFF */
         uint32_t s0 = graph_signature(), s1;
         ui.frame += 4u;
@@ -377,6 +384,7 @@ static void t_knobs(void)
                s0 != s1 && (ui.frame += 4u, graph_signature()) == graph_signature() && (ui.frame += 4u, s1 = graph_signature(), ui.frame += 4u, s1 == graph_signature()));
         ui_prefs &= ~PREF_ANIM_OFF;
     }
+#endif
     turn(EN_K4, 200);
     expect("KNOB 4 clamps at 100 %", mph[0].amount == 100u);
     turn(EN_K4, -60);
