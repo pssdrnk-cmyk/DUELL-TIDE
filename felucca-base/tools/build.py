@@ -253,7 +253,8 @@ def ldr_screen():
 def build_loader():
     LDR.mkdir(parents=True, exist_ok=True)
     src = FW / "loader"
-    flags = [*CFLAGS, "-Ifirmware/hal", "-Ifirmware/src", f"-DLDR_SCREEN={1 if ldr_screen() else 0}"]
+    flags = [*CFLAGS, "-Ifirmware/hal", "-Ifirmware/src", f"-DLDR_SCREEN={1 if ldr_screen() else 0}",
+             f"-DDUELL_TIDE={1 if tide_on() else 0}"]   # (TIDE 1.0.0-b5: the screen's TIDE look, ldr_screen_tide.c; DUELL_TIDE=0 builds DUELL's own screen, byte for byte)
     tc_all(("cc", "-c", src / "crt0_ldr.S", "-o", LDR / "crt0_ldr.o"),
            ("cc", *flags, "-c", src / "loader.c", "-o", LDR / "loader.o"))
     elf = LDR / "loader.elf"
