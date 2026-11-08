@@ -199,7 +199,7 @@ static void run_scn(const scn_t *c, uint32_t id)
         seqm_set_amount(p, 80);
         seqm_roll(p);
     }
-    morph.target = MT_BOTH;
+    song.both = 1;
     morph_musical = 1;
     gl.mode = c->mode, gl.target = GT_BOTH, gl.time = c->time, gl.wait = 0;
     sqm_vary_all = c->vary, sqm_turns = c->turns, sqm_poly = c->poly, sqm_sync = c->sync, sqm_arc = c->arc;

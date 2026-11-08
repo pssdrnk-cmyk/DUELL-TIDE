@@ -133,7 +133,7 @@ static void setup_run(const setup_t *s)
     for (k = 0; k < NTRK; k++)
         if (k < NSHOWN)
             trk[k].p[P_MUTE] = 0;
-    morph.target = MT_BOTH;
+    song.both = 1;
     if (s->style != ST_IDLE) {
         tide_style_apply(s->style == ST_PEAK ? STY_PEAK : STY_DUB);
         gl.time = (uint8_t)s->time;                      /* 0: 1 bar a trip, 4: 16 bars */

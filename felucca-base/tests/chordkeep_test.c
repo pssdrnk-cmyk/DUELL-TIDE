@@ -53,7 +53,7 @@ static uint32_t first_start(void)                       /* the unit as a new one
     project_load(TIDE_FIRST_MULTI);
     run(200);
     song.sel = 0;
-    morph.target = MT_SELECTED;
+    song.both = 0;
     return 0;
 }
 
@@ -185,7 +185,7 @@ static void first(void)
     show_parts(b0, sizeof b0);
     transport_req = 2u;
     run(48);
-    morph.target = MT_BOTH;
+    song.both = 1;
     gl.mode = GM_JOURNEY; gl.target = GT_BOTH; gl.time = 0; gl.wait = 0; gl.on = gl.armed = 0;
     song.g[G_BPM] = 120;
     glide_launch(1u, morph_mask(0), 0);
@@ -205,11 +205,11 @@ static void first(void)
     glide_stop();
     transport_req = 2u;
     run(48);
-    morph.target = MT_SELECTED;
+    song.both = 0;
     {   /* while a glide runs a K1 turn on the CHORD page still lands (nothing re-asserts the old value at the next block) */
         song.sel = 0;
         gl.mode = GM_JOURNEY; gl.target = GT_BOTH; gl.on = gl.armed = 0;
-        morph.target = MT_BOTH;
+        song.both = 1;
         glide_launch(1u, morph_mask(0), 0);
         run(800);
         go_page(GR_CHORD);

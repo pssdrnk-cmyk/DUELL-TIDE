@@ -1252,7 +1252,8 @@ static void sweep_quick(void)
     expect("  .. a second tap: the next GLO page, TEMPO", str_eq(cur_page()->title, "TEMPO") && cur_page()->fam == FAM_GLO);
     /* the header in a quick layer: the selected part alone, even with ALGORITHM at BOTH on PERFORM / MORPH */
     ui_power_on();
-    morph.target = MT_BOTH; song.sel = 1;
+    frames(48);                                         /* (1.0.0-b5: the first frame reads the stored part selection from the settings; set it after) */
+    song.both = 1; song.sel = 1;
     perf_enter(); frames(48);
     expect("PERFORM, ALGORITHM BOTH: both badges", badge_lit() == 3u);
     for (q = 0; q < 4u; q++) {
@@ -1265,7 +1266,7 @@ static void sweep_quick(void)
     expect("  QUICK GLO over PERFORM (BOTH): both badges (its cards are per part)", ui.layer == LAYER_GLO && badge_lit() == 3u);
     btn_up(B_GLO); frames(64);
     perf_leave(); frames(48);
-    morph.target = MT_SELECTED; song.sel = 0;
+    song.both = 0; song.sel = 0;
     /* OCT- in QUICK FILTER puts its four back; in QUICK LFO it is the octave */
     ui_power_on();
     set_engine_of(TSEL, 2u);
@@ -1385,23 +1386,23 @@ static void sweep_algo(void)
             continue;
         }
 #if DUELL_TIDE
-        if (PAGES[i].scope == SC_TIDE)                  /* (TIDE's TIDE SETTINGS and AUTO TIDE: ALGORITHM is the morph's selector there, PART 1 / BOTH / PART 2, as on MORPH: tide_ui.c) */
+        if (PAGES[i].scope == SC_TIDE)                  /* (TIDE's TIDE SETTINGS and AUTO TIDE: HOME pages, PART 1 / BOTH / PART 2 as on MORPH: tide.h HOME_BOTH_PAGE) */
             continue;
 #endif
-        morph.target = MT_SELECTED;
+        song.both = 0;
         song.sel = 0;
         enter(i);
         if (PAGES[i].fam == FAM_GLO && page_global(&PAGES[i])) {   /* GLO (the MIXER first; owner: "GLO / Mixer doesn't allow change of the selected voice"): ALGORITHM picks the part, the screen stays global, BOTH is left alone */
             turn(EN_ALGO, 1);
-            ok &= song.sel == 1u && morph.target == MT_SELECTED && badge_lit() == 3u && ux.glob == 1u;
+            ok &= song.sel == 1u && !song.both && badge_lit() == 3u && ux.glob == 1u;
             turn(EN_ALGO, 1);
             ok &= song.sel == 1u;
             turn(EN_ALGO, -1);
-            ok &= song.sel == 0u && morph.target == MT_SELECTED;
-            morph.target = MT_BOTH;
+            ok &= song.sel == 0u && !song.both;
+            song.both = 1;
             turn(EN_ALGO, 1);
             frame();
-            ok2 &= song.sel == 1u && morph.target == MT_BOTH && badge_lit() == 3u;
+            ok2 &= song.sel == 1u && song.both && badge_lit() == 3u;
             if (!ok || !ok2) {
                 printf("select: ALGORITHM on GLO page %u (%s)\n", (unsigned)i, PAGES[i].title);
                 break;
@@ -1410,11 +1411,11 @@ static void sweep_algo(void)
         }
         if (page_global(&PAGES[i]) || PAGES[i].scope == SC_MODE) {   /* 0.2.24 (owner): a GLOBAL page edits no part: ALGORITHM does nothing there (no part switch, no colour switch); the MODE page counts as global (ui_draw.c screen_global, badge_lit; ui_input.c algo_input; items 128, 138) */
             turn(EN_ALGO, 1); turn(EN_ALGO, -1); turn(EN_ALGO, 1);
-            ok &= song.sel == 0u && morph.target == MT_SELECTED && badge_lit() == 3u && ux.glob == 1u;
-            morph.target = MT_BOTH;
+            ok &= song.sel == 0u && !song.both && badge_lit() == 3u && ux.glob == 1u;
+            song.both = 1;
             turn(EN_ALGO, 1);
             frame();
-            ok2 &= song.sel == 0u && morph.target == MT_BOTH && badge_lit() == 3u;
+            ok2 &= song.sel == 0u && song.both && badge_lit() == 3u;
             if (!ok || !ok2) {
                 printf("select: ALGORITHM on page %u (%s)\n", (unsigned)i, PAGES[i].title);
                 break;
@@ -1422,15 +1423,15 @@ static void sweep_algo(void)
             continue;
         }
         turn(EN_ALGO, 1); turn(EN_ALGO, 1);
-        ok &= song.sel == 1u && morph.target == MT_SELECTED && ux.glob == 0u;
+        ok &= song.sel == 1u && !song.both && ux.glob == 0u;
         turn(EN_ALGO, -1);
-        ok &= song.sel == 0u && morph.target == MT_SELECTED;
-        morph.target = MT_BOTH;                         /* (BOTH left on the MORPH page) */
+        ok &= song.sel == 0u && !song.both;
+        song.both = 1;                         /* (BOTH left on the MORPH page) */
         turn(EN_ALGO, 1);
         frame();
-        ok2 &= song.sel == 1u && morph.target == MT_BOTH && badge_lit() == 2u;
+        ok2 &= song.sel == 1u && song.both && badge_lit() == 2u;
         turn(EN_ALGO, -1);
-        ok2 &= song.sel == 0u && morph.target == MT_BOTH;
+        ok2 &= song.sel == 0u && song.both;
         if (!ok || !ok2) {
             printf("select: ALGORITHM on page %u (%s)\n", (unsigned)i, PAGES[i].title);
             break;
@@ -1438,22 +1439,22 @@ static void sweep_algo(void)
     }
     expect("ALGORITHM on every part page but MORPH: PART 1 / PART 2 only, clamped, never BOTH; on a GLOBAL page nothing (0.2.24: the global colour, both badges)", ok);
     expect("  .. BOTH (set on MORPH) kept, the page's badge the selected part's alone (a GLOBAL page: both)", ok2);
-    morph.target = MT_SELECTED;
+    song.both = 0;
     song.sel = 0;
     enter(mp);
     ok = mp < NPAGES && badge_lit() == 1u;
     turn(EN_ALGO, -1);
-    ok &= song.sel == 0u && morph.target == MT_SELECTED;
+    ok &= song.sel == 0u && !song.both;
     turn(EN_ALGO, 1);
-    ok &= song.sel == 0u && morph.target == MT_BOTH && badge_lit() == 3u;
+    ok &= song.sel == 0u && song.both && badge_lit() == 3u;
     turn(EN_ALGO, 1);
-    ok &= song.sel == 1u && morph.target == MT_SELECTED && badge_lit() == 2u;
+    ok &= song.sel == 1u && !song.both && badge_lit() == 2u;
     turn(EN_ALGO, 1);
-    ok &= song.sel == 1u && morph.target == MT_SELECTED;
+    ok &= song.sel == 1u && !song.both;
     turn(EN_ALGO, -1);
-    ok &= song.sel == 1u && morph.target == MT_BOTH && badge_lit() == 3u;
+    ok &= song.sel == 1u && song.both && badge_lit() == 3u;
     expect("MORPH page: ALGORITHM PART 1 | BOTH | PART 2, clamped; BOTH keeps the selected part, both badges", ok);
-    morph.target = MT_SELECTED;
+    song.both = 0;
     song.sel = 0;
     frames(48);
 }
@@ -1706,9 +1707,55 @@ static void test_mod_hide(void)
     TSEL->p[P_M1SRC] = TSEL->p[P_M1DST] = TSEL->p[P_M1AMT] = 0;
 }
 
+/* 1.0.0-b5: the part selection is PART 1 / PART 2 / BOTH. The keys play as the PLAY MODE row says, whatever the selection: LAYER both parts (its XFADE and SPLIT rows apply), STEREO and DUEL the part
+ * song.sel names; with BOTH that is the last single part (owner 2026-11-08: "the keys play per the PLAY MODE row"; seq.c is not touched) */
+static uint32_t part_gates(uint32_t p)
+{
+    uint32_t i, n = 0;
+    for (i = 0; i < NVOICE; i++)
+        n += trk[p].v[i].gate != 0;
+    return n;
+}
+static void test_keys_both(void)
+{
+    static const uint8_t MODES[3] = {DM_STEREO, DM_SPLIT, DM_LAYER};
+    static const char *const MN[3] = {"STEREO", "DUEL", "LAYER"};
+    uint32_t m, sel, ok;
+    for (m = 0; m < 3u; m++)
+        for (sel = 0; sel < 3u; sel++) {
+            char w[160];
+            uint32_t g0, g1, want0, want1;
+            ui_power_on();
+            duell_mode_req = duell_mode = MODES[m];
+            mix_split = 0;
+            mix_xf = 0;
+            frames(48);
+            song.sel = sel == 1u ? 1u : 0u;
+            song.both = sel == 2u;
+            trk[0].p[P_MUTE] = trk[1].p[P_MUTE] = 0;
+            go_title("AMP ENV");
+            frames(16);
+            key_down(12);
+            frames(48);
+            g0 = part_gates(0);
+            g1 = part_gates(1);
+            key_up(12);
+            frames(200);
+            want0 = m == 2u || sel != 1u;                /* part 1 plays: LAYER always; STEREO / DUEL: PART 1, or BOTH with part 1 the last single part */
+            want1 = m == 2u || sel == 1u;                /* part 2 plays: LAYER always; STEREO / DUEL: PART 2 only */
+            ok = (g0 > 0u) == want0 && (g1 > 0u) == want1 && !part_gates(0) && !part_gates(1);
+            snprintf(w, sizeof w, "keys, %s, %s: part 1 %s, part 2 %s, both let go at the key-up (gates %u / %u)", MN[m], sel == 2u ? "BOTH" : sel ? "PART 2" : "PART 1",
+                     want0 ? "plays" : "silent", want1 ? "plays" : "silent", (unsigned)g0, (unsigned)g1);
+            expect(w, ok);
+        }
+    song.both = 0;
+    song.sel = 0;
+}
+
 int main(void)
 {
     setvbuf(stdout, NULL, _IONBF, 0);
+    test_keys_both();
     sweep_homepg();
     sweep_readonly();
     sweep_pages();

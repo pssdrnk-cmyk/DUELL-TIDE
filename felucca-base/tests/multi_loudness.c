@@ -38,7 +38,7 @@ static void ml_setup(void *v)
     ui_prefs2 |= PREF_MODE_RECALL >> 16;
     project_load(slot);
     for (i = 0; i < 40; i++) { memset(o, 0, sizeof o); mix_block(o, CTL); while (wave_service()) ; }
-    morph_set_target(1);
+    song.both = 1;
     morph_set_fader(getenv("ML_FADER") ? (uint32_t)atoi(getenv("ML_FADER")) : 0u);
     if (getenv("ML_INFO"))
         fprintf(stderr, "M%02u LEVEL %d/%d TRIM %d/%d PAN %d/%d XF %u CHRD %d/%d VOICE %d/%d\n", slot + 1u, trk[0].p[P_LEVEL], trk[1].p[P_LEVEL], trk[0].p[P_TRIM], trk[1].p[P_TRIM], trk[0].p[P_PAN], trk[1].p[P_PAN], (unsigned)mix_xf, trk[0].p[P_CHRD], trk[1].p[P_CHRD], trk[0].p[P_VOICE], trk[1].p[P_VOICE]);
