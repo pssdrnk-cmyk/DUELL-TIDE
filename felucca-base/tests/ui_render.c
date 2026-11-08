@@ -764,8 +764,8 @@ static void state(void)                          /* a playing song with steps on
     memset(&cpub, 0, sizeof cpub);                   /* (DUELL 0.2.9: the CPU bar under the battery in every scene: 5 of 8 steps, amber) */
     cpub.ok = 1; cpub.t = fm1_ms; cpub.step = 5; cpub.lvl = 1;
 #if DUELL_TIDE
-    memset(&cpuh, 0, sizeof cpuh);                   /* (K2: TIDE's header readout on HOME's three pages: a 92 % elapsed peak, 3 periods missed some time ago: amber on the count) */
-    cpuh.ok = 1; cpuh.t = fm1_ms; cpuh.hold = 92; cpuh.hold_t = fm1_ms; cpuh.miss = 3; cpum.base = 0; cpum.miss = 0;
+    memset(&cpuh, 0, sizeof cpuh);                   /* (K2: TIDE's header readout on HOME's three pages: a 92 % elapsed peak, 3 periods missed: both numbers red) */
+    cpuh.t = fm1_ms; cpuh.hold = 92; cpu_snap.miss = 3; cpum.base = 0; cpum.miss = 0;
 #endif
     memset(&gm, 0, sizeof gm);                       /* (GLO's level meters from silence) */
     midi_pch[0] = 0; midi_pch[1] = 1; meter_bus[0] = meter_bus[1] = 0;
@@ -1441,7 +1441,7 @@ static void setup(int s)
     case S_MORPH_SET_BOTH: morph_set_target(1); go_title(MORPH_SET_TITLE); ui.hot_col = 0; ui.hot_t = 30; break;
     case S_MORPH_SET_WILD: morph_set_cfg(MC_WILD | MC_ARP | MC_PIT, 1); morph_set_target(1); go_title(MORPH_SET_TITLE); ui.hot_col = 1; ui.hot_t = 30; 
 #if DUELL_TIDE
-        cpuh.hold = 138; cpuh.miss = 999; cpuh.miss_t = fm1_ms ? fm1_ms : 1u;   /* (K2: the widest readout, a miss just now: 138 and 999 in red) */
+        cpuh.hold = 138; cpu_snap.miss = 999;   /* (K2: the widest readout: 138 and 999, red) */
 #endif
         break;
     case S_MORPH_SAVE: go_title("MORPH"); confirm_open(CF_SAVE_OVER, 0u); break;   /* SAVE held: the SAVE OVER dialog */

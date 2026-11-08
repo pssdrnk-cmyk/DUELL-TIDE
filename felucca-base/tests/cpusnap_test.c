@@ -7,7 +7,7 @@
  *            published at the moment the interrupts go off (host_irq_hook) is in that very poll
  *   WINDOWS  a window keeps the longest of the polls since ITS last take and starts again after it
  *   METER    TEST / ABOUT's PEAK is the elapsed peak, the average the render's
- *   HEAD     TIDE: the header's elapsed peak and miss count (cpu_head): held 4 s, the miss count from the last clear (TEST's RESET: cpum.base), amber / red
+ *   HEAD     TIDE: the header's elapsed peak and miss count (cpu_head): held 4 s, the miss count from the last clear (TEST's RESET: cpum.base), REC red once a period was missed
  * Built and run by DUELL/host_tests.sh (name: cpusnap): the UI sources against ui_test.c's stubs. */
 #define UI_TEST_NO_MAIN 1
 #include "ui_test.c"
@@ -94,43 +94,42 @@ int main(void)
     cpu_meter_poll();
     expect("meter: the peak is the ELAPSED 60 %, the average the render's 50 %", cpum.peak >= 59u && cpum.peak <= 60u && cpum.avg >= 49u && cpum.avg <= 50u);
 #if DUELL_TIDE
-    {   /* HEAD */
-        char l[8], r[8];
-        uint16_t cl, cr;
+    {   /* HEAD: cpu_head reads (the window of the last 4 s, the count since the clear) and gives the two texts and the colour */
         uint32_t g;
+        char l[8], r[8];
+        uint16_t c;
         cpu_n = cpu_sum = cpu_pk = cpu_el_pk = cpu_miss = 0;
         memset(&cpu_snap, 0, sizeof cpu_snap);
         memset(&cpuh, 0, sizeof cpuh);
-        ux.dim = 0x2104u; ux.rec = 0xF800u; ux.light = 0; ux.mono = ux.bw = 0;   /* (distinct colours: the stub's are all 0) */
+        ux.dim = 0x2104u; ux.rec = 0xF800u;              /* (distinct colours: the stub's are all 0) */
         cpum.base = 0;
         cpu_meter_open();
         fm1_ms += 10000u;
         cpu_el_pk = CPU_BUDGET_US * 92u / 100u + 5u;
-        g = cpu_head(l, r, &cl, &cr);
-        expect("head: the first look has no history: it starts the window (0 %, 0)", g && !strcmp(l, "0%") && !strcmp(r, "0"));
-        fm1_ms += CPU_WIN_MS;
+        g = cpu_head(l, r, &c);
+        expect("head: the first look has no history: it starts the window (0, 0)", g && !strcmp(l, "0") && !strcmp(r, "0") && c == T_DIM);
+        fm1_ms += CPU_HOLD_MS;
         cpu_el_pk = CPU_BUDGET_US * 92u / 100u + 5u;
-        cpu_head(l, r, &cl, &cr);
-        expect("head: 92 % and no miss: '92%' and '0', dim", !strcmp(l, "92%") && !strcmp(r, "0") && cl == T_DIM && cr == T_DIM);
+        cpu_head(l, r, &c);
+        expect("head: a window later the longest elapsed half shows: 92 %, no miss", !strcmp(l, "92") && !strcmp(r, "0"));
         fm1_ms += CPU_WIN_MS;
         cpu_el_pk = CPU_BUDGET_US * 40u / 100u + 5u;
-        cpu_head(l, r, &cl, &cr);
-        expect("head: the peak is held while the window's own is lower", !strcmp(l, "92%"));
+        cpu_head(l, r, &c);
+        expect("head: it stays for the 4 s window (read every 4 s, not every frame)", !strcmp(l, "92"));
         fm1_ms += CPU_HOLD_MS;
         cpu_el_pk = CPU_BUDGET_US * 40u / 100u + 5u;
-        cpu_head(l, r, &cl, &cr);
-        expect("head: and falls to the latest after CPU_HOLD_MS", !strcmp(l, "40%"));
-        fm1_ms += CPU_WIN_MS;
+        cpu_head(l, r, &c);
+        expect("head: and goes to the next window's: 40 % (the 92 % was taken)", !strcmp(l, "40"));
         cpu_miss += 2u; cpu_el_pk = CPU_BUDGET_US * 130u / 100u + 5u;
-        cpu_head(l, r, &cl, &cr);
-        expect("head: 2 periods missed: '2' and a 130 peak without the % sign, in the warning colours", !strcmp(r, "2") && !strcmp(l, "130") && cl == T_REC && cr == T_REC);
-        fm1_ms += 6u * CPU_WIN_MS;
-        cpu_head(l, r, &cl, &cr);
-        expect("head: 5 s after the miss the red is amber (the count stays until the clear)", !strcmp(r, "2") && cr == cpu_col(1u, T_BG));
+        fm1_ms += CPU_HOLD_MS;
+        g = cpu_head(l, r, &c);
+        expect("head: 2 periods missed: the count 2 and the 130 peak; what a redraw depends on moved", !strcmp(r, "2") && !strcmp(l, "130") && c == T_REC && g != 0u);
+        fm1_ms += 60u * CPU_WIN_MS;
+        cpu_head(l, r, &c);
+        expect("head: a minute later the count stays until the clear; the old peak is gone", !strcmp(r, "2") && !strcmp(l, "0") && c == T_REC);
         cpum.base = cpu_snap.miss;                      /* TEST's RESET */
-        fm1_ms += CPU_WIN_MS;
-        cpu_head(l, r, &cl, &cr);
-        expect("head: after TEST > RESET the count is 0 and dim again", !strcmp(r, "0") && cr == T_DIM);
+        cpu_head(l, r, &c);
+        expect("head: after TEST > RESET the count is 0", !strcmp(r, "0") && c == T_DIM);
     }
 #endif
     printf("cpusnap: %d checks, %d failed\n", ncheck, bad);

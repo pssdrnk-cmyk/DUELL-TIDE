@@ -97,42 +97,25 @@ static void cpu_meter_poll(void)                       /* once a window, and onl
 }
 #if DUELL_TIDE
 /* K2, TIDE: the CPU truth in the header of HOME's three pages (MORPH, TIDE SETTINGS, AUTO TIDE), in the two gaps beside the page title: at the left the ELAPSED peak (cpu_el_pk: what the DMA deadline sees,
- * the key scan nested in it included) in % of the half's time, held 4 s as TEST's PEAK HOLD, at the right the DMA periods missed since power-on or the last TEST > RESET (cpu_miss - cpum.base). Dim
- * (T_DIM); amber from 95 % or once any period was missed since the clear, red for 5 s after a miss. Read-only: its own window (CPU_W_HEAD), once a second, nothing is cleared for anyone else */
-static struct { uint16_t hold; uint8_t ok; uint32_t t, hold_t, miss, miss_t; } cpuh;
-static uint32_t cpu_head(char *l, char *r, uint16_t *cl, uint16_t *cr)   /* the two texts and their colours -> what a redraw depends on */
+ * the key scan nested in it included) in % of the half's time, the longest of the last 4 s (the window is read every 4 s), at the right the DMA periods missed since power-on or the last TEST > RESET (cpu_miss - cpum.base: the one
+ * clear there is). Dim (T_DIM) until one period was missed since the clear, then both in REC red. Read-only: its own window (CPU_W_HEAD), once a second, nothing is cleared for anyone else */
+static struct { uint16_t hold; uint32_t t; } cpuh;
+static __attribute__((noinline)) uint32_t cpu_head(char *l, char *r, uint16_t *c)   /* the two texts and their colour -> what a redraw depends on */
 {
-    uint32_t el, m, lv;
-    if (fm1_ms - cpuh.t >= CPU_WIN_MS || !cpuh.ok) {
-        uint32_t gap = fm1_ms - cpuh.t;
+    uint32_t el, m, d = fm1_ms - cpuh.t;
+    if (d >= CPU_HOLD_MS) {                            /* the window: the longest elapsed half of the last 4 s, kept 4 s */
         cpu_win_take(CPU_W_HEAD, 0, &el);
         cpuh.t = fm1_ms;
-        el = (uint32_t)clamp((int32_t)((uint64_t)el * 100u / CPU_BUDGET_US), 0, 999);
-        if (!cpuh.ok || gap > 4u * CPU_WIN_MS) {         /* (not looked at for a while: the window is older than a second, start again) */
-            cpuh.ok = 1;
-            cpuh.hold = 0;
-            cpuh.hold_t = fm1_ms;
-            cpuh.miss = cpu_snap.miss;
-        } else if (el >= cpuh.hold || fm1_ms - cpuh.hold_t >= CPU_HOLD_MS) {
-            cpuh.hold = (uint16_t)el;
-            cpuh.hold_t = fm1_ms;
-        }
-        if (cpu_snap.miss != cpuh.miss) {
-            cpuh.miss = cpu_snap.miss;
-            cpuh.miss_t = fm1_ms;
-        }
+        el = d > 2u * CPU_HOLD_MS ? 0u : el * 100u / CPU_BUDGET_US;   /* (not looked at for a while: the window is older than that: left out) */
+        cpuh.hold = (uint16_t)(el > 999u ? 999u : el);
     }
-    m = cpuh.miss - cpum.base;
+    m = cpu_snap.miss - cpum.base;
     if (m > 999u)
         m = 999u;
     fmt_int(l, cpuh.hold);
-    if (cpuh.hold < 100u)
-        str_cpy(l + str_len(l), "%", 2);
     fmt_int(r, (int32_t)m);
-    lv = m && fm1_ms - cpuh.miss_t < CPU_RECENT_MS ? 2u : m || cpuh.hold >= CPU_HOT ? 1u : 0u;
-    *cl = lv ? cpu_col(lv, T_BG) : T_DIM;
-    *cr = lv >= 1u && m ? cpu_col(lv, T_BG) : T_DIM;
-    return cpuh.hold * 31u + m * 211u + lv * 1009u + 1u;
+    *c = m ? T_REC : T_DIM;
+    return cpuh.hold + (m << 10) + 1u;
 }
 #endif
 static uint32_t cpu_recent(void) { return cpum.seen && fm1_ms - cpum.miss_t < CPU_RECENT_MS; }

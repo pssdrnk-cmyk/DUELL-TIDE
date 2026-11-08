@@ -101,7 +101,7 @@ static void draw_battery(void)
 #define CPU_BAR_STEPS 8u
 static uint16_t cpu_col(uint32_t lvl, uint16_t bg);   /* (ui_menu.c) */
 #if DUELL_TIDE
-static uint32_t cpu_head(char *l, char *r, uint16_t *cl, uint16_t *cr);   /* (ui_menu.c K2: the header's CPU readout on TIDE's pages) */
+static uint32_t cpu_head(char *l, char *r, uint16_t *c);   /* (ui_menu.c K2: the header's CPU readout on TIDE's pages) */
 #endif
 static struct { uint32_t t, n0, sum0, miss0; uint8_t ok, step, lvl; } cpub;   /* lvl 0 theme, 1 amber, 2 red */
 static void cpu_bar_set(uint32_t pct, uint32_t flash) /* the load in % of the last window, and a missed half in it */
@@ -642,10 +642,10 @@ static void draw_head(void)
           (msg ? 0u : str_hash(13u, tb) + pi * 31u) + (head_ab_b() ? 811u : 0u) + (morph_fader_of(1 - song.sel) >= 127u ? 1301u : 0u) + (uint32_t)(notes_show_on() ? 17u : 0u) + (uint32_t)nv * 41u + head_marks(0) * 3011u + head_marks(1) * 4421u;
 #if DUELL_TIDE                                         /* TIDE hook (K2): HOME's three pages show the CPU's elapsed peak and the missed blocks beside the title (ui_menu.c cpu_head) */
     char cps[8], cms[8];
-    uint16_t cpc = 0, cmc = 0;
+    uint16_t cpc = 0;
     uint32_t cpk = 0;
     if (!glob && !msg && tide_foot_parts() && !ui.menu && !ui.guide && !ui.confirm)
-        cpk = cpu_head(cps, cms, &cpc, &cmc);
+        cpk = cpu_head(cps, cms, &cpc);
     sig += cpk * 6397u;
 #endif
     if (!ui.force && sig == ui.head_sig)
@@ -683,8 +683,8 @@ static void draw_head(void)
     if (cpk) {                                         /* K2: the elapsed peak at the left of the title, the missed periods at the right, small and dim (T_DIM), on the capsules' baseline */
         int32_t cy = UT_CAP_BASE - AF_S_CAP_Y - AF_S_CAP_H + 1 - Y_HEAD;
         GFX_HOOK_ALIGN(0, 0, 0, H_HEAD, AL_V, "header text on its middle");
-        cv_text_x16((CAP_X + CAP_W + 5) * 16, cy, &AF_S, cps, cpc, T_BG);
-        cv_text_x16((240 - CAP_X - CAP_W - 5) * 16 - text_w16(&AF_S, cms), cy, &AF_S, cms, cmc, T_BG);
+        cv_text(CAP_X + CAP_W + 5, cy, &AF_S, cps, cpc);
+        cv_text_r(240 - CAP_X - CAP_W - 5, cy, &AF_S, cms, cpc, T_BG);
     }
 #endif
     /* (owner V9: no rule under any title; the gradient stays on the title text, values and bars) */
