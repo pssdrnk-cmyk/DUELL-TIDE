@@ -68,4 +68,11 @@ TWOCORE = os.environ.get("DUELL_TWOCORE") == "1"
 if TWOCORE:
     NAMES = NAMES + [f for fs in TWOCORE_GROUPS.values() for f in fs]
     NAMES = [f for f in NAMES if f not in ("mod_tsrc", "mod_part_put")]   # hunt3: these two are in range X in TWOCORE builds (ram_fns_x.py X_FROM_Z)
+# TIDE 1.0.0-b5 (RAM room for the one-part change): cold code back to the flash, about 1 KB of range Z. The EQ's coefficient design (fx.c eq_design and
+# its helpers eq_q28, eq_taylor, eq_hz_q8, and __divdi3, which only they call from RAM) runs when a band's integer key changes (a knob step, a morph
+# step, a band turned on or off), not every block: track_eq, the per-block filter, stays in range Z (tools/ram_allow.py has the reason). morph_apply
+# is called only from the UI (ui_input, morph_effective_x). Plain DUELL (DUELL_TIDE=0) keeps them in range Z, byte for byte.
+TIDE_FLASH = ("eq_design", "eq_q28", "eq_taylor", "eq_hz_q8", "__divdi3", "morph_apply")
+if os.environ.get("DUELL_TIDE") != "0":
+    NAMES = [f for f in NAMES if f not in TIDE_FLASH]
 HI = 0x01C74000                                 # the stack guard (app_ram.ld _guard0): Z ends below it
