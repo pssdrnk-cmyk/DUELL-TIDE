@@ -173,7 +173,7 @@ static void rp_put(uint32_t f, uint32_t v)
  * default: every older setting), 1 STEREO, 2 LAYER; an unknown code reads as SPLIT and is kept as saved until the mode is
  * changed (ui_input.c mode_settings) */
 #define ui_mode_set (favorites.factory[15][9])
-/* the MODE page's KNOB 3..4 (core.h mix_xf, mix_split), two more bytes no engine uses, kept with the settings and in
+/* the MODE page's (TIDE: the XFADE and SPLIT rows') KNOB 3..4 (core.h mix_xf, mix_split), two more bytes no engine uses, kept with the settings and in
  * each MULTI: [15][6] XFADE (0..100 %), [15][7] SPLIT (0 = OFF, else the note + 1). [15][5] was BALANCE's (int8): item 157, a SPARE byte,
  * neither read nor written (the settings record keeps its size and layout). 0 in every older setting = XFADE 0, SPLIT OFF (nothing changes);
  * an out-of-range byte reads as 0 / OFF and is kept as saved until the value is changed (ui_input.c mode_settings) */

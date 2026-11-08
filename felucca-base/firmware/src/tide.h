@@ -156,6 +156,7 @@ static int tide_foot_two(void);
 #define TIDE_HOME_NAME "MORPH"                           /* MENU > CONTROL > HOME OPENS: the first page of the round (MORPH, as stock; AUTO TIDE is the round's 3rd) */
 #define TIDE_HOME_MODE(pg) ((pg)->graph == GR_TIDELIST)   /* HOME OPENS = MODE: TIDE has no MODE page (hidden, VIS_NOTIDE); its MODE is a row of TIDE SETTINGS, which opens with that row picked */
 #define TIDE_PICK_MODE() tide_pick_mode()
+#define TIDE_MODE_SAY "PLAY MODE "                       /* the header message of the output mode (the TIDE SETTINGS row PLAY MODE; AUTO TIDE's K2 is MODE) */
 /* LIVE GRAPHS (ui_live.c, included by ui_graph.c; the animation of the envelope, LFO, CYCLE, filter, insert, matrix and chord pictures; MENU > ANIM OFF takes it away). FM6 AMP DEST shows the operator envelope (OP ENV's picture) so that it can follow it */
 #define TIDE_LIVE_SIG(pg, t, h) ((h) = ((h) ^ live_sig((pg), (t))) * 16777619u)
 #define TIDE_LIVE_DRAW(pg, t) live_draw((pg), (t))
@@ -236,6 +237,7 @@ static int tide_foot_two(void);
 #define TIDE_HOME_NAME "MORPH"
 #define TIDE_HOME_MODE(pg) ((pg)->scope == SC_MODE)
 #define TIDE_PICK_MODE() ((void)0)
+#define TIDE_MODE_SAY "MODE "
 #define TIDE_LIVE_SIG(pg, t, h) ((void)0)
 #define TIDE_LIVE_DRAW(pg, t) ((void)0)
 #define TIDE_LIVE_MOD(t, y0) ((void)0)

@@ -6,7 +6,7 @@ DUELL turns the FM-1 into two synths in one box. This page is the short tour; [S
 
 ## The idea
 - **Two parts**, 1 and 2. Each has its own sound, effects, EQ, ducker and arp. The **ALGORITHM** knob picks which part you are editing.
-- **Three modes** (on the MODE page, first knob: MODE. It is the third page of HOME's round: MORPH, MORPH SET, MODE. With TIDE there is no MODE page: MODE, XFADE and SPLIT are the last three rows of TIDE SETTINGS):
+- **Three modes.** Plain DUELL: the MODE page, the third page of HOME's round (MORPH, MORPH SET, MODE), first knob. With TIDE there is no MODE page: PLAY MODE, XFADE and SPLIT are the last three rows of TIDE SETTINGS:
   - **DUEL**: part 1 hard left, part 2 hard right, kept apart, effects included. For playing two sounds into two channels.
   - **STEREO**: both parts in one stereo field, for headphones.
   - **LAYER** (default): both parts play on the keys together. The MODE page (with TIDE: the XFADE and SPLIT rows of TIDE SETTINGS) has XFADE (velocity crossfade) and SPLIT (a key split point) for it; DUEL and STEREO have neither.
@@ -29,7 +29,7 @@ Hold **HOME**. Four tabs: **DISPLAY** (COLOR, LIGHTS, SCALE LIGHTS, ANIMATION, S
 
 ## Make a first sound
 1. Turn **PRESETS** to hear sounds. Turn **ALGORITHM** to select part 2 and load another.
-2. Go to the MODE page (with TIDE: TIDE SETTINGS, last rows) and try DUEL, STEREO, LAYER.
+2. Go to the MODE page (with TIDE: TIDE SETTINGS, the PLAY MODE row) and try DUEL, STEREO, LAYER.
 3. Press **HOME** for the MORPH page. Knob 1 moves the morph from A to B. Knob 2 rolls a new random end with one click (turn left = A, right = B). Knob 3 undoes the last roll of A or B. Knob 4 is AMOUNT, the one percentage: how far a roll may go. On this page **ALGORITHM** has three positions, PART 1, BOTH and PART 2: with BOTH the morph moves both parts and both part numbers in the header light up.
 4. Press **SAVE**. The first page is **PATCHES**: 128 slots, #1 to #128, and the factory sounds fill them; with TIDE the last four are empty USER slots (U1 to U4) for new sounds, and the factory sounds go to #171 (#129 and up are read-only places). The list shows the factory sounds first, then your saved sounds, then the empty USER slots last. **Hold SAVE** asks "OVERWRITE #12 <name>?" (the slot your sound came from); turn **knob 1** in the dialog to pick another slot, turn **knob 2 (RENAME)** to give the sound a new name first (the NAME screen opens; OCT+ there brings you back to the dialog with the new name), OCT+ says yes. Whatever was in that slot is replaced. Knob 4 **RESTORE** takes your sound out of the slot again and the factory sound comes back.
    **Tip:** a short press of SAVE opens the page that fits where you are: PATTERNS when you are on a sequencer page (STEP, SEQUENCER HELP, PARAMETER LOCKS), otherwise MULTIS in LAYER and PATCHES in DUEL and STEREO. SELECT moves between PATCHES, PATTERNS, MULTIS and TOOLS. Hold SAVE on PATTERNS or MULTIS saves over the slot you picked ("SAVE OVER <name>?", OCT+ yes); an empty multi slot asks for a name first.

@@ -69,7 +69,7 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 - Code nits with no measured effect (finding 35): `DUELL_PROBE_STAGES` defined outside `#if DUELL_TIDE`; `morph_xside` into RAM only if the unit shows its cost; `glide_stop` lags one poll.
 
 **TIDE interface**
-- HOME without the MODE page: built in b3. MODE (LAYER / STEREO / DUEL), XFADE and SPLIT are the last three rows of TIDE SETTINGS, values kept where they were (settings and multis); HOME's round is MORPH, TIDE SETTINGS, AUTO TIDE. Owner decision 2026-11-08.
+- HOME without the MODE page: built in b3. PLAY MODE (LAYER / STEREO / DUEL), XFADE and SPLIT are the last three rows of TIDE SETTINGS, values kept where they were (settings and multis); HOME's round is MORPH, TIDE SETTINGS, AUTO TIDE. Owner decision 2026-11-08.
 - LFO DEPTH destinations shown as "LFO1/2 LVL"; the mod wheel keeps driving MORPH.
 - A legend while OCT- is held on the TIDE page (C9, not built).
 

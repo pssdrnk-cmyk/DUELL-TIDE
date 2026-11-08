@@ -5,7 +5,7 @@
  *                  left: glide to A, right: to B, two detents to stop a running glide), K2 MODE (ONCE / LOOP / DRIFT / WNDR / JRNY), K3 TIME
  *                  (bars), K4 WAIT; OCT- + K1 back to the Original, + K2 an ARC drop, + K3 / K4 TIME and WAIT to the STYLE's   ... play
  *   TIDE SETTINGS  (GR_TIDELIST) the settings in a list, as the MENU's: K1 picks the row, OCT+ or K2..K4 the next value, OCT- the one before.
- *                  STYLE, TARGET, VARY BARS, ROLL, ROLL ARP, ROLL PITCH, WASH, TURNS, POLY, SYNC, ARC, MODE, XFADE, SPLIT (JL_NAME)             ... set and forget
+ *                  STYLE, TARGET, VARY BARS, ROLL, ROLL ARP, ROLL PITCH, WASH, TURNS, POLY, SYNC, ARC, PLAY MODE, XFADE, SPLIT (JL_NAME)             ... set and forget
  * LINK: TARGET SND+SEQ links the two faders: GLIDE moves both, and the MORPH fader moved by hand (the MORPH page, the mod wheel, CC 70:
  * ui_input.c morph_act) moves the SEQ fader with it (tide_link). ALGORITHM is the morph's selector here too: PART 1, BOTH, PART 2
  * (morph_mask). The panel shows both faders with the glide on them, and the selected part's 16 steps as they play: varied ones
@@ -133,8 +133,8 @@ static void tide_link(uint32_t mask, uint32_t v)
 }
 
 /* ---------------------------------------------------------------- TIDE SETTINGS --- */
-enum { JL_STYLE, JL_TARGET, JL_VARY, JL_ROLL, JL_ARP, JL_PITCH, JL_WASH, JL_TURNS, JL_POLY, JL_SYNC, JL_ARC, JL_MODE, JL_XFADE, JL_SPLIT, JL_N };   /* (MODE, XFADE, SPLIT: the output mode's own settings, not part of STYLE; ui_input.c mode_knob) */
-static const char *const JL_NAME[JL_N] = {"STYLE", "TARGET", "VARY BARS", "ROLL", "ROLL ARP", "ROLL PITCH", "WASH", "TURNS", "POLY", "SYNC", "ARC", "MODE", "XFADE", "SPLIT"};
+enum { JL_STYLE, JL_TARGET, JL_VARY, JL_ROLL, JL_ARP, JL_PITCH, JL_WASH, JL_TURNS, JL_POLY, JL_SYNC, JL_ARC, JL_MODE, JL_XFADE, JL_SPLIT, JL_N };   /* (MODE, XFADE, SPLIT: the output mode's own settings, not part of STYLE; they go through ui_input.c mode_knob, whose header describes the old MODE page: TIDE's rows are these three) */
+static const char *const JL_NAME[JL_N] = {"STYLE", "TARGET", "VARY BARS", "ROLL", "ROLL ARP", "ROLL PITCH", "WASH", "TURNS", "POLY", "SYNC", "ARC", "PLAY MODE", "XFADE", "SPLIT"};
 static uint8_t jl_sel;                                   /* the row picked (K1) */
 static void morph_act(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi);   /* (ui_input.c) */
 static void tide_pick_mode(void) { jl_sel = JL_MODE; }   /* HOME OPENS = MODE (ui.c go_main_to): TIDE SETTINGS with the MODE row picked */
@@ -188,9 +188,14 @@ static __attribute__((noinline)) const char *jl_needs(uint32_t r)
         return duell_mode_req == DM_LAYER ? 0 : "LAYER ONLY";
     return gl.mode < GM_WANDER ? "WNDR OR JRNY" : !morph_musical ? "ROLL MUSIC" : gl.target == GT_SOUND ? "TARGET SEQ" : 0;   /* (what the row needs, short: knob 1's line has 91 px after "SETTING TURNS") */
 }
+/* does row r's value draw dim (it does nothing now)? nd: jl_needs(JL_TURNS). MODE always acts; XFADE and SPLIT need LAYER; TURNS .. ARC need nd (tests/mode_test.c checks this) */
+static int jl_dimmed(uint32_t r, const char *nd)
+{
+    return r == JL_MODE ? 0 : r >= JL_XFADE ? jl_needs(r) != 0 : r >= JL_TURNS && nd != 0;
+}
 /* the rows as tables: how many values each has, its byte (STYLE, TARGET and the plain rows; ROLL, ARP and PITCH are the morph's), the values'
  * names, and the header message a change shows: the prefix + the value's name, or a message of its own (TARGET, VARY BARS, TURNS) */
-static const uint8_t JL_NV[JL_N] = {6, 3, 2, 3, 2, 2, 4, 3, 3, 3, 3, 3, 101, 129};
+static const uint8_t JL_NV[JL_N] = {6, 3, 2, 3, 2, 2, 4, 3, 3, 3, 3, 3, 101, 129};   /* (XFADE 101: mix_xf 0..100 %; SPLIT 129: mix_split 0 = OFF, then note + 1 up to 128) */
 static volatile uint8_t *const JL_VAR[JL_N] = {[JL_STYLE] = &tide_style, [JL_TARGET] = &gl.target, [JL_VARY] = &sqm_vary_all, [JL_WASH] = &morph_wlvl,
                                                [JL_TURNS] = &sqm_turns, [JL_POLY] = &sqm_poly, [JL_SYNC] = &sqm_sync, [JL_ARC] = &sqm_arc};
 static const char *const JL_V[] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK", "CUSTOM", "SOUND", "SEQ", "SND+SEQ", "EVERY 4TH", "EVERY BAR", "MUSIC", "SMART", "WILD",
@@ -214,7 +219,7 @@ static uint32_t jl_get(uint32_t r)
 }
 static const char *jl_vname(uint32_t r, uint32_t v)
 {
-    static char b[8];
+    static char b[8];                                    /* (one buffer for XFADE and SPLIT: the caller draws or copies the name before the next call; do not cache the pointer) */
     r %= JL_N;
     if (r == JL_XFADE) {
         fmt_int(b, (int32_t)(v % 101u));
@@ -278,6 +283,10 @@ static int tide_list_on(void) { return !ui.perf && !ui.layer && cur_page()->grap
 static void tide_list_oct(uint32_t oct)
 {
     uint32_t r = jl_sel % JL_N, v = jl_get(r);
+    if (r >= JL_XFADE) {                                 /* XFADE steps 10 %, SPLIT one octave (12) from where it is; out of OFF the first step lands on the middle key (mode_knob). Both stop at their ends */
+        mode_knob(r - JL_MODE, (oct & 2u) ? (r == JL_SPLIT && !v ? 1 : r == JL_SPLIT ? 12 : 10) : (oct & 1u) ? (r == JL_SPLIT ? -12 : -10) : 0);
+        return;
+    }
     if ((oct & 2u) && v + 1u < jl_n(r))
         jl_put(r, v + 1u);
     else if ((oct & 1u) && v)
@@ -855,7 +864,7 @@ static void graph_tidelist(void)
             cv_rrect(x, sy, 26, 14, -7, track, bg);
             cv_rrect(on ? x + 14 : x + 2, sy + 2, 10, 10, -5, knob, track);
         } else
-            cv_text_r(xr, ty, &AF_M, v, sel ? T_INK : (r == JL_MODE ? 0 : r >= JL_XFADE ? jl_needs(r) : r >= JL_TURNS && nd) ? T_DIM : T_THEME, bg);   /* (a row that does nothing now: dim; MODE always acts) */
+            cv_text_r(xr, ty, &AF_M, v, sel ? T_INK : jl_dimmed(r, nd) ? T_DIM : T_THEME, bg);   /* (a row that does nothing now: dim; MODE always acts) */
     }
     if (JL_N > JL_VIS) {                                 /* where the window is in the list: a 2 px mark at the right (audit C12) */
         int32_t hh = UT_L5_PITCH * (int32_t)JL_VIS, th = hh * (int32_t)JL_VIS / (int32_t)JL_N;

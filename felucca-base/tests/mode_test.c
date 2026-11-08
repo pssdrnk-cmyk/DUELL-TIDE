@@ -1077,12 +1077,23 @@ static void t_mode_rows(void)
     mode_page();
     frames(32);
     expect("TIDE SETTINGS: MODE, XFADE, SPLIT are its last three rows, after ARC", JL_MODE == JL_ARC + 1u && JL_XFADE == JL_ARC + 2u && JL_SPLIT == JL_ARC + 3u && JL_N == JL_SPLIT + 1u &&
-           str_eq(JL_NAME[JL_MODE], "MODE") && str_eq(JL_NAME[JL_XFADE], "XFADE") && str_eq(JL_NAME[JL_SPLIT], "SPLIT"));
+           str_eq(JL_NAME[JL_MODE], "PLAY MODE") && str_eq(JL_NAME[JL_XFADE], "XFADE") && str_eq(JL_NAME[JL_SPLIT], "SPLIT"));
     expect("  .. HOME's round has no MODE page (hidden), PAGES keeps its entry", !page_visible(page_of("MODE")) && page_of("MODE") < NPAGES);
     for (i = 0; i < 5u; i++) {
         press(B_HOME);
         frames(8);
         expect("  .. HOME never lands on MODE", PAGES[ui.page].scope != SC_MODE);
+    }
+    {   /* PLAY MODE must fit: the header message (150 px), the knob-1 line, the list row (name at UT_L5_TAG_X, value to the right with a gap) */
+        int32_t hm = 0, row = 0, k1 = text_w(&AF_S, "SETTING") + 4 + text_w(&AF_M, "PLAY MODE"), v;
+        static const char *const M[3] = {"PLAY MODE LAYER", "PLAY MODE STEREO", "PLAY MODE DUEL"};
+        for (v = 0; v < 3; v++)
+            hm = text_w(&AF_M, M[v]) > hm ? text_w(&AF_M, M[v]) : hm;
+        row = UT_L5_TAG_X + text_w(&AF_M, "PLAY MODE") + 12 + text_w(&AF_M, "STEREO");
+        printf("mode: PLAY MODE widths: header message %d px (of 150), knob-1 line %d px, list row %d px (of %d)\n", hm, k1, row, UT_L5_W);
+        expect("PLAY MODE: the longest header message fits 150 px", hm <= 150);
+        expect("  .. knob 1's line (SETTING + PLAY MODE) fits the 91 px + label room the TURNS line had (<= 150)", k1 <= 150);
+        expect("  .. the list row: name, 12 px gap, the longest value (STEREO) inside the row", row <= UT_L5_W - 5);
     }
     /* MODE: the same names, order and message as the old K1 */
     mode_page();
@@ -1091,9 +1102,9 @@ static void t_mode_rows(void)
     expect("MODE row reads LAYER first", str_eq(jl_vname(JL_MODE, jl_get(JL_MODE)), "LAYER"));
     ui.msg_t = 0;
     turn(EN_K2, 1);
-    expect("  .. K2 right: STEREO, the message MODE STEREO", duell_mode_req == DM_STEREO && msg_is("MODE STEREO"));
+    expect("  .. K2 right: STEREO, the message PLAY MODE STEREO", duell_mode_req == DM_STEREO && msg_is("PLAY MODE STEREO"));
     turn(EN_K3, 1);
-    expect("  .. K3 right: DUEL, the message MODE DUEL", duell_mode_req == DM_SPLIT && msg_is("MODE DUEL"));
+    expect("  .. K3 right: DUEL, the message PLAY MODE DUEL", duell_mode_req == DM_SPLIT && msg_is("PLAY MODE DUEL"));
     turn(EN_K4, 3);
     expect("  .. further right stays DUEL", duell_mode_req == DM_SPLIT);
     tide_list_oct(1u);
@@ -1107,7 +1118,18 @@ static void t_mode_rows(void)
     turn(EN_K2, 7);
     expect("XFADE row (LAYER): a turn moves it by the detents turned", mix_xf == 27);
     tide_list_oct(2u);
-    expect("  .. OCT+ one step", mix_xf == 28);
+    expect("  .. OCT+ one step: 10 %", mix_xf == 37);
+    tide_list_oct(1u);
+    tide_list_oct(1u);
+    expect("  .. OCT- twice: 17", mix_xf == 17);
+    mix_xf = 95;
+    tide_list_oct(2u);
+    expect("  .. OCT+ from 95 stops at 100", mix_xf == 100);
+    mix_xf = 4;
+    tide_list_oct(1u);
+    expect("  .. OCT- from 4 stops at 0", mix_xf == 0);
+    mix_xf = 20;
+    turn(EN_K2, 7);
     turn(EN_K2, 500);
     expect("  .. clamped at 100", mix_xf == 100);
     expect("  .. no 'needs' text in LAYER", jl_needs(JL_XFADE) == 0 && jl_needs(JL_SPLIT) == 0);
@@ -1121,6 +1143,20 @@ static void t_mode_rows(void)
     mix_split = 0;
     tide_list_oct(2u);
     expect("  .. OCT+ out of OFF: the middle key too", mix_split == SPLIT_MID);
+    tide_list_oct(2u);
+    expect("  .. OCT+ again: one octave up (12)", mix_split == SPLIT_MID + 12);
+    tide_list_oct(1u);
+    tide_list_oct(1u);
+    expect("  .. OCT- twice: two octaves down", mix_split == SPLIT_MID - 12);
+    mix_split = 124;
+    tide_list_oct(2u);
+    expect("  .. OCT+ near the top stops at 128 (note 127)", mix_split == 128);
+    mix_split = 5;
+    tide_list_oct(1u);
+    expect("  .. OCT- near the bottom stops at OFF", mix_split == 0);
+    tide_list_oct(1u);
+    expect("  .. OCT- at OFF stays OFF", mix_split == 0);
+    mix_split = SPLIT_MID;
     expect("  .. the value reads as a note name", str_eq(jl_vname(JL_SPLIT, jl_get(JL_SPLIT)), "F#4"));
     for (i = 0; i < 2u; i++) {
         duell_mode_req = i ? DM_SPLIT : DM_STEREO;
@@ -1145,11 +1181,63 @@ static void t_mode_rows(void)
     turn(EN_K2, 1);
     frames(64);
     expect("STYLE stays DUB (not CUSTOM) after MODE, XFADE and SPLIT change", tide_style == STY_DUB && tide_style_holds());
-    /* the page redraws when any of the three changes (from the panel, MIDI or a multi load) */
-    jl_sel = JL_MODE;
+    /* the page redraws when any of the three changes from outside the panel: a MIDI CC (the learned MODE CC; XFADE and SPLIT lines) as midi_control.c sets them in the ISR, or a multi load.
+     * The signature checked is graph_signature(), the one draw_graph compares frame to frame (not only tide_list_sig, which loops jl_get); TIDE_GRAPH_SIG returns tide_list_sig()
+     * for this page, so the three values are in it by way of jl_get (they are read from the live bytes, not a copy) */
+    mode_page();
+    frames(32);
+    duell_mode_req = DM_LAYER;
+    mix_xf = 10;
+    mix_split = 0;
+    jl_sel = JL_STYLE;
+    sig = graph_signature();
+    expect("TIDE SETTINGS draws by graph_signature: stable while nothing changes", graph_signature() == sig);
+    midi(0xB0, 0, MIDI_MODE_CC, 50);                      /* CC 112 = 50: STEREO (mode_apply in the ISR path, as t_cc) */
+    mblk(1);
+    expect("a MIDI CC for MODE (as the ISR sets it) moves graph_signature", duell_mode_req == DM_STEREO && graph_signature() != sig);
+    sig = graph_signature();
+    duell_mode_req = DM_LAYER;
+    midi_glob_act(MAP_T_XFADE, 64u);
+    expect("  .. XFADE by a global CC line", mix_xf == 50 && graph_signature() != sig);
+    sig = graph_signature();
+    midi_glob_act(MAP_T_SPLIT, 60u);
+    expect("  .. SPLIT by a global CC line", mix_split == 61 && graph_signature() != sig);
+    sig = graph_signature();
+    {
+        uint8_t keep[3] = {duell_mode_req, mix_xf, mix_split};
+        duell_mode_req = DM_SPLIT;                        /* a multi load (multi.c) sets the three bytes the same way */
+        mix_xf = 3;
+        mix_split = 0;
+        expect("  .. a multi load changing all three", graph_signature() != sig);
+        duell_mode_req = keep[0];
+        mix_xf = keep[1];
+        mix_split = keep[2];
+    }
+    /* row dimming (the b613526 bug): MODE never dims; XFADE and SPLIT dim outside LAYER only; TURNS .. ARC dim while the automatic TIDE is not on (jl_dimmed is the draw's rule) */
+    {
+        uint32_t r, ok_mode = 1, ok_lay = 1, ok_duel = 1, ok_inert = 1;
+        const char *nd;
+        gl.mode = GM_ONCE;                                /* TURNS .. ARC inert */
+        nd = jl_needs(JL_TURNS);
+        for (r = JL_TURNS; r <= JL_ARC; r++)
+            ok_inert &= nd != 0 && jl_dimmed(r, nd);
+        for (i = 0; i < 3u; i++) {
+            duell_mode_req = (uint8_t)(i == 0u ? DM_LAYER : i == 1u ? DM_STEREO : DM_SPLIT);
+            ok_mode &= !jl_dimmed(JL_MODE, nd);
+            if (i == 0u)
+                ok_lay &= !jl_dimmed(JL_XFADE, nd) && !jl_dimmed(JL_SPLIT, nd);
+            else
+                ok_duel &= jl_dimmed(JL_XFADE, nd) && jl_dimmed(JL_SPLIT, nd);
+        }
+        expect("dimming, TURNS .. ARC inert: MODE's value never dims, in LAYER, STEREO and DUEL", ok_mode && ok_inert);
+        expect("  .. XFADE and SPLIT do not dim in LAYER", ok_lay);
+        expect("  .. XFADE and SPLIT dim in STEREO and DUEL", ok_duel);
+        expect("  .. rows before TURNS (STYLE .. WASH) never dim", !jl_dimmed(JL_STYLE, nd) && !jl_dimmed(JL_WASH, nd));
+        duell_mode_req = DM_LAYER;
+    }
     sig = tide_list_sig();
     duell_mode_req = (uint8_t)(duell_mode_req == DM_LAYER ? DM_STEREO : DM_LAYER);
-    expect("the page's signature follows MODE", tide_list_sig() != sig);
+    expect("tide_list_sig follows MODE", tide_list_sig() != sig);
     sig = tide_list_sig();
     mix_xf ^= 1u;
     expect("  .. XFADE", tide_list_sig() != sig);
@@ -1188,6 +1276,20 @@ static void t_settings(void)
     expect("  .. LAYER again after the power cycle", duell_mode_req == DM_LAYER);
     mblk(1);
     expect("  .. and the audio side follows at its next block", duell_mode == DM_LAYER);
+    {   /* the three values through the settings record (what a backup holds and a power cycle reads): MODE, XFADE, SPLIT */
+        persist_t q;
+        duell_mode_req = DM_LAYER;
+        mix_xf = 37;
+        mix_split = 70;
+        frame();
+        settings_export(&q);
+        expect("the settings record holds MODE, XFADE and SPLIT ([15][9], [15][6], [15][7])", q.favorites.factory[15][9] == DM_LAYER && q.favorites.factory[15][6] == 37 && q.favorites.factory[15][7] == 70);
+        ui_power_on();
+        expect("  .. power cycle: MODE back to its default", duell_mode_req == DM_SPLIT);
+        expect("  .. the record imports", settings_import(&q, sizeof q) == 1);
+        frame();
+        expect("  .. MODE, XFADE and SPLIT are what they were", duell_mode_req == DM_LAYER && mix_xf == 37 && mix_split == 70);
+    }
     midi(0xB0, 3, MIDI_MODE_CC, 60);
     mblk(1);
     frame();

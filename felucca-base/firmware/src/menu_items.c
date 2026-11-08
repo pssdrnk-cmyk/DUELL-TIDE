@@ -178,7 +178,7 @@ static const menu_flag_t MENU_FLAGS[] = {
     {MI_PREVIEW, PREF_PREVIEW, {"OFF", "ON"}},         /* 1.2, Discussion #169: ON, the cursor's step sounds (ui_input.c) */
     {MI_CPU, PREF_CPU_OFF, {"ON", "OFF"}},             /* DUELL 0.2.9: OFF, no CPU bar under the header's battery (ui_draw.c); bit clear = ON, as every older setting */
     {MI_MODERECALL, PREF_MODE_RECALL, {"KEEPS MODE", "SETS MODE"}},   /* DUELL 0.2.11 MODE RECALL, 0.2.14 MULTI LOAD: KEEPS MODE (default, bit clear) a multi load
-                                                       * leaves the MODE page (MODE, XFADE, SPLIT) as it is; SETS MODE, it sets the ones saved in the multi (multi.c) */
+                                                       * leaves MODE, XFADE and SPLIT (the MODE page; TIDE: their TIDE SETTINGS rows) as they are; SETS MODE, it sets the ones saved in the multi (multi.c) */
     {MI_CHADD, PREF_CHORD_ADD, {"WRITE", "ADD"}},      /* 1.2, #155 CHORD ENTRY HOLD / ADD, 0.2.14 STEP KEYS WRITE / ADD: ADD, keys add to the cursor step (ui_input.c) */
 };
 /* (OUTPUT EQ, the low cut and BASS+, was removed in 0.2.19) */
