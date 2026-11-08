@@ -22,6 +22,8 @@
 #include <time.h>
 static void fm1_irq_off(void);
 static void fm1_irq_on(void);
+static unsigned ease_probe[2];                          /* (K3 EASE section: core.h EASE_PROBE: 0 a morph blend of a block, 1 a block of FM6 retunes) */
+#define EASE_PROBE(k) (ease_probe[k]++)
 #include "ui_test.c"
 
 static uint8_t nor[0x100000];
@@ -461,6 +463,180 @@ static void check_wash(void)
     REQUIRE("optimized wash preserves legacy state and samples across floor changes, fading and restarts",
             bad == 0 && active > 1000u && floor_changes > 100u && fading > 100u && restarts > 0u);
 }
+/* ---------------------------------------------------------------- K3 EASE: the ease ladder's levels 1, 2 and 3 on real scenes (the render forced to a level; core.h ease)
+ * kind 0: a GLIDE (BACK AND FORTH, both parts), kind 1: a hand on both faders (a triangle, every block a new position), kind 2: kind 0 with note bursts on both parts.
+ * The renders are compared with the same scene at level 0: the largest sample step, the difference's level and its largest step. */
+#define EZ_N 2400u
+static int32_t ez_rec[4][EZ_N * 2u * CTL], ez_df[EZ_N * 2u * CTL];
+static unsigned ez_xon, ez_stuck;
+static void ease_run(uint32_t slot, uint32_t lvl, uint32_t kind, int32_t *rec, uint32_t nblk)
+{
+    uint32_t i, j, off = 0, offn[2] = {0, 0};
+    load(slot);
+    tide_style_apply(0);
+    gl.mode = GM_LOOP;
+    gl.target = GT_BOTH;
+    gl.time = 4;
+    morph_musical = 1;
+    song.g[G_BPM] = 240;
+    song.master_q12 = 4096;                             /* (the host mix follows MASTER: at unity) */
+    ease = 0, ovl_lite = 0;
+    for (i = 0; i < 24u; i++)
+        block_step();
+    if (kind != 1u)
+        glide_launch(1u, 3u, 0u);
+    else
+        transport_req = 1u;
+    for (i = 0; i < 300u; i++) {
+        block_step();
+        mix_block(ob, CTL);
+        while (wave_service())
+            ;
+    }
+    ease = (uint8_t)lvl, ovl_lite = lvl >= EASE_LIGHT;
+    ease_probe[0] = ease_probe[1] = 0;
+    ez_xon = ez_stuck = 0;
+    for (i = 0; i < nblk; i++) {
+        uint32_t q;
+        block_step();
+        if (kind == 1u) {
+            uint32_t f = i % 254u < 127u ? i % 254u : 254u - i % 254u;   /* (0 .. 127 and back in 0.37 s: a new position every block) */
+            morph_do(MQ_FADER, 1u, f);
+            morph_do(MQ_FADER, 2u, 127u - f);
+        }
+        if (kind == 2u)                                 /* (bursts: five notes on each part every 40 blocks, released 25 blocks later) */
+            for (q = 0; q < 2u; q++)
+                for (j = 0; j < 5u; j++) {
+                    if (i % 40u == 0u) trk_note_on(&trk[q], 50u + 3u * j + q, 100);
+                    if (i % 40u == 25u) trk_note_off(&trk[q], 50u + 3u * j + q);
+                }
+        mix_block(ob, CTL);
+        while (wave_service())
+            ;
+        for (q = 0; q < 2u; q++) {                      /* a stand-in left on a note: xs / xr set while the part's crossing has been off for 3 blocks */
+            ez_xon += fm6_xt[q].on != 0;
+            offn[q] = fm6_xt[q].on ? 0u : offn[q] + 1u;
+            if (trk[q].engine == trk[q].eng_req && ENGINES[trk[q].engine] == &ENG_FM6 && offn[q] >= 3u)
+                for (j = 0; j < FM6_POLY; j++) {
+                    const fm6_note_t *n = (const fm6_note_t *)ENG_MEM(q) + j;
+                    ez_stuck += n->live && (n->xs | n->xr);
+                }
+        }
+        if (rec)
+            for (j = 0; j < 2u * CTL; j++)
+                rec[off++] = ob[j];
+    }
+    ease = 0, ovl_lite = 0;
+}
+/* each run in a child forked from the same untouched parent: the same start state every time (the DSP lines, seeds, TIDE's own state), so two runs differ only by the level */
+static struct { unsigned probe[2], xon, stuck; int32_t rec[EZ_N * 2u * CTL]; } *ez_sh;
+static void ease_fork(uint32_t slot, uint32_t lvl, uint32_t kind, int32_t *rec, uint32_t nblk)
+{
+    pid_t pid;
+    int st = 0;
+    if (!ez_sh) {
+        void *m = mmap(0, sizeof *ez_sh, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+        ez_sh = m == MAP_FAILED ? 0 : m;
+    }
+    ez_xon = ez_stuck = 0, ease_probe[0] = ease_probe[1] = 0;
+    if (!ez_sh)
+        return;
+    memset(ez_sh, 0, sizeof *ez_sh);                    /* (the record too: a child that dies leaves zeros, never the run before's samples) */
+    fflush(stdout);
+    pid = fork();
+    if (!pid) {
+        ease_run(slot, lvl, kind, rec ? ez_sh->rec : 0, nblk);
+        ez_sh->probe[0] = ease_probe[0], ez_sh->probe[1] = ease_probe[1], ez_sh->xon = ez_xon, ez_sh->stuck = ez_stuck;
+        _exit(0);
+    }
+    if (pid > 0)
+        waitpid(pid, &st, 0);
+    REQUIRE("EASE: the scene's child ran to its end (exit status 0)", pid > 0 && WIFEXITED(st) && WEXITSTATUS(st) == 0);
+    ease_probe[0] = ez_sh->probe[0], ease_probe[1] = ez_sh->probe[1], ez_xon = ez_sh->xon, ez_stuck = ez_sh->stuck;
+    if (rec)
+        memcpy(rec, ez_sh->rec, nblk * 2u * CTL * sizeof rec[0]);
+}
+static int32_t ez_step(const int32_t *x, uint32_t n)    /* the largest step between two samples of one channel (interleaved stereo) */
+{
+    int32_t m = 0, d;
+    uint32_t i;
+    for (i = 2; i < n; i++)
+        d = x[i] - x[i - 2u], d = d < 0 ? -d : d, m = d > m ? d : m;
+    return m;
+}
+static void check_ease(void)
+{
+    static const char *const KN[3] = {"GLIDE", "hand faders", "GLIDE + note bursts"};
+    uint32_t slot, kind, sx = 99u, best = 0, n = EZ_N * 2u * CTL;
+    unsigned b0, b1, x0, x1, bs = 0;
+    for (slot = 0; slot < 16u; slot++) {                /* the scene with an FM6 crossing: the multi whose fader sweep runs the bridge longest */
+        ease_fork(slot, 0, 1, ez_rec[0], 1200u);
+        if (getenv("GLIDECPU_V"))
+            printf("glidecpu: EASE scan M%02u: bridge on %u part-blocks, largest step %d\n", slot + 1u, ez_xon, ez_step(ez_rec[0], 1200u * 2u * CTL));
+        if (ez_xon > best)
+            best = ez_xon, sx = slot;
+    }
+    printf("glidecpu: EASE the FM6 crossing scene: M%02u (bridge on in %u part-blocks of 2400)\n", sx + 1u, best);
+    REQUIRE("EASE: a factory multi's GLIDE runs the FM6 crossing", sx < 16u && best > 100u);
+    if (sx >= 16u)
+        return;
+    /* level 1 really skips: the blends of a hand on the faders, the retune blocks of the FM6 crossing, over 64 blocks (the counts of blocks 300 .. 364 of the run:
+     * two runs, 300 and 364 blocks long, from the same start) */
+    for (b0 = b1 = 0, slot = 0; slot < 16u && !b1; slot++) {
+        unsigned a0, a1, c0, c1;
+        ease_fork(slot, 0, 1, 0, 364u); a0 = ease_probe[0];
+        ease_fork(slot, 0, 1, 0, 300u); a0 -= ease_probe[0];
+        ease_fork(slot, 1, 1, 0, 364u); c0 = ease_probe[0];
+        ease_fork(slot, 1, 1, 0, 300u); c0 -= ease_probe[0];
+        a1 = a0, c1 = c0;
+        if (getenv("GLIDECPU_V"))
+            printf("glidecpu: EASE blends M%02u: %u -> %u\n", slot + 1u, a1, c1);
+        if (a1 && a1 % 64u == 0u)                       /* (a multi whose morph blends every block of the hand's move: TIDE's own transitions invalidate none of it) */
+            b0 = a1, b1 = c1, bs = slot;
+    }
+    {
+        unsigned a, b;
+        ease_fork(sx, 0, 1, 0, 364u); a = ease_probe[1];
+        ease_fork(sx, 0, 1, 0, 300u); b = ease_probe[1];
+        x0 = a - b;
+        ease_fork(sx, 1, 1, 0, 364u); a = ease_probe[1];
+        ease_fork(sx, 1, 1, 0, 300u); b = ease_probe[1];
+        x1 = a - b;
+    }
+    printf("glidecpu: EASE level 1 over 64 blocks: morph blends %u -> %u (hand faders, M%02u), FM6 retune blocks %u -> %u (hand faders across the crossing, M%02u)\n", b0, b1, bs + 1u, x0, x1, sx + 1u);
+    REQUIRE("EASE level 1: a hand on the faders blends every block at level 0 and every 4th at level 1 (64 / 16 a part, one either way at the window's edges)", b0 && b0 % 64u == 0u && b1 * 4u + 8u >= b0 && b1 * 4u <= b0 + 8u);
+    REQUIRE("EASE level 1: the FM6 crossing retunes every block at level 0 and every other one at level 1 (64 / 32 a part)", x0 && x0 % 64u == 0u && x1 * 2u == x0);
+    for (kind = 0; kind < 3u; kind++) {
+        uint32_t sl = kind == 1u ? 0u : sx, lv;
+        int32_t st0;
+        ease_fork(sl, 0, kind, ez_rec[0], EZ_N);
+        ease_fork(sl, 0, kind, ez_rec[3], EZ_N);
+        REQUIRE("EASE: the scene renders the same twice at level 0 (the comparison is meaningful)", !memcmp(ez_rec[0], ez_rec[3], n * sizeof ez_rec[0][0]));
+        st0 = ez_step(ez_rec[0], n);
+        for (lv = 1; lv <= 3u; lv += 2u) {
+            double e2 = 0, s2 = 0;
+            uint32_t i;
+            int32_t st, d0;
+            ease_fork(sl, lv, kind, ez_rec[lv], EZ_N);
+            if (kind == 2u)
+                REQUIRE("EASE: no FM6 stand-in left on a note after the crossing ends (note bursts, levels 1 and 3)", !ez_stuck);
+            st = ez_step(ez_rec[lv], n);
+            for (i = 0; i < n; i++) {
+                double d = (double)ez_rec[lv][i] - ez_rec[0][i];
+                e2 += d * d, s2 += (double)ez_rec[0][i] * ez_rec[0][i];
+                ez_df[i] = ez_rec[lv][i] - ez_rec[0][i];
+            }
+            d0 = ez_step(ez_df, n);
+            printf("glidecpu: EASE %s (M%02u) level %u: largest step %d (level 0: %d), the difference %.1f dB under the signal, its largest step %d\n",
+                   KN[kind], sl + 1u, lv, st, st0, 10.0 * log10((s2 + 1) / (e2 + 1)), d0);
+            REQUIRE("EASE: no click at level 1 or 3: the largest sample step within 5 % of level 0's + 50 (the level-1 click check proper: ease_test LEVEL1 JUMP)", st <= st0 + st0 / 20 + 50);
+            REQUIRE("EASE: the difference to level 0 steps no more than level 0's own largest step", d0 <= st0);
+        }
+    }
+    ease_fork(sx, 2, 2, 0, EZ_N);                        /* level 2's takeover with note bursts across the crossing: nothing stuck either */
+    REQUIRE("EASE: level 2 with note bursts across the FM6 crossing leaves no stand-in on a note", !ez_stuck);
+}
+
 int main(void)
 {
     setvbuf(stdout, 0, _IONBF, 0);
@@ -468,6 +644,7 @@ int main(void)
     if (getenv("GLIDECPU_REPORT") || getenv("GLIDECPU_ENDS") || getenv("GLIDECPU_ONLY"))
         return report_main();
     check_wash();
+    check_ease();
     printf("glidecpu: %u checks, %u failures\n", checks, failures);
     return failures ? 1 : 0;
 }

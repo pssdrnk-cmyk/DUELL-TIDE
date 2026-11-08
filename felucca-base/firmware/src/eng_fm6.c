@@ -88,6 +88,7 @@ typedef struct {
     uint8_t dirty;                               /* a held note still holds a stand-in (fm6_xblock runs on after the transition) */
     uint8_t drain;                               /* morph_xreset left the drain to the next block (core 1 may still render this part): fm6_block does it */
     fm6_xpitch_t pa, pb;                         /* endpoint tuning with macros applied */
+    uint8_t ez;                                  /* K3 ease level 1: the retune runs on every other block (fm6_xfer.c fm6_xblock; the struct's pad byte) */
 } fm6_xt_t;
 static fm6_xt_t fm6_xt[NLIVE] __attribute__((section(".pool"))); /* zeroed at startup before audio */
 typedef struct {

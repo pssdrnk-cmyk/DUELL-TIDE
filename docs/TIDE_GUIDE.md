@@ -108,6 +108,10 @@ DUEL (part 1 left, part 2 right, effects separate), STEREO, LAYER. This is stock
 
 A new unit (or after ERASE DATA) comes up as multi **M02 DUB CHORD** with AUTO TIDE on JRNY and STYLE DUB. Its two 16-step patterns play on PLAY with no key held (ARP SEQ). Press PLAY. With REC armed the pattern keeps playing; the keys sound as you play them and go into the pattern (the REC row of TIDE SETTINGS chooses ADD or REPLACE for ordinary parts).
 
+## When the unit is busy
+
+With heavy sounds and a moving morph the audio can get close to its limit. TIDE then backs off by itself, in steps, before it cuts anything. First a glide or a crossing moves in slightly coarser steps. Then a new note may take over a note that is already fading: the old tail stops when the new note starts. Then the delay's RANDOM and OCT UP play as the plain delay. Only if that is not enough do fading notes end early, and a held note only after the audio really missed a block. When the load is lower again it steps back one step at a time: about 1 s each for the first steps, about 3 s from LIGHT FX up (longer if the unit needed LIGHT FX again right after it ended, so the delay does not keep switching). Only LIGHT FX can be seen, in ABOUT; the other steps show nowhere. Nothing is stored and there is nothing to set.
+
 ## KEEP
 
 In the SEQ tools, hold SEQ and press G4 (KEEP): what you hear now becomes the part's own, sound and pattern, with one UNDO. Use it to freeze a good moment, then start the next tide from there.
