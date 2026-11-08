@@ -13,7 +13,7 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 | **Older betas** | `1.0.0-b4` (`d519548`: the ease ladder, the silent-bus skip, STYLE DRONE, the screen cleanups), `1.0.0-b3` (`c124935`), `1.0.0-b2` (`0d2fcb9`), `1.0.0-b1` (`817658d`) and `beta-2026-11-04` (`77a6df2`), all GitHub pre-releases. |
 | **Development** | `1.0.0-b6`: the effect buses on core 1 (K4, then K10), with MORPH c3 and roles T4 (see "After b3" and "Planned" below). |
 | **Flash** | 574,232 B of the 581,564 B slot (`1.0.0-b5` build, 8 November): **7,332 B free**; RAM .data+.bss 68,624 B of 73,728. Every addition is measured; simplifications pay for features. Keep 0xEA000..0xFBFFF for future pattern / multi slots. |
-| **CPU** | Since `1.0.0-b4` (the ease ladder): 0 missed blocks and 0 cut voices over the 16-multi GLIDE sweep on the unit, worst block about 90 %; `1.0.0-b5` measured the same with the wave tap (0 missed, 0 cut, worst 90 %). The drones are not yet measured under a GLIDE. |
+| **CPU** | Since `1.0.0-b4` (the ease ladder): 0 missed blocks and 0 cut voices over the 16-multi GLIDE sweep on the unit, worst block about 90 %; `1.0.0-b5`'s sweep matched it, but the wave tap's own cost is not yet proven (MORPH page on screen during the sweep unconfirmed; rerun after the rework). The drones are not yet measured under a GLIDE. |
 
 ## How we work
 
