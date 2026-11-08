@@ -26,12 +26,12 @@ POLY = ["OFF", "GENTLE", "WIDE"]
 SYNC = ["OFF", "SOFT", "PUSH"]
 ARC = ["OFF", "RISE", "DROP"]
 WASH = ["OFF", "LOW", "MID", "HIGH"]
-NAMES = ["DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK"]
+NAMES = ["DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK", "DRONE"]
 
 
 def code_styles():
     text = open(os.path.join(SRC, "tide_ui.c"), encoding="utf-8").read()
-    m = re.search(r"STY\[5\]\[9\]\s*=\s*\{(.*?)\};", text, re.S)
+    m = re.search(r"STY\[6\]\[9\]\s*=\s*\{(.*?)\};", text, re.S)
     rows = re.findall(r"\{([^{}]*)\}", m.group(1))
     out = []
     for r in rows:

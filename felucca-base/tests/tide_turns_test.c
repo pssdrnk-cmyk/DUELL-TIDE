@@ -846,9 +846,9 @@ static void t_style(void)
     flash_ok = 1;
     pt_boot();
     frame();
-    CHECK("STYLE shows its names, 6 values, first row", !strcmp(jl_vname(JL_STYLE, 0), "DUB") && !strcmp(jl_vname(JL_STYLE, 4), "PEAK") && !strcmp(jl_vname(JL_STYLE, 5), "CUSTOM") &&
-          jl_n(JL_STYLE) == 6u && JL_STYLE == 0);
-    for (k = 0; k < 5u; k++) {
+    CHECK("STYLE shows its names, 7 values, first row", !strcmp(jl_vname(JL_STYLE, 0), "DUB") && !strcmp(jl_vname(JL_STYLE, 4), "PEAK") && !strcmp(jl_vname(JL_STYLE, 5), "DRONE") && !strcmp(jl_vname(JL_STYLE, 6), "CUSTOM") &&
+          jl_n(JL_STYLE) == 7u && JL_STYLE == 0);
+    for (k = 0; k < 6u; k++) {
         gl.target = GT_SEQ, morph_musical = 0;
         jl_put(JL_STYLE, k);
         tide_settings();
@@ -942,6 +942,23 @@ static void t_style(void)
     tide_style = 2;
     tide_settings();
     CHECK("an out-of-range style byte: CUSTOM", tide_style == STY_CUSTOM);
+    rec[5 + TS_STYLE] = 5;                                         /* b4: 5 is DRONE; an earlier build stored CUSTOM as 5 (these are PEAK's values: CUSTOM, no style remembered) */
+    put_rec(rec, 5u + TS_N);
+    tide_seen_ok = 0;
+    tide_style_last = STY_DUB;
+    tide_settings();
+    CHECK("an old CUSTOM (5) with other rows: CUSTOM, as before", tide_style == STY_CUSTOM && tide_style_last == STY_DUB);
+    for (k = 0; k < 9u; k++)
+        rec[5 + (k == 0 ? TS_MODE : k == 1 ? TS_TIME : k == 2 ? TS_WAIT : k == 3 ? TS_VARY : k == 4 ? TS_TURNS : k == 5 ? TS_POLY : k == 6 ? TS_SYNC : k == 7 ? TS_ARC : TS_WASH)] = STY[STY_DRONE][k];
+    put_rec(rec, 5u + TS_N);
+    tide_seen_ok = 0;
+    tide_settings();
+    CHECK("a stored 5 with DRONE's rows: DRONE", tide_style == STY_DRONE && style_is(STY_DRONE));
+    rec[5 + TS_STYLE] = STY_CUSTOM;
+    put_rec(rec, 5u + TS_N);
+    tide_seen_ok = 0;
+    tide_settings();
+    CHECK("a stored 6 (CUSTOM): CUSTOM, its values kept", tide_style == STY_CUSTOM && style_is(STY_DRONE));
     rec[5 + TS_STYLE] = 1;                                         /* DEEP's byte, PEAK's values: they differ, so CUSTOM at once */
     put_rec(rec, 5u + TS_N);
     tide_seen_ok = 0;

@@ -83,6 +83,7 @@ Links from the project's pages (installer, emulator, issue forms) to the guides 
 | **MINIMAL** | WNDR | 8 bars | OFF | EVERY BAR | LEAD | WIDE | PUSH | OFF | OFF |
 | **AMBIENT** | JRNY | 64 bars | 8 bars | EVERY 4TH | TOGETHER | GENTLE | OFF | OFF | HIGH |
 | **PEAK** | JRNY | 8 bars | OFF | EVERY BAR | LEAD | GENTLE | PUSH | DROP | OFF |
+| **DRONE** | WNDR | 64 bars | OFF | EVERY 4TH | TOGETHER | OFF | OFF | OFF | HIGH |
 
 A new unit starts on DUB, so DUB's row (bold) is the default. A unit that had TIDE settings saved before STYLE existed keeps them and shows CUSTOM; the rows it lacked load as TURNS TAKE TURNS, POLY GENTLE, SYNC SOFT and ARC OFF.
 

@@ -56,7 +56,7 @@ K1 picks the row. **OCT+** the next value, **OCT-** the one before (knobs 2 to 4
 
 | Row | Values (default first) | What it does | Start |
 |---|---|---|---|
-| **STYLE** | DUB, DEEP, MINIMAL, AMBIENT, PEAK, CUSTOM | The top row. One pick sets the AUTO TIDE mode (K2), TIME, WAIT and the rows VARY BARS, TURNS, POLY, SYNC, ARC and WASH together. TARGET, ROLL, ROLL ARP and ROLL PITCH stay yours. Changing any of those nine by hand turns STYLE into CUSTOM and keeps your values. Step onto a style and back to CUSTOM, and CUSTOM brings your values back (until a power cycle). TURNS, POLY, SYNC and ARC act only in automatic MUSIC WNDR / JRNY with SEQ in TARGET. Otherwise their values are dim, and knob 1's line says what is missing. The presets are in the table below. | DUB |
+| **STYLE** | DUB, DEEP, MINIMAL, AMBIENT, PEAK, DRONE, CUSTOM | The top row. One pick sets the AUTO TIDE mode (K2), TIME, WAIT and the rows VARY BARS, TURNS, POLY, SYNC, ARC and WASH together. TARGET, ROLL, ROLL ARP and ROLL PITCH stay yours. Changing any of those nine by hand turns STYLE into CUSTOM and keeps your values. Step onto a style and back to CUSTOM, and CUSTOM brings your values back (until a power cycle). TURNS, POLY, SYNC and ARC act only in automatic MUSIC WNDR / JRNY with SEQ in TARGET. Otherwise their values are dim, and knob 1's line says what is missing. The presets are in the table below. | DUB |
 | **TARGET** | SND+SEQ, SOUND, SEQ | What the glide moves: the sound, the pattern, or both together. SND+SEQ links the two faders; the MORPH fader moved by hand drags the SEQ fader with it. | SND+SEQ |
 | **VARY BARS** | EVERY 4TH, EVERY BAR | When the pattern plays its variation: on every 4th bar of the phrase (EVERY 4TH), or every bar. | EVERY 4TH |
 | **ROLL** | MUSIC, SMART, WILD | How a new End B is made. MUSIC turns five dials (bright, movement, shape, space, character) inside the ranges where that kind of sound actually lives, so a brighter end is not a louder one. SMART is DUELL's own safe roll. WILD drops the safety rules. | MUSIC |
@@ -97,6 +97,9 @@ Defaults with no saved settings (a new unit, or after ERASE DATA): STYLE DUB, th
 | MINIMAL | WNDR, 8, OFF, EVERY BAR, LEAD, WIDE, PUSH, OFF, OFF |
 | AMBIENT | JRNY, 64, 8, EVERY 4TH, TOGETHER, GENTLE, OFF, OFF, HIGH |
 | PEAK | JRNY, 8, OFF, EVERY BAR, LEAD, GENTLE, PUSH, DROP, OFF |
+| DRONE | WNDR, 64, OFF, EVERY 4TH, TOGETHER, OFF, OFF, OFF, HIGH |
+
+DRONE is for a held chord of one of the factory drone sounds (#164 to #171) with HOLD on: WNDR keeps the sound and slowly moves it between its two ends over 64 bars, never waits at an end, and leaves out the rhythmic rows (TURNS TOGETHER, POLY, SYNC and ARC OFF) that a held chord would not use; WASH HIGH gives the slow breath. AMBIENT is JRNY: it hops from sound to sound and shortens loops. A STYLE saved by an earlier build still loads as the same style (CUSTOM moved from 5 to 6; an old 5 reads as CUSTOM unless its nine values are DRONE's).
 
 Dub-techno recipe: STYLE DUB, ALGORITHM BOTH (by hand: **AUTO TIDE** JRNY or WNDR, TIME 16, WAIT 2 to 4; **SETTINGS** TARGET SND+SEQ, VARY EVERY 4TH, ROLL MUSIC, ROLL ARP OFF, ROLL PITCH OFF, WASH LOW). Press PLAY, twist K1 right, walk away.
 
