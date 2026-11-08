@@ -632,11 +632,13 @@ static int cpu_head_on(int glob, int msg)              /* K2: HOME's three pages
 {
     return !glob && !msg && tide_foot_parts() && !ui.menu && !ui.guide && !ui.confirm;
 }
-/* K2: the header's CPU readout as a pill of the capsules' rows, outline and radius holding a small number (S, its ink centred, on the capsules' baseline), 7 px a figure + 9
- * (one figure 16 px: as wide as tall; three 30 px: the room between a capsule and TIDE SETTINGS less 2 px each side); x < 0: it ends at -x */
+/* K2: the header's CPU readout as a pill of the capsules' rows and radius holding a small number (S, its ink centred, on the capsules' baseline), 7 px a figure + 5, at least
+ * as wide as tall (b4, UI audit 22: UT_TITLE_GAP from the capsule, no outline, so it is no third cell of it; three figures 26 px: x 47 .. 72, 3 px before TIDE SETTINGS); x < 0: it ends at -x */
 static void k2_pill(int32_t x, const char *s, uint16_t edge, uint16_t fill, uint16_t ink)
 {
-    int32_t w = (int32_t)str_len(s) * 7 + 9;
+    int32_t w = (int32_t)str_len(s) * 7 + 5;
+    if (w < UT_CAP_H)
+        w = UT_CAP_H;
     if (x < 0)
         x = -x - w;
     cv_rrect(x, UT_CAP_Y, w, UT_CAP_H, UT_CAP_R, edge, T_BG);
@@ -701,10 +703,10 @@ static void draw_head(void)
         head_title_draw(tb, glob);
     }
 #if DUELL_TIDE
-    if (cpk) {                                         /* K2: the elapsed peak in a dim outlined pill 2 px right of part 1's capsule; the missed periods, only when there are any, in a REC red badge 2 px left of part 2's */
-        k2_pill(CAP_X + CAP_W + 2, cps, T_DIM, T_BG, T_MID);
+    if (cpk) {                                         /* K2: the elapsed peak in a T_RAISE pill UT_TITLE_GAP right of part 1's capsule; the missed periods, only when there are any, in a REC red badge UT_TITLE_GAP left of part 2's */
+        k2_pill(CAP_X + CAP_W + UT_TITLE_GAP, cps, T_RAISE, T_RAISE, T_MID);
         if (cms[0] != '0')
-            k2_pill(-(240 - CAP_X - CAP_W - 2), cms, T_REC, T_REC, T_BG);
+            k2_pill(-(240 - CAP_X - CAP_W - UT_TITLE_GAP), cms, T_REC, T_REC, T_BG);
     }
 #endif
     /* (owner V9: no rule under any title; the gradient stays on the title text, values and bars) */
