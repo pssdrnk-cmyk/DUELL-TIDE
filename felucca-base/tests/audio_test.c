@@ -203,6 +203,23 @@ static void dma(void)
     host_us = 100; host_half_reads = 0; host_dma_advanced = 1;
     fm1_alnk0_irq();
     check("meter: a half the DMA overtook is a miss too", cpu_miss == 2u && cpu_pk > 100u);
+    /* K2: misses count DMA periods (the half's ELAPSED time over 1, 2, 3 periods), the elapsed peak is kept beside the render's */
+    cpu_miss = 0; cpu_pk = cpu_el_pk = 0;
+    host_us = 2u * (HALF_FRAMES * 1000000u / FS) + 10u; host_half_reads = 0; host_dma_advanced = 0;
+    fm1_alnk0_irq();
+    check("meter K2: a half over two periods is 2 misses", cpu_miss == 2u && cpu_el_pk == host_us);
+    host_us = 3u * (HALF_FRAMES * 1000000u / FS) + 10u;
+    fm1_alnk0_irq();
+    check("meter K2: a half over three periods is 3 misses (5 in all)", cpu_miss == 5u);
+    cpu_miss = 0; cpu_pk = cpu_el_pk = 0;
+    host_us = HALF_FRAMES * 1000000u / FS - 100u; host_nest = 0;
+    fm1_alnk0_irq();
+    check("meter K2: a half within its period is no miss; the elapsed peak = the render peak with nothing nested", cpu_miss == 0u && cpu_el_pk == host_us && cpu_pk == host_us);
+    cpu_pk = cpu_el_pk = 0;
+    host_us = HALF_FRAMES * 1000000u / FS + 200u; host_nest = 400u;   /* (TIMER5 nested 400 us: the render alone is inside its period, the deadline's elapsed time is not) */
+    fm1_alnk0_irq();
+    check("meter K2: TIMER5 nested in the half makes the elapsed time miss while the render does not (cpu_pk < cpu_el_pk)", cpu_miss == 1u && cpu_pk == host_us - 400u && cpu_el_pk == host_us);
+    host_nest = 0;
 }
 /* MASTER and USB (DUELL 0.2.25: MENU > USB LEVEL is removed, USB is always at the fixed level): mix_block makes the mix at master_q12 = MASTER_USB_REF (2048) whatever
  * the knob says; USB (uac_tap) takes that; audio.c master_dac gives the DAC out * master_q12 / 2048 with OUT_SHIFT fractional bits, saturated, the gain gliding

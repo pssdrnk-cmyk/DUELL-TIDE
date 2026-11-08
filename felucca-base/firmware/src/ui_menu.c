@@ -12,11 +12,12 @@
 
 
 /* DUELL CPU LOAD METER (MENU > SYSTEM > TEST: the full card, graph_test below; ABOUT keeps a line). The audio ISR (audio.c) adds each I2S half's
- * render time to cpu_sum / cpu_n, keeps the longest in cpu_pk and counts the halves that missed their time (cpu_miss); this
- * reads them once a second, only while TEST or ABOUT is shown (cpu_meter_poll from their signature), so nothing runs for it
- * otherwise. AVERAGE = the sum / (halves x the half's time) of the last second; PEAK = the longest half of the last second,
- * held (the highest of the last CPU_HOLD_MS, then it falls to the latest); MISSED = halves over their time or overtaken
- * by the DMA since power-on. Colours (fixed, flat): below 80 % the theme, 80 % and up amber (NEAR LIMIT), 95 % and up or a
+ * render time to cpu_sum / cpu_n, keeps the longest in cpu_pk and the longest ELAPSED half in cpu_el_pk, and counts the DMA periods
+ * missed (cpu_miss); cpu_snap_poll (below) is the one place that reads and clears the peaks, this reads its snapshot
+ * once a second, only while TEST or ABOUT is shown (cpu_meter_poll from their signature), so nothing runs for it
+ * otherwise. AVERAGE = the sum / (halves x the half's time) of the last second (the render's); PEAK = the longest ELAPSED half of the last second
+ * (K2: what the DMA deadline saw), held (the highest of the last CPU_HOLD_MS, then it falls to the latest); MISSED = DMA periods missed
+ * since power-on. Colours (fixed, flat): below 80 % the theme, 80 % and up amber (NEAR LIMIT), 95 % and up or a
  * miss in the last 5 s red (the word says it too: MONO has no colours). Emulator: FELUCCA_METER_EST, a voice-count
  * ESTIMATE (audio.c), shown as such */
 #define CPU_WIN_MS 1000u
@@ -30,44 +31,110 @@ static struct {
     uint32_t base;                                     /* TEST's RESET: the misses counted from here (ABOUT: since power-on) */
     uint8_t seen;                                      /* a miss was ever seen (miss_t valid) */
 } cpum;
+static uint32_t cpu_wpk[CPU_NW], cpu_wel[CPU_NW];       /* each reader's own longest half since its last take (us) */
+static void cpu_snap_poll(void)                        /* THE owner (K2): read and clear the ISR's peaks together, fold them into every window */
+{
+    uint32_t k;
+    fm1_irq_off();
+    cpu_snap.sum = cpu_sum;
+    cpu_snap.n = cpu_n;
+    cpu_snap.miss = cpu_miss;
+    cpu_snap.pk = cpu_pk;
+    cpu_snap.el_pk = cpu_el_pk;
+    cpu_pk = cpu_el_pk = 0;
+    fm1_irq_on();
+    cpu_snap.seq++;
+    for (k = 0; k < CPU_NW; k++) {
+        if (cpu_snap.pk > cpu_wpk[k])
+            cpu_wpk[k] = cpu_snap.pk;
+        if (cpu_snap.el_pk > cpu_wel[k])
+            cpu_wel[k] = cpu_snap.el_pk;
+    }
+}
+static void cpu_win_take(uint32_t k, uint32_t *pk, uint32_t *el_pk)   /* reader k's longest half (render, elapsed: us) since its last take; the window starts again */
+{
+    cpu_snap_poll();
+    if (pk)
+        *pk = cpu_wpk[k];
+    if (el_pk)
+        *el_pk = cpu_wel[k];
+    cpu_wpk[k] = cpu_wel[k] = 0;
+}
 static void cpu_meter_open(void)                       /* TEST / ABOUT opened: a fresh window (the IIR load until it is over) */
 {
-    cpum.n0 = cpu_n;
-    cpum.sum0 = cpu_sum;
-    cpu_pk = 0;
+    cpu_win_take(CPU_W_MENU, 0, 0);
+    cpum.n0 = cpu_snap.n;
+    cpum.sum0 = cpu_snap.sum;
     cpum.t = fm1_ms;
     cpum.avg = cpum.peak = cpum.hold = (uint16_t)(song.cpu_q8 * 100u / 256u);
     cpum.hold_t = fm1_ms;
-    cpum.miss = cpu_miss;
+    cpum.miss = cpu_snap.miss;
     cpum.seen = 0;
 }
 static void cpu_meter_poll(void)                       /* once a window, and only when asked */
 {
-    uint32_t n, sum, pk;
+    uint32_t n, sum, el;
     if (fm1_ms - cpum.t < CPU_WIN_MS)
         return;
-    do {
-        n = cpu_n;
-        sum = cpu_sum;
-    } while (n != cpu_n);
-    pk = cpu_pk;
-    cpu_pk = 0;
+    cpu_win_take(CPU_W_MENU, 0, &el);
+    n = cpu_snap.n;
+    sum = cpu_snap.sum;
     cpum.t = fm1_ms;
     if (n != cpum.n0)
         cpum.avg = (uint16_t)clamp((int32_t)((uint64_t)(sum - cpum.sum0) * 100u / ((uint64_t)(n - cpum.n0) * CPU_BUDGET_US)), 0, 999);
     cpum.n0 = n;
     cpum.sum0 = sum;
-    cpum.peak = (uint16_t)clamp((int32_t)((uint64_t)pk * 100u / CPU_BUDGET_US), 0, 999);
+    cpum.peak = (uint16_t)clamp((int32_t)((uint64_t)el * 100u / CPU_BUDGET_US), 0, 999);   /* (K2: the elapsed peak, what the deadline saw; the average stays the render's) */
     if (cpum.peak >= cpum.hold || fm1_ms - cpum.hold_t >= CPU_HOLD_MS) {
         cpum.hold = cpum.peak;
         cpum.hold_t = fm1_ms;
     }
-    if (cpu_miss != cpum.miss) {
-        cpum.miss = cpu_miss;
+    if (cpu_snap.miss != cpum.miss) {
+        cpum.miss = cpu_snap.miss;
         cpum.miss_t = fm1_ms;
         cpum.seen = 1;
     }
 }
+#if DUELL_TIDE
+/* K2, TIDE: the CPU truth in the header of HOME's three pages (MORPH, TIDE SETTINGS, AUTO TIDE), in the two gaps beside the page title: at the left the ELAPSED peak (cpu_el_pk: what the DMA deadline sees,
+ * the key scan nested in it included) in % of the half's time, held 4 s as TEST's PEAK HOLD, at the right the DMA periods missed since power-on or the last TEST > RESET (cpu_miss - cpum.base). Dim
+ * (T_DIM); amber from 95 % or once any period was missed since the clear, red for 5 s after a miss. Read-only: its own window (CPU_W_HEAD), once a second, nothing is cleared for anyone else */
+static struct { uint16_t hold; uint8_t ok; uint32_t t, hold_t, miss, miss_t; } cpuh;
+static uint32_t cpu_head(char *l, char *r, uint16_t *cl, uint16_t *cr)   /* the two texts and their colours -> what a redraw depends on */
+{
+    uint32_t el, m, lv;
+    if (fm1_ms - cpuh.t >= CPU_WIN_MS || !cpuh.ok) {
+        uint32_t gap = fm1_ms - cpuh.t;
+        cpu_win_take(CPU_W_HEAD, 0, &el);
+        cpuh.t = fm1_ms;
+        el = (uint32_t)clamp((int32_t)((uint64_t)el * 100u / CPU_BUDGET_US), 0, 999);
+        if (!cpuh.ok || gap > 4u * CPU_WIN_MS) {         /* (not looked at for a while: the window is older than a second, start again) */
+            cpuh.ok = 1;
+            cpuh.hold = 0;
+            cpuh.hold_t = fm1_ms;
+            cpuh.miss = cpu_snap.miss;
+        } else if (el >= cpuh.hold || fm1_ms - cpuh.hold_t >= CPU_HOLD_MS) {
+            cpuh.hold = (uint16_t)el;
+            cpuh.hold_t = fm1_ms;
+        }
+        if (cpu_snap.miss != cpuh.miss) {
+            cpuh.miss = cpu_snap.miss;
+            cpuh.miss_t = fm1_ms;
+        }
+    }
+    m = cpuh.miss - cpum.base;
+    if (m > 999u)
+        m = 999u;
+    fmt_int(l, cpuh.hold);
+    if (cpuh.hold < 100u)
+        str_cpy(l + str_len(l), "%", 2);
+    fmt_int(r, (int32_t)m);
+    lv = m && fm1_ms - cpuh.miss_t < CPU_RECENT_MS ? 2u : m || cpuh.hold >= CPU_HOT ? 1u : 0u;
+    *cl = lv ? cpu_col(lv, T_BG) : T_DIM;
+    *cr = lv >= 1u && m ? cpu_col(lv, T_BG) : T_DIM;
+    return cpuh.hold * 31u + m * 211u + lv * 1009u + 1u;
+}
+#endif
 static uint32_t cpu_recent(void) { return cpum.seen && fm1_ms - cpum.miss_t < CPU_RECENT_MS; }
 static uint32_t cpu_level(void)                        /* 0 fine, 1 near the limit, 2 at it or blocks missed */
 {
@@ -601,7 +668,7 @@ static void test_sync(void)
 static void test_reset(void)                           /* K4: peak hold, missed blocks and the average window from zero */
 {
     cpu_meter_open();
-    cpum.base = cpu_miss;
+    cpum.base = cpu_snap.miss;
     test_t = fm1_ms ? fm1_ms : 1u;
 }
 static uint8_t test_pick = 0xFFu;                      /* K3's multi (0..15): the last one stepped to or loaded */

@@ -903,27 +903,22 @@ static BENCH_FN uint32_t bench_voices(void)
 }
 static BENCH_FN void bench_measure_begin(void)
 {
-    do {
-        bench.n0 = cpu_n;
-        bench.s0 = cpu_sum;
-    } while (bench.n0 != cpu_n);
-    bench.m0 = cpu_miss;
+    cpu_win_take(CPU_W_BENCH, 0, 0);                   /* (K2: the bench's own peak window starts; the snapshot's counters are the window's start) */
+    bench.n0 = cpu_snap.n;
+    bench.s0 = cpu_snap.sum;
+    bench.m0 = cpu_snap.miss;
     bench.shed0 = shed_count;
-    cpu_pk = 0;
     bench.vsum = bench.vn = bench.lfn = 0;
 }
 static BENCH_FN void bench_measure_end(bench_res_t *r)
 {
-    uint32_t n, sum;
-    do {
-        n = cpu_n;
-        sum = cpu_sum;
-    } while (n != cpu_n);
-    n -= bench.n0;
-    sum -= bench.s0;
+    uint32_t n, sum, pk;
+    cpu_win_take(CPU_W_BENCH, &pk, 0);
+    n = cpu_snap.n - bench.n0;
+    sum = cpu_snap.sum - bench.s0;
     r->avg = (uint16_t)(n ? bench_clamp((int32_t)((uint64_t)sum * 1000u / ((uint64_t)n * CPU_BUDGET_US)), 0, 9999) : 0);
-    r->pk = (uint16_t)bench_clamp((int32_t)((uint64_t)cpu_pk * 1000u / CPU_BUDGET_US), 0, 9999);
-    r->miss = (uint16_t)bench_clamp((int32_t)(cpu_miss - bench.m0), 0, 65535);
+    r->pk = (uint16_t)bench_clamp((int32_t)((uint64_t)pk * 1000u / CPU_BUDGET_US), 0, 9999);
+    r->miss = (uint16_t)bench_clamp((int32_t)(cpu_snap.miss - bench.m0), 0, 65535);
     r->shed = (uint16_t)bench_clamp((int32_t)(shed_count - bench.shed0), 0, 65535);
     r->vox = (uint16_t)(bench.vn ? bench.vsum * 10u / bench.vn : 0u);
     r->lfx = (uint8_t)(bench.vn ? bench.lfn * 100u / bench.vn : 0u);
@@ -1436,9 +1431,11 @@ static BENCH_FN void bench_half(void)
     } else
         btl.h++;
     h = btl.h;
+    if (btl.win && felucca_dbg.last_us > btl.pk1)       /* (K2: the window's longest half is kept here from the last half's own time: cpu_pk belongs to the snapshot's owner, which clears it) */
+        btl.pk1 = felucca_dbg.last_us;
     if (h == btl.m0) {                                  /* the CPU window opens: the meter's counters as they are at the start of this half */
         btl.n0 = cpu_n, btl.s0 = cpu_sum, btl.c0 = cpu_miss, btl.d0 = shed_count;
-        cpu_pk = 0;
+        btl.pk1 = 0;
         btl.vsum = btl.vn = btl.lfn = 0;
         btl.win = 1;
     }
@@ -1487,7 +1484,7 @@ static BENCH_FN void bench_half(void)
         btl.lfn += ovl_lite != 0u;
     }
     if (btl.win && (h >= btl.m1 || h >= btl.dur)) {      /* the window closes: the counters as they are at the start of this half */
-        btl.n1 = cpu_n, btl.s1 = cpu_sum, btl.c1 = cpu_miss, btl.d1 = shed_count, btl.pk1 = cpu_pk;
+        btl.n1 = cpu_n, btl.s1 = cpu_sum, btl.c1 = cpu_miss, btl.d1 = shed_count;
         btl.win = 0;
     }
     if (h >= btl.dur) {

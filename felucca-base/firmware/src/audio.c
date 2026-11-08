@@ -27,8 +27,9 @@ static uint32_t audio_cpu_rem;                         /* keep the fractional II
 
 /* DUELL CPU load meter (MENU > SYSTEM > TEST, ABOUT: ui_menu.c cpu_meter): what the audio ISR keeps per I2S half, three adds and
  * a compare, no division. cpu_sum/cpu_n: the sum of the halves' render times (us) and how many; cpu_pk: the longest half
- * (us, the UI reads and clears it); cpu_miss: halves that took longer than the half's time (HALF_FRAMES / FS) or that the DMA
- * overtook, counted since power-on. The time is fm1_ticks() across the half minus TIMER5's nested ticks (the key scan),
+ * (us; ui_menu.c cpu_snap_poll reads and clears it) and cpu_el_pk: the longest half's ELAPSED time (us, TIMER5's nested work included: the
+ * DMA deadline); cpu_miss: DMA periods missed (a half's elapsed time over 1, 2 or 3 periods = 1, 2, 3; a half the DMA overtook that was
+ * not over its time = 1), counted since power-on. The time is fm1_ticks() across the half minus TIMER5's nested ticks (the key scan),
  * i.e. the audio's own work. Emulator and host: FELUCCA_METER_EST replaces it by a model (below): there is no clock there */
 /* (the counters and CPU_BUDGET_US: core.h) */
 #ifdef FELUCCA_METER_EST
@@ -248,7 +249,7 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
     t5_nested_ticks = 0;
     fm1_audio_ack_aux(p);
     if (p & FM1_AUDIO_HALF) {
-        uint32_t half = fm1_audio_free_half(), b, us, late;
+        uint32_t half = fm1_audio_free_half(), b, us, late, all, el, mp;
         int32_t *o = &abuf[half * HALF_WORDS];
         if (shed_req) {
             uint32_t r = shed_req;
@@ -272,14 +273,11 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
             duck_half(o);
         fm1_audio_ack_half();
         audio_halves++;
-        us = shed_check(fm1_ticks() - t0);
-#if DUELL_TEST_MODE
-        {
-            uint32_t raw = (fm1_ticks() - t0) / FM1_TICKS_PER_US;
-            if (raw > cpu_raw_pk)
-                cpu_raw_pk = raw;
-        }
-#endif
+        all = fm1_ticks() - t0;
+        us = shed_check(all);
+        el = all / FM1_TICKS_PER_US;                    /* (K2: what the deadline saw, TIMER5 nested in it included) */
+        if (el > cpu_el_pk)
+            cpu_el_pk = el;
 #ifdef FELUCCA_METER_EST
         us = meter_est_us();
 #endif
@@ -295,7 +293,8 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
             audio_cpu_rem = load % CPU_AVG;
         }
         late = fm1_audio_free_half() != half;
-        cpu_miss += (us > CPU_BUDGET_US) | late;        /* (the meter's: over the half's time, or overtaken) */
+        mp = (el > CPU_BUDGET_US) + (el > 2u * CPU_BUDGET_US) + (el > 3u * CPU_BUDGET_US);   /* (K2: DMA periods missed: the half's elapsed time over 1, 2, 3 periods; the chip has no period counter, only the half selector) */
+        cpu_miss += mp ? mp : late;                     /* (or one period: the DMA moved on while a half no longer than its time was rendered: a late entry) */
         if (late)
             felucca_dbg.late++;                         /* the DMA moved on while we rendered */
         felucca_dbg.halves++;

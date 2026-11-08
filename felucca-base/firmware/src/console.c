@@ -377,21 +377,16 @@ static void con_pload(const char *p)                   /* (probe) pload N: part 
     pcq_w = (uint8_t)(w + 1u);
     con_kv("pload", n);
 }
-static void con_cpu(void)                              /* (probe) cpu: the longest half since the last `cpu` (us; cleared) and the misses since power-on */
+static void con_cpu(void)                              /* (probe) cpu: the longest half since the last `cpu` (us: render, and elapsed = what the DMA deadline saw) and the DMA periods missed since power-on; reads the snapshot, clears nothing of anybody else's (K2) */
 {
-    uint32_t pk, raw;
-    fm1_irq_off();                                     /* (read and clear together: an ISR peak between the two would be lost; the TEST / ABOUT meter also clears cpu_pk) */
-    pk = cpu_pk;
-    raw = cpu_raw_pk;
-    cpu_pk = 0;
-    cpu_raw_pk = 0;
-    fm1_irq_on();
+    uint32_t pk, el;
+    cpu_win_take(CPU_W_CON, &pk, &el);                 /* (the console's own window: the snapshot owner, ui_menu.c, has cleared the ISR's peaks) */
     con_kv("cpu_pk_us", (int32_t)pk);
-    con_kv("cpu_raw_pk_us", (int32_t)raw);               /* (before the nested TIMER5 / USB work is subtracted: what the half's deadline saw) */
+    con_kv("cpu_el_pk_us", (int32_t)el);               /* (the render time plus the nested TIMER5 / USB work: what the half's deadline saw) */
     con_kv("cpu_budget_us", (int32_t)CPU_BUDGET_US);
-    con_kv("cpu_miss", (int32_t)cpu_miss);
-    con_kv("cpu_sum_us", (int32_t)cpu_sum);
-    con_kv("cpu_n", (int32_t)cpu_n);
+    con_kv("cpu_miss", (int32_t)cpu_snap.miss);
+    con_kv("cpu_sum_us", (int32_t)cpu_snap.sum);
+    con_kv("cpu_n", (int32_t)cpu_snap.n);
 #if DUELL_PROBE_STAGES
     {
         extern volatile uint32_t prb_stage_pk[5];
