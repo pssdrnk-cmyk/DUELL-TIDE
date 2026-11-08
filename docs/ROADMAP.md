@@ -73,7 +73,7 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 **RAM room** (8 November, b5): the release build keeps 8,208 B of the pool tail against the 8,192 B rule (16 B spare; range Z 29,232 B), and a test-mode build needs the lowered 7,936 B rule. The next change that grows range Z or the pool fails the build: find about 1 KB first (a cold function out of `ram_fns_z.py`, or a pool buffer to `.bss`), measured on the unit.
 
 **MORPH** ([review](audits/2026-11-08/morph/REPORT.md): keep the core and the page, no big rework)
-- c3: factory loads stop resetting AMOUNT; K4 dim in JRNY, where it does nothing (about 50 B).
+- c3 (b6): factory loads stop resetting AMOUNT; K4 dim in JRNY, where it does nothing. Built on `fix/b6-morph-c3` `148d84b`, tests pass; rebase onto the reworked MORPH page before b6.
 - c2: a hand fader resting in the middle (40-60 %) between ends that differ in a switch stays dulled, FM6 on pure sines: after about 1 s at rest, settle onto the nearer side (about 100 B, audio interrupt; listen on the unit first).
 
 **CPU and audio engine**
@@ -91,7 +91,7 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 - A legend while OCT- is held on the TIDE page (C9, not built).
 
 **Content**
-- Roles spec T4: generated notes stay in the Original's register lane (`fix/roles-T4-lane` `7f6bbb9`, +288 B, not merged).
+- Roles spec T4 (b6): ready on `fix/b6-roles-t4` (review MERGE, +316 B, audio interrupt untouched); merge it for real into b6, never as a patch of the diff against b5/integ (the branch predates the flash screen). Cleanups then: TIDE_GUIDE.md:153 wording (the floor is min(lowest, C3)), the `t_lane` edge check is met for free in the bass scene, the unused `sqm_note` (seq_morph.c:89) and its comment at :60.
 - Roles spec T7: CELLAR TAPE's bass comes back with rewritten records.
 - Roles spec T8 to T10: the new reel of multis, together with the `tideroles` levels (43 of 338 checks red: M04 +3.8, M10 +5.3, M12 -3.1, M15 -7.2, M16 -9.2 dB from the median; finding 25, D46).
 
