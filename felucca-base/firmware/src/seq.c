@@ -1796,6 +1796,9 @@ static __attribute__((noinline)) void stop_all(void)
     }
     memset(kb_chn, 0, sizeof kb_chn);
     kb_mo = 0;
+#if DUELL_TIDE
+    memset(rec_key, 0, sizeof rec_key);            /* (kb_chn is zero: the key ups of keys held never reach input_off to clear their marks) */
+#endif
     memset(kb_chn2, 0, sizeof kb_chn2);
     memset(kb_sw, 0, sizeof kb_sw);               /* (item 144: the STRUM tones waiting) */
     memset(kb_sw2, 0, sizeof kb_sw2);

@@ -456,18 +456,27 @@ static void r6(void)
     CHECK("R6 (R2): ... steps 14 and 15 (outside the stretch) are not touched", (t->rec_wr[0] & ((1u << 14) | (1u << 15))) == ((1u << 14) | (1u << 15)));
     poly_len[0] = 0; t->rec_wr[0] = 0; tide_rec_replace = 0;
 
-    /* ARP SEQ part, a key held: transport stop / disarm / another part selected, then the key up: no voice left, the mark cleared */
-    for (i = 0; i < 3u; i++) {
-        char b[96];
+    /* ARP SEQ part, a key held (the keyboard's way: key_on, key_off through kb_trk): transport stop / disarm / another part selected / STOP ALL, then the key up:
+     * a voice is held just before it (so the check cannot pass with nothing sounding), none after, the mark cleared */
+    for (i = 0; i < 4u; i++) {
+        char b[110];
+        uint32_t before;
         arm_arp(0, V_POLY);
         wait_arp(t, 5);
-        input_on(t, 64, 100); run(100);
-        CHECK("R6: a key held on an armed ARP SEQ part sounds on its own voice", voices_on(t) >= 1u);
+        kb_note[3] = 64; kb_trk[3] = 0;
+        key_on(3, t); run(100);
+        CHECK("R6: a key held on an armed ARP SEQ part sounds on its own voice", held_on(t, 64) >= 1u && rec_key_set(t, 64, 1) == 1u);
         if (i == 0u) { transport_req = 2u; run(100); }
         else if (i == 1u) { song.rec = 0; run(100); }
-        else { song.sel = 1; run(100); }
-        input_off(t, 64); run(300);
-        snprintf(b, sizeof b, "R6: ... after %s, the key up lets its voice go (none held)", i == 0u ? "a stop" : i == 1u ? "a disarm" : "selecting the other part");
+        else if (i == 2u) { song.sel = 1; run(100); }
+        else { stop_all(); run(100); }
+        before = held_on(t, 64);
+        if (i == 3u)
+            CHECK("R6 (R5): STOP ALL clears the key's mark (kb_chn is zeroed, the key up never reaches input_off) and ends its voice", rec_key_set(t, 64, 0) == 0u && before == 0u);
+        else
+            CHECK("R6: ... the voice is still held just before the key up", before >= 1u);
+        key_off(3, &trk[kb_trk[3] % NTRK]); run(300);
+        snprintf(b, sizeof b, "R6: ... after %s, the key up lets its voice go (none held)", i == 0u ? "a stop" : i == 1u ? "a disarm" : i == 2u ? "selecting the other part" : "STOP ALL");
         CHECK(b, held_on(t, 64) == 0u);
         CHECK("R6: ... and its mark is clear", rec_key_set(t, 64, 0) == 0u);
         song.rec = 0; song.sel = 0; stop();
@@ -493,18 +502,40 @@ static void r6(void)
     CHECK("R6: ... and the key up ends the voice", held_on(t, 64) == 0u && rec_key_set(t, 64, 0) == 0u);
     stop();
 
-    /* MIDI OUT (R4): an armed ARP SEQ part's key goes out as a note-on, and its key up as a note-off, as a played key does */
-    arm_arp(0, V_POLY);
-    wait_arp(t, 5);
-    kb_note[3] = 64; kb_trk[3] = 0;
-    key_on(3, t);
-    run(100);
-    CHECK("R6 (R4): the key is a bypassed key (mark set) and marked as sent to MIDI OUT", rec_key_set(t, 64, 1) == 1u && ((kb_mo >> 3) & 1u));
-    key_off(3, t);
-    CHECK("R6 (R4): ... its key up clears the MIDI OUT mark (the note-off went out)", !((kb_mo >> 3) & 1u));
-    run(300);
-    CHECK("R6 (R4): ... no voice held", held_on(t, 64) == 0u);
-    song.rec = 0; stop();
+    /* MIDI OUT (R4): an armed ARP SEQ part's key goes out as exactly one note-on (its note, its velocity) and, at its key up, exactly one note-off */
+    {
+        uint32_t m0, m, on = 0, off = 0, onv = 0, mc;
+        arm_arp(0, V_POLY);
+        wait_arp(t, 5);
+        usb.config = 1;
+        mc = trk_midi_ch(0);
+        kb_note[3] = 64; kb_trk[3] = 0;
+        m0 = mo_w;
+        key_on(3, t);
+        run(100);
+        for (m = m0; m != mo_w; m++) {
+            uint32_t pk = midi_out_q[m % MQ];
+            if (((pk >> 16) & 0xFFu) != 64u) continue;
+            if (((pk >> 8) & 0xFFu) == (0x90u | mc)) { on++; onv = pk >> 24; }
+            if (((pk >> 8) & 0xFFu) == (0x80u | mc)) off++;
+        }
+        CHECK("R6 (R4): the key is a bypassed key (mark set), sent to MIDI OUT", rec_key_set(t, 64, 1) == 1u && ((kb_mo >> 3) & 1u));
+        CHECK("R6 (R4): ... exactly one note-on of note 64 on the part's channel, at the key's velocity, and no note-off yet", on == 1u && off == 0u && onv == kb_svel[3] && onv != 0u);
+        m0 = mo_w;
+        key_off(3, t);
+        run(300);
+        on = off = 0;
+        for (m = m0; m != mo_w; m++) {
+            uint32_t pk = midi_out_q[m % MQ];
+            if (((pk >> 16) & 0xFFu) != 64u) continue;
+            if (((pk >> 8) & 0xFFu) == (0x90u | mc)) on++;
+            if (((pk >> 8) & 0xFFu) == (0x80u | mc)) off++;
+        }
+        CHECK("R6 (R4): ... its key up sends exactly one note-off of note 64 (and no second note-on)", off == 1u && on == 0u && !((kb_mo >> 3) & 1u));
+        CHECK("R6 (R4): ... no voice held", held_on(t, 64) == 0u);
+        usb.config = 0;
+        song.rec = 0; stop();
+    }
 
     /* accent and velocity */
     arm_arp(0, V_MONO);
