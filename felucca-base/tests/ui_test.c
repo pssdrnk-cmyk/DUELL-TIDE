@@ -10014,11 +10014,11 @@ static int test_item165(void)
         }
         bad += check("item 165 E:   .. every other engine's ENGINE page keeps template 2 (its picture)", ok_keep);
     }
-    /* ---- F. names: LOFI's and ANALOG's WAVE lists in full words (PULSE, TRIANGLE, SINE, SQUARE); the LFO's and SUB OSC's lists not touched; too wide for Bold 23: Bold 15 */
+    /* ---- F. names: LOFI's and ANALOG's WAVE lists in full words (PULSE, TRIANGLE, SINE, SQUARE); the LFO's in full words too (b4); SUB OSC's list not touched; too wide for Bold 23: Bold 15 */
     {
         static const char *const AN[7] = {"SAW", "SQUARE", "TRIANGLE", "SINE", "PWM", "SYNC", "SUB"};
         static const char *const LO[15] = {"PULSE", "TRIANGLE", "SAW", "NOISE", "SINE", "SAW 2", "BASS 1", "BASS 2", "ORGAN", "HOLLOW", "AH", "OH", "EE", "BUZZ", "STAIR"};
-        static const char *const LF[5] = {"SIN", "TRI", "SAW", "SQR", "S&H"};
+        static const char *const LF[5] = {"SINE", "TRIANGLE", "SAW", "SQUARE", "S&H"};   /* (b4, UI audit 7: the LFO in full words too) */
         int ok = 1, ok_face = 1;
         char vb[PV_LEN];
         const char *u;
@@ -10039,7 +10039,7 @@ static int test_item165(void)
             TSEL->p[P_E1] = 6; screen_read(); ok_face &= c164_find("BASS 1", &f) && f == (const void *)&AF_L;
             TSEL->p[P_E1] = 0; screen_read(); ok_face &= c164_find("PULSE", &f) && f == (const void *)&AF_L;
         }
-        bad += check("item 165 F: LOFI's WAVE list PULSE TRIANGLE .. SINE and ANALOG's SAW SQUARE TRIANGLE SINE PWM SYNC SUB in full words; the LFO's (SIN TRI SAW SQR S&H) and SUB OSC's TRI not touched", ok);
+        bad += check("item 165 F: LOFI's WAVE list PULSE TRIANGLE .. SINE and ANALOG's SAW SQUARE TRIANGLE SINE PWM SYNC SUB in full words; the LFO's in full words too (SINE TRIANGLE SAW SQUARE S&H, b4); SUB OSC's TRI not touched", ok);
         bad += check("item 165 F:   .. on the pages: ANALOG's SQUARE / TRIANGLE in Bold 15 (too wide for Bold 23), LOFI's cells TRIANGLE, BASS 1, PULSE in Bold 23", ok_face);
     }
     (void)eT; (void)eV;
