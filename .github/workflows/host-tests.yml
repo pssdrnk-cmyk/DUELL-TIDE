@@ -115,7 +115,11 @@ jobs:
 
       - name: Emulator against native (host_tests.sh emu)
         shell: bash
-        run: sh host_tests.sh emu 2>&1 | tee emu.out      # (the runner's exit code: bash runs with pipefail)
+        run: |
+          # emsdk_env.sh must be sourced by bash: host_tests.sh runs under sh (dash here), where the script cannot find its own directory, found no emcc, and the group failed "no emcc"
+          . "$HOME/emsdk/emsdk_env.sh"
+          command -v emcc && echo "node: $EMSDK_NODE"
+          sh host_tests.sh emu 2>&1 | tee emu.out      # (the runner's exit code: bash runs with pipefail)
 
       - name: Keep the log
         if: always()
