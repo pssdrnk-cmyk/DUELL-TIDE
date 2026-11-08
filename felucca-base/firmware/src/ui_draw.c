@@ -407,7 +407,7 @@ static uint32_t badge_lit(void)
     const page_t *pg = cur_page();
     if (ui.layer)                                       /* a quick layer (0.2.11, owner): the selected part alone, as it edits one part (also over a BOTH page); */
         return ui.layer == LAYER_GLO ? (1u << NSHOWN) - 1u : lit;   /* GLO's cards are per part: both (QUICK SCALE, whose three were global, is removed: change list A.7) */
-    if (page_global(pg) || pg->scope == SC_MODE)   /* (a GLOBAL page: the SCALE page's, GLO's; the MODE page counts as global as in screen_global and ui_input.c algo_input, item 138: one rule. A global screen draws no capsules, so nothing on the screen changes) */
+    if (page_global(pg) || TIDE_MODE_PG(pg))   /* (a GLOBAL page: the SCALE page's, GLO's; the MODE page counts as global as in screen_global and ui_input.c algo_input, item 138: one rule. A global screen draws no capsules, so nothing on the screen changes) */
         return (1u << NSHOWN) - 1u;
     if ((pg->graph == GR_MORPH || TIDE_PAGE(pg) || pg->scope == SC_TEST || pg->scope == SC_PERF))   /* TIDE hook */
         lit |= morph_mask(song.sel);                    /* (ALGORITHM's PART 1 / BOTH / PART 2 there: the morph's target) */
@@ -490,7 +490,7 @@ static int screen_global(void)
         return 0;
     if (ui.layer || ui.perf)
         return 0;
-    return page_global(pg) || pg->scope == SC_MODE;
+    return page_global(pg) || TIDE_MODE_PG(pg);
 }
 /* a text of the capsule centred by its advance in the 12 px cell at x (item 111: the pictures centre by the advance, on a fraction of a pixel), face F, capitals ending on UT_CAP_BASE */
 static void head_cell_text(int32_t x, const char *s, uint16_t fg, uint16_t bg)
@@ -961,7 +961,7 @@ static void grid_geo(uint32_t c, int32_t *x, int32_t *y, int32_t *w, int32_t *h)
         *h = UT_T4_H;
         return;
     }
-    if (grid_on == 3) {                                /* MODE: K2 K3 K4 in a row under the list (K1 is the list) */
+    if (TIDE_GRID3) {                                /* MODE: K2 K3 K4 in a row under the list (K1 is the list) */
         *x = 4 + 78 * (int32_t)(c - 1u);
         *w = 76;
         *y = 150;
@@ -1035,7 +1035,7 @@ static const card_geo_t CGE = {UT_A_PAD, UT_A_LBL_BASE, UT_A_LBL_DX, UT_A_LBL_PA
 /* the grid card template of the page now (0: the page's cards are drawn by another painter) */
 static const card_geo_t *grid_cg(void)
 {
-    return grid_on == 1 ? &CG1 : grid_on == 3 ? &CG3 : grid_on == 5 ? &CGE : CELLS_ON ? &CG8 : AREA_ON ? &CGA : 0;
+    return grid_on == 1 ? &CG1 : TIDE_GRID3 ? &CG3 : grid_on == 5 ? &CGE : CELLS_ON ? &CG8 : AREA_ON ? &CGA : 0;
 }
 #define CARD_SEG_ON (grid_cg() && grid_cg()->seg)     /* the page's cards show a CHOICE as the segment line (draw_columns sets cell_seg_n / cell_seg_i for it) */
 /* an area card's label (TEMPLATE 9, section C of the change list): `one` (holds 24) gets the label on one line (a break the label carries, "OFF-\nSCALE", joined: no space after a hyphen);
@@ -1368,7 +1368,7 @@ static void draw_card_grid(uint32_t c, const char *label, const char *val, const
         cv_blit((uint32_t)gx, (uint32_t)gy);
         return;
     }
-    if (grid_on == 1 || grid_on == 3) {                 /* TEMPLATE 1: the design's card (item 114); item 120: the MODE page's three cards with template 1's rows (CG3) */
+    if (grid_on == 1 || TIDE_GRID3) {                 /* TEMPLATE 1: the design's card (item 114); item 120: the MODE page's three cards with template 1's rows (CG3) */
         card_paint(grid_on == 1 ? &CG1 : &CG3, c, gx, gw, gh, label[0] ? lb : "", vb, val, unit, vc, ratio, hot, ctr, big1);
         cv_blit((uint32_t)gx, (uint32_t)gy);
         return;
@@ -1452,7 +1452,7 @@ static void draw_card_grid(uint32_t c, const char *label, const char *val, const
 static void draw_column(uint32_t c, const char *label, const char *val, const char *unit, uint16_t vc,
                         int32_t ratio, uint32_t icon)
 {
-    if (grid_on == 4 || (grid_on == 3 && c == 0u) || (grid_on == 6 && c >= 2u)) {    /* (the MODE list is K1's; the MATRIX rows draw all four knobs themselves) */
+    if (grid_on == 4 || (TIDE_GRID3 && c == 0u) || (grid_on == 6 && c >= 2u)) {    /* (the MODE list is K1's; the MATRIX rows draw all four knobs themselves) */
         card_hide_next = 0;
         card_mk_next = card_mot_next = card_ctr_next = 0;
         return;
@@ -2042,7 +2042,7 @@ static void draw_foot(void)
     if (!ui.force && sig == ui.foot_sig)
         return;
     ui.foot_sig = sig;
-    foot_short = (grid_on == 1 || grid_on == 3 || grid_on == 4 || grid_on == 5 || grid_on == 7 || grid_on == 9 || grid_on == 11 || grid_on == 12 || grid_on == 13 || grid_on == 14 || grid_on == 15 || grid_on == 16 || grid_on == 17 || ui.guide) && !ui.ml.on && !pfl[0] && !save_hint && !foot_steps() && !TIDE_FOOT_FULL();   /* TIDE hook: TIDE / TIDE SET keep both rows */   /* (DUELL 1.1 grid pages: row 1 is empty, the cards use its rows) */
+    foot_short = (grid_on == 1 || TIDE_GRID3 || grid_on == 4 || grid_on == 5 || grid_on == 7 || grid_on == 9 || grid_on == 11 || grid_on == 12 || grid_on == 13 || grid_on == 14 || grid_on == 15 || grid_on == 16 || grid_on == 17 || ui.guide) && !ui.ml.on && !pfl[0] && !save_hint && !foot_steps() && !TIDE_FOOT_FULL();   /* TIDE hook: TIDE / TIDE SET keep both rows */   /* (DUELL 1.1 grid pages: row 1 is empty, the cards use its rows) */
     cv_begin(240, foot_short ? H_FOOT - 15 : pfl[0] ? H_FOOT + 15 : H_FOOT, T_BG);   /* (item 120: PERFORM's footer is 15 rows taller, its two hint lines on top) */
     cv_oy = foot_short ? -15 : pfl[0] ? 15 : 0;
     if (ui.ml.on) {                               /* row 1: MIDI LEARN's line, OCT+ DONE at the right (the one way out) */

@@ -31,9 +31,15 @@ SIZE_FILES += ["morph_tide.c", "morph_music.c", "morph_fm_shape.c", "morph_compl
                "morph_glide.c", "seq_morph.c", "seq_rhythm.c", "seq_phrase.c",
                "seq_evolve.c", "seq_voicelead.c", "seq_dialogue.c", "tide_seq.c",
                "tide_ui.c", "tide_store.c"]
+# (flash savings 2026-11-08: the TIDE files #included by tide_seq.c, morph.c and ui_graph.c, read by name here like multi.c; TIDE only, so plain DUELL is unchanged)
+SIZE_FILES += ["seq_poly.c", "seq_answer.c", "seq_arc.c", "morph_xfer.c", "ui_live.c"]
 # S0b: multi.c is #included by project.c, so its text was never read here; morph.c whole, not only its roll entry:
 # its block-rate code (morph_apply, morph_cur, ...) is reached from the audio interrupt, so isr_reach keeps it -Os
 SIZE_FILES += ["multi.c", "morph.c"]
+# (flash savings 2026-11-08: the same for the files the listed ones #include: editor.c's commands, project.c's ERASE DATA,
+# ui.c's categories and MIDI LEARN, upreset.c's FM6 bank, pattern slots and user wavetables; and twin_graph.c, ui_graph.c's TWIN picture)
+SIZE_FILES += ["editor_wtab.c", "editor_patchraw.c", "editor_learn.c", "editor_map.c", "editor_bypass.c", "editor_erase.c",
+               "erase_data.c", "category.c", "midi_learn.c", "fm6_vbank.c", "patslot.c", "wtab.c", "twin_graph.c"]
 ISR_ROOTS = ("fm1_alnk0_irq", "fm1_timer5_irq")      # hal/fm1_isr.S: the audio ISR, the key / LED scan (+ USB poll)
 DEF = re.compile(r"^(?:static|void|int|uint\w*|int\w*|const)\b[^;=(]*?\b([A-Za-z_]\w*)\s*\(", re.M)
 IR_DEF = re.compile(r"^(define [^\n]*?@\"?([\w.]+)\"?\([^\n]*\)(?: unnamed_addr| local_unnamed_addr)?)( #\d+[^\n]*\{)$",
