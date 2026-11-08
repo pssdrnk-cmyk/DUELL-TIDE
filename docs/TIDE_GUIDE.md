@@ -44,7 +44,7 @@ The screen shows the SOUND and SEQ faders with the glide's path, the 16 steps as
 
 Where two very different sounds cross, a short filter dip hides the change (WASH, below).
 
-**OCT- + knob**: K1 goes back to your original sound and pattern (the glide stops), K3 and K4 reset TIME and WAIT to the values of the STYLE on TIDE SETTINGS (the style you last chose, DUB if none: 16 bars, 2 bars).
+**OCT- + knob**: K1 goes back to your original sound and pattern (the glide stops), K2 drops the ARC at the next phrase (see ARC), K3 and K4 reset TIME and WAIT to the values of the STYLE on TIDE SETTINGS (the style you last chose, DUB if none: 16 bars, 2 bars).
 
 ## 3. TIDE SETTINGS (set and forget)
 
