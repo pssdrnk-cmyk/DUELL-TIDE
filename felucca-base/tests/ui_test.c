@@ -781,7 +781,7 @@ static int test_rec(void)
         bad += check(k == 0 ? "REC on TRACKS: arms the selected track, PLAY starts" :
                      k == 1 ? "#133 REC on SEQ > STEP: arms the selected track for step recording, PLAY does not start" :
                      "REC on ARP: arms the selected track, PLAY starts",
-                     song.rec == 4u && (k == 1u ? transport_req == 0u && msg_is("KEYS WRITE STEPS") : transport_req == 1u));
+                     song.rec == 4u && (k == 1u ? transport_req == 0u && msg_is("KEYS REPLACE STEPS") : transport_req == 1u));
         song.playing = 1;
         transport_req = 0;
         frames(400);                                   /* (not a double tap: that locks the REC layer) */
@@ -3859,8 +3859,8 @@ static int test_step_rec(void)
                  !memcmp(before, t->step, sizeof before) && ui.cursor == 3u);
     song.rec = 0;
     press(B_REC);
-    bad += check("#133 REC on STEP arms step recording: stopped, KEYS WRITE STEPS",
-                 song.rec == 1u && !transport_req && !song.playing && !seq_counting() && msg_is("KEYS WRITE STEPS"));
+    bad += check("#133 REC on STEP arms step recording: stopped, KEYS REPLACE STEPS",
+                 song.rec == 1u && !transport_req && !song.playing && !seq_counting() && msg_is("KEYS REPLACE STEPS"));
     key_down(7); frame();
     ok = t->step[3].n == 1u && t->step[3].note[0] == kb_map(t, 7) && t->step[3].time == ST_NOTE && ui.cursor == 3u;
     key_up(7); frame();
@@ -3922,12 +3922,12 @@ static int test_step_preview_chord_entry(void)
     uint32_t i, rec0, mc0;
     ui_power_on();
     ok = !ui_prefs2 && !menu_get(MI_PREVIEW) && !menu_get(MI_CHADD) && !scope_mix &&   /* (0.2.14: SCOPE removed; CHORD ENTRY is STEP KEYS) */
-         str_eq(menu_vname(MI_PREVIEW, 1), "ON") && str_eq(menu_vname(MI_CHADD, 0), "WRITE") &&
+         str_eq(menu_vname(MI_PREVIEW, 1), "ON") && str_eq(menu_vname(MI_CHADD, 0), "REPLACE") &&
          str_eq(menu_vname(MI_CHADD, 1), "ADD") && MI_TAB[MI_PREVIEW] == MTAB_CONTROL &&
          MI_TAB[MI_CHADD] == MTAB_CONTROL;
     menu_put(MI_PREVIEW, 1); menu_put(MI_CHADD, 1); ok &= ui_prefs2 == 6u && !ui_prefs && !(ui_rec_prefs & 0x40u);
     menu_put(MI_PREVIEW, 0); menu_put(MI_CHADD, 0); ok &= !ui_prefs2 && !scope_mix;
-    bad += check("1.2 MENU: STEP PREVIEW OFF / ON, STEP KEYS WRITE / ADD: 0 by default, a bit each", ok);
+    bad += check("1.2 MENU: STEP PREVIEW OFF / ON, STEP KEYS REPLACE / ADD: 0 by default, a bit each", ok);
 
     /* STEP PREVIEW */
     t = TSEL;
@@ -6071,7 +6071,7 @@ static int test_rec_layer(void)
     song.playing = 0;
     go_page(GR_ROLL); frame(); frames(400);
     press(B_REC);
-    ok &= song.rec == 1u && transport_req == 0u && msg_is("KEYS WRITE STEPS");
+    ok &= song.rec == 1u && transport_req == 0u && msg_is("KEYS REPLACE STEPS");
     bad += check("  a tap still arms / disarms when let go (HOME starts PLAY, STEP: step recording)", ok);
     ui_power_on();
     rec_down(); frame();

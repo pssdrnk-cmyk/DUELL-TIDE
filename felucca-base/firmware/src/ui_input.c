@@ -466,7 +466,7 @@ static int rec_tap(void)                                /* 1: the arming changed
         ui_message("REC OFF");                          /* (audit liverec L6: said on every page, HOME included, where the header ring is small) */
 #endif
     if ((song.rec & bit) && !song.playing && !seq_counting() && roll_on()) {
-        ui_message(ui_prefs2 & (PREF_CHORD_ADD >> 16) ? "KEYS ADD TO STEP" : "KEYS WRITE STEPS");   /* step recording:
+        ui_message(ui_prefs2 & (PREF_CHORD_ADD >> 16) ? "KEYS ADD TO STEP" : "KEYS REPLACE STEPS");   /* step recording:
                                                          * stopped, at the cursor (CHORD ENTRY ADD: adding) */
         return 1;
     }

@@ -179,7 +179,7 @@ static const menu_flag_t MENU_FLAGS[] = {
     {MI_CPU, PREF_CPU_OFF, {"ON", "OFF"}},             /* DUELL 0.2.9: OFF, no CPU bar under the header's battery (ui_draw.c); bit clear = ON, as every older setting */
     {MI_MODERECALL, PREF_MODE_RECALL, TIDE_MLOAD_NAMES},   /* TIDE hook */   /* DUELL 0.2.11 MODE RECALL, 0.2.14 MULTI LOAD: KEEPS MODE (default, bit clear) a multi load
                                                        * leaves MODE, XFADE and SPLIT (the MODE page; TIDE: their TIDE SETTINGS rows) as they are; SETS MODE, it sets the ones saved in the multi (multi.c) */
-    {MI_CHADD, PREF_CHORD_ADD, {"WRITE", "ADD"}},      /* 1.2, #155 CHORD ENTRY HOLD / ADD, 0.2.14 STEP KEYS WRITE / ADD: ADD, keys add to the cursor step (ui_input.c) */
+    {MI_CHADD, PREF_CHORD_ADD, {"REPLACE", "ADD"}},      /* 1.2, #155 CHORD ENTRY HOLD / ADD, 0.2.14 STEP KEYS WRITE / ADD: ADD, keys add to the cursor step (ui_input.c) */
 };
 /* (OUTPUT EQ, the low cut and BASS+, was removed in 0.2.19) */
 static const char *const HOLD_N[4] = {"0.3 s", "0.4 s", "0.5 s", "0.6 s"};   /* (the editor's names; the menu draws its own) */
