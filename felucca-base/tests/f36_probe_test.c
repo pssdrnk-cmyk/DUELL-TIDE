@@ -10,10 +10,19 @@
 static int bad, checks;
 #define CHECK(s, x) do { checks++; if (!(x)) { printf("f36: FAIL %s\n", s); bad++; } } while (0)
 
+/* all keys released, then one pressed: arp_remove, arp_add (nheld 1: arp_idx = 0xFFFFFFFF), the first arp step (arp_fire: arp_idx 0) */
+static void key_restart(track_t *t)
+{
+    t->nheld = 0; t->arp_phys = 0;
+    arp_add(t, 60);
+    CHECK("press: arp_add left arp_idx at 0xFFFFFFFF", t->arp_idx == 0xFFFFFFFFu);
+    arp_fire(t, 6000);
+}
+
 int main(void)
 {
     track_t *t;
-    uint32_t pi = 0, k, got[6];
+    uint32_t pi = 0, k, got[6], lc0, sl0;
     ui_power_on();
     t = &trk[pi];
     t->p[P_SLEN] = 16;
@@ -28,8 +37,13 @@ int main(void)
     CHECK("control: arp_idx 64 is the short loop's step 0", tide_arp_idx(t, 64, 16) == 0);
     CHECK("control: arp_idx 70 is step 6", tide_arp_idx(t, 70, 16) == 6);
     /* keys released, pressed again: arp_idx restarts at 0, the arp tick for step 0 runs */
-    t->arp_idx = 0;
-    tide_arp_tick(t);
+    lc0 = poly_lc[pi]; sl0 = tide_seq_loops[pi];
+    key_restart(t);                             /* the real path: release all, arp_add (arp_idx 0xFFFFFFFF), arp_fire (arp_idx 0) */
+    CHECK("restart: arp_idx is 0", t->arp_idx == 0u);
+    CHECK("restart: the stretch goes on", poly_len[pi] == 14u);
+    CHECK("restart: poly_base is 0", poly_base[pi] == 0u);
+    CHECK("restart: counts one full loop (poly_lc)", poly_lc[pi] == lc0 + 1u);
+    CHECK("restart: counts one loop (tide_seq_loops)", (uint8_t)(tide_seq_loops[pi] - sl0) == 1u);
     printf("f36: after restart poly_len=%u poly_base=%u\n", (unsigned)poly_len[pi], (unsigned)poly_base[pi]);
     for (k = 0; k < 6; k++)
         got[k] = poly_len[pi] ? tide_arp_idx(t, k, 16) : k % 16u;
@@ -38,8 +52,12 @@ int main(void)
     CHECK("arp_idx 1..5 play steps 1..5", got[1] == 1 && got[2] == 2 && got[3] == 3 && got[4] == 4 && got[5] == 5);
     /* the other direction: no stretch, a restart changes nothing (steps 0..n) */
     poly_len[pi] = 0; poly_base[pi] = 0; poly_lc[pi] = 5; poly_end[pi] = 0; poly_free[pi] = 1000;   /* (poly_free far: no new stretch starts) */
-    t->arp_idx = 0;
-    tide_arp_tick(t);
+    lc0 = poly_lc[pi]; sl0 = tide_seq_loops[pi];
+    key_restart(t);
+    CHECK("no stretch: arp_idx is 0", t->arp_idx == 0u);
+    CHECK("no stretch: counts one full loop (poly_lc)", poly_lc[pi] == lc0 + 1u);
+    CHECK("no stretch: counts one loop (tide_seq_loops)", (uint8_t)(tide_seq_loops[pi] - sl0) == 1u);
+    CHECK("no stretch: poly_base is 0", poly_base[pi] == 0u);
     CHECK("no stretch: still none after a restart", poly_len[pi] == 0);
     for (k = 0; k < 20; k++)
         CHECK("no stretch: arp_idx k plays k % 16", tide_arp_idx(t, k, 16) == k % 16u);
