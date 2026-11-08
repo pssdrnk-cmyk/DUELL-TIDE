@@ -210,7 +210,7 @@ static uint8_t sync_reload;                  /* engine / preset / project / user
 static uint8_t grid_on;                       /* 1 template 1 (part pages), 2 MODULES / MIDI, 3 MODE, 4 MATRIX, 5 template 2 (ENGINE), 6 MIDI LEARN, 7 template 4 (MIXER), 8 unused (template 3, the list pages, is removed: they are template 9 area pages), 9 template 5 (SENDS), 10 template 7 (STEP: the big roll and four compact cards), 11 SEQUENCER HELP (item 118), 12 MODULES, 13 a module switched OFF, 14 template 8 (the CELL pages, item 156), 15 the ENGINE page of LOFI / NOISE: template 2's K1 row and template 8's cells (item 165), 16 template 9 (the AREA page: the knob-1 line, the big area rows 48 .. 149, one card row; ui_tokens.h UT_A_*, ui_draw.c area_rect; PERFORM through perf_pg, the QUICK SEQ layer, ARP 1/3 and 2/3, PARAMETER LOCKS, SEQUENCER, GLOBAL SCALE, CHORD, PATCHES, MULTIS, PATTERNS), 17 TOOLS (no cards, three rows drawn whole by ui_graph.c graph_tools in their own strips in screen rows) */
 static uint8_t perf_pg;                       /* item 120: the PERFORM page is on screen (set by ui_draw_page): its map starts at row 74 and is 112 rows tall, the footer's two hint lines take the rows under it */
 #define Y_GRAPH (grid_on == 16 ? UT_A_GR_Y : perf_pg ? 74 : grid_on == 6 ? 86 : grid_on == 5 || grid_on == 15 ? UT_T2_GR_Y : grid_on ? 27 : 76)   /* the panel (15: the engine list in the top cell's place, item 165; 16: the area page's big area, tested before perf_pg: PERFORM is an area page now) */
-#define H_GRAPH (grid_on == 16 ? UT_A_GR_H : perf_pg ? 112 : grid_on == 7 ? UT_T4_MUTE_Y + UT_T4_MUTE_H - 27 : grid_on == 6 ? 112 : grid_on == 5 ? UT_T2_GR_H : grid_on == 15 ? UT_T8E_H : grid_on == 3 ? 120 : grid_on ? 76 : 122)
+#define H_GRAPH (grid_on == 16 ? UT_A_GR_H : perf_pg ? 112 : grid_on == 7 ? UT_T4_MUTE_Y + UT_T4_MUTE_H - 27 : grid_on == 6 ? 112 : grid_on == 5 ? UT_T2_GR_H : grid_on == 15 ? UT_T8E_H : TIDE_GRID3 ? 120 : grid_on ? 76 : 122)
 #define Y_FOOT 202
 #define H_FOOT 38
 
@@ -731,7 +731,9 @@ static int reset_glo(uint32_t k);
 #endif
 static const scope_ops_t SCOPE_OPS[] = {
     {SC_MORPH, 0x0Fu, 1, morph_knob, reset_morph},     /* HOME's MORPH (MORPH SET: K4 has no card) */
+#if !DUELL_TIDE                                        /* (TIDE: no MODE page; its rows are TIDE SETTINGS' and call mode_knob there) */
     {SC_MODE, 0x0Fu, 3, mode_knob, 0},
+#endif
     {SC_PERF, 0x0Fu, 0, perf_knob, reset_perf},
     {SC_TEST, 0x0Fu, 0, TEST_KNOB, 0},
     {SC_SCALE, 0x07u, 1, scale_knob, reset_scale},     /* K1 SCALE, K2 ROOT, K3 OFF-SCALE; K4 is an empty column */

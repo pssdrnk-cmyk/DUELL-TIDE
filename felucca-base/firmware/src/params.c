@@ -1165,7 +1165,7 @@ static const param_desc_t *page_desc(const page_t *pg, uint32_t slot, int16_t **
         *valp = 0;
         return 0;
     }
-    if (pg->scope == SC_STEP || pg->scope == SC_TRK || pg->scope == SC_MORPH || pg->scope == SC_MODE || pg->scope == SC_TEST ||
+    if (pg->scope == SC_STEP || pg->scope == SC_TRK || pg->scope == SC_MORPH || TIDE_MODE_PG(pg) || pg->scope == SC_TEST ||
         pg->scope == SC_SCALE || pg->scope == SC_PERF || pg->scope == SC_MODS || pg->scope == SC_FXSUM) {
         *valp = 0;
         return 0;
