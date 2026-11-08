@@ -154,8 +154,8 @@ static int tide_foot_two(void);
                                    if (TIDE_PAGE(pg)) (h) = ((h) ^ tide_sig() ^ (uint32_t)morph.target * 0x85EBCA77u) * 16777619u; } while (0)
 #define TIDE_COLUMNS() do { if (TIDE_PAGE(cur_page())) { tide_columns(); return; } } while (0)
 #define TIDE_HOME_NAME "MORPH"                           /* MENU > CONTROL > HOME OPENS: the first page of the round (MORPH, as stock; AUTO TIDE is the round's 3rd) */
-#define TIDE_HOME_MODE(pg) ((pg)->graph == GR_TIDELIST)   /* HOME OPENS = MODE: TIDE has no MODE page (hidden, VIS_NOTIDE); its MODE is a row of TIDE SETTINGS, which opens with that row picked */
-#define TIDE_MODE_PG(pg) 0                              /* the MODE page shown (never: VIS_NOTIDE; ui_draw.c turns away from a hidden page before it draws) */
+#define TIDE_HOME_MODE(pg) ((pg)->graph == GR_TIDELIST)   /* HOME OPENS = MODE: TIDE has no MODE page (no PAGES row); its MODE is a row of TIDE SETTINGS, which opens with that row picked */
+#define TIDE_MODE_PG(pg) 0                              /* the MODE page shown (never: TIDE has no MODE row in PAGES) */
 #define TIDE_GRID3 0                                    /* (its card template 3, CG3: SCOPE_OPS has no MODE row) */
 #define TIDE_PICK_MODE() tide_pick_mode()
 #define TIDE_MODE_SAY "PLAY MODE "                       /* the header message of the output mode (the TIDE SETTINGS row PLAY MODE; AUTO TIDE's K2 is MODE) */

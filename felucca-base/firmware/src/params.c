@@ -937,8 +937,7 @@ enum { VIS_ALWAYS, VIS_SHIM,        /* SHIMMER: the reverb TYPE is SHIM */
        VIS_E7,                      /* EDIT 2: the engine has an eighth card */
        VIS_ATGT,                    /* ARP 3/3: the engine has more than ALL (its atgt kind) */
        VIS_FM6,                     /* FM6's operator pages */
-       VIS_M5,                      /* MATRIX 5-8: slots 1..4 are all in use */
-       VIS_NOTIDE };                /* never in the page order (TIDE: the MODE page, its rows are in TIDE SETTINGS) */
+       VIS_M5 };                    /* MATRIX 5-8: slots 1..4 are all in use */
 
 #define TEMPO_TAP_SLOT 2u        /* TEMPO's TAP card: the knob that is no parameter (ui_input.c edit_param, tempo_tap; ui_draw.c) */
 
@@ -1056,7 +1055,6 @@ static const page_t PAGES[] = {
     {"MORPH", FAM_TRK, SC_MORPH, GR_MORPH, {0xFF, 0xFF, 0xFF, 0xFF}},
     {"TIDE SETTINGS", FAM_TRK, SC_TIDE, GR_TIDELIST, {0xFF, 0xFF, 0xFF, 0xFF}},
     {"AUTO TIDE", FAM_TRK, SC_TIDE, GR_TIDE, {0xFF, 0xFF, 0xFF, 0xFF}},
-    {"MODE", FAM_TRK, SC_MODE, GR_MODE, {0xFF, 0xFF, 0xFF, 0xFF}, VIS_NOTIDE},   /* (hidden: MODE, XFADE and SPLIT are rows of TIDE SETTINGS; the entry stays so no PAGES index moves) */
 #else
     {"MORPH", FAM_TRK, SC_MORPH, GR_MORPH, {0xFF, 0xFF, 0xFF, 0xFF}},
     {"MORPH SET", FAM_TRK, SC_MORPH, GR_MORPHSET, {0xFF, 0xFF, 0xFF, 0xFF}},

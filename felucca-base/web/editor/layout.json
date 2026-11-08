@@ -63,7 +63,6 @@
  {"title":"MORPH","fam":"TRK","scope":"MORPH","graph":"MORPH","ids":[-1,-1,-1,-1],"engines":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14],"global":0},
  {"title":"TIDE SETTINGS","fam":"TRK","scope":"TIDE","graph":"TIDELIST","ids":[-1,-1,-1,-1],"engines":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14],"global":0},
  {"title":"AUTO TIDE","fam":"TRK","scope":"TIDE","graph":"TIDE","ids":[-1,-1,-1,-1],"engines":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14],"global":0},
- {"title":"MODE","fam":"TRK","scope":"MODE","graph":"MODE","ids":[-1,-1,-1,-1],"engines":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14],"global":0},
  {"title":"CYCLE ENV 1/2","fam":"ENV","scope":"TRACK","graph":"CYCLE","ids":[138,142,139,140],"engines":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14],"global":0},
  {"title":"CYCLE ENV 2/2","fam":"ENV","scope":"TRACK","graph":"CYCLE","ids":[141,147,148,149],"engines":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14],"global":0},
  {"title":"MATRIX 1-4","fam":"ENV","scope":"TRACK","graph":"MOD","ids":[-1,49,50,51],"engines":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14],"global":0},

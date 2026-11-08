@@ -7580,7 +7580,9 @@ static int test_save_opens(void)
         {"LFO 1", DM_LAYER, GR_SLOTS},   {"ENV 2", DM_SPLIT, GR_BROWSE},     {"STEP", DM_LAYER, GR_PATS},
         {"STEP", DM_SPLIT, GR_PATS},     {"PARAMETER LOCKS", DM_STEREO, GR_PATS}, {"MIXER", DM_STEREO, GR_BROWSE},
         {"MORPH", DM_LAYER, GR_SLOTS},   {"REVERB", DM_STEREO, GR_BROWSE},   {"AMP ENV", DM_SPLIT, GR_BROWSE},
+#if !DUELL_TIDE                                         /* (TIDE 1.0.0-b4: PAGES has no MODE row) */
         {"MODE", DM_LAYER, GR_SLOTS},
+#endif
     };
     uint32_t i;
     for (i = 0; i < NELEM(T); i++) {

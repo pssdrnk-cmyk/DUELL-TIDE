@@ -691,10 +691,6 @@ static int page_visible(uint32_t i)
         return TSEL->eng_req % NENGINES == ENGI_FM6;
     case VIS_M5:
         return TSEL->p[P_M4SRC] != 0;
-#if DUELL_TIDE
-    case VIS_NOTIDE:
-        return 0;                                     /* (TIDE: the MODE page is TIDE SETTINGS' last three rows) */
-#endif
     default:
         return 1;
     }
