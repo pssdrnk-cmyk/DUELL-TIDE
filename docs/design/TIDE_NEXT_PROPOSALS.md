@@ -340,7 +340,7 @@ Still open, with the recommended defaults above: SYNC/TURNS/ARC defaults after l
 
 ## Owner decisions, 4 November 2026
 
-Planned, not built; the plan is in [the roadmap](../ROADMAP.md#planned-work-after-the-4-november-2026-decisions).
+Planned, not built; the plan is in [the roadmap](../ROADMAP.md#planned-not-yet-scheduled).
 
 1. ECHO folds into LEAD (TURNS: TOGETHER / TAKE TURNS / LEAD). LEAD's call and response applies to lead and pluck roles only, never to chord skanks.
 2. ARC resumes on STOP and PLAY and restarts only on a load or a K1 stop.
