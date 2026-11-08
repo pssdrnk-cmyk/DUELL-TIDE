@@ -9,9 +9,9 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 | | |
 |---|---|
 | **Stable** | `stable-2026-11-03` (`187e9d0`), validated by the fork owner. The first versioned stable will be `1.0.0`. |
-| **Newest beta** | `1.0.0-b3` (tag `tide-1.0.0-b3`), a GitHub pre-release since 8 November: PRs #1 to #5 (HOME without MODE, keys record into ARP SEQ with a REC row, the CPU pill and badge, the PATCHES order, live-recording fixes). |
-| **Older betas** | `1.0.0-b2` (`0d2fcb9`), `1.0.0-b1` (`817658d`) and `beta-2026-11-04` (`77a6df2`), all GitHub pre-releases. |
-| **Development** | `1.0.0-b4` on branch `b4/integ`: the pages cleanup (no SEQUENCER HELP, MORPH value in a card, about 4.9 KB freed), the ease ladder (K3) and the silent-bus skip (K5); measured on the unit with no missed blocks and no cut voices. Goes to `jam11` as a PR. |
+| **Newest beta** | `1.0.0-b4` (tag `tide-1.0.0-b4`): the ease ladder (no missed blocks or cut voices on the unit's GLIDE sweep), the silent-bus skip, STYLE DRONE and the drone pack, the pages and screen cleanups. |
+| **Older betas** | `1.0.0-b3` (`c124935`), `1.0.0-b2` (`0d2fcb9`), `1.0.0-b1` (`817658d`) and `beta-2026-11-04` (`77a6df2`), all GitHub pre-releases. |
+| **Development** | `1.0.0-b5`: MORPH UNDO dropped for RAM, the wave picture taking over the MORPH page, AUTO TIDE and the wave page showing both parts always. |
 | **Flash** | 580,808 B of the 581,564 B slot (build of `fix/b3-cleanup`, 8 November): **756 B free**. Every addition is measured; simplifications pay for features. Keep 0xEA000..0xFBFFF for future pattern / multi slots. |
 | **CPU** | About 3 missed audio blocks per FM6 crossing during a GLIDE, accepted for the betas. Five multis peak at raw 91 to 101 % in the 16-multi GLIDE sweep. `1.0.0` needs 0 missed blocks over that sweep. |
 
