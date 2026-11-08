@@ -67,6 +67,8 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 - b4: drop the ENV round's copy of the MATRIX pages (the LFO round keeps them); SIDECHAIN shows the PART FX OFF notice instead of a blank page; the MIDI LEARN line no longer cut under the footer's engine name; no placeholder rule on MORPH; the hold-EDIT layer is QUICK EDIT; one-line OFF notices.
 - Owner's call: drop SEND FX (every value is on FX and GLO) and TOOLS CLEAR PATTERN (QUICK SEQ and QUICK REC clear too), about 0.8 KB; the arp follows TEMPO SWING like the sequencer; TIDE rows SYNC and ROLL renamed so they don't share words with tempo sync and MORPH's ROLL.
 
+**One view for both parts** (owner, 8 November): pages that switch between a one-part and a both-parts picture (MORPH / the wave page first, then AUTO TIDE and any other) always show both, with the selected part clearly marked (full colour, the other dimmed, plus a cue that works on MONO and GREY). The wave page does it in b5; the survey and the rest follow the second screen round.
+
 **MORPH** ([review](audits/2026-11-08/morph/REPORT.md): keep the core and the page, no big rework)
 - c3: factory loads stop resetting AMOUNT; K4 dim in JRNY, where it does nothing (about 50 B).
 - c2: a hand fader resting in the middle (40-60 %) between ends that differ in a switch stays dulled, FM6 on pure sines: after about 1 s at rest, settle onto the nearer side (about 100 B, audio interrupt; listen on the unit first).
