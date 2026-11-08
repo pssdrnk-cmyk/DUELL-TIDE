@@ -240,9 +240,9 @@ static void test_knob4(void)
     fresh(0);
     go_title("TOOLS");
     TSEL->p[P_E0] = 5;
-    turn(EN_K2, 1);
+    turn(EN_K1, 1);
     press(B_OCTUP);
-    expect("SAVE > TOOLS: K2 INIT, OCT+ asks INITIALIZE SOUND?", ui.confirm == CF_INIT_SOUND);
+    expect("SAVE > TOOLS: K1 INIT, OCT+ asks INITIALIZE SOUND?", ui.confirm == CF_INIT_SOUND);
     press(B_OCTUP);
     expect("  .. OCT+ does it", !ui.confirm && TSEL->p[P_E0] != 5);
     /* (the song chain and its 'STOP TO EDIT' lock were removed with the song mode) */

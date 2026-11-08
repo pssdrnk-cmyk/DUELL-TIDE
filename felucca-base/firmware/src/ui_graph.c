@@ -2135,9 +2135,8 @@ static void graph_tools(void)
         cv_begin(240, (uint32_t)(y1 - y0), T_BG);
         cv_bg = T_BG;
         cv_oy = -y0;
-        tools_block(0u, y0, y1, "CLEAR PATTERN", part, 1);
-        tools_block(1u, y0, y1, "INITIALIZE SOUND", part, 1);
-        tools_block(2u, y0, y1, "RESTORE ALL PATCHES", restore ? "EVERY SLOT REPLACED" : "NOTHING TO RESTORE", restore);
+        tools_block(0u, y0, y1, "INITIALIZE SOUND", part, 1);
+        tools_block(1u, y0, y1, "RESTORE ALL PATCHES", restore ? "EVERY SLOT REPLACED" : "NOTHING TO RESTORE", restore);
         cv_oy = 0;
         cv_blit(0, (uint32_t)y0);
     }

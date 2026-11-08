@@ -1541,16 +1541,16 @@ static void act_do(void)
         return;
     }
     if (cur_page()->graph == GR_TOOLS) {
-        if (c > 2u)
+        if (c > 1u)
             return;
-        if (!act_ready()) {                               /* nothing there to clear */
-            ui_message(c == 2u ? "ALL FACTORY" : "NOTHING TO CLEAR");
+        if (!act_ready()) {                               /* RESTORE with nothing to restore */
+            ui_message("ALL FACTORY");
             return;
         }
-        if (c == 2u && transport_busy())                  /* (RESTORE ALL writes flash) */
+        if (c == 1u && transport_busy())                  /* (RESTORE ALL writes flash) */
             ui_message("STOP TO SAVE");
         else
-            confirm_open(c == 0u ? CF_CLEAR_SEQ : c == 1u ? CF_INIT_SOUND : CF_RESTORE_ALL, song.sel);
+            confirm_open(c == 0u ? CF_INIT_SOUND : CF_RESTORE_ALL, song.sel);
         return;
     }
     if (cur_page()->graph == GR_PATS) {                   /* LOAD (1), SAVE (2): the slot picked */
@@ -1586,9 +1586,6 @@ static void act_do(void)
     id = cur_page()->id[c & 3u];
     ui.act = 0;
     switch (id) {
-    case G_CLRSEQ:
-        confirm_open(CF_CLEAR_SEQ, song.sel);
-        break;
     default:                                              /* G_INITSND */
         init_sound();                                     /* engine defaults + its first preset (the steps stay), KEY TRK at its new-sound default */
         ui_message("SOUND INIT");

@@ -1127,12 +1127,12 @@ static int test_actions(void)
     bad += check("a press that began elsewhere does not load", steps_are(t, 0) && song.octave == 2);
     press(B_OCTDN);
     bad += check("PATTERNS: OCT- goes HOME (the octave stays)", at_home() && song.octave == 2);
-    /* TOOLS: CLRSQ and INIT are picked, not done, by their knobs */
+    /* TOOLS: INIT and RESTORE ALL are picked, not done, by their knobs (CLEAR PATTERN is gone: QUICK SEQ and QUICK REC clear) */
     my_steps(t);
     go_title("TOOLS");
-    bad += check("TOOLS: nothing picked, OCT+ dark", act_cols() == 15u && act_col() == 0u && oct_leds_seen(0) == 1u);
+    bad += check("TOOLS: nothing picked, OCT+ dark", (act_cols() == 3u || act_cols() == 1u) && act_col() == 0u && oct_leds_seen(0) == 1u);
     turn(EN_K1, 3);
-    bad += check("KNOB 1 picks CLEAR, the steps stay; OCT+ breathes", ui.act == 1u && !seq_is_empty(t) &&
+    bad += check("KNOB 1 picks INIT, nothing done; OCT+ breathes", ui.act == 1u && !seq_is_empty(t) &&
                  oct_leds_seen(0) == (1u | OCT_BREATH));
     turn(EN_K1, -1);
     bad += check("KNOB 1 left drops it", ui.act == 0u);
@@ -1140,18 +1140,11 @@ static int test_actions(void)
     press(B_OCTDN);
     bad += check("OCT- cancels the pick (still on TOOLS)", ui.act == 0u && !at_home() && !seq_is_empty(t));
     turn(EN_K1, 1);
-    press(B_OCTUP);
-    bad += check("TOOLS CLEAR first asks confirmation", ui.confirm == CF_CLEAR_SEQ && !seq_is_empty(t));
-    press(B_OCTUP);
-    bad += check("OCT+ clears the pattern, the pick dropped", seq_is_empty(t) && msg_is("PATTERN CLEARED") && ui.act == 0u);
-    turn(EN_K1, 1);
-    bad += check("nothing to clear: OCT+ dark", oct_leds_seen(0) == 1u);
-    turn(EN_K2, 1);
     t->p[P_E0] = (int16_t)(t->p[P_E0] + 1);
     press(B_OCTUP);
     bad += check("TOOLS INIT first asks confirmation", ui.confirm == CF_INIT_SOUND);
     press(B_OCTUP);
-    bad += check("KNOB 2 INIT, OCT+: SOUND INIT", msg_is("SOUND INIT") && ui.act == 0u);
+    bad += check("KNOB 1 INIT, OCT+: SOUND INIT, the steps stay", msg_is("SOUND INIT") && ui.act == 0u && !seq_is_empty(t));
     press(B_OCTDN);
     bad += check("OCT- with nothing picked: HOME", at_home());
     /* the dialogs and the menu */
@@ -3652,18 +3645,13 @@ static int test_bughunt_ui(void)
         bad += check("ALGORITHM ignored with a layer's button held (OCT- puts back all); then T2",
                      ok && song.sel == 1u);
     }
-    /* 6: TOOLS: each column its own ready check; nothing to do says so (not STOP TO EDIT) */
+    /* 6: TOOLS: INIT is always ready and asks its dialog */
     ui_power_on();
     go_title("TOOLS"); frame();
-    track_defaults_steps(TSEL);                         /* DUELL: CLEAR PAT, INIT SOUND (no SECTION, SONG) */
-    turn(EN_K1, 1);                                     /* CLEAR PAT on an empty track */
-    ok = !act_ready();
+    turn(EN_K1, 1);                                     /* INIT: its dialog */
+    ok = act_ready();
     press(B_OCTUP);
-    ok &= !ui.confirm && msg_is("NOTHING TO CLEAR");
-    turn(EN_K1 + 1, 1);                                 /* INIT: its dialog */
-    ok &= act_ready();
-    press(B_OCTUP);
-    bad += check("TOOLS: CLEAR PAT with nothing there: NOTHING TO CLEAR; INIT: its dialog", ok && ui.confirm == CF_INIT_SOUND);
+    bad += check("TOOLS: INIT: its dialog", ok && ui.confirm == CF_INIT_SOUND);
     /* 7: REC works in the layers, as PLAY: it arms the track (PLAY starts); the layer stays, no page */
     ok = 1;
     {
