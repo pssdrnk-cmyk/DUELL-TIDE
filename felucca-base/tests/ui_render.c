@@ -2421,7 +2421,7 @@ int main(int argc, char **argv)
         boxf = fopen(ap, "w");
     }
     {   /* TIDE's header messages: each must fit the title room (a long one wrapped onto a second line and overlapped the first) */
-        static const char *const M[] = {"BACK TO ORIGINAL", "PARTS LEAD IN TURNS", "PARTS VARY TOGETHER", "GLIDE SOUND + SEQ", "DROP NEEDS WNDR/JRNY",
+        static const char *const M[] = {"BACK TO ORIGINAL", "PARTS LEAD IN TURNS", "PARTS VARY TOGETHER", "GLIDE BOTH", "DROP NEEDS WANDER/JOURNEY",
             "DROP CANCELLED", "VARY EVERY 4TH", "VARY EVERY BAR", "STYLE AMBIENT", "STYLE MINIMAL", "GLIDE STOPPED", "NOTHING TO KEEP", "PARTS TAKE TURNS", "GLIDE TO B", "WASH HIGH", "SEQ KEPT", "SOUND KEPT"};
         uint32_t m;
         for (m = 0; m < sizeof M / sizeof M[0]; m++) {

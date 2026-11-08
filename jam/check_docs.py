@@ -17,7 +17,7 @@ SRC = os.path.join(ROOT, "felucca-base", "firmware", "src")
 bad = []
 
 # the names of each STY column, in the order of the C table (mode, time idx, wait idx, vary, turns, poly, sync, arc, wash)
-MODE = {"GM_ONCE": "ONCE", "GM_LOOP": "LOOP", "GM_DRIFT": "DRIFT", "GM_WANDER": "WNDR", "GM_JOURNEY": "JRNY"}
+MODE = {"GM_ONCE": "ONCE", "GM_LOOP": "LOOP", "GM_DRIFT": "DRIFT", "GM_WANDER": "WANDER", "GM_JOURNEY": "JOURNEY"}
 TIME = ["1", "2", "4", "8", "16", "32", "64"]
 WAIT = ["OFF", "1", "2", "4", "8", "16"]
 VARY = ["EVERY 4TH", "EVERY BAR"]

@@ -30,7 +30,7 @@ It is made for playing the FM-1 as a **background**: set a tide going, then play
 3. Twist **knob 1** right (to B) or left (to A) and press **PLAY**. While the music plays, the glide starts on the next bar.
 4. Play over it. **STOP** pauses the glide and PLAY goes on from there. Twist knob 1 two detents while it glides and it stops where it is; the sound stays.
 
-On the very first start TIDE comes up ready: multi **M02 DUB CHORD**, AUTO TIDE on **JRNY**, both parts, 16 bars, WAIT 2. Just press PLAY.
+On the very first start TIDE comes up ready: multi **M02 DUB CHORD**, AUTO TIDE on **JOURNEY**, both parts, 16 bars, WAIT 2. Just press PLAY.
 
 ## Before you flash
 
@@ -74,15 +74,15 @@ Links from the project's pages (installer, emulator, issue forms) to the guides 
 
 ## What changed from DUELL 1.1
 
-**AUTO TIDE** runs the tide: knob 1 glides to B or to A, knob 2 picks the AUTO TIDE mode (ONCE, LOOP, DRIFT, WNDR, JRNY), knob 3 the TIME of a trip (1 to 64 bars), knob 4 the WAIT at each end, and ALGORITHM picks PART 1, PART 2 or BOTH. **TIDE SETTINGS** says how it behaves: STYLE, TARGET, VARY BARS, ROLL, ROLL ARP, ROLL PITCH, WASH, TURNS, POLY, SYNC and ARC, then REC (ADD or REPLACE for live recording), PLAY MODE, XFADE and SPLIT (the output mode, LAYER / STEREO / DUEL, and its two settings). Every row, its values and when a change lands are in the [TIDE guide](docs/TIDE_GUIDE.md). The STYLE presets:
+**AUTO TIDE** runs the tide: knob 1 glides to B or to A, knob 2 picks the AUTO TIDE mode (ONCE, LOOP, DRIFT, WANDER, JOURNEY), knob 3 the TIME of a trip (1 to 64 bars), knob 4 the WAIT at each end, and ALGORITHM picks PART 1, PART 2 or BOTH. **TIDE SETTINGS** says how it behaves: STYLE, TARGET, VARY BARS, ROLL, ROLL ARP, ROLL PITCH, WASH, TURNS, POLY, SYNC and ARC, then REC (ADD or REPLACE for live recording), PLAY MODE, XFADE and SPLIT (the output mode, LAYER / STEREO / DUEL, and its two settings). Every row, its values and when a change lands are in the [TIDE guide](docs/TIDE_GUIDE.md). The STYLE presets:
 
 | STYLE | AUTO TIDE MODE | TIME | WAIT | VARY BARS | TURNS | POLY | SYNC | ARC | WASH |
 |---|---|---|---|---|---|---|---|---|---|
-| **DUB** | JRNY | 16 bars | 2 bars | EVERY 4TH | LEAD | GENTLE | SOFT | RISE | OFF |
-| **DEEP** | WNDR | 32 bars | 4 bars | EVERY 4TH | TAKE TURNS | OFF | SOFT | RISE | LOW |
-| **MINIMAL** | WNDR | 8 bars | OFF | EVERY BAR | LEAD | WIDE | PUSH | OFF | OFF |
-| **AMBIENT** | JRNY | 64 bars | 8 bars | EVERY 4TH | TOGETHER | GENTLE | OFF | OFF | HIGH |
-| **PEAK** | JRNY | 8 bars | OFF | EVERY BAR | LEAD | GENTLE | PUSH | DROP | OFF |
+| **DUB** | JOURNEY | 16 bars | 2 bars | EVERY 4TH | LEAD | GENTLE | SOFT | RISE | OFF |
+| **DEEP** | WANDER | 32 bars | 4 bars | EVERY 4TH | TAKE TURNS | OFF | SOFT | RISE | LOW |
+| **MINIMAL** | WANDER | 8 bars | OFF | EVERY BAR | LEAD | WIDE | PUSH | OFF | OFF |
+| **AMBIENT** | JOURNEY | 64 bars | 8 bars | EVERY 4TH | TOGETHER | GENTLE | OFF | OFF | HIGH |
+| **PEAK** | JOURNEY | 8 bars | OFF | EVERY BAR | LEAD | GENTLE | PUSH | DROP | OFF |
 
 A new unit starts on DUB, so DUB's row (bold) is the default. A unit that had TIDE settings saved before STYLE existed keeps them and shows CUSTOM; the rows it lacked load as TURNS TAKE TURNS, POLY GENTLE, SYNC SOFT and ARC OFF.
 

@@ -195,9 +195,9 @@ static void test_list_knobs(void)
     tide_knob(2u, -3);
     CHECK("LIST: knob 3 left is the one before", gl.target == GT_SEQ && jl_sel == JL_TARGET);
     CHECK("LIST: the row names say what they do (D9)", !strcmp(JL_NAME[JL_ARP], "ROLL ARP") && !strcmp(JL_NAME[JL_PITCH], "ROLL PITCH") && !strcmp(JL_NAME[JL_WASH], "WASH") &&
-          !strcmp(jl_vname(JL_TARGET, 2), "SND+SEQ") && !strcmp(jl_vname(JL_VARY, 0), "EVERY 4TH") && !strcmp(jl_vname(JL_VARY, 1), "EVERY BAR"));
+          !strcmp(jl_vname(JL_TARGET, 2), "BOTH") && !strcmp(jl_vname(JL_VARY, 0), "EVERY 4TH") && !strcmp(jl_vname(JL_VARY, 1), "EVERY BAR"));
     sqm_arc = 1; sqm_auto = 0;
-    CHECK("LIST: a hand drop with no automatic tide says what it needs", !strcmp(tarc_drop_hand(), "DROP NEEDS WNDR/JRNY"));
+    CHECK("LIST: a hand drop with no automatic tide says what it needs", !strcmp(tarc_drop_hand(), "DROP NEEDS WANDER/JOURNEY"));
     sqm_arc = 0;
     jl_sel = JL_STYLE;
     ui.force = 1; ui_draw();
@@ -227,7 +227,7 @@ static void test_arc_trip(void)
     CHECK("ARC: DROP NEXT still shows (its room: the line is full with both)", strstr(l, "DROP NEXT") != 0);
     sqm_arc = 0; tarc.run = 0; tarc.hand = 0;
     tide_status(l);
-    CHECK("ARC: no ARC: the trip line as before", !strncmp(l, "JRNY TO A", 9));
+    CHECK("ARC: no ARC: the trip line as before", !strncmp(l, "JOURNEY TO A", 12));
     song.playing = 0; gl.on = 0;
 }
 
