@@ -1018,7 +1018,7 @@ static void t_ui(void)
     frames(64);
     press(B_HOME);
     frames(64);
-    expect("  .. three taps are the round: back on MORPH, the MODE page never shown", ui.page == page_of("MORPH") && !page_visible(page_of("MODE")));
+    expect("  .. three taps are the round: back on MORPH, the MODE page never shown (TIDE has no MODE row in PAGES, 1.0.0-b4)", ui.page == page_of("MORPH") && page_of("MODE") == NPAGES);
     mode_page();
     frames(32);
     jl_sel = JL_MODE;
@@ -1078,7 +1078,7 @@ static void t_mode_rows(void)
     frames(32);
     expect("TIDE SETTINGS: REC after ARC, then PLAY MODE, XFADE, SPLIT as the last three rows", JL_REC == JL_ARC + 1u && JL_MODE == JL_ARC + 2u && JL_XFADE == JL_ARC + 3u && JL_SPLIT == JL_ARC + 4u && JL_N == JL_SPLIT + 1u &&
            str_eq(JL_NAME[JL_MODE], "PLAY MODE") && str_eq(JL_NAME[JL_XFADE], "XFADE") && str_eq(JL_NAME[JL_SPLIT], "SPLIT"));
-    expect("  .. HOME's round has no MODE page (hidden), PAGES keeps its entry", !page_visible(page_of("MODE")) && page_of("MODE") < NPAGES);
+    expect("  .. HOME's round has no MODE page: PAGES has no MODE row (1.0.0-b4: the hidden row is gone)", page_of("MODE") == NPAGES);
     for (i = 0; i < 5u; i++) {
         press(B_HOME);
         frames(8);

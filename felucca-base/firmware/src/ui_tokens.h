@@ -241,8 +241,8 @@
 #define UT_OFF_W 222            /* the longest line: x 9 .. 231 */
 #define UT_OFF_TXT_ARP "THE ARPEGGIATOR IS SWITCHED OFF"
 #define UT_OFF_TXT_SEQ "THE SEQUENCER IS SWITCHED OFF"
-#define UT_OFF_TXT_SENDS "THE EFFECT SENDS ARE SWITCHED OFF"
-#define UT_OFF_TXT_PFX "THE PART EFFECTS ARE SWITCHED OFF"
+#define UT_OFF_TXT_SENDS "EFFECT SENDS ARE SWITCHED OFF"
+#define UT_OFF_TXT_PFX "PART EFFECTS ARE SWITCHED OFF"
 #define UT_OFF_NOTE_IT "TURN A KNOB TO SWITCH IT ON IN MODULES"      /* ARP, SEQ */
 #define UT_OFF_NOTE_THEM "TURN A KNOB TO SWITCH THEM ON IN MODULES"  /* SENDS, PART FX */
 #define UT_T5_X 9               /* state text, row labels and note */
@@ -292,7 +292,7 @@
 #define UT_T6_G_TH 26           /* a sentence's last baseline -> the next heading's baseline */
 /* MODE (live page): its list rows keep their place (ui_graph.c graph_mode); the picked row takes the same fill and corners */
 
-/* ---- TEMPLATE 7, the STEP sequencer page (FINAL_V1_07_sequencer, item 118; final_pages.py page_step / roll_draw2) and its help page (FINAL_V1_07b_sequencer_help) ----
+/* ---- TEMPLATE 7, the STEP sequencer page (FINAL_V1_07_sequencer, item 118; final_pages.py page_step / roll_draw2) ----
  * The roll card: x 3 .. 236, rows 27 .. 173 (hard corners). Inside: 17 semitone rows of UT_T7_RH px from row UT_T7_Y0 (the highest on top), the step columns from x UT_T7_X0, 12 px each, the keyboard strip at UT_T7_KX
  * (white keys 8 px, black keys 4 px, one row less than the row's height); the C, E and G rows named at the strip's left (S, T_DIM, ink ending at x UT_T7_NAME_R, capitals' last row = the row's top + RH);
  * a note is 10 px wide (x + 1) and RH - 2 high, an accent the row's whole height in TEXT; the cursor frame 1 px, 2 rows over the first row and 1 under the last; a lock mark 7 x 2 under the step.
@@ -331,12 +331,6 @@
 #define UT_T7_VAL_X 5
 #define UT_T7_VAL_BASE 35       /* rel: as the list heads (UT_T3_VAL_BASE - UT_T3_HEAD_Y) */
 #define UT_T7_VAL_PAD_R 2
-/* the help page: eight rows 23 px apart from row 33 (the legend symbol at x 9 centred on the row's cap rows, the word S at x 30, its meaning M grey at x 86) */
-#define UT_T7_HELP_Y0 33
-#define UT_T7_HELP_PITCH 23
-#define UT_T7_HELP_SYM_X 9
-#define UT_T7_HELP_WORD_X 30
-#define UT_T7_HELP_MEAN_X 86
 
 /* ---- TEMPLATE 8, the CELL pages (item 156; owner-approved design_grid_2x2_REVERB.png, design_fill_2_and_3.png, design_choice_bars.png in DUELL/release_drafts) ----
  * The pages whose picture was only the calm curve (graph GR_NONE) have no picture: the cards that show fill the body, rows 27 .. 215, as big cells with template 2's rows (dot + label S on rel 19,

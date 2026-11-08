@@ -388,6 +388,17 @@ static void con_cpu(void)                              /* (probe) cpu: the longe
     con_kv("cpu_miss", (int32_t)cpu_snap.miss);
     con_kv("cpu_sum_us", (int32_t)cpu_snap.sum);
     con_kv("cpu_n", (int32_t)cpu_snap.n);
+#if DUELL_TIDE
+    {                                                  /* (K3: the ease ladder's level now, and how often each level was entered since power-on: ease_n1 .. ease_n5; audio.c ease_step) */
+        char k[] = "ease_n1";
+        uint32_t l;
+        con_kv("ease", (int32_t)ease);
+        for (l = 0; l < EASE_MAX; l++) {
+            k[6] = (char)('1' + l);
+            con_kv(k, (int32_t)ease_n[l]);
+        }
+    }
+#endif
 #if DUELL_PROBE_STAGES
     {
         extern volatile uint32_t prb_stage_pk[5];

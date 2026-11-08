@@ -773,12 +773,12 @@ static int learn_test(void)
     cut = trk[0].p[P_FREEA];
     turn(EN_K1, -3);
     ok = ui.ml.pick && ui.ml.trk == 0u && ui.ml.id == P_FREEA && trk[0].p[P_FREEA] == cut - 3 && ml_arm;
-    { char b[40]; ml_line(b); ok &= str_eq(b, "T1 CUTOFF: SEND A CC"); }
+    { char b[40]; ml_line(b); ok &= str_eq(b, "PART 1 CUTOFF: SEND A CC"); }
     queued(0xB0, 1, 99, 1); queued(0xB0, 64, 127, 1); queued(0xB0, 64, 0, 1); queued(0xB0, 0, 5, 1);
     frame();
     ok &= !ml_count() && ui.ml.pick;                                   /* (CC1, CC64, CC0: never learned) */
     queued(0xB0, 26, 100, 1); frame();
-    ok &= ml_count() == 1u && ml_entry(26, 0, P_FREEA) && msg_is("CC26 -> T1 CUTOFF") && !ui.ml.pick && !ml_arm;
+    ok &= ml_count() == 1u && ml_entry(26, 0, P_FREEA) && msg_is("CC26 -> PART 1 CUTOFF") && !ui.ml.pick && !ml_arm;
     ok &= trk[0].p[P_FREEA] == cut - 3;                                /* (the learning CC sets nothing itself) */
     { char b[40]; ml_line(b); ok &= str_eq(b, "LEARN: TURN A KNOB"); }
     bad += check("  EDIT 1 KNOB 2 picks T1 CUT; CC1 / CC64 / CC0 are passed over; CC26 is learned", ok);
@@ -787,7 +787,7 @@ static int learn_test(void)
     queued(0xB1, 26, 0, 1);                                          /* (channel 2: part 2's, still T1 CUT) */
     ok &= trk[0].p[P_FREEA] == 0;
     turn(EN_K1, 1);
-    { char b[40]; ml_line(b); ok &= str_eq(b, "T1 CUTOFF = CC26"); }
+    { char b[40]; ml_line(b); ok &= str_eq(b, "PART 1 CUTOFF = CC26"); }
     bad += check("  CC26 sets T1 CUT on any channel ROUT hears; the knob again shows its CC", ok);
     song.g[G_ROUTE] = 0; queued(0xB9, 26, 64, 1);
     bad += check("  ROUT CH1-4: CC26 on channel 10 is ignored as before", trk[0].p[P_FREEA] == 1);
@@ -830,7 +830,7 @@ static int learn_test(void)
     ok &= trk[0].p[P_FREEA] != 99;
     turn(EN_K2, 1);                                                  /* T1 RES */
     queued(0xB0, 27, 0, 1); frame();
-    ok &= ml_count() == 2u && ml_entry(27, 0, P_FREEA) && !ml_entry(27, 0, P_FREEB) && ui.ml.pick && msg_is("CC27 IS T1 CUTOFF");   /* (CUT keeps CC27: the number is taken) */
+    ok &= ml_count() == 2u && ml_entry(27, 0, P_FREEA) && !ml_entry(27, 0, P_FREEB) && ui.ml.pick && msg_is("CC27 IS PART 1 CUTOFF");   /* (CUT keeps CC27: the number is taken) */
     ml_drop(27, NTRK, P_COUNT); ml_heard = 0; ml_arm = 1;                  /* (CUT's CC27 cleared: the number is free) */
     queued(0xB0, 27, 0, 1); frame();
     ok &= ml_count() == 2u && ml_entry(27, 0, P_FREEB) && !ml_cc_of(0, P_FREEA);
@@ -839,7 +839,7 @@ static int learn_test(void)
     /* OCT- clears the picked parameter's CC; no octave */
     turn(EN_K2, -1);
     press(B_OCTDN);
-    ok = !ml_cc_of(0, P_FREEB) && msg_is("T1 RES CC CLEARED") && song.octave == 0 && ui.ml.on;
+    ok = !ml_cc_of(0, P_FREEB) && msg_is("PART 1 RES CC CLEARED") && song.octave == 0 && ui.ml.on;
     press(B_OCTDN);
     ok &= msg_is("NO CC TO CLEAR") && song.octave == 0;
     memcpy(before, trk[0].p, sizeof before);
@@ -852,7 +852,7 @@ static int learn_test(void)
     ml_learn(30, 0, P_FREEB);
     turn(EN_K2, -1);                                                   /* T1 RES picked again */
     press(B_OCTDN);                                                    /* T1 RES picked: drops CC30 only */
-    ok = ml_entry(16, 1, P_PAN) && !ml_cc_of(0, P_FREEB) && msg_is("T1 RES CC CLEARED");
+    ok = ml_entry(16, 1, P_PAN) && !ml_cc_of(0, P_FREEB) && msg_is("PART 1 RES CC CLEARED");
     press(B_OCTDN);
     ok &= ml_entry(16, 1, P_PAN) && msg_is("NO CC TO CLEAR");
     ml_drop(16, NTRK, P_COUNT);

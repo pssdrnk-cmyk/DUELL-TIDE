@@ -744,7 +744,7 @@ static void test_ui(void)
     show("DUCK 2/2");
     expect("  .. DUCK 2/2", off_module(cur_page()) == MODS_PFX);
     show("SIDECHAIN");
-    expect("  .. GLO > SIDECHAIN (the DUCK's SRC and NOTE), not a notice page, its cards not drawn", !off_module(cur_page()) && card_hid(0) && card_hid(1));
+    expect("  .. GLO > SIDECHAIN (the DUCK's SRC and NOTE): a PART FX notice page too (b4 UI round 2: was a blank page)", off_module(cur_page()) == MODS_PFX);
     set(MODS_PFX, 0u);
     show("FX");
     expect("all ON: no notice page, every card drawn", !off_module(cur_page()) && !card_hid(0) && !card_hid(1));

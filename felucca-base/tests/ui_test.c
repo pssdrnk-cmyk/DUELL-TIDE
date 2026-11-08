@@ -781,7 +781,7 @@ static int test_rec(void)
         bad += check(k == 0 ? "REC on TRACKS: arms the selected track, PLAY starts" :
                      k == 1 ? "#133 REC on SEQ > STEP: arms the selected track for step recording, PLAY does not start" :
                      "REC on ARP: arms the selected track, PLAY starts",
-                     song.rec == 4u && (k == 1u ? transport_req == 0u && msg_is("KEYS WRITE STEPS") : transport_req == 1u));
+                     song.rec == 4u && (k == 1u ? transport_req == 0u && msg_is("KEYS REPLACE STEPS") : transport_req == 1u));
         song.playing = 1;
         transport_req = 0;
         frames(400);                                   /* (not a double tap: that locks the REC layer) */
@@ -1072,7 +1072,10 @@ static void go_title(const char *title)
     uint32_t i;
     for (i = 0; i < NPAGES && !str_eq(PAGES[i].title, title); i++)
         ;
-    if (i >= NPAGES) fprintf(stderr, "go_title: no page titled \"%s\"\n", title);   /* (a scene on a renamed page) */
+    if (i >= NPAGES) {                                  /* (a scene on a renamed or removed page: stop loudly, ui.page = NPAGES would read past PAGES) */
+        fprintf(stderr, "go_title: no page titled \"%s\"\n", title);
+        abort();
+    }
     ui.page = (uint8_t)i;
     page_entered();
 }
@@ -1124,12 +1127,12 @@ static int test_actions(void)
     bad += check("a press that began elsewhere does not load", steps_are(t, 0) && song.octave == 2);
     press(B_OCTDN);
     bad += check("PATTERNS: OCT- goes HOME (the octave stays)", at_home() && song.octave == 2);
-    /* TOOLS: CLRSQ and INIT are picked, not done, by their knobs */
+    /* TOOLS: INIT and RESTORE ALL are picked, not done, by their knobs (CLEAR PATTERN is gone: QUICK SEQ and QUICK REC clear) */
     my_steps(t);
     go_title("TOOLS");
-    bad += check("TOOLS: nothing picked, OCT+ dark", act_cols() == 15u && act_col() == 0u && oct_leds_seen(0) == 1u);
+    bad += check("TOOLS: nothing picked, OCT+ dark", (act_cols() == 3u || act_cols() == 1u) && act_col() == 0u && oct_leds_seen(0) == 1u);
     turn(EN_K1, 3);
-    bad += check("KNOB 1 picks CLEAR, the steps stay; OCT+ breathes", ui.act == 1u && !seq_is_empty(t) &&
+    bad += check("KNOB 1 picks INIT, nothing done; OCT+ breathes", ui.act == 1u && !seq_is_empty(t) &&
                  oct_leds_seen(0) == (1u | OCT_BREATH));
     turn(EN_K1, -1);
     bad += check("KNOB 1 left drops it", ui.act == 0u);
@@ -1137,18 +1140,11 @@ static int test_actions(void)
     press(B_OCTDN);
     bad += check("OCT- cancels the pick (still on TOOLS)", ui.act == 0u && !at_home() && !seq_is_empty(t));
     turn(EN_K1, 1);
-    press(B_OCTUP);
-    bad += check("TOOLS CLEAR first asks confirmation", ui.confirm == CF_CLEAR_SEQ && !seq_is_empty(t));
-    press(B_OCTUP);
-    bad += check("OCT+ clears the pattern, the pick dropped", seq_is_empty(t) && msg_is("PATTERN CLEARED") && ui.act == 0u);
-    turn(EN_K1, 1);
-    bad += check("nothing to clear: OCT+ dark", oct_leds_seen(0) == 1u);
-    turn(EN_K2, 1);
     t->p[P_E0] = (int16_t)(t->p[P_E0] + 1);
     press(B_OCTUP);
     bad += check("TOOLS INIT first asks confirmation", ui.confirm == CF_INIT_SOUND);
     press(B_OCTUP);
-    bad += check("KNOB 2 INIT, OCT+: SOUND INIT", msg_is("SOUND INIT") && ui.act == 0u);
+    bad += check("KNOB 1 INIT, OCT+: SOUND INIT, the steps stay", msg_is("SOUND INIT") && ui.act == 0u && !seq_is_empty(t));
     press(B_OCTDN);
     bad += check("OCT- with nothing picked: HOME", at_home());
     /* the dialogs and the menu */
@@ -2550,7 +2546,7 @@ static int test_product_ux(void)
     ok &= cur_page()->graph == GR_TRK;
     go_title("AMP ENV"); press(B_HOME);
     ok &= at_home();
-    go_title("CLOCK"); press(B_HOME);
+    go_title("LFO 1"); press(B_HOME);                  /* (was CLOCK: no such page since 1.1, the lookup read past PAGES) */
     ok &= at_home();
     bad += check("1.2: HOME cycles HOME > MIXER > CLOCK > HOME (CLOCK: BPM SWG CLK, HOME's LED); from any other page HOME", ok);
     hold(B_HOME);
@@ -2559,7 +2555,7 @@ static int test_product_ux(void)
     frames(320);                                       /* (taps further apart than a double tap: #83) */
     press(B_GLO); frames(320); ok = cur_page()->fam == FAM_GLO && str_eq(cur_page()->title, "SONG");
     press(B_GLO); frames(320); ok &= str_eq(cur_page()->title, "SONG") && cur_page()->fam == FAM_GLO && !at_home();
-    go_title("CLOCK"); press(B_GLO); frames(320); ok &= str_eq(cur_page()->title, "SONG");
+    go_title("LFO 1"); press(B_GLO); frames(320); ok &= str_eq(cur_page()->title, "SONG");
     bad += check("1.2: GLO opens SONG directly, again SONG (no GLOBAL, no SYSTEM, no MIXER)", ok);
     go_main_to(HP_MORPH); btn_down(B_SEQ); frames(500);
     ok = ui.layer == LAYER_SEQ && at_home();
@@ -3649,18 +3645,13 @@ static int test_bughunt_ui(void)
         bad += check("ALGORITHM ignored with a layer's button held (OCT- puts back all); then T2",
                      ok && song.sel == 1u);
     }
-    /* 6: TOOLS: each column its own ready check; nothing to do says so (not STOP TO EDIT) */
+    /* 6: TOOLS: INIT is always ready and asks its dialog */
     ui_power_on();
     go_title("TOOLS"); frame();
-    track_defaults_steps(TSEL);                         /* DUELL: CLEAR PAT, INIT SOUND (no SECTION, SONG) */
-    turn(EN_K1, 1);                                     /* CLEAR PAT on an empty track */
-    ok = !act_ready();
+    turn(EN_K1, 1);                                     /* INIT: its dialog */
+    ok = act_ready();
     press(B_OCTUP);
-    ok &= !ui.confirm && msg_is("NOTHING TO CLEAR");
-    turn(EN_K1 + 1, 1);                                 /* INIT: its dialog */
-    ok &= act_ready();
-    press(B_OCTUP);
-    bad += check("TOOLS: CLEAR PAT with nothing there: NOTHING TO CLEAR; INIT: its dialog", ok && ui.confirm == CF_INIT_SOUND);
+    bad += check("TOOLS: INIT: its dialog", ok && ui.confirm == CF_INIT_SOUND);
     /* 7: REC works in the layers, as PLAY: it arms the track (PLAY starts); the layer stays, no page */
     ok = 1;
     {
@@ -3868,8 +3859,8 @@ static int test_step_rec(void)
                  !memcmp(before, t->step, sizeof before) && ui.cursor == 3u);
     song.rec = 0;
     press(B_REC);
-    bad += check("#133 REC on STEP arms step recording: stopped, KEYS WRITE STEPS",
-                 song.rec == 1u && !transport_req && !song.playing && !seq_counting() && msg_is("KEYS WRITE STEPS"));
+    bad += check("#133 REC on STEP arms step recording: stopped, KEYS REPLACE STEPS",
+                 song.rec == 1u && !transport_req && !song.playing && !seq_counting() && msg_is("KEYS REPLACE STEPS"));
     key_down(7); frame();
     ok = t->step[3].n == 1u && t->step[3].note[0] == kb_map(t, 7) && t->step[3].time == ST_NOTE && ui.cursor == 3u;
     key_up(7); frame();
@@ -3931,12 +3922,12 @@ static int test_step_preview_chord_entry(void)
     uint32_t i, rec0, mc0;
     ui_power_on();
     ok = !ui_prefs2 && !menu_get(MI_PREVIEW) && !menu_get(MI_CHADD) && !scope_mix &&   /* (0.2.14: SCOPE removed; CHORD ENTRY is STEP KEYS) */
-         str_eq(menu_vname(MI_PREVIEW, 1), "ON") && str_eq(menu_vname(MI_CHADD, 0), "WRITE") &&
+         str_eq(menu_vname(MI_PREVIEW, 1), "ON") && str_eq(menu_vname(MI_CHADD, 0), "REPLACE") &&
          str_eq(menu_vname(MI_CHADD, 1), "ADD") && MI_TAB[MI_PREVIEW] == MTAB_CONTROL &&
          MI_TAB[MI_CHADD] == MTAB_CONTROL;
     menu_put(MI_PREVIEW, 1); menu_put(MI_CHADD, 1); ok &= ui_prefs2 == 6u && !ui_prefs && !(ui_rec_prefs & 0x40u);
     menu_put(MI_PREVIEW, 0); menu_put(MI_CHADD, 0); ok &= !ui_prefs2 && !scope_mix;
-    bad += check("1.2 MENU: STEP PREVIEW OFF / ON, STEP KEYS WRITE / ADD: 0 by default, a bit each", ok);
+    bad += check("1.2 MENU: STEP PREVIEW OFF / ON, STEP KEYS REPLACE / ADD: 0 by default, a bit each", ok);
 
     /* STEP PREVIEW */
     t = TSEL;
@@ -6080,7 +6071,7 @@ static int test_rec_layer(void)
     song.playing = 0;
     go_page(GR_ROLL); frame(); frames(400);
     press(B_REC);
-    ok &= song.rec == 1u && transport_req == 0u && msg_is("KEYS WRITE STEPS");
+    ok &= song.rec == 1u && transport_req == 0u && msg_is("KEYS REPLACE STEPS");
     bad += check("  a tap still arms / disarms when let go (HOME starts PLAY, STEP: step recording)", ok);
     ui_power_on();
     rec_down(); frame();
@@ -7580,7 +7571,9 @@ static int test_save_opens(void)
         {"LFO 1", DM_LAYER, GR_SLOTS},   {"ENV 2", DM_SPLIT, GR_BROWSE},     {"STEP", DM_LAYER, GR_PATS},
         {"STEP", DM_SPLIT, GR_PATS},     {"PARAMETER LOCKS", DM_STEREO, GR_PATS}, {"MIXER", DM_STEREO, GR_BROWSE},
         {"MORPH", DM_LAYER, GR_SLOTS},   {"REVERB", DM_STEREO, GR_BROWSE},   {"AMP ENV", DM_SPLIT, GR_BROWSE},
+#if !DUELL_TIDE                                         /* (TIDE 1.0.0-b4: PAGES has no MODE row) */
         {"MODE", DM_LAYER, GR_SLOTS},
+#endif
     };
     uint32_t i;
     for (i = 0; i < NELEM(T); i++) {
@@ -9182,9 +9175,6 @@ static int test_item158_pages(void)
                 open_family(f);
                 ok_jump &= page_visible(ui.page);
             }
-            go_title("SEND FX");
-            fxsum_knob(1, 1);
-            ok_jump &= page_visible(ui.page);
             ui.perf = 1;
             frames(32);
             ui.perf = 0;
@@ -9193,7 +9183,7 @@ static int test_item158_pages(void)
             guide_to_midi();
             ok_jump &= page_visible(ui.page);
         }
-    bad += check("item 158 S3:   .. every family button (FX remembering a hidden DUCK page), SEND FX's jump, PERFORM's way back, the guide's NOW: a page in the order", ok_jump);
+    bad += check("item 158 S3:   .. every family button (FX remembering a hidden DUCK page), PERFORM's way back, the guide's NOW: a page in the order", ok_jump);
     /* every state: a visible CELL page has at least one card; an empty one is not visible */
     for (a = 0; a < 4u; a++)
         for (b = 0; b < 4u; b++)
@@ -10024,11 +10014,11 @@ static int test_item165(void)
         }
         bad += check("item 165 E:   .. every other engine's ENGINE page keeps template 2 (its picture)", ok_keep);
     }
-    /* ---- F. names: LOFI's and ANALOG's WAVE lists in full words (PULSE, TRIANGLE, SINE, SQUARE); the LFO's and SUB OSC's lists not touched; too wide for Bold 23: Bold 15 */
+    /* ---- F. names: LOFI's and ANALOG's WAVE lists in full words (PULSE, TRIANGLE, SINE, SQUARE); the LFO's in full words too (b4); SUB OSC's list not touched; too wide for Bold 23: Bold 15 */
     {
         static const char *const AN[7] = {"SAW", "SQUARE", "TRIANGLE", "SINE", "PWM", "SYNC", "SUB"};
         static const char *const LO[15] = {"PULSE", "TRIANGLE", "SAW", "NOISE", "SINE", "SAW 2", "BASS 1", "BASS 2", "ORGAN", "HOLLOW", "AH", "OH", "EE", "BUZZ", "STAIR"};
-        static const char *const LF[5] = {"SIN", "TRI", "SAW", "SQR", "S&H"};
+        static const char *const LF[5] = {"SINE", "TRIANGLE", "SAW", "SQUARE", "S&H"};   /* (b4, UI audit 7: the LFO in full words too) */
         int ok = 1, ok_face = 1;
         char vb[PV_LEN];
         const char *u;
@@ -10049,7 +10039,7 @@ static int test_item165(void)
             TSEL->p[P_E1] = 6; screen_read(); ok_face &= c164_find("BASS 1", &f) && f == (const void *)&AF_L;
             TSEL->p[P_E1] = 0; screen_read(); ok_face &= c164_find("PULSE", &f) && f == (const void *)&AF_L;
         }
-        bad += check("item 165 F: LOFI's WAVE list PULSE TRIANGLE .. SINE and ANALOG's SAW SQUARE TRIANGLE SINE PWM SYNC SUB in full words; the LFO's (SIN TRI SAW SQR S&H) and SUB OSC's TRI not touched", ok);
+        bad += check("item 165 F: LOFI's WAVE list PULSE TRIANGLE .. SINE and ANALOG's SAW SQUARE TRIANGLE SINE PWM SYNC SUB in full words; the LFO's in full words too (SINE TRIANGLE SAW SQUARE S&H, b4); SUB OSC's TRI not touched", ok);
         bad += check("item 165 F:   .. on the pages: ANALOG's SQUARE / TRIANGLE in Bold 15 (too wide for Bold 23), LOFI's cells TRIANGLE, BASS 1, PULSE in Bold 23", ok_face);
     }
     (void)eT; (void)eV;

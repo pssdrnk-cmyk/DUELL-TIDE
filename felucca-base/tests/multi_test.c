@@ -1269,8 +1269,8 @@ int main(void)
         uint32_t m, k, pi;
         memset(nor, 0xFF, sizeof nor);
         power_cycle();
-        ok = !(ui_prefs2 & (PREF_MODE_RECALL >> 16)) && menu_get(MI_MODERECALL) == 0u && str_eq(menu_vname(MI_MODERECALL, 0), "KEEPS MODE") &&
-             str_eq(menu_vname(MI_MODERECALL, 1), "SETS MODE") && str_eq(MI_NAME[MI_MODERECALL], "MULTI LOAD") && MI_TAB[MI_MODERECALL] == MTAB_CONTROL;
+        ok = !(ui_prefs2 & (PREF_MODE_RECALL >> 16)) && menu_get(MI_MODERECALL) == 0u && str_eq(menu_vname(MI_MODERECALL, 0), DUELL_TIDE ? "KEEPS PLAY MODE" : "KEEPS MODE") &&
+             str_eq(menu_vname(MI_MODERECALL, 1), DUELL_TIDE ? "SETS PLAY MODE" : "SETS MODE") && str_eq(MI_NAME[MI_MODERECALL], "MULTI LOAD") && MI_TAB[MI_MODERECALL] == MTAB_CONTROL;
         ck("MODE RECALL (0.2.14: MULTI LOAD KEEPS MODE / SETS MODE): KEEP by default (CONTROL tab)", ok);
         ok = 1;
         for (m = 0; m < 3u; m++)                      /* KEEP: M01, M02, M04 (all LAYER): the mode stays */

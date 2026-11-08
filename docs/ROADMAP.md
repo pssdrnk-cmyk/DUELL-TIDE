@@ -9,15 +9,15 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 | | |
 |---|---|
 | **Stable** | `stable-2026-11-03` (`187e9d0`), validated by the fork owner. The first versioned stable will be `1.0.0`. |
-| **Newest beta** | `1.0.0-b3` (tag `tide-1.0.0-b3`), a GitHub pre-release since 8 November: PRs #1 to #5 (HOME without MODE, keys record into ARP SEQ with a REC row, the CPU pill and badge, the PATCHES order, live-recording fixes). |
-| **Older betas** | `1.0.0-b2` (`0d2fcb9`), `1.0.0-b1` (`817658d`) and `beta-2026-11-04` (`77a6df2`), all GitHub pre-releases. |
-| **Development** | `1.0.0-b4` on branch `b4/integ`: the pages cleanup (no SEQUENCER HELP, MORPH value in a card, about 4.9 KB freed), the ease ladder (K3) and the silent-bus skip (K5); measured on the unit with no missed blocks and no cut voices. Goes to `jam11` as a PR. |
+| **Newest beta** | `1.0.0-b4` (tag `tide-1.0.0-b4`): the ease ladder (no missed blocks or cut voices on the unit's GLIDE sweep), the silent-bus skip, STYLE DRONE and the drone pack, the pages and screen cleanups. |
+| **Older betas** | `1.0.0-b3` (`c124935`), `1.0.0-b2` (`0d2fcb9`), `1.0.0-b1` (`817658d`) and `beta-2026-11-04` (`77a6df2`), all GitHub pre-releases. |
+| **Development** | `1.0.0-b5`: MORPH UNDO dropped for RAM, the wave picture taking over the MORPH page, AUTO TIDE and the wave page showing both parts always. |
 | **Flash** | 580,808 B of the 581,564 B slot (build of `fix/b3-cleanup`, 8 November): **756 B free**. Every addition is measured; simplifications pay for features. Keep 0xEA000..0xFBFFF for future pattern / multi slots. |
 | **CPU** | About 3 missed audio blocks per FM6 crossing during a GLIDE, accepted for the betas. Five multis peak at raw 91 to 101 % in the 16-multi GLIDE sweep. `1.0.0` needs 0 missed blocks over that sweep. |
 
 ## How we work
 
-- **One audio change per beta.** A change that can alter the sound gets a beta of its own, so a problem points at one change.
+- **Betas carry what is ready.** Several audio changes may ship in one beta (owner, 8 November: delivery first); each one is still measured on the unit before it ships.
 - **Measure before and after.** An audio-path change is measured on the unit before and after, with the same script, against a pass mark written down first.
 - **Builder and four reviewers.** Each change is built by one agent on its own branch, then read by separate reviewers: correctness, quality and cohesion, tests, docs. The coordinator decides the fixes; a verification review checks them.
 - **Pull requests.** Every change goes to GitHub as a pull request against `jam11`; GitHub runs the full host suite on it. Locally only the device build (size, hot-code check), `jam/check_off.sh` and `check_docs.py`. Builders work in parallel; merges go one at a time, with the owner's OK.
@@ -47,7 +47,7 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 | 8 | Unit measurements | The 16-multi GLIDE sweep reading both `cpu_pk_us` and `cpu_el_pk_us` (K2); each drone with its 3-note chord held while `glide 1 0` runs. Sets the acceptance numbers for b4. | Needs the unit on USB. |
 | 9 | Cut b3 | `TIDE_VERSION` 1.0.0-b3, CHANGELOG section, tag, build, flash, GitHub pre-release. | After 2 to 8 and the merges. |
 
-## After b3, one audio change per beta
+## After b3
 
 | Beta | Item | What it does | Spec |
 |---|---|---|---|
@@ -62,6 +62,16 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 **Before `1.0.0`:** 0 missed blocks over the 16-multi GLIDE sweep (owner, 8 November); the budget made honest: the per-sample work added after the 26 October cost calibration (SVF precision, delay low cut and knee, master knee, HALL / PLATE pre-delay) re-measured with `jam_dev.py measure` and charged, `bd_part` timed inside the audio interrupt and moved out if it costs over ~20 us, the blend charged as a part cost (findings 5, 6, 34); then `BUDGET_PEAK` lowered to the measured residual, only after the ease ladder is measured on the unit (K9).
 
 ## Planned, not yet scheduled
+
+**Screens** (redundancy audit 8 November, all 433 screens rendered)
+- b4: drop the ENV round's copy of the MATRIX pages (the LFO round keeps them); SIDECHAIN shows the PART FX OFF notice instead of a blank page; the MIDI LEARN line no longer cut under the footer's engine name; no placeholder rule on MORPH; the hold-EDIT layer is QUICK EDIT; one-line OFF notices.
+- Owner's call: drop SEND FX (every value is on FX and GLO) and TOOLS CLEAR PATTERN (QUICK SEQ and QUICK REC clear too), about 0.8 KB; the arp follows TEMPO SWING like the sequencer; TIDE rows SYNC and ROLL renamed so they don't share words with tempo sync and MORPH's ROLL.
+
+**One view for both parts** (owner, 8 November): AUTO TIDE and the MORPH / wave page always show both parts, with the selected part clearly marked (full colour, the other dimmed, plus a cue that works on MONO and GREY). The wave page does it in b5 (Wave Lab); AUTO TIDE follows the second screen round.
+
+**MORPH** ([review](audits/2026-11-08/morph/REPORT.md): keep the core and the page, no big rework)
+- c3: factory loads stop resetting AMOUNT; K4 dim in JRNY, where it does nothing (about 50 B).
+- c2: a hand fader resting in the middle (40-60 %) between ends that differ in a switch stays dulled, FM6 on pure sines: after about 1 s at rest, settle onto the nearer side (about 100 B, audio interrupt; listen on the unit first).
 
 **CPU and audio engine**
 - Effect code from slow flash: [analysis](audits/2026-11-08/flash-hot/REPORT.md) done. Of the 116 functions, 50 run per sample. Plan: first a test-mode probe that times one function from flash and from RAM (no sound change); only if it shows at least 0.5 % of a half, move ~0.9 KB (`dly_wr`, `master_knee`, `acc_sum`, `cho_zrun`, `fx_swing`, `rev_front`, `hall_gains`) and later ~1 KB more, as its own beta measured on the unit. Expected gain 1 to 3 %, not enough alone for `1.0.0`.
@@ -121,6 +131,7 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 | Question | Default if you don't mind |
 |---|---|
 | D43: when a crossing starts under a held chord, the chord stays whole (the budget plans for it from the start). | Stays whole; decided after the drones are measured under a GLIDE. |
+| MORPH UNDO: drop it (2 steps, and TIDE's own rolls fill it) to free about 1.9 KB of RAM, which the wave card needs? | Drop it, then retry the wave card. |
 | D46: the multis that are too loud or too quiet are trimmed by ear on the unit. | Trim M15, M16 up and M10 down by the numbers, then listen. |
 | Try on the unit: keys recording into an ARP SEQ part, and REC ADD / REPLACE (b3). | Nothing to decide; say if the nearest-step rule feels wrong. |
 | Merge PRs #1 to #4 once GitHub is green. | Merge in order #1, #2, #3, #4, then the three waiting branches. |
@@ -132,7 +143,7 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 
 ## Ideas, not decided
 
-- **MORPH card waves.** The MORPH card's moving lines become the part's real output, like an oscilloscope: a held note stands still, a chord beats, L and R as two lines, faint trails when the sound moves. Plan: [design/WAVE_DISPLAY_PLAN.md](design/WAVE_DISPLAY_PLAN.md) (branch `plan/wave-displays`); an emulator-only WAVE LAB page is on that branch for trying it. The audio tap is its own beta, measured on the unit. Owner choices in the plan (silence, trails, the bass line).
+- **MORPH card waves.** Since `1.0.0-b4` the MORPH page's made-up moving lines are gone and a quiet line holds their place; the wave card will show the part's real output there, like an oscilloscope: a held note stands still, a chord beats, L and R as two lines, faint trails when the sound moves. Plan: [design/WAVE_DISPLAY_PLAN.md](design/WAVE_DISPLAY_PLAN.md) (branch `plan/wave-displays`); an emulator-only WAVE LAB page is on that branch for trying it. The audio tap is its own beta, measured on the unit. Owner choices in the plan (silence, trails, the bass line).
 - **MORPH card waves: parked 8 November.** A build of the reduced design (a mono 512-entry tap and a stack of 8 ridges; WIP `fix/b6-wave-card` 2945b9e) needed +1,444 B of flash and left 992 B of .bss headroom against the 4,096 B rule. A retry needs at most 1 KB of RAM (8-bit samples, a 256-384 ring), net flash at or below +0 B (a simpler trigger), and comes after the flash savings land. See WAVE_DISPLAY_PLAN.md section 7 (branch `plan/wave-displays`).
 - **Wave card L/R lines and the deep-bass line:** about 4 KB more RAM. The candidates are PERFORM capture (8 KB = 93 ms shorter capture) or a canvas drawn in strips. Owner decision when wanted.
 - **From Niagara Drift** (an FM-1 drone firmware; checked against our code 8 November, estimates until built): **reverb FREEZE** on HALL / ROOM (the tail holds and the notes can stop; a block-rate gain change with a limiter, ~200-400 B, no CPU while off; risks: fixed-point overflow and the release click) fits best. **AGE** (slow tape-like wear, ~300-600 B) needs an offset layer on top of the saved sound, not checked yet. Gesture keys and a free-time motion loop do not fit the flash, the keys or the no-new-pages rule.

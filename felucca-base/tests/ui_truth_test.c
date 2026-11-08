@@ -138,13 +138,13 @@ static void test_style_custom(void)
     frame();
     CHECK("CUSTOM: a hand edit turns STYLE to CUSTOM", tide_style == STY_CUSTOM);
     jl_sel = JL_STYLE;
-    tide_list_oct(1u);                                       /* OCT-: CUSTOM -> PEAK */
-    CHECK("CUSTOM: OCT- picks PEAK and applies it", tide_style == STY_PEAK && gl.mode == GM_JOURNEY && gl.time == 3u && sqm_poly == 1u);
+    tide_list_oct(1u);                                       /* OCT-: CUSTOM -> DRONE (the last style) */
+    CHECK("CUSTOM: OCT- picks DRONE and applies it", tide_style == STY_DRONE && gl.mode == GM_WANDER && gl.time == 6u && sqm_poly == 0u);
     tide_list_oct(2u);                                       /* OCT+: back onto CUSTOM */
     CHECK("CUSTOM: OCT+ is CUSTOM again", tide_style == STY_CUSTOM);
     CHECK("CUSTOM:   with the player's nine values back", gl.mode == GM_WANDER && gl.time == 2u && gl.wait == 1u && sqm_vary_all == 1u && sqm_turns == 2u &&
                                                         sqm_poly == 2u && sqm_sync == 2u && sqm_arc == 2u && (morph_wlvl & 3u) == 3u);
-    tide_list_oct(1u); tide_list_oct(1u); tide_list_oct(2u); tide_list_oct(2u);   /* PEAK, AMBIENT, PEAK, CUSTOM */
+    tide_list_oct(1u); tide_list_oct(1u); tide_list_oct(2u); tide_list_oct(2u);   /* DRONE, PEAK, DRONE, CUSTOM */
     CHECK("CUSTOM: and again after two presets in between", tide_style == STY_CUSTOM && gl.mode == GM_WANDER && sqm_poly == 2u && sqm_arc == 2u && (morph_wlvl & 3u) == 3u);
     frame();
     CHECK("CUSTOM: it stays CUSTOM (the values are not a preset's)", tide_style == STY_CUSTOM);
@@ -162,14 +162,14 @@ static void test_inert_rows(void)
     gl.mode = GM_JOURNEY; morph_musical = 1; gl.target = GT_BOTH;
     ui.force = 1; ui_draw();
     CHECK("INERT: JRNY, MUSIC, SEQ: POLY's value in the theme colour", dots(x0, x1, y, y + UT_L5_H, T_THEME) > 0);
-    CHECK("INERT:   and knob 1's line names nothing", !rows_has(0, 80, "WNDR OR JRNY") && !rows_has(0, 80, "ROLL MUSIC") && !rows_has(0, 80, "TARGET SEQ"));
+    CHECK("INERT:   and knob 1's line names nothing", !rows_has(0, 80, "WNDR OR JRNY") && !rows_has(0, 80, "ROLL TYPE MUSIC") && !rows_has(0, 80, "TARGET SEQ"));
     gl.mode = GM_ONCE;
     ui.force = 1; ui_draw();
     CHECK("INERT: MODE ONCE: POLY's value is dim, not the theme colour", dots(x0, x1, y, y + UT_L5_H, T_DIM) > 0 && dots(x0, x1, y, y + UT_L5_H, T_THEME) == 0);
     CHECK("INERT:   knob 1's line says WNDR OR JRNY", rows_has(0, 80, "WNDR OR JRNY"));
     gl.mode = GM_WANDER; morph_musical = 0;
     ui.force = 1; ui_draw();
-    CHECK("INERT: ROLL SMART: ROLL MUSIC is named", rows_has(0, 80, "ROLL MUSIC") && dots(x0, x1, y, y + UT_L5_H, T_DIM) > 0);
+    CHECK("INERT: ROLL TYPE SMART: ROLL TYPE MUSIC is named", rows_has(0, 80, "ROLL TYPE MUSIC") && dots(x0, x1, y, y + UT_L5_H, T_DIM) > 0);
     morph_musical = 1; gl.target = GT_SOUND;
     ui.force = 1; ui_draw();
     CHECK("INERT: TARGET SOUND: TARGET SEQ is named", rows_has(0, 80, "TARGET SEQ") && dots(x0, x1, y, y + UT_L5_H, T_DIM) > 0);
@@ -195,9 +195,9 @@ static void test_list_knobs(void)
     tide_knob(2u, -3);
     CHECK("LIST: knob 3 left is the one before", gl.target == GT_SEQ && jl_sel == JL_TARGET);
     CHECK("LIST: the row names say what they do (D9)", !strcmp(JL_NAME[JL_ARP], "ROLL ARP") && !strcmp(JL_NAME[JL_PITCH], "ROLL PITCH") && !strcmp(JL_NAME[JL_WASH], "WASH") &&
-          !strcmp(jl_vname(JL_TARGET, 2), "SND+SEQ") && !strcmp(jl_vname(JL_VARY, 0), "EVERY 4TH") && !strcmp(jl_vname(JL_VARY, 1), "EVERY BAR"));
+          !strcmp(jl_vname(JL_TARGET, 2), "BOTH") && !strcmp(jl_vname(JL_VARY, 0), "EVERY 4TH") && !strcmp(jl_vname(JL_VARY, 1), "EVERY BAR"));
     sqm_arc = 1; sqm_auto = 0;
-    CHECK("LIST: a hand drop with no automatic tide says what it needs", !strcmp(tarc_drop_hand(), "DROP NEEDS WNDR/JRNY"));
+    CHECK("LIST: a hand drop with no automatic tide says what it needs", !strcmp(tarc_drop_hand(), "DROP NEEDS WANDER/JOURNEY"));
     sqm_arc = 0;
     jl_sel = JL_STYLE;
     ui.force = 1; ui_draw();
@@ -227,7 +227,7 @@ static void test_arc_trip(void)
     CHECK("ARC: DROP NEXT still shows (its room: the line is full with both)", strstr(l, "DROP NEXT") != 0);
     sqm_arc = 0; tarc.run = 0; tarc.hand = 0;
     tide_status(l);
-    CHECK("ARC: no ARC: the trip line as before", !strncmp(l, "JRNY TO A", 9));
+    CHECK("ARC: no ARC: the trip line as before", !strncmp(l, "JOURNEY TO A", 12));
     song.playing = 0; gl.on = 0;
 }
 

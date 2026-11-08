@@ -73,6 +73,8 @@ Companion to `CPU_AUDIT.md` (same folder). Each brief is complete on its own: an
 
 **Owner question before starting:** level 2 ("no new note for a moment") acceptable live? If no, skip level 2 and renumber.
 
+**Answered (owner, 2026-11-08):** yes, acceptable live; all five levels kept. As built (1.0.0-b4) level 2 is gentler than "no new note": a new POLY note takes over the part's oldest released voice instead of a free one (the old tail stops when the new note starts); with none released it takes a free voice, so no note is dropped and no held note is cut. The release rule was changed in review: one level down after ~1 s with no half over 80 % (the 70 %-average rule never let go of a scene at 70 .. 85 %).
+
 ---
 
 ## K4. Buses as a second core-1 job <a id="k4"></a>

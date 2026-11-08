@@ -88,11 +88,11 @@ static void t_entry(void)
     frames(500);
     btn_up(B_FX);
     frames(32);
-    expect("  FX held 0.5 s (under the hold): a tap, the next FX page", !ui.perf && str_eq(title_now(), "SEND FX"));
+    expect("  FX held 0.5 s (under the hold): a tap, the next FX page", !ui.perf && str_eq(title_now(), "INSERT 1/2"));
     perform_on();
     hold(B_FX);
     frames(32);
-    expect("FX held again in PERFORM: off, back to the page under it", !ui.perf && str_eq(title_now(), "SEND FX"));
+    expect("FX held again in PERFORM: off, back to the page under it", !ui.perf && str_eq(title_now(), "INSERT 1/2"));
     go_main_to(HP_MORPH);
     frames(32);
     perform_on();

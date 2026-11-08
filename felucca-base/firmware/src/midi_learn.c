@@ -89,17 +89,15 @@ static const char *const MAP_X_NAME[NX] = {"ROUTE", "LINK", "TWIN KEY TRK", "ENV
                                            "SUB OCTAVE", "SUB WAVE", "SUB HARMONICS", "CYCLE MODE", "CYCLE RISE", "CYCLE FALL", "CYCLE CURVE",
                                            "CYCLE SYNC", "AMP ENV TO SATURATION", "FILTER ENV TO FILTER BLEND", "FILTER ENV TO FILTER DRIVE", "FILTER ENV TO MULTI RES", "CYCLE TO TWIN CUTOFF", "CYCLE TO PAN", "CYCLE TO PITCH",
                                            "LFO 2 TO TWIN RES", "LFO 2 TO MULTI MODE", "LFO 2 TO FILTER BLEND", "LFO 1 LEVEL", "LFO 2 LEVEL", "STRUM"};   /* (DUELL 1.1: X15 .. X26; X27 STRUM, item 144) */
-/* the name of line l's parameter (b holds 40): "CUTOFF", "MORPH", "T2 ATTACK" (a learned line leads with its track) */
+/* the name of line l's parameter (b holds 40): "CUTOFF", "MORPH", "PART 2 ATTACK" (a learned line leads with its track) */
 static void map_name(uint32_t l, char *b)
 {
     uint32_t code = MAP_TARGET(l), k = MAP_WHO(l) == MAP_W_LEARNED ? MAP_RULE(l) : MAP_RULE(l) == MAP_R_PART1 ? 0u : MAP_RULE(l) == MAP_R_PART2 ? 1u : trk_index(TSEL);
     const char *s = 0;
     b[0] = 0;
     if (MAP_WHO(l) == MAP_W_LEARNED) {
-        b[0] = 'T';
-        b[1] = (char)('1' + k);
-        b[2] = ' ';
-        b[3] = 0;
+        str_cpy(b, "PART 1 ", 8);                  /* (b4, UI audit 5: "PART n" as everywhere else) */
+        b[5] = (char)('1' + k);
     }
     if (code < P_COUNT) {
         s = code == P_TWTYPE ? "TWIN TYPE" : code == P_CUT2 ? "TWIN CUTOFF" : code == P_RES2 ? "TWIN RES" : code == P_DRV2 ? "DRIVE" : code == P_BLEND ? "BLEND" : 0;
@@ -356,20 +354,19 @@ static void ml_arm_row(uint32_t code, uint32_t rule)
     ml_arm = 1;
     ui.foot_sig = 0;
 }
-/* the picked parameter's name: "T2 CUTOFF", "T1 FILTER ENV ATTACK" (b: 24 bytes; T0227: the full name, as PARAMETER LOCKS' list: ui_events.c ev_name) */
+/* the picked parameter's name: "PART 2 CUTOFF", "PART 1 FILTER ENV ATTACK" (b: 40 bytes; T0227: the full name, as PARAMETER LOCKS' list: ui_events.c ev_name) */
 static void ml_name(char *b)
 {
     if (ml_row_on) {
         map_name(MAP_LINE(ml_row_code, ml_row_rule, MAP_W_TYPED), b);
         return;
     }
-    b[0] = 'T';
-    b[1] = (char)('1' + ui.ml.trk);
-    b[2] = ' ';
+    str_cpy(b, "PART 1 ", 8);
+    b[5] = (char)('1' + ui.ml.trk);
     if (ui.ml.id >= XW_BASE)
         map_name(MAP_LINE(ui.ml.id, ui.ml.trk, MAP_W_LEARNED), b);
     else
-        ev_name(&trk[ui.ml.trk % NTRK], ui.ml.id, b + 3);
+        ev_name(&trk[ui.ml.trk % NTRK], ui.ml.id, b + 7);
 }
 /* "CC74 IS CUTOFF" on the footer: the number a learn did not take */
 static void ml_refused(uint32_t cc, const char *owner)
@@ -450,7 +447,7 @@ static void ml_oct(uint32_t oct)
         settings_save();
     }
 }
-/* the footer's first row while learning: "TURN A KNOB", "T2 CUT: SEND A CC", "T2 CUT = CC74" */
+/* the footer's first row while learning: "TURN A KNOB", "PART 2 CUTOFF: SEND A CC", "PART 2 CUTOFF = CC74" */
 static void ml_line(char *b)
 {
     uint32_t cc;

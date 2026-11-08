@@ -207,10 +207,10 @@ static uint8_t sync_reload;                  /* engine / preset / project / user
 #define CARD_X(c) (3 + 59 * (int32_t)(c))
 /* DUELL 1.1 GRID layout (PAGES_V1_filter.png, env-lfo, engine; grid_on, ui_draw.c): the picture on top (rows 28..105), the four cards as a 2 x 2 grid of big values under it (rows 108..213),
  * the footer's second row only below them. The old layout (the pages not redrawn yet) keeps the four small cards and the tall panel. */
-static uint8_t grid_on;                       /* 1 template 1 (part pages), 2 MODULES / MIDI, 3 MODE, 4 MATRIX, 5 template 2 (ENGINE), 6 MIDI LEARN, 7 template 4 (MIXER), 8 unused (template 3, the list pages, is removed: they are template 9 area pages), 9 template 5 (SENDS), 10 template 7 (STEP: the big roll and four compact cards), 11 SEQUENCER HELP (item 118), 12 MODULES, 13 a module switched OFF, 14 template 8 (the CELL pages, item 156), 15 the ENGINE page of LOFI / NOISE: template 2's K1 row and template 8's cells (item 165), 16 template 9 (the AREA page: the knob-1 line, the big area rows 48 .. 149, one card row; ui_tokens.h UT_A_*, ui_draw.c area_rect; PERFORM through perf_pg, the QUICK SEQ layer, ARP 1/3 and 2/3, PARAMETER LOCKS, SEQUENCER, GLOBAL SCALE, CHORD, PATCHES, MULTIS, PATTERNS), 17 TOOLS (no cards, three rows drawn whole by ui_graph.c graph_tools in their own strips in screen rows) */
+static uint8_t grid_on;                       /* 1 template 1 (part pages), 2 MODULES / MIDI, 3 MODE, 4 MATRIX, 5 template 2 (ENGINE), 6 MIDI LEARN, 7 template 4 (MIXER), 8 unused (template 3, the list pages, is removed: they are template 9 area pages), 9 template 5 (SENDS), 10 template 7 (STEP: the big roll and four compact cards), 11 unused (SEQUENCER HELP, removed in TIDE 1.0.0-b4), 12 MODULES, 13 a module switched OFF, 14 template 8 (the CELL pages, item 156), 15 the ENGINE page of LOFI / NOISE: template 2's K1 row and template 8's cells (item 165), 16 template 9 (the AREA page: the knob-1 line, the big area rows 48 .. 149, one card row; ui_tokens.h UT_A_*, ui_draw.c area_rect; PERFORM through perf_pg, the QUICK SEQ layer, ARP 1/3 and 2/3, PARAMETER LOCKS, SEQUENCER, GLOBAL SCALE, CHORD, PATCHES, MULTIS, PATTERNS), 17 TOOLS (no cards, three rows drawn whole by ui_graph.c graph_tools in their own strips in screen rows) */
 static uint8_t perf_pg;                       /* item 120: the PERFORM page is on screen (set by ui_draw_page): its map starts at row 74 and is 112 rows tall, the footer's two hint lines take the rows under it */
 #define Y_GRAPH (grid_on == 16 ? UT_A_GR_Y : perf_pg ? 74 : grid_on == 6 ? 86 : grid_on == 5 || grid_on == 15 ? UT_T2_GR_Y : grid_on ? 27 : 76)   /* the panel (15: the engine list in the top cell's place, item 165; 16: the area page's big area, tested before perf_pg: PERFORM is an area page now) */
-#define H_GRAPH (grid_on == 16 ? UT_A_GR_H : perf_pg ? 112 : grid_on == 7 ? UT_T4_MUTE_Y + UT_T4_MUTE_H - 27 : grid_on == 6 ? 112 : grid_on == 5 ? UT_T2_GR_H : grid_on == 15 ? UT_T8E_H : grid_on == 3 ? 120 : grid_on ? 76 : 122)
+#define H_GRAPH (grid_on == 16 ? UT_A_GR_H : perf_pg ? 112 : grid_on == 7 ? UT_T4_MUTE_Y + UT_T4_MUTE_H - 27 : grid_on == 6 ? 112 : grid_on == 5 ? UT_T2_GR_H : grid_on == 15 ? UT_T8E_H : TIDE_GRID3 ? 120 : grid_on ? 76 : 122)
 #define Y_FOOT 202
 #define H_FOOT 38
 
@@ -449,22 +449,20 @@ static uint32_t mods_fade_vp(const int16_t *vp)
     return 0;
 }
 /* DUELL 1.1 item 125: the module (MODS_*) whose switch in GLO > MODULES is OFF and whose function page pg is: such a page shows only a notice (ui_graph.c graph_off) and every knob of it jumps to MODULES
- * (ui_input.c off_knob); 0 for every other page and while the module is on. ARP: the ARP pages; SEQ: STEP, PARAMETER LOCKS, PATTERNS (SEQUENCER HELP stays); SENDS: CHORUS, DELAY 1/2, 2/2, REVERB, SHIMMER,
- * the part's SEND FX; PART FX: the part's FX, INSERT, EQ, DUCK pages (the quick layers ARP and SEQ: off_layer, ui_draw.c) */
+ * (ui_input.c off_knob); 0 for every other page and while the module is on. ARP: the ARP pages; SEQ: STEP, PARAMETER LOCKS, PATTERNS; SENDS: CHORUS, DELAY 1/2, 2/2, REVERB, SHIMMER,
+ * the part's SEND FX; PART FX: the part's FX, INSERT, EQ, DUCK pages and GLO's SIDECHAIN (the quick layers ARP and SEQ: off_layer, ui_draw.c) */
 static uint32_t off_module(const page_t *pg)
 {
     uint32_t b = 0;
     if (pg->scope == SC_PERF)
         return 0;
-    if (pg->scope == SC_FXSUM)
-        b = MODS_SENDS;
-    else if (pg->fam == FAM_GLO && pg->scope == SC_GLOBAL)
+    if (pg->fam == FAM_GLO && pg->scope == SC_GLOBAL)
         b = mods_of(1, pg->id[0]) == MODS_SENDS ? MODS_SENDS : 0u;
-    else if (pg->fam == FAM_FX && pg->scope == SC_TRACK)
+    else if ((pg->fam == FAM_FX && pg->scope == SC_TRACK) || pg->graph == GR_SCHAIN)
         b = MODS_PFX;
     else if (pg->fam == FAM_ARP)
         b = MODS_ARP;
-    else if (pg->fam == FAM_SEQ && pg->graph != GR_SEQHELP)
+    else if (pg->fam == FAM_SEQ)
         b = MODS_SEQ;
     else if (pg->graph == GR_PATS)
         b = MODS_SEQ;
@@ -691,10 +689,6 @@ static int page_visible(uint32_t i)
         return TSEL->eng_req % NENGINES == ENGI_FM6;
     case VIS_M5:
         return TSEL->p[P_M4SRC] != 0;
-#if DUELL_TIDE
-    case VIS_NOTIDE:
-        return 0;                                     /* (TIDE: the MODE page is TIDE SETTINGS' last three rows) */
-#endif
     default:
         return 1;
     }
@@ -715,7 +709,6 @@ static void mode_knob(uint32_t slot, int32_t s);
 static void test_knob(uint32_t slot, int32_t s);
 static void scale_knob(uint32_t slot, int32_t steps);
 static void mods_knob(uint32_t slot, int32_t steps);
-static void fxsum_knob(uint32_t slot, int32_t steps);
 static void step_edit(uint32_t slot, int32_t steps);
 static void glo_knob(uint32_t k, int32_t s);
 static int reset_morph(uint32_t k);
@@ -731,13 +724,14 @@ static int reset_glo(uint32_t k);
 #endif
 static const scope_ops_t SCOPE_OPS[] = {
     {SC_MORPH, 0x0Fu, 1, morph_knob, reset_morph},     /* HOME's MORPH (MORPH SET: K4 has no card) */
+#if !DUELL_TIDE                                        /* (TIDE: no MODE page; its rows are TIDE SETTINGS' and call mode_knob there) */
     {SC_MODE, 0x0Fu, 3, mode_knob, 0},
+#endif
     {SC_PERF, 0x0Fu, 0, perf_knob, reset_perf},
     {SC_TEST, 0x0Fu, 0, TEST_KNOB, 0},
     {SC_SCALE, 0x07u, 1, scale_knob, reset_scale},     /* K1 SCALE, K2 ROOT, K3 OFF-SCALE; K4 is an empty column */
     {SC_MIDI, 0x0Fu, 0, 0, reset_midi},                /* (its knobs: the page's id slots decide, edit_param) */
     {SC_MODS, 0x0Fu, 12, mods_knob, reset_mods},
-    {SC_FXSUM, 0x07u, 9, fxsum_knob, 0},
     {SC_GMIX, 0x0Fu, 0, glo_knob, reset_glo},          /* GLO's MIXER: LEVEL 1, LEVEL 2, PAN 1, PAN 2 */
     {SC_STEP, 0x0Fu, 0, step_edit, 0},
     TIDE_SCOPE_OPS                                     /* TIDE hook (TIDE, TIDE LIST) */
@@ -2046,14 +2040,14 @@ static void track_select(uint32_t i)
 /* Pages whose purpose is an action (SAVE > USER, PATTERNS, PROJECT, TOOLS, SEQ > PARAMETER LOCKS): the knobs pick,
  * OCT+ does it, OCT- cancels the picked action or goes HOME (ui_input.c). There OCT- / OCT+ do not
  * shift the octave */
-static int go_id(uint32_t id) { return id == G_LOAD || id == G_SAVE || id == G_CLRSEQ || id == G_INITSND; }
+static int go_id(uint32_t id) { return id == G_LOAD || id == G_SAVE || id == G_INITSND; }
 
 static uint32_t act_cols(void)                   /* the columns that are actions, a bit each; 0 = not such a page */
 {
     const page_t *pg = cur_page();
     uint32_t c, m = 0;
     if (pg->graph == GR_EVENTS) return 16u;     /* PARAMETER LOCKS: no knob is an action; OCT+ by the row (ev_oct) */
-    if (pg->graph == GR_TOOLS) return up_count() ? 7u : 3u;   /* CLEAR (the pattern), INIT (the sound), RESTORE (all slots; none when none holds a saved sound) */
+    if (pg->graph == GR_TOOLS) return up_count() ? 3u : 1u;   /* INIT (the sound), RESTORE (all slots; none when none holds a saved sound) */
     if (pg->graph == GR_PATS)
         return 6u;                               /* LOAD SAVE (K2, K3: a pattern slot P1..P16) */
     if (pg->graph == GR_SLOTS)
@@ -2077,12 +2071,12 @@ static const char *act_name(uint32_t c)          /* column c's action (the foote
     uint32_t id = cur_page()->id[c & 3u];
     if (cur_page()->graph == GR_EVENTS) return ev_act_name();
     if (cur_page()->graph == GR_TOOLS) {
-        static const char *const actions[] = {"CLEAR", "INIT", "RESTORE", ""};
+        static const char *const actions[] = {"INIT", "RESTORE", "", ""};
         return actions[c & 3u];
     }
     if (cur_page()->graph == GR_PATS || cur_page()->graph == GR_SLOTS)
         return c == 2u ? "SAVE" : "ON";   /* K2 LOAD, K3 SAVE */
-    return id == G_CLRSEQ ? "CLEAR" : id == G_INITSND ? "INIT" : id == G_LOAD ? "ON" : "SAVE";
+    return id == G_INITSND ? "INIT" : id == G_LOAD ? "ON" : "SAVE";
 }
 
 /* the picked action would do something now (OCT+ breathes): another pattern, a saved slot, stopped for
@@ -2093,8 +2087,8 @@ static int act_ready(void)
     if (!c--)
         return 0;
     if (cur_page()->graph == GR_EVENTS) return ev_act_ready();
-    if (cur_page()->graph == GR_TOOLS)                  /* one case per column: CLEAR PAT, INIT, RESTORE ALL */
-        return c == 0u ? !seq_is_empty(TSEL) || motion_count(TSEL) : c == 1u ? 1 : up_count() > 0u;
+    if (cur_page()->graph == GR_TOOLS)                  /* one case per column: INIT, RESTORE ALL */
+        return c == 0u ? 1 : up_count() > 0u;
     if (cur_page()->graph == GR_PATS) {                 /* LOAD: another pattern; SAVE: any slot */
         if (c == 2u) return 1;
         return pat_last[s] != pat_pick() + 1u || steps_sig(TSEL) != pat_sig[s];
@@ -2106,7 +2100,5 @@ static int act_ready(void)
         return project_used((uint32_t)song.g[G_SLOT] - 1u);
     if (id == G_SAVE)
         return !song.playing;
-    if (id == G_CLRSEQ)
-        return !seq_is_empty(TSEL);
     return 1;
 }

@@ -374,6 +374,24 @@ static voice_t *voice_reuse(track_t *t, voice_t *v)
     return v;
 }
 
+#if DUELL_TIDE
+/* K3 ease level 2 (core.h ease, audio.c ease_step): while the part sounds np - 1 voices or more, a new note takes over the part's oldest released voice (as a note
+ * over the part's number does) instead of a free one, so the voices sounding do not grow while the audio is eased. No released voice: a free one as ever (no held
+ * note is cut, nothing sounding fades). Returns that voice, or np: none */
+static __attribute__((noinline)) uint32_t ease_tail(const track_t *t, uint32_t np)
+{
+    uint32_t i, n = 0, best = np;
+    for (i = 0; i < NVOICE; i++)
+        n += t->v[i].active && t->v[i].stage != VSTAGE_FADE;
+    if (n + 1u < np)
+        return np;
+    for (i = 0; i < np; i++)
+        if (t->v[i].active && !t->v[i].gate && t->v[i].stage != VSTAGE_FADE && (best == np || t->v[i].age < t->v[best].age))
+            best = i;
+    return best;
+}
+#endif
+
 /* POLY allocation (within the engine's voice cap): the same note again reuses its voice.
  * Else a free voice: ROTATE takes
  * the next one round-robin (release tails ring out), REUSE (or any GLIDE) takes
@@ -397,6 +415,10 @@ static voice_t *voice_alloc(track_t *t, uint32_t note)
         nfree += !t->v[i].active;
 #endif
     }
+#if DUELL_TIDE
+    if (EASE >= EASE_ADMIT && (i = ease_tail(t, np)) < np)    /* (K3 ease level 2: no new voice while eased, if a released one can take the note) */
+        return voice_reuse(t, &t->v[i]);
+#endif
 #if NPART > 2
     if (nfree && voices_busy() >= VPOOL) {
         track_t *vp = 0;

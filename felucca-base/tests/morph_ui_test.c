@@ -52,8 +52,12 @@ static int card_is(uint32_t c, const char *label, const char *val)   /* the card
     snprintf(want, sizeof want, "%s|%s", label, val);
     if (card_match(c, want))
         return 1;
+#if DUELL_TIDE
+    return 0;                                 /* (TIDE 1.0.0-b4: MORPH's K1 is a labelled card, "MORPH|A"; no big-value fallback) */
+#else
     return c == 0u && card_match(0, val) &&   /* (MORPH since 1.1: K1's label is on the knob-1 line above its big value) */
            rows_has(UT_A_K1_Y, UT_A_K1_Y + UT_A_K1_H, label);
+#endif
 }
 #if DUELL_TIDE
 /* TIDE: TIDE SETTINGS is in MORPH SET's place, a list (tide_ui.c): K1 the row, OCT+ the next value, OCT- the one before; SMART / ARP / PITCH are its ROLL, ARP, PITCH */
@@ -368,6 +372,13 @@ static void t_knobs(void)
     frame();
     expect("  .. the cards in v3's order: MORPH, ROLL, UNDO, AMOUNT (KNOB 4)", card_is(0, "MORPH", "A") && card_is(1, "ROLL", "A<>B") &&
            card_is(2, "UNDO", "A<>B") && card_is(3, "AMOUNT", amt_txt));
+#if DUELL_TIDE
+    {   /* TIDE (1.0.0-b4): no motion field, the picture is still (the planned wave card's place): the same signature frame after frame */
+        uint32_t s0 = graph_signature();
+        ui.frame += 4u;
+        expect("TIDE: the MORPH picture is still (no motion field: the same signature 4 and 8 frames on)", s0 == graph_signature() && (ui.frame += 4u, s0 == graph_signature()));
+    }
+#else
     {   /* the panel's ribbons: a new picture every 4th frame (signature), none with MENU > ANIM OFF */
         uint32_t s0 = graph_signature(), s1;
         ui.frame += 4u;
@@ -377,6 +388,7 @@ static void t_knobs(void)
                s0 != s1 && (ui.frame += 4u, graph_signature()) == graph_signature() && (ui.frame += 4u, s1 = graph_signature(), ui.frame += 4u, s1 == graph_signature()));
         ui_prefs &= ~PREF_ANIM_OFF;
     }
+#endif
     turn(EN_K4, 200);
     expect("KNOB 4 clamps at 100 %", mph[0].amount == 100u);
     turn(EN_K4, -60);

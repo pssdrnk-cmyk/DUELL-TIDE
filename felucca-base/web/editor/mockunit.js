@@ -71,7 +71,7 @@ const MENU = [   // MENU_DESC items, DUELL 0.2.14 (EDITOR_PROTOCOL.md "MENU sett
   [13, "CLICK LEVEL", 0, ["LOW", "MID", "HIGH"], 0, 2, 1, 2], [14, "COUNT-IN", 0, ["OFF", "1 BAR", "2 BARS"], 0, 2, 0, 2],
   [15, "RESTORE LAST", 0, ["ON", "OFF"], 0, 1, 0, 3], [16, "SCALE LEDS", 0, ["AUTO", "OFF"], 0, 1, 0, 0],
   [17, "SCREEN OFF", 0, ["NEVER", "5 MIN", "15 MIN", "30 MIN", "60 MIN"], 0, 4, 0, 0], [19, "STEP PREVIEW", 0, ["OFF", "ON"], 0, 1, 0, 1],
-  [20, "STEP KEYS", 0, ["WRITE", "ADD"], 0, 1, 0, 1], [22, "TUNE", 2, "Hz", 4153, 4662, 4400, 2],   // 0.2.22: kind 2, A4 in 0.1 Hz (415.3 .. 466.2 Hz)
+  [20, "STEP KEYS", 0, ["REPLACE", "ADD"], 0, 1, 0, 1], [22, "TUNE", 2, "Hz", 4153, 4662, 4400, 2],   // 0.2.22: kind 2, A4 in 0.1 Hz (415.3 .. 466.2 Hz)
   [25, "HOME OPENS", 0, ["MORPH", "MODE"], 0, 1, 0, 1],
   [27, "MULTI LOAD", 0, ["KEEPS MODE", "SETS MODE"], 0, 1, 0, 1],
   [28, "ARP", 0, ["OFF", "FOLLOWS PATCH", "KEEPS RUNNING"], 0, 2, 1, 4], [29, "SEQ", 0, ["OFF", "FOLLOWS PATCH", "KEEPS RUNNING"], 0, 2, 1, 4],   // DEMO ONLY: the three values OFF / FOLLOWS PATCH / KEEPS RUNNING (owner, 2026-10-25) on the ids 28 and 29 until the firmware names its two menu ids; FOLLOWS PATCH is the old ON      // GLO > MODULES (ids 28..31, tab 4 "MODULES": no MENU tab on the unit)

@@ -285,13 +285,11 @@ export const DUPLICATE = {
   "CYCLE ENV 1/2": "the ENV tab's CYCLE ENV card (MODE, SYNC, RISE, FALL, CURVE)",
   "CYCLE ENV 2/2": "the ENV tab's CYCLE ENV card",
   MIXER: "the unit's GLO > MIXER page (0.2.25 layout round: GLO's first page; item 117 order: K1 LEVEL 1, K2 LEVEL 2, K3 PAN 1, K4 PAN 2, the MUTE cells): each part column's MIXER block (LEVEL, PAN, MUTE)",
-  "SEND FX": "the unit's SEND FX page (FX's second page) shows the selected part's three sends (the FX tab's CHO DLY REV cards) beside the effects they feed (the GLOBAL tab's cards); its twists only jump to those pages (item 117: the page says so, TURN A KNOB: JUMP TO GLOBAL EFFECT SETTINGS, and names the effects that are inactive for the part)",
 };
 export const NOT_EDITABLE = [
   ["SCALE", "SCALE, ROOT and OFF-SCALE are the instrument's, not parameters: the editor protocol has no command for them"],
   ["MIDI", "the parts' MIDI channels (PART 1 CHANNEL, PART 2 CHANNEL) are not reachable by the protocol; MIDI IN is on the MIDI tab"],
   ["TOOLS", "CLEAR SEQ is the SEQ tab's Clear; INITIALIZE SOUND is the Init patch... button of each part; RESTORE ALL is on the PATCHES tab"],
-  ["SEQUENCER HELP", "the legend of the STEP page's symbols on the unit (page 2 of the STEP family, item 118): no controls, nothing to edit"],
   ["PARAMETER LOCKS", "recorded motion and locks: not in this version (the protocol has MOTION; 1.1.0-test2: a lock can name every matrix destination, see lockTarget)"],
   ["MORPH", "the MORPH fader, ROLL and UNDO have no protocol command; a saved patch or multi keeps End B as exact values, and PATCH_RAW and the backup carry it (see below)"],
   ["MORPH SET", "SMART, ARP and PITCH of the morph have no protocol command"],
