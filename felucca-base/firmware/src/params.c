@@ -1277,7 +1277,7 @@ static const char *val_shown(const param_desc_t *d, const char *n)
                 return PC[i][1];
         return n;
     }
-    if (d->names == N_RWAVE || d->names == N_ANALOG_WAVE) {   /* item 165 (owner): LOFI's and ANALOG's WAVE lists in full words; their own table, so the LFO's and the SUB OSC's WAVE lists (the same label) are not touched */
+    if (d->names == N_RWAVE || d->names == N_ANALOG_WAVE || d->names == N_LWAVE) {   /* item 165 (owner): LOFI's and ANALOG's WAVE lists in full words; b4 (UI audit 7): the LFOs' too, as SUB OSC's SINE (S&H stays) */
         static const char *const WV[][2] = {{"PLS", "PULSE"}, {"TRI", "TRIANGLE"}, {"SIN", "SINE"}, {"SQR", "SQUARE"}};
         for (i = 0; i < NELEM(WV); i++)
             if (str_eq(n, WV[i][0]))
