@@ -4,7 +4,7 @@
 import { BackupConnection } from "../fm1backup.js";
 import { detectUnit } from "../installer_state.js";
 import { sysexGranted, watchUnit, HINT } from "./autoconnect.js";
-import { GROUPS, CAPS_MULTI_PATTERN, CAPS_PATCH_RECORDS, isPatchKey, objectLabel, parseInfo, readArchive, captureBackup, listUnit, planRestore, runRestore, verifyRestore, describe, fileName, rawLines } from "./duellbackup.js";
+import { GROUPS, CAPS_MULTI_PATTERN, CAPS_PATCH_RECORDS, isPatchKey, objectLabel, parseInfo, readArchive, captureBackup, listUnit, planRestore, strippedNote, runRestore, verifyRestore, describe, fileName, rawLines } from "./duellbackup.js";
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -193,9 +193,7 @@ async function restore() {
     const pw = plan.steps.filter((s) => s.key !== undefined), put = pw.filter((s) => s.size).length, gone = pw.length - put;
     const text = `Replace on ${unitName()}: ${kinds.join(", ")}.\n\n` +
       (pw.length || plan.skipped.length ? `Patches: ${plural(put, "patch", "patches")} written, ${plural(gone, "saved patch", "saved patches")} on the unit that the file does not have removed, ${plural(plan.skipped.length, "patch", "patches")} already identical.\n\n` : "") +
-      (plan.stripped ? `${plural(plan.stripped, "patch", "patches").toUpperCase()} LOSE${plan.stripped === 1 ? "S" : ""} the FM6 MORPH TO target${info.tideAnswer === false ? " (this unit says it is plain DUELL)" : " (this unit may be plain DUELL; an older TIDE build would keep it)"}.
-
-` : "") +
+      strippedNote(plan.stripped, info.tideAnswer) +
       (plan.excluded.length ? `Not restored: ${plan.excluded.map((x) => `${x.label.toLowerCase()} (${x.reason})`).join("; ")}.\n\n` : "") +
       "What the unit holds of these kinds is overwritten, empty slots in the file included. Playback on the unit is stopped. " +
       "A safety backup of the unit is saved to your downloads first; the restore does not start without it.\n\nRestore now?";

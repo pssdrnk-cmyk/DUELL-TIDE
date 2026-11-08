@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // The Backup page's logic (editor/duellbackup.js) against a simulated unit (editor/mockunit.js): INFO, the "duell-backup" file round trip,
 // every refusal before a write, the restore order and what is reported, the safety backup, the verify, older firmware and older files.
-import { OLD_PATCH_IDS, PATCH_ID, VERSION, GROUPS, DUELL_IDS, RESTORE_ORDER, patchKey, patchSlot, isPatchKey, objectLabel, parseInfo, parseList, parsePage, readArchive, objectsToFile, captureBackup, planRestore, runRestore,
+import { OLD_PATCH_IDS, PATCH_ID, VERSION, GROUPS, DUELL_IDS, RESTORE_ORDER, patchKey, patchSlot, isPatchKey, objectLabel, parseInfo, parseList, parsePage, readArchive, objectsToFile, captureBackup, planRestore, strippedNote, runRestore,
          verifyRestore, describe, FVB_ID, FVB_OBJ, bankVoices, unpackVoice, packVoice, checkObject, listUnit, fileName, rawLines, MULTI_VERSION } from "./editor/duellbackup.js";
 import { MockUnit, buildBankObject, buildPatchRecord, buildLegacyPatchChunk, buildMultiObject, buildPatternObject, MOCK_ENGINES } from "./editor/mockunit.js";
 import { buildRecord, buildEndB, stripEndBFmt, parseRecord, storeDefaults, engineIndex, PTF, XB_DEFS } from "./editor/patchrecord.js";
@@ -561,6 +561,12 @@ const KEYS = [1000, 1001, 1005, 1064];
      "plan: a unit that says plain DUELL and one without tag 44 (unknown) get the record without MBV_FMT (size, CRC of what is sent) and plan.stripped counts it; a unit that says TIDE gets it as it is");
   const r = await runRestore(rq, pn);
   ok(r.failed === null && same(P.patchBytes(2), cut) && parseRecord(P.patchBytes(2)).ok, "restore: the stripped record is what the unit holds");
+  const again = planRestore(arch, await listUnit(rq, 63), 63, new Set(["patches"]), { tide: false });
+  ok(again.stripped === 0 && again.steps.length === 0 && again.skipped.length === 2,
+     "plan: a restore twice onto a plain unit counts nothing as stripped: the patches already identical on the unit are skipped, not written, and lose nothing");
+  const n1 = strippedNote(1, false), n2 = strippedNote(2, undefined), n0 = strippedNote(0, undefined);
+  ok(n0 === "" && /^1 PATCH LOSES the FM6 MORPH TO target \(this unit says it is plain DUELL/.test(n1) && /^2 PATCHES LOSE the FM6 MORPH TO target \(this unit does not say it is TIDE/.test(n2) && !/would keep/.test(n1 + n2) && n2.includes("taken out"),
+     "confirm text: LOSES/LOSE by count, the plain-DUELL and the unknown-unit variants, nothing when none, and no claim that an older TIDE build keeps the target");
 }
 ok(/^DUELL-backup-\d{4}-\d\d-\d\d-\d{4}\.json$/.test(fileName("DUELL-backup")), "file name: DUELL-backup-YYYY-MM-DD-HHMM.json");
 
