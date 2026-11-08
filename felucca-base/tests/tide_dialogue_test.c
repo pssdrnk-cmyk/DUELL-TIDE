@@ -216,7 +216,7 @@ static void guards(void)
     trk[1].nheld = 1;
     CHECK("held-key arp is predicted", phrase_peer_attack(0, 0));
     trk[1].nheld = 0; song.rec = 1;
-    CHECK("REC disables the stand-in", !phrase_peer_attack(0, 0));
+    CHECK("REC does not disable the stand-in (audit liverec L1)", phrase_peer_attack(0, 0));
     song.rec = 0; trk[1].p[P_MUTE] = 1;
     CHECK("muted peer", !phrase_peer_attack(0, 0)); trk[1].p[P_MUTE] = 0;
     trk[1].p[P_LEVEL] = 0;
