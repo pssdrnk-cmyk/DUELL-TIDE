@@ -883,9 +883,9 @@ static int menu_protocol(void)
         {"SCREEN OFF", "NEVER,5 MIN,15 MIN,30 MIN,60 MIN"},
         {"STEP PREVIEW", "OFF,ON"}, {"STEP KEYS", "WRITE,ADD"},                                        /* (1.2; 0.2.14: SCOPE retired) */
         {"TUNE", 0},   /* (1.2: the project's TUNE, a number; DUELL 0.1: MIDI IN, id 21, left MENU for GLO > CHANNELS) */
-        {"HOME OPENS", "MORPH,MODE"},                                                                /* (DUELL 0.1, id 25; 0.2.14: no OVERVIEW; 0.2.25: no MIXER, GLO's first page now) */
+        {"HOME OPENS", DUELL_TIDE ? "MORPH,SETTINGS" : "MORPH,MODE"},                                                                /* (DUELL 0.1, id 25; 0.2.14: no OVERVIEW; 0.2.25: no MIXER, GLO's first page now) */
         /* (CPU METER, id 26, retired in 1.1 with the CPU bar: no row) */
-        {"MULTI LOAD", "KEEPS MODE,SETS MODE"},                                                      /* (DUELL 0.2.11, id 27) */
+        {"MULTI LOAD", DUELL_TIDE ? "KEEPS PLAY MODE,SETS PLAY MODE" : "KEEPS MODE,SETS MODE"},                                                      /* (DUELL 0.2.11, id 27) */
         {"ARP", "OFF,FOLLOWS PATCH,KEEPS RUNNING"}, {"SEQ", "OFF,FOLLOWS PATCH,KEEPS RUNNING"},   /* (DUELL 1.1: ARP_SEQ_RUN_SWITCH) */
          {"SENDS", "OFF,ON"}, {"PART FX", "OFF,ON"},
         {"PERF LEAVE", "FADE,KEEP"},          /* (DUELL 0.2.14: id 32, CONTROL) */

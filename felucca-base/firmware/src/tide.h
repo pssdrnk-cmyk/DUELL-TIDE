@@ -154,6 +154,8 @@ static int tide_foot_two(void);
                                    if (TIDE_PAGE(pg)) (h) = ((h) ^ tide_sig() ^ (uint32_t)morph.target * 0x85EBCA77u) * 16777619u; } while (0)
 #define TIDE_COLUMNS() do { if (TIDE_PAGE(cur_page())) { tide_columns(); return; } } while (0)
 #define TIDE_HOME_NAME "MORPH"                           /* MENU > CONTROL > HOME OPENS: the first page of the round (MORPH, as stock; AUTO TIDE is the round's 3rd) */
+#define TIDE_HOME_MODE_NAME "SETTINGS"                  /* (b4, UI audit 9: HOME OPENS' second value names the page it opens, TIDE SETTINGS; MULTI LOAD keeps or sets the PLAY MODE row) */
+#define TIDE_MLOAD_NAMES {"KEEPS PLAY MODE", "SETS PLAY MODE"}
 #define TIDE_HOME_MODE(pg) ((pg)->graph == GR_TIDELIST)   /* HOME OPENS = MODE: TIDE has no MODE page (no PAGES row); its MODE is a row of TIDE SETTINGS, which opens with that row picked */
 #define TIDE_MODE_PG(pg) 0                              /* the MODE page shown (never: TIDE has no MODE row in PAGES) */
 #define TIDE_GRID3 0                                    /* (its card template 3, CG3: SCOPE_OPS has no MODE row) */
@@ -237,6 +239,8 @@ static int tide_foot_two(void);
 #define TIDE_GRAPH_SIG(pg, h) ((void)0)
 #define TIDE_COLUMNS() ((void)0)
 #define TIDE_HOME_NAME "MORPH"
+#define TIDE_HOME_MODE_NAME "MODE"
+#define TIDE_MLOAD_NAMES {"KEEPS MODE", "SETS MODE"}
 #define TIDE_HOME_MODE(pg) ((pg)->scope == SC_MODE)
 #define TIDE_MODE_PG(pg) ((pg)->scope == SC_MODE)
 #define TIDE_GRID3 (grid_on == 3)
