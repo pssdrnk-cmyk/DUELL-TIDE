@@ -143,13 +143,14 @@ static void tide_pick_mode(void) { jl_sel = JL_MODE; }   /* HOME OPENS = MODE (u
 
 /* STYLE: one move sets the nine rows below it together (TARGET, ROLL, ARP and PITCH choose what TIDE may change, not the genre, and stay). A hand edit
  * of any of the nine turns it into CUSTOM (tide_settings); CUSTOM itself changes nothing. mode, time (index), wait (index), VARY, TURNS, POLY, SYNC, ARC, WASH */
-enum { STY_DUB, STY_DEEP, STY_MINIMAL, STY_AMBIENT, STY_PEAK, STY_CUSTOM };
-static const uint8_t STY[5][9] = {
+enum { STY_DUB, STY_DEEP, STY_MINIMAL, STY_AMBIENT, STY_PEAK, STY_DRONE, STY_CUSTOM };   /* (CUSTOM was 5 until 1.0.0-b4: a stored 5 is read as DRONE only if its rows are DRONE's, else CUSTOM; tide_settings) */
+static const uint8_t STY[6][9] = {
     {GM_JOURNEY, 4, 2, 0, 2, 1, 1, 1, 0},                /* DUB: the showcase (today's no-record rows) with LEAD and a RISE */
     {GM_WANDER, 5, 3, 0, 1, 0, 1, 1, 1},                 /* DEEP */
     {GM_WANDER, 3, 0, 1, 2, 2, 2, 0, 0},                 /* MINIMAL */
     {GM_JOURNEY, 6, 4, 0, 0, 1, 0, 0, 3},                /* AMBIENT */
-    {GM_JOURNEY, 3, 0, 1, 2, 1, 2, 2, 0}};               /* PEAK: ARC DROP and LEAD (ECHO before: D7) */
+    {GM_JOURNEY, 3, 0, 1, 2, 1, 2, 2, 0},                /* PEAK: ARC DROP and LEAD (ECHO before: D7) */
+    {GM_WANDER, 6, 0, 0, 0, 0, 0, 0, 3}};                /* DRONE: a held chord of a drone sound; WNDR keeps the sound, 64 bars, always moving, nothing rhythmic */
 static uint8_t tide_style = STY_DUB, tide_style_last = STY_DUB;   /* (the style a hand edit left: OCT- + K3 / K4 go back to its TIME and WAIT) */
 static volatile uint8_t *const TIDE_ROW[9] = {&gl.mode, &gl.time, &gl.wait, &sqm_vary_all, &sqm_turns, &sqm_poly, &sqm_sync, &sqm_arc, &morph_wlvl};   /* (STY's order) */
 static __attribute__((noinline)) void tide_rows_set(const uint8_t *t)
@@ -172,7 +173,7 @@ static int tide_style_holds(void)                        /* the nine rows are th
 {
     uint8_t t[9];
     tide_rows_get(t);
-    return !memcmp(t, STY[tide_style % 5u], sizeof t);
+    return !memcmp(t, STY[tide_style % 6u], sizeof t);
 }
 /* CUSTOM's nine values, kept when a style replaces them: the STYLE row back onto CUSTOM brings them back (RAM only, not saved) */
 static uint8_t tide_custom[9], tide_custom_ok;
@@ -197,13 +198,13 @@ static int jl_dimmed(uint32_t r, const char *nd)
 }
 /* the rows as tables: how many values each has, its byte (STYLE, TARGET and the plain rows; ROLL, ARP and PITCH are the morph's), the values'
  * names, and the header message a change shows: the prefix + the value's name, or a message of its own (TARGET, VARY BARS, TURNS) */
-static const uint8_t JL_NV[JL_N] = {6, 3, 2, 3, 2, 2, 4, 3, 3, 3, 3, 2, 3, 101, 129};   /* (XFADE 101: mix_xf 0..100 %; SPLIT 129: mix_split 0 = OFF, then note + 1 up to 128) */
+static const uint8_t JL_NV[JL_N] = {7, 3, 2, 3, 2, 2, 4, 3, 3, 3, 3, 2, 3, 101, 129};   /* (XFADE 101: mix_xf 0..100 %; SPLIT 129: mix_split 0 = OFF, then note + 1 up to 128) */
 static volatile uint8_t *const JL_VAR[JL_N] = {[JL_STYLE] = &tide_style, [JL_TARGET] = &gl.target, [JL_VARY] = &sqm_vary_all, [JL_WASH] = &morph_wlvl,
                                                [JL_TURNS] = &sqm_turns, [JL_POLY] = &sqm_poly, [JL_SYNC] = &sqm_sync, [JL_ARC] = &sqm_arc, [JL_REC] = &tide_rec_replace};   /* (REC is no part of a STYLE: seq.c, live recording) */
-static const char *const JL_V[] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK", "CUSTOM", "SOUND", "SEQ", "SND+SEQ", "EVERY 4TH", "EVERY BAR", "MUSIC", "SMART", "WILD",
+static const char *const JL_V[] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK", "DRONE", "CUSTOM", "SOUND", "SEQ", "SND+SEQ", "EVERY 4TH", "EVERY BAR", "MUSIC", "SMART", "WILD",
                                    "OFF", "ON", "OFF", "ON", "OFF", "LOW", "MID", "HIGH", "TOGETHER", "TAKE TURNS", "LEAD", "OFF", "GENTLE", "WIDE",
                                    "OFF", "SOFT", "PUSH", "OFF", "RISE", "DROP", "LAYER", "STEREO", "DUEL", "ADD", "REPLACE"};
-static const uint8_t JL_V0[JL_N] = {0, 6, 9, 11, 14, 16, 18, 22, 25, 28, 31, 37, 34, 0, 0};   /* (each row's first name in JL_V) */
+static const uint8_t JL_V0[JL_N] = {0, 7, 10, 12, 15, 17, 19, 23, 26, 29, 32, 38, 35, 0, 0};   /* (each row's first name in JL_V) */
 static const char *const JL_SAY[JL_N] = {"STYLE ", 0, 0, "", "", "", "WASH ", 0, "POLY ", "SYNC ", "ARC ", "REC ", 0, 0, 0};
 static const char *const JL_OWN[8] = {"GLIDE SOUND", "GLIDE SEQ", "GLIDE SOUND + SEQ", "VARY EVERY 4TH", "VARY EVERY BAR",
                                       "PARTS VARY TOGETHER", "PARTS TAKE TURNS", "PARTS LEAD IN TURNS"};
@@ -349,7 +350,7 @@ static void tide_midi(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi)
  * (the style a hand edit left, DUB when none: 16 bars, 2 bars); MODE has none */
 static int tide_reset(uint32_t k)
 {
-    const uint8_t *sty = STY[(tide_style < STY_CUSTOM ? tide_style : tide_style_last) % 5u];
+    const uint8_t *sty = STY[(tide_style < STY_CUSTOM ? tide_style : tide_style_last) % 6u];
     char v[12];
     if (cur_page()->graph == GR_TIDELIST)
         return 0;
@@ -961,6 +962,8 @@ static void tide_settings(void)
         if (have) {                                      /* (an older record: STYLE CUSTOM, its values kept; a stored ECHO reads as LEAD: D7) */
             for (i = 0; i < TS_N; i++)
                 *TS_VAR[i] = (uint8_t)(!TS_LIM[i] ? b[i] & TS_DEF[i] : b[i] < TS_LIM[i] ? b[i] : i == TS_TURNS && b[i] == 3u ? 2u : TS_DEF[i]);
+            if (tide_style == STY_DRONE && !tide_style_holds())   /* (b4 and later: DRONE is 5, CUSTOM 6; an earlier build stored CUSTOM as 5: not DRONE's rows, so CUSTOM, not a hand edit of DRONE) */
+                tide_style = STY_CUSTOM;
         } else {
             tide_style_apply(STY_DUB);                   /* (no record: the DUB showcase; REC ADD) */
             tide_rec_replace = 0;

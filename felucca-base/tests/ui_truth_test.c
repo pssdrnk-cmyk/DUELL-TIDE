@@ -138,13 +138,13 @@ static void test_style_custom(void)
     frame();
     CHECK("CUSTOM: a hand edit turns STYLE to CUSTOM", tide_style == STY_CUSTOM);
     jl_sel = JL_STYLE;
-    tide_list_oct(1u);                                       /* OCT-: CUSTOM -> PEAK */
-    CHECK("CUSTOM: OCT- picks PEAK and applies it", tide_style == STY_PEAK && gl.mode == GM_JOURNEY && gl.time == 3u && sqm_poly == 1u);
+    tide_list_oct(1u);                                       /* OCT-: CUSTOM -> DRONE (the last style) */
+    CHECK("CUSTOM: OCT- picks DRONE and applies it", tide_style == STY_DRONE && gl.mode == GM_WANDER && gl.time == 6u && sqm_poly == 0u);
     tide_list_oct(2u);                                       /* OCT+: back onto CUSTOM */
     CHECK("CUSTOM: OCT+ is CUSTOM again", tide_style == STY_CUSTOM);
     CHECK("CUSTOM:   with the player's nine values back", gl.mode == GM_WANDER && gl.time == 2u && gl.wait == 1u && sqm_vary_all == 1u && sqm_turns == 2u &&
                                                         sqm_poly == 2u && sqm_sync == 2u && sqm_arc == 2u && (morph_wlvl & 3u) == 3u);
-    tide_list_oct(1u); tide_list_oct(1u); tide_list_oct(2u); tide_list_oct(2u);   /* PEAK, AMBIENT, PEAK, CUSTOM */
+    tide_list_oct(1u); tide_list_oct(1u); tide_list_oct(2u); tide_list_oct(2u);   /* DRONE, PEAK, DRONE, CUSTOM */
     CHECK("CUSTOM: and again after two presets in between", tide_style == STY_CUSTOM && gl.mode == GM_WANDER && sqm_poly == 2u && sqm_arc == 2u && (morph_wlvl & 3u) == 3u);
     frame();
     CHECK("CUSTOM: it stays CUSTOM (the values are not a preset's)", tide_style == STY_CUSTOM);
