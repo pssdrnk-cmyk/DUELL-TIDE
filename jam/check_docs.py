@@ -73,7 +73,7 @@ for path in ("README.md", "docs/TIDE_GUIDE.md"):
 # no workspace or local paths in the documents that ship (history pages are exempt)
 for path in glob.glob(os.path.join(ROOT, "**", "*.md"), recursive=True):
     rel = os.path.relpath(path, ROOT).replace(os.sep, "/")
-    if rel.startswith(("work/", "felucca-base/build", "felucca-base/node_modules")) or "/history/" in rel:
+    if rel.startswith(("work/", "docs/audits/", "felucca-base/build", "felucca-base/node_modules")) or "/history/" in rel:   # docs/audits: internal audit records, they name workspace paths
         continue
     for n, line in enumerate(open(path, encoding="utf-8", errors="replace"), 1):
         if re.search(r"`work/|[(]work/|C:[/]Users|C:[^/a-z ]Users", line):
