@@ -1132,7 +1132,7 @@ static void setup(int s)
         go_home(); guide_open(0); ui.guide = (uint8_t)(1 + s - S_GUIDE1); break;
     case S_GUIDE_MSG: go_home(); guide_open(0); ui.guide = 4; ui_message("HOLD ON"); break;
     case S_GUIDE_KNOB: go_home(); guide_open(0); ui.guide = 2; ui_message(GUIDE_KNOB_MSG); break;   /* (a knob turned: why nothing happens) */
-    case S_GUIDE_OCT: go_title("MORPH"); morph.target = MT_BOTH; song.octave = -3; guide_open(1); ui.guide = GUIDE_N; break;
+    case S_GUIDE_OCT: go_title("MORPH"); morph.target = MT_BOTH; song.octave = -3; guide_open(1); ui.guide = 4; break;   /* (the MENU's GUIDE has pages 2..4, counter "3/3": GUIDE_N is SETUP's) */
     case S_GUIDE_ROW: ui.menu = 1; ui.menu_sel = MI_GUIDE; break;
     case S_MOD_RETIRED: eng_retired(13); mslot_ui(4, MS_RAND, MD_E1, 30); mslot_ui(5, MS_LFO, MD_E1 + 7, 30); mod_ui_slot = 0;
         go_title("MATRIX 5-8"); break;
@@ -1223,10 +1223,10 @@ static void setup(int s)
     case S_LEARN_WAIT: go_page(GR_GLO); ml_toggle(); ui.msg_t = 0; break;
     case S_LEARN_PICK: go_title("EDIT 2"); ml_toggle(); ml_knob(TSEL, P_E4); ui.msg_t = 0; ui.hot_col = 0; ui.hot_t = 30; break;
     case S_LEARN_SET: go_title("EDIT 2"); ml_toggle(); ml_learn_f(74, 0, P_E4, 1, 0); ml_knob(TSEL, P_E4); break;   /* (74 is the standard map's: a taken number needs force now) */
-    case S_LEARN_LONG: {                             /* "T4 WAVE2: SEND A CC" (PHASE's WAVE2: the widest label) */
+    case S_LEARN_LONG: {                             /* "PART 2 WAVE 2: SEND A CC" (PHASE's WAVE 2 on its ENGINE page: the widest label) */
         uint32_t k;
-        song.sel = 1; eng(2); go_title("EDIT 2"); ml_toggle();
-        for (k = 0; k < 7u && !str_eq(ENGINES[2]->edit[k].label, "WAVE2"); k++)
+        song.sel = 1; eng(2); go_title("ENGINE"); ml_toggle();
+        for (k = 0; k < 7u && !str_eq(ENGINES[2]->edit[k].label, "WAVE 2"); k++)
             ;
         ml_knob(TSEL, P_E0 + k); ui.msg_t = 0;
         break;
@@ -1396,7 +1396,7 @@ static void setup(int s)
     case S_MIDI_SEL: go_title("MIDI"); song.g[G_ROUTE] = 1; break;
     case S_MIDI_LEARN_OFF: go_title("MIDI LEARN"); break;
     case S_MIDI_LEARN_ON: go_title("MIDI LEARN"); ml_toggle(); ui.msg_t = 0; break;
-    case S_MIDI_LEARN_PICK: go_title("MIDI LEARN"); ml_toggle(); ml_knob(TSEL, P_E5); ui.msg_t = 0; break;
+    case S_MIDI_LEARN_PICK: go_title("MIDI LEARN"); ml_toggle(); ml_knob(TSEL, P_E4); ui.msg_t = 0; break;   /* (ANALOG's P_E5 has no label: "PART 1 -"; E4 is PWM) */
     case S_MIDI_LEARN_CC: {                            /* DUELL 0.1: LEARN off, three CCs learned: KNOB 2 CLEAR says how many, the panel names it */
         uint32_t k;
         go_title("MIDI LEARN");
