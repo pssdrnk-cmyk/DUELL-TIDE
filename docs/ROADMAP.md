@@ -9,7 +9,7 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 | **Stable** | `stable-2026-11-03` (`187e9d0`), validated by the fork owner. The first versioned stable will be `1.0.0`. |
 | **Newest beta** | `1.0.0-b2` (tag `tide-1.0.0-b2`, `0d2fcb9`), a GitHub pre-release since 8 November: the GLIDE CPU fix and eight drones (#164 to #171). The owner's unit runs the build just before the tag (`36f03cd`, ABOUT `1.0.0-b2+`); the tagged build adds only the every-block blend for a hand-moved morph. |
 | **Older betas** | `1.0.0-b1` (`817658d`) and `beta-2026-11-04` (`77a6df2`), both GitHub pre-releases. |
-| **Development** | `jam11` = `integ`: the b3 baseline. Docs match the firmware, the full suite is 174 pass / 0 fail / 3 skip on Windows, plain DUELL (`DUELL_TIDE=0`) is byte-identical to `jam/off.sha256`, the device image is 580,204 B (the b2 tag's was smaller by the PATCHES order, PLAY MODE rows and live recording). The suite count is pending a full run. CI is green on GitHub. |
+| **Development** | b3 is in pull requests against `jam11`, not merged yet: [#1](https://github.com/pssdrnk-cmyk/DUELL-TIDE/pull/1) b3 part 1, [#2](https://github.com/pssdrnk-cmyk/DUELL-TIDE/pull/2) PLAY MODE / XFADE / SPLIT rows, [#3](https://github.com/pssdrnk-cmyk/DUELL-TIDE/pull/3) REC ADD / REPLACE and ARP SEQ keys, [#4](https://github.com/pssdrnk-cmyk/DUELL-TIDE/pull/4) the `emu` CI job. Each PR runs every host test group on GitHub. Built and reviewed, waiting for #1 to #3: the POLY restart fix (`fix/b3-f36`), the `uartflood` test (`fix/b3-felucca264`), the `tcwrap` test (`probe/a1`). In its review round: the CPU meter (`fix/b3-k2`). |
 | **Flash** | 580,204 B of the 581,564 B slot (build of `fix/b3-rec-modes`): **1,360 B free**. Every addition is measured; simplifications pay for features. Keep 0xEA000..0xFBFFF for future pattern / multi slots. |
 | **CPU** | About 3 missed audio blocks per FM6 crossing during a GLIDE, accepted for the betas. Five multis peak at raw 91 to 101 % in the 16-multi GLIDE sweep. `1.0.0` needs 0 missed blocks over that sweep. |
 
@@ -17,8 +17,8 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 
 - **One audio change per beta.** A change that can alter the sound gets a beta of its own, so a problem points at one change.
 - **Measure before and after.** An audio-path change is measured on the unit before and after, with the same script, against a pass mark written down first.
-- **Two reviews.** Every firmware change is reviewed by the coordinator and by a second reviewer who reads only the code.
-- **One firmware change in progress at a time.** Agents work in parallel only on docs and tests, each in its own branch.
+- **Builder and four reviewers.** Each change is built by one agent on its own branch, then read by separate reviewers: correctness, quality and cohesion, tests, docs. The coordinator decides the fixes; a verification review checks them.
+- **Pull requests.** Every change goes to GitHub as a pull request against `jam11`; GitHub runs the full host suite on it. Locally only the device build (size, hot-code check), `jam/check_off.sh` and `check_docs.py`. Builders work in parallel; merges go one at a time, with the owner's OK.
 - **Never flash red.** A tagged beta is never flashed while the full suite or `jam/check_off.sh` is red. The tag comes before the build; the flashed commit is merged and pushed the same day.
 - **Plain DUELL stays identical.** `DUELL_TIDE=0` must match `jam/off.sha256`; re-pin it only for an explained shared-code change. The `partindep` pins are never regenerated.
 - **Formats and user data are kept** (patches, patterns, multis, settings, KEEP / UNDO) unless the owner decides otherwise.
@@ -32,17 +32,18 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 | # | Item | What it does | State |
 |---|---|---|---|
 | 1 | Clean baseline | CI on macOS 15; docs truth pass; `swing` / `duck` in the test list; the `emu` CI job; sound numbers #1 to #163 pinned; the measurement kit in `jam/measure/`; `check_docs.py` in `check.sh` and CI; b1 and b2 GitHub releases. | **Done** 8 November. |
-| 2 | CPU and skip counter on the main screens (K2) | The raw CPU peak and a count of missed blocks in the header or footer of the main screens, in every build; `cpu_miss` counts every missed DMA period; one owner of the peak window, so ABOUT, the console and the screens never clear each other's peak. Reads and draws only. | Next. Brief K2. |
+| 2 | CPU and skip counter on the main screens (K2) | The raw CPU peak and a count of missed blocks in the header or footer of the main screens, in every build; `cpu_miss` counts every missed DMA period; one owner of the peak window, so ABOUT, the console and the screens never clear each other's peak. Reads and draws only. | Built and reviewed (`fix/b3-k2`, +392 B); the header look is being redesigned to match the capsules. |
 | 3 | Hot code placement check (K6) | The build fails when a function that runs every audio block lands in slow flash instead of RAM range Z (or is not on an allow-list with a reason). Build time only; no image change. | Built (`fix/b3`). |
 | 4 | OCT- + K3 / K4 say what they set | On the TIDE page, holding OCT- and turning K3 or K4 resets TIME or WAIT to the STYLE's value; it will show "TIME 16" / "WAIT 2" like K1's BACK TO ORIGINAL. About 40 B. | Built (`fix/b3`). |
 | 5 | PATCHES order and numbers | The list: every factory sound (#1 to #171), then your saved sounds (one saved over #13 too), then the empty USER slots last (owner, 8 November); MIDI program numbers unchanged. The footer and the TIDE page number the factory sounds past #124 (they showed the name alone). | Built (`fix/b3`), reviewed. |
-| 6 | Felucca 1.7.0 check | Already in our tree (checked 8 November): the TRS clock read during the audio render (Felucca #258) and exact clock progress with no drift (#269), both in `820e533` (1 November); the guard against a briefly invalid tempo (Felucca #282) in `fx.c` `beat_samples`. Left: compare our TRS receive (`hal/fm1_uart.h` `fm1_uart1_rx_take`) with Felucca #264's diff to confirm it; optionally port Felucca's `timer5_midi_test.c` (a clock-under-CC-flood test, no firmware change). | Planned. |
+| 6 | Felucca 1.7.0 check | #258, #264, #269 and #282 are all in our tree ([comparison](audits/2026-11-08/felucca-264-check.md)); Felucca's clock-under-CC-flood test is ported as host group `uartflood`. No firmware change. | Done (`fix/b3-felucca264`), reviewed. |
 | 7 | Small fixes with no sound change | `settings_persist.c` comment on object 48 (finding 33, D48: object 48 stays); the restore confirm says how many patches lose their FM6 MORPH TO target when the unit may be plain DUELL, since INFO cannot tell it from an older TIDE build (finding 14), plus one line in `jam_dev.py restore`'s help; three UI lint scenes (DAMAGED record, ABOUT with the TIDE id, a PATCHES row past #163; finding 31). | Built (`fix/b3`). |
 | 7a | Live recording (live-record audit R1, R4, R5) | REC no longer silences the ARP SEQ parts, and an ARP SEQ part's arp no longer records its own notes into its pattern; once armed, a REC tap disarms on every page (on HOME, unarmed, REC stays HOLD and says how to record: owner, 8 November); PRESETS loads sounds on STEP and PARAMETER LOCKS. Host group `liverec`. | Done: `integ` `455e2bb`. |
 | 7b | HOME without the MODE page | PLAY MODE, XFADE and SPLIT are the last three rows of TIDE SETTINGS; HOME's round is MORPH, TIDE SETTINGS, AUTO TIDE (owner, 8 November). | Built (`fix/b3-mode-rows`). |
 | 7c | Keys record into ARP SEQ patterns; REC row | Keys sound as played and go into the pattern the part plays (a key sets the step's note); REC row ADD / REPLACE on TIDE SETTINGS. | Built (`fix/b3-rec-modes`); waits for the unit test. |
-| 8 | Unit measurements | The 16-multi GLIDE sweep reading both `cpu_pk_us` and `cpu_raw_pk_us`; each drone with its 3-note chord held while `glide 1 0` runs. Sets the acceptance numbers for b4. | Needs the unit on USB. |
-| 9 | Cut b3 | `TIDE_VERSION` 1.0.0-b3, CHANGELOG section, tag, build, flash, GitHub pre-release. | After 2 to 8. |
+| 7d | POLY restart (finding 36) | On an ARP SEQ part in a shortened POLY loop, releasing all keys and playing again restarted the loop part-way in; it now starts at its first step. Host group `f36`. | Built (`fix/b3-f36`), reviewed. |
+| 8 | Unit measurements | The 16-multi GLIDE sweep reading both `cpu_pk_us` and `cpu_el_pk_us` (K2); each drone with its 3-note chord held while `glide 1 0` runs. Sets the acceptance numbers for b4. | Needs the unit on USB. |
+| 9 | Cut b3 | `TIDE_VERSION` 1.0.0-b3, CHANGELOG section, tag, build, flash, GitHub pre-release. | After 2 to 8 and the merges. |
 
 ## After b3, one audio change per beta
 
@@ -61,13 +62,13 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 ## Planned, not yet scheduled
 
 **CPU and audio engine**
-- Effect code from slow flash: the K6 check lists 116 reverb, delay, compressor and other mix-stage functions that the audio path reaches but run from XIP flash (`tools/ram_allow.py`, "not yet reviewed"). Review which run per sample and whether range Z (568 B above its reserve) or freed hot-block space can take the dearest: a possible CPU gain with no sound change.
+- Effect code from slow flash: [analysis](audits/2026-11-08/flash-hot/REPORT.md) done. Of the 116 functions, 50 run per sample. Plan: first a test-mode probe that times one function from flash and from RAM (no sound change); only if it shows at least 0.5 % of a half, move ~0.9 KB (`dly_wr`, `master_knee`, `acc_sum`, `cho_zrun`, `fx_swing`, `rev_front`, `hall_gains`) and later ~1 KB more, as its own beta measured on the unit. Expected gain 1 to 3 %, not enough alone for `1.0.0`.
+- The budget model (`bd_part`, `bd_global`, `bd_slope`, `part_dl`, 2.1 KB) runs from flash at the start of every half: run it only when its inputs change. Larger gain than the above, but it changes behaviour; needs its own design and test.
 - K8: the next fader position's blended parameters prepared outside the audio interrupt (main loop or idle core 1) and swapped in by pointer. Large; needs one-writer rules.
 - K10: the dearer part (by measured cost) on core 1, not always part 2.
 - K11: a TIDE-only 5.8 ms half for background use, costed first (keyboard play keeps 2.9 ms).
 - K12: the "prove the CPU cost before flashing" process written into CONTRIBUTING and TESTING.
-- POLY + ARP SEQ step phase after a key re-press mid-stretch (finding 36, suspected).
-- The rare two-core job wrap / sentinel issue from the first audit (A1).
+- Two readers of the arp step ignore a POLY stretch (`ui_draw.c` ~1901, `seq_dialogue.c` ~44, found in the finding 36 review): check whether the display or TURNS can disagree with what plays.
 - Code nits with no measured effect (finding 35): `DUELL_PROBE_STAGES` defined outside `#if DUELL_TIDE`; `morph_xside` into RAM only if the unit shows its cost; `glide_stop` lags one poll.
 
 **TIDE interface**
@@ -93,7 +94,7 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 - Pattern save: document the exact visible entry point (saving needs STOP) before any live test.
 
 **Repository and CI**
-- The `emu` CI job failed on its first GitHub run (8 November, after 33 s; passes on Windows; the log needs a signed-in view). Find the cause, then let it gate Pages.
+- The `emu` CI job: fixed in [#4](https://github.com/pssdrnk-cmyk/DUELL-TIDE/pull/4) (emsdk sourced under bash) and gating once merged.
 - Rename `jam11` to `tide`.
 - Gate the release channels by CI too (a Stable / Beta release is offered only from a green commit), from the 4 November decisions.
 - Merge upstream's emulator commits.
@@ -125,14 +126,17 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 | D43: when a crossing starts under a held chord, the chord stays whole (the budget plans for it from the start). | Stays whole; decided after the drones are measured under a GLIDE. |
 | D46: the multis that are too loud or too quiet are trimmed by ear on the unit. | Trim M15, M16 up and M10 down by the numbers, then listen. |
 | Try on the unit: keys recording into an ARP SEQ part, and REC ADD / REPLACE (b3). | Nothing to decide; say if the nearest-step rule feels wrong. |
+| Merge PRs #1 to #4 once GitHub is green. | Merge in order #1, #2, #3, #4, then the three waiting branches. |
+| Reverb FREEZE (below): build it? | Not built until you say. |
+| Drone scenes: delivered as a file pack, replacing multis, or by packing the multi records to make room? | File pack (no factory multi changes). |
 | Which of the ideas below, if any. | None until chosen. |
 
 **By ear or eye on the unit** (no homework: noted when the owner meets them in use): the drones; the U2 multi sequences; the MULTIS / PATTERNS preview's readability; polymeter (12 / 16, 15 / 16) against a steady 4 / 4; whether TURNS' alternating bars improve the interplay.
 
 ## Ideas, not decided
 
-- **MORPH card waves.** The moving lines on the MORPH card (HOME 1/3 with TIDE) are synthetic. Draw the part's real output instead, like an oscilloscope: a held note stands still, a chord beats, L and R as two lines that drift apart on a wide sound, faint trails when the sound moves. Costs less flash than today's field (~0.7 KB against ~1.5 KB) and ~0.1 % CPU while the card shows. Full sketch in the [archived roadmap](history/ROADMAP_2026-11-08.md); mock-ups in the owner's workspace.
-- **From Niagara Drift** (an FM-1 drone firmware; checked against our code 8 November, estimates until built): **reverb FREEZE** on HALL / ROOM (the tail holds and the notes can stop; a block-rate gain change with a limiter, ~200-400 B, no CPU while off; risks: fixed-point overflow and the release click) and a **DRONE row** (one switch for the existing HOLD ALL latch, restoring the player's own HOLD on exit, ~100-250 B) fit best. **AGE** (slow tape-like wear, ~300-600 B) needs an offset layer on top of the saved sound, not checked yet. Gesture keys and a free-time motion loop do not fit the flash, the keys or the no-new-pages rule.
+- **MORPH card waves.** The MORPH card's moving lines become the part's real output, like an oscilloscope: a held note stands still, a chord beats, L and R as two lines, faint trails when the sound moves. Plan: [design/WAVE_DISPLAY_PLAN.md](design/WAVE_DISPLAY_PLAN.md) (branch `plan/wave-displays`); an emulator-only WAVE LAB page is on that branch for trying it. The audio tap is its own beta, measured on the unit. Owner choices in the plan (silence, trails, the bass line).
+- **From Niagara Drift** (an FM-1 drone firmware; checked against our code 8 November, estimates until built): **reverb FREEZE** on HALL / ROOM (the tail holds and the notes can stop; a block-rate gain change with a limiter, ~200-400 B, no CPU while off; risks: fixed-point overflow and the release click) fits best. **AGE** (slow tape-like wear, ~300-600 B) needs an offset layer on top of the saved sound, not checked yet. Gesture keys and a free-time motion loop do not fit the flash, the keys or the no-new-pages rule.
 - **Drone scenes:** multis built around the eight drones, one per theme.
 - **Keep current patterns on MULTI load** (U2 route A): an explicit load that keeps both playing patterns.
 - **Musical evaluations kept from the earlier plan** (no work scheduled): M2a chord movement; M5 / M10a level and slow-glide behaviour only for a found defect; M7d polymeter first by hand; CHANGE / ENERGY rows only with useful behaviour. Details in [design/TIDE_MUSICAL_DESIGN.md](design/TIDE_MUSICAL_DESIGN.md).
@@ -143,6 +147,7 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 - No real chord steps in ARP SEQ; no cross-engine JRNY; no automatic harmonic rewriting, loudness normalisation or harshness classification.
 - Exact live-morph continuation after a restart is not required.
 - Going back to plain DUELL 1.1 is documented, not supported.
+- No DRONE row: HOLD already latches the notes (owner, 8 November).
 - LADDER's bass loss, filter 1 without self-oscillation and LOFI's aliasing stay as character.
 
 ## Versions and releases
