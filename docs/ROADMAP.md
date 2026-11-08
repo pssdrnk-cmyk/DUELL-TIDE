@@ -9,11 +9,11 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 | | |
 |---|---|
 | **Stable** | `stable-2026-11-03` (`187e9d0`), validated by the fork owner. The first versioned stable will be `1.0.0`. |
-| **Newest beta** | `1.0.0-b4` (tag `tide-1.0.0-b4`): the ease ladder (no missed blocks or cut voices on the unit's GLIDE sweep), the silent-bus skip, STYLE DRONE and the drone pack, the pages and screen cleanups. |
-| **Older betas** | `1.0.0-b3` (`c124935`), `1.0.0-b2` (`0d2fcb9`), `1.0.0-b1` (`817658d`) and `beta-2026-11-04` (`77a6df2`), all GitHub pre-releases. |
-| **Development** | `1.0.0-b5`: MORPH UNDO dropped for RAM, the wave picture taking over the MORPH page, AUTO TIDE and the wave page showing both parts always. |
-| **Flash** | 580,808 B of the 581,564 B slot (build of `fix/b3-cleanup`, 8 November): **756 B free**. Every addition is measured; simplifications pay for features. Keep 0xEA000..0xFBFFF for future pattern / multi slots. |
-| **CPU** | About 3 missed audio blocks per FM6 crossing during a GLIDE, accepted for the betas. Five multis peak at raw 91 to 101 % in the 16-multi GLIDE sweep. `1.0.0` needs 0 missed blocks over that sweep. |
+| **Newest beta** | `1.0.0-b5` (tag `tide-1.0.0-b5`): the MORPH page as a wave picture of both parts, AUTO TIDE always showing both parts, MORPH UNDO dropped for RAM. |
+| **Older betas** | `1.0.0-b4` (`d519548`: the ease ladder, the silent-bus skip, STYLE DRONE, the screen cleanups), `1.0.0-b3` (`c124935`), `1.0.0-b2` (`0d2fcb9`), `1.0.0-b1` (`817658d`) and `beta-2026-11-04` (`77a6df2`), all GitHub pre-releases. |
+| **Development** | `1.0.0-b6`: the effect buses on core 1 (K4, then K10), with MORPH c3 and roles T4 (see "After b3" and "Planned" below). |
+| **Flash** | 574,232 B of the 581,564 B slot (`1.0.0-b5` build, 8 November): **7,332 B free**; RAM .data+.bss 68,624 B of 73,728. Every addition is measured; simplifications pay for features. Keep 0xEA000..0xFBFFF for future pattern / multi slots. |
+| **CPU** | Since `1.0.0-b4` (the ease ladder): 0 missed blocks and 0 cut voices over the 16-multi GLIDE sweep on the unit, worst block about 90 %; `1.0.0-b5` measured the same with the wave tap (0 missed, 0 cut, worst 90 %). The drones are not yet measured under a GLIDE. |
 
 ## How we work
 
@@ -51,8 +51,9 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 
 | Beta | Item | What it does | Spec |
 |---|---|---|---|
-| `1.0.0-b4` | Ease ladder (K3) | When the measured CPU runs hot, back off step by step instead of killing a note: 1 slower transitions (morph blend every 4th block, FM6 retune every other block), 2 no new note for a moment (owner: acceptable live), 3 lighter effects, 4 released tails, 5 held notes only after a real miss. Hysteresis: on after two halves over 85 %, off after ~3 s under 70 %. About 300 B. | Brief K3 |
-| `1.0.0-b5` | Effect buses on core 1 (K4) | Core 1 also runs the sends, chorus, delay and reverb when its measured time fits the deadline; today's one-core path stays as the fallback, bit-exact. Saves 7 to 15 % on core 0 in the scenes that burst. | Brief K4 |
+| `1.0.0-b4` (done) | Ease ladder (K3) | When the measured CPU runs hot, back off step by step instead of killing a note: 1 slower transitions (morph blend every 4th block, FM6 retune every other block), 2 no new note for a moment (owner: acceptable live), 3 lighter effects, 4 released tails, 5 held notes only after a real miss. Hysteresis: on after two halves over 85 %, off after ~3 s under 70 %. About 300 B. | Brief K3 |
+| `1.0.0-b5` (done) | Wave page | MORPH UNDO dropped for RAM; the MORPH page shows both parts' real output as waves; AUTO TIDE always shows both parts, the selected one marked. | Wave Lab, owner 8 November |
+| `1.0.0-b6` | Effect buses on core 1 (K4) | Core 1 also runs the sends, chorus, delay and reverb when its measured time fits the deadline; today's one-core path stays as the fallback, bit-exact. Saves 7 to 15 % on core 0 in the scenes that burst. | Brief K4 |
 | then | Hand-moved morph saving | A hand or MIDI fader move blended every other block like a GLIDE (about 70 us a block saved), with a sample check of the hand-moved morph. | Finding 12, D44 |
 | then | Transition costs only while moving | The engine cross-fade (BD_FADE), valley and wash charged only while a transition runs, as b2 does for FM6: more notes at rest. | Owner, 6 November |
 | then | FM6 crossing fixes | The deferred stand-in drain cleared only when the bridge stays off (suspected, needs a test that reproduces it first); the crossing charge leads the crossing instead of lagging one UI frame. Then K7: the crossing's shared modulation computed once per part per block. | Findings 8, 9; brief K7 |
@@ -68,6 +69,8 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 - Owner's call: drop SEND FX (every value is on FX and GLO) and TOOLS CLEAR PATTERN (QUICK SEQ and QUICK REC clear too), about 0.8 KB; the arp follows TEMPO SWING like the sequencer; TIDE rows SYNC and ROLL renamed so they don't share words with tempo sync and MORPH's ROLL.
 
 **One view for both parts** (owner, 8 November): AUTO TIDE and the MORPH / wave page always show both parts, with the selected part clearly marked (full colour, the other dimmed, plus a cue that works on MONO and GREY). The wave page does it in b5 (Wave Lab); AUTO TIDE follows the second screen round.
+
+**RAM room** (8 November, b5): the release build keeps 8,208 B of the pool tail against the 8,192 B rule (16 B spare; range Z 29,232 B), and a test-mode build needs the lowered 7,936 B rule. The next change that grows range Z or the pool fails the build: find about 1 KB first (a cold function out of `ram_fns_z.py`, or a pool buffer to `.bss`), measured on the unit.
 
 **MORPH** ([review](audits/2026-11-08/morph/REPORT.md): keep the core and the page, no big rework)
 - c3: factory loads stop resetting AMOUNT; K4 dim in JRNY, where it does nothing (about 50 B).
@@ -131,10 +134,8 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 | Question | Default if you don't mind |
 |---|---|
 | D43: when a crossing starts under a held chord, the chord stays whole (the budget plans for it from the start). | Stays whole; decided after the drones are measured under a GLIDE. |
-| ~~MORPH UNDO: drop it to free about 1.9 KB of RAM for the wave card?~~ Dropped on `fix/b5-noundo` (1.0.0-b5, 1,888 B of RAM freed; not merged or flashed yet). | Merge it, then retry the wave card. |
 | D46: the multis that are too loud or too quiet are trimmed by ear on the unit. | Trim M15, M16 up and M10 down by the numbers, then listen. |
 | Try on the unit: keys recording into an ARP SEQ part, and REC ADD / REPLACE (b3). | Nothing to decide; say if the nearest-step rule feels wrong. |
-| Merge PRs #1 to #4 once GitHub is green. | Merge in order #1, #2, #3, #4, then the three waiting branches. |
 | Reverb FREEZE (below): build it? | Not built until you say. |
 | Drone scenes: delivered as a file pack, replacing multis, or by packing the multi records to make room? | File pack (no factory multi changes). |
 | Which of the ideas below, if any. | None until chosen. |
@@ -143,8 +144,7 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 
 ## Ideas, not decided
 
-- **MORPH card waves.** Since `1.0.0-b4` the MORPH page's made-up moving lines are gone and a quiet line holds their place; the wave card will show the part's real output there, like an oscilloscope: a held note stands still, a chord beats, L and R as two lines, faint trails when the sound moves. Plan: [design/WAVE_DISPLAY_PLAN.md](design/WAVE_DISPLAY_PLAN.md) (branch `plan/wave-displays`); an emulator-only WAVE LAB page is on that branch for trying it. The audio tap is its own beta, measured on the unit. Owner choices in the plan (silence, trails, the bass line).
-- **MORPH card waves: parked 8 November.** A build of the reduced design (a mono 512-entry tap and a stack of 8 ridges; WIP `fix/b6-wave-card` 2945b9e) needed +1,444 B of flash and left 992 B of .bss headroom against the 4,096 B rule. A retry needs at most 1 KB of RAM (8-bit samples, a 256-384 ring), net flash at or below +0 B (a simpler trigger), and comes after the flash savings land. See WAVE_DISPLAY_PLAN.md section 7 (branch `plan/wave-displays`).
+- **MORPH card waves: shipped in `1.0.0-b5`** as the whole MORPH page (both parts, a mono 8-bit tap a part). Still open from the plan: L and R as two lines, the deep-bass line (about 4 KB more RAM, below).
 - **Wave card L/R lines and the deep-bass line:** about 4 KB more RAM. The candidates are PERFORM capture (8 KB = 93 ms shorter capture) or a canvas drawn in strips. Owner decision when wanted.
 - **From Niagara Drift** (an FM-1 drone firmware; checked against our code 8 November, estimates until built): **reverb FREEZE** on HALL / ROOM (the tail holds and the notes can stop; a block-rate gain change with a limiter, ~200-400 B, no CPU while off; risks: fixed-point overflow and the release click) fits best. **AGE** (slow tape-like wear, ~300-600 B) needs an offset layer on top of the saved sound, not checked yet. Gesture keys and a free-time motion loop do not fit the flash, the keys or the no-new-pages rule.
 - **Drone scenes:** multis built around the eight drones, one per theme.
