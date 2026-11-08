@@ -18,7 +18,7 @@ It is made for playing the FM-1 as a **background**: set a tide going, then play
 
 | AUTO TIDE | TIDE SETTINGS | MORPH, mid-glide |
 |:---:|:---:|:---:|
-| <img src="docs/tide/auto-tide-both-parts.png" width="260" alt="AUTO TIDE page with both parts gliding: WNDR to B, the SOUND and SEQ faders of parts 1 and 2 in two columns, both parts' steps, MODE WNDR, TIME 16 bars, WAIT 2 bars"> | <img src="docs/tide/morph-settings.png" width="260" alt="TIDE SETTINGS page: STYLE, TARGET SND+SEQ, VARY BARS EVERY 4TH, ROLL MUSIC, ROLL ARP, ROLL PITCH; the rest of the rows scroll below"> | <img src="docs/tide/morph-gliding.png" width="260" alt="MORPH page while a tide plays: the fader at 64, ROLL, UNDO and AMOUNT 40 %"> |
+| <img src="docs/tide/auto-tide-both-parts.png" width="260" alt="AUTO TIDE page with both parts gliding: WNDR to B, the SOUND and SEQ faders of parts 1 and 2 in two columns, both parts' steps, MODE WNDR, TIME 16 bars, WAIT 2 bars"> | <img src="docs/tide/morph-settings.png" width="260" alt="TIDE SETTINGS page: STYLE, TARGET SND+SEQ, VARY BARS EVERY 4TH, ROLL TYPE MUSIC, ROLL ARP, ROLL PITCH; the rest of the rows scroll below"> | <img src="docs/tide/morph-gliding.png" width="260" alt="MORPH page while a tide plays: the fader at 64, ROLL, UNDO and AMOUNT 40 %"> |
 | The glide, both parts, with their steps. | STYLE on top, then how the tide behaves. | DUELL's MORPH page follows the glide. |
 
 *Screens rendered from the firmware's own drawing code; try them live in the [web emulator](https://pssdrnk-cmyk.github.io/DUELL-TIDE/emu/).*
@@ -74,9 +74,9 @@ Links from the project's pages (installer, emulator, issue forms) to the guides 
 
 ## What changed from DUELL 1.1
 
-**AUTO TIDE** runs the tide: knob 1 glides to B or to A, knob 2 picks the AUTO TIDE mode (ONCE, LOOP, DRIFT, WANDER, JOURNEY), knob 3 the TIME of a trip (1 to 64 bars), knob 4 the WAIT at each end, and ALGORITHM picks PART 1, PART 2 or BOTH. **TIDE SETTINGS** says how it behaves: STYLE, TARGET, VARY BARS, ROLL, ROLL ARP, ROLL PITCH, WASH, TURNS, POLY, SYNC and ARC, then REC (ADD or REPLACE for live recording), PLAY MODE, XFADE and SPLIT (the output mode, LAYER / STEREO / DUEL, and its two settings). Every row, its values and when a change lands are in the [TIDE guide](docs/TIDE_GUIDE.md). The STYLE presets:
+**AUTO TIDE** runs the tide: knob 1 glides to B or to A, knob 2 picks the AUTO TIDE mode (ONCE, LOOP, DRIFT, WANDER, JOURNEY), knob 3 the TIME of a trip (1 to 64 bars), knob 4 the WAIT at each end, and ALGORITHM picks PART 1, PART 2 or BOTH. **TIDE SETTINGS** says how it behaves: STYLE, TARGET, VARY BARS, ROLL, ROLL ARP, ROLL PITCH, WASH, TURNS, POLY, OFFBEAT and ARC, then REC (ADD or REPLACE for live recording), PLAY MODE, XFADE and SPLIT (the output mode, LAYER / STEREO / DUEL, and its two settings). Every row, its values and when a change lands are in the [TIDE guide](docs/TIDE_GUIDE.md). The STYLE presets:
 
-| STYLE | AUTO TIDE MODE | TIME | WAIT | VARY BARS | TURNS | POLY | SYNC | ARC | WASH |
+| STYLE | AUTO TIDE MODE | TIME | WAIT | VARY BARS | TURNS | POLY | OFFBEAT | ARC | WASH |
 |---|---|---|---|---|---|---|---|---|---|
 | **DUB** | JOURNEY | 16 bars | 2 bars | EVERY 4TH | LEAD | GENTLE | SOFT | RISE | OFF |
 | **DEEP** | WANDER | 32 bars | 4 bars | EVERY 4TH | TAKE TURNS | OFF | SOFT | RISE | LOW |
@@ -85,7 +85,7 @@ Links from the project's pages (installer, emulator, issue forms) to the guides 
 | **PEAK** | JOURNEY | 8 bars | OFF | EVERY BAR | LEAD | GENTLE | PUSH | DROP | OFF |
 | **DRONE** | WANDER | 64 bars | OFF | EVERY 4TH | TOGETHER | OFF | OFF | OFF | HIGH |
 
-A new unit starts on DUB, so DUB's row (bold) is the default. A unit that had TIDE settings saved before STYLE existed keeps them and shows CUSTOM; the rows it lacked load as TURNS TAKE TURNS, POLY GENTLE, SYNC SOFT and ARC OFF.
+A new unit starts on DUB, so DUB's row (bold) is the default. A unit that had TIDE settings saved before STYLE existed keeps them and shows CUSTOM; the rows it lacked load as TURNS TAKE TURNS, POLY GENTLE, OFFBEAT SOFT and ARC OFF.
 
 Also new: 43 more factory sounds (#129 to #171: three of them FM6, the last eight drones) and ten chord and pad patterns for dub techno and deep house; four USER slots for patches (U1 to U4) and for patterns (P29 to P32); MULTIS and PATTERNS lists with a preview of the picked entry; live graphs on the ENV, LFO, CYCLE, filter, INSERT, MATRIX and CHORD pages; SEQ MORPH (a pattern has an End A and an End B too); ARP SEQ on PLAY; KEEP in the SEQ tools. Fixes that also hold with TIDE off (clock phase, FM6, UNISON, PHYS, CHORD keys, MODE / SPLIT) are in the [CHANGELOG](CHANGELOG.md). To make room, the fonts are Huffman-coded and UI render paths no page reaches are gone; building with `DUELL_TIDE=0` gives DUELL 1.1 without any TIDE code, and `jam/check_off.sh` checks that.
 

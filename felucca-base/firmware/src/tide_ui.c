@@ -5,7 +5,7 @@
  *                  left: glide to A, right: to B, two detents to stop a running glide), K2 MODE (ONCE / LOOP / DRIFT / WNDR / JRNY), K3 TIME
  *                  (bars), K4 WAIT; OCT- + K1 back to the Original, + K2 an ARC drop, + K3 / K4 TIME and WAIT to the STYLE's   ... play
  *   TIDE SETTINGS  (GR_TIDELIST) the settings in a list, as the MENU's: K1 picks the row, OCT+ or K2..K4 the next value, OCT- the one before.
- *                  STYLE, TARGET, VARY BARS, ROLL, ROLL ARP, ROLL PITCH, WASH, TURNS, POLY, SYNC, ARC, REC, PLAY MODE, XFADE, SPLIT (JL_NAME)        ... set and forget
+ *                  STYLE, TARGET, VARY BARS, ROLL TYPE, ROLL ARP, ROLL PITCH, WASH, TURNS, POLY, OFFBEAT, ARC, REC, PLAY MODE, XFADE, SPLIT (JL_NAME)        ... set and forget
  * LINK: TARGET SND+SEQ links the two faders: GLIDE moves both, and the MORPH fader moved by hand (the MORPH page, the mod wheel, CC 70:
  * ui_input.c morph_act) moves the SEQ fader with it (tide_link). ALGORITHM is the morph's selector here too: PART 1, BOTH, PART 2
  * (morph_mask). The panel shows both faders with the glide on them, and the selected part's 16 steps as they play: varied ones
@@ -136,7 +136,7 @@ static void tide_link(uint32_t mask, uint32_t v)
 
 /* ---------------------------------------------------------------- TIDE SETTINGS --- */
 enum { JL_STYLE, JL_TARGET, JL_VARY, JL_ROLL, JL_ARP, JL_PITCH, JL_WASH, JL_TURNS, JL_POLY, JL_SYNC, JL_ARC, JL_REC, JL_MODE, JL_XFADE, JL_SPLIT, JL_N };   /* (REC: live recording's; MODE, XFADE, SPLIT, the last three: the output mode's own settings; none part of STYLE; they go through ui_input.c mode_knob, whose header describes the old MODE page: TIDE's rows are these three) */
-static const char *const JL_NAME[JL_N] = {"STYLE", "TARGET", "VARY BARS", "ROLL", "ROLL ARP", "ROLL PITCH", "WASH", "TURNS", "POLY", "SYNC", "ARC", "REC", "PLAY MODE", "XFADE", "SPLIT"};
+static const char *const JL_NAME[JL_N] = {"STYLE", "TARGET", "VARY BARS", "ROLL TYPE", "ROLL ARP", "ROLL PITCH", "WASH", "TURNS", "POLY", "OFFBEAT", "ARC", "REC", "PLAY MODE", "XFADE", "SPLIT"};
 static uint8_t jl_sel;                                   /* the row picked (K1) */
 static void morph_act(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi);   /* (ui_input.c) */
 static void tide_pick_mode(void) { jl_sel = JL_MODE; }   /* HOME OPENS = MODE (ui.c go_main_to): TIDE SETTINGS with the MODE row picked */
@@ -189,7 +189,7 @@ static __attribute__((noinline)) const char *jl_needs(uint32_t r)
         return 0;
     if (r >= JL_XFADE)                                   /* XFADE and SPLIT are LAYER's only */
         return duell_mode_req == DM_LAYER ? 0 : "LAYER ONLY";
-    return gl.mode < GM_WANDER ? "WNDR OR JRNY" : !morph_musical ? "ROLL MUSIC" : gl.target == GT_SOUND ? "TARGET SEQ" : 0;   /* (what the row needs, short: knob 1's line has 91 px after "SETTING TURNS"; WANDER / JOURNEY in full do not fit, so the short names stay here only) */
+    return gl.mode < GM_WANDER ? "WNDR OR JRNY" : !morph_musical ? "ROLL TYPE MUSIC" : gl.target == GT_SOUND ? "TARGET SEQ" : 0;   /* (what the row needs, short: knob 1's line has 91 px after "SETTING TURNS"; WANDER / JOURNEY in full do not fit, so the short names stay here only) */
 }
 /* does row r's value draw dim (it does nothing now)? nd: jl_needs(JL_TURNS). MODE always acts; XFADE and SPLIT need LAYER; TURNS .. ARC need nd (tests/mode_test.c checks this) */
 static int jl_dimmed(uint32_t r, const char *nd)
@@ -205,7 +205,7 @@ static const char *const JL_V[] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK", 
                                    "OFF", "ON", "OFF", "ON", "OFF", "LOW", "MID", "HIGH", "TOGETHER", "TAKE TURNS", "LEAD", "OFF", "GENTLE", "WIDE",
                                    "OFF", "SOFT", "PUSH", "OFF", "RISE", "DROP", "LAYER", "STEREO", "DUEL", "ADD", "REPLACE"};
 static const uint8_t JL_V0[JL_N] = {0, 7, 10, 12, 15, 17, 19, 23, 26, 29, 32, 38, 35, 0, 0};   /* (each row's first name in JL_V) */
-static const char *const JL_SAY[JL_N] = {"STYLE ", 0, 0, "", "", "", "WASH ", 0, "POLY ", "SYNC ", "ARC ", "REC ", 0, 0, 0};
+static const char *const JL_SAY[JL_N] = {"STYLE ", 0, 0, "", "", "", "WASH ", 0, "POLY ", "OFFBEAT ", "ARC ", "REC ", 0, 0, 0};
 static const char *const JL_OWN[8] = {"GLIDE SOUND", "GLIDE SEQ", "GLIDE BOTH", "VARY EVERY 4TH", "VARY EVERY BAR",
                                       "PARTS VARY TOGETHER", "PARTS TAKE TURNS", "PARTS LEAD IN TURNS"};
 static uint32_t jl_n(uint32_t r) { return JL_NV[r % JL_N]; }

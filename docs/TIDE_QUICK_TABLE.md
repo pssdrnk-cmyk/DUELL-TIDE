@@ -20,19 +20,19 @@ TIME (K3) is how many bars one trip takes; WAIT (K4) is how many bars it rests a
 
 | Row | Values (default **bold**) | In short |
 |---|---|---|
-| **STYLE** | **DUB**, DEEP, MINIMAL, AMBIENT, PEAK, DRONE, CUSTOM | A preset for the whole tide: sets the mode, TIME, WAIT, VARY BARS, TURNS, POLY, SYNC, ARC and WASH in one go. Change any of those by hand and STYLE reads CUSTOM. |
+| **STYLE** | **DUB**, DEEP, MINIMAL, AMBIENT, PEAK, DRONE, CUSTOM | A preset for the whole tide: sets the mode, TIME, WAIT, VARY BARS, TURNS, POLY, OFFBEAT, ARC and WASH in one go. Change any of those by hand and STYLE reads CUSTOM. |
 | **VARY BARS** | **EVERY 4TH**, EVERY BAR | How often the pattern plays its variation: every 4th bar of the phrase, or every bar. |
-| **ROLL** | **MUSIC**, SMART, WILD | How a new destination sound (End B) is made. MUSIC: musical dials inside the range that sound lives in. SMART: DUELL's own safe roll. WILD: no safety rules. |
+| **ROLL TYPE** | **MUSIC**, SMART, WILD | How a new destination sound (End B) is made. MUSIC: musical dials inside the range that sound lives in. SMART: DUELL's own safe roll. WILD: no safety rules. |
 | **TURNS** | TOGETHER, TAKE TURNS, **LEAD** | How the two parts share the variations. TOGETHER: both vary on the same bars. TAKE TURNS: one varies, the other answers two bars later. LEAD: the parts take turns leading, the other plays thinner and softer meanwhile. |
 | **POLY** | OFF, **GENTLE**, WIDE | Now and then one part's loop gets a little shorter (15 or 14 of 16 steps; WIDE: 12 to 15), so its motif drifts against the beat, then lines up again at a phrase. Your stored pattern is never changed. |
-| **SYNC** | OFF, **SOFT**, PUSH | Pattern edits lean hits towards the off-beat 8th, with an occasional push into the beat (SOFT one a bar, PUSH two). Beats never move. |
+| **OFFBEAT** | OFF, **SOFT**, PUSH | Pattern edits lean hits towards the off-beat 8th, with an occasional push into the beat (SOFT one a bar, PUSH two). Beats never move. |
 | **ARC** | OFF, **RISE**, DROP | A 32 to 64 bar shape: builds up (more syncopation, brighter), peaks, eases into a breakdown, recovers. DROP also drops out (no new notes for two bars) on about half of the arcs. Hand drop: hold OCT- and turn K2 on AUTO TIDE. |
 
-TURNS, POLY, SYNC and ARC work only while the tide runs in WANDER or JOURNEY with ROLL MUSIC and the pattern in TARGET (BOTH or SEQ). Otherwise their values are dim and the top line says what's missing.
+TURNS, POLY, OFFBEAT and ARC work only while the tide runs in WANDER or JOURNEY with ROLL TYPE MUSIC and the pattern in TARGET (BOTH or SEQ). Otherwise their values are dim and the top line says what's missing.
 
 ## The six STYLEs
 
-| Style | Mode | TIME | WAIT | VARY | TURNS | POLY | SYNC | ARC | WASH | Feel |
+| Style | Mode | TIME | WAIT | VARY | TURNS | POLY | OFFBEAT | ARC | WASH | Feel |
 |---|---|---|---|---|---|---|---|---|---|---|
 | DUB | JOURNEY | 16 | 2 | 4TH | LEAD | GENTLE | SOFT | RISE | OFF | Dub-techno: slow journey, call and answer. |
 | DEEP | WANDER | 32 | 4 | 4TH | TAKE TURNS | OFF | SOFT | RISE | LOW | Long, deep, stays close to your sound. |
