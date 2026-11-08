@@ -331,7 +331,9 @@ for t in $want; do case $t in
   mod)     $CC -o $OUT/mod_test tests/mod_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run mod $OUT/mod_test build/mod_demo ;;
   perform) $CC "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/perform_test tests/perform_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run perform $OUT/perform_test ;;
   performcap) $CC "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/perform_cap_test tests/perform_cap_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run performcap $OUT/perform_cap_test ;;
-  ui)      $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/ui_render tests/ui_render.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run ui $OUT/ui_render build/ui_new build/ui_slot ;;
+  ui)      $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/ui_render tests/ui_render.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run ui $OUT/ui_render build/ui_new build/ui_slot &&
+           { $CCR -O1 "-DFELUCCA_VERSION=\"$FV\"" '-DDUELL_TIDE_ID="1.0.0-b2+"' -o $OUT/ui_render_tideid tests/ui_render.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; }; } &&
+           run ui-about-tide $OUT/ui_render_tideid --about-tide build/ui_slot ;;
   select)  $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/select_test tests/select_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run select $OUT/select_test ;;
   step3)   $CC -o $OUT/step3_test tests/step3_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run step3 $OUT/step3_test ;;
   engine)  $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/engine_page_test tests/engine_page_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run engine $OUT/engine_page_test ;;
