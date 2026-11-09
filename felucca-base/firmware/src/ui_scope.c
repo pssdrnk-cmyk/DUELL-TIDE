@@ -419,16 +419,18 @@ static uint16_t ui_part_col(uint32_t k, int hot)
 }
 static void ui_part_tag(uint32_t k, int32_t y, int hot)
 {
-    /* (b6, owner: "numbers are also thrash quality, they get out of the background color and not centered": the digit centred by its own ink in a pill of that ink and 2 px each
-     * side, 2 rows above and below the capitals (15 rows), the pill 2 px clear of the hot bar (x 1 .. 3); the knockout the pill and 1 px round it; a dimmed tag on the same grid) */
+    /* (b6, owner: "numbers are also thrash quality, they get out of the background color and not centered": the digit centred by its own ink in a pill of the wider digit's ink and 1 px each
+     * side (the same for both parts), 1 row above and below the capitals (13 rows), the pill 2 px clear of the hot bar (x 1 .. 3); the knockout the pill and 1 px round it; a dimmed tag on the same grid) */
     const uint16_t kc = ui_part_col(k, hot);
     const char *d = k ? "2" : "1";
-    const aag_t *g = &AF_S.g[glyph(&AF_S, (uint8_t)d[0])];
-    const int32_t px0 = 6, pw = (int32_t)glyph_bw(g) + 4, ph = AF_S_CAP_H + 4;
+    const aag_t *g = &AF_S.g[glyph(&AF_S, (uint8_t)d[0])], *g1 = &AF_S.g[glyph(&AF_S, '1')], *g2 = &AF_S.g[glyph(&AF_S, '2')];
+    const int32_t wm = (int32_t)(glyph_bw(g1) > glyph_bw(g2) ? glyph_bw(g1) : glyph_bw(g2));   /* (both pills as wide: the wider digit's ink; owner: a "1" in a pill of its own 4 px
+                                                                                             * of ink read as an outlined box with a purple digit, its stem splitting the fill) */
+    const int32_t px0 = 6, pw = wm + 2, ph = AF_S_CAP_H + 2;   /* (1 px round the ink: AUTO TIDE's two rows are 14 apart, a taller pill lost its foot to the next tag's knockout) */
     cv_rect(px0 - 1, y - ph / 2 - 1, pw + 2, ph + 2, T_BG);
     if (hot)
         cv_rrect(px0, y - ph / 2, pw, ph, 2, kc, T_BG);
-    cv_text_on(px0 + 2 - glyph_bx(g), UT_TY(S, y + AF_S_CAP_H / 2), &AF_S, d, hot ? T_INK : kc, hot ? kc : T_BG);
+    cv_text_on(px0 + HALF_UP(pw - (int32_t)glyph_bw(g)) - glyph_bx(g), UT_TY(S, y + AF_S_CAP_H / 2), &AF_S, d, hot ? T_INK : kc, hot ? kc : T_BG);
 }
 /* a box h rows high: the ridges' half height (*a), the rows from the front's middle to the oldest one's (*st: the stack spans the lane, the front's swing room at the foot, the oldest
  * ridge's, as tall, at the top) and how many fit WL_STEP apart (the return) */
