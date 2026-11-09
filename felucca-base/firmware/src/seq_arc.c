@@ -58,7 +58,7 @@ static void tarc_levers(uint32_t auto_mask)
     MORPH_LOCK();                                        /* (audit C12: the three levers change together for the audio interrupt) */
     tarc_fast = tarc.t >= 200u;
     tarc_thin = th;
-    tarc_hold = ph == AP_PEAK || ph == AP_DROP || tarc_dropphr != 0xFFu;
+    tarc_hold = ph == AP_PEAK || ph == AP_DROP || ph == AP_BREAK || tarc_dropphr != 0xFFu;   /* (B1: no POLY stretch in the breakdown either) */
     MORPH_UNLOCK();
 }
 static void tarc_poll(void)

@@ -16,7 +16,7 @@ static struct {
 } rhythm __attribute__((section(".pool")));
 _Static_assert(sizeof rhythm == 20u, "rhythm control state budget");
 /* The motif's anchors (M01, M03): in the Original p, a beat; a hit on the place in the beat most of its hits take (an offbeat skank's
- * "and"s are its anchors); then its other hits in order until max(2, 3/5 of its hits) are anchored. No mechanism drops or moves an
+ * "and"s are its anchors); then its other hits in order until max(2, 3/5 of its hits) are anchored (4/5 for a figure of 5 to 7 hits, MR6). No mechanism drops or moves an
  * anchor (DENS-, SYNC, the phrase gaps and moves, LEAD and ARC thinning): one identity floor for all of them. Main loop */
 static int sqm_anchor(const step_t *p, uint32_t len, uint32_t idx)
 {
@@ -35,7 +35,7 @@ static int sqm_anchor(const step_t *p, uint32_t len, uint32_t idx)
         return 1;
     for (n = c[0] + (best ? c[best] : 0u), i = 0; i < idx; i++)
         n += (i & 3u) && (i & 3u) != best && sqm_hit(&p[i]);
-    return n < 2u || n * 5u < hits * 3u;
+    return n < 2u || n * 5u < hits * (hits - 5u < 3u ? 4u : 3u);   /* (MR6: a figure of 5 to 7 hits keeps 4 of 5; a busier line, a groove of 8 or more, 3/5 and develops) */
 }
 /* D1 (M02): a hit never sits more than two 16ths from its stored step */
 static int rhythm_far(int32_t d) { return d > 2 || d < -2; }

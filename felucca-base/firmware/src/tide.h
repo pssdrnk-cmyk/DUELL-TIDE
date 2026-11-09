@@ -31,7 +31,8 @@ static uint32_t tide_seq_chord(const track_t *t, uint32_t *list, uint32_t n);
  * when the stop button is pressed"): no step while the transport is stopped and no key is down; the latched chord stays for PLAY (STOP ALL ends it) */
 static int tide_arp_paused(const track_t *t);
 #define TIDE_ARP_PAUSED(t) tide_arp_paused(t)
-#define TIDE_SEQ_CHORD(t, list, n) tide_seq_chord((t), (list), (n))
+static uint32_t tide_seq_voice(const track_t *t, uint32_t *list, uint32_t n);   /* (seq_voicelead.c: the chord bed's ARC voicing on the arp's chord) */
+#define TIDE_SEQ_CHORD(t, list, n) tide_seq_voice((t), (list), tide_seq_chord((t), (list), (n)))
 /* H3 (seq.c, audio path): VARY BARS' bar count since PLAY and the bar turning in this block; the patterns' completed loops (the
  * phrase lifecycle, seq_rhythm.c). Counted here, read by tide_seq.c and the pages */
 static volatile uint8_t sqm_bar, sqm_bar_turn, sqm_bar_soon;   /* (soon: the bar's last 32nd, the bar an ARP SEQ step plays in: its clock runs a little ahead of the beat's; MR4) */

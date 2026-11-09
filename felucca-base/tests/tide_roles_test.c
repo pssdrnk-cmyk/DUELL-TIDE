@@ -159,7 +159,7 @@ static uint32_t chord_mask(const uint8_t *notes, uint32_t n)   /* the keys (fm1_
 static const uint8_t KEYS_MIN[3] = {60, 63, 67}, KEYS_MAJ[3] = {60, 64, 67};
 
 /* ---------------------------------------------------------------- one run: what the two parts play */
-#define NB_MAX 96
+#define NB_MAX 128
 typedef struct { uint32_t ons, expct; uint64_t played, visited; } bar_t;   /* a bar: onsets, steps started that are hits of the Original, the steps that sounded / started */
 typedef struct {
     int32_t seen_lo, seen_hi;                          /* the notes started, lowest and highest (-1: none) */
@@ -172,6 +172,7 @@ typedef struct {
     double jsum;
     uint32_t jn;
     uint32_t loopn;                                    /* the Original's loop in bars (8 at most): all its steps visited */
+    uint32_t bass, bpoly, bnote, pbreak;               /* B1: a bass part (sqm_bassm); its bars with a POLY stretch; its notes the Original's steps do not hold; BREAK bars with a stretch */
 } res_t;
 typedef struct { int32_t lo, hi; uint32_t loopn; } lane_t;   /* the Original's lane: [lo, hi] (lo > hi: none), and its loop in bars */
 
@@ -214,7 +215,7 @@ static void play(uint32_t row, uint32_t style, uint32_t pitch, uint32_t tide, ui
     static bar_t hist[2][NB_MAX];
     static uint8_t drop[NB_MAX];
     bar_t cur[2];
-    uint64_t orig[2];
+    uint64_t orig[2], onote[2][2];
     uint32_t p, i, bars_done = 0, curbar = 0, started = 0, last, guard, lastblk[2] = {0, 0}, seen_on[2] = {0, 0}, lastidx[2] = {99, 99}, bpm;
     uint32_t perbar;
     memset(res, 0, 2u * sizeof *res);
@@ -229,9 +230,13 @@ static void play(uint32_t row, uint32_t style, uint32_t pitch, uint32_t tide, ui
         res[p].seen_lo = res[p].seen_hi = -1;
         res[p].dmin = 99.0, res[p].dmax = -1.0;
         res[p].anch_kept = res[p].anch_need = 0;
+        onote[p][0] = onote[p][1] = 0;
         for (orig[p] = 0, i = 0; i < len; i++)
-            if (sqm_hit(&trk[p].step[i]))
+            if (sqm_hit(&trk[p].step[i])) {
                 orig[p] |= 1ull << i;
+                for (uint32_t k = 0; k < trk[p].step[i].n && k < 4u; k++)
+                    onote[p][trk[p].step[i].note[k] >> 6 & 1u] |= 1ull << (trk[p].step[i].note[k] & 63u);
+            }
     }
     if (tide) {
         tide_style_apply(style);
@@ -263,6 +268,12 @@ static void play(uint32_t row, uint32_t style, uint32_t pitch, uint32_t tide, ui
                 hist[p][bars_done] = cur[p];
                 if (getenv("TIDEROLES_DUMP") && bars_done < (uint32_t)atoi(getenv("TIDEROLES_DUMP")))
                     printf("  dump tide %u bar %u p%u: ons %u visited %016llx played %016llx orig %016llx slen %d sdiv %d arate %d\n", tide, bars_done, p + 1u, cur[p].ons, (unsigned long long)cur[p].visited, (unsigned long long)cur[p].played, (unsigned long long)orig[p], (int)trk[p].p[P_SLEN], (int)trk[p].p[P_SDIV], (int)trk[p].p[P_ARATE]);
+            }
+            if (tide) {
+                for (p = 0; p < 2u; p++)
+                    if ((sqm_bassm >> p) & 1u)
+                        res[p].bass = 1, res[p].bpoly += poly_len[p] != 0u;
+                res[0].pbreak += sqm_arc && sqm_auto && tarc.phase == AP_BREAK && (poly_len[0] | poly_len[1]);
             }
             bars_done++;
             if (bars_done >= nbars)
@@ -299,6 +310,10 @@ static void play(uint32_t row, uint32_t style, uint32_t pitch, uint32_t tide, ui
                 seen_on[p] = 1;
                 lastblk[p] = blk;
                 if (tide) {
+                    if (((sqm_bassm >> p) & 1u) && !arp_mode(&trk[p]) && !(onote[p][n >> 6 & 1] >> (n & 63) & 1u)) {
+                        res[p].bnote++;
+                        viol(row, style, pitch, p, "bass note not in the Original", bars_done, steps ? (int)idx : -1, n, "");
+                    }
                     if (n < 36) {
                         res[p].floor_bad++;
                         viol(row, style, pitch, p, "floor (under C2)", bars_done, steps ? (int)idx : -1, n, "");
@@ -478,6 +493,28 @@ static void music(uint32_t row, uint32_t nbars)
     }
 }
 
+/* B1 (tide-morph audit): under DUB and MINIMAL a bass part keeps its loop length (no POLY) and its notes (no VOIC octave), and no BREAK bar has a stretch */
+static void bass_lock(uint32_t row, uint32_t nbars)
+{
+    static const uint32_t ST[2] = {STY_DUB, STY_MINIMAL};
+    int keys = TR[row].role[0] == R_ARP || TR[row].role[1] == R_ARP;
+    char msg[240];
+    for (uint32_t si = 0; si < 2u; si++) {
+        res_t r[2];
+        play_iso(row, ST[si], 0, 1, nbars, keys, 0, r);
+        printf("tideroles: M%02u %-12s %s B1: bass parts %u%u, POLY bars %u/%u, notes off the Original %u/%u, BREAK bars with POLY %u\n", TR[row].slot, TR[row].name, SN[ST[si]], r[0].bass, r[1].bass,
+               r[0].bpoly, r[1].bpoly, r[0].bnote, r[1].bnote, r[0].pbreak);
+        for (uint32_t p = 0; p < 2u; p++) {
+            if (!r[p].bass)
+                continue;
+            snprintf(msg, sizeof msg, "M%02u %s %s p%u: B1 the bass part: %u bars with a POLY stretch, %u notes outside the Original's", TR[row].slot, TR[row].name, SN[ST[si]], p + 1u, r[p].bpoly, r[p].bnote);
+            CHECK(msg, !r[p].bpoly && !r[p].bnote);
+        }
+        snprintf(msg, sizeof msg, "M%02u %s %s: B1 %u BREAK bars with a POLY stretch", TR[row].slot, TR[row].name, SN[ST[si]], r[0].pbreak);
+        CHECK(msg, !r[0].pbreak);
+    }
+}
+
 /* ---------------------------------------------------------------- the render half: 4.3 and 4.4 */
 typedef struct { double k_db, peak_db, band, band1; uint32_t silent, name_ok; } rend_t;
 /* the multi rendered 10 s, 2 - 10 s measured. mode 0: `gen_factory_multis loud`'s excitation (PLAY where a part has steps and no arp, else C4 E4 G4 held); 1: PLAY (the chord held for a
@@ -568,7 +605,7 @@ int main(void)
     if (do_music)
         for (row = 0; row < 16u; row++)
             if (!only || TR[row].slot == only)
-                music(row, nbars);
+                music(row, nbars), bass_lock(row, nbars);
     if (do_render) {
         for (row = 0; row < 16u; row++) {
             rend_t a, p, j;
