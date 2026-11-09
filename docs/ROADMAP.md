@@ -34,7 +34,7 @@ b5 goes out when you like the MORPH page on your FM-1. Room left on the b5 build
 | TIDE's louder peak and softer breakdown reach ARP SEQ parts, M02 included; accents kept ([D1](audits/2026-11-09/tide-morph/TASKS.md#d1)) | Planned: ~60 B, one multiply per arp step |
 | The bass keeps its loop and octave: no POLY, no VOIC octave on a bass part; POLY ends in ARC's breakdown ([B1](audits/2026-11-09/tide-morph/TASKS.md#b1)) | Planned: ~65 B, 1 B RAM |
 | More free flash: factory multis stored as template + changes (~3 KB), keycaps compressed (~2.5 KB); nothing you hear or see changes | In progress |
-| FM6 sounds no longer get louder at the morph's End B (FRETLESS, ISLAND STEEL, MALLET WOOD) | In progress |
+| FM6 sounds no longer get louder at the morph's End B (FRETLESS, ISLAND STEEL, MALLET WOOD) | Built, waits for the FM-1 test after b5 |
 
 ## Later, in order
 
@@ -48,7 +48,8 @@ b5 goes out when you like the MORPH page on your FM-1. Room left on the b5 build
 8. Factory pattern table trimmed (~0.9 KB; [SP3](audits/2026-11-09/space/TASKS.md)).
 9. Parameter units stored as an index (~0.87 KB; [SP4](audits/2026-11-09/space/TASKS.md)).
 10. Event-rate code built for size (1.78 KB; [SP5](audits/2026-11-09/space/TASKS.md)); needs the FM-1 CPU sweep.
-11. Before `1.0.0`: 0 missed blocks over the 16-multi GLIDE sweep (owner, 8 November); the CPU budget re-measured and made honest (findings 5, 6, 34; K9).
+11. FM6 MUSIC rolls at AMOUNT 40 leave the loudness window (all FM6 rolls, not just End B); needs its own change ([finding 7](audits/2026-11-09/tide-morph/REPORT.md)).
+12. Before `1.0.0`: 0 missed blocks over the 16-multi GLIDE sweep (owner, 8 November); the CPU budget re-measured and made honest (findings 5, 6, 34; K9).
 
 ## Released
 
