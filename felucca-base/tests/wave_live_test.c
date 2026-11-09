@@ -42,14 +42,14 @@ static void turn(uint32_t role, int32_t n)
     web_enc(role, n);
     run(150);
 }
-/* the picture's halves, as ui_scope.c wl_area / wl_card lays them out */
+/* the picture's halves, as ui_scope.c wl_area lays them out (b6: the whole area, the hint went to the ROLL / AMOUNT row; the old ay + ah - 20 cut both lanes 10 rows short) */
 static int32_t pic_y0, pic_ym, pic_y1;
 static void pic_rows(void)
 {
     int32_t ay, ah;
     area_rect(&ay, &ah);
     pic_y0 = ay;
-    pic_y1 = ay + ah - 20;
+    pic_y1 = ay + ah;
     pic_ym = (pic_y0 + pic_y1) / 2;
 }
 /* a pixel's brightness (the frame buffer holds RGB565 high byte first, as the LCD takes it) */
