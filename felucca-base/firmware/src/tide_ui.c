@@ -527,12 +527,12 @@ static int tide_foot_parts(void)
     uint32_t g = cur_page()->graph;
     return NSHOWN >= 2u && !ui.perf && !ui.layer && !ui.ml.on && (g == GR_TIDE || g == GR_TIDELIST || g == GR_MORPH);
 }
-/* .. AUTO TIDE and TIDE SETTINGS, whose footer has its two rows (MORPH's cards take row 1: there row 2 names the selected part):
+/* .. AUTO TIDE, TIDE SETTINGS and (b6, owner 2026-11-09) the MORPH page, whose footer has its two rows, the same on the three pages:
  * part 1 on row 1, part 2 on row 2, each its engine in its colour and the sound it plays (owner, 2026-11-01: as JAM, now AUTO TIDE, did) */
 static int tide_foot_two(void)
 {
     uint32_t g = cur_page()->graph;
-    return tide_foot_parts() && !ui.menu && !ui.guide && !ui.confirm && (g == GR_TIDE || g == GR_TIDELIST);
+    return tide_foot_parts() && !ui.menu && !ui.guide && !ui.confirm && (g == GR_TIDE || g == GR_TIDELIST || g == GR_MORPH);
 }
 
 /* ---------------------------------------------------------------- the cards --- */

@@ -3,8 +3,8 @@
  * The newest ridge wl_step makes (wl[k].rd[0], read back by front_of: px from its middle, one per point) is the picture: its pixels are a function of it.
  * The rings are written as the tap writes them (fx.c wvr_code), the signals given in the old 1/128 steps of the half scale (32 of the tap's 1/4,096 steps each).
  *   code         wvr_code / wl_dec: every value -4,095 .. 4,095 comes back within half a step, in order, 0 as 0
- *   trigger      the same signal at 10 starting offsets gives the same picture (within 1 px as drawn: the two sets of pixels, each to the nearest of the other; a saw, a resonant saw, a resonant saw at
- *                100.37 entries a cycle, a sine); the same signal as 10 pictures in a row: 0 changed points (all but the 100.37 one)
+ *   trigger      the same signal at 10 starting offsets gives the same picture (within 1 px as drawn: the two sets of pixels, each to the nearest of the other; a saw, a resonant saw, a sine;
+ *                a resonant saw at 100.37 entries a cycle within 4 px: its sharp edge lands in one of two neighbouring points); the same signal as 10 pictures in a row: 0 changed points (all but the 100.37 one)
  *   beat         two sines 3 Hz apart: the height of the ridge swings at least 3 : 1 over 60 pictures (a dip under a pixel shows the last shape fading, wl_fade)
  *   soft         right after a loud sine, the same sine 26 dB down is not blown up: the gain falls by 1/4 a picture, so it is under a pixel and the loud shape fades (half); a quiet held sine (-37 dB of the half scale) on its own still
  *                shows its shape at nearly the full height (the floor of the gain)
@@ -66,7 +66,7 @@ static int8_t *front_of(uint32_t k)
         b[p] = (int8_t)wl_rp(&wl[k], 0, p);
     return b;
 }
-static void set_pt7(uint32_t k, int32_t v) { wl[k].rd[0][7] = (int8_t)(v * 8); }   /* (point 7 of the newest ridge, px; stored in 1/8 px) */
+static void set_pt7(uint32_t k, int32_t v) { wl[k].rd[0][7] = (int8_t)(v * 4); }   /* (point 7 of the newest ridge, px; stored in 1/4 px) */
 static void fresh(uint32_t k)                            /* a part with no history: the gate opened long ago, no gap, no flag */
 {
     memset(&wl[k], 0, sizeof wl[k]);
@@ -251,7 +251,9 @@ int main(void)
         trigger_offsets(names[j], sigs[j], 1);
         trigger_frames(names[j], sigs[j]);
     }
-    trigger_offsets("a resonant saw at 100.37 entries a cycle", ressaw_f, 1);
+    trigger_offsets("a resonant saw at 100.37 entries a cycle", ressaw_f, 4);   /* (b6: edges are kept sharp (ui_scope.c wl_pte, owner / audit 2026-11-09), so an edge steeper than a point
+                                                                                  * lands in one of two neighbouring points by its sub-entry phase: a point's width (3 px) + 1, not the 1 px the smoothed
+                                                                                  * edges of b5 allowed; at whole periods (the saws and the sine above) it stays 0 .. 1 px) */
 
     /* the beat: two sines 3 Hz apart */
     sig_m = beat;
@@ -325,7 +327,7 @@ int main(void)
             snprintf(w, sizeof w, "silence (the part's flag): the front fades to half its height (%d px of %d), the older ridges move back", height(&wl[0]), h0);
             ok(w, !(wl[0].flat & 3u) && height(&wl[0]) * 2 <= h0 + 2 && height(&wl[0]) * 2 >= h0 - 2);
         }
-        for (i = 1; i < WL_HN + 4u; i++)
+        for (i = 1; i < WL_HN + 8u; i++)            /* (the front halves a picture in 1/4 px: from the full height it is flat after about 7, then WL_HN more push it out) */
             wl_step(0, HS);
         ok("silence (the part's flag): a few pictures later the stack has run out, every ridge flat", wl[0].flat == (uint16_t)((1u << WL_HN) - 1u));
     }
