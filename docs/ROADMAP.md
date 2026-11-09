@@ -26,6 +26,7 @@ b5 goes out when you like the MORPH page on your FM-1. Room left on the b5 build
 | Reverb on the second core, to free CPU (K4) | Built; the CPU saving is not measured on the unit yet |
 | Factory sounds stop resetting AMOUNT (MORPH c3) | Ready |
 | Pattern notes stay in a sensible range (roles T4) | Ready |
+| Four drone scenes built in (M17 to M20, played as STYLE DRONE; [brief](audits/2026-11-09/drones/TASKS.md)) | Planned: brief written, not built; needs flash room (b5 leaves 4,556 B) |
 
 ## Later, in order
 
@@ -137,7 +138,7 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 | D46: the multis that are too loud or too quiet are trimmed by ear on the unit. | Trim M15, M16 up and M10 down by the numbers, then listen. |
 | Try on the unit: keys recording into an ARP SEQ part, and REC ADD / REPLACE (Released in b3, not yet tried on the unit). | Nothing to decide; say if the nearest-step rule feels wrong. |
 | Reverb FREEZE (below): build it? | Later: not built until you say. |
-| Drone scenes: delivered as a file pack, replacing multis, or by packing the multi records to make room? | File pack (no factory multi changes). |
+| Drone scenes: delivered as a file pack, replacing multis, or by packing the multi records to make room? | Decided: built in, 2 or 4 multis in ROM (owner, 9 November); no file pack. |
 | Which of the ideas below, if any. | None until chosen. |
 
 **By ear or eye on the unit** (no homework: noted when the owner meets them in use): the drones; the U2 multi sequences; the MULTIS / PATTERNS preview's readability; polymeter (12 / 16, 15 / 16) against a steady 4 / 4; whether TURNS' alternating bars improve the interplay.
@@ -146,7 +147,6 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 
 - **Wave card L/R lines and the deep-bass line:** about 4 KB more RAM. The candidates are PERFORM capture (8 KB = 93 ms shorter capture) or a canvas drawn in strips. Owner decision when wanted.
 - **From Niagara Drift** (an FM-1 drone firmware; checked against our code 8 November, estimates until built): **reverb FREEZE** on HALL / ROOM (the tail holds and the notes can stop; a block-rate gain change with a limiter, ~200-400 B, no CPU while off; risks: fixed-point overflow and the release click) fits best. **AGE** (slow tape-like wear, ~300-600 B) needs an offset layer on top of the saved sound, not checked yet. Gesture keys and a free-time motion loop do not fit the flash, the keys or the no-new-pages rule.
-- **Drone scenes:** multis built around the eight drones, one per theme.
 - **Keep current patterns on MULTI load** (U2 route A): an explicit load that keeps both playing patterns.
 - **Musical evaluations kept from the earlier plan** (no work scheduled): M2a chord movement; M5 / M10a level and slow-glide behaviour only for a found defect; M7d polymeter first by hand; CHANGE / ENERGY rows only with useful behaviour. Details in [design/TIDE_MUSICAL_DESIGN.md](design/TIDE_MUSICAL_DESIGN.md).
 
