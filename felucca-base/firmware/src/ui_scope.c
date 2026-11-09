@@ -367,7 +367,7 @@ static void wl_col(int32_t x, int32_t ya, int32_t yb, int32_t w16, uint16_t c, i
     }
 }
 /* part k's picture in rows y0 .. y1 - 1: the ridges, the oldest first and the newest (the front, at the foot) last, each *st rows higher than the one after it and lower
- * ((8 - r) / 8 of the front's height: the back ones are calmer, the stack recedes); every ridge is ONE smooth anti-aliased stroke across the full width, nothing hidden (owner
+ * ((N - r) / N of the front's height, N the ridges that fit: the back ones are low ripples that rarely cross the front ones, the stack recedes); every ridge is ONE smooth anti-aliased stroke across the full width, nothing hidden (owner
  * 2026-11-09: "the lines are falling apart"). Colour: the part's, along its A..B gradient at the fader (mv_col); the front in full and about 2 px thick, each older one 1 px and evenly
  * fainter. The part the controls act on (ui_part_hot) in full colour with a bar at the half's edge, the other dimmed. A tail fades its shape (wl_fade); a ridge that has faded flat is
  * not drawn, and silence (every ridge flat) is one calm line */
@@ -387,14 +387,14 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
         nr = 0;                                      /* nothing yet, made for another box, or silence: one calm line */
     for (r = nr ? nr - 1 : 0; r >= 0; r--) {
         const int flat = !nr || ((s->flat >> r) & 1u);
-        const int32_t yb16 = (yf - st * r) * 16 + 8, num = 8 - r;                       /* (the ridge's middle, 1/16 px; its height (8 - r) / 8) */
-        const int32_t str = (r ? 72 - (nf > 2 ? (r - 1) * 50 / (nf - 2) : 0) : 100) * (hot ? 100 : 55) / 100 * (!nr ? 60 : 100) / 100;   /* (strength %: front 100, then 72 .. 22) */
+        const int32_t yb16 = (yf - st * r) * 16 + 8, num = nf - r;                      /* (the ridge's middle, 1/16 px; its height (N - r) / N) */
+        const int32_t str = (r ? 15 + (nf > 2 ? 60 * (nf - 1 - r) / (nf - 2) : 60) : 100) * (hot ? 100 : 55) / 100 * (!nr ? 60 : 100) / 100;   /* (strength %: front 100, then 75, 60 .. 15 evenly) */
         const int32_t w16 = !r && nr ? 28 : 16;
         int32_t py = yb16;
         if (r && flat)
             continue;
         for (p = 0; p < WL_NP; p++) {
-            const int32_t x = WL_X0 + 3 * (int32_t)p, y = flat ? yb16 : yb16 + wl_rq(s, (uint32_t)r, (uint32_t)p) * num / 8;
+            const int32_t x = WL_X0 + 3 * (int32_t)p, y = flat ? yb16 : yb16 + wl_rq(s, (uint32_t)r, (uint32_t)p) * num / nf;
             if (p) {                                 /* (the three columns of the segment from the last point) */
                 int32_t j;
                 for (j = 1; j <= 3; j++)
