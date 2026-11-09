@@ -1,22 +1,22 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* The MORPH page's picture (DUELL_TIDE): the part's real sound, from fx.c's scope tap (wv_m, 512 mono entries a part at 22.05 kHz, each a companded 8-bit code: wvr_code), drawn as a stack of ridges
+/* The MORPH page's picture (DUELL_TIDE): the part's real sound, from fx.c's scope tap (wv_m, 512 mono entries a part at 11.025 kHz (46 ms), each a companded 8-bit code: wvr_code), drawn as a stack of ridges
  * (docs/design/WAVE_DISPLAY_PLAN.md 3.2, reduced to the RAM there is; the look is the owner's pick from the WAVE LAB preview on plan/wave-displays, WAVE STACK). Included by ui_graph.c before graph_morph.
  * Core 0, main loop, nothing in the audio path.
  * Per part and picture step (about 16 a second, the page's step: mv_tick):
  *   1 gate    wv_want = "wanted until block N", 256 blocks (190 ms) ahead; MENU > ANIM OFF shuts it: no tap, the last picture stays (a flat line before there was one)
  *   2 read    the newest 400 entries or fewer, only those written since the gate opened and since the part's last hole (wv_gap); read IN PLACE (wl_dec on each read), the counter looked at again
  *             afterwards: if the writer went on by more than the ring leaves (512 less 400, less a block) the picture is made again, once, else the last one stays
- *   3 trigger the ring smoothed (a 10-point kernel); rising crossings of its middle that come after a clear dip (the Pico scope's hysteresis), found to 1/16 of an entry; of those in the last 3.5
+ *   3 trigger the ring smoothed (a 5-point kernel); rising crossings of its middle that come after a clear dip (the Pico scope's hysteresis), found to 1/16 of an entry; of those in the last 3.5
  *             periods the steepest (70 % of the steepest), and of those the one whose first 16 points match the last picture's best
- *   4 window  2.5 periods of the median crossing distance when it is steady (160 .. 360 entries), else the last one
+ *   4 window  2 whole periods of the median crossing distance when it is steady (1 when 2 do not fit after a period of room for the crossing; 80 .. 400 entries), else the last one
  *   5 ridge   72 points (1 to 5 linear samples across each point's share of the window), smoothed over neighbours twice, the middle of the line's range taken out
  *   6 gain    the peak of the window: a rise of more than 6 % at once, a fall of more than 12 % by 1/4 a step (a decaying note keeps a readable shape while it fades, a held note does not breathe), never under WL_FLOOR
  *             (-36 dB of the half scale: a quiet held note still shows its shape; quieter is smaller), a ridge under 2 px high is flat (a tail, not a line of dither)
  *   7 stack   the last WL_HN ridges, the newest in front (lowest), each older one a few rows higher, a little lower and evenly fainter; every ridge is ONE unbroken line across the
  *             whole width (nothing is hidden or cut, owner 2026-11-09: "the lines are falling apart"). A new ridge is blended with the one before when the two are of a size (the Pico's
- *             frame blend), so a busy sound flows as one shape; a new picture moves the stack up a step. Silence pushes flat ridges in front: the stack runs out, then one calm line stays
- * Samples inside are the tap's steps (1/4,096 of the half scale) times 16 (the interpolation's fraction). The ridges are kept as px from their middle, 4 bits a point (WL_AMAX: the half height of
- * a ridge is at most 7 px, so a nibble is exact). */
+ *             frame blend), so a busy sound flows as one shape; a new picture moves the stack up a step. Silence fades the front's shape (wl_fade), the stack runs out, and every lane stays drawn, flat: at rest the page shows the same set of lines as when it plays (owner 2026-11-09)
+ * Samples inside are the tap's steps (1/4,096 of the half scale) times 16 (the interpolation's fraction). The ridges are kept in 1/8 px from their middle, a byte a point (WL_AMAX: the half height of
+ * a ridge is at most 15 px; the front's is about 12 px in a 41-row lane). */
 #define WL_NP 72                                     /* points of a ridge: x = WL_X0 + 3 p (22 .. 235: the bar and the part's number stand to the left) */
 #define WL_X0 22
 #define WL_HN 6                                      /* ridges kept (6: each one a clean line apart at this size; 16 crowded into noodles, owner 2026-11-09) */
@@ -371,8 +371,8 @@ static void wl_col(int32_t x, int32_t ya, int32_t yb, int32_t w16, uint16_t c, i
 /* part k's picture in rows y0 .. y1 - 1: the ridges, the oldest first and the newest (the front, at the foot) last, each *st rows higher than the one after it and lower
  * ((N - r) / N of the front's height, N the ridges that fit: the back ones are low ripples that rarely cross the front ones, the stack recedes); every ridge is ONE smooth anti-aliased stroke across the full width, nothing hidden (owner
  * 2026-11-09: "the lines are falling apart"). Colour: the part's, along its A..B gradient at the fader (mv_col); the front in full and about 2 px thick, each older one 1 px and evenly
- * fainter. The part the controls act on (ui_part_hot) in full colour with a bar at the half's edge, the other dimmed. A tail fades its shape (wl_fade); a ridge that has faded flat is
- * not drawn, and silence (every ridge flat) is one calm line */
+ * fainter. The part the controls act on (ui_part_hot) in full colour with a bar at the half's edge, the other dimmed. A tail fades its shape (wl_fade); a ridge that has faded flat, a lane not
+ * filled yet and silence are drawn as straight lines in their place with the same fades, so every lane is always there (resting flat, or moving) */
 static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
 {
     const wl_t *s = &wl[k];
