@@ -334,19 +334,31 @@ static const step_t *seq_play_step_at(const track_t *t, uint32_t idx, uint32_t b
 /* .. in the bar now (the audio interrupt), with the dynamics (D4, M08; no setting): a part in automatic WNDR / JRNY plays its hits an
  * 8th louder in ARC's late rise and peak, a quarter softer in the breakdown and on its LEAD follower bars (an accent counts as 127). buf
  * holds the shaped copy; KEEP and the TIDE page read the steps themselves (the page asks for the bar each step plays in: tide_ui.c) */
+static const uint8_t SQM_VS[4] = {72, 96, 0, 144};      /* (x/128: softer twice, softer, -, louder) */
+static int32_t sqm_dyn_of(uint32_t pi)                   /* the dynamics now: -2 .. +1, 0 none (ARC OFF, not automatic, stopped) */
+{
+    if (pi >= NSHOWN || !song.playing || !((sqm_auto >> pi) & 1u))
+        return 0;
+    return sqm_dyn - sqm_follows(pi, (uint32_t)sqm_bar + sqm_bar_turn);
+}
+static uint32_t sqm_dyn_scale(uint32_t v, int32_t b) { v = v * SQM_VS[b + 2] >> 7; return v > 127u ? 127u : v; }
 static const step_t *seq_play_step(const track_t *t, uint32_t idx, step_t *buf)
 {
-    static const uint8_t VS[4] = {72, 96, 0, 144};       /* (x/128: softer twice, softer, -, louder) */
-    uint32_t pi = (uint32_t)(t - trk), bar = (uint32_t)sqm_bar + sqm_bar_turn, v;
-    const step_t *s = seq_play_step_at(t, idx, bar);
+    uint32_t pi = (uint32_t)(t - trk);
+    const step_t *s = seq_play_step_at(t, idx, (uint32_t)sqm_bar + sqm_bar_turn);
     int32_t b;
-    if (pi >= NSHOWN || !song.playing || !sqm_hit(s) || !((sqm_auto >> pi) & 1u) || !(b = sqm_dyn - sqm_follows(pi, bar)))
-        return s;
+    if (!sqm_hit(s) || arp_mode(t) == AM_SEQ_ID || !(b = sqm_dyn_of(pi)))
+        return s;                                        /* (D1: an ARP SEQ part keeps its accent; the arp's velocity is scaled in tide_arp_vel) */
     *buf = *s;
-    v = (s->flags & SF_ACCENT ? 127u : s->vel ? s->vel : 96u) * VS[b + 2] >> 7;
-    buf->vel = (uint8_t)(v > 127u ? 127u : v);
+    buf->vel = (uint8_t)sqm_dyn_scale(s->flags & SF_ACCENT ? 127u : s->vel ? s->vel : 96u, b);
     buf->flags &= (uint8_t)~SF_ACCENT;
     return buf;
+}
+/* TIDE hook (D1, seq.c arp_seq_notes, audio path): an ARP SEQ step's velocity (the arp's, an accent's 127) with the same dynamics */
+static uint32_t tide_arp_vel(const track_t *t, uint32_t v)
+{
+    int32_t b = sqm_dyn_of(trk_index(t));
+    return b ? sqm_dyn_scale(v, b) : v;
 }
 
 /* ------------------------------------------------------------------ the controls (main loop) --- */

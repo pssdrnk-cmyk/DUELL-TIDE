@@ -51,7 +51,7 @@ static int32_t sound_of(uint32_t p, uint32_t cat)
             return (int32_t)j;
     return -1;
 }
-static uint32_t orig[2];
+static uint32_t orig[2], g_amode = AM_OFF;   /* (g_amode: the parts' ARP mode; AM_SEQ_ID: D1, the velocity arp_seq_notes plays) */
 /* scene 0: dub skank + bass; 1: house stabs + offbeat bass; 2: a single-note lead line + the skank */
 static void setup(uint32_t scene)
 {
@@ -75,7 +75,7 @@ static void setup(uint32_t scene)
         memset(t->step, 0, sizeof t->step);
         for (i = 0; i < NSTEP; i++)
             t->step[i].time = ST_REST;
-        t->p[P_SLEN] = 16, t->p[P_SDIV] = 2, t->p[P_ARATE] = 2, t->p[P_AMODE] = AM_OFF, t->p[P_APROB] = 127;
+        t->p[P_SLEN] = 16, t->p[P_SDIV] = 2, t->p[P_ARATE] = 2, t->p[P_AMODE] = (int16_t)g_amode, t->p[P_APROB] = 127;
         t->p[P_AOCT] = 1, t->p[P_AGATE] = 64, t->p[P_SQNT] = 1, t->p[P_MUTE] = 0, t->p[P_LEVEL] = 100;
         t->nheld = 0, t->seq_active = 1;
         sqm[p].amt_x = 0;
@@ -100,6 +100,18 @@ static void setup(uint32_t scene)
         for (orig[p] = 0, i = 0; i < 16u; i++)
             if (sqm_hit(&trk[p].step[i]))
                 orig[p] |= 1u << i;
+}
+/* the velocity an ARP SEQ part's step i starts its notes at (seq.c arp_seq_notes, held C4; 0: a rest) */
+static uint32_t arp_vel_at(track_t *t, uint32_t i)
+{
+    static const uint32_t list[1] = {60};
+    uint32_t k = t->arp_idx, vel = 0;
+    uint8_t out[4];
+    t->arp_idx = i;
+    if (!arp_seq_notes(t, list, 1, out, &vel))
+        vel = 0;
+    t->arp_idx = k;
+    return vel;
 }
 typedef struct { uint32_t kept_min, drift, bars, thin_bars, vel[5], nvel[5], vlead, nlead, vfol, nfol; } stats_t;
 /* n bars of automatic WNDR (both parts, 16-bar trips, WAIT 2) from PLAY with TURNS, SYNC, ARC as asked (cat >= 0: part p on a sound of
@@ -147,6 +159,8 @@ static stats_t run(uint32_t scene, uint32_t bars, uint32_t turns, uint32_t sync,
                     continue;
                 m |= 1u << i;
                 v = s->flags & SF_ACCENT ? 127u : s->vel ? s->vel : 96u;
+                if (g_amode == AM_SEQ_ID)
+                    v = arp_vel_at(&trk[p], i);
                 if (sqm_arc && tarc.run)
                     st.vel[tarc.phase % 5u] += v, st.nvel[tarc.phase % 5u]++;
                 if (sqm_turns >= 2u && sqm_auto == 3u && !sqm_arc) {
@@ -225,6 +239,23 @@ static void t_dynamics(void)
     printf("tidemotif: ARC velocity: peak %u, breakdown %u\n", pk, br);
     CHECK("ARC: the peak plays louder than the breakdown (by more than 20 %)", pk && br && br * 120u < pk * 100u);
     CHECK("ARC: the shape never pushes a velocity past 127", pk <= 127u);
+    g_amode = AM_SEQ_ID;                                 /* D1: the same on ARP SEQ parts (nearly every factory multi) */
+    st = run(0, 192, 2, 1, 1, -1, 0);
+    pk = st.nvel[AP_PEAK] ? st.vel[AP_PEAK] / st.nvel[AP_PEAK] : 0u, br = st.nvel[AP_BREAK] ? st.vel[AP_BREAK] / st.nvel[AP_BREAK] : 0u;
+    printf("tidemotif: ARC velocity on ARP SEQ: peak %u, breakdown %u\n", pk, br);
+    CHECK("ARC on ARP SEQ: the peak plays louder than the breakdown (by more than 20 %)", pk && br && br * 120u < pk * 100u);
+    {   /* an accent at ARC OFF still starts at 127 */
+        uint32_t v;
+        setup(0);
+        sqm_arc = 0, sqm_dyn = 0;
+        trk[0].step[2].flags |= SF_ACCENT;
+        song.playing = 1;
+        v = arp_vel_at(&trk[0], 2);
+        song.playing = 0;
+        printf("tidemotif: ARP SEQ accent at ARC OFF: %u\n", v);
+        CHECK("ARP SEQ: an accented step at ARC OFF starts at 127", v == 127u);
+    }
+    g_amode = AM_OFF;
 }
 int main(void)
 {

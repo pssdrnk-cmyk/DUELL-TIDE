@@ -185,6 +185,7 @@ ALLOW = {
     "seq_tick": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~718 B); reached from events_block",
     "sk_taken": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~96 B); reached from sense_gate",
     "snd_lines_clear": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~120 B); reached from snd_step",
+    "sqm_dyn_of": "event rate (a sequencer or ARP SEQ step), not per sample; the dynamics of seq_play_step and tide_arp_vel (D1, ~64 B); reached from seq_play_step",
     "sqm_follows": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~152 B); reached from seq_play_step",
     "sqm_step": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~254 B); reached from seq_play_step_at",
     "strum_forget": "event rate (a panic: a sound, multi or project load, a mode change), not per sample; ~46 B; reached from events_block (review FR8 changed its inlining there)",
