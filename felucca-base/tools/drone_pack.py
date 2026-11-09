@@ -32,7 +32,7 @@ def multi(rom, slot, name, what, a, b, la=98, lb=82):
 # rom: the multi's place (M17, M18); slot: the scratch slot of the host build
 DRONES = [
     multi(17, 1, "DUNE HORN", "a swelling horn with a shimmer of void above it", "HORN SWELL", "VOID SHIMMER"),
-    multi(18, 2, "VOID DEEP", "a wide shimmering void with a thin solar wind", "VOID SHIMMER", "SOLAR WIND", 96, 76),
+    multi(18, 2, "VOID DEEP", "a wide shimmering void with a thin solar wind", "VOID SHIMMER", "SOLAR WIND", 96, 80),   # (part 2 at 80: the factory rule, -16 .. +4 dB, tests/level_test.c; the b4 pack had 76)
 ]
 
 
