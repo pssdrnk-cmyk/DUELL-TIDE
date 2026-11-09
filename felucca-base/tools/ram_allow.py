@@ -189,7 +189,7 @@ ALLOW = {
     "sqm_thinned": "event rate (a sequencer or ARP SEQ step), not per sample; whether the part plays thinned in the bar (MR4, ~40 B); reached from seq_play_step_at",
     "sqm_two": "event rate (a sequencer or ARP SEQ step), not per sample; a thinned chord's two voices (MR4, ~90 B); reached from seq_play_step, arp_seq_notes",
     "sqm_voices": "event rate (a sequencer or ARP SEQ step), not per sample; the voice count of a thinned chord (MR4, ~58 B); reached from sqm_two",
-    "sqm_follows": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~152 B); reached from seq_play_step",
+    "sqm_listens": "event rate (a sequencer or ARP SEQ step), not per sample; CALL AND ANSWER's listening bar (b7, ~150 B; replaced sqm_follows); reached from seq_play_step_at, sqm_dyn_of",
     "sqm_step": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~254 B); reached from seq_play_step_at",
     "strum_forget": "event rate (a panic: a sound, multi or project load, a mode change), not per sample; ~46 B; reached from events_block (review FR8 changed its inlining there)",
     "step_samples": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~102 B); reached from seq_tick",

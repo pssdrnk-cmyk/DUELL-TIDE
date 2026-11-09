@@ -89,7 +89,7 @@ static void setup(uint32_t len0, uint32_t len1, uint32_t div0, uint32_t div1, ui
 static int varied(uint32_t p)
 {
     step_t buf;
-    return seq_play_step(&trk[p], 0, &buf) == &sqm_pat[p][1][0];
+    return seq_play_step_at(&trk[p], 0, (uint32_t)sqm_bar + sqm_bar_turn) == &sqm_pat[p][1][0];   /* (the end the step plays: a listening bar's copy, softer, is still the variation) */
 }
 /* PLAY for `bars` bars (events_block, one control block at a time); per part the (bar + turn) mod 8 values it played varied on */
 static void block(uint32_t ext, uint32_t *pulse, uint32_t bpm, uint32_t b)
@@ -135,8 +135,7 @@ static void t_turns(void)
         setup(L[k][0], L[k][1], L[k][2], L[k][3], 0);
         sqm_auto = 3;
         bars = run_turns(16, INTERNAL, &a, &b);
-        CHECK("TAKE TURNS, both parts automatic: part 1 on bars 4 and 8, part 2 on bars 2 and 6 of every 8 (any lengths / DIVs)",
-              bars >= 15u && a == 0x88u && b == 0x22u);
+        CHECK("both parts automatic: the variation on bars 4 and 8 for both (TURNS plays nothing since b7: CALL AND ANSWER), any lengths / DIVs", bars >= 15u && a == 0x88u && b == 0x88u);
     }
     setup(16, 16, 2, 2, 0);
     sqm_auto = 3, sqm_turns = 0;
@@ -161,7 +160,7 @@ static void t_turns(void)
     setup(16, 16, 2, 2, 0);
     sqm_auto = 3;
     run_turns(16, EXTERNAL, &a, &b);
-    CHECK("external clock: TAKE TURNS in the beats the clock gives", a == 0x88u && b == 0x22u);
+    CHECK("external clock: the variation bars in the beats the clock gives", a == 0x88u && b == 0x88u);
     setup(16, 16, 2, 2, 0);
     sqm_auto = 3;
     song.playing = 0;
@@ -604,41 +603,24 @@ static void t_answer(void)
     put_hits(0, H, 12);
     sqm_refresh(0, 1);
     sqm_thin_build();
-    /* the leader per bar: bars 0-1 part 2, 2-3 part 1, over the 8-bit wrap, with the last block's turn */
+    /* CALL AND ANSWER per bar: bars 1-3 of 4 one part listens, by turns (who opens: the bar and the seed), bar 4 both speak; over the 8-bit wrap, with the last block's turn */
     for (bar = 0; bar < 600u; bar++) {
         uint32_t turn;
         for (turn = 0; turn < 2u; turn++) {
             uint32_t b = (bar + turn) & 3u;
             sqm_bar = (uint8_t)bar, sqm_bar_turn = (uint8_t)turn;
             for (p = 0; p < 2u; p++) {
-                uint32_t eb = (uint32_t)(uint8_t)bar + turn, lead = (b < 2u ? 1u : 0u) ^ (sqm_hash((uint32_t)morph.seed, eb >> 3, 0x4Cu) & 1u), masked = 0, any = 0;   /* (the opener swaps by the seed: M04) */
+                uint32_t eb = (uint32_t)(uint8_t)bar + turn, ls = (b ^ (eb >> 2) ^ sqm_hash((uint32_t)morph.seed, eb >> 3, 0x4Cu)) & 1u, masked = 0, any = 0;   /* (ls: the part listening) */
                 for (i = 0; i < 16u; i++)
                     if (thin_bit(p, i)) {
                         any = 1;
                         masked |= seq_play_step(&trk[p], i, &buf) == &SQM_REST;
                     }
-                wrong += any && (p == lead || ((eb + 2u * p) & 3u) == 3u ? masked : !masked);
+                wrong += any && (p != ls || b == 3u ? masked : !masked);
             }
         }
     }
-    CHECK("the leader plays whole, the other part thinned: part 2 on bars 1-2, part 1 on 3-4 (also over the wrap at 256)", !wrong);
-    {   /* audit C7: the ARC's fast turns (a leader a bar): a part on its own variation bar (part 2 bar 2, part 1 bar 4) is never the thinned follower */
-        uint32_t vw = 0, fw = 0;
-        tarc_fast = 1;
-        for (bar = 0; bar < 8u; bar++) {
-            sqm_bar = (uint8_t)bar, sqm_bar_turn = 0;
-            for (p = 0; p < 2u; p++) {
-                uint32_t varies = ((bar + 2u * p) & 3u) == 3u, lead = ((bar & 1u) ? 0u : 1u) ^ (sqm_hash((uint32_t)morph.seed, bar >> 3, 0x4Cu) & 1u), masked = 0;
-                for (i = 0; i < 16u; i++)
-                    if (thin_bit(p, i))
-                        masked |= seq_play_step(&trk[p], i, &buf) == &SQM_REST;
-                vw += varies && masked;
-                fw += masked != (p != lead && !varies);
-            }
-        }
-        tarc_fast = 0;
-        CHECK("ARC fast turns: the part on its variation bar plays whole; otherwise the leader changes every bar", !vw && !fw);
-    }
+    CHECK("CALL AND ANSWER: the speaker plays whole, the listener thinned, both whole on bar 4 of 4 (also over the wrap at 256)", !wrong);
     sqm_bar = 0, sqm_bar_turn = 0;
     {   uint32_t m0 = 0;
         for (i = 0; i < 16u; i++)
@@ -650,7 +632,7 @@ static void t_answer(void)
         sqm_turns = 1;
         for (i = 0, n = 0; i < 16u; i++)
             n += seq_play_step(&trk[0], i, &buf)->time == ST_NOTE;
-        CHECK("  .. TAKE TURNS: nothing masked, part 1 whole (12 hits), thinned under LEAD", n == 12u && m0 < 12u);
+        CHECK("  .. TURNS plays nothing: TAKE TURNS thins the listener as LEAD does", n == m0 && m0 < 12u);
         sqm_turns = 2;
         sqm_auto = 1;
         for (i = 0, n = 0; i < 16u; i++)
@@ -672,20 +654,18 @@ static void t_answer(void)
         put_hits(0, H, 12), put_hits(1, H, 12);
         sqm_auto = 3, sqm_turns = 2, sqm_sync = 0;
         seqm_poll();
-        tide_poll();
+        sqm_thin_poll();
         m0 = sqm_thin[0][0], m1 = sqm_thin[1][0];
         sqm_thin[0][0] = 0x5A5A5A5Au;                     /* (a marker a rebuild would overwrite) */
-        tide_poll(), tide_poll();
+        sqm_thin_poll(), sqm_thin_poll();
         ok1 = sqm_thin[0][0] == 0x5A5A5A5Au && m0 != 0u;
-        sqm_turns = 1;                                   /* TAKE TURNS: rebuilt at once */
-        tide_poll();
-        ok2 = sqm_thin[0][0] != 0x5A5A5A5Au;
-        sqm_turns = 2;
-        tide_poll();
-        ok3 = sqm_thin[0][0] == m0 && sqm_thin[1][0] == m1;
-        CHECK("masks: nothing changed, no rebuild (the marker stays); TURNS changed, rebuilt; back, the same masks", ok1 && ok2 && ok3);
+        sqm_turns = 1;                                   /* TURNS plays nothing since b7: no rebuild */
+        sqm_thin_poll();
+        ok2 = sqm_thin[0][0] == 0x5A5A5A5Au;
+        sqm_turns = 2, ok3 = m1 != 0u;
+        CHECK("masks: nothing changed, no rebuild (the marker stays), nor for TURNS; both parts have a mask", ok1 && ok2 && ok3);
         trk[0].p[P_SLEN] = 12;
-        seqm_poll(), tide_poll(), tide_poll();
+        seqm_poll(), sqm_thin_poll(), sqm_thin_poll();
         CHECK("  .. a new length rebuilds them (no bit past the loop)", !(sqm_thin[0][0] >> 12) && sqm_thin[0][0] != m0);
     }
     sqm_turns = 1, sqm_sync = 1, sqm_auto = 0;
