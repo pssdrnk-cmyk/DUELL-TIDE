@@ -12,6 +12,7 @@ b5 was never published: its changes ship inside b6 as one release (owner, 9 Nove
 |---|---|
 | The MORPH page's waves move like the first WAVE LAB stack again (13 lines a part scrolling back every picture, full height, fading toward the back), at today's size (from b5) | Built (in the b6 build), waits for your look and the CPU test on the FM-1. The owner, 9 November: "the animation quality got worse, the front lines moves a lot and the ones behind barely"; "the initial version looked quite cool when we called it wave lab" |
 | MORPH page: an older saw line no longer crosses the newest one on note changes (from b5) | Built (in the b6 build, with the motion fix), waits for the FM-1 test |
+| MORPH page no longer lags: the wave stack draws in about 53 us, under b5's 77 (owner on the FM-1: "the new UI is definitely laggy") | Built (in the b6 build), waits for your try on the FM-1 |
 | PART 1 / PART 2 / BOTH on HOME's pages (from b5) | Ready (in the b6 build) |
 | The new flashing screen (from b5) | Ready (in the b6 build) |
 | More free memory (EQ design moved out of fast RAM, 1,068 B; from b5) | Ready (in the b6 build) |
