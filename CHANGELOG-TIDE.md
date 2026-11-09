@@ -9,6 +9,40 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 
 ## 1.0.0-b7 (in progress)
 
+Built overnight on 9-10 November 2026 from the musical review (owner: "your ideas look good, go ahead with all of them", "let's keep what makes musical sense"). Not yet on the FM-1.
+
+### What TIDE plays
+
+- **Changed (ARC):** ARC moves on 8-bar boundaries. Every phase starts on bar 1 of an 8, the peak lasts 8 or 16 bars, and one arc is 40 to 64 bars. ARC DROP drops on the first arc after PLAY (about 40 seconds in), and the shape of the arcs differs from night to night. A drop's two silent bars are silent from their first downbeat, and ARC OFF ends a drop at once.
+- **Changed (ARC):** the breakdown is a real breakdown. Both parts keep only their main hits, chords drop to two voices and the level falls by 2 to 5 dB. The parts thin out by voices and level; the number of hits falls less (on M02 the breakdown still has about nine tenths of the rise's hits, by voices it is about two thirds).
+- **Changed (ARP SEQ parts):** the factory chord parts follow TIDE's dynamics now: ARC's peak is louder and its breakdown softer (M02: peak 112, breakdown 62 in MIDI velocity; it was flat at 100). An accented step keeps its accent.
+- **New (call and answer):** in WANDER and JOURNEY the two parts take turns bar by bar. One plays out while the other steps back to its main hits (chords in two voices, a little softer); both play the fourth bar. A bass or pad part is never pushed back. TURNS plays nothing now; the answer is built in.
+- **Changed (the bass):** a bass part keeps its loop length and its octave. TIDE no longer shortens its loop (POLY) or moves its notes an octave (VOIC), and a shortened loop ends when ARC's breakdown begins. M02's bass keeps its pickup.
+- **Changed (motifs):** a figure of five to seven hits plays whole most of the time (M09 DEEP 332's stab plays whole in 72 % of the bars, before 18 %). A figure with only one free hit keeps every hit outside the breakdown.
+- **New (chord part):** the chord part breathes with ARC. Its voicing opens at the peak and closes, lower and tighter, in the breakdown. Same notes, other octaves.
+- **New (chord part):** the variation bar of a chord part plays a rhythm a house or dub-techno player knows (the skank with a throw, the Detroit two-hit, 3-3-2 and more), the one nearest its own pattern, with the pattern's own chords. M02 plays the Detroit two-hit, M05 and M08 the skank with a throw, M09 3-3-2 in 16ths.
+- **Fixed (VOIC):** with OFF-SCALE PLAY, VOIC keeps a chord's out-of-scale note (a Bb in C major stays a Bb).
+- **New (hand on the fader):** grab the MORPH or SEQ fader while TIDE runs and TIDE waits for you with that part only. The other part, the pattern's own movement and ARC keep going. 8 bars after you let go, at the next phrase, TIDE takes the part back from where you left it. AUTO TIDE says HAND  BACK IN n BARS.
+- **Changed (JOURNEY):** the dip between two sounds on a long trip lasts a few bars (closing over 2, closed for 1, opening over 2) instead of most of the trip; FM6 sounds keep their sparkle for longer. The sound between the two ends is still duller than either end on some multis (not solved).
+- **Changed (JOURNEY):** it keeps your multi's mix. A part's mixer level never changes on the way, and a part the multi turned down stays down on the sounds JOURNEY travels to. M05 ORGAN SKANK, M06, M08 TINE DUB and M16 FINAL REEL were 6 to 7 dB too loud on a JOURNEY; now M05 and M06 are within 2 dB, M16 is on average 1 dB over (some bars more) and M08 sits 3 dB under its own sounds. The colour of the sounds on the way is not changed yet.
+- **Fixed (JOURNEY):** started with the fader away from A, JOURNEY no longer swaps the sound you are hearing; it travels to the B that is there first.
+- **Changed (AUTO TIDE):** multis that wait for keys play on their own under AUTO TIDE: PAD SPLIT, WHISPER TIDE and any pad, HOLD ALL or arp you made sound a chord as soon as AUTO TIDE runs. Press a key and the chord is yours until the next PLAY.
+
+### The settings page
+
+- **Changed (TIDE SETTINGS, owner: "let's keep what makes musical sense"):** the page has nine rows: STYLE, MODE, TARGET, ARC, ROLL TYPE, then REC, PLAY MODE, XFADE and SPLIT. VARY BARS, TURNS, POLY, OFFBEAT and WASH have no rows; each STYLE sets them. ROLL ARP and ROLL PITCH have no row either (OFF; a unit that had one ON keeps it, and a learned MIDI CC can still switch it). MODE is the same setting as K2 on AUTO TIDE. Your saved STYLE stays that style after the update.
+- **Changed (STYLE DUB):** DUB plays WANDER: the multi's own sounds stay and evolve instead of travelling to others, so the level and brightness stay steady (M02: brightness swing 2x, not 7x; dulled bars 7 %, not 51 %). A DUB you saved with b6 reads as DUB with WANDER. The first start is still M02 DUB CHORD.
+- **Changed (STYLE AMBIENT):** AMBIENT no longer shortens loops (POLY OFF).
+- **Changed (ROLL TYPE):** ROLL TYPE no longer switches the rhythm off; ARC and the pattern's movement act with any ROLL TYPE. ROLL TYPE is dim under JOURNEY, where it does nothing (knob 1's line says NOT JRNY).
+
+### The multis
+
+- **New (six electronic-genre multis):** M03 ACID FIELD (acid), M04 ROBOT FUNK (electro), M07 MINIMAL 12 (techno, reworked), M13 BROKEN BELLS (IDM), M14 BERLIN RUN (Berlin school) and M15 DETROIT STAB (Detroit), 120 to 130 BPM. All play both parts on PLAY with no key held. CELLAR TAPE, NIGHT ORGAN, COLD CHAPEL, EERIE SIGNAL and HAZY TENSOR left the factory set (owner: "I'm not emotionally attached to these half made multis"); they stay in git history.
+- **Changed (beds):** BASIC CHORD's crackle bed and the shimmer beds of DUNE HORN and VOID DEEP sound on PLAY with no key held. DUNE HORN and VOID DEEP move half as fast per step on the internal clock (as designed under a 120 BPM clock) and are 5 dB louder.
+- **Changed (multis):** TINE DUB and DEEP 332 have the pad an octave lower, under the stab. ORGAN SKANK has a little swing. FINAL REEL's brass pad keeps its octave and has a gentle low cut. PAD SPLIT and WHISPER TIDE are 5 to 6 dB quieter with a chord held, so they sit with the rest.
+
+### Fixes
+
 - **Fixed (review FR1):** a swung pattern (SWG over 50, the part's or TEMPO SWING; DEEP SHUFFLE, HOUSE STAB, DEEP 332, DOT DELAY) stays on the grid when TIDE's POLY plays it 15 or 13 steps long. Before, it came back from the stretch late against the other part, the click and an external kick (GENTLE 15 at SWG 60 by about a sixteenth and a half, WIDE by less) and stayed late until STOP / PLAY; during the stretch every other pass was off the grid too. Straight patterns (SWG 50) play exactly as before.
 - **Fixed (review FR8, a MIDI keyboard into the arp):** with GLO > MODULES ARP = KEEPS RUNNING, letting go of a chord held on a MIDI keyboard after a sound change (PRESETS or a program change) now stops the arp; before, it cycled the released chord until STOP ALL.
 - **Fixed (review FR8):** playing a key on a note a MIDI note already holds on the same part no longer leaves the arp counting one key too many: HOLD replaces its chord with the next one again, and HOLD off drops the latched chord. In LAYER with SPLIT, a MIDI note that only part 2 plays no longer releases a note of the same pitch on part 1.

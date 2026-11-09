@@ -321,7 +321,7 @@ static void gen_arc_case(void)
     gen_setup();
     morph_musical = 1; sqm_arc = 2;
     gl.on = 3; gl.mode = GM_WANDER; gl.mask = 3; gl.armed = 0; gl.hold = 0;
-    gen_arc_blocks(4u * 4u * 12000u / CTL * 3u);           /* about 3 phrases (4 bars each) */
+    gen_arc_blocks(8u * 4u * 12000u / CTL * 3u);           /* about 3 of ARC's 8-bar units (MR4) */
     phr = tarc.phr; phase = tarc.phase; cnt = tarc.cnt;
     printf("   ARC after PLAY: run %u phrase %u phase %s\n", tarc.run, phr, tarc_name());
     CHECK("(fixture: ARC runs and counts phrases)", tarc.run && phr >= 2u);

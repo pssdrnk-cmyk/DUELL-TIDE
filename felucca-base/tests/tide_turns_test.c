@@ -209,11 +209,13 @@ typedef struct {
 } polystat_t;
 static polystat_t ps;
 /* run `bars` bars; per step started of part p: the position in the part's own loop; ARP SEQ parts by their arp_idx */
+static void lead_sound(uint32_t p);
 static void run_poly(uint32_t bars, uint32_t arp, uint32_t mode, uint32_t lo, uint32_t hi)
 {
     uint32_t p, b, n = bars * 4u * (uint32_t)FS * 60u / 240u / CTL + 1u, pulse = 0;
     uint32_t last[2] = {0xFFFFFFFFu, 0xFFFFFFFFu}, run[2] = {0, 0}, since[2] = {0xFFFFFFFEu, 0xFFFFFFFEu}, shortrun[2] = {0, 0}, total[2] = {0, 0}, wasp[2] = {0, 0};
     memset(&ps, 0, sizeof ps);
+    lead_sound(0), lead_sound(1), sqm_bass_scan();       /* (B1: a BASS sound never stretches; these runs are about the loop lengths, the bass bits fresh) */
     ps.minrun[0] = ps.minrun[1] = 0xFFFFFFFFu;
     (void)mode;
     for (b = 0; b < n; b++) {

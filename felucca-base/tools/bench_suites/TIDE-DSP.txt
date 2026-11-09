@@ -330,7 +330,7 @@ expect report
 report tide
 repeat 2
 
-test TIDE.M16.BASE  M16 CELLAR TAPE (LAYER), 3 keys, TIDE idle
+test TIDE.M16.BASE  M16 ACID FIELD (LAYER), 3 keys, TIDE idle
 mode LAYER
 mods ALL ON
 mods SENDS OFF
@@ -339,7 +339,7 @@ master WIDTH 100
 master BM 0
 keysense OFF
 budget OPEN
-load multi 3 "CELLAR TAPE"
+load multi 3 "ACID FIELD"
 tide wash 0
 at 0.0  chord C4 E4 G4 vel 100 ch 1
 at 7.0  release
@@ -350,7 +350,7 @@ expect report
 report tide
 repeat 1
 
-test TIDE.M16.ON  M16 CELLAR TAPE with the valley forced on both parts and WASH MID
+test TIDE.M16.ON  M16 ACID FIELD with the valley forced on both parts and WASH MID
 mode LAYER
 mods ALL ON
 mods SENDS OFF
@@ -359,7 +359,7 @@ master WIDTH 100
 master BM 0
 keysense OFF
 budget OPEN
-load multi 3 "CELLAR TAPE"
+load multi 3 "ACID FIELD"
 tide wash 2
 tide force 1 60 60
 tide force 2 60 60
