@@ -17,6 +17,26 @@ Not flashed yet.
 - **Under the hood:** the keycap pills of the key hints are stored Huffman-coded with the fonts' own coder, in the code of the big-figures face, instead of 4 bits a pixel: KC_DATA 4,941 B -> 2,881 B, the image 2,032 B smaller, no RAM added and no extra font-table rebuilds. The pixels are b5's: a new ui_render check draws every pill in six states, whole and cut at each edge, in every theme, and compares it with b5's.
 - **New (owner, 2026-11-09):** two drone scenes built in as M17 DUNE HORN (HORN SWELL with VOID SHIMMER) and M18 VOID DEEP (VOID SHIMMER with SOLAR WIND), factory only. TIDE plays them as STYLE DRONE: pick one, hold a chord around C3 and press PLAY with AUTO TIDE on. Each is a LAYER of two latched drones (HOLD ALL, arp OFF), a 60 BPM ping-pong echo and a big HALL. They load, play and preview like M01 to M16, and MIDI program change 16 and 17 loads them (in LAYER). They can't be saved over, renamed or erased: SAVE says SAVE TO M01-M16, so save an edited one into M01 to M16. Like every factory multi, a drone keeps your AMOUNT (knob 4); its STYLE DRONE comes from the drone itself. While one of them is loaded, TIDE SETTINGS shows STYLE DRONE; loading any other multi brings your own STYLE back, and the saved STYLE never changes. The b4 file pack `packs/drones/` is gone (b4 never shipped it as a download). Backups are unchanged: nothing is stored for M17 and M18.
 - **Under the hood:** the factory multis (M01 to M18) are stored packed in the firmware: each part's settings as the bytes that differ from one shared template. They rebuild byte for byte when listed, previewed or loaded, so nothing sounds or loads differently; 2.8 KB of flash back for later features. No saved data, backup or RAM changes.
+- **Changed (owner, 9 November: the notes back, step by step; PENDING THE UNIT SWEEP):** the parts get back some of the notes 1.0.0-b1 took away to save CPU. Since b4 the audio backs off by itself before it cuts a sound, and the b4 and b5 tests on the unit never missed a beat, so the first step is given back: over the 16 factory multis 18 notes more, at most one more note per part. This stays only if the unit's 16-multi test still runs with no dropout and no cut voice; otherwise it goes back to b5's numbers. Plain DUELL is unchanged. Notes per part (part 1 / part 2), as loaded with the second core running:
+
+  | Multi | b5 | b6 |
+  |---|---|---|
+  | M01 BASIC CHORD | 5 / 5 | 6 / 6 |
+  | M02 DUB CHORD | 4 / 5 | 4 / 5 |
+  | M03 CELLAR TAPE | 2 / 7 | 2 / 8 |
+  | M04 NIGHT ORGAN | 3 / 4 | 3 / 5 |
+  | M05 ORGAN SKANK | 5 / 7 | 5 / 8 |
+  | M06 WARM ECHO | 5 / 6 | 6 / 6 |
+  | M07 MINIMAL 12 | 5 / 6 | 6 / 7 |
+  | M08 TINE DUB | 4 / 4 | 5 / 5 |
+  | M09 DEEP 332 | 5 / 5 | 6 / 6 |
+  | M10 PAD SPLIT | 4 / 4 | 4 / 4 |
+  | M11 WHISPER TIDE | 4 / 3 | 4 / 4 |
+  | M12 TINE STRINGS | 5 / 5 | 6 / 5 |
+  | M13 COLD CHAPEL | 5 / 2 | 5 / 2 |
+  | M14 EERIE SIGNAL | 3 / 3 | 4 / 4 |
+  | M15 HAZY TENSOR | 3 / 4 | 4 / 5 |
+  | M16 FINAL REEL | 5 / 5 | 5 / 5 |
 
 ## 1.0.0-b5
 
