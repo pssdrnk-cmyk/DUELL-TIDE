@@ -113,7 +113,8 @@ static int no_k3(void)
 }
 #endif
 #if DUELL_TIDE
-/* TIDE: TIDE SETTINGS is in MORPH SET's place, a list (tide_ui.c): K1 the row, OCT+ the next value, OCT- the one before; SMART / ARP / PITCH are its ROLL, ARP, PITCH */
+/* TIDE: TIDE SETTINGS is in MORPH SET's place, a list (tide_ui.c): K1 the row, OCT+ the next value, OCT- the one before; SMART is its ROLL TYPE; ARP and PITCH have
+ * no row since 1.0.0-b7 (MR8): their switches are set as a learned CC sets them (mset_cfg) */
 #define MORPH_SET_TITLE "TIDE SETTINGS"
 static void mset_row(uint32_t r) { turn(EN_K1, -8); if (r) turn(EN_K1, (int32_t)r); }
 static void mset_put(uint32_t r, uint32_t v)            /* row r to its value v: OCT- to the first, then OCT+ v times */
@@ -126,6 +127,7 @@ static void mset_put(uint32_t r, uint32_t v)            /* row r to its value v:
         press(B_OCTUP);
     frame();
 }
+static void mset_cfg(uint32_t kind, uint32_t v) { morph_act(kind, morph_mask(song.sel), v, song.sel); frame(); }   /* (MQ_ARP / MQ_PITCH: the morph's own switch) */
 #else
 #define MORPH_SET_TITLE "MORPH SET"
 #endif
@@ -480,12 +482,12 @@ static void t_knobs(void)
      * morph's selector there (PART 1, BOTH, PART 2: tide_ui.c) */
     go_title(MORPH_SET_TITLE);
     frames(32);
-    mset_put(JL_ROLL, 2u); mset_put(JL_ARP, 1u); mset_put(JL_PITCH, 1u);
-    expect("ROLL WILD, ARP ON, PITCH ON on TIDE SETTINGS (TIDE's list: K1 the row, OCT+ the value; the settings bits)",
+    mset_put(JL_ROLL, 2u); mset_cfg(MQ_ARP, 1u); mset_cfg(MQ_PITCH, 1u);
+    expect("ROLL WILD on TIDE SETTINGS (TIDE's list: K1 the row, OCT+ the value), ARP ON, PITCH ON (no rows: a learned CC); the settings bits",
            morph.cfg == (MC_WILD | MC_ARP | MC_PIT) && favorites.factory[15][8] == 7u);
     {
         uint32_t c = morph.cfg, t = SEL_BOTH;
-        jl_sel = JL_VARY;                                /* (audit C12: K2..K4 turn the picked row's value, here one that is not the morph's) */
+        jl_sel = JL_REC;                                 /* (audit C12: K2..K4 turn the picked row's value, here one that is not the morph's) */
         turn(EN_K2, 1); turn(EN_K3, -1); turn(EN_K4, 1); turn(EN_K4, -1);
         frame();
         expect("  .. KNOB 2..4: the picked row's value, not the morph's (no card on the list)", morph.cfg == c && SEL_BOTH == t);
@@ -493,7 +495,7 @@ static void t_knobs(void)
     turn(EN_ALGO, 1);
     expect("  .. ALGORITHM on TIDE SETTINGS: BOTH next (TIDE: the morph's selector, as on MORPH)", song.sel == 0u && SEL_BOTH);
     turn(EN_ALGO, -1);
-    mset_put(JL_ROLL, 0u); mset_put(JL_ARP, 0u); mset_put(JL_PITCH, 0u);
+    mset_put(JL_ROLL, 0u); mset_cfg(MQ_ARP, 0u); mset_cfg(MQ_PITCH, 0u);
     expect("  .. and back: MUSIC (TIDE's default: SMART with the musical dials), ARP OFF, PITCH OFF (the defaults)", !morph.cfg && !favorites.factory[15][8]);
 #else
     /* MORPH SET (0.2.9): SMART, ARP, PITCH, KNOB 4 empty; no TARGET card (ALGORITHM's BOTH on the MORPH page is the target) */
@@ -1060,7 +1062,7 @@ static void t_settings(void)
     turn(EN_ALGO, -1);                                  /* BOTH: not saved */
     go_title(MORPH_SET_TITLE); frames(32);
 #if DUELL_TIDE
-    mset_put(JL_ARP, 1u); mset_put(JL_PITCH, 1u);                 /* (ARP ON, PITCH ON) */
+    mset_cfg(MQ_ARP, 1u); mset_cfg(MQ_PITCH, 1u);                 /* (ARP ON, PITCH ON) */
 #else
     turn(EN_K2, 1);
     turn(EN_K3, 1);

@@ -207,12 +207,12 @@ static void test_multi_keeps_roll_rows(void)
     ui_power_on(); frame();
     morph.cfg = (uint8_t)((morph.cfg & ~MC_ARP) | MC_PIT | MC_WILD);
     project_load(1);                                     /* M02, factory */
-    CHECK("factory multi: ROLL PITCH stays ON", jl_get(JL_PITCH) == 1u);
+    CHECK("factory multi: ROLL PITCH stays ON", (morph.cfg & MC_PIT) != 0u);
     CHECK("factory multi: ROLL TYPE stays WILD", jl_get(JL_ROLL) == 2u);
-    CHECK("factory multi: ROLL ARP stays OFF", jl_get(JL_ARP) == 0u);
+    CHECK("factory multi: ROLL ARP stays OFF", !(morph.cfg & MC_ARP));
     morph.cfg = (uint8_t)(morph.cfg | MC_ARP);
     project_load(1);
-    CHECK("factory multi: ROLL ARP stays ON", jl_get(JL_ARP) == 1u);
+    CHECK("factory multi: ROLL ARP stays ON", (morph.cfg & MC_ARP) != 0u);
     morph.cfg = 0;
 }
 

@@ -187,7 +187,7 @@ static void t_turns(void)
     CHECK("  .. one part: that part's bit", sqm_auto == 1u);
     gl.on = 3, gl.mask = 3, morph_musical = 0;
     glide_poll();
-    CHECK("  .. not with ROLL SMART / WILD", sqm_auto == 0u);
+    CHECK("  .. with ROLL SMART / WILD too (1.0.0-b7, MR8: no gate on ROLL TYPE)", sqm_auto == 3u);
     gl.on = 3, morph_musical = 1, song.rec = 1;
     glide_poll();
     CHECK("  .. not while recording", sqm_auto == 0u);
@@ -481,8 +481,6 @@ static void sync_run(uint32_t mode, uint32_t div, uint32_t seed, uint32_t base, 
 static void t_sync(void)
 {
     uint32_t mode, seed, sh[3] = {0, 0, 0}, ob[3] = {0, 0, 0}, mp[3] = {0, 0, 0}, s, o, m, same = 1, kept[3] = {0, 0, 0};
-    CHECK("rows: TURNS / POLY / SYNC show their names", !strcmp(jl_vname(JL_TURNS, 1), "TAKE TURNS") && !strcmp(jl_vname(JL_TURNS, 0), "TOGETHER") &&
-          !strcmp(jl_vname(JL_POLY, 2), "WIDE") && !strcmp(jl_vname(JL_SYNC, 1), "SOFT") && !strcmp(jl_vname(JL_SYNC, 2), "PUSH") && jl_n(JL_SYNC) == 3u);
     for (mode = 0; mode < 3u; mode++)
         for (seed = 1; seed <= NSEEDS; seed++) {
             sync_run(mode, 2, seed, 0, &s, &o, &m);
@@ -548,7 +546,6 @@ static void t_answer(void)
     static const uint8_t H[] = {0, 2, 3, 4, 6, 7, 8, 10, 11, 12, 14, 15};
     uint32_t i, p, bar, drops, cand, nbad = 0, wrong = 0, n;
     step_t buf;
-    CHECK("TURNS shows its three values (ECHO folded into LEAD: D7)", !strcmp(jl_vname(JL_TURNS, 2), "LEAD") && jl_n(JL_TURNS) == 3u);
     setup(16, 16, 2, 2, 0), lead_sound(0), lead_sound(1);
     put_hits(0, H, 12);
     put_hits(1, H, 12);
@@ -894,7 +891,7 @@ static void t_style(void)
     jl_put(JL_STYLE, STY_CUSTOM);
     tide_settings();
     CHECK("CUSTOM changes nothing (with no values of its own kept)", tide_style == STY_CUSTOM && style_is(1));
-    /* a hand edit of each of the nine owned values: CUSTOM, the edited value and the rest kept; the other rows leave the style alone */
+    /* a hand edit of each of the four values with a hand (MODE, TIME, WAIT, ARC): CUSTOM; the five with no row changed underneath: the style stays */
     ok = 1;
     for (r = 0; r < 9u; r++) {
         jl_put(JL_STYLE, 4);
@@ -903,17 +900,17 @@ static void t_style(void)
         case 0: gl.mode = GM_WANDER; break;                       /* the MODE knob */
         case 1: gl.time = 2; break;                               /* the TIME knob */
         case 2: gl.wait = 1; break;                               /* the WAIT knob */
-        case 3: jl_put(JL_VARY, 0); break;
-        case 4: jl_put(JL_TURNS, 1); break;
-        case 5: jl_put(JL_POLY, 0); break;
-        case 6: jl_put(JL_SYNC, 0); break;
+        case 3: sqm_vary_all = 0; break;                          /* (no row since 1.0.0-b7: written as the engine or the bench would) */
+        case 4: sqm_turns = 1; break;
+        case 5: sqm_poly = 0; break;
+        case 6: sqm_sync = 0; break;
         case 7: jl_put(JL_ARC, 1); break;
-        default: jl_put(JL_WASH, 2); break;
+        default: morph_wlvl = 2; break;
         }
         tide_settings();
-        ok &= tide_style == STY_CUSTOM;
+        ok &= tide_style == ((0x87u >> r) & 1u ? STY_CUSTOM : 4u);
     }
-    CHECK("a hand edit of any of the nine rows turns STYLE into CUSTOM", ok);
+    CHECK("a hand edit of MODE, TIME, WAIT or ARC turns STYLE into CUSTOM; the values with no row (VARY, TURNS, POLY, OFFBEAT, WASH) changed underneath leave it (1.0.0-b7, MR8)", ok);
     jl_put(JL_STYLE, 3);
     tide_settings();
     gl.time = 5;
@@ -928,9 +925,9 @@ static void t_style(void)
     tide_settings();
     CHECK("  .. TARGET and ROLL leave the style alone", tide_style == 3u);
     jl_put(JL_STYLE, 2);
-    jl_put(JL_SYNC, 0);
+    jl_put(JL_ARC, 1);
     tide_settings();
-    jl_put(JL_SYNC, 2);                                           /* back to the style's value by hand: stays CUSTOM */
+    jl_put(JL_ARC, 0);                                            /* back to the style's value by hand: stays CUSTOM */
     tide_settings();
     CHECK("  .. setting the values back by hand stays CUSTOM", tide_style == STY_CUSTOM && style_is(2));
     /* the record */
@@ -943,7 +940,7 @@ static void t_style(void)
     tide_style = STY_CUSTOM;
     gl.mode = GM_ONCE, gl.time = 0, gl.wait = 0, sqm_turns = 0, sqm_arc = 0, sqm_sync = 0, sqm_poly = 0;
     tide_settings();
-    CHECK("no record: DUB, its existing rows today's defaults (JRNY, 16 bars, WAIT 2 bars, VARY 4 + 8, WASH OFF)", tide_style == STY_DUB && style_is(0) && gl.mode == GM_JOURNEY &&
+    CHECK("no record: DUB, its existing rows today's defaults (WNDR since 1.0.0-b7, 16 bars, WAIT 2 bars, VARY 4 + 8, WASH OFF)", tide_style == STY_DUB && style_is(0) && gl.mode == GM_WANDER &&
           GLIDE_BARS[gl.time] == 16u && GLIDE_WAIT_BARS[gl.wait] == 2u && !sqm_vary_all && !morph_wlvl);
     {
         static const uint8_t L[3] = {7, 9, 11};

@@ -2574,7 +2574,7 @@ int main(int argc, char **argv)
             if (sc == 5) { gl.hold = 1; gl.wait = 5; gl.prog = (1u << GLIDE_Q) - 1u; }
             if (sc == 8) { poly_len[0] = 12; }
             if (sc == 9) { gl.on = 0; gl.mode = GM_DRIFT; }
-            if (sc == 7 || (sc >= 11 && sc < 16)) { for (pg = 0; pg < NPAGES && strcmp(PAGES[pg].title, "TIDE SETTINGS"); pg++) ; jl_sel = (uint8_t)(sc == 11 ? JL_TURNS : sc == 13 ? JL_STYLE : sc == 14 ? JL_XFADE : JL_SPLIT);   /* (7 ts_bottom, 15 ts_split_duel: the SPLIT row) */ }
+            if (sc == 7 || (sc >= 11 && sc < 16)) { for (pg = 0; pg < NPAGES && strcmp(PAGES[pg].title, "TIDE SETTINGS"); pg++) ; jl_sel = (uint8_t)(sc == 11 ? JL_ARC : sc == 13 ? JL_STYLE : sc == 14 ? JL_XFADE : JL_SPLIT);   /* (7 ts_bottom, 15 ts_split_duel: the SPLIT row) */ }
             if (sc == 14 || sc == 15) { duell_mode_req = sc == 14 ? DM_LAYER : DM_SPLIT; mix_xf = 50; mix_split = 67; }   /* (the last rows, MODE XFADE SPLIT: in LAYER they act, in DUEL the XFADE and SPLIT values dim and knob 1's line says LAYER ONLY) */
             if (sc == 13) { tide_style = STY_CUSTOM; gl.target = GT_BOTH; morph_musical = 1; sqm_vary_all = 0; }   /* (the README's TIDE SETTINGS picture: the top of the list) */
             if (sc == 11 || sc == 12) { gl.mode = sc == 11 ? GM_ONCE : GM_JOURNEY; morph_musical = sc == 12; gl.target = GT_SOUND; }
