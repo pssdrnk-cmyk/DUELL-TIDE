@@ -22,6 +22,9 @@ DS_ENDB / DS_ENDB_AT. The AMOUNT in the block is 'bamt' (the category's if absen
 'lcat' (optional): the category the generator's defaults (End B AMOUNT, KEY TRK 0 of a bass or hit) and the browse order were made with; a sound re-filed under another 'cat' (a role for JRNY and the TYPE filter) keeps its sound, its End B and its place in the list. A sound with 'bend' has its End B from the block; one without keeps the seed (below).
 End B by a seed (morph.c morph_rebase_part): 'bamt' (the AMOUNT %, default by category: CAT_BAMT) and 'bseed' (1..65535, chosen by
 tests/sound_audit.c SOUND_BSEED=1 so End B keeps A's loudness and roughly its brightness; absent: the hash of (engine, idx)).
+'tamt' (optional, TIDE only): the MUSICAL AMOUNT (1..40) TIDE rolls this factory sound's End B at, instead of MUSICAL's own 40 (tide.h
+TIDE_FACTORY_BAMT; the part's AMOUNT knob stays 40). For a sound whose level rides on its decay, where AMOUNT 40's SHAPE dial moves
+the level out of the End B window (b6, sound audit T2). Plain DUELL never reads it.
 
 Output (firmware/src/sounds.c reads it): DS_PACKED (bitstream of signed value bytes and lossless ID deltas), DS_SOUNDS (engine-major: sound k of engine e is
 DS_SOUNDS[DS_ENG_AT[e] + k], k = its 'idx', the identity favourites, shadows and the End B seed use: append-only per
@@ -305,7 +308,7 @@ def build(data):
         for key in ("engine", "idx", "name", "cat", "p"):
             if key not in s:
                 die(f"{where}: no '{key}'")
-        unknown = set(s) - {"engine", "idx", "name", "cat", "p", "mono", "recipe", "bamt", "bseed", "bend", "bpin", "bfm", "lcat", "text"}
+        unknown = set(s) - {"engine", "idx", "name", "cat", "p", "mono", "recipe", "bamt", "bseed", "tamt", "bend", "bpin", "bfm", "lcat", "text"}
         if unknown:
             die(f"{where}: unknown keys {sorted(unknown)}")
         if "text" in s and (s["text"] is not True or s["cat"] != "FX"):
@@ -410,6 +413,9 @@ def build(data):
             die(f"{where}: bamt {bamt!r}: the End B AMOUNT is 1..40 (%); 0..100 for a sound with 'bend' (its block holds the knob exactly)")
         if not isinstance(bseed, int) or isinstance(bseed, bool) or not 0 <= bseed <= 65535:
             die(f"{where}: bseed {bseed!r}: 1..65535 (0 / absent: the hash of (engine, idx))")
+        tamt = s.get("tamt", 0)
+        if not isinstance(tamt, int) or isinstance(tamt, bool) or not 0 <= tamt <= 40:
+            die(f"{where}: tamt {tamt!r}: TIDE's End B AMOUNT is 1..40 (0 / absent: MUSICAL's own, 40)")
         block = None
         if "bend" in s or "bpin" in s or "bfm" in s:
             if "bend" not in s:
@@ -435,7 +441,7 @@ def build(data):
                 die(f"{where}: {x}")
         sounds.append({"e": e, "idx": idx, "name": name, "cat": s["cat"], "lcat": s.get("lcat", s["cat"]), "mono": bool(s.get("mono")), "arp": arp, "late": n >= getattr(data, "N_BASE", 1 << 30), "tail": (n - getattr(data, "N_LATE", 1 << 30)) if n >= getattr(data, "N_LATE", 1 << 30) else -1,
                        "keys": keys, "text": bool(s.get("text")), "pairs": sorted(pairs.items()), "recipe": s.get("recipe", ""), "bamt": bamt,
-                       "bseed": bseed, "endb": block})
+                       "bseed": bseed, "tamt": tamt, "endb": block})
     for e in {x["e"] for x in sounds}:
         got = sorted(x["idx"] for x in sounds if x["e"] == e)
         if got != list(range(len(got))):
@@ -498,7 +504,7 @@ def emit(path, sounds, lst, engines, cats, idname):
     for s in sounds:
         fl = " | ".join(f for f, on in (("DSF_MONO", s["mono"]), ("DSF_ARP", s["arp"]), ("DSF_KEYS", s["keys"]), ("DSF_TEXT", s["text"])) if on) or "0"
         L.append(f"    {{\"{s['name']}\", {s['e']}, {cats[s['cat']]}, {fl}, {len(s['pairs'])}, {s['at']}u, "
-                 f"{s['bseed']}u, {s['bamt']}}},"
+                 f"{s['bseed']}u, {s['bamt']}" + (f" DS_TAMT({s['tamt']})" if s['tamt'] else "") + "},"
                  f"   /* {s['cat']}; {s['recipe']} */")
     L += ["};"]
     L += ["", "/* Test-only independent reference: original uncompressed (ID, signed value) pairs. */",

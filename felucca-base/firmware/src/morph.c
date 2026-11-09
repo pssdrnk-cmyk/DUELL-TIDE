@@ -1884,7 +1884,7 @@ static void morph_rebase_part(uint32_t pi)               /* ends = the Original,
         else
 #endif
         {
-        morph_roll_cfg(pi, 1u, ds_seed(t->eng_req, t->preset), TIDE_FACTORY_AMOUNT(ds_amount(t->eng_req, t->preset)),
+        morph_roll_cfg(pi, 1u, ds_seed(t->eng_req, t->preset), TIDE_FACTORY_BAMT(t->eng_req, t->preset, ds_amount(t->eng_req, t->preset)),
                        (duell_stereo ? MC_STEREO : 0u) | TIDE_FACTORY_CFG());   /* TIDE hook */
         mp->amount = (uint8_t)TIDE_FACTORY_AMOUNT(ds_amount(t->eng_req, t->preset));   /* ... and the part's AMOUNT knob follows the sound's category amount */
         }
