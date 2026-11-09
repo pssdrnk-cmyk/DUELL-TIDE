@@ -26,7 +26,7 @@
  * that row while SAVE is held (ui_draw.c morph_row). */
 #define WL_NP 56                                     /* points of a ridge (b6: 56, one every 3.9 px, so 13 ridges fit the RAM rule), spread over x WL_X0 .. WL_X1 (right of the part's tag column, x 0 .. 21: no line starts under or beside a tag) */
 #define WL_X0 22
-#define WL_X1 236
+#define WL_X1 239                                     /* (b6: to the screen's last column, owner 2026-11-09) */
 #define WL_HN 13                                     /* ridges kept: as many as fit 2 rows apart over the 68-row lanes (2 parts x 13 x 56 B; the build keeps 4 KB of RAM headroom) */
 #define WL_AMAX 31                                   /* the largest half height of a ridge, px (31 x 4 quarters fit a byte) */
 #define WL_STEP 2                                    /* the fewest rows between two ridges (WAVE LAB's) */
@@ -440,42 +440,25 @@ static void wl_col(int32_t x, int32_t ya, int32_t yb, int32_t w16, uint16_t c, i
         *q = *q == bg ? tab[r1 - r0] : swap16(ux_mix(swap16(*q), c, m > 100 ? 100 : m));
     }
 }
-/* a plain 1-px line from (x0, ya) to (x1, yb), whole rows (Bresenham; WAVE LAB drew its ridges so), in the byte-swapped colour cs, rows ymin .. ymax */
-static void wl_ln(int32_t x0, int32_t ya, int32_t x1, int32_t yb, uint16_t cs, int32_t ymin, int32_t ymax)
+/* ridge r's height at x16 (1/16 px) of its span from xl16, mul the points a 1/16 px (Q16): the two nearest points, linear; 1/16 px from its middle */
+static int32_t wl_atx(const wl_t *s, uint32_t r, int32_t x16, int32_t xl16, int32_t mul)
 {
-    const int32_t dx = x1 > x0 ? x1 - x0 : x0 - x1, sx = x0 < x1 ? 1 : -1, dy = yb > ya ? ya - yb : yb - ya, sy = ya < yb ? 1 : -1;
-    int32_t err = dx + dy;
-    for (;;) {
-        const int32_t y = ya + cv_oy;
-        if (ya >= ymin && ya <= ymax && (uint32_t)x0 < cv_w && (uint32_t)y < cv_h)
-            cv_px[(uint32_t)y * cv_w + (uint32_t)x0] = cs;
-        if (x0 == x1 && ya == yb)
-            break;
-        {
-            const int32_t e2 = 2 * err;
-            if (e2 >= dy) {
-                err += dy;
-                x0 += sx;
-            }
-            if (e2 <= dx) {
-                err += dx;
-                ya += sy;
-            }
-        }
-    }
+    const int32_t u = (x16 - xl16) * mul >> 8, i = u >> 8, f = u & 255;
+    const int32_t a = wl_rq(s, r, (uint32_t)i), b = i + 1 < (int32_t)WL_NP ? wl_rq(s, r, (uint32_t)(i + 1)) : a;
+    return (a * (256 - f) + b * f) >> 6;
 }
-/* part k's picture in rows y0 .. y1 - 1 (WAVE LAB's WAVE STACK): the ridges, the oldest first and the newest (the front, at the foot) last, each about WL_STEP rows higher than the one
- * after it and as tall as the front; every ridge is ONE smooth anti-aliased stroke across the full width, nothing hidden (owner 2026-11-09: "the lines are falling apart"). Colour: the
- * part's, along its A..B gradient at the fader (mv_col), toward the background from the front to the back (WAVE LAB's fade); the front an anti-aliased stroke about 2 px thick, the
- * others plain 1-px lines as WAVE LAB drew them (b6, on the FM-1: "the new UI is definitely laggy": twelve anti-aliased strokes a part cost more than the stack is worth). The part the
- * controls act on (ui_part_hot) in full colour with a bar at the half's edge, the other dimmed. A tail fades its shape (wl_fade); a ridge that has faded flat, a lane not filled yet and
- * silence are drawn as straight lines in their place with the same colours, so every lane is always there (resting flat, or moving).
- * No older ridge is laid flat for being unlike the front or crossing it (b6: f162bdc's rules held the stack still behind a moving front); what b6 W1 kept from crossing is kept here: a
- * shaped ridge is never drawn under a newer shaped one, it rides on it (just above its stroke: 22/16 px over the front, 1 px over an older one) where it would cross; elsewhere its shape
- * is its own. A flat one is drawn flat.
- * Cost (b6, owner on the FM-1: "the new UI is definitely laggy"): point by point, every ridge's y in one pass from the front back (each one's bound is the newer ones'), then that
- * segment of every ridge, the oldest first: each pixel is blended in the same order as ridge by ridge, so the picture is the same, without walking the newer ridges again for every
- * ridge and point; and the front's blends of the background from a table */
+/* part k's picture in rows y0 .. y1 - 1 (WAVE LAB's WAVE STACK): the ridges, the oldest first and the newest (the front, at the foot) last, each higher than the one after it and as
+ * tall as the front; every ridge is ONE stroke across its width, nothing cut (owner 2026-11-09: "the lines are falling apart"). Colour: the part's, along its A..B gradient at the fader
+ * (mv_col), toward the background from the front to the back (WAVE LAB's fade); the front an anti-aliased stroke about 2 px thick, the others plain 1-px lines as WAVE LAB drew them
+ * (b6, on the FM-1: "the new UI is definitely laggy"). The part the controls act on (ui_part_hot) in full colour with a bar at the half's edge, the other dimmed. A tail fades its shape
+ * (wl_fade); a ridge that has faded flat and a lane not filled yet are drawn as straight lines in their place with the same colours, so every lane is always there.
+ * Depth (b6, owner 2026-11-09: "something is missing"): the stack recedes like a landscape. Each older ridge is narrower, centred (the oldest 4/5 of the front's width), and the gaps
+ * between ridges close toward the back (gap i from the front: 2 (N - 1) - i, the back one about half the front one); each ridge hides what lies behind it (WAVE LAB's): a column's
+ * ridges are drawn from the front back and an older one only above the top of the newer ones there, so nothing behind a ridge shows under it. At rest (nothing yet, or silence) the
+ * flat lines are spread evenly over the whole lane, no swing room kept.
+ * No older ridge is laid flat for being unlike the front or crossing it; a shaped ridge is never drawn under a newer shaped one, it rides on it (just above its stroke: 22/16 px over
+ * the front, 1 px over an older one) where it would cross; elsewhere its shape is its own. A flat one is drawn flat.
+ * Column by column: every ridge's height there in one pass from the front back (each one's bound is the newer ones'), and drawn in that order under the horizon they leave */
 static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
 {
     const wl_t *s = &wl[k];
@@ -483,18 +466,29 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
     const int32_t pct = (int32_t)ux.fader[k & 1u] * 100 / 127, str = hot ? 100 : 55;   /* (the fader as the theme took it: in steps, on a picture's frame (ui_draw.c), so
                                                                                       * a turn of knob 1 redraws the waves with a picture: ui_graph.c graph_signature) */
     const uint16_t bg = swap16(T_BG);
-    int32_t a, st, nf = wl_fit(y1 - y0, &a, &st), nr = s->hn < (uint32_t)nf ? (int32_t)s->hn : nf, yf = y1 - 2 - a, r, p, n, px = WL_X0;
-    int32_t yb[WL_HN], py[WL_HN];
-    uint16_t col[WL_HN], lc[WL_HN], ft[17];          /* (each ridge's colour; an older one's as drawn, byte-swapped; the front's blends of the background, ft[n]: by n/16) */
-    uint32_t shp = 0;                                /* (bit r: ridge r drawn with its shape) */
+    const int32_t cx16 = (WL_X0 + WL_X1) * 8, hw16 = (WL_X1 - WL_X0) * 8;   /* (the front's middle and half width, 1/16 px) */
+    int32_t a, st, nf = wl_fit(y1 - y0, &a, &st), nr = s->hn < (uint32_t)nf ? (int32_t)s->hn : nf, yf = y1 - 2 - a, r, n, c, gs = 0, g = 0;
+    int32_t yb[WL_HN], xl[WL_HN], xr[WL_HN], mul[WL_HN], py[WL_HN];
+    uint16_t col[WL_HN], lc[WL_HN], ft[17];
+    uint32_t shp = 0, seen = 0;                      /* (bit r: ridge r drawn with its shape; ridge r has had a column) */
     if (y1 - y0 < 8)
         return;
     if (hot)                                         /* the selected part (both with BOTH): a bar at the half's edge (the tag goes over the lines, last) */
         cv_rect(1, y0 + 1, 3, y1 - y0 - 2, T_PFILL(k));
     if (nr < 1 || s->a != (uint8_t)a || (s->flat & ((1u << nr) - 1u)) == (1u << nr) - 1u)
-        nr = 0;                                      /* nothing yet, made for another box, or silence: every lane at rest, flat (the same lines as when it plays) */
+        nr = 0;                                      /* nothing yet, made for another box, or silence: every lane at rest, flat */
+    for (r = 0; r + 1 < nf; r++)
+        gs += 2 * (nf - 1) - r;
     for (r = 0; r < nf; r++) {
-        yb[r] = yf * 16 + 8 - (nf > 1 ? st * 16 * r / (nf - 1) : 0);   /* (the ridge's middle, 1/16 px, spread over the lane) */
+        const int32_t w = nf > 1 ? hw16 * (5 * (nf - 1) - r) / (5 * (nf - 1)) : hw16;   /* (the half width: the front's, to 4/5 at the back) */
+        if (!nr)                                     /* (at rest: spread evenly from the lane's foot to its top) */
+            yb[r] = (y1 - 2) * 16 + 8 - (nf > 1 ? (y1 - 3 - y0) * 16 * r / (nf - 1) : 0);
+        else                                         /* (playing: the front's swing room at the foot, the oldest's at the top, the gaps closing toward the back) */
+            yb[r] = yf * 16 + 8 - (gs ? st * 16 * g / gs : 0);
+        g += 2 * (nf - 1) - r;
+        xl[r] = cx16 - w;
+        xr[r] = cx16 + w;
+        mul[r] = (int32_t)(((WL_NP - 1u) << 16) / (uint32_t)(2 * w > 0 ? 2 * w : 1));
         shp |= (uint32_t)(r < nr && !((s->flat >> r) & 1u)) << r;
         col[r] = mv_col(k, pct, r * 90 / nf);        /* (WAVE LAB's fade toward the back) */
         lc[r] = swap16(ux_mix(T_BG, col[r], str));
@@ -503,37 +497,51 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
         const int32_t m = str * n / 16;
         ft[n] = swap16(ux_mix(T_BG, col[0], m > 100 ? 100 : m));
     }
-    for (p = 0; p < WL_NP; p++) {
-        const int32_t x = WL_X0 + (int32_t)p * (WL_X1 - WL_X0) / (int32_t)(WL_NP - 1u);
-        int32_t y[WL_HN], lim = 1 << 28;
-        for (r = 0; r < nf; r++) {                   /* (the points as drawn, the front first: each shaped one at most at the bound the newer shaped ones leave) */
-            if (!((shp >> r) & 1u)) {
-                y[r] = yb[r];
-                continue;
-            }
-            y[r] = yb[r] + wl_rq(s, (uint32_t)r, (uint32_t)p) * 4;
-            y[r] = y[r] < lim ? y[r] : lim;
-            lim = y[r] - (r ? 16 : 22);
-        }
-        for (r = nf - 1; r >= 0; r--) {              /* (this segment of every ridge, the oldest first, the front over the rest) */
-            const int32_t w16 = !r ? 28 : 16;
-#ifdef WL_TEST_Y
-            WL_TEST_Y(k, r, p, y[r]);                /* (host probe only: the point as drawn) */
-#endif
-            if (r)                                   /* (an older line: plain, whole rows) */
-                wl_ln(p ? px : x, (p ? py[r] : y[r]) >> 4, x, y[r] >> 4, lc[r], y0 + 1, y1 - 1);
-            else if (p && x > px) {                  /* (the front: the columns of the segment from the last point, each from its left edge to its right) */
-                const int32_t d2 = 2 * (x - px), dy = y[r] - py[r];
-                int32_t c;
-                for (c = px + 1; c <= x; c++) {
-                    const int32_t e = 2 * (c - px) + 1;
-                    wl_col(c, py[r] + dy * (2 * (c - px) - 1) / d2, py[r] + dy * (e < d2 ? e : d2) / d2, w16, col[r], str, y0 + 1, y1 - 1, ft, bg);
+    {
+        int32_t y0f = shp & 1u ? yb[0] + wl_atx(s, 0u, WL_X0 * 16, xl[0], mul[0]) : yb[0];   /* (the front's height in this column; the next one's is found in the loop) */
+        for (c = WL_X0; c <= WL_X1; c++) {
+            const int32_t x16 = c * 16, yn = (shp & 1u) && c < WL_X1 ? yb[0] + wl_atx(s, 0u, x16 + 16, xl[0], mul[0]) : y0f;
+            int32_t y[WL_HN], lim, m, hz = y1 - 1;   /* (m: the ridges drawn in this column, the front and the older ones as wide as it reaches: each is narrower than the one before;
+                                                      * hz: the horizon, the top row drawn in this column so far: an older ridge shows only above it) */
+            y[0] = y0f;
+            lim = shp & 1u ? y0f - 22 : 1 << 28;  /* (a flat front bounds nothing) */
+            for (m = 1; m < nf && x16 >= xl[m] && x16 <= xr[m]; m++) {   /* (the heights, the front back: each shaped one at most at the bound the newer shaped ones leave) */
+                if (!((shp >> m) & 1u)) {
+                    y[m] = yb[m];
+                    continue;
                 }
-            } else if (!p)
-                wl_col(x, y[r], y[r], w16, col[r], str, y0 + 1, y1 - 1, ft, bg);
-            py[r] = y[r];
+                y[m] = yb[m] + wl_atx(s, (uint32_t)m, x16, xl[m], mul[m]);
+                y[m] = y[m] < lim ? y[m] : lim;
+                lim = y[m] - 16;
+            }
+            for (r = 0; r < m; r++) {
+                const int32_t ya = (seen >> r) & 1u ? py[r] : y[r];
+#ifdef WL_TEST_Y
+                WL_TEST_Y(k, r, c, y[r]);            /* (host probe only: the height as drawn) */
+#endif
+                py[r] = y[r];
+                seen |= 1u << r;
+                if (!r) {                            /* (the front: from halfway to the last column's height to halfway to the next one's, anti-aliased) */
+                    const int32_t a0 = (ya + y[0]) / 2, a1 = (y[0] + yn) / 2;
+                    wl_col(c, a0, a1, 28, col[0], str, y0 + 1, y1 - 1, ft, bg);
+                    hz = ((a0 < a1 ? a0 : a1) - 14) >> 4;
+                } else {                             /* (an older ridge: plain, from its height in the last column, whole rows above the horizon) */
+                    int32_t lo = (ya < y[r] ? ya : y[r]) >> 4, hi = (ya < y[r] ? y[r] : ya) >> 4;
+                    hi = hi < hz ? hi : hz - 1;
+                    lo = lo > y0 + 1 ? lo : y0 + 1;
+                    lo = lo > -cv_oy ? lo : -cv_oy;  /* (and inside the canvas) */
+                    hi = hi < (int32_t)cv_h - 1 - cv_oy ? hi : (int32_t)cv_h - 1 - cv_oy;
+                    if (lo <= hi && (uint32_t)c < cv_w) {
+                        uint16_t *q = &cv_px[(uint32_t)(lo + cv_oy) * cv_w + (uint32_t)c];
+                        int32_t n2;
+                        for (n2 = lo; n2 <= hi; n2++, q += cv_w)
+                            *q = lc[r];
+                        hz = lo;
+                    }
+                }
+            }
+            y0f = yn;
         }
-        px = x;
     }
     ui_part_tag(k, (y0 + y1) / 2, hot);              /* (over the lines' left edge) */
 }
