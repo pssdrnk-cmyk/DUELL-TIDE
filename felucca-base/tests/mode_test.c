@@ -1181,6 +1181,24 @@ static void t_mode_rows(void)
     turn(EN_K2, 1);
     frames(64);
     expect("STYLE stays DUB (not CUSTOM) after MODE, XFADE and SPLIT change", tide_style == STY_DUB && tide_style_holds());
+    {   /* 1.0.0-b7 (MR1): a unit that stored STYLE DUB (JOURNEY) or AMBIENT (POLY GENTLE) under b6 reads them as DUB / AMBIENT with this build's rows, not CUSTOM */
+        static const uint8_t B6[2][TS_N] = {{GM_JOURNEY, 4, GT_BOTH, 2, 0, 1, 0, 2, 1, 1, 1, STY_DUB, 0},
+                                            {GM_JOURNEY, 6, GT_BOTH, 4, 0, 1, 3, 0, 1, 0, 0, STY_AMBIENT, 0}};
+        uint8_t keep[TIDE_TAIL_N];
+        memcpy(keep, tide_tail, sizeof keep);
+        for (i = 0; i < 2u; i++) {
+            tide_store_mark(B6[i], TS_N);
+            tide_seen_ok = 0;
+            tide_settings();
+            expect(i ? "a b6 AMBIENT record: AMBIENT, POLY OFF" : "a b6 DUB record: DUB, WANDER", tide_style == (i ? STY_AMBIENT : STY_DUB) && tide_style_holds() &&
+                   gl.mode == (i ? GM_JOURNEY : GM_WANDER) && sqm_poly == (i ? 0u : 1u));
+        }
+        memcpy(tide_tail, keep, sizeof keep);
+        tide_store_dirty = 0;
+        tide_seen_ok = 0;
+        tide_settings();
+        tide_style_apply(STY_DUB);
+    }
     /* the page redraws when any of the three changes from outside the panel: a MIDI CC (the learned MODE CC; XFADE and SPLIT lines) as midi_control.c sets them in the ISR, or a multi load.
      * The signature checked is graph_signature(), the one draw_graph compares frame to frame (not only tide_list_sig, which loops jl_get); TIDE_GRAPH_SIG returns tide_list_sig()
      * for this page, so the three values are in it by way of jl_get (they are read from the live bytes, not a copy) */

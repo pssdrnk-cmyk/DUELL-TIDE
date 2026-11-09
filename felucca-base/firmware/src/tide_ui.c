@@ -149,10 +149,10 @@ static void tide_pick_mode(void) { jl_sel = JL_MODE; }   /* HOME OPENS = MODE (u
  * of any of the nine turns it into CUSTOM (tide_settings); CUSTOM itself changes nothing. mode, time (index), wait (index), VARY, TURNS, POLY, SYNC, ARC, WASH */
 enum { STY_DUB, STY_DEEP, STY_MINIMAL, STY_AMBIENT, STY_PEAK, STY_DRONE, STY_CUSTOM };   /* (CUSTOM was 5 until 1.0.0-b4: a stored 5 is read as DRONE only if its rows are DRONE's, else CUSTOM; tide_settings) */
 static const uint8_t STY[6][9] = {
-    {GM_JOURNEY, 4, 2, 0, 2, 1, 1, 1, 0},                /* DUB: the showcase (today's no-record rows) with LEAD and a RISE */
+    {GM_WANDER, 4, 2, 0, 2, 1, 1, 1, 0},                 /* DUB: the showcase (the no-record rows) with LEAD and a RISE; WANDER keeps the multi's own sounds (1.0.0-b7, MR1: JOURNEY before) */
     {GM_WANDER, 5, 3, 0, 1, 0, 1, 1, 1},                 /* DEEP */
     {GM_WANDER, 3, 0, 1, 2, 2, 2, 0, 0},                 /* MINIMAL */
-    {GM_JOURNEY, 6, 4, 0, 0, 1, 0, 0, 3},                /* AMBIENT */
+    {GM_JOURNEY, 6, 4, 0, 0, 0, 0, 0, 3},                /* AMBIENT: no groove tricks, so POLY OFF (1.0.0-b7, MR1: GENTLE before) */
     {GM_JOURNEY, 3, 0, 1, 2, 1, 2, 2, 0},                /* PEAK: ARC DROP and LEAD (ECHO before: D7) */
     {GM_WANDER, 6, 0, 0, 0, 0, 0, 0, 3}};                /* DRONE: a held chord of a drone sound; WNDR keeps the sound, 64 bars, always moving, nothing rhythmic */
 static uint8_t tide_style = STY_DUB, tide_style_last = STY_DUB;   /* (the style a hand edit left: OCT- + K3 / K4 go back to its TIME and WAIT) */
@@ -1020,6 +1020,8 @@ static void tide_settings(void)
                 *TS_VAR[i] = (uint8_t)(!TS_LIM[i] ? b[i] & TS_DEF[i] : b[i] < TS_LIM[i] ? b[i] : i == TS_TURNS && b[i] == 3u ? 2u : TS_DEF[i]);
             if (tide_style == STY_DRONE && !tide_style_holds())   /* (b4 and later: DRONE is 5, CUSTOM 6; an earlier build stored CUSTOM as 5: not DRONE's rows, so CUSTOM, not a hand edit of DRONE) */
                 tide_style = STY_CUSTOM;
+            else if (tide_style < STY_CUSTOM)            /* (a stored STYLE held its rows when it was saved: they are the style's as this build has them; 1.0.0-b7: an older DUB or AMBIENT stays DUB / AMBIENT) */
+                tide_style_apply(tide_style);
         } else {
             tide_style_apply(STY_DUB);                   /* (no record: the DUB showcase; REC ADD) */
             tide_rec_replace = 0;
