@@ -373,7 +373,7 @@ def build_app():
         if os.environ.get("DUELL_TEST_MODE") != "1":
             raise SystemExit("build: DUELL_NOTES_STEP is for test-mode builds (DUELL_TEST_MODE=1): a release build has the branch's default step")
         flags.append(f"-DDUELL_NOTES_STEP={v}")
-    v = os.environ.get("DUELL_LCD_BAUD")    # TIDE 1.0.0-b6 (lcdspeed): the LCD's SPI1 divider, src/lcd.c LCD_BAUD (lsb 60 MHz / (BAUD + 1): 4 = 12 MHz, the default; 2 = 20 MHz, 1 = 30 MHz;
+    v = os.environ.get("DUELL_LCD_BAUD")    # TIDE 1.0.0-b6 (lcdspeed): the LCD's SPI1 divider, src/lcd.c LCD_BAUD (lsb 60 MHz / (BAUD + 1): 4 = 12 MHz; 2 = 20 MHz, the default since b6; 1 = 30 MHz;
     if v:                                       # the ST7789V takes a serial write clock up to ~62 MHz, tSCYCW 16 ns). For test-mode builds tried on the unit; a release keeps lcd.c's default
         if v not in ("1", "2", "3", "4"):
             raise SystemExit(f"build: DUELL_LCD_BAUD={v}: one of 1 (30 MHz), 2 (20 MHz), 3 (15 MHz), 4 (12 MHz)")
