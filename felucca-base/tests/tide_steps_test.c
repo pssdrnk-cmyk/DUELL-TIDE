@@ -254,7 +254,7 @@ static void run_scn(const scn_t *c, uint32_t id)
             for (still = 1, m = 1; m <= 3u; m++)                             /* the pattern stood for the last steps (a tie holds a note from the hit: it needs the same steps at both) */
                 still &= stepno[p] >= m && hist[p][(stepno[p] - m) & 15u].valid && hist[p][(stepno[p] - m) & 15u].made == made_of(p);
             nvaried += memcmp(vt, &t->step[idx], sizeof *vt) != 0;
-            nchance += chance, ntie += vt->time == ST_TIE, narp += arp, npoly += poly_len[p] != 0, ndrop += tarc_dropphr == ((isr_bar >> 2) & 63u) && (isr_bar & 3u) < 2u && ((sqm_auto >> p) & 1u) && (tv_hit(&t->step[idx]) || tv_hit(vt));
+            nchance += chance, ntie += vt->time == ST_TIE, narp += arp, npoly += poly_len[p] != 0, ndrop += TARC_DROP_BAR(isr_bar) && ((sqm_auto >> p) & 1u) && (tv_hit(&t->step[idx]) || tv_hit(vt));
             nsteps++;
             nmaybe += pr->maybe;
             npred += snap[p].made == made_of(p) && (ph[p] == TV_NOPH || idx > ph[p]);

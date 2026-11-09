@@ -565,7 +565,7 @@ static void t_answer(void)
             nbad++;
     }
     /* (the anchors of these 12 hits: the 4 beats, then 2 3 6 7 for the floor of 3/5: 8 of 12; candidates 10 11 14 15) */
-    CHECK("mask: no beat, no anchor, only hits; half of the candidates (rounded up) dropped", !nbad && cand == 4u && drops == 2u);
+    CHECK("mask: no beat, no anchor, only hits; every candidate dropped (MR4: anchors and beats only)", !nbad && cand == 4u && drops == 4u);
     {   /* held hits: a tie after step 3 and 11, a slide on 7 */
         step_t *st = trk[0].step;
         st[4] = (step_t){{0}, 0, ST_TIE, 0, 0, 0};
@@ -595,7 +595,7 @@ static void t_answer(void)
         sqm_thin_build();
         for (i = 0, nb = 0; i < 16u; i++)
             nb += (uint32_t)thin_bit(0, i);
-        CHECK("  .. VARY 4 + 8: the mask is End A's alone, as before (2 of 4)", nb == 2u);
+        CHECK("  .. VARY 4 + 8: the mask is End A's alone, as before (4 of 4)", nb == 4u);
     }
     put_hits(0, H, 2);
     sqm_refresh(0, 1);
@@ -735,8 +735,8 @@ static void t_arc(void)
                     if (tot > mx[m]) mx[m] = tot;
                 }
             }
-        printf("  ARC length in phrases: RISE %u..%u, DROP %u..%u (PEAK up to %u)\n", mn[1], mx[1], mn[2], mx[2], pkmx);
-        CHECK("ARC length: every arc 8 to 16 phrases (32 to 64 bars) in RISE and DROP, PEAK at most 2", mn[1] >= 8u && mx[1] <= 16u && mn[2] >= 8u && mx[2] <= 16u && mx[2] == 16u && pkmx <= 2u);
+        printf("  ARC length in 8-bar units: RISE %u..%u, DROP %u..%u (PEAK up to %u)\n", mn[1], mx[1], mn[2], mx[2], pkmx);
+        CHECK("ARC length (MR4): every arc 5 to 8 units of 8 bars (40 to 64 bars) in RISE and DROP, PEAK at most 2", mn[1] >= 5u && mx[1] <= 8u && mn[2] >= 5u && mx[2] <= 8u && mx[2] == 8u && pkmx <= 2u);
         sqm_arc = 0, tarc.run = 0;
     }
     /* the shape: 600 bars of ARC DROP */
@@ -756,9 +756,9 @@ static void t_arc(void)
             if (tarc.run && tarc.phase != ph_prev) {
                 if (ph_prev != 9u) {
                     uint32_t want = ph_prev == AP_RISE ? AP_PEAK : ph_prev == AP_PEAK ? (mode == 2u ? AP_DROP : AP_BREAK) : ph_prev == AP_DROP ? AP_BREAK : ph_prev == AP_BREAK ? AP_RECOVER : AP_RISE;
-                    if (tarc.phase != want && !(ph_prev == AP_PEAK && mode == 2u && tarc.phase == AP_BREAK))
+                    if (tarc.phase != want && !(ph_prev == AP_PEAK && mode == 2u && tarc.phase == AP_BREAK) && !(ph_prev == AP_DROP && tarc.phase == AP_RECOVER))   /* (MR4: a one-unit breakdown is the drop alone) */
                         order_ok = 0;
-                    edge_ok &= (sqm_bar & 3u) == 0u || (sqm_bar & 3u) == 3u;   /* (the last block of a bar already counts the next) */
+                    edge_ok &= (sqm_bar & 7u) == 0u || (sqm_bar & 7u) == 7u;   /* (MR4: on a bar = 0 mod 8; the last block of a bar already counts the next) */
                     lens_ok &= run >= 1u && run <= 8u;
                 }
                 if (nseq < 40u)
@@ -777,7 +777,7 @@ static void t_arc(void)
         (void)phases;
         printf("  ARC %s: phases seen RISE %u PEAK %u DROP %u BREAK %u RECOVER %u in %u phases\n", mode == 1u ? "RISE" : "DROP", seen[0], seen[1], seen[2], seen[3], seen[4], nseq);
         CHECK(mode == 1u ? "ARC RISE: RISE, PEAK, BREAK, RECOVER in turn, never a drop of its own" : "ARC DROP: RISE, PEAK, (DROP,) BREAK, RECOVER in turn", order_ok && seen[0] >= 2u && seen[1] >= 2u && seen[3] >= 2u && seen[4] >= 2u && (mode == 1u ? seen[2] == 0u && !leak : seen[2] >= 1u));
-        CHECK("  .. a phase changes only at a phrase boundary", edge_ok);
+        CHECK("  .. a phase changes only on a bar = 0 (mod 8) (MR4)", edge_ok);
         (void)lens_ok;
     }
     /* the drop masks only onsets, for the first 2 bars of its phrase; a tie (none here) and the other bars play */
@@ -807,7 +807,7 @@ static void t_arc(void)
         }
         CHECK("  .. the drop comes: DROP, from RISE, skipping the PEAK", tarc.phase == AP_DROP);
         dropbars = dropfull = 0;
-        for (b2 = 0; b2 < 4u * 12000u / CTL * 4u; b2++) {
+        for (b2 = 0; b2 < 8u * 12000u / CTL * 4u; b2++) {
             uint32_t bar, hit = 0, any = 0, k;
             arc_block(300000u + b2);
             bar = (uint32_t)sqm_bar + sqm_bar_turn;
@@ -820,7 +820,7 @@ static void t_arc(void)
                     any++;
                     hit += seq_play_step(&trk[0], k, &buf)->time == ST_NOTE;
                 }
-            if ((bar & 3u) < 2u)
+            if ((bar & 7u) < 2u)
                 dropfull += hit != 0u;
             else
                 dropbars += hit != 0u;

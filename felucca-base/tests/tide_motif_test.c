@@ -149,7 +149,7 @@ static stats_t run(uint32_t scene, uint32_t bars, uint32_t turns, uint32_t sync,
             int32_t d;
             last = (uint32_t)sqm_bar;
             st.bars++;
-            drop = tarc_dropphr == ((bar >> 2) & 63u) && (bar & 3u) < 2u;
+            drop = TARC_DROP_BAR(bar);
             fol = (uint32_t)sqm_follows(p, bar);                  /* (LEAD's follower bars: seq_morph.c) */
             for (i = 0; i < 16u; i++) {
                 step_t buf;
