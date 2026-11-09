@@ -406,11 +406,18 @@ static uint16_t ui_part_col(uint32_t k, int hot)
 }
 static void ui_part_tag(uint32_t k, int32_t y, int hot)
 {
+    /* (b6, owner: "numbers are also thrash quality, they get out of the background color and not centered": the digit centred by its own ink in a pill of the wider digit's ink and 1 px each
+     * side (the same for both parts), 1 row above and below the capitals (13 rows), the pill 2 px clear of the hot bar (x 1 .. 3); the knockout the pill and 1 px round it; a dimmed tag on the same grid) */
     const uint16_t kc = ui_part_col(k, hot);
-    cv_rect(UT_A_K1_DOT_X - 5, y - 7, 17, 15, T_BG);    /* (a knockout, the tag's box and a 1-px margin, square: no line pixel inside it; the hot bar x 1 .. 3 stays) */
+    const char *d = k ? "2" : "1";
+    const aag_t *g = &AF_S.g[glyph(&AF_S, (uint8_t)d[0])], *g1 = &AF_S.g[glyph(&AF_S, '1')], *g2 = &AF_S.g[glyph(&AF_S, '2')];
+    const int32_t wm = (int32_t)(glyph_bw(g1) > glyph_bw(g2) ? glyph_bw(g1) : glyph_bw(g2));   /* (both pills as wide: the wider digit's ink; owner: a "1" in a pill of its own 4 px
+                                                                                             * of ink read as an outlined box with a purple digit, its stem splitting the fill) */
+    const int32_t px0 = 6, pw = wm + 2, ph = AF_S_CAP_H + 2;   /* (1 px round the ink: AUTO TIDE's two rows are 14 apart, a taller pill lost its foot to the next tag's knockout) */
+    cv_rect(px0 - 1, y - ph / 2 - 1, pw + 2, ph + 2, T_BG);
     if (hot)
-        cv_rrect(UT_A_K1_DOT_X - 4, y - 5, 14, 11, 2, kc, T_BG);
-    cv_text_on(UT_A_K1_DOT_X, UT_TY(S, y + AF_S_CAP_H / 2), &AF_S, k ? "2" : "1", hot ? T_INK : kc, hot ? kc : T_BG);
+        cv_rrect(px0, y - ph / 2, pw, ph, 2, kc, T_BG);
+    cv_text_on(px0 + HALF_UP(pw - (int32_t)glyph_bw(g)) - glyph_bx(g), UT_TY(S, y + AF_S_CAP_H / 2), &AF_S, d, hot ? T_INK : kc, hot ? kc : T_BG);
 }
 /* a box h rows high: the ridges' half height (*a), the rows from the front's middle to the oldest one's (*st: the stack spans the lane, the front's swing room at the foot, the oldest
  * ridge's, as tall, at the top) and how many fit WL_STEP apart (the return) */
@@ -455,7 +462,9 @@ static int32_t wl_atx(const wl_t *s, uint32_t r, int32_t x16, int32_t xl16, int3
  * Depth (b6, owner 2026-11-09: "something is missing"): the stack recedes like a landscape. Each older ridge is narrower, centred (the oldest 4/5 of the front's width), and the gaps
  * between ridges close toward the back (gap i from the front: 2 (N - 1) - i, the back one about half the front one); each ridge hides what lies behind it (WAVE LAB's): a column's
  * ridges are drawn from the front back and an older one only above the top of the newer ones there, so nothing behind a ridge shows under it. At rest (nothing yet, or silence) the
- * flat lines are spread evenly over the whole lane, no swing room kept.
+ * stack is the playing one with every line flat, the same middles and widths (b6, owner: "there is a fuckup with the default screen": the rest screen had its own even spread, the
+ * front apart). The gaps are whole rows, never wider further back and at least WL_STEP (owner: "a bigger gap after the 3rd line": each line's own rounding made 3 2 3 2 ..); 13
+ * lines in the 25 rows of spread a 68-row lane leaves come out 3 then 2s.
  * No older ridge is laid flat for being unlike the front or crossing it; a shaped ridge is never drawn under a newer shaped one, it rides on it (just above its stroke: 22/16 px over
  * the front, 1 px over an older one) where it would cross; elsewhere its shape is its own. A flat one is drawn flat.
  * Column by column: every ridge's height there in one pass from the front back (each one's bound is the newer ones'), and drawn in that order under the horizon they leave */
@@ -467,7 +476,7 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
                                                                                       * a turn of knob 1 redraws the waves with a picture: ui_graph.c graph_signature) */
     const uint16_t bg = swap16(T_BG);
     const int32_t cx16 = (WL_X0 + WL_X1) * 8, hw16 = (WL_X1 - WL_X0) * 8;   /* (the front's middle and half width, 1/16 px) */
-    int32_t a, st, nf = wl_fit(y1 - y0, &a, &st), nr = s->hn < (uint32_t)nf ? (int32_t)s->hn : nf, yf = y1 - 2 - a, r, n, c, gs = 0, g = 0;
+    int32_t a, st, nf = wl_fit(y1 - y0, &a, &st), nr = s->hn < (uint32_t)nf ? (int32_t)s->hn : nf, r, n, c, gs = 0, left, m0, mid = y1 - 2 - a;
     int32_t yb[WL_HN], xl[WL_HN], xr[WL_HN], mul[WL_HN], py[WL_HN];
     uint16_t col[WL_HN], lc[WL_HN], ft[17];
     uint32_t shp = 0, seen = 0;                      /* (bit r: ridge r drawn with its shape; ridge r has had a column) */
@@ -478,14 +487,16 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
     if (nr < 1 || s->a != (uint8_t)a || (s->flat & ((1u << nr) - 1u)) == (1u << nr) - 1u)
         nr = 0;                                      /* nothing yet, made for another box, or silence: every lane at rest, flat */
     for (r = 0; r + 1 < nf; r++)
-        gs += 2 * (nf - 1) - r;
+        gs += 2 * (nf - 1) - r;                      /* (the gaps' weights: 2 (N - 1) - i, closing toward the back) */
+    m0 = st >= WL_STEP * (nf - 1) ? WL_STEP : 0;     /* (every gap at least WL_STEP rows, so two 1-px lines never touch; the rows over that by the weights) */
+    left = st - m0 * (nf - 1);
+    for (r = 0; r + 1 < nf; r++)
+        left -= (st - m0 * (nf - 1)) * (2 * (nf - 1) - r) / gs;   /* (the rows the whole-row gaps leave over: one more each to the front ones) */
     for (r = 0; r < nf; r++) {
         const int32_t w = nf > 1 ? hw16 * (5 * (nf - 1) - r) / (5 * (nf - 1)) : hw16;   /* (the half width: the front's, to 4/5 at the back) */
-        if (!nr)                                     /* (at rest: spread evenly from the lane's foot to its top) */
-            yb[r] = (y1 - 2) * 16 + 8 - (nf > 1 ? (y1 - 3 - y0) * 16 * r / (nf - 1) : 0);
-        else                                         /* (playing: the front's swing room at the foot, the oldest's at the top, the gaps closing toward the back) */
-            yb[r] = yf * 16 + 8 - (gs ? st * 16 * g / gs : 0);
-        g += 2 * (nf - 1) - r;
+        yb[r] = mid * 16 + 8;                        /* (ridge r's middle: the front's swing room at the foot, the oldest's at the top; whole rows, the gaps never wider further back) */
+        if (r + 1 < nf)
+            mid -= m0 + (st - m0 * (nf - 1)) * (2 * (nf - 1) - r) / gs + (r < left);
         xl[r] = cx16 - w;
         xr[r] = cx16 + w;
         mul[r] = (int32_t)(((WL_NP - 1u) << 16) / (uint32_t)(2 * w > 0 ? 2 * w : 1));

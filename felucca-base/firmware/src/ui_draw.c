@@ -2381,7 +2381,8 @@ static void morph_dot(int32_t x, int32_t base, const char *n)
     cv_text_in(x, dy + HALF_UP(AF_S_CAP_H - AF_D_CAP_H) - AF_D_CAP_Y, AF_S_CAP_H, &AF_DOT, n, T_BG, T_MID);
 }
 /* b6 (owner 2026-11-09: "why do we keep half of the screen for the hold save, and roll and amount"): the MORPH page's knob 2 and knob 4 on one row, rows MROW_Y .. + MROW_H - 1:
- * "(2) ROLL A<>B" on the left (the twist's way while it builds: <A / B>, in the accent), "(4) AMOUNT 40 %" on the right with AMOUNT's bar inline. While SAVE is held (and only then) the row says
+ * "(2) ROLL A<>B" on the left (the twist's way while it builds: <A / B>, in the accent), "(4) AMOUNT 40 %" on the right (owner 2026-11-09: no bar, "does the 4 amount really
+ * needs that long of a line and also a percentage": the number alone, right-aligned; the dot and the label 6 px before the widest value, so they stay put as it changes). While SAVE is held (and only then) the row says
  * HOLD SAVE = SAVE PATCH instead. Drawn only when what it shows changes */
 static void morph_row(int32_t g, uint32_t amt)
 {
@@ -2409,21 +2410,12 @@ static void morph_row(int32_t g, uint32_t amt)
         cv_text_on(x, UT_TY(S, base), &AF_S, "ROLL", hot2 ? T_ACCENT : T_MID, T_BG);
         x += text_w(&AF_S, "ROLL") + 6;
         cv_text_on(x, UT_TY(S, base), &AF_S, g < 0 ? "<A" : g > 0 ? "B>" : "A<>B", g ? T_ACCENT : T_TEXT, T_BG);
-        morph_dot(100, base, "4");
-        x = 100 + UT_CARD_LBL_DX;
-        cv_text_on(x, UT_TY(S, base), &AF_S, "AMOUNT", hot4 ? T_ACCENT : T_MID, T_BG);
-        x += text_w(&AF_S, "AMOUNT") + 6;
+        x = 235 - text_w(&AF_S, "100%") - 6 - text_w(&AF_S, "AMOUNT") - UT_CARD_LBL_DX;
+        morph_dot(x, base, "4");
+        cv_text_on(x + UT_CARD_LBL_DX, UT_TY(S, base), &AF_S, "AMOUNT", hot4 ? T_ACCENT : T_MID, T_BG);
         fmt_int(v, (int32_t)amt);
         str_cpy(v + str_len(v), "%", sizeof v - str_len(v));
         cv_text_r(235, UT_TY(S, base), &AF_S, v, T_TEXT, T_BG);
-        {   /* AMOUNT's bar, inline between the label and the value, on the text's middle */
-            const int32_t bw = 235 - text_w(&AF_S, v) - 6 - x, by = base - AF_S_CAP_H / 2 - 1, fw = bw * (int32_t)(amt > 100u ? 100u : amt) / 100;
-            if (bw > 6) {
-                cv_rrect(x, by, bw, 3, 1, T_RAISE, T_BG);
-                if (fw > 0)
-                    cv_rrect(x, by, fw > 2 ? fw : 2, 3, 1, T_THEME, T_RAISE);
-            }
-        }
     }
     cv_blit(0, MROW_Y);
 }

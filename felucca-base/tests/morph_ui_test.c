@@ -64,7 +64,7 @@ static int card_is(uint32_t c, const char *label, const char *val)   /* the card
 #if DUELL_TIDE
 /* TIDE b6: the MORPH page has no card row; KNOB 2 and KNOB 4 are one slim row above the footer (ui_draw.c morph_row, rows MROW_Y .. + MROW_H - 1), the waves above it.
  * mrow_at: the text s drawn in that row (its box, after screen_read); mrow_only: every text drawn in the row is one of ok[] (the knob dots "2" and "4", ROLL and its way,
- * AMOUNT and its value: no KNOB 3 dot, no UNDO or any other control); mrow_bar: AMOUNT's bar, ink between AMOUNT and the value; no_k3: no "3" knob dot and no UNDO anywhere
+ * AMOUNT and its value: no KNOB 3 dot, no UNDO or any other control); mrow_bar: ink between AMOUNT and the value (b6: AMOUNT has no bar any more, owner 2026-11-09); no_k3: no "3" knob dot and no UNDO anywhere
  * from the knob-1 line down to the footer */
 static int mrow_at(const char *s, int32_t *x0, int32_t *x1)
 {
@@ -427,11 +427,11 @@ static void t_knobs(void)
            );
     frame();
 #if DUELL_TIDE
-    {   /* b6: MORPH on the knob-1 line; KNOB 2 and 4 on the slim row: ROLL A<>B, AMOUNT with its value and bar; nothing for KNOB 3 */
+    {   /* b6: MORPH on the knob-1 line; KNOB 2 and 4 on the slim row: ROLL A<>B, AMOUNT with its value and no bar; nothing for KNOB 3 */
         char pc[12];
         snprintf(pc, sizeof pc, "%s%%", amt_txt);
-        expect("  .. the controls in v3's order: MORPH A, then the row: ROLL A<>B, AMOUNT with its value and bar (KNOB 4); nothing else in the row, no KNOB 3 (1.0.0-b5: no UNDO)",
-               card_is(0, "MORPH", "A") && mrow_has("ROLL") && mrow_has("A<>B") && mrow_has("AMOUNT") && mrow_has(pc) && mrow_bar(pc) && mrow_only("A<>B", pc) && no_k3());
+        expect("  .. the controls in v3's order: MORPH A, then the row: ROLL A<>B, AMOUNT with its value and no bar (KNOB 4; b6); nothing else in the row, no KNOB 3 (1.0.0-b5: no UNDO)",
+               card_is(0, "MORPH", "A") && mrow_has("ROLL") && mrow_has("A<>B") && mrow_has("AMOUNT") && mrow_has(pc) && !mrow_bar(pc) && mrow_only("A<>B", pc) && no_k3());
     }
 #else
     expect("  .. the cards in v3's order: MORPH, ROLL, an empty KNOB 3 (1.0.0-b5: no UNDO), AMOUNT (KNOB 4)", card_is(0, "MORPH", "A") && card_is(1, "ROLL", "A<>B") &&
