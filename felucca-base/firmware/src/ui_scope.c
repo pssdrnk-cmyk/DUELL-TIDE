@@ -40,14 +40,14 @@ typedef struct {
     int8_t rd[WL_HN][WL_NP];                         /* the ridges, the newest first: 1/16 px from the ridge's middle (sub-pixel: the lines are drawn smooth) */
     uint16_t flat;                                   /* bit r: ridge r is flat (silence, a note's tail) */
     uint16_t w;                                      /* the window */
-    uint16_t per;                                    /* its period (entries; 0: none steady), so that a held note keeps its count of cycles */
+    uint16_t per;                                    /* its period (1/16 of an entry; 0: none steady), so that a held note keeps its window and its count of cycles */
     uint8_t got, have, a, hn;                        /* a picture exists since the last reset; one with a trigger to match; the half height the ridges were made for; ridges kept */
 } wl_t;
 static wl_t wl[2];
 static uint32_t wl_tk = 0xFFFFFFFFu;
 _Static_assert(NLIVE == 2, "ui_scope.c keeps one reader state for each of the two parts");
 _Static_assert(WL_HN <= 16, "wl_t.flat has a bit a ridge");
-static uint32_t wl_k, wl_b, wl_per;                  /* (wl_per: the period the last wl_pic found, 0: none) */                          /* the ring being read, and the counter value of its entry 0 */
+static uint32_t wl_k, wl_b, wl_per;                  /* (wl_per: the period the last wl_pic found, 1/16 entry, 0: none) */                          /* the ring being read, and the counter value of its entry 0 */
 /* an entry back from wvr_code's sign and 7 bits: the middle of its step, in 1/4,096 of the half scale (0 stays 0) */
 static int32_t wl_dec(int32_t c)
 {
@@ -104,7 +104,7 @@ static int32_t wl_pte(uint32_t cq, uint32_t w, uint32_t p, int32_t jump)
 static int wl_pic(const wl_t *s, int32_t n, int32_t a, int8_t *nd, int16_t *nf, uint32_t *nw, uint32_t *ng)
 {
     int32_t cand[WL_NC], slope[WL_NC], mx = -0x7FFFFFFF, mn = 0x7FFFFFFF, rmx = -32768, rmn = 32767, mid, thr, i, j, pk = 0, rm, last, maxs = 0, g;
-    uint32_t nc = 0, armed = 0, per = 0, w, span, cq, np = 0, pool[WL_NC], best = 0, sel = 0, p;
+    uint32_t nc = 0, armed = 0, per = 0, pq = 0, w, span, cq, np = 0, pool[WL_NC], best = 0, sel = 0, p;
     int32_t v[WL_NP], prev, cur, sg;
     for (i = 0; i < n; i++) {                        /* the range of the raw ring, and of the trigger's line without the ends of the copy (the smoothing there leans on one side) */
         int32_t r = WLR(i);
@@ -161,20 +161,21 @@ static int wl_pic(const wl_t *s, int32_t n, int32_t a, int8_t *nd, int16_t *nf, 
         }
         m = d[(nc - 2u) / 2u];       /* (for two crossings d[0]) */
         if (m > 0 && d[0] * 5 >= m * 4 && d[nc - 2u] * 4 <= m * 5)
-            per = (uint32_t)m / 16u;
+            pq = (uint32_t)m;                        /* (the period in 1/16 of an entry, as the crossings are found) */
     }
-    if (per && s->per && (per > s->per ? per - s->per : s->per - per) * 6u <= s->per)
-        per = s->per;                                /* (within 1/6 of the held period: the same note; the crossings' own jitter, up to 13 % on a driven saw's attack, does not move the window) */
-    wl_per = per;
+    if (pq && s->per && (pq > s->per ? pq - s->per : s->per - pq) * 6u <= s->per)
+        pq = s->per;                                 /* (within 1/6 of the held period: the same note; the crossings' own jitter, up to 13 % on a driven saw's attack, does not move the window) */
+    wl_per = pq;
+    per = pq / 16u;
     if (per) {                                       /* whole cycles of the played pitch: 2, or as many as make WL_MINW for a high note, never more than fit with a period of room for the
-                                                      * crossing before them (at least 1): a held note's window is a whole number of its periods, the same every picture */
-        uint32_t c = (uint32_t)n > per ? ((uint32_t)n - per) / per : 0u, k = (WL_MINW + per - 1u) / per, kp = s->w && s->per && (per > s->per ? per - s->per : s->per - per) * 6u <= s->per ? (s->w + per / 2u) / per : 0u;
+                                                      * crossing before them (at least 1): a held note's window is a whole number of its periods (to 1/16 of an entry), the same every picture */
+        uint32_t c = (uint32_t)n * 16u > pq ? ((uint32_t)n * 16u - pq) / pq : 0u, k = (WL_MINW * 16u + pq - 1u) / pq, kp = s->w && s->per == pq ? (s->w * 16u + pq / 2u) / pq : 0u;
         k = k < 2u ? 2u : k;
-        if (kp >= 1u && kp * per * 4u >= WL_MINW * 3u && kp >= k - 1u && kp <= k + 1u)   /* (the count the last picture had, while it still makes about the window: the period's own jitter */
-            k = kp;                                                                       /* never flips a held note between 2 and 3 cycles) */
-        while (k > 1u && (k > c || k * per > WL_MAXW))
+        if (kp >= 1u && kp * pq * 4u >= WL_MINW * 48u && kp >= k - 1u && kp <= k + 1u)   /* (the count the last picture had, while it still makes about the window: the period's own jitter */
+            k = kp;                                                                         /* never flips a held note between 2 and 3 cycles) */
+        while (k > 1u && (k > c || k * pq > WL_MAXW * 16u))
             k--;
-        w = k * per;
+        w = (k * pq + 8u) / 16u;
     } else {
         w = s->w ? s->w : WL_DEFW;
         w = w < WL_MINW ? WL_MINW : w > WL_MAXW ? WL_MAXW : w;
