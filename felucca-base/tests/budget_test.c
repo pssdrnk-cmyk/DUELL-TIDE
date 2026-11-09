@@ -456,12 +456,12 @@ static void frow_hash(uint32_t i, frow_t *rows)
 static void t_factory(void)
 {
     uint32_t i, p, st, below4[2] = {0, 0}, old_stricter[2] = {0, 0}, bad = 0;
-    printf("budget: --- the 16 factory multis (MODE RECALL): NOTES a part (budget.c, one core, %u %% of the time, margin %u %%), what limits it, the VOICE CAP of 0.2.11 beside it.\n"
+    printf("budget: --- the factory multis (MODE RECALL; TIDE: M17 M18 the drones): NOTES a part (budget.c, one core, %u %% of the time, margin %u %%), what limits it, the VOICE CAP of 0.2.11 beside it.\n"
            "budget:     'loaded' = as loaded; 'MORPH' = cpuscen's state (settled, MORPH on End B, fader in the middle): the morph adds a little to each voice\n", BUDGET_LIMIT, BUDGET_MARGIN);
     for (st = 0; st < 2u; st++) {
         printf("budget: [%s] %-3s %-14s %-6s %-7s %-7s %8s %8s %8s %7s %7s  %-12s %-12s %s\n", st ? "MORPH " : "loaded", "no", "name", "mode", "part 1", "part 2", "global %", "fixed 1", "fixed 2",
                "voice 1", "voice 2", "NOTES 1", "NOTES 2", "old cap");
-        for (i = 0; i < MU_SLOTS; i++) {
+        for (i = 0; i < MU_SHOWN; i++) {
             frow_t rows[2];
             const frow_t *r;
             char a[24], b[24];
@@ -542,7 +542,7 @@ static void t_monotone(void)
     uint32_t i, p, k, it;
     static const char *const ENG[10] = {"ANALOG", "FM6", "PHASE", "LOFI", "VOICE", "TRIO", "WHEEL", "PHYS", "NOISE", "WAVE"};
     t_mono_viol = t_mono_other = t_mono_n = 0;
-    for (i = 0; i < MU_SLOTS; i++) {
+    for (i = 0; i < MU_SHOWN; i++) {
         load_multi(i);
         for (p = 0; p < 2u; p++) {
             for (k = 0; k < NELEM(STEPS); k++)
@@ -815,7 +815,7 @@ static void t_bits(void)
     uint32_t i, bad = 0, diff44 = 0, nrep = 0, nover = 0;
     printf("budget: --- bit for bit: each multi with the notes its budget allows held, and with 4 + 4 notes (cpuscen's scene), the budget on and off (peak = the most voices\n"
            "budget:     that sounded without the budget: an arp's release tails hold voices beyond the held notes)\n");
-    for (i = 0; i < MU_SLOTS; i++) {
+    for (i = 0; i < MU_SHOWN; i++) {
         uint32_t k, k4, pa[2], pb[2], pc[2], pd[2], n[2], over;
         uint64_t a, a2, b, c, d;
         a = render_hash(i, 0, 0, &k, pa, n);
@@ -831,9 +831,9 @@ static void t_bits(void)
         printf("budget:   M%02u %-14s the budget's %u + %u notes (peak %u + %u): %s | 4 + 4 notes (peak %u + %u): %s\n", i + 1, mu_names[i], n[0], n[1], pa[0], pa[1],
                a == b ? "bit for bit" : over ? "changes (the voices that sound are over the budget)" : "DIFFERENT", pc[0], pc[1], c == d ? "bit for bit" : "changes");
     }
-    printf("budget: %u of 16 multis keep 4 + 4 notes bit for bit, %u change (a part has fewer than 4 notes there); %u sound more voices than held notes allow for\n", 16u - diff44, diff44, nover);
+    printf("budget: %u of %u multis keep 4 + 4 notes bit for bit, %u change (a part has fewer than 4 notes there); %u sound more voices than held notes allow for\n", MU_SHOWN - diff44, MU_SHOWN, diff44, nover);
     bchk("bit for bit: a render repeats exactly (each in a child process)", !nrep);
-    bchk("bit for bit: where no more voices sound than the budget allows, the render is the same with the budget on or off (all 16 multis)", !bad);
+    bchk("bit for bit: where no more voices sound than the budget allows, the render is the same with the budget on or off (all the factory multis, M17 M18 the drones included)", !bad);
 }
 
 /* ---- pure ---- */
@@ -841,7 +841,7 @@ static void t_pure(void)
 {
     uint32_t i, p, bad = 0, it;
     static const char *const ENG[10] = {"ANALOG", "FM6", "PHASE", "LOFI", "VOICE", "TRIO", "WHEEL", "PHYS", "NOISE", "WAVE"};
-    for (i = 0; i < MU_SLOTS; i++) {
+    for (i = 0; i < MU_SHOWN; i++) {
         uint32_t a0, a1, r0, r1, b0, b1, s0, s1;
         load_multi(i);
         a0 = part_notes(0), a1 = part_notes(1), r0 = part_notes_reason(0), r1 = part_notes_reason(1);
@@ -1012,7 +1012,7 @@ static void t_loaded(void)
             tide_count(&b, tide_n, &tide_parts, &tide_valley);
             nl++;
         }
-    for (s = 1; s <= MU_SLOTS; s++) {                   /* and the 16 factory multis (MODE RECALL) */
+    for (s = 1; s <= MU_SLOTS; s++) {                   /* and the 16 factory multis (MODE RECALL; the reference hash: M17, M18 are in the other sweeps here) */
         load_multi(s - 1u);
         spin(40);                                       /* (the parts' engines settle: before that the morph is stale and not charged at all) */
         nm += (mph[0].nid || mph[0].fnid) && (mph[1].nid || mph[1].fnid) && !morph_stale(&trk[0], &mph[0]) && !morph_stale(&trk[1], &mph[1]);

@@ -687,8 +687,9 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         break;
     }
     case ED_PROJECT:                                       /* 0 = load, 1 = save, 2 = query; slot 0..15 (DUELL: the
-                                                            * multis M01..M16, project.c multi.c; Felucca's editor asks 0..3) */
-        if (na < 2u || a[0] > 2u || a[1] >= 16u)
+                                                            * multis M01..M16, project.c multi.c; Felucca's editor asks 0..3; TIDE b6: 16, 17 the
+                                                            * ROM-only M17, M18: load and query, a save is refused (project_save, no reply) */
+        if (na < 2u || a[0] > 2u || a[1] >= MU_SHOWN)
             return;
         if (a[0] == 1u) {
             if (ed_flash_stop() || project_save(a[1]))

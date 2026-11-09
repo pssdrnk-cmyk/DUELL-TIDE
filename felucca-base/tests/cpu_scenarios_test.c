@@ -344,7 +344,7 @@ static void cap_tests(void)
         ok &= c[1] >= VC_MIN || c[1] == vc_eng_cap(ENGINES[eng_idx(trk[1].eng_req)]);
     }
     {   /* the factory multis as loaded (0.2.23: all sixteen, with their MODE: MODE RECALL ON) */
-        for (i = 0; i < MU_SLOTS; i++) {
+        for (i = 0; i < MU_SHOWN; i++) {
             power();
             ui_prefs2 |= PREF_MODE_RECALL >> 16;
             project_load(i);
@@ -532,13 +532,17 @@ int main(void)
     if (strchr(sec, 'G')) {                       /* 0.2.23: the factory multis of today (MODE RECALL ON), 4 + 4 notes, fader 63; M16 (the STRESS TEST) unguarded */
         uint32_t m;
         g_factory = 1;
-        for (m = 0; m < MU_SLOTS; m++) {
+        for (m = 0; m < MU_SHOWN; m++) {
             double pk, av = multi_run(m, 4, 63, &pk);
             printf("G M%02u %-12s 4+4 notes fader  63: avg %5.1f %%  peak half %5.1f %%  (parts: %s / %s, mode %u)\n", m + 1, mu_names[m], av, pk,
                    ENGINES[trk[0].engine]->name, ENGINES[trk[1].engine]->name, (unsigned)dm_cur);
-            if (m < 16u) {
-                snprintf(b, sizeof b, "M%02u %s 4 + 4 notes, fader 63, average (a factory multi)", m + 1, mu_names[m]);
-                guard(b, av, 100.0);
+            snprintf(b, sizeof b, "M%02u %s 4 + 4 notes, fader 63, average (a factory multi)", m + 1, mu_names[m]);
+            guard(b, av, 100.0);
+            if (m >= MU_SLOTS) {                  /* TIDE b6: the ROM drone multis as played: a held 3-note chord a part */
+                av = multi_run(m, 3, 63, &pk);
+                printf("G M%02u %-12s 3+3 notes fader  63: avg %5.1f %%  peak half %5.1f %%\n", m + 1, mu_names[m], av, pk);
+                snprintf(b, sizeof b, "M%02u %s 3 + 3 notes (a held chord), fader 63, peak half (a drone multi)", m + 1, mu_names[m]);
+                guard(b, pk, 100.0);
             }
         }
         g_factory = 0;

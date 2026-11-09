@@ -29,12 +29,25 @@ export function buildMultis(app, wrap) {
   wrap.append(h("div", { class: "multiswrap" }, bar, msg, box));
   let used = u.multis || null, recs = null;
   const factory = new Map(L.MULTIS);
+  // TIDE 1.0.0-b6: the slots past the sixteen stored ones (M17 DUNE HORN, M18 VOID DEEP) are ROM only on the unit: listed as factory, Recall only
+  // (no Save to unit, Rename, Download or Import into them; the backup format is unchanged: nothing is stored for them)
+  const ROM0 = 16, nShown = Math.max(ROM0, ...L.MULTIS.map(([s]) => s + 1)), rom = (s) => s >= ROM0;
   const nameOf = (s) => u.multiNames?.[s] ?? (recs?.[s] ? S.multiName(recs[s]) : null) ?? (factory.has(s) ? factory.get(s) : null);
   async function refreshUsed() { try { used = await u.multiUsed(); draw(); } catch (e) { app.fail(e); } }
   async function readNames() { try { app.say("Reading the stored multis ..."); const r = await S.readMultis(u); recs = r.records; await u.readMultiObjects(); draw(); app.say("Names read.", "good"); } catch (e) { app.fail(e); } }
   function draw() {
     clear(box);
-    for (let s = 0; s < 16; s++) {
+    for (let s = 0; s < nShown; s++) {
+      if (rom(s)) {
+        const name = factory.get(s) ?? "", ro = "A factory multi built into the firmware (read-only): Recall it, edit it, and save the result into M01 to M16";
+        box.append(h("div", { class: "mrow2", role: "listitem", title: `${S.M_LABEL(s)} ${name} (factory, read-only)` }, h("b", { text: S.M_LABEL(s) }), h("span", { class: "n", text: `${name} (factory, read-only)` }),
+          h("span", { class: "acts" },
+            h("button", { class: "ghost small", text: "Recall", title: `Recall ${S.M_LABEL(s)} on the unit (replaces both parts, the effects and the arps)`, onclick: () => doLoad(s, name) }),
+            h("button", { class: "ghost small", text: "Save to unit", title: ro, disabled: true }),
+            h("button", { class: "ghost small", text: "Download file", title: ro, disabled: true }),
+            h("button", { class: "ghost small", text: "Rename...", title: ro, disabled: true }))));
+        continue;
+      }
       const stored = recs ? !!recs[s] : u.multiNames ? u.multiNames[s] != null : null, name = nameOf(s);
       const label = used == null ? "…" : name ?? (used[s] ? "(used)" : "(empty)");
       // (editor2, owner item 7: no separate user and factory kinds: no kind words, no bold-versus-plain)

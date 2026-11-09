@@ -7,6 +7,12 @@ New lines for the fork go here, not into CHANGELOG.md.
 
 Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrnk-cmyk/DUELL-TIDE>), adding TIDE, a morph that plays and evolves by itself. TIDE has its own version, `MAJOR.MINOR.PATCH`, kept in the file `TIDE_VERSION` and shown in MENU > SYSTEM > ABOUT beside the DUELL version (1.1). A build flashed for testing is a beta, `1.0.0-b1`, `1.0.0-b2`, ...; the first build the fork owner has validated on the unit is `1.0.0`; a fix is `1.0.1`, a feature `1.1.0`. The git tag is `tide-` and the version (`tide-1.0.0-b1`); the GitHub release has the same name. Each version has a section below, `## 1.0.0-b1`, newest first; a section heading names the tag and, once known, the commit and the date it was flashed. The commit stays in the release notes, not in the name. The installer page offers the stable and the beta build of the [GitHub releases](https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases); the [README](README.md#builds-stable-and-beta) says which they are.
 
+## 1.0.0-b6
+
+Not tagged yet.
+
+- **New (owner, 2026-11-09):** two drone scenes built in as M17 DUNE HORN (HORN SWELL with VOID SHIMMER) and M18 VOID DEEP (VOID SHIMMER with SOLAR WIND), factory only. TIDE plays them as STYLE DRONE: pick one, hold a chord around C3 and press PLAY with AUTO TIDE on. Each is a LAYER of two latched drones (HOLD ALL, arp OFF), a 60 BPM ping-pong echo and a big HALL. They load, play and preview like M01 to M16, and MIDI program change 16 and 17 loads them (in LAYER). They can't be saved over, renamed or erased: SAVE says SAVE TO M01-M16, so save an edited one into M01 to M16. While one of them is loaded, TIDE SETTINGS shows STYLE DRONE; loading any other multi brings your own STYLE back, and the saved STYLE never changes. The b4 file pack `packs/drones/` is gone (b4 never shipped it as a download). Backups are unchanged: nothing is stored for M17 and M18.
+
 ## 1.0.0-b5
 
 Tag `tide-1.0.0-b5` (jam11 after the b5 PR).

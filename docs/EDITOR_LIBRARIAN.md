@@ -77,6 +77,10 @@ Drop a patch file, a DX7 file, or a slot from the list **on a part's column** (P
 
 On the WAVETABLES tab, drop a WAV file (a single-cycle wave or a wavetable like the ones Serum and Vital export) or a wavetable file on one of the three slots (anywhere else on the tab: the first empty slot). **Export file** saves a table from the unit as a small file ("duell-wavetable", about 1.7 KB) you can share; drop it on a slot of another unit to put it there. A WAV is reduced to 19 frames and 64 harmonics and the phases are not kept (the page says so); a wavetable file holds exactly what a unit stores, so nothing is lost on the way.
 
+## Multis
+
+The MULTIS tab lists M01 to M18. M01 to M16 are the unit's own slots: Recall, Save to unit, Download file, Rename and Import file work on them. M17 DUNE HORN and M18 VOID DEEP are drone scenes built into the firmware (TIDE 1.0.0-b6), marked "factory, read-only": Recall works, Save to unit, Download, Rename and Import into them do not. To keep an edited one, Recall it, change it on the unit, and save it into M01 to M16. Backups are unchanged: nothing is stored for M17 and M18.
+
 ## Good to know
 
 - Files from a unit with a newer record form may be refused by an older unit; the unit's own checks decide, and the editor shows the reason.

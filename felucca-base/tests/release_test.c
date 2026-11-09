@@ -42,7 +42,7 @@ int main(void)
     flash_ok = 1;
     multi_boot();
     frame();
-    ck("the switch is off by default", DUELL_TEST_MODE == 0 && DF_TEST_MULTIS == 0 && DF_N == 16u);
+    ck("the switch is off by default", DUELL_TEST_MODE == 0 && DF_TEST_MULTIS == 0 && DF_N == MU_SHOWN);   /* (TIDE b6: 16 + the two ROM drone multis M17, M18) */
     for (k = 0; k < MI_COUNT; k++) {
         test_rows += str_eq(MI_NAME[k], "TEST");
         sys_rows += MI_TAB[k] == MTAB_SYSTEM;
@@ -67,6 +67,10 @@ int main(void)
     for (k = 0, ok = 1; k < MU_SLOTS; k++)
         ok &= project_used(k) && project_factory(k) && str_eq(mu_names[k], FN[k]);
     ck("M01..M16 are the factory multis (D31 order: BASIC CHORD, DUB CHORD, CELLAR TAPE .. HAZY TENSOR, M16 FINAL REEL), as in the test mode", ok);
+#if DUELL_TIDE
+    ck("M17 DUNE HORN, M18 VOID DEEP: the built-in drone multis, factory (ROM only)", MU_SHOWN == 18u && project_used(16) && project_factory(16) && str_eq(mu_names[16], "DUNE HORN") &&
+       project_used(17) && project_factory(17) && str_eq(mu_names[17], "VOID DEEP"));
+#endif
     project_load(2);
     ck("LOAD of M03 loads CELLAR TAPE (PHYS + PHASE)", proj_cur == 2u && trk[0].eng_req == ENGI_PHYS && str_eq(ENGINES[trk[1].eng_req]->name, "PHASE"));
     printf(bad ? "release: FAILED (%d)\n" : "release: all ok\n", bad);
