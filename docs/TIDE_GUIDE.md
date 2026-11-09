@@ -21,7 +21,7 @@ On these three pages a small dim pill beside part 1's capsule shows the busiest 
 | 1 | The fader, A to B. Moving it by hand stops any glide on it. |
 | 2 | ROLL: left makes a new A, right a new B. One click, a new random end. |
 | 3 | Nothing for now (a picture of the sound's wave is planned). A roll replaces its end; there is no UNDO. |
-| 4 | AMOUNT: how far a roll may go. *Start: leave it.* The musical roll has its own sensible scale. |
+| 4 | AMOUNT: how far a roll may go. *Start: leave it.* The musical roll has its own sensible scale. A sound or multi load keeps your AMOUNT. It is dimmed while AUTO TIDE runs JOURNEY, where it does nothing. |
 
 The fader's position (A, 1 to 126, B) sits beside knob 1's label; ROLL and AMOUNT share one slim row under the picture, and the footer shows both parts' patches. Most of the page shows the sound itself as waves, like an oscilloscope: a held note stands still, a chord beats, the newest wave in front, the older ones fainter behind it; at rest the lines lie flat. ALGORITHM picks whose: PART 1, PART 2, or BOTH (one above the other). **Hold SAVE** saves the patch; with ALGORITHM on BOTH each part goes over its own slot.
 

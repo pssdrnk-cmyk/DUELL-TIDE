@@ -420,8 +420,11 @@ static void t_knobs(void)
     a1 = mph[1].amount;
     turn(EN_K4, 5);
     snprintf(amt_txt, sizeof amt_txt, "%u", (unsigned)(a0 + 5u));
-    expect("KNOB 4: AMOUNT of the selected part (+5), the other part's stays", mph[0].amount == a0 + 5u && mph[1].amount == a1 &&
-           a0 == snd_amount(trk[0].eng_req, trk[0].preset));
+    expect("KNOB 4: AMOUNT of the selected part (+5), the other part's stays", mph[0].amount == a0 + 5u && mph[1].amount == a1
+#if !DUELL_TIDE
+           && a0 == snd_amount(trk[0].eng_req, trk[0].preset)
+#endif
+           );
     frame();
 #if DUELL_TIDE
     {   /* b6: MORPH on the knob-1 line; KNOB 2 and 4 on the slim row: ROLL A<>B, AMOUNT with its value and bar; nothing for KNOB 3 */
@@ -817,6 +820,7 @@ static void t_view(void)
 /* -------------------------------------------------------------------- LOAD --- */
 static void t_load(void)
 {
+    uint32_t am0;
     fresh();
     morph_page();
     turn(EN_K2, -MORPH_DET); settle();
@@ -824,11 +828,21 @@ static void t_load(void)
     turn(EN_K1, 50);
     expect("rolled: both ends differ from the Original, the fader at 50", !end_is_base(0, 0) && !end_is_base(0, 1) && mph[0].nid &&
            mph[0].fader == 50u);
+    am0 = mph[0].amount;
     turn(EN_PRESET, 1);
     frames(32);
     expect("a sound load (PRESETS): the fader back at A, End A the sound, End B a fresh roll (seeded, the AMOUNT), no history",
            mph[0].fader == 0u && end_is_base(0, 0) && !end_is_base(0, 1) && rolls(0, 0) == 1u && rolls(0, 1) == 2u &&
            !seed_now(0, 0) && seed_now(0, 1) && mph[0].nid && mph[0].preset == trk[0].preset);
+#if DUELL_TIDE
+    expect("TIDE b6: a factory sound load keeps the player's AMOUNT (KNOB 4 shows the AMOUNT it had)", !trk[0].user && mph[0].amount == am0);
+    turn(EN_K4, 7);
+    expect("  .. turning KNOB 4 changes the AMOUNT", mph[0].amount == am0 + 7u);
+    am0 = mph[0].amount;
+    turn(EN_PRESET, 1);
+    frames(32);
+    expect("  .. and the next sound load keeps that one", mph[0].amount == am0);
+#else
     expect("AMOUNT follows the patch: the loaded factory sound's own AMOUNT shows on KNOB 4 (the rolled one's too)",
            !trk[0].user && mph[0].amount == snd_amount(trk[0].eng_req, trk[0].preset) && mph[0].ramt[1][mph[0].top[1]] == mph[0].amount);
     turn(EN_K4, 7);
@@ -837,7 +851,34 @@ static void t_load(void)
     frames(32);
     expect("  .. the next sound load sets it to that sound's AMOUNT again",
            mph[0].amount == snd_amount(trk[0].eng_req, trk[0].preset));
+#endif
 }
+
+#if DUELL_TIDE
+/* TIDE b6 (MORPH c3): a factory multi keeps the player's AMOUNT; the AMOUNT card dims while JOURNEY runs */
+static void t_amount_keep(void)
+{
+    fresh();
+    morph_page();
+    morph.target = MT_BOTH;
+    turn(EN_K4, 31);
+    settle();
+    {
+        uint32_t a0 = mph[0].amount, a1 = mph[1].amount;
+        project_load(0);                               /* (a factory multi: nothing stored in the test's flash) */
+        frames(32);
+        expect("a factory multi load keeps both parts' AMOUNT", mph[0].amount == a0 && mph[1].amount == a1 && a0 != 15u);
+    }
+    gl.on = 0;
+    expect("AMOUNT card not dimmed while no glide runs", !tide_amount_idle());
+    gl.on = 3u;
+    gl.mode = GM_JOURNEY;
+    expect("AMOUNT card dimmed while JOURNEY runs", tide_amount_idle());
+    gl.mode = GM_LOOP;
+    expect("  .. not in LOOP", !tide_amount_idle());
+    gl.on = 0;
+}
+#endif
 
 /* ------------------------------------------------------------ item 154: BREADBIN --- */
 /* The owner's steps: #15 BREADBIN on part 1, the LFO 1 DEST page, ROLL (AMOUNT 8), back to the page; again at AMOUNT 50 / 60. What the cards show (ui_draw.c card_vv = morph_view) is what the FADER sounds:
@@ -1028,7 +1069,11 @@ static void t_settings(void)
     power_cycle();
     expect("after a power cycle: each part's AMOUNT = its sound's (the settings keep 30 / 5 as the player's own), the selection BOTH kept (bit 7), ARP and PITCH ON; the ends' rolls and faders not kept; "
            "part 1's factory sound: its own End B (its seed and AMOUNT, SMART, no ARP / PITCH: sounds.c)",
+#if DUELL_TIDE
+           mph[0].amount == 30u && mph[1].amount == 5u &&      /* (TIDE b6: a load keeps AMOUNT, so the settings' 30 / 5 stand) */
+#else
            mph[0].amount == snd_amount(trk[0].eng_req, trk[0].preset) && mph[1].amount == snd_amount(trk[1].eng_req, trk[1].preset) &&
+#endif
            favorites.factory[15][12] == (0x80u | 31u) && favorites.factory[15][13] == 6u && SEL_BOTH && rolls(0, 0) == 1u && !mph[0].fader &&
            morph.cfg == (MC_ARP | MC_PIT) && !trk[0].user && trk[0].preset < ds_count(trk[0].eng_req) &&
            mph[0].seed[1][mph[0].top[1]] == ds_seed(trk[0].eng_req, trk[0].preset) &&
@@ -1060,6 +1105,9 @@ int main(void)
     t_matrix();
     t_view();
     t_load();
+#if DUELL_TIDE
+    t_amount_keep();
+#endif
     t_item154();
     t_save();
     t_settings();

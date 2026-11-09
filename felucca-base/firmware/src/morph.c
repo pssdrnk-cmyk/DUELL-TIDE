@@ -1886,7 +1886,9 @@ static void morph_rebase_part(uint32_t pi)               /* ends = the Original,
         {
         morph_roll_cfg(pi, 1u, ds_seed(t->eng_req, t->preset), TIDE_FACTORY_AMOUNT(ds_amount(t->eng_req, t->preset)),
                        (duell_stereo ? MC_STEREO : 0u) | TIDE_FACTORY_CFG());   /* TIDE hook */
-        mp->amount = (uint8_t)TIDE_FACTORY_AMOUNT(ds_amount(t->eng_req, t->preset));   /* ... and the part's AMOUNT knob follows the sound's category amount */
+#if !DUELL_TIDE
+        mp->amount = (uint8_t)TIDE_FACTORY_AMOUNT(ds_amount(t->eng_req, t->preset));   /* ... and the part's AMOUNT knob follows the sound's category amount (TIDE b6: the player's AMOUNT stays) */
+#endif
         }
     } else {                                             /* none saved: a fresh roll at the current AMOUNT */
         morph_roll_cfg(pi, 1u, morph_new_seed(), mp->amount, morph_cfg_of(pi));

@@ -675,11 +675,17 @@ static void project_load(uint32_t slot)
     uint8_t amt[NSHOWN], set[6];
     const uint8_t *r;
     int rc;
+#if DUELL_TIDE
+    uint32_t fact = 0;
+#endif
     mu_obj_read(k / 2u);
     r = mu_rec(k & 1u, &len);
     if (!len && df_of(k) < DF_N) {                     /* nothing stored: the factory multi */
         r = DM_REC + DM_AT[df_of(k)];
         len = DM_LEN[df_of(k)];
+#if DUELL_TIDE
+        fact = 1;
+#endif
     }
     if (!len) {
         ui_message("EMPTY SLOT");
@@ -712,6 +718,11 @@ static void project_load(uint32_t slot)
     song.both = (uint8_t)set[1];                       /* set[1] TARGET: the selection's BOTH (1.0.0-b5: a stored BOTH loads as the selection BOTH; before it was reserved and never read) */
 #endif                                                 /* (plain DUELL: reserved, ALGORITHM's BOTH is the player's, a load keeps it) */
     morph.cfg = set[2];
+#if DUELL_TIDE
+    if (fact)                                          /* TIDE b6: a factory multi keeps the player's AMOUNT (a saved one restores its own) */
+        for (pi = 0; pi < NSHOWN; pi++)
+            amt[pi] = (uint8_t)(mph[pi].n[0] ? mph[pi].aset : MORPH_AMOUNT_DEF);
+#endif
     for (pi = 0; pi < NSHOWN; pi++)                    /* MU_VER 8: End B as its values, the multi's AMOUNT; no block: a fresh B at that AMOUNT (a patch load's rule) */
         if (proj_scratch.bvn[pi]) {
             morph_load_part_v(pi, proj_scratch.bv[pi]);

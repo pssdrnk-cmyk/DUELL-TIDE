@@ -191,6 +191,7 @@ static void glide_launch(uint32_t to, uint32_t mask, uint32_t pi)
 }
 static void glide_stop(void) { gl.on = 0, gl.armed = 0, gl.hold = 0; }
 static int glide_running(void) { return gl.on != 0; }
+static int tide_amount_idle(void) { return gl.on != 0 && gl.mode == GM_JOURNEY; }   /* (the MORPH page's AMOUNT card dims) */
 
 /* progress of the glide now, Q16 (0 at the start .. 1 at the end) */
 static uint32_t glide_progress(void)

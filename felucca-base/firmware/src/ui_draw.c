@@ -2600,7 +2600,11 @@ static void draw_columns(void)
         draw_column(1, "ROLL", g < 0 ? "<A" : g > 0 ? "B>" : "A<>B", "", g ? T_ACCENT : VAL(1u), -1, ICON_NONE);
         draw_column(2, "", "", "", T_THEME, -1, ICON_NONE);   /* (an empty column: KNOB 3 does nothing here since UNDO left, 1.0.0-b5) */
         fmt_int(val, (int32_t)morph_amount_of(pi));
-        draw_column(3, "AMOUNT", val, "%", VAL(3u), (int32_t)morph_amount_of(pi) * 10, ICON_PROB);
+        draw_column(3, "AMOUNT", val, "%",
+#if DUELL_TIDE
+                    tide_amount_idle() ? T_DIM :           /* TIDE b6: JOURNEY running, where AMOUNT does nothing */
+#endif
+                    VAL(3u), (int32_t)morph_amount_of(pi) * 10, ICON_PROB);
         return;
     }
 #if DUELL_TEST_MODE
