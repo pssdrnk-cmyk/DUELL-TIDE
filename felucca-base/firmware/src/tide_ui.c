@@ -453,6 +453,37 @@ static void jh_push(uint32_t k, uint32_t c)
 }
 /* a sound's attack class from its ATK and SUS: 2 PAD (ATK 60 or more), 1 STAB (SUS 20 or less), 0 KEYS (C2 of TIDE_ROLES_AND_MULTIS_SPEC.md) */
 static uint32_t tide_cls(int32_t atk, int32_t sus) { return atk >= 60 ? 2u : sus <= 20 ? 1u : 0u; }
+/* J1 (audit 2026-11-09, owner 9 November): JOURNEY travels to sounds near the part's Original in level and colour as they play in their
+ * class's pattern (jrny_ctx.h, measured by tests/jrny_ctx.c: a byte a sound, its level in dB << 3 | its brightness in octaves). Of the
+ * n candidates (family, class) the nearest to factory sound `at` stay, first: JCTX_MIN at least, JCTX_KEEP at most, past the minimum
+ * only those within JCTX_NEAR; the memory and the random and contrast picks then choose among them. A dB a unit, an octave of
+ * brightness 4. Measured from the Original, not from the sound left, so the steps cannot add up over a set. The sounds themselves are
+ * not changed. Main loop. */
+#include "jrny_ctx.h"
+_Static_assert(sizeof JRNY_CTX == DS_N, "jrny_ctx.h: one byte a factory sound (build/host/jrny_ctx gen)");
+#define JCTX_KEEP 4u                                     /* (at most these: the memory, 4 deep, then rotates through the Original's nearest) */
+#define JCTX_MIN 2u                                      /* (at least these, so the sound keeps moving between the Original and two more) */
+#define JCTX_NEAR 3u                                     /* (past the minimum, only those within 3 dB; an octave of brightness is out) */
+static uint32_t jctx_dist(uint32_t a, uint32_t b)
+{
+    int32_t dl = (int32_t)(a >> 3) - (int32_t)(b >> 3), db = (int32_t)(a & 7u) - (int32_t)(b & 7u);
+    return (uint32_t)(dl < 0 ? -dl : dl) + 4u * (uint32_t)(db < 0 ? -db : db);
+}
+static uint32_t jctx_near(uint32_t e, uint32_t at, uint32_t *pick, uint32_t n)
+{
+    const uint8_t *row = JRNY_CTX + DS_ENG_AT[e];
+    uint32_t i, j, m, keep = n < JCTX_KEEP ? n : JCTX_KEEP;
+    for (i = 0; i < keep; i++) {                         /* (a partial selection sort: the nearest first, the lower index on a tie) */
+        uint32_t best = i, bd = 0xFFFFFFFFu, d;
+        for (j = i; j < n; j++)
+            if ((d = jctx_dist(row[at], row[pick[j]])) < bd)
+                bd = d, best = j;
+        m = pick[i], pick[i] = pick[best], pick[best] = m;
+        if (i >= JCTX_MIN && bd > JCTX_NEAR)
+            return i;
+    }
+    return keep;
+}
 static void tide_journey(uint32_t mask, uint32_t x, uint32_t snd, uint32_t seq)
 {
     uint32_t k, j, n, c, cls, pass, pick[64], r = morph_new_seed();
@@ -476,7 +507,9 @@ static void tide_journey(uint32_t mask, uint32_t x, uint32_t snd, uint32_t seq)
                         continue;
                     pick[n++] = j;
                 }
-            n = jh_filter(k, e, pick, n);
+            if (!UP_REC_USER(t) && t->preset < ds_count(e))   /* (J1: the nearest to the Original's factory sound, so a set cannot drift away step by step, as WANDER; a USER record has no row: as before) */
+                n = jctx_near(e, t->preset, pick, n);
+            n = jh_filter(k, e, pick, n);                /* (then the memory: it moves on through those, never out of them) */
             c = n ? pick[(r >> 8) % n] : 0u;
             if (n > 1u)
                 c = sound_complement_pick(k, e, c, pick[(r >> 16) % n], r >> 4);

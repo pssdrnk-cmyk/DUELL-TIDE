@@ -7,6 +7,12 @@ New lines for the fork go here, not into CHANGELOG.md.
 
 Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrnk-cmyk/DUELL-TIDE>), adding TIDE, a morph that plays and evolves by itself. TIDE has its own version, `MAJOR.MINOR.PATCH`, kept in the file `TIDE_VERSION` and shown in MENU > SYSTEM > ABOUT beside the DUELL version (1.1). A build flashed for testing is a beta, `1.0.0-b1`, `1.0.0-b2`, ...; the first build the fork owner has validated on the unit is `1.0.0`; a fix is `1.0.1`, a feature `1.1.0`. The git tag is `tide-` and the version (`tide-1.0.0-b1`); the GitHub release has the same name. Each version has a section below, `## 1.0.0-b1`, newest first; a section heading names the tag and, once known, the commit and the date it was flashed. The commit stays in the release notes, not in the name. The installer page offers the stable and the beta build of the [GitHub releases](https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases); the [README](README.md#builds-stable-and-beta) says which they are.
 
+## 1.0.0-b6
+
+Not tagged yet (prepared on local `fix/b6-*` branches while b5 waits for the FM-1).
+
+- **Changed (owner, 2026-11-09; audit 2026-11-09 finding 1):** JOURNEY now travels to sounds that play about as loud and as bright as the part's own sound. Each factory sound's level and brightness in a typical pattern (an off-beat stab, a held pad chord or a bass line, by its kind) are stored in a table of one byte a sound; of the sounds of the right family and attack, JOURNEY keeps the ones nearest the part's original sound (at least 2, at most 4, past 2 only those within about 3 dB) and its memory rotates through them. The sounds themselves are unchanged. Measured over 128 bars under STYLE DUB (host render): M02 DUB CHORD, the first-start multi, moved 14.6 dB in level before and 3.4 dB now; under DUB no multi moves more than 6.4 dB now (it was up to 14.6; M10 PAD SPLIT, near-silent in the render, aside). Each part still visits 4 sounds in 128 bars (5 to 8 before), so a set changes sound less widely. A USER sound as the original picks as before. About 400 B of flash, main loop only. New host group `jrnyctx` (the table must equal a fresh render).
+
 ## 1.0.0-b5
 
 Tag `tide-1.0.0-b5` (jam11 after the b5 PR).
