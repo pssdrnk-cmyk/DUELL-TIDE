@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* M3: JOURNEY's destination memory (tide_ui.c jh_*): the last four targets of a part are avoided where the group has others,
- * relaxed oldest first where it has not; RAM only; cleared when a session starts and on HOME. */
+ * relaxed oldest first where it has not; RAM only; cleared when a session starts and on HOME.
+ * J1 (audit 2026-11-09, owner 9 November): the memory now acts inside the Original's nearest sounds in level and colour (tide_ui.c
+ * jctx_near, jrny_ctx.h): every pick is one of the Original's JCTX_KEEP + 2 nearest of its class (the two ends being left are out of each
+ * pick), the sound still moves on (never a sound of the two picks before; three or more sounds over a walk), a group of two as before. */
 #define UI_TEST_NO_MAIN 1
 #include "ui_test.c"
 
@@ -46,11 +49,11 @@ static uint32_t walk(uint32_t seed, int hist, int *seq, uint32_t *same_as_curren
     }
     return STEPS;
 }
-static uint32_t revisits(const int *seq)   /* a pick equal to one of the 4 before it */
+static uint32_t revisits(const int *seq, uint32_t w)   /* a pick equal to one of the w before it */
 {
     uint32_t i, j, r = 0;
     for (i = 1; i < STEPS; i++)
-        for (j = i > 4u ? i - 4u : 0u; j < i; j++)
+        for (j = i > w ? i - w : 0u; j < i; j++)
             if (seq[j] == seq[i]) {
                 r++;
                 break;
@@ -63,7 +66,7 @@ int main(void)
     uint32_t e, cat, groups = 0, big = 0, small = 0, stalls = 0, cur = 0, rv_h = 0, rv_n = 0, big_rv = 0, picks = 0;
     uint32_t seen[NENGINES][32] = {{0}}, size_hist[8] = {0};
     int a[STEPS], b[STEPS], c[STEPS];
-    uint32_t one_same = 0, one_n = 0, det = 1;
+    uint32_t one_same = 0, one_n = 0, det = 1, stuck = 0, jn_groups = 0, jn_picks = 0, jn_far = 0;
     for (e = 0; e < NENGINES; e++) {
         if (!eng_ok(e) || ds_count(e) < 2u)
             continue;
@@ -92,7 +95,29 @@ int main(void)
                 dist += q == i;
             }
             size_hist[n > 7u ? 7u : n]++;
-            ra = revisits(a); rb = revisits(b);
+            ra = revisits(a, 2u); rb = revisits(b, 4u);
+            {                                     /* J1: the picks are among the Original's nearest of its class (tide_ui.c jctx_near) */
+                uint32_t o = trk[0].preset, q, rank, nd = 0, dd[64];
+                const uint8_t *row = JRNY_CTX + DS_ENG_AT[e];
+                uint32_t cls = tide_cls(ds_value(ds_get(e, o), P_ATK, TP[P_ATK].def), ds_value(ds_get(e, o), P_SUS, TP[P_SUS].def));
+                for (j = 0; j < ds_count(e) && nd < 64u; j++)
+                    if (j != o && fam_of_sound(e, j) == fam_of_sound(e, o) &&
+                        tide_cls(ds_value(ds_get(e, j), P_ATK, TP[P_ATK].def), ds_value(ds_get(e, j), P_SUS, TP[P_SUS].def)) == cls) {
+                        dd[nd++] = jctx_dist(row[o], row[j]);
+                    }
+                if (nd > JCTX_KEEP + 2u) {            /* (a class large enough for the bound to mean something) */
+                    jn_groups++;
+                    for (i = 0; i < STEPS; i++) {
+                        uint32_t d = jctx_dist(row[o], row[(uint32_t)a[i]]);
+                        if (a[i] == (int)o)
+                            continue;
+                        for (q = rank = 0; q < nd; q++)
+                            rank += dd[q] < d;
+                        jn_far += rank >= JCTX_KEEP + 2u;
+                        jn_picks++;
+                    }
+                }
+            }
             if (getenv("JM_DUMP")) {
                 printf("e%u c%u n%u rv %u/%u:", e, cat, n, ra, rb);
                 for (i = 0; i < 16u; i++)
@@ -101,9 +126,10 @@ int main(void)
             }
             rv_h += ra; rv_n += rb;
             picks += STEPS - 1u;
-            if (n >= 5u && dist >= 5u) {
+            if (n >= 5u) {                        /* (J1: the walk stays among the Original's nearest, so it reaches fewer than five) */
                 big++;
                 big_rv += ra;
+                stuck += dist < 3u;
             } else
                 small++;
             if (n == 2u) {                        /* one candidate: the same picks with and without the memory */
@@ -120,8 +146,11 @@ int main(void)
            picks, rv_n, rv_h, big_rv);
     CHECK("jrny memory: every group walks STEPS arrivals without a stall or a roll", !stalls);
     CHECK("jrny memory: seeded runs repeat", det);
-    CHECK("jrny memory: groups of five or more never revisit within four picks", big && !big_rv);
-    CHECK("jrny memory: fewer revisits than before overall", rv_h < rv_n);
+    printf("J1: %u classes larger than %u: %u picks, %u outside the Original's nearest %u; groups of 5+ reaching fewer than 3 sounds: %u\n",
+           jn_groups, JCTX_KEEP + 2u, jn_picks, jn_far, JCTX_KEEP + 2u, stuck);
+    CHECK("jrny memory: groups of five or more never pick a sound of the two picks before (the ends being left)", big && !big_rv);
+    CHECK("jrny memory: groups of five or more reach three or more sounds (the sound keeps moving, J1)", !stuck);
+    CHECK("jrny J1: every pick is among the Original's nearest of its class in level and colour", jn_groups && jn_picks && !jn_far);
     CHECK("jrny memory: a group of two (one candidate) picks exactly as before", one_n && one_same == one_n);
     CHECK("jrny memory: never the sound just reached", !cur);
 

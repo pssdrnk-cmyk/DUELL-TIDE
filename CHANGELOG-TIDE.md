@@ -38,6 +38,9 @@ Not tagged yet. 1.0.0-b6 also carries every change listed under [1.0.0-b5](#100-
   | M14 EERIE SIGNAL | 3 / 3 | 4 / 4 |
   | M15 HAZY TENSOR | 3 / 4 | 4 / 5 |
   | M16 FINAL REEL | 5 / 5 | 5 / 5 |
+Not tagged yet (prepared on local `fix/b6-*` branches while b5 waits for the FM-1).
+
+- **Changed (owner, 2026-11-09; audit 2026-11-09 finding 1):** JOURNEY now travels to sounds that play about as loud and as bright as the part's own sound. Each factory sound's level and brightness in a typical pattern (an off-beat stab, a held pad chord or a bass line, by its kind) are stored in a table of one byte a sound; of the sounds of the right family and attack, JOURNEY keeps the ones nearest the part's original sound (at least 2, at most 4, past 2 only those within about 3 dB) and its memory rotates through them. The sounds themselves are unchanged. Measured over 128 bars under STYLE DUB (host render): M02 DUB CHORD, the first-start multi, moved 14.6 dB in level before and 3.4 dB now; under DUB no multi moves more than 6.4 dB now (it was up to 14.6; M10 PAD SPLIT, near-silent in the render, aside). Each part still visits 4 sounds in 128 bars (5 to 8 before), so a set changes sound less widely. A USER sound as the original picks as before. About 400 B of flash, main loop only. New host group `jrnyctx` (the table must equal a fresh render).
 
 ## 1.0.0-b5
 
