@@ -6,7 +6,7 @@
  *   1 gate    wv_want = "wanted until block N", 256 blocks (190 ms) ahead; MENU > ANIM OFF shuts it: no tap, the last picture stays (a flat line before there was one)
  *   2 read    the newest 400 entries or fewer, only those written since the gate opened and since the part's last hole (wv_gap); read IN PLACE (wl_dec on each read), the counter looked at again
  *             afterwards: if the writer went on by more than the ring leaves (512 less 400, less a block) the picture is made again, once, else the last one stays
- *   3 trigger the ring smoothed (a 5-point kernel); rising crossings of its middle that come after a clear dip (the Pico scope's hysteresis), found to 1/16 of an entry; of those in the last 3.5
+ *   3 trigger the ring smoothed (a 5-point kernel); crossings of its middle, rising (falling when the falling edges are clearly the steeper: a saw's drop), that come after a clear dip (the Pico scope's hysteresis), found to 1/16 of an entry; of those in the last 3.5
  *             periods the steepest (70 % of the steepest), and of those the one whose first 16 points match the last picture's best
  *   4 window  whole periods of the median crossing distance when it is steady: 2, or more for a high note (80 entries at least), fewer when they do not fit after a period of room
  *             for the crossing (1 at least); else the last one
@@ -21,8 +21,8 @@
  * a ridge is at most 31 px; the front's is about 20 px in a 68-row lane). b6 layout (owner 2026-11-09, "the bottom half of the screen is badly used"): the picture takes the page
  * from the knob-1 line down to the compact ROLL / AMOUNT row (ui_draw.c morph_row) and the whole width, the part tags over the lanes' left edge; HOLD SAVE = SAVE PATCH is a hint in
  * that row while SAVE is held (ui_draw.c morph_row). */
-#define WL_NP 72                                     /* points of a ridge, spread over x WL_X0 .. WL_X1 (the whole width: the part's tag stands over the lane's left edge) */
-#define WL_X0 5
+#define WL_NP 72                                     /* points of a ridge, spread over x WL_X0 .. WL_X1 (right of the part's tag column, x 0 .. 21: no line starts under or beside a tag) */
+#define WL_X0 22
 #define WL_X1 236
 #define WL_HN 6                                      /* ridges kept (6: each one a clean line apart at this size; 16 crowded into noodles, owner 2026-11-09) */
 #define WL_AMAX 31                                   /* the largest half height of a ridge, px (31 x 4 quarters fit a byte) */
@@ -105,7 +105,7 @@ static int wl_pic(const wl_t *s, int32_t n, int32_t a, int8_t *nd, int16_t *nf, 
 {
     int32_t cand[WL_NC], slope[WL_NC], mx = -0x7FFFFFFF, mn = 0x7FFFFFFF, rmx = -32768, rmn = 32767, mid, thr, i, j, pk = 0, rm, last, maxs = 0, g;
     uint32_t nc = 0, armed = 0, per = 0, w, span, cq, np = 0, pool[WL_NC], best = 0, sel = 0, p;
-    int32_t v[WL_NP], prev, cur;
+    int32_t v[WL_NP], prev, cur, sg;
     for (i = 0; i < n; i++) {                        /* the range of the raw ring, and of the trigger's line without the ends of the copy (the smoothing there leans on one side) */
         int32_t r = WLR(i);
         rmx = r > rmx ? r : rmx;
@@ -118,9 +118,19 @@ static int wl_pic(const wl_t *s, int32_t n, int32_t a, int8_t *nd, int16_t *nf, 
     }
     mid = (mx + mn) / 2;
     thr = (mx - mn) / 8;
-    prev = wl_g(0, n);
-    for (i = 1; i < n; i++) {                        /* the rising crossings of the trigger's line, armed only after a clear dip (a full table drops its oldest) */
-        cur = wl_g(i, n);
+    {   /* the trigger's direction: the rising crossings, unless the falling edges are clearly the steeper (a falling saw's drop: on its slow ramp the crossing would wander) */
+        int32_t up = 0, dn = 0;
+        for (i = 2; i + 2 < n; i++) {
+            const int32_t d = wl_g(i + 2, n) - wl_g(i - 2, n);
+            up = d > up ? d : up;
+            dn = -d > dn ? -d : dn;
+        }
+        sg = dn > 2 * up ? -1 : 1;
+    }
+    mid *= sg;                                       /* (the line as sg * wl_g: the falling case runs as the rising one) */
+    prev = sg * wl_g(0, n);
+    for (i = 1; i < n; i++) {                        /* the crossings of the trigger's line in that direction, armed only after a clear dip (a full table drops its oldest) */
+        cur = sg * wl_g(i, n);
         if (cur < mid - thr)
             armed = 1;
         if (armed && prev < mid && cur >= mid) {
@@ -132,7 +142,7 @@ static int wl_pic(const wl_t *s, int32_t n, int32_t a, int8_t *nd, int16_t *nf, 
                 nc--;
             }
             cand[nc] = (i - 1) * 16 + ((mid - prev) * 16) / (cur - prev);   /* (Q4: the crossing between entries i - 1 and i) */
-            slope[nc] = wl_g(i + 2 < n ? i + 2 : n - 1, n) - wl_g(i >= 2 ? i - 2 : 0, n);
+            slope[nc] = sg * (wl_g(i + 2 < n ? i + 2 : n - 1, n) - wl_g(i >= 2 ? i - 2 : 0, n));
             nc++;
             armed = 0;
         }
@@ -204,6 +214,9 @@ static int wl_pic(const wl_t *s, int32_t n, int32_t a, int8_t *nd, int16_t *nf, 
     }
     cq = sel ? sel - 1u : (uint32_t)(n - (int32_t)w - 3) * 16u;   /* no crossing at all (noise, a drone): the newest window, free */
     *nw = w;
+#ifdef WL_TEST_PIC
+    WL_TEST_PIC(cq, w, per);                         /* (host probe only: the window chosen) */
+#endif
     for (p = 0; p < 16u; p++)
         nf[p] = (int16_t)(wl_pt(cq, w, p) >> 4);
     rm = (rmx + rmn) * 8;                            /* AC coupled: the middle of the line's range over everything read (times 16) */
