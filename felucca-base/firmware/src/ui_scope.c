@@ -406,11 +406,16 @@ static uint16_t ui_part_col(uint32_t k, int hot)
 }
 static void ui_part_tag(uint32_t k, int32_t y, int hot)
 {
+    /* (b6, owner: "numbers are also thrash quality, they get out of the background color and not centered": the digit centred by its own ink in a pill of that ink and 2 px each
+     * side, 2 rows above and below the capitals (15 rows), the pill 2 px clear of the hot bar (x 1 .. 3); the knockout the pill and 1 px round it; a dimmed tag on the same grid) */
     const uint16_t kc = ui_part_col(k, hot);
-    cv_rect(UT_A_K1_DOT_X - 5, y - 7, 17, 15, T_BG);    /* (a knockout, the tag's box and a 1-px margin, square: no line pixel inside it; the hot bar x 1 .. 3 stays) */
+    const char *d = k ? "2" : "1";
+    const aag_t *g = &AF_S.g[glyph(&AF_S, (uint8_t)d[0])];
+    const int32_t px0 = 6, pw = (int32_t)glyph_bw(g) + 4, ph = AF_S_CAP_H + 4;
+    cv_rect(px0 - 1, y - ph / 2 - 1, pw + 2, ph + 2, T_BG);
     if (hot)
-        cv_rrect(UT_A_K1_DOT_X - 4, y - 5, 14, 11, 2, kc, T_BG);
-    cv_text_on(UT_A_K1_DOT_X, UT_TY(S, y + AF_S_CAP_H / 2), &AF_S, k ? "2" : "1", hot ? T_INK : kc, hot ? kc : T_BG);
+        cv_rrect(px0, y - ph / 2, pw, ph, 2, kc, T_BG);
+    cv_text_on(px0 + 2 - glyph_bx(g), UT_TY(S, y + AF_S_CAP_H / 2), &AF_S, d, hot ? T_INK : kc, hot ? kc : T_BG);
 }
 /* a box h rows high: the ridges' half height (*a), the rows from the front's middle to the oldest one's (*st: the stack spans the lane, the front's swing room at the foot, the oldest
  * ridge's, as tall, at the top) and how many fit WL_STEP apart (the return) */
@@ -456,6 +461,11 @@ static int32_t wl_atx(const wl_t *s, uint32_t r, int32_t x16, int32_t xl16, int3
  * between ridges close toward the back (gap i from the front: 2 (N - 1) - i, the back one about half the front one); each ridge hides what lies behind it (WAVE LAB's): a column's
  * ridges are drawn from the front back and an older one only above the top of the newer ones there, so nothing behind a ridge shows under it. At rest (nothing yet, or silence) the
  * flat lines are spread evenly over the whole lane, no swing room kept.
+ * A landscape (b6, owner: the empty band under a quiet part): each ridge stands on its baseline, its lowest point on it and its shape rising above (shifted by its own lowest
+ * point, which the 1 : 1 blend keeps from jumping). The front's baseline is the lane's foot, the others recede upward in whole rows, the gaps never wider further back (owner:
+ * "a bigger gap after the 3rd line": each line's own rounding to a row made 3 2 3 2 ..) and never under WL_STEP rows while playing (1-row gaps ran the back lines together), so
+ * a flat or quiet part lies at the foot. (13 lines in a 68-row lane leave 25 rows of spread: 3 then 2 2 .. 2; fewer lines or lower waves would close the gaps more gradually) At full swing the oldest ridge's top is the
+ * lane's top row: the front's baseline, the stack's spread (wl_fit's room) and a ridge's full height (2 a) make the lane
  * No older ridge is laid flat for being unlike the front or crossing it; a shaped ridge is never drawn under a newer shaped one, it rides on it (just above its stroke: 22/16 px over
  * the front, 1 px over an older one) where it would cross; elsewhere its shape is its own. A flat one is drawn flat.
  * Column by column: every ridge's height there in one pass from the front back (each one's bound is the newer ones'), and drawn in that order under the horizon they leave */
@@ -467,8 +477,8 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
                                                                                       * a turn of knob 1 redraws the waves with a picture: ui_graph.c graph_signature) */
     const uint16_t bg = swap16(T_BG);
     const int32_t cx16 = (WL_X0 + WL_X1) * 8, hw16 = (WL_X1 - WL_X0) * 8;   /* (the front's middle and half width, 1/16 px) */
-    int32_t a, st, nf = wl_fit(y1 - y0, &a, &st), nr = s->hn < (uint32_t)nf ? (int32_t)s->hn : nf, yf = y1 - 2 - a, r, n, c, gs = 0, g = 0;
-    int32_t yb[WL_HN], xl[WL_HN], xr[WL_HN], mul[WL_HN], py[WL_HN];
+    int32_t a, st, nf = wl_fit(y1 - y0, &a, &st), nr = s->hn < (uint32_t)nf ? (int32_t)s->hn : nf, r, n, c, gs = 0, g = 0, rows, left, m0, base = y1 - 2;
+    int32_t yb[WL_HN], xl[WL_HN], xr[WL_HN], mul[WL_HN], py[WL_HN], mx[WL_HN];
     uint16_t col[WL_HN], lc[WL_HN], ft[17];
     uint32_t shp = 0, seen = 0;                      /* (bit r: ridge r drawn with its shape; ridge r has had a column) */
     if (y1 - y0 < 8)
@@ -477,15 +487,26 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
         cv_rect(1, y0 + 1, 3, y1 - y0 - 2, T_PFILL(k));
     if (nr < 1 || s->a != (uint8_t)a || (s->flat & ((1u << nr) - 1u)) == (1u << nr) - 1u)
         nr = 0;                                      /* nothing yet, made for another box, or silence: every lane at rest, flat */
+    rows = nr ? st : y1 - 3 - y0;                    /* (the rows from the front's baseline to the oldest one's: playing, the lane less the oldest's full height; at rest, the whole lane) */
     for (r = 0; r + 1 < nf; r++)
-        gs += 2 * (nf - 1) - r;
+        gs += nr ? 2 * (nf - 1) - r : 1;             /* (the gaps' weights: playing 2 (N - 1) - i, closing toward the back; at rest even) */
+    m0 = nr && rows >= WL_STEP * (nf - 1) ? WL_STEP : 0;   /* (playing: every gap at least WL_STEP rows, so two 1-px lines never touch; the rows over that by the weights) */
+    left = rows - m0 * (nf - 1);
+    for (r = 0; r + 1 < nf; r++)
+        left -= (rows - m0 * (nf - 1)) * (nr ? 2 * (nf - 1) - r : 1) / gs;   /* (the rows the whole-row gaps leave over: one more each to the front ones) */
     for (r = 0; r < nf; r++) {
         const int32_t w = nf > 1 ? hw16 * (5 * (nf - 1) - r) / (5 * (nf - 1)) : hw16;   /* (the half width: the front's, to 4/5 at the back) */
-        if (!nr)                                     /* (at rest: spread evenly from the lane's foot to its top) */
-            yb[r] = (y1 - 2) * 16 + 8 - (nf > 1 ? (y1 - 3 - y0) * 16 * r / (nf - 1) : 0);
-        else                                         /* (playing: the front's swing room at the foot, the oldest's at the top, the gaps closing toward the back) */
-            yb[r] = yf * 16 + 8 - (gs ? st * 16 * g / gs : 0);
-        g += 2 * (nf - 1) - r;
+        yb[r] = base * 16 + 8;                       /* (ridge r's baseline: whole rows, the gaps never wider further back, so the spacing shrinks evenly) */
+        if (r + 1 < nf) {
+            g = m0 + (rows - m0 * (nf - 1)) * (nr ? 2 * (nf - 1) - r : 1) / gs + (r < left);
+            base -= g;
+        }
+        mx[r] = 0;
+        if (r < nr && !((s->flat >> r) & 1u)) {      /* (its lowest point: a ridge stands on its baseline, its shape rising above it) */
+            uint32_t p;
+            for (p = 0; p < WL_NP; p++)
+                mx[r] = wl_rq(s, (uint32_t)r, p) > mx[r] ? wl_rq(s, (uint32_t)r, p) : mx[r];
+        }
         xl[r] = cx16 - w;
         xr[r] = cx16 + w;
         mul[r] = (int32_t)(((WL_NP - 1u) << 16) / (uint32_t)(2 * w > 0 ? 2 * w : 1));
@@ -498,9 +519,9 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
         ft[n] = swap16(ux_mix(T_BG, col[0], m > 100 ? 100 : m));
     }
     {
-        int32_t y0f = shp & 1u ? yb[0] + wl_atx(s, 0u, WL_X0 * 16, xl[0], mul[0]) : yb[0];   /* (the front's height in this column; the next one's is found in the loop) */
+        int32_t y0f = shp & 1u ? yb[0] - mx[0] * 4 + wl_atx(s, 0u, WL_X0 * 16, xl[0], mul[0]) : yb[0];   /* (the front's height in this column; the next one's is found in the loop) */
         for (c = WL_X0; c <= WL_X1; c++) {
-            const int32_t x16 = c * 16, yn = (shp & 1u) && c < WL_X1 ? yb[0] + wl_atx(s, 0u, x16 + 16, xl[0], mul[0]) : y0f;
+            const int32_t x16 = c * 16, yn = (shp & 1u) && c < WL_X1 ? yb[0] - mx[0] * 4 + wl_atx(s, 0u, x16 + 16, xl[0], mul[0]) : y0f;
             int32_t y[WL_HN], lim, m, hz = y1 - 1;   /* (m: the ridges drawn in this column, the front and the older ones as wide as it reaches: each is narrower than the one before;
                                                       * hz: the horizon, the top row drawn in this column so far: an older ridge shows only above it) */
             y[0] = y0f;
@@ -510,7 +531,7 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
                     y[m] = yb[m];
                     continue;
                 }
-                y[m] = yb[m] + wl_atx(s, (uint32_t)m, x16, xl[m], mul[m]);
+                y[m] = yb[m] - mx[m] * 4 + wl_atx(s, (uint32_t)m, x16, xl[m], mul[m]);
                 y[m] = y[m] < lim ? y[m] : lim;
                 lim = y[m] - 16;
             }
