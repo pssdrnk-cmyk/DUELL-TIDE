@@ -88,17 +88,24 @@ static uint32_t sqm_varc_now(void)                       /* the phase's voicing,
     uint32_t need = tarc_need();
     return need == 4u ? 2u : need == 2u && tarc_bright() > 0 ? 1u : 0u;
 }
-static uint32_t sqm_vmode(uint32_t pi, const step_t *p, uint32_t len)   /* 0 none, 1 open, 2 closed, 3 an ARP SEQ chord part's breakdown (its steps' octaves as written) */
+/* a chord part in automatic WNDR / JRNY: not a bass or pad sound; its hits mostly chords of 3 or 4 notes (ARP SEQ: the arp's chord, sqm_varp) */
+static int sqm_chordp(uint32_t pi, const step_t *p, uint32_t len)
 {
     uint32_t i, h = 0, c = 0;
-    if (!sqm_varc || sqm_vhold || !((sqm_auto >> pi) & 1u) || ((sqm_bassm >> pi) & 0x11u))
+    if (!((sqm_auto >> pi) & 1u) || ((sqm_bassm >> pi) & 0x11u))
         return 0;
     if (arp_mode(&trk[pi]) == AM_SEQ_ID)
-        return sqm_v.n[pi] && sqm_varc == 2u ? 3u : 0u;
+        return (sqm_v.cp >> pi) & 1u;
     for (i = 0; i < len; i++)
         if (sqm_hit(&p[i]))
             h++, c += p[i].n >= 3u;
-    return c && c * 2u >= h ? sqm_varc : 0u;
+    return c && c * 2u >= h;
+}
+static uint32_t sqm_vmode(uint32_t pi, const step_t *p, uint32_t len)   /* 0 none, 1 open, 2 closed, 3 an ARP SEQ chord part's breakdown (its steps' octaves as written) */
+{
+    if (!sqm_varc || sqm_vhold || !sqm_chordp(pi, p, len))
+        return 0;
+    return arp_mode(&trk[pi]) != AM_SEQ_ID ? sqm_varc : sqm_varc == 2u ? 3u : 0u;
 }
 static uint32_t sqm_vtop(const uint8_t *nt, uint32_t n) { uint32_t t = 0; for (uint32_t k = 1; k < n; k++) t = nt[k] > nt[t] ? k : t; return t; }
 static void sqm_vmove(uint8_t *nt, uint32_t n, uint32_t k, int32_t d, int32_t lo, int32_t hi)   /* note k by d if it stays in lo..hi on no other note */
@@ -159,9 +166,11 @@ static void sqm_varp(uint32_t pi)
     uint32_t n = 0, i;
     int32_t r;
     uint16_t mk;
-    if (sqm_varc && ((sqm_auto >> pi) & 1u) && !((sqm_bassm >> pi) & 0x11u) && arp_mode(t) == AM_SEQ_ID)
+    if (((sqm_auto >> pi) & 1u) && !((sqm_bassm >> pi) & 0x11u) && arp_mode(t) == AM_SEQ_ID)
         n = tide_chord_n[pi] ? (memcpy(c, tide_chord[pi], 4), tide_chord_n[pi]) : chord_make(t, 60, c, &r, &mk);
-    n = n - 3u < 2u ? n : 0u;                            /* (a chord of 3 or 4 notes) */
+    n = n - 3u < 2u ? n : 0u;                            /* (a chord of 3 or 4 notes: a chord part) */
+    sqm_v.cp = (uint8_t)((sqm_v.cp & ~(1u << pi)) | (n ? 1u << pi : 0u));
+    n = sqm_varc ? n : 0u;
     MORPH_LOCK();
     for (i = 0; i < n; i++)
         sqm_v.src[pi][i] = c[i];

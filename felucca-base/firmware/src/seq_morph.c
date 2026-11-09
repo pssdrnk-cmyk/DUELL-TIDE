@@ -116,7 +116,7 @@ static int tide_bass_part(const track_t *t);
 static uint32_t tarc_cap(uint32_t base);
 static int32_t tarc_bright(void);
 static volatile uint8_t sqm_bassm;                       /* B1: the parts whose sound is in the BASS family, a bit each (seqm_poll, main loop): no POLY, no VOIC, no phrase gaps; bits 4-5: a PAD sound's */
-static volatile struct { uint8_t arc, hold, n[NSHOWN], src[NSHOWN][4], out[NSHOWN][4]; } sqm_v __attribute__((section(".pool")));   /* the chord bed's voicing with ARC (seq_voicelead.c):
+static volatile struct { uint8_t arc, hold, cp, cell, n[NSHOWN], src[NSHOWN][4], out[NSHOWN][4]; } sqm_v __attribute__((section(".pool")));   /* the chord bed's voicing with ARC (seq_voicelead.c):
     arc 0 as written, 1 open (PEAK), 2 closed (BREAK); hold: KEEP builds without it; an ARP SEQ part's chord as voiced (n notes, src: as played, out: voiced; the arp's list reads it) */
 #define sqm_varc sqm_v.arc
 #define sqm_vhold sqm_v.hold
@@ -282,7 +282,7 @@ static void sqm_refresh(uint32_t pi, int force)
         q->a.seed = q->b[q->top].seed;
         q->aon = 1;
     }
-    sig = sqm_sig(t, q, len) ^ (uint32_t)(q->hold | ((sqm_bassm >> pi) & 1u) << 7 | vm << 8) * 0x85EBCA77u ^ rhythm_hash(pi);
+    sig = sqm_sig(t, q, len) ^ (uint32_t)(q->hold | ((sqm_bassm >> pi) & 1u) << 7 | vm << 8 | (uint32_t)sqm_sync << 10 | ((sqm_v.cp >> pi) & 1u) << 12 | ((sqm_auto >> pi) & 1u) << 13) * 0x85EBCA77u ^ rhythm_hash(pi);
     if (!force && q->ok && sig == q->sig)
         return;
     sqm_build_bass = (uint8_t)((sqm_bassm >> pi) & 1u);
@@ -299,10 +299,12 @@ static void sqm_refresh(uint32_t pi, int force)
     sqm_build(t->step, len, &q->b[q->top], SQM_AMT(q), sqm_buf);
     sqm_build_bass = 0;
     rhythm_apply(pi, len, sqm_buf);
-    sqm_breathe(t->step, len, vm, sqm_buf);
+    vm = (uint32_t)sqm_cell(pi, t->step, len, q->b[q->top].seed, sqm_buf) << 8 | vm;   /* (the variation bar's rhythm: a cell of the chord vocabulary, seq_phrase.c) */
+    sqm_breathe(t->step, len, vm & 3u, sqm_buf);
     sqm_shape_hold(sqm_buf, len, q->hold);
     MORPH_LOCK();
     memcpy(sqm_pat[pi][1], sqm_buf, len * sizeof sqm_buf[0]);
+    sqm_v.cell = (uint8_t)((sqm_v.cell & ~(1u << pi)) | (vm >> 8) << pi);
     q->sig = sig;
     q->tseed = q->b[q->top].seed * 0x9E3779B1u ^ q->a.seed;
     q->ok = 1;
@@ -325,7 +327,7 @@ static const step_t *sqm_step(const track_t *t, uint32_t idx, uint32_t vary)
         return &t->step[idx];
     if (!vary)
         return q->aon || q->hold || (rhythm.active & (1u << pi)) ? &sqm_pat[pi][0][idx] : &t->step[idx];
-    return &sqm_pat[pi][q->fader >= 1u + sqm_hash(q->tseed, idx / 4u, 9u) % 127u][idx];
+    return &sqm_pat[pi][((sqm_v.cell >> pi) & 1u) || q->fader >= 1u + sqm_hash(q->tseed, idx / 4u, 9u) % 127u][idx];   /* (a chord part's rhythm cell: the bar whole) */
 }
 /* LEAD: part pi follows in this bar (part 2 leads bars 1-2 of 4, part 1 bars 3-4; ARC's fast turns: a bar each; the opener swaps now and then,
  * by the seed, per 8 bars: M04): a lead or pluck line only (D2), and never on its own variation bar (audit C7: the ARC's 1-bar turns put part 2's bar 2 on part 1) */

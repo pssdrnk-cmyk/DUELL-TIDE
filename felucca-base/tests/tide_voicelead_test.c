@@ -252,6 +252,20 @@ static void gen_voicelead_cases(void)
         sqm_arc = 0; sqm_varc = 2; sqm_bass_scan();
         CHECK("ARC voicing: ARC OFF voices nothing", sqm_varc == 0u);
     }
+    {   /* b7 idea 1: a chord part's variation bar takes the nearest rhythm cell: off-beat chords on 2 and 10 become the Detroit two-hit (3, 10), notes from the nearest hit */
+        step_t o[16];
+        uint32_t m = 0, pcs_ok = 1, keep_auto = sqm_auto;
+        trk[0].p[P_SLEN] = 16; trk[0].p[P_SDIV] = 2; trk[0].p[P_AMODE] = AM_OFF;
+        memset(trk[0].step, 0, sizeof trk[0].step);
+        chord(&trk[0].step[2], 60, 63, 67, 70); chord(&trk[0].step[10], 60, 63, 67, 70);
+        sqm_auto = 1; sqm_bassm = 0; sqm_sync = 0;
+        memcpy(o, trk[0].step, sizeof o);
+        CHECK("cells: the fixture is a chord part", sqm_chordp(0, trk[0].step, 16));
+        sqm_cell(0, trk[0].step, 16, 2u, o);
+        for (i = 0; i < 16u; i++) if (sqm_hit(&o[i])) m |= 1u << i, pcs_ok &= pcs(&o[i]) == pcs(&trk[0].step[2]);
+        CHECK("cells: off-beats 2 10 vary to the Detroit two-hit 3 10, the same chord", m == 0x0408u && pcs_ok);
+        sqm_auto = (uint8_t)keep_auto;
+    }
 }
 static void gen_home_load_cases(void)
 {
