@@ -8,7 +8,8 @@
  *             afterwards: if the writer went on by more than the ring leaves (512 less 400, less a block) the picture is made again, once, else the last one stays
  *   3 trigger the ring smoothed (a 5-point kernel); rising crossings of its middle that come after a clear dip (the Pico scope's hysteresis), found to 1/16 of an entry; of those in the last 3.5
  *             periods the steepest (70 % of the steepest), and of those the one whose first 16 points match the last picture's best
- *   4 window  2 whole periods of the median crossing distance when it is steady (1 when 2 do not fit after a period of room for the crossing; 80 .. 400 entries), else the last one
+ *   4 window  whole periods of the median crossing distance when it is steady: 2, or more for a high note (80 entries at least), fewer when they do not fit after a period of room
+ *             for the crossing (1 at least); else the last one
  *   5 ridge   72 points, each the mean of the linear samples across its share of the window, or, where that share holds a jump of more than half the ridge's range, the sample at its
  *             centre (a saw's drop and a square's edges stay vertical); no smoothing over neighbours; the middle of the line's range taken out
  *   6 gain    the peak of the window: a rise of more than 6 % at once, a fall of more than 12 % by 1/4 a step (a decaying note keeps a readable shape while it fades, a held note does not breathe), never under WL_FLOOR
@@ -39,13 +40,14 @@ typedef struct {
     int8_t rd[WL_HN][WL_NP];                         /* the ridges, the newest first: 1/16 px from the ridge's middle (sub-pixel: the lines are drawn smooth) */
     uint16_t flat;                                   /* bit r: ridge r is flat (silence, a note's tail) */
     uint16_t w;                                      /* the window */
+    uint16_t per;                                    /* its period (entries; 0: none steady), so that a held note keeps its count of cycles */
     uint8_t got, have, a, hn;                        /* a picture exists since the last reset; one with a trigger to match; the half height the ridges were made for; ridges kept */
 } wl_t;
 static wl_t wl[2];
 static uint32_t wl_tk = 0xFFFFFFFFu;
 _Static_assert(NLIVE == 2, "ui_scope.c keeps one reader state for each of the two parts");
 _Static_assert(WL_HN <= 16, "wl_t.flat has a bit a ridge");
-static uint32_t wl_k, wl_b;                          /* the ring being read, and the counter value of its entry 0 */
+static uint32_t wl_k, wl_b, wl_per;                  /* (wl_per: the period the last wl_pic found, 0: none) */                          /* the ring being read, and the counter value of its entry 0 */
 /* an entry back from wvr_code's sign and 7 bits: the middle of its step, in 1/4,096 of the half scale (0 stays 0) */
 static int32_t wl_dec(int32_t c)
 {
@@ -151,12 +153,22 @@ static int wl_pic(const wl_t *s, int32_t n, int32_t a, int8_t *nd, int16_t *nf, 
         if (m > 0 && d[0] * 5 >= m * 4 && d[nc - 2u] * 4 <= m * 5)
             per = (uint32_t)m / 16u;
     }
-    if (per) {                                       /* whole cycles of the played pitch: 2 if they fit with a period of room for the crossing before them, else 1 */
-        uint32_t c = (uint32_t)n > per ? ((uint32_t)n - per) / per : 0u;
-        w = (c >= 2u ? 2u : 1u) * per;
-    } else
+    if (per && s->per && (per > s->per ? per - s->per : s->per - per) * 6u <= s->per)
+        per = s->per;                                /* (within 1/6 of the held period: the same note; the crossings' own jitter, up to 13 % on a driven saw's attack, does not move the window) */
+    wl_per = per;
+    if (per) {                                       /* whole cycles of the played pitch: 2, or as many as make WL_MINW for a high note, never more than fit with a period of room for the
+                                                      * crossing before them (at least 1): a held note's window is a whole number of its periods, the same every picture */
+        uint32_t c = (uint32_t)n > per ? ((uint32_t)n - per) / per : 0u, k = (WL_MINW + per - 1u) / per, kp = s->w && s->per && (per > s->per ? per - s->per : s->per - per) * 6u <= s->per ? (s->w + per / 2u) / per : 0u;
+        k = k < 2u ? 2u : k;
+        if (kp >= 1u && kp * per * 4u >= WL_MINW * 3u && kp >= k - 1u && kp <= k + 1u)   /* (the count the last picture had, while it still makes about the window: the period's own jitter */
+            k = kp;                                                                       /* never flips a held note between 2 and 3 cycles) */
+        while (k > 1u && (k > c || k * per > WL_MAXW))
+            k--;
+        w = k * per;
+    } else {
         w = s->w ? s->w : WL_DEFW;
-    w = w < WL_MINW ? WL_MINW : w > WL_MAXW ? WL_MAXW : w;
+        w = w < WL_MINW ? WL_MINW : w > WL_MAXW ? WL_MAXW : w;
+    }
     if (s->w && (w > s->w ? w - s->w : s->w - w) * 5u < s->w)   /* (within a fifth of the last: the same, so the picture does not breathe) */
         w = s->w;
     if (w + 20u > (uint32_t)n)
@@ -335,6 +347,8 @@ static void wl_step(uint32_t k, int32_t a)
             return;                                  /* torn twice: the last picture stays */
     }
     s->w = (uint16_t)nw;
+    if (wl_per)                                      /* (a picture with no steady period keeps the held one) */
+        s->per = (uint16_t)wl_per;
     s->gpk = ng;
     if (!r) {                                        /* nothing there (a note's tail): the front fades, the stack runs out as the sound does */
         wl_fade(s);
@@ -356,7 +370,7 @@ static uint16_t ui_part_col(uint32_t k, int hot)
 static void ui_part_tag(uint32_t k, int32_t y, int hot)
 {
     const uint16_t kc = ui_part_col(k, hot);
-    cv_rrect(UT_A_K1_DOT_X - 5, y - 6, 16, 13, 3, T_BG, T_BG);   /* (a knockout: no line touches the number) */
+    cv_rect(UT_A_K1_DOT_X - 5, y - 7, 17, 15, T_BG);    /* (a knockout, the tag's box and a 1-px margin, square: no line pixel inside it; the hot bar x 1 .. 3 stays) */
     if (hot)
         cv_rrect(UT_A_K1_DOT_X - 4, y - 5, 14, 11, 2, kc, T_BG);
     cv_text_on(UT_A_K1_DOT_X, UT_TY(S, y + AF_S_CAP_H / 2), &AF_S, k ? "2" : "1", hot ? T_INK : kc, hot ? kc : T_BG);
