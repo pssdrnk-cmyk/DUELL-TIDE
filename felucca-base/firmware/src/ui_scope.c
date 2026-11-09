@@ -20,12 +20,12 @@
 #define WL_NP 72                                     /* points of a ridge: x = WL_X0 + 3 p (22 .. 235: the bar and the part's number stand to the left) */
 #define WL_X0 22
 #define WL_HN 6                                      /* ridges kept (6: each one a clean line apart at this size; 16 crowded into noodles, owner 2026-11-09) */
-#define WL_AMAX 7                                    /* the largest half height of a ridge, px (7 x 16 sixteenths fit a byte) */
+#define WL_AMAX 15                                   /* the largest half height of a ridge, px (15 x 8 eighths fit a byte) */
 #define WL_STEP 3                                    /* the fewest rows between two ridges */
-#define WL_R 400u                                    /* entries read (ring 512) */
-#define WL_MINW 160u
-#define WL_MAXW 360u
-#define WL_DEFW 300u
+#define WL_R 400u                                    /* entries read (ring 512; 36 ms at the tap's 11.025 kHz) */
+#define WL_MINW 80u
+#define WL_MAXW 400u
+#define WL_DEFW 200u
 #define WL_FLOOR (64 * 16)                           /* the smallest peak the gain scales to: 64 of the tap's 4,096 steps (-36 dB of the half scale), times 16 */
 #define WL_NC 24
 typedef struct {
@@ -55,10 +55,10 @@ static int32_t wl_abs(int32_t v) { return v < 0 ? -v : v; }
 /* the ring smoothed for the trigger, entry i of n, times 32 (a 10-point kernel: 3 points, then 8: a ring on a resonant wave no longer moves the crossing) */
 static int32_t wl_g(int32_t i, int32_t n)
 {
-    static const uint8_t K[10] = {1, 3, 4, 4, 4, 4, 4, 4, 3, 1};
+    static const uint8_t K[5] = {1, 3, 4, 3, 1};
     int32_t j, s = 0;
-    for (j = 0; j < 10; j++) {
-        int32_t x = i + j - 5;
+    for (j = 0; j < 5; j++) {
+        int32_t x = i + j - 2;
         s += K[j] * WLR(x < 0 ? 0 : x >= n ? n - 1 : x);
     }
     return s;
@@ -88,7 +88,7 @@ static int wl_pic(const wl_t *s, int32_t n, int32_t a, int8_t *nd, int16_t *nf, 
         int32_t r = WLR(i);
         rmx = r > rmx ? r : rmx;
         rmn = r < rmn ? r : rmn;
-        if (i >= 8 && i + 8 < n) {
+        if (i >= 4 && i + 4 < n) {
             int32_t q = wl_g(i, n);
             mx = q > mx ? q : mx;
             mn = q < mn ? q : mn;
@@ -131,16 +131,18 @@ static int wl_pic(const wl_t *s, int32_t n, int32_t a, int8_t *nd, int16_t *nf, 
         if (m > 0 && d[0] * 5 >= m * 4 && d[nc - 2u] * 4 <= m * 5)
             per = (uint32_t)m / 16u;
     }
-    w = per ? per * 5u / 2u : s->w ? s->w : WL_DEFW;
-    if (per && w + per + 46u > (uint32_t)n)          /* the trigger needs a period of room before the window (n is 400 at most: 1.8 cycles of a 110 Hz note, less for a lower one) */
-        w = (uint32_t)n > per + 46u ? (uint32_t)n - per - 46u : 0u;
+    if (per) {                                       /* whole cycles of the played pitch: 2 if they fit with a period of room for the crossing before them, else 1 */
+        uint32_t c = (uint32_t)n > per ? ((uint32_t)n - per) / per : 0u;
+        w = (c >= 2u ? 2u : 1u) * per;
+    } else
+        w = s->w ? s->w : WL_DEFW;
     w = w < WL_MINW ? WL_MINW : w > WL_MAXW ? WL_MAXW : w;
     if (s->w && (w > s->w ? w - s->w : s->w - w) * 5u < s->w)   /* (within a fifth of the last: the same, so the picture does not breathe) */
         w = s->w;
-    if (w + 40u > (uint32_t)n)
-        w = (uint32_t)n - 40u;
+    if (w + 20u > (uint32_t)n)
+        w = (uint32_t)n - 20u;
     span = (per ? per * 7u / 2u : WL_DEFW) * 16u;
-    last = (n - (int32_t)w - 6) * 16;                /* (Q4: the newest start that leaves the whole window and the interpolation's room) */
+    last = (n - (int32_t)w - 3) * 16;                /* (Q4: the newest start that leaves the whole window and the interpolation's room) */
     for (j = 0; j < (int32_t)nc; j++)
         if (cand[j] <= last && cand[j] + (int32_t)span >= last && slope[j] > maxs)
             maxs = slope[j];
@@ -168,7 +170,7 @@ static int wl_pic(const wl_t *s, int32_t n, int32_t a, int8_t *nd, int16_t *nf, 
         }
         sel = (uint32_t)cand[best] + 1u;
     }
-    cq = sel ? sel - 1u : (uint32_t)(n - (int32_t)w - 6) * 16u;   /* no crossing at all (noise, a drone): the newest window, free */
+    cq = sel ? sel - 1u : (uint32_t)(n - (int32_t)w - 3) * 16u;   /* no crossing at all (noise, a drone): the newest window, free */
     *nw = w;
     for (p = 0; p < 16u; p++)
         nf[p] = (int16_t)(wl_pt(cq, w, p) >> 4);
@@ -207,8 +209,8 @@ static int wl_pic(const wl_t *s, int32_t n, int32_t a, int8_t *nd, int16_t *nf, 
     if (pk * a < 2 * g)                              /* under 2 px high: a flat ridge (the stack shows sound, not the last pixel of a tail) */
         return 0;
     for (p = 0; p < WL_NP; p++) {
-        int32_t q = -v[p] * a * 32;                  /* (1/16 px, rounded) */
-        nd[p] = (int8_t)clamp((q + (q < 0 ? -g : g)) / (2 * g), -16 * a, 16 * a);
+        int32_t q = -v[p] * a * 16;                  /* (1/8 px, rounded) */
+        nd[p] = (int8_t)clamp((q + (q < 0 ? -g : g)) / (2 * g), -8 * a, 8 * a);
     }
     return 1;
 }
@@ -217,7 +219,7 @@ static int32_t wl_rq(const wl_t *s, uint32_t r, uint32_t p) { return s->rd[r][p]
 static int32_t wl_rp(const wl_t *s, uint32_t r, uint32_t p)
 {
     const int32_t q = s->rd[r][p];
-    return (q + (q < 0 ? -8 : 8)) / 16;
+    return (q + (q < 0 ? -4 : 4)) / 8;
 }
 /* a picture becomes the newest ridge (nd 0: a flat one), the others move back. A picture of about the size of the newest ridge (within 2 : 1) is blended half and half with it,
  * so that a busy sound's ridges follow on from each other (one shape, not scattered lines); a jump in size (an attack, a much softer note) is taken as it is */
@@ -254,7 +256,7 @@ static void wl_fade(wl_t *s)
     for (p = 0; p < WL_NP; p++) {
         int32_t v = s->hn && !(s->flat & 1u) ? wl_rq(s, 0, p) : 0;
         nd[p] = (int8_t)(v / 2);
-        nd[p] = nd[p] > -8 && nd[p] < 8 ? 0 : nd[p];   /* (under half a px: gone) */
+        nd[p] = nd[p] > -4 && nd[p] < 4 ? 0 : nd[p];   /* (under half a px: gone) */
         any |= nd[p] != 0;
     }
     {
@@ -291,7 +293,7 @@ static void wl_step(uint32_t k, int32_t a)
         vs = (int32_t)(s->base - wv_gap[k]) > 0 ? s->base : wv_gap[k];
         avail = (int32_t)(c0 - vs) > 0 ? c0 - vs : 0u;
         n = (int32_t)(avail < WL_R ? avail : WL_R);
-        if (n < 200)
+        if (n < 100)
             return;                                  /* not enough since the gate opened or the hole: the last picture stays */
         wl_k = k;
         wl_b = c0 - (uint32_t)n;
@@ -303,7 +305,7 @@ static void wl_step(uint32_t k, int32_t a)
 #endif
         __asm__ volatile("" ::: "memory");
         c1 = wv_cnt[k];
-        if (c1 - c0 + 16u <= WVR_N - (uint32_t)n)    /* (and the block the writer may be in the middle of: 16 entries) */
+        if (c1 - c0 + 8u <= WVR_N - (uint32_t)n)     /* (and the block the writer may be in the middle of: 8 entries) */
             break;
         if (tries)
             return;                                  /* torn twice: the last picture stays */
@@ -337,7 +339,7 @@ static void ui_part_tag(uint32_t k, int32_t y, int hot)
 /* a box h rows high: the ridges' half height (*a), the rows between two ridges (*st) and how many fit (the return) */
 static int32_t wl_fit(int32_t h, int32_t *a, int32_t *st)
 {
-    const int32_t aa = clamp(h / 5, 2, WL_AMAX), room = h - 3 - 2 * aa;
+    const int32_t aa = clamp(h * 3 / 10, 2, WL_AMAX), room = h - 3 - 2 * aa;   /* (the front fills most of the lane: 12 px of a 41-row half) */
     int32_t n = clamp(room / WL_STEP + 1, 1, WL_HN);
     *a = aa;
     *st = n > 1 ? room / (n - 1) : WL_STEP;
@@ -384,17 +386,15 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
         cv_rect(1, y0 + 1, 3, y1 - y0 - 2, T_PFILL(k));
     ui_part_tag(k, (y0 + y1) / 2, hot);
     if (nr < 1 || s->a != (uint8_t)a || (s->flat & ((1u << nr) - 1u)) == (1u << nr) - 1u)
-        nr = 0;                                      /* nothing yet, made for another box, or silence: one calm line */
-    for (r = nr ? nr - 1 : 0; r >= 0; r--) {
-        const int flat = !nr || ((s->flat >> r) & 1u);
+        nr = 0;                                      /* nothing yet, made for another box, or silence: every lane at rest, flat (the same lines as when it plays) */
+    for (r = nf - 1; r >= 0; r--) {
+        const int flat = r >= nr || ((s->flat >> r) & 1u);
         const int32_t yb16 = (yf - st * r) * 16 + 8, num = nf - r;                      /* (the ridge's middle, 1/16 px; its height (N - r) / N) */
         const int32_t str = (r ? 15 + (nf > 2 ? 60 * (nf - 1 - r) / (nf - 2) : 60) : 100) * (hot ? 100 : 55) / 100 * (!nr ? 60 : 100) / 100;   /* (strength %: front 100, then 75, 60 .. 15 evenly) */
-        const int32_t w16 = !r && nr ? 28 : 16;
+        const int32_t w16 = !r ? 28 : 16;
         int32_t py = yb16;
-        if (r && flat)
-            continue;
         for (p = 0; p < WL_NP; p++) {
-            const int32_t x = WL_X0 + 3 * (int32_t)p, y = flat ? yb16 : yb16 + wl_rq(s, (uint32_t)r, (uint32_t)p) * num / nf;
+            const int32_t x = WL_X0 + 3 * (int32_t)p, y = flat ? yb16 : yb16 + wl_rq(s, (uint32_t)r, (uint32_t)p) * 2 * num / nf;
             if (p) {                                 /* (the three columns of the segment from the last point) */
                 int32_t j;
                 for (j = 1; j <= 3; j++)
