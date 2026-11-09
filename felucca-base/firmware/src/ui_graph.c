@@ -1953,7 +1953,7 @@ static uint32_t graph_signature(void)
         h = (h ^ (morph_fader_of(pi) | morph_amount_of(pi) << 8 | (uint32_t)SEL_BOTH << 16 | (uint32_t)morph.cfg << 20)) * 16777619u;
         h = (h ^ morph_fader_of(1u - pi)) * 16777619u;
 #endif
-        if (pg->graph == GR_MORPH)                   /* v4: the picture's motion, a step every 4th frame (~16 /s; TIDE: the parts' real sound, ui_scope.c) */
+        if (pg->graph == GR_MORPH)                   /* v4: the picture's motion, a step every MV_MS (b6: 60 ms, ~16 /s, by the clock: mv_clock; TIDE: the parts' real sound, ui_scope.c) */
             h = (h ^ (mv_tick() + 1u) * 2654435761u) * 16777619u;
     }
     if (pg->graph == GR_SLOTS) {                     /* (a checksum over each slot) */
@@ -2552,7 +2552,20 @@ static void mv_reset(void)
     mv_step = 0xFFFFFFFFu;
 }
 #endif
-static uint32_t mv_tick(void) { return (ui_prefs & PREF_ANIM_OFF) ? 0u : ui.frame >> 2; }
+/* the MORPH page's picture clock (b6, owner on the FM-1: "the animation feels laggy again"): a new picture MV_MS after the last, by fm1_ms. It was every 4th main-loop pass, and on
+ * the unit a pass that sends a picture takes ~44 ms of SPI and the others 15, so the pictures came 89 ms apart and any longer pass moved one. A pass that runs late moves its
+ * picture only (the next counts from it: one is skipped, never two in a row); main.c ends the loop's 15 ms wait when one is due, so its pass starts on time */
+#define MV_MS 60u
+static uint32_t mv_n, mv_t;                         /* pictures so far; fm1_ms at the last */
+static int mv_due(void) { return fm1_ms - mv_t >= MV_MS; }
+static void mv_clock(void)                          /* once a pass (ui_draw), before the page is drawn */
+{
+    if (mv_due()) {
+        mv_t = fm1_ms;
+        mv_n++;
+    }
+}
+static uint32_t mv_tick(void) { return (ui_prefs & PREF_ANIM_OFF) ? 0u : mv_n; }
 #if !DUELL_TIDE
 static void mv_levels(uint32_t tk)                  /* the parts' peaks since the last step (read and cleared, as the meters) */
 {

@@ -282,7 +282,7 @@ static void fm1_main(void)
         ui_leds();
         ui_draw();
         felucca_dbg.stage = 9;
-        while (fm1_ms - m < 15u) {                               /* ~60 UI frames/s at most */
+        while (fm1_ms - m < 15u && !mv_due()) {                  /* ~60 UI frames/s at most; a MORPH picture due starts its pass now (ui_graph.c mv_clock) */
             ui_input();
 #if DUELL_VELO_CAPTURE
             velocap_drain();
