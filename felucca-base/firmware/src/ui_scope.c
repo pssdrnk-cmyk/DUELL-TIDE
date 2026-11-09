@@ -432,6 +432,16 @@ static int32_t wl_fit(int32_t h, int32_t *a, int32_t *st)
 /* one column x of an anti-aliased stroke: the line passes from ya to yb (1/16 px) across the column, w16 thick (1/16 px); every column gets its ink, so the stroke is one connected line
  * at any slope (a steep part fills the rows between), the edges shaded by coverage. A pixel is blended toward the stroke's colour c by pct * its coverage (1/16 .. 16/16) %: from tab
  * (tab[n]: the canvas background bg blended by n/16, made once a stroke) where it is still the background, else mixed (ux_mix: the same colour either way, three divisions less) */
+/* t[n], n 1 .. 16: colour c at str % covering n/16 of a pixel on the background, for the canvas (byte-swapped); one mix and shifts (b6 wavepace: 13 ridges' tables a lane) */
+static void wl_tab(uint16_t *t, uint16_t c, int32_t str)
+{
+    const uint32_t f = ux_mix(T_BG, c, str), b = T_BG;
+    const int32_t r0 = (int32_t)(b >> 11), g0 = (int32_t)(b >> 5 & 63u), b0 = (int32_t)(b & 31u);
+    const int32_t dr = (int32_t)(f >> 11) - r0, dg = (int32_t)(f >> 5 & 63u) - g0, db = (int32_t)(f & 31u) - b0;
+    int32_t n;
+    for (n = 1; n <= 16; n++)
+        t[n] = ux.mono ? swap16(ux_mix(T_BG, c, str * n / 16)) : swap16((uint16_t)((r0 + ((dr * n + 8) >> 4)) << 11 | (g0 + ((dg * n + 8) >> 4)) << 5 | (b0 + ((db * n + 8) >> 4))));
+}
 static void wl_col(int32_t x, int32_t ya, int32_t yb, int32_t w16, uint16_t c, int32_t pct, int32_t ymin, int32_t ymax, const uint16_t *tab, uint16_t bg)
 {
     const int32_t top = (ya < yb ? ya : yb) - w16 / 2, bot = (ya < yb ? yb : ya) + w16 / 2;   /* the span the stroke covers, 1/16 px */
@@ -456,15 +466,15 @@ static int32_t wl_atx(const wl_t *s, uint32_t r, int32_t x16, int32_t xl16, int3
 }
 /* part k's picture in rows y0 .. y1 - 1 (WAVE LAB's WAVE STACK): the ridges, the oldest first and the newest (the front, at the foot) last, each higher than the one after it and as
  * tall as the front; every ridge is ONE stroke across its width, nothing cut (owner 2026-11-09: "the lines are falling apart"). Colour: the part's, along its A..B gradient at the fader
- * (mv_col), toward the background from the front to the back (WAVE LAB's fade); the front an anti-aliased stroke about 2 px thick, the others plain 1-px lines as WAVE LAB drew them
- * (b6, on the FM-1: "the new UI is definitely laggy"). The part the controls act on (ui_part_hot) in full colour with a bar at the half's edge, the other dimmed. A tail fades its shape
+ * (mv_col), toward the background from the front to the back (WAVE LAB's fade); the front an anti-aliased stroke about 2 px thick, the others anti-aliased 1-px strokes (b6: plain
+ * 1-px lines for the cost, "the new UI is definitely laggy"; then sub-pixel again, cheaply, owner: "somehow the smoothness is off": a plain line moves in 1-px jumps). The part the controls act on (ui_part_hot) in full colour with a bar at the half's edge, the other dimmed. A tail fades its shape
  * (wl_fade); a ridge that has faded flat and a lane not filled yet are drawn as straight lines in their place with the same colours, so every lane is always there.
  * Depth (b6, owner 2026-11-09: "something is missing"): the stack recedes like a landscape. Each older ridge is narrower, centred (the oldest 4/5 of the front's width), and the gaps
  * between ridges close toward the back (gap i from the front: 2 (N - 1) - i, the back one about half the front one); each ridge hides what lies behind it (WAVE LAB's): a column's
  * ridges are drawn from the front back and an older one only above the top of the newer ones there, so nothing behind a ridge shows under it. At rest (nothing yet, or silence) the
  * stack is the playing one with every line flat, the same middles and widths (b6, owner: "there is a fuckup with the default screen": the rest screen had its own even spread, the
- * front apart). The gaps are whole rows, never wider further back and at least WL_STEP (owner: "a bigger gap after the 3rd line": each line's own rounding made 3 2 3 2 ..); 13
- * lines in the 25 rows of spread a 68-row lane leaves come out 3 then 2s.
+ * front apart). The gaps never widen further back and are at least WL_STEP (owner: "a bigger gap after the 3rd line": each line's own rounding to whole rows made 3 2 3 2 ..);
+ * in 1/16 px, so 13 lines in the 25 rows of spread a 68-row lane leaves are about 2 1/16 px apart each.
  * No older ridge is laid flat for being unlike the front or crossing it; a shaped ridge is never drawn under a newer shaped one, it rides on it (just above its stroke: 22/16 px over
  * the front, 1 px over an older one) where it would cross; elsewhere its shape is its own. A flat one is drawn flat.
  * Column by column: every ridge's height there in one pass from the front back (each one's bound is the newer ones'), and drawn in that order under the horizon they leave */
@@ -476,9 +486,9 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
                                                                                       * a turn of knob 1 redraws the waves with a picture: ui_graph.c graph_signature) */
     const uint16_t bg = swap16(T_BG);
     const int32_t cx16 = (WL_X0 + WL_X1) * 8, hw16 = (WL_X1 - WL_X0) * 8;   /* (the front's middle and half width, 1/16 px) */
-    int32_t a, st, nf = wl_fit(y1 - y0, &a, &st), nr = s->hn < (uint32_t)nf ? (int32_t)s->hn : nf, r, n, c, gs = 0, left, m0, mid = y1 - 2 - a;
+    int32_t a, st, nf = wl_fit(y1 - y0, &a, &st), nr = s->hn < (uint32_t)nf ? (int32_t)s->hn : nf, r, n, c, gs = 0, left, m0, sp, mid = (y1 - 2 - a) * 16 + 8;
     int32_t yb[WL_HN], xl[WL_HN], xr[WL_HN], mul[WL_HN], py[WL_HN];
-    uint16_t col[WL_HN], lc[WL_HN], ft[17];
+    uint16_t col[WL_HN], ft[WL_HN][17];              /* (each ridge's colours by the share of a pixel its stroke covers, 0 .. 16 sixteenths: on the background) */
     uint32_t shp = 0, seen = 0;                      /* (bit r: ridge r drawn with its shape; ridge r has had a column) */
     if (y1 - y0 < 8)
         return;
@@ -488,25 +498,23 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
         nr = 0;                                      /* nothing yet, made for another box, or silence: every lane at rest, flat */
     for (r = 0; r + 1 < nf; r++)
         gs += 2 * (nf - 1) - r;                      /* (the gaps' weights: 2 (N - 1) - i, closing toward the back) */
-    m0 = st >= WL_STEP * (nf - 1) ? WL_STEP : 0;     /* (every gap at least WL_STEP rows, so two 1-px lines never touch; the rows over that by the weights) */
-    left = st - m0 * (nf - 1);
+    m0 = st >= WL_STEP * (nf - 1) ? WL_STEP * 16 : 0;   /* (every gap at least WL_STEP rows, so two 1-px lines never touch; the rest by the weights; 1/16 px) */
+    sp = st * 16 - m0 * (nf - 1);
+    left = sp;
     for (r = 0; r + 1 < nf; r++)
-        left -= (st - m0 * (nf - 1)) * (2 * (nf - 1) - r) / gs;   /* (the rows the whole-row gaps leave over: one more each to the front ones) */
+        left -= sp * (2 * (nf - 1) - r) / gs;        /* (the sixteenths the gaps leave over: one more each to the front ones) */
     for (r = 0; r < nf; r++) {
         const int32_t w = nf > 1 ? hw16 * (5 * (nf - 1) - r) / (5 * (nf - 1)) : hw16;   /* (the half width: the front's, to 4/5 at the back) */
-        yb[r] = mid * 16 + 8;                        /* (ridge r's middle: the front's swing room at the foot, the oldest's at the top; whole rows, the gaps never wider further back) */
+        yb[r] = mid;                                 /* (ridge r's middle, 1/16 px: the front's swing room at the foot, the oldest's at the top; the gaps never wider further back. b6
+                                                      * wavepace, owner: "somehow the smoothness is off": in 1/16 px again, as the lines are drawn sub-pixel) */
         if (r + 1 < nf)
-            mid -= m0 + (st - m0 * (nf - 1)) * (2 * (nf - 1) - r) / gs + (r < left);
+            mid -= m0 + sp * (2 * (nf - 1) - r) / gs + (r < left);
         xl[r] = cx16 - w;
         xr[r] = cx16 + w;
         mul[r] = (int32_t)(((WL_NP - 1u) << 16) / (uint32_t)(2 * w > 0 ? 2 * w : 1));
         shp |= (uint32_t)(r < nr && !((s->flat >> r) & 1u)) << r;
         col[r] = mv_col(k, pct, r * 90 / nf);        /* (WAVE LAB's fade toward the back) */
-        lc[r] = swap16(ux_mix(T_BG, col[r], str));
-    }
-    for (n = 1; n <= 16; n++) {
-        const int32_t m = str * n / 16;
-        ft[n] = swap16(ux_mix(T_BG, col[0], m > 100 ? 100 : m));
+        wl_tab(ft[r], col[r], str);
     }
     {
         int32_t y0f = shp & 1u ? yb[0] + wl_atx(s, 0u, WL_X0 * 16, xl[0], mul[0]) : yb[0];   /* (the front's height in this column; the next one's is found in the loop) */
@@ -534,11 +542,13 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
                 seen |= 1u << r;
                 if (!r) {                            /* (the front: from halfway to the last column's height to halfway to the next one's, anti-aliased) */
                     const int32_t a0 = (ya + y[0]) / 2, a1 = (y[0] + yn) / 2;
-                    wl_col(c, a0, a1, 28, col[0], str, y0 + 1, y1 - 1, ft, bg);
+                    wl_col(c, a0, a1, 28, col[0], str, y0 + 1, y1 - 1, ft[0], bg);
                     hz = ((a0 < a1 ? a0 : a1) - 14) >> 4;
-                } else {                             /* (an older ridge: plain, from its height in the last column, whole rows above the horizon) */
-                    int32_t lo = (ya < y[r] ? ya : y[r]) >> 4, hi = (ya < y[r] ? y[r] : ya) >> 4;
-                    hi = hi < hz ? hi : hz - 1;
+                } else {                             /* (an older ridge: a 1-px stroke from its height in the last column, anti-aliased as the front (b6 wavepace: the plain whole-row line
+                                                      * moved in 1-px jumps), the rows above the horizon only) */
+                    const int32_t t16 = (ya < y[r] ? ya : y[r]) - 8, b16 = (ya < y[r] ? y[r] : ya) + 8;   /* (the stroke's top and bottom, 1/16 px) */
+                    int32_t lo = t16 >> 4, hi = (b16 - 1) >> 4;
+                    hi = hi < hz ? hi : hz - 1;      /* (above the horizon only: those pixels are still the background, so a coverage's colour is written as it is) */
                     lo = lo > y0 + 1 ? lo : y0 + 1;
                     lo = lo > -cv_oy ? lo : -cv_oy;  /* (and inside the canvas) */
                     hi = hi < (int32_t)cv_h - 1 - cv_oy ? hi : (int32_t)cv_h - 1 - cv_oy;
@@ -546,7 +556,7 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
                         uint16_t *q = &cv_px[(uint32_t)(lo + cv_oy) * cv_w + (uint32_t)c];
                         int32_t n2;
                         for (n2 = lo; n2 <= hi; n2++, q += cv_w)
-                            *q = lc[r];
+                            *q = ft[r][(b16 < n2 * 16 + 16 ? b16 : n2 * 16 + 16) - (t16 > n2 * 16 ? t16 : n2 * 16)];
                         hz = lo;
                     }
                 }

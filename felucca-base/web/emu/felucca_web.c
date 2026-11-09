@@ -338,7 +338,7 @@ static void web_ms(void)
         splash_begin();                                   /* main.c: the splash proper, drawn by the loop below */
         web_last_frame = fm1_ms - 15u;
     }
-    if (fm1_ms - web_last_frame >= 15u) {                /* main.c: a frame, then ui_input until 15 ms are over */
+    if (fm1_ms - web_last_frame >= 15u || mv_due()) {    /* main.c: a frame, then ui_input until 15 ms are over or a MORPH picture is due */
         web_last_frame = fm1_ms;
         web_frame();
     } else {

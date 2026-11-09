@@ -3451,8 +3451,8 @@ static void ui_draw(void)
         uint16_t bg0 = ux.bg;
 #if DUELL_TIDE
         uint32_t f0 = TIDE_THEME_F(morph_fader_of(0)), f1 = TIDE_THEME_F(morph_fader_of(1));
-        if ((ui.frame & 3u) != 3u) {                    /* (b6, owner on the FM-1: "the UI gets weird if I use morph during the animation": the faders' colour follows on the frame that
-                                                         * brings a new picture (every 4th: mv_tick), so a turn of knob 1 redraws the page with the waves' own redraw, not on top of
+        if (!mv_due()) {                                /* (b6, owner on the FM-1: "the UI gets weird if I use morph during the animation": the faders' colour follows on the frame that
+                                                         * brings a new picture (mv_clock, below), so a turn of knob 1 redraws the page with the waves' own redraw, not on top of
                                                          * it every frame: the page whole is 55,680 px over the 12 MHz SPI, about 74 ms. The waves take this colour too, ui_scope.c) */
             f0 = ux.fader[0];
             f1 = ux.fader[1];
@@ -3468,6 +3468,7 @@ static void ui_draw(void)
         }
     }
     ui.frame++;
+    mv_clock();                                         /* (the MORPH page's picture clock: ui_graph.c) */
     {   /* the OCTAVE page began or ended: the page under it is drawn whole again */
         static uint8_t oct_was;
         uint8_t on = (uint8_t)oct_show_on();

@@ -437,13 +437,17 @@ static void t_knobs(void)
     expect("  .. the cards in v3's order: MORPH, ROLL, an empty KNOB 3 (1.0.0-b5: no UNDO), AMOUNT (KNOB 4)", card_is(0, "MORPH", "A") && card_is(1, "ROLL", "A<>B") &&
            card_is(2, "", "") && card_is(3, "AMOUNT", amt_txt));
 #endif
-    {   /* the picture (TIDE: the part's real sound, ui_scope.c): a new one every 4th frame (signature), none with MENU > ANIM OFF */
-        uint32_t s0 = graph_signature(), s1;
-        ui.frame += 4u;
+    {   /* the picture (TIDE: the part's real sound, ui_scope.c): a new one every MV_MS by fm1_ms (b6: mv_clock), not before; none with MENU > ANIM OFF */
+        uint32_t s0, s1, s2;
+        fm1_ms += MV_MS; mv_clock();
+        s0 = graph_signature();
+        fm1_ms += MV_MS - 1u; mv_clock();
         s1 = graph_signature();
+        fm1_ms += 1u; mv_clock();
+        s2 = graph_signature();
         ui_prefs |= PREF_ANIM_OFF;
-        expect("the MORPH panel animates (~16 /s: a new signature every 4 frames); ANIM OFF: still",
-               s0 != s1 && (ui.frame += 4u, graph_signature()) == graph_signature() && (ui.frame += 4u, s1 = graph_signature(), ui.frame += 4u, s1 == graph_signature()));
+        expect("the MORPH panel animates (a new signature MV_MS after the last, none sooner); ANIM OFF: still",
+               s0 == s1 && s1 != s2 && (fm1_ms += MV_MS, mv_clock(), s1 = graph_signature(), fm1_ms += MV_MS, mv_clock(), s1 == graph_signature()));
         ui_prefs &= ~PREF_ANIM_OFF;
     }
     turn(EN_K4, 200);
