@@ -33,6 +33,8 @@ b5 goes out when you like the MORPH page on your FM-1. Room left on the b5 build
 | JOURNEY doesn't jump the sound when started with the fader away from A ([J2](audits/2026-11-09/tide-morph/TASKS.md#j2)) | Planned: ~16 B, main loop |
 | TIDE's louder peak and softer breakdown reach ARP SEQ parts, M02 included; accents kept ([D1](audits/2026-11-09/tide-morph/TASKS.md#d1)) | Planned: ~60 B, one multiply per arp step |
 | The bass keeps its loop and octave: no POLY, no VOIC octave on a bass part; POLY ends in ARC's breakdown ([B1](audits/2026-11-09/tide-morph/TASKS.md#b1)) | Planned: ~65 B, 1 B RAM |
+| More free flash: factory multis stored as template + changes (~3 KB), keycaps compressed (~2.5 KB); nothing you hear or see changes | In progress |
+| FM6 sounds no longer get louder at the morph's End B (FRETLESS, ISLAND STEEL, MALLET WOOD) | In progress |
 
 ## Later, in order
 
@@ -43,7 +45,10 @@ b5 goes out when you like the MORPH page on your FM-1. Room left on the b5 build
 5. Two small interrupt savings in the crossing step ([C1](audits/2026-11-09/tide-morph/TASKS.md#c1)), with "Transition costs only while moving".
 6. WASH on: no jump when a glide is stopped by hand, one dip instead of two stacked ([W1](audits/2026-11-09/tide-morph/TASKS.md#w1)).
 7. Docs fixes from the TIDE and morph audit: `TIDE_GUIDE.md:49` how long the crossing dip is; `TIDE_GUIDE.md:23` the MORPH knob 3 text (the wave picture is shipped); the DUB recipe's WASH LOW against STYLE DUB's WASH OFF; AMBIENT "no groove tricks" against POLY GENTLE; WANDER "a little further each trip"; the bass promise worded for POLY and VOIC too, once B1 lands; the dynamics paragraph, once D1 lands.
-8. Before `1.0.0`: 0 missed blocks over the 16-multi GLIDE sweep (owner, 8 November); the CPU budget re-measured and made honest (findings 5, 6, 34; K9).
+8. Factory pattern table trimmed (~0.9 KB; [SP3](audits/2026-11-09/space/TASKS.md)).
+9. Parameter units stored as an index (~0.87 KB; [SP4](audits/2026-11-09/space/TASKS.md)).
+10. Event-rate code built for size (1.78 KB; [SP5](audits/2026-11-09/space/TASKS.md)); needs the FM-1 CPU sweep.
+11. Before `1.0.0`: 0 missed blocks over the 16-multi GLIDE sweep (owner, 8 November); the CPU budget re-measured and made honest (findings 5, 6, 34; K9).
 
 ## Released
 
@@ -169,6 +174,7 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 - No upstream pull requests: TIDE goes its own way (owner, 8 November).
 - No DRONE row: HOLD already latches the notes (owner, 8 November).
 - LADDER's bass loss, filter 1 without self-oscillation and LOFI's aliasing stay as character.
+- USB resampler taps as int16 (-3.8 KB, USB audio about 1 LSB different): not done, audio quality first (9 November).
 
 ## Versions and releases
 
