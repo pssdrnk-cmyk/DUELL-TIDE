@@ -605,6 +605,73 @@ static void test_hand_returns(void)
     }
 }
 
+/* J2: JOURNEY launched with the fader away from A keeps the End B it is heard at (no swap in one block); worst second difference of the
+ * output over the 120 blocks after the launch, dBFS (full scale 2^22) */
+#ifndef J2_BLOCKS
+#define J2_BLOCKS 2756u                                   /* (the launch bar at 120 BPM: 120 blocks of 32 samples are 87 ms, where M02 plays nothing) */
+#endif
+static double j2_launch(uint32_t fader, int *kept)
+{
+    static uint32_t acc;
+    double worst = 0, pk = 0;
+    int32_t to0, to1;
+    uint32_t s0, s1, blocks = 0, i;
+    int32_t p1 = 0, p2 = 0;
+    ui_power_on(); frame();
+    project_load(1);                                     /* M02 */
+    gl.mode = GM_JOURNEY; gl.target = GT_BOTH; gl.time = 4u; gl.wait = 2u; gl.on = gl.armed = 0;
+    song.sel = 0; SEL_BOTH = 0;
+    song.master_q12 = 2048;                              /* (MASTER at its default position, main.c) */
+    morph_do(MQ_FADER, 1u, fader); frame();
+    transport_req = 1u; run(48);                         /* (PLAY, TIDE idle; C3 E3 G3 held) */
+    fm1_in.notes = 0;
+    for (uint32_t k = 0; k < 27u; k++)                   /* (the keys, as a player holds them) */
+        if (kb_map(&trk[0], k) == 60u || kb_map(&trk[0], k) == 64u || kb_map(&trk[0], k) == 67u)
+            fm1_in.notes |= 1u << k;
+    run(4000);
+    to0 = morph_to_of(0, 1u); s0 = mph[0].seed[1][mph[0].top[1]];
+    tide_knob(0u, 1); tide_knob(0u, 1);                  /* K1: JOURNEY GLIDE TO B */
+    for (i = 0; i < 2000u && blocks < J2_BLOCKS; i++) {       /* (the launch bar, from its downbeat) */
+        int32_t out[2 * CTL];
+        acc += (uint32_t)FS * 16u;
+        while (acc >= 1000u * CTL) {
+            acc -= 1000u * CTL;
+            memset(out, 0, sizeof out); song.master_q12 = 2048;
+            mix_block(out, CTL);
+            if (!gl.armed && gl.on && blocks < J2_BLOCKS) {
+                for (uint32_t n = 0; n < CTL; n++) {
+                    int32_t x = out[2u * n], d = x - 2 * p1 + p2;
+                    double a = d < 0 ? -(double)d : (double)d;
+                    if (a > worst) worst = a;
+                    if (fabs((double)x) > pk) pk = fabs((double)x);
+                    p2 = p1; p1 = x;
+                }
+                blocks++;
+            } else
+                p2 = p1 = out[2u * (CTL - 1u)];
+        }
+        frame();
+    }
+    to1 = morph_to_of(0, 1u); s1 = mph[0].seed[1][mph[0].top[1]];
+    if (getenv("J2_V")) printf("J2v fader %u playing %u on %u armed %u blocks %u i %u pk %.0f worst %.0f\n", (unsigned)fader, song.playing, gl.on, gl.armed, (unsigned)blocks, (unsigned)i, pk, worst);
+    *kept = to0 == to1 && s0 == s1;
+    fm1_in.notes = 0;
+    glide_stop(); transport_req = 2u; run(48);
+    return worst > 0 ? 20.0 * log10(worst / 4194304.0) : -200.0;
+}
+static void test_journey_away_from_a(void)
+{
+    int k0, k100;
+    char l[120];
+    double w0 = j2_launch(0u, &k0), w100 = j2_launch(100u, &k100);
+    snprintf(l, sizeof l, "J2: JOURNEY from fader 100 keeps End B in the launch bar");
+    CHECK(l, k100);
+    snprintf(l, sizeof l, "J2: worst second difference in the launch bar: fader 100 %.1f dBFS, fader 0 %.1f dBFS (within 6 dB)", w100, w0);
+    printf("%s\n", l);
+    CHECK(l, w100 <= w0 + 6.0);
+    CHECK("J2: from fader 0 JOURNEY still picks End B at the launch", !k0);
+}
+
 int main(void)
 {
     uint32_t q[MQ_N], n;
@@ -713,6 +780,7 @@ int main(void)
     test_seq_ghost_chord();
     test_settings_flicker();
     test_hand_returns();
+    test_journey_away_from_a();
     printf("tidecontrols: %u checks, %u failures\n", checks, failures);
     return failures ? 1 : 0;
 }

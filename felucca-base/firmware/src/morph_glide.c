@@ -215,9 +215,10 @@ static void glide_start(uint32_t to, uint32_t mask, uint32_t pi)
             if ((mask >> k) & 1u)
                 jh_clear(k);
     }
-    if (gl.mode == GM_JOURNEY && !gl.on && (to & 1u))   /* (JOURNEY starts as it goes on: End B a target too; each part by its own End B, B18) */
+    if (gl.mode == GM_JOURNEY && !gl.on && (to & 1u))   /* (JOURNEY starts as it goes on: End B a target too; each part by its own End B, B18; J2: only
+                                                         * where the fader is at A: End B is heard elsewhere, the first trip goes to the B that is there) */
         for (uint32_t k = 0; k < NSHOWN; k++)
-            if ((mask >> k) & 1u)
+            if (((mask >> k) & 1u) && !morph_fader_of(k))
                 tide_journey(1u << k, 1u, (uint32_t)(((glide_lanes_of(gl.target) >> GT_SOUND) & 1u) && morph_to_of(k, 1u) < 0) << k, 0u);
     if (gl.mode >= GM_WANDER && morph_musical && (glide_lanes_of(gl.target) & (1u << GT_SEQ)))
         rhythm_begin(mask);
