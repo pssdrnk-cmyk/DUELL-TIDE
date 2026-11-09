@@ -43,14 +43,6 @@
 #define WL_C_RUN1 0x1000u
 #define WL_C_FALL 0x0800u                            /* (not calm: the note's trigger takes falling crossings, held while its falling edges are the steeper; silence clears it) */
 #define WL_C_STATE 0xF800u
-/* a new note (b6, coordinator 2026-11-09: "the owner's own case is a sequence, where every step is an attack"): a note started on the part (its latest note-on, track_t.m_vi, of another age than wl_t.vn; b6 W1:
- * a step of up to 2.5 semitones is inside the 1/6 below), or a steady period outside 1/6 of the held one. The ridges of the note before (r >= WL_C_AGE's count, the pictures since the
- * change, to 7) rest flat at once; the new note's ridges build up in front of them, and while the count runs (its attack) wl_stack drops any that would cross the front. A picture
- * with no steady period outside calm (a note change, an attack: 1 or 2 pictures at a crossing that is not the note's) is not made a ridge; the trigger keeps what it learnt from it, as
- * before. Outside calm only */
-#define WL_C_AGE 0x0700u
-#define WL_C_AGE1 0x0100u
-#define WL_C_NEW 0x0080u                             /* (wl_pic to wl_step only: this picture's period is a new note's) */
 typedef struct {
     uint32_t base;                                   /* wv_cnt where the gate last opened */
     uint32_t gpk;                                    /* the slow gain's peak */
@@ -61,7 +53,6 @@ typedef struct {
     uint16_t per;                                    /* its period (1/16 of an entry; 0: none steady), so that a held note keeps its window and its count of cycles */
     uint16_t calm;                                   /* bit r: ridge r was made calm (WL_C_ON); the top bits the calm state: WL_C_ON, WL_C_STD (the last picture had a steady period), the run of pictures without one (WL_C_RUN), the trigger's held direction (WL_C_FALL) */
     uint8_t got, have, a, hn;                        /* a picture exists since the last reset; one with a trigger to match; the half height the ridges were made for; ridges kept */
-    uint32_t vn;                                     /* the age (voice.c vage) of the part's latest note-on seen */
 } wl_t;
 static wl_t wl[2];
 static uint32_t wl_tk = 0xFFFFFFFFu;
@@ -191,8 +182,6 @@ static int wl_pic(const wl_t *s, int32_t n, int32_t a, int8_t *nd, int16_t *nf, 
     }
     if (pq && s->per && (pq > s->per ? pq - s->per : s->per - pq) * 6u <= s->per)
         pq = s->per;                                 /* (within 1/6 of the held period: the same note; the crossings' own jitter, up to 13 % on a driven saw's attack, does not move the window) */
-    else if (pq && s->per && !(*ncs & WL_C_ON))
-        *ncs |= WL_C_NEW;                            /* (outside it: a new note) */
     wl_per = pq;
     per = pq / 16u;
     if (per) {                                       /* whole cycles of the played pitch: 2, or as many as make WL_MINW for a high note, never more than fit with a period of room for the
@@ -308,13 +297,10 @@ static int32_t wl_rp(const wl_t *s, uint32_t r, uint32_t p)
 }
 /* a picture becomes the newest ridge (nd 0: a flat one), the others move back. A picture of about the size and shape of the newest ridge (within 2 : 1, the mean difference at most 1/8 of the peak) is blended half and half with it,
  * so that a busy sound's ridges follow on from each other (one shape, not scattered lines); a jump in size (an attack, a much softer note) is taken as it is */
-static void wl_push(wl_t *s, int8_t *nd, uint32_t how)   /* how: WL_C_ON (or bit 0): a calm ridge; WL_C_NEW: a new note's first, never blended into the note before */
+static void wl_push(wl_t *s, int8_t *nd, uint32_t how)   /* how: WL_C_ON (or bit 0): a calm ridge */
 {
     const uint32_t calm = how & (WL_C_ON | 1u);
-    uint32_t p, age = (s->calm & WL_C_AGE) / WL_C_AGE1;
-    age = !age || age >= WL_C_AGE / WL_C_AGE1 ? 0u : age + 1u;   /* (the pictures since a note change, to 7: the ridges past it are the note before's (none left from WL_HN);
-                                                                 * wl_stack's crossing check runs while it counts, the new note's attack) */
-    uint32_t fresh = (how & WL_C_NEW) != 0u;         /* (a new note: the ridges behind this one are the note before's) */
+    uint32_t p;
     if (nd && s->hn && !(s->flat & 1u)) {
         int32_t pn = 0, po = 0, sn = 0, sd = 0;
         for (p = 0; p < WL_NP; p++) {
@@ -324,8 +310,6 @@ static void wl_push(wl_t *s, int8_t *nd, uint32_t how)   /* how: WL_C_ON (or bit
             sn += a;
             sd += d < 0 ? -d : d;
         }
-        if (!calm && 4 * sd > (int32_t)WL_NP * pn)   /* (not calm, the mean difference over a quarter of the peak: a sequence's next step, the same pitch and a new shape) */
-            fresh = 1u;
         if (calm && pn <= 2 * po && po <= 2 * pn) {    /* (calm: 1 : 2 into the one before, whatever the shape; a jump in size is taken as it is) */
             for (p = 0; p < WL_NP; p++) {
                 int32_t q = nd[p] + 2 * wl_rq(s, 0, p);
@@ -345,7 +329,6 @@ static void wl_push(wl_t *s, int8_t *nd, uint32_t how)   /* how: WL_C_ON (or bit
     s->calm = (uint16_t)((s->calm & ~((1u << WL_HN) - 1u)) | ((s->calm << 1 | (calm ? 1u : 0u)) & ((1u << WL_HN) - 1u)));
     s->hn = s->hn < WL_HN ? s->hn + 1u : WL_HN;
     s->got = 1;
-    s->calm = (uint16_t)((s->calm & ~WL_C_AGE) | (fresh && nd ? 1u : age) * WL_C_AGE1);
 }
 /* the sound has gone (silence, a note's tail): the newest ridge again at half its height (a flat one once nothing is left), so a shape fades out over a few pictures instead of
  * dropping to a ruled line */
@@ -415,7 +398,7 @@ static void wl_step(uint32_t k, int32_t a)
     if (wl_per)                                      /* (a picture with no steady period keeps the held one) */
         s->per = (uint16_t)wl_per;
     s->gpk = ng;
-    s->calm = (uint16_t)((s->calm & (((1u << WL_HN) - 1u) | WL_C_AGE)) | (ncs & WL_C_STATE));
+    s->calm = (uint16_t)((s->calm & ((1u << WL_HN) - 1u)) | (ncs & WL_C_STATE));
     if (!r) {                                        /* nothing there (a note's tail): the front fades, the stack runs out as the sound does */
         wl_fade(s);
         s->have = 0;
@@ -425,12 +408,7 @@ static void wl_step(uint32_t k, int32_t a)
     s->have = 1;
     if (!(ncs & WL_C_ON) && !wl_per)                 /* no steady period, not calm: a note change or an attack, not made a ridge (the stack stays as it was) */
         return;
-    {   /* (a note started since the last ridge, outside calm: the part's latest note-on, track_t.m_vi, has another age; this ridge is a new note's) */
-        const uint32_t g = trk[k].v[trk[k].m_vi % NVOICE].age;
-        const uint32_t nn = g != s->vn && !(ncs & WL_C_ON) ? WL_C_NEW : 0u;
-        s->vn = g;
-        wl_push(s, nd, (ncs & (WL_C_ON | WL_C_NEW)) | nn);
-    }
+    wl_push(s, nd, ncs & WL_C_ON);
 }
 /* A part's tag, shared by the MORPH page and AUTO TIDE: its number at the knob-1 dot's x, centred on row y. The selected part (hot) in full colour, its number in a filled pill
  * (the cue that works on MONO and GREY too); the other plain and dimmed (its colour mixed 40 % into the background; MONO: its grey). ui_part_col is that colour, ui_part_hot says which:
@@ -486,61 +464,47 @@ static void wl_col(int32_t x, int32_t ya, int32_t yb, int32_t w16, uint16_t c, i
  * 2026-11-09: "the lines are falling apart"). Colour: the part's, along its A..B gradient at the fader (mv_col); the front in full and about 2 px thick, each older one 1 px and evenly
  * fainter. The part the controls act on (ui_part_hot) in full colour with a bar at the half's edge, the other dimmed. A tail fades its shape (wl_fade); a ridge that has faded flat, a lane not
  * filled yet and silence are drawn as straight lines in their place with the same fades, so every lane is always there (resting flat, or moving) */
-/* an older ridge r that no longer follows the front (b6, B5 release 2026-11-09: a held square whose pulse width moves drew its older edges at other x, across the front): its mean
- * difference from the front more than a quarter of the front's peak. Drawn flat, at rest, until it has left the stack; a calm ridge never (calm's echoes are blended into each other) */
-static int wl_far(const wl_t *s, uint32_t r)
+/* point p of ridge r as drawn, 1/16 px (yf16: the front's middle; sh: bit r, ridge r drawn with its shape, else flat in its place). b5 motion (owner 2026-11-09: "the front lines move
+ * a lot and the ones behind barely"): no older ridge is laid flat for being unlike the front or crossing it; every one keeps its shape and moves back with the stack, as on d4b3c36.
+ * What b6 W1 kept from crossing is kept by the drawing: a shaped ridge is never drawn under a newer shaped one, it rides on it (just above its stroke: 22/16 px over the front, 1 px
+ * over an older one) where it would cross; elsewhere its shape is its own. A calm ridge only under a newer one that is not calm (a note out of calm, its first ridges); calm ones
+ * among themselves are drawn as they are (blended into each other, calm's own look), and a flat one is drawn flat */
+static int32_t wl_y(const wl_t *s, int32_t r, uint32_t p, uint32_t sh, int32_t nf, int32_t st, int32_t yf16)
 {
-    int32_t pk = 0, sd = 0;
-    uint32_t p;
-    if (!r || ((s->calm >> r) & 1u) || (s->flat & 1u))
-        return 0;
-    for (p = 0; p < WL_NP; p++) {
-        const int32_t a = wl_rq(s, 0, p), d = wl_rq(s, r, p) - a;
-        pk = (a < 0 ? -a : a) > pk ? (a < 0 ? -a : a) : pk;
-        sd += d < 0 ? -d : d;
+    int32_t i, y = 0, lim = 1 << 28, lin = 1 << 28;  /* (the bound from every newer shaped ridge; from the newer ones that are not calm) */
+    for (i = 0; i <= r; i++) {
+        const int32_t yb = yf16 - (nf > 1 ? st * 16 * i / (nf - 1) : 0), g = i ? 16 : 22, calm = (s->calm >> i) & 1u;
+        if (!((sh >> i) & 1u)) {
+            y = yb;
+            continue;
+        }
+        y = yb + wl_rq(s, (uint32_t)i, p) * 4 * (nf - i) / nf;
+        if (i && y > (calm ? lin : lim))
+            y = calm ? lin : lim;
+        lim = (y < lim ? y : lim) - g;
+        lin = (!calm && y < lin ? y : lin) - g;
     }
-    return 4 * sd > (int32_t)WL_NP * pk;
-}
-/* (b6 W1) ridge r, as drawn, under the front by more than d (1/16 px) at m points in a row (the ridge's middle st / (nf - 1) rows a ridge higher, its height (nf - r) / nf; a single
- * point is an edge landing one point earlier, as a saw's drop may: not a crossing) */
-static int wl_under(const wl_t *s, int32_t r, int32_t nf, int32_t st, int32_t d, int32_t m)
-{
-    int32_t p, n = 0;
-    for (p = 0; p < WL_NP && n < m; p++)
-        n = (wl_rq(s, (uint32_t)r, (uint32_t)p) * (nf - r) - wl_rq(s, 0, (uint32_t)p) * nf) * 4 / nf - st * 16 * r / (nf - 1) > d ? n + 1 : 0;
-    return n >= m;
+    return y;
 }
 static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
 {
-    wl_t *s = &wl[k];
+    const wl_t *s = &wl[k];
     const int hot = ui_part_hot(k);
     const int32_t pct = (int32_t)morph_fader_of(k) * 100 / 127;
     const uint16_t col = mv_col(k, pct, 0);
     int32_t a, st, nf = wl_fit(y1 - y0, &a, &st), nr = s->hn < (uint32_t)nf ? (int32_t)s->hn : nf, yf = y1 - 2 - a, r, p;
-    uint32_t shp = !(s->flat & 1u);                  /* (bit r: ridge r drawn with its shape) */
+    uint32_t shp = 0;                                /* (bit r: ridge r drawn with its shape) */
     if (y1 - y0 < 8)
         return;
     if (hot)                                         /* the selected part (both with BOTH): a bar at the half's edge (the tag goes over the lines, last) */
         cv_rect(1, y0 + 1, 3, y1 - y0 - 2, T_PFILL(k));
     if (nr < 1 || s->a != (uint8_t)a || (s->flat & ((1u << nr) - 1u)) == (1u << nr) - 1u)
         nr = 0;                                      /* nothing yet, made for another box, or silence: every lane at rest, flat (the same lines as when it plays) */
-    {   /* which older ridges keep their shape. b6 W1: one that would cross the front drops out: flat, and it stays so (its flat bit) until it has left the stack. In a new note's first 7
-         * pictures (the attack, whose earlier shapes cross the front on a saw) by a px at 2 points in a row; after that by 2 px at 4 points (a held saw's moving shape, now and then), so
-         * a held note keeps its stack. A calm ridge never: its echoes are blended into each other */
-        const int32_t age = (int32_t)((s->calm & WL_C_AGE) / WL_C_AGE1), d = age ? 16 : 32, m = age ? 2 : 4;
-        for (r = 1; r < nr; r++) {
-            if (((s->flat >> r) & 1u) || (age && r >= age) || wl_far(s, (uint32_t)r))   /* (a stale ridge rests flat at once: the new note's front never crosses a shape of the note
-                                                                                        * before; nor one that has drifted away from the front's shape) */
-                continue;
-            if ((shp & 1u) && !((s->calm >> r) & 1u) && wl_under(s, r, nf, st, d, m))
-                s->flat |= (uint16_t)(1u << r);
-            else
-                shp |= 1u << r;
-        }
-    }
+    for (r = 0; r < nr; r++)
+        shp |= (uint32_t)!((s->flat >> r) & 1u) << r;
     for (r = nf - 1; r >= 0; r--) {
         const int flat = r >= nr || !((shp >> r) & 1u);
-        const int32_t yb16 = yf * 16 + 8 - (nf > 1 ? st * 16 * r / (nf - 1) : 0), num = nf - r, den = nf;   /* (the ridge's middle, 1/16 px, spread over the lane; its height (N - r) / N) */
+        const int32_t yb16 = yf * 16 + 8 - (nf > 1 ? st * 16 * r / (nf - 1) : 0);   /* (the ridge's middle, 1/16 px, spread over the lane; its shape: wl_y) */
         const int32_t str = (!r ? 100 : !flat && ((s->calm >> r) & 1u) ? (80 >> r > 15 ? 80 >> r : 15) : 15 + (nf > 2 ? 60 * (nf - 1 - r) / (nf - 2) : 60)) * (hot ? 100 : 55) / 100;
                                                      /* (strength %: front 100, then 75, 60 .. 15 evenly, the same at rest; a calm ridge (WL_C_ON) 40, 20, then 15: never fainter than the
                                                       * back ridge, or a dim line breaks into fragments) */
@@ -548,7 +512,7 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
         int32_t py = yb16;
         int32_t px = WL_X0;
         for (p = 0; p < WL_NP; p++) {
-            const int32_t x = WL_X0 + (int32_t)p * (WL_X1 - WL_X0) / (int32_t)(WL_NP - 1u), y = flat ? yb16 : yb16 + wl_rq(s, (uint32_t)r, (uint32_t)p) * 4 * num / den;
+            const int32_t x = WL_X0 + (int32_t)p * (WL_X1 - WL_X0) / (int32_t)(WL_NP - 1u), y = wl_y(s, r, (uint32_t)p, shp, nf, st, yf * 16 + 8);
             if (p && x > px) {                       /* (the columns of the segment from the last point, each from its left edge to its right) */
                 const int32_t d2 = 2 * (x - px);
                 int32_t c;

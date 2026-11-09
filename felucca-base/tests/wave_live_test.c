@@ -10,8 +10,8 @@
  *   busy      #18 PEDAL BASS with the sequence and the chord: each half of the picture at most WL_HN pieces (one unbroken line a ridge; the b5 merge's occluded stack fell into dozens)
  *   select    the ALGORITHM encoder on the page: PART 1, BOTH, PART 2 in that order and stopping at the ends; the picture alive in all three
  *   off HOME  an edit page: the encoder picks PART 1 / PART 2 only, BOTH stays for HOME
- *   saw       #25 DRIVEN SAW, a new note every 250 ms, then one held: no older line drawn more than 2 px under a newer one for 4 points in any picture (b6 W1: 1 in 15 at 1.0.0-b5), and the
- *             stack still has its echoes (held: 3 a picture; 5 at b5, where 1 look in 8 had a line crossing)
+ *   saw       #25 DRIVEN SAW, a new note every 250 ms, then one held: no older line drawn more than 2 px under a newer one for 4 points in any picture (b6 W1: 1 in 15 at 1.0.0-b5), as drawn
+ *             (wl_y); and the whole stack keeps its shape and moves back (b5 motion: 4 shaped older lines a look on changing notes, 4.5 of 5 held; the W1 drop-outs gave 0.9 and 3.8)
  * Run: wave_live_test (exit 0 = all ok) */
 #include "../web/emu/felucca_web.c"
 #ifndef QUIET_LVL
@@ -143,30 +143,29 @@ static void watch(uint32_t ms, uint32_t mask, int strike, uint32_t *alive0, uint
         }
     }
 }
-/* part k's stack as wl_stack draws it: the longest run of points where a shaped older ridge lies more than 2 px under a newer shaped one (*ne: the shaped older ridges). Shaped, as
- * wl_stack decides: inside the lane's count, not flat (silence, a tail, or dropped out), not the note before's (WL_C_AGE), not drifted from the front (wl_far) */
+/* part k's stack as wl_stack draws it (wl_y, the points as drawn): the longest run of points where a shaped older line lies more than 2 px under a newer shaped one (*ne: the shaped
+ * older lines). Shaped, as wl_stack decides: inside the lane's count and not flat (silence, a tail). b5 motion: no older line is dropped any more, the drawing keeps it off the newer ones */
 static uint32_t live_cross(uint32_t k, uint32_t *ne)
 {
     const wl_t *s = &wl[k];
     const int32_t h = k ? pic_y1 - pic_ym : pic_ym - pic_y0;
-    int32_t a, st, nf = wl_fit(h, &a, &st), nr = s->hn < (uint32_t)nf ? (int32_t)s->hn : nf, age = (int32_t)((s->calm & WL_C_AGE) / WL_C_AGE1), r, q, p, best = 0;
+    int32_t a, st, nf = wl_fit(h, &a, &st), nr = s->hn < (uint32_t)nf ? (int32_t)s->hn : nf, r, q, p, best = 0;
     uint32_t shp = 0;
     *ne = 0;
     if (nr < 2 || s->a != (uint8_t)a || (s->flat & 1u))
         return 0;
-    shp = 1;
-    for (r = 1; r < nr; r++)
-        if (!((s->flat >> r) & 1u) && !(age && r >= age) && !wl_far(s, (uint32_t)r)) {
+    for (r = 0; r < nr; r++)
+        if (!((s->flat >> r) & 1u)) {
             shp |= 1u << r;
-            (*ne)++;
+            *ne += r > 0;
         }
     for (r = 1; r < nr; r++)
         for (q = 0; q < r && ((shp >> r) & 1u); q++) {
             int32_t run = 0;
             if (!((shp >> q) & 1u))
                 continue;
-            for (p = 0; p < WL_NP; p++) {   /* (1/16 px: each ridge's middle st / (nf - 1) rows higher, its height (nf - r) / nf) */
-                const int32_t yr = -st * 16 * r / (nf - 1) + s->rd[r][p] * 4 * (nf - r) / nf, yq = -st * 16 * q / (nf - 1) + s->rd[q][p] * 4 * (nf - q) / nf;
+            for (p = 0; p < WL_NP; p++) {   /* (1/16 px, the lane's own offset left out: it is the same for both) */
+                const int32_t yr = wl_y(s, r, (uint32_t)p, shp, nf, st, 0), yq = wl_y(s, q, (uint32_t)p, shp, nf, st, 0);
                 run = yr > yq + 32 ? run + 1 : 0;
                 best = run > best ? run : best;
             }
@@ -314,10 +313,10 @@ int main(void)
         web_keys(0);
         snprintf(w, sizeof w, "saw: DRIVEN SAW, a new note every 250 ms: looks where an older line is drawn over 2 px under a newer one for 4 points %u of 516 (need 0)", xs);
         ok(w, xs == 0u);
-        snprintf(w, sizeof w, "saw: and still echoes, not a front alone: %u shaped older lines over 258 looks of part 1 (need 1 in 2)", es);
-        ok(w, es * 2u >= 258u);
-        snprintf(w, sizeof w, "saw: one held, after 0.6 s: crossings %u of %u looks (need 0), echoes %u.%02u a look (need 3)", xh, 2u * pics, eh / pics, eh * 100u / pics % 100u);
-        ok(w, xh == 0u && eh >= 3u * pics);
+        snprintf(w, sizeof w, "saw: the stack moves back whole, none laid flat: %u shaped older lines over 258 looks of part 1 (need 4 a look; b5 0.9)", es);
+        ok(w, es >= 4u * 258u);
+        snprintf(w, sizeof w, "saw: one held, after 0.6 s: crossings %u of %u looks (need 0), echoes %u.%02u a look (need 4.5 of 5)", xh, 2u * pics, eh / pics, eh * 100u / pics % 100u);
+        ok(w, xh == 0u && 2u * eh >= 9u * pics);
     }
 
     printf("wavelive: %d checks, %d failed\n", ncheck, bad);
