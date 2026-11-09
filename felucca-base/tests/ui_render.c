@@ -1354,7 +1354,7 @@ static void setup(int s)
         go_title("AUTO TIDE");
         if (run) {
             song.playing = 1;
-            gl.on = 3u; gl.to = 1u; gl.mask = (uint8_t)(both ? 3u : 1u); gl.pi = 0; gl.from[0] = gl.from[1] = 10u;
+            gl.on = 3u; gl.to = 1u; gl.mask = (uint8_t)(both ? 3u : 1u); gl.pi = 0; gl.from[0][0] = gl.from[0][1] = gl.from[1][0] = gl.from[1][1] = 10u;
             gl.prog = (3u << GLIDE_Q) / 8u; gl.hold = (uint8_t)(s == S_TIDE_WAIT);
             if (s != S_TIDE_BOTH_GLIDE) sqm_arc = 0;   /* (ARC off: the status line names the glide, "WNDR TO B  3/8", "WAITING  1/2"; BOTH gliding keeps ARC's "RISE 1/6") */
             morph_do(MQ_FADER, gl.mask, 60u);

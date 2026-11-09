@@ -13,6 +13,8 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 - **Fixed (review FR8, a MIDI keyboard into the arp):** with GLO > MODULES ARP = KEEPS RUNNING, letting go of a chord held on a MIDI keyboard after a sound change (PRESETS or a program change) now stops the arp; before, it cycled the released chord until STOP ALL.
 - **Fixed (review FR8):** playing a key on a note a MIDI note already holds on the same part no longer leaves the arp counting one key too many: HOLD replaces its chord with the next one again, and HOLD off drops the latched chord. In LAYER with SPLIT, a MIDI note that only part 2 plays no longer releases a note of the same pitch on part 1.
 - **Fixed (review FR8):** with MENU > MIDI > MIDI IN = SEL, bending the wheel (or pressing a key with channel aftertouch) and changing part before letting go no longer leaves the part you left bent or pressed; a part still holding a MIDI note keeps following its channel as before. The mod wheel's value stays on each part, as it is a position you set.
+- A GLIDE started with BOTH parts selected now moves each part from where its own MORPH fader is (before, the other part jumped to the selected part's place at once); AUTO TIDE draws each part's own path.
+- Loading a factory multi leaves TIDE SETTINGS' ROLL ARP, ROLL PITCH and ROLL TYPE as you set them (before, they went OFF / OFF / SMART and that was saved).
 
 ## 1.0.0-b6
 

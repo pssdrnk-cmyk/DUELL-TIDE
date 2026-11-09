@@ -177,6 +177,45 @@ static void test_both_takeover(void)
     transport_req = 2u; run(48);
 }
 
+/* FR4: a BOTH glide with the faders apart moves each part from where its own fader is (part 2 at 100 never drops back) */
+static void test_both_apart(void)
+{
+    uint32_t lo1 = 255u, lo2 = 255u, i;
+    ui_power_on(); frame();
+    transport_req = 2u; run(48);
+    song.sel = 0; SEL_BOTH = 0;
+    gl.mode = GM_ONCE; gl.target = GT_SOUND; gl.time = 0; gl.wait = 0; gl.on = gl.armed = 0;
+    song.g[G_BPM] = 120;
+    morph_do(MQ_FADER, 1u, 0u); morph_do(MQ_FADER, 2u, 100u); frame();
+    glide_launch(1u, 3u, 0);
+    for (i = 0; i < 400u && (gl.on || i < 4u); i++) {
+        run(16);
+        if (morph_fader_of(0) < lo1) lo1 = morph_fader_of(0);
+        if (morph_fader_of(1) < lo2) lo2 = morph_fader_of(1);
+        if (i < 40u) CHECK("both apart: part 1 never leads part 2 past it", morph_fader_of(0) <= morph_fader_of(1));
+    }
+    CHECK("both apart: part 2 never drops below its own 100", lo2 >= 100u);
+    CHECK("both apart: part 1 starts from its own 0", lo1 == 0u);
+    CHECK("both apart: both arrive at B together", !gl.on && morph_fader_of(0) == 127u && morph_fader_of(1) == 127u);
+    gl.on = gl.armed = 0;
+    transport_req = 2u; run(48);
+}
+
+/* FR5: a factory multi leaves ROLL ARP / ROLL PITCH / ROLL TYPE as the player set them (a saved one restores its own byte) */
+static void test_multi_keeps_roll_rows(void)
+{
+    ui_power_on(); frame();
+    morph.cfg = (uint8_t)((morph.cfg & ~MC_ARP) | MC_PIT | MC_WILD);
+    project_load(1);                                     /* M02, factory */
+    CHECK("factory multi: ROLL PITCH stays ON", jl_get(JL_PITCH) == 1u);
+    CHECK("factory multi: ROLL TYPE stays WILD", jl_get(JL_ROLL) == 2u);
+    CHECK("factory multi: ROLL ARP stays OFF", jl_get(JL_ARP) == 0u);
+    morph.cfg = (uint8_t)(morph.cfg | MC_ARP);
+    project_load(1);
+    CHECK("factory multi: ROLL ARP stays ON", jl_get(JL_ARP) == 1u);
+    morph.cfg = 0;
+}
+
 /* a glide of target / mode / WAIT on the parts of mask, read from part pi, 1-bar trips at 120 BPM, playing */
 static void r0_launch(uint32_t pi, uint32_t mask, uint32_t target, uint32_t mode, uint32_t wait)
 {
@@ -593,6 +632,8 @@ int main(void)
     test_time_mid_trip();
     test_wait_off_paused();
     test_both_takeover();
+    test_multi_keeps_roll_rows();
+    test_both_apart();
     test_wait_edit_running();
     test_takeover_symmetric();
     test_takeover_routes();

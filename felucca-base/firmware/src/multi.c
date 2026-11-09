@@ -748,7 +748,12 @@ static void project_load(uint32_t slot)
 #if DUELL_TIDE
     song.both = (uint8_t)set[1];                       /* set[1] TARGET: the selection's BOTH (1.0.0-b5: a stored BOTH loads as the selection BOTH; before it was reserved and never read) */
 #endif                                                 /* (plain DUELL: reserved, ALGORITHM's BOTH is the player's, a load keeps it) */
+#if DUELL_TIDE
+    if (!fact)                                         /* TIDE b7: a factory multi leaves ROLL ARP / ROLL PITCH / ROLL TYPE as the player set them (a saved one restores its own byte) */
+        morph.cfg = set[2];
+#else
     morph.cfg = set[2];
+#endif
 #if DUELL_TIDE
     if (fact)                                          /* TIDE b6: a factory multi keeps the player's AMOUNT (a saved one restores its own); M17, M18 too (their STYLE DRONE is not AMOUNT) */
         for (pi = 0; pi < NSHOWN; pi++)
