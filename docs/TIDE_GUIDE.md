@@ -23,7 +23,7 @@ On these three pages a small dim pill beside part 1's capsule shows the busiest 
 | 3 | Nothing for now (a picture of the sound's wave is planned). A roll replaces its end; there is no UNDO. |
 | 4 | AMOUNT: how far a roll may go. *Start: leave it.* The musical roll has its own sensible scale. |
 
-The fader's position (A, 1 to 126, B) is in knob 1's card, like the first value on every other page. The top of the page shows the sound itself as waves, like an oscilloscope: a held note stands still, a chord beats, the newest wave in front. ALGORITHM picks whose: PART 1, PART 2, or BOTH (one above the other). **Hold SAVE** saves the patch; with ALGORITHM on BOTH each part goes over its own slot.
+The fader's position (A, 1 to 126, B) is in knob 1's card, like the first value on every other page. The top of the page shows the sound itself as waves, like an oscilloscope: a held note stands still, a chord beats, the newest wave in front, the older ones fainter behind it; at rest the lines lie flat. ALGORITHM picks whose: PART 1, PART 2, or BOTH (one above the other). **Hold SAVE** saves the patch; with ALGORITHM on BOTH each part goes over its own slot.
 
 ## 2. AUTO TIDE (the page you live on)
 
