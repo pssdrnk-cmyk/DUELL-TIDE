@@ -56,6 +56,9 @@ static int accounted(const track_t *t, uint32_t note)
     for (i = 0; i < t->nheld && i < 16u; i++)
         if (t->held[i] == note)
             return 1;
+    if (trk_index(t) < NSHOWN)                           /* (b7: AUTO TIDE's ghost chord on a part that waits for keys owns its notes: it ends with the transport) */
+        if (TIDE_GH_ON(trk_index(t)))
+            return 1;
     return 0;
 }
 static void check_orphans(void)

@@ -435,9 +435,9 @@ static void drones(void)
 {
     static const char *const DN[2] = {"DUNE HORN", "VOID DEEP"};
     static const char *const DS[2][2] = {{"HORN SWELL", "VOID SHIMMER"}, {"VOID SHIMMER", "SOLAR WIND"}};
-    /* the sequences (tools/drone_pack.py, b6: owner "I'm missing some sequence from the drone multis"): the part, its RATE (params.c N_DIV: 0 1/4, 6 1/2), the 16 steps
+    /* the sequences (tools/drone_pack.py, b6: owner "I'm missing some sequence from the drone multis"): the part, its RATE (params.c N_DIV: 6 1/2, 7 1/1; b7: the bed beside it is ARP SEQ too, 1/4 = 0, one note tied over its 16 steps), the 16 steps
      * (a digit: the offset from the held key, '-' a tie, '.' a rest) */
-    static const uint8_t DQ[2] = {0, 1}, DQ_RATE[2] = {0, 6};
+    static const uint8_t DQ[2] = {0, 1}, DQ_RATE[2] = {6, 7};
     static const char DQ_STEP[2][17] = {"0--.0--.5--.0--.", "0------.2---5--."};
     uint8_t rec[MU_REC_MAX], obj[MU_NOBJ][MU_OBJ_MAX], amt[NSHOWN], set[6];
     uint16_t objn[MU_NOBJ];
@@ -489,11 +489,11 @@ static void drones(void)
     for (k = 16u, ok = 1; k < 18u; k++) {
         ok &= project_used(k) && project_factory(k) && !multi_bad(k) && project_info(k, nm) && str_eq(nm, DN[k - 16u]) && df_of(k) == k;
         ok &= str_eq(multi_vname(k, 0), DS[k - 16u][0]) && str_eq(multi_vname(k, 1), DS[k - 16u][1]);
-        ok &= multi_vmode(k, DQ[k - 16u]) == (2u | 4u) && multi_vmode(k, 1u - DQ[k - 16u]) == 0u;   /* (the MULTIS row, ui_graph.c graph_slots: "SEQ" on the sequence's part, "OFF" on the drone's) */
+        ok &= multi_vmode(k, DQ[k - 16u]) == (2u | 4u) && multi_vmode(k, 1u - DQ[k - 16u]) == (2u | 4u);   /* (the MULTIS row, ui_graph.c graph_slots: "SEQ" on both: the moving part and, b7, the bed with its one tied step) */
         multi_preview(k, &pv);
         ok &= pv.state == 1u;
     }
-    ck("  M17 DUNE HORN, M18 VOID DEEP: used, factory, their names, sounds (HORN SWELL + VOID SHIMMER, VOID SHIMMER + SOLAR WIND), the MULTIS row SEQ / OFF (M17) and OFF / SEQ (M18) with notes in the pattern, the preview decodes", ok);
+    ck("  M17 DUNE HORN, M18 VOID DEEP: used, factory, their names, sounds (HORN SWELL + VOID SHIMMER, VOID SHIMMER + SOLAR WIND), the MULTIS row SEQ / SEQ with notes in the pattern, the preview decodes", ok);
     for (k = 16u; k < 18u; k++) {
         char path[64];
         FILE *f;
@@ -513,16 +513,20 @@ static void drones(void)
         for (t = 0; ok && t < NSHOWN; t++)
             ok &= trk[t].eng_req == q.t[t].engine && trk[t].preset == q.t[t].preset && !memcmp(trk[t].p, q.t[t].p, sizeof q.t[t].p) &&
                   !memcmp(trk[t].step, q.t[t].step, sizeof q.t[t].step);
-        {                                            /* (the sequence, tools/drone_pack.py: one part ARP SEQ on 16 steps at its RATE, GATE 127, the steps' offsets; the other the latched drone, arp OFF) */
+        {                                            /* (the sequence, tools/drone_pack.py: one part ARP SEQ on 16 steps at its RATE, GATE 127, the steps' offsets; the other, b7, the bed: ARP SEQ 1/4, one tied note) */
             const track_t *s = &trk[DQ[k - 16u]], *d = &trk[1u - DQ[k - 16u]];
-            ok &= trk[0].p[P_AHOLD] == 2 && trk[1].p[P_AHOLD] == 2 && !d->p[P_AMODE] && song.g[G_BPM] == 60;
+            uint32_t bed_ok;
+            ok &= trk[0].p[P_AHOLD] == 2 && trk[1].p[P_AHOLD] == 2 && d->p[P_AMODE] == AM_SEQ_ID && song.g[G_BPM] == 60;
             ok &= s->p[P_AMODE] == AM_SEQ_ID && s->p[P_SLEN] == 16 && s->p[P_AGATE] == 127 && s->p[P_ARATE] == DQ_RATE[k - 16u];
             for (t = 0; ok && t < 16u; t++)
                 ok &= DQ_STEP[k - 16u][t] == '.' ? s->step[t].time == ST_REST : DQ_STEP[k - 16u][t] == '-' ? s->step[t].time == ST_TIE :
                       s->step[t].time == ST_NOTE && s->step[t].n == 1u && s->step[t].note[0] == 60u + (uint32_t)(DQ_STEP[k - 16u][t] - '0') && !(s->step[t].flags & SF_ACCENT);
+            for (bed_ok = 1, t = 0; t < 16u; t++)     /* (b7: the VOID SHIMMER bed, ARP SEQ 1/4, GATE 127: one note, root, tied over all 16 steps) */
+                bed_ok &= t ? d->step[t].time == ST_TIE : d->step[t].time == ST_NOTE && d->step[t].n == 1u && d->step[t].note[0] == 60u;
+            ok &= bed_ok && d->p[P_SLEN] == 16 && d->p[P_AGATE] == 127 && d->p[P_ARATE] == 0;
         }
-        ck(k == 16u ? "  M17: the ROM record is tools/drone_multis/M17.bin byte for byte (LAYER); LOAD gives its engines, sounds, every value and step; HOLD ALL, 60 BPM; part 1 ARP SEQ 1/4 root root fourth root, part 2 latched"
-                    : "  M18: the ROM record is tools/drone_multis/M18.bin byte for byte (LAYER); LOAD gives its engines, sounds, every value and step; HOLD ALL, 60 BPM; part 2 ARP SEQ 1/2 root, a tone up, fourth, part 1 latched", ok);
+        ck(k == 16u ? "  M17: the ROM record is tools/drone_multis/M17.bin byte for byte (LAYER); LOAD gives its engines, sounds, every value and step; HOLD ALL, 60 BPM; part 1 ARP SEQ 1/2 root root fourth root, part 2 ARP SEQ 1/4 one tied root"
+                    : "  M18: the ROM record is tools/drone_multis/M18.bin byte for byte (LAYER); LOAD gives its engines, sounds, every value and step; HOLD ALL, 60 BPM; part 2 ARP SEQ 1/1 root, a tone up, fourth, part 1 ARP SEQ 1/4 one tied root", ok);
     }
     memcpy(snap, nor, sizeof snap);
     gen = multi_gen();

@@ -24,11 +24,10 @@ OUT = fm.ROOT / "tools" / "drone_multis"
 
 
 def multi(rom, slot, name, what, a, b, la=98, lb=82, seq=None):
-    """seq: (part 0 / 1, ARP RATE, steps): that part plays the SEQUENCER arp (ARP SEQ) on the latched keys, GATE 127; the other stays a latched drone (HOLD ALL, arp OFF)"""
+    """seq: (part 0 / 1, ARP RATE, steps), or a list of them: that part plays the SEQUENCER arp (ARP SEQ) on the latched keys, GATE 127; a part without one stays a latched drone (HOLD ALL, arp OFF)"""
     hold = dict(P_AMODE="OFF", P_AHOLD="ALL")
     parts = [dict(sound=a, set=dict(hold, P_LEVEL=la)), dict(sound=b, set=dict(hold, P_LEVEL=lb))]
-    if seq:
-        p, rate, steps = seq
+    for p, rate, steps in ([seq] if isinstance(seq, tuple) else seq or []):
         parts[p]["set"].update(P_AMODE="SEQ", P_ARATE=rate, P_AGATE=127)
         parts[p]["steps"] = steps
     return dict(rom=rom, slot=slot, name=name, mode="LAYER", what=what, g=dict(G), parts=parts)
@@ -42,11 +41,14 @@ def multi(rom, slot, name, what, a, b, la=98, lb=82, seq=None):
 # DUNE HORN: the horn (it speaks at once) swells once a bar, root, root, fourth, root: three beats on and a beat to breathe, a 4-bar loop.
 # VOID DEEP: the solar wind (it takes about 2 s to come up) on 2-second steps over an 8-bar loop: the root for 14 s, a whole tone up for 8 s
 # (the held C E G under D F# A: an open, lydian colour), the fourth for 6 s, each followed by a breath: the wind turns three times in 32 s.
+# b7 (musical review MR2): the VOID SHIMMER bed is an ARP SEQ part with one step tied over the 16, 1/4 each (4 bars; 16 s at 60 BPM), so TIDE's own chord plays it
+# with no key held, and a held chord still sets the key. The moving parts' rates are doubled in length (1/4 -> 1/2, 1/2 -> 1/1): under a 120 BPM clock they move as made at 60.
+BED_STEPS = "0 - - - - - - - - - - - - - - -"
 DRONES = [
-    multi(17, 1, "DUNE HORN", "a horn swelling once a bar, root and fourth, with a shimmer of void above it", "HORN SWELL", "VOID SHIMMER",
-          seq=(0, "1/4", "0 - - . 0 - - . 5 - - . 0 - - .")),
-    multi(18, 2, "VOID DEEP", "a wide shimmering void with a thin solar wind turning slowly, root, a tone up, the fourth", "VOID SHIMMER", "SOLAR WIND", 96, 80,   # (part 2 at 80: the factory rule, -16 .. +4 dB, tests/level_test.c; the b4 pack had 76)
-          seq=(1, "1/2", "0 - - - - - - . 2 - - - 5 - - .")),
+    multi(17, 1, "DUNE HORN", "a horn swelling once a bar, root and fourth, with a shimmer of void above it", "HORN SWELL", "VOID SHIMMER", 109, 93,
+          seq=[(0, "1/2", "0 - - . 0 - - . 5 - - . 0 - - ."), (1, "1/4", BED_STEPS)]),
+    multi(18, 2, "VOID DEEP", "a wide shimmering void with a thin solar wind turning slowly, root, a tone up, the fourth", "VOID SHIMMER", "SOLAR WIND", 106, 90,   # (b7: +10 steps (5 dB) with the bed now sounding on its own, to the set; the b6 levels were 96 / 80; part 2 at 80: the factory rule, -16 .. +4 dB, tests/level_test.c; the b4 pack had 76)
+          seq=[(1, "1/1", "0 - - - - - - . 2 - - - 5 - - ."), (0, "1/4", BED_STEPS)]),
 ]
 
 

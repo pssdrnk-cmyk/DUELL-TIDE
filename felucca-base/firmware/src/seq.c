@@ -968,6 +968,7 @@ static void input_on(track_t *t, uint32_t note, uint32_t vel)
 {
     last_note = (uint8_t)note;
 #if DUELL_TIDE
+    tide_ghost_real(t);                             /* b7 (MULTIS): a real note ends the AUTO TIDE ghost chord on this part before it starts */
     if (rec_arp_keys(t)) {                          /* R2: the key sounds as played and goes into the pattern the part plays (the stand-in runs on) */
         rec_key_set(t, note, 1);
         trk_note_on(t, note, vel);
@@ -1379,6 +1380,7 @@ static void seq_stop(void)
         trk[i].nd_late = trk[i].nd_early = ND_NONE;   /* (a nudged step not played yet: not after the stop) */
         trk[i].nd_fired = 0;
     }
+    TIDE_GHOST_STOP();                             /* b7 (MULTIS): the AUTO TIDE ghost chords end with the transport */
     motion_end();
 }
 

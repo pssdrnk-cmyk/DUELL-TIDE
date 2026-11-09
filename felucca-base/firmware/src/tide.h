@@ -70,7 +70,11 @@ static uint32_t tide_arp_out(const track_t *t, uint8_t *out, uint32_t m, uint32_
 #define TIDE_ARP_OUT(t, out, m, vel) tide_arp_out((t), (out), (m), (vel))   /* (seq.c arp_seq_notes: TIDE's dynamics on an ARP SEQ step, D1; a thinned chord's two voices, MR4) */
 /* H13 (ui_input.c, main loop): once a frame, after morph_poll: GLIDE, the SEQ MORPH's ends, the settings */
 static void tide_poll(void);
+static void tide_ghost_poll(void);   /* (tide_seq.c, b7: the ghost chord of a part that waits for keys under AUTO TIDE; called by tide_poll) */
+static void tide_ghost_stop(void);   /* (seq.c seq_stop: the ghost chords end) */
+static void tide_ghost_real(track_t *t);   /* (seq.c input_on: a real note starts on t: the ghost chord ends first) */
 #define TIDE_POLL() tide_poll()
+#define TIDE_GHOST_STOP() tide_ghost_stop()
 /* H4-H8 (morph.c, main loop unless marked): morph_music.c, morph_fm_shape.c, morph_complement.c and morph_tide.c are included
  * by morph.c; these are the lines morph.c runs for them */
 #define TIDE_PART_FIELDS uint8_t tok[2][MORPH_HIST];    /* MORPH TO: the factory sound each end is (index + 1), 0 not one */
@@ -190,6 +194,7 @@ static int tide_foot_two(void);
 #define TIDE_ARP_PAUSED(t) 0
 #define TIDE_SEQ_CHORD(t, list, n) (n)
 #define TIDE_SEQ_START() ((void)0)
+#define TIDE_GHOST_STOP() ((void)0)
 #define TIDE_SLEN(t) ((uint32_t)(t)->p[P_SLEN])
 #define TIDE_SWING_PAR(t) 0u
 #define TIDE_PLAY_IDX(t) ((uint32_t)(t)->seq_idx)

@@ -1066,6 +1066,7 @@ static void tide_poll(void)
     sqm_thin_poll();                                     /* LEAD and ARC: the follower's mask (when what it reads changed) */
     glide_poll();                                        /* a launched GLIDE moves its faders */
     seqm_poll();                                         /* the SEQ MORPH's ends follow pattern edits (TRANS, SHIFT, an edit) */
+    tide_ghost_poll();                                   /* MULTIS lane (b7): the ghost chord of a HOLD ALL part under AUTO TIDE (tide_seq.c) */
     morph_xpoll();                                       /* plan any destination GLIDE generated in this same pass */
     tide_store_poll();
 }
