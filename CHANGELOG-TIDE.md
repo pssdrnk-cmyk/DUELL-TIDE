@@ -7,6 +7,10 @@ New lines for the fork go here, not into CHANGELOG.md.
 
 Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrnk-cmyk/DUELL-TIDE>), adding TIDE, a morph that plays and evolves by itself. TIDE has its own version, `MAJOR.MINOR.PATCH`, kept in the file `TIDE_VERSION` and shown in MENU > SYSTEM > ABOUT beside the DUELL version (1.1). A build flashed for testing is a beta, `1.0.0-b1`, `1.0.0-b2`, ...; the first build the fork owner has validated on the unit is `1.0.0`; a fix is `1.0.1`, a feature `1.1.0`. The git tag is `tide-` and the version (`tide-1.0.0-b1`); the GitHub release has the same name. Each version has a section below, `## 1.0.0-b1`, newest first; a section heading names the tag and, once known, the commit and the date it was flashed. The commit stays in the release notes, not in the name. The installer page offers the stable and the beta build of the [GitHub releases](https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases); the [README](README.md#builds-stable-and-beta) says which they are.
 
+## 1.0.0-b7 (in progress)
+
+- **Fixed (review FR1):** a swung pattern (SWG over 50, the part's or TEMPO SWING; DEEP SHUFFLE, HOUSE STAB, DEEP 332, DOT DELAY) stays on the grid when TIDE's POLY plays it 15 or 13 steps long. Before, it came back from the stretch late against the other part, the click and an external kick (GENTLE 15 at SWG 60 by about a sixteenth and a half, WIDE by less) and stayed late until STOP / PLAY; during the stretch every other pass was off the grid too. Straight patterns (SWG 50) play exactly as before.
+
 ## 1.0.0-b6
 
 Tag `tide-1.0.0-b6` (jam11 after the b6 PR), flashed 9 November 2026. 1.0.0-b6 also carries every change listed under [1.0.0-b5](#100-b5): b5 was never published on its own (owner, 9 November: "let's move to b6"), so its items ship here. Measured on the unit for b5 (16-multi GLIDE sweep, test-mode build, MORPH on screen): no missed audio blocks and no voices cut, worst block 83 % (M05). b6 keeps b5's note counts (the tried step is below), so that measurement stands; the drones M17 and M18 were measured on the unit too (no missed blocks, no voices cut).

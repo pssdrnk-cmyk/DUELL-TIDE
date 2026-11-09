@@ -35,6 +35,14 @@ static uint32_t tide_slen(const track_t *t)
     uint32_t pi = trk_index(t), len = tide_poly_full(t);
     return pi < NSHOWN && poly_len[pi] && poly_len[pi] < len && arp_mode(t) != AM_SEQ_ID ? poly_len[pi] : len;
 }
+/* review FR1 (B1): in a stretch a sequencer step swings by the full loop's step parity (poly_ref), not the short loop's: an odd short loop
+ * ends on an even step and starts on one, so each pass was one swing offset long and the part came back late for good. 0 outside a stretch
+ * (poly_ref follows seq_idx there) and on ARP SEQ (its swing runs on arp_idx). Audio path, at a step boundary */
+static uint32_t tide_swing_par(const track_t *t)
+{
+    uint32_t pi = trk_index(t);
+    return pi < NSHOWN && poly_len[pi] && arp_mode(t) != AM_SEQ_ID ? ((uint32_t)t->seq_idx ^ poly_ref[pi]) & 1u : 0u;
+}
 static int tide_poly_on(const track_t *t) { uint32_t pi = trk_index(t); return pi < NSHOWN && poly_len[pi] != 0u; }
 /* the full loop has wrapped: stay, shorten or lengthen (part pi, stored length len) */
 static void tide_poly_wrap(uint32_t pi, uint32_t len)

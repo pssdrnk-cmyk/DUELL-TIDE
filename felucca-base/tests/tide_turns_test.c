@@ -400,6 +400,39 @@ static void t_poly(void)
     }
     keepcheck();
 }
+/* review FR1 (B1): a swung part comes back on the grid after an odd stretch. Part 1 at SWG 60, part 2 straight, POLY forced to `slen`
+ * steps from the full loop's first step for `span` full loops; the first step 0 after the stretch starts on the same sample on both parts */
+static void poly_swing_case(const char *nm, uint32_t mode, uint32_t slen, uint32_t span, int32_t own)
+{
+    uint32_t b, pulse = 0, forced = 0, back = 0;
+    int32_t late = 0x7FFFFFFF;
+    char msg[128];
+    setup(16, 16, 2, 2, 0);
+    sqm_auto = 1, sqm_poly = (uint8_t)mode;
+    trk[0].p[P_SSWING] = (int16_t)own;
+    trk[1].p[P_SSWING] = 50;
+    for (b = 0; b < 200000u && !back; b++) {
+        block(0, &pulse, 240, b);
+        if (!forced && trk[0].seq_idx == 0u && poly_ref[0] == 0u && trk[0].seq_pos < 0x7FFFFFFFu) {
+            poly_len[0] = (uint8_t)slen;                    /* (the stretch from this full loop's first step, as tide_poly_wrap starts one) */
+            poly_end[0] = poly_lc[0] + span;
+            forced = 1;
+        } else if (forced == 1u && poly_len[0] == 0u && trk[0].seq_idx == 0u) {
+            late = (int32_t)trk[1].seq_pos - (int32_t)trk[0].seq_pos;
+            back = 1;
+            late = trk[1].seq_idx == 0u ? late : 0x7FFFFFFF;
+        }
+    }
+    snprintf(msg, sizeof msg, "POLY %s, %u steps, SWG %d: step 0 after the stretch on the straight part's sample (%d samples late)", nm, slen, own, late);
+    CHECK(msg, back && late == 0);
+}
+static void t_poly_swing(void)
+{
+    poly_swing_case("GENTLE", 1, 15, 8, 60);
+    poly_swing_case("WIDE", 2, 13, 4, 60);
+    poly_swing_case("GENTLE", 1, 15, 8, 50);
+    poly_swing_case("WIDE", 2, 14, 4, 60);
+}
 
 
 /* ------------------------------------------------------------------------------------------------ SYNC --- */
@@ -1139,6 +1172,7 @@ int main(void)
     t_turns();
     t_sig();
     t_poly();
+    t_poly_swing();
     t_sync();
     t_answer();
     t_arc();

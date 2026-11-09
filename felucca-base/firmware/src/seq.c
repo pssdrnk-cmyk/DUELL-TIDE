@@ -717,7 +717,7 @@ static void arp_tick(track_t *t, uint32_t n) { arp_step(t, n, n); }
 static uint32_t step_samples(const track_t *t, uint32_t period, uint32_t idx)
 {
     int32_t sw = DIV_TRIPLET(t->p[P_SDIV]) ? 0 : sw_len(sw_ex(t->p[P_SSWING]) + sw_ex(song.g[G_SWING]), period);   /* the track's + the global, at most 75 % (not on a triplet) */
-    return period + (uint32_t)((idx & 1u) ? -sw : sw);
+    return period + (uint32_t)(((idx ^ TIDE_SWING_PAR(t)) & 1u) ? -sw : sw);   /* TIDE hook (H3b): POLY swings on the full loop's parity */
 }
 
 /* NUDGE (1.2, #162): a note `off` samples from the start of the step it goes into, in 1/NUDGE_DIV of the step (period),
