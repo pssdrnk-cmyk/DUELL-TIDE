@@ -6,7 +6,7 @@ State words on this page: Released in bN, Ready (built and tested, waiting for a
 
 ## Now: 1.0.0-b5
 
-The only thing being worked on. Nothing else starts until b5 is out.
+b5 comes first; b6 is prepared alongside while the FM-1 is offline (owner, 9 November).
 
 | What | State |
 |---|---|
@@ -23,12 +23,12 @@ b5 goes out when you like the MORPH page on your FM-1. Room left on the b5 build
 
 | What | State |
 |---|---|
-| Reverb on the second core, to free CPU (K4) | Built; the CPU saving is not measured on the unit yet |
+| Reverb on the second core, to free CPU (K4) | Built, waits for the FM-1 test after b5 |
 | Factory sounds stop resetting AMOUNT (MORPH c3) | Ready |
 | Pattern notes stay in a sensible range (roles T4) | Ready |
-| Two drone scenes built in (M17 DUNE HORN, M18 VOID DEEP, played as STYLE DRONE; [brief](audits/2026-11-09/drones/TASKS.md)) | Ready: built (M17, M18), waits for the FM-1 check after b5 |
-| Give back the notes the first beta's CPU fix took (most factory multis play 1 or 2 notes fewer per part since b1; b4's ease ladder now catches the peaks) | Ready: steps 76 / 80 / 84 built, default 76; the FM-1 sweep picks the step |
-| MORPH page: an older saw line no longer crosses the newest one on note changes | Ready |
+| Two drone scenes built in (M17 DUNE HORN, M18 VOID DEEP, played as STYLE DRONE; [brief](audits/2026-11-09/drones/TASKS.md)) | Built, waits for the FM-1 test after b5 |
+| Give back the notes the first beta's CPU fix took (most factory multis play 1 or 2 notes fewer per part since b1; b4's ease ladder now catches the peaks) | Built, waits for the FM-1 test after b5; the test picks the step 76 / 80 / 84 |
+| MORPH page: an older saw line no longer crosses the newest one on note changes | Built, waits for the FM-1 test after b5 |
 | JOURNEY's crossing dip lasts a few bars, not 90 % of every trip ([X1](audits/2026-11-09/tide-morph/TASKS.md#x1); [audit 9 November](audits/2026-11-09/tide-morph/REPORT.md)) | Planned: ~60 B, 8 B RAM; before/after with `tide_long` |
 | JOURNEY doesn't jump the sound when started with the fader away from A ([J2](audits/2026-11-09/tide-morph/TASKS.md#j2)) | Planned: ~16 B, main loop |
 | TIDE's louder peak and softer breakdown reach ARP SEQ parts, M02 included; accents kept ([D1](audits/2026-11-09/tide-morph/TASKS.md#d1)) | Planned: ~60 B, one multiply per arp step |
