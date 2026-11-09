@@ -447,7 +447,10 @@ async function lists() {
     await E(`window.__app.setGlobalTab('multis', true); true`); await c.sleep(1500);
     await E(`[...document.querySelectorAll('.col.glob button')].find((b) => b.textContent === 'Load from unit')?.click(); true`); await c.sleep(1500);
     const mr = JSON.parse(await E(`JSON.stringify([...document.querySelectorAll('.col.glob .mrow2')].map((r) => ({ t: r.textContent, ti: r.title, b: [...r.querySelectorAll('button')].map((b) => b.textContent) })))`));
-    ok(mr.length === 16 && !mr.some((r) => /factory|saved/i.test(r.t + r.ti)), `MULTIS (?mock=${mode}): ${mr.length} rows, no kind words in a row or its tooltip`);
+    // (TIDE 1.0.0-b6: M17 and M18, the drone multis built into the firmware, follow the sixteen as "(factory, read-only)" rows, Recall only: editor/panels.js, docs/EDITOR_LIBRARIAN.md)
+    const ro = mr.slice(16);
+    ok(mr.length === 18 && !mr.slice(0, 16).some((r) => /factory|saved/i.test(r.t + r.ti)) && ro.every((r) => /\(factory, read-only\)/.test(r.t) && r.b[0] === "Recall"),
+       `MULTIS (?mock=${mode}): ${mr.length} rows, no kind words in M01-M16 or their tooltips; M17, M18 "(factory, read-only)" (${ro.map((r) => r.t.replace(/Recall.*$/, "")).join(", ")})`);
     const j = mr.findIndex((r) => /^Replace M\d\d /.test(r.b[1]));
     ok(j >= 0, `MULTIS (?mock=${mode}): the save button names what it replaces (${mr[j]?.b[1]})`);
     const wm = await E(`window.__app.mock.log.filter((x) => /^write 1[3-9]|^write 20/.test(x)).length`);
