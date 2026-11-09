@@ -18,6 +18,7 @@ b5 was never published: its changes ship inside b6 as one release (owner, 9 Nove
 | MORPH page: the waves have depth (older lines narrower, each hides what is behind it, as in WAVE LAB), reach the right edge, and lie evenly at rest (owner: "something is missing") | Built (in the b6 build), waits for your look on the FM-1 |
 | MORPH page: at rest the same stack lies flat, the gaps are whole rows, the part numbers sit in even pills, AMOUNT shows its value without the bar (owner: "there is a fuckup with the default screen") | Built (in the b6 build), waits for your look on the FM-1 |
 | MENU > COLOR: turning through the themes repaints at most every 100 ms (owner: "especially when changing the color scheme") | Built (in the b6 build), waits for your try on the FM-1 |
+| MORPH page: the waves move at an even pace (a new picture every 60 ms by the clock), the older lines smooth again; the screen link at 20 MHz instead of 12 (owner: "it's choppy", "the animation feels laggy again") | Built (in the b6 build), waits for your try on the FM-1 |
 | PART 1 / PART 2 / BOTH on HOME's pages (from b5) | Ready (in the b6 build) |
 | The new flashing screen (from b5) | Ready (in the b6 build) |
 | More free memory (EQ design moved out of fast RAM, 1,068 B; from b5) | Ready (in the b6 build) |
@@ -34,7 +35,7 @@ b5 was never published: its changes ship inside b6 as one release (owner, 9 Nove
 | The bass keeps its loop and octave: no POLY, no VOIC octave on a bass part; POLY ends in ARC's breakdown ([B1](audits/2026-11-09/tide-morph/TASKS.md#b1)) | Planned: ~65 B, 1 B RAM |
 | CPU test of b6 on your FM-1 (the 16 multis, the drones, the notes step; MORPH on screen) | Done 9 November: at the notes step 76 no missed blocks, but one voice cut on M14 EERIE SIGNAL (busiest block 90 %, b5 83 %), so b6 keeps b5's 72. The drones M17 and M18: no missed blocks, no voices cut (70 %, 65 %). Next: the b6 build at 72 gets the full sweep again (it holds more than b5: End B, the register lanes, JOURNEY, AMOUNT, the drones) |
 
-b6 goes out after the CPU test and your OK on the FM-1. Room left on the b6 build (everything above that is in it): 6,960 B of flash, RAM 69,624 of 73,728 B (4,104 B headroom against the 4,096 B rule).
+b6 goes out after the CPU test and your OK on the FM-1. Room left on the b6 build (everything above that is in it): 6,644 B of flash, RAM 69,624 of 73,728 B (4,104 B headroom against the 4,096 B rule).
 
 ## Next: 1.0.0-b7
 
