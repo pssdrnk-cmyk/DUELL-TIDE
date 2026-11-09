@@ -177,6 +177,21 @@ static void test_both_takeover(void)
     transport_req = 2u; run(48);
 }
 
+/* FR5: a factory multi leaves ROLL ARP / ROLL PITCH / ROLL TYPE as the player set them (a saved one restores its own byte) */
+static void test_multi_keeps_roll_rows(void)
+{
+    ui_power_on(); frame();
+    morph.cfg = (uint8_t)((morph.cfg & ~MC_ARP) | MC_PIT | MC_WILD);
+    project_load(1);                                     /* M02, factory */
+    CHECK("factory multi: ROLL PITCH stays ON", jl_get(JL_PITCH) == 1u);
+    CHECK("factory multi: ROLL TYPE stays WILD", jl_get(JL_ROLL) == 2u);
+    CHECK("factory multi: ROLL ARP stays OFF", jl_get(JL_ARP) == 0u);
+    morph.cfg = (uint8_t)(morph.cfg | MC_ARP);
+    project_load(1);
+    CHECK("factory multi: ROLL ARP stays ON", jl_get(JL_ARP) == 1u);
+    morph.cfg = 0;
+}
+
 /* a glide of target / mode / WAIT on the parts of mask, read from part pi, 1-bar trips at 120 BPM, playing */
 static void r0_launch(uint32_t pi, uint32_t mask, uint32_t target, uint32_t mode, uint32_t wait)
 {
@@ -593,6 +608,7 @@ int main(void)
     test_time_mid_trip();
     test_wait_off_paused();
     test_both_takeover();
+    test_multi_keeps_roll_rows();
     test_wait_edit_running();
     test_takeover_symmetric();
     test_takeover_routes();
