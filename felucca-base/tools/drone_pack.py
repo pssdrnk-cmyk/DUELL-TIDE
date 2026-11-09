@@ -6,7 +6,7 @@
 
 M17 and M18 are ROM-only multis past the sixteen stored slots (firmware/src/multi.c MU_SHOWN): tools/gen_duell_multis.py puts these two records into
 build/gen/duell_multis.h with DF_SLOT 16 and 17, next to the factory multis M01..M16, and checks them against the rows below. Each is a LAYER of two
-latched drones (HOLD ALL, arp OFF) of the W15 drone sounds (tools/duell_sounds.py), a 60 BPM ping-pong echo and a big hall. TIDE plays them as STYLE
+latched drones (HOLD ALL) of the W15 drone sounds (tools/duell_sounds.py), one of them on a slow ARP SEQ pattern (b6, DRONES below), a 60 BPM ping-pong echo and a big hall. TIDE plays them as STYLE
 DRONE (tide.c). The records are made by the same code as the factory multis (tools/factory_multis.py's table machinery, tests/gen_factory_multis.c),
 built in scratch slots M01, M02 of a host build (a record does not hold its slot) and copied here. (b4 shipped eight of these as a file pack,
 packs/drones/; b6 builds two in and drops the pack, owner 9 November 2026.)"""
@@ -23,16 +23,30 @@ G = dict(G_BPM=60, G_DTIME="4D", G_DFDBK=60, G_DMIX=64, G_DMODE="PING", G_RTYPE=
 OUT = fm.ROOT / "tools" / "drone_multis"
 
 
-def multi(rom, slot, name, what, a, b, la=98, lb=82):
+def multi(rom, slot, name, what, a, b, la=98, lb=82, seq=None):
+    """seq: (part 0 / 1, ARP RATE, steps): that part plays the SEQUENCER arp (ARP SEQ) on the latched keys, GATE 127; the other stays a latched drone (HOLD ALL, arp OFF)"""
     hold = dict(P_AMODE="OFF", P_AHOLD="ALL")
-    return dict(rom=rom, slot=slot, name=name, mode="LAYER", what=what, g=dict(G),
-                parts=[dict(sound=a, set=dict(hold, P_LEVEL=la)), dict(sound=b, set=dict(hold, P_LEVEL=lb))])
+    parts = [dict(sound=a, set=dict(hold, P_LEVEL=la)), dict(sound=b, set=dict(hold, P_LEVEL=lb))]
+    if seq:
+        p, rate, steps = seq
+        parts[p]["set"].update(P_AMODE="SEQ", P_ARATE=rate, P_AGATE=127)
+        parts[p]["steps"] = steps
+    return dict(rom=rom, slot=slot, name=name, mode="LAYER", what=what, g=dict(G), parts=parts)
 
 
-# rom: the multi's place (M17, M18); slot: the scratch slot of the host build
+# rom: the multi's place (M17, M18); slot: the scratch slot of the host build.
+# The sequences (owner, 9 November 2026: "I'm missing some sequence from the drone multis"): one part of each moves slowly on the held chord (every
+# held note by the step's offset, at the held keys' velocity: an ARP SEQ step's vNN is not used), the other stays the latched drone under it, no
+# note under the held chord. At 60 BPM a 1/4 step is a second. The intervals are the ones that keep the moving part at its latched level (host
+# render, the part alone, against the root): the horn's fifth is +5 dB and the wind's fifth +6, octave +4.5, so neither is used.
+# DUNE HORN: the horn (it speaks at once) swells once a bar, root, root, fourth, root: three beats on and a beat to breathe, a 4-bar loop.
+# VOID DEEP: the solar wind (it takes about 2 s to come up) on 2-second steps over an 8-bar loop: the root for 14 s, a whole tone up for 8 s
+# (the held C E G under D F# A: an open, lydian colour), the fourth for 6 s, each followed by a breath: the wind turns three times in 32 s.
 DRONES = [
-    multi(17, 1, "DUNE HORN", "a swelling horn with a shimmer of void above it", "HORN SWELL", "VOID SHIMMER"),
-    multi(18, 2, "VOID DEEP", "a wide shimmering void with a thin solar wind", "VOID SHIMMER", "SOLAR WIND", 96, 80),   # (part 2 at 80: the factory rule, -16 .. +4 dB, tests/level_test.c; the b4 pack had 76)
+    multi(17, 1, "DUNE HORN", "a horn swelling once a bar, root and fourth, with a shimmer of void above it", "HORN SWELL", "VOID SHIMMER",
+          seq=(0, "1/4", "0 - - . 0 - - . 5 - - . 0 - - .")),
+    multi(18, 2, "VOID DEEP", "a wide shimmering void with a thin solar wind turning slowly, root, a tone up, the fourth", "VOID SHIMMER", "SOLAR WIND", 96, 80,   # (part 2 at 80: the factory rule, -16 .. +4 dB, tests/level_test.c; the b4 pack had 76)
+          seq=(1, "1/2", "0 - - - - - - . 2 - - - 5 - - .")),
 ]
 
 
