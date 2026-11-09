@@ -1,6 +1,21 @@
 # DUELL with TIDE roadmap
 
-Updated 8 November 2026. This page says where TIDE stands, what comes next, in which order, and what waits on a decision. What is already built is in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md), one section per build. The roadmap before this reorganisation, with its full evidence and receipts, is [history/ROADMAP_2026-11-08.md](history/ROADMAP_2026-11-08.md); older ones are in [history/](history/). The audits of 8 November are in [audits/2026-11-08/](audits/2026-11-08/): the [live-record audit](audits/2026-11-08/liverec/LIVEREC_AUDIT.md), the [CPU audit](audits/2026-11-08/cpu/CPU_AUDIT.md) with its task briefs K1 to K12 ([TASKS.md](audits/2026-11-08/cpu/TASKS.md)), and the [round-2 code audit](audits/2026-11-08/full/AUDIT_REPORT.md) with its findings 1 to 39.
+Updated 9 November 2026. This page says where TIDE stands, what comes next, in which order, and what waits on a decision. What is already built is in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md), one section per build. The roadmap before this reorganisation, with its full evidence and receipts, is [history/ROADMAP_2026-11-08.md](history/ROADMAP_2026-11-08.md); older ones are in [history/](history/). The audits of 8 November are in [audits/2026-11-08/](audits/2026-11-08/): the [live-record audit](audits/2026-11-08/liverec/LIVEREC_AUDIT.md), the [CPU audit](audits/2026-11-08/cpu/CPU_AUDIT.md) with its task briefs K1 to K12 ([TASKS.md](audits/2026-11-08/cpu/TASKS.md)), and the [round-2 code audit](audits/2026-11-08/full/AUDIT_REPORT.md) with its findings 1 to 39.
+
+**DONE**
+- 1.0.0-b1 and 1.0.0-b2: the first betas (GitHub pre-releases).
+- 1.0.0-b3 (8 November): CPU and skip counter, hot-code check, PATCHES order, live recording into ARP SEQ, HOME without the MODE page.
+- 1.0.0-b4 (8 November, tag `tide-1.0.0-b4`): the ease ladder, the silent-bus skip, STYLE DRONE, the screen cleanups.
+
+**NOW**
+- 1.0.0-b5: the wave page's look is being reworked; PR #8 is held until the look is fixed and on your FM-1.
+
+**NEXT**, in order
+1. 1.0.0-b6: effect buses on core 1 (K4), MORPH c3, roles T4.
+2. Hand-moved morph saving, transition costs only while moving, FM6 crossing fixes, Felucca #265.
+3. Then the steps before 1.0.0 (below).
+
+State words used on this page: Released in bN, Ready (built and tested, waiting for a release), In progress, Next, Later, Waiting on you.
 
 **Quick reference:** [TIDE settings at a glance](TIDE_QUICK_TABLE.md): the tide modes, STYLE, VARY BARS, ROLL, TURNS, POLY, SYNC and ARC in one page.
 
@@ -9,56 +24,43 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 | | |
 |---|---|
 | **Stable** | `stable-2026-11-03` (`187e9d0`), validated by the fork owner. The first versioned stable will be `1.0.0`. |
-| **Newest beta** | `1.0.0-b5` (tag `tide-1.0.0-b5`): the MORPH page as a live wave picture, one part selection (PART 1 / PART 2 / BOTH) on HOME's pages, the TIDE update screen, MORPH UNDO dropped for RAM. |
-| **Older betas** | `1.0.0-b4` (`d519548`: the ease ladder, the silent-bus skip, STYLE DRONE, the screen cleanups), `1.0.0-b3` (`c124935`), `1.0.0-b2` (`0d2fcb9`), `1.0.0-b1` (`817658d`) and `beta-2026-11-04` (`77a6df2`), all GitHub pre-releases. |
+| **Newest beta** | `1.0.0-b4` (tag `tide-1.0.0-b4`): the ease ladder (no missed blocks or cut voices on the unit's GLIDE sweep), the silent-bus skip, STYLE DRONE and the drone pack, the screen cleanups. |
+| **Older betas** | `1.0.0-b3` (`c124935`), `1.0.0-b2` (`0d2fcb9`), `1.0.0-b1` (`817658d`) and `beta-2026-11-04` (`77a6df2`), all GitHub pre-releases. |
 | **Development** | `1.0.0-b6`: the effect buses on core 1 (K4, then K10), with MORPH c3 and roles T4 (see "After b3" and "Planned" below). |
-| **Flash** | 575,200 B of the 581,564 B slot (`1.0.0-b5` build, 9 November): **6,364 B free**; RAM .data+.bss 69,208 B of 73,728; pool tail 9,276 B (rule 8,192). Every addition is measured; simplifications pay for features. Keep 0xEA000..0xFBFFF for future pattern / multi slots. |
-| **CPU** | Since `1.0.0-b4` (the ease ladder): 0 missed blocks and 0 cut voices over the 16-multi GLIDE sweep on the unit, worst block about 90 %; `1.0.0-b5` with the wave tap running (the MORPH page on screen through every scene, checked): 0 missed, 0 cut, worst block 85 % (elapsed 91 %), and a WILD EQ glide 80 % (85 %). The drones are not yet measured under a GLIDE. |
+| **Flash** | 575,200 B of the 581,564 B slot (the `1.0.0-b5` candidate, 9 November): **6,364 B free**; RAM .data+.bss 69,208 B of 73,728; pool tail 9,276 B (rule 8,192). Every addition is measured; simplifications pay for features. Keep 0xEA000..0xFBFFF for future pattern / multi slots. |
+| **CPU** | Since `1.0.0-b4` (the ease ladder): 0 missed blocks and 0 cut voices over the 16-multi GLIDE sweep on the unit, worst block about 90 %; the `1.0.0-b5` candidate with the wave tap running (the MORPH page on screen through every scene, checked): 0 missed, 0 cut, worst block 85 % (elapsed 91 %), and a WILD EQ glide 80 % (85 %). The drones are not yet measured under a GLIDE. |
 
 ## How we work
 
 - **Betas carry what is ready.** Several audio changes may ship in one beta (owner, 8 November: delivery first); each one is still measured on the unit before it ships.
 - **Measure before and after.** An audio-path change is measured on the unit before and after, with the same script, against a pass mark written down first.
 - **Builder and four reviewers.** Each change is built by one agent on its own branch, then read by separate reviewers: correctness, quality and cohesion, tests, docs. The coordinator decides the fixes; a verification review checks them.
-- **Pull requests.** Every change goes to GitHub as a pull request against `jam11`; GitHub runs the full host suite on it. Locally only the device build (size, hot-code check), `jam/check_off.sh` and `check_docs.py`. Builders work in parallel; merges go one at a time, with the owner's OK.
-- **Never flash red.** A tagged beta is never flashed while the full suite or `jam/check_off.sh` is red. The tag comes before the build; the flashed commit is merged and pushed the same day.
+- **Pull requests.** Every change goes to GitHub as a pull request against `jam11`; GitHub runs the full host suite on it. Locally only the device build (size, hot-code check) and `check_docs.py`. Builders work in parallel; merges go one at a time, with the owner's OK.
+- **Never flash red.** A tagged beta is never flashed while the full suite is red. The tag comes before the build; the flashed commit is merged and pushed the same day.
 - **Plain DUELL is no longer kept identical** (owner, 8 November: no upstream merging). Shared code may change when that is simpler or smaller; the `DUELL_TIDE=0` build should still compile, but `jam/check_off.sh` is no longer a gate. The `partindep` pins are never regenerated.
 - **Formats and user data are kept** (patches, patterns, multis, settings, KEEP / UNDO) unless the owner decides otherwise.
 - **No new pages.** TIDE options are rows on TIDE SETTINGS with good defaults; restyles keep every fader bar, note and shown value.
 - **Technical choices are the coordinator's**, with audio quality first, then risk and effort. The owner decides what is heard, seen and touched.
 - **Anything unfinished gets a row here at once.**
 - **Pushes and releases need the owner's OK.**
+- **Look first:** a visible change is shown to the owner on the unit (or emulator) and approved before tests and paperwork.
 
-## 1.0.0-b3 (released 8 November): changes that cannot alter the sound
+## 1.0.0-b3
 
-| # | Item | What it does | State |
-|---|---|---|---|
-| 1 | Clean baseline | CI on macOS 15; docs truth pass; `swing` / `duck` in the test list; the `emu` CI job; sound numbers #1 to #163 pinned; the measurement kit in `jam/measure/`; `check_docs.py` in `check.sh` and CI; b1 and b2 GitHub releases. | **Done** 8 November. |
-| 2 | CPU and skip counter on the main screens (K2) | The raw CPU peak and a count of missed blocks in the header or footer of the main screens, in every build; `cpu_miss` counts every missed DMA period; one owner of the peak window, so ABOUT, the console and the screens never clear each other's peak. Reads and draws only. | Built and reviewed (`fix/b3-k2`, +392 B); built: the peak in a dim pill beside part 1's capsule, the misses in a red badge beside part 2's. |
-| 3 | Hot code placement check (K6) | The build fails when a function that runs every audio block lands in slow flash instead of RAM range Z (or is not on an allow-list with a reason). Build time only; no image change. | Built (`fix/b3`). |
-| 4 | OCT- + K3 / K4 say what they set | On the TIDE page, holding OCT- and turning K3 or K4 resets TIME or WAIT to the STYLE's value; it shows "TIME 16" / "WAIT 2" like K1's BACK TO ORIGINAL, only on that reset (a plain turn of K3 or K4 shows nothing new). About 40 B. | Built (`fix/b3`). |
-| 5 | PATCHES order and numbers | The list: every factory sound (#1 to #171), then your saved sounds (one saved over #13 too), then the empty USER slots last (owner, 8 November); MIDI program numbers unchanged. The footer and the TIDE page number the factory sounds past #124 (they showed the name alone). | Built (`fix/b3`), reviewed. |
-| 6 | Felucca 1.7.0 check | #258, #264, #269 and #282 are all in our tree ([comparison](audits/2026-11-08/felucca-264-check.md)); Felucca's clock-under-CC-flood test is ported as host group `uartflood`. No firmware change. | Done (`fix/b3-felucca264`), reviewed. |
-| 7 | Small fixes with no sound change | `settings_persist.c` comment on object 48 (finding 33, D48: object 48 stays); the restore confirm says how many patches lose their FM6 MORPH TO target when the unit may be plain DUELL, since INFO cannot tell it from an older TIDE build (finding 14), plus one line in `jam_dev.py restore`'s help; three UI lint scenes (DAMAGED record, ABOUT with the TIDE id, a PATCHES row past #163; finding 31). | Built (`fix/b3`). |
-| 7a | Live recording (live-record audit R1, R4, R5) | REC no longer silences the ARP SEQ parts, and an ARP SEQ part's arp no longer records its own notes into its pattern; once armed, a REC tap disarms on every page (on HOME, unarmed, REC stays HOLD and says how to record: owner, 8 November); PRESETS loads sounds on STEP and PARAMETER LOCKS. Host group `liverec`. | Done: `integ` `455e2bb`. |
-| 7b | HOME without the MODE page | PLAY MODE, XFADE and SPLIT are the last three rows of TIDE SETTINGS; HOME's round is MORPH, TIDE SETTINGS, AUTO TIDE (owner, 8 November). | Built (`fix/b3-mode-rows`). |
-| 7c | Keys record into ARP SEQ patterns; REC row | Keys sound as played and go into the pattern the part plays (a key sets the step's note); REC row ADD / REPLACE on TIDE SETTINGS. | Built (`fix/b3-rec-modes`); waits for the unit test. |
-| 7d | POLY restart (finding 36) | On an ARP SEQ part in a shortened POLY loop, releasing all keys and playing again restarted the loop part-way in; it now starts at its first step. Host group `f36`. | Built (`fix/b3-f36`), reviewed. |
-| 8 | Unit measurements | The 16-multi GLIDE sweep reading both `cpu_pk_us` and `cpu_el_pk_us` (K2); each drone with its 3-note chord held while `glide 1 0` runs. Sets the acceptance numbers for b4. | Needs the unit on USB. |
-| 9 | Cut b3 | `TIDE_VERSION` 1.0.0-b3, CHANGELOG section, tag, build, flash, GitHub pre-release. | After 2 to 8 and the merges. |
+1.0.0-b3 published 8 November (tag `tide-1.0.0-b3`). Details in [CHANGELOG-TIDE](../CHANGELOG-TIDE.md).
 
 ## After b3
 
-| Beta | Item | What it does | Spec |
+| Beta | Item | What it does | State |
 |---|---|---|---|
-| `1.0.0-b4` (done) | Ease ladder (K3) | When the measured CPU runs hot, back off step by step instead of killing a note: 1 slower transitions (morph blend every 4th block, FM6 retune every other block), 2 no new note for a moment (owner: acceptable live), 3 lighter effects, 4 released tails, 5 held notes only after a real miss. Hysteresis: on after two halves over 85 %, off after ~3 s under 70 %. About 300 B. | Brief K3 |
-| `1.0.0-b5` (done) | Wave page | MORPH UNDO dropped for RAM; the MORPH page shows the parts' real output as waves; one part selection PART 1 / PART 2 / BOTH on MORPH, TIDE SETTINGS and AUTO TIDE; the update screen in TIDE's look; about 1 KB of range Z freed (cold EQ design to flash). | Wave Lab, owner 8 November |
-| `1.0.0-b6` | Effect buses on core 1 (K4) | Core 1 also runs the sends, chorus, delay and reverb when its measured time fits the deadline; today's one-core path stays as the fallback, bit-exact. Saves 7 to 15 % on core 0 in the scenes that burst. | Brief K4 |
-| then | Hand-moved morph saving | A hand or MIDI fader move blended every other block like a GLIDE (about 70 us a block saved), with a sample check of the hand-moved morph. | Finding 12, D44 |
-| then | Transition costs only while moving | The engine cross-fade (BD_FADE), valley and wash charged only while a transition runs, as b2 does for FM6: more notes at rest. | Owner, 6 November |
-| then | FM6 crossing fixes | The deferred stand-in drain cleared only when the bridge stays off (suspected, needs a test that reproduces it first); the crossing charge leads the crossing instead of lagging one UI frame. Then K7: the crossing's shared modulation computed once per part per block. | Findings 8, 9; brief K7 |
-| then | Silent bus and master skip (K5) | A bus at exact zero is not run; the limiter and EQ rest after ~1 s of silence. About 6 % at idle. | Brief K5 |
-| then | Felucca #265 | Signed DSP arithmetic and the FM6 phase wrap without undefined behaviour, bit-exact. | Felucca v1.7.0 |
+| `1.0.0-b4` | Ease ladder (K3), silent-bus skip (K5), STYLE DRONE, screen cleanups | Details in [CHANGELOG-TIDE](../CHANGELOG-TIDE.md). | Released in b4 (8 November, tag `tide-1.0.0-b4`) |
+| `1.0.0-b5` | Wave page | MORPH UNDO dropped for RAM; the MORPH page shows the parts' real output as waves; one part selection PART 1 / PART 2 / BOTH on MORPH, TIDE SETTINGS and AUTO TIDE; the update screen in TIDE's look. The look is being reworked after your look with real playback (lines broke into fragments; branch `fix/b5-wavelook`). PR #8 is held until the look is fixed and on your FM-1. | In progress |
+| `1.0.0-b6` | Effect buses on core 1 (K4) | Core 1 also runs the sends, chorus, delay and reverb when its measured time fits the deadline; today's one-core path stays as the fallback, bit-exact. Branch `fix/b6-k4` 98c8a38 (on b556cfd). Host: two-core == one-core bit for bit for 16 multis; cost flash +1,712 B, .bss +376 B, range Z +16 B. Left: the unit sweep with K4 on and off (core 1 runs the reverb from XIP, a first). Expected saving about 3-4 % in STEREO / LAYER, not measured on the unit. | Next |
+| `1.0.0-b6` | MORPH c3, roles T4 | See "MORPH" and "Content" below. | Ready |
+| then | Hand-moved morph saving | A hand or MIDI fader move blended every other block like a GLIDE (about 70 us a block saved), with a sample check of the hand-moved morph. Finding 12, D44. | Later |
+| then | Transition costs only while moving | The engine cross-fade (BD_FADE), valley and wash charged only while a transition runs, as b2 does for FM6: more notes at rest. Owner, 6 November. | Later |
+| then | FM6 crossing fixes | The deferred stand-in drain cleared only when the bridge stays off (suspected, needs a test that reproduces it first); the crossing charge leads the crossing instead of lagging one UI frame. Then K7: the crossing's shared modulation computed once per part per block. Findings 8, 9; brief K7. | Later |
+| then | Felucca #265 | Signed DSP arithmetic and the FM6 phase wrap without undefined behaviour, bit-exact. Felucca v1.7.0. | Later |
 
 **Before `1.0.0`:** 0 missed blocks over the 16-multi GLIDE sweep (owner, 8 November); the budget made honest: the per-sample work added after the 26 October cost calibration (SVF precision, delay low cut and knee, master knee, HALL / PLATE pre-delay) re-measured with `jam_dev.py measure` and charged, `bd_part` timed inside the audio interrupt and moved out if it costs over ~20 us, the blend charged as a part cost (findings 5, 6, 34); then `BUDGET_PEAK` lowered to the measured residual, only after the ease ladder is measured on the unit (K9).
 
@@ -68,12 +70,12 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 - b4: drop the ENV round's copy of the MATRIX pages (the LFO round keeps them); SIDECHAIN shows the PART FX OFF notice instead of a blank page; the MIDI LEARN line no longer cut under the footer's engine name; no placeholder rule on MORPH; the hold-EDIT layer is QUICK EDIT; one-line OFF notices.
 - Owner's call: drop SEND FX (every value is on FX and GLO) and TOOLS CLEAR PATTERN (QUICK SEQ and QUICK REC clear too), about 0.8 KB; the arp follows TEMPO SWING like the sequencer; TIDE rows SYNC and ROLL renamed so they don't share words with tempo sync and MORPH's ROLL.
 
-**One view for both parts** (owner, 8 November): AUTO TIDE and the MORPH / wave page always show both parts, with the selected part clearly marked (full colour, the other dimmed, plus a cue that works on MONO and GREY). The wave page does it in b5 (Wave Lab); AUTO TIDE follows the second screen round.
+**One view for both parts** (owner, 8 November): AUTO TIDE and the MORPH / wave page always show both parts, with the selected part clearly marked (full colour, the other dimmed, plus a cue that works on MONO and GREY). The wave page does it in b5 (Wave Lab, In progress); AUTO TIDE follows the second screen round.
 
-**RAM room** (b5, done): cold EQ design and `morph_apply` moved out of range Z (1,068 B), pool tail 9,276 B against the 8,192 B rule. A test-mode build keeps the lowered 7,936 B rule. The next change that grows range Z or the pool measures against that.
+**RAM room** (b5, in progress): cold EQ design and `morph_apply` moved out of range Z (1,068 B), pool tail 9,276 B against the 8,192 B rule. A test-mode build keeps the lowered 7,936 B rule. The next change that grows range Z or the pool measures against that.
 
 **MORPH** ([review](audits/2026-11-08/morph/REPORT.md): keep the core and the page, no big rework)
-- c3 (b6): factory loads stop resetting AMOUNT; K4 dim in JRNY, where it does nothing. Built on `fix/b6-morph-c3` `148d84b`, tests pass; rebase onto the reworked MORPH page before b6.
+- c3 (b6, Ready): factory loads stop resetting AMOUNT; K4 dim in JRNY, where it does nothing. Branch `fix/b6-morph-c3` `148d84b`, tests pass; rebase onto the reworked MORPH page before b6.
 - c2: a hand fader resting in the middle (40-60 %) between ends that differ in a switch stays dulled, FM6 on pure sines: after about 1 s at rest, settle onto the nearer side (about 100 B, audio interrupt; listen on the unit first).
 
 **CPU and audio engine**
@@ -88,15 +90,15 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 
 **TIDE interface**
 - LFO DEPTH destinations shown as "LFO1/2 LVL"; the mod wheel keeps driving MORPH.
-- A legend while OCT- is held on the TIDE page (C9, not built).
+- A legend while OCT- is held on the TIDE page (C9, Later).
 
 **Content**
-- Roles spec T4 (b6): ready on `fix/b6-roles-t4` (review MERGE, +316 B, audio interrupt untouched); merge it for real into b6, never as a patch of the diff against b5/integ (the branch predates the flash screen). Cleanups then: TIDE_GUIDE.md:153 wording (the floor is min(lowest, C3)), the `t_lane` edge check is met for free in the bass scene, the unused `sqm_note` (seq_morph.c:89) and its comment at :60.
+- Roles spec T4 (b6, Ready): branch `fix/b6-roles-t4` (review MERGE, +316 B, audio interrupt untouched); merge it for real into b6, never as a patch of the diff against b5/integ (the branch predates the flash screen). Cleanups then: TIDE_GUIDE.md:153 wording (the floor is min(lowest, C3)), the `t_lane` edge check is met for free in the bass scene, the unused `sqm_note` (seq_morph.c:89) and its comment at :60.
 - Roles spec T7: CELLAR TAPE's bass comes back with rewritten records.
 - Roles spec T8 to T10: the new reel of multis, together with the `tideroles` levels (43 of 338 checks red: M04 +3.8, M10 +5.3, M12 -3.1, M15 -7.2, M16 -9.2 dB from the median; finding 25, D46).
 
 **Live recording** ([audit](audits/2026-11-08/liverec/LIVEREC_AUDIT.md))
-- Documented limits of the keys-record-into-ARP-SEQ pattern (built in b3, row 7c): a 2-step pattern in REPLACE splits a chord across the step boundary, and the key's step is predicted from the POLY stretch before the next arp step runs (it can land one step off at a stretch change). [Brief R2](audits/2026-11-08/liverec/TASKS.md#r2)
+- Documented limits of the keys-record-into-ARP-SEQ pattern (Released in b3): a 2-step pattern in REPLACE splits a chord across the step boundary, and the key's step is predicted from the POLY stretch before the next arp step runs (it can land one step off at a stretch change). [Brief R2](audits/2026-11-08/liverec/TASKS.md#r2)
 - Plain DUELL's `rec_note` stays under `#else`: deliberate, a shared `rec_put` would change the `DUELL_TIDE=0` binary.
 - Named `tide.h` hooks for the raw `#if DUELL_TIDE` blocks in `seq.c`; a `seq_len()` helper; one "past half step" helper.
 - Dead `SC_MODE` code under TIDE (flash to buy back, with the MODE page's `CG3` cards).
@@ -112,10 +114,10 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 - Pattern save: document the exact visible entry point (saving needs STOP) before any live test.
 
 **Repository and CI**
-- The `emu` CI job: fixed in [#4](https://github.com/pssdrnk-cmyk/DUELL-TIDE/pull/4) (emsdk sourced under bash) and gating once merged.
+- The `emu` CI job: fixed in [#4](https://github.com/pssdrnk-cmyk/DUELL-TIDE/pull/4) (emsdk sourced under bash; merged 8 November), and the job gates.
 - Rename `jam11` to `tide`.
 - Gate the release channels by CI too (a Stable / Beta release is offered only from a green commit), from the 4 November decisions.
-- Retire the plain build: drop `DUELL_TIDE=0`, `jam/check_off.sh`, `jam/off.sha256` and the tideoff test groups, and fold the `#if DUELL_TIDE` hooks into plain code where that saves flash or clarity. One step per beta, after b4.
+- Retire the plain build (Later): `jam/check_off.sh` is already no longer a gate (owner, 8 November). Still open: drop `DUELL_TIDE=0`, `jam/check_off.sh`, `jam/off.sha256` and the tideoff test groups, and fold the `#if DUELL_TIDE` hooks into plain code where that saves flash or clarity. One step per beta.
 - Test quality notes left from finding 38: split the FM6 budget check by crossing state, one generated multi-name table, the `F_NONE` hang exemption if it flakes.
 - Workspace clean-up: retire merged worktrees (owner's OK).
 
@@ -129,14 +131,14 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 | Screen canvas | 59.5 KB pool | Drawing in smaller strips; every direct pixel access must be checked. |
 | Performance capture | 32 KB pool | Check when it must stay live. |
 
-## Waiting on the owner
+## Waiting on you
 
 | Question | Default if you don't mind |
 |---|---|
 | D43: when a crossing starts under a held chord, the chord stays whole (the budget plans for it from the start). | Stays whole; decided after the drones are measured under a GLIDE. |
 | D46: the multis that are too loud or too quiet are trimmed by ear on the unit. | Trim M15, M16 up and M10 down by the numbers, then listen. |
-| Try on the unit: keys recording into an ARP SEQ part, and REC ADD / REPLACE (b3). | Nothing to decide; say if the nearest-step rule feels wrong. |
-| Reverb FREEZE (below): build it? | Not built until you say. |
+| Try on the unit: keys recording into an ARP SEQ part, and REC ADD / REPLACE (Released in b3, not yet tried on the unit). | Nothing to decide; say if the nearest-step rule feels wrong. |
+| Reverb FREEZE (below): build it? | Later: not built until you say. |
 | Drone scenes: delivered as a file pack, replacing multis, or by packing the multi records to make room? | File pack (no factory multi changes). |
 | Which of the ideas below, if any. | None until chosen. |
 
@@ -144,7 +146,7 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 
 ## Ideas, not decided
 
-- **MORPH card waves: shipped in `1.0.0-b5`** as the whole MORPH page (both parts, a mono 8-bit tap a part). Still open from the plan: L and R as two lines, the deep-bass line (about 4 KB more RAM, below).
+- **MORPH card waves: in progress for `1.0.0-b5`** as the whole MORPH page (a mono 8-bit tap a part; its look is being reworked). Still open from the plan: L and R as two lines, the deep-bass line (about 4 KB more RAM, below).
 - **Wave card L/R lines and the deep-bass line:** about 4 KB more RAM. The candidates are PERFORM capture (8 KB = 93 ms shorter capture) or a canvas drawn in strips. Owner decision when wanted.
 - **From Niagara Drift** (an FM-1 drone firmware; checked against our code 8 November, estimates until built): **reverb FREEZE** on HALL / ROOM (the tail holds and the notes can stop; a block-rate gain change with a limiter, ~200-400 B, no CPU while off; risks: fixed-point overflow and the release click) fits best. **AGE** (slow tape-like wear, ~300-600 B) needs an offset layer on top of the saved sound, not checked yet. Gesture keys and a free-time motion loop do not fit the flash, the keys or the no-new-pages rule.
 - **Drone scenes:** multis built around the eight drones, one per theme.
