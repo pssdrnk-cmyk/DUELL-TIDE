@@ -1057,7 +1057,11 @@ static void input_off(track_t *t, uint32_t note)
 static void key_tone(uint32_t k, track_t *t, uint32_t i, uint32_t vel)
 {
     uint32_t x = kb_chord[k][i], mc = trk_midi_ch(trk_index(t));
+#if DUELL_TIDE
+    if (midi_local_held(t, x) || midi_note_held(t, x))   /* review FR8 (A4): a MIDI note holds it too (as midi_play): not counted twice by the arp */
+#else
     if (midi_local_held(t, x))
+#endif
         return;
     if (duell_mode == DM_LAYER && t == trk)
         lay_input(t, x, vel);
@@ -1929,6 +1933,10 @@ static void events_block(uint32_t n)
         if (!(midi_route & 1u))
             midi_route_block();
     }
+#if DUELL_TIDE
+    if (song.sel != midi_sel_was)
+        midi_sel_change();                            /* review FR8 (A6) */
+#endif
     pr = panic_req;
     pk = panic_keep;
     panic_req = 0;
@@ -1960,11 +1968,19 @@ static void events_block(uint32_t n)
     for (i = 0; i < NTRK; i++) {
         track_t *t = &trk[i];
         if ((pr >> i) & 1u) {
-            midi_forget_track(i);
+#if DUELL_TIDE
+            int keep = ((pk >> i) & 1u) && (mods_keep & MODK_ARP) && arp_mode(t);
+            if (!keep)                                /* review FR8 (A3): the kept arp keeps who holds which MIDI note, so their note-offs still reach arp_remove */
+#endif
+                midi_forget_track(i);
             strum_forget(i);                          /* (item 144: a held key's tones still waiting are dropped with the rest) */
             trk_all_off(t);
             t->m_cycle = t->m_env = t->m_env2 = 0;                            /* (item 135: the latest note's CYCLE for the per-block destinations: a new sound's first block does not read the old one's) */
+#if DUELL_TIDE
+            if (keep) {
+#else
             if (((pk >> i) & 1u) && (mods_keep & MODK_ARP) && arp_mode(t)) {
+#endif
                 /* DUELL 1.1 ARP KEEPS RUNNING, a patch load: the voices end (a new sound starts clean) and the arp's own notes get their MIDI note-offs (mo_flush), but the held and latched
                  * notes (nheld, held[], arp_phys), the step counter and the phrase (arp_ph) stay: the next arp step plays the new sound */
                 mo_flush(t);

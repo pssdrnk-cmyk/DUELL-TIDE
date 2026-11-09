@@ -10,6 +10,9 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 ## 1.0.0-b7 (in progress)
 
 - **Fixed (review FR1):** a swung pattern (SWG over 50, the part's or TEMPO SWING; DEEP SHUFFLE, HOUSE STAB, DEEP 332, DOT DELAY) stays on the grid when TIDE's POLY plays it 15 or 13 steps long. Before, it came back from the stretch late against the other part, the click and an external kick (GENTLE 15 at SWG 60 by about a sixteenth and a half, WIDE by less) and stayed late until STOP / PLAY; during the stretch every other pass was off the grid too. Straight patterns (SWG 50) play exactly as before.
+- **Fixed (review FR8, a MIDI keyboard into the arp):** with GLO > MODULES ARP = KEEPS RUNNING, letting go of a chord held on a MIDI keyboard after a sound change (PRESETS or a program change) now stops the arp; before, it cycled the released chord until STOP ALL.
+- **Fixed (review FR8):** playing a key on a note a MIDI note already holds on the same part no longer leaves the arp counting one key too many: HOLD replaces its chord with the next one again, and HOLD off drops the latched chord. In LAYER with SPLIT, a MIDI note that only part 2 plays no longer releases a note of the same pitch on part 1.
+- **Fixed (review FR8):** with MENU > MIDI > MIDI IN = SEL, bending the wheel (or pressing a key with channel aftertouch) and changing part before letting go no longer leaves the part you left bent or pressed; a part still holding a MIDI note keeps following its channel as before. The mod wheel's value stays on each part, as it is a position you set.
 
 ## 1.0.0-b6
 
