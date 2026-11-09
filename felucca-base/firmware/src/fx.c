@@ -3126,8 +3126,8 @@ static inline __attribute__((always_inline)) void wv_tap(const mixpart_t *m)
     if (wv_last[pp] + 1u != m->bs->wv_blk)              /* a block missing since the last tap (silence, a shut gate, a skipped job) */
         wv_gap[pp] = w;
     wv_last[pp] = m->bs->wv_blk;
-    for (i = 0; i + 1u < m->n; i += 2u) {
-        wv_m[pp][w & (WVR_N - 1u)] = wvr_code((ac->l[i] + ac->l[i + 1u] + ac->r[i] + ac->r[i + 1u]) >> 5);   /* (the mean of four frames, at half scale, in 1/4,096 steps) */
+    for (i = 0; i + 3u < m->n; i += 4u) {             /* (one entry per four frames: 11.025 kHz, 46 ms of ring, two cycles of a 43 Hz bass) */
+        wv_m[pp][w & (WVR_N - 1u)] = wvr_code((ac->l[i] + ac->l[i + 1u] + ac->l[i + 2u] + ac->l[i + 3u] + ac->r[i] + ac->r[i + 1u] + ac->r[i + 2u] + ac->r[i + 3u]) >> 6);   /* (the mean of eight values, at half scale, in 1/4,096 steps) */
         w++;
     }
 #if DUELL_TWOCORE

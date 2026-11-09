@@ -5,15 +5,15 @@
  *   code         wvr_code / wl_dec: every value -4,095 .. 4,095 comes back within half a step, in order, 0 as 0
  *   trigger      the same signal at 10 starting offsets gives the same picture (within 1 px as drawn: the two sets of pixels, each to the nearest of the other; a saw, a resonant saw, a resonant saw at
  *                100.37 entries a cycle, a sine); the same signal as 10 pictures in a row: 0 changed points (all but the 100.37 one)
- *   beat         two sines 3 Hz apart: the height of the ridge swings at least 4 : 1 over 60 pictures
- *   soft         right after a loud sine, the same sine 26 dB down is drawn small (the gain falls by 1/4 a picture, not at once); a quiet held sine (-37 dB of the half scale) on its own still
+ *   beat         two sines 3 Hz apart: the height of the ridge swings at least 3 : 1 over 60 pictures (a dip under a pixel shows the last shape fading, wl_fade)
+ *   soft         right after a loud sine, the same sine 26 dB down is not blown up: the gain falls by 1/4 a picture, so it is under a pixel and the loud shape fades (half); a quiet held sine (-37 dB of the half scale) on its own still
  *                shows its shape at nearly the full height (the floor of the gain)
- *   silence      the part's silent flag: a flat ridge in front, the stack runs out (all flat after WL_HN pictures); a ring of zeros, the tap's dither: one flat ridge
+ *   silence      the part's silent flag: the front fades (half its height a picture), the stack runs out (all flat a few pictures after WL_HN); a ring of zeros, the tap's dither: one flat ridge
  *   stack        a held note builds up WL_HN ridges, no more
  *   wrap         the ring's free-running counter past 2^32 gives the picture it gives below it
  *   torn         the writer moves on past what the ring leaves between the read and the second look at the counter: once = one retry and a picture, twice = the old picture stays
  *   inside       every point of every picture inside the box (a full-scale square, noise, three box heights)
- *   tap          the entry the tap writes (the mean of four frames, half scale, 1/128 steps, clamped); a block the part did not tap (part 2 skipped, a shut gate, silence) moves the gap up, a late job
+ *   tap          the entry the tap writes (the mean of eight values, four frames, half scale, companded, clamped; 8 entries a block); a block the part did not tap (part 2 skipped, a shut gate, silence) moves the gap up, a late job
  *                (the block's own number, not wv_blk) does not; the reader draws only what lies after the gap
  *   gate         ANIM OFF leaves the gate shut and the picture as it was; otherwise the gate opens ahead; leaving the page starts the pictures over
  * Run: scope_test (exit 0 = all ok) */
@@ -66,7 +66,7 @@ static int8_t *front_of(uint32_t k)
         b[p] = (int8_t)wl_rp(&wl[k], 0, p);
     return b;
 }
-static void set_pt7(uint32_t k, int32_t v) { wl[k].rd[0][3] = (uint8_t)((wl[k].rd[0][3] & 15u) | (uint32_t)(v & 15) << 4); }   /* (point 7 of the newest ridge) */
+static void set_pt7(uint32_t k, int32_t v) { wl[k].rd[0][7] = (int8_t)(v * 8); }   /* (point 7 of the newest ridge, px; stored in 1/8 px) */
 static void fresh(uint32_t k)                            /* a part with no history: the gate opened long ago, no gap, no flag */
 {
     memset(&wl[k], 0, sizeof wl[k]);
@@ -270,8 +270,8 @@ int main(void)
     }
     {
         char w[160];
-        snprintf(w, sizeof w, "beat: two sines 3 Hz apart over 60 pictures: the height swings %d : %d px (need 4 : 1)", hmax, hmin);
-        ok(w, hmax >= 4 * (hmin ? hmin : 1));
+        snprintf(w, sizeof w, "beat: two sines 3 Hz apart over 60 pictures: the height swings %d : %d px (need 3 : 1)", hmax, hmin);
+        ok(w, hmax >= 3 * (hmin ? hmin : 1));
     }
 
     /* soft against loud: the next picture (the gain falls by 1/4 a picture) */
@@ -286,8 +286,8 @@ int main(void)
         wl_step(0, HS);
         {
             char w[160];
-            snprintf(w, sizeof w, "soft: right after a loud sine, the same 26 dB down is drawn %d px, the loud one %d px (not blown up)", height(&wl[0]), h1);
-            ok(w, height(&wl[0]) * 3 < h1);
+            snprintf(w, sizeof w, "soft: right after a loud sine, the same 26 dB down is drawn %d px, the loud one %d px (not blown up: the loud shape fades, half)", height(&wl[0]), h1);
+            ok(w, height(&wl[0]) * 2 <= h1 + 2);   /* (half, to a px of rounding) */
         }
     }
     /* quiet: a held sine at -37 dB of the half scale (+-60 of the tap's 4,096 steps: under two of the old 8-bit tap's steps), on its own: its shape at the gain's floor */
@@ -315,16 +315,19 @@ int main(void)
         wl_step(0, HS);
     }
     ok("stack: a held note builds up WL_HN ridges, no more, none flat", wl[0].hn == WL_HN && wl[0].flat == 0);
-    wv_sil[0] = 1;
-    wl_step(0, HS);
     {
-        uint32_t i, flat = 1;
-        for (i = 0; i < WL_NP; i++)
-            flat &= front_of(0)[i] == 0;
-        ok("silence (the part's flag): a flat ridge in front, the older ridges move back", flat && (wl[0].flat & 1u) && !(wl[0].flat & 2u) && height(&wl[0]) == 0);
-        for (i = 1; i < WL_HN; i++)
+        int32_t h0 = height(&wl[0]);
+        uint32_t i;
+        wv_sil[0] = 1;
+        wl_step(0, HS);
+        {
+            char w[160];
+            snprintf(w, sizeof w, "silence (the part's flag): the front fades to half its height (%d px of %d), the older ridges move back", height(&wl[0]), h0);
+            ok(w, !(wl[0].flat & 3u) && height(&wl[0]) * 2 <= h0 + 2 && height(&wl[0]) * 2 >= h0 - 2);
+        }
+        for (i = 1; i < WL_HN + 4u; i++)
             wl_step(0, HS);
-        ok("silence (the part's flag): after WL_HN pictures the stack has run out, every ridge flat", wl[0].flat == (uint16_t)((1u << WL_HN) - 1u));
+        ok("silence (the part's flag): a few pictures later the stack has run out, every ridge flat", wl[0].flat == (uint16_t)((1u << WL_HN) - 1u));
     }
     wv_sil[0] = 0;
     sig_m = zero;
@@ -342,12 +345,12 @@ int main(void)
     sig_m = sine128;                                     /* waking: the hole's gap says where; entries from before it are not used */
     ring(0, 9000u);
     fresh(0);
-    wv_gap[0] = 9000u - 100u;                            /* only 100 entries since it woke: not enough, the picture stays as it was */
+    wv_gap[0] = 9000u - 50u;                             /* only 50 entries since it woke: not enough (100), the picture stays as it was */
     wl[0].a = HS;
     wl[0].got = 1;
     set_pt7(0, 5);
     wl_step(0, HS);
-    ok("waking from silence: under 200 entries since it woke, nothing is made from older ones", wl_rp(&wl[0], 0, 7) == 5);
+    ok("waking from silence: under 100 entries since it woke, nothing is made from older ones", wl_rp(&wl[0], 0, 7) == 5);
 
     /* the counter past 2^32 (a signal with 128 entries a cycle, so that its phase is the same at counters 128 apart, and 2^32 is a whole number of them) */
     {
@@ -453,22 +456,22 @@ int main(void)
                 pacc[1].l[i] = pacc[1].r[i] = 100000;
             bsx.wv_blk = ++blk;
             wv_tap(&m);
-            ok("tap: a mix past the half scale clamps at code 127", wv_m[1][16] == 127);
+            ok("tap: a mix past the half scale clamps at code 127", wv_m[1][8] == 127);   /* (8 entries a block: one per four frames) */
             for (i = 0; i < CTL; i++)
                 pacc[1].l[i] = pacc[1].r[i] = -100000;
             bsx.wv_blk = ++blk;
             wv_tap(&m);
-            ok("tap: and at -127", wv_m[1][32] == -127);
+            ok("tap: and at -127", wv_m[1][16] == -127);
         }
         wv_cnt[1] = wv_gap[1] = wv_last[1] = 0;
         blk = 0;
         for (j = 0; j < 40u; j++)
             tap_block(&m, &bsx, &blk, &ts, 0, 1, 16384);
-        ok("tap: forty blocks in a row leave no gap after the first", wv_gap[1] == 0u && wv_cnt[1] == 40u * 16u);
+        ok("tap: forty blocks in a row leave no gap after the first", wv_gap[1] == 0u && wv_cnt[1] == 40u * 8u);
         tap_block(&m, &bsx, &blk, &ts, 1, 1, 16384);     /* part 2 does not run this block */
         gap_before = wv_cnt[1];
         tap_block(&m, &bsx, &blk, &ts, 0, 1, 16384);
-        ok("tap: a skipped block moves the gap up to the next block's first entry", wv_gap[1] == gap_before && wv_cnt[1] == gap_before + 16u);
+        ok("tap: a skipped block moves the gap up to the next block's first entry", wv_gap[1] == gap_before && wv_cnt[1] == gap_before + 8u);
         real_gap = wv_gap[1];                            /* (what the tap wrote: the reader below uses that, not the value it should have) */
         sig_m = zero;
         fresh(1);
@@ -478,7 +481,7 @@ int main(void)
         wl[1].got = 1;
         set_pt7(1, 5);
         wl_step(1, HS);
-        ok("tap: right after the hole (16 entries since it) the reader makes no picture and draws no seam", wl_rp(&wl[1], 0, 7) == 5);
+        ok("tap: right after the hole (8 entries since it) the reader makes no picture and draws no seam", wl_rp(&wl[1], 0, 7) == 5);
         for (j = 0; j < 40u; j++)
             tap_block(&m, &bsx, &blk, &ts, 0, 1, 16384);
         ok("tap: forty more blocks leave the gap where it was", wv_gap[1] == real_gap);
@@ -508,7 +511,7 @@ int main(void)
         tap_block(&m, &bsx, &blk, &ts, 0, 0, 16384);
         gap_before = wv_cnt[1];
         tap_block(&m, &bsx, &blk, &ts, 0, 1, 16384);
-        ok("tap: blocks with the gate shut leave the same mark", wv_gap[1] == gap_before && wv_cnt[1] == gap_before + 16u);
+        ok("tap: blocks with the gate shut leave the same mark", wv_gap[1] == gap_before && wv_cnt[1] == gap_before + 8u);
         /* a late job: its block number is the one made for it, whatever wv_blk says by the time it runs */
         {
             uint32_t g0 = wv_gap[1];

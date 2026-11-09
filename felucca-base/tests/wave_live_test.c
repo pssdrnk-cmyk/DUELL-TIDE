@@ -7,6 +7,7 @@
  *   stab      M01 as shipped (FM6 BIG STAB, a short stab): a chord struck every 450 ms for 3 s (as the WAVE LAB harness): the two parts alive in 40 % of the frames together (b5 WIP: 28 %)
  *   held      a held 4-note chord sequence on both parts (sustain full, PLAY): each part alive in 80 % of the frames, and the picture moves (frames differ)
  *   quiet     the same with both parts' MIXER LEVEL at 60 (the tap is after it): each part alive in 80 % of the frames (b5 WIP, the 8-bit tap: 1 and 2 of 20, a flat stack)
+ *   busy      #18 PEDAL BASS with the sequence and the chord: each half of the picture at most WL_HN pieces (one unbroken line a ridge; the b5 merge's occluded stack fell into dozens)
  *   select    the ALGORITHM encoder on the page: PART 1, BOTH, PART 2 in that order and stopping at the ends; the picture alive in all three
  *   off HOME  an edit page: the encoder picks PART 1 / PART 2 only, BOTH stays for HOME
  * Run: wave_live_test (exit 0 = all ok) */
@@ -77,6 +78,38 @@ static int32_t foot_span(int32_t y0, int32_t y1)
         hi = y > hi ? y : hi;
     }
     return hi < 0 ? -1 : hi - lo;
+}
+/* the pieces the picture falls into in rows y0 .. y1 - 1, x 22 .. 236 (right of the tag and the bar): 8-connected groups of lit pixels. One unbroken line a ridge is at most
+ * WL_HN pieces (fewer where lines touch); lines cut into fragments (the b5 merge's look, owner 2026-11-09: "noodles scattered") are many */
+static int32_t pieces(int32_t y0, int32_t y1)
+{
+    static uint8_t seen[240 * 240];
+    static uint16_t stk[240 * 240];
+    const int32_t bg = lum(238u, (uint32_t)(y0 + 2));   /* (lit: brighter than the background; the faint anti-aliased back lines count) */
+    int32_t x, y, n = 0;
+    memset(seen, 0, sizeof seen);
+    for (y = y0 + 1; y < y1; y++)
+        for (x = 22; x <= 236; x++) {
+            uint32_t sp = 0;
+            if (seen[y * 240 + x] || lum((uint32_t)x, (uint32_t)y) <= bg)
+                continue;
+            n++;
+            seen[y * 240 + x] = 1;
+            stk[sp++] = (uint16_t)(y * 240 + x);
+            while (sp) {
+                const int32_t q = stk[--sp], qx = q % 240, qy = q / 240;
+                int32_t dx, dy;
+                for (dy = -1; dy <= 1; dy++)
+                    for (dx = -1; dx <= 1; dx++) {
+                        const int32_t nx = qx + dx, ny = qy + dy;
+                        if (nx < 22 || nx > 236 || ny <= y0 || ny >= y1 || seen[ny * 240 + nx] || lum((uint32_t)nx, (uint32_t)ny) <= bg)
+                            continue;
+                        seen[ny * 240 + nx] = 1;
+                        stk[sp++] = (uint16_t)(ny * 240 + nx);
+                    }
+            }
+        }
+    return n;
 }
 static uint32_t pic_hash(void)
 {
@@ -154,6 +187,26 @@ int main(void)
         trk[0].p[P_LEVEL] = (uint8_t)lv0;
         trk[1].p[P_LEVEL] = (uint8_t)lv1;
         run(500);
+    }
+
+    /* busy: #18 PEDAL BASS on part 1 with the sequence and the chord (the owner's scene, 2026-11-09): every ridge one unbroken line, so each half is at most WL_HN pieces */
+    {
+        uint32_t f, worst0 = 0, worst1 = 0, sel = song.sel, both = SEL_BOTH;
+        song.sel = 0;
+        preset_go(17);                                   /* (#18 PEDAL BASS) */
+        song.sel = (uint8_t)sel;
+        SEL_BOTH = (uint8_t)both;
+        run(1500);
+        for (f = 0; f < 20u; f++) {
+            uint32_t p0, p1;
+            run(100);
+            p0 = (uint32_t)pieces(pic_y0, pic_ym);
+            p1 = (uint32_t)pieces(pic_ym, pic_y1);
+            worst0 = p0 > worst0 ? p0 : worst0;
+            worst1 = p1 > worst1 ? p1 : worst1;
+        }
+        snprintf(w, sizeof w, "busy: PEDAL BASS, sequence and chord: the picture is at most %u pieces a half (part 1 %u, part 2 %u: no fragments)", (unsigned)WL_HN, worst0, worst1);
+        ok(w, worst0 <= WL_HN && worst1 <= WL_HN);
     }
 
     /* select: PART 1, BOTH, PART 2 on the page */
