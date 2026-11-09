@@ -48,7 +48,7 @@ static int sqm_thin_build(void)                          /* 1: a mask changed */
 }
 /* main loop, every pass (tide_ui.c tide_poll): the masks again only when what they are built from changed (audit C9: not every frame):
  * the ends played (sqm sig / tseed / ok), the lengths, the grids and swings tide_metric reads, the parts gliding, the ARC's thinning and VARY BARS */
-static uint32_t sqm_thin_k, sqm_thin_kok;
+static uint32_t sqm_thin_k __attribute__((section(".pool"))), sqm_thin_kok __attribute__((section(".pool")));   /* (main loop only: the pool, zeroed at boot) */
 static void sqm_thin_poll(void)
 {
     uint32_t pi, h = 2166136261u;

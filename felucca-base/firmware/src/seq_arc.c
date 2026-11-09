@@ -9,7 +9,7 @@
  * nothing here is saved, a power cycle starts at RISE. STOP and PLAY leave the arc where it was; a load or a K1 stop starts it again. ARC OFF: every lever neutral, as before. The planner is main loop only; the
  * audio interrupt reads tarc_dropphr, tarc_thin, tarc_fast (seq_morph.c seq_play_step) and tarc_hold (seq_poly.c). */
 enum { AP_RISE, AP_PEAK, AP_DROP, AP_BREAK, AP_RECOVER };
-static struct { uint8_t last, phase, left, len, next, t, hand, cnt, run, phr, hleft, au; } tarc;   /* hleft: the units left before a hand drop shortened the phase; au: the arc's units so far */
+static struct { uint8_t last, phase, left, len, next, t, hand, cnt, run, phr, hleft, au; } tarc __attribute__((section(".pool")));   /* (main loop only: the pool, zeroed at boot; .bss is the tighter) hleft: the units left before a hand drop shortened the phase; au: the arc's units so far */
 
 /* the dice: the roll's seed and the session's (morph.gen: S3, so the arcs differ from night to night the way the notes do) */
 static uint32_t tarc_rnd(uint32_t salt) { return sqm_hash(((uint32_t)morph.seed << 8) ^ tarc.cnt ^ morph.gen, (uint32_t)tarc.phr * 16u + tarc.run, 0xA4C0u + salt); }
