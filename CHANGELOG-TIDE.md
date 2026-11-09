@@ -12,6 +12,7 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 Not flashed yet.
 
 - MORPH: loading a factory sound or a factory multi no longer resets AMOUNT (knob 4); yours stays. On the MORPH page the AMOUNT card is dimmed while AUTO TIDE runs JOURNEY, where it does nothing.
+- **Changed:** TIDE's generated notes stay in the register of the pattern you wrote (roles spec C1, task T4): VOIC (both voicings), the voice leading and the PITCH walk accept a note only from the pattern's lowest note up to its highest plus an octave (a pattern that starts above C3 may not reach under C3), inside the old 24 to 108. The check is made where the end is built, in the main loop; TIDE-only code, nothing in the audio interrupt, the `DUELL_TIDE=0` image is unchanged, flash +288 B. `tidebuild` has the lane bound with three mutations (VOIC chord note, VOIC single note, PITCH walk) that it must detect.
 
 ## 1.0.0-b5
 
