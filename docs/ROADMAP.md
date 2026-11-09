@@ -13,6 +13,8 @@ b5 was never published: its changes ship inside b6 as one release (owner, 9 Nove
 | The MORPH page's waves move like the first WAVE LAB stack again (13 lines a part scrolling back every picture, full height, fading toward the back), at today's size (from b5) | Built (in the b6 build), waits for your look and the CPU test on the FM-1. The owner, 9 November: "the animation quality got worse, the front lines moves a lot and the ones behind barely"; "the initial version looked quite cool when we called it wave lab" |
 | MORPH page: an older saw line no longer crosses the newest one on note changes (from b5) | Built (in the b6 build, with the motion fix), waits for the FM-1 test |
 | MORPH page no longer lags: the wave stack draws in about 53 us, under b5's 77 (owner on the FM-1: "the new UI is definitely laggy") | Built (in the b6 build), waits for your try on the FM-1 |
+| MORPH page: turning MORPH (knob 1) while the waves play no longer makes the screen go strange (owner on the FM-1: "the UI gets weird if I use morph during the animation") | Built (in the b6 build), waits for your try on the FM-1 |
+| The drone scenes get slow sequences of their own | In progress (owner, 9 November: "I'm missing some sequence from the drone multis"; fix/b6-droneseq) |
 | PART 1 / PART 2 / BOTH on HOME's pages (from b5) | Ready (in the b6 build) |
 | The new flashing screen (from b5) | Ready (in the b6 build) |
 | More free memory (EQ design moved out of fast RAM, 1,068 B; from b5) | Ready (in the b6 build) |
@@ -27,9 +29,16 @@ b5 was never published: its changes ship inside b6 as one release (owner, 9 Nove
 | JOURNEY doesn't jump the sound when started with the fader away from A ([J2](audits/2026-11-09/tide-morph/TASKS.md#j2)) | Planned: ~16 B, main loop |
 | TIDE's louder peak and softer breakdown reach ARP SEQ parts, M02 included; accents kept ([D1](audits/2026-11-09/tide-morph/TASKS.md#d1)) | Planned: ~60 B, one multiply per arp step |
 | The bass keeps its loop and octave: no POLY, no VOIC octave on a bass part; POLY ends in ARC's breakdown ([B1](audits/2026-11-09/tide-morph/TASKS.md#b1)) | Planned: ~65 B, 1 B RAM |
-| CPU test of b6 on your FM-1 (the 16 multis, the drones, the notes step; MORPH on screen) | Done 9 November: at the notes step 76 no missed blocks, but one voice cut on M14 EERIE SIGNAL (busiest block 90 %, b5 83 %), so b6 keeps b5's 72. The drones M17 and M18: no missed blocks, no voices cut (70 %, 65 %) |
+| CPU test of b6 on your FM-1 (the 16 multis, the drones, the notes step; MORPH on screen) | Done 9 November: at the notes step 76 no missed blocks, but one voice cut on M14 EERIE SIGNAL (busiest block 90 %, b5 83 %), so b6 keeps b5's 72. The drones M17 and M18: no missed blocks, no voices cut (70 %, 65 %). Next: the b6 build at 72 gets the full sweep again (it holds more than b5: End B, the register lanes, JOURNEY, AMOUNT, the drones) |
 
-b6 goes out after the CPU test and your OK on the FM-1. Room left on the b6 build (with the motion fix, its draw-cost fix and JOURNEY): 7,576 B of flash, RAM 69,624 of 73,728 B (4,104 B headroom against the 4,096 B rule).
+b6 goes out after the CPU test and your OK on the FM-1. Room left on the b6 build (with the motion fix, its draw-cost fix, the MORPH-turn fix and JOURNEY): 7,456 B of flash, RAM 69,624 of 73,728 B (4,104 B headroom against the 4,096 B rule).
+
+## Next: 1.0.0-b7
+
+| What | State |
+|---|---|
+| SPLIT MIDDLE: the keys split in the middle and the split follows OCT- / OCT+ | In progress (fix/b7-playmode) |
+| Try-out: the part selection (ALGORITHM knob on HOME) also picks how the keys play: PART 1, PART 2, LAYER, STEREO, DUEL | In progress, an experiment you try before it stays (fix/b7-playmode) |
 
 ## Later, in order
 
@@ -44,8 +53,9 @@ b6 goes out after the CPU test and your OK on the FM-1. Room left on the b6 buil
 9. Parameter units stored as an index (~0.87 KB; [SP4](audits/2026-11-09/space/TASKS.md)).
 10. Event-rate code built for size (1.78 KB; [SP5](audits/2026-11-09/space/TASKS.md)); needs the FM-1 CPU sweep.
 11. FM6 MUSIC rolls at AMOUNT 40 leave the loudness window (all FM6 rolls, not just End B); needs its own change ([finding 7](audits/2026-11-09/tide-morph/REPORT.md)).
-12. Give notes back in a finer step: at the first step (NOTES limit 76, 18 notes over the 16 multis) one voice was cut on EERIE SIGNAL, so b6 keeps b5's note counts (busiest block 90 %, b5 83 %; M08 TINE DUB 89 %; 0 missed blocks). Next: a step of 74, or more notes only on the multis with room; each kept only if the unit's sweep stays clean.
-13. Before `1.0.0`: 0 missed blocks over the 16-multi GLIDE sweep (owner, 8 November); the CPU budget re-measured and made honest (findings 5, 6, 34; K9).
+12. Give notes back more finely (per multi, or a smaller step than 76): at the first step, NOTES limit 76 (18 notes over the 16 multis), the unit's sweep missed no block but cut one voice on M14 EERIE SIGNAL, busiest block 90 % (b5 83 %); M08 TINE DUB 89 %. Each try kept only if the sweep stays clean.
+13. Send only the screen rows that changed, so the wave page reaches ~16 pictures a second instead of ~11 (the SPI link costs ~44 ms a full wave redraw).
+14. Before `1.0.0`: 0 missed blocks over the 16-multi GLIDE sweep (owner, 8 November); the CPU budget re-measured and made honest (findings 5, 6, 34; K9).
 
 ## Released
 
