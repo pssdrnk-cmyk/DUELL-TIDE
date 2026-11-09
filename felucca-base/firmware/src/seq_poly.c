@@ -49,10 +49,10 @@ static void tide_poly_wrap(uint32_t pi, uint32_t len)
 {
     static const uint8_t PCT[3] = {0, 15, 40}, SPAN[3] = {0, 8, 4}, FREE[3] = {0, 16, 8};
     uint32_t lc = ++poly_lc[pi], mode = sqm_poly % 3u, h;
-    int ok = mode && len >= 8u && ((sqm_auto >> pi) & 1u) && song.playing && !song.rec;
-    int calm = !tarc_hold;                               /* (ARC: no new stretch at the PEAK or the DROP) */
+    int ok = mode && len >= 8u && ((sqm_auto >> pi) & 1u) && song.playing && !song.rec && !((sqm_bassm >> pi) & 1u);   /* (B1: the bass keeps its loop) */
+    int calm = !tarc_hold && !tarc_thin;                 /* (ARC: no stretch at the PEAK, the DROP or while the breakdown thins; B1: one running then ends at its next loop start) */
     if (poly_len[pi]) {
-        if (!ok || lc >= poly_end[pi] || poly_len[pi] >= len) {
+        if (!ok || !calm || lc >= poly_end[pi] || poly_len[pi] >= len) {
             poly_len[pi] = 0;
             poly_free[pi] = lc + FREE[mode ? mode : 1u];
         }

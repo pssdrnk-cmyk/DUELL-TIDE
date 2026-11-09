@@ -115,6 +115,8 @@ static uint32_t glide_tide_on(void);
 static int tide_bass_part(const track_t *t);
 static uint32_t tarc_cap(uint32_t base);
 static int32_t tarc_bright(void);
+static volatile uint8_t sqm_bassm;                       /* B1: the parts whose sound is in the BASS family, a bit each (seqm_poll, main loop): no POLY, no VOIC, no phrase gaps */
+static uint8_t sqm_build_bass;                           /* B1: sqm_build is building a bass part's end (sqm_refresh sets it around the calls) */
 static volatile uint8_t sqm_sync = 1;                   /* SYNC: 0 OFF, 1 SOFT, 2 PUSH (tide_ui.c, the TIDE LIST; seq_rhythm.c, seq_dialogue.c) */
 static void sqm_refresh(uint32_t pi, int force);
 #include "seq_rhythm.c"
@@ -181,7 +183,7 @@ static void sqm_build(const step_t *p, uint32_t len, const sqm_end_t *x, uint32_
         score[i] = i % 4u && sqm_hit(&out[i]) && (d[SD_ACC] > 0) == !(out[i].flags & SF_ACCENT) ? sqm_score(seed, i, 5u, i % 4u == 2u ? 2u : 1u) : 0u;
     for (k = 0; k < n && (i = sqm_best(score, len)) < len; k++)
         out[i].flags ^= SF_ACCENT;
-    if (d[SD_VOIC]) {                                    /* VOIC: every chord the same inversions; single notes an octave */
+    if (d[SD_VOIC] && !sqm_build_bass) {                 /* VOIC: every chord the same inversions; single notes an octave (B1: never on the bass) */
         if (morph_musical) {                             /* (the octaves of the chord's own tones: PITCH, the new notes, is not needed) */
             sqm_voicelead(p, len, out);
         } else for (i = 0; i < len; i++) {
@@ -203,7 +205,7 @@ static void sqm_build(const step_t *p, uint32_t len, const sqm_end_t *x, uint32_
         n = sqm_cnt(d[SD_VOIC], 4u);
         n = n > 1u ? n - 1u : 0u;
         for (i = 0; i < len; i++)
-            score[i] = i % 4u && sqm_hit(&out[i]) && out[i].n == 1u && sqm_in_lane((int32_t)out[i].note[0] + (d[SD_VOIC] > 0 ? 12 : -12), lane_lo, lane_hi) ? sqm_score(seed, i, 6u, 1u) : 0u;
+            score[i] = i % 4u && sqm_hit(&out[i]) && out[i].n == 1u && out[i].note[0] >= 48u && sqm_in_lane((int32_t)out[i].note[0] + (d[SD_VOIC] > 0 ? 12 : -12), lane_lo, lane_hi) ? sqm_score(seed, i, 6u, 1u) : 0u;
         for (k = 0; k < n && (i = sqm_best(score, len)) < len; k++)
             out[i].note[0] = (uint8_t)(out[i].note[0] + (d[SD_VOIC] > 0 ? 12 : -12));
     }
@@ -266,9 +268,10 @@ static void sqm_refresh(uint32_t pi, int force)
     rhythm_validate(pi, len);
     if (rhythm.source[pi] != src)                        /* another pattern: the pitch offsets belong to the steps before */
         sqm_pitch_clear(q);
-    sig = sqm_sig(t, q, len) ^ (uint32_t)q->hold * 0x85EBCA77u ^ rhythm_hash(pi);
+    sig = sqm_sig(t, q, len) ^ (uint32_t)(q->hold | ((sqm_bassm >> pi) & 1u) << 7) * 0x85EBCA77u ^ rhythm_hash(pi);
     if (!force && q->ok && sig == q->sig)
         return;
+    sqm_build_bass = (uint8_t)((sqm_bassm >> pi) & 1u);
     if (q->aon)
         sqm_build(t->step, len, &q->a, SQM_AMT(q), sqm_buf);
     else
@@ -279,6 +282,7 @@ static void sqm_refresh(uint32_t pi, int force)
     memcpy(sqm_pat[pi][0], sqm_buf, len * sizeof sqm_buf[0]);
     MORPH_UNLOCK();
     sqm_build(t->step, len, &q->b[q->top], SQM_AMT(q), sqm_buf);
+    sqm_build_bass = 0;
     rhythm_apply(pi, len, sqm_buf);
     sqm_shape_hold(sqm_buf, len, q->hold);
     MORPH_LOCK();
@@ -371,10 +375,13 @@ static void seqm_set_amount(uint32_t pi, uint32_t amt)   /* SEQ AMT */
 /* main loop, every pass: the ends built again when the pattern was edited (every 20 ms at most) */
 static void seqm_poll(void)
 {
-    uint32_t k;
+    uint32_t k, b;
     if ((uint32_t)(fm1_ms - sqm_poll_ms) < 20u)
         return;
     sqm_poll_ms = fm1_ms;
+    for (k = 0, b = 0; k < NSHOWN; k++)
+        b |= (uint32_t)tide_bass_part(&trk[k]) << k;
+    sqm_bassm = (uint8_t)b;
     for (k = 0; k < NSHOWN; k++)
         if (seqm_active(k))
             sqm_refresh(k, 0);
