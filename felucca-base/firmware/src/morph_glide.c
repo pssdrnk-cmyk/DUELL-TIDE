@@ -18,7 +18,9 @@
  *            other part's; the pattern a WANDER generation, each part its own.
  * WAIT holds each arrival that many bars before the next trip. WANDER and JOURNEY follow the phrase grid: the bars run (gl.wbars)
  * give each generation the tier of the largest boundary crossed since the last (morph_music.c mm_tier: 16, 32, 64, 128 bars).
- * Touching a fader (its knob, a MIDI CC, a patch load that resets it) stops that lane where it is.
+ * A hand on a fader (its knob, a MIDI CC) takes that part's lane over; 8 untouched bars later, on the next 4-bar phrase (sqm_bar), the
+ * lane picks it up again from where the hand left it (MR7, owner 2026-11-09). Only the touched part waits; the lane, the pattern's own
+ * evolution (sqm_auto) and ARC go on. A sound load (mm_loads) still stops the lane for good, as STOP, HOME and K1 do.
  * Context: main loop only (glide_poll from ui_input); it writes through the morphs' own actions, nothing in the
  * interrupt changes. */
 
@@ -80,15 +82,18 @@ static struct {
     uint8_t mask;
     uint8_t playing;                                     /* the transport as the last pass saw it (a STOP pauses, a PLAY goes on) */
     uint8_t beat_seen;
-    uint8_t from[GLIDE_LANES][NSHOWN], last[GLIDE_LANES][NSHOWN];   /* from: each part's own fader at the trip's start; last: each moved part's fader as the last pass left it */
+    int16_t from[GLIDE_LANES][NSHOWN];                   /* each part's own fader at the trip's start (after a hand: the start that puts the path through it, MR7) */
+    uint8_t last[GLIDE_LANES][NSHOWN];                   /* each moved part's fader as the last pass left it */
     uint8_t loads[NSHOWN];                               /* each moved part's sound loads then (mm_loads: a load at the fader's own value) */
     uint32_t beats;                                      /* whole beats since the start, or since PLAY went on after a STOP */
     uint32_t bq, run;                                    /* Q16 beats: run before the last STOP; run in this stretch (as last seen) */
     uint32_t prog;                                       /* progress 0..1 << GLIDE_Q, for the page */
     uint8_t wait;                                        /* WAIT: an index of GLIDE_WAIT_BARS */
-    uint32_t wbars, wlast;                               /* WANDER, JOURNEY: the bars run since its start, at the last arrival */
+    uint8_t hw[GLIDE_LANES], bar_seen;                   /* MR7: the parts a hand holds on each lane; sqm_bar as last counted (in the padding: RAM is tight) */
+    uint16_t wbars, wlast;                               /* WANDER, JOURNEY: the bars run since its start, at the last arrival (16 bits: 36 hours at 120 BPM; MR7 needed the RAM) */
     uint8_t hold;                                        /* holding an arrival WAIT bars (the faders still) */
     uint8_t tt;                                          /* audit C3: the TIME the running trip took at its start (TIME lands at the next turn) */
+    uint8_t hq[NSHOWN];                                  /* MR7: each held part's untouched bars (in the padding: RAM is tight) */
 } gl = {.target = GT_BOTH, .mode = GM_JOURNEY, .time = 4u, .wait = 2u};   /* the defaults (no TIDE record yet): the showcase, BOTH, JRNY, 16 bars,
                                                                             * WAIT 2 bars (owner, 2026-11-01) */
 
@@ -131,12 +136,56 @@ static void glide_seen(uint32_t l)
                 gl.loads[k] = mm_loads[k];
         }
 }
-static int glide_touched(uint32_t l)
+static uint32_t glide_touched(uint32_t l)               /* the parts a hand moved; 0x80: a sound load */
 {
+    uint32_t m = 0;
     for (uint32_t k = 0; k < NSHOWN; k++)
-        if (((gl.mask >> k) & 1u) && (GLIDE_LANE[l].get(k) != gl.last[l][k] || (l == GT_SOUND && mm_loads[k] != gl.loads[k])))
-            return 1;
-    return 0;
+        if ((gl.mask >> k) & 1u) {
+            if (GLIDE_LANE[l].get(k) != gl.last[l][k])
+                m |= 1u << k;
+            if (l == GT_SOUND && mm_loads[k] != gl.loads[k])
+                m |= 0x80u;
+        }
+    return m;
+}
+/* a hand on lane l: the parts it moved wait (their bars counted from 0 again); a load stops the lane */
+static __attribute__((noinline)) void glide_hand(uint32_t l)
+{
+    uint32_t t = glide_touched(l);
+    if (t & 0x80u) {
+        gl.on &= (uint8_t)~(1u << l);
+        return;
+    }
+    if (!t)
+        return;
+    gl.hw[l] |= (uint8_t)t;
+    for (uint32_t k = 0; k < NSHOWN; k++)
+        if ((t >> k) & 1u)
+            gl.hq[k] = 0;
+    glide_seen(l);
+}
+/* MR7: each new bar a waiting part counts; after 8 untouched bars, on a phrase start, it is picked up where the hand left it: its path from a
+ * start f that runs through the fader now, to the same end; when that path would be faster than a trip a quarter as long (far off, late in the
+ * trip), it waits for the next trip */
+static uint32_t glide_ease(uint32_t p);
+static __attribute__((noinline)) void glide_back(void)
+{
+    uint32_t l, k, e, r;
+    if (gl.bar_seen == sqm_bar)
+        return;
+    gl.bar_seen = sqm_bar;
+    e = gl.hold ? 0u : glide_ease(gl.prog);
+    r = (1u << GLIDE_Q) - e;
+    for (k = 0; k < NSHOWN; k++) {
+        if (!(((gl.hw[0] | gl.hw[1]) >> k) & 1u) || ++gl.hq[k] < 8u || (sqm_bar & 3u) || !r)
+            continue;
+        for (l = 0; l < GLIDE_LANES; l++)
+            if ((gl.hw[l] >> k) & 1u) {
+                int32_t cur = (int32_t)GLIDE_LANE[l].get(k), end = gl.to ? 127 : 0, f = cur + (cur - end) * (int32_t)e / (int32_t)r;
+                if (f - end <= 508 && end - f <= 508)
+                    gl.hw[l] &= (uint8_t)~(1u << k), gl.from[l][k] = (int16_t)f;
+            }
+    }
 }
 
 static void glide_begin_lanes(void)
@@ -144,7 +193,7 @@ static void glide_begin_lanes(void)
     uint32_t l;
     for (l = 0; l < GLIDE_LANES; l++) {
         for (uint32_t k = 0; k < NSHOWN; k++)            /* (each part starts from its own fader: BOTH with the faders apart moves each from where it is) */
-            gl.from[l][k] = (uint8_t)GLIDE_LANE[l].get(k);
+            gl.from[l][k] = (int16_t)GLIDE_LANE[l].get(k);
         glide_seen(l);
     }
     gl.beats = 0;
@@ -169,7 +218,7 @@ static void glide_start(uint32_t to, uint32_t mask, uint32_t pi)
     if (gl.mode == GM_JOURNEY && !gl.on && (to & 1u))   /* (JOURNEY starts as it goes on: End B a target too; each part by its own End B, B18) */
         for (uint32_t k = 0; k < NSHOWN; k++)
             if ((mask >> k) & 1u)
-                tide_journey(1u << k, 1u, ((glide_lanes_of(gl.target) >> GT_SOUND) & 1u) && morph_to_of(k, 1u) < 0, 0u);
+                tide_journey(1u << k, 1u, (uint32_t)(((glide_lanes_of(gl.target) >> GT_SOUND) & 1u) && morph_to_of(k, 1u) < 0) << k, 0u);
     if (gl.mode >= GM_WANDER && morph_musical && (glide_lanes_of(gl.target) & (1u << GT_SEQ)))
         rhythm_begin(mask);
     gl.to = (uint8_t)(to & 1u);
@@ -177,6 +226,7 @@ static void glide_start(uint32_t to, uint32_t mask, uint32_t pi)
     gl.pi = (uint8_t)pi;
     gl.on = (uint8_t)glide_lanes_of(gl.target);
     gl.armed = 1;                                        /* (the next downbeat; stopped: the first one PLAY gives) */
+    gl.hw[0] = gl.hw[1] = 0;
     glide_begin_lanes();
 }
 /* A panel launch (the TIDE page's K1, PERFORM's GLIDE TO) while stopped starts PLAY too, whatever the glide moves (owner,
@@ -190,7 +240,7 @@ static void glide_launch(uint32_t to, uint32_t mask, uint32_t pi)
         gl.armed = 2;
     }
 }
-static void glide_stop(void) { gl.on = 0, gl.armed = 0, gl.hold = 0; }
+static void glide_stop(void) { gl.on = 0, gl.armed = 0, gl.hold = 0, gl.hw[0] = gl.hw[1] = 0; }
 static int glide_running(void) { return gl.on != 0; }
 static int tide_amount_idle(void) { return gl.on != 0 && gl.mode == GM_JOURNEY; }   /* (the MORPH page's AMOUNT card dims) */
 
@@ -220,19 +270,19 @@ static void glide_arrive(void)
     if (gl.mode >= GM_WANDER) {                          /* the phrase tier of this generation */
         static const uint8_t B[4] = {16, 32, 64, 128};
         uint32_t k;
-        gl.wbars += glide_trip_bars();
+        gl.wbars = (uint16_t)(gl.wbars + glide_trip_bars());
         mm_tier = 0;
         for (k = 0; k < 4u; k++)
             if (gl.wbars / B[k] > gl.wlast / B[k])
                 mm_tier = (int8_t)(k + 1u);
         gl.wlast = gl.wbars;
     }
-    if (gl.mode == GM_JOURNEY)                           /* JOURNEY: the end left the next target (a sound of the same kind, the next slot) */
-        tide_journey(gl.mask, left, (gl.on >> GT_SOUND) & 1u, (gl.on >> GT_SEQ) & 1u);
+    if (gl.mode == GM_JOURNEY)                           /* JOURNEY: the end left the next target (a sound of the same kind, the next slot); not on a part a hand holds (MR7: that end may be heard) */
+        tide_journey(gl.mask, left, (gl.on >> GT_SOUND) & 1u ? gl.mask & ~gl.hw[GT_SOUND] : 0u, (gl.on >> GT_SEQ) & 1u ? gl.mask & ~gl.hw[GT_SEQ] : 0u);
     else if (gl.mode >= GM_DRIFT)                        /* DRIFT: rolled again from the Original; WANDER: walked on */
         for (l = 0; l < GLIDE_LANES; l++)
-            if ((gl.on >> l) & 1u)
-                GLIDE_LANE[l].roll(gl.pi, gl.mask, left);
+            if (((gl.on >> l) & 1u) && (gl.mask & ~gl.hw[l]))
+                GLIDE_LANE[l].roll(gl.pi, gl.mask & ~gl.hw[l], left);
     gl_wander = 0;
     gl.to = (uint8_t)left;
     glide_begin_lanes();
@@ -255,8 +305,8 @@ static void glide_motion(int on)
         m = (m * XWL[morph_wlvl & 3u]) >> 15;            /* (WASH: x 0, 0.5, 1, 1.5) */
     }
     for (k = 0; k < NSHOWN; k++) {
-        mxs[k].motion = (uint16_t)(on && ((gl.mask >> k) & 1u) ? m : 0u);
-        mxs[k].follow = (uint8_t)(gl.on && ((gl.on >> GT_SOUND) & 1u) && ((gl.mask >> k) & 1u));   /* (the transition rides the trip itself) */
+        mxs[k].motion = (uint16_t)(on && ((gl.mask >> k) & 1u) ? m : 0u);   /* (MR7: under a hand too, so neither the touch nor the return jumps) */
+        mxs[k].follow = (uint8_t)(gl.on && ((gl.on >> GT_SOUND) & 1u) && (((gl.mask & ~gl.hw[GT_SOUND]) >> k) & 1u));   /* (the transition rides the trip itself; a hand's fader is its own) */
     }
 }
 /* the trip is an automatic MUSIC WNDR / JRNY on the SEQ lane, the transport aside: seq_arc.c keeps its arc through a STOP while this holds */
@@ -324,13 +374,14 @@ static void glide_poll(void)
     }
     gl.prog = glide_progress();
     glide_motion(!gl.hold && ((gl.on >> GT_SOUND) & 1u));   /* (the SOUND lane only: on BOTH a load stops it and the SEQ lane goes on; the new sound does not move) */
-    if (gl.hold) {                                       /* WAIT: the faders still; a hand still takes a lane over */
-        for (l = 0; l < GLIDE_LANES; l++)
-            if (((gl.on >> l) & 1u) && glide_touched(l))
-                gl.on &= (uint8_t)~(1u << l);
+    for (l = 0; l < GLIDE_LANES; l++)                    /* a hand (or a load) on any part it moves, moving or held */
+        if ((gl.on >> l) & 1u)
+            glide_hand(l);
+    glide_back();
+    if (gl.hold) {                                       /* WAIT: the faders still */
         if (gl.prog >= (1u << GLIDE_Q)) {
             gl.hold = 0;
-            gl.wbars += GLIDE_WAIT_BARS[gl.wait % GLIDE_WAITS];   /* (WANDER's phrase count: the held bars too) */
+            gl.wbars = (uint16_t)(gl.wbars + GLIDE_WAIT_BARS[gl.wait % GLIDE_WAITS]);   /* (WANDER's phrase count: the held bars too) */
             glide_begin_lanes();
         }
         return;
@@ -341,24 +392,20 @@ static void glide_poll(void)
         uint32_t v[NSHOWN], any = 0;
         if (!((gl.on >> l) & 1u))
             continue;
-        if (glide_touched(l)) {                          /* a hand (or a load) moved it, on any part it moves: this lane stops here */
-            gl.on &= (uint8_t)~(1u << l);
-            continue;
-        }
         {                                                /* (rounded to the nearer step either way: C's division truncates toward 0, so a
                                                          * +half rounded a trip down only from above and 127 -> 0 ended at 1; the end itself, exactly) */
             int32_t h = 1 << (GLIDE_Q - 2);
-            for (k = 0; k < NSHOWN; k++)                 /* each part on its own path, from its own start */
-                if ((gl.mask >> k) & 1u) {
+            for (k = 0; k < NSHOWN; k++)                 /* each part on its own path, from its own start (a part a hand holds: not moved) */
+                if (((gl.mask & ~gl.hw[l]) >> k) & 1u) {
                     int32_t num = ((int32_t)end - (int32_t)gl.from[l][k]) * (int32_t)(e >> 1);
-                    v[k] = gl.prog >= (1u << GLIDE_Q) ? end
-                        : (uint32_t)((int32_t)gl.from[l][k] + (num >= 0 ? (num + h) / (2 * h) : -((-num + h) / (2 * h))));
+                    int32_t w = gl.from[l][k] + (num >= 0 ? (num + h) / (2 * h) : -((-num + h) / (2 * h)));
+                    v[k] = gl.prog >= (1u << GLIDE_Q) ? end : (uint32_t)(w < 0 ? 0 : w > 127 ? 127 : w);
                     any |= gl.last[l][k] != v[k];
                 }
         }
         if (any) {
             for (k = 0; k < NSHOWN; k++)
-                if ((gl.mask >> k) & 1u)
+                if (((gl.mask & ~gl.hw[l]) >> k) & 1u)
                     GLIDE_LANE[l].set(gl.pi, 1u << k, v[k]);
             glide_seen(l);
         }

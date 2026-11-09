@@ -499,7 +499,7 @@ static void tide_journey(uint32_t mask, uint32_t x, uint32_t snd, uint32_t seq)
         const track_t *t = &trk[k];
         if (!((mask >> k) & 1u))
             continue;
-        if (snd) {
+        if ((snd >> k) & 1u) {
             const morph_part_t *mp = morph_ready(k);
             uint32_t e = t->eng_req, fam = UP_REC_USER(t) ? fam_of(sl_cat((uint32_t)t->user - 1u)) : fam_of_sound(e, t->preset);
             int32_t at = morph_to_of(k, x ^ 1u), was = morph_to_of(k, x);
@@ -534,7 +534,7 @@ static void tide_journey(uint32_t mask, uint32_t x, uint32_t snd, uint32_t seq)
             }
             r = r * 1103515245u + 12345u;
         }
-        if (seq)
+        if ((seq >> k) & 1u)
             seqm_wander_gen(k, x, (uint32_t)mm_tier);
     }
 }
@@ -627,7 +627,7 @@ static __attribute__((noinline)) void tide_frac(char *l, uint32_t a, uint32_t b)
     fmt_int(l, (int32_t)b);
 }
 /* AUTO TIDE's status line: what the glide does now, with its bar ("WNDR TO B  3/8", "WAITING  1/4"); stopped, the part(s) */
-static void tide_status(char *l)
+static __attribute__((noinline)) void tide_status(char *l)
 {
     static const char *const ST[5] = {"GLIDING", "LOOPING", "DRIFTING", "WANDERING", "JOURNEY"};
     uint32_t bars = gl.hold ? GLIDE_WAIT_BARS[gl.wait % GLIDE_WAITS] : glide_trip_bars(), at = ((gl.prog * bars) >> GLIDE_Q) + 1u;
@@ -637,7 +637,13 @@ static void tide_status(char *l)
         str_cpy(l, song.playing || transport_req == 1u ? "GLIDE ON THE NEXT BAR" : "GLIDE STARTS WITH PLAY", 40);
     else if (!song.playing)
         str_cpy(l, "PAUSED: PLAY GOES ON", 40);
-    else if (sqm_arc && sqm_auto && tarc.run) {         /* ARC: where the shape is ("RISE 3/6", "PEAK", "DROP", "BREAK 2/3") */
+    else if (((gl.hw[0] | gl.hw[1]) >> song.sel) & 1u) {   /* MR7: a hand holds the selected part: the bars before TIDE takes it back */
+        uint32_t q = gl.hq[song.sel], need = q < 8u ? 8u - q : 0u;
+        need += (4u - ((sqm_bar + need) & 3u)) & 3u;
+        str_cpy(l, "HAND  BACK IN ", 40);
+        fmt_int(l + str_len(l), (int32_t)(need ? need : 4u));
+        str_cpy(l + str_len(l), need == 1u ? " BAR" : " BARS", 8);
+    } else if (sqm_arc && sqm_auto && tarc.run) {         /* ARC: where the shape is ("RISE 3/6", "PEAK", "DROP", "BREAK 2/3") */
         str_cpy(l, tarc_name(), 40);
         if (tarc.phase != AP_PEAK && tarc.phase != AP_DROP) {
             str_cpy(l + str_len(l), " ", 4);
@@ -691,7 +697,7 @@ static void tide_track(int32_t y, int32_t x0, int32_t x1, uint32_t c, uint32_t p
         ui_part_tag(part, y, ui_part_hot(part));
     cv_rrect(x0, y - 1, x1 - x0 + 1, 3, 1, T_RAISE, T_BG);
     if (glide_running() && ((gl.on >> c) & 1u) && ((gl.mask >> part) & 1u)) {
-        int32_t a = tide_x(x0, x1, gl.from[c][part]), b = gl.to ? x1 : x0;
+        int32_t a = tide_x(x0, x1, (uint32_t)(gl.from[c][part] < 0 ? 0 : gl.from[c][part] > 127 ? 127 : gl.from[c][part])), b = gl.to ? x1 : x0;
         cv_rrect(a < b ? a : b, y - 1, (a < b ? b - a : a - b) + 1, 3, 1, ux.bw ? T_MID : T_TINT, T_RAISE);   /* (MONO has no tint: its black erased the track) */
     }
     cv_rrect(x - 2, y - 4, 5, 9, 2, kc, T_BG);
