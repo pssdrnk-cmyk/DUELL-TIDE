@@ -10,15 +10,13 @@
  *   busy      #18 PEDAL BASS with the sequence and the chord: each half of the picture at most WL_HN pieces (one unbroken line a ridge; the b5 merge's occluded stack fell into dozens)
  *   select    the ALGORITHM encoder on the page: PART 1, BOTH, PART 2 in that order and stopping at the ends; the picture alive in all three
  *   off HOME  an edit page: the encoder picks PART 1 / PART 2 only, BOTH stays for HOME
- *   saw       #25 DRIVEN SAW, a new note every 250 ms, then one held: no older line's pixel drawn at or under a newer line's top for 4 columns in any picture (b6 W1: 1 in 15 at 1.0.0-b5), as drawn
- *             (WL_TEST_SPAN: the rows wl_stack drew); and the whole stack (WAVE LAB's, 12 older lines in this lane) keeps its shape and moves back: 10 shaped older lines a look on
+ *   saw       #25 DRIVEN SAW, a new note every 250 ms, then one held: no older line drawn more than 2 px under a newer one for 4 points in any picture (b6 W1: 1 in 15 at 1.0.0-b5), as drawn
+ *             (WL_TEST_Y: the points wl_stack drew); and the whole stack (WAVE LAB's, 12 older lines in this lane) keeps its shape and moves back: 10 shaped older lines a look on
  *             changing notes, 95 % of them held (the W1 drop-outs left 0.9 and 3.8 of 5)
  * Run: wave_live_test (exit 0 = all ok) */
 #include <stdint.h>
-#include <string.h>
-static int16_t live_lo[2][16][240], live_hi[2][16][240];   /* (the rows each line drew in each screen column as wl_stack last drew the part: ui_scope.c WL_TEST_SPAN; lo 0: none) */
-#define WL_TEST_SPAN(k_, r_, c_, lo_, hi_) do { const uint32_t k2_ = (k_) & 1u; if (!(r_) && (c_) == WL_X0) { memset(live_lo[k2_], 0, sizeof live_lo[k2_]); } \
-                                                live_lo[k2_][(r_) & 15][(c_)] = (int16_t)(lo_); live_hi[k2_][(r_) & 15][(c_)] = (int16_t)(hi_); } while (0)
+static int32_t live_y[2][16][240];                      /* (each line's height in each screen column as wl_stack last drew it, 1/16 px: ui_scope.c WL_TEST_Y; 0: not drawn there) */
+#define WL_TEST_Y(k_, r_, p_, y_) (live_y[(k_) & 1u][(r_) & 15][(p_)] = (y_))
 #include "../web/emu/felucca_web.c"
 #ifndef QUIET_LVL
 #define QUIET_LVL 60u                                    /* (the quiet scene's MIXER LEVEL: unity is 112) */
@@ -149,9 +147,8 @@ static void watch(uint32_t ms, uint32_t mask, int strike, uint32_t *alive0, uint
         }
     }
 }
-/* part k's stack as wl_stack last drew it (WL_TEST_SPAN, the rows each line drew): the longest run of columns where an older line has a pixel drawn at or under a newer line's top
- * (b6: no guard; the newer line hides what lies behind it, so none should be) (*ne: the shaped older lines, *nl: the lines the lane holds). Shaped, as wl_stack decides: inside the
- * lane's count and not flat (silence, a tail) */
+/* part k's stack as wl_stack last drew it (WL_TEST_Y): the longest run of points where a shaped older line lies more than 2 px under a newer shaped one (*ne: the shaped older lines,
+ * *nl: the lines the lane holds). Shaped, as wl_stack decides: inside the lane's count and not flat (silence, a tail) */
 static uint32_t live_cross(uint32_t k, uint32_t *ne, uint32_t *nl)
 {
     const wl_t *s = &wl[k];
@@ -167,11 +164,13 @@ static uint32_t live_cross(uint32_t k, uint32_t *ne, uint32_t *nl)
             shp |= 1u << r;
             *ne += r > 0;
         }
-    for (r = 1; r < nf; r++)
-        for (q = 0; q < r; q++) {
+    for (r = 1; r < nr; r++)
+        for (q = 0; q < r && ((shp >> r) & 1u); q++) {
             int32_t run = 0;
-            for (p = WL_X0; p <= WL_X1; p++) {   /* (the columns where both drew: an older line is narrower, or hidden there) */
-                run = live_lo[k][r][p] && live_lo[k][q][p] && live_hi[k][r][p] >= live_lo[k][q][p] ? run + 1 : 0;
+            if (!((shp >> q) & 1u))
+                continue;
+            for (p = WL_X0; p <= WL_X1; p++) {   /* (the columns where both are drawn: an older line is narrower) */
+                run = live_y[k][r][p] && live_y[k][q][p] && live_y[k][r][p] > live_y[k][q][p] + 32 ? run + 1 : 0;
                 best = run > best ? run : best;
             }
         }
