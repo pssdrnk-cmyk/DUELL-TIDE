@@ -19,22 +19,23 @@ The only thing being worked on. Nothing else starts until b5 is out.
 
 b5 goes out when you like the MORPH page on your FM-1. Room left on the b5 build: 4,556 B of flash, RAM 68,968 of 73,728 B.
 
-## Next: 1.0.0-b6 (paused until b5 is out)
+## Next: 1.0.0-b6 (prepared while b5 waits for the FM-1; released after b5)
 
 | What | State |
 |---|---|
 | Reverb on the second core, to free CPU (K4) | Built; the CPU saving is not measured on the unit yet |
 | Factory sounds stop resetting AMOUNT (MORPH c3) | Ready |
 | Pattern notes stay in a sensible range (roles T4) | Ready |
-| Four drone scenes built in (M17 to M20, played as STYLE DRONE; [brief](audits/2026-11-09/drones/TASKS.md)) | Planned: brief written, not built; needs flash room (b5 leaves 4,556 B) |
+| Two drone scenes built in (M17 DUNE HORN, M18 VOID DEEP, played as STYLE DRONE; [brief](audits/2026-11-09/drones/TASKS.md)) | In progress (owner, 9 November: "I'm content with 2 drone multis if that helps with space") |
+| Give back the notes the first beta's CPU fix took (most factory multis play 1 or 2 notes fewer per part since b1; b4's ease ladder now catches the peaks) | In progress: raised in steps, each kept only if the GLIDE sweep on the FM-1 shows 0 missed blocks and 0 voices cut (owner, 9 November) |
+| MORPH page: an older saw line no longer crosses the newest one on note changes | In progress |
 
 ## Later, in order
 
 1. Hand-moved morph saving: a hand or MIDI fader move blended every other block like a GLIDE (about 70 us a block saved). Finding 12, D44.
 2. Transition costs only while moving: the engine cross-fade, valley and wash charged only while a transition runs, so more notes play at rest.
 3. FM6 crossing fixes (findings 8, 9; brief K7) and Felucca #265 (signed DSP arithmetic, bit-exact).
-4. MORPH page: with a saw sound on changing notes, an older wave line sometimes crosses the newest one for a moment (about 1 picture in 10); keep the stack clean on note changes.
-5. Before `1.0.0`: 0 missed blocks over the 16-multi GLIDE sweep (owner, 8 November); the CPU budget re-measured and made honest (findings 5, 6, 34; K9).
+4. Before `1.0.0`: 0 missed blocks over the 16-multi GLIDE sweep (owner, 8 November); the CPU budget re-measured and made honest (findings 5, 6, 34; K9).
 
 ## Released
 
@@ -138,7 +139,7 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 | D46: the multis that are too loud or too quiet are trimmed by ear on the unit. | Trim M15, M16 up and M10 down by the numbers, then listen. |
 | Try on the unit: keys recording into an ARP SEQ part, and REC ADD / REPLACE (Released in b3, not yet tried on the unit). | Nothing to decide; say if the nearest-step rule feels wrong. |
 | Reverb FREEZE (below): build it? | Later: not built until you say. |
-| Drone scenes: delivered as a file pack, replacing multis, or by packing the multi records to make room? | Decided: built in, 2 or 4 multis in ROM (owner, 9 November); no file pack. |
+| Drone scenes: delivered as a file pack, replacing multis, or by packing the multi records to make room? | Decided: built in, 2 multis in ROM (owner, 9 November); no file pack. |
 | Which of the ideas below, if any. | None until chosen. |
 
 **By ear or eye on the unit** (no homework: noted when the owner meets them in use): the drones; the U2 multi sequences; the MULTIS / PATTERNS preview's readability; polymeter (12 / 16, 15 / 16) against a steady 4 / 4; whether TURNS' alternating bars improve the interplay.
