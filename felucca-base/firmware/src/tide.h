@@ -65,10 +65,8 @@ static int tide_chance_roll(const track_t *t, uint32_t idx, uint32_t chance, int
 static int tide_aroll(const track_t *t, int hit);
 #define TIDE_CHANCE(t, idx, s, miss) tide_chance_roll((t), (idx), step_chance(s) < 100u, (miss))
 #define TIDE_APROB(t, hit) tide_aroll((t), (hit))
-static uint32_t tide_arp_vel(const track_t *t, uint32_t v);
-#define TIDE_ARP_VEL(t, v) tide_arp_vel((t), (v))   /* (D1: TIDE's dynamics on an ARP SEQ step, seq.c arp_seq_notes) */
-static uint32_t tide_arp_voices(const track_t *t, uint8_t *out, uint32_t m);
-#define TIDE_ARP_VOICES(t, out, m) tide_arp_voices((t), (out), (m))   /* (MR4: a thinned chord part plays two voices) */
+static uint32_t tide_arp_out(const track_t *t, uint8_t *out, uint32_t m, uint32_t *vel);
+#define TIDE_ARP_OUT(t, out, m, vel) tide_arp_out((t), (out), (m), (vel))   /* (seq.c arp_seq_notes: TIDE's dynamics on an ARP SEQ step, D1; a thinned chord's two voices, MR4) */
 /* H13 (ui_input.c, main loop): once a frame, after morph_poll: GLIDE, the SEQ MORPH's ends, the settings */
 static void tide_poll(void);
 #define TIDE_POLL() tide_poll()
@@ -204,8 +202,7 @@ static int tide_foot_two(void);
 #define TIDE_SEQ_LOOP(t, len) ((void)0)
 #define TIDE_CHANCE(t, idx, s, miss) (miss)
 #define TIDE_APROB(t, hit) (hit)
-#define TIDE_ARP_VEL(t, v) (v)
-#define TIDE_ARP_VOICES(t, out, m) (m)
+#define TIDE_ARP_OUT(t, out, m, vel) (m)
 #define TIDE_POLL() ((void)0)
 #define TIDE_FIRST_MULTI 0
 #define TIDE_PART_FIELDS

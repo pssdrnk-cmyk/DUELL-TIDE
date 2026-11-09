@@ -150,7 +150,7 @@ static int judge(const tv_t *e, uint32_t actual, uint32_t nons, int arp, uint32_
     uint32_t want = e->k >= TV_HIT ? A_NOTE : e->k == TV_TIE ? A_TIE : A_NONE;
     *et = E_N;
     if (want == actual) {
-        if (want == A_NOTE && !arp && nons != e->n) {
+        if (want == A_NOTE && !arp && nons != e->n && !(nons == 2u && e->n > 2u)) {   /* (MR4: a thinned chord plays two voices while the page shows the written chord: accepted, lane ARC) */
             *et = E_CHORD;
             return 0;
         }

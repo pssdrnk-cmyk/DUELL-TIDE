@@ -342,7 +342,7 @@ static const step_t *seq_play_step_at(const track_t *t, uint32_t idx, uint32_t b
 /* the bar part t's step plays in now (audio path): an ARP SEQ step's from the bar's last 32nd on is the next bar's (its clock runs a little
  * ahead of the beat's: a downbeat would get the bar before's thinning and dynamics) */
 static uint32_t sqm_bar_of(const track_t *t) { return (uint32_t)sqm_bar + (arp_mode(t) == AM_SEQ_ID ? sqm_bar_soon : sqm_bar_turn); }
-/* MR4: a thinned chord part (sqm_lead) plays two voices of its chord, the lowest and the top: the count (the TIDE page draws it too) .. */
+/* MR4: a thinned chord part (sqm_lead) plays two voices of its chord, the lowest and the top: the count .. */
 static uint32_t sqm_voices(uint32_t pi, uint32_t n, uint32_t bar)
 {
     return n > 2u && pi < NSHOWN && ((sqm_lead >> pi) & 1u) && song.playing && sqm_thinned(pi, bar) ? 2u : n;
@@ -378,7 +378,7 @@ static const step_t *seq_play_step(const track_t *t, uint32_t idx, step_t *buf)
     int32_t b;
     uint8_t n;
     if (!sqm_hit(s) || arp_mode(t) == AM_SEQ_ID)
-        return s;                                        /* (D1: an ARP SEQ part keeps its accent; the arp's velocity is scaled in tide_arp_vel, its chord in tide_arp_voices) */
+        return s;                                        /* (D1: an ARP SEQ part keeps its accent; the arp's velocity is scaled in tide_arp_out, its chord in tide_arp_out) */
     b = sqm_dyn_of(pi, bar);
     *buf = *s;
     n = (uint8_t)sqm_two(pi, buf->note, s->n, bar);
@@ -391,14 +391,16 @@ static const step_t *seq_play_step(const track_t *t, uint32_t idx, step_t *buf)
     }
     return buf;
 }
-/* TIDE hooks (seq.c arp_seq_notes, audio path): an ARP SEQ step's velocity (the arp's, an accent's 127) with the same dynamics (D1), and
- * its chord's voices (MR4: two while thinned) */
-static uint32_t tide_arp_vel(const track_t *t, uint32_t v)
+/* TIDE hook (seq.c arp_seq_notes, audio path, a call per arp step): an ARP SEQ step's velocity (the arp's, an accent's 127) with the same
+ * dynamics (D1), and its chord's voices (MR4: two while thinned) */
+static __attribute__((noinline)) uint32_t tide_arp_out(const track_t *t, uint8_t *out, uint32_t m, uint32_t *vel)
 {
-    int32_t b = sqm_dyn_of(trk_index(t), sqm_bar_of(t));
-    return b ? sqm_dyn_scale(v, b) : v;
+    uint32_t pi = trk_index(t), bar = sqm_bar_of(t);
+    int32_t b = sqm_dyn_of(pi, bar);
+    if (b)
+        *vel = sqm_dyn_scale(*vel, b);
+    return sqm_two(pi, out, m, bar);
 }
-static uint32_t tide_arp_voices(const track_t *t, uint8_t *out, uint32_t m) { return sqm_two(trk_index(t), out, m, sqm_bar_of(t)); }
 
 /* ------------------------------------------------------------------ the controls (main loop) --- */
 static uint32_t seqm_fader_of(uint32_t pi) { return pi < NSHOWN ? sqm[pi].fader : 0u; }

@@ -758,7 +758,7 @@ static uint32_t tide_views(const track_t *t, uint32_t page, tv_t *out)
             bar = tv_bar(at + (arp ? bl / 32 : 0), ob, bl);   /* (an ARP SEQ step from the bar's last 32nd on plays in the next: seq_morph.c sqm_bar_of; lane ARC) */
         }
         v = seq_play_step_at(t, idx, bar);
-        e->n = (uint8_t)sqm_voices(trk_index(t), v->n, bar);   /* (MR4: a thinned chord plays two voices; lane ARC) */
+        e->n = v->n;
         e->k = tv_hit(v) ? (v == o || !memcmp(v, o, sizeof *v) ? TV_HIT : tv_hit(o) ? TV_MOVE : TV_ADD) : v->time == ST_TIE ? TV_TIE : TV_REST;
         if (e->k >= TV_HIT || e->k == TV_TIE) {
             st = arp && e->k == TV_TIE ? 0u : tv_state(t, v, idx, ph != TV_NOPH && idx <= ph, arp);
