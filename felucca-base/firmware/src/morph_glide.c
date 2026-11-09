@@ -170,7 +170,7 @@ static void glide_start(uint32_t to, uint32_t mask, uint32_t pi)
         for (uint32_t k = 0; k < NSHOWN; k++)
             if ((mask >> k) & 1u)
                 tide_journey(1u << k, 1u, ((glide_lanes_of(gl.target) >> GT_SOUND) & 1u) && morph_to_of(k, 1u) < 0, 0u);
-    if (gl.mode >= GM_WANDER && morph_musical && (glide_lanes_of(gl.target) & (1u << GT_SEQ)))
+    if (gl.mode >= GM_WANDER && (glide_lanes_of(gl.target) & (1u << GT_SEQ)))
         rhythm_begin(mask);
     gl.to = (uint8_t)(to & 1u);
     gl.mask = (uint8_t)mask;
@@ -259,8 +259,8 @@ static void glide_motion(int on)
         mxs[k].follow = (uint8_t)(gl.on && ((gl.on >> GT_SOUND) & 1u) && ((gl.mask >> k) & 1u));   /* (the transition rides the trip itself) */
     }
 }
-/* the trip is an automatic MUSIC WNDR / JRNY on the SEQ lane, the transport aside: seq_arc.c keeps its arc through a STOP while this holds */
-static uint32_t glide_tide_on(void) { return (gl.on & (1u << GT_SEQ)) && gl.mode >= GM_WANDER && morph_musical && (gl.mask & 3u); }
+/* the trip is an automatic WNDR / JRNY on the SEQ lane, whatever ROLL TYPE is (1.0.0-b7, MR8), the transport aside: seq_arc.c keeps its arc through a STOP while this holds */
+static uint32_t glide_tide_on(void) { return (gl.on & (1u << GT_SEQ)) && gl.mode >= GM_WANDER && (gl.mask & 3u); }
 static void glide_poll(void)
 {
     morph_gliding = gl.on != 0;                      /* (morph.c: the blend every other block, budget.c: the FM6 crossing's charge) */

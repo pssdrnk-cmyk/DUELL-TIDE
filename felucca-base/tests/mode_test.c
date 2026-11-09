@@ -1076,8 +1076,10 @@ static void t_mode_rows(void)
     frames(64);
     mode_page();
     frames(32);
-    expect("TIDE SETTINGS: REC after ARC, then PLAY MODE, XFADE, SPLIT as the last three rows", JL_REC == JL_ARC + 1u && JL_MODE == JL_ARC + 2u && JL_XFADE == JL_ARC + 3u && JL_SPLIT == JL_ARC + 4u && JL_N == JL_SPLIT + 1u &&
-           str_eq(JL_NAME[JL_MODE], "PLAY MODE") && str_eq(JL_NAME[JL_XFADE], "XFADE") && str_eq(JL_NAME[JL_SPLIT], "SPLIT"));
+    expect("TIDE SETTINGS (1.0.0-b7, MR8): STYLE, MODE, TARGET, ARC, ROLL TYPE, REC, PLAY MODE, XFADE, SPLIT", JL_N == 9u &&
+           str_eq(JL_NAME[0], "STYLE") && str_eq(JL_NAME[1], "MODE") && str_eq(JL_NAME[2], "TARGET") && str_eq(JL_NAME[3], "ARC") && str_eq(JL_NAME[4], "ROLL TYPE") &&
+           str_eq(JL_NAME[5], "REC") && str_eq(JL_NAME[JL_MODE], "PLAY MODE") && JL_MODE == 6u && str_eq(JL_NAME[JL_XFADE], "XFADE") && str_eq(JL_NAME[JL_SPLIT], "SPLIT") && JL_SPLIT == JL_N - 1u);
+    expect("  .. MODE reads the glide's five modes, ONCE to JOURNEY", jl_n(JL_GMODE) == 5u && str_eq(jl_vname(JL_GMODE, 0), "ONCE") && str_eq(jl_vname(JL_GMODE, 4), "JOURNEY"));
     expect("  .. HOME's round has no MODE page: PAGES has no MODE row (1.0.0-b4: the hidden row is gone)", page_of("MODE") == NPAGES);
     for (i = 0; i < 5u; i++) {
         press(B_HOME);
@@ -1181,6 +1183,24 @@ static void t_mode_rows(void)
     turn(EN_K2, 1);
     frames(64);
     expect("STYLE stays DUB (not CUSTOM) after MODE, XFADE and SPLIT change", tide_style == STY_DUB && tide_style_holds());
+    {   /* 1.0.0-b7 (MR1): a unit that stored STYLE DUB (JOURNEY) or AMBIENT (POLY GENTLE) under b6 reads them as DUB / AMBIENT with this build's rows, not CUSTOM */
+        static const uint8_t B6[2][TS_N] = {{GM_JOURNEY, 4, GT_BOTH, 2, 0, 1, 0, 2, 1, 1, 1, STY_DUB, 0},
+                                            {GM_JOURNEY, 6, GT_BOTH, 4, 0, 1, 3, 0, 1, 0, 0, STY_AMBIENT, 0}};
+        uint8_t keep[TIDE_TAIL_N];
+        memcpy(keep, tide_tail, sizeof keep);
+        for (i = 0; i < 2u; i++) {
+            tide_store_mark(B6[i], TS_N);
+            tide_seen_ok = 0;
+            tide_settings();
+            expect(i ? "a b6 AMBIENT record: AMBIENT, POLY OFF" : "a b6 DUB record: DUB, WANDER", tide_style == (i ? STY_AMBIENT : STY_DUB) && tide_style_holds() &&
+                   gl.mode == (i ? GM_JOURNEY : GM_WANDER) && sqm_poly == (i ? 0u : 1u));
+        }
+        memcpy(tide_tail, keep, sizeof keep);
+        tide_store_dirty = 0;
+        tide_seen_ok = 0;
+        tide_settings();
+        tide_style_apply(STY_DUB);
+    }
     /* the page redraws when any of the three changes from outside the panel: a MIDI CC (the learned MODE CC; XFADE and SPLIT lines) as midi_control.c sets them in the ISR, or a multi load.
      * The signature checked is graph_signature(), the one draw_graph compares frame to frame (not only tide_list_sig, which loops jl_get); TIDE_GRAPH_SIG returns tide_list_sig()
      * for this page, so the three values are in it by way of jl_get (they are read from the live bytes, not a copy) */
@@ -1213,27 +1233,35 @@ static void t_mode_rows(void)
         mix_xf = keep[1];
         mix_split = keep[2];
     }
-    /* row dimming (the b613526 bug): MODE never dims; XFADE and SPLIT dim outside LAYER only; TURNS .. ARC dim while the automatic TIDE is not on (jl_dimmed is the draw's rule) */
+    /* row dimming (the b613526 bug): PLAY MODE never dims; XFADE and SPLIT dim outside LAYER only; ARC dims while the automatic TIDE is not on, whatever ROLL TYPE is,
+     * ROLL TYPE under JOURNEY (1.0.0-b7, MR8); jl_dimmed is the draw's rule */
     {
-        uint32_t r, ok_mode = 1, ok_lay = 1, ok_duel = 1, ok_inert = 1;
-        const char *nd;
-        gl.mode = GM_ONCE;                                /* TURNS .. ARC inert */
-        nd = jl_needs(JL_TURNS);
-        for (r = JL_TURNS; r <= JL_ARC; r++)
-            ok_inert &= nd != 0 && jl_dimmed(r, nd);
+        uint32_t ok_mode = 1, ok_lay = 1, ok_duel = 1;
+        uint8_t km = gl.mode, kt = gl.target, kr = morph_musical;
+        gl.target = GT_BOTH;
+        gl.mode = GM_ONCE;
+        expect("dimming: ARC dims under ONCE, says WNDR OR JRNY; ROLL TYPE acts", jl_dimmed(JL_ARC) && str_eq(jl_needs(JL_ARC), "WNDR OR JRNY") && !jl_dimmed(JL_ROLL));
+        gl.mode = GM_WANDER; morph_musical = 0;
+        expect("  .. WANDER, ROLL TYPE SMART: ARC acts (no ROLL TYPE gate), ROLL TYPE acts", !jl_dimmed(JL_ARC) && !jl_dimmed(JL_ROLL));
+        gl.mode = GM_JOURNEY; morph_musical = 1;
+        expect("  .. JOURNEY: ARC acts, ROLL TYPE dims and says NOT JRNY", !jl_dimmed(JL_ARC) && jl_dimmed(JL_ROLL) && str_eq(jl_needs(JL_ROLL), "NOT JRNY"));
+        gl.target = GT_SOUND;
+        expect("  .. TARGET SOUND: ARC dims, says TARGET SEQ", jl_dimmed(JL_ARC) && str_eq(jl_needs(JL_ARC), "TARGET SEQ"));
+        gl.target = GT_BOTH;
         for (i = 0; i < 3u; i++) {
             duell_mode_req = (uint8_t)(i == 0u ? DM_LAYER : i == 1u ? DM_STEREO : DM_SPLIT);
-            ok_mode &= !jl_dimmed(JL_MODE, nd);
+            ok_mode &= !jl_dimmed(JL_MODE);
             if (i == 0u)
-                ok_lay &= !jl_dimmed(JL_XFADE, nd) && !jl_dimmed(JL_SPLIT, nd);
+                ok_lay &= !jl_dimmed(JL_XFADE) && !jl_dimmed(JL_SPLIT);
             else
-                ok_duel &= jl_dimmed(JL_XFADE, nd) && jl_dimmed(JL_SPLIT, nd);
+                ok_duel &= jl_dimmed(JL_XFADE) && jl_dimmed(JL_SPLIT);
         }
-        expect("dimming, TURNS .. ARC inert: MODE's value never dims, in LAYER, STEREO and DUEL", ok_mode && ok_inert);
+        expect("  .. PLAY MODE's value never dims, in LAYER, STEREO and DUEL", ok_mode);
         expect("  .. XFADE and SPLIT do not dim in LAYER", ok_lay);
         expect("  .. XFADE and SPLIT dim in STEREO and DUEL", ok_duel);
-        expect("  .. rows before TURNS (STYLE .. WASH) never dim", !jl_dimmed(JL_STYLE, nd) && !jl_dimmed(JL_WASH, nd));
-        expect("  .. REC (live recording) never dims, in any mode", !jl_dimmed(JL_REC, nd) && jl_needs(JL_REC) == 0);
+        gl.mode = GM_ONCE;
+        expect("  .. STYLE, MODE, TARGET and REC never dim", !jl_dimmed(JL_STYLE) && !jl_dimmed(JL_GMODE) && !jl_dimmed(JL_TARGET) && !jl_dimmed(JL_REC) && jl_needs(JL_REC) == 0);
+        gl.mode = km, gl.target = kt, morph_musical = kr;
         duell_mode_req = DM_LAYER;
     }
     sig = tide_list_sig();

@@ -1,11 +1,12 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* TIDE (called JAM before): AUTO TIDE and TIDE SETTINGS, two pages of the HOME round (MORPH, TIDE SETTINGS, AUTO TIDE; TIDE SETTINGS stands in 1.1's
- * MORPH SET's place: SMART / ARP / PITCH are its ROLL, ROLL ARP, ROLL PITCH rows).
+ * MORPH SET's place: SMART is its ROLL TYPE row; 1.0.0-b7: ARP and PITCH have no row, their stored switches still act, OFF by default).
  *   AUTO TIDE      (GR_TIDE) the SOUND and SEQ faders with the glide's path, the 16 steps around the playhead, a status line. K1 GLIDE (twist
  *                  left: glide to A, right: to B, two detents to stop a running glide), K2 MODE (ONCE / LOOP / DRIFT / WNDR / JRNY), K3 TIME
  *                  (bars), K4 WAIT; OCT- + K1 back to the Original, + K2 an ARC drop, + K3 / K4 TIME and WAIT to the STYLE's   ... play
  *   TIDE SETTINGS  (GR_TIDELIST) the settings in a list, as the MENU's: K1 picks the row, OCT+ or K2..K4 the next value, OCT- the one before.
- *                  STYLE, TARGET, VARY BARS, ROLL TYPE, ROLL ARP, ROLL PITCH, WASH, TURNS, POLY, OFFBEAT, ARC, REC, PLAY MODE, XFADE, SPLIT (JL_NAME)        ... set and forget
+ *                  STYLE, MODE, TARGET, ARC, ROLL TYPE, REC, PLAY MODE, XFADE, SPLIT (JL_NAME; 1.0.0-b7, MR8: VARY BARS, WASH, TURNS, POLY and OFFBEAT
+ *                  are STYLE's alone, no rows)        ... set and forget
  * LINK: TARGET SND+SEQ links the two faders: GLIDE moves both, and the MORPH fader moved by hand (the MORPH page, the mod wheel, CC 70:
  * ui_input.c morph_act) moves the SEQ fader with it (tide_link). ALGORITHM is the morph's selector here too: PART 1, BOTH, PART 2
  * (morph_mask). The panel shows both faders with the glide on them, and the selected part's 16 steps as they play: varied ones
@@ -139,22 +140,25 @@ static void tide_link(uint32_t mask, uint32_t v)
 }
 
 /* ---------------------------------------------------------------- TIDE SETTINGS --- */
-enum { JL_STYLE, JL_TARGET, JL_VARY, JL_ROLL, JL_ARP, JL_PITCH, JL_WASH, JL_TURNS, JL_POLY, JL_SYNC, JL_ARC, JL_REC, JL_MODE, JL_XFADE, JL_SPLIT, JL_N };   /* (REC: live recording's; MODE, XFADE, SPLIT, the last three: the output mode's own settings; none part of STYLE; they go through ui_input.c mode_knob, whose header describes the old MODE page: TIDE's rows are these three) */
-static const char *const JL_NAME[JL_N] = {"STYLE", "TARGET", "VARY BARS", "ROLL TYPE", "ROLL ARP", "ROLL PITCH", "WASH", "TURNS", "POLY", "OFFBEAT", "ARC", "REC", "PLAY MODE", "XFADE", "SPLIT"};
+enum { JL_STYLE, JL_GMODE, JL_TARGET, JL_ARC, JL_ROLL, JL_REC, JL_MODE, JL_XFADE, JL_SPLIT, JL_N };   /* (GMODE: the glide's MODE, AUTO TIDE's K2 too; REC: live recording's; MODE (PLAY MODE), XFADE, SPLIT, the last three: the output mode's own settings; REC and those three no part of STYLE; the three go through ui_input.c mode_knob, whose header describes the old MODE page: TIDE's rows are these three) */
+static const char *const JL_NAME[JL_N] = {"STYLE", "MODE", "TARGET", "ARC", "ROLL TYPE", "REC", "PLAY MODE", "XFADE", "SPLIT"};
 static uint8_t jl_sel;                                   /* the row picked (K1) */
 static void morph_act(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi);   /* (ui_input.c) */
-static void tide_pick_mode(void) { jl_sel = JL_MODE; }   /* HOME OPENS = MODE (ui.c go_main_to): TIDE SETTINGS with the MODE row picked */
+static void tide_pick_mode(void) { jl_sel = JL_MODE; }   /* HOME OPENS = MODE (ui.c go_main_to): TIDE SETTINGS with the PLAY MODE row picked */
 
-/* STYLE: one move sets the nine rows below it together (TARGET, ROLL, ARP and PITCH choose what TIDE may change, not the genre, and stay). A hand edit
- * of any of the nine turns it into CUSTOM (tide_settings); CUSTOM itself changes nothing. mode, time (index), wait (index), VARY, TURNS, POLY, SYNC, ARC, WASH */
+/* STYLE: one move sets the nine values below together. MODE and ARC are rows, TIME and WAIT AUTO TIDE's knobs; VARY, TURNS, POLY, SYNC (OFFBEAT) and WASH
+ * are the style's alone (1.0.0-b7, MR8: no rows; the engine reads them as before). TARGET and ROLL TYPE choose what TIDE may change, not the genre, and stay.
+ * A hand edit of MODE, TIME, WAIT or ARC turns it into CUSTOM (tide_settings); CUSTOM itself changes nothing and keeps the style values it had.
+ * mode, time (index), wait (index), VARY, TURNS, POLY, SYNC, ARC, WASH */
 enum { STY_DUB, STY_DEEP, STY_MINIMAL, STY_AMBIENT, STY_PEAK, STY_DRONE, STY_CUSTOM };   /* (CUSTOM was 5 until 1.0.0-b4: a stored 5 is read as DRONE only if its rows are DRONE's, else CUSTOM; tide_settings) */
 static const uint8_t STY[6][9] = {
-    {GM_JOURNEY, 4, 2, 0, 2, 1, 1, 1, 0},                /* DUB: the showcase (today's no-record rows) with LEAD and a RISE */
+    {GM_WANDER, 4, 2, 0, 2, 1, 1, 1, 0},                 /* DUB: the showcase (the no-record rows) with LEAD and a RISE; WANDER keeps the multi's own sounds (1.0.0-b7, MR1: JOURNEY before) */
     {GM_WANDER, 5, 3, 0, 1, 0, 1, 1, 1},                 /* DEEP */
     {GM_WANDER, 3, 0, 1, 2, 2, 2, 0, 0},                 /* MINIMAL */
-    {GM_JOURNEY, 6, 4, 0, 0, 1, 0, 0, 3},                /* AMBIENT */
+    {GM_JOURNEY, 6, 4, 0, 0, 0, 0, 0, 3},                /* AMBIENT: no groove tricks, so POLY OFF (1.0.0-b7, MR1: GENTLE before) */
     {GM_JOURNEY, 3, 0, 1, 2, 1, 2, 2, 0},                /* PEAK: ARC DROP and LEAD (ECHO before: D7) */
     {GM_WANDER, 6, 0, 0, 0, 0, 0, 0, 3}};                /* DRONE: a held chord of a drone sound; WNDR keeps the sound, 64 bars, always moving, nothing rhythmic */
+#define STY_HAND 0x87u                                   /* (the values a hand can change, STY's columns: MODE, TIME, WAIT, ARC; the others only STYLE sets) */
 static uint8_t tide_style = STY_DUB, tide_style_last = STY_DUB;   /* (the style a hand edit left: OCT- + K3 / K4 go back to its TIME and WAIT) */
 static volatile uint8_t *const TIDE_ROW[9] = {&gl.mode, &gl.time, &gl.wait, &sqm_vary_all, &sqm_turns, &sqm_poly, &sqm_sync, &sqm_arc, &morph_wlvl};   /* (STY's order) */
 static __attribute__((noinline)) void tide_rows_set(const uint8_t *t)
@@ -167,17 +171,20 @@ static void tide_style_apply(uint32_t s)
     tide_rows_set(STY[s]);
     tide_style = (uint8_t)s;
 }
-static __attribute__((noinline)) void tide_rows_get(uint8_t *t)   /* the nine rows as they are now */
+static __attribute__((noinline)) void tide_rows_get(uint8_t *t)   /* the nine values as they are now */
 {
     for (uint32_t i = 0; i < 9u; i++)
         t[i] = *TIDE_ROW[i];
     t[8] &= 3u;                                          /* (WASH) */
 }
-static int tide_style_holds(void)                        /* the nine rows are the style's */
+static int tide_style_holds(void)                        /* the values a hand can change are the style's (the others: only STYLE sets them) */
 {
     uint8_t t[9];
     tide_rows_get(t);
-    return !memcmp(t, STY[tide_style % 6u], sizeof t);
+    for (uint32_t i = 0; i < 9u; i++)
+        if (((STY_HAND >> i) & 1u) && t[i] != STY[tide_style % 6u][i])
+            return 0;
+    return 1;
 }
 /* CUSTOM's nine values, kept when a style replaces them: the STYLE row back onto CUSTOM brings them back (RAM only, not saved) */
 static uint8_t tide_custom[9], tide_custom_ok;
@@ -186,32 +193,30 @@ static void tide_custom_take(void)
     tide_rows_get(tide_custom);
     tide_custom_ok = 1;
 }
-/* TURNS, POLY, SYNC and ARC act only in automatic MUSIC WNDR / JRNY with the SEQ gliding (glide_poll: sqm_auto): what row r lacks now (0: it acts) */
+/* what row r lacks now (0: it acts). ARC acts only in automatic WNDR / JRNY with the SEQ gliding (glide_poll: sqm_auto), whatever ROLL TYPE is (1.0.0-b7, MR8);
+ * ROLL TYPE does nothing in JOURNEY (each arrival a factory sound, not a roll); XFADE and SPLIT are LAYER's only */
 static __attribute__((noinline)) const char *jl_needs(uint32_t r)
 {
-    if (r < JL_TURNS || r == JL_REC || r == JL_MODE)   /* (REC acts whatever the mode: it is live recording's) */
-        return 0;
-    if (r >= JL_XFADE)                                   /* XFADE and SPLIT are LAYER's only */
+    if (r >= JL_XFADE)
         return duell_mode_req == DM_LAYER ? 0 : "LAYER ONLY";
-    return gl.mode < GM_WANDER ? "WNDR OR JRNY" : !morph_musical ? "ROLL TYPE MUSIC" : gl.target == GT_SOUND ? "TARGET SEQ" : 0;   /* (what the row needs, short: knob 1's line has 91 px after "SETTING TURNS"; WANDER / JOURNEY in full do not fit, so the short names stay here only) */
+    if (r == JL_ROLL)
+        return gl.mode == GM_JOURNEY ? "NOT JRNY" : 0;            /* (short: after "SETTING ROLL TYPE" the line has room for 8 letters) */
+    if (r != JL_ARC)
+        return 0;
+    return gl.mode < GM_WANDER ? "WNDR OR JRNY" : gl.target == GT_SOUND ? "TARGET SEQ" : 0;   /* (short: knob 1's line has room for these after "SETTING ARC"; WANDER / JOURNEY in full do not fit) */
 }
-/* does row r's value draw dim (it does nothing now)? nd: jl_needs(JL_TURNS). MODE always acts; XFADE and SPLIT need LAYER; TURNS .. ARC need nd (tests/mode_test.c checks this) */
-static int jl_dimmed(uint32_t r, const char *nd)
-{
-    return r >= JL_REC ? jl_needs(r) != 0 : r >= JL_TURNS && nd != 0;   /* (REC, MODE: jl_needs says 0) */
-}
-/* the rows as tables: how many values each has, its byte (STYLE, TARGET and the plain rows; ROLL, ARP and PITCH are the morph's), the values'
- * names, and the header message a change shows: the prefix + the value's name, or a message of its own (TARGET, VARY BARS, TURNS) */
-static const uint8_t JL_NV[JL_N] = {7, 3, 2, 3, 2, 2, 4, 3, 3, 3, 3, 2, 3, 101, 129};   /* (XFADE 101: mix_xf 0..100 %; SPLIT 129: mix_split 0 = OFF, then note + 1 up to 128) */
-static volatile uint8_t *const JL_VAR[JL_N] = {[JL_STYLE] = &tide_style, [JL_TARGET] = &gl.target, [JL_VARY] = &sqm_vary_all, [JL_WASH] = &morph_wlvl,
-                                               [JL_TURNS] = &sqm_turns, [JL_POLY] = &sqm_poly, [JL_SYNC] = &sqm_sync, [JL_ARC] = &sqm_arc, [JL_REC] = &tide_rec_replace};   /* (REC is no part of a STYLE: seq.c, live recording) */
-static const char *const JL_V[] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK", "DRONE", "CUSTOM", "SOUND", "SEQ", "BOTH", "EVERY 4TH", "EVERY BAR", "MUSIC", "SMART", "WILD",
-                                   "OFF", "ON", "OFF", "ON", "OFF", "LOW", "MID", "HIGH", "TOGETHER", "TAKE TURNS", "LEAD", "OFF", "GENTLE", "WIDE",
-                                   "OFF", "SOFT", "PUSH", "OFF", "RISE", "DROP", "LAYER", "STEREO", "DUEL", "ADD", "REPLACE"};
-static const uint8_t JL_V0[JL_N] = {0, 7, 10, 12, 15, 17, 19, 23, 26, 29, 32, 38, 35, 0, 0};   /* (each row's first name in JL_V) */
-static const char *const JL_SAY[JL_N] = {"STYLE ", 0, 0, "", "", "", "WASH ", 0, "POLY ", "OFFBEAT ", "ARC ", "REC ", 0, 0, 0};
-static const char *const JL_OWN[8] = {"GLIDE SOUND", "GLIDE SEQ", "GLIDE BOTH", "VARY EVERY 4TH", "VARY EVERY BAR",
-                                      "PARTS VARY TOGETHER", "PARTS TAKE TURNS", "PARTS LEAD IN TURNS"};
+/* does row r's value draw dim (it does nothing now)? whenever it lacks something (tests/mode_test.c checks this) */
+static int jl_dimmed(uint32_t r) { return jl_needs(r) != 0; }
+/* the rows as tables: how many values each has, its byte (STYLE, MODE, TARGET, ARC, REC; ROLL TYPE is the morph's), the values' names, and the
+ * header message a change shows: the prefix + the value's name, or a message of its own (TARGET) */
+static const uint8_t JL_NV[JL_N] = {7, 5, 3, 3, 3, 2, 3, 101, 129};   /* (XFADE 101: mix_xf 0..100 %; SPLIT 129: mix_split 0 = OFF, then note + 1 up to 128) */
+static volatile uint8_t *const JL_VAR[JL_N] = {[JL_STYLE] = &tide_style, [JL_GMODE] = &gl.mode, [JL_TARGET] = &gl.target, [JL_ARC] = &sqm_arc,
+                                               [JL_REC] = &tide_rec_replace};   /* (REC is no part of a STYLE: seq.c, live recording) */
+static const char *const JL_V[] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK", "DRONE", "CUSTOM", "SOUND", "SEQ", "BOTH", "OFF", "RISE", "DROP",
+                                   "MUSIC", "SMART", "WILD", "ADD", "REPLACE", "LAYER", "STEREO", "DUEL"};
+static const uint8_t JL_V0[JL_N] = {0, 0, 7, 10, 13, 16, 18, 0, 0};   /* (each row's first name in JL_V; MODE's are GL_MODE_NAME) */
+static const char *const JL_SAY[JL_N] = {"STYLE ", "MODE ", 0, "ARC ", "", "REC ", 0, 0, 0};
+static const char *const JL_OWN[3] = {"GLIDE SOUND", "GLIDE SEQ", "GLIDE BOTH"};   /* (TARGET's messages) */
 static uint32_t jl_n(uint32_t r) { return JL_NV[r % JL_N]; }
 static uint32_t jl_get(uint32_t r)
 {
@@ -221,8 +226,8 @@ static uint32_t jl_get(uint32_t r)
     if (r == JL_XFADE || r == JL_SPLIT)
         return r == JL_XFADE ? mix_xf : mix_split;
     if (JL_VAR[r])
-        return *JL_VAR[r] & (r == JL_WASH ? 3u : 0xFFu);
-    return r == JL_ROLL ? (morph.cfg & MC_WILD ? 2u : morph_musical ? 0u : 1u) : (morph.cfg & (r == JL_ARP ? MC_ARP : MC_PIT)) != 0u;
+        return *JL_VAR[r];
+    return morph.cfg & MC_WILD ? 2u : morph_musical ? 0u : 1u;   /* (ROLL TYPE) */
 }
 static const char *jl_vname(uint32_t r, uint32_t v)
 {
@@ -241,6 +246,8 @@ static const char *jl_vname(uint32_t r, uint32_t v)
             return "OFF";
         return b;
     }
+    if (r == JL_GMODE)
+        return GL_MODE_NAME[v % 5u];
     return JL_V[JL_V0[r] + v % JL_NV[r]];
 }
 static void jl_put(uint32_t r, uint32_t v)
@@ -268,19 +275,15 @@ static void jl_put(uint32_t r, uint32_t v)
         morph_musical = (uint8_t)(v == 0u);
         if ((v == 2u) != ((morph.cfg & MC_WILD) != 0u))
             morph_act(MQ_SMART, mask, v != 2u, pi);
-    } else if (!JL_VAR[r]) {                             /* ARP, PITCH: the morph's own switches (their message is morph_act's) */
-        morph_act(r == JL_ARP ? MQ_ARP : MQ_PITCH, mask, v, pi);
-        return;
-    } else                                               /* (WASH: morph_xfer.c's breath, swell and wash; TURNS, POLY, SYNC, ARC: seq_answer.c,
-                                                          * seq_poly.c, seq_rhythm.c, seq_arc.c) */
+    } else                                               /* (MODE: the glide's, as AUTO TIDE's K2; ARC: seq_arc.c) */
         *JL_VAR[r] = (uint8_t)v;
     say = JL_SAY[r];
-    ui_say(say ? say : JL_OWN[(r == JL_TARGET ? 0u : r == JL_VARY ? 3u : 5u) + v], say ? jl_vname(r, v) : "");
+    ui_say(say ? say : JL_OWN[v], say ? jl_vname(r, v) : "");
 }
 /* what TIDE SETTINGS draws (ui_graph.c graph_signature): the rows' values, the row picked, the parts' colours */
 static uint32_t tide_list_sig(void)
 {
-    uint32_t r, h = (uint32_t)jl_sel * 2654435761u ^ (uint32_t)T_PTHEME(0) * 0x85EBCA77u ^ (uint32_t)T_PTHEME(1) * 0xC2B2AE3Du ^ (uint32_t)(gl.mode < GM_WANDER) * 40503u;   /* (the rows' values; ROLL and TARGET are among them, MODE decides the inert rows with them) */
+    uint32_t r, h = (uint32_t)jl_sel * 2654435761u ^ (uint32_t)T_PTHEME(0) * 0x85EBCA77u ^ (uint32_t)T_PTHEME(1) * 0xC2B2AE3Du;   /* (the rows' values; MODE, TARGET and PLAY MODE, which decide the dim rows, are among them) */
     for (r = 0; r < JL_N; r++)
         h = (h ^ jl_get(r)) * 16777619u;
     return h;
@@ -879,7 +882,6 @@ static void graph_tidelist(void)
 {
     uint32_t r, top = jl_sel % JL_N >= JL_VIS ? jl_sel % JL_N - (JL_VIS - 1u) : 0u;
     int32_t y0 = UT_L5_Y0 - 2;
-    const char *nd = jl_needs(JL_TURNS);                 /* (what TURNS .. ARC lack now: those rows' values dim; XFADE and SPLIT: LAYER only) */
     cv_begin(240, (uint32_t)(UT_L5_PITCH * (int32_t)JL_VIS + 2), T_BG);
     cv_bg = T_BG;
     cv_oy = -y0;
@@ -893,14 +895,7 @@ static void graph_tidelist(void)
             cv_rrect(UT_L5_X, y, UT_L5_W, UT_L5_H, UT_T3_ROW_R, T_THEME, T_BG);
         }
         cv_text_on(UT_L5_TAG_X, ty, &AF_M, JL_NAME[r], sel ? T_INK : T_TEXT, bg);
-        if (r == JL_ARP || r == JL_PITCH) {              /* a switch (the MENU's, in the row's colours) */
-            int on = (int)jl_get(r);
-            int32_t x = xr - 26, sy = y + HALF_UP(UT_L5_H - 14);
-            uint16_t track = on ? (sel ? T_INK : T_THEME) : T_DIM, knob = on ? (sel ? T_THEME : T_INK) : T_TEXT;
-            cv_rrect(x, sy, 26, 14, -7, track, bg);
-            cv_rrect(on ? x + 14 : x + 2, sy + 2, 10, 10, -5, knob, track);
-        } else
-            cv_text_r(xr, ty, &AF_M, v, sel ? T_INK : jl_dimmed(r, nd) ? T_DIM : T_THEME, bg);   /* (a row that does nothing now: dim; MODE always acts) */
+        cv_text_r(xr, ty, &AF_M, v, sel ? T_INK : jl_dimmed(r) ? T_DIM : T_THEME, bg);   /* (a row that does nothing now: dim) */
     }
     if (JL_N > JL_VIS) {                                 /* where the window is in the list: a 2 px mark at the right (audit C12) */
         int32_t hh = UT_L5_PITCH * (int32_t)JL_VIS, th = hh * (int32_t)JL_VIS / (int32_t)JL_N;
@@ -1020,6 +1015,16 @@ static void tide_settings(void)
                 *TS_VAR[i] = (uint8_t)(!TS_LIM[i] ? b[i] & TS_DEF[i] : b[i] < TS_LIM[i] ? b[i] : i == TS_TURNS && b[i] == 3u ? 2u : TS_DEF[i]);
             if (tide_style == STY_DRONE && !tide_style_holds())   /* (b4 and later: DRONE is 5, CUSTOM 6; an earlier build stored CUSTOM as 5: not DRONE's rows, so CUSTOM, not a hand edit of DRONE) */
                 tide_style = STY_CUSTOM;
+            else if (tide_style < STY_CUSTOM) {          /* (1.0.0-b7: a stored STYLE whose hand values are its own takes the style's values as this build has them, the ones
+                                                          * with no row too: b6's AMBIENT (POLY GENTLE) stays AMBIENT, b6's DUB (JOURNEY) DUB; other values: CUSTOM, below) */
+                uint8_t m = gl.mode;
+                if (tide_style == STY_DUB && m == GM_JOURNEY)
+                    gl.mode = GM_WANDER;
+                if (tide_style_holds())
+                    tide_style_apply(tide_style);
+                else
+                    gl.mode = m;
+            }
         } else {
             tide_style_apply(STY_DUB);                   /* (no record: the DUB showcase; REC ADD) */
             tide_rec_replace = 0;
