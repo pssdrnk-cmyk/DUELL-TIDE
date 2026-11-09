@@ -10,7 +10,13 @@
  *   busy      #18 PEDAL BASS with the sequence and the chord: each half of the picture at most WL_HN pieces (one unbroken line a ridge; the b5 merge's occluded stack fell into dozens)
  *   select    the ALGORITHM encoder on the page: PART 1, BOTH, PART 2 in that order and stopping at the ends; the picture alive in all three
  *   off HOME  an edit page: the encoder picks PART 1 / PART 2 only, BOTH stays for HOME
+ *   saw       #25 DRIVEN SAW, a new note every 250 ms, then one held: no older line drawn more than 2 px under a newer one for 4 points in any picture (b6 W1: 1 in 15 at 1.0.0-b5), as drawn
+ *             (WL_TEST_Y: the points wl_stack drew); and the whole stack (WAVE LAB's, 12 older lines in this lane) keeps its shape and moves back: 10 shaped older lines a look on
+ *             changing notes, 95 % of them held (the W1 drop-outs left 0.9 and 3.8 of 5)
  * Run: wave_live_test (exit 0 = all ok) */
+#include <stdint.h>
+static int32_t live_y[2][16][72];                       /* (each line's points as wl_stack last drew them, 1/16 px: ui_scope.c WL_TEST_Y) */
+#define WL_TEST_Y(k_, r_, p_, y_) (live_y[(k_) & 1u][(r_) & 15][(p_)] = (y_))
 #include "../web/emu/felucca_web.c"
 #ifndef QUIET_LVL
 #define QUIET_LVL 60u                                    /* (the quiet scene's MIXER LEVEL: unity is 112) */
@@ -141,6 +147,35 @@ static void watch(uint32_t ms, uint32_t mask, int strike, uint32_t *alive0, uint
         }
     }
 }
+/* part k's stack as wl_stack last drew it (WL_TEST_Y): the longest run of points where a shaped older line lies more than 2 px under a newer shaped one (*ne: the shaped older lines,
+ * *nl: the lines the lane holds). Shaped, as wl_stack decides: inside the lane's count and not flat (silence, a tail) */
+static uint32_t live_cross(uint32_t k, uint32_t *ne, uint32_t *nl)
+{
+    const wl_t *s = &wl[k];
+    const int32_t h = k ? pic_y1 - pic_ym : pic_ym - pic_y0;
+    int32_t a, st, nf = wl_fit(h, &a, &st), nr = s->hn < (uint32_t)nf ? (int32_t)s->hn : nf, r, q, p, best = 0;
+    uint32_t shp = 0;
+    *ne = 0;
+    *nl = (uint32_t)nf;
+    if (nr < 2 || s->a != (uint8_t)a || (s->flat & 1u))
+        return 0;
+    for (r = 0; r < nr; r++)
+        if (!((s->flat >> r) & 1u)) {
+            shp |= 1u << r;
+            *ne += r > 0;
+        }
+    for (r = 1; r < nr; r++)
+        for (q = 0; q < r && ((shp >> r) & 1u); q++) {
+            int32_t run = 0;
+            if (!((shp >> q) & 1u))
+                continue;
+            for (p = 0; p < WL_NP; p++) {
+                run = live_y[k][r][p] > live_y[k][q][p] + 32 ? run + 1 : 0;
+                best = run > best ? run : best;
+            }
+        }
+    return (uint32_t)best;
+}
 
 int main(void)
 {
@@ -247,6 +282,47 @@ int main(void)
     ok("off HOME: a turn left picks PART 1", song.sel == 0u && SEL_BOTH == 1u);
     press(B_HOME);
     ok("back on HOME's MORPH page: BOTH, both capsules lit", cur_page()->graph == GR_MORPH && SEL_BOTH == 1u && badge_lit() == 3u);
+
+    /* saw: #25 DRIVEN SAW on part 1, a new note every 250 ms, then one held (b6 W1: an older line crossed the front in about 1 picture of 15) */
+    {
+        static const uint8_t NT[8] = {0, 7, 4, 12, 5, 9, 2, 11};
+        uint32_t t, k, pics = 0, xs = 0, xh = 0, eh = 0, es = 0, nl = 0;
+        if (song.playing)
+            press(B_PLAY);
+        web_keys(0);
+        song.sel = 0;
+        preset_go(24);                                   /* (#25 DRIVEN SAW) */
+        SEL_BOTH = 1;
+        run(1500);
+        for (t = 0; t < 8000u + 3000u; t += 31u) {       /* (a look twice a picture: none is missed) */
+            uint32_t e = 0, l = 0;
+            if (t < 8000u && t % 250u < 31u)
+                web_keys(1u << NT[(t / 250u) % 8u]);
+            if (t >= 8000u && t < 8031u)
+                web_keys(1u << 12);
+            run(31);
+            for (k = 0; k < 2u; k++) {
+                const uint32_t c = live_cross(k, &e, &l);
+                if (t < 8000u)
+                    xs += c >= 4u;
+                else if (t >= 8600u)
+                    xh += c >= 4u;
+                nl = k ? nl : l;
+                if (!k && t < 8000u)
+                    es += e;
+                else if (!k && t >= 8600u)
+                    eh += e;
+            }
+            pics += t >= 8600u;
+        }
+        web_keys(0);
+        snprintf(w, sizeof w, "saw: DRIVEN SAW, a new note every 250 ms: looks where an older line is drawn over 2 px under a newer one for 4 points %u of 516 (need 0)", xs);
+        ok(w, xs == 0u);
+        snprintf(w, sizeof w, "saw: the stack moves back whole, none laid flat: %u shaped older lines over 258 looks of part 1 (need 10 a look of %u; b5 0.9 of 5)", es, nl - 1u);
+        ok(w, es >= 10u * 258u);
+        snprintf(w, sizeof w, "saw: one held, after 0.6 s: crossings %u of %u looks (need 0), echoes %u.%02u a look (need 95 %% of %u)", xh, 2u * pics, eh / pics, eh * 100u / pics % 100u, nl - 1u);
+        ok(w, xh == 0u && 20u * eh >= 19u * (nl - 1u) * pics);
+    }
 
     printf("wavelive: %d checks, %d failed\n", ncheck, bad);
     return bad ? 1 : 0;

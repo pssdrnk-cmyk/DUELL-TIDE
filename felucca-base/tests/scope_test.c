@@ -398,10 +398,12 @@ int main(void)
             ok(w, tear_left == 0 && wl[0].hn == before.hn + 1u && picdist(keep, front_of(0)) <= 1);
         }
         before = wl[0];
-        tear_left = 2;                                   /* torn on the retry too: nothing is drawn, the last picture stays */
+        tear_left = 2;                                   /* torn on the retry too: nothing new is read; the front again, so the stack still moves back a step (b6: never still while it sounds) */
         ring(0, 9000u + 3u * 1366u);
         wl_step(0, HS);
-        ok("torn twice: no new picture, the last one stays", tear_left == 0 && memcmp(&before, &wl[0], sizeof before) == 0);
+        ok("torn twice: nothing new is read; the front again and the stack a step on", tear_left == 0 && !memcmp(wl[0].rd[0], before.rd[0], WL_NP) &&
+           !memcmp(wl[0].rd[1], before.rd[0], WL_NP) && !memcmp(wl[0].rd[2], before.rd[1], WL_NP) && wl[0].w == before.w && wl[0].gpk == before.gpk &&
+           !memcmp(wl[0].first, before.first, sizeof before.first));
         tear_left = 0;
     }
 
