@@ -413,7 +413,7 @@ What the target does:
 | --- | --- |
 | KNOB 1 | MORPH, the fader A<>B |
 | KNOB 2 | ROLL: twist left = ROLL A, twist right = ROLL B (as built) |
-| KNOB 3 | Nothing (an empty card; UNDO until TIDE 1.0.0-b5, a wave picture is planned). There is **no KEEP**: both ends simply stay as they are until you roll them again or load a sound. |
+| KNOB 3 | Nothing (no card: the wave picture takes the page; UNDO until TIDE 1.0.0-b5). There is **no KEEP**: both ends simply stay as they are until you roll them again or load a sound. |
 | KNOB 4 | AMOUNT, the one percentage; **each patch carries its own** (see "AMOUNT follows the patch" below) |
 
 (v3, owner 2026-10-11: ROLL and UNDO moved to KNOB 2 / 3, AMOUNT to KNOB 4; the MIDI CCs are unchanged.) **The panel (v3)** is an animated picture of the morph instead of the old A..B bar, seed numbers and UNDO counts: layered ribbon waveforms that get wilder as the fader moves from A to B (2 ribbons growing to 6, larger, faster, from smooth sines into angular, stepped, glitchy shapes), coloured from the part's A colour to its B colour (High Contrast: each ribbon solid A or B, no blends), breathing with the part's output level (a slow gentle motion in silence); a cursor line at the fader with its value in a thumb on an A<>B track, "A" and "B" at the ends; TARGET BOTH: one ribbon set per part in its colours (part 2 phase-shifted). About 16 frames/s while the page is shown, still with MENU > ANIM OFF. "HOLD SAVE = SAVE PATCH" stays as a small dim line at the bottom.
