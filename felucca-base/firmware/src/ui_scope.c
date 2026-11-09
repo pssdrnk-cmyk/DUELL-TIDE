@@ -390,7 +390,7 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
     for (r = nf - 1; r >= 0; r--) {
         const int flat = r >= nr || ((s->flat >> r) & 1u);
         const int32_t yb16 = (yf - st * r) * 16 + 8, num = nf - r;                      /* (the ridge's middle, 1/16 px; its height (N - r) / N) */
-        const int32_t str = (r ? 15 + (nf > 2 ? 60 * (nf - 1 - r) / (nf - 2) : 60) : 100) * (hot ? 100 : 55) / 100 * (!nr ? 60 : 100) / 100;   /* (strength %: front 100, then 75, 60 .. 15 evenly) */
+        const int32_t str = (r ? 15 + (nf > 2 ? 60 * (nf - 1 - r) / (nf - 2) : 60) : 100) * (hot ? 100 : 55) / 100;   /* (strength %: front 100, then 75, 60 .. 15 evenly; the same at rest) */
         const int32_t w16 = !r ? 28 : 16;
         int32_t py = yb16;
         for (p = 0; p < WL_NP; p++) {
