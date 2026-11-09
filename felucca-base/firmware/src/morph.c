@@ -1393,6 +1393,11 @@ static void morph_build(morph_part_t *mp)
                     (pn[(id + q) >> 3] >> ((id + q) & 7u) & 1u);   /* (a value set by hand is listed even where it equals the Original: the Original may move) */
         if (!diff)
             continue;
+#if DUELL_TIDE
+        if (id == P_LEVEL)                               /* MR5 (b7): the MIXER level is the part's, never an end's (T_NEV would flip it at the middle: a multi's
+                                                          * part at 85 jumped to an End B's 112, 13 dB, on M08) */
+            continue;
+#endif
         diff = 0;
         g = morph_tag(e, mp->base, id, 1);
         w = g.kind == MK_SLOT ? 3u : 1u;
