@@ -85,12 +85,13 @@ static int32_t pieces(int32_t y0, int32_t y1)
 {
     static uint8_t seen[240 * 240];
     static uint16_t stk[240 * 240];
+    const int32_t bg = lum(238u, (uint32_t)(y0 + 2));   /* (lit: brighter than the background; the faint anti-aliased back lines count) */
     int32_t x, y, n = 0;
     memset(seen, 0, sizeof seen);
     for (y = y0 + 1; y < y1; y++)
         for (x = 22; x <= 236; x++) {
             uint32_t sp = 0;
-            if (seen[y * 240 + x] || lum((uint32_t)x, (uint32_t)y) < 20)
+            if (seen[y * 240 + x] || lum((uint32_t)x, (uint32_t)y) <= bg)
                 continue;
             n++;
             seen[y * 240 + x] = 1;
@@ -101,7 +102,7 @@ static int32_t pieces(int32_t y0, int32_t y1)
                 for (dy = -1; dy <= 1; dy++)
                     for (dx = -1; dx <= 1; dx++) {
                         const int32_t nx = qx + dx, ny = qy + dy;
-                        if (nx < 22 || nx > 236 || ny <= y0 || ny >= y1 || seen[ny * 240 + nx] || lum((uint32_t)nx, (uint32_t)ny) < 20)
+                        if (nx < 22 || nx > 236 || ny <= y0 || ny >= y1 || seen[ny * 240 + nx] || lum((uint32_t)nx, (uint32_t)ny) <= bg)
                             continue;
                         seen[ny * 240 + nx] = 1;
                         stk[sp++] = (uint16_t)(ny * 240 + nx);
