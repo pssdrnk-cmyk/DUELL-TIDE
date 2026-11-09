@@ -193,11 +193,12 @@ static void js_palettes(void)
 static void js_multis(void)
 {
     uint32_t i, k;
+    static uint8_t dmb[2048];                        /* (TIDE: the records are packed, duell_multis.h dm_rec) */
     printf("[");
     for (i = 0; i < DF_N; i++) {
         char nm[PROJ_NAME_LEN + 1u];
         for (k = 0; k < PROJ_NAME_LEN; k++)
-            nm[k] = (char)DM_REC[DM_AT[i] + MU_NAME_AT + k];
+            nm[k] = (char)dm_rec(i, dmb)[MU_NAME_AT + k];
         nm[PROJ_NAME_LEN] = 0;
         printf("%s[%u,", i ? "," : "", (unsigned)DF_SLOT[i]);
         js_str(nm);

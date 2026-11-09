@@ -438,12 +438,45 @@ static void drones(void)
     uint8_t rec[MU_REC_MAX], obj[MU_NOBJ][MU_OBJ_MAX], amt[NSHOWN], set[6];
     uint16_t objn[MU_NOBJ];
     project_t q;
-    static uint8_t snap[0x100000];
+    static uint8_t snap[0x100000], dmb[MU_REC_MAX + 1u];
     uint32_t k, o, cut, len, ok, style0, gen;
     char nm[PROJ_NAME_LEN + 1u];
     mu_pv_t pv;
     song.playing = 0;
     duell_mode = duell_mode_req = DM_LAYER;
+    for (k = 0, ok = 1; k < DF_N; k++) {             /* SP1 (b6): the ROM holds the records packed; each rebuilds byte for byte to its source file */
+        char path[64];
+        FILE *f;
+        snprintf(path, sizeof path, DF_SLOT[k] < MU_SLOTS ? "tools/factory_multis/M%02u.bin" : "tools/drone_multis/M%02u.bin", (unsigned)DF_SLOT[k] + 1u);
+        f = fopen(path, "rb");
+        len = f ? (uint32_t)fread(rec, 1, sizeof rec, f) : 0u;
+        if (f)
+            fclose(f);
+        memset(dmb, 0xA5, sizeof dmb);
+        ok &= len > MU_G_AT && len == DM_LEN[k] && len <= MU_REC_MAX && !memcmp(rec, dm_rec(k, dmb), len) && dmb[len] == 0xA5u;
+    }
+    ck("drones: all 18 factory records (M01-M16, M17, M18) rebuild from the packed ROM byte for byte to their .bin files, and write nothing past their length", ok && DF_N == 18u);
+    {                                                /* the rebuild beside a stored partner: M02 saved, M01 empty (its factory record decodes at the end of the staging buffer) */
+        char nm2[PROJ_NAME_LEN + 1u];
+        uint32_t l1;
+        ok = project_save_as(1u, "PARTNER") == 0;
+        mu_obj_read(0u);
+        len = mu_put_rec(0u, 0, &cut, 0, 0);       /* (M01 emptied: its factory multi) */
+        ok &= mu_obj_write(0u, len) == 0;
+        mu_obj_read(0u);
+        (void)mu_rec(1u, &l1);
+        mu_note(0u);
+        ok &= project_factory(0u) && project_info(0u, nm) && str_eq(nm, "BASIC CHORD") && project_info(1u, nm2) && str_eq(nm2, "PARTNER") && !project_factory(1u);
+        mu_obj_read(0u);
+        multi_preview(0u, &pv);
+        ok &= pv.state == 1u && MU_HDR + l1 <= MU_OBJ_MAX - MU_REC_MAX;
+        project_load(0u);
+        ok &= proj_cur == 0u;
+        project_load(1u);
+        ok &= proj_cur == 1u;
+        ok &= project_erase(1u) == 0 && project_factory(1u);
+        ck("  a factory record rebuilt beside a stored partner (M01 factory, M02 saved): both list, preview and load; the partner is untouched", ok);
+    }
     for (o = 0; o < MU_NOBJ; o++) {                  /* (the store before: every object of M01..M16) */
         objn[o] = (uint16_t)mu_obj_read(o);
         memcpy(obj[o], mu_buf, objn[o]);
@@ -465,8 +498,8 @@ static void drones(void)
         len = f ? (uint32_t)fread(rec, 1, sizeof rec, f) : 0u;
         if (f)
             fclose(f);
-        ok = len == DM_LEN[k] && !memcmp(rec, DM_REC + DM_AT[k], len) && rec[4] == DM_LAYER;
-        ok &= mu_unpack(&q, amt, set, DM_REC + DM_AT[k], DM_LEN[k]);
+        ok = len == DM_LEN[k] && !memcmp(rec, dm_rec(k, dmb), len) && rec[4] == DM_LAYER;
+        ok &= mu_unpack(&q, amt, set, dm_rec(k, dmb), DM_LEN[k]);
         project_load(k);
         frame();
         for (t = 0; t < NSHOWN; t++)
@@ -1510,7 +1543,7 @@ int main(void)
             uint32_t l0;
             const uint8_t *r = mu_rec(0u, &l0);
             ok2 = DM_LEN[df_of(0u)] <= sizeof old;
-            memcpy(old, DM_REC + DM_AT[df_of(0u)], DM_LEN[df_of(0u)]);
+            memmove(old, dm_rec(df_of(0u), old), DM_LEN[df_of(0u)]);   /* (packed: rebuilt into old; plain DUELL: copied from the ROM) */
             old[0] = 2u;
             (void)r;
             ok2 &= mu_obj_write(o, mu_put_rec(0u, 1, &cut, old, DM_LEN[df_of(0u)])) == 0;

@@ -72,13 +72,94 @@ def main(argv):
              "static const uint8_t DF_SLOT[DF_N] = {%s};" % ", ".join(str(m["slot"] - 1) for m in multis),
              "static const uint16_t DM_LEN[DF_N] = {%s};" % ", ".join(str(len(b)) for b in recs),
              "static const uint16_t DM_AT[DF_N] = {%s};" % ", ".join(str(sum(len(x) for x in recs[:k])) for k in range(len(recs)))]
-    flat = b"".join(recs)
-    lines.append("static const uint8_t DM_REC[%d] = {" % len(flat))
-    for i in range(0, len(flat), 24):
-        lines.append("    " + ", ".join("%d" % c for c in flat[i:i + 24]) + ",")
-    lines.append("};")
+    def emit(name, data):
+        lines.append("static const uint8_t %s[%d] = {" % (name, len(data)))
+        for i in range(0, len(data), 24):
+            lines.append("    " + ", ".join("%d" % c for c in data[i:i + 24]) + ",")
+        lines.append("};")
+    if os.environ.get("DUELL_TIDE") == "0":                 # plain DUELL: the records as they are; dm_rec gives a pointer into the ROM
+        flat = b"".join(recs)
+        lines[-1] = "static const uint16_t DM_AT[DF_N] = {%s};" % ", ".join(str(sum(len(x) for x in recs[:k])) for k in range(len(recs)))
+        emit("DM_REC", flat)
+        lines.append("static const uint8_t *dm_rec(uint32_t i, uint8_t *out) { (void)out; return DM_REC + DM_AT[i]; }   /* factory multi i (DM_LEN[i] bytes) */")
+        out.write_text("\n".join(lines) + "\n")
+        print("duell_multis.h: %d factory multis, %d bytes%s" % (len(recs), len(flat), " (test mode)" if test_mode else ""))
+        return
+    # TIDE 1.0.0-b6 (SP1, flash space): each part's value block (np values + the NX slots, at the same place in every part) is stored as a bitmap of the bytes
+    # that differ from one shared template (the most common byte at each index over all parts) and those bytes; the rest of a record as it is. dm_rec rebuilds
+    # a record byte for byte (tests/multi_test.c checks every one against its .bin)
+    vn = recs[0][1] + fm.NX
+    vo, parts = [], []
+    for m, b in zip(multis, recs):
+        if b[1] + fm.NX != vn or len(b) > fm.REC_MAX:
+            die("M%02d: np %d or length %d unlike the others" % (m["slot"], b[1], len(b)))
+        ps, _ = fm.parts_of(b)
+        at = [st + 5 + b[st + 4] for _, _, st in ps]
+        vo.append(at)
+        parts += [b[a:a + vn] for a in at]
+    tpl = bytes(max(set(p[j] for p in parts), key=lambda v: (sum(1 for p in parts if p[j] == v), -v)) for j in range(vn))
+    nbm = (vn + 7) // 8
+    pk, ats = [], []
+    for b, at in zip(recs, vo):
+        e, o = bytearray(), 0
+        for a in at:
+            e += b[o:a]
+            blk = b[a:a + vn]
+            bm = bytearray(nbm)
+            for j in range(vn):
+                if blk[j] != tpl[j]:
+                    bm[j >> 3] |= 1 << (j & 7)
+            e += bm + bytes(blk[j] for j in range(vn) if blk[j] != tpl[j])
+            o = a + vn
+        e += b[o:]
+        ats.append(sum(len(x) for x in pk))
+        pk.append(bytes(e))
+    flat = b"".join(pk)
+    lines[-1] = "static const uint16_t DM_AT[DF_N] = {%s};   /* (into DM_PK)" % ", ".join(str(a) for a in ats) + " */"
+    lines.append("#define DM_VN %du                   /* a part's value block: np values + the NX slots */" % vn)
+    lines.append("static const uint16_t DM_VO[DF_N][2] = {%s};   /* where each part's value block starts in the record */" %
+                 ", ".join("{%d, %d}" % tuple(a) for a in vo))
+    emit("DM_TPL", tpl)
+    emit("DM_PK", flat)
+    lines += ["/* factory multi i rebuilt into out (DM_LEN[i] bytes, at most MU_REC_MAX); returns out */",
+              "static const uint8_t *dm_rec(uint32_t i, uint8_t *out)",
+              "{",
+              "    const uint8_t *s = DM_PK + DM_AT[i], *bm;",
+              "    uint32_t o = 0, p, j;",
+              "    for (p = 0; p < 2u; p++) {",
+              "        while (o < DM_VO[i][p])",
+              "            out[o++] = *s++;",
+              "        bm = s;",
+              "        s += (DM_VN + 7u) / 8u;",
+              "        for (j = 0; j < DM_VN; j++)",
+              "            out[o++] = (bm[j >> 3] >> (j & 7u)) & 1u ? *s++ : DM_TPL[j];",
+              "    }",
+              "    while (o < DM_LEN[i])",
+              "        out[o++] = *s++;",
+              "    return out;",
+              "}"]
+    # (the generator's own check: every record rebuilds from what is written above)
+    for k, b in enumerate(recs):
+        s, o, d = ats[k], 0, bytearray()
+        for a in vo[k]:
+            n = a - o
+            d += flat[s:s + n]
+            s += n
+            bm = flat[s:s + nbm]
+            s += nbm
+            for j in range(vn):
+                if (bm[j >> 3] >> (j & 7)) & 1:
+                    d.append(flat[s])
+                    s += 1
+                else:
+                    d.append(tpl[j])
+            o = a + vn
+        d += flat[s:s + len(b) - len(d)]
+        if bytes(d) != b:
+            die("M%02d: the packed record does not rebuild" % multis[k]["slot"])
     out.write_text("\n".join(lines) + "\n")
-    print("duell_multis.h: %d factory multis, %d bytes%s" % (len(recs), len(flat), " (test mode)" if test_mode else ""))
+    print("duell_multis.h: %d factory multis, %d bytes packed (%d raw)%s" % (len(recs), len(flat) + len(tpl) + 4 * len(recs), sum(len(b) for b in recs),
+                                                                       " (test mode)" if test_mode else ""))
 
 
 if __name__ == "__main__":

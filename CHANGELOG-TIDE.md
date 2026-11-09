@@ -12,6 +12,7 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 Not tagged yet.
 
 - **New (owner, 2026-11-09):** two drone scenes built in as M17 DUNE HORN (HORN SWELL with VOID SHIMMER) and M18 VOID DEEP (VOID SHIMMER with SOLAR WIND), factory only. TIDE plays them as STYLE DRONE: pick one, hold a chord around C3 and press PLAY with AUTO TIDE on. Each is a LAYER of two latched drones (HOLD ALL, arp OFF), a 60 BPM ping-pong echo and a big HALL. They load, play and preview like M01 to M16, and MIDI program change 16 and 17 loads them (in LAYER). They can't be saved over, renamed or erased: SAVE says SAVE TO M01-M16, so save an edited one into M01 to M16. While one of them is loaded, TIDE SETTINGS shows STYLE DRONE; loading any other multi brings your own STYLE back, and the saved STYLE never changes. The b4 file pack `packs/drones/` is gone (b4 never shipped it as a download). Backups are unchanged: nothing is stored for M17 and M18.
+- **Under the hood:** the factory multis (M01 to M18) are stored packed in the firmware: each part's settings as the bytes that differ from one shared template. They rebuild byte for byte when listed, previewed or loaded, so nothing sounds or loads differently; 2.8 KB of flash back for later features. No saved data, backup or RAM changes.
 
 ## 1.0.0-b5
 

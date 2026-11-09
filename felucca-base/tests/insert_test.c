@@ -1185,7 +1185,8 @@ static void test_bits_migrate(void)
         for (k = 0; k < DF_N; k++) {
             static project_t o;
             uint32_t t;
-            ok &= DM_REC[DM_AT[k]] == MU_VER && mu_unpack(&o, amt, set, DM_REC + DM_AT[k], DM_LEN[k]);
+            static uint8_t dmb[2048];
+            ok &= dm_rec(k, dmb)[0] == MU_VER && mu_unpack(&o, amt, set, dm_rec(k, dmb), DM_LEN[k]);
             for (t = 0; t < NSHOWN; t++)
                 if (o.t[t].p[P_ITYPE] == IT_CRUSH) {
                     printf("insert:   factory multi #%u part %u: INSERT CRUSH, A %d = %s bits\n", k, t + 1u, o.t[t].p[P_IA], N_IBITS[o.t[t].p[P_IA]]);

@@ -734,7 +734,8 @@ static void test_control(void)
     expect("a multi saved with OFF leaves the 400 Hz that was set", song.bm == 9);
     ok = 1;
     for (v = 0; v < DF_N; v++) {                        /* the factory multis: byte 5 holds no BASS MONO bit */
-        ok &= (DM_REC[DM_AT[v] + 5u] >> 1) == 0u;
+        static uint8_t dmb[2048];
+        ok &= (dm_rec(v, dmb)[5] >> 1) == 0u;
     }
     {
         uint32_t k;

@@ -291,7 +291,8 @@ static void lv_multi(void)
     int32_t m01_trim[2] = {-1, -1}, m01_lvl[2] = {-1, -1};
     /* the factory multis: a mixer level of their own (unity up to 0.2.22; 0.2.23: each multi's balance, -16 .. +4 dB), the trim the sound's */
     for (i = 0; i < DF_N; i++) {
-        const uint8_t *b = DM_REC + DM_AT[i];
+        static uint8_t dmb[2048];
+        const uint8_t *b = dm_rec(i, dmb);
         uint32_t pos = MU_G_AT + 2u * b[2], t, k, ns;
         if (b[0] != 8u)
             ok = 0;

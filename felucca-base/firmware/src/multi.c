@@ -92,7 +92,7 @@ static uint8_t mu_ram[MU_NOBJ][MU_OBJ_MAX];       /* (host builds: the store) */
 static uint16_t mu_ram_len[MU_NOBJ];
 #endif
 static int project_restore_runtime(const project_t *input);
-#include "duell_multis.h"                         /* DF_N factory multis: DF_SLOT (their slots) / DM_REC / DM_AT / DM_LEN (M01..M16) */
+#include "duell_multis.h"                         /* DF_N factory multis: DF_SLOT (their slots) / DM_LEN, dm_rec (TIDE: packed, SP1) (M01..M16; TIDE M17, M18) */
 static uint32_t df_of(uint32_t k)                 /* the factory multi of slot k (index into DM_*); DF_N none */
 {
     uint32_t i;
@@ -100,6 +100,16 @@ static uint32_t df_of(uint32_t k)                 /* the factory multi of slot k
         if (DF_SLOT[i] == k)
             return i;
     return DF_N;
+}
+/* factory multi i rebuilt for reading (TIDE 1.0.0-b6, SP1: the ROM holds the records packed, duell_multis.h dm_rec). Into DF_TAIL, the last MU_REC_MAX bytes of
+ * the staging buffer: a caller decodes there only when the slot's own stored record is empty, so the object in mu_buf (its partner) ends at MU_HDR + MU_REC_MAX
+ * at most and never reaches it. project_rename, which moves records inside mu_buf, decodes into proj_scratch instead. No RAM of its own */
+#define DF_TAIL (mu_buf + MU_OBJ_MAX - MU_REC_MAX)
+_Static_assert(MU_HDR + MU_REC_MAX <= MU_OBJ_MAX - MU_REC_MAX && sizeof proj_scratch >= MU_REC_MAX, "a factory record decodes beside a partner, or into the scratch");
+static const uint8_t *df_rec(uint32_t i, uint8_t *out)
+{
+    proj_wire_gen++;                              /* (mu_buf is the editor's staging too) */
+    return dm_rec(i, out);
 }
 _Static_assert(DF_TEST_MULTIS == DUELL_TEST_MODE, "duell_multis.h was generated with another DUELL_TEST_MODE: run tools/gen_duell_multis.py (tools/build.py) with the same switch");
 _Static_assert(DF_N <= MU_SHOWN && MU_SHOWN <= 32u, "factory multis: slots below MU_SHOWN, the masks hold them");
@@ -413,7 +423,7 @@ static void mu_note1(uint32_t k, const uint8_t *r, uint32_t len)
 #else
         if (!ok && df_of(k) < DF_N) {
 #endif             /* nothing stored, or a record this firmware does not load (one of before 0.2.14): the factory multi (ROM) */
-            r = DM_REC + DM_AT[df_of(k)];
+            r = df_rec(df_of(k), DF_TAIL);
             len = DM_LEN[df_of(k)];
             mu_fact |= 1u << k;
             ok = mu_unpack(&proj_scratch, amt, set, r, len);
@@ -493,7 +503,7 @@ static void multi_preview(uint32_t slot, mu_pv_t *o)
     }
     ok = len && mu_unpack(&proj_scratch, amt, set, r, len);
     if (!ok && df_of(k) < DF_N)                        /* (as mu_note: a slot that holds nothing it loads shows its factory multi) */
-        ok = mu_unpack(&proj_scratch, amt, set, DM_REC + DM_AT[df_of(k)], DM_LEN[df_of(k)]);
+        ok = mu_unpack(&proj_scratch, amt, set, df_rec(df_of(k), DF_TAIL), DM_LEN[df_of(k)]);
     if (!ok)
         return;
     o->state = 1;
@@ -661,7 +671,7 @@ static int project_rename(uint32_t slot, const char *name)
     len = mu_obj_read(o);
     if (project_factory(k)) {                          /* an unchanged factory multi: its record stored, renamed (an overwrite) */
         uint32_t cut;
-        len = mu_put_rec(k & 1u, 1, &cut, DM_REC + DM_AT[df_of(k)], DM_LEN[df_of(k)]);
+        len = mu_put_rec(k & 1u, 1, &cut, df_rec(df_of(k), (uint8_t *)&proj_scratch), DM_LEN[df_of(k)]);   /* (not DF_TAIL: mu_put_rec moves records in mu_buf) */
     }
     r = (uint8_t *)mu_rec(k & 1u, &n);
     memset(r + MU_NAME_AT, 0, PROJ_NAME_LEN);
@@ -698,7 +708,7 @@ static void project_load(uint32_t slot)
         r = mu_rec(k & 1u, &len);
     }
     if (!len && df_of(k) < DF_N) {                     /* nothing stored: the factory multi */
-        r = DM_REC + DM_AT[df_of(k)];
+        r = df_rec(df_of(k), DF_TAIL);
         len = DM_LEN[df_of(k)];
     }
     if (!len) {
