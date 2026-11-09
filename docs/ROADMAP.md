@@ -4,45 +4,17 @@ Updated 9 November 2026. What is already built is in the [CHANGELOG-TIDE](../CHA
 
 State words on this page: Released in bN, Ready (built and tested, waiting for a release), Built (waits for the FM-1 test), In progress, Planned (brief written, not built), Next, Later, Waiting on you.
 
-## Now: 1.0.0-b6 (b5 folded in)
-
-b5 was never published: its changes ship inside b6 as one release (owner, 9 November: "let's move to b6"). The b6 build is put together on one branch; the rows below say what is in it.
-
-| What | State |
-|---|---|
-| The MORPH page's waves move like the first WAVE LAB stack again (13 lines a part scrolling back every picture, full height, fading toward the back), at today's size (from b5) | Built (in the b6 build), waits for your look and the CPU test on the FM-1. The owner, 9 November: "the animation quality got worse, the front lines moves a lot and the ones behind barely"; "the initial version looked quite cool when we called it wave lab" |
-| MORPH page: an older saw line no longer crosses the newest one on note changes (from b5) | Built (in the b6 build, with the motion fix), waits for the FM-1 test |
-| MORPH page no longer lags: the wave stack draws in about 53 us, under b5's 77 (owner on the FM-1: "the new UI is definitely laggy") | Built (in the b6 build), waits for your try on the FM-1 |
-| MORPH page: turning MORPH (knob 1) while the waves play no longer makes the screen go strange (owner on the FM-1: "the UI gets weird if I use morph during the animation") | Built (in the b6 build), waits for your try on the FM-1 |
-| The drone scenes get slow sequences of their own: M17 a horn swell a bar, M18 the solar wind over 32 s (owner, 9 November: "I'm missing some sequence from the drone multis") | Built (in the b6 build), waits for the FM-1 test |
-| MORPH page: the waves have depth (older lines narrower, each hides what is behind it, as in WAVE LAB), reach the right edge, and lie evenly at rest (owner: "something is missing") | Built (in the b6 build), waits for your look on the FM-1 |
-| MORPH page: at rest the same stack lies flat, the gaps are whole rows, the part numbers sit in even pills, AMOUNT shows its value without the bar (owner: "there is a fuckup with the default screen") | Built (in the b6 build), waits for your look on the FM-1 |
-| MENU > COLOR: turning through the themes repaints at most every 100 ms (owner: "especially when changing the color scheme") | Built (in the b6 build), waits for your try on the FM-1 |
-| MORPH page: the waves move at an even pace (a new picture every 60 ms by the clock), the older lines smooth again; the screen link at 20 MHz instead of 12 (owner: "it's choppy", "the animation feels laggy again") | Built (in the b6 build), waits for your try on the FM-1 |
-| PART 1 / PART 2 / BOTH on HOME's pages (from b5) | Ready (in the b6 build) |
-| The new flashing screen (from b5) | Ready (in the b6 build) |
-| More free memory (EQ design moved out of fast RAM, 1,068 B; from b5) | Ready (in the b6 build) |
-| Factory sounds and multis stop resetting AMOUNT, the two drone scenes too (MORPH c3) | Ready (in the b6 build) |
-| Pattern notes stay in a sensible range (roles T4) | Ready (in the b6 build) |
-| More free flash: factory multis stored as template + changes (2,776 B), keycaps compressed (2,032 B); nothing you hear or see changes | Ready (in the b6 build) |
-| Two drone scenes built in (M17 DUNE HORN, M18 VOID DEEP, played as STYLE DRONE; [brief](audits/2026-11-09/drones/TASKS.md)) | Built (in the b6 build), waits for the FM-1 test |
-| FM6 sounds no longer get louder at the morph's End B (FRETLESS, ISLAND STEEL, MALLET WOOD) | Built (in the b6 build), waits for the FM-1 test |
-| JOURNEY travels to sounds near the current one in level and colour (the default set moves up to 15 dB today; [J1](audits/2026-11-09/tide-morph/TASKS.md#j1)) | Built (in the b6 build), waits for the FM-1 test |
-| Reverb on the second core, to free CPU (K4) | Built, not in the b6 build yet: needs its own FM-1 sweep with K4 on and off |
-| JOURNEY's crossing dip lasts a few bars, not 90 % of every trip ([X1](audits/2026-11-09/tide-morph/TASKS.md#x1); [audit 9 November](audits/2026-11-09/tide-morph/REPORT.md)) | Planned: ~60 B, 8 B RAM; before/after with `tide_long` |
-| JOURNEY doesn't jump the sound when started with the fader away from A ([J2](audits/2026-11-09/tide-morph/TASKS.md#j2)) | Planned: ~16 B, main loop |
-| TIDE's louder peak and softer breakdown reach ARP SEQ parts, M02 included; accents kept ([D1](audits/2026-11-09/tide-morph/TASKS.md#d1)) | Planned: ~60 B, one multiply per arp step |
-| The bass keeps its loop and octave: no POLY, no VOIC octave on a bass part; POLY ends in ARC's breakdown ([B1](audits/2026-11-09/tide-morph/TASKS.md#b1)) | Planned: ~65 B, 1 B RAM |
-| CPU test of b6 on your FM-1 (the 16 multis, the drones, the notes step; MORPH on screen) | Done 9 November: at the notes step 76 no missed blocks, but one voice cut on M14 EERIE SIGNAL (busiest block 90 %, b5 83 %), so b6 keeps b5's 72. The drones M17 and M18: no missed blocks, no voices cut (70 %, 65 %). Next: the b6 build at 72 gets the full sweep again (it holds more than b5: End B, the register lanes, JOURNEY, AMOUNT, the drones) |
-
-b6 goes out after the CPU test and your OK on the FM-1. Room left on the b6 build (everything above that is in it): 6,644 B of flash, RAM 69,624 of 73,728 B (4,104 B headroom against the 4,096 B rule).
-
-## Next: 1.0.0-b7
+## Now: 1.0.0-b7
 
 | What | State |
 |---|---|
 | SPLIT MIDDLE: the keys split in the middle and the split follows OCT- / OCT+ | In progress (fix/b7-playmode) |
 | Try-out: the part selection (ALGORITHM knob on HOME) also picks how the keys play: PART 1, PART 2, LAYER, STEREO, DUEL | In progress, an experiment you try before it stays (fix/b7-playmode) |
+| Reverb on the second core, to free CPU (K4) | Built, needs its own FM-1 sweep with K4 on and off |
+| JOURNEY's crossing dip lasts a few bars, not 90 % of every trip ([X1](audits/2026-11-09/tide-morph/TASKS.md#x1); [audit 9 November](audits/2026-11-09/tide-morph/REPORT.md)) | Planned: ~60 B, 8 B RAM; before/after with `tide_long` |
+| JOURNEY doesn't jump the sound when started with the fader away from A ([J2](audits/2026-11-09/tide-morph/TASKS.md#j2)) | Planned: ~16 B, main loop |
+| TIDE's louder peak and softer breakdown reach ARP SEQ parts, M02 included; accents kept ([D1](audits/2026-11-09/tide-morph/TASKS.md#d1)) | Planned: ~60 B, one multiply per arp step |
+| The bass keeps its loop and octave: no POLY, no VOIC octave on a bass part; POLY ends in ARC's breakdown ([B1](audits/2026-11-09/tide-morph/TASKS.md#b1)) | Planned: ~65 B, 1 B RAM |
 
 ## Later, in order
 
@@ -65,12 +37,13 @@ b6 goes out after the CPU test and your OK on the FM-1. Room left on the b6 buil
 
 | Version | Date | What you got |
 |---|---|---|
+| 1.0.0-b6 | 9 November | b5's MORPH wave picture and PART 1 / PART 2 / BOTH, then the WAVE LAB stack with depth at an even pace, two drone scenes with sequences (M17, M18), AMOUNT kept on factory loads, JOURNEY close in level, notes in your register, FM6 End B levels, a 20 MHz screen link, 4.8 KB of flash back ([release](https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases/tag/tide-1.0.0-b6)) |
 | 1.0.0-b4 | 8 November | No notes cut when the CPU runs hot (ease ladder), less CPU while a part is silent, STYLE DRONE, screen cleanups |
 | 1.0.0-b3 | 8 November | CPU and missed-block readout, patch list order, live recording into ARP SEQ, HOME without the MODE page |
 | 1.0.0-b2 | 8 November | Second beta |
 | 1.0.0-b1 | 5 November | First beta |
 
-1.0.0-b5 was not released separately: its changes are in 1.0.0-b6.
+1.0.0-b5 was not released separately: its changes are in 1.0.0-b6. On the unit before the b6 tag (9 November, test-mode build, MORPH on screen): no missed audio blocks and no voices cut over the 16 multis, busiest block 85 % (b5: 83 %); the drones 87 % and 67 %.
 
 Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first numbered stable will be `1.0.0`.
 
