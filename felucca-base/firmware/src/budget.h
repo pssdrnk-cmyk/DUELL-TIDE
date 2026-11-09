@@ -10,12 +10,12 @@
 /* TIDE 1.0.0-b6 N1, "give the notes back" (owner, 9 November: in steps, each kept only if the unit's GLIDE sweep stays clean: 0 missed, 0 voices cut). Since b4 the ease
  * ladder (audio.c, K3) backs off before it cuts sound, and the b4 / b5 sweeps at 72 were clean (worst per-second peak 84 .. 85 % render, 90 .. 91 % elapsed). The limit is a
  * step, DUELL_NOTES_STEP: 72 (b1 .. b5), 76, 80 or 84 (the b0 value, where the factory multis missed and shed before the ladder existed). A test-mode build picks one
- * (tools/build.py: env DUELL_NOTES_STEP, test-mode builds only; work/measure/b6-notes/UNIT_PLAN.md); every other build has the branch's default, 76, PENDING THE UNIT SWEEP.
+ * (tools/build.py: env DUELL_NOTES_STEP, test-mode builds only; work/measure/b6-notes/UNIT_PLAN.md); every other build has the default, 72 (b6: 76 was tried on the unit, 9 November, and cut one voice on M14 EERIE SIGNAL at 90 %; b6 keeps b5's 72).
  * Plain DUELL (DUELL_TIDE=0) keeps 72. BUDGET_PEAK stays 90 - BUDGET_LIMIT: the room up to 90 % for the real peak over the model (the unit's fit, below: peak = 30 + 0.74 x the
  * model, i.e. 83 % at 72, 86 at 76, 89 at 80, 92 at 84; the GLIDE sweep at 72 ran 1 .. 2 points over the fit, 85 %, and 6 more elapsed, 91 %) */
 #ifndef DUELL_NOTES_STEP
 #if DUELL_TIDE
-#define DUELL_NOTES_STEP 76     /* b6 default: PENDING THE UNIT SWEEP (UNIT_PLAN.md); 72 is b5's */
+#define DUELL_NOTES_STEP 72     /* b6 default: b5's 72 (the unit's GLIDE sweep at 76 cut a voice on M14: work/measure/b6-integ-aefe5c0); the step stays for a later finer try */
 #else
 #define DUELL_NOTES_STEP 72
 #endif

@@ -20,7 +20,6 @@ b5 was never published: its changes ship inside b6 as one release (owner, 9 Nove
 | Pattern notes stay in a sensible range (roles T4) | Ready (in the b6 build) |
 | More free flash: factory multis stored as template + changes (2,776 B), keycaps compressed (2,032 B); nothing you hear or see changes | Ready (in the b6 build) |
 | Two drone scenes built in (M17 DUNE HORN, M18 VOID DEEP, played as STYLE DRONE; [brief](audits/2026-11-09/drones/TASKS.md)) | Built (in the b6 build), waits for the FM-1 test |
-| Give back the notes the first beta's CPU fix took (most factory multis play 1 or 2 notes fewer per part since b1; b4's ease ladder now catches the peaks) | Built (in the b6 build at step 76), waits for the FM-1 test, which picks the step 76 / 80 / 84 |
 | FM6 sounds no longer get louder at the morph's End B (FRETLESS, ISLAND STEEL, MALLET WOOD) | Built (in the b6 build), waits for the FM-1 test |
 | JOURNEY travels to sounds near the current one in level and colour (the default set moves up to 15 dB today; [J1](audits/2026-11-09/tide-morph/TASKS.md#j1)) | Built (in the b6 build), waits for the FM-1 test |
 | Reverb on the second core, to free CPU (K4) | Built, not in the b6 build yet: needs its own FM-1 sweep with K4 on and off |
@@ -28,7 +27,7 @@ b5 was never published: its changes ship inside b6 as one release (owner, 9 Nove
 | JOURNEY doesn't jump the sound when started with the fader away from A ([J2](audits/2026-11-09/tide-morph/TASKS.md#j2)) | Planned: ~16 B, main loop |
 | TIDE's louder peak and softer breakdown reach ARP SEQ parts, M02 included; accents kept ([D1](audits/2026-11-09/tide-morph/TASKS.md#d1)) | Planned: ~60 B, one multiply per arp step |
 | The bass keeps its loop and octave: no POLY, no VOIC octave on a bass part; POLY ends in ARC's breakdown ([B1](audits/2026-11-09/tide-morph/TASKS.md#b1)) | Planned: ~65 B, 1 B RAM |
-| CPU test of b6 on your FM-1 (the 16 multis, the drones, the notes step; MORPH on screen) | Next. b5's baseline (9 November, before the motion fix): no missed blocks and no voices cut in all 16 multis, busiest block 83 % (M05). The sweep starts with one warm-up scene and checks MORPH is on screen before M01 (in the b5 run M01 came first after boot, ran off the MORPH page and cut 2 voices; on MORPH it was clean at 75 %) |
+| CPU test of b6 on your FM-1 (the 16 multis, the drones, the notes step; MORPH on screen) | Done 9 November: at the notes step 76 no missed blocks, but one voice cut on M14 EERIE SIGNAL (busiest block 90 %, b5 83 %), so b6 keeps b5's 72. The drones M17 and M18: no missed blocks, no voices cut (70 %, 65 %) |
 
 b6 goes out after the CPU test and your OK on the FM-1. Room left on the b6 build (with the motion fix, its draw-cost fix and JOURNEY): 7,608 B of flash, RAM 69,624 of 73,728 B (4,104 B headroom against the 4,096 B rule).
 
@@ -45,7 +44,8 @@ b6 goes out after the CPU test and your OK on the FM-1. Room left on the b6 buil
 9. Parameter units stored as an index (~0.87 KB; [SP4](audits/2026-11-09/space/TASKS.md)).
 10. Event-rate code built for size (1.78 KB; [SP5](audits/2026-11-09/space/TASKS.md)); needs the FM-1 CPU sweep.
 11. FM6 MUSIC rolls at AMOUNT 40 leave the loudness window (all FM6 rolls, not just End B); needs its own change ([finding 7](audits/2026-11-09/tide-morph/REPORT.md)).
-12. Before `1.0.0`: 0 missed blocks over the 16-multi GLIDE sweep (owner, 8 November); the CPU budget re-measured and made honest (findings 5, 6, 34; K9).
+12. Give notes back in a finer step: at the first step (NOTES limit 76, 18 notes over the 16 multis) one voice was cut on EERIE SIGNAL, so b6 keeps b5's note counts (busiest block 90 %, b5 83 %; M08 TINE DUB 89 %; 0 missed blocks). Next: a step of 74, or more notes only on the multis with room; each kept only if the unit's sweep stays clean.
+13. Before `1.0.0`: 0 missed blocks over the 16-multi GLIDE sweep (owner, 8 November); the CPU budget re-measured and made honest (findings 5, 6, 34; K9).
 
 ## Released
 
