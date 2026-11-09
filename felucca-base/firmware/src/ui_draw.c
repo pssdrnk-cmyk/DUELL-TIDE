@@ -892,8 +892,10 @@ static uint8_t k1_after_r;
 #define AREA_LIST_PG() 0
 #endif
 #if DUELL_TIDE
-#define MROW_Y 189                                      /* b6 (owner 2026-11-09): the MORPH page's ROLL / AMOUNT row, a 13-row canvas 189 .. 201 just above the footer (Y_FOOT 202), its caps at rows 191 .. 201: the same */
-#define MROW_H 13                                       /* 15-row pitch as footer row 1 (caps 206) to row 2 (221); the picture above it, rows 48 .. 186 */
+#define MROW_Y 189                                      /* b6 (owner 2026-11-09): the MORPH page's ROLL / AMOUNT row, a 13-row canvas 189 .. 201 just above the footer (Y_FOOT 202) that holds the */
+#define MROW_H 13                                       /* S face's whole box (caps 189 .. 199, descenders to 201: nothing cut, nothing under the footer's canvas); the picture above it */
+#define MROW_BASE (MROW_H - 3)                          /* rows 48 .. 183, two lanes of 68 (5 clear rows to the caps) */
+#define MROW_WAVES_END 184
 #endif
 static void area_rect(int32_t *y, int32_t *h)
 {
@@ -903,7 +905,7 @@ static void area_rect(int32_t *y, int32_t *h)
     if (AREA_LIST_PG())
         *h = LP_CARD_Y - UT_A_GR_Y;
     if (TIDE_WAVE_PAGE(cur_page()))                    /* (the MORPH page: the waves down to its compact row) */
-        *h = MROW_Y - 2 - UT_A_GR_Y;
+        *h = MROW_WAVES_END - UT_A_GR_Y;
 #endif
 }
 /* the card of knob c (1 .. 3) in the area card row: x, y, w, h (w = h = 0: no card in that column) */
@@ -2386,7 +2388,7 @@ static void morph_row(int32_t g, uint32_t amt)
     static char last[24];
     char key[24], v[8];
     const int hint = ui.save_t0 != 0u, hot2 = ui.hot_t && ui.hot_col == 1u, hot4 = ui.hot_t && ui.hot_col == 3u;
-    const int32_t base = MROW_H - 1;                    /* (the row's label baseline: its last row) */
+    const int32_t base = MROW_BASE;                     /* (the row's label baseline: the face's box, descenders included, ends on the canvas's last row) */
     key[0] = (char)('a' + hint);
     key[1] = (char)('b' + g + 1);
     key[2] = (char)('a' + hot2 + 2 * hot4);
