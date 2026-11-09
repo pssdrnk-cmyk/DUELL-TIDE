@@ -2379,13 +2379,13 @@ static void morph_dot(int32_t x, int32_t base, const char *n)
     cv_text_in(x, dy + HALF_UP(AF_S_CAP_H - AF_D_CAP_H) - AF_D_CAP_Y, AF_S_CAP_H, &AF_DOT, n, T_BG, T_MID);
 }
 /* b6 (owner 2026-11-09: "why do we keep half of the screen for the hold save, and roll and amount"): the MORPH page's knob 2 and knob 4 on one row, rows MROW_Y .. + MROW_H - 1:
- * "(2) ROLL A<>B" on the left (the twist's way while it builds: <A / B>, in the accent), "(4) AMOUNT 40 %" on the right with AMOUNT's bar under it. While SAVE is held, and for WL_HINT_MS after the
- * page opens (ui_scope.c wl_hint_t), the row says HOLD SAVE = SAVE PATCH instead. Drawn only when what it shows changes */
+ * "(2) ROLL A<>B" on the left (the twist's way while it builds: <A / B>, in the accent), "(4) AMOUNT 40 %" on the right with AMOUNT's bar inline. While SAVE is held (and only then) the row says
+ * HOLD SAVE = SAVE PATCH instead. Drawn only when what it shows changes */
 static void morph_row(int32_t g, uint32_t amt)
 {
     static char last[24];
     char key[24], v[8];
-    const int hint = ui.save_t0 != 0u || fm1_ms - wl_hint_t < WL_HINT_MS, hot2 = ui.hot_t && ui.hot_col == 1u, hot4 = ui.hot_t && ui.hot_col == 3u;
+    const int hint = ui.save_t0 != 0u, hot2 = ui.hot_t && ui.hot_col == 1u, hot4 = ui.hot_t && ui.hot_col == 3u;
     const int32_t base = 12;                            /* (the row's label baseline, canvas rows) */
     key[0] = (char)('a' + hint);
     key[1] = (char)('b' + g + 1);
