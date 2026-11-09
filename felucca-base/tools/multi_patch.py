@@ -24,7 +24,6 @@ PATCHES = [
     (16, 0, "P_TRIM", 95), (16, 1, "P_TRIM", 80),       # FINAL REEL: +1 dB, back to the set median after the low cut (-1.0 dB under it with a chord held)
     (10, 0, "P_TRIM", 101), (10, 1, "P_TRIM", 81),       # PAD SPLIT: -5 dB with a chord held (was +6.0 dB over the set)
     (11, 0, "P_TRIM", 113), (11, 1, "P_TRIM", 108),      # WHISPER TIDE: -6 dB (was +6.8)
-    (13, 0, "P_TRIM", 91), (13, 1, "P_TRIM", 114),       # COLD CHAPEL: -5 dB (was +5.4)
 ]
 REBUILT = (1, 5, 8, 9, 17, 18)
 
