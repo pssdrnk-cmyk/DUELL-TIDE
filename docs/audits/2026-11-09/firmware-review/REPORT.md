@@ -2,18 +2,20 @@
 
 Reviewed: DUELL with TIDE 1.0.0-b6 as published (`fd4b6c6` on `jam11`), read as the TIDE build. Six reviewers each traced one area of the code by reading it; nothing was built, rendered or run on the FM-1. The coordinator re-read the code behind the nine findings marked ✔ below. Everything already on the ROADMAP, in KNOWN_ISSUES / KNOWN_LIMITS or in the audits of 8 and 9 November was left out.
 
+**Ranked for the owner's setup (9 November):** the FM-1 is played DAWless. It receives notes and clock over MIDI and sends nothing that other gear follows, and its audio goes out through the jacks, not into a computer. Findings that only show when the FM-1 plays other gear over MIDI out, or when its USB audio is recorded on a computer, are set aside at the end; findings on MIDI input and clock were moved up.
+
 Files: the lane reports with the full traces are in [`lanes/`](lanes/) (A keys and MIDI, B sequencer, C MORPH and loading, D screens, E saved data, F audio core). The briefs are in [`TASKS.md`](TASKS.md), the rows are in the [ROADMAP](../../../ROADMAP.md).
 
 ## Verdict
 
 **No way to lose saved data in normal use, no crash, no hanging note on the FM-1 itself.** The storage commit order, the editor's transfers, the update path, the two-core hand-off, MIDI parsing and voice stealing were traced and are sound (each lane lists what it found correct, so nobody audits it again).
 
-**35 new findings: 1 P1, 11 P2, 23 P3.** They cluster in four places:
+**35 new findings: 1 P1, 9 P2, 21 P3, and 4 set aside** as they can't be met on this setup. The ones that count cluster in four places:
 
 1. **Timing under TIDE.** A swung pattern comes back late from a POLY stretch of odd length and stays late (the one P1). Knob recording on ARP SEQ parts follows the wrong clock.
 2. **The other part gets hurt.** Things done to one part or to BOTH change the part you didn't touch: a GLIDE on BOTH snaps the other fader, a saved-sound load cuts the other part's held notes, a fast PRESETS turn lands on the other part.
 3. **End B is fragile outside the unit's own SAVE.** The web editor's save drops it; load UNDO and AUTO TIDE's HOME re-roll it; loading a factory multi switches ROLL ARP / ROLL PITCH off for good.
-4. **MIDI out from the keys.** The FM-1 itself never hangs, but a DAW or second synth is left with hanging notes in three ordinary cases. The b7 play-mode try-out turns one of them into an everyday path.
+4. **A MIDI keyboard into the arp.** Notes that arrive over MIDI aren't always counted out again: after a sound change the arp can play on with no key held, HOLD can stop replacing its chord, and a pitch bend can stay on the part you left.
 
 The rest are small screen-and-control slips (stray letters in RENAME, OCT- acting twice, wrong cancel message) and words that don't match the unit (ERASE DATA erases the FM6 bank and the user tables without saying so).
 
@@ -31,14 +33,12 @@ The rest are small screen-and-control slips (stray letters in RENAME, OCT- actin
 
 | ID | What the player meets | Size | Brief |
 |---|---|---|---|
-| A1 ✔ | Two keys that play the same note (a scale with SNAP, or an octave shift): the DAW gets a note-on and never the note-off. | ~15 B, int. | [FR2](TASKS.md#fr2) |
-| A2 ✔ | Keys held across a MODE change (a multi load, the mode control): the DAW keeps every held note. b7's play-mode try-out makes this happen at every part change. | ~40 B, int. | [FR2](TASKS.md#fr2) |
+| A3 | ARP set to KEEPS RUNNING, a chord held on a MIDI keyboard, a sound change, keys released: the arp plays on until STOP ALL. | ~10 B, int. | [FR8](TASKS.md#fr8) |
 | E1 ✔ | A sound saved to a slot from the web editor loses its End B: every later load rolls a new random B. The editor's own protocol text promises End B is kept, and the test that should catch it compares the function with itself. | ~40 B | [FR3](TASKS.md#fr3) |
 | C1 ✔ | GLIDE with BOTH selected, the two faders at different places: the other part's fader jumps to the selected part's place in one block, switches and all. The AUTO TIDE picture doesn't show the jump. | ~30 B | [FR4](TASKS.md#fr4) |
 | C3 ✔ | Loading any factory multi sets ROLL ARP and ROLL PITCH to OFF and ROLL TYPE WILD to SMART, and saves that into the settings. b6 fixed the same thing for AMOUNT only. | ~8 B | [FR5](TASKS.md#fr5) |
 | F1 ✔ | Part 1 holds a big chord or a latched drone; you load one of your own saved sounds (or a multi or pattern) on part 2: part 1 loses notes at once and they don't come back while held. Factory sounds don't do it. | ~0 B | [FR6](TASKS.md#fr6) |
 | D1 ✔ | SAVE held, knob 2 (RENAME) turned more than one click: the rest of the turn types a stray character into the name. OCT+ then saves the wrong name. | ~12 B | [FR7](TASKS.md#fr7) |
-| A3 | ARP set to KEEPS RUNNING, a chord held on a MIDI keyboard, a sound change, keys released: the arp plays on until STOP ALL. | ~10 B, int. | [FR8](TASKS.md#fr8) |
 | B2 | On an ARP SEQ part (both parts of M02) a recorded knob lock sits on the sequencer's step, not the arp's: after the next key press, a different ARP RATE or a POLY stretch it colours another note than the one you turned it on. | ~60-90 B, int. | [FR9](TASKS.md#fr9) |
 | C2 | Load UNDO / REDO, and HOME on AUTO TIDE, bring a saved USER patch back with a new random End B; hand-set B values are gone. | ~40-60 B | [FR10](TASKS.md#fr10) |
 | E2 | ERASE DATA also erases the FM6 voice bank and the three user wavetables. The dialog doesn't list them; INSTALL.md and QUICKSTART say the bank is kept. | ~20 B + docs | [FR11](TASKS.md#fr11) |
@@ -48,7 +48,6 @@ The rest are small screen-and-control slips (stray letters in RENAME, OCT- actin
 | ID | What the player meets | Brief |
 |---|---|---|
 | A4 | The same note from the keys and from MIDI on an arp part: HOLD adds to the chord instead of replacing it, and HOLD off leaves the arp running. | [FR8](TASKS.md#fr8) |
-| A5 | A part's MIDI channel changed while a key is held: the note-off goes out on the new channel. | [FR2](TASKS.md#fr2) |
 | A6 | MIDI IN = SEL, the wheel bent across a part change: the old part stays out of tune. | [FR8](TASKS.md#fr8) |
 | A7 | Flash: `midi_play` holds its chord-keeping code twice (~120-200 B to win, unmeasured). | [ROADMAP](../../../ROADMAP.md), memory savings |
 | B3 | VOIC moves a chord's out-of-scale tone onto the scale even with OFF-SCALE PLAY. | [FR13](TASKS.md#fr13) |
@@ -69,29 +68,42 @@ The rest are small screen-and-control slips (stray letters in RENAME, OCT- actin
 | E4 | (Suspected) the editor's MENU tab writes the settings to flash on every request, with no rest time. | [FR15](TASKS.md#fr15) |
 | E5 | A `--release` build accepts the developer switches from the environment, so keeping the serial console out depends on the builder's shell. | [FR15](TASKS.md#fr15) |
 | F2 | (Suspected size) the effect code for bus B is a second full copy: ~10.6 KB by the b4 symbol sizes, ~9 KB to win. | [ROADMAP](../../../ROADMAP.md), memory savings |
-| F3 | A USB recording gets a hard 17-40 ms gap with two clicks when the unit writes flash (stopped transport only); the speaker gets the soft dip. | [FR15](TASKS.md#fr15) |
+
+### Set aside: can't be met on a DAWless FM-1
+
+These are real in the code, but they need the FM-1 to send notes to other gear, or its USB audio to be recorded on a computer. They are not scheduled; the briefs stay in case the setup changes.
+
+| ID | What would happen | Brief |
+|---|---|---|
+| A1 ✔ | Two keys that play the same note: gear following the FM-1's MIDI out gets a note-on and never the note-off. | [FR2](TASKS.md#fr2) |
+| A2 ✔ | Keys held across a MODE change: the following gear keeps every held note. | [FR2](TASKS.md#fr2) |
+| A5 | A part's MIDI channel changed while a key is held: the note-off goes out on the new channel. | [FR2](TASKS.md#fr2) |
+| F3 | A USB recording on a computer gets a hard 17-40 ms gap when the unit writes flash; the jacks get the soft dip. | [FR15](TASKS.md#fr15) |
 
 ## Recommendation
 
-**b7, before the play-mode try-out goes to the owner** (about 300 B together; 4.8 KB are free):
+**b7** (about 290 B together; 4.8 KB are free):
 
-1. [FR2](TASKS.md#fr2) keys' MIDI out (A1, A2, A5). b7's try-out sends every part change through the mode change, so A2 would hit at every part switch with a key down. The b7 builder also needs to know that the mode change silences held keys by design: under the try-out, switching part with a chord held cuts the chord.
-2. [FR1](TASKS.md#fr1) swung POLY (B1): the only P1, a cheap fix, and no existing test runs POLY with swing.
+1. [FR1](TASKS.md#fr1) swung POLY (B1): the only P1, a cheap fix, and no existing test runs POLY with swing. It shows against an external clock and the drum machine's kick just as against the FM-1's own click.
+2. [FR8](TASKS.md#fr8) a MIDI keyboard into the arp (A3, A4, A6): this is how the FM-1 is played here, so it moves up from b8.
 3. [FR4](TASKS.md#fr4) GLIDE on BOTH (C1), in the same branch as the planned J2 and X1: same launch code.
 4. [FR5](TASKS.md#fr5) factory multis keep the ROLL rows (C3): one line beside b6's AMOUNT rule.
-5. [FR3](TASKS.md#fr3) editor save keeps End B (E1), with a test that really compares bytes.
-6. [FR7](TASKS.md#fr7) the small control fixes (D1, D2, D6, D7, D9).
-7. [FR11](TASKS.md#fr11) words (E2 dialog and docs, C5, D4, D5), into the existing docs-fixes row.
+5. [FR7](TASKS.md#fr7) the small control fixes (D1, D2, D6, D7, D9).
+6. [FR11](TASKS.md#fr11) words (E2 dialog and docs, C5, D4, D5), into the existing docs-fixes row.
+7. [FR3](TASKS.md#fr3) editor save keeps End B (E1): last, as it only matters when the web editor is used to save sounds.
+
+For the play-mode try-out: the mode change silences held keys by design, so under the try-out switching part with a chord held cuts the chord. Tell the owner with the try-out.
 
 **b8:**
 
 8. [FR6](TASKS.md#fr6) saved-sound load cuts the other part's notes (F1). It changes two-core code, so it gets its own FM-1 check and doesn't ride with b7's experiment.
-9. [FR8](TASKS.md#fr8) held-note bookkeeping between MIDI, keys and the arp (A3, A4, A6).
-10. [FR10](TASKS.md#fr10) UNDO / HOME keep a USER patch's End B (C2).
-11. [FR9](TASKS.md#fr9) knob locks on ARP SEQ (B2), next to the live-recording limits row.
-12. [FR13](TASKS.md#fr13) pattern polish (B3, B5; B4 folded into the existing bass brief).
+9. [FR10](TASKS.md#fr10) UNDO / HOME keep a USER patch's End B (C2).
+10. [FR9](TASKS.md#fr9) knob locks on ARP SEQ (B2), next to the live-recording limits row.
+11. [FR13](TASKS.md#fr13) pattern polish (B3, B5; B4 folded into the existing bass brief).
 
-**Before 1.0.0:** [FR14](TASKS.md#fr14) stale patch records (E3); [FR12](TASKS.md#fr12) BOTH save from the read-only places (D3), with the USER-slot work; [FR15](TASKS.md#fr15) housekeeping (E5 release guard, F3 USB dip, one erase count for E4); read core 1's stack peak on the unit with TIDE's crossings and wash running (the 1,744 B figure predates them).
+**Before 1.0.0:** [FR14](TASKS.md#fr14) stale patch records (E3); [FR12](TASKS.md#fr12) BOTH save from the read-only places (D3), with the USER-slot work; [FR15](TASKS.md#fr15) housekeeping (E5 release guard, one erase count for E4); read core 1's stack peak on the unit with TIDE's crossings and wash running (the 1,744 B figure predates them).
+
+**Not scheduled, set aside:** [FR2](TASKS.md#fr2) (the keys' MIDI out) and the USB-recording dip in FR15.
 
 **Reserve, not scheduled:** F2 (~9 KB of flash from one copy of the bus effects) is the largest reserve anyone has found, larger than every row in the space audit except the factory multis. It needs a DUEL CPU sweep, so keep it for when a feature needs the room. A7 is ~150 B on the same terms.
 
@@ -108,6 +120,8 @@ None blocks the work above; each has a default that applies if unanswered.
 3. **SAVE after JOURNEY (C4).** SAVE stores the sound you loaded, not the A that JOURNEY has moved to (KEEP freezes what you hear). **Default: SAVE shows a short message when the two differ.**
 
 ## What was not covered
+
+- The external clock was read (Start, Stop, Continue, a lost clock, tempo changes) and found sound; it was not tried with the owner's drum machine as master.
 
 - Nothing was run: every finding is from reading the code. FR1, FR4 and FR6 each include a host check that reproduces the fault first.
 - Not read: the engines' voice code one by one (`eng_*.c`, `fm6_core.c`, `phys_*.c`), the reverb models line by line, `budget.c`'s ease ladder, `mod_begin` and LFO sync, the drawing code (`ui_draw.c`, `ui_graph.c`, `ui_scope.c`), the key scan in the HAL, the web editor and installer. No overflow proof at extreme resonance or feedback.

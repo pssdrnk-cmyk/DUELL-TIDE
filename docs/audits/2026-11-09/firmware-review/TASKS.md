@@ -34,7 +34,9 @@ Briefs for the findings in [`REPORT.md`](REPORT.md), in the recommended order. E
 ---
 
 <a id="fr2"></a>
-## FR2. The keys' MIDI out always sends its note-offs (A1, A2, A5; P2, S)
+## FR2. The keys' MIDI out always sends its note-offs (A1, A2, A5; set aside)
+
+**Set aside (owner, 9 November):** the FM-1 is played DAWless and nothing follows its MIDI out, so these can't be met. Not scheduled; build only if the FM-1 is ever used to play other gear.
 
 **Why:** three ordinary cases leave a DAW or second synth with hanging notes while the FM-1 itself is silent. Trace: [lanes/A.md](lanes/A.md) A1, A2, A5.
 - **A1:** `key_tone` (`seq.c:1057-1073`) returns early when another key already holds the note, before it sets the key's `kb_mo` bit. The first key's release skips the note (the second holds it); the second key's release has no `kb_mo` bit, so no note-off goes out.
@@ -51,7 +53,7 @@ Briefs for the findings in [`REPORT.md`](REPORT.md), in the recommended order. E
 - The three checks pass; `midiout`, `mode`, `scale`, `chord` pass.
 - About 70 B flash, ≤ 27 B RAM. Audio interrupt, event paths only.
 
-**For the b7 play-mode builder (fix/b7-playmode):** land this before the try-out goes to the owner. Also know that `mode_apply` silences held keys by design: with the part selection picking the play mode, a part change under a held chord cuts the chord. Say so in the try-out's note to the owner.
+**For the b7 play-mode builder (fix/b7-playmode):** this brief does not gate the try-out. Do know that `mode_apply` silences held keys by design: with the part selection picking the play mode, a part change under a held chord cuts the chord. Say so in the try-out's note to the owner.
 
 **Owner questions:** none.
 
@@ -148,6 +150,8 @@ Briefs for the findings in [`REPORT.md`](REPORT.md), in the recommended order. E
 
 <a id="fr8"></a>
 ## FR8. Held notes from MIDI, the keys and the arp stay counted (A3, A4, A6; P2-P3, S)
+
+**Priority:** b7. The FM-1 is played from a MIDI keyboard and clock (it sends nothing), so the MIDI-input paths are the ones the owner meets.
 
 **Why:** three bookkeeping gaps. Trace: [lanes/A.md](lanes/A.md) A3, A4, A6.
 - **A3:** with ARP = KEEPS RUNNING, the load's panic calls `midi_forget_track(i)` before the keep branch (`seq.c:1962-1976`), so the later MIDI note-offs find no owner and `arp_remove` never runs: the arp plays on.
@@ -263,11 +267,11 @@ Briefs for the findings in [`REPORT.md`](REPORT.md), in the recommended order. E
 ---
 
 <a id="fr15"></a>
-## FR15. Housekeeping (E5, F3, E4; P3, S)
+## FR15. Housekeeping (E5, E4; F3 set aside; P3, S)
 
 **Steps:**
 1. **E5:** `tools/build.py --release` stops when `FELUCCA_CDC`, `DUELL_TEST_MODE`, `DUELL_BENCH`, `FELUCCA_OTA_DRYRUN` or `FELUCCA_OTA_RAMONLY` is set to 1 in the environment (`build.py:362-390`). A release-tool test: a `--release` call with `FELUCCA_CDC=1` fails. No firmware bytes.
-2. **F3:** the flash-write dip fades only the DAC buffer (`audio.c:110-145`), so a USB recording gets a hard gap. Apply the duck gain to the block before `uac_tap` when `duck_on || duck_g < 32768`. Check in the duck's host group: frames written to `ua_ring` during the ducked halves fade to 0 and back. ~40-60 B, audio interrupt, only around a flash write.
+2. **F3 (set aside: only shows in a USB recording on a computer; skip unless asked):** the flash-write dip fades only the DAC buffer (`audio.c:110-145`), so a USB recording gets a hard gap. Apply the duck gain to the block before `uac_tap` when `duck_on || duck_g < 32768`. Check in the duck's host group: frames written to `ua_ring` during the ducked halves fade to 0 and back. ~40-60 B, audio interrupt, only around a flash write.
 3. **E4 (check first, then decide):** count flash erases during a 2 s slider drag in the editor's MENU tab (emulator, `felucca_dbg.erases`). If more than one, use the device debounce in `ed_menu_save` (`editor_menu.c:92-94`) and check how `web/editor` treats the "queued" reply. If one, close the item.
 4. On the next test-mode sweep, read core 1's stack peak (`tc_stack_peak`) with a JOURNEY crossing and WASH on; record it in `docs/TWOCORE_STAGE1.md`. The 1,744 B figure predates TIDE's crossing work on core 1 (stack: 3 KB).
 
