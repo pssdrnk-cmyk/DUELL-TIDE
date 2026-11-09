@@ -391,8 +391,7 @@ static void con_k4(const char *p)
         tcb.off = 0;
     } else if (con_word(&p, "clr")) {
         tcb.sclr = 1;
-        con_puts("k4 clr
-");
+        con_puts("k4 clr\r\n");
         return;
     }
     fm1_irq_off();
