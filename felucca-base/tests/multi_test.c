@@ -564,6 +564,30 @@ static void drones(void)
     tide_settings();
     ok &= tide_style == STY_DEEP && tide_style_holds() && gl.time == STY[STY_DEEP][1] && tide_seen[TS_STYLE] == STY_DEEP;
     ck("  M18 after it: still DRONE; M02 loaded: DEEP and its rows are back, the saved STYLE never changed", ok);
+    {   /* as a player plays them (TASKS: "hold a chord around C3"): loaded in LAYER, a C major chord on the keys of a power-on keyboard (MIDI 60 64 67;
+         * 48 and 52 need OCT- first) held 3 s, then let go: both parts sound it
+         * (the unit's console sweep played one MIDI channel and saw part 2 at 0 voices, 9 November) */
+        static pr_t dr[NSHOWN];
+        uint32_t c3 = pr_key(60), e3 = pr_key(64), g3 = pr_key(67), s, sec = (uint32_t)(FS / CTL);
+        for (s = 16u; s < 18u; s++) {
+            play_run(s, 1u << c3 | 1u << e3 | 1u << g3, 3u * sec, sec, 0, dr);
+            printf("multi:   M%02u the keys C E G (MIDI 60 64 67) held 3 s (LAYER): part 1 %u note-ons, part 2 %u; still sounding after the release (HOLD ALL): %u / %u\n",
+                   s + 1u, dr[0].n, dr[1].n, dr[0].gated_after, dr[1].gated_after);
+            if (getenv("DR_DBG")) {
+                uint32_t pi, i;
+                printf("keys %u %u %u; ", c3, e3, g3);
+                for (pi = 0; pi < 2u; pi++) {
+                    printf("part %u VOICE %d HOLD %d AMODE %d CHRD %d notes:", pi + 1u, trk[pi].p[P_VOICE], trk[pi].p[P_AHOLD], trk[pi].p[P_AMODE], trk[pi].p[P_CHRD]);
+                    for (i = 0; i < dr[pi].n && i < PR_MAX; i++)
+                        printf(" %u@%u", dr[pi].note[i], dr[pi].blk[i]);
+                    printf("; ");
+                }
+                printf("\n");
+            }
+            ck(s == 16u ? "  M17 DUNE HORN from the keys (C E G, LAYER): both parts sound the chord" : "  M18 VOID DEEP from the keys (C E G, LAYER): both parts sound the chord",
+               c3 < 27u && e3 < 27u && g3 < 27u && dr[0].n >= 3u && dr[1].n >= 3u);
+        }
+    }
     (void)amt; (void)set;
 }
 #endif
