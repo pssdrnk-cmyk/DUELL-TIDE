@@ -827,8 +827,10 @@ static void patch_save_ask(void)
         return;
     }
     if (cur_page()->graph == GR_SLOTS) {    /* MULTIS: the multi picked, the music over it under its name (an empty slot: NAME) */
-        uint32_t k = (uint32_t)(song.g[G_SLOT] - 1) % MU_SLOTS;
-        if (transport_busy())
+        uint32_t k = (uint32_t)(song.g[G_SLOT] - 1) % MU_SHOWN;
+        if (MU_ROM(k))                                  /* (TIDE b6: M17, M18 are ROM only) */
+            ui_message(MU_ROM_SAY);
+        else if (transport_busy())
             ui_message("STOP TO SAVE");
         else if (project_used(k))
             confirm_open(CF_HOLD_MULTI, k);
@@ -1024,15 +1026,15 @@ static void test_knob(uint32_t slot, int32_t s)
     {
         int32_t k = (int32_t)test_slot(), dir = s > 0 ? 1 : -1, n = s > 0 ? s : -s, to = k;
         char b[24];
-        if (k >= (int32_t)MU_SLOTS) {
+        if (k >= (int32_t)MU_SHOWN) {
             ui_message("NO MULTI SAVED");
             return;
         }
         for (; n > 0; n--) {
             int32_t j = to + dir;
-            while (j >= 0 && j < (int32_t)MU_SLOTS && !project_used((uint32_t)j))
+            while (j >= 0 && j < (int32_t)MU_SHOWN && !project_used((uint32_t)j))
                 j += dir;
-            if (j < 0 || j >= (int32_t)MU_SLOTS)
+            if (j < 0 || j >= (int32_t)MU_SHOWN)
                 break;
             to = j;
         }
@@ -1632,7 +1634,9 @@ static void act_do(void)
         if (c == 1u) {
             project_load(k);                              /* (no dialog, as PROJECT's LOAD; playing: it goes on) */
         } else if (c == 2u) {
-            if (transport_busy())
+            if (MU_ROM(k))                                /* (TIDE b6: M17, M18 are ROM only: an edit of one saves into M01..M16) */
+                ui_message(MU_ROM_SAY);
+            else if (transport_busy())
                 ui_message("STOP TO SAVE");
             else if (project_used(k))
                 confirm_open(CF_OVR_PROJ, k);             /* OVERWRITE M05? */
@@ -2198,7 +2202,7 @@ static void ui_input(void)
             ui.confirm = 0;
             ui.force = 1;
             if (kind == CF_OVR_PROJ) {                  /* overwrite: the NAME screen writes it */
-                name_open(NK_PROJ_SAVE, ui.confirm_trk % 16u);
+                name_open(NK_PROJ_SAVE, ui.confirm_trk % MU_SHOWN);
             } else if (kind == CF_HOLD_PSLOT) {         /* SAVE held on PATTERNS: straight into the slot, its name kept */
                 char tag[4], pn[13];
                 pat_label(ui.confirm_trk % PS_SLOTS, tag, pn);
@@ -2207,8 +2211,8 @@ static void ui_input(void)
                 pslot_save_ui(ui.confirm_trk % PS_SLOTS, pn);
             } else if (kind == CF_HOLD_MULTI) {         /* SAVE held on MULTIS: straight into the slot, its name kept */
                 char pn[13];
-                project_name(ui.confirm_trk % MU_SLOTS, pn);
-                project_save_as(ui.confirm_trk % MU_SLOTS, pn);
+                project_name(ui.confirm_trk % MU_SHOWN, pn);
+                project_save_as(ui.confirm_trk % MU_SHOWN, pn);
             } else if (kind == CF_RESTORE_ALL) {
                 patch_restore_all_do();
             } else if (kind == CF_LOAD_PAT) {

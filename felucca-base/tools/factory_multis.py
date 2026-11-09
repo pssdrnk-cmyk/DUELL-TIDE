@@ -300,6 +300,7 @@ static const uint8_t DF_SLOT[1] = {0};
 static const uint16_t DM_LEN[1] = {0};
 static const uint16_t DM_AT[1] = {0};
 static const uint8_t DM_REC[1] = {0};
+static const uint8_t *dm_rec(uint32_t i, uint8_t *out) { (void)out; return DM_REC + i; }
 """
 
 

@@ -352,8 +352,8 @@ static void con_mload(const char *p)                   /* (probe) mload N: load 
         p++;
     while (*p >= '0' && *p <= '9')
         n = n * 10 + (*p++ - '0');
-    if (n < 1 || n > (int32_t)MU_SLOTS) {
-        con_puts("mload 1..16\r\n");
+    if (n < 1 || n > (int32_t)MU_SHOWN) {
+        con_puts(MU_SHOWN > 16u ? "mload 1..18\r\n" : "mload 1..16\r\n");
         return;
     }
     project_load((uint32_t)(n - 1));

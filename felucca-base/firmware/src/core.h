@@ -569,6 +569,15 @@ typedef struct {                 /* the part in mix_part, its window: one per pa
 #ifndef DUELL_TIDE
 #define DUELL_TIDE 1                /* (needed here: track_t below has TIDE's live-recording fields before tide.h, included at the end of this file, sets it too) */
 #endif
+/* TIDE 1.0.0-b6: the multis SHOWN (lists, labels, pickers, previews, MIDI program change) are M01..M18; the STORED ones stay MU_SLOTS (16: the flash
+ * objects, storage.c). M17 DUNE HORN and M18 VOID DEEP are ROM only (MU_ROM; multi.c: they load and preview, never save, rename or erase) */
+#if DUELL_TIDE
+#define MU_SHOWN 18u
+#else
+#define MU_SHOWN MU_SLOTS
+#endif
+#define MU_ROM(k) ((uint32_t)(k) >= MU_SLOTS)
+#define MU_ROM_SAY "SAVE TO M01-M16"   /* SAVE / rename refused on M17, M18 (multi.c), as SOUNDS says PICK A USER SLOT */
 typedef struct track {
     int16_t p[EXT_P_LEN];        /* P_COUNT ids, a gap at 127, then the NX extension slots (ext.h XV); every store and format still counts P_COUNT */
     uint8_t engine, preset;      /* engine: what the audio ISR renders */

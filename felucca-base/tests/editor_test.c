@@ -457,6 +457,16 @@ static int malformed_saves(void)
     TSEL->p[P_LEVEL] = 21; song.playing = 1; host_progress = 0;
     bad += check("PROJECT never confirms a used slot when STOP timed out (DUELL: the slot is a MULTI)",
                  !request(ED_PROJECT, save, sizeof save));
+#if DUELL_TIDE
+    {   /* TIDE b6: a save to the ROM-only M17 / M18 is refused before the transport is touched: playback goes on, nothing is confirmed */
+        static const uint8_t rom[] = {1, 16}, rom2[] = {1, 17}, past[] = {1, 18};
+        song.playing = 1; host_progress = 1; transport_req = 0;
+        bad += check("PROJECT save to M17 / M18 (ROM only) is refused without stopping playback; slot 18 and up are invalid",
+                     !request(ED_PROJECT, rom, sizeof rom) && !request(ED_PROJECT, rom2, sizeof rom2) && !request(ED_PROJECT, past, sizeof past) &&
+                     song.playing && transport_req == 0u);
+        song.playing = 0; host_progress = 0;
+    }
+#endif
     return bad;
 }
 

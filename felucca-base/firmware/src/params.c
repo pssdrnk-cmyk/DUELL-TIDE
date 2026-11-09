@@ -358,7 +358,7 @@ static const param_desc_t GP[G_COUNT + 7u] = {
      * stored with the project as before. (was "--": stored 0 = CH1-4, as MIDI IN always was) */
     [G_ROUTE] = PE("ROUT", N_ROUTE, 0),
     [G_DMODE] = PE("MODE", N_DMODE, DMD_DIGITAL),   /* 0.2.16 (on the id of the old, unused G_INFO): the delay's mode, DIGI(TAL) (the plain delay, as ever) / PING(-PONG) / RAND(OM) / OCT+ (UP) */
-    [G_SLOT] = PD("SLOT", F_INT, 1, 16, 1),   /* DUELL: SAVE > MULTI's slot, M01..M16 (project.c multi.c) */
+    [G_SLOT] = PD("SLOT", F_INT, 1, (int)MU_SHOWN, 1),   /* DUELL: SAVE > MULTI's slot, M01..M16 (TIDE b6: M01..M18, core.h MU_SHOWN; project.c multi.c) */
     [G_SHMOD] = PD("MOD", F_PCT, 0, 100, 0),   /* 0.2.19 (on the id of the old, never shown G_NAME): SHIM's drift of the return's pitch, 0 = off (the old SHIM, bit for bit) */
     [G_LOAD] = PE("LOAD", N_GO, 0),
     [G_SAVE] = PE("SAVE", N_GO, 0),

@@ -427,6 +427,147 @@ static void editb_worst_multi(void)
             ck("  (erased again)", project_erase(13u) == 0 && project_factory(13));
 }
 
+#if DUELL_TIDE
+/* TIDE 1.0.0-b6: the built-in drone multis M17 DUNE HORN and M18 VOID DEEP (ROM only, MU_ROM): they show, load and preview as the factory multis do and match
+ * their ROM records byte for byte; SAVE, rename and ERASE on them are refused and write nothing; M01..M16 and the flash objects are as before; MIDI program
+ * change 16 and 17 load them, 18 and up are ignored; while one is loaded TIDE plays STYLE DRONE, another multi brings the STYLE back, the saved one never changes */
+static void drones(void)
+{
+    static const char *const DN[2] = {"DUNE HORN", "VOID DEEP"};
+    static const char *const DS[2][2] = {{"HORN SWELL", "VOID SHIMMER"}, {"VOID SHIMMER", "SOLAR WIND"}};
+    uint8_t rec[MU_REC_MAX], obj[MU_NOBJ][MU_OBJ_MAX], amt[NSHOWN], set[6];
+    uint16_t objn[MU_NOBJ];
+    project_t q;
+    static uint8_t snap[0x100000], dmb[MU_REC_MAX + 1u];
+    uint32_t k, o, cut, len, ok, style0, gen;
+    char nm[PROJ_NAME_LEN + 1u];
+    mu_pv_t pv;
+    song.playing = 0;
+    duell_mode = duell_mode_req = DM_LAYER;
+    for (k = 0, ok = 1; k < DF_N; k++) {             /* SP1 (b6): the ROM holds the records packed; each rebuilds byte for byte to its source file */
+        char path[64];
+        FILE *f;
+        snprintf(path, sizeof path, DF_SLOT[k] < MU_SLOTS ? "tools/factory_multis/M%02u.bin" : "tools/drone_multis/M%02u.bin", (unsigned)DF_SLOT[k] + 1u);
+        f = fopen(path, "rb");
+        len = f ? (uint32_t)fread(rec, 1, sizeof rec, f) : 0u;
+        if (f)
+            fclose(f);
+        memset(dmb, 0xA5, sizeof dmb);
+        ok &= len > MU_G_AT && len == DM_LEN[k] && len <= MU_REC_MAX && !memcmp(rec, dm_rec(k, dmb), len) && dmb[len] == 0xA5u;
+    }
+    ck("drones: all 18 factory records (M01-M16, M17, M18) rebuild from the packed ROM byte for byte to their .bin files, and write nothing past their length", ok && DF_N == 18u);
+    {                                                /* the rebuild beside a stored partner: M02 saved, M01 empty (its factory record decodes at the end of the staging buffer) */
+        char nm2[PROJ_NAME_LEN + 1u];
+        uint32_t l1;
+        ok = project_save_as(1u, "PARTNER") == 0;
+        mu_obj_read(0u);
+        len = mu_put_rec(0u, 0, &cut, 0, 0);       /* (M01 emptied: its factory multi) */
+        ok &= mu_obj_write(0u, len) == 0;
+        mu_obj_read(0u);
+        (void)mu_rec(1u, &l1);
+        mu_note(0u);
+        ok &= project_factory(0u) && project_info(0u, nm) && str_eq(nm, "BASIC CHORD") && project_info(1u, nm2) && str_eq(nm2, "PARTNER") && !project_factory(1u);
+        mu_obj_read(0u);
+        multi_preview(0u, &pv);
+        ok &= pv.state == 1u && MU_HDR + l1 <= MU_OBJ_MAX - MU_REC_MAX;
+        project_load(0u);
+        ok &= proj_cur == 0u;
+        project_load(1u);
+        ok &= proj_cur == 1u;
+        ok &= project_erase(1u) == 0 && project_factory(1u);
+        ck("  a factory record rebuilt beside a stored partner (M01 factory, M02 saved): both list, preview and load; the partner is untouched", ok);
+    }
+    for (o = 0; o < MU_NOBJ; o++) {                  /* (the store before: every object of M01..M16) */
+        objn[o] = (uint16_t)mu_obj_read(o);
+        memcpy(obj[o], mu_buf, objn[o]);
+    }
+    ck("drones: MU_SHOWN 18, MU_SLOTS (stored) still 16, the flash objects as before (OBJ_PATCH0 = OBJ_MULTI0 + 8)", MU_SHOWN == 18u && MU_SLOTS == 16u && MU_NOBJ == 8u && DF_N == 18u);
+    for (k = 16u, ok = 1; k < 18u; k++) {
+        ok &= project_used(k) && project_factory(k) && !multi_bad(k) && project_info(k, nm) && str_eq(nm, DN[k - 16u]) && df_of(k) == k;
+        ok &= str_eq(multi_vname(k, 0), DS[k - 16u][0]) && str_eq(multi_vname(k, 1), DS[k - 16u][1]) && (multi_vmode(k, 0) & 3u) == 0u;
+        multi_preview(k, &pv);
+        ok &= pv.state == 1u;
+    }
+    ck("  M17 DUNE HORN, M18 VOID DEEP: used, factory, their names, sounds (HORN SWELL + VOID SHIMMER, VOID SHIMMER + SOLAR WIND), arp OFF, the preview decodes", ok);
+    for (k = 16u; k < 18u; k++) {
+        char path[64];
+        FILE *f;
+        uint32_t t;
+        snprintf(path, sizeof path, "tools/drone_multis/M%u.bin", (unsigned)k + 1u);   /* (the source of the ROM record: tools/drone_pack.py) */
+        f = fopen(path, "rb");
+        len = f ? (uint32_t)fread(rec, 1, sizeof rec, f) : 0u;
+        if (f)
+            fclose(f);
+        ok = len == DM_LEN[k] && !memcmp(rec, dm_rec(k, dmb), len) && rec[4] == DM_LAYER;
+        ok &= mu_unpack(&q, amt, set, dm_rec(k, dmb), DM_LEN[k]);
+        project_load(k);
+        frame();
+        for (t = 0; t < NSHOWN; t++)
+            trk[t].engine = trk[t].eng_req;          /* (the engine-change fade, which audio blocks would finish) */
+        ok &= proj_cur == k;
+        for (t = 0; ok && t < NSHOWN; t++)
+            ok &= trk[t].eng_req == q.t[t].engine && trk[t].preset == q.t[t].preset && !memcmp(trk[t].p, q.t[t].p, sizeof q.t[t].p) &&
+                  !memcmp(trk[t].step, q.t[t].step, sizeof q.t[t].step);
+        ok &= trk[0].p[P_AHOLD] && trk[1].p[P_AHOLD] && !trk[0].p[P_AMODE] && !trk[1].p[P_AMODE] && song.g[G_BPM] == 60;
+        ck(k == 16u ? "  M17: the ROM record is tools/drone_multis/M17.bin byte for byte (LAYER); LOAD gives its engines, sounds, every value and step; HOLD, arp OFF, 60 BPM"
+                    : "  M18: the ROM record is tools/drone_multis/M18.bin byte for byte (LAYER); LOAD gives its engines, sounds, every value and step; HOLD, arp OFF, 60 BPM", ok);
+    }
+    memcpy(snap, nor, sizeof snap);
+    gen = multi_gen();
+    ok = project_save_as(16u, "MINE") != 0 && msg_is(MU_ROM_SAY) && project_rename(17u, "MINE") != 0 && project_erase(17u) != 0 && msg_is("ALREADY FACTORY");
+    ok &= project_save(17u) != 0 && !memcmp(snap, nor, sizeof snap) && multi_gen() == gen && project_info(16u, nm) && str_eq(nm, "DUNE HORN");
+    ck("  SAVE, rename and ERASE on M17 / M18 refused (SAVE TO M01-M16, ALREADY FACTORY), nothing written, the names stand", ok);
+    go_title("MULTIS");
+    song.g[G_SLOT] = 18;
+    frame();
+    ui.act = 3;                                      /* (K3: SAVE picked) */
+    act_do();
+    ck("  the MULTIS page: SAVE on M18 says SAVE TO M01-M16, no dialog, no NAME screen, nothing written", msg_is(MU_ROM_SAY) && !ui.confirm && !name_on() &&
+       !memcmp(snap + 0x97000, nor + 0x97000, 0x8000) && !memcmp(snap + 0xCE000, nor + 0xCE000, 0x8000));
+    for (o = 0, ok = 1; o < MU_NOBJ; o++)
+        ok &= mu_obj_read(o) == objn[o] && !memcmp(mu_buf, obj[o], objn[o]);
+    ck("  every flash object of M01..M16 reads back unchanged (no format change)", ok);
+    ok = project_save_as(3u, "EDITED DRONE") == 0 && project_info(3u, nm) && str_eq(nm, "EDITED DRONE") && !project_factory(3u);
+    project_load(3u);
+    ok &= proj_cur == 3u && project_erase(3u) == 0 && project_factory(3u) && project_info(3u, nm) && str_eq(nm, "NIGHT ORGAN");
+    ck("  an edited drone multi saves into M04 like any other, loads, and ERASE brings the factory M04 back", ok);
+    proj_cur = 0;
+    midi_pc(0, 16);
+    pc_poll();
+    ok = proj_cur == 16u;
+    midi_pc(0, 17);
+    pc_poll();
+    ok &= proj_cur == 17u;
+    project_load(1u);                                /* (M02: M01 holds the DAMAGED record of the check above) */
+    midi_pc(0, 18);
+    pc_poll();
+    midi_pc(0, 127);
+    pc_poll();
+    ck("  MIDI program change 16, 17 (LAYER) load M17, M18; 18 and 127 are ignored", ok && proj_cur == 1u);
+    tide_settings();
+    tide_style_apply(STY_DEEP);                     /* (the player's STYLE) */
+    tide_settings();
+    style0 = tide_seen[TS_STYLE];
+    mph[0].aset = mph[0].amount = 37u;               /* (the player's AMOUNT, knob 4: MORPH c3 keeps it over a factory load) */
+    mph[1].aset = mph[1].amount = 63u;
+    project_load(16u);
+    tide_settings();
+    ok = tide_style == STY_DRONE && tide_style_holds() && gl.mode == STY[STY_DRONE][0] && gl.time == STY[STY_DRONE][1] && str_eq(jl_vname(JL_STYLE, jl_get(JL_STYLE)), "DRONE");
+    ok &= tide_seen[TS_STYLE] == STY_DEEP && style0 == STY_DEEP && tide_seen[TS_TIME] == STY[STY_DEEP][1];
+    ck("  STYLE: M17 loaded, TIDE plays DRONE (its rows, TIDE SETTINGS shows DRONE); the saved STYLE stays DEEP", ok);
+    ck("  M17 loaded: like every factory multi (MORPH c3), both parts keep the player's AMOUNT (37 / 63), and STYLE is still DRONE",
+       mph[0].n[0] && mph[1].n[0] && mph[0].amount == 37u && mph[1].amount == 63u && tide_style == STY_DRONE);
+    project_load(17u);
+    tide_settings();
+    ok = tide_style == STY_DRONE && tide_seen[TS_STYLE] == STY_DEEP;
+    project_load(1u);
+    tide_settings();
+    ok &= tide_style == STY_DEEP && tide_style_holds() && gl.time == STY[STY_DEEP][1] && tide_seen[TS_STYLE] == STY_DEEP;
+    ck("  M18 after it: still DRONE; M02 loaded: DEEP and its rows are back, the saved STYLE never changed", ok);
+    (void)amt; (void)set;
+}
+#endif
+
 int main(void)
 {
     static track_t ref[NSHOWN];
@@ -480,8 +621,8 @@ int main(void)
     go_title("MULTIS");
     song.g[G_SLOT] = 11;
     frame();
-    ck("SAVE > MULTI is SAVE's page, sixteen slots (KNOB 1 M01..M16), all sixteen the factory multis (0.2.23; M11 WHISPER TIDE since D31)", cur_page()->graph == GR_SLOTS &&
-       cur_page()->fam == FAM_SAVE && GP[G_SLOT].max == 16 && project_used(10) && project_factory(10) && str_eq(mu_names[10], "WHISPER TIDE"));
+    ck("SAVE > MULTI is SAVE's page, KNOB 1 M01..M16 (TIDE b6: ..M18, the two ROM drone multis), all sixteen stored slots the factory multis (0.2.23; M11 WHISPER TIDE since D31)",
+       cur_page()->graph == GR_SLOTS && cur_page()->fam == FAM_SAVE && GP[G_SLOT].max == (int)MU_SHOWN && project_used(10) && project_factory(10) && str_eq(mu_names[10], "WHISPER TIDE"));
 #if DUELL_TIDE
     {                                                /* U3: browsing the MULTIS page (the preview) changes nothing live, decodes once per slot, and shows the record */
         uint32_t k, sum0, sum1, gen = multi_gen(), eng0 = trk[0].eng_req;
@@ -1016,12 +1157,19 @@ int main(void)
         ck("  the engine and patch names the panel draws follow (WAVE / DIGITAL PAD, M11 WHISPER TIDE)", str_eq(b, "M11 WHISPER TIDE") &&
            str_eq(nm_a, "DIGITAL PAD") && str_eq(ENGINES[trk[0].eng_req]->name, "WAVE"));
         turn(EN_K3, 40);
+#if DUELL_TIDE
+        ck("  many detents right: stops at the last used, M18 VOID DEEP (the built-in drone multi, TIDE b6)", proj_cur == 17u && msg_is("LOADED M18 VOID DEEP"));
+        turn(EN_K3, -2);
+        ck("  2 left: M16 FINAL REEL (WAVE + TRIO)", proj_cur == 15u && trk[0].eng_req == ENGI_WAVE && str_eq(ENGINES[trk[1].eng_req]->name, "TRIO"));
+        turn(EN_K3, 2);
+#else
         ck("  many detents right: stops at the last used, M16 FINAL REEL (WAVE + TRIO)", proj_cur == 15u && trk[0].eng_req == ENGI_WAVE && str_eq(ENGINES[trk[1].eng_req]->name, "TRIO"));
+#endif
         f0 = (uint32_t)proj_cur;
         turn(EN_K3, 1);
         ck("  right at the end: nothing", proj_cur == f0);
-        turn(EN_K3, -2);
-        ck("  2 left: M14 EERIE SIGNAL (VOICE + WHEEL)", proj_cur == 13u && trk[0].eng_req == 5u && trk[1].eng_req == 7u);
+        turn(EN_K3, -(int32_t)(MU_SHOWN - 14u));
+        ck("  back to M14 EERIE SIGNAL (VOICE + WHEEL)", proj_cur == 13u && trk[0].eng_req == 5u && trk[1].eng_req == 7u);
         turn(EN_K3, -2);
         ck("  2 more left: M12", proj_cur == 11u);
         /* K4 RESET */
@@ -1399,7 +1547,7 @@ int main(void)
             uint32_t l0;
             const uint8_t *r = mu_rec(0u, &l0);
             ok2 = DM_LEN[df_of(0u)] <= sizeof old;
-            memcpy(old, DM_REC + DM_AT[df_of(0u)], DM_LEN[df_of(0u)]);
+            memmove(old, dm_rec(df_of(0u), old), DM_LEN[df_of(0u)]);   /* (packed: rebuilt into old; plain DUELL: copied from the ROM) */
             old[0] = 2u;
             (void)r;
             ok2 &= mu_obj_write(o, mu_put_rec(0u, 1, &cut, old, DM_LEN[df_of(0u)])) == 0;
@@ -1517,6 +1665,9 @@ int main(void)
         ck("  the sound, End B and steps of the worst multi always fit (_Static_assert in multi.c)",
            MU_G_AT + 2u * MU_NG + NSHOWN * (MU_PART_FIX + MBV_MAX + NSTEP * MU_STEP + UPF_PK) + 1u + 2u <= MU_REC_MAX);
     }
+#if DUELL_TIDE
+    drones();                                        /* TIDE b6: M17 DUNE HORN, M18 VOID DEEP, ROM only */
+#endif
     keys_drive();                                    /* 6: the factory multis played from the keys (0.2.12; 0.2.23's set) */
     editb_worst_multi();                             /* 7: cloud job G, the worst multi through SAVE (it leaves the state changed: last) */
     printf(bad ? "multi: FAILED (%d)\n" : "multi: all ok\n", bad);

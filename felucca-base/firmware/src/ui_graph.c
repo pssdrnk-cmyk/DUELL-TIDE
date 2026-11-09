@@ -1224,19 +1224,19 @@ static void graph_fm6env(const track_t *t, uint16_t c)
 }
 
 /* SAVE > MULTI's slots: used and their names (project.c multi.c keeps them in RAM: cheap every frame) */
-static char graph_pname[MU_SLOTS][13];
+static char graph_pname[MU_SHOWN][13];
 static uint32_t graph_pname_sig;
 static int graph_project_used(uint32_t slot)
 {
     uint32_t i;
-    for (i = 0; i < MU_SLOTS; i++)
+    for (i = 0; i < MU_SHOWN; i++)
         project_info(i, graph_pname[i]);
     graph_pname_sig = fnv(2166136261u, graph_pname, sizeof graph_pname);
-    return project_used(slot % MU_SLOTS);
+    return project_used(slot % MU_SHOWN);
 }
 static const char *graph_project_name(uint32_t slot)  /* (after graph_project_used) */
 {
-    return graph_pname[slot % MU_SLOTS];
+    return graph_pname[slot % MU_SHOWN];
 }
 
 
@@ -1945,7 +1945,7 @@ static uint32_t graph_signature(void)
             h = (h ^ (mv_tick() + 1u) * 2654435761u) * 16777619u;
     }
     if (pg->graph == GR_SLOTS) {                     /* (a checksum over each slot) */
-        for (i = 0; i < MU_SLOTS; i++)
+        for (i = 0; i < MU_SHOWN; i++)
             h ^= (uint32_t)project_used(i) << (8u + i);
         graph_project_used(0);
         h += graph_pname_sig;
@@ -2341,7 +2341,7 @@ static mu_pv_t gsl_pv;
 static uint32_t gsl_key = 0xFFFFFFFFu;
 static void graph_slots(void)
 {
-    uint32_t cur = (uint32_t)(song.g[G_SLOT] - 1) % MU_SLOTS, e, t, f = list_first(cur, MU_SLOTS), pk = cur - f;
+    uint32_t cur = (uint32_t)(song.g[G_SLOT] - 1) % MU_SHOWN, e, t, f = list_first(cur, MU_SHOWN), pk = cur - f;
     char b[4];
     graph_project_used(0);                           /* (the names, once) */
     for (e = 0; e < LR_ROWS; e++) {
@@ -2392,7 +2392,7 @@ static __attribute__((noinline)) void list_panel(int pats)   /* (out of line: in
         else
             cv_text_on(UT_L5_NAME_X, UT_TY(S, LP_Y + 38), &AF_S, "NO SEQUENCE", T_MID, T_BG);
     } else {
-        uint32_t cur = (uint32_t)(song.g[G_SLOT] - 1) % MU_SLOTS;
+        uint32_t cur = (uint32_t)(song.g[G_SLOT] - 1) % MU_SHOWN;
         if (gsl_key != (cur | multi_gen() << 8)) {       /* the highlighted record changed: decode it once */
             gsl_key = cur | multi_gen() << 8;
             multi_preview(cur, &gsl_pv);
@@ -2423,8 +2423,8 @@ static __attribute__((noinline)) void list_panel(int pats)   /* (out of line: in
 /* SAVE > MULTI: the sixteen multis around the one picked ("M05  LOFI JAM"; unnamed "USED"; empty "M14  --" dim) */
 static void graph_slots(void)
 {
-    uint32_t cur = (uint32_t)(song.g[G_SLOT] - 1) % MU_SLOTS, r, f = list5_first(cur, MU_SLOTS);   /* TEMPLATE 9: five rows, the multi picked on the middle one where it can be */
-    for (r = 0; r < UT_L5_ROWS && f + r < MU_SLOTS; r++) {
+    uint32_t cur = (uint32_t)(song.g[G_SLOT] - 1) % MU_SHOWN, r, f = list5_first(cur, MU_SHOWN);   /* TEMPLATE 9: five rows, the multi picked on the middle one where it can be */
+    for (r = 0; r < UT_L5_ROWS && f + r < MU_SHOWN; r++) {
         char b[4];
         int used = graph_project_used(f + r);
         const char *nmp = graph_project_name(f + r);

@@ -99,6 +99,8 @@ Defaults with no saved settings (a new unit, or after ERASE DATA): STYLE DUB, th
 | PEAK | JOURNEY, 8, OFF, EVERY BAR, LEAD, GENTLE, PUSH, DROP, OFF |
 | DRONE | WANDER, 64, OFF, EVERY 4TH, TOGETHER, OFF, OFF, OFF, HIGH |
 
+The built-in drone multis M17 DUNE HORN and M18 VOID DEEP (SAVE > MULTIS, 1.0.0-b6) play as DRONE without a trip here: while one of them is the multi loaded, STYLE shows DRONE and its rows are DRONE's; loading any other multi brings back the STYLE and rows you had, and the saved STYLE never changes (a row you change while a drone multi is loaded lasts until then).
+
 DRONE is for a held chord of one of the factory drone sounds (#164 to #171) with HOLD on: WANDER keeps the sound and slowly moves it between its two ends over 64 bars, never waits at an end, and leaves out the rhythmic rows (TURNS TOGETHER, POLY, SYNC and ARC OFF) that a held chord would not use; WASH HIGH gives the slow breath. AMBIENT is JOURNEY: it hops from sound to sound and shortens loops. A STYLE saved by an earlier build still loads as the same style (CUSTOM moved from 5 to 6; an old 5 reads as CUSTOM unless its nine values are DRONE's).
 
 Dub-techno recipe: STYLE DUB, ALGORITHM BOTH (by hand: **AUTO TIDE** JOURNEY or WANDER, TIME 16, WAIT 2 to 4; **SETTINGS** TARGET BOTH, VARY EVERY 4TH, ROLL TYPE MUSIC, ROLL ARP OFF, ROLL PITCH OFF, WASH LOW). Press PLAY, twist K1 right, walk away.

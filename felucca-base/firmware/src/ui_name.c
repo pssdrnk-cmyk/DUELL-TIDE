@@ -120,7 +120,7 @@ static void name_open(uint32_t kind, uint32_t slot)
             b[0] = 0;                                  /* (an empty USER slot: a random name to start from) */
     } else {
         str_cpy(nm.ph, "MULTI ", sizeof nm.ph);       /* DUELL: "MULTI M05" (SAVE > MULTI) */
-        mu_label(nm.ph + 6, slot % MU_SLOTS);
+        mu_label(nm.ph + 6, slot % MU_SHOWN);
         if (kind == NK_PROJ_RENAME)
             project_name(slot, b);
         else
