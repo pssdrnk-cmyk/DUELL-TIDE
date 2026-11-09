@@ -257,7 +257,7 @@ static void play(uint32_t row, uint32_t style, uint32_t pitch, uint32_t tide, ui
         if (!started) {
             started = 1;
             curbar = sqm_bar;
-            drop[0] = tarc_dropphr == (((uint32_t)sqm_bar + sqm_bar_turn) >> 2 & 63u) && (((uint32_t)sqm_bar + sqm_bar_turn) & 3u) < 2u;
+            drop[0] = TARC_DROP_BAR((uint32_t)sqm_bar + sqm_bar_turn);
         } else if ((uint32_t)sqm_bar != curbar) {
             for (p = 0; p < 2u; p++) {
                 hist[p][bars_done] = cur[p];
@@ -269,7 +269,7 @@ static void play(uint32_t row, uint32_t style, uint32_t pitch, uint32_t tide, ui
                 break;
             curbar = sqm_bar;
             memset(cur, 0, sizeof cur);
-            drop[bars_done] = tarc_dropphr == (((uint32_t)sqm_bar + sqm_bar_turn) >> 2 & 63u) && (((uint32_t)sqm_bar + sqm_bar_turn) & 3u) < 2u;
+            drop[bars_done] = TARC_DROP_BAR((uint32_t)sqm_bar + sqm_bar_turn);
         }
         for (p = 0; p < 2u; p++) {
             int steps;

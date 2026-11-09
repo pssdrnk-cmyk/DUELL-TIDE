@@ -758,7 +758,7 @@ static uint32_t tide_views(const track_t *t, uint32_t page, tv_t *out)
         if (ph != TV_NOPH) {
             for (j = idx < ph ? idx : ph; j < (idx > ph ? idx : ph); j++)
                 at += (idx > ph ? 1 : -1) * (int32_t)phrase_duration(t, j, per, (int)arp, 0);
-            bar = tv_bar(at, ob, bl);
+            bar = tv_bar(at + (arp ? bl / 32 : 0), ob, bl);   /* (an ARP SEQ step from the bar's last 32nd on plays in the next: seq_morph.c sqm_bar_of; lane ARC) */
         }
         v = seq_play_step_at(t, idx, bar);
         e->n = v->n;

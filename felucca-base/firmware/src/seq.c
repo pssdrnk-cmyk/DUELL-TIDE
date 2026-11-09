@@ -373,7 +373,7 @@ static uint32_t arp_seq_notes(track_t *t, const uint32_t *list, uint32_t n, uint
             out[m++] = (uint8_t)nt;
     }
     *vel = (s->flags & SF_ACCENT) ? 127u : arp_vel(t);
-    return m;
+    return TIDE_ARP_OUT(t, out, m, vel);             /* TIDE hook (D1, MR4): its velocity with the dynamics, a thinned chord's two voices */
 }
 
 /* whether SEQ's step k is a TIE (it holds the note before it: arp_seq lengthens that note, arp_fire leaves it sounding) */

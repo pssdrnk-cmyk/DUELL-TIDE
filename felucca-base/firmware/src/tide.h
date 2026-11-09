@@ -34,7 +34,7 @@ static int tide_arp_paused(const track_t *t);
 #define TIDE_SEQ_CHORD(t, list, n) tide_seq_chord((t), (list), (n))
 /* H3 (seq.c, audio path): VARY BARS' bar count since PLAY and the bar turning in this block; the patterns' completed loops (the
  * phrase lifecycle, seq_rhythm.c). Counted here, read by tide_seq.c and the pages */
-static volatile uint8_t sqm_bar, sqm_bar_turn;
+static volatile uint8_t sqm_bar, sqm_bar_turn, sqm_bar_soon;   /* (soon: the bar's last 32nd, the bar an ARP SEQ step plays in: its clock runs a little ahead of the beat's; MR4) */
 static volatile uint8_t tide_seq_loops[NTRK];
 /* H3b (seq.c, audio path): POLY (seq_poly.c): the loop's length now, the step after seq_idx, the arp step k, an arp step started */
 static void tide_poly_start(void);
@@ -55,9 +55,9 @@ static uint32_t tide_swing_par(const track_t *t);
 #define TIDE_SEQ_RELEN(t, len) ((len) = tide_slen(t))   /* (a stretch began or ended at this step) */
 #define TIDE_ARP_IDX(t, k, len) tide_arp_idx((t), (k), (len))
 #define TIDE_ARP_TICK(t) tide_arp_tick(t)
-#define TIDE_SEQ_START() (sqm_bar = sqm_bar_turn = 0, tide_poly_start(), tide_seq_ghost_start())     /* (the phrase from the top; MIDI CONTINUE keeps it) */
+#define TIDE_SEQ_START() (sqm_bar = sqm_bar_turn = sqm_bar_soon = 0, tide_poly_start(), tide_seq_ghost_start())     /* (the phrase from the top; MIDI CONTINUE keeps it) */
 static void tide_seq_ghost_start(void);
-#define TIDE_BEAT_BLOCK(adv) (sqm_bar_turn = (uint8_t)(beat_n == 3u && beat_pos + (adv) >= beat_samples()))
+#define TIDE_BEAT_BLOCK(adv) (sqm_bar_turn = (uint8_t)(beat_n == 3u && beat_pos + (adv) >= beat_samples()), sqm_bar_soon = (uint8_t)(beat_n == 3u && beat_pos + (adv) + (beat_samples() >> 3) >= beat_samples()))
 #define TIDE_BEAT() do { if (!beat_n && song.playing) sqm_bar++; } while (0)
 #define TIDE_SEQ_LOOP(t, len) do { if (tide_seq_wrapping((t), (len)) && (t)->seq_pos < 0x7FFFFFFFu) tide_seq_loops[trk_index(t)]++; } while (0)   /* (the startup sentinel is no loop) */
 /* H3c (seq.c, audio path): the chance rolls the TIDE page shows (tide_seq.c): a step's (seq_play) and the SEQ arp's PROB (arp_fire); each returns the miss / hit it is given */
@@ -65,6 +65,8 @@ static int tide_chance_roll(const track_t *t, uint32_t idx, uint32_t chance, int
 static int tide_aroll(const track_t *t, int hit);
 #define TIDE_CHANCE(t, idx, s, miss) tide_chance_roll((t), (idx), step_chance(s) < 100u, (miss))
 #define TIDE_APROB(t, hit) tide_aroll((t), (hit))
+static uint32_t tide_arp_out(const track_t *t, uint8_t *out, uint32_t m, uint32_t *vel);
+#define TIDE_ARP_OUT(t, out, m, vel) tide_arp_out((t), (out), (m), (vel))   /* (seq.c arp_seq_notes: TIDE's dynamics on an ARP SEQ step, D1; a thinned chord's two voices, MR4) */
 /* H13 (ui_input.c, main loop): once a frame, after morph_poll: GLIDE, the SEQ MORPH's ends, the settings */
 static void tide_poll(void);
 #define TIDE_POLL() tide_poll()
@@ -200,6 +202,7 @@ static int tide_foot_two(void);
 #define TIDE_SEQ_LOOP(t, len) ((void)0)
 #define TIDE_CHANCE(t, idx, s, miss) (miss)
 #define TIDE_APROB(t, hit) (hit)
+#define TIDE_ARP_OUT(t, out, m, vel) (m)
 #define TIDE_POLL() ((void)0)
 #define TIDE_FIRST_MULTI 0
 #define TIDE_PART_FIELDS

@@ -104,12 +104,13 @@ static uint32_t sqm_best(uint32_t *score, uint32_t len)
     return b;
 }
 
-static volatile uint8_t sqm_turns = 1;                  /* TURNS: 0 TOGETHER, 1 TAKE TURNS, 2 LEAD (tide_ui.c, the TIDE LIST; ECHO folded into LEAD, D7) */
-static volatile uint32_t sqm_thin[NSHOWN][2];            /* LEAD: the steps the follower does not play, a bit each (seq_answer.c, main loop) */
+static volatile uint8_t sqm_turns = 1;                  /* TURNS: stored and shown (tide_ui.c), played by nothing since b7: CALL AND ANSWER is always on (sqm_listens) */
+static volatile uint32_t sqm_thin[NSHOWN][2];            /* the steps a thinned part does not play, a bit each (seq_answer.c, main loop) */
 static volatile int8_t sqm_dyn;                         /* ARC's dynamics, tarc_bright: +1 louder, -1 softer (seq_answer.c, main loop) */
-static volatile uint8_t sqm_lead;                        /* .. the parts LEAD answers with, a bit each: lead and pluck lines (D2; seq_answer.c) */
+static volatile uint8_t sqm_lead;                        /* the parts that listen in CALL AND ANSWER and whose chords thin to two voices, a bit each: neither a bass nor a pad (seq_answer.c, main loop) */
 static volatile uint8_t sqm_arc;                         /* ARC: 0 OFF, 1 RISE, 2 DROP (tide_ui.c, the TIDE LIST; seq_arc.c) */
-static volatile uint8_t tarc_dropphr = 0xFFu, tarc_thin, tarc_fast, tarc_hold;   /* seq_arc.c's planner to the audio side: the drop's phrase, the parts thinned, turns every bar, no POLY */
+static volatile uint8_t tarc_dropphr = 0xFFu, tarc_thin, tarc_fast, tarc_hold;   /* seq_arc.c's planner to the audio side: the drop's 8-bar unit, the parts thinned, the late rise (read by nothing since CALL AND ANSWER), no POLY */
+#define TARC_DROP_BAR(bar) (tarc_dropphr == (((bar) >> 3) & 63u) && ((bar) & 7u) < 2u)   /* (the drop's silent bars: its unit's first 2) */
 static uint32_t tarc_sync(void);
 static uint32_t glide_tide_on(void);
 static int tide_bass_part(const track_t *t);
@@ -307,46 +308,98 @@ static const step_t *sqm_step(const track_t *t, uint32_t idx, uint32_t vary)
         return q->aon || q->hold || (rhythm.active & (1u << pi)) ? &sqm_pat[pi][0][idx] : &t->step[idx];
     return &sqm_pat[pi][q->fader >= 1u + sqm_hash(q->tseed, idx / 4u, 9u) % 127u][idx];
 }
-/* LEAD: part pi follows in this bar (part 2 leads bars 1-2 of 4, part 1 bars 3-4; ARC's fast turns: a bar each; the opener swaps now and then,
- * by the seed, per 8 bars: M04): a lead or pluck line only (D2), and never on its own variation bar (audit C7: the ARC's 1-bar turns put part 2's bar 2 on part 1) */
-static int sqm_follows(uint32_t pi, uint32_t bar)
+/* CALL AND ANSWER (no setting; replaces TURNS, whose stored value is ignored): with both parts in automatic WNDR / JRNY, part pi listens
+ * in this bar: it drops to its anchors and beats, a chord to two voices, a step softer, while the other speaks. Per 4 bars: bars 1-3 one
+ * part then the other (who opens: by the bar and the seed, so it swaps every 4 bars, now and then not), bar 4 both play (their variation
+ * bar). A bass or a pad never listens (sqm_lead); against one, the other listens on bar 3 of 4 alone. Never in ARC's breakdown or
+ * RECOVER's thinned half (tarc_thin: the arc thins), so the two parts are never both thinned outside it */
+static int sqm_listens(uint32_t pi, uint32_t bar)
 {
-    return sqm_turns >= 2u && sqm_auto == 3u && ((sqm_lead >> pi) & 1u) && ((bar + 2u * pi) & 3u) != 3u &&
-           pi != ((~bar >> !tarc_fast ^ sqm_hash((uint32_t)morph.seed, bar >> 3, 0x4Cu)) & 1u);   /* (the leader: part 2 on bars 1-2 of 4, ARC's fast turns: on the odd bars; swapped on some 8-bar phrases) */
+    uint32_t q = bar & 3u;
+    if (sqm_auto != 3u || tarc_thin || !((sqm_lead >> pi) & 1u) || q == 3u)
+        return 0;
+    if (sqm_lead != 3u)
+        return q == 2u;
+    return pi == ((q ^ (bar >> 2) ^ sqm_hash((uint32_t)morph.seed, bar >> 3, 0x4Cu)) & 1u);
 }
-/* the step the sequencer plays (audio interrupt): with VARY BARS EVERY 4TH, while playing, End A but on every 4th bar (TAKE TURNS, both parts in automatic WNDR / JRNY: part 2 on bars 2 and 6) */
+/* part pi plays its thinned End A in this bar: ARC's breakdown (tarc_thin), a listening bar */
+static int sqm_thinned(uint32_t pi, uint32_t bar) { return ((tarc_thin >> pi) & 1u) || sqm_listens(pi, bar); }
+/* the step the sequencer plays (audio interrupt): with VARY BARS EVERY 4TH, while playing, End A but on every 4th bar */
 static const step_t *seq_play_step_at(const track_t *t, uint32_t idx, uint32_t bar)
 {
-    uint32_t pi = (uint32_t)(t - trk), off = sqm_turns && sqm_auto == 3u && pi == 1u;   /* TAKE TURNS: part 2 two bars on, in the shared bars (bars 2 and 6) */
-    uint32_t turn = ((bar + 2u * off) & 3u) == 3u;       /* (this part's own variation bar) */
-    const step_t *s = sqm_step(t, idx, sqm_vary_all || !song.playing || turn);
-    /* LEAD: the follower (sqm_follows) plays its thinned End A (onsets only: a tie after one stays silent) */
+    uint32_t pi = (uint32_t)(t - trk);
+    const step_t *s = sqm_step(t, idx, sqm_vary_all || !song.playing || (bar & 3u) == 3u);
+    /* a thinned bar (sqm_thinned) plays End A's mask: onsets only, a tie after one stays silent */
     if (pi < NSHOWN && song.playing && s->time == ST_NOTE) {
         /* ARC: the drop's first 2 bars, both parts in automatic WNDR / JRNY start nothing (ties and tails ring) */
-        if (tarc_dropphr == ((bar >> 2) & 63u) && (bar & 3u) < 2u && ((sqm_auto >> pi) & 1u))
+        if (TARC_DROP_BAR(bar) && ((sqm_auto >> pi) & 1u))
             return &SQM_REST;
-        if (idx < NSTEP && !poly_len[pi] && ((sqm_thin[pi][idx >> 5] >> (idx & 31u)) & 1u) &&
-            (((tarc_thin >> pi) & 1u) || sqm_follows(pi, bar)))
+        if (idx < NSTEP && !poly_len[pi] && ((sqm_thin[pi][idx >> 5] >> (idx & 31u)) & 1u) && sqm_thinned(pi, bar))
             return &SQM_REST;
     }
     return s;
 }
+/* the bar part t's step plays in now (audio path): an ARP SEQ step's from the bar's last 32nd on is the next bar's (its clock runs a little
+ * ahead of the beat's: a downbeat would get the bar before's thinning and dynamics) */
+static uint32_t sqm_bar_of(const track_t *t) { return (uint32_t)sqm_bar + (arp_mode(t) == AM_SEQ_ID ? sqm_bar_soon : sqm_bar_turn); }
+/* MR4: a thinned chord part (sqm_lead) plays two voices of its chord, the lowest and the top: the count .. */
+static uint32_t sqm_voices(uint32_t pi, uint32_t n, uint32_t bar)
+{
+    return n > 2u && pi < NSHOWN && ((sqm_lead >> pi) & 1u) && song.playing && sqm_thinned(pi, bar) ? 2u : n;
+}
+/* .. and the notes (n in out, sorted or not; the count back) */
+static uint32_t sqm_two(uint32_t pi, uint8_t *out, uint32_t n, uint32_t bar)
+{
+    uint32_t i, lo = 0, hi = 0;
+    if (sqm_voices(pi, n, bar) == n)
+        return n;
+    for (i = 1; i < n; i++)
+        lo = out[i] < out[lo] ? i : lo, hi = out[i] > out[hi] ? i : hi;
+    i = out[hi], out[0] = out[lo], out[1] = (uint8_t)i;
+    return 2u;
+}
 /* .. in the bar now (the audio interrupt), with the dynamics (D4, M08; no setting): a part in automatic WNDR / JRNY plays its hits an
- * 8th louder in ARC's late rise and peak, a quarter softer in the breakdown and on its LEAD follower bars (an accent counts as 127). buf
+ * 8th louder in ARC's late rise and peak, two steps softer in the breakdown (MR4), a step softer on its listening bars (an accent counts as 127). buf
  * holds the shaped copy; KEEP and the TIDE page read the steps themselves (the page asks for the bar each step plays in: tide_ui.c) */
+static const uint8_t SQM_VS[4] = {72, 96, 0, 144};      /* (x/128: softer twice, softer, -, louder) */
+static int32_t sqm_dyn_of(uint32_t pi, uint32_t bar)     /* the dynamics now: -2 .. +1, 0 none (ARC OFF, not automatic, stopped) */
+{
+    int32_t b;
+    if (pi >= NSHOWN || !song.playing || !((sqm_auto >> pi) & 1u))
+        return 0;
+    b = sqm_dyn - sqm_listens(pi, bar);
+    return b < -2 ? -2 : b;
+}
+static uint32_t sqm_dyn_scale(uint32_t v, int32_t b) { v = v * SQM_VS[b + 2] >> 7; return v > 127u ? 127u : v; }
 static const step_t *seq_play_step(const track_t *t, uint32_t idx, step_t *buf)
 {
-    static const uint8_t VS[4] = {72, 96, 0, 144};       /* (x/128: softer twice, softer, -, louder) */
-    uint32_t pi = (uint32_t)(t - trk), bar = (uint32_t)sqm_bar + sqm_bar_turn, v;
+    uint32_t pi = (uint32_t)(t - trk), bar = sqm_bar_of(t);
     const step_t *s = seq_play_step_at(t, idx, bar);
     int32_t b;
-    if (pi >= NSHOWN || !song.playing || !sqm_hit(s) || !((sqm_auto >> pi) & 1u) || !(b = sqm_dyn - sqm_follows(pi, bar)))
-        return s;
+    uint8_t n;
+    if (!sqm_hit(s) || arp_mode(t) == AM_SEQ_ID)
+        return s;                                        /* (D1: an ARP SEQ part keeps its accent; the arp's velocity is scaled in tide_arp_out, its chord in tide_arp_out) */
+    b = sqm_dyn_of(pi, bar);
     *buf = *s;
-    v = (s->flags & SF_ACCENT ? 127u : s->vel ? s->vel : 96u) * VS[b + 2] >> 7;
-    buf->vel = (uint8_t)(v > 127u ? 127u : v);
-    buf->flags &= (uint8_t)~SF_ACCENT;
+    n = (uint8_t)sqm_two(pi, buf->note, s->n, bar);
+    if (!b && n == s->n)
+        return s;
+    buf->n = n;
+    if (b) {
+        buf->vel = (uint8_t)sqm_dyn_scale(s->flags & SF_ACCENT ? 127u : s->vel ? s->vel : 96u, b);
+        buf->flags &= (uint8_t)~SF_ACCENT;
+    }
     return buf;
+}
+/* TIDE hook (seq.c arp_seq_notes, audio path, a call per arp step): an ARP SEQ step's velocity (the arp's, an accent's 127) with the same
+ * dynamics (D1), and its chord's voices (MR4: two while thinned) */
+static __attribute__((noinline)) uint32_t tide_arp_out(const track_t *t, uint8_t *out, uint32_t m, uint32_t *vel)
+{
+    uint32_t pi = trk_index(t), bar = sqm_bar_of(t);
+    int32_t b = sqm_dyn_of(pi, bar);
+    if (b)
+        *vel = sqm_dyn_scale(*vel, b);
+    return sqm_two(pi, out, m, bar);
 }
 
 /* ------------------------------------------------------------------ the controls (main loop) --- */
