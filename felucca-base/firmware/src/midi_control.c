@@ -623,7 +623,7 @@ static void __attribute__((noinline)) midi_pc(uint32_t ch, uint32_t prog)
     const midi_channel_t *c = midi_channel(ch);
     uint32_t bank = (uint32_t)c->bank_msb << 7 | c->bank_lsb, pi = trk_index(midi_track(ch)), w = pcq_w;
     if (duell_mode == DM_LAYER) {
-        if (bank || prog >= MU_SLOTS)
+        if (bank || prog >= MU_SHOWN)
             return;
         pi = PCQ_MULTI;
     } else if (pi >= NSHOWN || bank > 2u) {

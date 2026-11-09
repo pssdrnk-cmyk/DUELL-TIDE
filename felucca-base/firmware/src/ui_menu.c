@@ -690,21 +690,21 @@ static uint8_t test_pick = 0xFFu;                      /* K3's multi (0..15): th
 static uint32_t test_slot(void)                        /* the multi K3 shows: the pick, else the one the music came from, else the first used */
 {
     uint32_t k;
-    if (test_pick < MU_SLOTS && project_used(test_pick))
+    if (test_pick < MU_SHOWN && project_used(test_pick))
         return test_pick;
     k = project_cur_slot();
-    if (k < MU_SLOTS && project_used(k))
+    if (k < MU_SHOWN && project_used(k))
         return k;
-    for (k = 0; k < MU_SLOTS; k++)
+    for (k = 0; k < MU_SHOWN; k++)
         if (project_used(k))
             return k;
-    return MU_SLOTS;                                   /* no multi at all */
+    return MU_SHOWN;                                   /* no multi at all */
 }
 static uint32_t test_missed(void) { return cpum.miss - cpum.base; }
 static void test_multi_name(char *b)                   /* "M05 NAME", or "NO MULTI" when the music did not come from one */
 {
     uint32_t k = project_cur_slot();
-    if (k >= MU_SLOTS) {
+    if (k >= MU_SHOWN) {
         str_cpy(b, "NO MULTI", 24);
         return;
     }
@@ -737,7 +737,7 @@ static void graph_test(void)
     int32_t fill = (int32_t)(cpum.avg > 100u ? 100u : cpum.avg) * 224 / 100, tick = (int32_t)(cpum.hold > 100u ? 100u : cpum.hold) * 224 / 100, x;
     cv_text_on(10, 3, &AF_S, "MULTI", T_MID, T_BG);
     test_multi_name(b);
-    cv_text_r(230, 3, &AF_S, b, project_cur_slot() < MU_SLOTS ? T_TEXT : T_DIM, T_BG);
+    cv_text_r(230, 3, &AF_S, b, project_cur_slot() < MU_SHOWN ? T_TEXT : T_DIM, T_BG);
     for (k = 0; k < 2u; k++) {                         /* the parts: engine at the left, the patch at the right */
         int32_t y = 17 + 13 * (int32_t)k;
         v[0] = (char)('1' + k);

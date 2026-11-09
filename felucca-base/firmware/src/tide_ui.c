@@ -941,10 +941,32 @@ static volatile uint8_t *const TS_VAR[TS_N] = {&gl.mode, &gl.time, &gl.target, &
                                                &sqm_sync, &sqm_arc, &tide_style, &tide_rec_replace};
 static const uint8_t TS_LIM[TS_N] = {GM_JOURNEY + 1u, GLIDE_TIMES, GT_BOTH + 1u, GLIDE_WAITS, 0, 0, 0, 3, 3, 3, 3, STY_CUSTOM, 2},
                      TS_DEF[TS_N] = {GM_ONCE, 3, GT_SOUND, 0, 1, 1, 3, 1, 1, 1, 0, STY_CUSTOM, 0};
+/* TIDE 1.0.0-b6: while a built-in drone multi (M17, M18: MU_ROM) is the multi loaded, TIDE plays STYLE DRONE: the nine rows are DRONE's and TIDE SETTINGS
+ * shows DRONE. What was set (the nine rows and STYLE) is kept here and comes back when any other multi (or none) is loaded; the store always gets the
+ * kept values, so the saved STYLE never changes. A hand edit of a row while the drone multi is loaded lasts until then. Main loop only (no audio cost) */
+static uint8_t tide_drone_on, tide_drone_keep[10];      /* (STY's nine rows, then STYLE) */
+static void tide_drone(int reread)
+{
+    uint32_t cs = project_cur_slot(), on = cs < MU_SHOWN && MU_ROM(cs);
+    if (reread)                                          /* (the rows were just read from the store: they are what is kept now) */
+        tide_drone_on = 0;
+    if (on == tide_drone_on)
+        return;
+    if (on) {
+        tide_rows_get(tide_drone_keep);
+        tide_drone_keep[9] = tide_style;
+        tide_style_apply(STY_DRONE);
+    } else {
+        tide_rows_set(tide_drone_keep);
+        tide_style = tide_drone_keep[9];
+    }
+    tide_drone_on = (uint8_t)on;
+}
 static void tide_settings(void)
 {
     uint8_t w[TS_N];
     uint32_t i;
+    int reread = !tide_seen_ok || tide_tail_new;
     if (tide_tail_new) {                                 /* a settings restore (editor_backup.c) brought other fields: read them again */
         tide_tail_new = 0;
         tide_seen_ok = 0;
@@ -962,12 +984,18 @@ static void tide_settings(void)
             tide_rec_replace = 0;
         }
     }
+    tide_drone(reread);
     if (tide_style < STY_CUSTOM && !tide_style_holds()) {
         tide_style_last = tide_style;
         tide_style = STY_CUSTOM;                         /* a hand edit of any of the nine rows (knobs, rows, resets, MIDI) */
     }
-    for (i = 0; i < TS_N; i++)
+    for (i = 0; i < TS_N; i++) {
         w[i] = *TS_VAR[i];
+        if (tide_drone_on)                               /* (a drone multi loaded: the kept rows and STYLE are what is saved) */
+            for (uint32_t j = 0; j < 10u; j++)
+                if (j < 9u ? TS_VAR[i] == TIDE_ROW[j] : i == TS_STYLE)
+                    w[i] = tide_drone_keep[j];
+    }
     w[TS_WASH] &= 3u;
     if (!tide_seen_ok) {                                 /* (what was read, or the defaults: not a change, nothing to write at every power-on) */
         memcpy(tide_seen, w, TS_N);

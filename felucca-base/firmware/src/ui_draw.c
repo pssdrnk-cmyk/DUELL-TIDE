@@ -2614,11 +2614,11 @@ static void draw_columns(void)
         draw_column(0, "MORPH", val, "", VAL(0u), (int32_t)f * 1000 / 127, ICON_MIX);
         g = morph_pending(0);
         draw_column(1, "ROLL", g < 0 ? "<A" : g > 0 ? "B>" : "A<>B", "", g ? T_ACCENT : VAL(1u), -1, ICON_NONE);
-        if (mk < MU_SLOTS)
+        if (mk < MU_SHOWN)
             mu_label(val, mk);
         else
             str_cpy(val, "--", sizeof val);
-        draw_column(2, "LOAD", val, "", mk < MU_SLOTS ? VAL(2u) : T_DIM, -1, ICON_AUTO);
+        draw_column(2, "LOAD", val, "", mk < MU_SHOWN ? VAL(2u) : T_DIM, -1, ICON_AUTO);
         draw_column(3, "RESET", "--", "", VAL(3u), -1, ICON_AUTO);
         return;
     }
@@ -2797,15 +2797,15 @@ static void draw_columns(void)
         return;
     }
     if (cur_page()->graph == GR_SLOTS) {                 /* MULTI: SLOT M01..M16, then LOAD SAVE (GO buttons) */
-        uint32_t k = (uint32_t)(song.g[G_SLOT] - 1) % MU_SLOTS;
+        uint32_t k = (uint32_t)(song.g[G_SLOT] - 1) % MU_SHOWN;
         int used = project_used(k);
         mu_label(val, k);
 #if DUELL_TIDE
         {                                              /* U3: the multi loaded now, on knob 1's line, when the list does not show its star (the picked one is the list's) */
             static char cur_txt[16];
-            uint32_t wf = list_first(k, MU_SLOTS), cs = project_cur_slot();
-            if (cs >= MU_SLOTS || cs < wf || cs >= wf + LR_ROWS) {
-                if (cs < MU_SLOTS) {
+            uint32_t wf = list_first(k, MU_SHOWN), cs = project_cur_slot();
+            if (cs >= MU_SHOWN || cs < wf || cs >= wf + LR_ROWS) {
+                if (cs < MU_SHOWN) {
                     str_cpy(cur_txt, "LOADED ", sizeof cur_txt);
                     mu_label(cur_txt + 7, cs);
                 } else
@@ -2816,7 +2816,7 @@ static void draw_columns(void)
             }
         }
 #endif
-        draw_column(0, "SLOT", val, "", VAL(0u), (int32_t)k * 1000 / (int32_t)(MU_SLOTS - 1u), ICON_AUTO);
+        draw_column(0, "SLOT", val, "", VAL(0u), (int32_t)k * 1000 / (int32_t)(MU_SHOWN - 1u), ICON_AUTO);
         draw_act_column(1, "LOAD", used ? T_THEME : T_DIM, ICON_AUTO);
         draw_act_column(2, "SAVE", T_THEME, ICON_AUTO);   /* (change list A.9: ERASE is gone, SAVE is knob 3) */
         draw_column_hide(3);
@@ -3226,9 +3226,9 @@ static void confirm_text(char *a, char *b)          /* a, b hold 32 */
         break;
     case CF_OVR_PROJ:                                   /* MULTI: SAVE over a used multi */
         str_cpy(a, "OVERWRITE ", 24);
-        mu_label(a + str_len(a), k % MU_SLOTS);
+        mu_label(a + str_len(a), k % MU_SHOWN);
         str_cpy(a + str_len(a), "?", 2);
-        project_name(k % MU_SLOTS, b);                  /* the multi's name ("" none) */
+        project_name(k % MU_SHOWN, b);                  /* the multi's name ("" none) */
         break;
     case CF_OVR_PSLOT:                                  /* PATTERNS: SAVE over what the slot holds */
         str_cpy(a, "OVERWRITE ", 24);
@@ -3255,8 +3255,8 @@ static void confirm_text(char *a, char *b)          /* a, b hold 32 */
         if (ui.confirm == CF_HOLD_PSLOT) {
             pat_label(k % PS_SLOTS, tag, b);
         } else {
-            mu_label(tag, k % MU_SLOTS);
-            project_name(k % MU_SLOTS, b);
+            mu_label(tag, k % MU_SHOWN);
+            project_name(k % MU_SHOWN, b);
         }
         str_cpy(a + str_len(a), b[0] ? b : tag, 13);
         str_cpy(a + str_len(a), "?", 2);

@@ -1966,7 +1966,7 @@ static void pc_recall(uint32_t pi, uint32_t prog, uint32_t bank)
 {
     uint32_t was = song.sel;
     if (pi == PCQ_MULTI) {
-        if (prog < MU_SLOTS && project_used(prog)) {
+        if (prog < MU_SHOWN && project_used(prog)) {
             pc_multi = 1;
             project_load(prog);
             pc_multi = 0;
@@ -2094,7 +2094,7 @@ static int act_ready(void)
         return pat_last[s] != pat_pick() + 1u || steps_sig(TSEL) != pat_sig[s];
     }
     if (cur_page()->graph == GR_SLOTS)                  /* MULTI: LOAD a used one (playing too), SAVE stopped */
-        return c == 2u ? !song.playing : project_used((uint32_t)song.g[G_SLOT] - 1u);
+        return c == 2u ? !song.playing && !MU_ROM(song.g[G_SLOT] - 1) : project_used((uint32_t)song.g[G_SLOT] - 1u);   /* (M17, M18: ROM only, SAVE dim) */
     id = cur_page()->id[c & 3u];
     if (id == G_LOAD)
         return project_used((uint32_t)song.g[G_SLOT] - 1u);
