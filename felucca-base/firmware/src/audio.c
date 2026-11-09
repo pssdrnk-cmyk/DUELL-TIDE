@@ -167,7 +167,11 @@ static uint32_t shed_count;
  *  - up: two halves in a row over EASE_UP_PCT (85 %): one level up (at most one a half); a half over its whole time (a miss): to EASE_TAILS at least;
  *  - down, one level, the first of two rules to hold (both counts then start again; an up step restarts them too):
  *    a) PEAK: no half over EASE_DOWN_PCT (80 %) for EASE_DOWN_HALVES (~1 s) below LIGHT FX, for EASE_DOWN_HALVES_FX (~3 s) from LIGHT FX up. The meter's
- *       average alone would not do: the NOTES budget plans up to 72 % on average, so a scene that sits at 70 .. 85 % would never step down. LIGHT FX saves
+ *       average alone would not do: the NOTES budget plans up to BUDGET_LIMIT on average (72 % in b1 .. b5; b6 N1's steps 76 / 80 / 84, budget.h DUELL_NOTES_STEP),
+ *       so a scene that sits at 70 .. 85 % would never step down. (b6 N1: at 72 the busiest factory multis of the unit's GLIDE sweep already average 69 .. 70 % with a
+ *       per-second elapsed peak of 86 .. 91 %; at a higher step neither release may hold in those scenes, so the ladder can stay at level 1 or 2 there: nothing is
+ *       cut, but at level 2 a new note takes over a fading tail instead of a free voice while it lasts. The console's `cpu` shows the entries per level,
+ *       ease_n1 .. ease_n5.) LIGHT FX saves
  *       5.5 .. 8.8 points, more than the 5-point gap between 85 and 80 %, so leaving it takes longer; and if level 3 is entered again within those 3 s
  *       of leaving it (a scene that needs it: 87 % without, 78 % with), the next release from 3 up waits 3 x as long (ease_fxl): at most one LIGHT FX
  *       blip in ~10 s instead of one every 3 s;

@@ -366,6 +366,13 @@ def build_app():
         v = os.environ.get(flag)    # unset: the default in firmware/src/felucca.c (DUELL_TEST_MODE: core.h, 0 = release: no TEST screen, no M13..M16)
         if v in ("0", "1"):
             flags.append(f"-D{flag}={v}")
+    v = os.environ.get("DUELL_NOTES_STEP")    # TIDE 1.0.0-b6 N1 (firmware/src/budget.h): the NOTES limit step of a unit-sweep build; every other build keeps the branch's default
+    if v:
+        if v not in ("72", "76", "80", "84"):
+            raise SystemExit(f"build: DUELL_NOTES_STEP={v}: one of 72, 76, 80, 84")
+        if os.environ.get("DUELL_TEST_MODE") != "1":
+            raise SystemExit("build: DUELL_NOTES_STEP is for test-mode builds (DUELL_TEST_MODE=1): a release build has the branch's default step")
+        flags.append(f"-DDUELL_NOTES_STEP={v}")
     if os.environ.get("DUELL_PRESETS") != "1":   # Felucca's engine preset tables (engine_t.presets): no firmware code reads them (sounds.c's factory sounds replaced them), only the host tests do
         flags.append("-DDUELL_PRESETS=0")
     v = os.environ.get("DUELL_VELO", "1")   # KEY SENSE (key velocity and aftertouch, sense.c): ON in every build since 0.2.30 (owner, 2026-10-21; before: developer builds only, build.py passed nothing and felucca.c's default 0 held).
