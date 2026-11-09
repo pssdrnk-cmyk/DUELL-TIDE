@@ -3002,6 +3002,12 @@ static void draw_graph(void)
                                                       * every picture here draws in SCREEN rows (cv_oy = minus the area's first row). PERFORM keeps its own path below (ui_perform.c) */
         int32_t ay, ah;
         area_rect(&ay, &ah);
+#if DUELL_TIDE
+        if (TIDE_WAVE_PAGE(pg)) {                    /* (the MORPH page: taller than one canvas holds (CV_MAX 124 rows): a canvas a part, ui_scope.c wl_area) */
+            wl_area(ay, ah);
+            return;
+        }
+#endif
         cv_begin(240, (uint32_t)ah, T_BG);
         cv_bg = T_BG;
         cv_oy = -ay;
@@ -3025,10 +3031,6 @@ static void draw_graph(void)
             graph_pats();
         else if (pg->graph == GR_SLOTS)
             graph_slots();
-#if DUELL_TIDE                                       /* (ui_scope.c is TIDE's: the plain build has no wl_area) */
-        else if (TIDE_WAVE_PAGE(pg))
-            wl_area(ay, ah);                         /* (the MORPH page: the part's real sound, ui_scope.c) */
-#endif
         cv_oy = 0;
         cv_blit(0, (uint32_t)ay);
 #if DUELL_TIDE

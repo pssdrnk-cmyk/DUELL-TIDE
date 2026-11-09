@@ -15,12 +15,15 @@
  *   7 stack   the last WL_HN ridges, the newest in front (lowest), each older one a few rows higher, a little lower and evenly fainter; every ridge is ONE unbroken line across the
  *             whole width (nothing is hidden or cut, owner 2026-11-09: "the lines are falling apart"). A new ridge is blended with the one before when the two are of a size (the Pico's
  *             frame blend), so a busy sound flows as one shape; a new picture moves the stack up a step. Silence fades the front's shape (wl_fade), the stack runs out, and every lane stays drawn, flat: at rest the page shows the same set of lines as when it plays (owner 2026-11-09)
- * Samples inside are the tap's steps (1/4,096 of the half scale) times 16 (the interpolation's fraction). The ridges are kept in 1/8 px from their middle, a byte a point (WL_AMAX: the half height of
- * a ridge is at most 15 px; the front's is about 12 px in a 41-row lane). */
-#define WL_NP 72                                     /* points of a ridge: x = WL_X0 + 3 p (22 .. 235: the bar and the part's number stand to the left) */
-#define WL_X0 22
+ * Samples inside are the tap's steps (1/4,096 of the half scale) times 16 (the interpolation's fraction). The ridges are kept in 1/4 px from their middle, a byte a point (WL_AMAX: the half height of
+ * a ridge is at most 31 px; the front's is about 20 px in a 68-row lane). b6 layout (owner 2026-11-09, "the bottom half of the screen is badly used"): the picture takes the page
+ * from the knob-1 line down to the compact ROLL / AMOUNT row (ui_draw.c morph_row) and the whole width, the part tags over the lanes' left edge; HOLD SAVE = SAVE PATCH is a hint in
+ * that row while SAVE is held and for a moment after the page opens (wl_hint_t). */
+#define WL_NP 72                                     /* points of a ridge, spread over x WL_X0 .. WL_X1 (the whole width: the part's tag stands over the lane's left edge) */
+#define WL_X0 5
+#define WL_X1 236
 #define WL_HN 6                                      /* ridges kept (6: each one a clean line apart at this size; 16 crowded into noodles, owner 2026-11-09) */
-#define WL_AMAX 15                                   /* the largest half height of a ridge, px (15 x 8 eighths fit a byte) */
+#define WL_AMAX 31                                   /* the largest half height of a ridge, px (31 x 4 quarters fit a byte) */
 #define WL_STEP 3                                    /* the fewest rows between two ridges */
 #define WL_R 400u                                    /* entries read (ring 512; 36 ms at the tap's 11.025 kHz) */
 #define WL_MINW 80u
@@ -38,6 +41,8 @@ typedef struct {
     uint8_t got, have, a, hn;                        /* a picture exists since the last reset; one with a trigger to match; the half height the ridges were made for; ridges kept */
 } wl_t;
 static wl_t wl[2];
+static uint32_t wl_hint_t;                           /* when the page last opened (fm1_ms): ui_draw.c morph_row shows HOLD SAVE = SAVE PATCH for WL_HINT_MS after it */
+#define WL_HINT_MS 2500u
 static uint32_t wl_tk = 0xFFFFFFFFu;
 _Static_assert(NLIVE == 2, "ui_scope.c keeps one reader state for each of the two parts");
 _Static_assert(WL_HN <= 16, "wl_t.flat has a bit a ridge");
@@ -209,8 +214,8 @@ static int wl_pic(const wl_t *s, int32_t n, int32_t a, int8_t *nd, int16_t *nf, 
     if (pk * a < 2 * g)                              /* under 2 px high: a flat ridge (the stack shows sound, not the last pixel of a tail) */
         return 0;
     for (p = 0; p < WL_NP; p++) {
-        int32_t q = -v[p] * a * 16;                  /* (1/8 px, rounded) */
-        nd[p] = (int8_t)clamp((q + (q < 0 ? -g : g)) / (2 * g), -8 * a, 8 * a);
+        int32_t q = -v[p] * a * 8;                   /* (1/4 px, rounded) */
+        nd[p] = (int8_t)clamp((q + (q < 0 ? -g : g)) / (2 * g), -4 * a, 4 * a);
     }
     return 1;
 }
@@ -219,7 +224,7 @@ static int32_t wl_rq(const wl_t *s, uint32_t r, uint32_t p) { return s->rd[r][p]
 static int32_t wl_rp(const wl_t *s, uint32_t r, uint32_t p)
 {
     const int32_t q = s->rd[r][p];
-    return (q + (q < 0 ? -4 : 4)) / 8;
+    return (q + (q < 0 ? -2 : 2)) / 4;
 }
 /* a picture becomes the newest ridge (nd 0: a flat one), the others move back. A picture of about the size of the newest ridge (within 2 : 1) is blended half and half with it,
  * so that a busy sound's ridges follow on from each other (one shape, not scattered lines); a jump in size (an attack, a much softer note) is taken as it is */
@@ -256,7 +261,7 @@ static void wl_fade(wl_t *s)
     for (p = 0; p < WL_NP; p++) {
         int32_t v = s->hn && !(s->flat & 1u) ? wl_rq(s, 0, p) : 0;
         nd[p] = (int8_t)(v / 2);
-        nd[p] = nd[p] > -4 && nd[p] < 4 ? 0 : nd[p];   /* (under half a px: gone) */
+        nd[p] = nd[p] > -2 && nd[p] < 2 ? 0 : nd[p];   /* (under half a px: gone) */
         any |= nd[p] != 0;
     }
     {
@@ -339,7 +344,7 @@ static void ui_part_tag(uint32_t k, int32_t y, int hot)
 /* a box h rows high: the ridges' half height (*a), the rows between two ridges (*st) and how many fit (the return) */
 static int32_t wl_fit(int32_t h, int32_t *a, int32_t *st)
 {
-    const int32_t aa = clamp(h * 3 / 10, 2, WL_AMAX), room = h - 3 - 2 * aa;   /* (the front fills most of the lane: 12 px of a 41-row half) */
+    const int32_t aa = clamp(h * 3 / 10, 2, WL_AMAX), room = h - 3 - 2 * aa;   /* (the front fills most of the lane: 20 px of a 68-row half) */
     int32_t n = clamp(room / WL_STEP + 1, 1, WL_HN);
     *a = aa;
     *st = n > 1 ? room / (n - 1) : WL_STEP;
@@ -382,9 +387,8 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
     int32_t a, st, nf = wl_fit(y1 - y0, &a, &st), nr = s->hn < (uint32_t)nf ? (int32_t)s->hn : nf, yf = y1 - 2 - a, r, p;
     if (y1 - y0 < 8)
         return;
-    if (hot)                                         /* the selected part (both with BOTH): a bar at the half's edge, and the part's tag */
+    if (hot)                                         /* the selected part (both with BOTH): a bar at the half's edge (the tag goes over the lines, last) */
         cv_rect(1, y0 + 1, 3, y1 - y0 - 2, T_PFILL(k));
-    ui_part_tag(k, (y0 + y1) / 2, hot);
     if (nr < 1 || s->a != (uint8_t)a || (s->flat & ((1u << nr) - 1u)) == (1u << nr) - 1u)
         nr = 0;                                      /* nothing yet, made for another box, or silence: every lane at rest, flat (the same lines as when it plays) */
     for (r = nf - 1; r >= 0; r--) {
@@ -393,17 +397,23 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
         const int32_t str = (r ? 15 + (nf > 2 ? 60 * (nf - 1 - r) / (nf - 2) : 60) : 100) * (hot ? 100 : 55) / 100;   /* (strength %: front 100, then 75, 60 .. 15 evenly; the same at rest) */
         const int32_t w16 = !r ? 28 : 16;
         int32_t py = yb16;
+        int32_t px = WL_X0;
         for (p = 0; p < WL_NP; p++) {
-            const int32_t x = WL_X0 + 3 * (int32_t)p, y = flat ? yb16 : yb16 + wl_rq(s, (uint32_t)r, (uint32_t)p) * 2 * num / nf;
-            if (p) {                                 /* (the three columns of the segment from the last point) */
-                int32_t j;
-                for (j = 1; j <= 3; j++)
-                    wl_col(x - 3 + j, py + (y - py) * (2 * j - 1) / 6, py + (y - py) * (j < 3 ? 2 * j + 1 : 6) / 6, w16, col, str, y0 + 1, y1 - 1);
-            } else
+            const int32_t x = WL_X0 + (int32_t)p * (WL_X1 - WL_X0) / (int32_t)(WL_NP - 1u), y = flat ? yb16 : yb16 + wl_rq(s, (uint32_t)r, (uint32_t)p) * 4 * num / nf;
+            if (p && x > px) {                       /* (the columns of the segment from the last point, each from its left edge to its right) */
+                const int32_t d2 = 2 * (x - px);
+                int32_t c;
+                for (c = px + 1; c <= x; c++) {
+                    const int32_t e = 2 * (c - px) + 1;
+                    wl_col(c, py + (y - py) * (2 * (c - px) - 1) / d2, py + (y - py) * (e < d2 ? e : d2) / d2, w16, col, str, y0 + 1, y1 - 1);
+                }
+            } else if (!p)
                 wl_col(x, y, y, w16, col, str, y0 + 1, y1 - 1);
+            px = x;
             py = y;
         }
     }
+    ui_part_tag(k, (y0 + y1) / 2, hot);              /* (over the lines' left edge) */
 }
 /* the page's clock: arms the gate and says whether this draw makes a new picture (never with ANIM OFF: the tap stays shut) */
 static int wl_tick(void)
@@ -418,6 +428,7 @@ static int wl_tick(void)
             memset(wl, 0, sizeof wl);
             wl[0].base = wv_cnt[0];
             wl[1].base = wv_cnt[1];
+            wl_hint_t = fm1_ms;                      /* (the page opened: the HOLD SAVE hint for a moment, ui_draw.c morph_row) */
         }
         wv_want = wv_blk + 256u;                     /* the one word the UI writes */
         wl_tk = tk;
@@ -438,9 +449,28 @@ static void wl_card(int32_t y0, int32_t y1)
     wl_stack(0, y0, ym);
     wl_stack(1, ym, y1);
 }
-/* TEMPLATE 9: the picture in the big area (screen rows ay .. ay + ah - 1, drawn on the area's canvas by ui_graph.c draw_graph); HOLD SAVE = SAVE PATCH keeps its place on the last line */
+/* TEMPLATE 9: the picture in the big area, screen rows ay .. ay + ah - 1, all of it (b6: the hint went to the ROLL / AMOUNT row). Taller than one canvas (gfx.c CV_MAX, 124 rows):
+ * each part's half on a canvas of its own, blitted at its first row */
 static void wl_area(int32_t ay, int32_t ah)
 {
-    wl_card(ay, ay + ah - 20);
-    cv_text_on(UT_GR_NOTE_X, ay + ah - 19, &AF_S, "HOLD SAVE = SAVE PATCH", T_DIM, T_BG);
+    const int32_t y1 = ay + ah, ym = (ay + y1) / 2;
+    int32_t a0, a1, st;
+    wl_fit(ym - ay, &a0, &st);
+    wl_fit(y1 - ym, &a1, &st);
+    if (wl_tick()) {
+        wl_step(0, a0);
+        wl_step(1, a1);
+    }
+    cv_begin(240, (uint32_t)(ym - ay), T_BG);
+    cv_bg = T_BG;
+    cv_oy = -ay;
+    wl_stack(0, ay, ym);
+    cv_oy = 0;
+    cv_blit(0, (uint32_t)ay);
+    cv_begin(240, (uint32_t)(y1 - ym), T_BG);
+    cv_bg = T_BG;
+    cv_oy = -ym;
+    wl_stack(1, ym, y1);
+    cv_oy = 0;
+    cv_blit(0, (uint32_t)ym);
 }

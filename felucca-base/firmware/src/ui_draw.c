@@ -891,6 +891,10 @@ static uint8_t k1_after_r;
 #else
 #define AREA_LIST_PG() 0
 #endif
+#if DUELL_TIDE
+#define MROW_Y 186                                      /* b6 (owner 2026-11-09): the MORPH page's ROLL / AMOUNT row, rows 186 .. 201 (the footer canvas starts at Y_FOOT 202); the picture above it */
+#define MROW_H 16
+#endif
 static void area_rect(int32_t *y, int32_t *h)
 {
     *y = UT_A_GR_Y;
@@ -898,6 +902,8 @@ static void area_rect(int32_t *y, int32_t *h)
 #if DUELL_TIDE
     if (AREA_LIST_PG())
         *h = LP_CARD_Y - UT_A_GR_Y;
+    if (TIDE_WAVE_PAGE(cur_page()))                    /* (the MORPH page: the waves down to its compact row) */
+        *h = MROW_Y - 2 - UT_A_GR_Y;
 #endif
 }
 /* the card of knob c (1 .. 3) in the area card row: x, y, w, h (w = h = 0: no card in that column) */
@@ -2364,6 +2370,62 @@ static uint32_t midi_cards(uint8_t vis[4])
     return 3;
 }
 /* (the name a card shows: params.c desc_shown, T0227's unit label pass) */
+#if DUELL_TIDE
+/* a knob's number in its dot at x, its label's baseline `base` (canvas rows), as the cards draw it */
+static void morph_dot(int32_t x, int32_t base, const char *n)
+{
+    const int32_t dy = base - AF_S_CAP_H + 1;
+    cv_rrect(x, dy, AF_S_CAP_H, AF_S_CAP_H, AF_S_CAP_H / 2, T_MID, T_BG);
+    cv_text_in(x, dy + HALF_UP(AF_S_CAP_H - AF_D_CAP_H) - AF_D_CAP_Y, AF_S_CAP_H, &AF_DOT, n, T_BG, T_MID);
+}
+/* b6 (owner 2026-11-09: "why do we keep half of the screen for the hold save, and roll and amount"): the MORPH page's knob 2 and knob 4 on one row, rows MROW_Y .. + MROW_H - 1:
+ * "(2) ROLL A<>B" on the left (the twist's way while it builds: <A / B>, in the accent), "(4) AMOUNT 40 %" on the right with AMOUNT's bar under it. While SAVE is held, and for WL_HINT_MS after the
+ * page opens (ui_scope.c wl_hint_t), the row says HOLD SAVE = SAVE PATCH instead. Drawn only when what it shows changes */
+static void morph_row(int32_t g, uint32_t amt)
+{
+    static char last[24];
+    char key[24], v[8];
+    const int hint = ui.save_t0 != 0u || fm1_ms - wl_hint_t < WL_HINT_MS, hot2 = ui.hot_t && ui.hot_col == 1u, hot4 = ui.hot_t && ui.hot_col == 3u;
+    const int32_t base = 12;                            /* (the row's label baseline, canvas rows) */
+    key[0] = (char)('a' + hint);
+    key[1] = (char)('b' + g + 1);
+    key[2] = (char)('a' + hot2 + 2 * hot4);
+    key[3] = (char)('a' + ux.pal % 26u);
+    fmt_int(key + 4, (int32_t)amt);
+    if (!ui.force && str_eq(key, last))
+        return;
+    str_cpy(last, key, sizeof last);
+    cv_begin(240, MROW_H, T_BG);
+    cv_bg = T_BG;
+    cv_oy = 0;
+    if (hint) {
+        cv_text_in(0, UT_TY(S, base), 240, &AF_S, "HOLD SAVE = SAVE PATCH", T_DIM, T_BG);
+    } else {
+        int32_t x;
+        morph_dot(UT_GR_TITLE_X, base, "2");
+        x = UT_GR_TITLE_X + UT_CARD_LBL_DX;
+        cv_text_on(x, UT_TY(S, base), &AF_S, "ROLL", hot2 ? T_ACCENT : T_MID, T_BG);
+        x += text_w(&AF_S, "ROLL") + 6;
+        cv_text_on(x, UT_TY(S, base), &AF_S, g < 0 ? "<A" : g > 0 ? "B>" : "A<>B", g ? T_ACCENT : T_TEXT, T_BG);
+        morph_dot(100, base, "4");
+        x = 100 + UT_CARD_LBL_DX;
+        cv_text_on(x, UT_TY(S, base), &AF_S, "AMOUNT", hot4 ? T_ACCENT : T_MID, T_BG);
+        x += text_w(&AF_S, "AMOUNT") + 6;
+        fmt_int(v, (int32_t)amt);
+        str_cpy(v + str_len(v), "%", sizeof v - str_len(v));
+        cv_text_r(235, UT_TY(S, base), &AF_S, v, T_TEXT, T_BG);
+        {   /* AMOUNT's bar, inline between the label and the value, on the text's middle */
+            const int32_t bw = 235 - text_w(&AF_S, v) - 6 - x, by = base - AF_S_CAP_H / 2 - 1, fw = bw * (int32_t)(amt > 100u ? 100u : amt) / 100;
+            if (bw > 6) {
+                cv_rrect(x, by, bw, 3, 1, T_RAISE, T_BG);
+                if (fw > 0)
+                    cv_rrect(x, by, fw > 2 ? fw : 2, 3, 1, T_THEME, T_RAISE);
+            }
+        }
+    }
+    cv_blit(0, MROW_Y);
+}
+#endif
 static void draw_columns(void)
 {
     uint32_t c, nvis;
@@ -2527,6 +2589,12 @@ static void draw_columns(void)
         grid_big = 0;
 #endif
         g = morph_pending(0);                          /* ROLL: A left, B right; a twist building up: its way */
+#if DUELL_TIDE
+        if (cur_page()->graph == GR_MORPH) {           /* b6: ROLL and AMOUNT on one compact row, the waves take the rest */
+            morph_row(g, morph_amount_of(pi));
+            return;
+        }
+#endif
         draw_column(1, "ROLL", g < 0 ? "<A" : g > 0 ? "B>" : "A<>B", "", g ? T_ACCENT : VAL(1u), -1, ICON_NONE);
         draw_column(2, "", "", "", T_THEME, -1, ICON_NONE);   /* (an empty column: KNOB 3 does nothing here since UNDO left, 1.0.0-b5) */
         fmt_int(val, (int32_t)morph_amount_of(pi));
