@@ -121,7 +121,7 @@ int main(void)
     for (i = 0; i < 6u && cur_page()->graph != GR_MORPH; i++)
         press(B_HOME);
     pic_rows();
-    ok("the MORPH page is up, the part selection on BOTH (a new unit in LAYER)", cur_page()->graph == GR_MORPH && song.both == 1u);
+    ok("the MORPH page is up, the part selection on BOTH (a new unit in LAYER)", cur_page()->graph == GR_MORPH && SEL_BOTH == 1u);
 
     /* stab: M01 as shipped, a chord struck every 450 ms */
     run(300);
@@ -158,28 +158,28 @@ int main(void)
 
     /* select: PART 1, BOTH, PART 2 on the page */
     turn(EN_ALGO, -1);
-    ok("select: from BOTH one detent left is PART 1", !song.both && song.sel == 0u);
+    ok("select: from BOTH one detent left is PART 1", !SEL_BOTH && song.sel == 0u);
     turn(EN_ALGO, -1);
-    ok("select: and it stops there", !song.both && song.sel == 0u);
+    ok("select: and it stops there", !SEL_BOTH && song.sel == 0u);
     watch(1000, chord, 0, &a0, &a1, &n, &mv);
     snprintf(w, sizeof w, "select: PART 1, the picture alive (%u, %u of %u)", a0, a1, n);
     ok(w, a0 * 5u >= n * 4u && a1 * 5u >= n * 4u);
     turn(EN_ALGO, 1);
-    ok("select: one right is BOTH (the part kept for the edit pages: PART 1)", song.both && song.sel == 0u);
+    ok("select: one right is BOTH (the part kept for the edit pages: PART 1)", SEL_BOTH && song.sel == 0u);
     watch(1000, chord, 0, &a0, &a1, &n, &mv);
     snprintf(w, sizeof w, "select: BOTH, the picture alive (%u, %u of %u)", a0, a1, n);
     ok(w, a0 * 5u >= n * 4u && a1 * 5u >= n * 4u);
     turn(EN_ALGO, 1);
-    ok("select: one more right is PART 2", !song.both && song.sel == 1u);
+    ok("select: one more right is PART 2", !SEL_BOTH && song.sel == 1u);
     turn(EN_ALGO, 1);
-    ok("select: and it stops there", !song.both && song.sel == 1u);
+    ok("select: and it stops there", !SEL_BOTH && song.sel == 1u);
     watch(1000, chord, 0, &a0, &a1, &n, &mv);
     snprintf(w, sizeof w, "select: PART 2, the picture alive (%u, %u of %u)", a0, a1, n);
     ok(w, a0 * 5u >= n * 4u && a1 * 5u >= n * 4u);
 
     /* off HOME: an edit page picks PART 1 / PART 2 only; BOTH stays for the HOME pages */
     turn(EN_ALGO, -1);
-    ok("select: back to BOTH", song.both == 1u);
+    ok("select: back to BOTH", SEL_BOTH == 1u);
     press(B_ENV);
     ok("off HOME: the ENV page is not a BOTH page", !HOME_BOTH_PAGE(cur_page()) && !ui.perf);
     {
@@ -187,13 +187,13 @@ int main(void)
         ok("off HOME: one capsule lit (the part it edits)", lit == 1u << song.sel);
     }
     turn(EN_ALGO, 1);
-    ok("off HOME: a turn right picks PART 2, BOTH stays set for HOME", song.sel == 1u && song.both == 1u);
+    ok("off HOME: a turn right picks PART 2, BOTH stays set for HOME", song.sel == 1u && SEL_BOTH == 1u);
     turn(EN_ALGO, 1);
-    ok("off HOME: no third position (still PART 2)", song.sel == 1u && song.both == 1u);
+    ok("off HOME: no third position (still PART 2)", song.sel == 1u && SEL_BOTH == 1u);
     turn(EN_ALGO, -1);
-    ok("off HOME: a turn left picks PART 1", song.sel == 0u && song.both == 1u);
+    ok("off HOME: a turn left picks PART 1", song.sel == 0u && SEL_BOTH == 1u);
     press(B_HOME);
-    ok("back on HOME's MORPH page: BOTH, both capsules lit", cur_page()->graph == GR_MORPH && song.both == 1u && badge_lit() == 3u);
+    ok("back on HOME's MORPH page: BOTH, both capsules lit", cur_page()->graph == GR_MORPH && SEL_BOTH == 1u && badge_lit() == 3u);
 
     printf("wavelive: %d checks, %d failed\n", ncheck, bad);
     return bad ? 1 : 0;

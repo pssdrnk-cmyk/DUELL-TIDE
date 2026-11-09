@@ -417,14 +417,14 @@ static void t_knobs(void)
     expect("ROLL WILD, ARP ON, PITCH ON on TIDE SETTINGS (TIDE's list: K1 the row, OCT+ the value; the settings bits)",
            morph.cfg == (MC_WILD | MC_ARP | MC_PIT) && favorites.factory[15][8] == 7u);
     {
-        uint32_t c = morph.cfg, t = song.both;
+        uint32_t c = morph.cfg, t = SEL_BOTH;
         jl_sel = JL_VARY;                                /* (audit C12: K2..K4 turn the picked row's value, here one that is not the morph's) */
         turn(EN_K2, 1); turn(EN_K3, -1); turn(EN_K4, 1); turn(EN_K4, -1);
         frame();
-        expect("  .. KNOB 2..4: the picked row's value, not the morph's (no card on the list)", morph.cfg == c && song.both == t);
+        expect("  .. KNOB 2..4: the picked row's value, not the morph's (no card on the list)", morph.cfg == c && SEL_BOTH == t);
     }
     turn(EN_ALGO, 1);
-    expect("  .. ALGORITHM on TIDE SETTINGS: BOTH next (TIDE: the morph's selector, as on MORPH)", song.sel == 0u && song.both);
+    expect("  .. ALGORITHM on TIDE SETTINGS: BOTH next (TIDE: the morph's selector, as on MORPH)", song.sel == 0u && SEL_BOTH);
     turn(EN_ALGO, -1);
     mset_put(JL_ROLL, 0u); mset_put(JL_ARP, 0u); mset_put(JL_PITCH, 0u);
     expect("  .. and back: MUSIC (TIDE's default: SMART with the musical dials), ARP OFF, PITCH OFF (the defaults)", !morph.cfg && !favorites.factory[15][8]);
@@ -438,14 +438,14 @@ static void t_knobs(void)
            morph.cfg == (MC_WILD | MC_ARP | MC_PIT) && card_is(0, "SMART", "WILD") && card_is(1, "ARP", "ON") &&
            card_is(2, "PITCH", "ON") && favorites.factory[15][8] == 7u);
     {
-        uint32_t c = morph.cfg, t = song.both;
+        uint32_t c = morph.cfg, t = SEL_BOTH;
         turn(EN_K4, 1); turn(EN_K4, -1);
         frame();
-        expect("  .. KNOB 4: an empty column, does nothing (no TARGET card on the page)", morph.cfg == c && song.both == t &&
+        expect("  .. KNOB 4: an empty column, does nothing (no TARGET card on the page)", morph.cfg == c && SEL_BOTH == t &&
                card_is(3, "", "") && !card_is(0, "TARGET", "PART") && !card_is(0, "TARGET", "BOTH"));
     }
     turn(EN_ALGO, 1);
-    expect("  .. ALGORITHM on MORPH SET: PART 2 only (no BOTH here)", song.sel == 1u && !song.both);
+    expect("  .. ALGORITHM on MORPH SET: PART 2 only (no BOTH here)", song.sel == 1u && !SEL_BOTH);
     turn(EN_ALGO, -1);
     turn(EN_K1, 1); turn(EN_K2, -1); turn(EN_K3, -1);
     frame();
@@ -508,9 +508,9 @@ static void t_target(void)
     morph_page();
     turn(EN_ALGO, 1);
     expect("ALGORITHM on MORPH (0.2.9: PART 1, BOTH, PART 2): right is BOTH, both badges, part 1 still selected",
-           song.both && song.sel == 0u && badge_lit() == 3u && msg_is("BOTH"));
+           SEL_BOTH && song.sel == 0u && badge_lit() == 3u && msg_is("BOTH"));
     turn(EN_ALGO, 1);
-    expect("ALGORITHM: part 2 selected", song.sel == 1u && !song.both && badge_lit() == 2u);
+    expect("ALGORITHM: part 2 selected", song.sel == 1u && !SEL_BOTH && badge_lit() == 2u);
     turn(EN_K1, 20);
     expect("SELECTED: KNOB 1 now moves part 2's fader only", mph[1].fader == 20u && mph[0].fader == 0u);
     turn(EN_K2, -MORPH_DET);
@@ -519,7 +519,7 @@ static void t_target(void)
     go_title("AMP ENV"); frames(32);
     turn(EN_ALGO, -1);                                  /* (another page: PART 1 / PART 2 only) */
     morph_page();
-    expect("ALGORITHM on AMP ENV: part 1, no BOTH", song.sel == 0u && !song.both);
+    expect("ALGORITHM on AMP ENV: part 1, no BOTH", song.sel == 0u && !SEL_BOTH);
     turn(EN_K2, MORPH_DET);
     expect("ALGORITHM back to part 1: ROLL B rolls part 1 only", rolls(0, 1) == 3u && rolls(1, 1) == 2u);
     settle();
@@ -537,9 +537,9 @@ static void t_target(void)
         expect("BOTH: KNOB 4 sets both parts' AMOUNT", mph[0].amount == b0 - 5u && mph[1].amount == b0 - 5u);
     }
     go_title(MORPH_SET_TITLE); frames(32);
-    expect("BOTH, then MORPH SET: one badge (the selected part; TIDE's TIDE SETTINGS: both, as MORPH), BOTH kept", song.both && badge_lit() == (DUELL_TIDE ? 3u : 1u));
+    expect("BOTH, then MORPH SET: one badge (the selected part; TIDE's TIDE SETTINGS: both, as MORPH), BOTH kept", SEL_BOTH && badge_lit() == (DUELL_TIDE ? 3u : 1u));
     morph_page();
-    expect("  .. back on MORPH: both badges again", song.both && badge_lit() == 3u);
+    expect("  .. back on MORPH: both badges again", SEL_BOTH && badge_lit() == 3u);
 }
 
 /* -------------------------------------------------------------------- MIDI --- */
@@ -583,7 +583,7 @@ static void t_midi(void)
     expect("CC 24 ch 2: unassigned, ignored (no KEEP any more)", rolls(1, 1) == 3u && !msg_is("KEPT >B"));
     cc(1, 24, 10); run();
     cc(1, 111, 127); run();
-    expect("CC 111 86..127: TARGET BOTH", song.both && msg_is("BOTH"));
+    expect("CC 111 86..127: TARGET BOTH", SEL_BOTH && msg_is("BOTH"));
     cc(0, 20, 90); run();
     expect("BOTH: CC 20 on ch 1 moves both faders", mph[0].fader == 90u && mph[1].fader == 90u);
     cc(1, 20, 12); run();
@@ -593,9 +593,9 @@ static void t_midi(void)
     cc(0, 25, 127); run();
     expect("BOTH: CC 25 sets both parts' AMOUNT", mph[0].amount == 100u && mph[1].amount == 100u);
     cc(0, 111, 63); run();
-    ok = !song.both && song.sel == 1u && msg_is("PART 2");
+    ok = !SEL_BOTH && song.sel == 1u && msg_is("PART 2");
     cc(0, 111, 42); run();
-    expect("CC 111 43..85: PART 2 (selected); 0..42: PART 1", ok && !song.both && song.sel == 0u &&
+    expect("CC 111 43..85: PART 2 (selected); 0..42: PART 1", ok && !SEL_BOTH && song.sel == 0u &&
            msg_is("PART 1"));
     cc(0, 113, 0); cc(0, 114, 100); cc(0, 115, 64); run();
     expect("CC 113 SMART (0 = WILD), CC 114 ARP, CC 115 PITCH (>= 64 on)", morph.cfg == (MC_WILD | MC_ARP | MC_PIT));
@@ -904,7 +904,7 @@ static void t_save(void)
     press(B_OCTUP);                                     /* (INIT SOUND is the engine's first sound: SAVE offers the slot it belongs to; OCT+ writes) */
     expect("after INIT SOUND: SAVE held offers the slot of the engine's first sound; OCT+ saves it there (no NAME screen)",
            up_count() == 1u && !name_on() && !strncmp(ui.msg, "SAVED", 5) && trk[0].user != 0u && up_used(trk[0].user - 1u));
-    song.both = 1;
+    SEL_BOTH = 1;
     hold(B_SAVE);
     ok_both = ui.confirm == CF_SAVE_OVER && ui.confirm_trk == 2u;
     press(B_OCTUP);
@@ -943,14 +943,14 @@ static void t_settings(void)
     frame();
 #endif
     expect("AMOUNT 30 / 5 into the settings bytes (1 + %), the selection BOTH in bit 7 (1.0.0-b5), a save queued",
-           favorites.factory[15][12] == (0x80u | 31u) && favorites.factory[15][13] == 6u && ui.mset_dirty && song.both);
+           favorites.factory[15][12] == (0x80u | 31u) && favorites.factory[15][13] == 6u && ui.mset_dirty && SEL_BOTH);
     frames(2200);
     expect("  .. saved once the knob rested ~2 s (settings_save)", !ui.mset_dirty);
     power_cycle();
     expect("after a power cycle: each part's AMOUNT = its sound's (the settings keep 30 / 5 as the player's own), the selection BOTH kept (bit 7), ARP and PITCH ON; the ends' rolls and faders not kept; "
            "part 1's factory sound: its own End B (its seed and AMOUNT, SMART, no ARP / PITCH: sounds.c)",
            mph[0].amount == snd_amount(trk[0].eng_req, trk[0].preset) && mph[1].amount == snd_amount(trk[1].eng_req, trk[1].preset) &&
-           favorites.factory[15][12] == (0x80u | 31u) && favorites.factory[15][13] == 6u && song.both && rolls(0, 0) == 1u && !mph[0].fader &&
+           favorites.factory[15][12] == (0x80u | 31u) && favorites.factory[15][13] == 6u && SEL_BOTH && rolls(0, 0) == 1u && !mph[0].fader &&
            morph.cfg == (MC_ARP | MC_PIT) && !trk[0].user && trk[0].preset < ds_count(trk[0].eng_req) &&
            mph[0].seed[1][mph[0].top[1]] == ds_seed(trk[0].eng_req, trk[0].preset) &&
            mph[0].ramt[1][mph[0].top[1]] == snd_amount(trk[0].eng_req, trk[0].preset) && !(mph[0].rcfg[1][mph[0].top[1]] & MC_SET));
@@ -958,15 +958,15 @@ static void t_settings(void)
     power_cycle();
     frames(2500);
     expect("an older setting's TARGET BOTH bit: power-on has the selection BOTH (1.0.0-b5: the bit is read), no rewrite, no flash write",
-           song.both && favorites.factory[15][12] == (0x80u | 31u) && !ui.mset_dirty);
+           SEL_BOTH && favorites.factory[15][12] == (0x80u | 31u) && !ui.mset_dirty);
     morph_page();
     turn(EN_ALGO, 1);                                   /* BOTH -> PART 2 */
     frames(2500);
-    expect("  .. leaving BOTH writes the bit clear (saved once)", !song.both && song.sel == 1u && favorites.factory[15][12] == 31u && !ui.mset_dirty);
+    expect("  .. leaving BOTH writes the bit clear (saved once)", !SEL_BOTH && song.sel == 1u && favorites.factory[15][12] == 31u && !ui.mset_dirty);
     favorites.factory[15][12] = 0xFF; favorites.factory[15][13] = 102;
     frame();
     expect("unknown codes read as the default (15 %); bit 7 read as BOTH", mph[0].amount == MORPH_AMOUNT_DEF &&
-           mph[1].amount == MORPH_AMOUNT_DEF && song.both);
+           mph[1].amount == MORPH_AMOUNT_DEF && SEL_BOTH);
 }
 
 int main(void)

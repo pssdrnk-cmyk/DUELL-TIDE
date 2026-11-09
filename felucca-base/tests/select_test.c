@@ -1253,7 +1253,7 @@ static void sweep_quick(void)
     /* the header in a quick layer: the selected part alone, even with ALGORITHM at BOTH on PERFORM / MORPH */
     ui_power_on();
     frames(48);                                         /* (1.0.0-b5: the first frame reads the stored part selection from the settings; set it after) */
-    song.both = 1; song.sel = 1;
+    SEL_BOTH = 1; song.sel = 1;
     perf_enter(); frames(48);
     expect("PERFORM, ALGORITHM BOTH: both badges", badge_lit() == 3u);
     for (q = 0; q < 4u; q++) {
@@ -1266,7 +1266,7 @@ static void sweep_quick(void)
     expect("  QUICK GLO over PERFORM (BOTH): both badges (its cards are per part)", ui.layer == LAYER_GLO && badge_lit() == 3u);
     btn_up(B_GLO); frames(64);
     perf_leave(); frames(48);
-    song.both = 0; song.sel = 0;
+    SEL_BOTH = 0; song.sel = 0;
     /* OCT- in QUICK FILTER puts its four back; in QUICK LFO it is the octave */
     ui_power_on();
     set_engine_of(TSEL, 2u);
@@ -1389,20 +1389,20 @@ static void sweep_algo(void)
         if (PAGES[i].scope == SC_TIDE)                  /* (TIDE's TIDE SETTINGS and AUTO TIDE: HOME pages, PART 1 / BOTH / PART 2 as on MORPH: tide.h HOME_BOTH_PAGE) */
             continue;
 #endif
-        song.both = 0;
+        SEL_BOTH = 0;
         song.sel = 0;
         enter(i);
         if (PAGES[i].fam == FAM_GLO && page_global(&PAGES[i])) {   /* GLO (the MIXER first; owner: "GLO / Mixer doesn't allow change of the selected voice"): ALGORITHM picks the part, the screen stays global, BOTH is left alone */
             turn(EN_ALGO, 1);
-            ok &= song.sel == 1u && !song.both && badge_lit() == 3u && ux.glob == 1u;
+            ok &= song.sel == 1u && !SEL_BOTH && badge_lit() == 3u && ux.glob == 1u;
             turn(EN_ALGO, 1);
             ok &= song.sel == 1u;
             turn(EN_ALGO, -1);
-            ok &= song.sel == 0u && !song.both;
-            song.both = 1;
+            ok &= song.sel == 0u && !SEL_BOTH;
+            SEL_BOTH = 1;
             turn(EN_ALGO, 1);
             frame();
-            ok2 &= song.sel == 1u && song.both && badge_lit() == 3u;
+            ok2 &= song.sel == 1u && SEL_BOTH && badge_lit() == 3u;
             if (!ok || !ok2) {
                 printf("select: ALGORITHM on GLO page %u (%s)\n", (unsigned)i, PAGES[i].title);
                 break;
@@ -1411,11 +1411,11 @@ static void sweep_algo(void)
         }
         if (page_global(&PAGES[i]) || PAGES[i].scope == SC_MODE) {   /* 0.2.24 (owner): a GLOBAL page edits no part: ALGORITHM does nothing there (no part switch, no colour switch); the MODE page counts as global (ui_draw.c screen_global, badge_lit; ui_input.c algo_input; items 128, 138) */
             turn(EN_ALGO, 1); turn(EN_ALGO, -1); turn(EN_ALGO, 1);
-            ok &= song.sel == 0u && !song.both && badge_lit() == 3u && ux.glob == 1u;
-            song.both = 1;
+            ok &= song.sel == 0u && !SEL_BOTH && badge_lit() == 3u && ux.glob == 1u;
+            SEL_BOTH = 1;
             turn(EN_ALGO, 1);
             frame();
-            ok2 &= song.sel == 0u && song.both && badge_lit() == 3u;
+            ok2 &= song.sel == 0u && SEL_BOTH && badge_lit() == 3u;
             if (!ok || !ok2) {
                 printf("select: ALGORITHM on page %u (%s)\n", (unsigned)i, PAGES[i].title);
                 break;
@@ -1423,15 +1423,15 @@ static void sweep_algo(void)
             continue;
         }
         turn(EN_ALGO, 1); turn(EN_ALGO, 1);
-        ok &= song.sel == 1u && !song.both && ux.glob == 0u;
+        ok &= song.sel == 1u && !SEL_BOTH && ux.glob == 0u;
         turn(EN_ALGO, -1);
-        ok &= song.sel == 0u && !song.both;
-        song.both = 1;                         /* (BOTH left on the MORPH page) */
+        ok &= song.sel == 0u && !SEL_BOTH;
+        SEL_BOTH = 1;                         /* (BOTH left on the MORPH page) */
         turn(EN_ALGO, 1);
         frame();
-        ok2 &= song.sel == 1u && song.both && badge_lit() == 2u;
+        ok2 &= song.sel == 1u && SEL_BOTH && badge_lit() == 2u;
         turn(EN_ALGO, -1);
-        ok2 &= song.sel == 0u && song.both;
+        ok2 &= song.sel == 0u && SEL_BOTH;
         if (!ok || !ok2) {
             printf("select: ALGORITHM on page %u (%s)\n", (unsigned)i, PAGES[i].title);
             break;
@@ -1439,22 +1439,22 @@ static void sweep_algo(void)
     }
     expect("ALGORITHM on every part page but MORPH: PART 1 / PART 2 only, clamped, never BOTH; on a GLOBAL page nothing (0.2.24: the global colour, both badges)", ok);
     expect("  .. BOTH (set on MORPH) kept, the page's badge the selected part's alone (a GLOBAL page: both)", ok2);
-    song.both = 0;
+    SEL_BOTH = 0;
     song.sel = 0;
     enter(mp);
     ok = mp < NPAGES && badge_lit() == 1u;
     turn(EN_ALGO, -1);
-    ok &= song.sel == 0u && !song.both;
+    ok &= song.sel == 0u && !SEL_BOTH;
     turn(EN_ALGO, 1);
-    ok &= song.sel == 0u && song.both && badge_lit() == 3u;
+    ok &= song.sel == 0u && SEL_BOTH && badge_lit() == 3u;
     turn(EN_ALGO, 1);
-    ok &= song.sel == 1u && !song.both && badge_lit() == 2u;
+    ok &= song.sel == 1u && !SEL_BOTH && badge_lit() == 2u;
     turn(EN_ALGO, 1);
-    ok &= song.sel == 1u && !song.both;
+    ok &= song.sel == 1u && !SEL_BOTH;
     turn(EN_ALGO, -1);
-    ok &= song.sel == 1u && song.both && badge_lit() == 3u;
+    ok &= song.sel == 1u && SEL_BOTH && badge_lit() == 3u;
     expect("MORPH page: ALGORITHM PART 1 | BOTH | PART 2, clamped; BOTH keeps the selected part, both badges", ok);
-    song.both = 0;
+    SEL_BOTH = 0;
     song.sel = 0;
     frames(48);
 }
@@ -1731,7 +1731,7 @@ static void test_keys_both(void)
             mix_xf = 0;
             frames(48);
             song.sel = sel == 1u ? 1u : 0u;
-            song.both = sel == 2u;
+            SEL_BOTH = sel == 2u;
             trk[0].p[P_MUTE] = trk[1].p[P_MUTE] = 0;
             go_title("AMP ENV");
             frames(16);
@@ -1748,7 +1748,7 @@ static void test_keys_both(void)
                      want0 ? "plays" : "silent", want1 ? "plays" : "silent", (unsigned)g0, (unsigned)g1);
             expect(w, ok);
         }
-    song.both = 0;
+    SEL_BOTH = 0;
     song.sel = 0;
 }
 

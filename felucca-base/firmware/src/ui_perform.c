@@ -181,7 +181,7 @@ static void perf_knob(uint32_t slot, int32_t s)
 static void perf_presets(int32_t s)
 {
     uint32_t was = song.sel;
-    if (!song.both) {
+    if (!PART_BOTH()) {
         presets_turn(s);
         return;
     }
@@ -224,7 +224,7 @@ static int perf_foot(char *l, char *r)
         return 0;
     str_cpy(l, "SELECT = BALANCE", 24);                /* (item 160: the old balance number is gone with its value; SELECT moves LEVEL 1 / LEVEL 2, shown on the MIXER page) */
     str_cpy(r, "ALGORITHM = ", 24);
-    str_cpy(r + str_len(r), song.both ? "BOTH" : song.sel ? "PART 2" : "PART 1", 24 - str_len(r));
+    str_cpy(r + str_len(r), PART_BOTH() ? "BOTH" : song.sel ? "PART 2" : "PART 1", 24 - str_len(r));
     return 1;
 }
 static uint32_t perf_sig(void)

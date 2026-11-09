@@ -283,13 +283,13 @@ static void t_knobs(void)
     }
     turn(EN_ALGO, 1);                                   /* (0.2.9: PART 1, BOTH, PART 2 from left to right) */
     expect("ALGORITHM right: BOTH (both badges, the MORPH TARGET; part 1 still the selected part)", song.sel == 0u &&
-                                                                    song.both && badge_lit() == 3u && msg_is("BOTH"));
+                                                                    SEL_BOTH && badge_lit() == 3u && msg_is("BOTH"));
     turn(EN_ALGO, 1);
-    expect("  right again: PART 2 (selected, one badge)", song.sel == 1u && !song.both && badge_lit() == 2u);
+    expect("  right again: PART 2 (selected, one badge)", song.sel == 1u && !SEL_BOTH && badge_lit() == 2u);
     turn(EN_ALGO, 1);
-    expect("  right at PART 2: PART 2", song.sel == 1u && !song.both);
+    expect("  right at PART 2: PART 2", song.sel == 1u && !SEL_BOTH);
     turn(EN_ALGO, -1);
-    expect("  left: BOTH, part 2 kept as the selected part", song.sel == 1u && song.both && badge_lit() == 3u);
+    expect("  left: BOTH, part 2 kept as the selected part", song.sel == 1u && SEL_BOTH && badge_lit() == 3u);
     {
         char l[24], r[24];
         expect("  the footer: ALGO: BOTH", perf_foot(l, r) && str_eq(r, "ALGORITHM = BOTH"));
@@ -310,9 +310,9 @@ static void t_knobs(void)
                                                                        trk[1].eng_req == e1 && trk[1].preset == q1);
     }
     turn(EN_ALGO, -1);
-    expect("  left: PART 1", song.sel == 0u && !song.both && badge_lit() == 1u);
+    expect("  left: PART 1", song.sel == 0u && !SEL_BOTH && badge_lit() == 1u);
     turn(EN_ALGO, -1);
-    expect("  left at PART 1: PART 1", song.sel == 0u && !song.both);
+    expect("  left at PART 1: PART 1", song.sel == 0u && !SEL_BOTH);
     turn(EN_ALGO, 1);                                   /* BOTH, then out of PERFORM */
     press(B_FX);
     frame();
@@ -320,17 +320,17 @@ static void t_knobs(void)
     expect("  .. 0.64 s later SPACE and FILTER are neutral, DEPTH kept (90 %)", perf_space == 0 && !perf_filt && perf_depth == 90);
     perf_space = 3;
     expect("  ALGORITHM's BOTH kept (the MORPH page's state); this page shows the selected part's badge alone",
-           song.both && song.sel == 0u && badge_lit() == 1u);
+           SEL_BOTH && song.sel == 0u && badge_lit() == 1u);
     turn(EN_ALGO, 1);
-    expect("  ALGORITHM on another page: PART 2 only, BOTH kept for MORPH / PERFORM", song.sel == 1u && song.both && badge_lit() == 2u);
+    expect("  ALGORITHM on another page: PART 2 only, BOTH kept for MORPH / PERFORM", song.sel == 1u && SEL_BOTH && badge_lit() == 2u);
     turn(EN_ALGO, 1);
-    expect("  .. right again: still PART 2 (no BOTH there)", song.sel == 1u && song.both);
+    expect("  .. right again: still PART 2 (no BOTH there)", song.sel == 1u && SEL_BOTH);
     turn(EN_ALGO, -2);
     turn(EN_ALGO, -1);
-    expect("  .. left: PART 1", song.sel == 0u && song.both);
+    expect("  .. left: PART 1", song.sel == 0u && SEL_BOTH);
     perform_on();
     frame();
-    expect("  PERFORM again: BOTH as it was left (both badges)", song.both && badge_lit() == 3u);
+    expect("  PERFORM again: BOTH as it was left (both badges)", SEL_BOTH && badge_lit() == 3u);
     turn(EN_ALGO, -1);
     press(B_FX);
     frame();

@@ -154,10 +154,10 @@ static double run(const scn_t *s)
     if (s->perf == 2) perf_press(PF_OUP, 1);
     if (s->perf == 3) perf_press(PF_FRZ, 1);
     if (s->perf == 4) { perf_press(PF_FLG, 1); perf_press(PF_PHS, 1); perf_press(PF_DRV, 1); perf_press(PF_PUMP, 1); }
-    if (s->morph == 3) { morph_rebase_all(); song.both = 1; morph_set_fader((uint32_t)g_fader); }
+    if (s->morph == 3) { morph_rebase_all(); SEL_BOTH = 1; morph_set_fader((uint32_t)g_fader); }
     else if (s->morph) {
         if (s->morph == 2) morph.cfg |= MC_WILD;
-        song.both = 1; morph_set_amount((uint32_t)g_amt);
+        SEL_BOTH = 1; morph_set_amount((uint32_t)g_amt);
         morph_roll(0); morph_roll(1);
         morph_set_fader((uint32_t)g_fader);
     }
@@ -228,7 +228,7 @@ static double multi_run(uint32_t slot, uint32_t nn, uint32_t f, double *pk)
     } else
         load_scene_of(slot);
     for (i = 0; i < 40; i++) { half(0); while (wave_service()) ; }
-    song.both = 1;
+    SEL_BOTH = 1;
     morph_set_fader(f);
     for (i = 0; i < nn; i++) {
         trk_note_on(&trk[0], N8[i], 110);
@@ -274,7 +274,7 @@ static void cap_scene(const scn_t *s)
     setpart(&trk[1], s->e2, s->k2, s);
     for (i = 0; i < 40; i++) { half(0); while (wave_service()) ; }
     morph_rebase_all();
-    song.both = 1;
+    SEL_BOTH = 1;
     morph_set_fader(64);
     vcap_poll();
 }
@@ -448,7 +448,7 @@ static double stress_run(uint32_t mode, uint32_t nk, uint32_t fader, uint32_t co
     ovl_lite = (uint8_t)g_ovl;
     frame();
     for (i = 0; i < 40; i++) { half(0); while (wave_service()) ; frame(); }
-    song.both = 1;
+    SEL_BOTH = 1;
     morph_set_fader(fader);
     for (i = 0; i < nk; i++) {
         keys |= 1u << key_of_note(KN[i]);

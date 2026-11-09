@@ -503,7 +503,7 @@ static void lv_morph(void)
     song.sel = 1; sl_load(b);
     trk[0].p[P_LEVEL] = 71; trk[1].p[P_LEVEL] = 52;
     for (i = 0; i < 2u; i++) { t0[i] = trk[i].p[P_TRIM]; l0[i] = trk[i].p[P_LEVEL]; }
-    song.both = 1;                              /* BOTH */
+    SEL_BOTH = 1;                              /* BOTH */
     for (f = 0; f <= 127u; f += 127u) {
         int32_t out[2 * CTL];
         morph_set_fader(f);

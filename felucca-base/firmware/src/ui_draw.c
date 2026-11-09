@@ -409,8 +409,13 @@ static uint32_t badge_lit(void)
         return ui.layer == LAYER_GLO ? (1u << NSHOWN) - 1u : lit;   /* GLO's cards are per part: both (QUICK SCALE, whose three were global, is removed: change list A.7) */
     if (page_global(pg) || TIDE_MODE_PG(pg))   /* (a GLOBAL page: the SCALE page's, GLO's; the MODE page counts as global as in screen_global and ui_input.c algo_input, item 138: one rule. A global screen draws no capsules, so nothing on the screen changes) */
         return (1u << NSHOWN) - 1u;
+#if DUELL_TIDE
     if (song.both && HOME_BOTH_PAGE(pg))                /* 1.0.0-b5: the part selection on BOTH lights both capsules on the HOME pages (and PERFORM); every other page shows and edits song.sel alone, as before */
         lit = (1u << NSHOWN) - 1u;
+#else
+    if ((pg->graph == GR_MORPH || TIDE_PAGE(pg) || pg->scope == SC_TEST || pg->scope == SC_PERF))   /* TIDE hook */
+        lit |= morph_mask(song.sel);                    /* (ALGORITHM's PART 1 / BOTH / PART 2 there: the morph's target) */
+#endif
     return lit;
 }
 

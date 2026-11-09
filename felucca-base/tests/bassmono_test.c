@@ -711,7 +711,7 @@ static void test_control(void)
         song.bm = 5;
         project_capture(&q);
         len = mu_pack(rec, &q, &cut);
-        ok = len > MU_G_AT && q.bm == 0 && rec[5] == (uint8_t)(song.both);
+        ok = len > MU_G_AT && q.bm == 0 && rec[5] == (uint8_t)(SEL_BOTH);
         expect("a save writes byte 5 bits 1..4 as 0 and project byte 65 as 0 (BASS MONO 100 Hz on the unit)", ok);
         rec[5] = (uint8_t)((rec[5] & 1u) | 7u << 1);    /* a record of 0.2.19 / 0.2.20 with BASS MONO 125 Hz in it */
         {

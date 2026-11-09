@@ -619,6 +619,7 @@ static int32_t morph_pending(uint32_t g)
     return ui.mg.acc[g] < 0 ? -1 : 1;
 }
 static void morph_say_end(const char *a, uint32_t e) { ui_say(a, e ? "B" : "A"); }
+#if DUELL_TIDE
 /* The part selection (1.0.0-b5, owner 2026-11-08): ONE selection, PART 1 / PART 2 / BOTH. song.sel is the part (0, 1), song.both its third position; with BOTH, song.sel stays the last
  * single part. It replaces 0.2.9's ALGORITHM-as-morph-target and AUTO TIDE's own TARGET: there is no other target state. With BOTH the MORPH fader, ROLL, AMOUNT, MORPH SET's settings and the glide
  * act on both parts (morph.c morph_mask / morph_parts, morph_glide.c through the same mask), both parts are highlighted, and the keys play as the PLAY MODE row says (LAYER: both, STEREO / DUEL: the
@@ -673,6 +674,62 @@ static void algo_input(int32_t s)
     } else                                              /* the edit pages: PART 1 / PART 2, as before (BOTH stays for the BOTH pages) */
         track_select((uint32_t)clamp((int32_t)song.sel + (s > 0 ? 1 : -1), 0, NSHOWN - 1));
 }
+#else
+/* an action on the parts of mask its message; from the page or MIDI */
+static void morph_act(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi)
+{
+    if (kind == MQ_TARGET && v < 2u)
+        track_select(v);                                /* (a learned CC for MORPH TARGET, which has no shipped number: PART 1 / PART 2; BOTH keeps the part the other pages edit) */
+    morph_do(kind, mask, v);
+    TIDE_LINK(kind, mask, v);                           /* TIDE hook (LINK: TARGET BOTH moves the SEQ fader with it) */
+    if (kind == MQ_ROLL)
+        morph_say_end("ROLLED ", v);
+    else if (kind == MQ_TARGET)                         /* (ALGORITHM's words: a learned MORPH TARGET CC is the same selector) */
+        ui_message(v >= 2u ? "BOTH" : v ? "PART 2" : "PART 1");
+    else if (kind == MQ_SMART)
+        ui_message(v ? "SMART ON" : "WILD");
+    else if (kind == MQ_ARP)
+        ui_message(v ? "ARP ON" : "ARP OFF");
+    else if (kind == MQ_PITCH)
+        ui_message(v ? "PITCH ON" : "PITCH OFF");
+}
+/* ALGORITHM (0.2.9, owner 2026-10-14, "option A"): on the MORPH page (HOME 1/5) and in PERFORM a three-position selector,
+ * PART 1, BOTH, PART 2 from left to right (a detent a step, stopping at the ends, no wrap); it is the morph's target (it replaced
+ * MORPH SET's TARGET knob): BOTH = morph.target MT_BOTH, the morph (the MORPH page, PERFORM's K1 MORPH and ROLL A / B, MIDI's CCs)
+ * acts on both parts. On every other page ALGORITHM picks PART 1 or PART 2 only, as before (algo_input); BOTH stays as it was
+ * left for the MORPH page and PERFORM (one shared state). song.sel is always the last single part chosen: the part every other
+ * page edits and shows (its badge alone, the screen's colour), the keys' part. Not saved: power-on, a multi load and a settings
+ * import never set BOTH (their TARGET bytes are reserved); a learned MORPH TARGET CC sets it (it is this selector's state; the shipped map has no number for it).
+ * ALGO_BOTH_EDIT_HOOK (future, owner idea 2026-10-14, not built): BOTH on the edit pages, an edit moving both parts by the same
+ * step (relative); algo_input and edit_param's call are where it would go. Today an edit changes song.sel's part only */
+static uint32_t algo_pos(void) { return morph.target == MT_BOTH ? 1u : song.sel ? 2u : 0u; }   /* 0 PART 1, 1 BOTH, 2 PART 2 */
+static void algo_step(int32_t s)
+{
+    uint32_t cur = algo_pos();
+    int32_t nv = clamp((int32_t)cur + (s > 0 ? 1 : -1), 0, 2);
+    if ((uint32_t)nv == cur)
+        return;
+    if (nv != 1)
+        track_select(nv ? 1u : 0u);
+    morph_do(MQ_TARGET, 0, nv == 1 ? 2u : 0u);
+    ui_message(nv == 1 ? "BOTH" : nv ? "PART 2" : "PART 1");
+    ui.force = 1;
+}
+static void algo_input(int32_t s)
+{
+    if (ui.perf || (cur_page()->graph == GR_MORPH) || TIDE_PAGE(cur_page()))   /* TIDE hook */   /* (PERFORM: its page, shown while ui.perf) */
+        algo_step(s);
+    else if (cur_page()->fam == FAM_GLO && page_global(cur_page())) {   /* GLO (the MIXER first): the selected part still changes (the part every other page and the keys use); the screen stays global, so a message names it */
+        uint32_t was = song.sel;
+        track_select((uint32_t)clamp((int32_t)song.sel + (s > 0 ? 1 : -1), 0, NSHOWN - 1));
+        if (song.sel != was)
+            ui_message(song.sel ? "PART 2" : "PART 1");
+    } else if (page_global(cur_page()) || TIDE_MODE_PG(cur_page()))   /* 0.2.24 (owner): a GLOBAL page edits no part: ALGORITHM does nothing there (it switched the highlight colour and nothing else); the MODE page counts as global (ui_draw.c screen_global) */
+        return;
+    else
+        track_select((uint32_t)clamp((int32_t)song.sel + (s > 0 ? 1 : -1), 0, NSHOWN - 1));
+}
+#endif
 static void morph_knob(uint32_t slot, int32_t s)
 {
     uint32_t pi = song.sel, mask = morph_mask(pi);
@@ -715,7 +772,9 @@ static void morph_settings(void)
     uint32_t pi;
     if (!ui.mset_ok || b[0] != ui.mset_seen[0] || b[1] != ui.mset_seen[1] || ui_morph_cfg != ui.mset_seen[2]) {
         morph.cfg = (uint8_t)(ui_morph_cfg & MC_SET);
+#if DUELL_TIDE
         song.both = (uint8_t)(b[0] >> 7);               /* (the stored part selection: BOTH comes up BOTH, a single part as the part) */
+#endif
         for (pi = 0; pi < NSHOWN; pi++) {
             morph_part_t *mp = &mph[pi];
             uint32_t was = mp->n[0], a = mset_dec(b[pi]);
@@ -733,7 +792,11 @@ static void morph_settings(void)
         ui.mset_ok = 1;
         return;
     }
+#if DUELL_TIDE
     w[0] = (uint8_t)((song.both ? 0x80u : 0u) | mset_enc(mph[0].n[0] ? mph[0].aset : MORPH_AMOUNT_DEF));
+#else
+    w[0] = (uint8_t)((b[0] & 0x80u) | mset_enc(mph[0].n[0] ? mph[0].aset : MORPH_AMOUNT_DEF));   /* (plain DUELL: bit 7 kept as stored, never read) */
+#endif
     w[1] = (uint8_t)mset_enc(mph[1].n[0] ? mph[1].aset : MORPH_AMOUNT_DEF);
     w[2] = (uint8_t)(morph.cfg & MC_SET);
     if (w[0] != b[0] || w[1] != b[1] || w[2] != ui_morph_cfg) {
@@ -780,7 +843,7 @@ static void patch_save_ask(void)
     if (cur_page()->graph == GR_BROWSE)
         pl_commit();                                    /* (an accelerated K1 step still waiting loads first) */
     {
-        uint32_t trk2 = song.both && cur_page()->graph == GR_MORPH ? 2u : song.sel;   /* (0.2.9: the MORPH page
+        uint32_t trk2 = PART_BOTH() && cur_page()->graph == GR_MORPH ? 2u : song.sel;   /* (0.2.9: the MORPH page
                                                          * only, where the header shows both; was MORPH SET too) */
         if (trk2 >= 2u) {                               /* both parts, each over its own slot: the same slot twice would lose one */
             if (slot_home(&trk[0]) == slot_home(&trk[1])) {
@@ -1950,7 +2013,7 @@ static void first_boot_poll(void)
         project_load(TIDE_FIRST_MULTI);                 /* TIDE hook (H18) */
         ui_prefs2 = keep;
     }
-    song.both = 1;                             /* (2026-10-29: a new unit in LAYER starts with the part selector on BOTH) */
+    SEL_BOTH = 1;                                       /* (2026-10-29: a new unit in LAYER starts with the part selector on BOTH; plain DUELL: MT_BOTH) */
     settings_save();
 }
 

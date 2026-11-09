@@ -39,7 +39,7 @@ static void test_glide_transport(void)
     uint32_t f2, p2, p3;
     ui_power_on(); frame();
     transport_req = 2u; run(48);
-    song.sel = 0; song.both = 0;
+    song.sel = 0; SEL_BOTH = 0;
     gl.mode = GM_ONCE; gl.target = GT_SOUND; gl.time = 0; gl.wait = 0; gl.on = gl.armed = 0;
     song.g[G_BPM] = 120;                                 /* (1 bar: 2 s) */
     glide_launch(1u, morph_mask(0), 0);
@@ -73,7 +73,7 @@ static void test_wait_off_in_hold(void)
     uint32_t i;
     ui_power_on(); frame();
     transport_req = 2u; run(48);
-    song.sel = 0; song.both = 0;
+    song.sel = 0; SEL_BOTH = 0;
     gl.mode = GM_LOOP; gl.target = GT_SOUND; gl.time = 0; gl.wait = 1; gl.on = gl.armed = 0;
     song.g[G_BPM] = 120;
     glide_launch(1u, morph_mask(0), 0);
@@ -94,7 +94,7 @@ static void test_time_mid_trip(void)
     char st[40];
     ui_power_on(); frame();
     transport_req = 2u; run(48);
-    song.sel = 0; song.both = 0;
+    song.sel = 0; SEL_BOTH = 0;
     gl.mode = GM_LOOP; gl.target = GT_SOUND; gl.time = 2; gl.wait = 0; gl.on = gl.armed = 0;   /* (4 bars) */
     song.g[G_BPM] = 120;
     glide_launch(1u, morph_mask(0), 0);
@@ -132,7 +132,7 @@ static void test_wait_off_paused(void)
         uint32_t i;
         ui_power_on(); frame();
         transport_req = 2u; run(48);
-        song.sel = 0; song.both = 0;
+        song.sel = 0; SEL_BOTH = 0;
         gl.mode = GM_LOOP; gl.target = GT_SOUND; gl.time = 0; gl.wait = 1; gl.on = gl.armed = 0;
         song.g[G_BPM] = 120;
         glide_launch(1u, 1u, 0);
@@ -159,7 +159,7 @@ static void test_both_takeover(void)
     uint32_t f0;
     ui_power_on(); frame();
     transport_req = 2u; run(48);
-    song.sel = 0; song.both = 0;
+    song.sel = 0; SEL_BOTH = 0;
     gl.mode = GM_ONCE; gl.target = GT_SOUND; gl.time = 2; gl.wait = 0; gl.on = gl.armed = 0;
     song.g[G_BPM] = 120;
     morph_do(MQ_FADER, 3u, 35u); frame();
@@ -182,7 +182,7 @@ static void r0_launch(uint32_t pi, uint32_t mask, uint32_t target, uint32_t mode
 {
     ui_power_on(); frame();
     transport_req = 2u; run(48);
-    song.sel = (uint8_t)pi; song.both = 0;
+    song.sel = (uint8_t)pi; SEL_BOTH = 0;
     gl.mode = (uint8_t)mode; gl.target = (uint8_t)target; gl.time = 0; gl.wait = (uint8_t)wait; gl.on = gl.armed = 0;
     song.g[G_BPM] = 120;
     glide_launch(1u, mask, pi);
@@ -309,7 +309,7 @@ static void test_twist_stop(void)
     while (pg < pages && PAGES[pg].graph != GR_TIDE) pg++;
     CHECK("twist: the TIDE page exists", pg < pages);
     ui.page = pg; ui.cursor = ui.bank = 0; page_entered();
-    song.sel = 0; song.both = 0;
+    song.sel = 0; SEL_BOTH = 0;
     gl.mode = GM_ONCE; gl.target = GT_SOUND; gl.time = 0; gl.wait = 0; gl.on = gl.armed = 0;
     song.g[G_BPM] = 120;
     run(480);
@@ -502,7 +502,7 @@ int main(void)
     map_info_t info;
     ui_power_on(); frame();
     song.playing = song.rec = 0;
-    song.both = 0;
+    SEL_BOTH = 0;
     gl.mode = GM_ONCE; gl.target = GT_SOUND; gl.on = gl.armed = 0;
     mq_r = mq_w = 0;
     memset(midi_tide_fired, 0, sizeof midi_tide_fired);

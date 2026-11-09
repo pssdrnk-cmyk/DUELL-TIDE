@@ -74,9 +74,9 @@
  * owner: MORPH UNDO dropped for the RAM a wave picture needs; 9 deep up to memory trim 1, 3 deep up to 1.0.0-b4). There is no KEEP (v2). Replacing an end that is heard (ROLL)
  * ramps over ~50 ms: continuous values glide, a changed choice / route dips its end's weight to 0 and back
  * (the other end's value in the middle: two values at a time, continuous). One ramp per part: an action while one runs
- * completes it at once (a roll of the other end). The parts are the part selection's (1.0.0-b5, ui_input.c part_select): PART 1, PART 2 or
- * BOTH (song.both: one fader, each part its own independent ends, the same AMOUNT); there is no target state of the morph's own. The stored TARGET bytes (settings, multi, this block) carry BOTH
- * and a load restores it. Seeds: 1..65535, shown; morph_roll_seed with the
+ * completes it at once (a roll of the other end). The parts are the part selection's: PART 1, PART 2 or BOTH (one fader, each part its own independent ends, the same AMOUNT).
+ * TIDE (1.0.0-b5): song.both, the one selection (ui_input.c part_select), no target state of the morph's own; the stored TARGET bytes (settings, multi, this block) carry BOTH and a load
+ * restores it. Plain DUELL: morph.target, ALGORITHM's position on the MORPH page and in PERFORM, RAM only (the stored bytes are written and never read). Seeds: 1..65535, shown; morph_roll_seed with the
  * same Original, AMOUNT and seed gives the same end. The per-part seed is the shown one hashed with the part.
  *
  * v2 (SPEC 3.5): a sound load (morph_rebase_part) puts the fader at A and rolls End B (fresh, at the AMOUNT, or the B saved with
@@ -105,6 +105,9 @@ _Static_assert(MORPH_HIST == 1u && XH == 1u, "no morph history (1.0.0-b5)");
 #define MORPH_AMOUNT_DEF 15u          /* the player's AMOUNT at first use (owner, 2026-10-11: 25 before) */
 #define MORPH_RAMP_N (FS / 20u)      /* 50 ms */
 #define MORPH_RAMP_STEP ((32768u * CTL + MORPH_RAMP_N / 2u) / MORPH_RAMP_N)   /* Q15 a block */
+#if !DUELL_TIDE
+enum { MT_SELECTED, MT_BOTH };
+#endif
 /* cloud job G, EDITABLE B (docs/design/EDITABLE_B_DESIGN.md): at the fader's B end (127) a knob on a value the morph can move sets End B's value for good ("set by hand", pinned): the value is kept as
  * an absolute number in End B and marked in pin[] (a bit per wide id). A pinned value ignores the Original's later edits (the other B values follow them as before); a roll drops the marks.
  * EDITB_PINH: End B's entries that keep marks (1: the end itself, MORPH_HIST) */
@@ -1312,9 +1315,21 @@ static void morph_fm6_at(const morph_part_t *mp, uint32_t tr, uint8_t *p, int32_
 TIDE_MORPH_PROTOS                                        /* TIDE hook */
 static struct {
     uint8_t cfg;                                         /* v2 (SPEC 3.5): MC_WILD (SMART off), MC_ARP, MC_PIT: the settings */
+#if !DUELL_TIDE
+    uint8_t target;                                      /* MT_SELECTED / MT_BOTH (plain DUELL: ALGORITHM's BOTH on the MORPH page and PERFORM) */
+#endif
     uint16_t seed;                                       /* the last roll's (shown) */
     uint32_t gen;                                        /* the seed generator */
 } morph;
+/* the part selection's BOTH: TIDE (1.0.0-b5) song.both, the one selection PART 1 / PART 2 / BOTH (ui_input.c part_select); plain DUELL morph.target, ALGORITHM's position as before.
+ * SEL_BOTH is the stored value, PART_BOTH() whether it is on */
+#if DUELL_TIDE
+#define SEL_BOTH song.both
+#define PART_BOTH() (song.both)
+#else
+#define SEL_BOTH morph.target
+#define PART_BOTH() (morph.target == MT_BOTH)
+#endif
 
 static const int8_t *morph_cur(const morph_part_t *mp, uint32_t e) { return mp->h[e][mp->top[e]]; }
 static const int8_t *morph_curx(const morph_part_t *mp, uint32_t e) { return mp->hx[e][mp->top[e] % XH]; }   /* end e's extension slots (X0 .. X15) */
@@ -2539,7 +2554,7 @@ static void morph_load_part(uint32_t pi, const uint8_t *blk, uint32_t amount, co
 /* the parts the controls act on: the part selection's (song.sel, or both with BOTH) */
 static uint32_t morph_parts(uint32_t *first)
 {
-    if (song.both) {
+    if (PART_BOTH()) {
         *first = 0;
         return NSHOWN;
     }
@@ -2583,6 +2598,12 @@ static void morph_set_amount(uint32_t a)                 /* AMOUNT 0..100 % */
     for (; pi < end; pi++)
         morph_ready(pi)->aset = morph_ready(pi)->amount = (uint8_t)(a > 100u ? 100u : a);
 }
+#if !DUELL_TIDE
+static void morph_set_target(uint32_t both)
+{
+    morph.target = both ? MT_BOTH : MT_SELECTED;
+}
+#endif
 static void morph_set_cfg(uint32_t bit, uint32_t on)      /* v2: SMART (on = bit MC_WILD clear), ARP, PITCH */
 {
     morph.cfg = (uint8_t)(on ? morph.cfg | bit : morph.cfg & ~bit);
@@ -2602,7 +2623,7 @@ static volatile uint8_t mq_lost;                         /* actions dropped (the
 
 static uint32_t morph_mask(uint32_t pi)                  /* the parts a control of part pi acts on */
 {
-    return song.both ? (1u << NSHOWN) - 1u : 1u << (pi < NSHOWN ? pi : 0u);
+    return PART_BOTH() ? (1u << NSHOWN) - 1u : 1u << (pi < NSHOWN ? pi : 0u);
 }
 /* what the page shows of part pi without touching it (a part never used: AMOUNT's default, ends at the Original) */
 static uint32_t morph_fader_of(uint32_t pi) { return pi < NSHOWN ? mph[pi].fader : 0u; }
@@ -2618,6 +2639,12 @@ static uint32_t morph_seed_of(uint32_t pi, uint32_t e)  /* end e's seed, 0: no r
 static uint32_t morph_do(uint32_t kind, uint32_t mask, uint32_t v)
 {
     uint32_t pi, seed = 0;
+#if !DUELL_TIDE
+    if (kind == MQ_TARGET) {                             /* v2: 0 PART 1, 1 PART 2, 2 BOTH */
+        morph_set_target(v >= 2u);
+        return 0;
+    }
+#endif
     if (kind >= MQ_SMART) {
         morph_set_cfg(kind == MQ_SMART ? MC_WILD : kind == MQ_ARP ? MC_ARP : MC_PIT, kind == MQ_SMART ? !v : v);
         return 0;
@@ -2682,7 +2709,7 @@ static uint32_t morph_pack(uint8_t *b)
     uint32_t pi, e;
     b[0] = 'M';
     b[1] = 1;
-    b[2] = song.both;                                    /* (the selection's BOTH: written, and read back by a load since 1.0.0-b5) */
+    b[2] = SEL_BOTH;                                     /* (the selection's BOTH; TIDE reads it back since 1.0.0-b5) */
     b[3] = NSHOWN;
     for (pi = 0; pi < NSHOWN; pi++) {
         morph_part_t *mp = morph_ready(pi);
@@ -2707,7 +2734,9 @@ static int morph_unpack(const uint8_t *b, uint32_t n)
     np = b[3] < NSHOWN ? b[3] : NSHOWN;
     if (n < 4u + np * MORPH_PACK_PART)
         return 0;
+#if DUELL_TIDE
     song.both = (uint8_t)(b[2] & 1u);                   /* b[2] TARGET: the selection's BOTH (1.0.0-b5: read back; 0.2.9 to b4 wrote it and never read it) */
+#endif                                                   /* (plain DUELL: reserved, ALGORITHM's BOTH is not loaded) */
     for (pi = 0; pi < np; pi++) {
         morph_part_t *mp = morph_ready(pi);
         const uint8_t *q = b + 4u + pi * MORPH_PACK_PART;
