@@ -4,21 +4,7 @@ Updated 9 November 2026. What is already built is in the [CHANGELOG-TIDE](../CHA
 
 State words on this page: Released in bN, Ready (built and tested, waiting for a release), In progress, Next, Later, Waiting on you.
 
-## Now: 1.0.0-b5
-
-The only thing being worked on. Nothing else starts until b5 is out.
-
-| What | State |
-|---|---|
-| The MORPH page as a live wave picture | In progress. The first look broke into scattered bits with a busy patch; the second came out almost flat. You approve the look before anything else happens. |
-| PART 1 / PART 2 / BOTH on HOME's pages | Ready |
-| The new flashing screen | Ready |
-| More free memory (EQ design moved out of fast RAM, 1,068 B) | Ready |
-| CPU test on your FM-1 with the wave page on screen | Passed: no missed blocks, busiest block 84 % (b4: 84 %) |
-
-b5 goes out when you like the wave page on your FM-1. Room left on the b5 build: 6,352 B of flash, RAM 68,920 of 73,728 B.
-
-## Next: 1.0.0-b6 (paused until b5 is out)
+## Now: 1.0.0-b6
 
 | What | State |
 |---|---|
@@ -37,6 +23,7 @@ b5 goes out when you like the wave page on your FM-1. Room left on the b5 build:
 
 | Version | Date | What you got |
 |---|---|---|
+| 1.0.0-b5 | 9 November | The MORPH page as a live wave picture, PART 1 / PART 2 / BOTH on HOME's pages, the new flashing screen, more free memory |
 | 1.0.0-b4 | 8 November | No notes cut when the CPU runs hot (ease ladder), less CPU while a part is silent, STYLE DRONE, screen cleanups |
 | 1.0.0-b3 | 8 November | CPU and missed-block readout, patch list order, live recording into ARP SEQ, HOME without the MODE page |
 | 1.0.0-b2 | 8 November | Second beta |
@@ -66,9 +53,9 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 **Screens** (redundancy audit 8 November, all 433 screens rendered)
 - TIDE rows SYNC and ROLL renamed so they don't share words with tempo sync and MORPH's ROLL. (The rest of this audit was released in b4.)
 
-**One view for both parts** (owner, 8 November): AUTO TIDE and the MORPH / wave page always show both parts, with the selected part clearly marked (full colour, the other dimmed, plus a cue that works on MONO and GREY). The wave page and AUTO TIDE do it in b5 (In progress, see Now).
+**One view for both parts** (owner, 8 November): AUTO TIDE and the MORPH / wave page always show both parts, with the selected part clearly marked (full colour, the other dimmed, plus a cue that works on MONO and GREY). The wave page and AUTO TIDE do it (Released in b5).
 
-**RAM room** (b5, Ready): pool tail 9,276 B against the 8,192 B rule; a test-mode build keeps the lowered 7,936 B rule. The next change that grows range Z or the pool measures against that.
+**RAM room** (Released in b5): pool tail 9,276 B against the 8,192 B rule; a test-mode build keeps the lowered 7,936 B rule. The next change that grows range Z or the pool measures against that.
 
 **MORPH** ([review](audits/2026-11-08/morph/REPORT.md): keep the core and the page, no big rework)
 - c3 (b6, Ready): factory loads stop resetting AMOUNT; K4 dim in JRNY, where it does nothing. Branch `fix/b6-morph-c3` `148d84b`, tests pass; rebase onto the reworked MORPH page before b6.
