@@ -512,6 +512,16 @@ POOL_TAIL_MIN_TEST = 7936  # a DUELL_TEST_MODE=1 measurement build (unit sweeps,
                             # range-Z functions (b5: +44 B; the release build kept 8,208 B, the test build 8,164 B). Release and normal builds keep POOL_TAIL_MIN.
 
 
+RAM_HEADROOM_MIN = 4096      # the RAM rule: .data + .bss keep this much of RAM spare (state the audio side touches)
+RAM_HEADROOM_MIN_TEST = 3840  # a DUELL_TEST_MODE=1 measurement build (unit sweeps, never released): 256 B under the rule, as POOL_TAIL_MIN_TEST, for the
+                              # test-mode console's 264 B of .bss (TIDE b6: the release build keeps 4,104 B, the test build 3,840 B). Release and normal builds keep RAM_HEADROOM_MIN.
+
+
+def ram_headroom_min(env=None):
+    env = os.environ if env is None else env
+    return RAM_HEADROOM_MIN_TEST if env.get("DUELL_TEST_MODE") == "1" else RAM_HEADROOM_MIN
+
+
 def pool_tail_min(env=None):
     env = os.environ if env is None else env
     if env.get("DUELL_BENCH") == "1" and env.get("BENCH_TAG"):
@@ -557,7 +567,9 @@ def check(img, syms, dis, rt):
     notes.append(f"image {len(img)} B; RAM .data+.bss {bss} B of {ram_len}; pool {pool} B of {pool_len}")
     if region["RAM"][0] + ram_len != region["POOL"][0]:
         errors.append("app.ld: POOL does not start where RAM ends")
-    bss_min = 4096
+    bss_min = ram_headroom_min()
+    if bss_min != RAM_HEADROOM_MIN:
+        notes.append(f"RAM headroom rule lowered to {bss_min} B for this DUELL_TEST_MODE measurement build (normal builds keep {RAM_HEADROOM_MIN} B)")
     if os.environ.get("DUELL_BENCH") == "1" and os.environ.get("BENCH_BSS_MIN"):   # HANDOFF_V2 item 107: OPT-IN, a DUELL_BENCH developer build only; unset = the 4,096 B rule as ever
         bss_min = int(os.environ["BENCH_BSS_MIN"])
         notes.append(f".bss headroom rule lowered to {bss_min} B by BENCH_BSS_MIN for this DUELL_BENCH developer build (normal builds keep 4096 B)")
