@@ -89,10 +89,24 @@ MULTIS = [
                 dict(sound="DUST BED", set=dict(P_AHOLD="ALL", P_EQLG=-12, P_LEVEL=94))]),
     dict(slot=2, name="DUB CHORD", kept=True, owner=True, mode="LAYER", parts=[dict(sound="BIG STAB"), dict(sound="TIDAL SUB")],
          what="off-beat minor-seventh stabs through a long dotted echo over a sparse sub line (the owner's; the sub an octave up since D31; the first start's multi)"),
-    dict(slot=3, name="CELLAR TAPE", kept=True, mode="LAYER", parts=[dict(sound="PLUCK BASS"), dict(sound="CLAVICLE")],
-         what="deep dub techno: an offbeat plucked sub line under minor-ninth chord stabs, dotted-eighth delay and a plate (PLAY alone plays both; a held key transposes the bass and plays the stabs' chord)"),
-    dict(slot=4, name="NIGHT ORGAN", kept=True, owner=True, mode="LAYER", parts=[dict(sound="PEDAL BASS"), dict(sound="DRAWBARS")],
-         what="a house organ on the off-beats over a pedal-organ line (the owner's)"),
+    # ---- b7 (lane TECHNO, owner 9 November 2026: "adjustments of the multis for techno, like berlin and such"): M03, M04, M07, M13, M14, M15 are techno
+    # scenes, 126-133 BPM, two ARP SEQ parts each (both play on PLAY with no key held), the motif's anchors accented and a few softer hits TIDE may thin.
+    # Replaced: CELLAR TAPE (M03), NIGHT ORGAN (M04, the owner's), MINIMAL 12's blip and pad (M07), COLD CHAPEL, EERIE SIGNAL, HAZY TENSOR (M13-M15, the owner's);
+    # their records are in the git history (b7/integ dc8f1d3, tools/factory_multis/M03 M04 M07 M13 M14 M15.bin).
+    dict(slot=3, name="BUNKER DUB", mode="LAYER",
+         what="Berlin dub techno: a dark minor-seventh stab on an off-grid figure thrown into a long dotted echo and a dark hall, a low drone rumbling under it that sinks a third every fourth bar (128 BPM)",
+         g=dict(G_BPM=128, G_DTIME="8D", G_DFDBK=74, G_DMIX=84, G_DMODE="DIGI", G_RTYPE="HALL", G_RSIZE=96, G_RDAMP=72),
+         parts=[dict(sound="DARK MIN7", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=38, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="OPEN", P_DLY=72, P_REV=50, P_LEVEL=100),
+                     steps=". . . 0A . . 0v76 . . . 0A . . . . 0v64"),
+                dict(sound="NIGHT DRONE", set=dict(P_AMODE="SEQ", P_ARATE="1/4", P_AGATE=127, P_AHOLD="OFF", P_DLY=10, P_LEVEL=92),
+                     steps="0A - - - - - - - - - - . -4 - - .")]),
+    dict(slot=4, name="STEEL ECHO", mode="LAYER",
+         what="deep dub techno: a low saw chord on the and of one and three, its long tail in a ping-pong echo and a plate, a dark FM bell answering twice in two bars an octave up (126 BPM)",
+         g=dict(G_BPM=126, G_DTIME="8D", G_DFDBK=78, G_DMIX=84, G_DMODE="PING", G_RTYPE="PLATE", G_RSIZE=90, G_RDAMP=66),
+         parts=[dict(sound="LOW STAB", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=56, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="CLOSE", P_DLY=70, P_REV=44, P_LEVEL=105),
+                     steps=". . 0A . . . . 0v72 . . 0A . . 0v64 . ."),
+                dict(sound="BELL STAB", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=40, P_AHOLD="OFF", P_DLY=80, P_REV=40, P_LEVEL=101),
+                     steps=". . . . . 12A . . . . . . . . 10v70 . . . . . . 12A . . . . . 15v76 . . . .", bars=2)]),
     dict(slot=5, name="ORGAN SKANK", mode="LAYER",
          what="reggae-house organ stabs on the off-beats, a spring and a dotted echo, a breathing shimmer pad an octave up holding two chords a bar",
          g=dict(G_BPM=123, G_DTIME="8D", G_DFDBK=55, G_DMIX=77, G_DMODE="DIGI", G_RTYPE="SPRING", G_RSIZE=71, G_RDAMP=71),
@@ -109,12 +123,12 @@ MULTIS = [
                 dict(sound="TAPE PLUCK", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=36, P_AHOLD="OFF", P_DLY=77, P_REV=40, P_LEVEL=111),
                      steps="12A . . 12 . . . 8A . . 5 . . . 7 .")]),
     dict(slot=7, name="MINIMAL 12", mode="LAYER",
-         what="a twelve-step blip cell against a sixteen-step pad: the two loops drift (polymeter) while the echo carries the blip",
-         g=dict(G_BPM=124, G_DTIME="8D", G_DFDBK=50, G_DMIX=77, G_DMODE="DIGI", G_RTYPE="ROOM", G_RSIZE=77, G_RDAMP=61),
-         parts=[dict(sound="DUB BLIP", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=40, P_AHOLD="OFF", P_DLY=70, P_REV=34, P_LEVEL=106),
-                     steps="12A . . 12 . . 12 . . 10 - .", poly=True),
-                dict(sound="DEEP BLUE", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=100, P_AHOLD="OFF", P_CHRD="MIN", P_VOIC="CLOSE", P_DLY=0, P_REV=50, P_LEVEL=98),
-                     steps="0A - - - - - - . . . . . -5 - - .")]),
+         what="hypnotic minimal techno: a hollow two-note pluck on a twelve-step loop against the sixteen, the dotted echo on its grid, an iron ring-mod texture swelling once a bar on beat two, every other bar a fifth up (130 BPM; b7: was a blip and a pad)",
+         g=dict(G_BPM=130, G_DTIME="8D", G_DFDBK=62, G_DMIX=77, G_DMODE="DIGI", G_RTYPE="ROOM", G_RSIZE=80, G_RDAMP=64),
+         parts=[dict(sound="HOLLOW POP", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=40, P_AHOLD="OFF", P_DLY=66, P_REV=30, P_LEVEL=110),
+                     steps="12A . . 12v80 . . 15A . . . 12v66 .", poly=True),
+                dict(sound="IRON WORKS", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=127, P_AHOLD="OFF", P_DLY=30, P_REV=50, P_LEVEL=94),
+                     steps=". . . . 0A - - - - - - - - - . . . . . . 7v80 - - - - - - - - - . .", bars=2)]),
     dict(slot=8, name="TINE DUB", mode="LAYER",
          what="FM electric-piano tines stabbing a dub chord through a tape echo, a slow-moving analog pad holding open fifths under them (the FM voice of the set, 120 BPM)",
          g=dict(G_BPM=120, G_DTIME="8D", G_DFDBK=60, G_DMIX=84, G_DMODE="DIGI", G_RTYPE="PLATE", G_RSIZE=77, G_RDAMP=61),
@@ -131,6 +145,28 @@ MULTIS = [
                      steps="0A - - - - - - - 7A - - - - - - -")]),
     # ---- 10-16: colour: the owner's pads and textures, kept byte for byte (tools/owner_multis.py; their old slots in brackets) ----
     # 10 PAD SPLIT (M03), 11 WHISPER TIDE (M05), 12 TINE STRINGS (M06), 13 COLD CHAPEL (M13), 14 EERIE SIGNAL (M11), 15 HAZY TENSOR (M08), 16 FINAL REEL (M07)
+    # b7 lane TECHNO: 13-15 are techno scenes now (the owner's COLD CHAPEL, EERIE SIGNAL and HAZY TENSOR left; see M03 above)
+    dict(slot=13, name="COLD PULSE", mode="LAYER",
+         what="peak-hour tension: a suspended brass-string cluster swelling for three bars and leaning a half step up in the fourth (phrygian), a glassy tick on the off-beats over it (131 BPM)",
+         g=dict(G_BPM=131, G_DTIME="8D", G_DFDBK=50, G_DMIX=71, G_DMODE="PING", G_RTYPE="HALL", G_RSIZE=100, G_RDAMP=64),
+         parts=[dict(sound="NEON BRASS", set=dict(P_AMODE="SEQ", P_ARATE="1/8", P_AGATE=127, P_AHOLD="OFF", P_CHRD="SUS2", P_VOIC="CLOSE", P_DLY=20, P_REV=70, P_LEVEL=96),
+                     steps="-12A - - - - - - - - - - - - - - - - - - - - - - - -11 - - - - - . .", bars=2),
+                dict(sound="BOTTLE TAP", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=30, P_AHOLD="OFF", P_DLY=40, P_REV=20, P_LEVEL=100),
+                     steps=". . 12A . . . 12 12v56 . . 12A . . . 19 12v56")]),
+    dict(slot=14, name="BERLIN RUN", mode="LAYER",
+         what="Berlin school on a techno clock: an analog pluck running eighths through C minor, root against the fifth, seventh and octave, over string fifths an octave below: C for two bars, A flat and B flat a bar each (126 BPM)",
+         g=dict(G_BPM=126, G_DTIME="8D", G_DFDBK=48, G_DMIX=71, G_DMODE="PING", G_RTYPE="HALL", G_RSIZE=96, G_RDAMP=61),
+         parts=[dict(sound="ARP PLUCK", set=dict(P_AMODE="SEQ", P_ARATE="1/8", P_AOCT=1, P_AGATE=60, P_AHOLD="OFF", P_DLY=40, P_REV=34, P_LEVEL=104),
+                     steps="0A 7v90 0v84 10 . 12A 0v84 10v90 0A 7v90 0v84 3 . 5A 0v84 3v90"),
+                dict(sound="RAIN STRINGS", set=dict(P_AMODE="SEQ", P_ARATE="1/8", P_AGATE=127, P_AHOLD="OFF", P_CHRD="POW", P_VOIC="CLOSE", P_REV=64, P_LEVEL=92),
+                     steps="-12A - - - - - - - - - - - - - - . -16A - - - - - - . -14 - - - - - - .", bars=2)]),
+    dict(slot=15, name="HANGAR STAB", mode="LAYER",
+         what="warehouse techno: an icy minor stab on a three-step figure that turns over the bar, a long echo behind it, a grid hum low under it sliding a half step and back (133 BPM)",
+         g=dict(G_BPM=133, G_DTIME="8D", G_DFDBK=60, G_DMIX=77, G_DMODE="DIGI", G_RTYPE="ROOM", G_RSIZE=84, G_RDAMP=64),
+         parts=[dict(sound="ICE STAB", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=34, P_AHOLD="OFF", P_CHRD="MIN", P_VOIC="CLOSE", P_DLY=62, P_REV=30, P_LEVEL=103),
+                     steps=". . 0A . . 0v80 . . 0v70 . . 0A . . 0v76 ."),
+                dict(sound="GRID HUM", set=dict(P_AMODE="SEQ", P_ARATE="1/4", P_AGATE=127, P_AHOLD="OFF", P_EQLG=-9, P_DLY=12, P_REV=30, P_LEVEL=100),
+                     steps="-5A - - - - - - . -5 - - - -4 - - .")]),
 ]
 
 # ---- spare multis (0.2.24): made for 0.2.23, out of the sixteen so the owner's COLD CHAPEL, ACID ETHER and GARGLE ACID could come back.
@@ -296,6 +332,7 @@ def emit(path):
 BOOT_H = """/* tools/factory_multis.py: no factory multis (the build of the generator itself) */
 #define DF_TEST_MULTIS DUELL_TEST_MODE
 #define DF_N 0u
+#define DF_TIDE DUELL_TIDE
 static const uint8_t DF_SLOT[1] = {0};
 static const uint16_t DM_LEN[1] = {0};
 static const uint16_t DM_AT[1] = {0};
