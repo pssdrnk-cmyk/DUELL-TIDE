@@ -39,11 +39,11 @@ static int32_t voicelead_walk(const step_t *source, uint32_t len, step_t *out, i
                 candidate[0] = s->note[order[0]];
                 for (uint32_t k = 1; k < n; k++) {
                     uint32_t id = order[k];
-                    int32_t base = note_snap_to(trk, s->note[id], 1u);
+                    int32_t base = note_snap(trk, s->note[id]);   /* (B3: OFF-SCALE PLAY keeps an out-of-scale chord tone; SNAP snaps it, as the keys) */
                     int32_t note = base + ((int32_t)(bits % 3u) - 1) * 12;bits /= 3u;
                     candidate[k] = note;
                     if (!sqm_in_lane(note, lane_lo, lane_hi) || voicelead_abs(note - (source[i].n == n ? source[i].note[id] : s->note[id])) > 12 ||
-                        note <= candidate[k-1] || !((scale_mask(trk) >> (uint32_t)((note-root_g+240)%12)) & 1u)) {ok = 0;break;}
+                        note <= candidate[k-1] || ((note - (int32_t)s->note[id]) % 12 && !((scale_mask(trk) >> (uint32_t)((note-root_g+240)%12)) & 1u))) {ok = 0;break;}
                     score += 4 * voicelead_abs(note - reference[k]);
                     int32_t gap = note - candidate[k-1];
                     if (candidate[k-1] < 48 && gap < 5) score += 24 * (5-gap);

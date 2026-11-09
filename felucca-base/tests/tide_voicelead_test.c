@@ -225,6 +225,19 @@ static void gen_voicelead_cases(void)
     for (i = kept = 0; i < 16u; i++) kept += lowest(&out[i]) == lowest(&trk[0].step[i]);
     CHECK("M07: .. and ROLL SMART / WILD keeps the plain octave inversions", kept < 16u);
     morph_musical = 1;
+    {   /* B3 (firmware review FR13): OFF-SCALE PLAY, C major, a step {C E G Bb}, VOIC +60: the Bb survives (SNAP: it is moved onto the scale, as before) */
+        uint32_t keep = offscale_g, bb;
+        for (i = 0; i < 16u; i++) chord(&trk[0].step[i], 48, 52, 55, i % 2u ? 58 : 70);
+        offscale_g = OS_PLAY;
+        sqm_build(trk[0].step, 16, &x, 100u, out);
+        for (i = bb = 0; i < 16u; i++) bb += (pcs(&out[i]) >> 10 & 1u) && pcs(&out[i]) == pcs(&trk[0].step[i]);
+        CHECK("B3: OFF-SCALE PLAY: VOIC keeps an out-of-scale chord tone (Bb in C major)", bb == 16u);
+        offscale_g = OS_SNAP;
+        sqm_build(trk[0].step, 16, &x, 100u, out);
+        for (i = bb = 0; i < 16u; i++) bb += pcs(&out[i]) >> 10 & 1u;
+        CHECK("B3: OFF-SCALE SNAP: the Bb is snapped onto the scale", bb == 0u);
+        offscale_g = (uint8_t)keep;
+    }
 }
 static void gen_home_load_cases(void)
 {
