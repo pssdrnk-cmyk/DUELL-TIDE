@@ -4,37 +4,32 @@ Updated 9 November 2026. What is already built is in the [CHANGELOG-TIDE](../CHA
 
 State words on this page: Released in bN, Ready (built and tested, waiting for a release), Built (waits for the FM-1 test), In progress, Planned (brief written, not built), Next, Later, Waiting on you.
 
-## Now: 1.0.0-b5
+## Now: 1.0.0-b6 (b5 folded in)
 
-b5 comes first; b6 is prepared alongside while the FM-1 is offline (owner, 9 November).
-
-| What | State |
-|---|---|
-| The MORPH page's waves move like the first WAVE LAB stack again (many lines scrolling back evenly, full height, smooth), at today's size | In progress: the owner, 9 November: "the animation quality got worse, the front lines moves a lot and the ones behind barely"; "the initial version looked quite cool when we called it wave lab" |
-| MORPH page: an older saw line no longer crosses the newest one on note changes | In progress: goes into b5 with the motion fix |
-| PART 1 / PART 2 / BOTH on HOME's pages | Ready |
-| The new flashing screen | Ready |
-| More free memory (EQ design moved out of fast RAM, 1,068 B) | Ready |
-| CPU test on your FM-1 with the wave page on screen | Passed on the 898b1f6 layout (9 November, before the motion fix): no missed blocks, no voices cut with MORPH on screen, busiest block 83 % (b4: 84 %) |
-
-b5 goes out after this fix and your OK on the FM-1. Room left on the b5 build: 4,556 B of flash, RAM 68,968 of 73,728 B.
-
-## Next: 1.0.0-b6 (prepared while b5 waits for the FM-1; released after b5)
+b5 was never published: its changes ship inside b6 as one release (owner, 9 November: "let's move to b6"). The b6 build is put together on one branch; the rows below say what is in it.
 
 | What | State |
 |---|---|
-| Reverb on the second core, to free CPU (K4) | Built, waits for the FM-1 test after b5 |
-| Factory sounds stop resetting AMOUNT (MORPH c3) | Ready |
-| Pattern notes stay in a sensible range (roles T4) | Ready |
-| Two drone scenes built in (M17 DUNE HORN, M18 VOID DEEP, played as STYLE DRONE; [brief](audits/2026-11-09/drones/TASKS.md)) | Built, waits for the FM-1 test after b5 |
-| Give back the notes the first beta's CPU fix took (most factory multis play 1 or 2 notes fewer per part since b1; b4's ease ladder now catches the peaks) | Built, waits for the FM-1 test after b5; the test picks the step 76 / 80 / 84 |
+| The MORPH page's waves move like the first WAVE LAB stack again (many lines scrolling back evenly, full height, smooth), at today's size (from b5) | In progress: the owner, 9 November: "the animation quality got worse, the front lines moves a lot and the ones behind barely"; "the initial version looked quite cool when we called it wave lab". Joins the b6 build when it passes review |
+| MORPH page: an older saw line no longer crosses the newest one on note changes (from b5) | In progress: comes with the motion fix |
+| PART 1 / PART 2 / BOTH on HOME's pages (from b5) | Ready (in the b6 build) |
+| The new flashing screen (from b5) | Ready (in the b6 build) |
+| More free memory (EQ design moved out of fast RAM, 1,068 B; from b5) | Ready (in the b6 build) |
+| Factory sounds and multis stop resetting AMOUNT, the two drone scenes too (MORPH c3) | Ready (in the b6 build) |
+| Pattern notes stay in a sensible range (roles T4) | Ready (in the b6 build) |
+| More free flash: factory multis stored as template + changes (2,776 B), keycaps compressed (2,032 B); nothing you hear or see changes | Ready (in the b6 build) |
+| Two drone scenes built in (M17 DUNE HORN, M18 VOID DEEP, played as STYLE DRONE; [brief](audits/2026-11-09/drones/TASKS.md)) | Built (in the b6 build), waits for the FM-1 test |
+| Give back the notes the first beta's CPU fix took (most factory multis play 1 or 2 notes fewer per part since b1; b4's ease ladder now catches the peaks) | Built (in the b6 build at step 76), waits for the FM-1 test, which picks the step 76 / 80 / 84 |
+| FM6 sounds no longer get louder at the morph's End B (FRETLESS, ISLAND STEEL, MALLET WOOD) | Built (in the b6 build), waits for the FM-1 test |
+| JOURNEY travels to sounds near the current one in level and colour (the default set moves up to 15 dB today; [J1](audits/2026-11-09/tide-morph/TASKS.md#j1)) | In progress; joins the b6 build when it passes |
+| Reverb on the second core, to free CPU (K4) | Built, not in the b6 build yet: needs its own FM-1 sweep with K4 on and off |
 | JOURNEY's crossing dip lasts a few bars, not 90 % of every trip ([X1](audits/2026-11-09/tide-morph/TASKS.md#x1); [audit 9 November](audits/2026-11-09/tide-morph/REPORT.md)) | Planned: ~60 B, 8 B RAM; before/after with `tide_long` |
 | JOURNEY doesn't jump the sound when started with the fader away from A ([J2](audits/2026-11-09/tide-morph/TASKS.md#j2)) | Planned: ~16 B, main loop |
 | TIDE's louder peak and softer breakdown reach ARP SEQ parts, M02 included; accents kept ([D1](audits/2026-11-09/tide-morph/TASKS.md#d1)) | Planned: ~60 B, one multiply per arp step |
 | The bass keeps its loop and octave: no POLY, no VOIC octave on a bass part; POLY ends in ARC's breakdown ([B1](audits/2026-11-09/tide-morph/TASKS.md#b1)) | Planned: ~65 B, 1 B RAM |
-| JOURNEY travels to sounds near the current one in level and colour (the default set moves up to 15 dB today; [J1](audits/2026-11-09/tide-morph/TASKS.md#j1)) | In progress |
-| More free flash: factory multis stored as template + changes (~3 KB), keycaps compressed (~2.5 KB); nothing you hear or see changes | In progress |
-| FM6 sounds no longer get louder at the morph's End B (FRETLESS, ISLAND STEEL, MALLET WOOD) | Built, waits for the FM-1 test after b5 |
+| CPU test of b6 on your FM-1 (the 16 multis, the drones, the notes step; MORPH on screen) | Next. b5's baseline (9 November, before the motion fix): no missed blocks and no voices cut in all 16 multis, busiest block 83 % (M05). The sweep starts with one warm-up scene and checks MORPH is on screen before M01 (in the b5 run M01 came first after boot, ran off the MORPH page and cut 2 voices; on MORPH it was clean at 75 %) |
+
+b6 goes out after the motion fix, the CPU test and your OK on the FM-1. Room left on the b6 build so far (without the motion fix and JOURNEY): 7,956 B of flash, RAM 69,032 of 73,728 B.
 
 ## Later, in order
 
@@ -59,6 +54,8 @@ b5 goes out after this fix and your OK on the FM-1. Room left on the b5 build: 4
 | 1.0.0-b3 | 8 November | CPU and missed-block readout, patch list order, live recording into ARP SEQ, HOME without the MODE page |
 | 1.0.0-b2 | 8 November | Second beta |
 | 1.0.0-b1 | 5 November | First beta |
+
+1.0.0-b5 was not released separately: its changes are in 1.0.0-b6.
 
 Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first numbered stable will be `1.0.0`.
 
