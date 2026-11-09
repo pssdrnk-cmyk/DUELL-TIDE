@@ -513,6 +513,95 @@ static void test_seq_ghost_chord(void)
     t->p[P_AMODE] = 0;
 }
 
+/* b7 MR2 part B: AUTO TIDE under a multi whose parts would wait for keys (M10 PAD SPLIT: a HOLD ALL pad without steps and an ARP SEQ part; the host build's slot 10 is a test scene, so the parts are set up by hand): with no key down both
+ * parts sound within 4 bars, a real key replaces the ghost chord at once, STOP ends it, and a part under no AUTO TIDE stays silent as ever */
+static void test_hold_ghost(void)
+{
+    track_t *a = &trk[0], *b = &trk[1];
+    uint32_t i, heard_b = 0, voices;
+    ui_power_on(); frame();
+    transport_req = 2u; run(48);
+    /* (M10's two parts, set up by hand: this build's slot 10 is a test scene) part 1 a latched pad with no steps, part 2 an ARP SEQ part */
+    memset(a->step, 0, sizeof a->step); memset(b->step, 0, sizeof b->step);
+    a->p[P_AMODE] = 0; a->p[P_AHOLD] = 2; a->nheld = a->arp_phys = 0;
+    b->p[P_SLEN] = 4;
+    for (i = 0; i < 4u; i++) { b->step[i].time = ST_NOTE; b->step[i].n = 1; b->step[i].note[0] = (uint8_t)(60 + 2 * i); b->step[i].vel = 100; }
+    b->p[P_AMODE] = AM_SEQ_ID; b->p[P_ARATE] = 5; b->p[P_APROB] = 127; b->p[P_AOCT] = 1; b->p[P_AHOLD] = 2;
+    memset(tide_chord_n, 0, sizeof tide_chord_n);
+    memset(tide_gh_n, 0, sizeof tide_gh_n);
+    CHECK("hold ghost: part 1 is HOLD ALL without steps or arp", !arp_mode(a) && arp_hold(a) == 2 && !tide_gh_steps(a));
+    transport_req = 1u; run(500);                        /* PLAY alone, AUTO TIDE off */
+    CHECK("hold ghost: PLAY without AUTO TIDE: the pad waits for keys as ever", song.playing && !a->nheld && !tide_gh_n[0]);
+    transport_req = 2u; run(500);
+    tide_style_apply(STY_DUB);
+    gl.target = GT_BOTH; morph_musical = 1; morph.cfg = (uint8_t)(morph.cfg & ~MC_PIT);
+    glide_launch(1u, 3u, 0u);
+    for (i = 0; i < 1000u && !(tide_gh_n[0] && heard_b); i++) {   /* (16 s: more than 4 bars of M10's 97 BPM) */
+        run(16);
+        heard_b |= b->arp_note != 0u;
+    }
+    CHECK("hold ghost: AUTO TIDE + PLAY, no key: part 1 latches TIDE's chord and part 2 plays within 4 bars", song.playing && tide_gh_n[0] && a->nheld == tide_gh_n[0] && heard_b);
+    run(160);
+    CHECK("hold ghost:   the chord stays latched, nothing down", a->nheld == tide_gh_n[0] && !a->arp_phys);
+    voices = gated(a, 200u);
+    CHECK("hold ghost:   one voice a latched note", voices == a->nheld);
+    input_on(a, 50, 100); input_off(a, 50);
+    run(48);
+    CHECK("hold ghost: a key replaces the ghost chord at once: the key's note alone, nothing of the ghost left", a->nheld == 1u && a->held[0] == 50u && !tide_gh_n[0]);
+    voices = gated(a, 200u);
+    CHECK("hold ghost:   and no doubled note", voices == 1u);
+    run(1500);
+    CHECK("hold ghost:   the player's chord is not taken for the ghost's", a->nheld == 1u && !tide_gh_n[0]);
+    transport_req = 2u; run(500);
+    CHECK("hold ghost: STOP: the AUTO TIDE chord ends (the player's latched chord stays for PLAY)", !song.playing && a->nheld == 1u);
+    a->nheld = 0; a->arp_phys = 0;
+    trk_note_off(a, 50);
+    transport_req = 1u; run(1200);
+    CHECK("hold ghost: PLAY again: the ghost chord comes back", song.playing && tide_gh_n[0] && a->nheld == tide_gh_n[0]);
+    transport_req = 2u; run(500);
+    CHECK("hold ghost: STOP: the ghost chord ends, no hung voice", !song.playing && !a->nheld && !tide_gh_n[0]);
+    {   /* a plain key part (HOLD OFF, no arp, no steps: M10's and M14's pads): the ghost chord, a key ends it and the part is the player's until the next PLAY */
+        a->p[P_AHOLD] = 0; a->nheld = a->arp_phys = 0;
+        gl.on = gl.armed = 0;
+        glide_launch(1u, 3u, 0u);
+        for (i = 0; i < 400u && !tide_gh_n[0]; i++)
+            run(16);
+        run(160);
+        CHECK("hold ghost: a plain key part (HOLD OFF): the ghost chord sounds, one voice a note, nothing latched", song.playing && tide_gh_n[0] && gated(a, 200u) == tide_gh_n[0] && !a->nheld);
+        input_on(a, 50, 100);
+        CHECK("hold ghost:   a key ends the ghost chord before its note starts: that note alone", gated(a, 200u) == 1u && gated(a, 50u) == 1u && !tide_gh_n[0]);
+        input_off(a, 50);
+        run(1500);
+        CHECK("hold ghost:   let go: the part stays the player's (no ghost chord back)", gated(a, 200u) == 0u && !tide_gh_n[0]);
+        transport_req = 2u; run(500);
+        transport_req = 1u; run(1500);
+        CHECK("hold ghost:   the next PLAY: the ghost chord again", tide_gh_n[0] && gated(a, 200u) == tide_gh_n[0]);
+        transport_req = 2u; run(500);
+        CHECK("hold ghost:   STOP: it ends, no hung voice", !song.playing && !tide_gh_n[0] && gated(a, 200u) == 0u);
+        a->p[P_AHOLD] = 2;
+    }
+    {   /* a classic arp with nothing held: silent without AUTO TIDE, the ghost chord under it, a key takes over, STOP ends it */
+        uint32_t heard = 0;
+        gl.on = gl.armed = 0;
+        a->p[P_AMODE] = 1; a->p[P_AHOLD] = 0; a->p[P_ARATE] = 5; a->p[P_APROB] = 127; a->p[P_AOCT] = 1;
+        transport_req = 1u;
+        for (i = 0; i < 120u; i++) { run(16); heard |= a->arp_note != 0u; }
+        CHECK("hold ghost: a classic arp, PLAY, no AUTO TIDE, no key: silent as ever", song.playing && !heard);
+        transport_req = 2u; run(500);
+        glide_launch(1u, 3u, 0u);
+        for (i = 0; i < 400u && !heard; i++) { run(16); heard |= a->arp_note != 0u; }
+        CHECK("hold ghost: a classic arp, AUTO TIDE, no key: plays the ghost chord", song.playing && heard);
+        input_on(a, 48, 100); heard = 0;
+        for (i = 0; i < 60u; i++) { run(16); heard |= a->arp_note == 48u; }
+        CHECK("hold ghost:   a key held takes over at once", a->nheld == 1u && heard);
+        input_off(a, 48);
+        transport_req = 2u; run(500);
+        CHECK("hold ghost:   STOP: silent", !song.playing && !a->arp_note);
+        a->p[P_AMODE] = 0;
+    }
+    gl.on = gl.armed = 0;
+}
+
 /* owner 2026-11-01: TIDE SETTINGS flickered while playing: a glide moves the part colour, the page is drawn again, and the hidden
  * cards cleared the card row under the list each time */
 static void test_settings_flicker(void)
@@ -640,6 +729,7 @@ int main(void)
     test_seq_rule();
     test_seq_ghost();
     test_seq_ghost_chord();
+    test_hold_ghost();
     test_settings_flicker();
     printf("tidecontrols: %u checks, %u failures\n", checks, failures);
     return failures ? 1 : 0;
