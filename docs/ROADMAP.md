@@ -17,7 +17,7 @@ The only thing being worked on. Nothing else starts until b5 is out.
 | More free memory (EQ design moved out of fast RAM, 1,068 B) | Ready |
 | CPU test on your FM-1 with the wave page on screen | Passed: no missed blocks, busiest block 84 % (b4: 84 %) |
 
-b5 goes out when you like the MORPH page on your FM-1. Room left on the b5 build: 5,136 B of flash, RAM 68,968 of 73,728 B.
+b5 goes out when you like the MORPH page on your FM-1. Room left on the b5 build: 4,556 B of flash, RAM 68,968 of 73,728 B.
 
 ## Next: 1.0.0-b6 (paused until b5 is out)
 
@@ -106,7 +106,7 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 - K6 follow-up: 135 allow-list reasons in `tools/ram_allow.py` say "mix or effect stage ... not yet reviewed". They are per block, not per event; once each is reviewed, relabel it "per block, not yet reviewed" (or move the function to RAM). The classification is in [flash-hot REPORT](audits/2026-11-08/flash-hot/REPORT.md).
 
 **Storage and backups**
-- U4, 24 multi slots: tested on `wip-24-multis` (`21ca3a7`), its own rollout with a format bump. At the rebase: renumber its backup ids (41 is now the FM6 voice bank), archive VERSION 6 against 5, update `erase_test.c` and `xb_test.c`, measure the flash first (keep 3 KB headroom; 5,136 B is free on the b5 build).
+- U4, 24 multi slots: tested on `wip-24-multis` (`21ca3a7`), its own rollout with a format bump. At the rebase: renumber its backup ids (41 is now the FM6 voice bank), archive VERSION 6 against 5, update `erase_test.c` and `xb_test.c`, measure the flash first (keep 3 KB headroom; 4,556 B is free on the b5 build).
 - Patch capacity in the docs: INFO says 128 slots, TIDE guarantees 126 worst-case records; replace "every slot always fits" with exact wording.
 - Pattern save: document the exact visible entry point (saving needs STOP) before any live test.
 
