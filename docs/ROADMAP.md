@@ -10,8 +10,8 @@ The only thing being worked on. Nothing else starts until b5 is out.
 
 | What | State |
 |---|---|
-| The MORPH page as a live wave picture: smooth lines, the same lines lying flat at rest | Ready (look approved 9 November) |
-| The MORPH page layout: bigger waves, a slim ROLL / AMOUNT row, both parts' patches in the footer like TIDE SETTINGS and AUTO TIDE, real wave shapes | Ready (look approved 9 November) |
+| The MORPH page as a live wave picture: smooth lines, the same lines lying flat at rest | Ready: checked in the emulator; yours to judge on the FM-1 |
+| The MORPH page layout: bigger waves, a slim ROLL / AMOUNT row, both parts' patches in the footer like TIDE SETTINGS and AUTO TIDE, real wave shapes | Ready: checked in the emulator; yours to judge on the FM-1 |
 | PART 1 / PART 2 / BOTH on HOME's pages | Ready |
 | The new flashing screen | Ready |
 | More free memory (EQ design moved out of fast RAM, 1,068 B) | Ready |
