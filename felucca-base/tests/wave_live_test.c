@@ -15,7 +15,7 @@
  *             changing notes, 95 % of them held (the W1 drop-outs left 0.9 and 3.8 of 5)
  * Run: wave_live_test (exit 0 = all ok) */
 #include <stdint.h>
-static int32_t live_y[2][16][72];                       /* (each line's points as wl_stack last drew them, 1/16 px: ui_scope.c WL_TEST_Y) */
+static int32_t live_y[2][16][240];                      /* (each line's height in each screen column as wl_stack last drew it, 1/16 px: ui_scope.c WL_TEST_Y; 0: not drawn there) */
 #define WL_TEST_Y(k_, r_, p_, y_) (live_y[(k_) & 1u][(r_) & 15][(p_)] = (y_))
 #include "../web/emu/felucca_web.c"
 #ifndef QUIET_LVL
@@ -169,8 +169,8 @@ static uint32_t live_cross(uint32_t k, uint32_t *ne, uint32_t *nl)
             int32_t run = 0;
             if (!((shp >> q) & 1u))
                 continue;
-            for (p = 0; p < WL_NP; p++) {
-                run = live_y[k][r][p] > live_y[k][q][p] + 32 ? run + 1 : 0;
+            for (p = WL_X0; p <= WL_X1; p++) {   /* (the columns where both are drawn: an older line is narrower) */
+                run = live_y[k][r][p] && live_y[k][q][p] && live_y[k][r][p] > live_y[k][q][p] + 32 ? run + 1 : 0;
                 best = run > best ? run : best;
             }
         }
