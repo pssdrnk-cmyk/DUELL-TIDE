@@ -291,7 +291,7 @@ export const NOT_EDITABLE = [
   ["MIDI", "the parts' MIDI channels (PART 1 CHANNEL, PART 2 CHANNEL) are not reachable by the protocol; MIDI IN is on the MIDI tab"],
   ["TOOLS", "CLEAR SEQ is the SEQ tab's Clear; INITIALIZE SOUND is the Init patch... button of each part; RESTORE ALL is on the PATCHES tab"],
   ["PARAMETER LOCKS", "recorded motion and locks: not in this version (the protocol has MOTION; 1.1.0-test2: a lock can name every matrix destination, see lockTarget)"],
-  ["MORPH", "the MORPH fader, ROLL and UNDO have no protocol command; a saved patch or multi keeps End B as exact values, and PATCH_RAW and the backup carry it (see below)"],
+  ["MORPH", "the MORPH fader and ROLL have no protocol command; a saved patch or multi keeps End B as exact values, and PATCH_RAW and the backup carry it (see below)"],
   ["MORPH SET", "SMART, ARP and PITCH of the morph have no protocol command"],
   ["TIDE SETTINGS", "TIDE's MORPH SET (MUSIC, SMART, WILD, ARP, PITCH, WASH): no protocol command"],
   ["AUTO TIDE", "TIDE's automatic morph (MODE, TIME, WAIT, TARGET, VARY BARS): kept in the settings record's reserved tail, no protocol command (the backup carries it with the settings)"],

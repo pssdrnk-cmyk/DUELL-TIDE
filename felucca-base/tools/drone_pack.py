@@ -1,46 +1,56 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
-"""DUELL-TIDE drone pack: builds the eight drone multis into packs/drones/drones.duell-multis.json (the web editor's MULTIS tab, "Import file...").
+"""DUELL-TIDE built-in drone multis (TIDE 1.0.0-b6): makes the records of M17 DUNE HORN and M18 VOID DEEP into tools/drone_multis/M17.bin, M18.bin.
 
-    python3 tools/drone_pack.py [OUTDIR]       (needs build/gen: python3 ../gen_only.py; a C compiler)
+    python3 tools/drone_pack.py        (needs build/gen: python3 ../gen_only.py; a C compiler)
 
-One multi per drone theme of the W15 drones (#164 to #171, tools/duell_sounds.py): part 1 the drone, part 2 a partner drone/pad, both latched (HOLD ALL),
-LAYER, a slow echo and a big hall. The records are made by the same code as the factory multis (tools/factory_multis.py's table machinery,
-tests/gen_factory_multis.c), but into a scratch folder: no factory slot changes. A multi does not carry TIDE's STYLE; the README says to pick STYLE DRONE."""
-import base64
-import json
+M17 and M18 are ROM-only multis past the sixteen stored slots (firmware/src/multi.c MU_SHOWN): tools/gen_duell_multis.py puts these two records into
+build/gen/duell_multis.h with DF_SLOT 16 and 17, next to the factory multis M01..M16, and checks them against the rows below. Each is a LAYER of two
+latched drones (HOLD ALL) of the W15 drone sounds (tools/duell_sounds.py), one of them on a slow ARP SEQ pattern (b6, DRONES below), a 60 BPM ping-pong echo and a big hall. TIDE plays them as STYLE
+DRONE (tide.c). The records are made by the same code as the factory multis (tools/factory_multis.py's table machinery, tests/gen_factory_multis.c),
+built in scratch slots M01, M02 of a host build (a record does not hold its slot) and copied here. (b4 shipped eight of these as a file pack,
+packs/drones/; b6 builds two in and drops the pack, owner 9 November 2026.)"""
 import os
+import shutil
 import subprocess
 import sys
-import zlib
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import factory_multis as fm  # noqa: E402
 
 G = dict(G_BPM=60, G_DTIME="4D", G_DFDBK=60, G_DMIX=64, G_DMODE="PING", G_RTYPE="HALL", G_RSIZE=110, G_RDAMP=57)
+OUT = fm.ROOT / "tools" / "drone_multis"
 
 
-def multi(slot, name, what, a, b, la=98, lb=82):
+def multi(rom, slot, name, what, a, b, la=98, lb=82, seq=None):
+    """seq: (part 0 / 1, ARP RATE, steps): that part plays the SEQUENCER arp (ARP SEQ) on the latched keys, GATE 127; the other stays a latched drone (HOLD ALL, arp OFF)"""
     hold = dict(P_AMODE="OFF", P_AHOLD="ALL")
-    return dict(slot=slot, name=name, mode="LAYER", what=what, g=dict(G),
-                parts=[dict(sound=a, set=dict(hold, P_LEVEL=la)), dict(sound=b, set=dict(hold, P_LEVEL=lb))])
+    parts = [dict(sound=a, set=dict(hold, P_LEVEL=la)), dict(sound=b, set=dict(hold, P_LEVEL=lb))]
+    if seq:
+        p, rate, steps = seq
+        parts[p]["set"].update(P_AMODE="SEQ", P_ARATE=rate, P_AGATE=127)
+        parts[p]["steps"] = steps
+    return dict(rom=rom, slot=slot, name=name, mode="LAYER", what=what, g=dict(G), parts=parts)
 
 
+# rom: the multi's place (M17, M18); slot: the scratch slot of the host build.
+# The sequences (owner, 9 November 2026: "I'm missing some sequence from the drone multis"): one part of each moves slowly on the held chord (every
+# held note by the step's offset, at the held keys' velocity: an ARP SEQ step's vNN is not used), the other stays the latched drone under it, no
+# note under the held chord. At 60 BPM a 1/4 step is a second. The intervals are the ones that keep the moving part at its latched level (host
+# render, the part alone, against the root): the horn's fifth is +5 dB and the wind's fifth +6, octave +4.5, so neither is used.
+# DUNE HORN: the horn (it speaks at once) swells once a bar, root, root, fourth, root: three beats on and a beat to breathe, a 4-bar loop.
+# VOID DEEP: the solar wind (it takes about 2 s to come up) on 2-second steps over an 8-bar loop: the root for 14 s, a whole tone up for 8 s
+# (the held C E G under D F# A: an open, lydian colour), the fourth for 6 s, each followed by a breath: the wind turns three times in 32 s.
 DRONES = [
-    multi(9, "DUNE THROAT", "a man's vowels in the sand, a slow solar wind over them", "SAND THROAT", "SOLAR WIND"),
-    multi(10, "DUNE HORN", "a swelling horn with a shimmer of void above it", "HORN SWELL", "VOID SHIMMER"),
-    multi(11, "NEON ROOF", "blade-runner brass over rain on strings", "NEON BRASS", "RAIN STRINGS"),
-    multi(12, "RAIN CITY", "rain strings over the hum of the grid", "RAIN STRINGS", "GRID HUM"),
-    multi(13, "VOID DEEP", "a wide shimmering void with a thin solar wind", "VOID SHIMMER", "SOLAR WIND", 96, 76),
-    multi(14, "SOLAR DRIFT", "a solar wind carrying a slow horn", "SOLAR WIND", "HORN SWELL", 94, 80),
-    multi(15, "GRID BUZZ", "a lo-fi mains hum under neon brass", "GRID HUM", "NEON BRASS", 96, 80),
-    multi(16, "IRON YARD", "iron works over a sand throat: the heaviest of the eight", "IRON WORKS", "SAND THROAT", 94, 84),
+    multi(17, 1, "DUNE HORN", "a horn swelling once a bar, root and fourth, with a shimmer of void above it", "HORN SWELL", "VOID SHIMMER",
+          seq=(0, "1/4", "0 - - . 0 - - . 5 - - . 0 - - .")),
+    multi(18, 2, "VOID DEEP", "a wide shimmering void with a thin solar wind turning slowly, root, a tone up, the fourth", "VOID SHIMMER", "SOLAR WIND", 96, 80,   # (part 2 at 80: the factory rule, -16 .. +4 dB, tests/level_test.c; the b4 pack had 76)
+          seq=(1, "1/2", "0 - - - - - - . 2 - - - 5 - - .")),
 ]
 
 
 def main():
-    out = Path(sys.argv[1] if len(sys.argv) > 1 else fm.ROOT.parent / "packs" / "drones")
     os.chdir(fm.ROOT)
     fm.MULTIS = DRONES
     snd = fm.sounds()
@@ -57,15 +67,10 @@ def main():
     scratch.mkdir(parents=True, exist_ok=True)
     if subprocess.run([str(exe), "build", str(scratch)]).returncode:
         sys.exit("drone_pack: the build failed")
-    items = []
+    OUT.mkdir(parents=True, exist_ok=True)
     for m in DRONES:
-        b = (scratch / ("M%02d.bin" % m["slot"])).read_bytes()
-        items.append({"slot": m["slot"], "label": "M%02d" % m["slot"], "name": m["name"], "version": b[0], "size": len(b),
-                      "crc": zlib.crc32(b) & 0xFFFFFFFF, "data": base64.b64encode(b).decode("ascii")})
-    f = {"format": "duell-multis", "version": 1, "firmware": "DUELL-TIDE drone pack", "created": "2026-11-08T00:00:00.000Z", "multis": items}
-    out.mkdir(parents=True, exist_ok=True)
-    (out / "drones.duell-multis.json").write_text(json.dumps(f, indent=1) + "\n", encoding="utf-8", newline="\n")
-    print("%d multis -> %s" % (len(items), out / "drones.duell-multis.json"))
+        shutil.copyfile(scratch / ("M%02d.bin" % m["slot"]), OUT / ("M%02d.bin" % m["rom"]))
+        print("M%02d %s -> %s" % (m["rom"], m["name"], OUT / ("M%02d.bin" % m["rom"])))
 
 
 if __name__ == "__main__":

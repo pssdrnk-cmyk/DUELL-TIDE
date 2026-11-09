@@ -128,7 +128,8 @@ SOUNDS = [
             98, 94, 36, 97, 93, 96, 2, 6, 71, 95, 98, 45, 79, 98, 93, 98, 0, 1, 94, 97, 70, 98, 98, 98, 52, 0, 1, 95, 97, 25, 98, 98, 96, 97, 0, 98,
             93, 93, 36, 27, 96, 96, 3, 1, 74, 98, 37, 14, 47, 98, 98, 96, 0, 88, 99, 67, 95, 60, 50, 50, 50, 26, 2, 0, 1,
          ]),
-    dict(engine='FM6', idx=11, name='FRETLESS', cat='BASS', bseed=1048,  # #8
+    dict(engine='FM6', idx=11, name='FRETLESS', cat='BASS', bseed=1048, tamt=20,  # #8
+         # tamt (b6, sound audit T2): its level rides on its decay; MUSICAL's AMOUNT 40 moved End B +3.2 dB (window +-2.5), 20: +2.2
          p={
             'KTRK': 0, 'TRANS': -12, 'DIST': 7, 'CHOR': 14, 'VOICE': 2, 'GLIDE': 61, 'GLMODE': 1, 'FREEA': 47, 'FREEB': 8, 'E2ATK': 71, 'E2DEC': 87,
             'E2SUS': 41, 'E2REL': 51, 'L2RATE': 21, 'L2WAVE': 1, 'EQHG': -4, 'EQHF': -8, 'DKDEP': 14, 'TRIM': 120, 'DKSRC': 0, 'E2FLT': 27, 'L2FLT': 4,
@@ -1002,7 +1003,8 @@ SOUNDS = [
             'SUB LEVEL': 11, 'CYCLE RISE': 1, 'CYCLE FALL': 64, 'CYCLE CURVE': -3, 'AMPENV SATN': 12, 'FILTERENV MRES': -5, 'CYCLE PAN': -2,
             'LFO2 MMODE': 12,
          }),
-    dict(engine='FM6', idx=9, name='ISLAND STEEL', cat='PLUCK', bseed=19220,  # #67
+    dict(engine='FM6', idx=9, name='ISLAND STEEL', cat='PLUCK', bseed=19220, tamt=20,  # #67
+         # tamt (b6, sound audit T2): its level rides on its decay; MUSICAL's AMOUNT 40 moved End B +4.0 dB (window +-2.5), 20: +2.0
          p={
             'LRATE': 17, 'LWAVE': 1, 'LD_FLT': 5, 'KTRK': 31, 'DLY': 18, 'REV': 34, 'FREEA': 62, 'FREEB': 4, 'E2ATK': 0, 'E2DEC': 67, 'E2SUS': 0,
             'E2REL': 61, 'TRIM': 118, 'E2FLT': 7, 'E3': -7, 'E5': 11, 'E6': 3, 'E7': 14, 'E8': 7, 'MOD1': ('AT', 'CUT', 12),
@@ -1020,7 +1022,8 @@ SOUNDS = [
             97, 95, 89, 95, 91, 97, 98, 1, 2, 91, 97, 96, 96, 98, 98, 98, 0, 2, 93, 76, 31, 55, 89, 22, 4, 4, 59, 92, 62, 41, 65, 98, 31, 1, 0, 75,
             96, 75, 46, 55, 98, 45, 9, 5, 75, 90, 43, 27, 66, 98, 61, 1, 0, 99, 99, 99, 99, 99, 50, 50, 50, 42, 3, 0, 4,
          ]),
-    dict(engine='FM6', idx=3, name='MALLET WOOD', cat='PLUCK', bseed=12489,  # #68
+    dict(engine='FM6', idx=3, name='MALLET WOOD', cat='PLUCK', bseed=12489, tamt=20,  # #68
+         # tamt (b6, sound audit T2): its level rides on its decay; MUSICAL's AMOUNT 40 moved End B -4.5 dB (window +-2.5), 20: -1.9
          p={
             'LRATE': 21, 'LWAVE': 1, 'LD_FLT': 4, 'KTRK': 31, 'REV': 15, 'FREEA': 58, 'FREEB': 4, 'E2ATK': 0, 'E2DEC': 61, 'E2SUS': 0, 'E2REL': 51,
             'TRIM': 124, 'E2FLT': 11, 'E3': 14, 'E5': 25, 'E6': 4, 'E8': 5, 'MOD1': ('AT', 'CUT', 12), 'MOD2': ('CYCLE', 'E3', 7), 'LTRIG': 1,

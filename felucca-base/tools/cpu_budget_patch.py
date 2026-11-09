@@ -80,7 +80,7 @@ static zres_t zrun(uint32_t mode, uint32_t nk, uint32_t tide)
     ovl_lite = 0;
     frame();
     for (i = 0; i < 40; i++) { half(0); while (wave_service()) ; frame(); }
-    morph_set_target(1);
+    SEL_BOTH = 1;
     morph_set_fader(0);
     for (i = 0; i < nk; i++) {
         keys |= 1u << key_of_note(KN[i]);

@@ -57,6 +57,24 @@ static uint32_t sqm_hash(uint32_t seed, uint32_t idx, uint32_t salt)
     return x ^ x >> 16;
 }
 static int sqm_hit(const step_t *s) { return s->time == ST_NOTE && s->n; }
+/* the Original's lane (C1, TIDE_ROLES_AND_MULTIS_SPEC.md): from its lowest hit note (a lane that starts above C3 may still not reach under C3: 48) to its highest plus an octave, inside the outer bound 24..108 of sqm_note; a note outside it is never generated.
+ * Used by sqm_build's VOIC, voicelead_walk and the pitch walk (seq_voicelead.c, seq_evolve.c, included below). The Original's own notes are never moved by it: only new ones are tested */
+static void sqm_lane(const step_t *p, uint32_t len, int32_t *lo, int32_t *hi)
+{
+    uint32_t i, k;
+    int32_t l = 127, h = 0;
+    for (i = 0; i < len; i++)
+        if (sqm_hit(&p[i]))
+            for (k = 0; k < p[i].n && k < 4u; k++) {
+                l = p[i].note[k] < l ? p[i].note[k] : l;
+                h = p[i].note[k] > h ? p[i].note[k] : h;
+            }
+    if (l > h) l = 24, h = 96;                           /* (no hit: the old bounds) */
+    l = l > 48 ? 48 : l < 24 ? 24 : l;                   /* (a pad, a skank: never under C3) */
+    h += 12;
+    *lo = l, *hi = h > 108 ? 108 : h;
+}
+static int sqm_in_lane(int32_t n, int32_t lo, int32_t hi) { return n >= lo && n <= hi; }
 static int sqm_free(const step_t *s) { return s->time != ST_TIE && (s->time == ST_REST || !s->n); }
 /* a hit whose timing is fixed: it ties or slides into the next step, or is ratcheted already */
 static int sqm_held(const step_t *p, uint32_t idx, uint32_t len)
@@ -110,10 +128,11 @@ static void sqm_refresh(uint32_t pi, int force);
 static void sqm_build(const step_t *p, uint32_t len, const sqm_end_t *x, uint32_t amt, step_t *out)
 {
     uint32_t i, j, k, n, hits = 0, seed = x->seed, score[NSTEP];
-    int32_t d[SD_N];
+    int32_t d[SD_N], lane_lo, lane_hi, v;
     for (k = 0; k < SD_N; k++)
         d[k] = clamp(x->d[k], -(int32_t)amt, (int32_t)amt);
     memcpy(out, p, len * sizeof *out);
+    sqm_lane(p, len, &lane_lo, &lane_hi);
     sqm_pitch_apply(p, len, x, out);
     for (i = 0; i < len; i++)
         hits += (uint32_t)sqm_hit(&p[i]);
@@ -175,18 +194,18 @@ static void sqm_build(const step_t *p, uint32_t len, const sqm_end_t *x, uint32_
                     lo = s->note[q] < s->note[lo] ? q : lo;
                     hi = s->note[q] > s->note[hi] ? q : hi;
                 }
-                if (d[SD_VOIC] > 0)
-                    s->note[lo] = sqm_note(s->note[lo] + 12);
-                else
-                    s->note[hi] = sqm_note(s->note[hi] - 12);
+                q = d[SD_VOIC] > 0 ? lo : hi;           /* (a move out of the lane, which lies inside 24..108, is not made) */
+                v = (int32_t)s->note[q] + (d[SD_VOIC] > 0 ? 12 : -12);
+                if (sqm_in_lane(v, lane_lo, lane_hi))
+                    s->note[q] = (uint8_t)v;
             }
         }
         n = sqm_cnt(d[SD_VOIC], 4u);
         n = n > 1u ? n - 1u : 0u;
         for (i = 0; i < len; i++)
-            score[i] = i % 4u && sqm_hit(&out[i]) && out[i].n == 1u ? sqm_score(seed, i, 6u, 1u) : 0u;
+            score[i] = i % 4u && sqm_hit(&out[i]) && out[i].n == 1u && sqm_in_lane((int32_t)out[i].note[0] + (d[SD_VOIC] > 0 ? 12 : -12), lane_lo, lane_hi) ? sqm_score(seed, i, 6u, 1u) : 0u;
         for (k = 0; k < n && (i = sqm_best(score, len)) < len; k++)
-            out[i].note[0] = sqm_note(out[i].note[0] + (d[SD_VOIC] > 0 ? 12 : -12));
+            out[i].note[0] = (uint8_t)(out[i].note[0] + (d[SD_VOIC] > 0 ? 12 : -12));
     }
 }
 

@@ -569,6 +569,15 @@ typedef struct {                 /* the part in mix_part, its window: one per pa
 #ifndef DUELL_TIDE
 #define DUELL_TIDE 1                /* (needed here: track_t below has TIDE's live-recording fields before tide.h, included at the end of this file, sets it too) */
 #endif
+/* TIDE 1.0.0-b6: the multis SHOWN (lists, labels, pickers, previews, MIDI program change) are M01..M18; the STORED ones stay MU_SLOTS (16: the flash
+ * objects, storage.c). M17 DUNE HORN and M18 VOID DEEP are ROM only (MU_ROM; multi.c: they load and preview, never save, rename or erase) */
+#if DUELL_TIDE
+#define MU_SHOWN 18u
+#else
+#define MU_SHOWN MU_SLOTS
+#endif
+#define MU_ROM(k) ((uint32_t)(k) >= MU_SLOTS)
+#define MU_ROM_SAY "SAVE TO M01-M16"   /* SAVE / rename refused on M17, M18 (multi.c), as SOUNDS says PICK A USER SLOT */
 typedef struct track {
     int16_t p[EXT_P_LEN];        /* P_COUNT ids, a gap at 127, then the NX extension slots (ext.h XV); every store and format still counts P_COUNT */
     uint8_t engine, preset;      /* engine: what the audio ISR renders */
@@ -697,6 +706,9 @@ typedef struct {
     uint8_t grid;                /* 2: NAME (ui_name.c): no key plays (0 otherwise; 1 was the DRUM grid, gone in 0.2.14) */
     uint8_t rec;                 /* live recording armed: bit per track */
     uint8_t sel;                 /* selected track 0..NTRK-1: keys, pages, editor */
+#if DUELL_TIDE
+    uint8_t both;                /* 1.0.0-b5: the selection is BOTH parts (PART 1 / PART 2 / BOTH, ALGORITHM): the keys, the morph and the glide act on both, as the PLAY MODE says; sel stays the last single part, the one the edit pages edit */
+#endif
     int8_t octave;
     uint32_t tick;               /* sub-blocks since play */
     uint32_t cpu_q8;             /* audio ISR load, 1/256 */

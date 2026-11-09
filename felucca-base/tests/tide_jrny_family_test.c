@@ -16,7 +16,7 @@ static const char *const FAMN[FAM_N] = {"HARMONIC", "BASS", "LEAD/PLUCK", "PERC"
 static void setup(uint32_t e, uint32_t j)
 {
     ui_power_on(); frame();
-    song.sel = 0; morph.target = MT_SELECTED;
+    song.sel = 0; SEL_BOTH = 0;
     set_engine_of(&trk[0], e);
     apply_preset_to(&trk[0], j);
     frame();

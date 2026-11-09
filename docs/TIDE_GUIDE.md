@@ -1,6 +1,6 @@
 # DUELL with TIDE: a player's guide
 
-Five minutes. This guide describes the development line, `jam11`, as the source has it. It is the betas `1.0.0-b1` and `1.0.0-b2`, `1.0.0-b3` and `1.0.0-b4` (in development) and what is merged after them. The older beta `beta-2026-11-04` is a little different; the list at the end says what came after it. The version of your unit is in MENU > SYSTEM > ABOUT, beside the date.
+Five minutes. This guide describes the development line, `jam11`, as the source has it. It is the betas `1.0.0-b1` to `1.0.0-b5` and what is merged after them. The older beta `beta-2026-11-04` is a little different; the list at the end says what came after it. The version of your unit is in MENU > SYSTEM > ABOUT, beside the date.
 
 The stable build `stable-2026-11-03` has an earlier TIDE. Its TIDE SETTINGS page is still called MORPH SETTINGS. It lacks the STYLE, TURNS, POLY, OFFBEAT and ARC rows, and it has no JOURNEY role families or memory. The [README](../README.md#builds-stable-and-beta) lists the builds.
 
@@ -20,14 +20,14 @@ On these three pages a small dim pill beside part 1's capsule shows the busiest 
 |---|---|
 | 1 | The fader, A to B. Moving it by hand stops any glide on it. |
 | 2 | ROLL: left makes a new A, right a new B. One click, a new random end. |
-| 3 | UNDO the last roll of the end you rolled. |
-| 4 | AMOUNT: how far a roll may go. *Start: leave it.* The musical roll has its own sensible scale. |
+| 3 | Nothing for now (a picture of the sound's wave is planned). A roll replaces its end; there is no UNDO. |
+| 4 | AMOUNT: how far a roll may go. *Start: leave it.* The musical roll has its own sensible scale. A sound or multi load keeps your AMOUNT. It is dimmed while AUTO TIDE runs JOURNEY, where it does nothing. |
 
-The fader's position (A, 1 to 126, B) is in knob 1's card, like the first value on every other page. The top of the page is kept empty for now, with a quiet line (two with ALGORITHM on BOTH): a picture of the sound's wave is planned there. **Hold SAVE** saves the patch; with ALGORITHM on BOTH each part goes over its own slot.
+The fader's position (A, 1 to 126, B) sits beside knob 1's label; ROLL and AMOUNT share one slim row under the picture, and the footer shows both parts' patches. Most of the page shows the sound itself as waves, like an oscilloscope: a held note stands still, a chord beats, the newest wave in front, the older ones fainter behind it; at rest the lines lie flat. ALGORITHM picks whose: PART 1, PART 2, or BOTH (one above the other). **Hold SAVE** saves the patch; with ALGORITHM on BOTH each part goes over its own slot.
 
 ## 2. AUTO TIDE (the page you live on)
 
-The screen shows the SOUND and SEQ faders with the glide's path, the 16 steps as they play, and a status line. With both parts the faders sit in two columns, SOUND and SEQ, a row per part. In the steps a hit is a bar (a chord taller), a varied hit is in the accent colour, a hit the variation drops is a dim outline, a tie is a short bar, and a chance step is striped until it has rolled, then solid if it sounded or an outline if it did not. The glide only moves while the transport plays. STOP pauses it; PLAY carries on from there.
+The screen shows the SOUND and SEQ faders with the glide's path, the 16 steps as they play, and a status line. The page always shows both parts: the faders sit in two columns, SOUND and SEQ, a row per part, and the steps in two rows. The part the knobs act on (the selected part) is drawn in full colour with its number in a filled pill and a small bar beside its steps; the other part is dimmed. In the steps a hit is a bar (a chord taller), a varied hit is in the accent colour, a hit the variation drops is a dim outline, a tie is a short bar, and a chance step is striped until it has rolled, then solid if it sounded or an outline if it did not. The glide only moves while the transport plays. STOP pauses it; PLAY carries on from there.
 
 | Knob | Name | What it does to the sound | Start |
 |---|---|---|---|
@@ -44,7 +44,7 @@ The screen shows the SOUND and SEQ faders with the glide's path, the 16 steps as
 | LOOP | Back and forth between A and B. |
 | DRIFT | The end it left is rolled again from your sound: new twists around the same centre. |
 | WANDER | Walks away from your sound, a little further each trip; the steps grow with the phrase (16, 32, 64, 128 bars). Always computed from your original, so it can't run away. |
-| JOURNEY | Travels through factory sounds of the part's own engine (FM6 too); it never changes engine. It stays in the starting sound's role family: pads and keys; bass; lead and pluck; hits (PERC); textures and drones (eight marked sounds); the other FX, one-shots (a USER record in FX counts as one). It also keeps the starting sound's attack: a pad (ATK 60 or more) goes to other pads, a stab (SUS 20 or less) to other stabs, keys to keys; where the family has no other sound of that attack it takes any sound of the family. A sound with no other in its family rolls a new End B of itself, it does not leave its role. Never the other part's sound, and it skips the last 4 destinations where it can. Each part also gets its own pattern wander. |
+| JOURNEY | Travels through factory sounds of the part's own engine (FM6 too); it never changes engine. It stays in the starting sound's role family: pads and keys; bass; lead and pluck; hits (PERC); textures and drones (eight marked sounds); the other FX, one-shots (a USER record in FX counts as one). It also keeps the starting sound's attack: a pad (ATK 60 or more) goes to other pads, a stab (SUS 20 or less) to other stabs, keys to keys; where the family has no other sound of that attack it takes any sound of the family. A sound with no other in its family rolls a new End B of itself, it does not leave its role. Never the other part's sound, and it skips the last 4 destinations where it can. Of those, it keeps to the 2 to 4 that play nearest your sound in loudness and brightness, so the background keeps its level. Each part also gets its own pattern wander. |
 
 Where two very different sounds cross, a short filter dip hides the change (WASH, below).
 
@@ -61,7 +61,7 @@ K1 picks the row. **OCT+** the next value, **OCT-** the one before (knobs 2 to 4
 | **VARY BARS** | EVERY 4TH, EVERY BAR | When the pattern plays its variation: on every 4th bar of the phrase (EVERY 4TH), or every bar. | EVERY 4TH |
 | **ROLL TYPE** | MUSIC, SMART, WILD | How a new End B is made. MUSIC turns five dials (bright, movement, shape, space, character) inside the ranges where that kind of sound actually lives, so a brighter end is not a louder one. SMART is DUELL's own safe roll. WILD drops the safety rules. | MUSIC |
 | **ROLL ARP** | OFF, ON | OFF: rolls leave the arp's rate, gate and mode alone. ON: they may move them (never turning the arp into SEQ, so a TIDE part is never silenced). | OFF |
-| **ROLL PITCH** | OFF, ON | OFF: nothing that moves pitch changes, which keeps drones in tune. ON: small detune and, on TRIO, interval jumps. Only ON lets the automatic pattern edits walk a note one scale step. They walk the top note of a chord or a lead note, never a bass note under C3 or in a part whose sound is in the BASS category, and nothing on SCALE CHR. The chord voicing of VOIC does not need PITCH. | OFF |
+| **ROLL PITCH** | OFF, ON | OFF: nothing that moves pitch changes, which keeps drones in tune. ON: small detune and, on TRIO, interval jumps. Only ON lets the automatic pattern edits walk a note one scale step. They walk the top note of a chord or a lead note, never a bass note under C3 or in a part whose sound is in the BASS category, and nothing on SCALE CHR. No generated note leaves the register of the pattern you wrote (below). The chord voicing of VOIC does not need PITCH. | OFF |
 | **WASH** | OFF, LOW, MID, HIGH (default OFF) | The breath of a trip: filter dip, send swell and a wash where sounds cross. LOW is half, MID is full, HIGH one and a half. | LOW (try it; OFF is the default) |
 | **TURNS** | TOGETHER, TAKE TURNS, LEAD | Only in automatic WANDER / JOURNEY with both parts. TOGETHER: both parts vary on bars 4 and 8. TAKE TURNS: part 2 varies on bars 2 and 6, part 1 on 4 and 8, so each variation is answered two bars later. LEAD: part 2 leads bars 1-2 of every 4 and part 1 bars 3-4 (on some 8-bar phrases the two swap); a lead or pluck line answers by playing thinner and softer on the other part's bars (beats, held notes, the motif's own hits and about half of the rest stay), while a pad, a bass or a chord part keeps its pattern whole. Playback only: KEEP stores the whole pattern. A stored older ECHO value reads as LEAD. With VARY BARS on EVERY BAR, TAKE TURNS plays like TOGETHER (every bar varies); LEAD keeps TAKE TURNS' two-bar offset for part 2's variation bars. | LEAD |
 | **POLY** | OFF, GENTLE, WIDE | In automatic WANDER / JOURNEY one part's loop is now and then shorter, so its motif drifts against the beat, then plays whole again at a phrase. GENTLE: 15 or 14 of 16 steps, rarely. WIDE: 12 to 15, more often. Your stored pattern is never changed. | GENTLE |
@@ -99,6 +99,8 @@ Defaults with no saved settings (a new unit, or after ERASE DATA): STYLE DUB, th
 | PEAK | JOURNEY, 8, OFF, EVERY BAR, LEAD, GENTLE, PUSH, DROP, OFF |
 | DRONE | WANDER, 64, OFF, EVERY 4TH, TOGETHER, OFF, OFF, OFF, HIGH |
 
+The built-in drone multis M17 DUNE HORN and M18 VOID DEEP (SAVE > MULTIS, 1.0.0-b6) each have one part on a slow sequence over the held chord (DUNE HORN: the horn swells once a bar, root, root, fourth, root; VOID DEEP: the solar wind turns every 8 to 16 seconds, root, a tone up, the fourth) while the other part holds the chord; DRONE's WANDER keeps them sparse (never more than one new note a bar, never under the chord you hold). They play as DRONE without a trip here: while one of them is the multi loaded, STYLE shows DRONE and its rows are DRONE's; loading any other multi brings back the STYLE and rows you had, and the saved STYLE never changes (a row you change while a drone multi is loaded lasts until then).
+
 DRONE is for a held chord of one of the factory drone sounds (#164 to #171) with HOLD on: WANDER keeps the sound and slowly moves it between its two ends over 64 bars, never waits at an end, and leaves out the rhythmic rows (TURNS TOGETHER, POLY, SYNC and ARC OFF) that a held chord would not use; WASH HIGH gives the slow breath. AMBIENT is JOURNEY: it hops from sound to sound and shortens loops. A STYLE saved by an earlier build still loads as the same style (CUSTOM moved from 5 to 6; an old 5 reads as CUSTOM unless its nine values are DRONE's).
 
 Dub-techno recipe: STYLE DUB, ALGORITHM BOTH (by hand: **AUTO TIDE** JOURNEY or WANDER, TIME 16, WAIT 2 to 4; **SETTINGS** TARGET BOTH, VARY EVERY 4TH, ROLL TYPE MUSIC, ROLL ARP OFF, ROLL PITCH OFF, WASH LOW). Press PLAY, twist K1 right, walk away.
@@ -123,7 +125,7 @@ In the SEQ tools, hold SEQ and press G4 (KEEP): what you hear now becomes the pa
 
 # New since the stable build
 
-In the betas (`beta-2026-11-04`, `1.0.0-b1`, `1.0.0-b2`, and `1.0.0-b3` and `1.0.0-b4` in development), not in the stable build `stable-2026-11-03`.
+In the betas (`beta-2026-11-04` and `1.0.0-b1` to `1.0.0-b5`), not in the stable build `stable-2026-11-03`.
 
 | Feature | What it does |
 |---|---|
@@ -150,6 +152,7 @@ Merged on the development line, in `1.0.0-b1` and after it (the source is the re
 | **Loads start as written** | A multi, project or pattern load drops the old variation and pitch walk, puts the parts at A and starts ARC again at RISE. |
 | **ARC keeps its place** | STOP and PLAY only pause the arc; a load or a K1 stop starts it again. |
 | **PITCH leaves the bass alone** | No note under C3 and no BASS-category sound is walked, and nothing moves on SCALE CHR. The chord voicing of VOIC works with PITCH OFF. |
+| **The register stays** | WNDR, JRNY and TIDE's pattern edits (VOIC, voice leading, PITCH) never put a note outside the register of the pattern you wrote: from its lowest note up to its highest plus an octave, and a pattern that lives above C3 never gets a note under C3 (a skank at C4 stays a skank; a bass stays a bass and goes no lower). |
 | **TIDE settings in every backup** | The TIDE SETTINGS rows ride in the settings record, so a backup holds them and a restore brings them back. A backup made by an older build holds none and leaves the unit's rows as they are. |
 | **Load undo** | OCT- held and a turn of PRESETS undoes the last sound load (again: redo). Not on the TIDE pages, where OCT- plus a knob is TIDE's own reset. |
 | **Chord names** | Flats in a flat key (C minor's DIA7 reads Ebmaj7, Abmaj7, Bb7), a stack of 4ths reads m7sus or msus, and DIA7 on a scale of six notes is a triad. |

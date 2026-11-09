@@ -253,7 +253,8 @@ def ldr_screen():
 def build_loader():
     LDR.mkdir(parents=True, exist_ok=True)
     src = FW / "loader"
-    flags = [*CFLAGS, "-Ifirmware/hal", "-Ifirmware/src", f"-DLDR_SCREEN={1 if ldr_screen() else 0}"]
+    flags = [*CFLAGS, "-Ifirmware/hal", "-Ifirmware/src", f"-DLDR_SCREEN={1 if ldr_screen() else 0}",
+             f"-DDUELL_TIDE={1 if tide_on() else 0}"]   # (TIDE 1.0.0-b5: the screen's TIDE look, ldr_screen_tide.c; DUELL_TIDE=0 builds DUELL's own screen, byte for byte)
     tc_all(("cc", "-c", src / "crt0_ldr.S", "-o", LDR / "crt0_ldr.o"),
            ("cc", *flags, "-c", src / "loader.c", "-o", LDR / "loader.o"))
     elf = LDR / "loader.elf"
@@ -365,6 +366,20 @@ def build_app():
         v = os.environ.get(flag)    # unset: the default in firmware/src/felucca.c (DUELL_TEST_MODE: core.h, 0 = release: no TEST screen, no M13..M16)
         if v in ("0", "1"):
             flags.append(f"-D{flag}={v}")
+    v = os.environ.get("DUELL_NOTES_STEP")    # TIDE 1.0.0-b6 N1 (firmware/src/budget.h): the NOTES limit step of a unit-sweep build; every other build keeps the branch's default
+    if v:
+        if v not in ("72", "76", "80", "84"):
+            raise SystemExit(f"build: DUELL_NOTES_STEP={v}: one of 72, 76, 80, 84")
+        if os.environ.get("DUELL_TEST_MODE") != "1":
+            raise SystemExit("build: DUELL_NOTES_STEP is for test-mode builds (DUELL_TEST_MODE=1): a release build has the branch's default step")
+        flags.append(f"-DDUELL_NOTES_STEP={v}")
+    v = os.environ.get("DUELL_LCD_BAUD")    # TIDE 1.0.0-b6 (lcdspeed): the LCD's SPI1 divider, src/lcd.c LCD_BAUD (lsb 60 MHz / (BAUD + 1): 4 = 12 MHz; 2 = 20 MHz, the default since b6; 1 = 30 MHz;
+    if v:                                       # the ST7789V takes a serial write clock up to ~62 MHz, tSCYCW 16 ns). For test-mode builds tried on the unit; a release keeps lcd.c's default
+        if v not in ("1", "2", "3", "4"):
+            raise SystemExit(f"build: DUELL_LCD_BAUD={v}: one of 1 (30 MHz), 2 (20 MHz), 3 (15 MHz), 4 (12 MHz)")
+        if os.environ.get("DUELL_TEST_MODE") != "1":
+            raise SystemExit("build: DUELL_LCD_BAUD is for test-mode builds (DUELL_TEST_MODE=1): a release has lcd.c's default")
+        flags.append(f"-DLCD_BAUD={v}u")
     if os.environ.get("DUELL_PRESETS") != "1":   # Felucca's engine preset tables (engine_t.presets): no firmware code reads them (sounds.c's factory sounds replaced them), only the host tests do
         flags.append("-DDUELL_PRESETS=0")
     v = os.environ.get("DUELL_VELO", "1")   # KEY SENSE (key velocity and aftertouch, sense.c): ON in every build since 0.2.30 (owner, 2026-10-21; before: developer builds only, build.py passed nothing and felucca.c's default 0 held).
@@ -500,9 +515,25 @@ POOL_TAIL_MIN_BENCH = 4096  # 4,096 B again (owner, 2026-10-19; it was 2,816 B f
                             # two-core RAM code share the pool; BENCHT1 keeps 4,788 B). A normal or non-bench build keeps POOL_TAIL_MIN.
 
 
+POOL_TAIL_MIN_TEST = 7936  # a DUELL_TEST_MODE=1 measurement build (unit sweeps, never released): 256 B under the rule, for the test-mode code in the
+                            # range-Z functions (b5: +44 B; the release build kept 8,208 B, the test build 8,164 B). Release and normal builds keep POOL_TAIL_MIN.
+
+
+RAM_HEADROOM_MIN = 4096      # the RAM rule: .data + .bss keep this much of RAM spare (state the audio side touches)
+RAM_HEADROOM_MIN_TEST = 3840  # a DUELL_TEST_MODE=1 measurement build (unit sweeps, never released): 256 B under the rule, as POOL_TAIL_MIN_TEST, for the
+                              # test-mode console's 264 B of .bss (TIDE b6: the release build keeps 4,104 B, the test build 3,840 B). Release and normal builds keep RAM_HEADROOM_MIN.
+
+
+def ram_headroom_min(env=None):
+    env = os.environ if env is None else env
+    return RAM_HEADROOM_MIN_TEST if env.get("DUELL_TEST_MODE") == "1" else RAM_HEADROOM_MIN
+
+
 def pool_tail_min(env=None):
     env = os.environ if env is None else env
-    return POOL_TAIL_MIN_BENCH if env.get("DUELL_BENCH") == "1" and env.get("BENCH_TAG") else POOL_TAIL_MIN
+    if env.get("DUELL_BENCH") == "1" and env.get("BENCH_TAG"):
+        return POOL_TAIL_MIN_BENCH
+    return POOL_TAIL_MIN_TEST if env.get("DUELL_TEST_MODE") == "1" else POOL_TAIL_MIN
 
 
 def check(img, syms, dis, rt):
@@ -543,7 +574,9 @@ def check(img, syms, dis, rt):
     notes.append(f"image {len(img)} B; RAM .data+.bss {bss} B of {ram_len}; pool {pool} B of {pool_len}")
     if region["RAM"][0] + ram_len != region["POOL"][0]:
         errors.append("app.ld: POOL does not start where RAM ends")
-    bss_min = 4096
+    bss_min = ram_headroom_min()
+    if bss_min != RAM_HEADROOM_MIN:
+        notes.append(f"RAM headroom rule lowered to {bss_min} B for this DUELL_TEST_MODE measurement build (normal builds keep {RAM_HEADROOM_MIN} B)")
     if os.environ.get("DUELL_BENCH") == "1" and os.environ.get("BENCH_BSS_MIN"):   # HANDOFF_V2 item 107: OPT-IN, a DUELL_BENCH developer build only; unset = the 4,096 B rule as ever
         bss_min = int(os.environ["BENCH_BSS_MIN"])
         notes.append(f".bss headroom rule lowered to {bss_min} B by BENCH_BSS_MIN for this DUELL_BENCH developer build (normal builds keep 4096 B)")
@@ -556,7 +589,7 @@ def check(img, syms, dis, rt):
     if pool_len - pool < need:                    # keep >= 8 KiB of the pool spare (4 KiB in a DUELL_BENCH developer build)
         errors.append(f"pool headroom {pool_len - pool} B < {need} B")
     elif need != POOL_TAIL_MIN:
-        notes.append(f"pool tail rule lowered to {need} B for this DUELL_BENCH developer build (normal builds keep {POOL_TAIL_MIN} B)")
+        notes.append(f"pool tail rule lowered to {need} B for this DUELL_BENCH or DUELL_TEST_MODE developer build (normal builds keep {POOL_TAIL_MIN} B)")
     return errors, notes
 
 

@@ -787,7 +787,7 @@ static void test_target_seed(void)
     uint32_t seed, ok, d0 = 0, d1 = 0, same = 0, i;
     fresh(0, 1);
     host_preset(t1, 0, 1);                              /* both parts the same sound */
-    morph_set_target(0);
+    SEL_BOTH = 0;
     song.sel = 0;
     morph_set_amount(50);
     morph_roll(0);
@@ -796,7 +796,7 @@ static void test_target_seed(void)
     morph_set_fader(90);
     ok &= mph[1].fader == 90 && mph[0].fader == 0;
     check("TARGET SELECTED: ROLL and the fader act on the selected part only", ok);
-    morph_set_target(1);
+    SEL_BOTH = 1;
     morph_set_amount(50);
     morph_set_fader(10);
     seed = morph_roll(1);
@@ -837,7 +837,7 @@ static void test_target_seed(void)
         int8_t ea[NSHOWN][2][P_COUNT];
         uint32_t pi, x, n;
         fresh(0, 1);
-        morph_set_target(1);
+        SEL_BOTH = 1;
         morph_set_amount(33);
         morph_set_fader(77);
         morph_roll(0);
@@ -848,7 +848,7 @@ static void test_target_seed(void)
         n = morph_pack(blk);
         memset(mph, 0, sizeof mph);
         memset(&morph, 0, sizeof morph);
-        ok = n == MORPH_PACK_SIZE && morph_unpack(blk, n) && morph.target == MT_BOTH;
+        ok = n == MORPH_PACK_SIZE && morph_unpack(blk, n) && SEL_BOTH;
         for (pi = 0; pi < NSHOWN; pi++)
             for (x = 0; x < 2u; x++)
                 ok &= !memcmp(ea[pi][x], endp(pi, x), P_COUNT) && mph[pi].fader == 77 && mph[pi].amount == 33;

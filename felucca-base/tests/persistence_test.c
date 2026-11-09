@@ -507,7 +507,7 @@ static int editb_power_test(void)
     memset(mph, 0, sizeof mph);
     memset(&morph, 0, sizeof morph);
     song.sel = 0;
-    morph_set_target(0);
+    SEL_BOTH = 0;
     trk[0].user = 3;                                        /* a loaded user patch: slot 3, preset 0 (up_load) */
     trk[0].preset = 0;
     morph_rebase_all();

@@ -85,7 +85,7 @@ int main(int argc, char **argv)
     if (cut >= 0) trk[part].p[P_E0 + 4] = (int16_t)cut;
     if (e2 != -999) trk[part].p[P_E2FLT] = (int16_t)e2;
     if (dry) { trk[part].p[P_CHOR] = 0; trk[part].p[P_DLY] = 0; trk[part].p[P_REV] = 0; }
-    morph_set_target(1);
+    SEL_BOTH = 1;
     morph_set_fader((uint32_t)fader);
     for (i = 0; i < 4; i++) { memset(o, 0, sizeof o); mix_block(o, CTL); while (wave_service()) ; }
     printf("M%02u part %u %-12s key %u%+d KTRK %d UFCUT %d LOCUT %d dry %d fader %d E5 %d E2FLT %d: ", slot + 1u, part + 1u, ds_name(trk[part].eng_req, trk[part].preset),

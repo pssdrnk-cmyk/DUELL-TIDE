@@ -1361,6 +1361,9 @@ typedef struct {
     uint8_t dm_cur, dm_split, dm_hold, dm_clr;
     int8_t dm_dir, perf_space, perf_filt, perf_depth;
     uint8_t snd_st, mods_off, sp_tap, pf_mute;
+#if DUELL_TIDE
+    uint32_t wv_blk, wv_on;      /* the MORPH card's scope tap (wv_tap below): this block's number and the tap's gate, stamped in mix_block and carried to core 1 with the rest, so a late job taps the block it was made for */
+#endif
 } blockstate_t;
 #include "perform.c"                                 /* DUELL 0.2.5 PERFORM: the white keys' master effects and mutes */
 
@@ -1454,6 +1457,23 @@ typedef struct {
 _Static_assert(sizeof(part_acc_t) == 8u * CTL * sizeof(int32_t), "part_acc_t is eight arrays of CTL (mix_gather indexes them as one)");
 static part_acc_t pacc[NLIVE];
 static uint8_t pacc_on[NLIVE];                          /* the part wrote its accumulators this block: bit 0 l / r, bits 1..3 the sends sc / sd / sr that are not 0, bit 4 the floors fc / fd / fr (a silent part writes none: mix_gather skips it) */
+
+#if DUELL_TIDE
+/* The MORPH card's scope tap (docs/design/WAVE_DISPLAY_PLAN.md 3.1, reduced to the RAM there is: 512 entries, mono). Each part's finished block, as the meters see it (after PATCH LEVEL, DIST, INSERT, EQ, DUCK and PAN; before the sends
+ * and the master), as ONE mono entry per two frames: the average of the pair of L and the pair of R, at half scale (a loud chord passes full scale before the master). In 8 bits, companded (wvr_code, 1.0.0-b5):
+ * 12 bits of that half scale (4,096 steps, -72 dB) in a sign and 7 bits, 8 segments of 16 as A-law, so a quiet note or a decay keeps its shape (the plain 1/128 steps up to b5's first try
+ * turned a held chord into a flat line within half a second; the steps are 16 x finer at the bottom, 4 x coarser at the very top, under a pixel of the picture): 512 bytes a part, 23 ms at 22.05 kHz.
+ * One writer a word: the core that plays the part. The UI (core 0, main loop; ui_scope.c) only reads the rings and writes wv_want, "wanted until block N": off the card (or with ANIM OFF) the gate is shut and the tap is one load and one test.
+ * A block the part did not tap (silent, the gate shut, part 2 skipped by tcr_part2) leaves a hole: the next tap sees that wv_last[pp] + 1 is not its block number (bs->wv_blk) and moves wv_gap[pp] up; the reader draws only what lies after it */
+#define WVR_N 512u
+static int8_t wv_m[NLIVE][WVR_N];                       /* wvr_code's 8 bits (ui_scope.c wl_dec reads them back) */
+static volatile uint32_t wv_cnt[NLIVE];                 /* free-running entries written (the ring index is wv_cnt & (WVR_N - 1)), published after the block's entries */
+static volatile uint32_t wv_gap[NLIVE];                 /* wv_cnt where the part's entries last became continuous: older entries are no part of this sound */
+static volatile uint8_t wv_sil[NLIVE];                  /* 1: the part was silent in its last block with the gate open (it wrote no zeros) */
+static uint32_t wv_last[NLIVE];                         /* the number of the part's last tapped block (written by the part's own writer, like wv_cnt) */
+static volatile uint32_t wv_blk;                        /* blocks since power-on (mix_block, core 0) */
+static volatile uint32_t wv_want;                       /* the UI: "wanted until block N" (signed difference with wv_blk); the only word the UI writes */
+#endif
 
 /* SPACE's STEREO WIDTH (0.2.9, the owner: "SPACE should decrease the stereo space to completely mono, and widen it on the plus side"), STEREO and
  * LAYER only, on the mix before the master (mix_l / mix_r with the buses' return, wet folded in): mid M = (L + R) / 2, side S = (L - R) / 2,
@@ -2919,6 +2939,10 @@ static __attribute__((noinline)) void part_rest(mixpart_t *m)
     mx_ok[pp] = 0;                                      /* (0.2.25: the matrix's mix ramp starts again from this block's values) */
     sp_go[pp] = 0;
     mx_was[pp] = mod_mixmv[pp];
+#if DUELL_TIDE
+    if (m->bs->wv_on)                                   /* (the scope tap: a flag, no zeros) */
+        wv_sil[pp] = 1;
+#endif
     if (MODW(t).on)
         mod_end(t);
 }
@@ -3074,9 +3098,51 @@ static __attribute__((noinline)) void part_mix(const mixpart_t *m)
     }
 }
 
-/* the end of a sounding part's window: the stored SAT back (mod_end below also does), then the matrix's stored values */
-static inline void part_end(const mixpart_t *m)
+#if DUELL_TIDE
+/* an entry's code: v in 1/4,096 of the half scale (clamped at it), as a sign and 7 bits: segment e 0..7 (from 2 x 16 << e up, e 0 the 32 below linear), 4 bits in it (a step 2 << (e - 1), e 0: 2).
+ * A short loop, a shift and a mask, small enough that part_end stays inlined; no library call (the audio interrupt's code, inlined into wv_tap) */
+static inline __attribute__((always_inline)) int8_t wvr_code(int32_t v)
 {
+    uint32_t m = (uint32_t)(v < 0 ? -v : v), e = 0, c;
+    m = m > 4095u ? 4095u : m;
+    for (c = m >> 5; c; c >>= 1)                        /* (the segment: the bits above the lowest 5, at most 7 turns) */
+        e++;
+    c = e ? e << 4 | ((m >> e) & 15u) : m >> 1;
+    return (int8_t)(v < 0 ? -(int32_t)c : (int32_t)c);
+}
+/* The scope tap (see wv_m above), inlined into part_end, so into both callers (mix_part on core 0, tc_job_run on core 1): no function of its own. 16 entries a block */
+static inline __attribute__((always_inline)) void wv_tap(const mixpart_t *m)
+{
+    uint32_t pp = m->pp, w, i;
+    const part_acc_t *ac = m->acc;
+    if (!m->bs->wv_on)
+        return;
+    w = wv_cnt[pp];
+    if (!(pacc_on[pp] & 1u)) {                          /* (a sounding part that wrote no mix: counted silent) */
+        wv_sil[pp] = 1;
+        return;
+    }
+    wv_sil[pp] = 0;
+    if (wv_last[pp] + 1u != m->bs->wv_blk)              /* a block missing since the last tap (silence, a shut gate, a skipped job) */
+        wv_gap[pp] = w;
+    wv_last[pp] = m->bs->wv_blk;
+    for (i = 0; i + 3u < m->n; i += 4u) {             /* (one entry per four frames: 11.025 kHz, 46 ms of ring, two cycles of a 43 Hz bass) */
+        wv_m[pp][w & (WVR_N - 1u)] = wvr_code((ac->l[i] + ac->l[i + 1u] + ac->l[i + 2u] + ac->l[i + 3u] + ac->r[i] + ac->r[i + 1u] + ac->r[i + 2u] + ac->r[i + 3u]) >> 6);   /* (the mean of eight values, at half scale, in 1/4,096 steps) */
+        w++;
+    }
+#if DUELL_TWOCORE
+    TC_SYNC();                                          /* (the entries before the counter that says they are there) */
+#endif
+    wv_cnt[pp] = w;
+}
+#endif
+
+/* the end of a sounding part's window: the stored SAT back (mod_end below also does), then the matrix's stored values */
+static inline __attribute__((always_inline)) void part_end(const mixpart_t *m)   /* (always inlined: core 1 calls it from RAM, fm1_c1_main, which cannot reach a flash copy) */
+{
+#if DUELL_TIDE
+    wv_tap(m);                                          /* the MORPH card's scope tap */
+#endif
     m->t->p[P_DIST] = (int16_t)m->dist_st;              /* (the stored SAT back; mod_end below also does) */
     if (MODW(m->t).on)
         mod_end(m->t);                                  /* the stored values back */
@@ -3542,6 +3608,11 @@ static void mix_block(int32_t *out, uint32_t n)
         perf = perf_begin(n);
     }
     blk_snap(&bs, sp_tap);                              /* the shared control state, once: the parts only read it */
+#if DUELL_TIDE
+    wv_blk++;                                           /* the scope tap: the block count, and the gate (the card wants the tap until block wv_want), read once and stamped into the block's state for both parts */
+    bs.wv_blk = wv_blk;
+    bs.wv_on = (uint32_t)((int32_t)(wv_want - wv_blk) > 0);
+#endif
 #if DUELL_TWOCORE
     tcr_begin(&bs, n);                                  /* DUELL TWO-CORE stage 1: part 2 goes to core 1 (twocore_run.c), part 1 stays here */
     {

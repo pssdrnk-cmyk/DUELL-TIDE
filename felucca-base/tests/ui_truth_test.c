@@ -50,7 +50,7 @@ static void test_roll_playhead(void)
     ui_power_on(); frame();
     transport_req = 2u; frame(); frame();
     gl.on = gl.armed = 0;
-    song.sel = 0; morph.target = MT_SELECTED;
+    song.sel = 0; SEL_BOTH = 0;
     trk[0].p[P_SLEN] = 16;
     for (i = 0; i < NSTEP; i++)
         trk[0].step[i] = (step_t){{0}, 0, ST_REST, 0, 100, 0};

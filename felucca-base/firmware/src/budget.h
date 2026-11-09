@@ -7,14 +7,28 @@
 #ifndef DUELL_BUDGET_H
 #define DUELL_BUDGET_H
 
-#define BUDGET_PEAK 18u         /* CPU fix (wave 14, 2026-11-05; owner: "gotta conserve the cpu"): the points of a half's time the real per-second PEAK runs above the model's worst case, so that the peak stays under
+/* TIDE 1.0.0-b6 N1, "give the notes back" (owner, 9 November: in steps, each kept only if the unit's GLIDE sweep stays clean: 0 missed, 0 voices cut). Since b4 the ease
+ * ladder (audio.c, K3) backs off before it cuts sound, and the b4 / b5 sweeps at 72 were clean (worst per-second peak 84 .. 85 % render, 90 .. 91 % elapsed). The limit is a
+ * step, DUELL_NOTES_STEP: 72 (b1 .. b5), 76, 80 or 84 (the b0 value, where the factory multis missed and shed before the ladder existed). A test-mode build picks one
+ * (tools/build.py: env DUELL_NOTES_STEP, test-mode builds only; work/measure/b6-notes/UNIT_PLAN.md); every other build has the default, 72 (b6: 76 was tried on the unit, 9 November, and cut one voice on M14 EERIE SIGNAL at 90 %; b6 keeps b5's 72).
+ * Plain DUELL (DUELL_TIDE=0) keeps 72. BUDGET_PEAK stays 90 - BUDGET_LIMIT: the room up to 90 % for the real peak over the model (the unit's fit, below: peak = 30 + 0.74 x the
+ * model, i.e. 83 % at 72, 86 at 76, 89 at 80, 92 at 84; the GLIDE sweep at 72 ran 1 .. 2 points over the fit, 85 %, and 6 more elapsed, 91 %) */
+#ifndef DUELL_NOTES_STEP
+#if DUELL_TIDE
+#define DUELL_NOTES_STEP 72     /* b6 default: b5's 72 (the unit's GLIDE sweep at 76 cut a voice on M14: work/measure/b6-integ-aefe5c0); the step stays for a later finer try */
+#else
+#define DUELL_NOTES_STEP 72
+#endif
+#endif
+_Static_assert(DUELL_NOTES_STEP == 72 || DUELL_NOTES_STEP == 76 || DUELL_NOTES_STEP == 80 || DUELL_NOTES_STEP == 84, "budget.h: DUELL_NOTES_STEP is 72, 76, 80 or 84");
+#define BUDGET_PEAK (90u - BUDGET_LIMIT)   /* (b6 N1: 90 - the step; 18 at 72) CPU fix (wave 14, 2026-11-05; owner: "gotta conserve the cpu"): the points of a half's time the real per-second PEAK runs above the model's worst case, so that the peak stays under
                                  * about 90 % (BUDGET_LIMIT + BUDGET_PEAK = 90; it was 6). Calibration, the unit's own numbers (work/measure/cpu-multis/sweep_k0.jsonl and sweep_k1.jsonl: the 16 factory multis of
                                  * bb730b0, PLAY alone and a held Cm7, the console's `cpu` = the longest half of each second, 12 s each) against this model at the same voices (the busier core): the per-second peak
                                  * max = 30 + 0.74 x the model's peak, rms 9 points over 23 runs (the model's voices cost 0.74, the rest of the audio interrupt 30 more); the one outlier is FM6 BIG STAB (DUB CHORD, +24:
                                  * a chord hit costs its voices a second time, the note-on and the attack). At the old limit (84) the multis whose voices filled caps of 76 .. 80 ran peaks of 85 .. 109 % with 1 .. 8
                                  * missed halves and 2 .. 33 voices shed in 15 s (DUB CHORD, WHISPER TIDE, FINAL REEL, EERIE SIGNAL, DEAD BUFFER). At 72 the fitted peak of every factory multi is 83 or less. A part has
                                  * 1 or 2 notes fewer than at 84 (tests/budget_test.c prints them) */
-#define BUDGET_LIMIT 72u        /* (was 84, with an allowance of 6; 81 and 88 before) the share of the time budget the worst case may use (percent), the margin below applied to every cost (DUELL 1.1 item 132, owner: 80 -> 90; item 133: 88 with the
+#define BUDGET_LIMIT ((uint32_t)DUELL_NOTES_STEP)   /* (b6 N1: the step above; 72 in b1 .. b5, was 84, with an allowance of 6; 81 and 88 before) the share of the time budget the worst case may use (percent), the margin below applied to every cost (DUELL 1.1 item 132, owner: 80 -> 90; item 133: 88 with the
                                  * margin 1.15). DUELL 1.1 item 137 (owner: the model charges the true measured cost, margin 1.00; cap = the most notes whose true model load + 6 points of measured
                                  * steady peak over the average (HANDOFF_V2 item 130) fits, for core 0 and core 1): core 0 / one core: 90 - 6 = 84; core 1: block 0's job (posted ~0.27 block into
                                  * the half, the part's true cost) + 6 points must end before the runner's wait limit, which keeps its 1.15 table (BUDGET_DL_MARGIN): over the 19,472 setups of

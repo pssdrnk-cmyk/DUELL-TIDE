@@ -2428,7 +2428,7 @@ static BENCH_FN void bench_con(const char *p)
             return;
         }
         if (bench_ieq(w, "multi")) {
-            if (!bench_arg(&p, &n) || n < 1 || n > (int32_t)MU_SLOTS || !project_used((uint32_t)n - 1u)) {
+            if (!bench_arg(&p, &n) || n < 1 || n > (int32_t)MU_SHOWN || !project_used((uint32_t)n - 1u)) {
                 bench_err("no such multi");
                 return;
             }

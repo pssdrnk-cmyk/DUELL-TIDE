@@ -711,7 +711,7 @@ static void test_control(void)
         song.bm = 5;
         project_capture(&q);
         len = mu_pack(rec, &q, &cut);
-        ok = len > MU_G_AT && q.bm == 0 && rec[5] == (uint8_t)(morph.target == MT_BOTH);
+        ok = len > MU_G_AT && q.bm == 0 && rec[5] == (uint8_t)(SEL_BOTH);
         expect("a save writes byte 5 bits 1..4 as 0 and project byte 65 as 0 (BASS MONO 100 Hz on the unit)", ok);
         rec[5] = (uint8_t)((rec[5] & 1u) | 7u << 1);    /* a record of 0.2.19 / 0.2.20 with BASS MONO 125 Hz in it */
         {
@@ -734,7 +734,8 @@ static void test_control(void)
     expect("a multi saved with OFF leaves the 400 Hz that was set", song.bm == 9);
     ok = 1;
     for (v = 0; v < DF_N; v++) {                        /* the factory multis: byte 5 holds no BASS MONO bit */
-        ok &= (DM_REC[DM_AT[v] + 5u] >> 1) == 0u;
+        static uint8_t dmb[2048];
+        ok &= (dm_rec(v, dmb)[5] >> 1) == 0u;
     }
     {
         uint32_t k;

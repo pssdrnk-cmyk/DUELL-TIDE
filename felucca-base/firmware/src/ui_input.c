@@ -581,15 +581,15 @@ static void step_edit(uint32_t slot, int32_t steps)
 
 /* ------------------------------------------------------- MORPH (4b) --- */
 /* HOME's MORPH pages (SPEC 3.4, 3.4a, 3.5; morph.c). MORPH (v3, 2026-10-11): KNOB 1 the fader 0..127 (A .. B), 2 ROLL
- * (a turn left past the detent rolls end A, right end B), 3 UNDO (a turn left past the detent undoes end A's last roll, right end B's),
+ * (a turn left past the detent rolls end A, right end B), 3 nothing (UNDO until 1.0.0-b5: the morph keeps no history),
  * 4 AMOUNT 0..100 %; SAVE held saves the patch (patch_save_ask; a
  * press of SAVE opens the SAVE pages as everywhere). MORPH SET: KNOB 1 SMART (right ON, left WILD), 2 ARP, 3 PITCH,
- * KNOB 4 an empty column (0.2.9: TARGET left the page, ALGORITHM's BOTH is it: algo_step below). Each control acts on the parts of
- * morph_mask: the selected part (ALGORITHM), or with BOTH both parts. MIDI's CCs (midi_control.c midi_morph) do the same
+ * KNOB 4 an empty column (0.2.9: TARGET left the page; since 1.0.0-b5 the part selection is it: part_select below). Each control acts on the parts of
+ * morph_mask: the selected part, or with BOTH both parts. MIDI's CCs (midi_control.c midi_morph) do the same
  * through the queue morph_poll runs, with the same messages */
-#define MORPH_DET 3                                     /* detents a twist needs: one or two are a nudge, nothing */
+#define MORPH_DET 3                                     /* detents a twist needs: one or two are a nudge, nothing (the tests' turn; ROLL fires on one) */
 #define MORPH_REST_MS 400u                              /* .. a knob at rest this long: the gesture is over */
-/* the gesture of KNOB 2 ROLL (g 0) / KNOB 3 UNDO (g 1) / GLO's KNOB 1 MUTE 1 (g 2) / KNOB 2 MUTE 2 (g 3) turned s now: -1 / +1 when it fires (once), 0 not (yet). A nudge below the
+/* the gesture of KNOB 2 ROLL (g 0) / (g 1 spare: UNDO until 1.0.0-b5) / GLO's KNOB 1 MUTE 1 (g 2) / KNOB 2 MUTE 2 (g 3) turned s now: -1 / +1 when it fires (once), 0 not (yet). A nudge below the
  * detent left alone fades (the rest); a reversal starts anew; a gesture that fired swallows its further detents until
  * the knob rests, so one twist is one action however far it turns */
 static int32_t gesture_det(uint32_t g, int32_t s, int32_t det)
@@ -611,7 +611,6 @@ static int32_t gesture_det(uint32_t g, int32_t s, int32_t det)
     ui.mg.acc[g] = 0;
     return s < 0 ? -1 : 1;
 }
-static int32_t morph_gesture(uint32_t g, int32_t s) { return gesture_det(g, s, MORPH_DET); }
 /* the way a gesture is going (the card shows it): -1 / +1 while it builds up, 0 at rest or once it fired */
 static int32_t morph_pending(uint32_t g)
 {
@@ -620,18 +619,71 @@ static int32_t morph_pending(uint32_t g)
     return ui.mg.acc[g] < 0 ? -1 : 1;
 }
 static void morph_say_end(const char *a, uint32_t e) { ui_say(a, e ? "B" : "A"); }
+#if DUELL_TIDE
+/* The part selection (1.0.0-b5, owner 2026-11-08): ONE selection, PART 1 / PART 2 / BOTH. song.sel is the part (0, 1), song.both its third position; with BOTH, song.sel stays the last
+ * single part. It replaces 0.2.9's ALGORITHM-as-morph-target and AUTO TIDE's own TARGET: there is no other target state. With BOTH the MORPH fader, ROLL, AMOUNT, MORPH SET's settings and the glide
+ * act on both parts (morph.c morph_mask / morph_parts, morph_glide.c through the same mask), both parts are highlighted, and the keys play as the PLAY MODE row says (LAYER: both, STEREO / DUEL: the
+ * part song.sel names, as before; seq.c keyboard_block is not touched). The ALGORITHM encoder moves it (algo_input): on the BOTH pages (tide.h HOME_BOTH_PAGE: HOME's MORPH, TIDE SETTINGS and
+ * AUTO TIDE, and PERFORM) PART 1, BOTH, PART 2 from left to right, a detent a step, stopping at the ends; on every other page PART 1 / PART 2 only, the page showing and editing that part alone
+ * exactly as before b5, and BOTH stays set for the BOTH pages (the glide that runs on both runs on). A learned MORPH TARGET CC (midi_control.c, 0-42 PART 1, 43-85 PART 2, 86-127 BOTH) sets
+ * the same selection. Stored: the multi's TARGET bit, the project's morph block and the settings byte carry BOTH, and a load restores it */
+static void part_select(uint32_t pos)                   /* 0 PART 1, 1 PART 2, 2 BOTH */
+{
+    if (pos < 2u)
+        track_select(pos);
+    song.both = (uint8_t)(pos >= 2u);
+    ui.force = 1;
+}
+static void part_say(void) { ui_message(song.both ? "BOTH" : song.sel ? "PART 2" : "PART 1"); }
 /* an action on the parts of mask its message; from the page or MIDI */
 static void morph_act(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi)
 {
-    uint32_t r;
+    if (kind == MQ_TARGET) {                            /* (a learned MORPH TARGET CC: the part selection) */
+        part_select(v);
+        part_say();
+        return;
+    }
+    morph_do(kind, mask, v);
+    TIDE_LINK(kind, mask, v);                           /* TIDE hook (LINK: the fader moves the SEQ fader with it) */
+    if (kind == MQ_ROLL)
+        morph_say_end("ROLLED ", v);
+    else if (kind == MQ_SMART)
+        ui_message(v ? "SMART ON" : "WILD");
+    else if (kind == MQ_ARP)
+        ui_message(v ? "ARP ON" : "ARP OFF");
+    else if (kind == MQ_PITCH)
+        ui_message(v ? "PITCH ON" : "PITCH OFF");
+}
+static void algo_input(int32_t s)
+{
+    const page_t *pg = cur_page();
+    if (pg->fam == FAM_GLO && page_global(pg)) {        /* GLO (the MIXER first): the selected part still changes (the part every other page and the keys use); the screen stays global, so a message names it */
+        uint32_t was = song.sel;
+        track_select((uint32_t)clamp((int32_t)song.sel + (s > 0 ? 1 : -1), 0, NSHOWN - 1));
+        if (song.sel != was)
+            ui_message(song.sel ? "PART 2" : "PART 1");
+    } else if (page_global(pg) || TIDE_MODE_PG(pg)) {   /* 0.2.24 (owner): a GLOBAL page edits no part: the selector does nothing there */
+        return;
+    } else if (HOME_BOTH_PAGE(pg)) {                    /* PART 1, BOTH, PART 2 */
+        uint32_t cur = song.both ? 1u : song.sel ? 2u : 0u;
+        int32_t nv = clamp((int32_t)cur + (s > 0 ? 1 : -1), 0, 2);
+        if ((uint32_t)nv == cur)
+            return;
+        part_select(nv == 1 ? 2u : nv ? 1u : 0u);
+        part_say();
+    } else                                              /* the edit pages: PART 1 / PART 2, as before (BOTH stays for the BOTH pages) */
+        track_select((uint32_t)clamp((int32_t)song.sel + (s > 0 ? 1 : -1), 0, NSHOWN - 1));
+}
+#else
+/* an action on the parts of mask its message; from the page or MIDI */
+static void morph_act(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi)
+{
     if (kind == MQ_TARGET && v < 2u)
         track_select(v);                                /* (a learned CC for MORPH TARGET, which has no shipped number: PART 1 / PART 2; BOTH keeps the part the other pages edit) */
-    r = morph_do(kind, mask, v);
+    morph_do(kind, mask, v);
     TIDE_LINK(kind, mask, v);                           /* TIDE hook (LINK: TARGET BOTH moves the SEQ fader with it) */
     if (kind == MQ_ROLL)
         morph_say_end("ROLLED ", v);
-    else if (kind == MQ_UNDO)
-        morph_say_end(r ? "UNDO " : "NO UNDO ", v);
     else if (kind == MQ_TARGET)                         /* (ALGORITHM's words: a learned MORPH TARGET CC is the same selector) */
         ui_message(v >= 2u ? "BOTH" : v ? "PART 2" : "PART 1");
     else if (kind == MQ_SMART)
@@ -677,6 +729,7 @@ static void algo_input(int32_t s)
     else
         track_select((uint32_t)clamp((int32_t)song.sel + (s > 0 ? 1 : -1), 0, NSHOWN - 1));
 }
+#endif
 static void morph_knob(uint32_t slot, int32_t s)
 {
     uint32_t pi = song.sel, mask = morph_mask(pi);
@@ -695,21 +748,19 @@ static void morph_knob(uint32_t slot, int32_t s)
     case 0:
         morph_act(MQ_FADER, mask, (uint32_t)clamp((int32_t)morph_fader_of(pi) + accel(EN_K1, s, 127), 0, 127), pi);
         break;
-    case 1:                                             /* (v3: ROLL on KNOB 2, UNDO on 3, AMOUNT on 4) */
+    case 1:                                             /* (v3: ROLL on KNOB 2, AMOUNT on 4; KNOB 3 nothing since UNDO left, 1.0.0-b5) */
         if ((d = gesture_det(0, s, 1)) != 0)           /* (one detent: a roll is instant) */
             morph_act(MQ_ROLL, mask, d > 0, pi);
         break;
     case 2:
-        if ((d = morph_gesture(1, s)) != 0)
-            morph_act(MQ_UNDO, mask, d > 0, pi);
         break;
     default:
         morph_act(MQ_AMOUNT, mask, (uint32_t)clamp((int32_t)morph_amount_of(pi) + accel(EN_K4, s, 100), 0, 100), pi);
         break;
     }
 }
-/* AMOUNT and SMART / ARP / PITCH <-> the settings bytes (ui.c ui_morph_set, ui_morph_cfg; 0.2.9: TARGET's bit 7 is reserved, kept as
- * stored and never read: ALGORITHM's BOTH is not saved, power-on is a single part): bytes changed from outside
+/* AMOUNT and SMART / ARP / PITCH <-> the settings bytes (ui.c ui_morph_set, ui_morph_cfg; byte 0's bit 7 is the part selection's BOTH, 1.0.0-b5: written and read back, so
+ * a unit left on BOTH starts on BOTH; 0.2.9 to b4 kept it as stored and never read it): bytes changed from outside
  * (power-on, a settings import, the editor's restore) are read into the morph (and each part gets a fresh End B at that
  * AMOUNT and with those settings); a change made here is written into them and saved ~2 s after the last one (settings_save;
  * while playing it waits: project.c settings_poll), so a knob turned writes the flash once */
@@ -721,6 +772,9 @@ static void morph_settings(void)
     uint32_t pi;
     if (!ui.mset_ok || b[0] != ui.mset_seen[0] || b[1] != ui.mset_seen[1] || ui_morph_cfg != ui.mset_seen[2]) {
         morph.cfg = (uint8_t)(ui_morph_cfg & MC_SET);
+#if DUELL_TIDE
+        song.both = (uint8_t)(b[0] >> 7);               /* (the stored part selection: BOTH comes up BOTH, a single part as the part) */
+#endif
         for (pi = 0; pi < NSHOWN; pi++) {
             morph_part_t *mp = &mph[pi];
             uint32_t was = mp->n[0], a = mset_dec(b[pi]);
@@ -738,7 +792,11 @@ static void morph_settings(void)
         ui.mset_ok = 1;
         return;
     }
-    w[0] = (uint8_t)((b[0] & 0x80u) | mset_enc(mph[0].n[0] ? mph[0].aset : MORPH_AMOUNT_DEF));
+#if DUELL_TIDE
+    w[0] = (uint8_t)((song.both ? 0x80u : 0u) | mset_enc(mph[0].n[0] ? mph[0].aset : MORPH_AMOUNT_DEF));
+#else
+    w[0] = (uint8_t)((b[0] & 0x80u) | mset_enc(mph[0].n[0] ? mph[0].aset : MORPH_AMOUNT_DEF));   /* (plain DUELL: bit 7 kept as stored, never read) */
+#endif
     w[1] = (uint8_t)mset_enc(mph[1].n[0] ? mph[1].aset : MORPH_AMOUNT_DEF);
     w[2] = (uint8_t)(morph.cfg & MC_SET);
     if (w[0] != b[0] || w[1] != b[1] || w[2] != ui_morph_cfg) {
@@ -769,8 +827,10 @@ static void patch_save_ask(void)
         return;
     }
     if (cur_page()->graph == GR_SLOTS) {    /* MULTIS: the multi picked, the music over it under its name (an empty slot: NAME) */
-        uint32_t k = (uint32_t)(song.g[G_SLOT] - 1) % MU_SLOTS;
-        if (transport_busy())
+        uint32_t k = (uint32_t)(song.g[G_SLOT] - 1) % MU_SHOWN;
+        if (MU_ROM(k))                                  /* (TIDE b6: M17, M18 are ROM only) */
+            ui_message(MU_ROM_SAY);
+        else if (transport_busy())
             ui_message("STOP TO SAVE");
         else if (project_used(k))
             confirm_open(CF_HOLD_MULTI, k);
@@ -785,7 +845,7 @@ static void patch_save_ask(void)
     if (cur_page()->graph == GR_BROWSE)
         pl_commit();                                    /* (an accelerated K1 step still waiting loads first) */
     {
-        uint32_t trk2 = morph.target == MT_BOTH && cur_page()->graph == GR_MORPH ? 2u : song.sel;   /* (0.2.9: the MORPH page
+        uint32_t trk2 = PART_BOTH() && cur_page()->graph == GR_MORPH ? 2u : song.sel;   /* (0.2.9: the MORPH page
                                                          * only, where the header shows both; was MORPH SET too) */
         if (trk2 >= 2u) {                               /* both parts, each over its own slot: the same slot twice would lose one */
             if (slot_home(&trk[0]) == slot_home(&trk[1])) {
@@ -966,15 +1026,15 @@ static void test_knob(uint32_t slot, int32_t s)
     {
         int32_t k = (int32_t)test_slot(), dir = s > 0 ? 1 : -1, n = s > 0 ? s : -s, to = k;
         char b[24];
-        if (k >= (int32_t)MU_SLOTS) {
+        if (k >= (int32_t)MU_SHOWN) {
             ui_message("NO MULTI SAVED");
             return;
         }
         for (; n > 0; n--) {
             int32_t j = to + dir;
-            while (j >= 0 && j < (int32_t)MU_SLOTS && !project_used((uint32_t)j))
+            while (j >= 0 && j < (int32_t)MU_SHOWN && !project_used((uint32_t)j))
                 j += dir;
-            if (j < 0 || j >= (int32_t)MU_SLOTS)
+            if (j < 0 || j >= (int32_t)MU_SHOWN)
                 break;
             to = j;
         }
@@ -1574,7 +1634,9 @@ static void act_do(void)
         if (c == 1u) {
             project_load(k);                              /* (no dialog, as PROJECT's LOAD; playing: it goes on) */
         } else if (c == 2u) {
-            if (transport_busy())
+            if (MU_ROM(k))                                /* (TIDE b6: M17, M18 are ROM only: an edit of one saves into M01..M16) */
+                ui_message(MU_ROM_SAY);
+            else if (transport_busy())
                 ui_message("STOP TO SAVE");
             else if (project_used(k))
                 confirm_open(CF_OVR_PROJ, k);             /* OVERWRITE M05? */
@@ -1955,7 +2017,7 @@ static void first_boot_poll(void)
         project_load(TIDE_FIRST_MULTI);                 /* TIDE hook (H18) */
         ui_prefs2 = keep;
     }
-    morph.target = MT_BOTH;                             /* (2026-10-29: a new unit in LAYER starts with the part selector on BOTH) */
+    SEL_BOTH = 1;                                       /* (2026-10-29: a new unit in LAYER starts with the part selector on BOTH; plain DUELL: MT_BOTH) */
     settings_save();
 }
 
@@ -2140,7 +2202,7 @@ static void ui_input(void)
             ui.confirm = 0;
             ui.force = 1;
             if (kind == CF_OVR_PROJ) {                  /* overwrite: the NAME screen writes it */
-                name_open(NK_PROJ_SAVE, ui.confirm_trk % 16u);
+                name_open(NK_PROJ_SAVE, ui.confirm_trk % MU_SHOWN);
             } else if (kind == CF_HOLD_PSLOT) {         /* SAVE held on PATTERNS: straight into the slot, its name kept */
                 char tag[4], pn[13];
                 pat_label(ui.confirm_trk % PS_SLOTS, tag, pn);
@@ -2149,8 +2211,8 @@ static void ui_input(void)
                 pslot_save_ui(ui.confirm_trk % PS_SLOTS, pn);
             } else if (kind == CF_HOLD_MULTI) {         /* SAVE held on MULTIS: straight into the slot, its name kept */
                 char pn[13];
-                project_name(ui.confirm_trk % MU_SLOTS, pn);
-                project_save_as(ui.confirm_trk % MU_SLOTS, pn);
+                project_name(ui.confirm_trk % MU_SHOWN, pn);
+                project_save_as(ui.confirm_trk % MU_SHOWN, pn);
             } else if (kind == CF_RESTORE_ALL) {
                 patch_restore_all_do();
             } else if (kind == CF_LOAD_PAT) {
@@ -2340,7 +2402,7 @@ static void ui_input(void)
             ui.hot_t = 40;
         }
         knob_rec_begin(k);                              /* (record on: a lockable parameter's turn records a lock, motion.c) */
-        edit_param(k, s);                               /* (song.sel's part only: ALGO_BOTH_EDIT_HOOK, algo_step) */
+        edit_param(k, s);                               /* (song.sel's part only: the edit pages are single-part, part_select) */
         knob_rec_end();
     }
     ui_notices();

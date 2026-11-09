@@ -1029,7 +1029,7 @@ static void setup(int s)
     case S_PATCH_SAVE: song.playing = 0; up_store(5, "A VERY LONG SOUND NAME"); sl_load(2); go_page(GR_BROWSE); ui.svs = 5; confirm_open(CF_SAVE_OVER, 0); break;   /* SAVE held: OVERWRITE #6 over a saved slot, the K1 hint */
     case S_PATCH_SAVE_NAMED: song.playing = 0; up_store(5, "A VERY LONG SOUND NAME"); sl_load(2); go_page(GR_BROWSE); ui.svs = 5; str_cpy(save_nm, "A VERY LONG NEW NAME", sizeof save_nm); confirm_open(CF_SAVE_OVER, 0); break;   /* 0.2.21: after RENAME */
     case S_NAME_SAVE_PATCH: song.playing = 0; up_store(5, "A VERY LONG SOUND NAME"); sl_load(2); go_page(GR_BROWSE); ui.svs = 5; name_open(NK_SAVE_NAME, 0); break;   /* 0.2.21: the dialog's RENAME */
-    case S_PATCH_SAVE_BOTH: song.playing = 0; sl_load(2); go_page(GR_MORPH); morph.target = MT_BOTH; confirm_open(CF_SAVE_OVER, 2); break;   /* MORPH TARGET BOTH: each part over its own slot */
+    case S_PATCH_SAVE_BOTH: song.playing = 0; sl_load(2); go_page(GR_MORPH); SEL_BOTH = 1; confirm_open(CF_SAVE_OVER, 2); break;   /* MORPH TARGET BOTH: each part over its own slot */
     case S_TOOLS_RESTORE: song.playing = 0; up_store(3, "MY LONG BASS NAME"); go_page(GR_TOOLS); ui.act = 3; break;   /* RESTORE ALL picked (a saved slot exists) */
     case S_CONFIRM_RESTORE_ALL: song.playing = 0; up_store(6, "A VERY LONG SOUND NAME"); ui.confirm = CF_RESTORE_ALL; ui.confirm_trk = 0; break;
     case S_PHRASES: go_page(GR_PATS); break;
@@ -1132,7 +1132,7 @@ static void setup(int s)
         go_home(); guide_open(0); ui.guide = (uint8_t)(1 + s - S_GUIDE1); break;
     case S_GUIDE_MSG: go_home(); guide_open(0); ui.guide = 4; ui_message("HOLD ON"); break;
     case S_GUIDE_KNOB: go_home(); guide_open(0); ui.guide = 2; ui_message(GUIDE_KNOB_MSG); break;   /* (a knob turned: why nothing happens) */
-    case S_GUIDE_OCT: go_title("MORPH"); morph.target = MT_BOTH; song.octave = -3; guide_open(1); ui.guide = 4; break;   /* (the MENU's GUIDE has pages 2..4, counter "3/3": GUIDE_N is SETUP's) */
+    case S_GUIDE_OCT: go_title("MORPH"); SEL_BOTH = 1; song.octave = -3; guide_open(1); ui.guide = 4; break;   /* (the MENU's GUIDE has pages 2..4, counter "3/3": GUIDE_N is SETUP's) */
     case S_GUIDE_ROW: ui.menu = 1; ui.menu_sel = MI_GUIDE; break;
     case S_MOD_RETIRED: eng_retired(13); mslot_ui(4, MS_RAND, MD_E1, 30); mslot_ui(5, MS_LFO, MD_E1 + 7, 30); mod_ui_slot = 0;
         go_title("MATRIX 5-8"); break;
@@ -1349,7 +1349,7 @@ static void setup(int s)
                 }
             trk[k].seq_idx = 5u + k;
         }
-        if (both) morph_set_target(1);
+        if (both) SEL_BOTH = 1;
         gl.mode = s == S_TIDE ? GM_LOOP : GM_WANDER; gl.on = gl.armed = gl.hold = 0;
         go_title("AUTO TIDE");
         if (run) {
@@ -1420,7 +1420,7 @@ static void setup(int s)
      * (PUMP greyed), FILTER all the way left; in LAYER with part 2, the fader at B */
     case S_PERFORM: go_title("AMP ENV"); perf_enter(); break;
     case S_PERFORM_HELD:
-        go_title("AMP ENV"); perf_enter(); morph_set_target(1);   /* (item 160: no balance value: SELECT moves the MIXER LEVELs) */
+        go_title("AMP ENV"); perf_enter(); SEL_BOTH = 1;   /* (item 160: no balance value: SELECT moves the MIXER LEVELs) */
         kb_perf = 1u << key_at(0, PF_R16) | 1u << key_at(0, PF_FLG) | 1u << key_at(0, PF_M2);
         perf_held = perf_act = PF_BIT(PF_R16) | PF_BIT(PF_FLG) | PF_BIT(PF_M2);
         perf_space = -40; perf_filt = 60; perf_depth = 75; ui.hot_col = 2; ui.hot_t = 30;
@@ -1432,14 +1432,14 @@ static void setup(int s)
         morph_do(MQ_AMOUNT, 1u, 100u); morph_roll_seed(0, 0, 65535u); morph_roll_seed(0, 1, 12345u); morph_roll_seed(0, 1, 4242u);
         morph_do(MQ_FADER, 1u, 40u); go_title("MORPH"); ui.hot_col = 0; ui.hot_t = 30; break;
     case S_MORPH_BOTH:
-        song.sel = 1; morph_set_target(1); morph_do(MQ_AMOUNT, 3u, 7u); morph_roll_seed(0, 0, 101u); morph_roll_seed(1, 0, 101u);
+        song.sel = 1; SEL_BOTH = 1; morph_do(MQ_AMOUNT, 3u, 7u); morph_roll_seed(0, 0, 101u); morph_roll_seed(1, 0, 101u);
         morph_do(MQ_FADER, 3u, 127u); go_title("MORPH"); break;
     case S_MORPH_TWIST:
         go_title("MORPH"); ui.mg.acc[0] = -2; ui.mg.acc[1] = 2; ui.mg.t[0] = ui.mg.t[1] = fm1_ms; ui.hot_col = 3; ui.hot_t = 30;
         morph_do(MQ_FADER, 1u, 64u); break;
     case S_MORPH_SET: go_title(MORPH_SET_TITLE); break;
-    case S_MORPH_SET_BOTH: morph_set_target(1); go_title(MORPH_SET_TITLE); ui.hot_col = 0; ui.hot_t = 30; break;
-    case S_MORPH_SET_WILD: morph_set_cfg(MC_WILD | MC_ARP | MC_PIT, 1); morph_set_target(1); go_title(MORPH_SET_TITLE); ui.hot_col = 1; ui.hot_t = 30; 
+    case S_MORPH_SET_BOTH: SEL_BOTH = 1; go_title(MORPH_SET_TITLE); ui.hot_col = 0; ui.hot_t = 30; break;
+    case S_MORPH_SET_WILD: morph_set_cfg(MC_WILD | MC_ARP | MC_PIT, 1); SEL_BOTH = 1; go_title(MORPH_SET_TITLE); ui.hot_col = 1; ui.hot_t = 30; 
 #if DUELL_TIDE
         cpuh.hold = 138; cpu_snap.miss = 999;   /* (K2: the widest readout: 138 and 999, red) */
 #endif
@@ -1449,7 +1449,7 @@ static void setup(int s)
     case S_MORPH_MID: morph_do(MQ_FADER, 1u, 64u); go_title("MORPH"); trk[0].peak = 5000; break;
     case S_MORPH_B: morph_do(MQ_FADER, 1u, 127u); go_title("MORPH"); trk[0].peak = 14000; break;
     case S_MORPH_BOTH_MID:
-        morph_set_target(1); morph_do(MQ_FADER, 3u, 64u); go_title("MORPH"); trk[0].peak = 9000; trk[1].peak = 3000; break;
+        SEL_BOTH = 1; morph_do(MQ_FADER, 3u, 64u); go_title("MORPH"); trk[0].peak = 9000; trk[1].peak = 3000; break;
     /* DUELL step 5: HOME's MODE (HOME tapped three times from OVERVIEW: SPLIT, the power-on default), STEREO, LAYER (KNOB 1 just turned); the
      * MIXER in SPLIT (each part's PAN fixed: LEFT / RIGHT, DIM), part 2 selected and KNOB 2 turned (the message) */
 #if DUELL_TIDE                                           /* (TIDE: no MODE page; MODE is a row of TIDE SETTINGS, owner 2026-11-08) */
@@ -2090,7 +2090,27 @@ static void align_sweeps(void)
     if (nul) fclose(nul);
 }
 
-/* the keycaps' labels in their pills (tools/gen_aa_keycaps.py), from the data: the label's ink (nibbles 6..15) in the
+/* a pill's values as tools/gen_aa_keycaps.py made them (0 outside, 1..4 edge, 5 fill, 6..15 label), from its bit stream in
+ * face KC_HC's Huffman code (read as gen_aa_font.py huff_unpack; the data's 5 and 15 swapped back) */
+static void kc_vals(const kc_t *k, uint8_t *out)
+{
+    const uint8_t *d = KC_DATA + k->off, *hc = KC_HC;
+    uint32_t n = 0, pos = 0, total = (uint32_t)k->w * KC_H;
+    while (n < total) {
+        uint32_t code = 0, first = 0, idx = 0, len, s, r;
+        for (len = 0; len < 15u; len++) {
+            code |= (d[pos >> 3] >> (7u - (pos & 7u))) & 1u;
+            pos++;
+            if (code - first < hc[len]) break;
+            idx += hc[len];
+            first = (first + hc[len]) << 1;
+            code <<= 1;
+        }
+        s = hc[15u + idx + code - first];
+        for (r = (s >> 4) + 1u; r-- && n < total;) out[n++] = (uint8_t)((s & 15u) == 5u ? 15u : (s & 15u) == 15u ? 5u : s & 15u);
+    }
+}
+/* the keycaps' labels in their pills (tools/gen_aa_keycaps.py), from the data: the label's ink (values 6..15) in the
  * pill (KC_H rows, its width) */
 static void al_keycaps(void)
 {
@@ -2100,9 +2120,11 @@ static void al_keycaps(void)
         const kc_t *k = &KC[id];
         int32_t x, y, x0 = 999, y0 = 999, x1 = -1, y1 = -1, w = k->w;
         uint32_t i = 0;
+        static uint8_t v[256u * KC_H];
+        kc_vals(k, v);
         for (y = 0; y < KC_H; y++)
             for (x = 0; x < w; x++, i++)
-                if (((KC_DATA[k->off + (i >> 1)] >> ((i & 1u) ? 0 : 4)) & 15u) >= 6u) {
+                if (v[i] >= 6u) {
                     if (x < x0) x0 = x;
                     if (y < y0) y0 = y;
                     if (x + 1 > x1) x1 = x + 1;
@@ -2112,6 +2134,37 @@ static void al_keycaps(void)
         if (al_rep) fprintf(al_rep, "keycap %-8s w %2d  ink x %2d..%2d y %d..%d  across %+.1f up/down %+.1f\n", k->label, w, x0, x1, y0, y1,
                             ((x0 + x1) - w) / 2.0, ((y0 + y1) - KC_H) / 2.0);
     }
+}
+/* b6 SP2: every keycap pill (KC_COUNT, the knob dots too) in six states (the fills KEY, DIM and ACCENT over BG and over MID) and
+ * five places (whole, cut by each canvas edge) in every palette: a hash of the pixels, which must be KC_SWEEP_HASH, b5's (the
+ * pills as raw nibbles, cv_alpha) now that they are Huffman-coded (cv_alpha_hc). UI_KC_DUMP=FILE writes the canvases raw */
+#define KC_SWEEP_HASH 0x1924f365u
+static uint32_t kc_sweep(void)
+{
+    static const int16_t X[5] = {2, -5, 0, 2, 2}, Y[5] = {2, 2, 2, -4, 8};
+    FILE *f = getenv("UI_KC_DUMP") ? fopen(getenv("UI_KC_DUMP"), "wb") : 0;
+    const uint32_t p0 = settings.palette, ink0 = nink;
+    const int32_t oy0 = cv_oy;
+    uint32_t h = 2166136261u, p, id, s, c, i;
+    cv_oy = 0;
+    for (p = 0; p < NPALETTES; p++) {
+        pal(p);
+        for (id = 0; id < KC_COUNT; id++)
+            for (s = 0; s < 6u; s++)
+                for (c = 0; c < 5u; c++) {
+                    const uint16_t fill = s % 3u == 0 ? T_KEY : s % 3u == 1 ? T_DIM : T_ACCENT, under = s < 3u ? T_BG : T_MID;
+                    cv_begin(64, KC_H + 4, under);
+                    cv_keycap(c == 2u ? 64 - kc_w(id) + 5 : X[c], Y[c], id, fill, T_KINK, under);
+                    for (i = 0; i < cv_w * cv_h; i++) h = (h ^ cv_px[i]) * 16777619u;
+                    if (f) fwrite(cv_px, 2, cv_w * cv_h, f);
+                    nscr = npend = 0;
+                }
+    }
+    if (f) fclose(f);
+    nink = ink0;                                    /* (a state no page draws may put an ink on its own colour) */
+    cv_oy = oy0;
+    pal(p0);
+    return h;
 }
 static void al_table(void)
 {
@@ -2378,9 +2431,72 @@ static int about_tide_main(const char *out)
     return 0;
 #endif
 }
+#if DUELL_TIDE
+/* the MORPH page's wave, for looking at: --wave-study DIR writes DIR/ppm/<PAL>_<kind>_<sel>.ppm (VIOLET, GREY, MONO; held note, chord, sweep; PART 1, PART 2, BOTH selected) with the rings fed as the tap would
+ * leave them (part 1 a saw, part 2 a sine). */
+static int32_t wstudy_v(uint32_t kind, uint32_t q, uint32_t st, uint32_t t)
+{
+    double ph1 = (double)(t % 100u) / 100.0, ph2 = (double)(t % 127u) / 127.0, sn = sin(6.283185307179586 * (t % 128u) / 128.0);
+    if (kind == 0u)                                  /* a held note: a saw on part 1, a sine on part 2 */
+        return q ? (int32_t)(40.0 * sn) : (int32_t)((ph1 - 0.5) * 90.0);
+    if (kind == 1u)                                  /* a chord: two saws a little apart beat on part 1, two sines on part 2 */
+        return q ? (int32_t)(26.0 * sn + 22.0 * sin(6.283185307179586 * (t % 81u) / 81.0)) : (int32_t)((ph1 + ph2 - 1.0) * 45.0);
+    {                                                /* a sweep: the saw rounds into a sine and back; part 2 swells */
+        double m = 0.5 + 0.5 * sin(st * 0.22);
+        return q ? (int32_t)((30.0 + 18.0 * sin(st * 0.15)) * sn) : (int32_t)((1.0 - m) * (ph1 - 0.5) * 100.0 + m * 48.0 * sin(6.283185307179586 * ph1));
+    }
+}
+static int wave_study_main(const char *out)
+{
+    static const char *const PALS[] = {"VIOLET", "GREY", "MONO"}, *const KN[] = {"held", "chord", "sweep"}, *const SN[] = {"p1", "p2", "both"};
+    uint32_t j, k, sel, st, q, p, i;
+    char rp[600], nm[48];
+    snprintf(rp, sizeof rp, "%s/study_report.txt", out);
+    rep = fopen(rp, "w");
+    for (j = 0; j < 3u; j++)
+        for (p = 0; p < NPALETTES; p++)
+            if (!strcmp(UI_PALETTES[p].name, PALS[j]))
+                for (k = 0; k < 3u; k++)
+                    for (sel = 0; sel < 3u; sel++) {
+                        cur_name = "wave_study";
+                        setup(S_MORPH_MID);
+                        pal(p);
+                        song.sel = sel == 1u ? 1u : 0u;
+                        SEL_BOTH = sel == 2u;
+                        memset(wl, 0, sizeof wl);
+                        wl_tk = 0xFFFFFFFFu;
+                        wv_want = wv_blk + 256u;
+                        for (st = 0; st < 70u; st++) {
+                            for (q = 0; q < 2u; q++) {
+                                uint32_t cnt = 20000u + (st + 1u) * 1366u;
+                                for (i = 0; i < WVR_N; i++) {
+                                    uint32_t t = cnt - WVR_N + i;
+                                    int32_t v = wstudy_v(k, q, st, t);
+                                    wv_m[q][t & (WVR_N - 1u)] = wvr_code(v * 32);   /* (the signal in the old 1/128 steps: 32 of the tap's) */
+                                }
+                                wv_cnt[q] = cnt;
+                                wv_gap[q] = 0;
+                                wv_sil[q] = 0;
+                                if (st == 0u)
+                                    wl[q].base = cnt - 1366u;
+                            }
+                            ui.frame += 2u;
+                            draw(S_MORPH_MID);
+                            ui.frame += 2u;
+                            draw(S_MORPH_MID);
+                        }
+                        snprintf(nm, sizeof nm, "%s_%s", KN[k], SN[sel]);
+                        write_ppm(out, PALS[j], nm);
+                    }
+    return 0;
+}
+#endif
 int main(int argc, char **argv)
 {
     if (argc > 2 && !strcmp(argv[1], "--target")) return target_main(argv[2]);
+#if DUELL_TIDE
+    if (argc > 2 && !strcmp(argv[1], "--wave-study")) return wave_study_main(argv[2]);
+#endif
     if (argc > 2 && !strcmp(argv[1], "--about-tide")) return about_tide_main(argv[2]);
     const char *out = argc > 1 ? argv[1] : "build/ui_new";
     char path[600];
@@ -2432,7 +2548,7 @@ int main(int argc, char **argv)
     {   /* AUTO TIDE / TIDE SETTINGS in the states the page sweep does not reach (audit 2026-11-04 lane C, C8): BOTH parts, gliding, armed, ARC, WAIT, POLY, 32 steps, the list's last rows,
          * the ARC trip line, the list with inert rows */
         static const char *const NM[] = {"at_single_rest", "at_both_rest", "at_both_glide", "at_both_armed_stopped", "at_both_arc_recover_dropnext",
-                                         "at_both_waiting16", "at_single_glide_32steps", "ts_bottom", "at_both_poly", "at_both_minimal_text", "at_both_arc_trip", "ts_inert", "ts_inert_dim", "ts_top", "ts_xfade_layer", "ts_split_duel"};
+                                         "at_both_waiting16", "at_single_glide_32steps", "ts_bottom", "at_both_poly", "at_both_minimal_text", "at_both_arc_trip", "ts_inert", "ts_inert_dim", "ts_top", "ts_xfade_layer", "ts_split_duel", "at_one_part_gliding"};
         uint32_t pi, sc, k, i;
         for (pi = 0; pi < NPAGES && strcmp(PAGES[pi].title, "AUTO TIDE"); pi++) ;
         for (sc = 0; sc < sizeof NM / sizeof NM[0]; sc++) {
@@ -2440,7 +2556,8 @@ int main(int argc, char **argv)
             setup(S_HOME);
             pal(UI_DEFAULT_INDEX);
             song.rec = 0; usb.config = 0; ui.perf = 0;
-            morph.target = sc == 0 || sc == 6 ? MT_SELECTED : MT_BOTH;
+            SEL_BOTH = !(sc == 0 || sc == 6);
+            song.sel = sc == 6 || sc == 9 || sc == 16 ? 1 : 0;   /* (the page always shows both parts: the selected one in full, the other dimmed; 6, 9, 16: part 2 selected) */
             for (k = 0; k < NSHOWN; k++) {
                 track_t *t = &trk[k];
                 t->p[P_SLEN] = (int16_t)(sc == 6 ? 32 : 16);
@@ -2449,16 +2566,16 @@ int main(int argc, char **argv)
                 t->step[5].time = ST_TIE;
                 t->seq_idx = (uint16_t)(7u + 4u * k);
             }
-            song.playing = sc >= 2 && sc != 3 && sc != 7 && sc < 11;
+            song.playing = sc >= 2 && sc != 3 && sc != 7 && (sc < 11 || sc == 16);
             gl.on = 0; gl.armed = 0; gl.hold = 0; gl.wait = 2; sqm_arc = 0; tarc.run = 0; tarc.hand = 0; poly_len[0] = 0;
-            if (sc >= 2 && sc != 7 && sc < 11) { gl.on = 3; gl.mask = 3; gl.to = 1; gl.prog = 1u << (GLIDE_Q - 1); gl.mode = GM_JOURNEY; gl.time = 6; }
+            if (sc >= 2 && sc != 7 && (sc < 11 || sc == 16)) { gl.on = 3; gl.mask = (uint8_t)(sc == 16 ? 1 : 3); gl.to = 1; gl.prog = 1u << (GLIDE_Q - 1); gl.mode = GM_JOURNEY; gl.time = 6; }
             if (sc == 3) gl.armed = 1;
             if (sc == 4 || sc == 10) { sqm_arc = 2; sqm_auto = 3; tarc.run = 1; tarc.phase = 4; tarc.len = 2; tarc.left = 1; tarc.hand = sc == 4; }
             if (sc == 5) { gl.hold = 1; gl.wait = 5; gl.prog = (1u << GLIDE_Q) - 1u; }
             if (sc == 8) { poly_len[0] = 12; }
             if (sc == 9) { gl.on = 0; gl.mode = GM_DRIFT; }
-            if (sc == 7 || sc >= 11) { for (pg = 0; pg < NPAGES && strcmp(PAGES[pg].title, "TIDE SETTINGS"); pg++) ; jl_sel = (uint8_t)(sc == 11 ? JL_TURNS : sc == 13 ? JL_STYLE : sc == 14 ? JL_XFADE : JL_SPLIT);   /* (7 ts_bottom, 15 ts_split_duel: the SPLIT row) */ }
-            if (sc >= 14) { duell_mode_req = sc == 14 ? DM_LAYER : DM_SPLIT; mix_xf = 50; mix_split = 67; }   /* (the last rows, MODE XFADE SPLIT: in LAYER they act, in DUEL the XFADE and SPLIT values dim and knob 1's line says LAYER ONLY) */
+            if (sc == 7 || (sc >= 11 && sc < 16)) { for (pg = 0; pg < NPAGES && strcmp(PAGES[pg].title, "TIDE SETTINGS"); pg++) ; jl_sel = (uint8_t)(sc == 11 ? JL_TURNS : sc == 13 ? JL_STYLE : sc == 14 ? JL_XFADE : JL_SPLIT);   /* (7 ts_bottom, 15 ts_split_duel: the SPLIT row) */ }
+            if (sc == 14 || sc == 15) { duell_mode_req = sc == 14 ? DM_LAYER : DM_SPLIT; mix_xf = 50; mix_split = 67; }   /* (the last rows, MODE XFADE SPLIT: in LAYER they act, in DUEL the XFADE and SPLIT values dim and knob 1's line says LAYER ONLY) */
             if (sc == 13) { tide_style = STY_CUSTOM; gl.target = GT_BOTH; morph_musical = 1; sqm_vary_all = 0; }   /* (the README's TIDE SETTINGS picture: the top of the list) */
             if (sc == 11 || sc == 12) { gl.mode = sc == 11 ? GM_ONCE : GM_JOURNEY; morph_musical = sc == 12; gl.target = GT_SOUND; }
             ui.page = (uint8_t)pg;
@@ -2468,6 +2585,7 @@ int main(int argc, char **argv)
             lint();
             write_ppm(out, "VIOLET", NM[sc]);
             pal(UI_GREY_INDEX); ui.force = 1; draw(-1); lint(); write_ppm(out, "GREY", NM[sc]);
+            if (sc < 2u || sc == 6u || sc == 9u || sc == 16u) { pal(UI_BW_INDEX); ui.force = 1; draw(-1); lint(); write_ppm(out, "MONO", NM[sc]); }
         }
         song.playing = 0; gl.on = 0; gl.armed = 0; gl.hold = 0; sqm_arc = 0; tarc.run = 0; tarc.hand = 0; poly_len[0] = 0; jl_sel = 0; morph_musical = 1; sqm_auto = 0; tide_style = STY_DUB;
     }
@@ -2720,26 +2838,52 @@ int main(int argc, char **argv)
                 (!strcmp(UI_PALETTES[p].name, "VIOLET") || !strcmp(UI_PALETTES[p].name, "POLICE") || !strcmp(UI_PALETTES[p].name, "PALE")))   /* VIOLET (the default) and POLICE */
                 write_ppm(out, UI_PALETTES[p].name, S_NAME[s]);
         }
-    {   /* MORPH v4 stills: the fader at A, 64, B and BOTH (64, B), each silent and playing (40 steps of a part sounding:
-         * notes every 8 steps, its level, envelope, LFO 1 and 2 moving), as OUTDIR/ppm/<PAL>_mv_<fader>_<silent|play>.ppm */
+    {   /* MORPH stills: the fader at A, 64, B and BOTH (64, B), each silent and playing (40 steps: TIDE: the part's real sound as the tap would leave it, part 1 a saw whose level falls and rises, part 2 a sine at another
+         * pitch; plain DUELL: a part sounding, notes every 8 steps, its level, envelope, LFO 1 and 2 moving), as OUTDIR/ppm/<PAL>_mv_<fader>_<silent|play>.ppm; TIDE also with part 2 selected: ..._play_part2.ppm */
         static const int MS[] = {S_MORPH, S_MORPH_MID, S_MORPH_B, S_MORPH_BOTH_MID, S_MORPH_BOTH};
         static const char *const MN[] = {"A", "64", "B", "both64", "bothB"};
-        static const char *const MP[] = {"VIOLET", "COBALT", "ORANGE", "MINT", "PALE", "GREY", "POLICE"};
+        static const char *const MP[] = {"VIOLET", "COBALT", "ORANGE", "MINT", "PALE", "OCEAN", "GREY", "MONO", "POLICE"};
         uint32_t k, j, pl, st, q;
+#if DUELL_TIDE
+        uint32_t sel;
+#endif
         for (p = 0; p < NPALETTES; p++)
             for (j = 0; j < sizeof MP / sizeof MP[0]; j++)
                 if (!strcmp(UI_PALETTES[p].name, MP[j]))
                     for (k = 0; k < sizeof MS / sizeof MS[0]; k++)
+#if DUELL_TIDE
+                        for (pl = 0; pl < 3u; pl++) {
+#else
                         for (pl = 0; pl < 2u; pl++) {
+#endif
                             char nm[48];
                             cur_name = "morph_v4";
                             setup(MS[k]);
-#if DUELL_TIDE
-                            if (MS[k] == S_MORPH)                     /* (TIDE: S_MORPH's second HOME tap lands on TIDE SETTINGS; this still is the MORPH page at A) */
-                                go_title("MORPH");
-#endif
                             pal(p);
+#if DUELL_TIDE
+                            sel = pl == 2u ? 1u : 0u;
+                            song.sel = (uint8_t)sel;
+                            memset(wl, 0, sizeof wl);
+                            wl_tk = 0xFFFFFFFFu;
+                            wv_want = wv_blk + 256u;
+#endif
                             for (st = 0; st < 40u; st++) {
+#if DUELL_TIDE
+                                for (q = 0; q < 2u; q++) {
+                                    uint32_t cnt = 20000u + (st + 1u) * 1366u, i;
+                                    int32_t amp = q ? 40 : 30 + (int32_t)(st % 8u) * 4;
+                                    for (i = 0; i < WVR_N; i++) {
+                                        uint32_t t = cnt - WVR_N + i;
+                                        int32_t v = q ? (int32_t)(amp * sin(6.283185307179586 * (t % 128u) / 128.0)) : (int32_t)(t % 100u) * amp / 100 - amp / 2;
+                                        wv_m[q][t & (WVR_N - 1u)] = wvr_code(pl ? v * 32 : 0);
+                                    }
+                                    wv_cnt[q] = cnt;
+                                    wv_gap[q] = 0;
+                                    wv_sil[q] = pl ? 0 : 1;
+                                    if (st == 0u)
+                                        wl[q].base = cnt - 1366u;
+                                }
+#else
                                 for (q = 0; q < 2u; q++) {
                                     uint32_t ph = st % 8u, d = q ? 3u : 0u;
                                     trk[q].peak = pl ? (int32_t)(q ? 6000 : 12000) * (int32_t)(8u - (ph + d) % 8u) / 8 : 0;
@@ -2751,10 +2895,11 @@ int main(int argc, char **argv)
                                     trk[q].lfo2.val = pl ? sine_i(st * 0x05000000u) : 0;
                                     trk[q].lfo2.fade = 32767;
                                 }
+#endif
                                 ui.frame += 4u;
                                 draw(MS[k]);
                             }
-                            snprintf(nm, sizeof nm, "mv_%s_%s", MN[k], pl ? "play" : "silent");
+                            snprintf(nm, sizeof nm, "mv_%s_%s", MN[k], pl == 2u ? "play_part2" : pl ? "play" : "silent");
                             write_ppm(out, MP[j], nm);
                             for (q = 0; q < 2u; q++) {
                                 trk[q].v[0].active = 0;
@@ -2872,6 +3017,11 @@ int main(int argc, char **argv)
             }
         }
         roll_cost();
+    }
+    {
+        const uint32_t h = kc_sweep();
+        printf("ui_render: keycap pills: %u x 6 states x 5 places x %u palettes, hash %08x (b5's %08x)\n", (unsigned)KC_COUNT, (unsigned)NPALETTES, h, KC_SWEEP_HASH);
+        if (h != KC_SWEEP_HASH) { fprintf(stderr, "ui_render: the keycap pills are not b5's pixels (hash %08x, want %08x)\n", h, KC_SWEEP_HASH); nfind++; }
     }
     al_off = 0;
     al_keycaps();

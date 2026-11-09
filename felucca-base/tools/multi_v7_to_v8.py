@@ -171,7 +171,12 @@ def compile_harness():
     for h in ("build/gen/duell_multis.h", "build/gen_test/duell_multis.h", "build/gen/felucca_tables.h"):
         if not (ROOT / h).exists():
             sys.exit("multi_v7_to_v8: %s missing (run the device build and host_tests.sh once: sh jam/check.sh <group>)" % h)
-    cc = ["cc", "-O1", "-w", "-DHOST_MIX_FOLLOWS_MASTER=1", "-DDUELL_TEST_MODE=1", "-DDUELL_TIDE=0", "-Ibuild/gen_test", "-Ibuild/gen",
+    off = ROOT / "build" / "gen_off" / "duell_multis.h"        # (TIDE b6: the harness is plain DUELL, so its factory multis header is plain DUELL's: no M17, M18, unpacked)
+    off.parent.mkdir(parents=True, exist_ok=True)
+    if subprocess.run([sys.executable, "-I", str(ROOT / "tools" / "gen_duell_multis.py"), str(off), "--test-mode"], cwd=ROOT, capture_output=True,
+                      env=dict(os.environ, DUELL_TIDE="0")).returncode:
+        sys.exit("multi_v7_to_v8: tools/gen_duell_multis.py with DUELL_TIDE=0 failed")
+    cc = ["cc", "-O1", "-w", "-DHOST_MIX_FOLLOWS_MASTER=1", "-DDUELL_TEST_MODE=1", "-DDUELL_TIDE=0", "-Ibuild/gen_off", "-Ibuild/gen_test", "-Ibuild/gen",
           "-Ifirmware/src", "-Itests", '-DFELUCCA_VERSION="x"', "-DMORPH_UF_RESBP=40", "-DMORPH_UF_RES=60", "-o", str(HARNESS), "tests/multi_v7_endb.c", "-lm"]
     if run_sh(cc):
         sys.exit("multi_v7_to_v8: tests/multi_v7_endb.c does not compile")

@@ -25,6 +25,11 @@
 #define CPU_RECENT_MS 5000u
 #define CPU_WARN 80u
 #define CPU_HOT 95u
+#if DUELL_TIDE
+#define MENU_PAL_SIG ux.pal                 /* (the menu's signature: the theme applied, ui.c pal_q) */
+#else
+#define MENU_PAL_SIG settings.palette
+#endif
 static struct {
     uint16_t avg, peak, hold;                          /* % (peak and hold up to 999) */
     uint32_t miss, miss_t, t, hold_t, n0, sum0;        /* the misses seen, when the last one was seen, window start, ... */
@@ -690,21 +695,21 @@ static uint8_t test_pick = 0xFFu;                      /* K3's multi (0..15): th
 static uint32_t test_slot(void)                        /* the multi K3 shows: the pick, else the one the music came from, else the first used */
 {
     uint32_t k;
-    if (test_pick < MU_SLOTS && project_used(test_pick))
+    if (test_pick < MU_SHOWN && project_used(test_pick))
         return test_pick;
     k = project_cur_slot();
-    if (k < MU_SLOTS && project_used(k))
+    if (k < MU_SHOWN && project_used(k))
         return k;
-    for (k = 0; k < MU_SLOTS; k++)
+    for (k = 0; k < MU_SHOWN; k++)
         if (project_used(k))
             return k;
-    return MU_SLOTS;                                   /* no multi at all */
+    return MU_SHOWN;                                   /* no multi at all */
 }
 static uint32_t test_missed(void) { return cpum.miss - cpum.base; }
 static void test_multi_name(char *b)                   /* "M05 NAME", or "NO MULTI" when the music did not come from one */
 {
     uint32_t k = project_cur_slot();
-    if (k >= MU_SLOTS) {
+    if (k >= MU_SHOWN) {
         str_cpy(b, "NO MULTI", 24);
         return;
     }
@@ -737,7 +742,7 @@ static void graph_test(void)
     int32_t fill = (int32_t)(cpum.avg > 100u ? 100u : cpum.avg) * 224 / 100, tick = (int32_t)(cpum.hold > 100u ? 100u : cpum.hold) * 224 / 100, x;
     cv_text_on(10, 3, &AF_S, "MULTI", T_MID, T_BG);
     test_multi_name(b);
-    cv_text_r(230, 3, &AF_S, b, project_cur_slot() < MU_SLOTS ? T_TEXT : T_DIM, T_BG);
+    cv_text_r(230, 3, &AF_S, b, project_cur_slot() < MU_SHOWN ? T_TEXT : T_DIM, T_BG);
     for (k = 0; k < 2u; k++) {                         /* the parts: engine at the left, the patch at the right */
         int32_t y = 17 + 13 * (int32_t)k;
         v[0] = (char)('1' + k);
@@ -844,9 +849,13 @@ static void draw_menu(void)
         uint32_t r;
         sig = 2166136261u;
         for (r = 0; r < MI_COUNT; r++)
+#if DUELL_TIDE
+            sig = (sig ^ (r == MI_COLOR ? ux.pal : menu_get(r))) * 16777619u;   /* (COLOR: the theme applied: MENU > COLOR's steps wait for it, ui.c pal_q) */
+#else
             sig = (sig ^ menu_get(r)) * 16777619u;
+#endif
     }
-    sig += ui.menu * 7u + ui.menu_sel * 131u + settings.palette * 1009u + settings_hold * 3511u +
+    sig += ui.menu * 7u + ui.menu_sel * 131u + MENU_PAL_SIG * 1009u + settings_hold * 3511u +
           settings_leds * 6151u + ui_prefs * 4099u + song.rec * 65537u + song.sel * 13u +
           ui_rec_prefs * 92821u + ui_scr * 131071u +          /* (#157: SCREEN OFF's value redraws its row) */
           ui_prefs2 * 524287u + ui_idle * 1048573u +      /* (1.2: ANIM IDLE's value redraws its row) */

@@ -12,7 +12,7 @@
 #include "ui_tokens.h"                                /* DUELL 1.1 item 111: the shared header / footer / battery numbers, one set */
 static void draw_menu(void);
 static int name_on(void);                              /* NAME (ui_name.c) */
-static int32_t morph_pending(uint32_t g);              /* the twists building up: MORPH's ROLL, UNDO, GLO's MUTE 1, MUTE 2 (ui_input.c, 4b) */
+static int32_t morph_pending(uint32_t g);              /* the twists building up: MORPH's ROLL, GLO's MUTE 1, MUTE 2 (ui_input.c, 4b) */
 static void name_draw(void);
 static int guide_seen(void);                          /* DUELL 0.2.11: the first-start GUIDE (ui_guide.c, included with ui_layer.c) */
 static void guide_open(uint32_t from_menu);
@@ -409,8 +409,13 @@ static uint32_t badge_lit(void)
         return ui.layer == LAYER_GLO ? (1u << NSHOWN) - 1u : lit;   /* GLO's cards are per part: both (QUICK SCALE, whose three were global, is removed: change list A.7) */
     if (page_global(pg) || TIDE_MODE_PG(pg))   /* (a GLOBAL page: the SCALE page's, GLO's; the MODE page counts as global as in screen_global and ui_input.c algo_input, item 138: one rule. A global screen draws no capsules, so nothing on the screen changes) */
         return (1u << NSHOWN) - 1u;
+#if DUELL_TIDE
+    if (song.both && HOME_BOTH_PAGE(pg))                /* 1.0.0-b5: the part selection on BOTH lights both capsules on the HOME pages (and PERFORM); every other page shows and edits song.sel alone, as before */
+        lit = (1u << NSHOWN) - 1u;
+#else
     if ((pg->graph == GR_MORPH || TIDE_PAGE(pg) || pg->scope == SC_TEST || pg->scope == SC_PERF))   /* TIDE hook */
         lit |= morph_mask(song.sel);                    /* (ALGORITHM's PART 1 / BOTH / PART 2 there: the morph's target) */
+#endif
     return lit;
 }
 
@@ -886,6 +891,12 @@ static uint8_t k1_after_r;
 #else
 #define AREA_LIST_PG() 0
 #endif
+#if DUELL_TIDE
+#define MROW_Y 189                                      /* b6 (owner 2026-11-09): the MORPH page's ROLL / AMOUNT row, a 13-row canvas 189 .. 201 just above the footer (Y_FOOT 202) that holds the */
+#define MROW_H 13                                       /* S face's whole box (caps 189 .. 199, descenders to 201: nothing cut, nothing under the footer's canvas); the picture above it */
+#define MROW_BASE (MROW_H - 3)                          /* rows 48 .. 183, two lanes of 68 (5 clear rows to the caps) */
+#define MROW_WAVES_END 184
+#endif
 static void area_rect(int32_t *y, int32_t *h)
 {
     *y = UT_A_GR_Y;
@@ -893,6 +904,8 @@ static void area_rect(int32_t *y, int32_t *h)
 #if DUELL_TIDE
     if (AREA_LIST_PG())
         *h = LP_CARD_Y - UT_A_GR_Y;
+    if (TIDE_WAVE_PAGE(cur_page()))                    /* (the MORPH page: the waves down to its compact row) */
+        *h = MROW_WAVES_END - UT_A_GR_Y;
 #endif
 }
 /* the card of knob c (1 .. 3) in the area card row: x, y, w, h (w = h = 0: no card in that column) */
@@ -2283,7 +2296,7 @@ static int area_plan(const page_t *pg, uint32_t g)
     int two = 0, moved;
     if (g == 16u && (pg->scope == SC_SCALE || pg->graph == GR_PATS || pg->graph == GR_SLOTS))
         cols = 2u;
-    else if (g == 16u && (pg->graph == GR_EVENTS || pg->graph == GR_ROLL || pg->graph == GR_BROWSE || pg->scope == SC_PERF || TIDE_PAGE(pg)))   /* TIDE hook */
+    else if (g == 16u && (pg->graph == GR_EVENTS || pg->graph == GR_ROLL || pg->graph == GR_BROWSE || pg->scope == SC_PERF || TIDE_PAGE(pg) || TIDE_WAVE_PAGE(pg)))   /* TIDE hook */
         cols = 3u;
     else {                                              /* a page of parameter cards (ARP 1/3, ARP 2/3, CHORD; the ENGINE page): its slots 2 .. 4 that hold a card at all; their labels */
         for (s = 1; s < 4u; s++)
@@ -2359,6 +2372,54 @@ static uint32_t midi_cards(uint8_t vis[4])
     return 3;
 }
 /* (the name a card shows: params.c desc_shown, T0227's unit label pass) */
+#if DUELL_TIDE
+/* a knob's number in its dot at x, its label's baseline `base` (canvas rows), as the cards draw it */
+static void morph_dot(int32_t x, int32_t base, const char *n)
+{
+    const int32_t dy = base - AF_S_CAP_H + 1;
+    cv_rrect(x, dy, AF_S_CAP_H, AF_S_CAP_H, AF_S_CAP_H / 2, T_MID, T_BG);
+    cv_text_in(x, dy + HALF_UP(AF_S_CAP_H - AF_D_CAP_H) - AF_D_CAP_Y, AF_S_CAP_H, &AF_DOT, n, T_BG, T_MID);
+}
+/* b6 (owner 2026-11-09: "why do we keep half of the screen for the hold save, and roll and amount"): the MORPH page's knob 2 and knob 4 on one row, rows MROW_Y .. + MROW_H - 1:
+ * "(2) ROLL A<>B" on the left (the twist's way while it builds: <A / B>, in the accent), "(4) AMOUNT 40 %" on the right (owner 2026-11-09: no bar, "does the 4 amount really
+ * needs that long of a line and also a percentage": the number alone, right-aligned; the dot and the label 6 px before the widest value, so they stay put as it changes). While SAVE is held (and only then) the row says
+ * HOLD SAVE = SAVE PATCH instead. Drawn only when what it shows changes */
+static void morph_row(int32_t g, uint32_t amt)
+{
+    static char last[24];
+    char key[24], v[8];
+    const int hint = ui.save_t0 != 0u, hot2 = ui.hot_t && ui.hot_col == 1u, hot4 = ui.hot_t && ui.hot_col == 3u;
+    const int32_t base = MROW_BASE;                     /* (the row's label baseline: the face's box, descenders included, ends on the canvas's last row) */
+    key[0] = (char)('a' + hint);
+    key[1] = (char)('b' + g + 1);
+    key[2] = (char)('a' + hot2 + 2 * hot4);
+    key[3] = (char)('a' + ux.pal % 26u);
+    fmt_int(key + 4, (int32_t)amt);
+    if (!ui.force && str_eq(key, last))
+        return;
+    str_cpy(last, key, sizeof last);
+    cv_begin(240, MROW_H, T_BG);
+    cv_bg = T_BG;
+    cv_oy = 0;
+    if (hint) {
+        cv_text_in(0, UT_TY(S, base), 240, &AF_S, "HOLD SAVE = SAVE PATCH", T_DIM, T_BG);
+    } else {
+        int32_t x;
+        morph_dot(UT_GR_TITLE_X, base, "2");
+        x = UT_GR_TITLE_X + UT_CARD_LBL_DX;
+        cv_text_on(x, UT_TY(S, base), &AF_S, "ROLL", hot2 ? T_ACCENT : T_MID, T_BG);
+        x += text_w(&AF_S, "ROLL") + 6;
+        cv_text_on(x, UT_TY(S, base), &AF_S, g < 0 ? "<A" : g > 0 ? "B>" : "A<>B", g ? T_ACCENT : T_TEXT, T_BG);
+        x = 235 - text_w(&AF_S, "100%") - 6 - text_w(&AF_S, "AMOUNT") - UT_CARD_LBL_DX;
+        morph_dot(x, base, "4");
+        cv_text_on(x + UT_CARD_LBL_DX, UT_TY(S, base), &AF_S, "AMOUNT", hot4 ? T_ACCENT : T_MID, T_BG);
+        fmt_int(v, (int32_t)amt);
+        str_cpy(v + str_len(v), "%", sizeof v - str_len(v));
+        cv_text_r(235, UT_TY(S, base), &AF_S, v, T_TEXT, T_BG);
+    }
+    cv_blit(0, MROW_Y);
+}
+#endif
 static void draw_columns(void)
 {
     uint32_t c, nvis;
@@ -2479,7 +2540,7 @@ static void draw_columns(void)
         return;
     }
     TIDE_COLUMNS();                                    /* TIDE hook (TIDE, TIDE LIST) */
-    if (cur_page()->scope == SC_MORPH) {               /* MORPH (fader, ROLL, UNDO, AMOUNT: v3), MORPH SET (SMART ARP PITCH; 0.2.9: TARGET is ALGORITHM's BOTH) */
+    if (cur_page()->scope == SC_MORPH) {               /* MORPH (fader, ROLL, -, AMOUNT: v3; 1.0.0-b5: no UNDO), MORPH SET (SMART ARP PITCH; 0.2.9: TARGET is ALGORITHM's BOTH) */
         uint32_t pi = song.sel, f = morph_fader_of(pi);
         int32_t g;
         if (cur_page()->graph == GR_MORPHSET) {
@@ -2496,16 +2557,46 @@ static void draw_columns(void)
 #if !DUELL_TIDE
         grid_big = (uint8_t)(grid_on != 0);                /* (HOME's grid: the big value, PAGES_V1_home.png) */
 #endif
+#if DUELL_TIDE
+        if (AREA_ON && song.both && morph_fader_of(1u - pi) != f) {   /* the page shows both parts: with ALGORITHM on BOTH and the faders apart, the other part's value after this one's (the old track's tick) */
+            static char other[8];
+            uint32_t of = morph_fader_of(1u - pi);
+            other[0] = 'P';
+            other[1] = (char)('1' + (1u - pi));
+            other[2] = ' ';
+            if (of == 0u || of == 127u) {
+                other[3] = of ? 'B' : 'A';
+                other[4] = 0;
+            } else {
+                fmt_int(other + 3, (int32_t)of);
+            }
+            k1_after_next = other;
+            k1_after_col = T_PFILL(1u - pi);
+            k1_after_r = 0;
+        }
+#endif
         draw_column(0, "MORPH", val, "", VAL(0u), (int32_t)f * 1000 / 127, ICON_MIX);   /* (TIDE 1.0.0-b4: a plain card, its label, value and bar as every K1 card) */
+#if DUELL_TIDE
+        k1_after_next = 0;
+#endif
 #if !DUELL_TIDE
         grid_big = 0;
 #endif
         g = morph_pending(0);                          /* ROLL: A left, B right; a twist building up: its way */
+#if DUELL_TIDE
+        if (cur_page()->graph == GR_MORPH) {           /* b6: ROLL and AMOUNT on one compact row, the waves take the rest */
+            morph_row(g, morph_amount_of(pi));
+            return;
+        }
+#endif
         draw_column(1, "ROLL", g < 0 ? "<A" : g > 0 ? "B>" : "A<>B", "", g ? T_ACCENT : VAL(1u), -1, ICON_NONE);
-        g = morph_pending(1);                          /* UNDO: A left, B right, like ROLL; a twist building up: its way */
-        draw_column(2, "UNDO", g < 0 ? "<A" : g > 0 ? "B>" : "A<>B", "", g ? T_ACCENT : VAL(2u), -1, ICON_NONE);
+        draw_column(2, "", "", "", T_THEME, -1, ICON_NONE);   /* (an empty column: KNOB 3 does nothing here since UNDO left, 1.0.0-b5) */
         fmt_int(val, (int32_t)morph_amount_of(pi));
-        draw_column(3, "AMOUNT", val, "%", VAL(3u), (int32_t)morph_amount_of(pi) * 10, ICON_PROB);
+        draw_column(3, "AMOUNT", val, "%",
+#if DUELL_TIDE
+                    tide_amount_idle() ? T_DIM :           /* TIDE b6: JOURNEY running, where AMOUNT does nothing */
+#endif
+                    VAL(3u), (int32_t)morph_amount_of(pi) * 10, ICON_PROB);
         return;
     }
 #if DUELL_TEST_MODE
@@ -2519,11 +2610,11 @@ static void draw_columns(void)
         draw_column(0, "MORPH", val, "", VAL(0u), (int32_t)f * 1000 / 127, ICON_MIX);
         g = morph_pending(0);
         draw_column(1, "ROLL", g < 0 ? "<A" : g > 0 ? "B>" : "A<>B", "", g ? T_ACCENT : VAL(1u), -1, ICON_NONE);
-        if (mk < MU_SLOTS)
+        if (mk < MU_SHOWN)
             mu_label(val, mk);
         else
             str_cpy(val, "--", sizeof val);
-        draw_column(2, "LOAD", val, "", mk < MU_SLOTS ? VAL(2u) : T_DIM, -1, ICON_AUTO);
+        draw_column(2, "LOAD", val, "", mk < MU_SHOWN ? VAL(2u) : T_DIM, -1, ICON_AUTO);
         draw_column(3, "RESET", "--", "", VAL(3u), -1, ICON_AUTO);
         return;
     }
@@ -2702,15 +2793,15 @@ static void draw_columns(void)
         return;
     }
     if (cur_page()->graph == GR_SLOTS) {                 /* MULTI: SLOT M01..M16, then LOAD SAVE (GO buttons) */
-        uint32_t k = (uint32_t)(song.g[G_SLOT] - 1) % MU_SLOTS;
+        uint32_t k = (uint32_t)(song.g[G_SLOT] - 1) % MU_SHOWN;
         int used = project_used(k);
         mu_label(val, k);
 #if DUELL_TIDE
         {                                              /* U3: the multi loaded now, on knob 1's line, when the list does not show its star (the picked one is the list's) */
             static char cur_txt[16];
-            uint32_t wf = list_first(k, MU_SLOTS), cs = project_cur_slot();
-            if (cs >= MU_SLOTS || cs < wf || cs >= wf + LR_ROWS) {
-                if (cs < MU_SLOTS) {
+            uint32_t wf = list_first(k, MU_SHOWN), cs = project_cur_slot();
+            if (cs >= MU_SHOWN || cs < wf || cs >= wf + LR_ROWS) {
+                if (cs < MU_SHOWN) {
                     str_cpy(cur_txt, "LOADED ", sizeof cur_txt);
                     mu_label(cur_txt + 7, cs);
                 } else
@@ -2721,7 +2812,7 @@ static void draw_columns(void)
             }
         }
 #endif
-        draw_column(0, "SLOT", val, "", VAL(0u), (int32_t)k * 1000 / (int32_t)(MU_SLOTS - 1u), ICON_AUTO);
+        draw_column(0, "SLOT", val, "", VAL(0u), (int32_t)k * 1000 / (int32_t)(MU_SHOWN - 1u), ICON_AUTO);
         draw_act_column(1, "LOAD", used ? T_THEME : T_DIM, ICON_AUTO);
         draw_act_column(2, "SAVE", T_THEME, ICON_AUTO);   /* (change list A.9: ERASE is gone, SAVE is knob 3) */
         draw_column_hide(3);
@@ -3131,9 +3222,9 @@ static void confirm_text(char *a, char *b)          /* a, b hold 32 */
         break;
     case CF_OVR_PROJ:                                   /* MULTI: SAVE over a used multi */
         str_cpy(a, "OVERWRITE ", 24);
-        mu_label(a + str_len(a), k % MU_SLOTS);
+        mu_label(a + str_len(a), k % MU_SHOWN);
         str_cpy(a + str_len(a), "?", 2);
-        project_name(k % MU_SLOTS, b);                  /* the multi's name ("" none) */
+        project_name(k % MU_SHOWN, b);                  /* the multi's name ("" none) */
         break;
     case CF_OVR_PSLOT:                                  /* PATTERNS: SAVE over what the slot holds */
         str_cpy(a, "OVERWRITE ", 24);
@@ -3160,8 +3251,8 @@ static void confirm_text(char *a, char *b)          /* a, b hold 32 */
         if (ui.confirm == CF_HOLD_PSLOT) {
             pat_label(k % PS_SLOTS, tag, b);
         } else {
-            mu_label(tag, k % MU_SLOTS);
-            project_name(k % MU_SLOTS, b);
+            mu_label(tag, k % MU_SHOWN);
+            project_name(k % MU_SHOWN, b);
         }
         str_cpy(a + str_len(a), b[0] ? b : tag, 13);
         str_cpy(a + str_len(a), "?", 2);
@@ -3345,12 +3436,31 @@ static void draw_oct_page(void)
 static void ui_draw(void)
 {
     static uint8_t counting;
+#if DUELL_TIDE
+    if (pal_q.due && fm1_ms - pal_q.t >= 100u) {       /* (MENU > COLOR's theme: at most every 100 ms, the first step at once, the last always: ui.c pal_q) */
+        pal_q.due = 0;
+        pal_q.t = fm1_ms;
+        palette_set(settings.palette % NPALETTES);
+        ui.force = 1;
+    }
+#endif
     /* the theme follows the selected part (SPEC 5a), its MORPH fader (colour A -> B), LAYER mode and (0.2.24) a GLOBAL page: the third colour (cheap: only on a change). A quick layer over
      * a global page and PERFORM are per part: the part's colours */
     {   /* item 152 A: a fader moved (MORPH, a modulated fader) shifts the part colour A -> B only: the page is drawn again WITHOUT the BG fill (ui_refresh); the part, the layer or a GLOBAL page changing the background fills as before */
         uint8_t keep = (uint8_t)(ux.part == (song.sel & 1u) && ux.layer == (uint8_t)(duell_mode_req == DM_LAYER) && ux.glob == (uint8_t)(screen_global() != 0));
         uint16_t bg0 = ux.bg;
+#if DUELL_TIDE
+        uint32_t f0 = TIDE_THEME_F(morph_fader_of(0)), f1 = TIDE_THEME_F(morph_fader_of(1));
+        if (!mv_due()) {                                /* (b6, owner on the FM-1: "the UI gets weird if I use morph during the animation": the faders' colour follows on the frame that
+                                                         * brings a new picture (mv_clock, below), so a turn of knob 1 redraws the page with the waves' own redraw, not on top of
+                                                         * it every frame: the page whole is 55,680 px over the 12 MHz SPI, about 74 ms. The waves take this colour too, ui_scope.c) */
+            f0 = ux.fader[0];
+            f1 = ux.fader[1];
+        }
+        if (theme_follow(song.sel, f0, f1, duell_mode_req == DM_LAYER, screen_global())) {
+#else
         if (theme_follow(song.sel, TIDE_THEME_F(morph_fader_of(0)), TIDE_THEME_F(morph_fader_of(1)), duell_mode_req == DM_LAYER, screen_global())) {
+#endif
             if (keep && bg0 == ux.bg)
                 ui_refresh();
             else
@@ -3358,6 +3468,7 @@ static void ui_draw(void)
         }
     }
     ui.frame++;
+    mv_clock();                                         /* (the MORPH page's picture clock: ui_graph.c) */
     {   /* the OCTAVE page began or ended: the page under it is drawn whole again */
         static uint8_t oct_was;
         uint8_t on = (uint8_t)oct_show_on();
@@ -3500,7 +3611,7 @@ static void ui_draw_page(uint32_t counting)
             g = 4;
         if (!ui.perf && !page_over && gp->graph == GR_ENGINE)
             g = eng_cells(gp) ? 15 : 5;                 /* (item 165: LOFI and NOISE have no picture: cells under the K1 row) */
-        if (!ui.perf && !page_over && (area_page(gp) || TIDE_PAGE(gp)))   /* TIDE hook; TEMPLATE 9 (block C): the AREA pages (over the ARP / list / STEP exceptions above: ARP 1/3, ARP 2/3, PARAMETER LOCKS, SEQUENCER, GLOBAL SCALE, CHORD, PATCHES, MULTIS, PATTERNS) */
+        if (!ui.perf && !page_over && (area_page(gp) || TIDE_PAGE(gp) || TIDE_WAVE_PAGE(gp)))   /* TIDE hook; TEMPLATE 9 (block C): the AREA pages (over the ARP / list / STEP exceptions above: ARP 1/3, ARP 2/3, PARAMETER LOCKS, SEQUENCER, GLOBAL SCALE, CHORD, PATCHES, MULTIS, PATTERNS) */
             g = 16;
         if (perf_pg)                                    /* TEMPLATE 9: the PERFORM page (PERFORM_NEW_LAYOUT_V4: knob 1's line with SELECT = BALANCE, the 4 x 4 boxes in the area, three cards) */
             g = 16;

@@ -457,6 +457,16 @@ static int malformed_saves(void)
     TSEL->p[P_LEVEL] = 21; song.playing = 1; host_progress = 0;
     bad += check("PROJECT never confirms a used slot when STOP timed out (DUELL: the slot is a MULTI)",
                  !request(ED_PROJECT, save, sizeof save));
+#if DUELL_TIDE
+    {   /* TIDE b6: a save to the ROM-only M17 / M18 is refused before the transport is touched: playback goes on, nothing is confirmed */
+        static const uint8_t rom[] = {1, 16}, rom2[] = {1, 17}, past[] = {1, 18};
+        song.playing = 1; host_progress = 1; transport_req = 0;
+        bad += check("PROJECT save to M17 / M18 (ROM only) is refused without stopping playback; slot 18 and up are invalid",
+                     !request(ED_PROJECT, rom, sizeof rom) && !request(ED_PROJECT, rom2, sizeof rom2) && !request(ED_PROJECT, past, sizeof past) &&
+                     song.playing && transport_req == 0u);
+        song.playing = 0; host_progress = 0;
+    }
+#endif
     return bad;
 }
 
@@ -1381,7 +1391,7 @@ static int item159(void)
     usb.resets = 0;
     a[0] = 0; a[1] = 3; request(ED_PRESET, a, 2);       /* part 1: ANALOG #4 */
     track_select(1); a[0] = 2; a[1] = 1; request(ED_PRESET, a, 2); track_select(0);
-    morph_set_target(1);                                  /* BOTH: a roll and the fader act on both parts */
+    SEL_BOTH = 1;                                  /* BOTH: a roll and the fader act on both parts */
     morph_set_cfg(MC_WILD, 1);                            /* (WILD: more values move, the extension slots too) */
     morph_set_amount(60);
     morph_roll(0);
@@ -1493,7 +1503,7 @@ static int item159(void)
         bad += check("item 159: an editor save (UP_STORE) with the fader in the middle (shown values differ) = the unit's own save, byte for byte; its values are the stored Original",
                      differ > 0u && up_used(5) && up_used(6) && !memcmp(up_rec(5), up_rec(6), sizeof(up_rec_t)));
     }
-    morph_set_fader(0); morph_set_target(0); morph_set_cfg(MC_WILD, 0);
+    morph_set_fader(0); SEL_BOTH = 0; morph_set_cfg(MC_WILD, 0);
     reset();
     return bad;
 }

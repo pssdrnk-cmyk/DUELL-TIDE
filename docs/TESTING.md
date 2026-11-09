@@ -5,7 +5,7 @@ Thank you for testing. You can test, at your own risk, on an FM-1 with DUELL wit
 ## What to test
 
 - [ ] **DUEL / STEREO / LAYER**: DUEL keeps part 1 only on the left and part 2 only on the right (with effects on). STEREO is full stereo. LAYER plays both parts from the keys; try XFADE and the key SPLIT.
-- [ ] **MORPH**: move the fader slowly A to B, ROLL A and B, UNDO, change AMOUNT. Any click, dropout, silence or painful sound? Does a patch always load at A?
+- [ ] **MORPH**: move the fader slowly A to B, ROLL A and B, change AMOUNT. Any click, dropout, silence or painful sound? Does a patch always load at A?
 - [ ] **Matrix**: assign a few of the 8 slots (LFO 2, ENV 2, velocity, aftertouch, mod wheel). Do ENV 2 and LFO 2 DEST pages do what they say?
 - [ ] **TIDE** ([TIDE_GUIDE.md](TIDE_GUIDE.md)): on AUTO TIDE twist knob 1 and press PLAY; try each MODE and each STYLE on TIDE SETTINGS; hear whether TURNS, POLY, SYNC and ARC change the pattern; STOP, then PLAY (the glide goes on from where it was); twist knob 1 two detents while it glides (it stops where it is; one click does not). Does the screen match what you hear? Note MODE, STYLE, TARGET, ROLL, TURNS, POLY, SYNC and ARC in your report.
 - [ ] **MULTIs**: load the 16 factory multis (M01 to M16), then save, rename and erase your own. Power-cycle the unit and load again.

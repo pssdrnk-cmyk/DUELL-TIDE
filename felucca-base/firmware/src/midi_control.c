@@ -396,18 +396,18 @@ static volatile uint8_t *const ml_io;       /* ui.ml.io (midi_learn.c) */
 
 /* DUELL 4b, SPEC 4.4 / 3.4a: the MORPH's actions, on each part's channel (the part the channel plays, as its notes: ROUT CH1-4 channel 1
  * part 1, channel 2 part 2, the hidden parts' channels ignored; SEL the selected part):
- *   MORPH the fader 0..127; AMOUNT 0..127 -> 0..100 %; TARGET 0-42 PART 1, 43-85 PART 2, 86-127 BOTH (global; 0.2.9:
- *   ALGORITHM's selector, ui_input.c algo_step: BOTH keeps the selected part as the edit target);
+ *   MORPH the fader 0..127; AMOUNT 0..127 -> 0..100 %; TARGET 0-42 PART 1, 43-85 PART 2, 86-127 BOTH (global; 1.0.0-b5:
+ *   the one part selection, ui_input.c part_select: BOTH keeps the last single part as the edit pages' part);
  *   ROLL (one CC, centred like the knob): 0..42 rolls End A, 43..84 nothing, 85..127 rolls End B; a roll fires when the value ENTERS its zone and again
- *   only after the value has left it. ROLL A, ROLL B (typed lines only): a value >= 64 fires once; the channel's CC re-arms below 64. UNDO: 1..63 undoes End A once,
- *   64..127 End B once (the knob's left / right), 0 re-arms. SMART, ARP, PITCH: 0-63 off, 64-127 on (global).
+ *   only after the value has left it. ROLL A, ROLL B (typed lines only): a value >= 64 fires once; the channel's CC re-arms below 64 (UNDO, 1.0.0-b5: gone,
+ *   its code is a spare). SMART, ARP, PITCH: 0-63 off, 64-127 on (global).
  * TARGET a part: a CC acts on its channel's part only; BOTH: a CC on either channel acts on both parts (morph.c
  * morph_mask). Queued for the main loop (morph.c morph_push: a roll is no work for the audio ISR).
  * The MOD WHEEL (CC1) moves the fader too, always (no switch), as the MORPH line does (same queue, same
  * TARGET rules), while it stays the matrix's MODW source (mod.c mod_midi); in LAYER it moves both parts' faders.
- * The triggers' memory (midi_morph_fired) is a bit of the TARGET, not of the CC number: ROLL A 0, ROLL B 1, UNDO 2, ROLL's A zone 3, B zone 4 */
+ * The triggers' memory (midi_morph_fired) is a bit of the TARGET, not of the CC number: ROLL A 0, ROLL B 1, (2 spare: UNDO's), ROLL's A zone 3, B zone 4 */
 #define MQ_PART_ALL 0x7Fu                                  /* (morph_push's part: every shown part, ui_input.c morph_poll) */
-static uint8_t midi_morph_fired[16];                      /* bit k: ROLL A / ROLL B / UNDO (k = target - MAP_T_ROLL_A) at or above 64 on the channel (fired) */
+static uint8_t midi_morph_fired[16];                      /* bit k: ROLL A / ROLL B (k = target - MAP_T_ROLL_A) at or above 64 on the channel (fired) */
 static void __attribute__((noinline)) midi_morph(uint32_t ch, uint32_t pi, uint32_t code, uint32_t value)
 {
     uint32_t b;
@@ -435,16 +435,9 @@ static void __attribute__((noinline)) midi_morph(uint32_t ch, uint32_t pi, uint3
         }
     } else if (code >= MAP_T_SMART) {
         morph_push(code == MAP_T_SMART ? MQ_SMART : code == MAP_T_ARP ? MQ_ARP : MQ_PITCH, pi, value >= 64u);
-    } else {
+    } else if (code == MAP_T_ROLL_A || code == MAP_T_ROLL_B) {
         b = 1u << (code - MAP_T_ROLL_A);
-        if (code == MAP_T_UNDO) {
-            if (!value) {
-                midi_morph_fired[ch] &= (uint8_t)~b;
-            } else if (!(midi_morph_fired[ch] & b)) {
-                midi_morph_fired[ch] |= (uint8_t)b;
-                morph_push(MQ_UNDO, pi, value >= 64u);
-            }
-        } else if (value < 64u) {
+        if (value < 64u) {
             midi_morph_fired[ch] &= (uint8_t)~b;        /* released: armed again */
         } else if (!(midi_morph_fired[ch] & b)) {
             midi_morph_fired[ch] |= (uint8_t)b;
@@ -630,7 +623,7 @@ static void __attribute__((noinline)) midi_pc(uint32_t ch, uint32_t prog)
     const midi_channel_t *c = midi_channel(ch);
     uint32_t bank = (uint32_t)c->bank_msb << 7 | c->bank_lsb, pi = trk_index(midi_track(ch)), w = pcq_w;
     if (duell_mode == DM_LAYER) {
-        if (bank || prog >= MU_SLOTS)
+        if (bank || prog >= MU_SHOWN)
             return;
         pi = PCQ_MULTI;
     } else if (pi >= NSHOWN || bank > 2u) {

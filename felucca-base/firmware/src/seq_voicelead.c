@@ -10,7 +10,8 @@ static int32_t voicelead_abs(int32_t n) { return n < 0 ? -n : n; }
  * write 0 only measures */
 static int32_t voicelead_walk(const step_t *source, uint32_t len, step_t *out, int32_t *previous, uint32_t *pn_io, int write)
 {
-    int32_t first[4] = {0}, cost = 0;uint32_t pn = *pn_io, fn = 0;
+    int32_t first[4] = {0}, cost = 0, lane_lo, lane_hi;uint32_t pn = *pn_io, fn = 0;
+    sqm_lane(source, len, &lane_lo, &lane_hi);   /* (C1: a voice stays in the Original's lane) */
     for (uint32_t i = 0; i < len; i++) {
         step_t *s = &out[i];
         if (!sqm_hit(s) || s->n > 4u) continue;
@@ -41,7 +42,7 @@ static int32_t voicelead_walk(const step_t *source, uint32_t len, step_t *out, i
                     int32_t base = note_snap_to(trk, s->note[id], 1u);
                     int32_t note = base + ((int32_t)(bits % 3u) - 1) * 12;bits /= 3u;
                     candidate[k] = note;
-                    if (note < 24 || note > 108 || voicelead_abs(note - (source[i].n == n ? source[i].note[id] : s->note[id])) > 12 ||
+                    if (!sqm_in_lane(note, lane_lo, lane_hi) || voicelead_abs(note - (source[i].n == n ? source[i].note[id] : s->note[id])) > 12 ||
                         note <= candidate[k-1] || !((scale_mask(trk) >> (uint32_t)((note-root_g+240)%12)) & 1u)) {ok = 0;break;}
                     score += 4 * voicelead_abs(note - reference[k]);
                     int32_t gap = note - candidate[k-1];

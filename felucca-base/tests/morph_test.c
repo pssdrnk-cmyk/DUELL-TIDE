@@ -218,7 +218,7 @@ static uint64_t phrase(void)
     blocks(FS / 2u / CTL);
     return hash;
 }
-/* the phrase's hash in a child (the same generators each time): 0 nothing, 1 AMOUNT 0 rolled, 2 rolled and undone,
+/* the phrase's hash in a child (the same generators each time): 0 nothing, 1 AMOUNT 0 rolled, 2 rolled and then put back to the Original,
  * 3 AMOUNT 40 rolled (must differ) */
 static uint64_t phrase_child(uint32_t e, uint32_t pi, uint32_t k)
 {
@@ -241,12 +241,11 @@ static uint64_t phrase_child(uint32_t e, uint32_t pi, uint32_t k)
             morph_set_fader(40);
             morph_roll(0);
             morph_roll(1);
-            if (k == 2u) {
-                morph_set_fader(0);                     /* far end B */
-                morph_undo(1);
-                morph_undo(1);                           /* (v2: past the fresh B of the load, to the Original) */
-                morph_set_fader(127);                   /* far end A */
-                morph_undo(0);
+            if (k == 2u) {                              /* (1.0.0-b5: no UNDO: both ends rolled again at AMOUNT 0 from the Original, plain SMART (cfg 0), are the Original) */
+                morph_set_fader(0);                     /* (B not heard: no ramp) */
+                morph_roll_cfg(0, 1, 1u, 0, 0u);
+                morph_set_fader(127);                   /* (A not heard) */
+                morph_roll_cfg(0, 0, 1u, 0, 0u);
                 morph_set_fader(40);
             }
         }
@@ -287,7 +286,7 @@ static void test_amount0(void)
         uint64_t h3 = phrase_child(ea, 1, 3), g0 = phrase_child(ep, 2, 0), g1 = phrase_child(ep, 2, 1);
         check("AMOUNT 0 rolled, fader anywhere: the render is bit-identical to no morph (ANALOG, PHASE)",
               h0 && h0 == h1 && g0 && g0 == g1);
-        check("ends rolled then undone back to the Original: bit-identical (the list empties)", h0 && h0 == h2);
+        check("ends rolled then put back to the Original (rolled at AMOUNT 0 from it): bit-identical (the list empties)", h0 && h0 == h2);
         check("(control) AMOUNT 40 rolled: the render differs, and t->p is the Original after every block", h3 && h3 != h0);
     }
 }
@@ -792,7 +791,7 @@ static void test_ramp(void)
           with <= 1.25 * (none > steady ? none : steady) + 64);
 }
 
-/* --------------------------------------------------------- 7 UNDO --- */
+/* ------------------------------------------------- 7 no history (1.0.0-b5) --- */
 static void test_undo_keep(void)
 {
     track_t *t = &trk[0];
@@ -802,28 +801,16 @@ static void test_undo_keep(void)
     fresh(0, 1);
     busy(t);
     morph_set_amount(50);
-    morph_set_fader(20);                                /* the A half: the far end is B */
+    morph_set_fader(20);
     morph_roll(0);
     memcpy(a0, endp(0, 0), P_COUNT);
     for (i = 0; i < 12u; i++) {
         morph_roll(1);
         memcpy(r[i], endp(0, 1), P_COUNT);
+        ok &= mph[0].n[1] == 1u && mph[0].top[1] == 0u && !memcmp(endp(0, 0), a0, P_COUNT);
+        n += i && memcmp(r[i], r[i - 1u], P_COUNT) != 0;
     }
-    for (i = 0; i < MORPH_HIST - 1u; i++) {
-        ok &= morph_undo(1) == 1 && !memcmp(endp(0, 1), r[10 - i], P_COUNT) && !memcmp(endp(0, 0), a0, P_COUNT);
-        n++;
-    }
-    ok &= morph_undo(1) == 0 && !memcmp(endp(0, 1), r[12 - MORPH_HIST], P_COUNT);
-    check("history: 12 rolls of B, UNDO walks back MORPH_HIST - 1 = 2 (to roll 10), the 3rd does nothing; A untouched", ok && MORPH_HIST == 3u);
-    fresh(0, 1);
-    morph_set_amount(50);
-    morph_set_fader(100);                               /* the B half: the far end is A */
-    morph_roll(0);
-    morph_roll(1);
-    memcpy(a0, endp(0, 1), P_COUNT);
-    ok = morph_undo(0) == 1 && mph[0].n[0] == 1u && !memcmp(endp(0, 0), mph[0].base, P_COUNT) && !memcmp(endp(0, 1), a0, P_COUNT);
-    ok &= morph_undo(0) == 0;
-    check("UNDO End A (any fader): back to the Original), B untouched", ok);
+    check("no history: 12 rolls of B each replace End B in place (one entry, MORPH_HIST 1), each a new end; A untouched", ok && MORPH_HIST == 1u && n == 11u);
     /* manual edits on top */
     fresh(0, 1);
     morph_set_amount(60);
@@ -870,7 +857,7 @@ static void test_target_seed(void)
     uint32_t seed, ok, d0 = 0, d1 = 0, same = 0, i;
     fresh(0, 1);
     host_preset(t1, 0, 1);                              /* both parts the same sound */
-    morph_set_target(0);
+    SEL_BOTH = 0;
     song.sel = 0;
     morph_set_amount(50);
     morph_roll(0);
@@ -879,7 +866,7 @@ static void test_target_seed(void)
     morph_set_fader(90);
     ok &= mph[1].fader == 90 && mph[0].fader == 0;
     check("TARGET SELECTED: ROLL and the fader act on the selected part only", ok);
-    morph_set_target(1);
+    SEL_BOTH = 1;
     morph_set_amount(50);
     morph_set_fader(10);
     seed = morph_roll(1);
@@ -896,8 +883,6 @@ static void test_target_seed(void)
            (unsigned)d0, (unsigned)d1, (unsigned)same);
     ok &= d0 > 10 && d1 > 10 && same < d0 / 2;
     check("TARGET BOTH: one fader for both, ROLL rolls both with independent ends (same seed shown)", ok);
-    ok = morph_undo(1) == 1 && mph[0].n[1] == 2u && mph[1].n[1] == 2u;   /* (v2: the load's fresh B, the roll: one back) */
-    check("TARGET BOTH: UNDO End B acts on both parts", ok);
     /* seeds */
     fresh(0, 1);
     morph_set_amount(40);
@@ -920,7 +905,7 @@ static void test_target_seed(void)
         int8_t ea[NSHOWN][2][P_COUNT];
         uint32_t pi, x, n;
         fresh(0, 1);
-        morph_set_target(1);
+        SEL_BOTH = 1;
         morph_set_amount(33);
         morph_set_fader(77);
         morph_roll(0);
@@ -931,14 +916,15 @@ static void test_target_seed(void)
         n = morph_pack(blk);
         memset(mph, 0, sizeof mph);
         memset(&morph, 0, sizeof morph);
-        ok = n == MORPH_PACK_SIZE && blk[2] == MT_BOTH && morph_unpack(blk, n) && morph.target == MT_SELECTED;   /* (0.2.9: TARGET written, not read) */
+        SEL_BOTH = 0;
+        ok = n == MORPH_PACK_SIZE && blk[2] == 1 && morph_unpack(blk, n) && SEL_BOTH;   /* (1.0.0-b5: TARGET written and read: the selection BOTH) */
         for (pi = 0; pi < NSHOWN; pi++)
             for (x = 0; x < 2u; x++)
                 ok &= !memcmp(ea[pi][x], endp(pi, x), P_COUNT) && mph[pi].fader == 77 && mph[pi].amount == 33;
         ok &= !morph_unpack(blk, 3) && !morph_unpack((const uint8_t *)"Xx", 2);
         printf("morph: persistence block: %u bytes (%u parts); RAM: the parts' state %u bytes, the hook's %u\n", (unsigned)n,
            (unsigned)NSHOWN, (unsigned)sizeof mph, (unsigned)sizeof mwork);
-        check("the persistence block (morph_pack / morph_unpack) round-trips fader, AMOUNT, seeds, ends; TARGET written (byte 2), not loaded (0.2.9)", ok);
+        check("the persistence block (morph_pack / morph_unpack) round-trips fader, AMOUNT, seeds, ends; TARGET written (byte 2) and loaded as the selection BOTH (1.0.0-b5)", ok);
     }
 }
 
@@ -1846,8 +1832,8 @@ static void test_editb(void)
     ok = !morph_b_set(0, P_FREEA, 77);
     ok &= !memcmp(pa, t->p, sizeof pa);
     check("a B edit leaves A (every stored value) as it was", ok);
-    ok = morph_edits(0, ed) == 1u && ed[0].wid == P_FREEA && ed[0].val == 77 && endw(0, 1)[P_FREEA] == 77 && morph_view(0, P_FREEA) == 77 && mph[0].top[1] == (n0 + 1u) % MORPH_HIST && mph[0].bstay;
-    check("  .. the value is End B's, marked, shown at the B end, and the stay is one new history entry", ok);
+    ok = morph_edits(0, ed) == 1u && ed[0].wid == P_FREEA && ed[0].val == 77 && endw(0, 1)[P_FREEA] == 77 && morph_view(0, P_FREEA) == 77 && mph[0].top[1] == n0 && mph[0].n[1] == 1u;
+    check("  .. the value is End B's, marked, shown at the B end, written into End B itself (no history entry, 1.0.0-b5)", ok);
     settle();
     morph_begin(t, 0);
     ok = t->p[P_FREEA] == 77;
@@ -1858,9 +1844,9 @@ static void test_editb(void)
     morph_end(t);
     check("  .. the sound has it at the B end and A's at the A end", ok);
     morph_set_fader(127);
-    n0 = mph[0].top[1];                                  /* (the fader went to A and back: a new stay, one more entry for the first edit of it) */
-    ok = !morph_b_set(0, P_FREEA, 79) && mph[0].top[1] == (n0 + 1u) % MORPH_HIST && !morph_b_set(0, P_FREEA + 0, 80) && mph[0].top[1] == (n0 + 1u) % MORPH_HIST && morph_edits(0, ed) == 1u && ed[0].val == 80;
-    check("  .. more edits in the same stay change the value, never add a second entry or mark; arriving again starts a new entry", ok);
+    n0 = mph[0].top[1];                                  /* (the fader went to A and back) */
+    ok = !morph_b_set(0, P_FREEA, 79) && mph[0].top[1] == n0 && !morph_b_set(0, P_FREEA + 0, 80) && mph[0].top[1] == n0 && morph_edits(0, ed) == 1u && ed[0].val == 80;
+    check("  .. more edits change the value, never add an entry or a second mark, also after leaving the B end and coming back", ok);
     for (i = 0; i < P_COUNT; i++)                        /* a rolled value that B moved follows the Original, the hand-set one does not */
         if (i != P_FREEA && morph_editable(&mph[0], i, 1) && endw(0, 1)[i] != mph[0].base[i] && t->p[i] > -60 && t->p[i] < 60 && mph[0].base[i] == t->p[i]) {
             follow = i;
@@ -1911,7 +1897,7 @@ static void test_editb(void)
     ok &= morph_b_set(0, P_FREEA, 12) == 0 && endw(0, 1)[P_FREEA] == 12;
     check("the 33rd new value is refused (nothing changes); a value already set can still be changed", ok && nid > XB_MAX);
     morph_set_fader(0);
-    /* ROLL B / UNDO B */
+    /* ROLL B (1.0.0-b5: no UNDO B) */
     fresh(0, 1);
     busy(t);
     morph_set_amount(40);
@@ -1924,17 +1910,11 @@ static void test_editb(void)
     morph_set_fader(60);
     morph_set_fader(127);
     morph_b_set(0, P_LD_FLT, 3);
-    ok = morph_edits(0, ed) == 3u && mph[0].n[1] == 3u && morph_seed_of(0, 1) == s1;
+    ok = morph_edits(0, ed) == 3u && mph[0].n[1] == 1u && morph_seed_of(0, 1) == s1 && endw(0, 1)[P_FREEA] == 81 && endw(0, 1)[P_LD_FLT] == 3;
     morph_roll(1);
     s2 = morph_seed_of(0, 1);
     ok &= s2 != s1 && morph_edits(0, ed) == 0u;
     check("ROLL B: a new seed, the hand-set values are dropped (the new B has none)", ok);
-    ok = morph_undo(1) == 1 && morph_seed_of(0, 1) == s1 && morph_edits(0, ed) == 3u && endw(0, 1)[P_FREEA] == 81 && endw(0, 1)[P_LD_FLT] == 3;
-    check("UNDO B: the roll is taken back and the hand-set values with it", ok);
-    ok = morph_undo(1) == 1 && morph_seed_of(0, 1) == s1 && morph_edits(0, ed) == 2u && endw(0, 1)[P_FREEA] == 81 && endw(0, 1)[P_LD_FLT] != 3;
-    check("UNDO B again: the last stay's edits (the second arrival) go in one step, the first stay's remain", ok);
-    ok = morph_undo(1) == 0;
-    check("  .. and the history is 3 deep: no third step back", ok && MORPH_HIST == 3u);
     /* seed 0 plus a list: B = the Original with the values on top */
     fresh(0, 1);
     busy(t);

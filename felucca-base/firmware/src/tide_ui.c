@@ -53,10 +53,14 @@ static void tide_home(uint32_t mask)
         seqm_home(k);
     }
 }
-/* part pi sounds other than its Original: the fader off A, or End A itself moved (a roll or MORPH TO of A) */
+/* part pi sounds other than its Original: the fader off A, or End A itself moved (a roll or MORPH TO of A: End A is not the Original; 1.0.0-b5: no
+ * history, so this compares the values instead of asking whether End A's ring moved) */
 static int tide_sound_moved(uint32_t pi)
 {
-    return pi < NSHOWN && morph_view_on(pi) && (mph[pi].fader || mph[pi].top[0]);
+    const morph_part_t *mp = &mph[pi % NSHOWN];
+    return pi < NSHOWN && morph_view_on(pi) &&
+           (mp->fader || mp->tok[0][0] || memcmp(mp->h[0][0], mp->base, P_COUNT) || memcmp(mp->hx[0][0], mp->base + XW_BASE, NX) ||
+            (morph_isfm(mp) && memcmp(mp->fh[0][0], mp->fb, NFM)));
 }
 /* KEEP's sound half: what part pi sounds like now becomes its Original (then the ends rebased on it, End B a new roll). The values
  * as the fader blends them (morph_view_all); on FM6 the patch as it sounds (morph_tide.c tide_fm6_effective: the blend and a
@@ -449,6 +453,45 @@ static void jh_push(uint32_t k, uint32_t c)
 }
 /* a sound's attack class from its ATK and SUS: 2 PAD (ATK 60 or more), 1 STAB (SUS 20 or less), 0 KEYS (C2 of TIDE_ROLES_AND_MULTIS_SPEC.md) */
 static uint32_t tide_cls(int32_t atk, int32_t sus) { return atk >= 60 ? 2u : sus <= 20 ? 1u : 0u; }
+/* J1 (audit 2026-11-09, owner 9 November): JOURNEY travels to sounds near the part's Original in level and colour as they play in their
+ * class's pattern (jrny_ctx.h, measured by tests/jrny_ctx.c: a byte a sound, its level in dB << 3 | its brightness in octaves). Of the
+ * n candidates (family, class) the nearest to factory sound `at` stay, first: JCTX_MIN at least, JCTX_KEEP at most, past the minimum
+ * only those within JCTX_NEAR; the memory and the random and contrast picks then choose among them. A dB a unit, an octave of
+ * brightness 4. Measured from the Original, not from the sound left, so the steps cannot add up over a set. The sounds themselves are
+ * not changed. Main loop. */
+#include "jrny_ctx.h"
+_Static_assert(JRNY_CTX_NE == NENGINES, "jrny_ctx.h: one row block an engine (build/host/jrny_ctx gen)");
+/* (the rows are read by the table's own JRNY_CTX_AT, not DS_ENG_AT: a build whose sound list differs, as the xvalues loader's with a sound
+ * added, reads every measured sound right and has no row for the added one; host_tests.sh jrnyctx checks the table against the list) */
+#define JCTX_NONE 0xFFu                                  /* (a sound the table has no row for) */
+#define JCTX_KEEP 4u                                     /* (at most these: the memory, 4 deep, then rotates through the Original's nearest) */
+#define JCTX_MIN 2u                                      /* (at least these, so the sound keeps moving between the Original and two more) */
+#define JCTX_NEAR 3u                                     /* (past the minimum, only those within 3 dB; an octave of brightness is out) */
+static uint32_t jctx_dist(uint32_t a, uint32_t b)
+{
+    int32_t dl = (int32_t)(a >> 3) - (int32_t)(b >> 3), db = (int32_t)(a & 7u) - (int32_t)(b & 7u);
+    return (uint32_t)(dl < 0 ? -dl : dl) + 4u * (uint32_t)(db < 0 ? -db : db);
+}
+static uint32_t jctx_of(uint32_t e, uint32_t j)          /* engine e's sound j in the table, JCTX_NONE when it has no row */
+{
+    return e < JRNY_CTX_NE && j < (uint32_t)(JRNY_CTX_AT[e + 1u] - JRNY_CTX_AT[e]) ? JRNY_CTX[JRNY_CTX_AT[e] + j] : JCTX_NONE;
+}
+static uint32_t jctx_near(uint32_t e, uint32_t at, uint32_t *pick, uint32_t n)
+{
+    uint32_t i, j, m, keep = n < JCTX_KEEP ? n : JCTX_KEEP, a = jctx_of(e, at);
+    if (a == JCTX_NONE)                                  /* (the Original has no row: nothing to stay near, as for a USER record) */
+        return n;
+    for (i = 0; i < keep; i++) {                         /* (a partial selection sort: the nearest first, the lower index on a tie; a sound with no row last) */
+        uint32_t best = i, bd = 0xFFFFFFFFu, d, v;
+        for (j = i; j < n; j++)
+            if ((d = (v = jctx_of(e, pick[j])) == JCTX_NONE ? 0xFFFFFFFEu : jctx_dist(a, v)) < bd)
+                bd = d, best = j;
+        m = pick[i], pick[i] = pick[best], pick[best] = m;
+        if (i >= JCTX_MIN && bd > JCTX_NEAR)
+            return i;
+    }
+    return keep;
+}
 static void tide_journey(uint32_t mask, uint32_t x, uint32_t snd, uint32_t seq)
 {
     uint32_t k, j, n, c, cls, pass, pick[64], r = morph_new_seed();
@@ -472,7 +515,9 @@ static void tide_journey(uint32_t mask, uint32_t x, uint32_t snd, uint32_t seq)
                         continue;
                     pick[n++] = j;
                 }
-            n = jh_filter(k, e, pick, n);
+            if (!UP_REC_USER(t) && t->preset < ds_count(e))   /* (J1: the nearest to the Original's factory sound, so a set cannot drift away step by step, as WANDER; a USER record has no row: as before) */
+                n = jctx_near(e, t->preset, pick, n);
+            n = jh_filter(k, e, pick, n);                /* (then the memory: it moves on through those, never out of them) */
             c = n ? pick[(r >> 8) % n] : 0u;
             if (n > 1u)
                 c = sound_complement_pick(k, e, c, pick[(r >> 16) % n], r >> 4);
@@ -523,12 +568,12 @@ static int tide_foot_parts(void)
     uint32_t g = cur_page()->graph;
     return NSHOWN >= 2u && !ui.perf && !ui.layer && !ui.ml.on && (g == GR_TIDE || g == GR_TIDELIST || g == GR_MORPH);
 }
-/* .. AUTO TIDE and TIDE SETTINGS, whose footer has its two rows (MORPH's cards take row 1: there row 2 names the selected part):
+/* .. AUTO TIDE, TIDE SETTINGS and (b6, owner 2026-11-09) the MORPH page, whose footer has its two rows, the same on the three pages:
  * part 1 on row 1, part 2 on row 2, each its engine in its colour and the sound it plays (owner, 2026-11-01: as JAM, now AUTO TIDE, did) */
 static int tide_foot_two(void)
 {
     uint32_t g = cur_page()->graph;
-    return tide_foot_parts() && !ui.menu && !ui.guide && !ui.confirm && (g == GR_TIDE || g == GR_TIDELIST);
+    return tide_foot_parts() && !ui.menu && !ui.guide && !ui.confirm && (g == GR_TIDE || g == GR_TIDELIST || g == GR_MORPH);
 }
 
 /* ---------------------------------------------------------------- the cards --- */
@@ -571,7 +616,6 @@ static void tide_columns(void)
 }
 
 /* ---------------------------------------------------------------- the panels --- */
-static int tide_both(void) { return morph.target == MT_BOTH; }   /* ALGORITHM on BOTH: AUTO TIDE shows both parts */
 
 /* "a/b" appended to l */
 static __attribute__((noinline)) void tide_frac(char *l, uint32_t a, uint32_t b)
@@ -588,7 +632,7 @@ static void tide_status(char *l)
     static const char *const ST[5] = {"GLIDING", "LOOPING", "DRIFTING", "WANDERING", "JOURNEY"};
     uint32_t bars = gl.hold ? GLIDE_WAIT_BARS[gl.wait % GLIDE_WAITS] : glide_trip_bars(), at = ((gl.prog * bars) >> GLIDE_Q) + 1u;
     if (!glide_running())
-        str_cpy(l, tide_both() ? "BOTH PARTS" : song.sel ? "PART 2" : "PART 1", 40);
+        str_cpy(l, song.both ? "BOTH PARTS" : song.sel ? "PART 2" : "PART 1", 40);
     else if (gl.armed)
         str_cpy(l, song.playing || transport_req == 1u ? "GLIDE ON THE NEXT BAR" : "GLIDE STARTS WITH PLAY", 40);
     else if (!song.playing)
@@ -617,45 +661,40 @@ static void tide_status(char *l)
 /* the body, screen rows TB_Y0 .. TB_Y1 - 1 between the knob-1 line and the card row (lifted TIDE_LIFT), one canvas */
 #define TB_Y0 UT_A_GR_Y
 #define TB_Y1 (UT_A_CARD_Y - TIDE_LIFT)
-#define JP_X0 82                                         /* one part: the faders' tracks, x JP_X0 .. JP_X1 */
-#define JP_X1 218
-#define JB_X0 24                                         /* BOTH: the SOUND column's tracks x JB_X0 .. + JB_W, the SEQ column's JB_DX further */
+#define JB_X0 24                                         /* the SOUND column's tracks x JB_X0 .. + JB_W, the SEQ column's JB_DX further */
 #define JB_W 88
 #define JB_DX 116
 static int32_t tide_x(int32_t x0, int32_t x1, uint32_t f) { return x0 + (int32_t)f * (x1 - x0) / 127; }
 
-/* fader c (0 SOUND, 1 SEQ) on screen row y (its track's middle), x x0 .. x1: the track (a 3 px rounded bar, as the cards' bars), the glide's way on it (from where it
- * started to the end it goes to, the tint; MONO's white), the knob (the part's colour: 7 x 13 alone, 5 x 9 in BOTH's rows) and its labels. part -1: the selected part's row, its name,
- * A and B on it. part 0 / 1: that part's row in BOTH's column c (part 1's draws the column's head 10 rows up, A, the name centred, B; SOUND's the part's number) */
-static void tide_track(int32_t y, int32_t x0, int32_t x1, uint32_t c, int32_t part)
+/* The selected part (song.sel; with BOTH both parts: ui_part_hot) is shown in full, the other dimmed (the colour mixed 60 % into the background; MONO: its grey), and the selected part's number sits
+ * in a filled pill (the cue that works on MONO and GREY too) and a 2 px bar stands beside its steps row */
+static uint16_t tide_pc(uint32_t k)
+{
+    return ui_part_col(k, ui_part_hot(k));             /* (ui_scope.c: the MORPH page's and this page's one tag; BOTH: both in full) */
+}
+/* fader c (0 SOUND, 1 SEQ) of part `part` on screen row y (its track's middle), x x0 .. x1: the track (a 3 px rounded bar, as the cards' bars), the glide's way on it (from where it
+ * started to the end it goes to, the tint; MONO's white), the knob (5 x 9, the part's colour) and its labels: part 1's draws the column's head 10 rows up (A, the name centred, B);
+ * SOUND's the part's number */
+static void tide_track(int32_t y, int32_t x0, int32_t x1, uint32_t c, uint32_t part)
 {
     static const char *const LN[2] = {"SOUND", "SEQ"};
-    uint32_t pk = part < 0 ? song.sel : (uint32_t)part, f = c ? seqm_fader_of(pk) : morph_fader_of(pk);
-    uint16_t kc = part < 0 ? T_THEME : T_PTHEME(pk);
-    int32_t x = tide_x(x0, x1, f), ty = UT_TY(S, y + AF_S_CAP_H / 2);
-    if (part < 0) {
-        cv_text_on(UT_A_K1_DOT_X, ty, &AF_S, LN[c], T_MID, T_BG);
-        cv_text_on(x0 - 15, ty, &AF_S, "A", T_DIM, T_BG);   /* (4 px clear of the knob at A: its 7 px start at x0 - 3; B as far from the knob at B) */
-        cv_text_on(x1 + 7, ty, &AF_S, "B", T_DIM, T_BG);
-    } else {
-        if (!part) {
-            int32_t hy = UT_TY(S, y - 10);
-            cv_text_on(x0, hy, &AF_S, "A", T_DIM, T_BG);
-            cv_text_in(x0, hy, x1 - x0, &AF_S, LN[c], T_MID, T_BG);
-            cv_text_r(x1 + 1, hy, &AF_S, "B", T_DIM, T_BG);
-        }
-        if (!c)
-            cv_text_on(UT_A_K1_DOT_X, ty, &AF_S, part ? "2" : "1", kc, T_BG);
+    uint32_t f = c ? seqm_fader_of(part) : morph_fader_of(part);
+    uint16_t kc = tide_pc(part);
+    int32_t x = tide_x(x0, x1, f);
+    if (!part) {
+        int32_t hy = UT_TY(S, y - 10);
+        cv_text_on(x0, hy, &AF_S, "A", T_DIM, T_BG);
+        cv_text_in(x0, hy, x1 - x0, &AF_S, LN[c], T_MID, T_BG);
+        cv_text_r(x1 + 1, hy, &AF_S, "B", T_DIM, T_BG);
     }
+    if (!c)
+        ui_part_tag(part, y, ui_part_hot(part));
     cv_rrect(x0, y - 1, x1 - x0 + 1, 3, 1, T_RAISE, T_BG);
-    if (glide_running() && ((gl.on >> c) & 1u) && (part < 0 || ((gl.mask >> part) & 1u))) {
+    if (glide_running() && ((gl.on >> c) & 1u) && ((gl.mask >> part) & 1u)) {
         int32_t a = tide_x(x0, x1, gl.from[c]), b = gl.to ? x1 : x0;
         cv_rrect(a < b ? a : b, y - 1, (a < b ? b - a : a - b) + 1, 3, 1, ux.bw ? T_MID : T_TINT, T_RAISE);   /* (MONO has no tint: its black erased the track) */
     }
-    if (part < 0)
-        cv_rrect(x - 3, y - 6, 7, 13, 2, kc, T_BG);
-    else
-        cv_rrect(x - 2, y - 4, 5, 9, 2, kc, T_BG);
+    cv_rrect(x - 2, y - 4, 5, 9, 2, kc, T_BG);
 }
 
 /* The steps as the sequencer plays them: ONE model for the page (tide_steps, tide_sig) and its test (tests/tide_steps_test.c). A page of
@@ -752,7 +791,7 @@ static uint32_t tide_views(const track_t *t, uint32_t page, tv_t *out)
     return ph;
 }
 
-/* a part's 16 steps around its playhead, standing on row y (bars up to hmax tall: 22 alone, 9 in BOTH's two rows), in the footer's
+/* a part's 16 steps around its playhead, standing on row y (bars up to hmax tall: 9), in the footer's
  * columns (bar_x) and its rounded bars: a hit a bar (a chord taller) in the part's colour, the accent where it varies, a lit outline
  * where it is added, a dim outline where the variation, the thinning or a chance roll drops it; a tie a short bar, an empty step a
  * stub, the steps past the pattern's end a line; the playing step underlined. A chance step not rolled yet is striped. As they play
@@ -761,7 +800,7 @@ static void tide_steps(const track_t *t, int32_t y, int32_t hmax, uint16_t c)
 {
     tv_t tv[16];
     uint32_t ph = tide_views(t, 0xFFu, tv), page = ph == TV_NOPH ? 0u : ph / 16u, i;
-    int32_t h1 = hmax >= 20 ? 10 : 6, hs = hmax >= 20 ? 5 : 3, r;   /* (a single note, each further note of a chord; one part tall, both parts short) */
+    int32_t h1 = 6, hs = 3, r;                           /* (a single note, each further note of a chord) */
     for (i = 0; i < 16u; i++) {
         int32_t x = bar_x(i), h = h1 / 2;
         const tv_t *e = &tv[i];
@@ -799,12 +838,10 @@ static uint32_t tide_steps_sig(const track_t *t)
     return h;
 }
 
-/* TIDE's body. One part (ALGORITHM on PART 1 / PART 2): its SOUND and SEQ faders, its steps. BOTH: the SOUND and SEQ faders in two
- * columns (their names between A and B over them), a row per part (its number and colour), the steps in two rows, part 1 above. The
- * glide's status is knob 1's line (tide_columns). Rows (capitals, knobs, bars, playhead marks), one part: faders 54 .. 66 and 76 .. 88,
- * BOTH: the column heads 50 .. 60, faders 65 .. 75 and 79 .. 89; then the MODE line 94 .. 104, the steps 111 .. 136 (BOTH 110 .. 122 and
- * 124 .. 136), the glide's bar 139 .. 141: 4 px or more between them. The steps and the part numbers take the part's own colour (T_PTHEME, as the knobs and the MORPH
- * page's curves), not vt's text fallback, which turned one part black in the light palettes */
+/* TIDE's body: the SOUND and SEQ faders in two columns (their names between A and B over them), a row per part (its number and colour), the steps in two rows, part 1 above;
+ * always both parts, the selected one in full and marked (tide_pc, tide_track). The glide's status is knob 1's line (tide_columns). Rows (capitals, knobs, bars, playhead marks):
+ * the column heads 50 .. 60, faders 65 .. 75 and 79 .. 89; then the MODE line 94 .. 104, the steps 110 .. 122 and 124 .. 136, the glide's bar 139 .. 141: 4 px or more between them.
+ * The steps and the part numbers take the part's own colour (T_PTHEME), not vt's text fallback, which turned one part black in the light palettes */
 /* what each MODE does, one short line under the faders (owner, 2026-11-01) */
 static const char *const GL_MODE_WHAT[5] = {"ONE TRIP, THEN IT STOPS", "BACK AND FORTH, A AND B", "NEW TWISTS ON YOUR SOUND",
                                             "WALKS AWAY FROM YOUR SOUND", "TRAVELS THROUGH YOUR SOUNDS"};
@@ -814,16 +851,13 @@ static void graph_tide(void)
     cv_begin(240, TB_Y1 - TB_Y0, T_BG);
     cv_bg = T_BG;
     cv_oy = -TB_Y0;
-    if (tide_both()) {                                   /* two columns, SOUND and SEQ, their name between A and B over them; a row per part, its number in its colour */
-        for (k = 0; k < NSHOWN; k++) {
-            tide_track(70 + 14 * (int32_t)k, JB_X0, JB_X0 + JB_W, GT_SOUND, (int32_t)k);
-            tide_track(70 + 14 * (int32_t)k, JB_X0 + JB_DX, JB_X0 + JB_DX + JB_W, GT_SEQ, (int32_t)k);
-            tide_steps(&trk[k], 119 + 14 * (int32_t)k, 9, T_PTHEME(k));
-        }
-    } else {                                             /* one part: a row per fader, its name, A, the track, B */
-        tide_track(60, JP_X0, JP_X1, GT_SOUND, -1);
-        tide_track(82, JP_X0, JP_X1, GT_SEQ, -1);
-        tide_steps(TSEL, 133, 22, T_THEME);
+    for (k = 0; k < NSHOWN; k++) {
+        int32_t sy = 119 + 14 * (int32_t)k;
+        tide_track(70 + 14 * (int32_t)k, JB_X0, JB_X0 + JB_W, GT_SOUND, k);
+        tide_track(70 + 14 * (int32_t)k, JB_X0 + JB_DX, JB_X0 + JB_DX + JB_W, GT_SEQ, k);
+        tide_steps(&trk[k], sy, 9, tide_pc(k));
+        if (ui_part_hot(k))
+            cv_rect(5, sy - 9, 2, 10, T_PTHEME(k));      /* (the steps row's mark of the selected part) */
     }
     cv_text_in(0, UT_TY(S, 104), 240, &AF_S, GL_MODE_WHAT[gl.mode % 5u], T_MID, T_BG);   /* (between the faders and the steps' tallest bars) */
     /* Keep GLIDE's progress bar as well as its status and moving fader knobs.
@@ -931,8 +965,8 @@ static uint32_t tide_sig(void)
            ((uint32_t)gl.time | (uint32_t)gl.wait << 4 | (uint32_t)jl_sel << 8 | (uint32_t)sqm_vary_all << 12 | (uint32_t)morph_musical << 13 | (uint32_t)(sqm_turns & 3u) << 14 | (uint32_t)sqm_poly << 28 | (uint32_t)sqm_sync << 30 |
             (uint32_t)morph.cfg << 16 | (uint32_t)((sqm_bar + sqm_bar_turn) & 3u) << 24 | (uint32_t)song.playing << 26) * 0x9E3779B1u ^
            ((uint32_t)sqm_arc | (uint32_t)tarc.phase << 2 | (uint32_t)tarc.left << 5 | (uint32_t)tarc.hand << 9 | (uint32_t)tarc.len << 10) * 0x2545F491u ^   /* (audit C4: no field ORed over another) */
-           (tide_both() ? (morph_fader_of(1u - pi) | seqm_fader_of(1u - pi) << 7 | (song.playing ? trk[1u - pi].seq_idx : 0xFFu) << 14) * 0x85EBCA77u ^
-                             sqm_key(&sqm[(1u - pi) % NSHOWN]) * 0xC2B2AE3Du ^ tide_steps_sig(&trk[1u - pi]) * 0x165667B1u ^ 0x27D4EB2Fu : 0u) ^
+           ((morph_fader_of(1u - pi) | seqm_fader_of(1u - pi) << 7 | (song.playing ? trk[1u - pi].seq_idx : 0xFFu) << 14) * 0x85EBCA77u ^
+            sqm_key(&sqm[(1u - pi) % NSHOWN]) * 0xC2B2AE3Du ^ tide_steps_sig(&trk[1u - pi]) * 0x165667B1u ^ 0x27D4EB2Fu) ^
            tide_steps_sig(t) * 0xD3A2646Cu;
 }
 
@@ -948,10 +982,32 @@ static volatile uint8_t *const TS_VAR[TS_N] = {&gl.mode, &gl.time, &gl.target, &
                                                &sqm_sync, &sqm_arc, &tide_style, &tide_rec_replace};
 static const uint8_t TS_LIM[TS_N] = {GM_JOURNEY + 1u, GLIDE_TIMES, GT_BOTH + 1u, GLIDE_WAITS, 0, 0, 0, 3, 3, 3, 3, STY_CUSTOM, 2},
                      TS_DEF[TS_N] = {GM_ONCE, 3, GT_SOUND, 0, 1, 1, 3, 1, 1, 1, 0, STY_CUSTOM, 0};
+/* TIDE 1.0.0-b6: while a built-in drone multi (M17, M18: MU_ROM) is the multi loaded, TIDE plays STYLE DRONE: the nine rows are DRONE's and TIDE SETTINGS
+ * shows DRONE. What was set (the nine rows and STYLE) is kept here and comes back when any other multi (or none) is loaded; the store always gets the
+ * kept values, so the saved STYLE never changes. A hand edit of a row while the drone multi is loaded lasts until then. Main loop only (no audio cost) */
+static uint8_t tide_drone_on, tide_drone_keep[10];      /* (STY's nine rows, then STYLE) */
+static void tide_drone(int reread)
+{
+    uint32_t cs = project_cur_slot(), on = cs < MU_SHOWN && MU_ROM(cs);
+    if (reread)                                          /* (the rows were just read from the store: they are what is kept now) */
+        tide_drone_on = 0;
+    if (on == tide_drone_on)
+        return;
+    if (on) {
+        tide_rows_get(tide_drone_keep);
+        tide_drone_keep[9] = tide_style;
+        tide_style_apply(STY_DRONE);
+    } else {
+        tide_rows_set(tide_drone_keep);
+        tide_style = tide_drone_keep[9];
+    }
+    tide_drone_on = (uint8_t)on;
+}
 static void tide_settings(void)
 {
     uint8_t w[TS_N];
     uint32_t i;
+    int reread = !tide_seen_ok || tide_tail_new;
     if (tide_tail_new) {                                 /* a settings restore (editor_backup.c) brought other fields: read them again */
         tide_tail_new = 0;
         tide_seen_ok = 0;
@@ -969,12 +1025,18 @@ static void tide_settings(void)
             tide_rec_replace = 0;
         }
     }
+    tide_drone(reread);
     if (tide_style < STY_CUSTOM && !tide_style_holds()) {
         tide_style_last = tide_style;
         tide_style = STY_CUSTOM;                         /* a hand edit of any of the nine rows (knobs, rows, resets, MIDI) */
     }
-    for (i = 0; i < TS_N; i++)
+    for (i = 0; i < TS_N; i++) {
         w[i] = *TS_VAR[i];
+        if (tide_drone_on)                               /* (a drone multi loaded: the kept rows and STYLE are what is saved) */
+            for (uint32_t j = 0; j < 10u; j++)
+                if (j < 9u ? TS_VAR[i] == TIDE_ROW[j] : i == TS_STYLE)
+                    w[i] = tide_drone_keep[j];
+    }
     w[TS_WASH] &= 3u;
     if (!tide_seen_ok) {                                 /* (what was read, or the defaults: not a change, nothing to write at every power-on) */
         memcpy(tide_seen, w, TS_N);

@@ -352,8 +352,8 @@ static void con_mload(const char *p)                   /* (probe) mload N: load 
         p++;
     while (*p >= '0' && *p <= '9')
         n = n * 10 + (*p++ - '0');
-    if (n < 1 || n > (int32_t)MU_SLOTS) {
-        con_puts("mload 1..16\r\n");
+    if (n < 1 || n > (int32_t)MU_SHOWN) {
+        con_puts(MU_SHOWN > 16u ? "mload 1..18\r\n" : "mload 1..16\r\n");
         return;
     }
     project_load((uint32_t)(n - 1));
@@ -465,6 +465,17 @@ static void con_glide(const char *p)                   /* (probe) glide M [T]: M
     con_kv("glide_time", (int32_t)gl.time);
     con_kv("playing", song.playing ? 1 : 0);
 }
+/* wroll (test mode, TIDE): a WILD roll of End B of the selected part at AMOUNT 100, so a following `glide 1` moves the part EQ's gains (the EQ is a WILD-only
+ * morph target) and eq_design runs from the flash during the glide: the b5 sweep's EQ scene. SMART is set back on after the roll (the setting is as before) */
+static void con_wroll(void)
+{
+    uint32_t m = 1u << song.sel, smart = !(morph.cfg & MC_WILD);
+    morph_do(MQ_SMART, m, 0u);
+    morph_do(MQ_AMOUNT, m, 100u);
+    morph_do(MQ_ROLL, m, 1u);
+    morph_do(MQ_SMART, m, smart);
+    con_kv("wroll", (int32_t)song.sel);
+}
 #endif
 
 static void con_exec(const char *p)
@@ -505,6 +516,8 @@ static void con_exec(const char *p)
 #if DUELL_TIDE
     else if (con_word(&p, "glide"))
         con_glide(p);
+    else if (con_word(&p, "wroll"))
+        con_wroll();
 #endif
 #endif
     else if (con_word(&p, "uboot")) {

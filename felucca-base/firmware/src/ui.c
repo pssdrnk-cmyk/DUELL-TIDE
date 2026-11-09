@@ -268,7 +268,7 @@ static struct {
         int8_t dir;              /* +1: it went up (the old digit leaves upward), -1: down */
         uint8_t sig;             /* a card: what its value is of (label, unit, track, engine, palette) */
     } roll[5];
-    struct {                     /* DUELL 4b, the twist gestures (ui_input.c morph_gesture): 0 MORPH ROLL, 1 UNDO, 2 GLO MUTE 1, 3 GLO MUTE 2 */
+    struct {                     /* DUELL 4b, the twist gestures (ui_input.c gesture_det): 0 MORPH ROLL, 1 spare (UNDO until 1.0.0-b5), 2 GLO MUTE 1, 3 GLO MUTE 2 */
         int8_t acc[TIDE_MG_N];   /* detents turned in this gesture, signed (a reversal starts anew); TIDE hook: 4 + GLIDE's */
         uint8_t fired[TIDE_MG_N];  /* the gesture fired: its further detents do nothing until the knob rests */
         uint32_t t[TIDE_MG_N];   /* fm1_ms of its last detent */
@@ -769,6 +769,14 @@ static void ui_message(const char *s) { ui_say(s, ""); }
 /* item 152 A: a redraw of the SAME page and layout whose values changed (a patch load, the TYPE, the fader's colour): force = 2. Everything is drawn again but the BG
  * between the strips and cards is NOT filled first (ui_draw.c draw_frame): that fill went to the panel before the cards and the picture landed on it, and the whole
  * body blinked on every change. Any other reason (a page, a layer, a dialog, a theme with a new background) sets force = 1 and still fills; 1 wins over 2 */
+#if DUELL_TIDE
+/* MENU > COLOR's theme, applied at most every 100 ms (b6, owner: "especially when changing the color scheme"): a theme repaints the whole screen, 57,600 px over the
+ * 12 MHz SPI (~77 ms), so a turn through the themes queued one repaint a step. menu_items.c marks it due, ui_draw.c ui_draw applies it; the last one always lands */
+static struct {
+    uint32_t t;                              /* (fm1_ms when a theme was last applied) */
+    uint8_t due;
+} pal_q __attribute__((section(".pool")));   /* (zero-initialised, outside .data / .bss: the RAM rule's headroom is full) */
+#endif
 static void ui_refresh(void)
 {
     if (!ui.force)
@@ -1966,7 +1974,7 @@ static void pc_recall(uint32_t pi, uint32_t prog, uint32_t bank)
 {
     uint32_t was = song.sel;
     if (pi == PCQ_MULTI) {
-        if (prog < MU_SLOTS && project_used(prog)) {
+        if (prog < MU_SHOWN && project_used(prog)) {
             pc_multi = 1;
             project_load(prog);
             pc_multi = 0;
@@ -2094,7 +2102,7 @@ static int act_ready(void)
         return pat_last[s] != pat_pick() + 1u || steps_sig(TSEL) != pat_sig[s];
     }
     if (cur_page()->graph == GR_SLOTS)                  /* MULTI: LOAD a used one (playing too), SAVE stopped */
-        return c == 2u ? !song.playing : project_used((uint32_t)song.g[G_SLOT] - 1u);
+        return c == 2u ? !song.playing && !MU_ROM(song.g[G_SLOT] - 1) : project_used((uint32_t)song.g[G_SLOT] - 1u);   /* (M17, M18: ROM only, SAVE dim) */
     id = cur_page()->id[c & 3u];
     if (id == G_LOAD)
         return project_used((uint32_t)song.g[G_SLOT] - 1u);

@@ -239,7 +239,7 @@ static void ed_sync(void)                                /* main loop */
         n++;
     }
     int16_t sv[EXT_P_LEN], ov[EXT_P_LEN];
-    ed_view(song.sel, sv);                               /* item 159: the values as shown (a fader move, a roll, AMOUNT, an UNDO push what they change) */
+    ed_view(song.sel, sv);                               /* item 159: the values as shown (a fader move, a roll, AMOUNT push what they change) */
     ed_view(ed_other(), ov);
     for (i = 0; i < ED_NV && n < ED_PUSH_MAX; i++) {    /* round robin: nothing starves */
         uint32_t k = (ed_w.pos + i) % ED_NV;
@@ -687,12 +687,14 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         break;
     }
     case ED_PROJECT:                                       /* 0 = load, 1 = save, 2 = query; slot 0..15 (DUELL: the
-                                                            * multis M01..M16, project.c multi.c; Felucca's editor asks 0..3) */
-        if (na < 2u || a[0] > 2u || a[1] >= 16u)
+                                                            * multis M01..M16, project.c multi.c; Felucca's editor asks 0..3; TIDE b6: 16, 17 the
+                                                            * ROM-only M17, M18: load and query, a save is refused (project_save, no reply) */
+        if (na < 2u || a[0] > 2u || a[1] >= MU_SHOWN)
             return;
         if (a[0] == 1u) {
-            if (ed_flash_stop() || project_save(a[1]))
-                return;                              /* the legacy reply has no failure bit: do not confirm a failed save */
+            if ((!MU_ROM(a[1]) && ed_flash_stop()) || project_save(a[1]))
+                return;                              /* the legacy reply has no failure bit: do not confirm a failed save (M17, M18: refused
+                                                      * by project_save before anything stops: playback goes on) */
         }
         else if (a[0] == 0u)
             project_load(a[1]);

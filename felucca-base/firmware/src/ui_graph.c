@@ -1224,19 +1224,19 @@ static void graph_fm6env(const track_t *t, uint16_t c)
 }
 
 /* SAVE > MULTI's slots: used and their names (project.c multi.c keeps them in RAM: cheap every frame) */
-static char graph_pname[MU_SLOTS][13];
+static char graph_pname[MU_SHOWN][13];
 static uint32_t graph_pname_sig;
 static int graph_project_used(uint32_t slot)
 {
     uint32_t i;
-    for (i = 0; i < MU_SLOTS; i++)
+    for (i = 0; i < MU_SHOWN; i++)
         project_info(i, graph_pname[i]);
     graph_pname_sig = fnv(2166136261u, graph_pname, sizeof graph_pname);
-    return project_used(slot % MU_SLOTS);
+    return project_used(slot % MU_SHOWN);
 }
 static const char *graph_project_name(uint32_t slot)  /* (after graph_project_used) */
 {
-    return graph_pname[slot % MU_SLOTS];
+    return graph_pname[slot % MU_SHOWN];
 }
 
 
@@ -1847,9 +1847,7 @@ static void graph_arp(const track_t *t, uint16_t c)
     }
 }
 
-#if !DUELL_TIDE
 static uint32_t mv_tick(void);                       /* (the MORPH page's animation step, below) */
-#endif
 /* DUELL 1.1 GENERAL RULE (owner, test3: "the knob does not show the new setting until I switch to another page"): a panel is drawn again whenever ANY value it could show changed, so its signature
  * holds all of them, not the few its author thought of: every stored value of the part (P_*), every extension slot (X*) and every global (G_*). Cards are cached by the text they show
  * (ui_draw.c draw_column's key), the menu by every row's value (ui_menu.c), so a shown value never lags behind the stored one */
@@ -1941,15 +1939,25 @@ static uint32_t graph_signature(void)
 #endif
     if (pg->scope == SC_MORPH) {                     /* 4b: the faders, AMOUNT, TARGET; MORPH: the animation step */
         uint32_t pi = song.sel;
-        h = (h ^ (morph_fader_of(pi) | morph_amount_of(pi) << 8 | (uint32_t)morph.target << 16 | (uint32_t)morph.cfg << 20)) * 16777619u;
+#if DUELL_TIDE
+        uint32_t f0 = morph_fader_of(pi), f1 = morph_fader_of(1u - pi);
+        if (TIDE_WAVE_PAGE(pg)) {                    /* (b6, owner on the FM-1: "the UI gets weird if I use morph during the animation": the waves take the theme's fader colour (ux.fader:
+                                                      * in steps of 8, taken on a picture's frame, ui_draw.c), so a turn of knob 1 redraws them with a picture, not at every value: each
+                                                      * redraw is 32,640 px over the 12 MHz SPI, about 44 ms, and one every frame held the loop and slowed the pictures to a third) */
+            f0 = ux.fader[pi & 1u];
+            f1 = ux.fader[(1u - pi) & 1u];
+        }
+        h = (h ^ (f0 | morph_amount_of(pi) << 8 | (uint32_t)SEL_BOTH << 16 | (uint32_t)morph.cfg << 20)) * 16777619u;
+        h = (h ^ f1) * 16777619u;
+#else
+        h = (h ^ (morph_fader_of(pi) | morph_amount_of(pi) << 8 | (uint32_t)SEL_BOTH << 16 | (uint32_t)morph.cfg << 20)) * 16777619u;
         h = (h ^ morph_fader_of(1u - pi)) * 16777619u;
-#if !DUELL_TIDE                                      /* (TIDE: no motion field, the picture is still) */
-        if (pg->graph == GR_MORPH)                   /* v4: the picture's motion, a step every 4th frame (~16 /s) */
-            h = (h ^ (mv_tick() + 1u) * 2654435761u) * 16777619u;
 #endif
+        if (pg->graph == GR_MORPH)                   /* v4: the picture's motion, a step every MV_MS (b6: 60 ms, ~16 /s, by the clock: mv_clock; TIDE: the parts' real sound, ui_scope.c) */
+            h = (h ^ (mv_tick() + 1u) * 2654435761u) * 16777619u;
     }
     if (pg->graph == GR_SLOTS) {                     /* (a checksum over each slot) */
-        for (i = 0; i < MU_SLOTS; i++)
+        for (i = 0; i < MU_SHOWN; i++)
             h ^= (uint32_t)project_used(i) << (8u + i);
         graph_project_used(0);
         h += graph_pname_sig;
@@ -2345,7 +2353,7 @@ static mu_pv_t gsl_pv;
 static uint32_t gsl_key = 0xFFFFFFFFu;
 static void graph_slots(void)
 {
-    uint32_t cur = (uint32_t)(song.g[G_SLOT] - 1) % MU_SLOTS, e, t, f = list_first(cur, MU_SLOTS), pk = cur - f;
+    uint32_t cur = (uint32_t)(song.g[G_SLOT] - 1) % MU_SHOWN, e, t, f = list_first(cur, MU_SHOWN), pk = cur - f;
     char b[4];
     graph_project_used(0);                           /* (the names, once) */
     for (e = 0; e < LR_ROWS; e++) {
@@ -2396,7 +2404,7 @@ static __attribute__((noinline)) void list_panel(int pats)   /* (out of line: in
         else
             cv_text_on(UT_L5_NAME_X, UT_TY(S, LP_Y + 38), &AF_S, "NO SEQUENCE", T_MID, T_BG);
     } else {
-        uint32_t cur = (uint32_t)(song.g[G_SLOT] - 1) % MU_SLOTS;
+        uint32_t cur = (uint32_t)(song.g[G_SLOT] - 1) % MU_SHOWN;
         if (gsl_key != (cur | multi_gen() << 8)) {       /* the highlighted record changed: decode it once */
             gsl_key = cur | multi_gen() << 8;
             multi_preview(cur, &gsl_pv);
@@ -2427,8 +2435,8 @@ static __attribute__((noinline)) void list_panel(int pats)   /* (out of line: in
 /* SAVE > MULTI: the sixteen multis around the one picked ("M05  LOFI JAM"; unnamed "USED"; empty "M14  --" dim) */
 static void graph_slots(void)
 {
-    uint32_t cur = (uint32_t)(song.g[G_SLOT] - 1) % MU_SLOTS, r, f = list5_first(cur, MU_SLOTS);   /* TEMPLATE 9: five rows, the multi picked on the middle one where it can be */
-    for (r = 0; r < UT_L5_ROWS && f + r < MU_SLOTS; r++) {
+    uint32_t cur = (uint32_t)(song.g[G_SLOT] - 1) % MU_SHOWN, r, f = list5_first(cur, MU_SHOWN);   /* TEMPLATE 9: five rows, the multi picked on the middle one where it can be */
+    for (r = 0; r < UT_L5_ROWS && f + r < MU_SHOWN; r++) {
         char b[4];
         int used = graph_project_used(f + r);
         const char *nmp = graph_project_name(f + r);
@@ -2543,7 +2551,22 @@ static void mv_reset(void)
     memset(mv_lvl, 0, sizeof mv_lvl);
     mv_step = 0xFFFFFFFFu;
 }
-static uint32_t mv_tick(void) { return (ui_prefs & PREF_ANIM_OFF) ? 0u : ui.frame >> 2; }
+#endif
+/* the MORPH page's picture clock (b6, owner on the FM-1: "the animation feels laggy again"): a new picture MV_MS after the last, by fm1_ms. It was every 4th main-loop pass, and on
+ * the unit a pass that sends a picture takes ~44 ms of SPI and the others 15, so the pictures came 89 ms apart and any longer pass moved one. A pass that runs late moves its
+ * picture only (the next counts from it: one is skipped, never two in a row); main.c ends the loop's 15 ms wait when one is due, so its pass starts on time */
+#define MV_MS 60u
+static uint32_t mv_n, mv_last_ms;                         /* pictures so far; fm1_ms at the last */
+static int mv_due(void) { return fm1_ms - mv_last_ms >= MV_MS; }
+static void mv_clock(void)                          /* once a pass (ui_draw), before the page is drawn */
+{
+    if (mv_due()) {
+        mv_last_ms = fm1_ms;
+        mv_n++;
+    }
+}
+static uint32_t mv_tick(void) { return (ui_prefs & PREF_ANIM_OFF) ? 0u : mv_n; }
+#if !DUELL_TIDE
 static void mv_levels(uint32_t tk)                  /* the parts' peaks since the last step (read and cleared, as the meters) */
 {
     uint32_t k;
@@ -2597,6 +2620,7 @@ static int32_t mv_fold(int32_t v, int32_t lo, int32_t hi)   /* v folded back int
         t += 2 * l;
     return lo + (t <= l ? t : 2 * l - t);
 }
+#endif
 static void mv_line(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint16_t c)   /* 1 px (the box's rows) */
 {
     int32_t dx = x1 > x0 ? x1 - x0 : x0 - x1, sx = x0 < x1 ? 1 : -1, dy = y1 > y0 ? y0 - y1 : y1 - y0, sy = y0 < y1 ? 1 : -1;
@@ -2626,6 +2650,9 @@ static uint16_t mv_col(uint32_t k, int32_t pct, int32_t fade)
         return pl->c[2u * k + (pct >= 50)];
     return ux_mix(ux_mix(pl->c[2u * k], pl->c[2u * k + 1u], pct), T_BG, clamp(fade, 0, 92));
 }
+#if DUELL_TIDE
+#include "ui_scope.c"                                 /* the MORPH page's picture: the scope tap's stack of ridges */
+#else
 /* the front's position for fader c: past the right edge at A, past the left at B (px) */
 static int32_t mv_front(uint32_t c)
 {
@@ -2694,19 +2721,15 @@ static void graph_morph(void)
 {
     const ui_pal_t *pl = &UI_PALETTES[ux.pal % NPALETTES];
 #if DUELL_TIDE
-    uint32_t pi = song.sel, f = morph_fader_of(pi), both = morph.target == MT_BOTH;
+    uint32_t pi = song.sel, f = morph_fader_of(pi), both = PART_BOTH();
 #else
-    uint32_t pi = song.sel, f = morph_fader_of(pi), tk = mv_tick(), both = morph.target == MT_BOTH, n;
+    uint32_t pi = song.sel, f = morph_fader_of(pi), tk = mv_tick(), both = PART_BOTH(), n;
 #endif
     int32_t cx = MV_TX0 + (int32_t)(f * (uint32_t)(MV_TX1 - MV_TX0) / 127u), i;
     char b[8];
     khint_t kh[3];
 #if DUELL_TIDE
-    if (grid_on) {   /* TIDE (1.0.0-b4): nothing in the band under the title until the wave card comes (no placeholder rules: a rule there read as a rule under the title; ARP's
-                      * empty picture keeps its own line). MORPH is K1's card label (ui_draw.c). HOLD SAVE = SAVE PATCH left aligned at the bottom (ui_tokens.h UT_GR_NOTE_*) */
-        cv_text_on(UT_GR_NOTE_X, UT_TY(S, UT_GR_NOTE_BASE - UT_GR_Y), &AF_S, "HOLD SAVE = SAVE PATCH", T_DIM, T_BG);
-        return;
-    }
+    wl_card(MV_BY0, MV_BY1);                         /* (the other layouts, a layer or the menu over the page: the picture alone in the old box; the page itself is template 9, ui_draw.c) */
 #else
     mv_levels(tk);
     n = mv_step == 0xFFFFFFFFu ? 0u : tk - mv_step;   /* (steps since the last: the motion moves on by as many) */
@@ -2755,9 +2778,8 @@ static void graph_morph(void)
     GFX_HOOK_ALIGN(cx - 14, MV_TY - 7, cx + 15, MV_TY + 8, AL_HV, "morph value in its thumb");
     cv_text_in(cx - 14, MV_TY - 7 + CAP_IN(S, 15), 29, &AF_S, b, T_INK, T_PFILL(pi));
     kh[0] = (khint_t){KC_K2, "ROLL A|B"};
-    kh[1] = (khint_t){KC_K3, "UNDO A|B"};
-    kh[2] = (khint_t){KC_K4, "AMT"};             /* (AMOUNT: 5 px too wide for the row) */
-    cv_key_row(12, 228, MV_KY, kh, 3, 7u, T_BG);
+    kh[1] = (khint_t){KC_K4, "AMT"};             /* (AMOUNT: 5 px too wide for the row; 1.0.0-b5: KNOB 3 has no job, no UNDO) */
+    cv_key_row(12, 228, MV_KY, kh, 2, 7u, T_BG);
     GFX_HOOK_ALIGN(0, 0, 240, 0, AL_H, "morph save line centred");
     cv_text_in(0, MV_SY, 240, &AF_S, "HOLD SAVE = SAVE PATCH", T_DIM, T_BG);
 }
@@ -2933,7 +2955,7 @@ static void graph_mlearn(void)
 static void graph_morphset(void)
 {   /* DUELL 1.1 (TEXT_STRUCTURE_V1_A.png, MORPH SET): the four facts as a table, the cards SMART, ARP, PITCH under it */
     uint32_t pi = song.sel;
-    const char *t = morph.target == MT_BOTH ? "Moves both" : pi ? "Moves part 2" : "Moves part 1";
+    const char *t = PART_BOTH() ? "Moves both" : pi ? "Moves part 2" : "Moves part 1";
     static const char *const K[4] = {"MORPH", "SMART", "ARP", "PITCH"};
     const char *v[4];
     uint32_t i;
@@ -3005,6 +3027,12 @@ static void draw_graph(void)
                                                       * every picture here draws in SCREEN rows (cv_oy = minus the area's first row). PERFORM keeps its own path below (ui_perform.c) */
         int32_t ay, ah;
         area_rect(&ay, &ah);
+#if DUELL_TIDE
+        if (TIDE_WAVE_PAGE(pg)) {                    /* (the MORPH page: taller than one canvas holds (CV_MAX 124 rows): a canvas a part, ui_scope.c wl_area) */
+            wl_area(ay, ah);
+            return;
+        }
+#endif
         cv_begin(240, (uint32_t)ah, T_BG);
         cv_bg = T_BG;
         cv_oy = -ay;

@@ -68,7 +68,7 @@ static void tide_poll(void);
 #define TIDE_POLL() tide_poll()
 /* H4-H8 (morph.c, main loop unless marked): morph_music.c, morph_fm_shape.c, morph_complement.c and morph_tide.c are included
  * by morph.c; these are the lines morph.c runs for them */
-#define TIDE_PART_FIELDS uint8_t tok[2][MORPH_HIST];    /* MORPH TO: the factory sound each history entry is (index + 1), 0 not one */
+#define TIDE_PART_FIELDS uint8_t tok[2][MORPH_HIST];    /* MORPH TO: the factory sound each end is (index + 1), 0 not one */
 #define TIDE_CFG_BITS() (morph_musical && !(morph.cfg & MC_WILD) ? MC_MUSIC : 0u)   /* the next roll MUSICAL (TIDE LIST's ROLL) */
 #define TIDE_BLK_CFG_OK(c) (!((c) & ~(MC_SET | MC_STEREO | MC_PART | MC_MUSIC)))   /* a saved roll's cfg byte: MUSICAL too */
 #define TIDE_ROLL(mp, pi, x, end, fend, seed, amount, cfg, ndep) tide_roll((mp), (pi), (x), (end), (fend), (seed), (amount), (cfg), (ndep))
@@ -77,12 +77,16 @@ static void tide_poll(void);
 #define TIDE_REBASE_END(pi, mp, e) do { (mp)->tok[(e)][0] = 0; memset(mm_dv[(pi) % NSHOWN][(e)], 0, sizeof mm_dv[0][0]); \
                                        memset(mm_dir[(pi) % NSHOWN], 0, sizeof mm_dir[0]); mm_loads[(pi) % NSHOWN] += !(e); } while (0)   /* (WANDER from this sound's own dials) */
 #define TIDE_FACTORY_AMOUNT(a) (morph_musical ? MM_AMOUNT : (a))   /* a factory sound's B: MUSICAL at MUSICAL's AMOUNT (no DS_ENDB) */
+/* the AMOUNT the load rolls factory sound (e, k)'s B at: TIDE_FACTORY_AMOUNT, or the sound's own MUSICAL AMOUNT 'tamt' (b6, sound audit T2:
+ * a sound whose level rides on its decay, FRETLESS ISLAND STEEL MALLET WOOD, at 20, as SHAPE at 40 moved its level out of the End B
+ * window). The part's AMOUNT knob stays TIDE_FACTORY_AMOUNT (the next ROLL's) */
+#define TIDE_FACTORY_BAMT(e, k, a) (morph_musical && ds_get((e), (k))->tamt ? (uint32_t)ds_get((e), (k))->tamt : TIDE_FACTORY_AMOUNT(a))
 #define TIDE_FACTORY_CFG() (morph_musical ? MC_MUSIC : 0u)
+static int tide_amount_idle(void);   /* (morph_glide.c: JOURNEY runs, AMOUNT does nothing: the MORPH page dims its card) */
 #define TIDE_BUILD_KIND(mp, id, kind) do { if ((id) == P_TRIM && ((mp)->tok[0][(mp)->top[0]] || (mp)->tok[1][(mp)->top[1]])) \
                                               (kind) = MK_CONT; } while (0)   /* (MORPH TO: two sounds' loudness blends, no step halfway) */
 #define TIDE_BUILD_FNID(mp) ((mp)->fnid |= (uint8_t)((mp)->tok[0][(mp)->top[0]] | (mp)->tok[1][(mp)->top[1]]))   /* (MORPH TO's FM6 flip) */
 #define TIDE_FM6_TARGET(mp, tr, p, w) tide_fm6_target((mp), (tr), (p), (w))   /* (audio ISR) */
-#define TIDE_UNDO(pi, x) morph_fmto_sync((pi), (x))
 /* ARP ON (WILD): a roll never turns the arp into SEQ, nor a SEQ arp into another mode. SEQ is not an arp's flavour: it decides whether
  * PLAY sounds the part at all (seq.c: the steps only as offsets on held keys), so a roll there silenced a TIDE part (owner, 2026-11-01) */
 #define TIDE_AMODE_KEEP(v) ((v) == AM_SEQ_ID)
@@ -135,6 +139,7 @@ static int tide_foot_two(void);
 #define TIDE_PT_NCH 21u                                  /* the patch store's chunks with TIDE: 126 saved patches at most (plan §4.5) */
 #define TIDE_MG_N 5u                                     /* ui.mg's gestures: MORPH's, GLO's and GLIDE's (tide_ui.c TIDE_G_GLIDE) */
 #define TIDE_PAGE(pg) ((pg)->scope == SC_TIDE)
+#define TIDE_WAVE_PAGE(pg) ((pg)->graph == GR_MORPH)      /* the MORPH page is a template 9 page: MORPH on one line, the part's real sound in the big area (ui_scope.c), ROLL / AMOUNT in the card row */
 #define TIDE_LINK(kind, mask, v) do { if ((kind) == MQ_FADER) tide_link((mask), (v)); } while (0)   /* LINK: the SEQ fader follows */
 #define TIDE_MQ_ROUTE(kind, mask, v, pi) ((kind) >= MQ_GLIDE ? (tide_midi((kind), (mask), (v), (pi)), 1) : 0)   /* GLIDE, the SEQ fader */
 #define TIDE_MQ_KINDS , MQ_GLIDE, MQ_SEQF
@@ -151,7 +156,7 @@ static int tide_foot_two(void);
 #define TIDE_CARD_LIFT() (tide_foot_two() ? TIDE_LIFT : 0)
 #define TIDE_FOOT_FULL() tide_foot_two()
 #define TIDE_GRAPH_SIG(pg, h) do { if ((pg)->graph == GR_TIDELIST) return ((h) ^ tide_list_sig()) * 16777619u; \
-                                   if (TIDE_PAGE(pg)) (h) = ((h) ^ tide_sig() ^ (uint32_t)morph.target * 0x85EBCA77u) * 16777619u; } while (0)
+                                   if (TIDE_PAGE(pg)) (h) = ((h) ^ tide_sig() ^ (uint32_t)song.both * 0x85EBCA77u) * 16777619u; } while (0)
 #define TIDE_COLUMNS() do { if (TIDE_PAGE(cur_page())) { tide_columns(); return; } } while (0)
 #define TIDE_HOME_NAME "MORPH"                           /* MENU > CONTROL > HOME OPENS: the first page of the round (MORPH, as stock; AUTO TIDE is the round's 3rd) */
 #define TIDE_HOME_MODE_NAME "SETTINGS"                  /* (b4, UI audit 9: HOME OPENS' second value names the page it opens, TIDE SETTINGS; MULTI LOAD keeps or sets the PLAY MODE row) */
@@ -202,11 +207,11 @@ static int tide_foot_two(void);
 #define TIDE_TOK_COPY(mp, x, k, t) ((void)0)
 #define TIDE_REBASE_END(pi, mp, e) ((void)0)
 #define TIDE_FACTORY_AMOUNT(a) (a)
+#define TIDE_FACTORY_BAMT(e, k, a) (a)
 #define TIDE_FACTORY_CFG() 0u
 #define TIDE_BUILD_KIND(mp, id, kind) ((void)0)
 #define TIDE_BUILD_FNID(mp) ((void)0)
 #define TIDE_FM6_TARGET(mp, tr, p, w) ((void)0)
-#define TIDE_UNDO(pi, x) ((void)0)
 #define TIDE_AMODE_KEEP(v) 0
 #define TIDE_AMODE_END(n) (n)
 #define TIDE_MORPH_PROTOS
@@ -225,6 +230,7 @@ static int tide_foot_two(void);
 #define TIDE_PT_NCH 22u
 #define TIDE_MG_N 4u
 #define TIDE_PAGE(pg) 0
+#define TIDE_WAVE_PAGE(pg) 0
 #define TIDE_LINK(kind, mask, v) ((void)0)
 #define TIDE_MQ_ROUTE(kind, mask, v, pi) 0
 #define TIDE_MQ_KINDS
@@ -269,3 +275,6 @@ static int tide_foot_two(void);
 #define PS_USER0 (PS_SLOTS - PS_NUSER)
 #define PS_VSLOTS (PS_SLOTS + PS_NUSER)
 #endif
+/* the pages where the part selection has its third position, BOTH (owner 2026-11-08): HOME's MORPH page, TIDE SETTINGS and AUTO TIDE, and PERFORM, whose K1 MORPH and ROLL are the MORPH page's
+ * controls (and the test build's CPU TEST page). Everywhere else the selector picks PART 1 or PART 2 and the page shows and edits that part alone, as before; BOTH stays set for these pages */
+#define HOME_BOTH_PAGE(pg) ((pg)->graph == GR_MORPH || TIDE_PAGE(pg) || (pg)->scope == SC_TEST || (pg)->scope == SC_PERF)
