@@ -238,6 +238,20 @@ static void gen_voicelead_cases(void)
         CHECK("B3: OFF-SCALE SNAP: the Bb is snapped onto the scale", bb == 0u);
         offscale_g = (uint8_t)keep;
     }
+    {   /* b7 idea 2: the chord bed breathes with ARC: PEAK opens (drop-2, the top up while at G5 or under), BREAK closes and inverts down, never a new pitch class or under the lowest note */
+        uint8_t a[4] = {60, 63, 67, 70}, b[4] = {48, 55, 63, 70}, c[4] = {60, 63, 67, 70};
+        unsigned pa, pb;
+        sqm_vchord(a, 4, 1u, 60, 82, 79);
+        CHECK("ARC voicing: PEAK opens Cm7 60 63 67 70 to 60 67 70 75", a[0] == 60 && a[1] == 75 && a[2] == 67 && a[3] == 70);
+        sqm_vchord(b, 4, 2u, 40, 82, 79);
+        pa = 0, pb = 0;
+        for (i = 0; i < 4u; i++) pa |= 1u << (b[i] % 12u), pb |= 1u << ((uint8_t[]){48, 55, 63, 70})[i] % 12u;
+        CHECK("ARC voicing: BREAK closes 48 55 63 70 inside the octave and inverts it down, the same pitch classes", pa == pb && b[0] >= 40 && b[1] < 60 && b[2] < 60 && b[3] < 60);
+        sqm_vchord(c, 4, 2u, 60, 82, 79);
+        CHECK("ARC voicing: BREAK never goes under the part's lowest written note", c[0] == 60 && c[1] == 63 && c[2] == 67 && c[3] == 70);
+        sqm_arc = 0; sqm_varc = 2; sqm_bass_scan();
+        CHECK("ARC voicing: ARC OFF voices nothing", sqm_varc == 0u);
+    }
 }
 static void gen_home_load_cases(void)
 {
