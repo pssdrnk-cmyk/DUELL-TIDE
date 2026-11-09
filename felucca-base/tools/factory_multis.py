@@ -86,7 +86,8 @@ MULTIS = [
          parts=[dict(sound="CHORD ECHO", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=45, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="OPEN",
                                                    P_DKSRC="PUMP", P_DKRATE="1/4", P_DKDEP=30, P_LEVEL=102),
                      steps=". . 0 . . . 0A . . . 0 . . . 0A ."),
-                dict(sound="DUST BED", set=dict(P_AHOLD="ALL", P_EQLG=-12, P_LEVEL=94))]),
+                dict(sound="DUST BED", set=dict(P_AMODE="OFF", P_EQLG=-12, P_LEVEL=94),
+                     steps="n60 - - - - - - - - - - - - - - .")]),   # (b7: one tied step, so the bed sounds on PLAY with no key held; was HOLD ALL, silent until a key latched it)
     dict(slot=2, name="DUB CHORD", kept=True, owner=True, mode="LAYER", parts=[dict(sound="BIG STAB"), dict(sound="TIDAL SUB")],
          what="off-beat minor-seventh stabs through a long dotted echo over a sparse sub line (the owner's; the sub an octave up since D31; the first start's multi)"),
     dict(slot=3, name="CELLAR TAPE", kept=True, mode="LAYER", parts=[dict(sound="PLUCK BASS"), dict(sound="CLAVICLE")],
@@ -96,7 +97,7 @@ MULTIS = [
     dict(slot=5, name="ORGAN SKANK", mode="LAYER",
          what="reggae-house organ stabs on the off-beats, a spring and a dotted echo, a breathing shimmer pad an octave up holding two chords a bar",
          g=dict(G_BPM=123, G_DTIME="8D", G_DFDBK=55, G_DMIX=77, G_DMODE="DIGI", G_RTYPE="SPRING", G_RSIZE=71, G_RDAMP=71),
-         parts=[dict(sound="ORGAN SKANK", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=30, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="CLOSE", P_LEVEL=104),
+         parts=[dict(sound="ORGAN SKANK", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=30, P_ASWING=56, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="CLOSE", P_LEVEL=104),
                      steps=". . 0 0 . . 0A . . . 0 0 . . 0A ."),
                 dict(sound="AIR SHIMMER", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=100, P_AHOLD="ARP", P_CHRD="MIN7", P_VOIC="CLOSE",
                                                     P_DLY=30, P_REV=64, P_LEVEL=86),
@@ -121,14 +122,14 @@ MULTIS = [
          parts=[dict(sound="TINE ROOM", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=50, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="CLOSE", P_DLY=64, P_REV=30, P_LEVEL=98),
                      steps=". . 0A - - . 0 . . . 0A - - . 3 ."),
                 dict(sound="SLOW TIDE", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=100, P_AHOLD="OFF", P_CHRD="POW", P_VOIC="CLOSE", P_REV=50, P_LEVEL=85),
-                     steps="0A - - - - - - - 7A - - - - - - -")]),
+                     steps="-12A - - - - - - - -5A - - - - - - -")]),   # (b7: an octave down, under the stab)
     dict(slot=9, name="DEEP 332", mode="LAYER",
          what="a deep-house soul stab comping a 3-3-5-3-2 rhythm with a touch of swing, a dark fog holding the root and the fifth underneath (124 BPM)",
          g=dict(G_BPM=124, G_DTIME="8D", G_DFDBK=45, G_DMIX=71, G_DMODE="DIGI", G_RTYPE="ROOM", G_RSIZE=71, G_RDAMP=61),
          parts=[dict(sound="SOUL STAB", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=40, P_ASWING=54, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="OPEN", P_LEVEL=101),
                      steps="0A . . 0 . . 0A . . . . 3 . . 0 ."),
                 dict(sound="FOG BANK", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=100, P_AHOLD="OFF", P_REV=55, P_LEVEL=98),
-                     steps="0A - - - - - - - 7A - - - - - - -")]),
+                     steps="-12A - - - - - - - -5A - - - - - - -")]),   # (b7: an octave down, under the stab)
     # ---- 10-16: colour: the owner's pads and textures, kept byte for byte (tools/owner_multis.py; their old slots in brackets) ----
     # 10 PAD SPLIT (M03), 11 WHISPER TIDE (M05), 12 TINE STRINGS (M06), 13 COLD CHAPEL (M13), 14 EERIE SIGNAL (M11), 15 HAZY TENSOR (M08), 16 FINAL REEL (M07)
 ]
@@ -296,6 +297,7 @@ def emit(path):
 BOOT_H = """/* tools/factory_multis.py: no factory multis (the build of the generator itself) */
 #define DF_TEST_MULTIS DUELL_TEST_MODE
 #define DF_N 0u
+#define DF_TIDE DUELL_TIDE
 static const uint8_t DF_SLOT[1] = {0};
 static const uint16_t DM_LEN[1] = {0};
 static const uint16_t DM_AT[1] = {0};
