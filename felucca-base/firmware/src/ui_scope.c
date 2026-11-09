@@ -480,7 +480,8 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
 {
     const wl_t *s = &wl[k];
     const int hot = ui_part_hot(k);
-    const int32_t pct = (int32_t)morph_fader_of(k) * 100 / 127, str = hot ? 100 : 55;
+    const int32_t pct = (int32_t)ux.fader[k & 1u] * 100 / 127, str = hot ? 100 : 55;   /* (the fader as the theme took it: in steps, on a picture's frame (ui_draw.c), so
+                                                                                      * a turn of knob 1 redraws the waves with a picture: ui_graph.c graph_signature) */
     const uint16_t bg = swap16(T_BG);
     int32_t a, st, nf = wl_fit(y1 - y0, &a, &st), nr = s->hn < (uint32_t)nf ? (int32_t)s->hn : nf, yf = y1 - 2 - a, r, p, n, px = WL_X0;
     int32_t yb[WL_HN], py[WL_HN];
