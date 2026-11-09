@@ -401,7 +401,7 @@ static void ref_wash(uint32_t pp, int32_t *b, uint32_t n)
         int64_t fill = (v->wref >> XWS[morph_wlvl & 3u]) - v->wnow;
         want = fill > 0 ? fill : 0;
         if (x->need)
-            want += ((v->wref >> (XWS[morph_wlvl & 3u] + 3u)) * morph_xdepth(x->tp)) >> 15;
+            want += ((v->wref >> (XWS[morph_wlvl & 3u] + 3u)) * morph_xdepth(x, x->tp)) >> 15;
         want = want > (v->wref >> XWS[morph_wlvl & 3u]) ? v->wref >> XWS[morph_wlvl & 3u] : want;
     }
     if (want > 0 && pn > 0) {

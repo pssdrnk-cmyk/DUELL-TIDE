@@ -298,14 +298,20 @@ static void glide_arrive(void)
 static void glide_motion(int on)
 {
     static const uint16_t DEPTH[GLIDE_TIMES] = {9830, 14746, 21299, 27853, 32768, 32768, 32768};   /* 1 2 4 8 16 32 64 bars */
-    uint32_t k, p = gl.prog >> (GLIDE_Q - 15), m = 0;
+    uint32_t k, p = gl.prog >> (GLIDE_Q - 15), m = 0, xe;
     if (on) {
         p = p > 32768u ? 32768u : p;
         m = (uint32_t)xrise((int32_t)(p <= 16384u ? p * 2u : (32768u - p) * 2u));
         m = (m * DEPTH[gl.tt < GLIDE_TIMES ? gl.tt : 3u]) >> 15;
         m = (m * XWL[morph_wlvl & 3u]) >> 15;            /* (WASH: x 0, 0.5, 1, 1.5) */
     }
+    /* X1: the transition's dip down over 2 bars, its floor 1 bar (never under 2 fader steps a side), up over 2; a 1-4 bar trip: XW0 .. XW1
+     * as before. mxs_t xe by TIME (1 2 4 8 16 32 64 bars): the floor's half width and the ramp in 1/256 of the travel, a bar = 256 / TIME */
+    static const uint16_t XE_OF[GLIDE_TIMES] = {0u, 0u, 0u, 16u | 64u << 8, 8u | 32u << 8, 4u | 16u << 8, 4u | 8u << 8};
+    xe = XE_OF[gl.tt < GLIDE_TIMES ? gl.tt : 3u];
     for (k = 0; k < NSHOWN; k++) {
+        if (mxs[k].follow || mxs[k].tp <= XW0 || mxs[k].tp >= XW1)   /* (a hand mid-dip keeps the edges it had: no jump in the dip's depth) */
+            mxs[k].xe = (uint16_t)(on && ((gl.mask >> k) & 1u) ? xe : 0u);
         mxs[k].motion = (uint16_t)(on && ((gl.mask >> k) & 1u) ? m : 0u);   /* (MR7: under a hand too, so neither the touch nor the return jumps) */
         mxs[k].follow = (uint8_t)(gl.on && ((gl.on >> GT_SOUND) & 1u) && (((gl.mask & ~gl.hw[GT_SOUND]) >> k) & 1u));   /* (the transition rides the trip itself; a hand's fader is its own) */
     }
