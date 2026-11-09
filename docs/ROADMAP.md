@@ -9,11 +9,11 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 | | |
 |---|---|
 | **Stable** | `stable-2026-11-03` (`187e9d0`), validated by the fork owner. The first versioned stable will be `1.0.0`. |
-| **Newest beta** | `1.0.0-b5` (tag `tide-1.0.0-b5`): the MORPH page as a wave picture of both parts, AUTO TIDE always showing both parts, MORPH UNDO dropped for RAM. |
+| **Newest beta** | `1.0.0-b5` (tag `tide-1.0.0-b5`): the MORPH page as a live wave picture, one part selection (PART 1 / PART 2 / BOTH) on HOME's pages, the TIDE update screen, MORPH UNDO dropped for RAM. |
 | **Older betas** | `1.0.0-b4` (`d519548`: the ease ladder, the silent-bus skip, STYLE DRONE, the screen cleanups), `1.0.0-b3` (`c124935`), `1.0.0-b2` (`0d2fcb9`), `1.0.0-b1` (`817658d`) and `beta-2026-11-04` (`77a6df2`), all GitHub pre-releases. |
 | **Development** | `1.0.0-b6`: the effect buses on core 1 (K4, then K10), with MORPH c3 and roles T4 (see "After b3" and "Planned" below). |
-| **Flash** | 574,232 B of the 581,564 B slot (`1.0.0-b5` build, 8 November): **7,332 B free**; RAM .data+.bss 68,624 B of 73,728. Every addition is measured; simplifications pay for features. Keep 0xEA000..0xFBFFF for future pattern / multi slots. |
-| **CPU** | Since `1.0.0-b4` (the ease ladder): 0 missed blocks and 0 cut voices over the 16-multi GLIDE sweep on the unit, worst block about 90 %; `1.0.0-b5`'s sweep matched it, but the wave tap's own cost is not yet proven (MORPH page on screen during the sweep unconfirmed; rerun after the rework). The drones are not yet measured under a GLIDE. |
+| **Flash** | 575,200 B of the 581,564 B slot (`1.0.0-b5` build, 9 November): **6,364 B free**; RAM .data+.bss 69,208 B of 73,728; pool tail 9,276 B (rule 8,192). Every addition is measured; simplifications pay for features. Keep 0xEA000..0xFBFFF for future pattern / multi slots. |
+| **CPU** | Since `1.0.0-b4` (the ease ladder): 0 missed blocks and 0 cut voices over the 16-multi GLIDE sweep on the unit, worst block about 90 %; `1.0.0-b5` with the wave tap running (the MORPH page on screen through every scene, checked): 0 missed, 0 cut, worst block 85 % (elapsed 91 %), and a WILD EQ glide 80 % (85 %). The drones are not yet measured under a GLIDE. |
 
 ## How we work
 
@@ -52,7 +52,7 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 | Beta | Item | What it does | Spec |
 |---|---|---|---|
 | `1.0.0-b4` (done) | Ease ladder (K3) | When the measured CPU runs hot, back off step by step instead of killing a note: 1 slower transitions (morph blend every 4th block, FM6 retune every other block), 2 no new note for a moment (owner: acceptable live), 3 lighter effects, 4 released tails, 5 held notes only after a real miss. Hysteresis: on after two halves over 85 %, off after ~3 s under 70 %. About 300 B. | Brief K3 |
-| `1.0.0-b5` (done) | Wave page | MORPH UNDO dropped for RAM; the MORPH page shows both parts' real output as waves; AUTO TIDE always shows both parts, the selected one marked. | Wave Lab, owner 8 November |
+| `1.0.0-b5` (done) | Wave page | MORPH UNDO dropped for RAM; the MORPH page shows the parts' real output as waves; one part selection PART 1 / PART 2 / BOTH on MORPH, TIDE SETTINGS and AUTO TIDE; the update screen in TIDE's look; about 1 KB of range Z freed (cold EQ design to flash). | Wave Lab, owner 8 November |
 | `1.0.0-b6` | Effect buses on core 1 (K4) | Core 1 also runs the sends, chorus, delay and reverb when its measured time fits the deadline; today's one-core path stays as the fallback, bit-exact. Saves 7 to 15 % on core 0 in the scenes that burst. | Brief K4 |
 | then | Hand-moved morph saving | A hand or MIDI fader move blended every other block like a GLIDE (about 70 us a block saved), with a sample check of the hand-moved morph. | Finding 12, D44 |
 | then | Transition costs only while moving | The engine cross-fade (BD_FADE), valley and wash charged only while a transition runs, as b2 does for FM6: more notes at rest. | Owner, 6 November |
@@ -70,7 +70,7 @@ Updated 8 November 2026. This page says where TIDE stands, what comes next, in w
 
 **One view for both parts** (owner, 8 November): AUTO TIDE and the MORPH / wave page always show both parts, with the selected part clearly marked (full colour, the other dimmed, plus a cue that works on MONO and GREY). The wave page does it in b5 (Wave Lab); AUTO TIDE follows the second screen round.
 
-**RAM room** (8 November, b5): the release build keeps 8,208 B of the pool tail against the 8,192 B rule (16 B spare; range Z 29,232 B), and a test-mode build needs the lowered 7,936 B rule. The next change that grows range Z or the pool fails the build: find about 1 KB first (a cold function out of `ram_fns_z.py`, or a pool buffer to `.bss`), measured on the unit.
+**RAM room** (b5, done): cold EQ design and `morph_apply` moved out of range Z (1,068 B), pool tail 9,276 B against the 8,192 B rule. A test-mode build keeps the lowered 7,936 B rule. The next change that grows range Z or the pool measures against that.
 
 **MORPH** ([review](audits/2026-11-08/morph/REPORT.md): keep the core and the page, no big rework)
 - c3 (b6): factory loads stop resetting AMOUNT; K4 dim in JRNY, where it does nothing. Built on `fix/b6-morph-c3` `148d84b`, tests pass; rebase onto the reworked MORPH page before b6.
