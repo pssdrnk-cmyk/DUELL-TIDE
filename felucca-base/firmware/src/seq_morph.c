@@ -143,8 +143,9 @@ static void sqm_build(const step_t *p, uint32_t len, const sqm_end_t *x, uint32_
     n = sqm_cnt(d[SD_DENS], 2u);                         /* DENS */
     if (d[SD_DENS] < 0) {
         n = n < hits - 1u ? n : hits - 1u;
-        for (i = 0; i < len; i++)
-            score[i] = sqm_hit(&p[i]) && !sqm_held(p, i, len) && !rhythm_fixed(p, i) && !sqm_anchor(p, len, i) ? sqm_score(seed, i, 1u, i & 1u ? 2u : 1u) : 0u;
+        for (i = 0, k = 0; i < len; i++)
+            k += !!(score[i] = sqm_hit(&p[i]) && !sqm_held(p, i, len) && !rhythm_fixed(p, i) && !sqm_anchor(p, len, i) ? sqm_score(seed, i, 1u, i & 1u ? 2u : 1u) : 0u);
+        n = k > 1u ? n : 0u;                             /* (MR6: a motif with one free hit at most plays whole) */
         for (k = 0; k < n && (i = sqm_best(score, len)) < len; k++)
             out[i].time = ST_REST, out[i].n = 0;
     } else if (n) {
@@ -373,15 +374,20 @@ static void seqm_set_amount(uint32_t pi, uint32_t amt)   /* SEQ AMT */
     sqm_refresh(pi, 1);
 }
 /* main loop, every pass: the ends built again when the pattern was edited (every 20 ms at most) */
+static void sqm_bass_scan(void)                         /* B1: sqm_bassm from the parts' sounds (main loop) */
+{
+    uint32_t k, b = 0;
+    for (k = 0; k < NSHOWN; k++)
+        b |= (uint32_t)tide_bass_part(&trk[k]) << k;
+    sqm_bassm = (uint8_t)b;
+}
 static void seqm_poll(void)
 {
-    uint32_t k, b;
+    uint32_t k;
     if ((uint32_t)(fm1_ms - sqm_poll_ms) < 20u)
         return;
     sqm_poll_ms = fm1_ms;
-    for (k = 0, b = 0; k < NSHOWN; k++)
-        b |= (uint32_t)tide_bass_part(&trk[k]) << k;
-    sqm_bassm = (uint8_t)b;
+    sqm_bass_scan();
     for (k = 0; k < NSHOWN; k++)
         if (seqm_active(k))
             sqm_refresh(k, 0);

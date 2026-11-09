@@ -15,12 +15,20 @@ static int phrase_source(uint32_t pi, uint32_t i, uint32_t len)
 {
     return sqm_hit(&trk[pi].step[i]) && !sqm_held(trk[pi].step, i, len) && !sqm_anchor(trk[pi].step, len, i);
 }
+/* MR6: a motif with one free hit at most, and the bass (B1), keeps its hits outside ARC's breakdown: no gap, and no repeat added either
+ * (the density would only climb); a dropped one still comes back */
+static int phrase_whole(uint32_t pi, uint32_t len)
+{
+    uint32_t free = 0;
+    for (uint32_t i = 0; i < len; i++) free += phrase_source(pi, i, len);
+    return (free <= 1u || ((sqm_bassm >> pi) & 1u)) && !((tarc_thin >> pi) & 1u);
+}
 static int phrase_gap(uint32_t pi, uint32_t seed)
 {
     uint32_t len = sqm_len(&trk[pi]), base = 0;
     for (uint32_t i = 0; i < len; i++) base += sqm_hit(&trk[pi].step[i]);
     uint32_t count = phrase_count(pi, len);
-    if (count <= (base + 1u) / 2u || count <= 1u) return 0;
+    if (count <= (base + 1u) / 2u || count <= 1u || phrase_whole(pi, len)) return 0;
     /* Prefer making room where the other part already attacks. A second pass
      * permits development when there are no overlaps to remove. */
     for (uint32_t pass = 0; pass < 2u; pass++)
@@ -49,7 +57,7 @@ static int phrase_repeat(uint32_t pi, uint32_t seed)
         rhythm_mark(pi);
         return 1;
     }
-    for (uint32_t j = 0; j < len; j++) {
+    for (uint32_t j = 0; j < len && !phrase_whole(pi, len); j++) {
         uint32_t i = (seed + j) % len;
         if (phrase_peer_attack(pi, i) || !phrase_source(pi, i, len) || !rhythm_map[pi][i] ||
             (rhythm_map[pi][i] & RHYTHM_REPEAT)) continue;

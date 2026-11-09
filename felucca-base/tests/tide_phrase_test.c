@@ -50,6 +50,7 @@ static void setup(void)
         for (j = 0; j < ds_count(e) && ds_cat_of(e, j) != CAT_LEAD; j++)
             ;
         trk[0].preset = (uint8_t)j, trk[0].user = 0;
+        sqm_bass_scan();                                 /* (B1: the bass mask follows the sound) */
     }
     scale_g = 1;
     root_g = 0;
