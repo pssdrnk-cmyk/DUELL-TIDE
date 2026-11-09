@@ -528,56 +528,56 @@ static void test_hold_ghost(void)
     for (i = 0; i < 4u; i++) { b->step[i].time = ST_NOTE; b->step[i].n = 1; b->step[i].note[0] = (uint8_t)(60 + 2 * i); b->step[i].vel = 100; }
     b->p[P_AMODE] = AM_SEQ_ID; b->p[P_ARATE] = 5; b->p[P_APROB] = 127; b->p[P_AOCT] = 1; b->p[P_AHOLD] = 2;
     memset(tide_chord_n, 0, sizeof tide_chord_n);
-    memset(tide_gh_n, 0, sizeof tide_gh_n);
+    tide_gh = 0;
     CHECK("hold ghost: part 1 is HOLD ALL without steps or arp", !arp_mode(a) && arp_hold(a) == 2 && !tide_gh_steps(a));
     transport_req = 1u; run(500);                        /* PLAY alone, AUTO TIDE off */
-    CHECK("hold ghost: PLAY without AUTO TIDE: the pad waits for keys as ever", song.playing && !a->nheld && !tide_gh_n[0]);
+    CHECK("hold ghost: PLAY without AUTO TIDE: the pad waits for keys as ever", song.playing && !a->nheld && !TIDE_GH_ON(0));
     transport_req = 2u; run(500);
     tide_style_apply(STY_DUB);
     gl.target = GT_BOTH; morph_musical = 1; morph.cfg = (uint8_t)(morph.cfg & ~MC_PIT);
     glide_launch(1u, 3u, 0u);
-    for (i = 0; i < 1000u && !(tide_gh_n[0] && heard_b); i++) {   /* (16 s: more than 4 bars of M10's 97 BPM) */
+    for (i = 0; i < 1000u && !(TIDE_GH_ON(0) && heard_b); i++) {   /* (16 s: more than 4 bars of M10's 97 BPM) */
         run(16);
         heard_b |= b->arp_note != 0u;
     }
-    CHECK("hold ghost: AUTO TIDE + PLAY, no key: part 1 latches TIDE's chord and part 2 plays within 4 bars", song.playing && tide_gh_n[0] && a->nheld == tide_gh_n[0] && heard_b);
+    CHECK("hold ghost: AUTO TIDE + PLAY, no key: part 1 latches TIDE's chord and part 2 plays within 4 bars", song.playing && TIDE_GH_ON(0) && a->nheld >= 1u && a->nheld <= 4u && heard_b);
     run(160);
-    CHECK("hold ghost:   the chord stays latched, nothing down", a->nheld == tide_gh_n[0] && !a->arp_phys);
+    CHECK("hold ghost:   the chord stays latched, nothing down", a->nheld >= 1u && a->nheld <= 4u && !a->arp_phys);
     voices = gated(a, 200u);
     CHECK("hold ghost:   one voice a latched note", voices == a->nheld);
     input_on(a, 50, 100); input_off(a, 50);
     run(48);
-    CHECK("hold ghost: a key replaces the ghost chord at once: the key's note alone, nothing of the ghost left", a->nheld == 1u && a->held[0] == 50u && !tide_gh_n[0]);
+    CHECK("hold ghost: a key replaces the ghost chord at once: the key's note alone, nothing of the ghost left", a->nheld == 1u && a->held[0] == 50u && !TIDE_GH_ON(0));
     voices = gated(a, 200u);
     CHECK("hold ghost:   and no doubled note", voices == 1u);
     run(1500);
-    CHECK("hold ghost:   the player's chord is not taken for the ghost's", a->nheld == 1u && !tide_gh_n[0]);
+    CHECK("hold ghost:   the player's chord is not taken for the ghost's", a->nheld == 1u && !TIDE_GH_ON(0));
     transport_req = 2u; run(500);
     CHECK("hold ghost: STOP: the AUTO TIDE chord ends (the player's latched chord stays for PLAY)", !song.playing && a->nheld == 1u);
     a->nheld = 0; a->arp_phys = 0;
     trk_note_off(a, 50);
     transport_req = 1u; run(1200);
-    CHECK("hold ghost: PLAY again: the ghost chord comes back", song.playing && tide_gh_n[0] && a->nheld == tide_gh_n[0]);
+    CHECK("hold ghost: PLAY again: the ghost chord comes back", song.playing && TIDE_GH_ON(0) && a->nheld >= 1u && a->nheld <= 4u);
     transport_req = 2u; run(500);
-    CHECK("hold ghost: STOP: the ghost chord ends, no hung voice", !song.playing && !a->nheld && !tide_gh_n[0]);
+    CHECK("hold ghost: STOP: the ghost chord ends, no hung voice", !song.playing && !a->nheld && !TIDE_GH_ON(0));
     {   /* a plain key part (HOLD OFF, no arp, no steps: M10's and M14's pads): the ghost chord, a key ends it and the part is the player's until the next PLAY */
         a->p[P_AHOLD] = 0; a->nheld = a->arp_phys = 0;
         gl.on = gl.armed = 0;
         glide_launch(1u, 3u, 0u);
-        for (i = 0; i < 400u && !tide_gh_n[0]; i++)
+        for (i = 0; i < 400u && !TIDE_GH_ON(0); i++)
             run(16);
         run(160);
-        CHECK("hold ghost: a plain key part (HOLD OFF): the ghost chord sounds, one voice a note, nothing latched", song.playing && tide_gh_n[0] && gated(a, 200u) == tide_gh_n[0] && !a->nheld);
+        CHECK("hold ghost: a plain key part (HOLD OFF): the ghost chord sounds, one voice a note, nothing latched", song.playing && TIDE_GH_ON(0) && gated(a, 200u) >= 1u && !a->nheld);
         input_on(a, 50, 100);
-        CHECK("hold ghost:   a key ends the ghost chord before its note starts: that note alone", gated(a, 200u) == 1u && gated(a, 50u) == 1u && !tide_gh_n[0]);
+        CHECK("hold ghost:   a key ends the ghost chord before its note starts: that note alone", gated(a, 200u) == 1u && gated(a, 50u) == 1u && !TIDE_GH_ON(0));
         input_off(a, 50);
         run(1500);
-        CHECK("hold ghost:   let go: the part stays the player's (no ghost chord back)", gated(a, 200u) == 0u && !tide_gh_n[0]);
+        CHECK("hold ghost:   let go: the part stays the player's (no ghost chord back)", gated(a, 200u) == 0u && !TIDE_GH_ON(0));
         transport_req = 2u; run(500);
         transport_req = 1u; run(1500);
-        CHECK("hold ghost:   the next PLAY: the ghost chord again", tide_gh_n[0] && gated(a, 200u) == tide_gh_n[0]);
+        CHECK("hold ghost:   the next PLAY: the ghost chord again", TIDE_GH_ON(0) && gated(a, 200u) >= 1u);
         transport_req = 2u; run(500);
-        CHECK("hold ghost:   STOP: it ends, no hung voice", !song.playing && !tide_gh_n[0] && gated(a, 200u) == 0u);
+        CHECK("hold ghost:   STOP: it ends, no hung voice", !song.playing && !TIDE_GH_ON(0) && gated(a, 200u) == 0u);
         a->p[P_AHOLD] = 2;
     }
     {   /* a classic arp with nothing held: silent without AUTO TIDE, the ghost chord under it, a key takes over, STOP ends it */

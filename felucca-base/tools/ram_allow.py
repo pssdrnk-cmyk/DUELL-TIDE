@@ -26,6 +26,7 @@ ALLOW = {
     # ---- The audio interrupt (1)
     "fm1_alnk0_irq": "the audio interrupt itself, in flash since b2 (~2.8 KB; its hot loop bodies are in the hot block and range Z); moving it needs ~2,800 B of range Z, which is not there",
     # ---- Event rate (notes, MIDI, sequencer, arp, locks, clears) (177)
+    "tide_gh_end": "event rate (the transport stops, a real note arrives on a part holding AUTO TIDE's ghost chord), not per sample; in flash (82 B, b7 MULTIS); reached from seq_stop",
     "arp_add": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~352 B); reached from input_on",
     "arp_chord": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~202 B); reached from arp_fire",
     "arp_chord_off": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~84 B); reached from arp_silence",

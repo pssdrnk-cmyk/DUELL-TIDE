@@ -42,14 +42,19 @@ static const step_t *tide_play_step(const track_t *t, uint32_t idx, step_t *buf)
  * stand-in, the part's last chord held on the SEQ arp, else C4 as the part's CHRD builds it (audit G08: always one note), the steps as written.
  * Also while recording (an ARP SEQ part's arp never records: seq.c rec_arp_on), not stopped. A key held plays as ever */
 static uint8_t tide_chord[NSHOWN][4], tide_chord_n[NSHOWN];
-static uint8_t tide_auto;                /* b7: AUTO TIDE plays (tide_ghost_poll, once a frame: glide_tide_on() with the transport running) */
-static uint8_t tide_gh_n[NSHOWN], tide_gh_note[NSHOWN][4], tide_gh_hand[NSHOWN], tide_gh_in;   /* (b7, tide_ghost_poll below) */
+/* b7 (MR2 part B), one byte of state: bit p the ghost chord sounds on part p; bit 2 + p part p was played by hand since PLAY; bit 4 tide_ghost_poll's own
+ * input_on is running; bit 5 AUTO TIDE plays (once a frame: glide_tide_on() with the transport running) */
+static uint8_t tide_gh;
+#define TIDE_GH_ON(p) ((tide_gh >> (p)) & 1u)
+#define TIDE_GH_HAND(p) ((tide_gh >> (2u + (p))) & 1u)
+#define TIDE_GH_IN 0x10u
+#define TIDE_GH_AUTO 0x20u
 /* b7 (musical review MR2 part B): while AUTO TIDE plays, a classic arp with nothing held gets the ghost chord too, and (tide_ghost_poll) a HOLD ALL part without steps
  * latches it: the owner's pad and arp multis then play with no key down. ARP SEQ parts get it on every PLAY, as before */
 static int tide_seq_ghost(const track_t *t)
 {
     uint32_t m = (uint32_t)arp_mode(t);
-    return song.playing && trk_index(t) < NSHOWN && m && (m == AM_SEQ_ID || tide_auto);
+    return song.playing && trk_index(t) < NSHOWN && m && (m == AM_SEQ_ID || (tide_gh & TIDE_GH_AUTO));
 }
 static int tide_arp_paused(const track_t *t)
 {
@@ -85,7 +90,7 @@ static uint32_t tide_seq_chord(const track_t *t, uint32_t *list, uint32_t n)
 static void tide_seq_ghost_start(void)
 {
     uint32_t k;
-    memset(tide_gh_hand, 0, sizeof tide_gh_hand);                          /* (b7: a part played by hand is the ghost chord's again at PLAY) */
+    tide_gh &= ~0x0Cu;                                  /* (b7: a part played by hand is the ghost chord's again at PLAY) */
     for (k = 0; k < NSHOWN; k++)
         if (!trk[k].arp_phys && (arp_mode(&trk[k]) == AM_SEQ_ID || (arp_mode(&trk[k]) && !trk[k].nheld))) {   /* (b7: a classic arp with nothing latched too: AUTO TIDE's ghost chord) */
             trk[k].arp_pos = 0xFFFFFFF;
@@ -114,44 +119,45 @@ static uint32_t tide_gh_gated(const track_t *t)
         n += t->v[i].active && t->v[i].gate;
     return n;
 }
-static void tide_gh_end(track_t *t, uint32_t p)
+static void tide_gh_end(track_t *t, uint32_t p)          /* the part's gated voices are the ghost chord's (a real note ends it first, tide_ghost_real) */
 {
     uint32_t i;
-    for (i = 0; i < tide_gh_n[p]; i++)
-        trk_note_off(t, tide_gh_note[p][i]);
+    for (i = 0; i < NVOICE; i++)
+        if (t->v[i].active && t->v[i].gate)
+            trk_note_off(t, t->v[i].note);
     if (hold_all_keys(t))
         t->nheld = 0;
-    tide_gh_n[p] = 0;
+    tide_gh &= (uint8_t)~(1u << p);
 }
 static void tide_ghost_real(track_t *t)                  /* input_on: a real note is about to start on t */
 {
     uint32_t p = trk_index(t);
-    if (p >= NSHOWN || tide_gh_in)
+    if (p >= NSHOWN || (tide_gh & TIDE_GH_IN))
         return;
-    if (tide_gh_n[p])
+    if (TIDE_GH_ON(p))
         tide_gh_end(t, p);
-    tide_gh_hand[p] = 1;
+    tide_gh |= (uint8_t)(4u << p);
 }
 static void tide_ghost_stop(void)                        /* seq_stop: the transport stopped (main loop): the ghost chords end at once */
 {
     uint32_t p;
-    tide_auto = 0;
+    tide_gh &= (uint8_t)~TIDE_GH_AUTO;
     for (p = 0; p < NSHOWN; p++)
-        if (tide_gh_n[p])
+        if (TIDE_GH_ON(p))
             tide_gh_end(&trk[p], p);
 }
 static void tide_ghost_poll(void)
 {
     uint32_t p, i, n, on = song.playing && glide_tide_on();
-    tide_auto = (uint8_t)on;
+    tide_gh = (uint8_t)(on ? tide_gh | TIDE_GH_AUTO : tide_gh & ~TIDE_GH_AUTO);
     for (p = 0; p < NSHOWN; p++) {
         track_t *t = &trk[p];
-        if (tide_gh_n[p]) {
+        if (TIDE_GH_ON(p)) {
             if (!on || !tide_gh_gated(t))                /* STOP, AUTO TIDE ended, or a load took the voices */
                 tide_gh_end(t, p);
             continue;
         }
-        if (!on || tide_gh_hand[p] || arp_mode(t) || t->nheld || t->arp_phys || tide_gh_steps(t) || tide_gh_gated(t))
+        if (!on || TIDE_GH_HAND(p) || arp_mode(t) || t->nheld || t->arp_phys || tide_gh_steps(t) || tide_gh_gated(t))
             continue;
         {
             uint8_t o[CHORD_MAX];
@@ -160,17 +166,18 @@ static void tide_ghost_poll(void)
             n = chord_make(t, 60, o, &r, &mk);
             if (n > 4u)
                 n = 4u;
-            tide_gh_in = 1;
+            tide_gh |= TIDE_GH_IN;
             for (i = 0; i < n; i++) {
-                t->lay_xg = duell_mode == DM_LAYER ? (uint16_t)xf_gain(p, 100u) : 0u;
-                input_on(t, o[i], 100u);
-                t->lay_xg = 0;
-                tide_gh_note[p][i] = o[i];
+                if (duell_mode == DM_LAYER)
+                    lay_input(t, o[i], 100u);            /* (the part's XFADE share rides with the voice) */
+                else
+                    input_on(t, o[i], 100u);
             }
-            tide_gh_in = 0;
+            tide_gh &= (uint8_t)~TIDE_GH_IN;
             if (hold_all_keys(t))
                 t->arp_phys = 0;                         /* (the notes are down no more: a latched chord, which the next key replaces) */
-            tide_gh_n[p] = (uint8_t)n;
+            if (n)
+                tide_gh |= (uint8_t)(1u << p);
         }
     }
 }
