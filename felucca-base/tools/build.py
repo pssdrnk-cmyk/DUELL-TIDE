@@ -373,6 +373,13 @@ def build_app():
         if os.environ.get("DUELL_TEST_MODE") != "1":
             raise SystemExit("build: DUELL_NOTES_STEP is for test-mode builds (DUELL_TEST_MODE=1): a release build has the branch's default step")
         flags.append(f"-DDUELL_NOTES_STEP={v}")
+    v = os.environ.get("DUELL_LCD_BAUD")    # TIDE 1.0.0-b6 (lcdspeed): the LCD's SPI1 divider, src/lcd.c LCD_BAUD (lsb 60 MHz / (BAUD + 1): 4 = 12 MHz, the default; 2 = 20 MHz, 1 = 30 MHz;
+    if v:                                       # the ST7789V takes a serial write clock up to ~62 MHz, tSCYCW 16 ns). For test-mode builds tried on the unit; a release keeps lcd.c's default
+        if v not in ("1", "2", "3", "4"):
+            raise SystemExit(f"build: DUELL_LCD_BAUD={v}: one of 1 (30 MHz), 2 (20 MHz), 3 (15 MHz), 4 (12 MHz)")
+        if os.environ.get("DUELL_TEST_MODE") != "1":
+            raise SystemExit("build: DUELL_LCD_BAUD is for test-mode builds (DUELL_TEST_MODE=1): a release has lcd.c's default")
+        flags.append(f"-DLCD_BAUD={v}u")
     if os.environ.get("DUELL_PRESETS") != "1":   # Felucca's engine preset tables (engine_t.presets): no firmware code reads them (sounds.c's factory sounds replaced them), only the host tests do
         flags.append("-DDUELL_PRESETS=0")
     v = os.environ.get("DUELL_VELO", "1")   # KEY SENSE (key velocity and aftertouch, sense.c): ON in every build since 0.2.30 (owner, 2026-10-21; before: developer builds only, build.py passed nothing and felucca.c's default 0 held).

@@ -324,8 +324,12 @@ static void menu_put(uint32_t row, uint32_t v)
     switch (row) {
     case MI_COLOR:
         settings.palette = v;
+#if DUELL_TIDE
+        pal_q.due = 1;                                 /* (applied by ui_draw.c ui_draw, at most every 100 ms: ui.c pal_q) */
+#else
         palette_set(v);                                /* (the menu signature redraws) */
         ui.force = 1;
+#endif
         break;
     case MI_HOLD: settings_hold = (uint8_t)v; break;
     case MI_SCROFF: scr_put(v); break;                 /* (read every frame: ui.c scr_frame) */
