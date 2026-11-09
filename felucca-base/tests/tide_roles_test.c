@@ -95,8 +95,8 @@ static const char *const SN[5] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK"};
 static const struct { uint8_t slot, style, near, role[2], bass; const char *name; } TR[16] = {
     { 1, STY_DUB,     STY_DEEP,    {R_SKANK, R_ATMOS}, 0, "BASIC CHORD"},
     { 2, STY_DUB,     STY_DEEP,    {R_SKANK, R_BASS},  1, "DUB CHORD"},
-    { 3, STY_DUB,     STY_MINIMAL, {R_SKANK, R_DRONE}, 0, "BUNKER DUB"},      /* (b7 TECHNO: the techno scenes M03 M04 M07 M13 M14 M15) */
-    { 4, STY_DUB,     STY_DEEP,    {R_SKANK, R_ANSWER}, 0, "STEEL ECHO"},
+    { 3, STY_PEAK,    STY_MINIMAL, {R_MOTIF, R_PAD},   0, "ACID FIELD"},      /* (b7 TECHNO: acid, electro, techno, IDM, Berlin school, Detroit in M03 M04 M07 M13 M14 M15) */
+    { 4, STY_MINIMAL, STY_PEAK,    {R_MOTIF, R_PAD},   0, "ROBOT FUNK"},
     { 5, STY_DEEP,    STY_PEAK,    {R_SKANK, R_PAD},   0, "ORGAN SKANK"},
     { 6, STY_DEEP,    STY_DUB,     {R_PROG,  R_MOTIF}, 0, "WARM ECHO"},
     { 7, STY_MINIMAL, STY_PEAK,    {R_MOTIF, R_AIR},   0, "MINIMAL 12"},       /* (b7: the pluck on 12 and an iron texture) */
@@ -105,9 +105,9 @@ static const struct { uint8_t slot, style, near, role[2], bass; const char *name
     {10, STY_AMBIENT, STY_DEEP,    {R_LIVE,  R_MOTIF}, 0, "PAD SPLIT"},
     {11, STY_AMBIENT, STY_DEEP,    {R_DRONE, R_ARP},   0, "WHISPER TIDE"},
     {12, STY_AMBIENT, STY_DEEP,    {R_DRONE, R_MOTIF}, 0, "TINE STRINGS"},
-    {13, STY_PEAK,    STY_MINIMAL, {R_PAD,   R_MOTIF}, 0, "COLD PULSE"},
+    {13, STY_MINIMAL, STY_AMBIENT, {R_MOTIF, R_PAD},   0, "BROKEN BELLS"},
     {14, STY_MINIMAL, STY_PEAK,    {R_MOTIF, R_PROG},  0, "BERLIN RUN"},
-    {15, STY_PEAK,    STY_DUB,     {R_SKANK, R_DRONE}, 0, "HANGAR STAB"},
+    {15, STY_DEEP,    STY_PEAK,    {R_SKANK, R_PAD},   0, "DETROIT STAB"},
     {16, STY_AMBIENT, STY_DEEP,    {R_PAD,   R_PROG},  0, "FINAL REEL"},
 };
 /* density bounds per role: onsets a bar, averaged over a 4-bar window, as tenths (5 = 0.5) */
