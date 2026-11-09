@@ -41,6 +41,8 @@
 #define WL_C_STD 0x4000u
 #define WL_C_RUN 0x3000u
 #define WL_C_RUN1 0x1000u
+#define WL_C_FALL 0x0800u                            /* (not calm: the note's trigger takes falling crossings, held while its falling edges are the steeper; silence clears it) */
+#define WL_C_STATE 0xF800u
 typedef struct {
     uint32_t base;                                   /* wv_cnt where the gate last opened */
     uint32_t gpk;                                    /* the slow gain's peak */
@@ -49,13 +51,13 @@ typedef struct {
     uint16_t flat;                                   /* bit r: ridge r is flat (silence, a note's tail) */
     uint16_t w;                                      /* the window */
     uint16_t per;                                    /* its period (1/16 of an entry; 0: none steady), so that a held note keeps its window and its count of cycles */
-    uint16_t calm;                                   /* bit r: ridge r was made calm (WL_C_ON); the top bits the calm state: WL_C_ON, WL_C_STD (the last picture had a steady period), the run of pictures without one (WL_C_RUN) */
+    uint16_t calm;                                   /* bit r: ridge r was made calm (WL_C_ON); the top bits the calm state: WL_C_ON, WL_C_STD (the last picture had a steady period), the run of pictures without one (WL_C_RUN), the trigger's held direction (WL_C_FALL) */
     uint8_t got, have, a, hn;                        /* a picture exists since the last reset; one with a trigger to match; the half height the ridges were made for; ridges kept */
 } wl_t;
 static wl_t wl[2];
 static uint32_t wl_tk = 0xFFFFFFFFu;
 _Static_assert(NLIVE == 2, "ui_scope.c keeps one reader state for each of the two parts");
-_Static_assert(WL_HN <= 12, "wl_t.flat and .calm have a bit a ridge (calm's top 4 bits are its state)");
+_Static_assert(WL_HN <= 11, "wl_t.flat and .calm have a bit a ridge (calm's top 5 bits are its state: WL_C_STATE)");
 static uint32_t wl_k, wl_b, wl_per;                  /* (wl_per: the period the last wl_pic found, 1/16 entry, 0: none) */                          /* the ring being read, and the counter value of its entry 0 */
 /* an entry back from wvr_code's sign and 7 bits: the middle of its step, in 1/4,096 of the half scale (0 stays 0) */
 static int32_t wl_dec(int32_t c)
@@ -134,7 +136,8 @@ static int wl_pic(const wl_t *s, int32_t n, int32_t a, int8_t *nd, int16_t *nf, 
             up = d > up ? d : up;
             dn = -d > dn ? -d : dn;
         }
-        sg = dn > 2 * up ? -1 : 1;
+        sg = (s->calm & WL_C_FALL ? dn > up : dn > 2 * up) ? -1 : 1;   /* (held for the note: a saw whose drop is about twice its rise, the shape moving under a ROLL, would flip
+                                                                       * between the two every few pictures and each flip starts a ridge a third of a period off) */
     }
     mid *= sg;                                       /* (the line as sg * wl_g: the falling case runs as the rising one) */
     prev = sg * wl_g(0, n);
@@ -175,7 +178,7 @@ static int wl_pic(const wl_t *s, int32_t n, int32_t a, int8_t *nd, int16_t *nf, 
     {   /* the calm state: the run of pictures without a steady period, on at 3, off after 2 in a row with one */
         const uint32_t run = pq ? 0u : (s->calm & WL_C_RUN) == WL_C_RUN ? WL_C_RUN : (s->calm & WL_C_RUN) + WL_C_RUN1;
         const uint32_t on = s->calm & WL_C_ON ? !(pq && (s->calm & WL_C_STD)) : run == WL_C_RUN;
-        *ncs = (on ? WL_C_ON : 0u) | (pq ? WL_C_STD : 0u) | run;
+        *ncs = (on ? WL_C_ON : 0u) | (pq ? WL_C_STD : 0u) | run | (sg < 0 ? WL_C_FALL : 0u);
     }
     if (pq && s->per && (pq > s->per ? pq - s->per : s->per - pq) * 6u <= s->per)
         pq = s->per;                                 /* (within 1/6 of the held period: the same note; the crossings' own jitter, up to 13 % on a driven saw's attack, does not move the window) */
@@ -349,7 +352,7 @@ static void wl_fade(wl_t *s)
 static void wl_step(uint32_t k, int32_t a)
 {
     wl_t *s = &wl[k];
-    uint32_t c0, c1, vs, avail, tries, nw = s->w, ng = s->gpk, ncs = s->calm & 0xF000u;
+    uint32_t c0, c1, vs, avail, tries, nw = s->w, ng = s->gpk, ncs = s->calm & WL_C_STATE;
     int32_t n;
     int8_t nd[WL_NP];
     int16_t nf[16];
