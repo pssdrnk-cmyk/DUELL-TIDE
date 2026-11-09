@@ -860,7 +860,7 @@ static void t_amount_keep(void)
 {
     fresh();
     morph_page();
-    morph.target = MT_BOTH;
+    SEL_BOTH = 1;                                      /* (b5: the one selection, song.both; c3 was written before it, on morph.target) */
     turn(EN_K4, 31);
     settle();
     {
