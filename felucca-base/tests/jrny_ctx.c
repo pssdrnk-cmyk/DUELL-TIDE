@@ -130,6 +130,11 @@ int main(int argc, char **argv)
                "#ifndef JRNY_CTX_H\n#define JRNY_CTX_H\nstatic const uint8_t JRNY_CTX[%u] = {\n", (unsigned)n);
         for (i = 0; i < n; i++)
             printf("    %3u,   /* %u %u %s: %.1f dB, %.0f Hz */\n", got[i].v, (unsigned)qe[i], (unsigned)qk[i], ds_name(qe[i], qk[i]), got[i].db, got[i].hz);
+        printf("};\n/* the list it was measured on: engine e's rows are JRNY_CTX_AT[e] .. JRNY_CTX_AT[e + 1] - 1 (tide_ui.c jctx_of: a sound past them,\n"
+               " * as in a test build with a sound added, has no row and is treated as unmeasured; host_tests.sh jrnyctx checks them against DS_ENG_AT) */\n"
+               "#define JRNY_CTX_NE %uu\nstatic const uint16_t JRNY_CTX_AT[JRNY_CTX_NE + 1u] = {", (unsigned)NENGINES);
+        for (e = 0; e <= NENGINES; e++)
+            printf("%s%u", e ? ", " : "", (unsigned)(e < NENGINES ? DS_ENG_AT[e] : n));
         printf("};\n#endif\n");
         return bad ? 1 : 0;
     }
@@ -138,6 +143,16 @@ int main(int argc, char **argv)
         printf("jrnyctx: FAIL firmware/src/jrny_ctx.h has %u rows, the sound list %u: regenerate it (build/host/jrny_ctx gen)\n",
                (unsigned)(sizeof JRNY_CTX / sizeof JRNY_CTX[0]), (unsigned)n);
         return 1;
+    }
+    for (e = 0; e < NENGINES; e++)
+        if (JRNY_CTX_AT[e] != DS_ENG_AT[e] || JRNY_CTX_AT[e + 1u] - JRNY_CTX_AT[e] != ds_count(e)) {
+            printf("jrnyctx: FAIL engine %u: the table's rows %u..%u, the sound list's %u..%u: regenerate it (build/host/jrny_ctx gen)\n", (unsigned)e,
+                   (unsigned)JRNY_CTX_AT[e], (unsigned)JRNY_CTX_AT[e + 1u], (unsigned)DS_ENG_AT[e], (unsigned)(DS_ENG_AT[e] + ds_count(e)));
+            bad++;
+        }
+    if (JRNY_CTX_NE != NENGINES) {
+        printf("jrnyctx: FAIL the table has %u engines, the firmware %u\n", (unsigned)JRNY_CTX_NE, (unsigned)NENGINES);
+        bad++;
     }
     for (i = 0; i < n; i++)
         if (got[i].v != JRNY_CTX[i]) {

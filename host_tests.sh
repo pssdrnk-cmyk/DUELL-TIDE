@@ -260,6 +260,8 @@ CC="cc -O2 -w -DHOST_MIX_FOLLOWS_MASTER=1 -DDUELL_TEST_MODE=1 -Ibuild/gen_test -
 mkdir -p build/gen_test build/gen
 python3 tools/gen_duell_multis.py build/gen/duell_multis.h >/dev/null || exit 1                 # release header: M01..M16
 python3 tools/gen_duell_multis.py build/gen_test/duell_multis.h --test-mode >/dev/null || exit 1   # test header: the same sixteen
+mkdir -p build/gen_off
+DUELL_TIDE=0 python3 tools/gen_duell_multis.py build/gen_off/duell_multis.h --test-mode >/dev/null || exit 1   # TIDE b6: the test header of plain DUELL (no M17, M18, records unpacked), for the DUELL_TIDE=0 builds (tideoff), first on their path
 python3 tools/gen_midi_map.py build/gen/midi_map_defaults.h >/dev/null || exit 1                          # the shipped MIDI map (docs/MIDI_MAP_DEFAULTS.csv): the release firmware's table
 python3 tools/gen_midi_map.py --csv tests/midimap_legacy.csv build/gen_test/midi_map_defaults.h >/dev/null || exit 1   # the test builds start on today's 24 CCs (tests/midimap_legacy.csv): the old MIDI tests run unchanged
 python3 tools/gen_midi_map.py --csv tests/midimap_legacy.csv --sym MIDI_MAP_LEGACY build/gen_test/midi_map_legacy.h >/dev/null || exit 1   # (tests/midimap_test.c: both lists by name)
@@ -575,7 +577,7 @@ for t in $want; do case $t in
              $CC -O1 -DOTA_SRC='"../'$OUT'/ota_base.c"' -o $OUT/ota_reuse_base tests/ota_reuse_test.c &&
              { $OUT/ota_reuse_test > $OUT/ota_reuse_new.txt; $OUT/ota_reuse_base > $OUT/ota_reuse_old.txt; cmp -s $OUT/ota_reuse_old.txt $OUT/ota_reuse_new.txt && echo "   PASS (identical: $(wc -l < $OUT/ota_reuse_new.txt) lines)" || { echo "   FAIL (differs from the separate-buffer ota.c)"; diff $OUT/ota_reuse_old.txt $OUT/ota_reuse_new.txt | head; fail=1; }; }
            else echo "   SKIP OTA_BASE not in this clone"; fi ;;
-  tideoff) CT="$CC -O1 -DDUELL_TIDE=0"; toff() { n=$1; s=$2; shift 2; $CT "-DFELUCCA_VERSION=\"$FV\"" $NP -o $OUT/off_$n tests/$s.c -lm || { echo "== tideoff_$n"; echo "   FAIL (does not compile with DUELL_TIDE=0)"; fail=1; return; }; run tideoff_$n $OUT/off_$n "$@"; }
+  tideoff) CT="cc -Ibuild/gen_off ${CC#cc } -O1 -DDUELL_TIDE=0"; toff() { n=$1; s=$2; shift 2; $CT "-DFELUCCA_VERSION=\"$FV\"" $NP -o $OUT/off_$n tests/$s.c -lm || { echo "== tideoff_$n"; echo "   FAIL (does not compile with DUELL_TIDE=0)"; fail=1; return; }; run tideoff_$n $OUT/off_$n "$@"; }
            NP=-DNPART=4 toff regress regress tests/golden.txt tests/cpu_baseline.txt; NP= ; toff perform perform_test; toff mode mode_test; toff select select_test; toff hang hang_test; toff menuproduct menu_product_test; toff bank bank_test tests/factory_bank_records.txt; toff cpusnap cpusnap_test; toff audio audio_test; toff ovlguard ovl_test ;;
   tidephrase) $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/tide_phrase_test tests/tide_phrase_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run tidephrase $OUT/tide_phrase_test ;;
   tidebuild) $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/tide_build_test tests/tide_build_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run tidebuild $OUT/tide_build_test &&

@@ -112,6 +112,7 @@ static const uint8_t *df_rec(uint32_t i, uint8_t *out)
     return dm_rec(i, out);
 }
 _Static_assert(DF_TEST_MULTIS == DUELL_TEST_MODE, "duell_multis.h was generated with another DUELL_TEST_MODE: run tools/gen_duell_multis.py (tools/build.py) with the same switch");
+_Static_assert(DF_TIDE == DUELL_TIDE, "duell_multis.h was generated with another DUELL_TIDE (TIDE: M17, M18, packed): run tools/gen_duell_multis.py with the same switch");
 _Static_assert(DF_N <= MU_SHOWN && MU_SHOWN <= 32u, "factory multis: slots below MU_SHOWN, the masks hold them");
 static uint32_t mu_fact;                          /* bit k: M(k + 1) is empty in flash and shows its factory multi (M17, M18: always) */
 #define MU_K(slot) ((uint32_t)(slot) % MU_SHOWN)  /* a slot number in range: a shown multi (0..MU_SHOWN - 1); MU_ROM(k) ones have no flash object */

@@ -177,4 +177,8 @@ static const uint8_t JRNY_CTX[171] = {
     212,   /* 14 26 SAND THROAT: -10.5 dB, 988 Hz */
     227,   /* 14 27 VOID SHIMMER: -8.6 dB, 619 Hz */
 };
+/* the list it was measured on: engine e's rows are JRNY_CTX_AT[e] .. JRNY_CTX_AT[e + 1] - 1 (tide_ui.c jctx_of: a sound past them,
+ * as in a test build with a sound added, has no row and is treated as unmeasured; host_tests.sh jrnyctx checks them against DS_ENG_AT) */
+#define JRNY_CTX_NE 15u
+static const uint16_t JRNY_CTX_AT[JRNY_CTX_NE + 1u] = {0, 36, 36, 54, 64, 64, 72, 87, 100, 100, 112, 112, 125, 143, 143, 171};
 #endif
