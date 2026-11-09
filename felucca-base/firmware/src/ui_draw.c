@@ -892,7 +892,7 @@ static uint8_t k1_after_r;
 #define AREA_LIST_PG() 0
 #endif
 #if DUELL_TIDE
-#define MROW_Y 186                                      /* b6 (owner 2026-11-09): the MORPH page's ROLL / AMOUNT row, rows 186 .. 201 (the footer canvas starts at Y_FOOT 202); the picture above it */
+#define MROW_Y (186 - TIDE_CARD_LIFT())                 /* b6 (owner 2026-11-09): the MORPH page's ROLL / AMOUNT row, its 16 rows just above the footer (two rows on this page, as on TIDE: TIDE_CARD_LIFT); the picture above it */
 #define MROW_H 16
 #endif
 static void area_rect(int32_t *y, int32_t *h)

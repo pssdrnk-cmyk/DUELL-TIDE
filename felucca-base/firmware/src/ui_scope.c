@@ -9,7 +9,7 @@
  *   3 trigger the ring smoothed (a 5-point kernel); rising crossings of its middle that come after a clear dip (the Pico scope's hysteresis), found to 1/16 of an entry; of those in the last 3.5
  *             periods the steepest (70 % of the steepest), and of those the one whose first 16 points match the last picture's best
  *   4 window  2 whole periods of the median crossing distance when it is steady (1 when 2 do not fit after a period of room for the crossing; 80 .. 400 entries), else the last one
- *   5 ridge   72 points (1 to 5 linear samples across each point's share of the window), smoothed over neighbours twice, the middle of the line's range taken out
+ *   5 ridge   72 points (1 to 5 linear samples across each point's share of the window: no other smoothing, so edges and corners stay), the middle of the line's range taken out
  *   6 gain    the peak of the window: a rise of more than 6 % at once, a fall of more than 12 % by 1/4 a step (a decaying note keeps a readable shape while it fades, a held note does not breathe), never under WL_FLOOR
  *             (-36 dB of the half scale: a quiet held note still shows its shape; quieter is smaller), a ridge under 2 px high is flat (a tail, not a line of dither)
  *   7 stack   the last WL_HN ridges, the newest in front (lowest), each older one a few rows higher, a little lower and evenly fainter; every ridge is ONE unbroken line across the
@@ -182,14 +182,8 @@ static int wl_pic(const wl_t *s, int32_t n, int32_t a, int8_t *nd, int16_t *nf, 
     rm = (rmx + rmn) * 8;                            /* AC coupled: the middle of the line's range over everything read (times 16) */
     for (p = 0; p < WL_NP; p++)
         v[p] = wl_pt(cq, w, p) - rm;
-    for (j = 0; j < 2; j++) {                        /* smoothed over the neighbours (3 points, twice: the Pico scope's finding) */
-        int32_t pv = v[0], nv;
-        for (p = 1; p + 1u < WL_NP; p++) {
-            nv = (pv + 2 * v[p] + v[p + 1u]) / 4;
-            pv = v[p];
-            v[p] = nv;
-        }
-    }
+    /* (b6, owner 2026-11-09 "do we over-smooth the curves": no smoothing over neighbours any more; each point is the mean of its share of the window (wl_pt) and the anti-aliased stroke
+     * draws it smooth, so a saw keeps its edge and a square its corners) */
     {   /* the ridge centred on its own range (a low note shows less than a cycle: centred on the whole read it would sit off-centre and use half the height) */
         int32_t lo = v[0], hi = v[0], c;
         for (p = 1; p < WL_NP; p++) {
@@ -226,19 +220,21 @@ static int32_t wl_rp(const wl_t *s, uint32_t r, uint32_t p)
     const int32_t q = s->rd[r][p];
     return (q + (q < 0 ? -2 : 2)) / 4;
 }
-/* a picture becomes the newest ridge (nd 0: a flat one), the others move back. A picture of about the size of the newest ridge (within 2 : 1) is blended half and half with it,
+/* a picture becomes the newest ridge (nd 0: a flat one), the others move back. A picture of about the size and shape of the newest ridge (within 2 : 1, a quarter apart) is blended half and half with it,
  * so that a busy sound's ridges follow on from each other (one shape, not scattered lines); a jump in size (an attack, a much softer note) is taken as it is */
 static void wl_push(wl_t *s, int8_t *nd)
 {
     uint32_t p;
     if (nd && s->hn && !(s->flat & 1u)) {
-        int32_t pn = 0, po = 0;
+        int32_t pn = 0, po = 0, sn = 0, sd = 0;
         for (p = 0; p < WL_NP; p++) {
-            int32_t a = nd[p] < 0 ? -nd[p] : nd[p], b = wl_rq(s, 0, p) < 0 ? -wl_rq(s, 0, p) : wl_rq(s, 0, p);
+            int32_t a = nd[p] < 0 ? -nd[p] : nd[p], b = wl_rq(s, 0, p) < 0 ? -wl_rq(s, 0, p) : wl_rq(s, 0, p), d = nd[p] - wl_rq(s, 0, p);
             pn = a > pn ? a : pn;
             po = b > po ? b : po;
+            sn += a;
+            sd += d < 0 ? -d : d;
         }
-        if (pn <= 2 * po && po <= 2 * pn)
+        if (pn <= 2 * po && po <= 2 * pn && 4 * sd <= sn)   /* (only a close shape, a quarter apart at most: a held note settles, a new one is shown as it is) */
             for (p = 0; p < WL_NP; p++) {
                 int32_t q = nd[p] + wl_rq(s, 0, p);
                 nd[p] = (int8_t)((q + (q > 0)) / 2);
