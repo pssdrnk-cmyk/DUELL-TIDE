@@ -29,7 +29,7 @@ b5 was never published: its changes ship inside b6 as one release (owner, 9 Nove
 | The bass keeps its loop and octave: no POLY, no VOIC octave on a bass part; POLY ends in ARC's breakdown ([B1](audits/2026-11-09/tide-morph/TASKS.md#b1)) | Planned: ~65 B, 1 B RAM |
 | CPU test of b6 on your FM-1 (the 16 multis, the drones, the notes step; MORPH on screen) | Done 9 November: at the notes step 76 no missed blocks, but one voice cut on M14 EERIE SIGNAL (busiest block 90 %, b5 83 %), so b6 keeps b5's 72. The drones M17 and M18: no missed blocks, no voices cut (70 %, 65 %) |
 
-b6 goes out after the CPU test and your OK on the FM-1. Room left on the b6 build (with the motion fix, its draw-cost fix and JOURNEY): 7,608 B of flash, RAM 69,624 of 73,728 B (4,104 B headroom against the 4,096 B rule).
+b6 goes out after the CPU test and your OK on the FM-1. Room left on the b6 build (with the motion fix, its draw-cost fix and JOURNEY): 7,576 B of flash, RAM 69,624 of 73,728 B (4,104 B headroom against the 4,096 B rule).
 
 ## Later, in order
 
