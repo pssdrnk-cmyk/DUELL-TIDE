@@ -5,10 +5,10 @@
  *   code         wvr_code / wl_dec: every value -4,095 .. 4,095 comes back within half a step, in order, 0 as 0
  *   trigger      the same signal at 10 starting offsets gives the same picture (within 1 px as drawn: the two sets of pixels, each to the nearest of the other; a saw, a resonant saw, a resonant saw at
  *                100.37 entries a cycle, a sine); the same signal as 10 pictures in a row: 0 changed points (all but the 100.37 one)
- *   beat         two sines 3 Hz apart: the height of the ridge swings at least 4 : 1 over 60 pictures
- *   soft         right after a loud sine, the same sine 26 dB down is drawn small (the gain falls by 1/4 a picture, not at once); a quiet held sine (-37 dB of the half scale) on its own still
+ *   beat         two sines 3 Hz apart: the height of the ridge swings at least 3 : 1 over 60 pictures (a dip under a pixel shows the last shape fading, wl_fade)
+ *   soft         right after a loud sine, the same sine 26 dB down is not blown up: the gain falls by 1/4 a picture, so it is under a pixel and the loud shape fades (half); a quiet held sine (-37 dB of the half scale) on its own still
  *                shows its shape at nearly the full height (the floor of the gain)
- *   silence      the part's silent flag: a flat ridge in front, the stack runs out (all flat after WL_HN pictures); a ring of zeros, the tap's dither: one flat ridge
+ *   silence      the part's silent flag: the front fades (half its height a picture), the stack runs out (all flat a few pictures after WL_HN); a ring of zeros, the tap's dither: one flat ridge
  *   stack        a held note builds up WL_HN ridges, no more
  *   wrap         the ring's free-running counter past 2^32 gives the picture it gives below it
  *   torn         the writer moves on past what the ring leaves between the read and the second look at the counter: once = one retry and a picture, twice = the old picture stays
@@ -270,8 +270,8 @@ int main(void)
     }
     {
         char w[160];
-        snprintf(w, sizeof w, "beat: two sines 3 Hz apart over 60 pictures: the height swings %d : %d px (need 4 : 1)", hmax, hmin);
-        ok(w, hmax >= 4 * (hmin ? hmin : 1));
+        snprintf(w, sizeof w, "beat: two sines 3 Hz apart over 60 pictures: the height swings %d : %d px (need 3 : 1)", hmax, hmin);
+        ok(w, hmax >= 3 * (hmin ? hmin : 1));
     }
 
     /* soft against loud: the next picture (the gain falls by 1/4 a picture) */
@@ -286,8 +286,8 @@ int main(void)
         wl_step(0, HS);
         {
             char w[160];
-            snprintf(w, sizeof w, "soft: right after a loud sine, the same 26 dB down is drawn %d px, the loud one %d px (not blown up)", height(&wl[0]), h1);
-            ok(w, height(&wl[0]) * 3 < h1);
+            snprintf(w, sizeof w, "soft: right after a loud sine, the same 26 dB down is drawn %d px, the loud one %d px (not blown up: the loud shape fades, half)", height(&wl[0]), h1);
+            ok(w, height(&wl[0]) * 2 <= h1);
         }
     }
     /* quiet: a held sine at -37 dB of the half scale (+-60 of the tap's 4,096 steps: under two of the old 8-bit tap's steps), on its own: its shape at the gain's floor */
@@ -315,16 +315,19 @@ int main(void)
         wl_step(0, HS);
     }
     ok("stack: a held note builds up WL_HN ridges, no more, none flat", wl[0].hn == WL_HN && wl[0].flat == 0);
-    wv_sil[0] = 1;
-    wl_step(0, HS);
     {
-        uint32_t i, flat = 1;
-        for (i = 0; i < WL_NP; i++)
-            flat &= front_of(0)[i] == 0;
-        ok("silence (the part's flag): a flat ridge in front, the older ridges move back", flat && (wl[0].flat & 1u) && !(wl[0].flat & 2u) && height(&wl[0]) == 0);
-        for (i = 1; i < WL_HN; i++)
+        int32_t h0 = height(&wl[0]);
+        uint32_t i;
+        wv_sil[0] = 1;
+        wl_step(0, HS);
+        {
+            char w[160];
+            snprintf(w, sizeof w, "silence (the part's flag): the front fades to half its height (%d px of %d), the older ridges move back", height(&wl[0]), h0);
+            ok(w, !(wl[0].flat & 3u) && height(&wl[0]) * 2 <= h0 + 1 && height(&wl[0]) * 2 >= h0 - 2);
+        }
+        for (i = 1; i < WL_HN + 4u; i++)
             wl_step(0, HS);
-        ok("silence (the part's flag): after WL_HN pictures the stack has run out, every ridge flat", wl[0].flat == (uint16_t)((1u << WL_HN) - 1u));
+        ok("silence (the part's flag): a few pictures later the stack has run out, every ridge flat", wl[0].flat == (uint16_t)((1u << WL_HN) - 1u));
     }
     wv_sil[0] = 0;
     sig_m = zero;
