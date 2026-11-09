@@ -9,6 +9,7 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 
 ## 1.0.0-b7 (in progress)
 
+- A GLIDE started with BOTH parts selected now moves each part from where its own MORPH fader is (before, the other part jumped to the selected part's place at once); AUTO TIDE draws each part's own path.
 - Loading a factory multi leaves TIDE SETTINGS' ROLL ARP, ROLL PITCH and ROLL TYPE as you set them (before, they went OFF / OFF / SMART and that was saved).
 
 ## 1.0.0-b6
