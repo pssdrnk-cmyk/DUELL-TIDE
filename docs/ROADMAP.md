@@ -10,14 +10,14 @@ b5 comes first; b6 is prepared alongside while the FM-1 is offline (owner, 9 Nov
 
 | What | State |
 |---|---|
-| The MORPH page as a live wave picture: smooth lines, the same lines lying flat at rest | Ready: checked in the emulator; yours to judge on the FM-1 |
-| The MORPH page layout: bigger waves, a slim ROLL / AMOUNT row, both parts' patches in the footer like TIDE SETTINGS and AUTO TIDE, real wave shapes | Ready: checked in the emulator; yours to judge on the FM-1 |
+| The MORPH page's waves move like the first WAVE LAB stack again (many lines scrolling back evenly, full height, smooth), at today's size | In progress: the owner, 9 November: "the animation quality got worse, the front lines moves a lot and the ones behind barely"; "the initial version looked quite cool when we called it wave lab" |
+| MORPH page: an older saw line no longer crosses the newest one on note changes | In progress: goes into b5 with the motion fix |
 | PART 1 / PART 2 / BOTH on HOME's pages | Ready |
 | The new flashing screen | Ready |
 | More free memory (EQ design moved out of fast RAM, 1,068 B) | Ready |
-| CPU test on your FM-1 with the wave page on screen | Passed: no missed blocks, busiest block 84 % (b4: 84 %) |
+| CPU test on your FM-1 with the wave page on screen | Passed on the 898b1f6 layout (9 November, before the motion fix): no missed blocks, no voices cut with MORPH on screen, busiest block 83 % (b4: 84 %) |
 
-b5 goes out when you like the MORPH page on your FM-1. Room left on the b5 build: 4,556 B of flash, RAM 68,968 of 73,728 B.
+b5 goes out after this fix and your OK on the FM-1. Room left on the b5 build: 4,556 B of flash, RAM 68,968 of 73,728 B.
 
 ## Next: 1.0.0-b6 (prepared while b5 waits for the FM-1; released after b5)
 
@@ -28,7 +28,6 @@ b5 goes out when you like the MORPH page on your FM-1. Room left on the b5 build
 | Pattern notes stay in a sensible range (roles T4) | Ready |
 | Two drone scenes built in (M17 DUNE HORN, M18 VOID DEEP, played as STYLE DRONE; [brief](audits/2026-11-09/drones/TASKS.md)) | Built, waits for the FM-1 test after b5 |
 | Give back the notes the first beta's CPU fix took (most factory multis play 1 or 2 notes fewer per part since b1; b4's ease ladder now catches the peaks) | Built, waits for the FM-1 test after b5; the test picks the step 76 / 80 / 84 |
-| MORPH page: an older saw line no longer crosses the newest one on note changes | Built, waits for the FM-1 test after b5 |
 | JOURNEY's crossing dip lasts a few bars, not 90 % of every trip ([X1](audits/2026-11-09/tide-morph/TASKS.md#x1); [audit 9 November](audits/2026-11-09/tide-morph/REPORT.md)) | Planned: ~60 B, 8 B RAM; before/after with `tide_long` |
 | JOURNEY doesn't jump the sound when started with the fader away from A ([J2](audits/2026-11-09/tide-morph/TASKS.md#j2)) | Planned: ~16 B, main loop |
 | TIDE's louder peak and softer breakdown reach ARP SEQ parts, M02 included; accents kept ([D1](audits/2026-11-09/tide-morph/TASKS.md#d1)) | Planned: ~60 B, one multiply per arp step |
