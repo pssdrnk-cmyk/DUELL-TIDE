@@ -2,7 +2,7 @@
 
 Updated 9 November 2026. What is already built is in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md). Older roadmaps are in [history/](history/); the audits of 8 November in [audits/2026-11-08/](audits/2026-11-08/).
 
-State words on this page: Released in bN, Ready (built and tested, waiting for a release), In progress, Next, Later, Waiting on you.
+State words on this page: Released in bN, Ready (built and tested, waiting for a release), Built (waits for the FM-1 test), In progress, Planned (brief written, not built), Next, Later, Waiting on you.
 
 ## Now: 1.0.0-b5
 
