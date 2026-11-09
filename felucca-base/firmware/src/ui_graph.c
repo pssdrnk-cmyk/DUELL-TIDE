@@ -2556,12 +2556,12 @@ static void mv_reset(void)
  * the unit a pass that sends a picture takes ~44 ms of SPI and the others 15, so the pictures came 89 ms apart and any longer pass moved one. A pass that runs late moves its
  * picture only (the next counts from it: one is skipped, never two in a row); main.c ends the loop's 15 ms wait when one is due, so its pass starts on time */
 #define MV_MS 60u
-static uint32_t mv_n, mv_t;                         /* pictures so far; fm1_ms at the last */
-static int mv_due(void) { return fm1_ms - mv_t >= MV_MS; }
+static uint32_t mv_n, mv_last_ms;                         /* pictures so far; fm1_ms at the last */
+static int mv_due(void) { return fm1_ms - mv_last_ms >= MV_MS; }
 static void mv_clock(void)                          /* once a pass (ui_draw), before the page is drawn */
 {
     if (mv_due()) {
-        mv_t = fm1_ms;
+        mv_last_ms = fm1_ms;
         mv_n++;
     }
 }
