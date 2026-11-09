@@ -892,8 +892,9 @@ static int32_t cv_free_text(int32_t x, int32_t y, const aafont_t *f, const char 
 }
 
 /* ---------------------------------------------------------- keycaps --- */
-/* a pre-rendered pill (tools/gen_aa_keycaps.py): nibble 0 outside, 1..4 the edge over `under`, 5 the fill,
- * 6..15 the label over the fill; the 16 colours per (under, fill, ink) are cached like the text ramps */
+/* a pre-rendered pill (tools/gen_aa_keycaps.py): value 0 outside, 1..4 the edge over `under`, 15 the fill, 6..14 the
+ * label over the fill and 5 the full label (the two swapped in the data, so the fill makes runs: Huffman-coded in a
+ * face's code, KC_HC); the 16 colours per (under, fill, ink) are cached like the text ramps */
 #define NKRAMP 4u
 static struct {
     uint16_t key[NKRAMP][3], v[NKRAMP][16];
@@ -924,8 +925,9 @@ static const uint16_t *kc_ramp(uint16_t under, uint16_t fill, uint16_t ink)
     v = kr.v[i];
     v[0] = swap16(under);
     for (a = 1; a < 16u; a++) {
-        int32_t p = a < 5u ? (int32_t)a * 20 : (int32_t)(a - 5u) * 10;
-        v[a] = swap16(a < 5u ? ux_mix(under, fill, p) : ux_mix(fill, ink, p));
+        uint32_t b = a == 5u ? 15u : a == 15u ? 5u : a;         /* (the data's 5 and 15 swapped) */
+        int32_t p = b < 5u ? (int32_t)b * 20 : (int32_t)(b - 5u) * 10;
+        v[a] = swap16(b < 5u ? ux_mix(under, fill, p) : ux_mix(fill, ink, p));
     }
     return v;
 }
@@ -944,7 +946,7 @@ static int32_t cv_keycap(int32_t x, int32_t y, uint32_t id, uint16_t fill, uint1
         return x + 12;
     }
     rv = kc_ramp(under, fill, ink);
-    cv_alpha(x, y, k->w, KC_H, KC_DATA + k->off, rv);
+    cv_alpha_hc(x, y, k->w, KC_H, KC_DATA + k->off, KC_HC, rv);
     if (x < 0 || x + k->w > (int32_t)cv_w || y + cv_oy < 0 || y + KC_H + cv_oy > (int32_t)cv_h)
         GFX_HOOK_TEXT(x, y + cv_oy, x + k->w, y + KC_H + cv_oy, k->label, 6u);      /* cut by the canvas */
     else

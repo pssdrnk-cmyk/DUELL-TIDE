@@ -51,6 +51,7 @@ PHASES, PHASES_L = 4, 2                # horizontal phases per glyph (aa_raster.
 # faces use the existing lossless decoder; glyph pixels and metrics stay exact.
 PLAIN = []             # (filled by main(): every face of the barlow preset is PLAIN: as the design pictures set text, no kerning, no OpenType features)
 HUFF = [("S", "M", "L", "T", "D", "N", "X", "B", "P")]
+CODES = {}             # each Huffman face's code (emit), for face_code
 # L draws only "FELUCCA", the UPDATE MODE countdown digit, the calibration's control names (panel.c
 # B_NAME / E_NAME) (until DUELL 0.2.2 also MENU > LARGE's card values and page titles: some glyphs of the set below were only for those, a later size trim): a sparse face of those glyphs, the
 # space as its range and the rest as extras
@@ -163,6 +164,60 @@ def huff_pack(glyph_values):
     return hc, out
 
 
+def huff_pack_with(hc, glyph_values):
+    """[alpha values per glyph] -> [bytes per glyph] in an existing code hc (another face's AF_<N>_HC; the keycaps,
+    tools/gen_aa_keycaps.py): each run of zeros or 15s split into the code's run symbols at the fewest bits; a value
+    the code has no symbol for is an error"""
+    order, ln = hc[HC_MAXLEN:], []
+    for n in range(1, HC_MAXLEN + 1):
+        ln += [n] * hc[n - 1]
+    length, code, c, prev = dict(zip(order, ln)), {}, 0, ln[0]
+    for s in order:                                    # canonical, as huff_pack
+        c <<= length[s] - prev
+        prev = length[s]
+        code[s] = c
+        c += 1
+    out = []
+    for v in glyph_values:
+        syms, i = [], 0
+        while i < len(v):
+            j = i + 1
+            if v[i] in (0, 15):
+                while j < len(v) and v[j] == v[i]:
+                    j += 1
+                best = [(0, [])] + [None] * (j - i)     # fewest bits for the first a values of the run
+                for a in range(1, j - i + 1):
+                    for r in range(1, min(16, a) + 1):
+                        s = (r - 1) << 4 | v[i]
+                        if s in length and best[a - r] and (not best[a] or best[a - r][0] + length[s] < best[a][0]):
+                            best[a] = (best[a - r][0] + length[s], best[a - r][1] + [s])
+                assert best[j - i], f"a run of {j - i} x {v[i]} has no symbols in the code"
+                syms += best[j - i][1]
+            else:
+                assert v[i] in length, f"value {v[i]} has no symbol in the code"
+                syms.append(v[i])
+            i = j
+        acc, nb, b = 0, 0, bytearray()
+        for s in syms:
+            acc, nb = (acc << length[s]) | code[s], nb + length[s]
+            while nb >= 8:
+                nb -= 8
+                b.append((acc >> nb) & 255)
+        if nb:
+            b.append((acc << (8 - nb)) & 255)
+        out.append(bytes(b))
+    return out
+
+
+def face_code(name):
+    """the Huffman code (AF_<name>_HC) of a face of the barlow preset, as main() makes it with build.py's arguments"""
+    face = next(f for f in preset("barlow") if f[0] == name)
+    if name not in PLAIN:
+        PLAIN.append(name)
+    emit(face, 0.0, 1.0, 1)
+    return CODES[name]
+
+
 def huff_unpack(hc, data, n):
     """the decoder (gfx.c cv_alpha_hc), for the self-check: n values from the bit stream data"""
     out, pos = [], 0
@@ -206,6 +261,7 @@ def emit(face, tracking, gamma, kern_min):
                 v += [byte >> 4, byte & 15]
             vals.append(v[:e[4] * e[5]])
         hc, packed = huff_pack(vals)
+        CODES[name] = hc
         data, newoff = bytearray(), {}
         for off, v, b in zip(offs, vals, packed):
             assert huff_unpack(hc, b, len(v)) == v

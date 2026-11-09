@@ -2090,7 +2090,27 @@ static void align_sweeps(void)
     if (nul) fclose(nul);
 }
 
-/* the keycaps' labels in their pills (tools/gen_aa_keycaps.py), from the data: the label's ink (nibbles 6..15) in the
+/* a pill's values as tools/gen_aa_keycaps.py made them (0 outside, 1..4 edge, 5 fill, 6..15 label), from its bit stream in
+ * face KC_HC's Huffman code (read as gen_aa_font.py huff_unpack; the data's 5 and 15 swapped back) */
+static void kc_vals(const kc_t *k, uint8_t *out)
+{
+    const uint8_t *d = KC_DATA + k->off, *hc = KC_HC;
+    uint32_t n = 0, pos = 0, total = (uint32_t)k->w * KC_H;
+    while (n < total) {
+        uint32_t code = 0, first = 0, idx = 0, len, s, r;
+        for (len = 0; len < 15u; len++) {
+            code |= (d[pos >> 3] >> (7u - (pos & 7u))) & 1u;
+            pos++;
+            if (code - first < hc[len]) break;
+            idx += hc[len];
+            first = (first + hc[len]) << 1;
+            code <<= 1;
+        }
+        s = hc[15u + idx + code - first];
+        for (r = (s >> 4) + 1u; r-- && n < total;) out[n++] = (uint8_t)((s & 15u) == 5u ? 15u : (s & 15u) == 15u ? 5u : s & 15u);
+    }
+}
+/* the keycaps' labels in their pills (tools/gen_aa_keycaps.py), from the data: the label's ink (values 6..15) in the
  * pill (KC_H rows, its width) */
 static void al_keycaps(void)
 {
@@ -2100,9 +2120,11 @@ static void al_keycaps(void)
         const kc_t *k = &KC[id];
         int32_t x, y, x0 = 999, y0 = 999, x1 = -1, y1 = -1, w = k->w;
         uint32_t i = 0;
+        static uint8_t v[256u * KC_H];
+        kc_vals(k, v);
         for (y = 0; y < KC_H; y++)
             for (x = 0; x < w; x++, i++)
-                if (((KC_DATA[k->off + (i >> 1)] >> ((i & 1u) ? 0 : 4)) & 15u) >= 6u) {
+                if (v[i] >= 6u) {
                     if (x < x0) x0 = x;
                     if (y < y0) y0 = y;
                     if (x + 1 > x1) x1 = x + 1;
@@ -2112,6 +2134,37 @@ static void al_keycaps(void)
         if (al_rep) fprintf(al_rep, "keycap %-8s w %2d  ink x %2d..%2d y %d..%d  across %+.1f up/down %+.1f\n", k->label, w, x0, x1, y0, y1,
                             ((x0 + x1) - w) / 2.0, ((y0 + y1) - KC_H) / 2.0);
     }
+}
+/* b6 SP2: every keycap pill (KC_COUNT, the knob dots too) in six states (the fills KEY, DIM and ACCENT over BG and over MID) and
+ * five places (whole, cut by each canvas edge) in every palette: a hash of the pixels, which must be KC_SWEEP_HASH, b5's (the
+ * pills as raw nibbles, cv_alpha) now that they are Huffman-coded (cv_alpha_hc). UI_KC_DUMP=FILE writes the canvases raw */
+#define KC_SWEEP_HASH 0x1924f365u
+static uint32_t kc_sweep(void)
+{
+    static const int16_t X[5] = {2, -5, 0, 2, 2}, Y[5] = {2, 2, 2, -4, 8};
+    FILE *f = getenv("UI_KC_DUMP") ? fopen(getenv("UI_KC_DUMP"), "wb") : 0;
+    const uint32_t p0 = settings.palette, ink0 = nink;
+    const int32_t oy0 = cv_oy;
+    uint32_t h = 2166136261u, p, id, s, c, i;
+    cv_oy = 0;
+    for (p = 0; p < NPALETTES; p++) {
+        pal(p);
+        for (id = 0; id < KC_COUNT; id++)
+            for (s = 0; s < 6u; s++)
+                for (c = 0; c < 5u; c++) {
+                    const uint16_t fill = s % 3u == 0 ? T_KEY : s % 3u == 1 ? T_DIM : T_ACCENT, under = s < 3u ? T_BG : T_MID;
+                    cv_begin(64, KC_H + 4, under);
+                    cv_keycap(c == 2u ? 64 - kc_w(id) + 5 : X[c], Y[c], id, fill, T_KINK, under);
+                    for (i = 0; i < cv_w * cv_h; i++) h = (h ^ cv_px[i]) * 16777619u;
+                    if (f) fwrite(cv_px, 2, cv_w * cv_h, f);
+                    nscr = npend = 0;
+                }
+    }
+    if (f) fclose(f);
+    nink = ink0;                                    /* (a state no page draws may put an ink on its own colour) */
+    cv_oy = oy0;
+    pal(p0);
+    return h;
 }
 static void al_table(void)
 {
@@ -2964,6 +3017,11 @@ int main(int argc, char **argv)
             }
         }
         roll_cost();
+    }
+    {
+        const uint32_t h = kc_sweep();
+        printf("ui_render: keycap pills: %u x 6 states x 5 places x %u palettes, hash %08x (b5's %08x)\n", (unsigned)KC_COUNT, (unsigned)NPALETTES, h, KC_SWEEP_HASH);
+        if (h != KC_SWEEP_HASH) { fprintf(stderr, "ui_render: the keycap pills are not b5's pixels (hash %08x, want %08x)\n", h, KC_SWEEP_HASH); nfind++; }
     }
     al_off = 0;
     al_keycaps();
