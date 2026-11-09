@@ -692,8 +692,9 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         if (na < 2u || a[0] > 2u || a[1] >= MU_SHOWN)
             return;
         if (a[0] == 1u) {
-            if (ed_flash_stop() || project_save(a[1]))
-                return;                              /* the legacy reply has no failure bit: do not confirm a failed save */
+            if ((!MU_ROM(a[1]) && ed_flash_stop()) || project_save(a[1]))
+                return;                              /* the legacy reply has no failure bit: do not confirm a failed save (M17, M18: refused
+                                                      * by project_save before anything stops: playback goes on) */
         }
         else if (a[0] == 0u)
             project_load(a[1]);
