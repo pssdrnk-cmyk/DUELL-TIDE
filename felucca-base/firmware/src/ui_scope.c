@@ -422,57 +422,69 @@ static int32_t wl_fit(int32_t h, int32_t *a, int32_t *st)
     *st = room;
     return n;
 }
-/* pixel (x, y) blended toward c by pct % (the canvas is 16-bit, byte-swapped: gfx.c swap16) */
-static void wl_blend(int32_t x, int32_t y, uint16_t c, int32_t pct)
-{
-    uint16_t *q;
-    y += cv_oy;
-    if ((uint32_t)x >= cv_w || (uint32_t)y >= cv_h || pct <= 0)
-        return;
-    q = &cv_px[(uint32_t)y * cv_w + (uint32_t)x];
-    *q = swap16(ux_mix(swap16(*q), c, pct > 100 ? 100 : pct));
-}
-/* one column x of an anti-aliased stroke: the line passes from ya to yb (1/16 px) across the column, w16 thick (1/16 px), at strength pct %; every column gets its ink, so the stroke
- * is one connected line at any slope (a steep part fills the rows between), the edges shaded by coverage */
-static void wl_col(int32_t x, int32_t ya, int32_t yb, int32_t w16, uint16_t c, int32_t pct, int32_t ymin, int32_t ymax)
+/* one column x of an anti-aliased stroke: the line passes from ya to yb (1/16 px) across the column, w16 thick (1/16 px); every column gets its ink, so the stroke is one connected line
+ * at any slope (a steep part fills the rows between), the edges shaded by coverage. A pixel is blended toward the stroke's colour c by pct * its coverage (1/16 .. 16/16) %: from tab
+ * (tab[n]: the canvas background bg blended by n/16, made once a stroke) where it is still the background, else mixed (ux_mix: the same colour either way, three divisions less) */
+static void wl_col(int32_t x, int32_t ya, int32_t yb, int32_t w16, uint16_t c, int32_t pct, int32_t ymin, int32_t ymax, const uint16_t *tab, uint16_t bg)
 {
     const int32_t top = (ya < yb ? ya : yb) - w16 / 2, bot = (ya < yb ? yb : ya) + w16 / 2;   /* the span the stroke covers, 1/16 px */
     int32_t row;
+    if ((uint32_t)x >= cv_w)
+        return;
     for (row = top >> 4; row <= bot >> 4; row++) {
-        const int32_t r0 = row * 16 > top ? row * 16 : top, r1 = row * 16 + 16 < bot ? row * 16 + 16 : bot;
-        if (row < ymin || row > ymax || r1 <= r0)
+        const int32_t r0 = row * 16 > top ? row * 16 : top, r1 = row * 16 + 16 < bot ? row * 16 + 16 : bot, y = row + cv_oy, m = pct * (r1 - r0) / 16;
+        uint16_t *q;
+        if (row < ymin || row > ymax || r1 <= r0 || (uint32_t)y >= cv_h || m <= 0)
             continue;
-        wl_blend(x, row, c, pct * (r1 - r0) / 16);
+        q = &cv_px[(uint32_t)y * cv_w + (uint32_t)x];
+        *q = *q == bg ? tab[r1 - r0] : swap16(ux_mix(swap16(*q), c, m > 100 ? 100 : m));
     }
 }
-/* point p of ridge r as drawn, 1/16 px (yb: each ridge's middle; sh: bit r, ridge r drawn with its shape, else flat in its place). No older ridge is laid flat for being unlike
- * the front or crossing it (b6: f162bdc's rules held the stack still behind a moving front); what b6 W1 kept from crossing is kept here: a shaped ridge is never drawn under a newer
- * shaped one, it rides on it (just above its stroke: 22/16 px over the front, 1 px over an older one) where it would cross; elsewhere its shape is its own. A flat one is drawn flat */
-static int32_t wl_y(const wl_t *s, int32_t r, uint32_t p, uint32_t sh, const int32_t *yb)
+/* a plain 1-px line from (x0, ya) to (x1, yb), whole rows (Bresenham; WAVE LAB drew its ridges so), in the byte-swapped colour cs, rows ymin .. ymax */
+static void wl_ln(int32_t x0, int32_t ya, int32_t x1, int32_t yb, uint16_t cs, int32_t ymin, int32_t ymax)
 {
-    int32_t i, y = 0, lim = 1 << 28;
-    for (i = 0; i <= r; i++) {
-        if (!((sh >> i) & 1u)) {
-            y = yb[i];
-            continue;
+    const int32_t dx = x1 > x0 ? x1 - x0 : x0 - x1, sx = x0 < x1 ? 1 : -1, dy = yb > ya ? ya - yb : yb - ya, sy = ya < yb ? 1 : -1;
+    int32_t err = dx + dy;
+    for (;;) {
+        const int32_t y = ya + cv_oy;
+        if (ya >= ymin && ya <= ymax && (uint32_t)x0 < cv_w && (uint32_t)y < cv_h)
+            cv_px[(uint32_t)y * cv_w + (uint32_t)x0] = cs;
+        if (x0 == x1 && ya == yb)
+            break;
+        {
+            const int32_t e2 = 2 * err;
+            if (e2 >= dy) {
+                err += dy;
+                x0 += sx;
+            }
+            if (e2 <= dx) {
+                err += dx;
+                ya += sy;
+            }
         }
-        y = yb[i] + wl_rq(s, (uint32_t)i, p) * 4;
-        y = y < lim ? y : lim;
-        lim = y - (i ? 16 : 22);
     }
-    return y;
 }
 /* part k's picture in rows y0 .. y1 - 1 (WAVE LAB's WAVE STACK): the ridges, the oldest first and the newest (the front, at the foot) last, each about WL_STEP rows higher than the one
  * after it and as tall as the front; every ridge is ONE smooth anti-aliased stroke across the full width, nothing hidden (owner 2026-11-09: "the lines are falling apart"). Colour: the
- * part's, along its A..B gradient at the fader (mv_col), toward the background from the front to the back (WAVE LAB's fade); the front about 2 px thick, the others 1 px. The part the
+ * part's, along its A..B gradient at the fader (mv_col), toward the background from the front to the back (WAVE LAB's fade); the front an anti-aliased stroke about 2 px thick, the
+ * others plain 1-px lines as WAVE LAB drew them (b6, on the FM-1: "the new UI is definitely laggy": twelve anti-aliased strokes a part cost more than the stack is worth). The part the
  * controls act on (ui_part_hot) in full colour with a bar at the half's edge, the other dimmed. A tail fades its shape (wl_fade); a ridge that has faded flat, a lane not filled yet and
- * silence are drawn as straight lines in their place with the same colours, so every lane is always there (resting flat, or moving) */
+ * silence are drawn as straight lines in their place with the same colours, so every lane is always there (resting flat, or moving).
+ * No older ridge is laid flat for being unlike the front or crossing it (b6: f162bdc's rules held the stack still behind a moving front); what b6 W1 kept from crossing is kept here: a
+ * shaped ridge is never drawn under a newer shaped one, it rides on it (just above its stroke: 22/16 px over the front, 1 px over an older one) where it would cross; elsewhere its shape
+ * is its own. A flat one is drawn flat.
+ * Cost (b6, owner on the FM-1: "the new UI is definitely laggy"): point by point, every ridge's y in one pass from the front back (each one's bound is the newer ones'), then that
+ * segment of every ridge, the oldest first: each pixel is blended in the same order as ridge by ridge, so the picture is the same, without walking the newer ridges again for every
+ * ridge and point; and the front's blends of the background from a table */
 static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
 {
     const wl_t *s = &wl[k];
     const int hot = ui_part_hot(k);
-    const int32_t pct = (int32_t)morph_fader_of(k) * 100 / 127;
-    int32_t a, st, nf = wl_fit(y1 - y0, &a, &st), nr = s->hn < (uint32_t)nf ? (int32_t)s->hn : nf, yf = y1 - 2 - a, r, p, yb[WL_HN];
+    const int32_t pct = (int32_t)morph_fader_of(k) * 100 / 127, str = hot ? 100 : 55;
+    const uint16_t bg = swap16(T_BG);
+    int32_t a, st, nf = wl_fit(y1 - y0, &a, &st), nr = s->hn < (uint32_t)nf ? (int32_t)s->hn : nf, yf = y1 - 2 - a, r, p, n, px = WL_X0;
+    int32_t yb[WL_HN], py[WL_HN];
+    uint16_t col[WL_HN], lc[WL_HN], ft[17];          /* (each ridge's colour; an older one's as drawn, byte-swapped; the front's blends of the background, ft[n]: by n/16) */
     uint32_t shp = 0;                                /* (bit r: ridge r drawn with its shape) */
     if (y1 - y0 < 8)
         return;
@@ -483,28 +495,44 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
     for (r = 0; r < nf; r++) {
         yb[r] = yf * 16 + 8 - (nf > 1 ? st * 16 * r / (nf - 1) : 0);   /* (the ridge's middle, 1/16 px, spread over the lane) */
         shp |= (uint32_t)(r < nr && !((s->flat >> r) & 1u)) << r;
+        col[r] = mv_col(k, pct, r * 90 / nf);        /* (WAVE LAB's fade toward the back) */
+        lc[r] = swap16(ux_mix(T_BG, col[r], str));
     }
-    for (r = nf - 1; r >= 0; r--) {
-        const uint16_t col = mv_col(k, pct, r * 90 / nf);   /* (WAVE LAB's fade toward the back) */
-        const int32_t str = hot ? 100 : 55, w16 = !r ? 28 : 16;
-        int32_t py = yb[r], px = WL_X0;
-        for (p = 0; p < WL_NP; p++) {
-            const int32_t x = WL_X0 + (int32_t)p * (WL_X1 - WL_X0) / (int32_t)(WL_NP - 1u), y = wl_y(s, r, (uint32_t)p, shp, yb);
+    for (n = 1; n <= 16; n++) {
+        const int32_t m = str * n / 16;
+        ft[n] = swap16(ux_mix(T_BG, col[0], m > 100 ? 100 : m));
+    }
+    for (p = 0; p < WL_NP; p++) {
+        const int32_t x = WL_X0 + (int32_t)p * (WL_X1 - WL_X0) / (int32_t)(WL_NP - 1u);
+        int32_t y[WL_HN], lim = 1 << 28;
+        for (r = 0; r < nf; r++) {                   /* (the points as drawn, the front first: each shaped one at most at the bound the newer shaped ones leave) */
+            if (!((shp >> r) & 1u)) {
+                y[r] = yb[r];
+                continue;
+            }
+            y[r] = yb[r] + wl_rq(s, (uint32_t)r, (uint32_t)p) * 4;
+            y[r] = y[r] < lim ? y[r] : lim;
+            lim = y[r] - (r ? 16 : 22);
+        }
+        for (r = nf - 1; r >= 0; r--) {              /* (this segment of every ridge, the oldest first, the front over the rest) */
+            const int32_t w16 = !r ? 28 : 16;
 #ifdef WL_TEST_Y
-            WL_TEST_Y(k, r, p, y);                   /* (host probe only: the point as drawn) */
+            WL_TEST_Y(k, r, p, y[r]);                /* (host probe only: the point as drawn) */
 #endif
-            if (p && x > px) {                       /* (the columns of the segment from the last point, each from its left edge to its right) */
-                const int32_t d2 = 2 * (x - px);
+            if (r)                                   /* (an older line: plain, whole rows) */
+                wl_ln(p ? px : x, (p ? py[r] : y[r]) >> 4, x, y[r] >> 4, lc[r], y0 + 1, y1 - 1);
+            else if (p && x > px) {                  /* (the front: the columns of the segment from the last point, each from its left edge to its right) */
+                const int32_t d2 = 2 * (x - px), dy = y[r] - py[r];
                 int32_t c;
                 for (c = px + 1; c <= x; c++) {
                     const int32_t e = 2 * (c - px) + 1;
-                    wl_col(c, py + (y - py) * (2 * (c - px) - 1) / d2, py + (y - py) * (e < d2 ? e : d2) / d2, w16, col, str, y0 + 1, y1 - 1);
+                    wl_col(c, py[r] + dy * (2 * (c - px) - 1) / d2, py[r] + dy * (e < d2 ? e : d2) / d2, w16, col[r], str, y0 + 1, y1 - 1, ft, bg);
                 }
             } else if (!p)
-                wl_col(x, y, y, w16, col, str, y0 + 1, y1 - 1);
-            px = x;
-            py = y;
+                wl_col(x, y[r], y[r], w16, col[r], str, y0 + 1, y1 - 1, ft, bg);
+            py[r] = y[r];
         }
+        px = x;
     }
     ui_part_tag(k, (y0 + y1) / 2, hot);              /* (over the lines' left edge) */
 }
