@@ -153,7 +153,7 @@ static void test_wait_off_paused(void)
     }
 }
 
-/* a BOTH-parts glide launched from part 1: a hand on part 2's fader takes the lane over too */
+/* a BOTH-parts glide launched from part 1: a hand on part 2's fader takes part 2 over; part 1 goes on (MR7) */
 static void test_both_takeover(void)
 {
     uint32_t f0;
@@ -170,9 +170,9 @@ static void test_both_takeover(void)
     run(32);
     f0 = morph_fader_of(0);
     run(2000);
-    CHECK("both:   part 2's hand stops the lane", !(gl.on & (1u << GT_SOUND)));
+    CHECK("both:   part 2's hand holds part 2 only", (gl.on & (1u << GT_SOUND)) && gl.hw[GT_SOUND] == 2u);
     CHECK("both:   part 2 stays where the hand left it", morph_fader_of(1) == 100u);
-    CHECK("both:   part 1 stays where it stopped", morph_fader_of(0) == f0 && f0 < 127u);
+    CHECK("both:   part 1 goes on", morph_fader_of(0) > f0);
     gl.on = gl.armed = 0;
     transport_req = 2u; run(48);
 }
@@ -270,13 +270,13 @@ static void test_takeover_symmetric(void)
                 if (lane == GT_SOUND) morph_do(MQ_FADER, 1u << other, 100u); else seqm_set_fader(other, 100u);
                 run(32);
                 still = GLIDE_LANE[lane].get(pi);
-                snprintf(label, sizeof label, "%s%s: the touched lane stops", NAME[pi][lane], held ? " (held)" : "");
-                CHECK(label, !((gl.on >> lane) & 1u));
+                snprintf(label, sizeof label, "%s%s: the touched part waits, the launcher's not", NAME[pi][lane], held ? " (held)" : "");
+                CHECK(label, ((gl.on >> lane) & 1u) && gl.hw[lane] == (1u << other));
                 snprintf(label, sizeof label, "%s%s:   the other lane goes on", NAME[pi][lane], held ? " (held)" : "");
                 CHECK(label, (gl.on >> keep) & 1u);
                 run(2400);
-                snprintf(label, sizeof label, "%s%s:   the hand's value stays, the launcher's too", NAME[pi][lane], held ? " (held)" : "");
-                CHECK(label, GLIDE_LANE[lane].get(other) == 100u && GLIDE_LANE[lane].get(pi) == still);
+                snprintf(label, sizeof label, "%s%s:   the hand's value stays, the launcher moves", NAME[pi][lane], held ? " (held)" : "");
+                CHECK(label, GLIDE_LANE[lane].get(other) == 100u && GLIDE_LANE[lane].get(pi) != still);
                 glide_stop(); transport_req = 2u; run(48);
             }
 }
@@ -291,8 +291,8 @@ static void test_takeover_routes(void)
     CHECK("takeover: selecting part 2 alone cancels nothing", gl.on == 3u);
     song.sel = 0;
     morph_push(MQ_FADER, 1u, 90u); run(32);
-    CHECK("takeover: a MIDI MORPH on part 2, TARGET BOTH: LINK moves its SEQ fader too, both lanes stop",
-          !gl.on && morph_fader_of(1) == 90u && seqm_fader_of(1) == 90u);
+    CHECK("takeover: a MIDI MORPH on part 2, TARGET BOTH: LINK moves its SEQ fader too, part 2 waits on both lanes",
+          gl.on == 3u && gl.hw[0] == 2u && gl.hw[1] == 2u && morph_fader_of(1) == 90u && seqm_fader_of(1) == 90u);
     glide_stop(); transport_req = 2u; run(48);
 
     r0_launch(0, 3u, GT_SOUND, GM_LOOP, 0u);
@@ -300,13 +300,13 @@ static void test_takeover_routes(void)
     morph_push(MQ_FADER, 1u, 90u); run(32);
     f = morph_fader_of(0);
     run(800);
-    CHECK("takeover: a MIDI MORPH on part 2 stops a SOUND glide", !gl.on && morph_fader_of(1) == 90u && morph_fader_of(0) == f);
+    CHECK("takeover: a MIDI MORPH on part 2 holds part 2 of a SOUND glide, part 1 goes on", gl.on && gl.hw[0] == 2u && morph_fader_of(1) == 90u && morph_fader_of(0) != f);
     glide_stop(); transport_req = 2u; run(48);
 
     r0_launch(1, 3u, GT_BOTH, GM_LOOP, 0u);
     run(800);
     morph_push(MQ_SEQF, 0u, 90u); run(32);
-    CHECK("takeover: a MIDI SEQ fader on part 1 stops the SEQ lane", (gl.on & 1u) && !(gl.on & 2u) && seqm_fader_of(0) == 90u);
+    CHECK("takeover: a MIDI SEQ fader on part 1 holds part 1 of the SEQ lane", gl.on == 3u && !gl.hw[0] && gl.hw[1] == 1u && seqm_fader_of(0) == 90u);
     glide_stop(); transport_req = 2u; run(48);
 
     r0_launch(0, 3u, GT_SOUND, GM_LOOP, 0u);
@@ -534,6 +534,144 @@ static void test_settings_flicker(void)
     CHECK("settings flicker: back from AUTO TIDE, no card left in the card row", !memcmp(host_screen + 142 * 240, ref + 142 * 240, 2u * 240u * 66u));
 }
 
+/* MR7 (owner 2026-11-09): a hand at bar 20 of a WANDER glide (BOTH, 16-bar trips, ARC on); TIDE takes the fader back on the phrase after
+ * 8 untouched bars (bar 28) from where the hand left it; meanwhile the pattern keeps evolving (sqm_auto) and ARC keeps its place */
+static uint32_t mr7_run(int touch, uint8_t *ph, uint8_t *cnt, uint32_t *fad)
+{
+    uint32_t bar = 0, moved = 0, held = 0, autos = 0, f;
+    ui_power_on(); frame();
+    project_load(1);
+    memset(&tarc, 0, sizeof tarc); morph.seed = 0x5EEDu;  /* (both runs from the same arc) */
+    transport_req = 2u; run(48);
+    song.sel = 0; SEL_BOTH = 0;
+    gl.mode = GM_WANDER; gl.target = GT_BOTH; gl.time = 4u; gl.wait = 0; gl.on = gl.armed = 0;
+    sqm_arc = 1;
+    song.g[G_BPM] = 120;
+    glide_launch(1u, 1u, 0);
+    while (bar < 40u) {
+        run(16);
+        if (sqm_bar == bar)
+            continue;
+        bar = sqm_bar;
+        ph[bar] = tarc.phase; cnt[bar] = tarc.cnt; fad[bar] = morph_fader_of(0);
+        if (getenv("MR7_V")) printf("bar %u touch %d fad %u seq %u on %u hw %u/%u hq %u to %u prog %u from %d ph %u cnt %u run %u\n", (unsigned)bar, touch, (unsigned)fad[bar], (unsigned)seqm_fader_of(0), gl.on, gl.hw[0], gl.hw[1], gl.hq[0], gl.to, (unsigned)(gl.prog >> 10), gl.from[0][0], tarc.phase, tarc.cnt, tarc.run);
+        autos += sqm_auto == 1u;
+        if (touch && bar == 20u) {
+            f = morph_fader_of(0);
+            morph_push(MQ_FADER, 0u, f > 30u ? f - 30u : f + 30u);   /* (a hand pulls it back: MIDI, so LINK moves SEQ too) */
+            run(32);
+            held = gl.on == 3u && gl.hw[0] == 1u && gl.hw[1] == 1u;
+        }
+    }
+    if (touch) {
+        uint32_t b, back = 0;
+        for (b = 22; b <= 32u && !back; b++)
+            if (fad[b] != fad[21])
+                back = b;
+        moved = back;
+        CHECK("MR7: the hand holds the part on both lanes", held);
+    }
+    CHECK("MR7: the pattern keeps evolving (sqm_auto every bar)", autos >= 38u);
+    glide_stop(); transport_req = 2u; run(48);
+    return moved;
+}
+static void test_hand_returns(void)
+{
+    uint8_t ph0[64] = {0}, c0[64] = {0}, ph1[64] = {0}, c1[64] = {0};
+    uint32_t f0[64] = {0}, f1[64] = {0}, back, same = 1, b;
+    char l[120];
+    mr7_run(0, ph0, c0, f0);
+    back = mr7_run(1, ph1, c1, f1);
+    for (b = 1; b < 40u; b++)
+        same &= ph0[b] == ph1[b] && c0[b] == c1[b];
+    snprintf(l, sizeof l, "MR7: the glide moves again by bar 32 (from bar %u; fader %u at bar 21, %u at 32)", (unsigned)back, (unsigned)f1[21], (unsigned)f1[32]);
+    CHECK(l, back >= 28u && back <= 32u);
+    CHECK("MR7: ARC's phases equal a run with no touch", same);
+    CHECK("MR7: the hand's fader held through bar 27", f1[27] == f1[21]);
+    {
+        char st[48];                                     /* the page says so */
+        ui_power_on(); frame();
+        transport_req = 2u; run(48);
+        song.sel = 0; gl.mode = GM_WANDER; gl.target = GT_SOUND; gl.time = 4u; gl.wait = 0;
+        glide_launch(1u, 1u, 0); run(4000);
+        morph_do(MQ_FADER, 1u, 20u); run(32);
+        tide_status(st);
+        snprintf(l, sizeof l, "MR7: AUTO TIDE says the hand holds it (\"%s\")", st);
+        CHECK(l, !strncmp(st, "HAND  BACK IN ", 14));
+        ui.page = 0; while (ui.page < sizeof PAGES / sizeof PAGES[0] && PAGES[ui.page].graph != GR_TIDE) ui.page++;
+        ui.cursor = ui.bank = 0; page_entered(); ui.force = 1; frame();
+        if (getenv("MR7_SHOT")) screen(getenv("MR7_SHOT"));
+        glide_stop(); transport_req = 2u; run(48);
+    }
+}
+
+/* J2: JOURNEY launched with the fader away from A keeps the End B it is heard at (no swap in one block); worst second difference of the
+ * output over the 120 blocks after the launch, dBFS (full scale 2^22) */
+#ifndef J2_BLOCKS
+#define J2_BLOCKS 2756u                                   /* (the launch bar at 120 BPM: 120 blocks of 32 samples are 87 ms, where M02 plays nothing) */
+#endif
+static double j2_launch(uint32_t fader, int *kept)
+{
+    static uint32_t acc;
+    double worst = 0, pk = 0;
+    int32_t to0, to1;
+    uint32_t s0, s1, blocks = 0, i;
+    int32_t p1 = 0, p2 = 0;
+    ui_power_on(); frame();
+    project_load(1);                                     /* M02 */
+    gl.mode = GM_JOURNEY; gl.target = GT_BOTH; gl.time = 4u; gl.wait = 2u; gl.on = gl.armed = 0;
+    song.sel = 0; SEL_BOTH = 0;
+    song.master_q12 = 2048;                              /* (MASTER at its default position, main.c) */
+    morph_do(MQ_FADER, 1u, fader); frame();
+    transport_req = 1u; run(48);                         /* (PLAY, TIDE idle; C3 E3 G3 held) */
+    fm1_in.notes = 0;
+    for (uint32_t k = 0; k < 27u; k++)                   /* (the keys, as a player holds them) */
+        if (kb_map(&trk[0], k) == 60u || kb_map(&trk[0], k) == 64u || kb_map(&trk[0], k) == 67u)
+            fm1_in.notes |= 1u << k;
+    run(4000);
+    to0 = morph_to_of(0, 1u); s0 = mph[0].seed[1][mph[0].top[1]];
+    tide_knob(0u, 1); tide_knob(0u, 1);                  /* K1: JOURNEY GLIDE TO B */
+    for (i = 0; i < 2000u && blocks < J2_BLOCKS; i++) {       /* (the launch bar, from its downbeat) */
+        int32_t out[2 * CTL];
+        acc += (uint32_t)FS * 16u;
+        while (acc >= 1000u * CTL) {
+            acc -= 1000u * CTL;
+            memset(out, 0, sizeof out); song.master_q12 = 2048;
+            mix_block(out, CTL);
+            if (!gl.armed && gl.on && blocks < J2_BLOCKS) {
+                for (uint32_t n = 0; n < CTL; n++) {
+                    int32_t x = out[2u * n], d = x - 2 * p1 + p2;
+                    double a = d < 0 ? -(double)d : (double)d;
+                    if (a > worst) worst = a;
+                    if (fabs((double)x) > pk) pk = fabs((double)x);
+                    p2 = p1; p1 = x;
+                }
+                blocks++;
+            } else
+                p2 = p1 = out[2u * (CTL - 1u)];
+        }
+        frame();
+    }
+    to1 = morph_to_of(0, 1u); s1 = mph[0].seed[1][mph[0].top[1]];
+    if (getenv("J2_V")) printf("J2v fader %u playing %u on %u armed %u blocks %u i %u pk %.0f worst %.0f\n", (unsigned)fader, song.playing, gl.on, gl.armed, (unsigned)blocks, (unsigned)i, pk, worst);
+    *kept = to0 == to1 && s0 == s1;
+    fm1_in.notes = 0;
+    glide_stop(); transport_req = 2u; run(48);
+    return worst > 0 ? 20.0 * log10(worst / 4194304.0) : -200.0;
+}
+static void test_journey_away_from_a(void)
+{
+    int k0, k100;
+    char l[120];
+    double w0 = j2_launch(0u, &k0), w100 = j2_launch(100u, &k100);
+    snprintf(l, sizeof l, "J2: JOURNEY from fader 100 keeps End B in the launch bar");
+    CHECK(l, k100);
+    snprintf(l, sizeof l, "J2: worst second difference in the launch bar: fader 100 %.1f dBFS, fader 0 %.1f dBFS (within 6 dB)", w100, w0);
+    printf("%s\n", l);
+    CHECK(l, w100 <= w0 + 6.0);
+    CHECK("J2: from fader 0 JOURNEY still picks End B at the launch", !k0);
+}
+
 int main(void)
 {
     uint32_t q[MQ_N], n;
@@ -641,6 +779,8 @@ int main(void)
     test_seq_ghost();
     test_seq_ghost_chord();
     test_settings_flicker();
+    test_hand_returns();
+    test_journey_away_from_a();
     printf("tidecontrols: %u checks, %u failures\n", checks, failures);
     return failures ? 1 : 0;
 }
