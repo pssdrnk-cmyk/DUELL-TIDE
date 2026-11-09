@@ -3449,7 +3449,18 @@ static void ui_draw(void)
     {   /* item 152 A: a fader moved (MORPH, a modulated fader) shifts the part colour A -> B only: the page is drawn again WITHOUT the BG fill (ui_refresh); the part, the layer or a GLOBAL page changing the background fills as before */
         uint8_t keep = (uint8_t)(ux.part == (song.sel & 1u) && ux.layer == (uint8_t)(duell_mode_req == DM_LAYER) && ux.glob == (uint8_t)(screen_global() != 0));
         uint16_t bg0 = ux.bg;
+#if DUELL_TIDE
+        uint32_t f0 = TIDE_THEME_F(morph_fader_of(0)), f1 = TIDE_THEME_F(morph_fader_of(1));
+        if ((ui.frame & 3u) != 3u) {                    /* (b6, owner on the FM-1: "the UI gets weird if I use morph during the animation": the faders' colour follows on the frame that
+                                                         * brings a new picture (every 4th: mv_tick), so a turn of knob 1 redraws the page with the waves' own redraw, not on top of
+                                                         * it every frame: the page whole is 55,680 px over the 12 MHz SPI, about 74 ms. The waves take this colour too, ui_scope.c) */
+            f0 = ux.fader[0];
+            f1 = ux.fader[1];
+        }
+        if (theme_follow(song.sel, f0, f1, duell_mode_req == DM_LAYER, screen_global())) {
+#else
         if (theme_follow(song.sel, TIDE_THEME_F(morph_fader_of(0)), TIDE_THEME_F(morph_fader_of(1)), duell_mode_req == DM_LAYER, screen_global())) {
+#endif
             if (keep && bg0 == ux.bg)
                 ui_refresh();
             else

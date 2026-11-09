@@ -1939,8 +1939,20 @@ static uint32_t graph_signature(void)
 #endif
     if (pg->scope == SC_MORPH) {                     /* 4b: the faders, AMOUNT, TARGET; MORPH: the animation step */
         uint32_t pi = song.sel;
+#if DUELL_TIDE
+        uint32_t f0 = morph_fader_of(pi), f1 = morph_fader_of(1u - pi);
+        if (TIDE_WAVE_PAGE(pg)) {                    /* (b6, owner on the FM-1: "the UI gets weird if I use morph during the animation": the waves take the theme's fader colour (ux.fader:
+                                                      * in steps of 8, taken on a picture's frame, ui_draw.c), so a turn of knob 1 redraws them with a picture, not at every value: each
+                                                      * redraw is 32,640 px over the 12 MHz SPI, about 44 ms, and one every frame held the loop and slowed the pictures to a third) */
+            f0 = ux.fader[pi & 1u];
+            f1 = ux.fader[(1u - pi) & 1u];
+        }
+        h = (h ^ (f0 | morph_amount_of(pi) << 8 | (uint32_t)SEL_BOTH << 16 | (uint32_t)morph.cfg << 20)) * 16777619u;
+        h = (h ^ f1) * 16777619u;
+#else
         h = (h ^ (morph_fader_of(pi) | morph_amount_of(pi) << 8 | (uint32_t)SEL_BOTH << 16 | (uint32_t)morph.cfg << 20)) * 16777619u;
         h = (h ^ morph_fader_of(1u - pi)) * 16777619u;
+#endif
         if (pg->graph == GR_MORPH)                   /* v4: the picture's motion, a step every 4th frame (~16 /s; TIDE: the parts' real sound, ui_scope.c) */
             h = (h ^ (mv_tick() + 1u) * 2654435761u) * 16777619u;
     }
