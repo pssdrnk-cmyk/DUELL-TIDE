@@ -18,7 +18,7 @@
  *             WL_HN, the newest in front (lowest), each older one about 2 rows higher, every one at the front's full height, coloured from the part's colour at the front toward the
  *             background at the back (mv_col's fade); a ribbon that scrolls back a step every picture. Each new picture is blended half and half into the front whenever the two
  *             are of a size (within 2 : 1, whatever the shape: the approved look's frame blend), so neighbouring lines stay alike and a busy sound flows instead of turning to noodles;
- *             a jump in size (an attack) is taken as it is. No line is laid flat or held still for its shape; an older line never crosses a newer one (wl_stack: it rides just above it).
+ *             a jump in size (an attack) is taken as it is. No line is laid flat or held still for its shape; no older line is drawn over a newer one (wl_stack: the newer one hides it).
  *             Silence fades the front's shape (wl_fade), the stack runs out, and every lane stays drawn, flat: at rest the page shows the same set of lines as when it plays (owner 2026-11-09)
  * Samples inside are the tap's steps (1/4,096 of the half scale) times 16 (the interpolation's fraction). The ridges are kept in 1/4 px from their middle, a byte a point (WL_AMAX: the half height of
  * a ridge is at most 31 px; the front's is about 20 px in a 68-row lane). b6 layout (owner 2026-11-09, "the bottom half of the screen is badly used"): the picture takes the page
@@ -50,6 +50,9 @@ typedef struct {
     uint8_t got, have, a, hn;                        /* a picture exists since the last reset; one with a trigger to match; the half height the ridges were made for; ridges kept */
 } wl_t;
 static wl_t wl[2];
+static int8_t wl_off[2][WL_HN] __attribute__((section(".pool")));   /* (each ridge's lift onto its baseline: its lowest point when pushed, 1/4 px, blended 1 : 1 with the front's
+                                                                     * as its shape is, and carried back with it: a ridge does not bob as it recedes. Outside .data / .bss: the RAM
+                                                                     * rule's headroom is full; zero-initialised) */
 static uint32_t wl_tk = 0xFFFFFFFFu;
 _Static_assert(NLIVE == 2, "ui_scope.c keeps one reader state for each of the two parts");
 _Static_assert(WL_HN <= 16, "wl_t.flat has a bit a ridge");
@@ -295,6 +298,16 @@ static void wl_push(wl_t *s, int8_t *nd)
                 nd[p] = (int8_t)((q + (q > 0)) / 2);
             }
     }
+    {   /* (the new ridge's lift: its lowest point (the largest value: down is +), blended 1 : 1 with the front's unless the size jumps, as an attack's shape is taken as it is) */
+        int8_t *o = wl_off[(uint32_t)(s - wl) & 1u];
+        const int32_t o0 = s->hn && !(s->flat & 1u) ? o[0] : -1;
+        int32_t m = 0;
+        for (p = 0; nd && p < WL_NP; p++)
+            m = nd[p] > m ? nd[p] : m;
+        for (p = WL_HN - 1u; p > 0; p--)
+            o[p] = o[p - 1u];
+        o[0] = (int8_t)(o0 >= 0 && m && m < (m + 3 * o0 + 2) / 4 ? (m + 3 * o0 + 2) / 4 : m);   /* (up at once, so no shape dips under its baseline; down a quarter a picture, so a fading or quieter shape does not bob) */
+    }
     for (p = WL_HN - 1u; p > 0; p--)                 /* (row by row from the oldest: the firmware has no memmove) */
         memcpy(s->rd[p], s->rd[p - 1u], sizeof s->rd[0]);
     for (p = 0; p < WL_NP; p++)
@@ -460,15 +473,15 @@ static int32_t wl_atx(const wl_t *s, uint32_t r, int32_t x16, int32_t xl16, int3
  * Depth (b6, owner 2026-11-09: "something is missing"): the stack recedes like a landscape. Each older ridge is narrower, centred (the oldest 4/5 of the front's width), and the gaps
  * between ridges close toward the back (gap i from the front: 2 (N - 1) - i, the back one about half the front one); each ridge hides what lies behind it (WAVE LAB's): a column's
  * ridges are drawn from the front back and an older one only above the top of the newer ones there, so nothing behind a ridge shows under it. At rest (nothing yet, or silence) the
- * flat lines are spread evenly over the whole lane, no swing room kept.
+ * stack is the playing one with every line flat: the same baselines and widths.
  * A landscape (b6, owner: the empty band under a quiet part): each ridge stands on its baseline, its lowest point on it and its shape rising above (shifted by its own lowest
- * point, which the 1 : 1 blend keeps from jumping). The front's baseline is the lane's foot, the others recede upward in whole rows, the gaps never wider further back (owner:
- * "a bigger gap after the 3rd line": each line's own rounding to a row made 3 2 3 2 ..) and never under WL_STEP rows while playing (1-row gaps ran the back lines together), so
+ * point as it was pushed, blended 1 : 1 with the front's, and kept as it recedes: wl_off). The front's baseline is the lane's foot, the others recede upward in whole rows, the gaps never wider further back (owner:
+ * "a bigger gap after the 3rd line": each line's own rounding to a row made 3 2 3 2 ..) and never under WL_STEP rows (1-row gaps ran the back lines together), the same at rest, so
  * a flat or quiet part lies at the foot. (13 lines in a 68-row lane leave 25 rows of spread: 3 then 2 2 .. 2; fewer lines or lower waves would close the gaps more gradually) At full swing the oldest ridge's top is the
  * lane's top row: the front's baseline, the stack's spread (wl_fit's room) and a ridge's full height (2 a) make the lane
- * No older ridge is laid flat for being unlike the front or crossing it; a shaped ridge is never drawn under a newer shaped one, it rides on it (just above its stroke: 22/16 px over
- * the front, 1 px over an older one) where it would cross; elsewhere its shape is its own. A flat one is drawn flat.
- * Column by column: every ridge's height there in one pass from the front back (each one's bound is the newer ones'), and drawn in that order under the horizon they leave */
+ * No older ridge is laid flat for being unlike the front or crossing it; where it would cross a newer one, the newer one hides it (b6, owner: a real landscape; the ride-above guard
+ * of b6 W1 piled the older lines a row apart over a tall front, a thick false wave): no older line is ever drawn over a newer one. A flat one is drawn flat.
+ * Column by column: every ridge's height there, drawn from the front back under the horizon the newer ones leave */
 static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
 {
     const wl_t *s = &wl[k];
@@ -487,26 +500,22 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
         cv_rect(1, y0 + 1, 3, y1 - y0 - 2, T_PFILL(k));
     if (nr < 1 || s->a != (uint8_t)a || (s->flat & ((1u << nr) - 1u)) == (1u << nr) - 1u)
         nr = 0;                                      /* nothing yet, made for another box, or silence: every lane at rest, flat */
-    rows = nr ? st : y1 - 3 - y0;                    /* (the rows from the front's baseline to the oldest one's: playing, the lane less the oldest's full height; at rest, the whole lane) */
+    rows = st;                                       /* (the rows from the front's baseline to the oldest one's: the lane less the oldest's full height; the same at rest: b6, owner, "there is a
+                                                      * fuckup with the default screen": the rest screen had its own, even spread and stood apart from the playing stack) */
     for (r = 0; r + 1 < nf; r++)
-        gs += nr ? 2 * (nf - 1) - r : 1;             /* (the gaps' weights: playing 2 (N - 1) - i, closing toward the back; at rest even) */
-    m0 = nr && rows >= WL_STEP * (nf - 1) ? WL_STEP : 0;   /* (playing: every gap at least WL_STEP rows, so two 1-px lines never touch; the rows over that by the weights) */
+        gs += 2 * (nf - 1) - r;                      /* (the gaps' weights: 2 (N - 1) - i, closing toward the back) */
+    m0 = rows >= WL_STEP * (nf - 1) ? WL_STEP : 0;   /* (every gap at least WL_STEP rows, so two 1-px lines never touch; the rows over that by the weights) */
     left = rows - m0 * (nf - 1);
     for (r = 0; r + 1 < nf; r++)
-        left -= (rows - m0 * (nf - 1)) * (nr ? 2 * (nf - 1) - r : 1) / gs;   /* (the rows the whole-row gaps leave over: one more each to the front ones) */
+        left -= (rows - m0 * (nf - 1)) * (2 * (nf - 1) - r) / gs;   /* (the rows the whole-row gaps leave over: one more each to the front ones) */
     for (r = 0; r < nf; r++) {
         const int32_t w = nf > 1 ? hw16 * (5 * (nf - 1) - r) / (5 * (nf - 1)) : hw16;   /* (the half width: the front's, to 4/5 at the back) */
         yb[r] = base * 16 + 8;                       /* (ridge r's baseline: whole rows, the gaps never wider further back, so the spacing shrinks evenly) */
         if (r + 1 < nf) {
-            g = m0 + (rows - m0 * (nf - 1)) * (nr ? 2 * (nf - 1) - r : 1) / gs + (r < left);
+            g = m0 + (rows - m0 * (nf - 1)) * (2 * (nf - 1) - r) / gs + (r < left);
             base -= g;
         }
-        mx[r] = 0;
-        if (r < nr && !((s->flat >> r) & 1u)) {      /* (its lowest point: a ridge stands on its baseline, its shape rising above it) */
-            uint32_t p;
-            for (p = 0; p < WL_NP; p++)
-                mx[r] = wl_rq(s, (uint32_t)r, p) > mx[r] ? wl_rq(s, (uint32_t)r, p) : mx[r];
-        }
+        mx[r] = r < nr && !((s->flat >> r) & 1u) ? wl_off[k & 1u][r] : 0;   /* (its lift: a ridge stands on its baseline, its shape rising above it; set when it was pushed) */
         xl[r] = cx16 - w;
         xr[r] = cx16 + w;
         mul[r] = (int32_t)(((WL_NP - 1u) << 16) / (uint32_t)(2 * w > 0 ? 2 * w : 1));
@@ -522,19 +531,11 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
         int32_t y0f = shp & 1u ? yb[0] - mx[0] * 4 + wl_atx(s, 0u, WL_X0 * 16, xl[0], mul[0]) : yb[0];   /* (the front's height in this column; the next one's is found in the loop) */
         for (c = WL_X0; c <= WL_X1; c++) {
             const int32_t x16 = c * 16, yn = (shp & 1u) && c < WL_X1 ? yb[0] - mx[0] * 4 + wl_atx(s, 0u, x16 + 16, xl[0], mul[0]) : y0f;
-            int32_t y[WL_HN], lim, m, hz = y1 - 1;   /* (m: the ridges drawn in this column, the front and the older ones as wide as it reaches: each is narrower than the one before;
+            int32_t y[WL_HN], m, hz = y1 - 1;        /* (m: the ridges drawn in this column, the front and the older ones as wide as it reaches: each is narrower than the one before;
                                                       * hz: the horizon, the top row drawn in this column so far: an older ridge shows only above it) */
             y[0] = y0f;
-            lim = shp & 1u ? y0f - 22 : 1 << 28;  /* (a flat front bounds nothing) */
-            for (m = 1; m < nf && x16 >= xl[m] && x16 <= xr[m]; m++) {   /* (the heights, the front back: each shaped one at most at the bound the newer shaped ones leave) */
-                if (!((shp >> m) & 1u)) {
-                    y[m] = yb[m];
-                    continue;
-                }
-                y[m] = yb[m] - mx[m] * 4 + wl_atx(s, (uint32_t)m, x16, xl[m], mul[m]);
-                y[m] = y[m] < lim ? y[m] : lim;
-                lim = y[m] - 16;
-            }
+            for (m = 1; m < nf && x16 >= xl[m] && x16 <= xr[m]; m++)   /* (the heights: each ridge its own shape on its baseline) */
+                y[m] = (shp >> m) & 1u ? yb[m] - mx[m] * 4 + wl_atx(s, (uint32_t)m, x16, xl[m], mul[m]) : yb[m];
             for (r = 0; r < m; r++) {
                 const int32_t ya = (seen >> r) & 1u ? py[r] : y[r];
 #ifdef WL_TEST_Y
@@ -546,6 +547,9 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
                     const int32_t a0 = (ya + y[0]) / 2, a1 = (y[0] + yn) / 2;
                     wl_col(c, a0, a1, 28, col[0], str, y0 + 1, y1 - 1, ft, bg);
                     hz = ((a0 < a1 ? a0 : a1) - 14) >> 4;
+#ifdef WL_TEST_SPAN
+                    WL_TEST_SPAN(k, 0, c, hz, ((a0 < a1 ? a1 : a0) + 14) >> 4);   /* (host probe only: the rows the stroke covers) */
+#endif
                 } else {                             /* (an older ridge: plain, from its height in the last column, whole rows above the horizon) */
                     int32_t lo = (ya < y[r] ? ya : y[r]) >> 4, hi = (ya < y[r] ? y[r] : ya) >> 4;
                     hi = hi < hz ? hi : hz - 1;
@@ -558,6 +562,9 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
                         for (n2 = lo; n2 <= hi; n2++, q += cv_w)
                             *q = lc[r];
                         hz = lo;
+#ifdef WL_TEST_SPAN
+                        WL_TEST_SPAN(k, r, c, lo, hi);   /* (host probe only: the rows drawn) */
+#endif
                     }
                 }
             }
