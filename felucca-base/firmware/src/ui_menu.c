@@ -25,6 +25,11 @@
 #define CPU_RECENT_MS 5000u
 #define CPU_WARN 80u
 #define CPU_HOT 95u
+#if DUELL_TIDE
+#define MENU_PAL_SIG ux.pal                 /* (the menu's signature: the theme applied, ui.c pal_q) */
+#else
+#define MENU_PAL_SIG settings.palette
+#endif
 static struct {
     uint16_t avg, peak, hold;                          /* % (peak and hold up to 999) */
     uint32_t miss, miss_t, t, hold_t, n0, sum0;        /* the misses seen, when the last one was seen, window start, ... */
@@ -844,9 +849,13 @@ static void draw_menu(void)
         uint32_t r;
         sig = 2166136261u;
         for (r = 0; r < MI_COUNT; r++)
+#if DUELL_TIDE
+            sig = (sig ^ (r == MI_COLOR ? ux.pal : menu_get(r))) * 16777619u;   /* (COLOR: the theme applied: MENU > COLOR's steps wait for it, ui.c pal_q) */
+#else
             sig = (sig ^ menu_get(r)) * 16777619u;
+#endif
     }
-    sig += ui.menu * 7u + ui.menu_sel * 131u + settings.palette * 1009u + settings_hold * 3511u +
+    sig += ui.menu * 7u + ui.menu_sel * 131u + MENU_PAL_SIG * 1009u + settings_hold * 3511u +
           settings_leds * 6151u + ui_prefs * 4099u + song.rec * 65537u + song.sel * 13u +
           ui_rec_prefs * 92821u + ui_scr * 131071u +          /* (#157: SCREEN OFF's value redraws its row) */
           ui_prefs2 * 524287u + ui_idle * 1048573u +      /* (1.2: ANIM IDLE's value redraws its row) */

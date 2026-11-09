@@ -769,6 +769,14 @@ static void ui_message(const char *s) { ui_say(s, ""); }
 /* item 152 A: a redraw of the SAME page and layout whose values changed (a patch load, the TYPE, the fader's colour): force = 2. Everything is drawn again but the BG
  * between the strips and cards is NOT filled first (ui_draw.c draw_frame): that fill went to the panel before the cards and the picture landed on it, and the whole
  * body blinked on every change. Any other reason (a page, a layer, a dialog, a theme with a new background) sets force = 1 and still fills; 1 wins over 2 */
+#if DUELL_TIDE
+/* MENU > COLOR's theme, applied at most every 100 ms (b6, owner: "especially when changing the color scheme"): a theme repaints the whole screen, 57,600 px over the
+ * 12 MHz SPI (~77 ms), so a turn through the themes queued one repaint a step. menu_items.c marks it due, ui_draw.c ui_draw applies it; the last one always lands */
+static struct {
+    uint32_t t;                              /* (fm1_ms when a theme was last applied) */
+    uint8_t due;
+} pal_q __attribute__((section(".pool")));   /* (zero-initialised, outside .data / .bss: the RAM rule's headroom is full) */
+#endif
 static void ui_refresh(void)
 {
     if (!ui.force)

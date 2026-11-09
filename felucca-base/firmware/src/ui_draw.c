@@ -3444,6 +3444,14 @@ static void draw_oct_page(void)
 static void ui_draw(void)
 {
     static uint8_t counting;
+#if DUELL_TIDE
+    if (pal_q.due && fm1_ms - pal_q.t >= 100u) {       /* (MENU > COLOR's theme: at most every 100 ms, the first step at once, the last always: ui.c pal_q) */
+        pal_q.due = 0;
+        pal_q.t = fm1_ms;
+        palette_set(settings.palette % NPALETTES);
+        ui.force = 1;
+    }
+#endif
     /* the theme follows the selected part (SPEC 5a), its MORPH fader (colour A -> B), LAYER mode and (0.2.24) a GLOBAL page: the third colour (cheap: only on a change). A quick layer over
      * a global page and PERFORM are per part: the part's colours */
     {   /* item 152 A: a fader moved (MORPH, a modulated fader) shifts the part colour A -> B only: the page is drawn again WITHOUT the BG fill (ui_refresh); the part, the layer or a GLOBAL page changing the background fills as before */
