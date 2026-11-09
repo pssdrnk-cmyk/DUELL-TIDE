@@ -4,15 +4,28 @@ Updated 9 November 2026. What is already built is in the [CHANGELOG-TIDE](../CHA
 
 State words on this page: Released in bN, Ready (built and tested, waiting for a release), In progress, Next, Later, Waiting on you.
 
-## Now: 1.0.0-b6
+## Now: 1.0.0-b5
+
+The only thing being worked on. Nothing else starts until b5 is out.
+
+| What | State |
+|---|---|
+| The MORPH page as a live wave picture: smooth lines, the same lines lying flat at rest | Ready (look approved 9 November) |
+| The MORPH page layout: bigger waves, a slim ROLL / AMOUNT row, both parts' patches in the footer like TIDE SETTINGS and AUTO TIDE, real wave shapes | In progress. You approve the look before anything else happens. |
+| PART 1 / PART 2 / BOTH on HOME's pages | Ready |
+| The new flashing screen | Ready |
+| More free memory (EQ design moved out of fast RAM, 1,068 B) | Ready |
+| CPU test on your FM-1 with the wave page on screen | Passed: no missed blocks, busiest block 84 % (b4: 84 %) |
+
+b5 goes out when you like the MORPH page on your FM-1. Room left on the b5 build: 6,352 B of flash, RAM 68,920 of 73,728 B.
+
+## Next: 1.0.0-b6 (paused until b5 is out)
 
 | What | State |
 |---|---|
 | Reverb on the second core, to free CPU (K4) | Built; the CPU saving is not measured on the unit yet |
 | Factory sounds stop resetting AMOUNT (MORPH c3) | Ready |
 | Pattern notes stay in a sensible range (roles T4) | Ready |
-| The MORPH page reworked: the waves fill the page, ROLL / AMOUNT on one row, both parts in the footer, saws and squares keep their edges (branch `fix/b6-morphlayout`) | In progress |
-| Four drone scenes built in as M17 to M20, factory only, played as STYLE DRONE ([brief](audits/2026-11-09/drones/TASKS.md)) | Next |
 
 ## Later, in order
 
@@ -25,7 +38,6 @@ State words on this page: Released in bN, Ready (built and tested, waiting for a
 
 | Version | Date | What you got |
 |---|---|---|
-| 1.0.0-b5 | 9 November | The MORPH page as a live wave picture, PART 1 / PART 2 / BOTH on HOME's pages, the new flashing screen, more free memory |
 | 1.0.0-b4 | 8 November | No notes cut when the CPU runs hot (ease ladder), less CPU while a part is silent, STYLE DRONE, screen cleanups |
 | 1.0.0-b3 | 8 November | CPU and missed-block readout, patch list order, live recording into ARP SEQ, HOME without the MODE page |
 | 1.0.0-b2 | 8 November | Second beta |
@@ -55,9 +67,9 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 **Screens** (redundancy audit 8 November, all 433 screens rendered)
 - TIDE rows SYNC and ROLL renamed so they don't share words with tempo sync and MORPH's ROLL. (The rest of this audit was released in b4.)
 
-**One view for both parts** (owner, 8 November): AUTO TIDE and the MORPH / wave page always show both parts, with the selected part clearly marked (full colour, the other dimmed, plus a cue that works on MONO and GREY). The wave page and AUTO TIDE do it (Released in b5).
+**One view for both parts** (owner, 8 November): AUTO TIDE and the MORPH / wave page always show both parts, with the selected part clearly marked (full colour, the other dimmed, plus a cue that works on MONO and GREY). The wave page and AUTO TIDE do it in b5 (see Now).
 
-**RAM room** (Released in b5): pool tail 9,276 B against the 8,192 B rule; a test-mode build keeps the lowered 7,936 B rule. The next change that grows range Z or the pool measures against that.
+**RAM room** (b5, Ready): pool tail 9,276 B against the 8,192 B rule; a test-mode build keeps the lowered 7,936 B rule. The next change that grows range Z or the pool measures against that.
 
 **MORPH** ([review](audits/2026-11-08/morph/REPORT.md): keep the core and the page, no big rework)
 - c3 (b6, Ready): factory loads stop resetting AMOUNT; K4 dim in JRNY, where it does nothing. Branch `fix/b6-morph-c3` `148d84b`, tests pass; rebase onto the reworked MORPH page before b6.
@@ -124,6 +136,7 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 | D46: the multis that are too loud or too quiet are trimmed by ear on the unit. | Trim M15, M16 up and M10 down by the numbers, then listen. |
 | Try on the unit: keys recording into an ARP SEQ part, and REC ADD / REPLACE (Released in b3, not yet tried on the unit). | Nothing to decide; say if the nearest-step rule feels wrong. |
 | Reverb FREEZE (below): build it? | Later: not built until you say. |
+| Drone scenes: delivered as a file pack, replacing multis, or by packing the multi records to make room? | File pack (no factory multi changes). |
 | Which of the ideas below, if any. | None until chosen. |
 
 **By ear or eye on the unit** (no homework: noted when the owner meets them in use): the drones; the U2 multi sequences; the MULTIS / PATTERNS preview's readability; polymeter (12 / 16, 15 / 16) against a steady 4 / 4; whether TURNS' alternating bars improve the interplay.
@@ -132,6 +145,7 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 
 - **Wave card L/R lines and the deep-bass line:** about 4 KB more RAM. The candidates are PERFORM capture (8 KB = 93 ms shorter capture) or a canvas drawn in strips. Owner decision when wanted.
 - **From Niagara Drift** (an FM-1 drone firmware; checked against our code 8 November, estimates until built): **reverb FREEZE** on HALL / ROOM (the tail holds and the notes can stop; a block-rate gain change with a limiter, ~200-400 B, no CPU while off; risks: fixed-point overflow and the release click) fits best. **AGE** (slow tape-like wear, ~300-600 B) needs an offset layer on top of the saved sound, not checked yet. Gesture keys and a free-time motion loop do not fit the flash, the keys or the no-new-pages rule.
+- **Drone scenes:** multis built around the eight drones, one per theme.
 - **Keep current patterns on MULTI load** (U2 route A): an explicit load that keeps both playing patterns.
 - **Musical evaluations kept from the earlier plan** (no work scheduled): M2a chord movement; M5 / M10a level and slow-glide behaviour only for a found defect; M7d polymeter first by hand; CHANGE / ENERGY rows only with useful behaviour. Details in [design/TIDE_MUSICAL_DESIGN.md](design/TIDE_MUSICAL_DESIGN.md).
 
