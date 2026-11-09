@@ -62,6 +62,57 @@ static int card_is(uint32_t c, const char *label, const char *val)   /* the card
 #endif
 }
 #if DUELL_TIDE
+/* TIDE b6: the MORPH page has no card row; KNOB 2 and KNOB 4 are one slim row above the footer (ui_draw.c morph_row, rows MROW_Y .. + MROW_H - 1), the waves above it.
+ * mrow_at: the text s drawn in that row (its box, after screen_read); mrow_only: every text drawn in the row is one of ok[] (the knob dots "2" and "4", ROLL and its way,
+ * AMOUNT and its value: no KNOB 3 dot, no UNDO or any other control); mrow_bar: AMOUNT's bar, ink between AMOUNT and the value; no_k3: no "3" knob dot and no UNDO anywhere
+ * from the knob-1 line down to the footer */
+static int mrow_at(const char *s, int32_t *x0, int32_t *x1)
+{
+    uint32_t i;
+    screen_read();
+    for (i = 0; i < txt_n; i++)
+        if (txt_log[i].y0 >= MROW_Y && txt_log[i].y1 <= MROW_Y + MROW_H && !strcmp(txt_log[i].s, s)) {
+            *x0 = txt_log[i].x0;
+            *x1 = txt_log[i].x1;
+            return 1;
+        }
+    return 0;
+}
+static int mrow_has(const char *s) { int32_t a, b; return mrow_at(s, &a, &b); }
+static int mrow_only(const char *way, const char *val)
+{
+    uint32_t i;
+    screen_read();
+    for (i = 0; i < txt_n; i++) {
+        const char *s = txt_log[i].s;
+        if (txt_log[i].y1 <= MROW_Y || txt_log[i].y0 >= MROW_Y + MROW_H)
+            continue;
+        if (strcmp(s, "2") && strcmp(s, "4") && strcmp(s, "ROLL") && strcmp(s, way) && strcmp(s, "AMOUNT") && strcmp(s, val))
+            return 0;
+    }
+    return 1;
+}
+static int mrow_bar(const char *val)
+{
+    int32_t a0, a1, v0, v1, x, y, ink = 0;
+    if (!mrow_at("AMOUNT", &a0, &a1) || !mrow_at(val, &v0, &v1))
+        return 0;
+    for (y = MROW_Y; y < MROW_Y + MROW_H; y++)
+        for (x = a1 + 3; x < v0 - 2; x++)
+            ink += host_screen[(uint32_t)y * 240u + (uint32_t)x] != host_screen[(uint32_t)MROW_Y * 240u + 239u];
+    return ink >= 8;
+}
+static int no_k3(void)
+{
+    uint32_t i;
+    screen_read();
+    for (i = 0; i < txt_n; i++)
+        if (txt_log[i].y0 >= UT_A_K1_Y && txt_log[i].y1 <= Y_FOOT && (!strcmp(txt_log[i].s, "3") || !strcmp(txt_log[i].s, "UNDO")))
+            return 0;
+    return 1;
+}
+#endif
+#if DUELL_TIDE
 /* TIDE: TIDE SETTINGS is in MORPH SET's place, a list (tide_ui.c): K1 the row, OCT+ the next value, OCT- the one before; SMART / ARP / PITCH are its ROLL, ARP, PITCH */
 #define MORPH_SET_TITLE "TIDE SETTINGS"
 static void mset_row(uint32_t r) { turn(EN_K1, -8); if (r) turn(EN_K1, (int32_t)r); }
@@ -372,8 +423,17 @@ static void t_knobs(void)
     expect("KNOB 4: AMOUNT of the selected part (+5), the other part's stays", mph[0].amount == a0 + 5u && mph[1].amount == a1 &&
            a0 == snd_amount(trk[0].eng_req, trk[0].preset));
     frame();
+#if DUELL_TIDE
+    {   /* b6: MORPH on the knob-1 line; KNOB 2 and 4 on the slim row: ROLL A<>B, AMOUNT with its value and bar; nothing for KNOB 3 */
+        char pc[12];
+        snprintf(pc, sizeof pc, "%s%%", amt_txt);
+        expect("  .. the controls in v3's order: MORPH A, then the row: ROLL A<>B, AMOUNT with its value and bar (KNOB 4); nothing else in the row, no KNOB 3 (1.0.0-b5: no UNDO)",
+               card_is(0, "MORPH", "A") && mrow_has("ROLL") && mrow_has("A<>B") && mrow_has("AMOUNT") && mrow_has(pc) && mrow_bar(pc) && mrow_only("A<>B", pc) && no_k3());
+    }
+#else
     expect("  .. the cards in v3's order: MORPH, ROLL, an empty KNOB 3 (1.0.0-b5: no UNDO), AMOUNT (KNOB 4)", card_is(0, "MORPH", "A") && card_is(1, "ROLL", "A<>B") &&
            card_is(2, "", "") && card_is(3, "AMOUNT", amt_txt));
+#endif
     {   /* the picture (TIDE: the part's real sound, ui_scope.c): a new one every 4th frame (signature), none with MENU > ANIM OFF */
         uint32_t s0 = graph_signature(), s1;
         ui.frame += 4u;
@@ -487,10 +547,29 @@ static void t_far(void)                                  /* (1.0.0-b5: UNDO's ch
     turn(EN_K1, 63);
     frame();
     frame();
+#if DUELL_TIDE
+    expect("KNOB 3 at rest: nothing on the page for it (b6: no card row; the slim row shows ROLL A<>B and AMOUNT only)", no_k3() && mrow_has("A<>B"));
+    turn(EN_K3, -1);
+    frame();
+    expect("a KNOB 3 twist left building up: still nothing for it, ROLL not moved (A<>B)", no_k3() && mrow_has("A<>B"));
+    {   /* the row shows a KNOB 2 twist's way while it builds (ui_input.c morph_pending; set directly: on TIDE one detent rolls at once, so no roll is made here) */
+        const int32_t acc = ui.mg.acc[0];
+        const uint8_t fired = ui.mg.fired[0];
+        ui.mg.acc[0] = -1; ui.mg.fired[0] = 0; ui.mg.t[0] = fm1_ms;
+        frame();
+        expect("  .. a KNOB 2 twist left building up: the row's ROLL shows <A", mrow_has("<A") && !mrow_has("A<>B"));
+        ui.mg.acc[0] = 1; ui.mg.t[0] = fm1_ms;
+        frame();
+        expect("  .. a twist right building up: B>", mrow_has("B>") && !mrow_has("A<>B"));
+        ui.mg.acc[0] = acc; ui.mg.fired[0] = fired;
+        frame();
+    }
+#else
     expect("KNOB 3's card at rest: empty", card_is(2, "", ""));
     turn(EN_K3, -1);
     frame();
     expect("a twist left building up: still empty", card_is(2, "", ""));
+#endif
     settle();
     sa = seed_now(0, 0);
     sb = seed_now(0, 1);
