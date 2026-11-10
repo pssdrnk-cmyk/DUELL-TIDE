@@ -400,7 +400,7 @@ async function connect(opt = {}) { const m = new MockUnit(opt), u = new Unit(new
     ok(!isEnum(st) && st.max === 18 && valueText(st, 0).val === "OFF" && valueText(st, 1).val === "2" && valueText(st, 18).val === "19" && L.ENG[E("WAVE")].edit[6].names.length === 19, "WAVE STEPS: a slider of 19 places (OFF, 2 to 19) with its words from the firmware's list");
     {   // item 165 (owner): LOFI's and ANALOG's WAVE lists in full words, exactly as the unit shows them (params.c val_shown); the vowel and other sound names stay
       const lo = longDesc(L.ENG[E("LOFI")].edit[1], "e:LOFI").names.join(), an = longDesc(L.ENG[E("ANALOG")].edit[0], "e:ANALOG").names.join();
-      ok(lo === "PULSE,TRIANGLE,SAW,NOISE,SINE,SAW 2,BASS 1,BASS 2,ORGAN,HOLLOW,AH,OH,EE,BUZZ,STAIR" && an === "SAW,SQUARE,TRIANGLE,SINE,PWM,SYNC,SUB" &&
+      ok(lo === "PULSE,TRIANGLE,SAW,NOISE,SINE,SAW 2,BASS 1,BASS 2,ORGAN,HOLLOW,AH,OH,EE,BUZZ,STAIR" && an === "SAW,SQUARE,TRIANGLE,SINE,PWM,SYNC,SUB,ACID,ACSQ" &&
          L.ENG[E("LOFI")].edit[1].names[0] === "PLS" && L.ENG[E("ANALOG")].edit[0].names[2] === "TRI",
          `names (item 165): LOFI WAVE ${lo}; ANALOG WAVE ${an} (the stored names PLS / TRI / SIN / SQR stay the keys)`);
     }
