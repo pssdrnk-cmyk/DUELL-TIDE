@@ -142,6 +142,7 @@ ALLOW = {
     "mono_remove": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~54 B); reached from trk_note_off_1",
     "motion_begin": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~64 B); reached from midi_clock_transport",
     "motion_capture": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~568 B); reached from midi_cc_set",
+    "motion_arp_idx": "event rate (a lock or automation recorded on an ARP SEQ part, b7 review B2), not per sample; in flash (~94 B); reached from motion_capture / motion_knob_lock",
     "motion_guard": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~10 B); reached from motion_snapshot_track",
     "motion_param": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~28 B); reached from motion_capture",
     "motion_put": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~292 B); reached from motion_capture",

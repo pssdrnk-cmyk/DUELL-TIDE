@@ -427,6 +427,30 @@ static uint32_t held_on(track_t *t, uint32_t note)   /* voices of this note stil
     return n;
 }
 static void leave_seq(track_t *t, uint32_t k) { uint32_t n = 0; while (t->seq_idx == k && n++ < 2000u) run(16); }
+/* FR9 (b7, review B2): a lock on an ARP SEQ part sounds on the arp's step, not the sequencer's: a key pressed at the sequencer's step 9 restarts
+ * the arp's pattern; the lock on step 5 comes with the arp's step 5. Also with ARP RATE 1/8 against DIV 1/16 */
+static void fr9(void)
+{
+    track_t *t = &trk[0];
+    for (uint32_t r = 0; r < 2u; r++) {
+        int16_t base, lv;
+        boot(); setup(0, AM_SEQ_ID, V_POLY);
+        if (r)
+            t->p[P_ARATE] = 1;                          /* (1/8: the arp at half the sequencer's rate) */
+        base = t->p[P_REV]; lv = (int16_t)(base == 100 ? 40 : 100);
+        motion_set_lock(t, 5, P_REV, lv);
+        start();
+        wait_seq(t, 9);
+        input_on(t, 60, 100);
+        wait_arp(t, 4); run(16);
+        CHECK(r ? "FR9: ARP RATE 1/8: the arp's step 4 plays without the lock" : "FR9: ARP SEQ, a key at the sequencer's step 9: the arp's step 4 plays without the lock", t->p[P_REV] == base);
+        wait_arp(t, 5); run(16);
+        CHECK(r ? "FR9: ARP RATE 1/8: the lock on step 5 sounds on the arp's step 5" : "FR9: ARP SEQ: the lock on step 5 sounds on the arp's step 5", t->p[P_REV] == lv);
+        input_off(t, 60);
+        stop();
+        motion_clear(t);
+    }
+}
 static void r6(void)
 {
     track_t *t = &trk[0];
@@ -588,7 +612,7 @@ static void rec_backup(void)
 
 int main(void)
 {
-    h1(); r2(); h5(); rec_modes(); rec_row(); r6(); rec_backup(); r4(); r5();
+    h1(); r2(); h5(); rec_modes(); rec_row(); r6(); rec_backup(); r4(); r5(); fr9();
     printf("liverec: %u checks, %u FAIL\n", checks, failures);
     return failures ? 1 : 0;
 }
