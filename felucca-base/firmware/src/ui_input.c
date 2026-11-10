@@ -942,8 +942,10 @@ static void morph_poll(void)
 static void mode_knob(uint32_t slot, int32_t s)
 {
     int32_t m = duell_mode_req < DM_N ? duell_mode_req : DM_SPLIT;
-    if (slot == 3u)                                     /* (item 158: KNOB 4 has no card: it does nothing and says nothing) */
+#if !DUELL_TIDE
+    if (slot == 3u)                                     /* (item 158: KNOB 4 has no card: it does nothing and says nothing; TIDE: only rows 0 .. 2 of TIDE SETTINGS call here, tide_ui.c) */
         return;
+#endif
 #if TIDE_PLAYSEL
     if (slot >= 1u && (!song.both || (slot == 1u && m != DM_LAYER)))   /* (1.0.0-b7) XFADE and SPLIT in ALGORITHM's middle only; XFADE LAYER's, SPLIT any mode's */
         return;
