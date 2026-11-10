@@ -420,6 +420,28 @@ static void test_oct_reset_style(void)
     CHECK("OCT- reset: K1 says BACK TO ORIGINAL", !strcmp(ui.msg, "BACK TO ORIGINAL"));
 }
 
+/* FR7 D2 (b7): OCT- held as a modifier (a PRESETS turn, a knob on TIDE SETTINGS) does nothing more on its release */
+static void oct_page(uint32_t graph)
+{
+    uint32_t pg = 0, pages = sizeof PAGES / sizeof PAGES[0];
+    while (pg < pages && PAGES[pg].graph != graph) pg++;
+    ui.page = pg; ui.cursor = ui.bank = 0; page_entered(); frames(400);
+}
+static void test_oct_used(void)
+{
+    uint32_t pg, v;
+    ui_power_on(); frame();
+    oct_page(GR_TIDE); song.octave = 0;
+    btn_down(B_OCTDN); frame(); turn(EN_PRESET, 1); frames(400); btn_up(B_OCTDN); frames(64);
+    CHECK("OCT- held + PRESETS on AUTO TIDE: no octave down on its release", song.octave == 0);
+    oct_page(GR_SLOTS); pg = ui.page;
+    btn_down(B_OCTDN); frame(); turn(EN_PRESET, 1); frames(400); btn_up(B_OCTDN); frames(64);
+    CHECK("OCT- held + PRESETS on MULTIS: the page stays (no HOME on its release)", ui.page == pg);
+    oct_page(GR_TIDELIST); jl_sel = JL_AMOUNT; jl_put(JL_AMOUNT, 50);
+    btn_down(B_OCTDN); frame(); turn(EN_K2, 1); v = jl_get(JL_AMOUNT); btn_up(B_OCTDN); frames(64);
+    CHECK("OCT- held + K2 on TIDE SETTINGS: the turned value stays (no step back on its release)", v != 50u && jl_get(JL_AMOUNT) == v);
+}
+
 /* a WILD roll with ARP ON keeps a SEQ Original on SEQ and never draws SEQ for another (morph.c, TIDE_AMODE_KEEP / _END) */
 static void test_seq_rule(void)
 {
@@ -871,6 +893,7 @@ int main(void)
     test_settings_flicker();
     test_hand_returns();
     test_journey_away_from_a();
+    test_oct_used();
     printf("tidecontrols: %u checks, %u failures\n", checks, failures);
     return failures ? 1 : 0;
 }

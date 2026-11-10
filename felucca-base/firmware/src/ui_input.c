@@ -1741,7 +1741,7 @@ static uint32_t oct_taps(uint32_t pressed, int here)
         down |= (uint8_t)(((pressed >> dn) & 1u) | ((pressed >> up) & 1u) << 1);
     if (now == 3u)
         chord = 1;
-    tap = down & ~now;
+    tap = down & ~now & ~oct_mod;                       /* (b7: OCT- used as a modifier, by a PRESETS turn or a knob, is no tap) */
     down &= (uint8_t)now;
     if (chord) {
         tap = 0;
@@ -2415,6 +2415,7 @@ static void ui_input(void)
      * and the page under it (HOME's sound, motion recorded), PRESETS could load a sound. They stay for the next pass */
     kq |= lay;
     if (!lay && (s = panel_enc(EN_PRESET)) != 0) {
+        oct_mod |= (uint8_t)((fm1_in.buttons >> panel.btn[B_OCTDN]) & 1u);   /* (b7: OCT- held + PRESETS: a modifier, no octave or tap on its release) */
         if (pu_t && fm1_ms - pu_t >= KR_QUIET_MS)
             pu_t = 0;
         if (pu_t) {                                     /* after an undo: still turning, ignored until still */
@@ -2445,6 +2446,7 @@ static void ui_input(void)
             continue;
         if (kr_quiet(k))                                /* a reset's knob still turning: ignored until it has been still (no creeping) */
             continue;
+        oct_mod |= (uint8_t)((fm1_in.buttons >> panel.btn[B_OCTDN]) & 1u);   /* (b7: OCT- held + a knob, TIDE SETTINGS too: OCT- was a modifier) */
         if (off_module(pg)) {                           /* item 125: its module is OFF: any knob jumps to MODULES */
             off_knob(k, s);
             continue;
