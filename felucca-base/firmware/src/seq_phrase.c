@@ -21,7 +21,7 @@ static int phrase_whole(uint32_t pi, uint32_t len)
 {
     uint32_t free = 0;
     for (uint32_t i = 0; i < len; i++) free += phrase_source(pi, i, len);
-    return (free <= 1u || ((sqm_bassm >> pi) & 1u)) && !((tarc_thin >> pi) & 1u);
+    return (free <= 1u || ((sqm_bassm >> pi) & 1u)) && !((tarc_lev >> pi) & 1u);
 }
 static int phrase_gap(uint32_t pi, uint32_t seed)
 {

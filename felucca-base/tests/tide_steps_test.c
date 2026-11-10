@@ -114,7 +114,7 @@ static uint32_t made_of(uint32_t p)
         h = (h ^ b[i / (NSTEP * sizeof(step_t))][i % (NSTEP * sizeof(step_t))]) * 16777619u;
     for (i = 0; i < NSTEP; i++)
         h = (h ^ (sqm_step(&trk[p], i, 1u) == &sqm_pat[p][1][i])) * 16777619u;   /* (the fader: which end each step is on) */
-    h = (h ^ sqm_thin[p][0] ^ sqm_thin[p][1] * 3u ^ (uint32_t)tarc_thin << 8 ^ (uint32_t)tarc_dropphr << 16 ^ (uint32_t)poly_len[p] << 5 ^ (uint32_t)sqm_auto << 12 ^ (uint32_t)sqm_vary_all << 14 ^ (uint32_t)song.playing << 15) * 16777619u;
+    h = (h ^ sqm_thin[p][0] ^ sqm_thin[p][1] * 3u ^ (uint32_t)tarc_lev << 8 ^ (uint32_t)tarc_dropphr << 16 ^ (uint32_t)poly_len[p] << 5 ^ (uint32_t)sqm_auto << 12 ^ (uint32_t)sqm_vary_all << 14 ^ (uint32_t)song.playing << 15) * 16777619u;
     return h;
 }
 typedef struct { tv_t v[3][16]; uint8_t page[3]; uint32_t n, made; } snap_t;
@@ -323,6 +323,70 @@ static void run_scn(const scn_t *c, uint32_t id)
     frame();
 }
 
+/* A new ARC phase's first downbeat plays with the new phase's levers (1.0.0-b8, A2): the audio side reads the thinned parts and the POLY hold for a bar
+ * with tarc_lvl (the planner arms the next unit's a unit ahead). At the first block of every 8-bar unit, before the main loop's pass,
+ * what the audio side reads must be what the planner settles on in that pass. (Before the fix it read the old phase's, until the main loop caught up.) */
+#ifdef TARC_ARMED
+#define T_LEV(bar) tarc_lvl(bar)
+#else
+#define T_LEV(bar) (tarc_lev)
+#endif
+static void arc_levers(int multi, uint32_t arc_mode)
+{
+    uint32_t blk, p, units = 0, moved = 0, wrong = 0, phases = 0, last_u = 0xFFu, last_lev = 0xFFu, last_ph = 9u, seen_ph = 0, bad_at = 0;
+    ui_power_on();
+    frame();
+    gl.on = gl.armed = 0;
+    transport_req = 2u;
+    frame();
+    frame();
+    project_load((uint32_t)multi);
+    song.g[G_BPM] = 240;
+    song.g[G_CLOCK] = 0;
+    song.g[G_SWING] = 50;
+    midi_pch[0] = 0;
+    midi_pch[1] = 1;
+    usb.config = 1;
+    for (p = 0; p < 2u; p++) {
+        trk[p].p[P_MUTE] = 0;
+        trk[p].nheld = 0;
+        trk[p].seq_active = 1;
+        seqm_set_amount(p, 80);
+        seqm_roll(p);
+    }
+    SEL_BOTH = 1;
+    morph_musical = 1;
+    gl.mode = GM_WANDER, gl.target = GT_BOTH, gl.time = 1, gl.wait = 0;
+    sqm_vary_all = 0, sqm_poly = 1, sqm_sync = 1, sqm_arc = (uint8_t)arc_mode;
+    mo_w = mo_r = 0;
+    glide_launch(1u, 3u, 0);
+    for (blk = 0; blk < 90u * 4u * (uint32_t)FS * 60u / 240u / CTL + 40u; blk++) {
+        events_block(CTL);
+        if (song.playing && sqm_auto == 3u && tarc.run && ((sqm_bar >> 3) & 63u) != last_u) {   /* the first block of a unit: the main loop has not looked yet */
+            uint32_t pre = T_LEV(sqm_bar), post;
+            tarc_poll();
+            post = T_LEV(sqm_bar);
+            if (last_u != 0xFFu) {
+                units++;
+                moved += post != last_lev;
+                if (pre != post && !wrong++)
+                    bad_at = (uint32_t)sqm_bar;
+                if (tarc.phase != last_ph)
+                    phases++, seen_ph |= 1u << tarc.phase;
+            }
+            last_u = (sqm_bar >> 3) & 63u, last_lev = post, last_ph = tarc.phase;
+        }
+        if ((blk % 22u) == 21u)
+            frame();
+    }
+    printf("tidesteps: ARC levers, multi %d, ARC %u: %u units, %u phase changes, the levers moved %u times, %u read late (first: bar %u)\n", multi + 1, arc_mode, units, phases, moved, wrong, bad_at);
+    CHECK("ARC levers: the run saw whole arcs (units, phase changes, levers that moved)", units >= 8u && phases >= 4u && moved >= 3u);
+    CHECK("ARC levers: a new phase's first downbeat reads the new phase's thinned parts and POLY hold", wrong == 0u);
+    transport_req = 2u;
+    frame();
+    frame();
+}
+
 int main(void)
 {
     static const scn_t S[] = {
@@ -352,6 +416,8 @@ int main(void)
     uint32_t i, m, c, e, tot[M_N] = {0, 0};
     for (i = 0; i < sizeof S / sizeof S[0]; i++)
         run_scn(&S[i], i);
+    arc_levers(1, 2u);                                       /* (M02, ARC DROP) */
+    arc_levers(5, 1u);                                       /* (M06, ARC RISE) */
     printf("tidesteps: %u steps started: %u varied from the stored step, %u on a chance, %u ties, %u of an ARP SEQ part, %u in a POLY stretch, %u in an ARC drop (nothing starts); %u shown undecided; checked against the page 1, 3, 7, 15 steps before %u, a block before %u\n",
            nsteps, nvaried, nchance, ntie, narp, npoly, ndrop, nmaybe, nfar, npred);
     for (m = 0; m < M_N; m++) {

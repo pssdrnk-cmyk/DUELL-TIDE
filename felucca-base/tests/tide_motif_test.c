@@ -219,7 +219,7 @@ static void t_lead(void)
     CHECK("a listening part plays softer than when it speaks (by more than 15 %)", c.nfol && c.nlead && (uint64_t)c.vfol * 100u * c.nlead < (uint64_t)c.vlead * 85u * c.nfol);
     {   /* who opens swaps (by the bar and the seed); the two parts never both listen in a bar, both play bar 4 of 4; against a bass only bar 3 */
         uint32_t sd, bar, o0 = 0, o1 = 0, both = 0, b4 = 0, one = 0;
-        sqm_auto = 3, tarc_thin = 0, sqm_lead = 3;
+        sqm_auto = 3, tarc_lev = 0, sqm_lead = 3;
         for (sd = 1; sd <= 8u; sd++) {
             morph.seed = (uint16_t)(sd * 4099u);
             for (bar = 0; bar < 128u; bar++) {
@@ -235,9 +235,9 @@ static void t_lead(void)
         for (bar = 0, one = 0; bar < 64u; bar++)
             one += (uint32_t)sqm_listens(0, bar) != ((bar & 3u) == 2u) || sqm_listens(1, bar);
         CHECK("against a bass or a pad the other part listens on bar 3 of 4 alone", !one);
-        tarc_thin = 1;
+        tarc_lev = 1, tarc_unit = 0;                     /* (a thinned part in the unit the main loop is in: bars 0-7) */
         CHECK("no listening while the arc thins", !sqm_listens(0, 2u) && !sqm_listens(1, 1u));
-        tarc_thin = 0;
+        tarc_lev = 0;
     }
     a = run(0, 64, 1, 0, CAT_BASS, 1);                /* part 2's bass line on a bass */
     CHECK("a bass never listens", !a.thin_bars && !sqm_thin[1][0]);

@@ -689,7 +689,7 @@ static void t_arc(void)
     arc_pulse = 0;
     for (b = 0; b < 40000u; b++)
         arc_block(b);
-    CHECK("ARC OFF: no drop, no thinning of its own, SYNC and brightness untouched", tarc_dropphr == 0xFFu && tarc_thin == 0 && !tarc_hold && tarc_sync() == 1u && tarc_bright() == 0);
+    CHECK("ARC OFF: no drop, no thinning of its own, SYNC and brightness untouched", tarc_dropphr == 0xFFu && tarc_lev == 0 && tarc_sync() == 1u && tarc_bright() == 0);
     {   /* audit C5: an arc is 8-16 phrases (32-64 bars), as README and the guide say, over many seeds in both modes */
         uint32_t m, sd, a, mn[3] = {99, 99, 99}, mx[3] = {0, 0, 0}, pkmx = 0;
         for (m = 1; m <= 2u; m++)

@@ -11,6 +11,10 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 
 The polish beta after b7. Not yet on the FM-1.
 
+### What TIDE plays
+
+- **Fixed (ARC):** the first beat of a new ARC phase plays with the new phase's settings. The breakdown's first beat is thinned out and the peak's first loop gets no POLY stretch, as the rest of the phase does; before, the old phase's settings ran for the first beat or two.
+
 ### Under the hood
 
 - **Under the hood (ARC):** the dead TURNS leftovers are gone: the TURNS variable, ARC's late-rise flag (nothing read either since CALL AND ANSWER became always on) and TURNS' column in the STYLE table. The saved TIDE settings keep their size and every other field as they were; the TURNS byte is always written as 1 and never read back. Nothing you hear or see changes.

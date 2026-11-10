@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* THE THIN MASK (CALL AND ANSWER, ARC's breakdown; b7 replaces TURNS / LEAD). Included by tide_seq.c after seq_poly.c.
- * A thinned part (seq_morph.c sqm_thinned: a listening bar, sqm_listens, or ARC's tarc_thin) plays End A without the steps of its mask
+ * A thinned part (seq_morph.c sqm_thinned: a listening bar, sqm_listens, or ARC's tarc_lev) plays End A without the steps of its mask
  * sqm_thin (main loop, a bit per stored step), a playback mask only (KEEP stores sqm_step, never the mask): every optional hit goes, its
  * anchors (sqm_anchor) and beats stay (MR4), and a held hit, a hit before a tie are never dropped; a pattern of 2 hits or fewer is left whole.
  * A bass or a pad (the Original's category) never listens and keeps its own rule in the breakdown: half of its optional hits go. */
@@ -16,7 +16,7 @@ static int sqm_thin_build(void)                          /* 1: a mask changed */
         uint32_t keep = c == 1u || c == 3u;              /* (a BASS or a PAD sound, category.c's numbers: included later; stored, append-only) */
         if (!keep)
             lead |= 1u << pi;                            /* (it listens, and its chords thin to two voices) */
-        if (((sqm_auto == 3u && !keep) || ((tarc_thin >> pi) & 1u)) && sqm[pi].ok && len > 4u) {
+        if (((sqm_auto == 3u && !keep) || (((tarc_lev | tarc_lev >> 3) >> pi) & 1u)) && sqm[pi].ok && len > 4u) {
             const step_t *p = sqm_pat[pi][0], *pb = sqm_pat[pi][1];   /* (End A as played: it carries the phrase overlay; End B: VARY ALL plays it too) */
             uint32_t score[NSTEP], hits = 0, cand = 0, grid = tide_metric(t, 0) != SM_NONE;
             for (i = 0; i < len; i++)
@@ -60,7 +60,7 @@ static void sqm_thin_poll(void)
         h = (h ^ (uint32_t)(uint16_t)t->p[P_SSWING]) * 16777619u;
         h = (h ^ (t->preset | (uint32_t)t->user << 8 | (uint32_t)t->eng_req << 16)) * 16777619u;   /* (the sound: its category, D2) */
     }
-    h = (h ^ ((uint32_t)(uint16_t)song.g[G_SWING] | (uint32_t)sqm_auto << 16 | (uint32_t)tarc_thin << 20 | (uint32_t)sqm_vary_all << 24)) * 16777619u;
+    h = (h ^ ((uint32_t)(uint16_t)song.g[G_SWING] | (uint32_t)sqm_auto << 16 | (uint32_t)tarc_lev << 20 | (uint32_t)sqm_vary_all << 24)) * 16777619u;
     sqm_dyn = (int8_t)(tarc_bright() < 0 ? -2 : tarc_bright());   /* (the dynamics' ARC side for the audio interrupt, seq_morph.c seq_play_step: MR4, the breakdown two steps softer) */
     if (sqm_thin_kok && h == sqm_thin_k)
         return;
