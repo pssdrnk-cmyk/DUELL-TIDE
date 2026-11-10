@@ -465,6 +465,49 @@ static void t_keep_held_b(void)
     trk_note_off(&trk[0],60);
 }
 
+/* 1.0.0-b8, SAVE after JOURNEY: the SAVE dialog says what it saves (tide_ui.c tide_save_note_h, ui_draw.c draw_confirm) when the part's heard end is a factory sound MORPH TO
+ * or JOURNEY put there; nothing at A, nothing after KEEP, and with BOTH when either part is */
+static void t_savenote(void)
+{
+    fresh(); setup();
+    ui.confirm_trk = 0;
+    fader(0);
+    CHECK("SAVE note: not shown at A, with End B a MORPH TO sound waiting", tide_save_note_h() == 0);
+    fader(127);
+    CHECK("SAVE note: shown with the heard end moved to another sound (part 1)", tide_save_note_h() > 0);
+    ui.confirm_trk = 1;
+    CHECK("  .. not for part 2, which is not moved", tide_save_note_h() == 0);
+    ui.confirm_trk = 2;
+    CHECK("  .. BOTH: shown when part 1 is moved", tide_save_note_h() > 0);
+    ui.confirm_trk = 0;
+    tools_key(TL_KEEP);
+    CHECK("  .. after KEEP: gone (the heard sound is the Original)", tide_save_note_h() == 0);
+    fader(0);
+    CHECK("  .. and still gone at A", tide_save_note_h() == 0);
+    fresh(); setup();
+    fader(127);
+    other_sound();
+    CHECK("  .. a part loaded with another sound: gone", tide_save_note_h() == 0);
+    fresh(); setup();                                 /* part 2 as part 1: End B a MORPH TO sound; only part 2's fader moves */
+    set_engine_of(&trk[1], ENGI_FM6);
+    trk[1].engine = ENGI_FM6;
+    apply_preset_to(&trk[1], (uint32_t)sound_a);
+    frames(64);
+    ablocks(16);
+    morph_ready(1);
+    morph_to_sound(1, 1u, (uint32_t)sound_b);
+    mph[1].sm_r = 32768;
+    morph_do(MQ_FADER, 2u, 127u);
+    frame();
+    ablocks(4);
+    ui.confirm_trk = 1;
+    CHECK("  .. part 2 moved: shown for part 2", tide_save_note_h() > 0);
+    ui.confirm_trk = 0;
+    CHECK("  .. not for part 1", tide_save_note_h() == 0);
+    ui.confirm_trk = 2;
+    CHECK("  .. BOTH: shown when only part 2 is moved", tide_save_note_h() > 0);
+}
+
 int main(void)
 {
     pick();
@@ -476,6 +519,7 @@ int main(void)
     t_keep_macros();
     t_keep_live();
     t_keep_held_b();
+    t_savenote();
     t_store();
     t_limit();
     printf("tidekeep: %d of %d checks failed\n", bad, checks);

@@ -3393,7 +3393,7 @@ static void draw_confirm(void)
     char a[32], b[32];
     const aafont_t *tf = &AF_M;
     int hint = ui.confirm == CF_SAVE_OVER && ui.confirm_trk < 2u;   /* the slot picker's hint line (K1) */
-    int32_t dh = hint ? 22 : 0, by = 80 + dh, sh = ui.confirm == CF_SAVE_OVER ? TIDE_SAVE_NOTE_H() : 0;   /* (sh: 1.0.0-b8, the note above the question: the card sits sh lower) */
+    int32_t dh = hint ? 22 : 0, nh = ui.confirm == CF_SAVE_OVER ? TIDE_SAVE_NOTE_H() : 0, by = 80 + dh + nh;   /* (nh: 1.0.0-b8, the rows the note pushes the question down by, 0 none) */
     b[0] = 0;
     if (ui.confirm == CF_ERASE_ALL) {
         draw_confirm_erase();
@@ -3402,24 +3402,26 @@ static void draw_confirm(void)
     confirm_text(a, b);
     lcd_fill(0, H_HEAD, 240, 240 - H_HEAD, T_BG);
     ui.head_sig = ~0u;
-    cv_begin(DLG_W, DLG_H + dh, T_BG);                /* a SURF card: warning, the question, the detail, two buttons */
+    cv_begin(DLG_W, DLG_H + dh + 5, T_BG);      /* a SURF card: warning, the question, the detail, two buttons */
     GFX_HOOK_ALIGN(0, 0, DLG_W, 0, AL_H, "dialog icon centred");
     /* (DUELL 1.1: no icon above the question) */
     if (text_w(tf, a) > DLG_W - 16)
         tf = &AF_S;
-    GFX_HOOK_ALIGN(0, 0, DLG_W, 0, AL_H, "dialog question centred");
-    cv_text_in(0, 34, DLG_W, tf, a, T_TEXT, T_BG);
+    GFX_HOOK_ALIGN(0, nh, DLG_W, nh, AL_H, "dialog question centred");
+    if (nh)                                           /* 1.0.0-b8: SAVE after JOURNEY: what it stores, two rows over the question (the card's size limit: its bottom margin is the room) */
+        TIDE_SAVE_NOTE_DRAW(DLG_W);
+    cv_text_in(0, 34 + nh, DLG_W, tf, a, T_TEXT, T_BG);
     if (b[0]) {
         char f[32];
         text_fit(f, sizeof f, b, &AF_M, DLG_W - 16);    /* a name: free text (M: what is selected, as the question) */
         GFX_HOOK_ALIGN(0, 0, DLG_W, 0, AL_H, "dialog detail centred");
-        cv_text_flags(ink_in(&AF_M, f, DLG_W), 55, &AF_M, f, T_MID, T_BG, 8u | (f[str_len(f) - 1u] == ELLIPSIS));
+        cv_text_flags(ink_in(&AF_M, f, DLG_W), 55 + nh, &AF_M, f, T_MID, T_BG, 8u | (f[str_len(f) - 1u] == ELLIPSIS));
     }
     if (hint) {                                       /* SAVE held: K1 picks the slot the sound goes to */
-        GFX_HOOK_ALIGN(0, 78, DLG_W, 78 + KC_H, AL_H | AL_N(4), "dialog hint centred");
+        GFX_HOOK_ALIGN(0, 78 + nh, DLG_W, 78 + nh + KC_H, AL_H | AL_N(4), "dialog hint centred");
         int32_t w1 = kh_ink(KC_K1, "OTHER SLOT"), w2 = kh_ink(KC_K2, "RENAME"), x0 = HALF_UP(DLG_W - (w1 + 14 + w2)) - 1;   /* (the ink's centre on the dialog's: the keycaps' side margins) K1 OTHER SLOT, K2 RENAME (0.2.21) */
-        cv_key_hint(x0, 78, KC_K1, "OTHER SLOT", 1, T_BG);
-        cv_key_hint(x0 + w1 + 14, 78, KC_K2, "RENAME", 1, T_BG);
+        cv_key_hint(x0, 78 + nh, KC_K1, "OTHER SLOT", 1, T_BG);
+        cv_key_hint(x0 + w1 + 14, 78 + nh, KC_K2, "RENAME", 1, T_BG);
     }
     GFX_HOOK_ALIGN(10, by, 100, by + 26, AL_HV | AL_N(2), "dialog button NO");
     cv_key_hint(10 + HALF_UP(90 - kh_ink(KC_OCTDN, "NO")), by + HALF_UP(26 - KC_H), KC_OCTDN, "NO", 1, T_BG);   /* (ink centred) */
@@ -3430,9 +3432,7 @@ static void draw_confirm(void)
         x = cv_keycap(x, by + HALF_UP(26 - KC_H), KC_OCTUP, T_INK, T_THEME, T_THEME);
         cv_text_on(x + KH_GAP, by + HALF_UP(26 - KC_H) - 3, &AF_S, "YES", T_INK, T_THEME);   /* (item 122: the capitals centred on the pill) */
     }
-    cv_blit(DLG_X, DLG_Y + sh);
-    if (sh)                                           /* 1.0.0-b8: SAVE after JOURNEY: what it stores, a canvas of its own over the card's empty top (the card is at its size limit) */
-        TIDE_SAVE_NOTE_DRAW(DLG_Y + sh + 34 - 31 - 22);
+    cv_blit(DLG_X, DLG_Y + nh * 2 / 3);            /* (with the note the block is taller: moved down to stay where the plain one is centred) */
 }
 
 static void ui_draw_page(uint32_t counting);
