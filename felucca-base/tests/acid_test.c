@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* ACID (b8, work/b8/acid/DESIGN.md): ANALOG WAVE 7 ACID / 8 ACSQ play their accents like a 303; same sources as the firmware (hostsim.c).
  * build/host/acid_test (host_tests.sh acid):
- *   EXACT   a plain note with WAVE ACID renders bit for bit as WAVE SAW, ACSQ as SQR (the new code touches only accents)
+ *   EXACT   a plain note with WAVE ACID renders bit for bit as WAVE SAW at velocity 42 (ACID_BASE), ACSQ as SQR; whatever its own velocity
  *   NONACID the same accent on WAVE SAW: ENV 2 keeps its Decay, the capacitor stays empty, the level step is the velocity's alone
  *   DECAY   an accented ACID note's ENV 2 falls to a half in about 30 ms whatever the Decay knob says (a plain note keeps the Decay's time)
- *   LEVEL   the accent's level burst: well above the velocity's step at the start, back on it a few hundred ms later
+ *   LEVEL   the accent's level burst: +8 .. 11 dB over a plain note at the start (up to unity, no more: above it the amp ramp overflows), on it again after 200 ms
  *   PUSH    the capacitor: one accent charges it, a plain note leaves it empty; two accents in a row stack, more at high RES than at low
  *   SLIDE   a slid step (LEGATO, GLIDE TIME 54 ms, slide_glide as the sequencer sets it) does not retrigger and reaches 90 % of a
  *           semitone and of an octave in 45 .. 60 ms
@@ -119,7 +119,7 @@ static void exact(void)
     for (w = 0; w < 2u; w++) {
         track_t *t = fresh(W[w][1], 80, 100);
         char s[128];
-        trk_note_on(t, 45, 90);
+        trk_note_on(t, 45, 42);                         /* (ACID plays every plain note at ACID_BASE = Q15_FROM_127(42), whatever its velocity) */
         render(60, ref);
         trk_note_off(t, 45);
         render(40, ref + 60 * 2 * CTL);
@@ -192,8 +192,8 @@ static void level(void)
     e1 = energy(rec, 250, 290);
     {
         char s[160];
-        snprintf(s, sizeof s, "ACID: the accent's level: start x%.2f, 180 ms later x%.2f of the plain note's (velocity alone is x1.32)", e0 / l0, e1 / l1);
-        check(s, e0 / l0 > 1.7 && e1 / l1 > 1.2 && e1 / l1 < 1.45);
+        snprintf(s, sizeof s, "ACID: the accent's level over a plain note's: start +%.1f dB, 180 ms later %+.1f dB (+8 .. 11 dB, then on the plain level)", 20.0 * log10(e0 / l0), 20.0 * log10(e1 / l1));
+        check(s, 20.0 * log10(e0 / l0) > 8.0 && 20.0 * log10(e0 / l0) < 11.0 && fabs(20.0 * log10(e1 / l1)) < 1.0);
     }
 }
 

@@ -1343,8 +1343,8 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
                 env = e->amp(t, v, env);
             m.envq15 = e->ownenv ? 0 : env;
             m.amp1 = e->ownenv ? env : mulq15(env, Q15_FROM_127(v->vel));
-            if (acid && v->vel > ACCENT_V0)             /* the accent's burst: the level follows the (short) ENV 2, up to +ACID_BURST at its start */
-                m.amp1 += mulq15(m.amp1, mulq15(v->env2 >> 9, ACID_BURST));
+            if (acid)                                   /* ACID: the level is fixed (ACID_BASE); an accent bursts from it up to unity with the (short) ENV 2 */
+                m.amp1 = mulq15(env, ACID_BASE + (v->vel > ACCENT_V0 ? mulq15(32767 - ACID_BASE, v->env2 >> 9) : 0));
             if (v->xg)                                  /* LAYER XFADE (core.h mix_xf): the note's share between the parts */
                 m.amp1 = mulq15(m.amp1, v->xg);
             if (p[P_LD_AMP] && !BYP(t, BY_LFO1))
