@@ -85,26 +85,6 @@ MULTIS = [
     # in the multi (no new factory sound). ARP SEQ parts play one chord shape in parallel on TIDE's stand-in C4 (the key is written in the offsets; a held key moves it by its
     # distance from C); an ARP SEQ step's vNN is not read (seq.c arp_seq_notes), so those parts have two loudnesses, plain and A. A pad is written at the coarsest ARP RATE that
     # fits (a chord held four bars is one step). A part with len=N says its own pattern length.
-    # ---- the reel (10 November 2026, owner: "sounds good, go ahead with all changes"; the design, its research and the survey of the instrument: work/reel-2026-11-10/REEL.md,
-    # RESEARCH.md, SOUNDS.md in the owner's notes): 18 multis as one curated programme, a genre each, the patterns written "in the manner of", the voices set for their roles
-    # in the multi (no new factory sound). ARP SEQ parts play one chord shape in parallel on TIDE's stand-in C4 (the key is written in the offsets; a held key moves it by its
-    # distance from C); an ARP SEQ step's vNN is not read (seq.c arp_seq_notes), so those parts have two loudnesses, plain and A. A pad is written at the coarsest ARP RATE that
-    # fits (a chord held four bars is one step). A part with len=N says its own pattern length.
-    # ---- the reel (10 November 2026, owner: "sounds good, go ahead with all changes"; the design, its research and the survey of the instrument: work/reel-2026-11-10/REEL.md,
-    # RESEARCH.md, SOUNDS.md in the owner's notes): 18 multis as one curated programme, a genre each, the patterns written "in the manner of", the voices set for their roles
-    # in the multi (no new factory sound). ARP SEQ parts play one chord shape in parallel on TIDE's stand-in C4 (the key is written in the offsets; a held key moves it by its
-    # distance from C); an ARP SEQ step's vNN is not read (seq.c arp_seq_notes), so those parts have two loudnesses, plain and A. A pad is written at the coarsest ARP RATE that
-    # fits (a chord held four bars is one step). A part with len=N says its own pattern length.
-    # ---- the reel (10 November 2026, owner: "sounds good, go ahead with all changes"; the design, its research and the survey of the instrument: work/reel-2026-11-10/REEL.md,
-    # RESEARCH.md, SOUNDS.md in the owner's notes): 18 multis as one curated programme, a genre each, the patterns written "in the manner of", the voices set for their roles
-    # in the multi (no new factory sound). ARP SEQ parts play one chord shape in parallel on TIDE's stand-in C4 (the key is written in the offsets; a held key moves it by its
-    # distance from C); an ARP SEQ step's vNN is not read (seq.c arp_seq_notes), so those parts have two loudnesses, plain and A. A pad is written at the coarsest ARP RATE that
-    # fits (a chord held four bars is one step). A part with len=N says its own pattern length.
-    # ---- the reel (10 November 2026, owner: "sounds good, go ahead with all changes"; the design, its research and the survey of the instrument: work/reel-2026-11-10/REEL.md,
-    # RESEARCH.md, SOUNDS.md in the owner's notes): 18 multis as one curated programme, a genre each, the patterns written "in the manner of", the voices set for their roles
-    # in the multi (no new factory sound). ARP SEQ parts play one chord shape in parallel on TIDE's stand-in C4 (the key is written in the offsets; a held key moves it by its
-    # distance from C); an ARP SEQ step's vNN is not read (seq.c arp_seq_notes), so those parts have two loudnesses, plain and A. A pad is written at the coarsest ARP RATE that
-    # fits (a chord held four bars is one step). A part with len=N says its own pattern length.
     dict(slot=1, name="BASIC CHORD", mode="LAYER",
          what="dub techno, G minor: one inverted minor triad in a low-pass haze, three dry hits a bar (steps 4, 7, 14) and a dark dotted echo that plays the rest, the filter riding slowly, a crackle bed held under it (122 BPM)",
          g=dict(G_BPM=122, G_DTIME="8D", G_DFDBK=72, G_DMIX=84, G_DMODE="DIGI", G_DCOLOR=50, G_DMDEP=12, G_RTYPE="PLATE", G_RSIZE=84, G_RDAMP=61),
