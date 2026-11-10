@@ -71,6 +71,7 @@ The owner's answers to the musical review (9 November) are built in: the default
 24. Give notes back more finely (per multi, or a smaller step than 76): at the first step, NOTES limit 76 (18 notes over the 16 multis), the unit's sweep missed no block but cut one voice on M14 EERIE SIGNAL, busiest block 90 % (b5 83 %); M08 TINE DUB 89 %. Each try kept only if the sweep stays clean.
 25. Send only the screen rows that changed, so the wave page reaches ~16 pictures a second instead of ~11 (the SPI link costs ~44 ms a full wave redraw).
 26. Before `1.0.0`: 0 missed blocks over the 16-multi GLIDE sweep (owner, 8 November); the CPU budget re-measured and made honest (findings 5, 6, 34; K9).
+27. AUTO TIDE's step display can show one hit ahead that then doesn't play: M09 MINIMAL 12's 12-step blip under a style with ARC DROP (PEAK). Picture only, the sound is right. Seen once in 22,158 look-aheads in the `tidesteps` test (its WANDER / ARC DROP scenario on factory slot 8: part 2, step 6, three steps ahead). The same class showed on the old set in the night build. The scenario was moved from slot 8 to slot 6 to keep the suite green: put 8 back in `felucca-base/tests/tide_steps_test.c` to see it.
 
 ## Released
 
