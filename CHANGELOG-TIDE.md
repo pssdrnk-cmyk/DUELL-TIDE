@@ -7,6 +7,14 @@ New lines for the fork go here, not into CHANGELOG.md.
 
 Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrnk-cmyk/DUELL-TIDE>), adding TIDE, a morph that plays and evolves by itself. TIDE has its own version, `MAJOR.MINOR.PATCH`, kept in the file `TIDE_VERSION` and shown in MENU > SYSTEM > ABOUT beside the DUELL version (1.1). A build flashed for testing is a beta, `1.0.0-b1`, `1.0.0-b2`, ...; the first build the fork owner has validated on the unit is `1.0.0`; a fix is `1.0.1`, a feature `1.1.0`. The git tag is `tide-` and the version (`tide-1.0.0-b1`); the GitHub release has the same name. Each version has a section below, `## 1.0.0-b1`, newest first; a section heading names the tag and, once known, the commit and the date it was flashed. The commit stays in the release notes, not in the name. The installer page offers the stable and the beta build of the [GitHub releases](https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases); the [README](README.md#builds-stable-and-beta) says which they are.
 
+## 1.0.0-b8 (in progress)
+
+The polish run: no new pages, no format changes.
+
+### What TIDE plays
+
+- **New (ACID):** the ANALOG engine's WAVE list ends with ACID (a saw) and ACSQ (a square). A sound with either plays its accents like a TB-303: an accented note shortens the filter sweep to about 200 ms whatever the DECAY says, adds a short burst of level that follows the sweep, and pushes the cutoff up through a lag that grows with the RESONANCE, so accents in a row climb higher, more at high RESONANCE. Plain notes sound exactly as on SAW and SQR, and every other sound is unchanged. Slides stay the pattern's (SLIDE steps, a LEGATO sound, GLIDE in TIME mode).
+
 ## 1.0.0-b7 (in progress)
 
 Built overnight on 9-10 November 2026 from the musical review (owner: "your ideas look good, go ahead with all of them", "let's keep what makes musical sense"). Not yet on the FM-1.

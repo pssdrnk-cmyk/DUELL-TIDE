@@ -611,7 +611,8 @@ static int32_t pic_analog_at(const track_t *t, uint64_t ph)
 }
 static void graph_pic_analog(const track_t *t, uint16_t c)
 {
-    uint32_t w = (uint32_t)clamp(t->p[P_E0], 0, 6);                    /* SAW SQR TRI SIN PWM SYNC SUB */
+    uint32_t w = (uint32_t)clamp(t->p[P_E0], 0, 8);                    /* SAW SQR TRI SIN PWM SYNC SUB ACID ACSQ */
+    w = w == 8u ? 1u : w == 7u ? 0u : w;                                /* (ACID is a saw, ACSQ a square) */
     if (w < 4u) {                                                       /* SAW SQR TRI SIN: one oscillator's ideal shape (as before) */
         pic_draw(w == 1u ? 1u : w == 2u ? 2u : w == 3u ? 3u : 0u, 512u, c);
         return;
