@@ -389,7 +389,7 @@ static int mu_unpack(project_t *q, uint8_t amt[NSHOWN], uint8_t set[6], const ui
 #if DUELL_TIDE
 static uint32_t mu_bad;                           /* bit k: M(k + 1) holds a record this firmware does not load (not empty: LOAD says DAMAGED, the row and the preview too; no factory multi shows for it) */
 static uint32_t mu_gen;                           /* counts the records' changes (mu_note): the MULTIS preview decodes again when it moves */
-static uint8_t mu_vp[MU_SHOWN][NSHOWN][4];        /* per slot and part, from the decode mu_note does anyway: engine, preset, MODE (0 OFF, 1 ARP, 2 SEQ), 1 = a note in the pattern: the list rows' voice names */
+static uint8_t mu_vp[MU_SHOWN][NSHOWN][4];        /* per slot and part, from the decode mu_note does anyway: engine, preset, MODE (0 OFF, 1 ARP, 2 SEQ: ARP SEQ, or arp OFF with a note in the pattern), 1 = a note in the pattern: the list rows' voice names */
 static void mu_vp_set(uint8_t *v, const proj_trk_t *d)
 {
     uint32_t i, slen = (uint32_t)clamp(d->p[P_SLEN], 1, NSTEP);
@@ -400,6 +400,8 @@ static void mu_vp_set(uint8_t *v, const proj_trk_t *d)
     for (i = 0; i < slen; i++)
         if (d->step[i].time == ST_NOTE && d->step[i].n)
             v[3] = 1;
+    if (!v[2] && v[3])
+        v[2] = 2u;                                    /* (1.0.0-b7: arp OFF with notes in the pattern plays the sequencer on PLAY: SEQ too, not OFF; the reel's M03 JUNO DEEP) */
 }
 #endif
 /* slot k's RAM view from its record r (len bytes; 0 none: the factory multi, if k has one) */
