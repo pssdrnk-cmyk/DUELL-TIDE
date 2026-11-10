@@ -244,8 +244,8 @@ static void keys_drive(void)
         k = GRV[j];
         play_run(k, 1u << c4, 2u * sec, sec, 0, r);
         ok = !song.playing && r[0].n >= 1u && r[1].n >= (k == 1u ? 4u : 1u) && r[0].late == 0u && r[1].late == 0u && !r[0].gated_after && !r[1].gated_after;
-        if (k == 1u)                                 /* (0.2.25: the owner's edited NIGHT ORGAN and DUB CHORD (M04 and M02 since D31): an arp may finish its figure after the release; not changed) */
-            ok = !song.playing && r[0].n >= 1u && r[1].n >= 4u;
+        if (k == 1u)                                 /* (M02 DUB CHORD, re-voiced with the owner's leave: its pad is one note tied over four bars, so one note-on, and it may ring after the release; until then the owner's TIDAL SUB line, 4 or more) */
+            ok = !song.playing && r[0].n >= 1u && r[1].n >= 1u;
         if (P1[j])                                   /* (part 1 plays the key itself (TRN), at once, one note for the hold) */
             ok &= r[0].first <= 1u && r[0].n == 1u && r[0].note[0] == P1[j];
         else                                         /* (part 1 an arp too) */
@@ -253,7 +253,7 @@ static void keys_drive(void)
         ok &= r[1].first < sec / 2u;                 /* (part 2's arp from the key-down, on the internal clock) */
         printf("multi:   M%02u C4 held 2 s, stopped: part 1 %u note-ons (first in block %u), part 2 %u (first in block %u); after the release %u / %u\n",
                k + 1u, r[0].n, r[0].first, r[1].n, r[1].first, r[0].late, r[1].late);
-        snprintf(line, sizeof line, k == 1u ? "%s, LAYER, STOPPED: a key plays both parts (no PLAY; the owner's edit)" : "%s, LAYER, STOPPED: a key plays both parts (no PLAY), the release ends both", GN[j]);
+        snprintf(line, sizeof line, k == 1u ? "%s, LAYER, STOPPED: a key plays both parts (no PLAY; the pad may ring on)" : "%s, LAYER, STOPPED: a key plays both parts (no PLAY), the release ends both", GN[j]);
         ck(line, ok);
         if (getenv("PR_DBG")) {
             uint32_t i, jj;
@@ -840,7 +840,7 @@ int main(void)
             memcpy(eb[pi], morph_cur(&mph[pi], 1), P_COUNT);
             ne[pi] = morph_edits(pi, el[pi]);
         }
-        project_load(1u);                            /* another multi: the parts' B ends are other ones (reel, 2026-11-10: M02 DUB CHORD, the owner's record, no value set by hand at its B end;
+        project_load(16u);                           /* another multi: the parts' B ends are other ones (the reel re-voiced: M17 DUNE HORN, a ROM drone, no value set by hand at its B end; M02, used until then, has hand-set B values now;
                                                       * M12, loaded here until then, is ROBOT FUNK now, whose End B is set value by value: it has edit lists of its own) */
         frames(50);
         ok = morph_edits(0, g) == 0u && morph_edits(1, g) == 0u;
@@ -1088,11 +1088,11 @@ int main(void)
         static const char *const FN[16] = {"BASIC CHORD", "DUB CHORD", "JUNO DEEP", "LATE RHODES", "ORGAN HOUSE", "PIANO HOUSE", "DETROIT STAB",
                                            "HI-TECH SOUL", "MINIMAL 12", "SEVEN LOOP", "ACID LINES", "ROBOT FUNK", "DEEP SEA ARP", "WARPED TAPE",
                                            "BERLIN RUN", "TWO LOOPS"};
-        static const char *const SN[16][2] = {{"CHORD ECHO", "DUST BED"}, {"BIG STAB", "TIDAL SUB"}, {"WARM WASH", "RUBBER BAND"},
+        static const char *const SN[16][2] = {{"CHORD ECHO", "DUST BED"}, {"BIG STAB", "SLOW TIDE"}, {"WARM WASH", "RUBBER BAND"},
                                               {"TINE ROOM", "AIR SHIMMER"}, {"DUB DRAWBAR", "HOUSE ORGAN"}, {"SALOON KEYS", "RAIN STRINGS"},
-                                              {"ICE STAB", "STRING MACH"}, {"SUNDAY KEYS", "BELL STAB"}, {"SOUL STAB", "FOG BANK"},
+                                              {"LOW STAB", "STRING MACH"}, {"SUNDAY KEYS", "BELL STAB"}, {"SOUL STAB", "FOG BANK"},
                                               {"HOLLOW POP", "IRON WORKS"}, {"SQUELCH", "DEEP BLUE"}, {"LADDER BASS", "VOWEL PAD"},
-                                              {"DIGI PLUCK", "PWM PAD"}, {"NIGHT BOX", "TAPE CLOUD"}, {"ARP PLUCK", "CHOIR LOFT"},
+                                              {"DIGI PLUCK", "PWM PAD"}, {"WAVE CHIMES", "TAPE CLOUD"}, {"ARP PLUCK", "CHOIR LOFT"},
                                               {"FROST BELLS", "EVOLVING PAD"}};
         static const uint8_t MD[16] = {DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER,
                                        DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER};   /* (0.2.25: no factory multi in DUEL; M08 MONO DUEL, the only one, is spare: the owner's HAZY TENSOR, LAYER) */
@@ -1119,7 +1119,7 @@ int main(void)
                 ok &= str_eq(ds_name(trk[pi].eng_req, trk[pi].preset), SN[k][pi]) && (trk[pi].engine = trk[pi].eng_req, endb_set(pi)) &&
                       (AM[k][pi] < 0 || trk[pi].p[P_AMODE] == AM[k][pi]);
             ok &= duell_mode_req == MD[k] && proj_cur == k && song.g[G_BPM] == BPM[k] && mix_split == SPL[k] && (XF[k] == 255u || mix_xf == XF[k]) &&
-                  song.g[G_RLOCUT] == (k == 1u ? 80 : 75);   /* (0.2.25: the owner's DUB CHORD (M02 since D31) has its reverb LOW CUT at 80; until the reel his FINAL REEL (M16) had 79) */
+                  song.g[G_RLOCUT] == 75;   /* (the reel re-voiced: DUB CHORD rebuilt with the owner's leave, at the default 75; 0.2.25: the owner's DUB CHORD (M02 since D31) has its reverb LOW CUT at 80; until the reel his FINAL REEL (M16) had 79) */
             for (pi = 0; pi < NSHOWN && AM[k][pi] == 15; pi++) {   /* (a SEQUENCER arp: its steps, offsets within two octaves, one note a step) */
                 const track_t *t = &trk[pi];
                 for (n = st = 0; n < NSTEP; n++) {
@@ -1248,7 +1248,7 @@ int main(void)
         turn(EN_K3, 1);
         ck("  right at the end: nothing", proj_cur == f0);
         turn(EN_K3, -(int32_t)(MU_SHOWN - 14u));
-        ck("  back to M14 WARPED TAPE (WHEEL + PHASE)", proj_cur == 13u && str_eq(ENGINES[trk[0].eng_req]->name, "WHEEL") && str_eq(ENGINES[trk[1].eng_req]->name, "PHASE"));
+        ck("  back to M14 WARPED TAPE (WAVE + PHASE)", proj_cur == 13u && str_eq(ENGINES[trk[0].eng_req]->name, "WAVE") && str_eq(ENGINES[trk[1].eng_req]->name, "PHASE"));
         turn(EN_K3, -2);
         ck("  2 more left: M12", proj_cur == 11u);
         /* K4 RESET */
