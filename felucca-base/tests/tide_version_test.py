@@ -91,6 +91,12 @@ with tempfile.TemporaryDirectory() as t:
         (Path(t2) / "TIDE_VERSION").unlink()
         check("no TIDE_VERSION file", exits(build.tide_version), True)
 
+# TIDE b7 (review E5): --release refuses the developer switches
+check("--release with FELUCCA_CDC=1 stops the build", exits(lambda: build.release_guard(["build.py", "--release"], {"FELUCCA_CDC": "1"})), True)
+check("--release with DUELL_TEST_MODE=1 stops the build", exits(lambda: build.release_guard(["build.py", "--release"], {"DUELL_TEST_MODE": "1"})), True)
+check("--release with the switches off builds", exits(lambda: build.release_guard(["build.py", "--release"], {"FELUCCA_CDC": "0"})), False)
+check("a test build with FELUCCA_CDC=1 builds", exits(lambda: build.release_guard(["build.py"], {"FELUCCA_CDC": "1"})), False)
+
 # the repository's own file is valid
 build.SRC = Path(__file__).resolve().parents[1]
 check("the repository's TIDE_VERSION", bool(build.tide_version()), True)
