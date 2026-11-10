@@ -1094,7 +1094,7 @@ int main(void)
         static const char *const SN[16][2] = {{"CHORD ECHO", "DUST BED"}, {"BIG STAB", "SLOW TIDE"}, {"WARM WASH", "RUBBER BAND"},
                                               {"TINE ROOM", "AIR SHIMMER"}, {"DUB DRAWBAR", "HOUSE ORGAN"}, {"SALOON KEYS", "RAIN STRINGS"},
                                               {"LOW STAB", "STRING MACH"}, {"SUNDAY KEYS", "BELL STAB"}, {"SQUELCH", "FOG BANK"},
-                                              {"SQUELCH", "TIDAL SUB"}, {"SQUELCH", "DEEP BLUE"}, {"LADDER BASS", "VOWEL PAD"},
+                                              {"TIDAL SUB", "SQUELCH"}, {"SQUELCH", "DEEP BLUE"}, {"LADDER BASS", "VOWEL PAD"},
                                               {"DIGI PLUCK", "PWM PAD"}, {"WAVE CHIMES", "TAPE CLOUD"}, {"ARP PLUCK", "CHOIR LOFT"},
                                               {"FROST BELLS", "EVOLVING PAD"}};
         static const uint8_t MD[16] = {DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER,
