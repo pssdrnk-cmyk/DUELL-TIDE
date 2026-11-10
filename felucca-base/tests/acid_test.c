@@ -9,6 +9,7 @@
  *   PUSH    the capacitor: one accent charges it, a plain note leaves it empty; two accents in a row stack, more at high RES than at low
  *   SLIDE   a slid step (LEGATO, slide_glide as the sequencer sets it) does not retrigger and is an RC lag: 90 % of a semitone and of an
  *           octave in 45 .. 60 ms, 99 % in 90 .. 120 ms
+ *   PLAIN   a plain note slid into after an accent takes its own velocity: it is not accented
  *   WAVE    the WAVE list has ACID and ACSQ */
 #define main hostsim_main
 #include "hostsim.c"
@@ -290,6 +291,23 @@ static void slide(void)
     check(s, a9 >= 90.0 && a9 <= 120.0 && b9 >= 90.0 && b9 <= 120.0 && a9 > 1.7 * a && b9 > 1.7 * b);
 }
 
+/* an accent slid into a plain note: the plain note takes its own velocity (not accented), so ENV 2 / the capacitor / the level run down as for a plain note */
+static void plain_after_accent(void)
+{
+    track_t *t = fresh(7, 85, 100);
+    voice_t *v = &t->v[0];
+    int y0;
+    trk_note_on(t, 45, 127);
+    blocks(30);
+    y0 = t->acid_y;
+    t->slide_glide = 1;
+    trk_note_on(t, 47, 96);
+    t->slide_glide = 0;
+    check("ACID: a plain note slid into after an accent is plain (its own velocity, no retrigger)", v->vel == 96u && v->stage != 1u);
+    blocks(60);
+    check("ACID: and the capacitor runs down under it (an accent's would keep charging)", t->acid_y < y0);
+}
+
 static void wave(void)
 {
     const param_desc_t *d = &ENGINES[0]->edit[0];
@@ -305,6 +323,7 @@ int main(void)
     level();
     push();
     slide();
+    plain_after_accent();
     wave();
     printf("acid: %s\n", bad ? "FAIL" : "ok");
     return bad ? 1 : 0;

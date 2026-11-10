@@ -627,7 +627,7 @@ static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int g
             v->mvel = t->m_vel;
             v->mrnd = t->m_rnd;
             v->xg = t->lay_xg;
-            if (vel > v->vel && nv == 1u)
+            if ((vel > v->vel || acid_on(t)) && nv == 1u)   /* (ACID: a legato note takes its own velocity: a plain note slid into after an accent is plain) */
                 v->vel = (uint8_t)vel;
             glide_set(t, v, glide);
         }
