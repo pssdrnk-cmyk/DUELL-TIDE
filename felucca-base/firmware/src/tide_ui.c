@@ -137,15 +137,20 @@ static const char *tide_tl_keep(track_t *t, uint64_t was, uint32_t len)
  * heard); 1 when a part it is about to store plays a factory sound MORPH TO or JOURNEY put there (the footer's name for it, tide_part_name): the dialog says
  * so, as long as it is open (1.0.0-b8) */
 static int32_t tide_heard_to(uint32_t pi);
-static void tide_save_note(int32_t w)
+static int32_t tide_save_note_h(void)                    /* (how far the card moves down to make room for the note above its question) */
 {
     uint32_t k, t = ui.confirm_trk;
     for (k = 0; k < NSHOWN; k++)
-        if ((t >= 2u || k == t) && tide_heard_to(k) >= 0) {
-            cv_text_in(0, 0, w, &AF_S, "SAVES THE LOADED SOUND", T_MID, T_BG);
-            cv_text_in(0, 15, w, &AF_S, "KEEP FIRST = AS HEARD", T_MID, T_BG);
-            return;
-        }
+        if ((t >= 2u || k == t) && tide_heard_to(k) >= 0)
+            return 14;
+    return 0;
+}
+static void tide_save_note_draw(int32_t y)               /* (two lines at the dialog's 21 px pitch, drawn at screen y) */
+{
+    cv_begin(DLG_W, 44, T_BG);
+    cv_text_in(0, 1, DLG_W, &AF_M, "SAVES THE LOADED SOUND", T_MID, T_BG);
+    cv_text_in(0, 22, DLG_W, &AF_M, "KEEP FIRST = AS HEARD", T_MID, T_BG);
+    cv_blit(DLG_X, y);
 }
 
 /* LINK (TARGET BOTH): the MORPH fader moved by hand to v moves the SEQ faders of mask to v too (ui_input.c morph_act) */

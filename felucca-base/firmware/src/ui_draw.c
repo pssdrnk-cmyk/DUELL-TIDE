@@ -3393,7 +3393,7 @@ static void draw_confirm(void)
     char a[32], b[32];
     const aafont_t *tf = &AF_M;
     int hint = ui.confirm == CF_SAVE_OVER && ui.confirm_trk < 2u;   /* the slot picker's hint line (K1) */
-    int32_t dh = hint ? 22 : 0, by = 80 + dh;
+    int32_t dh = hint ? 22 : 0, by = 80 + dh, sh = ui.confirm == CF_SAVE_OVER ? TIDE_SAVE_NOTE_H() : 0;   /* (sh: 1.0.0-b8, the note above the question: the card sits sh lower) */
     b[0] = 0;
     if (ui.confirm == CF_ERASE_ALL) {
         draw_confirm_erase();
@@ -3409,8 +3409,6 @@ static void draw_confirm(void)
         tf = &AF_S;
     GFX_HOOK_ALIGN(0, 0, DLG_W, 0, AL_H, "dialog question centred");
     cv_text_in(0, 34, DLG_W, tf, a, T_TEXT, T_BG);
-    if (ui.confirm == CF_SAVE_OVER)
-        TIDE_SAVE_NOTE(DLG_W);                          /* (1.0.0-b8: SAVE after JOURNEY: what it stores, in the card's empty top) */
     if (b[0]) {
         char f[32];
         text_fit(f, sizeof f, b, &AF_M, DLG_W - 16);    /* a name: free text (M: what is selected, as the question) */
@@ -3432,7 +3430,9 @@ static void draw_confirm(void)
         x = cv_keycap(x, by + HALF_UP(26 - KC_H), KC_OCTUP, T_INK, T_THEME, T_THEME);
         cv_text_on(x + KH_GAP, by + HALF_UP(26 - KC_H) - 3, &AF_S, "YES", T_INK, T_THEME);   /* (item 122: the capitals centred on the pill) */
     }
-    cv_blit(DLG_X, DLG_Y);
+    cv_blit(DLG_X, DLG_Y + sh);
+    if (sh)                                           /* 1.0.0-b8: SAVE after JOURNEY: what it stores, a canvas of its own over the card's empty top (the card is at its size limit) */
+        TIDE_SAVE_NOTE_DRAW(DLG_Y + sh + 34 - 31 - 22);
 }
 
 static void ui_draw_page(uint32_t counting);
