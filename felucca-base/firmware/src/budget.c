@@ -104,7 +104,7 @@ static const uint16_t BD_SHM[2] = {390, 758};                                   
 #define BD_BMONO 38u
 
 /* ----------------------------------------------------------------- the parts --- */
-typedef struct {                /* one part's items, host instructions a sample (the ablations of budget_reason zero one) */
+typedef struct {                /* per-part CPU budget breakdown: engine + filter slope + morph extras; insert + sat + EQ + misc (ducker, keys, matrix, LFOs); base work; optional TIDE DSP; polyphony cap; mute flag */
     uint32_t eng, filt, ext;    /* a voice: the engine, the multimode filter's slope, the morph's extras */
     uint32_t ins, sat, eq, misc;/* fixed: INSERT, SAT, EQ, the rest (ducker, KEY TRK, matrix, LFOs, arp) */
     uint32_t base;              /* fixed: the part's own work while it sounds (BD_PART_ON; no ablation removes it) */
