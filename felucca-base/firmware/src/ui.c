@@ -60,6 +60,7 @@ static uint8_t pv_bar_of(const step_t *s)
 /* The PATCH SLOTS (upreset.c, the slot layer): ONE list of UP_SLOTS (128), slot k = its saved record, else the factory sound at browse position k */
 static uint32_t slot_of(const track_t *t);         /* the slot t's sound is in, UP_SLOTS = none */
 static uint32_t slot_home(const track_t *t);       /* .. where SAVE offers to write it */
+static uint32_t slot_both(uint32_t pi);                /* .. with BOTH, each part its own (b7) */
 static uint32_t slot_place(const track_t *t);      /* .. its browse place (a USER slot's displaced factory sound: UP_SLOTS..; UP_VSLOTS none) */
 #if UP_NUSER
 static int sl_empty_user(uint32_t k);              /* U1: slot k is an empty USER slot */

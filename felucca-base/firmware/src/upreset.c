@@ -1611,6 +1611,20 @@ static uint32_t slot_home(const track_t *t)
     return r < UP_SLOTS ? r : 0u;
 #endif
 }
+/* SAVE with BOTH: part pi's slot. Two sounds from the read-only places both resolve to the first empty USER slot: part 2 takes the next
+ * empty one (b7, review D3); none free: the same slot (the ask says so) */
+static uint32_t slot_both(uint32_t pi)
+{
+    uint32_t a = slot_home(&trk[0]), b = slot_home(&trk[1]);
+#if UP_NUSER
+    uint32_t k;
+    if (pi && a == b && slot_of(&trk[1]) >= UP_SLOTS)
+        for (k = a + 1u; k < UP_USER0 + UP_NUSER; k++)
+            if (!up_used(k))
+                return k;
+#endif
+    return pi ? b : a;
+}
 
 /* ---- SAVE (hold SAVE, ui_input.c patch_save_ask) ---- */
 _Static_assert(UP_MB_N == MB_N, "morph.c MB_N");
@@ -1675,7 +1689,7 @@ static void patch_save_do(uint32_t both)
     }
     both_names = (uint8_t)both;
     for (pi = first; pi < end && !rc; pi++, n++)
-        rc = up_patch_save_part(pi, both ? slot_home(&trk[pi]) : ui.svs % UP_SLOTS);
+        rc = up_patch_save_part(pi, both ? slot_both(pi) : ui.svs % UP_SLOTS);
     both_names = 0;
     save_nm[0] = 0;
     up_slot_label(l, ui.svs % UP_SLOTS);

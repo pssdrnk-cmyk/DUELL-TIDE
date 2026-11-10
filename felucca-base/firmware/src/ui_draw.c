@@ -3274,7 +3274,7 @@ static void confirm_text(char *a, char *b)          /* a, b hold 32 */
             str_cpy(a, "OVERWRITE BOTH PATCHES?", 32);
             b[0] = 0;
             for (i = 0; i < 2u; i++) {
-                up_slot_label(l, slot_home(&trk[i]));
+                up_slot_label(l, slot_both(i));
                 str_cpy(b + str_len(b), i ? " + " : "", 4);
                 str_cpy(b + str_len(b), l, 6);
             }

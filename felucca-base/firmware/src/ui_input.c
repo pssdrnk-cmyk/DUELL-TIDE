@@ -896,8 +896,8 @@ static void patch_save_ask(void)
         uint32_t trk2 = PART_BOTH() && cur_page()->graph == GR_MORPH ? 2u : song.sel;   /* (0.2.9: the MORPH page
                                                          * only, where the header shows both; was MORPH SET too) */
         if (trk2 >= 2u) {                               /* both parts, each over its own slot: the same slot twice would lose one */
-            if (slot_home(&trk[0]) == slot_home(&trk[1])) {
-                ui_message("SAME SLOT");
+            if (slot_both(0) == slot_both(1)) {
+                ui_message(slot_of(&trk[1]) >= UP_SLOTS ? "NEEDS 2 USER SLOTS" : "SAME SLOT");
                 return;
             }
         } else {
