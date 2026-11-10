@@ -330,7 +330,7 @@ static void keys_drive(void)
     /* U2 B (1.1): the sequenced arrangements of PAD SPLIT, WHISPER TIDE, TINE STRINGS, FINAL REEL, HAZY TENSOR, CELLAR TAPE (M10 M11 M12 M16 M15 M03 since D31). PLAY alone starts the plain-pattern parts; the ARP SEQ
      * parts follow a transposed key (D4 two semitones above C4, the same blocks); a plain pattern part does not move with the key (a live key plays on top) */
     {
-        static const uint8_t SQ[6][2] = {{9, 0}, {11, 1}, {15, 1}, {14, 0}, {10, 0}, {8, 0}};   /* slot, the part: ARP SEQ (the first four), a plain pattern (the last). (reel, 2026-11-10: M10 SEVEN LOOP's HOLLOW POP (its IRON WORKS holds one note
+        static const uint8_t SQ[6][2] = {{0, 0}, {11, 1}, {15, 1}, {14, 0}, {10, 0}, {8, 0}};   /* slot, the part: ARP SEQ (the first four), a plain pattern (the last). (reel, 2026-11-10: M10 SEVEN LOOP's HOLLOW POP (its IRON WORKS holds one note
                                                                                          * four bars), M12 ROBOT FUNK's VOWEL PAD, M16 TWO LOOPS' EVOLVING PAD, M15 BERLIN RUN's ARP PLUCK; the plain pattern is M11 ACID LINES' SQUELCH) */
         uint32_t m, pp, n;
         for (m = 0; m < 6u; m++) {
@@ -367,7 +367,7 @@ static void keys_drive(void)
             play_run(SPS[sp], 1u << f4, sec, sec / 2u, 0, q);
             pr_recall = 0;
             printf("multi:   M%02u split: E4 part 1 %u / part 2 %u note-ons; F4 part 1 %u / part 2 %u\n", SPS[sp] + 1u, r[0].n, r[1].n, q[0].n, q[1].n);
-            ck(sp ? "M10 SEVEN LOOP (MODE RECALL ON, no split): E4 and F4 both play both parts"
+            ck(sp ? "M10 TWO 303S (MODE RECALL ON, no split): E4 and F4 both play both parts"
                   : "M04 LATE RHODES (MODE RECALL ON, no split): E4 and F4 both play both parts",
                r[0].n >= 1u && r[1].n >= 1u && q[0].n >= 1u && q[1].n >= 1u && mix_split == 0u);
         }
@@ -1089,12 +1089,12 @@ int main(void)
     {
         /* (reel, 2026-11-10: the fifteen new factory multis, one curated programme (tools/factory_multis.py); M02 DUB CHORD is the owner's record as before) */
         static const char *const FN[16] = {"BASIC CHORD", "DUB CHORD", "JUNO DEEP", "LATE RHODES", "ORGAN HOUSE", "PIANO HOUSE", "DETROIT STAB",
-                                           "HI-TECH SOUL", "HYPNO 303", "SEVEN LOOP", "ACID LINES", "ROBOT FUNK", "DEEP SEA ARP", "WARPED TAPE",
+                                           "HI-TECH SOUL", "HYPNO 303", "TWO 303S", "ACID LINES", "ROBOT FUNK", "DEEP SEA ARP", "WARPED TAPE",
                                            "BERLIN RUN", "TWO LOOPS"};
         static const char *const SN[16][2] = {{"CHORD ECHO", "DUST BED"}, {"BIG STAB", "SLOW TIDE"}, {"WARM WASH", "RUBBER BAND"},
                                               {"TINE ROOM", "AIR SHIMMER"}, {"DUB DRAWBAR", "HOUSE ORGAN"}, {"SALOON KEYS", "RAIN STRINGS"},
                                               {"LOW STAB", "STRING MACH"}, {"SUNDAY KEYS", "BELL STAB"}, {"SQUELCH", "FOG BANK"},
-                                              {"HOLLOW POP", "IRON WORKS"}, {"SQUELCH", "DEEP BLUE"}, {"LADDER BASS", "VOWEL PAD"},
+                                              {"TIDAL SUB", "SQUELCH"}, {"SQUELCH", "DEEP BLUE"}, {"LADDER BASS", "VOWEL PAD"},
                                               {"DIGI PLUCK", "PWM PAD"}, {"WAVE CHIMES", "TAPE CLOUD"}, {"ARP PLUCK", "CHOIR LOFT"},
                                               {"FROST BELLS", "EVOLVING PAD"}};
         static const uint8_t MD[16] = {DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER,
@@ -1103,9 +1103,9 @@ int main(void)
         static const uint8_t SPL[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};          /* (the splits: F4 + 1, compared with the key as played) */
         static const uint8_t XF[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};   /* (reel, 2026-11-10: no factory multi sets XFADE; until then M16, the owner's FINAL REEL, had 58) */
         /* (seq.c AM_*: UP 1, RND 4, SEQ 15; D31: the six new multis are SEQ arps on both parts (BASIC CHORD's DUST BED is played live); the kept records as they were) */
-        /* (reel, 2026-11-10: ARP SEQ on both parts, but M03 JUNO DEEP, M06 PIANO HOUSE and M11 ACID LINES: written notes, plain patterns on both parts, the arp OFF) */
+        /* (reel, 2026-11-10: ARP SEQ on both parts, but M03 JUNO DEEP, M06 PIANO HOUSE, M10 TWO 303S (b8) and M11 ACID LINES: written notes, plain patterns on both parts, the arp OFF) */
         static const int8_t AM[16][2] = {{15, 15}, {15, 15}, {0, 0}, {15, 15}, {15, 15}, {0, 0}, {15, 15}, {15, 15}, {0, 15},
-                                         {15, 15}, {0, 0}, {15, 15}, {15, 15}, {15, 15}, {15, 15}, {15, 15}};
+                                         {0, 0}, {0, 0}, {15, 15}, {15, 15}, {15, 15}, {15, 15}, {15, 15}};
         static uint8_t before[0x100000];
         uint32_t n, st;
         memset(nor, 0xFF, sizeof nor);
@@ -1229,7 +1229,7 @@ int main(void)
         /* (reel, 2026-11-10: the names and engines of the new M04, M10, M11, M14, M16) */
         ck("  2 detents right: M03 skipped through, M04 (stepping), loaded: M04 LATE RHODES", proj_cur == 3u && msg_is("LOADED M04 LATE RHODES"));
         turn(EN_K3, 6);
-        ck("  6 more right: M10 SEVEN LOOP (the factory multis stepped through)", proj_cur == 9u && msg_is("LOADED M10 SEVEN LOOP"));
+        ck("  6 more right: M10 TWO 303S (the factory multis stepped through)", proj_cur == 9u && msg_is("LOADED M10 TWO 303S"));
         turn(EN_K3, 1);
         ck("  one more right: M11 ACID LINES (ANALOG SQUELCH + PHASE DEEP BLUE)", proj_cur == 10u &&
            trk[0].eng_req == 0u && trk[1].eng_req == 2u && str_eq(ds_name(trk[0].eng_req, trk[0].preset), "SQUELCH") &&

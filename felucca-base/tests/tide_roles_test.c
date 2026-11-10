@@ -102,7 +102,7 @@ static const struct { uint8_t slot, style, near, role[2], bass; const char *name
     { 7, STY_PEAK,    STY_DEEP,    {R_STAB,  R_PAD},   0, "DETROIT STAB"},
     { 8, STY_DEEP,    STY_PEAK,    {R_PROG,  R_MOTIF}, 0, "HI-TECH SOUL"},
     { 9, STY_MINIMAL, STY_PEAK,    {R_STAB,  R_MOTIF}, 0, "MINIMAL 12"},
-    {10, STY_MINIMAL, STY_PEAK,    {R_MOTIF, R_DRONE}, 0, "SEVEN LOOP"},
+    {10, STY_MINIMAL, STY_PEAK,    {R_MOTIF, R_DRONE}, 0, "TWO 303S"},
     {11, STY_MINIMAL, STY_PEAK,    {R_BASS,  R_MOTIF}, 1, "ACID LINES"},
     {12, STY_MINIMAL, STY_PEAK,    {R_BASS,  R_PROG},  1, "ROBOT FUNK"},
     {13, STY_PEAK,    STY_MINIMAL, {R_MOTIF, R_PROG},  0, "DEEP SEA ARP"},
