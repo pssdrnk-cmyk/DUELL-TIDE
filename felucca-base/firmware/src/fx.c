@@ -216,7 +216,7 @@ typedef struct {                         /* HALL's state (in the pool: no .bss) 
     int32_t sd[CTL];                     /* the block's left minus right (mix_block: rev_side_mix) */
     int32_t bx[HL_NC], l[HL_NC], r[HL_NC];   /* the block at half the rate: the diffused send, left, right */
     int16_t y[HL_NL][HL_NC];             /* the lines' ends, then what goes back into them */
-    int32_t pd[PD_N];                    /* HALL / PLATE's pre-delay line (fx_bus.c pre_dly; audit E3), at half the rate */
+    int32_t pd[PD_N];                    /* HALL / PLATE's pre-delay ring buffer, at half the rate */
     uint32_t pw;                         /* .. its write count, */
     int32_t pdq;                         /* .. and the delay it reads now (samples; moves a sample a block towards SIZE's) */
 } hall_t;
