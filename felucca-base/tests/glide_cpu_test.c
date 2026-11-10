@@ -634,7 +634,7 @@ static void check_ease(void)
             d0 = ez_step(ez_df, n);
             printf("glidecpu: EASE %s (M%02u) level %u: largest step %d (level 0: %d), the difference %.1f dB under the signal, its largest step %d\n",
                    KN[kind], sl + 1u, lv, st, st0, 10.0 * log10((s2 + 1) / (e2 + 1)), d0);
-            REQUIRE("EASE: no click at level 1 or 3: the largest sample step within 5 % of level 0's + 50 (the level-1 click check proper: ease_test LEVEL1 JUMP)", st <= st0 + st0 / 10 + 50);   /* (b8: 10 %, was 5 %: level 3 is not sample-comparable with level 0 (its difference is 6.9 dB under the signal from sample 0, already on b7), so the two peaks sit at different notes and move with their timing: the exact arp steps moved level 0 1941 -> 1894 and level 3 1883 -> 2076; a click is thousands above) */
+            REQUIRE("EASE: no click at level 1 or 3: the largest sample step within 10 % of level 0's + 50 (the level-1 click check proper: ease_test LEVEL1 JUMP)", st <= st0 + st0 / 10 + 50);   /* (b8: 10 %, was 5 %: level 3 is not sample-comparable with level 0 (its difference is 6.9 dB under the signal from sample 0, already on b7), so the two peaks sit at different notes and move with their timing: the exact arp steps moved level 0 1941 -> 1894 and level 3 1883 -> 2076; a click is thousands above) */
             REQUIRE("EASE: the difference to level 0 steps no more than level 0's own largest step", d0 <= st0);
         }
     }
