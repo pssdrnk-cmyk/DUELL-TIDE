@@ -101,11 +101,12 @@ static void test_drift(void)
     int64_t maxd = 0, maxs = 0, dmin, dmax;
     run_both();
     n = n_arp < n_seq ? n_arp : n_seq;
-    P = div_samples(2);
+    P = div_samples(2);                                    /* (the printed 1/16: the rounded-down one) */
     dmin = dmax = (int64_t)arp_at[0] - (int64_t)seq_at[0];
     for (k = 1; k < n; k++) {
-        int64_t ea = (int64_t)arp_at[k] - (int64_t)arp_at[0] - (int64_t)k * P;
-        int64_t es = (int64_t)seq_at[k] - (int64_t)seq_at[0] - (int64_t)k * P;
+        int64_t ref = (int64_t)k * beat_samples() / 4;     /* (b8: the exact 1/16, k quarters over 4; the steps are 5512 or 5513 samples, not div_samples' 5512 each) */
+        int64_t ea = (int64_t)arp_at[k] - (int64_t)arp_at[0] - ref;
+        int64_t es = (int64_t)seq_at[k] - (int64_t)seq_at[0] - ref;
         int64_t d = (int64_t)arp_at[k] - (int64_t)seq_at[k];
         if ((ea < 0 ? -ea : ea) > maxd) maxd = ea < 0 ? -ea : ea;
         if ((es < 0 ? -es : es) > maxs) maxs = es < 0 ? -es : es;
@@ -288,9 +289,12 @@ static void test_start(void)
         for (k = 0; k < 1500u && t->arp_idx == last; k++)
             blk();
         at = now_s - (t->arp_pos < CTL ? t->arp_pos : 0u);
-        snprintf(what, sizeof what, "PLAY running, ARP RATE %u: the first arp note lands on the transport's grid (%u samples after its step, key %u in)",
-                 rate[r], (at - seq0) % P, (key_at - seq0) % P);
-        expect(what, t->arp_idx != last && ((at - seq0) % P <= 2u || (at - seq0) % P >= P - 2u) && at > key_at);
+        {   /* (b8: the grid is the exact (beat / 2^rate) samples a step, 5512.5 at 1/16 and 120 BPM, not the rounded-down P) */
+            double Pe = (double)beat_samples() / (double)(1u << rate[r]), m = fmod((double)(at - seq0), Pe);
+            snprintf(what, sizeof what, "PLAY running, ARP RATE %u: the first arp note lands on the transport's grid (%.1f samples after its step, key %u in)",
+                     rate[r], m, (key_at - seq0) % P);
+            expect(what, t->arp_idx != last && (m <= 2.0 || m >= Pe - 2.0) && at > key_at);
+        }
         last = t->arp_idx;
         for (k = 0; k < 1500u && t->arp_idx == last; k++)
             blk();

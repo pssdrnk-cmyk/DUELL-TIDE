@@ -9,11 +9,12 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 
 ## 1.0.0-b8 (in progress)
 
-The polish run: no new pages, no format changes.
-
-### What TIDE plays
+A polish beta on top of b7: small fixes, leftovers out, tools and docs made true.
 
 - **New (ACID):** the ANALOG engine's WAVE list ends with ACID (a saw) and ACSQ (a square). A sound with either plays its accents like a TB-303: an accented note shortens the filter sweep to about 200 ms whatever the DECAY says, adds a short burst of level that follows the sweep, and pushes the cutoff up through a lag that grows with the RESONANCE, so accents in a row climb higher, more at high RESONANCE. Plain notes sound exactly as on SAW and SQR, and every other sound is unchanged. Slides stay the pattern's (SLIDE steps, a LEGATO sound, GLIDE in TIME mode).
+- SAVE after JOURNEY says what it saves: when the part plays a sound JOURNEY (or MORPH TO) moved it to, the SAVE dialog shows "SAVES THE LOADED SOUND / KEEP FIRST = AS HEARD" above its question. What SAVE stores did not change; do KEEP first to save what you hear.
+- ARP SEQ parts stay on the beat on the internal clock: on a long set (400 bars) the arp used to run up to a tenth of a second ahead of the bars and the click, at 117 BPM about 12 samples a bar; now it is exact, at any tempo and after a tap tempo.
+- **Under the hood (b8 ROOM):** HOME's old MODE page code was already out of TIDE's build; the last piece that only that page used (a KNOB 4 check in the output-mode knob) is out too, 4 bytes. Every TIDE screen is pixel-identical (923 renders compared). The factory multis tool rebuilds all eighteen records byte for byte (checked), so the patch step for the End B amounts is not needed.
 
 ## 1.0.0-b7 (in progress)
 

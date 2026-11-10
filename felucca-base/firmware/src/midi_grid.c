@@ -1,7 +1,10 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* JAM: Felucca #269's fixed musical clock, with DUELL's extra divisions.
- * Only external-clock progress uses these units; gates and engines keep samples.
- * At most half a quarter arrives per block, keeping the numerator below 2^32. */
+ * External-clock progress uses these units; gates and engines keep samples.
+ * At most half a quarter arrives per block, keeping the numerator below 2^32.
+ * b8 (DRIFT): on the internal clock the steps go through the same grids, n in samples and a beat of them the unit (midi_grid_advance): a division's
+ * step (fx.c div_samples, rounded down) is stretched back onto the beat, so DEN steps take NUM beats exactly and a part never drifts from beat_pos
+ * (TIDE's bars, the LED; 117 BPM, 1/16: 5653 of 5653.75 samples drifted 12 samples a bar, 107 ms in 400 bars). Every step is the old one or a sample longer. */
 #define MIDI_CLOCK_GRID 24000u
 typedef struct { uint32_t remainder; uint8_t div; } midi_grid_t;
 static midi_grid_t midi_seq_grid[NTRK], midi_arp_grid[NPART], midi_click_grid, midi_beat_grid;
@@ -27,6 +30,8 @@ static __attribute__((noinline)) void midi_grid_reset(void)
 static __attribute__((noinline)) uint32_t midi_grid_advance(midi_grid_t *g, uint32_t n, uint32_t div)
 {
     uint32_t quarter = beat_samples(), den = midi_grid_den(div), numerator;
+    if (!clock_src())
+        den = den / MIDI_CLOCK_GRID * quarter;       /* (b8: the internal clock: n in samples, a beat of them the unit) */
     if (g->div != div) {
         g->remainder = 0;                            /* a rate edit starts a fresh sub-sample carry */
         g->div = (uint8_t)div;

@@ -6,6 +6,7 @@
     python3 tools/multi_patch.py apply            writes PATCHES into the records (idempotent: absolute values)
     python3 tools/multi_patch.py keep-amount DIR  copies both parts' AMOUNT byte and End B block from DIR/Mnn.bin (the records as shipped before) into the
                                                    rebuilt records of REBUILT: a rebuild picks the sounds' present End B amounts, the shipped records keep theirs
+                                                   (b8: not needed now: factory_multis.py build and drone_pack.py reproduce every shipped record, M01..M18, byte for byte)
 
 A patch is (slot, part 0 / 1, parameter, value), the value as the unit shows it (LEVEL / TRIM 0..127, EQ dB): the record stores it +64.
 Only what the music asks for is touched (b7 MULTIS lane, owner 9 November 2026: the owner's M10, M11, M13 and M16 get a level or a low cut, nothing else)."""
