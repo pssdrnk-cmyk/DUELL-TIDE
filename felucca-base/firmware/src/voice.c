@@ -1357,6 +1357,11 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
         if (v->pitch_cur != v->pitch16 || v->gfrac) {   /* glide (glide_set), in 1/65536 of a 1/16 st */
             int32_t q = v->pitch_cur * 65536 + v->gfrac, d = v->pitch16 * 65536 - q;
             int32_t st = v->gstep ? v->gstep : (int32_t)(ENV_LIN[(p[P_GLIDE] ? p[P_GLIDE] : 40) & 127] << 2);   /* RATE (slide: GLD 40's) */
+            if (acid) {                             /* ACID: the 303's RC lag, d / 32 a tick (tau 23 ms: 90 % in 53 ms, 99 % in 106 ms, a semitone or an octave); the last bit (< 32 units) in one step */
+                st = (d < 0 ? -d : d) >> 5;
+                if (!st)
+                    st = d < 0 ? -d : d;
+            }
             q += d > 0 ? (d < st ? d : st) : (-d < st ? d : -st);
             v->pitch_cur = q >> 16;
             v->gfrac = (uint16_t)q;

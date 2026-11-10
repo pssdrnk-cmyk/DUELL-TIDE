@@ -6,8 +6,8 @@
  *   DECAY   an accented ACID note's ENV 2 falls to a half in about 30 ms whatever the Decay knob says (a plain note keeps the Decay's time)
  *   LEVEL   the accent's level burst: +8 .. 11 dB over a plain note at the start (up to unity, no more: above it the amp ramp overflows), on it again after 200 ms
  *   PUSH    the capacitor: one accent charges it, a plain note leaves it empty; two accents in a row stack, more at high RES than at low
- *   SLIDE   a slid step (LEGATO, GLIDE TIME 54 ms, slide_glide as the sequencer sets it) does not retrigger and reaches 90 % of a
- *           semitone and of an octave in 45 .. 60 ms
+ *   SLIDE   a slid step (LEGATO, slide_glide as the sequencer sets it) does not retrigger and is an RC lag: 90 % of a semitone and of an
+ *           octave in 45 .. 60 ms, 99 % in 90 .. 120 ms
  *   WAVE    the WAVE list has ACID and ACSQ */
 #define main hostsim_main
 #include "hostsim.c"
@@ -237,7 +237,7 @@ static void push(void)
 }
 
 /* a slid step: the second note while the first is held, slide_glide set as the sequencer sets it; blocks to 90 % of the way */
-static void slide_one(uint32_t from, uint32_t to, double *ms90, int *retrig)
+static void slide_one(uint32_t from, uint32_t to, double *ms90, double *ms99, int *retrig)
 {
     track_t *t = fresh(7, 85, 100);
     voice_t *v = &t->v[0];
@@ -252,26 +252,32 @@ static void slide_one(uint32_t from, uint32_t to, double *ms90, int *retrig)
     *retrig = v->age != age || v->stage == 1u;
     q0 = from * 16 * 65536;
     q1 = to * 16 * 65536;
+    *ms90 = *ms99 = -1.0;
     do {
         q = v->pitch_cur * 65536 + (int32_t)v->gfrac;
-        if ((double)(q - q0) >= 0.9 * (double)(q1 - q0))
+        if (*ms90 < 0 && (double)(q - q0) >= 0.9 * (double)(q1 - q0))
+            *ms90 = ms_of(n);
+        if ((double)(q - q0) >= 0.99 * (double)(q1 - q0)) {
+            *ms99 = ms_of(n);
             break;
+        }
         mix_block(o, CTL);
         n++;
-    } while (n < 400u);
-    *ms90 = ms_of(n);
+    } while (n < 800u);
 }
 static void slide(void)
 {
-    double a, b;
+    double a, b, a9, b9;
     int r1, r2;
-    char s[160];
-    slide_one(45, 46, &a, &r1);
-    slide_one(45, 57, &b, &r2);
+    char s[200];
+    slide_one(45, 46, &a, &a9, &r1);
+    slide_one(45, 57, &b, &b9, &r2);
     snprintf(s, sizeof s, "ACID: a slid step does not retrigger (age and stage kept)");
     check(s, !r1 && !r2);
     snprintf(s, sizeof s, "ACID: a slid step is at 90 %% in %.1f ms for a semitone and %.1f ms for an octave (45 .. 60 ms)", a, b);
     check(s, a >= 45.0 && a <= 60.0 && b >= 45.0 && b <= 60.0);
+    snprintf(s, sizeof s, "ACID: the RC tail: 99 %% in %.1f ms for a semitone and %.1f ms for an octave (90 .. 120 ms; 99 %% / 90 %% about 2)", a9, b9);
+    check(s, a9 >= 90.0 && a9 <= 120.0 && b9 >= 90.0 && b9 <= 120.0 && a9 > 1.7 * a && b9 > 1.7 * b);
 }
 
 static void wave(void)
