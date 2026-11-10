@@ -95,7 +95,6 @@ static uint32_t render(const char *path, uint32_t turns, uint32_t poly, uint32_t
     uint32_t n = BARS * 4u * (uint32_t)FS * 60u / BPM, t, i, short_blocks = 0, peak = 0;
     FILE *f = write ? fopen(path, "wb") : NULL;
     setup(fader, seed);
-    sqm_turns = (uint8_t)turns;
     sqm_poly = (uint8_t)poly;
     sqm_auto = 3;
     sqm_sync = (uint8_t)g_sync;

@@ -121,7 +121,7 @@ static void test_time_mid_trip(void)
     CHECK("TIME mid-trip:   the next trip runs the new TIME (x/1)", strlen(st) > 2u && !strcmp(st + strlen(st) - 2u, "/1"));
     for (i = 0; i < 400u && gl.to == 0u; i++) run(16);
     CHECK("TIME mid-trip:   and takes 1 bar", gl.to == 1u && i > 100u && i < 150u);
-    sqm_turns = 0; sqm_poly = 0; sqm_sync = 0; sqm_arc = 0; sqm_vary_all = 0; morph_wlvl = 0;
+    sqm_poly = 0; sqm_sync = 0; sqm_arc = 0; sqm_vary_all = 0; morph_wlvl = 0;
     glide_stop(); transport_req = 2u; run(48);
 }
 

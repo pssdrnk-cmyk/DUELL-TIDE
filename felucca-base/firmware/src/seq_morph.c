@@ -104,12 +104,20 @@ static uint32_t sqm_best(uint32_t *score, uint32_t len)
     return b;
 }
 
-static volatile uint8_t sqm_turns = 1;                  /* TURNS: stored and shown (tide_ui.c), played by nothing since b7: CALL AND ANSWER is always on (sqm_listens) */
 static volatile uint32_t sqm_thin[NSHOWN][2];            /* the steps a thinned part does not play, a bit each (seq_answer.c, main loop) */
 static volatile int8_t sqm_dyn;                         /* ARC's dynamics, tarc_bright: +1 louder, -1 softer (seq_answer.c, main loop) */
 static volatile uint8_t sqm_lead;                        /* the parts that listen in CALL AND ANSWER and whose chords thin to two voices, a bit each: neither a bass nor a pad (seq_answer.c, main loop) */
 static volatile uint8_t sqm_arc;                         /* ARC: 0 OFF, 1 RISE, 2 DROP (tide_ui.c, the TIDE LIST; seq_arc.c) */
-static volatile uint8_t tarc_dropphr = 0xFFu, tarc_thin, tarc_fast, tarc_hold;   /* seq_arc.c's planner to the audio side: the drop's 8-bar unit, the parts thinned, the late rise (read by nothing since CALL AND ANSWER), no POLY */
+static volatile uint8_t tarc_dropphr = 0xFFu, tarc_lev, tarc_unit;   /* seq_arc.c's planner to the audio side: the drop's 8-bar unit; the parts thinned (bits 0-1) and no POLY (bit 2) now,
+                                                          * and the same three bits for the next 8-bar unit (bits 3-5); the unit the planner last looked at. The audio side takes the next unit's from
+                                                          * its first bar on (tarc_lvl), so a new phase's first downbeat plays with its levers, not the main loop's catching up (1.0.0-b8) */
+#define TARC_ARMED 1
+static __attribute__((noinline)) uint32_t tarc_lvl(uint32_t bar)   /* what bar plays with: the parts thinned (bits 0-1), no POLY (bit 2) */
+{
+    return tarc_lev >> (((bar >> 3) & 63u) != tarc_unit ? 3u : 0u) & 7u;   /* (a unit the main loop has not looked at yet: the levers armed for it) */
+}
+#define tarc_thin_at(bar) (tarc_lvl(bar) & 3u)
+#define tarc_hold_at(bar) (tarc_lvl(bar) >> 2)
 #define TARC_DROP_BAR(bar) (tarc_dropphr == (((bar) >> 3) & 63u) && ((bar) & 7u) < 2u)   /* (the drop's silent bars: its unit's first 2) */
 static uint32_t tarc_sync(void);
 static uint32_t glide_tide_on(void);
@@ -334,18 +342,18 @@ static const step_t *sqm_step(const track_t *t, uint32_t idx, uint32_t vary)
  * in this bar: it drops to its anchors and beats, a chord to two voices, a step softer, while the other speaks. Per 4 bars: bars 1-3 one
  * part then the other (who opens: by the bar and the seed, so it swaps every 4 bars, now and then not), bar 4 both play (their variation
  * bar). A bass or a pad never listens (sqm_lead); against one, the other listens on bar 3 of 4 alone. Never in ARC's breakdown or
- * RECOVER's thinned half (tarc_thin: the arc thins), so the two parts are never both thinned outside it */
+ * RECOVER's thinned half (tarc_lvl: the arc thins), so the two parts are never both thinned outside it */
 static int sqm_listens(uint32_t pi, uint32_t bar)
 {
     uint32_t q = bar & 3u;
-    if (sqm_auto != 3u || tarc_thin || !((sqm_lead >> pi) & 1u) || q == 3u)
+    if (sqm_auto != 3u || tarc_thin_at(bar) || !((sqm_lead >> pi) & 1u) || q == 3u)
         return 0;
     if (sqm_lead != 3u)
         return q == 2u;
     return pi == ((q ^ (bar >> 2) ^ sqm_hash((uint32_t)morph.seed, bar >> 3, 0x4Cu)) & 1u);
 }
-/* part pi plays its thinned End A in this bar: ARC's breakdown (tarc_thin), a listening bar */
-static int sqm_thinned(uint32_t pi, uint32_t bar) { return ((tarc_thin >> pi) & 1u) || sqm_listens(pi, bar); }
+/* part pi plays its thinned End A in this bar: ARC's breakdown (tarc_lvl), a listening bar */
+static int sqm_thinned(uint32_t pi, uint32_t bar) { return ((tarc_thin_at(bar) >> pi) & 1u) || sqm_listens(pi, bar); }
 /* the step the sequencer plays (audio interrupt): with VARY BARS EVERY 4TH, while playing, End A but on every 4th bar */
 static const step_t *seq_play_step_at(const track_t *t, uint32_t idx, uint32_t bar)
 {
