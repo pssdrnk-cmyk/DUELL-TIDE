@@ -1902,9 +1902,26 @@ static void morph_rebase_part(uint32_t pi)               /* ends = the Original,
         morph_pin_load(mp, morph_ld_e, morph_ld_n);
 }
 static void morph_ready_first(uint32_t pi);
+#if DUELL_TIDE
+/* 1.0.0-b7: the loaded sound's FILTER, ECHO and LENGTH (HOME's MORPH page K2..K4, ui_input.c H1_PG: OCT- + the knob puts its value back), taken when a sound is
+ * loaded (morph_rebase), at a part's first use and when morph_ready finds another sound; not by a rebase of the same sound (HOME, KEEP: the edits stay the player's).
+ * In the pool (main loop; .bss is the tighter) */
+static const uint8_t H1_ID[3] = {P_FREEA, P_DLY, P_REL};
+static int16_t h1_orig[NSHOWN][3] __attribute__((section(".pool")));
+static void h1_take(uint32_t pi)
+{
+    for (uint32_t k = 0; k < 3u; k++)
+        h1_orig[pi][k] = trk[pi].p[H1_ID[k]];
+}
+#define H1_TAKE(pi) h1_take(pi)
+#else
+#define H1_TAKE(pi) ((void)0)
+#endif
 static void morph_rebase(const track_t *t)               /* a sound was loaded into t (ui.c, project.c) */
 {
     uint32_t pi = (uint32_t)(t - trk);
+    if (pi < NSHOWN)
+        H1_TAKE(pi);
     if (pi < NSHOWN && mph[pi].n[0])
         morph_rebase_part(pi);
     else if (pi < NSHOWN && (morph_ld || morph_ld_n || morph_ldv))       /* a part whose morph was never used: the first use would find no block (cloud job G, task 0: the saved End B was lost until a ROLL) */
@@ -1925,6 +1942,7 @@ static void morph_rebase_all(void)
 static void morph_ready_first(uint32_t pi)
 {
     morph_part_t *mp = &mph[pi];
+    H1_TAKE(pi);
     if (!mp->apre)
         mp->aset = mp->amount = MORPH_AMOUNT_DEF;
     mp->n[0] = 1;                                        /* (morph_roll_cfg asks for the part ready: no loop) */
@@ -1936,6 +1954,7 @@ static morph_part_t *morph_ready(uint32_t pi)
     if (!mp->n[0]) {
         morph_ready_first(pi);
     } else if (trk[pi].eng_req != mp->eng || trk[pi].preset != mp->preset || trk[pi].user != mp->user) {
+        H1_TAKE(pi);
         morph_rebase_part(pi);          /* (the sound's identity only: morph_stale also asks t->engine, which stays the old
                                          * engine through an engine-change fade, where rebase -> roll -> ready recursed) */
     }

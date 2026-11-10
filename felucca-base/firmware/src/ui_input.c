@@ -730,10 +730,43 @@ static void algo_input(int32_t s)
         track_select((uint32_t)clamp((int32_t)song.sel + (s > 0 ? 1 : -1), 0, NSHOWN - 1));
 }
 #endif
+#if !DUELL_TIDE || DUELL_TEST_MODE
+static void morph_roll_twist(int32_t s)                 /* ROLL A|B with its twist gesture (plain DUELL's MORPH page K2; TIDE: the TEST page's K2) */
+{
+    int32_t d = gesture_det(0, s, 1);                   /* (one detent: a roll is instant) */
+    if (d)
+        morph_act(MQ_ROLL, morph_mask(song.sel), d > 0, song.sel);
+}
+#endif
+#if DUELL_TIDE
+/* 1.0.0-b7 (owner 2026-11-10): HOME's MORPH page is the hands-on page. K1 MORPH, two fader steps a detent (half the twisting of b6; the ends still exact);
+ * K2 FILTER (QUICK EDIT's K1: the multimode filter's CUT on every engine), K3 ECHO (the delay send), K4 LENGTH (the AMP ENV's release): each the part's own
+ * parameter, turned as on its page (edit_param: motion, locks, MIDI LEARN, EDITABLE B, a card the selection hides does nothing). BOTH: each part moves from
+ * its own value by the same steps (the same acceleration; the selected part last, so MIDI LEARN picks its). OCT+ held + K1: End B a new roll (the knob loop) */
+static void edit_param(uint32_t slot, int32_t steps);
+static const page_t H1_PG = {"MORPH", FAM_TRK, SC_TRACK, GR_MORPH, {0xFFu, P_FREEA, P_DLY, P_REL}};
+static void morph_knob(uint32_t slot, int32_t s)
+{
+    uint32_t pi = song.sel, n = song.both ? NSHOWN : 1u, k, p, et = ui.enc_t[EN_K1 + slot];
+    int32_t d = slot ? 0 : accel(EN_K1, s, 127) * 2;
+    for (k = 0; k < n; k++) {
+        p = (pi + 1u + k + (n == 1u)) % NSHOWN;         /* (BOTH: the other part first) */
+        if (!slot) {
+            morph_act(MQ_FADER, 1u << p, (uint32_t)clamp((int32_t)morph_fader_of(p) + d, 0, 127), p);
+            continue;
+        }
+        ui.enc_t[EN_K1 + slot] = et;
+        song.sel = (uint8_t)p;
+        page_over = &H1_PG;
+        edit_param(slot, s);
+        page_over = 0;
+    }
+    song.sel = (uint8_t)pi;
+}
+#else
 static void morph_knob(uint32_t slot, int32_t s)
 {
     uint32_t pi = song.sel, mask = morph_mask(pi);
-    int32_t d;
     if (cur_page()->graph == GR_MORPHSET) {             /* SMART ARP PITCH: right on; KNOB 4 nothing (0.2.9: TARGET is ALGORITHM's BOTH) */
         uint32_t on = s > 0;
         if (slot == 0u && on != !(morph.cfg & MC_WILD))
@@ -749,8 +782,7 @@ static void morph_knob(uint32_t slot, int32_t s)
         morph_act(MQ_FADER, mask, (uint32_t)clamp((int32_t)morph_fader_of(pi) + accel(EN_K1, s, 127), 0, 127), pi);
         break;
     case 1:                                             /* (v3: ROLL on KNOB 2, AMOUNT on 4; KNOB 3 nothing since UNDO left, 1.0.0-b5) */
-        if ((d = gesture_det(0, s, 1)) != 0)           /* (one detent: a roll is instant) */
-            morph_act(MQ_ROLL, mask, d > 0, pi);
+        morph_roll_twist(s);
         break;
     case 2:
         break;
@@ -759,6 +791,7 @@ static void morph_knob(uint32_t slot, int32_t s)
         break;
     }
 }
+#endif
 /* AMOUNT and SMART / ARP / PITCH <-> the settings bytes (ui.c ui_morph_set, ui_morph_cfg; byte 0's bit 7 is the part selection's BOTH, 1.0.0-b5: written and read back, so
  * a unit left on BOTH starts on BOTH; 0.2.9 to b4 kept it as stored and never read it): bytes changed from outside
  * (power-on, a settings import, the editor's restore) are read into the morph (and each part gets a fresh End B at that
@@ -1015,7 +1048,10 @@ static void mode_settings(void)
 static void test_knob(uint32_t slot, int32_t s)
 {
     if (slot < 2u) {
-        morph_knob(slot, s);
+        if (slot)
+            morph_roll_twist(s);
+        else
+            morph_knob(0u, s);
         return;
     }
     if (slot == 3u) {
@@ -1379,7 +1415,7 @@ static void edit_param(uint32_t slot, int32_t steps)
  * cards (ui_layer.c layer_quick_reset); in QUICK FILTER a plain OCT- (no knob turned) still puts back */
 #define KR_QUIET_MS 300u
 static uint8_t oct_pend;                                /* bit 0 OCT-, bit 1 OCT+: pressed on a normal page, not let go yet */
-static uint8_t oct_mod;                                 /* OCT- was used as a modifier (a knob reset): no octave on its release */
+static uint8_t oct_mod;                                 /* bit 0: OCT- was used as a modifier (a knob reset), bit 1 OCT+ (TIDE: the MORPH page's new End B): no octave on its release */
 static uint8_t kr_on[4];                                /* knob k: a reset happened, its detents are ignored while it goes on */
 static uint32_t kr_t[4];
 
@@ -1466,6 +1502,29 @@ static int reset_say(const char *name)
     (void)name;
     return 1;
 }
+#if DUELL_TIDE
+static void tide_home(uint32_t mask);                  /* (tide_ui.c) */
+/* HOME's MORPH page: K1 back to the Original sound, as OCT- + K1 on AUTO TIDE (tide_home: the glide stops); K2..K4 FILTER, ECHO, LENGTH back to the loaded
+ * sound's value (morph.c h1_orig), on the part(s) the selection names; a card the selection hides (ECHO with SENDS OFF): nothing (2) */
+static int reset_morph(uint32_t k)
+{
+    uint32_t mask = morph_mask(song.sel), p, id = H1_ID[(k - 1u) % 3u];
+    if (k == 0u) {
+        tide_home(mask);
+        ui_message("BACK TO ORIGINAL");
+        return 1;
+    }
+    if (card_hidden_vp(&TSEL->p[id]))
+        return 2;
+    for (p = 0; p < NSHOWN; p++)
+        if ((mask >> p) & 1u) {
+            trk[p].p[id] = h1_orig[p][(k - 1u) % 3u];
+            motion_capture(&trk[p], id, trk[p].p[id]);
+            ml_knob(&trk[p], id);
+        }
+    return 1;
+}
+#else
 static int reset_morph(uint32_t k)
 {
     if (cur_page()->graph == GR_MORPHSET)
@@ -1480,6 +1539,7 @@ static int reset_morph(uint32_t k)
     }
     return 0;
 }
+#endif
 static int reset_perf(uint32_t k)
 {
     if (k == 0u) {
@@ -1573,12 +1633,12 @@ static void oct_rel(int blocked)
         oct_pend = 0;
     } else {
         rel = oct_pend & ~now;
-        if ((rel & 1u) && !oct_mod) {
+        if ((rel & 1u) && !(oct_mod & 1u)) {
             song.octave += song.octave > -3 ? -1 : 0;
             oct_show_t0 = fm1_ms ? fm1_ms : 1u;                  /* (DUELL 1.1: the OCTAVE page, ui_draw.c) */
             ui.force = 1;
         }
-        if (rel & 2u) {
+        if ((rel & 2u) && !(oct_mod & 2u)) {
             song.octave += song.octave < 3 ? 1 : 0;
             oct_show_t0 = fm1_ms ? fm1_ms : 1u;
             ui.force = 1;
@@ -1586,7 +1646,9 @@ static void oct_rel(int blocked)
         oct_pend &= (uint8_t)now;
     }
     if (!(now & 1u))
-        oct_mod = 0;
+        oct_mod &= (uint8_t)~1u;
+    if (!(now & 2u))
+        oct_mod &= (uint8_t)~2u;
 }
 
 /* OCT+ on an action page: the picked action. A load stays picked (browse and load again); the others
@@ -2346,7 +2408,7 @@ static void ui_input(void)
         } else if (load_undo_gate()) {                  /* OCT- held: the load undo, once (ui.c undo_swap) */
             pl_pend_on = 0;                             /* (a fast turn's waiting place does not load after it) */
             undo_swap();
-            oct_mod = 1;
+            oct_mod |= 1u;
             pu_t = fm1_ms ? fm1_ms : 1u;
         } else if (ui.perf) {                           /* PERFORM: the sound of the part(s) ALGORITHM chose (BOTH: each part its own step) */
             perf_presets(s);
@@ -2384,13 +2446,23 @@ static void ui_input(void)
             knob_rec_begin(k);                          /* (record on: the reset value of a lockable parameter is recorded as its lock) */
             knob_reset(k);
             knob_rec_end();
-            oct_mod = 1;
+            oct_mod |= 1u;
             kr_on[k] = 1;
             kr_t[k] = fm1_ms;
             ui.hot_col = (uint8_t)k;
             ui.hot_t = 40;
             continue;
         }
+#if DUELL_TIDE
+        if (!k && pg->graph == GR_MORPH && (oct_pend & 2u) && ((fm1_in.buttons >> panel.btn[B_OCTUP]) & 1u) && !((fm1_in.buttons >> panel.btn[B_OCTDN]) & 1u)) {
+            /* the MORPH page (1.0.0-b7): OCT+ held + a click of K1, either way: End B a new roll (once a twist; the fader stays), OCT+ a modifier (no octave on its release) */
+            morph_act(MQ_ROLL, morph_mask(song.sel), 1u, song.sel);
+            oct_mod |= 2u;
+            kr_on[k] = 1;
+            kr_t[k] = fm1_ms;
+            continue;
+        }
+#endif
         const scope_ops_t *op = scope_ops(pg->scope);
         if ((op && ((op->hot >> k) & 1u) && !(pg->graph == GR_MORPHSET && k == 3u)) || page_desc(pg, k, &hv) ||
             (k == 3u && duck_midi_page(pg)) ||

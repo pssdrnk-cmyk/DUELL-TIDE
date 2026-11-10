@@ -5,7 +5,7 @@
  *                  left: glide to A, right: to B, two detents to stop a running glide), K2 MODE (ONCE / LOOP / DRIFT / WNDR / JRNY), K3 TIME
  *                  (bars), K4 WAIT; OCT- + K1 back to the Original, + K2 an ARC drop, + K3 / K4 TIME and WAIT to the STYLE's   ... play
  *   TIDE SETTINGS  (GR_TIDELIST) the settings in a list, as the MENU's: K1 picks the row, OCT+ or K2..K4 the next value, OCT- the one before.
- *                  STYLE, MODE, TARGET, ARC, ROLL TYPE, REC, PLAY MODE, XFADE, SPLIT (JL_NAME; 1.0.0-b7, MR8: VARY BARS, WASH, TURNS, POLY and OFFBEAT
+ *                  STYLE, MODE, TARGET, ARC, ROLL TYPE, AMOUNT, REC, PLAY MODE, XFADE, SPLIT (JL_NAME; 1.0.0-b7, MR8: VARY BARS, WASH, TURNS, POLY and OFFBEAT
  *                  are STYLE's alone, no rows)        ... set and forget
  * LINK: TARGET SND+SEQ links the two faders: GLIDE moves both, and the MORPH fader moved by hand (the MORPH page, the mod wheel, CC 70:
  * ui_input.c morph_act) moves the SEQ fader with it (tide_link). ALGORITHM is the morph's selector here too: PART 1, BOTH, PART 2
@@ -140,8 +140,8 @@ static void tide_link(uint32_t mask, uint32_t v)
 }
 
 /* ---------------------------------------------------------------- TIDE SETTINGS --- */
-enum { JL_STYLE, JL_GMODE, JL_TARGET, JL_ARC, JL_ROLL, JL_REC, JL_MODE, JL_XFADE, JL_SPLIT, JL_N };   /* (GMODE: the glide's MODE, AUTO TIDE's K2 too; REC: live recording's; MODE (PLAY MODE), XFADE, SPLIT, the last three: the output mode's own settings; REC and those three no part of STYLE; the three go through ui_input.c mode_knob, whose header describes the old MODE page: TIDE's rows are these three) */
-static const char *const JL_NAME[JL_N] = {"STYLE", "MODE", "TARGET", "ARC", "ROLL TYPE", "REC", "PLAY MODE", "XFADE", "SPLIT"};
+enum { JL_STYLE, JL_GMODE, JL_TARGET, JL_ARC, JL_ROLL, JL_AMOUNT, JL_REC, JL_MODE, JL_XFADE, JL_SPLIT, JL_N };   /* (GMODE: the glide's MODE, AUTO TIDE's K2 too; REC: live recording's; MODE (PLAY MODE), XFADE, SPLIT, the last three: the output mode's own settings; REC and those three no part of STYLE; the three go through ui_input.c mode_knob, whose header describes the old MODE page: TIDE's rows are these three) */
+static const char *const JL_NAME[JL_N] = {"STYLE", "MODE", "TARGET", "ARC", "ROLL TYPE", "AMOUNT", "REC", "PLAY MODE", "XFADE", "SPLIT"};   /* (AMOUNT: how far a roll goes, the part's; on the MORPH page's K4 until 1.0.0-b7) */
 static uint8_t jl_sel;                                   /* the row picked (K1) */
 static void morph_act(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi);   /* (ui_input.c) */
 static void tide_pick_mode(void) { jl_sel = JL_MODE; }   /* HOME OPENS = MODE (ui.c go_main_to): TIDE SETTINGS with the PLAY MODE row picked */
@@ -209,13 +209,13 @@ static __attribute__((noinline)) const char *jl_needs(uint32_t r)
 static int jl_dimmed(uint32_t r) { return jl_needs(r) != 0; }
 /* the rows as tables: how many values each has, its byte (STYLE, MODE, TARGET, ARC, REC; ROLL TYPE is the morph's), the values' names, and the
  * header message a change shows: the prefix + the value's name, or a message of its own (TARGET) */
-static const uint8_t JL_NV[JL_N] = {7, 5, 3, 3, 3, 2, 3, 101, 129};   /* (XFADE 101: mix_xf 0..100 %; SPLIT 129: mix_split 0 = OFF, then note + 1 up to 128) */
+static const uint8_t JL_NV[JL_N] = {7, 5, 3, 3, 3, 101, 2, 3, 101, 129};   /* (AMOUNT and XFADE 101: 0..100 %; SPLIT 129: mix_split 0 = OFF, then note + 1 up to 128) */
 static volatile uint8_t *const JL_VAR[JL_N] = {[JL_STYLE] = &tide_style, [JL_GMODE] = &gl.mode, [JL_TARGET] = &gl.target, [JL_ARC] = &sqm_arc,
                                                [JL_REC] = &tide_rec_replace};   /* (REC is no part of a STYLE: seq.c, live recording) */
 static const char *const JL_V[] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK", "DRONE", "CUSTOM", "SOUND", "SEQ", "BOTH", "OFF", "RISE", "DROP",
                                    "MUSIC", "SMART", "WILD", "ADD", "REPLACE", "LAYER", "STEREO", "DUEL"};
-static const uint8_t JL_V0[JL_N] = {0, 0, 7, 10, 13, 16, 18, 0, 0};   /* (each row's first name in JL_V; MODE's are GL_MODE_NAME) */
-static const char *const JL_SAY[JL_N] = {"STYLE ", "MODE ", 0, "ARC ", "", "REC ", 0, 0, 0};
+static const uint8_t JL_V0[JL_N] = {0, 0, 7, 10, 13, 0, 16, 18, 0, 0};   /* (each row's first name in JL_V; MODE's are GL_MODE_NAME) */
+static const char *const JL_SAY[JL_N] = {"STYLE ", "MODE ", 0, "ARC ", "", "AMOUNT ", "REC ", 0, 0, 0};
 static const char *const JL_OWN[3] = {"GLIDE SOUND", "GLIDE SEQ", "GLIDE BOTH"};   /* (TARGET's messages) */
 static uint32_t jl_n(uint32_t r) { return JL_NV[r % JL_N]; }
 static uint32_t jl_get(uint32_t r)
@@ -225,6 +225,8 @@ static uint32_t jl_get(uint32_t r)
         return DM_LAYER - (duell_mode_req < DM_N ? duell_mode_req : DM_SPLIT);
     if (r == JL_XFADE || r == JL_SPLIT)
         return r == JL_XFADE ? mix_xf : mix_split;
+    if (r == JL_AMOUNT)
+        return morph_amount_of(song.sel);
     if (JL_VAR[r])
         return *JL_VAR[r];
     return morph.cfg & MC_WILD ? 2u : morph_musical ? 0u : 1u;   /* (ROLL TYPE) */
@@ -233,7 +235,7 @@ static const char *jl_vname(uint32_t r, uint32_t v)
 {
     static char b[8];                                    /* (one buffer for XFADE and SPLIT: the caller draws or copies the name before the next call; do not cache the pointer) */
     r %= JL_N;
-    if (r == JL_XFADE) {
+    if (r == JL_XFADE || r == JL_AMOUNT) {
         fmt_int(b, (int32_t)(v % 101u));
         str_cpy(b + str_len(b), "%", 2);
         return b;
@@ -271,6 +273,11 @@ static void jl_put(uint32_t r, uint32_t v)
                 tide_style_last = tide_style;
             tide_style = STY_CUSTOM;
         }
+    } else if (r == JL_AMOUNT) {                         /* (BOTH: each part from its own AMOUNT by the same steps) */
+        int32_t d = (int32_t)v - (int32_t)jl_get(r);
+        for (uint32_t k = 0; k < NSHOWN; k++)
+            if ((mask >> k) & 1u)
+                morph_act(MQ_AMOUNT, 1u << k, (uint32_t)clamp((int32_t)morph_amount_of(k) + d, 0, 100), k);
     } else if (r == JL_ROLL) {                           /* (MUSIC and SMART are SMART's tags with or without the dials; WILD drops them) */
         morph_musical = (uint8_t)(v == 0u);
         if ((v == 2u) != ((morph.cfg & MC_WILD) != 0u))
@@ -293,6 +300,10 @@ static int tide_list_on(void) { return !ui.perf && !ui.layer && cur_page()->grap
 static void tide_list_oct(uint32_t oct)
 {
     uint32_t r = jl_sel % JL_N, v = jl_get(r);
+    if (r == JL_AMOUNT) {                                /* AMOUNT steps 5 % */
+        jl_put(r, (uint32_t)clamp((int32_t)v + ((oct & 2u) ? 5 : (oct & 1u) ? -5 : 0), 0, 100));
+        return;
+    }
     if (r >= JL_XFADE) {                                 /* XFADE steps 10 %, SPLIT one octave (12) from where it is; out of OFF the first step lands on the middle key (mode_knob). Both stop at their ends */
         mode_knob(r - JL_MODE, (oct & 2u) ? (r == JL_SPLIT && !v ? 1 : r == JL_SPLIT ? 12 : 10) : (oct & 1u) ? (r == JL_SPLIT ? -12 : -10) : 0);
         return;
@@ -313,6 +324,8 @@ static void tide_knob(uint32_t slot, int32_t s)
             jl_sel = (uint8_t)clamp((int32_t)jl_sel + s, 0, JL_N - 1);
         else if (jl_sel % JL_N >= JL_MODE)            /* MODE, XFADE, SPLIT: the detents turned, as the old knobs (a turn moved XFADE and SPLIT by many) */
             mode_knob(jl_sel % JL_N - JL_MODE, s);
+        else if (jl_sel % JL_N == JL_AMOUNT)            /* AMOUNT: the detents turned, as its knob on the MORPH page did (b6) */
+            jl_put(JL_AMOUNT, (uint32_t)clamp((int32_t)jl_get(JL_AMOUNT) + accel(EN_K1 + slot, s, 100), 0, 100));
         else
             tide_list_oct(s > 0 ? 2u : 1u);
         return;

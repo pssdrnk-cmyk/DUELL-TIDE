@@ -91,7 +91,6 @@ static void tide_ghost_real(track_t *t);   /* (seq.c input_on: a real note start
  * window). The part's AMOUNT knob stays TIDE_FACTORY_AMOUNT (the next ROLL's) */
 #define TIDE_FACTORY_BAMT(e, k, a) (morph_musical && ds_get((e), (k))->tamt ? (uint32_t)ds_get((e), (k))->tamt : TIDE_FACTORY_AMOUNT(a))
 #define TIDE_FACTORY_CFG() (morph_musical ? MC_MUSIC : 0u)
-static int tide_amount_idle(void);   /* (morph_glide.c: JOURNEY runs, AMOUNT does nothing: the MORPH page dims its card) */
 #define TIDE_BUILD_KIND(mp, id, kind) do { if ((id) == P_TRIM && ((mp)->tok[0][(mp)->top[0]] || (mp)->tok[1][(mp)->top[1]])) \
                                               (kind) = MK_CONT; } while (0)   /* (MORPH TO: two sounds' loudness blends, no step halfway) */
 #define TIDE_BUILD_FNID(mp) ((mp)->fnid |= (uint8_t)((mp)->tok[0][(mp)->top[0]] | (mp)->tok[1][(mp)->top[1]]))   /* (MORPH TO's FM6 flip) */
