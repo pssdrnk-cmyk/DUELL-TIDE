@@ -236,11 +236,11 @@ static void keys_drive(void)
     /* (reel, 2026-11-10: the ARP SEQ pairs of the fifteen new multis: M05 ORGAN HOUSE, M07 DETROIT STAB, M09 MINIMAL 12, M13 DEEP SEA ARP (M03 and M06 are plain patterns now);
      * AMB: no factory multi has a latched pad any more, so the owner's WHISPER TIDE (the factory M11 until the reel) is the test scene tests/scenes/reel/M11_WHISPER_TIDE.bin,
      * stored in M11 for its check and erased again; M06 PIANO HOUSE is the keyed pair (both parts played from the keys, HOLD OFF), as TINE STRINGS and FINAL REEL were) */
-    static const uint8_t GRV[5] = {1, 4, 6, 8, 12}, P1[5] = {0, 0, 0, 0, 0}, AMB[2] = {10, 5};
-    static const char *const GN[5] = {"M02 DUB CHORD", "M05 ORGAN HOUSE", "M07 DETROIT STAB", "M09 MINIMAL 12", "M13 DEEP SEA ARP"};
+    static const uint8_t GRV[4] = {1, 4, 6, 12}, P1[4] = {0, 0, 0, 0}, AMB[2] = {10, 5};   /* (b8 lane M09: slot 9 HYPNO 303 has a plain-pattern 303 on part 1: with M11 in the plain-pattern check below) */
+    static const char *const GN[4] = {"M02 DUB CHORD", "M05 ORGAN HOUSE", "M07 DETROIT STAB", "M13 DEEP SEA ARP"};
     uint32_t j;
     char line[160];
-    for (j = 0; j < 5u; j++) {
+    for (j = 0; j < 4u; j++) {
         k = GRV[j];
         play_run(k, 1u << c4, 2u * sec, sec, 0, r);
         ok = !song.playing && r[0].n >= 1u && r[1].n >= (k == 1u ? 4u : 1u) && r[0].late == 0u && r[1].late == 0u && !r[0].gated_after && !r[1].gated_after;
@@ -330,10 +330,10 @@ static void keys_drive(void)
     /* U2 B (1.1): the sequenced arrangements of PAD SPLIT, WHISPER TIDE, TINE STRINGS, FINAL REEL, HAZY TENSOR, CELLAR TAPE (M10 M11 M12 M16 M15 M03 since D31). PLAY alone starts the plain-pattern parts; the ARP SEQ
      * parts follow a transposed key (D4 two semitones above C4, the same blocks); a plain pattern part does not move with the key (a live key plays on top) */
     {
-        static const uint8_t SQ[5][2] = {{9, 0}, {11, 1}, {15, 1}, {14, 0}, {10, 0}};   /* slot, the part: ARP SEQ (the first four), a plain pattern (the last). (reel, 2026-11-10: M10 SEVEN LOOP's HOLLOW POP (its IRON WORKS holds one note
+        static const uint8_t SQ[6][2] = {{9, 0}, {11, 1}, {15, 1}, {14, 0}, {10, 0}, {8, 0}};   /* slot, the part: ARP SEQ (the first four), a plain pattern (the last). (reel, 2026-11-10: M10 SEVEN LOOP's HOLLOW POP (its IRON WORKS holds one note
                                                                                          * four bars), M12 ROBOT FUNK's VOWEL PAD, M16 TWO LOOPS' EVOLVING PAD, M15 BERLIN RUN's ARP PLUCK; the plain pattern is M11 ACID LINES' SQUELCH) */
         uint32_t m, pp, n;
-        for (m = 0; m < 5u; m++) {
+        for (m = 0; m < 6u; m++) {
             k = SQ[m][0];
             pp = SQ[m][1];
             play_run(k, 1u << c4, (m < 4u ? 8u : 3u) * sec, sec / 2u, 0, r);
@@ -1089,11 +1089,11 @@ int main(void)
     {
         /* (reel, 2026-11-10: the fifteen new factory multis, one curated programme (tools/factory_multis.py); M02 DUB CHORD is the owner's record as before) */
         static const char *const FN[16] = {"BASIC CHORD", "DUB CHORD", "JUNO DEEP", "LATE RHODES", "ORGAN HOUSE", "PIANO HOUSE", "DETROIT STAB",
-                                           "HI-TECH SOUL", "MINIMAL 12", "SEVEN LOOP", "ACID LINES", "ROBOT FUNK", "DEEP SEA ARP", "WARPED TAPE",
+                                           "HI-TECH SOUL", "HYPNO 303", "SEVEN LOOP", "ACID LINES", "ROBOT FUNK", "DEEP SEA ARP", "WARPED TAPE",
                                            "BERLIN RUN", "TWO LOOPS"};
         static const char *const SN[16][2] = {{"CHORD ECHO", "DUST BED"}, {"BIG STAB", "SLOW TIDE"}, {"WARM WASH", "RUBBER BAND"},
                                               {"TINE ROOM", "AIR SHIMMER"}, {"DUB DRAWBAR", "HOUSE ORGAN"}, {"SALOON KEYS", "RAIN STRINGS"},
-                                              {"LOW STAB", "STRING MACH"}, {"SUNDAY KEYS", "BELL STAB"}, {"SOUL STAB", "FOG BANK"},
+                                              {"LOW STAB", "STRING MACH"}, {"SUNDAY KEYS", "BELL STAB"}, {"SQUELCH", "FOG BANK"},
                                               {"HOLLOW POP", "IRON WORKS"}, {"SQUELCH", "DEEP BLUE"}, {"LADDER BASS", "VOWEL PAD"},
                                               {"DIGI PLUCK", "PWM PAD"}, {"WAVE CHIMES", "TAPE CLOUD"}, {"ARP PLUCK", "CHOIR LOFT"},
                                               {"FROST BELLS", "EVOLVING PAD"}};
@@ -1104,7 +1104,7 @@ int main(void)
         static const uint8_t XF[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};   /* (reel, 2026-11-10: no factory multi sets XFADE; until then M16, the owner's FINAL REEL, had 58) */
         /* (seq.c AM_*: UP 1, RND 4, SEQ 15; D31: the six new multis are SEQ arps on both parts (BASIC CHORD's DUST BED is played live); the kept records as they were) */
         /* (reel, 2026-11-10: ARP SEQ on both parts, but M03 JUNO DEEP, M06 PIANO HOUSE and M11 ACID LINES: written notes, plain patterns on both parts, the arp OFF) */
-        static const int8_t AM[16][2] = {{15, 15}, {15, 15}, {0, 0}, {15, 15}, {15, 15}, {0, 0}, {15, 15}, {15, 15}, {15, 15},
+        static const int8_t AM[16][2] = {{15, 15}, {15, 15}, {0, 0}, {15, 15}, {15, 15}, {0, 0}, {15, 15}, {15, 15}, {0, 15},
                                          {15, 15}, {0, 0}, {15, 15}, {15, 15}, {15, 15}, {15, 15}, {15, 15}};
         static uint8_t before[0x100000];
         uint32_t n, st;
