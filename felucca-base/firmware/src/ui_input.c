@@ -5,7 +5,7 @@
 static uint8_t kr_on[4];                                /* knob k: a reset happened, its detents are ignored while it goes on */
 static uint32_t kr_t[4];
 /* knob k's detents swallowed after a reset or a jump (kr_on) until it has been still KR_QUIET_MS: 1 = swallow this detent */
-static uint32_t kr_quiet(uint32_t k)
+__attribute__((noinline)) static uint32_t kr_quiet(uint32_t k)
 {
     if (!kr_on[k])
         return 0;
@@ -1931,7 +1931,7 @@ static void play_hold(uint32_t now)
 enum { BT_NONE, BT_TAP, BT_HOLD };
 /* a dialog or NAME cancelled by HOME or a page button: nothing written. "NOT SAVED" for NAME and the save dialogs, "CANCELLED" for the others (b7) */
 #define CF_SAVES ((1u << CF_OVR_PROJ) | (1u << CF_OVR_USER) | (1u << CF_OVR_PSLOT) | (1u << CF_SAVE_OVER) | (1u << CF_HOLD_PSLOT) | (1u << CF_HOLD_MULTI))
-static void dlg_cancel(void)
+__attribute__((noinline)) static void dlg_cancel(void)
 {
     ui_message(name_on() || ((CF_SAVES >> ui.confirm) & 1u) ? "NOT SAVED" : "CANCELLED");
     name_close();
