@@ -1002,6 +1002,7 @@ int main(void)
         power_cycle();
         song.g[G_ROUTE] = 0;                                  /* (ROUT CH1-4) */
         duell_mode_req = DM_LAYER;
+        SEL_BOTH = 1;                                          /* (1.0.0-b7 TIDE_PLAYSEL: LAYER plays in ALGORITHM's middle) */
         events_block(CTL);
         song.g[G_BPM] = 99;
         midi_in_event(0x0Cu | 0xC0u << 8 | 40u << 16);        /* PC 40: no multi */
@@ -1015,6 +1016,7 @@ int main(void)
         project_save_as(11, "PC M12");
         song.g[G_BPM] = 99;
         duell_mode_req = DM_LAYER;
+        SEL_BOTH = 1;                                          /* (1.0.0-b7 TIDE_PLAYSEL: LAYER plays in ALGORITHM's middle) */
         events_block(CTL);
         midi_in_event(0x0Cu | 0xC0u << 8 | 11u << 16);
         events_block(CTL); frame();
@@ -1074,6 +1076,7 @@ int main(void)
         events_block(CTL); frame();
         ok = mph[0].fader == 127u && mph[1].fader == 0u && trk[0].mw == 127u && trk[1].mw == 0u;
         duell_mode_req = DM_LAYER;
+        SEL_BOTH = 1;                                          /* (1.0.0-b7 TIDE_PLAYSEL: LAYER plays in ALGORITHM's middle) */
         events_block(CTL);
         midi_in_event(0x0Bu | 0xB0u << 8 | 1u << 16 | 40u << 24);
         events_block(CTL); frame();
