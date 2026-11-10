@@ -1,6 +1,21 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* Felucca UI input: LEDs, knobs and buttons, SEQ step entry, panel setup. */
+#define KR_QUIET_MS 300u
+static uint8_t kr_on[4];                                /* knob k: a reset happened, its detents are ignored while it goes on */
+static uint32_t kr_t[4];
+/* knob k's detents swallowed after a reset or a jump (kr_on) until it has been still KR_QUIET_MS: 1 = swallow this detent */
+static uint32_t kr_quiet(uint32_t k)
+{
+    if (!kr_on[k])
+        return 0;
+    if (fm1_ms - kr_t[k] < KR_QUIET_MS) {
+        kr_t[k] = fm1_ms;
+        return 1;
+    }
+    kr_on[k] = 0;
+    return 0;
+}
 #include "ui_name.c"                                    /* NAME: naming user presets and projects */
 /* ----------------------------------------------------------- LEDs --- */
 /* The LED picture is built off-line and copied one byte per column: clearing
@@ -1413,11 +1428,8 @@ static void edit_param(uint32_t slot, int32_t steps)
  * the action pages (act_cols: PATTERNS, MULTIS, TOOLS, the SAVE / LOAD / CLEAR / INIT pages, PARAMETER LOCKS), a SET layer (put back), MIDI LEARN
  * (clear) and any layer button held (the layer's knobs are the layer's). 0.2.10: the QUICK EDIT layers (EDIT, LFO, ENV, ARP held) do reset their
  * cards (ui_layer.c layer_quick_reset); in QUICK FILTER a plain OCT- (no knob turned) still puts back */
-#define KR_QUIET_MS 300u
 static uint8_t oct_pend;                                /* bit 0 OCT-, bit 1 OCT+: pressed on a normal page, not let go yet */
 static uint8_t oct_mod;                                 /* bit 0: OCT- was used as a modifier (a knob reset), bit 1 OCT+ (TIDE: the MORPH page's new End B): no octave on its release */
-static uint8_t kr_on[4];                                /* knob k: a reset happened, its detents are ignored while it goes on */
-static uint32_t kr_t[4];
 
 /* Commit a knob link into GLO and swallow the detents still in flight. */
 static void glo_knob_jump(uint32_t page, uint32_t knob)
@@ -2312,6 +2324,8 @@ static void ui_input(void)
             if (panel_enc(EN_K2)) {                     /* 0.2.21: K2 RENAME - the NAME screen for the sound's name, back here after it */
                 name_open(NK_SAVE_NAME, ui.confirm_trk);
                 ui.confirm = 0;
+                kr_on[1] = 1;                           /* the rest of that twist is not typed into the name (kr_quiet in name_input) */
+                kr_t[1] = fm1_ms;
             }
         }
         ui.pg_down = 0;
@@ -2429,13 +2443,8 @@ static void ui_input(void)
         int16_t *hv;
         if ((s = panel_enc(EN_K1 + k)) == 0)
             continue;
-        if (kr_on[k]) {                                 /* a reset's knob still turning: ignored until it has been still (no creeping) */
-            if (fm1_ms - kr_t[k] < KR_QUIET_MS) {
-                kr_t[k] = fm1_ms;
-                continue;
-            }
-            kr_on[k] = 0;
-        }
+        if (kr_quiet(k))                                /* a reset's knob still turning: ignored until it has been still (no creeping) */
+            continue;
         if (off_module(pg)) {                           /* item 125: its module is OFF: any knob jumps to MODULES */
             off_knob(k, s);
             continue;

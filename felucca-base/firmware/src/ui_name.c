@@ -337,7 +337,7 @@ static void name_input(uint32_t notes, uint32_t oct)
         nm.rep_t = fm1_ms + NM_RATE_MS;
     }
     for (k = 0; k < 4u; k++)
-        if ((s = panel_enc(EN_K1 + k)) != 0)
+        if ((s = panel_enc(EN_K1 + k)) != 0 && !kr_quiet(k))
             nm_knob(k, s);
     enc_drop();                                        /* the other knobs do nothing here */
     if (oct & 2u)
