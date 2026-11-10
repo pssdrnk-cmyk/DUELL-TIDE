@@ -57,7 +57,7 @@ static uint32_t sqm_hash(uint32_t seed, uint32_t idx, uint32_t salt)
     return x ^ x >> 16;
 }
 static int sqm_hit(const step_t *s) { return s->time == ST_NOTE && s->n; }
-/* the Original's lane (C1, TIDE_ROLES_AND_MULTIS_SPEC.md): from its lowest hit note (a lane that starts above C3 may still not reach under C3: 48) to its highest plus an octave, inside the outer bound 24..108 of sqm_note; a note outside it is never generated.
+/* the Original's lane (C1, TIDE_ROLES_AND_MULTIS_SPEC.md): from its lowest hit note (a lane that starts above C3 may still not reach under C3: 48) to its highest plus an octave, inside the outer bound 24..108; a note outside it is never generated.
  * Used by sqm_build's VOIC, voicelead_walk and the pitch walk (seq_voicelead.c, seq_evolve.c, included below). The Original's own notes are never moved by it: only new ones are tested */
 static void sqm_lane(const step_t *p, uint32_t len, int32_t *lo, int32_t *hi)
 {
@@ -85,8 +85,6 @@ static int sqm_held(const step_t *p, uint32_t idx, uint32_t len)
 }
 /* a free step a hit may take (nothing ties into the step after it either) */
 static int sqm_target(const step_t *p, uint32_t idx, uint32_t len) { return sqm_free(&p[idx]) && p[(idx + 1u) % len].time != ST_TIE; }
-
-static uint8_t sqm_note(int32_t n) { return (uint8_t)(n < 24 ? n + 12 * ((24 - n + 11) / 12) : n > 108 ? n - 12 * ((n - 108 + 11) / 12) : n); }
 
 /* how many steps a dial touches: |d| % of max, rounded */
 static uint32_t sqm_cnt(int32_t d, uint32_t max) { return ((uint32_t)(d < 0 ? -d : d) * max + 50u) / 100u; }
