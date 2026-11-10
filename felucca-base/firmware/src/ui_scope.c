@@ -22,7 +22,7 @@
  *             Silence fades the front's shape (wl_fade), the stack runs out, and every lane stays drawn, flat: at rest the page shows the same set of lines as when it plays (owner 2026-11-09)
  * Samples inside are the tap's steps (1/4,096 of the half scale) times 16 (the interpolation's fraction). The ridges are kept in 1/4 px from their middle, a byte a point (WL_AMAX: the half height of
  * a ridge is at most 31 px; the front's is about 20 px in a 68-row lane). b6 layout (owner 2026-11-09, "the bottom half of the screen is badly used"): the picture takes the page
- * from the knob-1 line down to the compact ROLL / AMOUNT row (ui_draw.c morph_row) and the whole width, the part tags over the lanes' left edge; HOLD SAVE = SAVE PATCH is a hint in
+ * from the knob-1 line down to the compact FILTER / ECHO / LENGTH row (ui_draw.c morph_row; ROLL / AMOUNT until 1.0.0-b7) and the whole width, the part tags over the lanes' left edge; HOLD SAVE = SAVE PATCH is a hint in
  * that row while SAVE is held (ui_draw.c morph_row). */
 #define WL_NP 56                                     /* points of a ridge (b6: 56, one every 3.9 px, so 13 ridges fit the RAM rule), spread over x WL_X0 .. WL_X1 (right of the part's tag column, x 0 .. 21: no line starts under or beside a tag) */
 #define WL_X0 22
@@ -599,7 +599,7 @@ static void wl_card(int32_t y0, int32_t y1)
     wl_stack(0, y0, ym);
     wl_stack(1, ym, y1);
 }
-/* TEMPLATE 9: the picture in the big area, screen rows ay .. ay + ah - 1, all of it (b6: the hint went to the ROLL / AMOUNT row). Taller than one canvas (gfx.c CV_MAX, 124 rows):
+/* TEMPLATE 9: the picture in the big area, screen rows ay .. ay + ah - 1, all of it (b6: the hint went to the slim row under it). Taller than one canvas (gfx.c CV_MAX, 124 rows):
  * each part's half on a canvas of its own, blitted at its first row */
 static void wl_area(int32_t ay, int32_t ah)
 {

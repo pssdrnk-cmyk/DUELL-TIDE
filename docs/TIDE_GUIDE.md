@@ -18,12 +18,18 @@ On these three pages a small dim pill beside part 1's capsule shows the busiest 
 
 | Knob | What it does |
 |---|---|
-| 1 | The fader, A to B. Moving it by hand holds that part's glide (see "Your hand on the MORPH fader", section 3). |
-| 2 | ROLL: left makes a new A, right a new B. One click, a new random end. |
-| 3 | Nothing for now (a picture of the sound's wave is planned). A roll replaces its end; there is no UNDO. |
-| 4 | AMOUNT: how far a roll may go. *Start: leave it.* The musical roll has its own sensible scale. A sound or multi load keeps your AMOUNT. It is dimmed while AUTO TIDE runs JOURNEY, where it does nothing. |
+| 1 | **MORPH**, the fader from A to B. Two steps a click: a full sweep is half the turning of 1.0.0-b6. Moving it by hand holds that part's glide; TIDE takes it back after 8 untouched bars, at the next phrase (see "Your hand on the MORPH fader", section 3). |
+| 2 | **FILTER**: the part's cutoff, the same as knob 1 of QUICK EDIT (hold EDIT). |
+| 3 | **ECHO**: the part's delay send. Dim when the delay can't be heard (GLO > MODULES SENDS OFF, or the delay's MIX at 0); knob 1's line says which. |
+| 4 | **LENGTH**: the release of the amp envelope, as the ENV page shows it (FM6 and ENV SYNC have their own values). |
 
-The fader's position (A, 1 to 126, B) sits beside knob 1's label; ROLL and AMOUNT share one slim row under the picture, and the footer shows both parts' patches. Most of the page shows the sound itself as waves, like an oscilloscope: a held note stands still, a chord beats, the newest wave in front, the older ones fainter behind it; at rest the lines lie flat. ALGORITHM picks whose: PART 1, PART 2, or BOTH (one above the other). **Hold SAVE** saves the patch; with ALGORITHM on BOTH each part goes over its own slot.
+These are the sound's own settings: they record into the pattern with REC armed, MIDI LEARN picks them, SAVE keeps them, and turning them never holds TIDE's glide (only the MORPH fader does). With ALGORITHM on **BOTH** every knob moves each part from its own value by the same amount, so neither part jumps.
+
+**Hold OCT+ and click knob 1** (either way): End B becomes a new random roll; the fader stays where it is and the octave doesn't move. A roll replaces its end; there is no UNDO. How far a roll goes is the AMOUNT row of TIDE SETTINGS.
+
+**Hold OCT- and turn a knob:** knob 1 goes back to your original sound and pattern (the glide stops, as OCT- + K1 on AUTO TIDE); knobs 2 to 4 go back to the value the loaded sound had.
+
+The fader's position (A, 1 to 126, B) sits beside knob 1's label; FILTER, ECHO and LENGTH share one slim row under the picture, and the footer shows both parts' patches. Most of the page shows the sound itself as waves, like an oscilloscope: a held note stands still, a chord beats, the newest wave in front, the older ones fainter behind it; at rest the lines lie flat. ALGORITHM picks whose: PART 1, PART 2, or BOTH (one above the other). **Hold SAVE** saves the patch; with ALGORITHM on BOTH each part goes over its own slot.
 
 ## 2. AUTO TIDE (the page you live on)
 
@@ -52,7 +58,7 @@ Where two very different sounds cross, a short filter dip hides the change (the 
 
 ## 3. TIDE SETTINGS (set and forget)
 
-Nine rows: STYLE, MODE, TARGET, ARC and ROLL TYPE for the tide, then REC, PLAY MODE, XFADE and SPLIT. K1 picks the row. **OCT+** the next value, **OCT-** the one before (knobs 2 to 4 turn it too, one step a click; on PLAY MODE, XFADE and SPLIT a knob moves by the clicks you turn, while OCT+ and OCT- step XFADE by 10 % and SPLIT by an octave, and out of SPLIT OFF the first OCT+ lands on the middle key). Six rows show at a time; a mark at the right edge shows where they are in the list. A value that does nothing in the present setup is dim, and knob 1's line says why. Saved over a power cycle (about 2 s after the change while stopped; changes made during a running set are written at its next STOP, so switching the unit off mid-set loses them).
+Ten rows: STYLE, MODE, TARGET, ARC, ROLL TYPE and AMOUNT for the tide, then REC, PLAY MODE, XFADE and SPLIT. K1 picks the row. **OCT+** the next value, **OCT-** the one before (knobs 2 to 4 turn it too, one step a click; on AMOUNT, PLAY MODE, XFADE and SPLIT a knob moves by the clicks you turn, while OCT+ and OCT- step AMOUNT by 5 %, XFADE by 10 % and SPLIT by an octave, and out of SPLIT OFF the first OCT+ lands on the middle key). Six rows show at a time; a mark at the right edge shows where they are in the list. A value that does nothing in the present setup is dim, and knob 1's line says why. Saved over a power cycle (about 2 s after the change while stopped; changes made during a running set are written at its next STOP, so switching the unit off mid-set loses them).
 
 | Row | Values (default first) | What it does | Start |
 |---|---|---|---|
@@ -61,6 +67,7 @@ Nine rows: STYLE, MODE, TARGET, ARC and ROLL TYPE for the tide, then REC, PLAY M
 | **TARGET** | BOTH, SOUND, SEQ | What the glide moves: the sound, the pattern, or both together. BOTH links the two faders; the MORPH fader moved by hand drags the SEQ fader with it. | BOTH |
 | **ARC** | OFF, RISE, DROP | In automatic WANDER / JOURNEY with the pattern in TARGET the tide follows a long shape made of 8-bar phrases: it rises (more syncopation and repeats, brighter sounds), holds a peak, then eases into a breakdown, and recovers. One arc is 40 to 64 bars in 8-bar steps: RISE 16 to 32 bars, PEAK 8 to 16, BREAK 8 to 16 (a DROP is its first 8: two silent bars, then thinned), RECOVER 8. In the breakdown both parts keep their main hits, chords play two voices and everything is softer. A chord part's voicing opens at the peak and closes in the breakdown (octaves only, no new notes). DROP drops on the first arc after PLAY (about 40 seconds in), then on about half of the arcs, and the shape differs from night to night. The status line shows the phase. STOP and PLAY only pause the arc: PLAY goes on where it was. A load (multi, project, pattern) or a K1 stop starts it again at RISE. **Hand drop:** hold OCT- and turn K2 on the AUTO TIDE page; the drop lands at the next 8-bar step (a second turn cancels it). Dim with ONCE, LOOP or DRIFT, or TARGET SOUND. | RISE |
 | **ROLL TYPE** | MUSIC, SMART, WILD | How a new End B is made. MUSIC turns five dials (bright, movement, shape, space, character) inside the ranges where that kind of sound actually lives, so a brighter end is not a louder one. SMART is DUELL's own safe roll. WILD drops the safety rules. It no longer switches the rhythm off: ARC and the pattern's movement act with any ROLL TYPE. Dim under JOURNEY, which picks factory sounds instead of rolling (knob 1's line: NOT JRNY). | MUSIC |
+| **AMOUNT** | 0 to 100 % | How far a roll may go, the selected part's (with BOTH each part moves by the same steps). *Start: leave it.* The musical roll has its own sensible scale. A sound or multi load keeps your AMOUNT. Not part of a STYLE. It still shapes a roll in JOURNEY (OCT+ and knob 1 on the MORPH page), so it is never dim. Until 1.0.0-b7 it was knob 4 of the MORPH page. | 15 % |
 | **REC** | ADD, REPLACE | Live recording (REC armed while PLAY runs), not part of any STYLE: a STYLE pick leaves it and changing it does not turn STYLE into CUSTOM. ADD: a note you play into a step that already holds notes is added to them (a chord of up to 4; a MONO, LEGATO or UNISON part keeps one note per step). REPLACE: the first note you play into a step in a pass clears that step's old notes and takes their place; more notes played into the same step in that pass (a chord played together) are added; steps you do not play into stay as they are (nothing is erased as the playhead passes). A held note still ties the following steps in both. On an ARP SEQ part a key sets the step's note, in both modes: its steps hold one note each, so a second key into the same step takes its place. Saved with the other settings. | ADD |
 | **PLAY MODE** | LAYER, STEREO, DUEL | The output mode. LAYER: both parts on the keys. STEREO: both parts, one stereo field. DUEL: part 1 left, part 2 right. The header says PLAY MODE and the value. | LAYER |
 | **XFADE** | 0 to 100 % | The velocity crossfade between the parts. LAYER only. | 0 |
@@ -173,7 +180,8 @@ Merged on the development line, in `1.0.0-b1` and after it (the source is the re
 
 | Feature | What it does |
 |---|---|
-| **A shorter TIDE SETTINGS page** | STYLE, MODE, TARGET, ARC, ROLL TYPE, then REC, PLAY MODE, XFADE, SPLIT. VARY BARS, TURNS, POLY, OFFBEAT and WASH are STYLE's values (no rows); ROLL ARP and ROLL PITCH have no row (OFF by default; a unit that had them ON keeps them). The tide's MODE is a row too. A saved STYLE stays that style. |
+| **MORPH is the hands-on page** | Knob 1 MORPH at half the turning, knob 2 FILTER, knob 3 ECHO, knob 4 LENGTH, on the slim row under the wave picture. With BOTH every knob moves each part by the same amount. A new End B: hold OCT+ and click knob 1. AMOUNT is a TIDE SETTINGS row now; the new-A roll is gone from the page. |
+| **A shorter TIDE SETTINGS page** | STYLE, MODE, TARGET, ARC, ROLL TYPE, AMOUNT, then REC, PLAY MODE, XFADE, SPLIT. VARY BARS, TURNS, POLY, OFFBEAT and WASH are STYLE's values (no rows); ROLL ARP and ROLL PITCH have no row (OFF by default; a unit that had them ON keeps them). The tide's MODE is a row too. A saved STYLE stays that style. |
 | **ROLL TYPE no longer switches the rhythm off** | ARC and the pattern's movement act in WANDER and JOURNEY whatever ROLL TYPE is. ROLL TYPE is dim under JOURNEY, where it does nothing. |
 | **DUB walks your sounds** | STYLE DUB plays WANDER: the multi's own sounds stay and evolve, and the level and brightness stay steadier. AMBIENT plays without the shortened loops (poly OFF). |
 | **An arc you can hear** | ARC's phases fall on 8-bar boundaries (an arc is 40 to 64 bars), the breakdown keeps each part's main hits, plays chords in two voices and drops the level by 2 to 5 dB, the first arc after PLAY drops under ARC DROP, and ARP SEQ parts follow ARC's dynamics too. In the breakdown the parts thin by voices and level; their number of hits drops less. |

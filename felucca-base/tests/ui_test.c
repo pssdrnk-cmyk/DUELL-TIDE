@@ -9342,8 +9342,13 @@ static int test_item158_pages(void)
                 frames(64);
                 snprintf(want, sizeof want, "%s", row ? "%" : lay ? "LAYER" : "DUEL");   /* (XFADE: the text ending in %) */
                 screen_read();
+                {
+                    int32_t ylast = -1;                     /* (1.0.0-b7: AMOUNT's value ends in % too, rows above: XFADE's is the lowest) */
+                    for (k = 0; k < txt_n; k++)
+                        if (txt_log[k].x0 > 120 && txt_log[k].s[strlen(txt_log[k].s) - 1u] == '%' && txt_log[k].y0 > ylast)
+                            ylast = txt_log[k].y0;
                 for (k = 0; k < txt_n; k++)
-                    if (txt_log[k].x0 > 120 && (row ? txt_log[k].s[strlen(txt_log[k].s) - 1u] == '%' : !strcmp(txt_log[k].s, want))) {
+                    if (txt_log[k].x0 > 120 && (row ? txt_log[k].s[strlen(txt_log[k].s) - 1u] == '%' && txt_log[k].y0 == ylast : !strcmp(txt_log[k].s, want))) {
                         int32_t x, y;
                         found = 1;
                         for (y = txt_log[k].y0; y <= txt_log[k].y1; y++)
@@ -9352,6 +9357,7 @@ static int test_item158_pages(void)
                                 ntheme += host_screen[y * 240 + x] == I157_PX(T_THEME);
                             }
                     }
+                }
                 snprintf(m, sizeof m, "TIDE SETTINGS drawn: the %s value (%s) is %s", row ? "XFADE" : "PLAY MODE", lay ? "LAYER" : "DUEL", row && !lay ? "dim" : "in the theme colour");
                 bad += check(m, found && (row && !lay ? ndim > 0u && ntheme == 0u : ntheme > 0u && ndim == 0u));
             }

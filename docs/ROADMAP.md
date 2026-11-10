@@ -13,7 +13,7 @@ State words on this page: Released in bN, Ready (built and tested, waiting for a
 | Reverb on the second core, to free CPU (K4) | Built, needs its own FM-1 sweep with K4 on and off |
 | A sound saved from the web editor keeps its End B ([FR3](audits/2026-11-09/firmware-review/TASKS.md#fr3)) | Planned, not built in the night: ~40 B |
 | Small control fixes: RENAME no longer types stray letters, OCT- held as a modifier doesn't also act on release, a fast PRESETS turn can't land on the other part, SEQ + REC arms REC however the buttons are lifted, NOT SAVED only for saves ([FR7](audits/2026-11-09/firmware-review/TASKS.md#fr7)) | Planned, not built in the night: ~120 B |
-| Words that match the unit: ERASE DATA names the FM6 bank and the user tables and AMOUNT not dimmed in JOURNEY (the TURNS step falls away: the row is gone) ([FR11](audits/2026-11-09/firmware-review/TASKS.md#fr11)) | Planned, not built in the night: ~40 B and docs |
+| Words that match the unit: ERASE DATA names the FM6 bank and the user tables (AMOUNT not dimmed in JOURNEY: done with page 1 in b7; the TURNS step falls away: the row is gone) ([FR11](audits/2026-11-09/firmware-review/TASKS.md#fr11)) | Planned, not built in the night: ~40 B and docs |
 
 ## Built in b7, waits for the FM-1
 
@@ -38,6 +38,7 @@ Six builder lanes made these overnight (9 to 10 November); each is measured on t
 | BASIC CHORD's dust bed and the two drone beds play with no notes coming in; every part that waits for keys plays TIDE's chord under AUTO TIDE ([MR2](audits/2026-11-09/musical-review/TASKS.md#mr2), both parts) | Built. Level with no keys: M14 is +4.4 dB over the median, M15 -11.8, M16 -3.7, M08 +3.2 (the old M14 and M15 are replaced) |
 | The multis' data pass ([MR3](audits/2026-11-09/musical-review/TASKS.md#mr3)): pads an octave down in TINE DUB and DEEP 332, drones at a house clock and 5 dB louder, swing on ORGAN SKANK, FINAL REEL's brass keeps its octave with a gentle low cut, PAD SPLIT and WHISPER TIDE 5 to 6 dB quieter with a chord held | Built (register overlap of TINE DUB / DEEP 332 not re-measured) |
 | Six electronic-genre multis in M03, M04, M07, M13, M14, M15: ACID FIELD, ROBOT FUNK, MINIMAL 12, BROKEN BELLS, BERLIN RUN, DETROIT STAB. CELLAR TAPE, NIGHT ORGAN, COLD CHAPEL, EERIE SIGNAL and HAZY TENSOR left the factory set (in git history at dc8f1d3) | Built; its CPU is not measured on the host (`cpuscen` cannot count here): the 16-multi sweep on the unit decides, heaviest M13 BROKEN BELLS, then M14 |
+| HOME page 1 is the hands-on page: K1 MORPH at half the turning, K2 FILTER, K3 ECHO, K4 LENGTH on the slim row; BOTH moves each part by the same steps; OCT+ held + K1 rolls a new End B; OCT- + a knob puts it back; AMOUNT is a TIDE SETTINGS row, not dimmed in JOURNEY | Built (host tests, device build); not on the unit |
 
 The owner's answers to the musical review (9 November) are built in: the default for each of the nine questions, with the first start staying M02 DUB CHORD and FINAL REEL's brass pad keeping its octave.
 

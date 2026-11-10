@@ -647,7 +647,14 @@ static uint32_t mr7_run(int touch, uint8_t *ph, uint8_t *cnt, uint32_t *fad)
         autos += sqm_auto == 1u;
         if (touch && bar == 20u) {
             f = morph_fader_of(0);
-            morph_push(MQ_FADER, 0u, f > 30u ? f - 30u : f + 30u);   /* (a hand pulls it back: MIDI, so LINK moves SEQ too) */
+            if (touch == 2) {                            /* 1.0.0-b7: the hand on the MORPH page's K1, two fader steps a detent: 15 detents = the same 30 */
+                ui.page = 0; while (PAGES[ui.page].graph != GR_MORPH) ui.page++;
+                ui.cursor = ui.bank = 0; page_entered(); frame();
+                turn(EN_K1, f > 30u ? -15 : 15);
+                ui.page = 0; while (PAGES[ui.page].graph != GR_TIDE) ui.page++;   /* (as the MIDI run: AUTO TIDE's page) */
+                page_entered();
+            } else
+                morph_push(MQ_FADER, 0u, f > 30u ? f - 30u : f + 30u);   /* (a hand pulls it back: MIDI, so LINK moves SEQ too) */
             run(32);
             held = gl.on == 3u && gl.hw[0] == 1u && gl.hw[1] == 1u;
         }
@@ -664,6 +671,22 @@ static uint32_t mr7_run(int touch, uint8_t *ph, uint8_t *cnt, uint32_t *fad)
     glide_stop(); transport_req = 2u; run(48);
     return moved;
 }
+/* 1.0.0-b7: HOME's MORPH page: FILTER, ECHO and LENGTH turned during a glide do not hold it; MORPH (knob 1) does */
+static void test_page1_no_hold(void)
+{
+    ui_power_on(); frame();
+    transport_req = 2u; run(48);
+    song.sel = 0; SEL_BOTH = 0;
+    gl.mode = GM_WANDER; gl.target = GT_SOUND; gl.time = 4u; gl.wait = 0;
+    glide_launch(1u, 1u, 0); run(2000);
+    ui.page = 0; while (PAGES[ui.page].graph != GR_MORPH) ui.page++;
+    ui.cursor = ui.bank = 0; page_entered(); frame();
+    turn(EN_K2, 2); turn(EN_K3, 2); turn(EN_K4, 2); run(64);
+    CHECK("page 1: FILTER, ECHO, LENGTH turned during a glide do not hold it", song.playing && glide_running() && !gl.hw[0] && !gl.hw[1]);
+    turn(EN_K1, 3); run(64);
+    CHECK("  .. MORPH (knob 1) does", gl.hw[0] == 1u);
+    glide_stop(); transport_req = 2u; run(48);
+}
 static void test_hand_returns(void)
 {
     uint8_t ph0[64] = {0}, c0[64] = {0}, ph1[64] = {0}, c1[64] = {0};
@@ -677,6 +700,12 @@ static void test_hand_returns(void)
     CHECK(l, back >= 28u && back <= 32u);
     CHECK("MR7: ARC's phases equal a run with no touch", same);
     CHECK("MR7: the hand's fader held through bar 27", f1[27] == f1[21]);
+    {   /* 1.0.0-b7: the same hand from the MORPH page's knob 1 (half the twisting): TIDE takes it back as from MIDI */
+        uint8_t ph2[64] = {0}, c2[64] = {0};
+        uint32_t f2[64] = {0}, back2 = mr7_run(2, ph2, c2, f2);
+        snprintf(l, sizeof l, "MR7: a hand on the MORPH page's knob 1 (30 steps in 15 detents) is taken back by bar 32 (from bar %u; fader %u at 21)", (unsigned)back2, (unsigned)f2[21]);
+        CHECK(l, back2 >= 28u && back2 <= 32u && f2[21] == f1[21] && f2[27] == f2[21]);
+    }
     {
         char st[48];                                     /* the page says so */
         ui_power_on(); frame();
@@ -870,6 +899,7 @@ int main(void)
     test_hold_ghost();
     test_settings_flicker();
     test_hand_returns();
+    test_page1_no_hold();
     test_journey_away_from_a();
     printf("tidecontrols: %u checks, %u failures\n", checks, failures);
     return failures ? 1 : 0;
