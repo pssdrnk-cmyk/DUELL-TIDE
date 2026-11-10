@@ -117,7 +117,7 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 
 **One view for both parts** (owner, 8 November): AUTO TIDE and the MORPH / wave page always show both parts, with the selected part clearly marked (full colour, the other dimmed, plus a cue that works on MONO and GREY). The wave page and AUTO TIDE do it in b5 (see Now).
 
-**RAM room** (b5, Ready): pool tail 9,276 B against the 8,192 B rule; a test-mode build keeps the lowered 7,936 B rule. The next change that grows range Z or the pool measures against that.
+**RAM room** (b5, Ready): range Z has 9,140 B to the stack guard against the 8,192 B rule (b7 build); a test-mode build keeps the lowered 7,936 B rule. The next change that grows range Z or the pool measures against that.
 
 **MORPH** ([review](audits/2026-11-08/morph/REPORT.md): keep the core and the page, no big rework)
 - c3 (b6, Ready): factory loads stop resetting AMOUNT; K4 dim in JRNY (the review of 9 November found AMOUNT still shapes hand rolls and JOURNEY's fallback roll there: the dim comes out with FR11). Branch `fix/b6-morph-c3` `148d84b`, tests pass; rebase onto the reworked MORPH page before b6.
