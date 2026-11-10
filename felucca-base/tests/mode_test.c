@@ -1263,12 +1263,17 @@ static void t_mode_rows(void)
             ok_mode &= !jl_dimmed(JL_MODE);
             if (i == 0u)
                 ok_lay &= !jl_dimmed(JL_XFADE) && !jl_dimmed(JL_SPLIT);
-            else
-                ok_duel &= jl_dimmed(JL_XFADE) && jl_dimmed(JL_SPLIT);
+            else {                                       /* (TIDE_PLAYSEL, 1.0.0-b7: SPLIT acts in STEREO / DUEL with both parts selected, says 2 PARTS ONLY with one) */
+                song.both = 0;
+                ok_duel &= jl_dimmed(JL_XFADE) && jl_dimmed(JL_SPLIT) && (!TIDE_PLAYSEL || str_eq(jl_needs(JL_SPLIT), "2 PARTS ONLY"));
+                song.both = 1;
+                ok_duel &= jl_dimmed(JL_XFADE) && jl_dimmed(JL_SPLIT) == !TIDE_PLAYSEL;
+                song.both = 0;
+            }
         }
         expect("  .. PLAY MODE's value never dims, in LAYER, STEREO and DUEL", ok_mode);
         expect("  .. XFADE and SPLIT do not dim in LAYER", ok_lay);
-        expect("  .. XFADE and SPLIT dim in STEREO and DUEL", ok_duel);
+        expect("  .. XFADE dims in STEREO and DUEL; SPLIT too with one part selected, acts with both (TIDE_PLAYSEL)", ok_duel);
         gl.mode = GM_ONCE;
         expect("  .. STYLE, MODE, TARGET and REC never dim", !jl_dimmed(JL_STYLE) && !jl_dimmed(JL_GMODE) && !jl_dimmed(JL_TARGET) && !jl_dimmed(JL_REC) && jl_needs(JL_REC) == 0);
         gl.mode = km, gl.target = kt, morph_musical = kr;
@@ -1931,7 +1936,7 @@ static void t_playsel(void)
         expect("b7 the settings keep MIDDLE (129) through a power cycle; an unknown code reads OFF", ok && mix_split == 0u);
     }
     {
-        static const uint8_t MS[3] = {61u, 0u, SPLIT_MIDDLE}, MM[3] = {DM_LAYER, DM_STEREO, DM_SPLIT}, MB[3] = {0u, 1u, 1u};
+        static const uint8_t MS[3] = {61u, 0u, SPLIT_MIDDLE}, MM[3] = {DM_LAYER, DM_STEREO, DM_SPLIT}, MB[3] = {1u, 0u, 1u};   /* (LAYER always with BOTH since TIDE_PLAYSEL: below) */
         ui_prefs2 |= PREF_MODE_RECALL >> 16;
         ok = 1;
         for (i = 0; i < 3u; i++) {                       /* a multi saved as b6 saved it (SPLIT a note / OFF, BOTH off / on) loads the same bytes; MIDDLE too */
@@ -1947,8 +1952,16 @@ static void t_playsel(void)
             frame();
             ok &= duell_mode_req == MM[i] && song.both == MB[i] && mix_split == MS[i];
         }
-        ui_prefs2 &= (uint8_t)~(PREF_MODE_RECALL >> 16);
         expect("b7 a multi keeps MODE, BOTH and SPLIT (a note, OFF, MIDDLE) as stored: no format change", ok);
+#if TIDE_PLAYSEL
+        duell_mode_req = DM_LAYER; frame(); song.both = 0;   /* (an older multi: LAYER with BOTH off, the bytes written as b6 wrote them) */
+        ok = project_save(9u) == 0;
+        duell_mode_req = DM_STEREO; song.both = 0; frame();
+        project_load(9u);
+        frame();
+        expect("b7 an old multi with LAYER and BOTH off loads as ALGORITHM's LAYER: both parts selected, the knobs on both", ok && duell_mode_req == DM_LAYER && song.both && play_pos() == PLS_LAYER);
+#endif
+        ui_prefs2 &= (uint8_t)~(PREF_MODE_RECALL >> 16);
     }
     song.octave = 0;
     song.both = 0;

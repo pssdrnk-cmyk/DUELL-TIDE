@@ -10,7 +10,19 @@ Values marked *start* are suggestions for dub and house techno backgrounds, not 
 
 Every sound has two ends, **A** (your sound) and **B** (a variation of it), and a fader between them. TIDE moves that fader by itself, bar by bar, while the music plays, and also moves the pattern the same way. Over minutes the part evolves; nothing needs your hands. You can touch it whenever you like.
 
-HOME's round, one tap of **HOME** each: **MORPH → TIDE SETTINGS → AUTO TIDE**. **ALGORITHM** picks PART 1, BOTH or PART 2 on all of them.
+HOME's round, one tap of **HOME** each: **MORPH → TIDE SETTINGS → AUTO TIDE**. **ALGORITHM** picks PART 1, LAYER, STEREO, DUEL or PART 2 on all of them.
+
+**ALGORITHM picks the parts and the play mode** (1.0.0-b7). On MORPH, TIDE SETTINGS, AUTO TIDE and in PERFORM it has five positions, left to right, a click each:
+
+| Position | The keys play | The knobs, the fader and the glide act on |
+|---|---|---|
+| **PART 1** | part 1 alone, on every key | part 1 |
+| **LAYER** | both parts on every key (with SPLIT set: below the split part 1, from it part 2) | both parts, each from its own value |
+| **STEREO** | with SPLIT set: below the split part 1, from it part 2; SPLIT OFF: the last single part you picked | both parts |
+| **DUEL** | as STEREO, with part 1 hard left and part 2 hard right | both parts |
+| **PART 2** | part 2 alone, on every key | part 2 |
+
+With LAYER, STEREO or DUEL the header's title is that word, in the theme colour, and both part numbers light. It is the PLAY MODE row of TIDE SETTINGS and the BOTH of before, nothing new is stored: the row and ALGORITHM always show the same thing (setting the row to LAYER selects both parts). Going from PART 1 or PART 2 to the right keeps the mix: from LAYER to PART 1 the play mode becomes STEREO. **A move that changes the play mode lets go of the notes you hold** (a short dip, as the PLAY MODE row always did): a held chord stops, play it again. The edit pages still pick PART 1 or PART 2 only.
 
 On these three pages a small dim pill beside part 1's capsule shows the busiest audio block of the last 4 seconds, in % of its time. A red badge beside part 2's capsule shows audio blocks missed recently (a click or dropout was possible); it goes away after a minute with no new miss.
 
@@ -23,13 +35,13 @@ On these three pages a small dim pill beside part 1's capsule shows the busiest 
 | 3 | **ECHO**: the part's delay send. Dim when the delay can't be heard (GLO > MODULES SENDS OFF, or the delay's MIX at 0); knob 1's line says which. |
 | 4 | **LENGTH**: the release of the amp envelope, as the ENV page shows it (FM6 and ENV SYNC have their own values). |
 
-These are the sound's own settings: they record into the pattern with REC armed, MIDI LEARN picks them, SAVE keeps them, and turning them never holds TIDE's glide (only the MORPH fader does). With ALGORITHM on **BOTH** every knob moves each part from its own value by the same amount, so neither part jumps.
+These are the sound's own settings: they record into the pattern with REC armed, MIDI LEARN picks them, SAVE keeps them, and turning them never holds TIDE's glide (only the MORPH fader does). With ALGORITHM on **LAYER, STEREO or DUEL** (both parts) every knob moves each part from its own value by the same amount, so neither part jumps.
 
 **Hold OCT+ and click knob 1** (either way): End B becomes a new random roll; the fader stays where it is and the octave doesn't move. A roll replaces its end; there is no UNDO. How far a roll goes is the AMOUNT row of TIDE SETTINGS.
 
 **Hold OCT- and turn a knob:** knob 1 goes back to your original sound and pattern (the glide stops, as OCT- + K1 on AUTO TIDE); knobs 2 to 4 go back to the value the loaded sound had.
 
-The fader's position (A, 1 to 126, B) sits beside knob 1's label; the slim row under the picture shows knobs 2 to 4 as FLT, ECHO and LEN, each with its value, and the footer shows both parts' patches. Most of the page shows the sound itself as waves, like an oscilloscope: a held note stands still, a chord beats, the newest wave in front, the older ones fainter behind it; at rest the lines lie flat. ALGORITHM picks whose: PART 1, PART 2, or BOTH (one above the other). **Hold SAVE** saves the patch; with ALGORITHM on BOTH each part goes over its own slot.
+The fader's position (A, 1 to 126, B) sits beside knob 1's label; the slim row under the picture shows knobs 2 to 4 as FLT, ECHO and LEN, each with its value, and the footer shows both parts' patches. Most of the page shows the sound itself as waves, like an oscilloscope: a held note stands still, a chord beats, the newest wave in front, the older ones fainter behind it; at rest the lines lie flat. ALGORITHM picks whose: PART 1, PART 2, or both (LAYER, STEREO, DUEL: one above the other). **Hold SAVE** saves the patch; with both parts selected each part goes over its own slot.
 
 ## 2. AUTO TIDE (the page you live on)
 
@@ -58,7 +70,7 @@ Where two very different sounds cross, a short filter dip hides the change (the 
 
 ## 3. TIDE SETTINGS (set and forget)
 
-Ten rows: STYLE, MODE, TARGET, ARC, ROLL TYPE and AMOUNT for the tide, then REC, PLAY MODE, XFADE and SPLIT. K1 picks the row. **OCT+** the next value, **OCT-** the one before (knobs 2 to 4 turn it too, one step a click; on AMOUNT, PLAY MODE, XFADE and SPLIT a knob moves by the clicks you turn, while OCT+ and OCT- step AMOUNT by 5 %, XFADE by 10 % and SPLIT by an octave, and out of SPLIT OFF the first OCT+ lands on the middle key). Six rows show at a time; a mark at the right edge shows where they are in the list. A value that does nothing in the present setup is dim, and knob 1's line says why. Saved over a power cycle (about 2 s after the change while stopped; changes made during a running set are written at its next STOP, so switching the unit off mid-set loses them).
+Ten rows: STYLE, MODE, TARGET, ARC, ROLL TYPE and AMOUNT for the tide, then REC, PLAY MODE, XFADE and SPLIT. K1 picks the row. **OCT+** the next value, **OCT-** the one before (knobs 2 to 4 turn it too, one step a click; on AMOUNT, PLAY MODE, XFADE and SPLIT a knob moves by the clicks you turn, while OCT+ and OCT- step AMOUNT by 5 %, XFADE by 10 % and SPLIT by an octave, and out of SPLIT OFF the first OCT+ lands on MIDDLE, the next on the middle key's note). Six rows show at a time; a mark at the right edge shows where they are in the list. A value that does nothing in the present setup is dim, and knob 1's line says why. Saved over a power cycle (about 2 s after the change while stopped; changes made during a running set are written at its next STOP, so switching the unit off mid-set loses them).
 
 | Row | Values (default first) | What it does | Start |
 |---|---|---|---|
@@ -69,9 +81,9 @@ Ten rows: STYLE, MODE, TARGET, ARC, ROLL TYPE and AMOUNT for the tide, then REC,
 | **ROLL TYPE** | MUSIC, SMART, WILD | How a new End B is made. MUSIC turns five dials (bright, movement, shape, space, character) inside the ranges where that kind of sound actually lives, so a brighter end is not a louder one. SMART is DUELL's own safe roll. WILD drops the safety rules. It no longer switches the rhythm off: ARC and the pattern's movement act with any ROLL TYPE. Dim under JOURNEY, which picks factory sounds instead of rolling (knob 1's line: NOT JRNY). | MUSIC |
 | **AMOUNT** | 0 to 100 % | How far a roll may go, the selected part's (with BOTH each part moves by the same steps). *Start: leave it.* The musical roll has its own sensible scale. A sound or multi load keeps your AMOUNT. Not part of a STYLE. It still shapes a roll in JOURNEY (OCT+ and knob 1 on the MORPH page), so it is never dim. Until 1.0.0-b7 it was knob 4 of the MORPH page. | 15 % |
 | **REC** | ADD, REPLACE | Live recording (REC armed while PLAY runs), not part of any STYLE: a STYLE pick leaves it and changing it does not turn STYLE into CUSTOM. ADD: a note you play into a step that already holds notes is added to them (a chord of up to 4; a MONO, LEGATO or UNISON part keeps one note per step). REPLACE: the first note you play into a step in a pass clears that step's old notes and takes their place; more notes played into the same step in that pass (a chord played together) are added; steps you do not play into stay as they are (nothing is erased as the playhead passes). A held note still ties the following steps in both. On an ARP SEQ part a key sets the step's note, in both modes: its steps hold one note each, so a second key into the same step takes its place. Saved with the other settings. | ADD |
-| **PLAY MODE** | LAYER, STEREO, DUEL | The output mode. LAYER: both parts on the keys. STEREO: both parts, one stereo field. DUEL: part 1 left, part 2 right. The header says PLAY MODE and the value. | LAYER |
+| **PLAY MODE** | LAYER, STEREO, DUEL | The output mode. LAYER: both parts on the keys. STEREO: both parts, one stereo field. DUEL: part 1 left, part 2 right. The header says PLAY MODE and the value. ALGORITHM shows and sets the same (LAYER, STEREO, DUEL are its middle positions); a change lets go of held notes. | LAYER |
 | **XFADE** | 0 to 100 % | The velocity crossfade between the parts. LAYER only. | 0 |
-| **SPLIT** | OFF, then a note | The key split point. LAYER only. The first turn right out of OFF starts at the middle key (F#4). | OFF |
+| **SPLIT** | OFF, MIDDLE, then a note | The key split point: below it part 1, from it part 2. MIDDLE splits the keys in the middle wherever OCT- / OCT+ put them (the 14th of the 27 keys starts part 2: F#4 at octave 0; MIDI notes split at the note that key plays now). Acts in LAYER, and in STEREO and DUEL with both parts selected (with one it says 2 PARTS ONLY). Out of OFF the first turn right is MIDDLE, the next the note it stands for. | OFF |
 
 **What STYLE sets without a row.** These were rows until `1.0.0-b6`; now each STYLE has its own values (the table below) and they act in automatic WANDER / JOURNEY:
 
@@ -122,11 +134,11 @@ The built-in drone multis M17 DUNE HORN and M18 VOID DEEP (SAVE > MULTIS, 1.0.0-
 
 DRONE is for a held chord of one of the factory drone sounds (#164 to #171) with HOLD on: WANDER keeps the sound and slowly moves it between its two ends over 64 bars, never waits at an end, and leaves out everything rhythmic (turns TOGETHER, poly, offbeat and ARC OFF) that a held chord would not use; wash HIGH gives the slow breath. AMBIENT is JOURNEY: it hops from sound to sound, with no groove tricks (poly OFF). CUSTOM moved from 5 to 6 in `1.0.0-b4`; an old 5 reads as CUSTOM unless its values are DRONE's.
 
-Dub-techno recipe: STYLE DUB, ALGORITHM BOTH (by hand: **AUTO TIDE** WANDER, TIME 16, WAIT 2 to 4; **SETTINGS** TARGET BOTH, ARC RISE, ROLL TYPE MUSIC; DUB's wash is OFF, so the sounds keep their own level and space). Press PLAY, twist K1 right, walk away.
+Dub-techno recipe: STYLE DUB, ALGORITHM LAYER (by hand: **AUTO TIDE** WANDER, TIME 16, WAIT 2 to 4; **SETTINGS** TARGET BOTH, ARC RISE, ROLL TYPE MUSIC; DUB's wash is OFF, so the sounds keep their own level and space). Press PLAY, twist K1 right, walk away.
 
 ## 4. MODE (output)
 
-DUEL (part 1 left, part 2 right, effects separate), STEREO, LAYER. This is stock DUELL, not TIDE. With TIDE there is no MODE page: PLAY MODE, XFADE and SPLIT are the last three rows of TIDE SETTINGS (REC sits between ROLL TYPE and PLAY MODE). PLAY MODE is LAYER, STEREO or DUEL. XFADE (0 to 100 %) and SPLIT (OFF, then a note) act only in LAYER: in DUEL and STEREO their values are dim, knob 1's line says LAYER ONLY, and turning does nothing. The first turn right out of SPLIT OFF starts at the middle key. They are not part of STYLE (changing them does not turn it into CUSTOM), and they are kept as before (settings and multis). MENU > CONTROL > HOME OPENS = SETTINGS opens TIDE SETTINGS with the PLAY MODE row picked; MULTI LOAD KEEPS PLAY MODE (or SETS PLAY MODE) says whether a multi load changes these three rows. The MODE row near the top of TIDE SETTINGS and the AUTO TIDE page's K2 (ONCE, LOOP, DRIFT, WANDER, JOURNEY) are the tide's mode, a different setting. Dub chords on two parts: DUEL if you mix outside, STEREO for a single stereo out.
+DUEL (part 1 left, part 2 right, effects separate), STEREO, LAYER. This is stock DUELL, not TIDE. With TIDE there is no MODE page: PLAY MODE, XFADE and SPLIT are the last three rows of TIDE SETTINGS (REC sits between ROLL TYPE and PLAY MODE). PLAY MODE is LAYER, STEREO or DUEL. XFADE (0 to 100 %) acts only in LAYER: in DUEL and STEREO its value is dim, knob 1's line says LAYER ONLY, and turning does nothing. SPLIT (OFF, MIDDLE, then a note) acts in LAYER, and in STEREO and DUEL with both parts selected (ALGORITHM on STEREO or DUEL); with one part it says 2 PARTS ONLY. ALGORITHM sets PLAY MODE too (section 1). They are not part of STYLE (changing them does not turn it into CUSTOM), and they are kept as before (settings and multis). MENU > CONTROL > HOME OPENS = SETTINGS opens TIDE SETTINGS with the PLAY MODE row picked; MULTI LOAD KEEPS PLAY MODE (or SETS PLAY MODE) says whether a multi load changes these three rows. The MODE row near the top of TIDE SETTINGS and the AUTO TIDE page's K2 (ONCE, LOOP, DRIFT, WANDER, JOURNEY) are the tide's mode, a different setting. Dub chords on two parts: DUEL if you mix outside, STEREO for a single stereo out.
 
 ## First start
 
@@ -180,7 +192,9 @@ Merged on the development line, in `1.0.0-b1` and after it (the source is the re
 
 | Feature | What it does |
 |---|---|
-| **MORPH is the hands-on page** | Knob 1 MORPH at half the turning, knob 2 FILTER, knob 3 ECHO, knob 4 LENGTH, on the slim row under the wave picture. With BOTH every knob moves each part by the same amount. A new End B: hold OCT+ and click knob 1. AMOUNT is a TIDE SETTINGS row now; the new-A roll is gone from the page. |
+| **MORPH is the hands-on page** | Knob 1 MORPH at half the turning, knob 2 FILTER, knob 3 ECHO, knob 4 LENGTH, on the slim row under the wave picture. With both parts selected (LAYER, STEREO, DUEL) every knob moves each part by the same amount. A new End B: hold OCT+ and click knob 1. AMOUNT is a TIDE SETTINGS row now; the new-A roll is gone from the page. |
+| **ALGORITHM picks the play mode** | PART 1, LAYER, STEREO, DUEL, PART 2 on the HOME pages and PERFORM: the parts and the play mode in one turn; the header names LAYER, STEREO or DUEL. A change of play mode lets go of held notes. |
+| **SPLIT MIDDLE** | A SPLIT value after OFF: the keys split in the middle wherever OCT- / OCT+ put them. With SPLIT set, STEREO and DUEL split the keys too. |
 | **A shorter TIDE SETTINGS page** | STYLE, MODE, TARGET, ARC, ROLL TYPE, AMOUNT, then REC, PLAY MODE, XFADE, SPLIT. VARY BARS, TURNS, POLY, OFFBEAT and WASH are STYLE's values (no rows); ROLL ARP and ROLL PITCH have no row (OFF by default; a unit that had them ON keeps them). The tide's MODE is a row too. A saved STYLE stays that style. |
 | **ROLL TYPE no longer switches the rhythm off** | ARC and the pattern's movement act in WANDER and JOURNEY whatever ROLL TYPE is. ROLL TYPE is dim under JOURNEY, where it does nothing. |
 | **DUB walks your sounds** | STYLE DUB plays WANDER: the multi's own sounds stay and evolve, and the level and brightness stay steadier. AMBIENT plays without the shortened loops (poly OFF). |

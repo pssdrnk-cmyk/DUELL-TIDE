@@ -8,8 +8,6 @@ State words on this page: Released in bN, Ready (built and tested, waiting for a
 
 | What | State |
 |---|---|
-| SPLIT MIDDLE: the keys split in the middle and the split follows OCT- / OCT+ | In progress (fix/b7-playmode) |
-| Try-out: the part selection (ALGORITHM knob on HOME) also picks how the keys play: PART 1, PART 2, LAYER, STEREO, DUEL. Switching part with a chord held cuts the chord (the mode change silences held keys by design) | In progress, an experiment you try before it stays (fix/b7-playmode) |
 | Reverb on the second core, to free CPU (K4) | Built, needs its own FM-1 sweep with K4 on and off |
 | A sound saved from the web editor keeps its End B ([FR3](audits/2026-11-09/firmware-review/TASKS.md#fr3)) | Planned, not built in the night: ~40 B |
 | Small control fixes: RENAME no longer types stray letters, OCT- held as a modifier doesn't also act on release, a fast PRESETS turn can't land on the other part, SEQ + REC arms REC however the buttons are lifted, NOT SAVED only for saves ([FR7](audits/2026-11-09/firmware-review/TASKS.md#fr7)) | Planned, not built in the night: ~120 B |
@@ -21,6 +19,9 @@ Six builder lanes made these overnight (9 to 10 November); each is measured on t
 
 | What | State |
 |---|---|
+| ALGORITHM on HOME picks how the keys play: PART 1, LAYER, STEREO, DUEL, PART 2 (the middle three select both parts and set the PLAY MODE; the header names LAYER, STEREO or DUEL). A move that changes the play mode cuts a held chord (the mode change silences held keys by design). An experiment you try before it stays ([design](design/PLAY_MODE_SELECT.md)) | Built (b7/playsel, on b7), not on the unit yet |
+| SPLIT MIDDLE: the keys split in the middle and the split follows OCT- / OCT+; with SPLIT set, STEREO and DUEL split the keys too | Built (b7/playsel, on b7), not on the unit yet |
+| Factory pattern table packed: its accent / slide / tie flags as bit masks (SP3, 640 B), the room for the two above | Built (b7/playsel) |
 | STYLE DUB keeps the multi's own sounds (WANDER, not JOURNEY); AMBIENT without POLY; a saved STYLE stays that style ([MR1](audits/2026-11-09/musical-review/TASKS.md#mr1)). M02: brightness swing 2x not 7x, dulled bars 7 % not 51 %. The first start stays M02 DUB CHORD | Built |
 | A shorter TIDE SETTINGS page: nine rows, TURNS / ARP / PITCH / VARY / WASH / POLY / SYNC rows gone, MODE a row, ROLL TYPE no longer switches the rhythm off ([MR8](audits/2026-11-09/musical-review/TASKS.md#mr8)) | Built. One mark not met: ARC under ROLL SMART is only 0.67 to 0.82 like MUSIC (not 0.95), because ROLL TYPE's own pattern roll differs; that is what ROLL TYPE is for |
 | TIDE comes back by itself 8 bars after you let go of the MORPH or SEQ fader, only the part you moved is held, ARC keeps its place ([MR7](audits/2026-11-09/musical-review/TASKS.md#mr7)) | Built |

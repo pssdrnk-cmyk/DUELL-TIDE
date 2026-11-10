@@ -2,7 +2,7 @@
 
 One page: what each TIDE setting does, in short. The full detail is in the [TIDE guide](TIDE_GUIDE.md), section 2 (AUTO TIDE) and 3 (TIDE SETTINGS). This is the page of 1.0.0-b7 and later: ten rows (AMOUNT came from the MORPH page). Up to 1.0.0-b6 VARY BARS, TURNS, POLY, OFFBEAT, WASH, ROLL ARP and ROLL PITCH were rows too; DRONE is new in b4.
 
-**Where:** HOME's round is MORPH → TIDE SETTINGS → AUTO TIDE. On MORPH, K1 is the fader, K2 FILTER, K3 ECHO, K4 LENGTH; OCT+ held and a click of K1 rolls a new End B. On AUTO TIDE, K1 starts or stops the glide and K2 is the mode. On TIDE SETTINGS, K1 picks a row and OCT+ / OCT- (or K2..K4) change it.
+**Where:** HOME's round is MORPH → TIDE SETTINGS → AUTO TIDE. On MORPH, K1 is the fader, K2 FILTER, K3 ECHO, K4 LENGTH; OCT+ held and a click of K1 rolls a new End B. On AUTO TIDE, K1 starts or stops the glide and K2 is the mode. On TIDE SETTINGS, K1 picks a row and OCT+ / OCT- (or K2..K4) change it. On all three, ALGORITHM picks PART 1, LAYER, STEREO, DUEL or PART 2: the middle three select both parts and set the PLAY MODE.
 
 With no notes coming in TIDE plays in C minor; send or hold one note to set its key.
 
@@ -29,9 +29,9 @@ TIME (K3) is how many bars one trip takes; WAIT (K4) is how many bars it rests a
 | **ROLL TYPE** | **MUSIC**, SMART, WILD | How a new destination sound (End B) is made. MUSIC: musical dials inside the range that sound lives in. SMART: DUELL's own safe roll. WILD: no safety rules. Dim under JOURNEY, which picks factory sounds instead. |
 | **AMOUNT** | 0 to 100 % (**15 %**) | How far a roll may go (the selected part's; BOTH moves each part by the same steps). Not part of a STYLE. |
 | **REC** | **ADD**, REPLACE | Live recording into a step that holds notes: add to them, or take their place. Not part of a STYLE. |
-| **PLAY MODE** | **LAYER**, STEREO, DUEL | The output mode. |
+| **PLAY MODE** | **LAYER**, STEREO, DUEL | The output mode; ALGORITHM's middle positions set the same (a change lets go of held notes). |
 | **XFADE** | **0** to 100 % | Velocity crossfade between the parts (LAYER only). |
-| **SPLIT** | **OFF**, then a note | Key split point (LAYER only). |
+| **SPLIT** | **OFF**, MIDDLE, then a note | Key split point: below it part 1. MIDDLE = the middle of the keys, moving with OCT- / OCT+. LAYER, and STEREO / DUEL with both parts selected. |
 
 ARC works while the tide runs in WANDER or JOURNEY with the pattern in TARGET (BOTH or SEQ), whatever ROLL TYPE is. Otherwise its value is dim and the top line says what's missing.
 

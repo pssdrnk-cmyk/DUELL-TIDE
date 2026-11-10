@@ -26,7 +26,7 @@ It is made for playing the FM-1 as a **background**: set a tide going, then play
 ## Play a tide in four steps
 
 1. Press **HOME** until **AUTO TIDE** shows. HOME's round is **MORPH → TIDE SETTINGS → AUTO TIDE**.
-2. Pick a **MODE** with knob 2, a trip length (**TIME**, in bars) with knob 3 and a rest at each end (**WAIT**) with knob 4. Turn **ALGORITHM** to BOTH to glide both parts at once.
+2. Pick a **MODE** with knob 2, a trip length (**TIME**, in bars) with knob 3 and a rest at each end (**WAIT**) with knob 4. Turn **ALGORITHM** to LAYER, STEREO or DUEL to glide both parts at once.
 3. Twist **knob 1** right (to B) or left (to A) and press **PLAY**. While the music plays, the glide starts on the next bar.
 4. Play over it. **STOP** pauses the glide and PLAY goes on from there. Twist knob 1 two detents while it glides and it stops where it is; the sound stays.
 
@@ -77,7 +77,7 @@ Links from the project's pages (installer, emulator, issue forms) to the guides 
 
 ## What changed from DUELL 1.1
 
-**MORPH**, HOME's first page, is the hands-on page: knob 1 the morph fader (A to B), knob 2 FILTER, knob 3 ECHO, knob 4 LENGTH, over a live picture of the sound; hold OCT+ and click knob 1 for a new random End B. **AUTO TIDE** runs the tide: knob 1 glides to B or to A, knob 2 picks the AUTO TIDE mode (ONCE, LOOP, DRIFT, WANDER, JOURNEY), knob 3 the TIME of a trip (1 to 64 bars), knob 4 the WAIT at each end, and ALGORITHM picks PART 1, PART 2 or BOTH. **TIDE SETTINGS** says how it behaves, in ten rows: STYLE, MODE (the tide's mode, the same as knob 2 on AUTO TIDE), TARGET, ARC, ROLL TYPE and AMOUNT (how far a roll goes), then REC (ADD or REPLACE for live recording), PLAY MODE, XFADE and SPLIT (the output mode, LAYER / STEREO / DUEL, and its two settings). VARY BARS, TURNS, POLY, OFFBEAT and WASH have no rows: STYLE sets them. ROLL ARP and ROLL PITCH have no row either (OFF unless a unit had them on). Every row, its values and when a change lands are in the [TIDE guide](docs/TIDE_GUIDE.md). The STYLE presets:
+**MORPH**, HOME's first page, is the hands-on page: knob 1 the morph fader (A to B), knob 2 FILTER, knob 3 ECHO, knob 4 LENGTH, over a live picture of the sound; hold OCT+ and click knob 1 for a new random End B. **AUTO TIDE** runs the tide: knob 1 glides to B or to A, knob 2 picks the AUTO TIDE mode (ONCE, LOOP, DRIFT, WANDER, JOURNEY), knob 3 the TIME of a trip (1 to 64 bars), knob 4 the WAIT at each end, and ALGORITHM picks PART 1, LAYER, STEREO, DUEL or PART 2 (the middle three: both parts, and the play mode). **TIDE SETTINGS** says how it behaves, in ten rows: STYLE, MODE (the tide's mode, the same as knob 2 on AUTO TIDE), TARGET, ARC, ROLL TYPE and AMOUNT (how far a roll goes), then REC (ADD or REPLACE for live recording), PLAY MODE, XFADE and SPLIT (the output mode, LAYER / STEREO / DUEL, and its two settings). VARY BARS, TURNS, POLY, OFFBEAT and WASH have no rows: STYLE sets them. ROLL ARP and ROLL PITCH have no row either (OFF unless a unit had them on). Every row, its values and when a change lands are in the [TIDE guide](docs/TIDE_GUIDE.md). The STYLE presets:
 
 | STYLE | AUTO TIDE MODE | TIME | WAIT | VARY BARS | TURNS | POLY | OFFBEAT | ARC | WASH |
 |---|---|---|---|---|---|---|---|---|---|
