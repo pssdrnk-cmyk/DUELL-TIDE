@@ -1623,13 +1623,27 @@ static void up_adopt(uint32_t pi, uint32_t k)    /* part pi's sound was written 
  * has none (INIT) gets the engine's automatic name. Its category: the sound's. The record carries End B (morph block), the arp / keys /
  * SEQ pattern (AK block) and an FM6 sound's patch. 0 saved, else up_put's result */
 static uint8_t both_names;                       /* 1 while both parts are saved at once: the dialog's RENAME does not apply */
+/* part pi's End B as its values (ROLL CHAINED storage), against the Original the record stores (the values set by hand and their marks in it):
+ * up_bv_in / up_bv_n for the next up_store / up_store_trk; the caller clears them after. The device's SAVE and the editor's UP_STORE (b7, review E1) */
+static void up_bv_take(uint32_t pi, uint8_t *bv)
+{
+    track_t *t = &trk[pi];
+    int16_t ref[EXT_P_LEN];
+    uint32_t i;
+    (void)morph_ready(pi);
+    memset(ref, 0, sizeof ref);
+    for (i = 0; i < P_COUNT; i++)
+        ref[i] = motion_base_value(t, i);
+    for (i = 0; i < NX; i++)
+        ref[XW_BASE + i] = (int16_t)clamp(XV(t, i), -64, 127);
+    up_bv_n = morph_bv_make(pi, ref, bv);
+    up_bv_in = up_bv_n ? bv : 0;
+}
 static int up_patch_save_part(uint32_t pi, uint32_t k)
 {
     track_t *t = &trk[pi];
     uint8_t bv[MBV_MAX];
-    int16_t ref[EXT_P_LEN];
     char nm[16];
-    uint32_t i;
     int rc;
     if (k >= UP_SLOTS)
         return 1;
@@ -1641,14 +1655,7 @@ static int up_patch_save_part(uint32_t pi, uint32_t k)
         str_cpy(nm, ds_name(t->eng_req % NENGINES, t->preset), 13);
     if (!nm[0] || str_eq(nm, "INIT"))
         up_auto_name(nm, t->eng_req, k);
-    (void)morph_ready(pi);                              /* ROLL CHAINED storage: End B as its values, against the Original the record stores (the values set by hand and their marks in it) */
-    memset(ref, 0, sizeof ref);
-    for (i = 0; i < P_COUNT; i++)
-        ref[i] = motion_base_value(t, i);
-    for (i = 0; i < NX; i++)
-        ref[XW_BASE + i] = (int16_t)clamp(XV(t, i), -64, 127);
-    up_bv_n = morph_bv_make(pi, ref, bv);
-    up_bv_in = up_bv_n ? bv : 0;
+    up_bv_take(pi, bv);
     rc = up_store_trk(t, k, nm, 0);
     up_bv_in = 0;
     up_bv_n = 0;
