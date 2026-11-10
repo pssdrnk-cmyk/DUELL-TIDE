@@ -918,6 +918,7 @@ static void patch_save_ask(void)
         }
         save_nm[0] = 0;
         confirm_open(CF_SAVE_OVER, trk2);
+        TIDE_SAVE_NOTE(trk2);
     }
 }
 /* every pass (before the screen's own input; the screen dark too): MIDI's queued actions in order, the settings */

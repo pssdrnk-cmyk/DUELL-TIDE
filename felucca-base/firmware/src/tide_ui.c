@@ -133,6 +133,14 @@ static const char *tide_tl_keep(track_t *t, uint64_t was, uint32_t len)
     return sq && snd ? "KEPT" : sq ? "SEQ KEPT" : "SOUND KEPT";
 }
 
+/* SAVE opened (ui_input.c patch_save_ask; trk2 2 = both parts): SAVE stores the sound as loaded, not what JOURNEY, a roll or the fader made of it (KEEP freezes
+ * what is heard); when a part SAVE is about to store sounds other than that, one message says so (1.0.0-b8) */
+static void tide_save_note(uint32_t trk2)
+{
+    if (trk2 >= 2u ? tide_sound_moved(0) || tide_sound_moved(1) : tide_sound_moved(trk2))
+        ui_say("SAVES LOADED SOUND. ", "KEEP = AS HEARD");
+}
+
 /* LINK (TARGET BOTH): the MORPH fader moved by hand to v moves the SEQ faders of mask to v too (ui_input.c morph_act) */
 static void tide_link(uint32_t mask, uint32_t v)
 {
