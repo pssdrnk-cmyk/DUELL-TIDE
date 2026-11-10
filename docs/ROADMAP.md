@@ -212,6 +212,12 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 - LADDER's bass loss, filter 1 without self-oscillation and LOFI's aliasing stay as character.
 - Hanging notes on gear that follows the FM-1's MIDI out (two keys on one note, a MODE or channel change under a held key; [FR2](audits/2026-11-09/firmware-review/TASKS.md#fr2)) and the hard gap in a USB recording at a flash write: not fixed. The FM-1 is played DAWless, receives notes and clock only, and goes out through its jacks (owner, 9 November). The briefs stay in case that changes.
 - USB resampler taps as int16 (-3.8 KB, USB audio about 1 LSB different): not done, audio quality first (9 November).
+- D43: a crossing that starts under a held chord keeps the chord whole. (owner, 10 November)
+- Reverb FREEZE: not now; it stays an idea. (owner, 10 November)
+- An ARP SEQ pattern keeps moving off-scale notes down to the scale (keys and steps move to the nearest note); the guide says so. (owner, 10 November)
+- With both parts selected, the first click of MORPH's fader or AMOUNT puts both parts on the same value; the guide says so. (owner, 10 November)
+- ARC's breakdown keeps the chord parts' hits; it thins by voices and level. (owner, 10 November)
+- The drone scenes are built in (2 multis in ROM, no file pack); the musical review's ideas are built. (owner, 10 November)
 
 ## Versions and releases
 
