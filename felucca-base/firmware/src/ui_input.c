@@ -635,11 +635,13 @@ static int32_t morph_pending(uint32_t g)
 }
 static void morph_say_end(const char *a, uint32_t e) { ui_say(a, e ? "B" : "A"); }
 #if DUELL_TIDE
-/* The part selection (1.0.0-b5, three positions since 1.0.0-b7): PART 1, the middle, PART 2 — a detent each, stopping at ends. song.sel is the last single part (0 = P1, 1 = P2); song.both is 1 when
- * the middle is active. The ALGORITHM encoder cycles them on BOTH pages (HOME MORPH / TIDE SETTINGS / AUTO TIDE and PERFORM): left → PART 1, center → middle, right → PART 2; on edit pages only P1 / P2
- * (song.both stays for the BOTH pages). The middle plays both parts with the PLAY MODE row's mode (LAYER, STEREO or DUEL from duell_mode_req); its name comes from play_pos().
- * PART 1 / PART 2: that part alone on every key using the row's mode as STEREO; knobs / fader / morph / glide act on the selected part; keys play that part. The middle: knobs move both parts;
- * lower keys play P1, upper P2 when SPLIT is on (seq.c split_note); LAYER plays both on every key. Stored in multi's TARGET bit, project morph block, and settings byte; load restores it */
+/* The part selection (1.0.0-b5, owner 2026-11-08): ONE selection, PART 1 / PART 2 / BOTH. song.sel is the part (0, 1), song.both its third position; with BOTH, song.sel stays the last
+ * single part. It replaces 0.2.9's ALGORITHM-as-morph-target and AUTO TIDE's own TARGET: there is no other target state. With BOTH the MORPH fader, ROLL, AMOUNT, MORPH SET's settings and the glide
+ * act on both parts (morph.c morph_mask / morph_parts, morph_glide.c through the same mask), both parts are highlighted, and the keys play as the PLAY MODE row says (LAYER: both, STEREO / DUEL: the
+ * part song.sel names, as before; seq.c keyboard_block is not touched). The ALGORITHM encoder moves it (algo_input): on the BOTH pages (tide.h HOME_BOTH_PAGE: HOME's MORPH, TIDE SETTINGS and
+ * AUTO TIDE, and PERFORM) PART 1, BOTH, PART 2 from left to right, a detent a step, stopping at the ends; on every other page PART 1 / PART 2 only, the page showing and editing that part alone
+ * exactly as before b5, and BOTH stays set for the BOTH pages (the glide that runs on both runs on). A learned MORPH TARGET CC (midi_control.c, 0-42 PART 1, 43-85 PART 2, 86-127 BOTH) sets
+ * the same selection. Stored: the multi's TARGET bit, the project's morph block and the settings byte carry BOTH, and a load restores it */
 static void part_select(uint32_t pos)                   /* 0 PART 1, 1 PART 2, 2 BOTH */
 {
     if (pos < 2u)
