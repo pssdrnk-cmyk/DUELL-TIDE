@@ -1305,7 +1305,7 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
             y -= ((y * (c >> 2)) >> 15) + (y > 0);
         }
         t->acid_y = (int16_t)y;
-        if (v0->vel > ACCENT_V0)                        /* an accented note: ENV 2 decays in ACID's short fixed time (~200 ms), the Decay knob only acts on plain notes */
+        if (v0->vel > ACCENT_V0 && ENV_EXP[ACID_ACCDEC] > t->esk2[1])   /* an accented note: ENV 2 decays in ACID's short fixed time (~200 ms), or in the sound's own Decay when that is shorter */
             t->esk2[1] = ENV_EXP[ACID_ACCDEC];
     }
     if (e->block)                                       /* the engine's per-part work (WHEEL: bars, rotor) */

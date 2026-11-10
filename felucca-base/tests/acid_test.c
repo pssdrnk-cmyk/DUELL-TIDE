@@ -3,7 +3,8 @@
  * build/host/acid_test (host_tests.sh acid):
  *   EXACT   a plain note with WAVE ACID renders bit for bit as WAVE SAW at velocity 42 (ACID_BASE), ACSQ as SQR; whatever its own velocity
  *   NONACID the same accent on WAVE SAW: ENV 2 keeps its Decay, the capacitor stays empty, the level step is the velocity's alone
- *   DECAY   an accented ACID note's ENV 2 falls to a half in about 30 ms whatever the Decay knob says (a plain note keeps the Decay's time)
+ *   DECAY   an accented ACID note's ENV 2 falls to a half in about 30 ms whatever a long Decay says (a plain note keeps the Decay's time); a Decay
+ *           shorter than that stays (the accent never makes it longer)
  *   LEVEL   the accent's level burst: +8 .. 11 dB over a plain note at the start (up to unity, no more: above it the amp ramp overflows), on it again after 200 ms
  *   PUSH    the capacitor: one accent charges it, a plain note leaves it empty; two accents in a row stack, more at high RES than at low
  *   SLIDE   a slid step (LEGATO, slide_glide as the sequencer sets it) does not retrigger and is an RC lag: 90 % of a semitone and of an
@@ -174,6 +175,15 @@ static void decay(void)
         char s[160];
         snprintf(s, sizeof s, "ACID: the accent's time does not follow the Decay knob (Decay 85 / 110: %.0f / %.0f ms), a plain note does (%.0f ms)", aa, ms_of(acc), ms_of(plain2));
         check(s, ms_of(acc) > aa * 0.9 && ms_of(acc) < aa * 1.1 && ms_of(plain2) > 3.0 * ap);
+    }
+    t = fresh(7, 61, 100);
+    plain = env2_half(t, 96, 3000);
+    t = fresh(7, 61, 100);
+    acc = env2_half(t, 127, 3000);
+    {
+        char s[160];
+        snprintf(s, sizeof s, "ACID: a short Decay (61) is never made longer by an accent: half time plain %.1f ms, accent %.1f ms", ms_of(plain), ms_of(acc));
+        check(s, acc <= plain + 1u);
     }
 }
 
