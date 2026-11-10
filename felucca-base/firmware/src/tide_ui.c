@@ -139,13 +139,12 @@ static const char *tide_tl_keep(track_t *t, uint64_t was, uint32_t len)
 static int32_t tide_heard_to(uint32_t pi);
 static void tide_save_note(int32_t w)
 {
-    uint32_t k, t = ui.confirm_trk;
-    for (k = 0; k < NSHOWN; k++)
-        if ((t >= 2u || k == t) && tide_heard_to(k) >= 0) {
-            cv_text_in(0, 0, w, &AF_S, "SAVES THE LOADED SOUND", T_MID, T_BG);
-            cv_text_in(0, 15, w, &AF_S, "KEEP FIRST = AS HEARD", T_MID, T_BG);
-            return;
-        }
+    uint32_t t = ui.confirm_trk;
+    if (tide_heard_to(t & 1u) >= 0 || (t >= 2u && tide_heard_to(1) >= 0)) {   /* (t 2: both parts; part 0 asked first, then part 1) */
+        const char *s = "SAVES THE LOADED SOUND\0KEEP FIRST = AS HEARD";   /* (two lines in one string) */
+        for (t = 0; t < 2u; t++, s += 23)
+            cv_text_in(0, (int32_t)t * 15, w, &AF_S, s, T_MID, T_BG);
+    }
 }
 
 /* LINK (TARGET BOTH): the MORPH fader moved by hand to v moves the SEQ faders of mask to v too (ui_input.c morph_act) */
