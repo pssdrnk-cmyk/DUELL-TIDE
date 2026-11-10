@@ -892,7 +892,7 @@ static uint8_t k1_after_r;
 #define AREA_LIST_PG() 0
 #endif
 #if DUELL_TIDE
-#define MROW_Y 189                                      /* b6 (owner 2026-11-09): the MORPH page's ROLL / AMOUNT row, a 13-row canvas 189 .. 201 just above the footer (Y_FOOT 202) that holds the */
+#define MROW_Y 189                                      /* b6 (owner 2026-11-09): the MORPH page's slim row (1.0.0-b7: FILTER, ECHO, LENGTH; b6: ROLL / AMOUNT), a 13-row canvas 189 .. 201 just above the footer (Y_FOOT 202) that holds the */
 #define MROW_H 13                                       /* S face's whole box (caps 189 .. 199, descenders to 201: nothing cut, nothing under the footer's canvas); the picture above it */
 #define MROW_BASE (MROW_H - 3)                          /* rows 48 .. 183, two lanes of 68 (5 clear rows to the caps) */
 #define MROW_WAVES_END 184
@@ -2178,7 +2178,7 @@ static int page_compacts(const page_t *pg)
     uint32_t g = pg->graph;
     if (ui.layer || (pg->scope != SC_TRACK && pg->scope != SC_GLOBAL && pg->scope != SC_ENGINE))
         return 0;
-    if (g == GR_EVENTS || g == GR_TOOLS || g == GR_ENGINE || g == GR_BROWSE || g == GR_PATS || g == GR_SLOTS || g == GR_MOD || g == GR_ROLL || g == GR_GLO || fop_page(g))
+    if (g == GR_EVENTS || g == GR_TOOLS || g == GR_ENGINE || g == GR_MORPH || g == GR_BROWSE || g == GR_PATS || g == GR_SLOTS || g == GR_MOD || g == GR_ROLL || g == GR_GLO || fop_page(g))
         return 0;
     return !act_cols();
 }
@@ -2373,50 +2373,52 @@ static uint32_t midi_cards(uint8_t vis[4])
 }
 /* (the name a card shows: params.c desc_shown, T0227's unit label pass) */
 #if DUELL_TIDE
-/* a knob's number in its dot at x, its label's baseline `base` (canvas rows), as the cards draw it */
-static void morph_dot(int32_t x, int32_t base, const char *n)
+/* 1.0.0-b7 (owner 2026-11-10: HOME's MORPH page is the hands-on page): knob 2, 3 and 4 on the one row under the picture, rows MROW_Y .. + MROW_H - 1, in three fixed
+ * columns left to right as the knobs (H1_COL): "FILTER 2.4k", "ECHO 30%", "LENGTH 850ms", the name at the column's left, the value right-aligned at its right end, so
+ * nothing moves as a value changes. No knob dots: with them the three do not fit the width (their worst values: 12.5k, 100%, 99.5ms). The selected part's values as
+ * its cards show them (the morph's blend: card_vv); the knob just turned's name in the accent; ECHO dim while the delay does nothing (h1_echo_why: knob 1's line
+ * says why). While SAVE is held (and only then) the row says HOLD SAVE = SAVE PATCH instead. Drawn only when what it shows changes */
+static const char *h1_echo_why(void)
 {
-    const int32_t dy = base - AF_S_CAP_H + 1;
-    cv_rrect(x, dy, AF_S_CAP_H, AF_S_CAP_H, AF_S_CAP_H / 2, T_MID, T_BG);
-    cv_text_in(x, dy + HALF_UP(AF_S_CAP_H - AF_D_CAP_H) - AF_D_CAP_Y, AF_S_CAP_H, &AF_DOT, n, T_BG, T_MID);
+    return (mods_off & MODS_SENDS) ? "ECHO: SENDS OFF" : !song.g[G_DMIX] ? "ECHO: DELAY MIX 0" : 0;   /* (the line's words whole: no buffer, RAM is tight) */
 }
-/* b6 (owner 2026-11-09: "why do we keep half of the screen for the hold save, and roll and amount"): the MORPH page's knob 2 and knob 4 on one row, rows MROW_Y .. + MROW_H - 1:
- * "(2) ROLL A<>B" on the left (the twist's way while it builds: <A / B>, in the accent), "(4) AMOUNT 40 %" on the right (owner 2026-11-09: no bar, "does the 4 amount really
- * needs that long of a line and also a percentage": the number alone, right-aligned; the dot and the label 6 px before the widest value, so they stay put as it changes). While SAVE is held (and only then) the row says
- * HOLD SAVE = SAVE PATCH instead. Drawn only when what it shows changes */
-static void morph_row(int32_t g, uint32_t amt)
+static void morph_row(void)
 {
+    static const char *const L[3] = {"FILTER", "ECHO", "LENGTH"};
+    static const uint8_t H1_COL[4] = {4, 80, 148, 236};  /* (the columns' left ends and the last one's right end, 4 px apart) */
     static char last[24];
-    char key[24], v[8];
-    const int hint = ui.save_t0 != 0u, hot2 = ui.hot_t && ui.hot_col == 1u, hot4 = ui.hot_t && ui.hot_col == 3u;
-    const int32_t base = MROW_BASE;                     /* (the row's label baseline: the face's box, descenders included, ends on the canvas's last row) */
+    char key[24], v[PV_LEN + 4];
+    const char *unit;
+    const int hint = ui.save_t0 != 0u, dim = h1_echo_why() != 0;
+    const int32_t ty = UT_TY(S, MROW_BASE);             /* (the row's label baseline: the face's box, descenders included, ends on the canvas's last row) */
+    uint32_t i, id;
     key[0] = (char)('a' + hint);
-    key[1] = (char)('b' + g + 1);
-    key[2] = (char)('a' + hot2 + 2 * hot4);
+    key[1] = (char)('a' + (ui.hot_t ? ui.hot_col % 4u : 4u));
+    key[2] = (char)('a' + dim);
     key[3] = (char)('a' + ux.pal % 26u);
-    fmt_int(key + 4, (int32_t)amt);
+    key[4] = 0;
+    for (i = 0; i < 3u; i++) {
+        id = H1_ID[i];
+        fmt_int(key + str_len(key), card_vv(&TSEL->p[id]));   /* (each 0..127: the key fits) */
+        str_cpy(key + str_len(key), ",", 2);
+    }
     if (!ui.force && str_eq(key, last))
         return;
     str_cpy(last, key, sizeof last);
     cv_begin(240, MROW_H, T_BG);
     cv_bg = T_BG;
     cv_oy = 0;
-    if (hint) {
-        cv_text_in(0, UT_TY(S, base), 240, &AF_S, "HOLD SAVE = SAVE PATCH", T_DIM, T_BG);
-    } else {
-        int32_t x;
-        morph_dot(UT_GR_TITLE_X, base, "2");
-        x = UT_GR_TITLE_X + UT_CARD_LBL_DX;
-        cv_text_on(x, UT_TY(S, base), &AF_S, "ROLL", hot2 ? T_ACCENT : T_MID, T_BG);
-        x += text_w(&AF_S, "ROLL") + 6;
-        cv_text_on(x, UT_TY(S, base), &AF_S, g < 0 ? "<A" : g > 0 ? "B>" : "A<>B", g ? T_ACCENT : T_TEXT, T_BG);
-        x = 235 - text_w(&AF_S, "100%") - 6 - text_w(&AF_S, "AMOUNT") - UT_CARD_LBL_DX;
-        morph_dot(x, base, "4");
-        cv_text_on(x + UT_CARD_LBL_DX, UT_TY(S, base), &AF_S, "AMOUNT", hot4 ? T_ACCENT : T_MID, T_BG);
-        fmt_int(v, (int32_t)amt);
-        str_cpy(v + str_len(v), "%", sizeof v - str_len(v));
-        cv_text_r(235, UT_TY(S, base), &AF_S, v, T_TEXT, T_BG);
-    }
+    if (hint)
+        cv_text_in(0, ty, 240, &AF_S, "HOLD SAVE = SAVE PATCH", T_DIM, T_BG);
+    else
+        for (i = 0; i < 3u; i++) {
+            const int hot = ui.hot_t && ui.hot_col == i + 1u, d = dim && i == 1u;
+            id = H1_ID[i];
+            param_format(track_desc(TSEL, id), card_vv(&TSEL->p[id]), v, &unit);
+            str_cpy(v + str_len(v), str_eq(unit, "Hz") ? "" : str_eq(unit, "kHz") ? "k" : unit, 4);   /* (the cutoff's unit short: "2.4k", "880") */
+            cv_text_on(H1_COL[i], ty, &AF_S, L[i], d ? T_DIM : hot ? T_ACCENT : T_TEXT, T_BG);
+            cv_text_r(H1_COL[i + 1u] - 4, ty, &AF_S, v, d ? T_DIM : VAL(i + 1u), T_BG);   /* (the value in the knob-1 line's colour: each name and its value read as a pair) */
+        }
     cv_blit(0, MROW_Y);
 }
 #endif
@@ -2542,7 +2544,9 @@ static void draw_columns(void)
     TIDE_COLUMNS();                                    /* TIDE hook (TIDE, TIDE LIST) */
     if (cur_page()->scope == SC_MORPH) {               /* MORPH (fader, ROLL, -, AMOUNT: v3; 1.0.0-b5: no UNDO), MORPH SET (SMART ARP PITCH; 0.2.9: TARGET is ALGORITHM's BOTH) */
         uint32_t pi = song.sel, f = morph_fader_of(pi);
+#if !DUELL_TIDE
         int32_t g;
+#endif
         if (cur_page()->graph == GR_MORPHSET) {
             draw_column(0, "SMART", morph.cfg & MC_WILD ? "WILD" : "ON", "", VAL(0u), -1, ICON_NONE);
             draw_column(1, "ARP", morph.cfg & MC_ARP ? "ON" : "OFF", "", VAL(1u), -1, ICON_NONE);
@@ -2558,7 +2562,13 @@ static void draw_columns(void)
         grid_big = (uint8_t)(grid_on != 0);                /* (HOME's grid: the big value, PAGES_V1_home.png) */
 #endif
 #if DUELL_TIDE
-        if (AREA_ON && song.both && morph_fader_of(1u - pi) != f) {   /* the page shows both parts: with ALGORITHM on BOTH and the faders apart, the other part's value after this one's (the old track's tick) */
+        const char *why = h1_echo_why();
+        const int apart = song.both && morph_fader_of(1u - pi) != f;
+        if (AREA_ON && why && (!apart || (ui.hot_t && ui.hot_col == 2u))) {   /* 1.0.0-b7: ECHO dim, why (at the line's right end; with BOTH and the faders apart while knob 3 turns) */
+            k1_after_next = why;
+            k1_after_col = T_MID;
+            k1_after_r = 1;
+        } else if (AREA_ON && apart) {   /* the page shows both parts: with ALGORITHM on BOTH and the faders apart, the other part's value after this one's (the old track's tick) */
             static char other[8];
             uint32_t of = morph_fader_of(1u - pi);
             other[0] = 'P';
@@ -2582,22 +2592,17 @@ static void draw_columns(void)
 #if !DUELL_TIDE
         grid_big = 0;
 #endif
-        g = morph_pending(0);                          /* ROLL: A left, B right; a twist building up: its way */
 #if DUELL_TIDE
-        if (cur_page()->graph == GR_MORPH) {           /* b6: ROLL and AMOUNT on one compact row, the waves take the rest */
-            morph_row(g, morph_amount_of(pi));
-            return;
-        }
-#endif
+        morph_row();                                   /* (1.0.0-b7: FILTER, ECHO, LENGTH on one compact row, the waves take the rest) */
+        return;
+#else
+        g = morph_pending(0);                          /* ROLL: A left, B right; a twist building up: its way */
         draw_column(1, "ROLL", g < 0 ? "<A" : g > 0 ? "B>" : "A<>B", "", g ? T_ACCENT : VAL(1u), -1, ICON_NONE);
         draw_column(2, "", "", "", T_THEME, -1, ICON_NONE);   /* (an empty column: KNOB 3 does nothing here since UNDO left, 1.0.0-b5) */
         fmt_int(val, (int32_t)morph_amount_of(pi));
-        draw_column(3, "AMOUNT", val, "%",
-#if DUELL_TIDE
-                    tide_amount_idle() ? T_DIM :           /* TIDE b6: JOURNEY running, where AMOUNT does nothing */
-#endif
-                    VAL(3u), (int32_t)morph_amount_of(pi) * 10, ICON_PROB);
+        draw_column(3, "AMOUNT", val, "%", VAL(3u), (int32_t)morph_amount_of(pi) * 10, ICON_PROB);
         return;
+#endif
     }
 #if DUELL_TEST_MODE
     if (cur_page()->scope == SC_TEST) {                /* MENU > SYSTEM > TEST: MORPH and ROLL as the MORPH page's, LOAD MULTI, RESET */

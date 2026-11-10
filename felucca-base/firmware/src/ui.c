@@ -1318,6 +1318,8 @@ static void ds_seq_back(track_t *t);              /* (upreset.c: a patch's lent 
 /* What the loads changed (undo.what) and the copy change places, so again = the loads again. DUELL save flow
  * (2026-10-11): SAVE held is SAVE OVER now (ui_input.c patch_save_ask); the undo is OCT- held + a PRESETS turn (ui_input.c load_undo_gate). The sound: engine, preset and its parameters (not param_kept); the pattern: the steps and LEN
  * DIV SWING GATE. The mix (LEVEL PAN MUTE) stays: no load changes it */
+static const uint8_t *up_ldv(uint32_t k, uint8_t *bv);   /* (upreset.c) */
+static void up_ldv_rec(const track_t *t, uint8_t *bv);
 static __attribute__((noinline)) void undo_swap(void)
 {
     track_t *t;
@@ -1392,8 +1394,11 @@ static __attribute__((noinline)) void undo_swap(void)
         undo.fm6_slot = sl;
     }
     undo.keep = 0;                                /* the next load copies the track as it is now */
-    if (undo.what & UNDO_SOUND)
+    if (undo.what & UNDO_SOUND) {
+        uint8_t bv[MBV_MAX];
+        up_ldv_rec(t, bv);                        /* (b7: a USER record back with its own End B) */
         morph_rebase(t);                          /* DUELL: another sound, the MORPH starts from it (morph.c) */
+    }
     if (t == TSEL)
         sync_reload = 1;
     b[1] = (char)('1' + trk_index(t));
@@ -2031,6 +2036,7 @@ static void track_select(uint32_t i)
 {
     if (i >= NSHOWN || i == song.sel)             /* (tracks 3, 4: hidden) */
         return;
+    pl_commit();                                 /* (b7: a fast turn's waiting sound loads into the part it was turned on, not the next one) */
     song.sel = (uint8_t)i;
     ui.entry_open = 0;
     ui.hot_t = 0;

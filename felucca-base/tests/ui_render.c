@@ -2852,7 +2852,7 @@ int main(int argc, char **argv)
                 if (!strcmp(UI_PALETTES[p].name, MP[j]))
                     for (k = 0; k < sizeof MS / sizeof MS[0]; k++)
 #if DUELL_TIDE
-                        for (pl = 0; pl < 3u; pl++) {
+                        for (pl = 0; pl < 4u; pl++) {   /* (3: playing with GLO > MODULES SENDS OFF: the MORPH page's ECHO dim, knob 1's line says why) */
 #else
                         for (pl = 0; pl < 2u; pl++) {
 #endif
@@ -2863,6 +2863,8 @@ int main(int argc, char **argv)
 #if DUELL_TIDE
                             sel = pl == 2u ? 1u : 0u;
                             song.sel = (uint8_t)sel;
+                            if (pl == 3u)
+                                mods_off |= MODS_SENDS;
                             memset(wl, 0, sizeof wl);
                             wl_tk = 0xFFFFFFFFu;
                             wv_want = wv_blk + 256u;
@@ -2899,8 +2901,9 @@ int main(int argc, char **argv)
                                 ui.frame += 4u;
                                 draw(MS[k]);
                             }
-                            snprintf(nm, sizeof nm, "mv_%s_%s", MN[k], pl == 2u ? "play_part2" : pl ? "play" : "silent");
+                            snprintf(nm, sizeof nm, "mv_%s_%s", MN[k], pl == 3u ? "play_echo_off" : pl == 2u ? "play_part2" : pl ? "play" : "silent");
                             write_ppm(out, MP[j], nm);
+                            mods_off &= ~MODS_SENDS;
                             for (q = 0; q < 2u; q++) {
                                 trk[q].v[0].active = 0;
                                 trk[q].peak = 0;

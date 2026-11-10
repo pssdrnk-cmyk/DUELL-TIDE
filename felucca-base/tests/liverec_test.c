@@ -256,7 +256,7 @@ static void rec_row(void)
     memset(tide_tail, 0, TIDE_TAIL_N); tide_tail_new = 0;
     tide_settings();                                     /* no record: the defaults */
     CHECK("REC row: with no record it is ADD", tide_rec_replace == 0u && jl_get(JL_REC) == 0u && !strcmp(jl_vname(JL_REC, 0), "ADD") && !strcmp(jl_vname(JL_REC, 1), "REPLACE"));
-    CHECK("REC row: after ROLL TYPE, before PLAY MODE, with two values; PLAY MODE, XFADE, SPLIT stay the last three", JL_REC == JL_ROLL + 1u && JL_MODE == JL_REC + 1u && JL_SPLIT == JL_N - 1u && jl_n(JL_REC) == 2u && !strcmp(JL_NAME[JL_REC], "REC"));
+    CHECK("REC row: after AMOUNT (1.0.0-b7; ROLL TYPE before it), before PLAY MODE, with two values; PLAY MODE, XFADE, SPLIT stay the last three", JL_REC == JL_AMOUNT + 1u && JL_AMOUNT == JL_ROLL + 1u && JL_MODE == JL_REC + 1u && JL_SPLIT == JL_N - 1u && jl_n(JL_REC) == 2u && !strcmp(JL_NAME[JL_REC], "REC"));
     jl_put(JL_STYLE, STY_PEAK); tide_settings();
     jl_put(JL_REC, 1); tide_settings();
     CHECK("REC row: set to REPLACE, the STYLE stays PEAK (not CUSTOM)", tide_rec_replace == 1u && tide_style == STY_PEAK);
@@ -356,6 +356,20 @@ static void r4(void)
     CHECK("R4 (L5): ... and starts the stopped transport", song.playing || transport_req == 1u);
     song.rec = 0;
     stop();
+    /* b7 (FR7 D6): SEQ + REC as a chord, both let go in one pass, and SEQ let go first: arms, HOLD alone */
+    for (uint32_t w = 0; w < 2u; w++) {
+        to_home(); song.sel = 0; song.rec = 0; t->p[P_AHOLD] = 0;
+        btn_down(B_SEQ); frames(600);
+        btn_down(B_REC); frames(100);
+        btn_up(B_SEQ);
+        if (w)
+            frame();
+        btn_up(B_REC); frames(600);
+        CHECK(w ? "R4 (D6): SEQ let go before REC: arms, HOLD alone" : "R4 (D6): SEQ and REC let go together: arms, HOLD alone",
+              (song.rec & 1u) && t->p[P_AHOLD] == 0);
+        song.rec = 0;
+        stop();
+    }
 }
 
 /* ---- R5: PRESETS loads on STEP and PARAMETER LOCKS (owner 2026-11-08) ---- */

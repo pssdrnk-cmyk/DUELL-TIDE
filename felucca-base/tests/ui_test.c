@@ -2228,7 +2228,7 @@ static int test_soak_cards(void)
             quiet = 0;
         } else if (r < 30u) { go_main_to(HP_MORPH); page_entered(); quiet = 0; }
         else if (r < 31u) transport_req = song.playing ? 2u : 1u;
-        else if (r == 31u && SOAK_RND(3u) == 0u) rec_tap();
+        else if (r == 31u && SOAK_RND(3u) == 0u) rec_tap(0);
         else if (r == 32u) { host_enc[panel.enc[EN_ALGO]] += SOAK_RND(2u) ? 1 : -1; quiet = 0; }
         else if (r == 33u) trk[SOAK_RND(NTRK)].p[P_LRATE] = (int16_t)SOAK_RND(128u);
         fm1_ms += SOAK_RND(50u) ? 16u : 1u + SOAK_RND(200u);
@@ -6317,6 +6317,19 @@ static uint32_t acc_ms(uint32_t role, const uint16_t *gaps, uint32_t n, int32_t 
     }
     return sum;
 }
+/* b7 (FR7 D9): a dialog cancelled by HOME says NOT SAVED only when something was to be saved */
+static int test_cancel_words(void)
+{
+    int bad = 0;
+    ui_power_on(); frames(300);
+    confirm_open(CF_INIT_SOUND, 0u); frame();
+    press(B_HOME); frames(50);
+    bad += check("HOME in INITIALIZE SOUND?: CANCELLED (nothing was being saved)", !ui.confirm && msg_is("CANCELLED"));
+    confirm_open(CF_SAVE_OVER, 0u); frame();
+    press(B_HOME); frames(50);
+    bad += check("HOME in the SAVE dialog: NOT SAVED", !ui.confirm && msg_is("NOT SAVED"));
+    return bad;
+}
 /* DUELL 0.2.16: KNOB ACCEL ON, PATCHES' K1 steps by the turn speed and loads only the sound the turn ends on (ui.c pl_step / pl_poll);
  * OFF: one place a detent, each loaded, as before */
 static uint32_t snd_sig(void) { return (uint32_t)TSEL->eng_req * 100003u + (uint32_t)TSEL->preset * 131u + (uint32_t)TSEL->user; }
@@ -6365,6 +6378,22 @@ static int test_patch_accel(void)
     ok &= !pl_pend_on;
     bad += check("  .. TYPE (K2) drops the waiting place", ok);
     list_set(0u);
+    {   /* b7 (FR7 D7): a fast turn's waiting place, then ALGORITHM to the other part: part 2's sound is left alone */
+        uint32_t o0 = trk[1].eng_req * 100003u + trk[1].preset * 131u + trk[1].user;
+        song.sel = 0;
+        go_page(GR_MORPH);
+        frames(300);
+        fm1_ms += 1000;
+        for (k = 0; k < 10u; k++) turn(EN_PRESET, 1);
+        ok = pl_pend_on;
+        track_select(1u);                            /* (ALGORITHM's detent to part 2) */
+        frames(200);
+        ok &= song.sel == 1u && !pl_pend_on && trk[1].eng_req * 100003u + trk[1].preset * 131u + trk[1].user == o0;
+        bad += check("  .. ALGORITHM to the other part while a place waits: the other part's sound unchanged", ok);
+        track_select(0u);
+        go_page(GR_BROWSE);
+        frames(300);
+    }
     /* KNOB ACCEL OFF: one place a detent, each loaded */
     ui_prefs &= ~PREF_ACCEL;
     frames(300);
@@ -9342,8 +9371,13 @@ static int test_item158_pages(void)
                 frames(64);
                 snprintf(want, sizeof want, "%s", row ? "%" : lay ? "LAYER" : "DUEL");   /* (XFADE: the text ending in %) */
                 screen_read();
+                {
+                    int32_t ylast = -1;                     /* (1.0.0-b7: AMOUNT's value ends in % too, rows above: XFADE's is the lowest) */
+                    for (k = 0; k < txt_n; k++)
+                        if (txt_log[k].x0 > 120 && txt_log[k].s[strlen(txt_log[k].s) - 1u] == '%' && txt_log[k].y0 > ylast)
+                            ylast = txt_log[k].y0;
                 for (k = 0; k < txt_n; k++)
-                    if (txt_log[k].x0 > 120 && (row ? txt_log[k].s[strlen(txt_log[k].s) - 1u] == '%' : !strcmp(txt_log[k].s, want))) {
+                    if (txt_log[k].x0 > 120 && (row ? txt_log[k].s[strlen(txt_log[k].s) - 1u] == '%' && txt_log[k].y0 == ylast : !strcmp(txt_log[k].s, want))) {
                         int32_t x, y;
                         found = 1;
                         for (y = txt_log[k].y0; y <= txt_log[k].y1; y++)
@@ -9352,6 +9386,7 @@ static int test_item158_pages(void)
                                 ntheme += host_screen[y * 240 + x] == I157_PX(T_THEME);
                             }
                     }
+                }
                 snprintf(m, sizeof m, "TIDE SETTINGS drawn: the %s value (%s) is %s", row ? "XFADE" : "PLAY MODE", lay ? "LAYER" : "DUEL", row && !lay ? "dim" : "in the theme colour");
                 bad += check(m, found && (row && !lay ? ndim > 0u && ntheme == 0u : ntheme > 0u && ndim == 0u));
             }
@@ -10083,6 +10118,7 @@ int main(void)
     bad += test_head_ab_fit();                      /* (cloud job G: the A / B letter's room)
     bad += test_head_rec_foot();                    /* (DUELL 0.2.10: no number / REC mark in the header; the footer's armed mark) */
     bad += test_ui_t();                             /* (audit lane T: footer tempo, capsule marks, units) */
+    bad += test_cancel_words();
     bad += test_patch_accel();                      /* (DUELL 0.2.16: PATCHES' K1 with KNOB ACCEL ON) */
     bad += test_transpose_patch();                  /* (DUELL 1.1, item 141: TRANSPOSE is the patch's, VOICE 1/2 K4; no KEY OFFSET) */
     bad += test_item152_flicker();                  /* (item 152: no blank frame on a change, PATCHES' title) */

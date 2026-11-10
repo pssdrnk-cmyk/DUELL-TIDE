@@ -28,9 +28,16 @@ Built overnight on 9-10 November 2026 from the musical review (owner: "your idea
 - **Fixed (JOURNEY):** started with the fader away from A, JOURNEY no longer swaps the sound you are hearing; it travels to the B that is there first.
 - **Changed (AUTO TIDE):** multis that wait for keys play on their own under AUTO TIDE: any pad, HOLD ALL part or arp you made sounds a chord as soon as AUTO TIDE runs. Press a key and the chord is yours until the next PLAY.
 
+### The MORPH page
+
+- **Changed (MORPH, owner: page 1 is the hands-on page):** knob 1 MORPH takes half the turning (two steps a click; A and B still exact), knob 2 is FILTER (the cutoff, as QUICK EDIT's knob 1), knob 3 ECHO (the delay send; dim, with the reason on knob 1's line, when SENDS are OFF or the delay's MIX is 0), knob 4 LENGTH (the release). The values sit on the slim row under the wave picture. They are the sound's own settings: they record, take MIDI LEARN, save, and don't hold TIDE's glide. TIDE still takes the fader back 8 bars after your hand lets go.
+- **Changed (BOTH):** with ALGORITHM on BOTH every knob of the MORPH page moves each part from its own value by the same steps, the fader too; before, the other part jumped to the selected part's fader and AMOUNT.
+- **Changed (rolls):** a new End B is OCT+ held and a click of knob 1 (the octave stays). The new-A roll is gone from the page (MIDI's ROLL A still works). OCT- and a knob: knob 1 back to your original sound, knobs 2 to 4 back to the loaded sound's value.
+- **Moved (AMOUNT):** AMOUNT is a TIDE SETTINGS row, after ROLL TYPE, with your stored value. It is no longer dimmed in JOURNEY, where it still shapes a roll.
+
 ### The settings page
 
-- **Changed (TIDE SETTINGS, owner: "let's keep what makes musical sense"):** the page has nine rows: STYLE, MODE, TARGET, ARC, ROLL TYPE, then REC, PLAY MODE, XFADE and SPLIT. VARY BARS, TURNS, POLY, OFFBEAT and WASH have no rows; each STYLE sets them. ROLL ARP and ROLL PITCH have no row either (OFF; a unit that had one ON keeps it, and a learned MIDI CC can still switch it). MODE is the same setting as K2 on AUTO TIDE. Your saved STYLE stays that style after the update.
+- **Changed (TIDE SETTINGS, owner: "let's keep what makes musical sense"):** the page has ten rows: STYLE, MODE, TARGET, ARC, ROLL TYPE, AMOUNT (from the MORPH page), then REC, PLAY MODE, XFADE and SPLIT. VARY BARS, TURNS, POLY, OFFBEAT and WASH have no rows; each STYLE sets them. ROLL ARP and ROLL PITCH have no row either (OFF; a unit that had one ON keeps it, and a learned MIDI CC can still switch it). MODE is the same setting as K2 on AUTO TIDE. Your saved STYLE stays that style after the update.
 - **Changed (STYLE DUB):** DUB plays WANDER: the multi's own sounds stay and evolve instead of travelling to others, so the level and brightness stay steady (M02: brightness swing 2x, not 7x; dulled bars 7 %, not 51 %). A DUB you saved with b6 reads as DUB with WANDER. The first start is still M02 DUB CHORD.
 - **Changed (STYLE AMBIENT):** AMBIENT no longer shortens loops (POLY OFF).
 - **Changed (ROLL TYPE):** ROLL TYPE no longer switches the rhythm off; ARC and the pattern's movement act with any ROLL TYPE. ROLL TYPE is dim under JOURNEY, where it does nothing (knob 1's line says NOT JRNY).

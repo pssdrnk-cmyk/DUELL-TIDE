@@ -1258,7 +1258,11 @@ int main(void)
         SEL_BOTH = 1;
         f0 = morph_fader_of(0);
         turn(EN_K1, -5);
+#if DUELL_TIDE
+        ck("  MORPH TARGET BOTH: each part's fader by the same steps (1.0.0-b7; part 2 at A stays at A)", morph_fader_of(0) == f0 - 10u && morph_fader_of(1) == 0u);
+#else
         ck("  MORPH TARGET BOTH: both parts' faders", morph_fader_of(0) < f0 && morph_fader_of(1) == morph_fader_of(0));
+#endif
         turn(EN_K2, -MORPH_DET);
         ck("K2 ROLL left past the detent: ROLLED A (as the MORPH page)", msg_is("ROLLED A"));
         frames(600);

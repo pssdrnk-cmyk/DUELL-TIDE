@@ -1236,6 +1236,10 @@ int main(void)
            !name_on() && ui.confirm == CF_SAVE_OVER && ui.svs == 12u && !up_count() && !strcmp(b1, "WITH NEW NAME") && !strncmp(a1, "OVERWRITE #13 ", 14));
         turn(EN_K2, 1);
         ck("  RENAME again: the field starts from the name chosen", name_on() && str_eq(nm.s, "NEW NAME"));
+        turn(EN_K2, 1);                         /* (b7: the rest of the opening twist, a pass each: typed nothing) */
+        turn(EN_K2, 1);
+        turn(EN_K2, -1);
+        ck("  the rest of the twist that opened RENAME types no letters into the name", name_on() && str_eq(nm.s, "NEW NAME") && nm.len == 8u);
         press(B_OCTDN);
         press(B_OCTUP);
         up_name(12u, got);
