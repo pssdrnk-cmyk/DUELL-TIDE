@@ -77,6 +77,7 @@ The owner's answers to the musical review (9 November) are built in: the default
 22. Before `1.0.0`: 0 missed blocks over the 16-multi GLIDE sweep (owner, 8 November); the CPU budget re-measured and made honest (findings 5, 6, 34; K9).
 23. AUTO TIDE's step display can show one hit ahead that then doesn't play: M09 MINIMAL 12's 12-step blip under a style with ARC DROP (PEAK). Picture only, the sound is right. Seen once in 22,158 look-aheads in the `tidesteps` test (its WANDER / ARC DROP scenario on factory slot 8: part 2, step 6, three steps ahead). The same class showed on the old set in the night build. The scenario was moved from slot 8 to slot 6 to keep the suite green: put 8 back in `felucca-base/tests/tide_steps_test.c` to see it.
 24. SAVE after JOURNEY: SAVE shows a short message when the sound you loaded and the one JOURNEY moved to differ (owner, 10 November: the default).
+25. An acid line generator: SEQ held + A4 ACID writes a new 303 line (X0X's TB-3PO, GPL-3.0). Measured 1.46 KB plus an adapter (~1.8 KB): needs about 1.2 KB of flash won first, or a smaller integer generator (estimated 400-600 B, not built). After b8 (the acid audit's TASKS, AC2; the b8 acid DESIGN, §6).
 
 ## Released
 
