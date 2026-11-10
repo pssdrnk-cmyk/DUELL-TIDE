@@ -17,6 +17,7 @@ The polish beta after b7. Not yet on the FM-1.
 
 ### Under the hood
 
+- **Under the hood (test):** the step-display test `tidesteps` plays factory multi 9 (MINIMAL 12) again, also over several ARC DROP arcs, and finds no step shown that does not play. Its two readers of the ARP SEQ step (`ui_draw.c`, `seq_dialogue.c`) were checked: both already follow a POLY stretch.
 - **Under the hood (ARC):** the dead TURNS leftovers are gone: the TURNS variable, ARC's late-rise flag (nothing read either since CALL AND ANSWER became always on) and TURNS' column in the STYLE table. The saved TIDE settings keep their size and every other field as they were; the TURNS byte is always written as 1 and never read back. Nothing you hear or see changes.
 
 ## 1.0.0-b7 (in progress)

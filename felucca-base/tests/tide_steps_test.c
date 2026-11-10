@@ -405,7 +405,8 @@ int main(void)
         {-1, 3, GM_WANDER, 1, 0, 0, 1, 1, 24},
         {0, 0, GM_WANDER, 1, 1, 0, 0, 0, 16},
         {5, 0, GM_JOURNEY, 2, 2, 1, 0, 1, 16},
-        {6, 0, GM_WANDER, 1, 1, 2, 0, 0, 16},       /* (reel, 2026-11-10: M07 DETROIT STAB; it was slot 8, now M09 MINIMAL 12, whose 12-step ARP SEQ blip showed ONE hit 3 steps ahead that did not play (part 2 step 6, 1 of 22,158 look-aheads): the page's known rare look-ahead corner on a loop that is not 16, reported to the roadmap, not hidden: put 8 back to see it) */
+        {8, 0, GM_WANDER, 1, 1, 2, 0, 0, 16},       /* (M09 MINIMAL 12: a 12-step ARP SEQ loop; its look-ahead once showed a hit that did not play, 1.0.0-b8 A3) */
+        {8, 0, GM_WANDER, 1, 1, 2, 0, 0, 72},       /* (and over several arcs: ARC DROP's drops and breakdowns on the 12-step loop) */
         {11, 0, GM_JOURNEY, 2, 0, 0, 1, 1, 16},
         {13, 0, GM_WANDER, 1, 2, 1, 0, 0, 16},
         {15, 0, GM_JOURNEY, 2, 1, 2, 0, 1, 16},
