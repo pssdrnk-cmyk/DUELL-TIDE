@@ -180,11 +180,7 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 | Question | Default if you don't mind |
 |---|---|
 | Try on the unit: keys recording into an ARP SEQ part, and REC ADD / REPLACE (Released in b3, not yet tried on the unit). | Nothing to decide; say if the nearest-step rule feels wrong. |
-| With BOTH selected, the first click of MORPH's fader or AMOUNT knob puts both parts on the same value. Should each part move one step from where it is instead? | Keep "BOTH = the same value"; say so in the guide. |
-| SAVE after JOURNEY stores the sound you loaded, not the A that JOURNEY moved to (KEEP freezes what you hear). | SAVE shows a short message when the two differ. |
-| ARC's breakdown keeps the chord parts' hits (their anchors), so it thins by voices and level but not by hits (M02 plays 0.92 of the rise's hits). Drop the non-beat anchors in the breakdown to thin it further? It touches the rule that a motif keeps its anchors. | Leave it; the breakdown is two voices and 2 to 5 dB softer. |
 | D46: the levels of the multis, by ear on the unit. | The musical review's trims are in (PAD SPLIT and WHISPER TIDE 5 to 6 dB down, FINAL REEL and the drones adjusted). Listen to the set with a chord held and without keys; say which multi still sits too loud or too quiet. |
-| Which of the ideas below, if any. | The ideas from the musical review are built (chord-rhythm vocabulary, breathing voicing, call and answer). The rest: none until chosen. |
 
 **By ear or eye on the unit** (no homework: noted when the owner meets them in use): the drones and their beds; the six electronic-genre multis; M16 FINAL REEL's switch bar on a JOURNEY; the hand-and-return of the MORPH fader; call and answer; the U2 multi sequences; the MULTIS / PATTERNS preview's readability; polymeter (12 / 16, 15 / 16) against a steady 4 / 4; the chord part's rhythm cells.
 
