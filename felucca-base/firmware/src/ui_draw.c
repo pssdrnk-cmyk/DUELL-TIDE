@@ -3409,6 +3409,8 @@ static void draw_confirm(void)
         tf = &AF_S;
     GFX_HOOK_ALIGN(0, 0, DLG_W, 0, AL_H, "dialog question centred");
     cv_text_in(0, 34, DLG_W, tf, a, T_TEXT, T_BG);
+    if (ui.confirm == CF_SAVE_OVER)
+        TIDE_SAVE_NOTE(DLG_W);                          /* (1.0.0-b8: SAVE after JOURNEY: what it stores, in the card's empty top) */
     if (b[0]) {
         char f[32];
         text_fit(f, sizeof f, b, &AF_M, DLG_W - 16);    /* a name: free text (M: what is selected, as the question) */

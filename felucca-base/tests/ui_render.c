@@ -2478,17 +2478,17 @@ static int playsel_main(const char *out)
     return nfind ? 1 : 0;
 }
 /* 1.0.0-b8 SAVE after JOURNEY, for looking at: --savenote DIR writes DIR/ppm/<PAL>_savenote_<case>.ppm (VIOLET, GREY): M02 loaded, JOURNEY's move of End A (morph_to_sound), SAVE held
- * on the MORPH page (patch_save_ask: the dialog and, when the sound moved, the message); "plain" has no move, as the control */
+ * (patch_save_ask: the dialog says what it saves); "moved" one part, "both" BOTH parts on the MORPH page with part 1 moved, "plain" no move, as the control */
 static int savenote_main(const char *out)
 {
     static const uint32_t PP[2] = {UI_DEFAULT_INDEX, UI_GREY_INDEX};
-    static const char *const PN[2] = {"VIOLET", "GREY"}, *const CN[2] = {"moved", "plain"};
+    static const char *const PN[2] = {"VIOLET", "GREY"}, *const CN[3] = {"moved", "both", "plain"};
     uint32_t c, q;
     char rp[600];
     snprintf(rp, sizeof rp, "%s/savenote_report.txt", out);
     rep = fopen(rp, "w");
     if (!rep) { fprintf(stderr, "cannot write %s\n", rp); return 1; }
-    for (c = 0; c < 2u; c++)
+    for (c = 0; c < 3u; c++)
         for (q = 0; q < 2u; q++) {
             char nm[48];
             setup(S_MORPH_MID);
@@ -2496,7 +2496,8 @@ static int savenote_main(const char *out)
             song.playing = 0; song.rec = 0; usb.config = 0; ui.perf = 0;
             project_load(1);
             go_page(GR_MORPH);
-            if (c == 0u) {
+            SEL_BOTH = c == 1u;
+            if (c < 2u) {
                 trk[0].engine = trk[0].eng_req;          /* (the engine change's fade is over) */
                 morph_ready(0);
                 morph_to_sound(0, 0, 7u);

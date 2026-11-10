@@ -126,8 +126,8 @@ static void tide_store_mark(const uint8_t *b, uint32_t n);
 static void tide_store_poll(void);
 static uint8_t tide_tail_new;                            /* settings_import (settings_persist.c) brought a TIDE record: tide_settings reads the fields again */
 static const char *tide_tl_keep(track_t *t, uint64_t was, uint32_t len);   /* (tide_ui.c) */
-static void tide_save_note(uint32_t trk2);                  /* (tide_ui.c) */
-#define TIDE_SAVE_NOTE(trk2) tide_save_note(trk2)         /* SAVE opened: a sound JOURNEY moved away from the loaded one is said (1.0.0-b8) */
+static void tide_save_note(int32_t w);                      /* (tide_ui.c) */
+#define TIDE_SAVE_NOTE(w) tide_save_note(w)               /* the SAVE dialog says what it saves when the sound is not the loaded one (1.0.0-b8) */
 static void tl_undo_take(track_t *t);                    /* (ui_tools.c, compiled after tide_ui.c) */
 static void tl_unlock(track_t *t, uint64_t was, uint32_t len);
 #define TIDE_TL_KEEP , TL_KEEP                           /* SEQ held + G4; labelled below the tools grid */
@@ -265,7 +265,7 @@ static int tide_foot_two(void);
 #define TIDE_GRID3 (grid_on == 3)
 #define TIDE_PICK_MODE() ((void)0)
 #define TIDE_MODE_SAY "MODE "
-#define TIDE_SAVE_NOTE(trk2) ((void)0)
+#define TIDE_SAVE_NOTE(w) ((void)0)
 #define TIDE_LIVE_SIG(pg, t, h) ((void)0)
 #define TIDE_LIVE_DRAW(pg, t) ((void)0)
 #define TIDE_LIVE_MOD(t, y0) ((void)0)

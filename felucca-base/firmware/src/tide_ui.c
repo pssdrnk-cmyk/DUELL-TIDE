@@ -133,12 +133,19 @@ static const char *tide_tl_keep(track_t *t, uint64_t was, uint32_t len)
     return sq && snd ? "KEPT" : sq ? "SEQ KEPT" : "SOUND KEPT";
 }
 
-/* SAVE opened (ui_input.c patch_save_ask; trk2 2 = both parts): SAVE stores the sound as loaded, not what JOURNEY, a roll or the fader made of it (KEEP freezes
- * what is heard); when a part SAVE is about to store sounds other than that, one message says so (1.0.0-b8) */
-static void tide_save_note(uint32_t trk2)
+/* the SAVE dialog (ui_draw.c draw_confirm; trk2 2 = both parts): SAVE stores the sound as loaded, not what JOURNEY moved the heard end to (KEEP freezes what is
+ * heard); 1 when a part it is about to store plays a factory sound MORPH TO or JOURNEY put there (the footer's name for it, tide_part_name): the dialog says
+ * so, as long as it is open (1.0.0-b8) */
+static int32_t tide_heard_to(uint32_t pi);
+static void tide_save_note(int32_t w)
 {
-    if (trk2 >= 2u ? tide_sound_moved(0) || tide_sound_moved(1) : tide_sound_moved(trk2))
-        ui_say("SAVES LOADED SOUND. ", "KEEP = AS HEARD");
+    uint32_t k, t = ui.confirm_trk;
+    for (k = 0; k < NSHOWN; k++)
+        if ((t >= 2u || k == t) && tide_heard_to(k) >= 0) {
+            cv_text_in(0, 0, w, &AF_S, "SAVES THE LOADED SOUND", T_MID, T_BG);
+            cv_text_in(0, 15, w, &AF_S, "KEEP FIRST = AS HEARD", T_MID, T_BG);
+            return;
+        }
 }
 
 /* LINK (TARGET BOTH): the MORPH fader moved by hand to v moves the SEQ faders of mask to v too (ui_input.c morph_act) */
@@ -586,11 +593,15 @@ static void tide_journey(uint32_t mask, uint32_t x, uint32_t snd, uint32_t seq)
 /* ---------------------------------------------------------------- the footer --- */
 /* the sound part pi plays now by name (b holds 20): the end its fader is nearer, the factory sound MORPH TO or JRNY put there
  * by its label ("#31 DEEP PAD", as the Original's "#24 REESE BASS"); else (the Original, or a roll of it) the part's own label */
-static void tide_part_name(uint32_t pi, char *b)
+static int32_t tide_heard_to(uint32_t pi)                /* the factory sound part pi's heard end was moved to (MORPH TO, JOURNEY), -1 none */
 {
     const morph_part_t *mp = &mph[pi % NSHOWN];
+    return mp->n[0] && !morph_stale(&trk[pi % NSHOWN], mp) ? morph_to_of(pi, mp->fader >= 64u) : -1;
+}
+static void tide_part_name(uint32_t pi, char *b)
+{
     const track_t *t = &trk[pi % NSHOWN];
-    int32_t k = mp->n[0] && !morph_stale(t, mp) ? morph_to_of(pi, mp->fader >= 64u) : -1;
+    int32_t k = tide_heard_to(pi);
     if (k >= 0) {                                        /* (the destination keeps the number its slot has: audit C11) */
         uint32_t e = t->eng_req % NENGINES, r = ds_list_rank(e, (uint32_t)k);
         b[0] = 0;
