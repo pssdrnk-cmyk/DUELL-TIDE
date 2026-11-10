@@ -614,7 +614,11 @@ def check(snd=None):
         err += check_record(m, b, by_idx, P)
         if not m.get("stress"):
             snds = (m["parts"][0]["sound"], m["parts"][1]["sound"])
-            entries.append((m["slot"], m["name"], b[4], snds, b[-1], (cat[snds[0]], cat[snds[1]]), bool(m.get("owner"))))
+            kinds = [cat[x] for x in snds]
+            for t, p in enumerate(m["parts"]):      # (b8: an ANALOG part set to WAVE 7 ACID / 8 ACID SQR is another sound and another kind (ANALOG/ACID: a 303), not the saw bass it is loaded from)
+                if p.get("set", {}).get("E:WAVE") in (7, 8):
+                    snds, kinds[t] = snds[:t] + ("%s+WAVE%d" % (snds[t], p["set"]["E:WAVE"]),) + snds[t + 1:], (kinds[t][0], "ACID")
+            entries.append((m["slot"], m["name"], b[4], snds, b[-1], tuple(kinds), bool(m.get("owner"))))
     for m in SPARE:                                   # (the spare records exist and name their sounds)
         for t, p in enumerate(m["parts"]):
             if p.get("steps"):
