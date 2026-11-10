@@ -214,6 +214,7 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 - With both parts selected, the first click of MORPH's fader or AMOUNT puts both parts on the same value; the guide says so. (owner, 10 November)
 - ARC's breakdown keeps the chord parts' hits; it thins by voices and level. (owner, 10 November)
 - The drone scenes are built in (2 multis in ROM, no file pack); the musical review's ideas are built. (owner, 10 November)
+- A separate 303 engine ported from Open303 / X0X bass303.c (AC1): 14.8 KB of flash against 768 B free, 1.5 KB of RAM for two parts, 3.9x an ANALOG 24 dB note's CPU on the host. b8 builds the 303's accent and slide into the ANALOG engine instead (WAVE ACID / ACID SQR) (10 November).
 
 ## Versions and releases
 
