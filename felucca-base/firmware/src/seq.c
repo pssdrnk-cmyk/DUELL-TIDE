@@ -602,6 +602,8 @@ static __attribute__((noinline)) void arp_fire(track_t *t, uint32_t period)
     t->arp_idx++;
     TIDE_ARP_TICK(t);                               /* TIDE hook (H3b) */
 #if DUELL_TIDE
+    if (t->p[P_AMODE] == AM_SEQ && !(mods_off & MODS_SEQ))   /* b7 (review B2): the step's locks and automation on the step the arp plays (seq_play leaves them) */
+        motion_step(t, TIDE_ARP_IDX(t, t->arp_idx, t->p[P_SLEN] > 0 ? (uint32_t)t->p[P_SLEN] : 1u), &motion, 1u);
     if (t->p[P_AMODE] == AM_SEQ && arp_rec_fire(t))
         return;                                     /* live recording put a key into this step already: it sounds, the step does not play again */
 #endif
@@ -1534,6 +1536,9 @@ static __attribute__((noinline)) void seq_play(track_t *t, uint32_t idx, uint32_
     }
     if (TIDE_CHANCE(t, idx, s, step_chance(s) < 100u && rng() % 100u >= step_chance(s)))   /* TIDE hook (H3c) */
         skip = SEQ_MISS;
+#if DUELL_TIDE
+    if (t->p[P_AMODE] != AM_SEQ)                    /* (b7, review B2: an ARP SEQ part's locks play on the arp's steps: arp_fire) */
+#endif
     motion_step(t, idx, m, skip == SEQ_ROLLED);
     if (t->p[P_AMODE] == AM_SEQ) {                  /* DUELL 0.2.12: the steps are the SEQUENCER arp's (offsets on the held keys, */
         t->rskip_n = 0;                             /* arp_seq): PLAY does not also play them from C4 (the transport, the locks */

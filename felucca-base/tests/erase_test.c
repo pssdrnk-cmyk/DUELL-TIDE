@@ -201,6 +201,7 @@ int main(void)
         if (text_w(&AF_S, ERASE_LINES[i]) > 200)
             break;
     ck("the dialog's five lines fit the card (200 px, S 15; item 119)", i == 5u && sizeof ERASE_LINES / sizeof ERASE_LINES[0] == 5u);
+    ck("b7 (review E2): the dialog names the FM6 bank and the user tables it erases", strstr(ERASE_LINES[2], "FM6 BANK") && strstr(ERASE_LINES[2], "TABLES"));
     e0 = n_erase;
     w0 = n_prog;
     open_dialog();

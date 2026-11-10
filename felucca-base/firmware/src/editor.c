@@ -823,7 +823,13 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
             for (i = 0; i < n0; i++)
                 nm[i] = (char)a[1 + i];
             int r;
-            r = ed_flash_stop() ? 2 : up_store(a[0], nm);
+            {
+                uint8_t bv[MBV_MAX];
+                up_bv_take(song.sel % NSHOWN, bv);          /* (b7, review E1: End B as the device's SAVE keeps it) */
+                r = ed_flash_stop() ? 2 : up_store(a[0], nm);
+                up_bv_in = 0;
+                up_bv_n = 0;
+            }
             rc = r == PT_FULL ? 6u : r ? 2u : 0u;
             if (!r)
                 up_adopt(song.sel % NTRK, a[0]);           /* the selected part plays that slot now (as the device's SAVE) */

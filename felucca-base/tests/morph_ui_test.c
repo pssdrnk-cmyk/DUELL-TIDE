@@ -1154,6 +1154,29 @@ static void t_save(void)
            ok_both && str_eq(ui.msg, "SAVED 1+2") && up_count() == 2u && trk[0].user != 0u && trk[1].user != 0u && trk[0].user != trk[1].user);
 }
 
+/* FR12 (b7, review D3): SAVE held with BOTH, both parts on sounds of the read-only places (no slot of their own): two USER slots, both saved */
+static void t_both_ro(void)
+{
+#if UP_NUSER
+    uint32_t e, p, n = 0, r;
+    int ok;
+    fresh();
+    for (e = 0; e < NENGINES && n < 2u; e++)
+        for (p = 0; p < ds_count(e) && n < 2u; p++)
+            if ((r = ds_list_rank(e, p)) >= UP_USER0 && r < UP_SLOTS + UP_NXTRA) {
+                trk[n].eng_req = (uint8_t)e; trk[n].preset = (uint8_t)p; trk[n].user = 0; n++;
+            }
+    morph_page();
+    SEL_BOTH = 1;
+    hold(B_SAVE);
+    ok = n == 2u && ui.confirm == CF_SAVE_OVER && ui.confirm_trk == 2u;
+    press(B_OCTUP);
+    expect("BOTH, two sounds of the read-only places: SAVE held asks for two USER slots; OCT+ saves both (SAVED 1+2)",
+           ok && str_eq(ui.msg, "SAVED 1+2") && up_count() == 2u && trk[0].user != trk[1].user);
+    SEL_BOTH = 0;
+#endif
+}
+
 /* ---------------------------------------------------------------- SETTINGS --- */
 static void power_cycle(void)                           /* the morph's RAM gone, the settings bytes kept (flash) */
 {
@@ -1233,6 +1256,7 @@ int main(void)
 #endif
     t_item154();
     t_save();
+    t_both_ro();
     t_settings();
     t_editb();
     printf("morphui: %d checks, %d failed\n", ncheck, bad);

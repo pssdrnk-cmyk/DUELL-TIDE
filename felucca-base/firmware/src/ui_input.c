@@ -896,8 +896,8 @@ static void patch_save_ask(void)
         uint32_t trk2 = PART_BOTH() && cur_page()->graph == GR_MORPH ? 2u : song.sel;   /* (0.2.9: the MORPH page
                                                          * only, where the header shows both; was MORPH SET too) */
         if (trk2 >= 2u) {                               /* both parts, each over its own slot: the same slot twice would lose one */
-            if (slot_home(&trk[0]) == slot_home(&trk[1])) {
-                ui_message("SAME SLOT");
+            if (slot_both(0) == slot_both(1)) {
+                ui_message(slot_of(&trk[1]) >= UP_SLOTS ? "NEEDS 2 USER SLOTS" : "SAME SLOT");
                 return;
             }
         } else {
@@ -1157,7 +1157,13 @@ static void tempo_tap(void)
     ui.tap_n = (uint8_t)n;
     span = ui.tap_t[n - 1u] - ui.tap_t[0];
     if (n >= 2u && span) {
+        uint32_t ob;
+        MORPH_LOCK();                                   /* (interrupts off: the audio interrupt moves the positions) */
+        ob = beat_samples();       /* (b7, review B5: a jump on the internal clock keeps each part's step phase, as an external */
         song.g[G_BPM] = (int16_t)clamp((int32_t)((60000u * (n - 1u) + span / 2u) / span), GP[G_BPM].min, GP[G_BPM].max);
+        if (song.playing && !clock_src() && beat_samples() != ob)   /* clock's tempo change does: no flam of owed steps, the arp stays on the grid) */
+            clock_rescale(ob, beat_samples());
+        MORPH_UNLOCK();
         ui.bpm_t = 40;
     }
 }
