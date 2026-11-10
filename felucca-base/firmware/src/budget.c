@@ -353,7 +353,7 @@ static void budget_solve2(const bd_t *b, uint32_t *out, uint32_t two)
 }
 static void budget_solve(const bd_t *b, uint32_t *out) { budget_solve2(b, out, bd_two_now()); }   /* the rule in force */
 
-/* the two-core rule is in force: core 1 answered at power-on, has not failed, its jobs are not paused (a flash park is short: the runner trims to the one-core numbers for it) */
+/* the two-core rule is in force: core 1 answered at power-on, has not failed, its jobs are not paused (a store read, write or erase parks nothing since b7: twocore.c tc_store_wait; only the update's flash park, tc.park, makes the runner trim to the one-core numbers) */
 static uint32_t bd_two_now(void)
 {
 #if DUELL_TWOCORE

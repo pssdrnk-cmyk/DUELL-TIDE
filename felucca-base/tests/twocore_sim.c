@@ -744,7 +744,7 @@ static int trim_child(int how)
     xfade_sine(&trk[1]);
     trk[0].p[P_MUTE] = 1;
     bnotes[0] = bnotes[1] = bnotes1[0] = bnotes1[1] = 0;
-    fault = how ? F_TRIMSTOP : F_NONE;
+    fault = how == 1 ? F_TRIMSTOP : F_NONE;
     tc_host_ld_hook = ld_hook;
     tc_host_st_hook = st_hook;
     time_adj(0);
@@ -758,14 +758,19 @@ static int trim_child(int how)
         if (f == 0)
             for (i = 0; i < 8u; i++)
                 trk_note_on(&trk[1], 48u + 4u * i, 100);
-        if (f == (uint32_t)(0.8 * FS) / CTL * CTL)
+        if (how == 2 && f == (uint32_t)(0.8 * FS) / CTL * CTL)
+            bnotes[1] = 8, bnotes1[1] = 3;              /* (b7, review F1: two-core 8 notes, one-core 3) */
+        else if (f == (uint32_t)(0.8 * FS) / CTL * CTL)
             bnotes[1] = bnotes1[1] = 3;                 /* the budget drops (both rules' numbers: item 90): nothing is cut yet */
-        if (f == (uint32_t)(1.0 * FS) / CTL * CTL)
+        if (how == 2 && f == (uint32_t)(1.0 * FS) / CTL * CTL) {
+            tc_store_wait();                            /* a store read in the main loop (storage_hw.c st_read, its IRQ-off window): nothing parked */
+            at = f;
+        } else if (f == (uint32_t)(1.0 * FS) / CTL * CTL)
             trim_job = tc.job + 3u;                     /* the third job from now is the late one (or the one written wrong) */
         sim_block(o, CTL);
         for (i = 0; i < CTL; i++)
             L[f + i] = o[2 * i];
-        if (!at && tcs.trims)
+        if (!at && tcs.trims && how != 2)
             at = f;
         if (at && f == at + 8u * CTL) {
             after = young = 0;
@@ -1147,7 +1152,7 @@ int main(int argc, char **argv)
     if (!tsan && !audit) {
         /* the fallback fade (item 11) */
         int how;
-        for (how = 0; how < 2; how++) {
+        for (how = 0; how < 3; how++) {
             pid_t pid;
             int st = 0;
             res_t t;
@@ -1164,6 +1169,11 @@ int main(int argc, char **argv)
                 snprintf(what, sizeof what, "fade at once (%s): 8 notes held, the number drops to 3, then %s: %u fade out in the next block, %u sound 8 blocks later (the %u youngest kept), largest step %d vs %d before (%.2f x, limit 1.50 x)",
                          how ? "core 1 stops" : "the jobs pause", how ? "a wrong check value stops core 1" : "a very late block pauses the jobs", t.s.trims, t.nblk, t.busb_c1, a, calm,
                          calm ? (double)a / calm : 0.0);
+                if (how == 2) {
+                    snprintf(what, sizeof what, "store read (b7, review F1): 8 notes held on two-core numbers (one-core 3), a store read: %u trimmed, %u sound 8 blocks later, core 1 up (%u)",
+                             t.s.trims, t.nblk, t.failed);
+                    expect(what, WIFEXITED(st) && WEXITSTATUS(st) == 0 && t.s.trims == 0u && t.nblk == 8u && !t.failed);
+                } else
                 expect(what, WIFEXITED(st) && WEXITSTATUS(st) == 0 && t.hash == 1u && t.s.trims == 5u && t.nblk <= 3u && t.busb_c1 == 3u && a * 2 <= calm * 3 &&
                                  (how ? t.failed == TCR_BADJOB : t.s.pauses > 0));
             }
