@@ -3,5 +3,4 @@
 kept byte for byte; tools/factory_multis.py apply_owner puts these in its list as `kept`, `owner` (exempt from the similarity check)."""
 
 OWNER_MULTIS = [
-    dict(slot=2, name='DUB CHORD', mode='LAYER', parts=[dict(sound='BIG STAB'), dict(sound='TIDAL SUB')]),   # D31: was M04; TIDAL SUB's line an octave up (C2 to C3), its LEVEL down 4
 ]
