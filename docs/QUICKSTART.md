@@ -27,7 +27,17 @@ Turn **SELECT** (or press **OCT+** / **OCT-**) to go through it; on the two ques
 
 ## The controls in one minute
 - **SELECT** switches sub-pages (and moves rows in lists). It never changes the tempo. **Knobs 1 to 4** adjust the four columns on screen. Every control does what its label says.
-- **PRESETS** loads sounds for the selected part, on the sequencer pages (STEP, PARAMETER LOCKS) too: the steps and parameter locks stay. It steps the list the way PATCHES' knob 1 does: with KNOB ACCELERATION on, a fast turn loads only the sound where it stops. **Hold OCT- and turn PRESETS to undo the last load** (the same again puts it back; "NOTHING TO UNDO" says there is none). It works on the pages where PRESETS loads a sound, not in PERFORM, a dialog or the menu, not on the SAVE list and action pages (PATTERNS, MULTIS, TOOLS), and not on the TIDE pages, where OCT- plus a knob is TIDE's own reset. A sound brings its own loudness (its **PATCH LEVEL**, saved with the patch, on EDIT > VOICE 2/2 knob 4); your volume on the mixer (the **LEVEL** cards of the GLO MIXER page, and MIDI CC7) is yours: loading a sound never changes it, and a multi remembers it. The part plays at the patch level and the level together.
+- **PRESETS** loads sounds for the selected part, on the sequencer pages (STEP, PARAMETER LOCKS) too: the steps and parameter locks stay.
+  - It steps the list the way PATCHES' knob 1 does.
+  - With KNOB ACCELERATION on, a fast turn loads only the sound where it stops.
+  - **Hold OCT- and turn PRESETS to undo the last load** (the same again puts it back; "NOTHING TO UNDO" says there is none).
+  - It works on the pages where PRESETS loads a sound.
+  - It does not work in PERFORM, a dialog or the menu.
+  - It does not work on the SAVE list and action pages (PATTERNS, MULTIS, TOOLS).
+  - It does not work on the TIDE pages, where OCT- plus a knob is TIDE's own reset.
+  - A sound brings its own loudness (its **PATCH LEVEL**, saved with the patch, on EDIT > VOICE 2/2 knob 4).
+  - Your volume on the mixer (the **LEVEL** cards of the GLO MIXER page, and MIDI CC7) is yours: loading a sound never changes it, and a multi remembers it.
+  - The part plays at the patch level and the level together.
 - **HOME** opens the MORPH page; each tap goes on to the next page of HOME's round (MORPH, MORPH SET, MODE; with TIDE MORPH, TIDE SETTINGS, AUTO TIDE). Hold HOME for the menu (ABOUT shows the version and credits).
 - **MIXER** (GLO's first page since the 0.2.25 layout round): both parts side by side, part 1 left and part 2 right, with the level meters between them. Knob 1 is LEVEL 1, knob 2 LEVEL 2, knob 3 PAN 1, knob 4 PAN 2 (in DUEL the pans are fixed and not shown). Each part's cell reads MUTE and is lit in the part's colour while the part is muted; hold GLO and press **OCT-** or **OCT+** to mute or unmute part 1 or part 2. SPACE is on the PERFORM page.
 - **TEMPO** is on the GLO TEMPO page, the one after MIXER (a tap of GLO opens MIXER first). To set the levels and pans of both parts from any page hold GLO: the keys play notes, knob 1 is LEVEL 1, knob 2 LEVEL 2, knob 3 PAN 1, knob 4 PAN 2 (in DUEL the pans are fixed and not shown). With GLO held, **OCT-** mutes or unmutes part 1 and **OCT+** part 2; each cell reads MUTE, lit in the part's colour while muted (the mutes moved to these keys in 0.2.24; before, knobs 1 and 2 were the mutes).
