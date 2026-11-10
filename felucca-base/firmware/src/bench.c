@@ -207,7 +207,7 @@ static struct {
 static project_t bench_saved __attribute__((section(".pool.zbench")));
 static struct {                                        /* the audio side's words the rows set (the UI's own syncs do not run while the BENCH screen is up) */
     uint32_t cmp;
-    uint8_t wd, bm, mods, mode, xf, split;   /* (item 160: no BALANCE word: the parts' levels are in the project restored with the session) */
+    uint8_t wd, bm, mods, mode, xf, split, both;   /* (both: the part selection, 1.0.0-b7; item 160: no BALANCE word: the parts' levels are in the project restored with the session) */
     int8_t space;
 } bench_keep BENCH_BSS;
 
@@ -738,6 +738,9 @@ static BENCH_FN void bench_set(const bench_scn_t *s)            /* the row's who
     wd_sel = (uint8_t)(s->width ? s->width : 100u);
     bm_sel = s->bm;
     duell_mode_req = s->mode;
+#if TIDE_PLAYSEL
+    song.both = s->mode == DM_LAYER;                    /* (1.0.0-b7: LAYER plays in ALGORITHM's middle only, both parts selected; seq.c MODE_WANT) */
+#endif
     ui.force = 1;
 }
 static BENCH_FN void bench_notes_on(const bench_scn_t *s)
@@ -825,6 +828,9 @@ static BENCH_FN void bench_keep_session(void)
     bench_keep.cmp = cmp_cfg;
     bench_keep.wd = wd_sel, bench_keep.bm = bm_sel, bench_keep.mods = mods_off;
     bench_keep.mode = duell_mode_req;
+#if TIDE_PLAYSEL
+    bench_keep.both = song.both;
+#endif
     bench_keep.xf = mix_xf, bench_keep.split = mix_split;
     bench_keep.space = perf_space;
     bench_extras_keep();
@@ -837,6 +843,9 @@ static BENCH_FN void bench_restore_session(void)
     cmp_cfg = bench_keep.cmp;
     wd_sel = bench_keep.wd, bm_sel = bench_keep.bm, mods_off = bench_keep.mods;
     duell_mode_req = bench_keep.mode;
+#if TIDE_PLAYSEL
+    song.both = bench_keep.both;
+#endif
     mix_xf = bench_keep.xf, mix_split = bench_keep.split;
     perf_space = bench_keep.space;
     bench_extras_back();
@@ -2456,6 +2465,9 @@ static BENCH_FN void bench_con(const char *p)
             for (i = 0; i < 3u; i++)
                 if (bench_ieq(MN[i], x)) {
                     duell_mode_req = (uint8_t)i;       /* (DM_SPLIT 0, DM_STEREO 1, DM_LAYER 2: the order of the log's MN) */
+#if TIDE_PLAYSEL
+                    song.both = i == DM_LAYER;         /* (1.0.0-b7: LAYER plays with both parts selected, seq.c MODE_WANT) */
+#endif
                     bench_say("OK mode", MN[i], 0);
                     return;
                 }

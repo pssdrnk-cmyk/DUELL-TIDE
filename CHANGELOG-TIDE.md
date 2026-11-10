@@ -9,14 +9,11 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 
 ## 1.0.0-b8 (in progress)
 
-The polish beta after b7. Not yet on the FM-1.
+A polish beta on top of b7: small fixes, leftovers out, tools and docs made true.
 
-### What TIDE plays
-
+- ARP SEQ parts stay on the beat on the internal clock: on a long set (400 bars) the arp used to run up to a tenth of a second ahead of the bars and the click, at 117 BPM about 12 samples a bar; now it is exact, at any tempo and after a tap tempo.
+- **Under the hood (b8 ROOM):** HOME's old MODE page code was already out of TIDE's build; the last piece that only that page used (a KNOB 4 check in the output-mode knob) is out too, 4 bytes. Every TIDE screen is pixel-identical (923 renders compared). The factory multis tool rebuilds all eighteen records byte for byte (checked), so the patch step for the End B amounts is not needed.
 - **Fixed (ARC):** the first beat of a new ARC phase plays with the new phase's settings. The breakdown's first beat is thinned out and the peak's first loop gets no POLY stretch, as the rest of the phase does; before, the old phase's settings ran for the first beat or two.
-
-### Under the hood
-
 - **Under the hood (test):** the step-display test `tidesteps` plays factory multi 9 (MINIMAL 12) again, also over several ARC DROP arcs, and finds no step shown that does not play. Its two readers of the ARP SEQ step (`ui_draw.c`, `seq_dialogue.c`) were checked: both already follow a POLY stretch.
 - **Under the hood (ARC):** the dead TURNS leftovers are gone: the TURNS variable, ARC's late-rise flag (nothing read either since CALL AND ANSWER became always on) and TURNS' column in the STYLE table. The saved TIDE settings keep their size and every other field as they were; the TURNS byte is always written as 1 and never read back. Nothing you hear or see changes.
 

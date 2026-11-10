@@ -675,6 +675,8 @@ static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
             arp_off(t);
         return;
     }
+    if (!clock_src())                               /* (b8: the internal clock's samples onto the beat, as the external clock's pulses: midi_grid.c) */
+        n = midi_grid_advance(&midi_arp_grid[trk_index(t)], n, (uint32_t)t->p[P_ARATE]);
     period = div_samples((uint32_t)t->p[P_ARATE]);
     sw = arp_sw(t, period);
     if (t->arp_pos >= 0x8000000u) {                 /* a new phrase waits for its first step (0xFFFFFFF less the samples still to wait) */
@@ -683,7 +685,7 @@ static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
             t->arp_pos += n;
             return;
         }
-        if (clock_src()) midi_arp_grid[trk_index(t)].remainder = 0;
+        midi_arp_grid[trk_index(t)].remainder = 0;  /* (b8: on either clock: a phrase starts with a clean carry) */
         t->arp_pos = w ? n - w : 0u;                /* (the overshoot of a wait is carried: the next step stays on the grid) */
         arp_fire(t, period);
         if (t->arp_pos && ARP_UP(t)) {
@@ -1624,8 +1626,7 @@ static __attribute__((noinline)) void seq_nd_start(track_t *t, uint32_t period, 
 static void seq_tick(track_t *t, uint32_t n)
 {
     uint32_t period, len;
-    if (clock_src())
-        n = midi_grid_advance(&midi_seq_grid[trk_index(t)], n, (uint32_t)t->p[P_SDIV]);
+    n = midi_grid_advance(&midi_seq_grid[trk_index(t)], n, (uint32_t)t->p[P_SDIV]);   /* (b8: the internal clock too: the steps on the beat, midi_grid.c) */
     if (t->seq_n && !t->seq_hold) {
         if (t->seq_off <= n)
             seq_release(t);
@@ -1781,8 +1782,7 @@ static uint32_t arp_wait(const track_t *t)
 /* the metronome's beat: adv samples on while the transport runs (click.c sounds it in this block) */
 static void click_tick(uint32_t adv)
 {
-    if (clock_src())
-        adv = midi_grid_advance(&midi_click_grid, adv, 2u);
+    adv = midi_grid_advance(&midi_click_grid, adv, 2u);   /* (b8: on either clock, as a 1/16 track's) */
     uint32_t p = div_samples(2), beat = 0;
     if (clk_pos == CLK_START) {
         clk_pos = 0;
