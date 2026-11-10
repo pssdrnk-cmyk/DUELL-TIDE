@@ -56,6 +56,20 @@ Built overnight on 9-10 November 2026 from the musical review (owner: "your idea
 - **Fixed (review FR8):** with MENU > MIDI > MIDI IN = SEL, bending the wheel (or pressing a key with channel aftertouch) and changing part before letting go no longer leaves the part you left bent or pressed; a part still holding a MIDI note keeps following its channel as before. The mod wheel's value stays on each part, as it is a position you set.
 - A GLIDE started with BOTH parts selected now moves each part from where its own MORPH fader is (before, the other part jumped to the selected part's place at once); AUTO TIDE draws each part's own path.
 - Loading a factory multi leaves TIDE SETTINGS' ROLL ARP, ROLL PITCH and ROLL TYPE as you set them (before, they went OFF / OFF / SMART and that was saved).
+- **Fixed (review FR7):** RENAME in the SAVE dialog no longer types stray letters into the name with the rest of the twist that opened it.
+- **Fixed (review FR7):** OCT- held with a PRESETS turn or a knob no longer also acts when you let go: no octave drop on AUTO TIDE or in PERFORM, no jump HOME from PATTERNS or MULTIS, no step back of the row on TIDE SETTINGS.
+- **Fixed (review FR7):** a fast PRESETS turn followed by ALGORITHM loads the sound into the part you turned it on, never into the other part.
+- **Fixed (review FR7):** SEQ + REC arms recording however you let go of the two buttons (together, or SEQ first); before, REC flipped HOLD.
+- **Fixed (review FR7):** cancelling a dialog with HOME or a page button says NOT SAVED only when something was to be saved (SAVE, NAME); INITIALIZE SOUND, CLEAR and RESTORE ALL say CANCELLED.
+- **Fixed (review FR6):** loading one of your saved sounds, multis or patterns while you play no longer cuts notes the other part is holding (the second core is no longer parked for a store read). Not yet checked on the unit.
+- **Fixed (review FR10):** the load UNDO (OCT- held + PRESETS) and AUTO TIDE's HOME bring your saved sound back with its own End B and the values you set by hand, not a new random End B.
+- **Fixed (review FR3):** a save from the web editor keeps End B and its hand-set values, as the unit's own SAVE does.
+- **Fixed (review FR11):** ERASE DATA's dialog names everything it erases, the user wave tables and the FM6 voice bank included; INSTALL and QUICKSTART say the same.
+- **Fixed (review FR13):** a big tap-tempo jump while playing no longer fires the skipped steps at once (a flam) or knocks an arp off the grid.
+- **Fixed (review FR9):** knob locks recorded on an ARP SEQ part (M02's two parts, for example) play on the step the arp plays, also after a key restarts the pattern, with ARP RATE apart from DIV, and in a POLY stretch.
+- **Fixed (review FR12):** SAVE held with BOTH on two sounds from the read-only places (M17 DUNE HORN's) saves both, each into its own empty USER slot; before it said SAME SLOT and saved nothing.
+- **Fixed (review FR14):** after a save cut short by a power cut, RESTORE of that patch (or RESTORE ALL, or a new save after it) no longer brings the old sound back at the next power-on.
+- Under the hood (review FR15): `tools/build.py --release` refuses to build with a developer switch on (the USB serial console, the TEST screen, the bench, the update dry runs).
 
 ## 1.0.0-b6
 
