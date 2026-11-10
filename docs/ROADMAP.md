@@ -179,11 +179,7 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 
 | Question | Default if you don't mind |
 |---|---|
-| D43: when a crossing starts under a held chord, the chord stays whole (the budget plans for it from the start). | Stays whole; decided after the drones are measured under a GLIDE. |
 | Try on the unit: keys recording into an ARP SEQ part, and REC ADD / REPLACE (Released in b3, not yet tried on the unit). | Nothing to decide; say if the nearest-step rule feels wrong. |
-| Reverb FREEZE (below): build it? | Later: not built until you say. |
-| Drone scenes: delivered as a file pack, replacing multis, or by packing the multi records to make room? | Decided: built in, 2 multis in ROM (owner, 9 November); no file pack. |
-| An ARP SEQ pattern moves off-scale notes down to the scale; keys and sequence steps move them to the nearest note. Make ARP SEQ follow the keys? It changes how existing ARP SEQ patterns sound on pentatonic, blues and harmonic minor. | Leave it; say so in the guide. |
 | With BOTH selected, the first click of MORPH's fader or AMOUNT knob puts both parts on the same value. Should each part move one step from where it is instead? | Keep "BOTH = the same value"; say so in the guide. |
 | SAVE after JOURNEY stores the sound you loaded, not the A that JOURNEY moved to (KEEP freezes what you hear). | SAVE shows a short message when the two differ. |
 | ARC's breakdown keeps the chord parts' hits (their anchors), so it thins by voices and level but not by hits (M02 plays 0.92 of the rise's hits). Drop the non-beat anchors in the breakdown to thin it further? It touches the rule that a motif keeps its anchors. | Leave it; the breakdown is two voices and 2 to 5 dB softer. |
