@@ -1696,7 +1696,7 @@ static track_t *midi_track(uint32_t ch)
  * its dip (fx.c dm_step), which stops what still rings at its silent point */
 static __attribute__((noinline)) void mode_apply(void)
 {
-    uint32_t i, k, m = duell_mode_req;
+    uint32_t i, k, m = MODE_WANT();
     m = m < DM_N ? m : DM_SPLIT;
     if (m == duell_mode)
         return;
@@ -1925,7 +1925,7 @@ static void events_block(uint32_t n)
     if (midi_clock.mode != (uint32_t)song.g[G_CLOCK])
         clock_choice((uint32_t)song.g[G_CLOCK]);     /* (the CLK choice changed: midi_clock.c, a stop only if the active source changes) */
     clock_mode = clock_src();                        /* the ACTIVE source: 0 INT (CLK INT, or AUTO with no clock), 1 USB, 2 TRS */
-    if (duell_mode_req != duell_mode)
+    if (MODE_WANT() != duell_mode)
         mode_apply();                                 /* DUELL step 5: the MODE changed (every note let go) */
     if (cin_left && !clock_mode)
         cin_block(n);

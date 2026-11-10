@@ -2434,43 +2434,45 @@ static int about_tide_main(const char *out)
 #endif
 }
 #if DUELL_TIDE && TIDE_PLAYSEL
-/* 1.0.0-b7 PLAY MODE SELECT, for looking at: --playsel DIR writes DIR/ppm/<PAL>_ps_<page>_<pos>.ppm (VIOLET, GREY): HOME page 1 (MORPH) and TIDE SETTINGS (its PLAY MODE
- * row picked) with ALGORITHM on PART 1, LAYER, STEREO, DUEL, PART 2 (play_select, as the encoder sets it) */
+/* 1.0.0-b7 PLAY MODE SELECT, for looking at: --playsel DIR writes DIR/ppm/<PAL>_ps_<page>_<row>_<pos>.ppm (VIOLET, GREY): HOME page 1 (MORPH) and TIDE SETTINGS (its PLAY
+ * MODE row picked) for each PLAY MODE row value (LAYER, STEREO, DUEL) with ALGORITHM on PART 1, the middle, PART 2 (part_select, as the encoder sets it) */
 static int playsel_main(const char *out)
 {
     static const char *const PG[2] = {"morph", "settings"};
     static const uint32_t PP[2] = {UI_DEFAULT_INDEX, UI_GREY_INDEX};
     static const char *const PN[2] = {"VIOLET", "GREY"};
-    static const char *const POS[PLS_N] = {"part1", "layer", "stereo", "duel", "part2"};
-    uint32_t g, ps, q, pg;
+    static const char *const RN[3] = {"layer", "stereo", "duel"}, *const POS[3] = {"part1", "middle", "part2"};
+    static const uint8_t RM[3] = {DM_LAYER, DM_STEREO, DM_SPLIT}, PS[3] = {0u, 2u, 1u};
+    uint32_t g, r, ps, q, pg;
     char rp[600];
     snprintf(rp, sizeof rp, "%s/playsel_report.txt", out);
     rep = fopen(rp, "w");
     if (!rep) { fprintf(stderr, "cannot write %s\n", rp); return 1; }
     for (g = 0; g < 2u; g++)
-        for (ps = 0; ps < PLS_N; ps++)
-            for (q = 0; q < 2u; q++) {
-                char nm[40];
-                setup(S_MORPH_BOTH_MID);
-                pal(PP[q]);
-                song.rec = 0; usb.config = 0; ui.perf = 0;
-                if (g) {
-                    for (pg = 0; pg < NPAGES && strcmp(PAGES[pg].title, "TIDE SETTINGS"); pg++) ;
-                    ui.page = (uint8_t)pg;
-                    jl_sel = JL_MODE;
-                } else
-                    go_page(GR_MORPH);
-                duell_mode_req = DM_STEREO; song.both = 0; song.sel = 0;
-                play_select(ps);
-                duell_mode = duell_mode_req;
-                mix_split = SPLIT_MIDDLE;
-                ui.force = 1;
-                snprintf(nm, sizeof nm, "ps_%s_%s", PG[g], POS[ps]);
-                cur_name = nm;
-                draw(-1);
-                lint();
-                write_ppm(out, PN[q], nm);
-            }
+        for (r = 0; r < 3u; r++)
+            for (ps = 0; ps < 3u; ps++)
+                for (q = 0; q < 2u; q++) {
+                    char nm[48];
+                    setup(S_MORPH_BOTH_MID);
+                    pal(PP[q]);
+                    song.rec = 0; usb.config = 0; ui.perf = 0;
+                    if (g) {
+                        for (pg = 0; pg < NPAGES && strcmp(PAGES[pg].title, "TIDE SETTINGS"); pg++) ;
+                        ui.page = (uint8_t)pg;
+                        jl_sel = JL_MODE;
+                    } else
+                        go_page(GR_MORPH);
+                    duell_mode_req = RM[r];
+                    part_select(PS[ps]);
+                    duell_mode = (uint8_t)MODE_WANT();
+                    mix_split = SPLIT_MIDDLE;
+                    ui.force = 1;
+                    snprintf(nm, sizeof nm, "ps_%s_%s_%s", PG[g], RN[r], POS[ps]);
+                    cur_name = nm;
+                    draw(-1);
+                    lint();
+                    write_ppm(out, PN[q], nm);
+                }
     fclose(rep);
     printf("ui_render: PLAY MODE SELECT renders in %s: %u lint findings\n", out, nfind);
     return nfind ? 1 : 0;

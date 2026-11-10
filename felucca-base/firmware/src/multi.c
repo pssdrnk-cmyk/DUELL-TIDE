@@ -749,6 +749,10 @@ static void project_load(uint32_t slot)
     }
 #if DUELL_TIDE
     song.both = (uint8_t)set[1];                       /* set[1] TARGET: the selection's BOTH (1.0.0-b5: a stored BOTH loads as the selection BOTH; before it was reserved and never read) */
+#if TIDE_PLAYSEL
+    if (duell_mode_req == DM_LAYER)                    /* (1.0.0-b7: a LAYER multi loads in ALGORITHM's middle, both parts playing, as b6 played it) */
+        song.both = 1;
+#endif
 #endif                                                 /* (plain DUELL: reserved, ALGORITHM's BOTH is the player's, a load keeps it) */
 #if DUELL_TIDE
     if (!fact)                                         /* TIDE b7: a factory multi leaves ROLL ARP / ROLL PITCH / ROLL TYPE as the player set them (a saved one restores its own byte) */

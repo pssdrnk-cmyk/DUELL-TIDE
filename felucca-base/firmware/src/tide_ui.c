@@ -203,8 +203,10 @@ static void tide_custom_take(void)
 static __attribute__((noinline)) const char *jl_needs(uint32_t r)
 {
 #if TIDE_PLAYSEL
-    if (r == JL_SPLIT && duell_mode_req != DM_LAYER)     /* 1.0.0-b7: SPLIT plays in STEREO and DUEL too with the selection on BOTH (ALGORITHM on STEREO / DUEL) */
-        return song.both ? 0 : "2 PARTS ONLY";
+    if (r >= JL_XFADE && !song.both)                     /* 1.0.0-b7: XFADE and SPLIT act in ALGORITHM's middle only (PART 1 / PART 2 play one part); SPLIT there in STEREO and DUEL too */
+        return "2 PARTS ONLY";
+    if (r == JL_SPLIT)
+        return 0;
 #endif
     if (r >= JL_XFADE)
         return duell_mode_req == DM_LAYER ? 0 : "LAYER ONLY";
@@ -272,7 +274,7 @@ static void jl_put(uint32_t r, uint32_t v)
     const char *say;
     r %= JL_N, v %= JL_NV[r];
     if (r == JL_SPLIT) {                              /* (a place in the list, set as it is: mode_knob would step out of MIDDLE to its note) */
-        if (duell_mode_req == DM_LAYER || (TIDE_PLAYSEL && song.both))
+        if (TIDE_PLAYSEL ? song.both : duell_mode_req == DM_LAYER)
             mix_split = (uint8_t)jl_split_code(v);
         return;
     }

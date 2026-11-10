@@ -290,7 +290,7 @@ static int tide_foot_two(void);
  * controls (and the test build's CPU TEST page). Everywhere else the selector picks PART 1 or PART 2 and the page shows and edits that part alone, as before; BOTH stays set for these pages */
 #define HOME_BOTH_PAGE(pg) ((pg)->graph == GR_MORPH || TIDE_PAGE(pg) || (pg)->scope == SC_TEST || (pg)->scope == SC_PERF)
 #if DUELL_TIDE && TIDE_PLAYSEL
-/* 1.0.0-b7 PLAY MODE SELECT: ALGORITHM's five positions on those pages (ui_input.c play_pos / play_select; docs/design/PLAY_MODE_SELECT.md) */
+/* 1.0.0-b7 PLAY MODE SELECT: ALGORITHM's position names on those pages: PART 1, the middle named by the PLAY MODE row, PART 2 (ui_input.c play_pos; docs/design/PLAY_MODE_SELECT.md) */
 enum { PLS_P1, PLS_LAYER, PLS_STEREO, PLS_DUEL, PLS_P2, PLS_N };
 static const char *const PLS_NAME[PLS_N] = {"PART 1", "LAYER", "STEREO", "DUEL", "PART 2"};
 static uint32_t play_pos(void);
