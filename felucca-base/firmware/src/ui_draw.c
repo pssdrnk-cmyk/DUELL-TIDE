@@ -3325,8 +3325,8 @@ static void confirm_text(char *a, char *b)          /* a, b hold 32 */
 }
 /* MENU > SYSTEM > ERASE DATA's dialog (DUELL 0.2.2): exactly what goes and what stays, then NO / YES as every dialog. Item 119: at the floor (S 15) the same words take five lines of at most 200 px on a card 224 px wide
  * (x 8 .. 231); the card is 188 rows high, the canvas holds 124: two strips (it had been cut at row 143, the NO / YES buttons were not drawn) */
-static const char *const ERASE_LINES[5] = {"SETTINGS, FAVOURITES,", "AUTOSAVE, SAVED PATCHES,", "MULTIS, PATTERNS.",
-                                           "FACTORY SOUNDS COME BACK.", "THIS CANNOT BE UNDONE."};   /* (DUELL 1.1, item 91: the FM6 voice bank is erased too, its line is gone) */
+static const char *const ERASE_LINES[5] = {"SETTINGS, FAVOURITES,", "AUTOSAVE, PATCHES, MULTIS,", "PATTERNS, TABLES, FM6 BANK.",
+                                           "FACTORY SOUNDS COME BACK.", "THIS CANNOT BE UNDONE."};   /* (b7, review E2: the FM6 voice bank and the three user wave tables are erased too: named) */
 #define ERASE_X 8
 #define ERASE_W 224
 #define ERASE_H 188
