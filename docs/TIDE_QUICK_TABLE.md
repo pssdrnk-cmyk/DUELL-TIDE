@@ -13,7 +13,7 @@ With no notes coming in TIDE plays in C minor; send or hold one note to set its 
 | ONCE | One trip from A to B, then it stays. | A single build or transition. |
 | LOOP | Back and forth between the same A and B. | A steady two-state groove. |
 | DRIFT | The end it just left is rolled anew around your sound. | Small, endless variations of one sound. |
-| WANDER | Walks a little further from your sound each trip, always measured from your original, so it can't run away. | Slow evolution that stays recognisable. **Default** (STYLE DUB). |
+| WANDER | Every dial steps one position and bounces at the edges; always measured from your original, so it never drifts. | Slow evolution that stays recognisable. **Default** (STYLE DUB). |
 | JOURNEY | Travels through other factory sounds of the same engine and the same role (pad stays pad, bass stays bass). | Long sets that change sound over time: STYLE AMBIENT and PEAK, or by hand. |
 
 TIME (K3) is how many bars one trip takes; WAIT (K4) is how many bars it rests at each arrival.
