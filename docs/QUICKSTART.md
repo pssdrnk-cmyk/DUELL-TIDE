@@ -169,7 +169,23 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
   - **reverbs** (REVERB page, TYPE: ROOM, SPRING, HALL, SHIM, RESO and, new in 0.2.14, PLATE: a smooth stereo plate; SIZE is how long the tail lasts, DAMP how dark it gets, and, new in 0.2.14, LOCUT on K4 cuts the bass that goes into the reverb so it does not get muddy: OFF or 20 Hz to 2 kHz, 299 Hz by default (0.2.22: it was up to 450 Hz and 88 Hz); it works on every reverb type). SHIM and RESO reverbs come from JIANT; RESO's resonances stay in tune as DAMP rises
   - **SHIMMER** (new in 0.2.19: with TYPE SHIM, a second page SHIMMER follows REVERB (it is not shown for the other types, the GLO button and SELECT skip it): PITCH sets the shimmered part, UP (an octave up, as before) or DOWN (an octave down; BOTH was removed in 0.2.25), and DRIFT (0 to 100 %, off by default; the card was MOD before the 0.2.25 layout round) lets its pitch drift slowly so the shimmer does not stand still; 40 is a gentle drift, 100 a wide one. Both are saved with the multi.)
 
-**PERFORM.** Hold **FX** for a moment (or hold FX and press a white key) to open the PERFORM page. Now the 16 white keys are effects that last while you hold them, four per group of keys: REPEAT 1/8, 1/16, 1/32 and REVERSE; TAPE STOP, FREEZE, OCT UP and OCT DN; FLANGER, PHASER, DRIVE and PUMP; ROLL A and ROLL B (a new MORPH end, as on the MORPH page; with TIDE they glide to A or B instead), MUTE 1 and MUTE 2. The black keys still play notes, and in PERFORM they play in the scale (they follow the SCALE and ROOT of the SCALE page even if OFF-SCALE says PLAY; with SCALE CHROMATIC they play as they are). Knob 1 is MORPH, knob 2 SPACE (left a smaller room, right a huge one), knob 3 KILL (left low-pass, right high-pass, OFF in the middle), knob 4 DEPTH (how strong the held effects are). Here ALGORITHM picks PART 1, LAYER, STEREO, DUEL or PART 2, the same setting as on the MORPH page (PRESETS changes the sound of that part, or of both, each from its own sound), and SELECT is BALANCE between the two parts. Knob 2 SPACE is the only SPACE knob; the MIXER page has none. Tap FX to go back to where you were: SPACE and KILL then fade back to neutral in under half a second, and they do the same when you load another patch or multi. If you want them to stay as you left them, set MENU > CONTROL > LEAVING PERFORM to KEEP.
+**PERFORM.** Hold **FX** for a moment (or hold FX and press a white key) to open the PERFORM page.
+
+- The 16 white keys are effects that last while you hold them, four per group of keys:
+  - REPEAT 1/8, 1/16, 1/32 and REVERSE;
+  - TAPE STOP, FREEZE, OCT UP and OCT DN;
+  - FLANGER, PHASER, DRIVE and PUMP;
+  - ROLL A and ROLL B (a new MORPH end, as on the MORPH page; with TIDE they glide to A or B instead), MUTE 1 and MUTE 2.
+- The black keys still play notes, and in PERFORM they play in the scale. They follow the SCALE and ROOT of the SCALE page even if OFF-SCALE says PLAY; with SCALE CHROMATIC they play as they are.
+- Knob 1 is MORPH.
+- Knob 2 is SPACE (left a smaller room, right a huge one).
+- Knob 3 is KILL (left low-pass, right high-pass, OFF in the middle).
+- Knob 4 is DEPTH (how strong the held effects are).
+- Here ALGORITHM picks PART 1, LAYER, STEREO, DUEL or PART 2, the same setting as on the MORPH page. PRESETS changes the sound of that part, or of both, each from its own sound.
+- SELECT is BALANCE between the two parts.
+- Knob 2 SPACE is the only SPACE knob; the MIXER page has none.
+- Tap FX to go back to where you were. SPACE and KILL then fade back to neutral in under half a second. They do the same when you load another patch or multi.
+- If you want them to stay as you left them, set MENU > CONTROL > LEAVING PERFORM to KEEP.
 
 **MODULES.** On the GLO pages (tap GLO, then SELECT: MIXER, TEMPO, CHORUS, DELAY 1/2, DELAY 2/2, REVERB, SHIMMER with TYPE SHIM, STEREO MASTER, COMPRESSOR, MODULES, SIDECHAIN, MIDI, MIDI LEARN; these pages draw in a third colour of their own, neither part's; ALGORITHM still picks the part the keys and the other pages use, but nothing on these pages) four switches turn whole parts of DUELL off for the unit: knob 1 ARP, knob 2 SEQ, knob 3 SENDS, knob 4 PART FX, each ON (the default) or OFF (turn left for OFF, right for ON). ARP OFF: the keys play directly, no arp. SEQ OFF: PLAY runs the tempo and the arps but no stored steps (you can still edit them). SENDS OFF: no chorus, delay or reverb, which saves a lot of CPU. PART FX OFF: no SAT, insert, EQ or ducker. They are kept when you power off but are not part of a patch or a multi; your settings on the other pages stay as they are, and a page of a module that is OFF shows a notice in place of its cards; turning any knob there jumps to MODULES.
 
