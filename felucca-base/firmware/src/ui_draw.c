@@ -892,7 +892,7 @@ static uint8_t k1_after_r;
 #define AREA_LIST_PG() 0
 #endif
 #if DUELL_TIDE
-#define MROW_Y 189                                      /* b6 (owner 2026-11-09): the MORPH page's ROLL / AMOUNT row, a 13-row canvas 189 .. 201 just above the footer (Y_FOOT 202) that holds the */
+#define MROW_Y 189                                      /* b6 (owner 2026-11-09): the MORPH page's slim row (1.0.0-b7: FILTER, ECHO, LENGTH; b6: ROLL / AMOUNT), a 13-row canvas 189 .. 201 just above the footer (Y_FOOT 202) that holds the */
 #define MROW_H 13                                       /* S face's whole box (caps 189 .. 199, descenders to 201: nothing cut, nothing under the footer's canvas); the picture above it */
 #define MROW_BASE (MROW_H - 3)                          /* rows 48 .. 183, two lanes of 68 (5 clear rows to the caps) */
 #define MROW_WAVES_END 184
