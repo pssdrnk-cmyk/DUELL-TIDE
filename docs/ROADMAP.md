@@ -9,9 +9,6 @@ State words on this page: Released in bN, Ready (built and tested, waiting for a
 | What | State |
 |---|---|
 | Reverb on the second core, to free CPU (K4) | Built, needs its own FM-1 sweep with K4 on and off |
-| A sound saved from the web editor keeps its End B ([FR3](audits/2026-11-09/firmware-review/TASKS.md#fr3)) | Planned, not built in the night: ~40 B |
-| Small control fixes: RENAME no longer types stray letters, OCT- held as a modifier doesn't also act on release, a fast PRESETS turn can't land on the other part, SEQ + REC arms REC however the buttons are lifted, NOT SAVED only for saves ([FR7](audits/2026-11-09/firmware-review/TASKS.md#fr7)) | Planned, not built in the night: ~120 B |
-| Words that match the unit: ERASE DATA names the FM6 bank and the user tables (AMOUNT not dimmed in JOURNEY: done with page 1 in b7; the TURNS step falls away: the row is gone) ([FR11](audits/2026-11-09/firmware-review/TASKS.md#fr11)) | Planned, not built in the night: ~40 B and docs |
 
 ## Built in b7, waits for the FM-1
 
@@ -19,6 +16,9 @@ Six builder lanes made these overnight (9 to 10 November); each is measured on t
 
 | What | State |
 |---|---|
+| A sound saved from the web editor keeps its End B ([FR3](audits/2026-11-09/firmware-review/TASKS.md#fr3)) | Built |
+| Small control fixes: RENAME no longer types stray letters, OCT- held as a modifier doesn't also act on release, a fast PRESETS turn can't land on the other part, SEQ + REC arms REC however the buttons are lifted, NOT SAVED only for saves ([FR7](audits/2026-11-09/firmware-review/TASKS.md#fr7)) | Built |
+| Words that match the unit: ERASE DATA names the FM6 bank and the user tables (AMOUNT not dimmed in JOURNEY: done with page 1 in b7; the TURNS step falls away: the row is gone) ([FR11](audits/2026-11-09/firmware-review/TASKS.md#fr11)) | Built |
 | ALGORITHM on HOME: PART 1, the middle, PART 2. The middle plays both parts in the PLAY MODE row's mode and the header names it (LAYER, STEREO, DUEL); PART 1 / PART 2 play one part on every key; changing PLAY MODE moves ALGORITHM to the middle. With PLAY MODE on LAYER, moving between a side and the middle cuts a held chord (the mode change silences held keys by design) ([design](design/PLAY_MODE_SELECT.md)) | Built (b7/playsel, on b7), not on the unit yet |
 | SPLIT MIDDLE: the keys split in the middle and the split follows OCT- / OCT+; with SPLIT set, STEREO and DUEL split the keys too | Built (b7/playsel, on b7), not on the unit yet |
 | Factory pattern table packed: its accent / slide / tie flags as bit masks (SP3, 640 B), the room for the two above | Built (b7/playsel) |
