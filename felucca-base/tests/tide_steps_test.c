@@ -38,7 +38,7 @@ static void old_view(const track_t *t, uint32_t idx, uint32_t bar, tv_t *e)
 typedef struct {
     int multi;                  /* a factory multi 0..15, or -1: built (kind) */
     int kind;
-    uint8_t mode, turns, poly, sync, arc, vary, time, bars;
+    uint8_t mode, poly, sync, arc, vary, time, bars;
 } scn_t;
 
 static step_t hit(uint32_t n0, uint32_t chance)
@@ -114,7 +114,7 @@ static uint32_t made_of(uint32_t p)
         h = (h ^ b[i / (NSTEP * sizeof(step_t))][i % (NSTEP * sizeof(step_t))]) * 16777619u;
     for (i = 0; i < NSTEP; i++)
         h = (h ^ (sqm_step(&trk[p], i, 1u) == &sqm_pat[p][1][i])) * 16777619u;   /* (the fader: which end each step is on) */
-    h = (h ^ sqm_thin[p][0] ^ sqm_thin[p][1] * 3u ^ (uint32_t)tarc_thin << 8 ^ (uint32_t)tarc_dropphr << 16 ^ (uint32_t)tarc_fast << 24 ^ (uint32_t)poly_len[p] << 5 ^ (uint32_t)sqm_auto << 12 ^ (uint32_t)sqm_vary_all << 14 ^ (uint32_t)song.playing << 15) * 16777619u;
+    h = (h ^ sqm_thin[p][0] ^ sqm_thin[p][1] * 3u ^ (uint32_t)tarc_thin << 8 ^ (uint32_t)tarc_dropphr << 16 ^ (uint32_t)poly_len[p] << 5 ^ (uint32_t)sqm_auto << 12 ^ (uint32_t)sqm_vary_all << 14 ^ (uint32_t)song.playing << 15) * 16777619u;
     return h;
 }
 typedef struct { tv_t v[3][16]; uint8_t page[3]; uint32_t n, made; } snap_t;
@@ -202,7 +202,7 @@ static void run_scn(const scn_t *c, uint32_t id)
     SEL_BOTH = 1;
     morph_musical = 1;
     gl.mode = c->mode, gl.target = GT_BOTH, gl.time = c->time, gl.wait = 0;
-    sqm_vary_all = c->vary, sqm_turns = c->turns, sqm_poly = c->poly, sqm_sync = c->sync, sqm_arc = c->arc;
+    sqm_vary_all = c->vary, sqm_poly = c->poly, sqm_sync = c->sync, sqm_arc = c->arc;
     mo_w = mo_r = 0;
     glide_launch(1u, 3u, 0);
     nblk = c->bars * 4u * (uint32_t)FS * 60u / 240u / CTL + 40u;
@@ -326,28 +326,28 @@ static void run_scn(const scn_t *c, uint32_t id)
 int main(void)
 {
     static const scn_t S[] = {
-        /* multi kind mode        turns poly sync arc vary time bars */
-        {3, 0, GM_JOURNEY, 1, 1, 1, 0, 0, 0, 24},
-        {-1, 0, GM_WANDER, 1, 1, 1, 0, 0, 0, 24},
-        {-1, 0, GM_JOURNEY, 2, 2, 2, 1, 0, 1, 24},
-        {-1, 0, GM_WANDER, 2, 1, 0, 2, 1, 0, 24},
-        {-1, 0, GM_JOURNEY, 0, 2, 1, 0, 0, 2, 24},
-        {-1, 1, GM_WANDER, 1, 1, 1, 1, 0, 0, 32},
-        {-1, 1, GM_JOURNEY, 2, 2, 2, 2, 0, 1, 32},
-        {-1, 1, GM_WANDER, 2, 0, 1, 0, 1, 0, 32},
-        {-1, 2, GM_JOURNEY, 1, 1, 1, 0, 0, 0, 24},
-        {-1, 2, GM_WANDER, 2, 2, 2, 1, 0, 1, 24},
-        {-1, 3, GM_JOURNEY, 2, 2, 1, 2, 0, 0, 32},
-        {-1, 3, GM_WANDER, 0, 1, 0, 0, 1, 1, 24},
-        {0, 0, GM_WANDER, 1, 1, 1, 0, 0, 0, 16},
-        {5, 0, GM_JOURNEY, 2, 2, 2, 1, 0, 1, 16},
-        {6, 0, GM_WANDER, 2, 1, 1, 2, 0, 0, 16},       /* (reel, 2026-11-10: M07 DETROIT STAB; it was slot 8, now M09 MINIMAL 12, whose 12-step ARP SEQ blip showed ONE hit 3 steps ahead that did not play (part 2 step 6, 1 of 22,158 look-aheads): the page's known rare look-ahead corner on a loop that is not 16, reported to the roadmap, not hidden: put 8 back to see it) */
-        {11, 0, GM_JOURNEY, 1, 2, 0, 0, 1, 1, 16},
-        {13, 0, GM_WANDER, 2, 1, 2, 1, 0, 0, 16},
-        {15, 0, GM_JOURNEY, 2, 2, 1, 2, 0, 1, 16},
-        {-1, 0, GM_WANDER, 1, 1, 1, 2, 0, 0, 72},       /* (ARC needs its 5+ phrases before a drop) */
-        {-1, 1, GM_JOURNEY, 2, 2, 2, 2, 0, 0, 72},
-        {-1, 3, GM_WANDER, 2, 1, 1, 1, 0, 0, 72},
+        /* multi kind mode        poly sync arc vary time bars */
+        {3, 0, GM_JOURNEY, 1, 1, 0, 0, 0, 24},
+        {-1, 0, GM_WANDER, 1, 1, 0, 0, 0, 24},
+        {-1, 0, GM_JOURNEY, 2, 2, 1, 0, 1, 24},
+        {-1, 0, GM_WANDER, 1, 0, 2, 1, 0, 24},
+        {-1, 0, GM_JOURNEY, 2, 1, 0, 0, 2, 24},
+        {-1, 1, GM_WANDER, 1, 1, 1, 0, 0, 32},
+        {-1, 1, GM_JOURNEY, 2, 2, 2, 0, 1, 32},
+        {-1, 1, GM_WANDER, 0, 1, 0, 1, 0, 32},
+        {-1, 2, GM_JOURNEY, 1, 1, 0, 0, 0, 24},
+        {-1, 2, GM_WANDER, 2, 2, 1, 0, 1, 24},
+        {-1, 3, GM_JOURNEY, 2, 1, 2, 0, 0, 32},
+        {-1, 3, GM_WANDER, 1, 0, 0, 1, 1, 24},
+        {0, 0, GM_WANDER, 1, 1, 0, 0, 0, 16},
+        {5, 0, GM_JOURNEY, 2, 2, 1, 0, 1, 16},
+        {6, 0, GM_WANDER, 1, 1, 2, 0, 0, 16},       /* (reel, 2026-11-10: M07 DETROIT STAB; it was slot 8, now M09 MINIMAL 12, whose 12-step ARP SEQ blip showed ONE hit 3 steps ahead that did not play (part 2 step 6, 1 of 22,158 look-aheads): the page's known rare look-ahead corner on a loop that is not 16, reported to the roadmap, not hidden: put 8 back to see it) */
+        {11, 0, GM_JOURNEY, 2, 0, 0, 1, 1, 16},
+        {13, 0, GM_WANDER, 1, 2, 1, 0, 0, 16},
+        {15, 0, GM_JOURNEY, 2, 1, 2, 0, 1, 16},
+        {-1, 0, GM_WANDER, 1, 1, 2, 0, 0, 72},       /* (ARC needs its 5+ phrases before a drop) */
+        {-1, 1, GM_JOURNEY, 2, 2, 2, 0, 0, 72},
+        {-1, 3, GM_WANDER, 1, 1, 1, 0, 0, 72},
     };
     uint32_t i, m, c, e, tot[M_N] = {0, 0};
     for (i = 0; i < sizeof S / sizeof S[0]; i++)

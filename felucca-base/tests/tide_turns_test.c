@@ -74,7 +74,6 @@ static void setup(uint32_t len0, uint32_t len1, uint32_t div0, uint32_t div1, ui
         }
     }
     sqm_vary_all = 0;
-    sqm_turns = 1;
     sqm_poly = 1;
     sqm_auto = 0;
     for (p = 0; p < 2; p++) {
@@ -138,7 +137,7 @@ static void t_turns(void)
         CHECK("both parts automatic: the variation on bars 4 and 8 for both (TURNS plays nothing since b7: CALL AND ANSWER), any lengths / DIVs", bars >= 15u && a == 0x88u && b == 0x88u);
     }
     setup(16, 16, 2, 2, 0);
-    sqm_auto = 3, sqm_turns = 0;
+    sqm_auto = 3;
     run_turns(16, INTERNAL, &a, &b);
     CHECK("TOGETHER: both parts on bars 4 and 8", a == 0x88u && b == 0x88u);
     setup(16, 16, 2, 2, 0);
@@ -550,7 +549,7 @@ static void t_answer(void)
     setup(16, 16, 2, 2, 0), lead_sound(0), lead_sound(1);
     put_hits(0, H, 12);
     put_hits(1, H, 12);
-    sqm_auto = 3, sqm_turns = 2;
+    sqm_auto = 3;
     song.playing = 1;
     seqm_poll();
     sqm_refresh(0, 1), sqm_refresh(1, 1);
@@ -628,11 +627,9 @@ static void t_answer(void)
             morph.seed++;
         for (i = 0, m0 = 0; i < 16u; i++)
             m0 += seq_play_step(&trk[0], i, &buf)->time == ST_NOTE;
-        sqm_turns = 1;
         for (i = 0, n = 0; i < 16u; i++)
             n += seq_play_step(&trk[0], i, &buf)->time == ST_NOTE;
-        CHECK("  .. TURNS plays nothing: TAKE TURNS thins the listener as LEAD does", n == m0 && m0 < 12u);
-        sqm_turns = 2;
+        CHECK("  .. CALL AND ANSWER is always on: the listener is thinned as LEAD does", n == m0 && m0 < 12u);
         sqm_auto = 1;
         for (i = 0, n = 0; i < 16u; i++)
             n += seq_play_step(&trk[0], i, &buf)->time == ST_NOTE;
@@ -648,26 +645,23 @@ static void t_answer(void)
         CHECK("  .. a part in a POLY stretch is never thinned", n == 12u);
     }
     {   /* audit C9: the masks are built when what they read changes, not every frame */
-        uint32_t m0, m1, ok1, ok2, ok3;
+        uint32_t m0, m1, ok1, ok3;
         setup(16, 16, 2, 2, 0), lead_sound(0), lead_sound(1);
         put_hits(0, H, 12), put_hits(1, H, 12);
-        sqm_auto = 3, sqm_turns = 2, sqm_sync = 0;
+        sqm_auto = 3, sqm_sync = 0;
         seqm_poll();
         sqm_thin_poll();
         m0 = sqm_thin[0][0], m1 = sqm_thin[1][0];
         sqm_thin[0][0] = 0x5A5A5A5Au;                     /* (a marker a rebuild would overwrite) */
         sqm_thin_poll(), sqm_thin_poll();
         ok1 = sqm_thin[0][0] == 0x5A5A5A5Au && m0 != 0u;
-        sqm_turns = 1;                                   /* TURNS plays nothing since b7: no rebuild */
-        sqm_thin_poll();
-        ok2 = sqm_thin[0][0] == 0x5A5A5A5Au;
-        sqm_turns = 2, ok3 = m1 != 0u;
-        CHECK("masks: nothing changed, no rebuild (the marker stays), nor for TURNS; both parts have a mask", ok1 && ok2 && ok3);
+        ok3 = m1 != 0u;
+        CHECK("masks: nothing changed, no rebuild (the marker stays), both parts have a mask", ok1 && ok3);
         trk[0].p[P_SLEN] = 12;
         seqm_poll(), sqm_thin_poll(), sqm_thin_poll();
         CHECK("  .. a new length rebuilds them (no bit past the loop)", !(sqm_thin[0][0] >> 12) && sqm_thin[0][0] != m0);
     }
-    sqm_turns = 1, sqm_sync = 1, sqm_auto = 0;
+    sqm_sync = 1, sqm_auto = 0;
     sqm_thin_build();
 }
 
@@ -691,11 +685,11 @@ static void t_arc(void)
     /* ARC OFF: every lever neutral */
     setup(16, 16, 2, 2, 0);
     put_hits(0, H, 12), put_hits(1, H, 12);
-    sqm_arc = 0, sqm_turns = 2, sqm_sync = 1;
+    sqm_arc = 0, sqm_sync = 1;
     arc_pulse = 0;
     for (b = 0; b < 40000u; b++)
         arc_block(b);
-    CHECK("ARC OFF: no drop, no thinning of its own, SYNC and brightness untouched", tarc_dropphr == 0xFFu && tarc_thin == 0 && !tarc_fast && !tarc_hold && tarc_sync() == 1u && tarc_bright() == 0);
+    CHECK("ARC OFF: no drop, no thinning of its own, SYNC and brightness untouched", tarc_dropphr == 0xFFu && tarc_thin == 0 && !tarc_hold && tarc_sync() == 1u && tarc_bright() == 0);
     {   /* audit C5: an arc is 8-16 phrases (32-64 bars), as README and the guide say, over many seeds in both modes */
         uint32_t m, sd, a, mn[3] = {99, 99, 99}, mx[3] = {0, 0, 0}, pkmx = 0;
         for (m = 1; m <= 2u; m++)
@@ -722,7 +716,7 @@ static void t_arc(void)
     for (mode = 1; mode <= 2u; mode++) {
         setup(16, 16, 2, 2, 0);
         put_hits(0, H, 12), put_hits(1, H, 12);
-        sqm_arc = (uint8_t)mode, sqm_turns = 2, sqm_poly = 0;
+        sqm_arc = (uint8_t)mode, sqm_poly = 0;
         morph.seed = 77;
         arc_pulse = 0;
         memset(seen, 0, sizeof seen);
@@ -762,7 +756,7 @@ static void t_arc(void)
     /* the drop masks only onsets, for the first 2 bars of its phrase; a tie (none here) and the other bars play */
     setup(16, 16, 2, 2, 0);
     put_hits(0, H, 12), put_hits(1, H, 12);
-    sqm_arc = 2, sqm_turns = 1, sqm_poly = 0;
+    sqm_arc = 2, sqm_poly = 0;
     arc_pulse = 0;
     {
         uint32_t forced = 0, b2;
@@ -825,7 +819,7 @@ static void t_arc(void)
     tarc.phase = AP_RECOVER;
     n &= tarc_bright() == 0;
     CHECK("brightness: brighter at the peak, softer in the break, neutral in the recovery", n);
-    sqm_arc = 0, sqm_turns = 1, sqm_auto = 0;
+    sqm_arc = 0, sqm_auto = 0;
     tarc_poll();
     (void)i;
     (void)seq;
@@ -837,8 +831,8 @@ static void t_arc(void)
 static int style_is(uint32_t k)
 {
     const uint8_t *t = STY[k];
-    return gl.mode == t[0] && gl.time == t[1] && gl.wait == t[2] && sqm_vary_all == t[3] && sqm_turns == t[4] && sqm_poly == t[5] && sqm_sync == t[6] &&
-           sqm_arc == t[7] && (morph_wlvl & 3u) == t[8];
+    return gl.mode == t[0] && gl.time == t[1] && gl.wait == t[2] && sqm_vary_all == t[3] && sqm_poly == t[4] && sqm_sync == t[5] &&
+           sqm_arc == t[6] && (morph_wlvl & 3u) == t[7];
 }
 /* a TIDE record as bytes "TIDE", version, fields (the form object 48 held): placed in the settings record's tail, where TIDE keeps it now */
 static void put_rec(const uint8_t *r, uint32_t len)
@@ -873,9 +867,9 @@ static void t_style(void)
     jl_put(JL_STYLE, STY_CUSTOM);
     tide_settings();
     CHECK("CUSTOM changes nothing (with no values of its own kept)", tide_style == STY_CUSTOM && style_is(1));
-    /* a hand edit of each of the four values with a hand (MODE, TIME, WAIT, ARC): CUSTOM; the five with no row changed underneath: the style stays */
+    /* a hand edit of each of the four values with a hand (MODE, TIME, WAIT, ARC): CUSTOM; the four with no row changed underneath: the style stays */
     ok = 1;
-    for (r = 0; r < 9u; r++) {
+    for (r = 0; r < 8u; r++) {
         jl_put(JL_STYLE, 4);
         tide_settings();
         switch (r) {
@@ -883,16 +877,15 @@ static void t_style(void)
         case 1: gl.time = 2; break;                               /* the TIME knob */
         case 2: gl.wait = 1; break;                               /* the WAIT knob */
         case 3: sqm_vary_all = 0; break;                          /* (no row since 1.0.0-b7: written as the engine or the bench would) */
-        case 4: sqm_turns = 1; break;
-        case 5: sqm_poly = 0; break;
-        case 6: sqm_sync = 0; break;
-        case 7: jl_put(JL_ARC, 1); break;
+        case 4: sqm_poly = 0; break;
+        case 5: sqm_sync = 0; break;
+        case 6: jl_put(JL_ARC, 1); break;
         default: morph_wlvl = 2; break;
         }
         tide_settings();
-        ok &= tide_style == ((0x87u >> r) & 1u ? STY_CUSTOM : 4u);
+        ok &= tide_style == ((0x47u >> r) & 1u ? STY_CUSTOM : 4u);
     }
-    CHECK("a hand edit of MODE, TIME, WAIT or ARC turns STYLE into CUSTOM; the values with no row (VARY, TURNS, POLY, OFFBEAT, WASH) changed underneath leave it (1.0.0-b7, MR8)", ok);
+    CHECK("a hand edit of MODE, TIME, WAIT or ARC turns STYLE into CUSTOM; the values with no row (VARY, POLY, OFFBEAT, WASH) changed underneath leave it (1.0.0-b7, MR8)", ok);
     jl_put(JL_STYLE, 3);
     tide_settings();
     gl.time = 5;
@@ -920,7 +913,7 @@ static void t_style(void)
     pt_boot();
     tide_seen_ok = 0;
     tide_style = STY_CUSTOM;
-    gl.mode = GM_ONCE, gl.time = 0, gl.wait = 0, sqm_turns = 0, sqm_arc = 0, sqm_sync = 0, sqm_poly = 0;
+    gl.mode = GM_ONCE, gl.time = 0, gl.wait = 0, sqm_arc = 0, sqm_sync = 0, sqm_poly = 0;
     tide_settings();
     CHECK("no record: DUB, its existing rows today's defaults (WNDR since 1.0.0-b7, 16 bars, WAIT 2 bars, VARY 4 + 8, WASH OFF)", tide_style == STY_DUB && style_is(0) && gl.mode == GM_WANDER &&
           GLIDE_BARS[gl.time] == 16u && GLIDE_WAIT_BARS[gl.wait] == 2u && !sqm_vary_all && !morph_wlvl);
@@ -935,13 +928,13 @@ static void t_style(void)
             tide_style = STY_DUB;
             tide_settings();
             CHECK(k == 0 ? "a 7-byte record: CUSTOM, its values kept" : k == 1 ? "a 9-byte record: CUSTOM, its values kept (a stored ECHO reads as LEAD: D7)" : "an 11-byte record: CUSTOM, its values kept",
-                  tide_style == STY_CUSTOM && gl.mode == GM_LOOP && gl.time == 2u && gl.wait == 1u && morph_wlvl == 2u && (L[k] < 9u || (sqm_turns == 2u && sqm_poly == 2u)) &&
+                  tide_style == STY_CUSTOM && gl.mode == GM_LOOP && gl.time == 2u && gl.wait == 1u && morph_wlvl == 2u && (L[k] < 9u || sqm_poly == 2u) &&
                   (L[k] < 11u || (sqm_sync == 0u && sqm_arc == 2u)));
         }
     }
     memset(rec + 5, 0, 16);
-    for (k = 0; k < 9u; k++)
-        rec[5 + (k == 0 ? TS_MODE : k == 1 ? TS_TIME : k == 2 ? TS_WAIT : k == 3 ? TS_VARY : k == 4 ? TS_TURNS : k == 5 ? TS_POLY : k == 6 ? TS_SYNC : k == 7 ? TS_ARC : TS_WASH)] = STY[4][k];
+    for (k = 0; k < 8u; k++)
+        rec[5 + (k == 0 ? TS_MODE : k == 1 ? TS_TIME : k == 2 ? TS_WAIT : k == 3 ? TS_VARY : k == 4 ? TS_POLY : k == 5 ? TS_SYNC : k == 6 ? TS_ARC : TS_WASH)] = STY[4][k];
     rec[5 + TS_STYLE] = 4;
     put_rec(rec, 5u + TS_N);
     tide_seen_ok = 0;
@@ -960,8 +953,8 @@ static void t_style(void)
     tide_style_last = STY_DUB;
     tide_settings();
     CHECK("an old CUSTOM (5) with other rows: CUSTOM, as before", tide_style == STY_CUSTOM && tide_style_last == STY_DUB);
-    for (k = 0; k < 9u; k++)
-        rec[5 + (k == 0 ? TS_MODE : k == 1 ? TS_TIME : k == 2 ? TS_WAIT : k == 3 ? TS_VARY : k == 4 ? TS_TURNS : k == 5 ? TS_POLY : k == 6 ? TS_SYNC : k == 7 ? TS_ARC : TS_WASH)] = STY[STY_DRONE][k];
+    for (k = 0; k < 8u; k++)
+        rec[5 + (k == 0 ? TS_MODE : k == 1 ? TS_TIME : k == 2 ? TS_WAIT : k == 3 ? TS_VARY : k == 4 ? TS_POLY : k == 5 ? TS_SYNC : k == 6 ? TS_ARC : TS_WASH)] = STY[STY_DRONE][k];
     put_rec(rec, 5u + TS_N);
     tide_seen_ok = 0;
     tide_settings();
@@ -1012,39 +1005,39 @@ static void t_store(void)
     CHECK("  .. and tide_store_load(TS_N) still wants all of them", !tide_store_load(b, TS_N));
     tide_store_dirty = 0;
     tide_seen_ok = 0;
-    sqm_turns = 0, sqm_poly = 0;
+    sqm_poly = 0;
     gl.mode = GM_ONCE, gl.time = 0, gl.target = GT_SOUND, gl.wait = 0, sqm_vary_all = 0, morph_musical = 1, morph_wlvl = 0;
     tide_settings();
     CHECK("the settings of the older record are kept", gl.mode == GM_WANDER && gl.time == 2u && gl.target == GT_BOTH && gl.wait == 1u && sqm_vary_all == 1u &&
           morph_musical == 0u && morph_wlvl == 3u);
-    CHECK("  .. TURNS, POLY and SYNC at their defaults: TAKE TURNS, GENTLE, SOFT", sqm_turns == 1u && sqm_poly == 1u && sqm_sync == 1u);
+    CHECK("  .. POLY and SYNC at their defaults: GENTLE, SOFT", sqm_poly == 1u && sqm_sync == 1u);
     CHECK("  .. nothing is written back by the load alone", !tide_store_dirty);
-    sqm_turns = 0, sqm_poly = 2;
+    sqm_poly = 2;
     tide_settings();
     CHECK("a change is marked for saving with all the fields", tide_store_dirty && tide_tail[4] == TS_N);
     fm1_ms += 3000u;
     song.playing = 0;
     tide_store_poll();
-    CHECK("  .. saved", !tide_store_dirty && tide_store_load(b, TS_N) && b[TS_TURNS] == 0u && b[TS_POLY] == 2u && !memcmp(b, old, 7));
+    CHECK("  .. saved", !tide_store_dirty && tide_store_load(b, TS_N) && b[TS_TURNS] == TS_TURNS_OLD && b[TS_POLY] == 2u && !memcmp(b, old, 7));
     tide_seen_ok = 0;
-    sqm_turns = 1, sqm_poly = 1;
+    sqm_poly = 1;
     gl.mode = GM_ONCE;
     tide_settings();
-    CHECK("  .. read back after a restart", sqm_turns == 0u && sqm_poly == 2u && gl.mode == GM_WANDER);
-    {   /* the 9-byte record of the TURNS / POLY build: those two kept, SYNC at its default */
+    CHECK("  .. read back after a restart", sqm_poly == 2u && gl.mode == GM_WANDER);
+    {   /* the 9-byte record of the TURNS / POLY build: POLY kept (TURNS is not read), SYNC at its default */
         uint8_t r9[5 + 9] = {'T', 'I', 'D', 'E', 1, GM_LOOP, 1, GT_SEQ, 0, 0, 1, 0, 0, 2};
         put_rec(r9, sizeof r9);
         tide_seen_ok = 0;
         sqm_sync = 0;
         sqm_arc = 2;
         tide_settings();
-        CHECK("a 9-byte record: TURNS and POLY kept, SYNC SOFT", gl.mode == GM_LOOP && sqm_turns == 0u && sqm_poly == 2u && sqm_sync == 1u && sqm_arc == 0u);
+        CHECK("a 9-byte record: POLY kept, SYNC SOFT", gl.mode == GM_LOOP && sqm_poly == 2u && sqm_sync == 1u && sqm_arc == 0u);
     }
     rec[5 + TS_TURNS] = 9, rec[5 + TS_POLY] = 9, rec[5 + TS_SYNC] = 9, rec[5 + TS_ARC] = 9;
     put_rec(rec, 5 + TS_N);
     tide_seen_ok = 0;
     tide_settings();
-    CHECK("a value out of range: TURNS, POLY, SYNC at their defaults", sqm_turns == 1u && sqm_poly == 1u && sqm_sync == 1u && sqm_arc == 0u);
+    CHECK("a value out of range: POLY, SYNC at their defaults", sqm_poly == 1u && sqm_sync == 1u && sqm_arc == 0u);
     rec[5 + TS_ARC] = 2;
     put_rec(rec, 5 + TS_N);
     tide_seen_ok = 0;
@@ -1052,14 +1045,12 @@ static void t_store(void)
     CHECK("a full record: ARC read back", sqm_arc == 2u);
 }
 
-/* audit C4: the AUTO TIDE page's redraw hash changes when any one of its settings changes, whatever TURNS is (TAKE TURNS' factor masked VARY BARS) */
+/* audit C4: the AUTO TIDE page's redraw hash changes when any one of its settings changes */
 static void t_sig(void)
 {
-    uint32_t tu, f, ok = 1, h0, h1;
+    uint32_t f, ok = 1, h0, h1;
     setup(16, 16, 2, 2, 0);
-    for (tu = 0; tu < 4u; tu++)
-        for (f = 0; f < 12u; f++) {
-            sqm_turns = (uint8_t)tu;
+    for (f = 0; f < 11u; f++) {
             h0 = tide_sig();
             switch (f) {
             case 0: sqm_vary_all ^= 1u; break;
@@ -1073,12 +1064,12 @@ static void t_sig(void)
             case 8: gl.wait ^= 1u; break;
             case 9: jl_sel ^= 1u; break;
             case 10: tarc.hand ^= 1u; break;
-            default: sqm_turns ^= 1u; break;
+            default: break;
             }
             h1 = tide_sig();
             if (h0 == h1) {
                 ok = 0;
-                printf("  tide_sig: TURNS %u, field %u flipped, hash unchanged %08x\n", tu, f, h0);
+                printf("  tide_sig: field %u flipped, hash unchanged %08x\n", f, h0);
             }
             switch (f) {                                     /* (back) */
             case 0: sqm_vary_all ^= 1u; break;
@@ -1095,8 +1086,7 @@ static void t_sig(void)
             default: break;
             }
         }
-    CHECK("AUTO TIDE redraw hash: each setting moves it under every TURNS (TAKE TURNS no longer masks VARY BARS and the ARC)", ok);
-    sqm_turns = 0;
+    CHECK("AUTO TIDE redraw hash: each setting moves it", ok);
 }
 
 /* B04: the SEQ fader moved after an edit plays the edited ends at once (not up to 20 ms on) */

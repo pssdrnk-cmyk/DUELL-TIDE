@@ -116,7 +116,7 @@ static uint32_t arp_vel_at(track_t *t, uint32_t i)
 typedef struct { uint32_t kept_min, drift, bars, thin_bars, vel[5], nvel[5], vlead, nlead, vfol, nfol; } stats_t;
 /* n bars of automatic WNDR (both parts, 16-bar trips, WAIT 2) from PLAY with TURNS, SYNC, ARC as asked (cat >= 0: part p on a sound of
  * that category); part p's statistics */
-static stats_t run(uint32_t scene, uint32_t bars, uint32_t turns, uint32_t sync, uint32_t arc, int32_t cat1, uint32_t p)
+static stats_t run(uint32_t scene, uint32_t bars, uint32_t sync, uint32_t arc, int32_t cat1, uint32_t p)
 {
     stats_t st;
     uint32_t b, n = bars * 4u * (uint32_t)FS * 60u / 240u / CTL + 1u, last = 0xFFFFFFFFu;
@@ -132,7 +132,7 @@ static stats_t run(uint32_t scene, uint32_t bars, uint32_t turns, uint32_t sync,
         }
         trk[p].preset = (uint8_t)j, trk[p].user = 0;   /* (the role is the Original's category; the voice itself does not matter here) */
     }
-    sqm_vary_all = 0, sqm_turns = (uint8_t)turns, sqm_sync = (uint8_t)sync, sqm_arc = (uint8_t)arc, sqm_poly = 1;
+    sqm_vary_all = 0, sqm_sync = (uint8_t)sync, sqm_arc = (uint8_t)arc, sqm_poly = 1;
     morph_musical = 1;
     morph.cfg = (uint8_t)(morph.cfg & ~MC_PIT);
     gl.target = GT_BOTH, gl.mode = GM_WANDER, gl.time = 4u, gl.wait = 2u;
@@ -184,13 +184,13 @@ static uint32_t floor_of(uint32_t hits) { uint32_t f = (hits * 3u + 4u) / 5u; re
 
 static void t_motif(void)
 {
-    static const struct { uint32_t scene, turns, sync, arc; const char *name; } C[4] = {
-        {0, 2, 1, 1, "dub, STYLE DUB"}, {0, 2, 2, 2, "dub, STYLE PEAK"}, {1, 2, 1, 1, "house, STYLE DUB"}, {1, 2, 2, 2, "house, STYLE PEAK"}};
+    static const struct { uint32_t scene, sync, arc; const char *name; } C[4] = {
+        {0, 1, 1, "dub, STYLE DUB"}, {0, 2, 2, "dub, STYLE PEAK"}, {1, 1, 1, "house, STYLE DUB"}, {1, 2, 2, "house, STYLE PEAK"}};
     uint32_t c, p;
     char msg[160];
     for (c = 0; c < 4u; c++)
         for (p = 0; p < 2u; p++) {
-            stats_t st = run(C[c].scene, 128, C[c].turns, C[c].sync, C[c].arc, -1, p);
+            stats_t st = run(C[c].scene, 128, C[c].sync, C[c].arc, -1, p);
             printf("tidemotif: %s part %u: %u bars, original hits kept per bar min %u of %u, drift max %u\n", C[c].name, p + 1, st.bars,
                    st.kept_min, popc(orig[p]), st.drift);
             snprintf(msg, sizeof msg, "%s part %u: every bar keeps max(2, 3/5) of the Original's hits in place (%u of %u)", C[c].name, p + 1, st.kept_min, popc(orig[p]));
@@ -207,12 +207,12 @@ static void t_motif(void)
 static void t_lead(void)
 {
     stats_t a, b, c;
-    a = run(0, 64, 2, 1, 0, CAT_PAD, 0);                 /* the skank on a pad, no ARC */
+    a = run(0, 64, 1, 0, CAT_PAD, 0);                 /* the skank on a pad, no ARC */
     printf("tidemotif: ANSWER skank on a pad: %u listening bars thinned\n", a.thin_bars);
     CHECK("a pad never listens: its skank plays whole", a.bars > 50u && !a.thin_bars && !sqm_thin[0][0]);
-    b = run(0, 64, 2, 1, 0, CAT_PLUCK, 0);               /* the skank on a pluck: chords, every hit an anchor */
+    b = run(0, 64, 1, 0, CAT_PLUCK, 0);               /* the skank on a pluck: chords, every hit an anchor */
     CHECK("a chord skank on a pluck listens with its anchors whole (two voices, no hit dropped)", b.bars > 50u && !sqm_thin[0][0]);
-    c = run(2, 64, 2, 1, 0, CAT_LEAD, 0);                /* a 7-note lead line on a lead sound */
+    c = run(2, 64, 1, 0, CAT_LEAD, 0);                /* a 7-note lead line on a lead sound */
     printf("tidemotif: ANSWER lead line: %u listening bars thinned, vel speaking %u listening %u\n", c.thin_bars,
            c.nlead ? c.vlead / c.nlead : 0u, c.nfol ? c.vfol / c.nfol : 0u);
     CHECK("a lead line drops its optional hits on its listening bars", c.thin_bars > 2u);
@@ -239,18 +239,18 @@ static void t_lead(void)
         CHECK("no listening while the arc thins", !sqm_listens(0, 2u) && !sqm_listens(1, 1u));
         tarc_thin = 0;
     }
-    a = run(0, 64, 2, 1, 0, CAT_BASS, 1);                /* part 2's bass line on a bass */
+    a = run(0, 64, 1, 0, CAT_BASS, 1);                /* part 2's bass line on a bass */
     CHECK("a bass never listens", !a.thin_bars && !sqm_thin[1][0]);
 }
 static void t_dynamics(void)
 {
-    stats_t st = run(0, 192, 2, 1, 1, -1, 0);
+    stats_t st = run(0, 192, 1, 1, -1, 0);
     uint32_t pk = st.nvel[AP_PEAK] ? st.vel[AP_PEAK] / st.nvel[AP_PEAK] : 0u, br = st.nvel[AP_BREAK] ? st.vel[AP_BREAK] / st.nvel[AP_BREAK] : 0u;
     printf("tidemotif: ARC velocity: peak %u, breakdown %u\n", pk, br);
     CHECK("ARC: the peak plays louder than the breakdown (by more than 20 %)", pk && br && br * 120u < pk * 100u);
     CHECK("ARC: the shape never pushes a velocity past 127", pk <= 127u);
     g_amode = AM_SEQ_ID;                                 /* D1: the same on ARP SEQ parts (nearly every factory multi) */
-    st = run(0, 192, 2, 1, 1, -1, 0);
+    st = run(0, 192, 1, 1, -1, 0);
     pk = st.nvel[AP_PEAK] ? st.vel[AP_PEAK] / st.nvel[AP_PEAK] : 0u, br = st.nvel[AP_BREAK] ? st.vel[AP_BREAK] / st.nvel[AP_BREAK] : 0u;
     printf("tidemotif: ARC velocity on ARP SEQ: peak %u, breakdown %u\n", pk, br);
     CHECK("ARC on ARP SEQ: the peak plays louder than the breakdown (by more than 20 %)", pk && br && br * 120u < pk * 100u);

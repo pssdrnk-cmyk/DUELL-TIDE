@@ -104,12 +104,11 @@ static uint32_t sqm_best(uint32_t *score, uint32_t len)
     return b;
 }
 
-static volatile uint8_t sqm_turns = 1;                  /* TURNS: stored and shown (tide_ui.c), played by nothing since b7: CALL AND ANSWER is always on (sqm_listens) */
 static volatile uint32_t sqm_thin[NSHOWN][2];            /* the steps a thinned part does not play, a bit each (seq_answer.c, main loop) */
 static volatile int8_t sqm_dyn;                         /* ARC's dynamics, tarc_bright: +1 louder, -1 softer (seq_answer.c, main loop) */
 static volatile uint8_t sqm_lead;                        /* the parts that listen in CALL AND ANSWER and whose chords thin to two voices, a bit each: neither a bass nor a pad (seq_answer.c, main loop) */
 static volatile uint8_t sqm_arc;                         /* ARC: 0 OFF, 1 RISE, 2 DROP (tide_ui.c, the TIDE LIST; seq_arc.c) */
-static volatile uint8_t tarc_dropphr = 0xFFu, tarc_thin, tarc_fast, tarc_hold;   /* seq_arc.c's planner to the audio side: the drop's 8-bar unit, the parts thinned, the late rise (read by nothing since CALL AND ANSWER), no POLY */
+static volatile uint8_t tarc_dropphr = 0xFFu, tarc_thin, tarc_hold;   /* seq_arc.c's planner to the audio side: the drop's 8-bar unit, the parts thinned, no POLY */
 #define TARC_DROP_BAR(bar) (tarc_dropphr == (((bar) >> 3) & 63u) && ((bar) & 7u) < 2u)   /* (the drop's silent bars: its unit's first 2) */
 static uint32_t tarc_sync(void);
 static uint32_t glide_tide_on(void);

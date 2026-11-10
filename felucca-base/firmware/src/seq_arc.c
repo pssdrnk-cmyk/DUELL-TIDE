@@ -7,7 +7,7 @@
  * ARC RISE has no drop of its own; ARC DROP drops on the first arc after PLAY, then on about half; the hand
  * (OCT- + K2 on the TIDE page, tarc_drop_hand) drops at the next unit in either. Playback masks only: KEEP stores the whole pattern,
  * nothing here is saved, a power cycle starts at RISE. STOP and PLAY leave the arc where it was; a load or a K1 stop starts it again. ARC OFF: every lever neutral, as before. The planner is main loop only; the
- * audio interrupt reads tarc_dropphr, tarc_thin, tarc_fast (seq_morph.c seq_play_step) and tarc_hold (seq_poly.c). */
+ * audio interrupt reads tarc_dropphr, tarc_thin (seq_morph.c) and tarc_hold (seq_poly.c). */
 enum { AP_RISE, AP_PEAK, AP_DROP, AP_BREAK, AP_RECOVER };
 static struct { uint8_t last, phase, left, len, next, t, hand, cnt, run, phr, hleft, au; } tarc __attribute__((section(".pool")));   /* (main loop only: the pool, zeroed at boot; .bss is the tighter) hleft: the units left before a hand drop shortened the phase; au: the arc's units so far */
 
@@ -45,7 +45,7 @@ static void tarc_begin(uint32_t ph)
 }
 static void tarc_clear(void)
 {
-    tarc_dropphr = 0xFFu, tarc_thin = 0, tarc_fast = 0, tarc_hold = 0;
+    tarc_dropphr = 0xFFu, tarc_thin = 0, tarc_hold = 0;
     tarc.t = 0, tarc.hand = 0;
 }
 /* the levers of the phase and the phrase now */
@@ -56,7 +56,6 @@ static void tarc_levers(uint32_t auto_mask)
     tarc.t = (uint8_t)(ph == AP_RISE ? (el + 1u) * 255u / tarc.len : ph == AP_PEAK ? 255u : ph == AP_RECOVER ? (el + 1u) * 100u / tarc.len : 0u);
     th = (uint8_t)(auto_mask & (ph == AP_BREAK || ph == AP_DROP ? 3u : ph == AP_RECOVER && !el && !(sqm_bar & 4u) ? 1u << (tarc.cnt & 1u) : 0u));   /* (RECOVER: one part still thinned for its first 4 bars) */
     MORPH_LOCK();                                        /* (audit C12: the three levers change together for the audio interrupt) */
-    tarc_fast = tarc.t >= 200u;
     tarc_thin = th;
     tarc_hold = ph == AP_PEAK || ph == AP_DROP || ph == AP_BREAK || tarc_dropphr != 0xFFu;   /* (B1: no POLY stretch in the breakdown either) */
     MORPH_UNLOCK();
