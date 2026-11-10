@@ -422,13 +422,6 @@ static volatile uint8_t mix_xf, mix_split;
 #ifndef TIDE_PLAYSEL
 #define TIDE_PLAYSEL DUELL_TIDE
 #endif
-/* the mode the audio plays (seq.c mode_apply): the PLAY MODE row's (duell_mode_req), but TIDE_PLAYSEL with one part selected plays LAYER as STEREO (the part alone on
- * every key; owner 2026-11-10: ALGORITHM's PART 1 / PART 2 never play both parts). (song.both: TIDE's; expanded only where it is used) */
-#if TIDE_PLAYSEL
-#define MODE_WANT() (duell_mode_req == DM_LAYER && !song.both ? (uint32_t)DM_STEREO : (uint32_t)duell_mode_req)
-#else
-#define MODE_WANT() ((uint32_t)duell_mode_req)
-#endif
 
 #ifndef DUELL_PRESETS
 #define DUELL_PRESETS 1          /* 1: Felucca's engine preset tables (eng_*.c, engine_t.presets) are built; no firmware code reads them, the host tests render them (tests/hostsim.c,

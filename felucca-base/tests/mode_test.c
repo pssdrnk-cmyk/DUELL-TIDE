@@ -1861,30 +1861,37 @@ static void t_playsel(void)
     song.sel = 0;
     frame();
     expect("b7 ALGORITHM: PART 1 with STEREO reads PART 1", play_pos() == PLS_P1);
-    {
-        static const uint8_t PSB[PLS_N] = {0, 1, 1, 1, 0}, PSM[PLS_N] = {DM_STEREO, DM_LAYER, DM_STEREO, DM_SPLIT, DM_SPLIT}, PSS[PLS_N] = {0, 0, 0, 0, 1};
+    {                                                    /* (owner 2026-11-10: three positions; the middle is the PLAY MODE row's) */
+        static const uint8_t RM[3] = {DM_LAYER, DM_STEREO, DM_SPLIT}, RP[3] = {PLS_LAYER, PLS_STEREO, PLS_DUEL};
+        uint32_t r;
         ok = 1;
-        for (i = 1; i < PLS_N; i++) {
+        for (r = 0; r < 3u; r++) {
+            duell_mode_req = RM[r]; song.both = 0; song.sel = 0;
+            mblk(1);
+            ok &= duell_mode == (RM[r] == DM_LAYER ? DM_STEREO : RM[r]);   /* (PART 1: one part on every key; LAYER plays as STEREO) */
             ui.msg_t = 0;
             turn(EN_ALGO, 1);
             mblk(1);
-            ok &= play_pos() == i && song.both == PSB[i] && duell_mode_req == PSM[i] && duell_mode == PSM[i] && song.sel == PSS[i] && msg_is(PLS_NAME[i]);
-        }
-        expect("  .. right: LAYER (BOTH, LAYER), STEREO, DUEL (BOTH, the MODE each), PART 2 (part 2, DUEL kept), each named", ok);
-        turn(EN_ALGO, 1);
-        expect("  .. PART 2 is the right end", play_pos() == PLS_P2 && duell_mode_req == DM_SPLIT);
-        for (i = 0; i < 3u; i++)
+            ok &= play_pos() == RP[r] && song.both && duell_mode_req == RM[r] && duell_mode == RM[r] && msg_is(PLS_NAME[RP[r]]);
+            turn(EN_ALGO, 1);
+            mblk(1);
+            ok &= play_pos() == PLS_P2 && !song.both && song.sel == 1u && duell_mode_req == RM[r];
+            turn(EN_ALGO, 1);
+            ok &= play_pos() == PLS_P2;
             turn(EN_ALGO, -1);
-        expect("  .. back left: DUEL, STEREO, LAYER (BOTH, the edit pages' part stays part 2)", play_pos() == PLS_LAYER && song.both && song.sel == 1u && duell_mode_req == DM_LAYER);
-        turn(EN_ALGO, -1);
-        mblk(1);
-        expect("  .. PART 1 out of LAYER: STEREO (LAYER's mix; the keys play part 1 alone)", play_pos() == PLS_P1 && !song.both && song.sel == 0u && duell_mode == DM_STEREO);
-        turn(EN_ALGO, -1);
-        expect("  .. PART 1 is the left end", play_pos() == PLS_P1);
+            turn(EN_ALGO, -1);
+            turn(EN_ALGO, -1);
+            ok &= play_pos() == PLS_P1 && duell_mode_req == RM[r];
+        }
+        expect("  .. PART 1, the middle (named LAYER / STEREO / DUEL by the row, both parts, that mode), PART 2, stopping at the ends; the row is never changed", ok);
     }
-    duell_mode_req = DM_LAYER;                            /* an old multi / the PLAY MODE row: BOTH off with LAYER */
-    song.both = 0;
-    expect("  .. BOTH off with LAYER (an old multi) reads LAYER, nothing changed by reading it", play_pos() == PLS_LAYER && !song.both && duell_mode_req == DM_LAYER);
+    duell_mode_req = DM_LAYER;                            /* PART 1 with the row on LAYER: part 1 alone on the keys */
+    song.both = 0; song.sel = 0;
+    mblk(1);
+    expect("  .. PART 1 with LAYER on the row: the keys play part 1 alone (STEREO underneath), the row still LAYER", play_pos() == PLS_P1 && duell_mode == DM_STEREO && duell_mode_req == DM_LAYER && ps_key1(10u, 0u));
+    jl_sel = JL_MODE;
+    mode_knob(0u, 1);
+    expect("  .. the PLAY MODE row changed: ALGORITHM goes to the middle", song.both && play_pos() == PLS_STEREO);
     ui.page = page_of("MORPH") + 0u;
     {
         uint32_t ep;

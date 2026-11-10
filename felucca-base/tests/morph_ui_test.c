@@ -637,7 +637,7 @@ static void t_target(void)
     turn(EN_ALGO, 1);
     expect("ALGORITHM on MORPH (0.2.9: PART 1, BOTH, PART 2): right is BOTH, both badges, part 1 still selected",
            SEL_BOTH && song.sel == 0u && badge_lit() == 3u && msg_is(ALGO_BOTH_SAY));
-    algo_turns(ALGO_TO_P2);                             /* (1.0.0-b7 TIDE_PLAYSEL: LAYER, STEREO, DUEL, PART 2) */
+    algo_turns(ALGO_TO_P2);                             /* */
     expect("ALGORITHM: part 2 selected", song.sel == 1u && !SEL_BOTH && badge_lit() == 2u);
     turn(EN_K1, 20);
     expect("SELECTED: KNOB 1 now moves part 2's fader only", mph[1].fader == K1F(20u) && mph[0].fader == 0u);
@@ -1227,7 +1227,7 @@ static void t_settings(void)
     morph_page();
     turn(EN_K4, 30 - (int)mph[0].amount);   /* (30: TIDE's MUSIC roll loads at 40 already, a turn to 40 would turn nothing) */
     turn(EN_ALGO, 1);
-    algo_turns(ALGO_TO_P2);                             /* (0.2.9: BOTH, then PART 2; 1.0.0-b7 TIDE_PLAYSEL: LAYER, STEREO, DUEL, PART 2) */
+    algo_turns(ALGO_TO_P2);                             /* (0.2.9: BOTH, then PART 2) */
     turn(EN_K4, 5 - (int)mph[1].amount);
     turn(EN_ALGO, -1);                                  /* BOTH: not saved */
     go_title(MORPH_SET_TITLE); frames(32);

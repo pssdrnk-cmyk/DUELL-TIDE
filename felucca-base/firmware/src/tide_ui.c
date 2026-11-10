@@ -203,10 +203,8 @@ static void tide_custom_take(void)
 static __attribute__((noinline)) const char *jl_needs(uint32_t r)
 {
 #if TIDE_PLAYSEL
-    if (r >= JL_XFADE && !song.both)                     /* 1.0.0-b7: XFADE and SPLIT act in ALGORITHM's middle only (PART 1 / PART 2 play one part); SPLIT there in STEREO and DUEL too */
-        return "2 PARTS ONLY";
-    if (r == JL_SPLIT)
-        return 0;
+    if (r == JL_SPLIT || (r == JL_XFADE && duell_mode_req == DM_LAYER))   /* 1.0.0-b7: XFADE and SPLIT act in ALGORITHM's middle only (PART 1 / PART 2 play one part); SPLIT there in STEREO and DUEL too */
+        return song.both ? 0 : "2 PARTS ONLY";
 #endif
     if (r >= JL_XFADE)
         return duell_mode_req == DM_LAYER ? 0 : "LAYER ONLY";

@@ -481,16 +481,16 @@ static void turn(uint32_t role, int32_t s)
     frame();
     host_ticks += 200000u;                        /* (no knob acceleration between the turns) */
 }
-/* ALGORITHM on a BOTH page (ui_input.c algo_input): TIDE_PLAYSEL (1.0.0-b7) PART 1, LAYER, STEREO, DUEL, PART 2; else PART 1, BOTH, PART 2. ALGO_TO_P2: the detents from
+/* ALGORITHM on a BOTH page (ui_input.c algo_input): PART 1, the middle (BOTH; TIDE_PLAYSEL, 1.0.0-b7: named by the PLAY MODE row), PART 2. ALGO_TO_P2: the detents from
  * the first BOTH position (one right of PART 1) to PART 2, and from PART 2's left neighbour back to PART 1; the names those two BOTH positions show */
 #if TIDE_PLAYSEL
-#define ALGO_TO_P2 3
-#define ALGO_BOTH_SAY "LAYER"
-#define ALGO_BOTH_LEFT "DUEL"
+#define ALGO_TO_P2 1
+#define ALGO_BOTH_SAY (PLS_NAME[play_pos()])
+#define ALGO_BOTH_LEFT (PLS_NAME[play_pos()])
 #else
 #define ALGO_TO_P2 1
 #define ALGO_BOTH_SAY "BOTH"
-#define ALGO_BOTH_LEFT "BOTH"
+#define ALGO_BOTH_LEFT ("BOTH")
 #endif
 static void algo_turns(int32_t n)                 /* n detents of ALGORITHM, one event each */
 {
@@ -9361,7 +9361,7 @@ static int test_item158_pages(void)
                 ui_mode_set = duell_mode_req = duell_mode = lay ? DM_LAYER : DM_SPLIT;
                 go_title("TIDE SETTINGS");
                 jl_sel = (uint8_t)(JL_MODE + row);
-                song.both = 0;                            /* (1.0.0-b7 TIDE_PLAYSEL: one part selected; SPLIT then says 2 PARTS ONLY outside LAYER) */
+                song.both = (uint8_t)lay;                 /* (1.0.0-b7 TIDE_PLAYSEL: LAYER in ALGORITHM's middle; DUEL with one part selected, where SPLIT says 2 PARTS ONLY) */
                 frames(64);
                 screen_read();
                 has_set = has_row = has_need = k24 = 0;
@@ -9392,6 +9392,8 @@ static int test_item158_pages(void)
                 ui_mode_set = duell_mode_req = duell_mode = lay ? DM_LAYER : DM_SPLIT;
                 mix_xf = 50;
                 go_title("TIDE SETTINGS");
+                frames(64);                               /* (the stored part selection read first) */
+                song.both = (uint8_t)lay;                 /* (1.0.0-b7 TIDE_PLAYSEL: XFADE acts in the middle) */
                 jl_sel = JL_SPLIT;
                 frames(64);
                 snprintf(want, sizeof want, "%s", row ? "%" : lay ? "LAYER" : "DUEL");   /* (XFADE: the text ending in %) */

@@ -220,6 +220,9 @@ static void sweep_home(void)
         enter(r[m - 1u]);                                 /* (MODE, the round's last) */
 #endif
         duell_mode_force(DM_LAYER); ui_mode_set = ui.mode_seen = DM_LAYER;
+#if DUELL_TIDE
+        song.both = 1;                                    /* (1.0.0-b7 TIDE_PLAYSEL: SPLIT acts in ALGORITHM's middle) */
+#endif
         mix_split = 0;  turn(EN_K3, 1);                  /* (1.0.0-b7: OFF, MIDDLE, then the notes) */
         ok2 = mix_split == SPLIT_MIDDLE;
         turn(EN_K3, 1);   ok2 &= mix_split == 67u;
@@ -975,6 +978,7 @@ static void sweep_rec_hold_layer(void)
     ui_power_on();
     song.rec = 0;
     go_title("AMP ENV");
+    frames(64);                                         /* (the stored part selection read first: LAYER below is played with both parts selected, 1.0.0-b7) */
     duell_mode_force(DM_LAYER); ui_mode_set = ui.mode_seen = DM_LAYER;
     trk[0].p[P_AMODE] = AM_UP; trk[1].p[P_AMODE] = AM_OFF;
     trk[0].p[P_AHOLD] = trk[1].p[P_AHOLD] = 0;
@@ -1000,6 +1004,9 @@ static void sweep_rec_hold_layer(void)
     frames(600);
     expect("  .. one part on, one off: REC turns both OFF", trk[0].p[P_AHOLD] == 0 && trk[1].p[P_AHOLD] == 0 && msg_is("HOLD OFF"));
     duell_mode_force(DM_SPLIT); ui_mode_set = ui.mode_seen = DM_SPLIT;
+#if DUELL_TIDE
+    song.both = 0;                                      /* (one part selected: PART 1 in DUEL) */
+#endif
     press(B_REC);
     frames(600);
     expect("DUEL: REC acts on the selected part only", trk[0].p[P_AHOLD] == 1 && trk[1].p[P_AHOLD] == 0);
@@ -1449,7 +1456,7 @@ static void sweep_algo(void)
     ok &= song.sel == 0u && !SEL_BOTH;
     turn(EN_ALGO, 1);
     ok &= song.sel == 0u && SEL_BOTH && badge_lit() == 3u;
-    algo_turns(ALGO_TO_P2);                       /* (1.0.0-b7 TIDE_PLAYSEL: LAYER, STEREO, DUEL, PART 2) */
+    algo_turns(ALGO_TO_P2);                       /* */
     ok &= song.sel == 1u && !SEL_BOTH && badge_lit() == 2u;
     turn(EN_ALGO, 1);
     ok &= song.sel == 1u && !SEL_BOTH;

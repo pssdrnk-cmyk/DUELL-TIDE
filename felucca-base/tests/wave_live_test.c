@@ -244,7 +244,7 @@ int main(void)
         ok(w, worst0 <= WL_HN && worst1 <= WL_HN);
     }
 
-    /* select: PART 1, BOTH, PART 2 on the page (TIDE_PLAYSEL: PART 1, LAYER, STEREO, DUEL, PART 2; BOTH = the middle three) */
+    /* select: PART 1, BOTH, PART 2 on the page (TIDE_PLAYSEL: the middle named by the PLAY MODE row) */
     turn(EN_ALGO, -1);
     ok("select: from BOTH one detent left is PART 1", !SEL_BOTH && song.sel == 0u);
     turn(EN_ALGO, -1);
@@ -257,9 +257,8 @@ int main(void)
     watch(1000, chord, 0, &a0, &a1, &n, &mv);
     snprintf(w, sizeof w, "select: BOTH, the picture alive (%u, %u of %u)", a0, a1, n);
     ok(w, a0 * 5u >= n * 4u && a1 * 5u >= n * 4u);
-    for (uint32_t k = 0; k < (TIDE_PLAYSEL ? 3u : 1u); k++)   /* (TIDE_PLAYSEL, 1.0.0-b7: LAYER, STEREO, DUEL, then PART 2) */
-        turn(EN_ALGO, 1);
-    ok("select: one more right is PART 2 (with TIDE_PLAYSEL past STEREO and DUEL)", !SEL_BOTH && song.sel == 1u);
+    turn(EN_ALGO, 1);
+    ok("select: one more right is PART 2", !SEL_BOTH && song.sel == 1u);
     turn(EN_ALGO, 1);
     ok("select: and it stops there", !SEL_BOTH && song.sel == 1u);
     watch(1000, chord, 0, &a0, &a1, &n, &mv);

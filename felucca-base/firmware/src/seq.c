@@ -1694,6 +1694,13 @@ static track_t *midi_track(uint32_t ch)
  * part 2 note whose channel LAYER ignores): the keys held stay silent until pressed again, MIDI's held and pedalled notes,
  * chords and bends are forgotten, the arps' and the steps' notes end, a latched chord is dropped. The mix follows with
  * its dip (fx.c dm_step), which stops what still rings at its silent point */
+/* the mode the audio plays: the PLAY MODE row's (duell_mode_req), but TIDE_PLAYSEL with one part selected plays LAYER as STEREO (the part alone on every key; owner
+ * 2026-11-10: ALGORITHM's PART 1 / PART 2 never play both parts) */
+#if TIDE_PLAYSEL
+#define MODE_WANT() (duell_mode_req == DM_LAYER && !song.both ? (uint32_t)DM_STEREO : (uint32_t)duell_mode_req)
+#else
+#define MODE_WANT() ((uint32_t)duell_mode_req)
+#endif
 static __attribute__((noinline)) void mode_apply(void)
 {
     uint32_t i, k, m = MODE_WANT();

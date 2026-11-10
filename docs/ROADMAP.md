@@ -19,7 +19,7 @@ Six builder lanes made these overnight (9 to 10 November); each is measured on t
 
 | What | State |
 |---|---|
-| ALGORITHM on HOME picks how the keys play: PART 1, LAYER, STEREO, DUEL, PART 2 (the middle three select both parts and set the PLAY MODE; the header names LAYER, STEREO or DUEL). A move that changes the play mode cuts a held chord (the mode change silences held keys by design). An experiment you try before it stays ([design](design/PLAY_MODE_SELECT.md)) | Built (b7/playsel, on b7), not on the unit yet |
+| ALGORITHM on HOME: PART 1, the middle, PART 2. The middle plays both parts in the PLAY MODE row's mode and the header names it (LAYER, STEREO, DUEL); PART 1 / PART 2 play one part on every key; changing PLAY MODE moves ALGORITHM to the middle. With PLAY MODE on LAYER, moving between a side and the middle cuts a held chord (the mode change silences held keys by design) ([design](design/PLAY_MODE_SELECT.md)) | Built (b7/playsel, on b7), not on the unit yet |
 | SPLIT MIDDLE: the keys split in the middle and the split follows OCT- / OCT+; with SPLIT set, STEREO and DUEL split the keys too | Built (b7/playsel, on b7), not on the unit yet |
 | Factory pattern table packed: its accent / slide / tie flags as bit masks (SP3, 640 B), the room for the two above | Built (b7/playsel) |
 | STYLE DUB keeps the multi's own sounds (WANDER, not JOURNEY); AMBIENT without POLY; a saved STYLE stays that style ([MR1](audits/2026-11-09/musical-review/TASKS.md#mr1)). M02: brightness swing 2x not 7x, dulled bars 7 % not 51 %. The first start stays M02 DUB CHORD | Built |

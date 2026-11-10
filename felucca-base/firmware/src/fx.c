@@ -1918,6 +1918,10 @@ static void duell_mode_force(uint32_t m)
         dm_lines_clear();
     }
     duell_mode_req = duell_mode = dm_cur = (uint8_t)m;
+#if TIDE_PLAYSEL
+    if (m == DM_LAYER)                                  /* (1.0.0-b7: LAYER plays in ALGORITHM's middle only, both parts selected; seq.c MODE_WANT) */
+        song.both = 1;
+#endif
     dm_split = m == DM_SPLIT;
     dm_g = DM_ONE;
     dm_dir = 0;
