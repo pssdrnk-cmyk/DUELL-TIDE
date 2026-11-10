@@ -419,7 +419,7 @@ else:
 test SILENCE  5 s of nothing
 tail 2
 test M07-CHORDS  M07 FINAL REEL, four chords
-load multi 16 "FINAL REEL"
+load multi 6 "PIANO HOUSE"
 at 0.0 chord C3 E3 G3 B3 vel 90
 at 3.0 chord A2 C3 E3 G3 vel 90
 at 6.0 release
@@ -720,7 +720,7 @@ if os.path.exists(SIM):
     suite3 = os.path.join(tmp, "rep.txt")
     open(suite3, "w").write("""suite REP
 test M07-CHORDS  M07 FINAL REEL, four chords
-load multi 16 "FINAL REEL"
+load multi 6 "PIANO HOUSE"
 repeat 2
 at 0.0 chord C3 E3 G3 B3 vel 90
 at 3.0 chord A2 C3 E3 G3 vel 90
