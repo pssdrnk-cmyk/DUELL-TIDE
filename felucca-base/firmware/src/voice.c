@@ -627,7 +627,7 @@ static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int g
             v->mvel = t->m_vel;
             v->mrnd = t->m_rnd;
             v->xg = t->lay_xg;
-            if (vel > v->vel && nv == 1u)
+            if ((vel > v->vel || acid_on(t)) && nv == 1u)   /* (ACID: a legato note takes its own velocity: a plain note slid into after an accent is plain) */
                 v->vel = (uint8_t)vel;
             glide_set(t, v, glide);
         }
@@ -1305,7 +1305,7 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
             y -= ((y * (c >> 2)) >> 15) + (y > 0);
         }
         t->acid_y = (int16_t)y;
-        if (v0->vel > ACCENT_V0)                        /* an accented note: ENV 2 decays in ACID's short fixed time (~200 ms), the Decay knob only acts on plain notes */
+        if (v0->vel > ACCENT_V0 && ENV_EXP[ACID_ACCDEC] > t->esk2[1])   /* an accented note: ENV 2 decays in ACID's short fixed time (~200 ms), or in the sound's own Decay when that is shorter */
             t->esk2[1] = ENV_EXP[ACID_ACCDEC];
     }
     if (e->block)                                       /* the engine's per-part work (WHEEL: bars, rotor) */
@@ -1343,8 +1343,8 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
                 env = e->amp(t, v, env);
             m.envq15 = e->ownenv ? 0 : env;
             m.amp1 = e->ownenv ? env : mulq15(env, Q15_FROM_127(v->vel));
-            if (acid && v->vel > ACCENT_V0)             /* the accent's burst: the level follows the (short) ENV 2, up to +ACID_BURST at its start */
-                m.amp1 += mulq15(m.amp1, mulq15(v->env2 >> 9, ACID_BURST));
+            if (acid)                                   /* ACID: the level is fixed (ACID_BASE); an accent bursts from it up to unity with the (short) ENV 2 */
+                m.amp1 = mulq15(env, ACID_BASE + (v->vel > ACCENT_V0 ? mulq15(32767 - ACID_BASE, v->env2 >> 9) : 0));
             if (v->xg)                                  /* LAYER XFADE (core.h mix_xf): the note's share between the parts */
                 m.amp1 = mulq15(m.amp1, v->xg);
             if (p[P_LD_AMP] && !BYP(t, BY_LFO1))
@@ -1357,6 +1357,11 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
         if (v->pitch_cur != v->pitch16 || v->gfrac) {   /* glide (glide_set), in 1/65536 of a 1/16 st */
             int32_t q = v->pitch_cur * 65536 + v->gfrac, d = v->pitch16 * 65536 - q;
             int32_t st = v->gstep ? v->gstep : (int32_t)(ENV_LIN[(p[P_GLIDE] ? p[P_GLIDE] : 40) & 127] << 2);   /* RATE (slide: GLD 40's) */
+            if (acid) {                             /* ACID: the 303's RC lag, d / 32 a tick (tau 23 ms: 90 % in 53 ms, 99 % in 106 ms, a semitone or an octave); the last bit (< 32 units) in one step */
+                st = (d < 0 ? -d : d) >> 5;
+                if (!st)
+                    st = d < 0 ? -d : d;
+            }
             q += d > 0 ? (d < st ? d : st) : (-d < st ? d : -st);
             v->pitch_cur = q >> 16;
             v->gfrac = (uint16_t)q;

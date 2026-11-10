@@ -67,8 +67,12 @@ _Static_assert(NSHOWN <= NPART, "core.h: NSHOWN parts are shown, NPART parts exi
 #endif
 #define ACCENT_V0 110
 #define ACID_WAVE 7u             /* b8 ACID: ANALOG WAVE 7 (saw) and 8 (square) play like a 303 (voice.c acid_on, trk_vmode, the accent in track_render); work/b8/acid/DESIGN.md */
-#define ACID_BURST 20000         /* Q15: the accent's level burst at the start of its (short) ENV 2: x(1 + 0.61), +4 dB (tuned by ear on the unit) */
-#define ACID_PUSH 28000          /* Q8 dial steps at a full capacitor: one accent at RES 100 peaks at 0.2 of it (~22 of the 82 steps), four in a row at 0.4 */
+#ifndef ACID_BASE
+#define ACID_BASE 10836         /* Q15 = Q15_FROM_127(42): an ACID note's level whatever its velocity; an accent bursts from it up to unity (32767) with ENV 2: +9.6 dB at the peak. Above unity the amp ramp's multiplies overflow (dsp.c mulq15) */
+#endif
+#ifndef ACID_PUSH
+#define ACID_PUSH 12000         /* Q8 dial steps at a full capacitor (one accent at RES 100 charges it to 0.2: ~10 of the 82 steps, stacked accents to 0.4); the 303 probe's accent centroid 1.0 .. 1.34 x a plain note's (Open303 1.0 .. 1.3) */
+#endif
 #define ACID_ACCDEC 73           /* ENV_EXP index of the accent's forced ENV 2 decay: 10000^(73/127) = 200 ms to 99 % (the forum figure of research-B:204, not a primary source) */
 #define ACCENT_V1 127
 static inline int32_t accent_lift(uint32_t vel, int32_t envq15)

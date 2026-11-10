@@ -1,13 +1,15 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* ACID (b8, work/b8/acid/DESIGN.md): ANALOG WAVE 7 ACID / 8 ACSQ play their accents like a 303; same sources as the firmware (hostsim.c).
  * build/host/acid_test (host_tests.sh acid):
- *   EXACT   a plain note with WAVE ACID renders bit for bit as WAVE SAW, ACSQ as SQR (the new code touches only accents)
+ *   EXACT   a plain note with WAVE ACID renders bit for bit as WAVE SAW at velocity 42 (ACID_BASE), ACSQ as SQR; whatever its own velocity
  *   NONACID the same accent on WAVE SAW: ENV 2 keeps its Decay, the capacitor stays empty, the level step is the velocity's alone
- *   DECAY   an accented ACID note's ENV 2 falls to a half in about 30 ms whatever the Decay knob says (a plain note keeps the Decay's time)
- *   LEVEL   the accent's level burst: well above the velocity's step at the start, back on it a few hundred ms later
+ *   DECAY   an accented ACID note's ENV 2 falls to a half in about 30 ms whatever a long Decay says (a plain note keeps the Decay's time); a Decay
+ *           shorter than that stays (the accent never makes it longer)
+ *   LEVEL   the accent's level burst: +8 .. 11 dB over a plain note at the start (up to unity, no more: above it the amp ramp overflows), on it again after 200 ms
  *   PUSH    the capacitor: one accent charges it, a plain note leaves it empty; two accents in a row stack, more at high RES than at low
- *   SLIDE   a slid step (LEGATO, GLIDE TIME 54 ms, slide_glide as the sequencer sets it) does not retrigger and reaches 90 % of a
- *           semitone and of an octave in 45 .. 60 ms
+ *   SLIDE   a slid step (LEGATO, slide_glide as the sequencer sets it) does not retrigger and is an RC lag: 90 % of a semitone and of an
+ *           octave in 45 .. 60 ms, 99 % in 90 .. 120 ms
+ *   PLAIN   a plain note slid into after an accent takes its own velocity: it is not accented
  *   WAVE    the WAVE list has ACID and ACSQ */
 #define main hostsim_main
 #include "hostsim.c"
@@ -119,7 +121,7 @@ static void exact(void)
     for (w = 0; w < 2u; w++) {
         track_t *t = fresh(W[w][1], 80, 100);
         char s[128];
-        trk_note_on(t, 45, 90);
+        trk_note_on(t, 45, 42);                         /* (ACID plays every plain note at ACID_BASE = Q15_FROM_127(42), whatever its velocity) */
         render(60, ref);
         trk_note_off(t, 45);
         render(40, ref + 60 * 2 * CTL);
@@ -175,6 +177,15 @@ static void decay(void)
         snprintf(s, sizeof s, "ACID: the accent's time does not follow the Decay knob (Decay 85 / 110: %.0f / %.0f ms), a plain note does (%.0f ms)", aa, ms_of(acc), ms_of(plain2));
         check(s, ms_of(acc) > aa * 0.9 && ms_of(acc) < aa * 1.1 && ms_of(plain2) > 3.0 * ap);
     }
+    t = fresh(7, 61, 100);
+    plain = env2_half(t, 96, 3000);
+    t = fresh(7, 61, 100);
+    acc = env2_half(t, 127, 3000);
+    {
+        char s[160];
+        snprintf(s, sizeof s, "ACID: a short Decay (61) is never made longer by an accent: half time plain %.1f ms, accent %.1f ms", ms_of(plain), ms_of(acc));
+        check(s, acc <= plain + 1u);
+    }
 }
 
 static void level(void)
@@ -192,8 +203,8 @@ static void level(void)
     e1 = energy(rec, 250, 290);
     {
         char s[160];
-        snprintf(s, sizeof s, "ACID: the accent's level: start x%.2f, 180 ms later x%.2f of the plain note's (velocity alone is x1.32)", e0 / l0, e1 / l1);
-        check(s, e0 / l0 > 1.7 && e1 / l1 > 1.2 && e1 / l1 < 1.45);
+        snprintf(s, sizeof s, "ACID: the accent's level over a plain note's: start +%.1f dB, 180 ms later %+.1f dB (+8 .. 11 dB, then on the plain level)", 20.0 * log10(e0 / l0), 20.0 * log10(e1 / l1));
+        check(s, 20.0 * log10(e0 / l0) > 8.0 && 20.0 * log10(e0 / l0) < 11.0 && fabs(20.0 * log10(e1 / l1)) < 1.0);
     }
 }
 
@@ -237,7 +248,7 @@ static void push(void)
 }
 
 /* a slid step: the second note while the first is held, slide_glide set as the sequencer sets it; blocks to 90 % of the way */
-static void slide_one(uint32_t from, uint32_t to, double *ms90, int *retrig)
+static void slide_one(uint32_t from, uint32_t to, double *ms90, double *ms99, int *retrig)
 {
     track_t *t = fresh(7, 85, 100);
     voice_t *v = &t->v[0];
@@ -252,26 +263,49 @@ static void slide_one(uint32_t from, uint32_t to, double *ms90, int *retrig)
     *retrig = v->age != age || v->stage == 1u;
     q0 = from * 16 * 65536;
     q1 = to * 16 * 65536;
+    *ms90 = *ms99 = -1.0;
     do {
         q = v->pitch_cur * 65536 + (int32_t)v->gfrac;
-        if ((double)(q - q0) >= 0.9 * (double)(q1 - q0))
+        if (*ms90 < 0 && (double)(q - q0) >= 0.9 * (double)(q1 - q0))
+            *ms90 = ms_of(n);
+        if ((double)(q - q0) >= 0.99 * (double)(q1 - q0)) {
+            *ms99 = ms_of(n);
             break;
+        }
         mix_block(o, CTL);
         n++;
-    } while (n < 400u);
-    *ms90 = ms_of(n);
+    } while (n < 800u);
 }
 static void slide(void)
 {
-    double a, b;
+    double a, b, a9, b9;
     int r1, r2;
-    char s[160];
-    slide_one(45, 46, &a, &r1);
-    slide_one(45, 57, &b, &r2);
+    char s[200];
+    slide_one(45, 46, &a, &a9, &r1);
+    slide_one(45, 57, &b, &b9, &r2);
     snprintf(s, sizeof s, "ACID: a slid step does not retrigger (age and stage kept)");
     check(s, !r1 && !r2);
     snprintf(s, sizeof s, "ACID: a slid step is at 90 %% in %.1f ms for a semitone and %.1f ms for an octave (45 .. 60 ms)", a, b);
     check(s, a >= 45.0 && a <= 60.0 && b >= 45.0 && b <= 60.0);
+    snprintf(s, sizeof s, "ACID: the RC tail: 99 %% in %.1f ms for a semitone and %.1f ms for an octave (90 .. 120 ms; 99 %% / 90 %% about 2)", a9, b9);
+    check(s, a9 >= 90.0 && a9 <= 120.0 && b9 >= 90.0 && b9 <= 120.0 && a9 > 1.7 * a && b9 > 1.7 * b);
+}
+
+/* an accent slid into a plain note: the plain note takes its own velocity (not accented), so ENV 2 / the capacitor / the level run down as for a plain note */
+static void plain_after_accent(void)
+{
+    track_t *t = fresh(7, 85, 100);
+    voice_t *v = &t->v[0];
+    int y0;
+    trk_note_on(t, 45, 127);
+    blocks(30);
+    y0 = t->acid_y;
+    t->slide_glide = 1;
+    trk_note_on(t, 47, 96);
+    t->slide_glide = 0;
+    check("ACID: a plain note slid into after an accent is plain (its own velocity, no retrigger)", v->vel == 96u && v->stage != 1u);
+    blocks(60);
+    check("ACID: and the capacitor runs down under it (an accent's would keep charging)", t->acid_y < y0);
 }
 
 static void wave(void)
@@ -289,6 +323,7 @@ int main(void)
     level();
     push();
     slide();
+    plain_after_accent();
     wave();
     printf("acid: %s\n", bad ? "FAIL" : "ok");
     return bad ? 1 : 0;
