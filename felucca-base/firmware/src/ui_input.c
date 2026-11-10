@@ -467,10 +467,10 @@ static void rec_hold_tap(void)
     ui_message(off ? "HOLD OFF" : "HOLD ON");
     ui.force = 1;
 }
-static int rec_tap(void)                                /* 1: the arming changed */
+static int rec_tap(uint32_t seq)                        /* 1: the arming changed. seq: SEQ was down with REC (SEQ + REC: never HOLD) */
 {
     uint8_t bit = (uint8_t)(1u << song.sel);
-    if (rec_is_hold()) {
+    if (!seq && rec_is_hold()) {
         rec_hold_tap();
         return 1;
     }
@@ -1934,7 +1934,7 @@ static uint32_t btn_hold(uint32_t *t0, uint32_t label, uint32_t now, int hold_ok
     uint32_t tap;
     if ((fm1_in.buttons >> panel.btn[label]) & 1u) {
         if (!*t0)
-            *t0 = (now | 1u) & ~2u;
+            *t0 = (now | 1u) & ~6u;                     /* (bit 2: REC's "SEQ was down", ui_input) */
         else if (hold_ok && !(*t0 & 2u) && now - (*t0 & ~3u) > 700u * 1000u * FM1_TICKS_PER_US) {
             *t0 |= 2u;
             return BT_HOLD;
@@ -2099,7 +2099,7 @@ static uint32_t pu_t;                                  /* fm1_ms of the last PRE
 static void ui_input(void)
 {
     uint32_t pressed = fm1_input_edges(0), notes = fm1_input_note_edges(), now = fm1_ticks(), id, b, k;
-    uint32_t home, rec, save;
+    uint32_t home, rec, save, rseq;
     uint32_t oct;
     uint32_t lay, combo = 0, lytap, lkeys, kq = 0;
     int32_t s, ks[4] = {0, 0, 0, 0};
@@ -2141,7 +2141,10 @@ static void ui_input(void)
     }
     play_hold(now);
     home = btn_hold(&ui.home_t0, B_HOME, now, 1);
+    rseq = ui.rec_t0 & 4u;                              /* (b7: SEQ was down while REC was: SEQ + REC arms, however they are let go) */
     rec = btn_hold(&ui.rec_t0, B_REC, now, 0);          /* (a tap; held, the REC layer: ui_layer.c) */
+    if (ui.rec_t0 && ui.layer == LAYER_SEQ)
+        ui.rec_t0 |= 4u;
     if (ui.guide && guide_input(pressed, rec, now))     /* DUELL 0.2.11: the GUIDE takes the frame (ui_guide.c); a page button or SAVE */
         return;                                         /* closed it and goes on below to its job, as from the MENU */
     if (ui.menu && (leave_pressed(pressed) || ((pressed >> panel.btn[B_SAVE]) & 1u))) {   /* DUELL 0.2.2: a page button (or SAVE) while the MENU is */
@@ -2224,7 +2227,7 @@ static void ui_input(void)
         }
     }
     if (rec == BT_TAP && !ui.menu && !ui.confirm && !name_on())   /* REC pressed in another layer (REC alone: */
-        rec_tap();                                      /* its layer's tap); nothing in the menu, a dialog or NAME */
+        rec_tap(rseq);                                  /* its layer's tap); nothing in the menu, a dialog or NAME */
     if (ui.menu) {                                      /* SAVE / REC taps do nothing here (HOME: above) */
         if (ui.save_t0)
             ui.save_t0 |= 2u;

@@ -114,7 +114,7 @@ static int guide_input(uint32_t pressed, uint32_t rec, uint32_t now)
     if ((pressed >> panel.btn[B_PLAY]) & 1u)            /* PLAY/STOP as on HOME (twice: STOP ALL); its hold: play_hold */
         play_press(now);
     if (rec == BT_TAP && !ui.menu)                      /* REC: the HOLD switch (rec_tap: rec_is_hold on HOME) */
-        rec_tap();
+        rec_tap(0);
     song.grid = (uint8_t)keys_mode();                   /* (the keys play) */
     if ((pressed >> panel.btn[B_OCTUP]) & 1u) {
         guide_apply(ui.guide);

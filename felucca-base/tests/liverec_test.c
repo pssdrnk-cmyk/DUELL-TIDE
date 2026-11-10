@@ -356,6 +356,20 @@ static void r4(void)
     CHECK("R4 (L5): ... and starts the stopped transport", song.playing || transport_req == 1u);
     song.rec = 0;
     stop();
+    /* b7 (FR7 D6): SEQ + REC as a chord, both let go in one pass, and SEQ let go first: arms, HOLD alone */
+    for (uint32_t w = 0; w < 2u; w++) {
+        to_home(); song.sel = 0; song.rec = 0; t->p[P_AHOLD] = 0;
+        btn_down(B_SEQ); frames(600);
+        btn_down(B_REC); frames(100);
+        btn_up(B_SEQ);
+        if (w)
+            frame();
+        btn_up(B_REC); frames(600);
+        CHECK(w ? "R4 (D6): SEQ let go before REC: arms, HOLD alone" : "R4 (D6): SEQ and REC let go together: arms, HOLD alone",
+              (song.rec & 1u) && t->p[P_AHOLD] == 0);
+        song.rec = 0;
+        stop();
+    }
 }
 
 /* ---- R5: PRESETS loads on STEP and PARAMETER LOCKS (owner 2026-11-08) ---- */

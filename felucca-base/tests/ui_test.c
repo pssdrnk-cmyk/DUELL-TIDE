@@ -2228,7 +2228,7 @@ static int test_soak_cards(void)
             quiet = 0;
         } else if (r < 30u) { go_main_to(HP_MORPH); page_entered(); quiet = 0; }
         else if (r < 31u) transport_req = song.playing ? 2u : 1u;
-        else if (r == 31u && SOAK_RND(3u) == 0u) rec_tap();
+        else if (r == 31u && SOAK_RND(3u) == 0u) rec_tap(0);
         else if (r == 32u) { host_enc[panel.enc[EN_ALGO]] += SOAK_RND(2u) ? 1 : -1; quiet = 0; }
         else if (r == 33u) trk[SOAK_RND(NTRK)].p[P_LRATE] = (int16_t)SOAK_RND(128u);
         fm1_ms += SOAK_RND(50u) ? 16u : 1u + SOAK_RND(200u);
