@@ -22,7 +22,7 @@
 /* MUSIC WNDR/JRNY also carries the cumulative phrase overlay (seq_rhythm.c,
  * seq_phrase.c): retained routing, repeats/rests and phrase-level pitch edits.
  * These are session state until KEEP commits the reached ordinary steps. */
-#define SQM_HIST 4u                                      /* rolls UNDO can go back over */
+#define SQM_HIST 4u                                      /* rolls kept per part (a ring of End B) */
 enum { SD_DENS, SD_SYNC, SD_ACC, SD_VOIC, SD_N };
 #define SQM_PITCH_BYTES ((NSTEP * 5u + 7u) / 8u)
 typedef struct { uint16_t seed; int8_t d[SD_N]; uint8_t pitch[SQM_PITCH_BYTES]; } sqm_end_t;
@@ -268,7 +268,7 @@ static void sqm_refresh(uint32_t pi, int force)
     sqm_part_t *q = &sqm[pi];
     const track_t *t = &trk[pi];
     uint32_t len = sqm_len(t), sig, src = rhythm.source[pi];
-    if (!q->n) {                                         /* the part's default End B, the first entry UNDO can go back to */
+    if (!q->n) {                                         /* the part's default End B, the first entry of the ring */
         sqm_rand(&q->b[0], 0x5EEDu + 0x2F1u * pi, SQM_AMT(q));
         q->n = 1, q->top = 0;
     }
