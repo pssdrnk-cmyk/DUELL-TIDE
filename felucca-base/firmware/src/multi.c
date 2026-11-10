@@ -26,7 +26,7 @@
  *      then MU_STEP = 7 bytes per stored step (patslot.c ps_pack_step without its bytes 6 and 7, the drum lane of before 0.2.14, always 0; a step not stored is an
  *      empty step, step_clear); the FM6 patch packed 8 to 7 (UPF_PK = 112 bytes, upreset.c upf_pk_put: its 128 bytes are 7-bit), when flag bit 0
  *      the automation: a count, then (place, param, value) per event of parts 1..2 (core.h motion_event_t)
- *      then XFADE (0..100), SPLIT (0 OFF, else note + 1): core.h mix_xf, mix_split (the spare byte of before is gone)
+ *      then XFADE (0..100), SPLIT (0 OFF, 1..128 note + 1, 129 MIDDLE since 1.0.0-b7): core.h mix_xf, mix_split (the spare byte of before is gone)
  *   Sizes: 56 bytes of header and globals, a part 168 + End B (at most MBV_MAX 195) + 7 per used step (+ 112 FM6), the automation 1 + 3 per event, 2 mix bytes.
  *   Two FM6 parts with every value of End B moved and all 64 steps used take at most 1905 bytes (1827 measured at the worst ranges): the record always holds the
  *   sound with its End B, the slots and the steps; the automation gets the rest of the 1916 (3 events at the very worst), a save that has more keeps the first
@@ -376,7 +376,7 @@ static int mu_unpack(project_t *q, uint8_t amt[NSHOWN], uint8_t set[6], const ui
     }
     set[3] = 0u;                                    /* XFADE, SPLIT (after the events): out of range = the defaults */
     set[4] = b[pos] <= 100u ? b[pos] : 0u;
-    set[5] = b[pos + 1u] <= 128u ? b[pos + 1u] : 0u;
+    set[5] = b[pos + 1u] <= 128u || b[pos + 1u] == SPLIT_MIDDLE ? b[pos + 1u] : 0u;   /* (1.0.0-b7: MIDDLE, the first free code; b6 reads it OFF) */
     set[0] = b[4];
     set[1] = b[5] & 1u;
     set[2] = b[6];

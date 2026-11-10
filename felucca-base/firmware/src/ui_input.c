@@ -649,7 +649,38 @@ static void part_select(uint32_t pos)                   /* 0 PART 1, 1 PART 2, 2
     song.both = (uint8_t)(pos >= 2u);
     ui.force = 1;
 }
+#if TIDE_PLAYSEL
+/* 1.0.0-b7 (owner 2026-11-09, an experiment: docs/design/PLAY_MODE_SELECT.md): on the BOTH pages the selection is the play mode too, ONE row from left to right:
+ * PART 1, LAYER, STEREO, DUEL, PART 2. PART n: song.both 0 and the part, the MODE kept but LAYER becomes STEREO (LAYER's mix: the keys play the part alone);
+ * LAYER / STEREO / DUEL: song.both 1 (the knobs and the fader edit both, as b6's BOTH) and that output MODE (duell_mode_req: the PLAY MODE row's byte, saved as ever).
+ * The position is read from the two, nothing stored of its own: BOTH off with LAYER (an old multi, the PLAY MODE row) reads LAYER, b6's play.
+ * TIDE_PLAYSEL 0: b6's PART 1, BOTH, PART 2 below */
+enum { PLS_P1, PLS_LAYER, PLS_STEREO, PLS_DUEL, PLS_P2, PLS_N };
+static const char *const PLS_NAME[PLS_N] = {"PART 1", "LAYER", "STEREO", "DUEL", "PART 2"};
+static uint32_t play_pos(void)
+{
+    uint32_t m = duell_mode_req < DM_N ? duell_mode_req : DM_SPLIT;
+    if (!song.both && m != DM_LAYER)
+        return song.sel ? PLS_P2 : PLS_P1;
+    return m == DM_LAYER ? PLS_LAYER : m == DM_STEREO ? PLS_STEREO : PLS_DUEL;
+}
+static void play_select(uint32_t pos)
+{
+    uint32_t m = duell_mode_req < DM_N ? duell_mode_req : DM_SPLIT, w;
+    if (pos == PLS_P1 || pos == PLS_P2) {
+        part_select(pos == PLS_P2);
+        w = m == DM_LAYER ? DM_STEREO : m;
+    } else {
+        part_select(2u);
+        w = pos == PLS_LAYER ? DM_LAYER : pos == PLS_STEREO ? DM_STEREO : DM_SPLIT;
+    }
+    if (w != m)
+        duell_mode_req = (uint8_t)w;                    /* (the audio ISR takes it at its next block: seq.c mode_apply, the notes let go, fx.c's dip) */
+}
+static void part_say(void) { ui_message(PLS_NAME[play_pos()]); }
+#else
 static void part_say(void) { ui_message(song.both ? "BOTH" : song.sel ? "PART 2" : "PART 1"); }
+#endif
 /* an action on the parts of mask its message; from the page or MIDI */
 static void morph_act(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi)
 {
@@ -680,12 +711,21 @@ static void algo_input(int32_t s)
     } else if (page_global(pg) || TIDE_MODE_PG(pg)) {   /* 0.2.24 (owner): a GLOBAL page edits no part: the selector does nothing there */
         return;
     } else if (HOME_BOTH_PAGE(pg)) {                    /* PART 1, BOTH, PART 2 */
+#if TIDE_PLAYSEL
+        uint32_t cur = play_pos();                      /* (1.0.0-b7: PART 1, LAYER, STEREO, DUEL, PART 2) */
+        int32_t nv = clamp((int32_t)cur + (s > 0 ? 1 : -1), 0, PLS_N - 1);
+        if ((uint32_t)nv == cur)
+            return;
+        play_select((uint32_t)nv);
+        part_say();
+#else
         uint32_t cur = song.both ? 1u : song.sel ? 2u : 0u;
         int32_t nv = clamp((int32_t)cur + (s > 0 ? 1 : -1), 0, 2);
         if ((uint32_t)nv == cur)
             return;
         part_select(nv == 1 ? 2u : nv ? 1u : 0u);
         part_say();
+#endif
     } else                                              /* the edit pages: PART 1 / PART 2, as before (BOTH stays for the BOTH pages) */
         track_select((uint32_t)clamp((int32_t)song.sel + (s > 0 ? 1 : -1), 0, NSHOWN - 1));
 }
@@ -931,8 +971,13 @@ static void mode_knob(uint32_t slot, int32_t s)
     int32_t m = duell_mode_req < DM_N ? duell_mode_req : DM_SPLIT;
     if (slot == 3u)                                     /* (item 158: KNOB 4 has no card: it does nothing and says nothing) */
         return;
+#if TIDE_PLAYSEL
+    if (slot >= 1u && m != DM_LAYER && (slot == 1u || !song.both))   /* XFADE is LAYER's only; SPLIT LAYER's and, with the part selection on BOTH, STEREO's and DUEL's (1.0.0-b7) */
+        return;
+#else
     if (slot >= 1u && m != DM_LAYER)                    /* XFADE and SPLIT are LAYER's only: no cards, no knobs in DUEL and STEREO */
         return;
+#endif
     if (slot == 1u) {                                   /* XFADE 0..100 % (LAYER) */
         int32_t v = clamp((int32_t)mix_xf + s, 0, 100);
         if (v != mix_xf) {
@@ -940,15 +985,17 @@ static void mode_knob(uint32_t slot, int32_t s)
         }
         return;
     }
-    if (slot == 2u) {                                   /* SPLIT OFF, then the note C-1 .. G9 (LAYER) */
+    if (slot == 2u) {                                   /* SPLIT OFF, MIDDLE (1.0.0-b7), then the note C-1 .. G9 (LAYER) */
         int32_t v;
         if (mix_split == 0u && s < 0)                   /* OFF is the left end: a turn left there stays OFF (it bounced back to the middle key) */
             return;
-        if (mix_split == 0u && s > 0)                   /* item 155 (owner): OFF, the first turn right starts at the MIDDLE KEY of the unit's 27 keys (F3 .. G5, key 13 = F#4, note 66, stored 67), then goes on from there; no snapping: the knob moves the value as ever, only the step out of OFF is this long */
-            s = SPLIT_MID + s - 1;
-        else
-            s = (int32_t)mix_split + s;
-        v = clamp(s, 0, 128);
+        if (mix_split == 0u && s > 0)                   /* 1.0.0-b7: OFF, the first detent right is MIDDLE (the middle of the keys as played: it moves with OCT- / OCT+), more go on as below */
+            v = s == 1 ? (int32_t)SPLIT_MIDDLE : clamp((int32_t)kb_raw(SPLIT_KEY) + 1 + s - 2, 1, 128);
+        else if (mix_split == SPLIT_MIDDLE)             /* .. left OFF; right: item 155 (owner), the note MIDDLE stands for now (at octave 0 the MIDDLE KEY of the unit's 27 keys,
+                                                         * F3 .. G5, key 13 = F#4, note 66, stored 67), then on from there; no snapping, only the step out of MIDDLE is this long */
+            v = s < 0 ? 0 : clamp((int32_t)kb_raw(SPLIT_KEY) + 1 + s - 1, 1, 128);
+        else                                            /* a note: by the detents; below the lowest it is MIDDLE (then OFF) */
+            v = (int32_t)mix_split + s < 1 ? (int32_t)SPLIT_MIDDLE : clamp((int32_t)mix_split + s, 1, 128);
         if (v != mix_split) {
             mix_split = (uint8_t)v;
         }
@@ -1030,9 +1077,13 @@ static void mode_settings(void)
 {
     uint32_t b = ui_mode_set, w = duell_mode_req < DM_N ? duell_mode_req : DM_SPLIT;
     uint8_t mb[2] = {ui_mix_xf, ui_mix_split}, mw[2] = {mix_xf, mix_split};   /* (item 157: [15][5], BALANCE's byte, is a spare: neither read nor written) */
+#if TIDE_PLAYSEL
+    if (w == DM_LAYER)                                  /* 1.0.0-b7: LAYER is a position of ALGORITHM, both parts selected: the PLAY MODE row, a MODE CC or a load (an old multi with BOTH off) */
+        song.both = 1;                                  /* set LAYER, the knobs follow the keys onto both parts (ALGORITHM and the row never disagree) */
+#endif
     if (!ui.mix_ok || mb[0] != ui.mix_seen[0] || mb[1] != ui.mix_seen[1]) {   /* from outside */
         mix_xf = mb[0] <= 100u ? mb[0] : 0u;
-        mix_split = mb[1] <= 128u ? mb[1] : 0u;
+        mix_split = mb[1] <= 128u || mb[1] == SPLIT_MIDDLE ? mb[1] : 0u;   /* (1.0.0-b7: MIDDLE) */
         memcpy(ui.mix_seen, mb, 2);
         ui.mix_ok = 1;
     } else if (mw[0] != mb[0] || mw[1] != mb[1]) {       /* changed here, by a typed XFADE or SPLIT CC (no shipped numbers) or a MULTI */

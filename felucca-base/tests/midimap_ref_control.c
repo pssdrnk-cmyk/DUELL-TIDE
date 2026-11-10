@@ -506,8 +506,8 @@ static int __attribute__((noinline)) midi_mode_cc(uint32_t cc, uint32_t value)
     }
     if (cc == MIDI_XF_CC)                      /* 0..127 -> 0..100 % */
         mix_xf = (uint8_t)((value * 100u + 63u) / 127u);
-    else if (cc == MIDI_SPLIT_CC)                   /* 0 OFF, 1..127 the note n (stored n + 1) */
-        mix_split = (uint8_t)(value ? value + 1u : 0u);
+    else if (cc == MIDI_SPLIT_CC)                   /* 0 OFF, 1..127 the note n (stored n + 1); 1.0.0-b7, on purpose: 1 is MIDDLE (midi_control.c midi_glob_act) */
+        mix_split = (uint8_t)(value == 1u ? SPLIT_MIDDLE : value ? value + 1u : 0u);
     else {
         duell_mode_req = (uint8_t)(value < 43u ? DM_SPLIT : value < 86u ? DM_STEREO : DM_LAYER);
         mode_apply();

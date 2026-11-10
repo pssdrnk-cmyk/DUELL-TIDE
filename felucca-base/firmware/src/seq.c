@@ -1012,11 +1012,31 @@ static uint32_t kb_raw(uint32_t k)
 {
     return (uint32_t)clamp(53 + (int32_t)k + 12 * song.octave, 0, 127);
 }
+/* SPLIT as a stored code (0 OFF, else the note + 1): MIDDLE (1.0.0-b7) is the middle key's note as played now, the 14th of the 27 keys (k 13: F#4 = 66 at octave 0),
+ * so OCT- / OCT+ move it with the keys and MIDI notes split where that key sounds */
+#define SPLIT_KEY 13u
+static __attribute__((noinline)) uint32_t split_note(void)   /* (one copy in the flash: a note's or a key's rate, tools/ram_allow.py) */
+{
+    uint32_t s = mix_split;
+    return s == SPLIT_MIDDLE ? kb_raw(SPLIT_KEY) + 1u : s > 128u ? 0u : s;
+}
 /* LAYER with SPLIT set: which parts play note n (bit 0 part 1 below the split, bit 1 part 2 at or above it); 3 both */
 static uint32_t lay_route(uint32_t n)
 {
-    uint32_t s = mix_split;
+    uint32_t s = split_note();
     return !s ? 3u : n + 1u < s ? 1u : 2u;
+}
+/* the part key k plays when it goes down (seq.c keyboard_block): LAYER part 1 (key_on gives part 2 its own copy); TIDE_PLAYSEL: STEREO / DUEL with the part selection on BOTH
+ * and SPLIT set, the split's side of the key (the played key against the split, as LAYER); else the selected part */
+static uint32_t kb_part(uint32_t k)
+{
+    if (duell_mode == DM_LAYER)
+        return 0u;
+#if TIDE_PLAYSEL
+    if (song.both && split_note())
+        return lay_route(kb_raw(k)) == 1u ? 0u : 1u;
+#endif
+    return song.sel;
 }
 /* input_on of a LAYER note: the part's XFADE share rides with the voices it starts (an arp's later notes keep it) */
 static void lay_input(track_t *t, uint32_t note, uint32_t vel)
@@ -1224,7 +1244,11 @@ static __attribute__((noinline)) void arp_rechord(void)
 static __attribute__((noinline)) void velo_at_block(void)
 {
     static uint8_t sent, tm;                      /* the last value sent; the parts (bit per part) it went to */
+#if TIDE_PLAYSEL
+    uint32_t v = sense_at_value(), lay = duell_mode == DM_LAYER || (song.both && split_note());   /* (STEREO / DUEL split: the keys play both parts too) */
+#else
     uint32_t v = sense_at_value(), lay = duell_mode == DM_LAYER;
+#endif
     uint32_t bits = lay ? 3u : 1u << song.sel, d = v > sent ? v - sent : sent - v, i;
     if (bits != tm) {
         for (i = 0; i < NTRK; i++)
@@ -1273,7 +1297,7 @@ static void keyboard_block(void)
         if (!((ch >> k) & 1u))
             continue;
         if ((cur >> k) & 1u) {                    /* the selected track; the key-up goes to the same one */
-            kb_trk[k] = duell_mode == DM_LAYER ? 0u : song.sel;   /* (LAYER: part 1; key_on gives part 2 its own copy) */
+            kb_trk[k] = (uint8_t)kb_part(k);      /* (LAYER: part 1; key_on gives part 2 its own copy. TIDE_PLAYSEL: STEREO / DUEL split with BOTH) */
             if (kb_asleep) {                      /* (SCREEN OFF: the wake press is swallowed) */
                 kb_note[k] = KB_SILENT;
                 continue;

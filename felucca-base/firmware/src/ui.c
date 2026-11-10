@@ -175,7 +175,7 @@ static void rp_put(uint32_t f, uint32_t v)
  * changed (ui_input.c mode_settings) */
 #define ui_mode_set (favorites.factory[15][9])
 /* the MODE page's (TIDE: the XFADE and SPLIT rows') KNOB 3..4 (core.h mix_xf, mix_split), two more bytes no engine uses, kept with the settings and in
- * each MULTI: [15][6] XFADE (0..100 %), [15][7] SPLIT (0 = OFF, else the note + 1). [15][5] was BALANCE's (int8): item 157, a SPARE byte,
+ * each MULTI: [15][6] XFADE (0..100 %), [15][7] SPLIT (0 = OFF, 1..128 the note + 1, 129 MIDDLE: 1.0.0-b7). [15][5] was BALANCE's (int8): item 157, a SPARE byte,
  * neither read nor written (the settings record keeps its size and layout). 0 in every older setting = XFADE 0, SPLIT OFF (nothing changes);
  * an out-of-range byte reads as 0 / OFF and is kept as saved until the value is changed (ui_input.c mode_settings) */
 #define ui_mix_xf (favorites.factory[15][6])
@@ -1432,7 +1432,7 @@ static void pat_load_def(track_t *t, uint32_t k)
 {
     uint32_t i;
     for (i = 0; i < NSTEP; i++)
-        pat_make_step(&t->step[i], i < NPAT_STEPS ? PATTERNS[k].note[i] : 0, i < NPAT_STEPS ? PATTERNS[k].flags[i] : 0);
+        pat_make_step(&t->step[i], i < NPAT_STEPS ? PATTERNS[k].note[i] : 0, i < NPAT_STEPS ? pat_fl(k, i) : 0);
     t->p[P_SLEN] = PATTERNS[k].len;
     t->p[P_SDIV] = PATTERNS[k].div;
 }

@@ -473,6 +473,22 @@ static void turn(uint32_t role, int32_t s)
     frame();
     host_ticks += 200000u;                        /* (no knob acceleration between the turns) */
 }
+/* ALGORITHM on a BOTH page (ui_input.c algo_input): TIDE_PLAYSEL (1.0.0-b7) PART 1, LAYER, STEREO, DUEL, PART 2; else PART 1, BOTH, PART 2. ALGO_TO_P2: the detents from
+ * the first BOTH position (one right of PART 1) to PART 2, and from PART 2's left neighbour back to PART 1; the names those two BOTH positions show */
+#if TIDE_PLAYSEL
+#define ALGO_TO_P2 3
+#define ALGO_BOTH_SAY "LAYER"
+#define ALGO_BOTH_LEFT "DUEL"
+#else
+#define ALGO_TO_P2 1
+#define ALGO_BOTH_SAY "BOTH"
+#define ALGO_BOTH_LEFT "BOTH"
+#endif
+static void algo_turns(int32_t n)                 /* n detents of ALGORITHM, one event each */
+{
+    for (int32_t i = 0; i < (n < 0 ? -n : n); i++)
+        turn(EN_ALGO, n < 0 ? -1 : 1);
+}
 static void bpm_nudge(int32_t n)                  /* the tempo moved n (SELECT never does; GLO > CLOCK KNOB 1, MIDI clock, TAP) */
 {
     song.g[G_BPM] = (int16_t)(song.g[G_BPM] + n);
@@ -9337,6 +9353,7 @@ static int test_item158_pages(void)
                 ui_mode_set = duell_mode_req = duell_mode = lay ? DM_LAYER : DM_SPLIT;
                 go_title("TIDE SETTINGS");
                 jl_sel = (uint8_t)(JL_MODE + row);
+                song.both = 0;                            /* (1.0.0-b7 TIDE_PLAYSEL: one part selected; SPLIT then says 2 PARTS ONLY outside LAYER) */
                 frames(64);
                 screen_read();
                 has_set = has_row = has_need = k24 = 0;
@@ -9348,10 +9365,10 @@ static int test_item158_pages(void)
                     }
                 for (k = 0; k < txt_n; k++) {
                     has_row |= has_set && !strcmp(txt_log[k].s, NAME[row]) && txt_log[k].x0 > txt_log[set_k].x1 && abs(txt_log[k].y0 - txt_log[set_k].y0) <= 3;   /* (the card's line: the label, then the name on the same line; the list's row is lower) */
-                    has_need |= !strcmp(txt_log[k].s, "LAYER ONLY");
+                    has_need |= !strcmp(txt_log[k].s, TIDE_PLAYSEL && row == 2u ? "2 PARTS ONLY" : "LAYER ONLY");
                     k24 |= (!strcmp(txt_log[k].s, "SETTING") || !strcmp(txt_log[k].s, "VALUE")) && txt_log[k].x0 >= 82;
                 }
-                snprintf(m, sizeof m, "TIDE SETTINGS, %s row picked, %s: K1 card SETTING + %s, K2 .. K4 draw no card, 'LAYER ONLY' %s", NAME[row], lay ? "LAYER" : "DUEL", NAME[row],
+                snprintf(m, sizeof m, "TIDE SETTINGS, %s row picked, %s: K1 card SETTING + %s, K2 .. K4 draw no card, '%s' %s", NAME[row], lay ? "LAYER" : "DUEL", NAME[row], TIDE_PLAYSEL && row == 2u ? "2 PARTS ONLY" : "LAYER ONLY",
                          row && !lay ? "shown" : "not shown");
                 bad += check(m, has_set && has_row && !k24 && has_need == (row && !lay));
             }

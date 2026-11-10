@@ -83,6 +83,7 @@ Source and test comments cite these paths, so they stay where they are. Each say
 | [TIDE_MUSICAL_DESIGN.md](design/TIDE_MUSICAL_DESIGN.md) | maintainer | current | The musical proposals for TIDE, their decisions and the questions still open. |
 | [LIVE_GRAPHS.md](design/LIVE_GRAPHS.md) | contributor | design record | How the live graph markers work. |
 | [TIDE_NEXT_PROPOSALS.md](design/TIDE_NEXT_PROPOSALS.md) | maintainer | design record | SYNC, call and response, ARC and STYLES as proposed; all built. |
+| [PLAY_MODE_SELECT.md](design/PLAY_MODE_SELECT.md) | maintainer | current | 1.0.0-b7: SPLIT MIDDLE and ALGORITHM picking the play mode (an experiment, TIDE_PLAYSEL). |
 | [MIGRATION_1_1_PLAN.md](design/MIGRATION_1_1_PLAN.md) | maintainer | design record | The move of TIDE onto DUELL 1.1 and its receipts. |
 | [MIDI_MAP_FINAL.md](design/MIDI_MAP_FINAL.md), [MIDI_MAP_DESIGN_2.md](design/MIDI_MAP_DESIGN_2.md) | contributor | design record | The MIDI map design (the first is the final one). |
 | [TWIN_FILTER_DESIGN_2.md](design/TWIN_FILTER_DESIGN_2.md), [TWIN_FILTER_DESIGN.md](design/TWIN_FILTER_DESIGN.md) | contributor | design record | The twin filter design (the first is the one built). |

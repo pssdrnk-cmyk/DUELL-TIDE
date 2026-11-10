@@ -89,6 +89,8 @@ ALLOW = {
     "key_place": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~74 B); reached from perf_key_press",
     "key_tone": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~164 B); reached from events_block",
     "key_tone2": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~46 B); reached from events_block",
+    "split_note": "event rate (a key goes down, a note arrives) and once a block in velo_at_block (a compare), not per sample; 1.0.0-b7 SPLIT MIDDLE (~40 B); reached from keyboard_block, key_on, velo_at_block",
+    "lay_route": "event rate (a note: which parts a LAYER or split note plays), not per sample; ~30 B, out of line since 1.0.0-b7 (it was inlined); reached from key_on, events_block",
     "lay_input": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~166 B); reached from key_tone",
     "map_line": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~60 B); reached from midi_map_global",
     "mchord_of": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~44 B); reached from midi_release",

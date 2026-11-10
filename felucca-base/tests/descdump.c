@@ -125,7 +125,7 @@ int main(void)
         js_ints(v, NPAT_STEPS);
         putchar(',');
         for (i = 0; i < NPAT_STEPS; i++)
-            v[i] = PATTERNS[k].flags[i];
+            v[i] = pat_fl(k, i);
         js_ints(v, NPAT_STEPS);
         printf(",%u,%u]", (unsigned)PATTERNS[k].len, (unsigned)PATTERNS[k].div);
     }

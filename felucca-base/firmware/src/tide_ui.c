@@ -202,6 +202,10 @@ static void tide_custom_take(void)
  * ROLL TYPE does nothing in JOURNEY (each arrival a factory sound, not a roll); XFADE and SPLIT are LAYER's only */
 static __attribute__((noinline)) const char *jl_needs(uint32_t r)
 {
+#if TIDE_PLAYSEL
+    if (r == JL_SPLIT && duell_mode_req != DM_LAYER)     /* 1.0.0-b7: SPLIT plays in STEREO and DUEL too with the selection on BOTH (ALGORITHM on STEREO / DUEL) */
+        return song.both ? 0 : "2 PARTS ONLY";
+#endif
     if (r >= JL_XFADE)
         return duell_mode_req == DM_LAYER ? 0 : "LAYER ONLY";
     if (r == JL_ROLL)
@@ -214,7 +218,7 @@ static __attribute__((noinline)) const char *jl_needs(uint32_t r)
 static int jl_dimmed(uint32_t r) { return jl_needs(r) != 0; }
 /* the rows as tables: how many values each has, its byte (STYLE, MODE, TARGET, ARC, REC; ROLL TYPE is the morph's), the values' names, and the
  * header message a change shows: the prefix + the value's name, or a message of its own (TARGET) */
-static const uint8_t JL_NV[JL_N] = {7, 5, 3, 3, 3, 101, 2, 3, 101, 129};   /* (AMOUNT and XFADE 101: 0..100 %; SPLIT 129: mix_split 0 = OFF, then note + 1 up to 128) */
+static const uint8_t JL_NV[JL_N] = {7, 5, 3, 3, 3, 101, 2, 3, 101, 130};   /* (AMOUNT and XFADE 101: 0..100 %; SPLIT 130: 0 OFF, 1 MIDDLE (1.0.0-b7, mix_split SPLIT_MIDDLE), then the notes 0..127 (mix_split note + 1, the list 2..129): jl_split_ix) */
 static volatile uint8_t *const JL_VAR[JL_N] = {[JL_STYLE] = &tide_style, [JL_GMODE] = &gl.mode, [JL_TARGET] = &gl.target, [JL_ARC] = &sqm_arc,
                                                [JL_REC] = &tide_rec_replace};   /* (REC is no part of a STYLE: seq.c, live recording) */
 static const char *const JL_V[] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK", "DRONE", "CUSTOM", "SOUND", "SEQ", "BOTH", "OFF", "RISE", "DROP",
@@ -223,13 +227,16 @@ static const uint8_t JL_V0[JL_N] = {0, 0, 7, 10, 13, 0, 16, 18, 0, 0};   /* (eac
 static const char *const JL_SAY[JL_N] = {"STYLE ", "MODE ", 0, "ARC ", "", "AMOUNT ", "REC ", 0, 0, 0};
 static const char *const JL_OWN[3] = {"GLIDE SOUND", "GLIDE SEQ", "GLIDE BOTH"};   /* (TARGET's messages) */
 static uint32_t jl_n(uint32_t r) { return JL_NV[r % JL_N]; }
+/* SPLIT: the stored code (core.h mix_split) <-> its place in the list (OFF, MIDDLE, C-1 .. G9) */
+static uint32_t jl_split_ix(uint32_t s) { return s == SPLIT_MIDDLE ? 1u : s && s <= 128u ? s + 1u : 0u; }
+static uint32_t jl_split_code(uint32_t v) { return v == 1u ? SPLIT_MIDDLE : v ? v - 1u : 0u; }
 static uint32_t jl_get(uint32_t r)
 {
     r %= JL_N;
     if (r == JL_MODE)                                    /* (the list reads LAYER, STEREO, DUEL: mode_knob's order) */
         return DM_LAYER - (duell_mode_req < DM_N ? duell_mode_req : DM_SPLIT);
     if (r == JL_XFADE || r == JL_SPLIT)
-        return r == JL_XFADE ? mix_xf : mix_split;
+        return r == JL_XFADE ? mix_xf : jl_split_ix(mix_split);
     if (r == JL_AMOUNT)
         return morph_amount_of(song.sel);
     if (JL_VAR[r])
@@ -246,9 +253,11 @@ static const char *jl_vname(uint32_t r, uint32_t v)
         return b;
     }
     if (r == JL_SPLIT) {
-        v %= 129u;
+        v %= 130u;
+        if (v == 1u)
+            return "MIDDLE";
         if (v)
-            note_name(b, v - 1u);
+            note_name(b, v - 2u);
         else
             return "OFF";
         return b;
@@ -262,6 +271,11 @@ static void jl_put(uint32_t r, uint32_t v)
     uint32_t pi = song.sel, mask = morph_mask(pi);
     const char *say;
     r %= JL_N, v %= JL_NV[r];
+    if (r == JL_SPLIT) {                              /* (a place in the list, set as it is: mode_knob would step out of MIDDLE to its note) */
+        if (duell_mode_req == DM_LAYER || (TIDE_PLAYSEL && song.both))
+            mix_split = (uint8_t)jl_split_code(v);
+        return;
+    }
     if (r >= JL_MODE) {                               /* the old MODE page's knobs, by steps from where the value is (mode_knob: its message, its limits, SPLIT's middle-key start) */
         mode_knob(r - JL_MODE, (int32_t)v - (int32_t)jl_get(r));
         return;
@@ -296,6 +310,7 @@ static void jl_put(uint32_t r, uint32_t v)
 static uint32_t tide_list_sig(void)
 {
     uint32_t r, h = (uint32_t)jl_sel * 2654435761u ^ (uint32_t)T_PTHEME(0) * 0x85EBCA77u ^ (uint32_t)T_PTHEME(1) * 0xC2B2AE3Du;   /* (the rows' values; MODE, TARGET and PLAY MODE, which decide the dim rows, are among them) */
+    h ^= (uint32_t)song.both * 0x27D4EB2Fu;                                 /* (1.0.0-b7: SPLIT dims by the selection too) */
     for (r = 0; r < JL_N; r++)
         h = (h ^ jl_get(r)) * 16777619u;
     return h;
@@ -309,8 +324,8 @@ static void tide_list_oct(uint32_t oct)
         jl_put(r, (uint32_t)clamp((int32_t)v + ((oct & 2u) ? 5 : (oct & 1u) ? -5 : 0), 0, 100));
         return;
     }
-    if (r >= JL_XFADE) {                                 /* XFADE steps 10 %, SPLIT one octave (12) from where it is; out of OFF the first step lands on the middle key (mode_knob). Both stop at their ends */
-        mode_knob(r - JL_MODE, (oct & 2u) ? (r == JL_SPLIT && !v ? 1 : r == JL_SPLIT ? 12 : 10) : (oct & 1u) ? (r == JL_SPLIT ? -12 : -10) : 0);
+    if (r >= JL_XFADE) {                                 /* XFADE steps 10 %, SPLIT one octave (12) from where it is; out of OFF the first step is MIDDLE, out of MIDDLE the note it stands for (mode_knob). Both stop at their ends */
+        mode_knob(r - JL_MODE, (oct & 2u) ? (r == JL_SPLIT && v < 2u ? 1 : r == JL_SPLIT ? 12 : 10) : (oct & 1u) ? (r == JL_SPLIT ? -12 : -10) : 0);
         return;
     }
     if ((oct & 2u) && v + 1u < jl_n(r))
@@ -653,7 +668,11 @@ static __attribute__((noinline)) void tide_status(char *l)
     static const char *const ST[5] = {"GLIDING", "LOOPING", "DRIFTING", "WANDERING", "JOURNEY"};
     uint32_t bars = gl.hold ? GLIDE_WAIT_BARS[gl.wait % GLIDE_WAITS] : glide_trip_bars(), at = ((gl.prog * bars) >> GLIDE_Q) + 1u;
     if (!glide_running())
+#if TIDE_PLAYSEL
+        str_cpy(l, PLS_NAME[play_pos()], 40);              /* (1.0.0-b7: the selection is the play mode: PART 1, LAYER, STEREO, DUEL, PART 2) */
+#else
         str_cpy(l, song.both ? "BOTH PARTS" : song.sel ? "PART 2" : "PART 1", 40);
+#endif
     else if (gl.armed)
         str_cpy(l, song.playing || transport_req == 1u ? "GLIDE ON THE NEXT BAR" : "GLIDE STARTS WITH PLAY", 40);
     else if (!song.playing)

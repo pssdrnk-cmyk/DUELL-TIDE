@@ -497,7 +497,7 @@ static void midi_tide(uint32_t ch, uint32_t pi, uint32_t code, uint32_t value)
 
 /* DUELL step 5 (SPEC 5b.1): the MODE is global (not a part's): 0-42 SPLIT, 43-85 STEREO, 86-127 LAYER, on any channel (also one ROUT does
  * not play: the MODE is no part's), a value that keeps the mode does nothing. XFADE 0..127 -> 0..100 % (item 157: BALANCE is no target any more);
- * SPLIT 0 = OFF, 1..127 = the note n. Queued for nothing: mode_apply runs here, in the ISR */
+ * SPLIT 0 = OFF, 1 = MIDDLE (1.0.0-b7: the middle of the keys as played; it was the note 1, C#-1), 2..127 = the note n. Queued for nothing: mode_apply runs here, in the ISR */
 static void mode_apply(void);                   /* (seq.c) */
 /* 1: code is a global target and is set now */
 static int __attribute__((noinline)) midi_glob_act(uint32_t code, uint32_t value)
@@ -506,8 +506,8 @@ static int __attribute__((noinline)) midi_glob_act(uint32_t code, uint32_t value
         midi_glob_set(code - MAP_T_G0, value);
     else if (code == MAP_T_XFADE)                   /* 0..127 -> 0..100 % */
         mix_xf = (uint8_t)((value * 100u + 63u) / 127u);
-    else if (code == MAP_T_SPLIT)                   /* 0 OFF, 1..127 the note n (stored n + 1) */
-        mix_split = (uint8_t)(value ? value + 1u : 0u);
+    else if (code == MAP_T_SPLIT)                   /* 0 OFF, 1 MIDDLE, 2..127 the note n (stored n + 1) */
+        mix_split = (uint8_t)(value == 1u ? SPLIT_MIDDLE : value ? value + 1u : 0u);
     else if (code == MAP_T_MODE) {
         duell_mode_req = (uint8_t)(value < 43u ? DM_SPLIT : value < 86u ? DM_STEREO : DM_LAYER);
         mode_apply();

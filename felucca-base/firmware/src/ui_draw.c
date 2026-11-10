@@ -2744,12 +2744,14 @@ static void draw_columns(void)
             draw_column(1, "XFADE", val, "%", VAL(1u), (int32_t)mix_xf * 10, ICON_MIX);
         else
             draw_column_hide(1);
-        if (mix_split)
+        if (mix_split == SPLIT_MIDDLE)                 /* (1.0.0-b7) */
+            str_cpy(val, "MIDDLE", sizeof val);
+        else if (mix_split)
             note_name(val, (uint32_t)mix_split - 1u);
         else
             str_cpy(val, "OFF", sizeof val);
         if (duell_mode_req == DM_LAYER)
-            draw_column(2, "SPLIT", val, "", VAL(2u), mix_split ? ((int32_t)mix_split - 1) * 1000 / 127 : -1, ICON_MIX);
+            draw_column(2, "SPLIT", val, "", VAL(2u), mix_split == SPLIT_MIDDLE ? 500 : mix_split ? ((int32_t)mix_split - 1) * 1000 / 127 : -1, ICON_MIX);
         else
             draw_column_hide(2);
         draw_column_hide(3);
