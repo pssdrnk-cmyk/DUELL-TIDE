@@ -34,7 +34,7 @@ static void ck(const char *what, int ok)
 int main(void)
 {
     static const char *const FN[16] = {"BASIC CHORD", "DUB CHORD", "JUNO DEEP", "LATE RHODES", "ORGAN HOUSE", "PIANO HOUSE", "DETROIT STAB",
-                                       "HI-TECH SOUL", "MINIMAL 12", "TWO 303S", "ACID LINES", "ROBOT FUNK", "DEEP SEA ARP", "WARPED TAPE",
+                                       "HI-TECH SOUL", "HYPNO 303", "TWO 303S", "ACID LINES", "ROBOT FUNK", "DEEP SEA ARP", "WARPED TAPE",
                                        "BERLIN RUN", "TWO LOOPS"};   /* (the reel, 2026-11-10: fifteen new multis as one curated programme, M02 the owner's DUB CHORD; tools/factory_multis.py) */
     uint32_t k, ok, test_rows = 0, sys_rows = 0;
     memset(nor, 0xFF, sizeof nor);
