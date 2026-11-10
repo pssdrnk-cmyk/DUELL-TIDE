@@ -115,24 +115,24 @@ Ten rows: STYLE, MODE, TARGET, ARC, ROLL TYPE and AMOUNT for the tide, then REC,
 | At the next turn (when the trip arrives) | MODE, WAIT, TIME (also when a STYLE sets it; the page shows the new TIME at once, the bar count goes on with the trip that runs), and ROLL TYPE (it shapes the next end that is rolled). |
 | At the next start (knob 1) | TARGET: what the tide moves is fixed when a glide starts. |
 
-Defaults with no saved settings (a new unit, or after ERASE DATA): STYLE DUB, that is MODE WANDER, TIME 16, WAIT 2, ARC RISE (and DUB's feel: vary every 4th bar, turns LEAD, poly GENTLE, offbeat SOFT, wash OFF); and TARGET BOTH, ROLL TYPE MUSIC, REC ADD, ROLL ARP and ROLL PITCH OFF. A STYLE saved by an earlier build loads as the same style with this build's values (DUB saved by `1.0.0-b6` played JOURNEY and now plays WANDER). An older record without a STYLE loads as CUSTOM with its values kept.
+Defaults with no saved settings (a new unit, or after ERASE DATA): STYLE DUB, that is MODE WANDER, TIME 16, WAIT 2, ARC RISE (and DUB's feel: vary every 4th bar, poly GENTLE, offbeat SOFT, wash OFF); and TARGET BOTH, ROLL TYPE MUSIC, REC ADD, ROLL ARP and ROLL PITCH OFF. A STYLE saved by an earlier build loads as the same style with this build's values (DUB saved by `1.0.0-b6` played JOURNEY and now plays WANDER). An older record without a STYLE loads as CUSTOM with its values kept.
 
-**STYLE sets** (MODE, TIME, WAIT, vary bars, turns, poly, offbeat, ARC, wash):
+**STYLE sets** (MODE, TIME, WAIT, vary bars, poly, offbeat, ARC, wash):
 
-| Style | Nine values |
+| Style | Eight values |
 |---|---|
-| DUB | WANDER, 16, 2, EVERY 4TH, LEAD, GENTLE, SOFT, RISE, OFF |
-| DEEP | WANDER, 32, 4, EVERY 4TH, TAKE TURNS, OFF, SOFT, RISE, LOW |
-| MINIMAL | WANDER, 8, OFF, EVERY BAR, LEAD, WIDE, PUSH, OFF, OFF |
-| AMBIENT | JOURNEY, 64, 8, EVERY 4TH, TOGETHER, OFF, OFF, OFF, HIGH |
-| PEAK | JOURNEY, 8, OFF, EVERY BAR, LEAD, GENTLE, PUSH, DROP, OFF |
-| DRONE | WANDER, 64, OFF, EVERY 4TH, TOGETHER, OFF, OFF, OFF, HIGH |
+| DUB | WANDER, 16, 2, EVERY 4TH, GENTLE, SOFT, RISE, OFF |
+| DEEP | WANDER, 32, 4, EVERY 4TH, OFF, SOFT, RISE, LOW |
+| MINIMAL | WANDER, 8, OFF, EVERY BAR, WIDE, PUSH, OFF, OFF |
+| AMBIENT | JOURNEY, 64, 8, EVERY 4TH, OFF, OFF, OFF, HIGH |
+| PEAK | JOURNEY, 8, OFF, EVERY BAR, GENTLE, PUSH, DROP, OFF |
+| DRONE | WANDER, 64, OFF, EVERY 4TH, OFF, OFF, OFF, HIGH |
 
 DUB keeps the multi's own sounds and walks them (WANDER); JOURNEY, which travels through other factory sounds, is the mode of AMBIENT and PEAK, or yours by hand on the MODE row.
 
 The built-in drone multis M17 DUNE HORN and M18 VOID DEEP (SAVE > MULTIS, 1.0.0-b6) each have one part on a slow sequence over the held chord (DUNE HORN: the horn swells once a bar, root, root, fourth, root; VOID DEEP: the solar wind turns every 8 to 16 seconds, root, a tone up, the fourth) while the other part holds the chord; DRONE's WANDER keeps them sparse (never more than one new note a bar, never under the chord you hold). They play as DRONE without a trip here: while one of them is the multi loaded, STYLE shows DRONE and its values are DRONE's; loading any other multi brings back the STYLE and values you had, and the saved STYLE never changes (a row you change while a drone multi is loaded lasts until then).
 
-DRONE is for a held chord of one of the factory drone sounds (#164 to #171) with HOLD on: WANDER keeps the sound and slowly moves it between its two ends over 64 bars, never waits at an end, and leaves out everything rhythmic (turns TOGETHER, poly, offbeat and ARC OFF) that a held chord would not use; wash HIGH gives the slow breath. AMBIENT is JOURNEY: it hops from sound to sound, with no groove tricks (poly OFF). CUSTOM moved from 5 to 6 in `1.0.0-b4`; an old 5 reads as CUSTOM unless its values are DRONE's.
+DRONE is for a held chord of one of the factory drone sounds (#164 to #171) with HOLD on: WANDER keeps the sound and slowly moves it between its two ends over 64 bars, never waits at an end, and leaves out everything rhythmic (poly, offbeat and ARC OFF) that a held chord would not use; wash HIGH gives the slow breath. AMBIENT is JOURNEY: it hops from sound to sound, with no groove tricks (poly OFF). CUSTOM moved from 5 to 6 in `1.0.0-b4`; an old 5 reads as CUSTOM unless its values are DRONE's.
 
 Dub-techno recipe: STYLE DUB, ALGORITHM LAYER (by hand: **AUTO TIDE** WANDER, TIME 16, WAIT 2 to 4; **SETTINGS** TARGET BOTH, ARC RISE, ROLL TYPE MUSIC; DUB's wash is OFF, so the sounds keep their own level and space). Press PLAY, twist K1 right, walk away.
 
@@ -197,7 +197,7 @@ Merged on the development line, in `1.0.0-b1` and after it (the source is the re
 | **MORPH is the hands-on page** | Knob 1 MORPH at half the turning, knob 2 FILTER, knob 3 ECHO, knob 4 LENGTH, on the slim row under the wave picture. With both parts selected (ALGORITHM's middle) every knob moves each part by the same amount. A new End B: hold OCT+ and click knob 1. AMOUNT is a TIDE SETTINGS row now; the new-A roll is gone from the page. |
 | **ALGORITHM's middle is the play mode** | PART 1, the middle, PART 2 on the HOME pages and PERFORM: the middle plays both parts in the PLAY MODE row's mode and the header names it (LAYER, STEREO or DUEL); PART 1 and PART 2 play one part on every key. Changing PLAY MODE moves ALGORITHM to the middle. |
 | **SPLIT MIDDLE** | A SPLIT value after OFF: the keys split in the middle wherever OCT- / OCT+ put them. With SPLIT set, STEREO and DUEL split the keys too. |
-| **A shorter TIDE SETTINGS page** | STYLE, MODE, TARGET, ARC, ROLL TYPE, AMOUNT, then REC, PLAY MODE, XFADE, SPLIT. VARY BARS, TURNS, POLY, OFFBEAT and WASH are STYLE's values (no rows); ROLL ARP and ROLL PITCH have no row (OFF by default; a unit that had them ON keeps them). The tide's MODE is a row too. A saved STYLE stays that style. |
+| **A shorter TIDE SETTINGS page** | STYLE, MODE, TARGET, ARC, ROLL TYPE, AMOUNT, then REC, PLAY MODE, XFADE, SPLIT. VARY BARS, POLY, OFFBEAT and WASH are STYLE's values (no rows); ROLL ARP and ROLL PITCH have no row (OFF by default; a unit that had them ON keeps them). The tide's MODE is a row too. A saved STYLE stays that style. |
 | **ROLL TYPE no longer switches the rhythm off** | ARC and the pattern's movement act in WANDER and JOURNEY whatever ROLL TYPE is. ROLL TYPE is dim under JOURNEY, where it does nothing. |
 | **DUB walks your sounds** | STYLE DUB plays WANDER: the multi's own sounds stay and evolve, and the level and brightness stay steadier. AMBIENT plays without the shortened loops (poly OFF). |
 | **An arc you can hear** | ARC's phases fall on 8-bar boundaries (an arc is 40 to 64 bars), the breakdown keeps each part's main hits, plays chords in two voices and drops the level by 2 to 5 dB, the first arc after PLAY drops under ARC DROP, and ARP SEQ parts follow ARC's dynamics too. In the breakdown the parts thin by voices and level; their number of hits drops less. |

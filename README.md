@@ -77,18 +77,18 @@ Links from the project's pages (installer, emulator, issue forms) to the guides 
 
 ## What changed from DUELL 1.1
 
-**MORPH**, HOME's first page, is the hands-on page: knob 1 the morph fader (A to B), knob 2 FILTER, knob 3 ECHO, knob 4 LENGTH, over a live picture of the sound; hold OCT+ and click knob 1 for a new random End B. **AUTO TIDE** runs the tide: knob 1 glides to B or to A, knob 2 picks the AUTO TIDE mode (ONCE, LOOP, DRIFT, WANDER, JOURNEY), knob 3 the TIME of a trip (1 to 64 bars), knob 4 the WAIT at each end, and ALGORITHM picks PART 1, both parts (the middle, playing the PLAY MODE row's LAYER, STEREO or DUEL) or PART 2. **TIDE SETTINGS** says how it behaves, in ten rows: STYLE, MODE (the tide's mode, the same as knob 2 on AUTO TIDE), TARGET, ARC, ROLL TYPE and AMOUNT (how far a roll goes), then REC (ADD or REPLACE for live recording), PLAY MODE, XFADE and SPLIT (the output mode, LAYER / STEREO / DUEL, and its two settings). VARY BARS, TURNS, POLY, OFFBEAT and WASH have no rows: STYLE sets them. ROLL ARP and ROLL PITCH have no row either (OFF unless a unit had them on). Every row, its values and when a change lands are in the [TIDE guide](docs/TIDE_GUIDE.md). The STYLE presets:
+**MORPH**, HOME's first page, is the hands-on page: knob 1 the morph fader (A to B), knob 2 FILTER, knob 3 ECHO, knob 4 LENGTH, over a live picture of the sound; hold OCT+ and click knob 1 for a new random End B. **AUTO TIDE** runs the tide: knob 1 glides to B or to A, knob 2 picks the AUTO TIDE mode (ONCE, LOOP, DRIFT, WANDER, JOURNEY), knob 3 the TIME of a trip (1 to 64 bars), knob 4 the WAIT at each end, and ALGORITHM picks PART 1, both parts (the middle, playing the PLAY MODE row's LAYER, STEREO or DUEL) or PART 2. **TIDE SETTINGS** says how it behaves, in ten rows: STYLE, MODE (the tide's mode, the same as knob 2 on AUTO TIDE), TARGET, ARC, ROLL TYPE and AMOUNT (how far a roll goes), then REC (ADD or REPLACE for live recording), PLAY MODE, XFADE and SPLIT (the output mode, LAYER / STEREO / DUEL, and its two settings). VARY BARS, POLY, OFFBEAT and WASH have no rows: STYLE sets them. ROLL ARP and ROLL PITCH have no row either (OFF unless a unit had them on). Every row, its values and when a change lands are in the [TIDE guide](docs/TIDE_GUIDE.md). The STYLE presets:
 
-| STYLE | AUTO TIDE MODE | TIME | WAIT | VARY BARS | TURNS | POLY | OFFBEAT | ARC | WASH |
-|---|---|---|---|---|---|---|---|---|---|
-| **DUB** | WANDER | 16 bars | 2 bars | EVERY 4TH | LEAD | GENTLE | SOFT | RISE | OFF |
-| **DEEP** | WANDER | 32 bars | 4 bars | EVERY 4TH | TAKE TURNS | OFF | SOFT | RISE | LOW |
-| **MINIMAL** | WANDER | 8 bars | OFF | EVERY BAR | LEAD | WIDE | PUSH | OFF | OFF |
-| **AMBIENT** | JOURNEY | 64 bars | 8 bars | EVERY 4TH | TOGETHER | OFF | OFF | OFF | HIGH |
-| **PEAK** | JOURNEY | 8 bars | OFF | EVERY BAR | LEAD | GENTLE | PUSH | DROP | OFF |
-| **DRONE** | WANDER | 64 bars | OFF | EVERY 4TH | TOGETHER | OFF | OFF | OFF | HIGH |
+| STYLE | AUTO TIDE MODE | TIME | WAIT | VARY BARS | POLY | OFFBEAT | ARC | WASH |
+|---|---|---|---|---|---|---|---|---|
+| **DUB** | WANDER | 16 bars | 2 bars | EVERY 4TH | GENTLE | SOFT | RISE | OFF |
+| **DEEP** | WANDER | 32 bars | 4 bars | EVERY 4TH | OFF | SOFT | RISE | LOW |
+| **MINIMAL** | WANDER | 8 bars | OFF | EVERY BAR | WIDE | PUSH | OFF | OFF |
+| **AMBIENT** | JOURNEY | 64 bars | 8 bars | EVERY 4TH | OFF | OFF | OFF | HIGH |
+| **PEAK** | JOURNEY | 8 bars | OFF | EVERY BAR | GENTLE | PUSH | DROP | OFF |
+| **DRONE** | WANDER | 64 bars | OFF | EVERY 4TH | OFF | OFF | OFF | HIGH |
 
-A new unit starts on DUB, so DUB's row (bold) is the default. A unit that had TIDE settings saved before STYLE existed keeps them and shows CUSTOM; the values it lacked load as TURNS TAKE TURNS, POLY GENTLE, OFFBEAT SOFT and ARC OFF. A saved STYLE stays that style after an update (a b6 DUB reads as DUB with WANDER). Only a hand edit of MODE, TIME, WAIT or ARC turns STYLE into CUSTOM.
+A new unit starts on DUB, so DUB's row (bold) is the default. A unit that had TIDE settings saved before STYLE existed keeps them and shows CUSTOM; the values it lacked load as POLY GENTLE, OFFBEAT SOFT and ARC OFF. A saved STYLE stays that style after an update (a b6 DUB reads as DUB with WANDER). Only a hand edit of MODE, TIME, WAIT or ARC turns STYLE into CUSTOM.
 
 Also new: 43 more factory sounds (#129 to #171: three of them FM6, the last eight drones) and ten chord and pad patterns for dub techno and deep house; four USER slots for patches (U1 to U4) and for patterns (P29 to P32); MULTIS and PATTERNS lists with a preview of the picked entry; live graphs on the ENV, LFO, CYCLE, filter, INSERT, MATRIX and CHORD pages; SEQ MORPH (a pattern has an End A and an End B too); ARP SEQ on PLAY; KEEP in the SEQ tools. Fixes that also hold with TIDE off (clock phase, FM6, UNISON, PHYS, CHORD keys, MODE / SPLIT) are in the [CHANGELOG](CHANGELOG.md). To make room, the fonts are Huffman-coded and UI render paths no page reaches are gone; building with `DUELL_TIDE=0` gives DUELL 1.1 without any TIDE code, and `jam/check_off.sh` checks that.
 
