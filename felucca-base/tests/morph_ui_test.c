@@ -397,6 +397,20 @@ static void t_editb(void)
     expect("a patch saved with values set by hand: loading it gives A as saved, End B exactly as saved and the same two values, the fader at A",
            ok && trk[0].user == sl + 1u && mph[0].fader == 0u && !memcmp(pa, trk[0].p, sizeof pa) && endb_same(mph[0].eng, b0, endp(0, 1)) && morph_edits(0, ed) == 2u &&
            pin_get(morph_pins(&mph[0]), P_ATK) && pin_get(morph_pins(&mph[0]), P_SUS));
+    /* b7 (review C2): another sound, then the load UNDO: the USER patch back with its own End B and the two values; AUTO TIDE's HOME the same */
+    turn(EN_PRESET, -1);
+    frames(32);
+    undo_swap();
+    frames(32);
+    expect("the load UNDO back to the saved USER patch: End B exactly as saved and its two values (not a fresh roll)",
+           trk[0].user == sl + 1u && endb_same(mph[0].eng, b0, endp(0, 1)) && morph_edits(0, ed) == 2u &&
+           pin_get(morph_pins(&mph[0]), P_ATK) && pin_get(morph_pins(&mph[0]), P_SUS));
+#if DUELL_TIDE
+    tide_home(1u);
+    frames(32);
+    expect("AUTO TIDE's HOME on the saved USER patch: End B exactly as saved and its two values",
+           trk[0].user == sl + 1u && endb_same(mph[0].eng, b0, endp(0, 1)) && morph_edits(0, ed) == 2u);
+#endif
     /* undo of loads (SAVE held), both orders */
     fresh();
     live_b();

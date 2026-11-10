@@ -1303,24 +1303,35 @@ static int up_load(uint32_t k)
     t->user = (uint8_t)(k + 1u);
     {   /* ROLL CHAINED storage: End B saved with it, as values (morph.c MBV): a copy, as the read ring moves on during the load */
         uint8_t bv[MBV_MAX];
-        const uint8_t *p = pt_raw(k);
-        uint32_t xbo, mb, pr, pat, fm, n;
-        memset(bv, 0, sizeof bv);
-        morph_ldv = 0;
-        if (p && (p[4] & PTF_MB)) {
-            pt_layout(p, &xbo, &mb, &pr, &pat, &fm);
-            n = mb < pt_rd16(p) ? morph_bv_size(p + mb, pt_rd16(p) - mb, p[5]) : 0u;
-            if (n && n <= MBV_MAX) {
-                memcpy(bv, p + mb, n);
-                morph_ldv = bv;
-            }
-        }
+        morph_ldv = up_ldv(k, bv);
         load_end(t);
         morph_ldv = 0;
     }
     sync_reload = 1;
     ui.force = 1;
     return 0;
+}
+
+/* End B saved with record k (ROLL CHAINED storage, an MBV block) copied into bv (MBV_MAX bytes): what morph_ldv takes for the next rebase; 0 = none saved */
+static const uint8_t *up_ldv(uint32_t k, uint8_t *bv)
+{
+    const uint8_t *p = pt_raw(k);
+    uint32_t xbo, mb, pr, pat, fm, n;
+    memset(bv, 0, MBV_MAX);
+    if (!p || !(p[4] & PTF_MB))
+        return 0;
+    pt_layout(p, &xbo, &mb, &pr, &pat, &fm);
+    n = mb < pt_rd16(p) ? morph_bv_size(p + mb, pt_rd16(p) - mb, p[5]) : 0u;
+    if (!n || n > MBV_MAX)
+        return 0;
+    memcpy(bv, p + mb, n);
+    return bv;
+}
+/* b7 (review C2): a part given back a stored USER record without a load (the load UNDO, AUTO TIDE's HOME) gets that record's own End B at the
+ * rebase, not a fresh roll: morph_ldv from the record (re-read: no RAM copy) */
+static void up_ldv_rec(const track_t *t, uint8_t *bv)
+{
+    morph_ldv = t->user && t->user <= UP_SLOTS ? up_ldv(t->user - 1u, bv) : 0;
 }
 
 /* the patterns of the user presets (no longer listed by SAVE > PATTERNS: its list is the sixteen slots; kept for tests) */

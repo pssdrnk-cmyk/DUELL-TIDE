@@ -50,7 +50,12 @@ static void tide_home(uint32_t mask)
         if (!((mask >> k) & 1u))
             continue;
         jh_clear(k);
-        morph_rebase_part(k);
+        {
+            uint8_t bv[MBV_MAX];
+            up_ldv_rec(&trk[k], bv);                     /* (b7, review C2: a USER record's own End B, not a fresh roll) */
+            morph_rebase_part(k);
+            morph_ldv = 0;
+        }
         seqm_home(k);
     }
 }
