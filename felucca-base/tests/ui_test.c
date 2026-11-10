@@ -6317,6 +6317,19 @@ static uint32_t acc_ms(uint32_t role, const uint16_t *gaps, uint32_t n, int32_t 
     }
     return sum;
 }
+/* b7 (FR7 D9): a dialog cancelled by HOME says NOT SAVED only when something was to be saved */
+static int test_cancel_words(void)
+{
+    int bad = 0;
+    ui_power_on(); frames(300);
+    confirm_open(CF_INIT_SOUND, 0u); frame();
+    press(B_HOME); frames(50);
+    bad += check("HOME in INITIALIZE SOUND?: CANCELLED (nothing was being saved)", !ui.confirm && msg_is("CANCELLED"));
+    confirm_open(CF_SAVE_OVER, 0u); frame();
+    press(B_HOME); frames(50);
+    bad += check("HOME in the SAVE dialog: NOT SAVED", !ui.confirm && msg_is("NOT SAVED"));
+    return bad;
+}
 /* DUELL 0.2.16: KNOB ACCEL ON, PATCHES' K1 steps by the turn speed and loads only the sound the turn ends on (ui.c pl_step / pl_poll);
  * OFF: one place a detent, each loaded, as before */
 static uint32_t snd_sig(void) { return (uint32_t)TSEL->eng_req * 100003u + (uint32_t)TSEL->preset * 131u + (uint32_t)TSEL->user; }
@@ -10099,6 +10112,7 @@ int main(void)
     bad += test_head_ab_fit();                      /* (cloud job G: the A / B letter's room)
     bad += test_head_rec_foot();                    /* (DUELL 0.2.10: no number / REC mark in the header; the footer's armed mark) */
     bad += test_ui_t();                             /* (audit lane T: footer tempo, capsule marks, units) */
+    bad += test_cancel_words();
     bad += test_patch_accel();                      /* (DUELL 0.2.16: PATCHES' K1 with KNOB ACCEL ON) */
     bad += test_transpose_patch();                  /* (DUELL 1.1, item 141: TRANSPOSE is the patch's, VOICE 1/2 K4; no KEY OFFSET) */
     bad += test_item152_flicker();                  /* (item 152: no blank frame on a change, PATCHES' title) */

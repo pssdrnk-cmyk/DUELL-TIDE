@@ -1929,6 +1929,16 @@ static void play_hold(uint32_t now)
 /* HOME / REC / SAVE: tap on release, hold 0.7 s fires once. t0 = press time | 1,
  * bit 1 = fired (or swallowed: then the release is no tap either) */
 enum { BT_NONE, BT_TAP, BT_HOLD };
+/* a dialog or NAME cancelled by HOME or a page button: nothing written. "NOT SAVED" for NAME and the save dialogs, "CANCELLED" for the others (b7) */
+#define CF_SAVES ((1u << CF_OVR_PROJ) | (1u << CF_OVR_USER) | (1u << CF_OVR_PSLOT) | (1u << CF_SAVE_OVER) | (1u << CF_HOLD_PSLOT) | (1u << CF_HOLD_MULTI))
+static void dlg_cancel(void)
+{
+    ui_message(name_on() || ((CF_SAVES >> ui.confirm) & 1u) ? "NOT SAVED" : "CANCELLED");
+    name_close();
+    ui.confirm = 0;
+    ui.force = 1;
+}
+
 static uint32_t btn_hold(uint32_t *t0, uint32_t label, uint32_t now, int hold_ok)
 {
     uint32_t tap;
@@ -2154,11 +2164,8 @@ static void ui_input(void)
     }
     save = btn_hold(&ui.save_t0, B_SAVE, now, !ui.menu && !ui.confirm);   /* held: SAVE OVER (patch_save_ask) */
     if (!ui.menu && (ui.confirm || name_on()) && leave_pressed(pressed)) {   /* a page button in a dialog / NAME: cancelled (nothing */
-        if (name_on())                                  /* written, before the layers look at it, so the button goes on to its */
-            name_close();                               /* page like on any page) */
-        ui.confirm = 0;
-        ui.force = 1;
-        ui_message("NOT SAVED");
+        dlg_cancel();                                   /* written, before the layers look at it, so the button goes on to its
+                                                         * page like on any page) */
     }
     layer_lock_input(pressed);                          /* (#83: a button closes a locked layer) */
     layer_arm(pressed, now);
@@ -2251,11 +2258,7 @@ static void ui_input(void)
         return;
     }
     if ((ui.confirm || name_on()) && home == BT_TAP) {  /* HOME in a dialog / NAME: cancelled, nothing written, then HOME's page */
-        if (name_on())
-            name_close();
-        ui.confirm = 0;
-        ui.force = 1;
-        ui_message("NOT SAVED");
+        dlg_cancel();
         home_tap();
         home = BT_NONE;
     }
