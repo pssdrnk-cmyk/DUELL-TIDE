@@ -6365,6 +6365,22 @@ static int test_patch_accel(void)
     ok &= !pl_pend_on;
     bad += check("  .. TYPE (K2) drops the waiting place", ok);
     list_set(0u);
+    {   /* b7 (FR7 D7): a fast turn's waiting place, then ALGORITHM to the other part: part 2's sound is left alone */
+        uint32_t o0 = trk[1].eng_req * 100003u + trk[1].preset * 131u + trk[1].user;
+        song.sel = 0;
+        go_page(GR_MORPH);
+        frames(300);
+        fm1_ms += 1000;
+        for (k = 0; k < 10u; k++) turn(EN_PRESET, 1);
+        ok = pl_pend_on;
+        track_select(1u);                            /* (ALGORITHM's detent to part 2) */
+        frames(200);
+        ok &= song.sel == 1u && !pl_pend_on && trk[1].eng_req * 100003u + trk[1].preset * 131u + trk[1].user == o0;
+        bad += check("  .. ALGORITHM to the other part while a place waits: the other part's sound unchanged", ok);
+        track_select(0u);
+        go_page(GR_BROWSE);
+        frames(300);
+    }
     /* KNOB ACCEL OFF: one place a detent, each loaded */
     ui_prefs &= ~PREF_ACCEL;
     frames(300);

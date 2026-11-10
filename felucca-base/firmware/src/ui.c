@@ -2031,6 +2031,7 @@ static void track_select(uint32_t i)
 {
     if (i >= NSHOWN || i == song.sel)             /* (tracks 3, 4: hidden) */
         return;
+    pl_commit();                                 /* (b7: a fast turn's waiting sound loads into the part it was turned on, not the next one) */
     song.sel = (uint8_t)i;
     ui.entry_open = 0;
     ui.hot_t = 0;
