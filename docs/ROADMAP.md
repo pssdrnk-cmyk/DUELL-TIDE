@@ -42,6 +42,11 @@ Six builder lanes made these overnight (9 to 10 November); each is measured on t
 | HOME page 1 is the hands-on page: K1 MORPH at half the turning, K2 FILTER, K3 ECHO, K4 LENGTH on the slim row; BOTH moves each part by the same steps; OCT+ held + K1 rolls a new End B; OCT- + a knob puts it back; AMOUNT is a TIDE SETTINGS row, not dimmed in JOURNEY | Built (host tests, device build); not on the unit |
 | Loading one of your own sounds, a multi or a pattern no longer cuts notes the other part is holding ([FR6](audits/2026-11-09/firmware-review/TASKS.md#fr6)). Second-core code: its own FM-1 check. b8. | Built |
 | Pattern polish: a big tap-tempo jump doesn't flam or knock the arp off the grid (the rest of [FR13](audits/2026-11-09/firmware-review/TASKS.md#fr13)). | Built |
+| Load UNDO (OCT- held + PRESETS) and AUTO TIDE's HOME bring your saved sound back with its own End B ([FR10](audits/2026-11-09/firmware-review/TASKS.md#fr10)) | Built |
+| Knob locks recorded on an ARP SEQ part play on the step the arp plays ([FR9](audits/2026-11-09/firmware-review/TASKS.md#fr9)) | Built |
+| SAVE held with BOTH on two sounds from the read-only places saves each into its own empty USER slot ([FR12](audits/2026-11-09/firmware-review/TASKS.md#fr12)) | Built |
+| After a save cut short by a power cut, RESTORE no longer brings the old sound back ([FR14](audits/2026-11-09/firmware-review/TASKS.md#fr14)) | Built |
+| tools/build.py --release refuses to build with a developer switch on ([FR15](audits/2026-11-09/firmware-review/TASKS.md#fr15)) | Built |
 
 The owner's answers to the musical review (9 November) are built in: the default for each of the nine questions, with the first start staying M02 DUB CHORD and FINAL REEL's brass pad keeping its octave.
 
@@ -55,25 +60,23 @@ The owner's answers to the musical review (9 November) are built in: the default
 5. Cleanup after TURNS: `sqm_turns` and `tarc_fast` are kept for the tests and play nothing; they can go.
 6. JOURNEY keeps the multi's colour: M02's 8-bar brightness range is x6.6 (mark x2.5). `JCTX_MIN 1` brought it to x4.2 but made M02 +5 LU louder, so it was reverted; and the blend between two sounds is dull mid-trip on M13 and the FM6 multis (the rest of X1). Needs a way to pick destinations by level and colour together ([MR5](audits/2026-11-09/musical-review/TASKS.md#mr5)).
 7. Two multis for the missing roles, a sparse figure with a texture and a keys house stab ([MR9](audits/2026-11-09/musical-review/TASKS.md#mr9)), and the roles rows T8 to T10 (the new reel and its `tideroles` levels). Not built in the night.
-8. Load UNDO and AUTO TIDE's HOME bring your own patch back with its own End B, not a new roll ([FR10](audits/2026-11-09/firmware-review/TASKS.md#fr10)). b8.
-9. Knob locks recorded on an ARP SEQ part stay on the note you recorded them on ([FR9](audits/2026-11-09/firmware-review/TASKS.md#fr9)). b8, with the live-recording limits.
-10. Before `1.0.0`: no stale patch record after a save cut by power loss ([FR14](audits/2026-11-09/firmware-review/TASKS.md#fr14)); SAVE with BOTH from the read-only places uses two USER slots ([FR12](audits/2026-11-09/firmware-review/TASKS.md#fr12)); release builds refuse the developer switches, core 1's stack re-read with TIDE's crossings ([FR15](audits/2026-11-09/firmware-review/TASKS.md#fr15)).
-11. Hand-moved morph saving: a hand or MIDI fader move blended every other block like a GLIDE (about 70 us a block saved). Finding 12, D44.
-12. Transition costs only while moving: the engine cross-fade, valley and wash charged only while a transition runs, so more notes play at rest.
-13. FM6 crossing fixes (findings 8, 9; brief K7) and Felucca #265 (signed DSP arithmetic, bit-exact).
-14. Free 276 B of RAM: the SEQ MORPH history UNDO no longer reads ([R1](audits/2026-11-09/tide-morph/TASKS.md#r1)). When a feature needs RAM.
-15. Two small interrupt savings in the crossing step ([C1](audits/2026-11-09/tide-morph/TASKS.md#c1)), with "Transition costs only while moving".
-16. WASH on: no jump when a glide is stopped by hand, one dip instead of two stacked ([W1](audits/2026-11-09/tide-morph/TASKS.md#w1)).
-17. Docs fixes from the TIDE and morph audit still open (the dip's length, the DUB recipe's wash, the bass promise and the dynamics paragraph were written in the b7 guide pass): `TIDE_GUIDE.md:23` the MORPH knob 3 text (the wave picture is shipped); WANDER "a little further each trip"; `MOD_INERT_TABLE.md:21` (ANALOG: PW is offered only with WAVE PWM), and `INSTALL.md:60` / `QUICKSTART.md:41` (ERASE DATA erases the FM6 voice bank and the user tables), with FR11.
-18. Factory pattern table trimmed (~0.9 KB; [SP3](audits/2026-11-09/space/TASKS.md)).
-19. Parameter units stored as an index (~0.87 KB; [SP4](audits/2026-11-09/space/TASKS.md)).
-20. Event-rate code built for size (1.78 KB; [SP5](audits/2026-11-09/space/TASKS.md)); needs the FM-1 CPU sweep.
-21. FM6 MUSIC rolls at AMOUNT 40 leave the loudness window (all FM6 rolls, not just End B); needs its own change ([finding 7](audits/2026-11-09/tide-morph/REPORT.md)).
-22. Give notes back more finely (per multi, or a smaller step than 76): at the first step, NOTES limit 76 (18 notes over the 16 multis), the unit's sweep missed no block but cut one voice on M14 EERIE SIGNAL, busiest block 90 % (b5 83 %); M08 TINE DUB 89 %. Each try kept only if the sweep stays clean.
-23. Send only the screen rows that changed, so the wave page reaches ~16 pictures a second instead of ~11 (the SPI link costs ~44 ms a full wave redraw).
-24. Before `1.0.0`: 0 missed blocks over the 16-multi GLIDE sweep (owner, 8 November); the CPU budget re-measured and made honest (findings 5, 6, 34; K9).
-25. AUTO TIDE's step display can show one hit ahead that then doesn't play: M09 MINIMAL 12's 12-step blip under a style with ARC DROP (PEAK). Picture only, the sound is right. Seen once in 22,158 look-aheads in the `tidesteps` test (its WANDER / ARC DROP scenario on factory slot 8: part 2, step 6, three steps ahead). The same class showed on the old set in the night build. The scenario was moved from slot 8 to slot 6 to keep the suite green: put 8 back in `felucca-base/tests/tide_steps_test.c` to see it.
-26. SAVE after JOURNEY: SAVE shows a short message when the sound you loaded and the one JOURNEY moved to differ (owner, 10 November: the default).
+8. On the next test-mode sweep on the unit: read core 1's stack peak with a JOURNEY crossing and WASH on, and record it in docs/TWOCORE_STAGE1.md (the rest of [FR15](audits/2026-11-09/firmware-review/TASKS.md#fr15)).
+9. Hand-moved morph saving: a hand or MIDI fader move blended every other block like a GLIDE (about 70 us a block saved). Finding 12, D44.
+10. Transition costs only while moving: the engine cross-fade, valley and wash charged only while a transition runs, so more notes play at rest.
+11. FM6 crossing fixes (findings 8, 9; brief K7) and Felucca #265 (signed DSP arithmetic, bit-exact).
+12. Free 276 B of RAM: the SEQ MORPH history UNDO no longer reads ([R1](audits/2026-11-09/tide-morph/TASKS.md#r1)). When a feature needs RAM.
+13. Two small interrupt savings in the crossing step ([C1](audits/2026-11-09/tide-morph/TASKS.md#c1)), with "Transition costs only while moving".
+14. WASH on: no jump when a glide is stopped by hand, one dip instead of two stacked ([W1](audits/2026-11-09/tide-morph/TASKS.md#w1)).
+15. Docs fixes from the TIDE and morph audit still open (the dip's length, the DUB recipe's wash, the bass promise and the dynamics paragraph were written in the b7 guide pass): `TIDE_GUIDE.md:23` the MORPH knob 3 text (the wave picture is shipped); WANDER "a little further each trip"; `MOD_INERT_TABLE.md:21` (ANALOG: PW is offered only with WAVE PWM), and `INSTALL.md:60` / `QUICKSTART.md:41` (ERASE DATA erases the FM6 voice bank and the user tables), with FR11.
+16. Factory pattern table trimmed (~0.9 KB; [SP3](audits/2026-11-09/space/TASKS.md)).
+17. Parameter units stored as an index (~0.87 KB; [SP4](audits/2026-11-09/space/TASKS.md)).
+18. Event-rate code built for size (1.78 KB; [SP5](audits/2026-11-09/space/TASKS.md)); needs the FM-1 CPU sweep.
+19. FM6 MUSIC rolls at AMOUNT 40 leave the loudness window (all FM6 rolls, not just End B); needs its own change ([finding 7](audits/2026-11-09/tide-morph/REPORT.md)).
+20. Give notes back more finely (per multi, or a smaller step than 76): at the first step, NOTES limit 76 (18 notes over the 16 multis), the unit's sweep missed no block but cut one voice on M14 EERIE SIGNAL, busiest block 90 % (b5 83 %); M08 TINE DUB 89 %. Each try kept only if the sweep stays clean.
+21. Send only the screen rows that changed, so the wave page reaches ~16 pictures a second instead of ~11 (the SPI link costs ~44 ms a full wave redraw).
+22. Before `1.0.0`: 0 missed blocks over the 16-multi GLIDE sweep (owner, 8 November); the CPU budget re-measured and made honest (findings 5, 6, 34; K9).
+23. AUTO TIDE's step display can show one hit ahead that then doesn't play: M09 MINIMAL 12's 12-step blip under a style with ARC DROP (PEAK). Picture only, the sound is right. Seen once in 22,158 look-aheads in the `tidesteps` test (its WANDER / ARC DROP scenario on factory slot 8: part 2, step 6, three steps ahead). The same class showed on the old set in the night build. The scenario was moved from slot 8 to slot 6 to keep the suite green: put 8 back in `felucca-base/tests/tide_steps_test.c` to see it.
+24. SAVE after JOURNEY: SAVE shows a short message when the sound you loaded and the one JOURNEY moved to differ (owner, 10 November: the default).
 
 ## Released
 
