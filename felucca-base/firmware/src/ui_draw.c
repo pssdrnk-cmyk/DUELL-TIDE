@@ -2374,21 +2374,29 @@ static uint32_t midi_cards(uint8_t vis[4])
 /* (the name a card shows: params.c desc_shown, T0227's unit label pass) */
 #if DUELL_TIDE
 /* 1.0.0-b7 (owner 2026-11-10: HOME's MORPH page is the hands-on page): knob 2, 3 and 4 on the one row under the picture, rows MROW_Y .. + MROW_H - 1, in three fixed
- * columns left to right as the knobs (H1_COL): "FILTER 2.4k", "ECHO 30%", "LENGTH 850ms", the name at the column's left, the value right-aligned at its right end, so
- * nothing moves as a value changes. No knob dots: with them the three do not fit the width (their worst values: 12.5k, 100%, 99.5ms). The selected part's values as
+ * columns left to right as the knobs (H1_COL): "FLT 2.4k", "ECHO 30%", "LEN 850ms", the name at the column's left and the value beside it, so the
+ * names never move. No knob dots: with them the three do not fit the width. The selected part's values as
  * its cards show them (the morph's blend: card_vv); the knob just turned's name in the accent; ECHO dim while the delay does nothing (h1_echo_why: knob 1's line
  * says why). While SAVE is held (and only then) the row says HOLD SAVE = SAVE PATCH instead. Drawn only when what it shows changes */
 static const char *h1_echo_why(void)
 {
     return (mods_off & MODS_SENDS) ? "ECHO: SENDS OFF" : !song.g[G_DMIX] ? "ECHO: DELAY MIX 0" : 0;   /* (the line's words whole: no buffer, RAM is tight) */
 }
+/* knob i + 2's value v on the row as part t shows it (its card's form: FM6's DX7 number and ENV SYNC's note values for LENGTH), the cutoff's unit short ("2.4k", "880") */
+static void h1_val(uint32_t i, const track_t *t, int32_t v, char *out)
+{
+    const char *unit;
+    param_format(track_desc(t, H1_ID[i % 3u]), v, out, &unit);
+    str_cpy(out + str_len(out), str_eq(unit, "Hz") ? "" : str_eq(unit, "kHz") ? "k" : unit, 4);
+}
+static const char *const H1_L[3] = {"FLT", "ECHO", "LEN"};   /* (owner on the unit, 2026-11-10: FILTER and LENGTH crowded their 3-digit values; FLT and LEN are the short forms params.c uses) */
+static const uint8_t H1_COL[3] = {4, 79, 164};          /* the columns' left ends: each name there, its value 5 px after it, left-aligned. Laid out for the widest values
+                                                         * (FLT 10.1k, ECHO 100%, LEN 104ms in the S face, FM6 and ENV SYNC forms included): 12 px or more between the columns,
+                                                         * the last ends by x 236 (tests/morph_ui_test.c h1_fits checks every value) */
 static void morph_row(void)
 {
-    static const char *const L[3] = {"FILTER", "ECHO", "LENGTH"};
-    static const uint8_t H1_COL[4] = {4, 80, 148, 236};  /* (the columns' left ends and the last one's right end, 4 px apart) */
     static char last[24];
     char key[24], v[PV_LEN + 4];
-    const char *unit;
     const int hint = ui.save_t0 != 0u, dim = h1_echo_why() != 0;
     const int32_t ty = UT_TY(S, MROW_BASE);             /* (the row's label baseline: the face's box, descenders included, ends on the canvas's last row) */
     uint32_t i, id;
@@ -2414,10 +2422,9 @@ static void morph_row(void)
         for (i = 0; i < 3u; i++) {
             const int hot = ui.hot_t && ui.hot_col == i + 1u, d = dim && i == 1u;
             id = H1_ID[i];
-            param_format(track_desc(TSEL, id), card_vv(&TSEL->p[id]), v, &unit);
-            str_cpy(v + str_len(v), str_eq(unit, "Hz") ? "" : str_eq(unit, "kHz") ? "k" : unit, 4);   /* (the cutoff's unit short: "2.4k", "880") */
-            cv_text_on(H1_COL[i], ty, &AF_S, L[i], d ? T_DIM : hot ? T_ACCENT : T_TEXT, T_BG);
-            cv_text_r(H1_COL[i + 1u] - 4, ty, &AF_S, v, d ? T_DIM : VAL(i + 1u), T_BG);   /* (the value in the knob-1 line's colour: each name and its value read as a pair) */
+            h1_val(i, TSEL, card_vv(&TSEL->p[id]), v);
+            cv_text_on(H1_COL[i], ty, &AF_S, H1_L[i], d ? T_DIM : hot ? T_ACCENT : T_TEXT, T_BG);
+            cv_text_on(H1_COL[i] + text_w(&AF_S, H1_L[i]) + 5, ty, &AF_S, v, d ? T_DIM : VAL(i + 1u), T_BG);   /* (the value in the knob-1 line's colour, beside its name) */
         }
     cv_blit(0, MROW_Y);
 }

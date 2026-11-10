@@ -480,8 +480,8 @@ static void t_knobs(void)
         char pc[12];
         snprintf(pc, sizeof pc, "%s%%", amt_txt);
         (void)pc;
-        expect("  .. 1.0.0-b7: MORPH A on the knob-1 line, then the row: FILTER, ECHO, LENGTH; no ROLL, no AMOUNT (a TIDE SETTINGS row now)",
-               card_is(0, "MORPH", "A") && mrow_has("FILTER") && mrow_has("ECHO") && mrow_has("LENGTH") && !mrow_has("ROLL") && !mrow_has("AMOUNT"));
+        expect("  .. 1.0.0-b7: MORPH A on the knob-1 line, then the row: FLT, ECHO, LEN; no ROLL, no AMOUNT (a TIDE SETTINGS row now)",
+               card_is(0, "MORPH", "A") && mrow_has("FLT") && mrow_has("ECHO") && mrow_has("LEN") && !mrow_has("ROLL") && !mrow_has("AMOUNT"));
     }
 #else
     expect("  .. the cards in v3's order: MORPH, ROLL, an empty KNOB 3 (1.0.0-b5: no UNDO), AMOUNT (KNOB 4)", card_is(0, "MORPH", "A") && card_is(1, "ROLL", "A<>B") &&
@@ -928,9 +928,36 @@ static void t_amount_keep(void)
     expect("1.0.0-b7: the AMOUNT row is not dim while JOURNEY runs (it still shapes a hand's roll)", !jl_dimmed(JL_AMOUNT));
     gl.on = 0;
 }
+/* the slim row (owner on the unit, 2026-11-10): every value each column can show, in every form (FM6's DX7 number and ENV SYNC's note values for LEN), fits its
+ * column: the name, 5 px, the widest value, then 12 px or more before the next column; the last ends by x 236 */
+static int h1_fits(void)
+{
+    int32_t w[3] = {0, 0, 0}, x;
+    uint32_t i, f, v, ok = 1;
+    char b[PV_LEN + 4];
+    for (i = 0; i < 3u; i++)
+        for (f = 0; f < 3u; f++) {
+            track_t t = trk[0];
+            const param_desc_t *d;
+            t.eng_req = f == 1u ? ENGI_FM6 : 0u;
+            t.p[P_ESYNC] = (int16_t)(f == 2u);
+            d = track_desc(&t, H1_ID[i]);
+            for (v = (uint32_t)d->min; v <= (uint32_t)d->max; v++) {
+                h1_val(i, &t, (int32_t)v, b);
+                w[i] = text_w(&AF_S, b) > w[i] ? text_w(&AF_S, b) : w[i];
+            }
+        }
+    for (i = 0; i < 3u; i++) {
+        x = H1_COL[i] + text_w(&AF_S, H1_L[i]) + 5 + w[i];
+        ok &= x + (i < 2u ? 12 : 0) <= (i < 2u ? H1_COL[i + 1u] : 236);
+        printf("morphui: row column %s: widest value %d px, ends at x %d\n", H1_L[i], w[i], x);
+    }
+    return (int)ok;
+}
 /* 1.0.0-b7 (owner 2026-11-10): the MORPH page is the hands-on page */
 static void t_home1(void)
 {
+    expect("the slim row: the widest value of FLT, ECHO and LEN fits its column, 12 px or more apart", h1_fits());
     int32_t o;
     uint32_t f0, s1;
     int16_t c0, c1;

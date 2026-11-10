@@ -31,6 +31,7 @@ Built overnight on 9-10 November 2026 from the musical review (owner: "your idea
 ### The MORPH page
 
 - **Changed (MORPH, owner: page 1 is the hands-on page):** knob 1 MORPH takes half the turning (two steps a click; A and B still exact), knob 2 is FILTER (the cutoff, as QUICK EDIT's knob 1), knob 3 ECHO (the delay send; dim, with the reason on knob 1's line, when SENDS are OFF or the delay's MIX is 0), knob 4 LENGTH (the release). The values sit on the slim row under the wave picture. They are the sound's own settings: they record, take MIDI LEARN, save, and don't hold TIDE's glide. TIDE still takes the fader back 8 bars after your hand lets go.
+- **Changed (the MORPH page's row, owner on the unit):** the row under the picture reads FLT, ECHO and LEN, each name in a fixed place with its value beside it, so even the widest values (10.1k, 100%, 104ms) never crowd the next one.
 - **Changed (BOTH):** with ALGORITHM on BOTH every knob of the MORPH page moves each part from its own value by the same steps, the fader too; before, the other part jumped to the selected part's fader and AMOUNT.
 - **Changed (rolls):** a new End B is OCT+ held and a click of knob 1 (the octave stays). The new-A roll is gone from the page (MIDI's ROLL A still works). OCT- and a knob: knob 1 back to your original sound, knobs 2 to 4 back to the loaded sound's value.
 - **Moved (AMOUNT):** AMOUNT is a TIDE SETTINGS row, after ROLL TYPE, with your stored value. It is no longer dimmed in JOURNEY, where it still shapes a roll.

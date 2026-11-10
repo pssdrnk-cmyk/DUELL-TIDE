@@ -2852,7 +2852,7 @@ int main(int argc, char **argv)
                 if (!strcmp(UI_PALETTES[p].name, MP[j]))
                     for (k = 0; k < sizeof MS / sizeof MS[0]; k++)
 #if DUELL_TIDE
-                        for (pl = 0; pl < 4u; pl++) {   /* (3: playing with GLO > MODULES SENDS OFF: the MORPH page's ECHO dim, knob 1's line says why) */
+                        for (pl = 0; pl < 5u; pl++) {   /* (3: playing with GLO > MODULES SENDS OFF: the MORPH page's ECHO dim, knob 1's line says why; 4, at A only: BOTH, every part at the slim row's widest values) */
 #else
                         for (pl = 0; pl < 2u; pl++) {
 #endif
@@ -2865,6 +2865,24 @@ int main(int argc, char **argv)
                             song.sel = (uint8_t)sel;
                             if (pl == 3u)
                                 mods_off |= MODS_SENDS;
+                            if (pl == 4u) {
+                                uint32_t c, q2, v2, best;
+                                int32_t bw;
+                                char vb[PV_LEN + 4];
+                                if (MS[k] != S_MORPH)
+                                    continue;
+                                go_page(GR_MORPH);             /* (the scene's HOME tap from MORPH goes on to TIDE SETTINGS here: the page by its graph) */
+                                SEL_BOTH = 1;
+                                for (c = 0; c < 3u; c++) {
+                                    const param_desc_t *dd = track_desc(&trk[0], H1_ID[c]);
+                                    for (v2 = (uint32_t)dd->min, best = v2, bw = -1; v2 <= (uint32_t)dd->max; v2++) {
+                                        h1_val(c, &trk[0], (int32_t)v2, vb);
+                                        if (text_w(&AF_S, vb) > bw) { bw = text_w(&AF_S, vb); best = v2; }
+                                    }
+                                    for (q2 = 0; q2 < 2u; q2++)
+                                        trk[q2].p[H1_ID[c]] = (int16_t)best;
+                                }
+                            }
                             memset(wl, 0, sizeof wl);
                             wl_tk = 0xFFFFFFFFu;
                             wv_want = wv_blk + 256u;
@@ -2901,7 +2919,7 @@ int main(int argc, char **argv)
                                 ui.frame += 4u;
                                 draw(MS[k]);
                             }
-                            snprintf(nm, sizeof nm, "mv_%s_%s", MN[k], pl == 3u ? "play_echo_off" : pl == 2u ? "play_part2" : pl ? "play" : "silent");
+                            snprintf(nm, sizeof nm, "mv_%s_%s", MN[k], pl == 4u ? "play_worst" : pl == 3u ? "play_echo_off" : pl == 2u ? "play_part2" : pl ? "play" : "silent");
                             write_ppm(out, MP[j], nm);
                             mods_off &= ~MODS_SENDS;
                             for (q = 0; q < 2u; q++) {
