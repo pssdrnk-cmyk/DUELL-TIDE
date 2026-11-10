@@ -501,6 +501,29 @@ static void drones(void)
         ok &= pv.state == 1u;
     }
     ck("  M17 DUNE HORN, M18 VOID DEEP: used, factory, their names, sounds (HORN SWELL + VOID SHIMMER, VOID SHIMMER + SOLAR WIND), the MULTIS row SEQ / SEQ with notes in the pattern, the preview decodes", ok);
+    {   /* 1.0.0-b7: a part with the arp OFF and notes in its pattern plays the sequencer on PLAY: the MULTIS row and the preview say SEQ, not OFF (M03 JUNO DEEP, written patterns on both parts) */
+        static proj_trk_t d;
+        uint8_t v[4];
+        memset(&d, 0, sizeof d);
+        d.p[P_SLEN] = 16;
+        mu_vp_set(v, &d);
+        ok = v[2] == 0u && v[3] == 0u;                /* (arp OFF, no note: OFF) */
+        d.step[3].time = ST_NOTE;
+        d.step[3].n = 1;
+        d.step[3].note[0] = 60;
+        mu_vp_set(v, &d);
+        ok &= v[2] == 2u && v[3] == 1u;               /* (arp OFF, a note: SEQ) */
+        d.p[P_AMODE] = 1;
+        mu_vp_set(v, &d);
+        ok &= v[2] == (AM_SEQ_ID == 1 ? 2u : 1u);     /* (an arp: ARP) */
+        d.p[P_AMODE] = AM_SEQ_ID;
+        mu_vp_set(v, &d);
+        ok &= v[2] == 2u;
+        ok &= multi_vmode(2u, 0u) == (2u | 4u) && multi_vmode(2u, 1u) == (2u | 4u);
+        multi_preview(2u, &pv);
+        ok &= pv.state == 1u && pv.p[0].mode == 2u && pv.p[1].mode == 2u;
+        ck("  a part with the arp OFF and notes in its pattern shows SEQ (row and preview; M03 JUNO DEEP both parts); OFF only with neither, ARP stays ARP", ok);
+    }
     for (k = 16u; k < 18u; k++) {
         char path[64];
         FILE *f;

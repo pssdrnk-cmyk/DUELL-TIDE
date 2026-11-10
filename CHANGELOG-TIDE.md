@@ -53,6 +53,7 @@ Built overnight on 9-10 November 2026 from the musical review (owner: "your idea
 
 ### Fixes
 
+- **Fixed (SAVE > MULTIS):** a part that plays a written step pattern with the arp off shows SEQ in the list and in the preview, as it plays on PLAY; it showed a dash (M03 JUNO DEEP). Only a part with no arp and no notes shows the dash.
 - **Fixed (review FR1):** a swung pattern (SWG over 50, the part's or TEMPO SWING; DEEP SHUFFLE, HOUSE STAB, DEEP 332, DOT DELAY) stays on the grid when TIDE's POLY plays it 15 or 13 steps long. Before, it came back from the stretch late against the other part, the click and an external kick (GENTLE 15 at SWG 60 by about a sixteenth and a half, WIDE by less) and stayed late until STOP / PLAY; during the stretch every other pass was off the grid too. Straight patterns (SWG 50) play exactly as before.
 - **Fixed (review FR8, a MIDI keyboard into the arp):** with GLO > MODULES ARP = KEEPS RUNNING, letting go of a chord held on a MIDI keyboard after a sound change (PRESETS or a program change) now stops the arp; before, it cycled the released chord until STOP ALL.
 - **Fixed (review FR8):** playing a key on a note a MIDI note already holds on the same part no longer leaves the arp counting one key too many: HOLD replaces its chord with the next one again, and HOLD off drops the latched chord. In LAYER with SPLIT, a MIDI note that only part 2 plays no longer releases a note of the same pitch on part 1.
