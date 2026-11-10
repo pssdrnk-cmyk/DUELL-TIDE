@@ -95,20 +95,20 @@ static const char *const SN[5] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK"};
 static const struct { uint8_t slot, style, near, role[2], bass; const char *name; } TR[16] = {
     { 1, STY_DUB,     STY_DEEP,    {R_SKANK, R_ATMOS}, 0, "BASIC CHORD"},
     { 2, STY_DUB,     STY_DEEP,    {R_SKANK, R_BASS},  1, "DUB CHORD"},
-    { 3, STY_PEAK,    STY_MINIMAL, {R_MOTIF, R_PAD},   0, "ACID FIELD"},      /* (b7 TECHNO: acid, electro, techno, IDM, Berlin school, Detroit in M03 M04 M07 M13 M14 M15) */
-    { 4, STY_MINIMAL, STY_PEAK,    {R_MOTIF, R_PAD},   0, "ROBOT FUNK"},
-    { 5, STY_DEEP,    STY_PEAK,    {R_SKANK, R_PAD},   0, "ORGAN SKANK"},
-    { 6, STY_DEEP,    STY_DUB,     {R_PROG,  R_MOTIF}, 0, "WARM ECHO"},
-    { 7, STY_MINIMAL, STY_PEAK,    {R_MOTIF, R_AIR},   0, "MINIMAL 12"},       /* (b7: the pluck on 12 and an iron texture) */
-    { 8, STY_DUB,     STY_DEEP,    {R_SKANK, R_PAD},   0, "TINE DUB"},
-    { 9, STY_DEEP,    STY_DUB,     {R_STAB,  R_PAD},   0, "DEEP 332"},
-    {10, STY_AMBIENT, STY_DEEP,    {R_LIVE,  R_MOTIF}, 0, "PAD SPLIT"},
-    {11, STY_AMBIENT, STY_DEEP,    {R_DRONE, R_ARP},   0, "WHISPER TIDE"},
-    {12, STY_AMBIENT, STY_DEEP,    {R_DRONE, R_MOTIF}, 0, "TINE STRINGS"},
-    {13, STY_MINIMAL, STY_AMBIENT, {R_MOTIF, R_PAD},   0, "BROKEN BELLS"},
-    {14, STY_MINIMAL, STY_PEAK,    {R_MOTIF, R_PROG},  0, "BERLIN RUN"},
-    {15, STY_DEEP,    STY_PEAK,    {R_SKANK, R_PAD},   0, "DETROIT STAB"},
-    {16, STY_AMBIENT, STY_DEEP,    {R_PAD,   R_PROG},  0, "FINAL REEL"},
+    { 3, STY_DEEP,    STY_DUB,     {R_PAD,   R_BASS},  1, "JUNO DEEP"},        /* (reel, 2026-11-10: the fifteen new factory multis, tools/factory_multis.py; M02 the owner's DUB CHORD as before) */
+    { 4, STY_DEEP,    STY_DUB,     {R_STAB,  R_PAD},   0, "LATE RHODES"},
+    { 5, STY_DEEP,    STY_PEAK,    {R_MOTIF, R_SKANK}, 0, "ORGAN HOUSE"},
+    { 6, STY_PEAK,    STY_DEEP,    {R_STAB,  R_PAD},   0, "PIANO HOUSE"},
+    { 7, STY_PEAK,    STY_DEEP,    {R_STAB,  R_PAD},   0, "DETROIT STAB"},
+    { 8, STY_DEEP,    STY_PEAK,    {R_PROG,  R_MOTIF}, 0, "HI-TECH SOUL"},
+    { 9, STY_MINIMAL, STY_PEAK,    {R_STAB,  R_MOTIF}, 0, "MINIMAL 12"},
+    {10, STY_MINIMAL, STY_PEAK,    {R_MOTIF, R_DRONE}, 0, "SEVEN LOOP"},
+    {11, STY_MINIMAL, STY_PEAK,    {R_BASS,  R_MOTIF}, 1, "ACID LINES"},
+    {12, STY_MINIMAL, STY_PEAK,    {R_BASS,  R_PROG},  1, "ROBOT FUNK"},
+    {13, STY_PEAK,    STY_MINIMAL, {R_MOTIF, R_PROG},  0, "DEEP SEA ARP"},
+    {14, STY_AMBIENT, STY_DEEP,    {R_MOTIF, R_PROG},  0, "WARPED TAPE"},
+    {15, STY_DEEP,    STY_MINIMAL, {R_PULSE, R_PROG},  0, "BERLIN RUN"},
+    {16, STY_AMBIENT, STY_DEEP,    {R_AIR,   R_PAD},   0, "TWO LOOPS"},
 };
 /* density bounds per role: onsets a bar, averaged over a 4-bar window, as tenths (5 = 0.5) */
 static const struct { uint8_t lo, hi; } DENS[14] = {{0, 0}, {20, 60}, {5, 20}, {0, 10}, {10, 40}, {30, 80}, {5, 20}, {2, 10}, {60, 80}, {20, 50}, {10, 30}, {5, 10}, {10, 80}, {0, 0}};

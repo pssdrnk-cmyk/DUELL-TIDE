@@ -33,9 +33,9 @@ static void ck(const char *what, int ok)
 
 int main(void)
 {
-    static const char *const FN[16] = {"BASIC CHORD", "DUB CHORD", "ACID FIELD", "ROBOT FUNK", "ORGAN SKANK", "WARM ECHO", "MINIMAL 12",
-                                       "TINE DUB", "DEEP 332", "PAD SPLIT", "WHISPER TIDE", "TINE STRINGS", "BROKEN BELLS", "BERLIN RUN",
-                                       "DETROIT STAB", "FINAL REEL"};   /* (the curated dub / house order of D31, tools/factory_multis.py; b7: the electronic scenes in M03, M04, M07, M13-M15) */
+    static const char *const FN[16] = {"BASIC CHORD", "DUB CHORD", "JUNO DEEP", "LATE RHODES", "ORGAN HOUSE", "PIANO HOUSE", "DETROIT STAB",
+                                       "HI-TECH SOUL", "MINIMAL 12", "SEVEN LOOP", "ACID LINES", "ROBOT FUNK", "DEEP SEA ARP", "WARPED TAPE",
+                                       "BERLIN RUN", "TWO LOOPS"};   /* (the reel, 2026-11-10: fifteen new multis as one curated programme, M02 the owner's DUB CHORD; tools/factory_multis.py) */
     uint32_t k, ok, test_rows = 0, sys_rows = 0;
     memset(nor, 0xFF, sizeof nor);
     ui_power_on();
@@ -66,13 +66,13 @@ int main(void)
     ck("no page is called TEST (the GLO round is untouched)", ok);
     for (k = 0, ok = 1; k < MU_SLOTS; k++)
         ok &= project_used(k) && project_factory(k) && str_eq(mu_names[k], FN[k]);
-    ck("M01..M16 are the factory multis (D31 order, b7 techno: BASIC CHORD, DUB CHORD, ACID FIELD .. DETROIT STAB, M16 FINAL REEL), as in the test mode", ok);
+    ck("M01..M16 are the factory multis (the reel, 2026-11-10: BASIC CHORD, DUB CHORD, JUNO DEEP .. BERLIN RUN, M16 TWO LOOPS), as in the test mode", ok);
 #if DUELL_TIDE
     ck("M17 DUNE HORN, M18 VOID DEEP: the built-in drone multis, factory (ROM only)", MU_SHOWN == 18u && project_used(16) && project_factory(16) && str_eq(mu_names[16], "DUNE HORN") &&
        project_used(17) && project_factory(17) && str_eq(mu_names[17], "VOID DEEP"));
 #endif
     project_load(2);
-    ck("LOAD of M03 loads ACID FIELD (ANALOG + PHASE: SQUELCH, DEEP BLUE)", proj_cur == 2u && str_eq(ENGINES[trk[0].eng_req]->name, "ANALOG") && str_eq(ENGINES[trk[1].eng_req]->name, "PHASE"));
+    ck("LOAD of M03 loads JUNO DEEP (ANALOG + LOFI: WARM WASH, ARP BASS)", proj_cur == 2u && str_eq(ENGINES[trk[0].eng_req]->name, "ANALOG") && str_eq(ENGINES[trk[1].eng_req]->name, "LOFI"));
     printf(bad ? "release: FAILED (%d)\n" : "release: all ok\n", bad);
     return bad ? 1 : 0;
 }

@@ -88,9 +88,9 @@ def tide_tests():
     T += test("TIDE.HEAVY.ON", "the same with every TIDE stage running (valley forced on both parts, WASH MID, a real FM6 crossing): inside the deadline?",
               heavy + ["tide wash 2", f"morph 1 ROLL {SEED_FM6} 100", f"morph 2 ROLL {SEED_FM6} 100", "tide force 1 60 60", "tide force 2 60 60"], chord(N6, 0.0, 6.0, both=True) + ramp, (1.0, 5.0), settle=2.0,
               mode="DUEL")
-    M16 = ['load multi 3 "ACID FIELD"']
-    T += test("TIDE.M16.BASE", "M16 ACID FIELD (LAYER), 3 keys, TIDE idle", M16 + ["tide wash 0"], chord(["C4", "E4", "G4"], 0.0, 7.0), (1.0, 7.0), settle=2.0, repeat=1)
-    T += test("TIDE.M16.ON", "M16 ACID FIELD with the valley forced on both parts and WASH MID", M16 + ["tide wash 2", "tide force 1 60 60", "tide force 2 60 60"], chord(["C4", "E4", "G4"], 0.0, 7.0),
+    M16 = ['load multi 4 "LATE RHODES"']   # (reel, 2026-11-10: M04 LATE RHODES, both parts ARP SEQ and played from the held keys; M03, loaded here until then, is JUNO DEEP: two plain patterns. The test ids keep their M16)
+    T += test("TIDE.M16.BASE", "M16 LATE RHODES (LAYER), 3 keys, TIDE idle", M16 + ["tide wash 0"], chord(["C4", "E4", "G4"], 0.0, 7.0), (1.0, 7.0), settle=2.0, repeat=1)
+    T += test("TIDE.M16.ON", "M16 LATE RHODES with the valley forced on both parts and WASH MID", M16 + ["tide wash 2", "tide force 1 60 60", "tide force 2 60 60"], chord(["C4", "E4", "G4"], 0.0, 7.0),
               (1.0, 7.0), settle=2.0, repeat=1)
     return T
 

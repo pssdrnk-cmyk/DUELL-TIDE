@@ -1190,13 +1190,13 @@ static void test_bits_migrate(void)
             for (t = 0; t < NSHOWN; t++)
                 if (o.t[t].p[P_ITYPE] == IT_CRUSH) {
                     printf("insert:   factory multi #%u part %u: INSERT CRUSH, A %d = %s bits\n", k, t + 1u, o.t[t].p[P_IA], N_IBITS[o.t[t].p[P_IA]]);
-                    if (k == 6u && t == 1u)                       /* b7 (TECHNO): M07 MINIMAL 12's IRON WORKS carries its own CRUSH, 3 bits on its knot */
+                    if (k == 9u && t == 1u)                       /* b7 (TECHNO): IRON WORKS carries its own CRUSH, 3 bits on its knot (reel, 2026-11-10: it is part 2 of M10 SEVEN LOOP; M07 before) */
                         ok &= o.t[t].p[P_IA] == INS_BITS_KNOT[2];
                     else
                         ok &= o.t[t].p[P_IA] == INS_BITS_KNOT[7], crush_parts++;   /* WIRED SNAIL's: the old A 60 (8 bits), as the loader moved it */
                 }
         }
-        ck("multi: the factory multis (version 8) load; a CRUSH part among them (WIRED SNAIL's, M10, was the only one; it left the sixteen in D31) is the 8-bit detent it played before; M07's IRON WORKS its own 3 bits (b7)", ok && crush_parts <= 1u);
+        ck("multi: the factory multis (version 8) load; a CRUSH part among them (WIRED SNAIL's, M10, was the only one; it left the sixteen in D31) is the 8-bit detent it played before; M10's IRON WORKS its own 3 bits (b7; reel, 2026-11-10: M10 SEVEN LOOP, the only CRUSH among the eighteen)", ok && crush_parts <= 1u);
     }
     /* 4. a stored patch: written now it carries PTF_CB; one without (before 0.2.14) is no record */
     {
