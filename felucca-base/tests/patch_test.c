@@ -240,6 +240,34 @@ int main(void)
         pt_write(1, UP_SLOTS, 0);                          /* (chunk 1 empty again) */
         power_cycle();
     }
+    {   /* b7 (review E3): a move cut short by a power cut (the new record written, the old one not cut), then RESTORE: the factory sound after the
+         * next power-on, not the old record; RESTORE and a new save: the new sound */
+        up_rec_t r0 = *up_rec(9), r;
+        uint32_t w, rev, oc, d;
+        char nm1[13];
+        for (w = 0; w < 2u; w++) {
+            ck("  (slot 9 saved)", up_put(9, &r0) == 0 && up_used(9));
+            rev = pt_raw(9)[3]; oc = pt_dir[9].ch; d = (oc + 1u) % PT_NCH;
+            r = r0;
+            memset(r.name, 0, 12);
+            memcpy(r.name, "MOVED", 5);
+            pt_encode(9, rev + 1u, &r, 0);
+            pt_write(d, UP_SLOTS, pt_rd16(pt_enc));        /* the move's first write; the power goes before the old one is cut */
+            power_cycle();
+            up_put(9, 0);                                  /* RESTORE */
+            if (w) {
+                memcpy(r.name, "NEWER", 5);
+                up_put(9, &r);
+            }
+            power_cycle();
+            up_name(9, nm1);
+            ck(w ? "a move cut short, then RESTORE and a new save: after the next power-on the new sound (not the old record)"
+                 : "a move cut short, then RESTORE: after the next power-on the factory sound (not the old record)",
+               w ? up_used(9) && str_eq(nm1, "NEWER") : !up_used(9));
+        }
+        up_put(9, &r0);
+        power_cycle();
+    }
 
 
     /* 1b: the arp, the chord / scale keys and the SEQ pattern travel with a patch (upreset.c, the AK block) */

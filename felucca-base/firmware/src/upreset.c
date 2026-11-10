@@ -445,6 +445,7 @@ static int pt_sv(uint32_t c, const uint8_t *img, uint32_t len)
 
 /* ---- the directory ---- */
 static uint32_t pt_rgen __attribute__((section(".pool")));            /* +1 whenever the chunks change: the read records (pt_raw) are stale */
+static uint32_t pt_stale __attribute__((section(".pool")));           /* b7 (review E3): bit c, chunk c holds a record the directory does not point to (a move cut short): rewritten before the next write (pt_stale_fix) */
 static void pt_dir_chunk_out(uint32_t c)         /* the records of chunk c out of the directory */
 {
     uint32_t k;
@@ -484,6 +485,8 @@ static void pt_scan_img(uint32_t c, const uint8_t *img, uint32_t len)
         if (pt_rec_ok(p, rl)) {
             e = &pt_dir[p[2]];
             if (e->ch == PT_NOCH || (uint8_t)(p[3] - e->rev) - 1u < 127u) {
+                if (e->ch != PT_NOCH && e->ch != c)
+                    pt_stale |= 1u << e->ch;             /* (the older one's chunk) */
                 e->off = (uint16_t)off;
                 e->len = (uint16_t)rl;
                 e->ch = (uint8_t)c;
@@ -491,7 +494,8 @@ static void pt_scan_img(uint32_t c, const uint8_t *img, uint32_t len)
                 e->eng = p[5];
                 e->cat = p[6];
                 memcpy(e->name, p + 7, 12);
-            }
+            } else if (e->ch != c)
+                pt_stale |= 1u << c;                     /* (an older one here) */
         }
         off += rl;
     }
@@ -499,6 +503,7 @@ static void pt_scan_img(uint32_t c, const uint8_t *img, uint32_t len)
 static void pt_scan_all(void)                    /* the directory again from all chunks (boot, a restore, after a failed write) */
 {
     uint32_t c, k;
+    pt_stale = 0;
     for (k = 0; k < UP_SLOTS; k++)
         pt_dir[k].ch = PT_NOCH;
     for (c = 0; c < PT_NCH; c++) {
@@ -916,9 +921,22 @@ static int pt_write(uint32_t c, uint32_t skip, uint32_t n)
         return 2;
     }
     pt_dir_chunk_out(c);
+    pt_stale &= ~(1u << c);
     pt_scan_img(c, pt_work, (uint32_t)w);
     pt_tally();
     return rc;
+}
+/* b7 (review E3): each chunk holding a record the directory does not point to (a move cut short by a power cut) is written again with its own
+ * records only, before the next write of the store: a RESTORE or a new save of that slot can no longer lose to the stale one at power-on */
+static void pt_stale_fix(void)
+{
+    uint32_t c;
+    while (pt_stale) {
+        c = (uint32_t)__builtin_ctz(pt_stale);
+        pt_stale &= pt_stale - 1u;
+        if (pt_write(c, UP_SLOTS, 0) == 2)
+            break;
+    }
 }
 /* slot k = r (+ pk), or its record removed (r 0: RESTORE, the factory sound is back), in the chunks and in flash: 0 ok, 2 flash error
  * (nothing changed), 3 no flash (kept in RAM), PT_FULL no room (TIDE: the 127th new record; else a guard only) */
@@ -946,6 +964,7 @@ static int pt_put_enc(uint32_t k, uint32_t n)
 }
 static int pt_put(uint32_t k, const up_rec_t *r, const uint8_t *pk)
 {
+    pt_stale_fix();
     if (!r) {                                    /* erase */
         if (pt_dir[k].ch == PT_NOCH)
             return pt_idle();
@@ -981,6 +1000,7 @@ static int up_put_raw(uint32_t k, const uint8_t *rec, uint32_t n)
         ui_message("STOP TO SAVE");
         return 2;
     }
+    pt_stale_fix();
     rc = pt_put_enc(k, n);
     if (rc == 2 || rc == PT_FULL)
         return rc;
@@ -1008,7 +1028,7 @@ static uint32_t up_raw_get(uint32_t k, uint8_t *out)
 static int pt_wipe(uint32_t c)
 {
     int rc;
-    if (!pt_n[c])
+    if (!pt_n[c] && !((pt_stale >> c) & 1u))      /* (b7: a chunk holding only a stale record is wiped too) */
         return pt_idle();
     pt_work[0] = (uint8_t)PT_MAGIC;
     pt_work[1] = (uint8_t)(PT_MAGIC >> 8);
@@ -1019,6 +1039,7 @@ static int pt_wipe(uint32_t c)
         return 2;
     }
     pt_dir_chunk_out(c);
+    pt_stale &= ~(1u << c);
     pt_tally();
     return rc;
 }
