@@ -1157,7 +1157,13 @@ static void tempo_tap(void)
     ui.tap_n = (uint8_t)n;
     span = ui.tap_t[n - 1u] - ui.tap_t[0];
     if (n >= 2u && span) {
+        uint32_t ob;
+        MORPH_LOCK();                                   /* (interrupts off: the audio interrupt moves the positions) */
+        ob = beat_samples();       /* (b7, review B5: a jump on the internal clock keeps each part's step phase, as an external */
         song.g[G_BPM] = (int16_t)clamp((int32_t)((60000u * (n - 1u) + span / 2u) / span), GP[G_BPM].min, GP[G_BPM].max);
+        if (song.playing && !clock_src() && beat_samples() != ob)   /* clock's tempo change does: no flam of owed steps, the arp stays on the grid) */
+            clock_rescale(ob, beat_samples());
+        MORPH_UNLOCK();
         ui.bpm_t = 40;
     }
 }

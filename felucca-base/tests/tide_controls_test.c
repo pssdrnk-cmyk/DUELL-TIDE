@@ -442,6 +442,23 @@ static void test_oct_used(void)
     CHECK("OCT- held + K2 on TIDE SETTINGS: the turned value stays (no step back on its release)", v != 50u && jl_get(JL_AMOUNT) == v);
 }
 
+/* FR13 B5 (b7): a tap-tempo jump on the internal clock while playing keeps the step phase (the position scaled with the beat), as an external clock's
+ * tempo change does: no owed steps fired at once, the arp stays on the grid */
+static void test_tap_jump(void)
+{
+    uint32_t ob, nb, p0, p1, a0, a1;
+    ui_power_on(); frame();
+    song.g[G_BPM] = 120; transport_req = 1u; run(1008);
+    ob = beat_samples(); p0 = trk[0].seq_pos; a0 = trk[0].arp_pos;
+    ui.tap_n = 0; tempo_tap(); fm1_ms += 273u; tempo_tap();
+    nb = beat_samples(); p1 = trk[0].seq_pos; a1 = trk[0].arp_pos;
+    CHECK("tap-tempo jump (120 to 220): the step position scales with the beat (no flam of owed steps)",
+          song.g[G_BPM] == 220 && nb != ob && p0 && llabs((int64_t)p1 * ob - (int64_t)p0 * nb) <= (int64_t)ob);
+    CHECK("tap-tempo jump: the arp's position scales the same (it stays on the grid)",
+          a0 >= 0x8000000u || llabs((int64_t)a1 * ob - (int64_t)a0 * nb) <= (int64_t)ob);
+    transport_req = 2u; run(64);
+}
+
 /* a WILD roll with ARP ON keeps a SEQ Original on SEQ and never draws SEQ for another (morph.c, TIDE_AMODE_KEEP / _END) */
 static void test_seq_rule(void)
 {
@@ -924,6 +941,7 @@ int main(void)
     test_page1_no_hold();
     test_journey_away_from_a();
     test_oct_used();
+    test_tap_jump();
     printf("tidecontrols: %u checks, %u failures\n", checks, failures);
     return failures ? 1 : 0;
 }
