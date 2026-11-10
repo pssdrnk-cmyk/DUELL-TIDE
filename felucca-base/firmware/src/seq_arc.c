@@ -7,9 +7,10 @@
  * ARC RISE has no drop of its own; ARC DROP drops on the first arc after PLAY, then on about half; the hand
  * (OCT- + K2 on the TIDE page, tarc_drop_hand) drops at the next unit in either. Playback masks only: KEEP stores the whole pattern,
  * nothing here is saved, a power cycle starts at RISE. STOP and PLAY leave the arc where it was; a load or a K1 stop starts it again. ARC OFF: every lever neutral, as before. The planner is main loop only; the
- * audio interrupt reads tarc_dropphr, tarc_thin, tarc_fast (seq_morph.c seq_play_step) and tarc_hold (seq_poly.c). */
+ * audio interrupt reads tarc_dropphr, tarc_lev (the parts thinned, seq_morph.c, and no POLY, seq_poly.c); the levers of the next unit's phase are armed a unit ahead (tarc_levers: tarc_lev bits 3-5,
+ * tarc_unit: the unit the main loop last saw) and taken from the bar the unit begins on, like the drop's silence (tarc_lvl). */
 enum { AP_RISE, AP_PEAK, AP_DROP, AP_BREAK, AP_RECOVER };
-static struct { uint8_t last, phase, left, len, next, t, hand, cnt, run, phr, hleft, au; } tarc __attribute__((section(".pool")));   /* (main loop only: the pool, zeroed at boot; .bss is the tighter) hleft: the units left before a hand drop shortened the phase; au: the arc's units so far */
+static struct tarc_s { uint8_t last, phase, left, len, next, t, hand, cnt, run, phr, hleft, au; } tarc __attribute__((section(".pool")));   /* (main loop only: the pool, zeroed at boot; .bss is the tighter) hleft: the units left before a hand drop shortened the phase; au: the arc's units so far */
 
 /* the dice: the roll's seed and the session's (morph.gen: S3, so the arcs differ from night to night the way the notes do) */
 static uint32_t tarc_rnd(uint32_t salt) { return sqm_hash(((uint32_t)morph.seed << 8) ^ tarc.cnt ^ morph.gen, (uint32_t)tarc.phr * 16u + tarc.run, 0xA4C0u + salt); }
@@ -45,20 +46,39 @@ static void tarc_begin(uint32_t ph)
 }
 static void tarc_clear(void)
 {
-    tarc_dropphr = 0xFFu, tarc_thin = 0, tarc_fast = 0, tarc_hold = 0;
+    tarc_dropphr = 0xFFu, tarc_lev = 0;
     tarc.t = 0, tarc.hand = 0;
 }
-/* the levers of the phase and the phrase now */
-static void tarc_levers(uint32_t auto_mask)
+/* one 8-bar unit on: the phrase counted, the next phase begun when this one is done */
+static void tarc_adv(void)
 {
-    uint32_t el = (uint32_t)tarc.len - tarc.left, ph = tarc.phase;   /* phrases of the phase done */
-    uint8_t th;
+    tarc.phr++;
+    if (tarc.left > 1u)
+        tarc.left--;
+    else
+        tarc_begin(tarc.next);
+}
+/* the thinned parts (bits 0-1) and the POLY hold (bit 2) of the phase tarc is in, with `bar` the bar of its unit and dr a drop armed for the unit after */
+static uint32_t tarc_lv(uint32_t auto_mask, uint32_t bar, uint32_t dr)
+{
+    uint32_t ph = tarc.phase;
+    return (auto_mask & (ph - AP_DROP < 2u ? 3u : ph == AP_RECOVER && tarc.left == tarc.len && !(bar & 4u) ? 1u << (tarc.cnt & 1u) : 0u)) |   /* (RECOVER: one part still thinned for its first 4 bars) */
+           (ph - AP_PEAK < 3u || dr ? 4u : 0u);          /* (PEAK, DROP, BREAK; B1: no POLY stretch in the breakdown either) */
+}
+/* the levers of the phase and the phrase now, and of the next unit's phase (1.0.0-b8: the audio side takes those from the bar the unit begins on, tarc_thin_at: the same dice, run on a copy) */
+static void tarc_levers(uint32_t auto_mask, uint32_t cur)
+{
+    uint32_t el = (uint32_t)tarc.len - tarc.left, ph = tarc.phase, now, nxt;
+    struct tarc_s keep;
     tarc.t = (uint8_t)(ph == AP_RISE ? (el + 1u) * 255u / tarc.len : ph == AP_PEAK ? 255u : ph == AP_RECOVER ? (el + 1u) * 100u / tarc.len : 0u);
-    th = (uint8_t)(auto_mask & (ph == AP_BREAK || ph == AP_DROP ? 3u : ph == AP_RECOVER && !el && !(sqm_bar & 4u) ? 1u << (tarc.cnt & 1u) : 0u));   /* (RECOVER: one part still thinned for its first 4 bars) */
-    MORPH_LOCK();                                        /* (audit C12: the three levers change together for the audio interrupt) */
-    tarc_fast = tarc.t >= 200u;
-    tarc_thin = th;
-    tarc_hold = ph == AP_PEAK || ph == AP_DROP || ph == AP_BREAK || tarc_dropphr != 0xFFu;   /* (B1: no POLY stretch in the breakdown either) */
+    now = tarc_lv(auto_mask, sqm_bar, tarc_dropphr != 0xFFu);
+    keep = tarc;
+    tarc_adv();
+    nxt = tarc_lv(auto_mask, 0, tarc.phase != AP_DROP && tarc.left == 1u && tarc.next == AP_DROP);
+    tarc = keep;
+    MORPH_LOCK();                                        /* (audit C12: the levers change together for the audio interrupt) */
+    tarc_lev = (uint8_t)(now | nxt << 3);
+    tarc_unit = (uint8_t)cur;
     MORPH_UNLOCK();
 }
 static void tarc_poll(void)
@@ -77,21 +97,17 @@ static void tarc_poll(void)
         uint32_t adv = ((cur - tarc.last) & 63u) == 1u;  /* (PLAY took the bar count back to 0: resynchronise, no phrase) */
         tarc.last = (uint8_t)cur;
         if (adv) {
-            tarc.phr++;
-            if (tarc.left > 1u)
-                tarc.left--;
-            else {
-                tarc_begin(tarc.next);
-                if (tarc.phase == AP_DROP && tarc_dropphr == 0xFFu)
-                    tarc_dropphr = (uint8_t)cur;         /* (late: the hand came in the last moment) */
-            }
+            uint32_t was = tarc.phase;
+            tarc_adv();
+            if (tarc.phase != was && tarc.phase == AP_DROP && tarc_dropphr == 0xFFu)
+                tarc_dropphr = (uint8_t)cur;             /* (late: the hand came in the last moment) */
         }
     }
     if (tarc.phase != AP_DROP && tarc.left == 1u && tarc.next == AP_DROP) {
         tarc_dropphr = (uint8_t)((cur + 1u) & 63u);      /* the audio side knows the phrase ahead of the boundary (a hand that comes in the last moment: set late, below) */
     } else if (cur != tarc_dropphr)
         tarc_dropphr = 0xFFu;
-    tarc_levers(am);
+    tarc_levers(am, cur);
 }
 /* OCT- + K2 on the TIDE page: a drop at the next phrase; a second turn before it cancels (main loop) */
 static const char *tarc_drop_hand(void)

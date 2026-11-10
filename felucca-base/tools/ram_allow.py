@@ -206,6 +206,7 @@ ALLOW = {
     "tc_answer": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~78 B); reached from fm1_alnk0_irq",
     "tc_closed": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~50 B); reached from tcr_settle",
     "tc_fail": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~74 B); reached from fm1_alnk0_irq",
+    "tarc_lvl": "event rate (a sequencer or ARP SEQ step, a loop wrap), not per sample; the ARC levers a bar plays with, this unit's or the one armed for the next (1.0.0-b8, ~38 B); reached from sqm_thinned, sqm_listens, tide_poly_wrap",
     "tide_arp_idx": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~82 B); reached from arp_fire",
     "tide_miss_put": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~70 B); reached from seq_play",
     "tide_poly_wrap": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~380 B); reached from seq_tick",
