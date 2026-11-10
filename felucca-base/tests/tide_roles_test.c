@@ -94,7 +94,7 @@ static const char *const SN[5] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK"};
 /* slot (1..16), the multi's style and its neighbour (STY_*), the role of each part, the bass flag (a part may go under C3), the name */
 static const struct { uint8_t slot, style, near, role[2], bass; const char *name; } TR[16] = {
     { 1, STY_DUB,     STY_DEEP,    {R_SKANK, R_ATMOS}, 0, "BASIC CHORD"},
-    { 2, STY_DUB,     STY_DEEP,    {R_SKANK, R_PAD},   0, "DUB CHORD"}, /* (re-voiced: the stab over a held pad, no bass line) */,
+    { 2, STY_DUB,     STY_DEEP,    {R_SKANK, R_PAD},   0, "DUB CHORD"},     /* (re-voiced: the stab over a held pad, no bass line) */
     { 3, STY_DEEP,    STY_DUB,     {R_PAD,   R_BASS},  1, "JUNO DEEP"},        /* (reel, 2026-11-10: the fifteen new factory multis, tools/factory_multis.py; M02 the owner's DUB CHORD as before) */
     { 4, STY_DEEP,    STY_DUB,     {R_STAB,  R_PAD},   0, "LATE RHODES"},
     { 5, STY_DEEP,    STY_PEAK,    {R_MOTIF, R_SKANK}, 0, "ORGAN HOUSE"},
