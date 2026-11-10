@@ -375,7 +375,7 @@ static void keys_drive(void)
         play_run(10, 1u << e4, sec, sec / 2u, 0, r);         /* (reel: M11 ACID LINES has no arp on either part: the direct path, the transport stopped; until the reel the owner's PAD SPLIT, M10) */
         play_run(10, 1u << f4, sec, sec / 2u, 0, q);
         pr_recall = 0;
-        ck("M11 ACID LINES: part 1 (SQUELCH, TRN -12) plays E4 at E3, part 2 (SQUARE LEAD, TRN 0) plays F4 at F4 (no TRN of part 1 on part 2)",
+        ck("M11 ACID LINES: part 1 (SQUELCH, TRN -12) plays E4 at E3, part 2 (DEEP BLUE, TRN 0) plays F4 at F4 (no TRN of part 1 on part 2)",
            trk[0].p[P_TRANS] == -12 && trk[1].p[P_TRANS] == 0 && r[0].n >= 1u && r[0].note[0] == 52u && r[1].n >= 1u && r[1].note[0] == 64u && q[1].n >= 1u && q[1].note[0] == 65u);
         play_run(2, 1u << pr_key(60), sec, sec / 2u, 0, r);   /* M03 JUNO DEEP: the bass's own TRN -12 is heard from the keys (until the reel: the owner's FINAL REEL, M16, its strings TRN +12) */
         printf("multi:   M03 key C4: part 1 note %u, part 2 note %u (TRN %d / %d)\n", r[0].note[0], r[1].note[0], trk[0].p[P_TRANS], trk[1].p[P_TRANS]);
@@ -1088,11 +1088,11 @@ int main(void)
         static const char *const FN[16] = {"BASIC CHORD", "DUB CHORD", "JUNO DEEP", "LATE RHODES", "ORGAN HOUSE", "PIANO HOUSE", "DETROIT STAB",
                                            "HI-TECH SOUL", "MINIMAL 12", "SEVEN LOOP", "ACID LINES", "ROBOT FUNK", "DEEP SEA ARP", "WARPED TAPE",
                                            "BERLIN RUN", "TWO LOOPS"};
-        static const char *const SN[16][2] = {{"CHORD ECHO", "DUST BED"}, {"BIG STAB", "TIDAL SUB"}, {"WARM WASH", "ARP BASS"},
+        static const char *const SN[16][2] = {{"CHORD ECHO", "DUST BED"}, {"BIG STAB", "TIDAL SUB"}, {"WARM WASH", "RUBBER BAND"},
                                               {"TINE ROOM", "AIR SHIMMER"}, {"DUB DRAWBAR", "HOUSE ORGAN"}, {"SALOON KEYS", "RAIN STRINGS"},
-                                              {"ICE STAB", "STRING MACH"}, {"SUNDAY KEYS", "MALLET WOOD"}, {"SOUL STAB", "DUB BLIP"},
-                                              {"HOLLOW POP", "IRON WORKS"}, {"SQUELCH", "SQUARE LEAD"}, {"SID BASS", "VOWEL PAD"},
-                                              {"CLAVICLE", "PWM PAD"}, {"NIGHT BOX", "TAPE CLOUD"}, {"ARP PLUCK", "CHOIR LOFT"},
+                                              {"ICE STAB", "STRING MACH"}, {"SUNDAY KEYS", "BELL STAB"}, {"SOUL STAB", "FOG BANK"},
+                                              {"HOLLOW POP", "IRON WORKS"}, {"SQUELCH", "DEEP BLUE"}, {"LADDER BASS", "VOWEL PAD"},
+                                              {"DIGI PLUCK", "PWM PAD"}, {"NIGHT BOX", "TAPE CLOUD"}, {"ARP PLUCK", "CHOIR LOFT"},
                                               {"FROST BELLS", "EVOLVING PAD"}};
         static const uint8_t MD[16] = {DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER,
                                        DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER};   /* (0.2.25: no factory multi in DUEL; M08 MONO DUEL, the only one, is spare: the owner's HAZY TENSOR, LAYER) */
@@ -1194,7 +1194,7 @@ int main(void)
         ck("rename of the factory M12 (ROBOT FUNK) stores it under the new name; the music of the record is the factory one", n == 0u &&
            str_eq(mu_names[11], "STACK 2") && !project_factory(11) && project_used(11));
         project_load(11);
-        ck("  and it loads SID BASS + VOWEL PAD as before", str_eq(ds_name(trk[0].eng_req, trk[0].preset), "SID BASS") &&
+        ck("  and it loads LADDER BASS + VOWEL PAD as before", str_eq(ds_name(trk[0].eng_req, trk[0].preset), "LADDER BASS") &&
            str_eq(ds_name(trk[1].eng_req, trk[1].preset), "VOWEL PAD"));
     }
 
@@ -1228,9 +1228,9 @@ int main(void)
         turn(EN_K3, 6);
         ck("  6 more right: M10 SEVEN LOOP (the factory multis stepped through)", proj_cur == 9u && msg_is("LOADED M10 SEVEN LOOP"));
         turn(EN_K3, 1);
-        ck("  one more right: M11 ACID LINES (ANALOG SQUELCH + ANALOG SQUARE LEAD)", proj_cur == 10u &&
-           trk[0].eng_req == 0u && trk[1].eng_req == 0u && str_eq(ds_name(trk[0].eng_req, trk[0].preset), "SQUELCH") &&
-           str_eq(ds_name(trk[1].eng_req, trk[1].preset), "SQUARE LEAD") && msg_is("LOADED M11 ACID LINES"));
+        ck("  one more right: M11 ACID LINES (ANALOG SQUELCH + PHASE DEEP BLUE)", proj_cur == 10u &&
+           trk[0].eng_req == 0u && trk[1].eng_req == 2u && str_eq(ds_name(trk[0].eng_req, trk[0].preset), "SQUELCH") &&
+           str_eq(ds_name(trk[1].eng_req, trk[1].preset), "DEEP BLUE") && msg_is("LOADED M11 ACID LINES"));
         test_multi_name(b);
         sound_name(&trk[0], nm_a);
         ck("  the engine and patch names the panel draws follow (ANALOG / SQUELCH, M11 ACID LINES)", str_eq(b, "M11 ACID LINES") &&

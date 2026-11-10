@@ -72,7 +72,7 @@ int main(void)
        project_used(17) && project_factory(17) && str_eq(mu_names[17], "VOID DEEP"));
 #endif
     project_load(2);
-    ck("LOAD of M03 loads JUNO DEEP (ANALOG + LOFI: WARM WASH, ARP BASS)", proj_cur == 2u && str_eq(ENGINES[trk[0].eng_req]->name, "ANALOG") && str_eq(ENGINES[trk[1].eng_req]->name, "LOFI"));
+    ck("LOAD of M03 loads JUNO DEEP (ANALOG + ANALOG: WARM WASH, RUBBER BAND)", proj_cur == 2u && str_eq(ENGINES[trk[0].eng_req]->name, "ANALOG") && str_eq(ENGINES[trk[1].eng_req]->name, "ANALOG"));
     printf(bad ? "release: FAILED (%d)\n" : "release: all ok\n", bad);
     return bad ? 1 : 0;
 }
