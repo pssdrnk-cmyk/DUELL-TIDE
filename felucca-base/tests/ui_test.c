@@ -240,6 +240,14 @@ static int check(const char *what, int ok)
 }
 
 /* main.c felucca_init */
+/* default pattern k's flags as a column (engines.c pat_fl: the table keeps them as bit masks since 1.0.0-b7, SP3); one buffer, read before the next call */
+static const uint8_t *pat_flags(uint32_t k)
+{
+    static uint8_t f[NPAT_STEPS];
+    for (uint32_t i = 0; i < NPAT_STEPS; i++)
+        f[i] = (uint8_t)pat_fl(k, i);
+    return f;
+}
 static void ui_power_on(void)
 {
     uint32_t i;
@@ -278,7 +286,7 @@ static void ui_power_on(void)
         t->engine = t->eng_req;
         track_defaults_steps(t);
         if (TRK_DEF[i][2])
-            load_pat16(t, PATTERNS[TRK_DEF[i][2] - 1u].note, PATTERNS[TRK_DEF[i][2] - 1u].flags);
+            load_pat16(t, PATTERNS[TRK_DEF[i][2] - 1u].note, pat_flags(TRK_DEF[i][2] - 1u));
         pat_sig[i] = steps_sig(t);
         pat_last[i] = TRK_DEF[i][2];
     }
@@ -4084,7 +4092,7 @@ static int test_piano_roll(void)
     track_t *t;
     ui_power_on();
     t = TSEL;
-    load_pat16(t, PATTERNS[0].note, PATTERNS[0].flags);               /* ACID: A2..A3, ties, accents, slides */
+    load_pat16(t, PATTERNS[0].note, pat_flags(0));               /* ACID: A2..A3, ties, accents, slides */
     root_g = 9; scale_g = 2;
     go_page(GR_ROLL); ui.cursor = 0; ui.bank = 0;
     memset(host_screen, 0, sizeof host_screen); ui.force = 1; ui_draw();

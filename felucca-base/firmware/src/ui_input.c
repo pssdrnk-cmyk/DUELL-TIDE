@@ -655,8 +655,6 @@ static void part_select(uint32_t pos)                   /* 0 PART 1, 1 PART 2, 2
  * LAYER / STEREO / DUEL: song.both 1 (the knobs and the fader edit both, as b6's BOTH) and that output MODE (duell_mode_req: the PLAY MODE row's byte, saved as ever).
  * The position is read from the two, nothing stored of its own: BOTH off with LAYER (an old multi, the PLAY MODE row) reads LAYER, b6's play.
  * TIDE_PLAYSEL 0: b6's PART 1, BOTH, PART 2 below */
-enum { PLS_P1, PLS_LAYER, PLS_STEREO, PLS_DUEL, PLS_P2, PLS_N };
-static const char *const PLS_NAME[PLS_N] = {"PART 1", "LAYER", "STEREO", "DUEL", "PART 2"};
 static uint32_t play_pos(void)
 {
     uint32_t m = duell_mode_req < DM_N ? duell_mode_req : DM_SPLIT;

@@ -927,7 +927,7 @@ static void roll_scene(int s)
     case S_ROLL_EMPTY: break;
     case S_ROLL_ACID:
     case S_ROLL_PLAYING:
-        load_pat16(t, PATTERNS[0].note, PATTERNS[0].flags);
+        load_pat16(t, PATTERNS[0].note, pat_flags(0));
         root_g = 9; scale_g = 2; ui.cursor = 6;
         if (s == S_ROLL_PLAYING) {
             song.playing = 1; t->seq_idx = 9;
@@ -958,7 +958,7 @@ static void roll_scene(int s)
         ui.cursor = 9;
         break;
     case S_ROLL_LEN32:
-        load_pat16(t, PATTERNS[0].note, PATTERNS[0].flags);
+        load_pat16(t, PATTERNS[0].note, pat_flags(0));
         t->p[P_SLEN] = 32;
         for (i = 16; i < 32u; i++) {
             uint8_t n = (uint8_t)(60 + (i * 5u) % 12u);
@@ -2431,6 +2431,49 @@ static int about_tide_main(const char *out)
     return 0;
 #endif
 }
+#if DUELL_TIDE && TIDE_PLAYSEL
+/* 1.0.0-b7 PLAY MODE SELECT, for looking at: --playsel DIR writes DIR/ppm/<PAL>_ps_<page>_<pos>.ppm (VIOLET, GREY): HOME page 1 (MORPH) and TIDE SETTINGS (its PLAY MODE
+ * row picked) with ALGORITHM on PART 1, LAYER, STEREO, DUEL, PART 2 (play_select, as the encoder sets it) */
+static int playsel_main(const char *out)
+{
+    static const char *const PG[2] = {"morph", "settings"};
+    static const uint32_t PP[2] = {UI_DEFAULT_INDEX, UI_GREY_INDEX};
+    static const char *const PN[2] = {"VIOLET", "GREY"};
+    static const char *const POS[PLS_N] = {"part1", "layer", "stereo", "duel", "part2"};
+    uint32_t g, ps, q, pg;
+    char rp[600];
+    snprintf(rp, sizeof rp, "%s/playsel_report.txt", out);
+    rep = fopen(rp, "w");
+    if (!rep) { fprintf(stderr, "cannot write %s\n", rp); return 1; }
+    for (g = 0; g < 2u; g++)
+        for (ps = 0; ps < PLS_N; ps++)
+            for (q = 0; q < 2u; q++) {
+                char nm[40];
+                setup(S_MORPH_BOTH_MID);
+                pal(PP[q]);
+                song.rec = 0; usb.config = 0; ui.perf = 0;
+                if (g) {
+                    for (pg = 0; pg < NPAGES && strcmp(PAGES[pg].title, "TIDE SETTINGS"); pg++) ;
+                    ui.page = (uint8_t)pg;
+                    jl_sel = JL_MODE;
+                } else
+                    go_page(GR_MORPH);
+                duell_mode_req = DM_STEREO; song.both = 0; song.sel = 0;
+                play_select(ps);
+                duell_mode = duell_mode_req;
+                mix_split = SPLIT_MIDDLE;
+                ui.force = 1;
+                snprintf(nm, sizeof nm, "ps_%s_%s", PG[g], POS[ps]);
+                cur_name = nm;
+                draw(-1);
+                lint();
+                write_ppm(out, PN[q], nm);
+            }
+    fclose(rep);
+    printf("ui_render: PLAY MODE SELECT renders in %s: %u lint findings\n", out, nfind);
+    return nfind ? 1 : 0;
+}
+#endif
 #if DUELL_TIDE
 /* the MORPH page's wave, for looking at: --wave-study DIR writes DIR/ppm/<PAL>_<kind>_<sel>.ppm (VIOLET, GREY, MONO; held note, chord, sweep; PART 1, PART 2, BOTH selected) with the rings fed as the tap would
  * leave them (part 1 a saw, part 2 a sine). */
@@ -2498,6 +2541,9 @@ int main(int argc, char **argv)
     if (argc > 2 && !strcmp(argv[1], "--wave-study")) return wave_study_main(argv[2]);
 #endif
     if (argc > 2 && !strcmp(argv[1], "--about-tide")) return about_tide_main(argv[2]);
+#if DUELL_TIDE && TIDE_PLAYSEL
+    if (argc > 2 && !strcmp(argv[1], "--playsel")) return playsel_main(argv[2]);
+#endif
     const char *out = argc > 1 ? argv[1] : "build/ui_new";
     char path[600];
     uint32_t p, s;

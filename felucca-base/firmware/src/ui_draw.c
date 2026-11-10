@@ -347,10 +347,17 @@ static void nm_title(char *b);                         /* ui_name.c: NAME's titl
 /* the header's centre text (0.2.1): what the screen is called. Over a page, the PAGE NAME (params.c titles; EDIT's: the engine's; the piano roll
  * "STEP C MIN", the GRID "GRID"; OVERVIEW); the full-screen dialogs and NAME their own title; a layer shows its label as a message
  * (head_msg). tb holds 24; *pi gets the page's icon (MIXER, PATTERNS, PARAMETER LOCKS) or ICON_NONE */
+#if DUELL_TIDE && TIDE_PLAYSEL
+static int head_ps_on(void) { return song.both && !ui.perf && !ui.layer && HOME_BOTH_PAGE(cur_page()); }   /* (PERFORM names it in its footer: ALGORITHM = ..) */
+static uint8_t head_ps;                                 /* 1: the title drawn is the play position (head_page_title) */
+#endif
 static void head_page_title(char *tb, uint32_t *pi)
 {
     char nm[28], ct[8];
     *pi = ICON_NONE;
+#if DUELL_TIDE && TIDE_PLAYSEL
+    head_ps = 0;
+#endif
     if (oct_show_on()) {
         str_cpy(tb, "OCTAVE", 24);
     } else if (ui.uboot) {
@@ -368,6 +375,10 @@ static void head_page_title(char *tb, uint32_t *pi)
         int roll = page_parts(nm, ct);
         str_cpy(tb, roll ? "SEQUENCER" : nm, 40);            /* (item 118, FINAL_V1_07: the piano roll's title is STEP, no scale name; the name is the SCALE page's) */
         *pi = page_icon(cur_page());
+#if DUELL_TIDE && TIDE_PLAYSEL
+        if ((head_ps = (uint8_t)head_ps_on()) != 0)     /* 1.0.0-b7: both parts selected on HOME's pages: the title is how the keys play, LAYER / STEREO / DUEL, in the theme colour (head_title_draw) */
+            str_cpy(tb, PLS_NAME[play_pos()], 40);
+#endif
     }
 }
 /* EDITABLE B (cloud job G, docs/design/EDITABLE_B_DESIGN.md 2.2): the letter A or B in a filled cushion in the part's A or B colour, right of the 1 2 badges (x 33, 14 px like them; where the multi number was
@@ -541,7 +552,11 @@ static int32_t head_title_ink(const char *tb, int glob, uint16_t ink, int32_t *p
 static void head_title_draw(const char *tb, int glob)
 {
     int32_t w;
+#if DUELL_TIDE && TIDE_PLAYSEL
+    (void)head_title_ink(tb, glob, head_ps ? T_THEME : T_TEXT, &w);
+#else
     (void)head_title_ink(tb, glob, T_TEXT, &w);
+#endif
 }
 /* item 158: the title's one placement and drawing, in colour ink (the page title: T_TEXT; a program change's '#NN NAME': the part's colour, head_title_msg). Returns the pen's
  * start in 1/16 px and *pw the advance in 1/16 px (the face is the title's: T, or S when T does not fit), so a message drawn here stands pixel for pixel where the same text as a title stands */
