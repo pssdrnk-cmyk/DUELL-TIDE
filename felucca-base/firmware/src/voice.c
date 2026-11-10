@@ -236,6 +236,10 @@ static void vcap_poll(void)                             /* main loop, every fram
 }
 #endif
 
+/* b8 ACID: an ANALOG sound with WAVE ACID / ACSQ plays its accents like a 303 (work/b8/acid/DESIGN.md): an accent shortens ENV 2's decay, bursts the level with it and pushes the cutoff through a capacitor that stacks.
+ * The slide is the sequencer's (SLIDE steps, a LEGATO sound with GLIDE in TIME mode). Every other sound never reaches the ACID code */
+static inline uint32_t acid_on(const track_t *t) { return !t->engine && t->p[P_E0] >= ACID_WAVE; }   /* (ENGINES[0] is ANALOG) */
+
 /* the part's voice mode: P_VOICE */
 static uint32_t trk_vmode(const track_t *t)
 {
@@ -1252,7 +1256,8 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
     int32_t lfo = mulq15(t->lfo_val, t->lfo_fade);
     /* DUELL (SPEC 2.4, the classic arrangement): ENV 2 DEST / LFO 2 DEST, their own depths: either set, that one runs
      * (as when the matrix reads it); all 0, neither costs anything (every sound of before) */
-    uint32_t e2on = (mod->on && mod->e2) || p[P_E2FLT] || (p[P_TWTYPE] && XV(t, X_ENV2));   /* (TWIN FILTER: filter 2's ENV 2 amount) */
+    uint32_t acid = acid_on(t);                         /* b8 ACID */
+    uint32_t e2on = acid || (mod->on && mod->e2) || p[P_E2FLT] || (p[P_TWTYPE] && XV(t, X_ENV2));   /* (TWIN FILTER: filter 2's ENV 2 amount; ACID: its ENV 2 is the accent's sweep) */
     uint32_t l2on = (mod->on && mod->l2) || (p[P_TWTYPE] && XV(t, X_LFO2));   /* (DUELL 1.1: LFO 2 DEST's old PITCH / MULTI CUTOFF / TIMBRE cards no longer act: they reach the engine through the matrix) */   /* (.. and its LFO 2 amount) */
     int32_t tune, tune_fine;                           /* MASTER TUNE (tune_get above): whole 1/16 semitones in the pitch, the rest as a fine factor (no dead zone) */
     int32_t bend, bend16, bend_fine;
@@ -1290,6 +1295,19 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
     esync_coef(t);                                      /* this block's envelope steps for env_tick (ENV SYNC) */
     if (e2on)                                           /* DUELL: ENV 2, read by the matrix or ENV 2 DEST */
         esync2_coef(t);
+    if (acid) {                                         /* ACID: the accent push's capacitor y (Q15): charged from the accented note's ENV 2 through a lag that grows with RES (47 .. 147 ms), run down 4 x slower (acid.md in DESIGN.md) */
+        const voice_t *v0 = &t->v[0];
+        int32_t x = v0->gate && v0->vel > ACCENT_V0 ? v0->env2 >> 9 : 0, y = t->acid_y;
+        int32_t c = 449 - 40 * (p[P_FREEB] >> 4);       /* the charge per tick, Q15, 449 .. 169 over RES (tau 53 .. 140 ms): tau = 0.726 ms / c */
+        if (x > y) {
+            y += ((x - y) * c) >> 15;
+        } else {
+            y -= ((y * (c >> 2)) >> 15) + (y > 0);
+        }
+        t->acid_y = (int16_t)y;
+        if (v0->vel > ACCENT_V0)                        /* an accented note: ENV 2 decays in ACID's short fixed time (~200 ms), the Decay knob only acts on plain notes */
+            t->esk2[1] = ENV_EXP[ACID_ACCDEC];
+    }
     if (e->block)                                       /* the engine's per-part work (WHEEL: bars, rotor) */
         e->block(t);
     for (i = 0; i < NVOICE; i++) {
@@ -1325,6 +1343,8 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
                 env = e->amp(t, v, env);
             m.envq15 = e->ownenv ? 0 : env;
             m.amp1 = e->ownenv ? env : mulq15(env, Q15_FROM_127(v->vel));
+            if (acid && v->vel > ACCENT_V0)             /* the accent's burst: the level follows the (short) ENV 2, up to +ACID_BURST at its start */
+                m.amp1 += mulq15(m.amp1, mulq15(v->env2 >> 9, ACID_BURST));
             if (v->xg)                                  /* LAYER XFADE (core.h mix_xf): the note's share between the parts */
                 m.amp1 = mulq15(m.amp1, v->xg);
             if (p[P_LD_AMP] && !BYP(t, BY_LFO1))
@@ -1357,7 +1377,9 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
         if (e == &ENG_NOISE)                            /* NOISE's DRFT wander of the cutoff, worked out by the block before (eng_noise.c): filter 1's, one block late */
             m.cutoff += v->s[0];
         m.acc1 = 0;
-        if (ACCENT_VEL(v) > 110 && (uf != 1u || ACCENT_BOTH(e)))   /* accent opens the filter with the env: filter 1 on the three engines whose own filter went (ACCENT_BOTH), the engine's own tone control on the others (below) */
+        if (acid) {                                     /* ACID: the push is the capacitor's (a 303 is a low-pass: it opens upward) */
+            m.cutoff += m.acc1 = (t->acid_y * ACID_PUSH) >> 15;
+        } else if (ACCENT_VEL(v) > 110 && (uf != 1u || ACCENT_BOTH(e)))   /* accent opens the filter with the env: filter 1 on the three engines whose own filter went (ACCENT_BOTH), the engine's own tone control on the others (below) */
         {
             int32_t al = accent_lift(ACCENT_VEL(v), m.envq15);
             if (ACCENT_BOTH(e))

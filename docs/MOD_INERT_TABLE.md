@@ -18,7 +18,7 @@ A stored route to an inert destination stays and still plays (it just does nothi
 
 | engine | SHAPE moves | SHAPE has no effect with | E slots with no effect | removed from the DEST list (a list of choices) |
 |---|---|---|---|---|
-| ANALOG | pulse width (PWM), sync sweep (SYNC) | WAVE SAW, SQR, TRI, SIN, SUB | PW with any WAVE but PWM | WAVE |
+| ANALOG | pulse width (PWM), sync sweep (SYNC) | WAVE SAW, SQR, TRI, SIN, SUB, ACID, ACSQ | PW with any WAVE but PWM | WAVE |
 | PHASE | DCW (the distortion depth), every wave | never | slot 8 (unused, as before) | WAVE 1, WAVE 2, LINE |
 | LOFI | pulse width around DUTY (PLS) | WAVE TRI, SAW, NOIS, WRAM | DUTY with WAVE TRI, SAW, NOIS (PLS takes its width, WRAM its table) | CHIP, WAVE, ARP |
 | VOICE | BUZZ | never | none | none |
