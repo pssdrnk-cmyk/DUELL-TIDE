@@ -63,7 +63,17 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
 ## Make a first sound
 1. Turn **PRESETS** to hear sounds. Turn **ALGORITHM** to select part 2 and load another.
 2. Go to the MODE page (with TIDE: TIDE SETTINGS, the PLAY MODE row) and try DUEL, STEREO, LAYER.
-3. Press **HOME** for the MORPH page, the hands-on page. Knob 1 moves the morph from A to B (two steps a click). Knob 2 is FILTER (the cutoff), knob 3 ECHO (the delay send), knob 4 LENGTH (the release); their values sit on the row under the picture. Hold **OCT+** and click knob 1 for a new random End B (it replaces the old one: there is no UNDO). On this page **ALGORITHM** has five positions, PART 1, LAYER, STEREO, DUEL and PART 2: the middle three select both parts (every knob moves both, each from its own value, both part numbers light up and the header says LAYER, STEREO or DUEL) and set how the keys play, the same as the PLAY MODE row. A change of play mode lets go of held notes.
+3. Press **HOME** for the MORPH page, the hands-on page.
+   - Knob 1 moves the morph from A to B (two steps a click).
+   - Knob 2 is FILTER (the cutoff).
+   - Knob 3 is ECHO (the delay send).
+   - Knob 4 is LENGTH (the release).
+   - Their values sit on the row under the picture.
+   - Hold **OCT+** and click knob 1 for a new random End B (it replaces the old one: there is no UNDO).
+   - On this page **ALGORITHM** has five positions, PART 1, LAYER, STEREO, DUEL and PART 2.
+   - The middle three select both parts (every knob moves both, each from its own value, both part numbers light up and the header says LAYER, STEREO or DUEL).
+   - They also set how the keys play, the same as the PLAY MODE row.
+   - A change of play mode lets go of held notes.
    **With TIDE:** tap HOME twice more for TIDE SETTINGS (ten rows: STYLE, MODE, TARGET, ARC, ROLL TYPE, AMOUNT (how far a roll goes), then REC, PLAY MODE, XFADE, SPLIT; STYLE DUB is the default) and AUTO TIDE. Press PLAY and twist K1 on AUTO TIDE right: the parts evolve by themselves. With no notes coming in TIDE plays in C minor; send or hold one note to set its key. The [TIDE guide](TIDE_GUIDE.md) has the rest.
 4. Press **SAVE**. The first page is **PATCHES**: 128 slots, #1 to #128.
 
