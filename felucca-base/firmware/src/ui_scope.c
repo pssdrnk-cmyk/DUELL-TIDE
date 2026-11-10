@@ -486,7 +486,7 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
                                                                                       * a turn of knob 1 redraws the waves with a picture: ui_graph.c graph_signature) */
     const uint16_t bg = swap16(T_BG);
     const int32_t cx16 = (WL_X0 + WL_X1) * 8, hw16 = (WL_X1 - WL_X0) * 8;   /* (the front's middle and half width, 1/16 px) */
-    int32_t a, st, nf = wl_fit(y1 - y0, &a, &st), nr = s->hn < (uint32_t)nf ? (int32_t)s->hn : nf, r, n, c, gs = 0, left, m0, sp, mid = (y1 - 2 - a) * 16 + 8;
+    int32_t a, st, nf = wl_fit(y1 - y0, &a, &st), nr = s->hn < (uint32_t)nf ? (int32_t)s->hn : nf, r, c, gs = 0, left, m0, sp, mid = (y1 - 2 - a) * 16 + 8;
     int32_t yb[WL_HN], xl[WL_HN], xr[WL_HN], mul[WL_HN], py[WL_HN];
     uint16_t col[WL_HN], ft[WL_HN][17];              /* (each ridge's colours by the share of a pixel its stroke covers, 0 .. 16 sixteenths: on the background) */
     uint32_t shp = 0, seen = 0;                      /* (bit r: ridge r drawn with its shape; ridge r has had a column) */
