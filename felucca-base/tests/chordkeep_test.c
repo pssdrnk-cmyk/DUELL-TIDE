@@ -155,8 +155,8 @@ static void first(void)
     int16_t c0;
     uint32_t i;
     first_start();
-    expect("first start: M04 DUB CHORD; part 1 plays MIN7 chords (POLY), part 2 is LEGATO (a root alone)", trk[0].p[P_CHRD] == CH_MIN7 && trk[0].p[P_VOICE] == V_POLY &&
-           trk[1].p[P_VOICE] == V_LEGATO);
+    expect("first start: M02 DUB CHORD; part 1 plays MIN7 chords (POLY), part 2 holds a MIN chord (POLY: the re-voiced pad; a LEGATO sub line until then)", trk[0].p[P_CHRD] == CH_MIN7 && trk[0].p[P_VOICE] == V_POLY &&
+           trk[1].p[P_VOICE] == V_POLY && trk[1].p[P_CHRD] == CH_MIN);
     go_page(GR_CHORD);
     run(100);
     c0 = trk[0].p[P_CHRD];
@@ -290,7 +290,8 @@ static void hints(void)   /* (K3 / K4: the VOICE card is MODE, only while a chor
     go_page(GR_CHORD);
     run(100);
     t = &trk[1];
-    t->p[P_AMODE] = 0;                                  /* (part 2 runs an arp in M04: that alone hides STRUM; off, so that the voice mode is the reason) */
+    t->p[P_AMODE] = 0;                                  /* (part 2 runs an arp in M02: that alone hides STRUM; off, so that the voice mode is the reason) */
+    t->p[P_VOICE] = V_LEGATO;                           /* (the re-voiced DUB CHORD's part 2 is a POLY pad: LEGATO set here, as the sub line of before had it) */
     XV(t, X_STRUM) = 0;
     t->p[P_CHRD] = CH_DIA3;
     run(100);
