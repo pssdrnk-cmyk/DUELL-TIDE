@@ -158,14 +158,17 @@ class Runner:
         e["PATH"] = (posix(os.path.join(HERE, "ccwrap")).replace("/", "\\") if NT else os.path.join(HERE, "ccwrap")) + os.pathsep + e.get("PATH", "")
         if self.cache:
             e["HT_CC_CACHE"] = self.cache
-        if self.a.deps_dir:
-            e["HT_DEPS_DIR"] = posix(self.a.deps_dir)
+        e["HT_DEPS_DIR"] = posix(self.a.deps_dir)
         return e
 
     def run_group(self, g):
         a = self.a
         sandbox = os.path.join(self.sbroot, g)
         t0 = time.time()
+        try:
+            os.unlink(os.path.join(a.deps_dir, g + ".deps"))     # (this run records what the group's compiles read again)
+        except OSError:
+            pass
         out = os.path.join(a.log, g + ".log")
         try:
             make_sandbox(sandbox)
@@ -177,6 +180,10 @@ class Runner:
             rc = 99
             open(out, "w").write("fastcheck: %s\n" % ex)
         finally:
+            try:                                    # the full output of the last test program (host_tests.sh prints a digest of it): repin.py reads it
+                shutil.copyfile(os.path.join(sandbox, "felucca-base", "build", "host", "last.log"), os.path.join(a.log, g + ".full.log"))
+            except OSError:
+                pass
             remove_sandbox(sandbox)
         secs = int(time.time() - t0)
         text = open(out, errors="replace").read()
@@ -453,7 +460,13 @@ def changed_groups(base, gmap, groups):
     notes, run = [], set()
     deleted = {f for f in files if not os.path.exists(os.path.join(REPO, f))}
     rev = {}
+    allfw = None
     for g, fl in gmap["groups"].items():
+        fl = set(fl) | dyn_deps(g)                  # (+ what the group's compiles really read in its last run, build/host/groupdeps)
+        if not os.path.exists(os.path.join(DEPS_DEFAULT, g + ".deps")):
+            if allfw is None:                       # never run here: its programs may read more than the map found; the firmware is the usual rest
+                allfw = {rel_repo(os.path.join(dp, f)) for dp, dn, fn in os.walk(os.path.join(FB, "firmware")) for f in fn}
+            fl |= allfw
         for f in fl:
             rev.setdefault(f, set()).add(g)
     # host_tests.sh: the groups whose own body (or called function) changed, or all if the shared part changed
@@ -491,6 +504,27 @@ def changed_groups(base, gmap, groups):
     return sorted(run & set(groups)), extra, notes, files
 
 
+DEPS_DEFAULT = os.path.join(FB, "build", "host", "groupdeps")
+
+
+def dyn_deps(g, deps_dir=None):
+    """the project files the compiles of group g read in its last run (jam/ccwrap/cc writes them)."""
+    f = os.path.join(deps_dir or DEPS_DEFAULT, g + ".deps")
+    out = set()
+    try:
+        lines = open(f, errors="replace").read().split("\n")
+    except OSError:
+        return out
+    for l in lines:
+        l = l.strip().rstrip("\\").strip()
+        if not l or l == "\\" or re.match(r"^[A-Za-z]:/", l) or l.startswith("/"):
+            continue
+        r = rel_repo(os.path.join(FB, l))
+        if r and not r.startswith("felucca-base/build/"):
+            out.add(r)
+    return out
+
+
 def verify_map(a):
     """after a run with HT_DEPS_DIR: every project file a group's compiles read must be in the map."""
     mp = json.load(open(os.path.join(FB, "build", "host", "groupmap.json")))
@@ -498,19 +532,12 @@ def verify_map(a):
     for f in sorted(glob.glob(os.path.join(a.deps_dir, "*.deps"))):
         g = os.path.basename(f)[:-5]
         have = set(mp["groups"].get(g, []))
-        seen = set()
-        for l in open(f):
-            l = l.strip().rstrip("\\").strip()
-            if not l or l == "\\" or re.match(r"^[A-Za-z]:/", l) or l.startswith("/"):
-                continue
-            r = rel_repo(os.path.join(FB, l))
-            if r and not r.startswith("felucca-base/build/"):
-                seen.add(r)
+        seen = dyn_deps(g, a.deps_dir)
         miss = sorted(seen - have)
         if miss:
             bad += 1
             print("map misses for %s: %s" % (g, " ".join(miss[:8])))
-    print("== map check: %s" % ("every compiled file is in the map" if not bad else "%d group(s) with files the map does not list" % bad))
+    print("== map check: %s" % ("every compiled file is in the static map" if not bad else "%d group(s) with files only the recorded deps list (build/host/groupdeps covers them)" % bad))
     return bad == 0
 
 
@@ -532,6 +559,8 @@ def main():
     ap.add_argument("--verify-map", action="store_true", help="record the files every compile reads and check them against the map")
     ap.add_argument("--list-changed", action="store_true", help="with --changed: print the groups and stop")
     a = ap.parse_args()
+    a.deps_dir = os.path.abspath(a.deps_dir or os.path.join(FB, "build", "host", "groupdeps"))
+    os.makedirs(a.deps_dir, exist_ok=True)
     if not a.jobs:
         a.jobs = default_jobs()
     a.log = os.path.abspath(a.log)
@@ -559,12 +588,11 @@ def main():
         groups = sel
         if a.list_changed:
             return 0
-    if a.shard:
+    if a.shard:                                     # (as the CI's awk did: the default list without the $EMU token, every N-th group from place I)
         i, n = (int(x) for x in a.shard.split("/"))
+        groups = [g for g in groups if not g.startswith("$")]
         groups = [g for k, g in enumerate(groups) if k % n == i]
     if a.verify_map:
-        a.deps_dir = a.deps_dir or os.path.join(a.log, "deps")
-        shutil.rmtree(a.deps_dir, ignore_errors=True)
         build_map(os.environ["HT_REALCC"], a)
     expanded = []
     for g in groups:
