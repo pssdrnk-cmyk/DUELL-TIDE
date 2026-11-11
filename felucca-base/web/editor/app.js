@@ -554,7 +554,7 @@ function buildGlobalTab(wrap) {
     wrap.append(h("div", { class: "tabbody" },
       gcard("CLOCK", [2, 0, 1], { tip: "Where the tempo comes from, the tempo and the swing of the whole instrument." }),   // (the clock source first, as the unit's TEMPO page)
       gcard("CHORUS", pgs("CHORUS"), { bypass: "bus:chorus", tip: "Shared by both parts: each part's SENDS feed it." }),
-      gcard("DELAY", [...pgs("DELAY 1/2"), ...pgs("DELAY 2/2")], { bypass: "bus:delay", tip: "Shared by both parts. In RANDOM and OCTAVE UP the MOD depth is the CHANCE of an event and MOD RATE is not used." }),
+      gcard("DELAY", [...pgs("DELAY 1/2"), ...pgs("DELAY 2/2"), ...pgs("COLR LFO")], { bypass: "bus:delay", tip: "Shared by both parts. In RANDOM and OCTAVE UP the MOD depth is the CHANCE of an event and MOD RATE is not used." }),
       gcard("REVERB", [...pgs("REVERB"), ...pgs("SHIMMER")], { bypass: "bus:reverb", tip: "Shared by both parts. PITCH and DRIFT belong to TYPE SHIMMER." }),
       stereo, comp));
   } else if (tab === "midi") buildMidi(app, wrap, globalCell, card, sidechainCard());

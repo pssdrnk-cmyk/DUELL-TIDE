@@ -140,8 +140,8 @@ The KNOBS sets (HOME page 1; K1 is always MORPH; AUTO picks the set from the tag
 | **HSE** house | FLT: cutoff, a touch of resonance | PMP: sidechain pump depth | REV: reverb send, longer release |
 | **TECH** techno | TNS: cutoff, resonance and the filter envelope's depth up (build) | DEC: decay short to long | WSH: reverb and echo sends |
 | **ACID** | SQL: cutoff and resonance (the squelch) | BTE: the filter envelope's depth (ENV 2) and the cutoff up, decay shorter | DRT: saturation |
-| **ELEC** electro / IDM | FLT: cutoff | GRT: saturation and chorus | GLT: shorter gates, dropped steps |
-| **AMB** ambient / drone | BLM: slower attack, longer release, more reverb | DRF: deeper, slower filter wobble (the cutoff comes down a little so the wobble has room) | SPC: echo and reverb |
+| **ELEC** electro / IDM | FLT: cutoff | GRT: saturation and chorus, the cutoff opens a little with it | GLT: shorter gates, dropped steps |
+| **AMB** ambient / drone | BLM: slower attack, longer release, more reverb | DRF: deeper, slower filter wobble, twice as fast to full depth (the cutoff comes down a little so the wobble has room) | SPC: echo and reverb |
 
 **What STYLE sets without a row.** These were rows until `1.0.0-b6`; now each STYLE has its own values (the table below) and they act in automatic EVOLVE / TRAVEL:
 

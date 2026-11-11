@@ -264,7 +264,7 @@ export const PART_TABS = [
 // firmware params.c MASTER_PAGE_TITLE; this one place here); then COMPRESSOR (K1 RATIO, K2 THRESH, K3 ATTACK, K4 RELEASE)
 export const MASTER_TITLE = "STEREO MASTER";
 export const GLOBAL_TABS = [
-  { key: "global", label: "GLOBAL", pages: ["TEMPO", "CHORUS", "DELAY 1/2", "DELAY 2/2", "REVERB", "SHIMMER", MASTER_TITLE, "COMPRESSOR"] },
+  { key: "global", label: "GLOBAL", pages: ["TEMPO", "CHORUS", "DELAY 1/2", "DELAY 2/2", "COLR LFO", "REVERB", "SHIMMER", MASTER_TITLE, "COMPRESSOR"] },
   { key: "patches", label: "PATCHES", pages: ["PATCHES"] },
   { key: "multis", label: "MULTIS", pages: ["MULTIS"] },
   { key: "patterns", label: "PATTERNS", pages: ["PATTERNS"] },   // 0.2.25: the pattern slots P01..P16 through the backup objects 21..23 (stored.js)

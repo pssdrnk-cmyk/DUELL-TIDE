@@ -87,7 +87,7 @@ MULTIS = [
     # fits (a chord held four bars is one step). A part with len=N says its own pattern length.
     dict(slot=1, name="DUB BASIC", mode="LAYER",
          what="dub techno, G minor: one minor-seventh chord in a low-pass haze, three hits a bar (steps 4, 7, 14) through tape into a long dark dotted echo with a wobbling delay time, the filter riding slowly, under a low held G minor bed with a root an octave down (122 BPM)",
-         g=dict(G_BPM=122, G_DTIME="8D", G_DFDBK=110, G_DMIX=78, G_DMODE="DIGI", G_DCOLOR=26, G_DMDEP=24, G_RTYPE="PLATE", G_RSIZE=84, G_RDAMP=68),
+         g=dict(G_BPM=122, G_DTIME="8D", G_DFDBK=110, G_DMIX=78, G_DMODE="DIGI", G_DCOLOR=26, G_DCLFO=5, G_DMDEP=24, G_RTYPE="PLATE", G_RSIZE=84, G_RDAMP=68),
          parts=[dict(sound="CHORD ECHO", set={"P_AMODE": "SEQ", "P_ARATE": "1/16", "P_AGATE": 90, "P_AHOLD": "OFF", "P_CHRD": "MIN7", "P_VOIC": "OPEN", "E:NOIS": 24, "P_FREEB": 18,
                                               "P_LRATE": 12, "P_LD_FLT": 9, "P_REL": 78, "P_SPRD": 50, "P_EQMG": -4, "P_EQMF": -9, "P_DKSRC": "PUMP", "P_DKRATE": "1/4", "P_DKDEP": 30, "P_DLY": 78, "P_REV": 54, "P_LEVEL": 112, "P_ITYPE": "TAPE", "P_IA": 40, "P_IB": 45, "P_IC": 110, "P_IMIX": 70},
                      steps=". . . -5A . . -5 . . . . . . -5 . .", bseed=56484, amt=30, b={"P_FREEA": 46, "P_FREEB": 30, "P_REL": 84}),
@@ -95,7 +95,7 @@ MULTIS = [
                      steps="-17 -", len=2, bseed=4325, amt=20, b={"P_FREEA": 52})]),
     dict(slot=2, name="DUB CHORD", mode="LAYER",
          what="dub techno, C minor, the first start: the owner's FM minor-seventh stab on the off-beats (steps 3 and 11), an octave lower, C3 to B flat 3 (was C4 to B flat 4), dark and a little longer (b9 rework2: gate 60 -> 96), chorused, a wide dip of 5 dB around 600 Hz, the top rolled off from 4.5 kHz and a slow phaser (0.24 Hz) on it (b9 rework3, Attack Magazine dub techno chords), thrown into a long dark dotted echo (feedback 110, drifting), over a low analog pad holding C minor with its root an octave down through every bar (117 BPM)",
-         g=dict(G_BPM=117, G_DTIME="8D", G_DFDBK=110, G_DMIX=90, G_DMODE="DIGI", G_DCOLOR=26, G_DMDEP=24, G_RTYPE="PLATE", G_RSIZE=78, G_RDAMP=66),
+         g=dict(G_BPM=117, G_DTIME="8D", G_DFDBK=110, G_DMIX=90, G_DMODE="DIGI", G_DCOLOR=26, G_DCLFO=5, G_DMDEP=24, G_RTYPE="PLATE", G_RSIZE=78, G_RDAMP=66),
          parts=[dict(sound="BIG STAB", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=96, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="CLOSE", P_FREEA=40, P_SPRD=40,
                                                  P_EQMG=-5, P_EQMF=-9, P_EQMQ=-3, P_EQHG=-4, P_EQHF=-10, P_ITYPE="PHASER", P_IA=30, P_IB=80, P_IC=50, P_IMIX=60,
                                                  P_CHOR=80, P_DLY=77, P_REV=56, P_LRATE=12, P_LD_FLT=9, P_TRIM=120, P_LEVEL=112),

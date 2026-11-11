@@ -7,6 +7,11 @@ New lines for the fork go here, not into CHANGELOG.md.
 
 Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrnk-cmyk/DUELL-TIDE>), adding TIDE, a morph that plays and evolves by itself. TIDE has its own version, `MAJOR.MINOR.PATCH`, kept in the file `TIDE_VERSION` and shown in MENU > SYSTEM > ABOUT beside the DUELL version (1.1). A build flashed for testing is a beta, `1.0.0-b1`, `1.0.0-b2`, ...; the first build the fork owner has validated on the unit is `1.0.0`; a fix is `1.0.1`, a feature `1.1.0`. The git tag is `tide-` and the version (`tide-1.0.0-b1`); the GitHub release has the same name. Each version has a section below, `## 1.0.0-b1`, newest first; a section heading names the tag and, once known, the commit and the date it was flashed. The commit stays in the release notes, not in the name. The installer page offers the stable and the beta build of the [GitHub releases](https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases); the [README](README.md#builds-stable-and-beta) says which they are.
 
+## 1.0.0-b10 (in progress)
+
+- **Changed (two genre knobs do more):** ELEC's GRT also moves the cutoff a little (down = darker and cleaner, up = brighter and grittier): the odd harmonics now span about 10 dB over the knob's travel (was 2 dB); the saturation itself had no room left. AMB's DRF reaches its full filter wobble in about 9 detents (twice as fast).
+- **New (COLR LFO: the dub echo breathes):** a new DELAY page, COLR LFO, has one knob, CLFO 0..15: a slow wave (0.25 Hz) that swings the echo's COLOR darker and brighter around its set value (8 COLOR units a step each way), so the repeats move like a hand on a dub echo's tone control. 0 is off and sounds exactly as before. DUB BASIC and DUB CHORD use 5. A multi stores it (it fits in a spare part of the record: older multis read 0).
+
 ## 1.0.0-b9
 
 - **Changed (M06 is French house; DUB CHORD's stab is softer):** M06 HSE PIANO is now **M06 HSE FRENCH**: a mellow electric piano looping A minor 9 and F major 9, swung and pumped, its filter breathing slowly, over a round fretless disco bass on the off-beats. DUB CHORD's stab gets the dub-techno chord treatment: a wide dip around 600 Hz, the top rolled off and a slow phaser.

@@ -24,7 +24,7 @@
 # hunt1 (release_drafts/CLICK_HUNT1.md): the fader's steps of the sends, PATCH LEVEL and PAN are ramped inside the block (mod.c mod_mixmv counts the open morph window): M08 f127,
 # M09 f63 f127, M12 f63 f127 re-made once (2 to 16 samples in the first 12 ms differ, by at most 15 of a peak of 17,000: the step of the fader set at the start).
 # hunt1: SAT out of 0 and back into 0 without a step (fx.c track_dist_ramp): M12 f127 and S05_DEAD_BUFFER f127 re-made once (their matrix route lets the followed SAT run down
-# through the integer 0 at 1.43 s, 9 blocks; from there on the render differs by at most 89 of a peak of 12,900 / 19,700, 0.5 ). The other 103 renders are unchanged.
+# through the integer 0 at 1.43 s, 9 blocks; from there on the render differs by at most 89 of a peak of 12,900 / 19,700, 0.5 %). The other 103 renders are unchanged.
 # hunt1: the SPREAD mix's gains in a line while a route or the MORPH window moves them, SAT's blend ramp on a SPREAD part (fx.c spread_run / spread_post): M03 f63 f127, M05 f0 f63 f127,
 # M06 f63 f127, M07 f0 f63 f127, M10 f63 f127, M11 f63 f127 re-made once (14 of 105; the start of the render, the stored PAN's follower and the fader's first steps on SPREAD parts:
 # the largest difference is 266 of a peak of 17,000 (M10 f127), most 4 to 95). The other 91 renders are unchanged.
@@ -53,12 +53,12 @@
 # Audit P08 (CUT dial slewed, voice.c cut_slew), on purpose, 55 renders: the fader 63 / 127 renders of the multis and scenes whose MORPH moves the CUT dial.
 # Audit P09, on purpose, 9 renders: ANALOG's PW card is E4, the slot that held the old VCF's CUT; the test scenes S13, S14 and the spare X06 still store a CUT value there on a PWM part, which now sets its width.
 # D31 (audit G14, 2026-11-05), on purpose, 45 of the 108: the sixteen factory multis are in the curated dub / house order (BASIC CHORD, DUB CHORD, CELLAR TAPE, NIGHT ORGAN, ORGAN SKANK, WARM ECHO, MINIMAL 12, TINE DUB, DEEP 332, then the owner's PAD SPLIT .. FINAL REEL), six of them new: every M01..M16 render but M13 COLD CHAPEL (which keeps its slot) is another record; DUB CHORD's TIDAL SUB line is an octave up and its LEVEL 4 lower. The scenes and the spare renders are unchanged.
-M01 f0 d06045b0c672041b
-M01 f63 f3ffc492d12f2cd6
-M01 f127 ce00cd627c8e3fb2
-M02 f0 8b1f52253988249e
-M02 f63 9274e3a815e3a7d8
-M02 f127 6de01f50a800fb9a
+M01 f0 64a461f3eeae9a5c
+M01 f63 dd8040194a389d52
+M01 f127 b36d180aedf38eef
+M02 f0 f09652b6dcb76b23
+M02 f63 9d6f9131dbd4b118
+M02 f127 5638e188b00de433
 M03 f0 82b98c995391426c
 M03 f63 ad8b753609edbf12
 M03 f127 2fb0b30ebddb2343

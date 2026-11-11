@@ -171,6 +171,7 @@ export const GLOBAL = {
   15: ["MODE", "DIGITAL, PING-PONG, RANDOM or OCTAVE UP repeats."],
   17: ["DRIFT", "Slow drift of the shimmer's pitch."],
   21: ["LOW CUT", "Removes the low end from the reverb's input."],
+  22: ["COLOR LFO", "A slow wave (0.25 Hz) that swings the delay's COLOR darker and brighter around its set value, so the repeats breathe. 0 is off; each step is 8 COLOR units either way."],
   24: ["TYPE", "The reverb's model."],
   25: ["SPREAD", "How far the PING-PONG repeats go left and right."],
   26: ["PITCH", "Pitch of the shimmered return: an octave up or down."],
