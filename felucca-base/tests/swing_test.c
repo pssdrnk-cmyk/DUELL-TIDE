@@ -55,7 +55,7 @@ static uint32_t seq_starts(uint32_t *at, uint32_t n)
 
 static int test_seq(void)
 {
-    static const int C[][2] = {{50, 50}, {62, 50}, {66, 50}, {75, 50}, {50, 75}, {60, 60}, {75, 75}, {70, 70}};
+    static const int C[][2] = {{50, 50}, {60, 50}, {62, 50}, {66, 50}, {75, 50}, {50, 75}, {60, 60}, {75, 75}, {70, 70}};
     uint32_t c, at[17];
     int bad = 0;
     char what[160];

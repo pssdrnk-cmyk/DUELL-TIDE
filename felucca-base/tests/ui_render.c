@@ -866,7 +866,7 @@ enum { S_HOME, S_HOME_IDLE, S_MESSAGE, S_MESSAGE_KEY, S_MESSAGE_NOFILE, S_PRESET
        S_GUIDE1, S_GUIDE2, S_GUIDE3, S_GUIDE4, S_GUIDE5, S_GUIDE_MSG, S_GUIDE_KNOB, S_GUIDE_OCT, S_GUIDE_ROW,
        S_QUICK_FILTER, S_QUICK_GLO, S_MULTIS, S_MULTIS2, S_MULTIS3, S_PSLOT_NOSEQ, S_MODULES, S_MODULES_OFF, S_MODS_FX, S_MODS_ARP, S_MODS_ARP_SEQ,
        S_MODS_MIXER, S_MODS_PERFORM, S_MODS_SCHAIN, S_MODS_AUTO, S_MODS_QUICK_ARP, S_MODS_MSG, S_TOOLS_RESTORE, S_PATCH_SAVE_BOTH, S_CONFIRM_RESTORE_ALL, S_PATCH_SAVE_NAMED, S_NAME_SAVE_PATCH,
-       S_EQ_CURVE, S_EQ_CURVE2, S_COMP_CURVE, S_COMP_OFF, S_SMASTER, S_SMASTER_WIDE, S_FILT_MULTI, S_FILT_MULTI24, S_FILT_VCF, S_ARP_PATTERN, S_ARP_CHORD, S_SIDECHAIN_PARTS, S_VOICE_PATCH, S_OCTAVE, S_SPLASH_FIRST, S_GUIDE_MENU, S_ENGINE_LOFI, S_ENGINE_PHASE, S_ENGINE_VOICE, S_ENGINE_TRIO, S_ENGINE_PHYS, S_ENGINE_NOISE, S_ENGINE_WAVE, S_ENGINE_WHEEL, S_CAPSULES, S_STEREO_HOME, S_ENGINE_LIST, S_MODE_DUEL, S_SUB, S_EDIT_WAVE1, S_EDIT_VOICE1, S_CYCLE, S_TWIN, S_ABOUT_TOP, S_CYCLE2, S_CYCLE2_ALL, S_MIXER4, S_MOD_LONG, S_CONFIRM_ERASE_ALL, S_OFF_ARP, S_OFF_SEQ, S_OFF_SENDS, S_OFF_PFX, S_OFF_QARP, S_OFF_QSEQ, S_TIDE, S_TIDE_GLIDE, S_TIDE_BOTH, S_TIDE_BOTH_GLIDE, S_TIDE_WAIT, S_HEAD_MARKS, S_MULTIS_DAMAGED, S_PATCHES_DRONE, S_COUNT };
+       S_EQ_CURVE, S_EQ_CURVE2, S_COMP_CURVE, S_COMP_OFF, S_SMASTER, S_SMASTER_WIDE, S_FILT_MULTI, S_FILT_MULTI24, S_FILT_VCF, S_ARP_PATTERN, S_ARP_CHORD, S_SIDECHAIN_PARTS, S_VOICE_PATCH, S_OCTAVE, S_SPLASH_FIRST, S_GUIDE_MENU, S_ENGINE_LOFI, S_ENGINE_PHASE, S_ENGINE_VOICE, S_ENGINE_TRIO, S_ENGINE_PHYS, S_ENGINE_NOISE, S_ENGINE_WAVE, S_ENGINE_WHEEL, S_CAPSULES, S_STEREO_HOME, S_ENGINE_LIST, S_MODE_DUEL, S_SUB, S_EDIT_WAVE1, S_EDIT_VOICE1, S_CYCLE, S_TWIN, S_ABOUT_TOP, S_CYCLE2, S_CYCLE2_ALL, S_MIXER4, S_MOD_LONG, S_CONFIRM_ERASE_ALL, S_OFF_ARP, S_OFF_SEQ, S_OFF_SENDS, S_OFF_PFX, S_OFF_QARP, S_OFF_QSEQ, S_TIDE, S_TIDE_GLIDE, S_TIDE_BOTH, S_TIDE_BOTH_GLIDE, S_TIDE_WAIT, S_HEAD_MARKS, S_MULTIS_DAMAGED, S_PATCHES_DRONE, S_MULTIS_M03, S_COUNT };
 static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "message_key", "message_nofile", "presets",
     "presets_nofav", "user", "phrases", "project", "tools", "pslot_empty", "pslot", "step", "auto_steps", "auto_add_chance",
     "automation", "mixer", "mixer_from_home", "mixer_pan", "env", "env_dest", "lfo", "mod", "fx", "dly", "scl", "chord", "chord_wide",
@@ -897,7 +897,7 @@ static const char *const S_NAME[S_COUNT] = {"home", "home_idle", "message", "mes
     "mod_pan_duel", "mod_retired", "guide_1", "guide_2", "guide_3", "guide_4", "guide_5", "guide_message", "guide_knob",
     "guide_octave", "menu_guide_row", "layer_quick_filter", "quick_glo", "multis", "multis_2", "multis_3", "pslot_noseq", "modules", "modules_off", "mods_fx",
     "mods_arp", "mods_arp_seq", "mods_mixer", "mods_perform", "mods_schain", "mods_auto", "mods_quick_arp", "mods_msg", "tools_restore", "patches_save_both", "confirm_restore_all", "patches_save_named", "name_save_patch",
-    "eq_curve", "eq_curve2", "comp_curve", "comp_off", "stereo_master", "stereo_master_wide", "filt_multi", "filt_multi24", "filt_vcf", "arp_pattern", "arp_chord", "sidechain_parts", "voice_patch", "octave", "splash_first", "guide_menu", "engine_lofi", "engine_phase", "engine_voice", "engine_trio", "engine_phys", "engine_noise", "engine_wave", "engine_wheel", "capsules", "stereo_home", "engine_list", "mode_duel", "sub", "edit_wave1", "edit_voice1", "cycle", "twin", "about_top", "cycle2", "cycle2_all", "mixer4", "mod_long", "confirm_erase_all", "off_arp", "off_seq", "off_sends", "off_pfx", "off_quick_arp", "off_quick_seq", "tide", "tide_glide", "tide_both", "tide_both_glide", "tide_wait", "head_marks", "multis_damaged", "patches_drone"};
+    "eq_curve", "eq_curve2", "comp_curve", "comp_off", "stereo_master", "stereo_master_wide", "filt_multi", "filt_multi24", "filt_vcf", "arp_pattern", "arp_chord", "sidechain_parts", "voice_patch", "octave", "splash_first", "guide_menu", "engine_lofi", "engine_phase", "engine_voice", "engine_trio", "engine_phys", "engine_noise", "engine_wave", "engine_wheel", "capsules", "stereo_home", "engine_list", "mode_duel", "sub", "edit_wave1", "edit_voice1", "cycle", "twin", "about_top", "cycle2", "cycle2_all", "mixer4", "mod_long", "confirm_erase_all", "off_arp", "off_seq", "off_sends", "off_pfx", "off_quick_arp", "off_quick_seq", "tide", "tide_glide", "tide_both", "tide_both_glide", "tide_wait", "head_marks", "multis_damaged", "patches_drone", "multis_m03"};
 
 /* the STEP page's piano roll (ui_graph.c graph_roll) on track 1, stopped unless said: an empty pattern; ACID in
  * A minor; POLY chords (Am7 F C G, tied); a line with ties, slides and accents in C major; LEN 32 on its second
@@ -927,7 +927,7 @@ static void roll_scene(int s)
     case S_ROLL_EMPTY: break;
     case S_ROLL_ACID:
     case S_ROLL_PLAYING:
-        load_pat16(t, PATTERNS[0].note, PATTERNS[0].flags);
+        load_pat16(t, PATTERNS[0].note, pat_flags(0));
         root_g = 9; scale_g = 2; ui.cursor = 6;
         if (s == S_ROLL_PLAYING) {
             song.playing = 1; t->seq_idx = 9;
@@ -958,7 +958,7 @@ static void roll_scene(int s)
         ui.cursor = 9;
         break;
     case S_ROLL_LEN32:
-        load_pat16(t, PATTERNS[0].note, PATTERNS[0].flags);
+        load_pat16(t, PATTERNS[0].note, pat_flags(0));
         t->p[P_SLEN] = 32;
         for (i = 16; i < 32u; i++) {
             uint8_t n = (uint8_t)(60 + (i * 5u) % 12u);
@@ -1310,6 +1310,8 @@ static void setup(int s)
     case S_QUICK_GLO: go_title("AMP ENV"); ui.layer = LAYER_GLO; trk[0].peak = 11000; trk[1].peak = 4000; break;   /* 0.2.13 deck: GLO held, QUICK GLO (0.2.11) */
     case S_MULTIS: case S_MULTIS2:                /* 0.2.13 deck: SAVE > MULTIS, the factory multis in their 0.2.13 order (M01 REESE SWAMP loaded) */
         song.playing = 0; project_load(0); song.g[G_SLOT] = s == S_MULTIS ? 1 : 7; go_page(GR_SLOTS); ui.act = 2; ui.msg_t = 0; break;
+    case S_MULTIS_M03:                            /* 1.0.0-b7: SAVE > MULTIS, M03 JUNO DEEP picked: its two parts play written patterns with the arp OFF, SEQ in the preview (owner, from the emulator) */
+        song.playing = 0; project_load(0); song.g[G_SLOT] = 3; go_page(GR_SLOTS); ui.act = 2; ui.msg_t = 0; break;
     case S_MULTIS3:                               /* SAVE > MULTIS with nothing loaded, M09 (an ARP part, a SEQ part) picked, K3 SAVE picked: OCT+ saves */
         song.playing = 0; song.g[G_SLOT] = 9; go_page(GR_SLOTS); ui.act = 3; ui.msg_t = 0; break;
     case S_PSLOT_NOSEQ:                           /* SAVE > PATTERNS, a slot that holds no steps (NO SEQUENCE), K3 SAVE picked */
@@ -2431,6 +2433,51 @@ static int about_tide_main(const char *out)
     return 0;
 #endif
 }
+#if DUELL_TIDE && TIDE_PLAYSEL
+/* 1.0.0-b7 PLAY MODE SELECT, for looking at: --playsel DIR writes DIR/ppm/<PAL>_ps_<page>_<row>_<pos>.ppm (VIOLET, GREY): HOME page 1 (MORPH) and TIDE SETTINGS (its PLAY
+ * MODE row picked) for each PLAY MODE row value (LAYER, STEREO, DUEL) with ALGORITHM on PART 1, the middle, PART 2 (part_select, as the encoder sets it) */
+static int playsel_main(const char *out)
+{
+    static const char *const PG[2] = {"morph", "settings"};
+    static const uint32_t PP[2] = {UI_DEFAULT_INDEX, UI_GREY_INDEX};
+    static const char *const PN[2] = {"VIOLET", "GREY"};
+    static const char *const RN[3] = {"layer", "stereo", "duel"}, *const POS[3] = {"part1", "middle", "part2"};
+    static const uint8_t RM[3] = {DM_LAYER, DM_STEREO, DM_SPLIT}, PS[3] = {0u, 2u, 1u};
+    uint32_t g, r, ps, q, pg;
+    char rp[600];
+    snprintf(rp, sizeof rp, "%s/playsel_report.txt", out);
+    rep = fopen(rp, "w");
+    if (!rep) { fprintf(stderr, "cannot write %s\n", rp); return 1; }
+    for (g = 0; g < 2u; g++)
+        for (r = 0; r < 3u; r++)
+            for (ps = 0; ps < 3u; ps++)
+                for (q = 0; q < 2u; q++) {
+                    char nm[48];
+                    setup(S_MORPH_BOTH_MID);
+                    pal(PP[q]);
+                    song.rec = 0; usb.config = 0; ui.perf = 0;
+                    if (g) {
+                        for (pg = 0; pg < NPAGES && strcmp(PAGES[pg].title, "TIDE SETTINGS"); pg++) ;
+                        ui.page = (uint8_t)pg;
+                        jl_sel = JL_MODE;
+                    } else
+                        go_page(GR_MORPH);
+                    duell_mode_req = RM[r];
+                    part_select(PS[ps]);
+                    duell_mode = (uint8_t)MODE_WANT();
+                    mix_split = SPLIT_MIDDLE;
+                    ui.force = 1;
+                    snprintf(nm, sizeof nm, "ps_%s_%s_%s", PG[g], RN[r], POS[ps]);
+                    cur_name = nm;
+                    draw(-1);
+                    lint();
+                    write_ppm(out, PN[q], nm);
+                }
+    fclose(rep);
+    printf("ui_render: PLAY MODE SELECT renders in %s: %u lint findings\n", out, nfind);
+    return nfind ? 1 : 0;
+}
+#endif
 #if DUELL_TIDE
 /* the MORPH page's wave, for looking at: --wave-study DIR writes DIR/ppm/<PAL>_<kind>_<sel>.ppm (VIOLET, GREY, MONO; held note, chord, sweep; PART 1, PART 2, BOTH selected) with the rings fed as the tap would
  * leave them (part 1 a saw, part 2 a sine). */
@@ -2498,6 +2545,9 @@ int main(int argc, char **argv)
     if (argc > 2 && !strcmp(argv[1], "--wave-study")) return wave_study_main(argv[2]);
 #endif
     if (argc > 2 && !strcmp(argv[1], "--about-tide")) return about_tide_main(argv[2]);
+#if DUELL_TIDE && TIDE_PLAYSEL
+    if (argc > 2 && !strcmp(argv[1], "--playsel")) return playsel_main(argv[2]);
+#endif
     const char *out = argc > 1 ? argv[1] : "build/ui_new";
     char path[600];
     uint32_t p, s;
@@ -2574,7 +2624,7 @@ int main(int argc, char **argv)
             if (sc == 5) { gl.hold = 1; gl.wait = 5; gl.prog = (1u << GLIDE_Q) - 1u; }
             if (sc == 8) { poly_len[0] = 12; }
             if (sc == 9) { gl.on = 0; gl.mode = GM_DRIFT; }
-            if (sc == 7 || (sc >= 11 && sc < 16)) { for (pg = 0; pg < NPAGES && strcmp(PAGES[pg].title, "TIDE SETTINGS"); pg++) ; jl_sel = (uint8_t)(sc == 11 ? JL_TURNS : sc == 13 ? JL_STYLE : sc == 14 ? JL_XFADE : JL_SPLIT);   /* (7 ts_bottom, 15 ts_split_duel: the SPLIT row) */ }
+            if (sc == 7 || (sc >= 11 && sc < 16)) { for (pg = 0; pg < NPAGES && strcmp(PAGES[pg].title, "TIDE SETTINGS"); pg++) ; jl_sel = (uint8_t)(sc == 11 ? JL_ARC : sc == 13 ? JL_STYLE : sc == 14 ? JL_XFADE : JL_SPLIT);   /* (7 ts_bottom, 15 ts_split_duel: the SPLIT row) */ }
             if (sc == 14 || sc == 15) { duell_mode_req = sc == 14 ? DM_LAYER : DM_SPLIT; mix_xf = 50; mix_split = 67; }   /* (the last rows, MODE XFADE SPLIT: in LAYER they act, in DUEL the XFADE and SPLIT values dim and knob 1's line says LAYER ONLY) */
             if (sc == 13) { tide_style = STY_CUSTOM; gl.target = GT_BOTH; morph_musical = 1; sqm_vary_all = 0; }   /* (the README's TIDE SETTINGS picture: the top of the list) */
             if (sc == 11 || sc == 12) { gl.mode = sc == 11 ? GM_ONCE : GM_JOURNEY; morph_musical = sc == 12; gl.target = GT_SOUND; }
@@ -2827,7 +2877,7 @@ int main(int argc, char **argv)
             if (!strcmp(UI_PALETTES[p].name, "VIOLET")) {   /* 0.2.10 deck: the presentation's screens (docs/presentation/screens_0210; 0.2.13: screens_0213), VIOLET */
                 static const char *const DECK[] = {"home", "fx", "dly", "env", "lfo2", "mod", "glo_page", "midi", "midi_duck", "midi_layer", "mixer_split", "mode_layer",
                                                    "morph_rolled", "patches_save", "layer_edit_active", "layer_quick_filter", "layer_quick_lfo", "perform", "splash",
-                                                   "quick_glo", "multis", "multis_2", "guide_1", "guide_2", "guide_3", "guide_4", "guide_5",   /* (0.2.13 deck: + these) */
+                                                   "quick_glo", "multis", "multis_2", "multis_m03", "guide_1", "guide_2", "guide_3", "guide_4", "guide_5",   /* (0.2.13 deck: + these) */
                                                    "user", "patches_factory", "patches_restore", "patches_save", "patches_save_both", "tools", "tools_restore", "confirm_restore_all"};   /* (0.2.17: the one list of patch slots) */
                 for (k = 0; k < sizeof DECK / sizeof DECK[0]; k++)
                     if (!strcmp(S_NAME[s], DECK[k])) write_ppm(out, "VIOLET", S_NAME[s]);
@@ -2852,7 +2902,7 @@ int main(int argc, char **argv)
                 if (!strcmp(UI_PALETTES[p].name, MP[j]))
                     for (k = 0; k < sizeof MS / sizeof MS[0]; k++)
 #if DUELL_TIDE
-                        for (pl = 0; pl < 3u; pl++) {
+                        for (pl = 0; pl < 5u; pl++) {   /* (3: playing with GLO > MODULES SENDS OFF: the MORPH page's ECHO dim, knob 1's line says why; 4, at A only: BOTH, every part at the slim row's widest values) */
 #else
                         for (pl = 0; pl < 2u; pl++) {
 #endif
@@ -2863,6 +2913,26 @@ int main(int argc, char **argv)
 #if DUELL_TIDE
                             sel = pl == 2u ? 1u : 0u;
                             song.sel = (uint8_t)sel;
+                            if (pl == 3u)
+                                mods_off |= MODS_SENDS;
+                            if (pl == 4u) {
+                                uint32_t c, q2, v2, best;
+                                int32_t bw;
+                                char vb[PV_LEN + 4];
+                                if (MS[k] != S_MORPH)
+                                    continue;
+                                go_page(GR_MORPH);             /* (the scene's HOME tap from MORPH goes on to TIDE SETTINGS here: the page by its graph) */
+                                SEL_BOTH = 1;
+                                for (c = 0; c < 3u; c++) {
+                                    const param_desc_t *dd = track_desc(&trk[0], H1_ID[c]);
+                                    for (v2 = (uint32_t)dd->min, best = v2, bw = -1; v2 <= (uint32_t)dd->max; v2++) {
+                                        h1_val(c, &trk[0], (int32_t)v2, vb);
+                                        if (text_w(&AF_S, vb) > bw) { bw = text_w(&AF_S, vb); best = v2; }
+                                    }
+                                    for (q2 = 0; q2 < 2u; q2++)
+                                        trk[q2].p[H1_ID[c]] = (int16_t)best;
+                                }
+                            }
                             memset(wl, 0, sizeof wl);
                             wl_tk = 0xFFFFFFFFu;
                             wv_want = wv_blk + 256u;
@@ -2899,8 +2969,9 @@ int main(int argc, char **argv)
                                 ui.frame += 4u;
                                 draw(MS[k]);
                             }
-                            snprintf(nm, sizeof nm, "mv_%s_%s", MN[k], pl == 2u ? "play_part2" : pl ? "play" : "silent");
+                            snprintf(nm, sizeof nm, "mv_%s_%s", MN[k], pl == 4u ? "play_worst" : pl == 3u ? "play_echo_off" : pl == 2u ? "play_part2" : pl ? "play" : "silent");
                             write_ppm(out, MP[j], nm);
+                            mods_off &= ~MODS_SENDS;
                             for (q = 0; q < 2u; q++) {
                                 trk[q].v[0].active = 0;
                                 trk[q].peak = 0;

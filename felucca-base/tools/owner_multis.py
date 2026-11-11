@@ -3,13 +3,4 @@
 kept byte for byte; tools/factory_multis.py apply_owner puts these in its list as `kept`, `owner` (exempt from the similarity check)."""
 
 OWNER_MULTIS = [
-    dict(slot=2, name='DUB CHORD', mode='LAYER', parts=[dict(sound='BIG STAB'), dict(sound='TIDAL SUB')]),   # D31: was M04; TIDAL SUB's line an octave up (C2 to C3), its LEVEL down 4
-    dict(slot=4, name='NIGHT ORGAN', mode='LAYER', parts=[dict(sound='PEDAL BASS'), dict(sound='DRAWBARS')]),   # was M02
-    dict(slot=10, name='PAD SPLIT', mode='LAYER', parts=[dict(sound='EVOLVING PAD'), dict(sound='EMBER GLOW')]),   # was M03
-    dict(slot=11, name='WHISPER TIDE', mode='LAYER', parts=[dict(sound='DIGITAL PAD'), dict(sound='WHISPER PAD')]),   # was M05
-    dict(slot=12, name='TINE STRINGS', mode='LAYER', parts=[dict(sound='STRING MACH'), dict(sound='TINE ROOM')]),   # was M06
-    dict(slot=13, name='COLD CHAPEL', mode='LAYER', parts=[dict(sound='EVOLVING PAD'), dict(sound='SINGING BOWL')]),   # M13 as before
-    dict(slot=14, name='EERIE SIGNAL', mode='LAYER', parts=[dict(sound='VESPERS'), dict(sound='JAZZ CLUB')]),   # was M11
-    dict(slot=15, name='HAZY TENSOR', mode='LAYER', parts=[dict(sound='LADDER BASS'), dict(sound='GEARBOX')]),   # was M08
-    dict(slot=16, name='FINAL REEL', mode='LAYER', parts=[dict(sound='BRASS PAD'), dict(sound='STRING MACH')]),   # was M07
 ]

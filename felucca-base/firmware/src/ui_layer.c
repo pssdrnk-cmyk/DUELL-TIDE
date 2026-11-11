@@ -359,7 +359,7 @@ static void layer_tap(uint32_t l)
     lys.nv.rec = song.rec;
     if (l == LAYER_REC) {                               /* REC: arms / disarms (no page); said nothing: no double tap */
         uint32_t idle = !song.playing && !seq_counting() && transport_req != 1u;
-        acted = !rec_tap();
+        acted = !rec_tap(0);
         lys.nv.go = (uint8_t)(idle && transport_req == 1u);
     } else {
         acted = page_tap(LAYERS[l].btn);
@@ -473,7 +473,7 @@ static int layer_quick_reset(uint32_t l, uint32_t k)
     ui.page = pg;
     if (!r)
         return 0;
-    oct_mod = 1;
+    oct_mod |= 1u;
     kr_on[k] = 1;
     kr_t[k] = fm1_ms;
     return 1;
@@ -570,7 +570,7 @@ static uint32_t layer_oct(uint32_t pressed, uint32_t oct)
     if (layer_set_open())
         lys.oct |= (uint8_t)(((pressed >> dn) & 1u) | ((pressed >> up) & 1u) << 1);
     mine = oct & lys.oct;
-    if ((mine & 1u) && !oct_mod) {                      /* OCT-: back to when it opened (not after a knob reset with it: layer_quick_reset) */
+    if ((mine & 1u) && !(oct_mod & 1u)) {                      /* OCT-: back to when it opened (not after a knob reset with it: layer_quick_reset) */
         if (lys.l == LAYER_EDIT) {                      /* QUICK FILTER: its four */
             if (quick_put_back())
                 ui_message("VALUES PUT BACK");

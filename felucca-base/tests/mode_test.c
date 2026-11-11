@@ -1039,8 +1039,8 @@ static void t_ui(void)
     ui.msg_t = 0;
     mturn(1, -3);
     mturn(2, 2);
-    expect("  .. KNOB 2-3 (item 158: the cards line up to the left): XFADE (0 at the left end), SPLIT (OFF + 2: the middle key F#4 + 1, item 155) move; the mode stays",
-           duell_mode_req == DM_LAYER && mix_xf == 0 && mix_split == 68);
+    expect("  .. KNOB 2-3 (item 158: the cards line up to the left): XFADE (0 at the left end), SPLIT (OFF + 2: MIDDLE, then the note it stands for, F#4: 1.0.0-b7, item 155) move; the mode stays",
+           duell_mode_req == DM_LAYER && mix_xf == 0 && mix_split == SPLIT_MID);
 #if !DUELL_TIDE                                          /* (TIDE: on a row of TIDE SETTINGS every knob 2 .. 4 turns the picked row) */
     {
         int16_t lv0 = trk[0].p[P_LEVEL], lv1 = trk[1].p[P_LEVEL];
@@ -1076,8 +1076,10 @@ static void t_mode_rows(void)
     frames(64);
     mode_page();
     frames(32);
-    expect("TIDE SETTINGS: REC after ARC, then PLAY MODE, XFADE, SPLIT as the last three rows", JL_REC == JL_ARC + 1u && JL_MODE == JL_ARC + 2u && JL_XFADE == JL_ARC + 3u && JL_SPLIT == JL_ARC + 4u && JL_N == JL_SPLIT + 1u &&
-           str_eq(JL_NAME[JL_MODE], "PLAY MODE") && str_eq(JL_NAME[JL_XFADE], "XFADE") && str_eq(JL_NAME[JL_SPLIT], "SPLIT"));
+    expect("TIDE SETTINGS (1.0.0-b7, MR8 and page 1): STYLE, MODE, TARGET, ARC, ROLL TYPE, AMOUNT, REC, PLAY MODE, XFADE, SPLIT", JL_N == 10u &&
+           str_eq(JL_NAME[0], "STYLE") && str_eq(JL_NAME[1], "MODE") && str_eq(JL_NAME[2], "TARGET") && str_eq(JL_NAME[3], "ARC") && str_eq(JL_NAME[4], "ROLL TYPE") &&
+           str_eq(JL_NAME[5], "AMOUNT") && str_eq(JL_NAME[6], "REC") && str_eq(JL_NAME[JL_MODE], "PLAY MODE") && JL_MODE == 7u && str_eq(JL_NAME[JL_XFADE], "XFADE") && str_eq(JL_NAME[JL_SPLIT], "SPLIT") && JL_SPLIT == JL_N - 1u);
+    expect("  .. MODE reads the glide's five modes, ONCE to JOURNEY", jl_n(JL_GMODE) == 5u && str_eq(jl_vname(JL_GMODE, 0), "ONCE") && str_eq(jl_vname(JL_GMODE, 4), "JOURNEY"));
     expect("  .. HOME's round has no MODE page: PAGES has no MODE row (1.0.0-b4: the hidden row is gone)", page_of("MODE") == NPAGES);
     for (i = 0; i < 5u; i++) {
         press(B_HOME);
@@ -1137,12 +1139,19 @@ static void t_mode_rows(void)
     turn(EN_K2, -1);
     expect("SPLIT row: OFF stays OFF to the left", mix_split == 0);
     turn(EN_K2, 1);
-    expect("  .. the first turn right out of OFF starts at the middle key (item 155)", mix_split == SPLIT_MID);
+    expect("  .. the first turn right out of OFF is MIDDLE (1.0.0-b7), named so", mix_split == SPLIT_MIDDLE && str_eq(jl_vname(JL_SPLIT, jl_get(JL_SPLIT)), "MIDDLE"));
+    turn(EN_K2, 1);
+    expect("  .. the next one right: the note MIDDLE stands for, the middle key F#4 at octave 0 (item 155)", mix_split == SPLIT_MID);
     turn(EN_K3, 3);
     expect("  .. then by the detents turned", mix_split == SPLIT_MID + 3);
+    mix_split = SPLIT_MIDDLE;
+    turn(EN_K2, -1);
+    expect("  .. MIDDLE, a turn left: OFF", mix_split == 0);
     mix_split = 0;
     tide_list_oct(2u);
-    expect("  .. OCT+ out of OFF: the middle key too", mix_split == SPLIT_MID);
+    expect("  .. OCT+ out of OFF: MIDDLE", mix_split == SPLIT_MIDDLE);
+    tide_list_oct(2u);
+    expect("  .. OCT+ out of MIDDLE: the middle key's note", mix_split == SPLIT_MID);
     tide_list_oct(2u);
     expect("  .. OCT+ again: one octave up (12)", mix_split == SPLIT_MID + 12);
     tide_list_oct(1u);
@@ -1153,13 +1162,16 @@ static void t_mode_rows(void)
     expect("  .. OCT+ near the top stops at 128 (note 127)", mix_split == 128);
     mix_split = 5;
     tide_list_oct(1u);
-    expect("  .. OCT- near the bottom stops at OFF", mix_split == 0);
+    expect("  .. OCT- near the bottom stops at MIDDLE (1.0.0-b7: OFF, MIDDLE, the notes)", mix_split == SPLIT_MIDDLE);
+    tide_list_oct(1u);
+    expect("  .. OCT- again: OFF", mix_split == 0);
     tide_list_oct(1u);
     expect("  .. OCT- at OFF stays OFF", mix_split == 0);
     mix_split = SPLIT_MID;
     expect("  .. the value reads as a note name", str_eq(jl_vname(JL_SPLIT, jl_get(JL_SPLIT)), "F#4"));
     for (i = 0; i < 2u; i++) {
         duell_mode_req = i ? DM_SPLIT : DM_STEREO;
+        song.both = 0;                                   /* (1.0.0-b7, TIDE_PLAYSEL: a single part selected; with BOTH SPLIT acts: t_playsel) */
         mix_xf = 40;
         mix_split = 70;
         jl_sel = JL_XFADE;
@@ -1167,7 +1179,7 @@ static void t_mode_rows(void)
         jl_sel = JL_SPLIT;
         turn(EN_K2, 5);
         tide_list_oct(2u);
-        expect(i ? "XFADE and SPLIT in DUEL: inert" : "XFADE and SPLIT in STEREO: inert", mix_xf == 40 && mix_split == 70 && str_eq(jl_needs(JL_XFADE), "LAYER ONLY") && str_eq(jl_needs(JL_SPLIT), "LAYER ONLY"));
+        expect(i ? "XFADE and SPLIT in DUEL: inert" : "XFADE and SPLIT in STEREO: inert", mix_xf == 40 && mix_split == 70 && str_eq(jl_needs(JL_XFADE), "LAYER ONLY") && str_eq(jl_needs(JL_SPLIT), TIDE_PLAYSEL ? "2 PARTS ONLY" : "LAYER ONLY"));
     }
     /* not part of STYLE */
     tide_style_apply(STY_DUB);
@@ -1181,6 +1193,24 @@ static void t_mode_rows(void)
     turn(EN_K2, 1);
     frames(64);
     expect("STYLE stays DUB (not CUSTOM) after MODE, XFADE and SPLIT change", tide_style == STY_DUB && tide_style_holds());
+    {   /* 1.0.0-b7 (MR1): a unit that stored STYLE DUB (JOURNEY) or AMBIENT (POLY GENTLE) under b6 reads them as DUB / AMBIENT with this build's rows, not CUSTOM */
+        static const uint8_t B6[2][TS_N] = {{GM_JOURNEY, 4, GT_BOTH, 2, 0, 1, 0, 2, 1, 1, 1, STY_DUB, 0},
+                                            {GM_JOURNEY, 6, GT_BOTH, 4, 0, 1, 3, 0, 1, 0, 0, STY_AMBIENT, 0}};
+        uint8_t keep[TIDE_TAIL_N];
+        memcpy(keep, tide_tail, sizeof keep);
+        for (i = 0; i < 2u; i++) {
+            tide_store_mark(B6[i], TS_N);
+            tide_seen_ok = 0;
+            tide_settings();
+            expect(i ? "a b6 AMBIENT record: AMBIENT, POLY OFF" : "a b6 DUB record: DUB, WANDER", tide_style == (i ? STY_AMBIENT : STY_DUB) && tide_style_holds() &&
+                   gl.mode == (i ? GM_JOURNEY : GM_WANDER) && sqm_poly == (i ? 0u : 1u));
+        }
+        memcpy(tide_tail, keep, sizeof keep);
+        tide_store_dirty = 0;
+        tide_seen_ok = 0;
+        tide_settings();
+        tide_style_apply(STY_DUB);
+    }
     /* the page redraws when any of the three changes from outside the panel: a MIDI CC (the learned MODE CC; XFADE and SPLIT lines) as midi_control.c sets them in the ISR, or a multi load.
      * The signature checked is graph_signature(), the one draw_graph compares frame to frame (not only tide_list_sig, which loops jl_get); TIDE_GRAPH_SIG returns tide_list_sig()
      * for this page, so the three values are in it by way of jl_get (they are read from the live bytes, not a copy) */
@@ -1213,27 +1243,40 @@ static void t_mode_rows(void)
         mix_xf = keep[1];
         mix_split = keep[2];
     }
-    /* row dimming (the b613526 bug): MODE never dims; XFADE and SPLIT dim outside LAYER only; TURNS .. ARC dim while the automatic TIDE is not on (jl_dimmed is the draw's rule) */
+    /* row dimming (the b613526 bug): PLAY MODE never dims; XFADE and SPLIT dim outside LAYER only; ARC dims while the automatic TIDE is not on, whatever ROLL TYPE is,
+     * ROLL TYPE under JOURNEY (1.0.0-b7, MR8); jl_dimmed is the draw's rule */
     {
-        uint32_t r, ok_mode = 1, ok_lay = 1, ok_duel = 1, ok_inert = 1;
-        const char *nd;
-        gl.mode = GM_ONCE;                                /* TURNS .. ARC inert */
-        nd = jl_needs(JL_TURNS);
-        for (r = JL_TURNS; r <= JL_ARC; r++)
-            ok_inert &= nd != 0 && jl_dimmed(r, nd);
+        uint32_t ok_mode = 1, ok_lay = 1, ok_duel = 1;
+        uint8_t km = gl.mode, kt = gl.target, kr = morph_musical;
+        gl.target = GT_BOTH;
+        gl.mode = GM_ONCE;
+        expect("dimming: ARC dims under ONCE, says WNDR OR JRNY; ROLL TYPE acts", jl_dimmed(JL_ARC) && str_eq(jl_needs(JL_ARC), "WNDR OR JRNY") && !jl_dimmed(JL_ROLL));
+        gl.mode = GM_WANDER; morph_musical = 0;
+        expect("  .. WANDER, ROLL TYPE SMART: ARC acts (no ROLL TYPE gate), ROLL TYPE acts", !jl_dimmed(JL_ARC) && !jl_dimmed(JL_ROLL));
+        gl.mode = GM_JOURNEY; morph_musical = 1;
+        expect("  .. JOURNEY: ARC acts, ROLL TYPE dims and says NOT JRNY", !jl_dimmed(JL_ARC) && jl_dimmed(JL_ROLL) && str_eq(jl_needs(JL_ROLL), "NOT JRNY"));
+        gl.target = GT_SOUND;
+        expect("  .. TARGET SOUND: ARC dims, says TARGET SEQ", jl_dimmed(JL_ARC) && str_eq(jl_needs(JL_ARC), "TARGET SEQ"));
+        gl.target = GT_BOTH;
         for (i = 0; i < 3u; i++) {
             duell_mode_req = (uint8_t)(i == 0u ? DM_LAYER : i == 1u ? DM_STEREO : DM_SPLIT);
-            ok_mode &= !jl_dimmed(JL_MODE, nd);
+            ok_mode &= !jl_dimmed(JL_MODE);
             if (i == 0u)
-                ok_lay &= !jl_dimmed(JL_XFADE, nd) && !jl_dimmed(JL_SPLIT, nd);
-            else
-                ok_duel &= jl_dimmed(JL_XFADE, nd) && jl_dimmed(JL_SPLIT, nd);
+                ok_lay &= !jl_dimmed(JL_XFADE) && !jl_dimmed(JL_SPLIT);
+            else {                                       /* (TIDE_PLAYSEL, 1.0.0-b7: SPLIT acts in STEREO / DUEL with both parts selected, says 2 PARTS ONLY with one) */
+                song.both = 0;
+                ok_duel &= jl_dimmed(JL_XFADE) && jl_dimmed(JL_SPLIT) && (!TIDE_PLAYSEL || str_eq(jl_needs(JL_SPLIT), "2 PARTS ONLY"));
+                song.both = 1;
+                ok_duel &= jl_dimmed(JL_XFADE) && jl_dimmed(JL_SPLIT) == !TIDE_PLAYSEL;
+                song.both = 0;
+            }
         }
-        expect("dimming, TURNS .. ARC inert: MODE's value never dims, in LAYER, STEREO and DUEL", ok_mode && ok_inert);
+        expect("  .. PLAY MODE's value never dims, in LAYER, STEREO and DUEL", ok_mode);
         expect("  .. XFADE and SPLIT do not dim in LAYER", ok_lay);
-        expect("  .. XFADE and SPLIT dim in STEREO and DUEL", ok_duel);
-        expect("  .. rows before TURNS (STYLE .. WASH) never dim", !jl_dimmed(JL_STYLE, nd) && !jl_dimmed(JL_WASH, nd));
-        expect("  .. REC (live recording) never dims, in any mode", !jl_dimmed(JL_REC, nd) && jl_needs(JL_REC) == 0);
+        expect("  .. XFADE dims in STEREO and DUEL; SPLIT too with one part selected, acts with both (TIDE_PLAYSEL)", ok_duel);
+        gl.mode = GM_ONCE;
+        expect("  .. STYLE, MODE, TARGET and REC never dim", !jl_dimmed(JL_STYLE) && !jl_dimmed(JL_GMODE) && !jl_dimmed(JL_TARGET) && !jl_dimmed(JL_REC) && jl_needs(JL_REC) == 0);
+        gl.mode = km, gl.target = kt, morph_musical = kr;
         duell_mode_req = DM_LAYER;
     }
     sig = tide_list_sig();
@@ -1724,6 +1767,214 @@ static void t_outputs(void)
     pr = peak_of(rec_l, rec_n) + peak_of(rec_r, rec_n);
     expect("MUTE: a muted part 1 sounds nothing, in LAYER (with part 2 not playing) and in SPLIT", pl == 0 && pr == 0);
 }
+#if DUELL_TIDE
+/* 1.0.0-b7 (docs/design/PLAY_MODE_SELECT.md): SPLIT MIDDLE follows OCT- / OCT+ (keys and MIDI); TIDE_PLAYSEL: ALGORITHM on a BOTH page is PART 1, LAYER, STEREO,
+ * DUEL, PART 2 and STEREO / DUEL split the keys with BOTH; the codes in the settings and a multi */
+static uint32_t ps_keys(uint32_t lo, uint32_t hi, uint32_t plo, uint32_t phi)   /* keys lo and hi down: lo sounds on part plo alone, hi on phi alone; then let go, nothing left */
+{
+    uint32_t ok;
+    fm1_in.notes = (1u << lo) | (1u << hi);
+    mblk(2);
+    ok = vgated(&trk[plo], kb_note[lo]) == 1u && !vgated(&trk[1u - plo], kb_note[lo]) && vgated(&trk[phi], kb_note[hi]) == 1u && !vgated(&trk[1u - phi], kb_note[hi]);
+    fm1_in.notes = 0;
+    mblk(2);
+    return ok && !gated_any(&trk[0]) && !gated_any(&trk[1]);
+}
+static uint32_t ps_key1(uint32_t k, uint32_t p)          /* key k alone: it sounds on part p alone; then let go */
+{
+    uint32_t ok;
+    fm1_in.notes = 1u << k;
+    mblk(2);
+    ok = vgated(&trk[p], kb_note[k]) == 1u && !gated_any(&trk[1u - p]);
+    fm1_in.notes = 0;
+    mblk(2);
+    return ok && !gated_any(&trk[0]) && !gated_any(&trk[1]);
+}
+static void ps_clean(uint32_t mode, uint32_t both)
+{
+    dsp_clean(mode);
+    host_preset(&trk[0], eng_of("ANALOG"), 0);
+    host_preset(&trk[1], eng_of("ANALOG"), 0);
+    song.g[G_ROUTE] = 0;
+    song.both = (uint8_t)both;
+    mix_split = SPLIT_MIDDLE;
+}
+static void t_playsel(void)
+{
+    uint32_t ok = 1, ok2 = 1, i;
+    int32_t o;
+    for (o = -3; o <= 3; o++) {                          /* SPLIT MIDDLE, LAYER: the 13 lower keys part 1, key 14 up part 2, at every octave */
+        song.octave = (int8_t)o;
+        ps_clean(DM_LAYER, 1u);
+        ok &= ps_keys(12u, 13u, 0u, 1u) && ps_keys(0u, 26u, 0u, 1u);
+        ok &= kb_note[13] == (uint32_t)(66 + 12 * o);   /* (the key starting part 2: F#4 at octave 0) */
+        midi(0x90, 0, (uint32_t)(65 + 12 * o), 100);     /* MIDI: the middle key's note now splits: below it part 1, from it part 2 */
+        midi(0x90, 0, (uint32_t)(66 + 12 * o), 100);
+        mblk(2);
+        ok2 &= vgated(&trk[0], (uint32_t)(65 + 12 * o)) == 1u && !vgated(&trk[1], (uint32_t)(65 + 12 * o)) &&
+               vgated(&trk[1], (uint32_t)(66 + 12 * o)) == 1u && !vgated(&trk[0], (uint32_t)(66 + 12 * o));
+        midi(0x80, 0, (uint32_t)(65 + 12 * o), 0);
+        midi(0x80, 0, (uint32_t)(66 + 12 * o), 0);
+        mblk(2);
+        ok2 &= !gated_any(&trk[0]) && !gated_any(&trk[1]);
+    }
+    expect("b7 SPLIT MIDDLE, LAYER: keys 1-13 part 1, keys 14-27 part 2 at octave -3 .. +3 (the split moves with OCT- / OCT+)", ok);
+    expect("  .. MIDI channel 1: the note under the middle key now (F#4 + 12 per octave) starts part 2", ok2);
+    ps_clean(DM_LAYER, 1u);
+    song.octave = 0;
+    fm1_in.notes = 1u << 20;                              /* an octave change while a key is held: its release still ends what it started */
+    mblk(2);
+    song.octave = -2;
+    fm1_in.notes = 0;
+    mblk(2);
+    expect("  .. OCT- while a key is held: nothing left sounding", !gated_any(&trk[0]) && !gated_any(&trk[1]));
+#if TIDE_PLAYSEL
+    ok = 1;
+    for (i = 0; i < 2u; i++)
+        for (o = -1; o <= 1; o++) {                      /* STEREO and DUEL with BOTH: the keys split too, each key one part */
+            song.octave = (int8_t)o;
+            ps_clean(i ? DM_SPLIT : DM_STEREO, 1u);
+            ok &= ps_keys(12u, 13u, 0u, 1u) && ps_keys(3u, 24u, 0u, 1u);
+        }
+    expect("b7 STEREO and DUEL, BOTH, SPLIT MIDDLE: the lower keys part 1, the upper part 2, at octave -1 .. +1", ok);
+    song.octave = 0;
+    ps_clean(DM_STEREO, 1u);
+    mix_split = 61;
+    expect("  .. a SPLIT note (C4) the same way", ps_keys(5u, 20u, 0u, 1u) && kb_note[5] < 60u && kb_note[20] >= 60u);
+    ps_clean(DM_SPLIT, 0u);
+    song.sel = 1;
+    expect("  .. a single part (PART 2): every key plays it, SPLIT not used", ps_key1(2u, 1u) && ps_key1(22u, 1u));
+    ps_clean(DM_STEREO, 1u);
+    mix_split = 0;
+    expect("  .. BOTH with SPLIT OFF: the keys play the last single part, as b6", ps_key1(2u, 0u) && ps_key1(22u, 0u));
+    ps_clean(DM_STEREO, 1u);
+    midi(0x90, 0, 70, 100);
+    mblk(2);
+    expect("  .. MIDI in STEREO / DUEL goes by its channel as before (channel 1: part 1, above the split too)", vgated(&trk[0], 70) == 1u && !vgated(&trk[1], 70));
+    midi(0x80, 0, 70, 0);
+    mblk(2);
+    /* the selection: ALGORITHM on a BOTH page */
+    dsp_clean(DM_STEREO);
+    ui.page = page_of("MORPH");
+    duell_mode_req = DM_STEREO;
+    song.both = 0;
+    song.sel = 0;
+    frame();
+    expect("b7 ALGORITHM: PART 1 with STEREO reads PART 1", play_pos() == PLS_P1);
+    {                                                    /* (owner 2026-11-10: three positions; the middle is the PLAY MODE row's) */
+        static const uint8_t RM[3] = {DM_LAYER, DM_STEREO, DM_SPLIT}, RP[3] = {PLS_LAYER, PLS_STEREO, PLS_DUEL};
+        uint32_t r;
+        ok = 1;
+        for (r = 0; r < 3u; r++) {
+            duell_mode_req = RM[r]; song.both = 0; song.sel = 0;
+            mblk(1);
+            ok &= duell_mode == (RM[r] == DM_LAYER ? DM_STEREO : RM[r]);   /* (PART 1: one part on every key; LAYER plays as STEREO) */
+            ui.msg_t = 0;
+            turn(EN_ALGO, 1);
+            mblk(1);
+            ok &= play_pos() == RP[r] && song.both && duell_mode_req == RM[r] && duell_mode == RM[r] && msg_is(PLS_NAME[RP[r]]);
+            turn(EN_ALGO, 1);
+            mblk(1);
+            ok &= play_pos() == PLS_P2 && !song.both && song.sel == 1u && duell_mode_req == RM[r];
+            turn(EN_ALGO, 1);
+            ok &= play_pos() == PLS_P2;
+            turn(EN_ALGO, -1);
+            turn(EN_ALGO, -1);
+            turn(EN_ALGO, -1);
+            ok &= play_pos() == PLS_P1 && duell_mode_req == RM[r];
+        }
+        expect("  .. PART 1, the middle (named LAYER / STEREO / DUEL by the row, both parts, that mode), PART 2, stopping at the ends; the row is never changed", ok);
+    }
+    duell_mode_req = DM_LAYER;                            /* PART 1 with the row on LAYER: part 1 alone on the keys */
+    song.both = 0; song.sel = 0;
+    mblk(1);
+    expect("  .. PART 1 with LAYER on the row: the keys play part 1 alone (STEREO underneath), the row still LAYER", play_pos() == PLS_P1 && duell_mode == DM_STEREO && duell_mode_req == DM_LAYER && ps_key1(10u, 0u));
+    jl_sel = JL_MODE;
+    mode_knob(0u, 1);
+    expect("  .. the PLAY MODE row changed: ALGORITHM goes to the middle", song.both && play_pos() == PLS_STEREO);
+    ui.page = page_of("MORPH") + 0u;
+    {
+        uint32_t ep;
+        for (ep = 0; ep < NPAGES && (HOME_BOTH_PAGE(&PAGES[ep]) || page_global(&PAGES[ep]) || PAGES[ep].fam == FAM_GLO); ep++)
+            ;
+        ui.page = (uint8_t)ep;
+        duell_mode_req = DM_SPLIT;
+        song.both = 0;
+        song.sel = 0;
+        frame();
+        turn(EN_ALGO, 1);
+        expect("  .. an edit page: ALGORITHM picks PART 2 only, the MODE stays", ep < NPAGES && song.sel == 1u && !song.both && duell_mode_req == DM_SPLIT);
+    }
+    ui.page = page_of("MORPH");
+    {   /* TIDE SETTINGS' SPLIT row in STEREO: acts with BOTH */
+        mode_page();
+        duell_mode_req = DM_STEREO;
+        song.both = 1;
+        mix_split = 0;
+        jl_sel = JL_SPLIT;
+        turn(EN_K2, 1);
+        expect("  .. SPLIT row in STEREO with BOTH: acts (MIDDLE), no 'needs' text", mix_split == SPLIT_MIDDLE && !jl_needs(JL_SPLIT) && !jl_needs(JL_MODE));
+        jl_sel = JL_XFADE;
+        mix_xf = 20;
+        turn(EN_K2, 3);
+        expect("  .. XFADE stays LAYER's only", mix_xf == 20 && str_eq(jl_needs(JL_XFADE), "LAYER ONLY"));
+    }
+#endif
+    /* the codes: the settings bytes and a multi */
+    midi_glob_act(MAP_T_SPLIT, 1u);
+    ok = mix_split == SPLIT_MIDDLE;
+    midi_glob_act(MAP_T_SPLIT, 2u);
+    ok &= mix_split == 3u;
+    midi_glob_act(MAP_T_SPLIT, 0u);
+    expect("b7 a SPLIT CC line: 0 OFF, 1 MIDDLE, 2..127 the note", ok && mix_split == 0u);
+    {
+        persist_t q;
+        mix_split = SPLIT_MIDDLE;
+        frame();
+        settings_export(&q);
+        ok = q.favorites.factory[15][7] == SPLIT_MIDDLE;
+        ui_power_on();
+        settings_import(&q, sizeof q);
+        frame();
+        ok &= mix_split == SPLIT_MIDDLE;
+        q.favorites.factory[15][7] = 130;                 /* (an unknown code: OFF, as b6 reads 129) */
+        settings_import(&q, sizeof q);
+        frame();
+        expect("b7 the settings keep MIDDLE (129) through a power cycle; an unknown code reads OFF", ok && mix_split == 0u);
+    }
+    {
+        static const uint8_t MS[3] = {61u, 0u, SPLIT_MIDDLE}, MM[3] = {DM_LAYER, DM_STEREO, DM_SPLIT}, MB[3] = {1u, 0u, 1u};   /* (LAYER always with BOTH since TIDE_PLAYSEL: below) */
+        ui_prefs2 |= PREF_MODE_RECALL >> 16;
+        ok = 1;
+        for (i = 0; i < 3u; i++) {                       /* a multi saved as b6 saved it (SPLIT a note / OFF, BOTH off / on) loads the same bytes; MIDDLE too */
+            duell_mode_req = MM[i];
+            song.both = MB[i];
+            mix_split = MS[i];
+            frame();
+            ok &= project_save(9u) == 0;
+            duell_mode_req = DM_STEREO;
+            song.both = (uint8_t)!MB[i];
+            mix_split = 77;
+            project_load(9u);
+            frame();
+            ok &= duell_mode_req == MM[i] && song.both == MB[i] && mix_split == MS[i];
+        }
+        expect("b7 a multi keeps MODE, BOTH and SPLIT (a note, OFF, MIDDLE) as stored: no format change", ok);
+#if TIDE_PLAYSEL
+        duell_mode_req = DM_LAYER; frame(); song.both = 0;   /* (an older multi: LAYER with BOTH off, the bytes written as b6 wrote them) */
+        ok = project_save(9u) == 0;
+        duell_mode_req = DM_STEREO; song.both = 0; frame();
+        project_load(9u);
+        frame();
+        expect("b7 an old multi with LAYER and BOTH off loads as ALGORITHM's LAYER: both parts selected, the knobs on both", ok && duell_mode_req == DM_LAYER && song.both && play_pos() == PLS_LAYER);
+#endif
+        ui_prefs2 &= (uint8_t)~(PREF_MODE_RECALL >> 16);
+    }
+    song.octave = 0;
+    song.both = 0;
+    mix_split = 0;
+}
+#endif
 int main(void)
 {
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -1744,6 +1995,7 @@ int main(void)
     t_ui();
 #if DUELL_TIDE
     t_mode_rows();
+    t_playsel();
 #endif
     t_settings();
     t_midi_ch();

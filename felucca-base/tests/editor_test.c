@@ -1503,6 +1503,21 @@ static int item159(void)
         bad += check("item 159: an editor save (UP_STORE) with the fader in the middle (shown values differ) = the unit's own save, byte for byte; its values are the stored Original",
                      differ > 0u && up_used(5) && up_used(6) && !memcmp(up_rec(5), up_rec(6), sizeof(up_rec_t)));
     }
+    {   /* b7 (review E1): the editor's save keeps End B: its record carries the same End B block (PTF_MB) as the unit's own SAVE */
+        uint8_t r6[600];
+        const uint8_t *p;
+        uint32_t xbo, mb6, mb5, pr, pat, fm, n6 = 0, n5 = 0;
+        str_cpy(save_nm, "M159", sizeof save_nm);
+        (void)up_patch_save_part(0, 6);
+        save_nm[0] = 0;
+        p = pt_raw(6);
+        if (p && (p[4] & PTF_MB)) { n6 = pt_rd16(p); memcpy(r6, p, n6 < sizeof r6 ? n6 : sizeof r6); pt_layout(r6, &xbo, &mb6, &pr, &pat, &fm); }
+        a[0] = 5; memcpy(a + 1, "M159", 5); request(ED_UP_STORE, a, 6);
+        p = pt_raw(5);
+        if (p && (p[4] & PTF_MB)) { n5 = pt_rd16(p); pt_layout(p, &xbo, &mb5, &pr, &pat, &fm); }
+        bad += check("b7: an editor save (UP_STORE) keeps End B: the record has its End B block, byte for byte the unit's own SAVE's",
+                     n6 && n5 && n5 - mb5 == n6 - mb6 && !memcmp(p + mb5, r6 + mb6, n6 - mb6));
+    }
     morph_set_fader(0); SEL_BOTH = 0; morph_set_cfg(MC_WILD, 0);
     reset();
     return bad;

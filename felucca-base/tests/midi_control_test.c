@@ -1055,9 +1055,47 @@ static int editb_midi_test(void)
     return bad;
 }
 
+/* review FR8: held notes from MIDI, the keys and the arp stay counted (A3, A4, A6) */
+static int fr8_test(void)
+{
+    int bad = 0; uint32_t local;
+    /* A3: ARP KEEPS RUNNING, a sound load while a MIDI chord is held: the later note-offs still reach the arp */
+    midi_test_reset(); trk[0].p[P_AMODE] = 1; mods_keep = MODK_ARP;
+    queued(0x90, 60, 100, 1); queued(0x90, 64, 100, 1);
+    panic_req |= 1u; panic_keep |= 1u; events_block(CTL);
+    bad += check("FR8 A3: ARP KEEPS RUNNING, a sound load keeps the held MIDI chord", trk[0].nheld == 2u);
+    queued(0x80, 60, 0, 1); queued(0x80, 64, 0, 1);
+    bad += check("FR8 A3: ARP KEEPS RUNNING, the MIDI chord's note-offs after a sound load empty the arp", !trk[0].nheld && !trk[0].arp_phys && !midi_owners[0]);
+    mods_keep = 0;
+    /* A4: a key on the note a MIDI note holds: the arp's count of held keys goes back to 0 */
+    midi_test_reset(); fm1_in.notes = 1u; events_block(CTL); local = kb_note[0]; fm1_in.notes = 0; events_block(CTL);
+    midi_test_reset(); trk[0].p[P_AMODE] = 1;
+    queued(0x90, local, 100, 1); fm1_in.notes = 1u; events_block(CTL); fm1_in.notes = 0; events_block(CTL); queued(0x80, local, 0, 1);
+    bad += check("FR8 A4: MIDI on, the key on the same note, key off, MIDI off: the arp holds nothing", !trk[0].arp_phys && !trk[0].nheld);
+    /* A4: LAYER with SPLIT, a MIDI note routed to part 2 alone is not released on part 1 */
+    midi_test_reset(); local = duell_mode; duell_mode_req = DM_LAYER; events_block(CTL); mix_split = 61; trk[0].p[P_AMODE] = 1;
+    queued(0x90, 50, 100, 1); queued(0x90, 72, 100, 1); queued(0x80, 72, 0, 1);
+    bad += check("FR8 A4: LAYER SPLIT, part 2's MIDI note-off leaves part 1's held note counted", trk[0].arp_phys == 1u && trk[0].nheld == 1u);
+    queued(0x80, 50, 0, 1);
+    bad += check("FR8 A4: LAYER SPLIT, part 1's note-off then empties part 1's arp", !trk[0].arp_phys && !trk[0].nheld);
+    mix_split = 0; duell_mode_req = (uint8_t)local; events_block(CTL);
+    /* A6: MIDI IN = SEL, a bend and channel pressure held across a part change do not stay on the old part */
+    midi_test_reset(); song.g[G_ROUTE] = 1; events_block(CTL);
+    queued(0xE0, 127, 127, 1); queued(0xD0, 90, 0, 1);
+    bad += check("FR8 A6: SEL, the bend and pressure reach the selected part 1", midi_bend_target[0] == 512 && trk[0].at == 90);
+    song.sel = 1; events_block(CTL); queued(0xE0, 0, 64, 1); queued(0xD0, 0, 0, 1);
+    bad += check("FR8 A6: SEL, part 2 selected, the wheel centred: part 1 is not left bent or pressed", !midi_bend_target[0] && !midi_bend_target[1] && !trk[0].at);
+    song.sel = 0; events_block(CTL);
+    queued(0x90, 60, 100, 1); queued(0xE0, 127, 127, 1); song.sel = 1; events_block(CTL);
+    bad += check("FR8 A6: SEL, a part still holding a MIDI note keeps its bend at a part change", midi_bend_target[0] == 512);
+    queued(0xE0, 0, 64, 1); queued(0x80, 60, 0, 1);
+    bad += check("FR8 A6: ... and its note's channel centres it", !midi_bend_target[0]);
+    song.g[G_ROUTE] = 0; song.sel = 0; events_block(CTL);
+    return bad;
+}
 int main(void)
 {
     int bad = controls_test() + sustain_test() + ownership_test() + clock_test(1) + clock_test(2) + clock_arp_and_boundaries() +
-              arp_ext_stop_test() + arp_ext_clock_test() + auto_clock_test() + usb_burst_test() + drain_test() + route_test() + cc_map_test() + learn_test() + editb_midi_test() + stop_all_test();
+              arp_ext_stop_test() + arp_ext_clock_test() + auto_clock_test() + usb_burst_test() + drain_test() + route_test() + cc_map_test() + learn_test() + editb_midi_test() + stop_all_test() + fr8_test();
     printf("%s\n", bad ? "MIDI CONTROL/CLOCK TEST FAILED" : "MIDI control/clock integration tests passed"); return bad != 0;
 }

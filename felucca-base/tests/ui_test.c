@@ -240,6 +240,14 @@ static int check(const char *what, int ok)
 }
 
 /* main.c felucca_init */
+/* default pattern k's flags as a column (engines.c pat_fl: the table keeps them as bit masks since 1.0.0-b7, SP3); one buffer, read before the next call */
+static const uint8_t *pat_flags(uint32_t k)
+{
+    static uint8_t f[NPAT_STEPS];
+    for (uint32_t i = 0; i < NPAT_STEPS; i++)
+        f[i] = (uint8_t)pat_fl(k, i);
+    return f;
+}
 static void ui_power_on(void)
 {
     uint32_t i;
@@ -278,7 +286,7 @@ static void ui_power_on(void)
         t->engine = t->eng_req;
         track_defaults_steps(t);
         if (TRK_DEF[i][2])
-            load_pat16(t, PATTERNS[TRK_DEF[i][2] - 1u].note, PATTERNS[TRK_DEF[i][2] - 1u].flags);
+            load_pat16(t, PATTERNS[TRK_DEF[i][2] - 1u].note, pat_flags(TRK_DEF[i][2] - 1u));
         pat_sig[i] = steps_sig(t);
         pat_last[i] = TRK_DEF[i][2];
     }
@@ -472,6 +480,22 @@ static void turn(uint32_t role, int32_t s)
     host_enc[panel.enc[role]] += s * panel.dir[role];
     frame();
     host_ticks += 200000u;                        /* (no knob acceleration between the turns) */
+}
+/* ALGORITHM on a BOTH page (ui_input.c algo_input): PART 1, the middle (BOTH; TIDE_PLAYSEL, 1.0.0-b7: named by the PLAY MODE row), PART 2. ALGO_TO_P2: the detents from
+ * the first BOTH position (one right of PART 1) to PART 2, and from PART 2's left neighbour back to PART 1; the names those two BOTH positions show */
+#if TIDE_PLAYSEL
+#define ALGO_TO_P2 1
+#define ALGO_BOTH_SAY (PLS_NAME[play_pos()])
+#define ALGO_BOTH_LEFT (PLS_NAME[play_pos()])
+#else
+#define ALGO_TO_P2 1
+#define ALGO_BOTH_SAY "BOTH"
+#define ALGO_BOTH_LEFT ("BOTH")
+#endif
+static void algo_turns(int32_t n)                 /* n detents of ALGORITHM, one event each */
+{
+    for (int32_t i = 0; i < (n < 0 ? -n : n); i++)
+        turn(EN_ALGO, n < 0 ? -1 : 1);
 }
 static void bpm_nudge(int32_t n)                  /* the tempo moved n (SELECT never does; GLO > CLOCK KNOB 1, MIDI clock, TAP) */
 {
@@ -2228,7 +2252,7 @@ static int test_soak_cards(void)
             quiet = 0;
         } else if (r < 30u) { go_main_to(HP_MORPH); page_entered(); quiet = 0; }
         else if (r < 31u) transport_req = song.playing ? 2u : 1u;
-        else if (r == 31u && SOAK_RND(3u) == 0u) rec_tap();
+        else if (r == 31u && SOAK_RND(3u) == 0u) rec_tap(0);
         else if (r == 32u) { host_enc[panel.enc[EN_ALGO]] += SOAK_RND(2u) ? 1 : -1; quiet = 0; }
         else if (r == 33u) trk[SOAK_RND(NTRK)].p[P_LRATE] = (int16_t)SOAK_RND(128u);
         fm1_ms += SOAK_RND(50u) ? 16u : 1u + SOAK_RND(200u);
@@ -4068,7 +4092,7 @@ static int test_piano_roll(void)
     track_t *t;
     ui_power_on();
     t = TSEL;
-    load_pat16(t, PATTERNS[0].note, PATTERNS[0].flags);               /* ACID: A2..A3, ties, accents, slides */
+    load_pat16(t, PATTERNS[0].note, pat_flags(0));               /* ACID: A2..A3, ties, accents, slides */
     root_g = 9; scale_g = 2;
     go_page(GR_ROLL); ui.cursor = 0; ui.bank = 0;
     memset(host_screen, 0, sizeof host_screen); ui.force = 1; ui_draw();
@@ -6317,6 +6341,19 @@ static uint32_t acc_ms(uint32_t role, const uint16_t *gaps, uint32_t n, int32_t 
     }
     return sum;
 }
+/* b7 (FR7 D9): a dialog cancelled by HOME says NOT SAVED only when something was to be saved */
+static int test_cancel_words(void)
+{
+    int bad = 0;
+    ui_power_on(); frames(300);
+    confirm_open(CF_INIT_SOUND, 0u); frame();
+    press(B_HOME); frames(50);
+    bad += check("HOME in INITIALIZE SOUND?: CANCELLED (nothing was being saved)", !ui.confirm && msg_is("CANCELLED"));
+    confirm_open(CF_SAVE_OVER, 0u); frame();
+    press(B_HOME); frames(50);
+    bad += check("HOME in the SAVE dialog: NOT SAVED", !ui.confirm && msg_is("NOT SAVED"));
+    return bad;
+}
 /* DUELL 0.2.16: KNOB ACCEL ON, PATCHES' K1 steps by the turn speed and loads only the sound the turn ends on (ui.c pl_step / pl_poll);
  * OFF: one place a detent, each loaded, as before */
 static uint32_t snd_sig(void) { return (uint32_t)TSEL->eng_req * 100003u + (uint32_t)TSEL->preset * 131u + (uint32_t)TSEL->user; }
@@ -6365,6 +6402,22 @@ static int test_patch_accel(void)
     ok &= !pl_pend_on;
     bad += check("  .. TYPE (K2) drops the waiting place", ok);
     list_set(0u);
+    {   /* b7 (FR7 D7): a fast turn's waiting place, then ALGORITHM to the other part: part 2's sound is left alone */
+        uint32_t o0 = trk[1].eng_req * 100003u + trk[1].preset * 131u + trk[1].user;
+        song.sel = 0;
+        go_page(GR_MORPH);
+        frames(300);
+        fm1_ms += 1000;
+        for (k = 0; k < 10u; k++) turn(EN_PRESET, 1);
+        ok = pl_pend_on;
+        track_select(1u);                            /* (ALGORITHM's detent to part 2) */
+        frames(200);
+        ok &= song.sel == 1u && !pl_pend_on && trk[1].eng_req * 100003u + trk[1].preset * 131u + trk[1].user == o0;
+        bad += check("  .. ALGORITHM to the other part while a place waits: the other part's sound unchanged", ok);
+        track_select(0u);
+        go_page(GR_BROWSE);
+        frames(300);
+    }
     /* KNOB ACCEL OFF: one place a detent, each loaded */
     ui_prefs &= ~PREF_ACCEL;
     frames(300);
@@ -9308,6 +9361,7 @@ static int test_item158_pages(void)
                 ui_mode_set = duell_mode_req = duell_mode = lay ? DM_LAYER : DM_SPLIT;
                 go_title("TIDE SETTINGS");
                 jl_sel = (uint8_t)(JL_MODE + row);
+                song.both = (uint8_t)lay;                 /* (1.0.0-b7 TIDE_PLAYSEL: LAYER in ALGORITHM's middle; DUEL with one part selected, where SPLIT says 2 PARTS ONLY) */
                 frames(64);
                 screen_read();
                 has_set = has_row = has_need = k24 = 0;
@@ -9319,10 +9373,10 @@ static int test_item158_pages(void)
                     }
                 for (k = 0; k < txt_n; k++) {
                     has_row |= has_set && !strcmp(txt_log[k].s, NAME[row]) && txt_log[k].x0 > txt_log[set_k].x1 && abs(txt_log[k].y0 - txt_log[set_k].y0) <= 3;   /* (the card's line: the label, then the name on the same line; the list's row is lower) */
-                    has_need |= !strcmp(txt_log[k].s, "LAYER ONLY");
+                    has_need |= !strcmp(txt_log[k].s, TIDE_PLAYSEL && row == 2u ? "2 PARTS ONLY" : "LAYER ONLY");
                     k24 |= (!strcmp(txt_log[k].s, "SETTING") || !strcmp(txt_log[k].s, "VALUE")) && txt_log[k].x0 >= 82;
                 }
-                snprintf(m, sizeof m, "TIDE SETTINGS, %s row picked, %s: K1 card SETTING + %s, K2 .. K4 draw no card, 'LAYER ONLY' %s", NAME[row], lay ? "LAYER" : "DUEL", NAME[row],
+                snprintf(m, sizeof m, "TIDE SETTINGS, %s row picked, %s: K1 card SETTING + %s, K2 .. K4 draw no card, '%s' %s", NAME[row], lay ? "LAYER" : "DUEL", NAME[row], TIDE_PLAYSEL && row == 2u ? "2 PARTS ONLY" : "LAYER ONLY",
                          row && !lay ? "shown" : "not shown");
                 bad += check(m, has_set && has_row && !k24 && has_need == (row && !lay));
             }
@@ -9338,12 +9392,19 @@ static int test_item158_pages(void)
                 ui_mode_set = duell_mode_req = duell_mode = lay ? DM_LAYER : DM_SPLIT;
                 mix_xf = 50;
                 go_title("TIDE SETTINGS");
+                frames(64);                               /* (the stored part selection read first) */
+                song.both = (uint8_t)lay;                 /* (1.0.0-b7 TIDE_PLAYSEL: XFADE acts in the middle) */
                 jl_sel = JL_SPLIT;
                 frames(64);
                 snprintf(want, sizeof want, "%s", row ? "%" : lay ? "LAYER" : "DUEL");   /* (XFADE: the text ending in %) */
                 screen_read();
+                {
+                    int32_t ylast = -1;                     /* (1.0.0-b7: AMOUNT's value ends in % too, rows above: XFADE's is the lowest) */
+                    for (k = 0; k < txt_n; k++)
+                        if (txt_log[k].x0 > 120 && txt_log[k].s[strlen(txt_log[k].s) - 1u] == '%' && txt_log[k].y0 > ylast)
+                            ylast = txt_log[k].y0;
                 for (k = 0; k < txt_n; k++)
-                    if (txt_log[k].x0 > 120 && (row ? txt_log[k].s[strlen(txt_log[k].s) - 1u] == '%' : !strcmp(txt_log[k].s, want))) {
+                    if (txt_log[k].x0 > 120 && (row ? txt_log[k].s[strlen(txt_log[k].s) - 1u] == '%' && txt_log[k].y0 == ylast : !strcmp(txt_log[k].s, want))) {
                         int32_t x, y;
                         found = 1;
                         for (y = txt_log[k].y0; y <= txt_log[k].y1; y++)
@@ -9352,6 +9413,7 @@ static int test_item158_pages(void)
                                 ntheme += host_screen[y * 240 + x] == I157_PX(T_THEME);
                             }
                     }
+                }
                 snprintf(m, sizeof m, "TIDE SETTINGS drawn: the %s value (%s) is %s", row ? "XFADE" : "PLAY MODE", lay ? "LAYER" : "DUEL", row && !lay ? "dim" : "in the theme colour");
                 bad += check(m, found && (row && !lay ? ndim > 0u && ntheme == 0u : ntheme > 0u && ndim == 0u));
             }
@@ -10083,6 +10145,7 @@ int main(void)
     bad += test_head_ab_fit();                      /* (cloud job G: the A / B letter's room)
     bad += test_head_rec_foot();                    /* (DUELL 0.2.10: no number / REC mark in the header; the footer's armed mark) */
     bad += test_ui_t();                             /* (audit lane T: footer tempo, capsule marks, units) */
+    bad += test_cancel_words();
     bad += test_patch_accel();                      /* (DUELL 0.2.16: PATCHES' K1 with KNOB ACCEL ON) */
     bad += test_transpose_patch();                  /* (DUELL 1.1, item 141: TRANSPOSE is the patch's, VOICE 1/2 K4; no KEY OFFSET) */
     bad += test_item152_flicker();                  /* (item 152: no blank frame on a change, PATCHES' title) */

@@ -256,7 +256,7 @@ static void rec_row(void)
     memset(tide_tail, 0, TIDE_TAIL_N); tide_tail_new = 0;
     tide_settings();                                     /* no record: the defaults */
     CHECK("REC row: with no record it is ADD", tide_rec_replace == 0u && jl_get(JL_REC) == 0u && !strcmp(jl_vname(JL_REC, 0), "ADD") && !strcmp(jl_vname(JL_REC, 1), "REPLACE"));
-    CHECK("REC row: after ARC, before MODE, with two values; MODE, XFADE, SPLIT stay the last three", JL_REC == JL_ARC + 1u && JL_MODE == JL_REC + 1u && JL_SPLIT == JL_N - 1u && jl_n(JL_REC) == 2u && !strcmp(JL_NAME[JL_REC], "REC"));
+    CHECK("REC row: after AMOUNT (1.0.0-b7; ROLL TYPE before it), before PLAY MODE, with two values; PLAY MODE, XFADE, SPLIT stay the last three", JL_REC == JL_AMOUNT + 1u && JL_AMOUNT == JL_ROLL + 1u && JL_MODE == JL_REC + 1u && JL_SPLIT == JL_N - 1u && jl_n(JL_REC) == 2u && !strcmp(JL_NAME[JL_REC], "REC"));
     jl_put(JL_STYLE, STY_PEAK); tide_settings();
     jl_put(JL_REC, 1); tide_settings();
     CHECK("REC row: set to REPLACE, the STYLE stays PEAK (not CUSTOM)", tide_rec_replace == 1u && tide_style == STY_PEAK);
@@ -356,6 +356,20 @@ static void r4(void)
     CHECK("R4 (L5): ... and starts the stopped transport", song.playing || transport_req == 1u);
     song.rec = 0;
     stop();
+    /* b7 (FR7 D6): SEQ + REC as a chord, both let go in one pass, and SEQ let go first: arms, HOLD alone */
+    for (uint32_t w = 0; w < 2u; w++) {
+        to_home(); song.sel = 0; song.rec = 0; t->p[P_AHOLD] = 0;
+        btn_down(B_SEQ); frames(600);
+        btn_down(B_REC); frames(100);
+        btn_up(B_SEQ);
+        if (w)
+            frame();
+        btn_up(B_REC); frames(600);
+        CHECK(w ? "R4 (D6): SEQ let go before REC: arms, HOLD alone" : "R4 (D6): SEQ and REC let go together: arms, HOLD alone",
+              (song.rec & 1u) && t->p[P_AHOLD] == 0);
+        song.rec = 0;
+        stop();
+    }
 }
 
 /* ---- R5: PRESETS loads on STEP and PARAMETER LOCKS (owner 2026-11-08) ---- */
@@ -413,6 +427,30 @@ static uint32_t held_on(track_t *t, uint32_t note)   /* voices of this note stil
     return n;
 }
 static void leave_seq(track_t *t, uint32_t k) { uint32_t n = 0; while (t->seq_idx == k && n++ < 2000u) run(16); }
+/* FR9 (b7, review B2): a lock on an ARP SEQ part sounds on the arp's step, not the sequencer's: a key pressed at the sequencer's step 9 restarts
+ * the arp's pattern; the lock on step 5 comes with the arp's step 5. Also with ARP RATE 1/8 against DIV 1/16 */
+static void fr9(void)
+{
+    track_t *t = &trk[0];
+    for (uint32_t r = 0; r < 2u; r++) {
+        int16_t base, lv;
+        boot(); setup(0, AM_SEQ_ID, V_POLY);
+        if (r)
+            t->p[P_ARATE] = 1;                          /* (1/8: the arp at half the sequencer's rate) */
+        base = t->p[P_REV]; lv = (int16_t)(base == 100 ? 40 : 100);
+        motion_set_lock(t, 5, P_REV, lv);
+        start();
+        wait_seq(t, 9);
+        input_on(t, 60, 100);
+        wait_arp(t, 4); run(16);
+        CHECK(r ? "FR9: ARP RATE 1/8: the arp's step 4 plays without the lock" : "FR9: ARP SEQ, a key at the sequencer's step 9: the arp's step 4 plays without the lock", t->p[P_REV] == base);
+        wait_arp(t, 5); run(16);
+        CHECK(r ? "FR9: ARP RATE 1/8: the lock on step 5 sounds on the arp's step 5" : "FR9: ARP SEQ: the lock on step 5 sounds on the arp's step 5", t->p[P_REV] == lv);
+        input_off(t, 60);
+        stop();
+        motion_clear(t);
+    }
+}
 static void r6(void)
 {
     track_t *t = &trk[0];
@@ -574,7 +612,7 @@ static void rec_backup(void)
 
 int main(void)
 {
-    h1(); r2(); h5(); rec_modes(); rec_row(); r6(); rec_backup(); r4(); r5();
+    h1(); r2(); h5(); rec_modes(); rec_row(); r6(); rec_backup(); r4(); r5(); fr9();
     printf("liverec: %u checks, %u FAIL\n", checks, failures);
     return failures ? 1 : 0;
 }

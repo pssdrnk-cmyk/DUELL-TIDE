@@ -283,8 +283,8 @@ static void t_knobs(void)
     }
     turn(EN_ALGO, 1);                                   /* (0.2.9: PART 1, BOTH, PART 2 from left to right) */
     expect("ALGORITHM right: BOTH (both badges, the MORPH TARGET; part 1 still the selected part)", song.sel == 0u &&
-                                                                    SEL_BOTH && badge_lit() == 3u && msg_is("BOTH"));
-    turn(EN_ALGO, 1);
+                                                                    SEL_BOTH && badge_lit() == 3u && msg_is(ALGO_BOTH_SAY));
+    algo_turns(ALGO_TO_P2);                             /* */
     expect("  right again: PART 2 (selected, one badge)", song.sel == 1u && !SEL_BOTH && badge_lit() == 2u);
     turn(EN_ALGO, 1);
     expect("  right at PART 2: PART 2", song.sel == 1u && !SEL_BOTH);
@@ -292,7 +292,7 @@ static void t_knobs(void)
     expect("  left: BOTH, part 2 kept as the selected part", song.sel == 1u && SEL_BOTH && badge_lit() == 3u);
     {
         char l[24], r[24];
-        expect("  the footer: ALGO: BOTH", perf_foot(l, r) && str_eq(r, "ALGORITHM = BOTH"));
+        expect("  the footer: ALGO: BOTH", perf_foot(l, r) && !strncmp(r, "ALGORITHM = ", 12) && str_eq(r + 12, ALGO_BOTH_LEFT));
     }
     turn(EN_K1, 7);
     expect("  K1 MORPH with BOTH: both parts' faders (part 2's + 7 on both)", morph_fader_of(0) == 7u && morph_fader_of(1) == 7u);
@@ -309,7 +309,7 @@ static void t_knobs(void)
         expect("  PRESETS back: each part on its own first sound again", trk[0].eng_req == e0 && trk[0].preset == p0 &&
                                                                        trk[1].eng_req == e1 && trk[1].preset == q1);
     }
-    turn(EN_ALGO, -1);
+    algo_turns(-ALGO_TO_P2);
     expect("  left: PART 1", song.sel == 0u && !SEL_BOTH && badge_lit() == 1u);
     turn(EN_ALGO, -1);
     expect("  left at PART 1: PART 1", song.sel == 0u && !SEL_BOTH);

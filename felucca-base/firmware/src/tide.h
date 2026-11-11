@@ -31,10 +31,11 @@ static uint32_t tide_seq_chord(const track_t *t, uint32_t *list, uint32_t n);
  * when the stop button is pressed"): no step while the transport is stopped and no key is down; the latched chord stays for PLAY (STOP ALL ends it) */
 static int tide_arp_paused(const track_t *t);
 #define TIDE_ARP_PAUSED(t) tide_arp_paused(t)
-#define TIDE_SEQ_CHORD(t, list, n) tide_seq_chord((t), (list), (n))
+static uint32_t tide_seq_voice(const track_t *t, uint32_t *list, uint32_t n);   /* (seq_voicelead.c: the chord bed's ARC voicing on the arp's chord) */
+#define TIDE_SEQ_CHORD(t, list, n) tide_seq_voice((t), (list), tide_seq_chord((t), (list), (n)))
 /* H3 (seq.c, audio path): VARY BARS' bar count since PLAY and the bar turning in this block; the patterns' completed loops (the
  * phrase lifecycle, seq_rhythm.c). Counted here, read by tide_seq.c and the pages */
-static volatile uint8_t sqm_bar, sqm_bar_turn;
+static volatile uint8_t sqm_bar, sqm_bar_turn, sqm_bar_soon;   /* (soon: the bar's last 32nd, the bar an ARP SEQ step plays in: its clock runs a little ahead of the beat's; MR4) */
 static volatile uint8_t tide_seq_loops[NTRK];
 /* H3b (seq.c, audio path): POLY (seq_poly.c): the loop's length now, the step after seq_idx, the arp step k, an arp step started */
 static void tide_poly_start(void);
@@ -46,6 +47,8 @@ static void tide_arp_tick(track_t *t);
 static int tide_poly_on(const track_t *t);
 static uint32_t tide_play_idx(const track_t *t);
 static uint32_t tide_play_len(const track_t *t);
+static uint32_t tide_swing_par(const track_t *t);
+#define TIDE_SWING_PAR(t) tide_swing_par(t)   /* (review FR1: in a stretch a step swings by the full loop's step parity) */
 #define TIDE_PLAY_IDX(t) tide_play_idx(t)   /* (the pages: the step playing now, the loop's length it plays) */
 #define TIDE_PLAY_LEN(t) tide_play_len(t)
 #define TIDE_SLEN(t) tide_slen(t)
@@ -53,9 +56,9 @@ static uint32_t tide_play_len(const track_t *t);
 #define TIDE_SEQ_RELEN(t, len) ((len) = tide_slen(t))   /* (a stretch began or ended at this step) */
 #define TIDE_ARP_IDX(t, k, len) tide_arp_idx((t), (k), (len))
 #define TIDE_ARP_TICK(t) tide_arp_tick(t)
-#define TIDE_SEQ_START() (sqm_bar = sqm_bar_turn = 0, tide_poly_start(), tide_seq_ghost_start())     /* (the phrase from the top; MIDI CONTINUE keeps it) */
+#define TIDE_SEQ_START() (sqm_bar = sqm_bar_turn = sqm_bar_soon = 0, tide_poly_start(), tide_seq_ghost_start())     /* (the phrase from the top; MIDI CONTINUE keeps it) */
 static void tide_seq_ghost_start(void);
-#define TIDE_BEAT_BLOCK(adv) (sqm_bar_turn = (uint8_t)(beat_n == 3u && beat_pos + (adv) >= beat_samples()))
+#define TIDE_BEAT_BLOCK(adv) (sqm_bar_turn = (uint8_t)(beat_n == 3u && beat_pos + (adv) >= beat_samples()), sqm_bar_soon = (uint8_t)(beat_n == 3u && beat_pos + (adv) + (beat_samples() >> 3) >= beat_samples()))
 #define TIDE_BEAT() do { if (!beat_n && song.playing) sqm_bar++; } while (0)
 #define TIDE_SEQ_LOOP(t, len) do { if (tide_seq_wrapping((t), (len)) && (t)->seq_pos < 0x7FFFFFFFu) tide_seq_loops[trk_index(t)]++; } while (0)   /* (the startup sentinel is no loop) */
 /* H3c (seq.c, audio path): the chance rolls the TIDE page shows (tide_seq.c): a step's (seq_play) and the SEQ arp's PROB (arp_fire); each returns the miss / hit it is given */
@@ -63,9 +66,15 @@ static int tide_chance_roll(const track_t *t, uint32_t idx, uint32_t chance, int
 static int tide_aroll(const track_t *t, int hit);
 #define TIDE_CHANCE(t, idx, s, miss) tide_chance_roll((t), (idx), step_chance(s) < 100u, (miss))
 #define TIDE_APROB(t, hit) tide_aroll((t), (hit))
+static uint32_t tide_arp_out(const track_t *t, uint8_t *out, uint32_t m, uint32_t *vel);
+#define TIDE_ARP_OUT(t, out, m, vel) tide_arp_out((t), (out), (m), (vel))   /* (seq.c arp_seq_notes: TIDE's dynamics on an ARP SEQ step, D1; a thinned chord's two voices, MR4) */
 /* H13 (ui_input.c, main loop): once a frame, after morph_poll: GLIDE, the SEQ MORPH's ends, the settings */
 static void tide_poll(void);
+static void tide_ghost_poll(void);   /* (tide_seq.c, b7: the ghost chord of a part that waits for keys under AUTO TIDE; called by tide_poll) */
+static void tide_ghost_stop(void);   /* (seq.c seq_stop: the ghost chords end) */
+static void tide_ghost_real(track_t *t);   /* (seq.c input_on: a real note starts on t: the ghost chord ends first) */
 #define TIDE_POLL() tide_poll()
+#define TIDE_GHOST_STOP() tide_ghost_stop()
 /* H4-H8 (morph.c, main loop unless marked): morph_music.c, morph_fm_shape.c, morph_complement.c and morph_tide.c are included
  * by morph.c; these are the lines morph.c runs for them */
 #define TIDE_PART_FIELDS uint8_t tok[2][MORPH_HIST];    /* MORPH TO: the factory sound each end is (index + 1), 0 not one */
@@ -82,7 +91,6 @@ static void tide_poll(void);
  * window). The part's AMOUNT knob stays TIDE_FACTORY_AMOUNT (the next ROLL's) */
 #define TIDE_FACTORY_BAMT(e, k, a) (morph_musical && ds_get((e), (k))->tamt ? (uint32_t)ds_get((e), (k))->tamt : TIDE_FACTORY_AMOUNT(a))
 #define TIDE_FACTORY_CFG() (morph_musical ? MC_MUSIC : 0u)
-static int tide_amount_idle(void);   /* (morph_glide.c: JOURNEY runs, AMOUNT does nothing: the MORPH page dims its card) */
 #define TIDE_BUILD_KIND(mp, id, kind) do { if ((id) == P_TRIM && ((mp)->tok[0][(mp)->top[0]] || (mp)->tok[1][(mp)->top[1]])) \
                                               (kind) = MK_CONT; } while (0)   /* (MORPH TO: two sounds' loudness blends, no step halfway) */
 #define TIDE_BUILD_FNID(mp) ((mp)->fnid |= (uint8_t)((mp)->tok[0][(mp)->top[0]] | (mp)->tok[1][(mp)->top[1]]))   /* (MORPH TO's FM6 flip) */
@@ -139,7 +147,7 @@ static int tide_foot_two(void);
 #define TIDE_PT_NCH 21u                                  /* the patch store's chunks with TIDE: 126 saved patches at most (plan §4.5) */
 #define TIDE_MG_N 5u                                     /* ui.mg's gestures: MORPH's, GLO's and GLIDE's (tide_ui.c TIDE_G_GLIDE) */
 #define TIDE_PAGE(pg) ((pg)->scope == SC_TIDE)
-#define TIDE_WAVE_PAGE(pg) ((pg)->graph == GR_MORPH)      /* the MORPH page is a template 9 page: MORPH on one line, the part's real sound in the big area (ui_scope.c), ROLL / AMOUNT in the card row */
+#define TIDE_WAVE_PAGE(pg) ((pg)->graph == GR_MORPH)      /* the MORPH page is a template 9 page: MORPH on one line, the part's real sound in the big area (ui_scope.c), FILTER / ECHO / LENGTH on the slim row (1.0.0-b7) */
 #define TIDE_LINK(kind, mask, v) do { if ((kind) == MQ_FADER) tide_link((mask), (v)); } while (0)   /* LINK: the SEQ fader follows */
 #define TIDE_MQ_ROUTE(kind, mask, v, pi) ((kind) >= MQ_GLIDE ? (tide_midi((kind), (mask), (v), (pi)), 1) : 0)   /* GLIDE, the SEQ fader */
 #define TIDE_MQ_KINDS , MQ_GLIDE, MQ_SEQF
@@ -156,7 +164,7 @@ static int tide_foot_two(void);
 #define TIDE_CARD_LIFT() (tide_foot_two() ? TIDE_LIFT : 0)
 #define TIDE_FOOT_FULL() tide_foot_two()
 #define TIDE_GRAPH_SIG(pg, h) do { if ((pg)->graph == GR_TIDELIST) return ((h) ^ tide_list_sig()) * 16777619u; \
-                                   if (TIDE_PAGE(pg)) (h) = ((h) ^ tide_sig() ^ (uint32_t)song.both * 0x85EBCA77u) * 16777619u; } while (0)
+                                   if (TIDE_PAGE(pg)) (h) = ((h) ^ tide_sig() ^ (uint32_t)song.both * 0x85EBCA77u ^ (uint32_t)duell_mode_req * 0x9E3779B1u) * 16777619u; } while (0)   /* (1.0.0-b7: the MODE, AUTO TIDE names the play mode) */
 #define TIDE_COLUMNS() do { if (TIDE_PAGE(cur_page())) { tide_columns(); return; } } while (0)
 #define TIDE_HOME_NAME "MORPH"                           /* MENU > CONTROL > HOME OPENS: the first page of the round (MORPH, as stock; AUTO TIDE is the round's 3rd) */
 #define TIDE_HOME_MODE_NAME "SETTINGS"                  /* (b4, UI audit 9: HOME OPENS' second value names the page it opens, TIDE SETTINGS; MULTI LOAD keeps or sets the PLAY MODE row) */
@@ -185,7 +193,9 @@ static int tide_foot_two(void);
 #define TIDE_ARP_PAUSED(t) 0
 #define TIDE_SEQ_CHORD(t, list, n) (n)
 #define TIDE_SEQ_START() ((void)0)
+#define TIDE_GHOST_STOP() ((void)0)
 #define TIDE_SLEN(t) ((uint32_t)(t)->p[P_SLEN])
+#define TIDE_SWING_PAR(t) 0u
 #define TIDE_PLAY_IDX(t) ((uint32_t)(t)->seq_idx)
 #define TIDE_PLAY_LEN(t) ((uint32_t)(t)->p[P_SLEN])
 #define TIDE_SEQ_NEXT(t, len) (((uint32_t)(t)->seq_idx + 1u) % (len))
@@ -197,6 +207,7 @@ static int tide_foot_two(void);
 #define TIDE_SEQ_LOOP(t, len) ((void)0)
 #define TIDE_CHANCE(t, idx, s, miss) (miss)
 #define TIDE_APROB(t, hit) (hit)
+#define TIDE_ARP_OUT(t, out, m, vel) (m)
 #define TIDE_POLL() ((void)0)
 #define TIDE_FIRST_MULTI 0
 #define TIDE_PART_FIELDS
@@ -278,3 +289,9 @@ static int tide_foot_two(void);
 /* the pages where the part selection has its third position, BOTH (owner 2026-11-08): HOME's MORPH page, TIDE SETTINGS and AUTO TIDE, and PERFORM, whose K1 MORPH and ROLL are the MORPH page's
  * controls (and the test build's CPU TEST page). Everywhere else the selector picks PART 1 or PART 2 and the page shows and edits that part alone, as before; BOTH stays set for these pages */
 #define HOME_BOTH_PAGE(pg) ((pg)->graph == GR_MORPH || TIDE_PAGE(pg) || (pg)->scope == SC_TEST || (pg)->scope == SC_PERF)
+#if DUELL_TIDE && TIDE_PLAYSEL
+/* 1.0.0-b7 PLAY MODE SELECT: ALGORITHM's position names on those pages: PART 1, the middle named by the PLAY MODE row, PART 2 (ui_input.c play_pos; docs/design/PLAY_MODE_SELECT.md) */
+enum { PLS_P1, PLS_LAYER, PLS_STEREO, PLS_DUEL, PLS_P2, PLS_N };
+static const char *const PLS_NAME[PLS_N] = {"PART 1", "LAYER", "STEREO", "DUEL", "PART 2"};
+static uint32_t play_pos(void);
+#endif

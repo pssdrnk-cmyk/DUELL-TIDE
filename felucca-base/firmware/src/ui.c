@@ -60,6 +60,7 @@ static uint8_t pv_bar_of(const step_t *s)
 /* The PATCH SLOTS (upreset.c, the slot layer): ONE list of UP_SLOTS (128), slot k = its saved record, else the factory sound at browse position k */
 static uint32_t slot_of(const track_t *t);         /* the slot t's sound is in, UP_SLOTS = none */
 static uint32_t slot_home(const track_t *t);       /* .. where SAVE offers to write it */
+static uint32_t slot_both(uint32_t pi);                /* .. with BOTH, each part its own (b7) */
 static uint32_t slot_place(const track_t *t);      /* .. its browse place (a USER slot's displaced factory sound: UP_SLOTS..; UP_VSLOTS none) */
 #if UP_NUSER
 static int sl_empty_user(uint32_t k);              /* U1: slot k is an empty USER slot */
@@ -174,7 +175,7 @@ static void rp_put(uint32_t f, uint32_t v)
  * changed (ui_input.c mode_settings) */
 #define ui_mode_set (favorites.factory[15][9])
 /* the MODE page's (TIDE: the XFADE and SPLIT rows') KNOB 3..4 (core.h mix_xf, mix_split), two more bytes no engine uses, kept with the settings and in
- * each MULTI: [15][6] XFADE (0..100 %), [15][7] SPLIT (0 = OFF, else the note + 1). [15][5] was BALANCE's (int8): item 157, a SPARE byte,
+ * each MULTI: [15][6] XFADE (0..100 %), [15][7] SPLIT (0 = OFF, 1..128 the note + 1, 129 MIDDLE: 1.0.0-b7). [15][5] was BALANCE's (int8): item 157, a SPARE byte,
  * neither read nor written (the settings record keeps its size and layout). 0 in every older setting = XFADE 0, SPLIT OFF (nothing changes);
  * an out-of-range byte reads as 0 / OFF and is kept as saved until the value is changed (ui_input.c mode_settings) */
 #define ui_mix_xf (favorites.factory[15][6])
@@ -1318,6 +1319,8 @@ static void ds_seq_back(track_t *t);              /* (upreset.c: a patch's lent 
 /* What the loads changed (undo.what) and the copy change places, so again = the loads again. DUELL save flow
  * (2026-10-11): SAVE held is SAVE OVER now (ui_input.c patch_save_ask); the undo is OCT- held + a PRESETS turn (ui_input.c load_undo_gate). The sound: engine, preset and its parameters (not param_kept); the pattern: the steps and LEN
  * DIV SWING GATE. The mix (LEVEL PAN MUTE) stays: no load changes it */
+static const uint8_t *up_ldv(uint32_t k, uint8_t *bv);   /* (upreset.c) */
+static void up_ldv_rec(const track_t *t, uint8_t *bv);
 static __attribute__((noinline)) void undo_swap(void)
 {
     track_t *t;
@@ -1392,8 +1395,11 @@ static __attribute__((noinline)) void undo_swap(void)
         undo.fm6_slot = sl;
     }
     undo.keep = 0;                                /* the next load copies the track as it is now */
-    if (undo.what & UNDO_SOUND)
+    if (undo.what & UNDO_SOUND) {
+        uint8_t bv[MBV_MAX];
+        up_ldv_rec(t, bv);                        /* (b7: a USER record back with its own End B) */
         morph_rebase(t);                          /* DUELL: another sound, the MORPH starts from it (morph.c) */
+    }
     if (t == TSEL)
         sync_reload = 1;
     b[1] = (char)('1' + trk_index(t));
@@ -1426,7 +1432,7 @@ static void pat_load_def(track_t *t, uint32_t k)
 {
     uint32_t i;
     for (i = 0; i < NSTEP; i++)
-        pat_make_step(&t->step[i], i < NPAT_STEPS ? PATTERNS[k].note[i] : 0, i < NPAT_STEPS ? PATTERNS[k].flags[i] : 0);
+        pat_make_step(&t->step[i], i < NPAT_STEPS ? PATTERNS[k].note[i] : 0, i < NPAT_STEPS ? pat_fl(k, i) : 0);
     t->p[P_SLEN] = PATTERNS[k].len;
     t->p[P_SDIV] = PATTERNS[k].div;
 }
@@ -2031,6 +2037,7 @@ static void track_select(uint32_t i)
 {
     if (i >= NSHOWN || i == song.sel)             /* (tracks 3, 4: hidden) */
         return;
+    pl_commit();                                 /* (b7: a fast turn's waiting sound loads into the part it was turned on, not the next one) */
     song.sel = (uint8_t)i;
     ui.entry_open = 0;
     ui.hot_t = 0;

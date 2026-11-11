@@ -153,7 +153,7 @@ static void test_wait_off_paused(void)
     }
 }
 
-/* a BOTH-parts glide launched from part 1: a hand on part 2's fader takes the lane over too */
+/* a BOTH-parts glide launched from part 1: a hand on part 2's fader takes part 2 over; part 1 goes on (MR7) */
 static void test_both_takeover(void)
 {
     uint32_t f0;
@@ -170,9 +170,9 @@ static void test_both_takeover(void)
     run(32);
     f0 = morph_fader_of(0);
     run(2000);
-    CHECK("both:   part 2's hand stops the lane", !(gl.on & (1u << GT_SOUND)));
+    CHECK("both:   part 2's hand holds part 2 only", (gl.on & (1u << GT_SOUND)) && gl.hw[GT_SOUND] == 2u);
     CHECK("both:   part 2 stays where the hand left it", morph_fader_of(1) == 100u);
-    CHECK("both:   part 1 stays where it stopped", morph_fader_of(0) == f0 && f0 < 127u);
+    CHECK("both:   part 1 goes on", morph_fader_of(0) > f0);
     gl.on = gl.armed = 0;
     transport_req = 2u; run(48);
 }
@@ -207,12 +207,12 @@ static void test_multi_keeps_roll_rows(void)
     ui_power_on(); frame();
     morph.cfg = (uint8_t)((morph.cfg & ~MC_ARP) | MC_PIT | MC_WILD);
     project_load(1);                                     /* M02, factory */
-    CHECK("factory multi: ROLL PITCH stays ON", jl_get(JL_PITCH) == 1u);
+    CHECK("factory multi: ROLL PITCH stays ON", (morph.cfg & MC_PIT) != 0u);
     CHECK("factory multi: ROLL TYPE stays WILD", jl_get(JL_ROLL) == 2u);
-    CHECK("factory multi: ROLL ARP stays OFF", jl_get(JL_ARP) == 0u);
+    CHECK("factory multi: ROLL ARP stays OFF", !(morph.cfg & MC_ARP));
     morph.cfg = (uint8_t)(morph.cfg | MC_ARP);
     project_load(1);
-    CHECK("factory multi: ROLL ARP stays ON", jl_get(JL_ARP) == 1u);
+    CHECK("factory multi: ROLL ARP stays ON", (morph.cfg & MC_ARP) != 0u);
     morph.cfg = 0;
 }
 
@@ -270,13 +270,13 @@ static void test_takeover_symmetric(void)
                 if (lane == GT_SOUND) morph_do(MQ_FADER, 1u << other, 100u); else seqm_set_fader(other, 100u);
                 run(32);
                 still = GLIDE_LANE[lane].get(pi);
-                snprintf(label, sizeof label, "%s%s: the touched lane stops", NAME[pi][lane], held ? " (held)" : "");
-                CHECK(label, !((gl.on >> lane) & 1u));
+                snprintf(label, sizeof label, "%s%s: the touched part waits, the launcher's not", NAME[pi][lane], held ? " (held)" : "");
+                CHECK(label, ((gl.on >> lane) & 1u) && gl.hw[lane] == (1u << other));
                 snprintf(label, sizeof label, "%s%s:   the other lane goes on", NAME[pi][lane], held ? " (held)" : "");
                 CHECK(label, (gl.on >> keep) & 1u);
                 run(2400);
-                snprintf(label, sizeof label, "%s%s:   the hand's value stays, the launcher's too", NAME[pi][lane], held ? " (held)" : "");
-                CHECK(label, GLIDE_LANE[lane].get(other) == 100u && GLIDE_LANE[lane].get(pi) == still);
+                snprintf(label, sizeof label, "%s%s:   the hand's value stays, the launcher moves", NAME[pi][lane], held ? " (held)" : "");
+                CHECK(label, GLIDE_LANE[lane].get(other) == 100u && GLIDE_LANE[lane].get(pi) != still);
                 glide_stop(); transport_req = 2u; run(48);
             }
 }
@@ -291,8 +291,8 @@ static void test_takeover_routes(void)
     CHECK("takeover: selecting part 2 alone cancels nothing", gl.on == 3u);
     song.sel = 0;
     morph_push(MQ_FADER, 1u, 90u); run(32);
-    CHECK("takeover: a MIDI MORPH on part 2, TARGET BOTH: LINK moves its SEQ fader too, both lanes stop",
-          !gl.on && morph_fader_of(1) == 90u && seqm_fader_of(1) == 90u);
+    CHECK("takeover: a MIDI MORPH on part 2, TARGET BOTH: LINK moves its SEQ fader too, part 2 waits on both lanes",
+          gl.on == 3u && gl.hw[0] == 2u && gl.hw[1] == 2u && morph_fader_of(1) == 90u && seqm_fader_of(1) == 90u);
     glide_stop(); transport_req = 2u; run(48);
 
     r0_launch(0, 3u, GT_SOUND, GM_LOOP, 0u);
@@ -300,13 +300,13 @@ static void test_takeover_routes(void)
     morph_push(MQ_FADER, 1u, 90u); run(32);
     f = morph_fader_of(0);
     run(800);
-    CHECK("takeover: a MIDI MORPH on part 2 stops a SOUND glide", !gl.on && morph_fader_of(1) == 90u && morph_fader_of(0) == f);
+    CHECK("takeover: a MIDI MORPH on part 2 holds part 2 of a SOUND glide, part 1 goes on", gl.on && gl.hw[0] == 2u && morph_fader_of(1) == 90u && morph_fader_of(0) != f);
     glide_stop(); transport_req = 2u; run(48);
 
     r0_launch(1, 3u, GT_BOTH, GM_LOOP, 0u);
     run(800);
     morph_push(MQ_SEQF, 0u, 90u); run(32);
-    CHECK("takeover: a MIDI SEQ fader on part 1 stops the SEQ lane", (gl.on & 1u) && !(gl.on & 2u) && seqm_fader_of(0) == 90u);
+    CHECK("takeover: a MIDI SEQ fader on part 1 holds part 1 of the SEQ lane", gl.on == 3u && !gl.hw[0] && gl.hw[1] == 1u && seqm_fader_of(0) == 90u);
     glide_stop(); transport_req = 2u; run(48);
 
     r0_launch(0, 3u, GT_SOUND, GM_LOOP, 0u);
@@ -420,6 +420,45 @@ static void test_oct_reset_style(void)
     CHECK("OCT- reset: K1 says BACK TO ORIGINAL", !strcmp(ui.msg, "BACK TO ORIGINAL"));
 }
 
+/* FR7 D2 (b7): OCT- held as a modifier (a PRESETS turn, a knob on TIDE SETTINGS) does nothing more on its release */
+static void oct_page(uint32_t graph)
+{
+    uint32_t pg = 0, pages = sizeof PAGES / sizeof PAGES[0];
+    while (pg < pages && PAGES[pg].graph != graph) pg++;
+    ui.page = pg; ui.cursor = ui.bank = 0; page_entered(); frames(400);
+}
+static void test_oct_used(void)
+{
+    uint32_t pg, v;
+    ui_power_on(); frame();
+    oct_page(GR_TIDE); song.octave = 0;
+    btn_down(B_OCTDN); frame(); turn(EN_PRESET, 1); frames(400); btn_up(B_OCTDN); frames(64);
+    CHECK("OCT- held + PRESETS on AUTO TIDE: no octave down on its release", song.octave == 0);
+    oct_page(GR_SLOTS); pg = ui.page;
+    btn_down(B_OCTDN); frame(); turn(EN_PRESET, 1); frames(400); btn_up(B_OCTDN); frames(64);
+    CHECK("OCT- held + PRESETS on MULTIS: the page stays (no HOME on its release)", ui.page == pg);
+    oct_page(GR_TIDELIST); jl_sel = JL_AMOUNT; jl_put(JL_AMOUNT, 50);
+    btn_down(B_OCTDN); frame(); turn(EN_K2, 1); v = jl_get(JL_AMOUNT); btn_up(B_OCTDN); frames(64);
+    CHECK("OCT- held + K2 on TIDE SETTINGS: the turned value stays (no step back on its release)", v != 50u && jl_get(JL_AMOUNT) == v);
+}
+
+/* FR13 B5 (b7): a tap-tempo jump on the internal clock while playing keeps the step phase (the position scaled with the beat), as an external clock's
+ * tempo change does: no owed steps fired at once, the arp stays on the grid */
+static void test_tap_jump(void)
+{
+    uint32_t ob, nb, p0, p1, a0, a1;
+    ui_power_on(); frame();
+    song.g[G_BPM] = 120; transport_req = 1u; run(1008);
+    ob = beat_samples(); p0 = trk[0].seq_pos; a0 = trk[0].arp_pos;
+    ui.tap_n = 0; tempo_tap(); fm1_ms += 273u; tempo_tap();
+    nb = beat_samples(); p1 = trk[0].seq_pos; a1 = trk[0].arp_pos;
+    CHECK("tap-tempo jump (120 to 220): the step position scales with the beat (no flam of owed steps)",
+          song.g[G_BPM] == 220 && nb != ob && p0 && llabs((int64_t)p1 * ob - (int64_t)p0 * nb) <= (int64_t)ob);
+    CHECK("tap-tempo jump: the arp's position scales the same (it stays on the grid)",
+          a0 >= 0x8000000u || llabs((int64_t)a1 * ob - (int64_t)a0 * nb) <= (int64_t)ob);
+    transport_req = 2u; run(64);
+}
+
 /* a WILD roll with ARP ON keeps a SEQ Original on SEQ and never draws SEQ for another (morph.c, TIDE_AMODE_KEEP / _END) */
 static void test_seq_rule(void)
 {
@@ -513,6 +552,95 @@ static void test_seq_ghost_chord(void)
     t->p[P_AMODE] = 0;
 }
 
+/* b7 MR2 part B: AUTO TIDE under a multi whose parts would wait for keys (M10 PAD SPLIT: a HOLD ALL pad without steps and an ARP SEQ part; the host build's slot 10 is a test scene, so the parts are set up by hand): with no key down both
+ * parts sound within 4 bars, a real key replaces the ghost chord at once, STOP ends it, and a part under no AUTO TIDE stays silent as ever */
+static void test_hold_ghost(void)
+{
+    track_t *a = &trk[0], *b = &trk[1];
+    uint32_t i, heard_b = 0, voices;
+    ui_power_on(); frame();
+    transport_req = 2u; run(48);
+    /* (M10's two parts, set up by hand: this build's slot 10 is a test scene) part 1 a latched pad with no steps, part 2 an ARP SEQ part */
+    memset(a->step, 0, sizeof a->step); memset(b->step, 0, sizeof b->step);
+    a->p[P_AMODE] = 0; a->p[P_AHOLD] = 2; a->nheld = a->arp_phys = 0;
+    b->p[P_SLEN] = 4;
+    for (i = 0; i < 4u; i++) { b->step[i].time = ST_NOTE; b->step[i].n = 1; b->step[i].note[0] = (uint8_t)(60 + 2 * i); b->step[i].vel = 100; }
+    b->p[P_AMODE] = AM_SEQ_ID; b->p[P_ARATE] = 5; b->p[P_APROB] = 127; b->p[P_AOCT] = 1; b->p[P_AHOLD] = 2;
+    memset(tide_chord_n, 0, sizeof tide_chord_n);
+    tide_gh = 0;
+    CHECK("hold ghost: part 1 is HOLD ALL without steps or arp", !arp_mode(a) && arp_hold(a) == 2 && !tide_gh_steps(a));
+    transport_req = 1u; run(500);                        /* PLAY alone, AUTO TIDE off */
+    CHECK("hold ghost: PLAY without AUTO TIDE: the pad waits for keys as ever", song.playing && !a->nheld && !TIDE_GH_ON(0));
+    transport_req = 2u; run(500);
+    tide_style_apply(STY_DUB);
+    gl.target = GT_BOTH; morph_musical = 1; morph.cfg = (uint8_t)(morph.cfg & ~MC_PIT);
+    glide_launch(1u, 3u, 0u);
+    for (i = 0; i < 1000u && !(TIDE_GH_ON(0) && heard_b); i++) {   /* (16 s: more than 4 bars of M10's 97 BPM) */
+        run(16);
+        heard_b |= b->arp_note != 0u;
+    }
+    CHECK("hold ghost: AUTO TIDE + PLAY, no key: part 1 latches TIDE's chord and part 2 plays within 4 bars", song.playing && TIDE_GH_ON(0) && a->nheld >= 1u && a->nheld <= 4u && heard_b);
+    run(160);
+    CHECK("hold ghost:   the chord stays latched, nothing down", a->nheld >= 1u && a->nheld <= 4u && !a->arp_phys);
+    voices = gated(a, 200u);
+    CHECK("hold ghost:   one voice a latched note", voices == a->nheld);
+    input_on(a, 50, 100); input_off(a, 50);
+    run(48);
+    CHECK("hold ghost: a key replaces the ghost chord at once: the key's note alone, nothing of the ghost left", a->nheld == 1u && a->held[0] == 50u && !TIDE_GH_ON(0));
+    voices = gated(a, 200u);
+    CHECK("hold ghost:   and no doubled note", voices == 1u);
+    run(1500);
+    CHECK("hold ghost:   the player's chord is not taken for the ghost's", a->nheld == 1u && !TIDE_GH_ON(0));
+    transport_req = 2u; run(500);
+    CHECK("hold ghost: STOP: the AUTO TIDE chord ends (the player's latched chord stays for PLAY)", !song.playing && a->nheld == 1u);
+    a->nheld = 0; a->arp_phys = 0;
+    trk_note_off(a, 50);
+    transport_req = 1u; run(1200);
+    CHECK("hold ghost: PLAY again: the ghost chord comes back", song.playing && TIDE_GH_ON(0) && a->nheld >= 1u && a->nheld <= 4u);
+    transport_req = 2u; run(500);
+    CHECK("hold ghost: STOP: the ghost chord ends, no hung voice", !song.playing && !a->nheld && !TIDE_GH_ON(0));
+    {   /* a plain key part (HOLD OFF, no arp, no steps: M10's and M14's pads): the ghost chord, a key ends it and the part is the player's until the next PLAY */
+        a->p[P_AHOLD] = 0; a->nheld = a->arp_phys = 0;
+        gl.on = gl.armed = 0;
+        glide_launch(1u, 3u, 0u);
+        for (i = 0; i < 400u && !TIDE_GH_ON(0); i++)
+            run(16);
+        run(160);
+        CHECK("hold ghost: a plain key part (HOLD OFF): the ghost chord sounds, one voice a note, nothing latched", song.playing && TIDE_GH_ON(0) && gated(a, 200u) >= 1u && !a->nheld);
+        input_on(a, 50, 100);
+        CHECK("hold ghost:   a key ends the ghost chord before its note starts: that note alone", gated(a, 200u) == 1u && gated(a, 50u) == 1u && !TIDE_GH_ON(0));
+        input_off(a, 50);
+        run(1500);
+        CHECK("hold ghost:   let go: the part stays the player's (no ghost chord back)", gated(a, 200u) == 0u && !TIDE_GH_ON(0));
+        transport_req = 2u; run(500);
+        transport_req = 1u; run(1500);
+        CHECK("hold ghost:   the next PLAY: the ghost chord again", TIDE_GH_ON(0) && gated(a, 200u) >= 1u);
+        transport_req = 2u; run(500);
+        CHECK("hold ghost:   STOP: it ends, no hung voice", !song.playing && !TIDE_GH_ON(0) && gated(a, 200u) == 0u);
+        a->p[P_AHOLD] = 2;
+    }
+    {   /* a classic arp with nothing held: silent without AUTO TIDE, the ghost chord under it, a key takes over, STOP ends it */
+        uint32_t heard = 0;
+        gl.on = gl.armed = 0;
+        a->p[P_AMODE] = 1; a->p[P_AHOLD] = 0; a->p[P_ARATE] = 5; a->p[P_APROB] = 127; a->p[P_AOCT] = 1;
+        transport_req = 1u;
+        for (i = 0; i < 120u; i++) { run(16); heard |= a->arp_note != 0u; }
+        CHECK("hold ghost: a classic arp, PLAY, no AUTO TIDE, no key: silent as ever", song.playing && !heard);
+        transport_req = 2u; run(500);
+        glide_launch(1u, 3u, 0u);
+        for (i = 0; i < 400u && !heard; i++) { run(16); heard |= a->arp_note != 0u; }
+        CHECK("hold ghost: a classic arp, AUTO TIDE, no key: plays the ghost chord", song.playing && heard);
+        input_on(a, 48, 100); heard = 0;
+        for (i = 0; i < 60u; i++) { run(16); heard |= a->arp_note == 48u; }
+        CHECK("hold ghost:   a key held takes over at once", a->nheld == 1u && heard);
+        input_off(a, 48);
+        transport_req = 2u; run(500);
+        CHECK("hold ghost:   STOP: silent", !song.playing && !a->arp_note);
+        a->p[P_AMODE] = 0;
+    }
+    gl.on = gl.armed = 0;
+}
+
 /* owner 2026-11-01: TIDE SETTINGS flickered while playing: a glide moves the part colour, the page is drawn again, and the hidden
  * cards cleared the card row under the list each time */
 static void test_settings_flicker(void)
@@ -532,6 +660,173 @@ static void test_settings_flicker(void)
     ui.page = tp; page_entered(); run(320);
     ui.page = pg; page_entered(); run(320);
     CHECK("settings flicker: back from AUTO TIDE, no card left in the card row", !memcmp(host_screen + 142 * 240, ref + 142 * 240, 2u * 240u * 66u));
+}
+
+/* MR7 (owner 2026-11-09): a hand at bar 20 of a WANDER glide (BOTH, 16-bar trips, ARC on); TIDE takes the fader back on the phrase after
+ * 8 untouched bars (bar 28) from where the hand left it; meanwhile the pattern keeps evolving (sqm_auto) and ARC keeps its place */
+static uint32_t mr7_run(int touch, uint8_t *ph, uint8_t *cnt, uint32_t *fad)
+{
+    uint32_t bar = 0, moved = 0, held = 0, autos = 0, f;
+    ui_power_on(); frame();
+    project_load(1);
+    memset(&tarc, 0, sizeof tarc); morph.seed = 0x5EEDu;  /* (both runs from the same arc) */
+    transport_req = 2u; run(48);
+    song.sel = 0; SEL_BOTH = 0;
+    gl.mode = GM_WANDER; gl.target = GT_BOTH; gl.time = 4u; gl.wait = 0; gl.on = gl.armed = 0;
+    sqm_arc = 1;
+    song.g[G_BPM] = 120;
+    glide_launch(1u, 1u, 0);
+    while (bar < 40u) {
+        run(16);
+        if (sqm_bar == bar)
+            continue;
+        bar = sqm_bar;
+        ph[bar] = tarc.phase; cnt[bar] = tarc.cnt; fad[bar] = morph_fader_of(0);
+        if (getenv("MR7_V")) printf("bar %u touch %d fad %u seq %u on %u hw %u/%u hq %u to %u prog %u from %d ph %u cnt %u run %u\n", (unsigned)bar, touch, (unsigned)fad[bar], (unsigned)seqm_fader_of(0), gl.on, gl.hw[0], gl.hw[1], gl.hq[0], gl.to, (unsigned)(gl.prog >> 10), gl.from[0][0], tarc.phase, tarc.cnt, tarc.run);
+        autos += sqm_auto == 1u;
+        if (touch && bar == 20u) {
+            f = morph_fader_of(0);
+            if (touch == 2) {                            /* 1.0.0-b7: the hand on the MORPH page's K1, two fader steps a detent: 15 detents = the same 30 */
+                ui.page = 0; while (PAGES[ui.page].graph != GR_MORPH) ui.page++;
+                ui.cursor = ui.bank = 0; page_entered(); frame();
+                turn(EN_K1, f > 30u ? -15 : 15);
+                ui.page = 0; while (PAGES[ui.page].graph != GR_TIDE) ui.page++;   /* (as the MIDI run: AUTO TIDE's page) */
+                page_entered();
+            } else
+                morph_push(MQ_FADER, 0u, f > 30u ? f - 30u : f + 30u);   /* (a hand pulls it back: MIDI, so LINK moves SEQ too) */
+            run(32);
+            held = gl.on == 3u && gl.hw[0] == 1u && gl.hw[1] == 1u;
+        }
+    }
+    if (touch) {
+        uint32_t b, back = 0;
+        for (b = 22; b <= 32u && !back; b++)
+            if (fad[b] != fad[21])
+                back = b;
+        moved = back;
+        CHECK("MR7: the hand holds the part on both lanes", held);
+    }
+    CHECK("MR7: the pattern keeps evolving (sqm_auto every bar)", autos >= 38u);
+    glide_stop(); transport_req = 2u; run(48);
+    return moved;
+}
+/* 1.0.0-b7: HOME's MORPH page: FILTER, ECHO and LENGTH turned during a glide do not hold it; MORPH (knob 1) does */
+static void test_page1_no_hold(void)
+{
+    ui_power_on(); frame();
+    transport_req = 2u; run(48);
+    song.sel = 0; SEL_BOTH = 0;
+    gl.mode = GM_WANDER; gl.target = GT_SOUND; gl.time = 4u; gl.wait = 0;
+    glide_launch(1u, 1u, 0); run(2000);
+    ui.page = 0; while (PAGES[ui.page].graph != GR_MORPH) ui.page++;
+    ui.cursor = ui.bank = 0; page_entered(); frame();
+    turn(EN_K2, 2); turn(EN_K3, 2); turn(EN_K4, 2); run(64);
+    CHECK("page 1: FILTER, ECHO, LENGTH turned during a glide do not hold it", song.playing && glide_running() && !gl.hw[0] && !gl.hw[1]);
+    turn(EN_K1, 3); run(64);
+    CHECK("  .. MORPH (knob 1) does", gl.hw[0] == 1u);
+    glide_stop(); transport_req = 2u; run(48);
+}
+static void test_hand_returns(void)
+{
+    uint8_t ph0[64] = {0}, c0[64] = {0}, ph1[64] = {0}, c1[64] = {0};
+    uint32_t f0[64] = {0}, f1[64] = {0}, back, same = 1, b;
+    char l[120];
+    mr7_run(0, ph0, c0, f0);
+    back = mr7_run(1, ph1, c1, f1);
+    for (b = 1; b < 40u; b++)
+        same &= ph0[b] == ph1[b] && c0[b] == c1[b];
+    snprintf(l, sizeof l, "MR7: the glide moves again by bar 32 (from bar %u; fader %u at bar 21, %u at 32)", (unsigned)back, (unsigned)f1[21], (unsigned)f1[32]);
+    CHECK(l, back >= 28u && back <= 32u);
+    CHECK("MR7: ARC's phases equal a run with no touch", same);
+    CHECK("MR7: the hand's fader held through bar 27", f1[27] == f1[21]);
+    {   /* 1.0.0-b7: the same hand from the MORPH page's knob 1 (half the twisting): TIDE takes it back as from MIDI */
+        uint8_t ph2[64] = {0}, c2[64] = {0};
+        uint32_t f2[64] = {0}, back2 = mr7_run(2, ph2, c2, f2);
+        snprintf(l, sizeof l, "MR7: a hand on the MORPH page's knob 1 (30 steps in 15 detents) is taken back by bar 32 (from bar %u; fader %u at 21)", (unsigned)back2, (unsigned)f2[21]);
+        CHECK(l, back2 >= 28u && back2 <= 32u && f2[21] == f1[21] && f2[27] == f2[21]);
+    }
+    {
+        char st[48];                                     /* the page says so */
+        ui_power_on(); frame();
+        transport_req = 2u; run(48);
+        song.sel = 0; gl.mode = GM_WANDER; gl.target = GT_SOUND; gl.time = 4u; gl.wait = 0;
+        glide_launch(1u, 1u, 0); run(4000);
+        morph_do(MQ_FADER, 1u, 20u); run(32);
+        tide_status(st);
+        snprintf(l, sizeof l, "MR7: AUTO TIDE says the hand holds it (\"%s\")", st);
+        CHECK(l, !strncmp(st, "HAND  BACK IN ", 14));
+        ui.page = 0; while (ui.page < sizeof PAGES / sizeof PAGES[0] && PAGES[ui.page].graph != GR_TIDE) ui.page++;
+        ui.cursor = ui.bank = 0; page_entered(); ui.force = 1; frame();
+        if (getenv("MR7_SHOT")) screen(getenv("MR7_SHOT"));
+        glide_stop(); transport_req = 2u; run(48);
+    }
+}
+
+/* J2: JOURNEY launched with the fader away from A keeps the End B it is heard at (no swap in one block); worst second difference of the
+ * output over the 120 blocks after the launch, dBFS (full scale 2^22) */
+#ifndef J2_BLOCKS
+#define J2_BLOCKS 2756u                                   /* (the launch bar at 120 BPM: 120 blocks of 32 samples are 87 ms, where M02 plays nothing) */
+#endif
+static double j2_launch(uint32_t fader, int *kept)
+{
+    static uint32_t acc;
+    double worst = 0, pk = 0;
+    int32_t to0, to1;
+    uint32_t s0, s1, blocks = 0, i;
+    int32_t p1 = 0, p2 = 0;
+    ui_power_on(); frame();
+    project_load(1);                                     /* M02 */
+    gl.mode = GM_JOURNEY; gl.target = GT_BOTH; gl.time = 4u; gl.wait = 2u; gl.on = gl.armed = 0;
+    song.sel = 0; SEL_BOTH = 0;
+    song.master_q12 = 2048;                              /* (MASTER at its default position, main.c) */
+    morph_do(MQ_FADER, 1u, fader); frame();
+    transport_req = 1u; run(48);                         /* (PLAY, TIDE idle; C3 E3 G3 held) */
+    fm1_in.notes = 0;
+    for (uint32_t k = 0; k < 27u; k++)                   /* (the keys, as a player holds them) */
+        if (kb_map(&trk[0], k) == 60u || kb_map(&trk[0], k) == 64u || kb_map(&trk[0], k) == 67u)
+            fm1_in.notes |= 1u << k;
+    run(4000);
+    to0 = morph_to_of(0, 1u); s0 = mph[0].seed[1][mph[0].top[1]];
+    tide_knob(0u, 1); tide_knob(0u, 1);                  /* K1: JOURNEY GLIDE TO B */
+    for (i = 0; i < 2000u && blocks < J2_BLOCKS; i++) {       /* (the launch bar, from its downbeat) */
+        int32_t out[2 * CTL];
+        acc += (uint32_t)FS * 16u;
+        while (acc >= 1000u * CTL) {
+            acc -= 1000u * CTL;
+            memset(out, 0, sizeof out); song.master_q12 = 2048;
+            mix_block(out, CTL);
+            if (!gl.armed && gl.on && blocks < J2_BLOCKS) {
+                for (uint32_t n = 0; n < CTL; n++) {
+                    int32_t x = out[2u * n], d = x - 2 * p1 + p2;
+                    double a = d < 0 ? -(double)d : (double)d;
+                    if (a > worst) worst = a;
+                    if (fabs((double)x) > pk) pk = fabs((double)x);
+                    p2 = p1; p1 = x;
+                }
+                blocks++;
+            } else
+                p2 = p1 = out[2u * (CTL - 1u)];
+        }
+        frame();
+    }
+    to1 = morph_to_of(0, 1u); s1 = mph[0].seed[1][mph[0].top[1]];
+    if (getenv("J2_V")) printf("J2v fader %u playing %u on %u armed %u blocks %u i %u pk %.0f worst %.0f\n", (unsigned)fader, song.playing, gl.on, gl.armed, (unsigned)blocks, (unsigned)i, pk, worst);
+    *kept = to0 == to1 && s0 == s1;
+    fm1_in.notes = 0;
+    glide_stop(); transport_req = 2u; run(48);
+    return worst > 0 ? 20.0 * log10(worst / 4194304.0) : -200.0;
+}
+static void test_journey_away_from_a(void)
+{
+    int k0, k100;
+    char l[120];
+    double w0 = j2_launch(0u, &k0), w100 = j2_launch(100u, &k100);
+    snprintf(l, sizeof l, "J2: JOURNEY from fader 100 keeps End B in the launch bar");
+    CHECK(l, k100);
+    snprintf(l, sizeof l, "J2: worst second difference in the launch bar: fader 100 %.1f dBFS, fader 0 %.1f dBFS (within 6 dB)", w100, w0);
+    printf("%s\n", l);
+    CHECK(l, w100 <= w0 + 6.0);
+    CHECK("J2: from fader 0 JOURNEY still picks End B at the launch", !k0);
 }
 
 int main(void)
@@ -640,7 +935,13 @@ int main(void)
     test_seq_rule();
     test_seq_ghost();
     test_seq_ghost_chord();
+    test_hold_ghost();
     test_settings_flicker();
+    test_hand_returns();
+    test_page1_no_hold();
+    test_journey_away_from_a();
+    test_oct_used();
+    test_tap_jump();
     printf("tidecontrols: %u checks, %u failures\n", checks, failures);
     return failures ? 1 : 0;
 }

@@ -445,6 +445,7 @@ static int pt_sv(uint32_t c, const uint8_t *img, uint32_t len)
 
 /* ---- the directory ---- */
 static uint32_t pt_rgen __attribute__((section(".pool")));            /* +1 whenever the chunks change: the read records (pt_raw) are stale */
+static uint32_t pt_stale __attribute__((section(".pool")));           /* b7 (review E3): bit c, chunk c holds a record the directory does not point to (a move cut short): rewritten before the next write (pt_stale_fix) */
 static void pt_dir_chunk_out(uint32_t c)         /* the records of chunk c out of the directory */
 {
     uint32_t k;
@@ -484,6 +485,8 @@ static void pt_scan_img(uint32_t c, const uint8_t *img, uint32_t len)
         if (pt_rec_ok(p, rl)) {
             e = &pt_dir[p[2]];
             if (e->ch == PT_NOCH || (uint8_t)(p[3] - e->rev) - 1u < 127u) {
+                if (e->ch != PT_NOCH && e->ch != c)
+                    pt_stale |= 1u << e->ch;             /* (the older one's chunk) */
                 e->off = (uint16_t)off;
                 e->len = (uint16_t)rl;
                 e->ch = (uint8_t)c;
@@ -491,7 +494,8 @@ static void pt_scan_img(uint32_t c, const uint8_t *img, uint32_t len)
                 e->eng = p[5];
                 e->cat = p[6];
                 memcpy(e->name, p + 7, 12);
-            }
+            } else if (e->ch != c)
+                pt_stale |= 1u << c;                     /* (an older one here) */
         }
         off += rl;
     }
@@ -499,6 +503,7 @@ static void pt_scan_img(uint32_t c, const uint8_t *img, uint32_t len)
 static void pt_scan_all(void)                    /* the directory again from all chunks (boot, a restore, after a failed write) */
 {
     uint32_t c, k;
+    pt_stale = 0;
     for (k = 0; k < UP_SLOTS; k++)
         pt_dir[k].ch = PT_NOCH;
     for (c = 0; c < PT_NCH; c++) {
@@ -916,9 +921,22 @@ static int pt_write(uint32_t c, uint32_t skip, uint32_t n)
         return 2;
     }
     pt_dir_chunk_out(c);
+    pt_stale &= ~(1u << c);
     pt_scan_img(c, pt_work, (uint32_t)w);
     pt_tally();
     return rc;
+}
+/* b7 (review E3): each chunk holding a record the directory does not point to (a move cut short by a power cut) is written again with its own
+ * records only, before the next write of the store: a RESTORE or a new save of that slot can no longer lose to the stale one at power-on */
+static void pt_stale_fix(void)
+{
+    uint32_t c;
+    while (pt_stale) {
+        c = (uint32_t)__builtin_ctz(pt_stale);
+        pt_stale &= pt_stale - 1u;
+        if (pt_write(c, UP_SLOTS, 0) == 2)
+            break;
+    }
 }
 /* slot k = r (+ pk), or its record removed (r 0: RESTORE, the factory sound is back), in the chunks and in flash: 0 ok, 2 flash error
  * (nothing changed), 3 no flash (kept in RAM), PT_FULL no room (TIDE: the 127th new record; else a guard only) */
@@ -946,6 +964,7 @@ static int pt_put_enc(uint32_t k, uint32_t n)
 }
 static int pt_put(uint32_t k, const up_rec_t *r, const uint8_t *pk)
 {
+    pt_stale_fix();
     if (!r) {                                    /* erase */
         if (pt_dir[k].ch == PT_NOCH)
             return pt_idle();
@@ -981,6 +1000,7 @@ static int up_put_raw(uint32_t k, const uint8_t *rec, uint32_t n)
         ui_message("STOP TO SAVE");
         return 2;
     }
+    pt_stale_fix();
     rc = pt_put_enc(k, n);
     if (rc == 2 || rc == PT_FULL)
         return rc;
@@ -1008,7 +1028,7 @@ static uint32_t up_raw_get(uint32_t k, uint8_t *out)
 static int pt_wipe(uint32_t c)
 {
     int rc;
-    if (!pt_n[c])
+    if (!pt_n[c] && !((pt_stale >> c) & 1u))      /* (b7: a chunk holding only a stale record is wiped too) */
         return pt_idle();
     pt_work[0] = (uint8_t)PT_MAGIC;
     pt_work[1] = (uint8_t)(PT_MAGIC >> 8);
@@ -1019,6 +1039,7 @@ static int pt_wipe(uint32_t c)
         return 2;
     }
     pt_dir_chunk_out(c);
+    pt_stale &= ~(1u << c);
     pt_tally();
     return rc;
 }
@@ -1303,24 +1324,35 @@ static int up_load(uint32_t k)
     t->user = (uint8_t)(k + 1u);
     {   /* ROLL CHAINED storage: End B saved with it, as values (morph.c MBV): a copy, as the read ring moves on during the load */
         uint8_t bv[MBV_MAX];
-        const uint8_t *p = pt_raw(k);
-        uint32_t xbo, mb, pr, pat, fm, n;
-        memset(bv, 0, sizeof bv);
-        morph_ldv = 0;
-        if (p && (p[4] & PTF_MB)) {
-            pt_layout(p, &xbo, &mb, &pr, &pat, &fm);
-            n = mb < pt_rd16(p) ? morph_bv_size(p + mb, pt_rd16(p) - mb, p[5]) : 0u;
-            if (n && n <= MBV_MAX) {
-                memcpy(bv, p + mb, n);
-                morph_ldv = bv;
-            }
-        }
+        morph_ldv = up_ldv(k, bv);
         load_end(t);
         morph_ldv = 0;
     }
     sync_reload = 1;
     ui.force = 1;
     return 0;
+}
+
+/* End B saved with record k (ROLL CHAINED storage, an MBV block) copied into bv (MBV_MAX bytes): what morph_ldv takes for the next rebase; 0 = none saved */
+static const uint8_t *up_ldv(uint32_t k, uint8_t *bv)
+{
+    const uint8_t *p = pt_raw(k);
+    uint32_t xbo, mb, pr, pat, fm, n;
+    memset(bv, 0, MBV_MAX);
+    if (!p || !(p[4] & PTF_MB))
+        return 0;
+    pt_layout(p, &xbo, &mb, &pr, &pat, &fm);
+    n = mb < pt_rd16(p) ? morph_bv_size(p + mb, pt_rd16(p) - mb, p[5]) : 0u;
+    if (!n || n > MBV_MAX)
+        return 0;
+    memcpy(bv, p + mb, n);
+    return bv;
+}
+/* b7 (review C2): a part given back a stored USER record without a load (the load UNDO, AUTO TIDE's HOME) gets that record's own End B at the
+ * rebase, not a fresh roll: morph_ldv from the record (re-read: no RAM copy) */
+static void up_ldv_rec(const track_t *t, uint8_t *bv)
+{
+    morph_ldv = t->user && t->user <= UP_SLOTS ? up_ldv(t->user - 1u, bv) : 0;
 }
 
 /* the patterns of the user presets (no longer listed by SAVE > PATTERNS: its list is the sixteen slots; kept for tests) */
@@ -1600,6 +1632,20 @@ static uint32_t slot_home(const track_t *t)
     return r < UP_SLOTS ? r : 0u;
 #endif
 }
+/* SAVE with BOTH: part pi's slot. Two sounds from the read-only places both resolve to the first empty USER slot: part 2 takes the next
+ * empty one (b7, review D3); none free: the same slot (the ask says so) */
+static uint32_t slot_both(uint32_t pi)
+{
+    uint32_t a = slot_home(&trk[0]), b = slot_home(&trk[1]);
+#if UP_NUSER
+    uint32_t k;
+    if (pi && a == b && slot_of(&trk[1]) >= UP_SLOTS)
+        for (k = a + 1u; k < UP_USER0 + UP_NUSER; k++)
+            if (!up_used(k))
+                return k;
+#endif
+    return pi ? b : a;
+}
 
 /* ---- SAVE (hold SAVE, ui_input.c patch_save_ask) ---- */
 _Static_assert(UP_MB_N == MB_N, "morph.c MB_N");
@@ -1612,13 +1658,27 @@ static void up_adopt(uint32_t pi, uint32_t k)    /* part pi's sound was written 
  * has none (INIT) gets the engine's automatic name. Its category: the sound's. The record carries End B (morph block), the arp / keys /
  * SEQ pattern (AK block) and an FM6 sound's patch. 0 saved, else up_put's result */
 static uint8_t both_names;                       /* 1 while both parts are saved at once: the dialog's RENAME does not apply */
+/* part pi's End B as its values (ROLL CHAINED storage), against the Original the record stores (the values set by hand and their marks in it):
+ * up_bv_in / up_bv_n for the next up_store / up_store_trk; the caller clears them after. The device's SAVE and the editor's UP_STORE (b7, review E1) */
+static void up_bv_take(uint32_t pi, uint8_t *bv)
+{
+    track_t *t = &trk[pi];
+    int16_t ref[EXT_P_LEN];
+    uint32_t i;
+    (void)morph_ready(pi);
+    memset(ref, 0, sizeof ref);
+    for (i = 0; i < P_COUNT; i++)
+        ref[i] = motion_base_value(t, i);
+    for (i = 0; i < NX; i++)
+        ref[XW_BASE + i] = (int16_t)clamp(XV(t, i), -64, 127);
+    up_bv_n = morph_bv_make(pi, ref, bv);
+    up_bv_in = up_bv_n ? bv : 0;
+}
 static int up_patch_save_part(uint32_t pi, uint32_t k)
 {
     track_t *t = &trk[pi];
     uint8_t bv[MBV_MAX];
-    int16_t ref[EXT_P_LEN];
     char nm[16];
-    uint32_t i;
     int rc;
     if (k >= UP_SLOTS)
         return 1;
@@ -1630,14 +1690,7 @@ static int up_patch_save_part(uint32_t pi, uint32_t k)
         str_cpy(nm, ds_name(t->eng_req % NENGINES, t->preset), 13);
     if (!nm[0] || str_eq(nm, "INIT"))
         up_auto_name(nm, t->eng_req, k);
-    (void)morph_ready(pi);                              /* ROLL CHAINED storage: End B as its values, against the Original the record stores (the values set by hand and their marks in it) */
-    memset(ref, 0, sizeof ref);
-    for (i = 0; i < P_COUNT; i++)
-        ref[i] = motion_base_value(t, i);
-    for (i = 0; i < NX; i++)
-        ref[XW_BASE + i] = (int16_t)clamp(XV(t, i), -64, 127);
-    up_bv_n = morph_bv_make(pi, ref, bv);
-    up_bv_in = up_bv_n ? bv : 0;
+    up_bv_take(pi, bv);
     rc = up_store_trk(t, k, nm, 0);
     up_bv_in = 0;
     up_bv_n = 0;
@@ -1657,7 +1710,7 @@ static void patch_save_do(uint32_t both)
     }
     both_names = (uint8_t)both;
     for (pi = first; pi < end && !rc; pi++, n++)
-        rc = up_patch_save_part(pi, both ? slot_home(&trk[pi]) : ui.svs % UP_SLOTS);
+        rc = up_patch_save_part(pi, both ? slot_both(pi) : ui.svs % UP_SLOTS);
     both_names = 0;
     save_nm[0] = 0;
     up_slot_label(l, ui.svs % UP_SLOTS);

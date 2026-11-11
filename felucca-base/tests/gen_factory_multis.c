@@ -32,6 +32,7 @@ typedef struct {
     uint8_t len;
     uint16_t bseed;                              /* End B: 0 the sound's own; else rolled again with this seed (the sound's AMOUNT) */
     uint8_t amt;                                 /* 0.2.13: 0 the sound's AMOUNT; else End B rolled at this AMOUNT (%) and the part's AMOUNT set to it */
+    int16_t bset[40];                            /* reel (2026-11-10): End B values set by hand after the roll, (P_ id, value) pairs, END-terminated: morph.c morph_b_set, what a player does at the B end of the fader */
 } part_t;
 typedef struct {
     const char *name;
@@ -59,8 +60,8 @@ static const char *step_tail(step_t *st, const char *s)
         if (v < 1 || v > 127) { fprintf(stderr, "velocity %d out of 1..127\n", (int)v); exit(1); }
         st->vel = (uint8_t)v;
     }
-    for (; *s == 'A'; s++)
-        st->flags |= SF_ACCENT;
+    for (; *s == 'A' || *s == 'S'; s++)                 /* (reel, 2026-11-10: S a slide into the next step: a plain pattern on a MONO / LEGATO sound glides, seq.c seq_step) */
+        st->flags |= *s == 'A' ? SF_ACCENT : SF_SLIDE;
     return s;
 }
 
@@ -142,13 +143,16 @@ static void build(const multi_t *m)
         }
         for (i = 0; p->set[i] != END; i += 2u) {
             uint32_t id = (uint32_t)p->set[i];
-            if (id == P_M8SRC && t->p[P_M8SRC]) {
-                fprintf(stderr, "%s part %u: matrix slot 8 is the sound's own\n", m->name, k + 1u);
+            if (mod_is_src(id) && t->p[id] && t->p[id + 1u] && t->p[id + 2u]) {   /* (reel: any slot, not only the eighth; a slot with no destination or no amount does nothing and is free) */
+                fprintf(stderr, "%s part %u: that matrix slot is the sound's own\n", m->name, k + 1u);
                 exit(1);
             }
             t->p[id] = p->set[i + 1u];
         }
         parse_steps(t, p->steps, p->len);
+        for (i = 0; p->set[i] != END; i += 2u)           /* (reel: a multi may set its plain pattern's DIV; parse_steps wrote 1/16) */
+            if (p->set[i] == P_SDIV)
+                t->p[P_SDIV] = p->set[i + 1u];
     }
     for (k = 0; k < 2u; k++)
         if (m->p[k].bseed || m->p[k].amt) {
@@ -157,6 +161,15 @@ static void build(const multi_t *m)
             morph_roll_cfg(k, 1u, m->p[k].bseed ? m->p[k].bseed : (uint32_t)(blk[1] | blk[2] << 8), m->p[k].amt ? m->p[k].amt : blk[3], blk[4]);
             if (m->p[k].amt)
                 morph_ready(k)->amount = m->p[k].amt;   /* (the record's AMOUNT byte and the block's knob byte) */
+        }
+    for (k = 0; k < 2u; k++)
+        for (i = 0; m->p[k].bset[i] != END; i += 2u) {   /* (reel: the designed End B, value by value) */
+            morph_part_t *mp = morph_ready(k);
+            uint32_t id = (uint32_t)m->p[k].bset[i];
+            if (!morph_editable(mp, id, 0) || morph_b_set(k, id, m->p[k].bset[i + 1u])) {
+                fprintf(stderr, "%s part %u: End B cannot hold value id %u (not a morphed value, or more than the hand-set list holds)\n", m->name, k + 1u, id);
+                exit(1);
+            }
         }
     for (i = 0; m->g[i] != END; i += 2u)
         song.g[m->g[i]] = m->g[i + 1u];

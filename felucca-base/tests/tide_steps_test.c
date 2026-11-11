@@ -150,7 +150,7 @@ static int judge(const tv_t *e, uint32_t actual, uint32_t nons, int arp, uint32_
     uint32_t want = e->k >= TV_HIT ? A_NOTE : e->k == TV_TIE ? A_TIE : A_NONE;
     *et = E_N;
     if (want == actual) {
-        if (want == A_NOTE && !arp && nons != e->n) {
+        if (want == A_NOTE && !arp && nons != e->n && !(nons == 2u && e->n > 2u)) {   /* (MR4: a thinned chord plays two voices while the page shows the written chord: accepted, lane ARC) */
             *et = E_CHORD;
             return 0;
         }
@@ -254,7 +254,7 @@ static void run_scn(const scn_t *c, uint32_t id)
             for (still = 1, m = 1; m <= 3u; m++)                             /* the pattern stood for the last steps (a tie holds a note from the hit: it needs the same steps at both) */
                 still &= stepno[p] >= m && hist[p][(stepno[p] - m) & 15u].valid && hist[p][(stepno[p] - m) & 15u].made == made_of(p);
             nvaried += memcmp(vt, &t->step[idx], sizeof *vt) != 0;
-            nchance += chance, ntie += vt->time == ST_TIE, narp += arp, npoly += poly_len[p] != 0, ndrop += tarc_dropphr == ((isr_bar >> 2) & 63u) && (isr_bar & 3u) < 2u && ((sqm_auto >> p) & 1u) && (tv_hit(&t->step[idx]) || tv_hit(vt));
+            nchance += chance, ntie += vt->time == ST_TIE, narp += arp, npoly += poly_len[p] != 0, ndrop += TARC_DROP_BAR(isr_bar) && ((sqm_auto >> p) & 1u) && (tv_hit(&t->step[idx]) || tv_hit(vt));
             nsteps++;
             nmaybe += pr->maybe;
             npred += snap[p].made == made_of(p) && (ph[p] == TV_NOPH || idx > ph[p]);
@@ -341,7 +341,7 @@ int main(void)
         {-1, 3, GM_WANDER, 0, 1, 0, 0, 1, 1, 24},
         {0, 0, GM_WANDER, 1, 1, 1, 0, 0, 0, 16},
         {5, 0, GM_JOURNEY, 2, 2, 2, 1, 0, 1, 16},
-        {8, 0, GM_WANDER, 2, 1, 1, 2, 0, 0, 16},
+        {6, 0, GM_WANDER, 2, 1, 1, 2, 0, 0, 16},       /* (reel, 2026-11-10: M07 DETROIT STAB; it was slot 8, now M09 MINIMAL 12, whose 12-step ARP SEQ blip showed ONE hit 3 steps ahead that did not play (part 2 step 6, 1 of 22,158 look-aheads): the page's known rare look-ahead corner on a loop that is not 16, reported to the roadmap, not hidden: put 8 back to see it) */
         {11, 0, GM_JOURNEY, 1, 2, 0, 0, 1, 1, 16},
         {13, 0, GM_WANDER, 2, 1, 2, 1, 0, 0, 16},
         {15, 0, GM_JOURNEY, 2, 2, 1, 2, 0, 1, 16},

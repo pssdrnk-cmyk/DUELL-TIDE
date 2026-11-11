@@ -113,7 +113,8 @@ static int no_k3(void)
 }
 #endif
 #if DUELL_TIDE
-/* TIDE: TIDE SETTINGS is in MORPH SET's place, a list (tide_ui.c): K1 the row, OCT+ the next value, OCT- the one before; SMART / ARP / PITCH are its ROLL, ARP, PITCH */
+/* TIDE: TIDE SETTINGS is in MORPH SET's place, a list (tide_ui.c): K1 the row, OCT+ the next value, OCT- the one before; SMART is its ROLL TYPE; ARP and PITCH have
+ * no row since 1.0.0-b7 (MR8): their switches are set as a learned CC sets them (mset_cfg) */
 #define MORPH_SET_TITLE "TIDE SETTINGS"
 static void mset_row(uint32_t r) { turn(EN_K1, -8); if (r) turn(EN_K1, (int32_t)r); }
 static void mset_put(uint32_t r, uint32_t v)            /* row r to its value v: OCT- to the first, then OCT+ v times */
@@ -126,6 +127,7 @@ static void mset_put(uint32_t r, uint32_t v)            /* row r to its value v:
         press(B_OCTUP);
     frame();
 }
+static void mset_cfg(uint32_t kind, uint32_t v) { morph_act(kind, morph_mask(song.sel), v, song.sel); frame(); }   /* (MQ_ARP / MQ_PITCH: the morph's own switch) */
 #else
 #define MORPH_SET_TITLE "MORPH SET"
 #endif
@@ -153,6 +155,39 @@ static void fresh(void)
     ui_power_on();
     frame();                                            /* (morph_settings: the defaults read) */
 }
+#if DUELL_TIDE
+/* 1.0.0-b7: the MORPH page's knobs 2..4 are FILTER, ECHO, LENGTH; ROLL is gone from it (a new End B is OCT+ held + K1, End A has no page gesture) and AMOUNT
+ * is a TIDE SETTINGS row. The older checks below still turn K2 for a ROLL and K4 for AMOUNT on the MORPH page: on it they reach those through what the page
+ * offers now (t_home1 checks the page's own knobs): K2 left a ROLL of A (MIDI's ROLL A, the same action), right OCT+ held + K1; K4 AMOUNT as the row does it,
+ * from the selected part's value onto the selection; K3 nothing (as before) */
+static void turn_ui(uint32_t role, int32_t s) { turn(role, s); }
+static void turn_old(uint32_t role, int32_t s)
+{
+    if (!s || ui.layer || ui.perf || cur_page()->graph != GR_MORPH || (role != EN_K2 && role != EN_K3 && role != EN_K4)) {
+        turn_ui(role, s);
+        return;
+    }
+    if (role == EN_K2) {
+        if (s > 0) {
+            btn_down(B_OCTUP); frame();
+            turn_ui(EN_K1, 1);
+            btn_up(B_OCTUP); frame();
+        } else {
+            morph_act(MQ_ROLL, morph_mask(song.sel), 0u, song.sel);
+            frame();
+        }
+    } else if (role == EN_K4) {
+        morph_act(MQ_AMOUNT, morph_mask(song.sel), (uint32_t)clamp((int32_t)morph_amount_of(song.sel) + s, 0, 100), song.sel);
+        frame();
+    } else
+        frame();
+    host_ticks += 200000u;
+}
+#define turn turn_old
+#define K1F(n) ((n) * 2)                                 /* (1.0.0-b7: two fader steps a detent) */
+#else
+#define K1F(n) (n)
+#endif
 
 /* ------------------------------------------------------------------ ROUND --- */
 static void t_round(void)
@@ -362,6 +397,20 @@ static void t_editb(void)
     expect("a patch saved with values set by hand: loading it gives A as saved, End B exactly as saved and the same two values, the fader at A",
            ok && trk[0].user == sl + 1u && mph[0].fader == 0u && !memcmp(pa, trk[0].p, sizeof pa) && endb_same(mph[0].eng, b0, endp(0, 1)) && morph_edits(0, ed) == 2u &&
            pin_get(morph_pins(&mph[0]), P_ATK) && pin_get(morph_pins(&mph[0]), P_SUS));
+    /* b7 (review C2): another sound, then the load UNDO: the USER patch back with its own End B and the two values; AUTO TIDE's HOME the same */
+    turn(EN_PRESET, -1);
+    frames(32);
+    undo_swap();
+    frames(32);
+    expect("the load UNDO back to the saved USER patch: End B exactly as saved and its two values (not a fresh roll)",
+           trk[0].user == sl + 1u && endb_same(mph[0].eng, b0, endp(0, 1)) && morph_edits(0, ed) == 2u &&
+           pin_get(morph_pins(&mph[0]), P_ATK) && pin_get(morph_pins(&mph[0]), P_SUS));
+#if DUELL_TIDE
+    tide_home(1u);
+    frames(32);
+    expect("AUTO TIDE's HOME on the saved USER patch: End B exactly as saved and its two values",
+           trk[0].user == sl + 1u && endb_same(mph[0].eng, b0, endp(0, 1)) && morph_edits(0, ed) == 2u);
+#endif
     /* undo of loads (SAVE held), both orders */
     fresh();
     live_b();
@@ -405,9 +454,9 @@ static void t_knobs(void)
     fresh();
     morph_page();
     turn(EN_K1, 10);
-    expect("KNOB 1: the selected part's fader (10), the other part's stays (SELECTED)", mph[0].fader == 10u && mph[1].fader == 0u);
+    expect("KNOB 1: the selected part's fader (10; TIDE 20: two steps a detent), the other part's stays (SELECTED)", mph[0].fader == K1F(10u) && mph[1].fader == 0u);
     turn(EN_K1, -3);
-    expect("KNOB 1 left: the fader back (7)", mph[0].fader == 7u);
+    expect("KNOB 1 left: the fader back (7; TIDE 14)", mph[0].fader == K1F(7u));
     turn(EN_K1, -100);
     expect("KNOB 1 clamps at 0 (A)", mph[0].fader == 0u);
     frame();
@@ -430,8 +479,9 @@ static void t_knobs(void)
     {   /* b6: MORPH on the knob-1 line; KNOB 2 and 4 on the slim row: ROLL A<>B, AMOUNT with its value and no bar; nothing for KNOB 3 */
         char pc[12];
         snprintf(pc, sizeof pc, "%s%%", amt_txt);
-        expect("  .. the controls in v3's order: MORPH A, then the row: ROLL A<>B, AMOUNT with its value and no bar (KNOB 4; b6); nothing else in the row, no KNOB 3 (1.0.0-b5: no UNDO)",
-               card_is(0, "MORPH", "A") && mrow_has("ROLL") && mrow_has("A<>B") && mrow_has("AMOUNT") && mrow_has(pc) && !mrow_bar(pc) && mrow_only("A<>B", pc) && no_k3());
+        (void)pc;
+        expect("  .. 1.0.0-b7: MORPH A on the knob-1 line, then the row: FLT, ECHO, LEN; no ROLL, no AMOUNT (a TIDE SETTINGS row now)",
+               card_is(0, "MORPH", "A") && mrow_has("FLT") && mrow_has("ECHO") && mrow_has("LEN") && !mrow_has("ROLL") && !mrow_has("AMOUNT"));
     }
 #else
     expect("  .. the cards in v3's order: MORPH, ROLL, an empty KNOB 3 (1.0.0-b5: no UNDO), AMOUNT (KNOB 4)", card_is(0, "MORPH", "A") && card_is(1, "ROLL", "A<>B") &&
@@ -480,12 +530,12 @@ static void t_knobs(void)
      * morph's selector there (PART 1, BOTH, PART 2: tide_ui.c) */
     go_title(MORPH_SET_TITLE);
     frames(32);
-    mset_put(JL_ROLL, 2u); mset_put(JL_ARP, 1u); mset_put(JL_PITCH, 1u);
-    expect("ROLL WILD, ARP ON, PITCH ON on TIDE SETTINGS (TIDE's list: K1 the row, OCT+ the value; the settings bits)",
+    mset_put(JL_ROLL, 2u); mset_cfg(MQ_ARP, 1u); mset_cfg(MQ_PITCH, 1u);
+    expect("ROLL WILD on TIDE SETTINGS (TIDE's list: K1 the row, OCT+ the value), ARP ON, PITCH ON (no rows: a learned CC); the settings bits",
            morph.cfg == (MC_WILD | MC_ARP | MC_PIT) && favorites.factory[15][8] == 7u);
     {
         uint32_t c = morph.cfg, t = SEL_BOTH;
-        jl_sel = JL_VARY;                                /* (audit C12: K2..K4 turn the picked row's value, here one that is not the morph's) */
+        jl_sel = JL_REC;                                 /* (audit C12: K2..K4 turn the picked row's value, here one that is not the morph's) */
         turn(EN_K2, 1); turn(EN_K3, -1); turn(EN_K4, 1); turn(EN_K4, -1);
         frame();
         expect("  .. KNOB 2..4: the picked row's value, not the morph's (no card on the list)", morph.cfg == c && SEL_BOTH == t);
@@ -493,7 +543,7 @@ static void t_knobs(void)
     turn(EN_ALGO, 1);
     expect("  .. ALGORITHM on TIDE SETTINGS: BOTH next (TIDE: the morph's selector, as on MORPH)", song.sel == 0u && SEL_BOTH);
     turn(EN_ALGO, -1);
-    mset_put(JL_ROLL, 0u); mset_put(JL_ARP, 0u); mset_put(JL_PITCH, 0u);
+    mset_put(JL_ROLL, 0u); mset_cfg(MQ_ARP, 0u); mset_cfg(MQ_PITCH, 0u);
     expect("  .. and back: MUSIC (TIDE's default: SMART with the musical dials), ARP OFF, PITCH OFF (the defaults)", !morph.cfg && !favorites.factory[15][8]);
 #else
     /* MORPH SET (0.2.9): SMART, ARP, PITCH, KNOB 4 empty; no TARGET card (ALGORITHM's BOTH on the MORPH page is the target) */
@@ -530,6 +580,12 @@ static void t_gesture(void)
     turn(EN_K3, 2);
     expect("KNOB 3 (no job since 1.0.0-b5): no roll of either end", rolls(0, 1) == 2u && rolls(0, 0) == 1u);
     settle();
+#if DUELL_TIDE
+    turn_ui(EN_K2, -1);
+    turn_ui(EN_K2, 1);
+    expect("1.0.0-b7: KNOB 2 is FILTER: no roll of either end", rolls(0, 1) == 2u && rolls(0, 0) == 1u);
+    (void)i;
+#else
     turn(EN_K2, -1);
     expect("KNOB 2 ROLL: ONE detent left rolls A at once", rolls(0, 0) == 2u && rolls(0, 1) == 2u && msg_is("ROLLED A"));
     for (i = 0; i < 20u; i++)
@@ -541,6 +597,7 @@ static void t_gesture(void)
     settle();
     turn(EN_K2, 1);
     expect("ONE detent right rolls B at once", rolls(0, 1) == 3u && rolls(0, 0) == 3u && msg_is("ROLLED B"));
+#endif
 }
 
 /* ---------------------------------------------------------------- KNOB 3 --- */
@@ -555,22 +612,7 @@ static void t_far(void)                                  /* (1.0.0-b5: UNDO's ch
     frame();
     frame();
 #if DUELL_TIDE
-    expect("KNOB 3 at rest: nothing on the page for it (b6: no card row; the slim row shows ROLL A<>B and AMOUNT only)", no_k3() && mrow_has("A<>B"));
-    turn(EN_K3, -1);
-    frame();
-    expect("a KNOB 3 twist left building up: still nothing for it, ROLL not moved (A<>B)", no_k3() && mrow_has("A<>B"));
-    {   /* the row shows a KNOB 2 twist's way while it builds (ui_input.c morph_pending; set directly: on TIDE one detent rolls at once, so no roll is made here) */
-        const int32_t acc = ui.mg.acc[0];
-        const uint8_t fired = ui.mg.fired[0];
-        ui.mg.acc[0] = -1; ui.mg.fired[0] = 0; ui.mg.t[0] = fm1_ms;
-        frame();
-        expect("  .. a KNOB 2 twist left building up: the row's ROLL shows <A", mrow_has("<A") && !mrow_has("A<>B"));
-        ui.mg.acc[0] = 1; ui.mg.t[0] = fm1_ms;
-        frame();
-        expect("  .. a twist right building up: B>", mrow_has("B>") && !mrow_has("A<>B"));
-        ui.mg.acc[0] = acc; ui.mg.fired[0] = fired;
-        frame();
-    }
+    expect("1.0.0-b7: the slim row shows ECHO for KNOB 3, no ROLL", mrow_has("ECHO") && !mrow_has("ROLL"));
 #else
     expect("KNOB 3's card at rest: empty", card_is(2, "", ""));
     turn(EN_K3, -1);
@@ -594,11 +636,11 @@ static void t_target(void)
     morph_page();
     turn(EN_ALGO, 1);
     expect("ALGORITHM on MORPH (0.2.9: PART 1, BOTH, PART 2): right is BOTH, both badges, part 1 still selected",
-           SEL_BOTH && song.sel == 0u && badge_lit() == 3u && msg_is("BOTH"));
-    turn(EN_ALGO, 1);
+           SEL_BOTH && song.sel == 0u && badge_lit() == 3u && msg_is(ALGO_BOTH_SAY));
+    algo_turns(ALGO_TO_P2);                             /* */
     expect("ALGORITHM: part 2 selected", song.sel == 1u && !SEL_BOTH && badge_lit() == 2u);
     turn(EN_K1, 20);
-    expect("SELECTED: KNOB 1 now moves part 2's fader only", mph[1].fader == 20u && mph[0].fader == 0u);
+    expect("SELECTED: KNOB 1 now moves part 2's fader only", mph[1].fader == K1F(20u) && mph[0].fader == 0u);
     turn(EN_K2, -MORPH_DET);
     expect("SELECTED: ROLL A rolls part 2 only", rolls(1, 0) == 2u && rolls(0, 0) == 1u);
     settle();
@@ -615,8 +657,16 @@ static void t_target(void)
            seed_now(0, 0) == seed_now(1, 0) && seed_now(0, 0) == morph.seed);
     expect("  .. each part from its own Original (the ends differ)", memcmp(mph[0].h[0][mph[0].top[0]], mph[1].h[0][mph[1].top[0]], P_COUNT) != 0);
     settle();
+#if DUELL_TIDE
+    {   /* 1.0.0-b7: each part from its own fader by the same steps */
+        uint32_t g0 = mph[0].fader, g1 = mph[1].fader;
+        turn(EN_K1, 10);
+        expect("BOTH: KNOB 1 moves each fader from where it is by the same steps (1.0.0-b7)", g0 != g1 && mph[0].fader == g0 + 20u && mph[1].fader == g1 + 20u);
+    }
+#else
     turn(EN_K1, 30);
     expect("BOTH: KNOB 1 moves both faders together", mph[0].fader == 30u && mph[1].fader == 30u);
+#endif
     {
         uint32_t b0 = mph[0].amount;
         turn(EN_K4, -5);
@@ -669,7 +719,11 @@ static void t_midi(void)
     expect("CC 24 ch 2: unassigned, ignored (no KEEP any more)", rolls(1, 1) == 3u && !msg_is("KEPT >B"));
     cc(1, 24, 10); run();
     cc(1, 111, 127); run();
+#if TIDE_PLAYSEL
+    expect("CC 111 86..127: TARGET BOTH (1.0.0-b7: named as the play mode it lands on)", SEL_BOTH && msg_is(PLS_NAME[play_pos()]) && play_pos() != PLS_P1 && play_pos() != PLS_P2);
+#else
     expect("CC 111 86..127: TARGET BOTH", SEL_BOTH && msg_is("BOTH"));
+#endif
     cc(0, 20, 90); run();
     expect("BOTH: CC 20 on ch 1 moves both faders", mph[0].fader == 90u && mph[1].fader == 90u);
     cc(1, 20, 12); run();
@@ -829,7 +883,7 @@ static void t_load(void)
     morph_page();
     turn(EN_K2, -MORPH_DET); settle();
     turn(EN_K2, MORPH_DET); settle();
-    turn(EN_K1, 50);
+    turn(EN_K1, DUELL_TIDE ? 25 : 50);                  /* (TIDE: 25 detents, two steps each) */
     expect("rolled: both ends differ from the Original, the fader at 50", !end_is_base(0, 0) && !end_is_base(0, 1) && mph[0].nid &&
            mph[0].fader == 50u);
     am0 = mph[0].amount;
@@ -873,14 +927,109 @@ static void t_amount_keep(void)
         frames(32);
         expect("a factory multi load keeps both parts' AMOUNT", mph[0].amount == a0 && mph[1].amount == a1 && a0 != 15u);
     }
-    gl.on = 0;
-    expect("AMOUNT card not dimmed while no glide runs", !tide_amount_idle());
     gl.on = 3u;
     gl.mode = GM_JOURNEY;
-    expect("AMOUNT card dimmed while JOURNEY runs", tide_amount_idle());
-    gl.mode = GM_LOOP;
-    expect("  .. not in LOOP", !tide_amount_idle());
+    expect("1.0.0-b7: the AMOUNT row is not dim while JOURNEY runs (it still shapes a hand's roll)", !jl_dimmed(JL_AMOUNT));
     gl.on = 0;
+}
+/* the slim row (owner on the unit, 2026-11-10): every value each column can show, in every form (FM6's DX7 number and ENV SYNC's note values for LEN), fits its
+ * column: the name, 5 px, the widest value, then 12 px or more before the next column; the last ends by x 236 */
+static int h1_fits(void)
+{
+    int32_t w[3] = {0, 0, 0}, x;
+    uint32_t i, f, v, ok = 1;
+    char b[PV_LEN + 4];
+    for (i = 0; i < 3u; i++)
+        for (f = 0; f < 3u; f++) {
+            track_t t = trk[0];
+            const param_desc_t *d;
+            t.eng_req = f == 1u ? ENGI_FM6 : 0u;
+            t.p[P_ESYNC] = (int16_t)(f == 2u);
+            d = track_desc(&t, H1_ID[i]);
+            for (v = (uint32_t)d->min; v <= (uint32_t)d->max; v++) {
+                h1_val(i, &t, (int32_t)v, b);
+                w[i] = text_w(&AF_S, b) > w[i] ? text_w(&AF_S, b) : w[i];
+            }
+        }
+    for (i = 0; i < 3u; i++) {
+        x = H1_COL[i] + text_w(&AF_S, H1_L[i]) + 5 + w[i];
+        ok &= x + (i < 2u ? 12 : 0) <= (i < 2u ? H1_COL[i + 1u] : 236);
+        printf("morphui: row column %s: widest value %d px, ends at x %d\n", H1_L[i], w[i], x);
+    }
+    return (int)ok;
+}
+/* 1.0.0-b7 (owner 2026-11-10): the MORPH page is the hands-on page */
+static void t_home1(void)
+{
+    expect("the slim row: the widest value of FLT, ECHO and LEN fits its column, 12 px or more apart", h1_fits());
+    int32_t o;
+    uint32_t f0, s1;
+    int16_t c0, c1;
+    fresh();
+    morph_page();
+    SEL_BOTH = 0;
+    song.sel = 0;
+    morph_do(MQ_FADER, 3u, 0u);
+    turn_ui(EN_K1, 10);
+    expect("K1: two fader steps a detent (half the twisting)", mph[0].fader == 20u);
+    turn_ui(EN_K1, 60);
+    expect("  .. B reached exactly", mph[0].fader == 127u);
+    turn_ui(EN_K1, -64);
+    expect("  .. and A", mph[0].fader == 0u);
+    morph_do(MQ_FADER, 1u, 10u);
+    morph_do(MQ_FADER, 2u, 50u);
+    SEL_BOTH = 1;
+    turn_ui(EN_K1, 5);
+    expect("K1 with BOTH: each part from its own fader by the same steps", mph[0].fader == 20u && mph[1].fader == 60u);
+    morph_do(MQ_FADER, 3u, 0u);
+    trk[0].p[P_FREEA] = 40; trk[1].p[P_FREEA] = 60;
+    trk[0].p[P_REL] = 30; trk[1].p[P_REL] = 70;
+    trk[0].p[P_DLY] = 10; trk[1].p[P_DLY] = 20;
+    turn_ui(EN_K2, 3);
+    turn_ui(EN_K3, 2);
+    turn_ui(EN_K4, -4);
+    expect("K2 FILTER, K3 ECHO, K4 LENGTH with BOTH: each part by the same steps", trk[0].p[P_FREEA] == 43 && trk[1].p[P_FREEA] == 63 &&
+           trk[0].p[P_DLY] == 12 && trk[1].p[P_DLY] == 22 && trk[0].p[P_REL] == 26 && trk[1].p[P_REL] == 66);
+    SEL_BOTH = 0;
+    turn_ui(EN_K2, -3);
+    expect("  .. PART 1 alone moves part 1 only", trk[0].p[P_FREEA] == 40 && trk[1].p[P_FREEA] == 63);
+    mods_put(MODS_SENDS, 1u);
+    frame();
+    c0 = trk[0].p[P_DLY];
+    turn_ui(EN_K3, 5);
+    expect("ECHO with SENDS OFF: the knob does nothing, the row dims and says why", trk[0].p[P_DLY] == c0 && h1_echo_why() && str_eq(h1_echo_why(), "ECHO: SENDS OFF"));
+    mods_put(MODS_SENDS, 0u);
+    frame();
+    o = song.octave;
+    f0 = mph[0].fader;
+    s1 = seed_now(0, 1);
+    btn_down(B_OCTUP); frame();
+    turn_ui(EN_K1, -1);
+    turn_ui(EN_K1, -1);
+    btn_up(B_OCTUP); frames(64);
+    expect("OCT+ held + K1: End B a new roll, the fader stays, no octave on the release", seed_now(0, 1) != s1 && mph[0].fader == f0 && song.octave == o);
+    c0 = h1_orig[0][0];
+    c1 = h1_orig[0][2];
+    trk[0].p[P_FREEA] = (int16_t)(c0 > 10 ? c0 - 10 : c0 + 10);
+    trk[0].p[P_REL] = (int16_t)(c1 > 10 ? c1 - 10 : c1 + 10);
+    btn_down(B_OCTDN); frame();
+    turn_ui(EN_K2, 1);
+    turn_ui(EN_K4, 1);
+    btn_up(B_OCTDN); frames(64);
+    expect("OCT- + K2 / K4: FILTER and LENGTH back to the loaded sound's, no octave", trk[0].p[P_FREEA] == c0 && trk[0].p[P_REL] == c1 && song.octave == o);
+    morph_do(MQ_FADER, 1u, 90u);
+    frames(400);                                        /* (K1 at rest after the OCT+ roll: its further detents were swallowed for 300 ms) */
+    btn_down(B_OCTDN); frame();
+    turn_ui(EN_K1, 1);
+    btn_up(B_OCTDN); frames(64);
+    expect("OCT- + K1: back to the Original (the fader at A)", mph[0].fader == 0u);
+    /* (the glide is not held by K2..K4: tide_controls_test.c, where the transport plays) */
+    morph_do(MQ_AMOUNT, 1u, 20u);
+    morph_do(MQ_AMOUNT, 2u, 50u);
+    SEL_BOTH = 1;
+    jl_put(JL_AMOUNT, 30u);
+    expect("TIDE SETTINGS' AMOUNT row with BOTH: each part by the same steps", mph[0].amount == 30u && mph[1].amount == 60u && str_eq(JL_NAME[JL_AMOUNT], "AMOUNT") && JL_AMOUNT == JL_ROLL + 1u);
+    SEL_BOTH = 0;
 }
 #endif
 
@@ -1036,6 +1185,29 @@ static void t_save(void)
            ok_both && str_eq(ui.msg, "SAVED 1+2") && up_count() == 2u && trk[0].user != 0u && trk[1].user != 0u && trk[0].user != trk[1].user);
 }
 
+/* FR12 (b7, review D3): SAVE held with BOTH, both parts on sounds of the read-only places (no slot of their own): two USER slots, both saved */
+static void t_both_ro(void)
+{
+#if UP_NUSER
+    uint32_t e, p, n = 0, r;
+    int ok;
+    fresh();
+    for (e = 0; e < NENGINES && n < 2u; e++)
+        for (p = 0; p < ds_count(e) && n < 2u; p++)
+            if ((r = ds_list_rank(e, p)) >= UP_USER0 && r < UP_SLOTS + UP_NXTRA) {
+                trk[n].eng_req = (uint8_t)e; trk[n].preset = (uint8_t)p; trk[n].user = 0; n++;
+            }
+    morph_page();
+    SEL_BOTH = 1;
+    hold(B_SAVE);
+    ok = n == 2u && ui.confirm == CF_SAVE_OVER && ui.confirm_trk == 2u;
+    press(B_OCTUP);
+    expect("BOTH, two sounds of the read-only places: SAVE held asks for two USER slots; OCT+ saves both (SAVED 1+2)",
+           ok && str_eq(ui.msg, "SAVED 1+2") && up_count() == 2u && trk[0].user != trk[1].user);
+    SEL_BOTH = 0;
+#endif
+}
+
 /* ---------------------------------------------------------------- SETTINGS --- */
 static void power_cycle(void)                           /* the morph's RAM gone, the settings bytes kept (flash) */
 {
@@ -1055,12 +1227,12 @@ static void t_settings(void)
     morph_page();
     turn(EN_K4, 30 - (int)mph[0].amount);   /* (30: TIDE's MUSIC roll loads at 40 already, a turn to 40 would turn nothing) */
     turn(EN_ALGO, 1);
-    turn(EN_ALGO, 1);                                   /* (0.2.9: BOTH, then PART 2) */
+    algo_turns(ALGO_TO_P2);                             /* (0.2.9: BOTH, then PART 2) */
     turn(EN_K4, 5 - (int)mph[1].amount);
     turn(EN_ALGO, -1);                                  /* BOTH: not saved */
     go_title(MORPH_SET_TITLE); frames(32);
 #if DUELL_TIDE
-    mset_put(JL_ARP, 1u); mset_put(JL_PITCH, 1u);                 /* (ARP ON, PITCH ON) */
+    mset_cfg(MQ_ARP, 1u); mset_cfg(MQ_PITCH, 1u);                 /* (ARP ON, PITCH ON) */
 #else
     turn(EN_K2, 1);
     turn(EN_K3, 1);
@@ -1111,9 +1283,11 @@ int main(void)
     t_load();
 #if DUELL_TIDE
     t_amount_keep();
+    t_home1();
 #endif
     t_item154();
     t_save();
+    t_both_ro();
     t_settings();
     t_editb();
     printf("morphui: %d checks, %d failed\n", ncheck, bad);

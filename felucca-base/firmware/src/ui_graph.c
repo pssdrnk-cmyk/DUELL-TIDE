@@ -3115,7 +3115,7 @@ static void draw_graph(void)
         cv_oy = 0;
         graph_perf();
         break;
-#if !DUELL_TIDE                                      /* TIDE hook: MORPH SET is not in TIDE's round (TIDE LIST has SMART ARP PITCH) */
+#if !DUELL_TIDE                                      /* TIDE hook: MORPH SET is not in TIDE's round (TIDE LIST has ROLL TYPE) */
     case GR_MORPHSET:
         cv_oy = 0;
         graph_morphset();

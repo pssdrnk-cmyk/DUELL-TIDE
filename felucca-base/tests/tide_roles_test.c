@@ -94,21 +94,21 @@ static const char *const SN[5] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK"};
 /* slot (1..16), the multi's style and its neighbour (STY_*), the role of each part, the bass flag (a part may go under C3), the name */
 static const struct { uint8_t slot, style, near, role[2], bass; const char *name; } TR[16] = {
     { 1, STY_DUB,     STY_DEEP,    {R_SKANK, R_ATMOS}, 0, "BASIC CHORD"},
-    { 2, STY_DUB,     STY_DEEP,    {R_SKANK, R_BASS},  1, "DUB CHORD"},
-    { 3, STY_DUB,     STY_DEEP,    {R_BASS,  R_STAB},  1, "CELLAR TAPE"},
-    { 4, STY_DEEP,    STY_DUB,     {R_BASS,  R_SKANK}, 1, "NIGHT ORGAN"},
-    { 5, STY_DEEP,    STY_PEAK,    {R_SKANK, R_PAD},   0, "ORGAN SKANK"},
-    { 6, STY_DEEP,    STY_DUB,     {R_PROG,  R_MOTIF}, 0, "WARM ECHO"},
-    { 7, STY_MINIMAL, STY_PEAK,    {R_MOTIF, R_AIR},   0, "MINIMAL 12"},
-    { 8, STY_DUB,     STY_DEEP,    {R_SKANK, R_PAD},   0, "TINE DUB"},
-    { 9, STY_DEEP,    STY_DUB,     {R_STAB,  R_PAD},   0, "DEEP 332"},
-    {10, STY_AMBIENT, STY_DEEP,    {R_LIVE,  R_MOTIF}, 0, "PAD SPLIT"},
-    {11, STY_AMBIENT, STY_DEEP,    {R_DRONE, R_ARP},   0, "WHISPER TIDE"},
-    {12, STY_AMBIENT, STY_DEEP,    {R_DRONE, R_MOTIF}, 0, "TINE STRINGS"},
-    {13, STY_AMBIENT, STY_DEEP,    {R_DRONE, R_ARP},   0, "COLD CHAPEL"},
-    {14, STY_AMBIENT, STY_DEEP,    {R_LIVE,  R_ARP},   0, "EERIE SIGNAL"},     /* (part 1 is played from the keys: no steps) */
-    {15, STY_AMBIENT, STY_DEEP,    {R_BASS,  R_ARP},   1, "HAZY TENSOR"},
-    {16, STY_AMBIENT, STY_DEEP,    {R_PAD,   R_PROG},  0, "FINAL REEL"},
+    { 2, STY_DUB,     STY_DEEP,    {R_SKANK, R_PAD},   0, "DUB CHORD"},     /* (re-voiced: the stab over a held pad, no bass line) */
+    { 3, STY_DEEP,    STY_DUB,     {R_PAD,   R_BASS},  1, "JUNO DEEP"},        /* (reel, 2026-11-10: the fifteen new factory multis, tools/factory_multis.py; M02 the owner's DUB CHORD as before) */
+    { 4, STY_DEEP,    STY_DUB,     {R_STAB,  R_PAD},   0, "LATE RHODES"},
+    { 5, STY_DEEP,    STY_PEAK,    {R_MOTIF, R_SKANK}, 0, "ORGAN HOUSE"},
+    { 6, STY_PEAK,    STY_DEEP,    {R_STAB,  R_PAD},   0, "PIANO HOUSE"},
+    { 7, STY_PEAK,    STY_DEEP,    {R_STAB,  R_PAD},   0, "DETROIT STAB"},
+    { 8, STY_DEEP,    STY_PEAK,    {R_PROG,  R_MOTIF}, 0, "HI-TECH SOUL"},
+    { 9, STY_MINIMAL, STY_PEAK,    {R_STAB,  R_MOTIF}, 0, "MINIMAL 12"},
+    {10, STY_MINIMAL, STY_PEAK,    {R_MOTIF, R_DRONE}, 0, "SEVEN LOOP"},
+    {11, STY_MINIMAL, STY_PEAK,    {R_BASS,  R_MOTIF}, 1, "ACID LINES"},
+    {12, STY_MINIMAL, STY_PEAK,    {R_BASS,  R_PROG},  1, "ROBOT FUNK"},
+    {13, STY_PEAK,    STY_MINIMAL, {R_MOTIF, R_PROG},  0, "DEEP SEA ARP"},
+    {14, STY_AMBIENT, STY_DEEP,    {R_MOTIF, R_PROG},  0, "WARPED TAPE"},
+    {15, STY_DEEP,    STY_MINIMAL, {R_PULSE, R_PROG},  0, "BERLIN RUN"},
+    {16, STY_AMBIENT, STY_DEEP,    {R_AIR,   R_PAD},   0, "TWO LOOPS"},
 };
 /* density bounds per role: onsets a bar, averaged over a 4-bar window, as tenths (5 = 0.5) */
 static const struct { uint8_t lo, hi; } DENS[14] = {{0, 0}, {20, 60}, {5, 20}, {0, 10}, {10, 40}, {30, 80}, {5, 20}, {2, 10}, {60, 80}, {20, 50}, {10, 30}, {5, 10}, {10, 80}, {0, 0}};
@@ -159,7 +159,7 @@ static uint32_t chord_mask(const uint8_t *notes, uint32_t n)   /* the keys (fm1_
 static const uint8_t KEYS_MIN[3] = {60, 63, 67}, KEYS_MAJ[3] = {60, 64, 67};
 
 /* ---------------------------------------------------------------- one run: what the two parts play */
-#define NB_MAX 96
+#define NB_MAX 128
 typedef struct { uint32_t ons, expct; uint64_t played, visited; } bar_t;   /* a bar: onsets, steps started that are hits of the Original, the steps that sounded / started */
 typedef struct {
     int32_t seen_lo, seen_hi;                          /* the notes started, lowest and highest (-1: none) */
@@ -172,6 +172,7 @@ typedef struct {
     double jsum;
     uint32_t jn;
     uint32_t loopn;                                    /* the Original's loop in bars (8 at most): all its steps visited */
+    uint32_t bass, bpoly, bnote, pbreak;               /* B1: a bass part (sqm_bassm); its bars with a POLY stretch; its notes the Original's steps do not hold; BREAK bars with a stretch */
 } res_t;
 typedef struct { int32_t lo, hi; uint32_t loopn; } lane_t;   /* the Original's lane: [lo, hi] (lo > hi: none), and its loop in bars */
 
@@ -214,7 +215,7 @@ static void play(uint32_t row, uint32_t style, uint32_t pitch, uint32_t tide, ui
     static bar_t hist[2][NB_MAX];
     static uint8_t drop[NB_MAX];
     bar_t cur[2];
-    uint64_t orig[2];
+    uint64_t orig[2], onote[2][2];
     uint32_t p, i, bars_done = 0, curbar = 0, started = 0, last, guard, lastblk[2] = {0, 0}, seen_on[2] = {0, 0}, lastidx[2] = {99, 99}, bpm;
     uint32_t perbar;
     memset(res, 0, 2u * sizeof *res);
@@ -229,9 +230,13 @@ static void play(uint32_t row, uint32_t style, uint32_t pitch, uint32_t tide, ui
         res[p].seen_lo = res[p].seen_hi = -1;
         res[p].dmin = 99.0, res[p].dmax = -1.0;
         res[p].anch_kept = res[p].anch_need = 0;
+        onote[p][0] = onote[p][1] = 0;
         for (orig[p] = 0, i = 0; i < len; i++)
-            if (sqm_hit(&trk[p].step[i]))
+            if (sqm_hit(&trk[p].step[i])) {
                 orig[p] |= 1ull << i;
+                for (uint32_t k = 0; k < trk[p].step[i].n && k < 4u; k++)
+                    onote[p][trk[p].step[i].note[k] >> 6 & 1u] |= 1ull << (trk[p].step[i].note[k] & 63u);
+            }
     }
     if (tide) {
         tide_style_apply(style);
@@ -257,19 +262,25 @@ static void play(uint32_t row, uint32_t style, uint32_t pitch, uint32_t tide, ui
         if (!started) {
             started = 1;
             curbar = sqm_bar;
-            drop[0] = tarc_dropphr == (((uint32_t)sqm_bar + sqm_bar_turn) >> 2 & 63u) && (((uint32_t)sqm_bar + sqm_bar_turn) & 3u) < 2u;
+            drop[0] = TARC_DROP_BAR((uint32_t)sqm_bar + sqm_bar_turn);
         } else if ((uint32_t)sqm_bar != curbar) {
             for (p = 0; p < 2u; p++) {
                 hist[p][bars_done] = cur[p];
                 if (getenv("TIDEROLES_DUMP") && bars_done < (uint32_t)atoi(getenv("TIDEROLES_DUMP")))
                     printf("  dump tide %u bar %u p%u: ons %u visited %016llx played %016llx orig %016llx slen %d sdiv %d arate %d\n", tide, bars_done, p + 1u, cur[p].ons, (unsigned long long)cur[p].visited, (unsigned long long)cur[p].played, (unsigned long long)orig[p], (int)trk[p].p[P_SLEN], (int)trk[p].p[P_SDIV], (int)trk[p].p[P_ARATE]);
             }
+            if (tide) {
+                for (p = 0; p < 2u; p++)
+                    if ((sqm_bassm >> p) & 1u)
+                        res[p].bass = 1, res[p].bpoly += poly_len[p] != 0u;
+                res[0].pbreak += sqm_arc && sqm_auto && tarc.phase == AP_BREAK && (poly_len[0] | poly_len[1]);
+            }
             bars_done++;
             if (bars_done >= nbars)
                 break;
             curbar = sqm_bar;
             memset(cur, 0, sizeof cur);
-            drop[bars_done] = tarc_dropphr == (((uint32_t)sqm_bar + sqm_bar_turn) >> 2 & 63u) && (((uint32_t)sqm_bar + sqm_bar_turn) & 3u) < 2u;
+            drop[bars_done] = TARC_DROP_BAR((uint32_t)sqm_bar + sqm_bar_turn);
         }
         for (p = 0; p < 2u; p++) {
             int steps;
@@ -299,6 +310,10 @@ static void play(uint32_t row, uint32_t style, uint32_t pitch, uint32_t tide, ui
                 seen_on[p] = 1;
                 lastblk[p] = blk;
                 if (tide) {
+                    if (((sqm_bassm >> p) & 1u) && !arp_mode(&trk[p]) && !(onote[p][n >> 6 & 1] >> (n & 63) & 1u)) {
+                        res[p].bnote++;
+                        viol(row, style, pitch, p, "bass note not in the Original", bars_done, steps ? (int)idx : -1, n, "");
+                    }
                     if (n < 36) {
                         res[p].floor_bad++;
                         viol(row, style, pitch, p, "floor (under C2)", bars_done, steps ? (int)idx : -1, n, "");
@@ -478,6 +493,28 @@ static void music(uint32_t row, uint32_t nbars)
     }
 }
 
+/* B1 (tide-morph audit): under DUB and MINIMAL a bass part keeps its loop length (no POLY) and its notes (no VOIC octave), and no BREAK bar has a stretch */
+static void bass_lock(uint32_t row, uint32_t nbars)
+{
+    static const uint32_t ST[2] = {STY_DUB, STY_MINIMAL};
+    int keys = TR[row].role[0] == R_ARP || TR[row].role[1] == R_ARP;
+    char msg[240];
+    for (uint32_t si = 0; si < 2u; si++) {
+        res_t r[2];
+        play_iso(row, ST[si], 0, 1, nbars, keys, 0, r);
+        printf("tideroles: M%02u %-12s %s B1: bass parts %u%u, POLY bars %u/%u, notes off the Original %u/%u, BREAK bars with POLY %u\n", TR[row].slot, TR[row].name, SN[ST[si]], r[0].bass, r[1].bass,
+               r[0].bpoly, r[1].bpoly, r[0].bnote, r[1].bnote, r[0].pbreak);
+        for (uint32_t p = 0; p < 2u; p++) {
+            if (!r[p].bass)
+                continue;
+            snprintf(msg, sizeof msg, "M%02u %s %s p%u: B1 the bass part: %u bars with a POLY stretch, %u notes outside the Original's", TR[row].slot, TR[row].name, SN[ST[si]], p + 1u, r[p].bpoly, r[p].bnote);
+            CHECK(msg, !r[p].bpoly && !r[p].bnote);
+        }
+        snprintf(msg, sizeof msg, "M%02u %s %s: B1 %u BREAK bars with a POLY stretch", TR[row].slot, TR[row].name, SN[ST[si]], r[0].pbreak);
+        CHECK(msg, !r[0].pbreak);
+    }
+}
+
 /* ---------------------------------------------------------------- the render half: 4.3 and 4.4 */
 typedef struct { double k_db, peak_db, band, band1; uint32_t silent, name_ok; } rend_t;
 /* the multi rendered 10 s, 2 - 10 s measured. mode 0: `gen_factory_multis loud`'s excitation (PLAY where a part has steps and no arp, else C4 E4 G4 held); 1: PLAY (the chord held for a
@@ -568,7 +605,7 @@ int main(void)
     if (do_music)
         for (row = 0; row < 16u; row++)
             if (!only || TR[row].slot == only)
-                music(row, nbars);
+                music(row, nbars), bass_lock(row, nbars);
     if (do_render) {
         for (row = 0; row < 16u; row++) {
             rend_t a, p, j;

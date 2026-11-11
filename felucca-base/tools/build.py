@@ -637,8 +637,22 @@ def mmio_check():
     return errors
 
 
+DEV_SWITCHES = ("FELUCCA_CDC", "DUELL_TEST_MODE", "DUELL_BENCH", "FELUCCA_OTA_DRYRUN", "FELUCCA_OTA_RAMONLY")
+
+
+def release_guard(argv, env):
+    """TIDE b7 (review E5): a --release build stops when a developer switch is set to 1 in the environment (the serial console, the TEST screen,
+    the bench, the update dry runs): a release is never built with them"""
+    if "--release" not in argv:
+        return
+    on = [f for f in DEV_SWITCHES if env.get(f) == "1"]
+    if on:
+        raise SystemExit(f"build: --release with {', '.join(f + '=1' for f in on)} set: a release is built without the developer switches")
+
+
 def main():
     global PRODUCT
+    release_guard(sys.argv, os.environ)
     ap = argparse.ArgumentParser()
     ap.add_argument("--release", nargs="?", const="", metavar="X.Y", help="release build: a folder release-<VERSION>-beta/ too. The version is always the VERSION file; an X.Y given here is ignored")
     ap.add_argument("--sdk", type=Path, help="JieLi AC79 SDK checkout (default: $AC79_SDK)")

@@ -373,7 +373,7 @@ static uint32_t arp_seq_notes(track_t *t, const uint32_t *list, uint32_t n, uint
             out[m++] = (uint8_t)nt;
     }
     *vel = (s->flags & SF_ACCENT) ? 127u : arp_vel(t);
-    return m;
+    return TIDE_ARP_OUT(t, out, m, vel);             /* TIDE hook (D1, MR4): its velocity with the dynamics, a thinned chord's two voices */
 }
 
 /* whether SEQ's step k is a TIE (it holds the note before it: arp_seq lengthens that note, arp_fire leaves it sounding) */
@@ -602,6 +602,8 @@ static __attribute__((noinline)) void arp_fire(track_t *t, uint32_t period)
     t->arp_idx++;
     TIDE_ARP_TICK(t);                               /* TIDE hook (H3b) */
 #if DUELL_TIDE
+    if (t->p[P_AMODE] == AM_SEQ && !(mods_off & MODS_SEQ))   /* b7 (review B2): the step's locks and automation on the step the arp plays (seq_play leaves them) */
+        motion_step(t, TIDE_ARP_IDX(t, t->arp_idx, t->p[P_SLEN] > 0 ? (uint32_t)t->p[P_SLEN] : 1u), &motion, 1u);
     if (t->p[P_AMODE] == AM_SEQ && arp_rec_fire(t))
         return;                                     /* live recording put a key into this step already: it sounds, the step does not play again */
 #endif
@@ -717,7 +719,7 @@ static void arp_tick(track_t *t, uint32_t n) { arp_step(t, n, n); }
 static uint32_t step_samples(const track_t *t, uint32_t period, uint32_t idx)
 {
     int32_t sw = DIV_TRIPLET(t->p[P_SDIV]) ? 0 : sw_len(sw_ex(t->p[P_SSWING]) + sw_ex(song.g[G_SWING]), period);   /* the track's + the global, at most 75 % (not on a triplet) */
-    return period + (uint32_t)((idx & 1u) ? -sw : sw);
+    return period + (uint32_t)(((idx ^ TIDE_SWING_PAR(t)) & 1u) ? -sw : sw);   /* TIDE hook (H3b): POLY swings on the full loop's parity */
 }
 
 /* NUDGE (1.2, #162): a note `off` samples from the start of the step it goes into, in 1/NUDGE_DIV of the step (period),
@@ -968,6 +970,7 @@ static void input_on(track_t *t, uint32_t note, uint32_t vel)
 {
     last_note = (uint8_t)note;
 #if DUELL_TIDE
+    tide_ghost_real(t);                             /* b7 (MULTIS): a real note ends the AUTO TIDE ghost chord on this part before it starts */
     if (rec_arp_keys(t)) {                          /* R2: the key sounds as played and goes into the pattern the part plays (the stand-in runs on) */
         rec_key_set(t, note, 1);
         trk_note_on(t, note, vel);
@@ -1009,11 +1012,31 @@ static uint32_t kb_raw(uint32_t k)
 {
     return (uint32_t)clamp(53 + (int32_t)k + 12 * song.octave, 0, 127);
 }
+/* SPLIT as a stored code (0 OFF, else the note + 1): MIDDLE (1.0.0-b7) is the middle key's note as played now, the 14th of the 27 keys (k 13: F#4 = 66 at octave 0),
+ * so OCT- / OCT+ move it with the keys and MIDI notes split where that key sounds */
+#define SPLIT_KEY 13u
+static __attribute__((noinline)) uint32_t split_note(void)   /* (one copy in the flash: a note's or a key's rate, tools/ram_allow.py) */
+{
+    uint32_t s = mix_split;
+    return s == SPLIT_MIDDLE ? kb_raw(SPLIT_KEY) + 1u : s > 128u ? 0u : s;
+}
 /* LAYER with SPLIT set: which parts play note n (bit 0 part 1 below the split, bit 1 part 2 at or above it); 3 both */
 static uint32_t lay_route(uint32_t n)
 {
-    uint32_t s = mix_split;
+    uint32_t s = split_note();
     return !s ? 3u : n + 1u < s ? 1u : 2u;
+}
+/* the part key k plays when it goes down (seq.c keyboard_block): LAYER part 1 (key_on gives part 2 its own copy); TIDE_PLAYSEL: STEREO / DUEL with the part selection on BOTH
+ * and SPLIT set, the split's side of the key (the played key against the split, as LAYER); else the selected part */
+static uint32_t kb_part(uint32_t k)
+{
+    if (duell_mode == DM_LAYER)
+        return 0u;
+#if TIDE_PLAYSEL
+    if (song.both && split_note())
+        return lay_route(kb_raw(k)) == 1u ? 0u : 1u;
+#endif
+    return song.sel;
 }
 /* input_on of a LAYER note: the part's XFADE share rides with the voices it starts (an arp's later notes keep it) */
 static void lay_input(track_t *t, uint32_t note, uint32_t vel)
@@ -1057,7 +1080,11 @@ static void input_off(track_t *t, uint32_t note)
 static void key_tone(uint32_t k, track_t *t, uint32_t i, uint32_t vel)
 {
     uint32_t x = kb_chord[k][i], mc = trk_midi_ch(trk_index(t));
+#if DUELL_TIDE
+    if (midi_local_held(t, x) || midi_note_held(t, x))   /* review FR8 (A4): a MIDI note holds it too (as midi_play): not counted twice by the arp */
+#else
     if (midi_local_held(t, x))
+#endif
         return;
     if (duell_mode == DM_LAYER && t == trk)
         lay_input(t, x, vel);
@@ -1217,7 +1244,11 @@ static __attribute__((noinline)) void arp_rechord(void)
 static __attribute__((noinline)) void velo_at_block(void)
 {
     static uint8_t sent, tm;                      /* the last value sent; the parts (bit per part) it went to */
+#if TIDE_PLAYSEL
+    uint32_t v = sense_at_value(), lay = duell_mode == DM_LAYER || (song.both && split_note());   /* (STEREO / DUEL split: the keys play both parts too) */
+#else
     uint32_t v = sense_at_value(), lay = duell_mode == DM_LAYER;
+#endif
     uint32_t bits = lay ? 3u : 1u << song.sel, d = v > sent ? v - sent : sent - v, i;
     if (bits != tm) {
         for (i = 0; i < NTRK; i++)
@@ -1266,7 +1297,7 @@ static void keyboard_block(void)
         if (!((ch >> k) & 1u))
             continue;
         if ((cur >> k) & 1u) {                    /* the selected track; the key-up goes to the same one */
-            kb_trk[k] = duell_mode == DM_LAYER ? 0u : song.sel;   /* (LAYER: part 1; key_on gives part 2 its own copy) */
+            kb_trk[k] = (uint8_t)kb_part(k);      /* (LAYER: part 1; key_on gives part 2 its own copy. TIDE_PLAYSEL: STEREO / DUEL split with BOTH) */
             if (kb_asleep) {                      /* (SCREEN OFF: the wake press is swallowed) */
                 kb_note[k] = KB_SILENT;
                 continue;
@@ -1375,6 +1406,7 @@ static void seq_stop(void)
         trk[i].nd_late = trk[i].nd_early = ND_NONE;   /* (a nudged step not played yet: not after the stop) */
         trk[i].nd_fired = 0;
     }
+    TIDE_GHOST_STOP();                             /* b7 (MULTIS): the AUTO TIDE ghost chords end with the transport */
     motion_end();
 }
 
@@ -1528,6 +1560,9 @@ static __attribute__((noinline)) void seq_play(track_t *t, uint32_t idx, uint32_
     }
     if (TIDE_CHANCE(t, idx, s, step_chance(s) < 100u && rng() % 100u >= step_chance(s)))   /* TIDE hook (H3c) */
         skip = SEQ_MISS;
+#if DUELL_TIDE
+    if (t->p[P_AMODE] != AM_SEQ)                    /* (b7, review B2: an ARP SEQ part's locks play on the arp's steps: arp_fire) */
+#endif
     motion_step(t, idx, m, skip == SEQ_ROLLED);
     if (t->p[P_AMODE] == AM_SEQ) {                  /* DUELL 0.2.12: the steps are the SEQUENCER arp's (offsets on the held keys, */
         t->rskip_n = 0;                             /* arp_seq): PLAY does not also play them from C4 (the transport, the locks */
@@ -1659,9 +1694,16 @@ static track_t *midi_track(uint32_t ch)
  * part 2 note whose channel LAYER ignores): the keys held stay silent until pressed again, MIDI's held and pedalled notes,
  * chords and bends are forgotten, the arps' and the steps' notes end, a latched chord is dropped. The mix follows with
  * its dip (fx.c dm_step), which stops what still rings at its silent point */
+/* the mode the audio plays: the PLAY MODE row's (duell_mode_req), but TIDE_PLAYSEL with one part selected plays LAYER as STEREO (the part alone on every key; owner
+ * 2026-11-10: ALGORITHM's PART 1 / PART 2 never play both parts) */
+#if TIDE_PLAYSEL
+#define MODE_WANT() (duell_mode_req == DM_LAYER && !song.both ? (uint32_t)DM_STEREO : (uint32_t)duell_mode_req)
+#else
+#define MODE_WANT() ((uint32_t)duell_mode_req)
+#endif
 static __attribute__((noinline)) void mode_apply(void)
 {
-    uint32_t i, k, m = duell_mode_req;
+    uint32_t i, k, m = MODE_WANT();
     m = m < DM_N ? m : DM_SPLIT;
     if (m == duell_mode)
         return;
@@ -1890,7 +1932,7 @@ static void events_block(uint32_t n)
     if (midi_clock.mode != (uint32_t)song.g[G_CLOCK])
         clock_choice((uint32_t)song.g[G_CLOCK]);     /* (the CLK choice changed: midi_clock.c, a stop only if the active source changes) */
     clock_mode = clock_src();                        /* the ACTIVE source: 0 INT (CLK INT, or AUTO with no clock), 1 USB, 2 TRS */
-    if (duell_mode_req != duell_mode)
+    if (MODE_WANT() != duell_mode)
         mode_apply();                                 /* DUELL step 5: the MODE changed (every note let go) */
     if (cin_left && !clock_mode)
         cin_block(n);
@@ -1929,6 +1971,10 @@ static void events_block(uint32_t n)
         if (!(midi_route & 1u))
             midi_route_block();
     }
+#if DUELL_TIDE
+    if (song.sel != midi_sel_was)
+        midi_sel_change();                            /* review FR8 (A6) */
+#endif
     pr = panic_req;
     pk = panic_keep;
     panic_req = 0;
@@ -1960,11 +2006,19 @@ static void events_block(uint32_t n)
     for (i = 0; i < NTRK; i++) {
         track_t *t = &trk[i];
         if ((pr >> i) & 1u) {
-            midi_forget_track(i);
+#if DUELL_TIDE
+            int keep = ((pk >> i) & 1u) && (mods_keep & MODK_ARP) && arp_mode(t);
+            if (!keep)                                /* review FR8 (A3): the kept arp keeps who holds which MIDI note, so their note-offs still reach arp_remove */
+#endif
+                midi_forget_track(i);
             strum_forget(i);                          /* (item 144: a held key's tones still waiting are dropped with the rest) */
             trk_all_off(t);
             t->m_cycle = t->m_env = t->m_env2 = 0;                            /* (item 135: the latest note's CYCLE for the per-block destinations: a new sound's first block does not read the old one's) */
+#if DUELL_TIDE
+            if (keep) {
+#else
             if (((pk >> i) & 1u) && (mods_keep & MODK_ARP) && arp_mode(t)) {
+#endif
                 /* DUELL 1.1 ARP KEEPS RUNNING, a patch load: the voices end (a new sound starts clean) and the arp's own notes get their MIDI note-offs (mo_flush), but the held and latched
                  * notes (nheld, held[], arp_phys), the step counter and the phrase (arp_ph) stay: the next arp step plays the new sound */
                 mo_flush(t);

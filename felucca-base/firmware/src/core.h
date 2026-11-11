@@ -412,8 +412,16 @@ static uint8_t duell_mode = DM_STEREO;
 /* the MODE page's other two (KNOB 3..4; TIDE: the XFADE and SPLIT rows of TIDE SETTINGS), kept with the settings ([15][6..7], ui.c) and in each MULTI; XFADE and SPLIT have no shipped CC number (MIDI_MAP_DEFAULTS.csv: typed lines only).
  * (item 160: mix_bal, the old BALANCE, and its audio stage fx.c bal_lvl are gone; PERFORM's SELECT = BALANCE moves the two MIXER LEVELs, ui_input.c perf_balance);
  * mix_xf: XFADE 0..100 % (0 = off; LAYER only: a note's velocity shares its level between the parts, seq.c xf_gain);
- * mix_split: SPLIT 0 = OFF, else the note + 1 (LAYER only: below it part 1 plays alone, at or above it part 2) */
+ * mix_split: SPLIT 0 = OFF, 1..128 the note + 1, SPLIT_MIDDLE (1.0.0-b7) the middle of the keys as played (seq.c split_note: the 14th of the 27 keys starts part 2, it moves with
+ * OCT- / OCT+); LAYER: below it part 1 plays alone, at or above it part 2 (TIDE_PLAYSEL: STEREO and DUEL too with the part selection on BOTH, the keys only) */
 static volatile uint8_t mix_xf, mix_split;
+#define SPLIT_MIDDLE 129u        /* (the first free code: b6 reads it from the settings or a multi as OFF; docs/design/PLAY_MODE_SELECT.md) */
+/* TIDE_PLAYSEL (1.0.0-b7, an experiment, docs/design/PLAY_MODE_SELECT.md): ALGORITHM on the BOTH pages picks PART 1, LAYER, STEREO, DUEL, PART 2 (the selection and the
+ * output MODE in one; ui_input.c algo_input) and SPLIT plays in STEREO / DUEL with BOTH (seq.c keyboard_block). 0: b6's PART 1 / BOTH / PART 2, SPLIT LAYER's only.
+ * (DUELL_TIDE is set further down: this is only expanded where it is used) */
+#ifndef TIDE_PLAYSEL
+#define TIDE_PLAYSEL DUELL_TIDE
+#endif
 
 #ifndef DUELL_PRESETS
 #define DUELL_PRESETS 1          /* 1: Felucca's engine preset tables (eng_*.c, engine_t.presets) are built; no firmware code reads them, the host tests render them (tests/hostsim.c,

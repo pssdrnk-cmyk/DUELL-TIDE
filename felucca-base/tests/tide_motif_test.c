@@ -5,7 +5,7 @@
  *   anchors  every bar but a drop's keeps at least max(2, 3/5) of the Original's hits where they were (one identity floor across
  *            DENS-, phrase gaps, moves, LEAD and ARC thinning); an offbeat skank keeps all four of its "and"s
  *   drift    no hit is ever more than two 16ths from its stored step (D1)
- *   lead     LEAD thins a lead or pluck line on its follower bars, never a chord part or a pad, a bass (D2)
+ *   answer   CALL AND ANSWER: a part listens (anchors and beats) on its bars, never a pad or a bass, never both parts at once
  *   dynamics the hits play louder in ARC's peak than in its breakdown, and a LEAD follower's bars softer than its leading bars (D4) */
 #define UI_TEST_NO_MAIN 1
 #define FELUCCA_FLASH 1
@@ -51,7 +51,7 @@ static int32_t sound_of(uint32_t p, uint32_t cat)
             return (int32_t)j;
     return -1;
 }
-static uint32_t orig[2];
+static uint32_t orig[2], g_amode = AM_OFF;   /* (g_amode: the parts' ARP mode; AM_SEQ_ID: D1, the velocity arp_seq_notes plays) */
 /* scene 0: dub skank + bass; 1: house stabs + offbeat bass; 2: a single-note lead line + the skank */
 static void setup(uint32_t scene)
 {
@@ -75,7 +75,7 @@ static void setup(uint32_t scene)
         memset(t->step, 0, sizeof t->step);
         for (i = 0; i < NSTEP; i++)
             t->step[i].time = ST_REST;
-        t->p[P_SLEN] = 16, t->p[P_SDIV] = 2, t->p[P_ARATE] = 2, t->p[P_AMODE] = AM_OFF, t->p[P_APROB] = 127;
+        t->p[P_SLEN] = 16, t->p[P_SDIV] = 2, t->p[P_ARATE] = 2, t->p[P_AMODE] = (int16_t)g_amode, t->p[P_APROB] = 127;
         t->p[P_AOCT] = 1, t->p[P_AGATE] = 64, t->p[P_SQNT] = 1, t->p[P_MUTE] = 0, t->p[P_LEVEL] = 100;
         t->nheld = 0, t->seq_active = 1;
         sqm[p].amt_x = 0;
@@ -100,6 +100,18 @@ static void setup(uint32_t scene)
         for (orig[p] = 0, i = 0; i < 16u; i++)
             if (sqm_hit(&trk[p].step[i]))
                 orig[p] |= 1u << i;
+}
+/* the velocity an ARP SEQ part's step i starts its notes at (seq.c arp_seq_notes, held C4; 0: a rest) */
+static uint32_t arp_vel_at(track_t *t, uint32_t i)
+{
+    static const uint32_t list[1] = {60};
+    uint32_t k = t->arp_idx, vel = 0;
+    uint8_t out[4];
+    t->arp_idx = i;
+    if (!arp_seq_notes(t, list, 1, out, &vel))
+        vel = 0;
+    t->arp_idx = k;
+    return vel;
 }
 typedef struct { uint32_t kept_min, drift, bars, thin_bars, vel[5], nvel[5], vlead, nlead, vfol, nfol; } stats_t;
 /* n bars of automatic WNDR (both parts, 16-bar trips, WAIT 2) from PLAY with TURNS, SYNC, ARC as asked (cat >= 0: part p on a sound of
@@ -137,8 +149,8 @@ static stats_t run(uint32_t scene, uint32_t bars, uint32_t turns, uint32_t sync,
             int32_t d;
             last = (uint32_t)sqm_bar;
             st.bars++;
-            drop = tarc_dropphr == ((bar >> 2) & 63u) && (bar & 3u) < 2u;
-            fol = (uint32_t)sqm_follows(p, bar);                  /* (LEAD's follower bars: seq_morph.c) */
+            drop = TARC_DROP_BAR(bar);
+            fol = (uint32_t)sqm_listens(p, bar);                  /* (CALL AND ANSWER's listening bars: seq_morph.c) */
             for (i = 0; i < 16u; i++) {
                 step_t buf;
                 const step_t *s = seq_play_step(&trk[p], i, &buf);
@@ -147,9 +159,11 @@ static stats_t run(uint32_t scene, uint32_t bars, uint32_t turns, uint32_t sync,
                     continue;
                 m |= 1u << i;
                 v = s->flags & SF_ACCENT ? 127u : s->vel ? s->vel : 96u;
+                if (g_amode == AM_SEQ_ID)
+                    v = arp_vel_at(&trk[p], i);
                 if (sqm_arc && tarc.run)
                     st.vel[tarc.phase % 5u] += v, st.nvel[tarc.phase % 5u]++;
-                if (sqm_turns >= 2u && sqm_auto == 3u && !sqm_arc) {
+                if (sqm_auto == 3u && !sqm_arc) {
                     if (fol) st.vfol += v, st.nfol++;
                     else st.vlead += v, st.nlead++;
                 }
@@ -189,34 +203,44 @@ static void t_motif(void)
             }
         }
 }
+/* CALL AND ANSWER (b7, replaces LEAD): a part that is neither a bass nor a pad listens on its bars (anchors and beats, two voices, softer) */
 static void t_lead(void)
 {
     stats_t a, b, c;
-    a = run(0, 64, 2, 1, 0, CAT_PAD, 0);                 /* the skank on a pad, LEAD, no ARC */
-    printf("tidemotif: LEAD skank on a pad: %u follower bars thinned\n", a.thin_bars);
-    CHECK("LEAD never thins a chord skank on a pad", a.bars > 50u && !a.thin_bars && !sqm_thin[0][0]);
-    b = run(0, 64, 2, 1, 0, CAT_PLUCK, 0);               /* the skank on a pluck: still chords */
-    CHECK("LEAD never thins chords, even on a pluck sound", b.bars > 50u && !sqm_thin[0][0]);
+    a = run(0, 64, 2, 1, 0, CAT_PAD, 0);                 /* the skank on a pad, no ARC */
+    printf("tidemotif: ANSWER skank on a pad: %u listening bars thinned\n", a.thin_bars);
+    CHECK("a pad never listens: its skank plays whole", a.bars > 50u && !a.thin_bars && !sqm_thin[0][0]);
+    b = run(0, 64, 2, 1, 0, CAT_PLUCK, 0);               /* the skank on a pluck: chords, every hit an anchor */
+    CHECK("a chord skank on a pluck listens with its anchors whole (two voices, no hit dropped)", b.bars > 50u && !sqm_thin[0][0]);
     c = run(2, 64, 2, 1, 0, CAT_LEAD, 0);                /* a 7-note lead line on a lead sound */
-    printf("tidemotif: LEAD lead line: %u follower bars thinned, vel leading %u follower %u\n", c.thin_bars,
+    printf("tidemotif: ANSWER lead line: %u listening bars thinned, vel speaking %u listening %u\n", c.thin_bars,
            c.nlead ? c.vlead / c.nlead : 0u, c.nfol ? c.vfol / c.nfol : 0u);
-    CHECK("LEAD thins a lead line on its follower bars", c.thin_bars > 2u);
-    CHECK("a LEAD follower plays softer than the leader (by more than 15 %)", c.nfol && c.nlead && (uint64_t)c.vfol * 100u * c.nlead < (uint64_t)c.vlead * 85u * c.nfol);
-    {   /* M04: the opening follower swaps from phrase to phrase (by the seed); the two parts never both follow in a bar */
-        uint32_t sd, ph, o0 = 0, o1 = 0, both = 0;
-        sqm_lead = 3;
+    CHECK("a lead line drops its optional hits on its listening bars", c.thin_bars > 2u);
+    CHECK("a listening part plays softer than when it speaks (by more than 15 %)", c.nfol && c.nlead && (uint64_t)c.vfol * 100u * c.nlead < (uint64_t)c.vlead * 85u * c.nfol);
+    {   /* who opens swaps (by the bar and the seed); the two parts never both listen in a bar, both play bar 4 of 4; against a bass only bar 3 */
+        uint32_t sd, bar, o0 = 0, o1 = 0, both = 0, b4 = 0, one = 0;
+        sqm_auto = 3, tarc_thin = 0, sqm_lead = 3;
         for (sd = 1; sd <= 8u; sd++) {
             morph.seed = (uint16_t)(sd * 4099u);
-            for (ph = 0; ph < 16u; ph++) {
-                o0 += sqm_follows(0, 8u * ph), o1 += sqm_follows(1, 8u * ph);
-                both += sqm_follows(0, 8u * ph) && sqm_follows(1, 8u * ph);
+            for (bar = 0; bar < 128u; bar++) {
+                uint32_t l0 = (uint32_t)sqm_listens(0, bar), l1 = (uint32_t)sqm_listens(1, bar);
+                if (!(bar & 3u))
+                    o0 += l0, o1 += l1;
+                both += l0 && l1, b4 += (bar & 3u) == 3u && (l0 || l1), one += (bar & 3u) != 3u && !(l0 || l1);
             }
         }
-        printf("tidemotif: LEAD opener over 128 phrases: part 1 follows %u, part 2 follows %u\n", o0, o1);
-        CHECK("LEAD swaps its opener between phrases, never both follow", o0 && o1 && !both);
+        printf("tidemotif: ANSWER opener over 256 4-bar groups: part 1 %u, part 2 %u\n", o0, o1);
+        CHECK("ANSWER swaps its opener, never both listen, both play bar 4, one listens on bars 1-3", o0 && o1 && !both && !b4 && !one);
+        sqm_lead = 1;
+        for (bar = 0, one = 0; bar < 64u; bar++)
+            one += (uint32_t)sqm_listens(0, bar) != ((bar & 3u) == 2u) || sqm_listens(1, bar);
+        CHECK("against a bass or a pad the other part listens on bar 3 of 4 alone", !one);
+        tarc_thin = 1;
+        CHECK("no listening while the arc thins", !sqm_listens(0, 2u) && !sqm_listens(1, 1u));
+        tarc_thin = 0;
     }
     a = run(0, 64, 2, 1, 0, CAT_BASS, 1);                /* part 2's bass line on a bass */
-    CHECK("LEAD never thins a bass", !a.thin_bars && !sqm_thin[1][0]);
+    CHECK("a bass never listens", !a.thin_bars && !sqm_thin[1][0]);
 }
 static void t_dynamics(void)
 {
@@ -225,6 +249,23 @@ static void t_dynamics(void)
     printf("tidemotif: ARC velocity: peak %u, breakdown %u\n", pk, br);
     CHECK("ARC: the peak plays louder than the breakdown (by more than 20 %)", pk && br && br * 120u < pk * 100u);
     CHECK("ARC: the shape never pushes a velocity past 127", pk <= 127u);
+    g_amode = AM_SEQ_ID;                                 /* D1: the same on ARP SEQ parts (nearly every factory multi) */
+    st = run(0, 192, 2, 1, 1, -1, 0);
+    pk = st.nvel[AP_PEAK] ? st.vel[AP_PEAK] / st.nvel[AP_PEAK] : 0u, br = st.nvel[AP_BREAK] ? st.vel[AP_BREAK] / st.nvel[AP_BREAK] : 0u;
+    printf("tidemotif: ARC velocity on ARP SEQ: peak %u, breakdown %u\n", pk, br);
+    CHECK("ARC on ARP SEQ: the peak plays louder than the breakdown (by more than 20 %)", pk && br && br * 120u < pk * 100u);
+    {   /* an accent at ARC OFF still starts at 127 */
+        uint32_t v;
+        setup(0);
+        sqm_arc = 0, sqm_dyn = 0;
+        trk[0].step[2].flags |= SF_ACCENT;
+        song.playing = 1;
+        v = arp_vel_at(&trk[0], 2);
+        song.playing = 0;
+        printf("tidemotif: ARP SEQ accent at ARC OFF: %u\n", v);
+        CHECK("ARP SEQ: an accented step at ARC OFF starts at 127", v == 127u);
+    }
+    g_amode = AM_OFF;
 }
 int main(void)
 {

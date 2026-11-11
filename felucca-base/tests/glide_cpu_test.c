@@ -25,6 +25,7 @@ static void fm1_irq_on(void);
 static unsigned ease_probe[2];                          /* (K3 EASE section: core.h EASE_PROBE: 0 a morph blend of a block, 1 a block of FM6 retunes) */
 #define EASE_PROBE(k) (ease_probe[k]++)
 #include "ui_test.c"
+#include "scenes.h"                                   /* (the reel re-voiced: EASE's FM6 crossing scene, the old DUB CHORD) */
 
 static uint8_t nor[0x100000];
 static int st_read(uint32_t off, void *dst, uint32_t n) { memcpy(dst, nor + off, n); return 0; }
@@ -106,7 +107,11 @@ static void load(uint32_t slot)
     multi_boot();
     frame();
     ui_prefs2 |= PREF_MODE_RECALL >> 16;
-    project_load(slot);
+    if (slot == 16u)                                  /* (the reel re-voiced: candidate 17 is the old DUB CHORD, the factory M02 until then, as a test scene in M02's slot;
+                                                      * its BIG STAB's End B changed the FM6 structure, so a GLIDE crosses on the bridge; the factory multis' End B is set by hand now and none does) */
+        scene_load(1u, "reel/M02_DUB_CHORD");
+    else
+        project_load(slot);
     blk = 0;
     gl.on = gl.armed = 0;
     transport_req = 0;
@@ -401,7 +406,7 @@ static void ref_wash(uint32_t pp, int32_t *b, uint32_t n)
         int64_t fill = (v->wref >> XWS[morph_wlvl & 3u]) - v->wnow;
         want = fill > 0 ? fill : 0;
         if (x->need)
-            want += ((v->wref >> (XWS[morph_wlvl & 3u] + 3u)) * morph_xdepth(x->tp)) >> 15;
+            want += ((v->wref >> (XWS[morph_wlvl & 3u] + 3u)) * morph_xdepth(x, x->tp)) >> 15;
         want = want > (v->wref >> XWS[morph_wlvl & 3u]) ? v->wref >> XWS[morph_wlvl & 3u] : want;
     }
     if (want > 0 && pn > 0) {
@@ -569,7 +574,7 @@ static void check_ease(void)
     static const char *const KN[3] = {"GLIDE", "hand faders", "GLIDE + note bursts"};
     uint32_t slot, kind, sx = 99u, best = 0, n = EZ_N * 2u * CTL;
     unsigned b0, b1, x0, x1, bs = 0;
-    for (slot = 0; slot < 16u; slot++) {                /* the scene with an FM6 crossing: the multi whose fader sweep runs the bridge longest */
+    for (slot = 0; slot < 17u; slot++) {                /* the scene with an FM6 crossing: the multi whose fader sweep runs the bridge longest (17: the old DUB CHORD scene, see load) */
         ease_fork(slot, 0, 1, ez_rec[0], 1200u);
         if (getenv("GLIDECPU_V"))
             printf("glidecpu: EASE scan M%02u: bridge on %u part-blocks, largest step %d\n", slot + 1u, ez_xon, ez_step(ez_rec[0], 1200u * 2u * CTL));
@@ -577,12 +582,12 @@ static void check_ease(void)
             best = ez_xon, sx = slot;
     }
     printf("glidecpu: EASE the FM6 crossing scene: M%02u (bridge on in %u part-blocks of 2400)\n", sx + 1u, best);
-    REQUIRE("EASE: a factory multi's GLIDE runs the FM6 crossing", sx < 16u && best > 100u);
-    if (sx >= 16u)
+    REQUIRE("EASE: a factory multi's GLIDE runs the FM6 crossing", sx < 17u && best > 100u);
+    if (sx >= 17u)
         return;
     /* level 1 really skips: the blends of a hand on the faders, the retune blocks of the FM6 crossing, over 64 blocks (the counts of blocks 300 .. 364 of the run:
      * two runs, 300 and 364 blocks long, from the same start) */
-    for (b0 = b1 = 0, slot = 0; slot < 16u && !b1; slot++) {
+    for (b0 = b1 = 0, slot = 0; slot < 17u && !b1; slot++) {
         unsigned a0, a1, c0, c1;
         ease_fork(slot, 0, 1, 0, 364u); a0 = ease_probe[0];
         ease_fork(slot, 0, 1, 0, 300u); a0 -= ease_probe[0];

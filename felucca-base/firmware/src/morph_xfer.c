@@ -62,6 +62,7 @@
 #define XLP1 19661u                                      /* .. to 60 % */
 #define XS0 13763u                                       /* the switched values change side from 42 % .. */
 #define XS1 19005u                                       /* .. to 58 %, on a note (morph_xpick): inside the dips' floor, a margin either side */
+_Static_assert(XS0 > XLP0 && XS1 < XLP1 && XS0 + XS1 == 2u * XC, "morph_xfer.c: the side window sits inside the floor, around the middle (X1: morph_xpick)");
 #define XI0 8192u                                        /* the insert dry from 25 % (dry through the whole closed stretch) .. */
 #define XI1 24576u                                       /* .. to 75 % */
 #define XZ 160u                                          /* a silent operator's plateau around its switch (~0.5 %: a few blocks at XSTEP) */
@@ -107,6 +108,9 @@ typedef struct {
     uint16_t motion;                                     /* GLIDE's movement now, Q15 (main loop, morph_glide.c glide_motion): the breath, the swell */
     uint32_t age;                                        /* the newest voice's age (voice.c vage) the block before: a new note */
     uint16_t plan_ms;                                    /* (morph_xpoll: the last plan, fm1_ms) */
+    uint16_t xe;                                         /* X1: the dip's edges for GLIDE's running trip (morph_glide.c glide_motion), in 1/256 of the travel: the floor's half
+                                                          * width (low byte) and each ramp (high byte), around XC; 0: XW0 / XLP0 / XLP1 / XW1 (a hand, a 1-4 bar trip).
+                                                          * One 16-bit store: the interrupt never reads half of it (in the padding: no RAM) */
     uint32_t esig;                                       /* (.. the ends it was made for: morph_xesig) */
     uint8_t follow;                                      /* GLIDE moves this part's sound (morph_glide.c glide_motion): tp is the fader itself */
 } mxs_t;
@@ -282,36 +286,42 @@ static void morph_xpoll(void)
 }
 
 /* ---------------------------------------------------------------- a block (audio ISR) --- */
+/* X1: the arc's places for this part, w0 .. d1 .. d2 .. w1: XW0 XD1 XD2 XW1, or a glide's own edges (mxs_t xe; the bridge is then the dip's floor) */
+#define XE_EDGES(x) uint32_t xf_ = (uint32_t)((x)->xe & 255u) << 7, xr_ = (uint32_t)((x)->xe >> 8) << 7, \
+                    d1 = (x)->xe ? XC - xf_ : XD1, d2 = (x)->xe ? XC + xf_ : XD2, w0 = (x)->xe ? d1 - xr_ : XW0, w1 = (x)->xe ? d2 + xr_ : XW1
 /* operator k's level (linear Q15) at tp, and when it plays B's frequency */
 static int32_t morph_xgain(const mxs_t *x, uint32_t k, uint32_t tp)
 {
     uint32_t r = x->role[k];
-    if (tp < XD1)                                        /* the A structure: its modulators fade out */
-        return (x->car[0] >> k) & 1u ? 32768 : 32768 - xrise(xpos(tp, XW0, XD1 - XZ));
-    if (tp >= XD2)                                       /* the B structure: its modulators fade in */
-        return (x->car[1] >> k) & 1u ? 32768 : xrise(xpos(tp, XD2 + XZ, XW1));
+    XE_EDGES(x);
+    if (tp < d1)                                        /* the A structure: its modulators fade out */
+        return (x->car[0] >> k) & 1u ? 32768 : 32768 - xrise(xpos(tp, w0, d1 - XZ));
+    if (tp >= d2)                                       /* the B structure: its modulators fade in */
+        return (x->car[1] >> k) & 1u ? 32768 : xrise(xpos(tp, d2 + XZ, w1));
     if (r == XR_KEPT || r == XR_GLIDE)                   /* the bridge */
         return 32768;
     if ((x->rsub >> k) & 1u)                             /* a retuned carrier with a stand-in: out (A), then the stand-in's state at once (B) */
-        return tp < XD2 - XZ ? xcos(xpos(tp, XD1 + XZ, XD2 - 2u * XZ)) : 32768;
+        return tp < d2 - XZ ? xcos(xpos(tp, d1 + XZ, d2 - 2u * XZ)) : 32768;
     if (x->sfor[k])                                      /* .. its stand-in (B): in, equal-power, then silent */
-        return tp < XD2 - XZ ? xcos(32768 - xpos(tp, XD1 + XZ, XD2 - 2u * XZ)) : 0;
+        return tp < d2 - XZ ? xcos(32768 - xpos(tp, d1 + XZ, d2 - 2u * XZ)) : 0;
     if ((x->coh >> k) & 1u) {                            /* (one frequency, in phase: correlated, so the amplitudes add: linear) */
-        int32_t p = xrise(xpos(tp, XD1 + XZ, XD2 - XZ));
+        int32_t p = xrise(xpos(tp, d1 + XZ, d2 - XZ));
         return r == XR_LEAVE ? 32768 - p : p;
     }
     if (r == XR_LEAVE)                                   /* (other frequencies: uncorrelated, so the powers add: equal-power) */
-        return xcos(xpos(tp, XD1 + XZ, XD2 - XZ));
+        return xcos(xpos(tp, d1 + XZ, d2 - XZ));
     if (r == XR_ARRIVE)
-        return xcos(32768 - xpos(tp, XD1 + XZ, XD2 - XZ));
+        return xcos(32768 - xpos(tp, d1 + XZ, d2 - XZ));
     if (r == XR_RETUNE)                                  /* out, retuned at the middle, in */
-        return tp < XC ? xcos(xpos(tp, XD1 + XZ, XC - XZ)) : xcos(32768 - xpos(tp, XC + XZ, XD2 - XZ));
+        return tp < XC ? xcos(xpos(tp, d1 + XZ, XC - XZ)) : xcos(32768 - xpos(tp, XC + XZ, d2 - XZ));
     return 0;
 }
 static uint32_t morph_xtunes(const mxs_t *x, uint32_t k, uint32_t tp)
 {
     uint32_t r = x->role[k];
-    return tp >= ((x->rsub >> k) & 1u ? XD2 - XZ : r == XR_ARRIVE ? XD1 : r == XR_LEAVE ? XD2 : XC);
+    XE_EDGES(x);
+    (void)w0, (void)w1;
+    return tp >= ((x->rsub >> k) & 1u ? d2 - XZ : r == XR_ARRIVE ? d1 : r == XR_LEAVE ? d2 : XC);
 }
 
 /* part pi's arc at rest (morph.c morph_begin: no morph on the part, or another sound's): what the valley, the wash and the voices'
@@ -362,12 +372,17 @@ static void morph_xreset(uint32_t pi)
         fm6_eff[pi].ok = 0;
     }
 }
-/* a dip's depth at tp (Q15): down over a .. XLP0, its floor to XLP1, up to b (a raised cosine: no corner in the move) */
-static int32_t morph_xarc(uint32_t tp, uint32_t a, uint32_t b)
+/* a dip's depth at tp (Q15): down over a .. f0, its floor to f1, up to b (a raised cosine: no corner in the move) */
+static int32_t morph_xarc(uint32_t tp, uint32_t a, uint32_t f0, uint32_t f1, uint32_t b)
 {
-    return tp <= a || tp >= b ? 0 : tp < XLP0 ? xrise(xpos(tp, a, XLP0)) : tp <= XLP1 ? 32768 : 32768 - xrise(xpos(tp, XLP1, b));
+    return tp <= a || tp >= b ? 0 : tp < f0 ? xrise(xpos(tp, a, f0)) : tp <= f1 ? 32768 : 32768 - xrise(xpos(tp, f1, b));
 }
-static int32_t morph_xdepth(uint32_t tp) { return morph_xarc(tp, XW0, XW1); }
+/* the transition's dip: XW0 .. XLP0 .. XLP1 .. XW1, or (X1) a glide's own edges, a few bars whatever TIME is */
+static inline __attribute__((always_inline)) int32_t morph_xdepth(const mxs_t *x, uint32_t tp)
+{
+    uint32_t f = (uint32_t)(x->xe & 255u) << 7, r = (uint32_t)(x->xe >> 8) << 7;
+    return x->xe ? morph_xarc(tp, XC - f - r, XC - f, XC + f, XC + f + r) : morph_xarc(tp, XW0, XLP0, XLP1, XW1);
+}
 #define XBR_Q8 4634                                      /* GLIDE's breath at its deepest: two octaves of the dial (2317 Q8 steps an octave) */
 /* WASH (TIDE LIST; tide_ui.c keeps it in the settings): 0 OFF (the default since 2026-11-01, owner), 1 LOW, 2 MID, 3 HIGH. It scales GLIDE's movement
  * (the breath, the swell: XWL, x 0 .. 1.5), a transition's swell, and the wash's fill (15 dB under the part's level at rest at MID,
@@ -399,8 +414,9 @@ static uint32_t morph_xpick(const mxs_t *x, uint32_t tp, uint32_t w, uint32_t so
 {
     if (!sound)
         return tp >= XC;
-    if (tp >= XS1 || tp <= XS0)
-        return tp >= XS1;
+    uint32_t h = x->xe ? ((uint32_t)(x->xe & 255u) << 7) * 4u / 5u : XC - XS0;   /* (X1: the side window inside the glide's floor, as XS0 .. XS1 sits in XLP0 .. XLP1) */
+    if (tp >= XC + h || tp <= XC - h)
+        return tp >= XC + h;
     if (note)
         return w > tp ? 1u : w < tp ? 0u : tp >= XC;
     return x->side;
@@ -500,7 +516,7 @@ static __attribute__((noinline)) int morph_xstep(track_t *t, morph_part_t *mp, u
     x->age += age;
     /* the dip: the part's own multimode filter where its MODE is a low-pass (every engine has it, voice.c uf_run), else the
      * valley's filter (fx.c morph_valley); DUB THROW on any transition */
-    k = x->need ? (uint32_t)morph_xdepth(tp) : 0u;
+    k = x->need ? (uint32_t)morph_xdepth(x, tp) : 0u;
     x->lp = (uint8_t)(t->p[P_FREEC] <= 32 && ENGINES[t->engine]->ufilt);
     {                                                    /* (as voice.c vc_filter: the bypass is MODE LP, CUT open, no KEY TRK; the budget takes the dearer end) */
         const int8_t *e0 = morph_cur(mp, 0), *e1 = morph_cur(mp, 1);
@@ -515,10 +531,10 @@ static __attribute__((noinline)) int morph_xstep(track_t *t, morph_part_t *mp, u
     x->sounding = (uint8_t)sound;
     {
         /* the swell (the sends): GLIDE's movement at half, a transition's dip at 3/5, the larger */
-        uint32_t df = x->need & XN_LP ? k : 0u, dub = x->motion >> 1, di = x->need & XN_INS ? (uint32_t)morph_xarc(tp, XI0, XI1) : 0u;
+        uint32_t df = x->need & XN_LP ? k : 0u, dub = x->motion >> 1, di = x->need & XN_INS ? (uint32_t)morph_xarc(tp, XI0, XLP0, XLP1, XI1) : 0u;
         k = (k * 3u / 5u * XWL[morph_wlvl & 3u]) >> 15;
         dub = k > dub ? k : dub;
-        k = x->need ? (uint32_t)morph_xdepth(tp) : 0u;
+        k = x->need ? (uint32_t)morph_xdepth(x, tp) : 0u;
         if ((df >> 7) != (x->df >> 7u) || (dub >> 7) != (x->dub >> 7u) || di != x->dins)
             side |= 2u;                                  /* (the blend again: a value the arc writes moved; 1/256 steps for the slow ones) */
         x->df = (uint16_t)df, x->dub = (uint16_t)dub, x->dins = (uint16_t)di;
@@ -527,9 +543,10 @@ static __attribute__((noinline)) int morph_xstep(track_t *t, morph_part_t *mp, u
         x->lfloor = (uint16_t)clamp(35968 + ((int32_t)high - 69) * 4096 / 12 + 2396, 28290, 44916);
     if (pi < NLIVE && (x->need & XN_FM)) {
         fm6_xt_t *f = &fm6_xt[pi];
-        int on = sound && tp > XW0 && tp < XW1; /* silence needs no harmonic bridge or stand-ins */
+        XE_EDGES(x);
+        int on = sound && tp > w0 && tp < w1; /* silence needs no harmonic bridge or stand-ins */
         if (on) {
-            uint32_t now = 0, tune = 0, alg = tp < XD1 ? x->alg[0] : tp < XD2 ? 31u : x->alg[1], fb = tp < XD1 ? x->fb[0] : tp < XD2 ? 0u : x->fb[1];
+            uint32_t now = 0, tune = 0, alg = tp < d1 ? x->alg[0] : tp < d2 ? 31u : x->alg[1], fb = tp < d1 ? x->fb[0] : tp < d2 ? 0u : x->fb[1];
             int ch = alg != f->alg || fb != f->fb;
             for (k = 0; k < 6u; k++) {
                 int32_t g = morph_xgain(x, k, tp);
@@ -543,10 +560,10 @@ static __attribute__((noinline)) int morph_xstep(track_t *t, morph_part_t *mp, u
             f->tune = (uint8_t)tune;
             f->mute = (uint8_t)(now & x->mprev);
             f->glide = x->glide;
-            f->gv = (uint16_t)xpos(tp, XD1, XD2);
+            f->gv = (uint16_t)xpos(tp, d1, d2);
             x->mprev = (uint8_t)now;
-            for (now = 0, k = 0; k < 6u; k++)            /* the stand-ins: copies from XD1 (silent there) to XD2 - XZ (their carrier silent) */
-                now |= (uint32_t)(tp >= XD1 && tp < XD2 - XZ && x->sfor[k]) << k;
+            for (now = 0, k = 0; k < 6u; k++)            /* the stand-ins: copies from d1 (silent there) to d2 - XZ (their carrier silent) */
+                now |= (uint32_t)(tp >= d1 && tp < d2 - XZ && x->sfor[k]) << k;
             f->ser = (uint8_t)(f->ser + (now != f->xs));
             f->xs = (uint8_t)now;
             memcpy(f->sfor, x->sfor, sizeof x->sfor);
@@ -652,7 +669,7 @@ static __attribute__((noinline)) void MXT_BODY(morph_wash)(uint32_t pp, int32_t 
             int64_t fill = (v->wref >> XWS[morph_wlvl & 3u]) - v->wnow;   /* (to 9 dB under the level at rest at MID: WASH) */
             want = fill > 0 ? fill : 0;
             if (x->need)
-                want += ((v->wref >> (XWS[morph_wlvl & 3u] + 3u)) * morph_xdepth(x->tp)) >> 15;   /* (a transition's floor: 24 dB under it at MID) */
+                want += ((v->wref >> (XWS[morph_wlvl & 3u] + 3u)) * morph_xdepth(x, x->tp)) >> 15;   /* (a transition's floor: 24 dB under it at MID) */
             want = want > (v->wref >> XWS[morph_wlvl & 3u]) ? v->wref >> XWS[morph_wlvl & 3u] : want;
         }
         if (want > 0 && pn > 0) {                            /* the gain: the noise's level to the wanted one, Q12, at most x 16 */

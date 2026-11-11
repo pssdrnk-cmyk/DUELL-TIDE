@@ -224,7 +224,11 @@ static int perf_foot(char *l, char *r)
         return 0;
     str_cpy(l, "SELECT = BALANCE", 24);                /* (item 160: the old balance number is gone with its value; SELECT moves LEVEL 1 / LEVEL 2, shown on the MIXER page) */
     str_cpy(r, "ALGORITHM = ", 24);
+#if TIDE_PLAYSEL
+    str_cpy(r + str_len(r), PLS_NAME[play_pos()], 24 - str_len(r));   /* (1.0.0-b7) */
+#else
     str_cpy(r + str_len(r), PART_BOTH() ? "BOTH" : song.sel ? "PART 2" : "PART 1", 24 - str_len(r));
+#endif
     return 1;
 }
 static uint32_t perf_sig(void)

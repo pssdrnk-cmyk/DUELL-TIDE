@@ -124,19 +124,34 @@ static TC_FN void tc_watch(uint32_t now_ms)
 /* before every flash read, erase or program through the driver (storage_hw.c; the XIP map is off meanwhile, and part 2's job reads its
  * tables from the flash): the runner posts no job from now on (tc.park; it plays part 2 itself) and the last job must be over within
  * TC_PARK_US, else core 1 is stopped (TCR_FLASH). A park within the time is no fault (counted: tc.parks). The audio interrupt keeps running */
+static TC_FN void tc_park_wait(void)                    /* the last job gets TC_PARK_US to be over, else core 1 is stopped (TCR_FLASH) */
+{
+    uint32_t t0 = TC_TICKS();
+    while (!tc_closed() && TC_TICKS() - t0 < TC_PARK_US * TC_TICKS_PER_US)
+        TC_SYNC();
+    if (!tc_closed())
+        tc_fail(TCR_FLASH);
+}
 static TC_FN void tc_flash_park(void)
 {
-    uint32_t t0;
     if (!tc.up)
         return;
     if (!tc.park)
         tc.parks++;
     tc.park = 1;
-    t0 = TC_TICKS();
-    while (!tc_closed() && TC_TICKS() - t0 < TC_PARK_US * TC_TICKS_PER_US)
-        TC_SYNC();
-    if (!tc_closed())
-        tc_fail(TCR_FLASH);
+    tc_park_wait();
+}
+
+/* b7 (review F1): a store read, program or erase (storage_hw.c), called inside each of its IRQ-off windows. With the interrupts off the runner
+ * posts no job, and the job of the block before is over (the runner waits for it), so core 1 is normally idle already: nothing is parked,
+ * nothing counted, and the audio keeps its two-core numbers (a park held to the next pass made the runner trim the held notes to the one-core
+ * numbers: tcr_begin). Only the fault path's very late job can still be open: it gets TC_PARK_US, else core 1 is stopped (TCR_FLASH), as a park */
+static TC_FN void tc_store_wait(void)
+{
+    if (!tc.up || tc_closed())
+        return;
+    tc.parks++;
+    tc_park_wait();
 }
 
 /* ---------------------------------------------------------------- power-on --- */

@@ -66,13 +66,35 @@ static void midi_expression_channel(uint32_t ch)
             midi_expression(&trk[i], midi_channel(ch));
 }
 
+#if DUELL_TIDE
+/* review FR8 (A6): MIDI IN = SEL, the selected part changed (events_block): the part left keeps no bend or channel pressure its channel can no longer
+ * reach (the centring bend and the pressure going to 0 go to the new part); a part still holding a MIDI note keeps them (its channel reaches it:
+ * midi_targets). The mod wheel stays: it is a position, not a gesture that springs back */
+static uint8_t midi_sel_was;
+static void midi_sel_change(void)
+{
+    uint32_t o = midi_sel_was;
+    midi_sel_was = song.sel;
+    if (song.g[G_ROUTE] == 1 && duell_mode != DM_LAYER && o < NPART && o != song.sel && !midi_owners[o]) {
+        midi_bend_target[o] = 0;
+        trk[o].at = 0;
+    }
+}
+#endif
+
 /* a MIDI note of track t sounds note: one played as itself, or a tone of one played as a chord (chord.c) */
 static int midi_note_held(const track_t *t, uint32_t note)
 {
     uint32_t ch, id = trk_index(t) + 1u, own = duell_mode == DM_LAYER && id == 2u ? 1u : id;   /* (LAYER: part 2's copy of part 1's) */
-    for (ch = 0; ch < 16u; ch++)
+    for (ch = 0; ch < 16u; ch++) {
+#if DUELL_TIDE
+        uint32_t o = MIDI_OWNER(midi_note_get(ch, note));
+        if ((o == own || o == id) && !mchord_of(ch, note, id))   /* (review FR8: LAYER, a note part 2 plays alone is part 2's own: midi_note_event) */
+#else
         if (MIDI_OWNER(midi_note_get(ch, note)) == own && !mchord_of(ch, note, id))
+#endif
             return 1;
+    }
     return mchord_held(id, note);
 }
 
@@ -253,11 +275,18 @@ static void midi_note_event(uint32_t ch, uint32_t note, uint32_t vel)
         midi_expression(t, c);
         if (t != TSEL && duell_mode != DM_LAYER)       /* (LAYER: part 1 plays both, whichever is selected) */
             midi_hint = (uint8_t)(trk_index(t) + 1u);
-        c->targets |= (uint8_t)(1u << trk_index(t));
+#if DUELL_TIDE
+        /* review FR8 (A4): LAYER with SPLIT, a note part 2 plays alone is owned by part 2, so its release (midi_release, id 2) leaves part 1 alone; kept
+         * at the note-on, so a SPLIT moved while it is held cannot strand it */
+        uint32_t own = duell_mode == DM_LAYER && !(lay_route(note) & 1u) ? 1u : trk_index(t);
+#else
+        uint32_t own = trk_index(t);
+#endif
+        c->targets |= (uint8_t)(1u << own);
         midi_play(t, ch, note, vel);
-        midi_note_put(ch, note, trk_index(t) + 1u);
-        midi_owners[trk_index(t)]++;
-        c->owned[trk_index(t)]++;
+        midi_note_put(ch, note, own + 1u);
+        midi_owners[own]++;
+        c->owned[own]++;
     } else if (id) {
         if (c->pedal)
             midi_note_put(ch, note, midi_note_get(ch, note) | MIDI_PEDAL_NOTE);
@@ -468,7 +497,7 @@ static void midi_tide(uint32_t ch, uint32_t pi, uint32_t code, uint32_t value)
 
 /* DUELL step 5 (SPEC 5b.1): the MODE is global (not a part's): 0-42 SPLIT, 43-85 STEREO, 86-127 LAYER, on any channel (also one ROUT does
  * not play: the MODE is no part's), a value that keeps the mode does nothing. XFADE 0..127 -> 0..100 % (item 157: BALANCE is no target any more);
- * SPLIT 0 = OFF, 1..127 = the note n. Queued for nothing: mode_apply runs here, in the ISR */
+ * SPLIT 0 = OFF, 1 = MIDDLE (1.0.0-b7: the middle of the keys as played; it was the note 1, C#-1), 2..127 = the note n. Queued for nothing: mode_apply runs here, in the ISR */
 static void mode_apply(void);                   /* (seq.c) */
 /* 1: code is a global target and is set now */
 static int __attribute__((noinline)) midi_glob_act(uint32_t code, uint32_t value)
@@ -477,8 +506,8 @@ static int __attribute__((noinline)) midi_glob_act(uint32_t code, uint32_t value
         midi_glob_set(code - MAP_T_G0, value);
     else if (code == MAP_T_XFADE)                   /* 0..127 -> 0..100 % */
         mix_xf = (uint8_t)((value * 100u + 63u) / 127u);
-    else if (code == MAP_T_SPLIT)                   /* 0 OFF, 1..127 the note n (stored n + 1) */
-        mix_split = (uint8_t)(value ? value + 1u : 0u);
+    else if (code == MAP_T_SPLIT)                   /* 0 OFF, 1 MIDDLE, 2..127 the note n (stored n + 1) */
+        mix_split = (uint8_t)(value == 1u ? SPLIT_MIDDLE : value ? value + 1u : 0u);
     else if (code == MAP_T_MODE) {
         duell_mode_req = (uint8_t)(value < 43u ? DM_SPLIT : value < 86u ? DM_STEREO : DM_LAYER);
         mode_apply();

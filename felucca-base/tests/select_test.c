@@ -220,21 +220,26 @@ static void sweep_home(void)
         enter(r[m - 1u]);                                 /* (MODE, the round's last) */
 #endif
         duell_mode_force(DM_LAYER); ui_mode_set = ui.mode_seen = DM_LAYER;
-        mix_split = 0;  turn(EN_K3, 1);
-        ok2 = mix_split == 67u;
+#if DUELL_TIDE
+        song.both = 1;                                    /* (1.0.0-b7 TIDE_PLAYSEL: SPLIT acts in ALGORITHM's middle) */
+#endif
+        mix_split = 0;  turn(EN_K3, 1);                  /* (1.0.0-b7: OFF, MIDDLE, then the notes) */
+        ok2 = mix_split == SPLIT_MIDDLE;
+        turn(EN_K3, 1);   ok2 &= mix_split == 67u;
         turn(EN_K3, 1);   ok2 &= mix_split == 68u;
         turn(EN_K3, -2);  ok2 &= mix_split == 66u;
         mix_split = 0;  turn(EN_K3, -1);
         ok2 &= mix_split == 0u;
         mix_split = 0;  turn(EN_K3, 3);
-        ok2 &= mix_split == 69u;
+        ok2 &= mix_split == 68u;
         mix_split = 1;  turn(EN_K3, -1);
-        ok2 &= mix_split == 0u;
-        turn(EN_K3, 0);   ok2 &= mix_split == 0u;
+        ok2 &= mix_split == SPLIT_MIDDLE;
+        turn(EN_K3, 0);   ok2 &= mix_split == SPLIT_MIDDLE;
+        turn(EN_K3, -1);  ok2 &= mix_split == 0u;
         turn(EN_K3, -1);  ok2 &= mix_split == 0u;
         mix_split = 2;  turn(EN_K3, -4);
-        ok2 &= mix_split == 0u;
-        expect("MODE K3 SPLIT (item 158): OFF + a turn right = F#4 (middle of F3..G5), then +-1; C-1 - 1 = OFF, and turning on left stays OFF (no bounce to the middle); a stored split is read as it was", ok2);
+        ok2 &= mix_split == SPLIT_MIDDLE;
+        expect("MODE K3 SPLIT (item 158; 1.0.0-b7 MIDDLE): OFF + a turn right = MIDDLE, the next F#4 (middle of F3..G5), then +-1; C-1 - 1 = MIDDLE, then OFF, and turning on left stays OFF; a stored split is read as it was", ok2);
         mix_split = 128;  turn(EN_K3, 5);
         expect("  .. SPLIT stays at G9 at the top", mix_split == 128u);
         duell_mode_force(m0); ui_mode_set = ui.mode_seen = m0; mix_split = s0;
@@ -973,6 +978,7 @@ static void sweep_rec_hold_layer(void)
     ui_power_on();
     song.rec = 0;
     go_title("AMP ENV");
+    frames(64);                                         /* (the stored part selection read first: LAYER below is played with both parts selected, 1.0.0-b7) */
     duell_mode_force(DM_LAYER); ui_mode_set = ui.mode_seen = DM_LAYER;
     trk[0].p[P_AMODE] = AM_UP; trk[1].p[P_AMODE] = AM_OFF;
     trk[0].p[P_AHOLD] = trk[1].p[P_AHOLD] = 0;
@@ -998,6 +1004,9 @@ static void sweep_rec_hold_layer(void)
     frames(600);
     expect("  .. one part on, one off: REC turns both OFF", trk[0].p[P_AHOLD] == 0 && trk[1].p[P_AHOLD] == 0 && msg_is("HOLD OFF"));
     duell_mode_force(DM_SPLIT); ui_mode_set = ui.mode_seen = DM_SPLIT;
+#if DUELL_TIDE
+    song.both = 0;                                      /* (one part selected: PART 1 in DUEL) */
+#endif
     press(B_REC);
     frames(600);
     expect("DUEL: REC acts on the selected part only", trk[0].p[P_AHOLD] == 1 && trk[1].p[P_AHOLD] == 0);
@@ -1447,7 +1456,7 @@ static void sweep_algo(void)
     ok &= song.sel == 0u && !SEL_BOTH;
     turn(EN_ALGO, 1);
     ok &= song.sel == 0u && SEL_BOTH && badge_lit() == 3u;
-    turn(EN_ALGO, 1);
+    algo_turns(ALGO_TO_P2);                       /* */
     ok &= song.sel == 1u && !SEL_BOTH && badge_lit() == 2u;
     turn(EN_ALGO, 1);
     ok &= song.sel == 1u && !SEL_BOTH;

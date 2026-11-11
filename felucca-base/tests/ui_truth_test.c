@@ -150,33 +150,39 @@ static void test_style_custom(void)
     CHECK("CUSTOM: it stays CUSTOM (the values are not a preset's)", tide_style == STY_CUSTOM);
 }
 
-/* ---- TIDE SETTINGS: rows that do nothing ---- */
+/* ---- TIDE SETTINGS: rows that do nothing (1.0.0-b7, MR8: ARC needs WNDR / JRNY and the SEQ, not ROLL TYPE MUSIC; ROLL TYPE does nothing under JOURNEY) ---- */
+static int inert_look(uint32_t row, uint32_t line)       /* row's value with STYLE picked: 1 theme colour, 2 dim (0 neither); then row `line` picked for knob 1's line */
+{
+    int32_t y = UT_L5_Y0 + (int32_t)row * UT_L5_PITCH, x1 = UT_L5_X + UT_L5_W - 4, x0 = x1 - 90;   /* (the list's top: STYLE .. REC) */
+    int r;
+    jl_sel = JL_STYLE;
+    ui.force = 1; ui_draw();
+    r = dots(x0, x1, y, y + UT_L5_H, T_DIM) > 0 ? (dots(x0, x1, y, y + UT_L5_H, T_THEME) == 0 ? 2 : 0) : dots(x0, x1, y, y + UT_L5_H, T_THEME) > 0;
+    jl_sel = (uint8_t)line;
+    ui.force = 1; ui_draw();
+    return r;
+}
 static void test_inert_rows(void)
 {
-    int32_t y = UT_L5_Y0 + 3 * UT_L5_PITCH, x1 = UT_L5_X + UT_L5_W - 4, x0 = x1 - 90;   /* (ARC picked: the list shows PITCH .. ARC, POLY is its fourth row) */
     ui_power_on(); frame();
     transport_req = 2u; frame(); frame();
     gl.on = gl.armed = 0;
     go_title("TIDE SETTINGS");
-    jl_sel = JL_ARC;
-    gl.mode = GM_JOURNEY; morph_musical = 1; gl.target = GT_BOTH;
-    ui.force = 1; ui_draw();
-    CHECK("INERT: JRNY, MUSIC, SEQ: POLY's value in the theme colour", dots(x0, x1, y, y + UT_L5_H, T_THEME) > 0);
-    CHECK("INERT:   and knob 1's line names nothing", !rows_has(0, 80, "WNDR OR JRNY") && !rows_has(0, 80, "ROLL TYPE MUSIC") && !rows_has(0, 80, "TARGET SEQ"));
+    gl.mode = GM_WANDER; morph_musical = 1; gl.target = GT_BOTH;
+    CHECK("INERT: WNDR, MUSIC, BOTH: ARC's value in the theme colour", inert_look(JL_ARC, JL_ARC) == 1);
+    CHECK("INERT:   and knob 1's line names nothing", !rows_has(0, 80, "WNDR OR JRNY") && !rows_has(0, 80, "TARGET SEQ") && !rows_has(0, 80, "NOT JRNY"));
     gl.mode = GM_ONCE;
-    ui.force = 1; ui_draw();
-    CHECK("INERT: MODE ONCE: POLY's value is dim, not the theme colour", dots(x0, x1, y, y + UT_L5_H, T_DIM) > 0 && dots(x0, x1, y, y + UT_L5_H, T_THEME) == 0);
+    CHECK("INERT: MODE ONCE: ARC's value is dim", inert_look(JL_ARC, JL_ARC) == 2);
     CHECK("INERT:   knob 1's line says WNDR OR JRNY", rows_has(0, 80, "WNDR OR JRNY"));
     gl.mode = GM_WANDER; morph_musical = 0;
-    ui.force = 1; ui_draw();
-    CHECK("INERT: ROLL TYPE SMART: ROLL TYPE MUSIC is named", rows_has(0, 80, "ROLL TYPE MUSIC") && dots(x0, x1, y, y + UT_L5_H, T_DIM) > 0);
+    CHECK("INERT: ROLL TYPE SMART: ARC still acts (no gate on ROLL TYPE)", inert_look(JL_ARC, JL_ARC) == 1 && !rows_has(0, 80, "WNDR OR JRNY"));
     morph_musical = 1; gl.target = GT_SOUND;
-    ui.force = 1; ui_draw();
-    CHECK("INERT: TARGET SOUND: TARGET SEQ is named", rows_has(0, 80, "TARGET SEQ") && dots(x0, x1, y, y + UT_L5_H, T_DIM) > 0);
-    jl_sel = JL_PITCH;
-    ui.force = 1; ui_draw();
-    CHECK("INERT: a row that always acts (PITCH) names nothing", !rows_has(0, 80, "TARGET SEQ"));
-    gl.target = GT_BOTH;
+    CHECK("INERT: TARGET SOUND: ARC dims, TARGET SEQ is named", inert_look(JL_ARC, JL_ARC) == 2 && rows_has(0, 80, "TARGET SEQ"));
+    gl.target = GT_BOTH; gl.mode = GM_JOURNEY;
+    CHECK("INERT: JOURNEY: ROLL TYPE dims, knob 1's line says NOT JRNY", inert_look(JL_ROLL, JL_ROLL) == 2 && rows_has(0, 80, "NOT JRNY"));
+    CHECK("INERT:   .. ARC acts", inert_look(JL_ARC, JL_GMODE) == 1);
+    CHECK("INERT: a row that always acts (MODE) names nothing", !rows_has(0, 80, "NOT JRNY") && !rows_has(0, 80, "TARGET SEQ") && !rows_has(0, 80, "WNDR OR JRNY"));
+    gl.mode = GM_WANDER;
 }
 
 /* ---- TIDE SETTINGS: knobs 2 .. 4 turn the picked row's value, a mark shows where the window is in the list (audit C12) ---- */
@@ -194,8 +200,8 @@ static void test_list_knobs(void)
     CHECK("LIST: it stops at the last value", gl.target == GT_BOTH);
     tide_knob(2u, -3);
     CHECK("LIST: knob 3 left is the one before", gl.target == GT_SEQ && jl_sel == JL_TARGET);
-    CHECK("LIST: the row names say what they do (D9)", !strcmp(JL_NAME[JL_ARP], "ROLL ARP") && !strcmp(JL_NAME[JL_PITCH], "ROLL PITCH") && !strcmp(JL_NAME[JL_WASH], "WASH") &&
-          !strcmp(jl_vname(JL_TARGET, 2), "BOTH") && !strcmp(jl_vname(JL_VARY, 0), "EVERY 4TH") && !strcmp(jl_vname(JL_VARY, 1), "EVERY BAR"));
+    CHECK("LIST: the row names say what they do (D9)", !strcmp(JL_NAME[JL_ROLL], "ROLL TYPE") && !strcmp(JL_NAME[JL_GMODE], "MODE") && !strcmp(jl_vname(JL_GMODE, 3), "WANDER") &&
+          !strcmp(jl_vname(JL_TARGET, 2), "BOTH") && !strcmp(jl_vname(JL_ROLL, 0), "MUSIC") && !strcmp(jl_vname(JL_ARC, 1), "RISE"));
     sqm_arc = 1; sqm_auto = 0;
     CHECK("LIST: a hand drop with no automatic tide says what it needs", !strcmp(tarc_drop_hand(), "DROP NEEDS WANDER/JOURNEY"));
     sqm_arc = 0;

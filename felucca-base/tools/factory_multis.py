@@ -80,57 +80,151 @@ def note(s):
 SEND = ("P_CHOR", "P_DLY", "P_REV")
 MULTIS = [
     # ---- 1-9: the grooves of the set ----
+    # ---- the reel (10 November 2026, owner: "sounds good, go ahead with all changes"; the design, its research and the survey of the instrument: work/reel-2026-11-10/REEL.md,
+    # RESEARCH.md, SOUNDS.md in the owner's notes): 18 multis as one curated programme, a genre each, the patterns written "in the manner of", the voices set for their roles
+    # in the multi (no new factory sound). ARP SEQ parts play one chord shape in parallel on TIDE's stand-in C4 (the key is written in the offsets; a held key moves it by its
+    # distance from C); an ARP SEQ step's vNN is not read (seq.c arp_seq_notes), so those parts have two loudnesses, plain and A. A pad is written at the coarsest ARP RATE that
+    # fits (a chord held four bars is one step). A part with len=N says its own pattern length.
     dict(slot=1, name="BASIC CHORD", mode="LAYER",
-         what="dub techno chords with nothing in the bass: off-beat minor-seventh stabs through a dotted echo and a plate, ducked on the quarters, a crackle bed under them (the first multi to try)",
-         g=dict(G_BPM=122, G_DTIME="8D", G_DFDBK=70, G_DMIX=84, G_DMODE="DIGI", G_RTYPE="PLATE", G_RSIZE=80, G_RDAMP=61),
-         parts=[dict(sound="CHORD ECHO", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=45, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="OPEN",
-                                                   P_DKSRC="PUMP", P_DKRATE="1/4", P_DKDEP=30, P_LEVEL=102),
-                     steps=". . 0 . . . 0A . . . 0 . . . 0A ."),
-                dict(sound="DUST BED", set=dict(P_AHOLD="ALL", P_EQLG=-12, P_LEVEL=94))]),
-    dict(slot=2, name="DUB CHORD", kept=True, owner=True, mode="LAYER", parts=[dict(sound="BIG STAB"), dict(sound="TIDAL SUB")],
-         what="off-beat minor-seventh stabs through a long dotted echo over a sparse sub line (the owner's; the sub an octave up since D31; the first start's multi)"),
-    dict(slot=3, name="CELLAR TAPE", kept=True, mode="LAYER", parts=[dict(sound="PLUCK BASS"), dict(sound="CLAVICLE")],
-         what="deep dub techno: an offbeat plucked sub line under minor-ninth chord stabs, dotted-eighth delay and a plate (PLAY alone plays both; a held key transposes the bass and plays the stabs' chord)"),
-    dict(slot=4, name="NIGHT ORGAN", kept=True, owner=True, mode="LAYER", parts=[dict(sound="PEDAL BASS"), dict(sound="DRAWBARS")],
-         what="a house organ on the off-beats over a pedal-organ line (the owner's)"),
-    dict(slot=5, name="ORGAN SKANK", mode="LAYER",
-         what="reggae-house organ stabs on the off-beats, a spring and a dotted echo, a breathing shimmer pad an octave up holding two chords a bar",
-         g=dict(G_BPM=123, G_DTIME="8D", G_DFDBK=55, G_DMIX=77, G_DMODE="DIGI", G_RTYPE="SPRING", G_RSIZE=71, G_RDAMP=71),
-         parts=[dict(sound="ORGAN SKANK", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=30, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="CLOSE", P_LEVEL=104),
-                     steps=". . 0 0 . . 0A . . . 0 0 . . 0A ."),
-                dict(sound="AIR SHIMMER", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=100, P_AHOLD="ARP", P_CHRD="MIN7", P_VOIC="CLOSE",
-                                                    P_DLY=30, P_REV=64, P_LEVEL=86),
-                     steps="12A - - - - - - . 8A - - - - - - .")]),
-    dict(slot=6, name="WARM ECHO", mode="LAYER",
-         what="a warm detuned wash in open fifths under a slow dotted-delay pluck figure ping-ponging in the echo (118 BPM)",
-         g=dict(G_BPM=118, G_DTIME="8D", G_DFDBK=58, G_DMIX=84, G_DMODE="PING", G_RTYPE="HALL", G_RSIZE=84, G_RDAMP=61),
-         parts=[dict(sound="WARM WASH", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=100, P_AHOLD="OFF", P_CHRD="POW", P_VOIC="CLOSE", P_REV=60, P_LEVEL=89),
-                     steps="0A - - - - - - - - - - - - - - . -2A - - - - - - - - - - - - - - .", bars=2),
-                dict(sound="TAPE PLUCK", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=36, P_AHOLD="OFF", P_DLY=77, P_REV=40, P_LEVEL=111),
-                     steps="12A . . 12 . . . 8A . . 5 . . . 7 .")]),
-    dict(slot=7, name="MINIMAL 12", mode="LAYER",
-         what="a twelve-step blip cell against a sixteen-step pad: the two loops drift (polymeter) while the echo carries the blip",
-         g=dict(G_BPM=124, G_DTIME="8D", G_DFDBK=50, G_DMIX=77, G_DMODE="DIGI", G_RTYPE="ROOM", G_RSIZE=77, G_RDAMP=61),
-         parts=[dict(sound="DUB BLIP", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=40, P_AHOLD="OFF", P_DLY=70, P_REV=34, P_LEVEL=106),
-                     steps="12A . . 12 . . 12 . . 10 - .", poly=True),
-                dict(sound="DEEP BLUE", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=100, P_AHOLD="OFF", P_CHRD="MIN", P_VOIC="CLOSE", P_DLY=0, P_REV=50, P_LEVEL=98),
-                     steps="0A - - - - - - . . . . . -5 - - .")]),
-    dict(slot=8, name="TINE DUB", mode="LAYER",
-         what="FM electric-piano tines stabbing a dub chord through a tape echo, a slow-moving analog pad holding open fifths under them (the FM voice of the set, 120 BPM)",
-         g=dict(G_BPM=120, G_DTIME="8D", G_DFDBK=60, G_DMIX=84, G_DMODE="DIGI", G_RTYPE="PLATE", G_RSIZE=77, G_RDAMP=61),
-         parts=[dict(sound="TINE ROOM", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=50, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="CLOSE", P_DLY=64, P_REV=30, P_LEVEL=98),
-                     steps=". . 0A - - . 0 . . . 0A - - . 3 ."),
-                dict(sound="SLOW TIDE", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=100, P_AHOLD="OFF", P_CHRD="POW", P_VOIC="CLOSE", P_REV=50, P_LEVEL=85),
-                     steps="0A - - - - - - - 7A - - - - - - -")]),
-    dict(slot=9, name="DEEP 332", mode="LAYER",
-         what="a deep-house soul stab comping a 3-3-5-3-2 rhythm with a touch of swing, a dark fog holding the root and the fifth underneath (124 BPM)",
-         g=dict(G_BPM=124, G_DTIME="8D", G_DFDBK=45, G_DMIX=71, G_DMODE="DIGI", G_RTYPE="ROOM", G_RSIZE=71, G_RDAMP=61),
-         parts=[dict(sound="SOUL STAB", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=40, P_ASWING=54, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="OPEN", P_LEVEL=101),
-                     steps="0A . . 0 . . 0A . . . . 3 . . 0 ."),
-                dict(sound="FOG BANK", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=100, P_AHOLD="OFF", P_REV=55, P_LEVEL=98),
-                     steps="0A - - - - - - - 7A - - - - - - -")]),
+         what="dub techno, G minor: one minor-seventh chord in a low-pass haze, three hits a bar (steps 4, 7, 14) ringing into a long dark dotted echo, the filter riding slowly, a crackle bed held under it (122 BPM)",
+         g=dict(G_BPM=122, G_DTIME="8D", G_DFDBK=72, G_DMIX=84, G_DMODE="DIGI", G_DCOLOR=50, G_DMDEP=12, G_RTYPE="PLATE", G_RSIZE=84, G_RDAMP=61),
+         parts=[dict(sound="CHORD ECHO", set={"P_AMODE": "SEQ", "P_ARATE": "1/16", "P_AGATE": 90, "P_AHOLD": "OFF", "P_CHRD": "MIN7", "P_VOIC": "OPEN", "E:NOIS": 14, "P_FREEB": 18,
+                                              "P_LRATE": 12, "P_LD_FLT": 9, "P_REL": 78, "P_SPRD": 50, "P_EQMG": -4, "P_EQMF": -9, "P_DKSRC": "PUMP", "P_DKRATE": "1/4", "P_DKDEP": 30, "P_DLY": 78, "P_REV": 44, "P_LEVEL": 106},
+                     steps=". . . -5A . . -5 . . . . . . -5 . .", bseed=56484, amt=30, b={"P_FREEA": 46, "P_FREEB": 30, "P_REL": 84}),
+                dict(sound="DUST BED", set=dict(P_AMODE="SEQ", P_ARATE="4BAR", P_AGATE=127, P_AHOLD="OFF", P_EQLG=-12, P_LEVEL=100),
+                     steps="0 -", len=2, bseed=4325, amt=30, b={"P_FREEA": 52})]),
+    dict(slot=2, name="DUB CHORD", mode="LAYER",
+         what="dub techno, C minor, the first start: the owner's FM minor-seventh stab on the off-beats (steps 3 and 11, filtered to about 900 Hz, chorused) thrown into a long dark dotted echo (feedback 71, mix 97, drifting), over a low analog pad holding C minor through every bar (117 BPM; until the reel the stab played over a sparse sub line)",
+         g=dict(G_BPM=117, G_DTIME="8D", G_DFDBK=71, G_DMIX=97, G_DMODE="DIGI", G_DCOLOR=50, G_DMDEP=37, G_RTYPE="ROOM", G_RSIZE=69, G_RDAMP=71),
+         parts=[dict(sound="BIG STAB", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=60, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="CLOSE", P_FREEA=45, P_SPRD=40,
+                                                 P_CHOR=80, P_DLY=77, P_REV=37, P_LEVEL=112),
+                     steps=". . 0A . . . . . . . 0 . . . . .", bseed=26818, amt=30, b={"P_FREEA": 56}),
+                dict(sound="SLOW TIDE", set=dict(P_AMODE="SEQ", P_ARATE="4BAR", P_AGATE=127, P_AHOLD="OFF", P_CHRD="MIN", P_VOIC="CLOSE", P_FREEA=40, P_DLY=20, P_REV=60, P_LEVEL=88),
+                     steps="-12 -", len=2, bseed=27687, amt=30, b={"P_FREEA": 50})]),
+    # ---- b7 (lane TECHNO, owner 9 November 2026: "adjustments of the multis for techno, like berlin and such"; then: "a curated selection of electronic music and
+    # genres, berlin school, idm, electro"): M03 acid, M04 electro, M07 techno, M13 IDM, M14 Berlin school, M15 Detroit, 120-130 BPM, two ARP SEQ parts each (both play on
+    # PLAY with no key held), the motif's anchors accented and a few softer hits TIDE may thin.
+    # Replaced: CELLAR TAPE (M03), NIGHT ORGAN (M04, the owner's), MINIMAL 12's blip and pad (M07), COLD CHAPEL, EERIE SIGNAL, HAZY TENSOR (M13-M15, the owner's);
+    # their records are in the git history (b7/integ dc8f1d3, tools/factory_multis/M03 M04 M07 M13 M14 M15.bin).
+    dict(slot=3, name="JUNO DEEP", mode="LAYER",
+         what="deep house, A minor, written notes (it stays in its key): three soft clustered chords held long (A minor add 9 two bars, F major 7, G add 9) on a chorused saw pad, a round analog bass line of six notes a bar doing the rhythm, each note closing its filter, A2 to A3 (116 BPM)",
+         g=dict(G_BPM=116, G_DTIME="8D", G_DFDBK=45, G_DMIX=71, G_DMODE="DIGI", G_RTYPE="HALL", G_RSIZE=70, G_RDAMP=61),
+         parts=[dict(sound="WARM WASH", set=dict(P_AMODE="OFF", P_SDIV="1/2", P_SGATE=127, P_ATK=62, P_REL=88, P_FREEA=48, P_CHOR=100, P_DLY=30, P_REV=56, P_LEVEL=96),
+                     steps="n57+59+60+64v96 - - - n57+60+64+65v92 - n55+57+59+62v96 -", bseed=26818, amt=30, b={"P_FREEA": 56, "P_ATK": 72}),
+                dict(sound="RUBBER BAND", set=dict(P_AMODE="OFF", P_SGATE=100, P_E2FLT=44, P_CHOR=30, P_SPRD=40, P_DLY=24, P_REV=10, P_LEVEL=100),
+                     steps="n45v110 . . n45v90 . . n52v90 . . . n55v90 . n57 . . n52v80 "
+                           "n45v110 . . n45v90 . . n52v90 . . . n55v90 . n57 . . n55v80 "
+                           "n41v110 . . n41v90 . . n48v90 . . . n52v90 . n53 . . n48v80 "
+                           "n43v110 . . n43v90 . . n50v90 . . . n50v90 . n55 . . n52v80", len=64, bseed=26818, amt=30, b={"P_FREEA": 36, "P_DEC": 88})]),
+    dict(slot=4, name="LATE RHODES", mode="LAYER",
+         what="deep house, F minor: electric-piano minor sevenths in one parallel shape, the next bar's chord arriving on the last 16th (F minor 7, C minor 7, a 2-bar loop, swing 57) into a dotted echo, high airy strings holding A flat major 7 above without a break: F minor 9 together (122 BPM)",
+         g=dict(G_BPM=122, G_DTIME="8D", G_DFDBK=45, G_DMIX=71, G_DMODE="DIGI", G_RTYPE="PLATE", G_RSIZE=70, G_RDAMP=61),
+         parts=[dict(sound="TINE ROOM", set={"P_AMODE": "SEQ", "P_ARATE": "1/16", "P_AGATE": 75, "P_ASWING": 57, "P_AHOLD": "OFF", "P_CHRD": "MIN7", "P_VOIC": "INV2", "E:MLVL": -8,
+                                             "P_FREEA": 82, "P_E2FLT": 0, "P_M1AMT": 0, "P_M4AMT": 0, "P_KTRK": 0, "P_EQLG": -10, "P_EQLF": 7, "P_CHOR": 70, "P_DLY": 44, "P_REV": 28, "P_LEVEL": 103},
+                     steps=". . . -7 . . -7 . . . -7 - . . . -12A . . . -12 . . -12 . . . -12 - . . . -7A", bars=2, bseed=64940, amt=30, b={"E:MLVL": 0}),
+                dict(sound="AIR SHIMMER", set=dict(P_AMODE="SEQ", P_ARATE="1/1", P_AGATE=127, P_AHOLD="OFF", P_CHRD="MAJ7", P_VOIC="CLOSE", P_DLY=0, P_REV=60, P_LEVEL=85),
+                     steps="8 - - -", len=4, bseed=25230, amt=30, b={"P_FREEA": 76, "P_CHOR": 100})]),
+    dict(slot=5, name="ORGAN HOUSE", mode="LAYER",
+         what="classic house, G minor: an FM drawbar organ riff in hollow fifths (the hook: G, B flat, C, down to E flat and F, 2 bars, swung 58) through a dotted echo, over a tonewheel organ pad holding G and F suspended chords with a slow rotor (124 BPM)",
+         g=dict(G_BPM=124, G_DTIME="8D", G_DFDBK=50, G_DMIX=71, G_DMODE="DIGI", G_RTYPE="PLATE", G_RSIZE=70, G_RDAMP=61),
+         parts=[dict(sound="DUB DRAWBAR", set={"P_AMODE": "SEQ", "P_ARATE": "1/16", "P_AGATE": 95, "P_ASWING": 58, "P_AHOLD": "OFF", "P_CHRD": "POW", "P_VOIC": "CLOSE", "E:MEG": -20, "E:MRAT": 2,
+                                               "P_CHOR": 60, "P_SPRD": 50, "P_DLY": 50, "P_REV": 30, "P_LEVEL": 108},
+                     steps=". . -5A . -5 . . -2 . . -5 . -7 . . . . . -5A . -5 . . 0 . . -2 . -9 . -7 .", bars=2, bseed=64940, amt=30, b={"E:MLVL": 6, "P_DIST": 20}),
+                dict(sound="HOUSE ORGAN", set={"P_AMODE": "SEQ", "P_ARATE": "1/1", "P_AGATE": 127, "P_AHOLD": "OFF", "P_CHRD": "SUS2", "P_VOIC": "CLOSE", "E:PERC": 0, "E:ROTR": 1,
+                                               "P_ATK": 40, "P_REL": 90, "P_SUS": 127, "P_CHOR": 70, "P_SPRD": 60, "P_DLY": 20, "P_REV": 50, "P_LEVEL": 86},
+                     steps="7 - - 5", len=4, bseed=19366, amt=30, b={"E:TOP": 4, "P_FREEA": 78})]),
+    dict(slot=6, name="PIANO HOUSE", mode="LAYER",
+         what="classic house, C minor, written notes (it stays in its key): an FM electric grand hammering four chords, a bar each (C minor, A flat, E flat, B flat), hits on 1, 4, 7, 11, 14 with written velocities, chorused and wide into a dotted echo, a string line on top (124 BPM). The unit has no sampled piano: this is the DX kind",
+         g=dict(G_BPM=124, G_DTIME="8D", G_DFDBK=40, G_DMIX=71, G_DMODE="DIGI", G_RTYPE="PLATE", G_RSIZE=66, G_RDAMP=61),
+         parts=[dict(sound="SALOON KEYS", set={"P_AMODE": "OFF", "P_SGATE": 90, "E:DTUN": 24, "E:MLVL": 10, "P_EQHG": 3, "P_FREEA": 82, "P_E2FLT": 0, "P_M1AMT": 0, "P_M4AMT": 0, "P_KTRK": 0,
+                                               "P_CHOR": 50, "P_SPRD": 50, "P_DLY": 30, "P_REV": 40, "P_LEVEL": 100},
+                     steps="n55+60+63+67v118 . . n55+60+63+67v92 . . n55+60+63+67v104 . . . n55+60+63+67v112 . . n55+60+63+67v88 . . "
+                           "n56+60+63+68v118 . . n56+60+63+68v92 . . n56+60+63+68v104 . . . n56+60+63+68v112 . . n56+60+63+68v88 . . "
+                           "n55+58+63+67v118 . . n55+58+63+67v92 . . n55+58+63+67v104 . . . n55+58+63+67v112 . . n55+58+63+67v88 . . "
+                           "n53+58+62+65v118 . . n53+58+62+65v92 . . n53+58+62+65v104 . . . n53+58+62+65v112 . . n53+58+62+65v88 . .", len=64, bseed=25350, amt=30, b={"E:MLVL": 16}),
+                dict(sound="RAIN STRINGS", set=dict(P_AMODE="OFF", P_SDIV="1/1", P_SGATE=127, P_ATK=70, P_CHOR=80, P_DLY=0, P_REV=60, P_LEVEL=84),
+                     steps="n67+72v84 n68+72v84 n67+70v84 n65+70v84", len=4, bseed=33747, amt=30, b={"P_FREEA": 52})]),
+    dict(slot=7, name="DETROIT STAB", mode="LAYER",
+         what="Detroit techno, B minor: one saw minor-seventh block walking in parallel (B, F sharp, E), off the downbeats, each hit closing its filter and ringing into a long dotted echo, a 2-bar walk with its turnaround; string-machine fifths stabbing on the one and holding (125 BPM)",
+         g=dict(G_BPM=125, G_DTIME="8D", G_DFDBK=55, G_DMIX=71, G_DMODE="PING", G_RTYPE="HALL", G_RSIZE=80, G_RDAMP=61),
+         parts=[dict(sound="LOW STAB", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=75, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="CLOSE", P_FREEA=40, P_E2FLT=50, P_E2DEC=62, P_REL=66, P_SPRD=50, P_CHOR=50,
+                                                 P_DKSRC="PUMP", P_DKRATE="1/4", P_DKDEP=24, P_DLY=60, P_REV=30, P_LEVEL=98),
+                     steps=". . -1A . . -1 . . . -6 . . -6A . . . . . -8A . . -8 . . . -1 . . . . -1A -1", bars=2, bseed=43134, amt=30, b={"P_FREEA": 50, "P_DEC": 80}),
+                dict(sound="STRING MACH", set=dict(P_AMODE="SEQ", P_ARATE="1/2", P_AGATE=127, P_AHOLD="OFF", P_CHRD="POW", P_VOIC="CLOSE", P_ATK=58, P_CHOR=90, P_REV=50, P_LEVEL=86),
+                     steps="-1A - - - 4 - 6 -", bseed=53501, amt=30, b={"P_FREEA": 70})]),
+    dict(slot=8, name="HI-TECH SOUL", mode="LAYER",
+         what="Detroit, the jazz side, C sharp minor: soft chords in stacked fourths, one a bar without a break (C sharp, F sharp, G sharp, F sharp), an FM bell phrase falling through E major pentatonic into the echo (127 BPM)",
+         g=dict(G_BPM=127, G_DTIME="8D", G_DFDBK=50, G_DMIX=71, G_DMODE="PING", G_RTYPE="HALL", G_RSIZE=84, G_RDAMP=61),
+         parts=[dict(sound="SUNDAY KEYS", set=dict(P_AMODE="SEQ", P_ARATE="1/2", P_AGATE=127, P_AHOLD="OFF", P_CHRD="MIN11", P_VOIC="CLOSE", P_ATK=12, P_FREEA=40, P_E2FLT=24,
+                                                    P_CHOR=96, P_DLY=20, P_REV=56, P_LEVEL=92),
+                     steps="1A - -6A - -4A - -6A -", bseed=25255, amt=30, b={"P_FREEA": 50, "P_E2FLT": 34}),
+                dict(sound="BELL STAB", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=110, P_AHOLD="OFF", P_CHRD="OFF", P_CHOR=50, P_SPRD=50, P_DLY=70, P_REV=44, P_LEVEL=94),
+                     steps=". . 16A . 13 . . 11 . . 8 . . 11 13 .", bseed=64940, amt=30, b={"E:MLVL": 0})]),
+    dict(slot=9, name="MINIMAL 12", mode="LAYER",
+         what="minimal techno: one chord sound on a twelve-step loop against the bar (A minor and the G minor a whole tone under it, home again every three bars), ringing into a dotted echo, over a dark fog pad holding A3 in fifths (128 BPM)",
+         g=dict(G_BPM=128, G_DTIME="8D", G_DFDBK=45, G_DMIX=71, G_DMODE="DIGI", G_RTYPE="ROOM", G_RSIZE=70, G_RDAMP=64),
+         parts=[dict(sound="SOUL STAB", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=70, P_AHOLD="OFF", P_CHRD="MIN", P_VOIC="CLOSE", P_REL=64, P_SPRD=50, P_DKSRC="PUMP", P_DKRATE="1/4", P_DKDEP=20,
+                                                  P_CHOR=60, P_DLY=72, P_REV=50, P_LEVEL=104),
+                     steps="-3A . . -3 . -5 . . -3 . . -5A", poly=True, bseed=47481, amt=30, b={"P_E2DEC": 66, "P_FREEB": 22}),
+                dict(sound="FOG BANK", set=dict(P_AMODE="SEQ", P_ARATE="2BAR", P_AGATE=127, P_AHOLD="OFF", P_CHRD="POW", P_VOIC="CLOSE", P_FREEA=40, P_DLY=30, P_REV=60, P_LEVEL=94),
+                     steps="-3 -", len=2, bseed=26818, amt=30, b={"P_FREEA": 42})]),
     # ---- 10-16: colour: the owner's pads and textures, kept byte for byte (tools/owner_multis.py; their old slots in brackets) ----
     # 10 PAD SPLIT (M03), 11 WHISPER TIDE (M05), 12 TINE STRINGS (M06), 13 COLD CHAPEL (M13), 14 EERIE SIGNAL (M11), 15 HAZY TENSOR (M08), 16 FINAL REEL (M07)
+    # b7 lane TECHNO: 13-15 are IDM, Berlin school and Detroit scenes now (the owner's COLD CHAPEL, EERIE SIGNAL and HAZY TENSOR left; see M03 above)
+    dict(slot=13, name="DEEP SEA ARP", mode="LAYER",
+         what="electro, F sharp minor: a quick glassy wavetable arpeggio, each note closing its shape, chorused into a dotted echo and kept under the chords; chorused pulse-width minor sevenths on a six-bar cycle (F sharp, B, C sharp, two bars each) that ignores the four-bar grid (133 BPM, straight)",
+         g=dict(G_BPM=133, G_DTIME="8D", G_DFDBK=50, G_DMIX=71, G_DMODE="PING", G_RTYPE="HALL", G_RSIZE=90, G_RDAMP=61, G_CDEPTH=80),
+         parts=[dict(sound="DIGI PLUCK", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=90, P_AHOLD="OFF", P_CHRD="OFF", P_DKSRC="PUMP", P_DKRATE="1/4", P_DKDEP=20, P_CHOR=70, P_SPRD=60, P_DLY=55, P_REV=32, P_LEVEL=92),
+                     steps="-6A . 1 6 . 1 -3 . -6 . 1 4 . 1 . 9", bseed=25230, amt=30, b={"P_FREEA": 68, "P_DEC": 96}),
+                dict(sound="PWM PAD", set=dict(P_AMODE="SEQ", P_ARATE="1/1", P_AGATE=127, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="CLOSE", P_CHOR=100, P_DLY=0, P_REV=60, P_LEVEL=90),
+                     steps="6 - -1 - 1 -", len=6, bseed=50996, amt=30, b={"P_FREEA": 60})]),
+    dict(slot=14, name="WARPED TAPE", mode="LAYER",
+         what="IDM, D mixolydian: a music-box tune of long notes, two and a half bars long, into a dotted echo, over a detuned pad in bare suspended chords (D, C, G) that wobbles like worn tape (a TAPE insert) and turns over every six bars; the two meet differently each time (114 BPM)",
+         g=dict(G_BPM=114, G_DTIME="8D", G_DFDBK=45, G_DMIX=71, G_DMODE="PING", G_RTYPE="HALL", G_RSIZE=90, G_RDAMP=61),
+         parts=[dict(sound="WAVE CHIMES", set=dict(P_AMODE="SEQ", P_ARATE="1/8", P_AOCT=1, P_AGATE=110, P_AHOLD="OFF", P_CHRD="OFF", P_EQHG=-4, P_CHOR=40, P_SPRD=40, P_DLY=50, P_REV=50, P_LEVEL=105),
+                     steps="9A . 6 4 . 2 . . 4 . 6 9 . 11A . 9 . . . .", len=20, bseed=27687, amt=30, b={"P_REL": 82}),
+                dict(sound="TAPE CLOUD", set={"P_AMODE": "SEQ", "P_ARATE": "1/1", "P_AGATE": 127, "P_AHOLD": "OFF", "P_CHRD": "SUS2", "P_VOIC": "CLOSE", "P_ITYPE": "TAPE", "P_IA": 55, "P_IB": 40, "P_IC": 96,
+                                              "E:DTN": 52, "P_FREEA": 46, "P_CHOR": 100, "P_REV": 62, "P_LEVEL": 96},
+                     steps="2 - 0 - -5 2", len=6, bseed=64940, amt=30, b={"P_IA": 85, "E:DTN": 70, "P_FREEA": 40})]),
+    dict(slot=15, name="BERLIN RUN", mode="LAYER",
+         what="Berlin school, F minor: an eighth-note ladder-filter bass sequence on root, fifth, flat seventh and fourth, every note going bright to dark, a doubled hit at the turnaround, the dotted echo making sixteenths of it; a choir through a slow phaser holding fifths four bars at a time (F, F, E flat, B flat). Hold a key: the run transposes (112 BPM)",
+         g=dict(G_BPM=112, G_DTIME="8D", G_DFDBK=48, G_DMIX=71, G_DMODE="PING", G_RTYPE="HALL", G_RSIZE=100, G_RDAMP=61),
+         parts=[dict(sound="ARP PLUCK", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AOCT=1, P_AGATE=127, P_AHOLD="OFF", P_CHRD="OFF", P_VOICE="MONO", P_DEC=78, P_E2DEC=64, P_E2FLT=63, P_FREEA=30, P_FREEB=14,
+                                                  P_CHOR=40, P_SPRD=40, P_DLY=56, P_REV=20, P_LEVEL=115),
+                     steps="-19A . -7 . -12 . -7 . -9 . -7 . -12 . -14 . -19A . -7 . -12 . -7 . -4 . -7 . -9 . -12 -12", bars=2, bseed=26818, amt=30, b={"P_FREEA": 44, "P_E2FLT": 58, "P_DEC": 86}),
+                dict(sound="CHOIR LOFT", set=dict(P_AMODE="SEQ", P_ARATE="4BAR", P_AGATE=127, P_AHOLD="OFF", P_CHRD="POW", P_VOIC="CLOSE", P_ITYPE="PHASER", P_IA=30, P_IB=80, P_IC=50, P_IMIX=90,
+                                                   P_REV=70, P_LEVEL=97),
+                     steps="-7 - -9 -14", len=4, bseed=43134, amt=30, b={"P_IB": 110, "P_FREEA": 56})]),
+    dict(slot=10, name="SEVEN LOOP", mode="LAYER",
+         what="hypnotic techno, D minor: a resonant saw ping on a loop of seven 16ths against the bar (home again every seven bars), its filter riding slowly by itself, over an iron ring-mod drone holding D in fifths, a whole-bar echo (130 BPM)",
+         g=dict(G_BPM=130, G_DTIME="1/1", G_DFDBK=50, G_DMIX=64, G_DMODE="PING", G_RTYPE="HALL", G_RSIZE=96, G_RDAMP=61),
+         parts=[dict(sound="HOLLOW POP", set={"P_AMODE": "SEQ", "P_ARATE": "1/16", "P_AGATE": 90, "P_AHOLD": "OFF", "E:WAVE": 0, "P_E2ATK": 48, "P_E2DEC": 77, "P_DEC": 78, "P_SUS": 0, "P_REL": 66,
+                                              "P_FREEA": 36, "P_FREEB": 24, "P_LRATE": 0, "P_LD_FLT": 14, "P_CHOR": 55, "P_SPRD": 50, "P_DLY": 56, "P_REV": 34, "P_LEVEL": 104},
+                     steps="2A . 2 . 5 . .", len=7, bseed=25230, amt=30, b={"P_FREEA": 56, "P_FREEB": 40, "P_DEC": 86}),
+                dict(sound="IRON WORKS", set=dict(P_AMODE="SEQ", P_ARATE="4BAR", P_AGATE=127, P_AHOLD="OFF", P_CHRD="POW", P_VOIC="CLOSE", P_DLY=30, P_REV=70, P_LEVEL=100),
+                     steps="-10 -", len=2, bseed=20216, amt=30, b={"P_FREEA": 60})]),
+    dict(slot=11, name="ACID LINES", mode="LAYER",
+         what="deep acid, A minor, written notes (it stays in its key): a resonant saw line with slides (S: held into the next step, no retrigger, a 54 ms glide) and accents, every unslid note sweeping its filter shut, gate 58 %, over a slow dark pad holding A minor 7, F major 7 and G 6 (124 BPM)",
+         g=dict(G_BPM=124, G_DTIME="8D", G_DFDBK=50, G_DMIX=71, G_DMODE="PING", G_RTYPE="HALL", G_RSIZE=70, G_RDAMP=64),
+         parts=[dict(sound="SQUELCH", set=dict(P_AMODE="OFF", P_SGATE=74, P_FREEB=90, P_E2FLT=63, P_E2DEC=72, P_GLIDE=55, P_DIST=48, P_CHOR=35, P_SPRD=40, P_DLY=45, P_REV=20, P_LEVEL=108),
+                     steps="n45A n45 . n48S n50 . n45A n43S n45 . n45 n48A . n43S n45 n52AS", bseed=20216, amt=30, b={"P_FREEA": 46, "P_FREEB": 104, "P_E2DEC": 80, "P_DIST": 70}),
+                dict(sound="DEEP BLUE", set=dict(P_AMODE="OFF", P_SDIV="1/1", P_SGATE=127, P_ATK=84, P_CHOR=80, P_REV=70, P_LEVEL=100),
+                     steps="n57+60+64+67v90 - n53+57+60+64v90 n55+59+62+64v90", len=4, bseed=26818, amt=30, b={"P_FREEA": 58})]),
+    dict(slot=12, name="ROBOT FUNK", mode="LAYER",
+         what="electro, G minor: a round ladder-filter bass on the electro kick's own rhythm (steps 1, 7, 11, 14, one octave jump a bar), each note closing its filter, under a vowel-table choir in bare fifths holding every bar, its vowel moving slowly: G for two bars, B flat, F (128 BPM, straight)",
+         g=dict(G_BPM=128, G_DTIME="8D", G_DFDBK=45, G_DMIX=71, G_DMODE="DIGI", G_RTYPE="ROOM", G_RSIZE=64, G_RDAMP=64),
+         parts=[dict(sound="LADDER BASS", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=80, P_AHOLD="OFF", P_CHRD="OFF", P_E2ATK=0, P_E2FLT=44, P_E2DEC=70, P_FREEA=30, P_EQLG=-4, P_CHOR=30, P_SPRD=40, P_DLY=45, P_REV=25, P_LEVEL=108),
+                     steps="-17A . . -17 . . -17A . . . -5A . . -7 . -10", bseed=6079, amt=30, b={"P_FREEA": 40, "P_E2FLT": 54}),
+                dict(sound="VOWEL PAD", set={"P_AMODE": "SEQ", "P_ARATE": "1/4", "P_AGATE": 127, "P_AHOLD": "OFF", "P_CHRD": "POW", "P_VOIC": "CLOSE", "P_ATK": 52, "P_REL": 84, "P_FREEA": 45, "P_EQLG": -4,
+                                             "P_M8SRC": "LFO2", "P_M8DST": "E2", "P_M8AMT": 24, "P_L2RATE": 30, "P_CHOR": 80, "P_DLY": 50, "P_REV": 70, "P_LEVEL": 100},
+                     steps="7A - - - 7 - 7 - 10A - - - 5A - - -", bseed=64073, amt=30, b={"E:POS": 30, "P_FREEA": 54})]),
+    dict(slot=16, name="TWO LOOPS", mode="LAYER",
+         what="ambient, E flat major: two loops of unequal length that never meet the same way twice: four soft FM bell notes on eleven half-notes, open suspended chords (E flat four bars, A flat three) held without a break on seven whole notes; long hall, long echo (100 BPM)",
+         g=dict(G_BPM=100, G_DTIME="4D", G_DFDBK=60, G_DMIX=71, G_DMODE="PING", G_RTYPE="HALL", G_RSIZE=115, G_RDAMP=50),
+         parts=[dict(sound="FROST BELLS", set={"P_AMODE": "SEQ", "P_ARATE": "1/2", "P_AGATE": 127, "P_AHOLD": "OFF", "P_CHRD": "OFF", "E:MLVL": -14, "P_EQLG": -10, "P_EQLF": 7, "P_CHOR": 40, "P_DLY": 60, "P_REV": 80, "P_LEVEL": 90},
+                     steps="10 . . 17 . . . 15 . 7 .", len=11, bseed=19366, amt=30, b={"E:MLVL": -6}),
+                dict(sound="EVOLVING PAD", set=dict(P_AMODE="SEQ", P_ARATE="1/1", P_AGATE=127, P_AHOLD="OFF", P_CHRD="SUS2", P_VOIC="CLOSE", P_ATK=96, P_DLY=32, P_REV=90, P_LEVEL=96),
+                     steps="-9 - - - -4 - -", len=7, bseed=27687, amt=30, b={"E:POS": 90, "P_FREEA": 68})]),
 ]
 
 # ---- spare multis (0.2.24): made for 0.2.23, out of the sixteen so the owner's COLD CHAPEL, ACID ETHER and GARGLE ACID could come back.
@@ -282,11 +376,14 @@ def emit(path):
                 else:
                     st += [k, str(value(P_LIST, k, v))]
             steps = p.get("steps")
-            if steps and check_steps(steps, bool(p.get("poly")), p.get("bars", 1)):
-                sys.exit("factory_multis: %s: %s" % (m["name"], "; ".join(check_steps(steps, bool(p.get("poly")), p.get("bars", 1)))))
+            if steps and check_steps(steps, bool(p.get("poly")), (("len", p["len"]) if p.get("len") else p.get("bars", 1))):
+                sys.exit("factory_multis: %s: %s" % (m["name"], "; ".join(check_steps(steps, bool(p.get("poly")), (("len", p["len"]) if p.get("len") else p.get("bars", 1))))))
             n = len(steps.split()) if steps else 16
-            lines.append('        {%d, %d, "%s", {%s}, %s, %d, %d, %d},' % (p["eng"], p["idx"], p["sound"], ", ".join(st + ["END"]),
-                                                                       '"%s"' % steps if steps else "0", n, p.get("bseed", 0), p.get("amt", 0)))
+            bs = []                                     # (reel: b {P_id or "E:LABEL": value}: End B's value set by hand after the roll, as a player sets it at the B end; gen_factory_multis.c)
+            for k, v in p.get("b", {}).items():
+                bs += [edit_key(p["eng"], k[2:]) if k.startswith("E:") else k, str(value(P_LIST, k, v))]
+            lines.append('        {%d, %d, "%s", {%s}, %s, %d, %d, %d, {%s}},' % (p["eng"], p["idx"], p["sound"], ", ".join(st + ["END"]),
+                                                                             '"%s"' % steps if steps else "0", n, p.get("bseed", 0), p.get("amt", 0), ", ".join(bs + ["END"])))
         lines.append("    }},")
     lines.append("};")
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -296,6 +393,7 @@ def emit(path):
 BOOT_H = """/* tools/factory_multis.py: no factory multis (the build of the generator itself) */
 #define DF_TEST_MULTIS DUELL_TEST_MODE
 #define DF_N 0u
+#define DF_TIDE DUELL_TIDE
 static const uint8_t DF_SLOT[1] = {0};
 static const uint16_t DM_LEN[1] = {0};
 static const uint16_t DM_AT[1] = {0};
@@ -401,7 +499,7 @@ def p_ids():
     return {n: i for i, n in enumerate(names)}
 
 
-STEP_TOKEN = re.compile(r"(?P<rest>\.)|(?P<tie>-)|(?:n\d+(?:\+\d+){0,3}|[+-]?\d+)(?:v(?P<vel>\d+))?A*")
+STEP_TOKEN = re.compile(r"(?P<rest>\.)|(?P<tie>-)|(?:n\d+(?:\+\d+){0,3}|[+-]?\d+)(?:v(?P<vel>\d+))?[AS]*")
 
 
 def check_steps(steps, poly=False, bars=1):
@@ -422,6 +520,8 @@ def check_steps(steps, poly=False, bars=1):
             err.append("step %d: tie without a note" % (i + 1))
         prev = "rest" if m.group("rest") else "note"
     allowed = [8, 16] + ([12] if poly else []) + ([32] if bars == 2 else [])
+    if isinstance(bars, tuple):                     # (reel, 2026-11-10: a part with len=N says its own length, 1..64: a 7-step loop, a 6-bar pad at 1/1, a 4-bar written line)
+        allowed = [bars[1]] if 1 <= bars[1] <= 64 else []
     if len(toks) not in allowed:
         err.append("the pattern has %d steps, not %s (12 needs poly=True, 32 needs bars=2)" % (len(toks), " or ".join(str(n) for n in allowed)))
     return err
@@ -504,7 +604,7 @@ def check(snd=None):
     for m in MULTIS:                                  # (T1: a pattern is 8 or 16 steps, or 12 on a part with poly=True (a polymeter on purpose), or 32 on a part with bars=2 (two bars): one token short drifts a 16th a bar against the other part, M16 had 15; and the step grammar: ties, velocities)
         for t, p in enumerate(m["parts"]):
             if p.get("steps"):
-                err += ["M%02d part %d: %s" % (m["slot"], t + 1, e) for e in check_steps(p["steps"], bool(p.get("poly")), p.get("bars", 1))]
+                err += ["M%02d part %d: %s" % (m["slot"], t + 1, e) for e in check_steps(p["steps"], bool(p.get("poly")), (("len", p["len"]) if p.get("len") else p.get("bars", 1)))]
     for m in MULTIS:
         f = DIR / ("M%02d.bin" % m["slot"])
         if not f.exists():
@@ -518,7 +618,7 @@ def check(snd=None):
     for m in SPARE:                                   # (the spare records exist and name their sounds)
         for t, p in enumerate(m["parts"]):
             if p.get("steps"):
-                err += ["spare %s part %d: %s" % (m["name"], t + 1, e) for e in check_steps(p["steps"], bool(p.get("poly")), p.get("bars", 1))]
+                err += ["spare %s part %d: %s" % (m["name"], t + 1, e) for e in check_steps(p["steps"], bool(p.get("poly")), (("len", p["len"]) if p.get("len") else p.get("bars", 1)))]
         f = ROOT / "tests" / "scenes" / (m["scene"] + ".bin")
         if not f.exists():
             err.append("spare %s: %s missing" % (m["name"], f.name))

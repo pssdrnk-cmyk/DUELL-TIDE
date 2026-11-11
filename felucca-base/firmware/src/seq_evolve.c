@@ -75,13 +75,16 @@ static void sqm_pitch_apply(const step_t *p, uint32_t len, const sqm_end_t *x, s
 /* One nearest-scale-degree move; caller decides the musical opportunity. */
 static uint32_t sqm_pitch_walk(track_t *t, sqm_end_t *x, uint32_t seed)
 {
-    uint32_t len = sqm_len(t), first, i, k, d;
+    uint32_t len = sqm_len(t), first, i, k, d, list[64], cnt = 0, root = 60;
     if (scale_mask(t) == 0xFFFu || tide_bass_part(t)) return len;   /* (SCALE CHR: every pitch class would do, the walk would be chromatic; a bass-family sound: the bass never walks, D3) */
+    if (arp_mode(t) == AM_SEQ_ID && arp_list(t, list, &cnt))
+        for (root = 127, i = 0; i < cnt; i++)            /* (B4: an ARP SEQ step is an offset from the chord the arp plays: its lowest note is where the step sounds) */
+            root = list[i] < root ? list[i] : root;
     first = sqm_hash(seed, 0, 42u) % len;
     for (uint32_t j = 0; j < len; j++) {
         i = (first + j) % len;
         k = sqm_pitch_voice(&t->step[i], i);
-        if (k == 4u) continue;
+        if (k == 4u || (int32_t)root + t->step[i].note[k] - 60 < 48) continue;   /* (nothing under C3 walks, as played) */
         for (uint32_t turn = 0; turn < 2u; turn++) {
             int32_t sign = ((sqm_hash(seed, i, 43u) & 1u) ^ turn) ? 1 : -1;
             int32_t old = t->step[i].note[k], current = old + sqm_pitch_get(x, i);

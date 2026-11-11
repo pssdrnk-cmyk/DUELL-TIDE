@@ -4,15 +4,19 @@
  * audio keeps up, erases and writes only inside the storage areas, the audio ducked to silence
  * first (DUELL 0.2.11). The host tests (storage_test.c) provide their own st_* on a simulated NOR. */
 static uint8_t flash_ok;                 /* JEDEC id matched at boot (persist_boot) */
+#if DUELL_TWOCORE
+#define ST_TC() tc_store_wait()                 /* (the XIP map is off while the driver works: core 1 idle first, inside the IRQ-off window; twocore.c) */
+#else
+#define ST_TC() ((void)0)
+#endif
 static int st_read(uint32_t off, void *dst, uint32_t n)   /* 256-byte IRQ-off windows: audio keeps up */
 {
     uint8_t *d = dst;
-#if DUELL_TWOCORE
-    tc_flash_park();                            /* (the XIP map is off while the driver works: core 1 idle first, twocore.c) */
-#endif
     while (n) {
         uint32_t k = n > 256u ? 256u : n, f = irq_save();
-        int rc = FL_FAR(fl_read_ram)(off, d, k);
+        int rc;
+        ST_TC();
+        rc = FL_FAR(fl_read_ram)(off, d, k);
         irq_restore(f);
         if (rc)
             return rc;
@@ -48,13 +52,11 @@ static int st_erase(uint32_t off)
 {
     uint32_t took = 0, f;
     int rc;
-#if DUELL_TWOCORE
-    tc_flash_park();                            /* (the XIP map is off while the driver works: core 1 idle first, twocore.c) */
-#endif
     if (!FL_STORE_OK(off, 0x1000u))
         return -8;
     st_duck_begin();
     f = irq_save();
+    ST_TC();
     audio_silence();                            /* (already silent after the duck; kept for a duck that timed out) */
     fm1__led_lines(0);                          /* DUELL 0.2.14, from Felucca 1.6 (#236): the erase stops the LED scan (IRQs off */
     rc = FL_FAR(fl_erase4k_ram)(off, &took);    /* for ~17-40 ms): the column lit at that moment would burn at full duty and the */
@@ -73,9 +75,6 @@ static int st_prog(uint32_t off, const void *src, uint32_t n)   /* a page (256 b
 {
     const uint8_t *s = src;
     int rc = 0, burst = n > 256u;               /* more than one page: a burst of IRQ-off windows, ducked */
-#if DUELL_TWOCORE
-    tc_flash_park();                            /* (the XIP map is off while the driver works: core 1 idle first, twocore.c) */
-#endif
     if (!FL_STORE_OK(off, n))                   /* only inside the storage areas */
         return -8;
     if (burst)
@@ -84,6 +83,7 @@ static int st_prog(uint32_t off, const void *src, uint32_t n)   /* a page (256 b
         uint32_t k = 256u - (off & 0xFFu), took = 0, f;
         k = k > n ? n : k;
         f = irq_save();
+        ST_TC();
         rc = FL_FAR(fl_prog_ram)(off, s, k, &took);
         irq_restore(f);
         if (took > felucca_dbg.prog_max_us)

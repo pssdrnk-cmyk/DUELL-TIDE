@@ -35,16 +35,24 @@ static uint32_t tide_slen(const track_t *t)
     uint32_t pi = trk_index(t), len = tide_poly_full(t);
     return pi < NSHOWN && poly_len[pi] && poly_len[pi] < len && arp_mode(t) != AM_SEQ_ID ? poly_len[pi] : len;
 }
+/* review FR1 (B1): in a stretch a sequencer step swings by the full loop's step parity (poly_ref), not the short loop's: an odd short loop
+ * ends on an even step and starts on one, so each pass was one swing offset long and the part came back late for good. 0 outside a stretch
+ * (poly_ref follows seq_idx there) and on ARP SEQ (its swing runs on arp_idx). Audio path, at a step boundary */
+static uint32_t tide_swing_par(const track_t *t)
+{
+    uint32_t pi = trk_index(t);
+    return pi < NSHOWN && poly_len[pi] && arp_mode(t) != AM_SEQ_ID ? ((uint32_t)t->seq_idx ^ poly_ref[pi]) & 1u : 0u;
+}
 static int tide_poly_on(const track_t *t) { uint32_t pi = trk_index(t); return pi < NSHOWN && poly_len[pi] != 0u; }
 /* the full loop has wrapped: stay, shorten or lengthen (part pi, stored length len) */
 static void tide_poly_wrap(uint32_t pi, uint32_t len)
 {
     static const uint8_t PCT[3] = {0, 15, 40}, SPAN[3] = {0, 8, 4}, FREE[3] = {0, 16, 8};
     uint32_t lc = ++poly_lc[pi], mode = sqm_poly % 3u, h;
-    int ok = mode && len >= 8u && ((sqm_auto >> pi) & 1u) && song.playing && !song.rec;
-    int calm = !tarc_hold;                               /* (ARC: no new stretch at the PEAK or the DROP) */
+    int ok = mode && len >= 8u && ((sqm_auto >> pi) & 1u) && song.playing && !song.rec && !((sqm_bassm >> pi) & 1u);   /* (B1: the bass keeps its loop) */
+    int calm = !tarc_hold && !tarc_thin;                 /* (ARC: no stretch at the PEAK, the DROP or while the breakdown thins; B1: one running then ends at its next loop start) */
     if (poly_len[pi]) {
-        if (!ok || lc >= poly_end[pi] || poly_len[pi] >= len) {
+        if (!ok || !calm || lc >= poly_end[pi] || poly_len[pi] >= len) {
             poly_len[pi] = 0;
             poly_free[pi] = lc + FREE[mode ? mode : 1u];
         }

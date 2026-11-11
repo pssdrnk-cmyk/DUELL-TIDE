@@ -1,6 +1,21 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* Felucca UI input: LEDs, knobs and buttons, SEQ step entry, panel setup. */
+#define KR_QUIET_MS 300u
+static uint8_t kr_on[4];                                /* knob k: a reset happened, its detents are ignored while it goes on */
+static uint32_t kr_t[4];
+/* knob k's detents swallowed after a reset or a jump (kr_on) until it has been still KR_QUIET_MS: 1 = swallow this detent */
+__attribute__((noinline)) static uint32_t kr_quiet(uint32_t k)
+{
+    if (!kr_on[k])
+        return 0;
+    if (fm1_ms - kr_t[k] < KR_QUIET_MS) {
+        kr_t[k] = fm1_ms;
+        return 1;
+    }
+    kr_on[k] = 0;
+    return 0;
+}
 #include "ui_name.c"                                    /* NAME: naming user presets and projects */
 /* ----------------------------------------------------------- LEDs --- */
 /* The LED picture is built off-line and copied one byte per column: clearing
@@ -452,10 +467,10 @@ static void rec_hold_tap(void)
     ui_message(off ? "HOLD OFF" : "HOLD ON");
     ui.force = 1;
 }
-static int rec_tap(void)                                /* 1: the arming changed */
+static int rec_tap(uint32_t seq)                        /* 1: the arming changed. seq: SEQ was down with REC (SEQ + REC: never HOLD) */
 {
     uint8_t bit = (uint8_t)(1u << song.sel);
-    if (rec_is_hold()) {
+    if (!seq && rec_is_hold()) {
         rec_hold_tap();
         return 1;
     }
@@ -634,7 +649,20 @@ static void part_select(uint32_t pos)                   /* 0 PART 1, 1 PART 2, 2
     song.both = (uint8_t)(pos >= 2u);
     ui.force = 1;
 }
+#if TIDE_PLAYSEL
+/* 1.0.0-b7 (owner 2026-11-09 / 11-10, docs/design/PLAY_MODE_SELECT.md): on the BOTH pages ALGORITHM is PART 1, the middle, PART 2 (part_select's three positions); the middle
+ * selects both parts and is named by the PLAY MODE row: LAYER, STEREO or DUEL. PART 1 / PART 2 play that part alone on every key (core.h MODE_WANT: LAYER plays as STEREO there) */
+static uint32_t play_pos(void)
+{
+    uint32_t m = duell_mode_req < DM_N ? duell_mode_req : DM_SPLIT;
+    if (!song.both)
+        return song.sel ? PLS_P2 : PLS_P1;
+    return m == DM_LAYER ? PLS_LAYER : m == DM_STEREO ? PLS_STEREO : PLS_DUEL;
+}
+static void part_say(void) { ui_message(PLS_NAME[play_pos()]); }
+#else
 static void part_say(void) { ui_message(song.both ? "BOTH" : song.sel ? "PART 2" : "PART 1"); }
+#endif
 /* an action on the parts of mask its message; from the page or MIDI */
 static void morph_act(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi)
 {
@@ -730,10 +758,43 @@ static void algo_input(int32_t s)
         track_select((uint32_t)clamp((int32_t)song.sel + (s > 0 ? 1 : -1), 0, NSHOWN - 1));
 }
 #endif
+#if !DUELL_TIDE || DUELL_TEST_MODE
+static void morph_roll_twist(int32_t s)                 /* ROLL A|B with its twist gesture (plain DUELL's MORPH page K2; TIDE: the TEST page's K2) */
+{
+    int32_t d = gesture_det(0, s, 1);                   /* (one detent: a roll is instant) */
+    if (d)
+        morph_act(MQ_ROLL, morph_mask(song.sel), d > 0, song.sel);
+}
+#endif
+#if DUELL_TIDE
+/* 1.0.0-b7 (owner 2026-11-10): HOME's MORPH page is the hands-on page. K1 MORPH, two fader steps a detent (half the twisting of b6; the ends still exact);
+ * K2 FILTER (QUICK EDIT's K1: the multimode filter's CUT on every engine), K3 ECHO (the delay send), K4 LENGTH (the AMP ENV's release): each the part's own
+ * parameter, turned as on its page (edit_param: motion, locks, MIDI LEARN, EDITABLE B, a card the selection hides does nothing). BOTH: each part moves from
+ * its own value by the same steps (the same acceleration; the selected part last, so MIDI LEARN picks its). OCT+ held + K1: End B a new roll (the knob loop) */
+static void edit_param(uint32_t slot, int32_t steps);
+static const page_t H1_PG = {"MORPH", FAM_TRK, SC_TRACK, GR_MORPH, {0xFFu, P_FREEA, P_DLY, P_REL}};
+static void morph_knob(uint32_t slot, int32_t s)
+{
+    uint32_t pi = song.sel, n = song.both ? NSHOWN : 1u, k, p, et = ui.enc_t[EN_K1 + slot];
+    int32_t d = slot ? 0 : accel(EN_K1, s, 127) * 2;
+    for (k = 0; k < n; k++) {
+        p = (pi + 1u + k + (n == 1u)) % NSHOWN;         /* (BOTH: the other part first) */
+        if (!slot) {
+            morph_act(MQ_FADER, 1u << p, (uint32_t)clamp((int32_t)morph_fader_of(p) + d, 0, 127), p);
+            continue;
+        }
+        ui.enc_t[EN_K1 + slot] = et;
+        song.sel = (uint8_t)p;
+        page_over = &H1_PG;
+        edit_param(slot, s);
+        page_over = 0;
+    }
+    song.sel = (uint8_t)pi;
+}
+#else
 static void morph_knob(uint32_t slot, int32_t s)
 {
     uint32_t pi = song.sel, mask = morph_mask(pi);
-    int32_t d;
     if (cur_page()->graph == GR_MORPHSET) {             /* SMART ARP PITCH: right on; KNOB 4 nothing (0.2.9: TARGET is ALGORITHM's BOTH) */
         uint32_t on = s > 0;
         if (slot == 0u && on != !(morph.cfg & MC_WILD))
@@ -749,8 +810,7 @@ static void morph_knob(uint32_t slot, int32_t s)
         morph_act(MQ_FADER, mask, (uint32_t)clamp((int32_t)morph_fader_of(pi) + accel(EN_K1, s, 127), 0, 127), pi);
         break;
     case 1:                                             /* (v3: ROLL on KNOB 2, AMOUNT on 4; KNOB 3 nothing since UNDO left, 1.0.0-b5) */
-        if ((d = gesture_det(0, s, 1)) != 0)           /* (one detent: a roll is instant) */
-            morph_act(MQ_ROLL, mask, d > 0, pi);
+        morph_roll_twist(s);
         break;
     case 2:
         break;
@@ -759,6 +819,7 @@ static void morph_knob(uint32_t slot, int32_t s)
         break;
     }
 }
+#endif
 /* AMOUNT and SMART / ARP / PITCH <-> the settings bytes (ui.c ui_morph_set, ui_morph_cfg; byte 0's bit 7 is the part selection's BOTH, 1.0.0-b5: written and read back, so
  * a unit left on BOTH starts on BOTH; 0.2.9 to b4 kept it as stored and never read it): bytes changed from outside
  * (power-on, a settings import, the editor's restore) are read into the morph (and each part gets a fresh End B at that
@@ -848,8 +909,8 @@ static void patch_save_ask(void)
         uint32_t trk2 = PART_BOTH() && cur_page()->graph == GR_MORPH ? 2u : song.sel;   /* (0.2.9: the MORPH page
                                                          * only, where the header shows both; was MORPH SET too) */
         if (trk2 >= 2u) {                               /* both parts, each over its own slot: the same slot twice would lose one */
-            if (slot_home(&trk[0]) == slot_home(&trk[1])) {
-                ui_message("SAME SLOT");
+            if (slot_both(0) == slot_both(1)) {
+                ui_message(slot_of(&trk[1]) >= UP_SLOTS ? "NEEDS 2 USER SLOTS" : "SAME SLOT");
                 return;
             }
         } else {
@@ -883,8 +944,13 @@ static void mode_knob(uint32_t slot, int32_t s)
     int32_t m = duell_mode_req < DM_N ? duell_mode_req : DM_SPLIT;
     if (slot == 3u)                                     /* (item 158: KNOB 4 has no card: it does nothing and says nothing) */
         return;
+#if TIDE_PLAYSEL
+    if (slot >= 1u && (!song.both || (slot == 1u && m != DM_LAYER)))   /* (1.0.0-b7) XFADE and SPLIT in ALGORITHM's middle only; XFADE LAYER's, SPLIT any mode's */
+        return;
+#else
     if (slot >= 1u && m != DM_LAYER)                    /* XFADE and SPLIT are LAYER's only: no cards, no knobs in DUEL and STEREO */
         return;
+#endif
     if (slot == 1u) {                                   /* XFADE 0..100 % (LAYER) */
         int32_t v = clamp((int32_t)mix_xf + s, 0, 100);
         if (v != mix_xf) {
@@ -892,15 +958,17 @@ static void mode_knob(uint32_t slot, int32_t s)
         }
         return;
     }
-    if (slot == 2u) {                                   /* SPLIT OFF, then the note C-1 .. G9 (LAYER) */
+    if (slot == 2u) {                                   /* SPLIT OFF, MIDDLE (1.0.0-b7), then the note C-1 .. G9 (LAYER) */
         int32_t v;
         if (mix_split == 0u && s < 0)                   /* OFF is the left end: a turn left there stays OFF (it bounced back to the middle key) */
             return;
-        if (mix_split == 0u && s > 0)                   /* item 155 (owner): OFF, the first turn right starts at the MIDDLE KEY of the unit's 27 keys (F3 .. G5, key 13 = F#4, note 66, stored 67), then goes on from there; no snapping: the knob moves the value as ever, only the step out of OFF is this long */
-            s = SPLIT_MID + s - 1;
-        else
-            s = (int32_t)mix_split + s;
-        v = clamp(s, 0, 128);
+        if (mix_split == 0u && s > 0)                   /* 1.0.0-b7: OFF, the first detent right is MIDDLE (the middle of the keys as played: it moves with OCT- / OCT+), more go on as below */
+            v = s == 1 ? (int32_t)SPLIT_MIDDLE : clamp((int32_t)kb_raw(SPLIT_KEY) + 1 + s - 2, 1, 128);
+        else if (mix_split == SPLIT_MIDDLE)             /* .. left OFF; right: item 155 (owner), the note MIDDLE stands for now (at octave 0 the MIDDLE KEY of the unit's 27 keys,
+                                                         * F3 .. G5, key 13 = F#4, note 66, stored 67), then on from there; no snapping, only the step out of MIDDLE is this long */
+            v = s < 0 ? 0 : clamp((int32_t)kb_raw(SPLIT_KEY) + 1 + s - 1, 1, 128);
+        else                                            /* a note: by the detents; below the lowest it is MIDDLE (then OFF) */
+            v = (int32_t)mix_split + s < 1 ? (int32_t)SPLIT_MIDDLE : clamp((int32_t)mix_split + s, 1, 128);
         if (v != mix_split) {
             mix_split = (uint8_t)v;
         }
@@ -910,6 +978,9 @@ static void mode_knob(uint32_t slot, int32_t s)
     if (m == duell_mode_req)
         return;
     duell_mode_req = (uint8_t)m;
+#if TIDE_PLAYSEL
+    song.both = 1;                                      /* (1.0.0-b7: the row picks ALGORITHM's middle and moves it there, to be heard at once) */
+#endif
     ui_say(TIDE_MODE_SAY, DM_NAME[m]);
 }
 /* PERFORM's SELECT = BALANCE (item 160, owner 2026-10-29, third rule: a position, not steps). SELECT moves a position p between -1 (part 2 only) and +1 (part 1 only);
@@ -984,7 +1055,7 @@ static void mode_settings(void)
     uint8_t mb[2] = {ui_mix_xf, ui_mix_split}, mw[2] = {mix_xf, mix_split};   /* (item 157: [15][5], BALANCE's byte, is a spare: neither read nor written) */
     if (!ui.mix_ok || mb[0] != ui.mix_seen[0] || mb[1] != ui.mix_seen[1]) {   /* from outside */
         mix_xf = mb[0] <= 100u ? mb[0] : 0u;
-        mix_split = mb[1] <= 128u ? mb[1] : 0u;
+        mix_split = mb[1] <= 128u || mb[1] == SPLIT_MIDDLE ? mb[1] : 0u;   /* (1.0.0-b7: MIDDLE) */
         memcpy(ui.mix_seen, mb, 2);
         ui.mix_ok = 1;
     } else if (mw[0] != mb[0] || mw[1] != mb[1]) {       /* changed here, by a typed XFADE or SPLIT CC (no shipped numbers) or a MULTI */
@@ -1015,7 +1086,10 @@ static void mode_settings(void)
 static void test_knob(uint32_t slot, int32_t s)
 {
     if (slot < 2u) {
-        morph_knob(slot, s);
+        if (slot)
+            morph_roll_twist(s);
+        else
+            morph_knob(0u, s);
         return;
     }
     if (slot == 3u) {
@@ -1106,7 +1180,13 @@ static void tempo_tap(void)
     ui.tap_n = (uint8_t)n;
     span = ui.tap_t[n - 1u] - ui.tap_t[0];
     if (n >= 2u && span) {
+        uint32_t ob;
+        MORPH_LOCK();                                   /* (interrupts off: the audio interrupt moves the positions) */
+        ob = beat_samples();       /* (b7, review B5: a jump on the internal clock keeps each part's step phase, as an external */
         song.g[G_BPM] = (int16_t)clamp((int32_t)((60000u * (n - 1u) + span / 2u) / span), GP[G_BPM].min, GP[G_BPM].max);
+        if (song.playing && !clock_src() && beat_samples() != ob)   /* clock's tempo change does: no flam of owed steps, the arp stays on the grid) */
+            clock_rescale(ob, beat_samples());
+        MORPH_UNLOCK();
         ui.bpm_t = 40;
     }
 }
@@ -1377,11 +1457,8 @@ static void edit_param(uint32_t slot, int32_t steps)
  * the action pages (act_cols: PATTERNS, MULTIS, TOOLS, the SAVE / LOAD / CLEAR / INIT pages, PARAMETER LOCKS), a SET layer (put back), MIDI LEARN
  * (clear) and any layer button held (the layer's knobs are the layer's). 0.2.10: the QUICK EDIT layers (EDIT, LFO, ENV, ARP held) do reset their
  * cards (ui_layer.c layer_quick_reset); in QUICK FILTER a plain OCT- (no knob turned) still puts back */
-#define KR_QUIET_MS 300u
 static uint8_t oct_pend;                                /* bit 0 OCT-, bit 1 OCT+: pressed on a normal page, not let go yet */
-static uint8_t oct_mod;                                 /* OCT- was used as a modifier (a knob reset): no octave on its release */
-static uint8_t kr_on[4];                                /* knob k: a reset happened, its detents are ignored while it goes on */
-static uint32_t kr_t[4];
+static uint8_t oct_mod;                                 /* bit 0: OCT- was used as a modifier (a knob reset), bit 1 OCT+ (TIDE: the MORPH page's new End B): no octave on its release */
 
 /* Commit a knob link into GLO and swallow the detents still in flight. */
 static void glo_knob_jump(uint32_t page, uint32_t knob)
@@ -1466,6 +1543,29 @@ static int reset_say(const char *name)
     (void)name;
     return 1;
 }
+#if DUELL_TIDE
+static void tide_home(uint32_t mask);                  /* (tide_ui.c) */
+/* HOME's MORPH page: K1 back to the Original sound, as OCT- + K1 on AUTO TIDE (tide_home: the glide stops); K2..K4 FILTER, ECHO, LENGTH back to the loaded
+ * sound's value (morph.c h1_orig), on the part(s) the selection names; a card the selection hides (ECHO with SENDS OFF): nothing (2) */
+static int reset_morph(uint32_t k)
+{
+    uint32_t mask = morph_mask(song.sel), p, id = H1_ID[(k - 1u) % 3u];
+    if (k == 0u) {
+        tide_home(mask);
+        ui_message("BACK TO ORIGINAL");
+        return 1;
+    }
+    if (card_hidden_vp(&TSEL->p[id]))
+        return 2;
+    for (p = 0; p < NSHOWN; p++)
+        if ((mask >> p) & 1u) {
+            trk[p].p[id] = h1_orig[p][(k - 1u) % 3u];
+            motion_capture(&trk[p], id, trk[p].p[id]);
+            ml_knob(&trk[p], id);
+        }
+    return 1;
+}
+#else
 static int reset_morph(uint32_t k)
 {
     if (cur_page()->graph == GR_MORPHSET)
@@ -1480,6 +1580,7 @@ static int reset_morph(uint32_t k)
     }
     return 0;
 }
+#endif
 static int reset_perf(uint32_t k)
 {
     if (k == 0u) {
@@ -1573,12 +1674,12 @@ static void oct_rel(int blocked)
         oct_pend = 0;
     } else {
         rel = oct_pend & ~now;
-        if ((rel & 1u) && !oct_mod) {
+        if ((rel & 1u) && !(oct_mod & 1u)) {
             song.octave += song.octave > -3 ? -1 : 0;
             oct_show_t0 = fm1_ms ? fm1_ms : 1u;                  /* (DUELL 1.1: the OCTAVE page, ui_draw.c) */
             ui.force = 1;
         }
-        if (rel & 2u) {
+        if ((rel & 2u) && !(oct_mod & 2u)) {
             song.octave += song.octave < 3 ? 1 : 0;
             oct_show_t0 = fm1_ms ? fm1_ms : 1u;
             ui.force = 1;
@@ -1586,7 +1687,9 @@ static void oct_rel(int blocked)
         oct_pend &= (uint8_t)now;
     }
     if (!(now & 1u))
-        oct_mod = 0;
+        oct_mod &= (uint8_t)~1u;
+    if (!(now & 2u))
+        oct_mod &= (uint8_t)~2u;
 }
 
 /* OCT+ on an action page: the picked action. A load stays picked (browse and load again); the others
@@ -1667,7 +1770,7 @@ static uint32_t oct_taps(uint32_t pressed, int here)
         down |= (uint8_t)(((pressed >> dn) & 1u) | ((pressed >> up) & 1u) << 1);
     if (now == 3u)
         chord = 1;
-    tap = down & ~now;
+    tap = down & ~now & ~oct_mod;                       /* (b7: OCT- used as a modifier, by a PRESETS turn or a knob, is no tap) */
     down &= (uint8_t)now;
     if (chord) {
         tap = 0;
@@ -1855,12 +1958,22 @@ static void play_hold(uint32_t now)
 /* HOME / REC / SAVE: tap on release, hold 0.7 s fires once. t0 = press time | 1,
  * bit 1 = fired (or swallowed: then the release is no tap either) */
 enum { BT_NONE, BT_TAP, BT_HOLD };
+/* a dialog or NAME cancelled by HOME or a page button: nothing written. "NOT SAVED" for NAME and the save dialogs, "CANCELLED" for the others (b7) */
+#define CF_SAVES ((1u << CF_OVR_PROJ) | (1u << CF_OVR_USER) | (1u << CF_OVR_PSLOT) | (1u << CF_SAVE_OVER) | (1u << CF_HOLD_PSLOT) | (1u << CF_HOLD_MULTI))
+__attribute__((noinline)) static void dlg_cancel(void)
+{
+    ui_message(name_on() || ((CF_SAVES >> ui.confirm) & 1u) ? "NOT SAVED" : "CANCELLED");
+    name_close();
+    ui.confirm = 0;
+    ui.force = 1;
+}
+
 static uint32_t btn_hold(uint32_t *t0, uint32_t label, uint32_t now, int hold_ok)
 {
     uint32_t tap;
     if ((fm1_in.buttons >> panel.btn[label]) & 1u) {
         if (!*t0)
-            *t0 = (now | 1u) & ~2u;
+            *t0 = (now | 1u) & ~6u;                     /* (bit 2: REC's "SEQ was down", ui_input) */
         else if (hold_ok && !(*t0 & 2u) && now - (*t0 & ~3u) > 700u * 1000u * FM1_TICKS_PER_US) {
             *t0 |= 2u;
             return BT_HOLD;
@@ -2025,7 +2138,7 @@ static uint32_t pu_t;                                  /* fm1_ms of the last PRE
 static void ui_input(void)
 {
     uint32_t pressed = fm1_input_edges(0), notes = fm1_input_note_edges(), now = fm1_ticks(), id, b, k;
-    uint32_t home, rec, save;
+    uint32_t home, rec, save, rseq;
     uint32_t oct;
     uint32_t lay, combo = 0, lytap, lkeys, kq = 0;
     int32_t s, ks[4] = {0, 0, 0, 0};
@@ -2067,7 +2180,10 @@ static void ui_input(void)
     }
     play_hold(now);
     home = btn_hold(&ui.home_t0, B_HOME, now, 1);
+    rseq = ui.rec_t0 & 4u;                              /* (b7: SEQ was down while REC was: SEQ + REC arms, however they are let go) */
     rec = btn_hold(&ui.rec_t0, B_REC, now, 0);          /* (a tap; held, the REC layer: ui_layer.c) */
+    if (ui.rec_t0 && ui.layer == LAYER_SEQ)
+        ui.rec_t0 |= 4u;
     if (ui.guide && guide_input(pressed, rec, now))     /* DUELL 0.2.11: the GUIDE takes the frame (ui_guide.c); a page button or SAVE */
         return;                                         /* closed it and goes on below to its job, as from the MENU */
     if (ui.menu && (leave_pressed(pressed) || ((pressed >> panel.btn[B_SAVE]) & 1u))) {   /* DUELL 0.2.2: a page button (or SAVE) while the MENU is */
@@ -2077,11 +2193,8 @@ static void ui_input(void)
     }
     save = btn_hold(&ui.save_t0, B_SAVE, now, !ui.menu && !ui.confirm);   /* held: SAVE OVER (patch_save_ask) */
     if (!ui.menu && (ui.confirm || name_on()) && leave_pressed(pressed)) {   /* a page button in a dialog / NAME: cancelled (nothing */
-        if (name_on())                                  /* written, before the layers look at it, so the button goes on to its */
-            name_close();                               /* page like on any page) */
-        ui.confirm = 0;
-        ui.force = 1;
-        ui_message("NOT SAVED");
+        dlg_cancel();                                   /* written, before the layers look at it, so the button goes on to its
+                                                         * page like on any page) */
     }
     layer_lock_input(pressed);                          /* (#83: a button closes a locked layer) */
     layer_arm(pressed, now);
@@ -2150,7 +2263,7 @@ static void ui_input(void)
         }
     }
     if (rec == BT_TAP && !ui.menu && !ui.confirm && !name_on())   /* REC pressed in another layer (REC alone: */
-        rec_tap();                                      /* its layer's tap); nothing in the menu, a dialog or NAME */
+        rec_tap(rseq);                                  /* its layer's tap); nothing in the menu, a dialog or NAME */
     if (ui.menu) {                                      /* SAVE / REC taps do nothing here (HOME: above) */
         if (ui.save_t0)
             ui.save_t0 |= 2u;
@@ -2174,11 +2287,7 @@ static void ui_input(void)
         return;
     }
     if ((ui.confirm || name_on()) && home == BT_TAP) {  /* HOME in a dialog / NAME: cancelled, nothing written, then HOME's page */
-        if (name_on())
-            name_close();
-        ui.confirm = 0;
-        ui.force = 1;
-        ui_message("NOT SAVED");
+        dlg_cancel();
         home_tap();
         home = BT_NONE;
     }
@@ -2250,6 +2359,8 @@ static void ui_input(void)
             if (panel_enc(EN_K2)) {                     /* 0.2.21: K2 RENAME - the NAME screen for the sound's name, back here after it */
                 name_open(NK_SAVE_NAME, ui.confirm_trk);
                 ui.confirm = 0;
+                kr_on[1] = 1;                           /* the rest of that twist is not typed into the name (kr_quiet in name_input) */
+                kr_t[1] = fm1_ms;
             }
         }
         ui.pg_down = 0;
@@ -2339,6 +2450,7 @@ static void ui_input(void)
      * and the page under it (HOME's sound, motion recorded), PRESETS could load a sound. They stay for the next pass */
     kq |= lay;
     if (!lay && (s = panel_enc(EN_PRESET)) != 0) {
+        oct_mod |= (uint8_t)((fm1_in.buttons >> panel.btn[B_OCTDN]) & 1u);   /* (b7: OCT- held + PRESETS: a modifier, no octave or tap on its release) */
         if (pu_t && fm1_ms - pu_t >= KR_QUIET_MS)
             pu_t = 0;
         if (pu_t) {                                     /* after an undo: still turning, ignored until still */
@@ -2346,7 +2458,7 @@ static void ui_input(void)
         } else if (load_undo_gate()) {                  /* OCT- held: the load undo, once (ui.c undo_swap) */
             pl_pend_on = 0;                             /* (a fast turn's waiting place does not load after it) */
             undo_swap();
-            oct_mod = 1;
+            oct_mod |= 1u;
             pu_t = fm1_ms ? fm1_ms : 1u;
         } else if (ui.perf) {                           /* PERFORM: the sound of the part(s) ALGORITHM chose (BOTH: each part its own step) */
             perf_presets(s);
@@ -2367,13 +2479,9 @@ static void ui_input(void)
         int16_t *hv;
         if ((s = panel_enc(EN_K1 + k)) == 0)
             continue;
-        if (kr_on[k]) {                                 /* a reset's knob still turning: ignored until it has been still (no creeping) */
-            if (fm1_ms - kr_t[k] < KR_QUIET_MS) {
-                kr_t[k] = fm1_ms;
-                continue;
-            }
-            kr_on[k] = 0;
-        }
+        if (kr_quiet(k))                                /* a reset's knob still turning: ignored until it has been still (no creeping) */
+            continue;
+        oct_mod |= (uint8_t)((fm1_in.buttons >> panel.btn[B_OCTDN]) & 1u);   /* (b7: OCT- held + a knob, TIDE SETTINGS too: OCT- was a modifier) */
         if (off_module(pg)) {                           /* item 125: its module is OFF: any knob jumps to MODULES */
             off_knob(k, s);
             continue;
@@ -2384,13 +2492,23 @@ static void ui_input(void)
             knob_rec_begin(k);                          /* (record on: the reset value of a lockable parameter is recorded as its lock) */
             knob_reset(k);
             knob_rec_end();
-            oct_mod = 1;
+            oct_mod |= 1u;
             kr_on[k] = 1;
             kr_t[k] = fm1_ms;
             ui.hot_col = (uint8_t)k;
             ui.hot_t = 40;
             continue;
         }
+#if DUELL_TIDE
+        if (!k && pg->graph == GR_MORPH && (oct_pend & 2u) && ((fm1_in.buttons >> panel.btn[B_OCTUP]) & 1u) && !((fm1_in.buttons >> panel.btn[B_OCTDN]) & 1u)) {
+            /* the MORPH page (1.0.0-b7): OCT+ held + a click of K1, either way: End B a new roll (once a twist; the fader stays), OCT+ a modifier (no octave on its release) */
+            morph_act(MQ_ROLL, morph_mask(song.sel), 1u, song.sel);
+            oct_mod |= 2u;
+            kr_on[k] = 1;
+            kr_t[k] = fm1_ms;
+            continue;
+        }
+#endif
         const scope_ops_t *op = scope_ops(pg->scope);
         if ((op && ((op->hot >> k) & 1u) && !(pg->graph == GR_MORPHSET && k == 3u)) || page_desc(pg, k, &hv) ||
             (k == 3u && duck_midi_page(pg)) ||

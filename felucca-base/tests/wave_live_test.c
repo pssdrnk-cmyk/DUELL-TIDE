@@ -244,7 +244,7 @@ int main(void)
         ok(w, worst0 <= WL_HN && worst1 <= WL_HN);
     }
 
-    /* select: PART 1, BOTH, PART 2 on the page */
+    /* select: PART 1, BOTH, PART 2 on the page (TIDE_PLAYSEL: the middle named by the PLAY MODE row) */
     turn(EN_ALGO, -1);
     ok("select: from BOTH one detent left is PART 1", !SEL_BOTH && song.sel == 0u);
     turn(EN_ALGO, -1);

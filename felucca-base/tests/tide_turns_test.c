@@ -89,7 +89,7 @@ static void setup(uint32_t len0, uint32_t len1, uint32_t div0, uint32_t div1, ui
 static int varied(uint32_t p)
 {
     step_t buf;
-    return seq_play_step(&trk[p], 0, &buf) == &sqm_pat[p][1][0];
+    return seq_play_step_at(&trk[p], 0, (uint32_t)sqm_bar + sqm_bar_turn) == &sqm_pat[p][1][0];   /* (the end the step plays: a listening bar's copy, softer, is still the variation) */
 }
 /* PLAY for `bars` bars (events_block, one control block at a time); per part the (bar + turn) mod 8 values it played varied on */
 static void block(uint32_t ext, uint32_t *pulse, uint32_t bpm, uint32_t b)
@@ -135,8 +135,7 @@ static void t_turns(void)
         setup(L[k][0], L[k][1], L[k][2], L[k][3], 0);
         sqm_auto = 3;
         bars = run_turns(16, INTERNAL, &a, &b);
-        CHECK("TAKE TURNS, both parts automatic: part 1 on bars 4 and 8, part 2 on bars 2 and 6 of every 8 (any lengths / DIVs)",
-              bars >= 15u && a == 0x88u && b == 0x22u);
+        CHECK("both parts automatic: the variation on bars 4 and 8 for both (TURNS plays nothing since b7: CALL AND ANSWER), any lengths / DIVs", bars >= 15u && a == 0x88u && b == 0x88u);
     }
     setup(16, 16, 2, 2, 0);
     sqm_auto = 3, sqm_turns = 0;
@@ -161,7 +160,7 @@ static void t_turns(void)
     setup(16, 16, 2, 2, 0);
     sqm_auto = 3;
     run_turns(16, EXTERNAL, &a, &b);
-    CHECK("external clock: TAKE TURNS in the beats the clock gives", a == 0x88u && b == 0x22u);
+    CHECK("external clock: the variation bars in the beats the clock gives", a == 0x88u && b == 0x88u);
     setup(16, 16, 2, 2, 0);
     sqm_auto = 3;
     song.playing = 0;
@@ -187,7 +186,7 @@ static void t_turns(void)
     CHECK("  .. one part: that part's bit", sqm_auto == 1u);
     gl.on = 3, gl.mask = 3, morph_musical = 0;
     glide_poll();
-    CHECK("  .. not with ROLL SMART / WILD", sqm_auto == 0u);
+    CHECK("  .. with ROLL SMART / WILD too (1.0.0-b7, MR8: no gate on ROLL TYPE)", sqm_auto == 3u);
     gl.on = 3, morph_musical = 1, song.rec = 1;
     glide_poll();
     CHECK("  .. not while recording", sqm_auto == 0u);
@@ -210,11 +209,13 @@ typedef struct {
 } polystat_t;
 static polystat_t ps;
 /* run `bars` bars; per step started of part p: the position in the part's own loop; ARP SEQ parts by their arp_idx */
+static void lead_sound(uint32_t p);
 static void run_poly(uint32_t bars, uint32_t arp, uint32_t mode, uint32_t lo, uint32_t hi)
 {
     uint32_t p, b, n = bars * 4u * (uint32_t)FS * 60u / 240u / CTL + 1u, pulse = 0;
     uint32_t last[2] = {0xFFFFFFFFu, 0xFFFFFFFFu}, run[2] = {0, 0}, since[2] = {0xFFFFFFFEu, 0xFFFFFFFEu}, shortrun[2] = {0, 0}, total[2] = {0, 0}, wasp[2] = {0, 0};
     memset(&ps, 0, sizeof ps);
+    lead_sound(0), lead_sound(1), sqm_bass_scan();       /* (B1: a BASS sound never stretches; these runs are about the loop lengths, the bass bits fresh) */
     ps.minrun[0] = ps.minrun[1] = 0xFFFFFFFFu;
     (void)mode;
     for (b = 0; b < n; b++) {
@@ -400,6 +401,39 @@ static void t_poly(void)
     }
     keepcheck();
 }
+/* review FR1 (B1): a swung part comes back on the grid after an odd stretch. Part 1 at SWG 60, part 2 straight, POLY forced to `slen`
+ * steps from the full loop's first step for `span` full loops; the first step 0 after the stretch starts on the same sample on both parts */
+static void poly_swing_case(const char *nm, uint32_t mode, uint32_t slen, uint32_t span, int32_t own)
+{
+    uint32_t b, pulse = 0, forced = 0, back = 0;
+    int32_t late = 0x7FFFFFFF;
+    char msg[128];
+    setup(16, 16, 2, 2, 0);
+    sqm_auto = 1, sqm_poly = (uint8_t)mode;
+    trk[0].p[P_SSWING] = (int16_t)own;
+    trk[1].p[P_SSWING] = 50;
+    for (b = 0; b < 200000u && !back; b++) {
+        block(0, &pulse, 240, b);
+        if (!forced && trk[0].seq_idx == 0u && poly_ref[0] == 0u && trk[0].seq_pos < 0x7FFFFFFFu) {
+            poly_len[0] = (uint8_t)slen;                    /* (the stretch from this full loop's first step, as tide_poly_wrap starts one) */
+            poly_end[0] = poly_lc[0] + span;
+            forced = 1;
+        } else if (forced == 1u && poly_len[0] == 0u && trk[0].seq_idx == 0u) {
+            late = (int32_t)trk[1].seq_pos - (int32_t)trk[0].seq_pos;
+            back = 1;
+            late = trk[1].seq_idx == 0u ? late : 0x7FFFFFFF;
+        }
+    }
+    snprintf(msg, sizeof msg, "POLY %s, %u steps, SWG %d: step 0 after the stretch on the straight part's sample (%d samples late)", nm, slen, own, late);
+    CHECK(msg, back && late == 0);
+}
+static void t_poly_swing(void)
+{
+    poly_swing_case("GENTLE", 1, 15, 8, 60);
+    poly_swing_case("WIDE", 2, 13, 4, 60);
+    poly_swing_case("GENTLE", 1, 15, 8, 50);
+    poly_swing_case("WIDE", 2, 14, 4, 60);
+}
 
 
 /* ------------------------------------------------------------------------------------------------ SYNC --- */
@@ -448,8 +482,6 @@ static void sync_run(uint32_t mode, uint32_t div, uint32_t seed, uint32_t base, 
 static void t_sync(void)
 {
     uint32_t mode, seed, sh[3] = {0, 0, 0}, ob[3] = {0, 0, 0}, mp[3] = {0, 0, 0}, s, o, m, same = 1, kept[3] = {0, 0, 0};
-    CHECK("rows: TURNS / POLY / SYNC show their names", !strcmp(jl_vname(JL_TURNS, 1), "TAKE TURNS") && !strcmp(jl_vname(JL_TURNS, 0), "TOGETHER") &&
-          !strcmp(jl_vname(JL_POLY, 2), "WIDE") && !strcmp(jl_vname(JL_SYNC, 1), "SOFT") && !strcmp(jl_vname(JL_SYNC, 2), "PUSH") && jl_n(JL_SYNC) == 3u);
     for (mode = 0; mode < 3u; mode++)
         for (seed = 1; seed <= NSEEDS; seed++) {
             sync_run(mode, 2, seed, 0, &s, &o, &m);
@@ -515,7 +547,6 @@ static void t_answer(void)
     static const uint8_t H[] = {0, 2, 3, 4, 6, 7, 8, 10, 11, 12, 14, 15};
     uint32_t i, p, bar, drops, cand, nbad = 0, wrong = 0, n;
     step_t buf;
-    CHECK("TURNS shows its three values (ECHO folded into LEAD: D7)", !strcmp(jl_vname(JL_TURNS, 2), "LEAD") && jl_n(JL_TURNS) == 3u);
     setup(16, 16, 2, 2, 0), lead_sound(0), lead_sound(1);
     put_hits(0, H, 12);
     put_hits(1, H, 12);
@@ -532,7 +563,7 @@ static void t_answer(void)
             nbad++;
     }
     /* (the anchors of these 12 hits: the 4 beats, then 2 3 6 7 for the floor of 3/5: 8 of 12; candidates 10 11 14 15) */
-    CHECK("mask: no beat, no anchor, only hits; half of the candidates (rounded up) dropped", !nbad && cand == 4u && drops == 2u);
+    CHECK("mask: no beat, no anchor, only hits; every candidate dropped (MR4: anchors and beats only)", !nbad && cand == 4u && drops == 4u);
     {   /* held hits: a tie after step 3 and 11, a slide on 7 */
         step_t *st = trk[0].step;
         st[4] = (step_t){{0}, 0, ST_TIE, 0, 0, 0};
@@ -562,7 +593,7 @@ static void t_answer(void)
         sqm_thin_build();
         for (i = 0, nb = 0; i < 16u; i++)
             nb += (uint32_t)thin_bit(0, i);
-        CHECK("  .. VARY 4 + 8: the mask is End A's alone, as before (2 of 4)", nb == 2u);
+        CHECK("  .. VARY 4 + 8: the mask is End A's alone, as before (4 of 4)", nb == 4u);
     }
     put_hits(0, H, 2);
     sqm_refresh(0, 1);
@@ -571,41 +602,24 @@ static void t_answer(void)
     put_hits(0, H, 12);
     sqm_refresh(0, 1);
     sqm_thin_build();
-    /* the leader per bar: bars 0-1 part 2, 2-3 part 1, over the 8-bit wrap, with the last block's turn */
+    /* CALL AND ANSWER per bar: bars 1-3 of 4 one part listens, by turns (who opens: the bar and the seed), bar 4 both speak; over the 8-bit wrap, with the last block's turn */
     for (bar = 0; bar < 600u; bar++) {
         uint32_t turn;
         for (turn = 0; turn < 2u; turn++) {
             uint32_t b = (bar + turn) & 3u;
             sqm_bar = (uint8_t)bar, sqm_bar_turn = (uint8_t)turn;
             for (p = 0; p < 2u; p++) {
-                uint32_t eb = (uint32_t)(uint8_t)bar + turn, lead = (b < 2u ? 1u : 0u) ^ (sqm_hash((uint32_t)morph.seed, eb >> 3, 0x4Cu) & 1u), masked = 0, any = 0;   /* (the opener swaps by the seed: M04) */
+                uint32_t eb = (uint32_t)(uint8_t)bar + turn, ls = (b ^ (eb >> 2) ^ sqm_hash((uint32_t)morph.seed, eb >> 3, 0x4Cu)) & 1u, masked = 0, any = 0;   /* (ls: the part listening) */
                 for (i = 0; i < 16u; i++)
                     if (thin_bit(p, i)) {
                         any = 1;
                         masked |= seq_play_step(&trk[p], i, &buf) == &SQM_REST;
                     }
-                wrong += any && (p == lead || ((eb + 2u * p) & 3u) == 3u ? masked : !masked);
+                wrong += any && (p != ls || b == 3u ? masked : !masked);
             }
         }
     }
-    CHECK("the leader plays whole, the other part thinned: part 2 on bars 1-2, part 1 on 3-4 (also over the wrap at 256)", !wrong);
-    {   /* audit C7: the ARC's fast turns (a leader a bar): a part on its own variation bar (part 2 bar 2, part 1 bar 4) is never the thinned follower */
-        uint32_t vw = 0, fw = 0;
-        tarc_fast = 1;
-        for (bar = 0; bar < 8u; bar++) {
-            sqm_bar = (uint8_t)bar, sqm_bar_turn = 0;
-            for (p = 0; p < 2u; p++) {
-                uint32_t varies = ((bar + 2u * p) & 3u) == 3u, lead = ((bar & 1u) ? 0u : 1u) ^ (sqm_hash((uint32_t)morph.seed, bar >> 3, 0x4Cu) & 1u), masked = 0;
-                for (i = 0; i < 16u; i++)
-                    if (thin_bit(p, i))
-                        masked |= seq_play_step(&trk[p], i, &buf) == &SQM_REST;
-                vw += varies && masked;
-                fw += masked != (p != lead && !varies);
-            }
-        }
-        tarc_fast = 0;
-        CHECK("ARC fast turns: the part on its variation bar plays whole; otherwise the leader changes every bar", !vw && !fw);
-    }
+    CHECK("CALL AND ANSWER: the speaker plays whole, the listener thinned, both whole on bar 4 of 4 (also over the wrap at 256)", !wrong);
     sqm_bar = 0, sqm_bar_turn = 0;
     {   uint32_t m0 = 0;
         for (i = 0; i < 16u; i++)
@@ -617,7 +631,7 @@ static void t_answer(void)
         sqm_turns = 1;
         for (i = 0, n = 0; i < 16u; i++)
             n += seq_play_step(&trk[0], i, &buf)->time == ST_NOTE;
-        CHECK("  .. TAKE TURNS: nothing masked, part 1 whole (12 hits), thinned under LEAD", n == 12u && m0 < 12u);
+        CHECK("  .. TURNS plays nothing: TAKE TURNS thins the listener as LEAD does", n == m0 && m0 < 12u);
         sqm_turns = 2;
         sqm_auto = 1;
         for (i = 0, n = 0; i < 16u; i++)
@@ -639,20 +653,18 @@ static void t_answer(void)
         put_hits(0, H, 12), put_hits(1, H, 12);
         sqm_auto = 3, sqm_turns = 2, sqm_sync = 0;
         seqm_poll();
-        tide_poll();
+        sqm_thin_poll();
         m0 = sqm_thin[0][0], m1 = sqm_thin[1][0];
         sqm_thin[0][0] = 0x5A5A5A5Au;                     /* (a marker a rebuild would overwrite) */
-        tide_poll(), tide_poll();
+        sqm_thin_poll(), sqm_thin_poll();
         ok1 = sqm_thin[0][0] == 0x5A5A5A5Au && m0 != 0u;
-        sqm_turns = 1;                                   /* TAKE TURNS: rebuilt at once */
-        tide_poll();
-        ok2 = sqm_thin[0][0] != 0x5A5A5A5Au;
-        sqm_turns = 2;
-        tide_poll();
-        ok3 = sqm_thin[0][0] == m0 && sqm_thin[1][0] == m1;
-        CHECK("masks: nothing changed, no rebuild (the marker stays); TURNS changed, rebuilt; back, the same masks", ok1 && ok2 && ok3);
+        sqm_turns = 1;                                   /* TURNS plays nothing since b7: no rebuild */
+        sqm_thin_poll();
+        ok2 = sqm_thin[0][0] == 0x5A5A5A5Au;
+        sqm_turns = 2, ok3 = m1 != 0u;
+        CHECK("masks: nothing changed, no rebuild (the marker stays), nor for TURNS; both parts have a mask", ok1 && ok2 && ok3);
         trk[0].p[P_SLEN] = 12;
-        seqm_poll(), tide_poll(), tide_poll();
+        seqm_poll(), sqm_thin_poll(), sqm_thin_poll();
         CHECK("  .. a new length rebuilds them (no bit past the loop)", !(sqm_thin[0][0] >> 12) && sqm_thin[0][0] != m0);
     }
     sqm_turns = 1, sqm_sync = 1, sqm_auto = 0;
@@ -702,8 +714,8 @@ static void t_arc(void)
                     if (tot > mx[m]) mx[m] = tot;
                 }
             }
-        printf("  ARC length in phrases: RISE %u..%u, DROP %u..%u (PEAK up to %u)\n", mn[1], mx[1], mn[2], mx[2], pkmx);
-        CHECK("ARC length: every arc 8 to 16 phrases (32 to 64 bars) in RISE and DROP, PEAK at most 2", mn[1] >= 8u && mx[1] <= 16u && mn[2] >= 8u && mx[2] <= 16u && mx[2] == 16u && pkmx <= 2u);
+        printf("  ARC length in 8-bar units: RISE %u..%u, DROP %u..%u (PEAK up to %u)\n", mn[1], mx[1], mn[2], mx[2], pkmx);
+        CHECK("ARC length (MR4): every arc 5 to 8 units of 8 bars (40 to 64 bars) in RISE and DROP, PEAK at most 2", mn[1] >= 5u && mx[1] <= 8u && mn[2] >= 5u && mx[2] <= 8u && mx[2] == 8u && pkmx <= 2u);
         sqm_arc = 0, tarc.run = 0;
     }
     /* the shape: 600 bars of ARC DROP */
@@ -723,9 +735,9 @@ static void t_arc(void)
             if (tarc.run && tarc.phase != ph_prev) {
                 if (ph_prev != 9u) {
                     uint32_t want = ph_prev == AP_RISE ? AP_PEAK : ph_prev == AP_PEAK ? (mode == 2u ? AP_DROP : AP_BREAK) : ph_prev == AP_DROP ? AP_BREAK : ph_prev == AP_BREAK ? AP_RECOVER : AP_RISE;
-                    if (tarc.phase != want && !(ph_prev == AP_PEAK && mode == 2u && tarc.phase == AP_BREAK))
+                    if (tarc.phase != want && !(ph_prev == AP_PEAK && mode == 2u && tarc.phase == AP_BREAK) && !(ph_prev == AP_DROP && tarc.phase == AP_RECOVER))   /* (MR4: a one-unit breakdown is the drop alone) */
                         order_ok = 0;
-                    edge_ok &= (sqm_bar & 3u) == 0u || (sqm_bar & 3u) == 3u;   /* (the last block of a bar already counts the next) */
+                    edge_ok &= (sqm_bar & 7u) == 0u || (sqm_bar & 7u) == 7u;   /* (MR4: on a bar = 0 mod 8; the last block of a bar already counts the next) */
                     lens_ok &= run >= 1u && run <= 8u;
                 }
                 if (nseq < 40u)
@@ -744,7 +756,7 @@ static void t_arc(void)
         (void)phases;
         printf("  ARC %s: phases seen RISE %u PEAK %u DROP %u BREAK %u RECOVER %u in %u phases\n", mode == 1u ? "RISE" : "DROP", seen[0], seen[1], seen[2], seen[3], seen[4], nseq);
         CHECK(mode == 1u ? "ARC RISE: RISE, PEAK, BREAK, RECOVER in turn, never a drop of its own" : "ARC DROP: RISE, PEAK, (DROP,) BREAK, RECOVER in turn", order_ok && seen[0] >= 2u && seen[1] >= 2u && seen[3] >= 2u && seen[4] >= 2u && (mode == 1u ? seen[2] == 0u && !leak : seen[2] >= 1u));
-        CHECK("  .. a phase changes only at a phrase boundary", edge_ok);
+        CHECK("  .. a phase changes only on a bar = 0 (mod 8) (MR4)", edge_ok);
         (void)lens_ok;
     }
     /* the drop masks only onsets, for the first 2 bars of its phrase; a tie (none here) and the other bars play */
@@ -774,7 +786,7 @@ static void t_arc(void)
         }
         CHECK("  .. the drop comes: DROP, from RISE, skipping the PEAK", tarc.phase == AP_DROP);
         dropbars = dropfull = 0;
-        for (b2 = 0; b2 < 4u * 12000u / CTL * 4u; b2++) {
+        for (b2 = 0; b2 < 8u * 12000u / CTL * 4u; b2++) {
             uint32_t bar, hit = 0, any = 0, k;
             arc_block(300000u + b2);
             bar = (uint32_t)sqm_bar + sqm_bar_turn;
@@ -787,7 +799,7 @@ static void t_arc(void)
                     any++;
                     hit += seq_play_step(&trk[0], k, &buf)->time == ST_NOTE;
                 }
-            if ((bar & 3u) < 2u)
+            if ((bar & 7u) < 2u)
                 dropfull += hit != 0u;
             else
                 dropbars += hit != 0u;
@@ -861,7 +873,7 @@ static void t_style(void)
     jl_put(JL_STYLE, STY_CUSTOM);
     tide_settings();
     CHECK("CUSTOM changes nothing (with no values of its own kept)", tide_style == STY_CUSTOM && style_is(1));
-    /* a hand edit of each of the nine owned values: CUSTOM, the edited value and the rest kept; the other rows leave the style alone */
+    /* a hand edit of each of the four values with a hand (MODE, TIME, WAIT, ARC): CUSTOM; the five with no row changed underneath: the style stays */
     ok = 1;
     for (r = 0; r < 9u; r++) {
         jl_put(JL_STYLE, 4);
@@ -870,17 +882,17 @@ static void t_style(void)
         case 0: gl.mode = GM_WANDER; break;                       /* the MODE knob */
         case 1: gl.time = 2; break;                               /* the TIME knob */
         case 2: gl.wait = 1; break;                               /* the WAIT knob */
-        case 3: jl_put(JL_VARY, 0); break;
-        case 4: jl_put(JL_TURNS, 1); break;
-        case 5: jl_put(JL_POLY, 0); break;
-        case 6: jl_put(JL_SYNC, 0); break;
+        case 3: sqm_vary_all = 0; break;                          /* (no row since 1.0.0-b7: written as the engine or the bench would) */
+        case 4: sqm_turns = 1; break;
+        case 5: sqm_poly = 0; break;
+        case 6: sqm_sync = 0; break;
         case 7: jl_put(JL_ARC, 1); break;
-        default: jl_put(JL_WASH, 2); break;
+        default: morph_wlvl = 2; break;
         }
         tide_settings();
-        ok &= tide_style == STY_CUSTOM;
+        ok &= tide_style == ((0x87u >> r) & 1u ? STY_CUSTOM : 4u);
     }
-    CHECK("a hand edit of any of the nine rows turns STYLE into CUSTOM", ok);
+    CHECK("a hand edit of MODE, TIME, WAIT or ARC turns STYLE into CUSTOM; the values with no row (VARY, TURNS, POLY, OFFBEAT, WASH) changed underneath leave it (1.0.0-b7, MR8)", ok);
     jl_put(JL_STYLE, 3);
     tide_settings();
     gl.time = 5;
@@ -895,9 +907,9 @@ static void t_style(void)
     tide_settings();
     CHECK("  .. TARGET and ROLL leave the style alone", tide_style == 3u);
     jl_put(JL_STYLE, 2);
-    jl_put(JL_SYNC, 0);
+    jl_put(JL_ARC, 1);
     tide_settings();
-    jl_put(JL_SYNC, 2);                                           /* back to the style's value by hand: stays CUSTOM */
+    jl_put(JL_ARC, 0);                                            /* back to the style's value by hand: stays CUSTOM */
     tide_settings();
     CHECK("  .. setting the values back by hand stays CUSTOM", tide_style == STY_CUSTOM && style_is(2));
     /* the record */
@@ -910,7 +922,7 @@ static void t_style(void)
     tide_style = STY_CUSTOM;
     gl.mode = GM_ONCE, gl.time = 0, gl.wait = 0, sqm_turns = 0, sqm_arc = 0, sqm_sync = 0, sqm_poly = 0;
     tide_settings();
-    CHECK("no record: DUB, its existing rows today's defaults (JRNY, 16 bars, WAIT 2 bars, VARY 4 + 8, WASH OFF)", tide_style == STY_DUB && style_is(0) && gl.mode == GM_JOURNEY &&
+    CHECK("no record: DUB, its existing rows today's defaults (WNDR since 1.0.0-b7, 16 bars, WAIT 2 bars, VARY 4 + 8, WASH OFF)", tide_style == STY_DUB && style_is(0) && gl.mode == GM_WANDER &&
           GLIDE_BARS[gl.time] == 16u && GLIDE_WAIT_BARS[gl.wait] == 2u && !sqm_vary_all && !morph_wlvl);
     {
         static const uint8_t L[3] = {7, 9, 11};
@@ -1139,6 +1151,7 @@ int main(void)
     t_turns();
     t_sig();
     t_poly();
+    t_poly_swing();
     t_sync();
     t_answer();
     t_arc();

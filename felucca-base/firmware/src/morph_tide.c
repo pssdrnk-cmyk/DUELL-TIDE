@@ -137,6 +137,14 @@ static int morph_to_sound(uint32_t pi, uint32_t x, uint32_t k)
         if (!((g.flags | h.flags) & (MF_NEVER | MF_ARP | MF_GONE)) && (!((g.flags | h.flags) & MF_PIT) || (morph.cfg & MC_PIT)))
             end[id] = tv;                                /* (a switch, a route, TRIM too: morph_build flips what does not blend at the middle) */
     }
+    {                                                    /* MR5 (b7): a part the multi turned down stays down: the destination's factory TRIM less what the part's TRIM
+                                                          * takes off the Original's factory TRIM (M16's pads: JOURNEY played 9-12 dB over the multi). A TRIM raised to lift a
+                                                          * quiet sound (M02's BIG STAB) is not carried: the destination has its own level */
+        const track_t *t = &trk[pi];
+        int32_t o;
+        if (!UP_REC_USER(t) && t->preset < ds_count(en) && (o = mp->base[P_TRIM] - ds_value(ds_get(en, t->preset), P_TRIM, TP[P_TRIM].def)) < 0)
+            end[P_TRIM] = (int8_t)clamp((int32_t)end[P_TRIM] + o, 0, 127);
+    }
     if (fm) {                                            /* FM6: the patch's blended bytes; SLOT stays (turning it loads a patch) */
         end[P_E7] = mp->base[P_E7];
         for (id = 0; id < NFM; id++) {
