@@ -2,10 +2,10 @@
 
 Lane B's reference (lane C's README links here). Names are JSON paths. `mono` = (L + R) / 2. `bar range` = `--from BAR --to BAR`
 (default: bar 0 to the end of the file, tail included). A figure that cannot be measured is `null`.
-Old scripts: DM work/b9/dub/dubmetrics.py`, SP `space.py`, RU `rules.py`, M18 work/b9/sound/measure18.py`, RB work/b9/revoice/B/{metrics,rules}.py`,
-AN work/reel-2026-11-10/sound-check/tools/analyse.py`, QU work/audit/sound-vs-base-2026-11-09/tools/quality.py`, CK work/b9/knobs/click/analyse_click.py`.
+Old scripts: DM work/b9/dub/dubmetrics.py, SP `space.py`, RU `rules.py`, M18 work/b9/sound/measure18.py, RB work/b9/revoice/B/{metrics,rules}.py,
+AN work/reel-2026-11-10/sound-check/tools/analyse.py, QU work/audit/sound-vs-base-2026-11-09/tools/quality.py, CK work/b9/knobs/click/analyse_click.py.
 All of these were checked against the old numpy code on the same WAVs (LUFS, bands, side/mid, bed, rubs, hits, whistle, timbre, rhythm, attack: equal to the printed digits;
-true peak within 0.001 dB). All 18 multis of work/b9/sound/wav18` (new, PLAY) were run through M18 and soundlab: LUFS, true peak, side/mid, <120 Hz, bed, silence agree in all 18; the rub differs in M04 (50.79 old, 50.62 new) and M06 (68.10, 67.30) only because the old script stopped counting at the last log event and soundlab counts to the end of the render (the old code with a closing event gives 50.62 and 67.30). The low-band onsets differ by which bars are counted (soundlab counts every bar of the range).
+true peak within 0.001 dB). All 18 multis of work/b9/sound/wav18 (new, PLAY) were run through M18 and soundlab: LUFS, true peak, side/mid, <120 Hz, bed, silence agree in all 18; the rub differs in M04 (50.79 old, 50.62 new) and M06 (68.10, 67.30) only because the old script stopped counting at the last log event and soundlab counts to the end of the render (the old code with a closing event gives 50.62 and 67.30). The low-band onsets differ by which bars are counted (soundlab counts every bar of the range).
 
 ## input
 

@@ -76,7 +76,7 @@ Tags come from the numbers: **pad** (note length > 1.5 s or gate > 90 %), **stab
 
 ## Genre targets
 
-`genres.json`: per genre (dub-techno, deep-house, classic-house, detroit, acid, electro, idm, berlin-school, ambient, drone) numeric target ranges, each with `source` (file:section of work/b9/research/`) and `basis` (sourced / example / rule / measured). Where no source gave a number the metric is absent and `rules --genre NAME PREFIX` prints it UNSURE; never fill a gap from memory.
+`genres.json`: per genre (dub-techno, deep-house, classic-house, detroit, acid, electro, idm, berlin-school, ambient, drone) numeric target ranges, each with `source` (file:section of work/b9/research/) and `basis` (sourced / example / rule / measured). Where no source gave a number the metric is absent and `rules --genre NAME PREFIX` prints it UNSURE; never fill a gap from memory.
 `soundlab rules --genre dub-techno PREFIX` checks the measured values against the ranges. Add a number only with its source line.
 
 ## Tests and checks
