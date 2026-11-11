@@ -631,8 +631,8 @@ static void drones(void)
                 }
                 printf("\n");
             }
-            ck(s == 16u ? "  M17 AMB DUNEHORN from the keys (C E G, LAYER): both parts sound the chord" : "  M18 AMB GROWL from the keys (C E G, LAYER): both parts sound the chord",
-               c3 < 27u && e3 < 27u && g3 < 27u && dr[0].n >= 3u && dr[1].n >= 3u);
+            ck(s == 16u ? "  M17 AMB DUNEHORN from the keys (C E G, LAYER): both parts sound the chord" : "  M18 AMB GROWL from the keys (C E G, LAYER): the mono bed sounds, part 2 the chord",
+               c3 < 27u && e3 < 27u && g3 < 27u && dr[0].n >= (s == 17u ? 1u : 3u) && dr[1].n >= 3u);   /* (b9 rework2: M18 AMB GROWL's bed is a mono bass, PRIO LOW: the chord's lowest key, two octaves down) */
         }
     }
     (void)amt; (void)set;
@@ -1094,9 +1094,9 @@ int main(void)
                                            "AMB BERLIN", "AMB LOOPS"};
         static const char *const SN[16][2] = {{"CHORD ECHO", "WARM WASH"}, {"BIG STAB", "SLOW TIDE"}, {"WARM WASH", "RUBBER BAND"},
                                               {"TINE ROOM", "AIR SHIMMER"}, {"DUB DRAWBAR", "ORGAN WASH"}, {"SALOON KEYS", "RAIN STRINGS"},
-                                              {"LOW STAB", "STRING MACH"}, {"SUNDAY KEYS", "BELL STAB"}, {"SQUELCH", "FOG BANK"},
+                                              {"LOW STAB", "LAMPLIGHT"}, {"SUNDAY KEYS", "SYNTH BRASS"}, {"SQUELCH", "FOG BANK"},
                                               {"TIDAL SUB", "SQUELCH"}, {"SQUELCH", "DEEP BLUE"}, {"LADDER BASS", "VOWEL PAD"},
-                                              {"DIGI PLUCK", "PWM PAD"}, {"WAVE CHIMES", "TAPE CLOUD"}, {"ARP PLUCK", "CHOIR LOFT"},
+                                              {"DIGI PLUCK", "PWM PAD"}, {"WAVE CHIMES", "TAPE CLOUD"}, {"RUBBER BAND", "CHOIR LOFT"},
                                               {"FROST BELLS", "EVOLVING PAD"}};
         static const uint8_t MD[16] = {DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER,
                                        DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER};   /* (0.2.25: no factory multi in DUEL; M08 MONO DUEL, the only one, is spare: the owner's HAZY TENSOR, LAYER) */
