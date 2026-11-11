@@ -375,7 +375,7 @@ int main(void)
                 sweep();
             }
         }
-    for (i = 1; i <= 16u; i++) {                        /* the 16 factory multis as loaded (MODE RECALL), morphs included (slots 1..16: M02..M15, the STRESS TEST scene, and since TIDE b6 slot 16 = M17 DUNE HORN; until b6 slot 16 wrapped to M01) */
+    for (i = 1; i <= 16u; i++) {                        /* the 16 factory multis as loaded (MODE RECALL), morphs included (slots 1..16: M02..M15, the STRESS TEST scene, and since TIDE b6 slot 16 = M17 AMB DUNEHORN; until b6 slot 16 wrapped to M01) */
         boot();
         ui_prefs2 |= PREF_MODE_RECALL >> 16;
         if (i == 15u)

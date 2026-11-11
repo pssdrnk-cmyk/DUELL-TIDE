@@ -45,9 +45,9 @@ def multi(rom, slot, name, what, a, b, la=98, lb=82, seq=None):
 # with no key held, and a held chord still sets the key. The moving parts' rates are doubled in length (1/4 -> 1/2, 1/2 -> 1/1): under a 120 BPM clock they move as made at 60.
 BED_STEPS = "0 - - - - - - - - - - - - - - -"
 DRONES = [
-    multi(17, 1, "DUNE HORN", "a horn swelling once a bar, root and fourth, with a shimmer of void above it", "HORN SWELL", "VOID SHIMMER", 107, 91,
+    multi(17, 1, "AMB DUNEHORN", "a horn swelling once a bar, root and fourth, with a shimmer of void above it", "HORN SWELL", "VOID SHIMMER", 107, 91,
           seq=[(0, "1/2", "0 - - . 0 - - . 5 - - . 0 - - ."), (1, "1/4", BED_STEPS)]),
-    multi(18, 2, "VOID DEEP", "a wide shimmering void with a thin solar wind turning slowly, root, a tone up, the fourth", "VOID SHIMMER", "SOLAR WIND", 106, 90,   # (b7: +10 steps (5 dB) with the bed now sounding on its own, to the set; the b6 levels were 96 / 80; part 2 at 80: the factory rule, -16 .. +4 dB, tests/level_test.c; the b4 pack had 76)
+    multi(18, 2, "AMB VOID", "a wide shimmering void with a thin solar wind turning slowly, root, a tone up, the fourth", "VOID SHIMMER", "SOLAR WIND", 106, 90,   # (b7: +10 steps (5 dB) with the bed now sounding on its own, to the set; the b6 levels were 96 / 80; part 2 at 80: the factory rule, -16 .. +4 dB, tests/level_test.c; the b4 pack had 76)
           seq=[(1, "1/1", "0 - - - - - - . 2 - - - 5 - - ."), (0, "1/4", BED_STEPS)]),
 ]
 

@@ -644,7 +644,7 @@ static int stage1_checks(void)
                      is_err("load multi 7") && is_err("ev 0 on 1 60 90") && is_ok("reset") && btl.sess && bench.holds);
         bad += check("8 reset: STEREO, both parts from INIT, the NOTES budget as played", duell_mode_req == DM_STEREO && !bench_bopen && trk[0].p[P_LEVEL] != 77);
         r = con("load multi 7");
-        bad += check("8 load multi 7: 'OK multi 7 DETROIT STAB' (the runner checks the name; reel, 2026-11-10: M07 is DETROIT STAB)", !strcmp(r, "OK multi 7 DETROIT STAB\r\n"));
+        bad += check("8 load multi 7: 'OK multi 7 TECH DETROIT' (the runner checks the name; reel, 2026-11-10: M07 is DETROIT STAB)", !strcmp(r, "OK multi 7 TECH DETROIT\r\n"));
         r = con("load patch 1 61");
         bad += check("8 load patch 1 61: 'OK patch 61 EVOLVING PAD'", !strcmp(r, "OK patch 61 EVOLVING PAD\r\n"));
         bad += check("8 load: no such multi / part / slot is ERR", is_err(MU_SHOWN > 16u ? "load multi 19" : "load multi 17") && is_err("load multi 0") && is_err("load patch 3 1") && is_err("load patch 1 129") && is_err("load foo"));

@@ -1310,7 +1310,7 @@ static void setup(int s)
     case S_QUICK_GLO: go_title("AMP ENV"); ui.layer = LAYER_GLO; trk[0].peak = 11000; trk[1].peak = 4000; break;   /* 0.2.13 deck: GLO held, QUICK GLO (0.2.11) */
     case S_MULTIS: case S_MULTIS2:                /* 0.2.13 deck: SAVE > MULTIS, the factory multis in their 0.2.13 order (M01 REESE SWAMP loaded) */
         song.playing = 0; project_load(0); song.g[G_SLOT] = s == S_MULTIS ? 1 : 7; go_page(GR_SLOTS); ui.act = 2; ui.msg_t = 0; break;
-    case S_MULTIS_M03:                            /* 1.0.0-b7: SAVE > MULTIS, M03 JUNO DEEP picked: its two parts play written patterns with the arp OFF, SEQ in the preview (owner, from the emulator) */
+    case S_MULTIS_M03:                            /* 1.0.0-b7: SAVE > MULTIS, M03 HSE JUNO picked: its two parts play written patterns with the arp OFF, SEQ in the preview (owner, from the emulator) */
         song.playing = 0; project_load(0); song.g[G_SLOT] = 3; go_page(GR_SLOTS); ui.act = 2; ui.msg_t = 0; break;
     case S_MULTIS3:                               /* SAVE > MULTIS with nothing loaded, M09 (an ARP part, a SEQ part) picked, K3 SAVE picked: OCT+ saves */
         song.playing = 0; song.g[G_SLOT] = 9; go_page(GR_SLOTS); ui.act = 3; ui.msg_t = 0; break;
