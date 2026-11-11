@@ -42,8 +42,9 @@ def multi(rom, slot, name, what, a, b, la=98, lb=82, seq=None, sets=None):
 # render, the part alone, against the root): the horn's fifth is +5 dB and the wind's fifth +6, octave +4.5, so neither is used.
 # DUNE HORN: the horn (it speaks at once) swells once a bar, root, root, fourth, root: three beats on and a beat to breathe, a 4-bar loop.
 # b9 rework2 (owner, 11 November 2026: "I would like at least one deep growling drone"; research work/b9/research/drone.md): M18 AMB GROWL replaces VOID DEEP.
-# The bed is REESE BASS (two detuned saws beating slowly, its own sub an octave under) two octaves under the key, C2 with the sub on C1 (an ARP SEQ step's offset: the
-# arp's stand-in key ignores a sound's TRN, so TRN 0 and the octave in the step keep a held key and PLAY alone the same), overdriven a little, its low-pass on a slow LFO,
+# The bed is REESE BASS (two detuned saws beating slowly, its own sub an octave under) on C2 with the sub on C1 with no key held (an ARP SEQ step two octaves under TIDE's
+# stand-in C4 = MIDI 60: the stand-in ignores a sound's TRN, a held key does not, so TRN 0), PRIO LOW (b9 rework3: a held chord plays its lowest key; the chord the docs
+# ask for, "around C3" on the unit's keys at octave 0, is MIDI 60 64 67, the stand-in's octave: it sounds where PLAY alone does), overdriven a little, its low-pass on a slow LFO,
 # no PUMP duck; above it NIGHT DRONE turns C3, E flat 3, G3 (a dark minor colour, never a semitone against the bed). Was, b6-b9 rc2:
 # VOID DEEP: the solar wind (it takes about 2 s to come up) on 2-second steps over an 8-bar loop: the root for 14 s, a whole tone up for 8 s
 # (the held C E G under D F# A: an open, lydian colour), the fourth for 6 s, each followed by a breath: the wind turns three times in 32 s.
@@ -55,7 +56,7 @@ DRONES = [
           seq=[(0, "1/2", "0 - - . 0 - - . 5 - - . 0 - - ."), (1, "1/4", BED_STEPS)]),
     multi(18, 2, "AMB GROWL", "a deep growling drone: detuned low saws on C2 with their sub on C1, beating slowly, a little overdrive, the low-pass moving slowly; above it a dark haze turning C3, E flat 3, G3", "REESE BASS", "NIGHT DRONE", 106, 92,
           seq=[(1, "1/1", "-12 - - - - - - . -9 - - - -5 - - ."), (0, "1/4", "-24" + BED_STEPS[1:])],
-          sets=[dict(P_TRANS=0, P_PRIO="LOW", P_DKDEP=0, P_DIST=45, P_FREEA=66, P_LD_FLT=20, P_EQHG=-6, P_CHOR=40, P_DLY=30, P_REV=70), dict(P_TRANS=0, P_EQHG=-6, P_CHOR=70, P_SPRD=64, P_DLY=40, P_REV=90)]),
+          sets=[dict(P_TRANS=0, P_PRIO=1, P_DKDEP=0, P_DIST=45, P_FREEA=66, P_LD_FLT=20, P_EQHG=-6, P_CHOR=40, P_DLY=30, P_REV=70), dict(P_TRANS=0, P_EQHG=-6, P_CHOR=70, P_SPRD=64, P_DLY=40, P_REV=90)]),
 ]
 
 

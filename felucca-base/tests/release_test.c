@@ -33,7 +33,7 @@ static void ck(const char *what, int ok)
 
 int main(void)
 {
-    static const char *const FN[16] = {"DUB BASIC", "DUB CHORD", "HSE JUNO", "HSE RHODES", "HSE ORGAN", "HSE PIANO", "TECH DETROIT",
+    static const char *const FN[16] = {"DUB BASIC", "DUB CHORD", "HSE JUNO", "HSE RHODES", "HSE ORGAN", "HSE FRENCH", "TECH DETROIT",
                                        "TECH SOUL", "ACID HYPNO", "ACID TWO 303", "ACID LINES", "ELEC ROBOT", "ELEC DEEPSEA", "ELEC WARPED",
                                        "AMB BERLIN", "AMB LOOPS"};   /* (the reel, 2026-11-10: fifteen new multis as one curated programme, M02 the owner's DUB CHORD; tools/factory_multis.py) */
     uint32_t k, ok, test_rows = 0, sys_rows = 0;
