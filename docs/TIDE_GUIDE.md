@@ -272,7 +272,11 @@ With heavy sounds and a moving morph the audio can get close to its limit. TIDE 
 
 In the SEQ tools, hold SEQ and press G4 (KEEP): what you hear now becomes the part's own, sound and pattern, with one UNDO. Use it to freeze a good moment, then start the next tide from there.
 
-SAVE stores the sound as you loaded it, not the one TRAVEL (or MORPH TO) moved the part to. When you hold SAVE on a part that plays such a moved sound, the dialog says so above its question: "SAVES THE LOADED SOUND", "KEEP FIRST = AS HEARD". To save what you hear, answer NO (OCT-), do KEEP, then hold SAVE again. With BOTH the note shows when either part is moved. A part that was not moved, or that you kept, shows no note.
+SAVE stores the sound as you loaded it, not the one TRAVEL (or MORPH TO) moved the part to. When you hold SAVE on a part that plays such a moved sound, the dialog says so above its question:
+- "SAVES THE LOADED SOUND"
+- "KEEP FIRST = AS HEARD"
+
+To save what you hear, answer NO (OCT-), do KEEP, then hold SAVE again. With BOTH, the note shows when either part is moved. A part that was not moved, or that you kept, shows no note.
 
 ---
 
