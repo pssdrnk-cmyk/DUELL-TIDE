@@ -69,8 +69,11 @@ fi
 
     return 0
 }
+if [ "$HOSTONLY" = 1 ]; then    # (no device build: only the generated headers the host groups include, as jam/wsl.sh does)
+    (cd felucca-base && python3 tools/build.py --gen-only > "$LOG/gen.log" 2>&1) || { tail -20 "$LOG/gen.log"; echo "   FAIL (build.py --gen-only)"; exit 1; }
+fi
 if [ "$FAST" = 0 ]; then
-    device_build || exit 1
+    [ "$HOSTONLY" = 1 ] || device_build || exit 1
 else
     : > "$LOG/device.out"
     wantdev=1
