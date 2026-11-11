@@ -116,7 +116,7 @@ If anything stops: replug the cable and press Install again. The device stays in
   - the three user wave tables (USR1 to USR3)
   - the FM6 voice bank the editor loaded
 
-  The factory sounds come back. The factory multis M01 to M16 come back. The factory patterns come back. The unit starts as new: VIOLET, LAYER, M01; with TIDE, M04 DUB CHORD.
+  The factory sounds come back. The factory multis M01 to M16 come back. The factory patterns come back. The unit starts as new: VIOLET, LAYER, M01; with TIDE, M02 DUB CHORD.
 
   **Not erased:** the firmware itself.
 - **It cannot be undone: back up first** (step 2). The backup holds your multis and patterns too.
