@@ -217,7 +217,22 @@ A part whose DUCK source (FX > DUCK 1/2, SRC) is MIDI ducks when that note arriv
 
 The two times are in fine steps since 0.2.24 (40 a decade; the defaults 10 ms and 200 ms as before). It starts at **RATIO OFF** (the old 1:1): the sound is exactly what it was, and only RATIO is shown; turn RATIO up and the compressor is on and the other three appear. The panel draws the curve (input across, output up) and a bar of how much it turns the sound down right now. The makeup gain is automatic: half of the reduction a signal at -8 dB would get is given back, so switching it on does not make the music louder (the makeup is at most +6 dB). ATTACK and RELEASE are the times to cover 63 % of the change in dB. It squeezes the left and right together (one gain for both), with a soft knee. A slow ATTACK lets the start of a note through; a quick RELEASE can pump. Start with 2:1 or 3:1, THRESH a little under your loudest peaks, ATTACK 10 ms, RELEASE 200 ms. It works in STEREO and LAYER, not in DUEL (the cards are not shown there). It belongs to the unit, not to a multi: it is kept when you power off but a multi load does not change it, and ERASE DATA resets it to off.
 
-**The STEREO MASTER page (0.2.23, 0.2.25).** One GLO page, **STEREO MASTER**, holds **BASS MONO** (knob 1; it starts ON at 200 Hz on a new unit and belongs to the unit, not to a multi or a patch) and **WIDTH** (knob 2); the panel shows the mono region below BASS MONO and the width above it. The master's last stage is a limiter with a soft knee: up to the limiter's threshold (-5.2 dBFS) the sound passes exactly as it is. (Up to the 0.2.25 layout round WIDTH and MASTER were two pages.) COMPRESSOR follows it. **WIDTH** (0 to 200 %) makes the stereo picture narrower or wider: 100 % is off, 0 % is mono, 200 % is twice as wide. Wider only works above 125 Hz, so the bass is never spread, and the mono sum never changes. WIDTH starts off (the sound is exactly what it was), works in STEREO and LAYER (in DUEL the page says it is not used there), and belongs to the unit like the COMPRESSOR: kept when you power off, not changed by a multi load, reset by ERASE DATA.
+**The STEREO MASTER page (0.2.23, 0.2.25).** One GLO page, **STEREO MASTER**, holds two controls:
+
+- **BASS MONO** (knob 1; it starts ON at 200 Hz on a new unit and belongs to the unit, not to a multi or a patch).
+- **WIDTH** (knob 2).
+
+The panel shows the mono region below BASS MONO and the width above it. The master's last stage is a limiter with a soft knee: up to the limiter's threshold (-5.2 dBFS) the sound passes exactly as it is. (Up to the 0.2.25 layout round WIDTH and MASTER were two pages.) COMPRESSOR follows it. **WIDTH** (0 to 200 %) makes the stereo picture narrower or wider:
+
+- 100 % is off,
+- 0 % is mono,
+- 200 % is twice as wide.
+
+Wider only works above 125 Hz, so the bass is never spread, and the mono sum never changes. WIDTH starts off (the sound is exactly what it was). It works in STEREO and LAYER (in DUEL the page says it is not used there). It belongs to the unit like the COMPRESSOR:
+
+- kept when you power off,
+- not changed by a multi load,
+- reset by ERASE DATA.
 
 **Piano roll (editor, new in 0.2.20).** In the web editor each part has a PIANO ROLL tab for its step pattern, and a ROLL button that opens it across the whole window. See [EDITOR_ROLL.md](EDITOR_ROLL.md).
 
