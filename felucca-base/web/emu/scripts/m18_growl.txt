@@ -1,0 +1,20 @@
+# Demo 8 (M18 AMB GROWL, the deep growl drone): its MULTIS page and 6 s of audio with no key held, then with G3 held.
+boot
+master 800
+button SAVE
+enc K1 -20
+enc K1 17
+shot m18_page
+button OCTUP
+wait 600
+rec m18_nokey
+wait 6000
+rec off
+keys G3
+wait 500
+rec m18_g3
+wait 6000
+rec off
+keys off
+button HOME
+shot m18_home

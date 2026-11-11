@@ -1,0 +1,24 @@
+# Demo 7 (DLYGLIDE): a delay TIME change glides in the modulated delay. M02 DUB CHORD (DUB knob set: K4 is TIME), chord held, TIME stepped while 4 s are recorded: soundlab measure DIR/glide_up, and compare with a render of soundlab --fx-time-step.
+boot
+master 800
+button SAVE
+enc K1 -20
+enc K1 1
+button OCTUP
+wait 600
+button HOME
+keys C4 Eb4 G4
+wait 800
+shot time_before
+rec glide_up
+wait 1500
+enc K4 4
+wait 2500
+rec off
+shot time_after
+rec glide_down
+wait 1500
+enc K4 -4
+wait 2500
+rec off
+keys off

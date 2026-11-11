@@ -1,0 +1,17 @@
+# Demo 6 (USB): MENU > SYSTEM > USB AUDIO (OFF is the default). The menu opens by holding HOME on a page other than HOME's; SELECT walks the rows through the tabs, K1 changes the value.
+boot
+button SAVE
+button HOME down
+wait 1000
+button HOME up
+wait 300
+shot menu_open
+enc SELECT 40
+enc SELECT -3
+shot usb_audio_off
+enc K1 1
+wait 400
+shot usb_audio_on
+enc K1 -1
+wait 400
+shot usb_audio_off_again

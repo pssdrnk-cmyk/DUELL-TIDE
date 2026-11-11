@@ -1,4 +1,4 @@
-# emu_smoke: the group's script. Only pages that hold no live waveform, so the screens are equal on every machine: TIDE SETTINGS, MULTIS, GLO.
+# emu_smoke: the group's script. Only pages that hold no live waveform, so the screens are equal on every machine: TIDE SETTINGS, MULTIS, GLO, MENU > SYSTEM > USB AUDIO.
 boot
 button HOME
 button HOME
@@ -12,3 +12,14 @@ enc K1 2
 shot multis_m03
 button GLO
 shot glo
+button SAVE
+button HOME down
+wait 1000
+button HOME up
+wait 300
+enc SELECT 40
+enc SELECT -3
+shot usb_audio_off
+enc K1 1
+wait 400
+shot usb_audio_on
