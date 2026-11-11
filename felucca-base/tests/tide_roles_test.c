@@ -116,7 +116,7 @@ static const struct { uint8_t slot, style, near, role[2], bass; const char *name
     {21, STY_DEEP,    STY_DUB,     {R_MOTIF, R_BASS},  1, "HSE LOFI"},      /* (the electric-piano chord riff, 6 hits a bar, 5.0 .. 6.0 under TIDE: a MOTIF; the off-beat bass 2.25 .. 5.0) */
     {22, STY_PEAK,    STY_MINIMAL, {R_PAD,   R_ATMOS}, 1, "TECH CINEMA"},   /* (a chord a bar, 2 bars on the first; the A1 drone one note in four bars) */
     {23, STY_AMBIENT, STY_DEEP,    {R_PAD,   R_MOTIF}, 0, "AMB TECHNO"},    /* (a chord a bar; the harp arpeggio 4.75 .. 6.25 a bar) */
-    {24, STY_MINIMAL, STY_PEAK,    {R_MOTIF, R_BASS},  1, "TECH MINIMAL", {0, 0, 45, 80}},   /* (the koto 5.0 .. 7.25 a bar; the off-beat 16th sub 5.0 .. 7.5: its own band 4.5 .. 8.0) */
+    {24, STY_MINIMAL, STY_PEAK,    {R_MOTIF, R_BASS},  1, "TECH MINIMAL", {0, 0, 35, 80}},   /* (the koto 5.0 .. 7.25 a bar; the off-beat 16th sub, 5 a bar, 4.0 .. 6.5 under TIDE: its own band 3.5 .. 8.0) */
 };
 /* density bounds per role: onsets a bar, averaged over a 4-bar window, as tenths (5 = 0.5) */
 static const struct { uint8_t lo, hi; } DENS[14] = {{0, 0}, {20, 60}, {5, 20}, {0, 10}, {10, 40}, {30, 80}, {5, 20}, {2, 10}, {60, 80}, {20, 50}, {10, 30}, {5, 10}, {10, 80}, {0, 0}};

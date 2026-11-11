@@ -125,6 +125,7 @@ Built or being built in b9: **the sound lab** (`felucca-base/tools/soundlab/`: r
 23. AUTO TIDE's step display can show one hit ahead that then doesn't play: the old M09 MINIMAL 12's 12-step blip (that multi is now HYPNO 303) under a style with ARC DROP (PEAK). Picture only, the sound is right. Seen once in 22,158 look-aheads in the `tidesteps` test (its EVOLVE / ARC DROP scenario on factory slot 8: part 2, step 6, three steps ahead). The same class showed on the old set in the night build. The scenario was moved from slot 8 to slot 6 to keep the suite green: put 8 back in `felucca-base/tests/tide_steps_test.c` to see it.
 24. SAVE after TRAVEL: SAVE shows a short message when the sound you loaded and the one TRAVEL moved to differ (owner, 10 November: the default).
 25. ARC's loudness step (sqm_dyn) still follows the main loop's pass, so a new phase's first beat keeps the old loudness (B8-ARC).
+26. TRAVEL level: swapped sounds play 6-10 dB under the factory window (M19 TECH HYPNO -30.1 LUFS, M24 TECH MINIMAL -27.5 against -24.1 .. -18.1; host render, 16 bars under the multi's STYLE): level-match the swap in TIDE. The records are not the cause (the part LEVEL is at its +4 dB limit on M24); accepted for b10-rc2 by the coordinator.
 
 ## Released
 

@@ -810,7 +810,7 @@ static int stage1_checks(void)
         int d_patch, d_multi, d_row, d_off;
         d_patch = repeat_sweep("the 128 factory patches", 128u, scn_patch, 2500u, 0);
         bad += check("8 the reset list: every factory patch repeats (a chord, aftertouch, release; played forward, then backward)", d_patch == 0);
-        d_multi = repeat_sweep(MU_SHOWN > 16u ? "the 18 factory multis (M17, M18 the drones)" : "the 16 factory multis", MU_SHOWN, scn_multi, 2300u, 0);
+        d_multi = repeat_sweep(MU_SHOWN > 16u ? "the factory multis (M17, M18 the drones; b10: M19-M24 ROM)" : "the 16 factory multis", MU_SHOWN, scn_multi, 2300u, 0);
         bad += check("8 the reset list: every factory multi repeats", d_multi == 0);
         d_row = repeat_sweep("the bench rows (88)", BENCH_NAUTO, scn_row, 2300u, 0);
         bad += check("8 the reset list: every row of the bench list repeats", d_row == 0);
