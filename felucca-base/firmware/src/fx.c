@@ -448,13 +448,13 @@ static inline int32_t mulq15u(int32_t d, int32_t b)
     int32_t r = mulq15(d, b);
     return r == 0 && d > 0 ? 1 : r;
 }
-/* The delay loop's write (audit E2, owner D21): the feedback fbk (the low-passed repeat times FDBK) through a low cut of about 165 Hz (a one-pole high-pass, 3/128 of the gap a sample
+/* The delay loop's write (audit E2, owner D21): the feedback fbk (the low-passed repeat times FDBK) through a low cut of about 219 Hz (b9 G2: 165 Hz, 3/128, until b8; a one-pole high-pass, 4/128 of the gap a sample
  * to its low-pass h[0] (Q6), the product's remainder h[1] carried: the repeats thin out instead of piling up bass, and the tail still ends in exact silence), added to the input in,
- * then a soft knee at 16384 (the line is 16 bit; with FDBK above unity the loop settles where the knee's loss is the surplus gain, about -3 dBFS). Below the knee and below 165 Hz
+ * then a soft knee at 16384 (the line is 16 bit; with FDBK above unity the loop settles where the knee's loss is the surplus gain, about -3 dBFS). Below the knee and below 219 Hz
  * the loop is as it was. Returns the sample for the line */
 static __attribute__((noinline)) int32_t dly_wr(int32_t *h, int32_t in, int32_t fbk)
 {
-    int32_t e = 3 * (fbk * 64 - h[0]) + h[1], d = e >> 7;
+    int32_t e = 4 * (fbk * 64 - h[0]) + h[1], d = e >> 7;
     h[1] = e - d * 128;
     h[0] += d;
     return soft_knee(clamp(in + fbk - ((h[0] + 32) >> 6), -65536, 65535), 16384);

@@ -783,7 +783,7 @@ static __attribute__((noinline)) void BUS_FN(dly_mod)(uint32_t dmask, uint32_t d
             x = (a + b) >> 1;
             BUS_FX.dly_lp += mulq15u(x - BUS_FX.dly_lp, col);
             BUS_DLY[w & dmask] = (int16_t)dly_wr(BUS_FX.dly_h, dly_in[i] >> 1, mulq15t(BUS_FX.dly_lp, fb));
-            y += mulq15(x * 2, dmix);
+            y += mulq15(BUS_FX.dly_lp * 2, dmix);          /* (b9 G1: the return is the low-passed repeat, the first one too) */
             r = mulq15(a - b, dmix);
             mix_l[i] += r;
             mix_r[i] -= r;
@@ -791,7 +791,7 @@ static __attribute__((noinline)) void BUS_FN(dly_mod)(uint32_t dmask, uint32_t d
             x = dly_tap(BUS_DLY, dmask, ppos);
             BUS_FX.dly_lp += mulq15u(x - BUS_FX.dly_lp, col);
             BUS_DLY[w & dmask] = (int16_t)dly_wr(BUS_FX.dly_h, dly_in[i] >> 1, mulq15t(BUS_FX.dly_lp, fb));
-            y += mulq15(x * 2, dmix);
+            y += mulq15(BUS_FX.dly_lp * 2, dmix);          /* (b9 G1) */
         }
         w++;
         ppos += pstep;
@@ -932,7 +932,7 @@ static inline void BUS_FN(fx_buses_m)(uint32_t dmask, uint32_t dl, const int32_t
             BUS_DLY[BUS_FX.dly_w & dmask] =
                 (int16_t)dly_wr(BUS_FX.dly_h, dly_in[i] >> 1, mulq15t(BUS_FX.dly_lp, fb));
             BUS_FX.dly_w++;
-            y += mulq15(x * 2, dmix);
+            y += mulq15(BUS_FX.dly_lp * 2, dmix);          /* (b9 G1: after the loop's low-pass, as every repeat) */
         }
         wet[i] = y;
     }
