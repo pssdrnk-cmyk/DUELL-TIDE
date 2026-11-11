@@ -928,8 +928,20 @@ static void t_style(void)
             tide_style = STY_DUB;
             tide_settings();
             CHECK(k == 0 ? "a 7-byte record: CUSTOM, its values kept" : k == 1 ? "a 9-byte record: CUSTOM, its values kept (a stored ECHO reads as LEAD: D7)" : "an 11-byte record: CUSTOM, its values kept",
-                  tide_style == STY_CUSTOM && gl.mode == GM_LOOP && gl.time == 2u && gl.wait == 1u && morph_wlvl == 2u && (L[k] < 9u || sqm_poly == 2u) &&
+                  tide_style == STY_CUSTOM && gl.mode == GM_WANDER && gl.time == 2u && gl.wait == 1u && morph_wlvl == 2u && (L[k] < 9u || sqm_poly == 2u) &&
                   (L[k] < 11u || (sqm_sync == 0u && sqm_arc == 2u)));
+        }
+    }
+    {   /* b9: an older record whose MODE is ONCE, LOOP or DRIFT loads as EVOLVE; WANDER stays EVOLVE and JOURNEY stays TRAVEL */
+        static const uint8_t M[5] = {GM_ONCE, GM_LOOP, GM_DRIFT, GM_WANDER, GM_JOURNEY}, E[5] = {GM_WANDER, GM_WANDER, GM_WANDER, GM_WANDER, GM_JOURNEY};
+        for (k = 0; k < 5u; k++) {
+            memset(rec + 5, 0, 16);
+            rec[5 + TS_MODE] = M[k], rec[5 + TS_TIME] = 2, rec[5 + TS_TARGET] = GT_BOTH, rec[5 + TS_STYLE] = STY_CUSTOM;
+            put_rec(rec, 5u + TS_N);
+            tide_seen_ok = 0;
+            gl.mode = GM_ONCE;
+            tide_settings();
+            CHECK("b9: a stored MODE ONCE / LOOP / DRIFT loads as EVOLVE; WANDER as EVOLVE, JOURNEY as TRAVEL", gl.mode == E[k] && gl.time == 2u);
         }
     }
     memset(rec + 5, 0, 16);
@@ -1031,7 +1043,7 @@ static void t_store(void)
         sqm_sync = 0;
         sqm_arc = 2;
         tide_settings();
-        CHECK("a 9-byte record: POLY kept, SYNC SOFT", gl.mode == GM_LOOP && sqm_poly == 2u && sqm_sync == 1u && sqm_arc == 0u);
+        CHECK("a 9-byte record: POLY kept, SYNC SOFT (a stored LOOP loads as EVOLVE)", gl.mode == GM_WANDER && sqm_poly == 2u && sqm_sync == 1u && sqm_arc == 0u);
     }
     rec[5 + TS_TURNS] = 9, rec[5 + TS_POLY] = 9, rec[5 + TS_SYNC] = 9, rec[5 + TS_ARC] = 9;
     put_rec(rec, 5 + TS_N);

@@ -1352,13 +1352,13 @@ static void setup(int s)
             trk[k].seq_idx = 5u + k;
         }
         if (both) SEL_BOTH = 1;
-        gl.mode = s == S_TIDE ? GM_LOOP : GM_WANDER; gl.on = gl.armed = gl.hold = 0;
+        gl.mode = s == S_TIDE ? GM_JOURNEY : GM_WANDER; gl.on = gl.armed = gl.hold = 0;
         go_title("AUTO TIDE");
         if (run) {
             song.playing = 1;
             gl.on = 3u; gl.to = 1u; gl.mask = (uint8_t)(both ? 3u : 1u); gl.pi = 0; gl.from[0][0] = gl.from[0][1] = gl.from[1][0] = gl.from[1][1] = 10u;
             gl.prog = (3u << GLIDE_Q) / 8u; gl.hold = (uint8_t)(s == S_TIDE_WAIT);
-            if (s != S_TIDE_BOTH_GLIDE) sqm_arc = 0;   /* (ARC off: the status line names the glide, "WNDR TO B  3/8", "WAITING  1/2"; BOTH gliding keeps ARC's "RISE 1/6") */
+            if (s != S_TIDE_BOTH_GLIDE) sqm_arc = 0;   /* (ARC off: the status line names the glide, "EVOLVING TO B  3/8", "WAITING  1/2"; BOTH gliding keeps ARC's "RISE 1/6") */
             morph_do(MQ_FADER, gl.mask, 60u);
             for (k = 0; k < 2u; k++) if ((gl.mask >> k) & 1u) seqm_set_fader(k, k ? 90u : 52u);
         }
@@ -2657,7 +2657,7 @@ int main(int argc, char **argv)
         boxf = fopen(ap, "w");
     }
     {   /* TIDE's header messages: each must fit the title room (a long one wrapped onto a second line and overlapped the first) */
-        static const char *const M[] = {"BACK TO ORIGINAL", "PARTS LEAD IN TURNS", "PARTS VARY TOGETHER", "GLIDE BOTH", "DROP NEEDS WANDER/JOURNEY",
+        static const char *const M[] = {"BACK TO ORIGINAL", "PARTS LEAD IN TURNS", "PARTS VARY TOGETHER", "GLIDE BOTH", "DROP NEEDS EVOLVE/TRAVEL",
             "DROP CANCELLED", "VARY EVERY 4TH", "VARY EVERY BAR", "STYLE AMBIENT", "STYLE MINIMAL", "GLIDE STOPPED", "NOTHING TO KEEP", "PARTS TAKE TURNS", "GLIDE TO B", "WASH HIGH", "SEQ KEPT", "SOUND KEPT"};
         uint32_t m;
         for (m = 0; m < sizeof M / sizeof M[0]; m++) {
@@ -2699,7 +2699,7 @@ int main(int argc, char **argv)
             if (sc == 7 || (sc >= 11 && sc < 16)) { for (pg = 0; pg < NPAGES && strcmp(PAGES[pg].title, "TIDE SETTINGS"); pg++) ; jl_sel = (uint8_t)(sc == 11 ? JL_ARC : sc == 13 ? JL_STYLE : sc == 14 ? JL_XFADE : JL_SPLIT);   /* (7 ts_bottom, 15 ts_split_duel: the SPLIT row) */ }
             if (sc == 14 || sc == 15) { duell_mode_req = sc == 14 ? DM_LAYER : DM_SPLIT; mix_xf = 50; mix_split = 67; }   /* (the last rows, MODE XFADE SPLIT: in LAYER they act, in DUEL the XFADE and SPLIT values dim and knob 1's line says LAYER ONLY) */
             if (sc == 13) { tide_style = STY_CUSTOM; gl.target = GT_BOTH; morph_musical = 1; sqm_vary_all = 0; }   /* (the README's TIDE SETTINGS picture: the top of the list) */
-            if (sc == 11 || sc == 12) { gl.mode = sc == 11 ? GM_ONCE : GM_JOURNEY; morph_musical = sc == 12; gl.target = GT_SOUND; }
+            if (sc == 11 || sc == 12) { gl.mode = sc == 11 ? GM_WANDER : GM_JOURNEY; morph_musical = sc == 12; gl.target = GT_SOUND; }
             ui.page = (uint8_t)pg;
             ui.force = 1;
             cur_name = NM[sc];
