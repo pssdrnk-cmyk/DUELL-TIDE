@@ -56,7 +56,8 @@ Hold **HOME**. Four tabs:
 - **DISPLAY** (COLOR, LIGHTS, SCALE LIGHTS, ANIMATION, SCREEN OFF, NOTES LEFT: the numbers of free voices in the header)
 - **CONTROL** (MULTI LOAD, HOME OPENS, KNOB ACCELERATION, BUTTON HOLD, STEP KEYS, STEP PREVIEW, LEAVING PERFORM, KEY VELOCITY, AFTERTOUCH)
 - **AUDIO** (CLICK, CLICK LEVEL, COUNT-IN, TUNE: the frequency of A4 in Hz like a Roland keyboard, 415.3 to 466.2 Hz in steps of 0.1 Hz, 440.0 at first; with KNOB ACCELERATION on, a fast turn moves several steps)
-- **SYSTEM** (RESTORE LAST, BUTTON MAP, GUIDE, ABOUT, ERASE DATA; developer builds have a USB SERIAL row too)
+- **SYSTEM** (RESTORE LAST, BUTTON MAP, USB AUDIO, GUIDE, ABOUT, ERASE DATA; developer builds have a USB SERIAL row too)
+  - **USB AUDIO** (OFF at first): with OFF the FM-1 shows up on the computer as a MIDI device only, so the editor, the installer and MIDI work and no audio is streamed over the cable (the jacks sound the same). Turn it ON to record the FM-1 over USB. A change makes the unit leave the USB bus for a moment and come back.
 Turn **SELECT** to go from row to row (on through the tabs).
 Turn any knob or press OCT+ / OCT- to change the value.
 HOME closes it.
@@ -66,7 +67,7 @@ It is on the **GLO** button's round (the page **STEREO MASTER**, after SHIMMER; 
 It makes the output mono below the frequency you pick (40 to 400 Hz; 100 to 150 Hz is the usual club setting) so wide effects do not smear the bass.
 It belongs to the unit (a multi does not change it).
 It works in STEREO and LAYER, and in DUEL its card is not shown.
-- Defaults worth knowing: KNOB ACCELERATION ON, CLICK REC (the metronome only while you record on the sequencer pages), USB SERIAL OFF (with it ON, macOS 13 to 15 do not show the USB audio input). MULTI LOAD KEEPS MODE: loading a multi keeps your MODE, XFADE and SPLIT; set SETS MODE to take the multi's.
+- Defaults worth knowing: KNOB ACCELERATION ON, CLICK REC (the metronome only while you record on the sequencer pages), USB SERIAL OFF (with it ON, macOS 13 to 15 do not show the USB audio input), USB AUDIO OFF (turn it ON in SYSTEM to record over USB). MULTI LOAD KEEPS MODE: loading a multi keeps your MODE, XFADE and SPLIT; set SETS MODE to take the multi's.
 
 ## Make a first sound
 1. Turn **PRESETS** to hear sounds. Turn **ALGORITHM** to select part 2 and load another.
@@ -112,7 +113,7 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
 - **MULTIS**: 16 slots that hold both parts, effects, arps, patterns, mode and morph settings. The page always opens with LOAD picked.
 
   - **Factory scenes (M01 to M16):** all music, a curated programme with a genre each. From M01 DUB BASIC through house, Detroit, minimal, acid, electro and IDM to M15 AMB BERLIN and M16 AMB LOOPS. The former STRESS TEST is a test scene only and free to overwrite.
-  - **TIDE drone scenes:** with TIDE the list goes on with two drones built into the firmware: M17 AMB DUNEHORN and M18 AMB VOID. They load and play like the others. TIDE plays them as STYLE DRONE (hold a chord around C3, PLAY with AUTO TIDE on). They cannot be saved over, renamed or erased. Save an edited one into M01 to M16 instead.
+  - **TIDE drone scenes:** with TIDE the list goes on with two drones built into the firmware: M17 AMB DUNEHORN and M18 AMB GROWL (a deep growling drone). They load and play like the others. TIDE plays them as STYLE DRONE (hold a chord around C3, PLAY with AUTO TIDE on). They cannot be saved over, renamed or erased. Save an edited one into M01 to M16 instead.
   - **TIDE view:** the list shows three rows with the picked multi opened under them. Both parts' sound names, ARP / SEQ / OFF and their first 16 steps (or NO SEQUENCE) before you load. A record that does not load reads DAMAGED.
   - **Loading:** turn knob 1 to the multi you want, press OCT+ to load it. Knob 3 picks SAVE instead. Loading a multi sets its own levels, pan, mute and sends and the effects it stores (chorus, delay, reverb with their settings), whatever the mixer was. It leaves your MIDI settings, the clock source, TUNE and the master effect BASS MONO as they are. BASS MONO is a setting of your unit, not of the multi.
 - To start from scratch (erases settings, patches, multis, patterns, the user wave tables and the FM6 voice bank): MENU (hold HOME) > SYSTEM > ERASE DATA. A reinstall alone keeps your data.

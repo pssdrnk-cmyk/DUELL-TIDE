@@ -28,6 +28,7 @@ enum { MI_COLOR, MI_LEDS, MI_SCLLED, MI_ANIM, MI_SCROFF, MI_NOTESLEFT, MI_CPU,  
 #endif
        MI_CLICK, MI_CLKLVL, MI_COUNTIN, MI_TUNE,                 /* AUDIO (CLICK .. COUNT-IN, TUNE; 0.2.19: OUTPUT EQ removed; 0.2.25: USB LEVEL removed) */
        MI_RESTORE, MI_PANEL,                                                        /* SYSTEM (RESTORE LAST, BUTTON MAP) */
+       MI_USBAUDIO,                                    /* (b9: USB AUDIO OFF / ON, the audio input over USB; off by default; a build without FELUCCA_UAC has the row and it does nothing) */
 #if FELUCCA_CDC
        MI_SERIAL,                                      /* (USB SERIAL: developer builds only, FELUCCA_CDC: the product has no serial console, so no row that would do nothing) */
 #endif
@@ -60,6 +61,7 @@ static const char *const MI_NAME[MI_COUNT] = {"COLOR", "LEDS", "SCALE LEDS", "AN
 #endif
                                               "CLICK", "CLICK LEVEL", "COUNT-IN", "TUNE",
                                               "RESTORE LAST", "BUTTON MAP",
+                                              "USB AUDIO",
 #if FELUCCA_CDC
                                               "USB SERIAL",
 #endif
@@ -104,6 +106,7 @@ static const uint8_t MI_TAB[MI_COUNT] = {
 #endif
     MTAB_AUDIO, MTAB_AUDIO, MTAB_AUDIO, MTAB_AUDIO,                                       /* CLICK CLICK LEVEL COUNT-IN TUNE */
     MTAB_SYSTEM, MTAB_SYSTEM,                                                             /* RESTORE LAST BUTTON MAP */
+    MTAB_SYSTEM,                                                                          /* USB AUDIO */
 #if FELUCCA_CDC
     MTAB_SYSTEM,                                                                          /* USB SERIAL */
 #endif
@@ -209,21 +212,30 @@ static const char *const HOMEPG_N[HP_COUNT] = {TIDE_HOME_NAME, TIDE_HOME_MODE_NA
  * takes the device and the audio input never appears). USB-MIDI stays, and with it the editor, the update installer
  * and the soft key (SysEx on EP1). Applied at boot before USB starts (main.c: enumerated with it from the start, never
  * on then off) and while the menu is closed (ui_input: one re-enumeration when it closes, not one per KNOB 1 step).
- * A change from the editor (MENU_SET) waits 200 ms (menu_serial_at) so its reply leaves before the device drops off
+ * A change from the editor (MENU_SET) waits 200 ms (usb.set_at) so its reply leaves before the device drops off
  * the bus: the whole device re-enumerates, USB-MIDI and audio too */
-#if FELUCCA_CDC
-static uint32_t menu_serial_at;                        /* fm1_ms | 1 of the editor's change; 0 none */
-#endif
+/* b9 MENU > SYSTEM > USB AUDIO (the product's one USB row): the same machinery. OFF (the default, ui.c usb_audio_get) presents MIDI only (usb.c: descriptors without the audio
+ * streaming interface, no isochronous traffic, the resampler never runs), ON the audio input as before. Applied at boot before usb_start (enumerated with it from the start),
+ * and when the menu has closed or 200 ms after an editor change; one re-enumeration (the device drops off the bus for a moment, the editor reconnects). Bench builds always present it */
 static void usb_serial_apply(void)
 {
-#if FELUCCA_CDC
-    if (menu_serial_at && fm1_ms - (menu_serial_at & ~1u) < 200u)   /* (& ~1: at an even fm1_ms the | 1 was 1 ms ahead) */
+#if FELUCCA_CDC || FELUCCA_UAC
+    if (usb.set_at && (uint16_t)((uint16_t)fm1_ms - (usb.set_at & ~1u)) < 200u)   /* (& ~1: at an even fm1_ms the | 1 was 1 ms ahead; 16 bits wrap, fine for 200 ms) */
         return;
-    menu_serial_at = 0;
+    usb.set_at = 0;
+#endif
+#if FELUCCA_CDC
 #if DUELL_BENCH
     usb_cdc_switch(FELUCCA_CDC_DEFAULT);                /* (bench builds: the console is always presented, whatever USB SERIAL says: the bench suite's runner needs it) */
 #else
     usb_cdc_switch(FELUCCA_CDC_DEFAULT && !(ui_prefs & PREF_SERIAL_OFF));   /* (a FELUCCA_CDC_DEFAULT=0 build: off) */
+#endif
+#endif
+#if FELUCCA_UAC
+#if DUELL_BENCH
+    usb_audio_switch(1);
+#else
+    usb_audio_switch(usb_audio_get());
 #endif
 #endif
 }
@@ -261,6 +273,7 @@ static uint32_t menu_get(uint32_t row)
     case MI_HOMEPG: return ui_home_pg < HP_COUNT ? ui_home_pg : HP_MORPH;
     case MI_PERFLEAVE: return perf_keep();
     case MI_NOTESLEFT: return notes_show_on();         /* 1 = ON (the stored bit is OFF: set = OFF, clear = ON, the default) */
+    case MI_USBAUDIO: return usb_audio_get();          /* 1 = ON (tag + bit; anything else OFF, the default) */
 #if DUELL_VELO
     case MI_KEYVEL: return keyvel_on() ? 1u + keyvel_type() : 0u;   /* 0 OFF, 1..5 SOFTER .. HARDER (the ON bit: set = ON, clear = OFF, the default; the type in ui_sense_type) */
     case MI_AFTERT: return aftert_on() ? 1u + aftert_type() : 0u;   /* the same (ON = bit 7 clear) */
@@ -295,6 +308,7 @@ static const char *menu_vname(uint32_t row, uint32_t v)
     }
 #endif
     case MI_NOTESLEFT: return v & 1u ? "ON" : "OFF";
+    case MI_USBAUDIO: return v & 1u ? "ON" : "OFF";
     case MI_PERFLEAVE: return v & 1u ? "KEEP" : "FADE";   /* DUELL 0.2.14: leaving PERFORM / loading a sound: SPACE and KILL fade to neutral (default) / stay */
     case MI_LEDS: return LEDS_NAME[LEDS_MENU[v % LEDS_COUNT]];
     case MI_TUNE: {                                    /* A4 in Hz with one decimal ("440.0"; the menu adds "Hz") */
@@ -356,6 +370,7 @@ static void menu_put(uint32_t row, uint32_t v)
         break;
 #endif
     case MI_NOTESLEFT: ui_notes_off = (uint8_t)(v ? ui_notes_off & ~NOTES_OFF_BIT : ui_notes_off | NOTES_OFF_BIT); break;   /* (read where the header is drawn: ui_draw.c) */
+    case MI_USBAUDIO: ui_runkeep = (uint8_t)((ui_runkeep & 7u) | UAUD_TAG | (v ? UAUD_ON : 0u)); break;   /* (applied when the menu closes: usb_serial_apply) */
     case MI_PERFLEAVE: ui_idle = (uint8_t)(v ? ui_idle | PERF_KEEP_BIT : ui_idle & ~PERF_KEEP_BIT); break;   /* (read where PERFORM is left: ui_perform.c) */
     case MI_CLICK: case MI_CLKLVL: case MI_COUNTIN: rp_put(row - MI_CLICK, v); break;   /* (at once: click.c, seq.c) */
     case MI_TUNE: song.g[G_TUNE] = (int16_t)((int32_t)v + TUNE_MIN); break;

@@ -1558,19 +1558,19 @@ static int test_menu_tabs(void)
 {
     int bad = 0, ok = 1, fit = 1;
     uint32_t t, i, n, u, pg;
-    static const uint8_t WANT[MTAB_COUNT][8] = {
+    static const uint8_t WANT[MTAB_COUNT][10] = {
         {MI_COLOR, MI_LEDS, MI_SCLLED, MI_ANIM, MI_SCROFF, MI_NOTESLEFT, 0xFF},
         {MI_MODERECALL, MI_HOMEPG, MI_ACCEL, MI_HOLD, MI_CHADD, MI_PREVIEW, MI_PERFLEAVE, 0xFF},
         {MI_CLICK, MI_CLKLVL, MI_COUNTIN, MI_TUNE, 0xFF},
 #if DUELL_TEST_MODE
-        {MI_RESTORE, MI_PANEL, MI_SER_ROW MI_TEST, MI_GUIDE, MI_ABOUT, MI_ERASE, 0xFF}};
+        {MI_RESTORE, MI_PANEL, MI_USBAUDIO, MI_SER_ROW MI_TEST, MI_GUIDE, MI_ABOUT, MI_ERASE, 0xFF}};
 #else
-        {MI_RESTORE, MI_PANEL, MI_SER_ROW MI_GUIDE, MI_ABOUT, MI_ERASE, 0xFF}};
+        {MI_RESTORE, MI_PANEL, MI_USBAUDIO, MI_SER_ROW MI_GUIDE, MI_ABOUT, MI_ERASE, 0xFF}};
 #endif
     static const char *const NAMES[] = {"COLOR", "LEDS", "SCALE LEDS", "ANIMATION", "SCREEN OFF", "NOTES LEFT", "CPU METER",   /* (CPU METER: retired in 1.1, no tab, no page; the row is kept for its stored bit and editor id) */
                                         "MULTI LOAD", "HOME OPENS", "KNOB ACCEL", "BUTTON HOLD", "STEP KEYS", "STEP PREVIEW", "PERF LEAVE",
                                         "CLICK", "CLICK LEVEL", "COUNT-IN", "TUNE",
-                                        "RESTORE LAST", "BUTTON MAP"
+                                        "RESTORE LAST", "BUTTON MAP", "USB AUDIO"
 #if FELUCCA_CDC
                                         , "USB SERIAL"
 #endif
@@ -1628,22 +1628,22 @@ static int test_menu_tabs(void)
         char b[16];
         ui_power_on();
         hold(B_HOME);
-        ui.menu_sel = MI_ABOUT; ui.force = 1; frames(300);   /* (the tabs slid over from DISPLAY: settled) */
+        ui.menu_sel = MI_GUIDE; ui.force = 1; frames(300);   /* (the tabs slid over from DISPLAY: settled; b9: GUIDE is the last row of page 1 in test builds, USB AUDIO took a unit) */
         mtab_label(MTAB_SYSTEM, b);
         ok = str_eq(b, "SYSTEM") && (DUELL_TEST_MODE ? rows_has(224, 250, "1/2") : !rows_has(224, 250, "1/2"));   /* (item 119: the tab's name is plain, its page counter 1/2 is the footer's) */
 #if DUELL_TEST_MODE
         {
             static uint16_t p1[240 * 240];
             memcpy(p1, host_screen, sizeof p1);
-            turn(EN_SELECT, 1);                         /* ABOUT -> ERASE DATA: page 2 (RESTORE LAST 1, BUTTON MAP 1, USB SERIAL 2, TEST,
-                                                         * GUIDE, ABOUT 1 each: 7 units) */
+            turn(EN_SELECT, 1);                         /* GUIDE -> ABOUT: page 2 (RESTORE LAST 1, BUTTON MAP 1, USB AUDIO 1, USB SERIAL 2, TEST,
+                                                         * GUIDE 1 each: 7 units; ABOUT, ERASE DATA on page 2) */
             frame();
             mtab_label(MTAB_SYSTEM, b);
-            ok &= ui.menu_sel == MI_ERASE && menu_page() == 1u && str_eq(b, "SYSTEM") && rows_has(224, 250, "2/2") && memcmp(p1, host_screen, sizeof p1);
-            menu_place(MI_ERASE, &u);
-            ok &= u == 0u && menu_place(MI_ABOUT, &u) == 0u && u == 6u;
+            ok &= ui.menu_sel == MI_ABOUT && menu_page() == 1u && str_eq(b, "SYSTEM") && rows_has(224, 250, "2/2") && memcmp(p1, host_screen, sizeof p1);
+            menu_place(MI_ABOUT, &u);
+            ok &= u == 0u && menu_place(MI_GUIDE, &u) == 0u && u == 6u;
             turn(EN_SELECT, -1); frame();
-            ok &= ui.menu_sel == MI_ABOUT && menu_page() == 0u && !memcmp(p1, host_screen, sizeof p1);   /* (page 1 again, as it was) */
+            ok &= ui.menu_sel == MI_GUIDE && menu_page() == 0u && !memcmp(p1, host_screen, sizeof p1);   /* (page 1 again, as it was) */
         }
 #endif
         menu_close();

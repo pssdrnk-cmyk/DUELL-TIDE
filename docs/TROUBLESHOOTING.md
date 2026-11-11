@@ -17,6 +17,8 @@ Symptom, then fix. For a failed or interrupted flash read [RECOVERY.md](RECOVERY
 | Emulator shows old or broken saved data after an update | Download saved data first, then clear the site's browser data (cookies and site data) and reload. |
 | Emulator is silent | Click the page once (browsers block audio until you do) and raise MASTER. |
 | Emulator pitch sounds off | The browser plays at a rate other than 44.1 kHz; the console warns about it. |
+| Hum, buzz or whine in the outputs while the USB cable is connected | See **USB noise** below. |
+| The computer does not show the FM-1 as an audio input / sound card | USB AUDIO is OFF (its default): hold HOME, SYSTEM tab, USB AUDIO ON. The unit leaves the bus for a moment and comes back. |
 | A sound does not change when I turn SELECT | SELECT switches sub-pages and moves rows; knobs 1-4 adjust. See [QUICKSTART.md](QUICKSTART.md). |
 | MIDI notes play the wrong part | Part 1 listens on channel 1 and part 2 on channel 2. In LAYER, channel 1 plays both parts. |
 | SAVE ERROR | The flash failed to write: try again, and report it if it repeats. |
@@ -26,3 +28,11 @@ Symptom, then fix. For a failed or interrupted flash read [RECOVERY.md](RECOVERY
 | TIDE SETTINGS shows STYLE CUSTOM | You changed one of the rows a style sets; your values are kept. Pick a style again to set them all. |
 | STOP TO SAVE | Saving needs the transport stopped. Press PLAY/STOP. |
 | Anything else | TIDE, or this fork's installer, emulator and editor: open a bug report on [this fork's issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues/new/choose). A problem that plain DUELL has too: OSCILL/R's [bug report form](https://github.com/oscillr/DUELL/issues/new/choose). |
+
+## USB noise
+
+If you hear a hum, buzz or whine in the outputs only while the USB cable is connected, it is almost always **not** the FM-1's sound: the cable ties the unit's ground and power to the computer's, and the computer (especially a laptop on its charger) puts noise on them. The FM-1's audio itself does not depend on USB: the sound is made and sent to the jacks inside the unit, whatever the cable does. Try these, in this order:
+
+1. **Ground loop or power noise (the usual cause).** Hum at 50 or 60 Hz, or a whine that follows the computer (the screen, the disk, moving the mouse), points to this. Power the FM-1 from a phone charger or a power bank instead of the computer, and use the computer only when you need the editor (connect, edit, unplug). Or put a **USB isolator** between the computer and the FM-1, or a **ground-loop isolator** (a 1:1 audio transformer) on the FM-1's outputs. Try a different USB port, a shorter data cable or a cable with a ferrite, and run a laptop on its battery to test. A balanced connection (DI box) to the mixer also helps.
+2. **Digital noise.** A buzz at 1 kHz or a ticking that follows USB activity can be the USB bus itself (the computer sends a frame every millisecond) coupling into the outputs. **Set MENU > SYSTEM > USB AUDIO to OFF** (it is OFF by default): the FM-1 then shows up as MIDI only, no audio is streamed over the cable, and the unit's USB work is smaller. MIDI and the editor keep working. If the noise is still there with USB AUDIO OFF, the cable's ground is the cause: use the charger / power bank or an isolator as above.
+3. **Not the USB at all.** Unplug the USB cable. If the noise stays, it is the audio cable, the mixer or the power supply of another device.
