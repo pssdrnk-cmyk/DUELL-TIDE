@@ -215,7 +215,18 @@ A part whose DUCK source (FX > DUCK 1/2, SRC) is MIDI ducks when that note arriv
 - **ATTACK** (0.1 to 100 ms).
 - **RELEASE** (20 ms to 2 s).
 
-The two times are in fine steps since 0.2.24 (40 a decade; the defaults 10 ms and 200 ms as before). It starts at **RATIO OFF** (the old 1:1): the sound is exactly what it was, and only RATIO is shown; turn RATIO up and the compressor is on and the other three appear. The panel draws the curve (input across, output up) and a bar of how much it turns the sound down right now. The makeup gain is automatic: half of the reduction a signal at -8 dB would get is given back, so switching it on does not make the music louder (the makeup is at most +6 dB). ATTACK and RELEASE are the times to cover 63 % of the change in dB. It squeezes the left and right together (one gain for both), with a soft knee. A slow ATTACK lets the start of a note through; a quick RELEASE can pump. Start with 2:1 or 3:1, THRESH a little under your loudest peaks, ATTACK 10 ms, RELEASE 200 ms. It works in STEREO and LAYER, not in DUEL (the cards are not shown there). It belongs to the unit, not to a multi: it is kept when you power off but a multi load does not change it, and ERASE DATA resets it to off.
+The two times are in fine steps since 0.2.24 (40 a decade; the defaults 10 ms and 200 ms as before).
+
+- It starts at **RATIO OFF** (the old 1:1): the sound is exactly what it was, and only RATIO is shown.
+- Turn RATIO up and the compressor is on and the other three appear.
+- The panel draws the curve (input across, output up) and a bar of how much it turns the sound down right now.
+- The makeup gain is automatic: half of the reduction a signal at -8 dB would get is given back, so switching it on does not make the music louder (the makeup is at most +6 dB).
+- ATTACK and RELEASE are the times to cover 63 % of the change in dB.
+- It squeezes the left and right together (one gain for both), with a soft knee.
+- A slow ATTACK lets the start of a note through; a quick RELEASE can pump.
+- Start with 2:1 or 3:1, THRESH a little under your loudest peaks, ATTACK 10 ms, RELEASE 200 ms.
+- It works in STEREO and LAYER, not in DUEL (the cards are not shown there).
+- It belongs to the unit, not to a multi: it is kept when you power off but a multi load does not change it, and ERASE DATA resets it to off.
 
 **The STEREO MASTER page (0.2.23, 0.2.25).** One GLO page, **STEREO MASTER**, holds two controls:
 
