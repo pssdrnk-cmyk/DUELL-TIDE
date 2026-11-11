@@ -10,7 +10,7 @@ the checkout's folders and a private felucca-base/build, so groups cannot clobbe
 jam/ccwrap/cc, which compiles one translation unit once per (preprocessed text + flags) into build/host-cache. The verdict of a group (PASS / FAIL /
 SKIP / TIMEOUT) is decided exactly as check.sh decides it. Exit code 0 only if no group failed.
 """
-import argparse, concurrent.futures as cf, contextlib, fnmatch, glob, hashlib, json, os, re, shutil, subprocess, sys, tempfile, threading, time
+import argparse, concurrent.futures as cf, fnmatch, glob, hashlib, json, os, re, shutil, subprocess, sys, tempfile, threading, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
@@ -158,8 +158,8 @@ class Runner:
         self.cache = None if a.no_cache else posix(os.path.join(FB, "build", "host-cache"))
         self.sbroot = os.path.join(tempfile.gettempdir(), "htp%d" % os.getpid())
         self.realcc = os.environ.get("HT_REALCC") or ""
-        # the groups that start headless Chrome (web/cdp.mjs) run one at a time: two launches at once on a loaded machine timed out in CI (sliders, editorjson)
-        self.chrome_lock = threading.Lock()
+        # the groups that start headless Chrome (web/cdp.mjs) run alone at the end: on a runner busy with compiles Chrome's DevTools endpoint answered
+        # too late (cdp.mjs allows 5 s) in CI: rollbrowser, sliders, editorjson failed in turn
         self.browser_groups = set()
         try:
             for g, body in parse_hostsh(open(os.path.join(REPO, "host_tests.sh"), newline="").read())[1].items():
@@ -194,7 +194,7 @@ class Runner:
         out = os.path.join(a.log, g + ".log")
         try:
             make_sandbox(sandbox)
-            with open(out, "wb") as f, (self.chrome_lock if g in self.browser_groups else contextlib.nullcontext()):
+            with open(out, "wb") as f:
                 p = subprocess.run(["sh", "-c", 'exec timeout "$0" sh host_tests.sh "$1"', str(a.limit), g], cwd=sandbox, env=self.env(g, sandbox), stdout=f,
                                    stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
             rc = p.returncode
@@ -230,7 +230,10 @@ class Runner:
         print("== %d host groups, %d at a time (free memory %.1f GB; cache %s)" % (len(groups), a.jobs, free_gb(), "off" if not self.cache else "build/host-cache"),
               flush=True)
         with cf.ThreadPoolExecutor(max_workers=a.jobs) as ex:
-            list(ex.map(self.run_group, order))
+            list(ex.map(self.run_group, [g for g in order if g not in self.browser_groups]))
+        for g in order:
+            if g in self.browser_groups:
+                self.run_group(g)
         shutil.rmtree(self.sbroot, ignore_errors=True)
         save_times({g: r[1] for g, r in self.results.items()})
 
