@@ -120,12 +120,12 @@ The KNOBS sets (HOME page 1; K1 is always MORPH; AUTO picks the set from the tag
 | Set | K2 | K3 | K4 |
 |---|---|---|---|
 | **STD** (no tag, single sounds) | FLT: cutoff | RSN: resonance | ECH: echo send |
-| **DUB** | SEND: echo send, a little reverb | FDBK: feedback up to runaway, repeats darken | TIME: delay time in note values, glides |
-| **HSE** house | FLT: cutoff, a touch of resonance | PUMP: sidechain pump depth | REV: reverb send, longer release |
-| **TECH** techno | RISE: cutoff, resonance and envelope to filter up | DEC: decay short to long | WASH: reverb and echo sends |
-| **ACID** | FLT: cutoff and resonance (the squelch) | BITE: envelope to filter up, decay shorter | DIRT: saturation |
-| **ELEC** electro / IDM | FLT: cutoff | GRIT: saturation and chorus | SKIP: shorter gates, dropped steps |
-| **AMB** ambient / drone | FADE: slower attack, longer release, more reverb | MOVE: deeper, slower filter wobble | ROOM: echo and reverb |
+| **DUB** | SND: echo send, a little reverb | FDBK: feedback up to runaway, repeats darken | TIME: delay time in note values, glides |
+| **HSE** house | FLT: cutoff, a touch of resonance | PMP: sidechain pump depth | REV: reverb send, longer release |
+| **TECH** techno | TNS: cutoff, resonance and envelope up (build) | DEC: decay short to long | WSH: reverb and echo sends |
+| **ACID** | SQL: cutoff and resonance (the squelch) | BTE: envelope to filter up, decay shorter | DRT: saturation |
+| **ELEC** electro / IDM | FLT: cutoff | GRT: saturation and chorus | GLT: shorter gates, dropped steps |
+| **AMB** ambient / drone | BLM: slower attack, longer release, more reverb | DRF: deeper, slower filter wobble | SPC: echo and reverb |
 
 **What STYLE sets without a row.** These were rows until `1.0.0-b6`; now each STYLE has its own values (the table below) and they act in automatic EVOLVE / TRAVEL:
 
