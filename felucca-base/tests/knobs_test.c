@@ -99,12 +99,12 @@ static int macro_exact(uint32_t set, uint32_t knob, int32_t det, const char *tag
 /* the design's table (work/b9/QUICK_KNOBS_DESIGN.md v2) as parameters, factors in quarter steps and signs, written out here on its own so the macro table cannot drift from it unseen */
 static const struct { uint8_t id; int8_t mul; } SPEC[KS_N][3][3] = {
     {{{P_FREEA, 4}}, {{P_FREEB, 4}}, {{P_DLY, 4}}},
-    {{{P_DLY, 4}, {P_REV, 1}}, {{G_DFDBK, 4}, {G_DCOLOR, -2}}, {{G_DTIME, 4}}},
-    {{{P_FREEA, 4}, {P_FREEB, 1}}, {{P_DKDEP, 4}}, {{P_REV, 4}, {P_REL, 2}}},
-    {{{P_FREEA, 4}, {P_FREEB, 2}, {P_ED_FLT, 2}}, {{P_DEC, 4}}, {{P_REV, 4}, {P_DLY, 2}}},
-    {{{P_FREEA, 4}, {P_FREEB, 2}}, {{P_ED_FLT, 4}, {P_DEC, -2}}, {{P_DIST, 4}}},
-    {{{P_FREEA, 4}}, {{P_DIST, 4}, {P_CHOR, 2}}, {{P_AGATE, -4}, {P_SGATE, -4}, {P_APROB, -2}}},
-    {{{P_ATK, 4}, {P_REL, 4}, {P_REV, 2}}, {{P_LD_FLT, 4}, {P_LRATE, -2}}, {{P_DLY, 4}, {P_REV, 4}}}};
+    {{{P_DLY, 14}, {P_REV, 3}}, {{G_DFDBK, 16}, {G_DCOLOR, -8}, {P_DLY, 8}}, {{G_DTIME, 1}}},
+    {{{P_FREEA, 14}, {P_FREEB, 3}}, {{P_DKDEP, 24}, {P_REV, -6}, {P_DLY, -3}}, {{P_REV, 20}, {P_REL, 3}}},
+    {{{P_FREEA, 9}, {P_FREEB, 3}, {P_E2FLT, 3}}, {{P_DEC, 6}}, {{P_REV, 12}, {P_DLY, 4}}},
+    {{{P_FREEA, 6}, {P_FREEB, 3}}, {{P_E2FLT, 8}, {P_FREEA, 4}, {P_DEC, -4}}, {{P_DIST, 12}}},
+    {{{P_FREEA, 8}}, {{P_DIST, 16}, {P_CHOR, 4}}, {{P_AGATE, -8}, {P_SGATE, -8}, {P_APROB, -12}}},
+    {{{P_ATK, 8}, {P_REL, 8}, {P_REV, 4}}, {{P_LD_FLT, 14}, {P_LRATE, -2}, {P_FREEA, -6}}, {{P_DLY, 16}, {P_REV, 16}}}};
 int main(void)
 {
     uint32_t set, knob, k, j;
@@ -164,31 +164,37 @@ int main(void)
             snprintf(w, sizeof w, "OCT- + K%u in set %s (%s): all of the macro's parameters back to the sound's, the others kept", knob + 2u, KN_L[set][0], KN_L[set][knob]);
             expect(w, ok);
         }
-    /* BOTH: each part from its own value by the same steps (AC: cutoff + resonance at half the rate) */
+    /* BOTH: each part from its own value by the same steps (AC: cutoff 6 and resonance 3 quarter steps a detent) */
     setup(KS_AC, 1);
     snap(b);
     turn(EN_K2, 8);
     snap(a);
-    expect("BOTH, ACID K2: cutoff +8 and resonance +4 on each part from its own value",
-           a[0][K_FLT] == walk(desc(K_FLT), b[0][K_FLT], 8) && a[1][K_FLT] == walk(desc(K_FLT), b[1][K_FLT], 8) &&
-           a[0][K_RES] == walk(desc(K_RES), b[0][K_RES], 4) && a[1][K_RES] == walk(desc(K_RES), b[1][K_RES], 4) && b[0][K_FLT] != b[1][K_FLT]);
+    expect("BOTH, ACID K2: cutoff +12 and resonance +6 on each part from its own value",
+           a[0][K_FLT] == walk(desc(K_FLT), b[0][K_FLT], 12) && a[1][K_FLT] == walk(desc(K_FLT), b[1][K_FLT], 12) &&
+           a[0][K_RES] == walk(desc(K_RES), b[0][K_RES], 6) && a[1][K_RES] == walk(desc(K_RES), b[1][K_RES], 6) && b[0][K_FLT] != b[1][K_FLT]);
     /* globals once: DB's FDBK + COLR, and TIME, with BOTH */
     setup(KS_DB, 1);
     snap(b);
     turn(EN_K3, 8);
     snap(a);
-    expect("BOTH, DUB K3: the delay's FDBK moves 8 once (not 16), COLR 4 down once", a[0][K_FDB] == walk(desc(K_FDB), b[0][K_FDB], 8) && a[0][K_COL] == walk(desc(K_COL), b[0][K_COL], -4) &&
-           a[0][K_FDB] != walk(desc(K_FDB), b[0][K_FDB], 16));
-    turn(EN_K4, 3);
-    snap(b);
+    expect("BOTH, DUB K3: the delay's FDBK moves 32 once (not 64), COLR 16 down once, the echo send 16 on each part", a[0][K_FDB] == walk(desc(K_FDB), b[0][K_FDB], 32) && a[0][K_COL] == walk(desc(K_COL), b[0][K_COL], -16) &&
+           a[0][K_FDB] != walk(desc(K_FDB), b[0][K_FDB], 64) && a[0][K_DLY] == walk(desc(K_DLY), b[0][K_DLY], 16) && a[1][K_DLY] == walk(desc(K_DLY), b[1][K_DLY], 16));
     settle();
-    turn(EN_K4, 2);
+    snap(b);
+    turn(EN_K4, 8);
     snap(a);
-    expect("BOTH, DUB K4: TIME moves once (two detents, two steps)", a[0][K_TIM] == walk(desc(K_TIM), b[0][K_TIM], 2));
-    /* the macro's first parameter is the one the row shows (the knobs' first entries) */
+    expect("BOTH, DUB K4: TIME moves once (eight detents, two steps: a quarter step a detent)", a[0][K_TIM] == walk(desc(K_TIM), b[0][K_TIM], 2) && a[0][K_TIM] != walk(desc(K_TIM), b[0][K_TIM], 4));
+    /* the macro's first parameter is the one the row shows: every macro has one, and STD (the page as it was) keeps a step a detent */
     for (set = 0; set < KS_N; set++)
         for (knob = 0; knob < 3u; knob++)
-            expect("every macro's first entry has a factor of 4 or -4 (the main parameter)", KN_E[set][knob][0].mul == 4 || KN_E[set][knob][0].mul == -4);
+            expect("every macro has a first entry (the row's parameter); STD's is a step a detent", KN_E[set][knob][0].mul != 0 && (set != KS_STD || KN_E[set][knob][0].mul == 4));
+    /* KNOBSTR (b9): no macro entry is on a parameter that no engine reads: P_ED_FLT (AMP ENV's cutoff depth) has been T_GONE since DUELL 1.1; the filter envelope's depth is ENV 2's (P_E2FLT) */
+    {
+        uint32_t ok = 1;
+        for (k = 0; k < KN_NP; k++)                      /* (the part's own places; a global's id is another count) */
+            ok &= KN_ID[k] != P_ED_FLT;
+        expect("no knob macro moves P_ED_FLT (it has no effect since DUELL 1.1)", ok);
+    }
     /* PUMP: an OFF ducker starts as PUMP, OCT- puts it back */
     setup(KS_HS, 0);
     trk[0].p[P_DKSRC] = 3;
@@ -196,7 +202,7 @@ int main(void)
     h1_take(0);
     frames(32);
     turn(EN_K3, 6);
-    expect("HSE K3 PMP: the OFF ducker is PUMP now and its depth went up 6", trk[0].p[P_DKSRC] == 0 && trk[0].p[P_DKDEP] == 6);
+    expect("HSE K3 PMP: the OFF ducker is PUMP now and its depth went up 36 (six a detent)", trk[0].p[P_DKSRC] == 0 && trk[0].p[P_DKDEP] == 36);
     settle();
     btn_down(B_OCTDN);
     frame();
