@@ -29,7 +29,16 @@ What is known to be broken or untested. [KNOWN_LIMITS.md](KNOWN_LIMITS.md) lists
 
   - When a new version adds or sorts in sounds, a slot you never saved can show another sound than before.
   - A sound you saved stays in its slot number.
-- **With TIDE the patch store holds 126 patches, not 128.** The patch list has 128 slots. With TIDE the store has 21 chunks of at most 6 records, so it holds at most 126 saved patches, whatever their size. Overwriting a patch already saved always works. Saving into a 127th empty slot is refused. The unit shows STORE FULL, writes nothing and touches nothing already saved; the editor's store command reports an error. ERASE or RESTORE a saved slot to make room. Without TIDE the store has 22 chunks and holds all 128. K1 on PATCHES steps one slot a turn (faster with KNOB ACCEL ON), so use TYPE (knob 2: FAV, a category or an engine) to shorten the list. The editor's patch page lists the 128 slots with a search.
+- **With TIDE the patch store holds 126 patches, not 128.** The patch list has 128 slots. With TIDE the store has 21 chunks of at most 6 records, so it holds at most 126 saved patches, whatever their size.
+
+  - Overwriting a patch already saved always works.
+  - Saving into a 127th empty slot is refused.
+  - The unit shows STORE FULL, writes nothing and touches nothing already saved.
+  - The editor's store command reports an error.
+  - ERASE or RESTORE a saved slot to make room.
+  - Without TIDE the store has 22 chunks and holds all 128.
+
+  K1 on PATCHES steps one slot a turn (faster with KNOB ACCEL ON). Use TYPE (knob 2: FAV, a category or an engine) to shorten the list. The editor's patch page lists the 128 slots with a search.
 - **The second core is new.** Part 2 plays on the chip's second core from every power-on, with an automatic fallback to one core (see [RECOVERY.md](RECOVERY.md)). The two-core firmware has run on the author's unit and the unit fault tests were done; there is no menu switch or on-screen notice for it.
 - **MIDI is untested with many devices.** It follows the spec and the host tests; real controllers, sequencers and DAWs are still to be tested.
 - **WAVE user tables are new and tested on the computer only.** The three slots (USR1 to USR3) are checked by host tests (flash places, CRC, power cuts, refusal while playing, backup round trip) and the editor's WAVETABLES tab against a simulated unit. The writes have not been tried on other units than the author's. The editor tab has not been used to write a table on a real unit in a long session. A user table is reduced to 19 frames x 64 harmonics with no phases; a file with a very sharp or noisy sound loses its top and its character. An empty slot plays a sine. ERASE DATA erases the tables.
