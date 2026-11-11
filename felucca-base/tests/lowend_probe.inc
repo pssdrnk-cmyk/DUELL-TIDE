@@ -26,6 +26,7 @@ static double lo_run(lo_bq_t *f, double x)
 }
 #define LO_WIN 2048u
 static double lo_env[LO_WIN];
+#ifndef LO_HELPERS_ONLY                                  /* (tests/b9_rules_probe.c wants the filter and the envelope only) */
 static void lowend(uint32_t k, uint32_t nkeys)
 {
     static const uint8_t KEYS[3] = {60, 64, 67};
@@ -110,3 +111,4 @@ static void lowend(uint32_t k, uint32_t nkeys)
            pat ? "PLAY" : nkeys == 1u ? "C4" : "C4 E4 G4", efull > 0 ? 100.0 * elow / efull : 0.0, -0.691 + 10 * log10(e / n + 1e-30), slot[0], slot[4], slot[8], slot[12],
            other / 12.0);
 }
+#endif
