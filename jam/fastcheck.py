@@ -72,8 +72,17 @@ def link_dir(src, dst):
         os.symlink(src, dst)
 
 
-def link_entry(src, dst):
-    if os.path.isdir(src):
+def link_entry(src, dst, real=False):
+    """a link to a folder, or (real=True, on POSIX) a tree of hard links: the mutation groups `cp -R firmware tests build/x/` and edit the copy, and cp -R of
+    a symbolic link copies the link, so their sed would change the checkout's own files. Hard links are real files for cp; sed -i and `> f.new; mv` replace
+    them with new ones, while a test that writes a file of tests/ in place (a golden update) still reaches the checkout."""
+    if os.path.isdir(src) and real and not NT:
+        try:
+            shutil.copytree(src, dst, copy_function=os.link, symlinks=True)
+        except OSError:
+            shutil.rmtree(dst, ignore_errors=True)
+            shutil.copytree(src, dst, symlinks=True)
+    elif os.path.isdir(src):
         link_dir(src, dst)
     else:
         shutil.copy2(src, dst)
@@ -89,7 +98,7 @@ def make_sandbox(root):
     for n in os.listdir(FB):
         if n == "build":
             continue
-        link_entry(os.path.join(FB, n), os.path.join(root, "felucca-base", n))
+        link_entry(os.path.join(FB, n), os.path.join(root, "felucca-base", n), real=n in ("firmware", "tests"))
     bsrc, bdst = os.path.join(FB, "build"), os.path.join(root, "felucca-base", "build")
     for n in os.listdir(bsrc):
         s = os.path.join(bsrc, n)
@@ -285,7 +294,11 @@ def strip_comments(b):
     return "\n".join(l for l in b.split("\n") if not l.lstrip().startswith("#"))
 
 
+STRUCT = re.compile(r"#\s*include|^\s*(?:import|from)\s|require\(|\b(?:tests|tools|firmware|web|docs|jam)/")
+
+
 def tree_key():
+    """what the map depends on: the file lists and the lines that name other files (#include, import, paths) -- an edit elsewhere keeps the map."""
     h = hashlib.sha1()
     h.update(open(os.path.join(REPO, "host_tests.sh"), "rb").read())
     h.update(open(os.path.abspath(__file__), "rb").read())          # (a new map logic rebuilds the map)
@@ -293,8 +306,14 @@ def tree_key():
         for dp, dn, fn in os.walk(os.path.join(FB, top)):
             dn[:] = sorted(d for d in dn if d not in ("node_modules", "__pycache__"))
             for f in sorted(fn):
-                s = os.stat(os.path.join(dp, f))
-                h.update(("%s/%s %d %d\n" % (dp[len(FB):], f, s.st_size, s.st_mtime_ns)).encode())
+                h.update(("%s/%s\n" % (dp[len(FB):], f)).encode())
+                if f.endswith((".c", ".h", ".py", ".mjs", ".js", ".sh")):
+                    try:
+                        for ln in open(os.path.join(dp, f), errors="replace"):
+                            if STRUCT.search(ln):
+                                h.update(ln.encode("utf-8", "replace"))
+                    except OSError:
+                        pass
     return h.hexdigest()
 
 
