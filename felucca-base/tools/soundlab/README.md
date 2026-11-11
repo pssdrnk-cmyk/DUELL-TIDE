@@ -68,6 +68,17 @@ Every recipe: render, `measure`, then read the line named. `C` = `soundlab`; `P`
 8. **Before / after a change.** Build the baseline tree and the changed tree (each its own `soundlab`), render the same options into two folders, `compare.py before after`. Same options + same seed = every difference is the change. Report numbers with the commit from the JSON.
 9. **TIDE-proof (rule 9).** `--tide travel --style <its style> --bars 16` and for End A / mid / End B `--morph a|mid|b`; `C rules P` must stay PASS for rules 1, 4, 7.
 
+## Atlas: look here before rendering
+
+`felucca-base/tools/soundlab/atlas/` holds the measured profile of every factory sound (171: C3 note, C minor chord, End A, End B), multi (18: no key and under its STYLE, per part) and pattern (notes, register, density): JSON per item, `INDEX.md`, and one self-contained `atlas.html` (sortable, filterable, no libraries).
+`soundlab atlas [--only multis|sounds|patterns]` rebuilds it (run it after any sound change; budget 10 minutes). `soundlab atlas --find "pad dark sub"` or `--find "centroid<500 sub>10%"` prints the matches with their numbers.
+Tags come from the numbers: **pad** (note length > 1.5 s or gate > 90 %), **stab** (< 0.3 s, attack < 20 ms), **pluck** (0.3-1.5 s, attack < 20 ms), **bass** (median note < C3 and > 50 % under 400 Hz), **lead** (single voice, median note >= C4), **texture** (flatness high, no clear pitch); **dark** centroid < 800 Hz, **bright** > 2 kHz; **square** odd-harmonic share > 0.8; **sub** > 10 % under 60 Hz; **wet** tail share > 30 %, **dry** < 5 %. (Thresholds live in `sl_atlas.c`; if you change one, change it here.)
+
+## Genre targets
+
+`genres.json`: per genre (dub-techno, deep-house, classic-house, detroit, acid, electro, idm, berlin-school, ambient, drone) numeric target ranges, each with `source` (file:section of `work/b9/research/`) and `basis` (sourced / example / rule / measured). Where no source gave a number the metric is absent and `rules --genre NAME PREFIX` prints it UNSURE; never fill a gap from memory.
+`soundlab rules --genre dub-techno PREFIX` checks the measured values against the ranges. Add a number only with its source line.
+
 ## Tests and checks
 
 - `./host_tests.sh soundlab`: M02 for 2 bars rendered twice must give bit-identical WAV and JSON; `measure` must match `tests/soundlab_ref.txt` within 0.1. If you change firmware sound on purpose, re-generate the reference (`tests/soundlab_ref.sh --write`) and say so in the commit.
