@@ -24,6 +24,8 @@
    "qualitative": "m7/m9/m11 voicings, offbeat stabs, next chord on the last 16th, Juno chorus pads",
    "targets": {
     "delay_time": {"min": null, "max": null, "unit": "note value", "source": "work/b9/research/deep-house.md:Effects (S5 dotted 1/8; S2 1/8 on electric piano)", "basis": "sourced"},
+    "tempo_bpm": {"min": 120, "max": 125, "unit": "bpm", "source": "work/b9/research/attack/house.md:6 (Dusted deep house)", "basis": "sourced"},
+    "swing_pct": {"min": 70, "max": 80, "unit": "% (Attack scale, 50 = straight)", "source": "work/b9/research/attack/house.md:6", "basis": "sourced"},
     "reverb_length_pct": {"min": null, "max": 55, "unit": "% of range", "source": "work/b9/research/deep-house.md:Effects (S5: short airy, ~55 % length)", "basis": "sourced"},
     "wet_pct": {"min": null, "max": 25, "unit": "%", "source": "work/b9/research/deep-house.md:Effects (S5: ~25 % overall, delay:reverb about 50/50)", "basis": "sourced"},
     "reverb_lowcut_hz": {"min": 200, "max": null, "unit": "Hz", "source": "work/b9/research/deep-house.md:Effects (S5)", "basis": "sourced"},
@@ -37,6 +39,8 @@
    "qualitative": "minor chords, 4/4 quantised, simple bass line; no tempo, swing or reverb figure found (UNSURE)",
    "targets": {
     "wet_pct": {"min": null, "max": 25, "unit": "%", "source": "work/b9/research/classic-house.md:Effects (S4, a deep-house source; no Chicago-specific figure)", "basis": "sourced-other-genre"},
+    "tempo_bpm": {"min": 122, "max": 127, "unit": "bpm", "source": "work/b9/research/attack/house.md:19 (90s House, not Chicago-specific)", "basis": "sourced-other-genre"},
+    "swing_pct": {"min": 55, "max": 60, "unit": "% (Attack scale, 50 = straight)", "source": "work/b9/research/attack/house.md:19", "basis": "sourced-other-genre"},
     "delay_time": {"min": null, "max": null, "unit": "note value", "source": "work/b9/research/classic-house.md:Effects (S4: dotted 1/8)", "basis": "sourced-other-genre"},
     "side_mid_db": {"min": null, "max": -8, "unit": "dB", "source": "work/b9/MUSICAL_RULES_B9.md rule 4", "basis": "rule"}
    }
@@ -46,6 +50,8 @@
    "sources": ["work/b9/research/detroit-techno.md"],
    "qualitative": "minor-key stabs and synth strings over a 4/4 kick; the sources give no numeric target (UNSURE)",
    "targets": {
+        "deesser_hz": {"min": 5000, "max": 6000, "unit": "Hz", "source": "work/b9/research/attack/detroit.md:26 (Mills Amazon: de-esser on violins)", "basis": "sourced"},
+    "chord_top_note_max": {"min": null, "max": 63, "unit": "MIDI (D#4)", "source": "work/b9/research/attack/detroit.md:31 (chord tops stop around D#4)", "basis": "sourced"},
     "side_mid_db": {"min": null, "max": -8, "unit": "dB", "source": "work/b9/MUSICAL_RULES_B9.md rule 4", "basis": "rule"}
    }
   },
@@ -54,7 +60,9 @@
    "sources": ["work/b9/research/acid.md"],
    "qualitative": "303 saw, 24 dB low-pass, accents and slides, overdrive; a bare square lead is allowed here (rule 6)",
    "targets": {
-    "tempo_bpm": {"min": 129, "max": 129, "unit": "bpm", "source": "work/b9/research/acid.md: source 1 (one example)", "basis": "example"},
+        "tempo_bpm": {"min": 122, "max": 129, "unit": "bpm", "source": "work/b9/research/attack/acid.md:5 (129, ABL2) and :12 (122, Armando 151)", "basis": "sourced"},
+    "reverb_decay_s": {"min": 2.5, "max": 2.5, "unit": "s", "source": "work/b9/research/attack/acid.md:13 (Armando: ~2.5 s, lows cut on the return)", "basis": "example"},
+    "reverb_send_db": {"min": -19, "max": -19, "unit": "dB", "source": "work/b9/research/attack/acid.md:13", "basis": "example"},
     "delay_time": {"min": null, "max": null, "unit": "note value", "source": "work/b9/research/acid.md: source 1 (dotted 1/8, repeats high-passed)", "basis": "sourced"},
     "bass_lowcut_hz": {"min": 85, "max": 85, "unit": "Hz", "source": "work/b9/research/acid.md: source 1", "basis": "example"},
     "reverb_lowcut_hz": {"min": 400, "max": 400, "unit": "Hz", "source": "work/b9/research/acid.md: source 1 (reverb rolled off up to ~400 Hz)", "basis": "example"}
@@ -65,6 +73,8 @@
    "sources": ["work/b9/research/electro.md"],
    "qualitative": "808 drums, mono bass, arps and bell tones, heavy reverb / delay / chorus (source 1); no numbers (UNSURE)",
    "targets": {
+    "tempo_bpm": {"min": 125, "max": 134, "unit": "bpm", "source": "work/b9/research/attack/electro-idm.md:5 (125, Clear) and :11 (134)", "basis": "sourced"},
+    "room_reverb_ms": {"min": 710, "max": 710, "unit": "ms", "source": "work/b9/research/attack/electro-idm.md:6 (drum room, 8 % wet)", "basis": "example"},
     "side_mid_db": {"min": null, "max": -8, "unit": "dB", "source": "work/b9/MUSICAL_RULES_B9.md rule 4", "basis": "rule"}
    }
   },
@@ -73,7 +83,7 @@
    "sources": ["work/b9/research/idm.md"],
    "qualitative": "detuned unison, tape wobble, dark roomy reverb, melody and mood first",
    "targets": {
-    "tempo_bpm": {"min": 80, "max": 80, "unit": "bpm", "source": "work/b9/research/idm.md: source 2 (Roygbiv example)", "basis": "example"},
+        "tempo_bpm": {"min": 80, "max": 170, "unit": "bpm", "source": "work/b9/research/idm.md: source 2 (80, Roygbiv); work/b9/research/attack/berlin-sequenced.md:10 (150, Polynomial-C); work/b9/research/attack/electro-idm.md:16 (about 170, Vordhosbn)", "basis": "sourced-disputed"},
     "pitch_lfo_hz": {"min": 0.75, "max": 1, "unit": "Hz", "source": "work/b9/research/idm.md: source 2 (wow / flutter)", "basis": "sourced"},
     "echo_lfo_hz": {"min": 3, "max": 5, "unit": "Hz", "source": "work/b9/research/idm.md: source 3", "basis": "sourced"},
     "echo_lowpass_hz": {"min": 2000, "max": 5000, "unit": "Hz", "source": "work/b9/research/idm.md: source 3 (tape echo band-limited ~5 kHz; emulate with a 2-5 kHz low-pass)", "basis": "sourced"},
@@ -99,8 +109,11 @@
   "drone": {
    "multis": [17, 18],
    "sources": ["work/b9/reports/DRONE-BASS.md", "work/b9/reports/B9-DRONE.md"],
-   "qualitative": "held bed, sparse by design; no online research file yet (UNSURE: a rule 3 exception needs a quoted source)",
+   "qualitative": "held bed, sparse by design; Attack ambient pad numbers only (UNSURE: a rule 3 exception needs a quoted source)",
    "targets": {
+    "delay_feedback_pct": {"min": 70, "max": 70, "unit": "%", "source": "work/b9/research/attack/drone.md:10 (ambient techno pad, ping-pong)", "basis": "example"},
+    "pad_lowpass_hz": {"min": 720, "max": 720, "unit": "Hz", "source": "work/b9/research/attack/drone.md:8", "basis": "example"},
+    "pad_attack_s": {"min": 5, "max": 5, "unit": "s", "source": "work/b9/research/attack/drone.md:7", "basis": "example"},
     "share_under_150hz_pct": {"min": 20, "max": null, "unit": "%", "source": "work/b9/reports/B9-DRONE.md:Render check (gate >= 20 %)", "basis": "measured-gate"},
     "lufs_vs_median_db": {"min": -3, "max": 3, "unit": "dB", "source": "work/b9/MUSICAL_RULES_B9.md rule 7", "basis": "rule"},
     "true_peak_dbfs": {"min": null, "max": -1, "unit": "dBFS", "source": "work/b9/MUSICAL_RULES_B9.md rule 7", "basis": "rule"}
