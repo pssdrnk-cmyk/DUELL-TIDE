@@ -773,11 +773,11 @@ static void morph_roll_twist(int32_t s)                 /* ROLL A|B with its twi
 #endif
 #if DUELL_TIDE
 /* 1.0.0-b7 (owner 2026-11-10): HOME's MORPH page is the hands-on page. K1 MORPH, two fader steps a detent (half the twisting of b6; the ends still exact);
- * K2 FILTER (QUICK EDIT's K1: the multimode filter's CUT on every engine), K3 ECHO (the delay send), K4 LENGTH (the AMP ENV's release): each the part's own
+ * K2 FILTER (QUICK EDIT's K1: the multimode filter's CUT on every engine), K3 RESONANCE (the same filter's RES; b8, for LENGTH), K4 ECHO (the delay send): each the part's own
  * parameter, turned as on its page (edit_param: motion, locks, MIDI LEARN, EDITABLE B, a card the selection hides does nothing). BOTH: each part moves from
  * its own value by the same steps (the same acceleration; the selected part last, so MIDI LEARN picks its). OCT+ held + K1: End B a new roll (the knob loop) */
 static void edit_param(uint32_t slot, int32_t steps);
-static const page_t H1_PG = {"MORPH", FAM_TRK, SC_TRACK, GR_MORPH, {0xFFu, P_FREEA, P_DLY, P_REL}};
+static const page_t H1_PG = {"MORPH", FAM_TRK, SC_TRACK, GR_MORPH, {0xFFu, P_FREEA, P_FREEB, P_DLY}};
 static void morph_knob(uint32_t slot, int32_t s)
 {
     uint32_t pi = song.sel, n = song.both ? NSHOWN : 1u, k, p, et = ui.enc_t[EN_K1 + slot];
@@ -1552,7 +1552,7 @@ static int reset_say(const char *name)
 }
 #if DUELL_TIDE
 static void tide_home(uint32_t mask);                  /* (tide_ui.c) */
-/* HOME's MORPH page: K1 back to the Original sound, as OCT- + K1 on AUTO TIDE (tide_home: the glide stops); K2..K4 FILTER, ECHO, LENGTH back to the loaded
+/* HOME's MORPH page: K1 back to the Original sound, as OCT- + K1 on AUTO TIDE (tide_home: the glide stops); K2..K4 FILTER, RESONANCE, ECHO back to the loaded
  * sound's value (morph.c h1_orig), on the part(s) the selection names; a card the selection hides (ECHO with SENDS OFF): nothing (2) */
 static int reset_morph(uint32_t k)
 {

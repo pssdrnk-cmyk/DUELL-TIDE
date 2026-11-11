@@ -710,7 +710,7 @@ static uint32_t mr7_run(int touch, uint8_t *ph, uint8_t *cnt, uint32_t *fad)
     glide_stop(); transport_req = 2u; run(48);
     return moved;
 }
-/* 1.0.0-b7: HOME's MORPH page: FILTER, ECHO and LENGTH turned during a glide do not hold it; MORPH (knob 1) does */
+/* 1.0.0-b7: HOME's MORPH page: FILTER, RESONANCE and ECHO turned during a glide do not hold it; MORPH (knob 1) does */
 static void test_page1_no_hold(void)
 {
     ui_power_on(); frame();
@@ -721,7 +721,7 @@ static void test_page1_no_hold(void)
     ui.page = 0; while (PAGES[ui.page].graph != GR_MORPH) ui.page++;
     ui.cursor = ui.bank = 0; page_entered(); frame();
     turn(EN_K2, 2); turn(EN_K3, 2); turn(EN_K4, 2); run(64);
-    CHECK("page 1: FILTER, ECHO, LENGTH turned during a glide do not hold it", song.playing && glide_running() && !gl.hw[0] && !gl.hw[1]);
+    CHECK("page 1: FILTER, RESONANCE, ECHO turned during a glide do not hold it", song.playing && glide_running() && !gl.hw[0] && !gl.hw[1]);
     turn(EN_K1, 3); run(64);
     CHECK("  .. MORPH (knob 1) does", gl.hw[0] == 1u);
     glide_stop(); transport_req = 2u; run(48);

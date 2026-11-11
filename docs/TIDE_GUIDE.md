@@ -32,8 +32,8 @@ On these three pages a small dim pill beside part 1's capsule shows the busiest 
 |---|---|
 | 1 | **MORPH**, the fader from A to B. Two steps a click: a full sweep is half the turning of 1.0.0-b6. Moving it by hand holds that part's glide; TIDE takes it back after 8 untouched bars, at the next phrase (see "Your hand on the MORPH fader", section 3). |
 | 2 | **FILTER**: the part's cutoff, the same as knob 1 of QUICK EDIT (hold EDIT). |
-| 3 | **ECHO**: the part's delay send. Dim when the delay can't be heard (GLO > MODULES SENDS OFF, or the delay's MIX at 0); knob 1's line says which. |
-| 4 | **LENGTH**: the release of the amp envelope, as the ENV page shows it (FM6 and ENV SYNC have their own values). |
+| 3 | **RESONANCE**: the same filter's resonance (RES, the second knob on the FILTER page), on every engine. |
+| 4 | **ECHO**: the part's delay send. Dim when the delay can't be heard (GLO > MODULES SENDS OFF, or the delay's MIX at 0); knob 1's line says which. |
 
 These are the sound's own settings: they record into the pattern with REC armed, MIDI LEARN picks them, SAVE keeps them, and turning them never holds TIDE's glide (only the MORPH fader does). With ALGORITHM in the middle (both parts) every knob moves each part from its own value by the same amount, so neither part jumps.
 
@@ -41,7 +41,7 @@ These are the sound's own settings: they record into the pattern with REC armed,
 
 **Hold OCT- and turn a knob:** knob 1 goes back to your original sound and pattern (the glide stops, as OCT- + K1 on AUTO TIDE); knobs 2 to 4 go back to the value the loaded sound had.
 
-The fader's position (A, 1 to 126, B) sits beside knob 1's label; the slim row under the picture shows knobs 2 to 4 as FLT, ECHO and LEN, each with its value, and the footer shows both parts' patches. Most of the page shows the sound itself as waves, like an oscilloscope: a held note stands still, a chord beats, the newest wave in front, the older ones fainter behind it; at rest the lines lie flat. ALGORITHM picks whose: PART 1, PART 2, or both (the middle: one above the other). **Hold SAVE** saves the patch; with both parts selected each part goes over its own slot.
+The fader's position (A, 1 to 126, B) sits beside knob 1's label; the slim row under the picture shows knobs 2 to 4 as FLT, RSN and ECH, each with its value, and the footer shows both parts' patches. Most of the page shows the sound itself as waves, like an oscilloscope: a held note stands still, a chord beats, the newest wave in front, the older ones fainter behind it; at rest the lines lie flat. ALGORITHM picks whose: PART 1, PART 2, or both (the middle: one above the other). **Hold SAVE** saves the patch; with both parts selected each part goes over its own slot.
 
 ## 2. AUTO TIDE (the page you live on)
 
@@ -268,7 +268,7 @@ Merged on the development line, in `1.0.0-b1` and after it (the source is the re
 
 | Feature | What it does |
 |---|---|
-| **MORPH is the hands-on page** | Knob 1 MORPH at half the turning, knob 2 FILTER, knob 3 ECHO, knob 4 LENGTH, on the slim row under the wave picture. With both parts selected (ALGORITHM's middle) every knob moves each part by the same amount. A new End B: hold OCT+ and click knob 1. AMOUNT is a TIDE SETTINGS row now; the new-A roll is gone from the page. |
+| **MORPH is the hands-on page** | Knob 1 MORPH at half the turning, knob 2 FILTER, knob 3 RESONANCE, knob 4 ECHO (b8: RESONANCE took LENGTH's place), on the slim row under the wave picture. With both parts selected (ALGORITHM's middle) every knob moves each part by the same amount. A new End B: hold OCT+ and click knob 1. AMOUNT is a TIDE SETTINGS row now; the new-A roll is gone from the page. |
 | **ALGORITHM's middle is the play mode** | PART 1, the middle, PART 2 on the HOME pages and PERFORM: the middle plays both parts in the PLAY MODE row's mode and the header names it (LAYER, STEREO or DUEL); PART 1 and PART 2 play one part on every key. Changing PLAY MODE moves ALGORITHM to the middle. |
 | **SPLIT MIDDLE** | A SPLIT value after OFF: the keys split in the middle wherever OCT- / OCT+ put them. With SPLIT set, STEREO and DUEL split the keys too. |
 | **A shorter TIDE SETTINGS page** | STYLE, MODE, TARGET, ARC, ROLL TYPE, AMOUNT, then REC, PLAY MODE, XFADE, SPLIT. VARY BARS, POLY, OFFBEAT and WASH are STYLE's values (no rows); ROLL ARP and ROLL PITCH have no row (OFF by default; a unit that had them ON keeps them). The tide's MODE is a row too. A saved STYLE stays that style. |

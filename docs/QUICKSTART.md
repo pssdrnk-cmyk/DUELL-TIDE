@@ -66,8 +66,8 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
 3. Press **HOME** for the MORPH page, the hands-on page.
    - Knob 1 moves the morph from A to B (two steps a click).
    - Knob 2 is FILTER (the cutoff).
-   - Knob 3 is ECHO (the delay send).
-   - Knob 4 is LENGTH (the release).
+   - Knob 3 is RESONANCE (the filter's).
+   - Knob 4 is ECHO (the delay send).
    - Their values sit on the row under the picture.
    - Hold **OCT+** and click knob 1 for a new random End B (it replaces the old one: there is no UNDO).
    - On this page **ALGORITHM** has three positions, PART 1, the middle and PART 2.

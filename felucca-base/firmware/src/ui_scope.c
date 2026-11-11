@@ -22,7 +22,7 @@
  *             Silence fades the front's shape (wl_fade), the stack runs out, and every lane stays drawn, flat: at rest the page shows the same set of lines as when it plays (owner 2026-11-09)
  * Samples inside are the tap's steps (1/4,096 of the half scale) times 16 (the interpolation's fraction). The ridges are kept in 1/4 px from their middle, a byte a point (WL_AMAX: the half height of
  * a ridge is at most 31 px; the front's is about 20 px in a 68-row lane). b6 layout (owner 2026-11-09, "the bottom half of the screen is badly used"): the picture takes the page
- * from the knob-1 line down to the compact FILTER / ECHO / LENGTH row (ui_draw.c morph_row; ROLL / AMOUNT until 1.0.0-b7) and the whole width, the part tags over the lanes' left edge; HOLD SAVE = SAVE PATCH is a hint in
+ * from the knob-1 line down to the compact FILTER / RESONANCE / ECHO row (ui_draw.c morph_row; ROLL / AMOUNT until 1.0.0-b7) and the whole width, the part tags over the lanes' left edge; HOLD SAVE = SAVE PATCH is a hint in
  * that row while SAVE is held (ui_draw.c morph_row). */
 #define WL_NP 56                                     /* points of a ridge (b6: 56, one every 3.9 px, so 13 ridges fit the RAM rule), spread over x WL_X0 .. WL_X1 (right of the part's tag column, x 0 .. 21: no line starts under or beside a tag) */
 #define WL_X0 22
