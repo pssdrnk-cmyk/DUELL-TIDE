@@ -87,6 +87,16 @@ The sound and knobs beta on top of b8 (details in the [CHANGELOG-TIDE](../CHANGE
 
 Closed from "Later": the parameter units as an index (SP4, below).
 
+## Tooling: faster work (owner, 11 November)
+
+Built or being built in b9: **the sound lab** (`felucca-base/tools/soundlab/`: render, measure, sweep, rules, the sound atlas and `genres.json`; it replaces about 80 one-off scripts). Next, in order:
+
+1. **Fast test runner:** run groups in parallel (as many as memory allows), and a `--changed` mode that runs only the groups a change can affect (a map of which source files each group compiles; today every group compiles the whole firmware from scratch). CI shards run on after a failure and list every failure in one summary. Target: the full local run under 20 minutes, a typical change checked in about 5.
+2. **Re-pin helper:** given a cause commit, find the changed reference results, prove each by putting the cause back, and re-pin with the cause written in (today: slow manual work per failure).
+3. **Merge helper:** merge a list of branches, regenerate the generated files (level table, factory records, reference renders) instead of hand-resolving them, then run only the affected groups.
+4. **The emulator in testing:** drive the web emulator (the `emu` CI build) with scripted sessions (key presses, knob turns, page changes) to check screens and behaviour as the player meets them, with pictures for the "look first" rule, and audio captured for the sound lab.
+5. **A spec template per job type** (sound, firmware, docs) with the standard checks built in.
+
 ## Later, in order
 
 1. ARP SEQ parts drift against the beat on the internal clock: the arp's step period and the sequencer's beat round differently, 12 to 14 samples a bar on M02 at 117 BPM, about 107 ms after 400 bars (found by the ARC lane with a host probe). Not measured under an external clock, where both follow the clock grid and probably do not drift.
@@ -104,7 +114,7 @@ Closed from "Later": the parameter units as an index (SP4, below).
 13. Two small interrupt savings in the crossing step ([C1](audits/2026-11-09/tide-morph/TASKS.md#c1)), with "Transition costs only while moving".
 14. WASH on: no jump when a glide is stopped by hand, one dip instead of two stacked ([W1](audits/2026-11-09/tide-morph/TASKS.md#w1)).
 15. Docs fixes from the TIDE and morph audit still open (the dip's length, the DUB recipe's wash, the bass promise and the dynamics paragraph were written in the b7 guide pass): `TIDE_GUIDE.md:23` the MORPH knob 3 text (the wave picture is shipped); EVOLVE "a little further each trip"; `MOD_INERT_TABLE.md:21` (ANALOG: PW is offered only with WAVE PWM), and `INSTALL.md:60` / `QUICKSTART.md:41` (ERASE DATA erases the FM6 voice bank and the user tables), with FR11.
-16. Factory pattern table trimmed (~0.9 KB; [SP3](audits/2026-11-09/space/TASKS.md)).
+16. ~~Factory pattern table trimmed~~ (SP3): built in b9.
 17. ~~Parameter units stored as an index~~ (SP4): built in b9.
 18. Event-rate code built for size (1.78 KB; [SP5](audits/2026-11-09/space/TASKS.md)); needs the FM-1 CPU sweep.
 19. FM6 MUSIC rolls at AMOUNT 40 leave the loudness window (all FM6 rolls, not just End B); needs its own change ([finding 7](audits/2026-11-09/tide-morph/REPORT.md)).
@@ -227,6 +237,8 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 
 ## Ideas, not decided
 
+- Effects ideas from the sourced recipes (the b9 recipe research), each needing flash: a slow LFO on the delay send or loop filter (dub's ridden echo); a low cut or EQ on the reverb return; a phaser / flanger insert; a fast LFO to oscillator sync / PWM, plus tremolo / auto-pan; a two-tap delay (one synced, one free); separate L / R delay times; ducking the delay and reverb returns by the part's own notes; a per-bar delay-send ramp and a reverb accent on a phrase's last note; a slow swell LFO on a part's level; an oscillator pitch envelope.
+- More factory multis (hypnotic techno, cinematic hypnotic techno, dub house, lo-fi house, ambient techno, minimal; researched from Attack Magazine technique articles in b9): about 0.5 KB each, room from USB AUDIO OFF and its int16 resampler taps (b9) and SP5.
 - **Wave card L/R lines and the deep-bass line:** about 4 KB more RAM. The candidates are PERFORM capture (8 KB = 93 ms shorter capture) or a canvas drawn in strips. Owner decision when wanted.
 - **From Niagara Drift** (an FM-1 drone firmware; checked against our code 8 November, estimates until built): **reverb FREEZE** on HALL / ROOM (the tail holds and the notes can stop; a block-rate gain change with a limiter, ~200-400 B, no CPU while off; risks: fixed-point overflow and the release click) fits best. **AGE** (slow tape-like wear, ~300-600 B) needs an offset layer on top of the saved sound, not checked yet. Gesture keys and a free-time motion loop do not fit the flash, the keys or the no-new-pages rule.
 - **From the musical review** ([report](audits/2026-11-09/musical-review/REPORT.md)): the three ideas (a chord-rhythm vocabulary, voicing that breathes with the arc, a real call and answer) are built in b7.
