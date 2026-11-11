@@ -91,7 +91,17 @@ Where two very different sounds cross, a short filter dip hides the change (the 
 
 ## 3. TIDE SETTINGS (set and forget)
 
-Ten rows: STYLE, MODE, TARGET, ARC, ROLL TYPE and AMOUNT for the tide, then REC, PLAY MODE, XFADE and SPLIT. K1 picks the row. **OCT+** the next value, **OCT-** the one before (knobs 2 to 4 turn it too, one step a click; on AMOUNT, PLAY MODE, XFADE and SPLIT a knob moves by the clicks you turn, while OCT+ and OCT- step AMOUNT by 5 %, XFADE by 10 % and SPLIT by an octave, and out of SPLIT OFF the first OCT+ lands on MIDDLE, the next on the middle key's note). Six rows show at a time; a mark at the right edge shows where they are in the list. A value that does nothing in the present setup is dim, and knob 1's line says why. Saved over a power cycle (about 2 s after the change while stopped; changes made during a running set are written at its next STOP, so switching the unit off mid-set loses them).
+Ten rows: STYLE, MODE, TARGET, ARC, ROLL TYPE and AMOUNT for the tide, then REC, PLAY MODE, XFADE and SPLIT.
+- K1 picks the row.
+- **OCT+** the next value, **OCT-** the one before.
+- Knobs 2 to 4 turn it too, one step a click.
+- On AMOUNT, PLAY MODE, XFADE and SPLIT a knob moves by the clicks you turn.
+- OCT+ and OCT- step AMOUNT by 5 %, XFADE by 10 % and SPLIT by an octave.
+- Out of SPLIT OFF the first **OCT+** lands on MIDDLE, the next on the middle key's note.
+- Six rows show at a time; a mark at the right edge shows where they are in the list.
+- A value that does nothing in the present setup is dim, and knob 1's line says why.
+- Saved over a power cycle (about 2 s after the change while stopped).
+- Changes made during a running set are written at its next STOP, so switching the unit off mid-set loses them.
 
 | Row | Values (default first) | What it does | Start |
 |---|---|---|---|
