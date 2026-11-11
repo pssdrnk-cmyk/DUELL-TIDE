@@ -195,7 +195,17 @@ Dub-techno recipe: STYLE DUB, ALGORITHM LAYER (by hand: **AUTO TIDE** WANDER, TI
 
 ## 4. MODE (output)
 
-DUEL (part 1 left, part 2 right, effects separate), STEREO, LAYER. This is stock DUELL, not TIDE. With TIDE there is no MODE page: PLAY MODE, XFADE and SPLIT are the last three rows of TIDE SETTINGS (REC sits between ROLL TYPE and PLAY MODE). PLAY MODE is LAYER, STEREO or DUEL. XFADE (0 to 100 %) acts only in LAYER: in DUEL and STEREO its value is dim, knob 1's line says LAYER ONLY, and turning does nothing. SPLIT (OFF, MIDDLE, then a note) acts in ALGORITHM's middle in any PLAY MODE; with one part selected XFADE and SPLIT say 2 PARTS ONLY. PLAY MODE is what ALGORITHM's middle plays (section 1). They are not part of STYLE (changing them does not turn it into CUSTOM), and they are kept as before (settings and multis). MENU > CONTROL > HOME OPENS = SETTINGS opens TIDE SETTINGS with the PLAY MODE row picked; MULTI LOAD KEEPS PLAY MODE (or SETS PLAY MODE) says whether a multi load changes these three rows. The MODE row near the top of TIDE SETTINGS and the AUTO TIDE page's K2 (ONCE, LOOP, DRIFT, WANDER, JOURNEY) are the tide's mode, a different setting. Dub chords on two parts: DUEL if you mix outside, STEREO for a single stereo out.
+DUEL (part 1 left, part 2 right, effects separate), STEREO, LAYER. This is stock DUELL, not TIDE. With TIDE there is no MODE page. The last three rows of TIDE SETTINGS are PLAY MODE, XFADE and SPLIT (REC sits between ROLL TYPE and PLAY MODE).
+
+- PLAY MODE is **LAYER**, **STEREO** or **DUEL**.
+- XFADE (**0 to 100 %**) acts only in LAYER. In DUEL and STEREO its value is dim, knob 1's line says **LAYER ONLY**, and turning does nothing.
+- SPLIT (**OFF**, **MIDDLE**, then a note) acts in ALGORITHM's middle in any PLAY MODE. With one part selected XFADE and SPLIT say **2 PARTS ONLY**.
+- PLAY MODE is what ALGORITHM's middle plays (section 1).
+- They are not part of STYLE (changing them does not turn it into **CUSTOM**). They are kept as before (settings and multis).
+- **MENU > CONTROL > HOME OPENS = SETTINGS** opens TIDE SETTINGS with the PLAY MODE row picked.
+- **MULTI LOAD KEEPS PLAY MODE** (or **SETS PLAY MODE**) says whether a multi load changes these three rows.
+- The MODE row near the top of TIDE SETTINGS and the AUTO TIDE page's K2 (**ONCE**, **LOOP**, **DRIFT**, **WANDER**, **JOURNEY**) are the tide's mode, a different setting.
+- Dub chords on two parts: **DUEL** if you mix outside, **STEREO** for a single stereo out.
 
 ## First start
 
