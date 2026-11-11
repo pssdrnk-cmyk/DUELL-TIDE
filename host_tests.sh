@@ -357,7 +357,7 @@ for t in $want; do case $t in
   engine)  $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/engine_page_test tests/engine_page_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run engine $OUT/engine_page_test ;;
   rolllock) # 1.0.0-b9 (K2): ROLL TYPE retired: tests/roll_lock_test.c built locked (-DTIDE_ROLL_LOCK=1) and free (=0); a saved SMART / WILD End B is the same in both
            echo "== rolllock"; rl=0
-           for lk in 1 0; do ${CC/-DTIDE_ROLL_LOCK=0/-DTIDE_ROLL_LOCK=$lk} -o $OUT/roll_lock_$lk tests/roll_lock_test.c -lm && $OUT/roll_lock_$lk > $OUT/roll_lock_$lk.log 2>&1 || { echo "   FAIL (lock $lk)"; grep -v " ok$" $OUT/roll_lock_$lk.log | tail; rl=1; }; done
+           for lk in 1 0; do $(echo "$CC" | sed "s/-DTIDE_ROLL_LOCK=0/-DTIDE_ROLL_LOCK=$lk/") -o $OUT/roll_lock_$lk tests/roll_lock_test.c -lm && $OUT/roll_lock_$lk > $OUT/roll_lock_$lk.log 2>&1 || { echo "   FAIL (lock $lk)"; grep -v " ok$" $OUT/roll_lock_$lk.log | tail; rl=1; }; done
            [ "$(grep 'hash saved' $OUT/roll_lock_1.log)" = "$(grep 'hash saved' $OUT/roll_lock_0.log)" ] && [ -n "$(grep 'hash saved' $OUT/roll_lock_1.log)" ] || { echo "   FAIL (saved End B differs between locked and free)"; rl=1; }
            [ $rl = 0 ] && echo "   PASS" || fail=1 ;;
   morph)   $CC -o $OUT/morph_test tests/morph_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run morph $OUT/morph_test ;;
