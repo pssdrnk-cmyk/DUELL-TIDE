@@ -319,7 +319,7 @@ static double tie_longest(uint32_t k, uint32_t *runs)
     fresh();
     for (i = 0; i < NSTEP; i++) {
         if (i < PATTERNS[k].len)
-            pat_make_step(&t->step[i], PATTERNS[k].note[i], pat_fl(k, i));
+            pat_make_step(&t->step[i], pat_note(k, i), pat_fl(k, i));
     }
     t->p[P_SLEN] = PATTERNS[k].len;
     t->p[P_SDIV] = PATTERNS[k].div;

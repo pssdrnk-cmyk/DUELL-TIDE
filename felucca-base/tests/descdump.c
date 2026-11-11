@@ -121,7 +121,7 @@ int main(void)
     for (k = 0; k < NPATTERNS; k++) {
         printf("%s\n [", k ? "," : "");
         for (i = 0; i < NPAT_STEPS; i++)
-            v[i] = PATTERNS[k].note[i];
+            v[i] = pat_note(k, i);
         js_ints(v, NPAT_STEPS);
         putchar(',');
         for (i = 0; i < NPAT_STEPS; i++)

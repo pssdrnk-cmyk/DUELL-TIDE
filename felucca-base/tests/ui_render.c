@@ -927,7 +927,7 @@ static void roll_scene(int s)
     case S_ROLL_EMPTY: break;
     case S_ROLL_ACID:
     case S_ROLL_PLAYING:
-        load_pat16(t, PATTERNS[0].note, pat_flags(0));
+        load_pat16(t, pat_notes(0), pat_flags(0));
         root_g = 9; scale_g = 2; ui.cursor = 6;
         if (s == S_ROLL_PLAYING) {
             song.playing = 1; t->seq_idx = 9;
@@ -958,7 +958,7 @@ static void roll_scene(int s)
         ui.cursor = 9;
         break;
     case S_ROLL_LEN32:
-        load_pat16(t, PATTERNS[0].note, pat_flags(0));
+        load_pat16(t, pat_notes(0), pat_flags(0));
         t->p[P_SLEN] = 32;
         for (i = 16; i < 32u; i++) {
             uint8_t n = (uint8_t)(60 + (i * 5u) % 12u);
