@@ -275,7 +275,7 @@ static const param_desc_t XTP[NX] = {
     [X_L2BLD] = PD("FBLND", F_BIPCT, -64, 63, 0),  /* LFO 2 to FILTER BLEND */
     [X_LFO1LVL] = PD("LVL", F_PCT, 0, 127, 127),   /* LFO 1 LEVEL: the LFO's master depth (127 = 100 %, today's behaviour; the matrix DEPTH slots multiply on top) */
     [X_LFO2LVL] = PD("LVL", F_PCT, 0, 127, 127),   /* LFO 2 LEVEL */
-    [X_STRUM] = {"STRUM", F_INT, 0, 100, 0, 0, "ms"},   /* X27 (DUELL 1.1 item 144): the CHORD page's K3, ms between a chord's tones, low to high (seq.c strum_block); 0 shows OFF (ui_draw.c strum_card), as DUCK ATK's F_INT "ms" otherwise */
+    [X_STRUM] = {"STRUM", F_INT, 0, 100, 0, 0, "ms"},   /* X27 (DUELL 1.1 item 144): the CHORD page's K3, ms between a chord's tones, low to high (seq.c strum_block); 0 is OFF, as DUCK ATK's F_INT "ms" otherwise */
 };
 static const param_desc_t XTP_SYNC[2] = {          /* CYCLE RISE / FALL with SYNC on: as ENV SYNC's ATK / DEC (ESYNC_DESC) */
     {"RISE", F_INT, 0, 127, 10, ESYNC_NAMES, 0},
