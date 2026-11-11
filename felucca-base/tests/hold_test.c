@@ -115,7 +115,7 @@ int main(void)
     t->p[P_AMODE] = 1;                             /* arp on: the arp plays it, the plain voice ends */
     events_block(CTL);
     assert(t->nheld == 1);
-    arp_tick(t, div_samples((uint32_t)t->p[P_ARATE]));
+    arp_tick(t, div_samples((uint32_t)t->p[P_ARATE]) + 1u);   /* (b8 DRIFT: the step is the exact 5512.5 samples, a sample more than div_samples) */
     assert(gated(t) == 1 && t->arp_note == c);
 
     /* ARP (1) with the arp off: no latch, as before; with the arp on: the old latch, dropped when the arp goes off */
