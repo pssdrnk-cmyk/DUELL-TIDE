@@ -176,7 +176,7 @@ ok(await athrows(() => captureBackup((r, o) => { const x = new MockUnit(); x.pla
   ok(oldCheck(ob) === "damaged multi", "the 0.2.23 editor's multi check refused every version 6 record: that was the owner's 'Object 13: damaged multi'");
   const u = new MockUnit(); u.objs.set(13, ob);
   const g = await captureBackup((r, o) => u.request(r, o), info), ga = readArchive(JSON.stringify(g));
-  ok(!g.problems && same(ga.objects.get(13).bytes, ob) && describe(bytesOf(ga)).multis.slice(0, 2).map((m) => m.name).join() === "BASIC CHORD,DUB CHORD", "capture: a unit holding 0.2.23 / 0.2.24 multis in object 13 backs up without a warning, names listed");
+  ok(!g.problems && same(ga.objects.get(13).bytes, ob) && describe(bytesOf(ga)).multis.slice(0, 2).map((m) => m.name).join() === "DB BASIC CHD,DB DUB CHORD", "capture: a unit holding 0.2.23 / 0.2.24 multis in object 13 backs up without a warning, names listed");
   const bad = ob.slice(); bad[8 + 8] = 7;                               // a control character in M01's name: the editor cannot check it
   u.objs.set(13, bad);
   const gb = await captureBackup((r, o) => u.request(r, o), info), gba = readArchive(JSON.stringify(gb));

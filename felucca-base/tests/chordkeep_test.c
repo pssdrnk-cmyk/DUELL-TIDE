@@ -3,7 +3,7 @@
  *   KEEP     a sound load leaves the part's CHRD / VOIC alone unless the sound sets a chord of its own (the pads and BEHIVE: DSF_KEYS; a stored patch saved with a chord on);
  *            a chord a sound lent goes back with the next load, unless the player changed it since; a patch saved with the chord keys OFF leaves the player's
  *   NAMED    the five chord-named dub pack sounds (CHORD ECHO, DARK MIN7, SOUL STAB, LOW STAB, ICE STAB) set CHRD MIN7, VOIC OPEN
- *   FIRST    the first start's factory multi (M04 DUB CHORD, TIDE on): K1 turns TYPE with the MORPH fader at A, mid way, at B and while a glide runs; a TIDE JRNY of many trips
+ *   FIRST    the first start's factory multi (M04 DB DUB CHORD, TIDE on): K1 turns TYPE with the MORPH fader at A, mid way, at B and while a glide runs; a TIDE JRNY of many trips
  *            and its arrivals leave CHRD / VOIC / VOICE alone; the sound loads on the parts keep the player's TYPE
  *   HINTS    the CHORD page (K4 = the part's VOICE): "NEEDS POLY" with a chord on and the part not POLY, "SET A SCALE" with DIA3 / DIA7 on the CHROMATIC scale, the last
  *            chord's note names; the keyboard and the K1 line as before; what the page showed before is still there
@@ -45,7 +45,7 @@ static uint32_t sound_named(uint32_t eng, const char *name)
             return j;
     return 0xFFFFu;
 }
-static uint32_t first_start(void)                       /* the unit as a new one starts: LAYER, M02 DUB CHORD (TIDE_FIRST_MULTI) */
+static uint32_t first_start(void)                       /* the unit as a new one starts: LAYER, M02 DB DUB CHORD (TIDE_FIRST_MULTI) */
 {
     ui_power_on();
     frame();
@@ -155,7 +155,7 @@ static void first(void)
     int16_t c0;
     uint32_t i;
     first_start();
-    expect("first start: M02 DUB CHORD; part 1 plays MIN7 chords (POLY), part 2 holds a MIN7 chord (POLY: the re-voiced pad; b9 dub: MIN until then, a LEGATO sub line before the reel)", trk[0].p[P_CHRD] == CH_MIN7 && trk[0].p[P_VOICE] == V_POLY &&
+    expect("first start: M02 DB DUB CHORD; part 1 plays MIN7 chords (POLY), part 2 holds a MIN7 chord (POLY: the re-voiced pad; b9 dub: MIN until then, a LEGATO sub line before the reel)", trk[0].p[P_CHRD] == CH_MIN7 && trk[0].p[P_VOICE] == V_POLY &&
            trk[1].p[P_VOICE] == V_POLY && trk[1].p[P_CHRD] == CH_MIN7);
     go_page(GR_CHORD);
     run(100);

@@ -33,9 +33,9 @@ static void ck(const char *what, int ok)
 
 int main(void)
 {
-    static const char *const FN[16] = {"BASIC CHORD", "DUB CHORD", "JUNO DEEP", "LATE RHODES", "ORGAN HOUSE", "PIANO HOUSE", "DETROIT STAB",
-                                       "HI-TECH SOUL", "HYPNO 303", "TWO 303S", "ACID LINES", "ROBOT FUNK", "DEEP SEA ARP", "WARPED TAPE",
-                                       "BERLIN RUN", "TWO LOOPS"};   /* (the reel, 2026-11-10: fifteen new multis as one curated programme, M02 the owner's DUB CHORD; tools/factory_multis.py) */
+    static const char *const FN[16] = {"DB BASIC CHD", "DB DUB CHORD", "HS JUNO DEEP", "HS RHODES", "HS ORGAN HSE", "HS PIANO HSE", "TC DETROIT",
+                                       "TC HI-TECH", "AC HYPNO 303", "AC TWO 303S", "AC ACID LINE", "EL ROBOT FNK", "EL DEEP SEA", "EL WARP TAPE",
+                                       "AM BERLIN", "AM TWO LOOPS"};   /* (the reel, 2026-11-10: fifteen new multis as one curated programme, M02 the owner's DUB CHORD; tools/factory_multis.py) */
     uint32_t k, ok, test_rows = 0, sys_rows = 0;
     memset(nor, 0xFF, sizeof nor);
     ui_power_on();
@@ -66,10 +66,10 @@ int main(void)
     ck("no page is called TEST (the GLO round is untouched)", ok);
     for (k = 0, ok = 1; k < MU_SLOTS; k++)
         ok &= project_used(k) && project_factory(k) && str_eq(mu_names[k], FN[k]);
-    ck("M01..M16 are the factory multis (the reel, 2026-11-10: BASIC CHORD, DUB CHORD, JUNO DEEP .. BERLIN RUN, M16 TWO LOOPS), as in the test mode", ok);
+    ck("M01..M16 are the factory multis (the reel, 2026-11-10: BASIC CHORD, DUB CHORD, JUNO DEEP .. BERLIN RUN, M16 AM TWO LOOPS), as in the test mode", ok);
 #if DUELL_TIDE
-    ck("M17 DUNE HORN, M18 VOID DEEP: the built-in drone multis, factory (ROM only)", MU_SHOWN == 18u && project_used(16) && project_factory(16) && str_eq(mu_names[16], "DUNE HORN") &&
-       project_used(17) && project_factory(17) && str_eq(mu_names[17], "VOID DEEP"));
+    ck("M17 AM DUNE HORN, M18 AM VOID DEEP: the built-in drone multis, factory (ROM only)", MU_SHOWN == 18u && project_used(16) && project_factory(16) && str_eq(mu_names[16], "AM DUNE HORN") &&
+       project_used(17) && project_factory(17) && str_eq(mu_names[17], "AM VOID DEEP"));
 #endif
     project_load(2);
     ck("LOAD of M03 loads JUNO DEEP (ANALOG + ANALOG: WARM WASH, RUBBER BAND)", proj_cur == 2u && str_eq(ENGINES[trk[0].eng_req]->name, "ANALOG") && str_eq(ENGINES[trk[1].eng_req]->name, "ANALOG"));

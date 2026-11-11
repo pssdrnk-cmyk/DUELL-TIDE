@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* ARP SEQ parts against the beat grid over a long set (b8 lane DRIFT; finding work/b7-night/reports/ARC.md:101).
- * Four factory ARP SEQ multis (M02 DUB CHORD, M08, M14, M12: ARP RATE 1/16, 4BAR, 1/2, 1/8, 1/1, 1/4) play 400 bars at 117, 120, 128 and 93 BPM,
+ * Four factory ARP SEQ multis (M02 DB DUB CHORD, M08, M14, M12: ARP RATE 1/16, 4BAR, 1/2, 1/8, 1/1, 1/4) play 400 bars at 117, 120, 128 and 93 BPM,
  * on the internal clock and on a 24 ppq external clock (USB, pulses at their exact microsecond, fm1_ms as the unit's millisecond tick).
  * Every arp step's onset is placed on the beat grid that TIDE's bars run on (beat_n / beat_pos, beat_samples(): the place in samples
  * = beats counted * beat + beat_pos - the samples the new step has already run at the block's end) and compared with its exact place
