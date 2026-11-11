@@ -590,7 +590,7 @@ typedef struct {                 /* the part in mix_part, its window: one per pa
 /* TIDE 1.0.0-b6: the multis SHOWN (lists, labels, pickers, previews, MIDI program change) are M01..M18; the STORED ones stay MU_SLOTS (16: the flash
  * objects, storage.c). M17 DUNE HORN and M18 VOID DEEP are ROM only (MU_ROM; multi.c: they load and preview, never save, rename or erase) */
 #if DUELL_TIDE
-#define MU_SHOWN 21u                /* (b10: + M19 TECH HYPNO, M20 DUB HOUSE, M21 HSE LOFI, ROM only as the drones; tools/drone_pack.py ROM_MULTIS) */
+#define MU_SHOWN 24u                /* (b10: + M19 TECH HYPNO, M20 DUB HOUSE, M21 HSE LOFI, M22 TECH CINEMA, M23 AMB TECHNO, M24 TECH MINIMAL, ROM only as the drones; tools/drone_pack.py ROM_MULTIS) */
 #else
 #define MU_SHOWN MU_SLOTS
 #endif

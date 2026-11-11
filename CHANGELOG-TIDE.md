@@ -9,7 +9,7 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 
 ## 1.0.0-b10 (in progress)
 
-- **New (three more factory multis, built in after the drones):** M19 TECH HYPNO (hypnotic techno: a low dark bass stab turning against the bar under a dark pad), M20 DUB HOUSE (low-passed minor-ninth chords through vinyl crackle into a long dark echo, over a sub bass) and M21 HSE LOFI (a soft electric piano through worn tape, two close seventh chords a bar, over a round off-beat bass). They load and play like the others and, like the drones, cannot be saved over: save an edited one into M01 to M16.
+- **New (six more factory multis, built in after the drones):** M19 TECH HYPNO (hypnotic techno: a low dark bass stab turning against the bar under a dark pad), M20 DUB HOUSE (low-passed minor-ninth chords through vinyl crackle into a long dark echo, over a sub bass) M21 HSE LOFI (a soft electric piano through worn tape, two close seventh chords a bar, over a round off-beat bass), M22 TECH CINEMA (a slow string pad in wide minor-ninth and major-seventh chords through a deep phaser and a big hall, over a low breathing drone on A), M23 AMB TECHNO (four parallel major-seventh chords on a chorused pad with a soft harp arpeggio, into a long dotted echo) and M24 TECH MINIMAL (a ringing koto going back and forth between two notes, over a sub pluck on the off-beat 16ths). They load and play like the others and, like the drones, cannot be saved over: save an edited one into M01 to M16.
 - (new lines for the next beta go here; TIDE_VERSION is set only when the beta is cut)
 
 ## 1.0.0-b9

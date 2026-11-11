@@ -493,7 +493,7 @@ static void drones(void)
         objn[o] = (uint16_t)mu_obj_read(o);
         memcpy(obj[o], mu_buf, objn[o]);
     }
-    ck("drones: MU_SHOWN 21 (b10: M19-M21 ROM-only factory multis), MU_SLOTS (stored) still 16, the flash objects as before (OBJ_PATCH0 = OBJ_MULTI0 + 8)", MU_SHOWN == 21u && MU_SLOTS == 16u && MU_NOBJ == 8u && DF_N == MU_SHOWN);
+    ck("drones: MU_SHOWN 24 (b10: M19-M24 ROM-only factory multis), MU_SLOTS (stored) still 16, the flash objects as before (OBJ_PATCH0 = OBJ_MULTI0 + 8)", MU_SHOWN == 24u && MU_SLOTS == 16u && MU_NOBJ == 8u && DF_N == MU_SHOWN);
     for (k = 16u, ok = 1; k < 18u; k++) {
         ok &= project_used(k) && project_factory(k) && !multi_bad(k) && project_info(k, nm) && str_eq(nm, DN[k - 16u]) && df_of(k) == k;
         ok &= str_eq(multi_vname(k, 0), DS[k - 16u][0]) && str_eq(multi_vname(k, 1), DS[k - 16u][1]);
@@ -593,7 +593,7 @@ static void drones(void)
     pc_poll();
     midi_pc(0, 127);
     pc_poll();
-    ck("  MIDI program change 16, 17, 18 (LAYER) load M17, M18, M19; MU_SHOWN (21) and 127 are ignored", ok && proj_cur == 1u);
+    ck("  MIDI program change 16, 17, 18 (LAYER) load M17, M18, M19; MU_SHOWN (24) and 127 are ignored", ok && proj_cur == 1u);
     tide_settings();
     tide_style_apply(STY_DEEP);                     /* (the player's STYLE) */
     tide_settings();
@@ -1244,7 +1244,7 @@ int main(void)
            str_eq(nm_a, "SQUELCH") && str_eq(ENGINES[trk[0].eng_req]->name, "ANALOG"));
         turn(EN_K3, 40);
 #if DUELL_TIDE
-        ck("  many detents right: stops at the last used, M21 HSE LOFI (b10: the last ROM multi)", proj_cur == MU_SHOWN - 1u && msg_is("LOADED M21 HSE LOFI"));
+        ck("  many detents right: stops at the last used, M24 TECH MINIMAL (b10: the last ROM multi)", proj_cur == MU_SHOWN - 1u && msg_is("LOADED M24 TECH MINIMAL"));
         turn(EN_K3, -(int32_t)(MU_SHOWN - 16u));
         ck("  back to M16 AMB LOOPS (FM6 + WAVE)", proj_cur == 15u && trk[0].eng_req == ENGI_FM6 && str_eq(ENGINES[trk[1].eng_req]->name, "WAVE"));
         turn(EN_K3, (int32_t)(MU_SHOWN - 16u));
