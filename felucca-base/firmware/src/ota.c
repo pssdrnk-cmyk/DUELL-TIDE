@@ -207,7 +207,7 @@ static int ota_memeq(const uint8_t *a, const uint8_t *b, uint32_t n)
     return 1;
 }
 
-/* JLFS head "LOADER.BIN" — stage-0 head entry, written last */
+/* JLFS head "LOADER.BIN" in front of the staged loader (vm_update_defrag), written last */
 static int ota_stage_head(uint32_t len)
 {
     static const char NAME[16] = "LOADER.BIN";
