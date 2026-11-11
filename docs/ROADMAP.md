@@ -51,6 +51,20 @@ Six builder lanes made these overnight (9 to 10 November); each is measured on t
 The owner's answers to the musical review (9 November) are built in: the default for each of the nine questions, with the first start staying M02 DUB CHORD and FINAL REEL's brass pad keeping its octave.
 
 
+## Built in b8, waits for the FM-1
+
+A polish beta on top of b7 (details in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md#100-b8)); none of it is on the unit yet.
+
+| What | State |
+|---|---|
+| ARP SEQ parts stay on the beat on the internal clock: on a long set the arp no longer drifts ahead of the bars and the click, at any tempo and after a tap tempo | Built |
+| SAVE after JOURNEY says what it saves: "SAVES THE LOADED SOUND / KEEP FIRST = AS HEARD" above its question (what SAVE stores did not change) | Built |
+| ARC's new phase starts with its own levers: the breakdown's first beat is thinned, the peak's first loop gets no POLY stretch, as the rest of the phase does | Built |
+| The AUTO TIDE look-ahead test is back on factory multi slot 9, also over several ARC DROP arcs: no step shown that does not play | Built (no mismatch found) |
+| The ACID and ACSQ waves on the ANALOG engine play accents like a TB-303: a short sweep (about 200 ms), a level punch of about +9 dB, accents in a row stacking higher, and a soft RC slide (90 % in 53 ms, 99 % in 106 ms); checked against Open303 | Built, to set by ear on the unit |
+| Three acid multis: HYPNO 303 (slot 9, square 303 against the bar), TWO 303S (slot 10, two distorted 303s left and right), ACID LINES (slot 11, an acid-house saw line) | Built |
+| Under the hood: the TURNS leftovers are out, HOME's old MODE page leftover is out, and the `glidecpu` test's bound is 10 % (it failed on b8 before, not from a sound change) | Built |
+
 ## Later, in order
 
 1. ARP SEQ parts drift against the beat on the internal clock: the arp's step period and the sequencer's beat round differently, 12 to 14 samples a bar on M02 at 117 BPM, about 107 ms after 400 bars (found by the ARC lane with a host probe). Not measured under an external clock, where both follow the clock grid and probably do not drift.
