@@ -261,7 +261,7 @@ static const param_desc_t XTP[NX] = {
     [X_CYFALL] = PD("FALL", F_TIME, 0, 127, 70),   /* the DEC time table */
     [X_CYCURVE] = PD("CURVE", F_BIPCT, -64, 63, 0),
     [X_CYSYNC] = PE("SYNC", N_ONOFF, 0),           /* CYCLE's own SYNC switch (not ENV SYNC) */
-    /* DUELL 1.1 (owner, DEST pages): per-source depth cards. Each runs through the matrix's smooth path as a virtual route (mod.c mod_vr_*), so it is as clean as the same route in a slot. The stored
+    /* DUELL 1.1 (owner, DEST pages): per-source depth cards. Each runs through the matrix's smooth path as a virtual route (mod.c vr_t / VR[]), so it is as clean as the same route in a slot. The stored
      * labels are keys (LBL_SHOWN gives the words); depths -64..+63, 0 = off */
     [X_ESAT] = PD("SATN", F_BIPCT, -64, 63, 0),    /* AMP ENV to SATURATION */
     [X_E2BLD] = PD("FBLND", F_BIPCT, -64, 63, 0),  /* FILTER ENV to FILTER BLEND */
