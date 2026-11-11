@@ -119,10 +119,12 @@ enum {
 typedef struct {
     const char *label;
     uint8_t fmt;
+    uint8_t unit;               /* F_INT / F_ENUM optional unit: U_*, 0 = none (an index into UNIT_STR; 1.0.0-b9 SP4: 16 B a descriptor, was 20; sits in the padding after fmt, so every initialiser is {label, fmt, unit, min, max, def, names}) */
     int16_t min, max, def;
     const char *const *names;   /* F_ENUM */
-    const char *unit;           /* F_INT / F_ENUM optional unit */
 } param_desc_t;
+enum { U_NONE, U_CT, U_MS, U_ST, U_HZ };
+static const char *const UNIT_STR[] = {"", "ct", "ms", "st", "Hz"};
 
 enum {                          /* per-track parameters */
     P_LEVEL,                    /* DUELL 0.2.19 (owner, 2026-10-15): the MIXER LEVEL, the part's volume the player sets on the mixer: NOT part of a patch (a sound load,

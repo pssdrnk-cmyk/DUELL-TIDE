@@ -13,8 +13,8 @@
  *         sub oscillator's level */
 static const char *const N_ANALOG_WAVE[] = {"SAW", "SQR", "TRI", "SIN", "PWM", "SYNC", "SUB", "ACID", "ACSQ"};
 enum { AW_SYNC = 5, AW_SUB = 6, AW_ACSQ = 8 };   /* WAVE 7 ACID / 8 ACSQ (b8): a saw / a square that play as a 303 (voice.c acid_on); the oscillator is OSC 1 as SAW / SQR */
-static const param_desc_t ANALOG_SYNC = {"SYNC", F_INT, 0, 127, 10, 0, 0};   /* DTN's range and default */
-static const param_desc_t ANALOG_SUB = {"SUB", F_PCT, 0, 127, 64, 0, 0};      /* MIX's */
+static const param_desc_t ANALOG_SYNC = {"SYNC", F_INT, 0, 0, 127, 10, 0};   /* DTN's range and default */
+static const param_desc_t ANALOG_SUB = {"SUB", F_PCT, 0, 0, 127, 64, 0};      /* MIX's */
 
 static const param_desc_t *analog_desc(const track_t *t, uint32_t k)
 {
@@ -267,13 +267,13 @@ static const engine_t ENG_ANALOG = {
     .name = "ANALOG",
     .page_title = {"OSC", "FLT"},
     .edit = {
-        {"WAVE", F_ENUM, 0, 8, 0, N_ANALOG_WAVE, 0},
-        {"DTN", F_INT, 0, 127, 10, 0, "ct"},
-        {"MIX", F_PCT, 0, 127, 64, 0, 0},
-        {"NOIS", F_PCT, 0, 127, 0, 0, 0},
-        {"PW", F_PCT, 0, 127, 0, 0, 0},              /* was CUT: filter 1 (voice.c uf_run). PWM's static width (P09): 0 = 50 %, 127 = 90 % duty (dsp.c pulse_pw); every stored sound has 0 */
+        {"WAVE", F_ENUM, 0, 0, 8, 0, N_ANALOG_WAVE},
+        {"DTN", F_INT, U_CT, 0, 127, 10, 0},
+        {"MIX", F_PCT, 0, 0, 127, 64, 0},
+        {"NOIS", F_PCT, 0, 0, 127, 0, 0},
+        {"PW", F_PCT, 0, 0, 127, 0, 0},              /* was CUT: filter 1 (voice.c uf_run). PWM's static width (P09): 0 = 50 %, 127 = 90 % duty (dsp.c pulse_pw); every stored sound has 0 */
         {"-", F_INT, 0, 0, 0, 0, 0},                 /* was RES */
-        {"DRV", F_PCT, 0, 127, 0, 0, 0},
+        {"DRV", F_PCT, 0, 0, 127, 0, 0},
         {"-", F_INT, 0, 0, 0, 0, 0},                 /* was KTR (filter 1's KEY TRK) */
     },
 #if DUELL_PRESETS

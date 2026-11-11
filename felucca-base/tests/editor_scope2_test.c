@@ -78,8 +78,8 @@ static int scope2(void)
         o = 14u;
         ok &= !strcmp((const char *)host_wire + o, d->label);
         o += strlen(d->label) + 1u;
-        ok &= !strcmp((const char *)host_wire + o, d->unit ? d->unit : "");
-        o += (d->unit ? strlen(d->unit) : 0u) + 1u;
+        ok &= !strcmp((const char *)host_wire + o, UNIT_STR[d->unit]);
+        o += strlen(UNIT_STR[d->unit]) + 1u;
         if (d->fmt == F_ENUM && d->names)
             for (i = 0; i <= (uint32_t)(d->max - d->min); i++) {
                 ok &= !strcmp((const char *)host_wire + o, d->names[d->min + (int32_t)i]);

@@ -915,13 +915,13 @@ static const engine_t ENG_WAVE = {
     .name = "WAVE",
     .page_title = {"TABLE", "OSC"},
     .edit = {
-        {"TABLE", F_ENUM, 0, WV_NT - 1, 0, N_WV_TABLE, 0},
-        {"POS", F_PCT, 0, 127, 0, 0, 0},
-        {"BEND", F_PCT, 0, 127, 0, 0, 0},
-        {"SYNC", F_PCT, 0, 127, 0, 0, 0},
+        {"TABLE", F_ENUM, 0, 0, WV_NT - 1, 0, N_WV_TABLE},
+        {"POS", F_PCT, 0, 0, 127, 0, 0},
+        {"BEND", F_PCT, 0, 0, 127, 0, 0},
+        {"SYNC", F_PCT, 0, 0, 127, 0, 0},
         {"-", F_INT, 0, 0, 0, 0, 0},                 /* was SUB: the global SUB LAYER (chain_sub.c) replaces it */
-        {"DTN", F_INT, 0, 127, 0, 0, "ct"},
-        {"STEPS", F_ENUM, 0, 18, 0, N_WV_STEPS, 0},
+        {"DTN", F_INT, U_CT, 0, 127, 0, 0},
+        {"STEPS", F_ENUM, 0, 0, 18, 0, N_WV_STEPS},
         {"-", F_INT, 0, 0, 0, 0, 0},
     },
 #if DUELL_PRESETS

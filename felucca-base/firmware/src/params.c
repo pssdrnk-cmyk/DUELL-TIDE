@@ -43,21 +43,21 @@ static const char *const ESYNC_NAMES[ESYNC_N + 1u] = {
 static const uint16_t ESYNC_UNITS[ESYNC_N] = {0, 4, 6, 8, 9, 12, 16, 18, 24, 32, 36, 48, 64, 72,
                                               96, 128, 144, 192, 256, 288, 384, 576, 768, 1152, 1536};
 static const param_desc_t ESYNC_DESC[6] = {   /* ATK DEC REL with ENV SYNC on: the range and defaults as ever */
-    {"ATK", F_INT, 0, 127, 10, ESYNC_NAMES, 0},
-    {"DEC", F_INT, 0, 127, 70, ESYNC_NAMES, 0},
-    {"REL", F_INT, 0, 127, 60, ESYNC_NAMES, 0},
-    {"ATK2", F_INT, 0, 127, 10, ESYNC_NAMES, 0},  /* DUELL: ENV 2's (ENV SYNC is both envelopes') */
-    {"DEC2", F_INT, 0, 127, 70, ESYNC_NAMES, 0},
-    {"REL2", F_INT, 0, 127, 60, ESYNC_NAMES, 0},
+    {"ATK", F_INT, 0, 0, 127, 10, ESYNC_NAMES},
+    {"DEC", F_INT, 0, 0, 127, 70, ESYNC_NAMES},
+    {"REL", F_INT, 0, 0, 127, 60, ESYNC_NAMES},
+    {"ATK2", F_INT, 0, 0, 127, 10, ESYNC_NAMES},  /* DUELL: ENV 2's (ENV SYNC is both envelopes') */
+    {"DEC2", F_INT, 0, 0, 127, 70, ESYNC_NAMES},
+    {"REL2", F_INT, 0, 0, 127, 60, ESYNC_NAMES},
 };
 /* FM6's AMP ENV knobs (DUELL 1.1, owner 2026-10-25): ATTACK DECAY SUSTAIN RELEASE show the DX7 numbers 0..99 of the loudest carrier operator (eng_fm6.c); the same range 0..127 and the
  * same direction as on every engine (a higher number is longer). Not times: no milliseconds, no ENV SYNC note values. The default is only for the descriptor: a reset puts the knob on the
  * number the patch gives (ui_input.c reset_desc) */
 static const param_desc_t FM6_ENV_DESC[4] = {
-    {"ATK", F_N99, 0, 127, 10, 0, 0},
-    {"DEC", F_N99, 0, 127, 70, 0, 0},
-    {"SUS", F_N99, 0, 127, 90, 0, 0},
-    {"REL", F_N99, 0, 127, 60, 0, 0},
+    {"ATK", F_N99, 0, 0, 127, 10, 0},
+    {"DEC", F_N99, 0, 0, 127, 70, 0},
+    {"SUS", F_N99, 0, 0, 127, 90, 0},
+    {"REL", F_N99, 0, 0, 127, 60, 0},
 };
 static uint32_t esync_idx(int32_t v) { return (uint32_t)(v & 127) * ESYNC_N >> 7; }   /* (param_format's split) */
 /* P_KTRK (id 27, DUELL 0.2.21) took the id of the retired QNT (OFF / SNAP / WHITE / SEQ; owner 2026-10-12: the OFF-SCALE KEYS setting is global, core.h
@@ -121,9 +121,9 @@ static const char *const N_ATG_ANALOG[] = {"ALL", "A", "B", "ALL", "ALL", "ALL",
 static const char *const N_ATG_TRIO[] = {"ALL", "OSC1", "OSC2", "OSC3", "1+2", "2+3", "1+3", "ALL", "ALL"};
 static const char *const N_ATG_FM6[] = {"ALL", "OP1", "OP2", "OP3", "OP4", "OP5", "OP6", "ODD", "EVEN"};
 
-#define PD(l, f, mn, mx, df) {l, f, mn, mx, df, 0, 0}
+#define PD(l, f, mn, mx, df) {l, f, 0, mn, mx, df, 0}
 #define PFREE {"-", F_INT, 0, 0, 0, 0, 0}   /* a free id (core.h P_FREE*) */
-#define PE(l, n, df) {l, F_ENUM, 0, (int16_t)(sizeof(n) / sizeof(n[0]) - 1), df, n, 0}
+#define PE(l, n, df) {l, F_ENUM, 0, 0, (int16_t)(sizeof(n) / sizeof(n[0]) - 1), df, n}
 
 static const param_desc_t TP[P_COUNT] = {
     [P_LEVEL] = PD("LVL", F_DB, 0, 127, 112),      /* 0.2.19: the MIXER level, unity (112 = 0 dB) by default; the sound's loudness is P_TRIM */
@@ -177,7 +177,7 @@ static const param_desc_t TP[P_COUNT] = {
     [P_FREEA] = PD("CUT", F_FILT, 0, UF_STEPS, UF_STEPS),
     [P_FREEB] = PD("RES", F_PCT, 0, 127, 0),
     [P_FREEC] = PD("MODE", F_FMODE, 0, UF_HP, 0),
-    [P_FREED] = {"SLOPE", F_ENUM, 1, 2, 1, N_SLOPE, 0},
+    [P_FREED] = {"SLOPE", F_ENUM, 0, 1, 2, 1, N_SLOPE},
 #define MSLOT(k) [P_M##k##SRC] = PE("SRC" #k, N_MSRC, 0), [P_M##k##DST] = PE("DST" #k, N_MDST, 0), \
                  [P_M##k##AMT] = PD("AMT" #k, F_BIPCT, -64, 63, 0)
     MSLOT(1), MSLOT(2), MSLOT(3), MSLOT(4), MSLOT(5), MSLOT(6), MSLOT(7), MSLOT(8),
@@ -223,9 +223,9 @@ static const param_desc_t TP[P_COUNT] = {
     [P_EQHF] = PD("HI HZ", F_EQHI, -24, 12, 0),   /* HIGH shelf's corner, 8 kHz at 0 (2 .. 16 kHz) */
     /* DUELL DUCK (SPEC 5c.4, fx.c duck_*): a note-on on CH (and NOTE) ducks the part's level; CH 0 (OFF) or DEPTH 0 = nothing */
     [P_DKCRV] = PE("CURVE", N_DKCRV, 1),           /* the RELEASE's shape: LIN (a straight line, the earlier curve), EXP (a share of what is left: a pump's release, the default since 0.2.5; the sparse patch store keeps LIN as its own default: upreset.c up_def) */
-    [P_CUT2] = {"CUTOFF", F_INT, -63, 82, 0, 0, 0}, /* TWIN FILTER CUTOFF 2 (id 106, was the retired DUCK NOTE, 0.2.24 / 0.2.25's EQ switch): ONE stored value with two meanings (tw_desc): LINK on = OFFSET -63..+63 dial steps from filter 1's cutoff, LINK off = CUTOFF 0..82, on COMB TUNE -24..+24 semitones; the stored range is all of them */
+    [P_CUT2] = {"CUTOFF", F_INT, 0, -63, 82, 0, 0}, /* TWIN FILTER CUTOFF 2 (id 106, was the retired DUCK NOTE, 0.2.24 / 0.2.25's EQ switch): ONE stored value with two meanings (tw_desc): LINK on = OFFSET -63..+63 dial steps from filter 1's cutoff, LINK off = CUTOFF 0..82, on COMB TUNE -24..+24 semitones; the stored range is all of them */
     [P_DKDEP] = PD("DEPTH", F_PCT, 0, 100, 0),
-    [P_DKATK] = {"ATK", F_INT, 1, 100, 5, 0, "ms"},
+    [P_DKATK] = {"ATK", F_INT, U_MS, 1, 100, 5, 0},
     [P_TRIM] = PD("TRIM", F_DB, 0, 127, 104),      /* 0.2.19: the PATCH TRIM (core.h), on the id of the legacy DUCK HOLD (0.2.5, never read); the old default level */
     [P_DKRLS] = PD("RLS", F_DKRLS, 0, 67, 36),
     [P_DKSRC] = PE("SRC", N_DKSRC, 3),             /* OFF (0.2.24, stored 3: the default), PUMP (stored 0: every beat of RATE), PART (the other part's level), MIDI (0.2.22: the notes of the SIDECHAIN page's channel and note for this part) */
@@ -275,20 +275,20 @@ static const param_desc_t XTP[NX] = {
     [X_L2BLD] = PD("FBLND", F_BIPCT, -64, 63, 0),  /* LFO 2 to FILTER BLEND */
     [X_LFO1LVL] = PD("LVL", F_PCT, 0, 127, 127),   /* LFO 1 LEVEL: the LFO's master depth (127 = 100 %, today's behaviour; the matrix DEPTH slots multiply on top) */
     [X_LFO2LVL] = PD("LVL", F_PCT, 0, 127, 127),   /* LFO 2 LEVEL */
-    [X_STRUM] = {"STRUM", F_INT, 0, 100, 0, 0, "ms"},   /* X27 (DUELL 1.1 item 144): the CHORD page's K3, ms between a chord's tones, low to high (seq.c strum_block); 0 is OFF, as DUCK ATK's F_INT "ms" otherwise */
+    [X_STRUM] = {"STRUM", F_INT, U_MS, 0, 100, 0, 0},   /* X27 (DUELL 1.1 item 144): the CHORD page's K3, ms between a chord's tones, low to high (seq.c strum_block); 0 is OFF, as DUCK ATK's F_INT "ms" otherwise */
 };
 static const param_desc_t XTP_SYNC[2] = {          /* CYCLE RISE / FALL with SYNC on: as ENV SYNC's ATK / DEC (ESYNC_DESC) */
-    {"RISE", F_INT, 0, 127, 10, ESYNC_NAMES, 0},
-    {"FALL", F_INT, 0, 127, 70, ESYNC_NAMES, 0},
+    {"RISE", F_INT, 0, 0, 127, 10, ESYNC_NAMES},
+    {"FALL", F_INT, 0, 0, 127, 70, ESYNC_NAMES},
 };
 /* the TWIN FILTER's one-value-two-meanings: CUTOFF 2 is filter 1's OFFSET while LINK is on, filter 2's own CUTOFF with LINK off, TUNE on COMB (semitones around the note); RES 2 is RES (0..127) or, on COMB,
  * FDBK (FEEDBACK, -64..+63). TP[P_CUT2] / TP[P_RES2] hold the range of all of them (what is stored and clamped); tw_desc gives the one that applies (a page card, the editor, the matrix) */
 enum { TT_OFF, TT_LP, TT_BP, TT_HP, TT_NOTCH, TT_LADDER, TT_COMB };   /* P_TWTYPE (N_TWTYPE) */
-static const param_desc_t TWD_OFFSET = {"OFFSET", F_DSEMI, -TW_OFF_MAX, TW_OFF_MAX, 0, 0, 0};   /* (1.0, owner: whole semitones, 3 octaves; the stored value past it is clamped by the filter and shown clamped) */
-static const param_desc_t TWD_CUTOFF = {"CUTOFF", F_FILT, 0, UF_STEPS, UF_STEPS, 0, 0};
-static const param_desc_t TWD_TUNE = {"TUNE", F_SEMI, -24, 24, 0, 0, 0};
-static const param_desc_t TWD_RES = {"RES", F_PCT, 0, 127, 0, 0, 0};
-static const param_desc_t TWD_FDBK = {"FDBK", F_BIPCT, -64, 63, 0, 0, 0};
+static const param_desc_t TWD_OFFSET = {"OFFSET", F_DSEMI, 0, -TW_OFF_MAX, TW_OFF_MAX, 0, 0};   /* (1.0, owner: whole semitones, 3 octaves; the stored value past it is clamped by the filter and shown clamped) */
+static const param_desc_t TWD_CUTOFF = {"CUTOFF", F_FILT, 0, 0, UF_STEPS, UF_STEPS, 0};
+static const param_desc_t TWD_TUNE = {"TUNE", F_SEMI, 0, -24, 24, 0, 0};
+static const param_desc_t TWD_RES = {"RES", F_PCT, 0, 0, 127, 0, 0};
+static const param_desc_t TWD_FDBK = {"FDBK", F_BIPCT, 0, -64, 63, 0, 0};
 static const param_desc_t SCALE_D = PE("SCALE", N_SCALE, 0);     /* the instrument's SCALE and ROOT (core.h scale_g, root_g: the SCALE page, ui_input.c scale_knob): not parameters of a part, so no P_ id (25 and 26 are the TWIN FILTER's now) */
 static const param_desc_t ROOT_D = PD("ROOT", F_NOTE, 0, 11, 0);
 static const param_desc_t XFREE_D = PFREE;
@@ -318,10 +318,10 @@ static void ext_defaults(track_t *t)
 
 /* the INSERT's A B C as its TYPE means them (TP's ranges and defaults): the drives DRIVE TONE LEVEL, CRUSH BITS RATE
  * LPF, the swept ones RATE DEPTH FDBK, TAPE WOW SAT TONE, VINYL DUST NOISE WARP; OFF TP's own */
-#define PU(l, f, df, n, u) {l, f, 0, 127, df, n, u}
+#define PU(l, f, df, n, u) {l, f, u, 0, 127, df, n}
 static const param_desc_t INS_DESC[5][3] = {
     {PU("DRIVE", F_PCT, 64, 0, 0), PU("TONE", F_CUTOFF, 96, 0, 0), PU("LEVEL", F_DB, 96, 0, 0)},
-    {PU("BITS", F_INT, 99, N_IBITS, 0), PU("RATE", F_INT, 96, N_IRATE, "Hz"), PU("LPF", F_CUTOFF, 96, 0, 0)},
+    {PU("BITS", F_INT, 99, N_IBITS, 0), PU("RATE", F_INT, 96, N_IRATE, U_HZ), PU("LPF", F_CUTOFF, 96, 0, 0)},
     {PU("RATE", F_LFOHZ, 64, 0, 0), PU("DEPTH", F_PCT, 96, 0, 0), PU("FDBK", F_PCT, 96, 0, 0)},
     {PU("WOW", F_PCT, 47, 0, 0), PU("SAT", F_PCT, 71, 0, 0), PU("TONE", F_CUTOFF, 110, 0, 0)},     /* TAPE (0.2.14) */
     {PU("DUST", F_PCT, 47, 0, 0), PU("NOISE", F_PCT, 47, 0, 0), PU("WARP", F_PCT, 17, 0, 0)},      /* VINYL (0.2.14) */
@@ -453,10 +453,10 @@ static const uint8_t ATG_BITS[ATG_KINDS][9] = {
     {0, 1u << 5, 1u << 4, 1u << 3, 1u << 2, 1u << 1, 1u, (1u << 5) | (1u << 3) | (1u << 1), (1u << 4) | (1u << 2) | 1u},
 };
 static const param_desc_t ATG_DESC[ATG_KINDS] = {
-    {"TRGT", F_ENUM, 0, 0, 0, N_ATG_NONE, 0},
-    {"TRGT", F_ENUM, 0, 2, 0, N_ATG_ANALOG, 0},
-    {"TRGT", F_ENUM, 0, 6, 0, N_ATG_TRIO, 0},
-    {"TRGT", F_ENUM, 0, 8, 0, N_ATG_FM6, 0},
+    {"TRGT", F_ENUM, 0, 0, 0, 0, N_ATG_NONE},
+    {"TRGT", F_ENUM, 0, 0, 2, 0, N_ATG_ANALOG},
+    {"TRGT", F_ENUM, 0, 0, 6, 0, N_ATG_TRIO},
+    {"TRGT", F_ENUM, 0, 0, 8, 0, N_ATG_FM6},
 };
 /* the units of t's engine that follow the arp, 0 = ALL (the classic arp; also with the arp off) */
 static uint32_t atgt_bits(const track_t *t)
@@ -697,7 +697,7 @@ static void param_format(const param_desc_t *d, int32_t v, char *val, const char
     case F_ENUM:
         str_cpy(val, val_shown(d, d->names[v < d->min ? d->min : v > d->max ? d->max : v]), PV_LEN);
         if (d->unit)
-            *unit = d->unit;
+            *unit = UNIT_STR[d->unit];
         break;
     case F_BPM:
         fmt_int(val, v);
@@ -874,7 +874,7 @@ static void param_format(const param_desc_t *d, int32_t v, char *val, const char
             fmt_int(val, v);
         }
         if (d->unit)
-            *unit = d->unit;
+            *unit = UNIT_STR[d->unit];
         break;
     }
 }
@@ -1143,8 +1143,8 @@ static uint32_t pg_id(const page_t *pg, uint32_t slot)
 }
 /* MULTI FILTER 2/2 (0.2.21, 0.2.22): ENV 2's, LFO 1's and LFO 2's cutoff amounts are the DEST pages' P_E2FLT, P_LD_FLT, P_L2FLT (one stored value each, TP's "FLT"); here a card
  * names its source, so the page reads KTRK, ENV 2, LFO 1, LFO 2. Same range, format and default as TP's */
-static const param_desc_t DST_TCUT = {"TCUT", F_BIPCT, -64, 63, 0, 0, 0};   /* LFO 2 DEST K1: TWIN CUTOFF (key TCUT: LBL_SHOWN) */
-static const param_desc_t KT_FLT[3] = {{"ENV 2", F_BIPCT, -64, 63, 0, 0, 0}, {"LFO 1", F_BIPCT, -64, 63, 0, 0, 0}, {"LFO 2", F_BIPCT, -64, 63, 0, 0, 0}};
+static const param_desc_t DST_TCUT = {"TCUT", F_BIPCT, 0, -64, 63, 0, 0};   /* LFO 2 DEST K1: TWIN CUTOFF (key TCUT: LBL_SHOWN) */
+static const param_desc_t KT_FLT[3] = {{"ENV 2", F_BIPCT, 0, -64, 63, 0, 0}, {"LFO 1", F_BIPCT, 0, -64, 63, 0, 0}, {"LFO 2", F_BIPCT, 0, -64, 63, 0, 0}};
 static const param_desc_t *page_desc(const page_t *pg, uint32_t slot, int16_t **valp)
 {
     uint32_t id = pg_id(pg, slot);

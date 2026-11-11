@@ -132,7 +132,7 @@ def parse_xtp(names):
         k = slots.index(m.group(1))
         n = names[m.group(3)]
         out[m.group(1)] = (XW_BASE + k, m.group(2), 0, len(n) - 1, int(m.group(4)), n)
-    for m in re.finditer(r"\[(X_\w+)\]\s*=\s*\{\"([^\"]*)\",\s*\w+,\s*(-?\d+),\s*(-?\d+),\s*(-?\d+),", body):   # the brace form (none today; the KEY OFFSET had it)
+    for m in re.finditer(r"\[(X_\w+)\]\s*=\s*\{\"([^\"]*)\",\s*\w+,\s*\w+,\s*(-?\d+),\s*(-?\d+),\s*(-?\d+),", body):   # the brace form (none today; the KEY OFFSET had it)
         k = slots.index(m.group(1))
         out[m.group(1)] = (XW_BASE + k, m.group(2), int(m.group(3)), int(m.group(4)), int(m.group(5)), None)
     if len(out) != len(XGROUP):
@@ -168,7 +168,7 @@ def parse_tp(ids):
     for m in re.finditer(r"\[(P_\w+)\]\s*=\s*PE\(\"([^\"]*)\",\s*(\w+),\s*(-?\d+)\)", body):
         n = names[m.group(3)]
         tp[m.group(1)] = (m.group(2), 0, len(n) - 1, int(m.group(4)), n)
-    for m in re.finditer(r"\[(P_\w+)\]\s*=\s*\{\"([^\"]*)\",\s*\w+,\s*(-?\d+),\s*(-?\d+),\s*(-?\d+),", body):
+    for m in re.finditer(r"\[(P_\w+)\]\s*=\s*\{\"([^\"]*)\",\s*\w+,\s*\w+,\s*(-?\d+),\s*(-?\d+),\s*(-?\d+),", body):
         tp[m.group(1)] = (m.group(2), int(m.group(3)), int(m.group(4)), int(m.group(5)), None)
     for k in range(1, 9):
         tp[f"P_M{k}SRC"] = (f"SRC{k}", 0, len(names["N_MSRC"]) - 1, 0, names["N_MSRC"])
@@ -197,7 +197,7 @@ def parse_engines():
             nm = re.search(r"\.name\s*=\s*\"([^\"]+)\"", b)
             ed = b[b.index(".edit"):] if ".edit" in b else ""
             rows = []
-            for r in re.finditer(r"\{\"([^\"]*)\",\s*(F_\w+),\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*(\w+)", ed):
+            for r in re.finditer(r"\{\"([^\"]*)\",\s*(F_\w+),\s*\w+,\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*(\w+)", ed):   # {label, fmt, unit, lo, hi, def, names} (SP4)
                 lab, lo, hi, df, nl = r.group(1), r.group(3).strip(), r.group(4).strip(), r.group(5).strip(), r.group(6)
                 nlist = arrays.get(nl) if nl != "0" else None
 

@@ -390,7 +390,7 @@ static mtag_t morph_tag(const engine_t *e, const int8_t *o, uint32_t id, uint32_
 /* the range of id for engine e (the edit table, as the matrix: mod.c) */
 static const param_desc_t *morph_desc(const engine_t *e, uint32_t id) { return id >= XW_BASE ? xdesc(0, id - XW_BASE) : id >= P_COUNT ? &XFREE_D : id >= P_E0 ? &e->edit[id - P_E0] : &TP[id]; }
 static const param_desc_t MORPH_E7_OLD = {"-", F_INT, 0, 0, 0, 0, 0};   /* WAVE's E7 as it was before STEPS (an unused slot, range 0..0): a WILD roll draws it as it did, so the End B of every stored seed is what it was, and never turns STEPS on */
-static const param_desc_t MORPH_AW_OLD = {"WAVE", F_ENUM, 0, 6, 0, 0, 0};   /* ANALOG's WAVE as it was before ACID / ACSQ (b8, 0..6): a WILD roll draws it as it did, so stored seeds keep their End B and no roll turns the 303 on */
+static const param_desc_t MORPH_AW_OLD = {"WAVE", F_ENUM, 0, 0, 6, 0, 0};   /* ANALOG's WAVE as it was before ACID / ACSQ (b8, 0..6): a WILD roll draws it as it did, so stored seeds keep their End B and no roll turns the 303 on */
 
 /* ----------------------------------------------------------------- the roll (pure) --- */
 static uint32_t mr_below(uint32_t *s, uint32_t n) { return (uint32_t)(((uint64_t)xs32(s) * n) >> 32); }

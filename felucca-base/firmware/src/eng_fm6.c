@@ -717,14 +717,14 @@ static const engine_t ENG_FM6 = {
     .name = "FM6",
     .page_title = {"PATCH", "MACRO"},   /* (EDIT 1: SLOT ALG FB MLVL; EDIT 2: MRAT MEG VMOD DTUN) */
     .edit = {
-        {"ALG", F_INT, 0, 32, 0, N_FM6_ALG, 0},
-        {"FB", F_INT, -7, 7, 0, 0, 0},
-        {"MLVL", F_BIPCT, -64, 63, 0, 0, 0},
-        {"MRAT", F_INT, -16, 16, 0, 0, 0},
-        {"MEG", F_BIPCT, -64, 63, 0, 0, 0},
-        {"VMOD", F_INT, -7, 7, 0, 0, 0},
-        {"DTUN", F_PCT, 0, 127, 0, 0, 0},
-        {"SLOT", F_INT, 0, FM6_OWN + FM6_NBANK + FM6_NXF, 0, N_FM6_PATCH, 0},
+        {"ALG", F_INT, 0, 0, 32, 0, N_FM6_ALG},
+        {"FB", F_INT, 0, -7, 7, 0, 0},
+        {"MLVL", F_BIPCT, 0, -64, 63, 0, 0},
+        {"MRAT", F_INT, 0, -16, 16, 0, 0},
+        {"MEG", F_BIPCT, 0, -64, 63, 0, 0},
+        {"VMOD", F_INT, 0, -7, 7, 0, 0},
+        {"DTUN", F_PCT, 0, 0, 127, 0, 0},
+        {"SLOT", F_INT, 0, 0, FM6_OWN + FM6_NBANK + FM6_NXF, 0, N_FM6_PATCH},
     },
 #if DUELL_PRESETS
     .presets = FM6_PRESETS,

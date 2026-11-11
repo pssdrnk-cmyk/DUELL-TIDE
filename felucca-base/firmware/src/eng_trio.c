@@ -342,14 +342,14 @@ static const engine_t ENG_TRIO = {
     .name = "TRIO",
     .page_title = {"OSC", "TONE"},
     .edit = {
-        {"WAVE", F_ENUM, 0, 15, 0, N_TRIO_WAVE, 0},
-        {"INT2", F_SEMI, -24, 24, 0, 0, 0},
-        {"INT3", F_SEMI, -24, 24, -12, 0, 0},
-        {"DTN", F_INT, 0, 50, 6, 0, "ct"},
+        {"WAVE", F_ENUM, 0, 0, 15, 0, N_TRIO_WAVE},
+        {"INT2", F_SEMI, 0, -24, 24, 0, 0},
+        {"INT3", F_SEMI, 0, -24, 24, -12, 0},
+        {"DTN", F_INT, U_CT, 0, 50, 6, 0},
         {"-", F_INT, 0, 0, 0, 0, 0},                 /* was MODE: filter 2's TYPE */
         {"-", F_INT, 0, 0, 0, 0, 0},                 /* was CUT: filter 2's CUTOFF */
         {"-", F_INT, 0, 0, 0, 0, 0},                 /* was RES: filter 2's RES */
-        {"PW", F_PCT, 0, 127, 64, 0, 0},
+        {"PW", F_PCT, 0, 0, 127, 64, 0},
     },
 #if DUELL_PRESETS
     .presets = TRIO_PRESETS,

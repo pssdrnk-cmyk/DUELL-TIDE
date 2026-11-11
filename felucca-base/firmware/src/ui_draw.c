@@ -1778,7 +1778,7 @@ static int32_t twin_card(const track_t *t, const int16_t *vp, const param_desc_t
     if (d->fmt == F_ENUM && d->names && (vp == &t->p[P_TWTYPE] || (vp >= &XV(t, 0) && vp <= &XV(t, NX - 1)))) {   /* the names in full: param_format cuts an enum's name at 5 characters (SERIES, LADDER, SQUARE are 6) */
         str_cpy(val, d->names[clamp(v, d->min, d->max)], PV_LEN);
         if (d->unit)
-            *unit = d->unit;
+            *unit = UNIT_STR[d->unit];
         if (vp == &t->p[P_TWTYPE])
             return -1;
         return d->max < 2 ? -1 : RATIO(d, enum_rank(d, v));              /* (the lists' gauge as every enum card's; a switch has none) */

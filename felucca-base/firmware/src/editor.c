@@ -651,7 +651,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         ed_v(d->max);
         ed_v(d->def);
         ed_str(d->label, PV_LEN);
-        ed_str(d->unit, PV_LEN);
+        ed_str(UNIT_STR[d->unit], PV_LEN);
         if (d->fmt == F_ENUM && d->names)                  /* up to 64 (0.2.7: the matrix DST has 46; before, 24); the names of min .. max (0.2.9: */
             for (i = 0; i <= (uint32_t)(d->max - d->min) && i < 64u; i++)   /* SLOPE's 1, 2; every enum before starts at 0) */
                 ed_str(d->names[d->min + (int32_t)i], PV_LEN);
