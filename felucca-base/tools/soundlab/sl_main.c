@@ -41,8 +41,14 @@ static void usage(void)
          "  soundlab render  --multi N | --sound N  [options]  --out PREFIX    -> PREFIX.wav, PREFIX.json   (soundlab render with no option: all options)\n"
          "  soundlab measure PREFIX [--from BAR --to BAR]                     -> PREFIX.metrics.json\n"
          "  soundlab rules   PREFIX                                           -> PASS / FAIL / UNSURE per measurable rule of work/b9/MUSICAL_RULES_B9.md\n"
+         "  soundlab atlas   [--only multis|sounds|patterns] | --find \"pad dark sub\"    -> tools/soundlab/atlas/ (every sound, multi and pattern measured)\n"
          "  soundlab sweep   --multi N --knob SET:K [--points -32,-16,0,16,32] [render options]   -> renders and measures each point, prints the table");
 }
+#ifdef _WIN32
+#define SL_PY "python"                                   /* (cmd.exe: the venv python.exe comes first on the PATH jam/env.sh sets; a bare python3 is the Store stub) */
+#else
+#define SL_PY "python3"
+#endif
 int main(int argc, char **argv)
 {
     if (argc < 2 || !strcmp(argv[1], "--help") || !strcmp(argv[1], "-h")) {
@@ -58,6 +64,29 @@ int main(int argc, char **argv)
         return sl_cmd_measure(argc - 2, argv + 2);
     if (!strcmp(argv[1], "rules"))
         return sl_cmd_rules(argc - 2, argv + 2);
+    if (!strcmp(argv[1], "atlas")) {                    /* the atlas builder is tools/soundlab/atlas.py (stdlib Python), run on this program */
+        char cmd[8192], dir[4096];
+        size_t n, i;
+        int k;
+        snprintf(dir, sizeof dir, "%s", sl_self);
+        for (n = strlen(dir); n > 0 && dir[n - 1] != '/' && dir[n - 1] != '\\'; n--)
+            ;
+        dir[n] = 0;                                     /* felucca-base/build/soundlab/ */
+        snprintf(cmd, sizeof cmd, SL_PY " \"%s../../tools/soundlab/atlas.py\" --exe \"%s\"", dir, sl_self);
+        for (k = 2; k < argc; k++) {
+            i = strlen(cmd);
+            snprintf(cmd + i, sizeof cmd - i, " \"%s\"", argv[k]);
+        }
+#ifdef _WIN32
+        {
+            char b[8300];
+            snprintf(b, sizeof b, "\"%s\"", cmd);       /* (cmd.exe wants the whole line in one more pair of quotes) */
+            return system(b);
+        }
+#else
+        return system(cmd);
+#endif
+    }
     fprintf(stderr, "soundlab: unknown command %s\n", argv[1]);
     usage();
     return 2;
