@@ -144,9 +144,9 @@ static const uint8_t JRNY_CTX[171] = {
     137,   /* 12 11 FRETLESS: -19.9 dB, 97 Hz */
     105,   /* 12 12 FM BASS 2: -24.0 dB, 112 Hz */
     195,   /* 12 13 TUBE BELLS: -13.0 dB, 434 Hz */
-     18,   /* 12 14 FM HAZE: -35.3 dB, 232 Hz */
-    154,   /* 12 15 DUB DRAWBAR: -17.6 dB, 342 Hz */
-    235,   /* 12 16 BELL STAB: -8.3 dB, 603 Hz */
+     18,   /* 12 14 FM HAZE: -35.2 dB, 221 Hz */
+    162,   /* 12 15 DUB DRAWBAR: -17.4 dB, 316 Hz */
+    227,   /* 12 16 BELL STAB: -8.7 dB, 560 Hz */
     218,   /* 12 17 HORN SWELL: -10.5 dB, 295 Hz */
     203,   /* 14 0 PWM PAD: -11.8 dB, 486 Hz */
     204,   /* 14 1 VOWEL PAD: -12.2 dB, 1062 Hz */

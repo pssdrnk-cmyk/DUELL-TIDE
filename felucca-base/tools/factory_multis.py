@@ -65,17 +65,17 @@ def note(s):
 # (COLD CHAPEL, ACID ETHER, GARGLE ACID of 0.2.22; DEAD BUFFER holds his edits) are never dropped: `owner` (D31, 2026-11-05: the owner took ACID ETHER, GARGLE ACID, DEAD BUFFER, WIRED SNAIL, REESE SWAMP and WOOD & SKIN out of the sixteen himself).
 # In LAYER each part maps a played key with its own TRN (seq.c key_on, 0.2.23: until 0.2.22 part 2 got part 1's note and the split compared it),
 # so an octave between the parts can be set with either part's TRN.
-# Order (D31, audit G14, 2026-11-05): the curated dub / house order, a background layer for a Volca Bass and a drum machine. 1-9 are the grooves
+# Order (D31, audit G14, 2026-11-05): the curated dub / house order, a background layer for a bass synth and a drum machine (b9: the low end is welcome; the one rule is that the FM-1 does not take over the drums). 1-9 are the grooves
 # of the set (BASIC CHORD, DUB CHORD, CELLAR TAPE, NIGHT ORGAN: chords and a sparse bass part where there is one; ORGAN SKANK, WARM ECHO, MINIMAL 12,
 # TINE DUB, DEEP 332: the six new ones, built here), 10-16 the colour (the owner's pads and textures, kept byte for byte). The rules of the new
-# ones: no part below C3 (its first note, the arps' stand-in C4 with the steps as written), the reverb LOW CUT at the unit's default (299 Hz), the
+# ones: the reverb LOW CUT at the unit's default (299 Hz), the
 # rhythmic part six hits a bar or fewer and the other sustained or sparse, no part above C6, the chord and pad sounds from the dub pack (centroid
 # under about 1 kHz, so the hats keep 4-10 kHz). The patterns are the factory patterns' steps (engines.c PATTERNS: P03 DUB OFFBEAT, P04 HOUSE STAB,
 # P05 DOT DELAY, P10 MINIMAL 12, P11 DUB HALFTIME, P13 DEEP 332, P15 PAD BREATH, P17 HALF PAD, P01 DUB CHORD, P29 TIED ROOTS), written here as the arps' offsets
 # from the held key ("-" is a tie, which the SEQ arp honours). Left the sixteen: the three acid multis (REESE SWAMP, ACID ETHER, GARGLE ACID), WIRED SNAIL and
 # DEAD BUFFER (FX arps up to C8), WOOD & SKIN (a percussion demo); their records are in the git history (integ bb730b0, tools/factory_multis/M01 M09 M10 M12 M14 M15.bin)
-# and the older scenes in tests/scenes. The records kept move to their new slot byte for byte: DUB CHORD (was M04; its TIDAL SUB line moved up an octave, C2 to C3,
-# and its LEVEL down 4 so that the sub does not sit on the Volca Bass), CELLAR TAPE (was M16), NIGHT ORGAN (M02), PAD SPLIT (M03), WHISPER TIDE (M05),
+# and the older scenes in tests/scenes. The records kept move to their new slot byte for byte: DUB CHORD (was M04; its TIDAL SUB line was moved up an octave, C2 to C3,
+# and its LEVEL down 4, in 0.2.25 for a rule that is gone: b9, the low end is welcome; the reel replaced the line), CELLAR TAPE (was M16), NIGHT ORGAN (M02), PAD SPLIT (M03), WHISPER TIDE (M05),
 # TINE STRINGS (M06), COLD CHAPEL (M13), EERIE SIGNAL (M11), HAZY TENSOR (M08), FINAL REEL (M07); the first start loads M02 DUB CHORD (D5, tide.h TIDE_FIRST_MULTI).
 SEND = ("P_CHOR", "P_DLY", "P_REV")
 MULTIS = [

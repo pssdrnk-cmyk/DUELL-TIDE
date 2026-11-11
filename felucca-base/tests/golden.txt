@@ -37,6 +37,7 @@
 # there, fading over its last block (fm6_core.c FM6_CULL, voice.c track_render), not at msfa's -89 dB threshold with a step: preset/FM6/00..07, sound/FM6/00..07 and
 # 09..13, and song/4track_mix (its FM6 track). Bit for bit as before up to that block; in it the largest difference is 31 of a peak of 12,900 (-52 dB).
 # sound/FM6/14_FM_HAZE, 15_DUB_DRAWBAR and 16_BELL_STAB (lane G's, without a golden until now) are added at today's hashes. Every other render is unchanged.
+# b9 low end (B9-LOWEND), on purpose, 3 renders: the same three FM6 dub voices lost their low shelf (EQLG removed, TRIM 120 / 111 / 111): new hashes, nothing else moved.
 # b8 DRIFT (9fbac6b), on purpose, 8 renders: the arp, the sequencer steps and the click advance on the exact beat grid (a step is the old length
 # or a sample longer), so an arp's notes start a few samples later than the rounded-down grid put them: ANALOG/15_GLASS_SHARDS, ANALOG/18_ARP_PLUCK,
 # LOFI/05_DEAD_BATTERY, TRIO/04_PEBBLE_POP, TRIO/05_CIRCUIT_BEND, PHYS/03_NYLON_GUT, NOISE/09_MODEM and song/4track_mix. The b7 seq.c and midi_grid.c give
@@ -242,9 +243,9 @@ sound/FM6/10_SALOON_KEYS 445bd9fa3ebe904a
 sound/FM6/11_FRETLESS a19737250e635291
 sound/FM6/12_FM_BASS_2 5acd41e7105b5c89
 sound/FM6/13_TUBE_BELLS 5c30e104e5ce4c9c
-sound/FM6/14_FM_HAZE 7b0e72db2250d404
-sound/FM6/15_DUB_DRAWBAR 8ed0166e8b29beff
-sound/FM6/16_BELL_STAB 7f43b7800d603811
+sound/FM6/14_FM_HAZE 5c89549a468e00bf
+sound/FM6/15_DUB_DRAWBAR c885855866f222e9
+sound/FM6/16_BELL_STAB b69b4e158c759dc5
 sound/WAVE/00_PWM_PAD db987798846cb79a
 sound/WAVE/01_VOWEL_PAD 6ec5b11142be6979
 sound/WAVE/02_GLASS_PAD 325f3726eadaac1c
