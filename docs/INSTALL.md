@@ -74,7 +74,12 @@ The installer page has three separate action cards, each with its own button, pr
 - **INSTALL DUELL** (step 5): writes DUELL. Shown only when a DUELL package is found or chosen. The bar says "Writing DUELL".
 - **RETURN TO OFFICIAL FIRMWARE** (the section "Go back to the official firmware"): writes the official M-VAVE firmware back and removes DUELL. It has its own amber border and warning ("This writes the official M-VAVE firmware back. DUELL will be removed. Keep the cable connected until DONE."), and its bar says "Writing official firmware".
 
-While one of them runs, a coloured banner at the top says which ("BACKING UP", "INSTALLING DUELL" or "RETURNING TO THE OFFICIAL FIRMWARE: do not unplug or close this page until it says DONE"), the other two buttons, the file pickers and the checklist are locked (grey, with a note), and the browser asks before the tab is closed. A progress bar appears only in the card that is running. A failure message stays in the card that failed: press the same button again and do not unplug.
+While one of them runs:
+- a coloured banner at the top says which ("BACKING UP", "INSTALLING DUELL" or "RETURNING TO THE OFFICIAL FIRMWARE: do not unplug or close this page until it says DONE")
+- the other two buttons, the file pickers and the checklist are locked (grey, with a note)
+- the browser asks before the tab is closed
+- a progress bar appears only in the card that is running
+- a failure message stays in the card that failed: press the same button again and do not unplug
 
 ## Steps
 1. **Checklist.** Tick the four boxes on the page.
