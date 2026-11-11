@@ -352,6 +352,13 @@ static uint32_t mods_get(void) { return ((uint32_t)ui_idle >> MODS_SHIFT) & MODS
  * (below, DUELL_VELO builds). A clear bit (a new unit, ERASE DATA, every older record) = FOLLOWS PATCH. A device setting: no patch, multi or project holds it */
 #define ui_runkeep (favorites.factory[15][23])
 #define RUNKEEP_SHIFT 1u
+/* b9 MENU > SYSTEM > USB AUDIO (OFF / ON; usb.c usb_audio_switch, menu_items.c usb_serial_apply): bits 3..7 of the same byte [15][23]: the top five bits are a tag (UAUD_TAG, 10100)
+ * and the setting is the tag with bit 3 (UAUD_ON) set. Anything else, which includes a new unit, ERASE DATA and EVERY older record (no tag), reads OFF, the default (owner, b9: the
+ * USB audio input is off unless it is turned on; MIDI, and with it the editor, always work). The tag keeps bytes an old record carried in these bits (the retired FX key map
+ * wrote this byte) from turning it on. A device setting: no patch, multi or project holds it. The other writers of the byte keep bits 3..7 (NOTES LEFT, KEEPS RUNNING) */
+#define UAUD_TAG 0xA0u
+#define UAUD_ON 0x08u
+static uint32_t usb_audio_get(void) { return (ui_runkeep & 0xF8u) == (UAUD_TAG | UAUD_ON); }
 static uint32_t mods_keep_get(void) { return ((uint32_t)ui_runkeep >> RUNKEEP_SHIFT) & 3u; }
 static void mods_apply(void)
 {

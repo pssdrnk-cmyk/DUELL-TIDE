@@ -209,7 +209,7 @@ static int preferences(void)
         host_wire[e - 49] == 0 &&                        /* (no bank since 1.0.3) */
         host_wire[e - 48] == 0x53 && host_wire[e - 47] == 1 && host_wire[e - 46] == 3 &&
         host_wire[e - 45] == 0x50 && host_wire[e - 44] == 1 && host_wire[e - 43] == 3 &&   /* FM6 v2: no bank, preset patches */
-        host_wire[e - 42] == 0x4E && host_wire[e - 41] == 1 && host_wire[e - 40] == 32 &&   /* MENU settings: 33 items (0.2.25 hunt4: USB LEVEL, id 10, removed); was 34 items (0.2.25: DRIVE, id 43, removed; 0.2.23: + WIDTH, DRIVE, ids 42, 43; 0.2.22: + SIDECHAIN P1 CH, P1 NOTE, P2 CH, P2 NOTE, ids 38..41; 0.2.21: + COMP's THRESH, RATIO, ATTACK, RELEASE, ids 34..37; 0.2.19: OUTPUT EQ, id 9, retired; + BASS MONO, id 33; 0.2.14: + PERF LEAVE, id 32); (DUELL 0.2.2: STYLE, LARGE, FX LATCH, HELP retired too; 0.2.9: CPU METER, id 26; 0.2.11: MODE RECALL, id 27; 0.2.14: SCOPE, OVERVIEW retired, GLO > MODULES' four, ids 28..31) */
+        host_wire[e - 42] == 0x4E && host_wire[e - 41] == 1 && host_wire[e - 40] == 33 &&   /* MENU settings: 33 items (b9: USB AUDIO, id 46, added; 0.2.25 hunt4: USB LEVEL, id 10, removed); was 34 items (0.2.25: DRIVE, id 43, removed; 0.2.23: + WIDTH, DRIVE, ids 42, 43; 0.2.22: + SIDECHAIN P1 CH, P1 NOTE, P2 CH, P2 NOTE, ids 38..41; 0.2.21: + COMP's THRESH, RATIO, ATTACK, RELEASE, ids 34..37; 0.2.19: OUTPUT EQ, id 9, retired; + BASS MONO, id 33; 0.2.14: + PERF LEAVE, id 32); (DUELL 0.2.2: STYLE, LARGE, FX LATCH, HELP retired too; 0.2.9: CPU METER, id 26; 0.2.11: MODE RECALL, id 27; 0.2.14: SCOPE, OVERVIEW retired, GLO > MODULES' four, ids 28..31) */
         host_wire[e - 39] == 0x52 && host_wire[e - 38] == 1 && host_wire[e - 37] == 4 &&   /* RATCH */
         host_wire[e - 36] == 0x4C && host_wire[e - 35] == 1 && host_wire[e - 34] == 3 &&   /* 1.1 parameter locks */
         host_wire[e - 33] == 0x41 && host_wire[e - 32] == 1 && host_wire[e - 31] == 0 && host_wire[e - 30] == 1 &&   /* 1.2: 128 */
@@ -883,7 +883,7 @@ static int menu_protocol(void)
     /* DUELL 0.2.14: the new names (ANIMATION, BUTTON HOLD, OUTPUT EQ, STEP KEYS WRITE / ADD, MULTI LOAD KEEPS MODE / SETS MODE), SCALE LEDS in
      * DISPLAY, SCOPE (18) and OVERVIEW (23) retired, HOME OPENS without OVERVIEW; a fresh unit's defaults: KNOB ACCEL ON, USB SERIAL OFF,
      * CLICK REC (settings_persist.c settings_defaults, as persist_boot runs it on a unit with no settings) */
-#define MDN 32u
+#define MDN 33u
     static const char *const WANT[MDN][2] = {
         {"COLOR", 0}, {"ANIMATION", "ON,OFF,IDLE"}, {"LEDS", "OFF,LOW,MEDIUM,MAX"},
         {"BUTTON HOLD", "0.3 s,0.4 s,0.5 s,0.6 s"}, {"KNOB ACCEL", "OFF,ON"},
@@ -904,13 +904,14 @@ static int menu_protocol(void)
         {"ATTACK", "0.1 ms,0.15 ms,0.2 ms,0.3 ms,0.5 ms,0.7 ms,1 ms,1.5 ms,2 ms,3 ms,5 ms,7 ms,10 ms,15 ms,20 ms,30 ms,50 ms,70 ms,100 ms"},
         {"RELEASE", "20 ms,30 ms,50 ms,70 ms,100 ms,150 ms,200 ms,300 ms,500 ms,700 ms,1 s,1.5 s,2 s"},
         {"P1 CH", 0}, {"P1 NOTE", 0}, {"P2 CH", 0}, {"P2 NOTE", 0},   /* (DUELL 0.2.22: ids 38..41, GLO > SIDECHAIN, tab SIDECHAIN; numbers) */
-        {"WIDTH", 0}};                                                /* (DUELL 0.2.23: id 42, GLO > WIDTH, tab MASTER; a number; 0.2.25: id 43, DRIVE, is gone) */
+        {"WIDTH", 0},
+        {"USB AUDIO", "OFF,ON"}};                                     /* (b9: id 46, SYSTEM, the last item; OFF by default) */                                                /* (DUELL 0.2.23: id 42, GLO > WIDTH, tab MASTER; a number; 0.2.25: id 43, DRIVE, is gone) */
         /* (DUELL 0.2.14: GLO > MODULES, ids 28..31, tab MODULES) */
-    static const uint8_t ID[MDN] = {0, 3, 4, 5, 6, 11, 12, 13, 14, 15, 16, 17, 19, 20, 22, 25, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42};   /* (1 STYLE, 2 LARGE, 7 FX LATCH, 8 BPM LOCK, 18 SCOPE,
+    static const uint8_t ID[MDN] = {0, 3, 4, 5, 6, 11, 12, 13, 14, 15, 16, 17, 19, 20, 22, 25, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 46};   /* (1 STYLE, 2 LARGE, 7 FX LATCH, 8 BPM LOCK, 18 SCOPE,
                                                                                                          * 21 MIDI IN, 23 OVERVIEW, 24 HELP: retired) */
-    static const int32_t DEF[MDN] = {-1, 0, 2, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 4400, 0, 0, 1, 1, 1, 1, 0, 8, -17, 0, 80, 40, 10, 36, 10, 36, 100};   /* (0.2.23 WIDTH 100 %; 0.2.14 MODULES: ON; PERF LEAVE: FADE; 0.2.19 BASS MONO: OFF; 0.2.21 COMP: THRESH -17 dB, RATIO 1:1, ATTACK 10 ms, RELEASE 200 ms) */   /* (COLOR: the default palette; 0.2.14: ACCEL ON,
+    static const int32_t DEF[MDN] = {-1, 0, 2, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 4400, 0, 0, 1, 1, 1, 1, 0, 8, -17, 0, 80, 40, 10, 36, 10, 36, 100, 0};   /* (0.2.23 WIDTH 100 %; 0.2.14 MODULES: ON; PERF LEAVE: FADE; 0.2.19 BASS MONO: OFF; 0.2.21 COMP: THRESH -17 dB, RATIO 1:1, ATTACK 10 ms, RELEASE 200 ms) */   /* (COLOR: the default palette; 0.2.14: ACCEL ON,
                                                                                                     * USB SERIAL OFF, CLICK REC) */
-    static const uint8_t TAB[MDN] = {0, 0, 0, 1, 1, 3, 2, 2, 2, 3, 0, 0, 1, 1, 2, 1, 1, 4, 4, 4, 4, 1, 5, 5, 5, 5, 5, 6, 6, 6, 6, 5};   /* DISPLAY CONTROL AUDIO
+    static const uint8_t TAB[MDN] = {0, 0, 0, 1, 1, 3, 2, 2, 2, 3, 0, 0, 1, 1, 2, 1, 1, 4, 4, 4, 4, 1, 5, 5, 5, 5, 5, 6, 6, 6, 6, 5, 3};   /* DISPLAY CONTROL AUDIO
                                                                                                      * SYSTEM (DUELL 0.1: no MIDI tab) */
     static const char *const TABN[7] = {"DISPLAY", "CONTROL", "AUDIO", "SYSTEM", "MODULES", "MASTER", "SIDECHAIN"};   /* (0.2.14: MODULES, no MENU tab: GLO > MODULES; 0.2.19: MASTER, the GLO > MASTER page) */
     int bad = 0, ok = 1;
@@ -928,9 +929,9 @@ static int menu_protocol(void)
         n = menu_desc(i, &it);
         joined[0] = 0;
         for (k = 0; k < it.nnames; k++) { if (k) strcat(joined, ","); strcat(joined, it.names[k]); }
-        ok &= i >= 31u ? n > 10u && it.index == i && it.id == ID[i] && it.kind == 1 && it.min == 0 && it.max == (i == 31u ? 200 : 100) &&
-                         !it.nnames && !strcmp(it.unit, i == 31u ? "%" : "") && !strcmp(it.name, WANT[i][0])   /* (0.2.23: numbers: WIDTH 0..200 %, DRIVE 0..100) */
-              : i >= 27u ? n > 10u && it.index == i && it.id == ID[i] && it.kind == 1 && it.min == (((i - 27u) & 1u) ? 0 : 1) && it.max == (((i - 27u) & 1u) ? 127 : 16) &&
+        ok &= i == 31u ? n > 10u && it.index == i && it.id == ID[i] && it.kind == 1 && it.min == 0 && it.max == 200 &&
+                         !it.nnames && !strcmp(it.unit, "%") && !strcmp(it.name, WANT[i][0])   /* (0.2.23: numbers: WIDTH 0..200 %, DRIVE 0..100) */
+              : i >= 27u && i < 31u ? n > 10u && it.index == i && it.id == ID[i] && it.kind == 1 && it.min == (((i - 27u) & 1u) ? 0 : 1) && it.max == (((i - 27u) & 1u) ? 127 : 16) &&
                          !it.nnames && !it.unit[0] && !strcmp(it.name, WANT[i][0])   /* (0.2.22: numbers: a channel 1..16, a note 0..127) */
               : i == 25u || i == 26u ? n > 10u && it.index == i && it.id == ID[i] && it.kind == 1 && it.min == 0 && it.max == (i == 25u ? 120 : 80) &&
                          !it.nnames && !it.unit[0] && !strcmp(it.name, WANT[i][0])   /* (0.2.24: ATTACK 0..120, RELEASE 0..80 as numbers: the index of a fine time) */
@@ -1053,8 +1054,27 @@ static int menu_protocol(void)
         menu_set(42, 100);
         bad += check("  .. the default again: WIDTH 100 % (the stage off)", wd_sel == 100u);
     }
+    {   /* b9 USB AUDIO: id 46, OFF / ON in the settings byte [15][23] (tag + bit 3); a new unit, ERASE DATA and every older record read OFF */
+        uint8_t keep = favorites.factory[15][23];
+        ok = !usb_audio_get() &&
+             menu_set(46, 1) == 3 && ed_rv(host_wire + 7) == 1 && usb_audio_get() && (favorites.factory[15][23] & 7u) == (keep & 7u) &&
+             favorites.factory[15][23] == (UAUD_TAG | UAUD_ON | (keep & 7u)) &&
+             menu_set(46, 9) == 3 && ed_rv(host_wire + 7) == 1 && usb_audio_get() &&           /* (clamped) */
+             menu_set(46, 0) == 3 && ed_rv(host_wire + 7) == 0 && !usb_audio_get() && favorites.factory[15][23] == (UAUD_TAG | (keep & 7u)) &&
+             menu_set(46, 1) == 3;
+        favorites.factory[15][23] = 0xF8u;              /* bytes an old record carried in these bits (no tag): OFF */
+        ok &= !usb_audio_get() && menu_get(MI_USBAUDIO) == 0u;
+        favorites.factory[15][23] = (uint8_t)(UAUD_ON | 0x10u);   /* the ON bit without the tag: OFF */
+        ok &= !usb_audio_get();
+        favorites.factory[15][23] = (uint8_t)(UAUD_TAG | UAUD_ON);
+        ok &= usb_audio_get() && menu_get(MI_USBAUDIO) == 1u && str_eq(menu_vname(MI_USBAUDIO, 1), "ON") && str_eq(menu_vname(MI_USBAUDIO, 0), "OFF");
+        favorites.factory[15][23] = keep;
+        ok &= !usb_audio_get();
+        bad += check("MENU_SET 46 (USB AUDIO): OFF by default, set ON / OFF (clamped), the byte's other bits kept, a byte without the tag reads OFF (older records)", ok);
+        menu_set(46, 1);
+    }
     for (i = 0; i < MDN; i++) {                         /* MENU_DESC reads them back */
-        static const int32_t SET[MDN] = {2, 1, 1, 3, 1, 1, 2, 0, 2, 1, 1, 2, 1, 1, 4387, 1, 1, 0, 0, 1, 1, 1, 5, -10, 5, 7, 9, 10, 36, 10, 36, 100};   /* (0.2.25: HOME OPENS MODE, 1: MIXER is gone) */
+        static const int32_t SET[MDN] = {2, 1, 1, 3, 1, 1, 2, 0, 2, 1, 1, 2, 1, 1, 4387, 1, 1, 0, 0, 1, 1, 1, 5, -10, 5, 7, 9, 10, 36, 10, 36, 100, 1};   /* (b9 USB AUDIO ON; 0.2.25: HOME OPENS MODE, 1: MIXER is gone) */
         menu_desc(i, &it);
         ok &= it.value == SET[i];
     }
