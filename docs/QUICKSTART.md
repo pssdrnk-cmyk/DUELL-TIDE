@@ -45,7 +45,10 @@ Turn **SELECT** (or press **OCT+** / **OCT-**) to go through it; on the two ques
   - Each part's cell reads MUTE and is lit in the part's colour while the part is muted.
   - Hold GLO and press **OCT-** or **OCT+** to mute or unmute part 1 or part 2.
   - SPACE is on the PERFORM page.
-- **TEMPO** is on the GLO TEMPO page, the one after MIXER (a tap of GLO opens MIXER first). To set the levels and pans of both parts from any page hold GLO: the keys play notes, knob 1 is LEVEL 1, knob 2 LEVEL 2, knob 3 PAN 1, knob 4 PAN 2 (in DUEL the pans are fixed and not shown). With GLO held, **OCT-** mutes or unmutes part 1 and **OCT+** part 2; each cell reads MUTE, lit in the part's colour while muted (the mutes moved to these keys in 0.2.24; before, knobs 1 and 2 were the mutes).
+- **TEMPO** is on the GLO TEMPO page. It is the one after MIXER (a tap of GLO opens MIXER first). To set the levels and pans of both parts from any page hold GLO:
+  - The keys play notes.
+  - Knob 1 is LEVEL 1, knob 2 LEVEL 2, knob 3 PAN 1, knob 4 PAN 2 (in DUEL the pans are fixed and not shown).
+  With GLO held, **OCT-** mutes or unmutes part 1 and **OCT+** part 2. Each cell reads MUTE, lit in the part's colour while muted. The mutes moved to these keys in 0.2.24; before, knobs 1 and 2 were the mutes.
 - **OCT-/OCT+** change octave when you let go of them; in dialogs OCT- means back and OCT+ means do it. Hold **OCT-** and turn a knob to reset that knob's card to its default (the octave then does not change).
 
 ## The menu
