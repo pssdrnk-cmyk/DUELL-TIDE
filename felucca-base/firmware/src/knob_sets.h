@@ -11,7 +11,7 @@
 enum { KS_STD, KS_DB, KS_HS, KS_TC, KS_AC, KS_EL, KS_AM, KS_N };   /* the sets: STD (no prefix) and the six categories, in the order of KN_TAG */
 /* the parameters the macros can move (P_DKSRC is no entry: PUMP turns an OFF ducker to PUMP, ui_input.c morph_knob, and OCT- puts the sound's source back) (a macro entry names one by its place here); the first KN_NP are the part's own (track_t p[]), the rest globals (song.g[]) that move
  * once, not once per part. The sound's values of all of them are taken when a sound is loaded (morph.c h1_take) for OCT- + the knob */
-static const uint8_t KN_ID[] = {P_FREEA, P_FREEB, P_DLY, P_REV, P_ED_FLT, P_ATK, P_DEC, P_REL, P_LRATE, P_LD_FLT, P_DKDEP, P_AGATE, P_SGATE, P_APROB, P_DIST, P_CHOR, P_DKSRC,
+static const uint8_t KN_ID[] = {P_FREEA, P_FREEB, P_DLY, P_REV, P_E2FLT, P_ATK, P_DEC, P_REL, P_LRATE, P_LD_FLT, P_DKDEP, P_AGATE, P_SGATE, P_APROB, P_DIST, P_CHOR, P_DKSRC,
                                 G_DFDBK, G_DCOLOR, G_DTIME};
 #define KN_NP 17u                                              /* (the part's own parameters; a place from here on is a global) */
 #define KN_NID ((uint32_t)sizeof KN_ID)

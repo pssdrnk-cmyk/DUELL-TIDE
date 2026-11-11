@@ -91,21 +91,27 @@ def alternatives(name, desc):
     E0 = list(range(desc["P_E0"][0], min(desc["P_E0"][1], desc["P_E0"][0] + 15) + 1)) if "P_E0" in desc else []
     if name in G_LFO1:
         alts.append(("LFO 1 to pitch, cutoff and level up", ["P_LD_PIT=63", "P_LD_FLT=63", "XW_BASE + X_LFO1LVL=127", "P_LTRIG=0"]))
+        if name == "P_LRATE":                # b9: with SYNC on the tempo division replaces RATE (the card is hidden then, ui_draw.c card_hidden_vp): RATE is tried free-running
+            alts.append(("LFO 1 free-running (SYNC off) to pitch and level", ["P_LSYNC=0", "P_LD_PIT=63", "XW_BASE + X_LFO1LVL=127", "P_LTRIG=0"]))
     if name in G_LFO2:
         alts.append(("LFO 2 to pitch, cutoff and level up", ["P_L2PIT=63", "P_L2FLT=63", "XW_BASE + X_LFO2LVL=127"]))
+        if name == "P_L2RATE":
+            alts.append(("LFO 2 free-running (SYNC off), matrix slot 1 to pitch", ["P_L2SYNC=0", "P_M1SRC=12", "P_M1DST=1", "P_M1AMT=63", "XW_BASE + X_LFO2LVL=127", "P_L2TRIG=0"]))
         alts.append(("LFO 2 routed to pitch in matrix slot 1 (MS_LFO2 12 -> MD_PITCH 1)", ["P_M1SRC=12", "P_M1DST=1", "P_M1AMT=63", "XW_BASE + X_LFO2LVL=127", "P_L2TRIG=0"]))
     if name in G_ENV2:
         alts.append(("ENV 2 to cutoff", ["P_E2FLT=63"]))
         alts.append(("ENV 2 routed to cutoff in matrix slot 1 (MS_ENV2 11 -> MD_CUT 2)", ["P_M1SRC=11", "P_M1DST=2", "P_M1AMT=63"]))
+        if name == "P_E2REL":                # b9: RELEASE 2 starts from the level ENV 2 has when the key goes up; the factory sounds' SUSTAIN 2 is 0, so there is nothing to release
+            alts.append(("ENV 2 to cutoff down, SUSTAIN 2 up, AMP REL long", ["P_E2FLT=-63", "P_E2SUS=127", "P_REL=127", "P_FREEA=40"]))
     if name in G_INS or name == "P_ITYPE":
         for v in range(1, desc.get("P_ITYPE", (0, 6, 0, 0))[1] + 1):
             alts.append(("INSERT type %d, mix full" % v, ["P_ITYPE=%d" % v, "P_IMIX=127"]))
     if name in ("P_EQLF", "P_EQLG"):
-        alts.append(("EQ low band up", ["P_EQLG=127", "P_EQLF=40"]))
+        alts.append(("EQ low band up", ["P_EQLG=12", "P_EQLF=-24"]))
     if name in ("P_EQMF", "P_EQMQ", "P_EQMG"):
-        alts.append(("EQ mid band up", ["P_EQMG=127", "P_EQMF=64"]))
+        alts.append(("EQ mid band up", ["P_EQMG=12", "P_EQMF=0"]))
     if name in ("P_EQHF", "P_EQHG"):
-        alts.append(("EQ high band up", ["P_EQHG=127", "P_EQHF=64"]))
+        alts.append(("EQ high band up", ["P_EQHG=12", "P_EQHF=-24"]))
     if name in G_ARP:
         alts.append(("ARP on (mode 1), transport on", ["P_AMODE=1", "--transport on"]))
     if name == "P_AORDER":
@@ -120,7 +126,9 @@ def alternatives(name, desc):
         alts.append(("SUB OSC level up", ["XW_BASE + X_SUBLVL=100"]))
     if name in ("XW_BASE + X_CYMODE", "XW_BASE + X_CYFALL", "XW_BASE + X_CYSYNC", "XW_BASE + X_CYRISE", "XW_BASE + X_CYCUT2"):
         alts.append(("CYCLE ENV routed to cutoff in matrix slot 1 (MS_CYCLE 15 -> MD_CUT 2)", ["P_M1SRC=15", "P_M1DST=2", "P_M1AMT=63"]))
-        alts.append(("CYCLE ENV to TWIN CUTOFF (TWIN FILTER on)", ["P_TWTYPE=1", "P_CUT2=40", "XW_BASE + X_CYCUT2=63"]))
+        if name in ("XW_BASE + X_CYFALL", "XW_BASE + X_CYMODE"):   # b9: a factory sound can run a slow, tempo-synced cycle (WAVE: RISE 113, FALL 113): the fall never comes in one bar. Short RISE, SYNC off, to pitch
+            alts.append(("CYCLE ENV to pitch, RISE 0, SYNC off", ["XW_BASE + X_CYPIT=63", "XW_BASE + X_CYRISE=0", "XW_BASE + X_CYSYNC=0", "XW_BASE + X_CYFALL=20"]))
+        alts.append(("CYCLE ENV to TWIN CUTOFF (TWIN FILTER on)", ["P_TWTYPE=1", "P_CUT2=-20", "XW_BASE + X_CYCUT2=63"]))
     if name in ("P_CHRD", "P_SPRD"):
         alts.append(("POLY voice", ["P_VOICE=0"]))
     if name in ("P_DETUNE", "P_SPRD"):
@@ -130,9 +138,10 @@ def alternatives(name, desc):
     if name == "P_GLMODE":
         alts.append(("MONO voice, glide up", ["P_VOICE=1", "P_GLIDE=60"]))
     if name in G_TWIN:
-        alts.append(("TWIN FILTER on, CUTOFF 2 low", ["P_TWTYPE=1", "P_CUT2=40"]))
+        alts.append(("TWIN FILTER on, CUTOFF 2 low", ["P_TWTYPE=1", "P_CUT2=-20"]))
+        alts.append(("TWIN FILTER on, CUTOFF 2 low, ENV 2 sustained, LFO 2 level up", ["P_TWTYPE=1", "P_CUT2=-20", "P_E2SUS=127", "XW_BASE + X_LFO2LVL=127", "P_L2TRIG=0"]))
     if name == "P_TWTYPE":
-        alts.append(("CUTOFF 2 low", ["P_CUT2=40"]))
+        alts.append(("CUTOFF 2 low", ["P_CUT2=-20"]))
     if name == "P_CUT2":
         alts.append(("TWIN FILTER on", ["P_TWTYPE=1"]))
     if name in SHAPE:
@@ -172,7 +181,7 @@ class Runner:
         t = o.split()
         if t[0] == "same":
             return (0.0, 0.0, float(t[1]))
-        return (abs(float(t[2])), abs(float(t[3])), float(t[5]))
+        return (max(abs(float(t[2])), 1e-6), max(abs(float(t[3])), 1e-6), float(t[5]))     # (b9: samples differ, so not DEAD even when the change prints as 0.000 dB: NEAR)
 
 
 def main():

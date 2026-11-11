@@ -33,6 +33,8 @@ On every engine the EQ gains (EQLOW, EQMID, EQHI) and REVERB SIZE (RSIZE: the SP
 
 Four more destinations, the AMP ENV times (AATK, ADEC, ASUS, AREL; shown AMP / ATTACK .. on two lines). They do nothing on FM6 (its operators have their own envelopes): not offered there (reason OWN ENV).
 
+b9: for the same reason AMP DEST's PITCH, TIMBRE (SHP) and SATURATION cards, which take ENV 1, are dimmed on FM6 (ui_draw.c `card_hidden_vp`; the editor's hide rule says OWN ENV). Their stored values keep loading.
+
 ## PITCH and CUTOFF depths
 
 - **CUTOFF** (the FLT depths and the matrix's CUT) always does something.

@@ -5,28 +5,21 @@ The reasons are written by hand from the code (file:line); a dead parameter with
 import csv, collections, sys
 
 RETIRED = ("firmware: retired card. The engine no longer reads it: mod_legacy_move (mod.c:484-500) turns a stored value into a matrix slot on load and sets the card to 0; "
-           "morph.c lists it T_GONE on every engine. Whatever still writes it (a macro, a knob row, a morph) changes nothing.")
-OWNENV = "engine: FM6 has ownenv = 1 (core.h engine_t): its own operator envelopes are the amplitude, ENV 1 is 0, so the AMP ENV pages (and the amp-env saturation) do nothing on FM6."
+           "morph.c lists it T_GONE on every engine. Whatever still writes it (a macro, a knob row, a morph) changes nothing. b9: no page, no shipped MIDI-map line and no knob set shows or moves it any more "
+           "(the genre macros' ENV cutoff is P_E2FLT, the filter envelope's depth); a MIDI map saved with one lists it as doing nothing (midi_learn.c).")
+OWNENV = "engine: FM6 has ownenv = 1 (core.h engine_t): its own operator envelopes are the amplitude, ENV 1 is 0, so the AMP ENV pages (and the amp-env saturation) do nothing on FM6. b9: AMP DEST's PITCH, TIMBRE and SATURATION cards are dimmed on FM6 (ui_draw.c card_hidden_vp; the editor says OWN ENV)."
 REASONS = {
     "P_ED_FLT": [(None, RETIRED)], "P_E2SHP": [(None, RETIRED)], "P_L2PIT": [(None, RETIRED)], "P_L2FLT": [(None, RETIRED)], "P_L2SHP": [(None, RETIRED)],
-    "XW_BASE + X_SUBHARM": [(None, "firmware: never read. chain_sub.c:11: 'nothing reads or shows it since 2026-10-21, the octave-copy code is gone'; the id stays for the stored format.")],
+    "XW_BASE + X_SUBHARM": [(None, "firmware: never read. chain_sub.c:11: 'nothing reads or shows it since 2026-10-21, the octave-copy code is gone'; the id stays for the stored format. b9: CC 17 left the shipped MIDI map; a saved map's line is listed as doing nothing (midi_learn.c).")],
     "P_ED_PIT": [(("FM6",), OWNENV)],
     "XW_BASE + X_ESAT": [(("FM6",), OWNENV)],
     "P_ED_SHP": [(("FM6",), OWNENV), (("LOFI",), "engine: docs/MOD_INERT_TABLE.md: LOFI's SHAPE moves the pulse width only on the PLS wave; LOFI's wave slot was not varied here (it is not E0): not claimed dead for PLS.")],
     "P_LD_SHP": [(("LOFI",), "engine: as ED_SHP on LOFI (MOD_INERT_TABLE: SHAPE needs the PLS wave); not varied here.")],
     "P_E2": [(("LOFI",), "engine: MOD_INERT_TABLE: LOFI's DUTY has no effect with WAVE TRI, SAW, NOIS (PLS takes its width, WRAM its table): the base sound's wave.")],
-    "P_E2REL": [(("FM6",), OWNENV), (("LOFI", "VOICE", "WHEEL"), "no reason traced yet: ENV 2 routed to cutoff in matrix slot 1 changes nothing with REL2 at min or max on these engines (their filter route may not take ENV 2).")],
+    "P_E2REL": [(("FM6",), OWNENV), (("LOFI", "VOICE", "WHEEL"), "harness: REL2 starts from the level ENV 2 has when the key goes up, and the factory sounds' SUS2 is 0; the harness now also tries SUS2 up (alternatives()), where REL2 is live.")],
     "P_GLIDE": [(("WAVE",), "harness: glide needs a second note after the first; a held single note cannot show it.")],
     "XW_BASE + X_CYMODE": [(None, "harness: cycle.c:81 LOOP vs ONCE differ only after the first full cycle; one bar of render may not complete it. Not claimed dead.")],
-    "XW_BASE + X_CYFALL": [(("WAVE",), "no reason traced yet (CYCLE ENV routed to cutoff in slot 1 changes nothing on WAVE).")],
-    "P_EQHG": [(None, "no reason traced yet: EQ HIGH gain with HIGH freq 64 changes nothing on these engines' base sounds (little energy there?).")],
-    "P_EQHF": [(None, "no reason traced yet (see EQHG).")],
-    "P_LRATE": [(None, "no reason traced yet: LFO 1 RATE moves nothing with LFO 1 to pitch and cutoff up on these engines.")],
-    "P_L2RATE": [(None, "no reason traced yet: LFO 2 RATE moves nothing with LFO 2 routed to pitch (matrix slot 1) on WAVE.")],
-    "P_DETUNE": [(None, "no reason traced yet: DETUNE moves nothing on LOFI (POLY and UNISON tried).")],
-    "XW_BASE + X_E2BLD": [(None, "no reason traced yet: ENV 2 to FILTER BLEND with the twin filter on changes nothing on LOFI / WHEEL.")],
-    "XW_BASE + X_L2RES2": [(None, "no reason traced yet (twin filter on, LFO 2 routed).")],
-    "XW_BASE + X_KTRK2": [(None, "no reason traced yet: TWIN KEY TRK 2 changes nothing on PHYS with the twin filter on.")],
+    "XW_BASE + X_CYFALL": [(("WAVE",), "harness: see the follow-up list in b9 (CYCLE ENV FALL on WAVE).")],
 }
 KINDS = ("firmware", "engine", "harness")
 
@@ -76,6 +69,11 @@ def main():
     for (name, label, page), v in sorted(near.items(), key=lambda x: -len(x[1])):
         eng = "all 10" if len(v) == 10 else "%d: %s" % (len(v), ", ".join(e for e, _, _ in v[:5]) + (" ..." if len(v) > 5 else ""))
         L.append("| %s | %s | %s | %s | %.2f / %.3f |" % (name, label, page, eng, max(a for _, a, _ in v), max(b for _, _, b in v)))
+    L += ["", "## b9 follow-up of the first run (section 'no reason traced yet')", "",
+          "- LFO 1 / LFO 2 RATE on NOISE / WAVE: the base sounds run SYNC on; with SYNC the tempo division replaces RATE and the card is hidden (ui_draw.c card_hidden_vp, editor 'SYNC ON'). The harness now tries SYNC off for RATE.",
+          "- EQ HIGH gain / HI_HZ on ANALOG, WHEEL: the harness set HIGH FREQ 64, past its range (-24..12); with in-range values the bands move the bass sounds by well under 0.5 dB (the sounds have no energy up there): NEAR, not a bug.",
+          "- P_DETUNE on LOFI: a real bug. eng_lofi.c left out the voice's own fine offset (v->fine) that UNISON DETUNE sets (voice.c mono_play), so DTUNE did nothing on LOFI. Fixed in b9; LOFI sounds outside UNISON render bit for bit as before.",
+          "- REL2 on LOFI / VOICE / WHEEL, FBLND-from-ENV-2 on LOFI / WHEEL, TRES on WHEEL, KTRK2 on PHYS: harness contexts (SUS2 0, TWIN cutoff offset +36 = fully open); with SUS2 up and the twin cutoff low they are live.", ""]
     L += ["", "Many NEAR ones are small by design (PAN on a centred sound, sends at 0, glide modes with one note). The list is the place to look for a parameter that should do more."]
     open(sys.argv[2], "w", newline="\n").write("\n".join(L) + "\n")
     print("wrote", sys.argv[2])
