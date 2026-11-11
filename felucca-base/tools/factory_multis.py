@@ -160,12 +160,12 @@ MULTIS = [
                      steps="1A - -6A - -4A - -6A -", bseed=25255, amt=30, b={"P_FREEA": 50, "P_E2FLT": 34}),
                 dict(sound="BELL STAB", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=110, P_AHOLD="OFF", P_CHRD="OFF", P_CHOR=50, P_SPRD=50, P_DLY=70, P_REV=44, P_LEVEL=94),
                      steps=". . 16A . 13 . . 11 . . 8 . . 11 13 .", bseed=64940, amt=30, b={"E:MLVL": 0})]),
-    dict(slot=9, name="MINIMAL 12", mode="LAYER",
-         what="minimal techno: one chord sound on a twelve-step loop against the bar (A minor and the G minor a whole tone under it, home again every three bars), ringing into a dotted echo, over a dark fog pad holding A3 in fifths (128 BPM)",
-         g=dict(G_BPM=128, G_DTIME="8D", G_DFDBK=45, G_DMIX=71, G_DMODE="DIGI", G_RTYPE="ROOM", G_RSIZE=70, G_RDAMP=64),
-         parts=[dict(sound="SOUL STAB", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=70, P_AHOLD="OFF", P_CHRD="MIN", P_VOIC="CLOSE", P_REL=64, P_SPRD=50, P_DKSRC="PUMP", P_DKRATE="1/4", P_DKDEP=20,
-                                                  P_CHOR=60, P_DLY=72, P_REV=50, P_LEVEL=104),
-                     steps="-3A . . -3 . -5 . . -3 . . -5A", poly=True, bseed=47481, amt=30, b={"P_E2DEC": 66, "P_FREEB": 22}),
+    dict(slot=9, name="HYPNO 303", mode="LAYER",
+         what="hypnotic acid techno, A minor, written notes (it stays in its key): a 303 square line of fifteen 16ths against the bar (mostly A, accents on 1, 6, 10 and 14, octave pops on 4 and 10, the flat seventh on 8, one slide from C into the accent on 14), heavily distorted, its filter opening slowly by itself, home again every fifteen bars, ringing into a dotted echo over a dark fog pad holding A3 in fifths (128 BPM)",
+         g=dict(G_BPM=128, G_DTIME="8D", G_DFDBK=58, G_DMIX=80, G_DMODE="DIGI", G_RTYPE="ROOM", G_RSIZE=70, G_RDAMP=64),
+         parts=[dict(sound="SQUELCH", set={"P_AMODE": "OFF", "P_SGATE": 74, "E:WAVE": 8, "P_FREEA": 30, "P_FREEB": 100, "P_E2FLT": 55, "P_E2DEC": 78, "P_E2ATK": 15, "P_DIST": 75,
+                                           "P_CHOR": 30, "P_SPRD": 40, "P_DLY": 45, "P_REV": 20, "P_LEVEL": 112},
+                     steps="n45A n45 n45 n57 n45 n45A n45 n43 n45 n57A n45 n45 n48S n45A n45", len=15, bseed=20216, amt=30, b={"P_FREEA": 48}),
                 dict(sound="FOG BANK", set=dict(P_AMODE="SEQ", P_ARATE="2BAR", P_AGATE=127, P_AHOLD="OFF", P_CHRD="POW", P_VOIC="CLOSE", P_FREEA=40, P_DLY=30, P_REV=60, P_LEVEL=94),
                      steps="-3 -", len=2, bseed=26818, amt=30, b={"P_FREEA": 42})]),
     # ---- 10-16: colour: the owner's pads and textures, kept byte for byte (tools/owner_multis.py; their old slots in brackets) ----
@@ -195,20 +195,22 @@ MULTIS = [
                 dict(sound="CHOIR LOFT", set=dict(P_AMODE="SEQ", P_ARATE="4BAR", P_AGATE=127, P_AHOLD="OFF", P_CHRD="POW", P_VOIC="CLOSE", P_ITYPE="PHASER", P_IA=30, P_IB=80, P_IC=50, P_IMIX=90,
                                                    P_REV=70, P_LEVEL=97),
                      steps="-7 - -9 -14", len=4, bseed=43134, amt=30, b={"P_IB": 110, "P_FREEA": 56})]),
-    dict(slot=10, name="SEVEN LOOP", mode="LAYER",
-         what="hypnotic techno, D minor: a resonant saw ping on a loop of seven 16ths against the bar (home again every seven bars), its filter riding slowly by itself, over an iron ring-mod drone holding D in fifths, a whole-bar echo (130 BPM)",
-         g=dict(G_BPM=130, G_DTIME="1/1", G_DFDBK=50, G_DMIX=64, G_DMODE="PING", G_RTYPE="HALL", G_RSIZE=96, G_RDAMP=61),
-         parts=[dict(sound="HOLLOW POP", set={"P_AMODE": "SEQ", "P_ARATE": "1/16", "P_AGATE": 90, "P_AHOLD": "OFF", "E:WAVE": 0, "P_E2ATK": 48, "P_E2DEC": 77, "P_DEC": 78, "P_SUS": 0, "P_REL": 66,
-                                              "P_FREEA": 36, "P_FREEB": 24, "P_LRATE": 0, "P_LD_FLT": 14, "P_CHOR": 55, "P_SPRD": 50, "P_DLY": 56, "P_REV": 34, "P_LEVEL": 104},
-                     steps="2A . 2 . 5 . .", len=7, bseed=25230, amt=30, b={"P_FREEA": 56, "P_FREEB": 40, "P_DEC": 86}),
-                dict(sound="IRON WORKS", set=dict(P_AMODE="SEQ", P_ARATE="4BAR", P_AGATE=127, P_AHOLD="OFF", P_CHRD="POW", P_VOIC="CLOSE", P_DLY=30, P_REV=70, P_LEVEL=100),
-                     steps="-10 -", len=2, bseed=20216, amt=30, b={"P_FREEA": 60})]),
+    dict(slot=10, name="TWO 303S", mode="LAYER",
+         what="acid techno, D minor, the Hardfloor / Josh Wink way: two distorted 303s and no pad, a saw line (16 steps, accents before the kick, a slide up into an accent and an octave drop) hard left against a square line (13 steps, answering in the saw's rests) hard right, so they meet again only every thirteen bars, the long dotted echo carrying the gaps (130 BPM, straight, gate 58 %)",
+         g=dict(G_BPM=130, G_DTIME="8D", G_DFDBK=66, G_DMIX=80, G_DMODE="PING", G_RTYPE="ROOM", G_RSIZE=60, G_RDAMP=64),
+         parts=[dict(sound="TIDAL SUB", set={"P_AMODE": "OFF", "P_SGATE": 74, "E:WAVE": 7, "P_ATK": 0, "E:MIX": 0, "P_SUS": 110, "P_REL": 100, "P_GLIDE": 55, "P_GLMODE": 1, "P_FREEA": 30, "P_FREEB": 100, "P_E2FLT": 63, "P_E2DEC": 78, "P_E2ATK": 15,
+                                               "P_DIST": 72, "P_PAN": -56, "P_CHOR": 0, "P_SPRD": 0, "P_DLY": 70, "P_REV": 20, "P_LEVEL": 109},
+                     steps="n38 . n38 n45A . n38 n41S n43A . n38 n38 n45A . n50S n38 n48A", bseed=20216, amt=30, b={"P_FREEA": 52}),
+                dict(sound="SQUELCH", set={"P_AMODE": "OFF", "P_SGATE": 74, "E:WAVE": 8, "E:MIX": 0, "P_REL": 100, "P_FREEA": 34, "P_FREEB": 92, "P_E2FLT": 58, "P_E2DEC": 74, "P_E2ATK": 15,
+                                           "P_DIST": 72, "P_PAN": 56, "P_CHOR": 0, "P_SPRD": 0, "P_DLY": 70, "P_REV": 20, "P_LEVEL": 109},
+                     steps=". n57 . . n50A . n53S n55 n50A . . n60 n50A", len=13, bseed=26818, amt=30, b={"P_FREEA": 56})]),
     dict(slot=11, name="ACID LINES", mode="LAYER",
-         what="deep acid, A minor, written notes (it stays in its key): a resonant saw line with slides (S: held into the next step, no retrigger, a 54 ms glide) and accents, every unslid note sweeping its filter shut, gate 58 %, over a slow dark pad holding A minor 7, F major 7 and G 6 (124 BPM)",
-         g=dict(G_BPM=124, G_DTIME="8D", G_DFDBK=50, G_DMIX=71, G_DMODE="PING", G_RTYPE="HALL", G_RSIZE=70, G_RDAMP=64),
-         parts=[dict(sound="SQUELCH", set=dict(P_AMODE="OFF", P_SGATE=74, P_FREEB=90, P_E2FLT=63, P_E2DEC=72, P_GLIDE=55, P_DIST=48, P_CHOR=35, P_SPRD=40, P_DLY=45, P_REV=20, P_LEVEL=108),
-                     steps="n45A n45 . n48S n50 . n45A n43S n45 . n45 n48A . n43S n45 n52AS", bseed=20216, amt=30, b={"P_FREEA": 46, "P_FREEB": 104, "P_E2DEC": 80, "P_DIST": 70}),
-                dict(sound="DEEP BLUE", set=dict(P_AMODE="OFF", P_SDIV="1/1", P_SGATE=127, P_ATK=84, P_CHOR=80, P_REV=70, P_LEVEL=100),
+         what="Chicago acid house, E minor: a 303 saw line (ACID wave) of sixteen 16ths, accents on the off-beat eighths, three slides into accents (one an octave down, the bend), a resonant filter that snaps shut on every plain note and a hand on the cutoff in the ride; under it a slow dark pad holding A minor 7, F major 7 and G 6, its sends feeding the dotted echo (122 BPM, straight)",
+         g=dict(G_BPM=122, G_DTIME="8D", G_DFDBK=60, G_DMIX=80, G_DMODE="PING", G_RTYPE="PLATE", G_RSIZE=50, G_RDAMP=64),
+         parts=[dict(sound="SQUELCH", set={"P_AMODE": "OFF", "P_SGATE": 74, "E:WAVE": 7, "E:MIX": 0, "P_FREEA": 28, "P_FREEB": 95, "P_E2FLT": 63, "P_E2DEC": 80, "P_E2ATK": 15,
+                                            "P_GLIDE": 55, "P_DIST": 45, "P_CHOR": 35, "P_SPRD": 40, "P_DLY": 45, "P_REV": 20, "P_LEVEL": 115},
+                     steps="n40 n40 n52A n40 . n43S n45A n40 n40 n52S n40A . n41 n40S n43A .", bseed=20216, amt=30, b={"P_FREEA": 50, "P_FREEB": 108, "P_E2DEC": 86}),
+                dict(sound="DEEP BLUE", set=dict(P_AMODE="OFF", P_SDIV="1/1", P_SGATE=127, P_ATK=84, P_CHOR=80, P_DLY=80, P_REV=70, P_LEVEL=100),
                      steps="n57+60+64+67v90 - n53+57+60+64v90 n55+59+62+64v90", len=4, bseed=26818, amt=30, b={"P_FREEA": 58})]),
     dict(slot=12, name="ROBOT FUNK", mode="LAYER",
          what="electro, G minor: a round ladder-filter bass on the electro kick's own rhythm (steps 1, 7, 11, 14, one octave jump a bar), each note closing its filter, under a vowel-table choir in bare fifths holding every bar, its vowel moving slowly: G for two bars, B flat, F (128 BPM, straight)",
@@ -614,7 +616,11 @@ def check(snd=None):
         err += check_record(m, b, by_idx, P)
         if not m.get("stress"):
             snds = (m["parts"][0]["sound"], m["parts"][1]["sound"])
-            entries.append((m["slot"], m["name"], b[4], snds, b[-1], (cat[snds[0]], cat[snds[1]]), bool(m.get("owner"))))
+            kinds = [cat[x] for x in snds]
+            for t, p in enumerate(m["parts"]):      # (b8: an ANALOG part set to WAVE 7 ACID / 8 ACID SQR is another sound and another kind (ANALOG/ACID: a 303), not the saw bass it is loaded from)
+                if p.get("set", {}).get("E:WAVE") in (7, 8):
+                    snds, kinds[t] = snds[:t] + ("%s+WAVE%d" % (snds[t], p["set"]["E:WAVE"]),) + snds[t + 1:], (kinds[t][0], "ACID")
+            entries.append((m["slot"], m["name"], b[4], snds, b[-1], tuple(kinds), bool(m.get("owner"))))
     for m in SPARE:                                   # (the spare records exist and name their sounds)
         for t, p in enumerate(m["parts"]):
             if p.get("steps"):

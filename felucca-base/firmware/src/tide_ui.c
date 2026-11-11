@@ -133,6 +133,20 @@ static const char *tide_tl_keep(track_t *t, uint64_t was, uint32_t len)
     return sq && snd ? "KEPT" : sq ? "SEQ KEPT" : "SOUND KEPT";
 }
 
+/* the SAVE dialog (ui_draw.c draw_confirm; trk2 2 = both parts): SAVE stores the sound as loaded, not what JOURNEY moved the heard end to (KEEP freezes what is
+ * heard); 1 when a part it is about to store plays a factory sound MORPH TO or JOURNEY put there (the footer's name for it, tide_part_name): the dialog says
+ * so, as long as it is open (1.0.0-b8) */
+static int32_t tide_heard_to(uint32_t pi);
+static void tide_save_note(int32_t w)
+{
+    uint32_t t = ui.confirm_trk;
+    if (tide_heard_to(t & 1u) >= 0 || (t >= 2u && tide_heard_to(1) >= 0)) {   /* (t 2: both parts; part 0 asked first, then part 1) */
+        const char *s = "SAVES THE LOADED SOUND\0KEEP FIRST = AS HEARD";   /* (two lines in one string) */
+        for (t = 0; t < 2u; t++, s += 23)
+            cv_text_in(0, (int32_t)t * 15, w, &AF_S, s, T_MID, T_BG);
+    }
+}
+
 /* LINK (TARGET BOTH): the MORPH fader moved by hand to v moves the SEQ faders of mask to v too (ui_input.c morph_act) */
 static void tide_link(uint32_t mask, uint32_t v)
 {
@@ -151,24 +165,24 @@ static uint8_t jl_sel;                                   /* the row picked (K1) 
 static void morph_act(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi);   /* (ui_input.c) */
 static void tide_pick_mode(void) { jl_sel = JL_MODE; }   /* HOME OPENS = MODE (ui.c go_main_to): TIDE SETTINGS with the PLAY MODE row picked */
 
-/* STYLE: one move sets the nine values below together. MODE and ARC are rows, TIME and WAIT AUTO TIDE's knobs; VARY, TURNS, POLY, SYNC (OFFBEAT) and WASH
- * are the style's alone (1.0.0-b7, MR8: no rows; the engine reads them as before). TARGET and ROLL TYPE choose what TIDE may change, not the genre, and stay.
+/* STYLE: one move sets the eight values below together. MODE and ARC are rows, TIME and WAIT AUTO TIDE's knobs; VARY, POLY, SYNC (OFFBEAT) and WASH
+ * are the style's alone (1.0.0-b7, MR8: no rows; the engine reads them as before; TURNS is gone since 1.0.0-b8: see TS_TURNS_OLD). TARGET and ROLL TYPE choose what TIDE may change, not the genre, and stay.
  * A hand edit of MODE, TIME, WAIT or ARC turns it into CUSTOM (tide_settings); CUSTOM itself changes nothing and keeps the style values it had.
- * mode, time (index), wait (index), VARY, TURNS, POLY, SYNC, ARC, WASH */
+ * mode, time (index), wait (index), VARY, POLY, SYNC, ARC, WASH */
 enum { STY_DUB, STY_DEEP, STY_MINIMAL, STY_AMBIENT, STY_PEAK, STY_DRONE, STY_CUSTOM };   /* (CUSTOM was 5 until 1.0.0-b4: a stored 5 is read as DRONE only if its rows are DRONE's, else CUSTOM; tide_settings) */
-static const uint8_t STY[6][9] = {
-    {GM_WANDER, 4, 2, 0, 2, 1, 1, 1, 0},                 /* DUB: the showcase (the no-record rows) with LEAD and a RISE; WANDER keeps the multi's own sounds (1.0.0-b7, MR1: JOURNEY before) */
-    {GM_WANDER, 5, 3, 0, 1, 0, 1, 1, 1},                 /* DEEP */
-    {GM_WANDER, 3, 0, 1, 2, 2, 2, 0, 0},                 /* MINIMAL */
-    {GM_JOURNEY, 6, 4, 0, 0, 0, 0, 0, 3},                /* AMBIENT: no groove tricks, so POLY OFF (1.0.0-b7, MR1: GENTLE before) */
-    {GM_JOURNEY, 3, 0, 1, 2, 1, 2, 2, 0},                /* PEAK: ARC DROP and LEAD (ECHO before: D7) */
-    {GM_WANDER, 6, 0, 0, 0, 0, 0, 0, 3}};                /* DRONE: a held chord of a drone sound; WNDR keeps the sound, 64 bars, always moving, nothing rhythmic */
-#define STY_HAND 0x87u                                   /* (the values a hand can change, STY's columns: MODE, TIME, WAIT, ARC; the others only STYLE sets) */
+static const uint8_t STY[6][8] = {
+    {GM_WANDER, 4, 2, 0, 1, 1, 1, 0},                    /* DUB: the showcase (the no-record rows) with LEAD and a RISE; WANDER keeps the multi's own sounds (1.0.0-b7, MR1: JOURNEY before) */
+    {GM_WANDER, 5, 3, 0, 0, 1, 1, 1},                    /* DEEP */
+    {GM_WANDER, 3, 0, 1, 2, 2, 0, 0},                    /* MINIMAL */
+    {GM_JOURNEY, 6, 4, 0, 0, 0, 0, 3},                   /* AMBIENT: no groove tricks, so POLY OFF (1.0.0-b7, MR1: GENTLE before) */
+    {GM_JOURNEY, 3, 0, 1, 1, 2, 2, 0},                   /* PEAK: ARC DROP and LEAD (ECHO before: D7) */
+    {GM_WANDER, 6, 0, 0, 0, 0, 0, 3}};                   /* DRONE: a held chord of a drone sound; WNDR keeps the sound, 64 bars, always moving, nothing rhythmic */
+#define STY_HAND 0x47u                                   /* (the values a hand can change, STY's columns: MODE, TIME, WAIT, ARC; the others only STYLE sets) */
 static uint8_t tide_style = STY_DUB, tide_style_last = STY_DUB;   /* (the style a hand edit left: OCT- + K3 / K4 go back to its TIME and WAIT) */
-static volatile uint8_t *const TIDE_ROW[9] = {&gl.mode, &gl.time, &gl.wait, &sqm_vary_all, &sqm_turns, &sqm_poly, &sqm_sync, &sqm_arc, &morph_wlvl};   /* (STY's order) */
+static volatile uint8_t *const TIDE_ROW[8] = {&gl.mode, &gl.time, &gl.wait, &sqm_vary_all, &sqm_poly, &sqm_sync, &sqm_arc, &morph_wlvl};   /* (STY's order) */
 static __attribute__((noinline)) void tide_rows_set(const uint8_t *t)
 {
-    for (uint32_t i = 0; i < 9u; i++)
+    for (uint32_t i = 0; i < 8u; i++)
         *TIDE_ROW[i] = t[i];
 }
 static void tide_style_apply(uint32_t s)
@@ -176,23 +190,23 @@ static void tide_style_apply(uint32_t s)
     tide_rows_set(STY[s]);
     tide_style = (uint8_t)s;
 }
-static __attribute__((noinline)) void tide_rows_get(uint8_t *t)   /* the nine values as they are now */
+static __attribute__((noinline)) void tide_rows_get(uint8_t *t)   /* the eight values as they are now */
 {
-    for (uint32_t i = 0; i < 9u; i++)
+    for (uint32_t i = 0; i < 8u; i++)
         t[i] = *TIDE_ROW[i];
-    t[8] &= 3u;                                          /* (WASH) */
+    t[7] &= 3u;                                          /* (WASH) */
 }
 static int tide_style_holds(void)                        /* the values a hand can change are the style's (the others: only STYLE sets them) */
 {
-    uint8_t t[9];
+    uint8_t t[8];
     tide_rows_get(t);
-    for (uint32_t i = 0; i < 9u; i++)
+    for (uint32_t i = 0; i < 8u; i++)
         if (((STY_HAND >> i) & 1u) && t[i] != STY[tide_style % 6u][i])
             return 0;
     return 1;
 }
-/* CUSTOM's nine values, kept when a style replaces them: the STYLE row back onto CUSTOM brings them back (RAM only, not saved) */
-static uint8_t tide_custom[9], tide_custom_ok;
+/* CUSTOM's eight values, kept when a style replaces them: the STYLE row back onto CUSTOM brings them back (RAM only, not saved) */
+static uint8_t tide_custom[8], tide_custom_ok;
 static void tide_custom_take(void)
 {
     tide_rows_get(tide_custom);
@@ -578,11 +592,15 @@ static void tide_journey(uint32_t mask, uint32_t x, uint32_t snd, uint32_t seq)
 /* ---------------------------------------------------------------- the footer --- */
 /* the sound part pi plays now by name (b holds 20): the end its fader is nearer, the factory sound MORPH TO or JRNY put there
  * by its label ("#31 DEEP PAD", as the Original's "#24 REESE BASS"); else (the Original, or a roll of it) the part's own label */
-static void tide_part_name(uint32_t pi, char *b)
+static int32_t tide_heard_to(uint32_t pi)                /* the factory sound part pi's heard end was moved to (MORPH TO, JOURNEY), -1 none */
 {
     const morph_part_t *mp = &mph[pi % NSHOWN];
+    return mp->n[0] && !morph_stale(&trk[pi % NSHOWN], mp) ? morph_to_of(pi, mp->fader >= 64u) : -1;
+}
+static void tide_part_name(uint32_t pi, char *b)
+{
     const track_t *t = &trk[pi % NSHOWN];
-    int32_t k = mp->n[0] && !morph_stale(t, mp) ? morph_to_of(pi, mp->fader >= 64u) : -1;
+    int32_t k = tide_heard_to(pi);
     if (k >= 0) {                                        /* (the destination keeps the number its slot has: audit C11) */
         uint32_t e = t->eng_req % NENGINES, r = ds_list_rank(e, (uint32_t)k);
         b[0] = 0;
@@ -1000,7 +1018,7 @@ static uint32_t tide_sig(void)
     return (morph_fader_of(pi) | seqm_fader_of(pi) << 7 | (uint32_t)gl.on << 14 | (uint32_t)gl.armed << 16 | (uint32_t)gl.target << 17 |
             (uint32_t)gl.mode << 19 | (uint32_t)gl.to << 22 | (uint32_t)gl.hold << 23 | (song.playing ? t->seq_idx : 0xFFu) << 24) ^
            (gl.prog >> 10) * 2654435761u ^ ((gl.prog * bars) >> GLIDE_Q) * 0x27D4EB2Fu ^ sqm_key(&sqm[pi < NSHOWN ? pi : 0u]) * 40503u ^
-           ((uint32_t)gl.time | (uint32_t)gl.wait << 4 | (uint32_t)jl_sel << 8 | (uint32_t)sqm_vary_all << 12 | (uint32_t)morph_musical << 13 | (uint32_t)(sqm_turns & 3u) << 14 | (uint32_t)sqm_poly << 28 | (uint32_t)sqm_sync << 30 |
+           ((uint32_t)gl.time | (uint32_t)gl.wait << 4 | (uint32_t)jl_sel << 8 | (uint32_t)sqm_vary_all << 12 | (uint32_t)morph_musical << 13 | (uint32_t)sqm_poly << 28 | (uint32_t)sqm_sync << 30 |
             (uint32_t)morph.cfg << 16 | (uint32_t)((sqm_bar + sqm_bar_turn) & 3u) << 24 | (uint32_t)song.playing << 26) * 0x9E3779B1u ^
            ((uint32_t)sqm_arc | (uint32_t)tarc.phase << 2 | (uint32_t)tarc.left << 5 | (uint32_t)tarc.hand << 9 | (uint32_t)tarc.len << 10) * 0x2545F491u ^   /* (audit C4: no field ORed over another) */
            ((morph_fader_of(1u - pi) | seqm_fader_of(1u - pi) << 7 | (song.playing ? trk[1u - pi].seq_idx : 0xFFu) << 14) * 0x85EBCA77u ^
@@ -1015,15 +1033,17 @@ static uint32_t tide_sig(void)
  * while stopped and not during ERASE DATA (tide_store_poll) */
 enum { TS_MODE, TS_TIME, TS_TARGET, TS_WAIT, TS_VARY, TS_MUSIC, TS_WASH, TS_OLD, TS_TURNS = TS_OLD, TS_POLY, TS_SYNC, TS_ARC, TS_STYLE, TS_REC, TS_N };   /* (TS_OLD: the fields of the first record; a record of that length loads, the later fields at their defaults) */
 static uint8_t tide_seen[TS_N], tide_seen_ok;
+#define TS_TURNS_OLD 1u                                  /* TURNS played nothing since 1.0.0-b7 and has no variable since b8: the record keeps its byte (the same size, so a
+                                                          * build that reads it still can), always written as 1 (TAKE TURNS, the old default) and never read (TS_VAR 0) */
 /* each field's byte; read back: a value under TS_LIM kept, else TS_DEF (TS_LIM 0: masked with TS_DEF) */
-static volatile uint8_t *const TS_VAR[TS_N] = {&gl.mode, &gl.time, &gl.target, &gl.wait, &sqm_vary_all, &morph_musical, &morph_wlvl, &sqm_turns, &sqm_poly,
+static volatile uint8_t *const TS_VAR[TS_N] = {&gl.mode, &gl.time, &gl.target, &gl.wait, &sqm_vary_all, &morph_musical, &morph_wlvl, 0, &sqm_poly,
                                                &sqm_sync, &sqm_arc, &tide_style, &tide_rec_replace};
 static const uint8_t TS_LIM[TS_N] = {GM_JOURNEY + 1u, GLIDE_TIMES, GT_BOTH + 1u, GLIDE_WAITS, 0, 0, 0, 3, 3, 3, 3, STY_CUSTOM, 2},
                      TS_DEF[TS_N] = {GM_ONCE, 3, GT_SOUND, 0, 1, 1, 3, 1, 1, 1, 0, STY_CUSTOM, 0};
-/* TIDE 1.0.0-b6: while a built-in drone multi (M17, M18: MU_ROM) is the multi loaded, TIDE plays STYLE DRONE: the nine rows are DRONE's and TIDE SETTINGS
- * shows DRONE. What was set (the nine rows and STYLE) is kept here and comes back when any other multi (or none) is loaded; the store always gets the
+/* TIDE 1.0.0-b6: while a built-in drone multi (M17, M18: MU_ROM) is the multi loaded, TIDE plays STYLE DRONE: the eight rows are DRONE's and TIDE SETTINGS
+ * shows DRONE. What was set (the eight rows and STYLE) is kept here and comes back when any other multi (or none) is loaded; the store always gets the
  * kept values, so the saved STYLE never changes. A hand edit of a row while the drone multi is loaded lasts until then. Main loop only (no audio cost) */
-static uint8_t tide_drone_on, tide_drone_keep[10];      /* (STY's nine rows, then STYLE) */
+static uint8_t tide_drone_on, tide_drone_keep[9];       /* (STY's eight rows, then STYLE) */
 static void tide_drone(int reread)
 {
     uint32_t cs = project_cur_slot(), on = cs < MU_SHOWN && MU_ROM(cs);
@@ -1033,11 +1053,11 @@ static void tide_drone(int reread)
         return;
     if (on) {
         tide_rows_get(tide_drone_keep);
-        tide_drone_keep[9] = tide_style;
+        tide_drone_keep[8] = tide_style;
         tide_style_apply(STY_DRONE);
     } else {
         tide_rows_set(tide_drone_keep);
-        tide_style = tide_drone_keep[9];
+        tide_style = tide_drone_keep[8];
     }
     tide_drone_on = (uint8_t)on;
 }
@@ -1055,7 +1075,8 @@ static void tide_settings(void)
         uint32_t have = tide_store_load_min(b, TS_N, TS_OLD);
         if (have) {                                      /* (an older record: STYLE CUSTOM, its values kept; a stored ECHO reads as LEAD: D7) */
             for (i = 0; i < TS_N; i++)
-                *TS_VAR[i] = (uint8_t)(!TS_LIM[i] ? b[i] & TS_DEF[i] : b[i] < TS_LIM[i] ? b[i] : i == TS_TURNS && b[i] == 3u ? 2u : TS_DEF[i]);
+                if (i != TS_TURNS)
+                    *TS_VAR[i] = (uint8_t)(!TS_LIM[i] ? b[i] & TS_DEF[i] : b[i] < TS_LIM[i] ? b[i] : TS_DEF[i]);
             if (tide_style == STY_DRONE && !tide_style_holds())   /* (b4 and later: DRONE is 5, CUSTOM 6; an earlier build stored CUSTOM as 5: not DRONE's rows, so CUSTOM, not a hand edit of DRONE) */
                 tide_style = STY_CUSTOM;
             else if (tide_style < STY_CUSTOM) {          /* (1.0.0-b7: a stored STYLE whose hand values are its own takes the style's values as this build has them, the ones
@@ -1076,13 +1097,13 @@ static void tide_settings(void)
     tide_drone(reread);
     if (tide_style < STY_CUSTOM && !tide_style_holds()) {
         tide_style_last = tide_style;
-        tide_style = STY_CUSTOM;                         /* a hand edit of any of the nine rows (knobs, rows, resets, MIDI) */
+        tide_style = STY_CUSTOM;                         /* a hand edit of any of the eight rows (knobs, rows, resets, MIDI) */
     }
     for (i = 0; i < TS_N; i++) {
-        w[i] = *TS_VAR[i];
+        w[i] = i == TS_TURNS ? TS_TURNS_OLD : *TS_VAR[i];
         if (tide_drone_on)                               /* (a drone multi loaded: the kept rows and STYLE are what is saved) */
-            for (uint32_t j = 0; j < 10u; j++)
-                if (j < 9u ? TS_VAR[i] == TIDE_ROW[j] : i == TS_STYLE)
+            for (uint32_t j = 0; j < 9u; j++)
+                if (j < 8u ? TS_VAR[i] == TIDE_ROW[j] : i == TS_STYLE)
                     w[i] = tide_drone_keep[j];
     }
     w[TS_WASH] &= 3u;

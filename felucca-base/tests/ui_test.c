@@ -248,6 +248,14 @@ static const uint8_t *pat_flags(uint32_t k)
         f[i] = (uint8_t)pat_fl(k, i);
     return f;
 }
+/* default pattern k's notes as a column (engines.c pat_note: the table keeps only LEN steps since SP3) */
+static const uint8_t *pat_notes(uint32_t k)
+{
+    static uint8_t n[NPAT_STEPS];
+    for (uint32_t i = 0; i < NPAT_STEPS; i++)
+        n[i] = (uint8_t)pat_note(k, i);
+    return n;
+}
 static void ui_power_on(void)
 {
     uint32_t i;
@@ -286,7 +294,7 @@ static void ui_power_on(void)
         t->engine = t->eng_req;
         track_defaults_steps(t);
         if (TRK_DEF[i][2])
-            load_pat16(t, PATTERNS[TRK_DEF[i][2] - 1u].note, pat_flags(TRK_DEF[i][2] - 1u));
+            load_pat16(t, pat_notes(TRK_DEF[i][2] - 1u), pat_flags(TRK_DEF[i][2] - 1u));
         pat_sig[i] = steps_sig(t);
         pat_last[i] = TRK_DEF[i][2];
     }
@@ -578,7 +586,7 @@ static int steps_are(const track_t *t, uint32_t n)  /* steps 1..16 = PATTERNS[n]
 {
     uint32_t i;
     for (i = 0; i < NSTEP; i++) {
-        uint8_t want = i < 16u ? PATTERNS[n].note[i] : 0u;
+        uint8_t want = i < 16u ? pat_note(n, i) : 0u;
         if (t->step[i].note[0] != want || t->step[i].n != (want ? 1u : 0u))
             return 0;
     }
@@ -4092,7 +4100,7 @@ static int test_piano_roll(void)
     track_t *t;
     ui_power_on();
     t = TSEL;
-    load_pat16(t, PATTERNS[0].note, pat_flags(0));               /* ACID: A2..A3, ties, accents, slides */
+    load_pat16(t, pat_notes(0), pat_flags(0));               /* ACID: A2..A3, ties, accents, slides */
     root_g = 9; scale_g = 2;
     go_page(GR_ROLL); ui.cursor = 0; ui.bank = 0;
     memset(host_screen, 0, sizeof host_screen); ui.force = 1; ui_draw();

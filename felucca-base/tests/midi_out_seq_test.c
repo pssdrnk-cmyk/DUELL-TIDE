@@ -96,7 +96,7 @@ int main(void)
     per = div_samples(2);
     t->nheld = 3; t->held[0] = 60; t->held[1] = 64; t->held[2] = 67; memset(held_key[0], 0, sizeof held_key[0]);
     t->arp_pos = 0xFFFFFFF; t->arp_idx = 0xFFFFFFFFu;
-    for (i = 0; i < 6; i++) { arp_tick(t, per); drain(); }   /* (a step per period: the overshoot is carried, a half period more would be a seventh step in nine) */
+    for (i = 0; i < 6; i++) { arp_tick(t, per + 1u); drain(); }   /* (a step per period: the overshoot is carried, a half period more would be a seventh step in nine; b8: per + 1, the step is the exact 5512.5 samples now, not the rounded-down 5512) */
     bad += check("ARP: six steps, six note-ons C E G C E G in order", count(0x90u, 60) == 2 && count(0x90u, 64) == 2 && count(0x90u, 67) == 2 && NOTE(0) == 60u && NOTE(2) == 64u && NOTE(4) == 67u);
     bad += check("ARP: velocity 100 on channel 1, a note-off before the next note-on", VEL(0) == 100u && CHN(0) == 0u && ST(1) == 0x80u && NOTE(1) == 60u);
     t->nheld = 0; t->p[P_AMODE] = 0; arp_tick(t, per); drain();
@@ -131,7 +131,7 @@ int main(void)
     arp_off(t); drain();
     bad += check("channel changed while sounding: the note-off uses the note-on's channel (1)", ev_n == 2 && ST(1) == 0x80u && CHN(1) == 0u && CHN(0) == 0u);
     clr();
-    arp_tick(t, per); drain();
+    arp_tick(t, per + 1u); drain();   /* (b8: the exact step is 5512.5 samples) */
     bad += check("  the next note-on goes to the new channel (10)", ev_n >= 1 && ST(0) == 0x90u && CHN(0) == 9u);
     clr(); arp_forget(t); trk_all_off(t); drain();
     bad += check("  a panic (arp_forget) ends the sounding note on channel 10", ev_n == 1 && ST(0) == 0x80u && CHN(0) == 9u && NOTE(0) == 60u);

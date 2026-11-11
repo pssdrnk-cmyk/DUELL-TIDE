@@ -129,7 +129,10 @@ static uint32_t trig_stored(const uint8_t *raw, uint32_t pr)
 
 
 
-int main(void)
+#ifndef PATCH_TEST_MAIN
+#define PATCH_TEST_MAIN main                        /* (tests/store_xver_test.c includes this file for its flash simulation and renames it) */
+#endif
+int PATCH_TEST_MAIN(void)
 {
     uint32_t k, n, i, ok, total, occ, e, kk, rec0;
     int16_t was[P_COUNT];
@@ -1406,7 +1409,7 @@ int main(void)
         len_free = pt_rd16(pt_raw(51u));
         raw = pt_raw(51u);
         pt_layout(raw, &a, &b, &c, &d, &e);
-        ck("  its record holds both TRIG values (a pair each, or two values of the bitmap form)", trig_stored(raw, c) == 2u && len_free > len_note);
+        ck("  its record holds both TRIG values (a pair each, or two values of the bitmap form)", trig_stored(raw, c) == 2u && len_free >= len_note);   /* (b8: the values are bit-packed and ANALOG WAVE is 4 bits now (0..8, was 3), so the two TRIG bits of this record can end in the byte the NOTE record already filled: 83 and 83 bytes, was 83 and 82. The TRIG bits themselves are what is checked) */
         power_cycle();
         t = &trk[0];
         set_engine_of(t, 0u);

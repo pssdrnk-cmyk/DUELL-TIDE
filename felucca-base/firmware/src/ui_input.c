@@ -635,14 +635,19 @@ static int32_t morph_pending(uint32_t g)
 }
 static void morph_say_end(const char *a, uint32_t e) { ui_say(a, e ? "B" : "A"); }
 #if DUELL_TIDE
-/* The part selection (1.0.0-b5, owner 2026-11-08): ONE selection, PART 1 / PART 2 / BOTH. song.sel is the part (0, 1), song.both its third position; with BOTH, song.sel stays the last
- * single part. It replaces 0.2.9's ALGORITHM-as-morph-target and AUTO TIDE's own TARGET: there is no other target state. With BOTH the MORPH fader, ROLL, AMOUNT, MORPH SET's settings and the glide
- * act on both parts (morph.c morph_mask / morph_parts, morph_glide.c through the same mask), both parts are highlighted, and the keys play as the PLAY MODE row says (LAYER: both, STEREO / DUEL: the
- * part song.sel names, as before; seq.c keyboard_block is not touched). The ALGORITHM encoder moves it (algo_input): on the BOTH pages (tide.h HOME_BOTH_PAGE: HOME's MORPH, TIDE SETTINGS and
- * AUTO TIDE, and PERFORM) PART 1, BOTH, PART 2 from left to right, a detent a step, stopping at the ends; on every other page PART 1 / PART 2 only, the page showing and editing that part alone
- * exactly as before b5, and BOTH stays set for the BOTH pages (the glide that runs on both runs on). A learned MORPH TARGET CC (midi_control.c, 0-42 PART 1, 43-85 PART 2, 86-127 BOTH) sets
- * the same selection. Stored: the multi's TARGET bit, the project's morph block and the settings byte carry BOTH, and a load restores it */
-static void part_select(uint32_t pos)                   /* 0 PART 1, 1 PART 2, 2 BOTH */
+/* The part selection (1.0.0-b5, owner 2026-11-08; three positions with the play mode in the middle since 1.0.0-b7, owner 2026-11-10, docs/design/PLAY_MODE_SELECT.md): ONE selection, PART 1 /
+ * the middle / PART 2. song.sel is the part (0, 1), song.both the middle; with both on, song.sel stays the last single part (the one the edit pages edit). It replaces 0.2.9's
+ * ALGORITHM-as-morph-target and AUTO TIDE's own TARGET: there is no other target state. In the middle the MORPH fader, ROLL, AMOUNT, MORPH SET's settings and the glide act on both parts
+ * (morph.c morph_mask / morph_parts, morph_glide.c through the same mask), both parts are highlighted, and the keys play the mode the PLAY MODE row says (duell_mode_req, TIDE SETTINGS):
+ * LAYER both parts; STEREO and DUEL the part song.sel names, or with SPLIT set the lower keys part 1 and the upper part 2 (seq.c kb_part). The middle is named after that mode (LAYER, STEREO
+ * or DUEL: play_pos). On PART 1 or PART 2 the part plays alone on every key, whatever the row says: the audio's mode is the row's, but LAYER is played as STEREO (seq.c MODE_WANT), so the
+ * row keeps LAYER. A change of the mode the audio plays lets every held note go (seq.c mode_apply). The ALGORITHM encoder moves the selection (algo_input): on the BOTH pages (tide.h
+ * HOME_BOTH_PAGE: HOME's MORPH, TIDE SETTINGS and AUTO TIDE, and PERFORM) PART 1, the middle, PART 2 from left to right, a detent a step, stopping at the ends; on every other page PART 1 /
+ * PART 2 only, the page showing and editing that part alone, and the middle stays set for the BOTH pages (the glide that runs on both runs on). Changing the PLAY MODE row (mode_knob) also
+ * puts ALGORITHM in the middle; a MODE CC does not. A learned MORPH TARGET CC (midi_control.c, 0-42 PART 1, 43-85 PART 2, 86-127 the middle) sets the same selection. Stored: the multi's TARGET
+ * bit, the project's morph block and the settings byte carry song.both, and a load restores it; a multi that loads with LAYER comes up in the middle (multi.c); the row's mode is saved as ever
+ * (settings, multi), nothing of its own for the position */
+static void part_select(uint32_t pos)                   /* 0 PART 1, 1 PART 2, 2 the middle (both) */
 {
     if (pos < 2u)
         track_select(pos);
@@ -768,11 +773,11 @@ static void morph_roll_twist(int32_t s)                 /* ROLL A|B with its twi
 #endif
 #if DUELL_TIDE
 /* 1.0.0-b7 (owner 2026-11-10): HOME's MORPH page is the hands-on page. K1 MORPH, two fader steps a detent (half the twisting of b6; the ends still exact);
- * K2 FILTER (QUICK EDIT's K1: the multimode filter's CUT on every engine), K3 ECHO (the delay send), K4 LENGTH (the AMP ENV's release): each the part's own
+ * K2 FILTER (QUICK EDIT's K1: the multimode filter's CUT on every engine), K3 RESONANCE (the same filter's RES; b8, for LENGTH), K4 ECHO (the delay send): each the part's own
  * parameter, turned as on its page (edit_param: motion, locks, MIDI LEARN, EDITABLE B, a card the selection hides does nothing). BOTH: each part moves from
  * its own value by the same steps (the same acceleration; the selected part last, so MIDI LEARN picks its). OCT+ held + K1: End B a new roll (the knob loop) */
 static void edit_param(uint32_t slot, int32_t steps);
-static const page_t H1_PG = {"MORPH", FAM_TRK, SC_TRACK, GR_MORPH, {0xFFu, P_FREEA, P_DLY, P_REL}};
+static const page_t H1_PG = {"MORPH", FAM_TRK, SC_TRACK, GR_MORPH, {0xFFu, P_FREEA, P_FREEB, P_DLY}};
 static void morph_knob(uint32_t slot, int32_t s)
 {
     uint32_t pi = song.sel, n = song.both ? NSHOWN : 1u, k, p, et = ui.enc_t[EN_K1 + slot];
@@ -942,8 +947,10 @@ static void morph_poll(void)
 static void mode_knob(uint32_t slot, int32_t s)
 {
     int32_t m = duell_mode_req < DM_N ? duell_mode_req : DM_SPLIT;
-    if (slot == 3u)                                     /* (item 158: KNOB 4 has no card: it does nothing and says nothing) */
+#if !DUELL_TIDE
+    if (slot == 3u)                                     /* (item 158: KNOB 4 has no card: it does nothing and says nothing; TIDE: only rows 0 .. 2 of TIDE SETTINGS call here, tide_ui.c) */
         return;
+#endif
 #if TIDE_PLAYSEL
     if (slot >= 1u && (!song.both || (slot == 1u && m != DM_LAYER)))   /* (1.0.0-b7) XFADE and SPLIT in ALGORITHM's middle only; XFADE LAYER's, SPLIT any mode's */
         return;
@@ -1545,7 +1552,7 @@ static int reset_say(const char *name)
 }
 #if DUELL_TIDE
 static void tide_home(uint32_t mask);                  /* (tide_ui.c) */
-/* HOME's MORPH page: K1 back to the Original sound, as OCT- + K1 on AUTO TIDE (tide_home: the glide stops); K2..K4 FILTER, ECHO, LENGTH back to the loaded
+/* HOME's MORPH page: K1 back to the Original sound, as OCT- + K1 on AUTO TIDE (tide_home: the glide stops); K2..K4 FILTER, RESONANCE, ECHO back to the loaded
  * sound's value (morph.c h1_orig), on the part(s) the selection names; a card the selection hides (ECHO with SENDS OFF): nothing (2) */
 static int reset_morph(uint32_t k)
 {

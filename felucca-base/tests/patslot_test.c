@@ -139,7 +139,7 @@ int main(void)
             if (PATTERNS[i].len < 1u || PATTERNS[i].len > NPAT_STEPS)
                 bad32 = 1;
             for (j = 0; j < NPAT_STEPS; j++) {
-                uint32_t nt = PATTERNS[i].note[j], fl = pat_fl(i, j);
+                uint32_t nt = pat_note(i, j), fl = pat_fl(i, j);
                 n += nt != 0;
                 if (nt && (nt < 48u || nt > 84u))
                     bad32 = 1;                                  /* an offset beyond -12..+24 */
@@ -174,7 +174,7 @@ int main(void)
                 const uint32_t m = SET[q];
                 uint32_t hits = 0, movable = 0, ties = 0, lo = 99, hi = 0, j, odd = 0;
                 for (j = 0; j < PATTERNS[m].len; j++) {
-                    uint32_t nt = PATTERNS[m].note[j];
+                    uint32_t nt = pat_note(m, j);
                     ties += (pat_fl(m, j) & 4u) != 0;
                     if (!nt)
                         continue;
@@ -228,7 +228,7 @@ int main(void)
               trk[1].p[P_SGATE] == (PATTERNS[k].gate ? PATTERNS[k].gate : TP[P_SGATE].def);
         for (i = 0; i < NSTEP; i++) {
             step_t e;
-            pat_make_step(&e, i < NPAT_STEPS ? PATTERNS[k].note[i] : 0, i < NPAT_STEPS ? pat_fl(k, i) : 0);
+            pat_make_step(&e, i < NPAT_STEPS ? pat_note(k, i) : 0, i < NPAT_STEPS ? pat_fl(k, i) : 0);
             ok &= trk[1].step[i].n == e.n && trk[1].step[i].note[0] == e.note[0] && trk[1].step[i].time == e.time &&
                   trk[1].step[i].flags == e.flags && trk[1].step[i].vel == e.vel && trk[1].step[i].probability == 0;
         }
@@ -482,7 +482,7 @@ int main(void)
     if (ui.confirm)
         press(B_OCTUP);
     ck("LOAD of the default pattern place 36 (the reset slot 32): its default pattern (SEVEN EIGHT, 14 steps)", msg_is("LOADED P32 SEVEN EIGHT") &&
-       trk[0].step[0].note[0] == PATTERNS[31].note[0] && trk[0].step[6].note[0] == PATTERNS[31].note[6] && trk[0].p[P_SLEN] == 14);
+       trk[0].step[0].note[0] == pat_note(31, 0) && trk[0].step[6].note[0] == pat_note(31, 6) && trk[0].p[P_SLEN] == 14);
     pick(0);
     turn(EN_K3, 1);
     press(B_OCTUP);

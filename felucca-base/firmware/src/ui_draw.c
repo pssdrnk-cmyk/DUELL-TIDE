@@ -907,7 +907,7 @@ static uint8_t k1_after_r;
 #define AREA_LIST_PG() 0
 #endif
 #if DUELL_TIDE
-#define MROW_Y 189                                      /* b6 (owner 2026-11-09): the MORPH page's slim row (1.0.0-b7: FILTER, ECHO, LENGTH; b6: ROLL / AMOUNT), a 13-row canvas 189 .. 201 just above the footer (Y_FOOT 202) that holds the */
+#define MROW_Y 189                                      /* b6 (owner 2026-11-09): the MORPH page's slim row (1.0.0-b7: FILTER, RESONANCE, ECHO; b6: ROLL / AMOUNT), a 13-row canvas 189 .. 201 just above the footer (Y_FOOT 202) that holds the */
 #define MROW_H 13                                       /* S face's whole box (caps 189 .. 199, descenders to 201: nothing cut, nothing under the footer's canvas); the picture above it */
 #define MROW_BASE (MROW_H - 3)                          /* rows 48 .. 183, two lanes of 68 (5 clear rows to the caps) */
 #define MROW_WAVES_END 184
@@ -2389,7 +2389,7 @@ static uint32_t midi_cards(uint8_t vis[4])
 /* (the name a card shows: params.c desc_shown, T0227's unit label pass) */
 #if DUELL_TIDE
 /* 1.0.0-b7 (owner 2026-11-10: HOME's MORPH page is the hands-on page): knob 2, 3 and 4 on the one row under the picture, rows MROW_Y .. + MROW_H - 1, in three fixed
- * columns left to right as the knobs (H1_COL): "FLT 2.4k", "ECHO 30%", "LEN 850ms", the name at the column's left and the value beside it, so the
+ * columns left to right as the knobs (H1_COL): "FLT 2.4k", "RSN 40%", "ECH 30%", the name at the column's left and the value beside it, so the
  * names never move. No knob dots: with them the three do not fit the width. The selected part's values as
  * its cards show them (the morph's blend: card_vv); the knob just turned's name in the accent; ECHO dim while the delay does nothing (h1_echo_why: knob 1's line
  * says why). While SAVE is held (and only then) the row says HOLD SAVE = SAVE PATCH instead. Drawn only when what it shows changes */
@@ -2397,16 +2397,16 @@ static const char *h1_echo_why(void)
 {
     return (mods_off & MODS_SENDS) ? "ECHO: SENDS OFF" : !song.g[G_DMIX] ? "ECHO: DELAY MIX 0" : 0;   /* (the line's words whole: no buffer, RAM is tight) */
 }
-/* knob i + 2's value v on the row as part t shows it (its card's form: FM6's DX7 number and ENV SYNC's note values for LENGTH), the cutoff's unit short ("2.4k", "880") */
+/* knob i + 2's value v on the row as part t shows it (its card's form), the cutoff's unit short ("2.4k", "880") */
 static void h1_val(uint32_t i, const track_t *t, int32_t v, char *out)
 {
     const char *unit;
     param_format(track_desc(t, H1_ID[i % 3u]), v, out, &unit);
     str_cpy(out + str_len(out), str_eq(unit, "Hz") ? "" : str_eq(unit, "kHz") ? "k" : unit, 4);
 }
-static const char *const H1_L[3] = {"FLT", "ECHO", "LEN"};   /* (owner on the unit, 2026-11-10: FILTER and LENGTH crowded their 3-digit values; FLT and LEN are the short forms params.c uses) */
+static const char *const H1_L[3] = {"FLT", "RSN", "ECH"};   /* (owner on the unit, 2026-11-10: FILTER and LENGTH crowded their 3-digit values, so short names; b8: RSN for LEN, ECH for ECHO) */
 static const uint8_t H1_COL[3] = {4, 79, 164};          /* the columns' left ends: each name there, its value 5 px after it, left-aligned. Laid out for the widest values
-                                                         * (FLT 10.1k, ECHO 100%, LEN 104ms in the S face, FM6 and ENV SYNC forms included): 12 px or more between the columns,
+                                                         * (FLT 10.1k, RSN 100%, ECH 100% in the S face): 12 px or more between the columns,
                                                          * the last ends by x 236 (tests/morph_ui_test.c h1_fits checks every value) */
 static void morph_row(void)
 {
@@ -2435,7 +2435,7 @@ static void morph_row(void)
         cv_text_in(0, ty, 240, &AF_S, "HOLD SAVE = SAVE PATCH", T_DIM, T_BG);
     else
         for (i = 0; i < 3u; i++) {
-            const int hot = ui.hot_t && ui.hot_col == i + 1u, d = dim && i == 1u;
+            const int hot = ui.hot_t && ui.hot_col == i + 1u, d = dim && i == 2u;
             id = H1_ID[i];
             h1_val(i, TSEL, card_vv(&TSEL->p[id]), v);
             cv_text_on(H1_COL[i], ty, &AF_S, H1_L[i], d ? T_DIM : hot ? T_ACCENT : T_TEXT, T_BG);
@@ -2586,7 +2586,7 @@ static void draw_columns(void)
 #if DUELL_TIDE
         const char *why = h1_echo_why();
         const int apart = song.both && morph_fader_of(1u - pi) != f;
-        if (AREA_ON && why && (!apart || (ui.hot_t && ui.hot_col == 2u))) {   /* 1.0.0-b7: ECHO dim, why (at the line's right end; with BOTH and the faders apart while knob 3 turns) */
+        if (AREA_ON && why && (!apart || (ui.hot_t && ui.hot_col == 3u))) {   /* 1.0.0-b7: ECHO dim, why (at the line's right end; with BOTH and the faders apart while knob 4 turns) */
             k1_after_next = why;
             k1_after_col = T_MID;
             k1_after_r = 1;
@@ -2615,7 +2615,7 @@ static void draw_columns(void)
         grid_big = 0;
 #endif
 #if DUELL_TIDE
-        morph_row();                                   /* (1.0.0-b7: FILTER, ECHO, LENGTH on one compact row, the waves take the rest) */
+        morph_row();                                   /* (1.0.0-b7: FILTER, RESONANCE, ECHO on one compact row, the waves take the rest) */
         return;
 #else
         g = morph_pending(0);                          /* ROLL: A left, B right; a twist building up: its way */
@@ -3409,6 +3409,8 @@ static void draw_confirm(void)
         tf = &AF_S;
     GFX_HOOK_ALIGN(0, 0, DLG_W, 0, AL_H, "dialog question centred");
     cv_text_in(0, 34, DLG_W, tf, a, T_TEXT, T_BG);
+    if (ui.confirm == CF_SAVE_OVER)
+        TIDE_SAVE_NOTE(DLG_W);                          /* (1.0.0-b8: SAVE after JOURNEY: what it stores, in the card's empty top) */
     if (b[0]) {
         char f[32];
         text_fit(f, sizeof f, b, &AF_M, DLG_W - 16);    /* a name: free text (M: what is selected, as the question) */

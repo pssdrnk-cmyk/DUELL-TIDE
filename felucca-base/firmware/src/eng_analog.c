@@ -11,8 +11,8 @@
  *         every pair (OSC 2 alone at 127)
  *   SUB   OSC 1 a saw, OSC 2 a square an octave below it (detuned by DTN in cents as before): MIX (shown SUB) is the
  *         sub oscillator's level */
-static const char *const N_ANALOG_WAVE[] = {"SAW", "SQR", "TRI", "SIN", "PWM", "SYNC", "SUB"};
-enum { AW_SYNC = 5, AW_SUB = 6 };
+static const char *const N_ANALOG_WAVE[] = {"SAW", "SQR", "TRI", "SIN", "PWM", "SYNC", "SUB", "ACID", "ACSQ"};
+enum { AW_SYNC = 5, AW_SUB = 6, AW_ACSQ = 8 };   /* WAVE 7 ACID / 8 ACSQ (b8): a saw / a square that play as a 303 (voice.c acid_on); the oscillator is OSC 1 as SAW / SQR */
 static const param_desc_t ANALOG_SYNC = {"SYNC", F_INT, 0, 127, 10, 0, 0};   /* DTN's range and default */
 static const param_desc_t ANALOG_SUB = {"SUB", F_PCT, 0, 127, 64, 0, 0};      /* MIX's */
 
@@ -127,6 +127,8 @@ static inline __attribute__((always_inline)) void analog_osc(track_t *t, voice_t
 {
     const int16_t *p = t->p;
     uint32_t wave = (uint32_t)p[P_E0], i;
+    if (wave == AW_ACSQ)
+        wave = 1;                                                /* (ACID: the default case, the saw) */
     int32_t det = p[P_E1], mix = p[P_E2], noise = p[P_E3];
     int32_t drive = 32768 + p[P_E6] * 512;                       /* 1x .. 3x */
     uint32_t inc1 = m->inc;
@@ -235,7 +237,7 @@ static void analog_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, cons
 {
     if (MXF(t).on && MXF(t).w[MX_E0] && t->p[P_E0] < AW_SYNC)
         analog_render_m(t, v, out, n, m);               /* DUELL MORPH: a WAVE cross-fade */
-    else if (t->p[P_E0] >= AW_SYNC)
+    else if (t->p[P_E0] == AW_SYNC || t->p[P_E0] == AW_SUB)
         analog_render_x(t, v, out, n, m);
     else
         analog_osc(t, v, out, n, m);
@@ -265,7 +267,7 @@ static const engine_t ENG_ANALOG = {
     .name = "ANALOG",
     .page_title = {"OSC", "FLT"},
     .edit = {
-        {"WAVE", F_ENUM, 0, 6, 0, N_ANALOG_WAVE, 0},
+        {"WAVE", F_ENUM, 0, 8, 0, N_ANALOG_WAVE, 0},
         {"DTN", F_INT, 0, 127, 10, 0, "ct"},
         {"MIX", F_PCT, 0, 127, 64, 0, 0},
         {"NOIS", F_PCT, 0, 127, 0, 0, 0},

@@ -221,7 +221,7 @@ static uint32_t play(track_t *t, uint32_t blocks, uint32_t *at, uint8_t *note, u
 /* the block step i (from PLAY, no swing) plus `off` samples falls in, as a sample */
 static uint32_t blk(uint32_t i, int32_t off)
 {
-    uint32_t s = (uint32_t)((int32_t)(i * P16) + off);
+    uint32_t s = (uint32_t)((int32_t)((i * beat_samples() + 3u) / 4u) + off);   /* (b8 DRIFT: a step starts on the exact beat grid, i * 5512.5 samples at 120 BPM, rounded up; was i * P16, the rounded-down 5512) */
     return (s + CTL - 1u) / CTL * CTL;
 }
 

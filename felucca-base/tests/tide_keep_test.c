@@ -143,7 +143,7 @@ static void t_fmt(void)
     bad_blk[n - 3u] = 0;
     CHECK("MBV_FMT: target 0 is no block", morph_bv_size(bad_blk, MBV_MAX, ENGI_FM6) == 0u);
     memcpy(bad_blk, blk, sizeof blk);
-    bad_blk[0] |= 8u;
+    bad_blk[0] |= 16u;       /* (8 is MBV_W4, b9) */
     CHECK("MBV: an unknown flag is no block", morph_bv_size(bad_blk, MBV_MAX, ENGI_FM6) == 0u);
     CHECK("MBV_MAX, PT_WORST, PT_K re-checked: 198, 580, 6 a chunk; the project's End B as big", MBV_MAX == 198u && PT_WORST == 580u && PT_K == 6u &&
           PROJ_BV_MAX == MBV_MAX && PT_WORST * PT_K + PT_HDR <= PT_CAP);
@@ -223,7 +223,7 @@ static void t_fmt(void)
     morph_roll_cfg(0, 1u, 1234u, 60u, morph_cfg_of(0));
     n0 = morph_bv_make(0, ref, blk);
     CHECK("no MORPH TO end: no MBV_FMT, the block 1.1 reads", n0 && !(blk[0] & MBV_FMT) && morph_bv_size(blk, n0, ENGI_FM6) == n0 &&
-          !(blk[0] & ~(MBV_PINS | MBV_FMB)));
+          !(blk[0] & ~(MBV_PINS | MBV_FMB | MBV_W4)));
 }
 
 static void t_keep(void)
@@ -465,6 +465,53 @@ static void t_keep_held_b(void)
     trk_note_off(&trk[0],60);
 }
 
+/* 1.0.0-b8, SAVE after JOURNEY: the SAVE dialog's note (tide_ui.c tide_save_note, drawn by ui_draw.c draw_confirm) when the part's heard end is a factory sound MORPH TO or
+ * JOURNEY put there; none at A, none after KEEP, and with BOTH when either part is. note_drawn: whether it paints anything on a blank card for ui.confirm_trk (2 = BOTH) */
+static int note_drawn(uint32_t confirm_trk)
+{
+    ui.confirm_trk = confirm_trk;
+    cv_begin(208, 30, T_BG);
+    tide_save_note(208);
+    for (uint32_t i = 0; i < 208u * 30u; i++)
+        if (cv_px[i] != swap16(T_BG))
+            return 1;
+    return 0;
+}
+
+static void t_savenote(void)
+{
+    fresh(); setup(); fader(0);
+    CHECK("SAVE note: not shown at A", !note_drawn(0));
+    fader(127);
+    CHECK("shown with the heard end moved (part 1)", note_drawn(0));
+    CHECK("not for part 2, which is not moved", !note_drawn(1));
+    CHECK("BOTH: shown when part 1 is moved", note_drawn(2));
+    tools_key(TL_KEEP);
+    CHECK("after KEEP: gone", !note_drawn(0));
+
+    fresh(); setup(); fader(127); other_sound();
+    CHECK("a part loaded with another sound: gone", !note_drawn(0));
+
+    /* part 2 moved only */
+    {
+        fresh(); setup();
+        set_engine_of(&trk[1], ENGI_FM6);
+        trk[1].engine = ENGI_FM6;
+        apply_preset_to(&trk[1], (uint32_t)sound_a);
+        frames(64);
+        ablocks(16);
+        morph_ready(1);
+        morph_to_sound(1, 1u, (uint32_t)sound_b);
+        mph[1].sm_r = 32768;
+        morph_do(MQ_FADER, 2u, 127u);
+        frame();
+        ablocks(4);
+        CHECK("part 2 moved: shown for part 2", note_drawn(1));
+        CHECK("not for part 1", !note_drawn(0));
+        CHECK("BOTH: shown when only part 2 is moved", note_drawn(2));
+    }
+}
+
 int main(void)
 {
     pick();
@@ -476,6 +523,7 @@ int main(void)
     t_keep_macros();
     t_keep_live();
     t_keep_held_b();
+    t_savenote();
     t_store();
     t_limit();
     printf("tidekeep: %d of %d checks failed\n", bad, checks);

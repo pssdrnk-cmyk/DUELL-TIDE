@@ -406,7 +406,7 @@ static void demo(const char *dir, uint32_t pi)
     host_tracks_init();
     host_preset(&trk[0], eng_noise(), pi);
     for (s = 0; s < 48u; s++) {                       /* three times through the pattern's 16 steps, 120 BPM 1/16 */
-        uint32_t k = s % 16u, note = PATTERNS[pat].note[k], fl = pat_fl(pat, k);
+        uint32_t k = s % 16u, note = pat_note(pat, k), fl = pat_fl(pat, k);
         if (!(fl & 4u) && held) {
             trk_note_off(&trk[0], held);
             held = 0;

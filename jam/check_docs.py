@@ -16,12 +16,11 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, "felucca-base", "firmware", "src")
 bad = []
 
-# the names of each STY column, in the order of the C table (mode, time idx, wait idx, vary, turns, poly, sync, arc, wash)
+# the names of each STY column, in the order of the C table (mode, time idx, wait idx, vary, poly, sync, arc, wash; TURNS went in 1.0.0-b8)
 MODE = {"GM_ONCE": "ONCE", "GM_LOOP": "LOOP", "GM_DRIFT": "DRIFT", "GM_WANDER": "WANDER", "GM_JOURNEY": "JOURNEY"}
 TIME = ["1", "2", "4", "8", "16", "32", "64"]
 WAIT = ["OFF", "1", "2", "4", "8", "16"]
 VARY = ["EVERY 4TH", "EVERY BAR"]
-TURNS = ["TOGETHER", "TAKE TURNS", "LEAD"]
 POLY = ["OFF", "GENTLE", "WIDE"]
 SYNC = ["OFF", "SOFT", "PUSH"]
 ARC = ["OFF", "RISE", "DROP"]
@@ -31,13 +30,13 @@ NAMES = ["DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK", "DRONE"]
 
 def code_styles():
     text = open(os.path.join(SRC, "tide_ui.c"), encoding="utf-8").read()
-    m = re.search(r"STY\[6\]\[9\]\s*=\s*\{(.*?)\};", text, re.S)
+    m = re.search(r"STY\[6\]\[\d+\]\s*=\s*\{(.*?)\};", text, re.S)
     rows = re.findall(r"\{([^{}]*)\}", m.group(1))
     out = []
     for r in rows:
         v = [x.strip() for x in r.split(",")]
-        out.append([MODE[v[0]], TIME[int(v[1])], WAIT[int(v[2])], VARY[int(v[3])], TURNS[int(v[4])],
-                    POLY[int(v[5])], SYNC[int(v[6])], ARC[int(v[7])], WASH[int(v[8])]])
+        out.append([MODE[v[0]], TIME[int(v[1])], WAIT[int(v[2])], VARY[int(v[3])],
+                    POLY[int(v[4])], SYNC[int(v[5])], ARC[int(v[6])], WASH[int(v[7])]])
     return out
 
 

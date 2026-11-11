@@ -390,6 +390,7 @@ static mtag_t morph_tag(const engine_t *e, const int8_t *o, uint32_t id, uint32_
 /* the range of id for engine e (the edit table, as the matrix: mod.c) */
 static const param_desc_t *morph_desc(const engine_t *e, uint32_t id) { return id >= XW_BASE ? xdesc(0, id - XW_BASE) : id >= P_COUNT ? &XFREE_D : id >= P_E0 ? &e->edit[id - P_E0] : &TP[id]; }
 static const param_desc_t MORPH_E7_OLD = {"-", F_INT, 0, 0, 0, 0, 0};   /* WAVE's E7 as it was before STEPS (an unused slot, range 0..0): a WILD roll draws it as it did, so the End B of every stored seed is what it was, and never turns STEPS on */
+static const param_desc_t MORPH_AW_OLD = {"WAVE", F_ENUM, 0, 6, 0, 0, 0};   /* ANALOG's WAVE as it was before ACID / ACSQ (b8, 0..6): a WILD roll draws it as it did, so stored seeds keep their End B and no roll turns the 303 on */
 
 /* ----------------------------------------------------------------- the roll (pure) --- */
 static uint32_t mr_below(uint32_t *s, uint32_t n) { return (uint32_t)(((uint64_t)xs32(s) * n) >> 32); }
@@ -1177,7 +1178,7 @@ static void morph_roll_step(const int8_t *org, const int8_t *st, int8_t *end, co
     amount = amount > 100u ? 100u : amount;
     for (id = 0; id < P_COUNT; id++) {
         mtag_t g = morph_tag(e, o, id, stereo);
-        const param_desc_t *pd = e == &ENG_WAVE && id == P_E6 ? &MORPH_E7_OLD : morph_desc(e, id);
+        const param_desc_t *pd = e == &ENG_WAVE && id == P_E6 ? &MORPH_E7_OLD : e == &ENG_ANALOG && id == P_E0 ? &MORPH_AW_OLD : morph_desc(e, id);
         uint32_t *r = id >= P_E2FLT && id <= P_L2SHP ? &rs2 : &rs;   /* (ENV 2 / LFO 2 DEST: their own stream, so a seed of
                                                                        * before draws every other value as it did) */
         if (MORPH_OLD(id)) {                             /* the TWIN FILTER's ids: the draws they had (task 3 rolls their new values) */
@@ -1903,10 +1904,10 @@ static void morph_rebase_part(uint32_t pi)               /* ends = the Original,
 }
 static void morph_ready_first(uint32_t pi);
 #if DUELL_TIDE
-/* 1.0.0-b7: the loaded sound's FILTER, ECHO and LENGTH (HOME's MORPH page K2..K4, ui_input.c H1_PG: OCT- + the knob puts its value back), taken when a sound is
+/* 1.0.0-b7: the loaded sound's FILTER, RESONANCE and ECHO (HOME's MORPH page K2..K4, ui_input.c H1_PG: OCT- + the knob puts its value back; b8: RESONANCE for LENGTH), taken when a sound is
  * loaded (morph_rebase), at a part's first use and when morph_ready finds another sound; not by a rebase of the same sound (HOME, KEEP: the edits stay the player's).
  * In the pool (main loop; .bss is the tighter) */
-static const uint8_t H1_ID[3] = {P_FREEA, P_DLY, P_REL};
+static const uint8_t H1_ID[3] = {P_FREEA, P_FREEB, P_DLY};
 static int16_t h1_orig[NSHOWN][3] __attribute__((section(".pool")));
 static void h1_take(uint32_t pi)
 {
@@ -2277,11 +2278,13 @@ static uint32_t morph_sig(void)
  *   [MBV_PINS] 20 bytes: a bit per wide id, End B's values set by hand (EDITABLE B)
  *   [MBV_FMB]  57 bytes: End B's 65 FM6 bytes (fm_byte order, 0..99), 7 bits each, LSB first
  *   [MBV_FMT]  TIDE only, 3 bytes: End B's MORPH TO target on FM6 (morph_tide.c tide_mbv_make)
+ *   MBV_W4 (b9): ANALOG's WAVE (0..8 since b8) takes 4 bits in this block. A block WITHOUT it was made before b8 (WAVE 0..6, 3 bits): wv_bitsl reads it so. morph_bv_make always sets it
  * The 26 wide values that never differ between the ends (mbv_never: never rolled, not in WILD either, not editable at B, kept equal by the fold) have no bit.
  * Lossless: a value is stored inside its range, which is what a load fits it to anyway (param_fit). From the alpha on these ranges are part of the format
  * (frozen: a changed range in params.c or an engine's edit table would read stored patches wrong) */
 #define MBV_PINS 1u
 #define MBV_FMB 2u
+#define MBV_W4 8u                                        /* (4 is MBV_FMT, TIDE) */
 #define MBV_HDR 22u
 #define MBV_FMN ((NFM * 7u + 7u) / 8u)                   /* 57 */
 #define MBV_VMAX 96u                                     /* the values' most bytes: every wide value but mbv_never's at the worst engine (762 bits, the placeholder of the retired engines; FM6 745); morph_bv_limits_ok */
@@ -2307,6 +2310,10 @@ static uint32_t wv_bits(uint32_t eng, uint32_t w)        /* the bits of wide val
     while (b < 16u && (1u << b) < s)
         b++;
     return b;
+}
+static uint32_t wv_bitsl(uint32_t eng, uint32_t w, uint32_t w4)   /* wv_bits of a stored block / record: w4 = it carries MBV_W4 / PTF_W4; without, ANALOG (engine 0) WAVE is 3 bits (saved before b8) */
+{
+    return !w4 && !eng && w == P_E0 ? 3u : wv_bits(eng, w);
 }
 static uint32_t wv_code(uint32_t eng, uint32_t w, int32_t v)   /* v inside the range, from its minimum */
 {
@@ -2350,13 +2357,13 @@ static int morph_bv_limits_ok(void)
 static uint32_t morph_bv_size(const uint8_t *b, uint32_t avail, uint32_t eng)
 {
     uint32_t w, nb = 0, len, at, i;
-    if (avail < MBV_HDR || eng >= NENGINES || (b[0] & ~(MBV_PINS | MBV_FMB | TIDE_MBV_FLAGS)) || b[1] > 101u || ((b[0] & (MBV_FMB | TIDE_MBV_FLAGS)) && eng != ENGI_FM6))   /* TIDE hook (H9) */
+    if (avail < MBV_HDR || eng >= NENGINES || (b[0] & ~(MBV_PINS | MBV_FMB | MBV_W4 | TIDE_MBV_FLAGS)) || b[1] > 101u || ((b[0] & (MBV_FMB | TIDE_MBV_FLAGS)) && eng != ENGI_FM6))   /* TIDE hook (H9) */
         return 0;
     for (w = 0; w < 160u; w++)
         if (b[2u + w / 8u] >> (w % 8u) & 1u) {
             if (!mbv_wid(w) || mbv_never(w))
                 return 0;
-            nb += wv_bits(eng, w);
+            nb += wv_bitsl(eng, w, b[0] & MBV_W4);
         }
     len = MBV_HDR + (nb + 7u) / 8u;
     if (b[0] & MBV_PINS) {
@@ -2392,6 +2399,7 @@ static uint32_t morph_bv_make(uint32_t pi, const int16_t *ref, uint8_t *out)
     eng = mp->eng;
     morph_effective_x(pi, 1u, v);
     memset(out, 0, MBV_MAX);
+    out[0] = MBV_W4;
     out[1] = (uint8_t)(mp->amount + 1u);
     for (w = 0; w < EXT_P_LEN; w++)
         if (mbv_wid(w) && !mbv_never(w) && wv_code(eng, w, v[w]) != wv_code(eng, w, ref[w]))
@@ -2441,7 +2449,7 @@ static void morph_bv_load(uint32_t pi, const uint8_t *b)
     at = MBV_HDR * 8u;
     for (w = 0; w < EXT_P_LEN; w++)
         if (b[2u + w / 8u] >> (w % 8u) & 1u)
-            end[w] = (int8_t)clamp(wv_val(eng, w, bs_get(b, &at, wv_bits(eng, w))), -128, 127);
+            end[w] = (int8_t)clamp(wv_val(eng, w, bs_get(b, &at, wv_bitsl(eng, w, b[0] & MBV_W4))), -128, 127);
     at = (at + 7u) & ~7u;
     MORPH_LOCK();
     k = (mp->top[1] + 1u) % MORPH_HIST;

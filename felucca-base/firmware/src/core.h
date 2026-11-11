@@ -66,6 +66,14 @@ _Static_assert(NSHOWN <= NPART, "core.h: NSHOWN parts are shown, NPART parts exi
 #define ACCENT_MAX 24
 #endif
 #define ACCENT_V0 110
+#define ACID_WAVE 7u             /* b8 ACID: ANALOG WAVE 7 (saw) and 8 (square) play like a 303 (voice.c acid_on, trk_vmode, the accent in track_render); work/b8/acid/DESIGN.md */
+#ifndef ACID_BASE
+#define ACID_BASE 10836         /* Q15 = Q15_FROM_127(42): an ACID note's level whatever its velocity; an accent bursts from it up to unity (32767) with ENV 2: +9.6 dB at the peak. Above unity the amp ramp's multiplies overflow (dsp.c mulq15) */
+#endif
+#ifndef ACID_PUSH
+#define ACID_PUSH 12000         /* Q8 dial steps at a full capacitor (one accent at RES 100 charges it to 0.2: ~10 of the 82 steps, stacked accents to 0.4); the 303 probe's accent centroid 1.0 .. 1.34 x a plain note's (Open303 1.0 .. 1.3) */
+#endif
+#define ACID_ACCDEC 73           /* ENV_EXP index of the accent's forced ENV 2 decay: 10000^(73/127) = 200 ms to 99 % (the forum figure of research-B:204, not a primary source) */
 #define ACCENT_V1 127
 static inline int32_t accent_lift(uint32_t vel, int32_t envq15)
 {
@@ -630,6 +638,7 @@ typedef struct track {
     uint8_t seq_hold;            /* last step slides: keep the notes until the next step */
     uint8_t slide_glide;         /* next legato note glides (slide) */
     uint8_t rat_left;            /* RATCH: repeats of the playing step still to come (seq.c seq_ratchet) */
+    int16_t acid_y;              /* ACID (b8): the accent push's capacitor, Q15 (voice.c), in the padding after rat_left */
     uint32_t seq_off;
     uint8_t seq_active;          /* any step programmed */
     uint8_t rskip_idx;           /* live recording put notes into the step about to play: */

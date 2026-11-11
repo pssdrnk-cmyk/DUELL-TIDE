@@ -156,7 +156,7 @@ static void fresh(void)
     frame();                                            /* (morph_settings: the defaults read) */
 }
 #if DUELL_TIDE
-/* 1.0.0-b7: the MORPH page's knobs 2..4 are FILTER, ECHO, LENGTH; ROLL is gone from it (a new End B is OCT+ held + K1, End A has no page gesture) and AMOUNT
+/* 1.0.0-b7: the MORPH page's knobs 2..4 are FILTER, ECHO, LENGTH (b8: FILTER, RESONANCE, ECHO); ROLL is gone from it (a new End B is OCT+ held + K1, End A has no page gesture) and AMOUNT
  * is a TIDE SETTINGS row. The older checks below still turn K2 for a ROLL and K4 for AMOUNT on the MORPH page: on it they reach those through what the page
  * offers now (t_home1 checks the page's own knobs): K2 left a ROLL of A (MIDI's ROLL A, the same action), right OCT+ held + K1; K4 AMOUNT as the row does it,
  * from the selected part's value onto the selection; K3 nothing (as before) */
@@ -480,8 +480,8 @@ static void t_knobs(void)
         char pc[12];
         snprintf(pc, sizeof pc, "%s%%", amt_txt);
         (void)pc;
-        expect("  .. 1.0.0-b7: MORPH A on the knob-1 line, then the row: FLT, ECHO, LEN; no ROLL, no AMOUNT (a TIDE SETTINGS row now)",
-               card_is(0, "MORPH", "A") && mrow_has("FLT") && mrow_has("ECHO") && mrow_has("LEN") && !mrow_has("ROLL") && !mrow_has("AMOUNT"));
+        expect("  .. 1.0.0-b7: MORPH A on the knob-1 line, then the row: FLT, RSN, ECH; no ROLL, no AMOUNT (a TIDE SETTINGS row now)",
+               card_is(0, "MORPH", "A") && mrow_has("FLT") && mrow_has("RSN") && mrow_has("ECH") && !mrow_has("ROLL") && !mrow_has("AMOUNT"));
     }
 #else
     expect("  .. the cards in v3's order: MORPH, ROLL, an empty KNOB 3 (1.0.0-b5: no UNDO), AMOUNT (KNOB 4)", card_is(0, "MORPH", "A") && card_is(1, "ROLL", "A<>B") &&
@@ -612,7 +612,7 @@ static void t_far(void)                                  /* (1.0.0-b5: UNDO's ch
     frame();
     frame();
 #if DUELL_TIDE
-    expect("1.0.0-b7: the slim row shows ECHO for KNOB 3, no ROLL", mrow_has("ECHO") && !mrow_has("ROLL"));
+    expect("1.0.0-b7: the slim row shows RSN for KNOB 3 and ECH for KNOB 4, no ROLL", mrow_has("RSN") && mrow_has("ECH") && !mrow_has("ROLL"));
 #else
     expect("KNOB 3's card at rest: empty", card_is(2, "", ""));
     turn(EN_K3, -1);
@@ -932,7 +932,7 @@ static void t_amount_keep(void)
     expect("1.0.0-b7: the AMOUNT row is not dim while JOURNEY runs (it still shapes a hand's roll)", !jl_dimmed(JL_AMOUNT));
     gl.on = 0;
 }
-/* the slim row (owner on the unit, 2026-11-10): every value each column can show, in every form (FM6's DX7 number and ENV SYNC's note values for LEN), fits its
+/* the slim row (owner on the unit, 2026-11-10): every value each column can show, in every form (the engine and ENV SYNC loops are left from when K4 was LEN), fits its
  * column: the name, 5 px, the widest value, then 12 px or more before the next column; the last ends by x 236 */
 static int h1_fits(void)
 {
@@ -961,10 +961,10 @@ static int h1_fits(void)
 /* 1.0.0-b7 (owner 2026-11-10): the MORPH page is the hands-on page */
 static void t_home1(void)
 {
-    expect("the slim row: the widest value of FLT, ECHO and LEN fits its column, 12 px or more apart", h1_fits());
+    expect("the slim row: the widest value of FLT, RSN and ECH fits its column, 12 px or more apart", h1_fits());
     int32_t o;
     uint32_t f0, s1;
-    int16_t c0, c1;
+    int16_t c0, c1, c2;
     fresh();
     morph_page();
     SEL_BOTH = 0;
@@ -983,21 +983,27 @@ static void t_home1(void)
     expect("K1 with BOTH: each part from its own fader by the same steps", mph[0].fader == 20u && mph[1].fader == 60u);
     morph_do(MQ_FADER, 3u, 0u);
     trk[0].p[P_FREEA] = 40; trk[1].p[P_FREEA] = 60;
-    trk[0].p[P_REL] = 30; trk[1].p[P_REL] = 70;
-    trk[0].p[P_DLY] = 10; trk[1].p[P_DLY] = 20;
+    trk[0].p[P_FREEB] = 10; trk[1].p[P_FREEB] = 20;
+    trk[0].p[P_DLY] = 30; trk[1].p[P_DLY] = 70;
+    trk[0].p[P_REL] = 55; trk[1].p[P_REL] = 66;
     turn_ui(EN_K2, 3);
     turn_ui(EN_K3, 2);
     turn_ui(EN_K4, -4);
-    expect("K2 FILTER, K3 ECHO, K4 LENGTH with BOTH: each part by the same steps", trk[0].p[P_FREEA] == 43 && trk[1].p[P_FREEA] == 63 &&
-           trk[0].p[P_DLY] == 12 && trk[1].p[P_DLY] == 22 && trk[0].p[P_REL] == 26 && trk[1].p[P_REL] == 66);
+    expect("K2 FLT, K3 RSN, K4 ECH with BOTH: each part by the same steps", trk[0].p[P_FREEA] == 43 && trk[1].p[P_FREEA] == 63 &&
+           trk[0].p[P_FREEB] == 12 && trk[1].p[P_FREEB] == 22 &&
+           trk[0].p[P_DLY] == 26 && trk[1].p[P_DLY] == 66 &&
+           trk[0].p[P_REL] == 55 && trk[1].p[P_REL] == 66);
     SEL_BOTH = 0;
     turn_ui(EN_K2, -3);
     expect("  .. PART 1 alone moves part 1 only", trk[0].p[P_FREEA] == 40 && trk[1].p[P_FREEA] == 63);
     mods_put(MODS_SENDS, 1u);
     frame();
     c0 = trk[0].p[P_DLY];
-    turn_ui(EN_K3, 5);
+    turn_ui(EN_K4, 5);
     expect("ECHO with SENDS OFF: the knob does nothing, the row dims and says why", trk[0].p[P_DLY] == c0 && h1_echo_why() && str_eq(h1_echo_why(), "ECHO: SENDS OFF"));
+    c0 = trk[0].p[P_FREEB];
+    turn_ui(EN_K3, 5);
+    expect("RSN with SENDS OFF: the knob still works", trk[0].p[P_FREEB] != c0);
     mods_put(MODS_SENDS, 0u);
     frame();
     o = song.octave;
@@ -1009,14 +1015,25 @@ static void t_home1(void)
     btn_up(B_OCTUP); frames(64);
     expect("OCT+ held + K1: End B a new roll, the fader stays, no octave on the release", seed_now(0, 1) != s1 && mph[0].fader == f0 && song.octave == o);
     c0 = h1_orig[0][0];
-    c1 = h1_orig[0][2];
+    c1 = h1_orig[0][1];
+    c2 = h1_orig[0][2];
     trk[0].p[P_FREEA] = (int16_t)(c0 > 10 ? c0 - 10 : c0 + 10);
-    trk[0].p[P_REL] = (int16_t)(c1 > 10 ? c1 - 10 : c1 + 10);
+    trk[0].p[P_FREEB] = (int16_t)(c1 > 10 ? c1 - 10 : c1 + 10);
+    trk[0].p[P_DLY] = (int16_t)(c2 > 10 ? c2 - 10 : c2 + 10);
     btn_down(B_OCTDN); frame();
     turn_ui(EN_K2, 1);
+    turn_ui(EN_K3, 1);
     turn_ui(EN_K4, 1);
     btn_up(B_OCTDN); frames(64);
-    expect("OCT- + K2 / K4: FILTER and LENGTH back to the loaded sound's, no octave", trk[0].p[P_FREEA] == c0 && trk[0].p[P_REL] == c1 && song.octave == o);
+    expect("OCT- + K2 / K3 / K4: FLT, RSN and ECH back to the loaded sound's, no octave", trk[0].p[P_FREEA] == c0 && trk[0].p[P_FREEB] == c1 && trk[0].p[P_DLY] == c2 && song.octave == o);
+    SEL_BOTH = 1;
+    frames(400);                                        /* (the knobs at rest after the first OCT- gesture) */
+    trk[1].p[P_FREEB] = (int16_t)(h1_orig[1][1] > 10 ? h1_orig[1][1] - 10 : h1_orig[1][1] + 10);
+    btn_down(B_OCTDN); frame();
+    turn_ui(EN_K3, 1);
+    btn_up(B_OCTDN); frames(64);
+    expect("OCT- + K3 with BOTH: RSN back on both parts", trk[0].p[P_FREEB] == h1_orig[0][1] && trk[1].p[P_FREEB] == h1_orig[1][1]);
+    SEL_BOTH = 0;
     morph_do(MQ_FADER, 1u, 90u);
     frames(400);                                        /* (K1 at rest after the OCT+ roll: its further detents were swallowed for 300 ms) */
     btn_down(B_OCTDN); frame();

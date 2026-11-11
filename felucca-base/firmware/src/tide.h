@@ -126,6 +126,8 @@ static void tide_store_mark(const uint8_t *b, uint32_t n);
 static void tide_store_poll(void);
 static uint8_t tide_tail_new;                            /* settings_import (settings_persist.c) brought a TIDE record: tide_settings reads the fields again */
 static const char *tide_tl_keep(track_t *t, uint64_t was, uint32_t len);   /* (tide_ui.c) */
+static void tide_save_note(int32_t w);                      /* (tide_ui.c) */
+#define TIDE_SAVE_NOTE(w) tide_save_note(w)               /* the SAVE dialog says what it saves when the sound is not the loaded one (1.0.0-b8) */
 static void tl_undo_take(track_t *t);                    /* (ui_tools.c, compiled after tide_ui.c) */
 static void tl_unlock(track_t *t, uint64_t was, uint32_t len);
 #define TIDE_TL_KEEP , TL_KEEP                           /* SEQ held + G4; labelled below the tools grid */
@@ -147,7 +149,7 @@ static int tide_foot_two(void);
 #define TIDE_PT_NCH 21u                                  /* the patch store's chunks with TIDE: 126 saved patches at most (plan §4.5) */
 #define TIDE_MG_N 5u                                     /* ui.mg's gestures: MORPH's, GLO's and GLIDE's (tide_ui.c TIDE_G_GLIDE) */
 #define TIDE_PAGE(pg) ((pg)->scope == SC_TIDE)
-#define TIDE_WAVE_PAGE(pg) ((pg)->graph == GR_MORPH)      /* the MORPH page is a template 9 page: MORPH on one line, the part's real sound in the big area (ui_scope.c), FILTER / ECHO / LENGTH on the slim row (1.0.0-b7) */
+#define TIDE_WAVE_PAGE(pg) ((pg)->graph == GR_MORPH)      /* the MORPH page is a template 9 page: MORPH on one line, the part's real sound in the big area (ui_scope.c), FILTER / RESONANCE / ECHO on the slim row (1.0.0-b7) */
 #define TIDE_LINK(kind, mask, v) do { if ((kind) == MQ_FADER) tide_link((mask), (v)); } while (0)   /* LINK: the SEQ fader follows */
 #define TIDE_MQ_ROUTE(kind, mask, v, pi) ((kind) >= MQ_GLIDE ? (tide_midi((kind), (mask), (v), (pi)), 1) : 0)   /* GLIDE, the SEQ fader */
 #define TIDE_MQ_KINDS , MQ_GLIDE, MQ_SEQF
@@ -263,6 +265,7 @@ static int tide_foot_two(void);
 #define TIDE_GRID3 (grid_on == 3)
 #define TIDE_PICK_MODE() ((void)0)
 #define TIDE_MODE_SAY "MODE "
+#define TIDE_SAVE_NOTE(w) ((void)0)
 #define TIDE_LIVE_SIG(pg, t, h) ((void)0)
 #define TIDE_LIVE_DRAW(pg, t) ((void)0)
 #define TIDE_LIVE_MOD(t, y0) ((void)0)

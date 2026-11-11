@@ -40,6 +40,8 @@ static uint64_t xv_roll_hash(void)
                 }
                 if (en == &ENG_WAVE && id == P_E6)
                     lo = hi = 0;                               /* (WAVE's E7 as it was when the hash was made, an unused slot: STEPS has a range now; a roll draws it as it did, morph.c MORPH_E7_OLD) */
+                if (en == &ENG_ANALOG && id == P_E0)
+                    hi = 6;                                    /* (ANALOG's WAVE as it was when the hash was made, 0..6: ACID / ACSQ (7, 8, b8) are not in an Original here, and a roll draws 0..6, morph.c MORPH_AW_OLD) */
                 if (id >= P_M1SRC && id <= P_M8AMT) {
                     uint32_t k = (id - P_M1SRC) % 3u;
                     lo = 0;

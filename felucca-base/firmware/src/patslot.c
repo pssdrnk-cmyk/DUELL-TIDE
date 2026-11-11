@@ -285,7 +285,7 @@ static void ps_def_get(const void *ctx, uint32_t i, uint8_t *b9)
     uint32_t k = *(const uint32_t *)ctx;
     step_t s;
     if (i < NPAT_STEPS)
-        pat_make_step(&s, PATTERNS[k].note[i], pat_fl(k, i));
+        pat_make_step(&s, pat_note(k, i), pat_fl(k, i));
     else
         pat_make_step(&s, 0, 0);
     ps_pack_step(&s, b9);

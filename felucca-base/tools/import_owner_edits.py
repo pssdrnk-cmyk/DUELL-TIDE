@@ -39,7 +39,7 @@ TOOLS = ROOT / "tools"
 sys.path.insert(0, str(TOOLS))
 import endb                                                          # the End B block (the firmware's format), shared with gen_duell_sounds.py / convert_endb.py
 CATS = ["", "BASS", "LEAD", "PAD", "PLUCK", "KEYS", "PERC", "FX", "OTHER"]        # category.c (record byte; 0: none)
-PTF = dict(PAT=1, TR=2, FM6=4, MB=8, XB=16, AK=32, BM=64, CB=128)   # MB (PT_VER 4): End B as values; XB and BM (16, 64) are PT_VER 3's and are refused
+PTF = dict(PAT=1, TR=2, FM6=4, MB=8, XB=16, AK=32, W4=64, BM=64, CB=128)   # MB (PT_VER 4): End B as values; XB (16) is PT_VER 3's and is refused; W4 (b9, upreset.c PTF_W4; PT_VER 3's BM is the same bit, kept for tools/convert_twin.py and import_bank.py): ANALOG's WAVE takes 4 bits in the record (without: saved before b8, 3 bits)
 AK_NAMES = ["P_AMODE", "P_ARATE", "P_AOCT", "P_AGATE", "P_ASWING", "P_APROB", "P_AHOLD", "P_AORDER", "P_SCALE", "P_CHRD", "P_VOIC", "P_SLEN", "P_SDIV", "P_SSWING", "P_SGATE", "P_SQNT"]
 STORE_ZERO = ["P_KTRK", "P_FREEA", "P_FREED", "P_L2TRIG", "P_LTRIG", "P_DKCRV", "P_DKSRC"]       # upreset.c up_def: the stored default is 0 (0.2.24: DUCK SRC too, its stored default stays PUMP)
 RETIRED_ID = 127            # the SCALE (ordinal 8 of a record's keys group) is retired, its id 25 is the TWIN FILTER's RES 2 now (cloud job B): the value is read and dropped (no name for 127)
@@ -89,7 +89,9 @@ class Ctx:
         d = self.layout["XTP"][w - 128] if w >= 128 else self.layout["ENG"][eng]["edit"][w - self.e0] if w >= self.e0 else self.layout["TP"][w]
         return d["min"], d["max"]
 
-    def bits(self, eng, w):
+    def bits(self, eng, w, w4=True):
+        if not w4 and eng == 0 and w == self.e0:       # a record / block saved before b8 (WAVE 0..6): morph.c wv_bitsl
+            return 3
         lo, hi = self.rng(eng, w)
         n, b = hi - lo + 1, 0
         while b < 16 and (1 << b) < n:
@@ -110,14 +112,14 @@ PT_FIX, PT_VB, PT_WORST = 20, 20, 577       # upreset.c PT_VER 4: the fixed part
 
 def mbv_size(ctx, b, o, avail, eng):
     """the length of the End B block (morph.c MBV, morph_bv_size) at b[o:], 0 when it is no block"""
-    if avail < 22 or (b[o] & ~3) or b[o + 1] > 101 or (b[o] & 2 and eng != ctx.eng_names.index("FM6")):
+    if avail < 22 or (b[o] & ~11) or b[o + 1] > 101 or (b[o] & 2 and eng != ctx.eng_names.index("FM6")):
         return 0
     nb = 0
     for w in range(160):
         if b[o + 2 + (w >> 3)] >> (w & 7) & 1:
             if not wid_ok(w) or w in MBV_NEVER:
                 return 0
-            nb += ctx.bits(eng, w)
+            nb += ctx.bits(eng, w, b[o] & 8)       # (MBV_W4)
     n = 22 + (nb + 7) // 8
     if b[o] & 1:
         if n + 20 > avail:
@@ -145,9 +147,9 @@ def parse_record(ctx, b):
     f = b[4]
     if not f & PTF["CB"]:
         raise ValueError("a record of a firmware before 0.2.14")
-    if f & (PTF["XB"] | PTF["BM"]):
+    if f & PTF["XB"]:
         raise ValueError("a record of an older DUELL version (PT_VER 3), which this firmware does not load")
-    if f & ~(PTF["PAT"] | PTF["TR"] | PTF["FM6"] | PTF["MB"] | PTF["AK"] | PTF["CB"]):
+    if f & ~(PTF["PAT"] | PTF["TR"] | PTF["FM6"] | PTF["MB"] | PTF["AK"] | PTF["W4"] | PTF["CB"]):
         raise ValueError("unknown flags")
     eng = b[5]
     if eng >= len(ctx.eng_names):
@@ -160,7 +162,7 @@ def parse_record(ctx, b):
         if b[PT_FIX + (w >> 3)] >> (w & 7) & 1:
             if not wid_ok(w):
                 raise ValueError("it stores a parameter that does not exist")
-            code, at = get_bits(b, at, ctx.bits(eng, w))
+            code, at = get_bits(b, at, ctx.bits(eng, w, f & PTF["W4"]))
             lo, hi = ctx.rng(eng, w)
             v = min(lo + code, hi)
             nv += 1

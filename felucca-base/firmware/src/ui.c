@@ -1432,7 +1432,7 @@ static void pat_load_def(track_t *t, uint32_t k)
 {
     uint32_t i;
     for (i = 0; i < NSTEP; i++)
-        pat_make_step(&t->step[i], i < NPAT_STEPS ? PATTERNS[k].note[i] : 0, i < NPAT_STEPS ? pat_fl(k, i) : 0);
+        pat_make_step(&t->step[i], i < NPAT_STEPS ? pat_note(k, i) : 0, i < NPAT_STEPS ? pat_fl(k, i) : 0);
     t->p[P_SLEN] = PATTERNS[k].len;
     t->p[P_SDIV] = PATTERNS[k].div;
 }

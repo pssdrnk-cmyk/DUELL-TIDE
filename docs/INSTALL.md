@@ -4,7 +4,27 @@
 
 > **Install at your own risk.** TIDE has been flashed to and run on **one** real FM-1, the fork owner's. The way back to the official firmware (V15) has worked on that unit and has not been tried on others. The FM-1 has a single-bank layout and there is no known rollback. No warranty. DUELL with TIDE is not affiliated with OSCILL/R or M-VAVE, and M-VAVE's firmware is not distributed here. Read [RECOVERY.md](RECOVERY.md), [KNOWN_LIMITS.md](KNOWN_LIMITS.md) and [KNOWN_ISSUES.md](KNOWN_ISSUES.md) first.
 
-> **DUELL with TIDE (this fork) has its own installer page:** <https://pssdrnk-cmyk.github.io/DUELL-TIDE/install/>. It offers two builds. **Stable** is the default: the build the fork owner validated, a normal GitHub release (TIDE's version, for example `1.0.0`: tag `tide-1.0.0`, package `duell-tide-stable-1.0.0.fwsc`). **Beta** is a build under test, a GitHub pre-release (for example `1.0.0-b2`: tag `tide-1.0.0-b2`, package `duell-tide-beta-1.0.0-b2.fwsc`), shown only while it is newer than the stable one; it needs a tick box and a second confirmation. (Builds from before the versions have dated names, `stable-2026-11-03` and `beta-2026-11-04`; they count as older than any version.) The page shows the tag, version or date, commit and SHA-256 of what will be written, and checks the SHA-256 of the downloaded package in the browser against the release data (`install/channels.json`, written by the Pages workflow from the release) before it writes: on a mismatch it refuses. The backup, the way back to the official firmware and the resume after an interruption are as described below. After publishing or editing a release, run Host tests by hand on `jam11` (Actions > Host tests > Run workflow); Pages refreshes the site and release channels only after that run passes, using exactly the tested commit. The text below was written for OSCILL/R's page, whose files and names differ (`duell-latest.fwsc`, `duell-version.json`).
+> **DUELL with TIDE (this fork) has its own installer page:** <https://pssdrnk-cmyk.github.io/DUELL-TIDE/install/>.
+> - It offers two builds.
+> - **Stable** is the default: the build the fork owner validated, a normal GitHub release.
+>   - TIDE's version, for example `1.0.0`.
+>   - tag `tide-1.0.0`.
+>   - package `duell-tide-stable-1.0.0.fwsc`.
+> - **Beta** is a build under test, a GitHub pre-release.
+>   - For example `1.0.0-b2`.
+>   - tag `tide-1.0.0-b2`.
+>   - package `duell-tide-beta-1.0.0-b2.fwsc`.
+>   - shown only while it is newer than the stable one.
+>   - needs a tick box and a second confirmation.
+> - Builds from before the versions have dated names, `stable-2026-11-03` and `beta-2026-11-04`.
+>   - they count as older than any version.
+> - The page shows the tag, version or date, commit and SHA-256 of what will be written.
+> - It checks the SHA-256 of the downloaded package in the browser against the release data (`install/channels.json`, written by the Pages workflow from the release) before it writes.
+>   - on a mismatch it refuses.
+> - The backup, the way back to the official firmware and the resume after an interruption are as described below.
+> - After publishing or editing a release, run Host tests by hand on `jam11` (Actions > Host tests > Run workflow).
+>   - Pages refreshes the site and release channels only after that run passes, using exactly the tested commit.
+> - The text below was written for OSCILL/R's page, whose files and names differ (`duell-latest.fwsc`, `duell-version.json`).
 
 ## What you need
 - An M-VAVE FM-1.
@@ -55,7 +75,19 @@ If anything stops: replug the cable and press Install again. The device stays in
 
 ## Keep or erase your data
 - **A reinstall keeps your data.** Installing DUELL again, even after going back to the official firmware, does not touch the area where the unit keeps its saved data, so it comes back as you left it: your settings, patches, multis and patterns.
-- **To start from scratch while installing:** the INSTALL DUELL card has the box **"Erase my saved data after installing (start from scratch)"**. The page checks what the FM-1 runs: if it runs DUELL, the box is unticked (an update keeps your patches and settings); otherwise it is ticked (clean install). The line "Detected: ..." says which case it found; if the page has not talked to the unit yet it says so (press "Check the unit"). You can tick or untick the box yourself at any time, and your choice always wins. If it is ticked, after the install has finished and the unit has restarted into DUELL, the page connects to it, shows "Erasing your data ..." (the card stays locked: do not unplug) and then "Done. Your saved data was erased. The unit starts as new." If the unit cannot be reached or refuses (for example while it is playing), the card says that the install itself succeeded, that your data was **not** erased, and to use the menu item below.
+- **To start from scratch while installing:** do these steps on the installer page:
+
+  1. Open the INSTALL DUELL card. You see the box **"Erase my saved data after installing (start from scratch)"**.
+  2. The page checks what the FM-1 runs. Press "Check the unit" if the page has not talked to the unit yet.
+  3. The line "Detected: ..." tells you which case it found.
+     - If the unit runs DUELL now, the box is unticked by default (an update keeps your patches and settings).
+     - Otherwise it is ticked by default (clean install).
+  4. You can tick or untick the box yourself at any time. Your choice always wins over what the page detected.
+  5. If the box is ticked, after the install finishes and the unit restarts into DUELL:
+     - The page connects to the unit.
+     - It shows "Erasing your data ..." (the card stays locked: do not unplug).
+     - Then it shows "Done. Your saved data was erased. The unit starts as new."
+  6. If the unit cannot be reached or refuses (for example while it is playing), the card says that the install itself succeeded, that your data was **not** erased, and to use the menu item below.
 - **To start from scratch any time:** on the unit, hold HOME, go to SYSTEM > ERASE DATA, press OCT+ and confirm with OCT+ (OCT- or any page button cancels).
 - **What is erased:** the settings (theme, scale, MIDI channels, favourites, preferences), the autosave, all your saved patches (every slot holds its factory sound again, the USER slots U1 to U4 are empty), your multis, your pattern slots, the three user wave tables (USR1 to USR3) and the FM6 voice bank the editor loaded. The factory sounds, the factory multis M01 to M16 and the factory patterns come back, and the unit starts as new (VIOLET, LAYER, M01; with TIDE, M04 DUB CHORD). **Not erased:** the firmware itself.
 - **It cannot be undone: back up first** (step 2). The backup holds your multis and patterns too.
