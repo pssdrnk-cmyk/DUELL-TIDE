@@ -2318,7 +2318,7 @@ SOUNDS = [
     dict(engine='FM6', idx=17, name='HORN SWELL', cat='PAD', bseed=48240, bamt=27,  # #165
          p={
             'L2RATE': 7, 'L2WAVE': 1, 'KTRK': 16, 'DIST': 24, 'CHOR': 50, 'DLY': 30, 'REV': 100,
-            'SPRD': 40, 'EQLG': -4, 'FREEA': 50, 'FREEB': 10, 'FREED': 1, 'TRIM': 117, 'E3': 0, 'E5': 0, 'E7': 48, 'E8': 3,
+            'SPRD': 40, 'EQLG': -4, 'SUB LEVEL': 56, 'SUB OCTAVE': 1, 'FREEA': 50, 'FREEB': 10, 'FREED': 1, 'TRIM': 117, 'E3': 0, 'E5': 0, 'E7': 48, 'E8': 3,
             'MOD1': ('CYCLE', 'E3', 10), 'MOD2': ('LFO2', 'CUT', 10), 'MOD3': ('AT', 'CUT', 12), 'CYCLE RISE': 118, 'CYCLE FALL': 122, 'CYCLE CURVE': 10,
             'LTRIG': 1, 'L2TRIG': 1,
          },
@@ -2359,7 +2359,7 @@ SOUNDS = [
          p={
             'ATK': 80, 'DEC': 100, 'SUS': 127, 'REL': 118, 'LRATE': 0, 'LWAVE': 1, 'L2RATE': 3, 'L2WAVE': 1, 'KTRK': 20, 'CHOR': 80, 'DLY': 60,
             'REV': 127, 'SPRD': 100, 'FREEA': 46, 'FREEB': 20, 'FREED': 1, 'TRIM': 102, 'E1': 11, 'E2': 18, 'E6': 7, 'MOD1': ('CYCLE', 'E2', 24),
-            'MOD2': ('LFO2', 'CUT', 12), 'MOD3': ('LFO1', 'E6', 4), 'MOD4': ('AT', 'CUT', 12), 'SUB LEVEL': 64, 'SUB WAVE': 0, 'SUB OCTAVE': 2,
+            'MOD2': ('LFO2', 'CUT', 12), 'MOD3': ('LFO1', 'E6', 4), 'MOD4': ('AT', 'CUT', 12), 'SUB LEVEL': 64, 'SUB WAVE': 0, 'SUB OCTAVE': 1,
             'CYCLE RISE': 127, 'CYCLE FALL': 127, 'LTRIG': 1, 'L2TRIG': 1,
          },
          bend={
@@ -2371,7 +2371,7 @@ SOUNDS = [
     # End B: the wind takes over: more noise, the filter higher and more band-pass, faster, the beat wider, the room as big as it goes.
     dict(engine='ANALOG', idx=35, name='SOLAR WIND', cat='FX', text=True, bseed=37592, bamt=25,  # #169
          p={
-            'ATK': 88, 'DEC': 100, 'SUS': 127, 'REL': 118, 'LRATE': 2, 'LWAVE': 1, 'KTRK': 0, 'CHOR': 50, 'DLY': 56, 'REV': 120, 'SPRD': 90, 'EQLG': -3,
+            'ATK': 88, 'DEC': 100, 'SUS': 127, 'REL': 118, 'LRATE': 2, 'LWAVE': 1, 'KTRK': 0, 'CHOR': 50, 'DLY': 56, 'REV': 120, 'SPRD': 90, 'EQLG': -3, 'SUB LEVEL': 56, 'SUB OCTAVE': 1,
             'FREEA': 46, 'FREEB': 30, 'FREEC': 40, 'FREED': 1, 'TRIM': 116, 'E1': 2, 'E2': 4, 'E4': 52, 'MOD1': ('LFO1', 'CUT', 8), 'MOD2': ('CYCLE', 'FRES', 8),
             'MOD3': ('AT', 'CUT', 12), 'CYCLE RISE': 124, 'CYCLE FALL': 118, 'LTRIG': 1, 'L2TRIG': 1, 'LPHASE': 32, 'E3': 40,
          },
