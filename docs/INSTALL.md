@@ -75,7 +75,19 @@ If anything stops: replug the cable and press Install again. The device stays in
 
 ## Keep or erase your data
 - **A reinstall keeps your data.** Installing DUELL again, even after going back to the official firmware, does not touch the area where the unit keeps its saved data, so it comes back as you left it: your settings, patches, multis and patterns.
-- **To start from scratch while installing:** the INSTALL DUELL card has the box **"Erase my saved data after installing (start from scratch)"**. The page checks what the FM-1 runs: if it runs DUELL, the box is unticked (an update keeps your patches and settings); otherwise it is ticked (clean install). The line "Detected: ..." says which case it found; if the page has not talked to the unit yet it says so (press "Check the unit"). You can tick or untick the box yourself at any time, and your choice always wins. If it is ticked, after the install has finished and the unit has restarted into DUELL, the page connects to it, shows "Erasing your data ..." (the card stays locked: do not unplug) and then "Done. Your saved data was erased. The unit starts as new." If the unit cannot be reached or refuses (for example while it is playing), the card says that the install itself succeeded, that your data was **not** erased, and to use the menu item below.
+- **To start from scratch while installing:** do these steps on the installer page:
+
+  1. Open the INSTALL DUELL card. You see the box **"Erase my saved data after installing (start from scratch)"**.
+  2. The page checks what the FM-1 runs. Press "Check the unit" if the page has not talked to the unit yet.
+  3. The line "Detected: ..." tells you which case it found.
+     - If the unit runs DUELL now, the box is unticked by default (an update keeps your patches and settings).
+     - Otherwise it is ticked by default (clean install).
+  4. You can tick or untick the box yourself at any time. Your choice always wins over what the page detected.
+  5. If the box is ticked, after the install finishes and the unit restarts into DUELL:
+     - The page connects to the unit.
+     - It shows "Erasing your data ..." (the card stays locked: do not unplug).
+     - Then it shows "Done. Your saved data was erased. The unit starts as new."
+  6. If the unit cannot be reached or refuses (for example while it is playing), the card says that the install itself succeeded, that your data was **not** erased, and to use the menu item below.
 - **To start from scratch any time:** on the unit, hold HOME, go to SYSTEM > ERASE DATA, press OCT+ and confirm with OCT+ (OCT- or any page button cancels).
 - **What is erased:** the settings (theme, scale, MIDI channels, favourites, preferences), the autosave, all your saved patches (every slot holds its factory sound again, the USER slots U1 to U4 are empty), your multis, your pattern slots, the three user wave tables (USR1 to USR3) and the FM6 voice bank the editor loaded. The factory sounds, the factory multis M01 to M16 and the factory patterns come back, and the unit starts as new (VIOLET, LAYER, M01; with TIDE, M04 DUB CHORD). **Not erased:** the firmware itself.
 - **It cannot be undone: back up first** (step 2). The backup holds your multis and patterns too.
