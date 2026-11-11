@@ -1336,6 +1336,7 @@ static BENCH_FN uint32_t bench_ms_to_h(uint32_t ms) { return (ms * 441u * 2u + 1
 static BENCH_FN void bench_reset_phases(void)
 {
     uint32_t p, i;
+    dly_lfo_s = 0;                                     /* fx.c: the delay colour's LFO (CLFO) phase */
     rng_state = 0x1234567u;                            /* libc.c: the shared generator (events, the arp, note-on seeds, part 1's voice stage) */
     mod_seed = 0x2545F491u;                            /* mod.c: RAND of a note-on */
     bench_mono_seed = 0x1234567u;                      /* voice.c mono_play: the random start phases of a UNISON note */
