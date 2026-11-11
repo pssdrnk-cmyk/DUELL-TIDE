@@ -27,7 +27,7 @@ Renders are deterministic: same tree + same options = identical bytes. `multi` N
 The options added by lanes A / B beyond this list (`--dry`, `--solo`, `--fx`, `--ringout`, `--g NAME=VAL`, `--dump-params`) are in `soundlab --help`.
 Every metric, its JSON path and the old script it comes from: `METRICS.md`. Proof that soundlab gives the old lanes numbers: `REPRODUCE.md`.
 Known limits: per-part figures (steals, odd/even per part) use the mix, not stems (`--solo` stems are not wired into `measure` yet), and the voice log has no voice ids.
-Old "chord held" renders (`RR_SHIFT -12`) held only G3: use `--keys chord:G3` to compare; a full chord picks an octave that reaches every note (`keys_octave` in the JSON).
+Old "chord held" renders (`RR_SHIFT -12`) held only G3: use `--keys chord:G3` to compare; a full chord picks an octave that reaches every note (`keys_octave` in the JSON). `--keys` notes are what SOUNDS (a part TRN is compensated): `--keys-raw` presses the keys as they sound with TRN 0 so TRN shows, `--keys-turn MS` presses the keys one after another in the order given (PRIO, arp ORDER).
 ## Metrics (`PREFIX.metrics.json`; all dB are dBFS or ratios as stated)
 
 | Group | Metric | Definition |
@@ -80,7 +80,7 @@ Tags come from the numbers (thresholds in `atlas.py`, `tags_of`). Sounds, from t
 ## Genre targets
 
 `genres.json`: per genre (dub-techno, deep-house, classic-house, detroit, acid, electro, idm, berlin-school, ambient, drone) numeric target ranges, each with `source` (file:section of work/b9/research/) and `basis` (sourced / example / rule / measured). Where no source gave a number the metric is absent and `rules --genre NAME PREFIX` prints it UNSURE; never fill a gap from memory.
-`soundlab rules --genre dub-techno PREFIX` checks the measured values against the ranges. Add a number only with its source line.
+`soundlab rules --genre dub-techno PREFIX` checks the measured values against the ranges. Add a number only with its source line. Each genre also has a `measured` band: soundlab's own numbers over its factory multis in rc5 (PLAY alone, 4 bars); outside it `rules --genre` prints DRIFT (a regression signal, not a genre failure). Refill it with `soundlab atlas --only multis` after an approved sound change.
 
 ## Dead parameters
 
