@@ -18,7 +18,8 @@
 
 /* ---------------------------------------------------------------- tables */
 static const char *const SL_STYLE[6] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK", "DRONE"};
-static const uint8_t SL_STYLE_OF[18] = {0, 0, 1, 1, 1, 4, 4, 1, 2, 2, 2, 2, 4, 3, 1, 3, 5, 5};   /* the suggested STYLE of M01..M18 (work/b9/sound/render18.sh) */
+static const uint8_t SL_STYLE_OF[24] = {0, 0, 1, 1, 1, 4, 4, 1, 2, 2, 2, 2, 4, 3, 1, 3, 5, 5, 2, 0, 1, 4, 3, 2};   /* the suggested STYLE of M01..M18 (work/b9/sound/render18.sh); b10: M19 MINIMAL, M20 DUB, M21 DEEP, M22-M24 PEAK, AMBIENT, MINIMAL */
+_Static_assert(MU_SHOWN <= sizeof SL_STYLE_OF, "soundlab: a suggested STYLE for every shown multi");
 static const char *const SL_SET[8] = {"AUTO", "STD", "DUB", "HSE", "TECH", "ACID", "ELEC", "AMB"};   /* tide_knobs = index + 1 (1 AUTO, 2 STD, 3 DUB ..) */
 static const char *const SL_KNOBNAME[20] = {"FLT", "RES", "DLY", "REV", "EDF", "ATK", "DEC", "REL", "LRT", "LDF", "DKD", "AGT", "SGT", "APB", "DST", "CHO", "DKS", "FDB", "COL", "TIM"};
 
@@ -175,7 +176,7 @@ static void sl_setval(const sl_ev_t *e)                 /* a --g / --p value, cl
 static void sl_usage(void)
 {
     puts("usage: soundlab render --multi N|all | --sound N|NAME  --out PREFIX  [options]\n"
-         "  --multi N        factory multi 1..18 (M01..M18; `all`: all 18 as PREFIX_Mnn)      --sound N|NAME  one factory sound (1-based index or its name) on part 1\n"
+         "  --multi N        factory multi 1..MU_SHOWN (M01..; `all`: every one as PREFIX_Mnn)      --sound N|NAME  one factory sound (1-based index or its name) on part 1\n"
          "  --keys none|chord:C3,Eb3,G3|note:C3   keys held through the run (C4 = 60; default none; for --sound note:C3)\n"
          "  --bars 16 --bpm B  bars to record; tempo (default: the multi's own)\n"
          "  --tide off|evolve|travel|auto   off: PLAY alone; evolve / travel (= wander / journey): TIDE with the style's rows, MODE forced; auto: the style's own MODE\n"
@@ -933,8 +934,8 @@ int sl_render_main(int argc, char **argv)
             NEEDV;
             if (!strcmp(v, "all"))
                 o.all = 1;
-            else if ((o.multi = atoi(v)) < 1 || o.multi > 18)
-                return sl_die("--multi: 1..18 or all", v);
+            else if ((o.multi = atoi(v)) < 1 || o.multi > (int)MU_SHOWN)
+                return sl_die("--multi: 1..MU_SHOWN (the shown multis) or all", v);
         } else if (!strcmp(k, "--sound")) {
             NEEDV;
             if (isdigit((unsigned char)v[0])) {
@@ -1049,7 +1050,7 @@ int sl_render_main(int argc, char **argv)
     if (o.all) {                                         /* every multi in a process of its own (the firmware's state is not reset by a second load) */
         char cmd[4096];
         int m;
-        for (m = 1; m <= 18 && !r; m++) {
+        for (m = 1; m <= (int)MU_SHOWN && !r; m++) {
             int j, n = 0;
             n += snprintf(cmd, sizeof cmd, "\"%s\" render", sl_self);
             for (j = 1; j < argc; j++) {

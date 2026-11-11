@@ -55,7 +55,7 @@ def main(argv):
         spec = importlib.util.spec_from_file_location("drone_pack", ROOT / "tools" / "drone_pack.py")
         dp = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(dp)
-        for d in dp.DRONES:
+        for d in getattr(dp, "ROM_MULTIS", dp.DRONES):   # (b10: the ROM-only factory multis M19.. after the drones)
             m = dict(d, slot=d["rom"])
             f = dp.OUT / ("M%02d.bin" % m["slot"])
             if not f.exists():
