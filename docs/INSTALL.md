@@ -49,7 +49,13 @@ The installer page is `felucca-base/web/install/index.html`. It keeps Felucca's 
 
 Every build also writes `duell-latest.fwsc` (the same file) and `duell-version.json` next to it.
 
-(The package is named `duell-...`; the older name `felucca-0.1-beta.fwsc` is still found by the installer page. The device shows the version as "DUELL 1.1" (the `VERSION` file); TIDE does not change that text, and the AUTO TIDE page in HOME's round shows that TIDE is on the unit. MENU > SYSTEM > ABOUT shows TIDE's own version beside the date (`1.0.0-b1`, from the file `TIDE_VERSION`; a `+` after it means the build is not exactly the tagged release: for example the owner's unit shows `1.0.0-b2+`, the build made just before `tide-1.0.0-b2` was tagged). The packages on the releases are named after that version: [Versions](ROADMAP.md#versions-and-releases) says how a release is made. Build steps: [felucca-base/BUILDING.md](../felucca-base/BUILDING.md).)
+- The package name starts with `duell-` (for example `duell-1.1.fwsc`). The installer page also still finds the older name `felucca-0.1-beta.fwsc`.
+- The device shows the version as **DUELL 1.1** (from the `VERSION` file); TIDE does not change that text.
+- The AUTO TIDE page in HOME's round shows that TIDE is on the unit.
+- **MENU > SYSTEM > ABOUT** shows TIDE's own version beside the date (for example `1.0.0-b1`, from the file `TIDE_VERSION`).
+- A `+` after the version means the build is not exactly the tagged release (for example the owner's unit shows `1.0.0-b2+`, the build made just before `tide-1.0.0-b2` was tagged).
+- The packages on the releases are named after that version: [Versions](ROADMAP.md#versions-and-releases) says how a release is made.
+- Build steps: [felucca-base/BUILDING.md](../felucca-base/BUILDING.md).
 
 When you build the site yourself, the page reads the version from `duell-version.json` and looks for **`duell-latest.fwsc` next to itself** (then `duell-<VERSION>.fwsc`, then the older names `duell-0.1-beta.fwsc`, `felucca-0.1-beta.fwsc`) (in `felucca-base/web/install/`). If it is not there, the page shows the notice **"DUELL firmware is not yet released"** and keeps the install flow hidden; the flow appears when the file exists. It accepts only a Felucca-loader package (identity `FM-1_9xx`, which `tools/build.py` makes `FM-1_901`), and it shows the SHA-256 so you can compare it with `SHA256SUMS`.
 
