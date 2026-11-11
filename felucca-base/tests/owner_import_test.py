@@ -128,12 +128,12 @@ rc, out = run("--out", str(o4), str(tmp / "backup.json"))
 ok(rc == 0 and "1 multis edited" in out and (o4 / "factory_multis" / "M03.bin").read_bytes() == bytes(m3x) and not (o4 / "factory_multis" / "M04.bin").exists(),
    "a backup file with a changed M03 and an unchanged M04: M03's record is kept byte for byte, M04 is not touched")
 om = load(o4 / "owner_multis.py", "om4").OWNER_MULTIS
-ok(len(om) == 1 and om[0]["slot"] == 3 and om[0]["name"] == "HS JUNO DEEP" and [p["sound"] for p in om[0]["parts"]] == ["WARM WASH", "RUBBER BAND"] and om[0]["mode"] == "LAYER",
-   "owner_multis.py lists M03 HS JUNO DEEP, LAYER, WARM WASH + RUBBER BAND (the factory M03 since the reel, 2026-11-10)")
+ok(len(om) == 1 and om[0]["slot"] == 3 and om[0]["name"] == "HSE JUNO" and [p["sound"] for p in om[0]["parts"]] == ["WARM WASH", "RUBBER BAND"] and om[0]["mode"] == "LAYER",
+   "owner_multis.py lists M03 HSE JUNO, LAYER, WARM WASH + RUBBER BAND (the factory M03 since the reel, 2026-11-10)")
 
 # 4b: the editor's own multi file (duell-multis, stored.js multiFile): export-format file -> importer -> the same record bytes
 mf = {"format": "duell-multis", "version": 1, "firmware": FV, "created": "2026-01-01T00:00:00.000Z",
-      "multis": [{"slot": 3, "label": "M03", "name": "HS JUNO DEEP", "version": m3x[0], "size": len(m3x), "crc": zlib.crc32(bytes(m3x)), "data": base64.b64encode(bytes(m3x)).decode()}]}
+      "multis": [{"slot": 3, "label": "M03", "name": "HSE JUNO", "version": m3x[0], "size": len(m3x), "crc": zlib.crc32(bytes(m3x)), "data": base64.b64encode(bytes(m3x)).decode()}]}
 (tmp / "m.duell-multis.json").write_text(json.dumps(mf))
 o4b = tmp / "o4b"
 o4b.mkdir()

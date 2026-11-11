@@ -1310,7 +1310,7 @@ static void setup(int s)
     case S_QUICK_GLO: go_title("AMP ENV"); ui.layer = LAYER_GLO; trk[0].peak = 11000; trk[1].peak = 4000; break;   /* 0.2.13 deck: GLO held, QUICK GLO (0.2.11) */
     case S_MULTIS: case S_MULTIS2:                /* 0.2.13 deck: SAVE > MULTIS, the factory multis in their 0.2.13 order (M01 REESE SWAMP loaded) */
         song.playing = 0; project_load(0); song.g[G_SLOT] = s == S_MULTIS ? 1 : 7; go_page(GR_SLOTS); ui.act = 2; ui.msg_t = 0; break;
-    case S_MULTIS_M03:                            /* 1.0.0-b7: SAVE > MULTIS, M03 HS JUNO DEEP picked: its two parts play written patterns with the arp OFF, SEQ in the preview (owner, from the emulator) */
+    case S_MULTIS_M03:                            /* 1.0.0-b7: SAVE > MULTIS, M03 HSE JUNO picked: its two parts play written patterns with the arp OFF, SEQ in the preview (owner, from the emulator) */
         song.playing = 0; project_load(0); song.g[G_SLOT] = 3; go_page(GR_SLOTS); ui.act = 2; ui.msg_t = 0; break;
     case S_MULTIS3:                               /* SAVE > MULTIS with nothing loaded, M09 (an ARP part, a SEQ part) picked, K3 SAVE picked: OCT+ saves */
         song.playing = 0; song.g[G_SLOT] = 9; go_page(GR_SLOTS); ui.act = 3; ui.msg_t = 0; break;
@@ -2515,7 +2515,7 @@ static int savenote_main(const char *out)
     printf("ui_render: SAVE note renders in %s: %u lint findings\n", out, nfind);
     return nfind ? 1 : 0;
 }
-/* 1.0.0-b8 HOME page 1 (MORPH) knobs, for looking at: --h1res DIR writes DIR/ppm/<PAL>_h1res_<case>.ppm (VIOLET, GREY): M11 AC ACID LINE loaded, the MORPH page, "one" the
+/* 1.0.0-b8 HOME page 1 (MORPH) knobs, for looking at: --h1res DIR writes DIR/ppm/<PAL>_h1res_<case>.ppm (VIOLET, GREY): M11 ACID LINES loaded, the MORPH page, "one" the
  * selected part, "both" BOTH parts */
 static int h1res_main(const char *out)
 {
@@ -2532,7 +2532,7 @@ static int h1res_main(const char *out)
             setup(S_MORPH_MID);
             pal(PP[q]);
             song.playing = 0; song.rec = 0; usb.config = 0; ui.perf = 0;
-            project_load(10);                            /* (M11 AC ACID LINE) */
+            project_load(10);                            /* (M11 ACID LINES) */
             go_page(GR_MORPH);
             SEL_BOTH = c == 1u;
             ui.msg_t = 0;

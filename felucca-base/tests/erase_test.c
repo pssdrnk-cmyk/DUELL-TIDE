@@ -334,8 +334,8 @@ int main(void)
     ck("  0.2.14's defaults: KNOB ACCEL ON, CLICK REC, USB SERIAL OFF (the user's OFF / ON / ON before the erase gone)",
        (ui_prefs & PREF_ACCEL) && (ui_prefs & PREF_SERIAL_OFF) && rp_get(RP_CLICK) == 1u && (ui_prefs2 & (PREF_DEFAULTS >> 16)));
     frames(160);
-    ck("  MODE is LAYER and the first start's factory multi is loaded (M01 DB BASIC CHD since D31, REESE SWAMP before; TIDE: M02 DB DUB CHORD)", duell_mode_req == DM_LAYER &&
-       project_cur_slot() == TIDE_FIRST_MULTI && first_boot_pending == 0u && str_eq(proj_name, TIDE_FIRST_MULTI ? "DB DUB CHORD" : "DB BASIC CHD"));
+    ck("  MODE is LAYER and the first start's factory multi is loaded (M01 DUB BASIC since D31, REESE SWAMP before; TIDE: M02 DUB CHORD)", duell_mode_req == DM_LAYER &&
+       project_cur_slot() == TIDE_FIRST_MULTI && first_boot_pending == 0u && str_eq(proj_name, TIDE_FIRST_MULTI ? "DUB CHORD" : "DUB BASIC"));
     ck("  no patches, no user favourites; the pattern slots hold their 32 defaults again (none saved, none empty)", up_count() == 0u && !ps_changed(2) && !ps_changed(12) && favorites.user == 0u &&
        ({ char b0[13], b1[13]; ps_name(2, b0); ps_name(31, b1); str_eq(b0, PATTERNS[2].name) && str_eq(b1, PATTERNS[31].name); }));
     {   /* the sixteen new patch chunks (OBJ_PATCHX0..15, 0xA6000..0xC5FFF) are blank sectors again, the planted sectors outside every object untouched */
