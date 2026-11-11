@@ -45,7 +45,28 @@ The fader's position (A, 1 to 126, B) sits beside knob 1's label; the slim row u
 
 ## 2. AUTO TIDE (the page you live on)
 
-The screen shows the SOUND and SEQ faders with the glide's path, the 16 steps as they play, and a status line. The page always shows both parts: the faders sit in two columns, SOUND and SEQ, a row per part, and the steps in two rows. The part the knobs act on (the selected part) is drawn in full colour with its number in a filled pill and a small bar beside its steps; the other part is dimmed. In the steps a hit is a bar (a chord taller), a varied hit is in the accent colour, a hit the variation drops is a dim outline, a tie is a short bar, and a chance step is striped until it has rolled, then solid if it sounded or an outline if it did not. The glide only moves while the transport plays. STOP pauses it; PLAY carries on from there.
+The screen shows:
+
+- the **SOUND** and **SEQ** faders with the glide's path
+- the 16 steps as they play
+- a status line
+
+The page always shows both parts:
+
+- the faders sit in two columns, **SOUND** and **SEQ**, a row per part
+- the steps in two rows
+
+The part the knobs act on (the selected part) is drawn in full colour with its number in a filled pill and a small bar beside its steps; the other part is dimmed.
+
+In the steps:
+
+- a hit is a bar (a chord taller)
+- a varied hit is in the accent colour
+- a hit the variation drops is a dim outline
+- a tie is a short bar
+- a chance step is striped until it has rolled, then solid if it sounded or an outline if it did not
+
+The glide only moves while the transport plays. **STOP** pauses it; **PLAY** carries on from there.
 
 | Knob | Name | What it does to the sound | Start |
 |---|---|---|---|
@@ -61,7 +82,7 @@ The screen shows the SOUND and SEQ faders with the glide's path, the 16 steps as
 | ONCE | One trip, then stillness. |
 | LOOP | Back and forth between A and B. |
 | DRIFT | The end it left is rolled again from your sound: new twists around the same centre. |
-| WANDER | Walks away from your sound, a little further each trip; the steps grow with the phrase (16, 32, 64, 128 bars). Always computed from your original, so it can't run away. |
+| WANDER | Every dial steps one position toward its bound and turns around at each edge, never drifting further; step size grows at longer phrase boundaries (16, 32, 64, 128 bars). Always computed from your original, so it can't run away. |
 | JOURNEY | Travels through factory sounds of the part's own engine (FM6 too); it never changes engine. It stays in the starting sound's role family: pads and keys; bass; lead and pluck; hits (PERC); textures and drones (eight marked sounds); the other FX, one-shots (a USER record in FX counts as one). It also keeps the starting sound's attack: a pad (ATK 60 or more) goes to other pads, a stab (SUS 20 or less) to other stabs, keys to keys; where the family has no other sound of that attack it takes any sound of the family. A sound with no other in its family rolls a new End B of itself, it does not leave its role. Never the other part's sound, and it skips the last 4 destinations where it can. Of those, it keeps to the 2 to 4 that play nearest your sound in loudness and brightness, so the background keeps its level. Each part also gets its own pattern wander. |
 
 Where two very different sounds cross, a short filter dip hides the change (the STYLE's wash, below). On a trip of 8 bars or more the sound closes over 2 bars, stays closed for 1 and opens over 2 (on a 1 to 4 bar trip, across the trip); FM6 sounds keep their sparkle through it. JOURNEY is the mode of STYLE AMBIENT and PEAK, or yours by hand; DUB, DEEP, MINIMAL and DRONE WANDER.
@@ -70,7 +91,17 @@ Where two very different sounds cross, a short filter dip hides the change (the 
 
 ## 3. TIDE SETTINGS (set and forget)
 
-Ten rows: STYLE, MODE, TARGET, ARC, ROLL TYPE and AMOUNT for the tide, then REC, PLAY MODE, XFADE and SPLIT. K1 picks the row. **OCT+** the next value, **OCT-** the one before (knobs 2 to 4 turn it too, one step a click; on AMOUNT, PLAY MODE, XFADE and SPLIT a knob moves by the clicks you turn, while OCT+ and OCT- step AMOUNT by 5 %, XFADE by 10 % and SPLIT by an octave, and out of SPLIT OFF the first OCT+ lands on MIDDLE, the next on the middle key's note). Six rows show at a time; a mark at the right edge shows where they are in the list. A value that does nothing in the present setup is dim, and knob 1's line says why. Saved over a power cycle (about 2 s after the change while stopped; changes made during a running set are written at its next STOP, so switching the unit off mid-set loses them).
+Ten rows: STYLE, MODE, TARGET, ARC, ROLL TYPE and AMOUNT for the tide, then REC, PLAY MODE, XFADE and SPLIT.
+- K1 picks the row.
+- **OCT+** the next value, **OCT-** the one before.
+- Knobs 2 to 4 turn it too, one step a click.
+- On AMOUNT, PLAY MODE, XFADE and SPLIT a knob moves by the clicks you turn.
+- OCT+ and OCT- step AMOUNT by 5 %, XFADE by 10 % and SPLIT by an octave.
+- Out of SPLIT OFF the first **OCT+** lands on MIDDLE, the next on the middle key's note.
+- Six rows show at a time; a mark at the right edge shows where they are in the list.
+- A value that does nothing in the present setup is dim, and knob 1's line says why.
+- Saved over a power cycle (about 2 s after the change while stopped).
+- Changes made during a running set are written at its next STOP, so switching the unit off mid-set loses them.
 
 | Row | Values (default first) | What it does | Start |
 |---|---|---|---|
@@ -103,7 +134,25 @@ Ten rows: STYLE, MODE, TARGET, ARC, ROLL TYPE and AMOUNT for the tide, then REC,
 
 **Dynamics.** No setting: in automatic WANDER / JOURNEY the hits play an eighth louder late in ARC's rise and at its peak and a quarter softer in its drop and breakdown (ARC on), and softer on a part that steps back in call and answer (the two together: softer still). ARP SEQ parts, the factory chord parts, follow it too, and keep their accent. An accent counts as velocity 127 there and loses its accent. Playback only: KEEP stores the pattern's own velocities.
 
-**The motif is kept.** The automatic pattern edits never drop or move the pattern's anchors: its beats, the hits on the place in the beat most of its hits take (an offbeat skank's "and"s), and more of its hits in order until three fifths are anchored (at least two). A hit never sits more than two 16ths from its stored step, so a skank keeps its own shape. A figure of 5 to 7 hits keeps 4 of every 5 in place (3 of 5 for busier grooves); a figure with one free hit, and the bass, keep every hit outside ARC's breakdown. The exception is a chord part's variation bar: there the rhythm cell decides (below). The phrase gaps and moves, the offbeat lean, the answers and ARC's thinning all leave the anchors alone. On a chord part's variation bar the part plays a rhythm cell from a small house and dub-techno vocabulary (the skank with a throw, 3-3-2, the Detroit two-hit and more), the one nearest its own pattern, with the pattern's own chords. With OFF-SCALE PLAY, VOIC keeps a chord's out-of-scale note; VOIC never touches the bass or a note under C3. A sustained part holds still: a pattern with a single hit (a drone or a texture) is not varied at all, and a pad of two chords a bar never gets a repeat added by the phrase edits, not even at ARC's peak.
+**The motif is kept.** The automatic pattern edits never drop or move the pattern's anchors:
+
+- Its beats stay in place.
+- The hits on the place in the beat most of its hits take (an offbeat skank's "and"s) stay in place.
+- More of its hits are anchored in order until three fifths are anchored (at least two).
+- A hit never sits more than two 16ths from its stored step, so a skank keeps its own shape.
+- A figure of 5 to 7 hits keeps 4 of every 5 in place (3 of 5 for busier grooves).
+- A figure with one free hit, and the bass, keep every hit outside ARC's breakdown.
+
+The phrase gaps and moves, the offbeat lean, the answers and ARC's thinning all leave the anchors alone.
+
+On a chord part's variation bar the rhythm cell decides (below): the part plays a rhythm cell from a small house and dub-techno vocabulary (the skank with a throw, 3-3-2, the Detroit two-hit and more), the one nearest its own pattern, with the pattern's own chords.
+
+With OFF-SCALE PLAY, VOIC keeps a chord's out-of-scale note; VOIC never touches the bass or a note under C3.
+
+A sustained part holds still:
+
+- A pattern with a single hit (a drone or a texture) is not varied at all.
+- A pad of two chords a bar never gets a repeat added by the phrase edits, not even at ARC's peak.
 
 **Loading.** A multi, project or pattern load starts as written: both loaded parts go back to End A with no variation and no pitch edits from before, ARC starts again at RISE, and a running trip begins again from A (MODE and the auto state stay).
 
@@ -130,7 +179,15 @@ Defaults with no saved settings (a new unit, or after ERASE DATA): STYLE DUB, th
 
 DUB keeps the multi's own sounds and walks them (WANDER); JOURNEY, which travels through other factory sounds, is the mode of AMBIENT and PEAK, or yours by hand on the MODE row.
 
-The built-in drone multis M17 DUNE HORN and M18 VOID DEEP (SAVE > MULTIS, 1.0.0-b6) each have one part on a slow sequence over the held chord (DUNE HORN: the horn swells once a bar, root, root, fourth, root; VOID DEEP: the solar wind turns every 8 to 16 seconds, root, a tone up, the fourth) while the other part holds the chord; DRONE's WANDER keeps them sparse (never more than one new note a bar, never under the chord you hold). They play as DRONE without a trip here: while one of them is the multi loaded, STYLE shows DRONE and its values are DRONE's; loading any other multi brings back the STYLE and values you had, and the saved STYLE never changes (a row you change while a drone multi is loaded lasts until then).
+The built-in drone multis M17 DUNE HORN and M18 VOID DEEP (SAVE > MULTIS, 1.0.0-b6) behave as follows:
+- each has one part on a slow sequence over the held chord, while the other part holds the chord
+- DUNE HORN: the horn swells once a bar — root, root, fourth, root
+- VOID DEEP: the solar wind turns every 8 to 16 seconds — root, a tone up, the fourth
+- DRONE's WANDER keeps them sparse (never more than one new note a bar, never under the chord you hold)
+They play as DRONE without a trip here:
+- while one of them is the multi loaded, STYLE shows DRONE and its values are DRONE's
+- loading any other multi brings back the STYLE and values you had
+- the saved STYLE never changes (a row you change while a drone multi is loaded lasts until then)
 
 DRONE is for a held chord of one of the factory drone sounds (#164 to #171) with HOLD on: WANDER keeps the sound and slowly moves it between its two ends over 64 bars, never waits at an end, and leaves out everything rhythmic (poly, offbeat and ARC OFF) that a held chord would not use; wash HIGH gives the slow breath. AMBIENT is JOURNEY: it hops from sound to sound, with no groove tricks (poly OFF). CUSTOM moved from 5 to 6 in `1.0.0-b4`; an old 5 reads as CUSTOM unless its values are DRONE's.
 
@@ -138,7 +195,17 @@ Dub-techno recipe: STYLE DUB, ALGORITHM LAYER (by hand: **AUTO TIDE** WANDER, TI
 
 ## 4. MODE (output)
 
-DUEL (part 1 left, part 2 right, effects separate), STEREO, LAYER. This is stock DUELL, not TIDE. With TIDE there is no MODE page: PLAY MODE, XFADE and SPLIT are the last three rows of TIDE SETTINGS (REC sits between ROLL TYPE and PLAY MODE). PLAY MODE is LAYER, STEREO or DUEL. XFADE (0 to 100 %) acts only in LAYER: in DUEL and STEREO its value is dim, knob 1's line says LAYER ONLY, and turning does nothing. SPLIT (OFF, MIDDLE, then a note) acts in ALGORITHM's middle in any PLAY MODE; with one part selected XFADE and SPLIT say 2 PARTS ONLY. PLAY MODE is what ALGORITHM's middle plays (section 1). They are not part of STYLE (changing them does not turn it into CUSTOM), and they are kept as before (settings and multis). MENU > CONTROL > HOME OPENS = SETTINGS opens TIDE SETTINGS with the PLAY MODE row picked; MULTI LOAD KEEPS PLAY MODE (or SETS PLAY MODE) says whether a multi load changes these three rows. The MODE row near the top of TIDE SETTINGS and the AUTO TIDE page's K2 (ONCE, LOOP, DRIFT, WANDER, JOURNEY) are the tide's mode, a different setting. Dub chords on two parts: DUEL if you mix outside, STEREO for a single stereo out.
+DUEL (part 1 left, part 2 right, effects separate), STEREO, LAYER. This is stock DUELL, not TIDE. With TIDE there is no MODE page. The last three rows of TIDE SETTINGS are PLAY MODE, XFADE and SPLIT (REC sits between ROLL TYPE and PLAY MODE).
+
+- PLAY MODE is **LAYER**, **STEREO** or **DUEL**.
+- XFADE (**0 to 100 %**) acts only in LAYER. In DUEL and STEREO its value is dim, knob 1's line says **LAYER ONLY**, and turning does nothing.
+- SPLIT (**OFF**, **MIDDLE**, then a note) acts in ALGORITHM's middle in any PLAY MODE. With one part selected XFADE and SPLIT say **2 PARTS ONLY**.
+- PLAY MODE is what ALGORITHM's middle plays (section 1).
+- They are not part of STYLE (changing them does not turn it into **CUSTOM**). They are kept as before (settings and multis).
+- **MENU > CONTROL > HOME OPENS = SETTINGS** opens TIDE SETTINGS with the PLAY MODE row picked.
+- **MULTI LOAD KEEPS PLAY MODE** (or **SETS PLAY MODE**) says whether a multi load changes these three rows.
+- The MODE row near the top of TIDE SETTINGS and the AUTO TIDE page's K2 (**ONCE**, **LOOP**, **DRIFT**, **WANDER**, **JOURNEY**) are the tide's mode, a different setting.
+- Dub chords on two parts: **DUEL** if you mix outside, **STEREO** for a single stereo out.
 
 ## First start
 
@@ -146,7 +213,16 @@ A new unit (or after ERASE DATA) comes up as multi **M02 DUB CHORD** with STYLE 
 
 ## When the unit is busy
 
-With heavy sounds and a moving morph the audio can get close to its limit. TIDE then backs off by itself, in steps, before it cuts anything. First a glide or a crossing moves in slightly coarser steps. Then a new note may take over a note that is already fading: the old tail stops when the new note starts. Then the delay's RANDOM and OCT UP play as the plain delay. Only if that is not enough do fading notes end early, and a held note only after the audio really missed a block. When the load is lower again it steps back one step at a time: about 1 s each for the first steps, about 3 s from LIGHT FX up (longer if the unit needed LIGHT FX again right after it ended, so the delay does not keep switching). Only LIGHT FX can be seen, in ABOUT; the other steps show nowhere. Nothing is stored and there is nothing to set.
+With heavy sounds and a moving morph the audio can get close to its limit. TIDE then backs off by itself, in steps, before it cuts anything:
+
+- First a glide or a crossing moves in slightly coarser steps.
+- Then a new note may take over a note that is already fading: the old tail stops when the new note starts.
+- Then the delay's RANDOM and OCT UP play as the plain delay.
+- Only if that is not enough do fading notes end early.
+- A held note ends only after the audio really missed a block.
+- When the load is lower again it steps back one step at a time: about 1 s each for the first steps, about 3 s from LIGHT FX up (longer if the unit needed LIGHT FX again right after it ended, so the delay does not keep switching).
+- Only LIGHT FX can be seen, in ABOUT; the other steps show nowhere.
+- Nothing is stored and there is nothing to set.
 
 ## KEEP
 

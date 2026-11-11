@@ -22,7 +22,7 @@
 /* MUSIC WNDR/JRNY also carries the cumulative phrase overlay (seq_rhythm.c,
  * seq_phrase.c): retained routing, repeats/rests and phrase-level pitch edits.
  * These are session state until KEEP commits the reached ordinary steps. */
-#define SQM_HIST 4u                                      /* rolls UNDO can go back over */
+#define SQM_HIST 4u                                      /* rolls kept per part (a ring of End B) */
 enum { SD_DENS, SD_SYNC, SD_ACC, SD_VOIC, SD_N };
 #define SQM_PITCH_BYTES ((NSTEP * 5u + 7u) / 8u)
 typedef struct { uint16_t seed; int8_t d[SD_N]; uint8_t pitch[SQM_PITCH_BYTES]; } sqm_end_t;
@@ -57,7 +57,7 @@ static uint32_t sqm_hash(uint32_t seed, uint32_t idx, uint32_t salt)
     return x ^ x >> 16;
 }
 static int sqm_hit(const step_t *s) { return s->time == ST_NOTE && s->n; }
-/* the Original's lane (C1, TIDE_ROLES_AND_MULTIS_SPEC.md): from its lowest hit note (a lane that starts above C3 may still not reach under C3: 48) to its highest plus an octave, inside the outer bound 24..108 of sqm_note; a note outside it is never generated.
+/* the Original's lane (C1, TIDE_ROLES_AND_MULTIS_SPEC.md): from its lowest hit note (a lane that starts above C3 may still not reach under C3: 48) to its highest plus an octave, inside the outer bound 24..108; a note outside it is never generated.
  * Used by sqm_build's VOIC, voicelead_walk and the pitch walk (seq_voicelead.c, seq_evolve.c, included below). The Original's own notes are never moved by it: only new ones are tested */
 static void sqm_lane(const step_t *p, uint32_t len, int32_t *lo, int32_t *hi)
 {
@@ -85,8 +85,6 @@ static int sqm_held(const step_t *p, uint32_t idx, uint32_t len)
 }
 /* a free step a hit may take (nothing ties into the step after it either) */
 static int sqm_target(const step_t *p, uint32_t idx, uint32_t len) { return sqm_free(&p[idx]) && p[(idx + 1u) % len].time != ST_TIE; }
-
-static uint8_t sqm_note(int32_t n) { return (uint8_t)(n < 24 ? n + 12 * ((24 - n + 11) / 12) : n > 108 ? n - 12 * ((n - 108 + 11) / 12) : n); }
 
 /* how many steps a dial touches: |d| % of max, rounded */
 static uint32_t sqm_cnt(int32_t d, uint32_t max) { return ((uint32_t)(d < 0 ? -d : d) * max + 50u) / 100u; }
@@ -278,7 +276,7 @@ static void sqm_refresh(uint32_t pi, int force)
     sqm_part_t *q = &sqm[pi];
     const track_t *t = &trk[pi];
     uint32_t len = sqm_len(t), sig, src = rhythm.source[pi];
-    if (!q->n) {                                         /* the part's default End B, the first entry UNDO can go back to */
+    if (!q->n) {                                         /* the part's default End B, the first entry of the ring */
         sqm_rand(&q->b[0], 0x5EEDu + 0x2F1u * pi, SQM_AMT(q));
         q->n = 1, q->top = 0;
     }
