@@ -18,7 +18,7 @@ static int cmp_v(const void *a, const void *b) {
 }
 int sl_part_voices(const sig *s, int part, voice **out) {
     int i, k = 0; voice *a = (voice *)malloc(sizeof(voice) * (size_t)(s->nv + 1));
-    for (i = 0; i < s->nv; i++) if (s->v[i].part == part) a[k++] = s->v[i];
+    for (i = 0; i < s->nv; i++) if (s->v[i].part == part && s->v[i].s0 >= 0) a[k++] = s->v[i];   /* onsets inside the range only */
     qsort(a, (size_t)k, sizeof(voice), cmp_v);
     *out = a; return k;
 }
@@ -251,7 +251,8 @@ static ev *build_events(const sig *s, int all_mode, int *ne) {
     int i, k = 0; ev *e = (ev *)malloc(sizeof(ev) * (size_t)(2 * s->nv + 2));
     for (i = 0; i < s->nv; i++) {
         long a = s->v[i].s0, b = all_mode ? s->v[i].se : s->v[i].s1;
-        if (a >= s->n) continue;
+        if (a >= s->n || b < 0) continue;
+        if (a < 0) a = 0;
         if (b > s->n) b = s->n;
         if (b < a) b = a;
         e[k].t = a; e[k].d = 1; e[k].part = s->v[i].part; e[k].note = s->v[i].note; k++;

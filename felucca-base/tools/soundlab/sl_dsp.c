@@ -77,6 +77,11 @@ static plan *get_plan(size_t n) {
     return p;
 }
 
+void sl_fft_flush(void) {   /* frees the cached plans (the large ones are 100 MB and more) */
+    size_t i;
+    for (i = 0; i < NPLAN; i++) if (plans[i].n) plan_free(&plans[i]);
+}
+
 void sl_fft(double *re, double *im, size_t n, int inverse) {
     plan *p; size_t k;
     if (n < 2) return;

@@ -12,6 +12,7 @@ int sl_measure_prefix(const char *prefix, int from_bar, int to_bar, const char *
 int sl_sweep_table(const char *name, const char *const *prefixes, const double *points, int n);
 
 /* ---- dsp (sl_dsp.c) ---- */
+void sl_fft_flush(void);                                             /* drop the cached FFT plans */
 void sl_fft(double *re, double *im, size_t n, int inverse);          /* any n; inverse is scaled by 1/n */
 void sl_rfft(const double *x, size_t n, double *re, double *im);     /* n/2+1 bins, like numpy rfft */
 void sl_rfft_power(const double *x, size_t n, double *pw);           /* |X|^2, n/2+1 bins */
@@ -75,6 +76,5 @@ typedef struct {
     double note_med[SL_NP], note_p90[SL_NP], note_max[SL_NP];
 } sl_result;
 int sl_measure_core(const char *prefix, int from_bar, int to_bar, const char *control, double delay_ms, sl_result *res, sl_jw *out);
-int sl_load_result(const char *prefix, sl_result *res);    /* re-reads PREFIX.metrics.json (for rules and sweep) */
 
 #endif

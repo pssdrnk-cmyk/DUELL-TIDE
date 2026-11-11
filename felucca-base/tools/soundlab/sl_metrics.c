@@ -100,8 +100,9 @@ static int job_load(job *j, const char *prefix, int from_bar, int to_bar) {
         vv.s1 = rnd(sl_json_num(sl_json_get(o, "t1"), sl_json_num(sl_json_get(o, "t0"), 0)) * j->w.sr);
         vv.se = te ? rnd(sl_json_num(te, 0) * j->w.sr) : vv.s1;
         if (te) j->s.has_end = 1;
+        else if (sl_json_get(o, "tr")) { vv.se = vv.s1; vv.s1 = rnd(sl_json_num(sl_json_get(o, "tr"), 0) * j->w.sr); j->s.has_end = 1; }   /* an early renderer's key-off "tr" with t1 = voice end */
         vv.part = (int)sl_json_num(sl_json_get(o, "part"), 1); vv.note = (int)sl_json_num(sl_json_get(o, "note"), 60); vv.vel = (int)sl_json_num(sl_json_get(o, "vel"), 100);
-        if (vv.s0 < j->a || vv.s0 >= j->b) continue;
+        if (vv.s0 >= j->b || (vv.se > vv.s1 ? vv.se : vv.s1) <= j->a) continue;   /* keep voices that sound inside the range; onsets before it are skipped by the onset statistics */
         vv.s0 -= j->a; vv.s1 -= j->a; vv.se -= j->a;
         if (vv.s1 < vv.s0) vv.s1 = vv.s0;
         if (vv.se < vv.s1) vv.se = vv.s1;
@@ -202,7 +203,7 @@ int sl_measure_core(const char *prefix, int from_bar, int to_bar, const char *co
     jw_str(w, "name", J.name); jw_int(w, "multi", J.multi);
     jw_int(w, "sample_rate", sr); jw_num(w, "bpm", J.bpm);
     jw_open(w, "range", 0); jw_int(w, "from_bar", R->from_bar); jw_int(w, "to_bar", to_bar < 0 ? J.bars : to_bar);
-    jw_num(w, "start_s", (double)J.a / sr); jw_num(w, "seconds", R->seconds); jw_int(w, "bars", s->nbar); jw_int(w, "voices", s->nv); jw_close(w);
+    jw_num(w, "start_s", (double)J.a / sr); jw_num(w, "seconds", R->seconds); jw_int(w, "bars", s->nbar); { int cnt = 0; for (i = 0; i < s->nv; i++) if (s->v[i].s0 >= 0) cnt++; jw_int(w, "voices", cnt); } jw_close(w);
 
     /* ================= level ================= */
     {
@@ -254,6 +255,7 @@ int sl_measure_core(const char *prefix, int from_bar, int to_bar, const char *co
     }
     sallpw = totall; (void)sallpw;
     free(pw);
+    sl_fft_flush();
     jw_open(w, "spectrum", 0);
     jw_open(w, "bands_pct", 0);
     for (i = 0; i < 10; i++) jw_num(w, bname[i], R->bands[i]);
@@ -368,6 +370,7 @@ int sl_measure_core(const char *prefix, int from_bar, int to_bar, const char *co
         }
         jw_open(w, "sub", 0); jw_num(w, "level_dbfs", R->sub_db); jw_num(w, "mod_depth_std_over_mean", R->sub_mod); jw_close(w);
         free(lo);
+        sl_fft_flush();
     }
     {   /* onsets a bar */
         double all = 0;
@@ -504,7 +507,7 @@ int sl_measure_core(const char *prefix, int from_bar, int to_bar, const char *co
                 int *dlt = NULL;
                 double *allon = (double *)malloc(sizeof(double) * (size_t)(s->nv + 1)); int na = 0;
                 (void)dlt;
-                for (i = 0; i < s->nv; i++) allon[na++] = (double)s->v[i].s0;
+                for (i = 0; i < s->nv; i++) if (s->v[i].s0 >= 0) allon[na++] = (double)s->v[i].s0;
                 for (i = 0; i < nh; i++) {
                     long nxt = n, gap; int q;
                     for (q = 0; q < na; q++) if (allon[q] > (double)(H[i].t + tol) && (long)allon[q] < nxt) nxt = (long)allon[q];
@@ -565,7 +568,7 @@ int sl_measure_core(const char *prefix, int from_bar, int to_bar, const char *co
         }
         {   /* energy while no key is held (after every note-off) against while a key is held */
             int *d = (int *)calloc((size_t)n + 2, sizeof(int)); long q; int cur = 0; double eg = 0, eu = 0; long ng2 = 0, nu = 0;
-            for (i = 0; i < s->nv; i++) { long a0 = s->v[i].s0, b0 = s->v[i].s1; if (b0 > n) b0 = n; d[a0]++; d[b0]--; }
+            for (i = 0; i < s->nv; i++) { long a0 = s->v[i].s0, b0 = s->v[i].s1; if (a0 < 0) a0 = 0; if (b0 > n) b0 = n; if (b0 <= a0) continue; d[a0]++; d[b0]--; }
             for (q = 0; q < n; q++) { double e2 = s->m[q] * s->m[q]; cur += d[q]; if (cur > 0) { eg += e2; ng2++; } else { eu += e2; nu++; } }
             jw_open(w, "after_noteoff", 0);
             jw_num(w, "energy_pct", 100.0 * eu / (eg + eu + 1e-30));

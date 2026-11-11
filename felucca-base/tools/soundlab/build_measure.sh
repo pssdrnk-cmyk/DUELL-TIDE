@@ -5,4 +5,4 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 OUT="${1:-$HERE/../../build/host}"
 mkdir -p "$OUT"
 cc -O2 -std=c99 -Wall -Wextra -Wno-unused-parameter -I"$HERE" -o "$OUT/soundlab_measure" \
-    "$HERE/sl_measure_main.c" "$HERE/sl_cmd.c" "$HERE/sl_metrics.c" "$HERE/sl_notes.c" "$HERE/sl_rules.c" "$HERE/sl_dsp.c" "$HERE/sl_json.c" -lm
+    "$HERE/standalone_main.c" "$HERE/sl_cmd.c" "$HERE/sl_metrics.c" "$HERE/sl_notes.c" "$HERE/sl_rules.c" "$HERE/sl_dsp.c" "$HERE/sl_json.c" -lm
