@@ -434,7 +434,7 @@ static int arp_seq_mode(void)
     t->nheld = 1; t->arp_phys = 1; t->held[0] = 48;  /* (a key down: a SEQ arp on a latched chord only waits for PLAY, tide.h H2c) */ memset(held_key[0], 0, sizeof held_key[0]);
     t->arp_pos = 0xFFFFFFF; t->arp_idx = 0xFFFFFFFFu;
     for (i = 0; i < 8; i++) {
-        arp_tick(t, per);
+        arp_tick(t, per + 1u);                              /* (b8 DRIFT: the step is the exact 5512.5 samples, a sample longer than div_samples every other step: per + 1 reaches each one, as midi_out_seq_test) */
         vs_block();                                         /* (item 144/148: a step is a block of its own; the start limit counts a block) */
         got[i] = t->arp_note; vel[i] = got[i] ? sq_vel(t) : 0;
     }

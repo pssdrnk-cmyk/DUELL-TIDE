@@ -37,6 +37,10 @@
 # there, fading over its last block (fm6_core.c FM6_CULL, voice.c track_render), not at msfa's -89 dB threshold with a step: preset/FM6/00..07, sound/FM6/00..07 and
 # 09..13, and song/4track_mix (its FM6 track). Bit for bit as before up to that block; in it the largest difference is 31 of a peak of 12,900 (-52 dB).
 # sound/FM6/14_FM_HAZE, 15_DUB_DRAWBAR and 16_BELL_STAB (lane G's, without a golden until now) are added at today's hashes. Every other render is unchanged.
+# b8 DRIFT (9fbac6b), on purpose, 8 renders: the arp, the sequencer steps and the click advance on the exact beat grid (a step is the old length
+# or a sample longer), so an arp's notes start a few samples later than the rounded-down grid put them: ANALOG/15_GLASS_SHARDS, ANALOG/18_ARP_PLUCK,
+# LOFI/05_DEAD_BATTERY, TRIO/04_PEBBLE_POP, TRIO/05_CIRCUIT_BEND, PHYS/03_NYLON_GUT, NOISE/09_MODEM and song/4track_mix. The b7 seq.c and midi_grid.c give
+# all 253 old hashes; each of the 8 has an arp on, no sound with the arp off changed.
 preset/ANALOG/00_SAW_LEAD 6323c15d76dfb3b5
 preset/ANALOG/01_SOFT_PAD 88dbc29b63efac5b
 preset/ANALOG/02_SQR_BASS f6bd09aacbad9a6a
@@ -119,10 +123,10 @@ sound/ANALOG/11_VELVET_BOW 65ed131c5e81065c
 sound/ANALOG/12_PIZZICATO bdd762c9a3fa53f0
 sound/ANALOG/13_SFORZANDO eff9328f201a2415
 sound/ANALOG/14_STORM_FRONT 01bf4b53cc393fca
-sound/ANALOG/15_GLASS_SHARDS 1f0df51897342dcc
+sound/ANALOG/15_GLASS_SHARDS fe4c783ea0f0414c
 sound/ANALOG/16_FOLD_BASS 9e2e6b24aecb2130
 sound/ANALOG/17_SQUARE_LEAD 6f7ce56700ff2195
-sound/ANALOG/18_ARP_PLUCK 31dcc9caea53cfc0
+sound/ANALOG/18_ARP_PLUCK d31fa9f0c9fc6c4a
 sound/ANALOG/19_DRIVEN_SAW a0048628c919b25c
 sound/ANALOG/20_CHORD_ECHO bca8bcbd421d225f
 sound/ANALOG/21_DARK_MIN7 c549b084500afbb2
@@ -161,7 +165,7 @@ sound/LOFI/01_PIXEL_HERO a476aea092c2dcf7
 sound/LOFI/02_WOW_FLUTTER 18bd75c9cb9ba92c
 sound/LOFI/03_MARBLE_RUN 638df201cd036600
 sound/LOFI/04_DIVE_BOMB 02106ee7ead823a2
-sound/LOFI/05_DEAD_BATTERY 9ef77ffd0c37e39b
+sound/LOFI/05_DEAD_BATTERY e32329101b8d19cc
 sound/LOFI/06_PIXEL_KICK 7e1a57eb24289af4
 sound/LOFI/07_DUSTY_DRONE 18d9da50de895194
 sound/LOFI/08_ARP_BASS ccce194b98f576fc
@@ -177,8 +181,8 @@ sound/TRIO/00_BREADBIN 286802d027e9ffbc
 sound/TRIO/01_BANSHEE c2f2a612e4454022
 sound/TRIO/02_CHIP_CHAPEL 7b0027e784145738
 sound/TRIO/03_TIN_TOLL e7d8e37bc4dc4210
-sound/TRIO/04_PEBBLE_POP 48d197dc5fff0355
-sound/TRIO/05_CIRCUIT_BEND a50ea0079a1b08bb
+sound/TRIO/04_PEBBLE_POP e209051a1719490d
+sound/TRIO/05_CIRCUIT_BEND 79ac664d5b1a7d77
 sound/TRIO/06_GRAVEL_SNARE 8a3f991e599da83e
 sound/TRIO/07_FIELD_CLANK 86a5ec879a5b6179
 sound/TRIO/08_OBOE-ISH 2611b230e927a770
@@ -202,7 +206,7 @@ sound/WHEEL/12_ROTOR_HAZE 6873c6eceb458bf4
 sound/PHYS/00_PAN_WHISTLE 5a07e50d2ba25ca4
 sound/PHYS/01_SINGING_BOWL 0b4406e6394b46c3
 sound/PHYS/02_GHOST_HARP ae83152acc1e9bb1
-sound/PHYS/03_NYLON_GUT f68135c85b490c51
+sound/PHYS/03_NYLON_GUT 82cb6b5c3cd32417
 sound/PHYS/04_ROSEWOOD 5b6a0b1c6a7db0ff
 sound/PHYS/05_MOTOR_VIBES 30249a1d774d7020
 sound/PHYS/06_RAIN_CHIMES 608fff62a387a9c6
@@ -220,7 +224,7 @@ sound/NOISE/05_TIZZ_HAT e15e121df021500d
 sound/NOISE/06_OPEN_SIZZLE b2b92d75da80f073
 sound/NOISE/07_STATIC_SNARE 11b6e6df83eaccc5
 sound/NOISE/08_GEIGER 1eef9c6f3ed0d245
-sound/NOISE/09_MODEM 04d357c30d13527e
+sound/NOISE/09_MODEM 3630ceef4948590b
 sound/NOISE/10_REV_CYMBAL 23a35f51fdb372a4
 sound/NOISE/11_DUST_BED 6bc64304f6bdd9b6
 sound/NOISE/12_TAPE_HISS 7462423d17d54e47
@@ -281,4 +285,4 @@ sends/ANALOG/delay 35dfaee5bfeb0bb4
 sends/ANALOG/reverb 446ae3d9a270e8a4
 sends/ANALOG/all 3de4dcb7ad20d1de
 sends/ANALOG/dist 7073cc27fa7ab80e
-song/4track_mix c1e941ec51960c74
+song/4track_mix 70e33ee1e209c15b

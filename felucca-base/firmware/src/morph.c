@@ -390,6 +390,7 @@ static mtag_t morph_tag(const engine_t *e, const int8_t *o, uint32_t id, uint32_
 /* the range of id for engine e (the edit table, as the matrix: mod.c) */
 static const param_desc_t *morph_desc(const engine_t *e, uint32_t id) { return id >= XW_BASE ? xdesc(0, id - XW_BASE) : id >= P_COUNT ? &XFREE_D : id >= P_E0 ? &e->edit[id - P_E0] : &TP[id]; }
 static const param_desc_t MORPH_E7_OLD = {"-", F_INT, 0, 0, 0, 0, 0};   /* WAVE's E7 as it was before STEPS (an unused slot, range 0..0): a WILD roll draws it as it did, so the End B of every stored seed is what it was, and never turns STEPS on */
+static const param_desc_t MORPH_AW_OLD = {"WAVE", F_ENUM, 0, 6, 0, 0, 0};   /* ANALOG's WAVE as it was before ACID / ACSQ (b8, 0..6): a WILD roll draws it as it did, so stored seeds keep their End B and no roll turns the 303 on */
 
 /* ----------------------------------------------------------------- the roll (pure) --- */
 static uint32_t mr_below(uint32_t *s, uint32_t n) { return (uint32_t)(((uint64_t)xs32(s) * n) >> 32); }
@@ -1177,7 +1178,7 @@ static void morph_roll_step(const int8_t *org, const int8_t *st, int8_t *end, co
     amount = amount > 100u ? 100u : amount;
     for (id = 0; id < P_COUNT; id++) {
         mtag_t g = morph_tag(e, o, id, stereo);
-        const param_desc_t *pd = e == &ENG_WAVE && id == P_E6 ? &MORPH_E7_OLD : morph_desc(e, id);
+        const param_desc_t *pd = e == &ENG_WAVE && id == P_E6 ? &MORPH_E7_OLD : e == &ENG_ANALOG && id == P_E0 ? &MORPH_AW_OLD : morph_desc(e, id);
         uint32_t *r = id >= P_E2FLT && id <= P_L2SHP ? &rs2 : &rs;   /* (ENV 2 / LFO 2 DEST: their own stream, so a seed of
                                                                        * before draws every other value as it did) */
         if (MORPH_OLD(id)) {                             /* the TWIN FILTER's ids: the draws they had (task 3 rolls their new values) */
