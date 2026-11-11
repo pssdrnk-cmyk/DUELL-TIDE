@@ -365,6 +365,18 @@ static void press(uint32_t label)                 /* a tap: down, a frame, up, a
     frame();
 }
 static void frames(uint32_t ms) { uint32_t i; for (i = 0; i < ms / 16u; i++) frame(); }
+#if DUELL_TIDE
+/* 1.0.0-b9: TIDE SETTINGS has no ROLL TYPE row (KNOBS took its place; new rolls are MUSIC); the tests that need the old roll types (a saved SMART / WILD sound, the morph's WILD switch) set them
+ * as the row did: 0 MUSIC, 1 SMART (the dials off), 2 WILD */
+static void roll_type_put(uint32_t v)
+{
+    morph_musical = (uint8_t)(v == 0u);
+    if ((v == 2u) != ((morph.cfg & MC_WILD) != 0u))
+        morph_act(MQ_SMART, morph_mask(song.sel), v != 2u, song.sel);
+    frame();
+}
+static uint32_t roll_type_get(void) { return morph.cfg & MC_WILD ? 2u : morph_musical ? 0u : 1u; }
+#endif
 #if defined(UI_TEXT_CAPTURE) || !defined(UI_TEST_NO_MAIN)
 /* DUELL 1.1 (item 127): what card c shows now = the texts drawn inside its rectangle (ui_draw.c grid_geo) by a full redraw of the screen (ui.force). The old cache key "LABEL|VALUE|UNIT"
  * is gone for the grid pages: card_is(c, "LABEL|VALUE|UNIT|..") asks that the label, the value and the unit (the fields that are not empty; a card's own \n is a space on the screen) were drawn

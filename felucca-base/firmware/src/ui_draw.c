@@ -2389,7 +2389,7 @@ static uint32_t midi_cards(uint8_t vis[4])
 /* (the name a card shows: params.c desc_shown, T0227's unit label pass) */
 #if DUELL_TIDE
 /* 1.0.0-b7 (owner 2026-11-10: HOME's MORPH page is the hands-on page): knob 2, 3 and 4 on the one row under the picture, rows MROW_Y .. + MROW_H - 1, in three fixed
- * columns left to right as the knobs (H1_COL): "FLT 2.4k", "RSN 40%", "ECH 30%", the name at the column's left and the value beside it, so the
+ * columns left to right as the knobs (knob_sets.h KN_X, a set's own): "FLT 2.4k", "RSN 40%", "ECH 30%", the name at the column's left and the value beside it, so the
  * names never move. No knob dots: with them the three do not fit the width. The selected part's values as
  * its cards show them (the morph's blend: card_vv); the knob just turned's name in the accent; ECHO dim while the delay does nothing (h1_echo_why: knob 1's line
  * says why). While SAVE is held (and only then) the row says HOLD SAVE = SAVE PATCH instead. Drawn only when what it shows changes */
@@ -2397,32 +2397,35 @@ static const char *h1_echo_why(void)
 {
     return (mods_off & MODS_SENDS) ? "ECHO: SENDS OFF" : !song.g[G_DMIX] ? "ECHO: DELAY MIX 0" : 0;   /* (the line's words whole: no buffer, RAM is tight) */
 }
-/* knob i + 2's value v on the row as part t shows it (its card's form), the cutoff's unit short ("2.4k", "880") */
-static void h1_val(uint32_t i, const track_t *t, int32_t v, char *out)
+static uint32_t kn_cur(void);                           /* (tide_ui.c: the set the KNOBS row and the multi's name pick) */
+/* the value v of the macro parameter ix (knob_sets.h KN_ID's place) as part t shows it (its card's form; a global as its page shows it), the cutoff's unit short ("2.4k", "880") */
+static void h1_val(uint32_t ix, const track_t *t, int32_t v, char *out)
 {
     const char *unit;
-    param_format(track_desc(t, H1_ID[i % 3u]), v, out, &unit);
+    param_format(ix < KN_NP ? track_desc(t, KN_ID[ix]) : glob_desc(KN_ID[ix]), v, out, &unit);
     str_cpy(out + str_len(out), str_eq(unit, "Hz") ? "" : str_eq(unit, "kHz") ? "k" : unit, 4);
 }
-static const char *const H1_L[3] = {"FLT", "RSN", "ECH"};   /* (owner on the unit, 2026-11-10: FILTER and LENGTH crowded their 3-digit values, so short names; b8: RSN for LEN, ECH for ECHO) */
-static const uint8_t H1_COL[3] = {4, 79, 164};          /* the columns' left ends: each name there, its value 5 px after it, left-aligned. Laid out for the widest values
-                                                         * (FLT 10.1k, RSN 100%, ECH 100% in the S face): 12 px or more between the columns,
-                                                         * the last ends by x 236 (tests/morph_ui_test.c h1_fits checks every value) */
 static void morph_row(void)
 {
     static char last[24];
     char key[24], v[PV_LEN + 4];
     const int hint = ui.save_t0 != 0u, dim = h1_echo_why() != 0;
     const int32_t ty = UT_TY(S, MROW_BASE);             /* (the row's label baseline: the face's box, descenders included, ends on the canvas's last row) */
-    uint32_t i, id;
+    const uint32_t set = kn_cur();
+    uint32_t i, ix;
+    int32_t nv[3];
+    for (i = 0; i < 3u; i++) {                          /* (each knob's first parameter: the selected part's, as its card shows it; a global's as it is) */
+        ix = KN_E[set][i][0].ix;
+        nv[i] = ix < KN_NP ? card_vv(&TSEL->p[KN_ID[ix]]) : song.g[KN_ID[ix]];
+    }
     key[0] = (char)('a' + hint);
     key[1] = (char)('a' + (ui.hot_t ? ui.hot_col % 4u : 4u));
     key[2] = (char)('a' + dim);
     key[3] = (char)('a' + ux.pal % 26u);
-    key[4] = 0;
+    key[4] = (char)('a' + set);
+    key[5] = 0;
     for (i = 0; i < 3u; i++) {
-        id = H1_ID[i];
-        fmt_int(key + str_len(key), card_vv(&TSEL->p[id]));   /* (each 0..127: the key fits) */
+        fmt_int(key + str_len(key), nv[i]);             /* (each -64..127: the key fits) */
         str_cpy(key + str_len(key), ",", 2);
     }
     if (!ui.force && str_eq(key, last))
@@ -2435,11 +2438,12 @@ static void morph_row(void)
         cv_text_in(0, ty, 240, &AF_S, "HOLD SAVE = SAVE PATCH", T_DIM, T_BG);
     else
         for (i = 0; i < 3u; i++) {
-            const int hot = ui.hot_t && ui.hot_col == i + 1u, d = dim && i == 2u;
-            id = H1_ID[i];
-            h1_val(i, TSEL, card_vv(&TSEL->p[id]), v);
-            cv_text_on(H1_COL[i], ty, &AF_S, H1_L[i], d ? T_DIM : hot ? T_ACCENT : T_TEXT, T_BG);
-            cv_text_on(H1_COL[i] + text_w(&AF_S, H1_L[i]) + 5, ty, &AF_S, v, d ? T_DIM : VAL(i + 1u), T_BG);   /* (the value in the knob-1 line's colour, beside its name) */
+            const char *nm = KN_L[set][i];
+            ix = KN_E[set][i][0].ix;
+            const int hot = ui.hot_t && ui.hot_col == i + 1u, d = dim && (ix == K_DLY || ix == K_FDB || ix == K_TIM);   /* (a macro led by the echo does nothing while the delay does nothing) */
+            h1_val(ix, TSEL, nv[i], v);
+            cv_text_on(KN_X[set][i], ty, &AF_S, nm, d ? T_DIM : hot ? T_ACCENT : T_TEXT, T_BG);
+            cv_text_on(KN_X[set][i] + text_w(&AF_S, nm) + 5, ty, &AF_S, v, d ? T_DIM : VAL(i + 1u), T_BG);   /* (the value in the knob-1 line's colour, beside its name) */
         }
     cv_blit(0, MROW_Y);
 }
