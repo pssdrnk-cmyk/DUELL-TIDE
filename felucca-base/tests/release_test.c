@@ -33,9 +33,9 @@ static void ck(const char *what, int ok)
 
 int main(void)
 {
-    static const char *const FN[16] = {"BASIC CHORD", "DUB CHORD", "JUNO DEEP", "LATE RHODES", "ORGAN HOUSE", "PIANO HOUSE", "DETROIT STAB",
-                                       "HI-TECH SOUL", "HYPNO 303", "TWO 303S", "ACID LINES", "ROBOT FUNK", "DEEP SEA ARP", "WARPED TAPE",
-                                       "BERLIN RUN", "TWO LOOPS"};   /* (the reel, 2026-11-10: fifteen new multis as one curated programme, M02 the owner's DUB CHORD; tools/factory_multis.py) */
+    static const char *const FN[16] = {"DUB BASIC", "DUB CHORD", "HSE JUNO", "HSE RHODES", "HSE ORGAN", "HSE PIANO", "TECH DETROIT",
+                                       "TECH SOUL", "ACID HYPNO", "ACID TWO 303", "ACID LINES", "ELEC ROBOT", "ELEC DEEPSEA", "ELEC WARPED",
+                                       "AMB BERLIN", "AMB LOOPS"};   /* (the reel, 2026-11-10: fifteen new multis as one curated programme, M02 the owner's DUB CHORD; tools/factory_multis.py) */
     uint32_t k, ok, test_rows = 0, sys_rows = 0;
     memset(nor, 0xFF, sizeof nor);
     ui_power_on();
@@ -47,29 +47,29 @@ int main(void)
         test_rows += str_eq(MI_NAME[k], "TEST");
         sys_rows += MI_TAB[k] == MTAB_SYSTEM;
     }
-    ck("MENU has no TEST row and no USB SERIAL row (SYSTEM: RESTORE LAST, BUTTON MAP, GUIDE, ABOUT, ERASE DATA)", test_rows == 0u && sys_rows == 5u && MI_TAB[MI_ABOUT] == MTAB_SYSTEM &&
+    ck("MENU has no TEST row and no USB SERIAL row (SYSTEM: RESTORE LAST, BUTTON MAP, USB AUDIO, GUIDE, ABOUT, ERASE DATA)", test_rows == 0u && sys_rows == 6u && MI_TAB[MI_ABOUT] == MTAB_SYSTEM &&
        MI_TAB[MI_GUIDE] == MTAB_SYSTEM && MI_READONLY(MI_GUIDE) &&
        MI_READONLY(MI_ABOUT) && !MI_READONLY(MI_PANEL) && !menu_valued(MI_PANEL) && str_eq(MI_NAME[MI_PANEL], "BUTTON MAP") &&
-       MI_PANEL == MI_RESTORE + 1u && MI_GUIDE == MI_PANEL + 1u && MI_ERASE == MI_COUNT - 1u);
+       MI_PANEL == MI_RESTORE + 1u && MI_USBAUDIO == MI_PANEL + 1u && MI_GUIDE == MI_USBAUDIO + 1u && MI_ERASE == MI_COUNT - 1u);
     for (k = 0, ok = 1; k < MI_COUNT; k++)
         ok &= !str_eq(MI_NAME[k], "USB SERIAL");
     ck("memory trim 1: the product has no serial console: FELUCCA_CDC 0, no USB SERIAL row (the editor's list: tests/menu_product_test.c)", ok && FELUCCA_CDC == 0);
-    for (k = 0, ok = 1; k < MTAB_COUNT; k++)            /* (the release's tabs fit one page each: SYSTEM 5 units) */
+    for (k = 0, ok = 1; k < MTAB_COUNT; k++)            /* (the release's tabs fit one page each: SYSTEM 6 units) */
         ok &= mtab_pages(k) == 1u;
     {
         uint32_t u;
-        ok &= menu_place(MI_ERASE, &u) == 0u && u == 4u;
+        ok &= menu_place(MI_ERASE, &u) == 0u && u == 5u;
     }
-    ck("MENU: every tab one page in the release (SYSTEM: 5 units, ERASE DATA the last)", ok);
+    ck("MENU: every tab one page in the release (SYSTEM: 6 units, ERASE DATA the last)", ok);
     for (k = 0, ok = 1; k < NPAGES; k++)
         ok &= !str_eq(PAGES[k].title, "TEST");
     ck("no page is called TEST (the GLO round is untouched)", ok);
     for (k = 0, ok = 1; k < MU_SLOTS; k++)
         ok &= project_used(k) && project_factory(k) && str_eq(mu_names[k], FN[k]);
-    ck("M01..M16 are the factory multis (the reel, 2026-11-10: BASIC CHORD, DUB CHORD, JUNO DEEP .. BERLIN RUN, M16 TWO LOOPS), as in the test mode", ok);
+    ck("M01..M16 are the factory multis (the reel, 2026-11-10: BASIC CHORD, DUB CHORD, JUNO DEEP .. BERLIN RUN, M16 AMB LOOPS), as in the test mode", ok);
 #if DUELL_TIDE
-    ck("M17 DUNE HORN, M18 VOID DEEP: the built-in drone multis, factory (ROM only)", MU_SHOWN == 18u && project_used(16) && project_factory(16) && str_eq(mu_names[16], "DUNE HORN") &&
-       project_used(17) && project_factory(17) && str_eq(mu_names[17], "VOID DEEP"));
+    ck("M17 AMB DUNEHORN, M18 AMB GROWL: the built-in drone multis, factory (ROM only)", MU_SHOWN == 18u && project_used(16) && project_factory(16) && str_eq(mu_names[16], "AMB DUNEHORN") &&
+       project_used(17) && project_factory(17) && str_eq(mu_names[17], "AMB GROWL"));
 #endif
     project_load(2);
     ck("LOAD of M03 loads JUNO DEEP (ANALOG + ANALOG: WARM WASH, RUBBER BAND)", proj_cur == 2u && str_eq(ENGINES[trk[0].eng_req]->name, "ANALOG") && str_eq(ENGINES[trk[1].eng_req]->name, "ANALOG"));

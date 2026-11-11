@@ -896,7 +896,7 @@ static void t_style(void)
     jl_put(JL_STYLE, 3);
     tide_settings();
     jl_put(JL_TARGET, GT_SEQ);
-    jl_put(JL_ROLL, 1);
+    roll_type_put(1);
     tide_settings();
     CHECK("  .. TARGET and ROLL leave the style alone", tide_style == 3u);
     jl_put(JL_STYLE, 2);
@@ -928,8 +928,20 @@ static void t_style(void)
             tide_style = STY_DUB;
             tide_settings();
             CHECK(k == 0 ? "a 7-byte record: CUSTOM, its values kept" : k == 1 ? "a 9-byte record: CUSTOM, its values kept (a stored ECHO reads as LEAD: D7)" : "an 11-byte record: CUSTOM, its values kept",
-                  tide_style == STY_CUSTOM && gl.mode == GM_LOOP && gl.time == 2u && gl.wait == 1u && morph_wlvl == 2u && (L[k] < 9u || sqm_poly == 2u) &&
+                  tide_style == STY_CUSTOM && gl.mode == GM_WANDER && gl.time == 2u && gl.wait == 1u && morph_wlvl == 2u && (L[k] < 9u || sqm_poly == 2u) &&
                   (L[k] < 11u || (sqm_sync == 0u && sqm_arc == 2u)));
+        }
+    }
+    {   /* b9: an older record whose MODE is ONCE, LOOP or DRIFT loads as EVOLVE; WANDER stays EVOLVE and JOURNEY stays TRAVEL */
+        static const uint8_t M[5] = {GM_ONCE, GM_LOOP, GM_DRIFT, GM_WANDER, GM_JOURNEY}, E[5] = {GM_WANDER, GM_WANDER, GM_WANDER, GM_WANDER, GM_JOURNEY};
+        for (k = 0; k < 5u; k++) {
+            memset(rec + 5, 0, 16);
+            rec[5 + TS_MODE] = M[k], rec[5 + TS_TIME] = 2, rec[5 + TS_TARGET] = GT_BOTH, rec[5 + TS_STYLE] = STY_CUSTOM;
+            put_rec(rec, 5u + TS_N);
+            tide_seen_ok = 0;
+            gl.mode = GM_ONCE;
+            tide_settings();
+            CHECK("b9: a stored MODE ONCE / LOOP / DRIFT loads as EVOLVE; WANDER as EVOLVE, JOURNEY as TRAVEL", gl.mode == E[k] && gl.time == 2u);
         }
     }
     memset(rec + 5, 0, 16);
@@ -1006,10 +1018,10 @@ static void t_store(void)
     tide_store_dirty = 0;
     tide_seen_ok = 0;
     sqm_poly = 0;
-    gl.mode = GM_ONCE, gl.time = 0, gl.target = GT_SOUND, gl.wait = 0, sqm_vary_all = 0, morph_musical = 1, morph_wlvl = 0;
+    gl.mode = GM_ONCE, gl.time = 0, gl.target = GT_SOUND, gl.wait = 0, sqm_vary_all = 0, tide_knobs = 7, morph_wlvl = 0;
     tide_settings();
     CHECK("the settings of the older record are kept", gl.mode == GM_WANDER && gl.time == 2u && gl.target == GT_BOTH && gl.wait == 1u && sqm_vary_all == 1u &&
-          morph_musical == 0u && morph_wlvl == 3u);
+          tide_knobs == 0u && morph_wlvl == 3u);
     CHECK("  .. POLY and SYNC at their defaults: GENTLE, SOFT", sqm_poly == 1u && sqm_sync == 1u);
     CHECK("  .. nothing is written back by the load alone", !tide_store_dirty);
     sqm_poly = 2;
@@ -1031,7 +1043,7 @@ static void t_store(void)
         sqm_sync = 0;
         sqm_arc = 2;
         tide_settings();
-        CHECK("a 9-byte record: POLY kept, SYNC SOFT", gl.mode == GM_LOOP && sqm_poly == 2u && sqm_sync == 1u && sqm_arc == 0u);
+        CHECK("a 9-byte record: POLY kept, SYNC SOFT (a stored LOOP loads as EVOLVE)", gl.mode == GM_WANDER && sqm_poly == 2u && sqm_sync == 1u && sqm_arc == 0u);
     }
     rec[5 + TS_TURNS] = 9, rec[5 + TS_POLY] = 9, rec[5 + TS_SYNC] = 9, rec[5 + TS_ARC] = 9;
     put_rec(rec, 5 + TS_N);
@@ -1054,7 +1066,7 @@ static void t_sig(void)
             h0 = tide_sig();
             switch (f) {
             case 0: sqm_vary_all ^= 1u; break;
-            case 1: morph_musical ^= 1u; break;
+            case 1: gl.hold ^= 1u; break;
             case 2: sqm_poly ^= 1u; break;
             case 3: sqm_sync ^= 1u; break;
             case 4: sqm_arc ^= 1u; break;
@@ -1073,7 +1085,7 @@ static void t_sig(void)
             }
             switch (f) {                                     /* (back) */
             case 0: sqm_vary_all ^= 1u; break;
-            case 1: morph_musical ^= 1u; break;
+            case 1: gl.hold ^= 1u; break;
             case 2: sqm_poly ^= 1u; break;
             case 3: sqm_sync ^= 1u; break;
             case 4: sqm_arc ^= 1u; break;

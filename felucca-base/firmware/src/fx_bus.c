@@ -730,15 +730,23 @@ static __attribute__((noinline)) void BUS_FN(dly_mod)(uint32_t dmask, uint32_t d
     uint32_t inc = LFO_INC[clamp(song.g[G_DMRATE], 0, 127)], w = BUS_FX.dly_w, ppos, qpos, pstep, qstep;
     int32_t fb = mulq15(SV_DFB, byp_dg), col = 2000 + song.g[G_DCOLOR] * 240, dmix = mulq15(Q15_FROM_127(song.g[G_DMIX]), byp_dg);   /* (byp_dg: the BYPASS of the DELAY, 32768 = on) */
     int32_t cdepth = SV_CDEP, dev = fx_swing(clamp(song.g[G_DMDEP], 0, 100) * DM_PCT, clamp(song.g[G_DMRATE], 0, 127), DM_SWING_AT), cap = (int32_t)(dl << 6);
-    int32_t xl = BUS_FX.dm_xl, xr = BUS_FX.dm_xr, el, er, sl, sr, cdq, cst;
-    uint32_t cinc = LFO_INC[song.g[G_CRATE] & 127] / CTL, cw = BUS_FX.cho_w, cph = BUS_FX.cho_ph;
+    int32_t xl = BUS_FX.dm_xl, xr = BUS_FX.dm_xr, el, er, sl, sr, cdq, cst, gd, bs, sd;
+    uint32_t cinc = LFO_INC[song.g[G_CRATE] & 127] / CTL, cw = BUS_FX.cho_w, cph = BUS_FX.cho_ph, tg, g;
     int32_t room = (int32_t)(dmask - 2u - (pp ? dl << 1 : dl)) << 8;   /* the line's end: a tap never reads past the oldest sample */
     cap = cap > room ? (room > 0 ? room : 0) : cap;
     dev = dev > cap ? cap : dev;                        /* (the target, Q8 samples: DM_PCT a percent, held to the swing above MRATE 44) */
     BUS_FX.dm_dev += clamp(dev - BUS_FX.dm_dev, -DM_DEV_STEP, DM_DEV_STEP);
     dev = BUS_FX.dm_dev > cap ? cap : BUS_FX.dm_dev;
     BUS_FX.dm_dev = dev;
-    BUS_FX.dly_g = 0;                                   /* (the plain delay's slide starts from its time again: fx_buses_m) */
+    /* b9 dlyglide: a TIME change glides here as in fx_buses_m (K4: the modulated read jumped by the whole step in one block and clicked). g is the read offset now (Q15, the plain
+     * path's own state); this block moves it the plain path's 1/4096 of the way a sample, but at most 1/8 sample a sample (a tape's warp of +-12 %: with 1/2, as the plain path, two
+     * TIME pairs came out 6 dB over the control in K4's measure, with 1/8 none), in one step bs; the read positions slope by it (sd a sample, Q16) and the wobble rides on top.
+     * g == the TIME's length: bs = 0, the positions are the ones of before */
+    tg = dl << 15, g = BUS_FX.dly_g ? BUS_FX.dly_g : tg;
+    gd = (int32_t)(tg - g);
+    bs = clamp((gd >> (12 - CTL_LOG2)) + (gd > 0), -(4096 << CTL_LOG2), 4096 << CTL_LOG2);
+    sd = bs >> (CTL_LOG2 - 1);
+    BUS_FX.dly_g = g + (uint32_t)bs;
     BUS_FN(cho_glide)(cdepth, &cdq, &cst);
     el = ((sine_i(pl + inc) * (dev >> 3)) >> 12) * 256; /* where the offsets are to be at the block's end (Q16) */
     er = ((sine_i(pr + inc + (inc >> 4)) * (dev >> 3)) >> 12) * 256;
@@ -747,10 +755,10 @@ static __attribute__((noinline)) void BUS_FN(dly_mod)(uint32_t dmask, uint32_t d
     BUS_FX.dm_pl += inc;
     BUS_FX.dm_pr += inc + (inc >> 4);
     /* the read positions (Q16): w - delay; a sample on they move by 1 less the offset's step */
-    ppos = (w << 16) - (dl << 16) - (uint32_t)(xl + sl);
-    pstep = 65536u - (uint32_t)sl;
-    qpos = (w << 16) - ((pp ? dl << 1 : dl) << 16) - (uint32_t)(xr + sr);
-    qstep = 65536u - (uint32_t)sr;
+    ppos = (w << 16) - (g << 1) - (uint32_t)sd - (uint32_t)(xl + sl);
+    pstep = 65536u - (uint32_t)sl - (uint32_t)sd;
+    qpos = (w << 16) - (g << (1u + pp)) - ((uint32_t)sd << pp) - (uint32_t)(xr + sr);
+    qstep = 65536u - (uint32_t)sr - ((uint32_t)sd << pp);
     for (i = 0; i < n; i++) {
         int32_t y = 0, a, b, r, x;
         /* chorus: as fx_buses_m's */
@@ -783,7 +791,7 @@ static __attribute__((noinline)) void BUS_FN(dly_mod)(uint32_t dmask, uint32_t d
             x = (a + b) >> 1;
             BUS_FX.dly_lp += mulq15u(x - BUS_FX.dly_lp, col);
             BUS_DLY[w & dmask] = (int16_t)dly_wr(BUS_FX.dly_h, dly_in[i] >> 1, mulq15t(BUS_FX.dly_lp, fb));
-            y += mulq15(x * 2, dmix);
+            y += mulq15(BUS_FX.dly_lp * 2, dmix);          /* (b9 G1: the return is the low-passed repeat, the first one too) */
             r = mulq15(a - b, dmix);
             mix_l[i] += r;
             mix_r[i] -= r;
@@ -791,7 +799,7 @@ static __attribute__((noinline)) void BUS_FN(dly_mod)(uint32_t dmask, uint32_t d
             x = dly_tap(BUS_DLY, dmask, ppos);
             BUS_FX.dly_lp += mulq15u(x - BUS_FX.dly_lp, col);
             BUS_DLY[w & dmask] = (int16_t)dly_wr(BUS_FX.dly_h, dly_in[i] >> 1, mulq15t(BUS_FX.dly_lp, fb));
-            y += mulq15(x * 2, dmix);
+            y += mulq15(BUS_FX.dly_lp * 2, dmix);          /* (b9 G1) */
         }
         w++;
         ppos += pstep;
@@ -932,7 +940,7 @@ static inline void BUS_FN(fx_buses_m)(uint32_t dmask, uint32_t dl, const int32_t
             BUS_DLY[BUS_FX.dly_w & dmask] =
                 (int16_t)dly_wr(BUS_FX.dly_h, dly_in[i] >> 1, mulq15t(BUS_FX.dly_lp, fb));
             BUS_FX.dly_w++;
-            y += mulq15(x * 2, dmix);
+            y += mulq15(BUS_FX.dly_lp * 2, dmix);          /* (b9 G1: after the loop's low-pass, as every repeat) */
         }
         wet[i] = y;
     }

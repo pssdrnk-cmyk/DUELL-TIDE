@@ -71,7 +71,7 @@
 #define AUDIT_HIT_HI (-3.0)
 #define AUDIT_HIT_TRIM (-4.5)
 #define AUDIT_REL_MARGIN 3.0           /* rule (6): a sustaining sound's MED at most this far under the median MED of the sustaining ones */
-static const char *const AUDIT_RISERS[] = {"WHITE OUT", "MOOR WIND", "LESLIE STORM", "RAIN CHIMES"};   /* RAIN CHIMES: its arp is one LFO phrase now (TRIG NOTE no longer restarts per step), so its 0.25 Hz LFO 2 filter sweep runs its 4 s cycle as the recipe says */
+static const char *const AUDIT_RISERS[] = {"WHITE OUT", "MOOR WIND", "LESLIE STORM", "RAIN CHIMES", "VOID SHIMMER"};   /* VOID SHIMMER: b9, its sub an octave under the key swells in over its 20 s cycle (T-3 5 s), a drone by design; RAIN CHIMES: its arp is one LFO phrase now (TRIG NOTE no longer restarts per step), so its 0.25 Hz LFO 2 filter sweep runs its 4 s cycle as the recipe says */
 static const char *const AUDIT_KEEP[] = {"RAIN CHIMES"};   /* keep-as-designed: exempt from quiet body, falls away, quiet vs others (BACKSPIN until
                                                 * 0.2.8: retired with SLICE). RAIN CHIMES: a few chimes in a reverb, its median sits on the -21 dBFS line (-20.9 before the reverb's
                                                 * pre-delay, audit E3, moved a little of its tail later: -21.1); the bank lane may lift it */

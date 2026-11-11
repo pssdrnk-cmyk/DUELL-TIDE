@@ -29,7 +29,7 @@ static void js_str(const char *s)
 
 /* the formatted value tables, one per distinct (fmt, range, names, unit); a descriptor points at its table by index */
 #define NSIG 1024
-static struct { uint8_t fmt; int16_t min, max; const char *const *names; const char *unit; const param_desc_t *d; } sig[NSIG];
+static struct { uint8_t fmt; int16_t min, max; const char *const *names; uint8_t unit; const param_desc_t *d; } sig[NSIG];
 static int nsig;
 
 static int fk_of(const param_desc_t *d)
@@ -69,7 +69,7 @@ static void js_desc(const param_desc_t *d)
     printf("{\"label\":");
     js_str(d->label);
     printf(",\"fmt\":%d,\"min\":%d,\"max\":%d,\"def\":%d,\"fk\":%d,\"unit\":", d->fmt, d->min, d->max, d->def, fk_of(d));
-    js_str(d->unit ? d->unit : "");
+    js_str(UNIT_STR[d->unit]);
     printf(",\"names\":");
     if (d->fmt == F_ENUM && d->names) {
         putchar('[');

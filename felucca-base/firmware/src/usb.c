@@ -145,7 +145,7 @@ static struct {
     const uint8_t *e0_src;
     uint16_t e0_left;
     uint32_t resets, setups, rx_pkts, tx_pkts, sof_seen, timeouts, no_sof;
-    uint32_t suspends, max_gap, retries, frame_stalls;   /* diagnostics: suspend events, longest run of polls without SOF */
+    uint16_t suspends, max_gap, retries, frame_stalls;   /* diagnostics (b9: 16 bits, RAM is tight; the console reads them): suspend events, longest run of polls without SOF */
     uint16_t frame, frame_same;  /* last SOF frame number and how long it has not moved (x 10 ms) */
     uint8_t detached;            /* usb_detach() was called: no retry */
     volatile uint8_t suspended;  /* bus idle > 3 ms (unplugged or host asleep): the UI hides "USB" */
@@ -155,6 +155,8 @@ static struct {
     uint8_t rx_pend;             /* EP1 OUT packet seen, not yet taken (the MIDI ring was too full) */
     volatile uint8_t uboot_req;
     volatile uint8_t ota_req;    /* F0 22 24 35 7F F7: M-UPGRADE upgrade command (FELUCCA_OTA) */
+    uint8_t aud_off;             /* b9 USB AUDIO OFF (FELUCCA_UAC): 1 = presented as MIDI only (0 at power-on; usb_audio_switch) */
+    uint16_t set_at;             /* menu_items.c: the low 16 bits of fm1_ms | 1 of an editor change of USB SERIAL / USB AUDIO, 0 none (in the struct's padding: RAM is tight) */
 } usb;
 
 #if FELUCCA_OTA
@@ -249,6 +251,10 @@ static uint32_t midi_out_event(uint32_t pkt)        /* from the audio ISR, never
 #else
 #define FMT_LEN 0
 #endif
+/* b9 USB AUDIO OFF: the device presented without the audio streaming interface, byte for byte the descriptors of a FELUCCA_UAC=0 build:
+ * AC (the MIDI streaming interface's parent) + MIDI streaming, no isochronous endpoint, bcdDevice 3.00 (a host that learnt the audio
+ * device keeps nothing of it). The editor, the update installer and the soft key use MIDI only */
+#define D_AC_NA(a) 9, 4, (a), 0, 0, 1, 1, 0, 0, 9, 0x24, 1, 0x00, 0x01, 9, 0, 1, (a) + 1,
 #if FELUCCA_UAC
 /* DUELL 0.2.14, from Felucca 1.5.1 (#67): the AC header's collection lists the audio streaming interface first, then
  * the MIDI one. The interface NUMBERS do not move (0 AC, 1 MIDI, 2 AS, endpoints as before); only the order of the
@@ -276,7 +282,7 @@ static uint32_t midi_out_event(uint32_t pkt)        /* from the audio ISR, never
     9, 5, 0x84, 0x05, UAC_MAXP & 0xFF, UAC_MAXP >> 8, 1, 0, 0,   /* EP4 IN isochronous async, 1 ms */   \
     7, 0x25, 1, 0x01, 0, 0, 0,                             /* CS endpoint: sampling frequency control */
 #else
-#define D_AC(a) 9, 4, (a), 0, 0, 1, 1, 0, 0, 9, 0x24, 1, 0x00, 0x01, 9, 0, 1, (a) + 1,
+#define D_AC(a) D_AC_NA(a)
 #define D_AS(s)
 #endif
 #define D_MIDI(m)                                                                                    \
@@ -307,15 +313,27 @@ static uint32_t midi_out_event(uint32_t pkt)        /* from the audio ISR, never
 #define CDC_LEN 66                                         /* with its IAD */
 #define BCD_LO(cdc)                                                                                  \
     (0x10 * (FELUCCA_UAC + FELUCCA_UAC_48K) + 0x08 * FELUCCA_UAC_AS_FIRST + ((cdc) ? 0x01 + 2 * FELUCCA_USB_LAYOUT : 0))
-#define D_DEV(bcdusb, cls, sub, proto, cdc)                                                          \
+#define D_DEVB(bcdusb, cls, sub, proto, lo)                                                          \
     18, 1, (bcdusb) & 0xFF, (bcdusb) >> 8, (cls), (sub), (proto), 64, 0x09, 0x12, FELUCCA_USB_PID & 0xFF, \
-    FELUCCA_USB_PID >> 8, BCD_LO(cdc), 0x03, 1, 2, 0, 1
+    FELUCCA_USB_PID >> 8, (lo), 0x03, 1, 2, 0, 1
+#define D_DEV(bcdusb, cls, sub, proto, cdc) D_DEVB(bcdusb, cls, sub, proto, BCD_LO(cdc))
 
 /* without the console (FELUCCA_CDC=0, or usb_cdc_on = 0): class 0, no IAD, as a plain USB-MIDI / audio device */
 #define CFG_LEN_PLAIN (9 + AUD_LEN)
 static const uint8_t DEV_DESC_PLAIN[18] = {D_DEV(0x0110, 0, 0, 0, 0)};
 static const uint8_t CFG_DESC_PLAIN[] = {D_CFG(CFG_LEN_PLAIN, AUD_NIF), D_AUDIO(0)};
 typedef char cfg_plain_len_ok[sizeof CFG_DESC_PLAIN == CFG_LEN_PLAIN ? 1 : -1];
+#if FELUCCA_UAC
+#define CFG_LEN_NOAUD (9 + 92)
+static const uint8_t DEV_DESC_NOAUD[18] = {D_DEVB(0x0110, 0, 0, 0, 0x00)};
+static const uint8_t CFG_DESC_NOAUD[] = {D_CFG(CFG_LEN_NOAUD, 2), D_AC_NA(0) D_MIDI(1)};
+typedef char cfg_noaud_len_ok[sizeof CFG_DESC_NOAUD == CFG_LEN_NOAUD ? 1 : -1];
+/* USB AUDIO (MENU > SYSTEM): 1 = the audio input is presented (the descriptors above, as ever), 0 = MIDI only (the _NOAUD ones). Read by the
+ * TIMER5 ISR's host requests; changed by usb_audio_switch (main loop). The console (CDC) builds always present it with the console */
+#define USB_AUD_PRES (!usb.aud_off || USB_CDC_ON)
+#else
+#define USB_AUD_PRES 0
+#endif
 #if FELUCCA_CDC
 #define CFG_LEN (9 + 8 + AUD_LEN + CDC_LEN)
 #define USB_NIF (AUD_NIF + 2)
@@ -371,11 +389,21 @@ static int get_desc(uint32_t wvalue, const uint8_t **d, uint16_t *l)
     switch (wvalue >> 8) {
     case 1:
         *d = USB_CDC_ON ? DEV_DESC : DEV_DESC_PLAIN;
+#if FELUCCA_UAC
+        if (!USB_AUD_PRES)
+            *d = DEV_DESC_NOAUD;
+#endif
         *l = 18;
         return 1;
     case 2:
         *d = USB_CDC_ON ? CFG_DESC : CFG_DESC_PLAIN;
         *l = (uint16_t)(USB_CDC_ON ? sizeof CFG_DESC : sizeof CFG_DESC_PLAIN);
+#if FELUCCA_UAC
+        if (!USB_AUD_PRES) {
+            *d = CFG_DESC_NOAUD;
+            *l = sizeof CFG_DESC_NOAUD;
+        }
+#endif
         return 1;
     case 3:
         switch (wvalue & 0xFFu) {
@@ -653,7 +681,7 @@ static void ep0_service(void)
         return;
     case 0x010B:                                        /* SET_INTERFACE: alt 0 (alt 1 for the audio stream) */
 #if FELUCCA_UAC
-        if (s[4] == UAC_AS_IF && wvalue <= 1u && usb.config) {
+        if (s[4] == UAC_AS_IF && wvalue <= 1u && usb.config && USB_AUD_PRES) {
             uac_ep4_reset();
             uac_stream(wvalue);
             goto ack;
@@ -1063,7 +1091,7 @@ static inline int32_t uac_s16(int32_t v)
 #if FELUCCA_UAC_48K
 /* 44.1 -> 48 kHz (x 160 / 147), one block: each input frame enters the history, then the 1 or 2 output
  * frames whose newest input it is: phase ph, the window of UAC_FIR_N frames ending at it, the taps of
- * phase ph (or of 159 - ph backwards: the prototype is symmetric), Q30 into 64-bit sums. */
+ * phase ph (or of 159 - ph backwards: the prototype is symmetric), int16 Q15 taps into 64-bit sums. */
 static __attribute__((noinline)) void uac_tap48(const int32_t *out, uint32_t n)
 {
     uint32_t w = ua_w, i, j, k = 0, h = rs.w, ph = rs.ph;
@@ -1083,14 +1111,14 @@ static __attribute__((noinline)) void uac_tap48(const int32_t *out, uint32_t n)
             int64_t al = 0, ar = 0;
             int32_t yl, yr;
             if (ph < UAC_FIR_L / 2u) {
-                const int32_t *c = UAC_FIR[ph];
+                const int16_t *c = UAC_FIR[ph];
                 for (j = UAC_FIR_N; j; j--, x++) {
                     int32_t t = *c++;
                     al += (int64_t)t * x[0];
                     ar += (int64_t)t * x[2u * RS_H];
                 }
             } else {
-                const int32_t *c = &UAC_FIR[UAC_FIR_L - 1u - ph][UAC_FIR_N - 1u];
+                const int16_t *c = &UAC_FIR[UAC_FIR_L - 1u - ph][UAC_FIR_N - 1u];
                 for (j = UAC_FIR_N; j; j--, x++) {
                     int32_t t = *c--;
                     al += (int64_t)t * x[0];
@@ -1366,6 +1394,25 @@ static void usb_detach(void)
     fm1_usb_off();
 }
 
+#if FELUCCA_UAC
+/* USB AUDIO ON / OFF (main loop; at boot before usb_start, or later from the setting). A change while attached drops off the bus, as
+ * usb_cdc_switch below does, and usb_retry attaches again within a second with the other descriptors: the host enumerates the device afresh
+ * (MIDI back after a moment). The audio stream is reset first, so nothing of a recording is left in the ring */
+static __attribute__((unused)) void usb_audio_switch(uint32_t on)
+{
+    on = on != 0;
+    if (on == !usb.aud_off)
+        return;
+    if (usb.up) {
+        usb.up = 0;                                     /* usb_poll and uac_service (TIMER5) stop before the SIE goes */
+        RING_PUBLISH();
+        fm1_usb_off();
+    }
+    usb.config = 0;
+    uac_stream(0);
+    usb.aud_off = (uint8_t)!on;
+}
+#endif
 #if FELUCCA_CDC
 /* Present the device with or without the serial console (main loop; at boot before usb_start, or later
  * from a setting). A change while attached drops off the bus; usb_retry attaches again within a second

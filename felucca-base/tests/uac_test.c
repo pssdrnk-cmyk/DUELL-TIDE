@@ -183,6 +183,8 @@ static void test_descriptors(void)
  * HALF_FRAMES / 32 blocks of 32 (the samples count up: L = n, R = ~n, so the order can be checked); the consumer
  * takes one packet per ms. */
 static double fs_dev = 44117.6;                       /* the I2S rate (DAC_TICKS: 24 MHz / 544) */
+/* b9: the resampler taps are int16 Q15 (about 1.5 LSB rms on full-scale noise): a frame may differ from the double-precision reference by this much */
+#define REF_TOL 4
 #define FS_DEV fs_dev
 static uint32_t prod_n, cons_n, cons_bad, cons_rep, cons_zero, sizes[64], npk;
 static uint32_t last_frame;
@@ -579,16 +581,16 @@ static void test_resampler(void)
     char s[160];
 
     proto_init();
-    /* the table: each phase sums to 1 << 30 and is the prototype computed here (oldest input first) */
+    /* the table (int16 Q15, b9): each phase sums to 1 << 15 and is the prototype computed here (oldest input first) within 1.6 LSB */
     for (i = 0; i < UAC_FIR_L / 2u; i++) {
         int64_t t = 0;
         for (k = 0; k < UAC_FIR_N; k++) {
-            double want = H[i + RL * (RN - 1u - k)] * (1 << 30);
+            double want = H[i + RL * (RN - 1u - k)] * (1 << UAC_FIR_Q);
             t += UAC_FIR[i][k];
-            if (fabs(UAC_FIR[i][k] - want) > 2e-5 * (1 << 30))
+            if (fabs(UAC_FIR[i][k] - want) > 1.61)
                 tab_ok = 0;
         }
-        sum_ok &= t == (int64_t)1 << 30;
+        sum_ok &= t == (int64_t)1 << UAC_FIR_Q;
     }
     check("FIR table = sinc x Kaiser (24 x 160 taps, beta 9, 22 kHz); phases sum to 1.0", tab_ok && sum_ok);
 
@@ -604,11 +606,11 @@ static void test_resampler(void)
         m = rs_block(blk, 32, l, r);
         for (j = 0; j < m; j++, k++) {
             int32_t want = s16r(ref_out(k, rnd_x, &seed));
-            if (abs(l[j] - want) > 1 || abs(r[j] + want) > 1)
+            if (abs(l[j] - want) > REF_TOL || abs(r[j] + want) > REF_TOL)
                 bad++;
         }
     }
-    snprintf(s, sizeof s, "1 s of noise: every frame = the double-precision resampler +-1 LSB (%u off)", bad);
+    snprintf(s, sizeof s, "1 s of noise: every frame = the double-precision resampler +-%d LSB (%u off)", REF_TOL, bad);
     check(s, bad == 0);
     snprintf(s, sizeof s, "  frames out / in: %u / %u (160 / 147)", k, n);
     check(s, k == (160u * n - 1u) / 147u + 1u);          /* the outputs whose newest input frame is < n */
@@ -632,9 +634,9 @@ static void test_resampler(void)
         if (FQ[i] >= 100 && FQ[i] <= 15000 && (worst == 0 || sb < worst))
             worst = sb;
         if (FQ[i] == 1000)
-            check(s, sb >= 90.0);
+            check(s, sb >= 88.0);                       /* (int16 Q15 taps, b9: 94 dB with the Q30 ones) */
         else if (FQ[i] <= 15000)
-            check(s, sb >= 88.0);
+            check(s, sb >= 86.0);
         else if (FQ[i] == 18000)
             check(s, sb >= 80.0 && g > -0.2);
         else
@@ -706,8 +708,8 @@ static void take_packet48(void)
             k48 += from;
             continue;
         }
-        if (abs(l - s16r(ref_out(k48 - UA_PRIME48, ring_x, 0))) > 1 ||
-            abs(r - s16r(ref_out(k48 - UA_PRIME48, ring_xr, 0))) > 1)
+        if (abs(l - s16r(ref_out(k48 - UA_PRIME48, ring_x, 0))) > REF_TOL ||
+            abs(r - s16r(ref_out(k48 - UA_PRIME48, ring_xr, 0))) > REF_TOL)
             bad48++;
         k48++;
     }
@@ -784,6 +786,67 @@ static void test_ring48(void)
     uac_rate_set(44100);
 }
 
+/* ------------------------------------------------------------------ USB AUDIO OFF (b9) --- */
+static void test_audio_off(void)
+{
+    const uint8_t *d, *c = CFG_DESC_NOAUD;
+    uint16_t l;
+    uint32_t off, ifs = 0, eps = 0, audio_if = 0, iso = 0, midi_if = 0;
+    int ok = 1;
+    for (off = 0; off < sizeof CFG_DESC_NOAUD; off += c[off]) {
+        ok &= c[off] >= 2u && off + c[off] <= sizeof CFG_DESC_NOAUD;
+        if (!ok)
+            break;
+        if (c[off + 1] == 4) {
+            ifs++;
+            audio_if += c[off + 5] == 1 && c[off + 6] == 2;             /* an audio streaming interface */
+            midi_if += c[off + 5] == 1 && c[off + 6] == 3;
+        }
+        if (c[off + 1] == 5) {
+            eps++;
+            iso += (c[off + 3] & 3u) == 1u;                                 /* an isochronous endpoint */
+        }
+    }
+    check("USB AUDIO OFF: configuration = the bytes sent, 2 interfaces (audio control + MIDI streaming), 2 bulk endpoints, no audio streaming, no isochronous",
+          ok && le16(c + 2) == sizeof CFG_DESC_NOAUD && c[4] == 2 && ifs == 2u && midi_if == 1u && audio_if == 0u && eps == 2u && iso == 0u);
+    check("USB AUDIO OFF: the audio control header lists the MIDI interface only (the descriptors of a build without the audio input)",
+          c[9 + 9 + 2] == 1 && c[9 + 9 + 5] == 9 && le16(c + 9 + 9 + 3) == 0x0100u && c[9 + 9 + 7] == 1 && c[9 + 9 + 8] == 1);
+    check("USB AUDIO OFF: bcdDevice 3.00 (a host that learnt the audio device starts afresh), class 0, same VID / PID / strings",
+          DEV_DESC_NOAUD[12] == 0x00 && DEV_DESC_NOAUD[13] == 3 && DEV_DESC_NOAUD[4] == 0 && DEV_DESC_NOAUD[8] == DEV_DESC[8] &&
+          DEV_DESC_NOAUD[10] == DEV_DESC[10] && DEV_DESC_NOAUD[14] == DEV_DESC[14] && DEV_DESC_NOAUD[15] == DEV_DESC[15]);
+    usb.up = 0;
+    uac.alt = 1;
+    usb.aud_off = 0;
+    ok = get_desc(0x0100, &d, &l) && get_desc(0x0200, &d, &l) && d == (T_CDC ? CFG_DESC : CFG_DESC_PLAIN) && USB_AUD_PRES;
+    check("USB AUDIO ON (the default of the code): the descriptors as before", ok);
+    usb_audio_switch(0);
+    check("USB AUDIO OFF: a switch (usb not up: nothing to drop) stops the stream and presents MIDI only (with the console: audio stays)",
+          !uac.alt && usb.aud_off == 1 && (T_CDC ? USB_AUD_PRES : !USB_AUD_PRES));
+    ok = get_desc(0x0100, &d, &l) && l == 18u;
+    ok &= T_CDC ? d == DEV_DESC : d == DEV_DESC_NOAUD;
+    ok &= get_desc(0x0200, &d, &l) && (T_CDC ? d == CFG_DESC && l == sizeof CFG_DESC : d == CFG_DESC_NOAUD && l == sizeof CFG_DESC_NOAUD);
+    check("USB AUDIO OFF: GET_DESCRIPTOR answers the MIDI-only descriptors", ok);
+    {   /* the jacks: the audio ISR hands uac_tap the master output by const pointer; with the stream off it does nothing at all (no ring write, no
+         * resampler), and with it on the output is not touched either, so the DAC's samples are the same bit for bit whatever USB AUDIO says */
+        int32_t blk[64], ref[64], i;
+        uint32_t w0;
+        for (i = 0; i < 64; i++)
+            ref[i] = blk[i] = (int32_t)(i * 7919u % 65000u) - 32500;
+        usb.up = 0;
+        uac.alt = 0;
+        uac.r48 = 1;                                    /* (the costly rate: still nothing runs) */
+        w0 = ua_w;
+        uac_render_start();
+        uac_tap(blk, 32);
+        ok = !uac.feed && ua_w == w0 && !memcmp(blk, ref, sizeof blk);
+        uac.r48 = 0;
+        check("USB AUDIO OFF: the render start feeds nothing, uac_tap leaves the output and the ring alone (the jacks are the same bit for bit)", ok);
+    }
+    usb_audio_switch(1);
+    ok = get_desc(0x0200, &d, &l) && d == (T_CDC ? CFG_DESC : CFG_DESC_PLAIN) && usb.aud_off == 0 && USB_AUD_PRES;
+    check("USB AUDIO ON again: the audio descriptors", ok);
+}
+
 int main(void)
 {
     printf("-- USB audio input, CDC %s\n", T_CDC ? "on" : "off");
@@ -792,6 +855,7 @@ int main(void)
     test_rate();
     test_resampler();
     test_ring48();
+    test_audio_off();
     printf(fails ? "UAC TEST FAILED (%d)\n" : "uac: all ok\n", fails);
     return fails != 0;
 }

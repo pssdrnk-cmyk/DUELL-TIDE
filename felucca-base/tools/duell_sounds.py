@@ -2272,30 +2272,30 @@ SOUNDS = [
             'E8': 1, 'FREEA': 68, 'REV': 100, 'E4': 5,
          }),
     # FM6 DUB VOICES (2026-11-05, audit G10): the FM engine in the dub register, on the factory patches F5 PAD, F7 ORGAN and F2 BELL (SLOT);
-    # each darkened by the multimode filter and the modulator level (MLVL), its lows cut for the bass gear, thrown into the delay and the room.
+    # each darkened by the multimode filter and the modulator level (MLVL), thrown into the delay and the room (b9: the low shelf they had "for the bass gear" is gone; the low end is welcome).
     # A soft FM pad, two detuned pairs breathing under a slow low-pass: the filter rises and falls over four bars, a wide chorus and a long room.
     dict(engine='FM6', idx=14, name='FM HAZE', cat='PAD', bseed=32696,  # #133
          p={
-            'LRATE': 17, 'LWAVE': 1, 'LD_FLT': 4, 'KTRK': 24, 'CHOR': 72, 'DLY': 28, 'REV': 90, 'EQLG': -5, 'FREEA': 62, 'FREEB': 5, 'FREED': 2,
-            'TRIM': 122, 'E3': -6, 'E7': 20, 'E8': 4, 'MOD1': ('AT', 'CUT', 12), 'MOD2': ('CYCLE', 'CUT', 7), 'LTRIG': 1, 'L2TRIG': 1,
+            'LRATE': 17, 'LWAVE': 1, 'LD_FLT': 4, 'KTRK': 24, 'CHOR': 72, 'DLY': 28, 'REV': 90, 'FREEA': 62, 'FREEB': 5, 'FREED': 2,
+            'TRIM': 120, 'E3': -6, 'E7': 20, 'E8': 4, 'MOD1': ('AT', 'CUT', 12), 'MOD2': ('CYCLE', 'CUT', 7), 'LTRIG': 1, 'L2TRIG': 1,
             'CYCLE RISE': 113, 'CYCLE FALL': 113, 'CYCLE SYNC': 1, 'LSYNC': 1,
          }),
     # A drawbar organ by FM (six sine carriers), the top cut so it sits under the hats, a slow chorus for the rotor and a dub delay: the skank organ.
     dict(engine='FM6', idx=15, name='DUB DRAWBAR', cat='KEYS',  # #153
          p={
-            'KTRK': 20, 'CHOR': 34, 'DLY': 64, 'REV': 30, 'EQLG': -4, 'FREEA': 60, 'FREEB': 4, 'FREED': 2, 'E2ATK': 0, 'E2DEC': 62, 'E2SUS': 0,
-            'E2REL': 56, 'E2FLT': 14, 'TRIM': 112, 'E8': 6, 'MOD1': ('AT', 'CUT', 12), 'MOD2': ('VEL', 'CUT', 8), 'LTRIG': 1, 'L2TRIG': 1,
+            'KTRK': 20, 'CHOR': 34, 'DLY': 64, 'REV': 30, 'FREEA': 60, 'FREEB': 4, 'FREED': 2, 'E2ATK': 0, 'E2DEC': 62, 'E2SUS': 0,
+            'E2REL': 56, 'E2FLT': 14, 'TRIM': 111, 'E8': 6, 'MOD1': ('AT', 'CUT', 12), 'MOD2': ('VEL', 'CUT', 8), 'LTRIG': 1, 'L2TRIG': 1,
          }),
     # A dark bell stab: the glass bell with less modulator, low-passed, its ring thrown into a dotted delay and a plate: one hit an offbeat.
     dict(engine='FM6', idx=16, name='BELL STAB', cat='KEYS', bseed=31891,  # #152
          p={
-            'KTRK': 22, 'CHOR': 12, 'DLY': 70, 'REV': 44, 'EQLG': -6, 'FREEA': 64, 'FREEB': 4, 'FREED': 2, 'TRIM': 113, 'E3': -8, 'E8': 1,
+            'KTRK': 22, 'CHOR': 12, 'DLY': 70, 'REV': 44, 'FREEA': 64, 'FREEB': 4, 'FREED': 2, 'TRIM': 111, 'E3': -8, 'E8': 1,
             'MOD1': ('AT', 'CUT', 12), 'MOD2': ('VEL', 'CUT', 10), 'LTRIG': 1, 'L2TRIG': 1,
          }),
     # ---- W15 DRONES (owner, 2026-11-05: "dune, blade runner, and space related drones. big fat ones", a fourth theme cyberpunk): eight drones for the
     # background layer under a drum machine and an external bass. Hold one key or a 2-3 note chord around C3 (the DRONE lane 48-67) for minutes. Fat in the low
-    # mids (130-400 Hz), the 30-60 Hz band left to the bass gear (a sub only where the theme asks for it: SAND THROAT and GRID HUM, an octave under the key, so
-    # from C3 up); every one moves by itself over tens of seconds (a LOOP CYCLE and a free LFO on different periods, so the pattern repeats only after minutes);
+    # mids (130-400 Hz) and a soft sub under the key where it helps (SAND THROAT, GRID HUM, and since b9 HORN SWELL, VOID SHIMMER, SOLAR WIND: the lows are welcome, owner 11 November; no low cuts;
+    # the sub is an octave or two under the key); every one moves by itself over tens of seconds (a LOOP CYCLE and a free LFO on different periods, so the pattern repeats only after minutes);
     # chorus, delay and the room do the width, no UNISON (one voice a note: a 3-note chord stays inside the NOTES budget, each part alone and in a LAYER with a pad).
     # The pitched ones are PAD (JRNY travels among the engine's pads); the two textures are FX TEXT (SOLAR WIND among ANALOG's drones, GRID HUM alone on LOFI).
     # DESERT 1: the throat. A saw under a man's vowels (WAVE GROWL), the vowel drifting U -> AH over a 14 s cycle, a sine sub an octave under the key (the weight),
@@ -2313,12 +2313,12 @@ SOUNDS = [
          }),
     # DESERT 2: the horns. An FM brass section (F4), its carriers spread 36 cents apart (the ensemble), the modulators held dark and swelled by a 12 s cycle that
     # lingers low and then blooms (CURVE +): the brass grows its growl every cycle, as a braam-like body does, under a 12 dB low-pass breathing on a 14 s LFO;
-    # saturation for the rasp, the lows shelved for the bass gear, a long room.
+    # saturation for the rasp, the lows left full (a sub under the key), a long room.
     # End B: the horns bare their teeth: the modulators at full, more saturation, the filter up, the carriers wider, the room larger.
     dict(engine='FM6', idx=17, name='HORN SWELL', cat='PAD', bseed=48240, bamt=27,  # #165
          p={
             'L2RATE': 7, 'L2WAVE': 1, 'KTRK': 16, 'DIST': 24, 'CHOR': 50, 'DLY': 30, 'REV': 100,
-            'SPRD': 40, 'EQLG': -4, 'FREEA': 50, 'FREEB': 10, 'FREED': 1, 'TRIM': 117, 'E3': 0, 'E5': 0, 'E7': 48, 'E8': 3,
+            'SPRD': 40, 'SUB LEVEL': 72, 'SUB OCTAVE': 1, 'FREEA': 50, 'FREEB': 10, 'FREED': 1, 'TRIM': 117, 'E3': 0, 'E5': 0, 'E7': 48, 'E8': 3,
             'MOD1': ('CYCLE', 'E3', 10), 'MOD2': ('LFO2', 'CUT', 10), 'MOD3': ('AT', 'CUT', 12), 'CYCLE RISE': 118, 'CYCLE FALL': 122, 'CYCLE CURVE': 10,
             'LTRIG': 1, 'L2TRIG': 1,
          },
@@ -2344,7 +2344,7 @@ SOUNDS = [
     dict(engine='TRIO', idx=13, name='RAIN STRINGS', cat='PAD', bseed=17523, bamt=27,  # #167
          p={
             'ATK': 92, 'DEC': 100, 'SUS': 127, 'REL': 110, 'L2RATE': 6, 'L2WAVE': 1, 'KTRK': 24, 'CHOR': 110, 'DLY': 36, 'REV': 108, 'SPRD': 70,
-            'EQHG': -2, 'EQLG': -3, 'FREEA': 42, 'FREEB': 16, 'FREED': 2, 'E2ATK': 100, 'E2DEC': 100, 'E2SUS': 90, 'E2REL': 100, 'E2FLT': 12,
+            'EQHG': -2, 'FREEA': 42, 'FREEB': 16, 'FREED': 2, 'E2ATK': 100, 'E2DEC': 100, 'E2SUS': 90, 'E2REL': 100, 'E2FLT': 12,
             'TRIM': 93, 'E1': 0, 'E2': 0, 'E3': 0, 'E4': 11, 'MOD1': ('CYCLE', 'CUT', 10), 'MOD2': ('LFO2', 'CUT', 6), 'MOD3': ('AT', 'CUT', 12),
             'CYCLE RISE': 116, 'CYCLE FALL': 116, 'LTRIG': 1, 'L2TRIG': 1,
          },
@@ -2358,8 +2358,8 @@ SOUNDS = [
     dict(engine='WAVE', idx=27, name='VOID SHIMMER', cat='PAD', bseed=37388, bamt=27,  # #168
          p={
             'ATK': 80, 'DEC': 100, 'SUS': 127, 'REL': 118, 'LRATE': 0, 'LWAVE': 1, 'L2RATE': 3, 'L2WAVE': 1, 'KTRK': 20, 'CHOR': 80, 'DLY': 60,
-            'REV': 127, 'SPRD': 100, 'FREEA': 46, 'FREEB': 20, 'FREED': 1, 'TRIM': 102, 'E1': 11, 'E2': 18, 'E6': 7, 'MOD1': ('CYCLE', 'E2', 24),
-            'MOD2': ('LFO2', 'CUT', 12), 'MOD3': ('LFO1', 'E6', 4), 'MOD4': ('AT', 'CUT', 12), 'SUB LEVEL': 64, 'SUB WAVE': 0, 'SUB OCTAVE': 2,
+            'REV': 127, 'SPRD': 100, 'FREEA': 46, 'FREEB': 20, 'FREED': 1, 'TRIM': 104, 'E1': 11, 'E2': 18, 'E6': 7, 'MOD1': ('CYCLE', 'E2', 24),
+            'MOD2': ('LFO2', 'CUT', 12), 'MOD3': ('LFO1', 'E6', 4), 'MOD4': ('AT', 'CUT', 12), 'SUB LEVEL': 72, 'SUB WAVE': 0, 'SUB OCTAVE': 1,
             'CYCLE RISE': 127, 'CYCLE FALL': 127, 'LTRIG': 1, 'L2TRIG': 1,
          },
          bend={
@@ -2367,11 +2367,11 @@ SOUNDS = [
          }),
     # SPACE 2: the solar wind. Two triangles 3 cents apart (a slow beat under everything; a chord beats at three rates) and a loud noise in the same voice,
     # through a 12 dB filter between low-pass and band-pass whose cutoff rides an 18 s LFO and whose resonance breathes with a 14 s cycle: the wind swells and
-    # thins over the soft beating tone; the widest spread, a long echo, the room at full, the lows shelved. A texture (JRNY: with NIGHT DRONE and STORM FRONT).
+    # thins over the soft beating tone; the widest spread, a long echo, the room at full, the lows left full (a sub under the key). A texture (JRNY: with NIGHT DRONE and STORM FRONT).
     # End B: the wind takes over: more noise, the filter higher and more band-pass, faster, the beat wider, the room as big as it goes.
-    dict(engine='ANALOG', idx=35, name='SOLAR WIND', cat='FX', text=True, bseed=37592, bamt=25,  # #169
+    dict(engine='ANALOG', idx=35, name='SOLAR WIND', cat='FX', text=True, bseed=33367, bamt=25,  # #169
          p={
-            'ATK': 88, 'DEC': 100, 'SUS': 127, 'REL': 118, 'LRATE': 2, 'LWAVE': 1, 'KTRK': 0, 'CHOR': 50, 'DLY': 56, 'REV': 120, 'SPRD': 90, 'EQLG': -3,
+            'ATK': 88, 'DEC': 100, 'SUS': 127, 'REL': 118, 'LRATE': 2, 'LWAVE': 1, 'KTRK': 0, 'CHOR': 50, 'DLY': 56, 'REV': 120, 'SPRD': 90, 'SUB LEVEL': 72, 'SUB OCTAVE': 1,
             'FREEA': 46, 'FREEB': 30, 'FREEC': 40, 'FREED': 1, 'TRIM': 116, 'E1': 2, 'E2': 4, 'E4': 52, 'MOD1': ('LFO1', 'CUT', 8), 'MOD2': ('CYCLE', 'FRES', 8),
             'MOD3': ('AT', 'CUT', 12), 'CYCLE RISE': 124, 'CYCLE FALL': 118, 'LTRIG': 1, 'L2TRIG': 1, 'LPHASE': 32, 'E3': 40,
          },

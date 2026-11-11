@@ -53,7 +53,7 @@ static void js_desc(const param_desc_t *d)
         printf("null");
     }
     printf(",\"unit\":");
-    js_str(d->unit ? d->unit : "");
+    js_str(UNIT_STR[d->unit]);
     putchar('}');
 }
 

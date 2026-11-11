@@ -106,7 +106,7 @@ static void patch_restore_all_do(void);      /* SAVE > TOOLS: RESTORE ALL */
 #define PREF_SCALE_LEDS_OFF (0x80u << 8)
 /* 1.2: three more two-valued MENU settings, bits of another byte no engine uses, saved with the settings; 0 in older
  * settings = today's behaviour (append-only, as ui_prefs): bit 0 DISPLAY > SCOPE MIX (Discussion #165, fx.c scope_mix),
- * bit 1 CONTROL > STEP PREVIEW ON (Discussion #169, ui_input.c step_preview), bit 2 CONTROL > CHORD ENTRY ADD (#155,
+ * bit 1 CONTROL > STEP PREVIEW ON (Discussion #169, ui_input.c cursor_move), bit 2 CONTROL > CHORD ENTRY ADD (#155,
  * ui_input.c seq_entry). 1.5: bit 3 SYSTEM > HELP ON (Discussion #156; removed in DUELL 0.2.2: the bit is ignored, never reused). Bit 4: CPU METER OFF (DUELL 0.2.9).
  * Bit 5: the first-start GUIDE seen (DUELL 0.2.11, ui_guide.c; no MENU row, no editor id). Bit 6: MODE RECALL ON (0.2.11, multi.c project_load;
  * 0.2.14: MENU > CONTROL > MULTI LOAD SETS MODE). Bit 7 (0.2.14): the 0.2.14 defaults applied (PREF_DEFAULTS, settings_persist.c settings_defaults).
@@ -352,6 +352,13 @@ static uint32_t mods_get(void) { return ((uint32_t)ui_idle >> MODS_SHIFT) & MODS
  * (below, DUELL_VELO builds). A clear bit (a new unit, ERASE DATA, every older record) = FOLLOWS PATCH. A device setting: no patch, multi or project holds it */
 #define ui_runkeep (favorites.factory[15][23])
 #define RUNKEEP_SHIFT 1u
+/* b9 MENU > SYSTEM > USB AUDIO (OFF / ON; usb.c usb_audio_switch, menu_items.c usb_serial_apply): bits 3..7 of the same byte [15][23]: the top five bits are a tag (UAUD_TAG, 10100)
+ * and the setting is the tag with bit 3 (UAUD_ON) set. Anything else, which includes a new unit, ERASE DATA and EVERY older record (no tag), reads OFF, the default (owner, b9: the
+ * USB audio input is off unless it is turned on; MIDI, and with it the editor, always work). The tag keeps bytes an old record carried in these bits (the retired FX key map
+ * wrote this byte) from turning it on. A device setting: no patch, multi or project holds it. The other writers of the byte keep bits 3..7 (NOTES LEFT, KEEPS RUNNING) */
+#define UAUD_TAG 0xA0u
+#define UAUD_ON 0x08u
+static uint32_t usb_audio_get(void) { return (ui_runkeep & 0xF8u) == (UAUD_TAG | UAUD_ON); }
 static uint32_t mods_keep_get(void) { return ((uint32_t)ui_runkeep >> RUNKEEP_SHIFT) & 3u; }
 static void mods_apply(void)
 {

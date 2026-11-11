@@ -79,7 +79,7 @@ On the WAVETABLES tab, drop a WAV file (a single-cycle wave or a wavetable like 
 
 ## Multis
 
-The MULTIS tab lists M01 to M18. M01 to M16 are the unit's own slots: Recall, Save to unit, Download file, Rename and Import file work on them. M17 DUNE HORN and M18 VOID DEEP are drone scenes built into the firmware (TIDE 1.0.0-b6), marked "read-only": Recall works, Save to unit, Download, Rename and Import into them do not. To keep an edited one, Recall it, change it on the unit, and save it into M01 to M16. Backups are unchanged: nothing is stored for M17 and M18.
+The MULTIS tab lists M01 to M18. M01 to M16 are the unit's own slots: Recall, Save to unit, Download file, Rename and Import file work on them. M17 AMB DUNEHORN and M18 AMB GROWL are drone scenes built into the firmware (TIDE 1.0.0-b6), marked "read-only": Recall works, Save to unit, Download, Rename and Import into them do not. To keep an edited one, Recall it, change it on the unit, and save it into M01 to M16. Backups are unchanged: nothing is stored for M17 and M18.
 
 ## Good to know
 

@@ -78,19 +78,19 @@ static void tide_ghost_real(track_t *t);   /* (seq.c input_on: a real note start
 /* H4-H8 (morph.c, main loop unless marked): morph_music.c, morph_fm_shape.c, morph_complement.c and morph_tide.c are included
  * by morph.c; these are the lines morph.c runs for them */
 #define TIDE_PART_FIELDS uint8_t tok[2][MORPH_HIST];    /* MORPH TO: the factory sound each end is (index + 1), 0 not one */
-#define TIDE_CFG_BITS() (morph_musical && !(morph.cfg & MC_WILD) ? MC_MUSIC : 0u)   /* the next roll MUSICAL (TIDE LIST's ROLL) */
+#define TIDE_CFG_BITS() (MM_ON() && (MM_LOCK || !(morph.cfg & MC_WILD)) ? MC_MUSIC : 0u)   /* the next roll MUSICAL (TIDE LIST's ROLL) */
 #define TIDE_BLK_CFG_OK(c) (!((c) & ~(MC_SET | MC_STEREO | MC_PART | MC_MUSIC)))   /* a saved roll's cfg byte: MUSICAL too */
 #define TIDE_ROLL(mp, pi, x, end, fend, seed, amount, cfg, ndep) tide_roll((mp), (pi), (x), (end), (fend), (seed), (amount), (cfg), (ndep))
 #define TIDE_TOK_SET(mp, x, k, v) ((mp)->tok[(x)][(k)] = (uint8_t)(v))
 #define TIDE_TOK_COPY(mp, x, k, t) ((mp)->tok[(x)][(k)] = (mp)->tok[(x)][(t)])
 #define TIDE_REBASE_END(pi, mp, e) do { (mp)->tok[(e)][0] = 0; memset(mm_dv[(pi) % NSHOWN][(e)], 0, sizeof mm_dv[0][0]); \
                                        memset(mm_dir[(pi) % NSHOWN], 0, sizeof mm_dir[0]); mm_loads[(pi) % NSHOWN] += !(e); } while (0)   /* (WANDER from this sound's own dials) */
-#define TIDE_FACTORY_AMOUNT(a) (morph_musical ? MM_AMOUNT : (a))   /* a factory sound's B: MUSICAL at MUSICAL's AMOUNT (no DS_ENDB) */
+#define TIDE_FACTORY_AMOUNT(a) (MM_ON() ? MM_AMOUNT : (a))   /* a factory sound's B: MUSICAL at MUSICAL's AMOUNT (no DS_ENDB) */
 /* the AMOUNT the load rolls factory sound (e, k)'s B at: TIDE_FACTORY_AMOUNT, or the sound's own MUSICAL AMOUNT 'tamt' (b6, sound audit T2:
  * a sound whose level rides on its decay, FRETLESS ISLAND STEEL MALLET WOOD, at 20, as SHAPE at 40 moved its level out of the End B
  * window). The part's AMOUNT knob stays TIDE_FACTORY_AMOUNT (the next ROLL's) */
-#define TIDE_FACTORY_BAMT(e, k, a) (morph_musical && ds_get((e), (k))->tamt ? (uint32_t)ds_get((e), (k))->tamt : TIDE_FACTORY_AMOUNT(a))
-#define TIDE_FACTORY_CFG() (morph_musical ? MC_MUSIC : 0u)
+#define TIDE_FACTORY_BAMT(e, k, a) (MM_ON() && ds_get((e), (k))->tamt ? (uint32_t)ds_get((e), (k))->tamt : TIDE_FACTORY_AMOUNT(a))
+#define TIDE_FACTORY_CFG() (MM_ON() ? MC_MUSIC : 0u)
 #define TIDE_BUILD_KIND(mp, id, kind) do { if ((id) == P_TRIM && ((mp)->tok[0][(mp)->top[0]] || (mp)->tok[1][(mp)->top[1]])) \
                                               (kind) = MK_CONT; } while (0)   /* (MORPH TO: two sounds' loudness blends, no step halfway) */
 #define TIDE_BUILD_FNID(mp) ((mp)->fnid |= (uint8_t)((mp)->tok[0][(mp)->top[0]] | (mp)->tok[1][(mp)->top[1]]))   /* (MORPH TO's FM6 flip) */

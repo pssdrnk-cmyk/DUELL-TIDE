@@ -113,7 +113,7 @@ static void tarc_poll(void)
 static const char *tarc_drop_hand(void)
 {
     if (!sqm_arc || !sqm_auto)
-        return sqm_arc ? "DROP NEEDS WANDER/JOURNEY" : "ARC OFF";
+        return sqm_arc ? "DROP NEEDS EVOLVE/TRAVEL" : "ARC OFF";
     if (tarc.hand && tarc.phase != AP_DROP) {
         tarc.hand = 0;
         tarc_dropphr = 0xFFu;

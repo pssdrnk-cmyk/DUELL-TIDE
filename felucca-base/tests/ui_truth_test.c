@@ -170,18 +170,18 @@ static void test_inert_rows(void)
     go_title("TIDE SETTINGS");
     gl.mode = GM_WANDER; morph_musical = 1; gl.target = GT_BOTH;
     CHECK("INERT: WNDR, MUSIC, BOTH: ARC's value in the theme colour", inert_look(JL_ARC, JL_ARC) == 1);
-    CHECK("INERT:   and knob 1's line names nothing", !rows_has(0, 80, "WNDR OR JRNY") && !rows_has(0, 80, "TARGET SEQ") && !rows_has(0, 80, "NOT JRNY"));
+    CHECK("INERT:   and knob 1's line names nothing", !rows_has(0, 80, "NEEDS EVOLVE") && !rows_has(0, 80, "TARGET SEQ") && !rows_has(0, 80, "NOT TRVL"));
     gl.mode = GM_ONCE;
     CHECK("INERT: MODE ONCE: ARC's value is dim", inert_look(JL_ARC, JL_ARC) == 2);
-    CHECK("INERT:   knob 1's line says WNDR OR JRNY", rows_has(0, 80, "WNDR OR JRNY"));
+    CHECK("INERT:   knob 1's line says NEEDS EVOLVE", rows_has(0, 80, "NEEDS EVOLVE"));
     gl.mode = GM_WANDER; morph_musical = 0;
-    CHECK("INERT: ROLL TYPE SMART: ARC still acts (no gate on ROLL TYPE)", inert_look(JL_ARC, JL_ARC) == 1 && !rows_has(0, 80, "WNDR OR JRNY"));
+    CHECK("INERT: ROLL TYPE SMART: ARC still acts (no gate on ROLL TYPE)", inert_look(JL_ARC, JL_ARC) == 1 && !rows_has(0, 80, "NEEDS EVOLVE"));
     morph_musical = 1; gl.target = GT_SOUND;
     CHECK("INERT: TARGET SOUND: ARC dims, TARGET SEQ is named", inert_look(JL_ARC, JL_ARC) == 2 && rows_has(0, 80, "TARGET SEQ"));
     gl.target = GT_BOTH; gl.mode = GM_JOURNEY;
-    CHECK("INERT: JOURNEY: ROLL TYPE dims, knob 1's line says NOT JRNY", inert_look(JL_ROLL, JL_ROLL) == 2 && rows_has(0, 80, "NOT JRNY"));
+    CHECK("INERT: TRAVEL: KNOBS acts, knob 1's line names nothing", inert_look(JL_KNOB, JL_KNOB) == 1 && !rows_has(0, 80, "NOT TRVL"));
     CHECK("INERT:   .. ARC acts", inert_look(JL_ARC, JL_GMODE) == 1);
-    CHECK("INERT: a row that always acts (MODE) names nothing", !rows_has(0, 80, "NOT JRNY") && !rows_has(0, 80, "TARGET SEQ") && !rows_has(0, 80, "WNDR OR JRNY"));
+    CHECK("INERT: a row that always acts (MODE) names nothing", !rows_has(0, 80, "NOT TRVL") && !rows_has(0, 80, "TARGET SEQ") && !rows_has(0, 80, "NEEDS EVOLVE"));
     gl.mode = GM_WANDER;
 }
 
@@ -200,10 +200,10 @@ static void test_list_knobs(void)
     CHECK("LIST: it stops at the last value", gl.target == GT_BOTH);
     tide_knob(2u, -3);
     CHECK("LIST: knob 3 left is the one before", gl.target == GT_SEQ && jl_sel == JL_TARGET);
-    CHECK("LIST: the row names say what they do (D9)", !strcmp(JL_NAME[JL_ROLL], "ROLL TYPE") && !strcmp(JL_NAME[JL_GMODE], "MODE") && !strcmp(jl_vname(JL_GMODE, 3), "WANDER") &&
-          !strcmp(jl_vname(JL_TARGET, 2), "BOTH") && !strcmp(jl_vname(JL_ROLL, 0), "MUSIC") && !strcmp(jl_vname(JL_ARC, 1), "RISE"));
+    CHECK("LIST: the row names say what they do (D9)", !strcmp(JL_NAME[JL_KNOB], "KNOBS") && !strcmp(JL_NAME[JL_GMODE], "MODE") && !strcmp(jl_vname(JL_GMODE, 0), "EVOLVE") && !strcmp(jl_vname(JL_GMODE, 1), "TRAVEL") &&
+          !strcmp(jl_vname(JL_TARGET, 2), "BOTH") && !strcmp(jl_vname(JL_KNOB, 0), "AUTO") && !strcmp(jl_vname(JL_ARC, 1), "RISE"));
     sqm_arc = 1; sqm_auto = 0;
-    CHECK("LIST: a hand drop with no automatic tide says what it needs", !strcmp(tarc_drop_hand(), "DROP NEEDS WANDER/JOURNEY"));
+    CHECK("LIST: a hand drop with no automatic tide says what it needs", !strcmp(tarc_drop_hand(), "DROP NEEDS EVOLVE/TRAVEL"));
     sqm_arc = 0;
     jl_sel = JL_STYLE;
     ui.force = 1; ui_draw();
@@ -233,7 +233,7 @@ static void test_arc_trip(void)
     CHECK("ARC: DROP NEXT still shows (its room: the line is full with both)", strstr(l, "DROP NEXT") != 0);
     sqm_arc = 0; tarc.run = 0; tarc.hand = 0;
     tide_status(l);
-    CHECK("ARC: no ARC: the trip line as before", !strncmp(l, "JOURNEY TO A", 12));
+    CHECK("ARC: no ARC: the trip line as before", !strncmp(l, "TRAVEL TO A", 11));
     song.playing = 0; gl.on = 0;
 }
 

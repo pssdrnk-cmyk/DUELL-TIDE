@@ -119,10 +119,12 @@ enum {
 typedef struct {
     const char *label;
     uint8_t fmt;
+    uint8_t unit;               /* F_INT / F_ENUM optional unit: U_*, 0 = none (an index into UNIT_STR; 1.0.0-b9 SP4: 16 B a descriptor, was 20; sits in the padding after fmt, so every initialiser is {label, fmt, unit, min, max, def, names}) */
     int16_t min, max, def;
     const char *const *names;   /* F_ENUM */
-    const char *unit;           /* F_INT / F_ENUM optional unit */
 } param_desc_t;
+enum { U_NONE, U_CT, U_MS, U_ST, U_HZ };
+static const char *const UNIT_STR[] = {"", "ct", "ms", "st", "Hz"};
 
 enum {                          /* per-track parameters */
     P_LEVEL,                    /* DUELL 0.2.19 (owner, 2026-10-15): the MIXER LEVEL, the part's volume the player sets on the mixer: NOT part of a patch (a sound load,
@@ -820,8 +822,8 @@ static part_scr_t pscr[NLIVE];
 #define TSEL (&trk[song.sel])    /* the selected track */
 
 /* DUELL 0.2.14 GLO > MODULES (SPEC "Modules"): four DEVICE switches, ARP, SEQ, SENDS, PART FX, each ON (the default) or OFF. Kept in the
- * settings byte favorites.factory[15][10] bits 1..4 (ui.c ui_mods; a SET bit is OFF, so a new unit, ERASE DATA and every older record
- * read all four ON), never in a patch, a multi or the project. ui_input copies them here every frame (ui.c mods_apply); the audio side
+ * settings byte favorites.factory[15][10] bits 1..4 (a SET bit is OFF, so a new unit, ERASE DATA and every older record
+ * read all four ON), never in a patch, a multi or the project. ui_input copies them here every frame; the audio side
  * reads only this byte. The stored values of the arp, the steps, the sends and the part effects are never touched by a switch */
 #define MODS_ARP 1u              /* ARP OFF: no arp plays, whatever its MODE (seq.c: arp_mode below); the keys play directly */
 #define MODS_SEQ 2u              /* SEQ OFF: no stored step plays (seq.c seq_play), nor the arp's SEQUENCER mode (it plays the steps) */

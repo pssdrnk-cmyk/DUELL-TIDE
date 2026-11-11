@@ -8,6 +8,7 @@
  *   build/host/gen_factory_multis build tools/factory_multis    writes the built slots' Mnn.bin (tools/factory_multis.py build does it)
  *   build/host/gen_factory_multis dump [SLOT ..]                 what the factory multis of the generated header hold (default: all)
  *   build/host/gen_factory_multis loud                           the loudness of the factory multis (needs the header regenerated with them)
+ *   build/host/gen_factory_multis lowend [SLOT ..]               (b9) each multi's share under 150 Hz and its low band's onsets per beat (tests/lowend_probe.inc)
  *   build/host/gen_factory_multis search SLOT PART AMOUNT N [SEED]  (0.2.13) End B candidates of PART at AMOUNT: level, brightness against End A
  *   build/host/gen_factory_multis eval SLOT [S1 A1 S2 A2]         (0.2.13) End A against End B (both parts, each alone; 3 keys and C4)
  *   build/host/gen_factory_multis moves SLOT [S1 A1 [S2 A2]]       the values End B moves (optionally rolled again with these seeds / AMOUNTs)
@@ -336,6 +337,7 @@ static void loud(uint32_t k, uint32_t nkeys, uint32_t solo)   /* solo: 0 both pa
            -0.691 + 10 * log10(e / n + 1e-30), 20 * log10(pk + 1e-12), r > 0 ? sqrt(d / r) * FS / (2.0 * M_PI) : 0.0);
 }
 
+#include "lowend_probe.inc"                     /* b9: `lowend`, the share under 150 Hz and the low band's onsets per beat */
 int main(int argc, char **argv)
 {
     uint32_t i;
@@ -447,6 +449,17 @@ int main(int argc, char **argv)
                 if (morph_view(pi, id) != trk[pi].p[id])
                     printf(" %s(%d>%d)", param_desc_of(trk[pi].engine, id)->label, trk[pi].p[id], (int)morph_view(pi, id));
             printf("\n");
+        }
+        return 0;
+    }
+    if (argc > 1 && str_eq(argv[1], "lowend")) {   /* lowend [SLOT ..]: PLAY or C4 E4 G4 held, as loud() */
+        uint32_t a;
+        for (i = 0; i < MU_SLOTS; i++) {
+            int want = argc <= 2;
+            for (a = 2; a < (uint32_t)argc; a++)
+                want |= (uint32_t)atoi(argv[a]) == i + 1u;
+            if (want)
+                lowend(i, 3u);
         }
         return 0;
     }

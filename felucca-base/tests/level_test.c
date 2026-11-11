@@ -261,7 +261,7 @@ static void lv_multi(void)
     trk[0].p[P_LEVEL] = 0; trk[1].p[P_LEVEL] = 127;
     project_load(10u);
     ck("  MULTI LOAD over LEVEL 0 and 127 (GLO K3 / K4): the multi's 77 / 33, not the unit's", trk[0].p[P_LEVEL] == 77 && trk[1].p[P_LEVEL] == 33);
-    {   /* (D31: M01 BASIC CHORD sets its own balance, 102 / 94; until then REESE SWAMP's was unity: the check is that the multi's own comes back, whatever the unit had) */
+    {   /* (D31: M01 DUB BASIC sets its own balance, 102 / 94; until then REESE SWAMP's was unity: the check is that the multi's own comes back, whatever the unit had) */
         int32_t l0, l1;
         project_load(0u);
         l0 = trk[0].p[P_LEVEL]; l1 = trk[1].p[P_LEVEL];

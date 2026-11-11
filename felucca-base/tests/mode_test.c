@@ -34,7 +34,7 @@
 #endif
 #include <sys/wait.h>
 
-#define MODE_STEREO_HASH 0xC33B71E6E406F881ull   /* audit E3: HALL's pre-delay (SIZE's), re-based on purpose, was 0x7A78DAC0261F9A8F */ /* audit R09: ROOM runs the HALL's code (the first block's model fade from the power-on ROOM is stereo now), re-based on purpose, was 0x17213CD2BD841732 */ /* audit E2: the delay loop's low cut and soft knee (fx.c dly_wr), re-based on purpose, was 0x1E23D58DCF34873C */ /* audit R08: the loops' rounding dead bands closed (fx.c mulq15d), re-based on purpose, was 0xD873D87A2ACCFF78 */ /* master soft knee instead of the always-on tanh (audit R05, owner D22): re-based on purpose, was 0x366B468DC2425A83 */   /* DUELL 1.1 item 148: re-based on purpose: VS_MAX 3 -> 2 (the four-note chord now starts 2 + 2: its third and fourth tone one block later); item 144's hash with VS_MAX 3 was 0x51A55778D3DBFE39 */ /* DUELL 1.1 item 144: re-based on purpose: the scenario plays a four-note chord on part 1 in one block, and the voices' start limit (voice.c VS_MAX, 3 then) starts its fourth tone one block later; built with -DVS_MAX=8u it gives the hash before, 0x72791E3F551D6D9D */ /* DUELL 1.1 (item 127): re-based on purpose to the 1.1 sources (the scenario runs the HALL, the delay and the chorus, and the 1.1 reverb / feedback rounding fixes and the cost-table work changed its samples; the same hash at -O1 and -O2); was 0x9C13C6ADFCF3BC87 */ /* 0.2.32: re-based on purpose (the direct depth cards reach 100 % at +63, the merged line); was 0xC04494F53D46F0F0 */ /* older: */   /* 0.2.30: merged line (cloud wave 6 + click fixes), re-based on purpose, was 0x1CC6C8241C84C0DA; before:  0.2.29: re-based on purpose, the scenario runs the HALL and its quiet lines now round to the nearest (fx.c hall_end; 0.2.21..0.2.28: 0xC970174114DFD9BA) */   /* mode_stereo_scenario(); re-based 2026-10-16 (0.2.21) on purpose: the STEREO CHORUS (two taps, a side) changes the scenario, which sends every part to the chorus; with the second tap set to the first (-DCHO_OFF=0u) the render is the old hash 0xA77A7B40656EB88D again, bit for bit; before that: re-based 2026-10-16 when OUTPUT EQ (BASS+, which the scenario had on) was removed: the 0.2.19 sources with BASS+ off give this same hash (checked), so FLAT is bit for bit as it was; before it was 0xBB6416D3547A055C; re-based in 0.2.2: the FX layer's THROW / FLANGER / PHASER left the scenario with the layer (the output idle is regress's goldens, unchanged); was 0x174A9561B9854C15, before that 0xA233C4BC0DC6D894 (the sources before step 5, commit bb60ab7) up to 8f45fc5; re-based at 0d28bf8: a bipolar LFO now swings the whole range of a per-block destination and the scenario routes LFO to PAN */
+#define MODE_STEREO_HASH 0x3A9DBEE74D50A5E4ull /* (RE-BASED 2026-11-11, b9 G1/G2 echo: the first repeat leaves through the loop low-pass, the loop low cut 165 -> 219 Hz (fork/b9-sound 1b9cc6f); was 0xC33B71E6E406F881) */   /* audit E3: HALL's pre-delay (SIZE's), re-based on purpose, was 0x7A78DAC0261F9A8F */ /* audit R09: ROOM runs the HALL's code (the first block's model fade from the power-on ROOM is stereo now), re-based on purpose, was 0x17213CD2BD841732 */ /* audit E2: the delay loop's low cut and soft knee (fx.c dly_wr), re-based on purpose, was 0x1E23D58DCF34873C */ /* audit R08: the loops' rounding dead bands closed (fx.c mulq15d), re-based on purpose, was 0xD873D87A2ACCFF78 */ /* master soft knee instead of the always-on tanh (audit R05, owner D22): re-based on purpose, was 0x366B468DC2425A83 */   /* DUELL 1.1 item 148: re-based on purpose: VS_MAX 3 -> 2 (the four-note chord now starts 2 + 2: its third and fourth tone one block later); item 144's hash with VS_MAX 3 was 0x51A55778D3DBFE39 */ /* DUELL 1.1 item 144: re-based on purpose: the scenario plays a four-note chord on part 1 in one block, and the voices' start limit (voice.c VS_MAX, 3 then) starts its fourth tone one block later; built with -DVS_MAX=8u it gives the hash before, 0x72791E3F551D6D9D */ /* DUELL 1.1 (item 127): re-based on purpose to the 1.1 sources (the scenario runs the HALL, the delay and the chorus, and the 1.1 reverb / feedback rounding fixes and the cost-table work changed its samples; the same hash at -O1 and -O2); was 0x9C13C6ADFCF3BC87 */ /* 0.2.32: re-based on purpose (the direct depth cards reach 100 % at +63, the merged line); was 0xC04494F53D46F0F0 */ /* older: */   /* 0.2.30: merged line (cloud wave 6 + click fixes), re-based on purpose, was 0x1CC6C8241C84C0DA; before:  0.2.29: re-based on purpose, the scenario runs the HALL and its quiet lines now round to the nearest (fx.c hall_end; 0.2.21..0.2.28: 0xC970174114DFD9BA) */   /* mode_stereo_scenario(); re-based 2026-10-16 (0.2.21) on purpose: the STEREO CHORUS (two taps, a side) changes the scenario, which sends every part to the chorus; with the second tap set to the first (-DCHO_OFF=0u) the render is the old hash 0xA77A7B40656EB88D again, bit for bit; before that: re-based 2026-10-16 when OUTPUT EQ (BASS+, which the scenario had on) was removed: the 0.2.19 sources with BASS+ off give this same hash (checked), so FLAT is bit for bit as it was; before it was 0xBB6416D3547A055C; re-based in 0.2.2: the FX layer's THROW / FLANGER / PHASER left the scenario with the layer (the output idle is regress's goldens, unchanged); was 0x174A9561B9854C15, before that 0xA233C4BC0DC6D894 (the sources before step 5, commit bb60ab7) up to 8f45fc5; re-based at 0d28bf8: a bipolar LFO now swings the whole range of a per-block destination and the scenario routes LFO to PAN */
 
 static int bad, ncheck;
 static int expect(const char *what, int ok)
@@ -1076,10 +1076,10 @@ static void t_mode_rows(void)
     frames(64);
     mode_page();
     frames(32);
-    expect("TIDE SETTINGS (1.0.0-b7, MR8 and page 1): STYLE, MODE, TARGET, ARC, ROLL TYPE, AMOUNT, REC, PLAY MODE, XFADE, SPLIT", JL_N == 10u &&
-           str_eq(JL_NAME[0], "STYLE") && str_eq(JL_NAME[1], "MODE") && str_eq(JL_NAME[2], "TARGET") && str_eq(JL_NAME[3], "ARC") && str_eq(JL_NAME[4], "ROLL TYPE") &&
+    expect("TIDE SETTINGS (1.0.0-b7, MR8 and page 1): STYLE, MODE, TARGET, ARC, KNOBS, AMOUNT, REC, PLAY MODE, XFADE, SPLIT", JL_N == 10u &&
+           str_eq(JL_NAME[0], "STYLE") && str_eq(JL_NAME[1], "MODE") && str_eq(JL_NAME[2], "TARGET") && str_eq(JL_NAME[3], "ARC") && str_eq(JL_NAME[4], "KNOBS") &&
            str_eq(JL_NAME[5], "AMOUNT") && str_eq(JL_NAME[6], "REC") && str_eq(JL_NAME[JL_MODE], "PLAY MODE") && JL_MODE == 7u && str_eq(JL_NAME[JL_XFADE], "XFADE") && str_eq(JL_NAME[JL_SPLIT], "SPLIT") && JL_SPLIT == JL_N - 1u);
-    expect("  .. MODE reads the glide's five modes, ONCE to JOURNEY", jl_n(JL_GMODE) == 5u && str_eq(jl_vname(JL_GMODE, 0), "ONCE") && str_eq(jl_vname(JL_GMODE, 4), "JOURNEY"));
+    expect("  .. MODE offers two (b9): EVOLVE (was WANDER) and TRAVEL (was JOURNEY)", jl_n(JL_GMODE) == 2u && str_eq(jl_vname(JL_GMODE, 0), "EVOLVE") && str_eq(jl_vname(JL_GMODE, 1), "TRAVEL"));
     expect("  .. HOME's round has no MODE page: PAGES has no MODE row (1.0.0-b4: the hidden row is gone)", page_of("MODE") == NPAGES);
     for (i = 0; i < 5u; i++) {
         press(B_HOME);
@@ -1243,18 +1243,18 @@ static void t_mode_rows(void)
         mix_xf = keep[1];
         mix_split = keep[2];
     }
-    /* row dimming (the b613526 bug): PLAY MODE never dims; XFADE and SPLIT dim outside LAYER only; ARC dims while the automatic TIDE is not on, whatever ROLL TYPE is,
-     * ROLL TYPE under JOURNEY (1.0.0-b7, MR8); jl_dimmed is the draw's rule */
+    /* row dimming (the b613526 bug): PLAY MODE never dims; XFADE and SPLIT dim outside LAYER only; ARC dims while the automatic TIDE is not on; the KNOBS row (b9: it was ROLL TYPE,
+     * dim under JOURNEY) never dims; jl_dimmed is the draw's rule */
     {
         uint32_t ok_mode = 1, ok_lay = 1, ok_duel = 1;
         uint8_t km = gl.mode, kt = gl.target, kr = morph_musical;
         gl.target = GT_BOTH;
         gl.mode = GM_ONCE;
-        expect("dimming: ARC dims under ONCE, says WNDR OR JRNY; ROLL TYPE acts", jl_dimmed(JL_ARC) && str_eq(jl_needs(JL_ARC), "WNDR OR JRNY") && !jl_dimmed(JL_ROLL));
+        expect("dimming: ARC dims under ONCE, says NEEDS EVOLVE; KNOBS acts", jl_dimmed(JL_ARC) && str_eq(jl_needs(JL_ARC), "NEEDS EVOLVE") && !jl_dimmed(JL_KNOB));
         gl.mode = GM_WANDER; morph_musical = 0;
-        expect("  .. WANDER, ROLL TYPE SMART: ARC acts (no ROLL TYPE gate), ROLL TYPE acts", !jl_dimmed(JL_ARC) && !jl_dimmed(JL_ROLL));
+        expect("  .. WANDER, ROLL TYPE SMART: ARC acts (no roll gate), KNOBS acts", !jl_dimmed(JL_ARC) && !jl_dimmed(JL_KNOB));
         gl.mode = GM_JOURNEY; morph_musical = 1;
-        expect("  .. JOURNEY: ARC acts, ROLL TYPE dims and says NOT JRNY", !jl_dimmed(JL_ARC) && jl_dimmed(JL_ROLL) && str_eq(jl_needs(JL_ROLL), "NOT JRNY"));
+        expect("  .. TRAVEL: ARC acts, KNOBS acts (no gate)", !jl_dimmed(JL_ARC) && !jl_dimmed(JL_KNOB) && !jl_needs(JL_KNOB));
         gl.target = GT_SOUND;
         expect("  .. TARGET SOUND: ARC dims, says TARGET SEQ", jl_dimmed(JL_ARC) && str_eq(jl_needs(JL_ARC), "TARGET SEQ"));
         gl.target = GT_BOTH;

@@ -41,7 +41,7 @@ static void retired_render(struct track *t, voice_t *v, int32_t *out, uint32_t n
 {
     (void)t; (void)v; (void)out; (void)n; (void)m;
 }
-#define RETIRED_E {"-", F_INT, -64, 127, 0, 0, 0}
+#define RETIRED_E {"-", F_INT, 0, -64, 127, 0, 0}
 static const engine_t ENG_RETIRED = {
     .name = "-",
     .page_title = {"-", "-"},

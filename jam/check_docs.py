@@ -17,7 +17,7 @@ SRC = os.path.join(ROOT, "felucca-base", "firmware", "src")
 bad = []
 
 # the names of each STY column, in the order of the C table (mode, time idx, wait idx, vary, poly, sync, arc, wash; TURNS went in 1.0.0-b8)
-MODE = {"GM_ONCE": "ONCE", "GM_LOOP": "LOOP", "GM_DRIFT": "DRIFT", "GM_WANDER": "WANDER", "GM_JOURNEY": "JOURNEY"}
+MODE = {"GM_ONCE": "ONCE", "GM_LOOP": "LOOP", "GM_DRIFT": "DRIFT", "GM_WANDER": "EVOLVE", "GM_JOURNEY": "TRAVEL"}   # (1.0.0-b9, K5: the two modes the unit offers are named EVOLVE and TRAVEL; the enum keeps the old names)
 TIME = ["1", "2", "4", "8", "16", "32", "64"]
 WAIT = ["OFF", "1", "2", "4", "8", "16"]
 VARY = ["EVERY 4TH", "EVERY BAR"]
@@ -133,6 +133,7 @@ def cheat_names(section_title):
 
 guide = open(os.path.join(ROOT, "docs", "TIDE_GUIDE.md"), encoding="utf-8").read()
 sec3 = guide[guide.index("## 3. TIDE SETTINGS"):guide.index("## 4. MODE")]
+sec3 = sec3.split("The KNOBS sets")[0]   # (1.0.0-b9, K1: the KNOBS sets table below the rows has bold names of its own)
 guide_rows = set(re.findall(r"^\| \*\*([A-Z0-9+ ]+)\*\* \|", sec3, re.M))
 src = open(os.path.join(SRC, "tide_ui.c"), encoding="utf-8").read()
 code_rows = set(re.findall(r'"([A-Z ]+)"', re.search(r"JL_NAME\[JL_N\]\s*=\s*\{(.*?)\};", src, re.S).group(1)))

@@ -427,12 +427,12 @@ static const engine_t ENG_PHASE = {
     .name = "PHASE",
     .page_title = {"PHS", "LINE"},
     .edit = {
-        {"WAVE 1", F_ENUM, 0, 7, 0, N_PD_WAVE, 0},
-        {"WAVE 2", F_ENUM, 0, 8, 0, N_PD_WAVE2, 0},
-        {"DCW", F_PCT, 0, 127, 60, 0, 0},
-        {"ENV", F_PCT, 0, 127, 64, 0, 0},
-        {"DTN", F_INT, 0, 127, 0, 0, "ct"},
-        {"LINE", F_ENUM, 0, 1, 0, N_PD_LINE, 0},
+        {"WAVE 1", F_ENUM, 0, 0, 7, 0, N_PD_WAVE},
+        {"WAVE 2", F_ENUM, 0, 0, 8, 0, N_PD_WAVE2},
+        {"DCW", F_PCT, 0, 0, 127, 60, 0},
+        {"ENV", F_PCT, 0, 0, 127, 64, 0},
+        {"DTN", F_INT, U_CT, 0, 127, 0, 0},
+        {"LINE", F_ENUM, 0, 0, 1, 0, N_PD_LINE},
         {"-", F_INT, 0, 0, 0, 0, 0},                 /* was SUB: the global SUB LAYER (chain_sub.c) replaces it */
         {"-", F_INT, 0, 0, 0, 0, 0},
     },

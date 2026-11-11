@@ -120,7 +120,7 @@ static int strum(void)
     /* the range, the steps, the blocks */
     bad += check("STRUM: slot X27, F_INT 0..100 ms, default 0 (OFF), on the CHORD page as K3, learnable like CHRD / VOIC",
                  X_STRUM == 27 && str_eq(XTP[X_STRUM].label, "STRUM") && XTP[X_STRUM].fmt == F_INT && XTP[X_STRUM].min == 0 && XTP[X_STRUM].max == 100 &&
-                 XTP[X_STRUM].def == 0 && str_eq(XTP[X_STRUM].unit, "ms") && xb_def(X_STRUM) == 64u && map_code_ok(XW_BASE + X_STRUM) && map_code_ok(P_CHRD));
+                 XTP[X_STRUM].def == 0 && XTP[X_STRUM].unit == U_MS && xb_def(X_STRUM) == 64u && map_code_ok(XW_BASE + X_STRUM) && map_code_ok(P_CHRD));
     {
         const page_t *pg = 0;
         for (i = 0; i < NELEM(PAGES); i++) if (str_eq(PAGES[i].title, "CHORD")) pg = &PAGES[i];

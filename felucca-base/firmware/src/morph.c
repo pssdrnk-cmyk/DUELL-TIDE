@@ -390,7 +390,7 @@ static mtag_t morph_tag(const engine_t *e, const int8_t *o, uint32_t id, uint32_
 /* the range of id for engine e (the edit table, as the matrix: mod.c) */
 static const param_desc_t *morph_desc(const engine_t *e, uint32_t id) { return id >= XW_BASE ? xdesc(0, id - XW_BASE) : id >= P_COUNT ? &XFREE_D : id >= P_E0 ? &e->edit[id - P_E0] : &TP[id]; }
 static const param_desc_t MORPH_E7_OLD = {"-", F_INT, 0, 0, 0, 0, 0};   /* WAVE's E7 as it was before STEPS (an unused slot, range 0..0): a WILD roll draws it as it did, so the End B of every stored seed is what it was, and never turns STEPS on */
-static const param_desc_t MORPH_AW_OLD = {"WAVE", F_ENUM, 0, 6, 0, 0, 0};   /* ANALOG's WAVE as it was before ACID / ACSQ (b8, 0..6): a WILD roll draws it as it did, so stored seeds keep their End B and no roll turns the 303 on */
+static const param_desc_t MORPH_AW_OLD = {"WAVE", F_ENUM, 0, 0, 6, 0, 0};   /* ANALOG's WAVE as it was before ACID / ACSQ (b8, 0..6): a WILD roll draws it as it did, so stored seeds keep their End B and no roll turns the 303 on */
 
 /* ----------------------------------------------------------------- the roll (pure) --- */
 static uint32_t mr_below(uint32_t *s, uint32_t n) { return (uint32_t)(((uint64_t)xs32(s) * n) >> 32); }
@@ -1817,7 +1817,10 @@ static void morph_fm_live(uint32_t pi, uint8_t *live)     /* part pi's FM6 patch
 
 static uint32_t morph_new_seed(void);
 static void morph_roll_cfg(uint32_t pi, uint32_t x, uint32_t seed, uint32_t amount, uint32_t cfg);
-static uint32_t morph_cfg_of(uint32_t pi) { return (morph.cfg & MC_SET) | (duell_stereo ? MC_STEREO : 0u) | (pi ? MC_PART : 0u) | TIDE_CFG_BITS(); }   /* TIDE hook */
+#if !DUELL_TIDE
+#define MM_NOWILD 0u                                  /* (b9 rc2: K2 defines it in morph_music.c, TIDE only; without TIDE the roll is the classic one: a WILD end stays allowed) */
+#endif
+static uint32_t morph_cfg_of(uint32_t pi) { return (morph.cfg & MC_SET & ~MM_NOWILD) | (duell_stereo ? MC_STEREO : 0u) | (pi ? MC_PART : 0u) | TIDE_CFG_BITS(); }   /* TIDE hook */
 /* v2: a patch's saved End B (MB_N bytes in the user preset record, upreset.c): 'M', seed (16 bit), AMOUNT, MC_* bits, 0,
  * a check byte (DUELL: byte 5 = the part's AMOUNT knob + 1 at saving, 0 = not stored: older patches; a load sets the part's AMOUNT to it, else to the roll's). morph_ld: the block of the sound being loaded (set by up_load before load_end, read by morph_rebase_part) */
 #define MB_N 7u
@@ -1904,15 +1907,19 @@ static void morph_rebase_part(uint32_t pi)               /* ends = the Original,
 }
 static void morph_ready_first(uint32_t pi);
 #if DUELL_TIDE
-/* 1.0.0-b7: the loaded sound's FILTER, RESONANCE and ECHO (HOME's MORPH page K2..K4, ui_input.c H1_PG: OCT- + the knob puts its value back; b8: RESONANCE for LENGTH), taken when a sound is
+#include "knob_sets.h"          /* 1.0.0-b9: the genre knob sets (HOME page 1 K2..K4) */
+/* 1.0.0-b7: the loaded sound's FILTER, RESONANCE and ECHO (HOME's MORPH page K2..K4, ui_input.c H1_PG: OCT- + the knob puts its value back; b8: RESONANCE for LENGTH; b9: every parameter the genre macros move), taken when a sound is
  * loaded (morph_rebase), at a part's first use and when morph_ready finds another sound; not by a rebase of the same sound (HOME, KEEP: the edits stay the player's).
  * In the pool (main loop; .bss is the tighter) */
-static const uint8_t H1_ID[3] = {P_FREEA, P_FREEB, P_DLY};
-static int16_t h1_orig[NSHOWN][3] __attribute__((section(".pool")));
+static int16_t h1_orig[NSHOWN][KN_NP] __attribute__((section(".pool")));   /* (every parameter a genre macro can move, per part; b9: the globals too, below) */
+static int16_t h1_gorig[KN_NID - KN_NP] __attribute__((section(".pool")));
 static void h1_take(uint32_t pi)
 {
-    for (uint32_t k = 0; k < 3u; k++)
-        h1_orig[pi][k] = trk[pi].p[H1_ID[k]];
+    uint32_t k;
+    for (k = 0; k < KN_NP; k++)
+        h1_orig[pi][k] = trk[pi].p[KN_ID[k]];
+    for (k = KN_NP; k < KN_NID; k++)                     /* (the delay's TIME, FDBK, COLR as they are when the sound or multi is loaded) */
+        h1_gorig[k - KN_NP] = song.g[KN_ID[k]];
 }
 #define H1_TAKE(pi) h1_take(pi)
 #else

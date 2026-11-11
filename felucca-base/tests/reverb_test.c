@@ -96,7 +96,7 @@ static void ref_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_
         rf.dly_lp += mulq15u(x - rf.dly_lp, col);
         ref_dly[rf.dly_w & (DLY_LEN - 1u)] = (int16_t)dly_wr(rf.dh, dly_in[i] >> 1, mulq15t(rf.dly_lp, fb));   /* (audit E2: the loop's low cut and knee) */
         rf.dly_w++;
-        y += mulq15(x << 1, dmix);
+        y += mulq15(rf.dly_lp << 1, dmix);               /* (b9 G1: the return is the low-passed repeat, as fx_bus.c) */
         a = 0;
         {
             int16_t *c = ref_comb;

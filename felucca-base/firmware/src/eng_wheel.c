@@ -328,14 +328,14 @@ static const engine_t ENG_WHEEL = {
     .name = "WHEEL",
     .page_title = {"BARS", "TONE"},
     .edit = {
-        {"REG", F_ENUM, 0, 15, 4, N_DRW_REG, 0},
+        {"REG", F_ENUM, 0, 0, 15, 4, N_DRW_REG},
         {"-", F_INT, 0, 0, 0, 0, 0},                 /* was SUB: the registration's sub bars are not raised or lowered any more; the global SUB LAYER (chain_sub.c) adds sub */
-        {"BODY", F_INT, -8, 8, 0, 0, 0},
-        {"TOP", F_INT, -8, 8, 0, 0, 0},
-        {"PERC", F_ENUM, 0, 6, 0, N_DRW_PERC, 0},
-        {"CLICK", F_PCT, 0, 127, 40, 0, 0},
-        {"DRV", F_PCT, 0, 127, 0, 0, 0},
-        {"ROTR", F_ENUM, 0, 2, 1, N_DRW_ROTR, 0},
+        {"BODY", F_INT, 0, -8, 8, 0, 0},
+        {"TOP", F_INT, 0, -8, 8, 0, 0},
+        {"PERC", F_ENUM, 0, 0, 6, 0, N_DRW_PERC},
+        {"CLICK", F_PCT, 0, 0, 127, 40, 0},
+        {"DRV", F_PCT, 0, 0, 127, 0, 0},
+        {"ROTR", F_ENUM, 0, 0, 2, 1, N_DRW_ROTR},
     },
 #if DUELL_PRESETS
     .presets = WHEEL_PRESETS,

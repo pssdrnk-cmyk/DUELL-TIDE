@@ -773,26 +773,49 @@ static void morph_roll_twist(int32_t s)                 /* ROLL A|B with its twi
 #endif
 #if DUELL_TIDE
 /* 1.0.0-b7 (owner 2026-11-10): HOME's MORPH page is the hands-on page. K1 MORPH, two fader steps a detent (half the twisting of b6; the ends still exact);
- * K2 FILTER (QUICK EDIT's K1: the multimode filter's CUT on every engine), K3 RESONANCE (the same filter's RES; b8, for LENGTH), K4 ECHO (the delay send): each the part's own
- * parameter, turned as on its page (edit_param: motion, locks, MIDI LEARN, EDITABLE B, a card the selection hides does nothing). BOTH: each part moves from
- * its own value by the same steps (the same acceleration; the selected part last, so MIDI LEARN picks its). OCT+ held + K1: End B a new roll (the knob loop) */
+ * K2..K4 (b7: FILTER, RESONANCE, ECHO; b9: a genre's MACROS, knob_sets.h: one knob moves up to three parameters together, each from the part's own value by its own factor and
+ * sign, AUTO from the multi's name prefix, TIDE SETTINGS > KNOBS): each parameter turned as on its page (edit_param: motion, locks, MIDI LEARN, EDITABLE B, a card the selection
+ * hides does nothing). The macro's first parameter is the one MIDI LEARN picks (the entries go last to first). BOTH: each part moves from its own value by the same steps (the
+ * same acceleration; the selected part last, so MIDI LEARN picks its); a global (the delay's TIME, FDBK, COLR) moves once, with the first part, straight (no page: its card is
+ * hidden as on its own page). A factor is in quarters of a step: the remainder is kept (kn_acc), so a half-rate parameter moves every second detent. OCT+ held + K1: End B a new roll
+ * (the knob loop) */
 static void edit_param(uint32_t slot, int32_t steps);
-static const page_t H1_PG = {"MORPH", FAM_TRK, SC_TRACK, GR_MORPH, {0xFFu, P_FREEA, P_FREEB, P_DLY}};
+static page_t H1_PG = {"MORPH", FAM_TRK, SC_TRACK, GR_MORPH, {0xFFu, 0xFFu, 0xFFu, 0xFFu}};   /* (the macro's parameter is put in the knob's place before each turn) */
+static int8_t kn_acc[3][3];                              /* the quarter steps not yet moved, per knob and entry */
 static void morph_knob(uint32_t slot, int32_t s)
 {
-    uint32_t pi = song.sel, n = song.both ? NSHOWN : 1u, k, p, et = ui.enc_t[EN_K1 + slot];
-    int32_t d = slot ? 0 : accel(EN_K1, s, 127) * 2;
+    uint32_t pi = song.sel, n = song.both ? NSHOWN : 1u, k, p, j, et = ui.enc_t[EN_K1 + slot];
+    const kn_e *en = KN_E[kn_cur()][slot ? slot - 1u : 0u];
+    int32_t d = slot ? 0 : accel(EN_K1, s, 127) * 2, st[3] = {0, 0, 0};
+    for (j = 0; slot && j < 3u && en[j].mul; j++) {      /* (the steps of each entry, once: every part gets the same) */
+        int32_t a = kn_acc[slot - 1u][j] + s * en[j].mul;
+        st[j] = a / 4;
+        kn_acc[slot - 1u][j] = (int8_t)(a - st[j] * 4);
+    }
     for (k = 0; k < n; k++) {
         p = (pi + 1u + k + (n == 1u)) % NSHOWN;         /* (BOTH: the other part first) */
         if (!slot) {
             morph_act(MQ_FADER, 1u << p, (uint32_t)clamp((int32_t)morph_fader_of(p) + d, 0, 127), p);
             continue;
         }
-        ui.enc_t[EN_K1 + slot] = et;
         song.sel = (uint8_t)p;
-        page_over = &H1_PG;
-        edit_param(slot, s);
-        page_over = 0;
+        for (j = 3; j--;) {
+            uint32_t id = KN_ID[en[j].ix];
+            if (!en[j].mul || !st[j])
+                continue;
+            ui.enc_t[EN_K1 + slot] = et;
+            if (en[j].ix >= KN_NP) {
+                if (!k && !card_hidden_vp(&song.g[id]))
+                    song.g[id] = (int16_t)param_turn(glob_desc(id), song.g[id], accel(EN_K1 + slot, st[j], glob_desc(id)->max - glob_desc(id)->min));
+                continue;
+            }
+            if (id == P_DKDEP && st[j] > 0 && trk[p].p[P_DKSRC] == 3)   /* (PUMP: a ducker that is OFF starts as PUMP, else the knob would do nothing) */
+                trk[p].p[P_DKSRC] = 0;
+            H1_PG.id[slot] = (uint8_t)id;
+            page_over = &H1_PG;
+            edit_param(slot, st[j]);
+            page_over = 0;
+        }
     }
     song.sel = (uint8_t)pi;
 }
@@ -1492,7 +1515,7 @@ static void schain_jump(uint32_t knob, int32_t steps)
     glo_knob_jump(i, knob);
 }
 
-/* item 125: a twist of any knob of a page whose module is OFF (ui.c off_module, the notice of ui_graph.c graph_off) jumps to GLO > MODULES; the rest of that twist is swallowed (kr_on) as after fxsum_knob */
+/* item 125: a twist of any knob of a page whose module is OFF (ui.c off_module, the notice of ui_graph.c graph_off) jumps to GLO > MODULES; the rest of that twist is swallowed (kr_on) in glo_knob_jump */
 static void off_knob(uint32_t knob, int32_t steps)
 {
     uint32_t i;
@@ -1552,24 +1575,37 @@ static int reset_say(const char *name)
 }
 #if DUELL_TIDE
 static void tide_home(uint32_t mask);                  /* (tide_ui.c) */
-/* HOME's MORPH page: K1 back to the Original sound, as OCT- + K1 on AUTO TIDE (tide_home: the glide stops); K2..K4 FILTER, RESONANCE, ECHO back to the loaded
- * sound's value (morph.c h1_orig), on the part(s) the selection names; a card the selection hides (ECHO with SENDS OFF): nothing (2) */
+/* HOME's MORPH page: K1 back to the Original sound, as OCT- + K1 on AUTO TIDE (tide_home: the glide stops); K2..K4 the macro's parameters back to the loaded
+ * sound's values (morph.c h1_orig), on the part(s) the selection names (a global once: h1_gorig); a card the selection hides (ECHO with SENDS OFF): nothing (2) */
 static int reset_morph(uint32_t k)
 {
-    uint32_t mask = morph_mask(song.sel), p, id = H1_ID[(k - 1u) % 3u];
+    uint32_t mask = morph_mask(song.sel), p, j;
+    const kn_e *en = KN_E[kn_cur()][(k - 1u) % 3u];
     if (k == 0u) {
         tide_home(mask);
         ui_message("BACK TO ORIGINAL");
         return 1;
     }
-    if (card_hidden_vp(&TSEL->p[id]))
+    if (en[0].ix < KN_NP ? card_hidden_vp(&TSEL->p[KN_ID[en[0].ix]]) : card_hidden_vp(&song.g[KN_ID[en[0].ix]]))
         return 2;
-    for (p = 0; p < NSHOWN; p++)
-        if ((mask >> p) & 1u) {
-            trk[p].p[id] = h1_orig[p][(k - 1u) % 3u];
-            motion_capture(&trk[p], id, trk[p].p[id]);
-            ml_knob(&trk[p], id);
+    for (j = 0; j < 3u; j++) {                           /* (all of the macro's parameters back to the sound's; the lead's learn last) */
+        uint32_t ix = en[2u - j].ix, id = KN_ID[ix];
+        if (!en[2u - j].mul)
+            continue;
+        kn_acc[(k - 1u) % 3u][2u - j] = 0;
+        if (ix >= KN_NP) {
+            song.g[id] = h1_gorig[ix - KN_NP];
+            continue;
         }
+        for (p = 0; p < NSHOWN; p++)
+            if ((mask >> p) & 1u) {
+                trk[p].p[id] = h1_orig[p][ix];
+                if (id == P_DKDEP)
+                    trk[p].p[P_DKSRC] = (int16_t)h1_orig[p][K_DKS];
+                motion_capture(&trk[p], id, trk[p].p[id]);
+                ml_knob(&trk[p], id);
+            }
+    }
     return 1;
 }
 #else

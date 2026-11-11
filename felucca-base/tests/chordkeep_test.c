@@ -155,8 +155,8 @@ static void first(void)
     int16_t c0;
     uint32_t i;
     first_start();
-    expect("first start: M02 DUB CHORD; part 1 plays MIN7 chords (POLY), part 2 holds a MIN chord (POLY: the re-voiced pad; a LEGATO sub line until then)", trk[0].p[P_CHRD] == CH_MIN7 && trk[0].p[P_VOICE] == V_POLY &&
-           trk[1].p[P_VOICE] == V_POLY && trk[1].p[P_CHRD] == CH_MIN);
+    expect("first start: M02 DUB CHORD; part 1 plays MIN7 chords (POLY), part 2 holds a MIN7 chord (POLY: the re-voiced pad; b9 dub: MIN until then, a LEGATO sub line before the reel)", trk[0].p[P_CHRD] == CH_MIN7 && trk[0].p[P_VOICE] == V_POLY &&
+           trk[1].p[P_VOICE] == V_POLY && trk[1].p[P_CHRD] == CH_MIN7);
     go_page(GR_CHORD);
     run(100);
     c0 = trk[0].p[P_CHRD];

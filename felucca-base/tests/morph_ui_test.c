@@ -113,7 +113,7 @@ static int no_k3(void)
 }
 #endif
 #if DUELL_TIDE
-/* TIDE: TIDE SETTINGS is in MORPH SET's place, a list (tide_ui.c): K1 the row, OCT+ the next value, OCT- the one before; SMART is its ROLL TYPE; ARP and PITCH have
+/* TIDE: TIDE SETTINGS is in MORPH SET's place, a list (tide_ui.c): K1 the row, OCT+ the next value, OCT- the one before; its KNOBS row picks the HOME page 1 knob set (b9; ROLL TYPE is gone); ARP and PITCH have
  * no row since 1.0.0-b7 (MR8): their switches are set as a learned CC sets them (mset_cfg) */
 #define MORPH_SET_TITLE "TIDE SETTINGS"
 static void mset_row(uint32_t r) { turn(EN_K1, -8); if (r) turn(EN_K1, (int32_t)r); }
@@ -530,7 +530,7 @@ static void t_knobs(void)
      * morph's selector there (PART 1, BOTH, PART 2: tide_ui.c) */
     go_title(MORPH_SET_TITLE);
     frames(32);
-    mset_put(JL_ROLL, 2u); mset_cfg(MQ_ARP, 1u); mset_cfg(MQ_PITCH, 1u);
+    roll_type_put(2u); mset_cfg(MQ_ARP, 1u); mset_cfg(MQ_PITCH, 1u);
     expect("ROLL WILD on TIDE SETTINGS (TIDE's list: K1 the row, OCT+ the value), ARP ON, PITCH ON (no rows: a learned CC); the settings bits",
            morph.cfg == (MC_WILD | MC_ARP | MC_PIT) && favorites.factory[15][8] == 7u);
     {
@@ -543,7 +543,7 @@ static void t_knobs(void)
     turn(EN_ALGO, 1);
     expect("  .. ALGORITHM on TIDE SETTINGS: BOTH next (TIDE: the morph's selector, as on MORPH)", song.sel == 0u && SEL_BOTH);
     turn(EN_ALGO, -1);
-    mset_put(JL_ROLL, 0u); mset_cfg(MQ_ARP, 0u); mset_cfg(MQ_PITCH, 0u);
+    roll_type_put(0u); mset_cfg(MQ_ARP, 0u); mset_cfg(MQ_PITCH, 0u);
     expect("  .. and back: MUSIC (TIDE's default: SMART with the musical dials), ARP OFF, PITCH OFF (the defaults)", !morph.cfg && !favorites.factory[15][8]);
 #else
     /* MORPH SET (0.2.9): SMART, ARP, PITCH, KNOB 4 empty; no TARGET card (ALGORITHM's BOTH on the MORPH page is the target) */
@@ -932,36 +932,44 @@ static void t_amount_keep(void)
     expect("1.0.0-b7: the AMOUNT row is not dim while JOURNEY runs (it still shapes a hand's roll)", !jl_dimmed(JL_AMOUNT));
     gl.on = 0;
 }
-/* the slim row (owner on the unit, 2026-11-10): every value each column can show, in every form (the engine and ENV SYNC loops are left from when K4 was LEN), fits its
- * column: the name, 5 px, the widest value, then 12 px or more before the next column; the last ends by x 236 */
+/* the slim row (owner on the unit, 2026-11-10; b9: every genre set, knob_sets.h): every value each column can show, in every form (the engine and ENV SYNC loops are left from when K4 was LEN),
+ * fits its column: the name, 5 px, the widest value, then 12 px or more before the next column; the last ends by x 237 */
 static int h1_fits(void)
 {
-    int32_t w[3] = {0, 0, 0}, x;
-    uint32_t i, f, v, ok = 1;
-    char b[PV_LEN + 4];
-    for (i = 0; i < 3u; i++)
-        for (f = 0; f < 3u; f++) {
-            track_t t = trk[0];
-            const param_desc_t *d;
-            t.eng_req = f == 1u ? ENGI_FM6 : 0u;
-            t.p[P_ESYNC] = (int16_t)(f == 2u);
-            d = track_desc(&t, H1_ID[i]);
-            for (v = (uint32_t)d->min; v <= (uint32_t)d->max; v++) {
-                h1_val(i, &t, (int32_t)v, b);
-                w[i] = text_w(&AF_S, b) > w[i] ? text_w(&AF_S, b) : w[i];
+    uint32_t set, i, f, v, ok = 1;
+    uint8_t keep = tide_knobs;
+    for (set = 0; set < KS_N; set++) {
+        int32_t w[3] = {0, 0, 0}, x;
+        tide_knobs = (uint8_t)(set + 2u);
+        for (i = 0; i < 3u; i++) {
+            uint32_t ix = KN_E[set][i][0].ix;
+            for (f = 0; f < (ix < KN_NP ? 3u : 1u); f++) {
+                track_t t = trk[0];
+                const param_desc_t *d;
+                char b[PV_LEN + 4];
+                t.eng_req = f == 1u ? ENGI_FM6 : 0u;
+                t.p[P_ESYNC] = (int16_t)(f == 2u);
+                d = ix < KN_NP ? track_desc(&t, KN_ID[ix]) : glob_desc(KN_ID[ix]);
+                for (v = (uint32_t)(int32_t)d->min; (int32_t)v <= d->max; v++) {
+                    h1_val(ix, &t, (int32_t)(int16_t)v, b);
+                    w[i] = text_w(&AF_S, b) > w[i] ? text_w(&AF_S, b) : w[i];
+                }
             }
         }
-    for (i = 0; i < 3u; i++) {
-        x = H1_COL[i] + text_w(&AF_S, H1_L[i]) + 5 + w[i];
-        ok &= x + (i < 2u ? 12 : 0) <= (i < 2u ? H1_COL[i + 1u] : 236);
-        printf("morphui: row column %s: widest value %d px, ends at x %d\n", H1_L[i], w[i], x);
+        for (i = 0; i < 3u; i++) {
+            x = KN_X[set][i] + text_w(&AF_S, KN_L[set][i]) + 5 + w[i];
+            ok &= x + (i < 2u ? 12 : 0) <= (i < 2u ? KN_X[set][i + 1u] : 237);
+            if (set == 0u)
+                printf("morphui: row column %s: widest value %d px, ends at x %d\n", KN_L[set][i], w[i], x);
+        }
     }
+    tide_knobs = keep;
     return (int)ok;
 }
 /* 1.0.0-b7 (owner 2026-11-10): the MORPH page is the hands-on page */
 static void t_home1(void)
 {
-    expect("the slim row: the widest value of FLT, RSN and ECH fits its column, 12 px or more apart", h1_fits());
+    expect("the slim row: the widest value of every knob of every set (STD and the six genres) fits its column, 12 px or more apart", h1_fits());
     int32_t o;
     uint32_t f0, s1;
     int16_t c0, c1, c2;
@@ -1045,7 +1053,7 @@ static void t_home1(void)
     morph_do(MQ_AMOUNT, 2u, 50u);
     SEL_BOTH = 1;
     jl_put(JL_AMOUNT, 30u);
-    expect("TIDE SETTINGS' AMOUNT row with BOTH: each part by the same steps", mph[0].amount == 30u && mph[1].amount == 60u && str_eq(JL_NAME[JL_AMOUNT], "AMOUNT") && JL_AMOUNT == JL_ROLL + 1u);
+    expect("TIDE SETTINGS' AMOUNT row with BOTH: each part by the same steps", mph[0].amount == 30u && mph[1].amount == 60u && str_eq(JL_NAME[JL_AMOUNT], "AMOUNT") && JL_AMOUNT == JL_KNOB + 1u);
     SEL_BOTH = 0;
 }
 #endif
@@ -1073,7 +1081,7 @@ static void t_item154(void)
     fresh();
 #if DUELL_TIDE
     go_title(MORPH_SET_TITLE); frames(32);
-    mset_put(JL_ROLL, 1u);                                   /* (TIDE: ROLL SMART, 1.1's roll the owner's steps used; MUSIC, TIDE's default, keeps the LFO depths) */
+    roll_type_put(1u);                                   /* (TIDE: ROLL SMART, 1.1's roll the owner's steps used; MUSIC, TIDE's default, keeps the LFO depths) */
 #endif
     preset_pos(&tot);
     for (n = 0; n < tot; n++) {
@@ -1128,7 +1136,7 @@ static void t_item154(void)
     }
 #if DUELL_TIDE
     go_title(MORPH_SET_TITLE); frames(32);
-    mset_put(JL_ROLL, 0u);                                   /* (back to MUSIC, TIDE's default: the setting outlives a power cycle) */
+    roll_type_put(0u);                                   /* (back to MUSIC, TIDE's default: the setting outlives a power cycle) */
 #endif
 }
 

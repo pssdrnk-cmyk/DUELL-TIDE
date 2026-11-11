@@ -21,6 +21,15 @@
 #define MC_MUSIC 64u                                     /* the end's roll: MUSICAL (cfg bits, saved with the end; mrc while it rolls) */
 #define MM_AMOUNT 40u                                    /* AMOUNT for a factory sound's B and the part's knob (MUSICAL's own scale) */
 #define MM_MIN 20                                        /* a value's reach either way at least this (out of 127) */
+/* 1.0.0-b9 (K2): ROLL TYPE is retired. With MM_LOCK every new roll is MUSIC whatever the stored ROLL TYPE byte (morph_musical, morph.cfg MC_WILD) says; the
+ * bytes are still read and kept, and a saved End B recalls from its own cfg bits (SMART / WILD seeds unchanged: morph_roll_cfg takes the saved cfg, not these).
+ * The device build locks; host_tests.sh builds with -DTIDE_ROLL_LOCK=0 (the old, free roll: the tests set morph_musical to check the plain roll), tests/roll_lock_test.c with 1 */
+#ifndef TIDE_ROLL_LOCK
+#define TIDE_ROLL_LOCK 1
+#endif
+#define MM_LOCK (TIDE_ROLL_LOCK)
+#define MM_ON() (MM_LOCK || morph_musical)
+#define MM_NOWILD (MM_LOCK ? MC_WILD : 0u)
 static uint8_t morph_musical = 1;                        /* the player's choice (TIDE LIST's ROLL): the next rolls MUSICAL (the fork's default; the DSP
                                                           * harness, tests/hostsim.c, clears it: upstream's tests check the classic roll) */
 static uint8_t mm_walk;                                  /* WANDER: set while the next roll walks the dials of the end reached */

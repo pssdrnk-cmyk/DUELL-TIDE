@@ -44,7 +44,7 @@ static const uint8_t WRAM[11][16] = {
 static const char *const N_DCY[] = {"CONST", "D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10",
                                     "D11", "D12", "D13", "D14", "D15", "L1", "L2", "L3", "L4", "L5", "L6", "L7",
                                     "L8", "L9", "L10", "L11", "L12", "L13", "L14", "L15", 0};
-static const param_desc_t LOFI_DCY = {"DCY", F_INT, 0, 127, 0, N_DCY, 0};        /* = edit[3] but the names */
+static const param_desc_t LOFI_DCY = {"DCY", F_INT, 0, 0, 127, 0, N_DCY};        /* = edit[3] but the names */
 
 static const param_desc_t *lofi_desc(const track_t *t, uint32_t k)
 {
@@ -249,14 +249,14 @@ static const engine_t ENG_LOFI = {
     .name = "LOFI",
     .page_title = {"LOFI", "MOTN"},
     .edit = {
-        {"BITS", F_ENUM, 0, 4, 0, N_BITS, 0},
-        {"WAVE", F_ENUM, 0, RW_NWAVE - 1, 0, N_RWAVE, 0},
-        {"PULSE WIDTH", F_INT, 0, 127, 64, 0, 0},       /* PLS only (ui_draw.c card_hidden_vp); in STEP 12.5 / 25 / 50 / 75 % */
-        {"CRSH", F_PCT, 0, 127, 0, 0, 0},               /* STEP: the envelope (lofi_desc) */
-        {"SWP", F_PCT, 0, 127, 0, 0, 0},
-        {"VIB", F_PCT, 0, 127, 0, 0, 0},
-        {"ARP", F_ENUM, 0, 3, 0, N_RARP, 0},
-        {"TONE", F_PCT, 0, 127, 127, 0, 0},
+        {"BITS", F_ENUM, 0, 0, 4, 0, N_BITS},
+        {"WAVE", F_ENUM, 0, 0, RW_NWAVE - 1, 0, N_RWAVE},
+        {"PULSE WIDTH", F_INT, 0, 0, 127, 64, 0},       /* PLS only (ui_draw.c card_hidden_vp); in STEP 12.5 / 25 / 50 / 75 % */
+        {"CRSH", F_PCT, 0, 0, 127, 0, 0},               /* STEP: the envelope (lofi_desc) */
+        {"SWP", F_PCT, 0, 0, 127, 0, 0},
+        {"VIB", F_PCT, 0, 0, 127, 0, 0},
+        {"ARP", F_ENUM, 0, 0, 3, 0, N_RARP},
+        {"TONE", F_PCT, 0, 0, 127, 127, 0},
     },
 #if DUELL_PRESETS
     .presets = LOFI_PRESETS,
