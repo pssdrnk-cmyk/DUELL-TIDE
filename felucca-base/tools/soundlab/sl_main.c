@@ -8,46 +8,31 @@
 
 const char *sl_self = "soundlab";                      /* argv[0]: sweep and `render --multi all` start the program again for each render */
 
-__attribute__((weak)) int sl_measure_main(int argc, char **argv)
+__attribute__((weak)) int sl_cmd_measure(int argc, char **argv)
 {
     (void)argc, (void)argv;
     fprintf(stderr, "soundlab measure: not built into this binary (sl_metrics.c is missing)\n");
     return 2;
 }
-__attribute__((weak)) int sl_rules_main(int argc, char **argv)
+__attribute__((weak)) int sl_cmd_rules(int argc, char **argv)
 {
     (void)argc, (void)argv;
     fprintf(stderr, "soundlab rules: not built into this binary (sl_rules.c is missing)\n");
     return 2;
 }
-__attribute__((weak)) int sl_measure_run(const char *prefix, double from_bar, double to_bar, sl_kv_t *kv, int kvmax)
+__attribute__((weak)) int sl_measure_prefix(const char *prefix, int from_bar, int to_bar, const char *control)
 {
-    (void)prefix, (void)from_bar, (void)to_bar, (void)kv, (void)kvmax;
+    (void)prefix, (void)from_bar, (void)to_bar, (void)control;
     fprintf(stderr, "soundlab: measure is not built into this binary (sl_metrics.c is missing)\n");
-    return -1;
+    return 2;
 }
-/* the plain table: a row a metric, a column a point, then the deltas against the 0 point */
-__attribute__((weak)) void sl_sweep_print(const char *label, int npts, const double *points, int zero_idx, sl_kv_t **kv, const int *nkv)
+__attribute__((weak)) int sl_sweep_table(const char *name, const char *const *prefixes, const double *points, int n)
 {
-    int i, j, m;
-    printf("%s sweep (detents)\n%-40s", label, "metric");
-    for (i = 0; i < npts; i++)
-        printf(" %10.0f", points[i]);
-    printf("\n");
-    for (m = 0; m < nkv[0]; m++) {
-        printf("%-40s", kv[0][m].name);
-        for (i = 0; i < npts; i++) {
-            double v = 0.0 / 0.0;
-            for (j = 0; j < nkv[i]; j++)
-                if (!strcmp(kv[i][j].name, kv[0][m].name)) {
-                    v = kv[i][j].v;
-                    break;
-                }
-            printf(" %10.3f", v);
-        }
-        printf("\n");
-    }
-    (void)zero_idx;
+    int i;
+    printf("%s sweep: rendered and measured (no table: sl_metrics.c is missing)\n", name);
+    for (i = 0; i < n; i++)
+        printf("  %+.0f  %s\n", points[i], prefixes[i]);
+    return 0;
 }
 
 static void usage(void)
@@ -70,9 +55,9 @@ int main(int argc, char **argv)
     if (!strcmp(argv[1], "sweep"))
         return sl_sweep_main(argc - 1, argv + 1);
     if (!strcmp(argv[1], "measure"))
-        return sl_measure_main(argc - 1, argv + 1);
+        return sl_cmd_measure(argc - 2, argv + 2);
     if (!strcmp(argv[1], "rules"))
-        return sl_rules_main(argc - 1, argv + 1);
+        return sl_cmd_rules(argc - 2, argv + 2);
     fprintf(stderr, "soundlab: unknown command %s\n", argv[1]);
     usage();
     return 2;
