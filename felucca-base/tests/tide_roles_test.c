@@ -92,7 +92,7 @@ static const char *const RN[R_N] = {"-", "SKANK", "PAD", "ATMOS", "STAB", "MOTIF
 static const char *const SN[5] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK"};
 /* slot (1..16), the multi's style and its neighbour (STY_*), the role of each part, the bass flag (a part may go under C3), the name */
 /* the rows of TR[] and AL[]: one per factory multi under test (b10: 16; the sound lane's M19-M24 add six rows here and one line each in TR[], see AL[]) */
-#define NROW 16u
+#define NROW 22u
 static const struct { uint8_t slot, style, near, role[2], bass; const char *name; uint8_t dens[4]; } TR[NROW] = {
     { 1, STY_DUB,     STY_DEEP,    {R_STAB,  R_ATMOS}, 0, "DUB BASIC"},    /* (b10: a three-hit chord stab, 1.8 .. 2.5 a bar: a STAB, no longer a SKANK of 2 .. 6) */
     { 2, STY_DUB,     STY_DEEP,    {R_SKANK, R_ATMOS}, 0, "DUB CHORD"},    /* (re-voiced: the stab over a held pad, no bass line; the pad plays one chord in eight bars: an ATMOS, not a PAD of 0.5 .. 2) */
@@ -110,6 +110,13 @@ static const struct { uint8_t slot, style, near, role[2], bass; const char *name
     {14, STY_AMBIENT, STY_DEEP,    {R_MOTIF, R_PROG},  0, "ELEC WARPED", {25, 80, 0, 0}},   /* (2.8 .. 4.5 a bar) */
     {15, STY_DEEP,    STY_MINIMAL, {R_PULSE, R_ATMOS}, 0, "AMB BERLIN", {60, 90, 0, 0}},   /* (6.5 .. 8.5 a bar; the second part plays once in eight bars) */
     {16, STY_AMBIENT, STY_DEEP,    {R_AIR,   R_ATMOS}, 0, "AMB LOOPS"},     /* (the second part 0.25 .. 0.5 a bar) */
+    /* b10 sound lane: the ROM-only factory multis M19-M24 (tools/drone_pack.py MORE; M17, M18 are STYLE DRONE and not here) */
+    {19, STY_MINIMAL, STY_PEAK,    {R_BASS,  R_ATMOS}, 1, "TECH HYPNO", {45, 70, 0, 0}},   /* (the bass figure every third 16th, 5.0 .. 6.75 a bar: its own band 4.5 .. 7.0; the pad one chord in eight bars) */
+    {20, STY_DUB,     STY_DEEP,    {R_STAB,  R_BASS},  1, "DUB HOUSE"},     /* (chord stabs 3.0 .. 3.5 a bar over a held sub, 3.0 .. 3.5) */
+    {21, STY_DEEP,    STY_DUB,     {R_MOTIF, R_BASS},  1, "HSE LOFI"},      /* (the electric-piano chord riff, 6 hits a bar, 5.0 .. 6.0 under TIDE: a MOTIF; the off-beat bass 2.25 .. 5.0) */
+    {22, STY_PEAK,    STY_MINIMAL, {R_PAD,   R_ATMOS}, 1, "TECH CINEMA"},   /* (a chord a bar, 2 bars on the first; the A1 drone one note in four bars) */
+    {23, STY_AMBIENT, STY_DEEP,    {R_PAD,   R_MOTIF}, 0, "AMB TECHNO"},    /* (a chord a bar; the harp arpeggio 4.75 .. 6.25 a bar) */
+    {24, STY_MINIMAL, STY_PEAK,    {R_MOTIF, R_BASS},  1, "TECH MINIMAL", {0, 0, 45, 80}},   /* (the koto 5.0 .. 7.25 a bar; the off-beat 16th sub 5.0 .. 7.5: its own band 4.5 .. 8.0) */
 };
 /* density bounds per role: onsets a bar, averaged over a 4-bar window, as tenths (5 = 0.5) */
 static const struct { uint8_t lo, hi; } DENS[14] = {{0, 0}, {20, 60}, {5, 20}, {0, 10}, {10, 40}, {30, 80}, {5, 20}, {2, 10}, {60, 80}, {20, 50}, {10, 30}, {5, 10}, {10, 80}, {0, 0}};
@@ -126,6 +133,7 @@ static const struct { int8_t up, dn; uint8_t cut, still, jac; } AL[NROW][2] = {
     [7]  = {{3, 0, 0, 0, 0}},       /* M08 p1 PROG: b10: TIDE behaviour, not a role: note 81 under PEAK (lane top 78: +3) */
     [14] = {{0, 0, 0, 0, 0}, {0, 2, 0, 0, 0}},   /* M15 p2 ATMOS: b10: TIDE behaviour, not a role: note 46 under DEEP and MINIMAL (lane floor 48: -2) */
     [15] = {{0, 0, 0, 1, 0}},       /* M16 p1 AIR: b10: TIDE behaviour, not a role: one bar with 2 onsets where the Original's steps give 1 */
+    [18] = {{0, 0, 1, 0, 0}},       /* M21 p1 MOTIF: b10: TIDE behaviour, not a role: under DEEP and DUB it keeps 3 of the 6 hits of every bar (needs 4) */
 };
 /* the density band of part p of a row: the table's own band (b10: the bands measured on today's multis where no role's band fits), else the role's */
 #define DLO(row, p, r) (TR[row].dens[2 * (p) + 1] ? TR[row].dens[2 * (p)] : DENS[r].lo)
