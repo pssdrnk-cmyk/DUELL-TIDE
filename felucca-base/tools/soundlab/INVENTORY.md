@@ -1,6 +1,6 @@
 # soundlab inventory: every old sound-check script and what replaces it
 
-Written by lane C, 11 Nov 2026, from reading the scripts (paths relative to the workspace root; all under `work/`
+Written by lane C, 11 Nov 2026, from reading the scripts (paths relative to the workspace root; all under work/`
 unless noted). "SL" = soundlab. Status: **covered** = the spec's interface does it; **GAP** = the spec lacks it (sent to lanes A / B, see the end).
 
 Common facts the old scripts share (they matter for "same numbers"):
