@@ -7,6 +7,10 @@ New lines for the fork go here, not into CHANGELOG.md.
 
 Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrnk-cmyk/DUELL-TIDE>), adding TIDE, a morph that plays and evolves by itself. TIDE has its own version, `MAJOR.MINOR.PATCH`, kept in the file `TIDE_VERSION` and shown in MENU > SYSTEM > ABOUT beside the DUELL version (1.1). A build flashed for testing is a beta, `1.0.0-b1`, `1.0.0-b2`, ...; the first build the fork owner has validated on the unit is `1.0.0`; a fix is `1.0.1`, a feature `1.1.0`. The git tag is `tide-` and the version (`tide-1.0.0-b1`); the GitHub release has the same name. Each version has a section below, `## 1.0.0-b1`, newest first; a section heading names the tag and, once known, the commit and the date it was flashed. The commit stays in the release notes, not in the name. The installer page offers the stable and the beta build of the [GitHub releases](https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases); the [README](README.md#builds-stable-and-beta) says which they are.
 
+## 1.0.0-b9 (in progress)
+
+- **Changed (the drones get a low end):** the two drone multis (M17 DUNE HORN, M18 VOID DEEP) now have a soft sub an octave under their notes, and the low cuts on the drone sounds (HORN SWELL, RAIN STRINGS, SOLAR WIND) are gone. A quarter to a third of their sound now sits under 150 Hz (before: none). VOID SHIMMER is a little louder.
+
 ## 1.0.0-b8 (in progress)
 
 A polish beta on top of b7: small fixes, leftovers out, tools and docs made true.
