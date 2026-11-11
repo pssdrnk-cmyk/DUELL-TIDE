@@ -213,7 +213,16 @@ A new unit (or after ERASE DATA) comes up as multi **M02 DUB CHORD** with STYLE 
 
 ## When the unit is busy
 
-With heavy sounds and a moving morph the audio can get close to its limit. TIDE then backs off by itself, in steps, before it cuts anything. First a glide or a crossing moves in slightly coarser steps. Then a new note may take over a note that is already fading: the old tail stops when the new note starts. Then the delay's RANDOM and OCT UP play as the plain delay. Only if that is not enough do fading notes end early, and a held note only after the audio really missed a block. When the load is lower again it steps back one step at a time: about 1 s each for the first steps, about 3 s from LIGHT FX up (longer if the unit needed LIGHT FX again right after it ended, so the delay does not keep switching). Only LIGHT FX can be seen, in ABOUT; the other steps show nowhere. Nothing is stored and there is nothing to set.
+With heavy sounds and a moving morph the audio can get close to its limit. TIDE then backs off by itself, in steps, before it cuts anything:
+
+- First a glide or a crossing moves in slightly coarser steps.
+- Then a new note may take over a note that is already fading: the old tail stops when the new note starts.
+- Then the delay's RANDOM and OCT UP play as the plain delay.
+- Only if that is not enough do fading notes end early.
+- A held note ends only after the audio really missed a block.
+- When the load is lower again it steps back one step at a time: about 1 s each for the first steps, about 3 s from LIGHT FX up (longer if the unit needed LIGHT FX again right after it ended, so the delay does not keep switching).
+- Only LIGHT FX can be seen, in ABOUT; the other steps show nowhere.
+- Nothing is stored and there is nothing to set.
 
 ## KEEP
 
