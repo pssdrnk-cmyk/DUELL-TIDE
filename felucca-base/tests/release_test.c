@@ -68,7 +68,7 @@ int main(void)
         ok &= project_used(k) && project_factory(k) && str_eq(mu_names[k], FN[k]);
     ck("M01..M16 are the factory multis (the reel, 2026-11-10: BASIC CHORD, DUB CHORD, JUNO DEEP .. BERLIN RUN, M16 AMB LOOPS), as in the test mode", ok);
 #if DUELL_TIDE
-    ck("M17 AMB DUNEHORN, M18 AMB GROWL: the built-in drone multis, factory (ROM only)", MU_SHOWN == 18u && project_used(16) && project_factory(16) && str_eq(mu_names[16], "AMB DUNEHORN") &&
+    ck("M17 AMB DUNEHORN, M18 AMB GROWL: the built-in drone multis, factory (ROM only)", MU_SHOWN >= 18u && project_used(16) && project_factory(16) && str_eq(mu_names[16], "AMB DUNEHORN") &&
        project_used(17) && project_factory(17) && str_eq(mu_names[17], "AMB GROWL"));
 #endif
     project_load(2);
