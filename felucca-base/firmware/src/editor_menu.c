@@ -84,6 +84,7 @@ static const uint8_t ED_MENU[][2] = {
     {ED_SC + 0u, 38}, {ED_SC + 1u, 39},                 /* DUELL 0.2.22: SIDECHAIN P1 CH, P1 NOTE, P2 CH, P2 NOTE, the page GLO > SIDECHAIN (a device setting); no MENU rows (ED_SC) */
     {ED_SC + 2u, 40}, {ED_SC + 3u, 41},
     {ED_MS + 0u, 42},                                   /* DUELL 0.2.23: WIDTH (GLO > WIDTH), a device setting; not in DUEL; no MENU row (ED_MS). 0.2.25: id 43 (DRIVE, the saturator) is removed and not reused */
+    {MI_USBAUDIO, 46},                                 /* b9: USB AUDIO OFF / ON, a row of SYSTEM (the audio input over USB; OFF by default; applied 200 ms after the reply) */
 };
 _Static_assert(MI_COUNT < ED_MODS && ED_MODS + 4u <= ED_BM && ED_BM < ED_CP && ED_CP + 4u <= ED_SC && ED_SC + 4u <= ED_MS, "editor_menu.c: the MODULES rows, BASS MONO, COMP, SIDECHAIN and WIDTH are no MI_ row");
 #define ED_MENU_N NELEM(ED_MENU)
@@ -305,7 +306,11 @@ static int ed_menu_handle(uint32_t cmd, const uint8_t *a, uint32_t n)
     menu_put(row, (uint32_t)(clamp(v, lo, lo + (int32_t)menu_n(row) - 1) - lo));
 #if FELUCCA_CDC
     if (row == MI_SERIAL)
-        menu_serial_at = fm1_ms | 1u;                  /* (applied 200 ms after this reply: usb_serial_apply) */
+        usb.set_at = (uint16_t)(fm1_ms | 1u);          /* (applied 200 ms after this reply: usb_serial_apply) */
+#endif
+#if FELUCCA_UAC
+    if (row == MI_USBAUDIO)
+        usb.set_at = (uint16_t)(fm1_ms | 1u);          /* (the same: the reply leaves before the device drops off the bus) */
 #endif
     ui.force = 1;                                      /* (the MENU page, if shown, redraws) */
     ed_b(MI_PROJECT(row) ? 0u : menu_n(row) == 2u || ED_ROW_SERIAL(row) ? ed_menu_save() : ed_menu_defer());   /* (the project's: in the music, no settings to save;

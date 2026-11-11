@@ -56,7 +56,8 @@ Hold **HOME**. Four tabs:
 - **DISPLAY** (COLOR, LIGHTS, SCALE LIGHTS, ANIMATION, SCREEN OFF, NOTES LEFT: the numbers of free voices in the header)
 - **CONTROL** (MULTI LOAD, HOME OPENS, KNOB ACCELERATION, BUTTON HOLD, STEP KEYS, STEP PREVIEW, LEAVING PERFORM, KEY VELOCITY, AFTERTOUCH)
 - **AUDIO** (CLICK, CLICK LEVEL, COUNT-IN, TUNE: the frequency of A4 in Hz like a Roland keyboard, 415.3 to 466.2 Hz in steps of 0.1 Hz, 440.0 at first; with KNOB ACCELERATION on, a fast turn moves several steps)
-- **SYSTEM** (RESTORE LAST, BUTTON MAP, GUIDE, ABOUT, ERASE DATA; developer builds have a USB SERIAL row too)
+- **SYSTEM** (RESTORE LAST, BUTTON MAP, USB AUDIO, GUIDE, ABOUT, ERASE DATA; developer builds have a USB SERIAL row too)
+  - **USB AUDIO** (OFF at first): with OFF the FM-1 shows up on the computer as a MIDI device only, so the editor, the installer and MIDI work and no audio is streamed over the cable (the jacks sound the same). Turn it ON to record the FM-1 over USB. A change makes the unit leave the USB bus for a moment and come back.
 Turn **SELECT** to go from row to row (on through the tabs).
 Turn any knob or press OCT+ / OCT- to change the value.
 HOME closes it.
@@ -66,7 +67,7 @@ It is on the **GLO** button's round (the page **STEREO MASTER**, after SHIMMER; 
 It makes the output mono below the frequency you pick (40 to 400 Hz; 100 to 150 Hz is the usual club setting) so wide effects do not smear the bass.
 It belongs to the unit (a multi does not change it).
 It works in STEREO and LAYER, and in DUEL its card is not shown.
-- Defaults worth knowing: KNOB ACCELERATION ON, CLICK REC (the metronome only while you record on the sequencer pages), USB SERIAL OFF (with it ON, macOS 13 to 15 do not show the USB audio input). MULTI LOAD KEEPS MODE: loading a multi keeps your MODE, XFADE and SPLIT; set SETS MODE to take the multi's.
+- Defaults worth knowing: KNOB ACCELERATION ON, CLICK REC (the metronome only while you record on the sequencer pages), USB SERIAL OFF (with it ON, macOS 13 to 15 do not show the USB audio input), USB AUDIO OFF (turn it ON in SYSTEM to record over USB). MULTI LOAD KEEPS MODE: loading a multi keeps your MODE, XFADE and SPLIT; set SETS MODE to take the multi's.
 
 ## Make a first sound
 1. Turn **PRESETS** to hear sounds. Turn **ALGORITHM** to select part 2 and load another.

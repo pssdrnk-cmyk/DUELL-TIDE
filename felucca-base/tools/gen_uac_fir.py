@@ -7,13 +7,16 @@
 k * 147 / 160: phase p = (k * 147) % 160, newest input frame floor(k * 147 / 160). Each phase is N taps of
 the prototype (a Kaiser-windowed sinc of 160 * N taps at 7.056 MHz, cut-off FC):
     y[k] = sum_j  PROTO[p + 160 j] * x[base - j],   j = 0 .. N-1
-The table holds the taps oldest input first (UAC_FIR[p][i] = L * PROTO[p + 160 (N-1-i)]), Q30, and only the
-phases 0 .. 79: the prototype is symmetric, so phase 159 - p is phase p read backwards. Each phase's taps sum
-to exactly 1 << 30 (unity gain at DC, the rounding left on its largest tap).
+The table holds the taps oldest input first (UAC_FIR[p][i] = L * PROTO[p + 160 (N-1-i)]), int16 Q15 (b9: was
+int32 Q30, 3,840 B less), and only the phases 0 .. 79: the prototype is symmetric, so phase 159 - p is phase p
+read backwards. Each phase's taps sum to exactly 1 << 15 (unity gain at DC). The rounding is searched, not
+plain: the error of the 24 integer taps is kept small in 0..18 kHz (about -89 dB of a full-scale sine up to 15 kHz,
+-88 dB at 1 kHz, against -94 dB for the old Q30 taps) and no tap is more than 1.6 LSB (2^-15) from the prototype.
 Why these numbers (tests/uac_test.c measures them on the C code):
   N = 24, FC = 22 kHz, beta 9: images that would fold below 20 kHz (input above 28.1 kHz at 7.056 MHz) are
   down 90 dB, the passband is flat within 0.06 dB to 18 kHz (-1.2 dB at 20 kHz); with Q30 taps the 1 kHz SNR
-  sits at the 16-bit floor (~94 dB at -1 dBFS); Q15 taps would cap it near 87 dB.
+  sat at the 16-bit floor (~94 dB at -1 dBFS); Q15 taps lower it a few dB (tests/uac_test.c prints it): about
+  1 LSB of noise on a USB recording at 48 kHz (44.1 kHz recordings are not resampled and do not change).
   tools/gen_uac_fir.py [OUT]   (default firmware/src/uac_fir.h); numpy only."""
 import sys
 from pathlib import Path
@@ -21,7 +24,7 @@ from pathlib import Path
 import numpy as np
 
 L, M, N = 160, 147, 24
-FC, BETA, QB = 22000.0, 9.0, 30
+FC, BETA, QB = 22000.0, 9.0, 15
 FS = 44100.0
 
 
@@ -33,21 +36,51 @@ def prototype():
     return h / h.sum() * L                               # DC gain L: unity after the zero stuffing
 
 
+FGRID = np.linspace(0.0, 18000.0, 181)                   # the band the rounding error is kept small in
+WIN = np.exp(-2j * np.pi * np.outer(FGRID, np.arange(N)) / FS)
+
+
+def quantize(c, iters=20000, seed=0):
+    """c: one phase's ideal taps (sum 1). Integer taps in Q15 with the sum exactly 1 << 15, each within 1.6 LSB
+    of the ideal one: first-order error feedback as the start, then a deterministic local search (pairs of taps
+    moved by one LSB in opposite directions, so the sum holds) that lowers the rounding error's power in
+    0..18 kHz, where USB recordings have their signal."""
+    x = c * (1 << QB)
+    q = np.zeros(N, dtype=np.int64)
+    e = 0.0
+    for i in range(N):                                   # first-order error feedback
+        q[i] = int(np.floor(x[i] + e + 0.5))
+        e += x[i] - q[i]
+    q[N - 1] += (1 << QB) - q.sum()
+    best = np.mean(np.abs(WIN @ (q - x)) ** 2)
+    rng = np.random.default_rng(seed)
+    for _ in range(iters):
+        i, j = rng.integers(0, N, 2)
+        if i == j:
+            continue
+        d = int(rng.choice([-1, 1]))
+        q2 = q.copy()
+        q2[i] += d
+        q2[j] -= d
+        if np.abs(q2 - x).max() > 1.6:
+            continue
+        o = np.mean(np.abs(WIN @ (q2 - x)) ** 2)
+        if o < best:
+            best, q = o, q2
+    assert q.sum() == (1 << QB) and np.abs(q - x).max() <= 1.6 and np.abs(q).max() <= 32767
+    return q
+
+
 def table():
     h = prototype()
     tab = np.zeros((L, N), dtype=np.int64)
-    for p in range(L):
-        c = h[p::L][::-1]                                # oldest input first
-        q = np.round(c * (1 << QB)).astype(np.int64)
-        q[np.argmax(np.abs(c))] += (1 << QB) - q.sum()
-        tab[p] = q
-    for p in range(L // 2):                              # the symmetry the C code relies on
-        assert (tab[L - 1 - p] == tab[p][::-1]).all() or np.abs(tab[L - 1 - p] - tab[p][::-1]).max() <= 1
+    for p in range(L // 2):                              # phases 0 .. 79; 159 - p is phase p read backwards
+        tab[p] = quantize(h[p::L][::-1], seed=p)
     return tab
 
 
 def main():
-    out = Path(sys.argv[1] if len(sys.argv) > 1 else Path(__file__).resolve().parents[1] / "src" / "uac_fir.h")
+    out = Path(sys.argv[1] if len(sys.argv) > 1 else Path(__file__).resolve().parents[1] / "firmware" / "src" / "uac_fir.h")
     tab = table()
     lines = [
         "/* SPDX-License-Identifier: GPL-3.0-only",
@@ -59,13 +92,13 @@ def main():
         f"#define UAC_FIR_M {M}u",
         f"#define UAC_FIR_N {N}u",
         f"#define UAC_FIR_Q {QB}",
-        f"static const int32_t UAC_FIR[{L // 2}][{N}] = {{",
+        f"static const int16_t UAC_FIR[{L // 2}][{N}] = {{",
     ]
     for p in range(L // 2):
         lines.append("    {" + ", ".join(str(int(v)) for v in tab[p]) + "},")
     lines.append("};")
-    out.write_text("\n".join(lines) + "\n")
-    print(f"wrote {out}: {L // 2} x {N} taps, {L // 2 * N * 4} B")
+    out.write_bytes(("\n".join(lines) + "\n").encode("utf-8"))
+    print(f"wrote {out}: {L // 2} x {N} taps, {L // 2 * N * 2} B")
 
 
 if __name__ == "__main__":
