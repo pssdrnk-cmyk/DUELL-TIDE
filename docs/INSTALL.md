@@ -130,4 +130,10 @@ Your DUELL data cannot be opened by the official firmware. This path is the same
 
 
 ## Source and licences
-The package you install is DUELL with TIDE, licensed **GPL-3.0-only**. Its source is this repository at the tag of the release you chose (`tide-1.0.0-b1`, `tide-1.0.0` or a later one, or the older `stable-2026-11-03` and `beta-2026-11-04`); the release page names the commit. The licence texts of the parts that keep their own licence are in [felucca-base/LICENSES/](../felucca-base/LICENSES/), and [felucca-base/LICENSING.md](../felucca-base/LICENSING.md) says which file each one covers. Every package also holds three unmodified files of the JieLi AC79 SDK (Apache-2.0, `LICENSES/Apache-2.0.txt`). No warranty, as the GPL says.
+The package you install is DUELL with TIDE, licensed **GPL-3.0-only**.
+
+- Its source is this repository, at the tag of the release you chose (`tide-1.0.0-b1`, `tide-1.0.0` or a later one, or the older `stable-2026-11-03` and `beta-2026-11-04`). The release page names the commit.
+- The licence texts of the parts that keep their own licence are in [felucca-base/LICENSES/](../felucca-base/LICENSES/).
+- [felucca-base/LICENSING.md](../felucca-base/LICENSING.md) says which file each one covers.
+- Every package also holds three unmodified files of the JieLi AC79 SDK (Apache-2.0, `LICENSES/Apache-2.0.txt`).
+- No warranty, as the GPL says.
