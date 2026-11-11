@@ -5,6 +5,8 @@
 # Each host test group runs on its own with a time limit, so a slow or stuck one cannot stall the rest. On Windows a group
 # that needs fork() (jam/wincompat/sys/wait.h) or another POSIX-only part stops there with exit code 77 and "skipped" in its output; host_tests.sh turns that into a "   SKIP" line and this script reports SKIP, never PASS.
 # Any other non-zero exit is a FAIL even without a FAIL line. Each line ends with the group's seconds. The summary and every group's output land in the log folder (felucca-base/build/check/<sha>, git-ignored).
+#   Fast mode (jam/fastcheck.py, see jam/README.md "Fast tests"): -j N (groups at a time), --all (the default list; implied by -j), --changed [BASE] (only the groups
+#   whose sources changed since BASE, default fork/b9), --shard I/N, --host-only (no device build, no jam tests), --no-cache, --out FILE, --summary FILE.
 set -u
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 . "$REPO/jam/env.sh"
@@ -17,9 +19,29 @@ if [ -z "${JAM_CHECK_LOG:-}" ]; then
     ls -dt "$REPO"/felucca-base/build/check/*/ 2>/dev/null | tail -n +4 | while read -r d; do rm -rf "$d"; done
 fi
 
+JOBS=0 CHANGED="" SHARD="" HOSTONLY=0 NOCACHE="" OUTF="" SUMF="" ALL=0 FAST=0
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -j) JOBS="$2"; FAST=1; shift 2 ;;
+        -j[0-9]*) JOBS="${1#-j}"; FAST=1; shift ;;
+        --all) ALL=1; FAST=1; shift ;;
+        --changed=*) CHANGED="${1#--changed=}"; FAST=1; shift ;;
+        --changed) FAST=1; shift
+            CHANGED="fork/b9"
+            if [ $# -gt 0 ] && case "$1" in -*) false ;; esac && git rev-parse --verify -q "$1^{commit}" >/dev/null 2>&1 && ! grep -qw -- "$1" host_tests.sh 2>/dev/null; then CHANGED="$1"; shift; fi ;;
+        --shard) SHARD="$2"; FAST=1; shift 2 ;;
+        --host-only) HOSTONLY=1; shift ;;
+        --no-cache) NOCACHE=1; shift ;;
+        --out) OUTF="$2"; shift 2 ;;
+        --summary) SUMF="$2"; shift 2 ;;
+        *) break ;;
+    esac
+done
+[ "$FAST" = 1 ] && [ "$JOBS" = 0 ] && JOBS=""
 groups="${*:-$(sed -n 's/^want="\${\*:-\([^"]*\)}"$/\1/p' host_tests.sh)}"
 pass=0 fail=0 skip=0 failed=""
 
+device_build() {
 echo "== device build"
 if (cd felucca-base && python3 tools/build.py > "$LOG/build.log" 2>&1); then
     grep -E "^  ok    (image|\.ram_text)" "$LOG/build.log"
@@ -40,9 +62,47 @@ if (cd felucca-base && python3 tools/build.py > "$LOG/build.log" 2>&1); then
 else
     tail -20 "$LOG/build.log"
     echo "   FAIL (device build)"
-    exit 1
+    return 1
 fi
 
+    return 0
+}
+if [ "$FAST" = 0 ]; then
+    device_build || exit 1
+else
+    : > "$LOG/device.out"
+    wantdev=1
+    if [ -n "$CHANGED" ]; then   # --changed: the device build only when firmware or tools changed
+        wantdev=0; { git diff --name-only "$CHANGED"; git ls-files -o --exclude-standard; } 2>/dev/null | grep -q -E '^felucca-base/(firmware|tools)/' && wantdev=1
+    fi
+    if [ "$HOSTONLY" = 0 ] && [ "$wantdev" = 1 ]; then
+        # the device build is independent of the host groups: it runs beside them
+        ( device_build > "$LOG/device.out" 2>&1; echo $? > "$LOG/device.rc" ) &
+        devpid=$!
+    fi
+fi
+
+if [ "$FAST" = 1 ]; then
+    # parallel groups with a compile cache; the verdicts are decided as below (jam/fastcheck.py)
+    fa="--log $LOG"
+    [ -n "$JOBS" ] && fa="$fa -j $JOBS"
+    [ -n "$CHANGED" ] && fa="$fa --changed $CHANGED"
+    [ -n "$SHARD" ] && fa="$fa --shard $SHARD"
+    [ -n "$NOCACHE" ] && fa="$fa --no-cache"
+    [ -n "$OUTF" ] && fa="$fa --out $OUTF"
+    [ -n "$SUMF" ] && fa="$fa --summary $SUMF"
+    HT_REALCC="$(command -v cc)"; export HT_REALCC
+    # shellcheck disable=SC2086
+    if [ -n "${*:-}" ]; then python3 jam/fastcheck.py $fa "$@" > "$LOG/fast.out" 2>&1; else python3 jam/fastcheck.py $fa > "$LOG/fast.out" 2>&1; fi
+    cat "$LOG/fast.out"
+    pass=$(grep -c '^PASS ' "$LOG/fast.out"); skip=$(grep -c '^SKIP ' "$LOG/fast.out")
+    fail=$(grep -c -E '^(FAIL|TIMEOUT) ' "$LOG/fast.out")
+    failed=$(sed -n -E 's/^(FAIL|TIMEOUT) +([^ ]+).*/\2/p' "$LOG/fast.out" | tr '\n' ' '); [ -n "$failed" ] && failed=" $failed"
+    if [ -n "${devpid:-}" ]; then
+        wait "$devpid"; echo "== device build (ran beside the groups)"; cat "$LOG/device.out"
+        if [ "$(cat "$LOG/device.rc" 2>/dev/null || echo 1)" != 0 ]; then fail=$((fail + 1)); failed="$failed device_build"; fi
+    fi
+else
 for g in $groups; do
     if [ "$g" = '$EMU' ]; then
         if command -v emcc >/dev/null 2>&1 || [ -f "$HOME/emsdk/emsdk_env.sh" ]; then
@@ -71,8 +131,12 @@ for g in $groups; do
         echo "PASS    $g (${secs} s)"; pass=$((pass + 1))
     fi
 done
+fi
 
-if [ -z "${*:-}" ]; then
+full=0; [ -z "${*:-}" ] && [ -z "$SHARD" ] && [ -z "$CHANGED" ] && [ "$HOSTONLY" = 0 ] && full=1
+jamtools=$full
+[ -n "$CHANGED" ] && [ "$HOSTONLY" = 0 ] && git diff --name-only "$CHANGED" -- jam | grep -qv ccwrap && jamtools=1
+if [ "$jamtools" = 1 ]; then
     for t in jam_dev music_revision8; do          # (jam/test_jam_dev.py, jam/test_music_revision8.py: the flash / backup / restore tool and its music checks; CI runs both too)
         if python3 "jam/test_$t.py" > "$LOG/$t.log" 2>&1; then
             echo "PASS    $t"; pass=$((pass + 1))
@@ -82,7 +146,7 @@ if [ -z "${*:-}" ]; then
     done
 fi
 
-if [ -z "${*:-}" ]; then
+if [ "$full" = 1 ] || { [ -n "$CHANGED" ] && [ "$HOSTONLY" = 0 ]; }; then
     if python3 jam/check_docs.py > "$LOG/check_docs.log" 2>&1; then          # (the STYLE tables against tide_ui.c, no workspace paths in shipped documents; CI jam-tools runs it too)
         echo "PASS    check_docs"; pass=$((pass + 1))
     else
