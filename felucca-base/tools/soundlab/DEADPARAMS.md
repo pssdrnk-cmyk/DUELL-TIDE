@@ -2,7 +2,7 @@
 
 Method: each parameter id of each engine (10 engines, base = the engine's first factory sound) rendered at its min and max, a held C3 then a C minor chord, then in every context where it could act (README, Dead parameters). DEAD = bit-identical in all of them. This is a test on one base sound per engine: a parameter that lives only under another wave or mode can show as DEAD here; the reason column says which are firmware facts, which are an engine's own rule, and which this harness cannot show.
 
-Totals over 1530 (engine, parameter) pairs: 727 LIVE, 342 NEAR (under 0.5 dB and 1/12 octave), 91 DEAD, 370 UNTESTED (sequencer, matrix, sidechain, mute: a held note cannot show them).
+Totals over 1530 (engine, parameter) pairs: 789 LIVE, 304 NEAR (under 0.5 dB and 1/12 octave), 67 DEAD, 370 UNTESTED (sequencer, matrix, sidechain, mute: a held note cannot show them).
 
 Cross-check: docs/MOD_INERT_TABLE.md and the `modinert` test cover SHAPE and the E slots per wave; the LOFI and FM6 rows agree with them.
 
@@ -10,46 +10,34 @@ Cross-check: docs/MOD_INERT_TABLE.md and the `modinert` test cover SHAPE and the
 
 | id | label | page | engines | reason |
 |---|---|---|---|---|
-| P_E2SHP | SHP | - | all 10 | retired card. The engine no longer reads it: mod_legacy_move (mod.c:484-500) turns a stored value into a matrix slot on load and sets the card to 0; morph.c lists it T_GONE on every engine. Whatever still writes it (a macro, a knob row, a morph) changes nothing. |
-| P_ED_FLT | FLT | - | all 10 | retired card. The engine no longer reads it: mod_legacy_move (mod.c:484-500) turns a stored value into a matrix slot on load and sets the card to 0; morph.c lists it T_GONE on every engine. Whatever still writes it (a macro, a knob row, a morph) changes nothing. |
-| P_L2FLT | FLT | - | all 10 | retired card. The engine no longer reads it: mod_legacy_move (mod.c:484-500) turns a stored value into a matrix slot on load and sets the card to 0; morph.c lists it T_GONE on every engine. Whatever still writes it (a macro, a knob row, a morph) changes nothing. |
-| P_L2PIT | PIT | - | all 10 | retired card. The engine no longer reads it: mod_legacy_move (mod.c:484-500) turns a stored value into a matrix slot on load and sets the card to 0; morph.c lists it T_GONE on every engine. Whatever still writes it (a macro, a knob row, a morph) changes nothing. |
-| P_L2SHP | SHP | - | all 10 | retired card. The engine no longer reads it: mod_legacy_move (mod.c:484-500) turns a stored value into a matrix slot on load and sets the card to 0; morph.c lists it T_GONE on every engine. Whatever still writes it (a macro, a knob row, a morph) changes nothing. |
-| X_SUBHARM | HARM | - | all 10 | never read. chain_sub.c:11: 'nothing reads or shows it since 2026-10-21, the octave-copy code is gone'; the id stays for the stored format. |
+| P_E2SHP | SHP | - | all 10 | retired card. The engine no longer reads it: mod_legacy_move (mod.c:484-500) turns a stored value into a matrix slot on load and sets the card to 0; morph.c lists it T_GONE on every engine. Whatever still writes it (a macro, a knob row, a morph) changes nothing. b9: no page, no shipped MIDI-map line and no knob set shows or moves it any more (the genre macros' ENV cutoff is P_E2FLT, the filter envelope's depth); a MIDI map saved with one lists it as doing nothing (midi_learn.c). |
+| P_ED_FLT | FLT | - | all 10 | retired card. The engine no longer reads it: mod_legacy_move (mod.c:484-500) turns a stored value into a matrix slot on load and sets the card to 0; morph.c lists it T_GONE on every engine. Whatever still writes it (a macro, a knob row, a morph) changes nothing. b9: no page, no shipped MIDI-map line and no knob set shows or moves it any more (the genre macros' ENV cutoff is P_E2FLT, the filter envelope's depth); a MIDI map saved with one lists it as doing nothing (midi_learn.c). |
+| P_L2FLT | FLT | - | all 10 | retired card. The engine no longer reads it: mod_legacy_move (mod.c:484-500) turns a stored value into a matrix slot on load and sets the card to 0; morph.c lists it T_GONE on every engine. Whatever still writes it (a macro, a knob row, a morph) changes nothing. b9: no page, no shipped MIDI-map line and no knob set shows or moves it any more (the genre macros' ENV cutoff is P_E2FLT, the filter envelope's depth); a MIDI map saved with one lists it as doing nothing (midi_learn.c). |
+| P_L2PIT | PIT | - | all 10 | retired card. The engine no longer reads it: mod_legacy_move (mod.c:484-500) turns a stored value into a matrix slot on load and sets the card to 0; morph.c lists it T_GONE on every engine. Whatever still writes it (a macro, a knob row, a morph) changes nothing. b9: no page, no shipped MIDI-map line and no knob set shows or moves it any more (the genre macros' ENV cutoff is P_E2FLT, the filter envelope's depth); a MIDI map saved with one lists it as doing nothing (midi_learn.c). |
+| P_L2SHP | SHP | - | all 10 | retired card. The engine no longer reads it: mod_legacy_move (mod.c:484-500) turns a stored value into a matrix slot on load and sets the card to 0; morph.c lists it T_GONE on every engine. Whatever still writes it (a macro, a knob row, a morph) changes nothing. b9: no page, no shipped MIDI-map line and no knob set shows or moves it any more (the genre macros' ENV cutoff is P_E2FLT, the filter envelope's depth); a MIDI map saved with one lists it as doing nothing (midi_learn.c). |
+| X_SUBHARM | HARM | - | all 10 | never read. chain_sub.c:11: 'nothing reads or shows it since 2026-10-21, the octave-copy code is gone'; the id stays for the stored format. b9: CC 17 left the shipped MIDI map; a saved map's line is listed as doing nothing (midi_learn.c). |
 
 ## Dead by an engine's own rule
 
 | id | label | page | engines | reason |
 |---|---|---|---|---|
 | P_E2 | PULSE_WIDTH | ENGINE | LOFI | MOD_INERT_TABLE: LOFI's DUTY has no effect with WAVE TRI, SAW, NOIS (PLS takes its width, WRAM its table): the base sound's wave. |
-| P_E2REL | REL2 | ENV 2 | FM6 | FM6 has ownenv = 1 (core.h engine_t): its own operator envelopes are the amplitude, ENV 1 is 0, so the AMP ENV pages (and the amp-env saturation) do nothing on FM6. |
-| P_ED_PIT | PIT | AMP DEST | FM6 | FM6 has ownenv = 1 (core.h engine_t): its own operator envelopes are the amplitude, ENV 1 is 0, so the AMP ENV pages (and the amp-env saturation) do nothing on FM6. |
+| P_ED_PIT | PIT | AMP DEST | FM6 | FM6 has ownenv = 1 (core.h engine_t): its own operator envelopes are the amplitude, ENV 1 is 0, so the AMP ENV pages (and the amp-env saturation) do nothing on FM6. b9: AMP DEST's PITCH, TIMBRE and SATURATION cards are dimmed on FM6 (ui_draw.c card_hidden_vp; the editor says OWN ENV). |
 | P_ED_SHP | SHP | AMP DEST | LOFI | docs/MOD_INERT_TABLE.md: LOFI's SHAPE moves the pulse width only on the PLS wave; LOFI's wave slot was not varied here (it is not E0): not claimed dead for PLS. |
-| P_ED_SHP | SHP | AMP DEST | FM6 | FM6 has ownenv = 1 (core.h engine_t): its own operator envelopes are the amplitude, ENV 1 is 0, so the AMP ENV pages (and the amp-env saturation) do nothing on FM6. |
+| P_ED_SHP | SHP | AMP DEST | FM6 | FM6 has ownenv = 1 (core.h engine_t): its own operator envelopes are the amplitude, ENV 1 is 0, so the AMP ENV pages (and the amp-env saturation) do nothing on FM6. b9: AMP DEST's PITCH, TIMBRE and SATURATION cards are dimmed on FM6 (ui_draw.c card_hidden_vp; the editor says OWN ENV). |
 | P_LD_SHP | SHP | LFO 1 DEST | LOFI | as ED_SHP on LOFI (MOD_INERT_TABLE: SHAPE needs the PLS wave); not varied here. |
-| X_ESAT | SATN | AMP DEST | FM6 | FM6 has ownenv = 1 (core.h engine_t): its own operator envelopes are the amplitude, ENV 1 is 0, so the AMP ENV pages (and the amp-env saturation) do nothing on FM6. |
+| X_ESAT | SATN | AMP DEST | FM6 | FM6 has ownenv = 1 (core.h engine_t): its own operator envelopes are the amplitude, ENV 1 is 0, so the AMP ENV pages (and the amp-env saturation) do nothing on FM6. b9: AMP DEST's PITCH, TIMBRE and SATURATION cards are dimmed on FM6 (ui_draw.c card_hidden_vp; the editor says OWN ENV). |
 
 ## Not shown by this test (not claimed dead)
 
 | id | label | page | engines | reason |
 |---|---|---|---|---|
 | P_GLIDE | GLD | VOICE 2/2 | WAVE | glide needs a second note after the first; a held single note cannot show it. |
-| X_CYMODE | MODE | CYCLE ENV 1/2 | ANALOG, PHASE, LOFI, VOICE, TRIO, PHYS, NOISE, WAVE | cycle.c:81 LOOP vs ONCE differ only after the first full cycle; one bar of render may not complete it. Not claimed dead. |
 
 ## Dead here, no reason traced yet (follow-ups for the firmware owner)
 
 | id | label | page | engines | reason |
 |---|---|---|---|---|
-| P_DETUNE | DTUNE | VOICE 1/2 | LOFI | no reason traced yet: DETUNE moves nothing on LOFI (POLY and UNISON tried). |
-| P_E2REL | REL2 | ENV 2 | LOFI, VOICE, WHEEL | no reason traced yet: ENV 2 routed to cutoff in matrix slot 1 changes nothing with REL2 at min or max on these engines (their filter route may not take ENV 2). |
-| P_EQHF | HI_HZ | EQ 2/2 | WHEEL | no reason traced yet (see EQHG). |
-| P_EQHG | HIGH | EQ 2/2 | ANALOG, WHEEL | no reason traced yet: EQ HIGH gain with HIGH freq 64 changes nothing on these engines' base sounds (little energy there?). |
-| P_L2RATE | RATE2 | LFO 2 | WAVE | no reason traced yet: LFO 2 RATE moves nothing with LFO 2 routed to pitch (matrix slot 1) on WAVE. |
-| P_LRATE | RATE | LFO 1 | NOISE, WAVE | no reason traced yet: LFO 1 RATE moves nothing with LFO 1 to pitch and cutoff up on these engines. |
-| X_CYFALL | FALL | CYCLE ENV 1/2 | WAVE | no reason traced yet (CYCLE ENV routed to cutoff in slot 1 changes nothing on WAVE). |
-| X_E2BLD | FBLND | ENV 2 DEST | LOFI, WHEEL | no reason traced yet: ENV 2 to FILTER BLEND with the twin filter on changes nothing on LOFI / WHEEL. |
-| X_KTRK2 | KTRK2 | TWIN MOD | PHYS | no reason traced yet: TWIN KEY TRK 2 changes nothing on PHYS with the twin filter on. |
-| X_L2RES2 | TRES | LFO 2 DEST | WHEEL | no reason traced yet (twin filter on, LFO 2 routed). |
 
 ## Nearly dead (largest change under 0.5 dB RMS and 1/12 octave of centroid)
 
@@ -58,62 +46,55 @@ Cross-check: docs/MOD_INERT_TABLE.md and the `modinert` test cover SHAPE and the
 | P_GLMODE | GLMOD | VOICE 2/2 | all 10 | 0.18 / 0.014 |
 | P_LTRIG | TRIG | LFO 1 TRIG | all 10 | 0.07 / 0.029 |
 | X_CYSYNC | SYNC | CYCLE ENV 1/2 | all 10 | 0.03 / 0.012 |
-| X_L2BLD | FBLND | LFO 2 DEST | all 10 | 0.48 / 0.080 |
 | P_LPHASE | PHS | LFO 1 TRIG | 9: ANALOG, PHASE, LOFI, VOICE, TRIO ... | 0.25 / 0.050 |
 | P_PAN | PAN | - | 9: ANALOG, PHASE, LOFI, VOICE, TRIO ... | 0.14 / 0.001 |
 | P_L2PHASE | PHS2 | LFO 2 TRIG | 9: ANALOG, PHASE, LOFI, VOICE, TRIO ... | 0.11 / 0.035 |
 | P_L2TRIG | TRIG2 | LFO 2 TRIG | 9: ANALOG, PHASE, LOFI, VOICE, TRIO ... | 0.05 / 0.017 |
 | P_ESYNC | ESYNC | AMP DEST | 9: ANALOG, PHASE, LOFI, VOICE, TRIO ... | 0.22 / 0.008 |
+| P_EQHG | HIGH | EQ 2/2 | 9: ANALOG, PHASE, LOFI, VOICE, TRIO ... | 0.01 / 0.006 |
 | X_CYFALL | FALL | CYCLE ENV 1/2 | 9: ANALOG, PHASE, LOFI, VOICE, TRIO ... | 0.22 / 0.043 |
 | X_CYPAN | PAN | CYCLE ENV 2/2 | 9: ANALOG, PHASE, LOFI, VOICE, TRIO ... | 0.12 / 0.000 |
 | P_AORDER | ORD | ARP 1/3 | 8: ANALOG, PHASE, LOFI, VOICE, TRIO ... | 0.15 / 0.049 |
-| P_RES2 | RES | TWIN FILTER | 8: ANALOG, PHASE, LOFI, VOICE, WHEEL ... | 0.06 / 0.012 |
+| P_EQHF | HI_HZ | EQ 2/2 | 8: ANALOG, PHASE, LOFI, VOICE, TRIO ... | 0.23 / 0.043 |
 | X_CYCURVE | CURVE | CYCLE ENV 2/2 | 8: PHASE, LOFI, VOICE, TRIO, WHEEL ... | 0.05 / 0.040 |
 | P_ASWING | SWG | ARP 2/3 | 7: ANALOG, PHASE, LOFI, VOICE, WHEEL ... | 0.43 / 0.070 |
-| P_EQHF | HI_HZ | EQ 2/2 | 7: ANALOG, PHASE, LOFI, VOICE, TRIO ... | 0.23 / 0.043 |
-| X_ROUTE | ROUTE | TWIN CHAIN | 7: ANALOG, LOFI, VOICE, WHEEL, PHYS ... | 0.38 / 0.052 |
-| X_KTRK2 | KTRK2 | TWIN MOD | 7: ANALOG, PHASE, LOFI, VOICE, WHEEL ... | 0.14 / 0.022 |
-| X_E2DRV | FDRV | ENV 2 DEST | 7: ANALOG, PHASE, LOFI, VOICE, TRIO ... | 0.29 / 0.014 |
-| X_L2RES2 | TRES | LFO 2 DEST | 7: ANALOG, PHASE, LOFI, VOICE, PHYS ... | 0.01 / 0.003 |
+| X_E2DRV | FDRV | ENV 2 DEST | 7: ANALOG, PHASE, LOFI, VOICE, TRIO ... | 0.29 / 0.021 |
 | P_E2ATK | ATK2 | ENV 2 | 7: PHASE, LOFI, VOICE, TRIO, WHEEL ... | 0.10 / 0.036 |
-| P_EQHG | HIGH | EQ 2/2 | 7: PHASE, LOFI, VOICE, TRIO, PHYS ... | 0.01 / 0.006 |
 | X_CYRISE | RISE | CYCLE ENV 1/2 | 7: PHASE, LOFI, VOICE, TRIO, WHEEL ... | 0.11 / 0.038 |
 | X_STRUM | STRUM | CHORD | 7: PHASE, LOFI, VOICE, TRIO, WHEEL ... | 0.19 / 0.055 |
 | P_E2REL | REL2 | ENV 2 | 6: ANALOG, PHASE, TRIO, PHYS, NOISE ... | 0.01 / 0.000 |
-| X_E2BLD | FBLND | ENV 2 DEST | 6: ANALOG, VOICE, TRIO, PHYS, NOISE ... | 0.48 / 0.037 |
 | P_LSYNC | SYNC | LFO 1 | 6: PHASE, VOICE, TRIO, WHEEL, FM6 ... | 0.46 / 0.073 |
 | P_E2DEC | DEC2 | ENV 2 | 6: LOFI, VOICE, TRIO, WHEEL, PHYS ... | 0.28 / 0.064 |
+| X_E2BLD | FBLND | ENV 2 DEST | 6: LOFI, VOICE, TRIO, WHEEL, NOISE ... | 0.20 / 0.037 |
 | P_VOICE | VCE | CHORD/VOICE 1/2 | 5: ANALOG, PHASE, LOFI, NOISE, FM6 | 0.47 / 0.026 |
-| X_ENV2 | ENV2 | TWIN MOD | 5: PHASE, LOFI, VOICE, WHEEL, FM6 | 0.21 / 0.004 |
 | P_TWTYPE | TYPE | TWIN FILTER | 5: LOFI, TRIO, WHEEL, PHYS, FM6 | 0.41 / 0.076 |
 | P_FREED | SLOPE | MULTI FILTER 1/2 | 5: LOFI, VOICE, WHEEL, PHYS, FM6 | 0.33 / 0.056 |
 | P_E2SUS | SUS2 | ENV 2 | 5: LOFI, VOICE, WHEEL, PHYS, WAVE | 0.31 / 0.047 |
-| P_BLEND | BLEND | TWIN CHAIN | 5: LOFI, VOICE, WHEEL, PHYS, FM6 | 0.26 / 0.076 |
 | X_E2RES | MRES | ENV 2 DEST | 5: LOFI, VOICE, WHEEL, PHYS, FM6 | 0.17 / 0.017 |
+| X_L2BLD | FBLND | LFO 2 DEST | 5: LOFI, TRIO, WHEEL, PHYS, NOISE | 0.24 / 0.069 |
 | P_LD_SHP | SHP | LFO 1 DEST | 4: ANALOG, VOICE, TRIO, FM6 | 0.39 / 0.044 |
+| X_L2RES2 | TRES | LFO 2 DEST | 4: ANALOG, LOFI, WHEEL, PHYS | 0.49 / 0.048 |
 | P_E2FLT | FLT | ENV 2 DEST/MULTI FILTER 2/2 | 4: LOFI, VOICE, WHEEL, FM6 | 0.24 / 0.000 |
 | X_SUBOCT | OCTAVE | SUB OSC | 3: ANALOG, TRIO, NOISE | 0.48 / 0.054 |
+| X_ROUTE | ROUTE | TWIN CHAIN | 3: LOFI, WHEEL, PHYS | 0.41 / 0.068 |
+| X_ENV2 | ENV2 | TWIN MOD | 3: LOFI, WHEEL, FM6 | 0.26 / 0.000 |
 | P_L2SYNC | SYNC2 | LFO 2 | 3: TRIO, PHYS, NOISE | 0.24 / 0.050 |
 | P_DEC | DEC | AMP ENV | 3: WHEEL, PHYS, WAVE | 0.05 / 0.000 |
 | P_LWAVE | WAVE | LFO 1 | 3: WHEEL, NOISE, WAVE | 0.38 / 0.078 |
 | P_LFADE | FADE | LFO 1 | 3: WHEEL, NOISE, WAVE | 0.42 / 0.074 |
-| X_CYCUT2 | TCUT | CYCLE ENV 2/2 | 3: WHEEL, FM6, WAVE | 0.48 / 0.013 |
 | X_LFO1LVL | LVL | LFO 1 TRIG | 3: WHEEL, NOISE, WAVE | 0.43 / 0.072 |
 | P_ED_SHP | SHP | AMP DEST | 2: ANALOG, TRIO | 0.16 / 0.045 |
 | P_REV | REV | FX | 2: ANALOG, WHEEL | 0.19 / 0.068 |
 | P_EQLG | LOW | EQ 1/2 | 2: PHASE, PHYS | 0.35 / 0.071 |
 | P_ITYPE | INSRT | INSERT 1/2 | 2: PHASE, VOICE | 0.45 / 0.035 |
 | P_KTRK | KTRK | MULTI FILTER 2/2 | 2: LOFI, PHYS | 0.14 / 0.027 |
-| P_EQMQ | Q | EQ 2/2 | 2: LOFI, WHEEL | 0.26 / 0.047 |
-| X_LFO1 | LFO1 | TWIN MOD | 2: LOFI, WAVE | 0.46 / 0.013 |
 | P_LRATE | RATE | LFO 1 | 2: VOICE, WHEEL | 0.27 / 0.023 |
 | X_SUBWAVE | WAVE | SUB OSC | 2: VOICE, NOISE | 0.06 / 0.055 |
+| P_L2RATE | RATE2 | LFO 2 | 2: TRIO, WAVE | 0.35 / 0.072 |
 | P_L2FADE | FADE2 | LFO 2 | 2: TRIO, WHEEL | 0.41 / 0.060 |
-| X_LINK | LINK | TWIN FILTER | 2: TRIO, WHEEL | 0.12 / 0.074 |
 | X_LFO2LVL | LVL | LFO 2 TRIG | 2: TRIO, WHEEL | 0.41 / 0.056 |
 | P_ARATE | RATE | ARP 2/3 | 2: WHEEL, PHYS | 0.23 / 0.019 |
 | P_LPOL | POL | LFO 1 TRIG | 2: WHEEL, WAVE | 0.05 / 0.019 |
-| X_LFO2 | LFO2 | LFO 2 DEST/TWIN MOD | 2: WHEEL, PHYS | 0.46 / 0.007 |
 | X_CYMODE | MODE | CYCLE ENV 1/2 | 2: WHEEL, FM6 | 0.06 / 0.025 |
 | X_CYPIT | PIT | CYCLE ENV 2/2 | 2: WHEEL, FM6 | 0.20 / 0.018 |
 | P_ATGT | TRGT | ARP 3/3 | 1: ANALOG | 0.46 / 0.076 |
@@ -125,19 +106,29 @@ Cross-check: docs/MOD_INERT_TABLE.md and the `modinert` test cover SHAPE and the
 | P_E7 | TONE | EDIT 2 | 1: LOFI | 0.16 / 0.009 |
 | P_VOIC | VOIC | CHORD | 1: VOICE | 0.19 / 0.029 |
 | P_E0 | VOWL_1 | ENGINE | 1: VOICE | 0.02 / 0.000 |
-| P_L2RATE | RATE2 | LFO 2 | 1: TRIO | 0.03 / 0.036 |
 | P_L2WAVE | WAVE2 | LFO 2 | 1: TRIO | 0.06 / 0.070 |
 | P_L2POL | POL2 | LFO 2 TRIG | 1: TRIO | 0.02 / 0.027 |
+| X_LINK | LINK | TWIN FILTER | 1: TRIO | 0.05 / 0.074 |
 | P_EQMG | MID | EQ 1/2 | 1: WHEEL | 0.23 / 0.044 |
 | P_IA | WOW | INSERT 1/2 | 1: WHEEL | 0.00 / 0.000 |
+| P_E5 | CLICK | EDIT 1 | 1: WHEEL | 0.00 / 0.000 |
 | P_E7 | ROTR | EDIT 2 | 1: WHEEL | 0.44 / 0.008 |
 | P_FREEB | RES | MULTI FILTER 1/2 | 1: PHYS | 0.18 / 0.017 |
 | P_E7 | EXC | EDIT 2 | 1: PHYS | 0.03 / 0.002 |
+| X_LFO2 | LFO2 | LFO 2 DEST/TWIN MOD | 1: PHYS | 0.21 / 0.013 |
 | X_L2FMODE | MMODE | LFO 2 DEST | 1: PHYS | 0.08 / 0.014 |
 | P_LD_FLT | FLT | LFO 1 DEST/MULTI FILTER 2/2 | 1: NOISE | 0.37 / 0.071 |
 | P_GLIDE | GLD | VOICE 2/2 | 1: NOISE | 0.32 / 0.041 |
 | P_E1 | FB | ENGINE | 1: FM6 | 0.46 / 0.019 |
 | P_E5 | VMOD | EDIT 1 | 1: FM6 | 0.02 / 0.009 |
 | P_E6 | DTUN | EDIT 1 | 1: FM6 | 0.37 / 0.014 |
+
+## b9 follow-up of the first run (section 'no reason traced yet')
+
+- LFO 1 / LFO 2 RATE on NOISE / WAVE: the base sounds run SYNC on; with SYNC the tempo division replaces RATE and the card is hidden (ui_draw.c card_hidden_vp, editor 'SYNC ON'). The harness now tries SYNC off for RATE.
+- EQ HIGH gain / HI_HZ on ANALOG, WHEEL: the harness set HIGH FREQ 64, past its range (-24..12); with in-range values the bands move the bass sounds by well under 0.5 dB (the sounds have no energy up there): NEAR, not a bug.
+- P_DETUNE on LOFI: a real bug. eng_lofi.c left out the voice's own fine offset (v->fine) that UNISON DETUNE sets (voice.c mono_play), so DTUNE did nothing on LOFI. Fixed in b9; LOFI sounds outside UNISON render bit for bit as before.
+- REL2 on LOFI / VOICE / WHEEL, FBLND-from-ENV-2 on LOFI / WHEEL, TRES on WHEEL, KTRK2 on PHYS: harness contexts (SUS2 0, TWIN cutoff offset +36 = fully open); with SUS2 up and the twin cutoff low they are live.
+
 
 Many NEAR ones are small by design (PAN on a centred sound, sends at 0, glide modes with one note). The list is the place to look for a parameter that should do more.

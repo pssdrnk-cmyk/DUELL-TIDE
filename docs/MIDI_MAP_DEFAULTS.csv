@@ -1,4 +1,4 @@
-# THE FINAL MAP (docs/design/MIDI_MAP_FINAL.md, owner's answers of 2026-10-20): 70 direct lines, 23 locked (the 18 standard numbers 0 6 32 38 96..101 120..127
+# THE FINAL MAP (docs/design/MIDI_MAP_FINAL.md, owner's answers of 2026-10-20; b9: CC 17, SUB HARMONICS, left the list because nothing reads that value): 69 direct lines, 23 locked (the 18 standard numbers 0 6 32 38 96..101 120..127
 # and the 5 numbers 1 2 4 11 64: CC 1, 2, 4, 11 and 64 are inputs (mod wheel, breath, foot, expression, sustain pedal) that you can use as sources in the mod matrix; they cannot be assigned to parameters), 35 unused. SPDX-License-Identifier: GPL-3.0-only
 # columns: cc = the CC number 0..127; target = a name from the fixed list of tools/gen_midi_map.py (the P_ and G_ names of core.h,
 # the X_ slots of ext.h, the actions); part_rule = P (the part the CC's channel plays) or G (global, any channel); tag = SHIPPED or LOCKED
@@ -37,7 +37,6 @@ cc,target,part_rule,tag
 14,X_SUBLVL,P,SHIPPED
 15,X_SUBOCT,P,SHIPPED
 16,X_SUBWAVE,P,SHIPPED
-17,X_SUBHARM,P,SHIPPED
 18,P_E2FLT,P,SHIPPED
 19,P_KTRK,P,SHIPPED
 20,P_FREEC,P,SHIPPED
