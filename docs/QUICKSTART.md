@@ -81,7 +81,13 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
    - On this page **ALGORITHM** has three positions, PART 1, the middle and PART 2.
    - The middle selects both parts (every knob moves both, each from its own value, both part numbers light up) and plays the mode of the PLAY MODE row on TIDE SETTINGS; the header names it, LAYER, STEREO or DUEL.
    - PART 1 and PART 2 play that part alone on every key.
-   **With TIDE:** tap HOME twice more for TIDE SETTINGS (ten rows: STYLE, MODE, TARGET, ARC, KNOBS (which knob set HOME page 1 plays; AUTO follows the tag, the first word of the multi's name: DUB, HSE house, TECH techno, ACID, ELEC electro, AMB ambient), AMOUNT (how far a roll goes), then REC, PLAY MODE, XFADE, SPLIT; STYLE DUB is the default) and AUTO TIDE. Press PLAY and twist K1 on AUTO TIDE right: the parts evolve by themselves. With no notes coming in TIDE plays in C minor; send or hold one note to set its key. The [TIDE guide](TIDE_GUIDE.md) has the rest.
+   **With TIDE:** tap HOME twice more for TIDE SETTINGS. It has ten rows:
+   - STYLE, MODE, TARGET, ARC, KNOBS, AMOUNT, then REC, PLAY MODE, XFADE and SPLIT.
+   - KNOBS picks which knob set HOME page 1 plays. AUTO follows the tag, the first word of the multi's name: DUB, HSE (house), TECH (techno), ACID, ELEC (electro) or AMB (ambient).
+   - AMOUNT is how far a roll goes.
+   - STYLE DUB is the default.
+
+   Then AUTO TIDE. Press PLAY and twist K1 on AUTO TIDE right: the parts evolve by themselves. With no notes coming in TIDE plays in C minor; send or hold one note to set its key. The [TIDE guide](TIDE_GUIDE.md) has the rest.
 4. Press **SAVE**. The first page is **PATCHES**: 128 slots, #1 to #128.
 
    - The factory sounds fill them. With TIDE the last four are empty USER slots (U1 to U4) for new sounds. The factory sounds go to #171. (#129 and up are read-only places.)
