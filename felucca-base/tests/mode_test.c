@@ -1079,7 +1079,7 @@ static void t_mode_rows(void)
     expect("TIDE SETTINGS (1.0.0-b7, MR8 and page 1): STYLE, MODE, TARGET, ARC, ROLL TYPE, AMOUNT, REC, PLAY MODE, XFADE, SPLIT", JL_N == 10u &&
            str_eq(JL_NAME[0], "STYLE") && str_eq(JL_NAME[1], "MODE") && str_eq(JL_NAME[2], "TARGET") && str_eq(JL_NAME[3], "ARC") && str_eq(JL_NAME[4], "ROLL TYPE") &&
            str_eq(JL_NAME[5], "AMOUNT") && str_eq(JL_NAME[6], "REC") && str_eq(JL_NAME[JL_MODE], "PLAY MODE") && JL_MODE == 7u && str_eq(JL_NAME[JL_XFADE], "XFADE") && str_eq(JL_NAME[JL_SPLIT], "SPLIT") && JL_SPLIT == JL_N - 1u);
-    expect("  .. MODE reads the glide's five modes, ONCE to JOURNEY", jl_n(JL_GMODE) == 5u && str_eq(jl_vname(JL_GMODE, 0), "ONCE") && str_eq(jl_vname(JL_GMODE, 4), "JOURNEY"));
+    expect("  .. MODE offers two (b9): EVOLVE (was WANDER) and TRAVEL (was JOURNEY)", jl_n(JL_GMODE) == 2u && str_eq(jl_vname(JL_GMODE, 0), "EVOLVE") && str_eq(jl_vname(JL_GMODE, 1), "TRAVEL"));
     expect("  .. HOME's round has no MODE page: PAGES has no MODE row (1.0.0-b4: the hidden row is gone)", page_of("MODE") == NPAGES);
     for (i = 0; i < 5u; i++) {
         press(B_HOME);
@@ -1250,11 +1250,11 @@ static void t_mode_rows(void)
         uint8_t km = gl.mode, kt = gl.target, kr = morph_musical;
         gl.target = GT_BOTH;
         gl.mode = GM_ONCE;
-        expect("dimming: ARC dims under ONCE, says WNDR OR JRNY; ROLL TYPE acts", jl_dimmed(JL_ARC) && str_eq(jl_needs(JL_ARC), "WNDR OR JRNY") && !jl_dimmed(JL_ROLL));
+        expect("dimming: ARC dims under ONCE, says NEEDS EVOLVE; ROLL TYPE acts", jl_dimmed(JL_ARC) && str_eq(jl_needs(JL_ARC), "NEEDS EVOLVE") && !jl_dimmed(JL_ROLL));
         gl.mode = GM_WANDER; morph_musical = 0;
         expect("  .. WANDER, ROLL TYPE SMART: ARC acts (no ROLL TYPE gate), ROLL TYPE acts", !jl_dimmed(JL_ARC) && !jl_dimmed(JL_ROLL));
         gl.mode = GM_JOURNEY; morph_musical = 1;
-        expect("  .. JOURNEY: ARC acts, ROLL TYPE dims and says NOT JRNY", !jl_dimmed(JL_ARC) && jl_dimmed(JL_ROLL) && str_eq(jl_needs(JL_ROLL), "NOT JRNY"));
+        expect("  .. TRAVEL: ARC acts, ROLL TYPE dims and says NOT TRVL", !jl_dimmed(JL_ARC) && jl_dimmed(JL_ROLL) && str_eq(jl_needs(JL_ROLL), "NOT TRVL"));
         gl.target = GT_SOUND;
         expect("  .. TARGET SOUND: ARC dims, says TARGET SEQ", jl_dimmed(JL_ARC) && str_eq(jl_needs(JL_ARC), "TARGET SEQ"));
         gl.target = GT_BOTH;

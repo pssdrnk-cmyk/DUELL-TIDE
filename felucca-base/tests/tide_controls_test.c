@@ -380,11 +380,11 @@ static void test_knob_steps(void)
     ui_power_on(); frame();
     while (pg < pages && PAGES[pg].graph != GR_TIDE) pg++;
     ui.page = pg; ui.cursor = ui.bank = 0; page_entered();
-    gl.mode = GM_ONCE; gl.time = 1; gl.wait = 1;
+    gl.mode = GM_WANDER; gl.time = 1; gl.wait = 1;
     tide_knob(1u, 5); tide_knob(2u, 3); tide_knob(3u, 4);
-    CHECK("knob steps: a fast turn moves MODE, TIME and WAIT by one", gl.mode == GM_LOOP && gl.time == 2u && gl.wait == 2u);
+    CHECK("knob steps: a fast turn moves MODE (EVOLVE to TRAVEL), TIME and WAIT by one", gl.mode == GM_JOURNEY && gl.time == 2u && gl.wait == 2u);
     tide_knob(1u, -4); tide_knob(2u, -6); tide_knob(3u, -9);
-    CHECK("knob steps:   and back by one", gl.mode == GM_ONCE && gl.time == 1u && gl.wait == 1u);
+    CHECK("knob steps:   and back by one (TRAVEL to EVOLVE)", gl.mode == GM_WANDER && gl.time == 1u && gl.wait == 1u);
 }
 
 /* audit C9 (D9): on AUTO TIDE OCT- + K3 / K4 go back to the STYLE's TIME and WAIT (the style a hand edit left), K1 says BACK TO ORIGINAL; the TIDE SETTINGS list has no reset */
