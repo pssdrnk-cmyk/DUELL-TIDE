@@ -5,7 +5,12 @@ What is known to be broken or untested. [KNOWN_LIMITS.md](KNOWN_LIMITS.md) lists
 ## TIDE (this fork)
 
 - **In the beta `beta-2026-11-04`, fixed in `1.0.0-b1`:** the SAVE > MULTIS page layout, the TIDE page's step bars not always matching what plays, and a latched arp playing on after STOP (use STOP ALL there: a double press or a 0.6 s hold). [The README](../README.md#builds-stable-and-beta) says which build is which.
-- **Fixed in `1.0.0-b1` (TIDE):** ARC resumes where it was after STOP and PLAY (a load or a K1 stop starts it again). A multi or pattern loaded after a WNDR or JRNY session starts as written. The automatic pattern edits keep the motif of an offbeat skank: its own hits stay, a hit moves at most two 16ths, LEAD answers only on lead and pluck lines. PITCH leaves the bass alone (notes under C3, BASS-category sounds, SCALE CHR). ECHO is folded into LEAD (TURNS has three values; a stored ECHO reads as LEAD).
+- **Fixed in `1.0.0-b1` (TIDE):**
+  - ARC resumes where it was after STOP and PLAY (a load or a K1 stop starts it again).
+  - A multi or pattern loaded after a WNDR or JRNY session starts as written.
+  - The automatic pattern edits keep the motif of an offbeat skank: its own hits stay, a hit moves at most two 16ths, LEAD answers only on lead and pluck lines.
+  - PITCH leaves the bass alone (notes under C3, BASS-category sounds, SCALE CHR).
+  - ECHO is folded into LEAD (TURNS has three values; a stored ECHO reads as LEAD).
 - **`1.0.0-b9`: a big TIME change sweeps slowly.** With the delay's wobble on, a TIME change glides at most about 1/8 sample per sample (about 12 % off pitch): a dotted eighth to a quarter takes about a second, a bar's worth one and a half to five. Small steps settle in about a tenth of a second. Not yet heard on the unit.
 - **`1.0.0-b9`: the bench test `benchsim` fails on M17 DUNE HORN** (it does not render the same forward and backward; the cause is the drone's new sub on HORN SWELL). Only the test is affected; the sound plays right. The fix is with the CI lane.
 - **`1.0.0-b9`: `tideroles` fails by design** (the roles test has been red since b5, and the b9 re-voice moves its numbers; the coordinator reads them).
