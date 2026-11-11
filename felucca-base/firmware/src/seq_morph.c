@@ -22,14 +22,14 @@
 /* MUSIC WNDR/JRNY also carries the cumulative phrase overlay (seq_rhythm.c,
  * seq_phrase.c): retained routing, repeats/rests and phrase-level pitch edits.
  * These are session state until KEEP commits the reached ordinary steps. */
-#define SQM_HIST 4u                                      /* rolls kept per part (a ring of End B) */
+#define SQM_HIST 1u                                      /* End B kept per part (b9, R1: was a ring of 4 for a UNDO that left in b5; only b[top] was ever read: -276 B of .bss) */
 enum { SD_DENS, SD_SYNC, SD_ACC, SD_VOIC, SD_N };
 #define SQM_PITCH_BYTES ((NSTEP * 5u + 7u) / 8u)
 typedef struct { uint16_t seed; int8_t d[SD_N]; uint8_t pitch[SQM_PITCH_BYTES]; } sqm_end_t;
 typedef struct {
-    sqm_end_t b[SQM_HIST];                               /* a ring: b[top] is End B */
+    sqm_end_t b[SQM_HIST];                               /* b[top] is End B (SQM_HIST 1: top stays 0) */
     sqm_end_t a;                                         /* End A while aon (a WANDER / JOURNEY generation), else the Original */
-    uint8_t aon, top, n;                                 /* n: rolls kept (0: none yet, the part's default comes first) */
+    uint8_t aon, top, n;                                 /* n: 0 until the part's default End B is made (b9: 1 after; there is no history to count) */
     uint8_t fader;                                       /* 0 End A .. 127 End B */
     uint8_t amt_x;                                       /* SEQ AMT 0..100 as SQM_AMT_DEF ^ it (no knob; 0 = the default, so the table is .bss, not 504 B of flash; tests set it) */
     int8_t dir[SD_N];                                    /* WANDER: each dial's way */
@@ -276,7 +276,7 @@ static void sqm_refresh(uint32_t pi, int force)
     sqm_part_t *q = &sqm[pi];
     const track_t *t = &trk[pi];
     uint32_t len = sqm_len(t), sig, src = rhythm.source[pi];
-    if (!q->n) {                                         /* the part's default End B, the first entry of the ring */
+    if (!q->n) {                                         /* the part's default End B */
         sqm_rand(&q->b[0], 0x5EEDu + 0x2F1u * pi, SQM_AMT(q));
         q->n = 1, q->top = 0;
     }
@@ -482,7 +482,7 @@ static uint32_t seqm_roll(uint32_t pi)
     if (pi >= NSHOWN)
         return 0;
     q = &sqm[pi];
-    sqm_refresh(pi, 0);                                  /* (the default entry first) */
+    sqm_refresh(pi, 0);                                  /* (the default End B first) */
     q->top = (uint8_t)((q->top + 1u) % SQM_HIST);
     sqm_rand(&q->b[q->top], seed, SQM_AMT(q));
     q->n = (uint8_t)(q->n < SQM_HIST ? q->n + 1u : SQM_HIST);
