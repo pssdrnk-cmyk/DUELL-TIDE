@@ -649,7 +649,7 @@ static int sl_run(const sl_opt_t *o, int argc, char **argv)
     if (!fj)
         return sl_die("cannot write", fn);
     {
-        char n1[24], n2[24], cmd[1200] = "";
+        char n1[24], n2[24], cmd[1200] = "", ctl_name[620];
         int a;
         for (a = 1; a < argc; a++) {                      /* (without --out: the same arguments give the same bytes whatever the file is called) */
             if (!strcmp(argv[a], "--out")) {
@@ -659,6 +659,7 @@ static int sl_run(const sl_opt_t *o, int argc, char **argv)
             if (strlen(cmd) + strlen(argv[a]) + 4 < sizeof cmd)
                 strcat(cmd, cmd[0] ? " " : ""), strcat(cmd, argv[a]);
         }
+        snprintf(ctl_name, sizeof ctl_name, "%s_ctl", o->out);
         tide_part_name(0u, n1);
         tide_part_name(1u, n2);
         fprintf(fj, "{\"tool\":\"soundlab\",\"commit\":\"%s\",\"sample_rate\":%u,\"bars\":%u,\"bpm\":%d,\n", SL_COMMIT, (unsigned)FS, nb, (int)song.g[G_BPM]);
@@ -671,7 +672,12 @@ static int sl_run(const sl_opt_t *o, int argc, char **argv)
             sl_jnum(fj, ring_start);
         else
             fputs("null", fj);
-        fprintf(fj, ",\"control\":%s,\n", o->control ? "true" : "false");
+        fputs(",\"control\":", fj);
+        if (o->control)
+            sl_jstr(fj, ctl_name);
+        else
+            fputs("null", fj);
+        fputs(",\n", fj);
         fputs(" \"source\":{\"multi\":", fj);
         if (o->multi > 0)
             fprintf(fj, "%d,\"name\":", o->multi);
@@ -737,7 +743,7 @@ static int sl_run(const sl_opt_t *o, int argc, char **argv)
         fputs("]},\n", fj);
         fputs(" \"command\":", fj);
         sl_jstr(fj, cmd);
-        fputs(",\n \"bar_t\":[", fj);
+        fputs(",\n \"bar_starts\":[", fj);
         for (b = 0; b <= nb; b++)
             fprintf(fj, "%s%.6f", b ? "," : "", bar_t[b]);
         fputs("],\n \"events\":[", fj);
@@ -747,19 +753,14 @@ static int sl_run(const sl_opt_t *o, int argc, char **argv)
             if (e->kind == EV_KNOB)
                 fprintf(fj, "\"kind\":\"knob\",\"set\":\"%s\",\"k\":%d,\"detents\":%d,\"bar\":%d}", SL_SET[e->set], e->k, e->det, e->bar);
             else if (e->kind == EV_STEP)
-                fprintf(fj, "\"kind\":\"fx_time_step\",\"delta\":%d,\"absolute\":%s,\"to\":%d,\"bar\":%d}", e->delta, e->absolute ? "true" : "false", e->val, e->bar);
+                fprintf(fj, "\"kind\":\"fx_time\",\"sample\":%ld,\"delta\":%d,\"absolute\":%s,\"to\":%d,\"bar\":%d}", (long)(log_t[a] * FS + 0.5), e->delta, e->absolute ? "true" : "false", e->val, e->bar);
             else
                 fprintf(fj, "\"kind\":\"set\",\"name\":\"%s\",\"value\":%d,\"part\":%d,\"bar\":%d}", e->name, e->val, e->pi, e->bar);
         }
         fputs(nlog ? "\n ],\n" : "],\n", fj);
         fputs(" \"voices\":[", fj);
         for (i = 0; i < nvoice; i++) {
-            fprintf(fj, "%s\n  {\"t0\":%.6f,\"tr\":", i ? "," : "", voice[i].t0);
-            if (voice[i].tr >= 0.0)
-                fprintf(fj, "%.6f", voice[i].tr);
-            else
-                fputs("null", fj);
-            fprintf(fj, ",\"t1\":%.6f,\"part\":%d,\"note\":%d,\"vel\":%d,\"sound\":", voice[i].t1, voice[i].part, voice[i].note, voice[i].vel);
+            fprintf(fj, "%s\n  {\"t0\":%.6f,\"t1\":%.6f,\"t_end\":%.6f,\"part\":%d,\"note\":%d,\"vel\":%d,\"sound\":", i ? "," : "", voice[i].t0, voice[i].tr >= 0.0 ? voice[i].tr : voice[i].t1, voice[i].t1, voice[i].part, voice[i].note, voice[i].vel);
             sl_jstr(fj, voice[i].name);
             fputc('}', fj);
         }
