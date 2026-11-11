@@ -691,7 +691,7 @@ static void tide_track(int32_t y, int32_t x0, int32_t x1, uint32_t c, uint32_t p
         ui_part_tag(part, y, ui_part_hot(part));
     cv_rrect(x0, y - 1, x1 - x0 + 1, 3, 1, T_RAISE, T_BG);
     if (glide_running() && ((gl.on >> c) & 1u) && ((gl.mask >> part) & 1u)) {
-        int32_t a = tide_x(x0, x1, gl.from[c]), b = gl.to ? x1 : x0;
+        int32_t a = tide_x(x0, x1, gl.from[c][part]), b = gl.to ? x1 : x0;
         cv_rrect(a < b ? a : b, y - 1, (a < b ? b - a : a - b) + 1, 3, 1, ux.bw ? T_MID : T_TINT, T_RAISE);   /* (MONO has no tint: its black erased the track) */
     }
     cv_rrect(x - 2, y - 4, 5, 9, 2, kc, T_BG);
