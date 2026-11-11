@@ -28,7 +28,9 @@ while [ $# -gt 0 ]; do
         --changed=*) CHANGED="${1#--changed=}"; FAST=1; shift ;;
         --changed) FAST=1; shift
             CHANGED="fork/b9"
-            if [ $# -gt 0 ] && case "$1" in -*) false ;; esac && git rev-parse --verify -q "$1^{commit}" >/dev/null 2>&1 && ! grep -qw -- "$1" host_tests.sh 2>/dev/null; then CHANGED="$1"; shift; fi ;;
+            # (the next word is the BASE if it names a commit and is not a group of host_tests.sh)
+            if [ $# -gt 0 ] && case "$1" in -*) false ;; esac && git rev-parse --verify -q "$1^{commit}" >/dev/null 2>&1 \
+                && ! sed -n 's/^want="\${\*:-\([^"]*\)}"$/\1/p' host_tests.sh | tr ' ' '\n' | grep -qxF -- "$1"; then CHANGED="$1"; shift; fi ;;
         --shard) SHARD="$2"; FAST=1; shift 2 ;;
         --host-only) HOSTONLY=1; shift ;;
         --no-cache) NOCACHE=1; shift ;;
