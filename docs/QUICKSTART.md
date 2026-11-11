@@ -148,7 +148,15 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
   Holding it for **0.6 s** (or pressing it twice) is **STOP ALL**: it silences everything, the delay, chorus and reverb tails too.
   A single press of STOP leaves the tails to ring out.
 - Two envelopes, two LFOs and an 8-slot modulation matrix per part. AMP ENV is the amplitude envelope, ENV 2 the filter envelope.
-- **Filters:** every engine has the multimode filter: **MULTI FILTER 1/2** is CUT, RES, MODE and SLOPE (RES gives resonance over the whole knob: on the 12 dB slope the peak is about 1 dB at 32, 6 dB at 64, 11 dB at 96 and 17 dB at 127; CUT is smoothed over a few milliseconds, so a sweep or CC74 does not zipper); **MULTI FILTER 2/2** is KTRK (the cutoff follows the note you play, -100 to +100 %; a new or initialised sound and most factory sounds start at +51 %, the basses, percussion and kicks at 0), then ENV 2 and LFO 1, their amounts on this filter's cutoff (the same values are on the DEST pages of those modules: ENV 2 DEST, LFO 1 DEST). The engines' own filter pages (VCF, TRIO FILTER, NOISE FILT) are gone. A second filter, the **TWIN FILTER**, comes after it (TYPE OFF at first; TWIN MOD and TWIN CHAIN show only while it is on).
+- **Filters:** every engine has the multimode filter, on two pages.
+  - **MULTI FILTER 1/2:** CUT, RES, MODE and SLOPE.
+    - RES gives resonance over the whole knob. On the 12 dB slope the peak is about 1 dB at 32, 6 dB at 64, 11 dB at 96 and 17 dB at 127.
+    - CUT is smoothed over a few milliseconds, so a sweep or CC74 does not zipper.
+  - **MULTI FILTER 2/2:** KTRK, then ENV 2 and LFO 1.
+    - KTRK makes the cutoff follow the note you play, from -100 to +100 %. A new or initialised sound and most factory sounds start at +51 %; the basses, percussion and kicks start at 0.
+    - ENV 2 and LFO 1 are their amounts on this filter's cutoff. The same values are on the DEST pages of those modules: ENV 2 DEST and LFO 1 DEST.
+  - The engines' own filter pages (VCF, TRIO FILTER, NOISE FILT) are gone.
+  - A second filter, the **TWIN FILTER**, comes after the first. TYPE is OFF at first; TWIN MOD and TWIN CHAIN show only while it is on.
 - **Quick edit:** hold **EDIT**, **LFO**, **ENV**, **ARP** or **GLO** for a moment and the four knobs become performance controls.
 
   The header changes to show which quick layer is active: **QUICK EDIT**, **QUICK LFO**, **QUICK ENV**, **QUICK ARP** or **QUICK GLO** with a small bolt; it also shows the one part they edit.
