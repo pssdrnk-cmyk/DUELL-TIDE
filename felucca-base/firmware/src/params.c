@@ -954,7 +954,7 @@ static const page_t PAGES[] = {
     {"ENV 2 DEST", FAM_ENV, SC_TRACK, GR_ADSR, {P_E2FLT, XW_BASE + X_E2BLD, XW_BASE + X_E2DRV, XW_BASE + X_E2RES}},   /* DUELL 1.1 (owner): MULTI CUTOFF, FILTER BLEND, FILTER DRIVE, MULTI RES (the TIMBRE card is gone and no longer acts; P_E2SHP stays a stored id, never read) */
     {"LFO 1", FAM_LFO, SC_TRACK, GR_LFO, {P_LWAVE, P_LRATE, P_LSYNC, P_LFADE}},   /* WAVE RATE SYNC FADE: the shape, the speed (SYNC replaces RATE) */
     {"LFO 1 TRIG", FAM_LFO, SC_TRACK, GR_LFO, {P_LTRIG, P_LPHASE, P_LPOL, XW_BASE + X_LFO1LVL}},   /* how it starts: TRIG, the start PHS, POL */
-    {"LFO 1 DEST", FAM_LFO, SC_TRACK, GR_LFO, {P_LD_PIT, P_LD_FLT, P_LD_SHP, P_LD_AMP}},   /* 0.2.25 layout round (owner): the DEST pages draw their envelope's / LFO's curve as its first page (ui_graph.c env_of / lfo_is2) */
+    {"LFO 1 DEST", FAM_LFO, SC_TRACK, GR_LFO, {P_LD_PIT, P_LD_FLT, P_LD_SHP, P_LD_AMP}},   /* 0.2.25 layout round (owner): the DEST pages draw their envelope's / LFO's curve as its first page (ui_graph.c env_of) */
     {"LFO 2", FAM_LFO, SC_TRACK, GR_LFO, {P_L2WAVE, P_L2RATE, P_L2SYNC, P_L2FADE}},   /* DUELL: LFO 2, a matrix source */
     {"LFO 2 TRIG", FAM_LFO, SC_TRACK, GR_LFO, {P_L2TRIG, P_L2PHASE, P_L2POL, XW_BASE + X_LFO2LVL}},   /* DUELL 1.1: K4 LEVEL, the LFO's master depth */
     {"LFO 2 DEST", FAM_LFO, SC_TRACK, GR_LFO, {XW_BASE + X_LFO2, XW_BASE + X_L2RES2, XW_BASE + X_L2FMODE, XW_BASE + X_L2BLD}},   /* DUELL 1.1 (owner): TWIN CUTOFF (the stored X_LFO2, also on TWIN MOD), TWIN RES, MULTI MODE, FILTER BLEND. The old PITCH / MULTI CUTOFF / TIMBRE cards are gone and no longer act (P_L2PIT / P_L2FLT / P_L2SHP stay stored ids, never read; the matrix reaches the same destinations) */
