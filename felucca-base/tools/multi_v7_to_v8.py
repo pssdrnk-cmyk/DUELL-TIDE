@@ -32,6 +32,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import endb
 MU_G_AT, MB_N, PS_STEP, MU_STEP, FM6_PACKED, NSHOWN, NX7, NG7, NP = 20, 7, 9, 7, 128, 2, 16, 27, 127
 # core.h's global ids that multi.c MU_GLOBAL stores: BPM SWING, DTIME..CDEPTH, DMRATE DMDEP, DMODE, SHMOD, RLOCUT, RTYPE,
 # PINGSPREAD, SHPITCH (the ids once G_MIDI, G_SYNC, G_INFO, G_NAME, G_FREE26: core.h)
@@ -182,6 +184,14 @@ def compile_harness():
         sys.exit("multi_v7_to_v8: tests/multi_v7_endb.c does not compile")
 
 
+def blk_form(eng, blk):
+    """the harness is the firmware, and morph_bv_make sets MBV_W4 in every block it makes (b9). A converted 1.0 record is a record from before b8: its block says W4 only where
+    ANALOG's WAVE is in it (tools/endb.py encode), so the blocks without it stay byte for byte what 1.1 has (the committed scenes, tests/multi_v7_to_v8_test.py)"""
+    if blk and blk[0] & 8 and not (eng == 0 and blk[2 + (endb.E0 >> 3)] >> (endb.E0 & 7) & 1):
+        return bytes([blk[0] & ~8]) + blk[1:]
+    return blk
+
+
 def convert(records):
     """version 7 records (bytes) -> (version 8 records, parsed v7); the End B blocks from the harness (compiled first). V7Error on a record it cannot parse"""
     defs = xb_defs()
@@ -194,7 +204,7 @@ def convert(records):
     outl = r.stdout.splitlines()
     if r.returncode or len(outl) != len(parsed):
         sys.exit("multi_v7_to_v8: the harness failed (%d): %s" % (r.returncode, r.stderr.strip()))
-    return [build_v8(v, defs, tuple(b"" if w == "-" else bytes.fromhex(w) for w in ln.split())) for v, ln in zip(parsed, outl)], parsed
+    return [build_v8(v, defs, tuple(blk_form(p["eng"], b"" if w == "-" else bytes.fromhex(w)) for p, w in zip(v[2], ln.split()))) for v, ln in zip(parsed, outl)], parsed
 
 
 def main():
