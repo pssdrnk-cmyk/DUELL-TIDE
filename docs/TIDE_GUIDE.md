@@ -47,7 +47,17 @@ These are the sound's own settings: they record into the pattern with REC armed,
 
 **Hold OCT- and turn a knob:** knob 1 goes back to your original sound and pattern (the glide stops, as OCT- + K1 on AUTO TIDE); knobs 2 to 4 go back to the value the loaded sound had.
 
-The fader's position (A, 1 to 126, B) sits beside knob 1's label; the slim row under the picture shows knobs 2 to 4 as FLT, RSN and ECH, each with its value, and the footer shows both parts' patches. Most of the page shows the sound itself as waves, like an oscilloscope: a held note stands still, a chord beats, the newest wave in front, the older ones fainter behind it; at rest the lines lie flat. ALGORITHM picks whose: PART 1, PART 2, or both (the middle: one above the other). **Hold SAVE** saves the patch; with both parts selected each part goes over its own slot.
+- The fader's position (A, 1 to 126, B) sits beside knob 1's label.
+- The slim row under the picture shows knobs 2 to 4 as FLT, RSN and ECH, each with its value.
+- The footer shows both parts' patches.
+- Most of the page shows the sound itself as waves, like an oscilloscope:
+  - a held note stands still,
+  - a chord beats,
+  - the newest wave in front,
+  - the older ones fainter behind it;
+  - at rest the lines lie flat.
+- ALGORITHM picks whose: PART 1, PART 2, or both (the middle: one above the other).
+- **Hold SAVE** saves the patch; with both parts selected each part goes over its own slot.
 
 ## 2. AUTO TIDE (the page you live on)
 
