@@ -119,7 +119,6 @@ Ten rows: STYLE, MODE, TARGET, ARC, ROLL TYPE and AMOUNT for the tide, then REC,
 **What STYLE sets without a row.** These were rows until `1.0.0-b6`; now each STYLE has its own values (the table below) and they act in automatic WANDER / JOURNEY:
 
 - **Vary bars** (EVERY 4TH or EVERY BAR): how often the pattern plays its variation.
-- **Turns** (TOGETHER, TAKE TURNS, LEAD): a stored value that plays nothing since `1.0.0-b7`. The two parts answer each other anyway (call and answer, below).
 - **Poly** (OFF, GENTLE, WIDE): now and then one part's loop is a little shorter, so its motif drifts against the beat, then lines up again at a phrase. Your stored pattern is never changed. Never on a bass part; a shortened loop ends when ARC's breakdown begins.
 - **Offbeat** (OFF, SOFT, PUSH): the pattern edits that move a hit by a 16th lean towards the "and" (the off-beat 8th), with an occasional push into the beat. The beats never move.
 - **Wash** (OFF, LOW, MID, HIGH): the breath of a trip: filter dip, send swell and a wash where sounds cross.
@@ -255,7 +254,6 @@ Merged on the development line, in `1.0.0-b1` and after it (the source is the re
 
 | Feature | What it does |
 |---|---|
-| **TURNS has three values** | TOGETHER, TAKE TURNS, LEAD. ECHO is folded into LEAD (it played like it); a stored ECHO reads as LEAD and STYLE PEAK uses LEAD. LEAD answers only on lead and pluck lines. (Since `1.0.0-b7` STYLE sets it; there is no row.) |
 | **The motif is kept** | The automatic edits leave a pattern's anchors alone and a hit never moves more than two 16ths; see TIDE SETTINGS. |
 | **Dynamics** | Louder in ARC's late rise and peak, softer in its drop and breakdown and on a LEAD answer's bars. No setting. |
 | **Loads start as written** | A multi, project or pattern load drops the old variation and pitch walk, puts the parts at A and starts ARC again at RISE. |
@@ -277,7 +275,7 @@ Merged on the development line, in `1.0.0-b1` and after it (the source is the re
 | **ROLL TYPE no longer switches the rhythm off** | ARC and the pattern's movement act in WANDER and JOURNEY whatever ROLL TYPE is. ROLL TYPE is dim under JOURNEY, where it does nothing. |
 | **DUB walks your sounds** | STYLE DUB plays WANDER: the multi's own sounds stay and evolve, and the level and brightness stay steadier. AMBIENT plays without the shortened loops (poly OFF). |
 | **An arc you can hear** | ARC's phases fall on 8-bar boundaries (an arc is 40 to 64 bars), the breakdown keeps each part's main hits, plays chords in two voices and drops the level by 2 to 5 dB, the first arc after PLAY drops under ARC DROP, and ARP SEQ parts follow ARC's dynamics too. In the breakdown the parts thin by voices and level; their number of hits drops less. |
-| **Call and answer** | In WANDER and JOURNEY the two parts take turns bar by bar: one plays out while the other steps back to its main hits; both play the fourth bar. A bass or pad is never pushed back. TURNS plays nothing now. |
+| **Call and answer** | In WANDER and JOURNEY the two parts take turns bar by bar: one plays out while the other steps back to its main hits; both play the fourth bar. A bass or pad is never pushed back. |
 | **The bass is left alone** | No POLY and no VOIC on the bass part, a shortened loop ends when ARC's breakdown begins. |
 | **Motifs stay whole** | A figure of 5 to 7 hits keeps 4 of 5 in place; a figure with one free hit keeps all of them outside the breakdown. |
 | **The chord part breathes** | Its voicing opens at ARC's peak and closes in the breakdown (octaves only), and its variation bar plays a house or dub-techno rhythm cell. |
