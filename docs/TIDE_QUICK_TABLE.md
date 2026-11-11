@@ -23,7 +23,7 @@ TIME (K3) is how many bars one trip takes; WAIT (K4) is how many bars it rests a
 | **MODE** | **EVOLVE**, TRAVEL | The tide mode, the same as K2 on AUTO TIDE (table above). |
 | **TARGET** | **BOTH**, SOUND, SEQ | What the glide moves: the sound, the pattern, or both. |
 | **ARC** | OFF, **RISE**, DROP | A long shape in 8-bar phrases: builds up (more syncopation, brighter), peaks, eases into a breakdown where the parts thin out, recovers. DROP also drops out on some arcs; PEAK's first arc always drops. Hand drop: hold OCT- and turn K2 on AUTO TIDE. |
-| **KNOBS** | **AUTO**, STD, DB, HS, TC, AC, EL, AM | Which set K2-K4 play on HOME page 1; AUTO reads the multi's 2-letter name prefix. New End Bs are always MUSIC. See the sets in the [TIDE guide](TIDE_GUIDE.md). |
+| **KNOBS** | **AUTO**, STD, DUB, HSE, TECH, ACID, ELEC, AMB | Which set K2-K4 play on HOME page 1; AUTO reads the tag (first word) of the multi's name. New End Bs are always MUSIC. See the sets in the [TIDE guide](TIDE_GUIDE.md). |
 | **AMOUNT** | 0 to 100 % (**15 %**) | How far a roll may go (the selected part's; BOTH moves each part by the same steps). Not part of a STYLE. |
 | **REC** | **ADD**, REPLACE | Live recording into a step that holds notes: add to them, or take their place. Not part of a STYLE. |
 | **PLAY MODE** | **LAYER**, STEREO, DUEL | The output mode; It is what ALGORITHM's middle plays; changing it moves ALGORITHM to the middle (held notes let go). |

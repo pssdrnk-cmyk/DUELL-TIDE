@@ -108,24 +108,24 @@ Ten rows: STYLE, MODE, TARGET, ARC, KNOBS and AMOUNT for the tide, then REC, PLA
 | **MODE** | EVOLVE, TRAVEL (default EVOLVE) | The AUTO TIDE mode, the same setting as K2 on AUTO TIDE (section 2). The default comes from STYLE DUB: EVOLVE. | EVOLVE |
 | **TARGET** | BOTH, SOUND, SEQ | What the glide moves: the sound, the pattern, or both together. BOTH links the two faders; the MORPH fader moved by hand drags the SEQ fader with it. | BOTH |
 | **ARC** | OFF, RISE, DROP | In automatic EVOLVE / TRAVEL with the pattern in TARGET the tide follows a long shape made of 8-bar phrases: it rises (more syncopation and repeats, brighter sounds), holds a peak, then eases into a breakdown, and recovers. One arc is 40 to 64 bars in 8-bar steps: RISE 16 to 32 bars, PEAK 8 to 16, BREAK 8 to 16 (a DROP is its first 8: two silent bars, then thinned), RECOVER 8. In the breakdown both parts keep their main hits, chords play two voices and everything is softer. A chord part's voicing opens at the peak and closes in the breakdown (octaves only, no new notes). DROP drops on the first arc after PLAY (about 40 seconds in), then on about half of the arcs, and the shape differs from night to night. The status line shows the phase. STOP and PLAY only pause the arc: PLAY goes on where it was. A load (multi, project, pattern) or a K1 stop starts it again at RISE. **Hand drop:** hold OCT- and turn K2 on the AUTO TIDE page; the drop lands at the next 8-bar step (a second turn cancels it). Dim with ONCE, LOOP or DRIFT, or TARGET SOUND. | RISE |
-| **KNOBS** | AUTO, STD, DB, HS, TC, AC, EL, AM | Which set K2, K3 and K4 play on HOME page 1 (K1 is always MORPH). AUTO reads the 2-letter prefix of the loaded multi's name (a single sound or a name with no prefix: STD). The sets are in the table under this one. Every new End B is rolled MUSIC: five dials (bright, movement, shape, space, character) inside the ranges where that kind of sound actually lives, so a brighter end is not a louder one. There is no ROLL TYPE row any more; a unit that had SMART or WILD rolls MUSIC from now on, and sounds saved earlier recall exactly the End B they had. | AUTO |
+| **KNOBS** | AUTO, STD, DUB, HSE, TECH, ACID, ELEC, AMB | Which set K2, K3 and K4 play on HOME page 1 (K1 is always MORPH). AUTO reads the tag (first word) of the loaded multi's name (a single sound or a name with no tag: STD). The sets are in the table under this one. Every new End B is rolled MUSIC: five dials (bright, movement, shape, space, character) inside the ranges where that kind of sound actually lives, so a brighter end is not a louder one. There is no ROLL TYPE row any more; a unit that had SMART or WILD rolls MUSIC from now on, and sounds saved earlier recall exactly the End B they had. | AUTO |
 | **AMOUNT** | 0 to 100 % | How far a roll may go, the selected part's (with BOTH each part moves by the same steps). *Start: leave it.* The musical roll has its own sensible scale. A sound or multi load keeps your AMOUNT. Not part of a STYLE. It still shapes a roll in TRAVEL (OCT+ and knob 1 on the MORPH page), so it is never dim. Until 1.0.0-b7 it was knob 4 of the MORPH page. | 15 % |
 | **REC** | ADD, REPLACE | Live recording (REC armed while PLAY runs), not part of any STYLE: a STYLE pick leaves it and changing it does not turn STYLE into CUSTOM. ADD: a note you play into a step that already holds notes is added to them (a chord of up to 4; a MONO, LEGATO or UNISON part keeps one note per step). REPLACE: the first note you play into a step in a pass clears that step's old notes and takes their place; more notes played into the same step in that pass (a chord played together) are added; steps you do not play into stay as they are (nothing is erased as the playhead passes). A held note still ties the following steps in both. On an ARP SEQ part a key sets the step's note, in both modes: its steps hold one note each, so a second key into the same step takes its place. Saved with the other settings. | ADD |
 | **PLAY MODE** | LAYER, STEREO, DUEL | The output mode. LAYER: both parts on the keys. STEREO: both parts, one stereo field. DUEL: part 1 left, part 2 right. The header says PLAY MODE and the value. It names ALGORITHM's middle; changing it moves ALGORITHM to the middle. A change lets go of held notes. | LAYER |
 | **XFADE** | 0 to 100 % | The velocity crossfade between the parts. LAYER only. | 0 |
 | **SPLIT** | OFF, MIDDLE, then a note | The key split point: below it part 1, from it part 2. MIDDLE splits the keys in the middle wherever OCT- / OCT+ put them (the 14th of the 27 keys starts part 2: F#4 at octave 0; MIDI notes split at the note that key plays now). Acts in ALGORITHM's middle, in LAYER, STEREO and DUEL (with one part selected it says 2 PARTS ONLY). Out of OFF the first turn right is MIDDLE, the next the note it stands for. | OFF |
 
-The KNOBS sets (HOME page 1; K1 is always MORPH; AUTO picks the set from the 2-letter prefix of the multi's name):
+The KNOBS sets (HOME page 1; K1 is always MORPH; AUTO picks the set from the tag, the first word of the multi's name; a multi you save with one of these tags as its first word gets that set too):
 
 | Set | K2 | K3 | K4 |
 |---|---|---|---|
-| **STD** (no prefix, single sounds) | FLT: cutoff | RSN: resonance | ECH: echo send |
-| **DB** dub | THROW: echo send, a little reverb send | SPACE: delay feedback up to runaway, delay colour darker as it rises | TIME: delay time in note values |
-| **HS** house | FLT: cutoff + a touch of resonance | PUMP: duck depth | ROOM: reverb send + release longer |
-| **TC** techno | TENSE: cutoff + resonance + env to filter | STAB: decay short to long | WASH: reverb send + echo send |
-| **AC** acid | SQUELCH: cutoff + resonance | BITE: env to filter up + decay shorter | DIRT: saturation |
-| **EL** electro / IDM | FLT: cutoff | GRIT: saturation + chorus | GLITCH: arp / seq gate shorter + step probability lower |
-| **AM** ambient / drone | BLOOM: attack + release longer + reverb send | DRIFT: LFO to filter deeper + LFO rate slower | SPACE: echo + reverb sends |
+| **STD** (no tag, single sounds) | FLT | RSN | ECH |
+| **DUB** | SEND | FDBK | TIME |
+| **HSE** house | FLT | PUMP | REV |
+| **TECH** techno | RISE | DEC | WASH |
+| **ACID** | FLT | BITE | DIRT |
+| **ELEC** electro / IDM | FLT | GRIT | SKIP |
+| **AMB** ambient / drone | FADE | MOVE | ROOM |
 
 **What STYLE sets without a row.** These were rows until `1.0.0-b6`; now each STYLE has its own values (the table below) and they act in automatic EVOLVE / TRAVEL:
 
@@ -189,7 +189,7 @@ Defaults with no saved settings (a new unit, or after ERASE DATA): STYLE DUB, th
 
 DUB keeps the multi's own sounds and walks them (EVOLVE); TRAVEL, which travels through other factory sounds, is the mode of AMBIENT and PEAK, or yours by hand on the MODE row.
 
-The built-in drone multis M17 AM DUNE HORN and M18 AM VOID DEEP (SAVE > MULTIS, 1.0.0-b6) behave as follows:
+The built-in drone multis M17 AMB DUNEHORN and M18 AMB VOID (SAVE > MULTIS, 1.0.0-b6) behave as follows:
 - each has one part on a slow sequence over the held chord, while the other part holds the chord
 - DUNE HORN: the horn swells once a bar — root, root, fourth, root
 - VOID DEEP: the solar wind turns every 8 to 16 seconds — root, a tone up, the fourth
@@ -219,7 +219,7 @@ DUEL (part 1 left, part 2 right, effects separate), STEREO, LAYER. This is stock
 
 ## First start
 
-A new unit (or after ERASE DATA) comes up as multi **M02 DB DUB CHORD** with STYLE DUB (AUTO TIDE on EVOLVE). Its two 16-step patterns play on PLAY with no key held (ARP SEQ). Press PLAY. With no notes coming in TIDE plays its own chord on C; send or hold one note to set its key. With REC armed the pattern keeps playing; the keys sound as you play them and go into the pattern (the REC row of TIDE SETTINGS chooses ADD or REPLACE for ordinary parts).
+A new unit (or after ERASE DATA) comes up as multi **M02 DUB CHORD** with STYLE DUB (AUTO TIDE on EVOLVE). Its two 16-step patterns play on PLAY with no key held (ARP SEQ). Press PLAY. With no notes coming in TIDE plays its own chord on C; send or hold one note to set its key. With REC armed the pattern keeps playing; the keys sound as you play them and go into the pattern (the REC row of TIDE SETTINGS chooses ADD or REPLACE for ordinary parts).
 
 ## When the unit is busy
 
@@ -291,7 +291,7 @@ Merged on the development line, in `1.0.0-b1` and after it (the source is the re
 | **Motifs stay whole** | A figure of 5 to 7 hits keeps 4 of 5 in place; a figure with one free hit keeps all of them outside the breakdown. |
 | **The chord part breathes** | Its voicing opens at ARC's peak and closes in the breakdown (octaves only), and its variation bar plays a house or dub-techno rhythm cell. |
 | **The dip is short** | The crossing between two sounds closes over 2 bars, stays closed for 1 and opens over 2. A part's mixer level stays yours: TRAVEL never changes it, and a part the multi turned down stays quieter on the sounds TRAVEL travels to. TRAVEL started with the fader away from A no longer swaps the sound you hear. Not as bright as hoped: the blend between two sounds still dulls mid-trip. |
-| **The reel: fifteen new multis** | M01 DB BASIC CHORD (dub techno), M02 DB DUB CHORD (dub techno, rebuilt over a held low pad with its root an octave down), M03 HS JUNO DEEP and M04 HS LATE RHODES (deep house), M05 HS ORGAN HOUSE and M06 HS PIANO HOUSE (classic house), M07 TC DETROIT STAB and M08 TC HI-TECH SOUL (Detroit), M09 AC HYPNO 303 (acid techno, 128 BPM; was MINIMAL 12 until `1.0.0-b8`), M10 AC TWO 303S (acid techno, 130 BPM; was SEVEN LOOP until `1.0.0-b8`), M11 AC ACID LINES (Chicago acid house, 122 BPM), M12 EL ROBOT FUNK and M13 EL DEEP SEA ARP (electro), M14 EL WARPED TAPE (IDM), M15 AM BERLIN RUN (Berlin school), M16 AM TWO LOOPS (ambient). A genre each; all play both parts on PLAY with no key held. Hold a key and a multi moves by its distance from C; JUNO DEEP, PIANO HOUSE, HYPNO 303, TWO 303S and ACID LINES are written note by note and stay in their key (a key you play sounds on top). STYLE suggestions: DUB for M01 and M02, DEEP for M03 to M05, M08 and M15, PEAK for M06, M07 and M13, MINIMAL for M09 to M12, AMBIENT for M14 and M16 (DUB, DEEP and MINIMAL keep a multi's own two sounds). |
+| **The reel: fifteen new multis** | M01 DUB BASIC (dub techno), M02 DUB CHORD (dub techno, rebuilt over a held low pad with its root an octave down), M03 HSE JUNO and M04 HSE RHODES (deep house), M05 HSE ORGAN and M06 HSE PIANO (classic house), M07 TECH DETROIT and M08 TECH SOUL (Detroit), M09 ACID HYPNO (acid techno, 128 BPM; was MINIMAL 12 until `1.0.0-b8`), M10 ACID TWO 303 (acid techno, 130 BPM; was SEVEN LOOP until `1.0.0-b8`), M11 ACID LINES (Chicago acid house, 122 BPM), M12 ELEC ROBOT and M13 ELEC DEEPSEA (electro), M14 ELEC WARPED (IDM), M15 AMB BERLIN (Berlin school), M16 AMB LOOPS (ambient). A genre each; all play both parts on PLAY with no key held. Hold a key and a multi moves by its distance from C; JUNO DEEP, PIANO HOUSE, HYPNO 303, TWO 303S and ACID LINES are written note by note and stay in their key (a key you play sounds on top). STYLE suggestions: DUB for M01 and M02, DEEP for M03 to M05, M08 and M15, PEAK for M06, M07 and M13, MINIMAL for M09 to M12, AMBIENT for M14 and M16 (DUB, DEEP and MINIMAL keep a multi's own two sounds). |
 | **Beds that play themselves** | BASIC CHORD's low held bed, DUB CHORD's low pad, DUNE HORN's and VOID DEEP's shimmer sound on PLAY with no key held. |
 | **TIDE comes back after your hand** | A hand on the MORPH or SEQ fader holds only that part; 8 bars after you let go TIDE takes it back from where you left it, and the other part, the pattern's movement and ARC never stop. AUTO TIDE says HAND  BACK IN n BARS. |
 | **No keys, still music** | With no notes coming in TIDE plays its own chord on C; send or hold one note to set its key. A part that waits for keys plays TIDE's chord while AUTO TIDE runs; a key takes the part over until the next PLAY. |
