@@ -435,17 +435,18 @@ static void editb_worst_multi(void)
 }
 
 #if DUELL_TIDE
-/* TIDE 1.0.0-b6: the built-in drone multis M17 AMB DUNEHORN and M18 AMB VOID (ROM only, MU_ROM): they show, load and preview as the factory multis do and match
+/* TIDE 1.0.0-b6: the built-in drone multis M17 AMB DUNEHORN and M18 AMB GROWL (b9 rework2: was AMB VOID) (ROM only, MU_ROM): they show, load and preview as the factory multis do and match
  * their ROM records byte for byte; SAVE, rename and ERASE on them are refused and write nothing; M01..M16 and the flash objects are as before; MIDI program
  * change 16 and 17 load them, 18 and up are ignored; while one is loaded TIDE plays STYLE DRONE, another multi brings the STYLE back, the saved one never changes */
 static void drones(void)
 {
-    static const char *const DN[2] = {"AMB DUNEHORN", "AMB VOID"};
-    static const char *const DS[2][2] = {{"HORN SWELL", "VOID SHIMMER"}, {"VOID SHIMMER", "SOLAR WIND"}};
+    static const char *const DN[2] = {"AMB DUNEHORN", "AMB GROWL"};
+    static const char *const DS[2][2] = {{"HORN SWELL", "VOID SHIMMER"}, {"REESE BASS", "NIGHT DRONE"}};
     /* the sequences (tools/drone_pack.py, b6: owner "I'm missing some sequence from the drone multis"): the part, its RATE (params.c N_DIV: 6 1/2, 7 1/1; b7: the bed beside it is ARP SEQ too, 1/4 = 0, one note tied over its 16 steps), the 16 steps
-     * (a digit: the offset from the held key, '-' a tie, '.' a rest) */
+     * (a digit: the offset from the held key plus DQ_BASE, '-' a tie, '.' a rest; b9 rework2: M18 AMB GROWL moves C3, E flat 3, G3 over its bed on C2: DQ_BASE -12, DQ_BED -24) */
     static const uint8_t DQ[2] = {0, 1}, DQ_RATE[2] = {6, 7};
-    static const char DQ_STEP[2][17] = {"0--.0--.5--.0--.", "0------.2---5--."};
+    static const int8_t DQ_BASE[2] = {0, -12}, DQ_BED[2] = {0, -24};
+    static const char DQ_STEP[2][17] = {"0--.0--.5--.0--.", "0------.3---7--."};
     uint8_t rec[MU_REC_MAX], obj[MU_NOBJ][MU_OBJ_MAX], amt[NSHOWN], set[6];
     uint16_t objn[MU_NOBJ];
     project_t q;
@@ -500,7 +501,7 @@ static void drones(void)
         multi_preview(k, &pv);
         ok &= pv.state == 1u;
     }
-    ck("  M17 AMB DUNEHORN, M18 AMB VOID: used, factory, their names, sounds (HORN SWELL + VOID SHIMMER, VOID SHIMMER + SOLAR WIND), the MULTIS row SEQ / SEQ with notes in the pattern, the preview decodes", ok);
+    ck("  M17 AMB DUNEHORN, M18 AMB GROWL: used, factory, their names, sounds (HORN SWELL + VOID SHIMMER, REESE BASS + NIGHT DRONE), the MULTIS row SEQ / SEQ with notes in the pattern, the preview decodes", ok);
     {   /* 1.0.0-b7: a part with the arp OFF and notes in its pattern plays the sequencer on PLAY: the MULTIS row and the preview say SEQ, not OFF (M03 HSE JUNO, written patterns on both parts) */
         static proj_trk_t d;
         uint8_t v[4];
@@ -550,13 +551,13 @@ static void drones(void)
             ok &= s->p[P_AMODE] == AM_SEQ_ID && s->p[P_SLEN] == 16 && s->p[P_AGATE] == 127 && s->p[P_ARATE] == DQ_RATE[k - 16u];
             for (t = 0; ok && t < 16u; t++)
                 ok &= DQ_STEP[k - 16u][t] == '.' ? s->step[t].time == ST_REST : DQ_STEP[k - 16u][t] == '-' ? s->step[t].time == ST_TIE :
-                      s->step[t].time == ST_NOTE && s->step[t].n == 1u && s->step[t].note[0] == 60u + (uint32_t)(DQ_STEP[k - 16u][t] - '0') && !(s->step[t].flags & SF_ACCENT);
-            for (bed_ok = 1, t = 0; t < 16u; t++)     /* (b7: the VOID SHIMMER bed, ARP SEQ 1/4, GATE 127: one note, root, tied over all 16 steps) */
-                bed_ok &= t ? d->step[t].time == ST_TIE : d->step[t].time == ST_NOTE && d->step[t].n == 1u && d->step[t].note[0] == 60u;
+                      s->step[t].time == ST_NOTE && s->step[t].n == 1u && s->step[t].note[0] == (uint32_t)(60 + DQ_BASE[k - 16u] + (DQ_STEP[k - 16u][t] - '0')) && !(s->step[t].flags & SF_ACCENT);
+            for (bed_ok = 1, t = 0; t < 16u; t++)     /* (b7: the bed, ARP SEQ 1/4, GATE 127: one note, the root (M18: two octaves down), tied over all 16 steps) */
+                bed_ok &= t ? d->step[t].time == ST_TIE : d->step[t].time == ST_NOTE && d->step[t].n == 1u && d->step[t].note[0] == (uint32_t)(60 + DQ_BED[k - 16u]);
             ok &= bed_ok && d->p[P_SLEN] == 16 && d->p[P_AGATE] == 127 && d->p[P_ARATE] == 0;
         }
         ck(k == 16u ? "  M17: the ROM record is tools/drone_multis/M17.bin byte for byte (LAYER); LOAD gives its engines, sounds, every value and step; HOLD ALL, 60 BPM; part 1 ARP SEQ 1/2 root root fourth root, part 2 ARP SEQ 1/4 one tied root"
-                    : "  M18: the ROM record is tools/drone_multis/M18.bin byte for byte (LAYER); LOAD gives its engines, sounds, every value and step; HOLD ALL, 60 BPM; part 2 ARP SEQ 1/1 root, a tone up, fourth, part 1 ARP SEQ 1/4 one tied root", ok);
+                    : "  M18: the ROM record is tools/drone_multis/M18.bin byte for byte (LAYER); LOAD gives its engines, sounds, every value and step; HOLD ALL, 60 BPM; part 2 ARP SEQ 1/1 an octave down: root, minor third, fifth, part 1 ARP SEQ 1/4 one tied root two octaves down", ok);
     }
     memcpy(snap, nor, sizeof snap);
     gen = multi_gen();
@@ -630,8 +631,8 @@ static void drones(void)
                 }
                 printf("\n");
             }
-            ck(s == 16u ? "  M17 AMB DUNEHORN from the keys (C E G, LAYER): both parts sound the chord" : "  M18 AMB VOID from the keys (C E G, LAYER): both parts sound the chord",
-               c3 < 27u && e3 < 27u && g3 < 27u && dr[0].n >= 3u && dr[1].n >= 3u);
+            ck(s == 16u ? "  M17 AMB DUNEHORN from the keys (C E G, LAYER): both parts sound the chord" : "  M18 AMB GROWL from the keys (C E G, LAYER): the mono bed sounds, part 2 the chord",
+               c3 < 27u && e3 < 27u && g3 < 27u && dr[0].n >= (s == 17u ? 1u : 3u) && dr[1].n >= 3u);   /* (b9 rework2: M18 AMB GROWL's bed is a mono bass, PRIO LOW: the chord's lowest key, two octaves down) */
         }
     }
     (void)amt; (void)set;
@@ -1093,9 +1094,9 @@ int main(void)
                                            "AMB BERLIN", "AMB LOOPS"};
         static const char *const SN[16][2] = {{"CHORD ECHO", "WARM WASH"}, {"BIG STAB", "SLOW TIDE"}, {"WARM WASH", "RUBBER BAND"},
                                               {"TINE ROOM", "AIR SHIMMER"}, {"DUB DRAWBAR", "ORGAN WASH"}, {"SALOON KEYS", "RAIN STRINGS"},
-                                              {"LOW STAB", "STRING MACH"}, {"SUNDAY KEYS", "BELL STAB"}, {"SQUELCH", "FOG BANK"},
+                                              {"LOW STAB", "LAMPLIGHT"}, {"SUNDAY KEYS", "SYNTH BRASS"}, {"SQUELCH", "FOG BANK"},
                                               {"TIDAL SUB", "SQUELCH"}, {"SQUELCH", "DEEP BLUE"}, {"LADDER BASS", "VOWEL PAD"},
-                                              {"DIGI PLUCK", "PWM PAD"}, {"WAVE CHIMES", "TAPE CLOUD"}, {"ARP PLUCK", "CHOIR LOFT"},
+                                              {"DIGI PLUCK", "PWM PAD"}, {"WAVE CHIMES", "TAPE CLOUD"}, {"RUBBER BAND", "CHOIR LOFT"},
                                               {"FROST BELLS", "EVOLVING PAD"}};
         static const uint8_t MD[16] = {DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER,
                                        DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER};   /* (0.2.25: no factory multi in DUEL; M08 MONO DUEL, the only one, is spare: the owner's HAZY TENSOR, LAYER) */
@@ -1240,7 +1241,7 @@ int main(void)
            str_eq(nm_a, "SQUELCH") && str_eq(ENGINES[trk[0].eng_req]->name, "ANALOG"));
         turn(EN_K3, 40);
 #if DUELL_TIDE
-        ck("  many detents right: stops at the last used, M18 AMB VOID (the built-in drone multi, TIDE b6)", proj_cur == 17u && msg_is("LOADED M18 AMB VOID"));
+        ck("  many detents right: stops at the last used, M18 AMB GROWL (the built-in drone multi, TIDE b6)", proj_cur == 17u && msg_is("LOADED M18 AMB GROWL"));
         turn(EN_K3, -2);
         ck("  2 left: M16 AMB LOOPS (FM6 + WAVE)", proj_cur == 15u && trk[0].eng_req == ENGI_FM6 && str_eq(ENGINES[trk[1].eng_req]->name, "WAVE"));
         turn(EN_K3, 2);
@@ -1752,7 +1753,7 @@ int main(void)
            MU_G_AT + 2u * MU_NG + NSHOWN * (MU_PART_FIX + MBV_MAX + NSTEP * MU_STEP + UPF_PK) + 1u + 2u <= MU_REC_MAX);
     }
 #if DUELL_TIDE
-    drones();                                        /* TIDE b6: M17 AMB DUNEHORN, M18 AMB VOID, ROM only */
+    drones();                                        /* TIDE b6: M17 AMB DUNEHORN, M18 AMB GROWL, ROM only */
 #endif
     keys_drive();                                    /* 6: the factory multis played from the keys (0.2.12; 0.2.23's set) */
     editb_worst_multi();                             /* 7: cloud job G, the worst multi through SAVE (it leaves the state changed: last) */

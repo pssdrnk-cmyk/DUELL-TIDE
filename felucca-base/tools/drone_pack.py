@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
-"""DUELL-TIDE built-in drone multis (TIDE 1.0.0-b6): makes the records of M17 DUNE HORN and M18 VOID DEEP into tools/drone_multis/M17.bin, M18.bin.
+"""DUELL-TIDE built-in drone multis (TIDE 1.0.0-b6): makes the records of M17 DUNE HORN and M18 AMB GROWL (VOID DEEP / AMB VOID until b9) into tools/drone_multis/M17.bin, M18.bin.
 
     python3 tools/drone_pack.py        (needs build/gen: python3 ../gen_only.py; a C compiler)
 
@@ -23,10 +23,12 @@ G = dict(G_BPM=60, G_DTIME="4D", G_DFDBK=60, G_DMIX=64, G_DMODE="PING", G_RTYPE=
 OUT = fm.ROOT / "tools" / "drone_multis"
 
 
-def multi(rom, slot, name, what, a, b, la=98, lb=82, seq=None):
+def multi(rom, slot, name, what, a, b, la=98, lb=82, seq=None, sets=None):
     """seq: (part 0 / 1, ARP RATE, steps), or a list of them: that part plays the SEQUENCER arp (ARP SEQ) on the latched keys, GATE 127; a part without one stays a latched drone (HOLD ALL, arp OFF)"""
     hold = dict(P_AMODE="OFF", P_AHOLD="ALL")
     parts = [dict(sound=a, set=dict(hold, P_LEVEL=la)), dict(sound=b, set=dict(hold, P_LEVEL=lb))]
+    for p, st in enumerate(sets or ()):                  # (b9 rework2: values a part sets on top of its sound, as a factory multi's `set`)
+        parts[p]["set"].update(st)
     for p, rate, steps in ([seq] if isinstance(seq, tuple) else seq or []):
         parts[p]["set"].update(P_AMODE="SEQ", P_ARATE=rate, P_AGATE=127)
         parts[p]["steps"] = steps
@@ -39,6 +41,10 @@ def multi(rom, slot, name, what, a, b, la=98, lb=82, seq=None):
 # note under the held chord. At 60 BPM a 1/4 step is a second. The intervals are the ones that keep the moving part at its latched level (host
 # render, the part alone, against the root): the horn's fifth is +5 dB and the wind's fifth +6, octave +4.5, so neither is used.
 # DUNE HORN: the horn (it speaks at once) swells once a bar, root, root, fourth, root: three beats on and a beat to breathe, a 4-bar loop.
+# b9 rework2 (owner, 11 November 2026: "I would like at least one deep growling drone"; research work/b9/research/drone.md): M18 AMB GROWL replaces VOID DEEP.
+# The bed is REESE BASS (two detuned saws beating slowly, its own sub an octave under) two octaves under the key, C2 with the sub on C1 (an ARP SEQ step's offset: the
+# arp's stand-in key ignores a sound's TRN, so TRN 0 and the octave in the step keep a held key and PLAY alone the same), overdriven a little, its low-pass on a slow LFO,
+# no PUMP duck; above it NIGHT DRONE turns C3, E flat 3, G3 (a dark minor colour, never a semitone against the bed). Was, b6-b9 rc2:
 # VOID DEEP: the solar wind (it takes about 2 s to come up) on 2-second steps over an 8-bar loop: the root for 14 s, a whole tone up for 8 s
 # (the held C E G under D F# A: an open, lydian colour), the fourth for 6 s, each followed by a breath: the wind turns three times in 32 s.
 # b7 (musical review MR2): the VOID SHIMMER bed is an ARP SEQ part with one step tied over the 16, 1/4 each (4 bars; 16 s at 60 BPM), so TIDE's own chord plays it
@@ -47,8 +53,9 @@ BED_STEPS = "0 - - - - - - - - - - - - - - -"
 DRONES = [
     multi(17, 1, "AMB DUNEHORN", "a horn swelling once a bar, root and fourth, with a shimmer of void above it", "HORN SWELL", "VOID SHIMMER", 107, 91,
           seq=[(0, "1/2", "0 - - . 0 - - . 5 - - . 0 - - ."), (1, "1/4", BED_STEPS)]),
-    multi(18, 2, "AMB VOID", "a wide shimmering void with a thin solar wind turning slowly, root, a tone up, the fourth", "VOID SHIMMER", "SOLAR WIND", 106, 90,   # (b7: +10 steps (5 dB) with the bed now sounding on its own, to the set; the b6 levels were 96 / 80; part 2 at 80: the factory rule, -16 .. +4 dB, tests/level_test.c; the b4 pack had 76)
-          seq=[(1, "1/1", "0 - - - - - - . 2 - - - 5 - - ."), (0, "1/4", BED_STEPS)]),
+    multi(18, 2, "AMB GROWL", "a deep growling drone: detuned low saws on C2 with their sub on C1, beating slowly, a little overdrive, the low-pass moving slowly; above it a dark haze turning C3, E flat 3, G3", "REESE BASS", "NIGHT DRONE", 106, 92,
+          seq=[(1, "1/1", "-12 - - - - - - . -9 - - - -5 - - ."), (0, "1/4", "-24" + BED_STEPS[1:])],
+          sets=[dict(P_TRANS=0, P_PRIO="LOW", P_DKDEP=0, P_DIST=45, P_FREEA=66, P_LD_FLT=20, P_EQHG=-6, P_CHOR=40, P_DLY=30, P_REV=70), dict(P_TRANS=0, P_EQHG=-6, P_CHOR=70, P_SPRD=64, P_DLY=40, P_REV=90)]),
 ]
 
 
