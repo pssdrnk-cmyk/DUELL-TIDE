@@ -40,7 +40,7 @@ static const uint8_t JRNY_CTX[171] = {
     212,   /* 0 32 HOLLOW POP: -10.7 dB, 781 Hz */
     202,   /* 0 33 NIGHT DRONE: -12.4 dB, 337 Hz */
     227,   /* 0 34 NEON BRASS: -9.0 dB, 443 Hz */
-    243,   /* 0 35 SOLAR WIND: -6.7 dB, 402 Hz */
+    251,   /* 0 35 SOLAR WIND: -6.0 dB, 371 Hz */
     122,   /* 2 0 ELASTIC BASS: -21.7 dB, 293 Hz */
     114,   /* 2 1 BRAZEN: -22.6 dB, 214 Hz */
     179,   /* 2 2 LAMPLIGHT: -15.2 dB, 438 Hz */
@@ -90,7 +90,7 @@ static const uint8_t JRNY_CTX[171] = {
     129,   /* 6 10 DIAL TONE: -20.9 dB, 177 Hz */
     129,   /* 6 11 SID BASS: -21.3 dB, 150 Hz */
     158,   /* 6 12 SYNC BASS: -17.5 dB, 3259 Hz */
-    219,   /* 6 13 RAIN STRINGS: -9.6 dB, 683 Hz */
+    227,   /* 6 13 RAIN STRINGS: -9.3 dB, 658 Hz */
     195,   /* 6 14 IRON WORKS: -12.6 dB, 567 Hz */
      96,   /* 7 0 PEDAL BASS: -25.1 dB, 57 Hz */
     107,   /* 7 1 SMOKE RING: -23.6 dB, 444 Hz */
@@ -147,7 +147,7 @@ static const uint8_t JRNY_CTX[171] = {
      18,   /* 12 14 FM HAZE: -35.2 dB, 221 Hz */
     162,   /* 12 15 DUB DRAWBAR: -17.4 dB, 316 Hz */
     227,   /* 12 16 BELL STAB: -8.7 dB, 560 Hz */
-    218,   /* 12 17 HORN SWELL: -10.5 dB, 295 Hz */
+    218,   /* 12 17 HORN SWELL: -9.9 dB, 268 Hz */
     203,   /* 14 0 PWM PAD: -11.8 dB, 486 Hz */
     204,   /* 14 1 VOWEL PAD: -12.2 dB, 1062 Hz */
     204,   /* 14 2 GLASS PAD: -12.4 dB, 1006 Hz */
@@ -175,7 +175,7 @@ static const uint8_t JRNY_CTX[171] = {
     213,   /* 14 24 AIR POP: -11.5 dB, 1966 Hz */
     212,   /* 14 25 BOTTLE TAP: -11.3 dB, 1349 Hz */
     212,   /* 14 26 SAND THROAT: -10.5 dB, 988 Hz */
-    227,   /* 14 27 VOID SHIMMER: -8.6 dB, 619 Hz */
+    227,   /* 14 27 VOID SHIMMER: -9.1 dB, 714 Hz */
 };
 /* the list it was measured on: engine e's rows are JRNY_CTX_AT[e] .. JRNY_CTX_AT[e + 1] - 1 (tide_ui.c jctx_of: a sound past them,
  * as in a test build with a sound added, has no row and is treated as unmeasured; host_tests.sh jrnyctx checks them against DS_ENG_AT) */
