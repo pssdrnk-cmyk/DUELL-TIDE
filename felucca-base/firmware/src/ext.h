@@ -37,7 +37,7 @@ enum {                          /* slot numbers (the wide id is 128 + slot) */
     X_CYFALL,                   /* X12 140  CYCLE FALL: 0..127 */
     X_CYCURVE,                  /* X13 141  CYCLE CURVE: -64..+63 (0 = straight) */
     X_CYSYNC,                   /* X14 142  CYCLE SYNC: OFF, ON = 0..1 (OFF) */
-    /* DUELL 1.1 (owner, DEST pages): per-source depth cards that run through the matrix's smooth path (mod.c mod_vr, the virtual routes), and the LFOs' LEVEL. All depths -64..+63 (0) */
+    /* DUELL 1.1 (owner, DEST pages): per-source depth cards that run through the matrix's smooth path (mod.c vr_t + VR[], the virtual routes), and the LFOs' LEVEL. All depths -64..+63 (0) */
     X_ESAT,                     /* X15 143  AMP ENV to SATURATION */
     X_E2BLD,                    /* X16 144  FILTER ENV to FILTER BLEND */
     X_E2DRV,                    /* X17 145  FILTER ENV to FILTER DRIVE */
