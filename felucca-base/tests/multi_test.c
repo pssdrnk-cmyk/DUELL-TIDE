@@ -921,7 +921,23 @@ int main(void)
             mu_note(13u / 2u);
             song.bm = 3;
             project_load(13u);
-            ck("  a record saved by 0.2.19 / 0.2.20 with BASS MONO 100 Hz in byte 5 loads, the bit pattern ignored (the unit's 3 stays)", ok && project_used(13) && song.bm == 3);
+            ck("  a record saved by 0.2.19 / 0.2.20 with BASS MONO 100 Hz in byte 5 loads, the bit pattern is no BASS MONO (read as CLFO 5 since b10; the unit's 3 stays)", ok && project_used(13) && song.bm == 3);
+        }
+        /* b10 CLFO (G_DCLFO): byte 5 bits 1..4 are the delay colour's LFO now: packed as is (bit 0 and bits 5..7 left alone), read back by mu_unpack; 0 (every record written since 0.2.21) is no LFO */
+        {
+            static uint8_t rec3[MU_REC_MAX];
+            project_t q, q2;
+            uint32_t cut, len;
+            uint8_t amt[NSHOWN], set[6];
+            project_capture(&q);
+            q.g[G_DCLFO] = 9;
+            mu_pack(rec3, &q, &cut);
+            ck("  CLFO 9 is stored in byte 5 bits 1..4, bits 5..7 stay 0, a clamped 99 gives 15", (rec3[5] >> 1) == 9 && (rec3[5] >> 5) == 0 && (q.g[G_DCLFO] = 99, mu_pack(rec3, &q, &cut), (rec3[5] >> 1) == 15));
+            q.g[G_DCLFO] = 9;
+            len = mu_pack(rec3, &q, &cut);
+            q2 = q;
+            q2.g[G_DCLFO] = 0;
+            ck("  .. and mu_unpack gives it back (CLFO 9); a record with the bits 0 reads CLFO 0", mu_unpack(&q2, amt, set, rec3, len) && q2.g[G_DCLFO] == 9 && (rec3[5] &= 1u, mu_unpack(&q2, amt, set, rec3, len)) && q2.g[G_DCLFO] == 0);
         }
     }
 

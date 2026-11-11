@@ -364,7 +364,7 @@ static const param_desc_t GP[G_COUNT + 7u] = {
     [G_SAVE] = PE("SAVE", N_GO, 0),
     [G_ENGSEL] = PE("ENG", N_ENGNAME, 0),
     [G_RLOCUT] = PD("LOCUT", F_LOCUT, 0, 127, 75),   /* 0.2.14 (on the id of the old, unused G_ENGGO): the reverb's low cut; 0.2.22: 20 Hz .. 2 kHz, the default 75 = 299 Hz (61 = 88 Hz up to 0.2.21) */
-    [G_CLRSEQ] = PE("CLRSQ", N_GO, 0),
+    [G_DCLFO] = PD("CLFO", F_INT, 0, 15, 0),   /* b9 (on the id of the old CLEAR PATTERN go-value): the delay colour's slow LFO, 0 = off (the delay as before, bit for bit), x 8 COLR units each way at 0.25 Hz (fx_bus.c dly_col) */
     [G_INITSND] = PE("INIT", N_GO, 0),
     /* the reverb's model on the REVERB page: the id of the old GM drum channel (G_DRCH, inert since 1.0) */
     [G_RTYPE] = PE("TYPE", N_RTYPE, 2),         /* HALL at power-on since 1.2 (ROOM before; projects keep theirs) */
@@ -1017,6 +1017,7 @@ static const page_t PAGES[] = {
     {"CHORUS", FAM_GLO, SC_GLOBAL, GR_NONE, {G_CRATE, G_CDEPTH, 0xFF, 0xFF}},
     {"DELAY 1/2", FAM_GLO, SC_GLOBAL, GR_NONE, {G_DMODE, G_DTIME, G_DFDBK, G_DCOLOR}},   /* 0.2.16, top-down: MODE first (DIGITAL, PING-PONG, RANDOM, OCT UP: fx_bus.c; in DUEL all mono, PING-PONG as DIGITAL), then the loop: TIME, FDBK, COLR */
     {"DELAY 2/2", FAM_GLO, SC_GLOBAL, GR_NONE, {G_PINGSPREAD, G_DMRATE, G_DMDEP, G_DMIX}},   /* SPREAD (PING-PONG, RANDOM, OCT UP), the delay's MODULATION RATE, DEPTH (CHANCE in RANDOM / OCT UP), MIX last */
+    {"COLR LFO", FAM_GLO, SC_GLOBAL, GR_NONE, {G_DCLFO, 0xFF, 0xFF, 0xFF}},   /* b9: the delay colour's slow LFO (CLFO: 0 off, 1..15 = +-8 .. +-120 COLR units at 0.25 Hz; DUB BASIC and DUB CHORD use 5) */
     {"REVERB", FAM_GLO, SC_GLOBAL, GR_NONE, {G_RTYPE, G_RSIZE, G_RDAMP, G_RLOCUT}},   /* K4 LOCUT (0.2.14); TYPE: ROOM / SPRING / HALL / SHIM / RESO / PLATE */
     {"SHIMMER", FAM_GLO, SC_GLOBAL, GR_NONE, {G_SHPITCH, G_SHMOD, 0xFF, 0xFF}, VIS_SHIM},   /* 0.2.19: SHIM's own page (ui.c page_visible: skipped by the page buttons and SELECT unless TYPE is SHIM): PITCH (UP, DOWN, BOTH), MOD */
     {MASTER_PAGE_TITLE, FAM_GLO, SC_GLOBAL, GR_MSTG, {G_BM, G_WD, 0xFF, 0xFF}},   /* 0.2.25 layout round (owner): STEREO MASTER, one page for the master stereo stages where WIDTH and MASTER were: K1 BASS MONO (where the low end goes mono:
@@ -1199,7 +1200,7 @@ static const char *const LBL_SHOWN[][2] = {
     {"CUT", "CUTOFF"}, {"VCE", "MODE"}, {"PRIO", "PRIORITY"}, {"GLMOD", "GLIDE MODE"}, {"GLD", "GLIDE"}, {"SPRD", "SPREAD"},
     {"DTUNE", "DETUNE"}, {"DTN", "DETUNE"}, {"DTUN", "DETUNE"},
     {"SWG", "SWING"}, {"CLK", "CLOCK"}, {"COLR", "COLOR"}, {"CRT", "RATE"}, {"CDP", "DEPTH"},
-    {"MRATE", "MOD RATE"}, {"MDEPTH", "MOD DEPTH"}, {"LOCUT", "LOW CUT"}, {"CLRSQ", "CLEAR"},
+    {"MRATE", "MOD RATE"}, {"MDEPTH", "MOD DEPTH"}, {"LOCUT", "LOW CUT"}, {"CLFO", "COLOR LFO"},
     {"LVL", "LEVEL"}, {"SCL", "SCALE"}, {"LEN", "LENGTH"}, {"DIV", "DIVISION"},
     /* the engines (EDIT 1 / EDIT 2 and their mode-dependent cards) */
     {"NOIS", "NOISE"}, {"DRV", "DRIVE"}, {"LINE", "MODE"},

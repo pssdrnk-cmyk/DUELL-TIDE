@@ -702,6 +702,18 @@ busy:
     return 0;
 }
 #endif
+/* The delay loop's colour filter coefficient (COLR): 2000 + COLR x 240. b9 CLFO (G_DCLFO, page COLR LFO): a slow triangle on it, +-(8 x CLFO) COLR units around the set value at 0.25 Hz
+ * (the period 4000 ms of fm1_ms: both buses and every mode see the same phase, no state), kept inside COLR 0..127. CLFO 0 (every older store, a new unit): the plain colour, one load and a compare */
+static int32_t dly_col(void)
+{
+    int32_t col = 2000 + song.g[G_DCOLOR] * 240, d = song.g[G_DCLFO];
+    if (d > 0) {
+        uint32_t t = fm1_ms % 4000u;
+        int32_t tri = (int32_t)(t < 2000u ? t : 4000u - t) - 1000;   /* -1000 .. 1000 */
+        col = clamp(col + ((tri * (d > 15 ? 15 : d) * 8 * 61) >> 8), 2000, 2000 + 127 * 240);   /* (240 / 1000 x 256 = 61: 8 COLR units a step at the triangle's ends) */
+    }
+    return col;
+}
 /* the buses (fx_bus.c): bus A on the globals they always had, bus B (SPLIT, part 2) on its own */
 static uint8_t dm_split;                /* (below: the mix runs SPLIT; RESO reads the part its bus carries) */
 #define BUS_FX fx

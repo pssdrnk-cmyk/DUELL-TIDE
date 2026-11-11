@@ -436,16 +436,16 @@ static void test_tempo(void)
     ui_power_on();
     for (i = 0; i < NPAGES; i++)
         ck = PAGES[i].fam == FAM_GLO && str_eq(PAGES[i].title, "TEMPO") ? i : ck;
-    expect("GLO's pages in order (0.2.25 layout round): MIXER (graph GR_GLO, scope SC_GMIX), TEMPO, CHORUS, DELAY 1/2, DELAY 2/2, REVERB, SHIMMER, STEREO MASTER (K1 BASS MONO, K2 WIDTH), COMPRESSOR (K1 RATIO, K2 THRESH, K3 ATTACK, K4 RELEASE), MODULES, SIDECHAIN, MIDI, MIDI LEARN; no TEST page (it is MENU > SYSTEM > TEST); TEMPO: KNOB 1 is G_CLOCK, KNOB 2 G_BPM, KNOB 3 TAP, KNOB 4 G_SWING",
+    expect("GLO's pages in order (0.2.25 layout round): MIXER (graph GR_GLO, scope SC_GMIX), TEMPO, CHORUS, DELAY 1/2, DELAY 2/2, COLR LFO, REVERB, SHIMMER, STEREO MASTER (K1 BASS MONO, K2 WIDTH), COMPRESSOR (K1 RATIO, K2 THRESH, K3 ATTACK, K4 RELEASE), MODULES, SIDECHAIN, MIDI, MIDI LEARN; no TEST page (it is MENU > SYSTEM > TEST); TEMPO: KNOB 1 is G_CLOCK, KNOB 2 G_BPM, KNOB 3 TAP, KNOB 4 G_SWING",
            str_eq(PAGES[glo1].title, "MIXER") && PAGES[glo1].graph == GR_GLO && PAGES[glo1].scope == SC_GMIX &&
            str_eq(PAGES[glo1 + 1u].title, "TEMPO") && str_eq(PAGES[glo1 + 2u].title, "CHORUS") && str_eq(PAGES[glo1 + 3u].title, "DELAY 1/2") &&
-           str_eq(PAGES[glo1 + 4u].title, "DELAY 2/2") && str_eq(PAGES[glo1 + 5u].title, "REVERB") && str_eq(PAGES[glo1 + 6u].title, "SHIMMER") &&
-           str_eq(PAGES[glo1 + 7u].title, MASTER_PAGE_TITLE) && str_eq(MASTER_PAGE_TITLE, "STEREO MASTER") && PAGES[glo1 + 7u].scope == SC_GLOBAL && PAGES[glo1 + 7u].id[0] == G_BM && PAGES[glo1 + 7u].id[1] == G_WD && PAGES[glo1 + 7u].id[2] == 0xFFu &&
-           str_eq(PAGES[glo1 + 8u].title, "COMPRESSOR") && PAGES[glo1 + 8u].scope == SC_GLOBAL && PAGES[glo1 + 8u].id[0] == G_CR && PAGES[glo1 + 8u].id[1] == G_CT &&
-           str_eq(PAGES[glo1 + 9u].title, "MODULES") && PAGES[glo1 + 9u].scope == SC_MODS && PAGES[glo1 + 9u].graph == GR_MODS &&
-           str_eq(PAGES[glo1 + 10u].title, "SIDECHAIN") && PAGES[glo1 + 10u].graph == GR_SCHAIN &&
-           str_eq(PAGES[glo1 + 11u].title, "MIDI") && PAGES[glo1 + 11u].graph == GR_MIDI &&
-           str_eq(PAGES[glo1 + 12u].title, "MIDI LEARN") && PAGES[glo1 + 13u].fam != FAM_GLO &&
+           str_eq(PAGES[glo1 + 4u].title, "DELAY 2/2") && str_eq(PAGES[glo1 + 5u].title, "COLR LFO") && PAGES[glo1 + 5u].id[0] == G_DCLFO && PAGES[glo1 + 5u].id[1] == 0xFFu && str_eq(PAGES[glo1 + 6u].title, "REVERB") && str_eq(PAGES[glo1 + 7u].title, "SHIMMER") &&
+           str_eq(PAGES[glo1 + 8u].title, MASTER_PAGE_TITLE) && str_eq(MASTER_PAGE_TITLE, "STEREO MASTER") && PAGES[glo1 + 8u].scope == SC_GLOBAL && PAGES[glo1 + 8u].id[0] == G_BM && PAGES[glo1 + 8u].id[1] == G_WD && PAGES[glo1 + 8u].id[2] == 0xFFu &&
+           str_eq(PAGES[glo1 + 9u].title, "COMPRESSOR") && PAGES[glo1 + 9u].scope == SC_GLOBAL && PAGES[glo1 + 9u].id[0] == G_CR && PAGES[glo1 + 9u].id[1] == G_CT &&
+           str_eq(PAGES[glo1 + 10u].title, "MODULES") && PAGES[glo1 + 10u].scope == SC_MODS && PAGES[glo1 + 10u].graph == GR_MODS &&
+           str_eq(PAGES[glo1 + 11u].title, "SIDECHAIN") && PAGES[glo1 + 11u].graph == GR_SCHAIN &&
+           str_eq(PAGES[glo1 + 12u].title, "MIDI") && PAGES[glo1 + 12u].graph == GR_MIDI &&
+           str_eq(PAGES[glo1 + 13u].title, "MIDI LEARN") && PAGES[glo1 + 14u].fam != FAM_GLO &&
            ck == glo1 + 1u && PAGES[ck].id[0] == G_CLOCK && PAGES[ck].id[1] == G_BPM && PAGES[ck].id[TEMPO_TAP_SLOT] == 0xFFu && TEMPO_TAP_SLOT == 2u &&
            PAGES[ck].id[3] == G_SWING &&
            PAGES[ck].scope == SC_GLOBAL && PAGES[ck].graph == GR_TEMPO);
@@ -455,7 +455,7 @@ static void test_tempo(void)
             n += PAGES[i].graph == GR_GLO;
             gl += PAGES[i].fam == FAM_GLO && PAGES[i].scope == SC_GLOBAL;
         }
-        expect("  .. one page draws GR_GLO (GLO's MIXER); the global effects are SC_GLOBAL pages of GLO (TEMPO, CHORUS, DELAY x2, REVERB, SHIMMER, STEREO MASTER, COMPRESSOR = 8)", n == 1u && gl == 8u);
+        expect("  .. one page draws GR_GLO (GLO's MIXER); the global effects are SC_GLOBAL pages of GLO (TEMPO, CHORUS, DELAY x2, COLR LFO, REVERB, SHIMMER, STEREO MASTER, COMPRESSOR = 9)", n == 1u && gl == 9u);
     }
     for (i = 0, g0 = 0; i < NPAGES; i++)
         g0 += PAGES[i].scope == SC_TEST || PAGES[i].graph == GR_TEST || str_eq(PAGES[i].title, "TEST");
@@ -637,22 +637,22 @@ static void test_glo_page(void)
     expect("  .. let go: the layer is closed, TEMPO is back", !ui.layer && ui.page == glo1 + 1u);
     frames(600);                                         /* (the layer's hold: the knobs are quiet a moment after it) */
     ui.page = (uint8_t)(glo1 + 1u); page_entered();
-    {   /* the round: TEMPO, CHORUS, DELAY 1/2, DELAY 2/2, REVERB, (SHIMMER only with TYPE SHIM), MODULES, SIDECHAIN, MIDI, MIDI LEARN, MIXER. Item 158 (owner, nothing to adjust = no page): in DUEL, where
+    {   /* the round: TEMPO, CHORUS, DELAY 1/2, DELAY 2/2, COLR LFO, REVERB, (SHIMMER only with TYPE SHIM), MODULES, SIDECHAIN, MIDI, MIDI LEARN, MIXER. Item 158 (owner, nothing to adjust = no page): in DUEL, where
          * ui_power_on leaves the mode, STEREO MASTER and COMPRESSOR hide every card, so they are not in the round (STEREO / LAYER: ui_test.c test_item158_pages) */
-        static const char *const R[] = {"CHORUS", "DELAY 1/2", "DELAY 2/2", "REVERB", "MODULES", "SIDECHAIN", "MIDI", "MIDI LEARN", "MIXER", "TEMPO"};
+        static const char *const R[] = {"CHORUS", "DELAY 1/2", "DELAY 2/2", "COLR LFO", "REVERB", "MODULES", "SIDECHAIN", "MIDI", "MIDI LEARN", "MIXER", "TEMPO"};
         uint32_t i, ok = 1, glob = 1;
         for (i = 0; i < sizeof R / sizeof R[0]; i++) {
             turn(EN_SELECT, 1);
             frames(48);
             ok &= (uint32_t)str_eq(cur_page()->title, R[i]) && kb_lock == 0u && song.g[G_BPM] == 117;
-            if (i < 4u)
+            if (i < 5u)
                 glob &= (uint32_t)(cur_page()->scope == SC_GLOBAL && badge_lit() == 3u);
         }
-        expect("SELECT right x10: CHORUS, DELAY 1/2, DELAY 2/2, REVERB (SHIMMER skipped: TYPE is not SHIM; DUEL: STEREO MASTER and COMPRESSOR skipped, nothing to adjust), MODULES, SIDECHAIN, MIDI, MIDI LEARN, MIXER, round to TEMPO; the keys play notes", ok);
+        expect("SELECT right x11: CHORUS, DELAY 1/2, DELAY 2/2, COLR LFO, REVERB (SHIMMER skipped: TYPE is not SHIM; DUEL: STEREO MASTER and COMPRESSOR skipped, nothing to adjust), MODULES, SIDECHAIN, MIDI, MIDI LEARN, MIXER, round to TEMPO; the keys play notes", ok);
         expect("  .. the global effect pages light both parts' badges", glob);
         enter(glo1 + 1u);
         song.g[G_RTYPE] = 3;
-        for (i = 0; i < 5u; i++)
+        for (i = 0; i < 6u; i++)
             turn(EN_SELECT, 1);
         expect("  .. with the reverb TYPE SHIM the SHIMMER page follows REVERB", str_eq(cur_page()->title, "SHIMMER"));
         song.g[G_RTYPE] = 2;
@@ -663,11 +663,11 @@ static void test_glo_page(void)
     expect("  .. SELECT right: CHORUS", str_eq(cur_page()->title, "CHORUS"));
     {
         uint32_t k5;
-        for (k5 = 0; k5 < 4u; k5++)
+        for (k5 = 0; k5 < 5u; k5++)
             turn(EN_SELECT, 1);
     }
     frames(48);
-    expect("  .. four more detents: MODULES (DUEL: STEREO MASTER and COMPRESSOR, every card hidden, are not in the round; item 158)", str_eq(cur_page()->title, "MODULES") && song.bm == BM_DEF && song.ms[0] == 100 && song.g[G_BPM] == 117);
+    expect("  .. five more detents: MODULES (DUEL: STEREO MASTER and COMPRESSOR, every card hidden, are not in the round; item 158)", str_eq(cur_page()->title, "MODULES") && song.bm == BM_DEF && song.ms[0] == 100 && song.g[G_BPM] == 117);
     expect("  .. MODULES (0.2.14): the keys play notes, all four ON", str_eq(cur_page()->title, "MODULES") && kb_lock == 0u && mods_get() == 0u);
     turn(EN_SELECT, 1);
     frames(48);
