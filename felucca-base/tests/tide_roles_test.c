@@ -97,7 +97,7 @@ static const struct { uint8_t slot, style, near, role[2], bass; const char *name
     { 3, STY_DEEP,    STY_DUB,     {R_PAD,   R_BASS},  1, "HSE JUNO"},        /* (reel, 2026-11-10: the fifteen new factory multis, tools/factory_multis.py; M02 the owner's DUB CHORD as before) */
     { 4, STY_DEEP,    STY_DUB,     {R_STAB,  R_PAD},   0, "HSE RHODES"},
     { 5, STY_DEEP,    STY_PEAK,    {R_MOTIF, R_SKANK}, 0, "HSE ORGAN"},
-    { 6, STY_PEAK,    STY_DEEP,    {R_STAB,  R_PAD},   0, "HSE PIANO"},
+    { 6, STY_PEAK,    STY_DEEP,    {R_STAB,  R_BASS},  1, "HSE FRENCH"},   /* (b9 rework3: French house, electric-piano chords over a disco bass; was HSE PIANO, piano and strings) */
     { 7, STY_PEAK,    STY_DEEP,    {R_STAB,  R_PAD},   0, "TECH DETROIT"},
     { 8, STY_DEEP,    STY_PEAK,    {R_PROG,  R_MOTIF}, 0, "TECH SOUL"},
     { 9, STY_MINIMAL, STY_PEAK,    {R_STAB,  R_MOTIF}, 0, "MINIMAL 12"},

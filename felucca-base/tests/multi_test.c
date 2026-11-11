@@ -235,7 +235,7 @@ static void keys_drive(void)
      * (D31: all five are arps). AMB: the pads, WHISPER TIDE, TINE STRINGS, FINAL REEL, COLD CHAPEL (their D31 slots) */
     /* (reel, 2026-11-10: the ARP SEQ pairs of the fifteen new multis: M05 HSE ORGAN, M07 TECH DETROIT, M09 MINIMAL 12, M13 ELEC DEEPSEA (M03 and M06 are plain patterns now);
      * AMB: no factory multi has a latched pad any more, so the owner's WHISPER TIDE (the factory M11 until the reel) is the test scene tests/scenes/reel/M11_WHISPER_TIDE.bin,
-     * stored in M11 for its check and erased again; M06 HSE PIANO is the keyed pair (both parts played from the keys, HOLD OFF), as TINE STRINGS and FINAL REEL were) */
+     * stored in M11 for its check and erased again; M06 HSE FRENCH is the keyed pair (both parts played from the keys, HOLD OFF), as TINE STRINGS and FINAL REEL were) */
     static const uint8_t GRV[4] = {1, 4, 6, 11}, P1[4] = {0, 0, 0, 0}, AMB[2] = {10, 5};   /* (b8 lane M09: slot 9 HYPNO 303 has a plain-pattern 303 on part 1: with M11 in the plain-pattern check below) */
     static const char *const GN[4] = {"M02 DUB CHORD", "M05 HSE ORGAN", "M07 TECH DETROIT", "M12 ELEC ROBOT"};
     uint32_t j;
@@ -305,12 +305,12 @@ static void keys_drive(void)
             scene_put(10, "reel/M11_WHISPER_TIDE");
         play_run(k, chord, sec, 3u * sec, 0, r);
         ok = r[0].n >= 3u && r[0].first <= 1u && r[1].n >= 1u && r[0].gated_after >= 3u && r[1].late >= 1u;
-        if (k == 5u)                                 /* (reel: M06 HSE PIANO: both parts keyed, nothing latched (HOLD OFF), the release ends both; 0.2.25 .. b7 the owner's TINE STRINGS and FINAL REEL) */
-            ok = r[0].n >= 3u && r[0].first <= 1u && r[1].n >= 3u && r[0].gated_after == 0u && r[1].gated_after == 0u && r[1].late == 0u;
+        if (k == 5u)                                 /* (reel: M06, now HSE FRENCH: both parts keyed, nothing latched (HOLD OFF), the release ends both; 0.2.25 .. b7 the owner's TINE STRINGS and FINAL REEL) */
+            ok = r[0].n >= 3u && r[0].first <= 1u && r[1].n >= 1u && r[0].gated_after == 0u && r[1].gated_after == 0u && r[1].late == 0u;   /* (b9 rework3: HSE FRENCH's bass is mono, PRIO LOW: a chord plays its lowest key) */
         printf("multi:   M%02u C4 E4 G4 1 s, 3 s let go: part 1 %u note-ons, %u notes still gated; part 2 %u (%u after the release), %u gated\n",
                k + 1u, r[0].n, r[0].gated_after, r[1].n, r[1].late, r[1].gated_after);
         ck(k == 10u ? "WHISPER TIDE (the owner's, a test scene in M11 since the reel): a chord latches the pad, the choir picks its notes and goes on after the release"
-                    : "M06 HSE PIANO (reel): a chord plays the piano and the strings, nothing latched (HOLD OFF), the release ends both", ok);
+                    : "M06 HSE FRENCH (b9 rework3): a chord plays the electric piano, the mono bass its lowest key, nothing latched (HOLD OFF), the release ends both", ok);
         play_run(k, 0u, 2u * sec, 0u, 1, z);
         {   /* (U2 B: a plain pattern plays on PLAY whatever the build; an ARP SEQ part only with TIDE's stand-in; the classic arps (M05, M13) wait for keys) */
             uint32_t pi2, st2, n2;
@@ -1089,11 +1089,11 @@ int main(void)
      * 0.2.24: the owner's COLD CHAPEL, ACID ETHER and GARGLE ACID of 0.2.22 back in M06, M09, M14; 0.2.25: COLD CHAPEL in M13): in ROM, shown while the slot is empty in flash */
     {
         /* (reel, 2026-11-10: the fifteen new factory multis, one curated programme (tools/factory_multis.py); M02 DUB CHORD is the owner's record as before) */
-        static const char *const FN[16] = {"DUB BASIC", "DUB CHORD", "HSE JUNO", "HSE RHODES", "HSE ORGAN", "HSE PIANO", "TECH DETROIT",
+        static const char *const FN[16] = {"DUB BASIC", "DUB CHORD", "HSE JUNO", "HSE RHODES", "HSE ORGAN", "HSE FRENCH", "TECH DETROIT",
                                            "TECH SOUL", "ACID HYPNO", "ACID TWO 303", "ACID LINES", "ELEC ROBOT", "ELEC DEEPSEA", "ELEC WARPED",
                                            "AMB BERLIN", "AMB LOOPS"};
         static const char *const SN[16][2] = {{"CHORD ECHO", "WARM WASH"}, {"BIG STAB", "SLOW TIDE"}, {"WARM WASH", "RUBBER BAND"},
-                                              {"TINE ROOM", "AIR SHIMMER"}, {"DUB DRAWBAR", "ORGAN WASH"}, {"SALOON KEYS", "RAIN STRINGS"},
+                                              {"TINE ROOM", "AIR SHIMMER"}, {"DUB DRAWBAR", "ORGAN WASH"}, {"MELLOW EP", "FRETLESS"},
                                               {"LOW STAB", "LAMPLIGHT"}, {"SUNDAY KEYS", "SYNTH BRASS"}, {"SQUELCH", "FOG BANK"},
                                               {"TIDAL SUB", "SQUELCH"}, {"SQUELCH", "DEEP BLUE"}, {"LADDER BASS", "VOWEL PAD"},
                                               {"DIGI PLUCK", "PWM PAD"}, {"WAVE CHIMES", "TAPE CLOUD"}, {"RUBBER BAND", "CHOIR LOFT"},
@@ -1104,7 +1104,7 @@ int main(void)
         static const uint8_t SPL[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};          /* (the splits: F4 + 1, compared with the key as played) */
         static const uint8_t XF[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};   /* (reel, 2026-11-10: no factory multi sets XFADE; until then M16, the owner's FINAL REEL, had 58) */
         /* (seq.c AM_*: UP 1, RND 4, SEQ 15; D31: the six new multis are SEQ arps on both parts (BASIC CHORD's DUST BED is played live); the kept records as they were) */
-        /* (reel, 2026-11-10: ARP SEQ on both parts, but M03 HSE JUNO, M06 HSE PIANO, M10 ACID TWO 303 (b8) and M11 ACID LINES: written notes, plain patterns on both parts, the arp OFF) */
+        /* (reel, 2026-11-10: ARP SEQ on both parts, but M03 HSE JUNO, M06 HSE FRENCH (was HSE PIANO), M10 ACID TWO 303 (b8) and M11 ACID LINES: written notes, plain patterns on both parts, the arp OFF) */
         static const int8_t AM[16][2] = {{15, 15}, {15, 15}, {0, 0}, {15, 15}, {15, 15}, {0, 0}, {15, 15}, {15, 15}, {0, 15},
                                          {0, 0}, {0, 0}, {15, 15}, {15, 0}, {15, 15}, {15, 15}, {15, 15}};   /* (b9 sound: M13 ELEC DEEPSEA's pad is written chords now, the arp OFF; M01's bed is WARM WASH, no DUST BED) */
         static uint8_t before[0x100000];
