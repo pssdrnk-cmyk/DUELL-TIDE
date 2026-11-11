@@ -2278,11 +2278,13 @@ static uint32_t morph_sig(void)
  *   [MBV_PINS] 20 bytes: a bit per wide id, End B's values set by hand (EDITABLE B)
  *   [MBV_FMB]  57 bytes: End B's 65 FM6 bytes (fm_byte order, 0..99), 7 bits each, LSB first
  *   [MBV_FMT]  TIDE only, 3 bytes: End B's MORPH TO target on FM6 (morph_tide.c tide_mbv_make)
+ *   MBV_W4 (b9): ANALOG's WAVE (0..8 since b8) takes 4 bits in this block. A block WITHOUT it was made before b8 (WAVE 0..6, 3 bits): wv_bitsl reads it so. morph_bv_make always sets it
  * The 26 wide values that never differ between the ends (mbv_never: never rolled, not in WILD either, not editable at B, kept equal by the fold) have no bit.
  * Lossless: a value is stored inside its range, which is what a load fits it to anyway (param_fit). From the alpha on these ranges are part of the format
  * (frozen: a changed range in params.c or an engine's edit table would read stored patches wrong) */
 #define MBV_PINS 1u
 #define MBV_FMB 2u
+#define MBV_W4 8u                                        /* (4 is MBV_FMT, TIDE) */
 #define MBV_HDR 22u
 #define MBV_FMN ((NFM * 7u + 7u) / 8u)                   /* 57 */
 #define MBV_VMAX 96u                                     /* the values' most bytes: every wide value but mbv_never's at the worst engine (762 bits, the placeholder of the retired engines; FM6 745); morph_bv_limits_ok */
@@ -2308,6 +2310,10 @@ static uint32_t wv_bits(uint32_t eng, uint32_t w)        /* the bits of wide val
     while (b < 16u && (1u << b) < s)
         b++;
     return b;
+}
+static uint32_t wv_bitsl(uint32_t eng, uint32_t w, uint32_t w4)   /* wv_bits of a stored block / record: w4 = it carries MBV_W4 / PTF_W4; without, ANALOG (engine 0) WAVE is 3 bits (saved before b8) */
+{
+    return !w4 && !eng && w == P_E0 ? 3u : wv_bits(eng, w);
 }
 static uint32_t wv_code(uint32_t eng, uint32_t w, int32_t v)   /* v inside the range, from its minimum */
 {
@@ -2351,13 +2357,13 @@ static int morph_bv_limits_ok(void)
 static uint32_t morph_bv_size(const uint8_t *b, uint32_t avail, uint32_t eng)
 {
     uint32_t w, nb = 0, len, at, i;
-    if (avail < MBV_HDR || eng >= NENGINES || (b[0] & ~(MBV_PINS | MBV_FMB | TIDE_MBV_FLAGS)) || b[1] > 101u || ((b[0] & (MBV_FMB | TIDE_MBV_FLAGS)) && eng != ENGI_FM6))   /* TIDE hook (H9) */
+    if (avail < MBV_HDR || eng >= NENGINES || (b[0] & ~(MBV_PINS | MBV_FMB | MBV_W4 | TIDE_MBV_FLAGS)) || b[1] > 101u || ((b[0] & (MBV_FMB | TIDE_MBV_FLAGS)) && eng != ENGI_FM6))   /* TIDE hook (H9) */
         return 0;
     for (w = 0; w < 160u; w++)
         if (b[2u + w / 8u] >> (w % 8u) & 1u) {
             if (!mbv_wid(w) || mbv_never(w))
                 return 0;
-            nb += wv_bits(eng, w);
+            nb += wv_bitsl(eng, w, b[0] & MBV_W4);
         }
     len = MBV_HDR + (nb + 7u) / 8u;
     if (b[0] & MBV_PINS) {
@@ -2393,6 +2399,7 @@ static uint32_t morph_bv_make(uint32_t pi, const int16_t *ref, uint8_t *out)
     eng = mp->eng;
     morph_effective_x(pi, 1u, v);
     memset(out, 0, MBV_MAX);
+    out[0] = MBV_W4;
     out[1] = (uint8_t)(mp->amount + 1u);
     for (w = 0; w < EXT_P_LEN; w++)
         if (mbv_wid(w) && !mbv_never(w) && wv_code(eng, w, v[w]) != wv_code(eng, w, ref[w]))
@@ -2442,7 +2449,7 @@ static void morph_bv_load(uint32_t pi, const uint8_t *b)
     at = MBV_HDR * 8u;
     for (w = 0; w < EXT_P_LEN; w++)
         if (b[2u + w / 8u] >> (w % 8u) & 1u)
-            end[w] = (int8_t)clamp(wv_val(eng, w, bs_get(b, &at, wv_bits(eng, w))), -128, 127);
+            end[w] = (int8_t)clamp(wv_val(eng, w, bs_get(b, &at, wv_bitsl(eng, w, b[0] & MBV_W4))), -128, 127);
     at = (at + 7u) & ~7u;
     MORPH_LOCK();
     k = (mp->top[1] + 1u) % MORPH_HIST;

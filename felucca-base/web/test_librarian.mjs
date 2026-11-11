@@ -70,8 +70,8 @@ function expectRecord(eng, name, cat, entries, after = [], flags = PTF.CB | PTF.
 {
   const v = storeDefaults(0); v[ID.P_TRIM] = 99;
   const X0 = XB_DEFS.map((d) => d - 64), base = expectRecord(0, "XB BASE", 2, [[ID.P_TRIM, 99]]);
-  ok(XB_DEFS.length === NX && WORST === 580 && !("XB" in PTF) && !("BM" in PTF) && PTF.ALL === 175 && PTF.MB === 8 && XB_DEFS[1] === 65 && XB_DEFS[7] === 65 && XB_DEFS[11] === 74 && XB_DEFS[12] === 134 && XB_DEFS.filter((d) => d === 64).length === 22,
-     "values: the extension flag (16) and the bitmap flag (64) are gone, 28 slots, TWIN LINK and SUB OCTAVE default to stored 65, CYCLE RISE and FALL to 74 and 134, 22 of the 28 at 64 (DUELL 1.1), WORST is the unit's 580 (TIDE: 577 + MBV_FMT)");
+  ok(XB_DEFS.length === NX && WORST === 580 && !("XB" in PTF) && !("BM" in PTF) && PTF.ALL === 239 && PTF.W4 === 64 && PTF.MB === 8 && XB_DEFS[1] === 65 && XB_DEFS[7] === 65 && XB_DEFS[11] === 74 && XB_DEFS[12] === 134 && XB_DEFS.filter((d) => d === 64).length === 22,
+     "values: the extension flag (16) and the bitmap flag are gone (64 is b9's W4), 28 slots, TWIN LINK and SUB OCTAVE default to stored 65, CYCLE RISE and FALL to 74 and 134, 22 of the 28 at 64 (DUELL 1.1), WORST is the unit's 580 (TIDE: 577 + MBV_FMT)");
   ok(same(buildRecord({ engine: 0, name: "XB BASE", cat: 2, values: v }), base) && same(buildRecord({ engine: 0, name: "XB BASE", cat: 2, values: v, ext: X0 }), base), "values: every slot at its default writes no slot: the same record as without ext");
   const pr = parseRecord(base);
   ok(pr.ok && same(pr.xv, X0) && pr.mb === null && pr.values[ID.P_TRIM] === 99, "values: a record without a slot reads the 28 default slots and no End B");
@@ -89,7 +89,7 @@ function expectRecord(eng, name, cat, entries, after = [], flags = PTF.CB | PTF.
   ok(same(rb2, expectRecord(0, "XB BASE", 2, [[ID.P_TRIM, 99]], eb, PTF.CB | PTF.TR | PTF.MB)) && pb2.ok && same(pb2.mb, eb) && recordProblem(rb2) === null, "End B: the record carries the block right after its values (flag MB), parseRecord hands it back, recordProblem takes it");
   const never = [0, 5, 29, 94, 149, 155, 127, 156].map((w) => { const c = eb.slice(); c[2 + (w >> 3)] |= 1 << (w & 7); return c; });
   ok(never.every((c) => endBSize(c, 0, c.length, 0) === 0) && await rejects(async () => buildEndB({ engine: 0, values: { 29: 1 } }), /never differs/) && await rejects(async () => buildEndB({ engine: 0, values: { 127: 1 } }), /never differs/), "End B: a bit on a value that never differs (LEVEL, MUTE, LEN, QUANTIZE, CYCLE to PITCH, STRUM, wide id 127 and 156) is no block");
-  ok(endBSize(eb, 0, eb.length - 1, 0) === 0 && endBSize(eb.slice(0, 21), 0, 21, 0) === 0 && endBSize(Uint8Array.from([8, 0, ...Array(20).fill(0)]), 0, 22, 0) === 0 && endBSize(Uint8Array.from([4, 0, ...Array(20).fill(0), 1, 2, 3]), 0, 25, 0) === 0 && endBSize(Uint8Array.from([0, 102, ...Array(20).fill(0)]), 0, 22, 0) === 0 && endBSize(Uint8Array.from([2, 0, ...Array(20).fill(0), ...Array(57).fill(0)]), 0, 79, 0) === 0,
+  ok(endBSize(eb, 0, eb.length - 1, 0) === 0 && endBSize(eb.slice(0, 21), 0, 21, 0) === 0 && endBSize(Uint8Array.from([16, 0, ...Array(20).fill(0)]), 0, 22, 0) === 0 && endBSize(Uint8Array.from([4, 0, ...Array(20).fill(0), 1, 2, 3]), 0, 25, 0) === 0 && endBSize(Uint8Array.from([0, 102, ...Array(20).fill(0)]), 0, 22, 0) === 0 && endBSize(Uint8Array.from([2, 0, ...Array(20).fill(0), ...Array(57).fill(0)]), 0, 79, 0) === 0,
      "End B: a block cut short, with an unknown flag, with AMOUNT over 100 or with FM6 bytes or a MORPH TO target on another engine is no block");
   const fb = buildEndB({ engine: FM6E, amount: null, values: {}, fm6: Array.from({ length: 65 }, (_, i) => i + 30) });
   ok(fb.length === 79 && fb[0] === 2 && fb[1] === 0 && fb[22] === 30 + ((31 & 1) << 7) && endBSize(fb, 0, 79, FM6E) === 79 && await rejects(async () => buildEndB({ engine: FM6E, fm6: Array(65).fill(100) }), /0 to 99/), "End B: FM6 End B is 65 bytes of 7 bits (57 bytes), each at most 99");
@@ -99,7 +99,7 @@ function expectRecord(eng, name, cat, entries, after = [], flags = PTF.CB | PTF.
   const rbad = rb2.slice(); rbad[4] &= ~PTF.MB;
   ok(!parseRecord(rbad).ok && !parseRecord(rb2.slice(0, rb2.length - 3)).ok && !parseRecord(Uint8Array.from([...rb2.slice(0, 19), 4, ...rb2.slice(20)])).ok, "End B: the flag cleared (the block is left over), a record cut inside the block and a wrong value count are refused");
   const old = rb2.slice(); old[4] |= 16;
-  ok(!parseRecord(old).ok && !parseRecord(Object.assign(rb2.slice(), { 4: rb2[4] | 64 })).ok, "values: PT_VER 3's flags (16 the extension block, 64 the bitmap form) are refused");
+  ok(!parseRecord(old).ok && parseRecord(Object.assign(rb2.slice(), { 4: rb2[4] | 64 })).ok, "values: PT_VER 3's extension flag (16) is refused; 64 is b9's W4 (ANALOG's WAVE in 4 bits), taken");
   { const c = rb2.slice(); c[20 + 15] |= 128;
     ok(!parseRecord(c).ok, "values: wide id 127 in the bitmap is refused"); }
   // the arp / keys / sequencer block: g, u16 bitmap by ordinal, the values at range bits (padded), with SEQ a u16 step map and 7 bytes a step
