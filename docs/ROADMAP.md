@@ -92,8 +92,7 @@ A polish beta on top of b7 (details in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md
 22. Before `1.0.0`: 0 missed blocks over the 16-multi GLIDE sweep (owner, 8 November); the CPU budget re-measured and made honest (findings 5, 6, 34; K9).
 23. AUTO TIDE's step display can show one hit ahead that then doesn't play: the old M09 MINIMAL 12's 12-step blip (that multi is now HYPNO 303) under a style with ARC DROP (PEAK). Picture only, the sound is right. Seen once in 22,158 look-aheads in the `tidesteps` test (its WANDER / ARC DROP scenario on factory slot 8: part 2, step 6, three steps ahead). The same class showed on the old set in the night build. The scenario was moved from slot 8 to slot 6 to keep the suite green: put 8 back in `felucca-base/tests/tide_steps_test.c` to see it.
 24. SAVE after JOURNEY: SAVE shows a short message when the sound you loaded and the one JOURNEY moved to differ (owner, 10 November: the default).
-25. An acid line generator: SEQ held + A4 ACID writes a new 303 line (X0X's TB-3PO, GPL-3.0). Measured 1.46 KB plus an adapter (~1.8 KB): needs about 1.2 KB of flash won first, or a smaller integer generator (estimated 400-600 B, not built). After b8 (the acid audit's TASKS, AC2; the b8 acid DESIGN, §6).
-26. ARC's loudness step (sqm_dyn) still follows the main loop's pass, so a new phase's first beat keeps the old loudness (B8-ARC).
+25. ARC's loudness step (sqm_dyn) still follows the main loop's pass, so a new phase's first beat keeps the old loudness (B8-ARC).
 
 ## Released
 
@@ -231,6 +230,7 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 - ARC's breakdown keeps the chord parts' hits; it thins by voices and level. (owner, 10 November)
 - The drone scenes are built in (2 multis in ROM, no file pack); the musical review's ideas are built. (owner, 10 November)
 - A separate 303 engine ported from Open303 / X0X bass303.c (AC1): 14.8 KB of flash against 768 B free, 1.5 KB of RAM for two parts, 3.9x an ANALOG 24 dB note's CPU on the host. b8 builds the 303's accent and slide into the ANALOG engine instead (WAVE ACID / ACID SQR) (10 November).
+- An acid line generator (SEQ held + A4 writes a new 303 line, AC2): not needed. Acid lines are typed in and adjusted in the sequencer, which already plays notes, accents and slides (owner, 11 November).
 
 ## Versions and releases
 
