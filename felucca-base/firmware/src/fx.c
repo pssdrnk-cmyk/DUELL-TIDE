@@ -2401,7 +2401,7 @@ static __attribute__((noinline)) void fxb_done(uint32_t pp, int32_t *b, int32_t 
     if (d)
         fxb_mix(d, byp_dry[pp][1], n, by);
 }
-/* fxb_pre decides for the stage (bit) of part pp: 1 = held bypassed, skip it; 0 = run it as ever; 2 / 3 = the switch just went on / off: the dry block is kept (fxb_save) and fxb_post crossfades after the call.
+/* fxb_pre decides for the stage (bit) of part pp: 1 = held bypassed, skip it; 0 = run it as ever; 2 / 3 = the switch just went on / off: the dry block is kept (fxb_save) and fxb_done crossfades after the call.
  * It also notes the bit for the next block. In the flash: the stages' calls in part_fx (hot RAM of the second core) stay one call and one test each */
 static __attribute__((noinline)) uint32_t fxb_pre(uint32_t pp, uint32_t bit, const int32_t *b, const int32_t *d, uint32_t n)
 {
@@ -3412,7 +3412,7 @@ static __attribute__((noinline)) void perf_master(uint32_t n)
 
 /* EVENT stage: everything that is not audio and runs at the head of a block. events_block (seq.c: MIDI in, notes, the sequencer, the arp, the
  * clocks, the PUMP DUCK's beat count), then the MODE's step (the dip, dm_step) and MODULES SENDS' (snd_step). Reads: the MIDI / USB queues,
- * the transport, song.*. Writes: the voices' note state (t->v, envelopes, midi_bend), the parts' parameters (t->p, via the sequencer, CCs
+ * the transport, song.*. Writes: the voices' note state (t->v, envelopes, midi_bend_target), the parts' parameters (t->p, via the sequencer, CCs
  * and the morph's queue), duck_st[].ph / run / pos, dm_*, snd_st, mod_dk. It touches NO audio buffer (mix_l, send_*, pscr[].buf, ...), so it
  * can run on the core that owns the events while the other core renders: its outputs are the parts' and the buses' controls the
  * render stages then read (see MIXSPLIT_NOTES.md). Takes and gives no audio data */
