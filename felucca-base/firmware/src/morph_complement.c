@@ -104,7 +104,7 @@ static int32_t sound_cand_bright(uint32_t engine, uint32_t preset)
 static uint32_t sound_complement_pick(uint32_t pi, uint32_t engine, uint32_t a, uint32_t b, uint32_t seed)
 {
     int32_t tb;
-    if (!morph_musical || (morph.cfg & MC_WILD)) return a;
+    if (!MM_ON() || (!MM_LOCK && (morph.cfg & MC_WILD))) return a;
     if ((tb = tarc_bright()) != 0) {                     /* ARC: the brighter (peak) or the softer (breakdown) of the two */
         int32_t x = sound_cand_bright(engine, a), y = sound_cand_bright(engine, b);
         if (x != y) return (y > x) == (tb > 0) ? b : a;

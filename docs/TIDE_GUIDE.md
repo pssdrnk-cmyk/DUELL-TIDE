@@ -2,7 +2,7 @@
 
 Five minutes. This guide describes the development line, `jam11`, as the source has it. It is the betas `1.0.0-b1` to `1.0.0-b6` and what is merged after them for `1.0.0-b7` (the shorter TIDE SETTINGS page is from there). The older beta `beta-2026-11-04` is a little different; the list at the end says what came after it. The version of your unit is in MENU > SYSTEM > ABOUT, beside the date.
 
-The stable build `stable-2026-11-03` has an earlier TIDE. Its TIDE SETTINGS page is still called MORPH SETTINGS. It lacks STYLE and ARC, and it has no JOURNEY role families or memory. The [README](../README.md#builds-stable-and-beta) lists the builds.
+The stable build `stable-2026-11-03` has an earlier TIDE. Its TIDE SETTINGS page is still called MORPH SETTINGS. It lacks STYLE and ARC, and it has no TRAVEL role families or memory. The [README](../README.md#builds-stable-and-beta) lists the builds.
 
 Values marked *start* are suggestions for dub and house techno backgrounds, not defaults. Defaults are named as such.
 
@@ -71,7 +71,7 @@ The glide only moves while the transport plays. **STOP** pauses it; **PLAY** car
 | Knob | Name | What it does to the sound | Start |
 |---|---|---|---|
 | 1 | **GLIDE** | Twist right: go to B. Twist left: go to A. It starts on the next bar. **Twist two detents again while it runs and it stops where it is**; the sound stays as it is. | Right |
-| 2 | **MODE** (K2) | What happens at each arrival (below). The MODE row of TIDE SETTINGS is the same setting. | WANDER (default, from STYLE DUB) |
+| 2 | **MODE** (K2) | What happens at each arrival (below). The MODE row of TIDE SETTINGS is the same setting. | EVOLVE (default, from STYLE DUB) |
 | 3 | **TIME** | How many bars one trip takes: 1, 2, 4, 8, 16, 32 or 64. Longer trips also breathe more: the filter dips and the sends swell more over a long trip (full depth from 16 bars). Default 16. | 16 or 32 |
 | 4 | **WAIT** | Bars to hold at each arrival before the next trip: OFF, 1, 2, 4, 8 or 16. Default 2. | 2 to 8 |
 
@@ -79,19 +79,18 @@ The glide only moves while the transport plays. **STOP** pauses it; **PLAY** car
 
 | Mode | Heard as |
 |---|---|
-| ONCE | One trip, then stillness. |
-| LOOP | Back and forth between A and B. |
-| DRIFT | The end it left is rolled again from your sound: new twists around the same centre. |
-| WANDER | Every dial steps one position toward its bound and turns around at each edge, never drifting further; step size grows at longer phrase boundaries (16, 32, 64, 128 bars). Always computed from your original, so it can't run away. |
-| JOURNEY | Travels through factory sounds of the part's own engine (FM6 too); it never changes engine. It stays in the starting sound's role family: pads and keys; bass; lead and pluck; hits (PERC); textures and drones (eight marked sounds); the other FX, one-shots (a USER record in FX counts as one). It also keeps the starting sound's attack: a pad (ATK 60 or more) goes to other pads, a stab (SUS 20 or less) to other stabs, keys to keys; where the family has no other sound of that attack it takes any sound of the family. A sound with no other in its family rolls a new End B of itself, it does not leave its role. Never the other part's sound, and it skips the last 4 destinations where it can. Of those, it keeps to the 2 to 4 that play nearest your sound in loudness and brightness, so the background keeps its level. Each part also gets its own pattern wander. |
+| EVOLVE | Every dial steps one position toward its bound and turns around at each edge, never drifting further; step size grows at longer phrase boundaries (16, 32, 64, 128 bars). Always computed from your original, so it can't run away. |
+| TRAVEL | Travels through factory sounds of the part's own engine (FM6 too); it never changes engine. It stays in the starting sound's role family: pads and keys; bass; lead and pluck; hits (PERC); textures and drones (eight marked sounds); the other FX, one-shots (a USER record in FX counts as one). It also keeps the starting sound's attack: a pad (ATK 60 or more) goes to other pads, a stab (SUS 20 or less) to other stabs, keys to keys; where the family has no other sound of that attack it takes any sound of the family. A sound with no other in its family rolls a new End B of itself, it does not leave its role. Never the other part's sound, and it skips the last 4 destinations where it can. Of those, it keeps to the 2 to 4 that play nearest your sound in loudness and brightness, so the background keeps its level. Each part also gets its own pattern wander. |
 
-Where two very different sounds cross, a short filter dip hides the change (the STYLE's wash, below). On a trip of 8 bars or more the sound closes over 2 bars, stays closed for 1 and opens over 2 (on a 1 to 4 bar trip, across the trip); FM6 sounds keep their sparkle through it. JOURNEY is the mode of STYLE AMBIENT and PEAK, or yours by hand; DUB, DEEP, MINIMAL and DRONE WANDER.
+STYLE DUB, DEEP, MINIMAL and DRONE use EVOLVE; AMBIENT and PEAK use TRAVEL. A saved setup with an old MODE of ONCE, LOOP or DRIFT opens as EVOLVE. On the AUTO TIDE page the top line reads EVOLVING TO B or TRAVEL TO B; ARC's hint reads NEEDS EVOLVE, and "DROP NEEDS EVOLVE/TRAVEL" when it cannot act.
+
+Where two very different sounds cross, a short filter dip hides the change (the STYLE's wash, below). On a trip of 8 bars or more the sound closes over 2 bars, stays closed for 1 and opens over 2 (on a 1 to 4 bar trip, across the trip); FM6 sounds keep their sparkle through it. TRAVEL is the mode of STYLE AMBIENT and PEAK, or yours by hand; DUB, DEEP, MINIMAL and DRONE EVOLVE.
 
 **OCT- + knob**: K1 goes back to your original sound and pattern (the glide stops), K2 drops the ARC at the next phrase (see ARC), K3 and K4 reset TIME and WAIT to the values of the STYLE on TIDE SETTINGS (the style you last chose, DUB if none: 16 bars, 2 bars). The page says what it set: TIME 16 or WAIT 2 (WAIT OFF).
 
 ## 3. TIDE SETTINGS (set and forget)
 
-Ten rows: STYLE, MODE, TARGET, ARC, ROLL TYPE and AMOUNT for the tide, then REC, PLAY MODE, XFADE and SPLIT.
+Ten rows: STYLE, MODE, TARGET, ARC, KNOBS and AMOUNT for the tide, then REC, PLAY MODE, XFADE and SPLIT.
 - K1 picks the row.
 - **OCT+** the next value, **OCT-** the one before.
 - Knobs 2 to 4 turn it too, one step a click.
@@ -105,18 +104,30 @@ Ten rows: STYLE, MODE, TARGET, ARC, ROLL TYPE and AMOUNT for the tide, then REC,
 
 | Row | Values (default first) | What it does | Start |
 |---|---|---|---|
-| **STYLE** | DUB, DEEP, MINIMAL, AMBIENT, PEAK, DRONE, CUSTOM | The top row. One pick sets MODE, TIME, WAIT and ARC, and the feel of the pattern that has no row of its own (below). TARGET and ROLL TYPE stay yours. Changing MODE, TIME, WAIT or ARC by hand turns STYLE into CUSTOM and keeps your values and the feel of the style you came from. Step onto a style and back to CUSTOM, and CUSTOM brings your values back (until a power cycle). The presets are in the table below. | DUB |
-| **MODE** | ONCE, LOOP, DRIFT, WANDER, JOURNEY (default WANDER) | The AUTO TIDE mode, the same setting as K2 on AUTO TIDE (section 2). The default comes from STYLE DUB: WANDER. | WANDER |
+| **STYLE** | DUB, DEEP, MINIMAL, AMBIENT, PEAK, DRONE, CUSTOM | The top row. One pick sets MODE, TIME, WAIT and ARC, and the feel of the pattern that has no row of its own (below). TARGET and KNOBS stay yours. Changing MODE, TIME, WAIT or ARC by hand turns STYLE into CUSTOM and keeps your values and the feel of the style you came from. Step onto a style and back to CUSTOM, and CUSTOM brings your values back (until a power cycle). The presets are in the table below. | DUB |
+| **MODE** | EVOLVE, TRAVEL (default EVOLVE) | The AUTO TIDE mode, the same setting as K2 on AUTO TIDE (section 2). The default comes from STYLE DUB: EVOLVE. | EVOLVE |
 | **TARGET** | BOTH, SOUND, SEQ | What the glide moves: the sound, the pattern, or both together. BOTH links the two faders; the MORPH fader moved by hand drags the SEQ fader with it. | BOTH |
-| **ARC** | OFF, RISE, DROP | In automatic WANDER / JOURNEY with the pattern in TARGET the tide follows a long shape made of 8-bar phrases: it rises (more syncopation and repeats, brighter sounds), holds a peak, then eases into a breakdown, and recovers. One arc is 40 to 64 bars in 8-bar steps: RISE 16 to 32 bars, PEAK 8 to 16, BREAK 8 to 16 (a DROP is its first 8: two silent bars, then thinned), RECOVER 8. In the breakdown both parts keep their main hits, chords play two voices and everything is softer. A chord part's voicing opens at the peak and closes in the breakdown (octaves only, no new notes). DROP drops on the first arc after PLAY (about 40 seconds in), then on about half of the arcs, and the shape differs from night to night. The status line shows the phase. STOP and PLAY only pause the arc: PLAY goes on where it was. A load (multi, project, pattern) or a K1 stop starts it again at RISE. **Hand drop:** hold OCT- and turn K2 on the AUTO TIDE page; the drop lands at the next 8-bar step (a second turn cancels it). Dim with ONCE, LOOP or DRIFT, or TARGET SOUND. | RISE |
-| **ROLL TYPE** | MUSIC, SMART, WILD | How a new End B is made. MUSIC turns five dials (bright, movement, shape, space, character) inside the ranges where that kind of sound actually lives, so a brighter end is not a louder one. SMART is DUELL's own safe roll. WILD drops the safety rules. It no longer switches the rhythm off: ARC and the pattern's movement act with any ROLL TYPE. Dim under JOURNEY, which picks factory sounds instead of rolling (knob 1's line: NOT JRNY). | MUSIC |
-| **AMOUNT** | 0 to 100 % | How far a roll may go, the selected part's (with BOTH each part moves by the same steps). *Start: leave it.* The musical roll has its own sensible scale. A sound or multi load keeps your AMOUNT. Not part of a STYLE. It still shapes a roll in JOURNEY (OCT+ and knob 1 on the MORPH page), so it is never dim. Until 1.0.0-b7 it was knob 4 of the MORPH page. | 15 % |
+| **ARC** | OFF, RISE, DROP | In automatic EVOLVE / TRAVEL with the pattern in TARGET the tide follows a long shape made of 8-bar phrases: it rises (more syncopation and repeats, brighter sounds), holds a peak, then eases into a breakdown, and recovers. One arc is 40 to 64 bars in 8-bar steps: RISE 16 to 32 bars, PEAK 8 to 16, BREAK 8 to 16 (a DROP is its first 8: two silent bars, then thinned), RECOVER 8. In the breakdown both parts keep their main hits, chords play two voices and everything is softer. A chord part's voicing opens at the peak and closes in the breakdown (octaves only, no new notes). DROP drops on the first arc after PLAY (about 40 seconds in), then on about half of the arcs, and the shape differs from night to night. The status line shows the phase. STOP and PLAY only pause the arc: PLAY goes on where it was. A load (multi, project, pattern) or a K1 stop starts it again at RISE. **Hand drop:** hold OCT- and turn K2 on the AUTO TIDE page; the drop lands at the next 8-bar step (a second turn cancels it). Dim with ONCE, LOOP or DRIFT, or TARGET SOUND. | RISE |
+| **KNOBS** | AUTO, STD, DUB, HSE, TECH, ACID, ELEC, AMB | Which set K2, K3 and K4 play on HOME page 1 (K1 is always MORPH). AUTO reads the tag (first word) of the loaded multi's name (a single sound or a name with no tag: STD). The sets are in the table under this one. Every new End B is rolled MUSIC: five dials (bright, movement, shape, space, character) inside the ranges where that kind of sound actually lives, so a brighter end is not a louder one. There is no ROLL TYPE row any more; a unit that had SMART or WILD rolls MUSIC from now on, and sounds saved earlier recall exactly the End B they had. | AUTO |
+| **AMOUNT** | 0 to 100 % | How far a roll may go, the selected part's (with BOTH each part moves by the same steps). *Start: leave it.* The musical roll has its own sensible scale. A sound or multi load keeps your AMOUNT. Not part of a STYLE. It still shapes a roll in TRAVEL (OCT+ and knob 1 on the MORPH page), so it is never dim. Until 1.0.0-b7 it was knob 4 of the MORPH page. | 15 % |
 | **REC** | ADD, REPLACE | Live recording (REC armed while PLAY runs), not part of any STYLE: a STYLE pick leaves it and changing it does not turn STYLE into CUSTOM. ADD: a note you play into a step that already holds notes is added to them (a chord of up to 4; a MONO, LEGATO or UNISON part keeps one note per step). REPLACE: the first note you play into a step in a pass clears that step's old notes and takes their place; more notes played into the same step in that pass (a chord played together) are added; steps you do not play into stay as they are (nothing is erased as the playhead passes). A held note still ties the following steps in both. On an ARP SEQ part a key sets the step's note, in both modes: its steps hold one note each, so a second key into the same step takes its place. Saved with the other settings. | ADD |
 | **PLAY MODE** | LAYER, STEREO, DUEL | The output mode. LAYER: both parts on the keys. STEREO: both parts, one stereo field. DUEL: part 1 left, part 2 right. The header says PLAY MODE and the value. It names ALGORITHM's middle; changing it moves ALGORITHM to the middle. A change lets go of held notes. | LAYER |
 | **XFADE** | 0 to 100 % | The velocity crossfade between the parts. LAYER only. | 0 |
 | **SPLIT** | OFF, MIDDLE, then a note | The key split point: below it part 1, from it part 2. MIDDLE splits the keys in the middle wherever OCT- / OCT+ put them (the 14th of the 27 keys starts part 2: F#4 at octave 0; MIDI notes split at the note that key plays now). Acts in ALGORITHM's middle, in LAYER, STEREO and DUEL (with one part selected it says 2 PARTS ONLY). Out of OFF the first turn right is MIDDLE, the next the note it stands for. | OFF |
 
-**What STYLE sets without a row.** These were rows until `1.0.0-b6`; now each STYLE has its own values (the table below) and they act in automatic WANDER / JOURNEY:
+The KNOBS sets (HOME page 1; K1 is always MORPH; AUTO picks the set from the tag, the first word of the multi's name; a multi you save with one of these tags as its first word gets that set too):
+
+| Set | K2 | K3 | K4 |
+|---|---|---|---|
+| **STD** (no tag, single sounds) | FLT: cutoff | RSN: resonance | ECH: echo send |
+| **DUB** | SND: echo send, a little reverb | FDBK: feedback up to runaway, repeats darken | TIME: delay time in note values, glides |
+| **HSE** house | FLT: cutoff, a touch of resonance | PMP: sidechain pump depth | REV: reverb send, longer release |
+| **TECH** techno | TNS: cutoff, resonance and envelope up (build) | DEC: decay short to long | WSH: reverb and echo sends |
+| **ACID** | SQL: cutoff and resonance (the squelch) | BTE: envelope to filter up, decay shorter | DRT: saturation |
+| **ELEC** electro / IDM | FLT: cutoff | GRT: saturation and chorus | GLT: shorter gates, dropped steps |
+| **AMB** ambient / drone | BLM: slower attack, longer release, more reverb | DRF: deeper, slower filter wobble | SPC: echo and reverb |
+
+**What STYLE sets without a row.** These were rows until `1.0.0-b6`; now each STYLE has its own values (the table below) and they act in automatic EVOLVE / TRAVEL:
 
 - **Vary bars** (EVERY 4TH or EVERY BAR): how often the pattern plays its variation.
 - **Poly** (OFF, GENTLE, WIDE): now and then one part's loop is a little shorter, so its motif drifts against the beat, then lines up again at a phrase. Your stored pattern is never changed. Never on a bass part; a shortened loop ends when ARC's breakdown begins.
@@ -127,11 +138,11 @@ Ten rows: STYLE, MODE, TARGET, ARC, ROLL TYPE and AMOUNT for the tide, then REC,
 
 **No notes coming in.** With no notes coming in TIDE plays its own chord on C; send or hold one note to set its key. A part that waits for keys (a pad, HOLD ALL, an arp with nothing held) plays TIDE's own chord while AUTO TIDE runs; a key or MIDI note takes over and the part is yours until the next PLAY.
 
-**Call and answer.** No setting. In WANDER and JOURNEY, with both parts gliding, the parts answer each other: in bars 1 to 3 of every 4 one part steps back (main hits only, chords in two voices, softer) while the other plays; they swap each bar, and bar 4 both play. A bass or a pad is never pushed back; next to one, the other part steps back on bar 3. Nothing steps back while ARC's breakdown thins.
+**Call and answer.** No setting. In EVOLVE and TRAVEL, with both parts gliding, the parts answer each other: in bars 1 to 3 of every 4 one part steps back (main hits only, chords in two voices, softer) while the other plays; they swap each bar, and bar 4 both play. A bass or a pad is never pushed back; next to one, the other part steps back on bar 3. Nothing steps back while ARC's breakdown thins.
 
 **Your hand on the MORPH fader.** Move the MORPH fader (the MORPH page, the mod wheel or CC 70) and TIDE holds only the part you moved. The other part, the pattern's own movement and ARC go on. 8 bars after you let go, at the next phrase, TIDE takes the part back from where you left it (AUTO TIDE says HAND  BACK IN n BARS). A sound load, STOP, HOME or a K1 stop end it as before.
 
-**Dynamics.** No setting: in automatic WANDER / JOURNEY the hits play an eighth louder late in ARC's rise and at its peak and a quarter softer in its drop and breakdown (ARC on), and softer on a part that steps back in call and answer (the two together: softer still). ARP SEQ parts, the factory chord parts, follow it too, and keep their accent. An accent counts as velocity 127 there and loses its accent. Playback only: KEEP stores the pattern's own velocities.
+**Dynamics.** No setting: in automatic EVOLVE / TRAVEL the hits play an eighth louder late in ARC's rise and at its peak and a quarter softer in its drop and breakdown (ARC on), and softer on a part that steps back in call and answer (the two together: softer still). ARP SEQ parts, the factory chord parts, follow it too, and keep their accent. An accent counts as velocity 127 there and loses its accent. Playback only: KEEP stores the pattern's own velocities.
 
 **The motif is kept.** The automatic pattern edits never drop or move the pattern's anchors:
 
@@ -160,41 +171,41 @@ A sustained part holds still:
 | When | Settings |
 |---|---|
 | At once (next step or bar) | STYLE's pattern feel (vary bars, turns, poly, offbeat, wash), REC (the next note you record), PLAY MODE, XFADE, SPLIT. ARC switched on starts a RISE; switched off it ends the arc. |
-| At the next turn (when the trip arrives) | MODE, WAIT, TIME (also when a STYLE sets it; the page shows the new TIME at once, the bar count goes on with the trip that runs), and ROLL TYPE (it shapes the next end that is rolled). |
+| At the next turn (when the trip arrives) | MODE, WAIT, TIME (also when a STYLE sets it; the page shows the new TIME at once, the bar count goes on with the trip that runs), and KNOBS. |
 | At the next start (knob 1) | TARGET: what the tide moves is fixed when a glide starts. |
 
-Defaults with no saved settings (a new unit, or after ERASE DATA): STYLE DUB, that is MODE WANDER, TIME 16, WAIT 2, ARC RISE (and DUB's feel: vary every 4th bar, poly GENTLE, offbeat SOFT, wash OFF); and TARGET BOTH, ROLL TYPE MUSIC, REC ADD, ROLL ARP and ROLL PITCH OFF. A STYLE saved by an earlier build loads as the same style with this build's values (DUB saved by `1.0.0-b6` played JOURNEY and now plays WANDER). An older record without a STYLE loads as CUSTOM with its values kept.
+Defaults with no saved settings (a new unit, or after ERASE DATA): STYLE DUB, that is MODE EVOLVE, TIME 16, WAIT 2, ARC RISE (and DUB's feel: vary every 4th bar, poly GENTLE, offbeat SOFT, wash OFF); and TARGET BOTH, KNOBS AUTO, REC ADD, ROLL ARP and ROLL PITCH OFF. A STYLE saved by an earlier build loads as the same style with this build's values (DUB saved by `1.0.0-b6` played TRAVEL and now plays EVOLVE). An older record without a STYLE loads as CUSTOM with its values kept.
 
 **STYLE sets** (MODE, TIME, WAIT, vary bars, poly, offbeat, ARC, wash):
 
 | Style | Eight values |
 |---|---|
-| DUB | WANDER, 16, 2, EVERY 4TH, GENTLE, SOFT, RISE, OFF |
-| DEEP | WANDER, 32, 4, EVERY 4TH, OFF, SOFT, RISE, LOW |
-| MINIMAL | WANDER, 8, OFF, EVERY BAR, WIDE, PUSH, OFF, OFF |
-| AMBIENT | JOURNEY, 64, 8, EVERY 4TH, OFF, OFF, OFF, HIGH |
-| PEAK | JOURNEY, 8, OFF, EVERY BAR, GENTLE, PUSH, DROP, OFF |
-| DRONE | WANDER, 64, OFF, EVERY 4TH, OFF, OFF, OFF, HIGH |
+| DUB | EVOLVE, 16, 2, EVERY 4TH, GENTLE, SOFT, RISE, OFF |
+| DEEP | EVOLVE, 32, 4, EVERY 4TH, OFF, SOFT, RISE, LOW |
+| MINIMAL | EVOLVE, 8, OFF, EVERY BAR, WIDE, PUSH, OFF, OFF |
+| AMBIENT | TRAVEL, 64, 8, EVERY 4TH, OFF, OFF, OFF, HIGH |
+| PEAK | TRAVEL, 8, OFF, EVERY BAR, GENTLE, PUSH, DROP, OFF |
+| DRONE | EVOLVE, 64, OFF, EVERY 4TH, OFF, OFF, OFF, HIGH |
 
-DUB keeps the multi's own sounds and walks them (WANDER); JOURNEY, which travels through other factory sounds, is the mode of AMBIENT and PEAK, or yours by hand on the MODE row.
+DUB keeps the multi's own sounds and walks them (EVOLVE); TRAVEL, which travels through other factory sounds, is the mode of AMBIENT and PEAK, or yours by hand on the MODE row.
 
-The built-in drone multis M17 DUNE HORN and M18 VOID DEEP (SAVE > MULTIS, 1.0.0-b6) behave as follows:
+The built-in drone multis M17 AMB DUNEHORN and M18 AMB VOID (SAVE > MULTIS, 1.0.0-b6) behave as follows:
 - each has one part on a slow sequence over the held chord, while the other part holds the chord
 - DUNE HORN: the horn swells once a bar — root, root, fourth, root
 - VOID DEEP: the solar wind turns every 8 to 16 seconds — root, a tone up, the fourth
-- DRONE's WANDER keeps them sparse (never more than one new note a bar, never under the chord you hold)
+- DRONE's EVOLVE keeps them sparse (never more than one new note a bar, never under the chord you hold)
 They play as DRONE without a trip here:
 - while one of them is the multi loaded, STYLE shows DRONE and its values are DRONE's
 - loading any other multi brings back the STYLE and values you had
 - the saved STYLE never changes (a row you change while a drone multi is loaded lasts until then)
 
-DRONE is for a held chord of one of the factory drone sounds (#164 to #171) with HOLD on: WANDER keeps the sound and slowly moves it between its two ends over 64 bars, never waits at an end, and leaves out everything rhythmic (poly, offbeat and ARC OFF) that a held chord would not use; wash HIGH gives the slow breath. AMBIENT is JOURNEY: it hops from sound to sound, with no groove tricks (poly OFF). CUSTOM moved from 5 to 6 in `1.0.0-b4`; an old 5 reads as CUSTOM unless its values are DRONE's.
+DRONE is for a held chord of one of the factory drone sounds (#164 to #171) with HOLD on: EVOLVE keeps the sound and slowly moves it between its two ends over 64 bars, never waits at an end, and leaves out everything rhythmic (poly, offbeat and ARC OFF) that a held chord would not use; wash HIGH gives the slow breath. AMBIENT is TRAVEL: it hops from sound to sound, with no groove tricks (poly OFF). CUSTOM moved from 5 to 6 in `1.0.0-b4`; an old 5 reads as CUSTOM unless its values are DRONE's.
 
-Dub-techno recipe: STYLE DUB, ALGORITHM LAYER (by hand: **AUTO TIDE** WANDER, TIME 16, WAIT 2 to 4; **SETTINGS** TARGET BOTH, ARC RISE, ROLL TYPE MUSIC; DUB's wash is OFF, so the sounds keep their own level and space). Press PLAY, twist K1 right, walk away.
+Dub-techno recipe: STYLE DUB, ALGORITHM LAYER (by hand: **AUTO TIDE** EVOLVE, TIME 16, WAIT 2 to 4; **SETTINGS** TARGET BOTH, ARC RISE; DUB's wash is OFF, so the sounds keep their own level and space). Press PLAY, twist K1 right, walk away.
 
 ## 4. MODE (output)
 
-DUEL (part 1 left, part 2 right, effects separate), STEREO, LAYER. This is stock DUELL, not TIDE. With TIDE there is no MODE page. The last three rows of TIDE SETTINGS are PLAY MODE, XFADE and SPLIT (REC sits between ROLL TYPE and PLAY MODE).
+DUEL (part 1 left, part 2 right, effects separate), STEREO, LAYER. This is stock DUELL, not TIDE. With TIDE there is no MODE page. The last three rows of TIDE SETTINGS are PLAY MODE, XFADE and SPLIT (REC sits between AMOUNT and PLAY MODE).
 
 - PLAY MODE is **LAYER**, **STEREO** or **DUEL**.
 - XFADE (**0 to 100 %**) acts only in LAYER. In DUEL and STEREO its value is dim, knob 1's line says **LAYER ONLY**, and turning does nothing.
@@ -203,12 +214,12 @@ DUEL (part 1 left, part 2 right, effects separate), STEREO, LAYER. This is stock
 - They are not part of STYLE (changing them does not turn it into **CUSTOM**). They are kept as before (settings and multis).
 - **MENU > CONTROL > HOME OPENS = SETTINGS** opens TIDE SETTINGS with the PLAY MODE row picked.
 - **MULTI LOAD KEEPS PLAY MODE** (or **SETS PLAY MODE**) says whether a multi load changes these three rows.
-- The MODE row near the top of TIDE SETTINGS and the AUTO TIDE page's K2 (**ONCE**, **LOOP**, **DRIFT**, **WANDER**, **JOURNEY**) are the tide's mode, a different setting.
+- The MODE row near the top of TIDE SETTINGS and the AUTO TIDE page's K2 (**EVOLVE**, **TRAVEL**) are the tide's mode, a different setting.
 - Dub chords on two parts: **DUEL** if you mix outside, **STEREO** for a single stereo out.
 
 ## First start
 
-A new unit (or after ERASE DATA) comes up as multi **M02 DUB CHORD** with STYLE DUB (AUTO TIDE on WANDER). Its two 16-step patterns play on PLAY with no key held (ARP SEQ). Press PLAY. With no notes coming in TIDE plays its own chord on C; send or hold one note to set its key. With REC armed the pattern keeps playing; the keys sound as you play them and go into the pattern (the REC row of TIDE SETTINGS chooses ADD or REPLACE for ordinary parts).
+A new unit (or after ERASE DATA) comes up as multi **M02 DUB CHORD** with STYLE DUB (AUTO TIDE on EVOLVE). Its two 16-step patterns play on PLAY with no key held (ARP SEQ). Press PLAY. With no notes coming in TIDE plays its own chord on C; send or hold one note to set its key. With REC armed the pattern keeps playing; the keys sound as you play them and go into the pattern (the REC row of TIDE SETTINGS chooses ADD or REPLACE for ordinary parts).
 
 ## When the unit is busy
 
@@ -227,7 +238,7 @@ With heavy sounds and a moving morph the audio can get close to its limit. TIDE 
 
 In the SEQ tools, hold SEQ and press G4 (KEEP): what you hear now becomes the part's own, sound and pattern, with one UNDO. Use it to freeze a good moment, then start the next tide from there.
 
-SAVE stores the sound as you loaded it, not the one JOURNEY (or MORPH TO) moved the part to. When you hold SAVE on a part that plays such a moved sound, the dialog says so above its question: "SAVES THE LOADED SOUND", "KEEP FIRST = AS HEARD". To save what you hear, answer NO (OCT-), do KEEP, then hold SAVE again. With BOTH the note shows when either part is moved. A part that was not moved, or that you kept, shows no note.
+SAVE stores the sound as you loaded it, not the one TRAVEL (or MORPH TO) moved the part to. When you hold SAVE on a part that plays such a moved sound, the dialog says so above its question: "SAVES THE LOADED SOUND", "KEEP FIRST = AS HEARD". To save what you hear, answer NO (OCT-), do KEEP, then hold SAVE again. With BOTH the note shows when either part is moved. A part that was not moved, or that you kept, shows no note.
 
 ---
 
@@ -237,8 +248,8 @@ In the betas (`beta-2026-11-04` and `1.0.0-b1` to `1.0.0-b5`), not in the stable
 
 | Feature | What it does |
 |---|---|
-| **JOURNEY families and memory** | JOURNEY stays on the part's engine, picks within a role family and the starting sound's attack (pad, stab or keys; families: pads and keys; bass; lead and pluck; hits; textures and drones; one-shot FX; a USER record uses its own category) and skips the part's last four destinations where it can. |
-| **43 more factory sounds** | #129 to #171 (dub, deep house: pads, chords, stabs, plucks, textures; three of them FM6; the last eight, #164 to #171, are drones, new in `1.0.0-b2`), so JOURNEY has more to travel between. They are read-only places after the 128 in PATCHES; the names are in [PATCH_NUMBERS](PATCH_NUMBERS.md). |
+| **TRAVEL families and memory** | TRAVEL stays on the part's engine, picks within a role family and the starting sound's attack (pad, stab or keys; families: pads and keys; bass; lead and pluck; hits; textures and drones; one-shot FX; a USER record uses its own category) and skips the part's last four destinations where it can. |
+| **43 more factory sounds** | #129 to #171 (dub, deep house: pads, chords, stabs, plucks, textures; three of them FM6; the last eight, #164 to #171, are drones, new in `1.0.0-b2`), so TRAVEL has more to travel between. They are read-only places after the 128 in PATCHES; the names are in [PATCH_NUMBERS](PATCH_NUMBERS.md). |
 | **Factory patterns and multis** | Ten patterns are now chords and pads for dub techno and deep house (some with their own swing and gate); seven factory multis that had no sequence have one; CELLAR TAPE was M03 (since `1.0.0-b7` M03 is JUNO DEEP). A pattern slot you never saved over takes the new pattern at power-on. |
 | **USER slots** | The last 4 patch slots and 4 pattern slots (P29 to P32) are USER slots (U1 to U4), `USER EMPTY` until you save into them. The factory sounds and patterns they stand in for stay listed, read-only; SAVE offers USER 1 for a read-only place. In the PATCHES list the factory sounds come first (#1 to #171), then the sounds you saved, then the empty USER slots last. |
 | **MULTIS / PATTERNS previews** | On the SAVE pages: three list rows with the picked entry opened, showing both parts (sound names, ARP / SEQ / OFF, the first 16 steps) before you load. LOAD is already picked when the page opens, so OCT+ loads the picked entry (K3 picks SAVE). A broken record reads DAMAGED. |
@@ -259,7 +270,7 @@ Merged on the development line, in `1.0.0-b1` and after it (the source is the re
 | **Loads start as written** | A multi, project or pattern load drops the old variation and pitch walk, puts the parts at A and starts ARC again at RISE. |
 | **ARC keeps its place** | STOP and PLAY only pause the arc; a load or a K1 stop starts it again. |
 | **PITCH leaves the bass alone** | No note under C3 and no BASS-category sound is walked, and nothing moves on SCALE CHR. The chord voicing of VOIC works with PITCH OFF. |
-| **The register stays** | WNDR, JRNY and TIDE's pattern edits (VOIC, voice leading, PITCH) never put a note outside the register of the pattern you wrote: from its lowest note up to its highest plus an octave, and a pattern that lives above C3 never gets a note under C3 (a skank at C4 stays a skank; a bass stays a bass and goes no lower). |
+| **The register stays** | EVOLVE, TRAVEL and TIDE's pattern edits (VOIC, voice leading, PITCH) never put a note outside the register of the pattern you wrote: from its lowest note up to its highest plus an octave, and a pattern that lives above C3 never gets a note under C3 (a skank at C4 stays a skank; a bass stays a bass and goes no lower). |
 | **TIDE settings in every backup** | The TIDE SETTINGS rows ride in the settings record, so a backup holds them and a restore brings them back. A backup made by an older build holds none and leaves the unit's rows as they are. |
 | **Load undo** | OCT- held and a turn of PRESETS undoes the last sound load (again: redo). Not on the TIDE pages, where OCT- plus a knob is TIDE's own reset. |
 | **Chord names** | Flats in a flat key (C minor's DIA7 reads Ebmaj7, Abmaj7, Bb7), a stack of 4ths reads m7sus or msus, and DIA7 on a scale of six notes is a triad. |
@@ -272,15 +283,15 @@ Merged on the development line, in `1.0.0-b1` and after it (the source is the re
 | **ALGORITHM's middle is the play mode** | PART 1, the middle, PART 2 on the HOME pages and PERFORM: the middle plays both parts in the PLAY MODE row's mode and the header names it (LAYER, STEREO or DUEL); PART 1 and PART 2 play one part on every key. Changing PLAY MODE moves ALGORITHM to the middle. |
 | **SPLIT MIDDLE** | A SPLIT value after OFF: the keys split in the middle wherever OCT- / OCT+ put them. With SPLIT set, STEREO and DUEL split the keys too. |
 | **A shorter TIDE SETTINGS page** | STYLE, MODE, TARGET, ARC, ROLL TYPE, AMOUNT, then REC, PLAY MODE, XFADE, SPLIT. VARY BARS, POLY, OFFBEAT and WASH are STYLE's values (no rows); ROLL ARP and ROLL PITCH have no row (OFF by default; a unit that had them ON keeps them). The tide's MODE is a row too. A saved STYLE stays that style. |
-| **ROLL TYPE no longer switches the rhythm off** | ARC and the pattern's movement act in WANDER and JOURNEY whatever ROLL TYPE is. ROLL TYPE is dim under JOURNEY, where it does nothing. |
-| **DUB walks your sounds** | STYLE DUB plays WANDER: the multi's own sounds stay and evolve, and the level and brightness stay steadier. AMBIENT plays without the shortened loops (poly OFF). |
+| **ROLL TYPE no longer switches the rhythm off** | ARC and the pattern's movement act in EVOLVE and TRAVEL whatever ROLL TYPE is. ROLL TYPE is dim under TRAVEL, where it does nothing. |
+| **DUB walks your sounds** | STYLE DUB plays EVOLVE: the multi's own sounds stay and evolve, and the level and brightness stay steadier. AMBIENT plays without the shortened loops (poly OFF). |
 | **An arc you can hear** | ARC's phases fall on 8-bar boundaries (an arc is 40 to 64 bars), the breakdown keeps each part's main hits, plays chords in two voices and drops the level by 2 to 5 dB, the first arc after PLAY drops under ARC DROP, and ARP SEQ parts follow ARC's dynamics too. In the breakdown the parts thin by voices and level; their number of hits drops less. |
-| **Call and answer** | In WANDER and JOURNEY the two parts take turns bar by bar: one plays out while the other steps back to its main hits; both play the fourth bar. A bass or pad is never pushed back. |
+| **Call and answer** | In EVOLVE and TRAVEL the two parts take turns bar by bar: one plays out while the other steps back to its main hits; both play the fourth bar. A bass or pad is never pushed back. |
 | **The bass is left alone** | No POLY and no VOIC on the bass part, a shortened loop ends when ARC's breakdown begins. |
 | **Motifs stay whole** | A figure of 5 to 7 hits keeps 4 of 5 in place; a figure with one free hit keeps all of them outside the breakdown. |
 | **The chord part breathes** | Its voicing opens at ARC's peak and closes in the breakdown (octaves only), and its variation bar plays a house or dub-techno rhythm cell. |
-| **The dip is short** | The crossing between two sounds closes over 2 bars, stays closed for 1 and opens over 2. A part's mixer level stays yours: JOURNEY never changes it, and a part the multi turned down stays quieter on the sounds JOURNEY travels to. JOURNEY started with the fader away from A no longer swaps the sound you hear. Not as bright as hoped: the blend between two sounds still dulls mid-trip. |
-| **The reel: fifteen new multis** | M01 BASIC CHORD (dub techno), M02 DUB CHORD (dub techno, rebuilt over a held low pad with its root an octave down), M03 JUNO DEEP and M04 LATE RHODES (deep house), M05 ORGAN HOUSE and M06 PIANO HOUSE (classic house), M07 DETROIT STAB and M08 HI-TECH SOUL (Detroit), M09 HYPNO 303 (acid techno, 128 BPM; was MINIMAL 12 until `1.0.0-b8`), M10 TWO 303S (acid techno, 130 BPM; was SEVEN LOOP until `1.0.0-b8`), M11 ACID LINES (Chicago acid house, 122 BPM), M12 ROBOT FUNK and M13 DEEP SEA ARP (electro), M14 WARPED TAPE (IDM), M15 BERLIN RUN (Berlin school), M16 TWO LOOPS (ambient). A genre each; all play both parts on PLAY with no key held. Hold a key and a multi moves by its distance from C; JUNO DEEP, PIANO HOUSE, HYPNO 303, TWO 303S and ACID LINES are written note by note and stay in their key (a key you play sounds on top). STYLE suggestions: DUB for M01 and M02, DEEP for M03 to M05, M08 and M15, PEAK for M06, M07 and M13, MINIMAL for M09 to M12, AMBIENT for M14 and M16 (DUB, DEEP and MINIMAL keep a multi's own two sounds). |
+| **The dip is short** | The crossing between two sounds closes over 2 bars, stays closed for 1 and opens over 2. A part's mixer level stays yours: TRAVEL never changes it, and a part the multi turned down stays quieter on the sounds TRAVEL travels to. TRAVEL started with the fader away from A no longer swaps the sound you hear. Not as bright as hoped: the blend between two sounds still dulls mid-trip. |
+| **The reel: fifteen new multis** | M01 DUB BASIC (dub techno), M02 DUB CHORD (dub techno, rebuilt over a held low pad with its root an octave down), M03 HSE JUNO and M04 HSE RHODES (deep house), M05 HSE ORGAN and M06 HSE PIANO (classic house), M07 TECH DETROIT and M08 TECH SOUL (Detroit), M09 ACID HYPNO (acid techno, 128 BPM; was MINIMAL 12 until `1.0.0-b8`), M10 ACID TWO 303 (acid techno, 130 BPM; was SEVEN LOOP until `1.0.0-b8`), M11 ACID LINES (Chicago acid house, 122 BPM), M12 ELEC ROBOT and M13 ELEC DEEPSEA (electro), M14 ELEC WARPED (IDM), M15 AMB BERLIN (Berlin school), M16 AMB LOOPS (ambient). A genre each; all play both parts on PLAY with no key held. Hold a key and a multi moves by its distance from C; JUNO DEEP, PIANO HOUSE, HYPNO 303, TWO 303S and ACID LINES are written note by note and stay in their key (a key you play sounds on top). STYLE suggestions: DUB for M01 and M02, DEEP for M03 to M05, M08 and M15, PEAK for M06, M07 and M13, MINIMAL for M09 to M12, AMBIENT for M14 and M16 (DUB, DEEP and MINIMAL keep a multi's own two sounds). |
 | **Beds that play themselves** | BASIC CHORD's low held bed, DUB CHORD's low pad, DUNE HORN's and VOID DEEP's shimmer sound on PLAY with no key held. |
 | **TIDE comes back after your hand** | A hand on the MORPH or SEQ fader holds only that part; 8 bars after you let go TIDE takes it back from where you left it, and the other part, the pattern's movement and ARC never stop. AUTO TIDE says HAND  BACK IN n BARS. |
 | **No keys, still music** | With no notes coming in TIDE plays its own chord on C; send or hold one note to set its key. A part that waits for keys plays TIDE's chord while AUTO TIDE runs; a key takes the part over until the next PLAY. |

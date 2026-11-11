@@ -199,7 +199,7 @@ static void sqm_build(const step_t *p, uint32_t len, const sqm_end_t *x, uint32_
     for (k = 0; k < n && (i = sqm_best(score, len)) < len; k++)
         out[i].flags ^= SF_ACCENT;
     if (d[SD_VOIC] && !sqm_build_bass) {                 /* VOIC: every chord the same inversions; single notes an octave (B1: never on the bass) */
-        if (morph_musical) {                             /* (the octaves of the chord's own tones: PITCH, the new notes, is not needed) */
+        if (MM_ON()) {                                  /* (the octaves of the chord's own tones: PITCH, the new notes, is not needed) */
             sqm_voicelead(p, len, out);
         } else for (i = 0; i < len; i++) {
             step_t *s = &out[i];
@@ -248,7 +248,7 @@ static uint32_t sqm_sig(const track_t *t, const sqm_part_t *q, uint32_t len)
     _Static_assert(__builtin_offsetof(sqm_end_t, pitch) == __builtin_offsetof(sqm_end_t, d) + SD_N, "sqm_sig: the dials and the pitch bytes in one run");
     for (k = 0; k < 2u; k++)
         h = fnv((h ^ e[k]->seed) * 16777619u, e[k]->d, SD_N + SQM_PITCH_BYTES);
-    h = (h ^ (uint32_t)scale_g ^ ((uint32_t)root_g << 8) ^ ((morph.cfg & MC_PIT) << 16) ^ ((uint32_t)morph_musical << 24)) * 16777619u;
+    h = (h ^ (uint32_t)scale_g ^ ((uint32_t)root_g << 8) ^ ((morph.cfg & MC_PIT) << 16) ^ ((uint32_t)MM_ON() << 24)) * 16777619u;
     return (h ^ (len | (uint32_t)q->aon << 7 | (uint32_t)SQM_AMT(q) << 8)) * 16777619u;
 }
 /* the ends of part pi as they play now (main loop): built again when anything they depend on changed (force: always) */
@@ -516,7 +516,7 @@ static void seqm_wander_gen(uint32_t pi, uint32_t x, uint32_t tier)
         nx.seed = q->b[q->top].seed;
     }
     for (k = 0; k < SD_N; k++) {
-        if (k == SD_SYNC && morph_musical) { nx.d[k] = 0; continue; }
+        if (k == SD_SYNC && MM_ON()) { nx.d[k] = 0; continue; }
         r = r * 1103515245u + 12345u;
         if (!q->dir[k] || (r >> 16) % 6u == 0u)
             q->dir[k] = (int8_t)((r >> 30) & 1u ? 1 : -1);

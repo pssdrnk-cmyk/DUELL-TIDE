@@ -1817,7 +1817,7 @@ static void morph_fm_live(uint32_t pi, uint8_t *live)     /* part pi's FM6 patch
 
 static uint32_t morph_new_seed(void);
 static void morph_roll_cfg(uint32_t pi, uint32_t x, uint32_t seed, uint32_t amount, uint32_t cfg);
-static uint32_t morph_cfg_of(uint32_t pi) { return (morph.cfg & MC_SET) | (duell_stereo ? MC_STEREO : 0u) | (pi ? MC_PART : 0u) | TIDE_CFG_BITS(); }   /* TIDE hook */
+static uint32_t morph_cfg_of(uint32_t pi) { return (morph.cfg & MC_SET & ~MM_NOWILD) | (duell_stereo ? MC_STEREO : 0u) | (pi ? MC_PART : 0u) | TIDE_CFG_BITS(); }   /* TIDE hook */
 /* v2: a patch's saved End B (MB_N bytes in the user preset record, upreset.c): 'M', seed (16 bit), AMOUNT, MC_* bits, 0,
  * a check byte (DUELL: byte 5 = the part's AMOUNT knob + 1 at saving, 0 = not stored: older patches; a load sets the part's AMOUNT to it, else to the roll's). morph_ld: the block of the sound being loaded (set by up_load before load_end, read by morph_rebase_part) */
 #define MB_N 7u

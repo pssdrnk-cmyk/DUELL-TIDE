@@ -73,7 +73,7 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
    - On this page **ALGORITHM** has three positions, PART 1, the middle and PART 2.
    - The middle selects both parts (every knob moves both, each from its own value, both part numbers light up) and plays the mode of the PLAY MODE row on TIDE SETTINGS; the header names it, LAYER, STEREO or DUEL.
    - PART 1 and PART 2 play that part alone on every key.
-   **With TIDE:** tap HOME twice more for TIDE SETTINGS (ten rows: STYLE, MODE, TARGET, ARC, ROLL TYPE, AMOUNT (how far a roll goes), then REC, PLAY MODE, XFADE, SPLIT; STYLE DUB is the default) and AUTO TIDE. Press PLAY and twist K1 on AUTO TIDE right: the parts evolve by themselves. With no notes coming in TIDE plays in C minor; send or hold one note to set its key. The [TIDE guide](TIDE_GUIDE.md) has the rest.
+   **With TIDE:** tap HOME twice more for TIDE SETTINGS (ten rows: STYLE, MODE, TARGET, ARC, KNOBS (which knob set HOME page 1 plays; AUTO follows the tag, the first word of the multi's name: DUB, HSE house, TECH techno, ACID, ELEC electro, AMB ambient), AMOUNT (how far a roll goes), then REC, PLAY MODE, XFADE, SPLIT; STYLE DUB is the default) and AUTO TIDE. Press PLAY and twist K1 on AUTO TIDE right: the parts evolve by themselves. With no notes coming in TIDE plays in C minor; send or hold one note to set its key. The [TIDE guide](TIDE_GUIDE.md) has the rest.
 4. Press **SAVE**. The first page is **PATCHES**: 128 slots, #1 to #128.
 
    - The factory sounds fill them. With TIDE the last four are empty USER slots (U1 to U4) for new sounds. The factory sounds go to #171. (#129 and up are read-only places.)
@@ -82,7 +82,7 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
      - Turn **knob 1** in the dialog to pick another slot.
      - Turn **knob 2 (RENAME)** to give the sound a new name first: the NAME screen opens; OCT+ there brings you back to the dialog with the new name. OCT+ says yes.
    - Whatever was in that slot is replaced.
-   - With TIDE, if JOURNEY has moved the part to another sound, the dialog adds "SAVES THE LOADED SOUND / KEEP FIRST = AS HEARD": SAVE stores the sound as loaded, so do KEEP first to save what you hear (TIDE guide, KEEP).
+   - With TIDE, if TRAVEL has moved the part to another sound, the dialog adds "SAVES THE LOADED SOUND / KEEP FIRST = AS HEARD": SAVE stores the sound as loaded, so do KEEP first to save what you hear (TIDE guide, KEEP).
    - Knob 4 **RESTORE** takes your sound out of the slot again and the factory sound comes back.
    **Tip:** a short press of SAVE opens the page that fits where you are: PATTERNS when you are on a sequencer page (STEP, PARAMETER LOCKS), otherwise MULTIS in LAYER and PATCHES in DUEL and STEREO. SELECT moves between PATCHES, PATTERNS, MULTIS and TOOLS. Hold SAVE on PATTERNS or MULTIS saves over the slot you picked ("SAVE OVER <name>?", OCT+ yes); an empty multi slot asks for a name first.
 
@@ -97,8 +97,8 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
 - **PATTERNS**: 32 named, overwritable step patterns (P01 to P32). With TIDE P29 to P32 are USER slots (empty until saved); the default patterns they stand in for stay listed after them, read-only. The picked entry is opened with a preview of its 16 steps (or NO SEQUENCE). The page always opens with LOAD picked: knob 1 to the pattern, OCT+ loads it (knob 3 picks SAVE instead).
 - **MULTIS**: 16 slots that hold both parts, effects, arps, patterns, mode and morph settings. The page always opens with LOAD picked.
 
-  - **Factory scenes (M01 to M16):** all music, a curated programme with a genre each. From M01 BASIC CHORD through house, Detroit, minimal, acid, electro and IDM to M15 BERLIN RUN and M16 TWO LOOPS. The former STRESS TEST is a test scene only and free to overwrite.
-  - **TIDE drone scenes:** with TIDE the list goes on with two drones built into the firmware: M17 DUNE HORN and M18 VOID DEEP. They load and play like the others. TIDE plays them as STYLE DRONE (hold a chord around C3, PLAY with AUTO TIDE on). They cannot be saved over, renamed or erased. Save an edited one into M01 to M16 instead.
+  - **Factory scenes (M01 to M16):** all music, a curated programme with a genre each. From M01 DUB BASIC through house, Detroit, minimal, acid, electro and IDM to M15 AMB BERLIN and M16 AMB LOOPS. The former STRESS TEST is a test scene only and free to overwrite.
+  - **TIDE drone scenes:** with TIDE the list goes on with two drones built into the firmware: M17 AMB DUNEHORN and M18 AMB VOID. They load and play like the others. TIDE plays them as STYLE DRONE (hold a chord around C3, PLAY with AUTO TIDE on). They cannot be saved over, renamed or erased. Save an edited one into M01 to M16 instead.
   - **TIDE view:** the list shows three rows with the picked multi opened under them. Both parts' sound names, ARP / SEQ / OFF and their first 16 steps (or NO SEQUENCE) before you load. A record that does not load reads DAMAGED.
   - **Loading:** turn knob 1 to the multi you want, press OCT+ to load it. Knob 3 picks SAVE instead. Loading a multi sets its own levels, pan, mute and sends and the effects it stores (chorus, delay, reverb with their settings), whatever the mixer was. It leaves your MIDI settings, the clock source, TUNE and the master effect BASS MONO as they are. BASS MONO is a setting of your unit, not of the multi.
 - To start from scratch (erases settings, patches, multis, patterns, the user wave tables and the FM6 voice bank): MENU (hold HOME) > SYSTEM > ERASE DATA. A reinstall alone keeps your data.
