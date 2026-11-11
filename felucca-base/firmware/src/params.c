@@ -922,7 +922,7 @@ enum { GR_NONE, GR_ADSR, GR_LFO, GR_STEPS, GR_ARP, GR_SCALE, GR_FX, GR_ROLL, GR_
 #if DUELL_TIDE
        , GR_TIDE, GR_TIDELIST            /* TIDE hook (H10): HOME's TIDE and TIDE LIST (tide_ui.c) */
 #endif
-       };                   /* DUELL 0.2.24: FX's SEND FX (the hint that a twist jumps to the effect's GLO page, and which effect is inactive for this part: ui_graph.c graph_fxsum) */
+       };                   /* DUELL 0.2.24: FX's SEND FX (the SELECTED part's three send levels with the global effects they feed: K1 CHORUS, K2 DELAY, K3 REVERB; ui_layer.c, ui_tokens.h) */
 
 typedef struct {
     const char *title;
