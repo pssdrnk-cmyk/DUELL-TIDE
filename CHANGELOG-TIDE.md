@@ -9,6 +9,7 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 
 ## 1.0.0-b10 (in progress)
 
+- **Changed (two genre knobs do more):** ELEC's GRT also moves the cutoff a little (down = darker and cleaner, up = brighter and grittier): the odd harmonics now span about 10 dB over the knob's travel (was 2 dB); the saturation itself had no room left. AMB's DRF reaches its full filter wobble in about 9 detents (twice as fast).
 - **New (COLR LFO: the dub echo breathes):** a new DELAY page, COLR LFO, has one knob, CLFO 0..15: a slow wave (0.25 Hz) that swings the echo's COLOR darker and brighter around its set value (8 COLOR units a step each way), so the repeats move like a hand on a dub echo's tone control. 0 is off and sounds exactly as before. DUB BASIC and DUB CHORD use 5. A multi stores it (it fits in a spare part of the record: older multis read 0).
 
 ## 1.0.0-b9
