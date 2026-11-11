@@ -1056,3 +1056,37 @@ int sl_render_main(int argc, char **argv)
     }
     return r;
 }
+
+/* ---------------------------------------------------------------- params: the descriptors, for tools/soundlab/deadparams.py
+ * One block per engine that has factory sounds: "ENG <index> <name> <number of its first factory sound, 1-based> <its name>", then a line per parameter id of part 1 after that
+ * sound is loaded: "P <engine> <id> <label> <min> <max> <default> <value the sound has>" (a space in a label is written "_"). That sound is the base the dead-parameter renders start from. */
+int sl_params_main(int argc, char **argv)
+{
+    uint32_t e, id;
+    (void)argc;
+    (void)argv;
+    for (e = 0; e < NENGINES; e++) {
+        const ds_sound_t *s;
+        if ((uint32_t)DS_ENG_AT[e + 1u] <= (uint32_t)DS_ENG_AT[e])
+            continue;
+        s = ds_get(e, 0);
+        load(0);
+        host_tracks_init();
+        song.g[G_RTYPE] = GP[G_RTYPE].def;
+        duell_mode_force(DM_STEREO);
+        host_ds_load(&trk[0], e, 0);
+        printf("ENG\t%u\t%s\t%u\t%s\n", (unsigned)e, ENGINES[trk[0].engine]->name, (unsigned)DS_ENG_AT[e] + 1u, s ? s->name : "?");
+        for (id = 0; id < (uint32_t)EXT_P_LEN; id++) {
+            const param_desc_t *d = track_desc(&trk[0], id);
+            char lab[64], *c;
+            if (!d || !d->label || !d->label[0] || d->max <= d->min)
+                continue;
+            snprintf(lab, sizeof lab, "%s", d->label);
+            for (c = lab; *c; c++)
+                if (*c == ' ' || *c == '\t')
+                    *c = '_';
+            printf("P\t%u\t%u\t%s\t%d\t%d\t%d\t%d\n", (unsigned)e, (unsigned)id, lab, d->min, d->max, d->def, (int)trk[0].p[id]);
+        }
+    }
+    return 0;
+}

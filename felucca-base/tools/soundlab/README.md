@@ -82,6 +82,15 @@ Tags come from the numbers (thresholds in `atlas.py`, `tags_of`). Sounds, from t
 `genres.json`: per genre (dub-techno, deep-house, classic-house, detroit, acid, electro, idm, berlin-school, ambient, drone) numeric target ranges, each with `source` (file:section of work/b9/research/) and `basis` (sourced / example / rule / measured). Where no source gave a number the metric is absent and `rules --genre NAME PREFIX` prints it UNSURE; never fill a gap from memory.
 `soundlab rules --genre dub-techno PREFIX` checks the measured values against the ranges. Add a number only with its source line.
 
+## Dead parameters
+
+`soundlab deadparams [--engine NAME]` renders every parameter of every engine at its min and max (a held C3, then a C minor chord, then in each context where it could act: an LFO / ENV 2 / insert / EQ band / arp / voice mode / twin filter switched on, the wave slot at each value) and says DEAD (bit-identical), NEAR (< 0.5 dB and < 1/12 octave), LIVE or UNTESTED (sequencer, matrix, sidechain). `soundlab params` lists the descriptors. The table with the reason for each dead one: `DEADPARAMS.md`. About 8 minutes for all 10 engines.
+
+## Emulator sessions (emu_run)
+
+`sh web/emu/emu_run.sh --run web/emu/scripts/NAME.txt --out DIR` (from `felucca-base/`) plays a script on the emulator's device (`web/emu/felucca_web.c` built natively, the same sources the browser runs; CI checks wasm = native): `boot`, `button HOME|SAVE|GLO|OCTUP.. [tap|down|up]`, `enc K1..K4|SELECT N`, `keys C4 Eb4 G4|off`, `master V`, `midi S D1 D2`, `wait MS`, `shot NAME` (DIR/NAME.png, 240 x 240, and its CRC in `DIR/screens.txt`), `rec NAME|off` (DIR/NAME.wav + .json: `soundlab measure DIR/NAME` reads it). Header of `web/emu/emu_run.c` has the full list.
+Navigation: HOME cycles MORPH (K2-K4 the genre knobs), TIDE SETTINGS (K1 picks the row, OCT+/OCT- change it), AUTO TIDE; SAVE opens MULTIS (K1 the slot, OCT+ loads); a page persists, so do not press SAVE twice. Demos in `web/emu/scripts/`: `genre_knobs.txt` (K2-K4 down and up on M02 M03 M07 M09 M12 M17), `tide_settings.txt`, `multis_pages.txt` (M01-M18 page and 2 s of audio each). Group `emu_smoke` checks 4 screens against `tests/emu_smoke_ref.txt` (`tests/emu_smoke.sh --write-ref` after a UI change on purpose). The audio is the device's output at MASTER `master V`; its level is not soundlab's.
+
 ## Tests and checks
 
 - `./host_tests.sh soundlab`: M02 for 2 bars rendered twice must give bit-identical WAV and JSON; `measure` must match `tests/soundlab_ref.txt` within 0.1. If you change firmware sound on purpose, re-generate the reference (`tests/soundlab_ref.sh --write`) and say so in the commit.

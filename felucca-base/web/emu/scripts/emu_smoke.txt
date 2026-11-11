@@ -1,0 +1,14 @@
+# emu_smoke: the group's script. Only pages that hold no live waveform, so the screens are equal on every machine: TIDE SETTINGS, MULTIS, GLO.
+boot
+button HOME
+button HOME
+shot tide_settings
+enc K1 4
+button OCTUP
+shot knobs_row
+button SAVE
+enc K1 -20
+enc K1 2
+shot multis_m03
+button GLO
+shot glo

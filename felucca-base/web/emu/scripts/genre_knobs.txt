@@ -1,0 +1,316 @@
+# Demo 1: the genre knobs on HOME page 1 (K2 K3 K4), one multi per knob set, each knob turned down and up with a chord held (C4 Eb4 G4).
+# Screens: DIR/<multi>_<knob>_<lo|hi>.png; audio: DIR/<multi>_<knob>_<lo|hi>.wav (2 s each), for soundlab measure. Each knob goes back to where it was.
+boot
+master 800
+button SAVE
+wait 100
+enc K1 -20
+enc K1 1
+shot M02_slot
+button OCTUP
+wait 600
+button HOME
+shot M02_home
+keys C4 Eb4 G4
+wait 400
+enc K2 -14
+wait 300
+shot M02_K2_lo
+rec M02_K2_lo
+wait 2000
+rec off
+enc K2 28
+wait 300
+shot M02_K2_hi
+rec M02_K2_hi
+wait 2000
+rec off
+enc K2 -14
+enc K3 -14
+wait 300
+shot M02_K3_lo
+rec M02_K3_lo
+wait 2000
+rec off
+enc K3 28
+wait 300
+shot M02_K3_hi
+rec M02_K3_hi
+wait 2000
+rec off
+enc K3 -14
+enc K4 -14
+wait 300
+shot M02_K4_lo
+rec M02_K4_lo
+wait 2000
+rec off
+enc K4 28
+wait 300
+shot M02_K4_hi
+rec M02_K4_hi
+wait 2000
+rec off
+enc K4 -14
+keys off
+wait 300
+button SAVE
+wait 100
+enc K1 -20
+enc K1 2
+shot M03_slot
+button OCTUP
+wait 600
+button HOME
+shot M03_home
+keys C4 Eb4 G4
+wait 400
+enc K2 -14
+wait 300
+shot M03_K2_lo
+rec M03_K2_lo
+wait 2000
+rec off
+enc K2 28
+wait 300
+shot M03_K2_hi
+rec M03_K2_hi
+wait 2000
+rec off
+enc K2 -14
+enc K3 -14
+wait 300
+shot M03_K3_lo
+rec M03_K3_lo
+wait 2000
+rec off
+enc K3 28
+wait 300
+shot M03_K3_hi
+rec M03_K3_hi
+wait 2000
+rec off
+enc K3 -14
+enc K4 -14
+wait 300
+shot M03_K4_lo
+rec M03_K4_lo
+wait 2000
+rec off
+enc K4 28
+wait 300
+shot M03_K4_hi
+rec M03_K4_hi
+wait 2000
+rec off
+enc K4 -14
+keys off
+wait 300
+button SAVE
+wait 100
+enc K1 -20
+enc K1 6
+shot M07_slot
+button OCTUP
+wait 600
+button HOME
+shot M07_home
+keys C4 Eb4 G4
+wait 400
+enc K2 -14
+wait 300
+shot M07_K2_lo
+rec M07_K2_lo
+wait 2000
+rec off
+enc K2 28
+wait 300
+shot M07_K2_hi
+rec M07_K2_hi
+wait 2000
+rec off
+enc K2 -14
+enc K3 -14
+wait 300
+shot M07_K3_lo
+rec M07_K3_lo
+wait 2000
+rec off
+enc K3 28
+wait 300
+shot M07_K3_hi
+rec M07_K3_hi
+wait 2000
+rec off
+enc K3 -14
+enc K4 -14
+wait 300
+shot M07_K4_lo
+rec M07_K4_lo
+wait 2000
+rec off
+enc K4 28
+wait 300
+shot M07_K4_hi
+rec M07_K4_hi
+wait 2000
+rec off
+enc K4 -14
+keys off
+wait 300
+button SAVE
+wait 100
+enc K1 -20
+enc K1 8
+shot M09_slot
+button OCTUP
+wait 600
+button HOME
+shot M09_home
+keys C4 Eb4 G4
+wait 400
+enc K2 -14
+wait 300
+shot M09_K2_lo
+rec M09_K2_lo
+wait 2000
+rec off
+enc K2 28
+wait 300
+shot M09_K2_hi
+rec M09_K2_hi
+wait 2000
+rec off
+enc K2 -14
+enc K3 -14
+wait 300
+shot M09_K3_lo
+rec M09_K3_lo
+wait 2000
+rec off
+enc K3 28
+wait 300
+shot M09_K3_hi
+rec M09_K3_hi
+wait 2000
+rec off
+enc K3 -14
+enc K4 -14
+wait 300
+shot M09_K4_lo
+rec M09_K4_lo
+wait 2000
+rec off
+enc K4 28
+wait 300
+shot M09_K4_hi
+rec M09_K4_hi
+wait 2000
+rec off
+enc K4 -14
+keys off
+wait 300
+button SAVE
+wait 100
+enc K1 -20
+enc K1 11
+shot M12_slot
+button OCTUP
+wait 600
+button HOME
+shot M12_home
+keys C4 Eb4 G4
+wait 400
+enc K2 -14
+wait 300
+shot M12_K2_lo
+rec M12_K2_lo
+wait 2000
+rec off
+enc K2 28
+wait 300
+shot M12_K2_hi
+rec M12_K2_hi
+wait 2000
+rec off
+enc K2 -14
+enc K3 -14
+wait 300
+shot M12_K3_lo
+rec M12_K3_lo
+wait 2000
+rec off
+enc K3 28
+wait 300
+shot M12_K3_hi
+rec M12_K3_hi
+wait 2000
+rec off
+enc K3 -14
+enc K4 -14
+wait 300
+shot M12_K4_lo
+rec M12_K4_lo
+wait 2000
+rec off
+enc K4 28
+wait 300
+shot M12_K4_hi
+rec M12_K4_hi
+wait 2000
+rec off
+enc K4 -14
+keys off
+wait 300
+button SAVE
+wait 100
+enc K1 -20
+enc K1 16
+shot M17_slot
+button OCTUP
+wait 600
+button HOME
+shot M17_home
+keys C4 Eb4 G4
+wait 400
+enc K2 -14
+wait 300
+shot M17_K2_lo
+rec M17_K2_lo
+wait 2000
+rec off
+enc K2 28
+wait 300
+shot M17_K2_hi
+rec M17_K2_hi
+wait 2000
+rec off
+enc K2 -14
+enc K3 -14
+wait 300
+shot M17_K3_lo
+rec M17_K3_lo
+wait 2000
+rec off
+enc K3 28
+wait 300
+shot M17_K3_hi
+rec M17_K3_hi
+wait 2000
+rec off
+enc K3 -14
+enc K4 -14
+wait 300
+shot M17_K4_lo
+rec M17_K4_lo
+wait 2000
+rec off
+enc K4 28
+wait 300
+shot M17_K4_hi
+rec M17_K4_hi
+wait 2000
+rec off
+enc K4 -14
+keys off
+wait 300

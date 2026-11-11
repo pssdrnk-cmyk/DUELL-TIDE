@@ -11,6 +11,8 @@
 extern const char *sl_self;                              /* the program's own path (sl_main.c): sweep and `render --multi all` run it again for each render */
 
 int sl_render_main(int argc, char **argv);               /* argv[0] = "render" */
+int sl_params_main(int argc, char **argv);               /* the parameter descriptors of every engine (deadparams.py reads them) */
+int sl_wavdiff_main(int argc, char **argv);              /* soundlab wavdiff A.wav B.wav: same / diff, rms and centroid change */
 int sl_sweep_main(int argc, char **argv);                /* argv[0] = "sweep" */
 
 /* lane B. argv is what follows the subcommand: PREFIX [--from BAR --to BAR] [--control CTLPREFIX]; 0 = ok */
