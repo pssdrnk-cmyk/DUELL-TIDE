@@ -1,7 +1,7 @@
 # Runs every host test group on Linux. On the owner's Windows machine 3 groups SKIP (dx7compat: no .syx banks; benchrun: termios and select() on pipes;
 # benchaudio: no numpy; the fork() groups run through jam/wincompat, and in a snapshot without history otareuse and multiv8 SKIP too); here they run. Nothing is built for the device and nothing is published.
-# The groups are dealt round-robin to 8 machines that run at once (one machine took over 30 minutes); each keeps its log
-# as an artifact (host-tests-log-<shard>), and every shard writes a PASS / FAIL table per group to its job summary.
+# The groups are dealt round-robin to 8 machines that run at once (one machine took over 30 minutes); each runs its groups 4 at a time (jam/fastcheck.py), never stops at a failure,
+# keeps its log as an artifact (host-tests-log-<shard>), and writes a PASS / FAIL table per group plus every failed group's first failing line to its job summary.
 # The runner uses a named Ubuntu release to avoid ubuntu-latest transitions; hosted image updates still apply.
 # Every action is pinned to a full commit, with its version in the comment (Node 24 majors; the Node 20 ones are deprecated). The Pages workflow publishes only after
 # this one has passed (it runs on this workflow's completion).
@@ -173,14 +173,10 @@ jobs:
           groups=$(sed -n 's/^want="\${\*:-\([^"]*\)}"$/\1/p' host_tests.sh | tr ' ' '\n' | grep -v '^\$' | awk -v s=${{ matrix.shard }} 'NF && (NR - 1) % 8 == s' | tr '\n' ' ')
           echo "groups: $groups"
           case " $groups " in *" multiv8 "*) git fetch --quiet --unshallow --tags ;; esac    # (multiv8 reads the v1.0 / v1.1 files from git: the tags if there are any, else their commits)
-          # one group at a time with a time limit (a stuck group stops at 25 minutes and the rest still run), the output of all of them in one file
-          rc=0
-          for g in $groups; do
-            timeout 1500 sh host_tests.sh $g 2>&1 | tee -a host-tests.out
-            st=${PIPESTATUS[0]}
-            [ "$st" -eq 0 ] || { echo "   FAIL (group $g: exit $st, 124 = timed out)" | tee -a host-tests.out; rc=1; }
-          done
-          exit $rc
+          # jam/fastcheck.py: this shard's groups, 4 at a time, each in its own sandbox with a compile cache; every group runs (a failure never stops the rest),
+          # a stuck group stops at 25 minutes. host-tests.out is the groups' output one after the other (the steps below read it); the job summary lists every
+          # failed group with its first failing line; the step fails if any group failed.
+          python3 jam/fastcheck.py -j 4 --limit 1500 --shard ${{ matrix.shard }}/8 --out host-tests.out --summary "$GITHUB_STEP_SUMMARY"
 
       - name: Per-group result table (job summary)
         if: always()
@@ -207,5 +203,6 @@ jobs:
           name: host-tests-log-${{ matrix.shard }}
           path: |
             host-tests.out
+            felucca-base/build/check/fast/
             felucca-base/build/host/*.log
           if-no-files-found: ignore

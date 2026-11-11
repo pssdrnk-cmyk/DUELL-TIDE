@@ -12,6 +12,8 @@ if [ -z "${JAM_WORK:-}" ]; then
     done
     unset _jam_here _c
 fi
+# Linux / macOS / WSL (and CI): no Windows work folder, nothing to set up (the tools come from the system)
+if [ -z "${JAM_WORK:-}" ]; then return 0 2>/dev/null || exit 0; fi
 # A Windows-style JAM_WORK (C:/...) would put "C:" into PATH, which Git Bash splits at the colon: the venv, FriBiDi
 # (Pillow's Raqm text layout) and the shims would silently drop out and the fonts would be drawn differently
 JAM_WORK="$(cd "$JAM_WORK" && pwd)" || return 1 2>/dev/null || exit 1
