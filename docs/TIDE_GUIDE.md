@@ -195,7 +195,11 @@ A sustained part holds still:
 | At the next turn (when the trip arrives) | MODE, WAIT, TIME (also when a STYLE sets it; the page shows the new TIME at once, the bar count goes on with the trip that runs), and KNOBS. |
 | At the next start (knob 1) | TARGET: what the tide moves is fixed when a glide starts. |
 
-Defaults with no saved settings (a new unit, or after ERASE DATA): STYLE DUB, that is MODE EVOLVE, TIME 16, WAIT 2, ARC RISE (and DUB's feel: vary every 4th bar, poly GENTLE, offbeat SOFT, wash OFF); and TARGET BOTH, KNOBS AUTO, REC ADD, ROLL ARP and ROLL PITCH OFF. A STYLE saved by an earlier build loads as the same style with this build's values (DUB saved by `1.0.0-b6` played TRAVEL and now plays EVOLVE). An older record without a STYLE loads as CUSTOM with its values kept.
+Defaults with no saved settings (a new unit, or after ERASE DATA):
+- STYLE DUB, that is MODE EVOLVE, TIME 16, WAIT 2, ARC RISE (and DUB's feel: vary every 4th bar, poly GENTLE, offbeat SOFT, wash OFF);
+- TARGET BOTH, KNOBS AUTO, REC ADD, ROLL ARP and ROLL PITCH OFF.
+
+A STYLE saved by an earlier build loads as the same style with this build's values. DUB saved by `1.0.0-b6` played TRAVEL and now plays EVOLVE. An older record without a STYLE loads as CUSTOM with its values kept.
 
 **STYLE sets** (MODE, TIME, WAIT, vary bars, poly, offbeat, ARC, wash):
 
