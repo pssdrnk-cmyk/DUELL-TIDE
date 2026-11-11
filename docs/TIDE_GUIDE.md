@@ -224,7 +224,12 @@ They play as DRONE without a trip here:
 - loading any other multi brings back the STYLE and values you had
 - the saved STYLE never changes (a row you change while a drone multi is loaded lasts until then)
 
-DRONE is for a held chord of one of the factory drone sounds (#164 to #171) with HOLD on: EVOLVE keeps the sound and slowly moves it between its two ends over 64 bars, never waits at an end, and leaves out everything rhythmic (poly, offbeat and ARC OFF) that a held chord would not use; wash HIGH gives the slow breath. AMBIENT is TRAVEL: it hops from sound to sound, with no groove tricks (poly OFF). CUSTOM moved from 5 to 6 in `1.0.0-b4`; an old 5 reads as CUSTOM unless its values are DRONE's.
+DRONE is for a held chord of one of the factory drone sounds (#164 to #171) with HOLD on:
+- EVOLVE keeps the sound and slowly moves it between its two ends over 64 bars; it never waits at an end.
+- It leaves out everything rhythmic (poly, offbeat and ARC OFF) that a held chord would not use.
+- Wash HIGH gives the slow breath.
+
+AMBIENT is TRAVEL: it hops from sound to sound, with no groove tricks (poly OFF). CUSTOM moved from 5 to 6 in `1.0.0-b4`; an old 5 reads as CUSTOM unless its values are DRONE's.
 
 Dub-techno recipe: STYLE DUB, ALGORITHM LAYER (by hand: **AUTO TIDE** EVOLVE, TIME 16, WAIT 2 to 4; **SETTINGS** TARGET BOTH, ARC RISE; DUB's wash is OFF, so the sounds keep their own level and space). Press PLAY, twist K1 right, walk away.
 
