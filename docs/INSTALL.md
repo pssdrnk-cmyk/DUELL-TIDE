@@ -107,7 +107,18 @@ If anything stops: replug the cable and press Install again. The device stays in
      - Then it shows "Done. Your saved data was erased. The unit starts as new."
   6. If the unit cannot be reached or refuses (for example while it is playing), the card says that the install itself succeeded, that your data was **not** erased, and to use the menu item below.
 - **To start from scratch any time:** on the unit, hold HOME, go to SYSTEM > ERASE DATA, press OCT+ and confirm with OCT+ (OCT- or any page button cancels).
-- **What is erased:** the settings (theme, scale, MIDI channels, favourites, preferences), the autosave, all your saved patches (every slot holds its factory sound again, the USER slots U1 to U4 are empty), your multis, your pattern slots, the three user wave tables (USR1 to USR3) and the FM6 voice bank the editor loaded. The factory sounds, the factory multis M01 to M16 and the factory patterns come back, and the unit starts as new (VIOLET, LAYER, M01; with TIDE, M04 DUB CHORD). **Not erased:** the firmware itself.
+- **What is erased:** 
+  - the settings (theme, scale, MIDI channels, favourites, preferences)
+  - the autosave
+  - all your saved patches (every slot holds its factory sound again, the USER slots U1 to U4 are empty)
+  - your multis
+  - your pattern slots
+  - the three user wave tables (USR1 to USR3)
+  - the FM6 voice bank the editor loaded
+
+  The factory sounds come back. The factory multis M01 to M16 come back. The factory patterns come back. The unit starts as new: VIOLET, LAYER, M01; with TIDE, M04 DUB CHORD.
+
+  **Not erased:** the firmware itself.
 - **It cannot be undone: back up first** (step 2). The backup holds your multis and patterns too.
 
 ## Return to the official firmware
