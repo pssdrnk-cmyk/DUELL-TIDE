@@ -733,9 +733,9 @@ static void test_control(void)
     project_load(11);
     expect("a multi saved with OFF leaves the 400 Hz that was set", song.bm == 9);
     ok = 1;
-    for (v = 0; v < DF_N; v++) {                        /* the factory multis: byte 5 holds no BASS MONO bit */
+    for (v = 0; v < DF_N; v++) {                        /* the factory multis: byte 5 bits 1..4 are the delay CLFO since b10 (0..15), never BASS MONO; bits 5..7 stay 0 */
         static uint8_t dmb[2048];
-        ok &= (dm_rec(v, dmb)[5] >> 1) == 0u;
+        ok &= (dm_rec(v, dmb)[5] >> 5) == 0u;
     }
     {
         uint32_t k;
@@ -747,7 +747,7 @@ static void test_control(void)
             ok &= song.bm == 7;
         }
     }
-    expect("every factory multi (M01.., byte 5 bits 1..4 clear) leaves BASS MONO as it is", ok);
+    expect("every factory multi (M01.., byte 5 bits 5..7 clear; bits 1..4 are the CLFO since b10) leaves BASS MONO as it is", ok);
 
     /* the project: byte 65 is written 0 and not read (the format keeps its size): BASS MONO is the unit's (0.2.24) */
     boot();
