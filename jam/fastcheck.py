@@ -158,6 +158,10 @@ class Runner:
         self.cache = None if a.no_cache else posix(os.path.join(FB, "build", "host-cache"))
         self.sbroot = os.path.join(tempfile.gettempdir(), "htp%d" % os.getpid())
         self.realcc = os.environ.get("HT_REALCC") or ""
+        try:                                        # (a checkout that lost the executable bit would silently run without the cache)
+            os.chmod(os.path.join(HERE, "ccwrap", "cc"), 0o755)
+        except OSError:
+            pass
 
     def env(self, g, sandbox):
         e = dict(os.environ)
