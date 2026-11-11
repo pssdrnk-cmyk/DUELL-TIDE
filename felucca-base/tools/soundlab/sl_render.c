@@ -185,6 +185,7 @@ static void sl_usage(void)
          "  --fx-time-step BAR:+1    the delay TIME index moved by +-n (BAR:=v sets it) at the start of bar BAR; --control also renders PREFIX_ctl without the step\n"
          "  --dry | --fx dry|delay|reverb|full   FX sends: all 0 | none of delay+reverb | delay only | reverb only | as stored      --nofx drc  letters: d delay, r reverb, c chorus sends 0\n"
          "  --solo 1|2       the other part's LEVEL 0     --g NAME=V  a global (BPM DTIME DFDBK DCOLOR DMDEP DMODE .. or its label)     --p [1.|2.]NAME=V  a part value (DLY REV CHOR LEVEL SUBLVL SUBOCT .. or its label)\n"
+         "  --keys-raw       the keys by what they sound with TRN 0 (default: the notes are what SOUNDS, TRN is compensated)     --keys-turn MS  keys pressed one after another, MS apart, in the order given\n"
          "  --ringout SEC    after the last bar: keys up, transport stopped, SEC more seconds (the tails)      --skip N  bars played and not recorded (default 4 with TIDE, else 0)\n"
          "  --transport on|off   the sequencer (default on for a multi, off for a sound: the held keys alone, bars by time)      --uncap  no NOTES budget\n"
          "  --dump-params    also PREFIX.params.tsv: every part and global value at the start of each bar\n"
@@ -202,6 +203,7 @@ typedef struct {
     int fx;                                             /* 0 full, 1 dry, 2 delay only (reverb 0), 3 reverb only (delay 0) */
     char nofx[8];
     int solo, uncap, transport, dump_params, control;   /* transport -1: default */
+    int keys_raw, keys_turn_ms;                         /* --keys-raw: the keys as pressed (part 1's TRN not compensated); --keys-turn MS: pressed one after another, in the order given */
     double ringout;
     int skip;
     const char *out;
@@ -274,7 +276,8 @@ static int sl_run(const sl_opt_t *o, int argc, char **argv)
     char fn[600], keytext[96], sname[48];
     uint32_t i, p, b, macc = 0, bar = 0, curbar = 0, started = 0, nsamp = 0, perbar, guard, skip, nb = (uint32_t)o->bars, bar_rec = 0;
     int transport = o->transport >= 0 ? o->transport : (o->multi > 0 ? 1 : 0), style = o->style, ev_i, fire_end;
-    int keys_n = 0, keys[8], keys_oct = 0, keys_drop = 0, k0_set = 0;
+    int keys_n = 0, keys[8], keys_oct = 0, keys_drop = 0, k0_set = 0, stag_n = 0;
+    uint32_t stag_bit[8] = {0};
     double bar_t[4096], ring_start = -1.0;
     uint8_t pst[2][NVOICE] = {{0}}, pact[2][NVOICE] = {{0}};
     uint32_t page[2][NVOICE] = {{0}};
@@ -409,7 +412,20 @@ static int sl_run(const sl_opt_t *o, int argc, char **argv)
     fader0 = mph[0].fader, fader1 = mph[1].fader;
     /* ---- keys down */
     if (keys_n) {
+        int16_t trn0 = trk[0].p[P_TRANS];
+        if (o->keys_raw)
+            trk[0].p[P_TRANS] = 0;                      /* the notes name the keys as they sound with TRN 0: a TRN set by --p or the sound then moves them */
         fm1_in.notes = sl_keymask(keys, keys_n, &keys_oct, &keys_drop);
+        for (stag_n = 0; stag_n < keys_n && stag_n < 8; stag_n++) {   /* each note's own key, for --keys-turn */
+            int kk;
+            stag_bit[stag_n] = 0u;
+            for (kk = 0; kk < 27; kk++)
+                if ((int)kb_pitch(&trk[0], (uint32_t)kk, keys_oct) == keys[stag_n])
+                    stag_bit[stag_n] |= 1u << kk;
+        }
+        trk[0].p[P_TRANS] = trn0;
+        if (o->keys_turn_ms > 0 && keys_n > 1)
+            fm1_in.notes = stag_bit[0];                 /* --keys-turn: only the first key down at the start */
         song.octave = (int8_t)keys_oct;
         if (keys_drop) {
             fprintf(stderr, "soundlab render: %d key(s) of %s cannot be played on part 1's keys (SCALE / TRANS / OFF-SCALE move them): use --p TRN=.. or other notes\n", keys_drop, keytext);
@@ -523,6 +539,12 @@ static int sl_run(const sl_opt_t *o, int argc, char **argv)
                 if (cur > 0)
                     bar_t[cur] = (double)nsamp / FS;
             }
+        }
+        if (o->keys_turn_ms > 0 && keys_n > 1 && nsamp < (uint32_t)(o->keys_turn_ms * (keys_n + 1) * (FS / 1000u))) {   /* --keys-turn: key i goes down at i * MS */
+            uint32_t due = 1u + (uint32_t)(((double)nsamp * 1000.0 / (double)FS) / (double)o->keys_turn_ms), m = 0, i2;
+            for (i2 = 0; i2 < due && i2 < (uint32_t)keys_n; i2++)
+                m |= stag_bit[i2];
+            fm1_in.notes = m;
         }
         /* ---- events at the start of a bar (bar 0 ones ran before PLAY) */
         if (bar_rec > 0) {
@@ -998,6 +1020,11 @@ int sl_render_main(int argc, char **argv)
             o.solo = atoi(v);
         } else if (!strcmp(k, "--uncap")) {
             o.uncap = 1;
+        } else if (!strcmp(k, "--keys-raw")) {
+            o.keys_raw = 1;
+        } else if (!strcmp(k, "--keys-turn")) {
+            NEEDV;
+            o.keys_turn_ms = atoi(v);
         } else if (!strcmp(k, "--ringout")) {
             NEEDV;
             o.ringout = atof(v);

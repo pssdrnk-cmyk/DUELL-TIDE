@@ -2,7 +2,7 @@
 
 Method: each parameter id of each engine (10 engines, base = the engine's first factory sound) rendered at its min and max, a held C3 then a C minor chord, then in every context where it could act (README, Dead parameters). DEAD = bit-identical in all of them. This is a test on one base sound per engine: a parameter that lives only under another wave or mode can show as DEAD here; the reason column says which are firmware facts, which are an engine's own rule, and which this harness cannot show.
 
-Totals over 1530 (engine, parameter) pairs: 705 LIVE, 334 NEAR (under 0.5 dB and 1/12 octave), 121 DEAD, 370 UNTESTED (sequencer, matrix, sidechain, mute: a held note cannot show them).
+Totals over 1530 (engine, parameter) pairs: 727 LIVE, 342 NEAR (under 0.5 dB and 1/12 octave), 91 DEAD, 370 UNTESTED (sequencer, matrix, sidechain, mute: a held note cannot show them).
 
 Cross-check: docs/MOD_INERT_TABLE.md and the `modinert` test cover SHAPE and the E slots per wave; the LOFI and FM6 rows agree with them.
 
@@ -33,10 +33,7 @@ Cross-check: docs/MOD_INERT_TABLE.md and the `modinert` test cover SHAPE and the
 
 | id | label | page | engines | reason |
 |---|---|---|---|---|
-| P_AORDER | ORD | ARP 1/3 | all 10 | seq.c:528 reorders the arp's keys only when they were pressed out of order; the render presses a chord at once. Not claimed dead. |
 | P_GLIDE | GLD | VOICE 2/2 | WAVE | glide needs a second note after the first; a held single note cannot show it. |
-| P_PRIO | PRIO | VOICE 1/2 | all 10 | voice.c:640 mono_pick (LAST / LOW / HIGH) acts on overlapping mono notes; soundlab holds one chord at once and the render shows no difference. Not claimed dead; test with notes pressed in turn. |
-| P_TRANS | TRN | VOICE 1/2 | all 10 | TRN is added to the panel keys in kb_pitch (seq.c:178); the render's key path apparently skips it. Not claimed dead; check against the unit. |
 | X_CYMODE | MODE | CYCLE ENV 1/2 | ANALOG, PHASE, LOFI, VOICE, TRIO, PHYS, NOISE, WAVE | cycle.c:81 LOOP vs ONCE differ only after the first full cycle; one bar of render may not complete it. Not claimed dead. |
 
 ## Dead here, no reason traced yet (follow-ups for the firmware owner)
@@ -69,6 +66,7 @@ Cross-check: docs/MOD_INERT_TABLE.md and the `modinert` test cover SHAPE and the
 | P_ESYNC | ESYNC | AMP DEST | 9: ANALOG, PHASE, LOFI, VOICE, TRIO ... | 0.22 / 0.008 |
 | X_CYFALL | FALL | CYCLE ENV 1/2 | 9: ANALOG, PHASE, LOFI, VOICE, TRIO ... | 0.22 / 0.043 |
 | X_CYPAN | PAN | CYCLE ENV 2/2 | 9: ANALOG, PHASE, LOFI, VOICE, TRIO ... | 0.12 / 0.000 |
+| P_AORDER | ORD | ARP 1/3 | 8: ANALOG, PHASE, LOFI, VOICE, TRIO ... | 0.15 / 0.049 |
 | P_RES2 | RES | TWIN FILTER | 8: ANALOG, PHASE, LOFI, VOICE, WHEEL ... | 0.06 / 0.012 |
 | X_CYCURVE | CURVE | CYCLE ENV 2/2 | 8: PHASE, LOFI, VOICE, TRIO, WHEEL ... | 0.05 / 0.040 |
 | P_ASWING | SWG | ARP 2/3 | 7: ANALOG, PHASE, LOFI, VOICE, WHEEL ... | 0.43 / 0.070 |

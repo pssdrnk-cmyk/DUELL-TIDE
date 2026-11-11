@@ -108,6 +108,12 @@ def alternatives(name, desc):
         alts.append(("EQ high band up", ["P_EQHG=127", "P_EQHF=64"]))
     if name in G_ARP:
         alts.append(("ARP on (mode 1), transport on", ["P_AMODE=1", "--transport on"]))
+    if name == "P_AORDER":
+        alts.append(("ARP on, keys pressed in turn, high to low", ["P_AMODE=1", "--transport on", "--keys chord:G3,Eb3,C3", "--keys-turn 150"]))
+    if name == "P_TRANS":
+        alts.append(("keys as pressed (TRN not compensated)", ["--keys-raw"]))
+    if name == "P_PRIO":
+        alts.append(("MONO voice, keys pressed in turn, high to low", ["P_VOICE=1", "--keys chord:G3,Eb3,C3", "--keys-turn 150"]))
     if name in ("P_VOIC", "XW_BASE + X_STRUM"):
         alts.append(("POLY voice, chord keys on (CHRD 1)", ["P_VOICE=0", "P_CHRD=1"]))
     if name in ("XW_BASE + X_SUBWAVE", "XW_BASE + X_SUBOCT"):
@@ -174,6 +180,7 @@ def main():
     exe = os.path.join(FB, "build", "soundlab", "soundlab")
     out = os.path.join(FB, "build", "soundlab", "deadparams.tsv")
     only = None
+    only_p = None
     i = 0
     while i < len(a):
         if a[i] == "--exe":
@@ -182,6 +189,8 @@ def main():
             only = a[i + 1].upper(); i += 2
         elif a[i] == "--out":
             out = a[i + 1]; i += 2
+        elif a[i] == "--param":
+            only_p = a[i + 1].split(","); i += 2
         else:
             sys.exit("usage: soundlab deadparams [--engine NAME] [--out FILE.tsv]")
     R = Runner(exe)
@@ -222,6 +231,8 @@ def main():
                 pid, label, mn, mx = int(t[2]), t[3], int(t[4]), int(t[5])
                 pg = "/".join(pages.get(pid, [])) or "-"
                 nm = name_of.get(pid, "#%d" % pid)
+                if only_p and nm not in only_p:
+                    continue
                 if pid in untested:
                     row = (eng[0], pid, nm, label, pg, mn, mx, "UNTESTED", "", "", UNTESTED_WHY)
                 else:
