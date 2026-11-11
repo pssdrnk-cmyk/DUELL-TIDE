@@ -405,7 +405,7 @@ static void tide_knob(uint32_t slot, int32_t s)
     }
 }
 
-/* MIDI (midi_control.c midi_jam, through the morph queue): GLIDE to end v, the SEQ fader to v, on the parts of mask */
+/* MIDI (midi_control.c, through the morph queue): GLIDE to end v, the SEQ fader to v, on the parts of mask */
 static void tide_midi(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi)
 {
     uint32_t k;

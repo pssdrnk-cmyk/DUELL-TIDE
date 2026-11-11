@@ -1515,7 +1515,7 @@ static void schain_jump(uint32_t knob, int32_t steps)
     glo_knob_jump(i, knob);
 }
 
-/* item 125: a twist of any knob of a page whose module is OFF (ui.c off_module, the notice of ui_graph.c graph_off) jumps to GLO > MODULES; the rest of that twist is swallowed (kr_on) as after fxsum_knob */
+/* item 125: a twist of any knob of a page whose module is OFF (ui.c off_module, the notice of ui_graph.c graph_off) jumps to GLO > MODULES; the rest of that twist is swallowed (kr_on) in glo_knob_jump */
 static void off_knob(uint32_t knob, int32_t steps)
 {
     uint32_t i;
