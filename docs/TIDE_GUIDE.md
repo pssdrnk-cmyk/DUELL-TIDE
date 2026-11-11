@@ -120,12 +120,12 @@ The KNOBS sets (HOME page 1; K1 is always MORPH; AUTO picks the set from the tag
 | Set | K2 | K3 | K4 |
 |---|---|---|---|
 | **STD** (no tag, single sounds) | FLT: cutoff | RSN: resonance | ECH: echo send |
-| **DUB** | SND: echo send, a little reverb | FDBK: feedback up to runaway, repeats darken | TIME: delay time in note values, glides |
+| **DUB** | SND: echo send, a little reverb | FDBK: feedback up to runaway, repeats darken, the send follows | TIME: delay time in note values (a note value every fourth click), glides |
 | **HSE** house | FLT: cutoff, a touch of resonance | PMP: sidechain pump depth | REV: reverb send, longer release |
-| **TECH** techno | TNS: cutoff, resonance and envelope up (build) | DEC: decay short to long | WSH: reverb and echo sends |
-| **ACID** | SQL: cutoff and resonance (the squelch) | BTE: envelope to filter up, decay shorter | DRT: saturation |
+| **TECH** techno | TNS: cutoff, resonance and the filter envelope's depth up (build) | DEC: decay short to long | WSH: reverb and echo sends |
+| **ACID** | SQL: cutoff and resonance (the squelch) | BTE: the filter envelope's depth (ENV 2) and the cutoff up, decay shorter | DRT: saturation |
 | **ELEC** electro / IDM | FLT: cutoff | GRT: saturation and chorus | GLT: shorter gates, dropped steps |
-| **AMB** ambient / drone | BLM: slower attack, longer release, more reverb | DRF: deeper, slower filter wobble | SPC: echo and reverb |
+| **AMB** ambient / drone | BLM: slower attack, longer release, more reverb | DRF: deeper, slower filter wobble (the cutoff comes down a little so the wobble has room) | SPC: echo and reverb |
 
 **What STYLE sets without a row.** These were rows until `1.0.0-b6`; now each STYLE has its own values (the table below) and they act in automatic EVOLVE / TRAVEL:
 
