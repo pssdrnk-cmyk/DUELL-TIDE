@@ -179,7 +179,15 @@ Defaults with no saved settings (a new unit, or after ERASE DATA): STYLE DUB, th
 
 DUB keeps the multi's own sounds and walks them (WANDER); JOURNEY, which travels through other factory sounds, is the mode of AMBIENT and PEAK, or yours by hand on the MODE row.
 
-The built-in drone multis M17 DUNE HORN and M18 VOID DEEP (SAVE > MULTIS, 1.0.0-b6) each have one part on a slow sequence over the held chord (DUNE HORN: the horn swells once a bar, root, root, fourth, root; VOID DEEP: the solar wind turns every 8 to 16 seconds, root, a tone up, the fourth) while the other part holds the chord; DRONE's WANDER keeps them sparse (never more than one new note a bar, never under the chord you hold). They play as DRONE without a trip here: while one of them is the multi loaded, STYLE shows DRONE and its values are DRONE's; loading any other multi brings back the STYLE and values you had, and the saved STYLE never changes (a row you change while a drone multi is loaded lasts until then).
+The built-in drone multis M17 DUNE HORN and M18 VOID DEEP (SAVE > MULTIS, 1.0.0-b6) behave as follows:
+- each has one part on a slow sequence over the held chord, while the other part holds the chord
+- DUNE HORN: the horn swells once a bar — root, root, fourth, root
+- VOID DEEP: the solar wind turns every 8 to 16 seconds — root, a tone up, the fourth
+- DRONE's WANDER keeps them sparse (never more than one new note a bar, never under the chord you hold)
+They play as DRONE without a trip here:
+- while one of them is the multi loaded, STYLE shows DRONE and its values are DRONE's
+- loading any other multi brings back the STYLE and values you had
+- the saved STYLE never changes (a row you change while a drone multi is loaded lasts until then)
 
 DRONE is for a held chord of one of the factory drone sounds (#164 to #171) with HOLD on: WANDER keeps the sound and slowly moves it between its two ends over 64 bars, never waits at an end, and leaves out everything rhythmic (turns TOGETHER, poly, offbeat and ARC OFF) that a held chord would not use; wash HIGH gives the slow breath. AMBIENT is JOURNEY: it hops from sound to sound, with no groove tricks (poly OFF). CUSTOM moved from 5 to 6 in `1.0.0-b4`; an old 5 reads as CUSTOM unless its values are DRONE's.
 
