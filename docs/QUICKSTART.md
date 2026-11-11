@@ -237,7 +237,16 @@ Wider only works above 125 Hz, so the bass is never spread, and the mono sum nev
 **Piano roll (editor, new in 0.2.20).** In the web editor each part has a PIANO ROLL tab for its step pattern, and a ROLL button that opens it across the whole window. See [EDITOR_ROLL.md](EDITOR_ROLL.md).
 
 ## MIDI
-Part 1 listens on channel 1 and part 2 on channel 2 (editable). On the device: clock in, program change and bank select, the mod wheel (CC1) moves the MORPH fader and is also a matrix source. CC 70 morph, 102 roll (0 to 42 rolls End A, 85 to 127 rolls End B), 103 amount. In LAYER, program change 0 to 15 on part 1's channel recalls MULTIs M01 to M16 (with TIDE: 0 to 17, M17 and M18 the built-in drone scenes). With an external clock, MIDI Start plays step 0 on the first clock pulse after it, and the tempo is averaged over four beats so a steady clock keeps the delay time and the TEMPO display still. PLAY on this unit while a master's clock is arriving waits for the master's next bar (STOP, STOP ALL or the master's Stop cancel the wait); with no clock arriving PLAY starts at once. Not yet tested with a range of real MIDI devices.
+Part 1 listens on channel 1 and part 2 on channel 2 (editable).
+- On the device: clock in, program change and bank select.
+- The mod wheel (CC1) moves the MORPH fader and is also a matrix source.
+- CC 70 morph, 102 roll (0 to 42 rolls End A, 85 to 127 rolls End B), 103 amount.
+- In LAYER, program change 0 to 15 on part 1's channel recalls MULTIs M01 to M16 (with TIDE: 0 to 17, M17 and M18 the built-in drone scenes).
+- With an external clock, MIDI Start plays step 0 on the first clock pulse after it.
+- The tempo is averaged over four beats so a steady clock keeps the delay time and the TEMPO display still.
+- PLAY on this unit while a master's clock is arriving waits for the master's next bar (STOP, STOP ALL or the master's Stop cancel the wait).
+- With no clock arriving PLAY starts at once.
+- Not yet tested with a range of real MIDI devices.
 
 ## Next
 [TESTING.md](TESTING.md) lists what to try and report. [TROUBLESHOOTING.md](TROUBLESHOOTING.md) if something misbehaves.
