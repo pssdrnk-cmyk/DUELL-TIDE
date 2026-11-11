@@ -236,8 +236,8 @@ static void keys_drive(void)
     /* (reel, 2026-11-10: the ARP SEQ pairs of the fifteen new multis: M05 ORGAN HOUSE, M07 DETROIT STAB, M09 MINIMAL 12, M13 DEEP SEA ARP (M03 and M06 are plain patterns now);
      * AMB: no factory multi has a latched pad any more, so the owner's WHISPER TIDE (the factory M11 until the reel) is the test scene tests/scenes/reel/M11_WHISPER_TIDE.bin,
      * stored in M11 for its check and erased again; M06 PIANO HOUSE is the keyed pair (both parts played from the keys, HOLD OFF), as TINE STRINGS and FINAL REEL were) */
-    static const uint8_t GRV[4] = {1, 4, 6, 12}, P1[4] = {0, 0, 0, 0}, AMB[2] = {10, 5};   /* (b8 lane M09: slot 9 HYPNO 303 has a plain-pattern 303 on part 1: with M11 in the plain-pattern check below) */
-    static const char *const GN[4] = {"M02 DUB CHORD", "M05 ORGAN HOUSE", "M07 DETROIT STAB", "M13 DEEP SEA ARP"};
+    static const uint8_t GRV[4] = {1, 4, 6, 11}, P1[4] = {0, 0, 0, 0}, AMB[2] = {10, 5};   /* (b8 lane M09: slot 9 HYPNO 303 has a plain-pattern 303 on part 1: with M11 in the plain-pattern check below) */
+    static const char *const GN[4] = {"M02 DUB CHORD", "M05 ORGAN HOUSE", "M07 DETROIT STAB", "M12 ROBOT FUNK"};
     uint32_t j;
     char line[160];
     for (j = 0; j < 4u; j++) {
@@ -1091,8 +1091,8 @@ int main(void)
         static const char *const FN[16] = {"BASIC CHORD", "DUB CHORD", "JUNO DEEP", "LATE RHODES", "ORGAN HOUSE", "PIANO HOUSE", "DETROIT STAB",
                                            "HI-TECH SOUL", "HYPNO 303", "TWO 303S", "ACID LINES", "ROBOT FUNK", "DEEP SEA ARP", "WARPED TAPE",
                                            "BERLIN RUN", "TWO LOOPS"};
-        static const char *const SN[16][2] = {{"CHORD ECHO", "DUST BED"}, {"BIG STAB", "SLOW TIDE"}, {"WARM WASH", "RUBBER BAND"},
-                                              {"TINE ROOM", "AIR SHIMMER"}, {"DUB DRAWBAR", "HOUSE ORGAN"}, {"SALOON KEYS", "RAIN STRINGS"},
+        static const char *const SN[16][2] = {{"CHORD ECHO", "WARM WASH"}, {"BIG STAB", "SLOW TIDE"}, {"WARM WASH", "RUBBER BAND"},
+                                              {"TINE ROOM", "AIR SHIMMER"}, {"DUB DRAWBAR", "ORGAN WASH"}, {"SALOON KEYS", "RAIN STRINGS"},
                                               {"LOW STAB", "STRING MACH"}, {"SUNDAY KEYS", "BELL STAB"}, {"SQUELCH", "FOG BANK"},
                                               {"TIDAL SUB", "SQUELCH"}, {"SQUELCH", "DEEP BLUE"}, {"LADDER BASS", "VOWEL PAD"},
                                               {"DIGI PLUCK", "PWM PAD"}, {"WAVE CHIMES", "TAPE CLOUD"}, {"ARP PLUCK", "CHOIR LOFT"},
@@ -1105,7 +1105,7 @@ int main(void)
         /* (seq.c AM_*: UP 1, RND 4, SEQ 15; D31: the six new multis are SEQ arps on both parts (BASIC CHORD's DUST BED is played live); the kept records as they were) */
         /* (reel, 2026-11-10: ARP SEQ on both parts, but M03 JUNO DEEP, M06 PIANO HOUSE, M10 TWO 303S (b8) and M11 ACID LINES: written notes, plain patterns on both parts, the arp OFF) */
         static const int8_t AM[16][2] = {{15, 15}, {15, 15}, {0, 0}, {15, 15}, {15, 15}, {0, 0}, {15, 15}, {15, 15}, {0, 15},
-                                         {0, 0}, {0, 0}, {15, 15}, {15, 15}, {15, 15}, {15, 15}, {15, 15}};
+                                         {0, 0}, {0, 0}, {15, 15}, {15, 0}, {15, 15}, {15, 15}, {15, 15}};   /* (b9 sound: M13 DEEP SEA ARP's pad is written chords now, the arp OFF; M01's bed is WARM WASH, no DUST BED) */
         static uint8_t before[0x100000];
         uint32_t n, st;
         memset(nor, 0xFF, sizeof nor);

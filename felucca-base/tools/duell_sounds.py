@@ -2369,7 +2369,7 @@ SOUNDS = [
     # through a 12 dB filter between low-pass and band-pass whose cutoff rides an 18 s LFO and whose resonance breathes with a 14 s cycle: the wind swells and
     # thins over the soft beating tone; the widest spread, a long echo, the room at full, the lows left full (a sub under the key). A texture (JRNY: with NIGHT DRONE and STORM FRONT).
     # End B: the wind takes over: more noise, the filter higher and more band-pass, faster, the beat wider, the room as big as it goes.
-    dict(engine='ANALOG', idx=35, name='SOLAR WIND', cat='FX', text=True, bseed=37592, bamt=25,  # #169
+    dict(engine='ANALOG', idx=35, name='SOLAR WIND', cat='FX', text=True, bseed=33367, bamt=25,  # #169
          p={
             'ATK': 88, 'DEC': 100, 'SUS': 127, 'REL': 118, 'LRATE': 2, 'LWAVE': 1, 'KTRK': 0, 'CHOR': 50, 'DLY': 56, 'REV': 120, 'SPRD': 90, 'SUB LEVEL': 72, 'SUB OCTAVE': 1,
             'FREEA': 46, 'FREEB': 30, 'FREEC': 40, 'FREED': 1, 'TRIM': 116, 'E1': 2, 'E2': 4, 'E4': 52, 'MOD1': ('LFO1', 'CUT', 8), 'MOD2': ('CYCLE', 'FRES', 8),
