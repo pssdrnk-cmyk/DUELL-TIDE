@@ -2397,6 +2397,7 @@ static const char *h1_echo_why(void)
 {
     return (mods_off & MODS_SENDS) ? "ECHO: SENDS OFF" : !song.g[G_DMIX] ? "ECHO: DELAY MIX 0" : 0;   /* (the line's words whole: no buffer, RAM is tight) */
 }
+static uint32_t kn_cur(void);                           /* (tide_ui.c: the set the KNOBS row and the multi's name pick) */
 /* the value v of the macro parameter ix (knob_sets.h KN_ID's place) as part t shows it (its card's form; a global as its page shows it), the cutoff's unit short ("2.4k", "880") */
 static void h1_val(uint32_t ix, const track_t *t, int32_t v, char *out)
 {
@@ -2404,7 +2405,6 @@ static void h1_val(uint32_t ix, const track_t *t, int32_t v, char *out)
     param_format(ix < KN_NP ? track_desc(t, KN_ID[ix]) : glob_desc(KN_ID[ix]), v, out, &unit);
     str_cpy(out + str_len(out), str_eq(unit, "Hz") ? "" : str_eq(unit, "kHz") ? "k" : unit, 4);
 }
-static uint32_t kn_cur(void);                           /* (tide_ui.c: the set the KNOBS row and the multi's name pick) */
 static void morph_row(void)
 {
     static char last[24];

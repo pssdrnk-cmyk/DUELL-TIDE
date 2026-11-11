@@ -163,7 +163,7 @@ enum { JL_STYLE, JL_GMODE, JL_TARGET, JL_ARC, JL_KNOB, JL_AMOUNT, JL_REC, JL_MOD
 static const char *const JL_NAME[JL_N] = {"STYLE", "MODE", "TARGET", "ARC", "KNOBS", "AMOUNT", "REC", "PLAY MODE", "XFADE", "SPLIT"};   /* (AMOUNT: how far a roll goes, the part's; on the MORPH page's K4 until 1.0.0-b7) */
 static uint8_t jl_sel;                                   /* the row picked (K1) */
 /* 1.0.0-b9 KNOBS: HOME page 1's knobs 2..4 (knob_sets.h). Stored in the byte ROLL TYPE had (TS_KNOB): 0 or 1 AUTO (1 the default, an older record's 0 / 1 too), 2 STD, 3..8 DB HS TC AC EL AM.
- * AUTO takes the set from the first two letters of the music's name and a space ("AC HYPNO 303"); no prefix, or no multi: STD */
+ * AUTO takes the set from the first word of the music's name ("ACID HYPNO", knob_sets.h KN_TAG); any other first word, or no multi: STD */
 static uint8_t tide_knobs = 1;
 static uint32_t kn_cur(void)                             /* the set (KS_*) the knobs have now */
 {
@@ -172,9 +172,13 @@ static uint32_t kn_cur(void)                             /* the set (KS_*) the k
     if (tide_knobs > 1u)
         return tide_knobs - 2u;
     project_cur_name(b);
-    for (k = 0; k < KS_N - 1u; k++)
-        if (b[0] == KN_PFX[2u * k] && b[1] == KN_PFX[2u * k + 1u] && b[2] == ' ')
+    for (k = 0; k < KS_N - 1u; k++) {
+        uint32_t i;
+        for (i = 0; KN_TAG[k][i] && b[i] == KN_TAG[k][i]; i++)
+            ;
+        if (!KN_TAG[k][i] && (b[i] == ' ' || !b[i]))
             return k + 1u;
+    }
     return KS_STD;
 }
 static void morph_act(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi);   /* (ui_input.c) */
@@ -249,7 +253,7 @@ static const uint8_t JL_NV[JL_N] = {7, 5, 3, 3, KS_N + 1, 101, 2, 3, 101, 130}; 
 static volatile uint8_t *const JL_VAR[JL_N] = {[JL_STYLE] = &tide_style, [JL_GMODE] = &gl.mode, [JL_TARGET] = &gl.target, [JL_ARC] = &sqm_arc,
                                                [JL_REC] = &tide_rec_replace};   /* (REC is no part of a STYLE: seq.c, live recording) */
 static const char *const JL_V[] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK", "DRONE", "CUSTOM", "SOUND", "SEQ", "BOTH", "OFF", "RISE", "DROP",
-                                   "AUTO", "STD", "DB", "HS", "TC", "AC", "EL", "AM", "ADD", "REPLACE", "LAYER", "STEREO", "DUEL"};
+                                   "AUTO", "STD", "DUB", "HSE", "TECH", "ACID", "ELEC", "AMB", "ADD", "REPLACE", "LAYER", "STEREO", "DUEL"};
 static const uint8_t JL_V0[JL_N] = {0, 0, 7, 10, 13, 0, 21, 23, 0, 0};   /* (each row's first name in JL_V; MODE's are GL_MODE_NAME) */
 static const char *const JL_SAY[JL_N] = {"STYLE ", "MODE ", 0, "ARC ", "", "AMOUNT ", "REC ", 0, 0, 0};
 static const char *const JL_OWN[3] = {"GLIDE SOUND", "GLIDE SEQ", "GLIDE BOTH"};   /* (TARGET's messages) */

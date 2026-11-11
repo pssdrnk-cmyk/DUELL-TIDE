@@ -896,7 +896,7 @@ static void t_style(void)
     jl_put(JL_STYLE, 3);
     tide_settings();
     jl_put(JL_TARGET, GT_SEQ);
-    jl_put(JL_ROLL, 1);
+    roll_type_put(1);
     tide_settings();
     CHECK("  .. TARGET and ROLL leave the style alone", tide_style == 3u);
     jl_put(JL_STYLE, 2);
@@ -1006,10 +1006,10 @@ static void t_store(void)
     tide_store_dirty = 0;
     tide_seen_ok = 0;
     sqm_poly = 0;
-    gl.mode = GM_ONCE, gl.time = 0, gl.target = GT_SOUND, gl.wait = 0, sqm_vary_all = 0, morph_musical = 1, morph_wlvl = 0;
+    gl.mode = GM_ONCE, gl.time = 0, gl.target = GT_SOUND, gl.wait = 0, sqm_vary_all = 0, tide_knobs = 7, morph_wlvl = 0;
     tide_settings();
     CHECK("the settings of the older record are kept", gl.mode == GM_WANDER && gl.time == 2u && gl.target == GT_BOTH && gl.wait == 1u && sqm_vary_all == 1u &&
-          morph_musical == 0u && morph_wlvl == 3u);
+          tide_knobs == 0u && morph_wlvl == 3u);
     CHECK("  .. POLY and SYNC at their defaults: GENTLE, SOFT", sqm_poly == 1u && sqm_sync == 1u);
     CHECK("  .. nothing is written back by the load alone", !tide_store_dirty);
     sqm_poly = 2;
@@ -1054,7 +1054,7 @@ static void t_sig(void)
             h0 = tide_sig();
             switch (f) {
             case 0: sqm_vary_all ^= 1u; break;
-            case 1: morph_musical ^= 1u; break;
+            case 1: gl.hold ^= 1u; break;
             case 2: sqm_poly ^= 1u; break;
             case 3: sqm_sync ^= 1u; break;
             case 4: sqm_arc ^= 1u; break;
@@ -1073,7 +1073,7 @@ static void t_sig(void)
             }
             switch (f) {                                     /* (back) */
             case 0: sqm_vary_all ^= 1u; break;
-            case 1: morph_musical ^= 1u; break;
+            case 1: gl.hold ^= 1u; break;
             case 2: sqm_poly ^= 1u; break;
             case 3: sqm_sync ^= 1u; break;
             case 4: sqm_arc ^= 1u; break;

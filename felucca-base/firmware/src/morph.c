@@ -1904,16 +1904,19 @@ static void morph_rebase_part(uint32_t pi)               /* ends = the Original,
 }
 static void morph_ready_first(uint32_t pi);
 #if DUELL_TIDE
-/* 1.0.0-b7: the loaded sound's FILTER, RESONANCE and ECHO (HOME's MORPH page K2..K4, ui_input.c H1_PG: OCT- + the knob puts its value back; b8: RESONANCE for LENGTH), taken when a sound is
+#include "knob_sets.h"          /* 1.0.0-b9: the genre knob sets (HOME page 1 K2..K4) */
+/* 1.0.0-b7: the loaded sound's FILTER, RESONANCE and ECHO (HOME's MORPH page K2..K4, ui_input.c H1_PG: OCT- + the knob puts its value back; b8: RESONANCE for LENGTH; b9: every parameter the genre macros move), taken when a sound is
  * loaded (morph_rebase), at a part's first use and when morph_ready finds another sound; not by a rebase of the same sound (HOME, KEEP: the edits stay the player's).
  * In the pool (main loop; .bss is the tighter) */
-#include "knob_sets.h"          /* 1.0.0-b9: the genre knob sets (HOME page 1 K2..K4) */
-static const uint8_t H1_ID[3] = {P_FREEA, P_FREEB, P_DLY};
-static int16_t h1_orig[NSHOWN][3] __attribute__((section(".pool")));
+static int16_t h1_orig[NSHOWN][KN_NP] __attribute__((section(".pool")));   /* (every parameter a genre macro can move, per part; b9: the globals too, below) */
+static int16_t h1_gorig[KN_NID - KN_NP] __attribute__((section(".pool")));
 static void h1_take(uint32_t pi)
 {
-    for (uint32_t k = 0; k < 3u; k++)
-        h1_orig[pi][k] = trk[pi].p[H1_ID[k]];
+    uint32_t k;
+    for (k = 0; k < KN_NP; k++)
+        h1_orig[pi][k] = trk[pi].p[KN_ID[k]];
+    for (k = KN_NP; k < KN_NID; k++)                     /* (the delay's TIME, FDBK, COLR as they are when the sound or multi is loaded) */
+        h1_gorig[k - KN_NP] = song.g[KN_ID[k]];
 }
 #define H1_TAKE(pi) h1_take(pi)
 #else

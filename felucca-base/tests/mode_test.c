@@ -1076,8 +1076,8 @@ static void t_mode_rows(void)
     frames(64);
     mode_page();
     frames(32);
-    expect("TIDE SETTINGS (1.0.0-b7, MR8 and page 1): STYLE, MODE, TARGET, ARC, ROLL TYPE, AMOUNT, REC, PLAY MODE, XFADE, SPLIT", JL_N == 10u &&
-           str_eq(JL_NAME[0], "STYLE") && str_eq(JL_NAME[1], "MODE") && str_eq(JL_NAME[2], "TARGET") && str_eq(JL_NAME[3], "ARC") && str_eq(JL_NAME[4], "ROLL TYPE") &&
+    expect("TIDE SETTINGS (1.0.0-b7, MR8 and page 1): STYLE, MODE, TARGET, ARC, KNOBS, AMOUNT, REC, PLAY MODE, XFADE, SPLIT", JL_N == 10u &&
+           str_eq(JL_NAME[0], "STYLE") && str_eq(JL_NAME[1], "MODE") && str_eq(JL_NAME[2], "TARGET") && str_eq(JL_NAME[3], "ARC") && str_eq(JL_NAME[4], "KNOBS") &&
            str_eq(JL_NAME[5], "AMOUNT") && str_eq(JL_NAME[6], "REC") && str_eq(JL_NAME[JL_MODE], "PLAY MODE") && JL_MODE == 7u && str_eq(JL_NAME[JL_XFADE], "XFADE") && str_eq(JL_NAME[JL_SPLIT], "SPLIT") && JL_SPLIT == JL_N - 1u);
     expect("  .. MODE reads the glide's five modes, ONCE to JOURNEY", jl_n(JL_GMODE) == 5u && str_eq(jl_vname(JL_GMODE, 0), "ONCE") && str_eq(jl_vname(JL_GMODE, 4), "JOURNEY"));
     expect("  .. HOME's round has no MODE page: PAGES has no MODE row (1.0.0-b4: the hidden row is gone)", page_of("MODE") == NPAGES);
@@ -1243,18 +1243,18 @@ static void t_mode_rows(void)
         mix_xf = keep[1];
         mix_split = keep[2];
     }
-    /* row dimming (the b613526 bug): PLAY MODE never dims; XFADE and SPLIT dim outside LAYER only; ARC dims while the automatic TIDE is not on, whatever ROLL TYPE is,
-     * ROLL TYPE under JOURNEY (1.0.0-b7, MR8); jl_dimmed is the draw's rule */
+    /* row dimming (the b613526 bug): PLAY MODE never dims; XFADE and SPLIT dim outside LAYER only; ARC dims while the automatic TIDE is not on; the KNOBS row (b9: it was ROLL TYPE,
+     * dim under JOURNEY) never dims; jl_dimmed is the draw's rule */
     {
         uint32_t ok_mode = 1, ok_lay = 1, ok_duel = 1;
         uint8_t km = gl.mode, kt = gl.target, kr = morph_musical;
         gl.target = GT_BOTH;
         gl.mode = GM_ONCE;
-        expect("dimming: ARC dims under ONCE, says WNDR OR JRNY; ROLL TYPE acts", jl_dimmed(JL_ARC) && str_eq(jl_needs(JL_ARC), "WNDR OR JRNY") && !jl_dimmed(JL_ROLL));
+        expect("dimming: ARC dims under ONCE, says WNDR OR JRNY; KNOBS acts", jl_dimmed(JL_ARC) && str_eq(jl_needs(JL_ARC), "WNDR OR JRNY") && !jl_dimmed(JL_KNOB));
         gl.mode = GM_WANDER; morph_musical = 0;
-        expect("  .. WANDER, ROLL TYPE SMART: ARC acts (no ROLL TYPE gate), ROLL TYPE acts", !jl_dimmed(JL_ARC) && !jl_dimmed(JL_ROLL));
+        expect("  .. WANDER, ROLL TYPE SMART: ARC acts (no roll gate), KNOBS acts", !jl_dimmed(JL_ARC) && !jl_dimmed(JL_KNOB));
         gl.mode = GM_JOURNEY; morph_musical = 1;
-        expect("  .. JOURNEY: ARC acts, ROLL TYPE dims and says NOT JRNY", !jl_dimmed(JL_ARC) && jl_dimmed(JL_ROLL) && str_eq(jl_needs(JL_ROLL), "NOT JRNY"));
+        expect("  .. JOURNEY: ARC acts, KNOBS acts (no gate)", !jl_dimmed(JL_ARC) && !jl_dimmed(JL_KNOB) && !jl_needs(JL_KNOB));
         gl.target = GT_SOUND;
         expect("  .. TARGET SOUND: ARC dims, says TARGET SEQ", jl_dimmed(JL_ARC) && str_eq(jl_needs(JL_ARC), "TARGET SEQ"));
         gl.target = GT_BOTH;

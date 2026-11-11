@@ -2996,13 +2996,13 @@ int main(int argc, char **argv)
                                 go_page(GR_MORPH);             /* (the scene's HOME tap from MORPH goes on to TIDE SETTINGS here: the page by its graph) */
                                 SEL_BOTH = 1;
                                 for (c = 0; c < 3u; c++) {
-                                    const param_desc_t *dd = track_desc(&trk[0], H1_ID[c]);
+                                    const param_desc_t *dd = track_desc(&trk[0], KN_ID[c]);
                                     for (v2 = (uint32_t)dd->min, best = v2, bw = -1; v2 <= (uint32_t)dd->max; v2++) {
                                         h1_val(c, &trk[0], (int32_t)v2, vb);
                                         if (text_w(&AF_S, vb) > bw) { bw = text_w(&AF_S, vb); best = v2; }
                                     }
                                     for (q2 = 0; q2 < 2u; q2++)
-                                        trk[q2].p[H1_ID[c]] = (int16_t)best;
+                                        trk[q2].p[KN_ID[c]] = (int16_t)best;
                                 }
                             }
                             memset(wl, 0, sizeof wl);

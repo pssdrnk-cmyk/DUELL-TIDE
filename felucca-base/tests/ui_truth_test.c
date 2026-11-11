@@ -179,7 +179,7 @@ static void test_inert_rows(void)
     morph_musical = 1; gl.target = GT_SOUND;
     CHECK("INERT: TARGET SOUND: ARC dims, TARGET SEQ is named", inert_look(JL_ARC, JL_ARC) == 2 && rows_has(0, 80, "TARGET SEQ"));
     gl.target = GT_BOTH; gl.mode = GM_JOURNEY;
-    CHECK("INERT: JOURNEY: ROLL TYPE dims, knob 1's line says NOT JRNY", inert_look(JL_ROLL, JL_ROLL) == 2 && rows_has(0, 80, "NOT JRNY"));
+    CHECK("INERT: JOURNEY: KNOBS acts, knob 1's line names nothing", inert_look(JL_KNOB, JL_KNOB) == 1 && !rows_has(0, 80, "NOT JRNY"));
     CHECK("INERT:   .. ARC acts", inert_look(JL_ARC, JL_GMODE) == 1);
     CHECK("INERT: a row that always acts (MODE) names nothing", !rows_has(0, 80, "NOT JRNY") && !rows_has(0, 80, "TARGET SEQ") && !rows_has(0, 80, "WNDR OR JRNY"));
     gl.mode = GM_WANDER;
@@ -200,8 +200,8 @@ static void test_list_knobs(void)
     CHECK("LIST: it stops at the last value", gl.target == GT_BOTH);
     tide_knob(2u, -3);
     CHECK("LIST: knob 3 left is the one before", gl.target == GT_SEQ && jl_sel == JL_TARGET);
-    CHECK("LIST: the row names say what they do (D9)", !strcmp(JL_NAME[JL_ROLL], "ROLL TYPE") && !strcmp(JL_NAME[JL_GMODE], "MODE") && !strcmp(jl_vname(JL_GMODE, 3), "WANDER") &&
-          !strcmp(jl_vname(JL_TARGET, 2), "BOTH") && !strcmp(jl_vname(JL_ROLL, 0), "MUSIC") && !strcmp(jl_vname(JL_ARC, 1), "RISE"));
+    CHECK("LIST: the row names say what they do (D9)", !strcmp(JL_NAME[JL_KNOB], "KNOBS") && !strcmp(JL_NAME[JL_GMODE], "MODE") && !strcmp(jl_vname(JL_GMODE, 3), "WANDER") &&
+          !strcmp(jl_vname(JL_TARGET, 2), "BOTH") && !strcmp(jl_vname(JL_KNOB, 0), "AUTO") && !strcmp(jl_vname(JL_ARC, 1), "RISE"));
     sqm_arc = 1; sqm_auto = 0;
     CHECK("LIST: a hand drop with no automatic tide says what it needs", !strcmp(tarc_drop_hand(), "DROP NEEDS WANDER/JOURNEY"));
     sqm_arc = 0;

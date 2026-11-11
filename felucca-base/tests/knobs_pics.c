@@ -1,23 +1,24 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* 1.0.0-b9 K1 (Phase 1): pictures of HOME page 1 for each knob set (STD DB HS TC AC EL AM), each with a real multi's values and with the widest value every
+/* 1.0.0-b9 K1 (Phase 1): pictures of HOME page 1 for each knob set (STD DUB HSE TECH ACID ELEC AMB), each with a real multi's values and with the widest value every
  * column can show; TIDE SETTINGS with the KNOBS row; the MULTIS list with the category prefixes. PPMs into argv[1] (work/b9/knobs/pictures/make_pics.sh makes the PNGs
  * and the contact sheet). Also prints the width check (name, 5 px, the widest value, 12 px or more before the next column, the last ends by x 236) of every set */
 #define UI_TEST_NO_MAIN 1
 #define UI_TEXT_CAPTURE 1
 #include "ui_test.c"
 
-static const char *const SETN[KS_N] = {"STD", "DB", "HS", "TC", "AC", "EL", "AM"};
+static const char *const SETN[KS_N] = {"STD", "DUB", "HSE", "TECH", "ACID", "ELEC", "AMB"};
 static const uint8_t SETM[KS_N] = {0, 1, 2, 6, 8, 11, 14};   /* a multi of each category (slots 0..15): M01, M02, M03, M07, M09, M12, M15 */
 /* the candidate prefixed names (names only, ≤ 12 letters with the prefix; K3 renames the records) */
-static const char *const PFX_NAMES[MU_SHOWN] = {"DB BASIC CHD", "DB DUB CHORD", "HS JUNO DEEP", "HS LATE RHDS", "HS ORGAN HSE", "HS PIANO HSE", "TC DET STAB", "TC TECH SOUL",
-                                                "AC HYPNO 303", "AC TWO 303S", "AC ACID LINE", "EL ROBOT FNK", "EL SEA ARP", "EL WARP TAPE", "AM BERLIN RN", "AM TWO LOOPS",
-                                                "AM DUNE HORN", "AM VOID DEEP"};
+static const char *const PFX_NAMES[MU_SHOWN] = {"DUB BASIC", "DUB CHORD", "HSE JUNO", "HSE RHODES", "HSE ORGAN", "HSE PIANO", "TECH DETROIT", "TECH SOUL",
+                                                "ACID HYPNO", "ACID TWO 303", "ACID LINES", "ELEC ROBOT", "ELEC DEEPSEA", "ELEC WARPED", "AMB BERLIN", "AMB LOOPS",
+                                                "AMB DUNEHORN", "AMB VOID"};
 
 static int widths(void)
 {
     uint32_t s, i, e, f, v, ok = 1;
     for (s = 0; s < KS_N; s++) {
         int32_t w[3] = {0, 0, 0}, x;
+        tide_knobs = (uint8_t)(s + 2u);
         for (i = 0; i < 3u; i++) {
             uint32_t ix = KN_E[s][i][0].ix;
             for (f = 0; f < (ix < KN_NP ? 3u : 1u); f++) {
@@ -101,7 +102,7 @@ int main(int argc, char **argv)
         if (k)
             jl_put(JL_KNOB, 2u);
         frames(64);
-        snprintf(nm, sizeof nm, "tide_settings_knobs_%s", k ? "DB" : "AUTO");
+        snprintf(nm, sizeof nm, "tide_settings_knobs_%s", k ? "DUB" : "AUTO");
         screen_save(dir, nm);
     }
     ui_power_on();
