@@ -728,7 +728,7 @@ static __attribute__((noinline)) void BUS_FN(dly_mod)(uint32_t dmask, uint32_t d
 {
     uint32_t i, st = dsd != 0, pl = BUS_FX.dm_pl + (BUS_SPLITB ? 0x40000000u : 0u), pr = BUS_FX.dm_pr + 0x80000000u;
     uint32_t inc = LFO_INC[clamp(song.g[G_DMRATE], 0, 127)], w = BUS_FX.dly_w, ppos, qpos, pstep, qstep;
-    int32_t fb = mulq15(SV_DFB, byp_dg), col = dly_col(), dmix = mulq15(Q15_FROM_127(song.g[G_DMIX]), byp_dg);   /* (byp_dg: the BYPASS of the DELAY, 32768 = on) */
+    int32_t fb = mulq15(SV_DFB, byp_dg), col = dly_cv, dmix = mulq15(Q15_FROM_127(song.g[G_DMIX]), byp_dg);   /* (byp_dg: the BYPASS of the DELAY, 32768 = on) */
     int32_t cdepth = SV_CDEP, dev = fx_swing(clamp(song.g[G_DMDEP], 0, 100) * DM_PCT, clamp(song.g[G_DMRATE], 0, 127), DM_SWING_AT), cap = (int32_t)(dl << 6);
     int32_t xl = BUS_FX.dm_xl, xr = BUS_FX.dm_xr, el, er, sl, sr, cdq, cst, gd, bs, sd;
     uint32_t cinc = LFO_INC[song.g[G_CRATE] & 127] / CTL, cw = BUS_FX.cho_w, cph = BUS_FX.cho_ph, tg, g;
@@ -877,7 +877,7 @@ static inline void BUS_FN(fx_buses_m)(uint32_t dmask, uint32_t dl, const int32_t
                                       const int32_t *rev_in, int32_t *wet, uint32_t n, uint32_t pp, int32_t *dsd)
 {
     uint32_t i;
-    int32_t fb = mulq15(SV_DFB, byp_dg), col = dly_col();   /* (SV_*: song.g's, or PERFORM's SPACE: fx.c sv; byp_dg: the BYPASS of the DELAY) */
+    int32_t fb = mulq15(SV_DFB, byp_dg), col = dly_cv;   /* (SV_*: song.g's, or PERFORM's SPACE: fx.c sv; byp_dg: the BYPASS of the DELAY) */
     int32_t dmix = mulq15(Q15_FROM_127(song.g[G_DMIX]), byp_dg);
     int32_t cdepth = SV_CDEP, cdq, cst;
     uint32_t cinc = LFO_INC[song.g[G_CRATE] & 127] / CTL, st = dsd != 0;   /* (st: STEREO / LAYER, the chorus has a side) */
@@ -1139,7 +1139,7 @@ static __attribute__((noinline)) void BUS_FN(dly_ev)(uint32_t dlo, uint32_t dl, 
     dlyev_t *e = &BUS_EV;
     const uint32_t dmask = dlen - 1u, mono = dsd == 0;   /* (0.2.22 DUEL: dsd 0, mono: the events centred, one read, no side; dlen: this bus's line) */
     uint32_t i, w = BUS_FX.dly_w, per = dl, tgt16 = dl << 16, xt = mode ? 32768u : 0u;
-    int32_t fb = mulq15(SV_DFB, byp_dg), col = dly_col(), dmix = mulq15(Q15_FROM_127(song.g[G_DMIX]), byp_dg);   /* (byp_dg: the BYPASS of the DELAY, 32768 = on) */
+    int32_t fb = mulq15(SV_DFB, byp_dg), col = dly_cv, dmix = mulq15(Q15_FROM_127(song.g[G_DMIX]), byp_dg);   /* (byp_dg: the BYPASS of the DELAY, 32768 = on) */
     int32_t cdepth = SV_CDEP, cdq, cst, thr = clamp(song.g[G_DMDEP], 0, 100) * 328;
     uint32_t cinc = LFO_INC[song.g[G_CRATE] & 127] / CTL, cw = BUS_FX.cho_w, cph = BUS_FX.cho_ph;
     if (!e->on) {                                       /* a start from the plain delay: voice 0 plays NONE, the generator on its seed, x at 0 */
