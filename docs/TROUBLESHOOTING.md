@@ -22,7 +22,7 @@ Symptom, then fix. For a failed or interrupted flash read [RECOVERY.md](RECOVERY
 | SAVE ERROR | The flash failed to write: try again, and report it if it repeats. |
 | STORE FULL | With TIDE the patch store holds 126 saved patches, not 128. Saving into a 127th empty slot is refused and nothing is written. Overwriting a saved slot always works; RESTORE a saved slot to make room ([KNOWN_ISSUES.md](KNOWN_ISSUES.md)). |
 | The tide does not move | It moves only while the transport plays: press PLAY (STOP pauses it). Twist knob 1 on AUTO TIDE to start a glide. If you moved the fader by hand, that stopped the glide. See [TIDE_GUIDE.md](TIDE_GUIDE.md). |
-| TURNS, POLY, OFFBEAT or ARC do nothing | They act only while the tide runs by itself on a pattern: MODE WNDR or JRNY, ROLL TYPE MUSIC, TARGET SEQ or BOTH, the music playing. TURNS also needs ALGORITHM on BOTH. ONCE, LOOP and DRIFT always play your pattern as written. |
+| TURNS, POLY, OFFBEAT or ARC do nothing | They act only while the tide runs by itself on a pattern: MODE EVOLVE or TRAVEL, TARGET SEQ or BOTH, the music playing. TURNS also needs ALGORITHM on BOTH. With the tide stopped, or TARGET SOUND, your pattern plays as written. |
 | TIDE SETTINGS shows STYLE CUSTOM | You changed one of the rows a style sets; your values are kept. Pick a style again to set them all. |
 | STOP TO SAVE | Saving needs the transport stopped. Press PLAY/STOP. |
 | Anything else | TIDE, or this fork's installer, emulator and editor: open a bug report on [this fork's issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues/new/choose). A problem that plain DUELL has too: OSCILL/R's [bug report form](https://github.com/oscillr/DUELL/issues/new/choose). |
