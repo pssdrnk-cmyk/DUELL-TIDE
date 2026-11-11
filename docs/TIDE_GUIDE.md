@@ -249,7 +249,11 @@ DUEL (part 1 left, part 2 right, effects separate), STEREO, LAYER. This is stock
 
 ## First start
 
-A new unit (or after ERASE DATA) comes up as multi **M02 DUB CHORD** with STYLE DUB (AUTO TIDE on EVOLVE). Its two 16-step patterns play on PLAY with no key held (ARP SEQ). Press PLAY. With no notes coming in TIDE plays its own chord on C; send or hold one note to set its key. With REC armed the pattern keeps playing; the keys sound as you play them and go into the pattern (the REC row of TIDE SETTINGS chooses ADD or REPLACE for ordinary parts).
+A new unit (or after ERASE DATA) comes up as multi **M02 DUB CHORD** with STYLE DUB (AUTO TIDE on EVOLVE).
+- Its two 16-step patterns play on PLAY with no key held (ARP SEQ).
+- Press PLAY.
+- With no notes coming in, TIDE plays its own chord on C; send or hold one note to set its key.
+- With REC armed, the pattern keeps playing. The keys sound as you play them and go into the pattern. The REC row of TIDE SETTINGS chooses ADD or REPLACE for ordinary parts.
 
 ## When the unit is busy
 
