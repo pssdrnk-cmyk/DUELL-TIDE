@@ -158,7 +158,12 @@ The KNOBS sets (HOME page 1; K1 is always MORPH; AUTO picks the set from the tag
 
 **Your hand on the MORPH fader.** Move the MORPH fader (the MORPH page, the mod wheel or CC 70) and TIDE holds only the part you moved. The other part, the pattern's own movement and ARC go on. 8 bars after you let go, at the next phrase, TIDE takes the part back from where you left it (AUTO TIDE says HAND  BACK IN n BARS). A sound load, STOP, HOME or a K1 stop end it as before.
 
-**Dynamics.** No setting: in automatic EVOLVE / TRAVEL the hits play an eighth louder late in ARC's rise and at its peak and a quarter softer in its drop and breakdown (ARC on), and softer on a part that steps back in call and answer (the two together: softer still). ARP SEQ parts, the factory chord parts, follow it too, and keep their accent. An accent counts as velocity 127 there and loses its accent. Playback only: KEEP stores the pattern's own velocities.
+**Dynamics.** There is no setting for this. In automatic EVOLVE and TRAVEL, the hits play:
+- an eighth louder late in ARC's rise and at its peak;
+- a quarter softer in its drop and breakdown (ARC on);
+- softer on a part that steps back in call and answer (the two together: softer still).
+
+ARP SEQ parts, the factory chord parts, follow it too, and keep their accent. An accent counts as velocity 127 there and loses its accent. This is playback only: KEEP stores the pattern's own velocities.
 
 **The motif is kept.** The automatic pattern edits never drop or move the pattern's anchors:
 
