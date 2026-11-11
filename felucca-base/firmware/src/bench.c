@@ -800,6 +800,12 @@ static BENCH_FN void bench_extras_back(void)
     byp_m[0] = byp_m[1] = 0;
     byp_sh = 0;
 #if DUELL_TIDE
+    if (tide_drone_on) {                               /* (a built-in drone multi (M17, M18) had TIDE on STYLE DRONE: the rows it kept come back, as when another multi is loaded; a reset leaves no multi, and a drone multi loaded next
+                                                        * then plays DRONE again, not as the one before it left things: WASH 3 for M17 after M16, 0 after M18: the note cap, the repeat check) */
+        tide_rows_set(tide_drone_keep);
+        tide_style = tide_drone_keep[8];
+        tide_drone_on = 0;
+    }
     morph_wlvl = bench_xk.wash;                        /* (TIDE: WASH as the session began; GLIDE stopped; the forced valley off, the stage timers cleared: `tide` words) */
     glide_stop();
     memset(mxf, 0, sizeof mxf);
