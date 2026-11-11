@@ -20,11 +20,8 @@ case "${1:-}" in
     cp build/emu/ref_new.txt tests/emu_smoke_ref.txt; echo "added this machine's CRCs to tests/emu_smoke_ref.txt"; exit 0 ;;
 esac
 bad=0
-record=0
-[ "${CI:-}" = true ] && [ "${EMU_SMOKE_STRICT:-}" != 1 ] && record=1     # TEMPORARY: on CI (GitHub sets CI=true) only print each screen's CRC and never fail on an unknown one, until the Linux CRCs are in the reference (then remove this line)
 while read -r name crc; do
     echo "emu_smoke: screen $name CRC $crc"
-    [ $record = 1 ] && continue
     if ! grep -E "^$name( |$)" tests/emu_smoke_ref.txt | grep -qw "$crc"; then
         echo "FAIL emu_smoke: screen $name has CRC $crc, the reference has: $(grep -E "^$name " tests/emu_smoke_ref.txt | cut -d' ' -f2-)"
         bad=1
