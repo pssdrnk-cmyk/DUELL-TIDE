@@ -13,58 +13,251 @@ DUELL turns the FM-1 into two synths in one box. This page is the short tour; [S
 - **MORPH**: every sound has two ends, A and B, and one fader between them.
 
 ## The first-start guide
-The first time DUELL starts (and once after an update from an older build) a short guide follows the logo: five pages. The first asks which mode you want (LAYER is the recommended one) and the last whether to set up MIDI now or later; the three between them explain the part marker in the header and say what PRESETS, ALGORITHM, HOME (MORPH) and a long press of HOME (the MENU) do, then PERFORM, QUICK EDIT and STOP ALL, then the OCT- reset, SAVE OVER and PARAMETER LOCK (REC armed, then a knob). Turn **SELECT** (or press **OCT+** / **OCT-**) to go through it (on the two questions SELECT or a knob picks the answer); **HOME** closes it, and any page button closes it and opens its page. The keys play while it is shown. To see the three pages in between again: MENU (hold HOME) > SYSTEM > GUIDE.
+The first time DUELL starts (and once after an update from an older build) a short guide follows the logo: five pages.
+
+- Page 1 asks which mode you want (LAYER is the recommended one).
+- Pages 2–4 explain:
+  - the part marker in the header
+  - what PRESETS, ALGORITHM, HOME (MORPH) and a long press of HOME (the MENU) do
+  - then PERFORM, QUICK EDIT and STOP ALL
+  - then the OCT- reset, SAVE OVER and PARAMETER LOCK (REC armed, then a knob)
+- Page 5 asks whether to set up MIDI now or later.
+
+Turn **SELECT** (or press **OCT+** / **OCT-**) to go through it; on the two questions SELECT or a knob picks the answer. **HOME** closes it, and any page button closes it and opens its page. The keys play while it is shown. To see pages 2–4 again: MENU (hold HOME) > SYSTEM > GUIDE.
 
 ## The controls in one minute
 - **SELECT** switches sub-pages (and moves rows in lists). It never changes the tempo. **Knobs 1 to 4** adjust the four columns on screen. Every control does what its label says.
-- **PRESETS** loads sounds for the selected part, on the sequencer pages (STEP, PARAMETER LOCKS) too: the steps and parameter locks stay. It steps the list the way PATCHES' knob 1 does: with KNOB ACCELERATION on, a fast turn loads only the sound where it stops. **Hold OCT- and turn PRESETS to undo the last load** (the same again puts it back; "NOTHING TO UNDO" says there is none). It works on the pages where PRESETS loads a sound, not in PERFORM, a dialog or the menu, not on the SAVE list and action pages (PATTERNS, MULTIS, TOOLS), and not on the TIDE pages, where OCT- plus a knob is TIDE's own reset. A sound brings its own loudness (its **PATCH LEVEL**, saved with the patch, on EDIT > VOICE 2/2 knob 4); your volume on the mixer (the **LEVEL** cards of the GLO MIXER page, and MIDI CC7) is yours: loading a sound never changes it, and a multi remembers it. The part plays at the patch level and the level together.
+- **PRESETS** loads sounds for the selected part, on the sequencer pages (STEP, PARAMETER LOCKS) too: the steps and parameter locks stay.
+  - It steps the list the way PATCHES' knob 1 does.
+  - With KNOB ACCELERATION on, a fast turn loads only the sound where it stops.
+  - **Hold OCT- and turn PRESETS to undo the last load** (the same again puts it back; "NOTHING TO UNDO" says there is none).
+  - It works on the pages where PRESETS loads a sound.
+  - It does not work in PERFORM, a dialog or the menu.
+  - It does not work on the SAVE list and action pages (PATTERNS, MULTIS, TOOLS).
+  - It does not work on the TIDE pages, where OCT- plus a knob is TIDE's own reset.
+  - A sound brings its own loudness (its **PATCH LEVEL**, saved with the patch, on EDIT > VOICE 2/2 knob 4).
+  - Your volume on the mixer (the **LEVEL** cards of the GLO MIXER page, and MIDI CC7) is yours: loading a sound never changes it, and a multi remembers it.
+  - The part plays at the patch level and the level together.
 - **HOME** opens the MORPH page; each tap goes on to the next page of HOME's round (MORPH, MORPH SET, MODE; with TIDE MORPH, TIDE SETTINGS, AUTO TIDE). Hold HOME for the menu (ABOUT shows the version and credits).
 - **MIXER** (GLO's first page since the 0.2.25 layout round): both parts side by side, part 1 left and part 2 right, with the level meters between them. Knob 1 is LEVEL 1, knob 2 LEVEL 2, knob 3 PAN 1, knob 4 PAN 2 (in DUEL the pans are fixed and not shown). Each part's cell reads MUTE and is lit in the part's colour while the part is muted; hold GLO and press **OCT-** or **OCT+** to mute or unmute part 1 or part 2. SPACE is on the PERFORM page.
 - **TEMPO** is on the GLO TEMPO page, the one after MIXER (a tap of GLO opens MIXER first). To set the levels and pans of both parts from any page hold GLO: the keys play notes, knob 1 is LEVEL 1, knob 2 LEVEL 2, knob 3 PAN 1, knob 4 PAN 2 (in DUEL the pans are fixed and not shown). With GLO held, **OCT-** mutes or unmutes part 1 and **OCT+** part 2; each cell reads MUTE, lit in the part's colour while muted (the mutes moved to these keys in 0.2.24; before, knobs 1 and 2 were the mutes).
 - **OCT-/OCT+** change octave when you let go of them; in dialogs OCT- means back and OCT+ means do it. Hold **OCT-** and turn a knob to reset that knob's card to its default (the octave then does not change).
 
 ## The menu
-Hold **HOME**. Four tabs: **DISPLAY** (COLOR, LIGHTS, SCALE LIGHTS, ANIMATION, SCREEN OFF, NOTES LEFT: the numbers of free voices in the header), **CONTROL** (MULTI LOAD, HOME OPENS, KNOB ACCELERATION, BUTTON HOLD, STEP KEYS, STEP PREVIEW, LEAVING PERFORM, KEY VELOCITY, AFTERTOUCH), **AUDIO** (CLICK, CLICK LEVEL, COUNT-IN, TUNE: the frequency of A4 in Hz like a Roland keyboard, 415.3 to 466.2 Hz in steps of 0.1 Hz, 440.0 at first; with KNOB ACCELERATION on, a fast turn moves several steps) and **SYSTEM** (RESTORE LAST, BUTTON MAP, GUIDE, ABOUT, ERASE DATA; developer builds have a USB SERIAL row too). Turn **SELECT** to go from row to row (on through the tabs), turn any knob or press OCT+ / OCT- to change the value; HOME closes it. A tab with more rows than fit shows a second page (CONTROL 1/2 in its tab). **BASS MONO** is a sound setting, so it is not in the MENU: it is on the **GLO** button's round (the page **STEREO MASTER**, after SHIMMER; KNOB 1; 200 Hz on a new unit). It makes the output mono below the frequency you pick (40 to 400 Hz; 100 to 150 Hz is the usual club setting) so wide effects do not smear the bass; it belongs to the unit (a multi does not change it), it works in STEREO and LAYER, and in DUEL its card is not shown.
+Hold **HOME**. Four tabs:
+- **DISPLAY** (COLOR, LIGHTS, SCALE LIGHTS, ANIMATION, SCREEN OFF, NOTES LEFT: the numbers of free voices in the header)
+- **CONTROL** (MULTI LOAD, HOME OPENS, KNOB ACCELERATION, BUTTON HOLD, STEP KEYS, STEP PREVIEW, LEAVING PERFORM, KEY VELOCITY, AFTERTOUCH)
+- **AUDIO** (CLICK, CLICK LEVEL, COUNT-IN, TUNE: the frequency of A4 in Hz like a Roland keyboard, 415.3 to 466.2 Hz in steps of 0.1 Hz, 440.0 at first; with KNOB ACCELERATION on, a fast turn moves several steps)
+- **SYSTEM** (RESTORE LAST, BUTTON MAP, GUIDE, ABOUT, ERASE DATA; developer builds have a USB SERIAL row too)
+Turn **SELECT** to go from row to row (on through the tabs).
+Turn any knob or press OCT+ / OCT- to change the value.
+HOME closes it.
+A tab with more rows than fit shows a second page (CONTROL 1/2 in its tab).
+**BASS MONO** is a sound setting, so it is not in the MENU.
+It is on the **GLO** button's round (the page **STEREO MASTER**, after SHIMMER; KNOB 1; 200 Hz on a new unit).
+It makes the output mono below the frequency you pick (40 to 400 Hz; 100 to 150 Hz is the usual club setting) so wide effects do not smear the bass.
+It belongs to the unit (a multi does not change it).
+It works in STEREO and LAYER, and in DUEL its card is not shown.
 - Defaults worth knowing: KNOB ACCELERATION ON, CLICK REC (the metronome only while you record on the sequencer pages), USB SERIAL OFF (with it ON, macOS 13 to 15 do not show the USB audio input). MULTI LOAD KEEPS MODE: loading a multi keeps your MODE, XFADE and SPLIT; set SETS MODE to take the multi's.
 
 ## Make a first sound
 1. Turn **PRESETS** to hear sounds. Turn **ALGORITHM** to select part 2 and load another.
 2. Go to the MODE page (with TIDE: TIDE SETTINGS, the PLAY MODE row) and try DUEL, STEREO, LAYER.
-3. Press **HOME** for the MORPH page, the hands-on page. Knob 1 moves the morph from A to B (two steps a click). Knob 2 is FILTER (the cutoff), knob 3 ECHO (the delay send), knob 4 LENGTH (the release); their values sit on the row under the picture. Hold **OCT+** and click knob 1 for a new random End B (it replaces the old one: there is no UNDO). On this page **ALGORITHM** has three positions, PART 1, the middle and PART 2: the middle selects both parts (every knob moves both, each from its own value, both part numbers light up) and plays the mode of the PLAY MODE row on TIDE SETTINGS; the header names it, LAYER, STEREO or DUEL. PART 1 and PART 2 play that part alone on every key.
+3. Press **HOME** for the MORPH page, the hands-on page.
+   - Knob 1 moves the morph from A to B (two steps a click).
+   - Knob 2 is FILTER (the cutoff).
+   - Knob 3 is ECHO (the delay send).
+   - Knob 4 is LENGTH (the release).
+   - Their values sit on the row under the picture.
+   - Hold **OCT+** and click knob 1 for a new random End B (it replaces the old one: there is no UNDO).
+   - On this page **ALGORITHM** has three positions, PART 1, the middle and PART 2.
+   - The middle selects both parts (every knob moves both, each from its own value, both part numbers light up) and plays the mode of the PLAY MODE row on TIDE SETTINGS; the header names it, LAYER, STEREO or DUEL.
+   - PART 1 and PART 2 play that part alone on every key.
    **With TIDE:** tap HOME twice more for TIDE SETTINGS (ten rows: STYLE, MODE, TARGET, ARC, ROLL TYPE, AMOUNT (how far a roll goes), then REC, PLAY MODE, XFADE, SPLIT; STYLE DUB is the default) and AUTO TIDE. Press PLAY and twist K1 on AUTO TIDE right: the parts evolve by themselves. With no notes coming in TIDE plays in C minor; send or hold one note to set its key. The [TIDE guide](TIDE_GUIDE.md) has the rest.
-4. Press **SAVE**. The first page is **PATCHES**: 128 slots, #1 to #128, and the factory sounds fill them; with TIDE the last four are empty USER slots (U1 to U4) for new sounds, and the factory sounds go to #171 (#129 and up are read-only places). The list shows the factory sounds first, then your saved sounds, then the empty USER slots last. **Hold SAVE** asks "OVERWRITE #12 <name>?" (the slot your sound came from); turn **knob 1** in the dialog to pick another slot, turn **knob 2 (RENAME)** to give the sound a new name first (the NAME screen opens; OCT+ there brings you back to the dialog with the new name), OCT+ says yes. Whatever was in that slot is replaced. With TIDE, if JOURNEY has moved the part to another sound, the dialog adds "SAVES THE LOADED SOUND / KEEP FIRST = AS HEARD": SAVE stores the sound as loaded, so do KEEP first to save what you hear (TIDE guide, KEEP). Knob 4 **RESTORE** takes your sound out of the slot again and the factory sound comes back.
+4. Press **SAVE**. The first page is **PATCHES**: 128 slots, #1 to #128.
+
+   - The factory sounds fill them. With TIDE the last four are empty USER slots (U1 to U4) for new sounds. The factory sounds go to #171. (#129 and up are read-only places.)
+   - The list shows: factory sounds first, then your saved sounds, then the empty USER slots last.
+   - **Hold SAVE** asks "OVERWRITE #12 \<name\>?" — the slot your sound came from.
+     - Turn **knob 1** in the dialog to pick another slot.
+     - Turn **knob 2 (RENAME)** to give the sound a new name first: the NAME screen opens; OCT+ there brings you back to the dialog with the new name. OCT+ says yes.
+   - Whatever was in that slot is replaced.
+   - With TIDE, if JOURNEY has moved the part to another sound, the dialog adds "SAVES THE LOADED SOUND / KEEP FIRST = AS HEARD": SAVE stores the sound as loaded, so do KEEP first to save what you hear (TIDE guide, KEEP).
+   - Knob 4 **RESTORE** takes your sound out of the slot again and the factory sound comes back.
    **Tip:** a short press of SAVE opens the page that fits where you are: PATTERNS when you are on a sequencer page (STEP, PARAMETER LOCKS), otherwise MULTIS in LAYER and PATCHES in DUEL and STEREO. SELECT moves between PATCHES, PATTERNS, MULTIS and TOOLS. Hold SAVE on PATTERNS or MULTIS saves over the slot you picked ("SAVE OVER <name>?", OCT+ yes); an empty multi slot asks for a name first.
 
 ## Saving things
-- **PATCHES**: one list of 128 slots. With TIDE the last four (U1 to U4) are USER slots, shown as USER EMPTY until you save into them; the four factory sounds they stand in for (#125 to #128) and 43 more (#129 to #171, the last eight are drones: [PATCH_NUMBERS](PATCH_NUMBERS.md)) are read-only places that load but do not save (SAVE offers USER 1), and can be marked FAV like a slot. **The list order:** all the factory sounds (#1 to #124, then #125 to #171), then every sound you saved (a sound saved over #12 is there too), then the empty USER slots; the numbers and MIDI program change stay the same. A slot holds the sound you saved there, or else its factory sound. Knob 1 steps the slots, knob 2 filters by type, knob 3 marks favourites, knob 4 RESTORE brings the factory sound back (the card is not shown when the slot holds the factory sound already). **SAVE > TOOLS** has RESTORE ALL (every slot gets its factory sound). MIDI program change n loads slot n (bank 2: the places from #129, program 0 is #129 and program 42 is #171). Saving needs the transport stopped.
+- **PATCHES**: one list of 128 slots. With TIDE the last four (U1 to U4) are USER slots, shown as USER EMPTY until you save into them; the four factory sounds they stand in for (#125 to #128) and 43 more (#129 to #171, the last eight are drones: [PATCH_NUMBERS](PATCH_NUMBERS.md)) are read-only places that load but do not save (SAVE offers USER 1), and can be marked FAV like a slot.
+  - **The list order:** all the factory sounds (#1 to #124, then #125 to #171), then every sound you saved (a sound saved over #12 is there too), then the empty USER slots; the numbers and MIDI program change stay the same.
+  - A slot holds the sound you saved there, or else its factory sound.
+  - Knob 1 steps the slots, knob 2 filters by type, knob 3 marks favourites, knob 4 RESTORE brings the factory sound back (the card is not shown when the slot holds the factory sound already).
+  - **SAVE > TOOLS** has RESTORE ALL (every slot gets its factory sound).
+  - MIDI program change n loads slot n (bank 2: the places from #129, program 0 is #129 and program 42 is #171).
+  - Saving needs the transport stopped.
 - **PATTERNS**: 32 named, overwritable step patterns (P01 to P32). With TIDE P29 to P32 are USER slots (empty until saved); the default patterns they stand in for stay listed after them, read-only. The picked entry is opened with a preview of its 16 steps (or NO SEQUENCE). The page always opens with LOAD picked: knob 1 to the pattern, OCT+ loads it (knob 3 picks SAVE instead).
-- **MULTIS**: 16 slots that hold both parts, effects, arps, patterns, mode and morph settings. M01 to M16 are factory multis, all music, a curated programme with a genre each, from M01 BASIC CHORD (dub techno) through house, Detroit, minimal, acid, electro and IDM to M15 BERLIN RUN (Berlin school) and M16 TWO LOOPS (ambient); the former STRESS TEST is a test scene only and free to overwrite. With TIDE the list goes on with two drone scenes built into the firmware, M17 DUNE HORN and M18 VOID DEEP: they load and play like the others, TIDE plays them as STYLE DRONE (hold a chord around C3, PLAY with AUTO TIDE on), and they cannot be saved over, renamed or erased (save an edited one into M01 to M16). With TIDE the list shows three rows with the picked multi opened under them: both parts' sound names, ARP / SEQ / OFF and their first 16 steps (or NO SEQUENCE) before you load; a record that does not load reads DAMAGED. The page always opens with LOAD picked: turn knob 1 to the multi you want and press OCT+ to load it (knob 3 picks SAVE instead). Loading a multi sets its own levels, pan, mute and sends and the effects it stores (chorus, delay, reverb with their settings), whatever the mixer was; it leaves your MIDI settings, the clock source, TUNE and the master effect BASS MONO as they are (BASS MONO is a setting of your unit, not of the multi).
+- **MULTIS**: 16 slots that hold both parts, effects, arps, patterns, mode and morph settings. The page always opens with LOAD picked.
+
+  - **Factory scenes (M01 to M16):** all music, a curated programme with a genre each. From M01 BASIC CHORD through house, Detroit, minimal, acid, electro and IDM to M15 BERLIN RUN and M16 TWO LOOPS. The former STRESS TEST is a test scene only and free to overwrite.
+  - **TIDE drone scenes:** with TIDE the list goes on with two drones built into the firmware: M17 DUNE HORN and M18 VOID DEEP. They load and play like the others. TIDE plays them as STYLE DRONE (hold a chord around C3, PLAY with AUTO TIDE on). They cannot be saved over, renamed or erased. Save an edited one into M01 to M16 instead.
+  - **TIDE view:** the list shows three rows with the picked multi opened under them. Both parts' sound names, ARP / SEQ / OFF and their first 16 steps (or NO SEQUENCE) before you load. A record that does not load reads DAMAGED.
+  - **Loading:** turn knob 1 to the multi you want, press OCT+ to load it. Knob 3 picks SAVE instead. Loading a multi sets its own levels, pan, mute and sends and the effects it stores (chorus, delay, reverb with their settings), whatever the mixer was. It leaves your MIDI settings, the clock source, TUNE and the master effect BASS MONO as they are. BASS MONO is a setting of your unit, not of the multi.
 - To start from scratch (erases settings, patches, multis, patterns, the user wave tables and the FM6 voice bank): MENU (hold HOME) > SYSTEM > ERASE DATA. A reinstall alone keeps your data.
-- **WAVE user tables (new in 0.2.14):** WAVE's TABLE knob has three places after the factory tables, USR1 to USR3, named EMPTY until you fill them (an empty one plays a sine). You make a table in the editor from a WAV file (a single-cycle wave, or a wavetable file like the ones Serum and Vital export) and send it to a slot; the unit keeps it, ERASE DATA erases it, an update does not. **A user table is reduced to 19 frames and 64 harmonics and the phases are not kept**, so it sounds like the file's spectrum, not exactly like the file. A patch that uses USR2 on a unit where USR2 is empty plays a sine. The editor's WAVETABLES tab does this; see [EDITOR_LIBRARIAN.md](EDITOR_LIBRARIAN.md).
+- **WAVE user tables (new in 0.2.14):**
+  - WAVE's TABLE knob has three extra positions past the factory tables: **USR1**, **USR2**, **USR3**.
+  - Each slot shows the name **EMPTY** until filled; an empty slot plays a sine.
+  - Create a table in the editor from a WAV file—a single-cycle wave, or a wavetable file like those Serum and Vital export—then send it to a slot on the unit. The unit keeps it: **ERASE DATA** erases it, an update does not.
+  - **A user table is reduced to 19 frames and 64 harmonics and the phases are not kept**, so it sounds like the file's spectrum, not exactly like the file.
+  - A patch that uses **USR2** on a unit where **USR2** is empty plays a sine.
+  - The editor's **WAVETABLES** tab does all of this; see [EDITOR_LIBRARIAN.md](EDITOR_LIBRARIAN.md).
 - **Patch library in the editor (new in 0.2.20):** the editor's PATCHES tab exports one patch, a selection or the whole bank to a file, imports patch files and **DX7 `.syx` files** (each voice becomes an FM6 patch) with a preview and your choice of slots, copies and swaps slots by dragging, and loads a dropped patch into a part without saving. The WAVETABLES tab takes dropped WAV files and shares tables as small files. See [EDITOR_LIBRARIAN.md](EDITOR_LIBRARIAN.md).
-- The device backup (installer page, and the editor's Backup page) holds patches, MULTIs, PATTERNs, the user wavetables, settings and the current music. **Back up before you update, and before you switch between the stable and the beta build.** From the next build on the settings in it include TIDE's own (the TIDE SETTINGS rows): a restore brings them back, while a backup made by an older build holds none and leaves the unit's TIDE settings as they are. The FM6 voice bank (SLOT B1 to B32) is in it, too; a backup made by an older build has none and leaves the unit's bank as it is. A restore reports every object that failed and still restores the others, and a full patch store (126 saved patches with TIDE) reads STORE FULL.
+- The device backup lives on the installer page, and the editor's **Backup** page. It holds:
+  - Patches, MULTIs, PATTERNs, the user wavetables, settings, and the current music.
+  - **Back up before you update, and before you switch between the stable and the beta build.**
+- From the next build on, the backup includes TIDE's own settings (the TIDE SETTINGS rows). A restore brings them back; a backup made by an older build holds none of them and leaves the unit's TIDE settings as they are.
+- The FM6 voice bank (SLOT B1 to B32) is in the backup, too. A backup made by an older build has none of it and leaves the unit's bank as it is.
+- A restore reports every object that failed and still restores the others. A full patch store (126 saved patches with TIDE) reads **STORE FULL**.
 
 ## Playing and modulation
-- **ARP**, **SEQ**, **PLAY/STOP**, **REC**: each part has an arp; the SEQUENCER arp mode plays a pattern of 1 to 64 steps (16 in a new pattern). The arp plays the velocity of the newest key (an ACCENT step of ARP SEQ is 127), and a key pressed while PLAY runs starts it on the next ARP RATE step of the transport, so it stays on the grid. SWG (the ARP page's, the pattern's and the GLO TEMPO page's) is where the offbeat lands in a pair of steps: 50 % is straight, 66 % a triplet feel, 75 % the most; a part's SWG and the global one add above 50 %. REC arms recording on the sequencer pages (STEP, PARAMETER LOCKS) and in the SEQ layer; on every other page (HOME too) a tap of REC is the HOLD switch for the part or parts the keys play (both in LAYER; its light is bright when HOLD is on); to record from HOME hold SEQ and tap REC. Once the selected part is armed, a tap of REC disarms it on every page and leaves HOLD alone (if only the other part is armed, the tap is the HOLD switch). On a part whose pattern plays without keys (ARP SEQ) the pattern keeps playing while REC is armed, and the keys sound as you play them and are added to the pattern, to play back as played. On TIDE the REC row of TIDE SETTINGS chooses what a note recorded into a step that holds notes does: ADD (the default) adds it, REPLACE lets the first note you play into that step in a pass take the place of the old ones (a chord played together stays). A key held for a whole loop on a part without an arp fills the pattern with that note. While a part is armed for recording, a red dot and REC show in the bottom row of every page, next to the page number. PLAY/STOP lights green when stopped and red when playing (it blinks red on each beat of the count-in). When stopped, a short press of PLAY/STOP starts on its release; holding it for 0.6 s (or pressing it twice) is STOP ALL: it silences everything, the delay, chorus and reverb tails too (a single press of STOP leaves the tails to ring out).
+- **ARP**, **SEQ**, **PLAY/STOP**, **REC**:
+
+  Each part has its own arp. The SEQUENCER arp mode plays a pattern of 1 to 64 steps (16 in a new pattern).
+
+  - The arp plays the velocity of the newest key (an ACCENT step of ARP SEQ is **127**).
+  - A key pressed while PLAY runs starts the arp on the next ARP RATE step of the transport, so it stays on the grid.
+  - SWG (on the ARP page, the pattern page and the GLO TEMPO page) sets where the offbeat lands in a pair of steps: **50 %** is straight, **66 %** a triplet feel, **75 %** the most; a part's SWG and the global one add above 50 %.
+
+  REC arms recording on the sequencer pages (STEP, PARAMETER LOCKS) and in the SEQ layer.
+  On every other page (HOME too) a tap of REC is the HOLD switch for the part or parts the keys play (both in LAYER; its light is bright when HOLD is on).
+  To record from HOME hold **SEQ** and tap **REC**.
+
+  Once the selected part is armed, a tap of **REC** disarms it on every page and leaves HOLD alone.
+  If only the other part is armed, that tap becomes the HOLD switch instead.
+
+  On a part whose pattern plays without keys (ARP SEQ) the pattern keeps playing while REC is armed.
+  The keys sound as you play them and are added to the pattern, to play back as played.
+
+  - **ADD** (default): on TIDE the REC row of TIDE SETTINGS adds the note to a step that already holds notes.
+  - **REPLACE**: the first note you play into that step in a pass takes the place of the old ones (a chord played together stays).
+
+  A key held for a whole loop on a part without an arp fills the pattern with that note.
+
+  While a part is armed for recording, a red dot and REC show in the bottom row of every page, next to the page number.
+
+  **PLAY/STOP** lights **green** when stopped and **red** when playing (it blinks red on each beat of the count-in).
+  When stopped, a short press of PLAY/STOP starts on its release.
+  Holding it for **0.6 s** (or pressing it twice) is **STOP ALL**: it silences everything, the delay, chorus and reverb tails too.
+  A single press of STOP leaves the tails to ring out.
 - Two envelopes, two LFOs and an 8-slot modulation matrix per part. AMP ENV is the amplitude envelope, ENV 2 the filter envelope.
 - **Filters:** every engine has the multimode filter: **MULTI FILTER 1/2** is CUT, RES, MODE and SLOPE (RES gives resonance over the whole knob: on the 12 dB slope the peak is about 1 dB at 32, 6 dB at 64, 11 dB at 96 and 17 dB at 127; CUT is smoothed over a few milliseconds, so a sweep or CC74 does not zipper); **MULTI FILTER 2/2** is KTRK (the cutoff follows the note you play, -100 to +100 %; a new or initialised sound and most factory sounds start at +51 %, the basses, percussion and kicks at 0), then ENV 2 and LFO 1, their amounts on this filter's cutoff (the same values are on the DEST pages of those modules: ENV 2 DEST, LFO 1 DEST). The engines' own filter pages (VCF, TRIO FILTER, NOISE FILT) are gone. A second filter, the **TWIN FILTER**, comes after it (TYPE OFF at first; TWIN MOD and TWIN CHAIN show only while it is on).
-- **Quick edit:** hold **EDIT**, **LFO**, **ENV**, **ARP** or **GLO** for a moment and the four knobs become performance controls (header QUICK EDIT, QUICK LFO, QUICK ENV, QUICK ARP, QUICK GLO with a small bolt; the header shows the one part they edit). EDIT: cutoff, resonance, filter mode (the multimode filter, the same on every engine), release. LFO: each LFO's rate and its cutoff amount (LFO 2's goes to the TWIN FILTER). ENV: attack, release, the filter envelope's amount and decay. ARP: mode, rate, gate, octaves. GLO: level and pan of part 1 and part 2, as on the MIXER (the mutes on OCT- / OCT+), with the level meters, also over PERFORM. In every quick layer the keys still play. Let go and you are back on your page; a short press opens the page as always.
-- **FX** (the part's own pages: FX, INSERT, EQ, DUCK; there is no SEND FX page since TIDE 1.0.0-b4: the send levels are on the FX page. Chorus, delay and reverb, being the instrument's, are pages of the GLO button since 0.2.21): insert, per-part EQ, per-part **ducker** (SRC: OFF, a built-in pulse (PUMP), the other part, or MIDI, a note on the channel set on GLO > SIDECHAIN; a new sound starts at OFF and shows only SRC until you pick a source (0.2.24); with SRC MIDI, knob 4 of DUCK 1/2 jumps to that page, which says each part's SRC), per-part EQ (EQ 1/2: LOW FREQ, LOW GAIN, MID FREQ, MID GAIN; EQ 2/2: MID Q, HIGH FREQ, HIGH GAIN; a band at 0 dB runs no EQ code; the panel draws the curve of the three bands; the ON / OFF switch of 0.2.24 is gone in the 0.2.25 layout round), chorus (new in 0.2.21: in STEREO and LAYER the chorus is stereo, the left and the right of the sound sweep a quarter turn apart; RATE and DEPTH work as before, but above CRT 40 (about 0.4 Hz) DEPTH sets a pitch swing that stays the same as RATE rises, so a fast chorus stays a chorus; the delay's modulation does the same above MRATE 44. In DUEL the chorus stays as it was, on each part's own side), delay (DELAY 1/2 starts with MODE: DIGITAL, the plain delay; PING-PONG, the repeats alternate left and right; and, new in 0.2.14, RANDOM, where on a random share of the beats the repeat is retriggered, reversed, or an octave up or down, and OCT UP, octave-up repeats. In RANDOM and OCT UP the MOD card on DELAY 2/2 (the delay's modulation depth) is CHANCE, the share of beats (40 % when you switch in with it at 0), the beat is the delay's TIME, the MRATE card (the modulation rate) is not shown and the cards after it move up one knob (a hidden card never leaves a gap on a parameter page), and the repeats do not alternate left and right, that is PING-PONG. SPREAD is the stereo width, not shown in DIGITAL (nor in DUEL, where there is nothing to spread). The pages run top-down: MODE, TIME, FDBK, COLR, then SPREAD, MRATE, MOD, MIX last. A TIME that does not fit the delay line (1/2 at 77 BPM, for example) is halved until it does, in every mode, and the TIME card shows the note value that plays. In DIGITAL and PING-PONG a change of TIME, TEMPO or an external clock bends the repeats like a tape instead of clicking. In DUEL (new in 0.2.22) all four modes work, mono on each part's own side: PING-PONG sounds like DIGITAL there, because a ping-pong needs two sides, and the RANDOM and OCT UP events stay in the middle of the part's side), reverbs (REVERB page, TYPE: ROOM, SPRING, HALL, SHIM, RESO and, new in 0.2.14, PLATE: a smooth stereo plate; SIZE is how long the tail lasts, DAMP how dark it gets, and, new in 0.2.14, LOCUT on K4 cuts the bass that goes into the reverb so it does not get muddy: OFF or 20 Hz to 2 kHz, 299 Hz by default (0.2.22: it was up to 450 Hz and 88 Hz); it works on every reverb type). SHIM and RESO reverbs come from JIANT; RESO's resonances stay in tune as DAMP rises. New in 0.2.19: with TYPE SHIM, a second page SHIMMER follows REVERB (it is not shown for the other types, the GLO button and SELECT skip it): PITCH sets the shimmered part, UP (an octave up, as before) or DOWN (an octave down; BOTH was removed in 0.2.25), and DRIFT (0 to 100 %, off by default; the card was MOD before the 0.2.25 layout round) lets its pitch drift slowly so the shimmer does not stand still; 40 is a gentle drift, 100 a wide one. Both are saved with the multi.
+- **Quick edit:** hold **EDIT**, **LFO**, **ENV**, **ARP** or **GLO** for a moment and the four knobs become performance controls.
 
-**PERFORM.** Hold **FX** for a moment (or hold FX and press a white key) to open the PERFORM page. Now the 16 white keys are effects that last while you hold them, four per group of keys: REPEAT 1/8, 1/16, 1/32 and REVERSE; TAPE STOP, FREEZE, OCT UP and OCT DN; FLANGER, PHASER, DRIVE and PUMP; ROLL A and ROLL B (a new MORPH end, as on the MORPH page; with TIDE they glide to A or B instead), MUTE 1 and MUTE 2. The black keys still play notes, and in PERFORM they play in the scale (they follow the SCALE and ROOT of the SCALE page even if OFF-SCALE says PLAY; with SCALE CHROMATIC they play as they are). Knob 1 is MORPH, knob 2 SPACE (left a smaller room, right a huge one), knob 3 KILL (left low-pass, right high-pass, OFF in the middle), knob 4 DEPTH (how strong the held effects are). Here ALGORITHM picks PART 1, the middle (both parts) or PART 2, the same setting as on the MORPH page (PRESETS changes the sound of that part, or of both, each from its own sound), and SELECT is BALANCE between the two parts. Knob 2 SPACE is the only SPACE knob; the MIXER page has none. Tap FX to go back to where you were: SPACE and KILL then fade back to neutral in under half a second, and they do the same when you load another patch or multi. If you want them to stay as you left them, set MENU > CONTROL > LEAVING PERFORM to KEEP.
+  The header changes to show which quick layer is active: **QUICK EDIT**, **QUICK LFO**, **QUICK ENV**, **QUICK ARP** or **QUICK GLO** with a small bolt; it also shows the one part they edit.
 
-**MODULES.** On the GLO pages (tap GLO, then SELECT: MIXER, TEMPO, CHORUS, DELAY 1/2, DELAY 2/2, REVERB, SHIMMER with TYPE SHIM, STEREO MASTER, COMPRESSOR, MODULES, SIDECHAIN, MIDI, MIDI LEARN; these pages draw in a third colour of their own, neither part's; ALGORITHM still picks the part the keys and the other pages use, but nothing on these pages) four switches turn whole parts of DUELL off for the unit: knob 1 ARP, knob 2 SEQ, knob 3 SENDS, knob 4 PART FX, each ON (the default) or OFF (turn left for OFF, right for ON). ARP OFF: the keys play directly, no arp. SEQ OFF: PLAY runs the tempo and the arps but no stored steps (you can still edit them). SENDS OFF: no chorus, delay or reverb, which saves a lot of CPU. PART FX OFF: no SAT, insert, EQ or ducker. They are kept when you power off but are not part of a patch or a multi; your settings on the other pages stay as they are, and a page of a module that is OFF shows a notice in place of its cards; turning any knob there jumps to MODULES.
+  - **EDIT:** cutoff, resonance, filter mode (the multimode filter, the same on every engine), release.
+  - **LFO:** each LFO's rate and its cutoff amount (LFO 2's goes to the **TWIN FILTER**).
+  - **ENV:** attack, release, the filter envelope's amount and decay.
+  - **ARP:** mode, rate, gate, octaves.
+  - **GLO:** level and pan of part 1 and part 2, as on the **MIXER** (the mutes on **OCT- / OCT+**), with the level meters, also over **PERFORM**.
 
-**SIDECHAIN.** The GLO page SIDECHAIN is the MIDI setup of the ducker, for both parts: knob 1 PART 1 CH and knob 2 PART 1 NOTE, knob 3 PART 2 CH and knob 4 PART 2 NOTE (the channel, default 10, and the note, default C2 or ANY). A part whose DUCK source (FX > DUCK 1/2, SRC) is MIDI ducks when that note arrives on that channel; the page lists each part's source (PART 1 PUMP, PART 2 MIDI ...). These four belong to your unit like the MIDI channels: a patch or a multi never changes them, and you can set them with any source.
+  In every quick layer the keys still play. Let go and you are back on your page; a short press opens the page as always.
+- **FX** (the part's own pages: FX, INSERT, EQ, DUCK; there is no SEND FX page since TIDE 1.0.0-b4: the send levels are on the FX page. Chorus, delay and reverb, being the instrument's, are pages of the GLO button since 0.2.21):
+  - **insert** — part-level insert effect
+  - **EQ** (per-part, EQ 1/2 / EQ 2/2: LOW FREQ, LOW GAIN, MID FREQ, MID GAIN; EQ 2/2: MID Q, HIGH FREQ, HIGH GAIN; a band at 0 dB runs no EQ code; the panel draws the curve of the three bands; the ON / OFF switch of 0.2.24 is gone in the 0.2.25 layout round)
+  - **ducker** (per-part: SRC — OFF, a built-in pulse (PUMP), the other part, or MIDI, a note on the channel set on GLO > SIDECHAIN; a new sound starts at OFF and shows only SRC until you pick a source (0.2.24); with SRC MIDI, knob 4 of DUCK 1/2 jumps to that page, which says each part's SRC)
+  - **chorus** (new in 0.2.21: in STEREO and LAYER the chorus is stereo, the left and the right of the sound sweep a quarter turn apart; RATE and DEPTH work as before, but above CRT 40 (about 0.4 Hz) DEPTH sets a pitch swing that stays the same as RATE rises, so a fast chorus stays a chorus; the delay's modulation does the same above MRATE 44. In DUEL the chorus stays as it was, on each part's own side)
+  - **delay** (DELAY 1/2 starts with MODE: DIGITAL, the plain delay; PING-PONG, the repeats alternate left and right; and, new in 0.2.14, RANDOM, where on a random share of the beats the repeat is retriggered, reversed, or an octave up or down, and OCT UP, octave-up repeats. In RANDOM and OCT UP the MOD card on DELAY 2/2 (the delay's modulation depth) is CHANCE, the share of beats (40 % when you switch in with it at 0), the beat is the delay's TIME, the MRATE card (the modulation rate) is not shown and the cards after it move up one knob (a hidden card never leaves a gap on a parameter page), and the repeats do not alternate left and right, that is PING-PONG. SPREAD is the stereo width, not shown in DIGITAL (nor in DUEL, where there is nothing to spread). The pages run top-down: MODE, TIME, FDBK, COLR, then SPREAD, MRATE, MOD, MIX last. A TIME that does not fit the delay line (1/2 at 77 BPM, for example) is halved until it does, in every mode, and the TIME card shows the note value that plays. In DIGITAL and PING-PONG a change of TIME, TEMPO or an external clock bends the repeats like a tape instead of clicking. In DUEL (new in 0.2.22) all four modes work, mono on each part's own side: PING-PONG sounds like DIGITAL there, because a ping-pong needs two sides, and the RANDOM and OCT UP events stay in the middle of the part's side)
+  - **reverbs** (REVERB page, TYPE: ROOM, SPRING, HALL, SHIM, RESO and, new in 0.2.14, PLATE: a smooth stereo plate; SIZE is how long the tail lasts, DAMP how dark it gets, and, new in 0.2.14, LOCUT on K4 cuts the bass that goes into the reverb so it does not get muddy: OFF or 20 Hz to 2 kHz, 299 Hz by default (0.2.22: it was up to 450 Hz and 88 Hz); it works on every reverb type). SHIM and RESO reverbs come from JIANT; RESO's resonances stay in tune as DAMP rises
+  - **SHIMMER** (new in 0.2.19: with TYPE SHIM, a second page SHIMMER follows REVERB (it is not shown for the other types, the GLO button and SELECT skip it): PITCH sets the shimmered part, UP (an octave up, as before) or DOWN (an octave down; BOTH was removed in 0.2.25), and DRIFT (0 to 100 %, off by default; the card was MOD before the 0.2.25 layout round) lets its pitch drift slowly so the shimmer does not stand still; 40 is a gentle drift, 100 a wide one. Both are saved with the multi.)
 
-**COMPRESSOR (new in 0.2.21 as COMP).** A compressor on the whole output, on its own GLO page after STEREO MASTER (tap GLO, then SELECT). Four knobs: **RATIO** (OFF, 1.5:1, 2:1, 3:1, 4:1, 6:1, 8:1, 12:1, INF; knob 1 since the 0.2.25 layout round), **THRESH** (-40 to 0 dB), **ATTACK** (0.1 to 100 ms) and **RELEASE** (20 ms to 2 s), the two times in fine steps since 0.2.24 (40 a decade; the defaults 10 ms and 200 ms as before). It starts at **RATIO OFF** (the old 1:1): the sound is exactly what it was, and only RATIO is shown; turn RATIO up and the compressor is on and the other three appear. The panel draws the curve (input across, output up) and a bar of how much it turns the sound down right now. The makeup gain is automatic: half of the reduction a signal at -8 dB would get is given back, so switching it on does not make the music louder (the makeup is at most +6 dB). ATTACK and RELEASE are the times to cover 63 % of the change in dB. It squeezes the left and right together (one gain for both), with a soft knee. A slow ATTACK lets the start of a note through; a quick RELEASE can pump. Start with 2:1 or 3:1, THRESH a little under your loudest peaks, ATTACK 10 ms, RELEASE 200 ms. It works in STEREO and LAYER, not in DUEL (the cards are not shown there). It belongs to the unit, not to a multi: it is kept when you power off but a multi load does not change it, and ERASE DATA resets it to off.
+**PERFORM.** Hold **FX** for a moment (or hold FX and press a white key) to open the PERFORM page.
 
-**The STEREO MASTER page (0.2.23, 0.2.25).** One GLO page, **STEREO MASTER**, holds **BASS MONO** (knob 1; it starts ON at 200 Hz on a new unit and belongs to the unit, not to a multi or a patch) and **WIDTH** (knob 2); the panel shows the mono region below BASS MONO and the width above it. The master's last stage is a limiter with a soft knee: up to the limiter's threshold (-5.2 dBFS) the sound passes exactly as it is. (Up to the 0.2.25 layout round WIDTH and MASTER were two pages.) COMPRESSOR follows it. **WIDTH** (0 to 200 %) makes the stereo picture narrower or wider: 100 % is off, 0 % is mono, 200 % is twice as wide. Wider only works above 125 Hz, so the bass is never spread, and the mono sum never changes. WIDTH starts off (the sound is exactly what it was), works in STEREO and LAYER (in DUEL the page says it is not used there), and belongs to the unit like the COMPRESSOR: kept when you power off, not changed by a multi load, reset by ERASE DATA.
+- The 16 white keys are effects that last while you hold them, four per group of keys:
+  - REPEAT 1/8, 1/16, 1/32 and REVERSE;
+  - TAPE STOP, FREEZE, OCT UP and OCT DN;
+  - FLANGER, PHASER, DRIVE and PUMP;
+  - ROLL A and ROLL B (a new MORPH end, as on the MORPH page; with TIDE they glide to A or B instead), MUTE 1 and MUTE 2.
+- The black keys still play notes, and in PERFORM they play in the scale. They follow the SCALE and ROOT of the SCALE page even if OFF-SCALE says PLAY; with SCALE CHROMATIC they play as they are.
+- Knob 1 is MORPH.
+- Knob 2 is SPACE (left a smaller room, right a huge one).
+- Knob 3 is KILL (left low-pass, right high-pass, OFF in the middle).
+- Knob 4 is DEPTH (how strong the held effects are).
+- Here ALGORITHM picks PART 1, the middle (both parts) or PART 2, the same setting as on the MORPH page. PRESETS changes the sound of that part, or of both, each from its own sound.
+- SELECT is BALANCE between the two parts.
+- Knob 2 SPACE is the only SPACE knob; the MIXER page has none.
+- Tap FX to go back to where you were. SPACE and KILL then fade back to neutral in under half a second. They do the same when you load another patch or multi.
+- If you want them to stay as you left them, set MENU > CONTROL > LEAVING PERFORM to KEEP.
+
+**MODULES.** On the GLO pages (tap GLO, then SELECT: MIXER, TEMPO, CHORUS, DELAY 1/2, DELAY 2/2, REVERB, SHIMMER with TYPE SHIM, STEREO MASTER, COMPRESSOR, MODULES, SIDECHAIN, MIDI, MIDI LEARN; these pages draw in a third colour of their own, neither part's; ALGORITHM still picks the part the keys and the other pages use, but nothing on these pages):
+- Four switches turn whole parts of DUELL off for the unit: knob 1 ARP, knob 2 SEQ, knob 3 SENDS, knob 4 PART FX.
+- Each is ON (the default) or OFF (turn left for OFF, right for ON).
+- ARP OFF: the keys play directly, no arp.
+- SEQ OFF: PLAY runs the tempo and the arps but no stored steps (you can still edit them).
+- SENDS OFF: no chorus, delay or reverb, which saves a lot of CPU.
+- PART FX OFF: no SAT, insert, EQ or ducker.
+- They are kept when you power off but are not part of a patch or a multi.
+- Your settings on the other pages stay as they are.
+- A page of a module that is OFF shows a notice in place of its cards.
+- Turning any knob there jumps to MODULES.
+
+**SIDECHAIN.** The GLO page SIDECHAIN is the MIDI setup of the ducker, for both parts.
+
+- **Knob 1 (PART 1 CH):** channel for part 1 (default 10).
+- **Knob 2 (PART 1 NOTE):** note for part 1 (default C2 or ANY).
+- **Knob 3 (PART 2 CH):** channel for part 2 (default 10).
+- **Knob 4 (PART 2 NOTE):** note for part 2 (default C2 or ANY).
+
+A part whose DUCK source (FX > DUCK 1/2, SRC) is MIDI ducks when that note arrives on that channel. The page lists each part's source (PART 1 PUMP, PART 2 MIDI …). These four settings belong to your unit like the MIDI channels: a patch or a multi never changes them, and you can set them with any source.
+
+**COMPRESSOR (new in 0.2.21 as COMP).** A compressor on the whole output, on its own GLO page after STEREO MASTER (tap GLO, then SELECT). Four knobs:
+
+- **RATIO** (OFF, 1.5:1, 2:1, 3:1, 4:1, 6:1, 8:1, 12:1, INF; knob 1 since the 0.2.25 layout round).
+- **THRESH** (-40 to 0 dB).
+- **ATTACK** (0.1 to 100 ms).
+- **RELEASE** (20 ms to 2 s).
+
+The two times are in fine steps since 0.2.24 (40 a decade; the defaults 10 ms and 200 ms as before).
+
+- It starts at **RATIO OFF** (the old 1:1): the sound is exactly what it was, and only RATIO is shown.
+- Turn RATIO up and the compressor is on and the other three appear.
+- The panel draws the curve (input across, output up) and a bar of how much it turns the sound down right now.
+- The makeup gain is automatic: half of the reduction a signal at -8 dB would get is given back, so switching it on does not make the music louder (the makeup is at most +6 dB).
+- ATTACK and RELEASE are the times to cover 63 % of the change in dB.
+- It squeezes the left and right together (one gain for both), with a soft knee.
+- A slow ATTACK lets the start of a note through; a quick RELEASE can pump.
+- Start with 2:1 or 3:1, THRESH a little under your loudest peaks, ATTACK 10 ms, RELEASE 200 ms.
+- It works in STEREO and LAYER, not in DUEL (the cards are not shown there).
+- It belongs to the unit, not to a multi: it is kept when you power off but a multi load does not change it, and ERASE DATA resets it to off.
+
+**The STEREO MASTER page (0.2.23, 0.2.25).** One GLO page, **STEREO MASTER**, holds two controls:
+
+- **BASS MONO** (knob 1; it starts ON at 200 Hz on a new unit and belongs to the unit, not to a multi or a patch).
+- **WIDTH** (knob 2).
+
+The panel shows the mono region below BASS MONO and the width above it. The master's last stage is a limiter with a soft knee: up to the limiter's threshold (-5.2 dBFS) the sound passes exactly as it is. (Up to the 0.2.25 layout round WIDTH and MASTER were two pages.) COMPRESSOR follows it. **WIDTH** (0 to 200 %) makes the stereo picture narrower or wider:
+
+- 100 % is off,
+- 0 % is mono,
+- 200 % is twice as wide.
+
+Wider only works above 125 Hz, so the bass is never spread, and the mono sum never changes. WIDTH starts off (the sound is exactly what it was). It works in STEREO and LAYER (in DUEL the page says it is not used there). It belongs to the unit like the COMPRESSOR:
+
+- kept when you power off,
+- not changed by a multi load,
+- reset by ERASE DATA.
 
 **Piano roll (editor, new in 0.2.20).** In the web editor each part has a PIANO ROLL tab for its step pattern, and a ROLL button that opens it across the whole window. See [EDITOR_ROLL.md](EDITOR_ROLL.md).
 
 ## MIDI
-Part 1 listens on channel 1 and part 2 on channel 2 (editable). On the device: clock in, program change and bank select, the mod wheel (CC1) moves the MORPH fader and is also a matrix source. CC 70 morph, 102 roll (0 to 42 rolls End A, 85 to 127 rolls End B), 103 amount. In LAYER, program change 0 to 15 on part 1's channel recalls MULTIs M01 to M16 (with TIDE: 0 to 17, M17 and M18 the built-in drone scenes). With an external clock, MIDI Start plays step 0 on the first clock pulse after it, and the tempo is averaged over four beats so a steady clock keeps the delay time and the TEMPO display still. PLAY on this unit while a master's clock is arriving waits for the master's next bar (STOP, STOP ALL or the master's Stop cancel the wait); with no clock arriving PLAY starts at once. Not yet tested with a range of real MIDI devices.
+Part 1 listens on channel 1 and part 2 on channel 2 (editable).
+- On the device: clock in, program change and bank select.
+- The mod wheel (CC1) moves the MORPH fader and is also a matrix source.
+- CC 70 morph, 102 roll (0 to 42 rolls End A, 85 to 127 rolls End B), 103 amount.
+- In LAYER, program change 0 to 15 on part 1's channel recalls MULTIs M01 to M16 (with TIDE: 0 to 17, M17 and M18 the built-in drone scenes).
+- With an external clock, MIDI Start plays step 0 on the first clock pulse after it.
+- The tempo is averaged over four beats so a steady clock keeps the delay time and the TEMPO display still.
+- PLAY on this unit while a master's clock is arriving waits for the master's next bar (STOP, STOP ALL or the master's Stop cancel the wait).
+- With no clock arriving PLAY starts at once.
+- Not yet tested with a range of real MIDI devices.
 
 ## Next
 [TESTING.md](TESTING.md) lists what to try and report. [TROUBLESHOOTING.md](TROUBLESHOOTING.md) if something misbehaves.
