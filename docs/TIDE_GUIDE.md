@@ -22,7 +22,13 @@ HOME's round, one tap of **HOME** each: **MORPH → TIDE SETTINGS → AUTO TIDE*
 | **the middle: DUEL** | as STEREO, with part 1 hard left and part 2 hard right | both parts |
 | **PART 2** | part 2 alone, on every key | part 2 |
 
-In the middle the header's title is LAYER, STEREO or DUEL, in the theme colour, and both part numbers light. Changing the PLAY MODE row also moves ALGORITHM to the middle, so you hear the new mode at once. A multi saved in LAYER loads in the middle. Nothing new is stored: the middle is the BOTH of before. **With PLAY MODE on LAYER, a move between a side and the middle lets go of the notes you hold** (a short dip): a held chord stops, play it again. With STEREO or DUEL the held notes stay. The edit pages still pick PART 1 or PART 2 only.
+In the middle the header's title is LAYER, STEREO or DUEL, in the theme colour, and both part numbers light.
+- Changing the PLAY MODE row also moves ALGORITHM to the middle, so you hear the new mode at once.
+- A multi saved in LAYER loads in the middle.
+- Nothing new is stored: the middle is the BOTH of before.
+- **With PLAY MODE on LAYER, a move between a side and the middle lets go of the notes you hold** (a short dip): a held chord stops, play it again.
+- With STEREO or DUEL the held notes stay.
+- The edit pages still pick PART 1 or PART 2 only.
 
 On these three pages a small dim pill beside part 1's capsule shows the busiest audio block of the last 4 seconds, in % of its time. A red badge beside part 2's capsule shows audio blocks missed recently (a click or dropout was possible); it goes away after a minute with no new miss.
 
