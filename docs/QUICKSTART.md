@@ -187,7 +187,17 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
 - Tap FX to go back to where you were. SPACE and KILL then fade back to neutral in under half a second. They do the same when you load another patch or multi.
 - If you want them to stay as you left them, set MENU > CONTROL > LEAVING PERFORM to KEEP.
 
-**MODULES.** On the GLO pages (tap GLO, then SELECT: MIXER, TEMPO, CHORUS, DELAY 1/2, DELAY 2/2, REVERB, SHIMMER with TYPE SHIM, STEREO MASTER, COMPRESSOR, MODULES, SIDECHAIN, MIDI, MIDI LEARN; these pages draw in a third colour of their own, neither part's; ALGORITHM still picks the part the keys and the other pages use, but nothing on these pages) four switches turn whole parts of DUELL off for the unit: knob 1 ARP, knob 2 SEQ, knob 3 SENDS, knob 4 PART FX, each ON (the default) or OFF (turn left for OFF, right for ON). ARP OFF: the keys play directly, no arp. SEQ OFF: PLAY runs the tempo and the arps but no stored steps (you can still edit them). SENDS OFF: no chorus, delay or reverb, which saves a lot of CPU. PART FX OFF: no SAT, insert, EQ or ducker. They are kept when you power off but are not part of a patch or a multi; your settings on the other pages stay as they are, and a page of a module that is OFF shows a notice in place of its cards; turning any knob there jumps to MODULES.
+**MODULES.** On the GLO pages (tap GLO, then SELECT: MIXER, TEMPO, CHORUS, DELAY 1/2, DELAY 2/2, REVERB, SHIMMER with TYPE SHIM, STEREO MASTER, COMPRESSOR, MODULES, SIDECHAIN, MIDI, MIDI LEARN; these pages draw in a third colour of their own, neither part's; ALGORITHM still picks the part the keys and the other pages use, but nothing on these pages):
+- Four switches turn whole parts of DUELL off for the unit: knob 1 ARP, knob 2 SEQ, knob 3 SENDS, knob 4 PART FX.
+- Each is ON (the default) or OFF (turn left for OFF, right for ON).
+- ARP OFF: the keys play directly, no arp.
+- SEQ OFF: PLAY runs the tempo and the arps but no stored steps (you can still edit them).
+- SENDS OFF: no chorus, delay or reverb, which saves a lot of CPU.
+- PART FX OFF: no SAT, insert, EQ or ducker.
+- They are kept when you power off but are not part of a patch or a multi.
+- Your settings on the other pages stay as they are.
+- A page of a module that is OFF shows a notice in place of its cards.
+- Turning any knob there jumps to MODULES.
 
 **SIDECHAIN.** The GLO page SIDECHAIN is the MIDI setup of the ducker, for both parts.
 
