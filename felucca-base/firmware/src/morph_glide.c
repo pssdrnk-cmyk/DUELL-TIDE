@@ -101,7 +101,7 @@ static void glide_shape_follow(void)
 {
     for (uint32_t k = 0; k < NSHOWN; k++) {
         uint32_t span = 0;
-        if (gl.on == 3u && gl.mode == GM_WANDER && morph_musical && ((gl.mask >> k) & 1u)) {
+        if (gl.on == 3u && gl.mode == GM_WANDER && MM_ON() && ((gl.mask >> k) & 1u)) {
             morph_part_t *mp = morph_ready(k);
             if (morph_isfm(mp)) {
                 int32_t shape = fm_shape_value(mp->base, morph_view(k, P_DEC));
