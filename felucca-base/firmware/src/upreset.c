@@ -227,7 +227,9 @@ static void up_values(const up_rec_t *r, int16_t *v)   /* the record's values cl
 #define PTF_CB 128u                              /* 0.2.14: always set in a record written now (its CRUSH BITS, INS A, is the curve of ins_bits.h); a record without it is
                                                   * of firmware before 0.2.14 and no record (pt_rec_ok). Bit 2 (2) was the drum grid, never set: 0.2.19 uses it as PTF_TR. Bits 16 (the extension
                                                   * block) and 64 (the values' bitmap form) were PT_VER 3's: not in a record now */
-#define PTF_ALL (PTF_PAT | PTF_TR | PTF_FM6 | PTF_MB | PTF_AK | PTF_CB)
+#define PTF_W4 64u                               /* b9: ANALOG's WAVE (0..8 since b8) takes 4 bits in this record's values (the bitmap form of PT_VER 4); a record WITHOUT it was saved before b8 (WAVE 0..6, 3 bits: morph.c wv_bitsl).
+                                                  * pt_encode always sets it. The record's End B block says it in its own flag (MBV_W4). PT_VER stays 4: no record is moved or rewritten by this */
+#define PTF_ALL (PTF_PAT | PTF_TR | PTF_FM6 | PTF_MB | PTF_AK | PTF_CB | PTF_W4)
 #define UPF_PK 112u                              /* an FM6 patch, FM6_PACKED 7-bit bytes packed 8 to 7 (112 bytes) */
 #define AK_MAX 190u                              /* the AK block's most bytes with its length (ak_build) */
 #define AK_NS 16u
@@ -307,12 +309,12 @@ static void upf_pk_put(const uint8_t *pk, uint8_t *d)
 static uint32_t pt_rd16(const uint8_t *p) { return (uint32_t)p[0] | (uint32_t)p[1] << 8; }
 /* PT_VER 4: the bits the values of the bitmap at bm (PT_VB bytes) take for engine eng: the sum of their ranges' bits (morph.c wv_bits); bits that name no
  * wide id (127, past the slots) count none here and make pt_rec_ok refuse the record */
-static uint32_t pt_vbits(const uint8_t *bm, uint32_t eng)
+static uint32_t pt_vbits(const uint8_t *bm, uint32_t eng, uint32_t w4)
 {
     uint32_t w, nb = 0;
     for (w = 0; w < PT_VB * 8u; w++)
         if ((bm[w / 8u] >> (w % 8u) & 1u) && mbv_wid(w))
-            nb += wv_bits(eng, w);
+            nb += wv_bitsl(eng, w, w4);
     return nb;
 }
 /* where a record's parts start: *xbo and *pr the values (bitmap + bits), *mb End B (morph.c MBV), *pat, *fm, *ak (offsets); the total length. The AK block
@@ -324,7 +326,7 @@ static uint32_t pt_layout_x(const uint8_t *p, uint32_t *xbo, uint32_t *mb, uint3
     *mb = *pat = *fm = *ak = o;
     if (o + PT_VB > rl || p[5] >= NENGINES)
         return o + (1u << 16);
-    o += PT_VB + (pt_vbits(p + o, p[5]) + 7u) / 8u;
+    o += PT_VB + (pt_vbits(p + o, p[5], f & PTF_W4) + 7u) / 8u;
     *mb = o;
     if (f & PTF_MB) {
         uint32_t n = o < rl ? morph_bv_size(p + o, rl - o, p[5]) : 0u;
@@ -762,7 +764,7 @@ static up_rec_t *up_rec(uint32_t k)
         uint32_t at = (pr + PT_VB) * 8u, w;
         for (w = 0; w < EXT_P_LEN; w++)
             if ((p[pr + w / 8u] >> (w % 8u) & 1u) && mbv_wid(w)) {
-                int32_t v = wv_val(r->engine, w, bs_get(p, &at, wv_bits(r->engine, w)));
+                int32_t v = wv_val(r->engine, w, bs_get(p, &at, wv_bitsl(r->engine, w, p[4] & PTF_W4)));
                 if (w < P_COUNT)
                     up_set_value(r, w, (int16_t)v);
                 else
@@ -819,7 +821,7 @@ static uint32_t pt_encode(uint32_t k, uint32_t rev, const up_rec_t *r, const uin
     memset(o, 0, PT_FIX + PT_VB + PT_VMAX);
     o[2] = (uint8_t)k;
     o[3] = (uint8_t)rev;
-    o[4] = f | PTF_CB | PTF_TR;
+    o[4] = f | PTF_CB | PTF_TR | PTF_W4;
     o[5] = r->engine;
     o[6] = r->np <= UP_CAT_AT ? r->packed[UP_CAT_AT] : 0u;
     memcpy(o + 7, r->name, 12);

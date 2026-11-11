@@ -143,7 +143,7 @@ static void t_fmt(void)
     bad_blk[n - 3u] = 0;
     CHECK("MBV_FMT: target 0 is no block", morph_bv_size(bad_blk, MBV_MAX, ENGI_FM6) == 0u);
     memcpy(bad_blk, blk, sizeof blk);
-    bad_blk[0] |= 8u;
+    bad_blk[0] |= 16u;       /* (8 is MBV_W4, b9) */
     CHECK("MBV: an unknown flag is no block", morph_bv_size(bad_blk, MBV_MAX, ENGI_FM6) == 0u);
     CHECK("MBV_MAX, PT_WORST, PT_K re-checked: 198, 580, 6 a chunk; the project's End B as big", MBV_MAX == 198u && PT_WORST == 580u && PT_K == 6u &&
           PROJ_BV_MAX == MBV_MAX && PT_WORST * PT_K + PT_HDR <= PT_CAP);
@@ -223,7 +223,7 @@ static void t_fmt(void)
     morph_roll_cfg(0, 1u, 1234u, 60u, morph_cfg_of(0));
     n0 = morph_bv_make(0, ref, blk);
     CHECK("no MORPH TO end: no MBV_FMT, the block 1.1 reads", n0 && !(blk[0] & MBV_FMT) && morph_bv_size(blk, n0, ENGI_FM6) == n0 &&
-          !(blk[0] & ~(MBV_PINS | MBV_FMB)));
+          !(blk[0] & ~(MBV_PINS | MBV_FMB | MBV_W4)));
 }
 
 static void t_keep(void)

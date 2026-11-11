@@ -129,7 +129,10 @@ static uint32_t trig_stored(const uint8_t *raw, uint32_t pr)
 
 
 
-int main(void)
+#ifndef PATCH_TEST_MAIN
+#define PATCH_TEST_MAIN main                        /* (tests/store_xver_test.c includes this file for its flash simulation and renames it) */
+#endif
+int PATCH_TEST_MAIN(void)
 {
     uint32_t k, n, i, ok, total, occ, e, kk, rec0;
     int16_t was[P_COUNT];
