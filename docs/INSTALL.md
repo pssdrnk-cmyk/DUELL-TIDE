@@ -4,7 +4,27 @@
 
 > **Install at your own risk.** TIDE has been flashed to and run on **one** real FM-1, the fork owner's. The way back to the official firmware (V15) has worked on that unit and has not been tried on others. The FM-1 has a single-bank layout and there is no known rollback. No warranty. DUELL with TIDE is not affiliated with OSCILL/R or M-VAVE, and M-VAVE's firmware is not distributed here. Read [RECOVERY.md](RECOVERY.md), [KNOWN_LIMITS.md](KNOWN_LIMITS.md) and [KNOWN_ISSUES.md](KNOWN_ISSUES.md) first.
 
-> **DUELL with TIDE (this fork) has its own installer page:** <https://pssdrnk-cmyk.github.io/DUELL-TIDE/install/>. It offers two builds. **Stable** is the default: the build the fork owner validated, a normal GitHub release (TIDE's version, for example `1.0.0`: tag `tide-1.0.0`, package `duell-tide-stable-1.0.0.fwsc`). **Beta** is a build under test, a GitHub pre-release (for example `1.0.0-b2`: tag `tide-1.0.0-b2`, package `duell-tide-beta-1.0.0-b2.fwsc`), shown only while it is newer than the stable one; it needs a tick box and a second confirmation. (Builds from before the versions have dated names, `stable-2026-11-03` and `beta-2026-11-04`; they count as older than any version.) The page shows the tag, version or date, commit and SHA-256 of what will be written, and checks the SHA-256 of the downloaded package in the browser against the release data (`install/channels.json`, written by the Pages workflow from the release) before it writes: on a mismatch it refuses. The backup, the way back to the official firmware and the resume after an interruption are as described below. After publishing or editing a release, run Host tests by hand on `jam11` (Actions > Host tests > Run workflow); Pages refreshes the site and release channels only after that run passes, using exactly the tested commit. The text below was written for OSCILL/R's page, whose files and names differ (`duell-latest.fwsc`, `duell-version.json`).
+> **DUELL with TIDE (this fork) has its own installer page:** <https://pssdrnk-cmyk.github.io/DUELL-TIDE/install/>.
+> - It offers two builds.
+> - **Stable** is the default: the build the fork owner validated, a normal GitHub release.
+>   - TIDE's version, for example `1.0.0`.
+>   - tag `tide-1.0.0`.
+>   - package `duell-tide-stable-1.0.0.fwsc`.
+> - **Beta** is a build under test, a GitHub pre-release.
+>   - For example `1.0.0-b2`.
+>   - tag `tide-1.0.0-b2`.
+>   - package `duell-tide-beta-1.0.0-b2.fwsc`.
+>   - shown only while it is newer than the stable one.
+>   - needs a tick box and a second confirmation.
+> - Builds from before the versions have dated names, `stable-2026-11-03` and `beta-2026-11-04`.
+>   - they count as older than any version.
+> - The page shows the tag, version or date, commit and SHA-256 of what will be written.
+> - It checks the SHA-256 of the downloaded package in the browser against the release data (`install/channels.json`, written by the Pages workflow from the release) before it writes.
+>   - on a mismatch it refuses.
+> - The backup, the way back to the official firmware and the resume after an interruption are as described below.
+> - After publishing or editing a release, run Host tests by hand on `jam11` (Actions > Host tests > Run workflow).
+>   - Pages refreshes the site and release channels only after that run passes, using exactly the tested commit.
+> - The text below was written for OSCILL/R's page, whose files and names differ (`duell-latest.fwsc`, `duell-version.json`).
 
 ## What you need
 - An M-VAVE FM-1.
