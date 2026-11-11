@@ -2272,24 +2272,24 @@ SOUNDS = [
             'E8': 1, 'FREEA': 68, 'REV': 100, 'E4': 5,
          }),
     # FM6 DUB VOICES (2026-11-05, audit G10): the FM engine in the dub register, on the factory patches F5 PAD, F7 ORGAN and F2 BELL (SLOT);
-    # each darkened by the multimode filter and the modulator level (MLVL), its lows cut for the bass gear, thrown into the delay and the room.
+    # each darkened by the multimode filter and the modulator level (MLVL), thrown into the delay and the room (b9: the low shelf they had "for the bass gear" is gone; the low end is welcome).
     # A soft FM pad, two detuned pairs breathing under a slow low-pass: the filter rises and falls over four bars, a wide chorus and a long room.
     dict(engine='FM6', idx=14, name='FM HAZE', cat='PAD', bseed=32696,  # #133
          p={
-            'LRATE': 17, 'LWAVE': 1, 'LD_FLT': 4, 'KTRK': 24, 'CHOR': 72, 'DLY': 28, 'REV': 90, 'EQLG': -5, 'FREEA': 62, 'FREEB': 5, 'FREED': 2,
-            'TRIM': 122, 'E3': -6, 'E7': 20, 'E8': 4, 'MOD1': ('AT', 'CUT', 12), 'MOD2': ('CYCLE', 'CUT', 7), 'LTRIG': 1, 'L2TRIG': 1,
+            'LRATE': 17, 'LWAVE': 1, 'LD_FLT': 4, 'KTRK': 24, 'CHOR': 72, 'DLY': 28, 'REV': 90, 'FREEA': 62, 'FREEB': 5, 'FREED': 2,
+            'TRIM': 120, 'E3': -6, 'E7': 20, 'E8': 4, 'MOD1': ('AT', 'CUT', 12), 'MOD2': ('CYCLE', 'CUT', 7), 'LTRIG': 1, 'L2TRIG': 1,
             'CYCLE RISE': 113, 'CYCLE FALL': 113, 'CYCLE SYNC': 1, 'LSYNC': 1,
          }),
     # A drawbar organ by FM (six sine carriers), the top cut so it sits under the hats, a slow chorus for the rotor and a dub delay: the skank organ.
     dict(engine='FM6', idx=15, name='DUB DRAWBAR', cat='KEYS',  # #153
          p={
-            'KTRK': 20, 'CHOR': 34, 'DLY': 64, 'REV': 30, 'EQLG': -4, 'FREEA': 60, 'FREEB': 4, 'FREED': 2, 'E2ATK': 0, 'E2DEC': 62, 'E2SUS': 0,
-            'E2REL': 56, 'E2FLT': 14, 'TRIM': 112, 'E8': 6, 'MOD1': ('AT', 'CUT', 12), 'MOD2': ('VEL', 'CUT', 8), 'LTRIG': 1, 'L2TRIG': 1,
+            'KTRK': 20, 'CHOR': 34, 'DLY': 64, 'REV': 30, 'FREEA': 60, 'FREEB': 4, 'FREED': 2, 'E2ATK': 0, 'E2DEC': 62, 'E2SUS': 0,
+            'E2REL': 56, 'E2FLT': 14, 'TRIM': 111, 'E8': 6, 'MOD1': ('AT', 'CUT', 12), 'MOD2': ('VEL', 'CUT', 8), 'LTRIG': 1, 'L2TRIG': 1,
          }),
     # A dark bell stab: the glass bell with less modulator, low-passed, its ring thrown into a dotted delay and a plate: one hit an offbeat.
     dict(engine='FM6', idx=16, name='BELL STAB', cat='KEYS', bseed=31891,  # #152
          p={
-            'KTRK': 22, 'CHOR': 12, 'DLY': 70, 'REV': 44, 'EQLG': -6, 'FREEA': 64, 'FREEB': 4, 'FREED': 2, 'TRIM': 113, 'E3': -8, 'E8': 1,
+            'KTRK': 22, 'CHOR': 12, 'DLY': 70, 'REV': 44, 'FREEA': 64, 'FREEB': 4, 'FREED': 2, 'TRIM': 111, 'E3': -8, 'E8': 1,
             'MOD1': ('AT', 'CUT', 12), 'MOD2': ('VEL', 'CUT', 10), 'LTRIG': 1, 'L2TRIG': 1,
          }),
     # ---- W15 DRONES (owner, 2026-11-05: "dune, blade runner, and space related drones. big fat ones", a fourth theme cyberpunk): eight drones for the

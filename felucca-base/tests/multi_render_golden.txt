@@ -59,6 +59,8 @@
 # 1.0.0-b7 integration, on purpose: the factory multis MULTIS (M01, M05, M08-M11, M16) and TECHNO (M03, M04, M07, M13-M15) changed together; written once on the merged tree.
 # The reel (reel, 2026-11-10), on purpose, 45 of the 108: fifteen new factory multis as one curated programme (tools/factory_multis.py: M01 BASIC CHORD, M03 JUNO DEEP .. M16 TWO LOOPS): every render of M01 and M03..M16
 # is another record, written once; M02 DUB CHORD (the owner's record), the test scenes and the spare renders are unchanged. No firmware source changed.
+# b9 low end (B9-LOWEND), on purpose, 6 of the 108: the three FM6 dub voices lost the low shelf they had "for the bass gear" (FM HAZE, DUB DRAWBAR, BELL STAB: EQLG removed, TRIM re-levelled);
+# M05 holds DUB DRAWBAR and M08 BELL STAB (three faders each); every other render is unchanged.
 M01 f0 ffc91f3cf24e3933
 M01 f63 eb1561d01bc6847c
 M01 f127 c355e56fb5d45117
@@ -71,18 +73,18 @@ M03 f127 58cc2a5d4e756df9
 M04 f0 048cd16dda95c5e5
 M04 f63 71e11716bad24e73
 M04 f127 cda6f7f49f82f406
-M05 f0 4d9021e530ce8ce5
-M05 f63 6a24d12a59fc3f44
-M05 f127 24f9b8bc6b2aaa61
+M05 f0 7780b8590c277982
+M05 f63 863b7ff94f52d9e5
+M05 f127 a4c55c349953ded1
 M06 f0 cfbef2f82465fabb
 M06 f63 f1d7ea410944a8b7
 M06 f127 a966df245bd78088
 M07 f0 b8fe7307658bddbc
 M07 f63 727eada8ffd55384
 M07 f127 b188429a6128ebb8
-M08 f0 8060e66cba887355
-M08 f63 d1fdab095568f304
-M08 f127 cf9d0e326d8ec32e
+M08 f0 796e313792ce8164
+M08 f63 088c1e562117a24f
+M08 f127 ce19d4edadfdadcb
 M09 f0 73c3a61f8b34bbac
 M09 f63 30b55aa6beef9ded
 M09 f127 7f2da0620d5d8edd

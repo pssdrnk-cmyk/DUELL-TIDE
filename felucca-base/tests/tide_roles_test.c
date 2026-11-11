@@ -5,13 +5,12 @@
  * the step the part is on), so these are the notes as the unit sounds them (LAYER sends no MIDI out for part 2, so the ring cannot be used). Everything is run with PITCH OFF
  * and PITCH ON, each run from the boot state in a forked child (ui_power_on() leaves voices, arcs and held keys behind). Time: about 10 s.
  *   4.1 lane      every note started lies in the Original's lane: [lowest, highest + 12] of the notes the multi plays on PLAY alone with TIDE idle (8 bars, the same load),
- *                 where a lane that starts at C3 (48) or above may reach down to 48 (spec C1). And 4.1f, from the register map (1.1) and CHECKED: no note under C2 (36), "never"
- *                 (a record, or a mechanism, that plays under it is the finding). 'strict' (printed only): notes outside [Original's lowest, highest + 12] without C1's allowance.
+ *                 where a lane that starts at C3 (48) or above may reach down to 48 (spec C1). (b9: no floor under C2: the low end is welcome, 4.1f is gone.)
+ *                 'strict' (printed only): notes outside [Original's lowest, highest + 12] without C1's allowance.
  *   4.2 density   onsets a bar, averaged over every 4-bar window (the bars of a DROP's two left out), inside the role's range (Appendix B DENS); a sustained role (PAD, ATMOS, AIR,
  *                 DRONE, PROG) never shows a bar with more onsets than the steps of the Original that started in it.
- *   4.3 low band  non-bass multis: the 30 - 120 Hz band 15 dB under the full band; bass multis 30 - 60 Hz, 12 dB under; on a 10 s render (2 - 10 s measured) of PLAY and of PLAY
- *                 with JRNY (TIME 1 bar, WAIT OFF), the mix before MASTER. The band meter (tests/loudness.h lz_band) has 'steep' filters (2nd-order high-pass, 4th-order low-pass),
- *                 which hold the bound; the spec's literal one-pole pair is printed beside it: its skirt (6 dB an octave) lets a chord at 300 Hz into a 120 Hz band at -8.6 dB.
+ *   4.3 low band  (b9: no bound. The 30 - 120 Hz band was held 15 dB under the full band (12 dB, 30 - 60 Hz, for a bass multi); the owner ended that rule on 11 November: low end and
+ *                 sub are welcome, the FM-1 only must not play the drums. The band is still measured and printed, on a 10 s render of PLAY and of PLAY with JRNY.)
  *   4.4 loudness  the 16 within 3 dB of their median, K-weighted as `gen_factory_multis loud` measures (same excitation: PLAY where a part has steps and no arp, else C4 E4 G4 held;
  *                 each multi from the boot state, so within about 1 dB of that tool, which runs them one after the other in one process), the peak under -3 dBFS
  *   4.5 motif     every loop of the Original (all its steps visited: a bar for a 16-step pattern, more for 32 steps or a slow one) but a DROP's keeps max(2, 3/5) of its hits in place;
@@ -164,7 +163,7 @@ typedef struct { uint32_t ons, expct; uint64_t played, visited; } bar_t;   /* a 
 typedef struct {
     int32_t seen_lo, seen_hi;                          /* the notes started, lowest and highest (-1: none) */
     uint32_t nons, nnotes;
-    uint32_t lane_bad, floor_bad, strict_bad;          /* notes outside the lane, under C2, under the Original's lowest / over its highest + 12 */
+    uint32_t lane_bad, strict_bad;                     /* notes outside the lane, under the Original's lowest / over its highest + 12 */
     uint32_t dwin, dbad;                               /* 4-bar windows measured / outside the role's range */
     double dmin, dmax;                                 /* the lowest and highest window average (onsets a bar) */
     uint32_t still_bad;                                /* bars with more onsets than the Original's steps have (sustained roles) */
@@ -314,10 +313,6 @@ static void play(uint32_t row, uint32_t style, uint32_t pitch, uint32_t tide, ui
                         res[p].bnote++;
                         viol(row, style, pitch, p, "bass note not in the Original", bars_done, steps ? (int)idx : -1, n, "");
                     }
-                    if (n < 36) {
-                        res[p].floor_bad++;
-                        viol(row, style, pitch, p, "floor (under C2)", bars_done, steps ? (int)idx : -1, n, "");
-                    }
                     if (ref && ref[p].lo <= ref[p].hi) {
                         int32_t lo = ref[p].lo >= 48 ? 48 : ref[p].lo, hi = ref[p].hi + 12;
                         if (n < lo || n > hi) {
@@ -455,10 +450,10 @@ static void music(uint32_t row, uint32_t nbars)
             const res_t *a = &r[0][p], *b = &r[1][p];
             char head[96], msg[240];
             snprintf(head, sizeof head, "M%02u %s %s p%u %s", TR[row].slot, TR[row].name, SN[style], p + 1u, RN[role]);
-            printf("tideroles: %s: notes %d..%d lane %d..%d | lane out %u/%u floor out %u/%u strict %u/%u | dens %.2f..%.2f of %u windows (range %.1f..%.1f) out %u/%u | still %u/%u | anchors worst %u of %u, out %u/%u | jacc %.2f/%.2f\n",
+            printf("tideroles: %s: notes %d..%d lane %d..%d | lane out %u/%u strict %u/%u | dens %.2f..%.2f of %u windows (range %.1f..%.1f) out %u/%u | still %u/%u | anchors worst %u of %u, out %u/%u | jacc %.2f/%.2f\n",
                    head, a->seen_lo < b->seen_lo ? a->seen_lo : b->seen_lo, a->seen_hi > b->seen_hi ? a->seen_hi : b->seen_hi,
                    ref[p].lo > ref[p].hi ? 0 : (int)(ref[p].lo >= 48 ? 48 : ref[p].lo), ref[p].lo > ref[p].hi ? 0 : (int)ref[p].hi + 12,
-                   a->lane_bad, b->lane_bad, a->floor_bad, b->floor_bad, a->strict_bad, b->strict_bad, a->dmin > 90 ? 0.0 : a->dmin, a->dmax < 0 ? 0.0 : a->dmax, a->dwin,
+                   a->lane_bad, b->lane_bad, a->strict_bad, b->strict_bad, a->dmin > 90 ? 0.0 : a->dmin, a->dmax < 0 ? 0.0 : a->dmax, a->dwin,
                    DENS[role].lo / 10.0, DENS[role].hi / 10.0, a->dbad, b->dbad, a->still_bad, b->still_bad, a->anch_kept, a->anch_need, a->anch_bad, b->anch_bad,
                    a->jn ? a->jsum / a->jn : 0.0, b->jn ? b->jsum / b->jn : 0.0);
             if (!role || role == R_LIVE)
@@ -468,8 +463,6 @@ static void music(uint32_t row, uint32_t nbars)
                          b->lane_bad, a->nnotes, b->nnotes, ref[p].lo >= 48 ? 48 : ref[p].lo, ref[p].hi + 12);
                 CHECK(msg, !a->lane_bad && !b->lane_bad);
             }
-            snprintf(msg, sizeof msg, "%s: 4.1f floor: %u + %u notes under C2 (36); the Original itself plays %d..%d on PLAY alone", head, a->floor_bad, b->floor_bad, idle[p].seen_lo, idle[p].seen_hi);
-            CHECK(msg, !a->floor_bad && !b->floor_bad);
             if (bound) {
                 snprintf(msg, sizeof msg, "%s: 4.2 density: %.2f..%.2f onsets a bar over 4-bar windows (PITCH OFF; ON %.2f..%.2f), range %.1f..%.1f, %u + %u of %u windows out", head,
                          a->dmin > 90 ? 0.0 : a->dmin, a->dmax < 0 ? 0.0 : a->dmax, b->dmin > 90 ? 0.0 : b->dmin, b->dmax < 0 ? 0.0 : b->dmax, DENS[role].lo / 10.0, DENS[role].hi / 10.0, a->dbad,
@@ -609,7 +602,6 @@ int main(void)
     if (do_render) {
         for (row = 0; row < 16u; row++) {
             rend_t a, p, j;
-            double lim = TR[row].bass ? 12.0 : 15.0;
             if (only && TR[row].slot != only)
                 continue;
             render_iso(row, 0, &a);
@@ -618,10 +610,8 @@ int main(void)
             kl[n++] = a.k_db;
             snprintf(msg, sizeof msg, "M%02u: the table says %s, the record is another multi (update TR[] with the records)", TR[row].slot, TR[row].name);
             CHECK(msg, a.name_ok);
-            printf("tideroles: M%02u %-12s loud %.1f dB K-weighted, peak %.1f dBFS | low band %s%u..%u Hz under the full band: PLAY %.1f dB (one-pole %.1f), after JRNY %.1f dB (one-pole %.1f), bound -%.0f\n", TR[row].slot,
-                   TR[row].name, a.k_db, a.peak_db, p.silent ? "(silent) " : "", 30u, TR[row].bass ? 60u : 120u, p.band, p.band1, j.band, j.band1, lim);
-            snprintf(msg, sizeof msg, "M%02u %s: 4.3 low band 30..%u Hz is %.1f dB under the full band on PLAY (%.1f after JRNY), bound %.0f dB", TR[row].slot, TR[row].name, TR[row].bass ? 60u : 120u, -p.band, -j.band, lim);
-            CHECK(msg, (p.silent || p.band <= -lim) && (j.silent || j.band <= -lim));
+            printf("tideroles: M%02u %-12s loud %.1f dB K-weighted, peak %.1f dBFS | low band %s%u..%u Hz under the full band: PLAY %.1f dB (one-pole %.1f), after JRNY %.1f dB (one-pole %.1f), no bound\n", TR[row].slot,
+                   TR[row].name, a.k_db, a.peak_db, p.silent ? "(silent) " : "", 30u, TR[row].bass ? 60u : 120u, p.band, p.band1, j.band, j.band1);
             snprintf(msg, sizeof msg, "M%02u %s: 4.4 peak %.1f dBFS, not under -3", TR[row].slot, TR[row].name, a.peak_db);
             CHECK(msg, a.peak_db <= -3.0);
         }

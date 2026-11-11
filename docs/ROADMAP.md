@@ -125,6 +125,7 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 - **Anything unfinished gets a row here at once.**
 - **Pushes and releases need the owner's OK.**
 - **Look first:** a visible change is shown to the owner on the unit (or emulator) and approved before tests and paperwork.
+- **The low end is welcome** (owner, 11 November): bass and sub may be in any multi or sound. The one rule: the FM-1 does not take over the drums (no kick-like thump on every beat, no drum-kit role). Nothing else limits the low end: no thresholds under 120 Hz, no caps, no registers kept free. The "leave the low end free" marks of the 9 November musical review ([audits](audits/2026-11-09/musical-review/REPORT.md)) were a suggestion for a few edge cases, never a rule.
 
 ## Planned, not yet scheduled
 
