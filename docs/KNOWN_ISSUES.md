@@ -5,7 +5,12 @@ What is known to be broken or untested. [KNOWN_LIMITS.md](KNOWN_LIMITS.md) lists
 ## TIDE (this fork)
 
 - **In the beta `beta-2026-11-04`, fixed in `1.0.0-b1`:** the SAVE > MULTIS page layout, the TIDE page's step bars not always matching what plays, and a latched arp playing on after STOP (use STOP ALL there: a double press or a 0.6 s hold). [The README](../README.md#builds-stable-and-beta) says which build is which.
-- **Fixed in `1.0.0-b1` (TIDE):** ARC resumes where it was after STOP and PLAY (a load or a K1 stop starts it again). A multi or pattern loaded after a WNDR or JRNY session starts as written. The automatic pattern edits keep the motif of an offbeat skank: its own hits stay, a hit moves at most two 16ths, LEAD answers only on lead and pluck lines. PITCH leaves the bass alone (notes under C3, BASS-category sounds, SCALE CHR). ECHO is folded into LEAD (TURNS has three values; a stored ECHO reads as LEAD).
+- **Fixed in `1.0.0-b1` (TIDE):**
+  - ARC resumes where it was after STOP and PLAY (a load or a K1 stop starts it again).
+  - A multi or pattern loaded after a WNDR or JRNY session starts as written.
+  - The automatic pattern edits keep the motif of an offbeat skank: its own hits stay, a hit moves at most two 16ths, LEAD answers only on lead and pluck lines.
+  - PITCH leaves the bass alone (notes under C3, BASS-category sounds, SCALE CHR).
+  - ECHO is folded into LEAD (TURNS has three values; a stored ECHO reads as LEAD).
 - **`1.0.0-b9`: a big TIME change sweeps slowly.** With the delay's wobble on, a TIME change glides at most about 1/8 sample per sample (about 12 % off pitch): a dotted eighth to a quarter takes about a second, a bar's worth one and a half to five. Small steps settle in about a tenth of a second. Not yet heard on the unit.
 - **`1.0.0-b9`: the bench test `benchsim` fails on M17 DUNE HORN** (it does not render the same forward and backward; the cause is the drone's new sub on HORN SWELL). Only the test is affected; the sound plays right. The fix is with the CI lane.
 - **`1.0.0-b9`: `tideroles` fails by design** (the roles test has been red since b5, and the b9 re-voice moves its numbers; the coordinator reads them).
@@ -14,7 +19,12 @@ What is known to be broken or untested. [KNOWN_LIMITS.md](KNOWN_LIMITS.md) lists
 - **Up to `1.0.0-b3`: missed audio blocks during a GLIDE** (about 3 per FM6 crossing; b3's sweep: 1 missed block, 17 voices cut). Fixed in `1.0.0-b4` by the ease ladder (see [KNOWN_LIMITS](KNOWN_LIMITS.md)).
 - **`1.0.0-b2`: one unreproduced spike on factory multi 11 (WHISPER TIDE)** in the 16-multi GLIDE sweep. It was seen once and has not come back; the drones were checked with a 3-note chord only.
 - **`1.0.0-b3`: live recording on an ARP SEQ part.** A key always sets the step's note (one note a step, no chords), and a 1- or 2-step pattern in REPLACE can split a chord across the step boundary. The key's step is predicted from the POLY stretch before the next arp step runs, so at a stretch change it can land one step off. Plain DUELL has the old ARP SEQ recording bug; the fix is TIDE-only.
-- **`1.0.0-b7`: the step display can blink a hit that doesn't play.** AUTO TIDE's step display can show one hit ahead that then doesn't play: the old M09 MINIMAL 12's 12-step blip (that multi is now HYPNO 303) under a style with ARC DROP (PEAK). Picture only, the sound is right. Seen once in 22,158 look-aheads in the `tidesteps` test (its WANDER / ARC DROP scenario on factory slot 8: part 2, step 6, three steps ahead). The same class showed on the old set in the night build. The scenario was moved from slot 8 to slot 6 to keep the suite green: put 8 back in `felucca-base/tests/tide_steps_test.c` to see it.
+- **`1.0.0-b7`: the step display can blink a hit that doesn't play.**
+  - AUTO TIDE's step display can show one hit ahead that then doesn't play: the old M09 MINIMAL 12's 12-step blip (that multi is now HYPNO 303), under a style with ARC DROP (PEAK).
+  - It is a picture only; the sound is right.
+  - It was seen once in 22,158 look-aheads in the `tidesteps` test: its WANDER / ARC DROP scenario on factory slot 8 (part 2, step 6, three steps ahead).
+  - The same class showed on the old set in the night build.
+  - The scenario was moved from slot 8 to slot 6 to keep the suite green. To see it, put 8 back in `felucca-base/tests/tide_steps_test.c`.
 - **Tested in software and by ear on one unit.** Host tests, the emulator and the editor's mock unit show that the code does what it says; how a tide sounds with a real MIDI clock has been judged on one unit only.
 
 ## Inherited from DUELL 1.0
@@ -24,12 +34,37 @@ What is known to be broken or untested. [KNOWN_LIMITS.md](KNOWN_LIMITS.md) lists
 - **The editor and restore are not tested with many units.** The web editor (patch library, backup and restore, piano roll, wavetable files) and the installer's backup and restore have been used on the author's unit; other units, other computers and other USB-MIDI setups are untested, and the piano roll has not been used on a real unit yet. The backup covers patches, multis, patterns, the user wavetables, settings and the current music; restoring a backup on another unit has not been tried.
 - **The 128-patch export and import are untested on hardware.** The editor moves a whole patch with PATCH_RAW (in pieces over USB-MIDI). The USB-MIDI timing of a 128-patch export or import, the flash timing of 128 writes and playing while importing have been tested on the computer only (simulated flash and unit), not measured on a real unit. Do not import a whole bank while you play.
 - **Very rare missed audio blocks.** When you switch to a very heavy multi, a block of audio can be late once in a while; you may hear a short click. Normal loads of patches and multis do not do this.
-- **The CPU figures in the documentation are a host model; the unit can read higher on some scenes.** The percentages in TESTING.md, the bench and the changelog are instruction counts on a computer. A count of the device code (not a measurement) says the part EQ costs about three times its model figure on the unit, and the SHIM pitch shifter and the RANDOM delay about 1.5 times. The flash cache adds an unknown part. M16 STRESS TEST of 0.2.23 overloaded at one key on the author's unit where the model said 78 %; 0.2.24 recalibrated it (TESTING.md "CPU on the unit"). Read the CPU bar on your unit, not the model.
-- **A slot shows the factory sound of the installed firmware.** The 128 patch slots hold the factory sounds until you save over one (RESTORE brings one back; with TIDE the last four, U1 to U4, are empty USER slots, and the factory sounds #125 to #171 are read-only places; the PATCHES list shows the factory sounds first, then every sound you saved, then the empty USER slots). The factory sound a slot falls back to is the one at that place in the list of the firmware you run: when a new version adds or sorts in sounds, a slot you never saved can show another sound than before, while a sound you saved stays in its slot number.
-- **With TIDE the patch store holds 126 patches, not 128.** The patch list has 128 slots. With TIDE the store has 21 chunks of at most 6 records, so it holds at most 126 saved patches, whatever their size. Overwriting a patch already saved always works. Saving into a 127th empty slot is refused. The unit shows STORE FULL, writes nothing and touches nothing already saved; the editor's store command reports an error. ERASE or RESTORE a saved slot to make room. Without TIDE the store has 22 chunks and holds all 128. K1 on PATCHES steps one slot a turn (faster with KNOB ACCEL ON), so use TYPE (knob 2: FAV, a category or an engine) to shorten the list. The editor's patch page lists the 128 slots with a search.
+- **The CPU figures in the documentation are a host model; the unit can read higher on some scenes.**
+  - The percentages in TESTING.md, the bench and the changelog are instruction counts on a computer.
+  - A count of the device code (not a measurement) says the part EQ costs about three times its model figure on the unit. The SHIM pitch shifter and the RANDOM delay cost about 1.5 times.
+  - The flash cache adds an unknown part.
+  - M16 STRESS TEST of 0.2.23 overloaded at one key on the author's unit, where the model said 78 %. 0.2.24 recalibrated it (TESTING.md "CPU on the unit").
+  - Read the CPU bar on your unit, not the model.
+- **A slot shows the factory sound of the installed firmware.** The 128 patch slots hold the factory sounds until you save over one. You can bring a factory sound back with RESTORE. With TIDE the last four slots (U1 to U4) are empty USER slots. The factory sounds #125 to #171 are read-only places. The PATCHES list shows the factory sounds first, then every sound you saved, then the empty USER slots. The factory sound a slot falls back to is the one at that place in the list of the firmware you run:
+
+  - When a new version adds or sorts in sounds, a slot you never saved can show another sound than before.
+  - A sound you saved stays in its slot number.
+- **With TIDE the patch store holds 126 patches, not 128.** The patch list has 128 slots. With TIDE the store has 21 chunks of at most 6 records, so it holds at most 126 saved patches, whatever their size.
+
+  - Overwriting a patch already saved always works.
+  - Saving into a 127th empty slot is refused.
+  - The unit shows STORE FULL, writes nothing and touches nothing already saved.
+  - The editor's store command reports an error.
+  - ERASE or RESTORE a saved slot to make room.
+  - Without TIDE the store has 22 chunks and holds all 128.
+
+  K1 on PATCHES steps one slot a turn (faster with KNOB ACCEL ON). Use TYPE (knob 2: FAV, a category or an engine) to shorten the list. The editor's patch page lists the 128 slots with a search.
 - **The second core is new.** Part 2 plays on the chip's second core from every power-on, with an automatic fallback to one core (see [RECOVERY.md](RECOVERY.md)). The two-core firmware has run on the author's unit and the unit fault tests were done; there is no menu switch or on-screen notice for it.
 - **MIDI is untested with many devices.** It follows the spec and the host tests; real controllers, sequencers and DAWs are still to be tested.
-- **WAVE user tables are new and tested on the computer only.** The three slots (USR1 to USR3) are checked by host tests (flash places, CRC, power cuts, refusal while playing, backup round trip) and the editor's WAVETABLES tab against a simulated unit. The writes have not been tried on other units than the author's. The editor tab has not been used to write a table on a real unit in a long session. A user table is reduced to 19 frames x 64 harmonics with no phases; a file with a very sharp or noisy sound loses its top and its character. An empty slot plays a sine. ERASE DATA erases the tables.
+- **WAVE user tables are new and tested on the computer only.**
+  - The three slots (USR1 to USR3) were checked by host tests: flash places, CRC, power cuts, refusal while playing, backup round trip.
+  - The editor's WAVETABLES tab was checked against a simulated unit.
+  - The writes have not been tried on other units than the author's.
+  - The editor tab has not been used to write a table on a real unit in a long session.
+  - A user table is reduced to 19 frames x 64 harmonics with no phases.
+  - A file with a very sharp or noisy sound loses its top and its character.
+  - An empty slot plays a sine.
+  - ERASE DATA erases the tables.
 - **User sample slots:** gone since 0.2.9, with the sample engines. Slot 3's flash now holds the patch store; the WAVE user tables (0.2.14) sit in 24 KiB at the start of the old slot 1 range (0xA0000 to 0xA5FFF); the rest of the old sample flash (0xA6000 to 0xB9FFF) now holds the patch store's chunks 6 to 15 (80 KiB); 0xBA000 to 0xC7FFF (56 KiB) is free.
 - **Fixed in `1.0.0-b1`:** GLIDE follows its display: TIME takes the shown time for any interval, RATE moves 64 semitones in the shown time, up to 10 s. Patches you saved yourself with GLIDE now glide for the time their GLIDE shows (the factory sounds and multis keep the glide they had).
 - **Fixed in `1.0.0-b1` (timing and clock):** delay TIME and TEMPO moves no longer click in DIGITAL and PING-PONG, and an external clock's tempo is averaged over four beats, so it is steadier. A delay TIME too long for the delay line is halved until it fits in every mode, and its card shows the note value that plays. MIDI Start plays step 0 on the first clock pulse. PLAY pressed while a master clock arrives waits for the master's next bar. The arp plays the key's velocity (it played 100), and a key pressed during PLAY starts it on the next ARP RATE step of the transport. SWG is the place of the offbeat in a pair of steps (75 % now plays 75 %, 66 % a triplet feel): a value you saved keeps its number and swings a little more. An ENV SYNC release of several bars now ends at slow tempi (a 4-bar one at 69 BPM or slower never ended).

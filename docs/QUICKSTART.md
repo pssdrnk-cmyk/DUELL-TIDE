@@ -39,8 +39,16 @@ Turn **SELECT** (or press **OCT+** / **OCT-**) to go through it; on the two ques
   - Your volume on the mixer (the **LEVEL** cards of the GLO MIXER page, and MIDI CC7) is yours: loading a sound never changes it, and a multi remembers it.
   - The part plays at the patch level and the level together.
 - **HOME** opens the MORPH page; each tap goes on to the next page of HOME's round (MORPH, MORPH SET, MODE; with TIDE MORPH, TIDE SETTINGS, AUTO TIDE). Hold HOME for the menu (ABOUT shows the version and credits).
-- **MIXER** (GLO's first page since the 0.2.25 layout round): both parts side by side, part 1 left and part 2 right, with the level meters between them. Knob 1 is LEVEL 1, knob 2 LEVEL 2, knob 3 PAN 1, knob 4 PAN 2 (in DUEL the pans are fixed and not shown). Each part's cell reads MUTE and is lit in the part's colour while the part is muted; hold GLO and press **OCT-** or **OCT+** to mute or unmute part 1 or part 2. SPACE is on the PERFORM page.
-- **TEMPO** is on the GLO TEMPO page, the one after MIXER (a tap of GLO opens MIXER first). To set the levels and pans of both parts from any page hold GLO: the keys play notes, knob 1 is LEVEL 1, knob 2 LEVEL 2, knob 3 PAN 1, knob 4 PAN 2 (in DUEL the pans are fixed and not shown). With GLO held, **OCT-** mutes or unmutes part 1 and **OCT+** part 2; each cell reads MUTE, lit in the part's colour while muted (the mutes moved to these keys in 0.2.24; before, knobs 1 and 2 were the mutes).
+- **MIXER** (GLO's first page since the 0.2.25 layout round):
+  - Both parts are side by side, part 1 left and part 2 right, with the level meters between them.
+  - Knob 1 is LEVEL 1, knob 2 LEVEL 2, knob 3 PAN 1, knob 4 PAN 2 (in DUEL the pans are fixed and not shown).
+  - Each part's cell reads MUTE and is lit in the part's colour while the part is muted.
+  - Hold GLO and press **OCT-** or **OCT+** to mute or unmute part 1 or part 2.
+  - SPACE is on the PERFORM page.
+- **TEMPO** is on the GLO TEMPO page. It is the one after MIXER (a tap of GLO opens MIXER first). To set the levels and pans of both parts from any page hold GLO:
+  - The keys play notes.
+  - Knob 1 is LEVEL 1, knob 2 LEVEL 2, knob 3 PAN 1, knob 4 PAN 2 (in DUEL the pans are fixed and not shown).
+  With GLO held, **OCT-** mutes or unmutes part 1 and **OCT+** part 2. Each cell reads MUTE, lit in the part's colour while muted. The mutes moved to these keys in 0.2.24; before, knobs 1 and 2 were the mutes.
 - **OCT-/OCT+** change octave when you let go of them; in dialogs OCT- means back and OCT+ means do it. Hold **OCT-** and turn a knob to reset that knob's card to its default (the octave then does not change).
 
 ## The menu
@@ -73,7 +81,13 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
    - On this page **ALGORITHM** has three positions, PART 1, the middle and PART 2.
    - The middle selects both parts (every knob moves both, each from its own value, both part numbers light up) and plays the mode of the PLAY MODE row on TIDE SETTINGS; the header names it, LAYER, STEREO or DUEL.
    - PART 1 and PART 2 play that part alone on every key.
-   **With TIDE:** tap HOME twice more for TIDE SETTINGS (ten rows: STYLE, MODE, TARGET, ARC, KNOBS (which knob set HOME page 1 plays; AUTO follows the tag, the first word of the multi's name: DUB, HSE house, TECH techno, ACID, ELEC electro, AMB ambient), AMOUNT (how far a roll goes), then REC, PLAY MODE, XFADE, SPLIT; STYLE DUB is the default) and AUTO TIDE. Press PLAY and twist K1 on AUTO TIDE right: the parts evolve by themselves. With no notes coming in TIDE plays in C minor; send or hold one note to set its key. The [TIDE guide](TIDE_GUIDE.md) has the rest.
+   **With TIDE:** tap HOME twice more for TIDE SETTINGS. It has ten rows:
+   - STYLE, MODE, TARGET, ARC, KNOBS, AMOUNT, then REC, PLAY MODE, XFADE and SPLIT.
+   - KNOBS picks which knob set HOME page 1 plays. AUTO follows the tag, the first word of the multi's name: DUB, HSE (house), TECH (techno), ACID, ELEC (electro) or AMB (ambient).
+   - AMOUNT is how far a roll goes.
+   - STYLE DUB is the default.
+
+   Then AUTO TIDE. Press PLAY and twist K1 on AUTO TIDE right: the parts evolve by themselves. With no notes coming in TIDE plays in C minor; send or hold one note to set its key. The [TIDE guide](TIDE_GUIDE.md) has the rest.
 4. Press **SAVE**. The first page is **PATCHES**: 128 slots, #1 to #128.
 
    - The factory sounds fill them. With TIDE the last four are empty USER slots (U1 to U4) for new sounds. The factory sounds go to #171. (#129 and up are read-only places.)
@@ -173,7 +187,19 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
   - **EQ** (per-part, EQ 1/2 / EQ 2/2: LOW FREQ, LOW GAIN, MID FREQ, MID GAIN; EQ 2/2: MID Q, HIGH FREQ, HIGH GAIN; a band at 0 dB runs no EQ code; the panel draws the curve of the three bands; the ON / OFF switch of 0.2.24 is gone in the 0.2.25 layout round)
   - **ducker** (per-part: SRC — OFF, a built-in pulse (PUMP), the other part, or MIDI, a note on the channel set on GLO > SIDECHAIN; a new sound starts at OFF and shows only SRC until you pick a source (0.2.24); with SRC MIDI, knob 4 of DUCK 1/2 jumps to that page, which says each part's SRC)
   - **chorus** (new in 0.2.21: in STEREO and LAYER the chorus is stereo, the left and the right of the sound sweep a quarter turn apart; RATE and DEPTH work as before, but above CRT 40 (about 0.4 Hz) DEPTH sets a pitch swing that stays the same as RATE rises, so a fast chorus stays a chorus; the delay's modulation does the same above MRATE 44. In DUEL the chorus stays as it was, on each part's own side)
-  - **delay** (DELAY 1/2 starts with MODE: DIGITAL, the plain delay; PING-PONG, the repeats alternate left and right; and, new in 0.2.14, RANDOM, where on a random share of the beats the repeat is retriggered, reversed, or an octave up or down, and OCT UP, octave-up repeats. In RANDOM and OCT UP the MOD card on DELAY 2/2 (the delay's modulation depth) is CHANCE, the share of beats (40 % when you switch in with it at 0), the beat is the delay's TIME, the MRATE card (the modulation rate) is not shown and the cards after it move up one knob (a hidden card never leaves a gap on a parameter page), and the repeats do not alternate left and right, that is PING-PONG. SPREAD is the stereo width, not shown in DIGITAL (nor in DUEL, where there is nothing to spread). The pages run top-down: MODE, TIME, FDBK, COLR, then SPREAD, MRATE, MOD, MIX last. A TIME that does not fit the delay line (1/2 at 77 BPM, for example) is halved until it does, in every mode, and the TIME card shows the note value that plays. In DIGITAL and PING-PONG a change of TIME, TEMPO or an external clock bends the repeats like a tape instead of clicking. In DUEL (new in 0.2.22) all four modes work, mono on each part's own side: PING-PONG sounds like DIGITAL there, because a ping-pong needs two sides, and the RANDOM and OCT UP events stay in the middle of the part's side)
+  - **delay** (DELAY 1/2 starts with MODE:
+    - DIGITAL, the plain delay.
+    - PING-PONG, the repeats alternate left and right.
+    - RANDOM (new in 0.2.14): on a random share of the beats the repeat is retriggered, reversed, or an octave up or down.
+    - OCT UP: octave-up repeats.
+    - In RANDOM and OCT UP the MOD card on DELAY 2/2 (the delay's modulation depth) is CHANCE, the share of beats (40 % when you switch in with it at 0). The beat is the delay's TIME.
+    - In those two modes the MRATE card (the modulation rate) is not shown, and the cards after it move up one knob. A hidden card never leaves a gap on a parameter page.
+    - In those two modes the repeats do not alternate left and right, that is PING-PONG.
+    - SPREAD is the stereo width. It is not shown in DIGITAL, nor in DUEL, where there is nothing to spread.
+    - The pages run top-down: MODE, TIME, FDBK, COLR, then SPREAD, MRATE, MOD, MIX last.
+    - A TIME that does not fit the delay line (1/2 at 77 BPM, for example) is halved until it does, in every mode. The TIME card shows the note value that plays.
+    - In DIGITAL and PING-PONG a change of TIME, TEMPO or an external clock bends the repeats like a tape instead of clicking.
+    - In DUEL (new in 0.2.22) all four modes work, mono on each part's own side. PING-PONG sounds like DIGITAL there, because a ping-pong needs two sides. The RANDOM and OCT UP events stay in the middle of the part's side.
   - **reverbs** (REVERB page, TYPE: ROOM, SPRING, HALL, SHIM, RESO and, new in 0.2.14, PLATE: a smooth stereo plate; SIZE is how long the tail lasts, DAMP how dark it gets, and, new in 0.2.14, LOCUT on K4 cuts the bass that goes into the reverb so it does not get muddy: OFF or 20 Hz to 2 kHz, 299 Hz by default (0.2.22: it was up to 450 Hz and 88 Hz); it works on every reverb type). SHIM and RESO reverbs come from JIANT; RESO's resonances stay in tune as DAMP rises
   - **SHIMMER** (new in 0.2.19: with TYPE SHIM, a second page SHIMMER follows REVERB (it is not shown for the other types, the GLO button and SELECT skip it): PITCH sets the shimmered part, UP (an octave up, as before) or DOWN (an octave down; BOTH was removed in 0.2.25), and DRIFT (0 to 100 %, off by default; the card was MOD before the 0.2.25 layout round) lets its pitch drift slowly so the shimmer does not stand still; 40 is a gentle drift, 100 a wide one. Both are saved with the multi.)
 

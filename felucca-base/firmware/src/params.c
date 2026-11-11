@@ -261,7 +261,7 @@ static const param_desc_t XTP[NX] = {
     [X_CYFALL] = PD("FALL", F_TIME, 0, 127, 70),   /* the DEC time table */
     [X_CYCURVE] = PD("CURVE", F_BIPCT, -64, 63, 0),
     [X_CYSYNC] = PE("SYNC", N_ONOFF, 0),           /* CYCLE's own SYNC switch (not ENV SYNC) */
-    /* DUELL 1.1 (owner, DEST pages): per-source depth cards. Each runs through the matrix's smooth path as a virtual route (mod.c mod_vr_*), so it is as clean as the same route in a slot. The stored
+    /* DUELL 1.1 (owner, DEST pages): per-source depth cards. Each runs through the matrix's smooth path as a virtual route (mod.c vr_t / VR[]), so it is as clean as the same route in a slot. The stored
      * labels are keys (LBL_SHOWN gives the words); depths -64..+63, 0 = off */
     [X_ESAT] = PD("SATN", F_BIPCT, -64, 63, 0),    /* AMP ENV to SATURATION */
     [X_E2BLD] = PD("FBLND", F_BIPCT, -64, 63, 0),  /* FILTER ENV to FILTER BLEND */
@@ -899,7 +899,7 @@ enum { SC_TRACK, SC_GLOBAL, SC_ENGINE, SC_STEP, SC_TRK,   /* SC_TRK: HOME's MIXE
        , SC_TIDE         /* TIDE hook (H10): HOME's TIDE and TIDE LIST (tide_ui.c): no parameter id */
 #endif
        };        /* 0.2.25 layout round: GLO's MIXER page (both parts' LEVEL and PAN, the MUTE cells, the meters: ui_layer.c, as the hold-GLO layer): no parameter id */       /* DUELL 0.2.22: FX's second page, SEND FX (the SELECTED part's three send levels with the global effect they feed under them: K1 CHORUS, K2 DELAY,
-                          * K3 REVERB; a twist jumps to that effect's page in GLO; ui_draw.c, ui_input.c fxsum_knob): no parameter id, nothing stored (the levels are P_CHOR, P_DLY, P_REV) */
+                          * K3 REVERB; a twist jumps to that effect's page in GLO; ui_draw.c): no parameter id, nothing stored (the levels are P_CHOR, P_DLY, P_REV) */
 enum { GR_NONE, GR_ADSR, GR_LFO, GR_STEPS, GR_ARP, GR_SCALE, GR_FX, GR_ROLL, GR_BROWSE, GR_SLOTS, GR_USER /* (retired: no page) */, GR_TRK,
        GR_SLCR /* (retired: no page, no graph; kept so the ids after it hold) */, GR_MOD, GR_PATS, GR_TOOLS, GR_CHORD, GR_SLICES /* (retired with SLICE, 0.2.9: no page) */, GR_EVENTS,
        GR_FMOP, GR_FMOP2, GR_FMENV, GR_INS,
@@ -954,7 +954,7 @@ static const page_t PAGES[] = {
     {"ENV 2 DEST", FAM_ENV, SC_TRACK, GR_ADSR, {P_E2FLT, XW_BASE + X_E2BLD, XW_BASE + X_E2DRV, XW_BASE + X_E2RES}},   /* DUELL 1.1 (owner): MULTI CUTOFF, FILTER BLEND, FILTER DRIVE, MULTI RES (the TIMBRE card is gone and no longer acts; P_E2SHP stays a stored id, never read) */
     {"LFO 1", FAM_LFO, SC_TRACK, GR_LFO, {P_LWAVE, P_LRATE, P_LSYNC, P_LFADE}},   /* WAVE RATE SYNC FADE: the shape, the speed (SYNC replaces RATE) */
     {"LFO 1 TRIG", FAM_LFO, SC_TRACK, GR_LFO, {P_LTRIG, P_LPHASE, P_LPOL, XW_BASE + X_LFO1LVL}},   /* how it starts: TRIG, the start PHS, POL */
-    {"LFO 1 DEST", FAM_LFO, SC_TRACK, GR_LFO, {P_LD_PIT, P_LD_FLT, P_LD_SHP, P_LD_AMP}},   /* 0.2.25 layout round (owner): the DEST pages draw their envelope's / LFO's curve as its first page (ui_graph.c env_of / lfo_is2) */
+    {"LFO 1 DEST", FAM_LFO, SC_TRACK, GR_LFO, {P_LD_PIT, P_LD_FLT, P_LD_SHP, P_LD_AMP}},   /* 0.2.25 layout round (owner): the DEST pages draw their envelope's / LFO's curve as its first page (ui_graph.c env_of) */
     {"LFO 2", FAM_LFO, SC_TRACK, GR_LFO, {P_L2WAVE, P_L2RATE, P_L2SYNC, P_L2FADE}},   /* DUELL: LFO 2, a matrix source */
     {"LFO 2 TRIG", FAM_LFO, SC_TRACK, GR_LFO, {P_L2TRIG, P_L2PHASE, P_L2POL, XW_BASE + X_LFO2LVL}},   /* DUELL 1.1: K4 LEVEL, the LFO's master depth */
     {"LFO 2 DEST", FAM_LFO, SC_TRACK, GR_LFO, {XW_BASE + X_LFO2, XW_BASE + X_L2RES2, XW_BASE + X_L2FMODE, XW_BASE + X_L2BLD}},   /* DUELL 1.1 (owner): TWIN CUTOFF (the stored X_LFO2, also on TWIN MOD), TWIN RES, MULTI MODE, FILTER BLEND. The old PITCH / MULTI CUTOFF / TIMBRE cards are gone and no longer act (P_L2PIT / P_L2FLT / P_L2SHP stay stored ids, never read; the matrix reaches the same destinations) */

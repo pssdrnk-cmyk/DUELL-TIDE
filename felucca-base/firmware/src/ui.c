@@ -106,7 +106,7 @@ static void patch_restore_all_do(void);      /* SAVE > TOOLS: RESTORE ALL */
 #define PREF_SCALE_LEDS_OFF (0x80u << 8)
 /* 1.2: three more two-valued MENU settings, bits of another byte no engine uses, saved with the settings; 0 in older
  * settings = today's behaviour (append-only, as ui_prefs): bit 0 DISPLAY > SCOPE MIX (Discussion #165, fx.c scope_mix),
- * bit 1 CONTROL > STEP PREVIEW ON (Discussion #169, ui_input.c step_preview), bit 2 CONTROL > CHORD ENTRY ADD (#155,
+ * bit 1 CONTROL > STEP PREVIEW ON (Discussion #169, ui_input.c cursor_move), bit 2 CONTROL > CHORD ENTRY ADD (#155,
  * ui_input.c seq_entry). 1.5: bit 3 SYSTEM > HELP ON (Discussion #156; removed in DUELL 0.2.2: the bit is ignored, never reused). Bit 4: CPU METER OFF (DUELL 0.2.9).
  * Bit 5: the first-start GUIDE seen (DUELL 0.2.11, ui_guide.c; no MENU row, no editor id). Bit 6: MODE RECALL ON (0.2.11, multi.c project_load;
  * 0.2.14: MENU > CONTROL > MULTI LOAD SETS MODE). Bit 7 (0.2.14): the 0.2.14 defaults applied (PREF_DEFAULTS, settings_persist.c settings_defaults).

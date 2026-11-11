@@ -2,7 +2,12 @@
 
 One page: what each TIDE setting does, in short. The full detail is in the [TIDE guide](TIDE_GUIDE.md), section 2 (AUTO TIDE) and 3 (TIDE SETTINGS). This is the page of 1.0.0-b7 and later: ten rows (AMOUNT came from the MORPH page). Up to 1.0.0-b6 VARY BARS, TURNS, POLY, OFFBEAT, WASH, ROLL ARP and ROLL PITCH were rows too; DRONE is new in b4.
 
-**Where:** HOME's round is MORPH → TIDE SETTINGS → AUTO TIDE. On MORPH, K1 is the fader, K2 FILTER, K3 RESONANCE, K4 ECHO; OCT+ held and a click of K1 rolls a new End B. On AUTO TIDE, K1 starts or stops the glide and K2 is the mode. On TIDE SETTINGS, K1 picks a row and OCT+ / OCT- (or K2..K4) change it. On all three, ALGORITHM picks PART 1, the middle (both parts, in the PLAY MODE row's mode, named LAYER, STEREO or DUEL) or PART 2.
+**Where:** HOME's round is MORPH → TIDE SETTINGS → AUTO TIDE.
+
+- On MORPH: K1 is the fader; K2 FILTER, K3 RESONANCE, K4 ECHO; hold OCT+ and click K1 to roll a new End B.
+- On AUTO TIDE: K1 starts or stops the glide; K2 is the mode.
+- On TIDE SETTINGS: K1 picks a row; OCT+ / OCT- (or K2..K4) change it.
+- On all three screens: ALGORITHM picks PART 1, the middle (both parts, in the PLAY MODE row's mode, named LAYER, STEREO or DUEL) or PART 2.
 
 With no notes coming in TIDE plays in C minor; send or hold one note to set its key.
 

@@ -22,7 +22,13 @@ HOME's round, one tap of **HOME** each: **MORPH → TIDE SETTINGS → AUTO TIDE*
 | **the middle: DUEL** | as STEREO, with part 1 hard left and part 2 hard right | both parts |
 | **PART 2** | part 2 alone, on every key | part 2 |
 
-In the middle the header's title is LAYER, STEREO or DUEL, in the theme colour, and both part numbers light. Changing the PLAY MODE row also moves ALGORITHM to the middle, so you hear the new mode at once. A multi saved in LAYER loads in the middle. Nothing new is stored: the middle is the BOTH of before. **With PLAY MODE on LAYER, a move between a side and the middle lets go of the notes you hold** (a short dip): a held chord stops, play it again. With STEREO or DUEL the held notes stay. The edit pages still pick PART 1 or PART 2 only.
+In the middle the header's title is LAYER, STEREO or DUEL, in the theme colour, and both part numbers light.
+- Changing the PLAY MODE row also moves ALGORITHM to the middle, so you hear the new mode at once.
+- A multi saved in LAYER loads in the middle.
+- Nothing new is stored: the middle is the BOTH of before.
+- **With PLAY MODE on LAYER, a move between a side and the middle lets go of the notes you hold** (a short dip): a held chord stops, play it again.
+- With STEREO or DUEL the held notes stay.
+- The edit pages still pick PART 1 or PART 2 only.
 
 On these three pages a small dim pill beside part 1's capsule shows the busiest audio block of the last 4 seconds, in % of its time. A red badge beside part 2's capsule shows audio blocks missed recently (a click or dropout was possible); it goes away after a minute with no new miss.
 
@@ -41,7 +47,17 @@ These are the sound's own settings: they record into the pattern with REC armed,
 
 **Hold OCT- and turn a knob:** knob 1 goes back to your original sound and pattern (the glide stops, as OCT- + K1 on AUTO TIDE); knobs 2 to 4 go back to the value the loaded sound had.
 
-The fader's position (A, 1 to 126, B) sits beside knob 1's label; the slim row under the picture shows knobs 2 to 4 as FLT, RSN and ECH, each with its value, and the footer shows both parts' patches. Most of the page shows the sound itself as waves, like an oscilloscope: a held note stands still, a chord beats, the newest wave in front, the older ones fainter behind it; at rest the lines lie flat. ALGORITHM picks whose: PART 1, PART 2, or both (the middle: one above the other). **Hold SAVE** saves the patch; with both parts selected each part goes over its own slot.
+- The fader's position (A, 1 to 126, B) sits beside knob 1's label.
+- The slim row under the picture shows knobs 2 to 4 as FLT, RSN and ECH, each with its value.
+- The footer shows both parts' patches.
+- Most of the page shows the sound itself as waves, like an oscilloscope:
+  - a held note stands still,
+  - a chord beats,
+  - the newest wave in front,
+  - the older ones fainter behind it;
+  - at rest the lines lie flat.
+- ALGORITHM picks whose: PART 1, PART 2, or both (the middle: one above the other).
+- **Hold SAVE** saves the patch; with both parts selected each part goes over its own slot.
 
 ## 2. AUTO TIDE (the page you live on)
 
@@ -142,7 +158,12 @@ The KNOBS sets (HOME page 1; K1 is always MORPH; AUTO picks the set from the tag
 
 **Your hand on the MORPH fader.** Move the MORPH fader (the MORPH page, the mod wheel or CC 70) and TIDE holds only the part you moved. The other part, the pattern's own movement and ARC go on. 8 bars after you let go, at the next phrase, TIDE takes the part back from where you left it (AUTO TIDE says HAND  BACK IN n BARS). A sound load, STOP, HOME or a K1 stop end it as before.
 
-**Dynamics.** No setting: in automatic EVOLVE / TRAVEL the hits play an eighth louder late in ARC's rise and at its peak and a quarter softer in its drop and breakdown (ARC on), and softer on a part that steps back in call and answer (the two together: softer still). ARP SEQ parts, the factory chord parts, follow it too, and keep their accent. An accent counts as velocity 127 there and loses its accent. Playback only: KEEP stores the pattern's own velocities.
+**Dynamics.** There is no setting for this. In automatic EVOLVE and TRAVEL, the hits play:
+- an eighth louder late in ARC's rise and at its peak;
+- a quarter softer in its drop and breakdown (ARC on);
+- softer on a part that steps back in call and answer (the two together: softer still).
+
+ARP SEQ parts, the factory chord parts, follow it too, and keep their accent. An accent counts as velocity 127 there and loses its accent. This is playback only: KEEP stores the pattern's own velocities.
 
 **The motif is kept.** The automatic pattern edits never drop or move the pattern's anchors:
 
@@ -174,7 +195,11 @@ A sustained part holds still:
 | At the next turn (when the trip arrives) | MODE, WAIT, TIME (also when a STYLE sets it; the page shows the new TIME at once, the bar count goes on with the trip that runs), and KNOBS. |
 | At the next start (knob 1) | TARGET: what the tide moves is fixed when a glide starts. |
 
-Defaults with no saved settings (a new unit, or after ERASE DATA): STYLE DUB, that is MODE EVOLVE, TIME 16, WAIT 2, ARC RISE (and DUB's feel: vary every 4th bar, poly GENTLE, offbeat SOFT, wash OFF); and TARGET BOTH, KNOBS AUTO, REC ADD, ROLL ARP and ROLL PITCH OFF. A STYLE saved by an earlier build loads as the same style with this build's values (DUB saved by `1.0.0-b6` played TRAVEL and now plays EVOLVE). An older record without a STYLE loads as CUSTOM with its values kept.
+Defaults with no saved settings (a new unit, or after ERASE DATA):
+- STYLE DUB, that is MODE EVOLVE, TIME 16, WAIT 2, ARC RISE (and DUB's feel: vary every 4th bar, poly GENTLE, offbeat SOFT, wash OFF);
+- TARGET BOTH, KNOBS AUTO, REC ADD, ROLL ARP and ROLL PITCH OFF.
+
+A STYLE saved by an earlier build loads as the same style with this build's values. DUB saved by `1.0.0-b6` played TRAVEL and now plays EVOLVE. An older record without a STYLE loads as CUSTOM with its values kept.
 
 **STYLE sets** (MODE, TIME, WAIT, vary bars, poly, offbeat, ARC, wash):
 
@@ -199,7 +224,12 @@ They play as DRONE without a trip here:
 - loading any other multi brings back the STYLE and values you had
 - the saved STYLE never changes (a row you change while a drone multi is loaded lasts until then)
 
-DRONE is for a held chord of one of the factory drone sounds (#164 to #171) with HOLD on: EVOLVE keeps the sound and slowly moves it between its two ends over 64 bars, never waits at an end, and leaves out everything rhythmic (poly, offbeat and ARC OFF) that a held chord would not use; wash HIGH gives the slow breath. AMBIENT is TRAVEL: it hops from sound to sound, with no groove tricks (poly OFF). CUSTOM moved from 5 to 6 in `1.0.0-b4`; an old 5 reads as CUSTOM unless its values are DRONE's.
+DRONE is for a held chord of one of the factory drone sounds (#164 to #171) with HOLD on:
+- EVOLVE keeps the sound and slowly moves it between its two ends over 64 bars; it never waits at an end.
+- It leaves out everything rhythmic (poly, offbeat and ARC OFF) that a held chord would not use.
+- Wash HIGH gives the slow breath.
+
+AMBIENT is TRAVEL: it hops from sound to sound, with no groove tricks (poly OFF). CUSTOM moved from 5 to 6 in `1.0.0-b4`; an old 5 reads as CUSTOM unless its values are DRONE's.
 
 Dub-techno recipe: STYLE DUB, ALGORITHM LAYER (by hand: **AUTO TIDE** EVOLVE, TIME 16, WAIT 2 to 4; **SETTINGS** TARGET BOTH, ARC RISE; DUB's wash is OFF, so the sounds keep their own level and space). Press PLAY, twist K1 right, walk away.
 
@@ -219,7 +249,11 @@ DUEL (part 1 left, part 2 right, effects separate), STEREO, LAYER. This is stock
 
 ## First start
 
-A new unit (or after ERASE DATA) comes up as multi **M02 DUB CHORD** with STYLE DUB (AUTO TIDE on EVOLVE). Its two 16-step patterns play on PLAY with no key held (ARP SEQ). Press PLAY. With no notes coming in TIDE plays its own chord on C; send or hold one note to set its key. With REC armed the pattern keeps playing; the keys sound as you play them and go into the pattern (the REC row of TIDE SETTINGS chooses ADD or REPLACE for ordinary parts).
+A new unit (or after ERASE DATA) comes up as multi **M02 DUB CHORD** with STYLE DUB (AUTO TIDE on EVOLVE).
+- Its two 16-step patterns play on PLAY with no key held (ARP SEQ).
+- Press PLAY.
+- With no notes coming in, TIDE plays its own chord on C; send or hold one note to set its key.
+- With REC armed, the pattern keeps playing. The keys sound as you play them and go into the pattern. The REC row of TIDE SETTINGS chooses ADD or REPLACE for ordinary parts.
 
 ## When the unit is busy
 
@@ -238,7 +272,11 @@ With heavy sounds and a moving morph the audio can get close to its limit. TIDE 
 
 In the SEQ tools, hold SEQ and press G4 (KEEP): what you hear now becomes the part's own, sound and pattern, with one UNDO. Use it to freeze a good moment, then start the next tide from there.
 
-SAVE stores the sound as you loaded it, not the one TRAVEL (or MORPH TO) moved the part to. When you hold SAVE on a part that plays such a moved sound, the dialog says so above its question: "SAVES THE LOADED SOUND", "KEEP FIRST = AS HEARD". To save what you hear, answer NO (OCT-), do KEEP, then hold SAVE again. With BOTH the note shows when either part is moved. A part that was not moved, or that you kept, shows no note.
+SAVE stores the sound as you loaded it, not the one TRAVEL (or MORPH TO) moved the part to. When you hold SAVE on a part that plays such a moved sound, the dialog says so above its question:
+- "SAVES THE LOADED SOUND"
+- "KEEP FIRST = AS HEARD"
+
+To save what you hear, answer NO (OCT-), do KEEP, then hold SAVE again. With BOTH, the note shows when either part is moved. A part that was not moved, or that you kept, shows no note.
 
 ---
 
