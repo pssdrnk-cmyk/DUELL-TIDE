@@ -134,7 +134,25 @@ Ten rows: STYLE, MODE, TARGET, ARC, ROLL TYPE and AMOUNT for the tide, then REC,
 
 **Dynamics.** No setting: in automatic WANDER / JOURNEY the hits play an eighth louder late in ARC's rise and at its peak and a quarter softer in its drop and breakdown (ARC on), and softer on a part that steps back in call and answer (the two together: softer still). ARP SEQ parts, the factory chord parts, follow it too, and keep their accent. An accent counts as velocity 127 there and loses its accent. Playback only: KEEP stores the pattern's own velocities.
 
-**The motif is kept.** The automatic pattern edits never drop or move the pattern's anchors: its beats, the hits on the place in the beat most of its hits take (an offbeat skank's "and"s), and more of its hits in order until three fifths are anchored (at least two). A hit never sits more than two 16ths from its stored step, so a skank keeps its own shape. A figure of 5 to 7 hits keeps 4 of every 5 in place (3 of 5 for busier grooves); a figure with one free hit, and the bass, keep every hit outside ARC's breakdown. The exception is a chord part's variation bar: there the rhythm cell decides (below). The phrase gaps and moves, the offbeat lean, the answers and ARC's thinning all leave the anchors alone. On a chord part's variation bar the part plays a rhythm cell from a small house and dub-techno vocabulary (the skank with a throw, 3-3-2, the Detroit two-hit and more), the one nearest its own pattern, with the pattern's own chords. With OFF-SCALE PLAY, VOIC keeps a chord's out-of-scale note; VOIC never touches the bass or a note under C3. A sustained part holds still: a pattern with a single hit (a drone or a texture) is not varied at all, and a pad of two chords a bar never gets a repeat added by the phrase edits, not even at ARC's peak.
+**The motif is kept.** The automatic pattern edits never drop or move the pattern's anchors:
+
+- Its beats stay in place.
+- The hits on the place in the beat most of its hits take (an offbeat skank's "and"s) stay in place.
+- More of its hits are anchored in order until three fifths are anchored (at least two).
+- A hit never sits more than two 16ths from its stored step, so a skank keeps its own shape.
+- A figure of 5 to 7 hits keeps 4 of every 5 in place (3 of 5 for busier grooves).
+- A figure with one free hit, and the bass, keep every hit outside ARC's breakdown.
+
+The phrase gaps and moves, the offbeat lean, the answers and ARC's thinning all leave the anchors alone.
+
+On a chord part's variation bar the rhythm cell decides (below): the part plays a rhythm cell from a small house and dub-techno vocabulary (the skank with a throw, 3-3-2, the Detroit two-hit and more), the one nearest its own pattern, with the pattern's own chords.
+
+With OFF-SCALE PLAY, VOIC keeps a chord's out-of-scale note; VOIC never touches the bass or a note under C3.
+
+A sustained part holds still:
+
+- A pattern with a single hit (a drone or a texture) is not varied at all.
+- A pad of two chords a bar never gets a repeat added by the phrase edits, not even at ARC's peak.
 
 **Loading.** A multi, project or pattern load starts as written: both loaded parts go back to End A with no variation and no pitch edits from before, ARC starts again at RISE, and a running trip begins again from A (MODE and the auto state stay).
 
