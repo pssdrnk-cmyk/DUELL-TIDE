@@ -1907,6 +1907,7 @@ static void morph_ready_first(uint32_t pi);
 /* 1.0.0-b7: the loaded sound's FILTER, RESONANCE and ECHO (HOME's MORPH page K2..K4, ui_input.c H1_PG: OCT- + the knob puts its value back; b8: RESONANCE for LENGTH), taken when a sound is
  * loaded (morph_rebase), at a part's first use and when morph_ready finds another sound; not by a rebase of the same sound (HOME, KEEP: the edits stay the player's).
  * In the pool (main loop; .bss is the tighter) */
+#include "knob_sets.h"          /* 1.0.0-b9: the genre knob sets (HOME page 1 K2..K4) */
 static const uint8_t H1_ID[3] = {P_FREEA, P_FREEB, P_DLY};
 static int16_t h1_orig[NSHOWN][3] __attribute__((section(".pool")));
 static void h1_take(uint32_t pi)
