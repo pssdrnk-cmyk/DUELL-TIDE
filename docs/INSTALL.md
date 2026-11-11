@@ -57,7 +57,14 @@ Every build also writes `duell-latest.fwsc` (the same file) and `duell-version.j
 - The packages on the releases are named after that version: [Versions](ROADMAP.md#versions-and-releases) says how a release is made.
 - Build steps: [felucca-base/BUILDING.md](../felucca-base/BUILDING.md).
 
-When you build the site yourself, the page reads the version from `duell-version.json` and looks for **`duell-latest.fwsc` next to itself** (then `duell-<VERSION>.fwsc`, then the older names `duell-0.1-beta.fwsc`, `felucca-0.1-beta.fwsc`) (in `felucca-base/web/install/`). If it is not there, the page shows the notice **"DUELL firmware is not yet released"** and keeps the install flow hidden; the flow appears when the file exists. It accepts only a Felucca-loader package (identity `FM-1_9xx`, which `tools/build.py` makes `FM-1_901`), and it shows the SHA-256 so you can compare it with `SHA256SUMS`.
+When you build the site yourself, the page does these things:
+
+- Reads the version from `duell-version.json`.
+- Looks for **`duell-latest.fwsc` next to itself** (in `felucca-base/web/install/`).
+- If that file is missing, looks for `duell-<VERSION>.fwsc`, then the older names `duell-0.1-beta.fwsc`, `felucca-0.1-beta.fwsc`.
+- If none of those files are there, shows the notice **"DUELL firmware is not yet released"** and keeps the install flow hidden; the flow appears when the file exists.
+- Accepts only a Felucca-loader package (identity `FM-1_9xx`, which `tools/build.py` makes `FM-1_901`).
+- Shows the SHA-256 so you can compare it with `SHA256SUMS`.
 
 To view the page, serve the folder `felucca-base/web/` with any static web server, for example `python3 -m http.server -d felucca-base/web 8000`, and open `http://localhost:8000/install/`. (Opening the file straight from disk does not work, because the page loads modules.) The same page is published at <https://pssdrnk-cmyk.github.io/DUELL-TIDE/install/> (GitHub Pages), which loads the package of the channel you pick from this fork's releases.
 
