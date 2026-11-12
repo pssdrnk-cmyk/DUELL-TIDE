@@ -1,0 +1,49 @@
+# Re-runs the jobs of a "Host tests" run that GitHub's runners failed (never a job that really failed): jam/ci_retry.py decides, this file only starts it.
+# Runner failures: "The job was not acquired by Runner of type hosted even after multiple attempts" (no step ran), "The runner has received a shutdown signal",
+# "lost communication with the server". Such a run is re-run for those jobs only, at most twice (attempt 1 -> 2 -> 3). A failed test, a build error, a timeout,
+# a person's cancel, a run replaced by a newer one (concurrency) and a commit that is no longer the branch head are left alone; see the script's header.
+# Needs "Actions: write" for the re-run requests and nothing else; it checks out the default branch's script, never the tested commit, so a pull request cannot change it.
+# workflow_run workflows run from the default branch (jam11) only; a branch proves the script with the manual start below (dry_run, force on an old run).
+name: CI retry
+
+on:
+  workflow_run:
+    workflows: ["Host tests"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Host tests run to look at"
+        required: true
+      dry_run:
+        description: "only say what would be re-run"
+        type: boolean
+        default: true
+      force:
+        description: "skip the 'still the branch head' test (a proof on an old run)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  retry:
+    # only red or cancelled runs (a dispatch always looks); the script decides whether a runner failure is behind it
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure' || github.event.workflow_run.conclusion == 'cancelled'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
+        with:
+          sparse-checkout: jam/ci_retry.py
+          sparse-checkout-cone-mode: false
+
+      - name: Re-run the jobs the runner failed
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
+          DRY: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '--dry-run' || '' }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force && '--force' || '' }}
+        run: python3 jam/ci_retry.py "$RUN_ID" $DRY $FORCE

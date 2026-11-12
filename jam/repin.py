@@ -10,6 +10,7 @@
   4. only for proven groups, writes the new values into the pins (comment "(b9: <cause subject>, proven by revert; was OLD)"), regenerates the
      golden files of regress / mrender / union, then runs the groups on the checkout once more
   5. prints a table: group, pin, old -> new, proven yes / no. Unproven pins are never written.
+  (the group emu_smoke: its pins are the screens' CRCs in tests/emu_smoke_ref.txt; the same proof by revert, then the changed screens' CRCs are written, the others stay)
 """
 import os, re, shutil, subprocess, sys, tempfile
 
@@ -23,6 +24,9 @@ ARR = re.compile(r"^\s*(?:static\s+)?const\s+(?:uint64_t|unsigned long long)\s+(
 HEX = re.compile(r"0x[0-9A-Fa-f]{8,16}")
 GOLDEN = {"regress": ("GOLDEN_UPDATE", "felucca-base/tests/golden.txt"), "mrender": ("MULTI_RENDER_UPDATE", "felucca-base/tests/multi_render_golden.txt"),
           "union": ("GOLDEN_UPDATE", "felucca-base/tests/union_golden.txt")}
+EMU = "emu_smoke"                      # its pins are the screens' CRCs in tests/emu_smoke_ref.txt, not hashes in a test source
+EMU_REF = "felucca-base/tests/emu_smoke_ref.txt"
+HEXPIN = re.compile(r"0x[0-9A-Fa-f]{8,16}$")
 PROBE = ("static int repin_eq_(unsigned long long a, unsigned long long b, const char *n, const char *f) "
          "{ if (a != b) { printf(" + chr(34) + "REPIN %s %s 0x%016llx 0x%016llx" + chr(92) + "n" + chr(34) + ", f, n, b, a); fflush(stdout); } return 1; }" + chr(10))
 
@@ -53,6 +57,37 @@ def fast(tree, groups, log, extra_env=None):
         if m:
             res[m.group(2)] = m.group(1)
     return res
+
+
+def emu_refs(th):
+    """emu_smoke: the CRC of every screen as the scratch tree (HEAD, the cause in) draws it, merged into the checkout's reference: a line whose stored CRCs already include the
+    new one stays as it is (other machines' CRCs too); a changed screen gets the new CRC (the other machines' CRCs of that screen are dropped: the CI prints the Linux ones);
+    a screen the reference lacks is added. -> (the new text of the reference, [rows: group, file, screen, old CRCs, new CRC])"""
+    run(["sh", "tests/emu_smoke.sh", "--write-ref"], os.path.join(th, "felucca-base"))       # (the scratch tree's own reference now holds the CRCs it draws)
+    new = {}
+    for ln in open(os.path.join(th, EMU_REF), newline="").read().split("\n"):
+        w = ln.split()
+        if len(w) >= 2:
+            new[w[0]] = w[1]
+    out, rows, seen = [], [], set()
+    for ln in open(os.path.join(REPO, EMU_REF), newline="").read().split("\n"):
+        w = ln.split()
+        if len(w) < 2:
+            out.append(ln)
+            continue
+        seen.add(w[0])
+        if w[0] not in new or new[w[0]] in w[1:]:
+            out.append(ln)
+            continue
+        out.append("%s %s" % (w[0], new[w[0]]))
+        rows.append([EMU, EMU_REF, w[0], ",".join(w[1:]), new[w[0]]])
+    if out and out[-1] == "":
+        out.pop()
+    for name in new:
+        if name not in seen:
+            out.append("%s %s" % (name, new[name]))
+            rows.append([EMU, EMU_REF, name, "(new screen)", new[name]])
+    return "\n".join(out) + "\n", rows
 
 
 def group_test_files(g):
@@ -141,7 +176,7 @@ def main():
         print("== 2/4 the new values (the pins' comparisons print what they saw): %s" % " ".join(failing))
         rows = []                                   # [group, file, name, old, new]
         for g in failing:
-            if g in GOLDEN:
+            if g in GOLDEN or g == EMU:
                 continue
             files = [f for f in group_test_files(g) if pins_of(os.path.join(th, f))]
             ins = {}
@@ -187,10 +222,19 @@ def main():
                     rows.append([g, gf, "(golden file)", "old", "regenerated"]); written += 1
             elif g in GOLDEN:
                 rows.append([g, GOLDEN[g][1], "(golden file)", "-", "not written"])
+            elif g == EMU and proven[g]:
+                text, erows = emu_refs(th)
+                if erows:
+                    open(os.path.join(REPO, EMU_REF), "w", newline="").write(text)
+                    rows.extend(erows); written += 1
+                else:
+                    rows.append([g, EMU_REF, "(no screen's CRC changed)", "-", None])
+            elif g == EMU:
+                rows.append([g, EMU_REF, "(screens' CRCs)", "-", None])
         edits = {}
         for r in rows:
             g, f, n, o, nw = r
-            if nw and proven.get(g):
+            if nw and proven.get(g) and HEXPIN.match(o or ""):
                 edits.setdefault(f, {}).setdefault(n, {}).setdefault(int(o, 16), set()).add(nw)
         for f, d in edits.items():
             path = os.path.join(REPO, f)
@@ -204,7 +248,7 @@ def main():
                     nw = next(iter(news))
                     if len(news) != 1:
                         for r in rows:
-                            if r[1] == f and r[2] == n and int(r[3], 16) == ov:
+                            if r[1] == f and r[2] == n and HEXPIN.match(r[3] or "") and int(r[3], 16) == ov:
                                 r[4] = "CONFLICT (groups disagree)"
                         continue
                     done = False
@@ -223,6 +267,7 @@ def main():
             open(path, "w", newline="").write("\n".join(L))
         ok = [g for g in failing if proven[g]]
         if ok and written:
+            run([sys.executable, "tools/build.py", "--gen-only"], os.path.join(REPO, "felucca-base"), check=False)      # (the checkout's generated headers may be those of another commit: the screens are drawn with them)
             after = fast(REPO, ok, os.path.join(tmp, "log_after"))
             print("   the checkout, with the new pins: " + " ".join("%s %s" % (g, after.get(g)) for g in ok))
         print("\n%-12s %-36s %-34s %-18s %-18s %s" % ("group", "file", "pin", "old", "new", "proven"))
