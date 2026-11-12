@@ -306,14 +306,17 @@ static void palette_set(uint32_t i)
     part_theme(ux.part);
 }
 
-/* settings store a tagged id (UI_PAL_TAG + index); an untagged one (the palettes of Felucca's firmware, ids below 20; DUELL 0.2.14 no longer
- * maps them) is the default theme */
+/* settings store a tagged id (UI_PAL_TAG + index). b10 (owner): four themes, TIDE PAPER GREY MONO; the ten of before were stored as UI_PAL_TAG_OLD + their index and are
+ * read through UI_PAL_OLD_LIST (GREY, MONO and TIDE keep their place, every removed theme is TIDE). Any other id (Felucca's firmware, below 20) is the default theme */
 static uint32_t palette_from_stored(uint32_t v)
 {
-    return v >= UI_PAL_TAG && v - UI_PAL_TAG < NPALETTES ? v - UI_PAL_TAG : UI_DEFAULT_INDEX;
+    static const uint8_t OLD[UI_PAL_OLD_N] = {UI_PAL_OLD_LIST};
+    if (v >= UI_PAL_TAG)
+        return v - UI_PAL_TAG < NPALETTES ? v - UI_PAL_TAG : UI_DEFAULT_INDEX;
+    return v >= UI_PAL_TAG_OLD && v - UI_PAL_TAG_OLD < UI_PAL_OLD_N ? OLD[v - UI_PAL_TAG_OLD] : UI_DEFAULT_INDEX;
 }
 static uint32_t palette_to_stored(uint32_t i) { return UI_PAL_TAG + i % NPALETTES; }
-static int palette_stored_ok(uint32_t v) { return v >= UI_PAL_TAG && v - UI_PAL_TAG < NPALETTES; }
+static int palette_stored_ok(uint32_t v) { return (v >= UI_PAL_TAG && v - UI_PAL_TAG < NPALETTES) || (v >= UI_PAL_TAG_OLD && v - UI_PAL_TAG_OLD < UI_PAL_OLD_N); }
 
 static inline uint16_t swap16(uint32_t c) { return (uint16_t)(((c >> 8) & 0xFFu) | ((c & 0xFFu) << 8)); }
 
