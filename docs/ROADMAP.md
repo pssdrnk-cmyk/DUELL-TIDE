@@ -183,7 +183,7 @@ Name: TIDE (owner, 12 November: drop DUELL; the attribution line stays)
 - Gate the release channels by CI too (a Stable / Beta release is offered only from a green commit), from the 4 November decisions.
 - ~~Retire the plain build~~ Done (b10 tools lane): `DUELL_TIDE=0`, `jam/check_off.sh`, `jam/off.sha256`, the `tideoff` and `multiv8` groups (and the 1.0 -> 1.1 record converter) are gone, and the `#if DUELL_TIDE` sides are folded; the TIDE image is byte for byte the one before.
 - Test quality notes left from finding 38: ~~split the FM6 budget check by crossing state~~ and ~~one generated multi-name table~~ built in b10 (tools-b); the `F_NONE` hang exemption if it flakes.
-- Workspace clean-up: retire merged worktrees (owner's OK).
+- Workspace clean-up: ~~retire merged worktrees (owner's OK)~~. Done 12 November (b11): 47 merged, clean worktrees removed, 255 stale logs, run outputs and old emulator copies (about 2 GB) moved aside, and 53 merged branches deleted from GitHub (each with a backup ref). Kept: the unmerged and dirty worktrees (`b10-design`, `b10-docs`, `b10-mgr`, `b10-perf`, `b10-rc64`, `b10-splash`, `b10-sweep`, `emu-latest`) and the open lanes'. Left open: 13 remote branches that are not fully merged (`b10-perf*`, `b10-order`, `b10-tide-line`, `b10-wave-idle*`, `b10-docs`, `b10-assist2`), to decide one by one.
 - Redraw the pictures that still say DUELL: `docs/duell-tide-cover.jpg` (README, landing page) and the editor's header image `web/editor/img/editor-header.png`. The USB product name `DUELL` (usb.c) is the host's port and audio-device name; renaming it is a separate decision (saved DAW routings and the bench tools use it).
 
 **Memory savings, when a feature needs room** (estimates until measured; none is free)
