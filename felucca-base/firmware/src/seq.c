@@ -490,6 +490,8 @@ static volatile uint32_t cin_pos;               /* samples into its beat playing
 static uint8_t cin_flush;                       /* the count-in ended in this block: record what was kept */
 static uint8_t cin_note[NTRK][4], cin_vel[NTRK][4], cin_n[NTRK], cin_up[NTRK];   /* kept notes; cin_up bit k: let go */
 static int seq_counting(void) { return cin_left != 0u; }
+static volatile uint8_t rec_wait;               /* b10 (live assist): the parts REC was armed on from stop (no count-in): they wait, the first key of one starts PLAY with its note on step 1 */
+static uint8_t cin_first;                       /* .. a first key waits for PLAY (transport_req): cin_note keeps it as the count-in's last eighth does; events_block starts and records it */
 static uint32_t click_beat_len(void) { return 4u * div_samples(2); }   /* DIV 2: 1/16 */
 static int click_wanted(void)                  /* CLICK REC: while a track is armed (not in a song: no recording) */
 {
@@ -909,6 +911,18 @@ static __attribute__((noinline)) void rec_arp_note(track_t *t, uint32_t note, ui
     } else
         root = 60;
     oc = (k / len) % (uint32_t)(t->p[P_AOCT] > 0 ? t->p[P_AOCT] : 1);   /* (arp_seq_notes raises each pass through the pattern by an octave) */
+    {   /* b10 (live assist): a key's chord (CHRD) comes as its tones one after another in the same block: the step keeps the key's own note, the first; the others only join the hold */
+        static uint32_t last[NSHOWN] __attribute__((section(".pool")));
+        uint32_t pi = trk_index(t), stamp = (clk_pos * 31u + clk_step) * 67u + idx + 1u;
+        if (pi < NSHOWN) {
+            if (last[pi] == stamp && t->rh_n && t->rh_start == idx) {
+                if (t->rh_n < 4u)
+                    t->rh_note[t->rh_n++] = (uint8_t)note;
+                return;
+            }
+            last[pi] = stamp;
+        }
+    }
     rec_put(t, idx, (uint32_t)clamp((int32_t)note - (int32_t)root + 60 - 12 * (int32_t)oc, 0, 127), vel, 0, note);
     if (k != t->arp_idx)
         t->arp_skip = k + 1u;                       /* it sounds now: the arp does not play that step again in this pass (arp_rec_fire) */
@@ -932,7 +946,7 @@ static __attribute__((noinline)) int arp_rec_fire(track_t *t)
 static __attribute__((noinline)) void cin_keep(track_t *t, uint32_t note, uint32_t vel)
 {
     uint32_t i = trk_index(t), k;
-    if (cin_left != 1u || before_half(cin_pos, click_beat_len()) || !((song.rec >> i) & 1u) || arp_mode(t))
+    if ((!cin_first && (cin_left != 1u || before_half(cin_pos, click_beat_len()))) || !((song.rec >> i) & 1u) || (arp_mode(t) && !(cin_first && arp_mode(t) == AM_SEQ_ID)))
         return;
     for (k = 0; k < cin_n[i] && cin_note[i][k] != note; k++)
         ;
@@ -951,7 +965,12 @@ static void input_on(track_t *t, uint32_t note, uint32_t vel)
     last_note = (uint8_t)note;
     TIDE_REC_INPUT_ON(t, note, vel);                /* TIDE hook (H20) */
     arp_key_vel[trk_index(t)] = (uint8_t)vel;       /* (the arp plays the newest key's velocity) */
-    if (cin_left)
+    if (!song.playing && !cin_left && !cin_first && (rec_wait & song.rec & (1u << trk_index(t))) && !clock_src()) {   /* b10: REC armed from stop waits for the first key: it starts PLAY (events_block) */
+        cin_first = 1;
+        memset(cin_n, 0, sizeof cin_n);
+        transport_req = 1;
+    }
+    if (cin_left || cin_first)
         cin_keep(t, note, vel);
     if (rec_on(t) && !arp_mode(t))                 /* (ARP on: arp_tick records its notes) */
         rec_note(t, note, vel);
@@ -994,7 +1013,9 @@ static __attribute__((noinline)) uint32_t split_note(void)   /* (one copy in the
 /* LAYER with SPLIT set: which parts play note n (bit 0 part 1 below the split, bit 1 part 2 at or above it); 3 both */
 static uint32_t lay_route(uint32_t n)
 {
-    uint32_t s = split_note();
+    uint32_t s = split_note(), r = (uint32_t)song.rec & 3u;
+    if (r && duell_mode == DM_LAYER)
+        return r;                                   /* b10 (live assist): while a part records, only it hears the keys */
     return !s ? 3u : n + 1u < s ? 1u : 2u;
 }
 /* the part key k plays when it goes down (seq.c keyboard_block): LAYER part 1 (key_on gives part 2 its own copy); TIDE_PLAYSEL: STEREO / DUEL with the part selection on BOTH
@@ -1024,7 +1045,7 @@ static void input_off(track_t *t, uint32_t note)
 {
     if (midi_note_held(t, note))
         return;
-    if (cin_left) {                                 /* a kept note let go before step 1: recorded, then let go */
+    if (cin_left || cin_first) {                    /* a kept note let go before step 1: recorded, then let go */
         uint32_t i = trk_index(t), k;
         for (k = 0; k < cin_n[i]; k++)
             if (cin_note[i][k] == note)
@@ -1327,6 +1348,7 @@ static void seq_start(void)
     beat_pos = 0; beat_n = 0;                      /* the ARP LED's beat from the top too */
     clk_pos = CLK_START;                           /* the metronome's first beat with step 0 */
     song.playing = 1;
+    rec_wait = 0;
     duck_start();                                  /* fx.c: the DUCK's PUMP from the top as well */
     dlyev_start();                                 /* fx.c: the delay's event clock (RAND / OCT+) from the top as well */
     perf_start();                                  /* perform.c: its 1/16 grid and PUMP's beat too */
@@ -1348,6 +1370,7 @@ static void seq_stop(void)
     song.playing = 0;
     cin_left = 0;                                  /* (a count-in: cancelled, nothing recorded) */
     cin_flush = 0;
+    cin_first = 0;
     memset(cin_n, 0, sizeof cin_n);
     if (clock_src())                               /* external clock: the arp stops with the transport, */
         for (i = 0; i < NPART; i++)                /* its sounding note too (HOLD keeps the latched chord) */
@@ -1706,7 +1729,10 @@ static __attribute__((noinline)) void cin_record(void)
         track_t *t = &trk[i];
         for (k = 0; k < cin_n[i]; k++)
             if (rec_on(t)) {
-                rec_note(t, cin_note[i][k], cin_vel[i][k]);
+                if (arp_mode(t) == AM_SEQ_ID)
+                    rec_arp_note(t, cin_note[i][k], cin_vel[i][k]);
+                else
+                    rec_note(t, cin_note[i][k], cin_vel[i][k]);
                 if ((cin_up[i] >> k) & 1u)
                     rec_release(t, cin_note[i][k]);
             }
@@ -1889,8 +1915,13 @@ static void events_block(uint32_t n)
             ;                                       /* counting in already (the UI's PLAY stops it: seq_counting) */
         else if (cin_bars && song.rec && !song.playing)
             cin_begin();                            /* recording from stop: the count-in first */
-        else
+        else {
             seq_start();
+            if (cin_first) {                        /* b10: the first key that started PLAY is recorded onto step 1 (cin_record) */
+                cin_first = 0;
+                cin_flush = 1;
+            }
+        }
         transport_req = 0;
     } else if (transport_req == 2u) {
         midi_bar &= 0x7Fu;
