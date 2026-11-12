@@ -118,7 +118,7 @@ Status of 1 to 3 (b10): built and measured (`jam/check.sh -j N | --changed`, `ja
 12. Free 276 B of RAM: the SEQ MORPH history UNDO no longer reads ([R1](audits/2026-11-09/tide-morph/TASKS.md#r1)). When a feature needs RAM.
 13. Two small interrupt savings in the crossing step ([C1](audits/2026-11-09/tide-morph/TASKS.md#c1)), with "Transition costs only while moving".
 14. WASH on: no jump when a glide is stopped by hand, one dip instead of two stacked ([W1](audits/2026-11-09/tide-morph/TASKS.md#w1)).
-15. Docs fixes from the TIDE and morph audit still open (the dip's length, the DUB recipe's wash, the bass promise and the dynamics paragraph were written in the b7 guide pass): `TIDE_GUIDE.md:23` the MORPH knob 3 text (the wave picture is shipped); EVOLVE "a little further each trip"; `MOD_INERT_TABLE.md:21` (ANALOG: PW is offered only with WAVE PWM), and `INSTALL.md:60` / `QUICKSTART.md:41` (ERASE DATA erases the FM6 voice bank and the user tables), with FR11.
+15. ~~Docs fixes from the TIDE and morph audit still open (the dip's length, the DUB recipe's wash, the bass promise and the dynamics paragraph were written in the b7 guide pass): `TIDE_GUIDE.md:23` the MORPH knob 3 text (the wave picture is shipped); EVOLVE "a little further each trip"; `MOD_INERT_TABLE.md:21` (ANALOG: PW is offered only with WAVE PWM), and `INSTALL.md:60` / `QUICKSTART.md:41` (ERASE DATA erases the FM6 voice bank and the user tables), with FR11.~~ Built in b10 chores, after checking each line against the source. Already right, no edit: ERASE DATA lists the FM6 bank and the user tables (`INSTALL.md:117`, `QUICKSTART.md:119`; `erase_data.c`); the MORPH knob 3 text (`TIDE_GUIDE.md:320`, RESONANCE); the ANALOG PW row (`MOD_INERT_TABLE.md:21`, `eng_analog.c:274`, `ui_draw.c` hides PW unless WAVE PWM). Fixed: EVOLVE wording (`web/cheatsheet/index.html`, `web/landing.html`; the step grows with the phrase, `morph_music.c:15-16`, `:162`, `:171`); the 160 figure (`DUELL_1_1_REFERENCE.md:28`).
 16. ~~Factory pattern table trimmed~~ (SP3): built in b9.
 17. ~~Parameter units stored as an index~~ (SP4): built in b9.
 18. Event-rate code built for size (1.78 KB; [SP5](audits/2026-11-09/space/TASKS.md)); needs the FM-1 CPU sweep.
@@ -209,8 +209,8 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 
 **Storage and backups**
 - U4, 24 multi slots: tested on `wip-24-multis` (`21ca3a7`), its own rollout with a format bump. At the rebase: renumber its backup ids (41 is now the FM6 voice bank), archive VERSION 6 against 5, update `erase_test.c` and `xb_test.c`, measure the flash first (keep 3 KB headroom; 4,556 B is free on the b5 build).
-- Patch capacity in the docs: INFO says 128 slots, TIDE guarantees 126 worst-case records; replace "every slot always fits" with exact wording.
-- Pattern save: document the exact visible entry point (saving needs STOP) before any live test.
+- ~~Patch capacity in the docs: INFO says 128 slots, TIDE guarantees 126 worst-case records; replace "every slot always fits" with exact wording.~~ Built in b10 chores: the docs already say 126 (`KNOWN_ISSUES.md:47`, `EDITOR_LIBRARIAN.md:17`); "every slot always fits" is not in the docs; INFO now reports 126 with TIDE (`editor.c:585`, `upreset.c:252`); the 160 figure is fixed (`DUELL_1_1_REFERENCE.md:28`).
+- ~~Pattern save: document the exact visible entry point (saving needs STOP) before any live test.~~ Built in b10 chores, with a correction: saving a pattern does not need STOP. SAVE held on PATTERNS goes to the slot confirm before the STOP check (`ui_input.c`, `patch_save_ask`); `ui_name.c:282` keeps a pattern in RAM while playing. Documented in `QUICKSTART.md:112`.
 
 **Repository and CI**
 - The `emu` CI job: fixed in [#4](https://github.com/pssdrnk-cmyk/DUELL-TIDE/pull/4) (emsdk sourced under bash; merged 8 November), and the job gates.
