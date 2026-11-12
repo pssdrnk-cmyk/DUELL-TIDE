@@ -17,7 +17,24 @@
 #include <stdint.h>
 static int32_t live_y[2][16][240];                      /* (each line's height in each screen column as wl_stack last drew it, 1/16 px: ui_scope.c WL_TEST_Y; 0: not drawn there) */
 #define WL_TEST_Y(k_, r_, p_, y_) (live_y[(k_) & 1u][(r_) & 15][(p_)] = (y_))
+#define WL_ROWS_DIFF 1                                  /* (the switch is off in the firmware: this test builds it on) */
+static uint32_t wlh_n, wlh_bad, wlh_px, wlh_px0;                         /* (halves drawn; their pixels where the panel differs from the canvas: ui_scope.c wl_rows sends only the changed rows) */
+static void wl_half_check(uint32_t y, uint32_t n, int end);
+#define WL_TEST_HALF(y_, n_, e_) wl_half_check((y_), (n_), (e_))
 #include "../web/emu/felucca_web.c"
+static void wl_half_check(uint32_t y, uint32_t n, int end)
+{
+    uint32_t j, i;
+    if (!end) {
+        wlh_px0 = web_blit_px;
+        return;
+    }
+    wlh_px += web_blit_px - wlh_px0;
+    wlh_n++;
+    for (j = 0; j < n; j++)
+        for (i = 0; i < 240u; i++)
+            wlh_bad += web_fb[(y + j) * 240u + i] != cv_px[j * 240u + i];
+}
 #ifndef QUIET_LVL
 #define QUIET_LVL 60u                                    /* (the quiet scene's MIXER LEVEL: unity is 112) */
 #endif
@@ -244,6 +261,17 @@ int main(void)
         ok(w, worst0 <= WL_HN && worst1 <= WL_HN);
     }
 
+    /* rows (ROADMAP Later 21): only the rows that changed are sent, and the panel is the canvas all the same: pixels sent a picture (a whole one is 2 x 68 x 240 = 32,640) */
+    {
+        const uint32_t px0 = wlh_px, h0 = wlh_n;
+        uint32_t pics, per;
+        run(3000);
+        pics = (wlh_n - h0) / 2u;
+        per = pics ? (wlh_px - px0) / pics : 0u;
+        snprintf(w, sizeof w, "rows: PEDAL BASS, 3 s: %u pictures, %u px of the wave sent a picture on average (the whole one is %u)", pics, per, (unsigned)((pic_y1 - pic_y0) * 240));
+        ok(w, pics >= 20u && per < (uint32_t)((pic_y1 - pic_y0) * 240));
+    }
+
     /* select: PART 1, BOTH, PART 2 on the page (TIDE_PLAYSEL: the middle named by the PLAY MODE row) */
     turn(EN_ALGO, -1);
     ok("select: from BOTH one detent left is PART 1", !SEL_BOTH && song.sel == 0u);
@@ -324,6 +352,8 @@ int main(void)
         ok(w, xh == 0u && 20u * eh >= 19u * (nl - 1u) * pics);
     }
 
+    snprintf(w, sizeof w, "rows: all %u halves of the whole run left the panel equal to the canvas (%u pixels differ); %u px of the wave a picture on average over the run", wlh_n, wlh_bad, wlh_n ? wlh_px / (wlh_n / 2u) : 0u);
+    ok(w, wlh_n >= 200u && wlh_bad == 0u && wlh_px / (wlh_n / 2u) < (uint32_t)((pic_y1 - pic_y0) * 240));
     printf("wavelive: %d checks, %d failed\n", ncheck, bad);
     return bad ? 1 : 0;
 }

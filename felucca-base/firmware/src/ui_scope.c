@@ -599,6 +599,40 @@ static void wl_card(int32_t y0, int32_t y1)
     wl_stack(0, y0, ym);
     wl_stack(1, ym, y1);
 }
+#if WL_ROWS_DIFF   /* (OFF by default: build.py DUELL_WAVE_ROWS=1; not proven on the unit, +164 B of flash) */
+/* Only the rows that changed go to the panel (ROADMAP Later 21: the SPI link costs ~44 ms for a whole picture, 32,640 px): a 32-bit hash of every screen row of what the panel
+ * holds, kept in the canvas's unused tail (a half is 68 rows, the canvas holds 124: from row 72 on, a word a screen row; anything else drawn there only costs a row sent, never a
+ * wrong picture), the changed rows blitted in runs. Every row after a page change or any redraw of the screen (ui.force: the area may hold anything).
+ * WL_TEST_HALF: host check (before / after a half) that the panel then equals the canvas, and the pixels sent */
+#ifndef WL_TEST_HALF
+#define WL_TEST_HALF(y, n, end) ((void)0)
+#endif
+typedef uint32_t __attribute__((may_alias)) wl_u32;
+static void wl_rows(uint32_t y)
+{
+    wl_u32 *const rh = (wl_u32 *)(cv_px + 72u * 240u) + y;
+    const uint32_t n = cv_h;
+    uint32_t r, s = 0, i, h, ch;
+    GFX_HOOK_BLIT(0, y, 0u);
+    WL_TEST_HALF(y, n, 0);
+    for (r = 0; r <= n; r++) {
+        ch = 0;
+        if (r < n) {
+            const uint16_t *q = cv_px + r * 240u;
+            for (h = i = 0; i < 240u; i++)
+                h = (h ^ q[i]) * 16777619u;
+            ch = (rh[r] ^ h) | ui.force;
+            rh[r] = h;
+        }
+        if (!ch) {                                   /* (an unchanged row, or the end: the run before it goes out) */
+            if (s < r)
+                lcd_blit(0, y + s, 240u, r - s, cv_px + s * 240u);
+            s = r + 1u;
+        }
+    }
+    WL_TEST_HALF(y, n, 1);
+}
+#endif
 /* TEMPLATE 9: the picture in the big area, screen rows ay .. ay + ah - 1, all of it (b6: the hint went to the slim row under it). Taller than one canvas (gfx.c CV_MAX, 124 rows):
  * each part's half on a canvas of its own, blitted at its first row */
 static void wl_area(int32_t ay, int32_t ah)
@@ -616,11 +650,19 @@ static void wl_area(int32_t ay, int32_t ah)
     cv_oy = -ay;
     wl_stack(0, ay, ym);
     cv_oy = 0;
+#if WL_ROWS_DIFF
+    wl_rows((uint32_t)ay);
+#else
     cv_blit(0, (uint32_t)ay);
+#endif
     cv_begin(240, (uint32_t)(y1 - ym), T_BG);
     cv_bg = T_BG;
     cv_oy = -ym;
     wl_stack(1, ym, y1);
     cv_oy = 0;
+#if WL_ROWS_DIFF
+    wl_rows((uint32_t)ym);
+#else
     cv_blit(0, (uint32_t)ym);
+#endif
 }

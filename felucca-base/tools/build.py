@@ -389,6 +389,8 @@ def build_app():
         if os.environ.get("FELUCCA_CDC") != "1" or os.environ.get("DUELL_VELO", "1") != "1" or "--release" in sys.argv:
             raise SystemExit("build: DUELL_VELO_CAPTURE=1 is a developer build: FELUCCA_CDC=1 (the USB serial console) and DUELL_VELO on, never --release")
         flags.append("-DDUELL_VELO_CAPTURE=1")
+    if os.environ.get("DUELL_WAVE_ROWS") == "1":   # ROADMAP Later 21: the wave page sends only the screen rows that changed (ui_scope.c wl_rows); OFF unless asked, +164 B
+        flags.append("-DWL_ROWS_DIFF=1")
     v = os.environ.get("FELUCCA_USB_LAYOUT")   # firmware/src/usb.c: how the USB composite presents itself (#67), 0..3
     if v in ("0", "1", "2", "3"):
         flags.append(f"-DFELUCCA_USB_LAYOUT={v}")

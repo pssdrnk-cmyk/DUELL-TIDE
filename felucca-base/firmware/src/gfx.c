@@ -83,7 +83,14 @@ typedef struct { uint16_t off; uint8_t w; const char *label; } kc_t;
 #define AL_N(n) ((uint32_t)(n) << 8)
 
 #define CV_MAX (240u * 124u)      /* the graph strip is 240 x 124 */
+#ifndef WL_ROWS_DIFF
+#define WL_ROWS_DIFF 0                    /* 1: the wave page sends only the rows that changed (ui_scope.c wl_rows; build.py DUELL_WAVE_ROWS=1; ROADMAP Later 21) */
+#endif
+#if WL_ROWS_DIFF
+static uint16_t cv_px[CV_MAX] __attribute__((section(".pool"), aligned(4)));   /* (wl_rows keeps word hashes in its tail) */
+#else
 static uint16_t cv_px[CV_MAX] __attribute__((section(".pool")));
+#endif
 static uint32_t cv_w, cv_h;
 static uint16_t cv_bg;           /* what cv_begin cleared the canvas to */
 static uint8_t cv_scroll;        /* 1: drawing a scrolled view (its text may run past the canvas) */
