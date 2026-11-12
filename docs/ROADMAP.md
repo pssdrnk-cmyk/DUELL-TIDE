@@ -193,6 +193,11 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 
 ## Planned, not yet scheduled
 
+**Live performance assist** (owner, 12 November: "recording and overwriting, or add complementary logic to the voice not being played ... store a melody and it'll add a complementary bass in the same key, or a question answer logic, dubbing it on the other voice"). In design: one coherent system for a DAWless live player, phased by value and cost (flash / pool room comes from the b10 screen overhaul):
+- Capture what you play, loop it, overdub / replace, undo (builds on keys recording into ARP SEQ and REC ADD / REPLACE, and the live-record audit's open items).
+- The part you aren't playing responds: a complementary bass in the same key from a stored melody, question / answer (extending b7's call and answer), dub-style doubling or answering on the other voice.
+- Design study first (the coordinator's `PERF_ASSIST` brief); the owner picks the player-facing choices before it is built.
+
 **Screens** (redundancy audit 8 November, all 433 screens rendered)
 - TIDE rows SYNC and ROLL renamed so they don't share words with tempo sync and MORPH's ROLL. (The rest of this audit was released in b4.)
 
