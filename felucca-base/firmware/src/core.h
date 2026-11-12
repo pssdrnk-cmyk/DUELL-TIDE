@@ -592,12 +592,12 @@ typedef struct {                 /* the part in mix_part, its window: one per pa
 /* TIDE 1.0.0-b6: the multis SHOWN (lists, labels, pickers, previews, MIDI program change) are M01..M18; the STORED ones stay MU_SLOTS (16: the flash
  * objects, storage.c). M17 DUNE HORN and M18 VOID DEEP are ROM only (MU_ROM; multi.c: they load and preview, never save, rename or erase) */
 #if DUELL_TIDE
-#define MU_SHOWN 24u                /* (b10: + M19 TECH HYPNO, M20 DUB HOUSE, M21 HSE LOFI, M22 TECH CINEMA, M23 AMB TECHNO, M24 TECH MINIMAL, ROM only as the drones; tools/drone_pack.py ROM_MULTIS) */
+#define MU_SHOWN 26u                /* (b10: + M19 TECH HYPNO, M20 DUB HOUSE, M21 HSE LOFI, M22 TECH CINEMA, M23 AMB TECHNO, M24 TECH MINIMAL, MR9 M25 DUB MINIMAL, M26 HSE KEYS, ROM only as the drones; tools/drone_pack.py ROM_MULTIS) */
 #else
 #define MU_SHOWN MU_SLOTS
 #endif
 #define MU_ROM(k) ((uint32_t)(k) >= MU_SLOTS)
-#define MU_DRONE(k) (DUELL_TIDE && (uint32_t)(k) - 22u < 2u)   /* M23, M24: the built-in drone multis (TIDE plays them as STYLE DRONE, tide_ui.c tide_drone); since b10 the list is in genre order (tools/factory_multis.py DISPLAY_ORDER): M17 .. M22 are ROM-only multis of other genres */
+#define MU_DRONE(k) (DUELL_TIDE && (uint32_t)(k) - 24u < 2u)   /* M25, M26: the built-in drone multis (TIDE plays them as STYLE DRONE, tide_ui.c tide_drone); since b10 the list is in genre order (tools/factory_multis.py DISPLAY_ORDER): M17 .. M24 are ROM-only multis of other genres */
 #define MU_ROM_SAY "SAVE TO M01-M16"   /* SAVE / rename refused on M17, M18 (multi.c), as SOUNDS says PICK A USER SLOT */
 typedef struct track {
     int16_t p[EXT_P_LEN];        /* P_COUNT ids, a gap at 127, then the NX extension slots (ext.h XV); every store and format still counts P_COUNT */
@@ -913,6 +913,15 @@ static uint8_t tide_lvc2[NLIVE];  /* TIDE live graphs: the latest note's effecti
  * (tools/build.py: env FELUCCA_MOVECOST=1) */
 #ifndef FELUCCA_MOVECOST
 #define FELUCCA_MOVECOST 0
+#endif
+/* b10 round 7 (ROADMAP Later 14, the RAM-candidate review): 1 = two per-block functions run only when their inputs are live - morph_xrest (a part with no morph, every block: only the first time after
+ * its state was last written) and vs_block (the note-start queue: only while a note-on is waiting or was counted this block). Same sound, bit for bit; 92 + 168 B of hot code off the always-on set.
+ * ON by default; FELUCCA_GUARDS=0 python tools/build.py turns it off if a glitch is reported (host tests: group "guards" builds both) */
+#ifndef FELUCCA_GUARDS
+#define FELUCCA_GUARDS 1
+#endif
+#ifndef GD_COUNT
+#define GD_COUNT(c) ((void)0)          /* tests/guards_test.c counts the calls and the runs of the two guarded functions (define GD_COUNT(c) (c##_n++) there) */
 #endif
 /* the per-stage timing of the console probe `cpu` (fx.c, eng_fm6.c, console.c): the unit's test-mode build only (the host tests have no TIMER4); defined with or without TIDE (b10 round 5, finding 35: it sat inside #if DUELL_TIDE, undefined elsewhere) */
 #if DUELL_TEST_MODE && !defined(__x86_64__) && !defined(__i386__) && !defined(__aarch64__)

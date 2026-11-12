@@ -416,7 +416,7 @@ const img = ctx.createImageData(240, 240);
 let framed = false;
 const poster = new Image();
 poster.onload = () => { if (!framed) ctx.drawImage(poster, 0, 0, 240, 240); };
-poster.src = "../img/auto-tide-both-parts.png";
+poster.src = "img/auto-tide-both-parts.png";
 function drawScreen(fb) {
   framed = true;
   const d = img.data;

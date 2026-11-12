@@ -135,7 +135,7 @@ button.mute.on { background: var(--acc); color: var(--accfg); border-color: var(
   #main[data-view=global] .tabbody { grid-template-columns: repeat(8, minmax(0, 1fr)); }
   #main[data-view=global] .tabbody > * { grid-column: span 4; }
   #main[data-view=global] .card .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  #main[data-view=global] .multis { grid-template-columns: 1fr 1fr; grid-auto-flow: column; grid-template-rows: repeat(8, auto); }
+  #main[data-view=global] .multis { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-flow: column; grid-template-rows: repeat(13, auto); }   /* (MR9: 26 multis, two columns of 13: with 8 rows a column the list wrapped into four narrow columns and its rows onto two lines) */
   #main[data-view=global] .multis.pats { grid-template-rows: repeat(16, auto); }
 }
 

@@ -240,6 +240,7 @@ static void morph_xplan(uint32_t pi)
                     }
     }
     MORPH_LOCK();
+    morph_xr[pi % NSHOWN] = 0;
     x->need = (uint8_t)need;
     memcpy(x->role, role, sizeof role);
     memcpy(x->alg, alg, sizeof alg);
@@ -332,6 +333,7 @@ static uint16_t morph_cdd[NSHOWN];                      /* the filter dip: its d
 static __attribute__((noinline)) void morph_xrest(uint32_t pi)
 {
     mxs_t *x = &mxs[pi % NSHOWN];
+    morph_xr[pi % NSHOWN] = 1;
     x->d = x->df = x->dub = x->dins = x->bv = 0;
     x->need = 0;
     x->snd = 0;
@@ -486,6 +488,7 @@ static __attribute__((noinline)) int morph_xstep(track_t *t, morph_part_t *mp, u
 {
     mxs_t *x = &mxs[pi];
     uint32_t w = (uint32_t)morph_wb(mp->fader), tp = x->tp, k, sound = 0, high = 0, side, age = 0, held = 0;
+    morph_xr[pi % NSHOWN] = 0;                           /* (FELUCCA_GUARDS: the state is written below: morph_xrest has to run again once the part has no morph) */
     for (k = 0; k < NVOICE; k++)
         if (t->v[k].active) {
             sound = 1;
