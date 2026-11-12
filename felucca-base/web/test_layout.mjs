@@ -257,6 +257,8 @@ async function spacing() {
       await U(`u.writeX(0, 1, 0)`); f = await cardsOf("filter");
       ok(labs(f, "TWIN FILTER") === "TYPE,LINK,CUTOFF,RESONANCE,KEY TRACK,FILTER ENV DEPTH,LFO 1 DEPTH,LFO 2 DEPTH", "FILTER tab: LINK off renames OFFSET to CUTOFF and hides nothing");
       await U(`u.writeX(0, 1, 1)`);
+      // (the tab rebuilds after the write: wait for the cell the next lines read instead of hoping one render has happened; on a loaded runner it had not)
+      await c.until(`(() => { const t = [...window.__app.cols[0].body.querySelectorAll('.card')].find((x) => x.querySelector('h3 .ttl')?.textContent === 'TWIN FILTER'); return !!t && [...t.querySelectorAll('.cell')].some((x) => x.querySelector('.lab')?.textContent.replace(/^[0-9]/, '') === 'OFFSET'); })()`);
       // the DRIVE says OFF at 0; the centre of the bipolar sliders is marked; the controls
       const ctl = JSON.parse(await E(`JSON.stringify((() => { const q = (t, l) => [...window.__app.cols[0].body.querySelectorAll('.card')].find((x) => x.querySelector('h3 .ttl')?.textContent === t)?.querySelectorAll('.cell'); const by = (t, l) => [...q(t)].find((c) => c.querySelector('.lab')?.textContent.replace(/^[0-9]/, '') === l);
         return { drive: by('TWIN CHAIN', 'DRIVE').querySelector('.val').textContent, blendBi: !!by('TWIN CHAIN', 'BLEND').querySelector('.slider.bipolar'), offBi: !!by('TWIN FILTER', 'OFFSET').querySelector('.slider.bipolar'), ktBi: !!by('TWIN FILTER', 'KEY TRACK').querySelector('.slider.bipolar'),
