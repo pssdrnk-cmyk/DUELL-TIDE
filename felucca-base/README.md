@@ -370,7 +370,7 @@ the FM-1 can be brought back:
 If Felucca is useful to you, [sponsoring on GitHub](https://github.com/sponsors/hugelton) or a donation
 on [itch.io](https://hugelton.itch.io/felucca) helps keep its development going.
 
-For DUELL with TIDE, bugs and ideas go to [this fork's issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues/new/choose): the bug report form for
+For TIDE, bugs and ideas go to [this fork's issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues/new/choose): the bug report form for
 reproducible bugs (one per issue) and the idea form for requests. For plain DUELL: OSCILL/R's [issues](https://github.com/oscillr/DUELL/issues/new/choose). Pull requests are welcome: see
 [CONTRIBUTING.md](CONTRIBUTING.md).
 

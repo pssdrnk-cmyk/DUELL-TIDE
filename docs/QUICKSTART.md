@@ -1,8 +1,8 @@
-# DUELL quick start
+# TIDE quick start
 
-**DUELL** with TIDE: pssdrnk's fork of DUELL 1.1, MultiMorphing Bitimbral Synthesizer by OSCILL/R
+**TIDE**: built on DUELL (OSCILL/R) and Felucca (Hügelton Instruments), GPL-3.0
 
-DUELL turns the FM-1 into two synths in one box. This page is the short tour; [SPEC.md](../SPEC.md) is the full design, and [TIDE_GUIDE.md](TIDE_GUIDE.md) covers TIDE, the fork's auto-morph. DUELL with TIDE runs on the FM-1 ([INSTALL.md](INSTALL.md)) and in the [web emulator](https://pssdrnk-cmyk.github.io/DUELL-TIDE/emu/). Where this page says "with TIDE", it describes this fork; the rest is plain DUELL.
+DUELL turns the FM-1 into two synths in one box. This page is the short tour; [SPEC.md](../SPEC.md) is the full design, and [TIDE_GUIDE.md](TIDE_GUIDE.md) covers TIDE, the fork's auto-morph. TIDE runs on the FM-1 ([INSTALL.md](INSTALL.md)) and in the [web emulator](https://pssdrnk-cmyk.github.io/DUELL-TIDE/emu/). Where this page says "with TIDE", it describes this fork; the rest is plain DUELL.
 
 ## The idea
 - **Two parts**, 1 and 2. Each has its own sound, effects, EQ, ducker and arp. The **ALGORITHM** knob picks which part you are editing.

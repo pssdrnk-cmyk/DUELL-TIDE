@@ -1,6 +1,6 @@
-# Building Felucca (DUELL with TIDE)
+# Building Felucca (TIDE)
 
-> **DUELL with TIDE.** This is Felucca's build guide, with DUELL's changes. TIDE is the firmware (the plain `DUELL_TIDE=0` build and `jam/check_off.sh` were retired in b10). The package is `build/duell-1.1.fwsc`, named from the `VERSION` file. `python3 tools/build.py` does the same as `./build.sh` where the toolchain is installed. On Windows, `. jam/env.sh` in Git Bash points the build at a local toolchain folder (no Docker or WSL); see [../CONTRIBUTING.md](../CONTRIBUTING.md).
+> **TIDE.** This is Felucca's build guide, with DUELL's changes. TIDE is the firmware (the plain `DUELL_TIDE=0` build and `jam/check_off.sh` were retired in b10). The package is `build/duell-1.1.fwsc`, named from the `VERSION` file. `python3 tools/build.py` does the same as `./build.sh` where the toolchain is installed. On Windows, `. jam/env.sh` in Git Bash points the build at a local toolchain folder (no Docker or WSL); see [../CONTRIBUTING.md](../CONTRIBUTING.md).
 
 The build makes three files in `build/`:
 
@@ -89,7 +89,7 @@ MIDI out, the editor, updates) and TRS MIDI. A build of it is on the site:
 
 ## Tests
 
-> **DUELL with TIDE.** This fork runs its host tests with `host_tests.sh` in the repository root (`sh host_tests.sh <group> ...`; see [../docs/DEVELOPING.md](../docs/DEVELOPING.md) for the prerequisites, Windows and what CI runs). `tests/run_tests.sh` below is upstream Felucca's runner and is not used by the fork.
+> **TIDE.** This fork runs its host tests with `host_tests.sh` in the repository root (`sh host_tests.sh <group> ...`; see [../docs/DEVELOPING.md](../docs/DEVELOPING.md) for the prerequisites, Windows and what CI runs). `tests/run_tests.sh` below is upstream Felucca's runner and is not used by the fork.
 
 ```
 tests/run_tests.sh

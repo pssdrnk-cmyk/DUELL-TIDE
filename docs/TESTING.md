@@ -1,6 +1,6 @@
-# What to test: DUELL with TIDE
+# What to test: TIDE
 
-Thank you for testing. You can test, at your own risk, on an FM-1 with DUELL with TIDE (see [INSTALL.md](INSTALL.md); the stable build is the validated one, the beta is the one that needs testers). Web emulator: <https://pssdrnk-cmyk.github.io/DUELL-TIDE/emu/>. TIDE has run on one real unit only, the fork owner's, so reports from other units are especially welcome.
+Thank you for testing. You can test, at your own risk, on an FM-1 with TIDE (see [INSTALL.md](INSTALL.md); the stable build is the validated one, the beta is the one that needs testers). Web emulator: <https://pssdrnk-cmyk.github.io/DUELL-TIDE/emu/>. TIDE has run on one real unit only, the fork owner's, so reports from other units are especially welcome.
 
 ## What to test
 

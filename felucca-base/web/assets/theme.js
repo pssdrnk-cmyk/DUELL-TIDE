@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// The theme toggle of the DUELL with TIDE site: system (default) -> light -> dark. The choice is kept in this browser only (localStorage, if allowed).
+// The theme toggle of the TIDE site: system (default) -> light -> dark. The choice is kept in this browser only (localStorage, if allowed).
 // Loaded in the head as a plain script so the theme is set before the page paints. No network, no tracking.
 (function () {
   var root = document.documentElement, KEY = "duell-tide-theme";

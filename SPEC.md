@@ -2,7 +2,7 @@
 
 Bitimbral polyphonic synth firmware for the M-VAVE FM-1. Fork of Felucca (GPL-3.0, so DUELL is GPL-3.0). Developed and auditioned in the browser emulator first; flashed to the device only when every feature is done.
 
-> **DUELL with TIDE (pssdrnk's fork).** This is OSCILL/R's specification of DUELL, kept as written. The fork changes it in these places: the factory bank has **171** sounds (the 128 below plus 43, #129 to #171, read-only places listed after the 128; the list is [docs/PATCH_NUMBERS.md](docs/PATCH_NUMBERS.md)); the last four patch slots (125 to 128) and pattern slots (P29 to P32) are empty **USER** slots (U1 to U4); CELLAR TAPE is M03; ten factory patterns are chord and pad patterns; and TIDE adds the AUTO TIDE and TIDE SETTINGS pages. [TIDE_GUIDE.md](docs/TIDE_GUIDE.md) and [the README](README.md) describe those; where they disagree with this file, they are right.
+> **TIDE (pssdrnk's fork).** This is OSCILL/R's specification of DUELL, kept as written. The fork changes it in these places: the factory bank has **171** sounds (the 128 below plus 43, #129 to #171, read-only places listed after the 128; the list is [docs/PATCH_NUMBERS.md](docs/PATCH_NUMBERS.md)); the last four patch slots (125 to 128) and pattern slots (P29 to P32) are empty **USER** slots (U1 to U4); CELLAR TAPE is M03; ten factory patterns are chord and pad patterns; and TIDE adds the AUTO TIDE and TIDE SETTINGS pages. [TIDE_GUIDE.md](docs/TIDE_GUIDE.md) and [the README](README.md) describe those; where they disagree with this file, they are right.
 
 Items marked **[verify]** are assumptions about Felucca's code that must be checked before building on them. Items marked **[decide]** need an answer from the owner.
 

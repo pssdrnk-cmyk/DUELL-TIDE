@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
 # Copyright (C) 2026 OSCILL/R (DUELL)
-"""Make the DUELL with TIDE site (GitHub Pages) as a static folder:
+"""Make the TIDE site (GitHub Pages) as a static folder:
 
   index.html                  landing page (web/landing.html)
   assets/                     the site's stylesheet, theme script and self-hosted fonts (web/assets/); no external requests
@@ -12,8 +12,8 @@
   install/index.html          the installer page (web/install/index.html)
   install/channels.json       what the installer offers: {"channels": {"stable": {...} | null, "beta": {...} | null}}; per channel: tag,
                               date, commit, file, size, sha256, product, notes_url, summary, known_issues (from the release notes)
-  install/stable/duell-tide-stable-X.Y.Z.fwsc    the Stable package (+ .sha256), when there is one
-  install/beta/duell-tide-beta-X.Y.Z-bN.fwsc     the Beta package (+ .sha256), when there is one
+  install/stable/tide-stable-X.Y.Z.fwsc    the Stable package (+ .sha256), when there is one
+  install/beta/tide-beta-X.Y.Z-bN.fwsc          the Beta package (+ .sha256), when there is one
                               (+ LICENSE, LICENSING.md, LICENSES/: the package holds JieLi SDK files under Apache-2.0, see LICENSING.md)
   fm1pkg.js fm1ota.js fm1backup.js installer_state.js installer_backup.js   imported by the installer page as "../fm1*.js" (installer_backup.js imports editor/duellbackup.js)
   cheatsheet/                 the printable one-page cheat sheet (web/cheatsheet/index.html)
@@ -24,8 +24,8 @@
   web/make_site.py [--stable-pkg FILE.fwsc [--stable-info FILE.json]] [--beta-pkg FILE.fwsc [--beta-info FILE.json]] [--emu DIR] [OUT_DIR]
 
   OUT_DIR       default: site/ at the repository root
-  --stable-pkg  the Stable package, named duell-tide-stable-X.Y.Z.fwsc (TIDE's version; the older duell-tide-stable-YYYY-MM-DD[.N].fwsc too)
-  --beta-pkg    the Beta package, named duell-tide-beta-X.Y.Z-bN.fwsc (the older duell-tide-beta-YYYY-MM-DD[.N].fwsc too)
+  --stable-pkg  the Stable package, named tide-stable-X.Y.Z.fwsc (TIDE's version; the older duell-tide-stable-X.Y.Z.fwsc and duell-tide-stable-YYYY-MM-DD[.N].fwsc too)
+  --beta-pkg    the Beta package, named tide-beta-X.Y.Z-bN.fwsc (the older duell-tide-beta-X.Y.Z-bN.fwsc and duell-tide-beta-YYYY-MM-DD[.N].fwsc too)
   --*-info      the release data (web/releases.py writes it from the GitHub release): tag, commit, published_at, notes_url, body, sha256.
                 Without it the tag and date come from the file name, and there is no commit, notes link or known-issues list.
                 When it has a sha256, the package must match it, or the build stops.
@@ -102,7 +102,7 @@ def channel_entry(channel, pkg, info_path):
     """check one package and return (manifest entry, bytes). Stops the build on a wrong name, identity or SHA-256."""
     m = releases.parse_package(pkg.name)
     if not m or m["channel"] != channel:
-        raise SystemExit(f"{pkg.name}: the {channel} package must be named duell-tide-{channel}-" + ("X.Y.Z-bN" if channel == "beta" else "X.Y.Z") + ".fwsc")
+        raise SystemExit(f"{pkg.name}: the {channel} package must be named tide-{channel}-" + ("X.Y.Z-bN" if channel == "beta" else "X.Y.Z") + ".fwsc")
     tag_default = f"{channel}-{m['date']}" if m["date"] else f"tide-{m['version']}"      # (a name from before TIDE had versions: the tag is channel-date)
     raw, product = check_package(pkg)
     sha = hashlib.sha256(raw).hexdigest()
@@ -133,7 +133,7 @@ def channel_entry(channel, pkg, info_path):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Make the DUELL with TIDE site folder")
+    ap = argparse.ArgumentParser(description="Make the TIDE site folder")
     ap.add_argument("out", nargs="?", default=str(ROOT / "site"))
     ap.add_argument("--stable-pkg")
     ap.add_argument("--stable-info")
@@ -203,10 +203,10 @@ def main():
         shutil.copy(lic / n, inst / "LICENSES" / n)
     (inst / "LICENSES" / "index.html").write_text(     # Pages lists no folders
         '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
-        '<title>Licence texts - DUELL with TIDE</title><h1>Licence texts</h1><ul>'
+        '<title>Licence texts - TIDE</title><h1>Licence texts</h1><ul>'
         + "".join(f'<li><a href="{n}">{n}</a></li>' for n in names)
         + '</ul><p><a href="../LICENSING.md">LICENSING.md</a> · <a href="../LICENSE">LICENSE (GPL-3.0)</a> · '
-          f'<a href="https://github.com/{REPO}">Source code (DUELL with TIDE)</a> · '
+          f'<a href="https://github.com/{REPO}">Source code (TIDE)</a> · '
           '<a href="https://github.com/oscillr/DUELL">DUELL by OSCILL/R</a></p>\n', encoding="utf-8")
     for doc, src in (("LICENSE", ROOT / "LICENSE"), ("LICENSING.md", BASE / "LICENSING.md")):
         shutil.copy(src, inst / doc)
@@ -219,9 +219,9 @@ def main():
         (out / "emu").mkdir()
         (out / "emu" / "index.html").write_text(
             '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
-            "<title>Emulator - DUELL with TIDE</title>"
+            "<title>Emulator - TIDE</title>"
             '<body style="font:16px/1.6 -apple-system,Helvetica,Arial,sans-serif;max-width:600px;margin:48px auto;padding:0 16px">'
-            "<h1>DUELL with TIDE</h1><p>TIDE by pssdrnk, built on DUELL 1.1 by OSCILL/R.</p>"
+            "<h1>TIDE</h1><p>TIDE by pssdrnk, built on DUELL 1.1 by OSCILL/R.</p>"
             "<p><b>The browser emulator is not attached yet.</b> It appears here when the site is built with it.</p>"
             f'<p><a href="../">Back</a> · <a href="https://github.com/{REPO}">Source code</a> · '
             f'<a href="https://github.com/{REPO}/releases">Releases</a></p></body></html>\n', encoding="utf-8")

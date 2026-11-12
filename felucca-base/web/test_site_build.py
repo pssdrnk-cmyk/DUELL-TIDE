@@ -199,6 +199,30 @@ class Pick(unittest.TestCase):
         self.assertEqual(self.tags([self.rel("x", "beta", "1.0.0")]), (None, None))                         # (a beta needs -bN)
         self.assertIsNone(releases.parse_package("duell-tide-beta-1.0.0-beta1.fwsc"))
 
+    # the rename to TIDE: packages are tide-stable-X.Y.Z.fwsc / tide-beta-X.Y.Z-bN.fwsc; the duell-tide- names of the releases before it still count, with the same order
+    @staticmethod
+    def rel_new(tag, channel, version, **kw):
+        r = Pick.rel(tag, channel, version, **kw)
+        r["assets"] = [{"name": f"tide-{channel}-{version}.fwsc", "size": 5}]
+        return r
+
+    def test_both_name_patterns_parse_alike(self):
+        for old, new in (("duell-tide-stable-1.0.0.fwsc", "tide-stable-1.0.0.fwsc"), ("duell-tide-beta-1.0.0-b3.fwsc", "tide-beta-1.0.0-b3.fwsc"),
+                         ("duell-tide-stable-2026-11-03.fwsc", "tide-stable-2026-11-03.fwsc")):
+            self.assertEqual(releases.parse_package(old), releases.parse_package(new))
+        for bad in ("tide-beta-1.0.0.fwsc", "tide-stable-1.0.0-b1.fwsc", "tide-beta-1.0.0-beta1.fwsc", "duplicate-tide-stable-1.0.0.fwsc", "xtide-stable-1.0.0.fwsc", "tide-1.0.0.fwsc"):
+            self.assertIsNone(releases.parse_package(bad), bad)
+
+    def test_old_and_new_names_order_by_version(self):
+        old_s = self.rel("tide-1.0.0", "stable", "1.0.0")
+        new_b = self.rel_new("tide-1.0.1-b1", "beta", "1.0.1-b1")
+        new_s = self.rel_new("tide-1.0.1", "stable", "1.0.1", published_at="2026-11-01T00:00:00Z")
+        old_b = self.rel("tide-1.0.0-b9", "beta", "1.0.0-b9")
+        self.assertEqual(self.tags([old_s, new_b]), ("tide-1.0.0", "tide-1.0.1-b1"))                 # (an old-named stable, a new-named beta after it)
+        self.assertEqual(self.tags([old_s, new_s, new_b]), ("tide-1.0.1", None))                     # (a new-named stable after an old-named one, the version decides)
+        self.assertEqual(self.tags([old_s, old_b, new_b]), ("tide-1.0.0", "tide-1.0.1-b1"))
+        self.assertEqual(self.tags(copy.deepcopy(FIXTURE) + [self.rel_new("tide-1.0.0-b1", "beta", "1.0.0-b1")]), ("stable-2026-11-03", "tide-1.0.0-b1"))   # (a new name is newer than every dated old one)
+
     def test_info_of_a_versioned_release(self):
         r = self.rel("tide-1.0.0-b1", "beta", "1.0.0-b1", body="Build `abcdef1`")
         i = releases.info(r, "beta")
@@ -313,6 +337,15 @@ class Build(unittest.TestCase):
         info = self.info("beta", b, tag="tide-1.1.0-b1")
         self.run_site("--beta-pkg", b, "--beta-info", info)
         self.assertEqual(self.manifest()["beta"]["date"], "2026-11-04")   # (the release's publishing date)
+
+    def test_new_named_packages_build_the_site(self):
+        s, b = self.pkg("tide-stable-1.0.0.fwsc"), self.pkg("tide-beta-1.1.0-b1.fwsc", extra=b"beta")
+        self.run_site("--stable-pkg", s, "--beta-pkg", b)
+        m = self.manifest()
+        self.assertEqual((m["stable"]["tag"], m["stable"]["version"], m["stable"]["file"]), ("tide-1.0.0", "1.0.0", "stable/tide-stable-1.0.0.fwsc"))
+        self.assertEqual((m["beta"]["tag"], m["beta"]["version"], m["beta"]["file"]), ("tide-1.1.0-b1", "1.1.0-b1", "beta/tide-beta-1.1.0-b1.fwsc"))
+        with self.assertRaises(SystemExit):
+            self.run_site("--beta-pkg", self.pkg("tide-beta-1.0.0.fwsc"))
 
     def test_versioned_beta_not_newer_is_dropped(self):
         s, b = self.pkg("duell-tide-stable-1.0.0.fwsc"), self.pkg("duell-tide-beta-1.0.0-b3.fwsc", extra=b"b")

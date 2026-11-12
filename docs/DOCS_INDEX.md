@@ -8,7 +8,7 @@ Audiences: **player** (uses the unit), **installer** (flashes it), **contributor
 
 | Document | Audience | Status | Purpose |
 |---|---|---|---|
-| [README.md](../README.md) | player, installer | current | What DUELL with TIDE is, how to play a tide, how to install it, the stable and beta builds and what changed. |
+| [README.md](../README.md) | player, installer | current | What TIDE is, how to play a tide, how to install it, the stable and beta builds and what changed. |
 | [docs/QUICKSTART.md](QUICKSTART.md) | player | current | A short tour of the controls, saving, effects and MIDI. |
 | [docs/TIDE_GUIDE.md](TIDE_GUIDE.md) | player | current | A five-minute guide to AUTO TIDE and TIDE SETTINGS. |
 | [docs/DUELL_1_1_REFERENCE.md](DUELL_1_1_REFERENCE.md) | player | reference | DUELL 1.1 by OSCILL/R: parts and modes, engines, factory content, effects, MIDI and the CC map. |

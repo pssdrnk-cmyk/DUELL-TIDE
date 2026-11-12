@@ -1,19 +1,19 @@
-# Installing DUELL with TIDE
+# Installing TIDE
 
-**DUELL** with TIDE: pssdrnk's fork of DUELL 1.1, MultiMorphing Bitimbral Synthesizer by OSCILL/R.
+**TIDE**: built on DUELL (OSCILL/R) and Felucca (Hügelton Instruments), GPL-3.0.
 
-> **Install at your own risk.** TIDE has been flashed to and run on **one** real FM-1, the fork owner's. The way back to the official firmware (V15) has worked on that unit and has not been tried on others. The FM-1 has a single-bank layout and there is no known rollback. No warranty. DUELL with TIDE is not affiliated with OSCILL/R or M-VAVE, and M-VAVE's firmware is not distributed here. Read [RECOVERY.md](RECOVERY.md), [KNOWN_LIMITS.md](KNOWN_LIMITS.md) and [KNOWN_ISSUES.md](KNOWN_ISSUES.md) first.
+> **Install at your own risk.** TIDE has been flashed to and run on **one** real FM-1, the fork owner's. The way back to the official firmware (V15) has worked on that unit and has not been tried on others. The FM-1 has a single-bank layout and there is no known rollback. No warranty. TIDE is not affiliated with OSCILL/R or M-VAVE, and M-VAVE's firmware is not distributed here. Read [RECOVERY.md](RECOVERY.md), [KNOWN_LIMITS.md](KNOWN_LIMITS.md) and [KNOWN_ISSUES.md](KNOWN_ISSUES.md) first.
 
-> **DUELL with TIDE (this fork) has its own installer page:** <https://pssdrnk-cmyk.github.io/DUELL-TIDE/install/>.
+> **TIDE (this fork) has its own installer page:** <https://pssdrnk-cmyk.github.io/DUELL-TIDE/install/>.
 > - It offers two builds.
 > - **Stable** is the default: the build the fork owner validated, a normal GitHub release.
 >   - TIDE's version, for example `1.0.0`.
 >   - tag `tide-1.0.0`.
->   - package `duell-tide-stable-1.0.0.fwsc`.
+>   - package `tide-stable-1.0.0.fwsc` (before the rename to TIDE: `duell-tide-stable-1.0.0.fwsc`; the site reads both).
 > - **Beta** is a build under test, a GitHub pre-release.
 >   - For example `1.0.0-b2`.
 >   - tag `tide-1.0.0-b2`.
->   - package `duell-tide-beta-1.0.0-b2.fwsc`.
+>   - package `tide-beta-1.0.0-b2.fwsc` (before the rename: `duell-tide-beta-1.0.0-b2.fwsc`).
 >   - shown only while it is newer than the stable one.
 >   - needs a tick box and a second confirmation.
 > - Builds from before the versions have dated names, `stable-2026-11-03` and `beta-2026-11-04`.
@@ -130,7 +130,7 @@ Your DUELL data cannot be opened by the official firmware. This path is the same
 
 
 ## Source and licences
-The package you install is DUELL with TIDE, licensed **GPL-3.0-only**.
+The package you install is TIDE, licensed **GPL-3.0-only**.
 
 - Its source is this repository, at the tag of the release you chose (`tide-1.0.0-b1`, `tide-1.0.0` or a later one, or the older `stable-2026-11-03` and `beta-2026-11-04`). The release page names the commit.
 - The licence texts of the parts that keep their own licence are in [felucca-base/LICENSES/](../felucca-base/LICENSES/).

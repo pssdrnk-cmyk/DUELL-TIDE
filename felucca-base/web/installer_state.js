@@ -12,10 +12,10 @@ export const ACTIONS = ["backup", "install", "return"];
 
 export const BANNERS = {
   backup:  { kind: "backup",  text: "BACKING UP: do not unplug or close this page until it says DONE. Nothing is written to the FM-1." },
-  install: { kind: "install", text: "INSTALLING DUELL: do not unplug or close this page until it says DONE." },
+  install: { kind: "install", text: "INSTALLING TIDE: do not unplug or close this page until it says DONE." },
   return:  { kind: "return",  text: "RETURNING TO THE OFFICIAL FIRMWARE: do not unplug or close this page until it says DONE." },
 };
-const NAMES = { backup: "the backup", install: "the DUELL install", return: "the return to the official firmware" };
+const NAMES = { backup: "the backup", install: "the TIDE install", return: "the return to the official firmware" };
 
 // The optional "Erase my saved data after installing" box in the INSTALL card (off by default). Pure texts and outcomes; the page
 // does the talking (install/index.html eraseAfterInstall -> fm1backup.js eraseAllData).
@@ -42,12 +42,12 @@ export function eraseOutcome(rc, err = null) {
 // What the unit runs decides the erase box's default. The unit's answer to the editor protocol's INFO (fm1backup.js, cmd 1) starts with
 // "FELUCCA <version string>"; DUELL's version string is "DUELL 0.2.4 beta", Felucca's is a bare number, the official firmware does not answer.
 export const SMART = {
-  duell:   "Updating DUELL: your patches and settings are kept.",
-  clean:   "Clean install recommended: the unit does not run DUELL, so old data from another firmware is cleared.",
+  duell:   "Updating: your patches and settings are kept.",
+  clean:   "Clean install recommended: the unit does not run TIDE or DUELL, so old data from another firmware is cleared.",
   hint:    "Connect the FM-1 to check.",
   keepOwn: "You chose to keep the data: anything an older firmware left on the unit stays.",
   eraseOwn: "You chose to erase: your patches and settings will be erased after the install.",
-  detected: { duell: (v, tide = false) => `Detected: DUELL ${v}${tide ? " with TIDE" : ""} running`, other: "Detected: not DUELL (or no answer)", none: "Not checked yet. Connect the FM-1 and press \"Check the unit\"." },
+  detected: { duell: (v, tide = false) => tide ? "Detected: TIDE running" : `Detected: DUELL ${v} running`, other: "Detected: not TIDE or DUELL (or no answer)", none: "Not checked yet. Connect the FM-1 and press \"Check the unit\"." },
   checking: "Checking the unit ...",
 };
 // info: the version string from INFO (a string), or null/undefined/anything else when the unit gave no usable answer.
@@ -103,14 +103,14 @@ export const BACKUP_FIRST = {
   looking: "Backing up the unit first (nothing is written yet)",
   saved: "Backup saved to your downloads. Writing the firmware ...",
   failed: (why) => `The backup failed (${why}). Nothing was written to the unit: the install did not start. Keep the cable connected, stop the unit if it plays, and press Install again.`,
-  cannot: "This DUELL build cannot make a complete backup, so your sounds and settings cannot be saved first. Install anyway?",
+  cannot: "This build cannot make a complete backup, so your sounds and settings cannot be saved first. Install anyway?",
   declined: "Nothing was written: the install did not start.",
 };
 
 // texts per card
 export const SWITCH_OFF_ON = "Switch the unit off and on once.";
 export const TEXT = {
-  writing: { install: "Writing DUELL. Do not unplug", return: "Writing official firmware. Do not unplug" },
+  writing: { install: "Writing TIDE. Do not unplug", return: "Writing official firmware. Do not unplug" },
   done: {
     install: "Done. Switch the unit off and on once.",   // (owner 2026-10-21, item 31: the boot guard step; the one line after a successful install)
     return: "Done. The official firmware is back. Switch the unit off and on.",
@@ -134,7 +134,7 @@ export const BETA = {
   none: "No known issues are listed in the release notes. Read the notes before you install.",
 };
 export const NOT_RELEASED = {
-  title: "DUELL with TIDE is not released yet.",
+  title: "TIDE is not released yet.",
   text: "No stable or beta package is published with this page, so there is nothing to install here. The emulator works without a unit.",
 };
 export const HASH_TEXT = {

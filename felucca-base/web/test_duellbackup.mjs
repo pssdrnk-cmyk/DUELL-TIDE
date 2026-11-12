@@ -69,7 +69,7 @@ const bytesOf = (a) => new Map([...a.objects].map(([id, o]) => [id, o.bytes]));
      "objects: a multi with a bad magic, length, version, name character or part count is refused");
   const music = new MockUnit({ seed: false }).objs.get(0);
   ok(checkObject(0, music) === null && t(0, music, (c) => { c[63] = 4; }) && t(0, music, (c) => { c[67] = 4; }) && t(0, music, (c) => { c[67] = 5; }) && t(0, music, (c) => { c[67] = 6; }) && t(0, music, (c) => { c[67] = 7; }) && t(0, music, (c) => { c[66] = 122; }) && t(0, music, (c) => { c[0] ^= 1; }) && checkObject(0, music.slice(0, 3000)) !== null
-     && /older DUELL version/.test(checkObject(0, music.map((x, i) => i === 63 ? 4 : x))),
+     && /older version/.test(checkObject(0, music.map((x, i) => i === 63 ? 4 : x))),
      "objects: the music of two parts and revision 8 passes; one of four parts (byte 63), revision 4, 5, 6 or 7 (byte 67), another P_COUNT, a bad magic or size is refused, the old one with a clear reason");
   const at = 8 + 11;   // (the second slot's record would be later; the first slot's record starts at 8: rlen 2, flags, LEN, DIV, SWING, GATE, nlen, name ...)
   ok(t(21, pa, (c) => { c[0] ^= 1; }) && t(21, pa, (c) => { c[8 + 3] = 0; }) && t(21, pa, (c) => { c[8 + 8] = 3; }) && t(21, pa, (c) => { c[8 + 2] = 4; }) &&
@@ -85,7 +85,7 @@ const bytesOf = (a) => new Map([...a.objects].map(([id, o]) => [id, o.bytes]));
      "objects: a patch record with a slot or revision byte not 0, a wrong length field, no CB flag, an unknown engine, no name, a control character or a gap in its name, a size under 20, 0 or over 580 is refused");
   ok(t(k, pv, (c) => { c[20 + 15] |= 128; }) && t(k, pv, (c) => { c[19]++; }) && t(k, pv, (c) => { c[4] |= 16; }) && t(k, pv, (c) => { c[4] |= 32; }) && t(k, ex, (c) => { c[4] &= ~PTF.MB; }) && t(k, ex, (c) => { c[c.length - 1] ^= 255; c[0]--; }),
      "objects: a patch record that names wide id 127 in its bitmap, has a wrong value count, carries a flag of the older form (16) or an AK flag without a block or has its End B flag cleared or its End B cut short is refused");
-  ok(/older DUELL version/.test(checkObject(k, (() => { const c = pv.slice(); c[4] |= 16; return c; })())), "objects: a patch record of the older form (flag 16 or 64) is refused with a plain message");
+  ok(/older version/.test(checkObject(k, (() => { const c = pv.slice(); c[4] |= 16; return c; })())), "objects: a patch record of the older form (flag 16 or 64) is refused with a plain message");
   ok(OLD_PATCH_IDS.every((id) => checkObject(id, buildLegacyPatchChunk([{ slot: 3, name: "P" }])) !== null) && checkObject(40, pc) !== null, "objects: a physical patch chunk (ids 6 7 9..12 27..31 35..39) and the bare wire id 40 are no objects of a backup");
   ok(checkObject(0, new Uint8Array(3840)) !== null && checkObject(1, new Uint8Array(584)) !== null && checkObject(2, new Uint8Array(0)) !== null, "objects: music / settings without their magic, and a retired id, are refused");
   ok(objectLabel(patchKey(6), pc) === "patch #07 P" && objectLabel(patchKey(127)) === "patch #128" && objectLabel(6) === "a chunk of the old patch store" && patchSlot(patchKey(9)) === 9 && !isPatchKey(40) && !isPatchKey(1128) && isPatchKey(1127), "labels: patch #NN NAME from the slot (1-based, as the Patches page) and the record");
@@ -197,7 +197,7 @@ ok(await athrows(() => captureBackup((r, o) => { const x = new MockUnit(); x.pla
 {
   const bad = (f) => { const c = clone(file); f(c); return c; };
   ok(throwsMsg(() => readArchive("{ nope"), /JSON/), "file: not JSON");
-  ok(throwsMsg(() => readArchive({ format: "something", objects: [] }), /not a DUELL/), "file: another format");
+  ok(throwsMsg(() => readArchive({ format: "something", objects: [] }), /not a TIDE/), "file: another format");
   ok(throwsMsg(() => readArchive(bad((c) => { c.version = 7; })), /newer editor/), "file: a newer version is refused with a plain message");
   ok(throwsMsg(() => readArchive(bad((c) => { c.version = 1; })), /unknown version/), "file: version 1 of the duell-backup format does not exist");
   ok(throwsMsg(() => readArchive(bad((c) => { const o = c.objects.find((x) => x.id === 14); o.crc = (o.crc ^ 1) >>> 0; })), /checksum/), "file: a damaged object (CRC) is refused");
@@ -274,7 +274,7 @@ const KEYS = [1000, 1001, 1005, 1064];
   const p3 = planRestore(archive, list, null, all);
   ok(p3.excluded.length === 4, "plan: a unit that reported no caps is treated as not able");
   const odd = readArchive(file); odd.objects.get(1).size = 600;
-  ok(planRestore(odd, list, 63, new Set(["settings"])).excluded[0]?.reason.includes("another DUELL version"), "plan: a settings object of another size than the unit's is left out");
+  ok(planRestore(odd, list, 63, new Set(["settings"])).excluded[0]?.reason.includes("another version"), "plan: a settings object of another size than the unit's is left out");
   ok(GROUPS[0].key === "patches" && GROUPS[0].dynamic && GROUPS[0].caps === 32 && GROUPS.slice(1).every((g) => !g.dynamic && g.ids.length > 0), "groups: patches is dynamic (caps bit 5), the others keep their ids");
 }
 {   // errors while writing: reported, the object aborted, nothing after it written, what was written is named
@@ -308,7 +308,7 @@ const KEYS = [1000, 1001, 1005, 1064];
   const r4 = await runRestore((r, o) => H.request(r, o), plan4);
   ok(r4.failed?.id === 21 && r4.failures.length === 1 && r4.written.includes(20) && r4.written.includes(22) && r4.written.includes(1) && r4.written.includes(0), "restore: the unit refusing a commit (rc 2) is reported and the settings and the music are still restored (D05)");
 }
-{   // D04 / D05: a nearly full store (DUELL with TIDE holds 126 records; the mock holds 4 here): STORE FULL is told as such, the removals go first, every failure is reported
+{   // D04 / D05: a nearly full store (TIDE holds 126 records; the mock holds 4 here): STORE FULL is told as such, the removals go first, every failure is reported
   const S = new MockUnit({ seed: false, storeMax: 4 }), rq = (r, o) => S.request(r, o);
   for (const k of [7, 8, 9, 10]) S.setRecord(k, buildPatchRecord({ name: `OLD ${k}` }));
   S.rebuild();
@@ -452,7 +452,7 @@ const KEYS = [1000, 1001, 1005, 1064];
   ok(throwsMsg(() => readArchive(bad((c) => rewrite(c, (r) => { /* too short */ }, 0) || (P(c).size = 0, P(c).data = "", P(c).crc = 0))), /Patch #01/) && throwsMsg(() => readArchive(bad((c) => rewrite(c, () => {}, 0) || (() => { const r = new Uint8Array(581); r[0] = 581 & 255; r[1] = 581 >> 8; P(c).data = btoa(String.fromCharCode(...r)); P(c).size = 581; P(c).crc = bkCrc(r); })())), /Patch #01/),
      "file v5: a patch of size 0 or of 581 bytes is refused (only saved patches, 20 to 580 bytes)");
   const xb = readArchive(JSON.stringify(file));
-  ok(throwsMsg(() => readArchive(bad((c) => rewrite(c, (r) => { r[4] |= 16; }))), /Patch #01: .*older DUELL version/), "file v5: a patch record of the older form (the extension flag, PT_VER 3) is refused with a plain message");
+  ok(throwsMsg(() => readArchive(bad((c) => rewrite(c, (r) => { r[4] |= 16; }))), /Patch #01: .*older version/), "file v5: a patch record of the older form (the extension flag, PT_VER 3) is refused with a plain message");
   ok(throwsMsg(() => readArchive(bad((c) => { c.version = 5; c.objects.find((o) => o.id === 40).id = 47; })), /Unknown object id 47/), "file v5: an object id 42 is unknown (41 is the FM6 voice bank)");
   ok(readArchive(JSON.stringify({ ...clone(file), objects: clone(file).objects.filter((o) => o.id !== 40) })).hasPatches === true && readArchive(JSON.stringify({ ...clone(file), patchRecords: undefined, objects: clone(file).objects.filter((o) => o.id !== 40) })).hasPatches === false, "file v5: patchRecords says a file without patches is the file of a unit with none; without the flag it leaves a unit's patches alone");
   ok(xb.objects.get(1000).size >= 20 && !xb.problems.length, "file v5: (no raw objects in the good file)");
@@ -593,7 +593,7 @@ const KEYS = [1000, 1001, 1005, 1064];
   ok(p63.excluded.some((x) => x.key === "multis2" && /update it first/.test(x.reason)) && p63.steps.length === 0, "U4: a unit without caps bit 6 cannot take them: the group is excluded with the reason");
   ok(throwsMsg(() => readArchive(JSON.stringify({ ...v5, objects: [...v5.objects, f.objects.find((o) => o.id === 42)] })), /no multis M17 and up/), "U4: a version 5 file with an object 42 is refused as damaged");
 }
-ok(/^DUELL-backup-\d{4}-\d\d-\d\d-\d{4}\.json$/.test(fileName("DUELL-backup")), "file name: DUELL-backup-YYYY-MM-DD-HHMM.json");
+ok(/^TIDE-backup-\d{4}-\d\d-\d\d-\d{4}\.json$/.test(fileName("TIDE-backup")), "file name: TIDE-backup-YYYY-MM-DD-HHMM.json");
 
 console.log(fails ? `DUELL BACKUP WEB TESTS FAILED (${fails})` : "duell backup web tests passed");
 process.exit(fails ? 1 : 0);

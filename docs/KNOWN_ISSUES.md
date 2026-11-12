@@ -1,4 +1,4 @@
-# Known issues: DUELL with TIDE
+# Known issues: TIDE
 
 What is known to be broken or untested. [KNOWN_LIMITS.md](KNOWN_LIMITS.md) lists the design limits; this page lists the bugs and the untested ground. Report anything else on this fork's [issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues/new/choose). The sections say where each note comes from: the TIDE fork, or the DUELL 1.0 notes of OSCILL/R that still hold.
 

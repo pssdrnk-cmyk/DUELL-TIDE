@@ -1,4 +1,4 @@
-# Developing DUELL with TIDE
+# Developing TIDE
 
 How to build the generated files, run the tests and what CI runs. The hardware checklist is [TESTING.md](TESTING.md); how to send a change is [../CONTRIBUTING.md](../CONTRIBUTING.md).
 

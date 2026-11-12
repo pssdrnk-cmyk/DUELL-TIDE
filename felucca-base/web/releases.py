@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
-"""Pick the releases the DUELL with TIDE site publishes, and download their packages (the Pages workflow runs this).
+"""Pick the releases the TIDE site publishes, and download their packages (the Pages workflow runs this).
 
   releases.py --repo OWNER/NAME --out DIR [--releases-json FILE] [--no-download] [--require-green [--tests-workflow FILE]]
 
 Two channels, from the repository's GitHub releases (drafts never count):
 
-  stable  the highest version among the normal (non-pre-release) releases that carry duell-tide-stable-X.Y.Z.fwsc (TIDE's version, file TIDE_VERSION; tag tide-X.Y.Z). Mark it GitHub's "Latest".
-  beta    the newest pre-release that carries duell-tide-beta-X.Y.Z-bN.fwsc (tag tide-X.Y.Z-bN) AND is a newer build than that stable one (the version in the package
+  stable  the highest version among the normal (non-pre-release) releases that carry tide-stable-X.Y.Z.fwsc (TIDE's version, file TIDE_VERSION; tag tide-X.Y.Z). Mark it GitHub's "Latest".
+  beta    the newest pre-release that carries tide-beta-X.Y.Z-bN.fwsc (tag tide-X.Y.Z-bN) AND is a newer build than that stable one (the version in the package
           name: 1.0.0-b2 is after 1.0.0-b1 and before 1.0.0; the publishing time only breaks a tie).
           An older beta is a superseded build: it is not offered. With no stable release at all, the newest beta is offered alone.
   The names from before TIDE had versions (duell-tide-stable-YYYY-MM-DD[.N].fwsc, duell-tide-beta-YYYY-MM-DD[.N].fwsc, tags stable-YYYY-MM-DD, beta-YYYY-MM-DD)
-  still count, and every one of them is older than any versioned build.
+  still count, and every one of them is older than any versioned build. So do the versioned names from before the rename to TIDE (duell-tide-stable-X.Y.Z.fwsc,
+  duell-tide-beta-X.Y.Z-bN.fwsc): both name patterns are read, a release may carry either, and the version decides the order, never the prefix.
 
 For each channel found it downloads the package and its .sha256 into DIR/<channel>/ and writes DIR/<channel>.json
 (the release data make_site.py turns into install/channels.json: tag, date, commit, SHA-256, release notes URL, notes body).
@@ -35,7 +36,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-PKG = re.compile(r"duell-tide-(stable|beta)-(?:(\d{4}-\d{2}-\d{2})(?:\.(\d+))?|(\d+)\.(\d+)\.(\d+)(?:-b(\d+))?)\.fwsc")
+PKG = re.compile(r"(?:duell-)?tide-(stable|beta)-(?:(\d{4}-\d{2}-\d{2})(?:\.(\d+))?|(\d+)\.(\d+)\.(\d+)(?:-b(\d+))?)\.fwsc")
 SHA = re.compile(r"\b([0-9a-fA-F]{64})\b")
 
 
@@ -44,8 +45,7 @@ def _when(rel):
 
 
 def parse_package(name):
-    """a package name -> {channel, version, date, key}, or None when it is not one. A versioned name (duell-tide-beta-1.0.0-b1.fwsc,
-    duell-tide-stable-1.0.0.fwsc) has date '' (the release's publishing date is used); an older dated one has the date as its version.
+    """a package name -> {channel, version, date, key}, or None when it is not one. A versioned name (tide-beta-1.0.0-b1.fwsc, tide-stable-1.0.0.fwsc, or with the older duell- prefix) has date '' (the release's publishing date is used); an older dated one has the date as its version.
     A beta must carry -bN and a stable must not. key orders builds: the dated ones first, then by version, a beta before its release."""
     m = PKG.fullmatch(name or "")
     if not m:
