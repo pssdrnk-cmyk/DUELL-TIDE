@@ -566,7 +566,7 @@ _Static_assert(sizeof(motion_store_t) == 388u, "motion disk layout (FUN10)");
 #include "ins_bits.h"
 #define PS_SLOTS 32u             /* DUELL: the pattern slots P01..P32, ONE list for the whole device (patslot.c, SAVE > PATTERNS) */
 #if !defined(DUELL_TIDE) || DUELL_TIDE
-#define MU_SLOTS 24u             /* b10 U4: the multis M01..M24, all stored (project.c multi.c, SAVE > MULTI): storage.c holds up to M26 (13 objects); MR9's two more change this number only */
+#define MU_SLOTS 26u             /* b10 U4 + MR9: the multis M01..M26, all stored (project.c multi.c, SAVE > MULTI; MU_SHOWN follows it): storage.c holds exactly M26 (13 objects, multi.c MU_OBJ_ALL: a 27th needs a new object); M25, M26 are the drone multis */
 #else
 #define MU_SLOTS 16u             /* DUELL: the multis M01..M16 (project.c multi.c, SAVE > MULTI) */
 #endif
@@ -596,7 +596,7 @@ typedef struct {                 /* the part in mix_part, its window: one per pa
 /* The multis SHOWN (lists, labels, pickers, previews, MIDI program change) are the stored ones: since b10 U4 every position has a flash slot (storage.c), the factory multi shows
  * while it holds nothing (multi.c mu_fact), and SAVE writes over it */
 #define MU_SHOWN MU_SLOTS
-#define MU_DRONE(k) (DUELL_TIDE && (uint32_t)(k) - 22u < 2u)   /* M23, M24: the built-in drone multis (TIDE plays them as STYLE DRONE, tide_ui.c tide_drone); since b10 the list is in genre order (tools/factory_multis.py DISPLAY_ORDER): M17 .. M22 are ROM-only multis of other genres */
+#define MU_DRONE(k) (DUELL_TIDE && (uint32_t)(k) - 24u < 2u)   /* M25, M26: the built-in drone multis (TIDE plays them as STYLE DRONE, tide_ui.c tide_drone); since b10 the list is in genre order (tools/factory_multis.py DISPLAY_ORDER): M17 .. M24 are ROM-only multis of other genres */
 typedef struct track {
     int16_t p[EXT_P_LEN];        /* P_COUNT ids, a gap at 127, then the NX extension slots (ext.h XV); every store and format still counts P_COUNT */
     uint8_t engine, preset;      /* engine: what the audio ISR renders */

@@ -18,7 +18,7 @@
 
 /* ---------------------------------------------------------------- tables */
 static const char *const SL_STYLE[6] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK", "DRONE"};
-static const uint8_t SL_STYLE_OF[24] = {0, 0, 1, 1, 1, 4, 4, 1, 2, 2, 2, 2, 4, 3, 1, 3, 5, 5, 2, 0, 1, 4, 3, 2};   /* the suggested STYLE of M01..M18 (work/b9/sound/render18.sh); b10: M19 MINIMAL, M20 DUB, M21 DEEP, M22-M24 PEAK, AMBIENT, MINIMAL */
+static const uint8_t SL_STYLE_OF[26] = {0, 0, 1, 1, 1, 4, 4, 1, 2, 2, 2, 2, 4, 3, 1, 3, 5, 5, 2, 0, 1, 4, 3, 2, 2, 1};   /* the suggested STYLE of M01..M18 (work/b9/sound/render18.sh); b10: M19 MINIMAL, M20 DUB, M21 DEEP, M22-M24 PEAK, AMBIENT, MINIMAL; MR9 M25 MINIMAL, M26 DEEP (by record number) */
 _Static_assert(MU_SHOWN <= sizeof SL_STYLE_OF, "soundlab: a suggested STYLE for every shown multi");
 static const char *const SL_SET[8] = {"AUTO", "STD", "DUB", "HSE", "TECH", "ACID", "ELEC", "AMB"};   /* tide_knobs = index + 1 (1 AUTO, 2 STD, 3 DUB ..) */
 static const char *const SL_KNOBNAME[20] = {"FLT", "RES", "DLY", "REV", "EDF", "ATK", "DEC", "REL", "LRT", "LDF", "DKD", "AGT", "SGT", "APB", "DST", "CHO", "DKS", "FDB", "COL", "TIM"};

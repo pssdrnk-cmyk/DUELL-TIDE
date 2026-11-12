@@ -116,6 +116,25 @@ MORE = [
                      steps="n57v110 . n64v84 . . n57v96 . n64v80 . . n57v100 . n64v88 . . .", len=16, bseed=36321, amt=30, b={"P_FREEA": 64}),
                 dict(sound="SUB PLUCK", set={"P_AMODE": "OFF", "P_SDIV": "1/16", "P_SGATE": 80, "P_TRANS": 0, "P_SPRD": 30, "P_DLY": 16, "P_REV": 6, "P_TRIM": 98, "P_LEVEL": 120},
                      steps=". . n45v110 n45v70 . . n45v100 . . . n45v110 . . . n45v100 .", len=16, bseed=35683, amt=30, b={})]),
+    # b10 MR9 (musical review M5: the roles the set lacked; research work/b9/research/minimal-dub.md, deep-house.md, attack/dub-house.md, attack/minimal.md)
+    dict(rom=25, slot=9, name="DUB MINIMAL", mode="LAYER",
+         what="minimal dub, G minor (115 BPM): a soft low-passed saw blip two or three times a bar, off the beat (G3, D4; G3, B flat 3, F3 over two bars), thrown into a long dark drifting ping-pong echo that does the rest; under it tape hiss, held three bars and let go for one, so it swells again every four",
+         g=dict(G_BPM=115, G_DTIME="8D", G_DFDBK=72, G_DMIX=80, G_DMODE="PING", G_DCOLOR=26, G_DMDEP=20, G_RTYPE="PLATE", G_RSIZE=80, G_RDAMP=70),
+         parts=[dict(sound="DUB BLIP", set={"P_AMODE": "SEQ", "E:WAVE": 0, "P_ARATE": "1/16", "P_AGATE": 100, "P_AHOLD": "OFF", "P_CHRD": "OFF", "P_TRANS": 0, "P_FREEA": 38,
+                                             "P_CHOR": 50, "P_SPRD": 50, "P_DLY": 96, "P_REV": 30, "P_TRIM": 127, "P_LEVEL": 106},
+                     steps=". . . -5A . . . . . . 2 . . . . . . . . -5 . . . -2 . . . . . . -7 .", bars=2, bseed=41213, amt=30, b={"P_FREEA": 36}),
+                dict(sound="TAPE HISS", set={"P_AMODE": "SEQ", "P_ARATE": "1/1", "P_AGATE": 127, "P_AHOLD": "OFF", "P_CHRD": "OFF", "P_TRANS": 0, "P_EQHG": -6,
+                                              "P_CHOR": 40, "P_SPRD": 64, "P_DLY": 20, "P_REV": 70, "P_TRIM": 118, "P_LEVEL": 90},
+                     steps="0 - - .", len=4, bseed=17761, amt=30, b={})]),
+    dict(rom=26, slot=10, name="HSE KEYS", mode="LAYER",
+         what="deep house, G minor (124 BPM, swung): soft keys stabbing minor sevenths in one close voicing, G minor 7 then A minor 7 in parallel, on the off-beats with the next chord on the last 16th before its bar, into a short dotted echo and a plate; under it a rotor organ holding G2 and D3",
+         g=dict(G_BPM=124, G_DTIME="8D", G_DFDBK=36, G_DMIX=50, G_DMODE="PING", G_DCOLOR=30, G_RTYPE="PLATE", G_RSIZE=60, G_RDAMP=70),
+         parts=[dict(sound="SUNDAY KEYS", set={"P_AMODE": "SEQ", "P_ARATE": "1/16", "P_AGATE": 70, "P_ASWING": 58, "P_AHOLD": "OFF", "P_CHRD": "MIN7", "P_VOIC": "INV2", "P_TRANS": 0,
+                                                "P_ATK": 10, "P_DEC": 70, "P_SUS": 40, "P_REL": 56, "P_FREEA": 38, "P_CHOR": 80, "P_SPRD": 50, "P_DLY": 40, "P_REV": 30, "P_TRIM": 120, "P_LEVEL": 98},
+                     steps=". . -17A - . . . -17 . . -17 - . . . -15 . . -15A - . . . -15 . . -15 - . . . -17", bars=2, bseed=22871, amt=30, b={"P_FREEA": 46}),
+                dict(sound="ROTOR HAZE", set={"P_AMODE": "SEQ", "P_ARATE": "4BAR", "P_AGATE": 127, "P_AHOLD": "OFF", "P_CHRD": "POW", "P_VOIC": "CLOSE", "P_TRANS": 0,
+                                               "P_FREEA": 50, "P_CHOR": 80, "P_SPRD": 100, "P_DLY": 10, "P_REV": 50, "P_TRIM": 110, "P_LEVEL": 92},
+                     steps="-17 -", len=2, bseed=50923, amt=30, b={"P_FREEA": 58})]),
 ]
 ROM_MULTIS = DRONES + MORE                    # (tools/gen_duell_multis.py reads this list: every ROM-only multi, M17 ..)
 

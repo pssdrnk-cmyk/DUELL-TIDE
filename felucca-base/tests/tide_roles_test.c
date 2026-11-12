@@ -92,7 +92,7 @@ static const char *const RN[R_N] = {"-", "SKANK", "PAD", "ATMOS", "STAB", "MOTIF
 static const char *const SN[5] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK"};
 /* slot (1..16), the multi's style and its neighbour (STY_*), the role of each part, the bass flag (a part may go under C3), the name */
 /* the rows of TR[] and AL[]: one per factory multi under test (b10: 16; the sound lane's M19-M24 add six rows here and one line each in TR[], see AL[]) */
-#define NROW 22u
+#define NROW 24u
 static const struct { uint8_t slot, style, near, role[2], bass; const char *name; uint8_t dens[4]; } TR[NROW] = {
     { 1, STY_DUB,     STY_DEEP,    {R_STAB,  R_ATMOS}, 0, "DUB BASIC"},    /* (b10: a three-hit chord stab, 1.8 .. 2.5 a bar: a STAB, no longer a SKANK of 2 .. 6) */
     { 2, STY_DUB,     STY_DEEP,    {R_SKANK, R_ATMOS}, 0, "DUB CHORD"},    /* (re-voiced: the stab over a held pad, no bass line; the pad plays one chord in eight bars: an ATMOS, not a PAD of 0.5 .. 2) */
@@ -117,6 +117,9 @@ static const struct { uint8_t slot, style, near, role[2], bass; const char *name
     {22, STY_PEAK,    STY_MINIMAL, {R_PAD,   R_ATMOS}, 1, "TECH CINEMA"},   /* (a chord a bar, 2 bars on the first; the A1 drone one note in four bars) */
     {23, STY_AMBIENT, STY_DEEP,    {R_PAD,   R_MOTIF}, 0, "AMB TECHNO"},    /* (a chord a bar; the harp arpeggio 4.75 .. 6.25 a bar) */
     {24, STY_MINIMAL, STY_PEAK,    {R_MOTIF, R_BASS},  1, "TECH MINIMAL", {0, 0, 35, 80}},   /* (the koto 5.0 .. 7.25 a bar; the off-beat 16th sub, 5 a bar, 4.0 .. 6.5 under TIDE: its own band 3.5 .. 8.0) */
+    /* b10 MR9: the two roles the set lacked (musical review M5) */
+    {25, STY_MINIMAL, STY_DUB,     {R_STAB,  R_ATMOS}, 0, "DUB MINIMAL"},   /* (a saw blip 2 .. 3 a bar into the echo; the tape hiss held three bars of four) */
+    {26, STY_DEEP,    STY_DUB,     {R_STAB,  R_ATMOS}, 1, "HSE KEYS", {25, 50, 0, 0}},   /* (the keys stab 4 a bar, 2.5 .. 4.5 under DEEP: 2.5 .. 5.0, as M04's; the organ holds G2 D3 G3 for eight bars: an ATMOS, under C3) */
 };
 /* density bounds per role: onsets a bar, averaged over a 4-bar window, as tenths (5 = 0.5) */
 static const struct { uint8_t lo, hi; } DENS[14] = {{0, 0}, {20, 60}, {5, 20}, {0, 10}, {10, 40}, {30, 80}, {5, 20}, {2, 10}, {60, 80}, {20, 50}, {10, 30}, {5, 10}, {10, 80}, {0, 0}};
