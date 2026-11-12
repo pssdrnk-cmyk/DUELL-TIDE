@@ -2432,7 +2432,7 @@ static void h1_val(uint32_t ix, const track_t *t, int32_t v, char *out)
 {
     const char *unit;
     param_format(ix < KN_NP ? track_desc(t, KN_ID[ix]) : glob_desc(KN_ID[ix]), v, out, &unit);
-    str_cpy(out + str_len(out), str_eq(unit, "kHz") ? "k" : unit, 4);   /* (b10: "880Hz" and "2.4k", the Hz stays under 1 kHz) */
+    str_cpy(out + str_len(out), str_eq(unit, "Hz") ? "" : str_eq(unit, "kHz") ? "k" : unit, 4);
 }
 static void morph_row(void)
 {

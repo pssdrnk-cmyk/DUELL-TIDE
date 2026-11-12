@@ -229,6 +229,7 @@ static void hk_allow(int32_t x0, int32_t y0, int32_t x1, int32_t y1)
 #define GFX_HOOK_INK(ink, bg) hk_ink(ink, bg)
 #define GFX_HOOK_PIXELS(n) (px_visited += (n))
 #define UI_FILL_HOOK(x, y, w, h) hk_fill(x, y, w, h)
+#define GRID_PREFILL() do { hk_fill(0, H_HEAD, 240, Y_FOOT + 15 - H_HEAD); grid_fill(); } while (0)   /* (b10 ui-a: the model sees the old whole-body fill: the page drawn next replaces what stood there) */
 static void fm6_hook(uint32_t kind, uint32_t a, uint32_t b);
 #define FM6_CHART_HOOK(kind, a, b) fm6_hook(kind, a, b)
 static void cs_hook(const char *v, const char *u);
