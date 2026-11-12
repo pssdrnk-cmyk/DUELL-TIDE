@@ -7,13 +7,13 @@
  *   (left) and forward (right) along the history while the newest edit is a take or a roll (tk_fresh); a ROLL (morph_do MQ_ROLL, the gesture and word TIDE has) on the answering part writes
  *   the answer again with the roll's seed, one history step. The generators are the host prototype's (tools/perf/perf_probe.c): integer only, deterministic, the same seed the same answer.
  * Pool: 4 snapshots of both parts' steps (4.6 KB), the take's events and the answer's steps (1.1 KB). */
-enum { TA_OFF, TA_BASS, TA_DOUBLE, TA_N };
+enum { TA_OFF, TA_BASS, TA_DOUBLE, TA_REPLY, TA_ECHO, TA_N };
 static volatile uint8_t tide_answer __attribute__((section(".pool")));           /* TIDE SETTINGS ANSWER: what the other part is given when a take closes (a fresh unit: BASS LINE) */
 static volatile uint8_t tide_answer_on __attribute__((section(".pool")));                  /* TIDE SETTINGS ANSWER ON: 0 the other part, 1 OFF */
 
 typedef struct {                                         /* the answer that is live now (it travels with a history state) */
     uint8_t ans;                                         /* the part that holds it + 1, 0 none */
-    uint8_t src, mode, key, flags;                       /* the take's part; TA_*; the key's root (0..11); bit 0 minor, bit 1 guessed, bit 2 scale named, bits 3.. the SCL index */
+    uint8_t src, mode, key, flags, clen;                       /* the take's part; TA_*; the key's root (0..11); bit 0 minor, bit 1 guessed, bit 2 scale named, bits 3.. the SCL index */
     uint16_t seed, roll;                                 /* the seed it was written with; the rolls since the take (the header says ROLL n) */
     uint32_t sig;                                        /* steps_sig of the answer's part right after it was written: an edit since ends the roll */
 } tk_meta_t;
@@ -326,6 +326,27 @@ static void tk_double(uint32_t seed)
         tk_put(e->t, e->len, n, e->vel, 0u);
     }
 }
+/* ---- REPLY: the call's rhythm in the bars after it, moved in scale steps so the last note is the tonic; ECHO: the call's last note thrown 4 times (100, 80, 60, 40) ---- */
+static void tk_reply(uint32_t len, uint32_t seed)
+{
+    uint32_t i, last = tk_nev - 1u;
+    int32_t o, nd = (int32_t)tk_nd, dl = tk_deg_of(tk_ev[last].note, &o), shift = dl == 0 ? -2 : dl <= nd / 2 ? -dl : nd - dl, oc = seed % 3u == 1u ? -12 : seed % 3u == 2u ? 12 : 0;
+    for (i = 0; i < tk_nev; i++) {
+        int32_t d = tk_deg_of(tk_ev[i].note, &o), n = tk_note_of(d + shift, o);
+        if (i == last) {                                 /* ends home: the tonic nearest the note */
+            d = tk_deg_of(n, &o);
+            n = tk_note_of(0, d >= nd / 2 ? o + 1 : o);
+        }
+        tk_put(tk_ev[i].t + (int32_t)len, tk_ev[i].len, n + oc, 96u, 0u);
+    }
+}
+static void tk_echo(uint32_t seed)
+{
+    const tk_ev_t *e = &tk_ev[tk_nev - 1u];
+    uint32_t r, h = seed ? tk_hs(seed, 99u) % 3u : 0u, gap = h == 1u ? 4u : h == 2u ? 6u : 3u;   /* (a dotted eighth; a roll: a quarter or a dotted quarter) */
+    for (r = 0; r < 4u; r++)
+        tk_put((int32_t)(e->t + e->len + gap * r), 2, e->note, 100u - 20u * r, 1u);
+}
 static uint32_t tk_genre(void)                           /* DUB HSE TECH ACID ELEC AMB: the multi's name, else STYLE */
 {
     static const char *const G[6] = {"DUB", "HSE", "TECH", "ACID", "ELEC", "AMB"};
@@ -345,35 +366,49 @@ static uint32_t tk_genre(void)                           /* DUB HSE TECH ACID EL
 static uint32_t tk_gen(uint32_t src, uint32_t dst, uint32_t seed, uint32_t mode)
 {
     track_t *ts = &trk[src], *td = &trk[dst];
-    uint32_t len = seq_len(ts), spb = tk_spb(), bars = (len + spb - 1u) / spb, i, n = 0;
+    uint32_t len = seq_len(ts), spb = tk_spb(), bars, i, n = 0, call = mode >= TA_REPLY;
     int32_t shift = td->p[P_TRANS] - ts->p[P_TRANS];
+    if (call && seed && tk_m.ans && tk_m.mode == mode && tk_m.clen)
+        len = tk_m.clen;                                 /* (a roll: the part's loop is the doubled one: the call is the first half) */
+    bars = (len + spb - 1u) / spb;
     if (bars > 4u)
         bars = 4u;
+    if (call && (bars > 2u || 2u * len > NSTEP))
+        return 0;                                        /* (a call is 2 bars at most: it and its answer share 64 steps) */
     tk_events(ts, len);
     if (!tk_nev)
         return 0;
     tk_key();
     memset(tk_out, 0, sizeof tk_out);
-    tk_olen = len;
-    tk_chords(bars, spb);
-    if (mode == TA_BASS)
-        tk_bass(bars, spb, tk_genre(), seed);
-    else
-        tk_double(seed);
-    for (i = 0; i < len; i++)
+    tk_olen = call ? 2u * len : len;
+    if (mode == TA_REPLY)
+        tk_reply(len, seed);
+    else if (mode == TA_ECHO)
+        tk_echo(seed);
+    else {
+        tk_chords(bars, spb);
+        if (mode == TA_BASS)
+            tk_bass(bars, spb, tk_genre(), seed);
+        else
+            tk_double(seed);
+    }
+    for (i = 0; i < tk_olen; i++)
         n += tk_out[i].n != 0;
     if (!n)
         return 0;
     if (shift)                                           /* (the answer sounds as written: the other part's TRN is taken off) */
-        for (i = 0; i < len; i++)
+        for (i = 0; i < tk_olen; i++)
             for (n = 0; n < tk_out[i].n; n++) {
                 int32_t v = (int32_t)tk_out[i].note[n] - shift;
                 tk_out[i].note[n] = (uint8_t)(v < 0 ? 0 : v > 127 ? 127 : v);
             }
     fm1_irq_off();
     memcpy(td->step, tk_out, sizeof td->step);
-    td->p[P_SLEN] = (int16_t)len;
+    td->p[P_SLEN] = (int16_t)tk_olen;
+    if (call)
+        ts->p[P_SLEN] = (int16_t)tk_olen;               /* the call's loop doubles: the call, then the answer */
     fm1_irq_on();
+    tk_m.clen = (uint8_t)len;
     tk_m.ans = (uint8_t)(dst + 1u);
     tk_m.src = (uint8_t)src;
     tk_m.mode = (uint8_t)mode;
@@ -396,7 +431,7 @@ static void tk_say(const char *pre, uint32_t no)
         tk_cat(b, n);
         tk_cat(b, "  ");
     }
-    tk_cat(b, tk_m.mode == TA_DOUBLE ? "DOUBLE  " : "BASS LINE  ");
+    tk_cat(b, tk_m.mode == TA_DOUBLE ? "DOUBLE  " : tk_m.mode == TA_REPLY ? "REPLY  " : tk_m.mode == TA_ECHO ? "ECHO  " : "BASS LINE  ");
     tk_cat(b, N_NOTE[tk_m.key % 12u]);
     tk_cat(b, (tk_m.flags & 4u) ? " " : tk_m.flags & 1u ? " MINOR" : " MAJOR");
     if (tk_m.flags & 4u)
@@ -528,6 +563,8 @@ static void tk_close(uint32_t mask)                       /* the parts of mask s
             tk_say(0, 0);
             return;
         }
+        if (tide_answer >= TA_REPLY && !((song.rec >> o) & 1u))
+            ui_message("CALL: 2 BARS AT MOST");           /* (REPLY and ECHO need room: the call and its answer share 64 steps) */
     }
     tk_push(tk_total, 0u);
 }
