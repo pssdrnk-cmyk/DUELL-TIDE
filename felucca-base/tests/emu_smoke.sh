@@ -1,6 +1,6 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-only
-# The emu_smoke group (host_tests.sh emu_smoke): web/emu/emu_run.c (the emulator's device, built natively) plays web/emu/scripts/emu_smoke.txt twice (boot, TIDE SETTINGS, the KNOBS row,
+# The emu_smoke group (host_tests.sh emu_smoke): web/emu/emu_run.c (the emulator's device, built natively) plays web/emu/scripts/emu_smoke.txt and emu_smoke_b10.txt (each twice, a fresh device each) (boot, TIDE SETTINGS, the KNOBS row,
 # SAVE > MULTIS on M03, GLO); both runs must give the same screens (CRC of each 240 x 240 frame), and each screen's CRC must be one of those stored in tests/emu_smoke_ref.txt.
 # A line of the reference is "NAME crc [crc ...]": more than one CRC when machines draw a screen differently (a compiler's float rounding). Pages with no live waveform only.
 #   tests/emu_smoke.sh [--write-ref | --add-ref]      from felucca-base/   (--write-ref: replace the reference; --add-ref: add this machine's CRCs next to the stored ones)
@@ -12,6 +12,12 @@ build/emu/emu_run web/emu/scripts/emu_smoke.txt --out build/emu/smoke_a || { ech
 build/emu/emu_run web/emu/scripts/emu_smoke.txt --out build/emu/smoke_b || { echo "FAIL emu_smoke: the second run"; exit 1; }
 cmp -s build/emu/smoke_a/screens.txt build/emu/smoke_b/screens.txt || { echo "FAIL emu_smoke: two runs of the same script give different screens"; exit 1; }
 cmp -s build/emu/smoke_a/tide_settings.png build/emu/smoke_b/tide_settings.png || { echo "FAIL emu_smoke: the PNGs differ"; exit 1; }
+# the second script (b10 pages): its own process, so a fresh device; its screens join the first script's list
+rm -rf build/emu/smoke2_a build/emu/smoke2_b
+build/emu/emu_run web/emu/scripts/emu_smoke_b10.txt --out build/emu/smoke2_a || { echo "FAIL emu_smoke: the b10 script did not run"; exit 1; }
+build/emu/emu_run web/emu/scripts/emu_smoke_b10.txt --out build/emu/smoke2_b || { echo "FAIL emu_smoke: the b10 script, second run"; exit 1; }
+cmp -s build/emu/smoke2_a/screens.txt build/emu/smoke2_b/screens.txt || { echo "FAIL emu_smoke: two runs of the b10 script give different screens"; exit 1; }
+cat build/emu/smoke2_a/screens.txt >> build/emu/smoke_a/screens.txt
 case "${1:-}" in
 --write-ref) cp build/emu/smoke_a/screens.txt tests/emu_smoke_ref.txt; echo "wrote tests/emu_smoke_ref.txt"; exit 0 ;;
 --add-ref)

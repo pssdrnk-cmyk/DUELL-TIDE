@@ -1,0 +1,48 @@
+# emu_smoke, second script (b10; its own process, so a fresh device): pages of the b10 features that hold no live waveform, so the screens are equal on every machine.
+# TIDE SETTINGS > KNOBS stepped with OCT+ from AUTO to ELEC and AMB (the rows; the HOME pages of ELEC / AMB draw a live waveform, so no shot of those).
+boot
+button HOME
+button HOME
+enc K1 4
+button OCTUP
+enc SELECT 2
+enc SELECT 1
+button OCTUP
+enc SELECT 2
+enc SELECT 1
+button OCTUP
+enc SELECT 2
+enc SELECT 1
+button OCTUP
+enc SELECT 2
+enc SELECT 1
+button OCTUP
+enc SELECT 2
+enc SELECT 1
+button OCTUP
+shot knobs_ELEC_row
+enc SELECT 2
+enc SELECT 1
+button OCTUP
+shot knobs_AMB_row
+# the COLR LFO page (GLO page 6: CLFO 0..15, the default multi M02 holds 5) and the same page with the knob turned down to 0
+button GLO
+enc SELECT 5
+shot colr_lfo
+enc K1 -5
+shot colr_lfo_off
+# the built-in multis M19 .. M24 on the MULTIS page (K1 walks the slots; the list ends at M24)
+button SAVE
+enc K1 -30
+enc K1 18
+shot multis_m19
+enc K1 1
+shot multis_m20
+enc K1 1
+shot multis_m21
+enc K1 1
+shot multis_m22
+enc K1 1
+shot multis_m23
+enc K1 1
+shot multis_m24
