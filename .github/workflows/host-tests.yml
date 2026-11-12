@@ -44,6 +44,7 @@ jobs:
           python3 jam/test_music_revision8.py
           python3 jam/test_ci_retry.py
           python3 jam/test_assemble_changes.py
+          python3 jam/test_safe.py
           python3 jam/check_docs.py
 
   # The emulator (WebAssembly) against the native build: the same samples (web/emu/native_check.c, emu_test.mjs). The emsdk setup is pages.yml's (same version, same cache key).
