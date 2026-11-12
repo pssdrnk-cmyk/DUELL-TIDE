@@ -7,7 +7,7 @@ usb_audio_on 96c077dd
 knobs_ELEC_row ad1dc5ce
 knobs_AMB_row 7b8b93a0
 colr_lfo 4c3f926c
-colr_lfo_off 620f73cc
+colr_lfo_off a15967b2
 multis_m19 1df7ea8b
 multis_m20 fd15b10c
 multis_m21 19fd8e38
