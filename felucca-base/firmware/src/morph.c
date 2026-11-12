@@ -2618,8 +2618,10 @@ static uint32_t morph_do(uint32_t kind, uint32_t mask, uint32_t v)
         default: morph_roll_seed(pi, v & 1u, seed); break;   /* MQ_ROLL */
         }
     }
-    if (kind == MQ_ROLL)
+    if (kind == MQ_ROLL) {
         morph.seed = (uint16_t)seed;
+        TIDE_TAKE_ROLL(mask, seed);                      /* TIDE hook (b10 round 8): the part that holds a take's answer writes it again with this seed */
+    }
     return seed;
 }
 

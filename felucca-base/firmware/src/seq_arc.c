@@ -177,4 +177,6 @@ static void tide_loaded(uint32_t mask)
             seqm_home(k), tide_mu[k] = 0;                /* (a factory multi's load sets tide_mu after this: multi.c project_load) */
     tarc.run = 0;
     sqm_restart = 1;
+    tk_reset_v = 1;                                      /* (b10 round 8: the takes' history belongs to the music that was) */
+    tk_fresh_v = 0;
 }
