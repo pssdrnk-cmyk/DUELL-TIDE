@@ -181,10 +181,3 @@ static void tide_ghost_poll(void)
         }
     }
 }
-/* b10 round 8 (tide_take.c): the sequencer enters a step of a part whose first take is being recorded (tide.h TIDE_REC_REPLACE_PASS; the audio path: one increment) */
-static void tide_take_step(track_t *t)
-{
-    uint32_t p = trk_index(t);
-    if (p < 2u && ((tk_first >> p) & 1u) && tk_adv[p] < 255u)
-        tk_adv[p]++;
-}

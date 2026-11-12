@@ -132,47 +132,50 @@ static void empty_part(uint32_t p)
     memset(trk[p].step, 0, sizeof trk[p].step);
     trk[p].p[P_SLEN] = 16; trk[p].p[P_SDIV] = 2; trk[p].p[P_AMODE] = 0; trk[p].p[P_VOICE] = V_POLY; trk[p].p[P_CHRD] = 0; trk[p].p[P_TRANS] = 0;
 }
-static void at_step(track_t *t, uint32_t idx) { while (t->seq_idx != idx) run(16); }
+static void at_step(track_t *t, uint32_t idx) { uint32_t n = 0; while (t->seq_idx != idx && n++ < 1000u) run(16); if (n > 1000u) printf("take: at_step %u never came%c", idx, 10); }
 static void rec_note_at(uint32_t part, uint32_t idx, uint32_t note, uint32_t ms)
 {
     at_step(&trk[part], idx);
     input_on(&trk[part], note, 100); run(ms); input_off(&trk[part], note);
 }
 static int said(const char *w) { return ui.msg_t && !strncmp(ui.msg, w, str_len(w)); }   /* (shown now: the text stays in the buffer after its frames are over) */
-/* a first take on an empty part 1 (a melody over ~1.5 bars), closed by REC; part 2 holds the PAT pattern */
+/* b10 assist2: an answer is written in the other part on the next bar line (tide_take.c tk_land) */
+static void land(void) { uint32_t n = 0; while (tk_pend && n++ < 300u) run(16); run(32); }
+static void rec_off(void) { song.rec = 0; run(48); land(); }
+/* a take on an empty part 1 whose LEN is 2 bars (a melody over ~1.5 bars), closed by REC; part 2 holds the PAT pattern */
 static void first_take(void)
 {
     boot();
-    empty_part(0); setup(1, 0, V_POLY);
+    empty_part(0); trk[0].p[P_SLEN] = 32; setup(1, 0, V_POLY);
     tide_answer = TA_BASS; tide_answer_on = 0;
     start();
     song.rec = 1; run(100);
     rec_note_at(0, 2, 69, 60); rec_note_at(0, 6, 72, 60); rec_note_at(0, 10, 76, 60); rec_note_at(0, 14, 74, 60);
     rec_note_at(0, 18, 72, 60); rec_note_at(0, 22, 69, 60);
     at_step(&trk[0], 26);
-    song.rec = 0; run(120);
+    rec_off();
 }
 static void take_lifecycle(void)
 {
     uint32_t sig1_before, sig2_before, sig1_after, sig2_after, i, n2 = 0;
     boot();
-    empty_part(0); setup(1, 0, V_POLY);
+    empty_part(0); trk[0].p[P_SLEN] = 32; setup(1, 0, V_POLY);
     sig1_before = psig(0); sig2_before = psig(1);
     CHECK("a fresh unit: ANSWER is BASS LINE, ANSWER ON is the other part", tide_answer == TA_BASS && tide_answer_on == 0u && jl_get(JL_ANS) == TA_BASS && !strcmp(jl_vname(JL_ANS, 0), "OFF") &&
           !strcmp(jl_vname(JL_ANS, 1), "BASS LINE") && !strcmp(jl_vname(JL_ANS, 2), "DOUBLE") && !strcmp(JL_NAME[JL_ANSON], "ANSWER ON"));
     first_take();
     sig1_after = psig(0); sig2_after = psig(1);
     for (i = 0; i < NSTEP; i++) n2 += trk[1].step[i].n != 0;
-    CHECK("the first take on an empty part sets the loop: 26 steps are 2 bars (32 steps)", trk[0].p[P_SLEN] == 32);
+    CHECK("the loop is the part's LEN (2 bars, 32 steps), whatever the take's length", trk[0].p[P_SLEN] == 32);
     CHECK("... the take is in the part (6 notes)", trk[0].step[2].note[0] == 69 && trk[0].step[22].note[0] == 69);
-    CHECK("... the other part was given the answer: its loop is the take's, its pattern is new", trk[1].p[P_SLEN] == 32 && sig2_after != sig2_before && n2 > 0);
-    CHECK("... the header names it: BASS LINE and the key (guessed: a ?)", said("BASS LINE") && strchr(ui.msg, '?'));
+    CHECK("... the other part was given the answer on the bar line: its loop is the take's, its pattern is new", trk[1].p[P_SLEN] == 32 && sig2_after != sig2_before && n2 > 0);
+    CHECK("... the header names it: BASS LINE and the key", said("BASS LINE"));
     CHECK("... one step of history", tk_cnt == 1 && tk_pos == 1 && tk_fresh);
     /* undo / redo: OCT- held + a PRESETS turn: left back, right forward */
     CHECK("undo: left goes back one take", take_undo(-1) == 1u && said("UNDO TAKE 1"));
-    CHECK("... the take is gone (the loop and the steps as they were) and the answer with it", psig(0) == sig1_before && psig(1) == sig2_before && trk[0].p[P_SLEN] == 16 && trk[1].p[P_SLEN] == 16);
+    CHECK("... the take is gone and the answer with it", psig(0) == sig1_before && psig(1) == sig2_before && trk[0].p[P_SLEN] == 32 && trk[1].p[P_SLEN] == 16);
     CHECK("... nothing further back", take_undo(-1) == 0u);
-    CHECK("redo: right brings the take and its answer back", take_undo(1) == 1u && said("REDO TAKE 1") && psig(0) == sig1_after && psig(1) == sig2_after && trk[0].p[P_SLEN] == 32);
+    CHECK("redo: right brings the take and its answer back", take_undo(1) == 1u && said("REDO TAKE 1") && psig(0) == sig1_after && psig(1) == sig2_after && trk[1].p[P_SLEN] == 32);
     CHECK("... nothing further forward", take_undo(1) == 0u);
     TIDE_TAKE_STALE();
     CHECK("a load or a lock edit after the take: the gesture is the load undo's again", take_undo(-1) == 0u);
@@ -184,9 +187,9 @@ static void take_history(void)
     s[0] = psig(1);
     for (uint32_t k = 1; k < 4u; k++) {                  /* three more passes: each adds a note to part 1 (ADD) */
         tide_rec_replace = 0;
-        start(); song.rec = 1; run(100);
+        song.rec = 1; run(100);
         rec_note_at(0, 4 + k, 60 + 4 * k, 60);
-        song.rec = 0; run(120);
+        rec_off();
         s[k] = psig(1);
     }
     CHECK("4 takes: the history keeps the last 2", tk_cnt == 2 && tk_pos == 2);
@@ -195,7 +198,7 @@ static void take_history(void)
     CHECK("... the 1st is not kept", take_undo(-1) == 0u);
     CHECK("... redo twice goes to the last one", take_undo(1) == 1u && take_undo(1) == 1u && psig(1) == s[3]);
     take_undo(-1);
-    start(); song.rec = 1; run(100); rec_note_at(0, 9, 79, 60); song.rec = 0; run(120);
+    song.rec = 1; run(100); rec_note_at(0, 9, 79, 60); rec_off();
     CHECK("a take after an undo drops what could be redone", tk_cnt == 2 && tk_pos == 2 && take_undo(1) == 0u);
 }
 static void take_settings(void)
@@ -204,120 +207,228 @@ static void take_settings(void)
     boot(); empty_part(0); setup(1, 0, V_POLY); tide_answer = TA_OFF;
     before = psig(1);
     start(); song.rec = 1; run(100);
-    rec_note_at(0, 2, 69, 60); rec_note_at(0, 6, 72, 60); at_step(&trk[0], 12); song.rec = 0; run(120);
-    CHECK("ANSWER OFF: the loop is still set (1 bar), the other part is not touched, the take is undoable", trk[0].p[P_SLEN] == 16 && psig(1) == before && tk_cnt == 1 && take_undo(-1) == 1u);
+    rec_note_at(0, 2, 69, 60); rec_note_at(0, 6, 72, 60); at_step(&trk[0], 12); rec_off();
+    CHECK("ANSWER OFF: the loop stays LEN (1 bar), the other part is not touched, the take is undoable", trk[0].p[P_SLEN] == 16 && psig(1) == before && tk_cnt == 1 && take_undo(-1) == 1u);
     boot(); empty_part(0); setup(1, 0, V_POLY); tide_answer = TA_BASS; tide_answer_on = 1;
     before = psig(1);
     start(); song.rec = 1; run(100);
-    rec_note_at(0, 2, 69, 60); at_step(&trk[0], 12); song.rec = 0; run(120);
+    rec_note_at(0, 2, 69, 60); at_step(&trk[0], 12); rec_off();
     CHECK("ANSWER ON OFF: the other part is not touched", psig(1) == before);
     boot(); empty_part(0); setup(1, 0, V_POLY); tide_answer = TA_DOUBLE; tide_answer_on = 0;
     start(); song.rec = 1; run(100);
-    rec_note_at(0, 2, 69, 60); rec_note_at(0, 6, 72, 60); at_step(&trk[0], 12); song.rec = 0; run(120);
+    rec_note_at(0, 2, 69, 60); rec_note_at(0, 6, 72, 60); at_step(&trk[0], 12); rec_off();
     for (i = 0; i < NSTEP; i++) n2 += trk[1].step[i].n;
     CHECK("DOUBLE: the other part plays the take's notes a third above (2 notes at the same steps)", said("DOUBLE") && n2 == 2u && trk[1].step[2].n == 1u && trk[1].step[6].n == 1u);
+    boot(); empty_part(0); setup(1, 0, V_POLY); tide_answer = TA_BASS; tide_answer_on = 0;
+    before = psig(1);
+    start(); song.rec = 1; run(100);
+    rec_note_at(0, 2, 30, 60); at_step(&trk[0], 12); rec_off();
+    (void)before;
+    CHECK("a take down in the bass register: no limit message", !said("NO ANSWER"));
     boot(); setup(0, 0, V_POLY); setup(1, 0, V_POLY); tide_answer = TA_BASS; tide_answer_on = 0; tide_rec_replace = 0;
     start(); song.rec = 1; run(100);
-    rec_note_at(0, 5, 67, 60); song.rec = 0; run(120);
+    rec_note_at(0, 5, 67, 60); rec_off();
     CHECK("a pass over a part that has a pattern (ADD): the loop stays 16, the answer is written, one take", trk[0].p[P_SLEN] == 16 && trk[1].p[P_SLEN] == 16 && tk_cnt == 1);
     boot(); setup(0, 0, V_POLY); setup(1, 0, V_POLY);
-    start(); song.rec = 1; run(100); song.rec = 0; run(120);
+    start(); song.rec = 1; run(100); rec_off();
     CHECK("a pass that writes nothing is no take", tk_cnt == 0);
     boot(); setup(0, 0, V_POLY); setup(1, 0, V_POLY);
     song.rec = 1;
     CHECK("an armed part plays its stored step, not an evolved one", seq_play_step_at(&trk[0], 3, 0) == &trk[0].step[3]);
     song.rec = 0;
 }
+/* the answer switches on the bar line, not when REC goes off */
+static void take_barline(void)
+{
+    uint32_t s2;
+    boot(); empty_part(0); trk[0].p[P_SLEN] = 32; setup(1, 0, V_POLY); tide_answer = TA_BASS; tide_answer_on = 0;
+    s2 = psig(1);
+    start(); song.rec = 1; run(100);
+    rec_note_at(0, 2, 69, 60); rec_note_at(0, 6, 72, 60);
+    at_step(&trk[0], 9);
+    song.rec = 0; run(48);
+    CHECK("REC off mid-bar: the answer is made (the header says so) but waits for the bar line", said("BASS LINE") && tk_pend && psig(1) == s2);
+    while (tk_pend && trk[0].seq_idx != 15u) run(16);
+    CHECK("... it lands in the last 16th of the bar, before the downbeat", !tk_pend && psig(1) != s2 && (clk_step & 15u) == 15u);
+}
 static void take_roll_test(void)
 {
-    uint32_t a0, a1, a2, h0;
+    uint32_t a0, a1, a2, h0, s2;
+    boot(); setup(1, 0, V_POLY);
+    s2 = psig(1);
     first_take();
     a0 = psig(1);
-    morph_do(MQ_ROLL, 1u, 0u); run(32);
+    morph_do(MQ_ROLL, 1u, 0u); run(32); land();
     CHECK("a ROLL of the take's own part: the answer is left alone", psig(1) == a0 && tk_cnt == 1);
-    morph_do(MQ_ROLL, 2u, 0u); run(32);
+    morph_do(MQ_ROLL, 2u, 0u); run(32); land();
     a1 = psig(1);
-    CHECK("a ROLL of the answering part writes the answer again with the roll's seed", a1 != a0 && tk_cnt == 2 && tk_m.roll == 1u);
+    CHECK("a ROLL of the answering part writes the answer again with the roll's seed, and takes no history step", a1 != a0 && tk_cnt == 1 && tk_m.roll == 1u);
     CHECK("... the header says ROLL 1  BASS LINE", said("ROLL 1  BASS LINE"));
     CHECK("... the take stays", trk[0].step[2].note[0] == 69 && trk[0].p[P_SLEN] == 32);
     h0 = psig(0);
-    morph_do(MQ_ROLL, 3u, 1u); run(32);
+    morph_do(MQ_ROLL, 3u, 1u); run(32); land();
     a2 = psig(1);
-    CHECK("a second roll (BOTH parts): another answer, one more step", a2 != a1 && tk_cnt == 2 && tk_m.roll == 2u && psig(0) == h0);
-    CHECK("undo: the roll goes back to the answer before it", take_undo(-1) == 1u && said("UNDO ROLL 2") && psig(1) == a1);
-    CHECK("... and the roll before", take_undo(-1) == 1u && said("UNDO ROLL 1") && psig(1) == a0);
-    CHECK("... redo forward again", take_undo(1) == 1u && said("REDO ROLL 1") && psig(1) == a1);
+    CHECK("a second roll (BOTH parts): another answer, still one history step", a2 != a1 && tk_cnt == 1 && tk_m.roll == 2u && psig(0) == h0);
+    CHECK("undo after rolls: back to before the take (the rolls are not steps)", take_undo(-1) == 1u && said("UNDO TAKE 1") && psig(1) == s2);
+    CHECK("... redo: the take with the last rolled answer", take_undo(1) == 1u && said("REDO TAKE 1") && psig(1) == a2);
     trk[1].step[3].n = 1; trk[1].step[3].note[0] = 50; trk[1].step[3].time = ST_NOTE;   /* the answer edited by hand is the player's now */
     a0 = psig(1);
-    morph_do(MQ_ROLL, 2u, 0u); run(32);
+    morph_do(MQ_ROLL, 2u, 0u); run(32); land();
     CHECK("a ROLL after the answer was edited leaves it alone", psig(1) == a0);
+    /* ROLL while REC is armed: the answer is rolled, and the pass keeps the rolled seed */
+    first_take();
+    song.rec = 1; run(100);
+    a0 = psig(1);
+    morph_do(MQ_ROLL, 2u, 0u); run(32); land();
+    a1 = psig(1);
+    CHECK("ROLL while REC is armed: the answer is written again", a1 != a0 && tk_m.roll == 1u && tk_live);
+    at_step(&trk[0], 3);
+    rec_off();
+    CHECK("... REC off with no change: the rolled answer stays, no new take", psig(1) == a1 && tk_cnt == 1);
 }
-
+static uint32_t notes_in(uint32_t p, uint32_t a, uint32_t b) { uint32_t i, n = 0; for (i = a; i < b; i++) n += trk[p].step[i].n != 0; return n; }
 static void take_reply(void)
 {
-    uint32_t a0, a1;
+    static const uint8_t LENS[3] = {16, 32, 64};
+    uint32_t a0, li;
+    for (li = 0; li < 3u; li++) {
+        uint32_t L = LENS[li], h = L / 2u;
+        boot(); empty_part(0); trk[0].p[P_SLEN] = (int16_t)L; setup(1, 0, V_POLY); tide_answer = TA_REPLY; tide_answer_on = 0;
+        start(); song.rec = 1; run(100);
+        rec_note_at(0, 1, 69, 60); rec_note_at(0, 3, 72, 60); rec_note_at(0, 5, 76, 60); at_step(&trk[0], 7); rec_off();
+        if (li == 0u)
+            printf("take: REPLY on LEN 16: part 2 steps 9 11 13: %u %u %u, first half %u notes\n", trk[1].step[9].n, trk[1].step[11].n, trk[1].step[13].n, notes_in(1, 0, 8));
+        CHECK("REPLY on LEN 16 / 32 / 64: the loops stay LEN, the header says REPLY", trk[0].p[P_SLEN] == (int16_t)L && trk[1].p[P_SLEN] == (int16_t)L && said("REPLY"));
+        CHECK("... the first half calls, the second answers: 3 notes at the call's steps + LEN / 2, nothing in the first half", trk[1].step[h + 1u].n == 1 && trk[1].step[h + 3u].n == 1 && trk[1].step[h + 5u].n == 1 && notes_in(1, 0, h) == 0u);
+    }
+    a0 = psig(1);
+    for (uint32_t r = 0; r < 4u && psig(1) == a0; r++) {          /* (a REPLY rolls among 3 octaves: a roll may land on the same one) */
+        morph_do(MQ_ROLL, 2u, r); run(32); land();
+    }
+    CHECK("a ROLL of the reply writes it again inside LEN, no history step", trk[0].p[P_SLEN] == 64 && trk[1].p[P_SLEN] == 64 && tk_cnt == 1 && psig(1) != a0);
     boot(); empty_part(0); setup(1, 0, V_POLY); tide_answer = TA_REPLY; tide_answer_on = 0;
     start(); song.rec = 1; run(100);
-    rec_note_at(0, 2, 69, 60); rec_note_at(0, 6, 72, 60); rec_note_at(0, 10, 76, 60); at_step(&trk[0], 13); song.rec = 0; run(120);
-    CHECK("REPLY on a 1 bar call: both loops double (32 steps), the header says REPLY", trk[0].p[P_SLEN] == 32 && trk[1].p[P_SLEN] == 32 && said("REPLY"));
-    CHECK("... the reply is in the bar after the call (3 notes at 18, 22, 26)", trk[1].step[18].n == 1 && trk[1].step[22].n == 1 && trk[1].step[26].n == 1 && trk[1].step[2].n == 0);
-    a0 = psig(1);
-    morph_do(MQ_ROLL, 2u, 0u); run(32);
-    a1 = psig(1);
-    CHECK("a ROLL of the reply keeps the doubled loop (the call is still one bar) and writes it again", trk[0].p[P_SLEN] == 32 && trk[1].p[P_SLEN] == 32 && tk_cnt == 2 && trk[1].step[18].n == 1);
-    CHECK("... undo goes back to the first reply", take_undo(-1) == 1u && psig(1) == a0);
+    rec_note_at(0, 10, 69, 60); rec_note_at(0, 13, 72, 60); at_step(&trk[0], 15); rec_off();
+    CHECK("he played only in the second half: the first half answers it", trk[1].step[2].n == 1 && trk[1].step[5].n == 1 && notes_in(1, 8, 16) == 0u);
     boot(); empty_part(0); setup(1, 0, V_POLY); tide_answer = TA_ECHO; tide_answer_on = 0;
     start(); song.rec = 1; run(100);
-    rec_note_at(0, 2, 69, 60); rec_note_at(0, 8, 72, 60); at_step(&trk[0], 13); song.rec = 0; run(120);
-    {
-        uint32_t i, n = 0;
-        for (i = 0; i < NSTEP; i++) n += trk[1].step[i].n != 0;
-        CHECK("ECHO: 4 throws of the last note, the loop doubled", said("ECHO") && n == 4u && trk[1].p[P_SLEN] == 32 && trk[1].step[9].n == 1u);
-    }
-    boot(); empty_part(0); setup(1, 0, V_POLY); tide_answer = TA_REPLY; tide_answer_on = 0;
-    {
-        uint32_t before = psig(1);
-        start(); song.rec = 1; run(100);
-        rec_note_at(0, 2, 69, 60); at_step(&trk[0], 40); song.rec = 0; run(120);
-        CHECK("a call of 3 bars (a 4 bar loop): REPLY says so and writes nothing", trk[0].p[P_SLEN] == 64 && psig(1) == before && said("CALL: 2 BARS AT MOST"));
-    }
+    rec_note_at(0, 2, 69, 60); rec_note_at(0, 8, 72, 60); at_step(&trk[0], 13); rec_off();
+    CHECK("ECHO: 4 throws of the last note, wrapping round LEN 16 (steps 9 12 15 and 2)", said("ECHO") && notes_in(1, 0, 16) == 4u && trk[1].p[P_SLEN] == 16 && trk[1].step[9].n == 1u && trk[1].step[2].n == 1u);
+    boot(); empty_part(0); trk[0].p[P_SLEN] = 64; setup(1, 0, V_POLY); tide_answer = TA_REPLY; tide_answer_on = 0;
+    start(); song.rec = 1; run(100);
+    rec_note_at(0, 2, 69, 60); at_step(&trk[0], 40); rec_off();
+    CHECK("a call in a 4 bar loop: no limit, the reply is written in bars 3-4", trk[0].p[P_SLEN] == 64 && trk[1].step[34].n == 1 && !said("CALL"));
 }
 static void take_line_test(void)
 {
     uint32_t pr = 0, beat = 0, mask = 3u;
     char l[48];
-    boot(); empty_part(0); setup(1, 0, V_POLY);
+    boot(); empty_part(0); trk[0].p[P_SLEN] = 64; setup(1, 0, V_POLY);
     CHECK("no take: the tide line and knob 1 are as they were", take_line(&pr) == 0u && !take_text(l) && tide_line_state(&pr, &beat, &mask) == 0);
     start(); song.rec = 1; run(100);
     at_step(&trk[0], 20);
-    CHECK("a first take records: take_line says recording, the tide line is REC red (state 6), the fill is 20 of 64", take_line(&pr) == 2u && tide_line_state(&pr, &beat, &mask) == 6 && pr / 1024u == 20u);
-    CHECK("... knob 1's line says TAKE  BAR 2/4 (step 20 of the 64 the first take runs at)", take_text(l) == 1u && !strcmp(l, "TAKE  BAR 2/4"));
+    CHECK("a take records: take_line says recording, the tide line is REC red (state 6), the fill is 20 of LEN 64", take_line(&pr) == 2u && tide_line_state(&pr, &beat, &mask) == 6 && pr / 1024u == 20u);
+    CHECK("... knob 1's line says TAKE  BAR 2/4", take_text(l) == 1u && !strcmp(l, "TAKE  BAR 2/4"));
     cin_left = 2;
     CHECK("the count-in of a take: dashes (state 5)", tide_line_state(&pr, &beat, &mask) == 5);
     cin_left = 0;
-    song.rec = 0; run(120);
+    rec_off();
     CHECK("closed: the line is as before", take_line(&pr) == 0u && tide_line_state(&pr, &beat, &mask) == 0);
+}
+/* REC from stop arms and waits; the first key starts PLAY at step 1 with its note on step 1 */
+static void take_first_key(void)
+{
+    uint32_t pr = 0, beat = 0, mask = 3u;
+    boot(); empty_part(0); setup(1, 0, V_POLY); tide_answer = TA_BASS; tide_answer_on = 0; cin_bars = 0;
+    song.sel = 0;
+    rec_tap(1u); run(100);
+    CHECK("REC from stop arms and waits: no PLAY", (song.rec & 1u) && !song.playing);
+    CHECK("... the tide line shows REC armed (dashes, state 5)", tide_line_state(&pr, &beat, &mask) == 5);
+    run(500);
+    CHECK("... still waiting half a second later", !song.playing);
+    input_on(&trk[0], 64, 100); run(40); input_off(&trk[0], 64); run(40);
+    CHECK("the first key starts PLAY", song.playing);
+    CHECK("... its note is on step 1", trk[0].step[0].n == 1 && trk[0].step[0].note[0] == 64);
+    CHECK("... the tide line turns REC red (state 6)", tide_line_state(&pr, &beat, &mask) == 6);
+    rec_tap(1u); run(48); land();
+    CHECK("REC off: the take and its answer", tk_cnt == 1 && tk_m.ans == 2u);
+    stop();
+    /* MIDI: the same */
+    boot(); empty_part(0); setup(1, 0, V_POLY); cin_bars = 0; song.sel = 0;
+    rec_tap(1u); run(100);
+    midi_event(0x90, 0, 67, 100); run(40); midi_event(0x80, 0, 67, 0); run(40);
+    CHECK("a MIDI note starts it the same way, on step 1", song.playing && trk[0].step[0].n == 1 && trk[0].step[0].note[0] == 67);
+    song.rec = 0; run(48); stop();
+    /* the count-in on: as before (REC starts it) */
+    boot(); empty_part(0); setup(1, 0, V_POLY); cin_bars = 1; click_mode = CLICK_REC; song.sel = 0;
+    rec_tap(1u); run(40);
+    CHECK("with COUNT-IN on, REC from stop counts in as before", seq_counting() || song.playing);
+    song.rec = 0; stop(); cin_bars = 0; click_mode = 0;
+}
+/* LAYER: while a part records, only it hears the keys */
+static void take_layer(void)
+{
+    uint32_t i, on1 = 0, on2 = 0;
+    boot(); setup(0, 0, V_POLY); setup(1, 0, V_POLY); duell_mode_force(DM_LAYER);
+    start(); song.rec = 2u; run(100);
+    midi_event(0x90, 0, 71, 100); run(40);
+    for (i = 0; i < NVOICE; i++) {
+        on1 += trk[0].v[i].active && trk[0].v[i].note == 71u;
+        on2 += trk[1].v[i].active && trk[1].v[i].note == 71u;
+    }
+    midi_event(0x80, 0, 71, 0); run(40);
+    CHECK("LAYER, part 2 recording: the note plays part 2 only", on2 > 0u && on1 == 0u);
+    song.rec = 0; run(48); stop();
+    duell_mode_force(DM_STEREO);
+}
+/* an ARP SEQ part: the held chord's notes (CHRD) on a key, and the take played back as single notes */
+static void take_arpseq(void)
+{
+    uint32_t i, n;
+    boot(); setup(0, AM_SEQ_ID, V_POLY); setup(1, 0, V_POLY); tide_answer = TA_OFF; tide_rec_replace = 0;
+    trk[0].p[P_CHRD] = 1;                                /* (a major chord on every key) */
+    start(); song.rec = 1; run(100);
+    wait_arp(&trk[0], 5);
+    midi_event(0x90, 0, 67, 100); run(40); midi_event(0x80, 0, 67, 0); run(40);
+    printf("take: ARP SEQ, CHRD maj on one MIDI note: step 5 = %u notes: %u (the pattern's %u)\n", trk[0].step[5].n, trk[0].step[5].note[0], PAT[5]);
+    CHECK("ARP SEQ with CHRD: a key's chord sets the step once, to the key's own note (not its top tone)", trk[0].step[5].n == 1u && trk[0].step[5].note[0] == 67u);
+    rec_off();
+    CHECK("the take on an ARP SEQ part plays single notes: it leaves ARP SEQ, on the arp's rate", trk[0].p[P_AMODE] == 0 && trk[0].p[P_SDIV] == trk[0].p[P_ARATE]);
+    for (i = 0, n = 0; i < 16u; i++) n += trk[0].step[i].n == 1u;
+    CHECK("... one note a step", n == 16u);
+    CHECK("undo brings ARP SEQ back", take_undo(-1) == 1u && trk[0].p[P_AMODE] == AM_SEQ_ID);
+    stop();
+    /* the answer on an ARP SEQ part */
+    boot(); empty_part(0); setup(1, AM_SEQ_ID, V_POLY); trk[1].p[P_ARATE] = 9; tide_answer = TA_BASS; tide_answer_on = 0;
+    start(); song.rec = 1; run(100);
+    rec_note_at(0, 2, 69, 60); rec_note_at(0, 6, 72, 60); rec_note_at(0, 10, 76, 60); at_step(&trk[0], 12); rec_off();
+    for (i = 0, n = 0; i < 16u; i++) n += trk[1].step[i].n > 1u;
+    CHECK("a BASS LINE on an ARP SEQ pad (slow rate): single notes on the take's grid", trk[1].p[P_AMODE] == 0 && trk[1].p[P_SDIV] == 2 && notes_in(1, 0, 16) >= 1u && n == 0u);
+    stop();
 }
 /* ---- the answer follows the live pass (owner: "when I overwrite an existing sequence via live play the response should be generated instantly") ---- */
 static void take_live(void)
 {
-    uint32_t s1, s2, a1, a2, a3, pass;
-    boot(); setup(0, 0, V_POLY); setup(1, 0, V_POLY); tide_answer = TA_BASS; tide_answer_on = 0; tide_rec_replace = 0;
-    s1 = psig(0); s2 = psig(1);
-    start(); song.rec = 1; run(100);
-    CHECK("REC armed over an existing part: nothing is written yet", psig(1) == s2 && tk_cnt == 0);
-    for (pass = 1; pass <= 3u; pass++) {
-        rec_note_at(0, 2 + 3 * pass, 60 + 4 * pass, 60);
-        at_step(&trk[0], 15); run(60);                    /* the last step of the pass: the answer is made from the part's steps as they are now */
-        if (pass == 1) a1 = psig(1);
-        if (pass == 2) a2 = psig(1);
-        if (pass == 3) a3 = psig(1);
-        CHECK("an answer is written at the end of the loop pass, before REC is off, and no history step yet", psig(1) != s2 && tk_cnt == 0 && tk_live && said("BASS LINE"));
+    uint32_t s1, s2, a1 = 0, a2 = 0, a3 = 0, pass, m;
+    for (m = TA_BASS; m <= TA_ECHO; m++) {
+        boot(); setup(0, 0, V_POLY); setup(1, 0, V_POLY); tide_answer = (uint8_t)m; tide_answer_on = 0; tide_rec_replace = 0;
+        s1 = psig(0); s2 = psig(1);
+        start(); song.rec = 1; run(100);
+        CHECK("REC armed over an existing part: nothing is written yet", psig(1) == s2 && tk_cnt == 0);
+        for (pass = 1; pass <= 3u; pass++) {
+            rec_note_at(0, 2 + 3 * pass, 60 + 4 * pass, 60);
+            at_step(&trk[0], 15); run(60);                    /* the last step of the pass: the answer is made from the part's steps as they are now, and lands on the bar line */
+            if (pass == 1) a1 = psig(1);
+            if (pass == 2) a2 = psig(1);
+            if (pass == 3) a3 = psig(1);
+            CHECK("every mode: an answer at the end of the loop pass, before REC is off, no history step yet", psig(1) != s2 && tk_cnt == 0 && tk_live);
+        }
+        CHECK("the answer follows the take (it changed between passes)", a1 != a2 || a2 != a3 || a1 != s2);
+        at_step(&trk[0], 3); rec_off();
+        CHECK("REC off: one history step for the whole armed session, the answer unchanged (same seed)", tk_cnt == 1 && tk_pos == 1 && psig(1) == a3);
+        CHECK("undo goes back to before the armed session", take_undo(-1) == 1u && psig(0) == s1 && psig(1) == s2);
+        stop();
     }
-    CHECK("the answer follows the take (it changed between passes)", a1 != a2 || a2 != a3 || a1 != s2);
-    at_step(&trk[0], 3); song.rec = 0; run(120);
-    CHECK("REC off: one history step for the whole armed session, the answer unchanged (same seed, take unchanged since the last pass)", tk_cnt == 1 && tk_pos == 1 && psig(1) == a3);
-    CHECK("undo goes back to before the armed session: the take's part and the answer's part as they were", take_undo(-1) == 1u && psig(0) == s1 && psig(1) == s2);
     /* ANSWER ON OFF and ANSWER OFF: nothing changes */
     boot(); setup(0, 0, V_POLY); setup(1, 0, V_POLY); tide_answer = TA_BASS; tide_answer_on = 1; tide_rec_replace = 0;
     s2 = psig(1);
@@ -327,7 +438,7 @@ static void take_live(void)
     tide_answer_on = 0; tide_answer = TA_OFF;
     rec_note_at(0, 9, 70, 60); at_step(&trk[0], 15); run(60);
     CHECK("ANSWER OFF: no answer while the pass is open", psig(1) == s2 && !tk_live);
-    song.rec = 0; run(120);
+    rec_off();
 }
 /* the header message of a take / answer stays 4 bars, 4 s at least, 8 s at most (120 bpm: 8 s) */
 static void take_hold(void)
@@ -336,25 +447,25 @@ static void take_hold(void)
     first_take();
     CHECK("the answer's message is shown", said("BASS LINE"));
     t0 = fm1_ms;
-    run(3500);
-    CHECK("... still there after 3.5 s", said("BASS LINE") && fm1_ms - t0 >= 3400u);
-    run(3500);
-    CHECK("... and after 7 s (4 bars at 120 bpm = 8 s)", said("BASS LINE") && fm1_ms - t0 >= 6900u);
-    run(2800);
-    CHECK("... and gone after 9.8 s (the held frames end with the hold, 8 s, and the normal 0.7 s)", !said("BASS LINE") && fm1_ms - t0 >= 9700u);
+    run(3000);
+    CHECK("... still there after 3 s", said("BASS LINE") && fm1_ms - t0 >= 2900u);
+    run(3000);
+    CHECK("... and after 6 s (4 bars at 120 bpm = 8 s from the take)", said("BASS LINE") && fm1_ms - t0 >= 5900u);
+    run(4000);
+    CHECK("... and gone 10 s later", !said("BASS LINE"));
     boot_bpm = 240;
     first_take();
     t0 = fm1_ms;
-    run(3500);
-    CHECK("at 240 bpm (4 bars = 4 s) the minimum applies: still there after 3.5 s", said("BASS LINE"));
     run(2500);
+    CHECK("at 240 bpm (4 bars = 4 s) the minimum applies: still there 2.5 s later", said("BASS LINE"));
+    run(3500);
     CHECK("... gone after 6 s", !said("BASS LINE"));
     boot_bpm = 120;
 }
 int main(void)
 {
     step1();
-    take_lifecycle(); take_history(); take_settings(); take_roll_test(); take_reply(); take_line_test(); take_live(); take_hold();
+    take_lifecycle(); take_history(); take_settings(); take_barline(); take_roll_test(); take_reply(); take_line_test(); take_first_key(); take_layer(); take_arpseq(); take_live(); take_hold();
     printf("take: %u checks, %u FAIL\n", checks, failures);
     return failures ? 1 : 0;
 }
