@@ -8,8 +8,8 @@
  *   the answer again with the roll's seed, one history step. The generators are the host prototype's (tools/perf/perf_probe.c): integer only, deterministic, the same seed the same answer.
  * Pool: 4 snapshots of both parts' steps (4.6 KB), the take's events and the answer's steps (1.1 KB). */
 enum { TA_OFF, TA_BASS, TA_DOUBLE, TA_N };
-static volatile uint8_t tide_answer = TA_BASS;           /* TIDE SETTINGS ANSWER: what the other part is given when a take closes (a fresh unit: BASS LINE) */
-static volatile uint8_t tide_answer_on;                  /* TIDE SETTINGS ANSWER ON: 0 the other part, 1 OFF */
+static volatile uint8_t tide_answer __attribute__((section(".pool")));           /* TIDE SETTINGS ANSWER: what the other part is given when a take closes (a fresh unit: BASS LINE) */
+static volatile uint8_t tide_answer_on __attribute__((section(".pool")));                  /* TIDE SETTINGS ANSWER ON: 0 the other part, 1 OFF */
 
 typedef struct {                                         /* the answer that is live now (it travels with a history state) */
     uint8_t ans;                                         /* the part that holds it + 1, 0 none */
@@ -28,17 +28,15 @@ static step_t tk_out[NSTEP] __attribute__((section(".pool")));   /* the answer b
 typedef struct { uint8_t t, len, note, vel; } tk_ev_t;
 #define TK_MAXE 96u
 static tk_ev_t tk_ev[TK_MAXE] __attribute__((section(".pool")));
-static uint32_t tk_nev;
-static tk_meta_t tk_m;                                   /* the live answer's */
-static uint16_t tk_hn[2];                                /* history step j: its number, bit 15 a roll */
-static uint8_t tk_cnt, tk_pos, tk_open, tk_oldlen[2];   /* (tk_fresh_v, tk_first, tk_adv ..: tide.h) */
-static uint16_t tk_total;
+static uint32_t tk_nev __attribute__((section(".pool")));
+static tk_meta_t tk_m __attribute__((section(".pool")));                                   /* the live answer's */
+static uint16_t tk_hn[2] __attribute__((section(".pool")));                                /* history step j: its number, bit 15 a roll */
+static uint8_t tk_cnt __attribute__((section(".pool"))), tk_pos __attribute__((section(".pool"))), tk_open __attribute__((section(".pool"))), tk_oldlen[2] __attribute__((section(".pool")));   /* (tk_fresh_v, tk_first, tk_adv ..: tide.h) */
+static uint16_t tk_total __attribute__((section(".pool")));
 #define tk_fresh tk_fresh_v
 
 /* ---- the key: SCL (scale_g, root_g), else the take's own (guessed) ---- */
-static uint8_t tk_deg[8], tk_nd, tk_kr, tk_km;
-static uint8_t tk_guess;
-static const uint16_t TK_KMAJ[12] = {639, 223, 348, 233, 437, 409, 252, 519, 239, 365, 229, 288}, TK_KMIN[12] = {633, 268, 352, 538, 260, 353, 254, 475, 398, 266, 334, 317};
+static uint8_t tk_deg[8] __attribute__((section(".pool"))), tk_nd __attribute__((section(".pool"))), tk_kr __attribute__((section(".pool"))), tk_km __attribute__((section(".pool"))), tk_guess __attribute__((section(".pool")));
 static const uint8_t TK_SMAJ[7] = {0, 2, 4, 5, 7, 9, 11}, TK_SMIN[7] = {0, 2, 3, 5, 7, 8, 10};
 static void tk_key(void)
 {
@@ -53,21 +51,14 @@ static void tk_key(void)
         tk_km = (uint8_t)(((mask >> 3) & 1u) && !((mask >> 4) & 1u));
         return;
     }
-    {   /* the take alone says: the best correlation with the major and minor profiles (covariance: the norms are the same for every key) */
-        int32_t h[12] = {0}, best = -0x7FFFFFFF, sh = 0;
+    {   /* the take alone says: the pitch classes weighed by length and beat; a tonic, its fifth and its third (minor or major) count, the other third and the semitones above the tonic and the tritone count against */
+        int32_t h[12] = {0}, best = -0x7FFFFFFF;
         uint32_t r, m;
         for (i = 0; i < tk_nev; i++)
             h[tk_ev[i].note % 12u] += (int32_t)tk_ev[i].len * 4 + (tk_ev[i].t % 4u == 0u ? 2 : 0);
-        for (i = 0; i < 12u; i++)
-            sh += h[i];
         for (m = 0; m < 2u; m++)
             for (r = 0; r < 12u; r++) {
-                int32_t s = 0, sp = 0;
-                const uint16_t *p = m ? TK_KMIN : TK_KMAJ;
-                for (i = 0; i < 12u; i++)
-                    sp += p[i];
-                for (i = 0; i < 12u; i++)
-                    s += (h[(i + r) % 12u] * 12 - sh) / 16 * ((int32_t)p[i] * 12 - sp) / 16;
+                int32_t s = 3 * h[r] + 2 * h[(r + 7) % 12u] + 2 * h[(r + 4 - m) % 12u] - 3 * h[(r + 3 + m) % 12u] - 2 * h[(r + 1) % 12u] - 2 * h[(r + 6) % 12u];
                 if (s > best) {
                     best = s;
                     tk_kr = (uint8_t)r;
@@ -177,7 +168,7 @@ static uint32_t tk_rubs(int32_t t, int32_t len, int32_t note)
 }
 
 /* ---- the answer's steps ---- */
-static uint32_t tk_olen;                                 /* the answer's length in steps */
+static uint32_t tk_olen __attribute__((section(".pool")));                                 /* the answer's length in steps */
 static void tk_put(int32_t t, int32_t len, int32_t note, uint32_t vel, uint32_t mono)
 {
     step_t *s;
@@ -207,7 +198,7 @@ static void tk_put(int32_t t, int32_t len, int32_t note, uint32_t vel, uint32_t 
 }
 
 /* ---- chords, a bar each: the diatonic triad whose notes the bar weighs most ---- */
-static uint8_t tk_chord[4];
+static uint8_t tk_chord[4] __attribute__((section(".pool")));
 static void tk_chords(uint32_t bars, uint32_t spb)
 {
     static const int8_t PMIN[7] = {3, 0, 1, 2, 1, 2, 2}, PMAJ[7] = {3, 1, 0, 2, 2, 2, 0};
@@ -394,37 +385,24 @@ static uint32_t tk_gen(uint32_t src, uint32_t dst, uint32_t seed, uint32_t mode)
 }
 
 /* ---- the header ---- */
-static void tk_say(const char *pre, uint32_t no, uint32_t roll)
+static void tk_cat(char *b, const char *s) { str_cpy(b + str_len(b), s, 48u - str_len(b)); }
+static void tk_say(const char *pre, uint32_t no)
 {
-    char b[48];
-    uint32_t n = 0;
-    const char *w = tk_m.mode == TA_DOUBLE ? "DOUBLE" : "BASS LINE";
+    char b[48], n[8];
     b[0] = 0;
     if (pre) {
-        str_cpy(b, pre, sizeof b);
-        n = str_len(b);
-        fmt_int(b + n, (int32_t)no);
-        n = str_len(b);
-        b[n++] = ' ';
-        b[n++] = ' ';
-        b[n] = 0;
+        tk_cat(b, pre);
+        fmt_int(n, (int32_t)no);
+        tk_cat(b, n);
+        tk_cat(b, "  ");
     }
-    (void)roll;
-    str_cpy(b + n, w, sizeof b - n);
-    n = str_len(b);
-    str_cpy(b + n, "  ", sizeof b - n);
-    n = str_len(b);
-    str_cpy(b + n, N_NOTE[tk_m.key % 12u], sizeof b - n);
-    n = str_len(b);
-    str_cpy(b + n, (tk_m.flags & 4u) ? " " : tk_m.flags & 1u ? " MINOR" : " MAJOR", sizeof b - n);
-    if (tk_m.flags & 4u) {
-        n = str_len(b);
-        str_cpy(b + n, N_SCALE[(tk_m.flags >> 3) & 15u], sizeof b - n);
-    }
-    if (tk_m.flags & 2u) {
-        n = str_len(b);
-        str_cpy(b + n, "?", sizeof b - n);
-    }
+    tk_cat(b, tk_m.mode == TA_DOUBLE ? "DOUBLE  " : "BASS LINE  ");
+    tk_cat(b, N_NOTE[tk_m.key % 12u]);
+    tk_cat(b, (tk_m.flags & 4u) ? " " : tk_m.flags & 1u ? " MINOR" : " MAJOR");
+    if (tk_m.flags & 4u)
+        tk_cat(b, N_SCALE[(tk_m.flags >> 3) & 15u]);
+    if (tk_m.flags & 2u)
+        tk_cat(b, "?");
     ui_say(b, "");
 }
 
@@ -498,7 +476,7 @@ static void take_roll(uint32_t mask, uint32_t seed)
         return;
     }
     tk_push(tk_m.roll, 1u);
-    tk_say("ROLL ", tk_m.roll, 1u);
+    tk_say("ROLL ", tk_m.roll);
 }
 
 /* ---- passes: a take opens when a part's REC bit goes up, closes when it goes down ---- */
@@ -547,7 +525,7 @@ static void tk_close(uint32_t mask)                       /* the parts of mask s
         if (!((song.rec >> o) & 1u) && tk_gen(who, o, 0u, tide_answer)) {
             tk_m.roll = 0;
             tk_push(tk_total, 0u);
-            tk_say(0, 0, 0);
+            tk_say(0, 0);
             return;
         }
     }
