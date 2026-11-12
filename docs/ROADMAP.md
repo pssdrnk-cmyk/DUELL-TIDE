@@ -17,7 +17,7 @@ jam11 is the 1.0.0-b10 work; it is not tagged yet, so `TIDE_VERSION` still reads
 The owner's two tracks from the roadmap review of 12 November, plus quality checks and housekeeping. State: In progress (five lanes started on 12 November).
 
 - **Room on the unit.** 1,528 B of flash is free, so a size pass comes before features: RANDOM and COOK with TIDE's rules (Planned, below) wait for it, and so does anything that adds code. A room report says where the bytes are and one plan covers the next unit sweep (the switched-off savings of Later 9, 10 and 18 wait for that sweep).
-- **Test and tool debt.** The open rows Later 28 (a stale comment) and 30 (the store's cross-version fixture), and the design for per-module host objects (the first open point under Tooling). Done in b11: Later 33 (`budget` and `deadline` build the shipped MOVECOST=1 configuration; the OFF state stays covered by `movecost`; PR 57) and the `benchsim` M17 finding.
+- **Test and tool debt.** The one open point is the design for per-module host objects (the first open point under Tooling). Done in b11: Later 28 (a stale comment, PR 61), Later 30 (the store's cross-version fixture, PR 59) and Later 33 (`budget` and `deadline` build the shipped MOVECOST=1 configuration; the OFF state stays covered by `movecost`; PR 57) and the `benchsim` M17 finding.
 - **Quality and housekeeping.** One review pass per pull request; the workspace and the GitHub branches cleaned (merged worktrees and branches removed, old outputs moved aside); this page refreshed.
 
 ## On the unit
@@ -53,7 +53,7 @@ Status of 1 to 3 (b10): built and measured (`jam/check.sh -j N | --changed`, `ja
 
 ## Later, in order
 
-Numbers are kept as they were (code comments, the CHANGELOG and the audits cite them: "Later 22"), so the list has gaps. The finished rows (Later 1 to 3, 5, 6 "TRAVEL keeps the multi's colour", 11, 13 to 17, 19, 23, 25, and 27 and 33 in b11) are in [history/ROADMAP_built_b7-b10.md](history/ROADMAP_built_b7-b10.md) under "Done in b10".
+Numbers are kept as they were (code comments, the CHANGELOG and the audits cite them: "Later 22"), so the list has gaps. The finished rows (Later 1 to 3, 5, 6 "TRAVEL keeps the multi's colour", 11, 13 to 17, 19, 23, 25, and 27, 28, 30 and 33 in b11) are in [history/ROADMAP_built_b7-b10.md](history/ROADMAP_built_b7-b10.md) under "Done in b10".
 
 4. RAM headroom: the b7 build had only about 8 B above the build's 4,096 B rule at the start of the night (4,104 B free); a change that adds RAM will fail the build. Re-measure the merged image.
 6. TIDE range overshoot and the tideroles allowances: decided per case in b10 round 2 (`fork/b10-tide2`). The overshoots (M01 +4, M04 +2, M07 +5, M08 +3) were a TIDE bug: on an ARP SEQ chord part, a VOIC octave on the step and PEAK's open voicing of the arp chord added up past the lane (seq_voicelead.c sqm_varp, fixed). M15's -2 was the test reading 8 bars of a 16-bar loop (fixed). Left, musical, reasons in `AL[]` of `tests/tide_roles_test.c`: the stab anchors of M01, M02, M21 (bar 4 of 4 is CALL AND ANSWER's variation bar) and M16's AIR onset (one bell moved half a note). Done when tide2 is merged.
@@ -68,9 +68,7 @@ Numbers are kept as they were (code comments, the CHANGELOG and the audits cite 
 22. Before `1.0.0`: 0 missed blocks over the 16-multi GLIDE sweep (owner, 8 November); the CPU budget re-measured and made honest (findings 5, 6, 34; K9). **Host part done in b10 round 6** ([BUDGET_HONEST](BUDGET_HONEST.md), `sh host_tests.sh budgetcal`): the MOVECOST rest state fixed; findings 5 and 34 measured and written into `budget.c`, not folded (the PEAK fit already contains them); finding 6 measured at 3 .. 7 us warm, a timer (`st_budget_us`) added. **Left, unit only:** the six items at the end of that file (first: `st_budget_us` on the GLIDE sweep; over 20 us -> a snapshot from `budget_poll`), then K9's `BUDGET_PEAK` re-fit together with folding the four 5 November rows in.
 24. SAVE after TRAVEL: SAVE shows a short message when the sound you loaded and the one TRAVEL moved to differ (owner, 10 November: the default).
 26. TRAVEL level: b10 tide2 + tide3 (`fork/b10-tide3`): the destination plays at the part's level as the multi plays it (`firmware/src/jrny_mu.h`), and a destination it cannot reach is not picked. 22 of 24 multis inside -24.1 .. -18.1 LUFS (M19 -30.1 -> -21.8, M17 -24.3 -> -19.6). Left: M24 -17.7 (BRAZEN, ATK 43, reads quiet in the J1 table's 56 ms stab gate and plays louder in M24's full 16ths; next step: J1 measured with the part's own gate), M05 -24.2 (0.1 under: a pad to keys swap, two patterns, no match).
-28. Stale comment: `ui_input.c` above `part_select` still describes MORPH SET's SMART / WILD roll knobs, retired in b9 (b9 chores).
 29. Two low cuts from before the "low end welcome" rule were kept "for another reason" and never decided: the C3 pitch-walk floor and the pad lows in M04, M12 and M16 (B9-LOWEND rows 9 and 14). Check them with the sound lab and open them unless the reason holds.
-30. The store's cross-version test has no record written by b8 rc1 / rc2 (B9-STORE); add one to the fixtures.
 31. USB AUDIO OFF: the web editor's mock unit (`web/editor/mockunit.js`) has no USB AUDIO item, and a Mac host seeing the MIDI-only device was never tried (Windows is proven by every flash since b9).
 32. The Attack Magazine research left about 25 relevant articles listed but unread, and the Deconstructed house / nu-disco ones (listed in the b9 research index, "unread but relevant"): read them before the next sound round.
 
