@@ -2296,6 +2296,8 @@ static int area_plan(const page_t *pg, uint32_t g)
         for (s = 1; s < 4u; s++)
             slots += !slot_blank(pg, s);
         cols = g == 5u || slots >= 3u ? 3u : 2u;
+        if (g == 16u && pg->graph == GR_CHORD && (slot_hidden(pg, 2u) || slot_hidden(pg, 3u)))   /* b10 (one pair with GLOBAL SCALE): CHORD shows two cards at most (STRUM and the VOICE never both, card_hidden_vp; page_cards moves them left): GLOBAL SCALE's two columns */
+            cols = 2u;
         n = page_cards(pg, vis);
         for (c = 1; c < 4u && c < n; c++) {
             int16_t *vp;
