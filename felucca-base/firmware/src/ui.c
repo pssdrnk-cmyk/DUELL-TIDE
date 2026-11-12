@@ -14,6 +14,7 @@ static uint32_t up_count(void);
 static uint32_t up_engine(uint32_t k);
 static void up_name(uint32_t k, char *b);
 static void up_slot_label(char *b, uint32_t k);   /* "#7" */
+static void ds_label(uint32_t e, uint32_t k, char *b);   /* factory sound (e, k) by name with its number, "#31 DEEP PAD" (b holds 20): upreset.c */
 static void up_ui(uint32_t op, uint32_t k);
 static int ps_changed(uint32_t k);               /* DUELL: the pattern slots P01..P32 (patslot.c) */
 static uint32_t ps_len(uint32_t k);

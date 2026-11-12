@@ -636,18 +636,9 @@ static void tide_end_name(uint32_t pi, uint32_t end, char *b)
 static void tide_sound_name(uint32_t pi, int32_t k, char *b)
 {
     const track_t *t = &trk[pi % NSHOWN];
-    if (k >= 0) {                                        /* (the destination keeps the number its slot has: audit C11) */
-        uint32_t e = t->eng_req % NENGINES, r = ds_list_rank(e, (uint32_t)k);
-        b[0] = 0;
-        if (r < UP_USER0 && !up_used(r)) {
-            up_slot_label(b, r);
-            str_cpy(b + str_len(b), " ", 2);
-        } else if (r >= UP_USER0 && r < UP_SLOTS + UP_NXTRA) {   /* (a read-only place past the slots: #125 .. #171, as PATCHES numbers it) */
-            up_slot_label(b, r + UP_NUSER);
-            str_cpy(b + str_len(b), " ", 2);
-        }
-        str_cpy(b + str_len(b), ds_name(e, (uint32_t)k), 16);
-    } else
+    if (k >= 0)                                          /* (the destination keeps the number its slot has: audit C11; upreset.c ds_label) */
+        ds_label(t->eng_req % NENGINES, (uint32_t)k, b);
+    else
         sound_label(t, b);
 }
 /* HOME's three pages (AUTO TIDE, TIDE SETTINGS, MORPH) show both parts in the footer, part 1 in row 1, part 2 in row 2 (ui_draw.c draw_foot), each as the sound it
@@ -818,7 +809,7 @@ static __attribute__((noinline)) void tide_status_arc(char *l, int arc)
             uint32_t pi = ((gl.mask >> song.sel) & 1u) ? song.sel : (gl.mask & 1u) ? 0u : 1u;
             tide_end_name(pi, gl.to, nm);
             str_cpy(l + str_len(l), arc == 2 ? "TO " : " TO ", 8);
-            str_cpy(l + str_len(l), arc == 2 && nm[0] == '#' && str_len(nm) > 4u ? nm + (nm[3] == ' ' ? 4 : nm[4] == ' ' ? 5 : 0) : nm, 24);   /* (short: no slot number) */
+            str_cpy(l + str_len(l), nm, 24);           /* (b10: with its number on the wave page too; ui_draw.c k1_line shortens the line to fit) */
             str_cpy(l + str_len(l), "  ", 4);
         } else {
             if (!gl.hold)

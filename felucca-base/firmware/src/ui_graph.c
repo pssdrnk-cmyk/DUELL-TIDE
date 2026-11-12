@@ -2413,7 +2413,9 @@ static __attribute__((noinline)) void list_panel(int pats)   /* (out of line: in
                 uint32_t md = gsl_pv.p[t].mode;
                 cv_rrect(UT_L5_TAG_X, y, 13, 13, 3, c, T_BG);
                 cv_text_in(UT_L5_TAG_X, UT_TY(M, y + 11), 13, &AF_M, d, T_INK, c);
-                cv_free_text(UT_L5_NAME_X, UT_TY(M, y + 11), &AF_M, ds_name(gsl_pv.p[t].eng % NENGINES, gsl_pv.p[t].preset), c, T_BG, LR_R - 30 - UT_L5_NAME_X);   /* (in the list's name column) */
+                char pnm[24];
+                ds_label(gsl_pv.p[t].eng, gsl_pv.p[t].preset, pnm);   /* (b10: with its number, as PATCHES and the footer name it) */
+                cv_free_text(UT_L5_NAME_X, UT_TY(M, y + 11), &AF_M, pnm, c, T_BG, LR_R - 30 - UT_L5_NAME_X);   /* (in the list's name column) */
                 lr_chip(LR_R, y, md, t, T_BG);
                 if (gsl_pv.p[t].has)
                     pv_bars(UT_L5_NAME_X, y + 15, 12, 11, 8, gsl_pv.p[t].bar, md == 2u ? c : T_MID);   /* (only a SEQ part plays them: under an arp they are dimmed) */
