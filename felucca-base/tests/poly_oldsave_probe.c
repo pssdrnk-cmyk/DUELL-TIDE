@@ -35,9 +35,7 @@ static void play(const char *what)
 {
     int32_t o[2 * CTL]; uint32_t i, j, mx0 = 0, mx1 = 0, keys[6] = {7, 11, 14, 18, 21, 24}, c0 = 0, ns[2]; bd_t b;
     for (i = 0; i < 12; i++) fr();
-#ifndef OLD
-    { uint8_t n[2]; head_notes(n); c0 = n[0]; }
-#endif
+    /* (the capsule's free-voices counter is gone since b10 ui-b: c0 stays 0) */
     for (i = 0; i < 6; i++) {
         fm1_in.notes |= 1u << keys[i]; host_notes |= 1u << keys[i];
         for (j = 0; j < 3; j++) { mix_block(o, CTL); fr(); }
