@@ -6,7 +6,7 @@
 # that needs fork() (jam/wincompat/sys/wait.h) or another POSIX-only part stops there with exit code 77 and "skipped" in its output; host_tests.sh turns that into a "   SKIP" line and this script reports SKIP, never PASS.
 # Any other non-zero exit is a FAIL even without a FAIL line. Each line ends with the group's seconds. The summary and every group's output land in the log folder (felucca-base/build/check/<sha>, git-ignored).
 #   Fast mode (jam/fastcheck.py, see jam/README.md "Fast tests"): -j N (groups at a time), --all (the default list; implied by -j), --changed [BASE] (only the groups
-#   whose sources changed since BASE, default fork/b9), --shard I/N, --host-only (no device build, no jam tests), --no-cache, --out FILE, --summary FILE.
+#   whose sources changed since BASE, default fork/b9), --shard I/N, --host-only (no device build, no jam tests), --no-cache, --out FILE, --summary FILE, --with-slow (--changed otherwise leaves out the groups whose last recorded run took over 60 s and lists them as NOT RUN at the end).
 set -u
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 . "$REPO/jam/env.sh"
@@ -20,7 +20,7 @@ if [ -z "${JAM_CHECK_LOG:-}" ]; then
     ls -dt "$REPO"/felucca-base/build/check/*/ 2>/dev/null | tail -n +4 | while read -r d; do safe_rm "$REPO/felucca-base/build/check" "${d%/}"; done
 fi
 
-JOBS=0 CHANGED="" SHARD="" HOSTONLY=0 NOCACHE="" OUTF="" SUMF="" ALL=0 FAST=0
+JOBS=0 CHANGED="" SHARD="" HOSTONLY=0 NOCACHE="" OUTF="" SUMF="" ALL=0 FAST=0 WITHSLOW="" SLOWS=""
 while [ $# -gt 0 ]; do
     case "$1" in
         -j) JOBS="$2"; FAST=1; shift 2 ;;
@@ -35,6 +35,8 @@ while [ $# -gt 0 ]; do
         --shard) SHARD="$2"; FAST=1; shift 2 ;;
         --host-only) HOSTONLY=1; shift ;;
         --no-cache) NOCACHE=1; shift ;;
+        --with-slow) WITHSLOW=1; FAST=1; shift ;;
+        --slow-s) SLOWS="$2"; FAST=1; shift 2 ;;
         --out) OUTF="$2"; shift 2 ;;
         --summary) SUMF="$2"; shift 2 ;;
         *) break ;;
@@ -95,6 +97,8 @@ if [ "$FAST" = 1 ]; then
     [ -n "$CHANGED" ] && fa="$fa --changed $CHANGED"
     [ -n "$SHARD" ] && fa="$fa --shard $SHARD"
     [ -n "$NOCACHE" ] && fa="$fa --no-cache"
+    [ -n "$WITHSLOW" ] && fa="$fa --with-slow"
+    [ -n "$SLOWS" ] && fa="$fa --slow-s $SLOWS"
     [ -n "$OUTF" ] && fa="$fa --out $OUTF"
     [ -n "$SUMF" ] && fa="$fa --summary $SUMF"
     HT_REALCC="$(command -v cc)"; export HT_REALCC
@@ -163,4 +167,5 @@ fi
 
 echo "== $pass passed, $fail failed, $skip skipped (logs: $LOG)"
 [ -n "$failed" ] && echo "   failed:$failed"
+[ "$FAST" = 1 ] && grep '^== NOT RUN' "$LOG/fast.out"
 [ "$fail" -eq 0 ]

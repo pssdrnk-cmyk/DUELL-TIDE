@@ -243,6 +243,15 @@ class Runner:
         save_times({g: r[1] for g, r in self.results.items()})
 
 
+SLOW_S = int(os.environ.get("JAM_SLOW_S", "60"))      # --changed leaves the groups out whose last recorded run took longer than this many seconds (their time is in build/host/grouptimes.json)
+
+
+def split_slow(groups, times, limit=SLOW_S):
+    """(groups to run, the slow tier left out): a group is slow when its last recorded time is over `limit` seconds; a group never timed is not."""
+    fast = [g for g in groups if times.get(g, 0) <= limit]
+    return fast, [g for g in groups if times.get(g, 0) > limit]
+
+
 def load_times():
     try:
         return json.load(open(os.path.join(FB, "build", "host", "grouptimes.json")))
@@ -598,6 +607,8 @@ def main():
     ap.add_argument("--map", action="store_true", help="only build / refresh build/host/groupmap.json")
     ap.add_argument("--verify-map", action="store_true", help="record the files every compile reads and check them against the map")
     ap.add_argument("--list-changed", action="store_true", help="with --changed: print the groups and stop")
+    ap.add_argument("--slow-s", type=int, default=None, help="with --changed: the slow tier's limit in seconds (default %d, or JAM_SLOW_S)" % SLOW_S)
+    ap.add_argument("--with-slow", action="store_true", help="with --changed: also run the slow tier (groups whose last recorded time is over SLOW_S seconds); CI and the full runs always do")
     a = ap.parse_args()
     a.deps_dir = os.path.abspath(a.deps_dir or os.path.join(FB, "build", "host", "groupdeps"))
     os.makedirs(a.deps_dir, exist_ok=True)
@@ -618,6 +629,7 @@ def main():
         if a.map and not a.groups and a.changed is None:
             return 0
     extra = {}
+    slow_left = []
     if a.changed is not None:
         sel, extra, notes, files = changed_groups(a.changed, gm, [g for g in default_groups()])
         for n in notes:
@@ -625,7 +637,11 @@ def main():
         print("== changed since %s: %d files -> %d of %d groups: %s" % (a.changed, len(files), len(sel), len(default_groups()), " ".join(sel) or "(none)"))
         if a.groups:
             sel = [g for g in sel if g in a.groups]
+        elif not a.with_slow:                       # (groups named on the command line are asked for: never left out)
+            sel, slow_left = split_slow(sel, load_times(), a.slow_s if a.slow_s is not None else SLOW_S)
         groups = sel
+        if slow_left:
+            print("== slow tier left out (last run over %d s; --with-slow runs it, CI and full runs always do): %s" % (a.slow_s if a.slow_s is not None else SLOW_S, " ".join(slow_left)))
         if a.list_changed:
             return 0
     if a.shard:                                     # (as the CI's awk did: the default list without the $EMU token, every N-th group from place I)
@@ -686,9 +702,11 @@ def main():
         pass
     print("== fastcheck: %d PASS, %d FAIL, %d SKIP in %d s (%d at a time); compile cache so far: %d hits, %d misses" %
           (cnt["PASS"], cnt["FAIL"] + cnt["TIMEOUT"], cnt["SKIP"], time.time() - t0, a.jobs, hits, misses))
+    if slow_left:
+        print("== NOT RUN (slow tier, last run over %d s; they did not pass or fail here; --with-slow, or CI): %s" % (a.slow_s if a.slow_s is not None else SLOW_S, " ".join(slow_left)))
     if a.verify_map:
         verify_map(a)
-    json.dump({"pass": cnt["PASS"], "fail": failed, "skip": cnt["SKIP"], "extra": extra}, open(os.path.join(a.log, "summary.json"), "w"))
+    json.dump({"pass": cnt["PASS"], "fail": failed, "skip": cnt["SKIP"], "slow_not_run": slow_left, "extra": extra}, open(os.path.join(a.log, "summary.json"), "w"))
     return 1 if failed else 0
 
 
