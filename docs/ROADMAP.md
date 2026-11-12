@@ -199,6 +199,13 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 - The part you aren't playing responds: a complementary bass in the same key from a stored melody, question / answer (extending b7's call and answer), dub-style doubling or answering on the other voice.
 - Design study first (the coordinator's `PERF_ASSIST` brief); the owner picks the player-facing choices before it is built.
 
+**Full design overhaul: TIDE as its own instrument** (owner, 12 November: a separate, standalone topic, not now). b10 brought the TIDE colours, splash and tide line (direction A of `work/b10/reports/DESIGN_CONSULT.md`); the shapes are still DUELL's, and the DUELL logo and artwork are not under the GPL. Three parts, in this order:
+- Off the unit: the website, installer, emulator page, release and package names (`duell-tide-…`) and README say TIDE, with the credits to DUELL and Felucca kept.
+- A TIDE home / performance page built around time: where the tide is, the ARC phase, bars, and live assist's take and answer on one screen.
+- The shape language: water-line fills, wave-edged knob bars, a TIDE header on the global pages, one icon style, replacing DUELL's cards and bars.
+
+Each part is proposed with close-ups and approved by the owner before it's built.
+
 **Screens** (redundancy audit 8 November, all 433 screens rendered)
 - TIDE rows SYNC and ROLL renamed so they don't share words with tempo sync and MORPH's ROLL. (The rest of this audit was released in b4.)
 
