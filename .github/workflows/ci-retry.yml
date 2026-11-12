@@ -7,6 +7,8 @@
 name: CI retry
 
 on:
+  push:                       # TEMPORARY (registers the workflow so the branch can start it by hand; removed before the merge)
+    branches: [b10/ci-retry]
   workflow_run:
     workflows: ["Host tests"]
     types: [completed]
