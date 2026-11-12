@@ -59,8 +59,13 @@ def free_gb():
     return 4.0
 
 
+GB_PER_JOB = 0.8     # measured (b10): one -O2 compile of a test program peaks at about 340 MB, a running test program less; 0.8 GB a job leaves room for the compilers' bursts
+MAX_DEFAULT_JOBS = 4  # the default never goes above this: -j 8 on the owner's PC ran Windows out of processes ("fork: Resource temporarily unavailable" in Git Bash, other lanes included);
+                      # the limit is the process table, not memory. Ask for more with -j N when nothing else is building
+
+
 def default_jobs():
-    return max(1, min(int(free_gb() / 1.5), (os.cpu_count() or 2) - 1))
+    return max(1, min(int(free_gb() / GB_PER_JOB), (os.cpu_count() or 2) - 1, MAX_DEFAULT_JOBS))
 
 
 # ---------------------------------------------------------------------------------------------------------------- sandbox
@@ -630,14 +635,21 @@ def main():
     if a.verify_map:
         build_map(os.environ["HT_REALCC"], a)
     expanded = []
+    sdk = bool(shutil.which("emcc"))
+    env_sh = os.path.expanduser("~/emsdk/emsdk_env.sh")
+    if not sdk and os.path.exists(env_sh):          # (the way host_tests.sh finds it: an emsdk folder that does not give an emcc after its env script, a half-made install, is no SDK)
+        sdk = subprocess.run(["sh", "-c", '. "$0" >/dev/null 2>&1; command -v emcc >/dev/null 2>&1', env_sh]).returncode == 0
     for g in groups:
-        if g == "$EMU":
-            if shutil.which("emcc") or os.path.exists(os.path.expanduser("~/emsdk/emsdk_env.sh")):
-                expanded.append("emu")
-            else:
+        if g in ("$EMU", "emu"):                    # (--changed names the group `emu` itself when an edit reaches it, besides the $EMU token: without the SDK both are one SKIP, never a FAIL)
+            if sdk:
+                if "emu" not in expanded:
+                    expanded.append("emu")
+            elif "$EMU" not in expanded:
+                expanded.append("$EMU")
                 print("SKIP    emu (SDK unavailable)")
         else:
             expanded.append(g)
+    expanded = [g for g in expanded if g != "$EMU"]
     t0 = time.time()
     r = Runner(a)
     r.run(expanded)
