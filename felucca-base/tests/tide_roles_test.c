@@ -164,7 +164,7 @@ static void load(uint32_t slot)                        /* a fresh power-on, the 
     multi_boot();
     frame();
     ui_prefs2 |= PREF_MODE_RECALL >> 16;
-    project_load(slot);
+    project_load(MIDX(slot));
     blk = 0;
     gl.on = gl.armed = 0;
     transport_req = 0;
@@ -553,7 +553,7 @@ static void render(uint32_t row, uint32_t mode, rend_t *r)
         memset(nor, 0xFF, sizeof nor);
         ui_power_on();
         ui_prefs2 |= PREF_MODE_RECALL >> 16;
-        project_load(TR[row].slot - 1u);
+        project_load(MIDX(TR[row].slot - 1u));
     } else {
         load(TR[row].slot - 1u);
     }

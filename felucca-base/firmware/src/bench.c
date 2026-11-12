@@ -703,7 +703,7 @@ static BENCH_FN void bench_part(uint32_t p, const bench_scn_t *s)   /* a part fr
         t->p[P_FREEA] = 41, t->p[P_FREEB] = 40, t->p[P_FREEC] = 0, t->p[P_KTRK] = 0, t->p[P_FREED] = s->flt == 24u ? 2 : 1;
 }
 #ifndef BENCH_LOAD_M16
-#define BENCH_LOAD_M16() project_load(15u)             /* (the host twin loads the STRESS TEST scene instead: U2 B, M16 is CELLAR TAPE) */
+#define BENCH_LOAD_M16() project_load(21u)             /* (the host twin loads the STRESS TEST scene instead: U2 B, M16 is CELLAR TAPE) */
 #endif
 static BENCH_FN void bench_load_m16(void)              /* the "M16" rows: slot 16 as a multi LOAD has it (multi.c project_load: as stored, the factory one unless
                                                         * the owner saved over it), then LAYER whatever MULTI LOAD says. Until U2 B that was the STRESS TEST; the rows

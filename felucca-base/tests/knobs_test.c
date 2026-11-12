@@ -30,7 +30,7 @@ static void setup(uint32_t set, uint32_t both)
     ui_power_on();
     frame();
     song.playing = 0;
-    project_load(0);
+    project_load(MIDX(0));
     frames(32);
     tide_knobs = (uint8_t)(set + 2u);
     ui.menu = 0;

@@ -77,7 +77,7 @@ static uint64_t render(const rn_t *rn, uint32_t fader)
     }
     if (rn->recall)
         ui_prefs2 |= PREF_MODE_RECALL >> 16;
-    project_load(rn->slot);
+    project_load(MIDX(rn->slot));
     for (i = 0; i < 40; i++) { memset(o, 0, sizeof o); mix_block(o, CTL); while (wave_service()) ; }
     SEL_BOTH = 1;
     morph_set_fader(fader);

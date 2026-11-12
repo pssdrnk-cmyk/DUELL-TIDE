@@ -989,7 +989,7 @@ static void test_control(void)
     project_save_as(10, "COMP TEST");                   /* M11 */
     song.cp[1] = 7;
     frame();
-    project_load(10);
+    project_load(MIDX(10));
     frame();
     expect("a multi load leaves COMP alone (a device setting: nothing of it in the multi)", song.cp[0] == 12 && song.cp[1] == 7 && song.cp[2] == 4 && song.cp[3] == 5);
     {
@@ -998,7 +998,7 @@ static void test_control(void)
         for (k = 0; k < 16u; k++) {
             if (df_of(k) >= DF_N)
                 continue;
-            project_load(k);
+            project_load(MIDX(k));
             frame();
             ok &= song.cp[0] == 12 && song.cp[1] == 7 && song.cp[2] == 4 && song.cp[3] == 5;
         }

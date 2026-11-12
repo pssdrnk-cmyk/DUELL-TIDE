@@ -45,7 +45,7 @@ int main(void)
     song.playing = song.rec = 0;
     transport_req = 0;
     gl.on = gl.armed = 0;
-    project_load(1u);                                   /* M02: both ends differ, so a blend has work */
+    project_load(MIDX(1u));                                   /* M02: both ends differ, so a blend has work */
     morph_ready(0);
     morph_do(MQ_FADER, 1u, 0u);
     trk[0].p[P_MUTE] = 0;

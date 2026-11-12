@@ -212,7 +212,7 @@ static void load_scene_of(uint32_t slot)
         scene_load(slot, OLD_SCENE[slot]);
     else {
         scene_put(slot, OLD_SCENE[slot]);
-        project_load(slot);
+        project_load(MIDX(slot));
     }
 }
 /* the multis as stored (the scenes, above), nn notes (4: 4 + 4 on both parts, 8: on part 1), the fader at f; avg (returned) and *pk the worst half */
@@ -224,7 +224,7 @@ static double multi_run(uint32_t slot, uint32_t nn, uint32_t f, double *pk)
     power();
     if (g_factory) {
         ui_prefs2 |= PREF_MODE_RECALL >> 16;
-        project_load(slot);
+        project_load(MIDX(slot));
     } else
         load_scene_of(slot);
     for (i = 0; i < 40; i++) { half(0); while (wave_service()) ; }
@@ -347,7 +347,7 @@ static void cap_tests(void)
         for (i = 0; i < MU_SHOWN; i++) {
             power();
             ui_prefs2 |= PREF_MODE_RECALL >> 16;
-            project_load(i);
+            project_load(MIDX(i));
             frame();
             printf("C M%02u %-12s (%s / %s) as loaded: caps %u / %u, predicted worst %5.1f %%\n", i + 1, mu_names[i], ENGINES[eng_idx(trk[0].eng_req)]->name,
                    ENGINES[eng_idx(trk[1].eng_req)]->name, vcap_shown(0), vcap_shown(1), vcap_worst / 10.0);

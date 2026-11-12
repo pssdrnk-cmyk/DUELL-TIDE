@@ -50,7 +50,7 @@ static uint32_t first_start(void)                       /* the unit as a new one
     ui_power_on();
     frame();
     duell_mode_force(DM_LAYER);
-    project_load(TIDE_FIRST_MULTI);
+    project_load(MIDX(TIDE_FIRST_MULTI));
     run(200);
     song.sel = 0;
     SEL_BOTH = 0;

@@ -1524,7 +1524,7 @@ static void t_ktrk_params(void)
         t->p[P_KTRK] = -17;
         project_save_as(14, "KT TEST");
         t->p[P_KTRK] = 0;
-        project_load(14);
+        project_load(MIDX(14));
         printf("uf:   (multi load: %d)\n", (int)TSEL->p[P_KTRK]);
         ok &= TSEL->p[P_KTRK] == -17;
     }

@@ -165,7 +165,7 @@ static void t_fmt(void)
     fader(127);
     CHECK("multi: saved", project_save(3) == 0);
     other_sound();
-    project_load(3);
+    project_load(MIDX(3));
     frames(16);
     CHECK("multi: the target is back", target_back());
     for (i = 0, ok = 1; i < 3u; i++) {

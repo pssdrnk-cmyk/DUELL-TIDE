@@ -72,7 +72,7 @@ int main(void)
         }
         mu_note(0);
         ui_prefs2 |= PREF_MODE_RECALL >> 16;
-        project_load(0);
+        project_load(MIDX(0));
         if (proj_cur != 0u) {
             uint8_t a[NSHOWN], s[6];
             fprintf(stderr, "multi_v7_endb: the v8 record does not load (%s)\n",

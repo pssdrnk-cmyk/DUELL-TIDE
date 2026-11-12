@@ -55,7 +55,7 @@ int main(int argc, char **argv)
 {
     FILE *f; uint32_t e, k; static const char *const E[] = {"WAVE", "LOFI", "ANALOG", "FM6"};
     if (argc > 2 && argv[1][0] == 'w') {
-        memset(nor, 0xFF, sizeof nor); boot(); ui_prefs2 |= PREF_MODE_RECALL >> 16; project_load(1); fr();
+        memset(nor, 0xFF, sizeof nor); boot(); ui_prefs2 |= PREF_MODE_RECALL >> 16; project_load(MIDX(1)); fr();
         settings_save(); project_capture(&proj_scratch); proj_wire_gen++; proj_pack(&proj_wire, &proj_scratch); st_save(OBJ_AUTOSAVE, &proj_wire, sizeof proj_wire);
         f = fopen(argv[2], "wb"); fwrite(nor, 1, sizeof nor, f); fclose(f); return 0;
     }

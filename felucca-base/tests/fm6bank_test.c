@@ -482,7 +482,7 @@ static int keep_test(void)
     slot_to(0, 1);
     slot_to(1, 1);
     memset(proj_slot, 0, sizeof proj_slot);              /* (from flash) */
-    project_load(0);
+    project_load(MIDX(0));
     ok &= patch_is(0, a.v[4]) && trk[0].p[P_E7] == FM6_OWN && patch_is(1, a.v[6]) && trk[1].p[P_E7] == FM6_OWN;
     bad += check("a project saved on B5 / B7: loads those voices (SLOT OWN) after the bank was replaced", ok);
     song.sel = 2;

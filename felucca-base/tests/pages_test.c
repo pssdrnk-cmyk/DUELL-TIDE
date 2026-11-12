@@ -248,7 +248,7 @@ static void test_pages(void)
                 if (how == 0u) {
                     TSEL->p[P_TWTYPE] = 0;
                 } else if (how == 1u) {
-                    project_load(0);
+                    project_load(MIDX(0));
                     TSEL->p[P_TWTYPE] = 0;                    /* (the factory multis hold no filter 2) */
                 } else if (how == 2u) {
                     init_sound();

@@ -77,7 +77,7 @@ int main(int argc, char **argv)
         ui_power_on();
         frame();
         song.playing = 0;
-        project_load(SETM[s]);
+        project_load(MIDX(SETM[s]));
         tide_knobs = (uint8_t)(s + 2u);
         ui.menu = 0;
         go_title("MORPH");
@@ -104,7 +104,7 @@ int main(int argc, char **argv)
     }
     ui_power_on();
     frame();
-    project_load(8);
+    project_load(MIDX(8));
     for (k = 0; k < MU_SHOWN; k++)
         str_cpy(mu_names[k], MULTI_NAME[k], PROJ_NAME_LEN + 1u);
     for (s = 0; s < 3u; s++) {                           /* the MULTIS list: three pages of the factory multis */

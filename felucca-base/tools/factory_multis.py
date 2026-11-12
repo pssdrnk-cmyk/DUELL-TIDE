@@ -287,6 +287,10 @@ def apply_owner(multis):
 
 
 MULTIS = apply_owner(MULTIS)
+# The ORDER the unit lists the multis in (owner, 12 November 2026: genre by genre, not in the order they were made): the record numbers (M01 .. M24 as these tools, the tests' names and the
+# docs call a record: the files tools/factory_multis/Mnn.bin and tools/drone_multis/Mnn.bin) in the order of the slots. tools/gen_duell_multis.py gives each record the slot of its place here (the unit's
+# M01 .. M24, MIDI program changes 1 .. 24, DF_SLOT, multi_names.h); a record keeps its number in every tool. Slots 1 .. 16 can be saved over (flash objects), 17 .. 24 are ROM only, the last two the drones.
+DISPLAY_ORDER = [1, 2, 20, 3, 4, 5, 6, 21, 7, 8, 24, 19, 22, 9, 10, 11, 12, 13, 14, 23, 15, 16, 17, 18]
 
 
 # ---- the firmware's names --------------------------------------------------------------------------------------------------------

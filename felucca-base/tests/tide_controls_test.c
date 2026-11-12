@@ -206,12 +206,12 @@ static void test_multi_keeps_roll_rows(void)
 {
     ui_power_on(); frame();
     morph.cfg = (uint8_t)((morph.cfg & ~MC_ARP) | MC_PIT | MC_WILD);
-    project_load(1);                                     /* M02, factory */
+    project_load(MIDX(1));                                     /* M02, factory */
     CHECK("factory multi: ROLL PITCH stays ON", (morph.cfg & MC_PIT) != 0u);
     CHECK("factory multi: ROLL TYPE stays WILD", roll_type_get() == 2u);
     CHECK("factory multi: ROLL ARP stays OFF", !(morph.cfg & MC_ARP));
     morph.cfg = (uint8_t)(morph.cfg | MC_ARP);
-    project_load(1);
+    project_load(MIDX(1));
     CHECK("factory multi: ROLL ARP stays ON", (morph.cfg & MC_ARP) != 0u);
     morph.cfg = 0;
 }
@@ -668,7 +668,7 @@ static uint32_t mr7_run(int touch, uint8_t *ph, uint8_t *cnt, uint32_t *fad)
 {
     uint32_t bar = 0, moved = 0, held = 0, autos = 0, f;
     ui_power_on(); frame();
-    project_load(1);
+    project_load(MIDX(1));
     memset(&tarc, 0, sizeof tarc); morph.seed = 0x5EEDu;  /* (both runs from the same arc) */
     transport_req = 2u; run(48);
     song.sel = 0; SEL_BOTH = 0;
@@ -775,7 +775,7 @@ static double j2_launch(uint32_t fader, int *kept)
     uint32_t s0, s1, blocks = 0, i;
     int32_t p1 = 0, p2 = 0;
     ui_power_on(); frame();
-    project_load(1);                                     /* M02 */
+    project_load(MIDX(1));                                     /* M02 */
     gl.mode = GM_JOURNEY; gl.target = GT_BOTH; gl.time = 4u; gl.wait = 2u; gl.on = gl.armed = 0;
     song.sel = 0; SEL_BOTH = 0;
     song.master_q12 = 2048;                              /* (MASTER at its default position, main.c) */

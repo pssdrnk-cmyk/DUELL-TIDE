@@ -69,7 +69,7 @@ int main(void)
     ck("M17 AMB DUNEHORN, M18 AMB GROWL: the built-in drone multis, factory (ROM only)", MU_SHOWN >= 18u && project_used(16) && project_factory(16) && str_eq(mu_names[16], MULTI_NAME[16]) &&
        project_used(17) && project_factory(17) && str_eq(mu_names[17], MULTI_NAME[17]));
 #endif
-    project_load(2);
+    project_load(MIDX(2));
     ck("LOAD of M03 loads JUNO DEEP (ANALOG + ANALOG: WARM WASH, RUBBER BAND)", proj_cur == 2u && str_eq(ENGINES[trk[0].eng_req]->name, "ANALOG") && str_eq(ENGINES[trk[1].eng_req]->name, "ANALOG"));
     printf(bad ? "release: FAILED (%d)\n" : "release: all ok\n", bad);
     return bad ? 1 : 0;

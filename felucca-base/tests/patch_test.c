@@ -1671,7 +1671,7 @@ int PATCH_TEST_MAIN(void)
             power_cycle();
             song.playing = 0;
             sl_load(UP_SLOTS);
-            project_load(m);
+            project_load(MIDX(m));
             for (pi = 0; pi < NSHOWN; pi++) {
                 uint32_t r = ds_list_rank(trk[pi].eng_req % NENGINES, trk[pi].preset);
                 char a[16];
