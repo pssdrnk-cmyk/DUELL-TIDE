@@ -20,6 +20,7 @@ typedef struct {                                         /* the answer that is l
 typedef struct {
     step_t s[2][NSTEP];
     uint8_t len[2];
+    uint8_t gr[2][2];                                    /* each part's SDIV and ARATE (an answer may set the grid of the part that holds it) */
     tk_meta_t m;
 } tk_snap_t;
 static tk_snap_t tk_h[3] __attribute__((section(".pool")));      /* history: tk_h[j] the state before step j + 1 (a take or a roll) */
@@ -118,7 +119,8 @@ static int32_t tk_triad_pc(int32_t d, int32_t i) { return tk_wrap((int32_t)tk_kr
 /* ---- the take as events ---- */
 /* b10 (rc6.4-test: an answer on an ARP SEQ part played at the wrong speed or not at all): a part's steps sit on its own grid - the sequencer's division, or on an ARP SEQ part the arp's rate (seq.c arp_dur) - so a take is read
  * in the grid of the part it was recorded on and the answer is written in the grid of the part that plays it (tk_put converts; equal grids: no change) */
-static uint32_t tk_gp(const track_t *t) { return div_samples((uint32_t)(arp_mode(t) == AM_SEQ_ID ? t->p[P_ARATE] : t->p[P_SDIV])); }
+static uint32_t tk_gi(const track_t *t) { return (uint32_t)(arp_mode(t) == AM_SEQ_ID ? P_ARATE : P_SDIV); }   /* the parameter that sets the part's grid */
+static uint32_t tk_gp(const track_t *t) { return div_samples((uint32_t)t->p[tk_gi(t)]); }
 static uint32_t tk_ps __attribute__((section(".pool"))), tk_pd __attribute__((section(".pool"))), tk_slen __attribute__((section(".pool")));   /* the take's grid, the answer's grid (samples a step), the take's length in steps */
 static uint32_t tk_spb(const track_t *t)                 /* steps in a bar on the part's grid (16 at 1/16) */
 {
@@ -400,7 +402,7 @@ static uint32_t tk_genre(void)                           /* DUB HSE TECH ACID EL
 static uint32_t tk_gen(uint32_t src, uint32_t dst, uint32_t seed, uint32_t mode)
 {
     track_t *ts = &trk[src], *td = &trk[dst];
-    uint32_t len = seq_len(ts), spb = tk_spb(ts), bars, i, n = 0, call = mode >= TA_REPLY, dlen;
+    uint32_t len = seq_len(ts), spb = tk_spb(ts), bars, i, n = 0, call = mode >= TA_REPLY, dlen, gset = 0;
     int32_t shift = td->p[P_TRANS] - ts->p[P_TRANS];
     if (call && seed && tk_m.ans && tk_m.mode == mode && tk_m.clen)
         len = tk_m.clen;                                 /* (a roll: the part's loop is the doubled one: the call is the first half) */
@@ -418,8 +420,13 @@ static uint32_t tk_gen(uint32_t src, uint32_t dst, uint32_t seed, uint32_t mode)
     tk_ps = tk_gp(ts);
     tk_pd = tk_gp(td);
     dlen = tk_ps == tk_pd || !tk_pd ? tk_slen : (tk_slen * tk_ps + tk_pd / 2u) / tk_pd;
+    if (tk_pd && tk_pd != tk_ps && (tk_pd > tk_ps || dlen > NSTEP)) {   /* b10 (M02's pad, an ARP SEQ part at a slow rate, gave NO ANSWER): the answer wins - when the part's own grid is too coarse to hold it (or too fine to fit 64 steps) it is written on the take's grid and the part's RATE / DIV is set to match while the answer stands (the history step holds the old one) */
+        gset = 1;
+        tk_pd = tk_ps;
+        dlen = tk_slen;
+    }
     if (!dlen || dlen > NSTEP)
-        return 0;                                        /* (the answer's grid is too slow or too fast for the take to fit 64 steps) */
+        return 0;
     if (!tk_pd)
         tk_pd = tk_ps;
     tk_olen = dlen;
@@ -447,6 +454,8 @@ static uint32_t tk_gen(uint32_t src, uint32_t dst, uint32_t seed, uint32_t mode)
     fm1_irq_off();
     memcpy(td->step, tk_out, sizeof td->step);
     td->p[P_SLEN] = (int16_t)tk_olen;
+    if (gset)
+        td->p[tk_gi(td)] = ts->p[tk_gi(ts)];
     if (call)
         ts->p[P_SLEN] = (int16_t)tk_slen;               /* the call's loop doubles: the call, then the answer */
     fm1_irq_on();
@@ -498,6 +507,8 @@ static void tk_save(tk_snap_t *d)
     for (p = 0; p < 2u; p++) {
         memcpy(d->s[p], trk[p].step, sizeof d->s[p]);
         d->len[p] = (uint8_t)trk[p].p[P_SLEN];
+        d->gr[p][0] = (uint8_t)trk[p].p[P_SDIV];
+        d->gr[p][1] = (uint8_t)trk[p].p[P_ARATE];
     }
     d->m = tk_m;
 }
@@ -508,6 +519,8 @@ static void tk_load(const tk_snap_t *d)
     for (p = 0; p < 2u; p++) {
         memcpy(trk[p].step, d->s[p], sizeof trk[p].step);
         trk[p].p[P_SLEN] = d->len[p];
+        trk[p].p[P_SDIV] = d->gr[p][0];
+        trk[p].p[P_ARATE] = d->gr[p][1];
     }
     fm1_irq_on();
     tk_m = d->m;
