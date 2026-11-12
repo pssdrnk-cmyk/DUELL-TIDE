@@ -1,11 +1,11 @@
-tide_settings 52901e4e
-knobs_row 5fb20ba7
+tide_settings 5401b115
+knobs_row 5923a4fc
 multis_m03 2c78a927
 glo 776d68d0
 usb_audio_off f9498479
 usb_audio_on 343ee3ef
-knobs_ELEC_row 57f42973
-knobs_AMB_row d4c4f834
+knobs_ELEC_row 51658628
+knobs_AMB_row d255576f
 colr_lfo c2b2efd5
 colr_lfo_off bb1bf539
 multis_m19 89154256

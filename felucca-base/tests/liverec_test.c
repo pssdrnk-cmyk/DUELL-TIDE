@@ -256,7 +256,7 @@ static void rec_row(void)
     memset(tide_tail, 0, TIDE_TAIL_N); tide_tail_new = 0;
     tide_settings();                                     /* no record: the defaults */
     CHECK("REC row: with no record it is ADD", tide_rec_replace == 0u && jl_get(JL_REC) == 0u && !strcmp(jl_vname(JL_REC, 0), "ADD") && !strcmp(jl_vname(JL_REC, 1), "REPLACE"));
-    CHECK("REC row: after AMOUNT (1.0.0-b7; ROLL TYPE before it), before PLAY MODE, with two values; PLAY MODE, XFADE, SPLIT stay the last three", JL_REC == JL_AMOUNT + 1u && JL_AMOUNT == JL_KNOB + 1u && JL_MODE == JL_REC + 1u && JL_SPLIT == JL_N - 1u && jl_n(JL_REC) == 2u && !strcmp(JL_NAME[JL_REC], "REC"));
+    CHECK("REC row: after AMOUNT (1.0.0-b7; ROLL TYPE before it), before PLAY MODE, with two values; PLAY MODE, XFADE, SPLIT stay the last three", JL_REC == JL_AMOUNT + 1u && JL_AMOUNT == JL_KNOB + 1u && JL_ANS == JL_REC + 1u && JL_ANSON == JL_ANS + 1u && JL_MODE == JL_ANSON + 1u && JL_SPLIT == JL_N - 1u && jl_n(JL_REC) == 2u && !strcmp(JL_NAME[JL_REC], "REC"));
     jl_put(JL_STYLE, STY_PEAK); tide_settings();
     jl_put(JL_REC, 1); tide_settings();
     CHECK("REC row: set to REPLACE, the STYLE stays PEAK (not CUSTOM)", tide_rec_replace == 1u && tide_style == STY_PEAK);
@@ -267,7 +267,7 @@ static void rec_row(void)
     jl_put(JL_REC, 0); tide_settings();
     CHECK("REC row: back to ADD, the STYLE is not touched", tide_rec_replace == 0u && tide_style == STY_CUSTOM);
     jl_put(JL_REC, 1); tide_settings();
-    CHECK("REC row: kept in TIDE's record (field count 13, the last byte 1)", tide_tail[4] == TS_N && tide_tail[5 + TS_REC] == 1u && TS_N == 13);
+    CHECK("REC row: kept in TIDE's record (field count 15 since the ANSWER rows, the REC byte 1)", tide_tail[4] == TS_N && tide_tail[5 + TS_REC] == 1u && TS_N == 15);
     tide_rec_replace = 0; tide_seen_ok = 0;
     tide_settings();
     CHECK("REC row: survives a save and a load (power-on)", tide_rec_replace == 1u);

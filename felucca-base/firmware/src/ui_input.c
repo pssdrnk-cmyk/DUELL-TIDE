@@ -670,7 +670,7 @@ static void morph_act(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi)
     morph_do(kind, mask, v);
     TIDE_LINK(kind, mask, v);                           /* TIDE hook (LINK: the fader moves the SEQ fader with it) */
     if (kind == MQ_ROLL)
-        morph_say_end("ROLLED ", v);
+        morph_say_end("ROLLED ", v);                   /* (an answer that was rolled says its own after it: ROLL n  BASS LINE .., tide_take.c) */
     else if (kind == MQ_SMART)
         ui_message(v ? "SMART ON" : "WILD");
     else if (kind == MQ_ARP)
@@ -2383,7 +2383,8 @@ static void ui_input(void)
             pu_t = fm1_ms ? fm1_ms : 1u;
         } else if (load_undo_gate()) {                  /* OCT- held: the load undo, once (ui.c undo_swap) */
             pl_pend_on = 0;                             /* (a fast turn's waiting place does not load after it) */
-            undo_swap();
+            if (!TIDE_TAKE_UNDO(s))                     /* TIDE hook (b10 round 8): the newest edit a take or a roll: back (left) or forward (right) along them */
+                undo_swap();
             oct_mod |= 1u;
             pu_t = fm1_ms ? fm1_ms : 1u;
         } else if (ui.perf) {                           /* PERFORM: the sound of the part(s) ALGORITHM chose (BOTH: each part its own step) */

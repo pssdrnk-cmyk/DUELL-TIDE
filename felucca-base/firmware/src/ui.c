@@ -1102,6 +1102,7 @@ static void load_begin(track_t *t, uint32_t what)
     what &= (uint32_t)~UNDO_ENG;
     if (undo_depth++)
         return;
+    TIDE_TAKE_STALE();                            /* b10 round 8: a load is the newest edit (tide_take.c) */
     motion_restore(t);
     if (undo.keep && undo.trk == i + 1u && !(undo.what & UNDO_MOT) && track_sig(t) == undo.after) {
         undo.what |= (uint8_t)what;               /* browsing on: the copy from before the first load stays */
@@ -1172,6 +1173,7 @@ static void edit_undo_take(track_t *t, uint32_t tag, uint32_t what)
         edit_sig(t) == undo.after && fm1_ms - undo.t_ms < 1500u)
         return;
     undo_mot_tag = tag;
+    TIDE_TAKE_STALE();                            /* b10 round 8: the newest edit is not a take (tide_take.c) */
     undo.trk = (uint8_t)(i + 1u);
     undo.what = (uint8_t)what;
     undo.eng = t->eng_req;

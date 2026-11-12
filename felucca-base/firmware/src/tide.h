@@ -65,6 +65,16 @@ static uint32_t tide_arp_out(const track_t *t, uint8_t *out, uint32_t m, uint32_
 #define TIDE_ARP_OUT(t, out, m, vel) tide_arp_out((t), (out), (m), (vel))   /* (seq.c arp_seq_notes: TIDE's dynamics on an ARP SEQ step, D1; a thinned chord's two voices, MR4) */
 /* H20 (seq.c): live recording into an ARP SEQ part (audit liverec L2, R2) and the MIDI hooks of review FR8. TIDE_LIVEREC: the sections of seq.c only TIDE has (rec_put, arp_dur, rec_arp_note ..); a hook that returns, returns from the function it stands in */
 #define TIDE_LIVEREC 1
+/* b10 round 8 (tide_take.c, work/b10/specs/PERF_PHASE1.md): TAKE + ANSWER. tk_fresh_v: the newest edit is a take or a roll (ui.c clears it when a load or a lock edit takes the undo copy); tk_said: a roll
+ * wrote its own header message (ui_input.c morph_act then leaves "ROLLED A" out) */
+static uint8_t tk_fresh_v __attribute__((section(".pool"))), tk_reset_v __attribute__((section(".pool"))), tk_first __attribute__((section(".pool"))), tk_adv[2] __attribute__((section(".pool"))), tk_roll_mask __attribute__((section(".pool")));   /* (the pool: zero at power-on, and the RAM rule's .bss line has no room)
+ */
+static uint16_t tk_roll_seed __attribute__((section(".pool")));   /* (tk_reset_v: a multi / project loaded: the history of takes is of another music: tide_take.c take_poll drops it) */
+static void tide_take_step(track_t *t);
+static uint32_t take_undo(int32_t dir);
+#define TIDE_TAKE_STALE() (tk_fresh_v = 0)
+#define TIDE_TAKE_UNDO(s) take_undo((s) < 0 ? -1 : 1)
+#define TIDE_TAKE_ROLL(mask, seed) (tk_roll_mask |= (uint8_t)(mask), tk_roll_seed = (uint16_t)(seed))   /* (morph_do, any context: take_poll writes the answer again in the main loop) */
 #define TIDE_REC_VARS static volatile uint8_t tide_rec_replace; static uint32_t rec_key[NSHOWN][4];   /* (tide_rec_replace: TIDE SETTINGS REC, 0 ADD, 1 REPLACE; rec_key: the keys of an armed ARP SEQ part that went straight to the voices) */
 static int arp_rec_fire(track_t *t);
 #define TIDE_REC_ARP_ON(t) (rec_on(t) && (t)->p[P_AMODE] != AM_SEQ_ID)   /* (the arp records what it plays, except on an ARP SEQ part) */
@@ -75,6 +85,7 @@ static int arp_rec_fire(track_t *t);
             return;                                     /* live recording put a key into this step already: it sounds, the step does not play again */ \
     } while (0)
 #define TIDE_REC_REPLACE_PASS(t, idx, len, k) do { \
+        tide_take_step(t);                              /* b10 round 8 (tide_take.c): a step entered by a part that records its first take is counted */ \
         (k) = ((idx) + 2u * (len) - 2u) % (len);        /* REPLACE's pass: the playhead enters step idx, the mark of the step two behind it goes (rec_put) */ \
         (t)->rec_wr[((k) >> 5) & 1u] &= ~(1u << ((k) & 31u)); \
     } while (0)

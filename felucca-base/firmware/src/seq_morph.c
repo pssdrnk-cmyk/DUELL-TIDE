@@ -358,7 +358,10 @@ static int sqm_thinned(uint32_t pi, uint32_t bar) { return ((tarc_thin_at(bar) >
 static const step_t *seq_play_step_at(const track_t *t, uint32_t idx, uint32_t bar)
 {
     uint32_t pi = (uint32_t)(t - trk);
-    const step_t *s = sqm_step(t, idx, sqm_vary_all || !song.playing || (bar & 3u) == 3u);
+    const step_t *s;
+    if (pi < NSHOWN && ((song.rec >> pi) & 1u) && idx < NSTEP)
+        return &t->step[idx];                            /* b10 round 8: a part armed for REC plays its own notes, not the evolved ones (the take is what the player hears) */
+    s = sqm_step(t, idx, sqm_vary_all || !song.playing || (bar & 3u) == 3u);
     /* a thinned bar (sqm_thinned) plays End A's mask: onsets only, a tie after one stays silent */
     if (pi < NSHOWN && song.playing && s->time == ST_NOTE) {
         /* ARC: the drop's first 2 bars, both parts in automatic WNDR / JRNY start nothing (ties and tails ring) */
