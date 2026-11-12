@@ -390,7 +390,7 @@ int BACKUP_TEST_MAIN(void)
         bad += check("restore: M03 and M04 are back by name, used (names, mask updated at once)",
                      project_used(2) && project_used(3) && !strcmp(mu_names[2], "TESTONE") && !strcmp(mu_names[3], "TESTTWO") &&
                      project_factory(9) && list(14, &len, &crc) == 0 && len == ml && crc == mc);
-        bad += check("restore: the multi LOADs (its part A step 0)", (host_tracks_init(), project_load(MIDX(2)), trk[0].step[0].note[0] == 62u));
+        bad += check("restore: the multi LOADs (its part A step 0)", (host_tracks_init(), project_load(2u), trk[0].step[0].note[0] == 62u));   /* (the slot TESTONE was saved in; MR9: by slot, not by record, which the genre order moves) */
         ps_save_trk(&trk[1], 5, "NEWER");                   /* P6 now in the mirror, dirty: the restore must win over it */
         bad += check("restore: the pattern object (id 21) commits over a dirty mirror", (ps_dirty & 1u) && put_all(21, p_a, pl, pc) == 0 && !(ps_dirty & 1u));
         ps_poll();
