@@ -17,7 +17,7 @@ jam11 is the 1.0.0-b10 work; it is not tagged yet, so `TIDE_VERSION` still reads
 The owner's two tracks from the roadmap review of 12 November, plus quality checks and housekeeping. State: In progress (five lanes started on 12 November).
 
 - **Room on the unit.** 1,528 B of flash is free, so a size pass comes before features: RANDOM and COOK with TIDE's rules (Planned, below) wait for it, and so does anything that adds code. A room report says where the bytes are and one plan covers the next unit sweep (the switched-off savings of Later 9, 10 and 18 wait for that sweep).
-- **Test and tool debt.** The one open point is the design for per-module host objects (the first open point under Tooling). Done in b11: Later 28 (a stale comment, PR 61), Later 30 (the store's cross-version fixture, PR 59) and Later 33 (`budget` and `deadline` build the shipped MOVECOST=1 configuration; the OFF state stays covered by `movecost`; PR 57) and the `benchsim` M17 finding.
+- **Test and tool debt.** The one open point is the design for per-module host objects (the first open point under Tooling). Done in b11: Later 28 (a stale comment, PR 61), Later 30 (the store's cross-version fixture, PR 59) and Later 33 (`budget` and `deadline` build the shipped MOVECOST=1 configuration; the OFF state stays covered by `movecost`; PR 57) and the `benchsim` M17 finding, and the live assist groups (`take`, `answer`, `guards`) now run in CI (PR 62).
 - **Quality and housekeeping.** One review pass per pull request; the workspace and the GitHub branches cleaned (merged worktrees and branches removed, old outputs moved aside); this page refreshed.
 
 ## On the unit
@@ -175,6 +175,7 @@ Name: TIDE (owner, 12 November: drop DUELL; the attribution line stays)
 - **Web emulator: keep our engine, borrow features** (12 November; the emulator survey is kept in the workspace notes, not shipped). Other FM-1 emulators either compile the firmware like ours (X0X, Hortator, MC-1) or emulate the FM-1's chip and run the real `.fwsc` package (fm1-emu by Joakim Eriksson, MIT; m-wave-fm1-browser-emulator, GPL-3.0). The chip emulators run at about 50 % real time on a weak core, so switching brings no speed. Borrow instead, each small: WAV recording of what you play; a saved flash store (IndexedDB), so the emulator keeps your sounds between visits; Web MIDI in with a channel picker, and a device picker; a phone landscape layout; loading / saving a backup file. Plus a check: run the real TIDE `.fwsc` in fm1-emu (or its CI action) as an independent test that the package boots and plays.
 
 **Repository and CI**
+- Live assist's `take`, `answer` and `guards` groups were not in `host_tests.sh`'s default list, so CI never ran them. Done in b11 (PR 62): CI runs them now, and all three PASS.
 - The `emu` CI job: fixed in [#4](https://github.com/pssdrnk-cmyk/DUELL-TIDE/pull/4) (emsdk sourced under bash; merged 8 November), and the job gates.
 - Rename `jam11` to `tide`.
 - Gate the release channels by CI too (a Stable / Beta release is offered only from a green commit), from the 4 November decisions.
