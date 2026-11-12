@@ -476,7 +476,7 @@ static int32_t wl_atx(const wl_t *s, uint32_t r, int32_t x16, int32_t xl16, int3
  * front apart). The gaps never widen further back and are at least WL_STEP (owner: "a bigger gap after the 3rd line": each line's own rounding to whole rows made 3 2 3 2 ..);
  * in 1/16 px, so 13 lines in the 25 rows of spread a 68-row lane leaves are about 2 1/16 px apart each.
  * No older ridge is laid flat for being unlike the front or crossing it; a shaped ridge is never drawn under a newer shaped one, it rides on it (just above its stroke: 22/16 px over
- * the front, 1 px over an older one) where it would cross; elsewhere its shape is its own. A flat one is drawn flat.
+ * the front, 2 px over an older one: b10, a 1-px pile of 1-px lines fused into solid bars on a steep slope) where it would cross; elsewhere its shape is its own. A flat one is drawn flat.
  * Column by column: every ridge's height there in one pass from the front back (each one's bound is the newer ones'), and drawn in that order under the horizon they leave */
 static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
 {
@@ -531,7 +531,7 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
                 }
                 y[m] = yb[m] + wl_atx(s, (uint32_t)m, x16, xl[m], mul[m]);
                 y[m] = y[m] < lim ? y[m] : lim;
-                lim = y[m] - 16;
+                lim = y[m] - 32;
             }
             for (r = 0; r < m; r++) {
                 const int32_t ya = (seen >> r) & 1u ? py[r] : y[r];
