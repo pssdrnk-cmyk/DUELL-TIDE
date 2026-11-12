@@ -678,10 +678,8 @@ static void morph_act(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi)
     }
     morph_do(kind, mask, v);
     TIDE_LINK(kind, mask, v);                           /* TIDE hook (LINK: the fader moves the SEQ fader with it) */
-    if (kind == MQ_ROLL) {
-        if (!TIDE_TAKE_SAID())
-            morph_say_end("ROLLED ", v);                   /* (an answer that was rolled said its own: ROLL n  BASS LINE ..) */
-    }
+    if (kind == MQ_ROLL)
+        morph_say_end("ROLLED ", v);                   /* (an answer that was rolled says its own after it: ROLL n  BASS LINE .., tide_take.c) */
     else if (kind == MQ_SMART)
         ui_message(v ? "SMART ON" : "WILD");
     else if (kind == MQ_ARP)
@@ -717,10 +715,8 @@ static void morph_act(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi)
         track_select(v);                                /* (a learned CC for MORPH TARGET, which has no shipped number: PART 1 / PART 2; BOTH keeps the part the other pages edit) */
     morph_do(kind, mask, v);
     TIDE_LINK(kind, mask, v);                           /* TIDE hook (LINK: TARGET BOTH moves the SEQ fader with it) */
-    if (kind == MQ_ROLL) {
-        if (!TIDE_TAKE_SAID())
-            morph_say_end("ROLLED ", v);                   /* (an answer that was rolled said its own: ROLL n  BASS LINE ..) */
-    }
+    if (kind == MQ_ROLL)
+        morph_say_end("ROLLED ", v);                   /* (an answer that was rolled says its own after it: ROLL n  BASS LINE .., tide_take.c) */
     else if (kind == MQ_TARGET)                         /* (ALGORITHM's words: a learned MORPH TARGET CC is the same selector) */
         ui_message(v >= 2u ? "BOTH" : v ? "PART 2" : "PART 1");
     else if (kind == MQ_SMART)

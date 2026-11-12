@@ -31,7 +31,7 @@ static tk_ev_t tk_ev[TK_MAXE] __attribute__((section(".pool")));
 static uint32_t tk_nev;
 static tk_meta_t tk_m;                                   /* the live answer's */
 static uint16_t tk_hn[2];                                /* history step j: its number, bit 15 a roll */
-static uint8_t tk_cnt, tk_pos, tk_open, tk_first, tk_adv[2], tk_oldlen[2];   /* (tk_fresh_v, tk_said: tide.h) */
+static uint8_t tk_cnt, tk_pos, tk_open, tk_oldlen[2];   /* (tk_fresh_v, tk_first, tk_adv ..: tide.h) */
 static uint16_t tk_total;
 #define tk_fresh tk_fresh_v
 
@@ -426,7 +426,6 @@ static void tk_say(const char *pre, uint32_t no, uint32_t roll)
         str_cpy(b + n, "?", sizeof b - n);
     }
     ui_say(b, "");
-    tk_said = 1;
 }
 
 /* ---- the history ---- */
@@ -487,7 +486,6 @@ static uint32_t take_undo(int32_t dir)
 static void take_roll(uint32_t mask, uint32_t seed)
 {
     uint32_t ap;
-    tk_said = 0;
     if (!tk_m.ans || !((mask >> (tk_m.ans - 1u)) & 1u))
         return;
     ap = (uint32_t)tk_m.ans - 1u;
@@ -504,12 +502,6 @@ static void take_roll(uint32_t mask, uint32_t seed)
 }
 
 /* ---- passes: a take opens when a part's REC bit goes up, closes when it goes down ---- */
-static void tide_take_step(track_t *t)                     /* the sequencer enters a step of a part that records (the audio path: one increment) */
-{
-    uint32_t p = trk_index(t);
-    if (p < 2u && ((tk_first >> p) & 1u) && tk_adv[p] < 255u)
-        tk_adv[p]++;
-}
 static void tk_close(uint32_t mask)                       /* the parts of mask stopped recording */
 {
     uint32_t p, changed = 0, nch = 0, who = 0;
@@ -564,6 +556,19 @@ static void tk_close(uint32_t mask)                       /* the parts of mask s
 static void take_poll(void)                                /* main loop, every frame */
 {
     uint32_t now = song.rec & 3u, was = tk_open, p;
+    if (tk_roll_mask) {                                  /* a ROLL (morph_do) since the last frame */
+        uint32_t m = tk_roll_mask;
+        tk_roll_mask = 0;
+        take_roll(m, tk_roll_seed);
+    }
+    if (tk_reset_v) {                                    /* a load: no history, no live answer, no pass that was open */
+        tk_reset_v = 0;
+        tk_cnt = tk_pos = 0, tk_total = 0;
+        tk_m.ans = 0;
+        tk_open = (uint8_t)now;
+        tk_first = 0;
+        return;
+    }
     if (now == was)
         return;
     if (now & ~was) {                                      /* a part armed */
