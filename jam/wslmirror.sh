@@ -7,7 +7,7 @@
 # The mirror keeps its own felucca-base/build (the generated headers, the compile cache, the logs): rsync never touches it, so a second run starts warm.
 # Commits happen only in the Windows worktree. The shared repository is never written: the mirror has a repository of its own (a `git clone --shared`, which reads the
 # shared objects through its alternates and writes only under ~/duell-build), no GIT_DIR / GIT_WORK_TREE is ever set (a test that makes its own scratch repository would
-# then write into the real one), the mirror's HEAD is a detached sha (a commit there can move no shared branch), and the script refuses to run if the shared config has a core.worktree and fails loudly if that config is not byte-identical after the run.
+# then write into the real one), the mirror's HEAD is a detached sha (a commit there can move no shared branch), and the script refuses to run if the shared config has a core.worktree and fails loudly if that config changed after the run (other than its [branch] / [remote] sections, which other lanes write when they push).
 # Needs `rsync` and ~/venv (Pillow, fontTools: requirements-dev.txt) in the WSL distribution, as jam/wsl.sh does. Logs: felucca-base/build/check/<sha>/ in the worktree.
 set -u
 case "$(uname -s 2>/dev/null)" in
@@ -39,7 +39,10 @@ fi
 shared_config_ok() {      # no core.worktree in the shared config (a broken one stops every git command of every lane)
     [ -z "$MAIN" ] || [ -z "$(git config --file "$MAIN/config" --get core.worktree 2>/dev/null)" ]
 }
-CFG_BEFORE=""; [ -n "$MAIN" ] && [ -f "$MAIN/config" ] && CFG_BEFORE=$(md5sum "$MAIN/config" | cut -d' ' -f1)
+cfg_sum() {      # the config without its [branch ...] / [remote ...] sections (another lane that pushes or makes a branch writes those at any time); anything else changing is a warning sign
+    awk '/^\[/ { skip = ($0 ~ /^\[(branch|remote) /) } !skip' "$MAIN/config" | md5sum | cut -d' ' -f1
+}
+CFG_BEFORE=""; [ -n "$MAIN" ] && [ -f "$MAIN/config" ] && CFG_BEFORE=$(cfg_sum)
 shared_config_ok || { echo "wslmirror: refusing to run: $MAIN/config has a core.worktree (remove that line first: it breaks every git command on Windows)"; exit 3; }
 
 mkdir -p "$DST" || exit 1
@@ -74,8 +77,8 @@ rc=$?
 # only the logs come back, as files
 mkdir -p "$SRC/felucca-base/build/check"
 rsync -a "$DST/felucca-base/build/check/$sha/" "$SRC/felucca-base/build/check/$sha/" 2>/dev/null && echo "== logs: $SRC/felucca-base/build/check/$sha"
-if [ -n "$CFG_BEFORE" ] && [ "$(md5sum "$MAIN/config" | cut -d' ' -f1)" != "$CFG_BEFORE" ]; then
-    echo "wslmirror: ERROR: the shared git config $MAIN/config is not byte-identical to what it was before this run: something wrote it; tell the owner of the session, do not leave it"
+if [ -n "$CFG_BEFORE" ] && [ "$(cfg_sum)" != "$CFG_BEFORE" ]; then
+    echo "wslmirror: ERROR: the shared git config $MAIN/config changed outside its [branch]/[remote] sections during this run: something wrote it; tell the owner of the session, do not leave it"
     exit 3
 fi
 shared_config_ok || { echo "wslmirror: ERROR: $MAIN/config now has a core.worktree: something in this run wrote the shared config; tell the owner of the session, do not leave it"; exit 3; }
