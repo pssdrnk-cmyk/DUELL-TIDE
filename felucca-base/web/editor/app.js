@@ -954,7 +954,7 @@ async function connect() {
     let link;
     if (MOCK) {
       const { MockUnit, MockLink } = await import("./mockunit.js");
-      app.mock = new MockUnit({ pat32: MOCK === "pat32", caps: MOCK === "old" ? 3 : 31, playing: MOCK === "playing", patchRaw: MOCK !== "old", version: MOCK === "old" ? "FELUCCA DUELL 0.2.13 bet" : undefined });
+      app.mock = new MockUnit({ pat32: MOCK === "pat32", caps: MOCK === "old" ? 3 : MOCK === "u4" ? 127 : 31, playing: MOCK === "playing", patchRaw: MOCK !== "old", version: MOCK === "old" ? "FELUCCA DUELL 0.2.13 bet" : undefined });
       link = new MockLink(app.mock, 2);
       if (DEMO) seedDemo(app.mock);
     } else {

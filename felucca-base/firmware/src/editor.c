@@ -566,7 +566,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         ed_b(0);                                           /* v6: song rows (DUELL: none, no song mode) */
         ed_b(0x55); ed_b(1); ed_b(ed_ui_caps());             /* tagged preferences v1: commands 34..38 */
         ed_b(0x4d); ed_b(1); ed_b(64); ed_b(1);   /* motion + chance v1 (64: what it said before 1.2; 41 01 has the real count) */
-        ed_b(0x42); ed_b(1); ed_b(63); /* bounded full-backup read + restore; bit 2 (DUELL 0.2.14): multis 13..20 and pattern slots 21..23 are in it;
+        ed_b(0x42); ed_b(1); ed_b(127); /* bounded full-backup read + restore; bit 6 (value 64, b10 U4): M17..M26 = ids 42..46 are in it (the archive is "version 6", duellbackup.js; 41 is the FM6 voice bank); bit 2 (DUELL 0.2.14): multis 13..20 and pattern slots 21..23 are in it;
                                          * bit 3 (value 8): the user wavetables 24..26 are in it, and cmds 81..83 (editor_wtab.c);
                                          * bit 4 (value 16, DUELL 0.2.15): the patch store's chunks 6..15 were backup ids 27..31 and 35..39 (gone in job A: see bit 5);
                                          * bit 5 (value 32, the cloud plan's job A): the patch store is carried as LOGICAL records, one patch at a time: object id 40 plus a slot byte,
@@ -684,15 +684,13 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         ed_b(TSEL->preset);
         break;
     }
-    case ED_PROJECT:                                       /* 0 = load, 1 = save, 2 = query; slot 0..15 (DUELL: the
-                                                            * multis M01..M16, project.c multi.c; Felucca's editor asks 0..3; TIDE b6: 16, 17 the
-                                                            * ROM-only M17, M18: load and query, a save is refused (project_save, no reply) */
+    case ED_PROJECT:                                       /* 0 = load, 1 = save, 2 = query; slot 0..MU_SHOWN - 1 (DUELL: the
+                                                            * multis M01..M24, project.c multi.c; Felucca's editor asks 0..3; b10 U4: every slot is stored) */
         if (na < 2u || a[0] > 2u || a[1] >= MU_SHOWN)
             return;
         if (a[0] == 1u) {
-            if ((!MU_ROM(a[1]) && ed_flash_stop()) || project_save(a[1]))
-                return;                              /* the legacy reply has no failure bit: do not confirm a failed save (M17, M18: refused
-                                                      * by project_save before anything stops: playback goes on) */
+            if (ed_flash_stop() || project_save(a[1]))
+                return;                              /* the legacy reply has no failure bit: do not confirm a failed save */
         }
         else if (a[0] == 0u)
             project_load(a[1]);

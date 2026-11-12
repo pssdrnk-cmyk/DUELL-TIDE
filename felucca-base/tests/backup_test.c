@@ -220,8 +220,8 @@ int BACKUP_TEST_MAIN(void)
 
     reset();
     trk[0].step[0] = (step_t){{60}, 1, ST_NOTE, 0, 96, 0, 0};
-    bad += check("LIST captures the runtime: the 24 other objects (ED_BK_N: ids 0..5 8 empty ones, 13..20 the multis, 21..23 the pattern slots, 24..26 the user wavetables, 32..34; the patches are paged), runtime 3840 B (FUN11)",
-                 list(0, &len, &crc) == 0 && rep[2] == ED_BK_N && ED_BK_N == 24u && len == sizeof(project_store_t) && len == 3840u &&
+    bad += check("LIST captures the runtime: the 29 other objects (ED_BK_N: ids 0..5 8 empty ones, 13..20 and 42..46 the multis (b10 U4), 21..23 the pattern slots, 24..26 the user wavetables, 32..34; the patches are paged), runtime 3840 B (FUN11)",
+                 list(0, &len, &crc) == 0 && rep[2] == ED_BK_N && ED_BK_N == 29u && len == sizeof(project_store_t) && len == 3840u &&
                  crc == st_crc32(ED_BK_RAW, len));
     bad += check("an empty project slot lists as length 0", list(2, &len, &crc) == 0 && len == 0);
     bad += check("GET of the runtime copy", get(0, 0, 64) == 0);
@@ -390,7 +390,7 @@ int BACKUP_TEST_MAIN(void)
         bad += check("restore: M03 and M04 are back by name, used (names, mask updated at once)",
                      project_used(2) && project_used(3) && !strcmp(mu_names[2], "TESTONE") && !strcmp(mu_names[3], "TESTTWO") &&
                      project_factory(9) && list(14, &len, &crc) == 0 && len == ml && crc == mc);
-        bad += check("restore: the multi LOADs (its part A step 0)", (host_tracks_init(), project_load(2u), trk[0].step[0].note[0] == 62u));   /* (the slot TESTONE was saved in; MR9: by slot, not by record, which the genre order moves) */
+        bad += check("restore: the multi LOADs (its part A step 0)", (host_tracks_init(), project_load(2), trk[0].step[0].note[0] == 62u));
         ps_save_trk(&trk[1], 5, "NEWER");                   /* P6 now in the mirror, dirty: the restore must win over it */
         bad += check("restore: the pattern object (id 21) commits over a dirty mirror", (ps_dirty & 1u) && put_all(21, p_a, pl, pc) == 0 && !(ps_dirty & 1u));
         ps_poll();
@@ -459,6 +459,34 @@ int BACKUP_TEST_MAIN(void)
         ps_save_trk(&trk[0], 0, "X");
         bad += check("restore: length 0 for id 21 gives its slots their defaults again (object listed, written at the next quiet pass)",
                      put_all(21, "", 0, 0) == 0 && !ps_changed(0) && (ps_dirty & 1u) && list(21, &len, &crc) == 0 && len == ps_used_len(0) && len > 400u);
+        {   /* b10 U4: M17 .. M26 are the multi objects 8..12, backup ids 42..46 (41 is the FM6 voice bank): a saved M17 / M24 lists in 42 / 45, 46 (M25, M26: no slot yet) is listed empty and restores */
+            uint32_t l42 = 0, c42 = 0, l45 = 0, c45 = 0, off2;
+            static uint8_t o42[3840];
+            reset();
+            multi_boot(); ps_boot();
+            project_save_as(16, "SEVENTEEN");
+            project_save_as(23, "TWENTYFOUR");
+            project_save_as(25, "TWENTYSIX");
+            bad += check("U4: a saved M17 lists in id 42, M24 in id 45, M26 in id 46; ids 43, 44 are empty; 41 is not a multi object here",
+                         list(42, &l42, &c42) == 0 && l42 > 8u && list(45, &l45, &c45) == 0 && l45 > 8u && list(43, &len, &crc) == 0 && len == 0 &&
+                         list(44, &len, &crc) == 0 && len == 0 && list(46, &len, &crc) == 0 && len > 8u && put_begin(41, 0, 0) == 1u && put_begin(47, 0, 0) == 1u);
+            for (off2 = 0; off2 < l42; off2 += 256u) {
+                uint32_t n = l42 - off2 > 256u ? 256u : l42 - off2;
+                uint8_t a[8] = {42};
+                put32(a + 1, off2);
+                a[6] = (uint8_t)(n & 127u); a[7] = (uint8_t)(n >> 7);
+                call(ED_BACKUP_GET, a, sizeof a);
+                ed_unpack7(rep + 9, rep_n - 9u, o42 + off2, n);
+            }
+            bad += check("U4: GET of id 42 is the flash object (MUL1, CRC as listed)", st_crc32(o42, l42) == c42 && !memcmp(o42, "MUL1", 4));
+            reset();
+            multi_boot(); ps_boot();
+            bad += check("U4: restore of id 42 commits; M17 is back by name, stored (not the factory multi); M24 is not", put_all(42, o42, l42, c42) == 0 &&
+                         project_used(16) && !project_factory(16) && !strcmp(mu_names[16], "SEVENTEEN") && !project_factory(16) && list(42, &len, &crc) == 0 && len == l42 && crc == c42 &&
+                         list(45, &len, &crc) == 0 && len == 0);
+            bad += check("U4: length 0 for id 42 gives M17 back its factory multi; length 0 for id 46 empties M25 / M26",
+                         put_all(42, "", 0, 0) == 0 && list(42, &len, &crc) == 0 && len == 0 && put_all(46, "", 0, 0) == 0 && list(46, &len, &crc) == 0 && len == 0);
+        }
     }
 
     /* the runtime */

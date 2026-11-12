@@ -326,6 +326,13 @@ static void graph_roll(const track_t *t, uint16_t c)
 }
 /* GLOBAL SCALE, TEMPLATE 9 (SCALE_CHORD_NEW_LAYOUT_V3.png): the keyboard (kb_draw, ui_kb.c) on rows UT_A_KB_Y .. + UT_A_KB_H - 1 (56 .. 130), x UT_A_KB_X .. + UT_A_KB_W, drawn on the area
  * canvas in SCREEN rows (draw_graph sets cv_oy); one octave from C, lit = the scale's notes, the root marked (kb_draw's light key). The old bars (black keys high, white keys low) are gone */
+static void kb_names(const char *b)                  /* the line under the keyboard, right: the lit notes' names (GLOBAL SCALE: the scale's, CHORD: the chord's) */
+{
+    int32_t ay, ah, base = UT_A_KB_Y + UT_A_KB_H + 14;
+    area_rect(&ay, &ah);
+    if (base < ay + ah)
+        cv_text_on(UT_A_KB_X + UT_A_KB_W - text_w(&AF_S, b), UT_TY(S, base), &AF_S, b, T_MID, T_BG);
+}
 static uint32_t scale_lit(const track_t *t)          /* the scale's notes as semitones from C (bit 0 = C) */
 {
     uint32_t i, lit = 0, mask = scale_mask(t);
@@ -338,7 +345,20 @@ static void graph_scale(const track_t *t, uint16_t c)
 {
     /* CHROMATIC: the OFF-SCALE card is hidden on this page (ui_draw.c draw_column_hide), so the old note "NO SCALE: OFF-SCALE HAS NO EFFECT" (two lines; they do not fit under the keyboard)
      * is not drawn: QUESTION in the report */
-    kb_draw(UT_A_KB_X, UT_A_KB_Y, UT_A_KB_W, UT_A_KB_H, scale_lit(t), (uint32_t)root_of(t) % 12u, 1u, c);
+    uint32_t lit = scale_lit(t), i;
+    char b[12 * 3 + 1];
+    kb_scale = 1u;                                   /* (b10, one pair with CHORD: its two octaves, the root in both, the keys in the GLOBAL gradient as the page's values) */
+    kb_draw(UT_A_KB_X, UT_A_KB_Y, UT_A_KB_W, UT_A_KB_H, lit | lit << 12, (uint32_t)root_of(t) % 12u, 2u, c);
+    kb_scale = 0u;
+    b[0] = 0;
+    for (i = 0; i < 12u; i++)                        /* the scale's notes from its root, named as CHORD names its chord's (chord.c note_str: flats in a flat key) */
+        if ((lit >> ((i + (uint32_t)root_of(t)) % 12u)) & 1u) {
+            if (b[0])
+                str_cpy(b + str_len(b), " ", 2);
+            note_str(b + str_len(b), (i + (uint32_t)root_of(t)) % 12u);
+        }
+    if (scale_mask(t) != 0xFFFu)                     /* (CHROMATIC: every key is lit, twelve names say nothing more) */
+        kb_names(b);
 }
 #if DUELL_TEST_MODE
 static void graph_test(void);                        /* MENU > SYSTEM > TEST (ui_menu.c: the CPU meter's code) */
@@ -438,15 +458,25 @@ static void chord_line(const track_t *t)
         return;
     if (why)
         cv_text_on(UT_A_KB_X, y, &AF_S, why, T_TEXT, T_BG);
-    if (trk_vmode(t) == V_POLY && chord_last[k].n) {
+    if (trk_vmode(t) == V_POLY) {                    /* (b10: also before a key is played: the chord the keyboard shows, on the scale's root, as GLOBAL SCALE names its notes) */
         char b[4 * 3 + 1];
+        uint8_t nn[CHORD_MAX];
+        int32_t r;
+        uint16_t m;
+        uint32_t n = chord_last[k].n;
+        if (n)
+            for (i = 0; i < n && i < CHORD_MAX; i++)
+                nn[i] = chord_last[k].note[i];
+        else
+            n = chord_make(t, (uint32_t)(60 + root_of(t)), nn, &r, &m);
         b[0] = 0;
-        for (i = 0; i < chord_last[k].n && i < CHORD_MAX; i++) {
+        for (i = 0; i < n && i < CHORD_MAX; i++) {
             if (i)
                 str_cpy(b + str_len(b), " ", 2);
-            note_str(b + str_len(b), chord_last[k].note[i]);
+            note_str(b + str_len(b), nn[i]);
         }
-        cv_text_on(UT_A_KB_X + UT_A_KB_W - text_w(&AF_S, b), y, &AF_S, b, T_MID, T_BG);
+        if (b[0])
+            kb_names(b);
     }
 }
 static void graph_chord(const track_t *t, uint16_t c)

@@ -565,7 +565,7 @@ _Static_assert(sizeof(motion_store_t) == 388u, "motion disk layout (FUN10)");
  * The stores of before 0.2.14 held 8 detents a bit; they are no longer read, so nothing converts them */
 #include "ins_bits.h"
 #define PS_SLOTS 32u             /* DUELL: the pattern slots P01..P32, ONE list for the whole device (patslot.c, SAVE > PATTERNS) */
-#define MU_SLOTS 16u             /* DUELL: the multis M01..M16 (project.c multi.c, SAVE > MULTI) */
+#define MU_SLOTS 26u             /* b10 U4 + MR9: the multis M01..M26, all stored (project.c multi.c, SAVE > MULTI; MU_SHOWN follows it): storage.c holds exactly M26 (13 objects, multi.c MU_OBJ_ALL: a 27th needs a new object); M25, M26 are the drone multis */
 
 #define NMSLOT 8u
 #define MOD_NK 16u               /* DUELL 1.1: per-block parameters a part's block can hold modulated at once: the 8 slots' destinations plus the DEST cards' virtual routes (mod.c VR, at most 7 distinct destinations) */
@@ -586,12 +586,10 @@ typedef struct {                 /* the part in mix_part, its window: one per pa
     int16_t keep[MOD_NK];
 } mod_win_t;
 
-/* TIDE 1.0.0-b6: the multis SHOWN (lists, labels, pickers, previews, MIDI program change) are M01..M18; the STORED ones stay MU_SLOTS (16: the flash
- * objects, storage.c). M17 DUNE HORN and M18 VOID DEEP are ROM only (MU_ROM; multi.c: they load and preview, never save, rename or erase) */
-#define MU_SHOWN 26u                /* (b10: + M19 TECH HYPNO, M20 DUB HOUSE, M21 HSE LOFI, M22 TECH CINEMA, M23 AMB TECHNO, M24 TECH MINIMAL, MR9 M25 DUB MINIMAL, M26 HSE KEYS, ROM only as the drones; tools/drone_pack.py ROM_MULTIS) */
-#define MU_ROM(k) ((uint32_t)(k) >= MU_SLOTS)
+/* The multis SHOWN (lists, labels, pickers, previews, MIDI program change) are the stored ones: since b10 U4 every position has a flash slot (storage.c), the factory multi shows
+ * while it holds nothing (multi.c mu_fact), and SAVE writes over it */
+#define MU_SHOWN MU_SLOTS
 #define MU_DRONE(k) ((uint32_t)(k) - 24u < 2u)   /* M25, M26: the built-in drone multis (TIDE plays them as STYLE DRONE, tide_ui.c tide_drone); since b10 the list is in genre order (tools/factory_multis.py DISPLAY_ORDER): M17 .. M24 are ROM-only multis of other genres */
-#define MU_ROM_SAY "SAVE TO M01-M16"   /* SAVE / rename refused on M17, M18 (multi.c), as SOUNDS says PICK A USER SLOT */
 typedef struct track {
     int16_t p[EXT_P_LEN];        /* P_COUNT ids, a gap at 127, then the NX extension slots (ext.h XV); every store and format still counts P_COUNT */
     uint8_t engine, preset;      /* engine: what the audio ISR renders */

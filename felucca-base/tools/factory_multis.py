@@ -290,6 +290,12 @@ MULTIS = apply_owner(MULTIS)
 # The ORDER the unit lists the multis in (owner, 12 November 2026: genre by genre, not in the order they were made): the record numbers (M01 .. M24 as these tools, the tests' names and the
 # docs call a record: the files tools/factory_multis/Mnn.bin and tools/drone_multis/Mnn.bin) in the order of the slots. tools/gen_duell_multis.py gives each record the slot of its place here (the unit's
 # M01 .. M24, MIDI program changes 1 .. 24, DF_SLOT, multi_names.h); a record keeps its number in every tool. Slots 1 .. 16 can be saved over (flash objects), 17 .. 24 are ROM only, the last two the drones.
+# The KEY of each multi (b10 round 9, live assist phase 2): record number -> "A min" / "F# maj", None where the multi has no key worth naming (a drone, a bed of two or three notes). TAKE + ANSWER
+# (firmware/src/tide_take.c) takes the key from SCL, else from here, else from the take itself (the header then shows a ?). Read by tools/gen_duell_multis.py (DF_KEY in duell_multis.h, one byte
+# a multi: 0xFF none, else the root 0 .. 11 | 16 for minor). The keys were read off each multi's own patterns (the key estimate of tide_take.c over both parts; M03, M06, M08, M15 agree with the
+# design report's hand-made keys). The record format is untouched: a multi saved by the player carries no key (0xFF) until it is saved with SCL.
+KEYS = {1: None, 2: None, 3: "A min", 4: "F min", 5: "G min", 6: "A min", 7: "E maj", 8: "C# min", 9: "A min", 10: "D min", 11: "E min", 12: "G min", 13: "F# min", 14: "D maj", 15: "F min",
+        16: None, 17: None, 18: None, 19: None, 20: "G maj", 21: "G# min", 22: "A min", 23: "A min", 24: "A maj", 25: None, 26: "G maj"}
 DISPLAY_ORDER = [1, 2, 25, 20, 3, 4, 26, 5, 6, 21, 7, 8, 24, 19, 22, 9, 10, 11, 12, 13, 14, 23, 15, 16, 17, 18]
 
 
@@ -403,6 +409,7 @@ BOOT_H = """/* tools/factory_multis.py: no factory multis (the build of the gene
 #define DF_TEST_MULTIS DUELL_TEST_MODE
 #define DF_N 0u
 static const uint8_t DF_SLOT[1] = {0};
+static const uint8_t DF_KEY[1] = {255};
 static const uint16_t DM_LEN[1] = {0};
 static const uint16_t DM_AT[1] = {0};
 static const uint8_t DM_REC[1] = {0};

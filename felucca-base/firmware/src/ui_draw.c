@@ -2296,6 +2296,8 @@ static int area_plan(const page_t *pg, uint32_t g)
         for (s = 1; s < 4u; s++)
             slots += !slot_blank(pg, s);
         cols = g == 5u || slots >= 3u ? 3u : 2u;
+        if (g == 16u && pg->graph == GR_CHORD && (slot_hidden(pg, 2u) || slot_hidden(pg, 3u)))   /* b10 (one pair with GLOBAL SCALE): CHORD shows two cards at most (STRUM and the VOICE never both, card_hidden_vp; page_cards moves them left): GLOBAL SCALE's two columns */
+            cols = 2u;
         n = page_cards(pg, vis);
         for (c = 1; c < 4u && c < n; c++) {
             int16_t *vp;
@@ -3554,11 +3556,13 @@ static void tide_line_draw(void)
         const uint32_t p2 = mask == 2u || (mask == 3u && x >= 120);   /* (part 2's stretch) */
         uint16_t c = mask == 3u && !grey ? ux_mix(T_PTHEME(0), T_PTHEME(1), x * 100 / 239) : T_PTHEME(p2);
         int32_t yc16 = 24 + (st == 2u ? sine_i((uint32_t)x * 0x01111111u * 4u + (beat & 7u) * 0x20000000u) * 8 >> 15 : 0);   /* the middle, 1/16 px */
-        if (st == 1u && (x & 7) > 3)
-            continue;                                   /* armed: dashes */
-        if (grey && p2 && (x & 7) > 5)
+        if ((st == 1u || st == 5u) && (x & 7) > 3)
+            continue;                                   /* armed: dashes (5: the count-in of a take) */
+        if (st >= 5u)
+            c = T_REC;                                  /* b10 round 9: a take records: REC red, filling with the loop */
+        else if (grey && p2 && (x & 7) > 5)
             continue;                                   /* GREY / MONO: part 2 dashed (6 on, 2 off) */
-        if (st == 4u || st == 1u || x > xp)
+        if (st == 4u || st == 1u || st == 5u || x > xp)
             c = ux_mix(T_BG, c, 45);                    /* ahead of the tide (paused: all of it) */
         else if (x >= xp - 1)
             c = ux_mix(c, T_TEXT, 55);                  /* the tide's edge */

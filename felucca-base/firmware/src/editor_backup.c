@@ -24,6 +24,8 @@
  * DUELL 0.2.14: what a PUT restores must be of this firmware's formats (project.c, multi.c, upreset.c): a project of another format
  * or revision (2), a multi object whose record is not MU_VER with P_COUNT values (2), a patch chunk with a record without PTF_CB (2) are
  * refused; nothing is written or changed then.
+ * b10 U4 (INFO 42 01 caps bit 6, value 64): ids 42..46 = OBJ_MULTIX0..4 (M17-18 .. M25-26, the same object format as 13..20; "version 6"; the flash holds exactly M26: a build with fewer slots lists the last
+ * object empty and a restore of it is kept as it is). A version 5 archive has none of them: its restore leaves M17 and up as they are.
  * DUELL 0.2.14 (INFO 42 01 caps bit 2): ids 13..20 = OBJ_MULTI0..7 (M01-02 .. M15-16, two multis an object, magic MUL1, multi.c) and ids
  * 21..23 = OBJ_PATSLOT0..2 (P01-11, P12-22, P23-32, 11 / 11 / 10 slots an object, magic PTS3, a compact variable-length object, patslot.c) are in the
  * archive (27 ids). They are read
@@ -40,13 +42,19 @@
 #define ED_BK_PAT0 21u
 #define ED_BK_WT0 24u
 #define ED_BK_PATCH 40u                         /* a patch record, with its slot (see the top) */
+#define ED_BK_MULX0 42u                         /* ids 42..46: the multi objects 8..12 (M17..M26, b10 U4, INFO 42 01 caps bit 6): always all five, the flash has room for M26 (MU_OBJ_ALL); the ones past MU_SLOTS read empty; 41 is the voice bank */
 #define ED_BK_FVB 41u                           /* TIDE: FM6's voice bank, read only (see the top) */
 #define ED_BK_PPAGE 32u                         /* patch records a LIST page lists (32 x 11 bytes fit the reply) */
-static const uint8_t ED_BK_IDS[24] = {0, 1, 2, 3, 4, 5, 8, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 32, 33, 34};
+static const uint8_t ED_BK_IDS[29] = {0, 1, 2, 3, 4, 5, 8, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 32, 33, 34, 42, 43, 44, 45, 46};
 static uint8_t ed_bk_slot;                      /* the slot of the patch record a PUT is staging */
 static uint8_t ed_wt_put;                       /* a user wavetable upload is staging (editor_wtab.c): they share ED_BK_RAW */
 static int ed_bk_wt(uint32_t id) { return id >= ED_BK_WT0 && id < ED_BK_WT0 + WV_NU ? (int)(id - ED_BK_WT0) : -1; }
-static int ed_bk_multi(uint32_t id) { return id >= ED_BK_MUL0 && id < ED_BK_MUL0 + MU_NOBJ ? (int)(id - ED_BK_MUL0) : -1; }
+static int ed_bk_multi(uint32_t id)             /* the multi object of a wire id, -1 none */
+{
+    if (id >= ED_BK_MUL0 && id < ED_BK_MUL0 + MU_NOBJ0)
+        return (int)(id - ED_BK_MUL0);
+    return id >= ED_BK_MULX0 && id < ED_BK_MULX0 + (MU_OBJ_ALL - MU_NOBJ0) ? (int)(MU_NOBJ0 + id - ED_BK_MULX0) : -1;
+}
 static int ed_bk_pat(uint32_t id) { return id >= ED_BK_PAT0 && id < ED_BK_PAT0 + PS_NOBJ ? (int)(id - ED_BK_PAT0) : -1; }
 #define ED_BK_N ((uint32_t)sizeof ED_BK_IDS)
 #define ED_BK_MAX ((uint32_t)sizeof proj_wire_u.raw)
@@ -117,7 +125,7 @@ static const uint8_t *ed_bk_object(uint32_t id, uint32_t *len)
         const uint8_t *p;
 #if FELUCCA_FLASH
         st_hdr_t h;
-        if (!flash_ok || st_current(OBJ_MULTI0 + o, &h) < 0)
+        if (!flash_ok || st_current(mu_oid(o), &h) < 0)
             return ED_BK_RAW;
         n = h.len;
         p = st_buf;                                 /* (st_current left the payload there) */
@@ -222,7 +230,8 @@ static uint32_t ed_bk_commit(void)
         } else if (!ed_bk_mul_ok(raw, ed_bk_len)) return 2;
         if (mu_obj_write(o, ed_bk_len)) return 4;   /* (mu_buf is the staging RAM; host builds: mu_ram) */
         mu_obj_read(o);                             /* what the unit holds now (flash, checked); its names and used mask */
-        mu_note(o);
+        if (o < MU_NOBJ)                            /* (b10 U4: the objects past the slots in use hold what the archive carried: M25, M26 come with MR9) */
+            mu_note(o);
         sync_reload = 1; ui.force = 1;
         return 0;
     } else if (ed_bk_wt(ed_bk_id) >= 0) {      /* DUELL 0.2.14: a user wavetable; length 0 = EMPTY */

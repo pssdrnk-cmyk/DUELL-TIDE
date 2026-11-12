@@ -3,7 +3,7 @@
  * ERASE_ALL (cmd 80, editor_erase.c, with its token) run the same erase_data_run(); included by project.c.
  *
  * What goes (flash objects, storage.c; a stored object is the A/B pair of sectors, both erased by st_wipe):
- *   the autosave (OBJ_AUTOSAVE), the pattern slots (OBJ_PATSLOT0..2), the multis (OBJ_MULTI0..7: M01..M16 are
+ *   the autosave (OBJ_AUTOSAVE), the pattern slots (OBJ_PATSLOT0..2), the multis (OBJ_MULTI0..7 and OBJ_MULTIX0..4: M01..M26 are
  *   the factory ones again, ROM), the patch store (OBJ_PATCH0..5 and, DUELL 0.2.15, OBJ_PATCHX0..9, the cloud plan's job A: OBJ_PATCHX0..15 (chunks 6..21): every stored patch and every factory sound's shadow copy),
  *   the user wavetables (OBJ_WTAB0..2, DUELL 0.2.14: USR1..USR3 are EMPTY again), DUELL 1.1 (item 91, owner: erase EVERYTHING the user stored) the FM6
  *   voice bank (0xE7000), and the settings (OBJ_SETTINGS: theme, scale, MIDI channels and MIDI MAP / LEARN, the favourites, the preferences). The theme's RAM
@@ -40,6 +40,7 @@ static int erase_data_run(void)
     static const uint8_t ORDER[] = {OBJ_AUTOSAVE, OBJ_PATSLOT0, OBJ_PATSLOT0 + 1, OBJ_PATSLOT0 + 2,
                                     OBJ_MULTI0, OBJ_MULTI0 + 1, OBJ_MULTI0 + 2, OBJ_MULTI0 + 3,
                                     OBJ_MULTI0 + 4, OBJ_MULTI0 + 5, OBJ_MULTI0 + 6, OBJ_MULTI0 + 7,
+                                    OBJ_MULTIX0, OBJ_MULTIX0 + 1, OBJ_MULTIX0 + 2, OBJ_MULTIX0 + 3, OBJ_MULTIX0 + 4,   /* (b10 U4: M17..M26) */
                                     OBJ_PATCH0, OBJ_PATCH0 + 1, OBJ_PATCH0 + 2, OBJ_PATCH0 + 3, OBJ_PATCH0 + 4, OBJ_PATCH0 + 5,
                                     OBJ_PATCHX0, OBJ_PATCHX0 + 1, OBJ_PATCHX0 + 2, OBJ_PATCHX0 + 3, OBJ_PATCHX0 + 4,
                                     OBJ_PATCHX0 + 5, OBJ_PATCHX0 + 6, OBJ_PATCHX0 + 7, OBJ_PATCHX0 + 8, OBJ_PATCHX0 + 9,

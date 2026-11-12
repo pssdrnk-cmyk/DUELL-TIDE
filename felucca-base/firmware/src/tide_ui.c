@@ -259,8 +259,8 @@ static const uint8_t JL_NV[JL_N] = {7, 2, 3, 3, KS_N + 1, 101, 2, TA_N, 2, 3, 10
 static volatile uint8_t *const JL_VAR[JL_N] = {[JL_STYLE] = &tide_style, [JL_GMODE] = &gl.mode, [JL_TARGET] = &gl.target, [JL_ARC] = &sqm_arc,
                                                [JL_REC] = &tide_rec_replace, [JL_ANS] = &tide_answer, [JL_ANSON] = &tide_answer_on};   /* (REC is no part of a STYLE: seq.c, live recording) */
 static const char *const JL_V[] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK", "DRONE", "CUSTOM", "SOUND", "SEQ", "BOTH", "OFF", "RISE", "DROP",
-                                   "AUTO", "STD", "DUB", "HSE", "TECH", "ACID", "ELEC", "AMB", "ADD", "REPLACE", "LAYER", "STEREO", "DUEL", "OFF", "BASS LINE", "DOUBLE", "OTHER", "OFF"};
-static const uint8_t JL_V0[JL_N] = {0, 0, 7, 10, 13, 0, 21, 26, 29, 23, 0, 0};   /* (each row's first name in JL_V; MODE's are GL_MODE_NAME) */
+                                   "AUTO", "STD", "DUB", "HSE", "TECH", "ACID", "ELEC", "AMB", "ADD", "REPLACE", "LAYER", "STEREO", "DUEL", "OFF", "BASS LINE", "DOUBLE", "REPLY", "ECHO", "OTHER", "OFF"};
+static const uint8_t JL_V0[JL_N] = {0, 0, 7, 10, 13, 0, 21, 26, 31, 23, 0, 0};   /* (each row's first name in JL_V; MODE's are GL_MODE_NAME) */
 static const char *const JL_SAY[JL_N] = {"STYLE ", "MODE ", 0, "ARC ", "", "AMOUNT ", "REC ", "ANSWER ", "ANSWER ON ", 0, 0, 0};
 static const char *const JL_OWN[3] = {"TARGET SOUND", "TARGET SEQ", "TARGET BOTH"};   /* (TARGET's messages) */
 static uint32_t jl_n(uint32_t r) { return JL_NV[r % JL_N]; }
@@ -718,6 +718,9 @@ cards:
  * its beat, the parts it moves */
 static int tide_line_state(uint32_t *prog, uint32_t *beat, uint32_t *mask)
 {
+    uint32_t tk = take_line(prog);                       /* b10 round 9: a take records: the line is REC red (5 the count-in, 6 recording) */
+    if (tk)
+        return (int)tk + 4;
     if (!glide_running())
         return 0;
     *mask = gl.mask & 3u ? gl.mask & 3u : 3u;
@@ -742,6 +745,16 @@ static __attribute__((noinline)) void tide_frac(char *l, uint32_t a, uint32_t b)
 /* AUTO TIDE's status line: what the glide does now, with its bar ("EVOLVING TO B  3/8", "WAITING  1/4"); stopped, the part(s) */
 static __attribute__((noinline)) void tide_status_arc(char *l, int arc);
 static void tide_status(char *l) { tide_status_arc(l, 1); }
+/* b10 round 9: knob 1's line while a take records: TAKE  BAR 3/4 (0: no take is recording) */
+static uint32_t take_text(char *l)
+{
+    uint32_t pr = 0, p = song.rec & 1u ? 0u : 1u, spb = tk_spb(), len = TIDE_PLAY_LEN(&trk[p]);
+    if (take_line(&pr) != 2u)
+        return 0;
+    str_cpy(l, "TAKE  BAR ", 40);
+    tide_frac(l, TIDE_PLAY_IDX(&trk[p]) / spb + 1u, len / spb ? len / spb : 1u);
+    return 1;
+}
 /* b10 Phase B (I4, I5): the trip without the ARC's words ("EVOLVING TO B  3/16", "WAITING  1/2"; armed, paused, a hand as tide_status) */
 static __attribute__((unused)) void tide_trip(char *l) { tide_status_arc(l, 0); }
 static __attribute__((unused)) void tide_trip_short(char *l) { tide_status_arc(l, 2); }   /* (the wave page's knob-1 line: no "BAR", it has less room) */
@@ -765,6 +778,8 @@ static __attribute__((unused)) int tide_arc_text(char *l)
 static __attribute__((noinline)) void tide_status_arc(char *l, int arc)
 {
     uint32_t bars = gl.hold ? GLIDE_WAIT_BARS[gl.wait % GLIDE_WAITS] : glide_trip_bars(), at = ((gl.prog * bars) >> GLIDE_Q) + 1u;
+    if (take_text(l))
+        return;                                          /* b10 round 9: a take records: TAKE  BAR 3/4 */
     if (!glide_running())
 #if TIDE_PLAYSEL
         str_cpy(l, PLS_NAME[play_pos()], 40);              /* (1.0.0-b7: the selection is the play mode: PART 1, LAYER, STEREO, DUEL, PART 2) */
@@ -1198,13 +1213,13 @@ static volatile uint8_t *const TS_VAR[TS_N] = {&gl.mode, &gl.time, &gl.target, &
                                                &sqm_sync, &sqm_arc, &tide_style, &tide_rec_replace, &tide_answer, &tide_answer_on};
 static const uint8_t TS_LIM[TS_N] = {GM_JOURNEY + 1u, GLIDE_TIMES, GT_BOTH + 1u, GLIDE_WAITS, 0, KS_N + 2u, 0, 3, 3, 3, 3, STY_CUSTOM, 2, TA_N, 2},
                      TS_DEF[TS_N] = {GM_WANDER, 3, GT_SOUND, 0, 1, 1, 3, 1, 1, 1, 0, STY_CUSTOM, 0, TA_BASS, 0};
-/* TIDE 1.0.0-b6: while a built-in drone multi (M17, M18: MU_DRONE; b10: the ROM multis M19.. are not drones) is the multi loaded, TIDE plays STYLE DRONE: the eight rows are DRONE's and TIDE SETTINGS
+/* TIDE 1.0.0-b6: while a built-in drone multi (M25, M26: MU_DRONE) is the multi loaded, TIDE plays STYLE DRONE: the eight rows are DRONE's and TIDE SETTINGS
  * shows DRONE. What was set (the eight rows and STYLE) is kept here and comes back when any other multi (or none) is loaded; the store always gets the
  * kept values, so the saved STYLE never changes. A hand edit of a row while the drone multi is loaded lasts until then. Main loop only (no audio cost) */
 static uint8_t tide_drone_on, tide_drone_keep[9];       /* (STY's eight rows, then STYLE) */
 static void tide_drone(int reread)
 {
-    uint32_t cs = project_cur_slot(), on = cs < MU_SHOWN && MU_DRONE(cs);
+    uint32_t cs = project_cur_slot(), on = cs < MU_SHOWN && MU_DRONE(cs) && project_factory(cs);   /* (b10 U4: only while the slot shows the factory drone; a multi saved over it is an ordinary one) */
     if (reread)                                          /* (the rows were just read from the store: they are what is kept now) */
         tide_drone_on = 0;
     if (on == tide_drone_on)

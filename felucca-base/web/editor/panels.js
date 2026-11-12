@@ -5,6 +5,7 @@ import { L, ID, P_E0, descOf, engineLabel, CATEGORIES } from "./layout.js";
 import * as WTM from "./wavetable.js";
 import { dropZone, hasFiles, filesOf, readBytes, saveText } from "./dropzone.js";
 import * as S from "./stored.js";
+import { multiSlotsOf } from "./duellbackup.js";
 import { MENU_LONG, longDesc } from "./labels.js";
 
 const pad = (n, w = 2) => String(n).padStart(w, "0");
@@ -29,10 +30,9 @@ export function buildMultis(app, wrap) {
   wrap.append(h("div", { class: "multiswrap" }, bar, msg, box));
   let used = u.multis || null, recs = null;
   const factory = new Map(L.MULTIS);
-  // TIDE 1.0.0-b6: the slots past the sixteen stored ones (M17 DUNE HORN, M18 VOID DEEP) are ROM only on the unit: listed as built in and read-only, Recall only
-  // (no kind words: editor2 owner item 7, as the other rows)
-  // (no Save to unit, Rename, Download or Import into them; the backup format is unchanged: nothing is stored for them)
-  const ROM0 = 16, nShown = Math.max(ROM0, ...L.MULTIS.map(([s]) => s + 1)), rom = (s) => s >= ROM0;
+  // b10 U4: a unit with INFO caps bit 6 has a flash slot behind every multi (M01..M26): all rows are alike. A unit without it (an older TIDE build) keeps M17 and up built in:
+  // listed read-only, Recall only (no kind words: editor2 owner item 7, as the other rows). The backup carries M17..M26 as ids 42..46
+  const ROM0 = multiSlotsOf(u.info?.caps), nShown = Math.max(ROM0, ...L.MULTIS.map(([s]) => s + 1)), rom = (s) => s >= ROM0;   // (a unit without caps bit 6 keeps M17 and up built in: Recall only)
   const nameOf = (s) => u.multiNames?.[s] ?? (recs?.[s] ? S.multiName(recs[s]) : null) ?? (factory.has(s) ? factory.get(s) : null);
   async function refreshUsed() { try { used = await u.multiUsed(); draw(); } catch (e) { app.fail(e); } }
   async function readNames() { try { app.say("Reading the stored multis ..."); const r = await S.readMultis(u); recs = r.records; await u.readMultiObjects(); draw(); app.say("Names read.", "good"); } catch (e) { app.fail(e); } }
@@ -40,7 +40,7 @@ export function buildMultis(app, wrap) {
     clear(box);
     for (let s = 0; s < nShown; s++) {
       if (rom(s)) {
-        const name = factory.get(s) ?? "", ro = "Built into the firmware (read-only): Recall it, edit it, and save the result into M01 to M16";
+        const name = factory.get(s) ?? "", ro = "Built into this unit's firmware (read-only): Recall it, edit it, and save the result into M01 to M16";
         box.append(h("div", { class: "mrow2", role: "listitem", title: `${S.M_LABEL(s)} ${name} (read-only, built in)` }, h("b", { text: S.M_LABEL(s) }), h("span", { class: "n", text: `${name} (read-only)` }),
           h("span", { class: "acts" },
             h("button", { class: "ghost small", text: "Recall", title: `Recall ${S.M_LABEL(s)} on the unit (replaces both parts, the effects and the arps)`, onclick: () => doLoad(s, name) }),
@@ -86,7 +86,7 @@ export function buildMultis(app, wrap) {
     try {
       app.say("Reading the stored multis ...");
       const r = await S.readMultis(u); recs = r.records;
-      const list = (slot == null ? [...Array(16).keys()] : [slot]).filter((s) => recs[s]).map((s) => ({ slot: s, bytes: recs[s] }));
+      const list = (slot == null ? [...Array(ROM0).keys()] : [slot]).filter((s) => recs[s]).map((s) => ({ slot: s, bytes: recs[s] }));
       if (!list.length) { app.say(slot == null ? "No multi is saved on the unit (the factory multis live in the firmware: Recall one and save it to the unit to keep a copy)." : `${S.M_LABEL(slot)} is not saved on the unit: Recall it and save it to the unit once, then download it.`, "warn"); draw(); return; }
       const name = slot == null ? `duell-multis-${list.length}.duell-multis.json` : `duell-multi-${S.M_LABEL(slot)}-${S.multiName(recs[slot]).replace(/[^A-Za-z0-9._-]+/g, "_") || "multi"}.duell-multis.json`;
       saveText(app, name, JSON.stringify(S.multiFile(list, u.info.version), null, 1) + "\n");
@@ -101,7 +101,7 @@ export function buildMultis(app, wrap) {
     const pick = await new Promise((resolve) => {
       const dlg = h("dialog", { class: "ask", "aria-label": "Import a multi" });
       const which = h("select", { "aria-label": "Multi from the file" }, ok.map((m, i) => h("option", { value: i, text: `${m.slot != null ? S.M_LABEL(m.slot) + "  " : ""}${m.name}` })));
-      const slot = h("select", { "aria-label": "Unit slot" }, Array.from({ length: 16 }, (_, s) => h("option", { value: s, text: `${S.M_LABEL(s)}  ${nameOf(s) ?? ""}` })));
+      const slot = h("select", { "aria-label": "Unit slot" }, Array.from({ length: ROM0 }, (_, s) => h("option", { value: s, text: `${S.M_LABEL(s)}  ${nameOf(s) ?? ""}` })));
       const sync = () => { const m = ok[+which.value]; if (m.slot != null) slot.value = m.slot; };
       which.addEventListener("change", sync); sync();
       const done = (v) => { dlg.close(); dlg.remove(); resolve(v); };

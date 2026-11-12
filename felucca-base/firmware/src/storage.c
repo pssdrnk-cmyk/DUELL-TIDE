@@ -47,6 +47,7 @@
  * (fm1_flash.h FL_MULTI_*): objects 0..3 at 0x97000..0x9EFFF (the sectors of Felucca's four project slots, OBJ_PROJECT0..3:
  * retired, their numbers kept so no other object's commit records change; st_head / st_save refuse them, so nothing
  * writes there under their name and an old project's record reads as no multi), objects 4..7 at 0xCE000..0xD5FFF.
+ * b10 U4: objects OBJ_MULTIX0..+4 (ids 50..54, M17..M26) at 0xEA000..0xF3FFF, the first ten sectors of the stock firmware's USR region; 0xF4000..0xFBFFF stays unused (room for eight more).
  * The factory multis M01..M10 (multi.c, build/gen/duell_multis.h) are ROM, not flash: an empty record shows them, a stored one wins. */
 #define OBJ_FM6VB 32u                          /* the voice bank's commit records (fm6_vbank.c; not an st_load object: OBJ_RETIRED, so
                                                 * st_head / st_save / st_wipe refuse it, and no object here takes its sectors) */
@@ -56,7 +57,8 @@ enum { OBJ_SETTINGS, OBJ_PROJECT0, OBJ_UPRESET0 = OBJ_PROJECT0 + 4, OBJ_FM6BANK 
        OBJ_WTAB0 = OBJ_PATCH0 + 6,                                  /* .. 6 objects; DUELL 0.2.14: the user wavetables (wtab.c), 3 objects */
        OBJ_PATCHX0 = OBJ_FM6VB + 1,                                 /* DUELL 0.2.15: the PATCH store's chunks 6..15 (upreset.c), 10 objects, ids 33..42: id 32 is skipped */
        OBJ_VELO = OBJ_PATCHX0 + 16,                                 /* the cloud plan's job A: chunks 6..21 = OBJ_PATCHX0..15 (ids 33..48), six more at 0xBA000..0xC5FFF; id 49: the velocity calibration, 0xC6000 / 0xC7000 */
-       OBJ_COUNT = OBJ_VELO + 1 };
+       OBJ_MULTIX0 = OBJ_VELO + 1,                                  /* b10 U4: M17..M26, objects 50..54 (multi.c), 0xEA000..0xF3FFF (fm1_flash.h FL_MULTI_C); ids after everything else, so no commit record of another object changes */
+       OBJ_COUNT = OBJ_MULTIX0 + 5 };
 _Static_assert(OBJ_WTAB0 + 3 <= OBJ_FM6VB, "the object ids below the voice bank's");
 /* the project slots' numbers, Felucca's user preset banks and the FM6 patch objects (DUELL: all retired, never read or written) */
 #define OBJ_RETIRED(obj) (((obj) >= OBJ_PROJECT0 && (obj) < OBJ_PROJECT0 + 4u) || ((obj) >= OBJ_UPRESET0 && (obj) <= OBJ_UPFM6) || \
@@ -94,6 +96,8 @@ static uint32_t st_sector(uint32_t obj, uint32_t copy)  /* flash offset of copy 
 {
     if (obj == OBJ_SETTINGS)
         return 0xFC000u + copy * ST_SECTOR;
+    if (obj >= OBJ_MULTIX0)                              /* M17..M26: 0xEA000..0xF3FFF */
+        return 0xEA000u + (obj - OBJ_MULTIX0) * 2u * ST_SECTOR + copy * ST_SECTOR;
     if (obj >= OBJ_PATCHX0)                              /* DUELL 0.2.15: the PATCH store's chunks 6..15: 0xA6000..0xB9FFF (the old sample region); ids 43..48: chunks 16..21, 0xBA000..0xC5FFF; OBJ_VELO (49): 0xC6000 */
         return 0xA6000u + (obj - OBJ_PATCHX0) * 2u * ST_SECTOR + copy * ST_SECTOR;
     if (obj >= OBJ_WTAB0)                                /* the user wavetables USR1..USR3: 0xA0000..0xA5FFF (the old sample region) */

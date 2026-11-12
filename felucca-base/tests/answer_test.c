@@ -78,7 +78,9 @@ static void fill(const take_def_t *d)
     t->p[P_SDIV] = 2;                                    /* 1/16: a bar is 16 steps (the loaded multi's part may sequence on another grid) */
     t->p[P_AMODE] = 0;
 }
-static uint32_t sig_of(const track_t *t) { return steps_sig(t); }
+static uint32_t all_sig = 2166136261u;                    /* (a hash of every answer made: the size pass of b10 round 10 must leave it as it was)
+ */
+static uint32_t sig_of(const track_t *t) { uint32_t h = steps_sig(t); all_sig = (all_sig ^ h) * 16777619u; return h; }
 /* the answer part's notes as events */
 typedef struct { int t, len, note; } ev_t;
 static int answer_events(ev_t *out, int max)
@@ -149,6 +151,67 @@ static int check_rules(const take_def_t *d, uint32_t mode, int *nout, const char
     }
     return !bad;
 }
+/* ---- phase 2: REPLY and ECHO on the calls of 2 bars or less, with 8 rolls; a longer call gets nothing ---- */
+static void reply_echo(void)
+{
+    unsigned cases = 0, passed = 0;
+    for (int ti = 0; ti < 5; ti++)
+        for (int mi = 0; mi < 5; mi++)
+            for (uint32_t mode = TA_REPLY; mode <= TA_ECHO; mode++)
+                for (int scl = 0; scl < 2; scl++) {
+                    const take_def_t *d = &TAKES[ti];
+                    int L = d->bars * 16;
+                    uint32_t h0 = 0, hs[9];
+                    power();
+                    project_load(MIDX(MULTIS[mi] - 1));
+                    frame();
+                    scale_g = scl ? d->scale : 0;
+                    root_g = scl ? d->root : 0;
+                    for (uint32_t seed = 0; seed <= 8u; seed++) {
+                        ev_t ev[128];
+                        int n, ok = 1, i;
+                        uint32_t sg;
+                        fill(d);
+                        trk[1].p[P_SLEN] = 16;
+                        memset(trk[1].step, 0, sizeof trk[1].step);
+                        tk_m.ans = 0;                                    /* (no live answer: a seed is a first answer's, the call is the part's loop) */
+                        sg = sig_of(&trk[1]);
+                        if (d->bars > 2) {
+                            CHECK("a call of more than 2 bars: REPLY / ECHO write nothing", tk_gen(0, 1, seed, mode) == 0u && sig_of(&trk[1]) == sg && trk[1].p[P_SLEN] == 16 && trk[0].p[P_SLEN] == L);
+                            continue;
+                        }
+                        CHECK("REPLY / ECHO: the answer is written", tk_gen(0, 1, seed ? seed * 7919u : 0u, mode) == 1u);
+                        n = answer_events(ev, 128);
+                        ok &= trk[0].p[P_SLEN] == 2 * L && trk[1].p[P_SLEN] == 2 * L;       /* the loop doubles: the call, then the answer */
+                        for (i = 0; i < n; i++)
+                            ok &= (mode == TA_ECHO || ev[i].t >= L) && ev[i].t + ev[i].len <= 2 * L && (mode == TA_ECHO || tk_in_key(ev[i].note));   /* (the echo is the call's own note: the player's pitch) */   /* (a reply plays in the bars after the call; the echo from where the call's last note ends) */
+                        if (mode == TA_REPLY) {
+                            ok &= n == d->nn;
+                            for (i = 0; i < n && i < d->nn; i++)
+                                ok &= ev[i].t == d->n[i].t + L && ev[i].len == d->n[i].len;    /* the call's rhythm */
+                            ok &= n > 0 && ev[n - 1].note % 12 == (int)tk_kr;                    /* ends on the tonic */
+                        } else {
+                            int last = d->nn - 1, t0 = d->n[last].t + d->n[last].len, gap = ev[1].t - ev[0].t;
+                            ok &= n == 4 && ev[0].t == t0 && (gap == 3 || gap == 4 || gap == 6) && (seed != 0u || gap == 3);
+                            for (i = 0; i < n; i++)
+                                ok &= ev[i].note == d->n[last].note + trk[0].p[P_TRANS] && trk[1].step[ev[i].t].vel == 100 - 20 * i && ev[i].t == t0 + gap * i;
+                        }
+                        if (!ok)
+                            printf("answer: %s on M%02d, %s, seed %u: loops %d %d, notes %d\n", d->name, MULTIS[mi], mode == TA_REPLY ? "REPLY" : "ECHO", seed, trk[0].p[P_SLEN], trk[1].p[P_SLEN], n);
+                        CHECK("REPLY / ECHO: loop doubled, after the call, in key, the reply ends on the tonic / the echo is 4 throws 100 80 60 40", ok);
+                        hs[seed] = sig_of(&trk[1]);
+                        cases++; passed += ok;
+                        if (seed == 0u) {
+                            h0 = hs[0];
+                            fill(d); trk[1].p[P_SLEN] = 16; memset(trk[1].step, 0, sizeof trk[1].step);
+                            tk_gen(0, 1, 0, mode);
+                            CHECK("REPLY / ECHO: the same seed gives the same answer", sig_of(&trk[1]) == h0);
+                        }
+                    }
+                }
+    printf("answer: REPLY / ECHO: %u cases of 2 bars or less pass the rules (9 seeds each)\n", passed);
+    CHECK("REPLY / ECHO cases all pass", cases && passed == cases);
+}
 int main(void)
 {
     int ti, mi, ok_all = 1;
@@ -182,7 +245,10 @@ int main(void)
                     if (scl)
                         CHECK("SCL set: the key is the take's own, not guessed", !tk_guess && tk_kr == (uint32_t)d->root % 12u);
                     else
-                        CHECK("SCL chromatic: the key is a guess (the header says so)", tk_guess == 1u);
+                        {   /* SCL chromatic: the multi's own key when it has one (DF_KEY), else a guess (the header says ?) */
+                        uint32_t mk = project_key();
+                        CHECK("SCL chromatic: the key is the multi's own, or a guess when it has none", mk == 0xFFu ? tk_guess == 1u : (!tk_guess && tk_kr == (mk & 15u) && tk_km == (mk >> 4)));
+                    }
                     /* 8 rolls */
                     for (uint32_t sd = 1; sd <= 8u; sd++) {
                         int seed_ok;
@@ -206,9 +272,11 @@ int main(void)
                     }
                 }
     printf("answer: %u takes x multis x answers x keys: %u pass every rule at seed 0; the rolls of 8 seeds gave at least 5 different answers in %u of %u bass cases of 2 bars or more\n", combos, passed, distinct_ok, distinct_cases);
+    reply_echo();
     CHECK("every answer at seed 0 passes the rules", passed == combos);
     CHECK("rolls give different answers in most bass cases", distinct_cases && distinct_ok * 4u >= distinct_cases * 3u);
     (void)ok_all;
+    printf("answer: hash of every answer made: %08x\n", all_sig);
     printf("answer: %u checks, %u FAIL\n", checks, failures);
     return failures ? 1 : 0;
 }

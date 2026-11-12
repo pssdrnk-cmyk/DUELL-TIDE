@@ -7,13 +7,13 @@
  *   (left) and forward (right) along the history while the newest edit is a take or a roll (tk_fresh); a ROLL (morph_do MQ_ROLL, the gesture and word TIDE has) on the answering part writes
  *   the answer again with the roll's seed, one history step. The generators are the host prototype's (tools/perf/perf_probe.c): integer only, deterministic, the same seed the same answer.
  * Pool: 4 snapshots of both parts' steps (4.6 KB), the take's events and the answer's steps (1.1 KB). */
-enum { TA_OFF, TA_BASS, TA_DOUBLE, TA_N };
+enum { TA_OFF, TA_BASS, TA_DOUBLE, TA_REPLY, TA_ECHO, TA_N };
 static volatile uint8_t tide_answer __attribute__((section(".pool")));           /* TIDE SETTINGS ANSWER: what the other part is given when a take closes (a fresh unit: BASS LINE) */
 static volatile uint8_t tide_answer_on __attribute__((section(".pool")));                  /* TIDE SETTINGS ANSWER ON: 0 the other part, 1 OFF */
 
 typedef struct {                                         /* the answer that is live now (it travels with a history state) */
     uint8_t ans;                                         /* the part that holds it + 1, 0 none */
-    uint8_t src, mode, key, flags;                       /* the take's part; TA_*; the key's root (0..11); bit 0 minor, bit 1 guessed, bit 2 scale named, bits 3.. the SCL index */
+    uint8_t src, mode, key, flags, clen;                       /* the take's part; TA_*; the key's root (0..11); bit 0 minor, bit 1 guessed, bit 2 scale named, bits 3.. the SCL index */
     uint16_t seed, roll;                                 /* the seed it was written with; the rolls since the take (the header says ROLL n) */
     uint32_t sig;                                        /* steps_sig of the answer's part right after it was written: an edit since ends the roll */
 } tk_meta_t;
@@ -36,12 +36,24 @@ static uint16_t tk_total __attribute__((section(".pool")));
 #define tk_fresh tk_fresh_v
 
 /* ---- the key: SCL (scale_g, root_g), else the take's own (guessed) ---- */
+static __attribute__((noinline)) int32_t tk_wrap(int32_t x) { return ((x % 12) + 12) % 12; }   /* a pitch class, whatever the sign (one copy of the division) */
 static uint8_t tk_deg[8] __attribute__((section(".pool"))), tk_nd __attribute__((section(".pool"))), tk_kr __attribute__((section(".pool"))), tk_km __attribute__((section(".pool"))), tk_guess __attribute__((section(".pool")));
 static const uint8_t TK_SMAJ[7] = {0, 2, 4, 5, 7, 9, 11}, TK_SMIN[7] = {0, 2, 3, 5, 7, 8, 10};
-static void tk_key(void)
+static __attribute__((noinline)) void tk_key(void)
 {
     uint32_t mask = scale_mask(&trk[0]), i, nd = 0;
     tk_guess = 0;
+    {   /* the multi's own key (duell_multis.h DF_KEY: tools/factory_multis.py KEYS), when SCL is chromatic */
+        uint32_t k = project_key();
+        if (mask == 0xFFFu && k != 0xFFu) {
+            tk_kr = (uint8_t)(k & 15u);
+            tk_km = (uint8_t)(k >> 4);
+            for (i = 0; i < 7u; i++)
+                tk_deg[i] = tk_km ? TK_SMIN[i] : TK_SMAJ[i];
+            tk_nd = 7;
+            return;
+        }
+    }
     if (mask != 0xFFFu) {
         tk_kr = (uint8_t)((uint32_t)root_g % 12u);
         for (i = 0; i < 12u && nd < 8u; i++)
@@ -52,13 +64,15 @@ static void tk_key(void)
         return;
     }
     {   /* the take alone says: the pitch classes weighed by length and beat; a tonic, its fifth and its third (minor or major) count, the other third and the semitones above the tonic and the tritone count against */
-        int32_t h[12] = {0}, best = -0x7FFFFFFF;
+        int32_t h[24] = {0}, best = -0x7FFFFFFF;
         uint32_t r, m;
         for (i = 0; i < tk_nev; i++)
             h[tk_ev[i].note % 12u] += (int32_t)tk_ev[i].len * 4 + (tk_ev[i].t % 4u == 0u ? 2 : 0);
+        for (i = 0; i < 12u; i++)
+            h[i + 12u] = h[i];
         for (m = 0; m < 2u; m++)
             for (r = 0; r < 12u; r++) {
-                int32_t s = 3 * h[r] + 2 * h[(r + 7) % 12u] + 2 * h[(r + 4 - m) % 12u] - 3 * h[(r + 3 + m) % 12u] - 2 * h[(r + 1) % 12u] - 2 * h[(r + 6) % 12u];
+                int32_t s = 3 * h[r] + 2 * h[r + 7] + 2 * h[r + 4 - m] - 3 * h[r + 3 + m] - 2 * h[r + 1] - 2 * h[r + 6];
                 if (s > best) {
                     best = s;
                     tk_kr = (uint8_t)r;
@@ -73,7 +87,7 @@ static void tk_key(void)
 }
 static int32_t tk_in_key(int32_t n)
 {
-    int32_t pc = (n - (int32_t)tk_kr + 1200) % 12;
+    int32_t pc = tk_wrap(n - (int32_t)tk_kr);
     uint32_t i;
     for (i = 0; i < tk_nd; i++)
         if (tk_deg[i] == pc)
@@ -97,7 +111,7 @@ static int32_t tk_note_of(int32_t d, int32_t o)
     while (d >= nd) { d -= nd; o++; }
     return (int32_t)tk_kr + o * 12 + tk_deg[d];
 }
-static int32_t tk_triad_pc(int32_t d, int32_t i) { return ((int32_t)tk_kr + tk_deg[(d + 2 * i) % (int32_t)tk_nd]) % 12; }
+static int32_t tk_triad_pc(int32_t d, int32_t i) { return tk_wrap((int32_t)tk_kr + tk_deg[(d + 2 * i) % (int32_t)tk_nd]); }
 
 /* ---- the take as events ---- */
 static uint32_t tk_spb(void)                             /* steps in a bar at the sequencer's division (16 at 1/16) */
@@ -105,7 +119,7 @@ static uint32_t tk_spb(void)                             /* steps in a bar at th
     uint32_t period = div_samples((uint32_t)trk[0].p[P_SDIV]), n = period ? (4u * click_beat_len() + period / 2u) / period : 16u;
     return n < 4u ? 4u : n > 64u ? 64u : n;
 }
-static void tk_events(const track_t *t, uint32_t len)
+static __attribute__((noinline)) void tk_events(const track_t *t, uint32_t len)
 {
     uint32_t i, k, l, list[16], cnt = 0, root = 127;
     int32_t off = t->p[P_TRANS];
@@ -199,15 +213,21 @@ static void tk_put(int32_t t, int32_t len, int32_t note, uint32_t vel, uint32_t 
 
 /* ---- chords, a bar each: the diatonic triad whose notes the bar weighs most ---- */
 static uint8_t tk_chord[4] __attribute__((section(".pool")));
-static void tk_chords(uint32_t bars, uint32_t spb)
+static __attribute__((noinline)) void tk_chords(uint32_t bars, uint32_t spb)
 {
     static const int8_t PMIN[7] = {3, 0, 1, 2, 1, 2, 2}, PMAJ[7] = {3, 1, 0, 2, 2, 2, 0};
     uint32_t b, d, i;
+    int32_t tp[8][4];                                    /* (the pitch classes of the triad on each degree, and the one a semitone under its root) */
+    for (d = 0; d < tk_nd; d++) {
+        for (i = 0; i < 3u; i++)
+            tp[d][i] = tk_triad_pc((int32_t)d, (int32_t)i);
+        tp[d][3] = tk_wrap(tp[d][0] - 1);
+    }
     for (b = 0; b < bars && b < 4u; b++) {
         int32_t best = -9999, bd = 0;
         for (d = 0; d < tk_nd; d++) {
             int32_t s = (d < 7u ? (tk_km ? PMIN : PMAJ)[d] : 0) * 4 + (b && tk_chord[b - 1] == d ? 3 : 0) + (b == 0 && d == 0 ? 4 : 0);
-            if ((tk_triad_pc((int32_t)d, 2) - tk_triad_pc((int32_t)d, 0) + 12) % 12 == 6)
+            if (tk_wrap(tp[d][2] - tp[d][0]) == 6)
                 continue;                                /* (the diminished triad: no bass root) */
             for (i = 0; i < tk_nev; i++) {
                 const tk_ev_t *e = &tk_ev[i];
@@ -215,7 +235,7 @@ static void tk_chords(uint32_t bars, uint32_t spb)
                 if (z <= a)
                     continue;
                 w = (z - a) + (e->t % 4 == 0 ? 2 : 0) + (e->t % spb == 0u ? 2 : 0);
-                s += pc == tk_triad_pc((int32_t)d, 0) ? 3 * w : pc == tk_triad_pc((int32_t)d, 1) || pc == tk_triad_pc((int32_t)d, 2) ? 2 * w : pc == (tk_triad_pc((int32_t)d, 0) + 11) % 12 ? w / 2 : -w;
+                s += pc == tp[d][0] ? 3 * w : pc == tp[d][1] || pc == tp[d][2] ? 2 * w : pc == tp[d][3] ? w / 2 : -w;
             }
             if (s > best) {
                 best = s;
@@ -244,11 +264,11 @@ static int32_t tk_fit(int32_t t, int32_t len, int32_t cand)
 static const char TK_BT[6][17] = {"R.......F.R.....", "..R...R...O...RA", "..RR..RR..RR..RA", "R.RO.RFR.R.OR.A.", "R.....O...R..F..", "R..............."};
 static const char TK_BL[6][17] = {"6.......2.4.....", "..2...2...2...11", "..11..11..11..11", "1.11.111.1.11.1.", "3.....2...2..2..", "g..............."};
 static const uint8_t TK_LO[6] = {28, 33, 33, 33, 31, 29};      /* the root's lowest note (E1 .. A1): it sits in lo .. lo + 11 */
-static void tk_bass(uint32_t bars, uint32_t spb, uint32_t g, uint32_t seed)
+static __attribute__((noinline)) void tk_bass(uint32_t bars, uint32_t spb, uint32_t g, uint32_t seed)
 {
     uint32_t b, s, i;
     for (b = 0; b < bars && b < 4u; b++) {
-        int32_t rpc = tk_triad_pc(tk_chord[b], 0), lo = TK_LO[g], root = lo + ((rpc - lo) % 12 + 12) % 12, nroot_pc = tk_triad_pc(tk_chord[b + 1u < bars ? b + 1u : 0u], 0);
+        int32_t rpc = tk_triad_pc(tk_chord[b], 0), lo = TK_LO[g], root = lo + tk_wrap(rpc - lo), nroot_pc = tk_triad_pc(tk_chord[b + 1u < bars ? b + 1u : 0u], 0);
         uint32_t busy = 0, h = seed ? tk_hs(seed, b) : 0u, drop = (h & 7u) == 0u ? 1u + (h >> 3) % 15u : 99u, pop = ((h >> 6) & 7u) == 0u, pass = ((h >> 12) & 3u) == 0u, first = 1;   /* (first: nothing placed in this bar yet) */
         if (seed && ((h >> 9) & 3u) == 0u && root + 12 <= lo + 23)
             root += 12;                                  /* (a roll: this bar's root an octave up) */
@@ -256,12 +276,12 @@ static void tk_bass(uint32_t bars, uint32_t spb, uint32_t g, uint32_t seed)
             busy += tk_ev[i].t >= b * spb && tk_ev[i].t < b * spb + spb;
         for (s = 0; s < 16u; s++) {
             char c = TK_BT[g][s];
-            int32_t t = (int32_t)(b * spb + s * spb / 16u), len = TK_BL[g][s] == 'g' ? (int32_t)spb : (TK_BL[g][s] - '0') * (int32_t)spb / 16, note, plo, o, d, j;
+            int32_t t = (int32_t)(b * spb + (s * spb >> 4)), note, plo, o, d, j, len = TK_BL[g][s] == 'g' ? (int32_t)spb : TK_BL[g][s] >= '0' ? (int32_t)((uint32_t)(TK_BL[g][s] - '0') * spb >> 4) : 0;
             if (c == '.' && seed) {                      /* a roll adds a note to an empty step now and then: a passing note, a fifth, an approach */
                 if (pass && s == 14u && TK_BT[g][15] == 'A')
                     c = 'P';
                 else if (s == 8u && ((h >> 14) & 3u) == 0u)
-                    c = 'F', len = 4 * (int32_t)spb / 16;
+                    c = 'F', len = (int32_t)(spb >> 2);
                 else if (s == 15u && ((h >> 16) & 3u) == 0u)
                     c = 'A';
             }
@@ -283,7 +303,7 @@ static void tk_bass(uint32_t bars, uint32_t spb, uint32_t g, uint32_t seed)
             }
             note = c == 'O' ? root + 12 : c == 'F' ? root + 7 : root;
             if (c == 'A' || c == 'P') {                  /* approach: the scale step next to the next root, from below if the root rises; passing: the step above the root */
-                int32_t nr = lo + ((nroot_pc - lo) % 12 + 12) % 12;
+                int32_t nr = lo + tk_wrap(nroot_pc - lo);
                 if (c == 'P') {
                     d = tk_deg_of(root, &o);
                     note = tk_note_of(d + 1, o);
@@ -299,7 +319,7 @@ static void tk_bass(uint32_t bars, uint32_t spb, uint32_t g, uint32_t seed)
                 alt[0] = note;
                 alt[1] = root;
                 alt[2] = root + 7;
-                alt[3] = root + ((tk_triad_pc(tk_chord[b], 1) - root) % 12 + 12) % 12;
+                alt[3] = root + tk_wrap(tk_triad_pc(tk_chord[b], 1) - root);
                 for (a = 0; a < 4 && (note = tk_fit(t, len, alt[a])) < 0; a++)
                     ;
                 if (note < 0)
@@ -311,7 +331,7 @@ static void tk_bass(uint32_t bars, uint32_t spb, uint32_t g, uint32_t seed)
     }
 }
 /* ---- DOUBLE: the take's notes a diatonic third above, in time (a roll: an octave down on odd seeds) ---- */
-static void tk_double(uint32_t seed)
+static __attribute__((noinline)) void tk_double(uint32_t seed)
 {
     uint32_t i;
     for (i = 0; i < tk_nev; i++) {
@@ -325,6 +345,27 @@ static void tk_double(uint32_t seed)
             n -= 12;
         tk_put(e->t, e->len, n, e->vel, 0u);
     }
+}
+/* ---- REPLY: the call's rhythm in the bars after it, moved in scale steps so the last note is the tonic; ECHO: the call's last note thrown 4 times (100, 80, 60, 40) ---- */
+static __attribute__((noinline)) void tk_reply(uint32_t len, uint32_t seed)
+{
+    uint32_t i, last = tk_nev - 1u;
+    int32_t o, nd = (int32_t)tk_nd, dl = tk_deg_of(tk_ev[last].note, &o), shift = dl == 0 ? -2 : dl <= nd / 2 ? -dl : nd - dl, oc = seed % 3u == 1u ? -12 : seed % 3u == 2u ? 12 : 0;
+    for (i = 0; i < tk_nev; i++) {
+        int32_t d = tk_deg_of(tk_ev[i].note, &o), n = tk_note_of(d + shift, o);
+        if (i == last) {                                 /* ends home: the tonic nearest the note */
+            d = tk_deg_of(n, &o);
+            n = tk_note_of(0, d >= nd / 2 ? o + 1 : o);
+        }
+        tk_put(tk_ev[i].t + (int32_t)len, tk_ev[i].len, n + oc, 96u, 0u);
+    }
+}
+static __attribute__((noinline)) void tk_echo(uint32_t seed)
+{
+    const tk_ev_t *e = &tk_ev[tk_nev - 1u];
+    uint32_t r, h = seed ? tk_hs(seed, 99u) % 3u : 0u, gap = h == 1u ? 4u : h == 2u ? 6u : 3u;   /* (a dotted eighth; a roll: a quarter or a dotted quarter) */
+    for (r = 0; r < 4u; r++)
+        tk_put((int32_t)(e->t + e->len + gap * r), 2, e->note, 100u - 20u * r, 1u);
 }
 static uint32_t tk_genre(void)                           /* DUB HSE TECH ACID ELEC AMB: the multi's name, else STYLE */
 {
@@ -345,35 +386,49 @@ static uint32_t tk_genre(void)                           /* DUB HSE TECH ACID EL
 static uint32_t tk_gen(uint32_t src, uint32_t dst, uint32_t seed, uint32_t mode)
 {
     track_t *ts = &trk[src], *td = &trk[dst];
-    uint32_t len = seq_len(ts), spb = tk_spb(), bars = (len + spb - 1u) / spb, i, n = 0;
+    uint32_t len = seq_len(ts), spb = tk_spb(), bars, i, n = 0, call = mode >= TA_REPLY;
     int32_t shift = td->p[P_TRANS] - ts->p[P_TRANS];
+    if (call && seed && tk_m.ans && tk_m.mode == mode && tk_m.clen)
+        len = tk_m.clen;                                 /* (a roll: the part's loop is the doubled one: the call is the first half) */
+    bars = (len + spb - 1u) / spb;
     if (bars > 4u)
         bars = 4u;
+    if (call && (bars > 2u || 2u * len > NSTEP))
+        return 0;                                        /* (a call is 2 bars at most: it and its answer share 64 steps) */
     tk_events(ts, len);
     if (!tk_nev)
         return 0;
     tk_key();
     memset(tk_out, 0, sizeof tk_out);
-    tk_olen = len;
-    tk_chords(bars, spb);
-    if (mode == TA_BASS)
-        tk_bass(bars, spb, tk_genre(), seed);
-    else
-        tk_double(seed);
-    for (i = 0; i < len; i++)
+    tk_olen = call ? 2u * len : len;
+    if (mode == TA_REPLY)
+        tk_reply(len, seed);
+    else if (mode == TA_ECHO)
+        tk_echo(seed);
+    else {
+        tk_chords(bars, spb);
+        if (mode == TA_BASS)
+            tk_bass(bars, spb, tk_genre(), seed);
+        else
+            tk_double(seed);
+    }
+    for (i = 0; i < tk_olen; i++)
         n += tk_out[i].n != 0;
     if (!n)
         return 0;
     if (shift)                                           /* (the answer sounds as written: the other part's TRN is taken off) */
-        for (i = 0; i < len; i++)
+        for (i = 0; i < tk_olen; i++)
             for (n = 0; n < tk_out[i].n; n++) {
                 int32_t v = (int32_t)tk_out[i].note[n] - shift;
                 tk_out[i].note[n] = (uint8_t)(v < 0 ? 0 : v > 127 ? 127 : v);
             }
     fm1_irq_off();
     memcpy(td->step, tk_out, sizeof td->step);
-    td->p[P_SLEN] = (int16_t)len;
+    td->p[P_SLEN] = (int16_t)tk_olen;
+    if (call)
+        ts->p[P_SLEN] = (int16_t)tk_olen;               /* the call's loop doubles: the call, then the answer */
     fm1_irq_on();
+    tk_m.clen = (uint8_t)len;
     tk_m.ans = (uint8_t)(dst + 1u);
     tk_m.src = (uint8_t)src;
     tk_m.mode = (uint8_t)mode;
@@ -396,7 +451,7 @@ static void tk_say(const char *pre, uint32_t no)
         tk_cat(b, n);
         tk_cat(b, "  ");
     }
-    tk_cat(b, tk_m.mode == TA_DOUBLE ? "DOUBLE  " : "BASS LINE  ");
+    tk_cat(b, tk_m.mode == TA_DOUBLE ? "DOUBLE  " : tk_m.mode == TA_REPLY ? "REPLY  " : tk_m.mode == TA_ECHO ? "ECHO  " : "BASS LINE  ");
     tk_cat(b, N_NOTE[tk_m.key % 12u]);
     tk_cat(b, (tk_m.flags & 4u) ? " " : tk_m.flags & 1u ? " MINOR" : " MAJOR");
     if (tk_m.flags & 4u)
@@ -442,10 +497,10 @@ static void tk_push(uint32_t no, uint32_t roll)           /* tk_pre is the state
     tk_fresh = 1;
 }
 /* OCT- held + a PRESETS turn while the newest edit is a take or a roll: left goes back one step, right forward (ui_input.c); 1 when it did */
-static uint32_t take_undo(int32_t dir)
+static __attribute__((noinline)) uint32_t take_undo(int32_t dir)
 {
     uint32_t j, hn;
-    char b[24];
+    char b[48];
     if (!tk_fresh || (dir < 0 ? tk_pos == 0u : tk_pos >= tk_cnt))
         return 0;
     j = dir < 0 ? tk_pos - 1u : tk_pos;
@@ -453,7 +508,9 @@ static uint32_t take_undo(int32_t dir)
     tk_save(&tk_h[tk_pos]);
     tk_load(&tk_h[dir < 0 ? tk_pos - 1u : tk_pos + 1u]);
     tk_pos = (uint8_t)(dir < 0 ? tk_pos - 1u : tk_pos + 1u);
-    str_cpy(b, dir < 0 ? (hn & 0x8000u ? "UNDO ROLL " : "UNDO TAKE ") : (hn & 0x8000u ? "REDO ROLL " : "REDO TAKE "), sizeof b);
+    b[0] = 0;
+    tk_cat(b, dir < 0 ? "UNDO " : "REDO ");
+    tk_cat(b, hn & 0x8000u ? "ROLL " : "TAKE ");
     fmt_int(b + str_len(b), (int32_t)(hn & 0x7FFFu));
     ui_say(b, "");
     return 1;
@@ -461,7 +518,7 @@ static uint32_t take_undo(int32_t dir)
 #define TAKE_STALE() (tk_fresh = 0)                       /* a load or a lock edit took the undo copy: the newest edit is not a take any more (ui.c) */
 
 /* ---- a ROLL of the part that holds the answer (morph.c morph_do MQ_ROLL: the knob, MIDI, the same word) ---- */
-static void take_roll(uint32_t mask, uint32_t seed)
+static __attribute__((noinline)) void take_roll(uint32_t mask, uint32_t seed)
 {
     uint32_t ap;
     if (!tk_m.ans || !((mask >> (tk_m.ans - 1u)) & 1u))
@@ -479,8 +536,24 @@ static void take_roll(uint32_t mask, uint32_t seed)
     tk_say("ROLL ", tk_m.roll);
 }
 
+/* ---- the tide line and knob 1's line while a take records (b10 round 9, on the identity's tide line) ---- */
+static uint32_t take_line(uint32_t *prog)                  /* 0 no take, 1 the count-in, 2 recording (prog: how far through the loop, Q16) */
+{
+    uint32_t p, len, idx;
+    if (!(song.rec & 3u))
+        return 0;
+    if (cin_left)
+        return 1;
+    if (!song.playing)
+        return 0;
+    p = song.rec & 1u ? 0u : 1u;
+    len = TIDE_PLAY_LEN(&trk[p]);
+    idx = TIDE_PLAY_IDX(&trk[p]);
+    *prog = len ? (idx % len) * 65536u / len : 0u;
+    return 2;
+}
 /* ---- passes: a take opens when a part's REC bit goes up, closes when it goes down ---- */
-static void tk_close(uint32_t mask)                       /* the parts of mask stopped recording */
+static __attribute__((noinline)) void tk_close(uint32_t mask)                       /* the parts of mask stopped recording */
 {
     uint32_t p, changed = 0, nch = 0, who = 0;
     for (p = 0; p < 2u; p++) {
@@ -528,10 +601,12 @@ static void tk_close(uint32_t mask)                       /* the parts of mask s
             tk_say(0, 0);
             return;
         }
+        if (tide_answer >= TA_REPLY && !((song.rec >> o) & 1u))
+            ui_message("CALL: 2 BARS AT MOST");           /* (REPLY and ECHO need room: the call and its answer share 64 steps) */
     }
     tk_push(tk_total, 0u);
 }
-static void take_poll(void)                                /* main loop, every frame */
+static __attribute__((noinline)) void take_poll(void)                                /* main loop, every frame */
 {
     uint32_t now = song.rec & 3u, was = tk_open, p;
     if (tk_roll_mask) {                                  /* a ROLL (morph_do) since the last frame */

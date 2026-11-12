@@ -31,7 +31,7 @@ static int dead, watch;
 static uint32_t stray;                              /* (watch) bytes erased / programmed outside the multi store */
 static void hit(uint32_t off, uint32_t n)
 {
-    if (watch && !((off >= 0x97000u && off + n <= 0x9F000u) || (off >= 0xCE000u && off + n <= 0xD6000u)))
+    if (watch && !((off >= 0x97000u && off + n <= 0x9F000u) || (off >= 0xCE000u && off + n <= 0xD6000u) || (off >= 0xEA000u && off + n <= 0xF4000u)))   /* (b10 U4: M17..M26 = OBJ_MULTIX0..4) */
         stray += n;
 }
 static int st_read(uint32_t off, void *dst, uint32_t n) { memcpy(dst, nor + off, n); return 0; }
@@ -434,8 +434,8 @@ static void editb_worst_multi(void)
             ck("  (erased again)", project_erase(13u) == 0 && project_factory(13));
 }
 
-/* TIDE 1.0.0-b6: the built-in drone multis M17 AMB DUNEHORN and M18 AMB GROWL (b9 rework2: was AMB VOID) (ROM only, MU_ROM): they show, load and preview as the factory multis do and match
- * their ROM records byte for byte; SAVE, rename and ERASE on them are refused and write nothing; M01..M16 and the flash objects are as before; MIDI program
+/* TIDE 1.0.0-b6: the built-in drone multis M23 AMB DUNEHORN and M24 AMB GROWL: they show, load and preview as the factory multis do and match
+ * their ROM records byte for byte; (b10 U4: SAVE, rename and ERASE work on them like on any slot, a SAVE ends the drone); M01..M16 and the flash objects are as before; MIDI program
  * change 16 and 17 load them, 18 and up are ignored; while one is loaded TIDE plays STYLE DRONE, another multi brings the STYLE back, the saved one never changes */
 static void drones(void)
 {
@@ -458,7 +458,7 @@ static void drones(void)
     for (k = 0, ok = 1; k < DF_N; k++) {             /* SP1 (b6): the ROM holds the records packed; each rebuilds byte for byte to its source file */
         char path[64];
         FILE *f;
-        snprintf(path, sizeof path, MREC(DF_SLOT[k]) < MU_SLOTS ? "tools/factory_multis/M%02u.bin" : "tools/drone_multis/M%02u.bin", (unsigned)MREC(DF_SLOT[k]) + 1u);   /* (the file by the record number, not the slot) */
+        snprintf(path, sizeof path, MREC(DF_SLOT[k]) < 16u ? "tools/factory_multis/M%02u.bin" : "tools/drone_multis/M%02u.bin", (unsigned)MREC(DF_SLOT[k]) + 1u);   /* (the file by the record number, not the slot) */
         f = fopen(path, "rb");
         len = f ? (uint32_t)fread(rec, 1, sizeof rec, f) : 0u;
         if (f)
@@ -492,7 +492,7 @@ static void drones(void)
         objn[o] = (uint16_t)mu_obj_read(o);
         memcpy(obj[o], mu_buf, objn[o]);
     }
-    ck("drones: MU_SHOWN 26 (b10: M19-M26 ROM-only factory multis), MU_SLOTS (stored) still 16, the flash objects as before (OBJ_PATCH0 = OBJ_MULTI0 + 8)", MU_SHOWN == 26u && MU_SLOTS == 16u && MU_NOBJ == 8u && DF_N == MU_SHOWN);
+    ck("drones: MU_SHOWN 26 = MU_SLOTS (b10 U4 + MR9: all stored; M17..M26 are the flash objects OBJ_MULTIX0..4, exactly the 13 objects the flash holds, the first eight as before: OBJ_PATCH0 = OBJ_MULTI0 + 8)", MU_SHOWN == 26u && MU_SLOTS == MU_SHOWN && MU_NOBJ == 13u && MU_NOBJ == MU_OBJ_ALL && OBJ_PATCH0 == OBJ_MULTI0 + 8u && DF_N == MU_SHOWN);
     for (k = MU_SHOWN - 2u, ok = 1; k < MU_SHOWN; k++) {
         ok &= project_used(k) && project_factory(k) && !multi_bad(k) && project_info(k, nm) && str_eq(nm, DN_NAME(k - (MU_SHOWN - 2u))) && df_of(k) == k - (MU_SHOWN - 18u);     /* (the DM_* arrays are in record order: the drones are records 17, 18 = indexes 16, 17) */
         ok &= str_eq(multi_vname(k, 0), DS[k - (MU_SHOWN - 2u)][0]) && str_eq(multi_vname(k, 1), DS[k - (MU_SHOWN - 2u)][1]);
@@ -560,16 +560,23 @@ static void drones(void)
     }
     memcpy(snap, nor, sizeof snap);
     gen = multi_gen();
-    ok = project_save_as(MU_SHOWN - 2u, "MINE") != 0 && msg_is(MU_ROM_SAY) && project_rename(MU_SHOWN - 1u, "MINE") != 0 && project_erase(MU_SHOWN - 1u) != 0 && msg_is("ALREADY FACTORY");
-    ok &= project_save(MU_SHOWN - 1u) != 0 && !memcmp(snap, nor, sizeof snap) && multi_gen() == gen && project_info(MU_SHOWN - 2u, nm) && str_eq(nm, MULTI_NAME[MU_SHOWN - 2u]);
-    ck("  SAVE, rename and ERASE on M23 / M24 refused (SAVE TO M01-M16, ALREADY FACTORY), nothing written, the names stand", ok);
+    ok = project_save_as(22u, "MINE") == 0 && project_info(22u, nm) && str_eq(nm, "MINE") && !project_factory(22u) && multi_gen() != gen;
+    ok &= memcmp(snap + 0xF0000, nor + 0xF0000, 0x2000) != 0 && !memcmp(snap, nor, 0xF0000) && !memcmp(snap + 0xF2000, nor + 0xF2000, sizeof snap - 0xF2000);   /* (M23 is object 11 = OBJ_MULTIX0 + 3: only its A/B pair at 0xF0000 changed) */
+    ok &= project_rename(22u, "MINE TOO") == 0 && project_info(22u, nm) && str_eq(nm, "MINE TOO");
+    ok &= project_erase(22u) == 0 && project_factory(22u) && project_info(22u, nm) && str_eq(nm, MULTI_NAME[22]);
+    ck("  b10 U4: SAVE, rename and ERASE work on M23 (a flash slot of its own: only OBJ_MULTIX0 + 3 changes); ERASE brings the factory multi back", ok);
+    memcpy(snap, nor, sizeof snap);
+    ok = project_save_as(MU_SHOWN - 1u, "LAST ONE") == 0 && project_info(MU_SHOWN - 1u, nm) && str_eq(nm, "LAST ONE") && !project_factory(MU_SHOWN - 1u);
+    ok &= memcmp(snap + 0xF2000, nor + 0xF2000, 0x2000) != 0 && !memcmp(snap, nor, 0xF2000) && !memcmp(snap + 0xF4000, nor + 0xF4000, sizeof snap - 0xF4000);   /* (the last slot, M26 = the end of object 12 = OBJ_MULTIX0 + 4: only 0xF2000..0xF3FFF changed, the room ends at 0xF3FFF) */
+    ok &= project_erase(MU_SHOWN - 1u) == 0 && project_factory(MU_SHOWN - 1u) && project_info(MU_SHOWN - 1u, nm) && str_eq(nm, MULTI_NAME[MU_SHOWN - 1u]);
+    ck("  the last slot (M26) saves into the fifth new object and ERASE brings the factory drone back; nothing is written past 0xF3FFF", ok);
     go_title("MULTIS");
     song.g[G_SLOT] = (int16_t)MU_SHOWN;
     frame();
     ui.act = 3;                                      /* (K3: SAVE picked) */
     act_do();
-    ck("  the MULTIS page: SAVE on M24 says SAVE TO M01-M16, no dialog, no NAME screen, nothing written", msg_is(MU_ROM_SAY) && !ui.confirm && !name_on() &&
-       !memcmp(snap + 0x97000, nor + 0x97000, 0x8000) && !memcmp(snap + 0xCE000, nor + 0xCE000, 0x8000));
+    ck("  the MULTIS page: SAVE on the last slot asks to overwrite (a dialog, no refusal)", !msg_is("SAVE TO M01-M16") && ui.confirm);
+    ui.confirm = 0;
     for (o = 0, ok = 1; o < MU_NOBJ; o++)
         ok &= mu_obj_read(o) == objn[o] && !memcmp(mu_buf, obj[o], objn[o]);
     ck("  every flash object of M01..M16 reads back unchanged (no format change)", ok);
@@ -953,7 +960,7 @@ int main(void)
     trk[0].p[P_RES2] = trk[1].p[P_DRV2] = 0;
     scale_g = 0; root_g = 0;
 
-    /* 2: sixteen slots, each its own; a rewrite keeps the pair partner */
+    /* 2: the 24 slots, each its own; a rewrite keeps the pair partner */
     for (k = 0; k < MU_SLOTS; k++) {
         char nm2[8] = "MULTI  ";   /* ("MULTI A" ..) */
         nm2[6] = (char)('A' + k);
@@ -964,7 +971,7 @@ int main(void)
         project_save_as(k, nm2);
         watch = 0;
     }
-    ck("16 saves: each SAVED, nothing written outside the multi store", project_used(15) && !stray);
+    ck("24 saves: each SAVED, nothing written outside the multi store", project_used(15) && project_used(23) && !stray);
     power_cycle();
     ok = 1;
     for (k = 0; k < MU_SLOTS; k++) {
@@ -1129,7 +1136,7 @@ int main(void)
         ck("empty flash: M01..M16 are the factory multis (the reel, 2026-11-10: BASIC CHORD, DUB CHORD, JUNO DEEP .. BERLIN RUN, TWO LOOPS; the owner's DUB CHORD kept)", ok);
         ok = 1;
         ui_prefs2 |= PREF_MODE_RECALL >> 16;           /* (0.2.11: the MODE is read back from the multi) */
-        for (k = 0; k < MU_SLOTS; k++) {              /* each part's engine + factory index names the intended sound (k: a record number, the tables follow the records; MIDX: its slot) */
+        for (k = 0; k < 16u; k++) {              /* each part's engine + factory index names the intended sound (k: a record number, the tables follow the records; MIDX: its slot) */
             project_load(MIDX(k));
             for (pi = 0; pi < NSHOWN; pi++)
                 ok &= str_eq(ds_name(trk[pi].eng_req, trk[pi].preset), SN[k][pi]) && (trk[pi].engine = trk[pi].eng_req, endb_set(pi)) &&
@@ -1156,7 +1163,7 @@ int main(void)
              * each part has a pattern of at least one note, inside its own length, every stored note a playable one (C1..C8, 24..108), the reverb LOW CUT at the default and an End B of its
              * own (both checked above) */
             uint32_t m6, bad6 = 0;
-            for (m6 = 0; m6 < MU_SLOTS; m6++) {
+            for (m6 = 0; m6 < 16u; m6++) {
                 if (m6 == 1u)                         /* (M02 DUB CHORD: the owner's record, not one of the fifteen) */
                     continue;
                 project_load(MIDX(m6));

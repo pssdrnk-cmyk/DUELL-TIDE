@@ -2111,7 +2111,7 @@ static int act_ready(void)
         return pat_last[s] != pat_pick() + 1u || steps_sig(TSEL) != pat_sig[s];
     }
     if (cur_page()->graph == GR_SLOTS)                  /* MULTI: LOAD a used one (playing too), SAVE stopped */
-        return c == 2u ? !song.playing && !MU_ROM(song.g[G_SLOT] - 1) : project_used((uint32_t)song.g[G_SLOT] - 1u);   /* (M17, M18: ROM only, SAVE dim) */
+        return c == 2u ? !song.playing : project_used((uint32_t)song.g[G_SLOT] - 1u);
     id = cur_page()->id[c & 3u];
     if (id == G_LOAD)
         return project_used((uint32_t)song.g[G_SLOT] - 1u);
