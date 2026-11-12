@@ -43,6 +43,16 @@ def preprocess(cc, src, extra):
 LINEMARK = re.compile(r'^# (\d+) "([^"]*)"((?: \d+)*)\s*$')
 
 
+def is_sys(path):
+    return path.startswith("/usr/")
+
+
+def sysname(path):
+    """the #include <name> of a system header"""
+    m = re.match(r"^(?:/usr/include/(?:x86_64-linux-gnu/)?|/usr/lib/gcc/[^/]+/[^/]+/include/)(.+)$", path)
+    return m.group(1) if m else path
+
+
 def items(text):
     """yield (kind, file, text): kind 'dir' for a directive line (#define / #undef / pragma), 'item' for a top-level declaration or definition (with the kind of
     its first '{' as extra: 'func', 'init', 'type', None)"""
@@ -58,15 +68,28 @@ def items(text):
         t = "\n".join(buf).strip("\n")
         buf, depth, par, first_brace, body_kind = [], 0, 0, None, None
         return t
+    insys = False
+    stack = []                                      # the files being read (an include stack from the line markers' flags 1 = enter, 2 = return)
     for ln in lines:
         m = LINEMARK.match(ln)
         if m:
             cur_file = m.group(2)
+            flags = m.group(3).split()
+            if "1" in flags:
+                if is_sys(cur_file) and stack and not any(is_sys(x) for x in stack):
+                    yield ("sysinc", cur_file, sysname(cur_file), None)     # (a system header a project file includes: the declaration header includes it again)
+                stack.append(cur_file)
+            elif "2" in flags:
+                while stack and stack[-1] != cur_file:
+                    stack.pop()
+            elif not stack:
+                stack.append(cur_file)
             skip = cur_file.startswith("<")
+            insys = any(is_sys(x) for x in stack)
             continue
         if ln.startswith("#"):
             if not skip:
-                yield ("dir", cur_file, ln, None)
+                yield ("sdir" if insys else "dir", cur_file, ln, None)
             continue
         if skip:
             continue
@@ -74,6 +97,7 @@ def items(text):
             continue
         if not buf:
             line_file = cur_file
+            line_sys = insys
         buf.append(ln)
         # scan the line for structure (strings and chars were left in the text: skip them)
         j, m = 0, len(ln)
@@ -121,9 +145,9 @@ def items(text):
         if end_item:
             kind = body_kind
             t = flush()
-            yield ("item", line_file, t, kind)
+            yield ("sitem" if line_sys else "item", line_file, t, kind)
     if buf:
-        yield ("item", line_file, flush(), body_kind)
+        yield ("sitem" if line_sys else "item", line_file, flush(), body_kind)
 
 
 SPEC = re.compile(r"^\s*(?:(?:static|inline|__inline__|__inline|extern)\b\s*)+")
@@ -140,6 +164,104 @@ def fname(h):
     h = re.sub(r"__attribute__\s*\(\(.*?\)\)", "", h, flags=re.S)
     m = re.search(r"([A-Za-z_]\w*)\s*\(", h)
     return m.group(1) if m else None
+
+
+def count_init(init):
+    """the number of elements of a brace initializer `{ a, b, c }` (None for designated initializers or anything odd)"""
+    init = init.strip()
+    if not init.startswith("{") or not init.endswith("}"):
+        return None
+    body = init[1:-1]
+    depth, n, cur, i, m = 0, 0, False, 0, len(body)
+    while i < m:
+        c = body[i]
+        if c in "\"'":
+            q = c
+            cur = True
+            i += 1
+            while i < m and body[i] != q:
+                i += 2 if body[i] == "\\" else 1
+        elif c in "({[":
+            if c == "[" and depth == 0 and not cur:
+                return None                              # [index] = value
+            depth += 1
+            cur = True
+        elif c in ")}]":
+            depth -= 1
+        elif c == "," and depth == 0:
+            if cur:
+                n += 1
+            cur = False
+        elif c == "." and depth == 0 and not cur:
+            return None                                  # .field = value
+        elif not c.isspace():
+            cur = True
+        i += 1
+    return n + (1 if cur else 0)
+
+
+def split_top(body, sep):
+    """split at `sep` outside (), [], {} and strings"""
+    out, depth, cur, i, m = [], 0, [], 0, len(body)
+    while i < m:
+        c = body[i]
+        if c in "\"'":
+            q = c
+            j = i + 1
+            while j < m and body[j] != q:
+                j += 2 if body[j] == "\\" else 1
+            cur.append(body[i:j + 1])
+            i = j + 1
+            continue
+        if c in "([{":
+            depth += 1
+        elif c in ")]}":
+            depth -= 1
+        if c == sep and depth == 0:
+            out.append("".join(cur))
+            cur = []
+        else:
+            cur.append(c)
+        i += 1
+    out.append("".join(cur))
+    return out
+
+
+def extern_decls(s0, stats):
+    """`static T a = 1, b[] = {..};` -> ['extern T a;', 'extern T b[2];'] (sizes of unsized arrays counted from the initializer)"""
+    if re.match(r"^\s*(extern|typedef)", s0):
+        return [s0]
+    body = s0.rstrip().rstrip(";")
+    pieces = split_top(body, ",")
+    first_dec = split_top(pieces[0], "=")[0]
+    if "(" in first_dec.split("[")[0] or len(pieces) == 1 and "(" in first_dec:   # (a function pointer variable: one declarator)
+        pieces = [body]
+        first_dec = split_top(body, "=")[0]
+        return ["extern " + first_dec.rstrip() + ";"]
+    names = list(re.finditer(r"[A-Za-z_]\w*", first_dec.split("[")[0]))
+    if not names:
+        return ["extern " + first_dec.rstrip() + ";"]
+    nm = names[-1]
+    spec = first_dec[: nm.start()].rstrip()
+    stars = re.search(r"\**\s*$", spec).group(0) if spec else ""
+    spec_base = spec[: len(spec) - len(stars)].rstrip() if stars.strip() else spec
+    out = []
+    for i, pc in enumerate(pieces):
+        parts = split_top(pc, "=")
+        dec = parts[0].rstrip()
+        init = "=".join(parts[1:]).strip() if len(parts) > 1 else None
+        if i == 0:
+            dec = dec[len(spec_base):].lstrip() if dec.startswith(spec_base) else dec
+        else:
+            dec = dec.lstrip()
+        if re.search(r"\[\s*\]", dec):
+            cnt = count_init(init) if init else None
+            if cnt is not None:
+                dec = re.sub(r"\[\s*\]", "[%d]" % cnt, dec, count=1)
+            else:
+                stats["unsized"].append((spec_base + " " + dec)[:80])
+        out.append("extern %s %s;" % (spec_base, dec))
+    return out
 
 
 def strip_spec(h):
@@ -196,7 +318,7 @@ def make(cc, outdir, src, define_main=True, report=False, extra=None):
             nm = fname(h)
             if nm:
                 bodies[nm] = body
-    asm_names = {nm for nm, b in bodies.items() if re.search(r"(?<![A-Za-z0-9_])(?:__asm__|__asm|asm)(?![A-Za-z0-9_])", b)}
+    asm_names = {nm for nm, b in bodies.items() if re.search(r"(?<![A-Za-z0-9_])(?:__asm__|__asm|asm)[ 	]*(?:volatile[ 	]*|__volatile__[ 	]*)?[(][ 	]*\"[^\"]", b)}     # (an asm with an empty template, a compiler barrier, is fine on the host)
     changed = True
     words ={nm: set(re.findall(r"[A-Za-z_]\w*", b)) for nm, b in bodies.items()}
     while changed:
@@ -206,6 +328,14 @@ def make(cc, outdir, src, define_main=True, report=False, extra=None):
                 asm_names.add(nm)
                 changed = True
     for kind, f, t, bk in all_items:
+        if kind == "sysinc":
+            decl_parts.append("#include <%s>" % t)
+            continue
+        if kind == "sdir":
+            continue
+        if kind == "sitem":
+            obj_parts.append(t)
+            continue
         if kind in ("dir", "dirlate"):
             if t.startswith("#define main hostsim_main") or t.startswith("#undef main"):
                 continue
@@ -219,7 +349,8 @@ def make(cc, outdir, src, define_main=True, report=False, extra=None):
         stats[c] += 1
         if c == "type":
             obj_parts.append(t)
-            decl_parts.append(t)
+            if not t.lstrip().startswith("_Static_assert"):      # (they size unsized arrays: only in the object)
+                decl_parts.append(t)
         elif c == "func":
             h, body = head_body(t)
             if fname(h) in asm_names:     # (device-only, see above: stays static, not declared)
@@ -237,28 +368,10 @@ def make(cc, outdir, src, define_main=True, report=False, extra=None):
             obj_parts.append(h + ";")
             decl_parts.append(h + ";")
         elif c == "var":
-            # object: the item without static / inline; declaration: extern + the declarators without initializers
+            # object: the item without static / inline; declaration: extern + each declarator without its initializer
             s0 = strip_spec(t)
             obj_parts.append(s0)
-            if "=" in s0 or "{" in s0:
-                k = None
-                d = 0
-                for idx, ch in enumerate(s0):
-                    if ch == "(":
-                        d += 1
-                    elif ch == ")":
-                        d -= 1
-                    elif ch == "=" and d == 0:
-                        k = idx
-                        break
-                dec = s0[:k].rstrip() + ";" if k is not None else s0
-            else:
-                dec = s0
-            if re.search(r"\[\s*\]\s*;?$", dec.strip().rstrip(";")):
-                stats["unsized"].append(dec.strip()[:80])
-            if not re.match(r"^\s*(extern|typedef)\b", dec):
-                dec = "extern " + dec
-            decl_parts.append(dec)
+            decl_parts.extend(extern_decls(s0, stats))
         else:
             obj_parts.append(t)
             decl_parts.append(t)
