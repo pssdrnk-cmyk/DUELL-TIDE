@@ -1017,31 +1017,36 @@ static uint32_t tide_steps_sig(const track_t *t)
 static const char *const GL_MODE_WHAT[5] = {"SLOWLY EVOLVES YOUR SOUND", "SLOWLY EVOLVES YOUR SOUND", "SLOWLY EVOLVES YOUR SOUND",
                                             "SLOWLY EVOLVES YOUR SOUND", "TRAVELS THROUGH OTHER SOUNDS"};
 /* b10 TIDE identity (item 4): ARC on screen. With ARC on (and the tide evolving the pattern), AUTO TIDE shows the arc's shape in place of the two step-mark
- * rows: RISE a slope, PEAK the top, then DROP (down to nothing) or BREAK (down to low), RECOVER back half way; the moment now a mark on it, the arc so far
- * filled. The phases' places are fixed (the arc's lengths are rolled as it goes: seq_arc.c); the mark moves through the phase it is in by the phase's units
- * (8 bars each) and the bar in the unit. After PEAK: DROP or BREAK as the arc will take it (under ARC RISE always BREAK) */
+ * rows, its heights the phases' real intensity (seq_arc.c: RISE builds, tarc.t to full; PEAK the whole of it; DROP the drop's silence, the floor; BREAK the parts
+ * thinned to their anchors, low; RECOVER part way back, tarc.t to 100 of 255): RISE a slope up to 60 %, PEAK a raised cap at the top, then DROP straight to the
+ * floor or BREAK down to 20 %, RECOVER back up to 45 %. The phase names in ONE row under it, as an axis (owner on rc6, "eh", "the peak": the labels sat above and
+ * inside the curve, the peak read as a flat line): the phase now bright, the others dim. The moment now one mark (a hairline and a dot), the arc so far filled;
+ * the glide's own bar is not drawn under it (the TRAVEL line above says the trip's n/m: one progress mark in the picture). The phases' places are fixed (the
+ * arc's lengths are rolled as it goes); the mark moves through the phase it is in by the phase's units (8 bars each) and the bar in the unit. After PEAK: DROP
+ * or BREAK as the arc will take it (under ARC RISE always BREAK) */
 #define AC_X0 9
 #define AC_W 222
-#define AC_YT 113                                        /* the curve's top and bottom rows */
-#define AC_YB 135
+#define AC_YT 109                                        /* the curve's top (the peak) and its floor */
+#define AC_YB 128
+#define AC_LB 141                                        /* the phase names' capitals' last row */
+static const int16_t AC_E[4] = {80, 120, 164, AC_W};     /* the phases' ends: RISE, PEAK, DROP / BREAK, RECOVER (each wide enough for its name: RECOVER ~55 px) */
 static int32_t tide_arc_y(int32_t x, int drop)            /* the curve's row at x (0 .. AC_W) */
 {
-    static const int16_t E[4] = {100, 155, 190, AC_W};   /* the phases' ends: RISE, PEAK, DROP / BREAK, RECOVER */
-    const int32_t h = AC_YB - AC_YT, lo = drop ? h - 1 : h * 7 / 10;
-    int32_t d;
-    if (x < E[0])
-        d = h - 3 - (h - 3) * x / E[0];
-    else if (x < E[1])
-        d = 0;
-    else if (x < E[2])
-        d = lo * (x - E[1]) / (E[2] - E[1]);
+    const int32_t lo = drop ? 0 : 52;                    /* (the breakdown's level, 1/256: the floor after a DROP) */
+    int32_t lv, u;
+    if (x < AC_E[0])
+        lv = 64 + (154 - 64) * x / AC_E[0];              /* RISE: 25 % .. 60 % */
+    else if (x < AC_E[1])
+        lv = (u = x - AC_E[0]) < 4 ? 154 + (256 - 154) * u / 4 : 256;   /* PEAK: steps up to the top, a cap */
+    else if (x < AC_E[2])
+        lv = (u = x - AC_E[1]) < 5 ? 256 - (256 - lo) * u / 5 : lo;     /* DROP / BREAK: falls at once */
     else
-        d = lo - (lo - h / 2) * (x - E[2]) / (E[3] - E[2]);
-    return AC_YT + d;
+        lv = lo + (115 - lo) * (x - AC_E[2]) / (AC_E[3] - AC_E[2]);    /* RECOVER: back up to 45 % */
+    return AC_YB - lv * (AC_YB - AC_YT) / 256;
 }
 static void tide_arc_chart(void)
 {
-    static const int16_t S0[5] = {0, 100, 155, 155, 190}, SW[5] = {100, 55, 35, 35, 32};   /* each phase's start and width (RISE PEAK DROP BREAK RECOVER) */
+    static const int16_t S0[5] = {0, 80, 120, 120, 164}, SW[5] = {80, 40, 44, 44, 58};   /* each phase's start and width (RISE PEAK DROP BREAK RECOVER) */
     const uint32_t ph = tarc.phase % 5u;
     const int drop = ph == AP_DROP || (ph == AP_PEAK && tarc.next == AP_DROP) || (ph == AP_RISE && sqm_arc == 2u && tarc.cnt <= 1u);
     const uint16_t c = T_THEME, cf = ux_mix(T_BG, c, 22), cd = ux_mix(T_BG, c, 45);
@@ -1058,12 +1063,13 @@ static void tide_arc_chart(void)
             cv_line_t(AC_X0 + x - 1, py, AC_X0 + x, y, x <= now ? c : cd, 2);
         py = y;
     }
-    cv_text(AC_X0 + 2, UT_TY(S, AC_YT + 4), &AF_S, "RISE", ph == AP_RISE ? T_TEXT : T_MID);
-    cv_text_in(AC_X0 + 100, UT_TY(S, AC_YT + 18), 55, &AF_S, "PEAK", ph == AP_PEAK ? T_TEXT : T_MID, T_BG);
-    cv_text_r(AC_X0 + AC_W, UT_TY(S, AC_YT + 4), &AF_S, ph == AP_RECOVER ? "RECOVER" : drop ? "DROP" : "BREAK", ph >= AP_DROP ? T_TEXT : T_MID, T_BG);
+    cv_text_in(AC_X0, UT_TY(S, AC_LB), AC_E[0], &AF_S, "RISE", ph == AP_RISE ? T_TEXT : T_DIM, T_BG);   /* (the names: one row, under their phases) */
+    cv_text_in(AC_X0 + AC_E[0], UT_TY(S, AC_LB), AC_E[1] - AC_E[0], &AF_S, "PEAK", ph == AP_PEAK ? T_TEXT : T_DIM, T_BG);
+    cv_text_in(AC_X0 + AC_E[1], UT_TY(S, AC_LB), AC_E[2] - AC_E[1], &AF_S, drop ? "DROP" : "BREAK", ph == AP_DROP || ph == AP_BREAK ? T_TEXT : T_DIM, T_BG);
+    cv_text_r(AC_X0 + AC_W, UT_TY(S, AC_LB), &AF_S, "RECOVER", ph == AP_RECOVER ? T_TEXT : T_DIM, T_BG);
     if (now >= 0) {                                      /* now: a hairline and a dot on the curve */
         int32_t y = tide_arc_y(now, drop);
-        cv_rect(AC_X0 + now, AC_YT - 3, 1, AC_YB - AC_YT + 4, T_TEXT);
+        cv_rect(AC_X0 + now, AC_YT - 2, 1, AC_YB - AC_YT + 3, T_TEXT);
         cv_rrect(AC_X0 + now - 2, y - 2, 5, 5, 2, T_TEXT, T_BG);
     }
 }
@@ -1095,7 +1101,7 @@ static void graph_tide(void)
             cv_text_in(0, UT_TY(S, 104), 240, &AF_S, GL_MODE_WHAT[gl.mode % 5u], T_MID, T_BG);   /* (between the faders and the steps' tallest bars) */
         /* Keep GLIDE's progress bar as well as its status and moving fader knobs.
          * This strip sits below both parts' playheads and above the card row. */
-        if (glide_running() && !gl.armed) {
+        if (glide_running() && !gl.armed && !arcv) {     /* (under ARC's picture the TRAVEL line's n/m says it: one progress mark there) */
             int32_t w = (int32_t)((222u * gl.prog) >> GLIDE_Q);
             cv_rrect(9, TB_Y1 - 3, 222, 3, 1, T_RAISE, T_BG);
             if (w > 0)
