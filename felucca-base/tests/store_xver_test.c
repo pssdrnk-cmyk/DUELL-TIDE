@@ -13,6 +13,7 @@
 #define PATCH_TEST_MAIN patch_main_unused
 #include "patch_test.c"
 #include "store_xver_fixture.h"
+#include "store_xver8_fixture.h"
 
 static void snap(uint32_t slot, int16_t *v)         /* what slot's record loads to: as the fixtures were taken */
 {
@@ -200,6 +201,54 @@ int main(void)
     }
     snprintf(msg, sizeof msg, "E: %u old End B blocks (no MBV_W4) read through morph_load_part_v give b7's End B", blocks);
     ck(msg, blocks >= 3u && blocks_ok == blocks);
+
+    /* F: records written by b8 rc1 / rc2 (tests/store_xver8_fixture.h, store_xver8_gen.c on fork/b8-acid-integ ebc63ca): ANALOG WAVE in 4 bits, no width flag. The first XV8_PLAIN have no WAVE in
+     * them (WAVE 0 in the values and in End B; another engine): the store reads them as b8 did. The others hold WAVE 3, 7, 8 (also in End B): the record does not say its width, so the
+     * store reads them as the 3-bit ones of b7 (B9-STORE, "ambiguity"; none of the owner's backups holds one): pinned here is what the store does today: 4 of the 5 are accepted (the WAVE 7 one is refused), the accepted stay the bytes they were, load
+     * without harm, and none gives b8's values. */
+    {
+        enum { XV8_PLAIN = 3 };
+        uint32_t plain_ok = 0, plain_bytes = 0, plain_flag = 0, plain_put = 0, amb_put = 0, amb_bytes = 0, amb_eq = 0, amb_load = 0;
+        memset(nor, 0xFF, sizeof nor);
+        power_cycle();
+        for (i = 0; i < XV8_NCASES; i++) {
+            c = &xv8_cases[i];
+            if (up_put_raw(c->slot, c->rec, c->len) == 0) {
+                if (i < XV8_PLAIN)
+                    plain_flag += (c->rec[4] & PTF_W4) != 0, plain_put++;
+                else
+                    amb_put++;
+            } else
+                printf("store_xver:   b8 record %u (slot %u): refused by the store\n", i, c->slot);
+        }
+        for (i = 0; i < XV8_NCASES; i++) {
+            const uint8_t *raw;
+            c = &xv8_cases[i];
+            snap(c->slot, v);
+            raw = pt_raw(c->slot);
+            if (i < XV8_PLAIN) {
+                plain_ok += !memcmp(v, c->val, sizeof v);
+                if (memcmp(v, c->val, sizeof v)) {
+                    for (j = 0; j < XV_NVAL && v[j] == c->val[j]; j++)
+                        ;
+                    printf("store_xver:   b8 record %u (slot %u): first difference at value %u: %d, b8 had %d\n", i, c->slot, j, j < XV_NVAL ? v[j] : 0, j < XV_NVAL ? c->val[j] : 0);
+                }
+                plain_bytes += raw && pt_rd16(raw) == c->len && !memcmp(raw + 4, c->rec + 4, c->len - 4u);
+            } else {
+                amb_bytes += raw && pt_rd16(raw) == c->len && !memcmp(raw + 4, c->rec + 4, c->len - 4u);
+                amb_eq += !memcmp(v, c->val, sizeof v);
+                amb_load += v[0] != 0x5555;
+                printf("store_xver:   b8 record %u (slot %u): loads %s b8's values\n", i, c->slot, !memcmp(v, c->val, sizeof v) ? "to" : "NOT to");
+            }
+        }
+        snprintf(msg, sizeof msg, "F: the %d b8 rc1 / rc2 records without WAVE are accepted, none carries PTF_W4", XV8_PLAIN);
+        ck(msg, plain_flag == 0 && plain_put == XV8_PLAIN);
+        ck("F: the records without ANALOG WAVE load to the values b8 loaded (parts, extension slots, End B)", plain_ok == XV8_PLAIN);
+        ck("F: and stay the bytes they were", plain_bytes == XV8_PLAIN);
+        printf("store_xver:   b8 records with WAVE: %u of %u accepted, %u as put, %u load to b8's values, %u load\n", amb_put, XV8_NCASES - XV8_PLAIN, amb_bytes, amb_eq, amb_load);
+        ck("F: known ambiguity (B9-STORE): the b8 records with WAVE are read as b7's 3-bit ones: 4 of 5 are accepted (the ACID one is refused), the accepted stay the bytes put, none loads to "
+           "b8's values (a better reading changes these numbers: update them with it)", amb_put == 4u && amb_bytes == amb_put && amb_eq == 0u && amb_load == amb_put);
+    }
 
     printf("store_xver: %d FAIL\n", bad);
     return bad != 0;
