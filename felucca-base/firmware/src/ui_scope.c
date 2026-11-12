@@ -37,7 +37,7 @@
 #define WL_FLOOR (64 * 16)                           /* the smallest peak the gain scales to: 64 of the tap's 4,096 steps (-36 dB of the half scale), times 16 */
 #define WL_NC 24
 /* b10 wave flow (owner 2026-11-12, of the rc6 alternatives: "I like [the settling one] but with the speed of the original ... you could add VERY subtle ripples";
- * then "a bit more calmer or slower, or we could link it to the bpm"): the stack moves back one ridge every WL_FLOW_PACE 16ths of the tempo (beat_samples: the BPM, or an external
+ * then "a bit more calmer or slower, or we could link it to the bpm"): the stack moves back one ridge every WL_FLOW_PACE 16ths of the tempo while a part sounds, every WL_FLOW_IDLE at rest, eased between them over a beat (beat_samples: the BPM, or an external
  * clock's measured one; the same with the transport stopped), smoothly: each ridge drifts between its two places by the belt's phase, which runs at the tempo's
  * rate (an accumulator: a tempo change changes the speed, never jumps the place). The front takes every picture in place between the steps, so it follows the sound
  * as it dies; the last ridge fades out as it reaches the far end. An older ridge's shape settles flatter with its place (eased: the front whole, the back one at WL_FLOW_BACK %),
@@ -47,7 +47,8 @@
 #define WL_FLOW 1
 #endif
 #define WL_FLOW_BACK 18                              /* THE FLATTENING: the oldest line's shape, % of the newest's, eased in between (owner: "flatten the further they get a bit more": 30 -> 18) */
-#define WL_FLOW_PACE 3                               /* THE SPEED: 16th notes a line moves back (owner on the unit, rc6.3-test: "need to slow down significantly": 1 -> 3, a third) */
+#define WL_FLOW_PACE 1                               /* THE SPEED while a part sounds: 16th notes a line moves back (the pace the owner approved) */
+#define WL_FLOW_IDLE 3                               /* THE SPEED at rest (no part above the wave's floor): 16ths a line (owner on rc6.3-test: the idle drift "need to slow down significantly") */
 #define WL_RIP_A 12                                  /* the ripples' height, 1/16 px (0.75 px each way: the owner tried 2.25, "the initial was better") */
 /* (b6: calm, 7032411's own drawing for sounds with no steady period, is gone: with every picture blended 1 : 1 into the front, a held pad chord measures the same without it,
  * neighbouring lines 1.66 px apart with it and 1.65 without; the blend does what it did) */
@@ -68,18 +69,31 @@ static uint32_t wl_tk = 0xFFFFFFFFu;
 #if WL_FLOW
 static uint32_t wl_pn[2];                            /* each part's pushes so far: a ridge's ripple rides back with it */
 static uint32_t wl_bpos, wl_brem, wl_bms, wl_bpn[2]; /* the belt's place (1/256 of a ridge) and the remainder of its last step, fm1_ms when it was last moved, the belt step at each part's last push */
-static void wl_belt(void)                            /* once a picture: the belt on by the time gone (fm1_ms: real ms on the unit and in the emulator, whatever the picture rate), a line
-                                                      * every WL_FLOW_PACE 16ths of the tempo (4 FS / beat_samples 16ths a second) */
+static uint32_t wl_brate = 256u / WL_FLOW_IDLE;     /* the speed now, 1/256 of a line a 16th: eased between 256 / WL_FLOW_PACE (a part sounds) and 256 / WL_FLOW_IDLE (rest) over a beat */
+static int wl_quiet(void)                            /* no part above the wave's floor: both fronts flat (or none yet) */
 {
-    const uint32_t dt = fm1_ms - wl_bms, d = dt < 250u ? dt : 250u, bs = (beat_samples() ? beat_samples() : 1u) * WL_FLOW_PACE;   /* (a long gap, the page away: no catching up) */
-    const uint32_t num = d * (1024u * FS / 1000u) + wl_brem;   /* (256ths of a ridge x beat_samples x the pace: 32-bit, 250 ms x 45,158 at most) */
+    return (!wl[0].hn || (wl[0].flat & 1u)) && (!wl[1].hn || (wl[1].flat & 1u));
+}
+static void wl_belt(void)                            /* once a picture: the belt on by the time gone (fm1_ms: real ms on the unit and in the emulator, whatever the picture rate), wl_brate / 256
+                                                      * of a line a 16th of the tempo (4 FS / beat_samples 16ths a second); the speed eases to its target in even steps over a beat, so it
+                                                      * changes smoothly and the place never jumps */
+{
+    const uint32_t dt = fm1_ms - wl_bms, d = dt < 250u ? dt : 250u, b = beat_samples() ? beat_samples() : 1u;   /* (a long gap, the page away: no catching up) */
+    const uint32_t want = 256u / (wl_quiet() ? WL_FLOW_IDLE : WL_FLOW_PACE), bms = b / (FS / 1000u) ? b / (FS / 1000u) : 1u;
+    const uint32_t span = 256u / WL_FLOW_PACE > 256u / WL_FLOW_IDLE ? 256u / WL_FLOW_PACE - 256u / WL_FLOW_IDLE : 256u / WL_FLOW_IDLE - 256u / WL_FLOW_PACE;
+    const uint32_t step = span * d / bms + 1u;       /* (the whole way in a beat) */
+    uint32_t bs, num;
+    wl_brate = wl_brate < want ? (want - wl_brate > step ? wl_brate + step : want) : (wl_brate - want > step ? wl_brate - step : want);
+    bs = b * 256u / (wl_brate ? wl_brate : 1u);      /* (beat_samples / the speed: 22,050 x 3 at 120 BPM at rest, 66,150 x 256 / 1 at most) */
+    bs = bs ? bs : 1u;
+    num = d * (1024u * FS / 1000u) + (wl_brem < bs ? wl_brem : bs - 1u);   /* (256ths of a line x bs: 32-bit, 250 ms x 45,158 at most) */
     wl_bms = fm1_ms;
     wl_bpos += num / bs;
     wl_brem = num % bs;
 }
 static const int8_t wl_sin[65] = {0, 6, 12, 19, 24, 30, 36, 41, 45, 49, 53, 56, 59, 61, 63, 64, 64, 64, 63, 61, 59, 56, 53, 49, 45, 41, 36, 30, 24, 19, 12, 6,
                                   0, -6, -12, -19, -24, -30, -36, -41, -45, -49, -53, -56, -59, -61, -63, -64, -64, -64, -63, -61, -59, -56, -53, -49, -45, -41, -36, -30, -24, -19, -12, -6, 0};
-static uint32_t wl_ripc(uint32_t k, int32_t c)       /* the ripples' phase at column c, 1/16384 of a round: 150 px long, drifting a round every 16 lines (WL_FLOW_PACE bars), the parts half a round apart */
+static uint32_t wl_ripc(uint32_t k, int32_t c)       /* the ripples' phase at column c, 1/16384 of a round: 150 px long, drifting a round every 16 lines (a bar while a part sounds), the parts half a round apart */
 {
     return (uint32_t)c * 16384u / 150u + wl_bpos * 4u + k * 8192u;
 }
