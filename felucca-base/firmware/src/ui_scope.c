@@ -486,6 +486,8 @@ static int32_t wl_fit(int32_t h, int32_t *a, int32_t *st)
  * at any slope (a steep part fills the rows between), the edges shaded by coverage. A pixel is blended toward the stroke's colour c by pct * its coverage (1/16 .. 16/16) %: from tab
  * (tab[n]: the canvas background bg blended by n/16, made once a stroke) where it is still the background, else mixed (ux_mix: the same colour either way, three divisions less) */
 /* t[n], n 1 .. 16: colour c at str % covering n/16 of a pixel on the background, for the canvas (byte-swapped); one mix and shifts (b6 wavepace: 13 ridges' tables a lane) */
+static uint16_t wl_bwn(uint16_t c) { return ux.bw ? ux_gray((uint32_t)c >> 11) : c; }   /* (MONO: a blend snapped to exact gray: the channels rounded apart drift
+                                                                                        * off neutral where the flow's settling, ripples and fading line blend over each other) */
 static void wl_tab(uint16_t *t, uint16_t c, int32_t str)
 {
     const uint32_t f = ux_mix(T_BG, c, str), b = T_BG;
@@ -493,7 +495,7 @@ static void wl_tab(uint16_t *t, uint16_t c, int32_t str)
     const int32_t dr = (int32_t)(f >> 11) - r0, dg = (int32_t)(f >> 5 & 63u) - g0, db = (int32_t)(f & 31u) - b0;
     int32_t n;
     for (n = 1; n <= 16; n++)
-        t[n] = ux.mono ? swap16(ux_mix(T_BG, c, str * n / 16)) : swap16((uint16_t)((r0 + ((dr * n + 8) >> 4)) << 11 | (g0 + ((dg * n + 8) >> 4)) << 5 | (b0 + ((db * n + 8) >> 4))));
+        t[n] = ux.mono ? swap16(ux_mix(T_BG, c, str * n / 16)) : swap16(wl_bwn((uint16_t)((r0 + ((dr * n + 8) >> 4)) << 11 | (g0 + ((dg * n + 8) >> 4)) << 5 | (b0 + ((db * n + 8) >> 4)))));
 }
 static void wl_col(int32_t x, int32_t ya, int32_t yb, int32_t w16, uint16_t c, int32_t pct, int32_t ymin, int32_t ymax, const uint16_t *tab, uint16_t bg)
 {
@@ -507,7 +509,7 @@ static void wl_col(int32_t x, int32_t ya, int32_t yb, int32_t w16, uint16_t c, i
         if (row < ymin || row > ymax || r1 <= r0 || (uint32_t)y >= cv_h || m <= 0)
             continue;
         q = &cv_px[(uint32_t)y * cv_w + (uint32_t)x];
-        *q = *q == bg ? tab[r1 - r0] : swap16(ux_mix(swap16(*q), c, m > 100 ? 100 : m));
+        *q = *q == bg ? tab[r1 - r0] : swap16(wl_bwn(ux_mix(swap16(*q), c, m > 100 ? 100 : m)));
     }
 }
 /* ridge r's height at x16 (1/16 px) of its span from xl16, mul the points a 1/16 px (Q16): the two nearest points, linear; 1/16 px from its middle */
