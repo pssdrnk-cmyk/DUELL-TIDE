@@ -70,8 +70,10 @@ static uint32_t wl_tk = 0xFFFFFFFFu;
 static uint32_t wl_pn[2];                            /* each part's pushes so far: a ridge's ripple rides back with it */
 static uint32_t wl_bpos, wl_brem, wl_bms, wl_bpn[2]; /* the belt's place (1/256 of a ridge) and the remainder of its last step, fm1_ms when it was last moved, the belt step at each part's last push */
 static uint32_t wl_brate = 256u / WL_FLOW_IDLE;     /* the speed now, 1/256 of a line a 16th: eased between 256 / WL_FLOW_PACE (a part sounds) and 256 / WL_FLOW_IDLE (rest) over a beat */
-static int wl_quiet(void)                            /* no part above the wave's floor: both fronts flat (or none yet) */
+static int wl_quiet(void)                            /* no part above the wave's floor: both fronts flat (or none yet); off the wave page (its tap shut, the tide line's clock), the transport stopped */
 {
+    if ((int32_t)(wv_want - wv_blk) <= 0)
+        return !song.playing;
     return (!wl[0].hn || (wl[0].flat & 1u)) && (!wl[1].hn || (wl[1].flat & 1u));
 }
 static void wl_belt(void)                            /* once a picture: the belt on by the time gone (fm1_ms: real ms on the unit and in the emulator, whatever the picture rate), wl_brate / 256
