@@ -2718,20 +2718,19 @@ static void mv_field(uint32_t k, int32_t y0, int32_t y1, uint32_t nl)
     }
 }
 #endif
+#if DUELL_TIDE
+static void graph_morph(void)
+{
+    wl_card(MV_BY0, MV_BY1);                         /* (the other layouts, a layer or the menu over the page: the picture alone in the old box; the page itself is template 9, ui_draw.c; b10: the old A..B track, thumb, ROLL A|B / AMT and HOLD SAVE lines are not compiled into TIDE) */
+}
+#else
 static void graph_morph(void)
 {
     const ui_pal_t *pl = &UI_PALETTES[ux.pal % NPALETTES];
-#if DUELL_TIDE
-    uint32_t pi = song.sel, f = morph_fader_of(pi), both = PART_BOTH();
-#else
     uint32_t pi = song.sel, f = morph_fader_of(pi), tk = mv_tick(), both = PART_BOTH(), n;
-#endif
     int32_t cx = MV_TX0 + (int32_t)(f * (uint32_t)(MV_TX1 - MV_TX0) / 127u), i;
     char b[8];
     khint_t kh[3];
-#if DUELL_TIDE
-    wl_card(MV_BY0, MV_BY1);                         /* (the other layouts, a layer or the menu over the page: the picture alone in the old box; the page itself is template 9, ui_draw.c) */
-#else
     mv_levels(tk);
     n = mv_step == 0xFFFFFFFFu ? 0u : tk - mv_step;   /* (steps since the last: the motion moves on by as many) */
     mv_listen(0, n > 4u ? 4u : n);
@@ -2760,7 +2759,6 @@ static void graph_morph(void)
     } else {
         mv_field(pi, MV_BY0, MV_BY1, 5u);
     }
-#endif
     for (i = MV_TX0; i <= MV_TX1; i++) {             /* the A..B track (POLICE: two solid halves) */
         int32_t p = (i - MV_TX0) * 100 / (MV_TX1 - MV_TX0);
         uint16_t col = pl->hc ? pl->c[2u * pi + (p >= 50)] : ux_mix(ux_mix(pl->c[2u * pi], pl->c[2u * pi + 1u], p), T_BG, 45);
@@ -2784,6 +2782,7 @@ static void graph_morph(void)
     GFX_HOOK_ALIGN(0, 0, 240, 0, AL_H, "morph save line centred");
     cv_text_in(0, MV_SY, 240, &AF_S, "HOLD SAVE = SAVE PATCH", T_DIM, T_BG);
 }
+#endif
 #if !DUELL_TIDE                                      /* TIDE hook: no MODE page */
 static void graph_mode(void)
 {   /* DUELL 1.1 (PAGES_V2_home-modes.png), item 118: the three modes as a list in the order LAYER, STEREO, DUEL (the SETUP page's), the picked one on a box of the selected part's colour (ui_tokens.h TEMPLATE 6: the selection style of
