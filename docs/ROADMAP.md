@@ -68,7 +68,7 @@ A polish beta on top of b7 (details in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md
 
 ## Built in b9, waits for the FM-1
 
-The sound and knobs beta on top of b8 (details in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md#100-b9)); none of it is on the unit yet.
+The sound and knobs beta on top of b8 (details in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md#100-b9)); released as 1.0.0-b9 (11 November) and on the unit since then.
 
 | What | State |
 |---|---|
@@ -130,6 +130,12 @@ Status of 1 to 3 (b10): built and measured (`jam/check.sh -j N | --changed`, `ja
 24. SAVE after TRAVEL: SAVE shows a short message when the sound you loaded and the one TRAVEL moved to differ (owner, 10 November: the default).
 25. ARC's loudness step (sqm_dyn) still follows the main loop's pass, so a new phase's first beat keeps the old loudness (B8-ARC).
 26. TRAVEL level: swapped sounds play 6-10 dB under the factory window (M19 TECH HYPNO -30.1 LUFS, M24 TECH MINIMAL -27.5 against -24.1 .. -18.1; host render, 16 bars under the multi's STYLE): level-match the swap in TIDE. The records are not the cause (the part LEVEL is at its +4 dB limit on M24); accepted for b10-rc2 by the coordinator.
+27. README's second picture (`docs/tide/morph-settings.png`) still shows the retired ROLL MUSIC / ARP / PITCH rows: shoot a new one of TIDE SETTINGS with the emulator (b9 chores).
+28. Stale comment: `ui_input.c` above `part_select` still describes MORPH SET's SMART / WILD roll knobs, retired in b9 (b9 chores).
+29. Two low cuts from before the "low end welcome" rule were kept "for another reason" and never decided: the C3 pitch-walk floor and the pad lows in M04, M12 and M16 (B9-LOWEND rows 9 and 14). Check them with the sound lab and open them unless the reason holds.
+30. The store's cross-version test has no record written by b8 rc1 / rc2 (B9-STORE); add one to the fixtures.
+31. USB AUDIO OFF: the web editor's mock unit (`web/editor/mockunit.js`) has no USB AUDIO item, and a Mac host seeing the MIDI-only device was never tried (Windows is proven by every flash since b9).
+32. The Attack Magazine research left about 25 relevant articles listed but unread, and the Deconstructed house / nu-disco ones (listed in the b9 research index, "unread but relevant"): read them before the next sound round.
 
 ## Released
 
@@ -243,8 +249,8 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 
 ## Ideas, not decided
 
-- Effects ideas from the sourced recipes (the b9 recipe research), each needing flash: a slow LFO on the delay send or loop filter (dub's ridden echo); a low cut or EQ on the reverb return; a phaser / flanger insert; a fast LFO to oscillator sync / PWM, plus tremolo / auto-pan; a two-tap delay (one synced, one free); separate L / R delay times; ducking the delay and reverb returns by the part's own notes; a per-bar delay-send ramp and a reverb accent on a phrase's last note; a slow swell LFO on a part's level; an oscillator pitch envelope.
-- More factory multis (hypnotic techno, cinematic hypnotic techno, dub house, lo-fi house, ambient techno, minimal; researched from Attack Magazine technique articles in b9): about 0.5 KB each, room from USB AUDIO OFF and its int16 resampler taps (b9) and SP5.
+- Effects ideas from the sourced recipes (the b9 recipe research), each needing flash: ~~a slow LFO on the delay loop filter~~ (built in b10: COLR LFO); a noise source for the FM6 and insert sounds (Attack's dub-chord "chuff" and tape hiss, not possible today); a low cut or EQ on the reverb return; a phaser / flanger insert; a fast LFO to oscillator sync / PWM, plus tremolo / auto-pan; a two-tap delay (one synced, one free); separate L / R delay times; ducking the delay and reverb returns by the part's own notes; a per-bar delay-send ramp and a reverb accent on a phrase's last note; a slow swell LFO on a part's level; an oscillator pitch envelope.
+- ~~More factory multis~~ (built in b10 as M19 to M24: hypnotic techno, cinematic hypnotic techno, dub house, lo-fi house, ambient techno, minimal; researched from Attack Magazine technique articles in b9): about 0.5 KB each, room from USB AUDIO OFF and its int16 resampler taps (b9) and SP5.
 - **Wave card L/R lines and the deep-bass line:** about 4 KB more RAM. The candidates are PERFORM capture (8 KB = 93 ms shorter capture) or a canvas drawn in strips. Owner decision when wanted.
 - **From Niagara Drift** (an FM-1 drone firmware; checked against our code 8 November, estimates until built): **reverb FREEZE** on HALL / ROOM (the tail holds and the notes can stop; a block-rate gain change with a limiter, ~200-400 B, no CPU while off; risks: fixed-point overflow and the release click) fits best. **AGE** (slow tape-like wear, ~300-600 B) needs an offset layer on top of the saved sound, not checked yet. Gesture keys and a free-time motion loop do not fit the flash, the keys or the no-new-pages rule.
 - **From the musical review** ([report](audits/2026-11-09/musical-review/REPORT.md)): the three ideas (a chord-rhythm vocabulary, voicing that breathes with the arc, a real call and answer) are built in b7.
