@@ -331,9 +331,16 @@ static void run_scn(const scn_t *c, uint32_t id)
 #else
 #define T_LEV(bar) (tarc_lev)
 #endif
+#ifdef TARC_DYN_ARMED                                   /* (Later 25: ARC's loudness step is armed a unit ahead too; what seq_morph.c sqm_dyn_of reads before the listening bars are taken off) */
+#define T_DYN(bar) ((((bar) >> 3) & 63u) != tarc_unit ? sqm_dyn_nx : sqm_dyn)
+#else
+#define T_DYN(bar) (sqm_dyn)
+#endif
 static void arc_levers(int multi, uint32_t arc_mode)
 {
     uint32_t blk, p, units = 0, moved = 0, wrong = 0, phases = 0, last_u = 0xFFu, last_lev = 0xFFu, last_ph = 9u, seen_ph = 0, bad_at = 0;
+    uint32_t dmoved = 0, dwrong = 0, dbad_at = 0, dseen = 0;
+    int32_t last_dyn = 99;
     ui_power_on();
     frame();
     gl.on = gl.armed = 0;
@@ -364,24 +371,33 @@ static void arc_levers(int multi, uint32_t arc_mode)
         events_block(CTL);
         if (song.playing && sqm_auto == 3u && tarc.run && ((sqm_bar >> 3) & 63u) != last_u) {   /* the first block of a unit: the main loop has not looked yet */
             uint32_t pre = T_LEV(sqm_bar), post;
+            int32_t dpre = T_DYN(sqm_bar), dpost;
             tarc_poll();
+            sqm_thin_poll();
             post = T_LEV(sqm_bar);
+            dpost = T_DYN(sqm_bar);
             if (last_u != 0xFFu) {
                 units++;
                 moved += post != last_lev;
                 if (pre != post && !wrong++)
                     bad_at = (uint32_t)sqm_bar;
+                dmoved += dpost != last_dyn;
+                dseen |= 1u << (uint32_t)(dpost + 2);
+                if (dpre != dpost && !dwrong++)
+                    dbad_at = (uint32_t)sqm_bar;
                 if (tarc.phase != last_ph)
                     phases++, seen_ph |= 1u << tarc.phase;
             }
-            last_u = (sqm_bar >> 3) & 63u, last_lev = post, last_ph = tarc.phase;
+            last_u = (sqm_bar >> 3) & 63u, last_lev = post, last_ph = tarc.phase, last_dyn = dpost;
         }
         if ((blk % 22u) == 21u)
             frame();
     }
-    printf("tidesteps: ARC levers, multi %d, ARC %u: %u units, %u phase changes, the levers moved %u times, %u read late (first: bar %u)\n", multi + 1, arc_mode, units, phases, moved, wrong, bad_at);
+    printf("tidesteps: ARC levers, multi %d, ARC %u: %u units, %u phase changes, the levers moved %u times, %u read late (first: bar %u); the loudness step moved %u times (values seen, mask %u), %u read late (first: bar %u)\n", multi + 1, arc_mode, units, phases, moved, wrong, bad_at, dmoved, dseen, dwrong, dbad_at);
     CHECK("ARC levers: the run saw whole arcs (units, phase changes, levers that moved)", units >= 8u && phases >= 4u && moved >= 3u);
     CHECK("ARC levers: a new phase's first downbeat reads the new phase's thinned parts and POLY hold", wrong == 0u);
+    CHECK("ARC dynamics: the loudness step changed in the run (louder in the late rise and peak, two steps softer in the breakdown)", dmoved >= 3u && (dseen & 1u) != 0u);
+    CHECK("ARC dynamics: a new phase's first downbeat reads the new phase's loudness step (Later 25)", dwrong == 0u);
     transport_req = 2u;
     frame();
     frame();
