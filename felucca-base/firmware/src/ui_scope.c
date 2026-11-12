@@ -475,8 +475,8 @@ static int32_t wl_atx(const wl_t *s, uint32_t r, int32_t x16, int32_t xl16, int3
  * stack is the playing one with every line flat, the same middles and widths (b6, owner: "there is a fuckup with the default screen": the rest screen had its own even spread, the
  * front apart). The gaps never widen further back and are at least WL_STEP (owner: "a bigger gap after the 3rd line": each line's own rounding to whole rows made 3 2 3 2 ..);
  * in 1/16 px, so 13 lines in the 25 rows of spread a 68-row lane leaves are about 2 1/16 px apart each.
- * No older ridge is laid flat for being unlike the front or crossing it; a shaped ridge is never drawn under a newer shaped one, it rides on it (just above its stroke: 22/16 px over
- * the front, 1 px over an older one) where it would cross; elsewhere its shape is its own. A flat one is drawn flat.
+ * No older ridge is laid flat for being unlike the front or crossing it; a shaped ridge is never drawn under a newer one: where it would cross, the part behind is not drawn (b10, hidden lines: it used to ride on the newer one,
+ * and a pile of 1-px lines fused into solid bars on steep slopes); elsewhere its shape is its own. A flat one is drawn flat.
  * Column by column: every ridge's height there in one pass from the front back (each one's bound is the newer ones'), and drawn in that order under the horizon they leave */
 static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
 {
@@ -520,18 +520,15 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
         int32_t y0f = shp & 1u ? yb[0] + wl_atx(s, 0u, WL_X0 * 16, xl[0], mul[0]) : yb[0];   /* (the front's height in this column; the next one's is found in the loop) */
         for (c = WL_X0; c <= WL_X1; c++) {
             const int32_t x16 = c * 16, yn = (shp & 1u) && c < WL_X1 ? yb[0] + wl_atx(s, 0u, x16 + 16, xl[0], mul[0]) : y0f;
-            int32_t y[WL_HN], lim, m, hz = y1 - 1;   /* (m: the ridges drawn in this column, the front and the older ones as wide as it reaches: each is narrower than the one before;
+            int32_t y[WL_HN], m, hz = y1 - 1;   /* (m: the ridges drawn in this column, the front and the older ones as wide as it reaches: each is narrower than the one before;
                                                       * hz: the horizon, the top row drawn in this column so far: an older ridge shows only above it) */
             y[0] = y0f;
-            lim = shp & 1u ? y0f - 22 : 1 << 28;  /* (a flat front bounds nothing) */
             for (m = 1; m < nf && x16 >= xl[m] && x16 <= xr[m]; m++) {   /* (the heights, the front back: each shaped one at most at the bound the newer shaped ones leave) */
                 if (!((shp >> m) & 1u)) {
                     y[m] = yb[m];
                     continue;
                 }
                 y[m] = yb[m] + wl_atx(s, (uint32_t)m, x16, xl[m], mul[m]);
-                y[m] = y[m] < lim ? y[m] : lim;
-                lim = y[m] - 16;
             }
             for (r = 0; r < m; r++) {
                 const int32_t ya = (seen >> r) & 1u ? py[r] : y[r];
