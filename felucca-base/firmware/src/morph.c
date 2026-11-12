@@ -1306,6 +1306,7 @@ static morph_part_t mph[NSHOWN];
 #if DUELL_TIDE
 static uint32_t morph_xside(const morph_part_t *mp, int32_t w, int aud);
 static void morph_xrest(uint32_t pi);
+static uint8_t morph_xr[NSHOWN];                        /* b10 round 7 (FELUCCA_GUARDS): 1 = morph_xrest has run and morph_xstep / morph_xplan have written nothing since: a part with no morph skips it */
 static void morph_xreset(uint32_t pi);
 static int morph_xstep(track_t *t, morph_part_t *mp, uint32_t pi);
 static uint32_t morph_xreg(uint32_t pi, const int16_t *p, uint8_t *tid, uint8_t *chk, int16_t *tlive, uint32_t m);
@@ -1644,7 +1645,11 @@ static int morph_begin(track_t *t, int adv)
     t->mf = mp->fader;                                  /* (4b) the matrix's MORPH source for this block (mod.c) */
     if ((!mp->nid && !mp->fnid) || t->mwon || morph_stale(t, mp)) {
 #if DUELL_TIDE
-        if (!t->mwon) morph_xrest(pi);
+        if (!t->mwon) GD_COUNT(gd_xr_call);
+        if (!t->mwon && !(FELUCCA_GUARDS && morph_xr[pi])) {
+            GD_COUNT(gd_xr_run);
+            morph_xrest(pi);
+        }
 #endif
         return 0;
     }
