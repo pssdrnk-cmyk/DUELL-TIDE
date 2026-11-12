@@ -1300,8 +1300,8 @@ static const char *label_shown(const char *l)
 static const char *desc_shown(const param_desc_t *d)
 {
     static const struct { uint8_t id; const char *name; } TS[] = {
-        {P_TRIM, "PATCH\nLEVEL"}, {P_APROB, "CHANCE"}, {P_EQLF, "LOW\nFREQUENCY"}, {P_EQLG, "LOW\nGAIN"}, {P_EQMF, "MID\nFREQUENCY"}, {P_EQMG, "MID\nGAIN"},
-        {P_EQMQ, "MID Q"}, {P_EQHF, "HIGH\nFREQUENCY"}, {P_EQHG, "HIGH\nGAIN"}, {P_CHRD, "TYPE"},
+        {P_TRIM, "PATCH\nLEVEL"}, {P_APROB, "CHANCE"}, {P_EQLF, "LOW FREQ"}, {P_EQLG, "LOW\nGAIN"}, {P_EQMF, "MID FREQ"}, {P_EQMG, "MID\nGAIN"},
+        {P_EQMQ, "MID Q"}, {P_EQHF, "HIGH FREQ"}, {P_EQHG, "HIGH\nGAIN"}, {P_CHRD, "TYPE"},   /* (I13: the EQ's frequencies on one line) */
     };
     uint32_t i;
     for (i = 0; i < NELEM(TS); i++)

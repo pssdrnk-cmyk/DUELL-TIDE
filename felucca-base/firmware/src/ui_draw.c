@@ -100,7 +100,7 @@ static void draw_battery(void)
 #define CPU_BAR_HOT 85u
 #define CPU_BAR_STEPS 8u
 static uint16_t cpu_col(uint32_t lvl, uint16_t bg);   /* (ui_menu.c) */
-#if DUELL_TIDE
+#if DUELL_TIDE && DUELL_TEST_MODE
 static uint32_t cpu_head(char *l, char *r, uint16_t *c);   /* (ui_menu.c K2: the header's CPU readout on TIDE's pages) */
 static void cpu_head_arm(void);
 #endif
@@ -347,17 +347,10 @@ static void nm_title(char *b);                         /* ui_name.c: NAME's titl
 /* the header's centre text (0.2.1): what the screen is called. Over a page, the PAGE NAME (params.c titles; EDIT's: the engine's; the piano roll
  * "STEP C MIN", the GRID "GRID"; OVERVIEW); the full-screen dialogs and NAME their own title; a layer shows its label as a message
  * (head_msg). tb holds 24; *pi gets the page's icon (MIXER, PATTERNS, PARAMETER LOCKS) or ICON_NONE */
-#if DUELL_TIDE && TIDE_PLAYSEL
-static int head_ps_on(void) { return song.both && !ui.perf && !ui.layer && HOME_BOTH_PAGE(cur_page()); }   /* (PERFORM names it in its footer: ALGORITHM = ..) */
-static uint8_t head_ps;                                 /* 1: the title drawn is the play position (head_page_title) */
-#endif
 static void head_page_title(char *tb, uint32_t *pi)
 {
     char nm[28], ct[8];
     *pi = ICON_NONE;
-#if DUELL_TIDE && TIDE_PLAYSEL
-    head_ps = 0;
-#endif
     if (oct_show_on()) {
         str_cpy(tb, "OCTAVE", 24);
     } else if (ui.uboot) {
@@ -375,10 +368,8 @@ static void head_page_title(char *tb, uint32_t *pi)
         int roll = page_parts(nm, ct);
         str_cpy(tb, roll ? "SEQUENCER" : nm, 40);            /* (item 118, FINAL_V1_07: the piano roll's title is STEP, no scale name; the name is the SCALE page's) */
         *pi = page_icon(cur_page());
-#if DUELL_TIDE && TIDE_PLAYSEL
-        if ((head_ps = (uint8_t)head_ps_on()) != 0)     /* 1.0.0-b7: both parts selected on HOME's pages: the title is how the keys play, LAYER / STEREO / DUEL, in the theme colour (head_title_draw) */
-            str_cpy(tb, PLS_NAME[play_pos()], 40);
-#endif
+        /* (b10, owner 2026-11-12: HOME's pages are titled by their names, MORPH / TIDE SETTINGS / AUTO TIDE, also with both parts selected; the play position
+         * (PART 1, LAYER, STEREO, DUEL, PART 2) is at the right end of knob 1's line on those pages (ui_draw.c MORPH, tide_ui.c), and ALGORITHM still says it as it turns) */
     }
 }
 /* EDITABLE B (cloud job G, docs/design/EDITABLE_B_DESIGN.md 2.2): the letter A or B in a filled cushion in the part's A or B colour, right of the 1 2 badges (x 33, 14 px like them; where the multi number was
@@ -430,59 +421,9 @@ static uint32_t badge_lit(void)
     return lit;
 }
 
-/* DUELL 1.1 NOTES LEFT (MENU > DISPLAY > NOTES LEFT, ON by default): the notes each part can still play, digits only, in the header's left corner right after the part
- * badges (and the A / B letter where it shows), AF_S. A part's number is the voices the audio engine will give it (voice.c trk_nvoice: the stricter of the engine's own limit,
- * the VOICE CAP and the budget's NOTES, budget.c part_notes via bnotes[], which budget_poll refreshes every frame, so any change of patch, engine, filter, twin filter, effects or
- * mode shows at once) minus its keys held now (voices that are active with the gate on; fading ones count as free), never below 0. DUEL (DM_SPLIT): two numbers, part 1 then
- * part 2, 6 px apart. STEREO and LAYER (item 117, owner): one number, the SELECTED part's own (not the smaller of the two: every key plays on both parts, but the number says what
- * the part you are editing can still play). A muted part gives 0. A number is drawn in the accent
- * colour when it is 0, or when the budget (CPU) is what holds it under the engine's own limit and part_notes_reason names a cause; else in the theme colour. Hidden while the header
- * shows a message, a layer, the menu or a dialog (head_msg's room starts at x 45). The page name gives way (head_page_title's room starts after the numbers) */
-#define HEAD_NOTES_GAP 6
-static uint32_t head_notes(uint8_t *n)                  /* the numbers to show: how many (0, 1 or 2), in n[] */
-{
-    uint32_t p, k, v[2];
-    if (!notes_show_on())
-        return 0;
-    for (p = 0; p < 2u; p++) {
-        uint32_t held = 0, lim = trk[p].p[P_MUTE] ? 0u : trk_nvoice(&trk[p]);
-        for (k = 0; k < NVOICE; k++)
-            held += trk[p].v[k].active && trk[p].v[k].gate && trk[p].v[k].stage != 4u;
-        v[p] = lim > held ? lim - held : 0u;
-    }
-    if (duell_mode_req == DM_SPLIT || UT_CAP_VOICES_OWN) {
-        n[0] = (uint8_t)v[0];
-        n[1] = (uint8_t)v[1];
-        return 2;
-    }
-    n[0] = (uint8_t)v[song.sel & 1u];                   /* (item 117: the selected part's own number) */
-    return 1;
-}
-/* item 153 (owner): the third cell's number is the free voices in POLY only. MONO shows M, LEGATO L, UNISON U in its place (those modes play one note at a time; the
- * count there said nothing useful). The letter follows the part whose number would have stood there (the selected part's own for the one shared number). 0: POLY, a number */
-static char head_mode_ch(uint32_t p)
-{
-    switch (trk[p & 1u].p[P_VOICE]) {
-    case V_MONO: return 'M';
-    case V_LEGATO: return 'L';
-    case V_UNISON: return 'U';
-    default: return 0;
-    }
-}
-static uint32_t head_notes_cpu(uint32_t p)              /* 1: the budget (CPU) is what holds part p under its engine's own limit, and part_notes_reason names a cause */
-{
-    return !trk[p].p[P_MUTE] && bnotes[p] && bnotes[p] < trk_nvoice_eng(&trk[p]) && part_notes_reason((int)p) != NR_NONE;
-}
-static uint32_t head_notes_sig(void)                    /* what the drawing depends on (the numbers and, cheap, whether the budget is the limit) */
-{
-    uint8_t n[2];
-    uint32_t c = head_notes(n), s = c * 977u;
-    if (c)
-        s += n[0] * 31u + (c == 2u ? n[1] * 1009u : 0u) + (bnotes[0] < trk_nvoice_eng(&trk[0]) ? 5u : 0u) + (bnotes[1] < trk_nvoice_eng(&trk[1]) ? 7u : 0u);
-    return s;
-}
-
-/* DUELL 1.1 HEADER (owner, HANDOFF_V2 items 82, 83 and the one after 86; HEADER_MORPH_MARKER_V1.png, the CAPSULE): on a PART page part 1's capsule [number | letter | voices] stands top left, part 2's top right,
+/* (b10, owner 2026-11-12: the capsules no longer show the free voices, nor MONO / LEGATO / UNISON's letter in their place: NOTES LEFT, head_notes and head_mode_ch are gone;
+ * MENU > DISPLAY > NOTES LEFT has no row any more, its stored bit stays reserved, as CPU METER's) */
+/* DUELL 1.1 HEADER (owner, HANDOFF_V2 items 82, 83 and the one after 86; HEADER_MORPH_MARKER_V1.png, the CAPSULE): on a PART page part 1's capsule [number | letter] (b10: the voices cell is gone) stands top left, part 2's top right,
  * 4 px from the screen's side and top, full capsules (all four corners round); the number cell is filled in the part's colour (the other part's grey), the letter (A or B: the morph end the part's knobs
  * edit) and the AVAILABLE VOICES number are plain text on the dim part. The cells have fixed widths, so only the letter and the number ever change. The page title stands centred between them, on
  * their baseline; no line, no bar. DUEL shows both capsules, STEREO and LAYER one number in both capsules: the selected part's own (item 117; UT_CAP_VOICES_OWN 1: each its own). A GLOBAL page (screen_global: GLO, SCALE, MODE, SAVE, MENU, the
@@ -490,11 +431,10 @@ static uint32_t head_notes_sig(void)                    /* what the drawing depe
 #define CAP_X UT_CAP_X                                 /* (the numbers are ui_tokens.h's: item 111, measured on FINAL_V1_01_morph.png: 37 x 16, radius 5, cells 12 / 12 / 13) */
 #define CAP_Y UT_CAP_Y
 #define CAP_H UT_CAP_H
-#define CAP_NUM_W UT_CAP_CELL                          /* its cells: the part's number, the letter, the voices number (+ the right outline) */
-#define CAP_LET_W UT_CAP_CELL
-#define CAP_VOI_W (UT_CAP_W - 2 * UT_CAP_CELL)
+#define CAP_NUM_W UT_CAP_CELL                          /* its cells: the part's number, the letter (+ the right outline) */
+#define CAP_LET_W (UT_CAP_W - UT_CAP_CELL)
 #define CAP_W UT_CAP_W
-#define HEAD_TITLE_L (CAP_X + CAP_W + 4)               /* a message's room: 45 .. 195 (the page title's is UT_TITLE_L .. UT_TITLE_R) */
+#define HEAD_TITLE_L (CAP_X + CAP_W + 4)               /* a message's room: 33 .. 207 (b10; the page title's is UT_TITLE_L .. UT_TITLE_R) */
 #define HEAD_TITLE_R (240 - CAP_X - CAP_W - 4)
 /* a GLOBAL screen: the gradient accent, no part capsules (the pages that edit the instrument, not a part) */
 static int screen_global(void)
@@ -519,12 +459,12 @@ static uint32_t head_marks(uint32_t k)
 {
     return (trk[k].p[P_MUTE] != 0) | (arp_hold(&trk[k]) ? 2u : 0u);
 }
-static void head_capsule(int32_t x, uint32_t k, uint32_t lit, uint32_t b, int32_t voices, uint32_t mk)
+static void head_capsule(int32_t x, uint32_t k, uint32_t lit, uint32_t b, uint32_t mk)
 {
     uint16_t pc = lit ? T_PTHEME(k) : T_DIM, cell = lit ? ux_mix(T_BG, pc, UT_CAP_DIM_PCT) : ux_mix(T_BG, T_TEXT, UT_CAP_OFF_PCT);
     char n[8];
     cv_rrect(x, UT_CAP_Y, UT_CAP_W, UT_CAP_H, UT_CAP_R, pc, T_BG);                          /* the outline and the number cell in the part colour (an unlit part: T_DIM) */
-    cv_rrect(x + UT_CAP_CELL, UT_CAP_Y + 1, UT_CAP_W - UT_CAP_CELL - 1, UT_CAP_H - 2, UT_CAP_R - 1, cell, pc);   /* the dim part: the letter and the voices number */
+    cv_rrect(x + UT_CAP_CELL, UT_CAP_Y + 1, UT_CAP_W - UT_CAP_CELL - 1, UT_CAP_H - 2, UT_CAP_R - 1, cell, pc);   /* the dim part: the letter */
     cv_rect(x + UT_CAP_CELL, UT_CAP_Y + 1, 4, UT_CAP_H - 2, cell);                          /* (its left side square) */
     n[0] = (char)('1' + k);
     n[1] = 0;
@@ -537,14 +477,6 @@ static void head_capsule(int32_t x, uint32_t k, uint32_t lit, uint32_t b, int32_
     head_cell_text(x + UT_CAP_CELL, n, ux_mix(T_BG, T_TEXT, UT_CAP_LETTER_PCT), cell);
     if (mk & 2u)                                        /* HOLD: a line under the letter */
         cv_rect(x + UT_CAP_CELL + 2, UT_CAP_Y + UT_CAP_H - 2, 8, 1, T_TEXT);
-    if (voices < -1) {                                  /* item 153: a mode letter (the code is -voices: 'M', 'L', 'U') instead of the number */
-        n[0] = (char)(-voices);
-        n[1] = 0;
-        head_cell_text(x + 2 * UT_CAP_CELL - 1, n, T_TEXT, cell);   /* (owner, item 157: everything in the third cell one pixel to the left) */
-    } else if (voices >= 0) {
-        fmt_int(n, voices);
-        head_cell_text(x + 2 * UT_CAP_CELL - 1, n, T_TEXT, cell);   /* (owner V13: the voices number is T_TEXT always, also when the budget is short: no colour change; two digits are 16 px wide: 4 px over their cell) */
-    }
 }
 /* the page title, on the header canvas (item 111: face T Bold 15, T_TEXT white, centred on the screen's middle, no colour, no line; S when T does not fit; `glob`: no capsules, the whole width).
  * One function for every header: draw_head below and the MENU / ABOUT header (ui_menu.c menu_head, item 119) */
@@ -552,11 +484,7 @@ static int32_t head_title_ink(const char *tb, int glob, uint16_t ink, int32_t *p
 static void head_title_draw(const char *tb, int glob)
 {
     int32_t w;
-#if DUELL_TIDE && TIDE_PLAYSEL
-    (void)head_title_ink(tb, glob, head_ps ? T_THEME : T_TEXT, &w);
-#else
     (void)head_title_ink(tb, glob, T_TEXT, &w);
-#endif
 }
 /* item 158: the title's one placement and drawing, in colour ink (the page title: T_TEXT; a program change's '#NN NAME': the part's colour, head_title_msg). Returns the pen's
  * start in 1/16 px and *pw the advance in 1/16 px (the face is the title's: T, or S when T does not fit), so a message drawn here stands pixel for pixel where the same text as a title stands */
@@ -647,7 +575,7 @@ static void head_title_msg(int glob)
         cv_rect(k ? ax + aw - 1 - i : ax + i, top + (ah - h) / 2, 1, h, ink);
     }
 }
-#if DUELL_TIDE
+#if DUELL_TIDE && DUELL_TEST_MODE                     /* (b10, owner 2026-11-12: a test build's only) */
 static int cpu_head_on(int glob, int msg)              /* K2: HOME's three pages, a part page with no message, layer, menu, guide or dialog over the title */
 {
     return !glob && !msg && tide_foot_parts() && !ui.menu && !ui.guide && !ui.confirm;
@@ -674,15 +602,11 @@ static void draw_head(void)
     uint32_t pi;
     int msg = ui.msg_t || ui.layer, glob = screen_global();
     uint32_t sig;
-    uint8_t vn[2];
-    uint32_t nv = 0;
     head_page_title(tb, &pi);
-    if (!glob)
-        nv = head_notes(vn);
     sig = song.sel * 13131u + (uint32_t)glob * 7u + (ui.msg_t ? str_hash(7u, ui.msg) : ui.layer * 7919u + (uint32_t)layer_locked() * 3u) +
-          head_notes_sig() * 6007u + (uint32_t)head_mode_ch(0) * 53u + (uint32_t)head_mode_ch(1) * 59u + (uint32_t)(song.sel & 1u) * 61u + badge_lit() * 4093u + (uint32_t)duell_mode_req * 331u +
-          (msg ? 0u : str_hash(13u, tb) + pi * 31u) + (head_ab_b() ? 811u : 0u) + (morph_fader_of(1 - song.sel) >= 127u ? 1301u : 0u) + (uint32_t)(notes_show_on() ? 17u : 0u) + (uint32_t)nv * 41u + head_marks(0) * 3011u + head_marks(1) * 4421u;
-#if DUELL_TIDE                                         /* TIDE hook (K2): HOME's three pages show the CPU's elapsed peak and the missed blocks beside the title (ui_menu.c cpu_head) */
+          (uint32_t)(song.sel & 1u) * 61u + badge_lit() * 4093u + (uint32_t)duell_mode_req * 331u +
+          (msg ? 0u : str_hash(13u, tb) + pi * 31u) + (head_ab_b() ? 811u : 0u) + (morph_fader_of(1 - song.sel) >= 127u ? 1301u : 0u) + head_marks(0) * 3011u + head_marks(1) * 4421u;
+#if DUELL_TIDE && DUELL_TEST_MODE                      /* TIDE hook (K2): HOME's three pages show the CPU's elapsed peak and the missed blocks beside the title (ui_menu.c cpu_head) */
     char cps[8], cms[8];
     uint16_t cpc = 0;
     uint32_t cpk = 0;
@@ -697,23 +621,9 @@ static void draw_head(void)
     cv_begin(240, H_HEAD, T_BG);
     if (!glob) {                                       /* a part page: the capsules */
         uint32_t lit = badge_lit();
-        int32_t v0 = -1, v1 = -1;
-        if (nv == 2u) {
-            v0 = vn[0];
-            v1 = vn[1];
-        } else if (nv == 1u) {
-            v0 = v1 = vn[0];
-        }
-        if (nv) {                                      /* item 153: MONO / LEGATO / UNISON show their letter in place of the number (the shared number: the selected part's mode) */
-            char m0 = head_mode_ch(nv == 2u ? 0u : song.sel), m1 = head_mode_ch(nv == 2u ? 1u : song.sel);
-            if (m0)
-                v0 = -(int32_t)m0;
-            if (m1)
-                v1 = -(int32_t)m1;
-        }
-        /* both parts' capsules in every mode (owner, test3): the selected part lit, the other dim; STEREO and LAYER show the one shared voices number in both */
-        head_capsule(CAP_X, 0, lit & 1u, morph_fader_of(0) >= 127u, v0, head_marks(0));
-        head_capsule(240 - CAP_X - CAP_W, 1, (lit >> 1) & 1u, morph_fader_of(1) >= 127u, v1, head_marks(1));
+        /* both parts' capsules in every mode (owner, test3): the selected part lit, the other dim */
+        head_capsule(CAP_X, 0, lit & 1u, morph_fader_of(0) >= 127u, head_marks(0));
+        head_capsule(240 - CAP_X - CAP_W, 1, (lit >> 1) & 1u, morph_fader_of(1) >= 127u, head_marks(1));
     }
     if (ui.msg_t && (ui.msg[0] == MSG_PC1[0] || ui.msg[0] == MSG_PC2[0] || ui.msg[0] == MSG_TITLE[0])) {   /* item 157: a program change's load, as the title */
         head_title_msg(glob);
@@ -722,7 +632,7 @@ static void draw_head(void)
     } else {
         head_title_draw(tb, glob);
     }
-#if DUELL_TIDE
+#if DUELL_TIDE && DUELL_TEST_MODE
     if (cpk) {                                         /* K2: the elapsed peak in a T_RAISE pill UT_TITLE_GAP right of part 1's capsule; the missed periods, only when there are any, in a REC red badge UT_TITLE_GAP left of part 2's */
         k2_pill(CAP_X + CAP_W + UT_TITLE_GAP, cps, T_RAISE, T_RAISE, T_MID);
         if (cms[0] != '0')
@@ -2103,6 +2013,15 @@ static void draw_foot(void)
     ctp = FOOT_CT_R * 16 - (ct[0] ? text_w16(&AF_S, ct) : 0);   /* the counter's pen, 1/16 px */
     rdot = foot_rec_dot(ctp);                          /* (the REC mark's left edge: the patch name ends before it) */
     fmt_int(tp, song.g[G_BPM]);                                   /* T12 (D26): the tempo (an external clock's measured one) before the number, the patch name ends before it; REC armed: the REC mark has the room */
+#if DUELL_TIDE
+    char tp1[6];                                                  /* b10 (owner 2026-11-12): the two-row footer (part 1 on row 1, part 2 on row 2) has the tempo on ROW 1, right-aligned above the
+                                                                   * counter and the battery, so part 2's name on row 2 gets its room back; part 1's name ends before it */
+    tp1[0] = 0;
+    if (pn1[0] && !ui.ml.on && !pfl[0] && !save_hint) {
+        str_cpy(tp1, tp, sizeof tp1);
+        tp[0] = 0;
+    }
+#endif
     if (rdot)
         tp[0] = 0;
     tpen = tp[0] ? ctp - FT_GAP * 16 - text_w16(&AF_S, tp) : rdot ? rdot * 16 : ctp;
@@ -2134,10 +2053,15 @@ static void draw_foot(void)
         cv_text_in(0, 2, 240, &AF_S, save_hint, T_DIM, T_BG);
 #if DUELL_TIDE
     } else if (pn1[0]) {                               /* TIDE hook: row 1, part 1 as row 2 names a part (its engine in its colour, the sound it plays) */
-        int32_t f1 = UT_FOOT_BASE - 15 - Y_FOOT - AF_S_CAP_Y - AF_S_CAP_H + 1, x = UT_FOOT_X * 16;
+        static const char FT_BPM[] = " BPM";          /* (owner 2026-11-12: "122 BPM", the unit dimmer, as the cards' units; part 1's name may end 2 px before the tempo's pen (the glyphs' own sides leave ~6 px of air), so M08's SUNDAY KEYS stays whole) */
+        int32_t f1 = UT_FOOT_BASE - 15 - Y_FOOT - AF_S_CAP_Y - AF_S_CAP_H + 1, x = UT_FOOT_X * 16, uw = text_w16(&AF_S, FT_BPM), bx = (UT_BAT_X + UT_BAT_W) * 16 - text_w16(&AF_S, tp1) - uw;   /* (bx: the tempo's pen; its unit ends with the battery) */
         cv_text_x16(x, f1, &AF_S, en1, vt(T_PTHEME(0u), T_BG), T_BG);
         x += text_w16(&AF_S, en1) + UT_FOOT_WORD_GAP * 16;
-        cv_free_text(x >> 4, f1, &AF_S, pn1, T_TEXT, T_BG, 235 - (x >> 4));
+        cv_free_text(x >> 4, f1, &AF_S, pn1, T_TEXT, T_BG, (tp1[0] ? (bx >> 4) - 2 : 235) - (x >> 4));
+        if (tp1[0]) {
+            cv_text_x16(bx, f1, &AF_S, tp1, T_MID, T_BG);
+            cv_text_x16((UT_BAT_X + UT_BAT_W) * 16 - uw, f1, &AF_S, FT_BPM, T_DIM, T_BG);
+        }
 #endif
     } else if (foot_steps()) {
         uint32_t i, ph = foot_playhead(t);
@@ -2428,6 +2352,8 @@ static const char *h1_echo_why(void)
     return (mods_off & MODS_SENDS) ? "ECHO: SENDS OFF" : !song.g[G_DMIX] ? "ECHO: DELAY MIX 0" : 0;   /* (the line's words whole: no buffer, RAM is tight) */
 }
 static uint32_t kn_cur(void);                           /* (tide_ui.c: the set the KNOBS row and the multi's name pick) */
+static int tide_moves(uint32_t pi);                     /* (tide_ui.c, I4: AUTO TIDE moves part pi's sound now; its trip in words) */
+static void tide_trip_short(char *l);
 /* the value v of the macro parameter ix (knob_sets.h KN_ID's place) as part t shows it (its card's form; a global as its page shows it), the cutoff's unit short ("2.4k", "880") */
 static void h1_val(uint32_t ix, const track_t *t, int32_t v, char *out)
 {
@@ -2620,6 +2546,13 @@ static void draw_columns(void)
 #if DUELL_TIDE
         const char *why = h1_echo_why();
         const int apart = song.both && morph_fader_of(1u - pi) != f;
+        char trip[40];
+        if (AREA_ON && tide_moves(pi) && !(ui.hot_t && ui.hot_col)) {   /* I4: AUTO TIDE moves this part: what it does, at the line's right end (a knob 2..4 just turned keeps its own words) */
+            tide_trip_short(trip);
+            k1_after_next = trip;
+            k1_after_col = T_ACCENT;
+            k1_after_r = 1;
+        } else
         if (AREA_ON && why && (!apart || (ui.hot_t && ui.hot_col == 3u))) {   /* 1.0.0-b7: ECHO dim, why (at the line's right end; with BOTH and the faders apart while knob 4 turns) */
             k1_after_next = why;
             k1_after_col = T_MID;
@@ -2639,6 +2572,10 @@ static void draw_columns(void)
             k1_after_next = other;
             k1_after_col = T_PFILL(1u - pi);
             k1_after_r = 0;
+        } else if (AREA_ON) {                            /* b10 (owner 2026-11-12): the play position, which the title showed before (PART 1, LAYER, STEREO, DUEL, PART 2) */
+            k1_after_next = PLS_NAME[play_pos()];
+            k1_after_col = T_MID;
+            k1_after_r = 1;
         }
 #endif
         draw_column(0, "MORPH", val, "", VAL(0u), (int32_t)f * 1000 / 127, ICON_MIX);   /* (TIDE 1.0.0-b4: a plain card, its label, value and bar as every K1 card) */

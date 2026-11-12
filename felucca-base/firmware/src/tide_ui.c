@@ -661,6 +661,7 @@ static int tide_foot_two(void)
  * (the status line's words: "EVOLVING TO B  3/8", "GLIDE ON THE NEXT BAR"; at rest the gesture, A<>B, and at the right the part(s) it
  * moves); MODE, TIME, WAIT the cards. TIDE SETTINGS: knob 1 the row picked (SETTING), no cards */
 static void tide_status(char *l);
+static int tide_arc_text(char *l);
 static void tide_columns(void)
 {
     static char st[40];
@@ -669,15 +670,23 @@ static void tide_columns(void)
     int32_t g;
     if (cur_page()->graph == GR_TIDELIST) {
         const char *nd = jl_needs(jl_sel % JL_N);
-        if (nd) {                                        /* a row that does nothing in this setup says what it needs (at the line's right end, as the status) */
-            k1_after_next = nd;
-            k1_after_col = T_MID;
-            k1_after_r = 1;
-        }
+        k1_after_next = nd ? nd : PLS_NAME[play_pos()];  /* a row that does nothing in this setup says what it needs (at the line's right end, as the status); else the play position (b10: the title names the page) */
+        k1_after_col = T_MID;
+        k1_after_r = 1;
         draw_column(0, "SETTING", JL_NAME[jl_sel % JL_N], "", VAL(0u), -1, ICON_NONE);
         return;                                          /* (no cards: the list and its hint own the card row; hiding them cleared it under the list on every redraw, a flicker while the colour follows a glide) */
     }
     g = morph_pending(TIDE_G_GLIDE);
+    if (glide_running()) {                               /* (I5: running, knob 1's line is the gesture as at rest and the ARC's words at its right; the trip is the line under the faders, graph_tide) */
+        str_cpy(val, g < 0 ? "<A" : g > 0 ? "B>" : "A<>B", sizeof val);
+        if (tide_arc_text(st)) {
+            k1_after_next = st;
+            k1_after_col = T_ACCENT;
+            k1_after_r = 1;
+        }
+        draw_column(0, "GLIDE", val, "", g ? T_ACCENT : VAL(0u), -1, ICON_NONE);
+        goto cards;
+    }
     tide_status(st);
     if (glide_running()) {
         draw_column(0, "GLIDE", st, "", T_ACCENT, -1, ICON_NONE);
@@ -688,6 +697,7 @@ static void tide_columns(void)
         k1_after_r = 1;
         draw_column(0, "GLIDE", val, "", g ? T_ACCENT : VAL(0u), -1, ICON_NONE);
     }
+cards:
     draw_column(1, "MODE", GL_MODE_NAME[gl.mode % 5u], "", VAL(1u), -1, ICON_NONE);
     fmt_int(val, (int32_t)glide_bars());
     draw_column(2, "TIME", val, glide_bars() == 1u ? "BAR" : "BARS", VAL(2u), -1, ICON_NONE);
@@ -707,7 +717,29 @@ static __attribute__((noinline)) void tide_frac(char *l, uint32_t a, uint32_t b)
     fmt_int(l, (int32_t)b);
 }
 /* AUTO TIDE's status line: what the glide does now, with its bar ("EVOLVING TO B  3/8", "WAITING  1/4"); stopped, the part(s) */
-static __attribute__((noinline)) void tide_status(char *l)
+static __attribute__((noinline)) void tide_status_arc(char *l, int arc);
+static void tide_status(char *l) { tide_status_arc(l, 1); }
+/* b10 Phase B (I4, I5): the trip without the ARC's words ("EVOLVING TO B  3/16", "WAITING  1/2"; armed, paused, a hand as tide_status) */
+static __attribute__((unused)) void tide_trip(char *l) { tide_status_arc(l, 0); }
+static __attribute__((unused)) void tide_trip_short(char *l) { tide_status_arc(l, 2); }   /* (the wave page's knob-1 line: no "BAR", it has less room) */
+/* .. and whether the glide moves part pi's sound now (the wave page says so on knob 1's line) */
+static __attribute__((unused)) int tide_moves(uint32_t pi) { return glide_running() && ((gl.on >> GT_SOUND) & 1u) && ((gl.mask >> pi) & 1u); }
+/* .. the ARC's words alone ("ARC RISE 1/3", "ARC PEAK  DROP NEXT"), 0: no ARC running */
+static __attribute__((unused)) int tide_arc_text(char *l)
+{
+    if (!(glide_running() && !gl.armed && song.playing && sqm_arc && sqm_auto && tarc.run))
+        return 0;
+    str_cpy(l, "ARC ", 40);
+    str_cpy(l + 4, tarc_name(), 36);
+    if (tarc.phase != AP_PEAK && tarc.phase != AP_DROP) {
+        str_cpy(l + str_len(l), " ", 4);
+        tide_frac(l, tarc.len - tarc.left + 1u, tarc.len);
+    }
+    if (tarc.hand && tarc.phase != AP_DROP)
+        str_cpy(l + str_len(l), "  DROP NEXT", 16);
+    return 1;
+}
+static __attribute__((noinline)) void tide_status_arc(char *l, int arc)
 {
     uint32_t bars = gl.hold ? GLIDE_WAIT_BARS[gl.wait % GLIDE_WAITS] : glide_trip_bars(), at = ((gl.prog * bars) >> GLIDE_Q) + 1u;
     if (!glide_running())
@@ -726,7 +758,7 @@ static __attribute__((noinline)) void tide_status(char *l)
         str_cpy(l, "HAND  BACK IN ", 40);
         fmt_int(l + str_len(l), (int32_t)(need ? need : 4u));
         str_cpy(l + str_len(l), need == 1u ? " BAR" : " BARS", 8);
-    } else if (sqm_arc && sqm_auto && tarc.run) {         /* ARC: where the shape is ("RISE 3/6", "PEAK", "DROP", "BREAK 2/3") */
+    } else if (arc == 1 && sqm_arc && sqm_auto && tarc.run) {   /* ARC: where the shape is ("RISE 3/6", "PEAK", "DROP", "BREAK 2/3"); not in the trip (I4, I5) */
         str_cpy(l, tarc_name(), 40);
         if (tarc.phase != AP_PEAK && tarc.phase != AP_DROP) {
             str_cpy(l + str_len(l), " ", 4);
@@ -742,7 +774,7 @@ static __attribute__((noinline)) void tide_status(char *l)
         str_cpy(l, gl.hold ? "WAITING" : gl.mode == GM_JOURNEY ? "TRAVEL" : "EVOLVING", 40);   /* (b10: ONCE / LOOP / DRIFT show as EVOLVE everywhere else) */
         if (!gl.hold)
             str_cpy(l + str_len(l), gl.to ? " TO B" : " TO A", 8);
-        str_cpy(l + str_len(l), "  ", 4);
+        str_cpy(l + str_len(l), arc ? "  " : "   BAR ", 8);
         tide_frac(l, at > bars ? bars : at, bars);
     }
 }
@@ -948,6 +980,11 @@ static void graph_tide(void)
         if (ui_part_hot(k))
             cv_rect(5, sy - 9, 2, 10, T_PTHEME(k));      /* (the steps row's mark of the selected part) */
     }
+    if (glide_running()) {                               /* (I5: running, the line says where the trip is: "EVOLVING TO B   BAR 3/16"; stopped, what the MODE does) */
+        char l[40];
+        tide_trip(l);
+        cv_text_in(0, UT_TY(S, 104), 240, &AF_S, l, T_ACCENT, T_BG);
+    } else
     cv_text_in(0, UT_TY(S, 104), 240, &AF_S, GL_MODE_WHAT[gl.mode % 5u], T_MID, T_BG);   /* (between the faders and the steps' tallest bars) */
     /* Keep GLIDE's progress bar as well as its status and moving fader knobs.
      * This strip sits below both parts' playheads and above the card row. */

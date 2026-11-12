@@ -35,25 +35,24 @@
  * are mixed from (the colours of the final pictures), never drawn as a fill. tests/ui_render.c box_lint finds a flat fill of 12 x 12 px or more that is neither the background nor
  * allowed (GFX_HOOK_ALLOW) on every screen in every palette and fails on one. */
 
-/* ---- header: the two capsules [part number | morph end letter | voices number] ---- */
+/* ---- header: the two capsules [part number | morph end letter] (b10, owner 2026-11-12: the voices number is gone) ---- */
 #define UT_CAP_X 4              /* left capsule's left edge; the right capsule ends at 240 - UT_CAP_X (x 235) */
 #define UT_CAP_Y 4              /* rows 4 .. 19 */
-#define UT_CAP_W 37             /* x 4 .. 40 and 199 .. 235, outline included */
+#define UT_CAP_W 25             /* x 4 .. 28 and 211 .. 235, outline included (b10: two cells, was 37 with the voices) */
 #define UT_CAP_H 16
 #define UT_CAP_R 5              /* outer corner radius; the dim half's is one less (1 px outline) */
-#define UT_CAP_CELL 12          /* the number cell (outline included) and the letter / voices text cells: 12 px each, the text centred in its cell by its advance */
+#define UT_CAP_CELL 12          /* the number cell (outline included) and the letter's text cell: 12 px each, the text centred in its cell by its advance */
 #define UT_CAP_BASE 16          /* the capitals' last row of the capsule text; the page title shares it */
 #define UT_CAP_DIM_PCT 27       /* a lit capsule's dim half: BG -> the part colour, % (VIOLET: 66,15,75) */
 #define UT_CAP_OFF_PCT 10       /* an unlit capsule's dim half: BG -> TEXT, % (VIOLET: 32,28,32); its outline and number cell are T_DIM */
-#define UT_CAP_LETTER_PCT 88    /* the morph end letter: BG -> TEXT, % (VIOLET: 222,218,230); the number and the voices number are T_TEXT (white; dark in the light palettes) */
-#define UT_CAP_VOICES_OWN 1    /* item 117: STEREO and LAYER show the SELECTED part's number (the same one in both capsules, as the one shared number was). 1: each capsule shows its OWN part's number (as in DUEL, and as the pictures' 8 | 6) */
+#define UT_CAP_LETTER_PCT 88    /* the morph end letter: BG -> TEXT, % (VIOLET: 222,218,230); the number is T_TEXT (white; dark in the light palettes) */
 
 /* ---- header: the page title (face T, T_TEXT, centred on the screen's middle, no line, no colour) ---- */
 #define UT_TITLE_CX 120
 #define UT_TITLE_BASE 16        /* capitals' last row: the capsule text's */
 #define UT_TITLE_GAP 6          /* free room between the title and a capsule */
-#define UT_TITLE_L (UT_CAP_X + UT_CAP_W + UT_TITLE_GAP)           /* 47: the title room with capsules */
-#define UT_TITLE_R (240 - UT_CAP_X - UT_CAP_W - UT_TITLE_GAP)     /* 193 */
+#define UT_TITLE_L (UT_CAP_X + UT_CAP_W + UT_TITLE_GAP)           /* 35: the title room with capsules (b10: was 47) */
+#define UT_TITLE_R (240 - UT_CAP_X - UT_CAP_W - UT_TITLE_GAP)     /* 205 (b10: was 193) */
 #define UT_TITLE_GL 8           /* the title room of a page without capsules (global pages) */
 #define UT_TITLE_GR 232
 
