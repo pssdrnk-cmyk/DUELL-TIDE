@@ -71,6 +71,7 @@ static uint8_t tk_fresh_v __attribute__((section(".pool"))), tk_reset_v __attrib
  */
 static uint16_t tk_roll_seed __attribute__((section(".pool")));   /* (tk_reset_v: a multi / project loaded: the history of takes is of another music: tide_take.c take_poll drops it) */
 static void tide_take_step(track_t *t);
+static uint32_t project_key(void);                   /* (multi.c) */
 static uint32_t take_undo(int32_t dir);
 #define TIDE_TAKE_STALE() (tk_fresh_v = 0)
 #define TIDE_TAKE_UNDO(s) take_undo((s) < 0 ? -1 : 1)

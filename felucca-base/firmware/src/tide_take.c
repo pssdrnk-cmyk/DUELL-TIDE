@@ -42,6 +42,17 @@ static void tk_key(void)
 {
     uint32_t mask = scale_mask(&trk[0]), i, nd = 0;
     tk_guess = 0;
+    {   /* the multi's own key (duell_multis.h DF_KEY: tools/factory_multis.py KEYS), when SCL is chromatic */
+        uint32_t k = project_key();
+        if (mask == 0xFFFu && k != 0xFFu) {
+            tk_kr = (uint8_t)(k & 15u);
+            tk_km = (uint8_t)(k >> 4);
+            for (i = 0; i < 7u; i++)
+                tk_deg[i] = tk_km ? TK_SMIN[i] : TK_SMAJ[i];
+            tk_nd = 7;
+            return;
+        }
+    }
     if (mask != 0xFFFu) {
         tk_kr = (uint8_t)((uint32_t)root_g % 12u);
         for (i = 0; i < 12u && nd < 8u; i++)

@@ -182,7 +182,7 @@ static void reply_echo(void)
                         n = answer_events(ev, 128);
                         ok &= trk[0].p[P_SLEN] == 2 * L && trk[1].p[P_SLEN] == 2 * L;       /* the loop doubles: the call, then the answer */
                         for (i = 0; i < n; i++)
-                            ok &= (mode == TA_ECHO || ev[i].t >= L) && ev[i].t + ev[i].len <= 2 * L && tk_in_key(ev[i].note);   /* (a reply plays in the bars after the call; the echo from where the call's last note ends) */
+                            ok &= (mode == TA_ECHO || ev[i].t >= L) && ev[i].t + ev[i].len <= 2 * L && (mode == TA_ECHO || tk_in_key(ev[i].note));   /* (the echo is the call's own note: the player's pitch) */   /* (a reply plays in the bars after the call; the echo from where the call's last note ends) */
                         if (mode == TA_REPLY) {
                             ok &= n == d->nn;
                             for (i = 0; i < n && i < d->nn; i++)
@@ -243,7 +243,10 @@ int main(void)
                     if (scl)
                         CHECK("SCL set: the key is the take's own, not guessed", !tk_guess && tk_kr == (uint32_t)d->root % 12u);
                     else
-                        CHECK("SCL chromatic: the key is a guess (the header says so)", tk_guess == 1u);
+                        {   /* SCL chromatic: the multi's own key when it has one (DF_KEY), else a guess (the header says ?) */
+                        uint32_t mk = project_key();
+                        CHECK("SCL chromatic: the key is the multi's own, or a guess when it has none", mk == 0xFFu ? tk_guess == 1u : (!tk_guess && tk_kr == (mk & 15u) && tk_km == (mk >> 4)));
+                    }
                     /* 8 rolls */
                     for (uint32_t sd = 1; sd <= 8u; sd++) {
                         int seed_ok;
