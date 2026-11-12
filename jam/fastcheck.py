@@ -59,8 +59,13 @@ def free_gb():
     return 4.0
 
 
+GB_PER_JOB = 0.8     # measured (b10): one -O2 compile of a test program peaks at about 340 MB, a running test program less; 0.8 GB a job leaves room for the compilers' bursts
+MAX_DEFAULT_JOBS = 4  # the default never goes above this: -j 8 on the owner's PC ran Windows out of processes ("fork: Resource temporarily unavailable" in Git Bash, other lanes included);
+                      # the limit is the process table, not memory. Ask for more with -j N when nothing else is building
+
+
 def default_jobs():
-    return max(1, min(int(free_gb() / 1.5), (os.cpu_count() or 2) - 1))
+    return max(1, min(int(free_gb() / GB_PER_JOB), (os.cpu_count() or 2) - 1, MAX_DEFAULT_JOBS))
 
 
 # ---------------------------------------------------------------------------------------------------------------- sandbox
