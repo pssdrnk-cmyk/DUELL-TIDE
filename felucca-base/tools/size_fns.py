@@ -77,7 +77,7 @@ def event_names():
     "event rate" (they run once per note, MIDI message, sequencer step or load, not per sample or block) are also built for size, although the audio
     interrupt reaches them. Never the "mix or effect stage" entries (those run every block). Off: the image is the one without SP5, byte for byte.
     Not proven on the unit yet (the CPU sweep of chord-heavy and arp-heavy scenes and the 16-multi GLIDE sweep): it stays off in the package until then."""
-    if os.environ.get("FELUCCA_SIZE_EVENT") != "1":
+    if os.environ.get("FELUCCA_SIZE_EVENT", "1") != "1":
         return set()
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import ram_allow

@@ -389,15 +389,15 @@ def build_app():
         if os.environ.get("FELUCCA_CDC") != "1" or os.environ.get("DUELL_VELO", "1") != "1" or "--release" in sys.argv:
             raise SystemExit("build: DUELL_VELO_CAPTURE=1 is a developer build: FELUCCA_CDC=1 (the USB serial console) and DUELL_VELO on, never --release")
         flags.append("-DDUELL_VELO_CAPTURE=1")
-    v = os.environ.get("FELUCCA_HANDSKIP")     # firmware/src/morph.c (Later 9): 1 = a hand- or MIDI-moved morph fader blends every other block, as a GLIDE's does; unset or 0: every block (the default until the unit sweep)
+    v = os.environ.get("FELUCCA_HANDSKIP", "1")     # firmware/src/morph.c (Later 9): 1 = a hand- or MIDI-moved morph fader blends every other block, as a GLIDE's does; unset or 1: every other block (ON in the rc3.1 package, 0 turns it off; host tests compile without it)  [was: unset or 0: every block (the default until the unit sweep)
     if v in ("0", "1"):
         flags.append(f"-DFELUCCA_HANDSKIP={v}")
-    if os.environ.get("DUELL_WAVE_ROWS") == "1":   # ROADMAP Later 21: the wave page sends only the screen rows that changed (ui_scope.c wl_rows); OFF unless asked, +164 B
+    if os.environ.get("DUELL_WAVE_ROWS", "1") == "1":   # ROADMAP Later 21: the wave page sends only the screen rows that changed (ui_scope.c wl_rows); OFF unless asked, +164 B
         flags.append("-DWL_ROWS_DIFF=1")
     v = os.environ.get("FELUCCA_USB_LAYOUT")   # firmware/src/usb.c: how the USB composite presents itself (#67), 0..3
     if v in ("0", "1", "2", "3"):
         flags.append(f"-DFELUCCA_USB_LAYOUT={v}")
-    v = os.environ.get("FELUCCA_MOVECOST")     # firmware/src/core.h (Later 10 + 13): 1 = a part's morph costs charged only while a transition moves, the INSERT dip's blend in 1/256 steps; unset or 0: as before (the default until the unit sweep)
+    v = os.environ.get("FELUCCA_MOVECOST", "1")     # firmware/src/core.h (Later 10 + 13): 1 = a part's morph costs charged only while a transition moves, the INSERT dip's blend in 1/256 steps; unset or 0: as before (the default until the unit sweep)
     if v in ("0", "1"):
         flags.append(f"-DFELUCCA_MOVECOST={v}")
     v = os.environ.get("DUELL_BUILD_DATE")   # ABOUT's date ("Nov  1 2026", __DATE__'s form): unset, the day of the build
