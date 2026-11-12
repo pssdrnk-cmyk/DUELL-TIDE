@@ -56,13 +56,29 @@ export async function launch() {
   const { proc, dir, exited, port } = st;
   let ws;
   try {
-    const tabs = await (await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(5000) })).json();
-    ws = new WebSocket(tabs.find((t) => t.type === "page").webSocketDebuggerUrl);
-    await new Promise((res, rej) => {
-      const timer = setTimeout(() => rej(new Error("Chrome DevTools WebSocket did not open after 5 s")), 5000);
-      ws.onopen = () => { clearTimeout(timer); res(); };
-      ws.onerror = (e) => { clearTimeout(timer); rej(e); };
-    });
+    // Chrome has written its port, but on a loaded machine the DevTools endpoint and the WebSocket answer late: poll every 250 ms for up to 30 s (a flat 5 s failed in CI)
+    const t0 = Date.now();
+    let last = "no answer";
+    for (;;) {
+      try {
+        const tabs = await (await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(2000) })).json();
+        const page = tabs.find((t) => t.type === "page");
+        if (!page) throw new Error("no page tab yet");
+        const w = new WebSocket(page.webSocketDebuggerUrl);
+        try {
+          await new Promise((res, rej) => {
+            const timer = setTimeout(() => rej(new Error("WebSocket not open after 2 s")), 2000);
+            w.onopen = () => { clearTimeout(timer); res(); };
+            w.onerror = (e) => { clearTimeout(timer); rej(e instanceof Error ? e : new Error("WebSocket error")); };
+          });
+        } catch (e2) { try { w.close(); } catch { /* closed */ } throw e2; }
+        ws = w;
+        break;
+      } catch (e3) { last = String(e3.message || e3); }
+      if (exited.done) throw new Error(`Chrome ended while waiting for its DevTools endpoint (${exited.how})`);
+      if (Date.now() - t0 > 30000) throw new Error(`Chrome DevTools endpoint did not answer within 30 s (${last})`);
+      await new Promise((r) => setTimeout(r, 250));
+    }
   } catch (e) {
     try { ws?.close(); } catch { /* closed */ }
     await stop(proc, dir, exited);
