@@ -747,6 +747,33 @@ static void draw_gaps(uint32_t y, uint32_t h)
         lcd_fill(x, y, w, h, T_BG);
     }
 }
+/* b10 ui-a (Phase A, cost #2): a grid layout's strips (header, cards, panel, cells, footer) cover ~95 % of the body, so the whole-body fill (46,320 px, 37 ms of SPI) before them is
+ * almost all drawn over. Only the BG the strips leave is filled: the rows between them (GAPB: grid, first row, rows) and the gutters beside the cards (every column set any grid
+ * uses, x 0..3, 79..81, 119..120, 158..160, 236..239, rows 27 .. 216: a fill under a strip is only drawn over). Found with tests/gap_probe.c:
+ * every page of every engine and the QUICK layers redrawn on a poisoned screen end equal to the whole-body fill's picture. A grid with no row here (13, any new one) is filled whole. */
+static void grid_fill(void)
+{
+    static const uint8_t GAPB[][3] = {{1, 24, 3}, {1, 103, 3}, {1, 160, 2}, {1, 216, 1}, {2, 24, 4}, {2, 112, 4}, {2, 200, 2}, {4, 24, 4},
+        {5, 24, 3}, {5, 51, 3}, {5, 130, 7}, {5, 209, 8}, {6, 24, 4}, {6, 80, 6}, {6, 198, 4}, {7, 24, 3}, {7, 90, 3}, {7, 152, 3}, {7, 214, 3},
+        {14, 24, 3}, {14, 119, 98}, {15, 24, 3}, {15, 51, 3}, {15, 133, 4}, {15, 216, 1},
+        {16, 24, 3}, {16, 150, 1}, {16, 170, 4}, {16, 184, 5}, {16, 194, 8}, {16, 209, 8}, {17, 24, 3}};
+    static const uint8_t GUT[5][2] = {{0, 4}, {79, 3}, {119, 2}, {158, 3}, {236, 4}};
+    uint32_t i, n = 0;
+    for (i = 0; i < sizeof GAPB / sizeof GAPB[0]; i++)
+        if (GAPB[i][0] == grid_on) {
+            lcd_fill(0, GAPB[i][1], 240, GAPB[i][2], T_BG);
+            n++;
+        }
+    if (!n) {
+        gap_rows(H_HEAD, Y_FOOT + 15);
+        return;
+    }
+    for (i = 0; i < 5u; i++)
+        lcd_fill(GUT[i][0], 27, GUT[i][1], 190, T_BG);
+}
+#ifndef GRID_PREFILL
+#define GRID_PREFILL() grid_fill()
+#endif
 /* full redraw: the strips (header, cards, panel, footer) cover the rest; only the BG between them is filled */
 static void draw_frame(void)
 {
@@ -754,7 +781,7 @@ static void draw_frame(void)
     if (ui.force == 2)                                 /* item 152 A: the same page again (ui_refresh): the strips and cards cover their own rows, the BG between them is already there */
         return;
     if (grid_on) {                                     /* the grid: everything under the header is drawn over the background */
-        gap_rows(H_HEAD, Y_FOOT + 15);
+        GRID_PREFILL();
         return;
     }
     gap_rows(H_HEAD, Y_LABEL);
@@ -2693,7 +2720,7 @@ static void draw_columns(void)
                 }
                 if (!(c & 1u)) {                       /* (DUELL 1.1: the duck source under the part's channel) */
                     static char ds[24];
-                    str_cpy(ds, "Duck source: ", sizeof ds);
+                    str_cpy(ds, "DUCK SOURCE: ", sizeof ds);
                     str_cpy(ds + str_len(ds), val_shown(&TP[P_DKSRC], N_DKSRC[(uint32_t)clamp(trk[c >> 1].p[P_DKSRC], 0, 3)]), (uint32_t)sizeof ds - str_len(ds));
                     for (n = 13; ds[n]; n++)
                         if (ds[n] == '\n')                   /* (b4, UI audit 8: the value in its own capitals, as the card shows it; no lower-casing) */
@@ -2707,7 +2734,7 @@ static void draw_columns(void)
         }
         {
             uint32_t sel = song.g[G_ROUTE] == 1, k, n = midi_cards(vis), mm = duell_mode_req < DM_N ? duell_mode_req : DM_SPLIT;
-            static const char *const WH[3][2] = {{"Duel: left output", "Duel: right output"}, {"Stereo output", "Stereo output"}, {"Layer: plays both parts", "Layer: not heard, use PART 1"}};
+            static const char *const WH[3][2] = {{"DUEL: LEFT OUTPUT", "DUEL: RIGHT OUTPUT"}, {"STEREO OUTPUT", "STEREO OUTPUT"}, {"LAYER: PLAYS BOTH PARTS", "LAYER: NOT HEARD"}};
             grid_wide = 1;
             for (c = 0; c < 4u; c++) {                 /* the parts' channels (not shown when SELECTED listens on one channel; part 2 in LAYER), MIDI IN; T0227: moved left */
                 k = c < n ? vis[c] : 0xFFu;
@@ -2716,7 +2743,7 @@ static void draw_columns(void)
                     grid_d = WH[mm][k];
                     draw_column(c, k ? "PART 2\nCHANNEL" : "PART 1\nCHANNEL", val, "", VAL(c), (int32_t)midi_ch_get(k) * 1000 / 15, ICON_MIDI);   /* (item 86: never faded) */
                 } else if (k == 2u) {
-                    grid_d = sel ? "Any channel plays the selected part" : mm == DM_LAYER ? "Layer mode: part 1 channel counts" : "Each part on its own channel";
+                    grid_d = sel ? "ANY CHANNEL PLAYS THE SELECTED PART" : mm == DM_LAYER ? "LAYER: PART 1 CHANNEL COUNTS" : "EACH PART ON ITS OWN CHANNEL";
                     draw_column(c, "MIDI IN", sel ? "ANY\nCHANNEL" : "PART\nCHANNEL", "", VAL(c), -1, ICON_MIDI);
                 } else if (n < 3u) {
                     draw_column_hide(c);

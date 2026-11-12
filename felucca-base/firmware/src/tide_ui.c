@@ -7,7 +7,7 @@
  *   TIDE SETTINGS  (GR_TIDELIST) the settings in a list, as the MENU's: K1 picks the row, OCT+ or K2..K4 the next value, OCT- the one before.
  *                  STYLE, MODE, TARGET, ARC, KNOBS, AMOUNT, REC, PLAY MODE, XFADE, SPLIT (JL_NAME;1.0.0-b7, MR8: VARY BARS, WASH, TURNS, POLY and OFFBEAT
  *                  are STYLE's alone, no rows)        ... set and forget
- * LINK: TARGET SND+SEQ links the two faders: GLIDE moves both, and the MORPH fader moved by hand (the MORPH page, the mod wheel, CC 70:
+ * LINK: TARGET BOTH links the two faders (b10: it read SND+SEQ): GLIDE moves both, and the MORPH fader moved by hand (the MORPH page, the mod wheel, CC 70:
  * ui_input.c morph_act) moves the SEQ fader with it (tide_link). ALGORITHM is the morph's selector here too: PART 1, BOTH, PART 2
  * (morph_mask). The panel shows both faders with the glide on them, and the selected part's 16 steps as they play: varied ones
  * lit, dropped ones hollow. MODE, TIME, WAIT and the list are kept over a power cycle (tide_settings).
@@ -190,7 +190,7 @@ static void tide_pick_mode(void) { jl_sel = JL_MODE; }   /* HOME OPENS = MODE (u
 
 /* STYLE: one move sets the eight values below together. MODE and ARC are rows, TIME and WAIT AUTO TIDE's knobs; VARY, POLY, SYNC (OFFBEAT) and WASH
  * are the style's alone (1.0.0-b7, MR8: no rows; the engine reads them as before; TURNS is gone since 1.0.0-b8: see TS_TURNS_OLD). TARGET chooses what TIDE may change, not the genre, and stays.
- * A hand edit of MODE, TIME, WAIT or ARC turns it into CUSTOM (tide_settings); CUSTOM itself changes nothing and keeps the style values it had.
+ * A hand edit of MODE, TIME, WAIT or ARC turns it into CUSTOM and says "STYLE CUSTOM" (tide_settings); CUSTOM itself changes nothing and keeps the style values it had.
  * mode, time (index), wait (index), VARY, POLY, SYNC, ARC, WASH */
 enum { STY_DUB, STY_DEEP, STY_MINIMAL, STY_AMBIENT, STY_PEAK, STY_DRONE, STY_CUSTOM };   /* (CUSTOM was 5 until 1.0.0-b4: a stored 5 is read as DRONE only if its rows are DRONE's, else CUSTOM; tide_settings) */
 static const uint8_t STY[6][8] = {
@@ -248,7 +248,7 @@ static __attribute__((noinline)) const char *jl_needs(uint32_t r)
         return duell_mode_req == DM_LAYER ? 0 : "LAYER ONLY";
     if (k != JK_ARC)
         return 0;
-    return gl.mode < GM_WANDER ? "NEEDS EVOLVE" : gl.target == GT_SOUND ? "TARGET SEQ" : 0;   /* (short: knob 1's line has room for these after "SETTING ARC"; EVOLVE / TRAVEL in full do not fit) */
+    return gl.mode < GM_WANDER ? "NEEDS EVOLVE" : gl.target == GT_SOUND ? "NEEDS SEQ" : 0;   /* (short: knob 1's line has room for these after "SETTING ARC"; EVOLVE / TRAVEL in full do not fit) */
 }
 /* does row r's value draw dim (it does nothing now)? whenever it lacks something (tests/mode_test.c checks this) */
 static int jl_dimmed(uint32_t r) { return jl_needs(r) != 0; }
@@ -261,7 +261,7 @@ static const char *const JL_V[] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK", 
                                    "AUTO", "STD", "DUB", "HSE", "TECH", "ACID", "ELEC", "AMB", "ADD", "REPLACE", "LAYER", "STEREO", "DUEL"};
 static const uint8_t JL_V0[JL_N] = {0, 0, 7, 10, 13, 0, 21, 23, 0, 0};   /* (each row's first name in JL_V; MODE's are GL_MODE_NAME) */
 static const char *const JL_SAY[JL_N] = {"STYLE ", "MODE ", 0, "ARC ", "", "AMOUNT ", "REC ", 0, 0, 0};
-static const char *const JL_OWN[3] = {"GLIDE SOUND", "GLIDE SEQ", "GLIDE BOTH"};   /* (TARGET's messages) */
+static const char *const JL_OWN[3] = {"TARGET SOUND", "TARGET SEQ", "TARGET BOTH"};   /* (TARGET's messages) */
 static uint32_t jl_n(uint32_t r) { return JL_NV[r % JL_N]; }
 /* SPLIT: the stored code (core.h mix_split) <-> its place in the list (OFF, MIDDLE, C-1 .. G9) */
 static uint32_t jl_split_ix(uint32_t s) { return s == SPLIT_MIDDLE ? 1u : s && s <= 128u ? s + 1u : 0u; }
@@ -709,7 +709,6 @@ static __attribute__((noinline)) void tide_frac(char *l, uint32_t a, uint32_t b)
 /* AUTO TIDE's status line: what the glide does now, with its bar ("EVOLVING TO B  3/8", "WAITING  1/4"); stopped, the part(s) */
 static __attribute__((noinline)) void tide_status(char *l)
 {
-    static const char *const ST[5] = {"GLIDING", "LOOPING", "DRIFTING", "EVOLVING", "TRAVEL"};
     uint32_t bars = gl.hold ? GLIDE_WAIT_BARS[gl.wait % GLIDE_WAITS] : glide_trip_bars(), at = ((gl.prog * bars) >> GLIDE_Q) + 1u;
     if (!glide_running())
 #if TIDE_PLAYSEL
@@ -740,7 +739,7 @@ static __attribute__((noinline)) void tide_status(char *l)
             tide_frac(l, at > bars ? bars : at, bars);
         }
     } else {
-        str_cpy(l, gl.hold ? "WAITING" : ST[gl.mode % 5u], 40);
+        str_cpy(l, gl.hold ? "WAITING" : gl.mode == GM_JOURNEY ? "TRAVEL" : "EVOLVING", 40);   /* (b10: ONCE / LOOP / DRIFT show as EVOLVE everywhere else) */
         if (!gl.hold)
             str_cpy(l + str_len(l), gl.to ? " TO B" : " TO A", 8);
         str_cpy(l + str_len(l), "  ", 4);
@@ -1126,6 +1125,8 @@ static void tide_settings(void)
     if (tide_style < STY_CUSTOM && !tide_style_holds()) {
         tide_style_last = tide_style;
         tide_style = STY_CUSTOM;                         /* a hand edit of any of the eight rows (knobs, rows, resets, MIDI) */
+        if (!reread)
+            ui_say("STYLE ", "CUSTOM");                  /* (b10: the player is told; not when a record is read) */
     }
     for (i = 0; i < TS_N; i++) {
         w[i] = i == TS_TURNS ? TS_TURNS_OLD : *TS_VAR[i];

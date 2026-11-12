@@ -1256,7 +1256,7 @@ static void t_mode_rows(void)
         gl.mode = GM_JOURNEY; morph_musical = 1;
         expect("  .. TRAVEL: ARC acts, KNOBS acts (no gate)", !jl_dimmed(JL_ARC) && !jl_dimmed(JL_KNOB) && !jl_needs(JL_KNOB));
         gl.target = GT_SOUND;
-        expect("  .. TARGET SOUND: ARC dims, says TARGET SEQ", jl_dimmed(JL_ARC) && str_eq(jl_needs(JL_ARC), "TARGET SEQ"));
+        expect("  .. TARGET SOUND: ARC dims, says NEEDS SEQ", jl_dimmed(JL_ARC) && str_eq(jl_needs(JL_ARC), "NEEDS SEQ"));
         gl.target = GT_BOTH;
         for (i = 0; i < 3u; i++) {
             duell_mode_req = (uint8_t)(i == 0u ? DM_LAYER : i == 1u ? DM_STEREO : DM_SPLIT);
