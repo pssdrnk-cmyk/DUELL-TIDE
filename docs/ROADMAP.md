@@ -17,7 +17,7 @@ jam11 is the 1.0.0-b10 work; it is not tagged yet, so `TIDE_VERSION` still reads
 The owner's two tracks from the roadmap review of 12 November, plus quality checks and housekeeping. State: In progress (five lanes started on 12 November).
 
 - **Room on the unit.** 1,528 B of flash is free, so a size pass comes before features: RANDOM and COOK with TIDE's rules (Planned, below) wait for it, and so does anything that adds code. A room report says where the bytes are and one plan covers the next unit sweep (the switched-off savings of Later 9, 10 and 18 wait for that sweep).
-- **Test and tool debt.** The open rows Later 28 (a stale comment), 30 (the store's cross-version fixture) and 33 (the `budget` and `deadline` groups with MOVECOST on; `benchsim` M17 is fixed, see "On the unit"), and the design for per-module host objects (the first open point under Tooling).
+- **Test and tool debt.** The open rows Later 28 (a stale comment) and 30 (the store's cross-version fixture), and the design for per-module host objects (the first open point under Tooling). Done in b11: Later 33 (`budget` and `deadline` build the shipped MOVECOST=1 configuration; the OFF state stays covered by `movecost`; PR 57) and the `benchsim` M17 finding.
 - **Quality and housekeeping.** One review pass per pull request; the workspace and the GitHub branches cleaned (merged worktrees and branches removed, old outputs moved aside); this page refreshed.
 
 ## On the unit
@@ -53,7 +53,7 @@ Status of 1 to 3 (b10): built and measured (`jam/check.sh -j N | --changed`, `ja
 
 ## Later, in order
 
-Numbers are kept as they were (code comments, the CHANGELOG and the audits cite them: "Later 22"), so the list has gaps. The finished rows (Later 1 to 3, 5, 6 "TRAVEL keeps the multi's colour", 11, 13 to 17, 19, 23, 25, and 27 in b11) are in [history/ROADMAP_built_b7-b10.md](history/ROADMAP_built_b7-b10.md) under "Done in b10".
+Numbers are kept as they were (code comments, the CHANGELOG and the audits cite them: "Later 22"), so the list has gaps. The finished rows (Later 1 to 3, 5, 6 "TRAVEL keeps the multi's colour", 11, 13 to 17, 19, 23, 25, and 27 and 33 in b11) are in [history/ROADMAP_built_b7-b10.md](history/ROADMAP_built_b7-b10.md) under "Done in b10".
 
 4. RAM headroom: the b7 build had only about 8 B above the build's 4,096 B rule at the start of the night (4,104 B free); a change that adds RAM will fail the build. Re-measure the merged image.
 6. TIDE range overshoot and the tideroles allowances: decided per case in b10 round 2 (`fork/b10-tide2`). The overshoots (M01 +4, M04 +2, M07 +5, M08 +3) were a TIDE bug: on an ARP SEQ chord part, a VOIC octave on the step and PEAK's open voicing of the arp chord added up past the lane (seq_voicelead.c sqm_varp, fixed). M15's -2 was the test reading 8 bars of a 16-bar loop (fixed). Left, musical, reasons in `AL[]` of `tests/tide_roles_test.c`: the stab anchors of M01, M02, M21 (bar 4 of 4 is CALL AND ANSWER's variation bar) and M16's AIR onset (one bell moved half a note). Done when tide2 is merged.
@@ -73,7 +73,6 @@ Numbers are kept as they were (code comments, the CHANGELOG and the audits cite 
 30. The store's cross-version test has no record written by b8 rc1 / rc2 (B9-STORE); add one to the fixtures.
 31. USB AUDIO OFF: the web editor's mock unit (`web/editor/mockunit.js`) has no USB AUDIO item, and a Mac host seeing the MIDI-only device was never tried (Windows is proven by every flash since b9).
 32. The Attack Magazine research left about 25 relevant articles listed but unread, and the Deconstructed house / nu-disco ones (listed in the b9 research index, "unread but relevant"): read them before the next sound round.
-33. The `budget` group (item 142 reference hash, A01 rules) and the `deadline` group (TIDE scene) only run with the MOVECOST switch off, but the shipped build has it on (`tools/build.py` default 1): built with `-DFELUCCA_MOVECOST=1` they fail 3 and 1 checks because their expectations are the off-state's (a part with WASH on at rest pays only the meter; valley, wash and cross-fade are charged only in a transition). Give them an ON build in `host_tests.sh` with ON expectations (re-pin through `jam/repin.sh`); found in b10 round 6.
 
 ## Released
 
