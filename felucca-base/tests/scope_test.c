@@ -16,6 +16,9 @@
  *   tap          the entry the tap writes (the mean of eight values, four frames, half scale, companded, clamped; 8 entries a block); a block the part did not tap (part 2 skipped, a shut gate, silence) moves the gap up, a late job
  *                (the block's own number, not wv_blk) does not; the reader draws only what lies after the gap
  *   gate         ANIM OFF leaves the gate shut and the picture as it was; otherwise the gate opens ahead; leaving the page starts the pictures over
+ *   flow         (WL_FLOW, b10) the belt moves 8 ridges a second at 120 BPM, 4 x BPM / 60 at any tempo, a tempo change changes its speed with no jump; between its steps a
+ *                picture is taken into the front in place (the stack does not move); the ripples stay within WL_RIP_A and reach it. The checks above see one belt step a
+ *                picture (wl_step below), as the reader's pictures did before the belt
  * Run: scope_test (exit 0 = all ok) */
 #define UI_TEST_NO_MAIN 1
 static void tear_hook(unsigned k);                       /* (ui_scope.c's WL_TEST_AFTER_COPY: the writer moves on after the reader's read) */
@@ -31,6 +34,14 @@ static void tear_hook(unsigned k)
     }
 }
 
+#if WL_FLOW
+static void wl_step_belt(uint32_t k, int32_t a)           /* (WL_FLOW: the belt a ridge on before each picture, so every picture is a step of the stack, as the checks of the reader expect) */
+{
+    wl_bpos += 256u;
+    wl_step(k, a);
+}
+#define wl_step(k, a) wl_step_belt(k, a)
+#endif
 static int bad, ncheck;
 static void ok(const char *what, int c)
 {
@@ -555,6 +566,54 @@ int main(void)
         ok("gate: a part change does not start the pictures over (both parts are always drawn)", st == 0 && wl[0].hn == 3);
     }
 
+#if WL_FLOW
+    {   /* the flow: the belt at a 16th of the tempo, a tempo change with no jump, the front in place between steps, the ripples' height */
+        uint32_t i, p0, d, dmin = ~0u, dmax = 0, hn, ph;
+        int32_t rmax = 0, rmin = 0;
+        char w[200];
+        song.g[G_BPM] = 120;
+        wl_bms = fm1_ms;
+        wl_belt();
+        p0 = wl_bpos;
+        for (i = 0; i < 100u; i++) {                     /* 6 s of pictures 60 ms apart */
+            fm1_ms += 60u;
+            wl_belt();
+        }
+        d = wl_bpos - p0;
+        snprintf(w, sizeof w, "flow: 120 BPM, 6 s: the belt moved %u.%02u ridges (48: 8 a second, a 16th each)", d / 256u, d % 256u * 100u / 256u);
+        ok(w, d >= 48u * 256u - 64u && d <= 48u * 256u + 64u);
+        for (i = 0; i < 100u; i++) {                     /* 120 -> 140 BPM halfway: each picture's move between the two tempos' (122.9 .. 143.4), never a jump */
+            if (i == 50u)
+                song.g[G_BPM] = 140;
+            p0 = wl_bpos;
+            fm1_ms += 60u;
+            wl_belt();
+            d = wl_bpos - p0;
+            dmin = d < dmin ? d : dmin;
+            dmax = d > dmax ? d : dmax;
+        }
+        snprintf(w, sizeof w, "flow: 120 -> 140 BPM: a picture's move %u .. %u of 256 (no jump: 122 .. 144)", dmin, dmax);
+        ok(w, dmin >= 122u && dmax <= 144u);
+        song.g[G_BPM] = 120;
+        sig_m = sine128;
+        ring(0, 9000u);
+        fresh(0);
+        wl_step(0, HS);                                  /* (a belt step: a ridge) */
+        wl_step(0, HS);
+        hn = wl[0].hn;
+        (wl_step)(0, HS);                                /* (the belt where it was: the front in place) */
+        (wl_step)(0, HS);
+        snprintf(w, sizeof w, "flow: between the belt's steps a picture goes into the front in place (the stack does not move: %u ridges, %u before, flat %x)", wl[0].hn, hn, wl[0].flat);
+        ok(w, wl[0].hn == hn && hn == 2u && !(wl[0].flat & 1u));
+        for (ph = 0; ph < 16384u; ph += 7u) {
+            int32_t v = wl_rip(ph);
+            rmax = v > rmax ? v : rmax;
+            rmin = v < rmin ? v : rmin;
+        }
+        snprintf(w, sizeof w, "flow: the ripples %d .. %d of 1/16 px (WL_RIP_A %d)", rmin, rmax, WL_RIP_A);
+        ok(w, rmax <= WL_RIP_A && rmin >= -WL_RIP_A && rmax >= WL_RIP_A - 1 && rmin <= -(WL_RIP_A - 1));
+    }
+#endif
     printf("scope: %d checks, %d failed\n", ncheck, bad);
     return bad ? 1 : 0;
 }
