@@ -185,7 +185,7 @@ class BackupTests(Base):
         created = json.loads(js)["created"]
         py = jd.file_text(capture(created))
         self.assertEqual(py, js)
-        self.assertRegex(js, r'^\{"format":"duell-backup","version":5,"firmware":"FELUCCA DUELL 0\.2\.25 bet","created":"[^"]+","engines":\[')
+        self.assertRegex(js, r'^\{"format":"duell-backup","version":6,"firmware":"FELUCCA DUELL 0\.2\.25 bet","created":"[^"]+","engines":\[')
 
     def test_cli_backup_read_by_web_editor(self):
         p = self.backup_file()
@@ -194,10 +194,10 @@ class BackupTests(Base):
         self.assertFalse(text.endswith(b"\n") or b"\r" in text)
         r = ctl("readArchive", text=text.decode())
         self.assertTrue(r["accepted"], r.get("reason"))
-        self.assertEqual((r["version"], r["objects"], r["patches"], r["problems"], r["hasPatches"]), (5, 20, [0, 1, 5, 64], [], True))
+        self.assertEqual((r["version"], r["objects"], r["patches"], r["problems"], r["hasPatches"]), (6, 20, [0, 1, 5, 64], [], True))
         f = json.loads(text)
         self.assertRegex(f["created"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$")
-        self.assertEqual([o["id"] for o in f["objects"]], jd.DUELL_IDS + [40] * 4)
+        self.assertEqual([o["id"] for o in f["objects"]], [i for i in jd.DUELL_IDS if i not in jd.MULTI2_IDS] + [40] * 4)
         a = jd.read_archive(text.decode())
         self.assertEqual(sorted(a.objects), sorted(jd.DUELL_IDS + [1000, 1001, 1005, 1064]))
 
@@ -452,7 +452,7 @@ class RestoreTests(Base):
         t = NoClose(BRIDGE)
         ctl("setPatch", slot=100, name="ALSO MINE")
         plan = jd.plan_restore(a, jd.list_unit(t, 63), 63)
-        self.assertEqual([s.key for s in plan.steps], [1100, *jd.RESTORE_ORDER])
+        self.assertEqual([s.key for s in plan.steps], [1100, *[k for k in jd.RESTORE_ORDER if k not in jd.MULTI2_IDS]])   # (the simulated unit has caps 63: no multis M17 and up)
         self.assertEqual(plan.steps[0].data, b"")
         self.assertEqual(plan.skipped, [1000, 1001, 1005, 1064])
         old = jd.plan_restore(a, jd.list_unit(t, 63), 7)
