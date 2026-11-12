@@ -113,7 +113,8 @@ enum {
     F_DSEMI,                               /* TWIN FILTER (ext.h, cloud job B): filter 2's OFFSET, whole dial steps shown as semitones with one decimal (a dial step is 0.1103 octave: 1.3236 st), "+1.3" "-83.4" st */
     F_N99,                                 /* DUELL 1.1 (owner 2026-10-25): FM6's AMP ENV knobs, 0..127 shown as the DX7 number 0..99 of the loudest carrier ((v * 99 + 63) / 127), no unit (appended: the fmt numbers are in the protocol) */
     F_DEG,                                 /* a phase 0..127 shown as 0..357 degrees ("deg": the LFO's start PHS; appended) */
-    F_VOWL                                 /* VOICE's vowel position 0..127 shown as A E I O U with ">" between two ("A>E"; appended) */
+    F_VOWL,                                /* VOICE's vowel position 0..127 shown as A E I O U with ">" between two ("A>E"; appended) */
+    F_CLFO                                 /* b10: the delay colour LFO, 0 shown OFF, 1..15 the number (appended) */
 };
 
 typedef struct {

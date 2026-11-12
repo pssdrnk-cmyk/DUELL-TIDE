@@ -170,18 +170,18 @@ static void test_inert_rows(void)
     go_title("TIDE SETTINGS");
     gl.mode = GM_WANDER; morph_musical = 1; gl.target = GT_BOTH;
     CHECK("INERT: WNDR, MUSIC, BOTH: ARC's value in the theme colour", inert_look(JL_ARC, JL_ARC) == 1);
-    CHECK("INERT:   and knob 1's line names nothing", !rows_has(0, 80, "NEEDS EVOLVE") && !rows_has(0, 80, "TARGET SEQ") && !rows_has(0, 80, "NOT TRVL"));
+    CHECK("INERT:   and knob 1's line names nothing", !rows_has(0, 80, "NEEDS EVOLVE") && !rows_has(0, 80, "NEEDS SEQ") && !rows_has(0, 80, "NOT TRVL"));
     gl.mode = GM_ONCE;
     CHECK("INERT: MODE ONCE: ARC's value is dim", inert_look(JL_ARC, JL_ARC) == 2);
     CHECK("INERT:   knob 1's line says NEEDS EVOLVE", rows_has(0, 80, "NEEDS EVOLVE"));
     gl.mode = GM_WANDER; morph_musical = 0;
     CHECK("INERT: ROLL TYPE SMART: ARC still acts (no gate on ROLL TYPE)", inert_look(JL_ARC, JL_ARC) == 1 && !rows_has(0, 80, "NEEDS EVOLVE"));
     morph_musical = 1; gl.target = GT_SOUND;
-    CHECK("INERT: TARGET SOUND: ARC dims, TARGET SEQ is named", inert_look(JL_ARC, JL_ARC) == 2 && rows_has(0, 80, "TARGET SEQ"));
+    CHECK("INERT: TARGET SOUND: ARC dims, NEEDS SEQ is named", inert_look(JL_ARC, JL_ARC) == 2 && rows_has(0, 80, "NEEDS SEQ"));
     gl.target = GT_BOTH; gl.mode = GM_JOURNEY;
     CHECK("INERT: TRAVEL: KNOBS acts, knob 1's line names nothing", inert_look(JL_KNOB, JL_KNOB) == 1 && !rows_has(0, 80, "NOT TRVL"));
     CHECK("INERT:   .. ARC acts", inert_look(JL_ARC, JL_GMODE) == 1);
-    CHECK("INERT: a row that always acts (MODE) names nothing", !rows_has(0, 80, "NOT TRVL") && !rows_has(0, 80, "TARGET SEQ") && !rows_has(0, 80, "NEEDS EVOLVE"));
+    CHECK("INERT: a row that always acts (MODE) names nothing", !rows_has(0, 80, "NOT TRVL") && !rows_has(0, 80, "NEEDS SEQ") && !rows_has(0, 80, "NEEDS EVOLVE"));
     gl.mode = GM_WANDER;
 }
 

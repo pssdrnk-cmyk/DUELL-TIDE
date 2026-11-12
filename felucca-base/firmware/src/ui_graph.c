@@ -1944,7 +1944,7 @@ static uint32_t graph_signature(void)
         uint32_t f0 = morph_fader_of(pi), f1 = morph_fader_of(1u - pi);
         if (TIDE_WAVE_PAGE(pg)) {                    /* (b6, owner on the FM-1: "the UI gets weird if I use morph during the animation": the waves take the theme's fader colour (ux.fader:
                                                       * in steps of 8, taken on a picture's frame, ui_draw.c), so a turn of knob 1 redraws them with a picture, not at every value: each
-                                                      * redraw is 32,640 px over the 12 MHz SPI, about 44 ms, and one every frame held the loop and slowed the pictures to a third) */
+                                                      * redraw is 32,640 px over the 20 MHz SPI, about 26 ms (44 ms at the 12 MHz of b5), and one every frame held the loop and slowed the pictures to a third) */
             f0 = ux.fader[pi & 1u];
             f1 = ux.fader[(1u - pi) & 1u];
         }
@@ -2934,21 +2934,21 @@ static void graph_mlearn(void)
     char a[56], b[32];
     if (!ui.ml.on) {
         knob_mark(12, 12, 1);
-        cv_text(30, 10, &AF_M, "Turn right to start", T_TEXT);
+        cv_text(30, 10, &AF_M, "TURN RIGHT TO START", T_TEXT);
         knob_mark(12, 34, 2);
-        cv_text(30, 32, &AF_M, "Turn right to clear all", T_TEXT);
+        cv_text(30, 32, &AF_M, "TURN RIGHT TO CLEAR ALL", T_TEXT);
         fmt_int(b, (int32_t)ml_count());
-        str_cpy(b + str_len(b), " CC learned", 14);
+        str_cpy(b + str_len(b), " CC LEARNED", 14);
         cv_text(12, 62, &AF_M, b, T_MID);
     } else if (!ui.ml.pick) {
-        cv_text(12, 10, &AF_M, "1. Turn any knob to pick it", T_TEXT);
-        cv_text(12, 32, &AF_M, "2. Send a CC from your controller", T_TEXT);
+        cv_text(12, 10, &AF_M, "1. TURN ANY KNOB TO PICK IT", T_TEXT);
+        cv_text(12, 32, &AF_M, "2. SEND A CC FROM YOUR CONTROLLER", T_TEXT);
     } else {
         ml_name(a);
         cv_text_grad(12, 8, &AF_L, a, 12);
-        cv_text(12, 38, &AF_M, "Send a CC", T_TEXT);
+        cv_text(12, 38, &AF_M, "SEND A CC", T_TEXT);
         cv_free_hint(12, 60, "[OCT+] DONE", T_TEXT, T_BG, 200);
-        cv_free_hint(12, 80, "[OCT-] Clears its CC", T_TEXT, T_BG, 200);
+        cv_free_hint(12, 80, "[OCT-] CLEARS ITS CC", T_TEXT, T_BG, 200);
     }
 }
 /* MORPH SET: what TARGET means now (in words), and SMART, ARP and PITCH */

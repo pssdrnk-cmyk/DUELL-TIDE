@@ -16,7 +16,7 @@
  * 1.2: TUNE is not a setting: it edits the project's G_TUNE, the value the project holds and saves as before (no format change;
  * a project load brings its own); nothing of its is in the settings record (MI_PROJECT: menu_get / menu_put read and write song.g) */
 /* DUELL 0.2.14 (the owner's MENU rework, 2026-10-14): new names (ANIM -> ANIMATION, HOLD -> BUTTON HOLD,
- * SPEAKER EQ -> OUTPUT EQ, MODE RECALL -> MULTI LOAD (KEEPS MODE / SETS MODE), CHORD ENTRY -> STEP KEYS (WRITE / ADD), CALIBRATION ->
+ * SPEAKER EQ -> OUTPUT EQ, MODE RECALL -> MULTI LOAD (KEEPS MODE / SETS MODE), CHORD ENTRY -> STEP KEYS (REPLACE / ADD), CALIBRATION ->
  * BUTTON MAP), new groups (SCALE LEDS in DISPLAY), SCOPE and OVERVIEW removed (their editor ids 18 and 23 retired, never reused).
  * MI order = the order the device shows (a tab's rows follow each other); the editor's ids are editor_menu.c ED_MENU's, by row, so
  * the order is no id. MI_NAME is the editor's name (at most 12 characters, ed_str) and the device's label unless MI_LABEL has one */

@@ -2405,7 +2405,7 @@ static void h1_val(uint32_t ix, const track_t *t, int32_t v, char *out)
 {
     const char *unit;
     param_format(ix < KN_NP ? track_desc(t, KN_ID[ix]) : glob_desc(KN_ID[ix]), v, out, &unit);
-    str_cpy(out + str_len(out), str_eq(unit, "Hz") ? "" : str_eq(unit, "kHz") ? "k" : unit, 4);
+    str_cpy(out + str_len(out), str_eq(unit, "kHz") ? "k" : unit, 4);   /* (b10: "880Hz" and "2.4k", the Hz stays under 1 kHz) */
 }
 static void morph_row(void)
 {
@@ -2692,7 +2692,7 @@ static void draw_columns(void)
                 }
                 if (!(c & 1u)) {                       /* (DUELL 1.1: the duck source under the part's channel) */
                     static char ds[24];
-                    str_cpy(ds, "Duck source: ", sizeof ds);
+                    str_cpy(ds, "DUCK SOURCE: ", sizeof ds);
                     str_cpy(ds + str_len(ds), val_shown(&TP[P_DKSRC], N_DKSRC[(uint32_t)clamp(trk[c >> 1].p[P_DKSRC], 0, 3)]), (uint32_t)sizeof ds - str_len(ds));
                     for (n = 13; ds[n]; n++)
                         if (ds[n] == '\n')                   /* (b4, UI audit 8: the value in its own capitals, as the card shows it; no lower-casing) */
@@ -2706,7 +2706,7 @@ static void draw_columns(void)
         }
         {
             uint32_t sel = song.g[G_ROUTE] == 1, k, n = midi_cards(vis), mm = duell_mode_req < DM_N ? duell_mode_req : DM_SPLIT;
-            static const char *const WH[3][2] = {{"Duel: left output", "Duel: right output"}, {"Stereo output", "Stereo output"}, {"Layer: plays both parts", "Layer: not heard, use PART 1"}};
+            static const char *const WH[3][2] = {{"DUEL: LEFT OUTPUT", "DUEL: RIGHT OUTPUT"}, {"STEREO OUTPUT", "STEREO OUTPUT"}, {"LAYER: PLAYS BOTH PARTS", "LAYER: NOT HEARD, USE PART 1"}};
             grid_wide = 1;
             for (c = 0; c < 4u; c++) {                 /* the parts' channels (not shown when SELECTED listens on one channel; part 2 in LAYER), MIDI IN; T0227: moved left */
                 k = c < n ? vis[c] : 0xFFu;
