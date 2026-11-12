@@ -1,13 +1,15 @@
 # Credits
 
-**DUELL**<br>
-**MultiMorphing Bitimbral Synthesizer**<br>
-**by OSCILL/R**
+**TIDE**<br>
+**by pssdrnk**<br>
+**Built on DUELL (OSCILL/R) and Felucca (Hügelton Instruments), GPL-3.0.**
+
+The base it is built on, DUELL (**MultiMorphing Bitimbral Synthesizer**, by **OSCILL/R**):
 
 Thank you. Each line names the source, the link, the licence and what DUELL uses. The same list, with the exact files, is in [NOTICE.md](NOTICE.md) and [felucca-base/LICENSING.md](felucca-base/LICENSING.md). DUELL itself is GPL-3.0-only.
 
 **This fork**
-- **TIDE** (AUTO TIDE, TIDE SETTINGS, SEQ MORPH, the added sounds and patterns, and the fixes listed in the [README](README.md)) by **pssdrnk**, <https://github.com/pssdrnk-cmyk/DUELL-TIDE>. DUELL with TIDE is a fork of DUELL 1.1 and is not made or endorsed by OSCILL/R.
+- **TIDE** (AUTO TIDE, TIDE SETTINGS, SEQ MORPH, the added sounds and patterns, and the fixes listed in the [README](README.md)) by **pssdrnk**, <https://github.com/pssdrnk-cmyk/DUELL-TIDE>. TIDE is a fork of DUELL 1.1 and is not made or endorsed by OSCILL/R.
 
 **The base**
 - **DUELL** 1.1 by **OSCILL/R**, <https://github.com/oscillr/DUELL>, GPL-3.0-only.

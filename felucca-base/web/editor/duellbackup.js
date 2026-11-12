@@ -42,7 +42,7 @@ export const isPatchKey = (key) => Number.isInteger(key) && key >= PATCH_KEY0 &&
 export const patchSlot = (key) => key - PATCH_KEY0;
 export const OLD_PATCH_IDS = [6, 7, 9, 10, 11, 12, 27, 28, 29, 30, 31, 35, 36, 37, 38, 39];   // the physical chunks of before (not a wire id of a unit with caps bit 5; a v1..v4 file may carry them)
 
-// FM6's voice bank B1..B32 (fm6_vbank.c; INFO tag 44 01 bit 1, DUELL with TIDE): object 41 is the bank as the unit stores it, FVB_LEN bytes (a 32 byte header: magic "FM6V", version 1, 32, the used mask u32,
+// FM6's voice bank B1..B32 (fm6_vbank.c; INFO tag 44 01 bit 1, TIDE): object 41 is the bank as the unit stores it, FVB_LEN bytes (a 32 byte header: magic "FM6V", version 1, 32, the used mask u32,
 // the 12 character name, then the 32 voices of 112 bytes, each the 128 7-bit bytes of a record packed 8 to 7) and its CRC-32 (u32, little endian). Read with GET 41 (not in the plain LIST); a unit
 // without a bank answers rc 1. It is written back voice by voice with FM6B_BEGIN / WRITE / END (cmds 74..76), the way the unit's own bank upload goes: a bank cannot be erased, so a file
 // without the object leaves the unit's bank alone.
@@ -97,8 +97,8 @@ export function checkObject(id, b) {
   const n = b.length;
   if (n > MAX_OBJ) return "too large";
   if (id === 0) {                                      // the music: FUNB, 3840 B; byte 63 the parts (2), 66 P_COUNT, 67 the revision (firmware project.c PROJ_REV)
-    if (n !== MAX_OBJ || u32(b, 0) !== 0x46554E42) return "not the current music of a DUELL unit";
-    if (b[63] !== MUSIC_PARTS || b[66] !== P_COUNT || b[67] !== MUSIC_REV) return "the music of an older DUELL version; make a new backup with this version";
+    if (n !== MAX_OBJ || u32(b, 0) !== 0x46554E42) return "not the current music of a TIDE unit";
+    if (b[63] !== MUSIC_PARTS || b[66] !== P_COUNT || b[67] !== MUSIC_REV) return "the music of an older version; make a new backup with this version";
     return null;
   }
   if (id === 1) return n >= 64 && u32(b, 0) === 0x50455234 ? null : "not a settings record";
@@ -106,7 +106,7 @@ export function checkObject(id, b) {
     if (n < REC_FIX || n > PATCH_MAX) return "not a patch record (its size)";
     if (b[2] || b[3]) return "not a patch record as it is backed up (the slot and revision bytes are not 0)";
     const why = recordProblem(b);
-    if (why && (b[4] & (16 | 64))) return "a patch record of an older DUELL version, which this firmware does not load; make a new backup with this version";   // (PT_VER 3: the extension block and bitmap flags, 16 and 64)
+    if (why && (b[4] & (16 | 64))) return "a patch record of an older version, which this firmware does not load; make a new backup with this version";   // (PT_VER 3: the extension block and bitmap flags, 16 and 64)
     return why ? `damaged patch record (${why})` : null;
   }
   if (groupOf(id)?.key === "multis" || groupOf(id)?.key === "multis2") {
@@ -134,7 +134,7 @@ export function checkObject(id, b) {
     const why = wtCheck(b);
     return why ? `not a user wavetable (${why})` : null;
   }
-  return "not an object of a DUELL backup";
+  return "not an object of a TIDE backup";
 }
 
 // ---- decoders for the preview (what is in an object), pure
@@ -222,7 +222,7 @@ export function parseInfo(a) {
   let caps = null, patchCap = null, tide = false, tideAnswer, fvBank = false;
   while (pos < a.length && TAG_LEN[a[pos]]) {
     if (a[pos] === 0x42 && a[pos + 1] === 1) caps = a[pos + 2];
-    if (a[pos] === 0x44 && a[pos + 1] === 1) { tide = (a[pos + 2] & 1) !== 0; tideAnswer = tide; fvBank = (a[pos + 2] & CAPS_FVBANK) !== 0; }   // DUELL with TIDE; bit 1: GET 41, the FM6 voice bank
+    if (a[pos] === 0x44 && a[pos + 1] === 1) { tide = (a[pos + 2] & 1) !== 0; tideAnswer = tide; fvBank = (a[pos + 2] & CAPS_FVBANK) !== 0; }   // TIDE; bit 1: GET 41, the FM6 voice bank
     if (a[pos] === 0x58 && a[pos + 1] === 1) patchCap = a[pos + 2] | a[pos + 3] << 7;   // the patch capacity (DUELL 0.2.15)
     pos += TAG_LEN[a[pos]];
   }
@@ -252,7 +252,7 @@ export function objectsToFile(objects, info, opt = {}) {
 // hasPatches (the file carries the patches as records: version 5 made by a unit with them), oldPatchChunks (the physical chunks a version 1..4 file holds: kept out, never restored) }.
 export function readArchive(file) {
   if (typeof file === "string") { try { file = JSON.parse(file); } catch { throw new Error("This is not a backup file (it is not valid JSON)."); } }
-  if (!file || typeof file !== "object" || !Array.isArray(file.objects)) throw new Error("This is not a DUELL backup file.");
+  if (!file || typeof file !== "object" || !Array.isArray(file.objects)) throw new Error("This is not a TIDE backup file.");
   let source, items, version;
   if (file.format === FORMAT) {
     if (!Number.isInteger(file.version) || file.version < 2) throw new Error("This backup has an unknown version.");
@@ -263,10 +263,10 @@ export function readArchive(file) {
     if (version < 5 && items.some((o) => o && o.id === PATCH_ID)) throw new Error(`This backup is version ${version}, which has no patch records (id ${PATCH_ID}): it is damaged.`);
     if (version < 6 && items.some((o) => o && MULTI2_IDS.includes(o.id))) throw new Error(`This backup is version ${version}, which has no multis M17 and up (ids 42 to 46): it is damaged.`);
   } else if (file.format === "felucca-backup" && file.version === 1) {
-    if (!/DUELL/i.test(String(file.firmware || ""))) throw new Error("This is a Felucca backup, not a DUELL one: its objects mean other things. It was not read.");
+    if (!/DUELL|TIDE/i.test(String(file.firmware || ""))) throw new Error("This is a Felucca backup, not a TIDE one: its objects mean other things. It was not read.");
     items = readBackup(file).objects;                  // the installer's file: its own checks (ids, sizes, CRC); the retired objects are dropped below
     version = 1; source = "felucca-backup v1";
-  } else throw new Error("This is not a DUELL backup file.");
+  } else throw new Error("This is not a TIDE backup file.");
   const objects = new Map(); let oldPatchChunks = 0;
   for (const o of items) {
     if (!o || !Number.isInteger(o.id)) throw new Error("A backup object has no id.");
@@ -276,7 +276,7 @@ export function readArchive(file) {
     if (!patch && !KNOWN_IDS.includes(o.id)) throw new Error(`Unknown object id ${o.id} in this backup.`);
     const old = OLD_PATCH_IDS.includes(o.id);
     if (!patch && !old && !DUELL_IDS.includes(o.id) && o.id !== FVB_ID) {   // a retired object: must be empty, then it is left out
-      if (o.size) throw new Error(`Object ${o.id} is retired in DUELL and holds data: this is not a DUELL backup.`);
+      if (o.size) throw new Error(`Object ${o.id} is retired in TIDE and holds data: this is not a TIDE backup.`);
       continue;
     }
     if (objects.has(key)) throw new Error(patch ? `${name} is in the file twice.` : `Object ${o.id} is in the file twice.`);
@@ -394,7 +394,7 @@ async function restoreBank(request, bytes) {
 // as usual. A restore skips a raw object unless the user asks for it (planRestore opt.includeRaw). Only a refused LIST stops the backup.
 export async function captureBackup(request, info, onProgress = () => {}) {
   const list = await listUnit(request, info.caps), ids = [...DUELL_IDS.filter((id) => list.has(id)), ...[...list.keys()].filter(isPatchKey).sort((a, b) => a - b)];
-  if (!list.has(0) || !list.has(1)) throw new Error("The unit does not list its music and settings: is it running DUELL?");
+  if (!list.has(0) || !list.has(1)) throw new Error("The unit does not list its music and settings: is it running TIDE?");
   if (info.fvBank && await hasBank(request)) { list.set(FVB_ID, { size: FVB_OBJ, crc: 0 }); ids.splice(ids.indexOf(0), 0, FVB_ID); }   // the voice bank is not in the plain LIST; its own CRC is its last four bytes
   const total = ids.reduce((n, id) => n + list.get(id).size, 0); let done = 0; const got = [];
   const readOne = async (id, size) => {
@@ -437,7 +437,7 @@ export const rawLines = (problems, objects = null) => (problems || []).map((p) =
 // {id: 40, slot, key, size, crc, bytes, group: "patches"}: a PUT of the record, or (size 0) of nothing, which removes the slot's record. The patches are made EXACTLY the file's: one PUT
 // for each patch whose size or CRC differs on the unit (an identical one is not written again) and a removal for each slot the unit has saved and the file has not.
 // opt.includeRaw (0.2.25): also send the objects the backup could not check (the unit checks them at commit and refuses what it cannot load).
-// opt.tide (INFO tag 44 01, info.tideAnswer): true = the unit says it is DUELL with TIDE: a patch's FM6 MORPH TO target (End B flag 4) is kept. false (tag 44 present, bit 0 clear) or undefined (no tag 44: plain DUELL 1.1 and the TIDE builds before the tag look the same) = the target is taken out before the PUT (patchrecord.js stripEndBFmt; plain DUELL 1.1 would drop the whole record, D02); plan.stripped counts those patches, the confirm text says so.
+// opt.tide (INFO tag 44 01, info.tideAnswer): true = the unit says it is TIDE: a patch's FM6 MORPH TO target (End B flag 4) is kept. false (tag 44 present, bit 0 clear) or undefined (no tag 44: plain DUELL 1.1 and the TIDE builds before the tag look the same) = the target is taken out before the PUT (patchrecord.js stripEndBFmt; plain DUELL 1.1 would drop the whole record, D02); plan.stripped counts those patches, the confirm text says so.
 // opt.patchCap (INFO tag 58 01, the patch records the store takes: 126 with TIDE): a file with more patches than that cannot be restored whole, so the patches are left out
 // with that reason and the other groups still go (D05). The removals of the slots the file does not have come BEFORE the patches that are written, so a nearly full store has the room.
 // A multi object whose records are of another version than this editor's firmware writes is left out unless includeRaw (the unit would refuse it).
@@ -453,8 +453,8 @@ export function planRestore(archive, list, caps, sel, opt = {}) {
       else if (opt.patchCap && idsOf(g, archive.objects).length > opt.patchCap) reason = `the file holds ${idsOf(g, archive.objects).length} patches and this unit stores at most ${opt.patchCap} (STORE FULL); remove some from the file or restore them later in parts`;
     } else if (g.caps && ((caps ?? 0) & g.caps) !== g.caps) reason = "this unit's firmware cannot restore them (update it first)";
     else if (!g.ids.every((id) => archive.objects.has(id))) reason = "not in this file";
-    else if (g.needs && !opt[g.needs]) reason = "this unit's firmware cannot restore it (it needs DUELL with TIDE, a build with the FM6 voice bank in its backup)";
-    else if ((g.key === "settings" || g.key === "music") && list.get(g.ids[0])?.size !== archive.objects.get(g.ids[0]).size) reason = "the file was made by another DUELL version (its size differs from the unit's)";
+    else if (g.needs && !opt[g.needs]) reason = "this unit's firmware cannot restore it (it needs TIDE, a build with the FM6 voice bank in its backup)";
+    else if ((g.key === "settings" || g.key === "music") && list.get(g.ids[0])?.size !== archive.objects.get(g.ids[0]).size) reason = "the file was made by another version (its size differs from the unit's)";
     if (reason) { excluded.push({ key: g.key, label: g.label, reason }); continue; }
     if (g.dynamic) {
       const inFile = idsOf(g, archive.objects);

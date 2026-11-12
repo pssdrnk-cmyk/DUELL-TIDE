@@ -1,12 +1,12 @@
-# Publishes the DUELL with TIDE site (landing page, installer, emulator) to GitHub Pages.
+# Publishes the TIDE site (landing page, installer, emulator) to GitHub Pages.
 #
 # Nothing generated is committed. The workflow builds the site from the committed sources with
 # felucca-base/web/make_site.py. The firmware packages and the emulator build are not made here (the firmware toolchain is not
 # on the runner); the packages come from the GitHub releases, the emulator is built from the sources:
-#   Stable  the highest-version normal (non-pre-release, non-draft) release with duell-tide-stable-X.Y.Z.fwsc (tag tide-X.Y.Z; GitHub's "Latest")
-#   Beta    the newest pre-release with duell-tide-beta-X.Y.Z-bN.fwsc (tag tide-X.Y.Z-bN) whose build is NEWER than that stable one: the version
+#   Stable  the highest-version normal (non-pre-release, non-draft) release with tide-stable-X.Y.Z.fwsc (tag tide-X.Y.Z; GitHub's "Latest")
+#   Beta    the newest pre-release with tide-beta-X.Y.Z-bN.fwsc (tag tide-X.Y.Z-bN) whose build is NEWER than that stable one: the version
 #           in the package name decides, the publishing time only breaks a tie (an older beta is superseded and not offered).
-#           The older dated names (duell-tide-stable-YYYY-MM-DD.fwsc, ...-beta-...) still count and are older than any version.
+#           The older names (duell-tide-stable-X.Y.Z.fwsc, duell-tide-stable-YYYY-MM-DD.fwsc, ...-beta-...) still count: the dated ones are older than any version.
 #   Both go to /install/stable/ and /install/beta/, with /install/channels.json: tag, date, commit, SHA-256 (from the release's
 #   .sha256 asset and GitHub's asset digest; the build stops if the package does not match them), release notes URL, known issues.
 #   felucca-base/web/releases.py does the choosing and the downloads.
@@ -14,7 +14,7 @@
 #   has a successful run on exactly that commit. The newest release that has one is chosen for each channel; a red, missing or unreadable one is skipped
 #   (the log names it) and the next older release is looked at. This matters because the site is rebuilt from jam11's green head, but the packages it
 #   offers come from the releases, whose commits nobody else checks.
-#   duell-emulator*.zip     the emulator, any version in the name (the contents of felucca-base/build/emu, zipped) -> /emu/, from the newest
+#   tide-emulator*.zip      (or duell-emulator*.zip, the old name) the emulator, any version in the name (the contents of felucca-base/build/emu, zipped) -> /emu/, from the newest
 #                           release (pre-releases count, drafts do not), used only if the emulator build below leaves nothing.
 # The emulator is built from the committed sources (step below). With no release at all the installer page says "not released yet"
 # and keeps its install flow hidden; without the emulator zip /emu/ says the emulator is not attached. Neither fails the job.
@@ -97,11 +97,11 @@ jobs:
           tag=$(gh release list --exclude-drafts --limit 1 --json tagName --jq '.[0].tagName' || true)
           if [ -n "$tag" ]; then
             echo "newest release: $tag"
-            gh release download "$tag" --pattern 'duell-emulator*.zip' --dir dl || echo "no emulator in $tag"
+            gh release download "$tag" --pattern '*-emulator*.zip' --dir dl || echo "no emulator in $tag"
           else
             echo "no release yet"
           fi
-          z=$(ls dl/duell-emulator*.zip 2>/dev/null | sort -V | tail -n 1 || true)   # any version; the highest wins
+          z=$(ls dl/*-emulator*.zip 2>/dev/null | sort -V | tail -n 1 || true)   # any version; the highest wins
           if [ -n "$z" ]; then unzip -q -o "$z" -d dl/emu; fi
           true
           ls -la dl dl/stable dl/beta dl/emu 2>/dev/null || true
@@ -110,7 +110,7 @@ jobs:
         run: |
           args=""
           for ch in stable beta; do
-            pkg=$(ls dl/$ch/duell-tide-$ch-*.fwsc 2>/dev/null | sort | tail -n 1 || true)
+            pkg=$(ls dl/$ch/tide-$ch-*.fwsc dl/$ch/duell-tide-$ch-*.fwsc 2>/dev/null | sort -t/ -k3 | tail -n 1 || true)   # either name pattern; releases.py picked the one release and downloaded its package only
             if [ -n "$pkg" ] && [ -f "dl/$ch.json" ]; then args="$args --${ch}-pkg $pkg --${ch}-info dl/$ch.json"; fi
           done
           # the emulator built above from the sources wins over a release zip

@@ -1,6 +1,6 @@
-# Contributing to DUELL with TIDE
+# Contributing to TIDE
 
-DUELL with TIDE is pssdrnk's fork of DUELL 1.1 by OSCILL/R. It adds TIDE. This page is for the fork; OSCILL/R's own rules for plain DUELL are in [felucca-base/CONTRIBUTING.md](felucca-base/CONTRIBUTING.md).
+TIDE is pssdrnk's fork of DUELL 1.1 by OSCILL/R. It adds TIDE. This page is for the fork; OSCILL/R's own rules for plain DUELL are in [felucca-base/CONTRIBUTING.md](felucca-base/CONTRIBUTING.md).
 
 ## Where things go
 

@@ -9,13 +9,15 @@
 # (EMU_CFLAGS=-msimd128: let the compiler vectorise; every browser with AudioWorklet has wasm SIMD).
 # DUELL_TEST_MODE=1 builds in the CPU TEST screen (default 0, the release; since 0.2.23 both hold the same sixteen factory multis; build/gen/duell_multis.h must come from the same
 # switch: DUELL_TEST_MODE=1 python3 tools/gen_duell_multis.py build/gen/duell_multis.h, or DUELL/gen_only.py with it set; multi.c refuses a mismatch).
-# The page shows the version (DUELL_VERSION_STR, from the VERSION file) marked "(preview)" before its release; EMU_PREVIEW=0 drops the mark.
+# The page shows "TIDE <version>" (DUELL_TIDE_VERSION, from the TIDE_VERSION file) marked "(preview)" before its release; EMU_PREVIEW=0 drops the mark.
 set -e
 cd "$(dirname "$0")/../.."
 [ -f build/gen/felucca_tables.h ] || { echo "emu: run ./build.sh once first (build/gen)"; exit 1; }
 command -v emcc >/dev/null 2>&1 || { echo "emu: no emcc (Emscripten)"; exit 1; }
 python3 tools/gen_version.py build/gen/duell_version.h     # the VERSION file at the DUELL root
 VERSION=$(sed -n 's/^#define DUELL_VERSION_STR "\(.*\)"/\1/p' build/gen/duell_version.h)
+TIDE_V=$(sed -n 's/^#define DUELL_TIDE_VERSION "\(.*\)"/\1/p' build/gen/duell_version.h)
+LABEL="TIDE${TIDE_V:+ $TIDE_V}"          # what the page shows: the TIDE version (TIDE_VERSION file), not the DUELL one the firmware reports on the wire
 mkdir -p build/emu/fonts
 # shellcheck disable=SC2086
 emcc ${EMU_OPT:--O2} -ffp-contract=off -std=gnu99 -w ${EMU_CFLAGS:-} \
@@ -25,7 +27,7 @@ emcc ${EMU_OPT:--O2} -ffp-contract=off -std=gnu99 -w ${EMU_CFLAGS:-} \
 [ "${EMU_PREVIEW:-1}" = 0 ] && PREVIEW='' || PREVIEW=' (preview)'
 # Version the loaded resources so a rebuild cannot reuse an older cached wasm or worklet.
 BUILD_ID=$(cat build/emu/felucca.wasm web/emu/worklet.js | sha256sum | cut -c1-16)
-sed -e "s/@BUILD@/$BUILD_ID/g" -e "s/@VERSION@/$VERSION/g" -e "s/@PREVIEW@/$PREVIEW/g" web/emu/index.html > build/emu/index.html
+sed -e "s/@BUILD@/$BUILD_ID/g" -e "s/@VERSION@/$LABEL/g" -e "s/@PREVIEW@/$PREVIEW/g" web/emu/index.html > build/emu/index.html
 cp web/emu/worklet.js build/emu/
 cp web/emu/fonts/DotGothic16-subset.woff web/emu/fonts/OFL.txt web/emu/fonts/BarlowSemiCondensed-*-subset.woff web/emu/fonts/OFL-Barlow.txt build/emu/fonts/
 mkdir -p build/emu/img && cp web/emu/img/*.png build/emu/img/

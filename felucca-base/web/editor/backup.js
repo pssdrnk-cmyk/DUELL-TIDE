@@ -18,7 +18,7 @@ const isDuell = () => !!info && detectUnit(info.version).kind === "duell";
 const hasCaps = () => !!info && ((info.caps ?? 0) & CAPS_MULTI_PATTERN) === CAPS_MULTI_PATTERN;
 const hasPatchRecords = () => !!info && ((info.caps ?? 0) & CAPS_PATCH_RECORDS) !== 0;
 const objName = (id) => (isPatchKey(id) ? objectLabel(id) : String(id));
-const unitName = () => info.version.replace(/^FELUCCA /, "") + (info.tide ? " with TIDE" : "");
+const unitName = () => info.tide ? "TIDE (built on " + info.version.replace(/^FELUCCA /, "") + ")" : info.version.replace(/^FELUCCA /, "");
 
 function refresh() {
   $("connect").disabled = busy || !!link && isDuell();
@@ -53,7 +53,7 @@ async function connect() {
       request = (r, o) => unit.request(r, o);
     } else {
       try { midi = await navigator.requestMIDIAccess({ sysex: true }); } catch { say("unit", "MIDI access with SysEx was refused. Allow it and press Connect again.", "warn"); return; }
-      const named = (p) => /felucca|duell/i.test(p.name || "") && p.state !== "disconnected";
+      const named = (p) => /felucca|duell|tide/i.test(p.name || "") && p.state !== "disconnected";
       const input = [...midi.inputs.values()].find(named), output = [...midi.outputs.values()].find(named);
       if (watched !== midi) {   // (the unit may come later: watched from here on)
         watched = midi;
@@ -66,13 +66,13 @@ async function connect() {
       ports = [input, output];
     }
     info = parseInfo(await request([1, []], { timeout: 2000 }));
-    if (!isDuell()) { const v = info.version; info = null; link?.close?.(); link = null; request = null; say("unit", `This unit does not run DUELL (it reports "${v}"). Nothing was changed.`, "warn"); return; }
+    if (!isDuell()) { const v = info.version; info = null; link?.close?.(); link = null; request = null; say("unit", `This unit does not run TIDE or DUELL (it reports "${v}"). Nothing was changed.`, "warn"); return; }
     link = link || {};    // (mock: a placeholder so the buttons know a unit is there)
     say("unit", `Connected: ${unitName()}`, "good");
     say("unitnote", hasCaps() && hasPatchRecords()
       ? "This firmware backs up and restores patches (one at a time), multis, pattern slots, settings and the current music."
       : hasCaps()
-        ? "This firmware cannot back up or restore patches in this editor's form (it needs a newer DUELL firmware). A backup from it holds multis, pattern slots, settings and the current music. Update the firmware with the installer for a complete backup."
+        ? "This firmware cannot back up or restore patches in this editor's form (it needs a newer firmware). A backup from it holds multis, pattern slots, settings and the current music. Update the firmware with the installer for a complete backup."
         : "This firmware (DUELL 0.2.13 or older) cannot back up or restore patches, multis and pattern slots. A backup from it holds settings and the current music. Update the firmware with the installer for a complete backup.");
     if (!hasCaps() || !hasPatchRecords()) $("unitnote").className = "small warn";
     else $("unitnote").className = "small";
@@ -122,7 +122,7 @@ async function backup() {
   try {
     say("status-backup", "Saving backup 0%"); bar("bar-backup", 0);
     const file = await captureBackup(request, info, (d, t) => { const pc = d / Math.max(1, t) * 100; say("status-backup", `Saving backup ${Math.round(pc)}%`); bar("bar-backup", pc); });
-    const name = fileName("DUELL-backup");
+    const name = fileName("TIDE-backup");
     download(name, file);
     const a = readArchive(file), d = showContents("saved-list", new Map([...a.objects].map(([id, o]) => [id, o.bytes])), a.engines, a.objects.has(13), 0, a.hasPatches);
     $("saved").hidden = false;
@@ -140,7 +140,7 @@ function groupRows() {   // what each group would do, from the file and (when co
     const inFile = archive && (g.dynamic ? archive.hasPatches : g.ids.every((id) => archive.objects.has(id)));
     let off = null;
     if (!inFile) off = g.dynamic && archive?.oldPatchChunks ? "patches saved by an older firmware (physical chunks) are in this file but cannot be restored" : "not in this file";
-    else if (info && g.needs && !info[g.needs]) off = "this unit's firmware cannot restore it (it needs DUELL with TIDE)";
+    else if (info && g.needs && !info[g.needs]) off = "this unit's firmware cannot restore it (it needs TIDE)";
     else if (info && g.caps && ((info.caps ?? 0) & g.caps) !== g.caps) off = g.dynamic ? "this unit's firmware cannot restore patches one at a time (update it first)" : "this unit's firmware cannot restore them (update it first)";
     return { g, off };
   });
@@ -166,11 +166,11 @@ $("file").addEventListener("change", async () => {
   const f = $("file").files[0];
   if (f) {
     try {
-      if (f.size > 200000) throw new Error("This file is too large to be a DUELL backup.");
+      if (f.size > 200000) throw new Error("This file is too large to be a TIDE backup.");
       archive = readArchive(await f.text());
       const when = Date.parse(archive.created) ? new Date(archive.created).toLocaleString() : "an unknown date";
       const raw = rawLines(archive.problems, archive.objects);
-      say("filestate", `OK: a backup of ${archive.firmware.replace(/^FELUCCA /, "") || "a DUELL unit"}, made ${when}. ${raw.length ? `It passed every check except ${raw.length === 1 ? "one object" : raw.length + " objects"} (below).` : "It passed every check."}${archive.notes.length ? " " + archive.notes.join(" ") : ""}`, raw.length || archive.notes.length ? "warn" : "good");
+      say("filestate", `OK: a backup of ${archive.firmware.replace(/^FELUCCA /, "") || "a TIDE unit"}, made ${when}. ${raw.length ? `It passed every check except ${raw.length === 1 ? "one object" : raw.length + " objects"} (below).` : "It passed every check."}${archive.notes.length ? " " + archive.notes.join(" ") : ""}`, raw.length || archive.notes.length ? "warn" : "good");
       showContents("contents-list", new Map([...archive.objects].map(([id, o]) => [id, o.bytes])), archive.engines, archive.objects.has(13), archive.oldPatchChunks, archive.hasPatches);
       $("contents").hidden = false;
     } catch (e) { say("filestate", `Cannot use this file: ${e.message}`, "warn"); }
@@ -200,7 +200,7 @@ async function restore() {
     if (!window.confirm(text)) { say("status-restore", "Cancelled. Nothing was written.", ""); return; }
     say("status-restore", "Saving a safety backup of the unit first ..");
     const safety = await captureBackup(request, info);
-    safetyName = fileName("DUELL-safety-backup");
+    safetyName = fileName("TIDE-safety-backup");
     download(safetyName, safety);
     say("status-restore", "Restoring 0%"); bar("bar-restore", 0);
     const r = await runRestore(request, plan, (d, t) => { const pc = d / Math.max(1, t) * 100; say("status-restore", `Restoring ${Math.round(pc)}%`); bar("bar-restore", pc); });

@@ -21,7 +21,7 @@ function installerState() {
   ok(ACTIONS.every((a) => !uiState({ ...base, ready: false }).buttons[a].enabled), "no WebMIDI: all off");
 
   // running: exactly one bar (its own), all buttons off, banner for that action, notes on the others
-  const words = { backup: /^BACKING UP:/, install: /^INSTALLING DUELL:/, return: /^RETURNING TO THE OFFICIAL FIRMWARE:/ };
+  const words = { backup: /^BACKING UP:/, install: /^INSTALLING TIDE:/, return: /^RETURNING TO THE OFFICIAL FIRMWARE:/ };
   for (const a of ACTIONS) {
     u = uiState({ ...base, busy: a });
     ok(ACTIONS.every((x) => !u.buttons[x].enabled), `${a}: all buttons off`);
@@ -36,7 +36,7 @@ function installerState() {
   ok(/Locked: the return to the official firmware/.test(uiState({ ...base, busy: "return" }).buttons.install.note), "install note names the return");
 
   // wording
-  ok(TEXT.writing.return === "Writing official firmware. Do not unplug" && TEXT.writing.install === "Writing DUELL. Do not unplug", "writing texts");
+  ok(TEXT.writing.return === "Writing official firmware. Do not unplug" && TEXT.writing.install === "Writing TIDE. Do not unplug", "writing texts");
   ok(TEXT.done.return === "Done. The official firmware is back. Switch the unit off and on.", "return done text");
   ok(BANNERS.return.text.startsWith("RETURNING TO THE OFFICIAL FIRMWARE: do not unplug or close this page until it says DONE"), "return banner text");
 }
@@ -53,7 +53,7 @@ function pageWiring() {
     ok(!/id="(bar|status|result)-(?!${a}\b)\w+"/.test(card[1].replace(new RegExp(`id="\\w+-${a}"`, "g"), "")), `card ${a} holds no other card's ids`);
     ok(new RegExp(`<progress class="bar" id="bar-${a}"[^>]*\\shidden`).test(card[1]), `bar ${a} starts hidden`);
   }
-  ok(/This writes the official M-VAVE firmware back\. DUELL will be removed\. Keep the cable connected until DONE\./.test(h), "return warning text");
+  ok(/This writes the official M-VAVE firmware back\. TIDE will be removed\. Keep the cable connected until DONE\./.test(h), "return warning text");
   ok(/Go back to the official firmware/.test(h), "return section title");
   ok(!/id="(bar|status)"/.test(h), "no shared bar/status left");
   // the return card is not inside the package-gated blocks
@@ -97,14 +97,14 @@ function smartDefault() {
   for (const v of [null, undefined, "", "FELUCCA 1.5.2", "1.2", "FELUCCA 1.0", "M-VAVE", "DUELLX 0.2", 42, "DUELL"])
     ok(detectUnit(v).kind === "other", `not DUELL: ${JSON.stringify(v)}`);
   const tide = detectUnit("FELUCCA DUELL 1.1 TIDE");
-  ok(tide.kind === "duell" && tide.version === "1.1" && tide.tide === true && duell.tide === false && eraseDecision({ detected: tide }).line === "Detected: DUELL 1.1 with TIDE running", "a TIDE unit (INFO tag 44) is DUELL and says so");
+  ok(tide.kind === "duell" && tide.version === "1.1" && tide.tide === true && duell.tide === false && eraseDecision({ detected: tide }).line === "Detected: TIDE running", "a TIDE unit (INFO tag 44) is detected as TIDE and says so");
   let d = eraseDecision({ detected: duell });
-  ok(d.checked === false && d.help === "Updating DUELL: your patches and settings are kept." && d.line === "Detected: DUELL 0.2.4 running", "DUELL answered: unticked, update text, detected line");
+  ok(d.checked === false && d.help === "Updating: your patches and settings are kept." && d.line === "Detected: DUELL 0.2.4 running", "DUELL answered: unticked, update text, detected line");
   d = eraseDecision({ detected: detectUnit(null) });
-  ok(d.checked === true && d.help === "Clean install recommended: the unit does not run DUELL, so old data from another firmware is cleared." && d.line === "Detected: not DUELL (or no answer)", "no answer / other: ticked, clean text, not-DUELL line");
+  ok(d.checked === true && d.help === "Clean install recommended: the unit does not run TIDE or DUELL, so old data from another firmware is cleared." && d.line === "Detected: not TIDE or DUELL (or no answer)", "no answer / other: ticked, clean text, not-TIDE-or-DUELL line");
   d = eraseDecision({});
   ok(d.checked === true && d.help.startsWith(SMART.clean) && /Connect the FM-1 to check/.test(d.help), "not checked yet: ticked, clean text and the connect hint");
-  ok(!/Detected: (DUELL|not DUELL)/.test(d.line) && /Not checked yet/.test(d.line), "never claims a detection without an answer");
+  ok(!/Detected: (TIDE|DUELL|not TIDE)/.test(d.line) && /Not checked yet/.test(d.line), "never claims a detection without an answer");
   for (const det of [null, duell, detectUnit(null)]) {
     ok(eraseDecision({ detected: det, touched: true, current: true }).checked === true, "touched ticked stays ticked");
     ok(eraseDecision({ detected: det, touched: true, current: false }).checked === false, "touched unticked stays unticked");
@@ -194,8 +194,9 @@ function channelPage() {
   // legal and safety lines that must stay
   for (const t of ["GPL-3.0", "no warranty", "Felucca by Leo Kuroshita", "JIANT", "JieLi AC79 SDK", "Apache-2.0", "not affiliated with, endorsed by or supported by", "not by OSCILL/R", "This writes the official M-VAVE firmware back."])
     ok(h.includes(t), `page keeps: ${t}`);
+  ok(h.includes("Built on DUELL (OSCILL/R) and Felucca (H&uuml;gelton Instruments), GPL-3.0."), "page keeps the one attribution line");
   const l = readFileSync(new URL("./landing.html", import.meta.url), "utf8");
-  for (const t of ["GPL-3.0", "no warranty", "Felucca", "JIANT", "JieLi AC79 SDK", "Apache-2.0", "not made, affiliated with or endorsed by OSCILL/R or M-VAVE", "TIDE by pssdrnk, built on DUELL 1.1 by OSCILL/R", "Install Stable", "Install Beta", "Try the emulator", "DUELL-TIDE/issues", "Use at your own risk"])
+  for (const t of ["GPL-3.0", "no warranty", "Felucca", "JIANT", "JieLi AC79 SDK", "Apache-2.0", "not made, affiliated with or endorsed by OSCILL/R or M-VAVE", "Built on DUELL (OSCILL/R) and Felucca (H&uuml;gelton Instruments), GPL-3.0.", "Install Stable", "Install Beta", "Try the emulator", "DUELL-TIDE/issues", "Use at your own risk"])
     ok(l.includes(t), `landing keeps: ${t}`);
   const strip = (x) => x.replace(/data:image[^"]*/g, "");
   ok(!/oscillr\/DUELL\/issues/.test(h + l), "pages: no bug-report link to OSCILL/R (they are credit and original-DUELL links only)");

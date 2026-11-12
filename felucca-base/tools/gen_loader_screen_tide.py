@@ -7,7 +7,7 @@ ldr_screen_data.h: the loader is built in parallel with generate(), so its data 
 
 The screen is a TIDE page (firmware/src/ui_tokens.h): plain background, no boxes, no rule; the header's page title UPDATE (face T, Barlow Semi Condensed Bold 15, T_TEXT, centred,
 capitals' last row 16); WRITING (face S, SemiBold 15, T_MID); the percent as a big value (face N, Bold 31 figures, T_TEXT) with its unit % (face M, Medium 15, T_MID) on the same baseline;
-a capsule bar (6 px, the part 1 -> part 2 colour over the T_RAISE track); DO NOT SWITCH OFF in a filled pill (T_THEME, the text in T_BG); the name line DUELL with TIDE in the footer row
+a capsule bar (6 px, the part 1 -> part 2 colour over the T_RAISE track); DO NOT SWITCH OFF in a filled pill (T_THEME, the text in T_BG); the name line TIDE in the footer row
 (face S, T_MID, capitals' last row 231). Colours: the VIOLET palette, as the DUELL loader screen. Bitmaps are 4-bit alpha, two pixels a byte, row after row; each text's offsets are
 from its pen and its baseline."""
 import re
@@ -88,7 +88,7 @@ def main():
     for k, v in P.items():
         h.append("#define LS_%s 0x%04xu" % (k.upper(), v))
     s = ""
-    for name, f, text in (("TITLE", T, "UPDATE"), ("WRITING", S, "WRITING"), ("DONOT", S, "DO NOT SWITCH OFF"), ("NAME", S, "DUELL with TIDE"), ("PCT", M, "%")):
+    for name, f, text in (("TITLE", T, "UPDATE"), ("WRITING", S, "WRITING"), ("DONOT", S, "DO NOT SWITCH OFF"), ("NAME", S, "TIDE"), ("PCT", M, "%")):
         w, hh, bx, by, data = text_bitmap(f, text)
         h.append("#define LS_%s_W %d\n#define LS_%s_H %d\n#define LS_%s_BX %d\n#define LS_%s_BY %d\n#define LS_%s_ADV %d"
                  % (name, w, name, hh, name, bx, name, by, name, round(f.getlength(text))))

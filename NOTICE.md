@@ -1,12 +1,14 @@
 # Notice
 
-**DUELL**<br>
-**MultiMorphing Bitimbral Synthesizer**<br>
-**by OSCILL/R**
+**TIDE**<br>
+**by pssdrnk**<br>
+**Built on DUELL (OSCILL/R) and Felucca (Hügelton Instruments), GPL-3.0.**
+
+The base it is built on, DUELL (**MultiMorphing Bitimbral Synthesizer**, by **OSCILL/R**):
 
 DUELL is free, open-source firmware for the M-VAVE FM-1. Source: <https://github.com/oscillr/DUELL>.
 
-**Modified version.** This repository is **DUELL with TIDE**, a modified version of DUELL 1.1 made by pssdrnk from 2026-10-27 on (source: <https://github.com/pssdrnk-cmyk/DUELL-TIDE>). It is not an official DUELL release and is not made or endorsed by OSCILL/R. The changes are listed in [CHANGELOG.md](CHANGELOG.md) and in the git history; the upstream DUELL commit is `974d875` (OSCILL/R's tag `v1.1`; this fork carries the commit, not the tag).
+**Modified version.** This repository is **TIDE**, a modified version of DUELL 1.1 made by pssdrnk from 2026-10-27 on (source: <https://github.com/pssdrnk-cmyk/DUELL-TIDE>). It is not an official DUELL release and is not made or endorsed by OSCILL/R. The changes are listed in [CHANGELOG.md](CHANGELOG.md) and in the git history; the upstream DUELL commit is `974d875` (OSCILL/R's tag `v1.1`; this fork carries the commit, not the tag).
 
 - **Based on Felucca** by Leo Kuroshita (@kurogedelic), Hügelton Instruments (<https://github.com/hugelton/Felucca>). DUELL is a modified version of Felucca. The upstream commits (Felucca's, and DUELL 1.1's) are in [UPSTREAM_COMMIT.txt](UPSTREAM_COMMIT.txt).
 - **JIANT** (juanjiant-bit, <https://github.com/juanjiant-bit/JIANT>) is credited for the SHIM and RESO reverbs only.

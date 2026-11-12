@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- SPDX-License-Identifier: GPL-3.0-only
-     DUELL with TIDE installer page. Adapted from DUELL's installer, itself adapted from Felucca's installer:
+     TIDE installer page. Adapted from DUELL's installer, itself adapted from Felucca's installer:
      Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments.
      It keeps Felucca's install method (fm1ota.js: the running firmware stages an update loader, the loader
      writes the package; fm1pkg.js: package checks; fm1backup.js: the complete backup).
@@ -12,8 +12,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Install DUELL with TIDE</title>
-<meta name="description" content="Install DUELL with TIDE on an M-VAVE FM-1 from your browser: Stable or Beta, with a backup first and a way back to the official firmware.">
+<title>Install TIDE</title>
+<meta name="description" content="Install TIDE on an M-VAVE FM-1 from your browser: Stable or Beta, with a backup first and a way back to the official firmware.">
 <meta name="theme-color" content="#170f38">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1'%3E%3Cstop offset='0' stop-color='%237c4dff'/%3E%3Cstop offset='1' stop-color='%23d6247f'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='%23170f38'/%3E%3Cpath d='M6 38 C16 20 26 52 36 36 S52 22 58 34' fill='none' stroke='url(%23g)' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="../assets/site.css">
@@ -24,7 +24,7 @@
 <a class="skip" href="#main">Skip to the content</a>
 <header class="site">
   <div class="wrap">
-    <a class="brand" href="../">DUELL <span class="t">TIDE</span></a>
+    <a class="brand" href="../"><span class="t">TIDE</span></a>
     <nav aria-label="Main">
       <a href="../">Home</a>
       <a href="../emu/">Emulator</a>
@@ -35,18 +35,18 @@
   </div>
 </header>
 <main id="main" class="wrap" style="padding-top:32px;padding-bottom:24px">
-  <h1 style="font-size:clamp(34px,9vw,46px)">Install DUELL with TIDE</h1>
+  <h1 style="font-size:clamp(34px,9vw,46px)">Install TIDE</h1>
   <p class="lead" style="font-size:21px;font-weight:500;margin:10px 0 6px">Firmware for the M-VAVE FM-1, written from this page over USB.</p>
-  <p class="small"><b>TIDE by pssdrnk, built on DUELL 1.1 by OSCILL/R.</b> Not made or endorsed by OSCILL/R or M-VAVE.</p>
+  <p class="small"><b>TIDE by pssdrnk.</b> Built on DUELL (OSCILL/R) and Felucca (H&uuml;gelton Instruments), GPL-3.0. Not made or endorsed by OSCILL/R or M-VAVE.</p>
 
   <div class="notice" id="notreleased" hidden>
-    <p><b class="t" id="notreleased-title">DUELL with TIDE is not released yet.</b></p>
+    <p><b class="t" id="notreleased-title">TIDE is not released yet.</b></p>
     <p id="notreleased-text">No stable or beta package is published with this page, so there is nothing to install here.</p>
     <p><a href="../emu/">Web emulator</a> · <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE">Source code</a></p>
   </div>
 
   <div class="notice risk" id="risknote" role="note">
-    <p><b class="t">Installing is at your own risk.</b> If something goes wrong, the way back is the official firmware (the last card below, "Go back to the official firmware"); the <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/RECOVERY.md">recovery notes</a> explain it. DUELL with TIDE is not affiliated with M-VAVE. Back up first.</p>
+    <p><b class="t">Installing is at your own risk.</b> If something goes wrong, the way back is the official firmware (the last card below, "Go back to the official firmware"); the <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/RECOVERY.md">recovery notes</a> explain it. TIDE is not affiliated with M-VAVE. Back up first.</p>
   </div>
 
   <p class="small" id="browser"></p>
@@ -58,7 +58,7 @@
     <div class="card backup" id="card-backup">
       <h2>BACK UP</h2>
       <p>Reads the unit and saves a file with your current sounds and settings to this computer. Nothing is written to the FM-1. It needs a firmware that supports
-      backups (Felucca or DUELL). The official M-VAVE firmware cannot be backed up from this page.</p>
+      backups (Felucca, DUELL or TIDE). The official M-VAVE firmware cannot be backed up from this page.</p>
       <p class="small">The file holds every patch, the settings and the music of both parts; from DUELL 0.2.14 on also the MULTIs and the PATTERN slots, and the user wavetables. An older firmware cannot save the MULTIs and PATTERN slots: the message after the backup says so. A backup is restored in the editor (its Backup page).</p>
       <p><button id="backup" class="act" disabled>Save a backup file</button></p>
       <p class="lock" id="lock-backup"></p>
@@ -105,7 +105,7 @@
   <section class="step">
     <h2>Install</h2>
     <div class="card install" id="card-install">
-      <h2>INSTALL DUELL WITH TIDE</h2>
+      <h2>INSTALL TIDE</h2>
       <p class="small" id="install-what"></p>
       <p class="small">The page checks what your FM-1 runs now and sets the box below for you. You can always tick or untick it yourself.</p>
       <p class="small"><b id="erase-detect"></b> <button id="detect" class="act quiet" style="min-height:36px;padding:4px 14px;font-size:16px" type="button" disabled>Check the unit</button></p>
@@ -113,8 +113,8 @@
       <p class="small" id="erase-smart"></p>
       <p class="small" id="erase-help">Erases your settings (theme, scale, MIDI channels, favourites), the autosave, your patches, your multis and your patterns. The factory sounds, multis and patterns come back. This cannot be undone: back up first. Left off, your saved data stays and the unit comes back as you left it.</p>
       <p class="small" id="erase-lock"></p>
-      <p><b>Do not switch off or unplug the unit while it installs.</b> On a unit that runs DUELL the page first saves a backup file to your downloads and stops if that fails (<a href="../editor/backup.html">the Backup page</a> restores it).</p>
-      <p><button id="go" class="act" disabled>Install <span class="ver">DUELL with TIDE</span></button></p>
+      <p><b>Do not switch off or unplug the unit while it installs.</b> On a unit that runs TIDE or DUELL the page first saves a backup file to your downloads and stops if that fails (<a href="../editor/backup.html">the Backup page</a> restores it).</p>
+      <p><button id="go" class="act" disabled>Install <span class="ver">TIDE</span></button></p>
       <p class="lock" id="lock-install"></p>
       <progress class="bar" id="bar-install" max="100" value="0" hidden></progress>
       <p class="status" id="status-install"></p>
@@ -128,7 +128,7 @@
     <h2>Go back to the official firmware</h2>
     <div class="card return" id="card-return">
       <h2>RETURN TO OFFICIAL FIRMWARE</h2>
-      <p class="retwarn">This writes the official M-VAVE firmware back. DUELL will be removed. Keep the cable connected until DONE.</p>
+      <p class="retwarn">This writes the official M-VAVE firmware back. TIDE will be removed. Keep the cable connected until DONE.</p>
       <p>Download the official FM-1 firmware (<code>FM-1.fwsc</code>, V15) yourself from M-VAVE's download page:
       <a href="https://www.m-vave.com/download" target="_blank" rel="noopener">m-vave.com/download</a>. This project does not host or redistribute M-VAVE's files.
       Select the unmodified file here; the page checks it in your browser (it is never uploaded) and only accepts V15.</p>
@@ -138,7 +138,7 @@
       <progress class="bar" id="bar-return" max="100" value="0" hidden></progress>
       <p class="status" id="status-return"></p>
       <p class="result" id="result-return"></p>
-      <p class="small">DUELL music and sounds cannot be opened by the official firmware.</p>
+      <p class="small">TIDE music and sounds cannot be opened by the official firmware.</p>
       <p class="small"><label><input id="stock-recovery" type="checkbox"> Resume an interrupted return: I already saved a complete backup to this computer</label></p>
       <p class="small" id="stockstate"></p>
     </div>
@@ -159,11 +159,11 @@
 </main>
 <footer class="site">
   <div class="wrap">
-    <p><b>TIDE is by pssdrnk, not by OSCILL/R.</b> DUELL with TIDE is pssdrnk's fork of <a href="https://github.com/oscillr/DUELL">DUELL</a> 1.1, which is made by OSCILL/R. It is not made, affiliated with or endorsed by OSCILL/R or M-VAVE. Please send TIDE problems to this fork's <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues">issues</a>, not to the DUELL author.</p>
-    <p><span class="ver">DUELL with TIDE</span> installer. DUELL with TIDE is free software under the GPL-3.0, with <b>no warranty</b>. DUELL is a fork of Felucca by Leo Kuroshita (@kurogedelic), Hügelton Instruments, with the SHIM and RESO reverbs from JIANT.
+    <p><b>TIDE is by pssdrnk, not by OSCILL/R.</b> TIDE is pssdrnk's fork of <a href="https://github.com/oscillr/DUELL">DUELL</a> 1.1, which is made by OSCILL/R. It is not made, affiliated with or endorsed by OSCILL/R or M-VAVE. Please send TIDE problems to this fork's <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues">issues</a>, not to the DUELL author.</p>
+    <p><span class="ver">TIDE</span> installer. TIDE is free software under the GPL-3.0, with <b>no warranty</b>. DUELL is a fork of Felucca by Leo Kuroshita (@kurogedelic), Hügelton Instruments, with the SHIM and RESO reverbs from JIANT.
     The package also holds three JieLi AC79 SDK files (uboot.boot, cfg_tool.bin, eq_cfg_hw.bin; JieLi Technology, Apache-2.0).
-    <a href="./LICENSES/">Licence texts</a> · <a href="./LICENSING.md">LICENSING.md</a> · <a href="./LICENSE">GPL-3.0</a> · <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE">Source code (DUELL with TIDE)</a> · <a href="https://github.com/oscillr/DUELL">Source code (DUELL)</a>.</p>
-    <p>M-VAVE and FM-1 are trademarks of their respective owners. DUELL with TIDE is independent and not affiliated with, endorsed by or supported by them.</p>
+    <a href="./LICENSES/">Licence texts</a> · <a href="./LICENSING.md">LICENSING.md</a> · <a href="./LICENSE">GPL-3.0</a> · <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE">Source code (TIDE)</a> · <a href="https://github.com/oscillr/DUELL">Source code (DUELL)</a>.</p>
+    <p>M-VAVE and FM-1 are trademarks of their respective owners. TIDE is independent and not affiliated with, endorsed by or supported by them.</p>
     <p>This page sets no cookies and loads nothing from other servers. The package is checked in your browser and never uploaded.</p>
   </div>
 </footer>
@@ -231,7 +231,7 @@ if (!navigator.requestMIDIAccess) {
 
 // ---- the builds: channels.json lists Stable and Beta (tag, date, commit, file, size, SHA-256, notes link). Stable is chosen unless the address says #beta.
 const showVersion = () => {
-  const v = entry ? `${CHANNEL[channel].label} ${entry.version || entry.date || entry.tag}` : "DUELL with TIDE";
+  const v = entry ? `${CHANNEL[channel].label} ${entry.version || entry.date || entry.tag}` : "TIDE";
   document.querySelectorAll(".ver").forEach((e) => { e.textContent = v; });
   $("install-what").textContent = entry ? `Writes: ${CHANNEL[channel].label} build ${entry.tag}${entry.commit ? " (" + entry.commit.slice(0, 7) + ")" : ""}. Chosen above.` : "";
 };
@@ -276,7 +276,7 @@ async function acceptPackage(bytes, source, e, token) {
     if (!check.ok) { image = null; product = null; showHash("bad", check.text); $("pkgstate").textContent = "This build cannot be installed."; refresh(); return; }
     showHash("good", check.text);
     const id = productOf(bytes);
-    if (!/^FM-1_9\d\d$/.test(id)) throw new Error(`identity ${id || "(none)"} is not a DUELL/Felucca package (expected FM-1_9xx)`);
+    if (!/^FM-1_9\d\d$/.test(id)) throw new Error(`identity ${id || "(none)"} is not a TIDE/DUELL/Felucca package (expected FM-1_9xx)`);
     if (!new TextDecoder("latin1").decode(bytes).includes("FELUCCA-LOADER-1"))
       throw new Error("no Felucca update loader in this file (never install a package made from an official file)");
     image = logicalImage(bytes); product = id;
@@ -547,7 +547,7 @@ $("stock-go").addEventListener("click", async () => {
     if (loader) {
       loader.link.close();
       if (!$("stock-recovery").checked) { result("return", "The FM-1 is in update mode, so no backup can be made now. Tick \"Resume an interrupted return\" only if you already saved a backup.", true); return; }
-      if (!confirm("Return to official V15? DUELL music cannot be opened by the official firmware.")) return;
+      if (!confirm("Return to official V15? TIDE music cannot be opened by the official firmware.")) return;
       if (await up.resume(selected.image, step, selected.product)) result("return", TEXT.done.return); else result("return", ERR.stopped, true);
     } else {
       say("return", "Backing up before the return (nothing is written yet)");

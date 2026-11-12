@@ -1,6 +1,6 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Quick start (how to play DUELL with TIDE)
+  - name: Quick start (how to play TIDE)
     url: https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/QUICKSTART.md
     about: A short tour of the parts, modes, morph, effects and MIDI.
   - name: TIDE guide (AUTO TIDE and TIDE SETTINGS)

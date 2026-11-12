@@ -137,8 +137,8 @@ export class MockUnit {
   constructor({ plainTag = false, caps = 63, playing = false, version = "FELUCCA DUELL 0.2.25 bet", seed = true, savedFlags = true, patchRaw = true, scope2 = true, pat32 = false, bypassCap = true, locksCap = true, morphView = false, storeMax = 128, tide = false, fvBank = false } = {}) {
     this.plainTag = plainTag;                      // INFO 44 01 with bit 0 clear: the unit says it is plain DUELL (no firmware sends it yet)
     this.fvBank = fvBank; this.bank = null; this.bankTx = null;   // INFO 44 01 bit 1: GET 41 and FM6B_BEGIN / WRITE / END (the FM6 voice bank, this.bank: the object as the unit stores it, or null)
-    this.tide = tide || fvBank;                    // INFO 44 01 bit 0: the unit is DUELL with TIDE
-    this.storeMax = storeMax;            // the patch records the store takes (INFO 58 01): 126 on DUELL with TIDE; a new record past it is rc 6 (STORE FULL)
+    this.tide = tide || fvBank;                    // INFO 44 01 bit 0: the unit is TIDE
+    this.storeMax = storeMax;            // the patch records the store takes (INFO 58 01): 126 on TIDE; a new record past it is rc 6 (STORE FULL)
     this.morphView = morphView; this.shift = [new Map(), new Map()];   // item 159 (INFO 4F 01): the values read AS SHOWN at the MORPH fader; shift: a part's fader offset per id (shown = stored + offset)
     this.locksCap = locksCap; this.motion = []; this.bypassCap = bypassCap; this.pat32 = pat32; this.scope2 = scope2; this.savedFlags = savedFlags; this.patchRaw = patchRaw; this.prStage = null; this.version = version; this.caps = caps; this.playing = playing;
     this.tables = [null, null, null]; this.wtStage = null;    // the user wavetables {name, data} (caps bit 3, cmds 81..83)

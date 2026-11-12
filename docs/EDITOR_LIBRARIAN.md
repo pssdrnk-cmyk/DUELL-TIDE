@@ -1,8 +1,7 @@
 # The patch library in the web editor
 
-**DUELL**
-MultiMorphing Bitimbral Synthesizer
-by OSCILL/R
+**TIDE**
+Built on DUELL (OSCILL/R) and Felucca (Hügelton Instruments), GPL-3.0
 
 The editor's **PATCHES** tab (GLOBAL column) is a library for the 128 patch slots on your unit. You can keep patches in files, move them between units, copy and swap slots, and bring in DX7 voices. It needs DUELL 0.2.19 or newer on the unit (the editor tells you if yours is older). Try it without a unit: open the editor with `?mock=1`.
 
@@ -10,7 +9,7 @@ A slot holds either a patch you saved or the factory sound of that place; saving
 
 ## With TIDE: USER slots and sounds 129 to 171
 
-On a DUELL with TIDE unit the editor still works on **128 slots**, numbered 1 to 128 as in the list above. What differs from plain DUELL:
+On a TIDE unit the editor still works on **128 slots**, numbered 1 to 128 as in the list above. What differs from plain DUELL:
 
 - **Slots 125 to 128 are the USER slots U1 to U4.** Until you save into one it is listed as `USER EMPTY` and holds no factory sound: loading it into a part changes nothing, and the editor reads it as a blank default sound. **Restore** on a saved USER slot empties it again.
 - **The factory sounds #125 to #128 and the 43 more, #129 to #171, have no slot**, so the editor does not list, export or write them. They are read-only places on the unit's PATCHES list (SAVE offers USER 1 for them). To keep one, load it on the unit and save it into a slot.

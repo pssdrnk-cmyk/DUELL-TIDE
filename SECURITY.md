@@ -2,7 +2,7 @@
 
 ## Flashing is a risk of its own
 
-DUELL with TIDE is firmware for the M-VAVE FM-1. The FM-1 has a single copy of its firmware and no known rollback: a failed write can leave the unit dark, and then only a hardware recovery helps. That is a risk of installing, not a security hole, and it is described in [docs/INSTALL.md](docs/INSTALL.md) and [docs/RECOVERY.md](docs/RECOVERY.md). Back up first. No warranty (GPL-3.0-only).
+TIDE is firmware for the M-VAVE FM-1. The FM-1 has a single copy of its firmware and no known rollback: a failed write can leave the unit dark, and then only a hardware recovery helps. That is a risk of installing, not a security hole, and it is described in [docs/INSTALL.md](docs/INSTALL.md) and [docs/RECOVERY.md](docs/RECOVERY.md). Back up first. No warranty (GPL-3.0-only).
 
 Only install firmware from this repository's [releases](https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases) or build it yourself from the source. Compare the SHA-256 the installer page shows with the one in the release.
 

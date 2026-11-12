@@ -1,6 +1,6 @@
-# Known limits: DUELL with TIDE
+# Known limits: TIDE
 
-**DUELL** with TIDE: pssdrnk's fork of DUELL 1.1, MultiMorphing Bitimbral Synthesizer by OSCILL/R
+**TIDE**: built on DUELL (OSCILL/R) and Felucca (Hügelton Instruments), GPL-3.0
 
 The fork's own limits are listed first, then the inherited DUELL 1.1 limits. [KNOWN_ISSUES.md](KNOWN_ISSUES.md) lists bugs and untested ground. See [the roadmap](ROADMAP.md) for source, installed-package and measurement evidence.
 

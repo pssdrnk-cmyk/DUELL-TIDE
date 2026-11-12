@@ -1,4 +1,4 @@
-# DUELL with TIDE: a player's guide
+# TIDE: a player's guide
 
 Five minutes. This guide describes the development line, `jam11`, as the source has it. It describes `1.0.0-b10` (release candidate `rc5`) and the betas before it; the shorter TIDE SETTINGS page is from `1.0.0-b7`. The older beta `beta-2026-11-04` is a little different; the list at the end says what came after it. The version of your unit is in MENU > SYSTEM > ABOUT, beside the date.
 

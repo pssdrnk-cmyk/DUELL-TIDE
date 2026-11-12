@@ -3087,7 +3087,7 @@ static void splash_logo_draw(int32_t y0, int32_t h)
     cv_text_in(0, 108, 240, &AF_M, "generative bitimbral synth", T_TEXT, T_BG);
     if (tide_spl_credits) {                              /* the GPL credits: the base it is built on, its licence */
         cv_text_in(0, 202, 240, &AF_S, "built on DUELL (OSCILL/R) and Felucca", T_MID, T_BG);
-        cv_text_in(0, 218, 240, &AF_S, "GPL-3.0  -  TIDE by pssdrnk", T_MID, T_BG);
+        cv_text_in(0, 218, 240, &AF_S, "(H\xFCgelton Instruments), GPL-3.0", T_MID, T_BG);
     }
 }
 /* MENU > ABOUT's key hints (0.2.9, the owner: KNOB 1 scrolls, SELECT goes left and right between its sections; OCT- back, lit) */

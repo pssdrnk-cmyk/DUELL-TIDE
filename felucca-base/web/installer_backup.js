@@ -13,6 +13,6 @@ import { captureBackup as captureListed } from "./fm1backup.js";
 export async function captureUnitBackup(request, info, onProgress = () => {}) {
   const unit = parseInfo(info);
   if ((unit.caps ?? 0) & CAPS_PATCH_RECORDS)
-    return { file: await captureBackup(request, unit, onProgress), name: fileName("DUELL-backup"), format: "duell-backup" };
-  return { file: await captureListed(request, unit.version, onProgress), name: `DUELL-backup-${new Date().toISOString().slice(0, 10)}.json`, format: "felucca-backup" };
+    return { file: await captureBackup(request, unit, onProgress), name: fileName("TIDE-backup"), format: "duell-backup" };
+  return { file: await captureListed(request, unit.version, onProgress), name: `TIDE-backup-${new Date().toISOString().slice(0, 10)}.json`, format: "felucca-backup" };
 }

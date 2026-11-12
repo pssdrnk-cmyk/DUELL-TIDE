@@ -255,8 +255,8 @@ static int screen_checks(const uint8_t *newapp, const uint8_t *oldapp, uint8_t *
     new_screen_at(0);
     ppm("0");
     bad += check("screen 0%: bar empty (the track only)", bar_ok(0));
-    bad += check("screen 0%: UPDATE, WRITING, 0 %, DUELL with TIDE are drawn (bright pixels in their boxes)",
-                 ink(90, 5, 150, 18) > 60 && ink(90, 63, 150, 76) > 60 && ink(100, 84, 140, 110) > 40 && ink(4, 220, 110, 233) > 150);
+    bad += check("screen 0%: UPDATE, WRITING, 0 %, TIDE are drawn (bright pixels in their boxes)",
+                 ink(90, 5, 150, 18) > 60 && ink(90, 63, 150, 76) > 60 && ink(100, 84, 140, 110) > 40 && ink(4, 220, 40, 233) > 40);
     bad += check("screen 0%: DO NOT SWITCH OFF in its pill (the pill's colour, the text in the background colour)",
                  count_col(52, 156, 188, 175, LS_C0) > 1000 && count_col(62, 160, 178, 171, LS_BG) > 150);
     new_screen_at(45);

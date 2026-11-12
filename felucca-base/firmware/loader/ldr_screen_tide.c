@@ -6,7 +6,7 @@
  *     row 108  45 %                          the percent as a big value (face N, T_TEXT) and its unit (face M, T_MID) on one baseline, centred
  *     rows 120 .. 125                        the capsule bar, x 22 .. 217: the part 1 -> part 2 colour over the T_RAISE track, both ends round
  *     rows 156 .. 174  DO NOT SWITCH OFF     in a filled pill (T_THEME), the text in T_BG
- *     row 231  DUELL with TIDE               the footer row (face S, T_MID)
+*     row 231  TIDE                         the footer row (face S, T_MID)
  * Rows are the capitals' last rows. Only drawing lives here: buffers, colours, bitmaps, the band renderer. The data: ldr_screen_tide_data.h (tools/gen_loader_screen_tide.py). */
 #include "ldr_screen_tide_data.h"
 

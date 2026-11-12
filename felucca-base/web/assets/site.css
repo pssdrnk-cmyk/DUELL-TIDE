@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only
-   DUELL with TIDE: the site's design language (landing page and installer). TIDE by pssdrnk, built on DUELL 1.1 by OSCILL/R.
+   TIDE: the site's design language (landing page and installer). TIDE by pssdrnk, built on DUELL 1.1 by OSCILL/R.
    The look comes from the fork's cover (docs/duell-tide-cover.jpg) and the unit's own screens (docs/tide/*.png): a deep violet night,
    a violet-to-pink accent, calm waves. One font, Barlow Semi Condensed (SIL OFL 1.1, fonts/OFL-Barlow.txt), served from this folder.
    No external requests: no web fonts from a CDN, no scripts, no trackers. Light and dark themes (the system's, or the toggle). */

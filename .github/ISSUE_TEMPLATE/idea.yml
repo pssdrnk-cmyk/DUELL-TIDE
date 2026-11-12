@@ -1,12 +1,12 @@
 name: Idea or request
-description: A feature idea, a request or a suggestion for DUELL with TIDE (no promise it will be added)
+description: A feature idea, a request or a suggestion for TIDE (no promise it will be added)
 title: "[idea] "
 labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        **DUELL with TIDE** is pssdrnk's fork of DUELL 1.1 by OSCILL/R. One idea per issue, please. Bugs go in the bug report form instead.
+        **TIDE** is pssdrnk's fork of DUELL 1.1 by OSCILL/R. One idea per issue, please. Bugs go in the bug report form instead.
         An idea for plain DUELL (nothing to do with TIDE or this fork's pages) belongs with [OSCILL/R](https://github.com/oscillr/DUELL/issues/new/choose).
         The [roadmap](https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/docs/ROADMAP.md) shows what is planned.
   - type: textarea
