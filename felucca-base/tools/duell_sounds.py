@@ -2315,7 +2315,7 @@ SOUNDS = [
     # lingers low and then blooms (CURVE +): the brass grows its growl every cycle, as a braam-like body does, under a 12 dB low-pass breathing on a 14 s LFO;
     # saturation for the rasp, the lows left full (a sub under the key), a long room.
     # End B: the horns bare their teeth: the modulators at full, more saturation, the filter up, the carriers wider, the room larger.
-    dict(engine='FM6', idx=17, name='HORN SWELL', cat='PAD', bseed=37424, bamt=27,  # #165 (b10 Later 19: was 48240, its End B peaked over -1 dBFS once FM6's roll moved the envelope only once)
+    dict(engine='FM6', idx=17, name='HORN SWELL', cat='PAD', bseed=48240, bamt=27,  # #165
          p={
             'L2RATE': 7, 'L2WAVE': 1, 'KTRK': 16, 'DIST': 24, 'CHOR': 50, 'DLY': 30, 'REV': 100,
             'SPRD': 40, 'SUB LEVEL': 72, 'SUB OCTAVE': 1, 'FREEA': 50, 'FREEB': 10, 'FREED': 1, 'TRIM': 117, 'E3': 0, 'E5': 0, 'E7': 48, 'E8': 3,

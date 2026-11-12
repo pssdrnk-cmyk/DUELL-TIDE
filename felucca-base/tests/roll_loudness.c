@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* DUELL: the loudness of the player's own rolls (host_tests.sh rolls; by hand, not in the default list: ~1 min).
- * ROLL B at AMOUNT ROLL_AMOUNT (20) with the default roll (MUSIC, as the device locks it; ROLL_SMART=1: SMART), ARP and PITCH off, STEREO, 300 seeds per
+ * ROLL B at AMOUNT ROLL_AMOUNT (20) with the player's default settings (SMART, ARP and PITCH off, STEREO), 300 seeds per
  * engine over its sounds (ANALOG: the DUELL factory sounds; PHASE FM6 TRIO WHEEL GRAIN: the engine's presets), each End B
  * (fader at B) and its Original rendered as tests/loudness.h measures (C3 held 4 s, the weighted loudness of the sound's
  * body). The ratio B / A in dB: its distribution per engine and in all. Targets (owner, 2026-10-11): 90 % of the rolls
@@ -62,7 +62,7 @@ static void rl_setup(void *v)
     if (!a->seed)
         return;                                         /* End A: the Original */
     morph_ready(0);
-    morph_roll_cfg(0, 1u, a->seed, a->amt, MC_STEREO | (getenv("ROLL_SMART") ? 0u : MC_MUSIC));   /* (MUSIC unless ROLL_SMART; no ARP / PITCH) */
+    morph_roll_cfg(0, 1u, a->seed, a->amt, MC_STEREO);   /* (the player's default: SMART, no ARP / PITCH) */
     if (a->keep >= 0) {
         morph_part_t *mp = &mph[0];
         int8_t *b = mp->h[1][mp->top[1]];
@@ -101,8 +101,8 @@ int main(void)
     uint32_t nr = getenv("ROLL_N") ? (uint32_t)atoi(getenv("ROLL_N")) : 300u, why = getenv("ROLL_WHY") != 0;
     uint32_t q, nall = 0, in45 = 0, in8 = 0, gcount[G_N] = {0};
     nr = nr > 600u ? 600u : nr;
-    printf("rolls: ROLL B at AMOUNT %u, %s (no ARP / PITCH), STEREO, %u seeds per engine; End B against the Original, "
-           "weighted loudness of the body (tests/loudness.h), C3\n", (unsigned)amt, getenv("ROLL_SMART") ? "SMART" : "MUSIC", (unsigned)nr);
+    printf("rolls: ROLL B at AMOUNT %u, SMART (no ARP / PITCH), STEREO, %u seeds per engine; End B against the Original, "
+           "weighted loudness of the body (tests/loudness.h), C3\n", (unsigned)amt, (unsigned)nr);
     for (q = 0; q < NELEM(ENG); q++) {
         uint32_t e = eng_by_name(ENG[q]), ds = ds_count(e) > 0, ns = ds ? ds_count(e) : ENGINES[e]->npresets, i, n45 = 0, n8 = 0;
         static lz_t LA[64];
