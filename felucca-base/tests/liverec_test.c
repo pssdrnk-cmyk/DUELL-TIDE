@@ -353,7 +353,9 @@ static void r4(void)
     press(B_REC); frames(600);
     btn_up(B_SEQ); frames(600);
     CHECK("R4 (L5): SEQ held + REC on HOME arms the selected part", (song.rec & 1u) && t->p[P_AHOLD] == 0);
-    CHECK("R4 (L5): ... and starts the stopped transport", song.playing || transport_req == 1u);
+    CHECK("R4 (L5): ... and waits for the first key (b10 assist2: REC from stop arms, the first key starts PLAY)", !song.playing && transport_req != 1u && (rec_wait & 1u));
+    input_on(t, 64, 100); run(200); input_off(t, 64); run(100);
+    CHECK("R4 (L5): ... the first key starts the stopped transport", song.playing);
     song.rec = 0;
     stop();
     /* b7 (FR7 D6): SEQ + REC as a chord, both let go in one pass, and SEQ let go first: arms, HOLD alone */

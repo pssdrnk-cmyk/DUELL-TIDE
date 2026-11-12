@@ -157,12 +157,14 @@ static void mchord_tone(mchord_t *m, uint32_t i)
 {
     track_t *t = &trk[(m->id - 1u) % NTRK];
     uint32_t x = m->note[i];
+    rec_ctone = (uint8_t)i;
     if (!midi_note_held(t, x) && !midi_local_held(t, x)) {
         if (duell_mode == DM_LAYER)
             lay_input(t, x, m->vel);
         else
             input_on(t, x, m->vel);
     }
+    rec_ctone = 0;
     m->n = (uint8_t)(i + 1u);
 }
 
@@ -197,10 +199,12 @@ static void midi_play(track_t *t, uint32_t ch, uint32_t note, uint32_t vel)
     } else if (rt & 1u) {
         for (i = 0; i < n; i++)
             if (!midi_note_held(t, nn[i]) && !midi_local_held(t, nn[i])) {
+                rec_ctone = (uint8_t)i;
                 if (lay)
                     lay_input(t, nn[i], vel);
                 else
                     input_on(t, nn[i], vel);
+                rec_ctone = 0;
             }
         if (n > 1u || nn[0] != note) {
             mchord_t *m = &mchord[f];
@@ -241,8 +245,11 @@ static void midi_play(track_t *t, uint32_t ch, uint32_t note, uint32_t vel)
             return;
         }
         for (i = 0; i < n; i++)
-            if (!midi_note_held(t2, nn[i]) && !midi_local_held(t2, nn[i]))
+            if (!midi_note_held(t2, nn[i]) && !midi_local_held(t2, nn[i])) {
+                rec_ctone = (uint8_t)i;
                 lay_input(t2, nn[i], vel);
+                rec_ctone = 0;
+            }
         if (n > 1u || nn[0] != note) {
             mchord_t *m = &mchord[f];
             m->ch = (uint8_t)ch;

@@ -657,6 +657,8 @@ static void tk_plain(uint32_t p)
             t->step[i].note[k] = (uint8_t)clamp((int32_t)t->step[i].note[k] + off, 0, 127);
     t->p[P_SDIV] = t->p[P_ARATE];
     t->p[P_AMODE] = 0;
+    t->arp_skip = 0;                                     /* (the arp's hold and its skipped step go with ARP SEQ) */
+    t->rh_n = 0;
     fm1_irq_on();
 }
 static __attribute__((noinline)) void tk_close(uint32_t mask)                       /* the parts of mask stopped recording */
