@@ -243,13 +243,26 @@ static void wash_stop(void)
     REQUIRE("W1: WASH OFF: the movement stays 0 and the cutoff is the dip alone", mxs[0].motion==0 && morph_xcut(t,uc)==ed);
     morph_cdd[0]=0; t->mwon=0; mxs[0].lp=mxs[0].vf=0;
 }
+/* Audit finding 9: a new Original's stand-in drain that was left to the render side (core 1 held part 2's job) waits while a new crossing runs already, instead of being cleared with the
+ * stand-ins mapped; with the bridge off it is done as before */
+static void drain_waits(void)
+{
+    track_t *t=fresh(ENGI_FM6);
+    fm6_xt[0].on=1; fm6_xt[0].drain=fm6_xt[0].dirty=1; fm6_xt[0].mute=63u;
+    fm6_block(t);
+    REQUIRE("finding 9: with a crossing running again the drain waits (drain, dirty and the mute kept)", fm6_xt[0].drain==1 && fm6_xt[0].mute==63u);
+    fm6_xt[0].on=0;
+    fm6_block(t);
+    REQUIRE("finding 9: with the bridge off the drain gives back and clears, as before", fm6_xt[0].drain==0 && fm6_xt[0].mute==0 && fm6_xt[0].dirty==0);
+    memset(fm6_xt,0,sizeof fm6_xt);
+}
 #endif
 int main(void)
 {
     setvbuf(stdout, 0, _IONBF, 0);
     at_rest();
 #ifdef CROSSINGS
-    curves(); key_layout(); held_retune(); held_keep_retune(); compact_tuning(); chain_dip(); wash_stop();
+    curves(); key_layout(); held_retune(); held_keep_retune(); compact_tuning(); chain_dip(); wash_stop(); drain_waits();
 #endif
     printf("crossings: %u checks, %u failures\n",checks,failures);
     return failures?1:0;
