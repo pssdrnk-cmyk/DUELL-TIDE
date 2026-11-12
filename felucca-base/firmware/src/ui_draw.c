@@ -747,6 +747,33 @@ static void draw_gaps(uint32_t y, uint32_t h)
         lcd_fill(x, y, w, h, T_BG);
     }
 }
+/* b10 ui-a (Phase A, cost #2): a grid layout's strips (header, cards, panel, cells, footer) cover ~95 % of the body, so the whole-body fill (46,320 px, 37 ms of SPI) before them is
+ * almost all drawn over. Only the BG the strips leave is filled: the rows between them (GAPB: grid, first row, rows) and the gutters beside the cards (every column set any grid
+ * uses, x 0..3, 79..81, 119..120, 158..160, 236..239, rows 27 .. 216: a fill under a strip is only drawn over). Found with tests/gap_probe.c:
+ * every page of every engine and the QUICK layers redrawn on a poisoned screen end equal to the whole-body fill's picture. A grid with no row here (13, any new one) is filled whole. */
+static void grid_fill(void)
+{
+    static const uint8_t GAPB[][3] = {{1, 24, 3}, {1, 103, 3}, {1, 160, 2}, {1, 216, 1}, {2, 24, 4}, {2, 112, 4}, {2, 200, 2}, {4, 24, 4},
+        {5, 24, 3}, {5, 51, 3}, {5, 130, 7}, {5, 209, 8}, {6, 24, 4}, {6, 80, 6}, {6, 198, 4}, {7, 24, 3}, {7, 90, 3}, {7, 152, 3}, {7, 214, 3},
+        {14, 24, 3}, {14, 119, 98}, {15, 24, 3}, {15, 51, 3}, {15, 133, 4}, {15, 216, 1},
+        {16, 24, 3}, {16, 150, 1}, {16, 170, 4}, {16, 184, 5}, {16, 194, 8}, {16, 209, 8}, {17, 24, 3}};
+    static const uint8_t GUT[5][2] = {{0, 4}, {79, 3}, {119, 2}, {158, 3}, {236, 4}};
+    uint32_t i, n = 0;
+    for (i = 0; i < sizeof GAPB / sizeof GAPB[0]; i++)
+        if (GAPB[i][0] == grid_on) {
+            lcd_fill(0, GAPB[i][1], 240, GAPB[i][2], T_BG);
+            n++;
+        }
+    if (!n) {
+        gap_rows(H_HEAD, Y_FOOT + 15);
+        return;
+    }
+    for (i = 0; i < 5u; i++)
+        lcd_fill(GUT[i][0], 27, GUT[i][1], 190, T_BG);
+}
+#ifndef GRID_PREFILL
+#define GRID_PREFILL() grid_fill()
+#endif
 /* full redraw: the strips (header, cards, panel, footer) cover the rest; only the BG between them is filled */
 static void draw_frame(void)
 {
@@ -754,7 +781,7 @@ static void draw_frame(void)
     if (ui.force == 2)                                 /* item 152 A: the same page again (ui_refresh): the strips and cards cover their own rows, the BG between them is already there */
         return;
     if (grid_on) {                                     /* the grid: everything under the header is drawn over the background */
-        gap_rows(H_HEAD, Y_FOOT + 15);
+        GRID_PREFILL();
         return;
     }
     gap_rows(H_HEAD, Y_LABEL);
