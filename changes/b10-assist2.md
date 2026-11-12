@@ -1,5 +1,0 @@
-## changelog
-### 1.0.0-b10
-- **Changed (live assist works like a normal sequencer; owner: "let's focus on delivering the performance assist update"):** the loop is always the part's own LEN; REC from stop arms and waits and the first key starts PLAY with its note on step 1 (COUNT-IN on: as before); every answer fits inside LEN (REPLY: the first half calls, the second answers; ECHO wraps round the loop) and starts on the next bar line; the answer is remade at every loop pass while armed in all four modes; rolls no longer use undo slots and work while REC is armed; in LAYER only the recording part hears the keys; an ARP SEQ part plays a take or an answer as single notes (undo / reload brings the chord back); every factory multi has a key (M01, M02 C minor, M16-M19, M25 added).
-- **Removed:** the first-take loop rule, the doubled loop of REPLY / ECHO, the messages "CALL: 2 BARS AT MOST" and "NO ANSWER: NO ROOM UNDER IT".
-- **Fixed:** on an ARP SEQ part a key with CHRD set the step to its top chord tone; it now keeps the key's own note.

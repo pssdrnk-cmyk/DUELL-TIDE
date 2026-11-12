@@ -259,6 +259,7 @@ Name: TIDE (owner, 12 November: drop DUELL; the attribution line stays)
 - ~~Pattern save: document the exact visible entry point (saving needs STOP) before any live test.~~ Built in b10 chores, with a correction: saving a pattern does not need STOP. SAVE held on PATTERNS goes to the slot confirm before the STOP check (`ui_input.c`, `patch_save_ask`); `ui_name.c:282` keeps a pattern in RAM while playing. Documented in `QUICKSTART.md:112`.
 
 **Tooling**
+- **Web emulator: keep our engine, borrow features** (12 November; the emulator survey is kept in the workspace notes, not shipped). Other FM-1 emulators either compile the firmware like ours (X0X, Hortator, MC-1) or emulate the FM-1's chip and run the real `.fwsc` package (fm1-emu by Joakim Eriksson, MIT; m-wave-fm1-browser-emulator, GPL-3.0). The chip emulators run at about 50 % real time on a weak core, so switching brings no speed. Borrow instead, each small: WAV recording of what you play; a saved flash store (IndexedDB), so the emulator keeps your sounds between visits; Web MIDI in with a channel picker, and a device picker; a phone landscape layout; loading / saving a backup file. Plus a check: run the real TIDE `.fwsc` in fm1-emu (or its CI action) as an independent test that the package boots and plays.
 
 **Repository and CI**
 - The `emu` CI job: fixed in [#4](https://github.com/pssdrnk-cmyk/DUELL-TIDE/pull/4) (emsdk sourced under bash; merged 8 November), and the job gates.
@@ -267,6 +268,7 @@ Name: TIDE (owner, 12 November: drop DUELL; the attribution line stays)
 - ~~Retire the plain build~~ Done (b10 tools lane): `DUELL_TIDE=0`, `jam/check_off.sh`, `jam/off.sha256`, the `tideoff` and `multiv8` groups (and the 1.0 -> 1.1 record converter) are gone, and the `#if DUELL_TIDE` sides are folded; the TIDE image is byte for byte the one before.
 - Test quality notes left from finding 38: ~~split the FM6 budget check by crossing state~~ and ~~one generated multi-name table~~ built in b10 (tools-b); the `F_NONE` hang exemption if it flakes.
 - Workspace clean-up: retire merged worktrees (owner's OK).
+- Redraw the pictures that still say DUELL: `docs/duell-tide-cover.jpg` (README, landing page) and the editor's header image `web/editor/img/editor-header.png`. The USB product name `DUELL` (usb.c) is the host's port and audio-device name; renaming it is a separate decision (saved DAW routings and the bench tools use it).
 
 **Memory savings, when a feature needs room** (estimates until measured; none is free)
 
