@@ -491,6 +491,7 @@ static uint8_t cin_flush;                       /* the count-in ended in this bl
 static uint8_t cin_note[NTRK][4], cin_vel[NTRK][4], cin_n[NTRK], cin_up[NTRK];   /* kept notes; cin_up bit k: let go */
 static int seq_counting(void) { return cin_left != 0u; }
 static volatile uint8_t rec_wait;               /* b10 (live assist): the parts REC was armed on from stop (no count-in): they wait, the first key of one starts PLAY with its note on step 1 */
+static uint8_t rec_ctone;                       /* b10: the tone of a key's (or MIDI note's) chord going to input_on now, 0 the key's own note (an ARP SEQ step keeps that one: rec_arp_note) */
 static uint8_t cin_first;                       /* .. a first key waits for PLAY (transport_req): cin_note keeps it as the count-in's last eighth does; events_block starts and records it */
 static uint32_t click_beat_len(void) { return 4u * div_samples(2); }   /* DIV 2: 1/16 */
 static int click_wanted(void)                  /* CLICK REC: while a track is armed (not in a song: no recording) */
@@ -911,17 +912,10 @@ static __attribute__((noinline)) void rec_arp_note(track_t *t, uint32_t note, ui
     } else
         root = 60;
     oc = (k / len) % (uint32_t)(t->p[P_AOCT] > 0 ? t->p[P_AOCT] : 1);   /* (arp_seq_notes raises each pass through the pattern by an octave) */
-    {   /* b10 (live assist): a key's chord (CHRD) comes as its tones one after another in the same block: the step keeps the key's own note, the first; the others only join the hold */
-        static uint32_t last[NSHOWN] __attribute__((section(".pool")));
-        uint32_t pi = trk_index(t), stamp = (clk_pos * 31u + clk_step) * 67u + idx + 1u;
-        if (pi < NSHOWN) {
-            if (last[pi] == stamp && t->rh_n && t->rh_start == idx) {
-                if (t->rh_n < 4u)
-                    t->rh_note[t->rh_n++] = (uint8_t)note;
-                return;
-            }
-            last[pi] = stamp;
-        }
+    if (rec_ctone) {                                /* b10 (live assist): a key's chord (CHRD): the step keeps the key's own note (tone 0); its other tones only join the hold */
+        if (t->rh_n && t->rh_start == idx && t->rh_n < 4u)
+            t->rh_note[t->rh_n++] = (uint8_t)note;
+        return;
     }
     rec_put(t, idx, (uint32_t)clamp((int32_t)note - (int32_t)root + 60 - 12 * (int32_t)oc, 0, 127), vel, 0, note);
     if (k != t->arp_idx)
@@ -1069,10 +1063,12 @@ static void key_tone(uint32_t k, track_t *t, uint32_t i, uint32_t vel)
     uint32_t x = kb_chord[k][i], mc = trk_midi_ch(trk_index(t));
     if (midi_local_held(t, x) || TIDE_MIDI_NOTE_HELD(t, x))   /* TIDE hook (H20; review FR8 A4): a MIDI note holds it too (as midi_play): not counted twice by the arp */
         return;
+    rec_ctone = (uint8_t)i;
     if (duell_mode == DM_LAYER && t == trk)
         lay_input(t, x, vel);
     else
         input_on(t, x, vel);
+    rec_ctone = 0;
     if (!(arp_mode(t) && !atgt_bits(t)) || TIDE_REC_ARP_KEYS(t)) {   /* (ARP on: the arp's notes are what sounds and goes out: arp_note_on; TIDE hook (H20): but an armed ARP SEQ part's key went to the voices by input_on, so it goes out here, and kb_mo ends it) */
         midi_out_event(0x09u | (0x90u | mc) << 8 | x << 16 | vel << 24);
         kb_mo |= 1u << k;
@@ -1081,8 +1077,10 @@ static void key_tone(uint32_t k, track_t *t, uint32_t i, uint32_t vel)
 /* .. LAYER part 2's copy of it */
 static void key_tone2(uint32_t k, uint32_t i, uint32_t vel)
 {
+    rec_ctone = (uint8_t)i;
     if (!midi_local_held(&trk[1], kb_chord2[k][i]))
         lay_input(&trk[1], kb_chord2[k][i], vel);
+    rec_ctone = 0;
 }
 
 /* key k plays kb_note[k] on track t: its chord (chord.c; the note alone with CHRD OFF). A note another key
@@ -1729,10 +1727,12 @@ static __attribute__((noinline)) void cin_record(void)
         track_t *t = &trk[i];
         for (k = 0; k < cin_n[i]; k++)
             if (rec_on(t)) {
+                rec_ctone = (uint8_t)(k && arp_mode(t) == AM_SEQ_ID);   /* (an ARP SEQ step keeps the first kept note) */
                 if (arp_mode(t) == AM_SEQ_ID)
                     rec_arp_note(t, cin_note[i][k], cin_vel[i][k]);
                 else
                     rec_note(t, cin_note[i][k], cin_vel[i][k]);
+                rec_ctone = 0;
                 if ((cin_up[i] >> k) & 1u)
                     rec_release(t, cin_note[i][k]);
             }
