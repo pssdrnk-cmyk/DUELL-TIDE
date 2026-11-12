@@ -3586,7 +3586,7 @@ static void tide_line_draw(void)
         wl_belt();
         tl_ph = wl_bpos << 20;
     }
-    sig = (st ? st * 7919u + (uint32_t)xp * 31u + (st == 2u ? tl_ph >> 22 : 0u) * 3u + mask * 1301u + ux.pal * 17u + 1u : 0u) + tl_up * 0x10001u;
+    sig = (st ? st * 7919u + (uint32_t)xp * 31u + (st == 2u ? tl_ph >> 22 : 0u) * 3u + mask * 1301u + ux.pal * 17u + 1u : 0u) + tl_up * 65537u;
     (void)beat;
     if (!ui.force && sig == tide_line_sig)
         return;
