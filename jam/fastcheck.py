@@ -635,14 +635,21 @@ def main():
     if a.verify_map:
         build_map(os.environ["HT_REALCC"], a)
     expanded = []
+    sdk = bool(shutil.which("emcc"))
+    env_sh = os.path.expanduser("~/emsdk/emsdk_env.sh")
+    if not sdk and os.path.exists(env_sh):          # (the way host_tests.sh finds it: an emsdk folder that does not give an emcc after its env script, a half-made install, is no SDK)
+        sdk = subprocess.run(["sh", "-c", '. "$0" >/dev/null 2>&1; command -v emcc >/dev/null 2>&1', env_sh]).returncode == 0
     for g in groups:
-        if g == "$EMU":
-            if shutil.which("emcc") or os.path.exists(os.path.expanduser("~/emsdk/emsdk_env.sh")):
-                expanded.append("emu")
-            else:
+        if g in ("$EMU", "emu"):                    # (--changed names the group `emu` itself when an edit reaches it, besides the $EMU token: without the SDK both are one SKIP, never a FAIL)
+            if sdk:
+                if "emu" not in expanded:
+                    expanded.append("emu")
+            elif "$EMU" not in expanded:
+                expanded.append("$EMU")
                 print("SKIP    emu (SDK unavailable)")
         else:
             expanded.append(g)
+    expanded = [g for g in expanded if g != "$EMU"]
     t0 = time.time()
     r = Runner(a)
     r.run(expanded)
