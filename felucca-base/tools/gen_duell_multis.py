@@ -27,6 +27,20 @@ def die(msg):
     sys.exit("gen_duell_multis: " + msg)
 
 
+NOTE_PC = {"C": 0, "C#": 1, "D": 2, "D#": 3, "E": 4, "F": 5, "F#": 6, "G": 7, "G#": 8, "A": 9, "A#": 10, "B": 11}
+
+
+def key_byte(m, keys):
+    """a multi's key as the firmware reads it (DF_KEY): 0xFF none; else the root's pitch class, plus 16 for a minor key (tools/factory_multis.py KEYS, by record number)"""
+    if keys is None:
+        return 255
+    k = keys.get(m.get("rec", m["slot"]))
+    if not k:
+        return 255
+    root, mode = k.split()
+    return NOTE_PC[root] + (16 if mode == "min" else 0)
+
+
 def write_names(folder, multis):
     """the one table of the factory multis' names, next to the header: multi_names.h (MULTI_NAME[slot - 1], MN_N) for the C tests and multi_names.txt
     (one "N NAME" line per slot) for tools/bench_run.py and the bench suites (`load multi M06`). A rename in tools/factory_multis.py changes both
@@ -99,6 +113,7 @@ def main(argv):
              "#define DF_TEST_MULTIS %d" % (1 if test_mode else 0),
              "#define DF_N %du" % len(recs),
              "static const uint8_t DF_SLOT[DF_N] = {%s};" % ", ".join(str(m["slot"] - 1) for m in multis),
+             "static const uint8_t DF_KEY[DF_N] = {%s};   /* the multi's key: 0xFF none, else root | 16 minor (tools/factory_multis.py KEYS) */" % ", ".join(str(key_byte(m, getattr(fm, "KEYS", None))) for m in multis),
              "static const uint16_t DM_LEN[DF_N] = {%s};" % ", ".join(str(len(b)) for b in recs),
              "static const uint16_t DM_AT[DF_N] = {%s};" % ", ".join(str(sum(len(x) for x in recs[:k])) for k in range(len(recs)))]
     def emit(name, data):

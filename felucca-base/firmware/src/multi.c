@@ -524,6 +524,7 @@ static int project_info(uint32_t slot, char *b)
     return project_used(slot);
 }
 static int project_name(uint32_t slot, char *b) { return project_info(slot, b); }
+static uint32_t project_key(void) { uint32_t f = proj_cur < MU_SHOWN ? df_of(proj_cur) : DF_N; return f < DF_N ? DF_KEY[f] : 0xFFu; }   /* b10 round 9: the loaded multi's key (DF_KEY: 0xFF none, else root | 16 minor; TAKE + ANSWER) */
 static uint32_t project_cur_slot(void) { return proj_cur; }   /* (0..MU_SHOWN - 1, PROJ_NO_SLOT none) */
 static void project_cur_name(char *b) { str_cpy(b, proj_name, PROJ_NAME_LEN + 1u); }   /* b: 13 bytes */
 
