@@ -4,3 +4,4 @@
 ## roadmap
 ### Later, in order
 - **Firmware objects for the host tests** (stage 1 of the HOSTOBJ design note, kept in the workspace notes): compile the firmware once per flag set to an object (statics exported by a build-time transform and a generated declarations header, no firmware file edited), link every group against it. Model: a firmware edit's `--changed` about 4 min to about 2 min (with the slow tier left out); M effort (about 4 tools sessions). Per-module objects (stage 2) not worth it. Needs the measurement below first: the model overestimated stage 0 (see `jam/README.md`, slow tier).
+- **Fixed (developer tooling):** `jam/wslmirror.sh` sets `core.fileMode false` in the mirror's repository on every run (also on a mirror made earlier): rsync from `/mnt/c` gave every file mode 755 against the index's 644, so `git diff BASE` listed every file and `--changed` selected every group in every lane's mirror.
