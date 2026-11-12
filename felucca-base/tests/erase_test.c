@@ -5,7 +5,7 @@
  *   2. YES erases the settings, favourites, autosave, patches (+ shadow copies), multis, pattern slots, user wavetables and (DUELL 1.1, item 91)
  *      the FM6 voice bank sector (the velocity calibration is KEPT, item 103: the unit's, not user data); the stock firmware's regions are untouched; the restart is due ~0.7 s later (the main loop reboots); nothing is
  *      written meanwhile (settings_poll / autosave);
- *   3. the next start is a fresh unit: VIOLET, LAYER, factory multi M01 (0.2.13: REESE SWAMP), no patches, the 32 default patterns and the factory multis back;
+ *   3. the next start is a fresh unit: TIDE (b10: a new unit's theme), LAYER, factory multi M01 (0.2.13: REESE SWAMP), no patches, the 32 default patterns and the factory multis back;
  *   4. a power cut after any number of erases: every object whole or empty, the settings still valid until the very last
  *      object has gone, the unit boots; running it again finishes;
  *   5. the editor op: only the exact token "ERASE ALL" (wrong token, wrong length: rc 1, nothing written), not while playing (rc 3).
@@ -325,8 +325,8 @@ int main(void)
     fm1_ms += 800u;
     ck("  ~0.7 s later the restart is due (main.c reboots; the browser build reloads)", erase_restart_due());
     boot();
-    ck("the next start is a new unit: no valid settings (first start), VIOLET", first_boot_pending == 1u && settings.palette == UI_DEFAULT_INDEX &&
-       str_eq(UI_PALETTES[settings.palette].name, "VIOLET"));
+    ck("the next start is a new unit: no valid settings (first start), TIDE", first_boot_pending == 1u && settings.palette == UI_DEFAULT_INDEX &&
+       str_eq(UI_PALETTES[settings.palette].name, "TIDE"));
     if (autosave_boot(1))
         first_boot_pending = 0;
     ck("  no autosave to restore", first_boot_pending == 1u);

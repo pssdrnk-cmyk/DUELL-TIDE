@@ -88,7 +88,7 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
    - AMOUNT is how far a roll goes.
    - STYLE DUB is the default.
 
-   Then AUTO TIDE. Press PLAY and twist K1 on AUTO TIDE right: the parts evolve by themselves. With no notes coming in TIDE plays in C minor; send or hold one note to set its key. The [TIDE guide](TIDE_GUIDE.md) has the rest.
+   Then AUTO TIDE. Press PLAY and twist K1 on AUTO TIDE right: the parts evolve by themselves. With no notes coming in TIDE plays its own chord on C; send or hold one note to set its key. The [TIDE guide](TIDE_GUIDE.md) has the rest.
 4. Press **SAVE**. The first page is **PATCHES**: 128 slots, #1 to #128.
 
    - The factory sounds fill them. With TIDE the last four are empty USER slots (U1 to U4) for new sounds. The factory sounds go to #171. (#129 and up are read-only places.)
@@ -113,7 +113,7 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
 - **MULTIS**: 16 slots that hold both parts, effects, arps, patterns, mode and morph settings. The page always opens with LOAD picked.
 
   - **Factory scenes (M01 to M16):** all music, a curated programme with a genre each. In genre order: dub (M01 to M03), house (M04 to M08), tech (M09 to M13: Detroit, soul, minimal, hypnotic, cinematic) and acid (M14 to M16). All sixteen are free to overwrite. The former STRESS TEST is a test scene only.
-  - **TIDE built-in scenes (M17 to M24):** with TIDE the list goes on with electro (M17 ELEC ROBOT, M18 ELEC DEEPSEA, M19 ELEC WARPED), ambient (M20 AMB TECHNO, M21 AMB BERLIN, M22 AMB LOOPS) and two drones built into the firmware, M23 AMB DUNEHORN and M24 AMB GROWL (a deep growling drone). They load and play like the others. TIDE plays the two drones as STYLE DRONE (hold a chord around C3, PLAY with AUTO TIDE on). None of them can be saved over, renamed or erased. Save an edited one into M01 to M16 instead.
+  - **TIDE built-in scenes (M17 to M26):** with TIDE the list goes on with acid (M17 ACID TWO 303, M18 ACID LINES), electro (M19 ELEC ROBOT, M20 ELEC DEEPSEA, M21 ELEC WARPED), ambient (M22 AMB TECHNO, M23 AMB BERLIN, M24 AMB LOOPS) and two drones built into the firmware, M25 AMB DUNEHORN and M26 AMB GROWL (a deep growling drone). They load and play like the others. TIDE plays the two drones as STYLE DRONE (hold a chord around C3, PLAY with AUTO TIDE on). None of them can be saved over, renamed or erased. Save an edited one into M01 to M16 instead.
   - **TIDE view:** the list shows three rows with the picked multi opened under them. Both parts' sound names, ARP / SEQ / OFF and their first 16 steps (or NO SEQUENCE) before you load. A record that does not load reads DAMAGED.
   - **Loading:** turn knob 1 to the multi you want, press OCT+ to load it. Knob 3 picks SAVE instead. Loading a multi sets its own levels, pan, mute and sends and the effects it stores (chorus, delay, reverb with their settings), whatever the mixer was. It leaves your MIDI settings, the clock source, TUNE and the master effect BASS MONO as they are. BASS MONO is a setting of your unit, not of the multi.
 - To start from scratch (erases settings, patches, multis, patterns, the user wave tables and the FM6 voice bank): MENU (hold HOME) > SYSTEM > ERASE DATA. A reinstall alone keeps your data.
@@ -198,6 +198,7 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
     - In those two modes the repeats do not alternate left and right, that is PING-PONG.
     - SPREAD is the stereo width. It is not shown in DIGITAL, nor in DUEL, where there is nothing to spread.
     - The pages run top-down: MODE, TIME, FDBK, COLR, then SPREAD, MRATE, MOD, MIX last.
+    - **COLR LFO** is not on the DELAY pages. It is GLO's page 6 of 13 (its own page, shown as COLR LFO): one knob, COLOR LFO, 0 to 15, a slow wave at 0.25 Hz that swings the echo's colour darker and brighter, 8 colour units a step each way, so the repeats move like a hand on a dub echo's tone control. 0 is off. DUB BASIC and DUB CHORD use 5, and a multi stores it.
     - A TIME that does not fit the delay line (1/2 at 77 BPM, for example) is halved until it does, in every mode. The TIME card shows the note value that plays.
     - In DIGITAL and PING-PONG a change of TIME, TEMPO or an external clock bends the repeats like a tape instead of clicking.
     - In DUEL (new in 0.2.22) all four modes work, mono on each part's own side. PING-PONG sounds like DIGITAL there, because a ping-pong needs two sides. The RANDOM and OCT UP events stay in the middle of the part's side.

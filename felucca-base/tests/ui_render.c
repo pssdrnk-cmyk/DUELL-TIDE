@@ -2135,7 +2135,7 @@ static void al_keycaps(void)
 /* b6 SP2: every keycap pill (KC_COUNT, the knob dots too) in six states (the fills KEY, DIM and ACCENT over BG and over MID) and
  * five places (whole, cut by each canvas edge) in every palette: a hash of the pixels, which must be KC_SWEEP_HASH, b5's (the
  * pills as raw nibbles, cv_alpha) now that they are Huffman-coded (cv_alpha_hc). UI_KC_DUMP=FILE writes the canvases raw */
-#define KC_SWEEP_HASH 0x1924f365u
+#define KC_SWEEP_HASH 0x50ccba6du   /* (b10 tide-id: the TIDE palette row, swept with the others; proven by revert (jam/repin.sh fe30d72 ui: the old hash passes without it); was 0x1924f365u) */
 static uint32_t kc_sweep(void)
 {
     static const int16_t X[5] = {2, -5, 0, 2, 2}, Y[5] = {2, 2, 2, -4, 8};
@@ -2414,7 +2414,21 @@ static int about_tide_main(const char *out)
             ui.force = 1;
             cur_name = "about_tide";
             draw(-1);
-            for (i = 0; i < nscr; i++) if (!strcmp(scr[i].s, DUELL_TIDE_ID)) seen++;
+            {   /* (b10 TIDE identity: ABOUT says "TIDE 1.0.0-b9+" in its gradient, a glyph at a time (cv_text_grad; MONO: one text): the glyphs of a row joined) */
+                char row[64];
+                uint32_t n = 0;
+                for (i = 0; i < nscr; i++) {
+                    if (!strcmp(scr[i].s, "TIDE " DUELL_TIDE_ID))
+                        seen++;
+                    if (scr[i].s[0] && !scr[i].s[1] && n + 1u < sizeof row)   /* (consecutive single glyphs: one gradient text) */
+                        row[n++] = scr[i].s[0];
+                    else
+                        n = 0;
+                    row[n] = 0;
+                    if (n && (strstr(row, "TIDE" DUELL_TIDE_ID) || strstr(row, "TIDE " DUELL_TIDE_ID)))   /* (a space may be no glyph of its own) */
+                        seen++, n = 0;
+                }
+            }
             lint();
         }
         if (!seen) { fprintf(stderr, "ui_render: ABOUT (%s) never draws the TIDE id %s\n", UI_PALETTES[p].name, DUELL_TIDE_ID); nfind++; }

@@ -233,7 +233,13 @@ static void test_arc_trip(void)
     CHECK("ARC: DROP NEXT still shows (its room: the line is full with both)", strstr(l, "DROP NEXT") != 0);
     sqm_arc = 0; tarc.run = 0; tarc.hand = 0;
     tide_status(l);
-    CHECK("ARC: no ARC: the trip line as before", !strncmp(l, "TRAVEL TO A", 11));
+    {   /* (b10 item 6: TRAVEL names the sound it goes to, the selected part's end A) */
+        char nm[24], w[48];
+        tide_end_name(song.sel, 0u, nm);
+        str_cpy(w, "TRAVEL TO ", sizeof w);
+        str_cpy(w + 10, nm, sizeof w - 10u);
+        CHECK("ARC: no ARC: the trip line as before, TRAVEL naming where it goes", !strncmp(l, w, str_len(w)) && nm[0]);
+    }
     song.playing = 0; gl.on = 0;
 }
 

@@ -1939,7 +1939,7 @@ static uint32_t graph_signature(void)
     }
     if (pg->graph == GR_SLOTS) {                     /* (a checksum over each slot) */
         for (i = 0; i < MU_SHOWN; i++)
-            h ^= (uint32_t)project_used(i) << (8u + i);
+            h = (h ^ ((uint32_t)project_used(i) + 1u) * (i + 0x9E37u)) * 16777619u;   /* (each slot mixed in: the old bit per slot, 1u << (8 + i), overflowed at M25: MU_SHOWN 26, UBSAN) */
         graph_project_used(0);
         h += graph_pname_sig;
         h = (h ^ (multi_gen() + 1u) * 0x9E3779B1u ^ (uint32_t)project_cur_slot() << 16) * 16777619u;   /* (U3: the preview's record, the multi loaded now) */

@@ -2435,6 +2435,12 @@ static void ui_input(void)
             kr_t[k] = fm1_ms;
             continue;
         }
+        if (k == 3u && pg->graph == GR_SLOTS) {         /* b10 item 7: SAVE > MULTIS, knob 4: the next / previous genre's first multi (ui_draw.c mu_genre_jump) */
+            mu_genre_jump(s);
+            ui.hot_col = 3u;
+            ui.hot_t = 40;
+            continue;
+        }
         const scope_ops_t *op = scope_ops(pg->scope);
         if ((op && ((op->hot >> k) & 1u) && !(pg->graph == GR_MORPHSET && k == 3u)) || page_desc(pg, k, &hv) ||
             (k == 3u && duck_midi_page(pg)) ||

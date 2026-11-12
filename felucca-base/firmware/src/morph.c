@@ -787,7 +787,7 @@ static int32_t reflect_floor(int32_t x, int32_t o, int32_t fl)
 #define MORPH_CUT_DOWN 32                                /* a roll's net cutoff closing at most (morph_cut_steer) */
 #define MORPH_UF_LO 45                                   /* the multimode filter: a low-pass / band-pass share never below this dial step (~1.3 kHz) ... */
 #define MORPH_UF_HI 25                                   /* ... a high-pass / band-pass one never above this (~210 Hz); a pure band-pass up to MORPH_UF_BP */
-#ifndef MORPH_UF_RESBP                                   /* (the old ceilings were 40 and 60; the 1.0 -> 1.1 record converter that defined them is retired) */
+#ifndef MORPH_UF_RESBP                                   /* (tools/multi_v7_to_v8.py defines the old ceilings, 40 and 60, to roll the End B that 1.0 rolled) */
 #define MORPH_UF_RESBP 17                                /* the band-pass side: RES at most this (or the original's); audit P07: 17 has the damping 40 had under the linear RES law */
 #endif
 #define MORPH_UF_BP0 36                                  /* the band-pass side's CUT window */
@@ -1300,6 +1300,7 @@ static morph_part_t mph[NSHOWN];
 
 static uint32_t morph_xside(const morph_part_t *mp, int32_t w, int aud);
 static void morph_xrest(uint32_t pi);
+static uint8_t morph_xr[NSHOWN];                        /* b10 round 7 (FELUCCA_GUARDS): 1 = morph_xrest has run and morph_xstep / morph_xplan have written nothing since: a part with no morph skips it */
 static void morph_xreset(uint32_t pi);
 static int morph_xstep(track_t *t, morph_part_t *mp, uint32_t pi);
 static uint32_t morph_xreg(uint32_t pi, const int16_t *p, uint8_t *tid, uint8_t *chk, int16_t *tlive, uint32_t m);
@@ -1602,7 +1603,11 @@ static int morph_begin(track_t *t, int adv)
     mp = &mph[pi];
     t->mf = mp->fader;                                  /* (4b) the matrix's MORPH source for this block (mod.c) */
     if ((!mp->nid && !mp->fnid) || t->mwon || morph_stale(t, mp)) {
-        if (!t->mwon) morph_xrest(pi);
+        if (!t->mwon) GD_COUNT(gd_xr_call);
+        if (!t->mwon && !(FELUCCA_GUARDS && morph_xr[pi])) {
+            GD_COUNT(gd_xr_run);
+            morph_xrest(pi);
+        }
         return 0;
     }
     if (adv && morph_xstep(t, mp, pi)) mp->cvalid = 0;

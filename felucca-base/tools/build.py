@@ -394,6 +394,9 @@ def build_app():
     v = os.environ.get("FELUCCA_MOVECOST", "1")     # firmware/src/core.h (Later 10 + 13): 1 = a part's morph costs charged only while a transition moves, the INSERT dip's blend in 1/256 steps; unset or 0: as before (the default until the unit sweep)
     if v in ("0", "1"):
         flags.append(f"-DFELUCCA_MOVECOST={v}")
+    v = os.environ.get("FELUCCA_GUARDS", "1")     # firmware/src/core.h (b10 round 7): 1 = morph_xrest and vs_block run only when their inputs are live (same sound, bit for bit); 0 = every block as before
+    if v in ("0", "1"):
+        flags.append(f"-DFELUCCA_GUARDS={v}")
     v = os.environ.get("DUELL_BUILD_DATE")   # ABOUT's date ("Nov  1 2026", __DATE__'s form): unset, the day of the build
     if not v and "--release" in sys.argv:    # a release carries the date of its commit, so a rebuild of the same commit is byte-identical
         try:

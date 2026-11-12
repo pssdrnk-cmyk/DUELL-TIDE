@@ -742,6 +742,7 @@ typedef struct { uint8_t note, vel; uint16_t xg; } vs_ent_t;
 static vs_ent_t vs_q[NTRK][VS_QN];
 static uint8_t vs_qn[NTRK], vs_n[NTRK];                 /* waiting; started this block */
 static uint32_t vs_held;                                /* note-ons held back since power-on (tests, console) */
+static uint8_t vs_busy;                                 /* b10 round 7 (FELUCCA_GUARDS): a note-on was counted or is waiting since vs_block last found nothing to do: vs_block returns at once while it is 0 */
 /* note sounds on part t already (a re-strike: voice_alloc restarts that voice in place, its states kept: no start from rest, nothing to stagger) */
 static int vs_sounding(const track_t *t, uint32_t note)
 {
@@ -761,9 +762,11 @@ static void trk_note_on_1(track_t *t, uint32_t note, uint32_t vel)
             e->vel = (uint8_t)vel;
             e->xg = t->lay_xg;                          /* (LAYER XFADE: the share it was played with) */
             vs_held++;
+            vs_busy = 1;
             return;
         }
         vs_n[p] = (uint8_t)(vs_n[p] + (trk_vmode(t) == V_UNISON ? trk_nvoice(t) : 1u));
+        vs_busy = 1;
     }
     trk_note_on_now(t, note, vel);
 }
@@ -771,6 +774,11 @@ static void trk_note_on_1(track_t *t, uint32_t note, uint32_t vel)
 static __attribute__((noinline)) void vs_block(void)
 {
     uint32_t p, i, k;
+    GD_COUNT(gd_vs_call);
+    if (FELUCCA_GUARDS && !vs_busy)
+        return;
+    GD_COUNT(gd_vs_run);                                         /* (nothing counted, nothing waiting: the loop below would only store 0 over 0) */
+    vs_busy = 0;
     for (p = 0; p < NTRK; p++) {
         track_t *t = &trk[p];
         vs_n[p] = 0;
@@ -784,6 +792,7 @@ static __attribute__((noinline)) void vs_block(void)
         for (i = 0; k + i < vs_qn[p]; i++)
             vs_q[p][i] = vs_q[p][k + i];
         vs_qn[p] = (uint8_t)i;
+        vs_busy |= (i | vs_n[p]) != 0u;                 /* (still waiting, or started this block: the next block resets the count and starts the rest) */
     }
 }
 /* a note-off: the same note waiting in part t's queue never starts */

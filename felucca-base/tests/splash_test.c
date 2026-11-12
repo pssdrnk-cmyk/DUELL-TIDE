@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* DUELL: the power-on splash, the VIOLET default, the version name and the CPU load meter's window maths.
- *   VIOLET     a fresh unit's theme is VIOLET (UI_DEFAULT_INDEX = 0, the first palette)
+ *   TIDE       a fresh unit's theme is TIDE (b10 TIDE identity: UI_DEFAULT_INDEX, an appended palette); a unit with a saved colour keeps it
  *   VERSION    the shown version is "DUELL <VERSION> beta" (the VERSION file -> build/gen/duell_version.h)
  *   SPLASH     begun at once, it lasts SPLASH_MS (1.2 s) and then the UI is drawn again; any button, key or knob ends it and is
  *              used up by that (the page does not change); a MIDI note does not end it and sounds; ANIM OFF: one still frame
@@ -34,8 +34,10 @@ int main(void)
 {
     uint32_t i, p0, page0;
     setvbuf(stdout, NULL, _IONBF, 0);
-    expect("the default theme is VIOLET", UI_DEFAULT_INDEX == 0u && !strcmp(UI_PALETTES[UI_DEFAULT_INDEX].name, "VIOLET"));
-    expect("a fresh unit (settings blank) starts in VIOLET", (settings.magic = 0, settings_init(), settings.palette == UI_DEFAULT_INDEX));
+    expect("the default theme is TIDE (appended after GREY / MONO: saved ids keep their theme)", !strcmp(UI_PALETTES[UI_DEFAULT_INDEX].name, "TIDE") &&
+           UI_DEFAULT_INDEX == NPALETTES - 1u && !strcmp(UI_PALETTES[0].name, "VIOLET"));
+    expect("a fresh unit (settings blank) starts in TIDE", (settings.magic = 0, settings_init(), settings.palette == UI_DEFAULT_INDEX));
+    expect("a unit with VIOLET saved keeps VIOLET", palette_from_stored(palette_to_stored(0u)) == 0u);
     expect("the version is DUELL " DUELL_VERSION " (the VERSION file)", !strcmp(FELUCCA_VERSION, DUELL_VERSION_STR) && !strcmp(FELUCCA_VERSION, DUELL_VERSION_STR));
 
     ui_power_on();
