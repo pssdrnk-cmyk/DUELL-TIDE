@@ -1169,6 +1169,7 @@ static void t_tide(void)
     bd_t b, b0;
     uint32_t ok = 1, k, p;
     load_both(DM_LAYER, 0);                             /* #01 BEHIVE on both parts (ANALOG, the multimode filter running) */
+    bd_mv[0] = bd_mv[1] = 1;                            /* both faders moving: with FELUCCA_MOVECOST (the shipped build) the valley and the wash are charged in full only while a transition is under way (budget.c bd_where); the rest state is checked below */
     morph_wlvl = 0;
     bd_build(&b0);
     ok &= eng_of_slot_named("ANALOG") && b0.p[0].tide_v == BD_TIDE_DIP && b0.p[1].tide_v == BD_TIDE_DIP;
@@ -1186,6 +1187,23 @@ static void t_tide(void)
     for (p = 0; p < 2u; p++)
         ok &= b.p[p].tide >= BD_TIDE_VALLEY && b.p[p].misc >= b0.p[p].misc - b0.p[p].tide + BD_TIDE_VALLEY;
     printf("budget:     TIDE: #01 BEHIVE x 2, WASH OFF: the valley %u + the wash 0 (filter MODE not a low-pass: %u + 0), the dip %u a voice; WASH MID adds %u\n", b0.p[0].tide, b.p[0].tide, b0.p[0].tide_v, BD_TIDE_WASH);
+#if FELUCCA_MOVECOST
+    /* at rest (b10 round 6, finding 34): the fader at an end, arrived, no glide: no valley whatever the filter MODE, no dip charge change, and with WASH on only the wash's meter (BD_TIDE_WASH_REST), WASH OFF nothing */
+    bd_mv[0] = bd_mv[1] = 0;
+    load_both(DM_LAYER, 0);
+    for (k = 0; k < 2u; k++)
+        trk[k].p[P_FREEC] = 40;
+    morph_wlvl = 2;
+    bd_build(&b);
+    for (p = 0; p < 2u; p++)
+        ok &= b.p[p].tide == BD_TIDE_WASH_REST && b.p[p].tide_v == BD_TIDE_DIP;
+    morph_wlvl = 0;
+    bd_build(&b);
+    for (p = 0; p < 2u; p++)
+        ok &= b.p[p].tide == 0u && b.p[p].tide_v == BD_TIDE_DIP;
+    printf("budget:     TIDE at rest (fader at A, MOVECOST): the wash's meter %u with WASH MID, 0 with WASH OFF, no valley (filter MODE not a low-pass)\n", BD_TIDE_WASH_REST);
+#endif
+    bd_mv[0] = bd_mv[1] = 0;
     /* no morph, or muted: nothing */
     load_both(DM_LAYER, 0);
     for (k = 0; k < 2u; k++)
