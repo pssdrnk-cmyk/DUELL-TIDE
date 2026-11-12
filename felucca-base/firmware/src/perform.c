@@ -656,7 +656,7 @@ static __attribute__((noinline)) void perf_switch(uint32_t a) { perf_buf_select(
                 z1 = 2 * v2 - z1
 #define PF_MOVE a1 += d1, a2 += d2, a3 += d3
 #define PF_HP(k) (x - v2 - (int32_t)(((int64_t)(k) * v1) >> 30))
-#define PF_IN(v) (clamp(v, -PF_XMAX, PF_XMAX) << PF_SH)
+#define PF_IN(v) (clamp(v, -PF_XMAX, PF_XMAX) * (1 << PF_SH))   /* (a multiply, not a shift: a negative sample shifted left is undefined in C; the same bits, the same instruction) */
 #define PF_OUT(v) (((v) + (1 << (PF_SH - 1))) >> PF_SH)
 #define PF_LOOPS(IN, LP, HP)                                                                        \
     uint32_t i;                                                                                   \
