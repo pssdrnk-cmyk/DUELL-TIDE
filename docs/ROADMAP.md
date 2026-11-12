@@ -106,7 +106,6 @@ Closed from "Later": the parameter units as an index (SP4, below).
 ## Built in b10-rc3, waits for the FM-1
 
 - **ARC first beat:** the first beat of a new ARC phase plays at the new phase's loudness (louder peak, softer breakdown), not the old level.
-- **FM6 sounds keep their level when TIDE rolls them:** a ROLL, DRIFT or WANDER step moves the FM6 envelope once, so 99.7 % of rolls stay within 4.5 dB (was 70 %). Factory multis keep their stored End B; HORN SWELL gets a new End B.
 - **Hot-code check:** it now follows function pointers, so an engine voice function left in flash is no longer invisible; 15 engine hooks are allow-listed as event rate. No image changes.
 
 ## Tooling: faster work (owner, 11 November)
