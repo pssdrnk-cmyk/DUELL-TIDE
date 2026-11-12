@@ -204,11 +204,11 @@ int main(void)
 
     /* F: records written by b8 rc1 / rc2 (tests/store_xver8_fixture.h, store_xver8_gen.c on fork/b8-acid-integ ebc63ca): ANALOG WAVE in 4 bits, no width flag. The first XV8_PLAIN have no WAVE in
      * them (WAVE 0 in the values and in End B; another engine): the store reads them as b8 did. The others hold WAVE 3, 7, 8 (also in End B): the record does not say its width, so the
-     * store reads them as the 3-bit ones of b7 (B9-STORE, "ambiguity"; none of the owner's backups holds one): pinned here is only that they are accepted, stay the bytes they were, load
-     * without harm, and that the stored width of a re-save is the new one. */
+     * store reads them as the 3-bit ones of b7 (B9-STORE, "ambiguity"; none of the owner's backups holds one): pinned here is what the store does today: 4 of the 5 are accepted (the WAVE 7 one is refused), the accepted stay the bytes they were, load
+     * without harm, and none gives b8's values. */
     {
         enum { XV8_PLAIN = 3 };
-        uint32_t plain_ok = 0, plain_bytes = 0, plain_flag = 0, plain_put = 0, amb_put = 0, amb_bytes = 0, amb_eq = 0, amb_load = 0, amb_resave = 0;
+        uint32_t plain_ok = 0, plain_bytes = 0, plain_flag = 0, plain_put = 0, amb_put = 0, amb_bytes = 0, amb_eq = 0, amb_load = 0;
         memset(nor, 0xFF, sizeof nor);
         power_cycle();
         for (i = 0; i < XV8_NCASES; i++) {
@@ -241,7 +241,6 @@ int main(void)
                 printf("store_xver:   b8 record %u (slot %u): loads %s b8's values\n", i, c->slot, !memcmp(v, c->val, sizeof v) ? "to" : "NOT to");
             }
         }
-        (void)amb_resave;
         snprintf(msg, sizeof msg, "F: the %d b8 rc1 / rc2 records without WAVE are accepted, none carries PTF_W4", XV8_PLAIN);
         ck(msg, plain_flag == 0 && plain_put == XV8_PLAIN);
         ck("F: the records without ANALOG WAVE load to the values b8 loaded (parts, extension slots, End B)", plain_ok == XV8_PLAIN);
