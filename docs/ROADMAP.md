@@ -199,6 +199,13 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 - The part you aren't playing responds: a complementary bass in the same key from a stored melody, question / answer (extending b7's call and answer), dub-style doubling or answering on the other voice.
 - Design study first (the coordinator's `PERF_ASSIST` brief); the owner picks the player-facing choices before it is built.
 
+**Full design overhaul: TIDE as its own instrument** (owner, 12 November: a separate, standalone topic, not now). b10 brought the TIDE colours, splash and tide line (direction A of `work/b10/reports/DESIGN_CONSULT.md`); the shapes are still DUELL's, and the DUELL logo and artwork are not under the GPL. Three parts, in this order:
+- Off the unit: the website, installer, emulator page, release and package names (`duell-tide-…`) and README say TIDE, with the credits to DUELL and Felucca kept.
+- A TIDE home / performance page built around time: where the tide is, the ARC phase, bars, and live assist's take and answer on one screen.
+- The shape language: water-line fills, wave-edged knob bars, a TIDE header on the global pages, one icon style, replacing DUELL's cards and bars.
+
+Each part is proposed with close-ups and approved by the owner before it's built.
+
 **Screens** (redundancy audit 8 November, all 433 screens rendered)
 - TIDE rows SYNC and ROLL renamed so they don't share words with tempo sync and MORPH's ROLL. (The rest of this audit was released in b4.)
 
@@ -277,9 +284,8 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 
 ## Ideas, not decided
 
-- Effects ideas from the sourced recipes (the b9 recipe research), each needing flash: ~~a slow LFO on the delay loop filter~~ (built in b10: COLR LFO); a noise source for the FM6 and insert sounds (Attack's dub-chord "chuff" and tape hiss, not possible today); a low cut or EQ on the reverb return; a phaser / flanger insert; a fast LFO to oscillator sync / PWM, plus tremolo / auto-pan; a two-tap delay (one synced, one free); separate L / R delay times; ducking the delay and reverb returns by the part's own notes; a per-bar delay-send ramp and a reverb accent on a phrase's last note; a slow swell LFO on a part's level; an oscillator pitch envelope.
+- Effects ideas from the sourced recipes (the b9 recipe research), each needing flash: ~~a slow LFO on the delay loop filter~~ (built in b10: COLR LFO); a noise source for the FM6 and insert sounds (Attack's dub-chord "chuff" and tape hiss, not possible today); a low cut or EQ on the reverb return; a phaser / flanger insert; a fast LFO to oscillator sync / PWM, plus tremolo / auto-pan; a two-tap delay (one synced, one free); separate L / R delay times; ducking the delay and reverb returns by the part's own notes; a per-bar delay-send ramp and a reverb accent on a phrase's last note; a slow swell LFO on a part's level; an oscillator pitch envelope. Low priority (owner, 12 November: "Effects are a bit less important I have other gear for that").
 - ~~More factory multis~~ (built in b10 as M19 to M24: hypnotic techno, cinematic hypnotic techno, dub house, lo-fi house, ambient techno, minimal; researched from Attack Magazine technique articles in b9): about 0.5 KB each, room from USB AUDIO OFF and its int16 resampler taps (b9) and SP5.
-- **Wave card L/R lines and the deep-bass line:** about 4 KB more RAM. The candidates are PERFORM capture (8 KB = 93 ms shorter capture) or a canvas drawn in strips. Owner decision when wanted.
 - **From Niagara Drift** (an FM-1 drone firmware; checked against our code 8 November, estimates until built): **reverb FREEZE** on HALL / ROOM (the tail holds and the notes can stop; a block-rate gain change with a limiter, ~200-400 B, no CPU while off; risks: fixed-point overflow and the release click) fits best. **AGE** (slow tape-like wear, ~300-600 B) needs an offset layer on top of the saved sound, not checked yet. Gesture keys and a free-time motion loop do not fit the flash, the keys or the no-new-pages rule.
 - **From the musical review** ([report](audits/2026-11-09/musical-review/REPORT.md)): the three ideas (a chord-rhythm vocabulary, voicing that breathes with the arc, a real call and answer) are built in b7.
 - **Keep current patterns on MULTI load** (U2 route A): an explicit load that keeps both playing patterns.
@@ -305,6 +311,7 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 - The drone scenes are built in (2 multis in ROM, no file pack); the musical review's ideas are built. (owner, 10 November)
 - A separate 303 engine ported from Open303 / X0X bass303.c (AC1): 14.8 KB of flash against 768 B free, 1.5 KB of RAM for two parts, 3.9x an ANALOG 24 dB note's CPU on the host. b8 builds the 303's accent and slide into the ANALOG engine instead (WAVE ACID / ACID SQR) (10 November).
 - An acid line generator (SEQ held + A4 writes a new 303 line, AC2): not needed. Acid lines are typed in and adjusted in the sequencer, which already plays notes, accents and slides (owner, 11 November).
+- Wave card L/R lines and a deep-bass band: decided against (owner, 12 November, after seeing drawn mock-ups: they clutter the wave page that the b10 overhaul just cleaned up).
 
 ## Versions and releases
 
