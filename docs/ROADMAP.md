@@ -184,7 +184,7 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 - K10: the dearer part (by measured cost) on core 1, not always part 2.
 - K11: a TIDE-only 5.8 ms half for background use, costed first (keyboard play keeps 2.9 ms).
 - K12: the "prove the CPU cost before flashing" process written into CONTRIBUTING and TESTING.
-- Two readers of the arp step ignore a POLY stretch (`ui_draw.c` ~1901, `seq_dialogue.c` ~44, found in the finding 36 review): check whether the display or TURNS can disagree with what plays.
+- ~~Two readers of the arp step ignore a POLY stretch~~ (`ui_draw.c` foot_playhead, `seq_dialogue.c` phrase_peer_attack): checked in b10 (b10/fw-b), no change needed. The footer's playhead already maps the arp step through `TIDE_ARP_IDX` (a stretch included; `f36` pins it equal to `tide_play_idx` over 16 arp steps inside a stretch, with a key held, none held and the arp not started); the dialogue reads the raw `arp_idx` but declines the whole prediction while either part is in a stretch (`tide_poly_on`, `f36` runs `phrase_peer_attack` with each part stretched). `P_SLEN` is 1..`NSTEP`, so `foot_playhead`'s length and `tide_poly_full`'s are the same. `f36` and `tidedialogue` PASS.
 - Code nits with no measured effect (finding 35): `DUELL_PROBE_STAGES` defined outside `#if DUELL_TIDE`; `morph_xside` into RAM only if the unit shows its cost; `glide_stop` lags one poll.
 
 **TIDE interface**
