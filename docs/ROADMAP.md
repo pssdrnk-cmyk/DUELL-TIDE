@@ -1,26 +1,30 @@
 # DUELL with TIDE roadmap
 
-Updated 10 November 2026. What is already built is in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md). Older roadmaps are in [history/](history/); the audits of 8 November in [audits/2026-11-08/](audits/2026-11-08/); the firmware review of 9 November in [audits/2026-11-09/firmware-review/](audits/2026-11-09/firmware-review/REPORT.md); the musical review of TIDE and the multis in [audits/2026-11-09/musical-review/](audits/2026-11-09/musical-review/REPORT.md).
+Updated 12 November 2026. What is already built is in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md). Older roadmaps are in [history/](history/); the audits of 8 November in [audits/2026-11-08/](audits/2026-11-08/); the firmware review of 9 November in [audits/2026-11-09/firmware-review/](audits/2026-11-09/firmware-review/REPORT.md); the musical review of TIDE and the multis in [audits/2026-11-09/musical-review/](audits/2026-11-09/musical-review/REPORT.md).
 
 State words on this page: Released in bN, Ready (built and tested, waiting for a release), Built (waits for the FM-1 test), In progress, Planned (brief written, not built), Next, Later, Waiting on you.
 
 ## Now: 1.0.0-b7
 
+The unit runs b10-rc2, flashed 12 November at 02:34 (its TIDE_VERSION string still reads 1.0.0-b9). b10-rc3 is built and tested, and waits for the FM-1.
+
 | What | State |
 |---|---|
 | Reverb on the second core, to free CPU (K4) | Built, needs its own FM-1 sweep with K4 on and off |
 
-## Built in b7, waits for the FM-1
+## On the unit: built in b7
 
-Six builder lanes made these overnight (9 to 10 November); each is measured on the host, none is yet on the unit. State words in brackets are honest: what is only partly done says so.
+On the unit since b10-rc2 (12 November).
+
+Six builder lanes made these overnight (9 to 10 November); each is measured on the host; all of it has been on the unit since b10-rc2. State words in brackets are honest: what is only partly done says so.
 
 | What | State |
 |---|---|
 | A sound saved from the web editor keeps its End B ([FR3](audits/2026-11-09/firmware-review/TASKS.md#fr3)) | Built |
 | Small control fixes: RENAME no longer types stray letters, OCT- held as a modifier doesn't also act on release, a fast PRESETS turn can't land on the other part, SEQ + REC arms REC however the buttons are lifted, NOT SAVED only for saves ([FR7](audits/2026-11-09/firmware-review/TASKS.md#fr7)) | Built |
 | Words that match the unit: ERASE DATA names the FM6 bank and the user tables (AMOUNT not dimmed in JOURNEY: done with page 1 in b7; the TURNS step falls away: the row is gone) ([FR11](audits/2026-11-09/firmware-review/TASKS.md#fr11)) | Built |
-| ALGORITHM on HOME: PART 1, the middle, PART 2. The middle plays both parts in the PLAY MODE row's mode and the header names it (LAYER, STEREO, DUEL); PART 1 / PART 2 play one part on every key; changing PLAY MODE moves ALGORITHM to the middle. With PLAY MODE on LAYER, moving between a side and the middle cuts a held chord (the mode change silences held keys by design) ([design](design/PLAY_MODE_SELECT.md)) | Built (b7/playsel, on b7), not on the unit yet |
-| SPLIT MIDDLE: the keys split in the middle and the split follows OCT- / OCT+; with SPLIT set, STEREO and DUEL split the keys too | Built (b7/playsel, on b7), not on the unit yet |
+| ALGORITHM on HOME: PART 1, the middle, PART 2. The middle plays both parts in the PLAY MODE row's mode and the header names it (LAYER, STEREO, DUEL); PART 1 / PART 2 play one part on every key; changing PLAY MODE moves ALGORITHM to the middle. With PLAY MODE on LAYER, moving between a side and the middle cuts a held chord (the mode change silences held keys by design) ([design](design/PLAY_MODE_SELECT.md)) | Built (b7/playsel, on b7), on the unit since b10-rc2 |
+| SPLIT MIDDLE: the keys split in the middle and the split follows OCT- / OCT+; with SPLIT set, STEREO and DUEL split the keys too | Built (b7/playsel, on b7), on the unit since b10-rc2 |
 | Factory pattern table packed: its accent / slide / tie flags as bit masks (SP3, 640 B), the room for the two above | Built (b7/playsel) |
 | STYLE DUB keeps the multi's own sounds (WANDER, not JOURNEY); AMBIENT without POLY; a saved STYLE stays that style ([MR1](audits/2026-11-09/musical-review/TASKS.md#mr1)). M02: brightness swing 2x not 7x, dulled bars 7 % not 51 %. The first start stays M02 DUB CHORD | Built |
 | A shorter TIDE SETTINGS page: nine rows, TURNS / ARP / PITCH / VARY / WASH / POLY / SYNC rows gone, MODE a row, ROLL TYPE no longer switches the rhythm off ([MR8](audits/2026-11-09/musical-review/TASKS.md#mr8)) | Built. One mark not met: ARC under ROLL SMART is only 0.67 to 0.82 like MUSIC (not 0.95), because ROLL TYPE's own pattern roll differs; that is what ROLL TYPE is for |
@@ -39,7 +43,7 @@ Six builder lanes made these overnight (9 to 10 November); each is measured on t
 | BASIC CHORD's dust bed and the two drone beds play with no notes coming in; every part that waits for keys plays TIDE's chord under AUTO TIDE ([MR2](audits/2026-11-09/musical-review/TASKS.md#mr2), both parts) | Built. Level with no keys: M14 is +4.4 dB over the median, M15 -11.8, M16 -3.7, M08 +3.2 (the old M14 and M15 are replaced) |
 | The multis' data pass ([MR3](audits/2026-11-09/musical-review/TASKS.md#mr3)): pads an octave down in TINE DUB and DEEP 332, drones at a house clock and 5 dB louder, swing on ORGAN SKANK, FINAL REEL's brass keeps its octave with a gentle low cut, PAD SPLIT and WHISPER TIDE 5 to 6 dB quieter with a chord held | Built (register overlap of TINE DUB / DEEP 332 not re-measured) |
 | The reel: fifteen new factory multis as one curated programme, a genre each (M01 BASIC CHORD (dub techno), M02 DUB CHORD (dub techno, rebuilt over a held pad), M03 JUNO DEEP and M04 LATE RHODES (deep house), M05 ORGAN HOUSE and M06 PIANO HOUSE (classic house), M07 DETROIT STAB and M08 HI-TECH SOUL (Detroit), M09 HYPNO 303 (hypnotic techno), M10 TWO 303s (acid), M11 ACID LINES (acid), M12 ROBOT FUNK and M13 DEEP SEA ARP (electro), M14 WARPED TAPE (IDM), M15 BERLIN RUN (Berlin school), M16 TWO LOOPS (ambient)). The night's six genre scenes, ORGAN SKANK, WARM ECHO, TINE DUB, DEEP 332 and the owner's four pads left the set (git history, fa8d5c0) | Built on the computer: notes, rhythm cells, registers and levels match the design; End B set by hand. Not on the unit yet: the CPU sweep decides (heaviest by the model: M06 PIANO HOUSE, M04 LATE RHODES, M05 ORGAN HOUSE), and the ear decides the organ, the piano, the acid line and the tape wobble |
-| HOME page 1 is the hands-on page: K1 MORPH at half the turning, K2 FILTER, K3 ECHO, K4 LENGTH on the slim row (b8: K3 RESONANCE, K4 ECHO, no LENGTH); BOTH moves each part by the same steps; OCT+ held + K1 rolls a new End B; OCT- + a knob puts it back; AMOUNT is a TIDE SETTINGS row, not dimmed in JOURNEY | Built (host tests, device build); not on the unit |
+| HOME page 1 is the hands-on page: K1 MORPH at half the turning, K2 FILTER, K3 ECHO, K4 LENGTH on the slim row (b8: K3 RESONANCE, K4 ECHO, no LENGTH); BOTH moves each part by the same steps; OCT+ held + K1 rolls a new End B; OCT- + a knob puts it back; AMOUNT is a TIDE SETTINGS row, not dimmed in JOURNEY | Built (host tests, device build); on the unit since b10-rc2 |
 | Loading one of your own sounds, a multi or a pattern no longer cuts notes the other part is holding ([FR6](audits/2026-11-09/firmware-review/TASKS.md#fr6)). Second-core code: its own FM-1 check. b8. | Built |
 | Pattern polish: a big tap-tempo jump doesn't flam or knock the arp off the grid (the rest of [FR13](audits/2026-11-09/firmware-review/TASKS.md#fr13)). | Built |
 | Load UNDO (OCT- held + PRESETS) and AUTO TIDE's HOME bring your saved sound back with its own End B ([FR10](audits/2026-11-09/firmware-review/TASKS.md#fr10)) | Built |
@@ -51,14 +55,16 @@ Six builder lanes made these overnight (9 to 10 November); each is measured on t
 The owner's answers to the musical review (9 November) are built in: the default for each of the nine questions, with the first start staying M02 DUB CHORD and FINAL REEL's brass pad keeping its octave.
 
 
-## Built in b8, waits for the FM-1
+## On the unit: built in b8
 
-A polish beta on top of b7 (details in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md#100-b8)); none of it is on the unit yet.
+On the unit since b10-rc2 (12 November).
+
+A polish beta on top of b7 (details in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md#100-b8)); all of it has been on the unit since b10-rc2.
 
 | What | State |
 |---|---|
 | ARP SEQ parts stay on the beat on the internal clock: on a long set the arp no longer drifts ahead of the bars and the click, at any tempo and after a tap tempo | Built |
-| HOME page 1's knobs are now K2 FLT, K3 RSN (the filter's resonance, on every engine), K4 ECH; LENGTH is dropped (owner 2026-11-11); OCT- + a knob still puts it back, BOTH moves each part by the same steps; test `morphui` t_home1 | Built (host tests, device build); not on the unit |
+| HOME page 1's knobs are now K2 FLT, K3 RSN (the filter's resonance, on every engine), K4 ECH; LENGTH is dropped (owner 2026-11-11); OCT- + a knob still puts it back, BOTH moves each part by the same steps; test `morphui` t_home1 | Built (host tests, device build); on the unit since b10-rc2 |
 | SAVE after JOURNEY says what it saves: "SAVES THE LOADED SOUND / KEEP FIRST = AS HEARD" above its question (what SAVE stores did not change) | Built |
 | ARC's new phase starts with its own levers: the breakdown's first beat is thinned, the peak's first loop gets no POLY stretch, as the rest of the phase does | Built |
 | The AUTO TIDE look-ahead test is back on factory multi slot 9, also over several ARC DROP arcs: no step shown that does not play | Built (no mismatch found) |
@@ -66,7 +72,9 @@ A polish beta on top of b7 (details in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md
 | Three acid multis: HYPNO 303 (slot 9, square 303 against the bar), TWO 303S (slot 10, two distorted 303s left and right), ACID LINES (slot 11, an acid-house saw line) | Built |
 | Under the hood: the TURNS leftovers are out, HOME's old MODE page leftover is out, and the `glidecpu` test's bound is 10 % (it failed on b8 before, not from a sound change) | Built |
 
-## Built in b9, waits for the FM-1
+## On the unit: built in b9
+
+On the unit since b10-rc2 (12 November).
 
 The sound and knobs beta on top of b8 (details in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md#100-b9)); released as 1.0.0-b9 (11 November) and on the unit since then.
 
@@ -86,6 +94,20 @@ The sound and knobs beta on top of b8 (details in the [CHANGELOG-TIDE](../CHANGE
 | `benchsim`: M17 DUNE HORN does not render the same forward and backward (its HORN SWELL sub); a test-side finding, the sound is right | Open: the CI lane's fix is not in this build |
 
 Closed from "Later": the parameter units as an index (SP4, below).
+
+## On the unit: built in b10 (rc2)
+
+- **COLR LFO (CLFO):** a new DELAY page knob, 0..15, swings the echo's colour darker and brighter at a slow 0.25 Hz; 0 is off, and DUB BASIC and DUB CHORD use 5. Multis store it.
+- **ELEC GRT and AMB DRF:** ELEC's GRT also moves the cutoff, so the odd harmonics span about 10 dB (was 2 dB); AMB's DRF reaches its full filter wobble in about 9 detents (twice as fast).
+- **Six new factory multis, M19 to M24:** TECH HYPNO, DUB HOUSE, HSE LOFI, TECH CINEMA, AMB TECHNO and TECH MINIMAL (24 factory multis in all).
+- **Developer tools:** `factory_multis.py verify` and `drone_pack.py verify` fail on any byte drift from the committed records M01 to M24; `multi_patch.py keep-amount` is removed.
+- **Developer tests:** a generated table of the factory multis' names (`build/gen/multi_names.h`) that the C tests read, so a rename cannot break them; `tests/bench_run_test.py` fails on a suite that spells a factory name.
+
+## Built in b10-rc3, waits for the FM-1
+
+- **ARC first beat:** the first beat of a new ARC phase plays at the new phase's loudness (louder peak, softer breakdown), not the old level.
+- **FM6 sounds keep their level when TIDE rolls them:** a ROLL, DRIFT or WANDER step moves the FM6 envelope once, so 99.7 % of rolls stay within 4.5 dB (was 70 %). Factory multis keep their stored End B; HORN SWELL gets a new End B.
+- **Hot-code check:** it now follows function pointers, so an engine voice function left in flash is no longer invisible; 15 engine hooks are allow-listed as event rate. No image changes.
 
 ## Tooling: faster work (owner, 11 November)
 
