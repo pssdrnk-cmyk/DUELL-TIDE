@@ -11,7 +11,7 @@ import json, os, re, shutil, subprocess, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FB = os.path.abspath(os.path.join(HERE, "..", ".."))
-STYLE = [0, 0, 1, 1, 1, 4, 4, 1, 2, 2, 2, 2, 4, 3, 1, 3, 5, 5]        # the suggested TIDE STYLE of each multi (0 DUB 1 DEEP 2 MINIMAL 3 AMBIENT 4 PEAK 5 DRONE)
+STYLE = [0, 0, 1, 1, 1, 4, 4, 1, 2, 2, 2, 2, 4, 3, 1, 3, 5, 5, 2, 0, 1, 4, 3, 2]        # the suggested TIDE STYLE of each multi (0 DUB 1 DEEP 2 MINIMAL 3 AMBIENT 4 PEAK 5 DRONE)
 STYLE_NAME = ["DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK", "DRONE"]
 NSOUNDS = 171
 FIELDS = [      # name -> JSON path in PREFIX.metrics.json (the unit is in README.md / METRICS.md)
@@ -137,7 +137,7 @@ def build_sounds(lab, ids):
 
 def build_multis(lab):
     out = []
-    for k in range(1, 19):
+    for k in range(1, 25):
         st = STYLE[k - 1]
         e = {"n": k, "name": None, "style": STYLE_NAME[st], "variants": {}}
         for vn, va in (("play", []), ("tide", ["--tide", "evolve", "--style", STYLE_NAME[st]]), ("part1", ["--solo", "1"]), ("part2", ["--solo", "2"])):

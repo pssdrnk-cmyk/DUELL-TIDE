@@ -106,6 +106,7 @@ typedef struct {
     uint8_t snd;                                         /* a note is held (the wash plays only then) */
     uint8_t sounding;                                    /* actual audio state; a silent part's queries use the requested side */
     uint16_t motion;                                     /* GLIDE's movement now, Q15 (main loop, morph_glide.c glide_motion): the breath, the swell */
+    uint16_t mms;                                        /* .. fm1_ms (low 16 bits) of its last change: a stop fades it by time (W1) */
     uint32_t age;                                        /* the newest voice's age (voice.c vage) the block before: a new note */
     uint16_t plan_ms;                                    /* (morph_xpoll: the last plan, fm1_ms) */
     uint16_t xe;                                         /* X1: the dip's edges for GLIDE's running trip (morph_glide.c glide_motion), in 1/256 of the travel: the floor's half
@@ -398,7 +399,7 @@ static __attribute__((noinline)) int32_t morph_xcut(const track_t *t, int32_t uc
 {
     uint32_t pi = t->mwpi % NSHOWN;
     const mxs_t *x = &mxs[pi];
-    int32_t fl;
+    int32_t fl, u0 = uc;
     if (!t->mwon || (!morph_cdd[pi] && !(x->motion && x->lp && x->vf)))
         return uc;
     fl = (((int32_t)x->lfloor - 20098) * 2317) >> 12;
@@ -406,7 +407,11 @@ static __attribute__((noinline)) int32_t morph_xcut(const track_t *t, int32_t uc
         int32_t d = uc - (int32_t)(((int32_t)x->motion * XBR_Q8) >> 15);
         uc = d > fl ? d : fl;
     }
-    return morph_cdd[pi] && uc > fl ? uc - (int32_t)(((int64_t)(uc - fl) * morph_cdd[pi]) >> 15) : uc;
+    if (morph_cdd[pi] && u0 > fl) {                      /* (W1: the transition's dip from the undipped cutoff, and the lower of the two, as the valley does: the breath and the dip do not stack) */
+        int32_t dip = u0 - (int32_t)(((int64_t)(u0 - fl) * morph_cdd[pi]) >> 15);
+        uc = dip < uc ? dip : uc;
+    }
+    return uc;
 }
 /* the switched values' side: a new note in the closed stretch takes them over toward where tp goes (a fresh attack carries the
  * change, as a player would make it); with no note they change at the stretch's edge; with nothing sounding at the middle */
@@ -534,8 +539,7 @@ static __attribute__((noinline)) int morph_xstep(track_t *t, morph_part_t *mp, u
         uint32_t df = x->need & XN_LP ? k : 0u, dub = x->motion >> 1, di = x->need & XN_INS ? (uint32_t)morph_xarc(tp, XI0, XLP0, XLP1, XI1) : 0u;
         k = (k * 3u / 5u * XWL[morph_wlvl & 3u]) >> 15;
         dub = k > dub ? k : dub;
-        k = x->need ? (uint32_t)morph_xdepth(x, tp) : 0u;
-        if ((df >> 7) != (x->df >> 7u) || (dub >> 7) != (x->dub >> 7u) || di != x->dins)
+        if ((df >> 7) != (x->df >> 7u) || (dub >> 7) != (x->dub >> 7u) || (FELUCCA_MOVECOST ? (di >> 7) != (x->dins >> 7) || !di != !x->dins : di != x->dins))   /* (C1, FELUCCA_MOVECOST: the INSERT dip in 1/256 steps like the others, its end still exactly 0; k was a dead store here) */
             side |= 2u;                                  /* (the blend again: a value the arc writes moved; 1/256 steps for the slow ones) */
         x->df = (uint16_t)df, x->dub = (uint16_t)dub, x->dins = (uint16_t)di;
     }

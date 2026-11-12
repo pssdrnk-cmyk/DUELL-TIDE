@@ -923,7 +923,7 @@ static void t_amount_keep(void)
     settle();
     {
         uint32_t a0 = mph[0].amount, a1 = mph[1].amount;
-        project_load(0);                               /* (a factory multi: nothing stored in the test's flash) */
+        project_load(MIDX(0));                               /* (a factory multi: nothing stored in the test's flash) */
         frames(32);
         expect("a factory multi load keeps both parts' AMOUNT", mph[0].amount == a0 && mph[1].amount == a1 && a0 != 15u);
     }

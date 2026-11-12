@@ -44,7 +44,7 @@ static void load_multi(uint32_t i)                      /* (the factory multi of
 {
     power();
     ui_prefs2 |= PREF_MODE_RECALL >> 16;
-    project_load(i);
+    project_load(MIDX(i));
     frame();
 }
 typedef struct { uint32_t n[2][2][2]; uint32_t mode; char name[PROJ_NAME_LEN + 1u]; } row_t;   /* [state][rule: 0 one core, 1 two cores][part] */

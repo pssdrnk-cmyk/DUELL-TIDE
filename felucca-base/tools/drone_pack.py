@@ -3,6 +3,7 @@
 """DUELL-TIDE built-in drone multis (TIDE 1.0.0-b6): makes the records of M17 DUNE HORN and M18 AMB GROWL (VOID DEEP / AMB VOID until b9) into tools/drone_multis/M17.bin, M18.bin.
 
     python3 tools/drone_pack.py        (needs build/gen: python3 ../gen_only.py; a C compiler)
+    python3 tools/drone_pack.py verify  the committed records equal a rebuild, byte for byte (writes nothing in tools/)
 
 M17 and M18 are ROM-only multis past the sixteen stored slots (firmware/src/multi.c MU_SHOWN): tools/gen_duell_multis.py puts these two records into
 build/gen/duell_multis.h with DF_SLOT 16 and 17, next to the factory multis M01..M16, and checks them against the rows below. Each is a LAYER of two
@@ -120,6 +121,10 @@ ROM_MULTIS = DRONES + MORE                    # (tools/gen_duell_multis.py reads
 
 
 def main():
+    verify = sys.argv[1:] == ["verify"]
+    if verify and os.name == "nt":
+        print("drone_pack: verify not run on Windows (tests/gen_factory_multis.c needs fork())")
+        return
     os.chdir(fm.ROOT)
     fm.MULTIS = ROM_MULTIS
     snd = fm.sounds()
@@ -136,6 +141,11 @@ def main():
     scratch.mkdir(parents=True, exist_ok=True)
     if subprocess.run([str(exe), "build", str(scratch)]).returncode:
         sys.exit("drone_pack: the build failed")
+    if verify:                                          # `drone_pack.py verify`: the committed records must equal a rebuild; nothing is written to tools/
+        bad = [("M%02d" % m["rom"]) for m in ROM_MULTIS
+               if not (OUT / ("M%02d.bin" % m["rom"])).exists() or (scratch / ("M%02d.bin" % m["slot"])).read_bytes() != (OUT / ("M%02d.bin" % m["rom"])).read_bytes()]
+        print("drone_pack: %d records rebuilt, %d differ from the committed ones%s" % (len(ROM_MULTIS), len(bad), (": " + " ".join(bad)) if bad else ""))
+        sys.exit(1 if bad else 0)
     OUT.mkdir(parents=True, exist_ok=True)
     for m in ROM_MULTIS:
         shutil.copyfile(scratch / ("M%02d.bin" % m["slot"]), OUT / ("M%02d.bin" % m["rom"]))

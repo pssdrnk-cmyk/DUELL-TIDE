@@ -4,6 +4,8 @@
 # Everything lives in portable folders under ../work: the JieLi Windows toolchain and SDK files (jieli-target), the
 # Python venv (duell-win-venv), the FriBiDi DLL Pillow's text layout needs (tools/fribidi), llvm-mingw for the host
 # tests (tools/llvm-mingw) and Emscripten (emsdk).
+# Linux / WSL: the system tools are used (even in a checkout under /mnt/c, where the Windows folders below would be found and the Windows toolchain put in PATH)
+case "$(uname -s 2>/dev/null)" in Linux) return 0 2>/dev/null || exit 0 ;; esac
 # The shared work folder: ../work beside the main checkout, or the folder two levels up from a worktree in work/wt/<name>
 if [ -z "${JAM_WORK:-}" ]; then
     _jam_here="$(cd "$(dirname "${BASH_SOURCE:-$0}")" && pwd)"

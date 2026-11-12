@@ -703,7 +703,7 @@ static BENCH_FN void bench_part(uint32_t p, const bench_scn_t *s)   /* a part fr
         t->p[P_FREEA] = 41, t->p[P_FREEB] = 40, t->p[P_FREEC] = 0, t->p[P_KTRK] = 0, t->p[P_FREED] = s->flt == 24u ? 2 : 1;
 }
 #ifndef BENCH_LOAD_M16
-#define BENCH_LOAD_M16() project_load(15u)             /* (the host twin loads the STRESS TEST scene instead: U2 B, M16 is CELLAR TAPE) */
+#define BENCH_LOAD_M16() project_load(21u)             /* (the host twin loads the STRESS TEST scene instead: U2 B, M16 is CELLAR TAPE) */
 #endif
 static BENCH_FN void bench_load_m16(void)              /* the "M16" rows: slot 16 as a multi LOAD has it (multi.c project_load: as stored, the factory one unless
                                                         * the owner saved over it), then LAYER whatever MULTI LOAD says. Until U2 B that was the STRESS TEST; the rows
@@ -1188,23 +1188,25 @@ static BENCH_FN void bench_draw(void)
     ui.force = 0;
     for (band = 0; band < 2u; band++) {
         int32_t y0 = (int32_t)band * 120;
-        cv_begin(240, 120, T_BG);
-        if (band == 0u) {
-            cv_text_on(4, 2, &AF_S, "BENCH " BENCH_TAG, T_THEME, T_BG);
-            bench_put(t, "PAGE ");
-            bench_num(t + 5, bench.page + 1);
-            bench_put(t + str_len(t), "/");
-            bench_num(t + str_len(t), (int32_t)bench_pages());
-            cv_text_r(236, 2, &AF_S, t, T_MID, T_BG);
-            cv_rect(0, 17, 240, 1, T_RAISE);
+        CV_BANDS(120) {
+            cv_begin(240, 120, T_BG);
+            if (band == 0u) {
+                cv_text_on(4, 2, &AF_S, "BENCH " BENCH_TAG, T_THEME, T_BG);
+                bench_put(t, "PAGE ");
+                bench_num(t + 5, bench.page + 1);
+                bench_put(t + str_len(t), "/");
+                bench_num(t + str_len(t), (int32_t)bench_pages());
+                cv_text_r(236, 2, &AF_S, t, T_MID, T_BG);
+                cv_rect(0, 17, 240, 1, T_RAISE);
+            }
+            if (bench.page == 0u)
+                bench_draw_state(y0);
+            else
+                bench_draw_table(bench.page, y0);
+            if (band == 1u)
+                cv_text_on(4, 224 - y0, &AF_S, bench.on ? "K1 PAGE   OCT - STOP" : "K1 PAGE   K4/OCT + START   OCT - BACK", T_DIM, T_BG);
+            cv_blit(0, (uint32_t)y0);
         }
-        if (bench.page == 0u)
-            bench_draw_state(y0);
-        else
-            bench_draw_table(bench.page, y0);
-        if (band == 1u)
-            cv_text_on(4, 224 - y0, &AF_S, bench.on ? "K1 PAGE   OCT - STOP" : "K1 PAGE   K4/OCT + START   OCT - BACK", T_DIM, T_BG);
-        cv_blit(0, (uint32_t)y0);
     }
 }
 

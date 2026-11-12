@@ -34,7 +34,7 @@ int main(int argc, char **argv)
     multi_boot();
     frame();
     ui_prefs2 |= PREF_MODE_RECALL >> 16;
-    project_load(slot);
+    project_load(MIDX(slot));
     song.master_q12 = 2048;
     for (i = 0; i < 40; i++) { mix_block(o, CTL); while (wave_service()) ; }
     printf("slot %u mode %d RTYPE %d RSIZE %d RDAMP %d LOCUT %d | p1 C%d D%d R%d p2 C%d D%d R%d | BM %d comp 0x%x\n", slot, duell_mode, song.g[G_RTYPE], song.g[G_RSIZE], song.g[G_RDAMP],

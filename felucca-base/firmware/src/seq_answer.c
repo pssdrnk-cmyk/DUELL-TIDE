@@ -61,7 +61,7 @@ static void sqm_thin_poll(void)
         h = (h ^ (t->preset | (uint32_t)t->user << 8 | (uint32_t)t->eng_req << 16)) * 16777619u;   /* (the sound: its category, D2) */
     }
     h = (h ^ ((uint32_t)(uint16_t)song.g[G_SWING] | (uint32_t)sqm_auto << 16 | (uint32_t)tarc_lev << 20 | (uint32_t)sqm_vary_all << 24)) * 16777619u;
-    sqm_dyn = (int8_t)(tarc_bright() < 0 ? -2 : tarc_bright());   /* (the dynamics' ARC side for the audio interrupt, seq_morph.c seq_play_step: MR4, the breakdown two steps softer) */
+    sqm_dyn = (int8_t)tarc_dyn();                        /* (the dynamics' ARC side for the audio interrupt, seq_morph.c seq_play_step: MR4, the breakdown two steps softer; the unit's turn: tarc_levers sets it with the levers) */
     if (sqm_thin_kok && h == sqm_thin_k)
         return;
     sqm_thin_k = h, sqm_thin_kok = 1;

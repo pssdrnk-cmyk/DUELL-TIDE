@@ -77,7 +77,7 @@ int main(int argc, char **argv)
     frame();
     song.master_q12 = 4096;
     ui_prefs2 |= PREF_MODE_RECALL >> 16;
-    project_load(slot);
+    project_load(MIDX(slot));
     for (i = 0; i < 40; i++) { memset(o, 0, sizeof o); mix_block(o, CTL); while (wave_service()) ; }
     trk[1u - part].p[P_MUTE] = 1;
     if (ktrk != -99) trk[part].p[P_KTRK] = (int16_t)ktrk;

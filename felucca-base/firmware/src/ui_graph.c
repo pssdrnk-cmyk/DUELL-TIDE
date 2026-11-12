@@ -910,66 +910,68 @@ static void graph_mod_new(const track_t *t)
     uint32_t base = mod_page_base(cur_page()), k, band;
     for (band = 0; band < 2u; band++) {
         const int32_t y0 = band ? MX_SPLIT : MX_LEG_Y;
-        cv_begin(240, band ? 218u - MX_SPLIT : MX_SPLIT - MX_LEG_Y, T_BG);
-        cv_oy = -y0;
-        if (!band) {   /* the legend: the four knobs, K1 K2 over K3 K4 (the grid of the cards' own knobs) */
-            static const char *const LG[4] = {"SLOT", "SOURCE", "DESTINATION", "AMOUNT"};
+        CV_BANDS(band ? 218u - MX_SPLIT : MX_SPLIT - MX_LEG_Y) {
+            cv_begin(240, band ? 218u - MX_SPLIT : MX_SPLIT - MX_LEG_Y, T_BG);
+            cv_oy = -y0;
+            if (!band) {   /* the legend: the four knobs, K1 K2 over K3 K4 (the grid of the cards' own knobs) */
+                static const char *const LG[4] = {"SLOT", "SOURCE", "DESTINATION", "AMOUNT"};
+                for (k = 0; k < 4u; k++) {
+                    char d[2] = {(char)('1' + k), 0};
+                    int32_t lx = k & 1u ? 124 : 9, ly = MX_LEG_Y + (int32_t)(k >> 1) * 14;
+                    cv_rrect(lx, ly, 11, 11, 5, T_TEXT, T_BG);
+                    cv_text_in(lx, ly + HALF_UP(11 - AF_D_CAP_H) - AF_D_CAP_Y, 11, &AF_DOT, d, T_BG, T_TEXT);
+                    cv_text(lx + 15, UT_TY(S, ly + 10), &AF_S, LG[k], T_TEXT);
+                }
+            }
             for (k = 0; k < 4u; k++) {
-                char d[2] = {(char)('1' + k), 0};
-                int32_t lx = k & 1u ? 124 : 9, ly = MX_LEG_Y + (int32_t)(k >> 1) * 14;
-                cv_rrect(lx, ly, 11, 11, 5, T_TEXT, T_BG);
-                cv_text_in(lx, ly + HALF_UP(11 - AF_D_CAP_H) - AF_D_CAP_Y, 11, &AF_DOT, d, T_BG, T_TEXT);
-                cv_text(lx + 15, UT_TY(S, ly + 10), &AF_S, LG[k], T_TEXT);
+                const int32_t y = MX_Y0 + (int32_t)k * MX_PITCH;
+                const int16_t *tp = &t->p[MSLOT_ID(base + k)];
+                const int16_t p[3] = {tp[0], tp[1], (int16_t)morph_view(song.sel, MSLOT_ID(base + k) + 2u)};   /* item 152 E: the amount as the fader sounds it (the AMT card shows that too): at B the rolled End B's, not the Original's */
+                int32_t sel = k == mod_ui_slot, on = p[0] && p[1] && p[2] && !mod_dst_why(t, p[1]);
+                uint16_t bg = sel ? T_THEME : T_BG, big = sel ? T_INK : on ? T_TEXT : T_DIM, sm = sel ? T_INK : T_MID, amc = sel ? T_INK : on ? T_THEME : T_DIM;
+                char b[PV_LEN], sn[24], dn[40], line[32], num[2] = {(char)('1' + base + k), 0}, am[16];
+                const char *unit, *more = 0, *grp;
+                int32_t x, aw, room;
+                if (y + MX_H <= y0 || y >= y0 + (int32_t)cv_ph)
+                    continue;
+                if (sel) CV_HL(3, y, 234, MX_H);
+                cv_rrect(3, y, 234, MX_H, 4, bg, T_BG);
+                one_line(sn, sizeof sn, msrc_shown(p[0]));
+                one_line(dn, sizeof dn, mod_dst_name(t, p[1]));
+                mod_dst_line(t, p[1], line, &more);
+                grp = mod_dst_why(t, p[1]) ? mod_dst_why(t, p[1]) : MDST_GRPNAME[p[1] >= 0 && p[1] < 57 ? MDST_GRP[p[1]] : 0];
+                {   /* rule B1 (HANDOFF item 95, change list section D): where the row's small line says the category (AMP ENV, FILTER ENV, INSERT, DUCK, CHORUS, DELAY, REVERB), the name is the item alone
+                     * (ATTACK, MIX, DEPTH, SEND, MOD DEPTH). Where the small line says a reason instead (INS OFF, OWN ENV ...), the category is not on the row, so the name keeps it (INSERT MIX) */
+                    uint32_t gi = p[1] >= 0 && p[1] < 57 ? MDST_GRP[p[1]] : 0u, gl = str_len(MDST_GRPNAME[gi]);
+                    if (MDST_GRP_STRIP[gi] && grp == MDST_GRPNAME[gi] && !memcmp(dn, MDST_GRPNAME[gi], gl) && dn[gl] == ' ')
+                        str_cpy(dn, dn + gl + 1u, sizeof dn);
+                }
+                param_format(&TP[P_M1AMT], p[2], b, &unit);
+                str_cpy(am, b, sizeof am);
+                /* change list A.2 and D (owner): the amount's number in L (Bold 23, the name's big face), the % right after it with no space, in M (Medium 15: thinner and smaller), white, on the number's
+                 * baseline (the capitals' last row y + 34, UT_TY). 12 px for the % instead of 18 + a 5 px gap: the name has 11 px more room (130 px at +100 %, 132 at -100 %, 143 at two digits) */
+                aw = text_w(&AF_L, am) + (unit[0] ? text_w(&AF_M, unit) + UT_A_UNIT_GAP : 0);
+                cv_text_on(12, y + HALF_UP(MX_H - AF_L_CAP_H) - AF_L_CAP_Y, &AF_L, num, sel ? T_INK : T_THEME, bg);
+                cv_text_on(34, y, &AF_S, sn, sm, bg);   /* (the source: whole, S 15 over the big line; the group follows after a gap, no rule) */
+                if (grp[0])
+                    cv_text_on(34 + text_w(&AF_S, sn) + 12, y, &AF_S, grp, sm, bg);
+                x = 232 - aw;
+                cv_text_on(x, y + 12, &AF_L, am, amc, bg);
+                if (unit[0])
+                    cv_text_on(x + text_w(&AF_L, am) + UT_A_UNIT_GAP, UT_TY(M, y + 12 + AF_L_CAP_Y + AF_L_CAP_H - 1), &AF_M, unit, sel ? T_INK : on ? T_TEXT : T_DIM, bg);   /* (white; the picked row's ink on its fill, a row that does nothing dim, as its number) */
+                room = x - 6 - 34;
+                if (text_w(&AF_L, dn) <= room)
+                    cv_text_on(34, y + 12, &AF_L, dn, big, bg);
+                else if (text_w(&AF_T, dn) <= room)               /* item 152 D: the smaller steps are the same Bold face as L (T: Bold 15, capitals; M and S are Medium / SemiBold: they looked thin next to the big names) */
+                    cv_text_on(34, y + 20, &AF_T, dn, big, bg);
+                else
+                    cv_free_text(34, y + 20, &AF_T, dn, big, bg, room);   /* (the smallest step, still the whole word) */
+                (void)more;
             }
+            TIDE_LIVE_MOD(t, y0);                        /* TIDE: each acting row's source now (ui_live.c) */
+            cv_oy = 0;
+            cv_blit(0, (uint32_t)y0);
         }
-        for (k = 0; k < 4u; k++) {
-            const int32_t y = MX_Y0 + (int32_t)k * MX_PITCH;
-            const int16_t *tp = &t->p[MSLOT_ID(base + k)];
-            const int16_t p[3] = {tp[0], tp[1], (int16_t)morph_view(song.sel, MSLOT_ID(base + k) + 2u)};   /* item 152 E: the amount as the fader sounds it (the AMT card shows that too): at B the rolled End B's, not the Original's */
-            int32_t sel = k == mod_ui_slot, on = p[0] && p[1] && p[2] && !mod_dst_why(t, p[1]);
-            uint16_t bg = sel ? T_THEME : T_BG, big = sel ? T_INK : on ? T_TEXT : T_DIM, sm = sel ? T_INK : T_MID, amc = sel ? T_INK : on ? T_THEME : T_DIM;
-            char b[PV_LEN], sn[24], dn[40], line[32], num[2] = {(char)('1' + base + k), 0}, am[16];
-            const char *unit, *more = 0, *grp;
-            int32_t x, aw, room;
-            if (y + MX_H <= y0 || y >= y0 + (int32_t)cv_h)
-                continue;
-            if (sel) CV_HL(3, y, 234, MX_H);
-            cv_rrect(3, y, 234, MX_H, 4, bg, T_BG);
-            one_line(sn, sizeof sn, msrc_shown(p[0]));
-            one_line(dn, sizeof dn, mod_dst_name(t, p[1]));
-            mod_dst_line(t, p[1], line, &more);
-            grp = mod_dst_why(t, p[1]) ? mod_dst_why(t, p[1]) : MDST_GRPNAME[p[1] >= 0 && p[1] < 57 ? MDST_GRP[p[1]] : 0];
-            {   /* rule B1 (HANDOFF item 95, change list section D): where the row's small line says the category (AMP ENV, FILTER ENV, INSERT, DUCK, CHORUS, DELAY, REVERB), the name is the item alone
-                 * (ATTACK, MIX, DEPTH, SEND, MOD DEPTH). Where the small line says a reason instead (INS OFF, OWN ENV ...), the category is not on the row, so the name keeps it (INSERT MIX) */
-                uint32_t gi = p[1] >= 0 && p[1] < 57 ? MDST_GRP[p[1]] : 0u, gl = str_len(MDST_GRPNAME[gi]);
-                if (MDST_GRP_STRIP[gi] && grp == MDST_GRPNAME[gi] && !memcmp(dn, MDST_GRPNAME[gi], gl) && dn[gl] == ' ')
-                    str_cpy(dn, dn + gl + 1u, sizeof dn);
-            }
-            param_format(&TP[P_M1AMT], p[2], b, &unit);
-            str_cpy(am, b, sizeof am);
-            /* change list A.2 and D (owner): the amount's number in L (Bold 23, the name's big face), the % right after it with no space, in M (Medium 15: thinner and smaller), white, on the number's
-             * baseline (the capitals' last row y + 34, UT_TY). 12 px for the % instead of 18 + a 5 px gap: the name has 11 px more room (130 px at +100 %, 132 at -100 %, 143 at two digits) */
-            aw = text_w(&AF_L, am) + (unit[0] ? text_w(&AF_M, unit) + UT_A_UNIT_GAP : 0);
-            cv_text_on(12, y + HALF_UP(MX_H - AF_L_CAP_H) - AF_L_CAP_Y, &AF_L, num, sel ? T_INK : T_THEME, bg);
-            cv_text_on(34, y, &AF_S, sn, sm, bg);   /* (the source: whole, S 15 over the big line; the group follows after a gap, no rule) */
-            if (grp[0])
-                cv_text_on(34 + text_w(&AF_S, sn) + 12, y, &AF_S, grp, sm, bg);
-            x = 232 - aw;
-            cv_text_on(x, y + 12, &AF_L, am, amc, bg);
-            if (unit[0])
-                cv_text_on(x + text_w(&AF_L, am) + UT_A_UNIT_GAP, UT_TY(M, y + 12 + AF_L_CAP_Y + AF_L_CAP_H - 1), &AF_M, unit, sel ? T_INK : on ? T_TEXT : T_DIM, bg);   /* (white; the picked row's ink on its fill, a row that does nothing dim, as its number) */
-            room = x - 6 - 34;
-            if (text_w(&AF_L, dn) <= room)
-                cv_text_on(34, y + 12, &AF_L, dn, big, bg);
-            else if (text_w(&AF_T, dn) <= room)               /* item 152 D: the smaller steps are the same Bold face as L (T: Bold 15, capitals; M and S are Medium / SemiBold: they looked thin next to the big names) */
-                cv_text_on(34, y + 20, &AF_T, dn, big, bg);
-            else
-                cv_free_text(34, y + 20, &AF_T, dn, big, bg, room);   /* (the smallest step, still the whole word) */
-            (void)more;
-        }
-        TIDE_LIVE_MOD(t, y0);                        /* TIDE: each acting row's source now (ui_live.c) */
-        cv_oy = 0;
-        cv_blit(0, (uint32_t)y0);
     }
 }
 
@@ -1621,7 +1623,7 @@ static void graph_sub(const track_t *t, uint16_t c)
         }
     }
     if (!lv)
-        graph_cap("NOT RUN AT LEVEL 0", T_MID);
+        graph_cap("OFF AT LEVEL 0", T_MID);              /* (I13: plain words) */
 }
 
 /* CYCLE ENV 1/2 and 2/2 (cloud job H, SUB_AND_CYCLE_DESIGN B4): the cycle's shape as cycle.c makes it (y = x + c (x^2 - x), c = CURVE / 64, on the rise; the fall is 1 - that of the progress), RISE and FALL in the
@@ -1944,7 +1946,7 @@ static uint32_t graph_signature(void)
         uint32_t f0 = morph_fader_of(pi), f1 = morph_fader_of(1u - pi);
         if (TIDE_WAVE_PAGE(pg)) {                    /* (b6, owner on the FM-1: "the UI gets weird if I use morph during the animation": the waves take the theme's fader colour (ux.fader:
                                                       * in steps of 8, taken on a picture's frame, ui_draw.c), so a turn of knob 1 redraws them with a picture, not at every value: each
-                                                      * redraw is 32,640 px over the 12 MHz SPI, about 44 ms, and one every frame held the loop and slowed the pictures to a third) */
+                                                      * redraw is 32,640 px over the 20 MHz SPI, about 26 ms (44 ms at the 12 MHz of b5), and one every frame held the loop and slowed the pictures to a third) */
             f0 = ux.fader[pi & 1u];
             f1 = ux.fader[(1u - pi) & 1u];
         }
@@ -2010,7 +2012,7 @@ static void list_row(int32_t y, int sel, const char *tag, uint16_t tc, const cha
     uint16_t bg = sel ? T_THEME : T_BG;
     uint16_t on_part = ux_cr(T_TEXT, T_THEME) >= 300u ? T_TEXT : ux_cr(T_BG, T_THEME) >= ux_cr(T_TEXT, T_THEME) ? T_BG : T_TEXT;   /* white on the part colour where it reads 3:1, else the better of BG / TEXT (item 111's number cell) */
     int32_t ty;
-    if (y < 0 || y + UT_T3_ROW_H > (int32_t)cv_h)      /* (a row outside the canvas) */
+    if (y < 0 || y + UT_T3_ROW_H > (int32_t)cv_ph)      /* (a row outside the canvas) */
         return;
     ty = UT_TY(M, y + UT_T3_TEXT_BASE);
     if (sel)
@@ -2141,13 +2143,15 @@ static void graph_tools(void)
     part[5] = (char)('1' + song.sel % NTRK);
     for (s = 0; s < 2u; s++) {
         int32_t y0 = s ? TOOLS_Y1 : TOOLS_Y0, y1 = s ? TOOLS_END : TOOLS_Y1;
-        cv_begin(240, (uint32_t)(y1 - y0), T_BG);
-        cv_bg = T_BG;
-        cv_oy = -y0;
-        tools_block(0u, y0, y1, "INITIALIZE SOUND", part, 1);
-        tools_block(1u, y0, y1, "RESTORE ALL PATCHES", restore ? "EVERY SLOT REPLACED" : "NOTHING TO RESTORE", restore);
-        cv_oy = 0;
-        cv_blit(0, (uint32_t)y0);
+        CV_BANDS(y1 - y0) {
+            cv_begin(240, (uint32_t)(y1 - y0), T_BG);
+            cv_bg = T_BG;
+            cv_oy = -y0;
+            tools_block(0u, y0, y1, "INITIALIZE SOUND", part, 1);
+            tools_block(1u, y0, y1, "RESTORE ALL PATCHES", restore ? "EVERY SLOT REPLACED" : "NOTHING TO RESTORE", restore);
+            cv_oy = 0;
+            cv_blit(0, (uint32_t)y0);
+        }
     }
 }
 /* PARAMETER LOCKS, TEMPLATE 9 (NEW_LAYOUT_SHEET_V2.png): text rows on the background of the big area, drawn in SCREEN rows (draw_graph sets cv_oy). Columns as the picture (measured): the kind
@@ -2481,7 +2485,7 @@ static void knob_arc(int32_t x, int32_t y, int32_t r, const uint8_t *cov, const 
                 continue;
             for (m = 0; m < 4; m++) {                /* top right, bottom right, bottom left, top left */
                 int32_t s = m == 0 ? q : m == 1 ? 512 - q : m == 2 ? q - 512 : -q;
-                int32_t px = m < 2 ? x + r + i : x + r - 1 - i, py = (m == 0 || m == 3 ? y + r - 1 - j : y + r + j) + cv_oy;
+                int32_t px = m < 2 ? x + r + i : x + r - 1 - i, py = (m == 0 || m == 3 ? y + r - 1 - j : y + r + j) + CV_Y;
                 if (s < -KA_END || s > KA_END || (uint32_t)px >= cv_w || (uint32_t)py >= cv_h)
                     continue;
                 cv_px[(uint32_t)py * cv_w + (uint32_t)px] = (s >= lo && s <= hi ? rv : rt)[a];
@@ -2718,20 +2722,19 @@ static void mv_field(uint32_t k, int32_t y0, int32_t y1, uint32_t nl)
     }
 }
 #endif
+#if DUELL_TIDE
+static void graph_morph(void)
+{
+    wl_card(MV_BY0, MV_BY1);                         /* (the other layouts, a layer or the menu over the page: the picture alone in the old box; the page itself is template 9, ui_draw.c; b10: the old A..B track, thumb, ROLL A|B / AMT and HOLD SAVE lines are not compiled into TIDE) */
+}
+#else
 static void graph_morph(void)
 {
     const ui_pal_t *pl = &UI_PALETTES[ux.pal % NPALETTES];
-#if DUELL_TIDE
-    uint32_t pi = song.sel, f = morph_fader_of(pi), both = PART_BOTH();
-#else
     uint32_t pi = song.sel, f = morph_fader_of(pi), tk = mv_tick(), both = PART_BOTH(), n;
-#endif
     int32_t cx = MV_TX0 + (int32_t)(f * (uint32_t)(MV_TX1 - MV_TX0) / 127u), i;
     char b[8];
     khint_t kh[3];
-#if DUELL_TIDE
-    wl_card(MV_BY0, MV_BY1);                         /* (the other layouts, a layer or the menu over the page: the picture alone in the old box; the page itself is template 9, ui_draw.c) */
-#else
     mv_levels(tk);
     n = mv_step == 0xFFFFFFFFu ? 0u : tk - mv_step;   /* (steps since the last: the motion moves on by as many) */
     mv_listen(0, n > 4u ? 4u : n);
@@ -2760,7 +2763,6 @@ static void graph_morph(void)
     } else {
         mv_field(pi, MV_BY0, MV_BY1, 5u);
     }
-#endif
     for (i = MV_TX0; i <= MV_TX1; i++) {             /* the A..B track (POLICE: two solid halves) */
         int32_t p = (i - MV_TX0) * 100 / (MV_TX1 - MV_TX0);
         uint16_t col = pl->hc ? pl->c[2u * pi + (p >= 50)] : ux_mix(ux_mix(pl->c[2u * pi], pl->c[2u * pi + 1u], p), T_BG, 45);
@@ -2784,6 +2786,7 @@ static void graph_morph(void)
     GFX_HOOK_ALIGN(0, 0, 240, 0, AL_H, "morph save line centred");
     cv_text_in(0, MV_SY, 240, &AF_S, "HOLD SAVE = SAVE PATCH", T_DIM, T_BG);
 }
+#endif
 #if !DUELL_TIDE                                      /* TIDE hook: no MODE page */
 static void graph_mode(void)
 {   /* DUELL 1.1 (PAGES_V2_home-modes.png), item 118: the three modes as a list in the order LAYER, STEREO, DUEL (the SETUP page's), the picked one on a box of the selected part's colour (ui_tokens.h TEMPLATE 6: the selection style of
@@ -2847,17 +2850,19 @@ static void graph_mods(void)
     uint16_t grey = ux_mix(T_BG, T_TEXT, UT_GREY_PCT), vc = vt(T_PTHEME(song.sel), T_BG);
     for (s = 0; s < 2u; s++) {
         int32_t y0 = s ? MOD_Y1 : MOD_Y0;
-        cv_begin(240, (uint32_t)((s ? MOD_END : MOD_Y1) - y0), T_BG);
-        cv_bg = T_BG;
-        cv_oy = 0;
-        for (k = 2u * s; k < 2u * s + 2u; k++) {
-            int32_t base = UT_MODS_BASE0 + UT_MODS_PITCH * (int32_t)k - y0;
-            uint32_t rv = k < 2u ? mods_run_get(k) : ((m >> k) & 1u) ? 0u : 1u;
-            int hot = k == ui.hot_col && ui.hot_t;
-            dot_label(k, UT_MODS_DOT_X, UT_MODS_LBL_X, base, MODS_NAME[k], hot ? T_ACCENT : T_TEXT, hot ? T_ACCENT : grey, UT_MODS_VAL_X - UT_MODS_LBL_X - 4, T_BG);
-            cv_text_on(UT_MODS_VAL_X, UT_TY(M, base), &AF_M, rv == 0u ? "OFF" : rv == 1u ? "ON" : "KEEPS RUNNING", vc, T_BG);
+        CV_BANDS((s ? MOD_END : MOD_Y1) - y0) {
+            cv_begin(240, (uint32_t)((s ? MOD_END : MOD_Y1) - y0), T_BG);
+            cv_bg = T_BG;
+            cv_oy = 0;
+            for (k = 2u * s; k < 2u * s + 2u; k++) {
+                int32_t base = UT_MODS_BASE0 + UT_MODS_PITCH * (int32_t)k - y0;
+                uint32_t rv = k < 2u ? mods_run_get(k) : ((m >> k) & 1u) ? 0u : 1u;
+                int hot = k == ui.hot_col && ui.hot_t;
+                dot_label(k, UT_MODS_DOT_X, UT_MODS_LBL_X, base, MODS_NAME[k], hot ? T_ACCENT : T_TEXT, hot ? T_ACCENT : grey, UT_MODS_VAL_X - UT_MODS_LBL_X - 4, T_BG);
+                cv_text_on(UT_MODS_VAL_X, UT_TY(M, base), &AF_M, rv == 0u ? "OFF" : rv == 1u ? "ON" : "KEEPS RUNNING", vc, T_BG);
+            }
+            cv_blit(0, (uint32_t)y0);
         }
-        cv_blit(0, (uint32_t)y0);
     }
 }
 /* A page of a function GLO > MODULES has switched OFF (item 125; ui.c off_module): the message in M, under it the grey note in S, top left on the background, wrapped at spaces to UT_OFF_W, left aligned
@@ -2895,19 +2900,22 @@ static void graph_off(uint32_t bit)
 {
     char ml[4][48], nl[4][48];
     uint32_t nm, nn, i;
-    int32_t base = UT_OFF_MSG_BASE;
+    int32_t base;
     uint16_t grey = ux_mix(T_BG, T_TEXT, UT_GREY_PCT);
     nm = off_wrap(&AF_M, bit == MODS_ARP ? UT_OFF_TXT_ARP : bit == MODS_SEQ ? UT_OFF_TXT_SEQ : bit == MODS_SENDS ? UT_OFF_TXT_SENDS : UT_OFF_TXT_PFX, ml);
     nn = off_wrap(&AF_S, bit == MODS_ARP || bit == MODS_SEQ ? UT_OFF_NOTE_IT : UT_OFF_NOTE_THEM, nl);
-    cv_begin(240, UT_OFF_H, T_BG);
-    cv_bg = T_BG;
-    cv_oy = 0;
-    for (i = 0; i < nm; i++, base += UT_OFF_MSG_PITCH)
-        cv_text_on(UT_OFF_X, UT_TY(M, base - UT_OFF_Y0), &AF_M, ml[i], T_MID, T_BG);
-    base += UT_OFF_NOTE_GAP - UT_OFF_MSG_PITCH;
-    for (i = 0; i < nn; i++, base += UT_OFF_NOTE_PITCH)
-        cv_text_on(UT_OFF_X, UT_TY(S, base - UT_OFF_Y0), &AF_S, nl[i], grey, T_BG);
-    cv_blit(0, UT_OFF_Y0);
+    CV_BANDS(UT_OFF_H) {
+        base = UT_OFF_MSG_BASE;                          /* (the rows below advance it: each band starts again) */
+        cv_begin(240, UT_OFF_H, T_BG);
+        cv_bg = T_BG;
+        cv_oy = 0;
+        for (i = 0; i < nm; i++, base += UT_OFF_MSG_PITCH)
+            cv_text_on(UT_OFF_X, UT_TY(M, base - UT_OFF_Y0), &AF_M, ml[i], T_MID, T_BG);
+        base += UT_OFF_NOTE_GAP - UT_OFF_MSG_PITCH;
+        for (i = 0; i < nn; i++, base += UT_OFF_NOTE_PITCH)
+            cv_text_on(UT_OFF_X, UT_TY(S, base - UT_OFF_Y0), &AF_S, nl[i], grey, T_BG);
+        cv_blit(0, UT_OFF_Y0);
+    }
 }
 /* GLO > SIDECHAIN (0.2.22; 0.2.24, owner: far too much text, it repeated the cards): the note on top (when the setup counts), then each part's DUCK SRC as it is now
  * ("PART 1  PUMP", "PART 2  MIDI", "PART 2  OFF": the part the setup applies to is the one on MIDI); the cards above hold the channels and notes themselves */
@@ -2935,21 +2943,21 @@ static void graph_mlearn(void)
     char a[56], b[32];
     if (!ui.ml.on) {
         knob_mark(12, 12, 1);
-        cv_text(30, 10, &AF_M, "Turn right to start", T_TEXT);
+        cv_text(30, 10, &AF_M, "TURN RIGHT TO START", T_TEXT);
         knob_mark(12, 34, 2);
-        cv_text(30, 32, &AF_M, "Turn right to clear all", T_TEXT);
+        cv_text(30, 32, &AF_M, "TURN RIGHT TO CLEAR ALL", T_TEXT);
         fmt_int(b, (int32_t)ml_count());
-        str_cpy(b + str_len(b), " CC learned", 14);
+        str_cpy(b + str_len(b), " CC LEARNED", 14);
         cv_text(12, 62, &AF_M, b, T_MID);
     } else if (!ui.ml.pick) {
-        cv_text(12, 10, &AF_M, "1. Turn any knob to pick it", T_TEXT);
-        cv_text(12, 32, &AF_M, "2. Send a CC from your controller", T_TEXT);
+        cv_text(12, 10, &AF_M, "1. TURN ANY KNOB TO PICK IT", T_TEXT);
+        cv_text(12, 32, &AF_M, "2. SEND A CC FROM YOUR GEAR", T_TEXT);
     } else {
         ml_name(a);
         cv_text_grad(12, 8, &AF_L, a, 12);
-        cv_text(12, 38, &AF_M, "Send a CC", T_TEXT);
+        cv_text(12, 38, &AF_M, "SEND A CC", T_TEXT);
         cv_free_hint(12, 60, "[OCT+] DONE", T_TEXT, T_BG, 200);
-        cv_free_hint(12, 80, "[OCT-] Clears its CC", T_TEXT, T_BG, 200);
+        cv_free_hint(12, 80, "[OCT-] CLEARS ITS CC", T_TEXT, T_BG, 200);
     }
 }
 /* MORPH SET: what TARGET means now (in words), and SMART, ARP and PITCH */
@@ -2999,11 +3007,13 @@ static void draw_graph(void)
         return;
     if (grid_on == 15) {                             /* item 165 (owner): the ENGINE page of LOFI / NOISE has no picture; while K1 turns, the engine list in the top cell's place (ui_draw.c leaves that cell undrawn) */
         if (ui.hot_t && ui.hot_col == 0u) {
-            cv_begin(240, H_GRAPH, T_BG);
-            cv_bg = T_BG;
-            graph_eng_list(t);
-            cv_oy = 0;
-            cv_blit(0, Y_GRAPH);
+            CV_BANDS(H_GRAPH) {
+                cv_begin(240, H_GRAPH, T_BG);
+                cv_bg = T_BG;
+                graph_eng_list(t);
+                cv_oy = 0;
+                cv_blit(0, Y_GRAPH);
+            }
         }
         return;
     }
@@ -3034,158 +3044,162 @@ static void draw_graph(void)
             return;
         }
 #endif
-        cv_begin(240, (uint32_t)ah, T_BG);
-        cv_bg = T_BG;
-        cv_oy = -ay;
-        if (pg->graph == GR_ARP) {
-            if (arp_drawn(t))
-                graph_arp(t, c);
-            else                                     /* MODE OFF or SEQ: the calm flat baseline across the area's middle (the picture), not the live output scope */
-                cv_rect(PANEL_X0, ay + ah / 2, PANEL_W, 1, T_RAISE);   /* (b4, UI audit 4: the panel's width, as every picture's zero line and MORPH's placeholder; no full-bleed rule) */
-        } else if (pg->graph == GR_EVENTS)
-            graph_events();
-        else if (pg->graph == GR_ROLL)
-            graph_roll(t, c);
-        else if (pg->scope == SC_SCALE || pg->graph == GR_SCALE)
-            graph_scale(t, c);
-        else if (pg->graph == GR_CHORD) {
-            graph_chord(t, c);
-            TIDE_LIVE_CHORD(t);                      /* TIDE: the sounding keys' envelope levels */
-        } else if (pg->graph == GR_BROWSE)
-            graph_browse();
-        else if (pg->graph == GR_PATS)
-            graph_pats();
-        else if (pg->graph == GR_SLOTS)
-            graph_slots();
-        cv_oy = 0;
-        cv_blit(0, (uint32_t)ay);
+        CV_BANDS(ah) {
+            cv_begin(240, (uint32_t)ah, T_BG);
+            cv_bg = T_BG;
+            cv_oy = -ay;
+            if (pg->graph == GR_ARP) {
+                if (arp_drawn(t))
+                    graph_arp(t, c);
+                else                                     /* MODE OFF or SEQ: the calm flat baseline across the area's middle (the picture), not the live output scope */
+                    cv_rect(PANEL_X0, ay + ah / 2, PANEL_W, 1, T_RAISE);   /* (b4, UI audit 4: the panel's width, as every picture's zero line and MORPH's placeholder; no full-bleed rule) */
+            } else if (pg->graph == GR_EVENTS)
+                graph_events();
+            else if (pg->graph == GR_ROLL)
+                graph_roll(t, c);
+            else if (pg->scope == SC_SCALE || pg->graph == GR_SCALE)
+                graph_scale(t, c);
+            else if (pg->graph == GR_CHORD) {
+                graph_chord(t, c);
+                TIDE_LIVE_CHORD(t);                      /* TIDE: the sounding keys' envelope levels */
+            } else if (pg->graph == GR_BROWSE)
+                graph_browse();
+            else if (pg->graph == GR_PATS)
+                graph_pats();
+            else if (pg->graph == GR_SLOTS)
+                graph_slots();
+            cv_oy = 0;
+            cv_blit(0, (uint32_t)ay);
+        }
 #if DUELL_TIDE
         if (pg->graph == GR_PATS || pg->graph == GR_SLOTS)   /* (SAVE > PATTERNS / MULTIS: the picked entry's preview under the cards) */
             list_panel(pg->graph == GR_PATS);
 #endif
         return;
     }
-    cv_begin(240, H_GRAPH, T_BG);
-    cv_bg = T_BG;                                    /* (text drawn with cv_text lands on it) */
-    cv_oy = GOY;                                     /* graphs on a 100 px scale */
-    switch (pg->graph) {
-    case GR_ADSR:
-        if (TIDE_AMPDEST_FM6(pg, t)) {               /* TIDE: FM6 owns its amplitude; AMP DEST shows the operator envelope, which the live graphs follow */
-            graph_fm6env(t, c);
+    CV_BANDS(H_GRAPH) {
+        cv_begin(240, H_GRAPH, T_BG);
+        cv_bg = T_BG;                                    /* (text drawn with cv_text lands on it) */
+        cv_oy = GOY;                                     /* graphs on a 100 px scale */
+        switch (pg->graph) {
+        case GR_ADSR:
+            if (TIDE_AMPDEST_FM6(pg, t)) {               /* TIDE: FM6 owns its amplitude; AMP DEST shows the operator envelope, which the live graphs follow */
+                graph_fm6env(t, c);
+                break;
+            }
+            graph_adsr(t, c);
             break;
-        }
-        graph_adsr(t, c);
-        break;
-    case GR_LFO:
-        graph_lfo(t, c);
-        break;
-    case GR_FX:
-        graph_fx(t, c);
-        break;
-    case GR_INS:
-        graph_insert(t, c);
-        break;
-    case GR_ENGINE:                                  /* T0227: WHEEL's drawbars and FM6's chart on the page that edits their first controls; the engines' list while K1 turns */
-        if (!(ui.hot_t && ui.hot_col == 0u) && ENGINES[t->eng_req % NENGINES] == &ENG_WHEEL) { graph_wheel(t, c); break; }
-        if (!(ui.hot_t && ui.hot_col == 0u) && t->eng_req % NENGINES == ENGI_FM6) { graph_fm6(t, c, 6u); break; }
-        if (ui.hot_t && ui.hot_col == 0u) {          /* K1 turning: the list of engines in the picture's place (the approved list look) */
-            graph_eng_list(t);
+        case GR_LFO:
+            graph_lfo(t, c);
             break;
+        case GR_FX:
+            graph_fx(t, c);
+            break;
+        case GR_INS:
+            graph_insert(t, c);
+            break;
+        case GR_ENGINE:                                  /* T0227: WHEEL's drawbars and FM6's chart on the page that edits their first controls; the engines' list while K1 turns */
+            if (!(ui.hot_t && ui.hot_col == 0u) && ENGINES[t->eng_req % NENGINES] == &ENG_WHEEL) { graph_wheel(t, c); break; }
+            if (!(ui.hot_t && ui.hot_col == 0u) && t->eng_req % NENGINES == ENGI_FM6) { graph_fm6(t, c, 6u); break; }
+            if (ui.hot_t && ui.hot_col == 0u) {          /* K1 turning: the list of engines in the picture's place (the approved list look) */
+                graph_eng_list(t);
+                break;
+            }
+            {                                            /* option B (grid_on 5: LOFI and NOISE have no picture since item 165, grid_on 15, cells): the picture of the engine */
+                const engine_t *en = ENGINES[t->eng_req % NENGINES];
+                if (en == &ENG_ANALOG)
+                    graph_pic_analog(t, c);
+                else if (en == &ENG_PHASE)
+                    pic_phase(t, c);
+                else if (en == &ENG_WAVE)
+                    pic_table(t, c);
+                else if (en == &ENG_FORMANT)
+                    pic_voice(t, c);
+                else if (en == &ENG_PHYS)
+                    pic_phys(t, c);
+                else if (en == &ENG_TRIO)
+                    pic_trio(t, c);                      /* (a retired engine, a stored DIGITAL, SAMPLE .. sound: no picture) */
+            }
+            break;
+        case GR_MORPH:
+            cv_oy = 0;
+            graph_morph();
+            break;
+        case GR_PERF:
+            cv_oy = 0;
+            graph_perf();
+            break;
+    #if !DUELL_TIDE                                      /* TIDE hook: MORPH SET is not in TIDE's round (TIDE LIST has ROLL TYPE) */
+        case GR_MORPHSET:
+            cv_oy = 0;
+            graph_morphset();
+            break;
+    #endif
+    #if !DUELL_TIDE
+        case GR_MODE:
+            cv_oy = 0;
+            graph_mode();
+            break;
+    #endif
+        TIDE_GRAPH_CASES                                 /* TIDE hook */
+        case GR_MIDI:
+            cv_oy = 0;
+            graph_midi();
+            break;
+        case GR_MLEARN:
+            cv_oy = 0;
+            graph_mlearn();
+            break;
+        case GR_SCHAIN:
+            cv_oy = 0;
+            graph_schain();
+            break;
+        case GR_MODS:
+            cv_oy = 0;
+            graph_mods();
+            break;
+        case GR_MSTG:
+            cv_oy = 0;
+            graph_mstg(c);
+            break;
+        case GR_EQ:
+            graph_eq(t, c);
+            break;
+        case GR_COMP:
+            cv_oy = 0;
+            graph_comp(c);
+            break;
+        case GR_FILT:
+            graph_filt(t, c);
+            break;
+        case GR_SUB:
+            graph_sub(t, c);
+            break;
+        case GR_CYCLE:
+            graph_cycle(t, c);
+            break;
+    #if DUELL_TEST_MODE
+        case GR_TEST:
+            cv_oy = 0;
+            graph_test();
+            break;
+    #endif
+        case GR_FMOP:
+        case GR_FMOP2:
+            if (fop_ok()) graph_fm6(t, c, fop_op % 6u);   /* the chart, the operator picked */
+            break;
+        case GR_FMENV:
+            if (fop_ok()) graph_fm6env(t, c);
+            break;
+        default:
+            if (pg->scope == SC_ENGINE && ENGINES[t->eng_req % NENGINES] == &ENG_WHEEL) graph_wheel(t, c);
+            else if (pg->scope == SC_ENGINE && t->eng_req % NENGINES == ENGI_FM6) graph_fm6(t, c, 6u);   /* EDIT 1 and 2 */
+            break;                                       /* (no other page comes here: the plain card pages are CELL pages, template 8, which return above; the MIXER is a layer) */
         }
-        {                                            /* option B (grid_on 5: LOFI and NOISE have no picture since item 165, grid_on 15, cells): the picture of the engine */
-            const engine_t *en = ENGINES[t->eng_req % NENGINES];
-            if (en == &ENG_ANALOG)
-                graph_pic_analog(t, c);
-            else if (en == &ENG_PHASE)
-                pic_phase(t, c);
-            else if (en == &ENG_WAVE)
-                pic_table(t, c);
-            else if (en == &ENG_FORMANT)
-                pic_voice(t, c);
-            else if (en == &ENG_PHYS)
-                pic_phys(t, c);
-            else if (en == &ENG_TRIO)
-                pic_trio(t, c);                      /* (a retired engine, a stored DIGITAL, SAMPLE .. sound: no picture) */
-        }
-        break;
-    case GR_MORPH:
+        TIDE_LIVE_DRAW(pg, t);                           /* TIDE: over the picture just drawn */
         cv_oy = 0;
-        graph_morph();
-        break;
-    case GR_PERF:
-        cv_oy = 0;
-        graph_perf();
-        break;
-#if !DUELL_TIDE                                      /* TIDE hook: MORPH SET is not in TIDE's round (TIDE LIST has ROLL TYPE) */
-    case GR_MORPHSET:
-        cv_oy = 0;
-        graph_morphset();
-        break;
-#endif
-#if !DUELL_TIDE
-    case GR_MODE:
-        cv_oy = 0;
-        graph_mode();
-        break;
-#endif
-    TIDE_GRAPH_CASES                                 /* TIDE hook */
-    case GR_MIDI:
-        cv_oy = 0;
-        graph_midi();
-        break;
-    case GR_MLEARN:
-        cv_oy = 0;
-        graph_mlearn();
-        break;
-    case GR_SCHAIN:
-        cv_oy = 0;
-        graph_schain();
-        break;
-    case GR_MODS:
-        cv_oy = 0;
-        graph_mods();
-        break;
-    case GR_MSTG:
-        cv_oy = 0;
-        graph_mstg(c);
-        break;
-    case GR_EQ:
-        graph_eq(t, c);
-        break;
-    case GR_COMP:
-        cv_oy = 0;
-        graph_comp(c);
-        break;
-    case GR_FILT:
-        graph_filt(t, c);
-        break;
-    case GR_SUB:
-        graph_sub(t, c);
-        break;
-    case GR_CYCLE:
-        graph_cycle(t, c);
-        break;
-#if DUELL_TEST_MODE
-    case GR_TEST:
-        cv_oy = 0;
-        graph_test();
-        break;
-#endif
-    case GR_FMOP:
-    case GR_FMOP2:
-        if (fop_ok()) graph_fm6(t, c, fop_op % 6u);   /* the chart, the operator picked */
-        break;
-    case GR_FMENV:
-        if (fop_ok()) graph_fm6env(t, c);
-        break;
-    default:
-        if (pg->scope == SC_ENGINE && ENGINES[t->eng_req % NENGINES] == &ENG_WHEEL) graph_wheel(t, c);
-        else if (pg->scope == SC_ENGINE && t->eng_req % NENGINES == ENGI_FM6) graph_fm6(t, c, 6u);   /* EDIT 1 and 2 */
-        break;                                       /* (no other page comes here: the plain card pages are CELL pages, template 8, which return above; the MIXER is a layer) */
+        cv_blit(0, Y_GRAPH);
     }
-    TIDE_LIVE_DRAW(pg, t);                           /* TIDE: over the picture just drawn */
-    cv_oy = 0;
-    cv_blit(0, Y_GRAPH);
     if (pg->graph == GR_COMP) {                      /* (the bar over the panel just drawn) */
         cmpm_sig = 0;
         comp_meter();

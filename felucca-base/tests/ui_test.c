@@ -44,6 +44,7 @@
 #endif
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>          /* (strcmp in the text capture hook below, before hostsim.c: gcc 14 makes an implicit declaration an error) */
 /* DUELL 1.1 (item 127): the grid cards (ui_draw.c draw_card_grid) keep a hash, not "LABEL|VALUE|UNIT", in ui.col, so a test reads a card from the texts drawn in its rectangle:
  * GFX_HOOK_TEXT records every text with its ink box while txt_on is set (card_text / card_is / card_hid below). Only the tests that ask (UI_TEXT_CAPTURE, or this file's own main) build the hook. */
 #if defined(UI_TEXT_CAPTURE) || !defined(UI_TEST_NO_MAIN)
@@ -67,23 +68,39 @@ static void txt_hook(int32_t x0, int32_t y0, int32_t x1, int32_t y1, const char 
         txt_n++;
     }
 }
-static void txt_blit(int32_t x, int32_t y)             /* the canvas goes to the screen at (x, y): its texts get their screen boxes */
+static void txt_blit(int32_t x, int32_t y, int32_t ch)           /* the canvas goes to the screen at (x, y): its texts get their screen boxes */
 {
     if (txt_on && txt_grid_now())
         txt_grid = txt_grid_now();
-    for (; txt_pend < txt_n; txt_pend++) {
-        txt_log[txt_pend].x0 = (int16_t)(txt_log[txt_pend].x0 + x); txt_log[txt_pend].x1 = (int16_t)(txt_log[txt_pend].x1 + x);
-        txt_log[txt_pend].y0 = (int16_t)(txt_log[txt_pend].y0 + y); txt_log[txt_pend].y1 = (int16_t)(txt_log[txt_pend].y1 + y);
+    {   /* b10 ui-c: a picture drawn in canvas bands records every text in each band: the ones wholly outside this band's rows are not in it, one across two bands is the same screen box twice (kept once) */
+        uint32_t i, j, k = txt_pend;
+        for (i = txt_pend; i < txt_n; i++) {
+            int dup = 0;
+            if (txt_log[i].y1 <= 0 || txt_log[i].y0 >= ch)
+                continue;
+            txt_log[k] = txt_log[i];
+            txt_log[k].x0 = (int16_t)(txt_log[k].x0 + x); txt_log[k].x1 = (int16_t)(txt_log[k].x1 + x);
+            txt_log[k].y0 = (int16_t)(txt_log[k].y0 + y); txt_log[k].y1 = (int16_t)(txt_log[k].y1 + y);
+            for (j = 0; j < txt_pend && !dup; j++)
+                dup = txt_log[j].x0 == txt_log[k].x0 && txt_log[j].x1 == txt_log[k].x1 && txt_log[j].y0 == txt_log[k].y0 && txt_log[j].y1 == txt_log[k].y1 && !strcmp(txt_log[j].s, txt_log[k].s);
+            if (!dup)
+                k++;
+        }
+        txt_n = k;
+        txt_pend = k;
     }
 }
 #define GFX_HOOK_TEXT(x0, y0, x1, y1, s, flags) (txt_cw = (int32_t)cv_w, txt_hook((x0), (y0), (x1), (y1), (s)))
 #define GFX_HOOK_PEN(y, f) (txt_face = (f))
-#define GFX_HOOK_BLIT(x, y, r0) txt_blit((int32_t)(x), (int32_t)(y))
+#define GFX_HOOK_BLIT(x, y, r0) txt_blit((int32_t)(x), (int32_t)(y), (int32_t)cv_h)
 #define GFX_HOOK_BEGIN() (txt_pend = txt_n)
 #define GFX_HOOK_PIXELS(n) ((void)0)
+static uint32_t ui_over_n;                            /* (b10 ui-c: pictures taller than a canvas band begun outside CV_BANDS: they would be cut) */
+#define GFX_HOOK_OVER(h, inb) ((h) > CV_BAND && !(inb) ? ui_over_n++ : 0u)
 #endif
 #define main hostsim_main
 #include "hostsim.c"
+#include "multi_names.h"      /* (MIDX / MPOS / MREC: a test names a multi by its record number, tools/factory_multis.py DISPLAY_ORDER) */
 #undef main
 
 /* ------------------------------------------------------------ HAL stubs --- */
@@ -1559,7 +1576,7 @@ static int test_menu_tabs(void)
     int bad = 0, ok = 1, fit = 1;
     uint32_t t, i, n, u, pg;
     static const uint8_t WANT[MTAB_COUNT][10] = {
-        {MI_COLOR, MI_LEDS, MI_SCLLED, MI_ANIM, MI_SCROFF, MI_NOTESLEFT, 0xFF},
+        {MI_COLOR, MI_LEDS, MI_SCLLED, MI_ANIM, MI_SCROFF, 0xFF},   /* (NOTES LEFT: no row since b10 ui-b, owner 2026-11-12: the capsule has no voices count; its bit and editor id stay) */
         {MI_MODERECALL, MI_HOMEPG, MI_ACCEL, MI_HOLD, MI_CHADD, MI_PREVIEW, MI_PERFLEAVE, 0xFF},
         {MI_CLICK, MI_CLKLVL, MI_COUNTIN, MI_TUNE, 0xFF},
 #if DUELL_TEST_MODE
@@ -1608,7 +1625,7 @@ static int test_menu_tabs(void)
     ok &= str_eq(menu_label(MI_ACCEL), "KNOB ACCELERATION") && str_eq(MI_NAME[MI_ACCEL], "KNOB ACCEL") && str_eq(menu_label(MI_LEDS), "LIGHTS") && str_eq(menu_label(MI_PERFLEAVE), "LEAVING PERFORM");   /* (DUELL 1.1 label audit: the device says ACCELERATION, LIGHTS, LEAVING PERFORM; MI_NAME stays the editor's key) */
     ok &= mtab_pages(MTAB_DISPLAY) == 1u && mtab_pages(MTAB_CONTROL) == 1u && mtab_pages(MTAB_AUDIO) == 1u &&
           mtab_pages(MTAB_SYSTEM) == 1u + DUELL_TEST_MODE;   /* (SYSTEM: 7 units in the release, 8 with TEST: 2 pages) */
-    for (i = 0; i < MI_COUNT; i++) ok &= (MI_TAB[i] < MTAB_COUNT) == (i != MI_CPU);   /* (every row is on a tab but the retired CPU METER) */
+    for (i = 0; i < MI_COUNT; i++) ok &= (MI_TAB[i] < MTAB_COUNT) == (i != MI_CPU && i != MI_NOTESLEFT);   /* (every row is on a tab but the retired CPU METER and NOTES LEFT) */
     {   /* the tab bar: one equal gap between every two tabs (never overlapping) at every place of the slide, inside MT_X0..MT_X1, whichever row (and page) is selected */
         int32_t a[MTAB_COUNT], x[MTAB_COUNT], w[MTAB_COUNT], p;
         for (n = 0; n < MI_COUNT; n++)
@@ -1653,11 +1670,11 @@ static int test_menu_tabs(void)
     ui_power_on();
     hold(B_HOME);
     ok = ui.menu == 1 && ui.menu_sel == MI_COLOR && menu_tab() == MTAB_DISPLAY;
-    for (i = 0; i < 5u; i++) turn(EN_SELECT, 1);
-    ok &= ui.menu_sel == MI_NOTESLEFT;
+    for (i = 0; i < 4u; i++) turn(EN_SELECT, 1);
+    ok &= ui.menu_sel == MI_SCROFF;                     /* (DISPLAY's last row since b10 ui-b: NOTES LEFT has none) */
     turn(EN_SELECT, 1); ok &= ui.menu_sel == MI_MODERECALL && menu_tab() == MTAB_CONTROL;   /* (SPEC 1.1a: on into the next tab) */
-    turn(EN_SELECT, -1); ok &= ui.menu_sel == MI_NOTESLEFT && menu_tab() == MTAB_DISPLAY;
-    for (i = 0; i < 4u; i++) turn(EN_SELECT, -1);
+    turn(EN_SELECT, -1); ok &= ui.menu_sel == MI_SCROFF && menu_tab() == MTAB_DISPLAY;
+    for (i = 0; i < 3u; i++) turn(EN_SELECT, -1);
     ok &= ui.menu_sel == MI_LEDS;
     bad += check("MENU: SELECT moves the row and goes on across the tab ends (select_test.c: all of them, both ways)", ok);
     ui.menu_sel = MI_LEDS;
@@ -1810,7 +1827,7 @@ static int test_menu_tabs(void)
     /* the slide: ANIM ON, a few frames from DISPLAY to CONTROL drawing only the tab strip; ANIM OFF, at once */
     ui_power_on();
     hold(B_HOME);
-    ui.menu_sel = MI_NOTESLEFT;                               /* (DISPLAY's last row: SELECT goes on to CONTROL) */
+    ui.menu_sel = MI_SCROFF;                                  /* (DISPLAY's last row: SELECT goes on to CONTROL; NOTES LEFT has no row since b10 ui-b) */
     frame();
     turn(EN_SELECT, 1);
     ok = mt.pos > 0 && mt.pos < MT_ONE;                 /* (a step on the way) */
@@ -7338,13 +7355,13 @@ static int test_ui_t(void)
     go_main_to(HP_MORPH);
     song.g[G_BPM] = 137;
     song.rec = 0;
-    tempo_ok = rows_has(215, 240, "137");
+    tempo_ok = rows_has(190, 226, "137");             /* (HOME's two-row footer: row 1, above the counter and the battery, b10 ui-b owner 2026-11-12) */
     for (pg = 0; pg < 2u; pg++) {                        /* (another page, another family: the same footer) */
         open_family(pg ? FAM_EDIT : FAM_SEQ);
         tempo_ok &= rows_has(215, 240, "137");
     }
     song.g[G_BPM] = 98;
-    tempo_ok &= rows_has(215, 240, "98");
+    tempo_ok &= rows_has(215, 240, "98");             /* (EDIT's one-row footer: row 2) */
     go_main_to(HP_MORPH);
     memset(host_screen, 0, sizeof host_screen);
     ui.force = 1; draw_head(); ui.force = 0;
@@ -7369,7 +7386,7 @@ static int test_ui_t(void)
     unit_ok &= !strcmp(v, "I");
     param_format(&ENG_FORMANT.edit[1], 127, v, &u);
     unit_ok &= !strcmp(v, "U");
-    bad += check("footer: the tempo (BPM, the clock's measured one included) stands in row 2 on every page", tempo_ok);
+    bad += check("footer: the tempo (BPM, the clock's measured one included) on every page: row 1 of HOME's two-row footer, row 2 elsewhere", tempo_ok);
     bad += check("capsule: a muted part has a hollow number cell, a held arp a line under its letter (three different pictures)", mark_ok);
     bad += check("units: the LFO's PHS in degrees (64 = 180 deg), VOICE's vowels as A E I O U with > between", unit_ok);
     ui_power_on();
@@ -7863,9 +7880,9 @@ static int test_item152_flicker(void)
     }
     return bad;
 }
-/* item 153 (owner): the capsule's third cell. POLY keeps the number of voices still free; MONO shows M, LEGATO L, UNISON U in its place (each part its own letter). The cell is
- * compared with head_capsule drawn directly with the number / the letter, so the test sees the pixels, not the code path. The A / B letter cell is not touched */
-static void cap_cell(uint32_t part, uint16_t *out)       /* the header's capsule cells of `part` (all three), rows 0..H_HEAD */
+/* item 153, b10 ui-b (owner 2026-11-12): the capsule is two cells, [number | letter]: the voices count (POLY) and M / L / U (MONO / LEGATO / UNISON) are gone. The header's capsule
+ * equals head_capsule drawn directly (the test sees the pixels, not the code path), and the voice mode no longer changes it */
+static void cap_cell(uint32_t part, uint16_t *out)       /* the header's capsule of `part`, rows 0..H_HEAD */
 {
     int32_t x0 = part ? 240 - CAP_X - CAP_W : CAP_X, x, y;
     for (y = 0; y < H_HEAD; y++)
@@ -7874,10 +7891,9 @@ static void cap_cell(uint32_t part, uint16_t *out)       /* the header's capsule
 }
 static int test_item153_capsule(void)
 {
-    int bad = 0, ok_ref = 1, ok_poly = 1, ok_diff = 1, ok_ab = 1, ok_own = 1;
-    static const char CH[4] = {0, 'M', 'L', 'U'};
-    static uint16_t got[2][H_HEAD * 40], ref[H_HEAD * 40], seen[4][H_HEAD * 40];
-    uint32_t m, a, b, part, i;
+    int bad = 0, ok_ref = 1, ok_same = 1;
+    static uint16_t got[H_HEAD * 40], ref[H_HEAD * 40], first[H_HEAD * 40];
+    uint32_t m, part, i;
     ui_power_on();
     settings.palette = 0; palette_set(0);
     go_main_to(HP_MORPH);
@@ -7885,75 +7901,28 @@ static int test_item153_capsule(void)
     for (part = 0; part < 2u; part++)
         for (m = 0; m < 4u; m++) {
             uint32_t lit, bb;
-            int32_t code;
             trk[0].p[P_VOICE] = trk[1].p[P_VOICE] = (int16_t)V_POLY;
             trk[part].p[P_VOICE] = (int16_t)m;
             memset(host_screen, 0, sizeof host_screen);
             ui.force = 1; draw_head(); ui.force = 0;
-            cap_cell(part, got[0]);
-            if (m == V_POLY) {                           /* the number: the part's free voices, as head_capsule draws it */
-                uint8_t n[2];
-                head_notes(n);
-                code = n[part];
-            } else {
-                code = -(int32_t)CH[m];
-            }
+            cap_cell(part, got);
             lit = (badge_lit() >> part) & 1u;
             bb = morph_fader_of(part) >= 127u;
             memset(host_screen, 0, sizeof host_screen);
             cv_begin(240, H_HEAD, T_BG);
-            head_capsule(part ? 240 - CAP_X - CAP_W : CAP_X, part, lit, bb, code, 0);
+            head_capsule(part ? 240 - CAP_X - CAP_W : CAP_X, part, lit, bb, 0);
             cv_blit(0, Y_HEAD);
             cap_cell(part, ref);
-            for (i = 0; i < (uint32_t)(H_HEAD * CAP_W); i++)
-                if (got[0][i] != ref[i])
-                    ok_ref = 0;
-            if (m == V_POLY)
-                ok_poly &= code >= 0;
-            memcpy(seen[m], got[0], sizeof seen[m]);
-            if (m == 3u) {                               /* the four looks (number, M, L, U) all differ in the third cell */
-                for (a = 0; a < 4u; a++)
-                    for (b = a + 1u; b < 4u; b++) {
-                        uint32_t same = 1, x, y;
-                        for (y = 0; y < H_HEAD; y++)
-                            for (x = 2u * CAP_NUM_W; x < CAP_W; x++)
-                                if (seen[a][y * CAP_W + x] != seen[b][y * CAP_W + x])
-                                    same = 0;
-                        if (same)
-                            ok_diff = 0;
-                    }
-                for (a = 1; a < 4u; a++) {               /* the A / B cell and the part number cell are the same in all four */
-                    uint32_t x, y;
-                    for (y = 0; y < H_HEAD; y++)
-                        for (x = 0; x < 2u * CAP_NUM_W; x++)
-                            if (seen[a][y * CAP_W + x] != seen[0][y * CAP_W + x])
-                                ok_ab = 0;
-                }
+            if (!m)
+                memcpy(first, got, sizeof first);
+            for (i = 0; i < (uint32_t)(H_HEAD * CAP_W); i++) {
+                ok_ref &= got[i] == ref[i];
+                ok_same &= got[i] == first[i];
             }
         }
-    /* each part its own letter: part 1 MONO and part 2 POLY shows M in capsule 1 and a number in capsule 2 */
-    {
-        uint16_t c1[H_HEAD * 40], c2[H_HEAD * 40], d1[H_HEAD * 40];
-        uint32_t x, y, differs = 0;
-        trk[0].p[P_VOICE] = (int16_t)V_MONO; trk[1].p[P_VOICE] = (int16_t)V_POLY;
-        memset(host_screen, 0, sizeof host_screen);
-        ui.force = 1; draw_head(); ui.force = 0;
-        cap_cell(0, c1); cap_cell(1, c2);
-        trk[1].p[P_VOICE] = (int16_t)V_MONO;
-        memset(host_screen, 0, sizeof host_screen);
-        ui.force = 1; draw_head(); ui.force = 0;
-        cap_cell(1, d1);
-        for (y = 0; y < H_HEAD; y++)
-            for (x = 2u * CAP_NUM_W; x < CAP_W; x++)
-                differs |= c2[y * CAP_W + x] != d1[y * CAP_W + x];
-        ok_own &= differs != 0u;                         /* part 2's cell changes with part 2's own mode */
-        (void)c1;
-    }
     trk[0].p[P_VOICE] = trk[1].p[P_VOICE] = (int16_t)V_POLY;
-    bad += check("item 153: the capsule's third cell = head_capsule with the number in POLY and with M / L / U in MONO / LEGATO / UNISON (both parts, pixel for pixel)", ok_ref && ok_poly);
-    bad += check("item 153:   .. number, M, L, U all look different", ok_diff);
-    bad += check("item 153:   .. the part number and A / B cells do not change with the mode", ok_ab);
-    bad += check("item 153:   .. each part shows its own mode", ok_own);
+    bad += check("item 153 (b10 ui-b): the header's capsule = head_capsule [number | letter] drawn directly (both parts, POLY / MONO / LEGATO / UNISON, pixel for pixel)", ok_ref);
+    bad += check("item 153 (b10 ui-b):   .. the voice mode does not change the capsule (no voices count, no M / L / U)", ok_same);
     return bad;
 }
 /* item 157 (owner): (A) no "ENGINE <name>" header message on any page; (B) a MIDI program change of a sound says "#NN NAME" in the TITLE's place, face (T) and

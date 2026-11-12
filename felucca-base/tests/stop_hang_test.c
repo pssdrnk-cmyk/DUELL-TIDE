@@ -122,7 +122,7 @@ static void setup_run(const setup_t *s)
     multi_boot();
     frame();
     ui_prefs2 |= PREF_MODE_RECALL >> 16;
-    project_load(s->slot);
+    project_load(MIDX(s->slot));
     song.master_q12 = 2048;                              /* (felucca_init: the default MASTER) */
     if (getenv("STOPHANG_PLAY"))
         printf("  loaded slot %u: HOLD %d %d, AMODE %d %d, VOICE %d %d, mode %d, G_CLOCK %d\n", s->slot, (int)trk[0].p[P_AHOLD], (int)trk[1].p[P_AHOLD], (int)trk[0].p[P_AMODE], (int)trk[1].p[P_AMODE], (int)trk[0].p[P_VOICE], (int)trk[1].p[P_VOICE], (int)duell_mode, (int)song.g[G_CLOCK]);

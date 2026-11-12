@@ -600,7 +600,7 @@ static void test_control(void)
     project_save_as(10, "MS TEST");
     song.ms[0] = 180;
     frame();
-    project_load(10);
+    project_load(MIDX(10));
     frame();
     expect("a multi load leaves WIDTH alone (a device setting: nothing of it in the multi)", song.ms[0] == 180);
     {
@@ -609,7 +609,7 @@ static void test_control(void)
         for (k = 0; k < 16u; k++) {
             if (df_of(k) >= DF_N)
                 continue;
-            project_load(k);
+            project_load(MIDX(k));
             frame();
             ok &= song.ms[0] == 180;
         }

@@ -5,6 +5,7 @@
 #define FELUCCA_CDC 1                                    /* (the developer builds' MENU: USB SERIAL is a row there; the product has none, tests/release_test.c) */
 #endif
 #define main hostsim_main
+#include "multi_names.h"      /* (MIDX: a test names a multi by its record number) */
 #include "hostsim.c"
 #undef main
 
@@ -230,7 +231,7 @@ static int autosave_test(void)
     bad += check("autosave: power-on restores it (steps, tempo, name; RESTORED); no write after (unchanged)",
                  ok && !as.writes && as_erases == b0);
     bad += check("autosave: MASTER TUNE (A4 in 0.1 Hz) comes back with it (432.1 Hz)", song.g[G_TUNE] == 4321);
-    bad += check("autosave: BASS MONO (a master effect, project byte 65) comes back with it (5); a multi load (M01) leaves it as it is", song.bm == 5 && (project_load(0), song.bm == 5));
+    bad += check("autosave: BASS MONO (a master effect, project byte 65) comes back with it (5); a multi load (M01) leaves it as it is", song.bm == 5 && (project_load(MIDX(0)), song.bm == 5));
     as_power_on();
     ok = autosave_boot(0) == 0 && song.g[G_BPM] != 97;
     as_run(60000u);

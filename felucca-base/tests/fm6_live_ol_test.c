@@ -8,8 +8,10 @@ static int bad, checks;
 static void fm_compute(fm6_note_t *n, const uint8_t *p, int32_t *out)
 {
     int32_t dt[6] = {0};
+    fm6_lfot_t lt;
     memset(out, 0, 3 * FM6_N * sizeof *out);
-    fm6_note_compute(n, p, out, 0, 0, fm6_note_logfreq(60 * 16, 0), 31, 0, dt, 0, 0);
+    fm6_lfo_terms(&lt, p, 0, 0);
+    fm6_note_compute(n, p, out, &lt, fm6_note_logfreq(60 * 16, 0), 31, 0, dt, 0, 0);
 }
 #if DUELL_TIDE
 /* The pre-optimization renderer: even without an ARP it prepared temporary pitch/gate arrays for the bridge.
@@ -29,10 +31,10 @@ static void legacy_bridge_render(track_t *t, voice_t *v, int32_t *out, const vmo
     fb = clamp(fm6_eff[tr].fb + ((m->shape - (64 << 8)) >> 11), 0, 7);
     lvl = clamp(t->p[P_E2], -64, 63) * 24 + clamp(m->cutoff >> 8, -150, 150) * 16;
     if (m->amask || fm6_xt[tr].on) {
-        if (!fm6_note_compute(n, p, bus, fm6_lfo_v[tr], fm6_lfo_d[tr], lf, fm6_eff[tr].alg, fb,
+        if (!fm6_note_compute(n, p, bus, &fm6_lfot[tr], lf, fm6_eff[tr].alg, fb,
                               atg_fm6(m, fm6_eff[tr].dt, dt2, ul), lvl * 65536, ul))
             return;
-    } else if (!fm6_note_compute(n, p, bus, fm6_lfo_v[tr], fm6_lfo_d[tr], lf, fm6_eff[tr].alg, fb,
+    } else if (!fm6_note_compute(n, p, bus, &fm6_lfot[tr], lf, fm6_eff[tr].alg, fb,
                                  fm6_eff[tr].dt, lvl * 65536, 0)) {
         return;
     }
@@ -179,12 +181,50 @@ static void bridge_render_equivalence(void)
     }
 }
 #endif
+/* K7: the LFO terms are computed once a part and block (fm6_lfo_terms); they must be the numbers the per-voice formulas gave (the old fm6_note_compute's own lines, copied here) */
+static void lfo_terms_old(const uint8_t *p, int32_t lfo_val, int32_t lfo_delay, int32_t *pm, uint32_t *am)
+{
+    uint32_t pmd = (uint32_t)((p[FP_LPMD] % 100u) * 165u >> 6) * (uint32_t)lfo_delay;
+    int32_t senslfo = FM6_PMS[p[FP_LPMS] & 7u] * (lfo_val - (1 << 23));
+    int32_t pmod = (int32_t)(((int64_t)pmd * senslfo) >> 39);
+    uint32_t amd = (uint32_t)((p[FP_LAMD] % 100u) * 165u >> 6), amod;
+    pmod = pmod < 0 ? -pmod : pmod;
+    *pm = senslfo < 0 ? -pmod : pmod;
+    amod = (uint32_t)(((int64_t)amd * lfo_delay) >> 8);
+    *am = (uint32_t)(((int64_t)amod * ((1 << 24) - lfo_val)) >> 24);
+}
+static void k7_terms(void)
+{
+    static const int32_t vals[] = {0, 1, 1 << 20, (1 << 23) - 1, 1 << 23, (1 << 23) + 12345, 3 << 22, (1 << 24) - 1}, dels[] = {0, 1, 1 << 12, 1 << 20, (1 << 24) - 1, 1 << 24};
+    uint32_t n = 0, bad_terms = 0, pi, ai, si, vi, di;
+    uint8_t p[FP_SIZE];
+    memcpy(p, fm6_patch[0], sizeof p);
+    for (pi = 0; pi < 4; pi++)
+        for (ai = 0; ai < 4; ai++)
+            for (si = 0; si < 8; si++)
+                for (vi = 0; vi < sizeof vals / sizeof vals[0]; vi++)
+                    for (di = 0; di < sizeof dels / sizeof dels[0]; di++) {
+                        fm6_lfot_t c;
+                        int32_t pm;
+                        uint32_t am;
+                        p[FP_LPMD] = (uint8_t)(pi == 0 ? 0 : pi == 1 ? 7 : pi == 2 ? 50 : 99);
+                        p[FP_LAMD] = (uint8_t)(ai == 0 ? 0 : ai == 1 ? 9 : ai == 2 ? 60 : 99);
+                        p[FP_LPMS] = (uint8_t)si;
+                        fm6_lfo_terms(&c, p, vals[vi], dels[di]);
+                        lfo_terms_old(p, vals[vi], dels[di], &pm, &am);
+                        n++;
+                        bad_terms += c.pm != pm || c.am != am;
+                    }
+    printf("fm6liveol: K7 LFO terms: %u combinations, %u differ\n", n, bad_terms);
+    CHECK("K7: the part's LFO terms equal the per-voice formulas they replace", n > 1000 && bad_terms == 0);
+}
 int main(void)
 {
     static const uint32_t notes[] = {24, 60, 108}, velocities[] = {1, 32, 127};
     _Static_assert(sizeof(fm6_env_t) == 24u, "the key and velocity reuse the envelope's padding");
     ui_power_on();
     frame();
+    k7_terms();
     for (uint32_t a = 0; a < 3; a++)
         for (uint32_t b = 0; b < 3; b++) {
             uint8_t p[FP_SIZE];

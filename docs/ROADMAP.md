@@ -1,26 +1,30 @@
 # DUELL with TIDE roadmap
 
-Updated 10 November 2026. What is already built is in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md). Older roadmaps are in [history/](history/); the audits of 8 November in [audits/2026-11-08/](audits/2026-11-08/); the firmware review of 9 November in [audits/2026-11-09/firmware-review/](audits/2026-11-09/firmware-review/REPORT.md); the musical review of TIDE and the multis in [audits/2026-11-09/musical-review/](audits/2026-11-09/musical-review/REPORT.md).
+Updated 12 November 2026. What is already built is in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md). Older roadmaps are in [history/](history/); the audits of 8 November in [audits/2026-11-08/](audits/2026-11-08/); the firmware review of 9 November in [audits/2026-11-09/firmware-review/](audits/2026-11-09/firmware-review/REPORT.md); the musical review of TIDE and the multis in [audits/2026-11-09/musical-review/](audits/2026-11-09/musical-review/REPORT.md).
 
 State words on this page: Released in bN, Ready (built and tested, waiting for a release), Built (waits for the FM-1 test), In progress, Planned (brief written, not built), Next, Later, Waiting on you.
 
 ## Now: 1.0.0-b7
 
+The unit runs b10-rc2, flashed 12 November at 02:34 (its TIDE_VERSION string still reads 1.0.0-b9). b10-rc3 is built and tested, and waits for the FM-1.
+
 | What | State |
 |---|---|
 | Reverb on the second core, to free CPU (K4) | Built, needs its own FM-1 sweep with K4 on and off |
 
-## Built in b7, waits for the FM-1
+## On the unit: built in b7
 
-Six builder lanes made these overnight (9 to 10 November); each is measured on the host, none is yet on the unit. State words in brackets are honest: what is only partly done says so.
+On the unit since b10-rc2 (12 November).
+
+Six builder lanes made these overnight (9 to 10 November); each is measured on the host; all of it has been on the unit since b10-rc2. State words in brackets are honest: what is only partly done says so.
 
 | What | State |
 |---|---|
 | A sound saved from the web editor keeps its End B ([FR3](audits/2026-11-09/firmware-review/TASKS.md#fr3)) | Built |
 | Small control fixes: RENAME no longer types stray letters, OCT- held as a modifier doesn't also act on release, a fast PRESETS turn can't land on the other part, SEQ + REC arms REC however the buttons are lifted, NOT SAVED only for saves ([FR7](audits/2026-11-09/firmware-review/TASKS.md#fr7)) | Built |
 | Words that match the unit: ERASE DATA names the FM6 bank and the user tables (AMOUNT not dimmed in JOURNEY: done with page 1 in b7; the TURNS step falls away: the row is gone) ([FR11](audits/2026-11-09/firmware-review/TASKS.md#fr11)) | Built |
-| ALGORITHM on HOME: PART 1, the middle, PART 2. The middle plays both parts in the PLAY MODE row's mode and the header names it (LAYER, STEREO, DUEL); PART 1 / PART 2 play one part on every key; changing PLAY MODE moves ALGORITHM to the middle. With PLAY MODE on LAYER, moving between a side and the middle cuts a held chord (the mode change silences held keys by design) ([design](design/PLAY_MODE_SELECT.md)) | Built (b7/playsel, on b7), not on the unit yet |
-| SPLIT MIDDLE: the keys split in the middle and the split follows OCT- / OCT+; with SPLIT set, STEREO and DUEL split the keys too | Built (b7/playsel, on b7), not on the unit yet |
+| ALGORITHM on HOME: PART 1, the middle, PART 2. The middle plays both parts in the PLAY MODE row's mode and the header names it (LAYER, STEREO, DUEL); PART 1 / PART 2 play one part on every key; changing PLAY MODE moves ALGORITHM to the middle. With PLAY MODE on LAYER, moving between a side and the middle cuts a held chord (the mode change silences held keys by design) ([design](design/PLAY_MODE_SELECT.md)) | Built (b7/playsel, on b7), on the unit since b10-rc2 |
+| SPLIT MIDDLE: the keys split in the middle and the split follows OCT- / OCT+; with SPLIT set, STEREO and DUEL split the keys too | Built (b7/playsel, on b7), on the unit since b10-rc2 |
 | Factory pattern table packed: its accent / slide / tie flags as bit masks (SP3, 640 B), the room for the two above | Built (b7/playsel) |
 | STYLE DUB keeps the multi's own sounds (WANDER, not JOURNEY); AMBIENT without POLY; a saved STYLE stays that style ([MR1](audits/2026-11-09/musical-review/TASKS.md#mr1)). M02: brightness swing 2x not 7x, dulled bars 7 % not 51 %. The first start stays M02 DUB CHORD | Built |
 | A shorter TIDE SETTINGS page: nine rows, TURNS / ARP / PITCH / VARY / WASH / POLY / SYNC rows gone, MODE a row, ROLL TYPE no longer switches the rhythm off ([MR8](audits/2026-11-09/musical-review/TASKS.md#mr8)) | Built. One mark not met: ARC under ROLL SMART is only 0.67 to 0.82 like MUSIC (not 0.95), because ROLL TYPE's own pattern roll differs; that is what ROLL TYPE is for |
@@ -39,7 +43,7 @@ Six builder lanes made these overnight (9 to 10 November); each is measured on t
 | BASIC CHORD's dust bed and the two drone beds play with no notes coming in; every part that waits for keys plays TIDE's chord under AUTO TIDE ([MR2](audits/2026-11-09/musical-review/TASKS.md#mr2), both parts) | Built. Level with no keys: M14 is +4.4 dB over the median, M15 -11.8, M16 -3.7, M08 +3.2 (the old M14 and M15 are replaced) |
 | The multis' data pass ([MR3](audits/2026-11-09/musical-review/TASKS.md#mr3)): pads an octave down in TINE DUB and DEEP 332, drones at a house clock and 5 dB louder, swing on ORGAN SKANK, FINAL REEL's brass keeps its octave with a gentle low cut, PAD SPLIT and WHISPER TIDE 5 to 6 dB quieter with a chord held | Built (register overlap of TINE DUB / DEEP 332 not re-measured) |
 | The reel: fifteen new factory multis as one curated programme, a genre each (M01 BASIC CHORD (dub techno), M02 DUB CHORD (dub techno, rebuilt over a held pad), M03 JUNO DEEP and M04 LATE RHODES (deep house), M05 ORGAN HOUSE and M06 PIANO HOUSE (classic house), M07 DETROIT STAB and M08 HI-TECH SOUL (Detroit), M09 HYPNO 303 (hypnotic techno), M10 TWO 303s (acid), M11 ACID LINES (acid), M12 ROBOT FUNK and M13 DEEP SEA ARP (electro), M14 WARPED TAPE (IDM), M15 BERLIN RUN (Berlin school), M16 TWO LOOPS (ambient)). The night's six genre scenes, ORGAN SKANK, WARM ECHO, TINE DUB, DEEP 332 and the owner's four pads left the set (git history, fa8d5c0) | Built on the computer: notes, rhythm cells, registers and levels match the design; End B set by hand. Not on the unit yet: the CPU sweep decides (heaviest by the model: M06 PIANO HOUSE, M04 LATE RHODES, M05 ORGAN HOUSE), and the ear decides the organ, the piano, the acid line and the tape wobble |
-| HOME page 1 is the hands-on page: K1 MORPH at half the turning, K2 FILTER, K3 ECHO, K4 LENGTH on the slim row (b8: K3 RESONANCE, K4 ECHO, no LENGTH); BOTH moves each part by the same steps; OCT+ held + K1 rolls a new End B; OCT- + a knob puts it back; AMOUNT is a TIDE SETTINGS row, not dimmed in JOURNEY | Built (host tests, device build); not on the unit |
+| HOME page 1 is the hands-on page: K1 MORPH at half the turning, K2 FILTER, K3 ECHO, K4 LENGTH on the slim row (b8: K3 RESONANCE, K4 ECHO, no LENGTH); BOTH moves each part by the same steps; OCT+ held + K1 rolls a new End B; OCT- + a knob puts it back; AMOUNT is a TIDE SETTINGS row, not dimmed in JOURNEY | Built (host tests, device build); on the unit since b10-rc2 |
 | Loading one of your own sounds, a multi or a pattern no longer cuts notes the other part is holding ([FR6](audits/2026-11-09/firmware-review/TASKS.md#fr6)). Second-core code: its own FM-1 check. b8. | Built |
 | Pattern polish: a big tap-tempo jump doesn't flam or knock the arp off the grid (the rest of [FR13](audits/2026-11-09/firmware-review/TASKS.md#fr13)). | Built |
 | Load UNDO (OCT- held + PRESETS) and AUTO TIDE's HOME bring your saved sound back with its own End B ([FR10](audits/2026-11-09/firmware-review/TASKS.md#fr10)) | Built |
@@ -51,14 +55,16 @@ Six builder lanes made these overnight (9 to 10 November); each is measured on t
 The owner's answers to the musical review (9 November) are built in: the default for each of the nine questions, with the first start staying M02 DUB CHORD and FINAL REEL's brass pad keeping its octave.
 
 
-## Built in b8, waits for the FM-1
+## On the unit: built in b8
 
-A polish beta on top of b7 (details in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md#100-b8)); none of it is on the unit yet.
+On the unit since b10-rc2 (12 November).
+
+A polish beta on top of b7 (details in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md#100-b8)); all of it has been on the unit since b10-rc2.
 
 | What | State |
 |---|---|
 | ARP SEQ parts stay on the beat on the internal clock: on a long set the arp no longer drifts ahead of the bars and the click, at any tempo and after a tap tempo | Built |
-| HOME page 1's knobs are now K2 FLT, K3 RSN (the filter's resonance, on every engine), K4 ECH; LENGTH is dropped (owner 2026-11-11); OCT- + a knob still puts it back, BOTH moves each part by the same steps; test `morphui` t_home1 | Built (host tests, device build); not on the unit |
+| HOME page 1's knobs are now K2 FLT, K3 RSN (the filter's resonance, on every engine), K4 ECH; LENGTH is dropped (owner 2026-11-11); OCT- + a knob still puts it back, BOTH moves each part by the same steps; test `morphui` t_home1 | Built (host tests, device build); on the unit since b10-rc2 |
 | SAVE after JOURNEY says what it saves: "SAVES THE LOADED SOUND / KEEP FIRST = AS HEARD" above its question (what SAVE stores did not change) | Built |
 | ARC's new phase starts with its own levers: the breakdown's first beat is thinned, the peak's first loop gets no POLY stretch, as the rest of the phase does | Built |
 | The AUTO TIDE look-ahead test is back on factory multi slot 9, also over several ARC DROP arcs: no step shown that does not play | Built (no mismatch found) |
@@ -66,9 +72,11 @@ A polish beta on top of b7 (details in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md
 | Three acid multis: HYPNO 303 (slot 9, square 303 against the bar), TWO 303S (slot 10, two distorted 303s left and right), ACID LINES (slot 11, an acid-house saw line) | Built |
 | Under the hood: the TURNS leftovers are out, HOME's old MODE page leftover is out, and the `glidecpu` test's bound is 10 % (it failed on b8 before, not from a sound change) | Built |
 
-## Built in b9, waits for the FM-1
+## On the unit: built in b9
 
-The sound and knobs beta on top of b8 (details in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md#100-b9)); none of it is on the unit yet.
+On the unit since b10-rc2 (12 November).
+
+The sound and knobs beta on top of b8 (details in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md#100-b9)); released as 1.0.0-b9 (11 November) and on the unit since then.
 
 | What | State |
 |---|---|
@@ -87,6 +95,19 @@ The sound and knobs beta on top of b8 (details in the [CHANGELOG-TIDE](../CHANGE
 
 Closed from "Later": the parameter units as an index (SP4, below).
 
+## On the unit: built in b10 (rc2)
+
+- **COLR LFO (CLFO):** a new DELAY page knob, 0..15, swings the echo's colour darker and brighter at a slow 0.25 Hz; 0 is off, and DUB BASIC and DUB CHORD use 5. Multis store it.
+- **ELEC GRT and AMB DRF:** ELEC's GRT also moves the cutoff, so the odd harmonics span about 10 dB (was 2 dB); AMB's DRF reaches its full filter wobble in about 9 detents (twice as fast).
+- **Six new factory multis, M19 to M24:** TECH HYPNO, DUB HOUSE, HSE LOFI, TECH CINEMA, AMB TECHNO and TECH MINIMAL (24 factory multis in all).
+- **Developer tools:** `factory_multis.py verify` and `drone_pack.py verify` fail on any byte drift from the committed records M01 to M24; `multi_patch.py keep-amount` is removed.
+- **Developer tests:** a generated table of the factory multis' names (`build/gen/multi_names.h`) that the C tests read, so a rename cannot break them; `tests/bench_run_test.py` fails on a suite that spells a factory name.
+
+## Built in b10-rc3, waits for the FM-1
+
+- **ARC first beat:** the first beat of a new ARC phase plays at the new phase's loudness (louder peak, softer breakdown), not the old level.
+- **Hot-code check:** it now follows function pointers, so an engine voice function left in flash is no longer invisible; 15 engine hooks are allow-listed as event rate. No image changes.
+
 ## Tooling: faster work (owner, 11 November)
 
 Built or being built in b9: **the sound lab** (`felucca-base/tools/soundlab/`: render, measure, sweep, rules, the sound atlas and `genres.json`; it replaces about 80 one-off scripts). Next, in order:
@@ -103,33 +124,40 @@ Status of 1 to 3 (b10): built and measured (`jam/check.sh -j N | --changed`, `ja
 
 ## Later, in order
 
-1. ARP SEQ parts drift against the beat on the internal clock: the arp's step period and the sequencer's beat round differently, 12 to 14 samples a bar on M02 at 117 BPM, about 107 ms after 400 bars (found by the ARC lane with a host probe). Not measured under an external clock, where both follow the clock grid and probably do not drift.
-2. A new ARC phase's first downbeat still plays with the old phase's level and voices (the main loop sets the levers after the bar turns; the drop's silence is armed ahead and is exact). One step per phase change; about 40 B to arm the levers a bar ahead.
-3. `factory_multis.py build` no longer reproduces the committed End B AMOUNT bytes: a rebuild moves four bytes in every built record (two values a part, 40 to 15 and 41 to 16). The b7 records were patched to keep the old bytes (`multi_patch.py keep-amount`); a rebuild from source shows the drift again. The sounds-against-records question is the pack's.
+1. ~~ARP SEQ parts drift against the beat on the internal clock: the arp's step period and the sequencer's beat round differently, 12 to 14 samples a bar on M02 at 117 BPM, about 107 ms after 400 bars (found by the ARC lane with a host probe). Not measured under an external clock, where both follow the clock grid and probably do not drift.~~ Built in b8 (DRIFT: arp, tracks and click run through one exact beat accumulator); checked on 12 November (b10 round 2) with `arpdrift`: M02 at 117 BPM, 400 bars, drift 1 and 0 samples at every row (a constant, no growth); the external-clock path is unchanged (`clockdrift` passes).
+2. ~~A new ARC phase's first downbeat still plays with the old phase's level and voices (the main loop sets the levers after the bar turns; the drop's silence is armed ahead and is exact). One step per phase change; about 40 B to arm the levers a bar ahead.~~ Built in b8 (A2, the levers armed a unit ahead, `tarc_lev` bits 3-5); the b10 probe (`arc_levers` in `tidesteps`) reads 0 late levers on M02 and M06. The loudness step was the part left: see 25.
+3. ~~`factory_multis.py build` no longer reproduces the committed End B AMOUNT bytes~~ Closed (b10 tools lane): the drift was already gone since b8 (the sounds' End B amounts match the shipped records; a rebuild from source gives zero byte diff on M01..M24, also after a record is damaged first). `multi_patch.py keep-amount` is retired, and `factory_multis.py verify` / `drone_pack.py verify` (in the `sounds` group) fail the build if a rebuild ever differs from the committed records again.
 4. RAM headroom: the b7 build had only about 8 B above the build's 4,096 B rule at the start of the night (4,104 B free); a change that adds RAM will fail the build. Re-measure the merged image.
-5. Cleanup after TURNS: `sqm_turns` and `tarc_fast` are kept for the tests and play nothing; they can go.
-6. TIDE range overshoot of 2 to 5 semitones past the Original's highest + 12 (M01 +4, M04 +2, M07 +5, M08 +3) and below the floor (M15 p2 -2), the stab anchors (M01 keeps 0 of 3 hits in a bar, M02 keeps 1 of 2) and one AIR onset (M16 p1): check whether it is musical or a TIDE bug. `tideroles` lists them as per-part allowances (`AL[]` in `tests/tide_roles_test.c`, sized to what was measured, found in b10); remove an allowance when its cause is fixed. The test's table also needs rows for the new multis (see the comment above `AL[]`).
-6. TRAVEL keeps the multi's colour: M02's 8-bar brightness range is x6.6 (mark x2.5). `JCTX_MIN 1` brought it to x4.2 but made M02 +5 LU louder, so it was reverted; and the blend between two sounds is dull mid-trip on M13 and the FM6 multis (the rest of X1). Needs a way to pick destinations by level and colour together ([MR5](audits/2026-11-09/musical-review/TASKS.md#mr5)).
+5. ~~Cleanup after TURNS~~: `sqm_turns` and `tarc_fast` were removed in b8 (`5a3e086`); checked again on 12 November (b10 round 2): no symbol of them is in the rc2 image.
+6. TIDE range overshoot and the tideroles allowances: decided per case in b10 round 2 (`fork/b10-tide2`). The overshoots (M01 +4, M04 +2, M07 +5, M08 +3) were a TIDE bug: on an ARP SEQ chord part, a VOIC octave on the step and PEAK's open voicing of the arp chord added up past the lane (seq_voicelead.c sqm_varp, fixed). M15's -2 was the test reading 8 bars of a 16-bar loop (fixed). Left, musical, reasons in `AL[]` of `tests/tide_roles_test.c`: the stab anchors of M01, M02, M21 (bar 4 of 4 is CALL AND ANSWER's variation bar) and M16's AIR onset (one bell moved half a note). Done when tide2 is merged.
+6. ~~TRAVEL keeps the multi's colour~~ b10 tide3 (`fork/b10-tide3`): a part as a factory multi loaded it travels only to sounds in its Original's brightness octave whose level its TRIM can reach; if there is none, it travels between its own two ends. 8-bar brightness under TRAVEL against EVOLVE alone: M02 x2.6 / x2.6 (the rest is EVOLVE's own), M12 x1.3 / x1.3 (was x2.1, and half as bright), M13 x1.4 / x1.2 (was x1.9, its mid-trip dips gone). A sound loaded alone walks as J1.
 7. Two multis for the missing roles, a sparse figure with a texture and a keys house stab ([MR9](audits/2026-11-09/musical-review/TASKS.md#mr9)), and the roles rows T8 to T10 (the new reel and its `tideroles` levels). Not built in the night.
 8. On the next test-mode sweep on the unit: read core 1's stack peak with a TRAVEL crossing and WASH on, and record it in docs/TWOCORE_STAGE1.md (the rest of [FR15](audits/2026-11-09/firmware-review/TASKS.md#fr15)).
-9. Hand-moved morph saving: a hand or MIDI fader move blended every other block like a GLIDE (about 70 us a block saved). Finding 12, D44.
-10. Transition costs only while moving: the engine cross-fade, valley and wash charged only while a transition runs, so more notes play at rest.
-11. FM6 crossing fixes (findings 8, 9; brief K7) and Felucca #265 (signed DSP arithmetic, bit-exact).
+9. ~~Hand-moved morph saving: a hand or MIDI fader move blended every other block like a GLIDE (about 70 us a block saved). Finding 12, D44.~~ Built behind a switch in b10 round 4 (`fw4`): `FELUCCA_HANDSKIP=1 python tools/build.py` (`morph.c`) gives a hand- or MIDI-moved fader a blend every other block (host: 50 blends in 100 blocks of a stepping fader, 100 off; the fader jump still blends at once; host group `handskip` builds both). **Off by default**: the image is byte-identical; on it is 4 B smaller. Still to do: the unit sweep (a fast twist during dense play; the 0.73 ms trail listened to), then make it the default.
+10. ~~Transition costs only while moving: the engine cross-fade, valley and wash charged only while a transition runs, so more notes play at rest.~~ Built behind a switch in b10 round 5 (`fw5`): `FELUCCA_MOVECOST=1 python tools/build.py` (`core.h`, `budget.c` `BD_AT_REST`): the cross-fade, valley and wash are charged only while the part's fader moves or a GLIDE runs (`bd_mv`, the FM6 bridge's rule). Host (`movecost`): M02 part 1 with WASH MID, tide 60 -> 0 and misc 103 -> 43 cost units at rest. **Off by default** (byte-identical); on, +76 B. A jump over 12 fader steps is not a move in `bd_mv` (**fixed in round 6**: `bd_where` also charges a jump, a fader parked inside the arc or between its ends, and the wash's meter; [BUDGET_HONEST](BUDGET_HONEST.md)). Turning it on re-pins `budget` (item 142 reference, A01) and `deadline` (the TIDE scene) through `jam/repin.sh`.
+11. ~~FM6 crossing fixes (findings 8, 9; brief K7) and Felucca #265 (signed DSP arithmetic, bit-exact).~~ Checked and built in b10 round 4 (`fw4`): finding 8 was built already (`budget.c` charges the crossing when the glide or fader arms, `bd_mv` with `XN_FM`); finding 9 fixed (`fm6_block`: a stand-in drain waits while a new crossing runs and still runs after it; probe in `tidecrossings`); K7 built (the part's LFO terms once a block and part, `fm6_lfo_terms`; bit-exact, 6,144 term combinations equal the old formulas; +36 B with finding 9 and 152 B less hot code, the saving per voice is about 0.15 % of an FM6 voice block, not the few % the brief expected); Felucca #265 is in since `6bef0a7` (the DC block, the FM6 velocity and LFO scaling, the phase additions, PHYS out; `ubsanrender` passes).
 12. Free 276 B of RAM: the SEQ MORPH history UNDO no longer reads ([R1](audits/2026-11-09/tide-morph/TASKS.md#r1)). When a feature needs RAM.
-13. Two small interrupt savings in the crossing step ([C1](audits/2026-11-09/tide-morph/TASKS.md#c1)), with "Transition costs only while moving".
-14. WASH on: no jump when a glide is stopped by hand, one dip instead of two stacked ([W1](audits/2026-11-09/tide-morph/TASKS.md#w1)).
-15. Docs fixes from the TIDE and morph audit still open (the dip's length, the DUB recipe's wash, the bass promise and the dynamics paragraph were written in the b7 guide pass): `TIDE_GUIDE.md:23` the MORPH knob 3 text (the wave picture is shipped); EVOLVE "a little further each trip"; `MOD_INERT_TABLE.md:21` (ANALOG: PW is offered only with WAVE PWM), and `INSTALL.md:60` / `QUICKSTART.md:41` (ERASE DATA erases the FM6 voice bank and the user tables), with FR11.
+13. ~~Two small interrupt savings in the crossing step ([C1](audits/2026-11-09/tide-morph/TASKS.md#c1)), with "Transition costs only while moving".~~ Built in b10 round 5 with Later 10: step 1 (the dead `k` store) is a 0 B cleanup; step 2 (the INSERT dip in 1/256 steps) is under the same switch. Host: with an INSERT difference forced on M02, a hand jump 0 -> 127 blends 278 times in 1.5 s instead of 351 (1.26 times fewer; the brief's 3 times is not reached: the dip's ramp is steep).
+14. ~~WASH on: no jump when a glide is stopped by hand, one dip instead of two stacked ([W1](audits/2026-11-09/tide-morph/TASKS.md#w1)).~~ Built in b10 round 4 (`fw4`, W1 steps 1 and 2): a stop fades the breath and the swell by time (1/32 of what is left a millisecond; per pass would be gone in a millisecond, the passes run far faster than the audio blocks) and the breath and the transition dip no longer stack (the lower of the two); the effective cutoff after a stop moves at most 1 dial step a block (it jumped 18); WASH off unchanged. +132 B. Step 3 (the wash level at rest, `wref`) left as it is: letting it follow during motion would pull the fill down toward the dipped level.
+15. ~~Docs fixes from the TIDE and morph audit still open (the dip's length, the DUB recipe's wash, the bass promise and the dynamics paragraph were written in the b7 guide pass): `TIDE_GUIDE.md:23` the MORPH knob 3 text (the wave picture is shipped); EVOLVE "a little further each trip"; `MOD_INERT_TABLE.md:21` (ANALOG: PW is offered only with WAVE PWM), and `INSTALL.md:60` / `QUICKSTART.md:41` (ERASE DATA erases the FM6 voice bank and the user tables), with FR11.~~ Built in b10 chores, after checking each line against the source. Already right, no edit: ERASE DATA lists the FM6 bank and the user tables (`INSTALL.md:117`, `QUICKSTART.md:119`; `erase_data.c`); the MORPH knob 3 text (`TIDE_GUIDE.md:320`, RESONANCE); the ANALOG PW row (`MOD_INERT_TABLE.md:21`, `eng_analog.c:274`, `ui_draw.c` hides PW unless WAVE PWM). Fixed: EVOLVE wording (`web/cheatsheet/index.html`, `web/landing.html`; the step grows with the phrase, `morph_music.c:15-16`, `:162`, `:171`); the 160 figure (`DUELL_1_1_REFERENCE.md:28`).
 16. ~~Factory pattern table trimmed~~ (SP3): built in b9.
 17. ~~Parameter units stored as an index~~ (SP4): built in b9.
-18. Event-rate code built for size (1.78 KB; [SP5](audits/2026-11-09/space/TASKS.md)); needs the FM-1 CPU sweep.
-19. FM6 MUSIC rolls at AMOUNT 40 leave the loudness window (all FM6 rolls, not just End B); needs its own change ([finding 7](audits/2026-11-09/tide-morph/REPORT.md)).
+18. Event-rate code built for size (1.78 KB; [SP5](audits/2026-11-09/space/TASKS.md)); needs the FM-1 CPU sweep. **Built behind a switch in b10 round 3:** `FELUCCA_SIZE_EVENT=1 python tools/build.py` builds the 203 "event rate" functions of `tools/ram_allow.py` for size (`tools/size_fns.py`) and the 43 helpers the size build stops inlining are allow-listed; image 579,444 B against 580,992 B (-1,548 B), hot-code check ok. **Off by default, so the package is byte-identical to the build without it.** Still to do: the unit sweep (chord-heavy and arp-heavy scenes, the 16-multi GLIDE sweep; 0 missed blocks, 0 cut voices, worst block not above b5's), then make it the default.
+19. ~~FM6 MUSIC rolls at AMOUNT 40 leave the loudness window~~ ([finding 7](audits/2026-11-09/tide-morph/REPORT.md)): built in b10 (`morph_fm_shape.c`: the roll moves FM6's carrier envelopes once, through the AMP ENV knobs; 99.7 % within +-4.5 dB, was 69.7 %).
 20. Give notes back more finely (per multi, or a smaller step than 76): at the first step, NOTES limit 76 (18 notes over the 16 multis), the unit's sweep missed no block but cut one voice on M14 EERIE SIGNAL, busiest block 90 % (b5 83 %); M08 TINE DUB 89 %. Each try kept only if the sweep stays clean.
 21. Send only the screen rows that changed, so the wave page reaches ~16 pictures a second instead of ~11 (the SPI link costs ~44 ms a full wave redraw).
-22. Before `1.0.0`: 0 missed blocks over the 16-multi GLIDE sweep (owner, 8 November); the CPU budget re-measured and made honest (findings 5, 6, 34; K9).
-23. AUTO TIDE's step display can show one hit ahead that then doesn't play: the old M09 MINIMAL 12's 12-step blip (that multi is now HYPNO 303) under a style with ARC DROP (PEAK). Picture only, the sound is right. Seen once in 22,158 look-aheads in the `tidesteps` test (its EVOLVE / ARC DROP scenario on factory slot 8: part 2, step 6, three steps ahead). The same class showed on the old set in the night build. The scenario was moved from slot 8 to slot 6 to keep the suite green: put 8 back in `felucca-base/tests/tide_steps_test.c` to see it.
+22. Before `1.0.0`: 0 missed blocks over the 16-multi GLIDE sweep (owner, 8 November); the CPU budget re-measured and made honest (findings 5, 6, 34; K9). **Host part done in b10 round 6** ([BUDGET_HONEST](BUDGET_HONEST.md), `sh host_tests.sh budgetcal`): the MOVECOST rest state fixed; findings 5 and 34 measured and written into `budget.c`, not folded (the PEAK fit already contains them); finding 6 measured at 3 .. 7 us warm, a timer (`st_budget_us`) added. **Left, unit only:** the six items at the end of that file (first: `st_budget_us` on the GLIDE sweep; over 20 us -> a snapshot from `budget_poll`), then K9's `BUDGET_PEAK` re-fit together with folding the four 5 November rows in.
+23. ~~AUTO TIDE's step display can show one hit ahead that then doesn't play~~ (picture only): built in b10 (b10/fw-b). Cause: the page's redraw hash (`tide_sig`) did not see `morph.seed`; a ROLL sets the seed at once and CALL AND ANSWER's listening bars (and POLY) read it from the audio side, while the ends' key (`tseed`) follows from the main loop, so a look-ahead drawn just before the roll stayed on the screen until the playhead moved. Reproduced only with the old M09 MINIMAL 12 record (reel commit `2de0f78`, gone with the reel's re-voice `e2f8c07`); setting the old seed back reproduced the old view in all 4 cases. The seed is in the hash now (+4 B); `tidesteps` probes it (a seed alone changed 6,426 steps with both parts leading; the hash stayed the same 0 times, 103,451 before) and plays three more 12-step ARP SEQ loops.
 24. SAVE after TRAVEL: SAVE shows a short message when the sound you loaded and the one TRAVEL moved to differ (owner, 10 November: the default).
-25. ARC's loudness step (sqm_dyn) still follows the main loop's pass, so a new phase's first beat keeps the old loudness (B8-ARC).
-26. TRAVEL level: swapped sounds play 6-10 dB under the factory window (M19 TECH HYPNO -30.1 LUFS, M24 TECH MINIMAL -27.5 against -24.1 .. -18.1; host render, 16 bars under the multi's STYLE): level-match the swap in TIDE. The records are not the cause (the part LEVEL is at its +4 dB limit on M24); accepted for b10-rc2 by the coordinator.
+25. ~~ARC's loudness step (sqm_dyn) still follows the main loop's pass, so a new phase's first beat keeps the old loudness (B8-ARC).~~ Built in b10 round 2: `sqm_dyn_nx` is armed with the levers and the audio side takes it from the unit's first bar (`tarc_levers`, `sqm_dyn_of`); the `arc_levers` probe read the step late at 4 of 11 unit starts before (first at bar 16), 0 after. About +40 B.
+26. TRAVEL level: b10 tide2 + tide3 (`fork/b10-tide3`): the destination plays at the part's level as the multi plays it (`firmware/src/jrny_mu.h`), and a destination it cannot reach is not picked. 22 of 24 multis inside -24.1 .. -18.1 LUFS (M19 -30.1 -> -21.8, M17 -24.3 -> -19.6). Left: M24 -17.7 (BRAZEN, ATK 43, reads quiet in the J1 table's 56 ms stab gate and plays louder in M24's full 16ths; next step: J1 measured with the part's own gate), M05 -24.2 (0.1 under: a pad to keys swap, two patterns, no match).
+27. README's second picture (`docs/tide/morph-settings.png`) still shows the retired ROLL MUSIC / ARP / PITCH rows: shoot a new one of TIDE SETTINGS with the emulator (b9 chores).
+28. Stale comment: `ui_input.c` above `part_select` still describes MORPH SET's SMART / WILD roll knobs, retired in b9 (b9 chores).
+29. Two low cuts from before the "low end welcome" rule were kept "for another reason" and never decided: the C3 pitch-walk floor and the pad lows in M04, M12 and M16 (B9-LOWEND rows 9 and 14). Check them with the sound lab and open them unless the reason holds.
+30. The store's cross-version test has no record written by b8 rc1 / rc2 (B9-STORE); add one to the fixtures.
+31. USB AUDIO OFF: the web editor's mock unit (`web/editor/mockunit.js`) has no USB AUDIO item, and a Mac host seeing the MIDI-only device was never tried (Windows is proven by every flash since b9).
+32. The Attack Magazine research left about 25 relevant articles listed but unread, and the Deconstructed house / nu-disco ones (listed in the b9 research index, "unread but relevant"): read them before the next sound round.
+33. The `budget` group (item 142 reference hash, A01 rules) and the `deadline` group (TIDE scene) only run with the MOVECOST switch off, but the shipped build has it on (`tools/build.py` default 1): built with `-DFELUCCA_MOVECOST=1` they fail 3 and 1 checks because their expectations are the off-state's (a part with WASH on at rest pays only the meter; valley, wash and cross-fade are charged only in a transition). Give them an ON build in `host_tests.sh` with ON expectations (re-pin through `jam/repin.sh`); found in b10 round 6.
 
 ## Released
 
@@ -166,6 +194,11 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 
 ## Planned, not yet scheduled
 
+**Live performance assist** (owner, 12 November: "recording and overwriting, or add complementary logic to the voice not being played ... store a melody and it'll add a complementary bass in the same key, or a question answer logic, dubbing it on the other voice"). In design: one coherent system for a DAWless live player, phased by value and cost (flash / pool room comes from the b10 screen overhaul):
+- Capture what you play, loop it, overdub / replace, undo (builds on keys recording into ARP SEQ and REC ADD / REPLACE, and the live-record audit's open items).
+- The part you aren't playing responds: a complementary bass in the same key from a stored melody, question / answer (extending b7's call and answer), dub-style doubling or answering on the other voice.
+- Design study first (the coordinator's `PERF_ASSIST` brief); the owner picks the player-facing choices before it is built.
+
 **Screens** (redundancy audit 8 November, all 433 screens rendered)
 - TIDE rows SYNC and ROLL renamed so they don't share words with tempo sync and MORPH's ROLL. (The rest of this audit was released in b4.)
 
@@ -178,13 +211,14 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 - c2: a hand fader resting in the middle (40-60 %) between ends that differ in a switch stays dulled, FM6 on pure sines: after about 1 s at rest, settle onto the nearer side (about 100 B, audio interrupt; listen on the unit first).
 
 **CPU and audio engine**
+- Move the 44 reviewed RAM candidates of `tools/ram_allow.py` (~13.7 KB, ranked in [REVIEW_2026-11-12.md](audits/2026-11-08/flash-hot/REVIEW_2026-11-12.md): the always-on per-sample stages first, by executed bytes) into the hot block / range Z as the room allows, and take `morph_xrest` (92 B) and `vs_block` (168 B) out of the always-on set with a guard that skips them when their state is already at rest (they run every block today). After the unit sweep: the gain of a flash line fill is still unmeasured (flash-hot REPORT section 1), so the sweep decides how many to move.
 - Effect code from slow flash: [analysis](audits/2026-11-08/flash-hot/REPORT.md) done. Of the 116 functions, 50 run per sample. Plan: first a test-mode probe that times one function from flash and from RAM (no sound change); only if it shows at least 0.5 % of a half, move ~0.9 KB (`dly_wr`, `master_knee`, `acc_sum`, `cho_zrun`, `fx_swing`, `rev_front`, `hall_gains`) and later ~1 KB more, as its own beta measured on the unit. Expected gain 1 to 3 %, not enough alone for `1.0.0`.
 - The budget model (`bd_part`, `bd_global`, `bd_slope`, `part_dl`, 2.1 KB) runs from flash at the start of every half: run it only when its inputs change. Larger gain than the above, but it changes behaviour; needs its own design and test.
 - K8: the next fader position's blended parameters prepared outside the audio interrupt (main loop or idle core 1) and swapped in by pointer. Large; needs one-writer rules.
 - K10: the dearer part (by measured cost) on core 1, not always part 2.
 - K11: a TIDE-only 5.8 ms half for background use, costed first (keyboard play keeps 2.9 ms).
 - K12: the "prove the CPU cost before flashing" process written into CONTRIBUTING and TESTING.
-- Two readers of the arp step ignore a POLY stretch (`ui_draw.c` ~1901, `seq_dialogue.c` ~44, found in the finding 36 review): check whether the display or TURNS can disagree with what plays.
+- ~~Two readers of the arp step ignore a POLY stretch~~ (`ui_draw.c` foot_playhead, `seq_dialogue.c` phrase_peer_attack): checked in b10 (b10/fw-b), no change needed. The footer's playhead already maps the arp step through `TIDE_ARP_IDX` (a stretch included; `f36` pins it equal to `tide_play_idx` over 16 arp steps inside a stretch, with a key held, none held and the arp not started); the dialogue reads the raw `arp_idx` but declines the whole prediction while either part is in a stretch (`tide_poly_on`, `f36` runs `phrase_peer_attack` with each part stretched). `P_SLEN` is 1..`NSTEP`, so `foot_playhead`'s length and `tide_poly_full`'s are the same. `f36` and `tidedialogue` PASS.
 - Code nits with no measured effect (finding 35): `DUELL_PROBE_STAGES` defined outside `#if DUELL_TIDE`; `morph_xside` into RAM only if the unit shows its cost; `glide_stop` lags one poll.
 
 **TIDE interface**
@@ -199,25 +233,25 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 **Live recording** ([audit](audits/2026-11-08/liverec/LIVEREC_AUDIT.md))
 - Documented limits of the keys-record-into-ARP-SEQ pattern (Released in b3): a 2-step pattern in REPLACE splits a chord across the step boundary, and the key's step is predicted from the POLY stretch before the next arp step runs (it can land one step off at a stretch change). [Brief R2](audits/2026-11-08/liverec/TASKS.md#r2)
 - Plain DUELL's `rec_note` stays under `#else`: deliberate, a shared `rec_put` would change the `DUELL_TIDE=0` binary.
-- Named `tide.h` hooks for the raw `#if DUELL_TIDE` blocks in `seq.c`; a `seq_len()` helper; one "past half step" helper.
-- Dead `SC_MODE` code under TIDE (flash to buy back, with the MODE page's `CG3` cards).
-- A small per-row kind table for TIDE SETTINGS (replaces the row comparisons in `tide_ui.c`).
+- ~~Named `tide.h` hooks for the raw `#if DUELL_TIDE` blocks in `seq.c`; a `seq_len()` helper; one "past half step" helper.~~ Built in b10 round 3 (`fw3`): hooks H20 in `tide.h`, `TIDE_LIVEREC`, `seq_len`, `past_half` / `before_half`; `seq.c` keeps one `#if DUELL_TIDE` (the include of `tide_seq.c`). The TIDE image is byte-identical.
+- ~~Dead `SC_MODE` code under TIDE~~: checked on 12 November (b10 round 2): nothing to buy back. The MODE page's draw, graph and knob code is under `#if !DUELL_TIDE`, and `TIDE_MODE_PG` / `TIDE_GRID3` are constant 0 in TIDE, so the compiler folds the rest; the rc2 image has no `graph_mode` and no `CG3` symbol (`mode_knob` stays: TIDE SETTINGS calls it).
+- ~~A small per-row kind table for TIDE SETTINGS (replaces the row comparisons in `tide_ui.c`).~~ Built in b10 round 3 (`JL_KIND`, +4 B).
 
 **Hot code check (K6)**
-- K6 follow-up (review finding H1): `tools/hot_reach.py` does not follow function pointers or address-taken functions, so a new engine voice function left in flash and reached only through the engine table passes silently. Cheap fix: add an edge for every function whose address is a literal-pool word or in a data pointer table of a reached function, or name the engine entry points as roots. The self-test is `tools/test_hot_reach.py` (host group `hotreach`).
-- K6 follow-up: 135 allow-list reasons in `tools/ram_allow.py` say "mix or effect stage ... not yet reviewed". They are per block, not per event; once each is reviewed, relabel it "per block, not yet reviewed" (or move the function to RAM). The classification is in [flash-hot REPORT](audits/2026-11-08/flash-hot/REPORT.md).
+- ~~K6 follow-up (review finding H1): `tools/hot_reach.py` follows function pointers~~: built in b10 (tools-b). An edge for every address-taken function and for every function pointer in a data table a reached function points to (ENGINES -> engine_t -> note_on / desc); 15 engine hooks were allow-listed as event rate.
+- ~~K6 follow-up: 135 allow-list reasons in `tools/ram_allow.py` say "mix or effect stage ... not yet reviewed" ...~~ Reviewed in b10 round 5: every reason now says per block / per sample when on / event and either "RAM candidate" (44, ~13694 B) or why it stays in the flash; list in [REVIEW_2026-11-12.md](audits/2026-11-08/flash-hot/REVIEW_2026-11-12.md). Nothing measured on the unit.
 
 **Storage and backups**
 - U4, 24 multi slots: tested on `wip-24-multis` (`21ca3a7`), its own rollout with a format bump. At the rebase: renumber its backup ids (41 is now the FM6 voice bank), archive VERSION 6 against 5, update `erase_test.c` and `xb_test.c`, measure the flash first (keep 3 KB headroom; 4,556 B is free on the b5 build).
-- Patch capacity in the docs: INFO says 128 slots, TIDE guarantees 126 worst-case records; replace "every slot always fits" with exact wording.
-- Pattern save: document the exact visible entry point (saving needs STOP) before any live test.
+- ~~Patch capacity in the docs: INFO says 128 slots, TIDE guarantees 126 worst-case records; replace "every slot always fits" with exact wording.~~ Built in b10 chores: the docs already say 126 (`KNOWN_ISSUES.md:47`, `EDITOR_LIBRARIAN.md:17`); "every slot always fits" is not in the docs; INFO now reports 126 with TIDE (`editor.c:585`, `upreset.c:252`); the 160 figure is fixed (`DUELL_1_1_REFERENCE.md:28`).
+- ~~Pattern save: document the exact visible entry point (saving needs STOP) before any live test.~~ Built in b10 chores, with a correction: saving a pattern does not need STOP. SAVE held on PATTERNS goes to the slot confirm before the STOP check (`ui_input.c`, `patch_save_ask`); `ui_name.c:282` keeps a pattern in RAM while playing. Documented in `QUICKSTART.md:112`.
 
 **Repository and CI**
 - The `emu` CI job: fixed in [#4](https://github.com/pssdrnk-cmyk/DUELL-TIDE/pull/4) (emsdk sourced under bash; merged 8 November), and the job gates.
 - Rename `jam11` to `tide`.
 - Gate the release channels by CI too (a Stable / Beta release is offered only from a green commit), from the 4 November decisions.
 - Retire the plain build (Later): `jam/check_off.sh` is already no longer a gate (owner, 8 November). Still open: drop `DUELL_TIDE=0`, `jam/check_off.sh`, `jam/off.sha256` and the tideoff test groups, and fold the `#if DUELL_TIDE` hooks into plain code where that saves flash or clarity. One step per beta.
-- Test quality notes left from finding 38: split the FM6 budget check by crossing state, one generated multi-name table, the `F_NONE` hang exemption if it flakes.
+- Test quality notes left from finding 38: ~~split the FM6 budget check by crossing state~~ and ~~one generated multi-name table~~ built in b10 (tools-b); the `F_NONE` hang exemption if it flakes.
 - Workspace clean-up: retire merged worktrees (owner's OK).
 
 **Memory savings, when a feature needs room** (estimates until measured; none is free)
@@ -243,8 +277,8 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 
 ## Ideas, not decided
 
-- Effects ideas from the sourced recipes (the b9 recipe research), each needing flash: a slow LFO on the delay send or loop filter (dub's ridden echo); a low cut or EQ on the reverb return; a phaser / flanger insert; a fast LFO to oscillator sync / PWM, plus tremolo / auto-pan; a two-tap delay (one synced, one free); separate L / R delay times; ducking the delay and reverb returns by the part's own notes; a per-bar delay-send ramp and a reverb accent on a phrase's last note; a slow swell LFO on a part's level; an oscillator pitch envelope.
-- More factory multis (hypnotic techno, cinematic hypnotic techno, dub house, lo-fi house, ambient techno, minimal; researched from Attack Magazine technique articles in b9): about 0.5 KB each, room from USB AUDIO OFF and its int16 resampler taps (b9) and SP5.
+- Effects ideas from the sourced recipes (the b9 recipe research), each needing flash: ~~a slow LFO on the delay loop filter~~ (built in b10: COLR LFO); a noise source for the FM6 and insert sounds (Attack's dub-chord "chuff" and tape hiss, not possible today); a low cut or EQ on the reverb return; a phaser / flanger insert; a fast LFO to oscillator sync / PWM, plus tremolo / auto-pan; a two-tap delay (one synced, one free); separate L / R delay times; ducking the delay and reverb returns by the part's own notes; a per-bar delay-send ramp and a reverb accent on a phrase's last note; a slow swell LFO on a part's level; an oscillator pitch envelope.
+- ~~More factory multis~~ (built in b10 as M19 to M24: hypnotic techno, cinematic hypnotic techno, dub house, lo-fi house, ambient techno, minimal; researched from Attack Magazine technique articles in b9): about 0.5 KB each, room from USB AUDIO OFF and its int16 resampler taps (b9) and SP5.
 - **Wave card L/R lines and the deep-bass line:** about 4 KB more RAM. The candidates are PERFORM capture (8 KB = 93 ms shorter capture) or a canvas drawn in strips. Owner decision when wanted.
 - **From Niagara Drift** (an FM-1 drone firmware; checked against our code 8 November, estimates until built): **reverb FREEZE** on HALL / ROOM (the tail holds and the notes can stop; a block-rate gain change with a limiter, ~200-400 B, no CPU while off; risks: fixed-point overflow and the release click) fits best. **AGE** (slow tape-like wear, ~300-600 B) needs an offset layer on top of the saved sound, not checked yet. Gesture keys and a free-time motion loop do not fit the flash, the keys or the no-new-pages rule.
 - **From the musical review** ([report](audits/2026-11-09/musical-review/REPORT.md)): the three ideas (a chord-rhythm vocabulary, voicing that breathes with the arc, a real call and answer) are built in b7.

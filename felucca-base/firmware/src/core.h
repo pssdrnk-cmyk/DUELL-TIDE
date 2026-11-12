@@ -113,7 +113,8 @@ enum {
     F_DSEMI,                               /* TWIN FILTER (ext.h, cloud job B): filter 2's OFFSET, whole dial steps shown as semitones with one decimal (a dial step is 0.1103 octave: 1.3236 st), "+1.3" "-83.4" st */
     F_N99,                                 /* DUELL 1.1 (owner 2026-10-25): FM6's AMP ENV knobs, 0..127 shown as the DX7 number 0..99 of the loudest carrier ((v * 99 + 63) / 127), no unit (appended: the fmt numbers are in the protocol) */
     F_DEG,                                 /* a phase 0..127 shown as 0..357 degrees ("deg": the LFO's start PHS; appended) */
-    F_VOWL                                 /* VOICE's vowel position 0..127 shown as A E I O U with ">" between two ("A>E"; appended) */
+    F_VOWL,                                /* VOICE's vowel position 0..127 shown as A E I O U with ">" between two ("A>E"; appended) */
+    F_CLFO                                 /* b10: the delay colour LFO, 0 shown OFF, 1..15 the number (appended) */
 };
 
 typedef struct {
@@ -596,7 +597,7 @@ typedef struct {                 /* the part in mix_part, its window: one per pa
 #define MU_SHOWN MU_SLOTS
 #endif
 #define MU_ROM(k) ((uint32_t)(k) >= MU_SLOTS)
-#define MU_DRONE(k) ((uint32_t)(k) - MU_SLOTS < 2u)   /* M17, M18: the built-in drone multis (TIDE plays them as STYLE DRONE, tide_ui.c tide_drone); M19.. are ROM-only factory multis of other genres (b10) */
+#define MU_DRONE(k) (DUELL_TIDE && (uint32_t)(k) - 22u < 2u)   /* M23, M24: the built-in drone multis (TIDE plays them as STYLE DRONE, tide_ui.c tide_drone); since b10 the list is in genre order (tools/factory_multis.py DISPLAY_ORDER): M17 .. M22 are ROM-only multis of other genres */
 #define MU_ROM_SAY "SAVE TO M01-M16"   /* SAVE / rename refused on M17, M18 (multi.c), as SOUNDS says PICK A USER SLOT */
 typedef struct track {
     int16_t p[EXT_P_LEN];        /* P_COUNT ids, a gap at 127, then the NX extension slots (ext.h XV); every store and format still counts P_COUNT */
@@ -906,10 +907,16 @@ struct { uint32_t magic, failed, pending; } bootguard __attribute__((section(".n
 #if DUELL_TIDE
 static uint8_t tide_lvc2[NLIVE];  /* TIDE live graphs: the latest note's effective cutoff of filter 2, Q8 dial steps >> 7 (chain_f2.c writes it, ui_live.c reads it; the pad bytes of track_t are used up) */
 #define LVC2(t) (tide_lvc2[(uint32_t)((t) - trk) % NLIVE])
-/* the per-stage timing of the console probe `cpu` (fx.c, eng_fm6.c, console.c): the unit's test-mode build only (the host tests have no TIMER4) */
+#endif
+/* Later 10 + 13 (b10 round 5): 1 = a part's morph costs are charged only while a transition moves (the engine cross-fade BD_FADE, TIDE's valley and wash: budget.c bd_part, bd_mv, the FM6 bridge's rule) and the
+ * INSERT dip asks for a new blend only when its value moved by a 1/256 step (morph_xfer.c morph_xstep, C1): more notes at rest, thinner while moving, fewer blends in a slow dip. 0 until the unit sweep has tried it
+ * (tools/build.py: env FELUCCA_MOVECOST=1) */
+#ifndef FELUCCA_MOVECOST
+#define FELUCCA_MOVECOST 0
+#endif
+/* the per-stage timing of the console probe `cpu` (fx.c, eng_fm6.c, console.c): the unit's test-mode build only (the host tests have no TIMER4); defined with or without TIDE (b10 round 5, finding 35: it sat inside #if DUELL_TIDE, undefined elsewhere) */
 #if DUELL_TEST_MODE && !defined(__x86_64__) && !defined(__i386__) && !defined(__aarch64__)
 #define DUELL_PROBE_STAGES 1
 #else
 #define DUELL_PROBE_STAGES 0
-#endif
 #endif

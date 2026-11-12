@@ -101,7 +101,7 @@ typedef struct {
 #define FM6_MEM (sizeof(fm6_note_t) * FM6_POLY)
 #endif
 static fm6_lfo_t fm6_lfo[NLIVE];
-static int32_t fm6_lfo_v[NLIVE], fm6_lfo_d[NLIVE]; /* this block's LFO value and delay (Q24) */
+static fm6_lfot_t fm6_lfot[NLIVE];                 /* this block's LFO terms for the part's voices (K7: fm6_lfo_terms, once a block and part) */
 ENG_MEM_FITS("FM6", FM6_MEM);
 /* the voice bank (fm6_vbank.c; in the pool, zeroed at boot: no bank without the store) */
 static uint32_t fm6_bank_used __attribute__((section(".pool")));   /* bit k: B k+1 holds a voice */
@@ -565,24 +565,23 @@ static void fm6_block(track_t *t)       /* once a block and part: the macros, th
         return;
     fm6_sync(t);
 #if DUELL_TIDE
-    if (tr < NLIVE && (fm6_xt[tr].on || fm6_xt[tr].dirty)) {
+    if (tr < NLIVE && (fm6_xt[tr].on || fm6_xt[tr].dirty || fm6_xt[tr].drain)) {   /* (drain: a drain that waited for a crossing to end still runs after it, even with no stand-in mapped) */
 #if DUELL_PROBE_STAGES
-        extern volatile uint32_t prb_stage_pk[5];
+        extern volatile uint32_t prb_stage_pk[6];
         uint32_t x0 = fm1_ticks();
         fm6_xblock(t, tr);
         if (!tr && fm1_ticks() - x0 > prb_stage_pk[3]) prb_stage_pk[3] = fm1_ticks() - x0;
 #else
         fm6_xblock(t, tr);
 #endif
-        if (fm6_xt[tr].drain) {                  /* a new Original's drain that morph_xreset left to the render side (core 1 held part 2's job): give back, then restore */
+        if (fm6_xt[tr].drain && !fm6_xt[tr].on) {   /* a new Original's drain that morph_xreset left to the render side (core 1 held part 2's job): give back, then restore; not while a new crossing runs already (audit finding 9: its plan takes the stand-ins again, so the drain would clear with them mapped): it waits for the crossing to end */
             fm6_xblock(t, tr);
             fm6_xt[tr].drain = fm6_xt[tr].mute = fm6_xt[tr].dirty = 0;
         }
     }
 #endif
     fm6_unison_sync(t);
-    fm6_lfo_v[tr] = fm6_lfo_sample(&fm6_lfo[tr]);
-    fm6_lfo_d[tr] = fm6_lfo_delay(&fm6_lfo[tr]);
+    fm6_lfo_terms(&fm6_lfot[tr], fm6_eff[tr].p, fm6_lfo_sample(&fm6_lfo[tr]), fm6_lfo_delay(&fm6_lfo[tr]));
 }
 
 /* the SUB LAYER's follow (chain_sub.c; FM6 owns its amplitude, the operators' envelopes are inside its signal): voice v's level as the block just rendered left it, 0..1 as Q15. It is the loudest
@@ -661,16 +660,16 @@ static void fm6_render(track_t *t, voice_t *v, int32_t *out, uint32_t len, const
     fb = clamp(fm6_eff[tr].fb + ((m->shape - (64 << 8)) >> 11), 0, 7);
     lvl = clamp(t->p[P_E2], -64, 63) * 24 + clamp(m->cutoff >> 8, -150, 150) * 16;   /* microsteps */
     if (m->amask) {                                     /* DUELL ARP TARGET (SPEC 2.3): operators on the arp's pitch */
-        if (!fm6_note_compute(n, p, bus, fm6_lfo_v[tr], fm6_lfo_d[tr], lf, fm6_eff[tr].alg, fb,
+        if (!fm6_note_compute(n, p, bus, &fm6_lfot[tr], lf, fm6_eff[tr].alg, fb,
                               atg_fm6(m, fm6_eff[tr].dt, dt2, ul), lvl * 65536, ul))
             return;
 #if DUELL_TIDE
     } else if (fm6_xt[tr].on) {                         /* No ARP: the bridge's offsets are already shared by the part; no per-voice pitch/gate preparation. */
-        if (!fm6_note_compute(n, p, bus, fm6_lfo_v[tr], fm6_lfo_d[tr], lf, fm6_eff[tr].alg, fb, fm6_eff[tr].dt,
+        if (!fm6_note_compute(n, p, bus, &fm6_lfot[tr], lf, fm6_eff[tr].alg, fb, fm6_eff[tr].dt,
                               lvl * 65536, fm6_xt[tr].lv))
             return;
 #endif
-    } else if (!fm6_note_compute(n, p, bus, fm6_lfo_v[tr], fm6_lfo_d[tr], lf, fm6_eff[tr].alg, fb, fm6_eff[tr].dt,
+    } else if (!fm6_note_compute(n, p, bus, &fm6_lfot[tr], lf, fm6_eff[tr].alg, fb, fm6_eff[tr].dt,
                                  lvl * 65536, 0)) {
         return;                                         /* every carrier below the threshold */
     }
@@ -687,7 +686,9 @@ static void fm6_render(track_t *t, voice_t *v, int32_t *out, uint32_t len, const
 }
 
 /* --------------------------------------------------------- the engine --- */
-static const char *const N_FM6_ALG[] = {"PAT", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13",
+static const char *const N_FM6_ALG[] = {
+                                        "OWN",     /* (I13: the patch's own algorithm, as a word: OWN as SLOT says it; PATCH is too wide for the editor's macro cell) */
+                                        "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13",
                                         "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25",
                                         "26", "27", "28", "29", "30", "31", "32", 0};
 static const char *const N_FM6_PATCH[] = {"F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "OWN",

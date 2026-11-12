@@ -182,24 +182,30 @@ Open `atlas.html` (sortable, filterable) or run `soundlab atlas --find "pad dark
 
 | # | name | style | centroid Hz | <60 Hz % | <150 % | >4k % | side/mid dB | LUFS | bed | tags |
 |---|---|---|---|---|---|---|---|---|---|---|
-| M01 | DUB BASIC | DUB | 601.29 | 1.42 | 9.14 | 1.32 | -4.98 | -20.79 | 6.86 | bed dry |
-| M02 | DUB CHORD | DUB | 722.67 | 0.03 | 8.07 | 0.34 | -5.07 | -20.96 | 5.65 | bed dry |
+| M01 | DUB BASIC | DUB | 603.52 | 1.43 | 9.18 | 1.33 | -4.96 | -20.8 | 6.86 | bed dry |
+| M02 | DUB CHORD | DUB | 435.06 | 0.35 | 24.67 | 0.04 | -6.67 | -20.52 | 5.74 | bed dark dry |
 | M03 | HSE JUNO | DEEP | 435.76 | 0.42 | 20.41 | 0.9 | -6.92 | -20.59 | 4.98 | bed dark dry |
 | M04 | HSE RHODES | DEEP | 559.53 | 2.34 | 11.41 | 2.01 | -7.14 | -20.85 | 7.8 | bed dry |
 | M05 | HSE ORGAN | DEEP | 496.43 | 0.17 | 8.17 | 0.01 | -6.86 | -20.43 | 4.24 | bed dark dry |
-| M06 | HSE PIANO | PEAK | 558.14 | 0.59 | 25.74 | 2.87 | -8.78 | -20.54 | 7.6 | bed dry |
-| M07 | TECH DETROIT | PEAK | 780.22 | 0.12 | 14.14 | 2.33 | -6.0 | -22.97 | 6.39 | bed dry |
-| M08 | TECH SOUL | DEEP | 830.32 | 0.0 | 0.01 | 2.33 | -4.8 | -20.09 | 7.9 | bed dry |
+| M06 | HSE FRENCH | PEAK | 517.93 | 0.28 | 22.36 | 0.1 | -7.81 | -20.23 | 5.07 | bed busy dry |
+| M07 | TECH DETROIT | PEAK | 493.6 | 0.16 | 17.83 | 0.69 | -6.91 | -21.46 | 6.42 | bed dark dry |
+| M08 | TECH SOUL | DEEP | 504.99 | 0.0 | 2.94 | 0.79 | -5.6 | -20.01 | 5.49 | bed dry |
 | M09 | ACID HYPNO | MINIMAL | 332.68 | 0.16 | 45.52 | 0.18 | -7.91 | -21.96 | 4.75 | bed busy dark dry |
 | M10 | ACID TWO 303 | MINIMAL | 292.74 | 0.05 | 48.46 | 0.17 | -6.33 | -21.19 | 1.98 | busy dark wet |
 | M11 | ACID LINES | MINIMAL | 756.43 | 0.2 | 26.92 | 0.13 | -6.29 | -20.24 | 5.14 | bed busy dry |
-| M12 | ELEC ROBOT | MINIMAL | 1242.96 | 8.09 | 31.3 | 4.15 | -8.44 | -21.15 | 4.07 | bed dry |
+| M12 | ELEC ROBOT | MINIMAL | 636.17 | 8.9 | 36.49 | 0.34 | -9.35 | -22.95 | 4.07 | bed dry |
 | M13 | ELEC DEEPSEA | PEAK | 651.48 | 0.01 | 0.05 | 0.12 | -4.45 | -22.52 | 6.91 | bed busy dry |
 | M14 | ELEC WARPED | AMBIENT | 593.45 | 0.03 | 0.17 | 0.8 | -4.71 | -21.25 | 7.63 | bed dry |
-| M15 | AMB BERLIN | DEEP | 1333.24 | 0.03 | 9.12 | 5.55 | -5.38 | -19.42 | 3.92 | bed busy dry |
-| M16 | AMB LOOPS | AMBIENT | 700.03 | 0.0 | 13.9 | 3.91 | -7.39 | -22.05 | 4.23 | bed dry |
+| M15 | AMB BERLIN | DEEP | 593.09 | 0.13 | 20.56 | 0.11 | -6.41 | -19.32 | 4.0 | bed busy dry |
+| M16 | AMB LOOPS | AMBIENT | 436.56 | 0.3 | 13.73 | 0.27 | -7.11 | -22.08 | 4.23 | bed dark dry |
 | M17 | AMB DUNEHORN | DRONE | 344.8 | 0.0 | 36.09 | 0.0 | -5.16 | -19.45 | 1.79 | dark dry |
-| M18 | AMB VOID | DRONE | 367.43 | 0.0 | 55.85 | 0.02 | -1.72 | -20.13 | 2 | dark dry |
+| M18 | AMB GROWL | DRONE | 112.82 | 8.38 | 90.75 | 0.01 | -14.86 | -21.36 | 2 | dark dry |
+| M19 | TECH HYPNO | MINIMAL | 171.61 | 30.77 | 59.2 | 0.0 | -10.07 | -19.72 | 4.45 | bed dark sub dry |
+| M20 | DUB HOUSE | DUB | 201.4 | 39.58 | 51.64 | 0.1 | -9.13 | -22.09 | 4.47 | bed dark sub dry |
+| M21 | HSE LOFI | DEEP | 255.87 | 31.39 | 53.89 | 0.0 | -7.06 | -20.75 | 5.94 | bed busy dark sub |
+| M22 | TECH CINEMA | PEAK | 298.44 | 27.38 | 35.67 | 0.07 | -4.83 | -20.49 | 5.5 | bed dark sub dry |
+| M23 | AMB TECHNO | AMBIENT | 441.02 | 0.0 | 6.84 | 0.08 | -4.0 | -20.22 | 4.71 | bed dark dry |
+| M24 | TECH MINIMAL | MINIMAL | 260.73 | 2.59 | 34.31 | 0.0 | -7.04 | -20.66 | 2.37 | busy dark |
 
 ## Patterns (engines.c PATTERNS)
 

@@ -46,7 +46,7 @@ static int projects(void)
     v5.sum = proj_hash(&v5, sizeof v5 - 4u);
     memset(&proj_slot[2], 0, sizeof proj_slot[2]);
     memcpy(&proj_slot[2], &v5, sizeof v5);
-    project_load(2);
+    project_load(MIDX(2));
     bad += check("a retained FUN5 RAM slot loads bounded (velocity 200 -> inside 0..127)",
                  trk[0].step[0].n == 1u && trk[0].step[0].note[0] == 60u && trk[0].step[0].vel <= 127u);
     return bad;
