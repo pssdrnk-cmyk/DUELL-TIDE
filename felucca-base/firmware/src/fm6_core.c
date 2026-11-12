@@ -558,23 +558,31 @@ static int32_t fm6_note_logfreq(int32_t pitch16, int32_t fine)
     return FM6_LOGF0 + (int32_t)(((int64_t)pitch16 * ((1 << 24) / 12)) >> 4) + fine * 5909;
 }
 
-/* one block (msfa note compute): the LFO's value and delay (Q24), the note's log2 frequency, the patch's
+/* K7: what the part's LFO adds to every voice of the block, computed once per part and block (eng_fm6.c fm6_block), not once per voice: the
+ * pitch term (signed, Q24 log2, the depth through the delay and the sensitivity) and the amplitude modulation depth (Q24) */
+typedef struct { int32_t pm; uint32_t am; } fm6_lfot_t;
+static void fm6_lfo_terms(fm6_lfot_t *c, const uint8_t *p, int32_t lfo_val, int32_t lfo_delay)
+{
+    uint32_t pmd = (uint32_t)((p[FP_LPMD] % 100u) * 165u >> 6) * (uint32_t)lfo_delay;   /* Q32 */
+    int32_t senslfo = FM6_PMS[p[FP_LPMS] & 7u] * (lfo_val - (1 << 23));
+    int32_t pmod = (int32_t)(((int64_t)pmd * senslfo) >> 39);
+    uint32_t amd = (uint32_t)((p[FP_LAMD] % 100u) * 165u >> 6), amod;
+    pmod = pmod < 0 ? -pmod : pmod;
+    c->pm = senslfo < 0 ? -pmod : pmod;
+    amod = (uint32_t)(((int64_t)amd * lfo_delay) >> 8);                 /* Q24 */
+    c->am = (uint32_t)(((int64_t)amod * ((1 << 24) - lfo_val)) >> 24);
+}
+/* one block (msfa note compute): the part's LFO terms (fm6_lfo_terms), the note's log2 frequency, the patch's
  * algorithm and feedback (already through the macros), dt[k]: a pitch offset per operator (Q24),
  * modlvl: a level offset of the operators that are not carriers (Q24 log2), ulvl: one per operator (0 = none; DUELL
  * ARP TARGET, eng_fm6.c fm6_render). Writes out (Q24); 0 = silent
  * (out untouched). out: 3 x FM6_N (the output and the two operator buses) */
-static int fm6_note_compute(fm6_note_t *n, const uint8_t *p, int32_t *out, int32_t lfo_val, int32_t lfo_delay,
+static int fm6_note_compute(fm6_note_t *n, const uint8_t *p, int32_t *out, const fm6_lfot_t *lt,
                              int32_t logfreq, uint32_t alg, int32_t fb, const int32_t *dt, int32_t modlvl,
                              const int32_t *ulvl)
 {
-    uint32_t pmd = (uint32_t)((p[FP_LPMD] % 100u) * 165u >> 6) * (uint32_t)lfo_delay;   /* Q32 */
-    int32_t senslfo = FM6_PMS[p[FP_LPMS] & 7u] * (lfo_val - (1 << 23));
-    int32_t pmod = (int32_t)(((int64_t)pmd * senslfo) >> 39), pitch_mod;
-    uint32_t amd = (uint32_t)((p[FP_LAMD] % 100u) * 165u >> 6), amod, car = fm6_carriers(alg), k;
-    pmod = pmod < 0 ? -pmod : pmod;
-    pitch_mod = fm6_penv_get(&n->penv, p) + (senslfo < 0 ? -pmod : pmod);
-    amod = (uint32_t)(((int64_t)amd * lfo_delay) >> 8);                 /* Q24 */
-    amod = (uint32_t)(((int64_t)amod * ((1 << 24) - lfo_val)) >> 24);
+    int32_t pitch_mod = fm6_penv_get(&n->penv, p) + lt->pm;
+    uint32_t amod = lt->am, car = fm6_carriers(alg), k;
     for (k = 0; k < 6u; k++) {
         const uint8_t *op = p + k * FP_OP;
         int32_t level = fm6_env_get(&n->env[k], op);

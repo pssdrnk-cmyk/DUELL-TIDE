@@ -106,6 +106,7 @@ typedef struct {
     uint8_t snd;                                         /* a note is held (the wash plays only then) */
     uint8_t sounding;                                    /* actual audio state; a silent part's queries use the requested side */
     uint16_t motion;                                     /* GLIDE's movement now, Q15 (main loop, morph_glide.c glide_motion): the breath, the swell */
+    uint16_t mms;                                        /* .. fm1_ms (low 16 bits) of its last change: a stop fades it by time (W1) */
     uint32_t age;                                        /* the newest voice's age (voice.c vage) the block before: a new note */
     uint16_t plan_ms;                                    /* (morph_xpoll: the last plan, fm1_ms) */
     uint16_t xe;                                         /* X1: the dip's edges for GLIDE's running trip (morph_glide.c glide_motion), in 1/256 of the travel: the floor's half
@@ -398,7 +399,7 @@ static __attribute__((noinline)) int32_t morph_xcut(const track_t *t, int32_t uc
 {
     uint32_t pi = t->mwpi % NSHOWN;
     const mxs_t *x = &mxs[pi];
-    int32_t fl;
+    int32_t fl, u0 = uc;
     if (!t->mwon || (!morph_cdd[pi] && !(x->motion && x->lp && x->vf)))
         return uc;
     fl = (((int32_t)x->lfloor - 20098) * 2317) >> 12;
@@ -406,7 +407,11 @@ static __attribute__((noinline)) int32_t morph_xcut(const track_t *t, int32_t uc
         int32_t d = uc - (int32_t)(((int32_t)x->motion * XBR_Q8) >> 15);
         uc = d > fl ? d : fl;
     }
-    return morph_cdd[pi] && uc > fl ? uc - (int32_t)(((int64_t)(uc - fl) * morph_cdd[pi]) >> 15) : uc;
+    if (morph_cdd[pi] && u0 > fl) {                      /* (W1: the transition's dip from the undipped cutoff, and the lower of the two, as the valley does: the breath and the dip do not stack) */
+        int32_t dip = u0 - (int32_t)(((int64_t)(u0 - fl) * morph_cdd[pi]) >> 15);
+        uc = dip < uc ? dip : uc;
+    }
+    return uc;
 }
 /* the switched values' side: a new note in the closed stretch takes them over toward where tp goes (a fresh attack carries the
  * change, as a player would make it); with no note they change at the stretch's edge; with nothing sounding at the middle */
