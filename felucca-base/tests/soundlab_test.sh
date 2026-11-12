@@ -6,7 +6,7 @@
 set -e
 sh tools/soundlab/build.sh > build/soundlab_build.log 2>&1 || { tail -20 build/soundlab_build.log; echo "FAIL soundlab: does not build"; exit 1; }
 S=build/soundlab/soundlab; [ -x $S.exe ] && S=$S.exe; S="$(pwd)/$S"
-D=build/soundlab/test; rm -rf $D; mkdir -p $D
+D=build/soundlab/test; rm -rf "${D:?}"; mkdir -p "$D"
 $S render --multi 2 --bars 2 --out $D/a > $D/a.log 2>&1 || { cat $D/a.log; echo "FAIL soundlab: render"; exit 1; }
 $S render --multi 2 --bars 2 --out $D/b > $D/b.log 2>&1 || { cat $D/b.log; echo "FAIL soundlab: render 2"; exit 1; }
 cmp -s $D/a.wav $D/b.wav || { echo "FAIL soundlab: two renders of M02 differ (WAV)"; exit 1; }
