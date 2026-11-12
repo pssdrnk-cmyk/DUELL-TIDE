@@ -113,7 +113,7 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
 - **MULTIS**: 16 slots that hold both parts, effects, arps, patterns, mode and morph settings. The page always opens with LOAD picked.
 
   - **Factory scenes (M01 to M16):** all music, a curated programme with a genre each. In genre order: dub (M01 to M03), house (M04 to M08), tech (M09 to M13: Detroit, soul, minimal, hypnotic, cinematic) and acid (M14 to M16). All sixteen are free to overwrite. The former STRESS TEST is a test scene only.
-  - **TIDE built-in scenes (M17 to M24):** with TIDE the list goes on with electro (M17 ELEC ROBOT, M18 ELEC DEEPSEA, M19 ELEC WARPED), ambient (M20 AMB TECHNO, M21 AMB BERLIN, M22 AMB LOOPS) and two drones built into the firmware, M23 AMB DUNEHORN and M24 AMB GROWL (a deep growling drone). They load and play like the others. TIDE plays the two drones as STYLE DRONE (hold a chord around C3, PLAY with AUTO TIDE on). None of them can be saved over, renamed or erased. Save an edited one into M01 to M16 instead.
+  - **TIDE built-in scenes (M17 to M24):** with TIDE the list goes on with electro (M17 ELEC ROBOT, M18 ELEC DEEPSEA, M19 ELEC WARPED), ambient (M20 AMB TECHNO, M21 AMB BERLIN, M22 AMB LOOPS) and two drones built into the firmware, M23 AMB DUNEHORN and M24 AMB GROWL (a deep growling drone). They load and play like the others. TIDE plays the two drones as STYLE DRONE (hold a chord around C3, PLAY with AUTO TIDE on) while the slot still holds the built-in drone. Since b10 every slot M01 to M24 can be saved over, renamed and erased like M01 to M16; ERASE brings the built-in multi back. If you save over a drone slot it is an ordinary multi from then on.
   - **TIDE view:** the list shows three rows with the picked multi opened under them. Both parts' sound names, ARP / SEQ / OFF and their first 16 steps (or NO SEQUENCE) before you load. A record that does not load reads DAMAGED.
   - **Loading:** turn knob 1 to the multi you want, press OCT+ to load it. Knob 3 picks SAVE instead. Loading a multi sets its own levels, pan, mute and sends and the effects it stores (chorus, delay, reverb with their settings), whatever the mixer was. It leaves your MIDI settings, the clock source, TUNE and the master effect BASS MONO as they are. BASS MONO is a setting of your unit, not of the multi.
 - To start from scratch (erases settings, patches, multis, patterns, the user wave tables and the FM6 voice bank): MENU (hold HOME) > SYSTEM > ERASE DATA. A reinstall alone keeps your data.
@@ -287,7 +287,7 @@ Part 1 listens on channel 1 and part 2 on channel 2 (editable).
 - On the device: clock in, program change and bank select.
 - The mod wheel (CC1) moves the MORPH fader and is also a matrix source.
 - CC 70 morph, 102 roll (0 to 42 rolls End A, 85 to 127 rolls End B), 103 amount.
-- In LAYER, program change 0 to 15 on part 1's channel recalls MULTIs M01 to M16 (with TIDE: 0 to 23, M17 to M24 the built-in scenes).
+- In LAYER, program change 0 to 15 on part 1's channel recalls MULTIs M01 to M16 (with TIDE: 0 to 23, M17 to M24 the built-in scenes or what you saved over them).
 - With an external clock, MIDI Start plays step 0 on the first clock pulse after it.
 - The tempo is averaged over four beats so a steady clock keeps the delay time and the TEMPO display still.
 - PLAY on this unit while a master's clock is arriving waits for the master's next bar (STOP, STOP ALL or the master's Stop cancel the wait).

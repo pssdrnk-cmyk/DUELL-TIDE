@@ -408,7 +408,7 @@ export class MockUnit {
         q.fm6 = Uint8Array.from(a.slice(2)); q.p[P_E0 + 7] = 8; return [a[0], a[1], 0];
       }
       case CMD.PROJECT: {
-        if (a[1] > 15) return undefined;
+        if (a[1] > ((this.caps & 64) ? 23 : 15)) return undefined;
         const used = this.multiStored[a[1]] != null || a[1] < 16 || this.multiUsedExtra.has(a[1]);   // (DUELL 0.2.23: all sixteen slots hold a factory multi)
         if (a[0] === 2) return [2, a[1], used ? 1 : 0];
         if (a[0] === 1) {

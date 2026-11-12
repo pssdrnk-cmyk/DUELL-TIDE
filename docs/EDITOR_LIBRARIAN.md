@@ -79,7 +79,7 @@ On the WAVETABLES tab, drop a WAV file (a single-cycle wave or a wavetable like 
 
 ## Multis
 
-The MULTIS tab lists M01 to M24. M01 to M16 are the unit's own slots: Recall, Save to unit, Download file, Rename and Import file work on them. M17 to M22 (ELEC ROBOT, ELEC DEEPSEA, ELEC WARPED, AMB TECHNO, AMB BERLIN, AMB LOOPS) and the drone scenes M23 AMB DUNEHORN and M24 AMB GROWL (TIDE 1.0.0-b6) are built into the firmware, marked "read-only": Recall works, Save to unit, Download, Rename and Import into them do not. To keep an edited one, Recall it, change it on the unit, and save it into M01 to M16. Backups are unchanged: nothing is stored for M17 to M24.
+The MULTIS tab lists M01 to M24. All of them are stored slots on the unit (b10: M17 to M24, the electro, ambient and drone scenes, were built-in only before): Recall and Save to unit work on every row; a slot you never saved shows its built-in multi, and saving over it replaces that (ERASE on the unit brings it back). Download file, Rename and Import file work on M01 to M16 for now; the buttons are off on M17 and up, with the reason (the editor's multi file code reads the objects 13 to 20 only). Backups carry M17 to M26 (objects 42 to 46, archive version 6); a version 5 backup restores without touching them.
 
 ## Good to know
 

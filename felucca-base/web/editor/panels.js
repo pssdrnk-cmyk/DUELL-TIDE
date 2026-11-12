@@ -29,9 +29,8 @@ export function buildMultis(app, wrap) {
   wrap.append(h("div", { class: "multiswrap" }, bar, msg, box));
   let used = u.multis || null, recs = null;
   const factory = new Map(L.MULTIS);
-  // TIDE 1.0.0-b6: the slots past the sixteen stored ones (M17 DUNE HORN, M18 VOID DEEP) are ROM only on the unit: listed as built in and read-only, Recall only
-  // (no kind words: editor2 owner item 7, as the other rows)
-  // (no Save to unit, Rename, Download or Import into them; the backup format is unchanged: nothing is stored for them)
+  // b10 U4: the slots past the sixteen stored ones (M17 .. M24, built into the firmware) have a flash slot of their own now: Recall and Save to unit work on them (the unit's PROJECT command);
+  // Download, Rename and Import into them are not in this editor's multi file code yet (it reads the objects 13..20 only): those buttons stay off, with the reason; the backup carries them (ids 42..46)
   const ROM0 = 16, nShown = Math.max(ROM0, ...L.MULTIS.map(([s]) => s + 1)), rom = (s) => s >= ROM0;
   const nameOf = (s) => u.multiNames?.[s] ?? (recs?.[s] ? S.multiName(recs[s]) : null) ?? (factory.has(s) ? factory.get(s) : null);
   async function refreshUsed() { try { used = await u.multiUsed(); draw(); } catch (e) { app.fail(e); } }
@@ -40,11 +39,11 @@ export function buildMultis(app, wrap) {
     clear(box);
     for (let s = 0; s < nShown; s++) {
       if (rom(s)) {
-        const name = factory.get(s) ?? "", ro = "Built into the firmware (read-only): Recall it, edit it, and save the result into M01 to M16";
-        box.append(h("div", { class: "mrow2", role: "listitem", title: `${S.M_LABEL(s)} ${name} (read-only, built in)` }, h("b", { text: S.M_LABEL(s) }), h("span", { class: "n", text: `${name} (read-only)` }),
+        const name = factory.get(s) ?? "", ro = "Download and Rename of M17 and up are not in this editor yet: use the unit's own MULTIS page, or the Backup page (it carries them)";
+        box.append(h("div", { class: "mrow2", role: "listitem", title: `${S.M_LABEL(s)} ${name} (built in until you save over it)` }, h("b", { text: S.M_LABEL(s) }), h("span", { class: "n", text: name }),
           h("span", { class: "acts" },
             h("button", { class: "ghost small", text: "Recall", title: `Recall ${S.M_LABEL(s)} on the unit (replaces both parts, the effects and the arps)`, onclick: () => doLoad(s, name) }),
-            h("button", { class: "ghost small", text: "Save to unit", title: ro, disabled: true }),
+            h("button", { class: "ghost small", text: "Save to unit", title: `Save what the unit plays now into the unit's slot ${S.M_LABEL(s)} (replaces the built-in multi there; ERASE on the unit brings it back)`, onclick: () => doSave(s, name) }),
             h("button", { class: "ghost small", text: "Download file", title: ro, disabled: true }),
             h("button", { class: "ghost small", text: "Rename...", title: ro, disabled: true }))));
         continue;

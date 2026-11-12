@@ -16,7 +16,7 @@ MAGIC = b"DUELLFLASH1"
 SECTOR, PAYLOAD_OFF, PAYLOAD_MAX = 4096, 256, 4096 - 256
 ST_MAGIC = 0x554C4546
 MU_MAGIC = b"MUL1"
-OBJ_SETTINGS, OBJ_UPRESET0, OBJ_UPFM6, OBJ_AUTOSAVE, OBJ_PATSLOT0, OBJ_MULTI0, OBJ_PATCH0, OBJ_WTAB0, OBJ_PATCHX0, OBJ_VELO, OBJ_COUNT = 0, 5, 8, 9, 10, 13, 21, 27, 33, 49, 50   # (ids 30..32: unused, and the FM6 voice bank's commit records)
+OBJ_SETTINGS, OBJ_UPRESET0, OBJ_UPFM6, OBJ_AUTOSAVE, OBJ_PATSLOT0, OBJ_MULTI0, OBJ_PATCH0, OBJ_WTAB0, OBJ_PATCHX0, OBJ_VELO, OBJ_MULTIX0, OBJ_COUNT = 0, 5, 8, 9, 10, 13, 21, 27, 33, 49, 50, 55   # (ids 30..32: unused, and the FM6 voice bank's commit records)
 ENGINES = ["ANALOG", "DIGITAL", "PHASE", "LOFI", "SAMPLE", "VOICE", "TRIO", "WHEEL", "GRAIN", "PHYS",
            "DRUM", "NOISE", "FM6", "SLICE"]
 MODES = ["DUEL", "STEREO", "LAYER"]
@@ -45,6 +45,8 @@ def read_file(path):
 def sector_addr(obj, copy):
     if obj == OBJ_SETTINGS:
         return 0xFC000 + copy * SECTOR
+    if obj >= OBJ_MULTIX0:                       # b10 U4: M17..M26, five A/B pairs, 0xEA000..0xF3FFF
+        return 0xEA000 + (obj - OBJ_MULTIX0) * 2 * SECTOR + copy * SECTOR
     if obj >= OBJ_PATCHX0:                       # DUELL 0.2.15: the PATCH store's chunks 6..15, 0xA6000..0xB9FFF; the cloud plan's job A: chunks 16..21 (ids 43..48) to 0xC5FFF, OBJ_VELO (49) 0xC6000
         return 0xA6000 + (obj - OBJ_PATCHX0) * 2 * SECTOR + copy * SECTOR
     if OBJ_WTAB0 <= obj < OBJ_WTAB0 + 3:         # the user wavetables, 0xA0000..0xA5FFF
@@ -137,7 +139,7 @@ def main():
     # settings record (its reserved tail), which this tool lists as "settings" without decoding it
     names = {OBJ_SETTINGS: "settings (TIDE's settings are in its tail)", OBJ_PATCHX0 + 15: "chunk 21 (older TIDE settings, or patches)", OBJ_AUTOSAVE: "autosave", OBJ_UPFM6: "user presets' FM6 patches (retired)", OBJ_VELO: "velocity calibration"}
     for obj in range(OBJ_COUNT):
-        if OBJ_MULTI0 <= obj < OBJ_PATCH0 or 1 <= obj <= 4 or obj == 7 or OBJ_WTAB0 + 3 <= obj < OBJ_PATCHX0:
+        if OBJ_MULTI0 <= obj < OBJ_PATCH0 or obj >= OBJ_MULTIX0 or 1 <= obj <= 4 or obj == 7 or OBJ_WTAB0 + 3 <= obj < OBJ_PATCHX0:
             continue
         c = current(flash, obj)
         if c:
@@ -149,8 +151,9 @@ def main():
     if args.extract_multis:
         os.makedirs(args.extract_multis, exist_ok=True)
     used = 0
-    for k in range(8):
-        c = current(flash, OBJ_MULTI0 + k)
+    for k in range(13):
+        oid = OBJ_MULTI0 + k if k < 8 else OBJ_MULTIX0 + k - 8
+        c = current(flash, oid)
         if not c:
             continue
         pay = c[1]
@@ -168,7 +171,7 @@ def main():
             used += 1
             s = summarize(rec)
             print("  M%02d  %-12s  %s  [object %d copy %s seq %d, %d bytes]" % (
-                slot, name_of(rec) or "(no name)", s or "unreadable record", OBJ_MULTI0 + k, c[2], c[0], len(rec)))
+                slot, name_of(rec) or "(no name)", s or "unreadable record", oid, c[2], c[0], len(rec)))
             if args.extract_multis:
                 with open(os.path.join(args.extract_multis, "M%02d.bin" % slot), "wb") as f:
                     f.write(rec)
