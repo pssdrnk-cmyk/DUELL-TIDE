@@ -133,7 +133,7 @@ ok(await athrows(() => restoreBackup(failing.request, file)) && failing.log.incl
   ok(await athrows(() => captureBackup(cur.req, "TEST")), "installer backup: the old capture still stops on a current unit's 24-object LIST (why the installer must not use it for caps bit 5)");
   const got = await captureUnitBackup(cur.req, cur.info);
   const arc = readArchive(got.file);
-  ok(got.format === "duell-backup" && got.file.version === 5 && /^DUELL-backup-\d{4}-\d\d-\d\d-\d{4}\.json$/.test(got.name), "installer backup: a current unit gives the Backup page's file (duell-backup v5)");
+  ok(got.format === "duell-backup" && got.file.version === 6 && /^DUELL-backup-\d{4}-\d\d-\d\d-\d{4}\.json$/.test(got.name), "installer backup: a current unit gives the Backup page's file (duell-backup v5)");
   ok([0, 1, 13, 21, 24].every((id) => arc.objects.has(id)) && [...arc.objects.keys()].filter(isPatchKey).length === 4 && arc.hasPatches && !arc.problems?.length, "installer backup: music, settings, multis, patterns, wavetables and the four saved patches are in it, nothing flagged raw");
   for (const [caps, n] of [[31, 40], [15, 30], [7, 27]]) {
     const old = await mk({ caps }), g = await captureUnitBackup(old.req, old.info);

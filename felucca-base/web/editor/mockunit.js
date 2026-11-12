@@ -219,7 +219,7 @@ export class MockUnit {
   }
   get capacity() { return this.caps & 16 ? this.storeMax : 48; }                // the patches the unit holds (INFO tag 58 01 with caps bit 4)
   get records() { return (this.caps & CAPS_PATCH_RECORDS) !== 0; }    // caps bit 5: the patches go one at a time as records (editor_backup.c); without it the unit is an older firmware: no pages, GET / PUT of 40 answer rc 1
-  has(id) { return [0, 1, 2, 3, 4, 5, 8, 32, 33, 34].includes(id) || (OLD_PATCH_IDS.includes(id) ? !this.records && (id < 27 || (this.caps & 16) !== 0) : id >= 24 ? (this.caps & 8) !== 0 && id <= 26 : id >= 13 && id <= 23 && (this.caps & 4) !== 0); }
+  has(id) { return [0, 1, 2, 3, 4, 5, 8, 32, 33, 34].includes(id) || (OLD_PATCH_IDS.includes(id) ? !this.records && (id < 27 || (this.caps & 16) !== 0) : id >= 24 ? (this.caps & 8) !== 0 && id <= 26 : id >= 13 && id <= 23 && (this.caps & 4) !== 0) || (id >= 42 && id <= 46 && (this.caps & 64) !== 0); }
   patchBytes(slot) { const v = slot < 128 ? this.patches.get(slot) : null; return v ? this.recordOf(v).slice().fill(0, 2, 4) : null; }   // the saved record as the store gives it out (up_raw_get): slot and revision 0
   push(cmd, args) { if (this.watching && this.onpush) this.onpush(cmd, args); }
   // ---- what the unit's panel does (tests and the page's "turn a knob on the unit" button)
@@ -257,7 +257,7 @@ export class MockUnit {
       if (a.length) return [1, 1, 0];
       if (this.playing) return [1, 3, 0];
       this.listed = true;
-      const ids = this.records ? [0, 1, 2, 3, 4, 5, 8, ...(this.caps & 4 ? [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23] : []), ...(this.caps & 8 ? [24, 25, 26] : []), 32, 33, 34]   // (24 in all with caps 63)
+      const ids = this.records ? [0, 1, 2, 3, 4, 5, 8, ...(this.caps & 4 ? [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23] : []), ...(this.caps & 8 ? [24, 25, 26] : []), 32, 33, 34, ...(this.caps & 64 ? [42, 43, 44, 45, 46] : [])]   // (24 in all with caps 63; 29 with 127, b10 U4)
         : [...Array(13).keys(), ...(this.caps & 4 ? [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23] : []), ...(this.caps & 8 ? [24, 25, 26] : []), ...(this.caps & 16 ? [27, 28, 29, 30, 31] : []), 32, 33, 34, ...(this.caps & 16 ? [35, 36, 37, 38, 39] : [])];   // an older firmware lists its patch chunks
       return [1, 0, ids.length, ...ids.flatMap((id) => { const v = this.objs.get(id); return [id, ...bkU32(v ? v.length : 0), ...bkU32(v && v.length ? bkCrc(v) : 0)]; })];
     }
@@ -626,7 +626,7 @@ export class MockUnit {
       if (!RETIRED_IDS.includes(id) && ((!DUELL_IDS.includes(id) && !OLD_PATCH_IDS.includes(id)) || !this.has(id))) return ret(1);   // (the retired ids 2..5 and 8 are accepted and dropped, as editor_backup.c does for an older archive)
       const size = bkR32(a, 2), crc = bkR32(a, 7);
       const bad = size > 3840 || (id === 0 && size !== 3840) || (id === 1 && size !== this.settingsSize) ||
-        (id >= 13 && id <= 20 && size && size < 8) || (id >= 21 && id <= 23 && size && (size < 8 || size > 3584)) || (id >= 24 && id <= 26 && size && size !== WT.OBJ);
+        ((id >= 13 && id <= 20 || id >= 42 && id <= 46) && size && size < 8) || (id >= 21 && id <= 23 && size && (size < 8 || size > 3584)) || (id >= 24 && id <= 26 && size && size !== WT.OBJ);
       if (bad) return ret(1);
       if (this.playing) return ret(3);
       this.staged = { id, size, crc, bytes: new Uint8Array(size), pos: 0 };

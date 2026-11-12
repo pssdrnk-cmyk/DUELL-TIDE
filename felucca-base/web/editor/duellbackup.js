@@ -12,6 +12,7 @@
 //   6 7 9..12 27..31 35..39  the patch store's PHYSICAL chunks of before (DUELL 0.2.14 .. 0.2.25): gone from the unit's ids; a file of version 1..4 may carry them, it is read
 //             and they are kept out of the patches (they are of the old record and chunk format and cannot go to a unit with the new store)
 //   13..20    the multis, two to an object, M01-02 .. M15-16 (magic MUL1; DUELL 0.2.14, INFO 42 01 caps bit 2)
+//   42..46    the multis M17-18 .. M25-26 (b10, INFO 42 01 caps bit 6; "version 6"; 41 is the FM6 voice bank); a version 5 file has none of them and its restore leaves M17 and up as they are
 //   21..23    the pattern slots, 11 + 11 + 10 to an object, P01-11 P12-22 P23-32 (magic PTS3, compact objects: patslot.js; DUELL 0.2.14, format of job F3, caps bit 2)
 //   24..26    the user wavetables USR1..USR3 (1228 bytes: version 1, 19, 64, 0, the 8 character name, 19 x 64 harmonic bytes; length 0 = EMPTY;
 //             wavetable.js; DUELL 0.2.14, caps bit 3). A file with them is "version 3"; an editor that reads up to version 2 says so and stops
@@ -24,8 +25,10 @@ import { recordProblem, stripEndBFmt, WORST, FIX as REC_FIX } from "./patchrecor
 import { PS, parsePatObject } from "./patslot.js";
 
 export const FORMAT = "duell-backup";
-export const VERSION = 5;                      // 5 carries the patches as logical records (id 40 + slot); 4 adds the ten more patch chunks (ids 27..31, 35..39); 3 adds the user wavetables (ids 24..26); 2 is read as it was; 1 is the installer's "felucca-backup" file of a DUELL unit (read here, never written)
+export const VERSION = 6;                      // 6 adds the multis M17 to M26 (ids 42..46, caps bit 6); 5 carries the patches as logical records (id 40 + slot); 4 adds the ten more patch chunks (ids 27..31, 35..39); 3 adds the user wavetables (ids 24..26); 2 is read as it was; 1 is the installer's "felucca-backup" file of a DUELL unit (read here, never written)
 export const CAPS_MULTI_PATTERN = 4;           // INFO 42 01 caps, bit 2
+export const CAPS_MULTI_MORE = 64;             // bit 6 (b10): the multis M17 to M26, ids 42..46
+export const MULTI2_IDS = [42, 43, 44, 45, 46];   // two multis an object, M17-18 .. M25-26 (the unit has slots up to M24 for now; the last object reads empty)
 export const CAPS_WAVETABLES = 8;              // bit 3: the user wavetables (ids 24..26, cmds 81..83)
 export const CAPS_PATCH16 = 16;                // bit 4: the unit holds 128 patches (INFO tag 58 01)
 export const CAPS_PATCH_RECORDS = 32;          // bit 5: the patches are backed up and restored one at a time, as records (id 40, LIST page)
@@ -68,11 +71,12 @@ export const GROUPS = [
   { key: "wavetables", label: "User wavetables", ids: [24, 25, 26], caps: CAPS_WAVETABLES },
   { key: "fm6bank", label: "FM6 voice bank (B1 to B32)", ids: [FVB_ID], caps: 0, needs: "fvBank", optional: true },   // optional: a file or a unit without a bank is no exclusion to report   // needs: the INFO flag of the unit (parseInfo) it can be restored to
   { key: "settings", label: "Settings", ids: [1], caps: 0 },
+  { key: "multis2", label: "Multis M17 and up", ids: MULTI2_IDS, caps: CAPS_MULTI_MORE, optional: true },   // optional: a file from before version 6, or a unit without the bit, is no exclusion to report (GROUPS[0..3] stay where they are)
   { key: "music", label: "Current music (both parts)", ids: [0], caps: 0 },
 ];
-export const DUELL_IDS = [0, 1, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26];   // the objects other than the patches (the voice bank, FVB_ID, is not in the plain LIST)
-export const RESTORE_ORDER = [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 1, 0];   // (the voice bank goes just before the settings: planRestore)   // after the patches (by slot); live music last
-const KNOWN_IDS = [0, 1, 2, 3, 4, 5, 8, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, FVB_ID, 32, 33, 34, ...OLD_PATCH_IDS];   // what a unit lists (the plain LIST): the chunk ids only an older firmware lists, and they are ignored
+export const DUELL_IDS = [0, 1, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, ...MULTI2_IDS];   // the objects other than the patches (the voice bank, FVB_ID, is not in the plain LIST)
+export const RESTORE_ORDER = [13, 14, 15, 16, 17, 18, 19, 20, ...MULTI2_IDS, 21, 22, 23, 24, 25, 26, 1, 0];   // (the voice bank goes just before the settings: planRestore)   // after the patches (by slot); live music last
+const KNOWN_IDS = [0, 1, 2, 3, 4, 5, 8, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, FVB_ID, ...MULTI2_IDS, 32, 33, 34, ...OLD_PATCH_IDS];   // what a unit lists (the plain LIST): the chunk ids only an older firmware lists, and they are ignored
 const MAX_OBJ = 3840;
 const MUSIC_PARTS = 2, MUSIC_REV = 8;               // the music object: NPART 2 (byte 63) and the revision 8 (byte 67: memory trim 1 two parts, job A extension slots, ROLL CHAINED storage: End B as values, project.c PROJ_REV 8); anything else is refused
 const MUL_HDR = 8, MUL_REC_MAX = (MAX_OBJ - MUL_HDR) / 2, MUL_VER = 8, MUL_NAME = 8, MUL_G_AT = 20, P_COUNT = 127;
@@ -103,7 +107,7 @@ export function checkObject(id, b) {
     if (why && (b[4] & (16 | 64))) return "a patch record of an older DUELL version, which this firmware does not load; make a new backup with this version";   // (PT_VER 3: the extension block and bitmap flags, 16 and 64)
     return why ? `damaged patch record (${why})` : null;
   }
-  if (groupOf(id)?.key === "multis") {
+  if (groupOf(id)?.key === "multis" || groupOf(id)?.key === "multis2") {
     if (!n) return null;
     const l = [u16(b, 4), u16(b, 6)];
     if (n < MUL_HDR || u32(b, 0) !== 0x314C554D || l[0] > MUL_REC_MAX || l[1] > MUL_REC_MAX || MUL_HDR + l[0] + l[1] !== n) return "not a multi object";
@@ -163,6 +167,7 @@ export function objectLabel(id, bytes = null) {
   if (id === 0) return "the current music";
   if (id === 1) return "the settings";
   if (id >= 13 && id <= 20) { const a = 2 * (id - 13) + 1; return `multis M${String(a).padStart(2, "0")} and M${String(a + 1).padStart(2, "0")}`; }
+  if (MULTI2_IDS.includes(id)) { const a = 2 * (id - 42) + 17; return `multis M${String(a).padStart(2, "0")} and M${String(a + 1).padStart(2, "0")}`; }
   if (id >= 21 && id <= 23) { const a = 11 * (id - 21) + 1, b = Math.min(32, a + 10); return `pattern slots P${String(a).padStart(2, "0")} to P${String(b).padStart(2, "0")}`; }
   if (id >= 24 && id <= 26) return `user wavetable ${id - 23}`;
   if (id === FVB_ID) return "the FM6 voice bank";
@@ -188,7 +193,7 @@ export function describe(objects, engines = [], oldPatchChunks = 0) {
   const get = (ids) => ids.map((id) => objects.get(id) || null);
   return {
     patches: decodePatches(objects).map((p) => ({ ...p, engineName: engines[p.engine] || `ENGINE ${p.engine}` })),
-    multis: decodeMultis(get(GROUPS[1].ids)),
+    multis: decodeMultis([...get(GROUPS[1].ids), ...get(MULTI2_IDS)]),   // (index = object: ids 13..20 are 0..7, ids 42..46 are 8..12)
     patterns: decodePatterns(get(GROUPS[2].ids)),
     wavetables: decodeWavetables(get(GROUPS[3].ids)),
     fm6bank: objects.get(FVB_ID)?.length === FVB_OBJ ? (({ name, voices }) => ({ name, voices: voices.length }))(bankVoices(objects.get(FVB_ID))) : null,
@@ -254,6 +259,7 @@ export function readArchive(file) {
     if (version < 4 && items.some((o) => o && [27, 28, 29, 30, 31, 35, 36, 37, 38, 39].includes(o.id))) throw new Error("This backup holds patch chunks a version 3 file does not have: it is damaged.");
     if (version >= 5 && items.some((o) => o && OLD_PATCH_IDS.includes(o.id))) throw new Error(`This backup is version ${version}, which carries patches as records, but it holds patch chunks (ids 6, 7, 9 to 12, 27 to 31, 35 to 39): it is damaged.`);
     if (version < 5 && items.some((o) => o && o.id === PATCH_ID)) throw new Error(`This backup is version ${version}, which has no patch records (id ${PATCH_ID}): it is damaged.`);
+    if (version < 6 && items.some((o) => o && MULTI2_IDS.includes(o.id))) throw new Error(`This backup is version ${version}, which has no multis M17 and up (ids 42 to 46): it is damaged.`);
   } else if (file.format === "felucca-backup" && file.version === 1) {
     if (!/DUELL/i.test(String(file.firmware || ""))) throw new Error("This is a Felucca backup, not a DUELL one: its objects mean other things. It was not read.");
     items = readBackup(file).objects;                  // the installer's file: its own checks (ids, sizes, CRC); the retired objects are dropped below
@@ -467,7 +473,7 @@ export function planRestore(archive, list, caps, sel, opt = {}) {
     for (const id of g.ids) {
       const o = archive.objects.get(id);
       if (o.raw && !opt.includeRaw) { excluded.push({ key: g.key, id, label: `${g.label}: object ${id} (${objectLabel(id)})`, reason: `it could not be checked when the backup was made (${o.problem}); the unit keeps what it holds there` }); continue; }
-      const old = g.key === "multis" && !o.raw ? multiVersions(o.bytes).find((r) => r.version !== MUL_VER || r.np !== P_COUNT) : null;
+      const old = (g.key === "multis" || g.key === "multis2") && !o.raw ? multiVersions(o.bytes).find((r) => r.version !== MUL_VER || r.np !== P_COUNT) : null;
       if (old && !opt.includeRaw) { excluded.push({ key: g.key, id, label: `${g.label}: object ${id} (${objectLabel(id)})`, reason: `a multi record of version ${old.version}, which this firmware does not load; the unit keeps what it holds there` }); continue; }
       steps.push({ id, size: o.size, crc: o.crc, bytes: o.bytes, group: g.key });
     }

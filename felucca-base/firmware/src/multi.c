@@ -59,7 +59,9 @@
  * RAM: the names and which slots are used (multi_boot reads the eight objects once at power-on); a record is read from flash
  * when it is loaded or written, through proj_wire (the serialized scratch). Without FELUCCA_FLASH (host builds) the objects
  * live in RAM (mu_ram). */
-#define MU_NOBJ (MU_SLOTS / 2u)
+#define MU_NOBJ ((MU_SLOTS + 1u) / 2u)
+#define MU_OBJ_ALL 13u                            /* the multi objects the flash has room for (M01..M26): the backup lists all of them; MU_NOBJ of them are in use (MR9's two multis only raise MU_SLOTS) */
+#define MU_NOBJ0 8u                               /* the objects of M01..M16 (OBJ_MULTI0..7); M17.. (b10 U4) are OBJ_MULTIX0..4, ids 50..54 */
 #define MU_MAGIC 0x314C554Du                      /* "MUL1" */
 #define MU_VER 8u                                 /* 8 (ROLL CHAINED storage, 2026-10-29): End B as values (morph.c MBV, after a length byte), only the MU_NG globals a multi loads, the NX slots dense without a count, no edit list, steps in 7 bytes, the FM6 patch packed 8 to 7, no spare byte; 7 (the cloud plan's job A): per part the NX extension slots and the hand-set B edit list; 6 (0.2.22): DUCK SRC 2 is MIDI; 5 (0.2.19): P_LEVEL is the MIXER level and P_TRIM the sound's loudness; 4 (0.2.16): G_DMODE; 3 (0.2.14): CRUSH's BITS curve, BALANCE, XFADE, SPLIT. The only version that loads (7 and before: refused) */
 #define MU_HDR 8u
@@ -71,7 +73,7 @@
 #define MU_PART_FIX (4u + 1u + P_COUNT + NX + 8u) /* a part without its End B block, steps and patch: engine, preset, AMOUNT, flags, End B's length, the values, the slots, the step map */
 _Static_assert(sizeof proj_wire_u.raw >= MU_OBJ_MAX && PROJ_NAME_LEN == 12u && NSHOWN == 2u, "multi object staging");
 #if FELUCCA_FLASH
-_Static_assert(MU_OBJ_MAX <= ST_PAYLOAD_MAX && OBJ_PATCH0 == OBJ_MULTI0 + MU_NOBJ, "a multi object is one storage object");
+_Static_assert(MU_OBJ_MAX <= ST_PAYLOAD_MAX && OBJ_PATCH0 == OBJ_MULTI0 + MU_NOBJ0 && MU_NOBJ <= MU_OBJ_ALL && OBJ_COUNT == OBJ_MULTIX0 + (MU_OBJ_ALL - MU_NOBJ0), "a multi object is one storage object");
 #endif
 /* the globals a multi loads (the music's; not the device's: clock source, TUNE, MIDI, the SAVE pages' own) */
 #define MU_GLOBAL(i) ((i) == G_BPM || (i) == G_SWING || ((i) >= G_DTIME && (i) <= G_CDEPTH) || (i) == G_RTYPE || \
@@ -86,10 +88,10 @@ _Static_assert(MU_G_AT + 2u * MU_NG + NSHOWN * (MU_PART_FIX + MBV_MAX + NSTEP * 
                "a multi's sound with its End B and its steps always fit its record (only the automation can be cut)");
 #define mu_buf (proj_wire_u.raw)
 static char mu_names[MU_SHOWN][PROJ_NAME_LEN + 1u] __attribute__((section(".pool")));
-static uint32_t mu_used;                          /* bit k: M(k + 1) holds a multi that loads (TIDE b6: 32 bits, M17 M18 the ROM-only drone multis, MU_ROM) */
+static uint32_t mu_used;                          /* bit k: M(k + 1) holds a multi that loads (32 bits) */
 #if !FELUCCA_FLASH
-static uint8_t mu_ram[MU_NOBJ][MU_OBJ_MAX];       /* (host builds: the store) */
-static uint16_t mu_ram_len[MU_NOBJ];
+static uint8_t mu_ram[MU_OBJ_ALL][MU_OBJ_MAX];       /* (host builds: the store) */
+static uint16_t mu_ram_len[MU_OBJ_ALL];
 #endif
 static int project_restore_runtime(const project_t *input);
 #include "duell_multis.h"                         /* DF_N factory multis: DF_SLOT (their slots) / DM_LEN, dm_rec (TIDE: packed, SP1) (M01..M16; TIDE M17, M18) */
@@ -115,7 +117,7 @@ _Static_assert(DF_TEST_MULTIS == DUELL_TEST_MODE, "duell_multis.h was generated 
 _Static_assert(DF_TIDE == DUELL_TIDE, "duell_multis.h was generated with another DUELL_TIDE (TIDE: M17, M18, packed): run tools/gen_duell_multis.py with the same switch");
 _Static_assert(DF_N <= MU_SHOWN && MU_SHOWN <= 32u, "factory multis: slots below MU_SHOWN, the masks hold them");
 static uint32_t mu_fact;                          /* bit k: M(k + 1) is empty in flash and shows its factory multi (M17, M18: always) */
-#define MU_K(slot) ((uint32_t)(slot) % MU_SHOWN)  /* a slot number in range: a shown multi (0..MU_SHOWN - 1); MU_ROM(k) ones have no flash object */
+#define MU_K(slot) ((uint32_t)(slot) % MU_SHOWN)  /* a slot number in range: a shown multi (0..MU_SHOWN - 1) */
 
 static uint32_t mu_rd16(const uint8_t *b) { return (uint32_t)b[0] | (uint32_t)b[1] << 8; }
 static void mu_wr16(uint8_t *b, uint32_t v) { b[0] = (uint8_t)v; b[1] = (uint8_t)(v >> 8); }
@@ -134,6 +136,9 @@ static void mu_label(char *b, uint32_t k)         /* "M01" .. "M18" (b: 4 bytes)
     b[3] = 0;
 }
 
+#if FELUCCA_FLASH
+static uint32_t mu_oid(uint32_t o) { return o < MU_NOBJ0 ? OBJ_MULTI0 + o : OBJ_MULTIX0 + (o - MU_NOBJ0); }   /* the storage object of multi object o */
+#endif
 /* object o -> mu_buf, always a well-formed one (none, torn or damaged: both records empty); its length */
 static uint32_t mu_obj_read(uint32_t o)
 {
@@ -141,7 +146,7 @@ static uint32_t mu_obj_read(uint32_t o)
     uint32_t l0, l1, magic;
     proj_wire_gen++;                              /* (the editor's staging lives there too) */
 #if FELUCCA_FLASH
-    n = flash_ok ? st_load(OBJ_MULTI0 + o, mu_buf, MU_OBJ_MAX) : -1;
+    n = flash_ok ? st_load(mu_oid(o), mu_buf, MU_OBJ_MAX) : -1;
 #else
     n = mu_ram_len[o];
     memcpy(mu_buf, mu_ram[o], (uint32_t)n);
@@ -168,7 +173,7 @@ static const uint8_t *mu_rec(uint32_t h, uint32_t *len)   /* record h (0, 1) of 
 static int mu_obj_write(uint32_t o, uint32_t len)   /* mu_buf -> object o; 0 written */
 {
 #if FELUCCA_FLASH
-    return flash_ok ? st_save(OBJ_MULTI0 + o, mu_buf, len) : -1;
+    return flash_ok ? st_save(mu_oid(o), mu_buf, len) : -1;
 #else
     memcpy(mu_ram[o], mu_buf, len);
     mu_ram_len[o] = (uint16_t)len;
@@ -461,8 +466,6 @@ static void mu_note_all(void)                     /* every slot from flash (the 
         mu_obj_read(o);
         mu_note(o);
     }
-    for (o = MU_SLOTS; o < MU_SHOWN; o++)
-        mu_note1(o, 0, 0);
 }
 static void multi_boot(void)                      /* persist_boot: the names from flash */
 {
@@ -499,11 +502,8 @@ static void multi_preview(uint32_t slot, mu_pv_t *o)
     if (!project_used(k))
         return;
     o->state = 2;
-    r = 0;
-    if (!MU_ROM(k)) {                                  /* (M17, M18: no flash object, the ROM record below) */
-        mu_obj_read(k / 2u);
-        r = mu_rec(k & 1u, &len);
-    }
+    mu_obj_read(k / 2u);
+    r = mu_rec(k & 1u, &len);
     ok = len && mu_unpack(&proj_scratch, amt, set, r, len);
     if (!ok && df_of(k) < DF_N)                        /* (as mu_note: a slot that holds nothing it loads shows its factory multi) */
         ok = mu_unpack(&proj_scratch, amt, set, df_rec(df_of(k), DF_TAIL), DM_LEN[df_of(k)]);
@@ -585,10 +585,6 @@ static int project_save_as(uint32_t slot, const char *name)
 {
     uint32_t k = MU_K(slot), o = k / 2u, len, cut, pi;
     project_t *p = &proj_scratch;
-    if (MU_ROM(k)) {                                   /* M17, M18: ROM only (no flash object): an edit of one saves into M01..M16 */
-        ui_message(MU_ROM_SAY);
-        return 1;
-    }
     if (transport_busy()) {                            /* a flash erase silences the audio and stalls the */
         ui_message("STOP TO SAVE");                     /* sequencer (storage_hw.c): only while stopped */
         return 1;
@@ -659,10 +655,6 @@ static int project_rename(uint32_t slot, const char *name)
 {
     uint32_t k = MU_K(slot), o = k / 2u, len, n;
     uint8_t *r;
-    if (MU_ROM(k)) {                                   /* M17, M18: ROM only, nothing to rename */
-        ui_message(MU_ROM_SAY);
-        return 1;
-    }
     if (transport_busy()) {
         ui_message("STOP TO SAVE");
         return 1;
@@ -704,15 +696,13 @@ static void project_load(uint32_t slot)
 {
     uint32_t k = MU_K(slot), len = 0, pi;
     uint8_t amt[NSHOWN], set[6];
-    const uint8_t *r = 0;
+    const uint8_t *r;
     int rc;
 #if DUELL_TIDE
     uint32_t fact = 0;
 #endif
-    if (!MU_ROM(k)) {                                  /* (M17, M18: no flash object, their ROM record) */
-        mu_obj_read(k / 2u);
-        r = mu_rec(k & 1u, &len);
-    }
+    mu_obj_read(k / 2u);
+    r = mu_rec(k & 1u, &len);
     if (!len && df_of(k) < DF_N) {                     /* nothing stored: the factory multi */
         r = df_rec(df_of(k), DF_TAIL);
         len = DM_LEN[df_of(k)];

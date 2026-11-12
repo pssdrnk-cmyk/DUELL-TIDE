@@ -1065,13 +1065,13 @@ static volatile uint8_t *const TS_VAR[TS_N] = {&gl.mode, &gl.time, &gl.target, &
                                                &sqm_sync, &sqm_arc, &tide_style, &tide_rec_replace};
 static const uint8_t TS_LIM[TS_N] = {GM_JOURNEY + 1u, GLIDE_TIMES, GT_BOTH + 1u, GLIDE_WAITS, 0, KS_N + 2u, 0, 3, 3, 3, 3, STY_CUSTOM, 2},
                      TS_DEF[TS_N] = {GM_WANDER, 3, GT_SOUND, 0, 1, 1, 3, 1, 1, 1, 0, STY_CUSTOM, 0};
-/* TIDE 1.0.0-b6: while a built-in drone multi (M17, M18: MU_DRONE; b10: the ROM multis M19.. are not drones) is the multi loaded, TIDE plays STYLE DRONE: the eight rows are DRONE's and TIDE SETTINGS
+/* TIDE 1.0.0-b6: while a built-in drone multi (M23, M24: MU_DRONE, unchanged by a SAVE) is the multi loaded, TIDE plays STYLE DRONE: the eight rows are DRONE's and TIDE SETTINGS
  * shows DRONE. What was set (the eight rows and STYLE) is kept here and comes back when any other multi (or none) is loaded; the store always gets the
  * kept values, so the saved STYLE never changes. A hand edit of a row while the drone multi is loaded lasts until then. Main loop only (no audio cost) */
 static uint8_t tide_drone_on, tide_drone_keep[9];       /* (STY's eight rows, then STYLE) */
 static void tide_drone(int reread)
 {
-    uint32_t cs = project_cur_slot(), on = cs < MU_SHOWN && MU_DRONE(cs);
+    uint32_t cs = project_cur_slot(), on = cs < MU_SHOWN && MU_DRONE(cs) && project_factory(cs);   /* (b10 U4: only while the slot shows the factory drone; a multi saved over it is an ordinary one) */
     if (reread)                                          /* (the rows were just read from the store: they are what is kept now) */
         tide_drone_on = 0;
     if (on == tide_drone_on)
