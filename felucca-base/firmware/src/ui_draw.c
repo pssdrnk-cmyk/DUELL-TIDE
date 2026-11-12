@@ -595,7 +595,7 @@ static void k2_pill(int32_t x, const char *s, uint16_t edge, uint16_t fill, uint
 }
 #endif
 static int tide_line_state(uint32_t *prog, uint32_t *beat, uint32_t *mask);   /* tide_ui.c: 0 off, 1 armed, 2 running, 3 waiting (slack), 4 paused */
-static uint8_t tl_page, tl_up;                       /* (the page draw is on, ui_draw_page; the rows above 24 the tide line has now: 4 or 0) */
+static uint8_t tl_page, tl_up, tl_st;                /* (the page draw is on, ui_draw_page; the rows above 24 the tide line has now: 4 or 0; its state at its last draw) */
 static void draw_head(void)
 {
     char tb[40];
@@ -616,8 +616,7 @@ static void draw_head(void)
     sig += cpk * 6397u;
 #endif
     {   /* (b10: the tide line has rows 20 .. 23 on a part page's own draw while it shows and no message is up; else the header keeps its whole height) */
-        uint32_t tp, tb, tm = 3u;
-        const uint8_t up = tl_page && !msg && !screen_global() && !ui.menu && !ui.guide && tide_line_state(&tp, &tb, &tm) ? 4u : 0u;
+        const uint8_t up = tl_page && !msg && tl_st ? 4u : 0u;   /* (the line's state at its last draw: a frame late, the strip covers both) */
         if (up != tl_up) {
             tl_up = up;
             tide_line_sig = 0xFFFFFFFFu;               /* (the strip is drawn again with its new rows) */
@@ -3581,6 +3580,7 @@ static void tide_line_draw(void)
     int32_t xp = (int32_t)((prog * 240u) >> 16), x, r;
     const int grey = ux.mono || ux.bw;
     uint32_t sig;
+    tl_st = (uint8_t)st;
     if (st == 2u && mv_tick() != tl_tk) {               /* (a step a picture: the belt's place, a wavelength every 16 lines) */
         tl_tk = mv_tick();
         wl_belt();
