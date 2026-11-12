@@ -6,9 +6,9 @@
  *   trigger      the same signal at 10 starting offsets gives the same picture (within 1 px as drawn: the two sets of pixels, each to the nearest of the other; a saw, a resonant saw, a sine;
  *                a resonant saw at 100.37 entries a cycle within 4 px: its sharp edge lands in one of two neighbouring points); the same signal as 10 pictures in a row: 0 changed points (all but the 100.37 one)
  *   beat         two sines 3 Hz apart: the height of the ridge swings at least 3 : 1 over 60 pictures (a dip under a pixel shows the last shape fading, wl_fade)
- *   soft         right after a loud sine, the same sine 26 dB down is not blown up: the gain falls by 1/4 a picture, so it is under a pixel and the loud shape fades (half); a quiet held sine (-37 dB of the half scale) on its own still
+ *   soft         right after a loud sine, the same sine 26 dB down is not blown up: the gain falls by 1/4 a picture, so it is under a pixel and the loud shape fades in place (15/16, b10 I3); a quiet held sine (-37 dB of the half scale) on its own still
  *                shows its shape at nearly the full height (the floor of the gain)
- *   silence      the part's silent flag: the front fades (half its height a picture), the stack runs out (all flat a few pictures after WL_HN); a ring of zeros, the tap's dither: one flat ridge
+ *   silence      the part's silent flag: every ridge keeps its shape and fades in place (15/16 of its height a picture, nothing pushed: b10 I3), all flat once under half a px; a ring of zeros, the tap's dither: one flat ridge
  *   stack        a held note builds up WL_HN ridges, no more
  *   wrap         the ring's free-running counter past 2^32 gives the picture it gives below it
  *   torn         the writer moves on past what the ring leaves between the read and the second look at the counter: once = one retry and a picture, twice = the old picture stays
@@ -288,8 +288,8 @@ int main(void)
         wl_step(0, HS);
         {
             char w[160];
-            snprintf(w, sizeof w, "soft: right after a loud sine, the same 26 dB down is drawn %d px, the loud one %d px (not blown up: the loud shape fades, half)", height(&wl[0]), h1);
-            ok(w, height(&wl[0]) * 2 <= h1 + 2);   /* (half, to a px of rounding) */
+            snprintf(w, sizeof w, "soft: right after a loud sine, the same 26 dB down is drawn %d px, the loud one %d px (not blown up: the loud shape fades in place, 15/16)", height(&wl[0]), h1);
+            ok(w, height(&wl[0]) < h1 && height(&wl[0]) * 16 <= h1 * 15 + 16);   /* (one fade step, to a px of rounding) */
         }
     }
     /* quiet: a held sine at -37 dB of the half scale (+-60 of the tap's 4,096 steps: under two of the old 8-bit tap's steps), on its own: its shape at the gain's floor */
@@ -324,10 +324,10 @@ int main(void)
         wl_step(0, HS);
         {
             char w[160];
-            snprintf(w, sizeof w, "silence (the part's flag): the front fades to half its height (%d px of %d), the older ridges move back", height(&wl[0]), h0);
-            ok(w, !(wl[0].flat & 3u) && height(&wl[0]) * 2 <= h0 + 2 && height(&wl[0]) * 2 >= h0 - 2);
+            snprintf(w, sizeof w, "silence (the part's flag): the front fades in place to 15/16 of its height (%d px of %d), the stack stays (nothing pushed)", height(&wl[0]), h0);
+            ok(w, !(wl[0].flat & 3u) && wl[0].hn == WL_HN && height(&wl[0]) * 16 <= h0 * 15 + 16 && height(&wl[0]) * 16 >= h0 * 15 - 32);
         }
-        for (i = 1; i < WL_HN + 8u; i++)            /* (the front halves a picture in 1/4 px: from the full height it is flat after about 7, then WL_HN more push it out) */
+        for (i = 1; i < 90u; i++)                   /* (15/16 a picture: from the full height under half a px after about 70) */
             wl_step(0, HS);
         ok("silence (the part's flag): a few pictures later the stack has run out, every ridge flat", wl[0].flat == (uint16_t)((1u << WL_HN) - 1u));
     }
@@ -336,14 +336,14 @@ int main(void)
     ring(0, 8000u);
     fresh(0);
     wl_step(0, HS);
-    ok("silence (a ring of zeros): one flat ridge", wl[0].hn == 1 && wl[0].flat == 1u && height(&wl[0]) == 0);
+    ok("silence (a ring of zeros): no shaped ridge (b10 I3: nothing pushed; an empty stack is the rest picture)", wl[0].hn <= 1 && (wl[0].hn == 0 || (wl[0].flat == 1u && height(&wl[0]) == 0)));
     sig_m = dither;                                      /* one step of the tap's dither (the tail of a decay) */
     ring_scale = 1;
     ring(0, 8000u);
     fresh(0);
     wl_step(0, HS);
     ring_scale = 32;
-    ok("silence (a step of the tap's dither): one flat ridge, not a stack of them", wl[0].hn == 1 && wl[0].flat == 1u && height(&wl[0]) == 0);
+    ok("silence (a step of the tap's dither): no shaped ridge, not a stack of them (b10 I3)", wl[0].hn <= 1 && (wl[0].hn == 0 || (wl[0].flat == 1u && height(&wl[0]) == 0)));
     sig_m = sine128;                                     /* waking: the hole's gap says where; entries from before it are not used */
     ring(0, 9000u);
     fresh(0);

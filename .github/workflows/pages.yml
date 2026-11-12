@@ -10,6 +10,10 @@
 #   Both go to /install/stable/ and /install/beta/, with /install/channels.json: tag, date, commit, SHA-256 (from the release's
 #   .sha256 asset and GitHub's asset digest; the build stops if the package does not match them), release notes URL, known issues.
 #   felucca-base/web/releases.py does the choosing and the downloads.
+#   Only a build whose commit passed the tests is offered: --require-green asks, for the commit of each release's tag, whether the "Host tests" workflow
+#   has a successful run on exactly that commit. The newest release that has one is chosen for each channel; a red, missing or unreadable one is skipped
+#   (the log names it) and the next older release is looked at. This matters because the site is rebuilt from jam11's green head, but the packages it
+#   offers come from the releases, whose commits nobody else checks.
 #   duell-emulator*.zip     the emulator, any version in the name (the contents of felucca-base/build/emu, zipped) -> /emu/, from the newest
 #                           release (pre-releases count, drafts do not), used only if the emulator build below leaves nothing.
 # The emulator is built from the committed sources (step below). With no release at all the installer page says "not released yet"
@@ -32,6 +36,7 @@ on:
 
 permissions:
   contents: read
+  actions: read      # (--require-green lists the Host tests runs of a release's commit)
   pages: write
   id-token: write
 
@@ -87,7 +92,7 @@ jobs:
         run: |
           mkdir -p dl/emu
           # the packages: releases.py picks Stable and Beta (rules in its header) and writes dl/stable.json, dl/beta.json, dl/<channel>/*.fwsc
-          python3 felucca-base/web/releases.py --repo "$GH_REPO" --out dl
+          python3 felucca-base/web/releases.py --repo "$GH_REPO" --out dl --require-green
           # the emulator zip, as before: from the newest release, pre-releases included, drafts excluded
           tag=$(gh release list --exclude-drafts --limit 1 --json tagName --jq '.[0].tagName' || true)
           if [ -n "$tag" ]; then

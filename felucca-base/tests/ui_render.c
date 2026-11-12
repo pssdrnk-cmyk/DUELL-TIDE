@@ -163,12 +163,12 @@ static void al_flush(void)                      /* a canvas blitted or begun: de
 }
 static int32_t icon_cell(uint32_t *size, uint32_t id);
 static void hk_icon(int32_t x, int32_t y, uint32_t size, uint32_t id);   /* (after the icons: their cells' nibbles) */
-#define GFX_HOOK_ALIGN(x0, y0, x1, y1, mode, tag) hk_align(x0, (y0) + cv_oy, x1, (y1) + cv_oy, mode, tag)
+#define GFX_HOOK_ALIGN(x0, y0, x1, y1, mode, tag) hk_align(x0, (y0) + CV_Y, x1, (y1) + CV_Y, mode, tag)
 static int32_t pen_c0, pen_c1;                  /* GFX_HOOK_PEN: the capitals' band of the text being hooked, always (item 122's keycap table) */
 static uint8_t pen_h;                           /* GFX_HOOK_PEN: the line height of the text being hooked (its face) */
-#define GFX_HOOK_PEN(y, f) (pen_h = (f)->h, pen_c0 = (y) + cv_oy + (f)->metrics[glyph((f), 'H') >> (f)->psh].by, pen_c1 = pen_c0 + (f)->metrics[glyph((f), 'H') >> (f)->psh].bh, al_n ? (al_cy0 = pen_c0, al_cy1 = pen_c1) : 0)
-#define GFX_HOOK_ITEM(x0, y0, x1, y1) al_item(x0, (y0) + cv_oy, x1, (y1) + cv_oy, 1, "cushion")
-#define GFX_HOOK_ICON(x, y, size, id) hk_icon(x, (y) + cv_oy, size, id)
+#define GFX_HOOK_PEN(y, f) (pen_h = (f)->h, pen_c0 = (y) + CV_Y + (f)->metrics[glyph((f), 'H') >> (f)->psh].by, pen_c1 = pen_c0 + (f)->metrics[glyph((f), 'H') >> (f)->psh].bh, al_n ? (al_cy0 = pen_c0, al_cy1 = pen_c1) : 0)
+#define GFX_HOOK_ITEM(x0, y0, x1, y1) al_item(x0, (y0) + CV_Y, x1, (y1) + CV_Y, 1, "cushion")
+#define GFX_HOOK_ICON(x, y, size, id) hk_icon(x, (y) + CV_Y, size, id)
 static void hk_text(int32_t x0, int32_t y0, int32_t x1, int32_t y1, const char *s, uint32_t flags)
 {
     al_text(x0, y0, x1, y1, s, flags);
@@ -225,11 +225,21 @@ static void hk_allow(int32_t x0, int32_t y0, int32_t x1, int32_t y1)
 {
     if (nallow_p < 256u) { allow_p[nallow_p][0] = (int16_t)x0; allow_p[nallow_p][1] = (int16_t)y0; allow_p[nallow_p][2] = (int16_t)x1; allow_p[nallow_p][3] = (int16_t)y1; nallow_p++; }
 }
-#define GFX_HOOK_ALLOW(x0, y0, x1, y1) hk_allow(x0, (y0) + cv_oy, x1, (y1) + cv_oy)
+#define GFX_HOOK_ALLOW(x0, y0, x1, y1) hk_allow(x0, (y0) + CV_Y, x1, (y1) + CV_Y)
 #define GFX_HOOK_INK(ink, bg) hk_ink(ink, bg)
 #define GFX_HOOK_PIXELS(n) (px_visited += (n))
+#define CV_SITE_TRACE 1
+static void cv_site_note(const char *file, int line, uint32_t h, int inb)
+{
+    static char seen[4096]; char k[64];
+    if (inb || h <= 68u) return;
+    snprintf(k, sizeof k, "|%s:%d|", file, line);
+    if (!strstr(seen, k)) { strcat(seen, k); fprintf(stderr, "OVER %s:%d h %u\n", file, line, h); }
+}
 #define UI_FILL_HOOK(x, y, w, h) hk_fill(x, y, w, h)
 #define GRID_PREFILL() do { hk_fill(0, H_HEAD, 240, Y_FOOT + 15 - H_HEAD); grid_fill(); } while (0)   /* (b10 ui-a: the model sees the old whole-body fill: the page drawn next replaces what stood there) */
+static uint32_t cv_over_n;                               /* (b10 ui-c: pictures taller than a canvas band begun outside CV_BANDS: they would be cut) */
+#define GFX_HOOK_OVER(h, inb) ((h) > CV_BAND && !(inb) ? cv_over_n++ : 0u)
 static void fm6_hook(uint32_t kind, uint32_t a, uint32_t b);
 #define FM6_CHART_HOOK(kind, a, b) fm6_hook(kind, a, b)
 static void cs_hook(const char *v, const char *u);
@@ -401,7 +411,7 @@ static void fmp_check(uint32_t alg)
                     }
             }
         }
-    fmp_charts++;
+    fmp_charts += cv_by == 0;                           /* (b10 ui-c: a chart in a taller picture is drawn once for each canvas band; counted once, linted in each) */
 }
 static void fm6_hook(uint32_t kind, uint32_t a, uint32_t b)
 {
@@ -511,8 +521,7 @@ static void contain(int32_t x, int32_t y)
             int touch = b->x0 < r[2] && r[0] < b->x1 && b->y0 < r[3] && r[1] < b->y1;
             int in = b->x0 >= r[0] && b->x1 <= r[2] && b->y0 >= r[1] && b->y1 <= r[3];
             int around = r[0] >= b->x0 && r[2] <= b->x1 && r[1] >= b->y0 && r[3] <= b->y1;   /* (a mark inside the box) */
-            int digits2 = b->s[0] >= '0' && b->s[0] <= '9' && b->s[1] >= '0' && b->s[1] <= '9' && !b->s[2] && b->x0 >= r[0] && b->x1 - r[2] <= 4;   /* (the capsule's voices number: two digits are 16 px wide, 4 px over the cell by design: ui_draw.c head_capsule, owner V13) */
-            if (touch && !in && !around && !digits2) {
+            if (touch && !in && !around) {
                 rbox_t t = *b, o = {(int16_t)(r[0] + x), (int16_t)(r[1] + y), (int16_t)(r[2] + x), (int16_t)(r[3] + y), 0, "cell"};
                 t.x0 += (int16_t)x; t.x1 += (int16_t)x; t.y0 += (int16_t)y; t.y1 += (int16_t)y;
                 nspill++;
@@ -536,8 +545,9 @@ static void hk_blit(uint32_t x, uint32_t y, uint32_t r0, uint32_t w, uint32_t h)
     blit_px += (uint64_t)w * (h > r0 ? h - r0 : 0u);
     for (i = 0; i < npend; i++) {
         rbox_t b = pend[i];
-        if (b.y1 <= (int32_t)r0) continue;           /* rows not blitted */
+        if (b.y1 <= (int32_t)r0 || b.y0 >= (int32_t)h) continue;   /* rows not blitted (b10 ui-c: nor a box wholly below the canvas: a picture drawn in bands records its texts in every band) */
         if (b.y0 < (int32_t)r0) b.flags |= 2u;
+        if (b.y1 > (int32_t)h) b.flags |= 2u;          /* (b10 ui-c: the bottom edge too: an icon across two canvas bands is cut in both) */
         b.x0 += (int16_t)x; b.x1 += (int16_t)x; b.y0 += (int16_t)y; b.y1 += (int16_t)y;
         if (b.c1) { b.c0 += (int16_t)y; b.c1 += (int16_t)y; }
         if (!split_pair(&b)) pend[k++] = b;
@@ -764,9 +774,12 @@ static void state(void)                          /* a playing song with steps on
     ui_power_on();
     memset(&cpub, 0, sizeof cpub);                   /* (DUELL 0.2.9: the CPU bar under the battery in every scene: 5 of 8 steps, amber) */
     cpub.ok = 1; cpub.t = fm1_ms; cpub.step = 5; cpub.lvl = 1;
+#if DUELL_TIDE && DUELL_TEST_MODE
+    memset(&cpuh, 0, sizeof cpuh);                   /* (K2: TIDE's header readout on HOME's three pages, test builds only since b10 ui-b: a 92 % elapsed peak in the dim pill, 3 periods missed in the red badge) */
+    cpuh.t = fm1_ms; cpuh.hold = 92;
+#endif
 #if DUELL_TIDE
-    memset(&cpuh, 0, sizeof cpuh);                   /* (K2: TIDE's header readout on HOME's three pages: a 92 % elapsed peak in the dim pill, 3 periods missed in the red badge) */
-    cpuh.t = fm1_ms; cpuh.hold = 92; cpu_snap.miss = 3; cpum.base = 0; cpum.miss = 0;
+    cpu_snap.miss = 3; cpum.base = 0; cpum.miss = 0;
 #endif
     memset(&gm, 0, sizeof gm);                       /* (GLO's level meters from silence) */
     midi_pch[0] = 0; midi_pch[1] = 1; meter_bus[0] = meter_bus[1] = 0;
@@ -1443,8 +1456,8 @@ static void setup(int s)
     case S_MORPH_SET: go_title(MORPH_SET_TITLE); break;
     case S_MORPH_SET_BOTH: SEL_BOTH = 1; go_title(MORPH_SET_TITLE); ui.hot_col = 0; ui.hot_t = 30; break;
     case S_MORPH_SET_WILD: morph_set_cfg(MC_WILD | MC_ARP | MC_PIT, 1); SEL_BOTH = 1; go_title(MORPH_SET_TITLE); ui.hot_col = 1; ui.hot_t = 30; 
-#if DUELL_TIDE
-        cpuh.hold = 138; cpu_snap.miss = 999;   /* (K2: the widest readout: 138 and 999, red) */
+#if DUELL_TIDE && DUELL_TEST_MODE
+        cpuh.hold = 138; cpu_snap.miss = 999;   /* (K2: the widest readout: 138 and 999, red; test builds only since b10 ui-b) */
 #endif
         break;
     case S_MORPH_SAVE: go_title("MORPH"); confirm_open(CF_SAVE_OVER, 0u); break;   /* SAVE held: the SAVE OVER dialog */
@@ -1583,18 +1596,18 @@ static void setup(int s)
 }
 static void draw(int s)
 {
+    if (getenv("UIR_TRACE") && s >= 0) { fprintf(stderr, "%s ", S_NAME[s]); fflush(stderr); }
     if (s < 0 || (!strstr(S_NAME[s], "rec") && !strstr(S_NAME[s], "head") && !strstr(S_NAME[s], "batt") && !strstr(S_NAME[s], "motion") && !strstr(S_NAME[s], "layer_hint"))) {   /* (s -1: a state set by hand, the FM6 charts: no scene name to read) */
         song.rec = 0;                                  /* (the scenes arm the recording and set USB power for their own tests: an ordinary unit shows neither REC nor the charging bolt) */
         usb.config = 0;
     }
-    if (s == S_CAPSULES) {   /* the capsule header at real size: 1 A 8, 2 B 6, 1 A 10, 2 B 10, lit and dim */
+    if (s == S_CAPSULES) {   /* the capsule header at real size: [1 A], [2 B], lit and dim (b10 ui-b, owner 2026-11-12: two cells, no voices number) */
         int32_t row;
-        static const int8_t V[3][2] = {{8, 6}, {10, 10}, {8, 6}};
         lcd_fill(0, 0, 240, 240, T_BG);
         for (row = 0; row < 3; row++) {
             cv_begin(240, 24, T_BG);
-            head_capsule(CAP_X, 0, row < 2 ? 1u : 0u, 0u, V[row][0], 0u);
-            head_capsule(240 - CAP_X - CAP_W, 1, row == 2 ? 1u : 0u, 1u, V[row][1], 0u);
+            head_capsule(CAP_X, 0, row < 2 ? 1u : 0u, 0u, 0u);
+            head_capsule(240 - CAP_X - CAP_W, 1, row == 2 ? 1u : 0u, 1u, 0u);
             cv_blit(0, 10u + (uint32_t)row * 30u);
         }
         return;
@@ -2065,8 +2078,7 @@ static void align_sweeps(void)
         roll_scene(S_ROLL_ACID);
         for (v = 0; v + PR_ROWS <= 128; v++) {
             proll.lo = (uint8_t)v;
-            cv_begin(240, H_GRAPH, T_BG);
-            graph_roll(TSEL, T_THEME);
+            CV_BANDS(H_GRAPH) { cv_begin(240, H_GRAPH, T_BG); graph_roll(TSEL, T_THEME); }
         }
         state(); pal(UI_GREY_INDEX);
         cur_name = st ? "sweep LINE: mixer" : "sweep FLAT: mixer";
@@ -3214,5 +3226,6 @@ int main(int argc, char **argv)
            al_fail ? " (see align.txt)" : "");
     printf("ui_render: keycaps beside a word: %u pairs over all palettes, %u with the pill's centre off the capitals' centre (see keycap_table.txt)\n", nkc_pairs, nkc_off);
     printf("ui_render: boxes (a flat fill of 12 x 12 px or more that is not the page background and not an allowed highlight or data): %u (see boxes.txt)\n", nbox);
-    return nfind || nink || mono_bad || al_fail || nbox || nkc_off ? 1 : 0;
+    printf("ui_render: pictures taller than a canvas band (%u rows) drawn outside CV_BANDS: %u\n", (unsigned)CV_BAND, cv_over_n);
+    return nfind || nink || mono_bad || al_fail || nbox || nkc_off || cv_over_n ? 1 : 0;
 }

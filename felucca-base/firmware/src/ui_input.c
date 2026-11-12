@@ -818,6 +818,15 @@ static void morph_knob(uint32_t slot, int32_t s)
         }
     }
     song.sel = (uint8_t)pi;
+    if (slot) {                                          /* b10 (owner 2026-11-12, audit I6): the knob's whole name and the value its row shows, over the title ("BLOOM 2.1ms"; the row keeps the short names) */
+        static const char *const KN_FULL[KS_N][3] = {{"FILTER ", "RESONANCE ", "ECHO "}, {"SEND ", "FEEDBACK ", "TIME "}, {"FILTER ", "PUMP ", "REVERB "},
+                                                     {"TENSION ", "DECAY ", "WASH "}, {"SQUELCH ", "BITE ", "DIRT "}, {"FILTER ", "GRIT ", "GLITCH "},
+                                                     {"BLOOM ", "DRIFT ", "SPACE "}};
+        const uint32_t set = kn_cur(), ix = KN_E[set][slot - 1u][0].ix;
+        char v[PV_LEN + 4];
+        h1_val(ix, TSEL, ix < KN_NP ? card_vv(&TSEL->p[KN_ID[ix]]) : song.g[KN_ID[ix]], v);
+        ui_say(KN_FULL[set][slot - 1u], v);
+    }
 }
 #else
 static void morph_knob(uint32_t slot, int32_t s)
@@ -2512,6 +2521,8 @@ static void ui_input(void)
             perf_balance(s);
         else
             page_select(s);
+        if (ui.msg_t && ui.msg[0] == 'H' && ui.msg[5] == '[')   /* I11: the tap's "HOLD [..] QUICK" goes with the first SELECT step, so the page's own name shows (ui_layer.c says it) */
+            ui.msg_t = 0;
     }
     for (k = 0; k < 4u && !kq; k++) {
         const page_t *pg = cur_page();

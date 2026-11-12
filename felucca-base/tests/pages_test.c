@@ -632,7 +632,7 @@ static void test_graphs(void)
     XV(TSEL, X_SUBHARM) = 0;
     frames(64);
     h0 = graph_hash();
-    expect("(f) SUB OSC at LEVEL 0: the flat line and 'NOT RUN AT LEVEL 0'", ink_rows(Y_GRAPH + 108, Y_GRAPH + 120) > 20);
+    expect("(f) SUB OSC at LEVEL 0: the flat line and 'OFF AT LEVEL 0' (b10 ui-b I13)", ink_rows(Y_GRAPH + 108, Y_GRAPH + 120) > 20);
     XV(TSEL, X_SUBLVL) = 100;
     frames(64);
     h1 = graph_hash();

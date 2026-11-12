@@ -64,7 +64,7 @@ static void lcd_window(uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1)
     lcd_cmd(0x2C);
 }
 
-static uint16_t lcd_fillbuf[240];
+static uint16_t lcd_fillbuf[240] __attribute__((section(".pool")));   /* (b10: the pool, not .bss: written before every use) */
 
 static void lcd_fill(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint16_t c)
 {

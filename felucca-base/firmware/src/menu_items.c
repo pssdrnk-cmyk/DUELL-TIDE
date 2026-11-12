@@ -97,7 +97,7 @@ enum { MTAB_DISPLAY, MTAB_CONTROL, MTAB_AUDIO, MTAB_SYSTEM, MTAB_COUNT };   /* (
 #define MPAGE_UNITS 7u
 static const char *const MTAB_NAME[MTAB_COUNT] = {"DISPLAY", "CONTROL", "AUDIO", "SYSTEM"};
 static const uint8_t MI_TAB[MI_COUNT] = {
-    MTAB_DISPLAY, MTAB_DISPLAY, MTAB_DISPLAY, MTAB_DISPLAY, MTAB_DISPLAY, MTAB_DISPLAY, 0xFFu,   /* COLOR LEDS SCALE LEDS ANIMATION SCREEN OFF NOTES LEFT (CPU METER, last of its group: no tab, no row: the CPU bar is gone in DUELL 1.1; the row, its stored bit and its editor id 26 stay reserved) */
+    MTAB_DISPLAY, MTAB_DISPLAY, MTAB_DISPLAY, MTAB_DISPLAY, MTAB_DISPLAY, 0xFFu, 0xFFu,   /* COLOR LEDS SCALE LEDS ANIMATION SCREEN OFF (NOTES LEFT: no row since b10, owner 2026-11-12, the capsules show no voices; its bit stays reserved) (CPU METER, last of its group: no tab, no row: the CPU bar is gone in DUELL 1.1; the row, its stored bit and its editor id 26 stay reserved) */
     MTAB_CONTROL, MTAB_CONTROL, MTAB_CONTROL, MTAB_CONTROL, MTAB_CONTROL, MTAB_CONTROL,   /* MULTI LOAD HOME OPENS KNOB ACCEL BUTTON HOLD STEP KEYS
                                                                                           * STEP PREVIEW */
     MTAB_CONTROL,                                                                         /* PERF LEAVE (FADE / KEEP; the 7th unit: one page is full) */

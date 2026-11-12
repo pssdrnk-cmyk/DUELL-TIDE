@@ -567,7 +567,7 @@ static void fm6_block(track_t *t)       /* once a block and part: the macros, th
 #if DUELL_TIDE
     if (tr < NLIVE && (fm6_xt[tr].on || fm6_xt[tr].dirty || fm6_xt[tr].drain)) {   /* (drain: a drain that waited for a crossing to end still runs after it, even with no stand-in mapped) */
 #if DUELL_PROBE_STAGES
-        extern volatile uint32_t prb_stage_pk[5];
+        extern volatile uint32_t prb_stage_pk[6];
         uint32_t x0 = fm1_ticks();
         fm6_xblock(t, tr);
         if (!tr && fm1_ticks() - x0 > prb_stage_pk[3]) prb_stage_pk[3] = fm1_ticks() - x0;
@@ -686,7 +686,9 @@ static void fm6_render(track_t *t, voice_t *v, int32_t *out, uint32_t len, const
 }
 
 /* --------------------------------------------------------- the engine --- */
-static const char *const N_FM6_ALG[] = {"PAT", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13",
+static const char *const N_FM6_ALG[] = {
+                                        "OWN",     /* (I13: the patch's own algorithm, as a word: OWN as SLOT says it; PATCH is too wide for the editor's macro cell) */
+                                        "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13",
                                         "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25",
                                         "26", "27", "28", "29", "30", "31", "32", 0};
 static const char *const N_FM6_PATCH[] = {"F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "OWN",

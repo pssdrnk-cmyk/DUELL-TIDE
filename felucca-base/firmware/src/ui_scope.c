@@ -49,7 +49,8 @@ typedef struct {
     uint8_t fall;                                    /* the note's trigger takes falling crossings (held while its falling edges are the steeper; silence clears it) */
     uint8_t got, have, a, hn;                        /* a picture exists since the last reset; one with a trigger to match; the half height the ridges were made for; ridges kept */
 } wl_t;
-static wl_t wl[2];
+static wl_t wl[2] __attribute__((section(".pool")));   /* (b10 ui-c: the pool, not .bss; zeroed by wl_tick the first time) */
+static uint8_t wl_zeroed;
 static uint32_t wl_tk = 0xFFFFFFFFu;
 _Static_assert(NLIVE == 2, "ui_scope.c keeps one reader state for each of the two parts");
 _Static_assert(WL_HN <= 16, "wl_t.flat has a bit a ridge");
@@ -305,22 +306,25 @@ static void wl_push(wl_t *s, int8_t *nd)
 }
 /* the sound has gone (silence, a note's tail): the newest ridge again at half its height (a flat one once nothing is left), so a shape fades out over a few pictures instead of
  * dropping to a ruled line */
+/* b10 Phase B (I3, audit: a stab's lane snapped to the flat lines between hits): silence pushes nothing; every ridge keeps its shape and shrinks to 15/16 a picture
+ * (half in ~11 pictures, ~0.65 s; under half a px: flat), so the last notes stay where they were and fade, and the next note starts the stack moving again */
 static void wl_fade(wl_t *s)
 {
-    int8_t nd[WL_NP];
-    uint32_t p, any = 0;
-    for (p = 0; p < WL_NP; p++) {
-        int32_t v = s->hn && !(s->flat & 1u) ? wl_rq(s, 0, p) : 0;
-        nd[p] = (int8_t)(v / 2);
-        nd[p] = nd[p] > -2 && nd[p] < 2 ? 0 : nd[p];   /* (under half a px: gone) */
-        any |= nd[p] != 0;
+    uint32_t r, p;
+    for (r = 0; r < s->hn; r++) {
+        uint32_t any = 0;
+        if ((s->flat >> r) & 1u)
+            continue;
+        for (p = 0; p < WL_NP; p++) {
+            int32_t v = s->rd[r][p] * 15 / 16;
+            v = v > -2 && v < 2 ? 0 : v;
+            s->rd[r][p] = (int8_t)v;
+            any |= v != 0;
+        }
+        if (!any)
+            s->flat |= (uint16_t)(1u << r);
     }
-    {
-        const uint16_t was = s->flat;
-        s->flat |= 1u;                               /* (no blend with it: the fade is the shape itself) */
-        wl_push(s, any ? nd : 0);
-        s->flat = (uint16_t)((was << 1 | (any ? 0u : 1u)) & ((1u << WL_HN) - 1u));
-    }
+    s->got = 1;                                      /* (a picture step was taken: wl_tick waits for the next tick, as after a push) */
 }
 /* a picture that could not be read (too little since a hole in the tap, or torn twice): the front again (flat if it is), so the stack still moves back a step while the part
  * sounds (b6, owner 2026-11-09: "check why the current display doesn't move when piece is playing") */
@@ -449,7 +453,7 @@ static void wl_col(int32_t x, int32_t ya, int32_t yb, int32_t w16, uint16_t c, i
     if ((uint32_t)x >= cv_w)
         return;
     for (row = top >> 4; row <= bot >> 4; row++) {
-        const int32_t r0 = row * 16 > top ? row * 16 : top, r1 = row * 16 + 16 < bot ? row * 16 + 16 : bot, y = row + cv_oy, m = pct * (r1 - r0) / 16;
+        const int32_t r0 = row * 16 > top ? row * 16 : top, r1 = row * 16 + 16 < bot ? row * 16 + 16 : bot, y = row + CV_Y, m = pct * (r1 - r0) / 16;
         uint16_t *q;
         if (row < ymin || row > ymax || r1 <= r0 || (uint32_t)y >= cv_h || m <= 0)
             continue;
@@ -484,6 +488,7 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
     const int hot = ui_part_hot(k);
     const int32_t pct = (int32_t)ux.fader[k & 1u] * 100 / 127, str = hot ? 100 : 55;   /* (the fader as the theme took it: in steps, on a picture's frame (ui_draw.c), so
                                                                                       * a turn of knob 1 redraws the waves with a picture: ui_graph.c graph_signature) */
+    const int32_t fstr = ux.mono || ux.bw ? 100 : str;   /* I12: GREY / MONO: the other part's front line at full strength, so it does not read as switched off */
     const uint16_t bg = swap16(T_BG);
     const int32_t cx16 = (WL_X0 + WL_X1) * 8, hw16 = (WL_X1 - WL_X0) * 8;   /* (the front's middle and half width, 1/16 px) */
     int32_t a, st, nf = wl_fit(y1 - y0, &a, &st), nr = s->hn < (uint32_t)nf ? (int32_t)s->hn : nf, r, c, gs = 0, left, m0, sp, mid = (y1 - 2 - a) * 16 + 8;
@@ -514,7 +519,7 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
         mul[r] = (int32_t)(((WL_NP - 1u) << 16) / (uint32_t)(2 * w > 0 ? 2 * w : 1));
         shp |= (uint32_t)(r < nr && !((s->flat >> r) & 1u)) << r;
         col[r] = mv_col(k, pct, r * 90 / nf);        /* (WAVE LAB's fade toward the back) */
-        wl_tab(ft[r], col[r], str);
+        wl_tab(ft[r], col[r], r ? str : fstr);
     }
     {
         int32_t y0f = shp & 1u ? yb[0] + wl_atx(s, 0u, WL_X0 * 16, xl[0], mul[0]) : yb[0];   /* (the front's height in this column; the next one's is found in the loop) */
@@ -539,7 +544,7 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
                 seen |= 1u << r;
                 if (!r) {                            /* (the front: from halfway to the last column's height to halfway to the next one's, anti-aliased) */
                     const int32_t a0 = (ya + y[0]) / 2, a1 = (y[0] + yn) / 2;
-                    wl_col(c, a0, a1, 28, col[0], str, y0 + 1, y1 - 1, ft[0], bg);
+                    wl_col(c, a0, a1, 28, col[0], fstr, y0 + 1, y1 - 1, ft[0], bg);
                     hz = ((a0 < a1 ? a0 : a1) - 14) >> 4;
                 } else {                             /* (an older ridge: a 1-px stroke from its height in the last column, anti-aliased as the front (b6 wavepace: the plain whole-row line
                                                       * moved in 1-px jumps), the rows above the horizon only) */
@@ -547,10 +552,10 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
                     int32_t lo = t16 >> 4, hi = (b16 - 1) >> 4;
                     hi = hi < hz ? hi : hz - 1;      /* (above the horizon only: those pixels are still the background, so a coverage's colour is written as it is) */
                     lo = lo > y0 + 1 ? lo : y0 + 1;
-                    lo = lo > -cv_oy ? lo : -cv_oy;  /* (and inside the canvas) */
-                    hi = hi < (int32_t)cv_h - 1 - cv_oy ? hi : (int32_t)cv_h - 1 - cv_oy;
+                    lo = lo > -CV_Y ? lo : -CV_Y;  /* (and inside the canvas) */
+                    hi = hi < (int32_t)cv_h - 1 - CV_Y ? hi : (int32_t)cv_h - 1 - CV_Y;
                     if (lo <= hi && (uint32_t)c < cv_w) {
-                        uint16_t *q = &cv_px[(uint32_t)(lo + cv_oy) * cv_w + (uint32_t)c];
+                        uint16_t *q = &cv_px[(uint32_t)(lo + CV_Y) * cv_w + (uint32_t)c];
                         int32_t n2;
                         for (n2 = lo; n2 <= hi; n2++, q += cv_w)
                             *q = ft[r][(b16 < n2 * 16 + 16 ? b16 : n2 * 16 + 16) - (t16 > n2 * 16 ? t16 : n2 * 16)];
@@ -568,6 +573,10 @@ static int wl_tick(void)
 {
     uint32_t tk = mv_tick();
     int stepit;
+    if (!wl_zeroed) {
+        memset(wl, 0, sizeof wl);
+        wl_zeroed = 1;
+    }
     if (ui_prefs & PREF_ANIM_OFF)
         return 0;
     stepit = tk != wl_tk || !(wl[0].got && wl[1].got);
@@ -604,10 +613,11 @@ static void wl_card(int32_t y0, int32_t y1)
 #ifndef WL_TEST_HALF
 #define WL_TEST_HALF(y, n, end) ((void)0)
 #endif
-typedef uint32_t __attribute__((may_alias)) wl_u32;
+typedef uint32_t wl_u32;
+static wl_u32 wl_rh[240] __attribute__((section(".pool")));   /* (the hash of every screen row of what the panel holds) */
 static void wl_rows(uint32_t y)
 {
-    wl_u32 *const rh = (wl_u32 *)(cv_px + 72u * 240u) + y;
+    wl_u32 *const rh = wl_rh + y;
     const uint32_t n = cv_h;
     uint32_t r, s = 0, i, h, ch;
     GFX_HOOK_BLIT(0, y, 0u);

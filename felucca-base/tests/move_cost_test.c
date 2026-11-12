@@ -3,6 +3,8 @@
  * only while its fader moves or a GLIDE runs (budget.c bd_part / bd_mv, the rule the FM6 bridge has had since 6 November), and the INSERT dip asks for a new blend only when it moved by a
  * 1/256 step (morph_xfer.c morph_xstep). Built twice by host_tests.sh (group "movecost": the default and -DFELUCCA_MOVECOST=1).
  *   BUDGET  bd_part of a part with a morph, at rest and while moving (bd_mv): off: the same; on: the valley, the wash and the cross-fade cost nothing at rest and the same as before moving.
+ *   WHERE   b10 round 6 (budget.c bd_where): "at rest" is the fader at an end with its transition arrived; a fader parked inside the arc (the valley and the wash run) or between the ends (both shapes of a
+ *           cross-faded choice are made) is charged, and so is a jump (the transition's place trails the fader for ~1.1 s); the wash's meter alone is charged at rest with WASH on
  *   BLENDS  a hand jump of the fader 0 -> 127 with an INSERT difference between the ends (need XN_INS forced on the plan): the blends over 1.5 s (EASE_PROBE(0)); on: fewer (1.26 times on M02). */
 #define UI_TEST_NO_MAIN 1
 #ifndef HOST_MIX_FOLLOWS_MASTER
@@ -45,10 +47,42 @@ int main(void)
            (unsigned)rest.tide, (unsigned)rest.ext, (unsigned)rest.misc, (unsigned)move.tide, (unsigned)move.ext, (unsigned)move.misc);
     expect("moving: the valley / wash are charged (WASH MID: at least 60)", move.tide >= 60u);
 #if FELUCCA_MOVECOST
-    expect("on: at rest the valley and the wash cost nothing, the part costs less", rest.tide == 0u && rest.misc < move.misc);
+    expect("on: at rest the valley and the wash's noise cost nothing (the wash's meter does: BD_TIDE_WASH_REST), the part costs less", rest.tide == BD_TIDE_WASH_REST && rest.misc < move.misc);
 #else
     expect("off: at rest the part costs what it does moving (nothing changed)", rest.tide == move.tide && rest.misc == move.misc && rest.ext == move.ext);
 #endif
+    {   /* WHERE: the fader at an end, parked in the arc, parked between the ends but outside the arc, and jumped (tp trails) */
+        uint32_t mid, arc;
+        bd_part_t pk;
+        mxs[0].planned = 1, mxs[0].need = XN_LP;
+        bd_mv[0] = 0;
+        morph_do(MQ_FADER, 1u, 0u);
+        mxs[0].tp = 0;
+        bd_where(0, &mid, &arc);
+        expect("WHERE: the fader at an end, arrived: mid and arc are off (on) / on (off)", FELUCCA_MOVECOST ? !mid && !arc : mid && arc);
+        morph_do(MQ_FADER, 1u, 64u);
+        mxs[0].tp = (uint16_t)morph_wb(64u);
+        bd_where(0, &mid, &arc);
+        expect("WHERE: parked inside the arc: charged (mid and arc)", mid && arc);
+        bd_part(&trk[0], &pk);
+        expect("WHERE: parked inside the arc: the valley and the wash are charged (WASH MID: at least 60)", pk.tide >= 60u);
+        morph_do(MQ_FADER, 1u, 3u);
+        mxs[0].tp = (uint16_t)morph_wb(3u);
+        bd_where(0, &mid, &arc);
+        expect("WHERE: parked between the ends below the arc: both shapes are made (mid), no valley (arc off on)", FELUCCA_MOVECOST ? mid && !arc : mid && arc);
+        morph_do(MQ_FADER, 1u, 0u);
+        mxs[0].tp = (uint16_t)morph_wb(127u);
+        bd_where(0, &mid, &arc);
+        expect("WHERE: a jump (the transition's place trails the fader): charged", mid && arc);
+        mxs[0].tp = 0;
+        mxs[0].need = 0;
+        bd_part(&trk[0], &pk);
+        expect("WHERE: at an end, arrived, WASH MID: only the meter (BD_TIDE_WASH_REST) on (the wash 60 off)", FELUCCA_MOVECOST ? pk.tide == BD_TIDE_WASH_REST : pk.tide >= 60u);
+        morph_wlvl = 0;
+        bd_part(&trk[0], &pk);
+        expect("WHERE: WASH OFF at rest: nothing", FELUCCA_MOVECOST ? pk.tide == 0u : 1);
+        morph_wlvl = 2;
+    }
     bd_mv[0] = 0;
     trk[0].nheld = 0;
     trk[0].p[P_VOICE] = V_POLY;
