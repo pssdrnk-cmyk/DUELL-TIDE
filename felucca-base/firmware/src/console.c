@@ -388,7 +388,6 @@ static void con_cpu(void)                              /* (probe) cpu: the longe
     con_kv("cpu_miss", (int32_t)cpu_snap.miss);
     con_kv("cpu_sum_us", (int32_t)cpu_snap.sum);
     con_kv("cpu_n", (int32_t)cpu_snap.n);
-#if DUELL_TIDE
     {                                                  /* (K3: the ease ladder's level now, and how often each level was entered since power-on: ease_n1 .. ease_n5; audio.c ease_step) */
         char k[] = "ease_n1";
         uint32_t l;
@@ -398,7 +397,6 @@ static void con_cpu(void)                              /* (probe) cpu: the longe
             con_kv(k, (int32_t)ease_n[l]);
         }
     }
-#endif
 #if DUELL_PROBE_STAGES
     {
         extern volatile uint32_t prb_stage_pk[6];
@@ -414,7 +412,6 @@ static void con_cpu(void)                              /* (probe) cpu: the longe
         con_kv("st_budget_us", (int32_t)(st[5] / 24u));    /* b10 round 6 (finding 6): the budget's figures the deadline works out at a half's block 0, longest in the interval */
     }
 #endif
-#if DUELL_TIDE
     {                                                  /* (what the glide is doing at this moment, to be sure the probe saw the stages it means to: voices sounding, the FM6 bridge on, the valley's depth, the wash/breath movement) */
         uint32_t k, i, nv;
         for (k = 0; k < 2u; k++) {
@@ -432,11 +429,10 @@ static void con_cpu(void)                              /* (probe) cpu: the longe
 #endif
         }
     }
-#endif
 }
 #endif
 
-#if DUELL_TEST_MODE && DUELL_TIDE
+#if DUELL_TEST_MODE
 static void con_glide(const char *p)                   /* (probe) glide M [T]: M 1 = the TIDE page's K1 twist with MODE BACK AND FORTH (LOOP): launch towards B on the selected part's morph target, PLAY starts
                                                         * with it (glide_launch); M 0 = stop it where it is; T (0..6) = the trip's TIME index (1 .. 64 bars, default: as set). No reply but the state: glide running to */
 {
@@ -514,12 +510,10 @@ static void con_exec(const char *p)
         con_pload(p);
     else if (con_word(&p, "cpu"))
         con_cpu();
-#if DUELL_TIDE
     else if (con_word(&p, "glide"))
         con_glide(p);
     else if (con_word(&p, "wroll"))
         con_wroll();
-#endif
 #endif
     else if (con_word(&p, "uboot")) {
         if (con_word(&p, "yes")) {

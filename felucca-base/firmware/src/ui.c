@@ -33,7 +33,6 @@ static uint32_t project_cur_slot(void);           /* .. the multi the music came
 static int project_factory(uint32_t slot);         /* .. M01..M10 not overwritten: shows its factory multi */
 static int erase_data_run(void);                   /* DUELL 0.2.2: MENU > SYSTEM > ERASE DATA (erase_data.c) */
 static void mu_label(char *b, uint32_t k);         /* .. "M01" .. "M16" */
-#if DUELL_TIDE
 typedef struct {
     uint8_t state;
     struct {
@@ -56,7 +55,6 @@ static uint8_t pv_bar_of(const step_t *s)
     uint8_t b = s->time == ST_NOTE && s->n ? (s->n > 1u ? 4u : 3u) : s->time == ST_TIE ? 2u : 1u;
     return (uint8_t)(b | (b >= 3u && (s->flags & SF_ACCENT) ? 8u : 0u));
 }
-#endif
 /* The PATCH SLOTS (upreset.c, the slot layer): ONE list of UP_SLOTS (128), slot k = its saved record, else the factory sound at browse position k */
 static uint32_t slot_of(const track_t *t);         /* the slot t's sound is in, UP_SLOTS = none */
 static uint32_t slot_home(const track_t *t);       /* .. where SAVE offers to write it */
@@ -732,9 +730,6 @@ static int reset_glo(uint32_t k);
 #endif
 static const scope_ops_t SCOPE_OPS[] = {
     {SC_MORPH, 0x0Fu, 1, morph_knob, reset_morph},     /* HOME's MORPH (MORPH SET: K4 has no card) */
-#if !DUELL_TIDE                                        /* (TIDE: no MODE page; its rows are TIDE SETTINGS' and call mode_knob there) */
-    {SC_MODE, 0x0Fu, 3, mode_knob, 0},
-#endif
     {SC_PERF, 0x0Fu, 0, perf_knob, reset_perf},
     {SC_TEST, 0x0Fu, 0, TEST_KNOB, 0},
     {SC_SCALE, 0x07u, 1, scale_knob, reset_scale},     /* K1 SCALE, K2 ROOT, K3 OFF-SCALE; K4 is an empty column */
@@ -777,14 +772,12 @@ static void ui_message(const char *s) { ui_say(s, ""); }
 /* item 152 A: a redraw of the SAME page and layout whose values changed (a patch load, the TYPE, the fader's colour): force = 2. Everything is drawn again but the BG
  * between the strips and cards is NOT filled first (ui_draw.c draw_frame): that fill went to the panel before the cards and the picture landed on it, and the whole
  * body blinked on every change. Any other reason (a page, a layer, a dialog, a theme with a new background) sets force = 1 and still fills; 1 wins over 2 */
-#if DUELL_TIDE
 /* MENU > COLOR's theme, applied at most every 100 ms (b6, owner: "especially when changing the color scheme"): a theme repaints the whole screen, 57,600 px over the
  * 12 MHz SPI (~77 ms), so a turn through the themes queued one repaint a step. menu_items.c marks it due, ui_draw.c ui_draw applies it; the last one always lands */
 static struct {
     uint32_t t;                              /* (fm1_ms when a theme was last applied) */
     uint8_t due;
 } pal_q __attribute__((section(".pool")));   /* (zero-initialised, outside .data / .bss: the RAM rule's headroom is full) */
-#endif
 static void ui_refresh(void)
 {
     if (!ui.force)
@@ -1827,7 +1820,7 @@ static uint32_t track_cat(const track_t *t)
 /* THE ORDER of the list (owner, 2026-11-05: "the user ones aren't the last ones"; 2026-11-08: "empty user ones go to the end of the list"): the factory sounds first, in browse order (the slots
  * with no record #1..#124, then the read-only places the USER slots displaced and the sounds past the 128: #125.. #NNN, however many there are), then every SAVED sound (its record, in slot
  * order; also one saved over #12 or into U1), then the empty USER slots (U1.. USER EMPTY) last. Only the order of the places is this: the slot number, its "#NN" / "U1" label, its FAV flag, its record, the editor's slot id and
- * MIDI program change (bank 0 / 1: slot n + 1; bank 2: #129 + n) stay as they were. Nothing counts the factory sounds: the list is walked tier by tier. DUELL_TIDE=0: slot order */
+ * MIDI program change (bank 0 / 1: slot n + 1; bank 2: #129 + n) stay as they were. Nothing counts the factory sounds: the list is walked tier by tier. */
 #if UP_NUSER
 static uint32_t list_tier(uint32_t k) { return k >= UP_SLOTS ? 0u : up_used(k) ? 1u : UP_EMPTY_USER(k) ? 2u : 0u; }
 #define LIST_DECL uint32_t lt;

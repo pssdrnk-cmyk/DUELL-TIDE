@@ -197,7 +197,7 @@ static int preferences(void)
     uint8_t a[4] = {0, 3, 0, 0};          /* (palette 3: a colour theme; DUELL's 7 is GREY, whose T_BG is the neutral one) */
     reset();
     uint32_t n = request(ED_INFO, a, 0);
-    uint32_t e = n - (DUELL_TIDE ? 3u : 0u);   /* (the TIDE tag 44 01 1 is the last block of a TIDE build) */
+    uint32_t e = n - 3u;   /* (the TIDE tag 44 01 1 is the last block of a TIDE build) */
     bad += check("INFO explicitly tags display capabilities (song rows 0 since DUELL, the SONG lanes tag gone) without changing command 33",
         ED_SONG_RETIRED == 33 && ED_UI_STATE == 34 && ED_FAV_SET == 38 &&
         host_wire[e - 63] == 0 && host_wire[e - 62] == 0x55 &&
@@ -223,7 +223,7 @@ static int preferences(void)
         host_wire[e - 10] == 0x5B && host_wire[e - 9] == 1 && host_wire[e - 8] == 1 &&   /* 1.1: BYPASS (cmd 89) */
         host_wire[e - 4] == 0x4F && host_wire[e - 3] == 1 && host_wire[e - 2] == 1);   /* DUELL: the MIDI MAP (cmds 85..88) */   /* DUELL 0.2.19: PATCH_RAW */   /* DUELL 0.2.15: the patch capacity, 128 as two 7-bit bytes */   /* 1.5: MIDI LEARN */
     bad += check("INFO of a TIDE build ends with the TIDE tag 44 01 3 (bit 0 TIDE, bit 1 the voice bank object); plain DUELL sends none",
-        DUELL_TIDE ? host_wire[n - 4] == 0x44 && host_wire[n - 3] == 1 && host_wire[n - 2] == 3 : host_wire[n - 4] == 0x4F);
+        host_wire[n - 4] == 0x44 && host_wire[n - 3] == 1 && host_wire[n - 2] == 3);
     request(ED_UI_SET, a, 2);
     bad += check("UI_SET updates the actual palette and reports RAM-only saving",
         host_wire[5] == 3 && settings.palette == 3 && T_BG == UI_PALETTES[3].bg[ux.part]);
@@ -457,7 +457,6 @@ static int malformed_saves(void)
     TSEL->p[P_LEVEL] = 21; song.playing = 1; host_progress = 0;
     bad += check("PROJECT never confirms a used slot when STOP timed out (DUELL: the slot is a MULTI)",
                  !request(ED_PROJECT, save, sizeof save));
-#if DUELL_TIDE
     {   /* b10 U4: M17 .. M26 are stored slots like M01 .. M16: a save confirms and the slot no longer shows its factory multi; slot 26 and up are invalid */
         static const uint8_t m17[] = {1, 16}, m24[] = {1, 25}, past[] = {1, 26};
         song.playing = 0; host_progress = 0;
@@ -466,7 +465,6 @@ static int malformed_saves(void)
         bad += check("  M17 and M26 are stored now and used", !project_factory(16) && !project_factory(25) && project_used(16) && project_used(25));
         bad += check("  slot 26 and up are invalid", !request(ED_PROJECT, past, sizeof past));
     }
-#endif
     return bad;
 }
 
@@ -893,9 +891,9 @@ static int menu_protocol(void)
         {"SCREEN OFF", "NEVER,5 MIN,15 MIN,30 MIN,60 MIN"},
         {"STEP PREVIEW", "OFF,ON"}, {"STEP KEYS", "REPLACE,ADD"},                                        /* (1.2; 0.2.14: SCOPE retired) */
         {"TUNE", 0},   /* (1.2: the project's TUNE, a number; DUELL 0.1: MIDI IN, id 21, left MENU for GLO > CHANNELS) */
-        {"HOME OPENS", DUELL_TIDE ? "MORPH,SETTINGS" : "MORPH,MODE"},                                                                /* (DUELL 0.1, id 25; 0.2.14: no OVERVIEW; 0.2.25: no MIXER, GLO's first page now) */
+        {"HOME OPENS", "MORPH,SETTINGS"},                                                                /* (DUELL 0.1, id 25; 0.2.14: no OVERVIEW; 0.2.25: no MIXER, GLO's first page now) */
         /* (CPU METER, id 26, retired in 1.1 with the CPU bar: no row) */
-        {"MULTI LOAD", DUELL_TIDE ? "KEEPS PLAY MODE,SETS PLAY MODE" : "KEEPS MODE,SETS MODE"},                                                      /* (DUELL 0.2.11, id 27) */
+        {"MULTI LOAD", "KEEPS PLAY MODE,SETS PLAY MODE"},                                                      /* (DUELL 0.2.11, id 27) */
         {"ARP", "OFF,FOLLOWS PATCH,KEEPS RUNNING"}, {"SEQ", "OFF,FOLLOWS PATCH,KEEPS RUNNING"},   /* (DUELL 1.1: ARP_SEQ_RUN_SWITCH) */
          {"SENDS", "OFF,ON"}, {"PART FX", "OFF,ON"},
         {"PERF LEAVE", "FADE,KEEP"},          /* (DUELL 0.2.14: id 32, CONTROL) */

@@ -206,7 +206,6 @@ static void ppm(const char *name)
     }
     fclose(f);
 }
-#if DUELL_TIDE
 static int bar_ok(uint32_t pct)                    /* the TIDE capsule bar: the fill (the gradient) up to ls_bar_end, the T_RAISE track after it, nothing above and below */
 {
     uint32_t x, bad = 0, ym = LS_BAR_Y + LS_BAR_H / 2u, xe = pct ? LS_BAR_X0 + (LS_BAR_X1 - LS_BAR_X0) * pct / 100u : 0u;
@@ -227,19 +226,6 @@ static uint32_t count_col(uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1, ui
             n += panel[y * 240 + x] == c;
     return n;
 }
-#else
-static int seg_ok(uint32_t filled)                 /* the bar on the panel: segments 0 .. filled - 1 in the gradient, the rest the empty colour */
-{
-    uint32_t k, bad = 0;
-    for (k = 0; k < 20; k++) {
-        uint32_t xa = 22u + k * 197u / 20u, xb = 22u + (k + 1u) * 197u / 20u - 1u, x = (xa + xb) / 2u;
-        uint16_t want = k < filled ? ls_mix(LS_C0, LS_C2, (int32_t)(k * 100u / 19u)) : LS_RAISE_;
-        bad += panel[138 * 240 + x] != want || panel[134 * 240 + xa] != want || panel[143 * 240 + xb - 1] != want;
-        bad += panel[133 * 240 + x] == want || panel[144 * 240 + x] == want;           /* the bar is 10 rows tall: nothing above and below */
-    }
-    return bad == 0;
-}
-#endif
 static uint32_t ink(uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1)     /* pixels in the box that are not wave lines or background: bright text */
 {
     uint32_t x, y, n = 0;
@@ -268,7 +254,6 @@ static int screen_checks(const uint8_t *newapp, const uint8_t *oldapp, uint8_t *
     bad += check("screen: the strip was drawn without leaving the panel (nothing outside 240 x 240)", 1);
     new_screen_at(0);
     ppm("0");
-#if DUELL_TIDE
     bad += check("screen 0%: bar empty (the track only)", bar_ok(0));
     bad += check("screen 0%: UPDATE, WRITING, 0 %, DUELL with TIDE are drawn (bright pixels in their boxes)",
                  ink(90, 5, 150, 18) > 60 && ink(90, 63, 150, 76) > 60 && ink(100, 84, 140, 110) > 40 && ink(4, 220, 110, 233) > 150);
@@ -286,24 +271,6 @@ static int screen_checks(const uint8_t *newapp, const uint8_t *oldapp, uint8_t *
             n += panel[i] != LS_BG;
         bad += check("screen 100%: the rest is the plain background (no boxes)", n < 9000);
     }
-#else
-    bad += check("screen 0%: bar empty (20 segments in the empty colour)", seg_ok(0));
-    bad += check("screen 0%: DUELL word, WRITING, 0%, DO NOT SWITCH OFF are drawn (bright pixels in their boxes)",
-                 ink(22, 40, 190, 75) > 1500 && ink(22, 108, 90, 126) > 60 && ink(190, 108, 220, 126) > 15 && ink(22, 176, 190, 194) > 150);
-    new_screen_at(45);
-    ppm("45");
-    bad += check("screen 45%: 9 of 20 segments filled", seg_ok(9));
-    new_screen_at(100);
-    ppm("100");
-    bad += check("screen 100%: 20 of 20 segments filled", seg_ok(20));
-    {
-        uint32_t x, y, n = 0;
-        for (y = 190; y < 240; y++)
-            for (x = 0; x < 240; x++)
-                n += panel[y * 240 + x] != LS_BG;
-        bad += check("screen 100%: the wave lines run behind everything (the lower strip is not flat)", n > 150);
-    }
-#endif
     /* a panel that times out: the screen gives up for good, the write is the same */
     memcpy(nor, old_full, 0x93000);
     lcd_inject_timeout = 1; fake_ticks = 0;

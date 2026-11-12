@@ -13,7 +13,6 @@ static void fm_compute(fm6_note_t *n, const uint8_t *p, int32_t *out)
     fm6_lfo_terms(&lt, p, 0, 0);
     fm6_note_compute(n, p, out, &lt, fm6_note_logfreq(60 * 16, 0), 31, 0, dt, 0, 0);
 }
-#if DUELL_TIDE
 /* The pre-optimization renderer: even without an ARP it prepared temporary pitch/gate arrays for the bridge.
  * Keep this reference separate so the comparison covers the resulting audio and note state, not just array values. */
 static void legacy_bridge_render(track_t *t, voice_t *v, int32_t *out, const vmod_t *m)
@@ -180,7 +179,6 @@ static void bridge_render_equivalence(void)
         }
     }
 }
-#endif
 /* K7: the LFO terms are computed once a part and block (fm6_lfo_terms); they must be the numbers the per-voice formulas gave (the old fm6_note_compute's own lines, copied here) */
 static void lfo_terms_old(const uint8_t *p, int32_t lfo_val, int32_t lfo_delay, int32_t *pm, uint32_t *am)
 {
@@ -272,9 +270,7 @@ int main(void)
                 fm_compute(&walked, p, y);
             CHECK("an all-zero EG stays inaudible when OL rises", walked.op[0].gain_out < FM6_THRESH);
         }
-#if DUELL_TIDE
     bridge_render_equivalence();
-#endif
     printf("fm6liveol: %d checks, %d failed\n", checks, bad);
     return bad != 0;
 }

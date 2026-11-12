@@ -194,11 +194,7 @@ static void sweep_seq_round(void)
  * longer on it); SELECT right and HOME's taps go round it the same way, SELECT left backwards */
 static void sweep_home(void)
 {
-#if DUELL_TIDE                                           /* (TIDE: TIDE SETTINGS in MORPH SET's place, then AUTO TIDE) */
     static const char *const ORDER[] = {"MORPH", "TIDE SETTINGS", "AUTO TIDE"};   /* (MODE, XFADE and SPLIT are the last rows of TIDE SETTINGS) */
-#else
-    static const char *const ORDER[] = {"MORPH", "MORPH SET", "MODE"};   /* (0.2.25 layout round: the MIXER is GLO's first page) */
-#endif
     uint8_t r[8];
     uint32_t m, k, ok, c;
     ui_power_on();
@@ -213,16 +209,10 @@ static void sweep_home(void)
         uint8_t m0 = duell_mode_req, s0 = mix_split;
         int ok2;
         uint8_t p0 = ui.page;
-#if DUELL_TIDE
         enter(r[1]);                                              /* (the SPLIT row: every knob 2 .. 4 turns it) */
         jl_sel = JL_SPLIT;
-#else
-        enter(r[m - 1u]);                                 /* (MODE, the round's last) */
-#endif
         duell_mode_force(DM_LAYER); ui_mode_set = ui.mode_seen = DM_LAYER;
-#if DUELL_TIDE
         song.both = 1;                                    /* (1.0.0-b7 TIDE_PLAYSEL: SPLIT acts in ALGORITHM's middle) */
-#endif
         mix_split = 0;  turn(EN_K3, 1);                  /* (1.0.0-b7: OFF, MIDDLE, then the notes) */
         ok2 = mix_split == SPLIT_MIDDLE;
         turn(EN_K3, 1);   ok2 &= mix_split == 67u;
@@ -846,17 +836,9 @@ static void sweep_readonly(void)
  * 0.2.14: MORPH, MODE, MIXER (OVERVIEW is gone with its page; a stored 3, OVERVIEW up to 0.2.13, reads as MORPH) */
 static void sweep_homepg(void)
 {
-#if DUELL_TIDE                                           /* (TIDE: MODE is a row of TIDE SETTINGS, which opens with that row picked) */
     static const char *const T[3] = {"MORPH", "TIDE SETTINGS", "MIXER"};
-#else
-    static const char *const T[3] = {"MORPH", "MODE", "MIXER"};
-#endif
     uint32_t v, ok;
-#if DUELL_TIDE                                           /* (b4, UI audit 9: the second value names the page it opens) */
     expect("HOME OPENS: two values, MORPH SETTINGS (0.2.25 layout round: the MIXER is GLO's)", HP_COUNT == 2 && menu_n(MI_HOMEPG) == 2u && str_eq(menu_vname(MI_HOMEPG, 1), TIDE_HOME_MODE_NAME));
-#else
-    expect("HOME OPENS: two values, MORPH MODE (0.2.25 layout round: the MIXER is GLO's)", HP_COUNT == 2 && menu_n(MI_HOMEPG) == 2u && str_eq(menu_vname(MI_HOMEPG, 1), "MODE"));
-#endif
     for (v = 0; v < HP_COUNT; v++) {
         ui_power_on();
         menu_put(MI_HOMEPG, v);
@@ -868,9 +850,7 @@ static void sweep_homepg(void)
         hold(B_HOME); frames(16);                         /* the menu, then HOME closes it: the same page */
         press(B_HOME); frames(32);
         ok &= !ui.menu && str_eq(cur_page()->title, T[v]);
-#if DUELL_TIDE
         if (v == HP_MODE) { jl_sel = JL_STYLE; go_main(); frames(8); ok &= jl_sel == JL_MODE; }
-#endif
         expect(T[v], ok);
     }
     ui_power_on();
@@ -1004,9 +984,7 @@ static void sweep_rec_hold_layer(void)
     frames(600);
     expect("  .. one part on, one off: REC turns both OFF", trk[0].p[P_AHOLD] == 0 && trk[1].p[P_AHOLD] == 0 && msg_is("HOLD OFF"));
     duell_mode_force(DM_SPLIT); ui_mode_set = ui.mode_seen = DM_SPLIT;
-#if DUELL_TIDE
     song.both = 0;                                      /* (one part selected: PART 1 in DUEL) */
-#endif
     press(B_REC);
     frames(600);
     expect("DUEL: REC acts on the selected part only", trk[0].p[P_AHOLD] == 1 && trk[1].p[P_AHOLD] == 0);
@@ -1038,11 +1016,7 @@ static void sweep_rec_hold(void)
     song.rec = 1u << song.sel;
     press(B_REC);
     frames(600);
-#if DUELL_TIDE
     expect("  .. an armed recording: REC disarms it on this page too and leaves HOLD alone (audit liverec L6)", song.rec == 0u && TSEL->p[P_AHOLD] == 0);
-#else
-    expect("  .. an armed recording stays armed while REC switches HOLD", song.rec == (1u << song.sel) && TSEL->p[P_AHOLD] == 2);
-#endif
     press(B_REC);
     frames(600);
     song.rec = 0; song.playing = 0; transport_req = 0;
@@ -1394,10 +1368,8 @@ static void sweep_algo(void)
             mp = i;
             continue;
         }
-#if DUELL_TIDE
         if (PAGES[i].scope == SC_TIDE)                  /* (TIDE's TIDE SETTINGS and AUTO TIDE: HOME pages, PART 1 / BOTH / PART 2 as on MORPH: tide.h HOME_BOTH_PAGE) */
             continue;
-#endif
         SEL_BOTH = 0;
         song.sel = 0;
         enter(i);
@@ -1491,11 +1463,7 @@ static void sweep_leds_play_rec(void)
     song.rec = 1u << song.sel;
     TSEL->p[P_AHOLD] = 0;
     ui_leds();
-#if DUELL_TIDE
     expect("  .. armed recording shows on REC's LED here: REC disarms it, not HOLD (audit liverec L6)", !!(fm1_led[qr >> 3] >> (qr & 7u) & 1u));
-#else
-    expect("  .. armed recording is not shown on REC's LED here (HOLD is)", !(fm1_led[qr >> 3] >> (qr & 7u) & 1u));
-#endif
     song.playing = 1;
     ui_leds();
     expect("PLAY running: red lit, green dark", !(fm1_led[LED_PLAY_GREEN >> 3] >> (LED_PLAY_GREEN & 7u) & 1u) && (fm1_led[qp >> 3] >> (qp & 7u) & 1u));

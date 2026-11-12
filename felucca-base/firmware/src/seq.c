@@ -2065,6 +2065,4 @@ static void events_block(uint32_t n)
     if (song.playing)
         song.tick++;
 }
-#if DUELL_TIDE
 #include "tide_seq.c"          /* TIDE hook (H1): TIDE's sequencer side */
-#endif

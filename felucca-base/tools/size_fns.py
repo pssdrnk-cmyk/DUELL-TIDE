@@ -69,6 +69,10 @@ def size_names():
     names = {"morph_roll_from", "morph_end_pure", "morph_roll_step", "morph_fm_roll", "morph_xplan", "morph_xesig", "morph_xpoll", "fm6_cross_macros"}
     for f in SIZE_FILES:
         names.update(definitions((SRC / f).read_text()))
+    # b10: with the plain build's #if / #else twins gone from the sources this textual scan sees the definition of morph_view_at (a preprocessor line between its signature and
+    # body hid it before), so it would be built for size: 1 function, a few bytes. It stays -Os, as it was: the image is byte for byte the one before the retirement.
+    # (Taking it in is a deliberate change of its own.)
+    names.discard("morph_view_at")
     return names
 
 

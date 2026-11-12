@@ -216,7 +216,6 @@ def parse_record(ctx, b):
     return dict(engine=eng, cat=b[6], name=name, values=full, mb=mb, steps=steps, fm6=fm6, ext=ext)
 
 
-TIDE = bool(re.search(r"^#define DUELL_TIDE 1", (ROOT / "firmware" / "src" / "tide.h").read_text(), re.M))   # the TIDE fork (firmware/src/tide.h)
 LEGACY = [("P_ED_FLT", 2, 2), ("P_E2SHP", 11, 3), ("P_L2PIT", 12, 1), ("P_L2FLT", 12, 2), ("P_L2SHP", 12, 3)]   # mod.c mod_legacy_move L[]: card, MS_ source, MD_ destination
 
 
@@ -265,17 +264,8 @@ def sound_from_record(ctx, rec, factory):
     s = dict(engine=ctx.eng_names[eng], idx=factory["idx"], name=rec["name"], cat=CATS[rec["cat"]] if rec["cat"] else factory["cat"], p=p)
     if "lcat" in factory:
         s["lcat"] = factory["lcat"]
-    if TIDE:                                         # TIDE (firmware tide.h H6): a factory sound's B is rolled MUSICAL as it loads, the recipe's End B is not used; the record's is that roll: the recipe's stays
-        s.update({k: v for k, v in factory.items() if k in ("bseed", "bamt", "bend", "bpin", "bfm")})
-    elif rec["mb"]:                                  # PT_VER 4: End B as exact values (the block of the record): 'bend' {label: End B value} (where it differs from the Original), 'bpin' (the marks of the values set by hand), 'bfm' (FM6 bytes), 'bamt' (the AMOUNT)
-        d = endb.decode(rec["mb"], eng)
-        if d["amt"]:
-            s["bamt"] = d["amt"] - 1
-        s["bend"] = {ctx.wlabel[w]: v for w, v in sorted(d["vals"].items())}
-        if d["marks"]:
-            s["bpin"] = [ctx.wlabel[w] for w in d["marks"]]
-        if d["fm"] is not None:
-            s["bfm"] = d["fm"]
+    # TIDE (firmware tide.h H6): a factory sound's B is rolled MUSICAL as it loads, the recipe's End B is not used; the record's is that roll: the recipe's stays
+    s.update({k: v for k, v in factory.items() if k in ("bseed", "bamt", "bend", "bpin", "bfm")})
     return s
 
 

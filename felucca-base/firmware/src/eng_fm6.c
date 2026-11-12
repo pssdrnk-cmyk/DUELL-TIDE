@@ -67,7 +67,6 @@ static struct {                                  /* the patch through the macros
  * into fm6_eff's copy of the patch (never into fm6_patch). fm6_morph(tr, 0) = the blend's key (0: nothing morphed; a
  * changed key rebuilds fm6_eff), fm6_morph(tr, p) = apply it to the 155 bytes p. Set by morph.c; null = no morph */
 static uint32_t (*fm6_morph)(uint32_t tr, uint8_t *p);
-#if DUELL_TIDE
 /* Crossing endpoints need tuning, not another copy of levels, EGs and LFOs. */
 typedef struct {
     uint8_t op[6][4];
@@ -97,9 +96,6 @@ typedef struct {
     uint8_t ol0, fixed;
 } fm6_xsave_t;
 #define FM6_MEM (sizeof(fm6_note_t) * FM6_POLY + sizeof(fm6_xsave_t) * FM6_POLY * 6u)
-#else
-#define FM6_MEM (sizeof(fm6_note_t) * FM6_POLY)
-#endif
 static fm6_lfo_t fm6_lfo[NLIVE];
 static fm6_lfot_t fm6_lfot[NLIVE];                 /* this block's LFO terms for the part's voices (K7: fm6_lfo_terms, once a block and part) */
 ENG_MEM_FITS("FM6", FM6_MEM);
@@ -452,22 +448,14 @@ __attribute__((noinline)) static void fm6_env_apply(uint8_t *op, const int32_t *
         op[FP_L1 + 2] = (uint8_t)(n3 > cap ? cap : n3);
     }
 }
-#if DUELL_TIDE
 static void fm6_xapply(uint32_t tr);
 static void fm6_macros(uint8_t *p, const int16_t *e, uint8_t *alg_out, uint8_t *fb_out, int32_t *dt, const int32_t *eoff);
-#endif
 /* the patch through E0..E6 (audio ISR; cheap when nothing changed) */
 static void fm6_sync(const track_t *t)
 {
-#if DUELL_TIDE
     uint32_t tr = (uint32_t)(t - trk), k;
     const int16_t *e = &t->p[P_E0];
     int32_t eoff[4];
-#else
-    uint32_t tr = (uint32_t)(t - trk), k, j, car, n = 0;
-    const int16_t *e = &t->p[P_E0];
-    int32_t meg, step, eoff[4];
-#endif
     uint32_t mk, eon = 0;
     const int16_t *ek = &t->p[P_ATK];                           /* the AMP ENV knobs: P_ATK, P_DEC, P_SUS, P_REL follow each other */
     if (tr >= NLIVE)
@@ -487,47 +475,14 @@ static void fm6_sync(const track_t *t)
         fm6_morph(tr, fm6_eff[tr].p);
     for (k = 0; k < 7u; k++)
         fm6_eff[tr].e[k] = e[k];
-#if DUELL_TIDE
     fm6_macros(fm6_eff[tr].p, e, &fm6_eff[tr].alg, &fm6_eff[tr].fb, fm6_eff[tr].dt, eon ? eoff : 0);
     fm6_lfo_reset(&fm6_lfo[tr], fm6_eff[tr].p);
-#else
-    {
-        uint8_t *p = fm6_eff[tr].p;
-        uint32_t alg = e[0] >= 1 && e[0] <= 32 ? (uint32_t)e[0] - 1u : p[FP_ALG] & 31u;
-        fm6_eff[tr].alg = (uint8_t)alg;
-        fm6_eff[tr].fb = (uint8_t)clamp(p[FP_FB] + e[1], 0, 7);
-        car = fm6_carriers(alg);
-        meg = clamp(e[4], -64, 63) * 40 / 64;               /* MEG: rate steps (+ slower) */
-        step = clamp(e[6], 0, 127) * (12 * 13981) / 127;    /* DTUN: up to 12 cents a step (1 cent = 13981) */
-        for (k = 0; k < 6u; k++) {
-            uint8_t *op = p + (5u - k) * FP_OP;              /* OP1 first: carriers in their order */
-            uint32_t ki = 5u - k;
-            fm6_eff[tr].dt[ki] = 0;
-            if ((car >> ki) & 1u) {                          /* the carriers a step apart, centred on the note */
-                fm6_eff[tr].dt[ki] = (2 * (int32_t)n++ - (int32_t)__builtin_popcount(car) + 1) * step / 2;
-                if (eon)                                     /* the AMP ENV knobs: every carrier's envelope by the same steps (a higher knob is slower or higher) */
-                    fm6_env_apply(op, eoff);
-                continue;
-            }
-            if (!op[FP_MODE])
-                op[FP_FC] = (uint8_t)clamp(op[FP_FC] + e[3], 0, 31);
-            for (j = 0; j < 4u; j++)
-                op[FP_R1 + j] = (uint8_t)clamp(op[FP_R1 + j] - meg, 0, 99);
-            op[FP_KVS] = (uint8_t)clamp(op[FP_KVS] + e[5], 0, 7);
-        }
-        fm6_lfo_reset(&fm6_lfo[tr], p);
-    }
-#endif
-#if DUELL_TIDE
     if (fm6_xt[tr].on) fm6_xapply(tr); /* TIDE: override the bridge after 1.1 macros */
-#endif
     fm6_eff[tr].ok = 1;
 }
 
 /* --------------------------------------------------------------- voice --- */
-#if DUELL_TIDE
 #include "fm6_xfer.c"                              /* the crossing bridge: stand-ins, retuning, phase alignment, the macros (audit A10) */
-#endif
 
 static fm6_note_t *fm6_note_of(track_t *t, voice_t *v)
 {
@@ -549,11 +504,9 @@ static void fm6_note_on(track_t *t, voice_t *v)
     p = fm6_eff[tr].p;
     fm6_note_init(n, p, (int32_t)v->note + p[FP_TRNSP] - 24, v->mvel ? v->mvel : v->vel,
                   (!v->env && !v->env_out) || !n->live);    /* from silence: phases and gains from 0 */
-#if DUELL_TIDE
     n->xb = (uint8_t)((fm6_eff[tr].mk & 0x80000000u) && ((fm6_eff[tr].mk >> 15) & 1u) ? 0x3Fu : 0u);
     n->xs = n->xr = 0;
     if (tr < NLIVE && fm6_xt[tr].on) fm6_xtune(t, tr, n, v, 0x3Fu);
-#endif
     fm6_lfo_key(&fm6_lfo[tr]);
 }
 
@@ -564,7 +517,6 @@ static void fm6_block(track_t *t)       /* once a block and part: the macros, th
     if (tr >= NTRK)
         return;
     fm6_sync(t);
-#if DUELL_TIDE
     if (tr < NLIVE && (fm6_xt[tr].on || fm6_xt[tr].dirty || fm6_xt[tr].drain)) {   /* (drain: a drain that waited for a crossing to end still runs after it, even with no stand-in mapped) */
 #if DUELL_PROBE_STAGES
         extern volatile uint32_t prb_stage_pk[6];
@@ -579,7 +531,6 @@ static void fm6_block(track_t *t)       /* once a block and part: the macros, th
             fm6_xt[tr].drain = fm6_xt[tr].mute = fm6_xt[tr].dirty = 0;
         }
     }
-#endif
     fm6_unison_sync(t);
     fm6_lfo_terms(&fm6_lfot[tr], fm6_eff[tr].p, fm6_lfo_sample(&fm6_lfo[tr]), fm6_lfo_delay(&fm6_lfo[tr]));
 }
@@ -639,9 +590,7 @@ static __attribute__((noinline)) const int32_t *atg_fm6(const vmod_t *m, const i
         dt2[k] = dt[k] + (on ? d : 0);
         ul[k] = on ? lg : 0;
     }
-#if DUELL_TIDE
     fm6_xlv(dt, ul);
-#endif
     return dt2;
 }
 
@@ -663,12 +612,10 @@ static void fm6_render(track_t *t, voice_t *v, int32_t *out, uint32_t len, const
         if (!fm6_note_compute(n, p, bus, &fm6_lfot[tr], lf, fm6_eff[tr].alg, fb,
                               atg_fm6(m, fm6_eff[tr].dt, dt2, ul), lvl * 65536, ul))
             return;
-#if DUELL_TIDE
     } else if (fm6_xt[tr].on) {                         /* No ARP: the bridge's offsets are already shared by the part; no per-voice pitch/gate preparation. */
         if (!fm6_note_compute(n, p, bus, &fm6_lfot[tr], lf, fm6_eff[tr].alg, fb, fm6_eff[tr].dt,
                               lvl * 65536, fm6_xt[tr].lv))
             return;
-#endif
     } else if (!fm6_note_compute(n, p, bus, &fm6_lfot[tr], lf, fm6_eff[tr].alg, fb, fm6_eff[tr].dt,
                                  lvl * 65536, 0)) {
         return;                                         /* every carrier below the threshold */

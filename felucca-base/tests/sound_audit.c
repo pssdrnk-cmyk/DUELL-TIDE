@@ -325,7 +325,7 @@ int main(void)
             why = "FAIL (quiet vs others)";
         else if (!hit && T->w05 < AUDIT_TAP_MIN)
             why = "FAIL (quiet tap)";
-        else if (!bok && (DUELL_TIDE || !ds_endb(e, k)))   /* (DUELL 1.1: an End B the owner made as values (sounds.c ds_endb, PT_VER 4) is his, not a seed's roll: not judged by the seed windows.
+        else if (!bok)   /* (DUELL 1.1: an End B the owner made as values (sounds.c ds_endb, PT_VER 4) is his, not a seed's roll: not judged by the seed windows.
                                                          * With TIDE a factory sound's End B is always its seed's MUSICAL roll (morph.c, tide.h TIDE_FACTORY_CFG: the block is not read), so it is judged) */
             why = "FAIL (End B)";
         else if (!bok)                                  /* (an authored End B outside the window: reported, the owner's to keep or trim; a tide to it is a jump in level or tone) */

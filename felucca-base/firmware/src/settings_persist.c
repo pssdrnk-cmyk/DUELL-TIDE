@@ -73,7 +73,6 @@ typedef struct {
 } persist_t;
 _Static_assert(sizeof(persist_t) == sizeof(persist_head_t) + 2u * MAP_N + 64u, "persist_head_t is the record before the map");
 #define PERSIST_MAGIC 0x50455234u
-#if DUELL_TIDE
 /* TIDE's settings (tide_store.c) ride in the second half of `map_tail`, bytes 32..63 (D11: every backup holds them; the first 32 stay upstream's reserve): "TIDE", the field count n,
  * then the fields (tide_ui.c TS_*, 27 at most). tide_tail is the record as it stands now (settings_export writes it, settings_import reads it, a record without the tag leaves it
  * as it is: an older backup or a unit of plain DUELL 1.1 keeps what the unit has), tide_tail_saved the one in the flash (persist_note). Plain DUELL 1.1 reads the tail as zero
@@ -84,7 +83,6 @@ _Static_assert(sizeof(persist_t) == sizeof(persist_head_t) + 2u * MAP_N + 64u, "
 static uint8_t tide_tail[TIDE_TAIL_N] __attribute__((section(".pool")));
 static uint8_t tide_tail_saved[TIDE_TAIL_N] __attribute__((section(".pool")));
 static int tide_tail_ok(const uint8_t *t) { return t[0] == 'T' && t[1] == 'I' && t[2] == 'D' && t[3] == 'E' && t[4] <= TIDE_TAIL_N - 5u; }
-#endif
 #define MAP_REC_VER 1u                    /* favorites.factory[14][0] */
 /* before the map: 4 words, the panel, bold, the favourites (16 x 32 bytes and 5 words); after it: + the 128 lines and the 64-byte tail, the 16 learn slots' 32 bytes now the header */
 _Static_assert(sizeof(persist_t) == 4u * 4u + sizeof(panel_t) + 4u + 16u * 32u + 4u * 5u + 2u * MAP_N + 64u, "persist_t: the settings record's size is fixed (tests/settings_test.c, tests/midimap_test.c)");
@@ -123,12 +121,10 @@ static int settings_import(persist_t *p, int n)
     favorites.filter = favorites.filter == 1u;
     memset(favorites.factory[FAV_WAVE_ROW], 0, FAV_WAVE_AT);   /* DIGITAL's starred presets (engine 1, gone in 0.2.14): cleared (bytes 16..31 hold WAVE's flags, favorites.c) */
 #endif
-#if DUELL_TIDE
     if (tide_tail_ok(p->map_tail + TIDE_TAIL_AT)) {   /* (no TIDE record in it: the unit's own stays) */
         memcpy(tide_tail, p->map_tail + TIDE_TAIL_AT, TIDE_TAIL_N);
         tide_tail_new = 1;
     }
-#endif
     if (p->panel.magic == PANEL_MAGIC) panel = p->panel;
     if (p->favorites.factory[14][0] == MAP_REC_VER) {  /* the MIDI MAP: as stored, made valid; a record of another map version starts with the shipped list */
         memcpy(midi_map, p->map, sizeof midi_map);
@@ -162,7 +158,5 @@ static void settings_export(persist_t *p)
 #endif
     memcpy(p->map, midi_map, sizeof p->map);
     memset(p->map_tail, 0, sizeof p->map_tail);
-#if DUELL_TIDE
     memcpy(p->map_tail + TIDE_TAIL_AT, tide_tail, TIDE_TAIL_N);
-#endif
 }

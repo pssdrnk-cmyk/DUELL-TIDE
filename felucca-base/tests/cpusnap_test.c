@@ -7,10 +7,10 @@
  *            published at the moment the interrupts go off (host_irq_hook) is in that very poll
  *   WINDOWS  a window keeps the longest of the polls since ITS last take and starts again after it
  *   METER    TEST / ABOUT's PEAK is the elapsed peak, the average the render's
- *   HEAD     TIDE (and, built with DUELL_TIDE=0, that none of it is there): when the header's readout shows, its window and count, the baseline 8 s after power-on, the
+ *   HEAD     TIDE: when the header's readout shows, its window and count, the baseline 8 s after power-on, the
  *            clear by TEST > RESET, a fresh peak after the header was hidden, no overflow; the header's picture follows the readout only on a TIDE page
  * The writers of cpu_pk / cpu_el_pk are checked by host_tests.sh (group cpusnap: only audio.c and cpu_snap_poll write them).
- * Built and run by DUELL/host_tests.sh (name: cpusnap, and again with DUELL_TIDE=0 in tideoff): the UI sources against ui_test.c's stubs. */
+ * Built and run by DUELL/host_tests.sh (name: cpusnap): the UI sources against ui_test.c's stubs. */
 #define UI_TEST_NO_MAIN 1
 #include "ui_test.c"
 
@@ -86,7 +86,6 @@ int main(void)
     cpu_n += 344u; cpu_sum += 344u * (CPU_BUDGET_US / 2u); cpu_pk = CPU_BUDGET_US * 40u / 100u; cpu_el_pk = CPU_BUDGET_US * 60u / 100u;
     cpu_meter_poll();
     expect("meter: the peak is the ELAPSED 60 %, the average the render's 50 %", cpum.peak >= 59u && cpum.peak <= 60u && cpum.avg >= 49u && cpum.avg <= 50u);
-#if DUELL_TIDE
     {   /* HEAD */
         char l[8], r[8];
         uint16_t c;
@@ -187,14 +186,6 @@ int main(void)
         cpu_head(l, r, &c);
         expect("badge: 61 s after it, gone", !strcmp(r, "0") && c == T_DIM);
     }
-#else
-    {   /* DUELL_TIDE=0: the plain DUELL header has no readout: the code (cpu_head, cpuh, the draw) is not there, the meter's owner and windows are (above) */
-        ui_power_on();
-        go_title("MORPH");
-        ui.force = 1; frame(); frame();
-        expect("plain: the page draws with the meter's polling in place", cpu_snap.n == cpu_n);
-    }
-#endif
     printf("cpusnap: %d checks, %d failed\n", ncheck, bad);
     return bad ? 1 : 0;
 }

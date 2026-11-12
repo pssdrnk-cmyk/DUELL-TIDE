@@ -114,7 +114,6 @@ static const uint8_t *df_rec(uint32_t i, uint8_t *out)
     return dm_rec(i, out);
 }
 _Static_assert(DF_TEST_MULTIS == DUELL_TEST_MODE, "duell_multis.h was generated with another DUELL_TEST_MODE: run tools/gen_duell_multis.py (tools/build.py) with the same switch");
-_Static_assert(DF_TIDE == DUELL_TIDE, "duell_multis.h was generated with another DUELL_TIDE (TIDE: M17, M18, packed): run tools/gen_duell_multis.py with the same switch");
 _Static_assert(DF_N <= MU_SHOWN && MU_SHOWN <= 32u, "factory multis: slots below MU_SHOWN, the masks hold them");
 static uint32_t mu_fact;                          /* bit k: M(k + 1) is empty in flash and shows its factory multi (M17, M18: always) */
 #define MU_K(slot) ((uint32_t)(slot) % MU_SHOWN)  /* a slot number in range: a shown multi (0..MU_SHOWN - 1) */
@@ -391,7 +390,6 @@ static int mu_unpack(project_t *q, uint8_t amt[NSHOWN], uint8_t set[6], const ui
 }
 
 /* the RAM view of object o (in mu_buf): which of its two multis load, their names */
-#if DUELL_TIDE
 static uint32_t mu_bad;                           /* bit k: M(k + 1) holds a record this firmware does not load (not empty: LOAD says DAMAGED, the row and the preview too; no factory multi shows for it) */
 static uint32_t mu_gen;                           /* counts the records' changes (mu_note): the MULTIS preview decodes again when it moves */
 static uint8_t mu_vp[MU_SHOWN][NSHOWN][4];        /* per slot and part, from the decode mu_note does anyway: engine, preset, MODE (0 OFF, 1 ARP, 2 SEQ: ARP SEQ, or arp OFF with a note in the pattern), 1 = a note in the pattern: the list rows' voice names */
@@ -408,29 +406,20 @@ static void mu_vp_set(uint8_t *v, const proj_trk_t *d)
     if (!v[2] && v[3])
         v[2] = 2u;                                    /* (1.0.0-b7: arp OFF with notes in the pattern plays the sequencer on PLAY: SEQ too, not OFF; the reel's M03 JUNO DEEP) */
 }
-#endif
 /* slot k's RAM view from its record r (len bytes; 0 none: the factory multi, if k has one) */
 static void mu_note1(uint32_t k, const uint8_t *r, uint32_t len)
 {
     {
         uint8_t amt[NSHOWN], set[6];
         mu_names[k][0] = 0;
-#if DUELL_TIDE
         memset(mu_vp[k], 0, sizeof mu_vp[k]);
-#endif
         mu_used &= ~(1u << k);
         mu_fact &= ~(1u << k);
         int ok = len && mu_unpack(&proj_scratch, amt, set, r, len);
-#if DUELL_TIDE
         mu_bad &= ~(1u << k);
         if (!ok && len)                           /* a record that is there but not loadable: DAMAGED, as LOAD says (audit C01), never the factory multi */
             mu_bad |= 1u << k;
-#endif
-#if DUELL_TIDE
         if (!ok && !len && df_of(k) < DF_N) {
-#else
-        if (!ok && df_of(k) < DF_N) {
-#endif             /* nothing stored, or a record this firmware does not load (one of before 0.2.14): the factory multi (ROM) */
             r = df_rec(df_of(k), DF_TAIL);
             len = DM_LEN[df_of(k)];
             mu_fact |= 1u << k;
@@ -439,19 +428,15 @@ static void mu_note1(uint32_t k, const uint8_t *r, uint32_t len)
         if (ok) {
             mu_used |= 1u << k;
             proj_name_get(mu_names[k], r + MU_NAME_AT);
-#if DUELL_TIDE
             mu_vp_set(mu_vp[k][0], &proj_scratch.t[0]);
             mu_vp_set(mu_vp[k][1], &proj_scratch.t[1]);
-#endif
         }
     }
 }
 static void mu_note(uint32_t o)
 {
     uint32_t h, len;
-#if DUELL_TIDE
     mu_gen++;
-#endif
     for (h = 0; h < 2u; h++) {
         const uint8_t *r = mu_rec(h, &len);
         mu_note1(2u * o + h, r, len);
@@ -481,7 +466,6 @@ static void multi_ram_reset(void)                 /* (host tests: a power-on; wi
 }
 
 static int project_used(uint32_t slot) { return (mu_used >> MU_K(slot)) & 1u; }
-#if DUELL_TIDE
 /* U3, the MULTIS page's preview of one record, read-only: the record is decoded (mu_unpack, into the scratch, as mu_note does) and only what the page
  * draws is kept: per part its sound (engine, preset), what its MODE does (0 OFF, 1 ARP, 2 SEQ), whether the pattern holds a note, and its first 16 steps
  * (0 past the end, 1 empty, 2 tie, 3 note, 4 chord; |8 accent). Nothing live is touched: not the sounds, the patterns, the transport nor the morph.
@@ -532,7 +516,6 @@ static uint32_t multi_vmode(uint32_t slot, uint32_t part)
     const uint8_t *v = mu_vp[MU_K(slot)][part % NSHOWN];
     return v[2] | (v[3] ? 4u : 0u);
 }
-#endif
 static int project_factory(uint32_t slot) { return (mu_fact >> MU_K(slot)) & 1u; }   /* shows its factory multi */
 /* slot's name -> b (PROJ_NAME_LEN + 1 bytes); 0 = an empty slot (b "") */
 static int project_info(uint32_t slot, char *b)
@@ -698,17 +681,13 @@ static void project_load(uint32_t slot)
     uint8_t amt[NSHOWN], set[6];
     const uint8_t *r;
     int rc;
-#if DUELL_TIDE
     uint32_t fact = 0;
-#endif
     mu_obj_read(k / 2u);
     r = mu_rec(k & 1u, &len);
     if (!len && df_of(k) < DF_N) {                     /* nothing stored: the factory multi */
         r = df_rec(df_of(k), DF_TAIL);
         len = DM_LEN[df_of(k)];
-#if DUELL_TIDE
         fact = 1;
-#endif
     }
     if (!len) {
         ui_message("EMPTY SLOT");
@@ -737,20 +716,13 @@ static void project_load(uint32_t slot)
         mix_split = set[5];
         duell_mode_req = set[0];                       /* (the audio takes it at its next block: seq.c mode_apply) */
     }
-#if DUELL_TIDE
     song.both = (uint8_t)set[1];                       /* set[1] TARGET: the selection's BOTH (1.0.0-b5: a stored BOTH loads as the selection BOTH; before it was reserved and never read) */
 #if TIDE_PLAYSEL
     if (duell_mode_req == DM_LAYER)                    /* (1.0.0-b7: a LAYER multi loads in ALGORITHM's middle, both parts playing, as b6 played it) */
         song.both = 1;
 #endif
-#endif                                                 /* (plain DUELL: reserved, ALGORITHM's BOTH is the player's, a load keeps it) */
-#if DUELL_TIDE
     if (!fact)                                         /* TIDE b7: a factory multi leaves ROLL ARP / ROLL PITCH / ROLL TYPE as the player set them (a saved one restores its own byte) */
         morph.cfg = set[2];
-#else
-    morph.cfg = set[2];
-#endif
-#if DUELL_TIDE
     if (fact)                                          /* TIDE b6: a factory multi keeps the player's AMOUNT (a saved one restores its own); M17, M18 too (their STYLE DRONE is not AMOUNT) */
         for (pi = 0; pi < NSHOWN; pi++) {
             amt[pi] = (uint8_t)(mph[pi].n[0] ? mph[pi].aset : MORPH_AMOUNT_DEF);
@@ -759,7 +731,6 @@ static void project_load(uint32_t slot)
         _Static_assert(JRNY_MU_N == DF_N, "jrny_mu.h: a row a factory multi (build/host/jrny_mu gen)");
 #endif
         }
-#endif
     for (pi = 0; pi < NSHOWN; pi++)                    /* MU_VER 8: End B as its values, the multi's AMOUNT; no block: a fresh B at that AMOUNT (a patch load's rule) */
         if (proj_scratch.bvn[pi]) {
             morph_load_part_v(pi, proj_scratch.bv[pi]);

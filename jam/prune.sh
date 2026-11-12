@@ -4,7 +4,7 @@
 #   sh jam/prune.sh          show what would go
 #   sh jam/prune.sh --yes    remove it
 # - the work folder's old per-checkout log folders (check*, check-off.log) untouched for over 7 days: jam/check.sh now keeps its logs in
-#   felucca-base/build/check/<short sha> of the checkout (the three newest) and check_off.sh in felucca-base/build/check-off.log
+#   felucca-base/build/check/<short sha> of the checkout (the three newest)
 # - this checkout's felucca-base/build/*_mut copies of the firmware and tests (the self-checks remove them after a clean run)
 # - this checkout's felucca-base/build/check/ folders beyond the three newest
 # Nothing outside build/ and the work folder's check* logs is touched.

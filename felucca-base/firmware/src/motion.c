@@ -317,7 +317,6 @@ static int motion_room(uint32_t k, uint32_t step, uint32_t id)
 /* the lock of part t's parameter id with value: stopped, on the cursor's step; playing, on the step playing now (before the
  * first step has started: step 1). 1 = recorded, 0 = not (the records are full), -1 = no step inside the pattern's length
  * (the turn is then a live edit, as with record off) */
-#if DUELL_TIDE
 static uint32_t arp_dur(const track_t *t);              /* (seq.c) */
 /* b7 (review B2): an ARP SEQ part plays its steps (and their locks: seq.c arp_fire) on the arp's clock: a lock is recorded on the arp's step,
  * the one playing (half 0) or the next one past its middle (half 1, as rec_arp_note); 0xFFFFFFFF: not an ARP SEQ part */
@@ -331,9 +330,6 @@ static uint32_t motion_arp_idx(const track_t *t, uint32_t len, uint32_t half)
     return tide_arp_idx(t, k, len);
 }
 #define MOTION_ARP_IDX(t, len, half) motion_arp_idx((t), (len), (half))
-#else
-#define MOTION_ARP_IDX(t, len, half) 0xFFFFFFFFu
-#endif
 static int motion_knob_lock(track_t *t, uint32_t id, int16_t value)
 {
     uint32_t k = trk_index(t), len = (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP), step, f;

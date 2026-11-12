@@ -38,9 +38,6 @@ enum { FM1_ADC_BATT = 3, FM1_ADC_MASTER = 4 };
 static int32_t fm1_adc_read(uint32_t ch) { return ch == FM1_ADC_MASTER ? 1023 : 620; }
 #include "../firmware/src/master.c"
 
-#if !DUELL_TIDE
-int main(void) { printf("SKIP the ease ladder is TIDE's (DUELL_TIDE=0: the two rules of before, tests/audio_test.c)\n"); return 0; }
-#else
 static int bad, ncheck;
 static void expect(const char *what, int ok)
 {
@@ -434,4 +431,3 @@ int main(void)
     printf("ease: %d checks, %d failed\n", ncheck, bad);
     return bad ? 1 : 0;
 }
-#endif

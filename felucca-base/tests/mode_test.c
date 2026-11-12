@@ -987,20 +987,12 @@ static uint32_t page_of(const char *title)
 /* MODE, XFADE and SPLIT: with TIDE the last three rows of TIDE SETTINGS (K1 picks the row, K2 turns it); plain DUELL: HOME's MODE page (K1, K2, K3) */
 static void mode_page(void)
 {
-#if DUELL_TIDE
     go_title("TIDE SETTINGS");
-#else
-    go_title("MODE");
-#endif
 }
 static void mturn(uint32_t k, int d)                    /* k: 0 MODE, 1 XFADE, 2 SPLIT */
 {
-#if DUELL_TIDE
     jl_sel = (uint8_t)(JL_MODE + k);
     turn(EN_K2, d);
-#else
-    turn(k == 0u ? EN_K1 : k == 1u ? EN_K2 : EN_K3, d);
-#endif
 }
 static void t_ui(void)
 {
@@ -1011,7 +1003,6 @@ static void t_ui(void)
     expect("power-on: MODE SPLIT (the settings byte 0)", duell_mode_req == DM_SPLIT && !ui_mode_set);
     press(B_HOME);                                      /* (the harness starts on MORPH: MORPH SET -> MODE) */
     frames(64);
-#if DUELL_TIDE
     page_title(ti);
     expect("TIDE: HOME tapped once from MORPH: TIDE SETTINGS (HOME's round is MORPH, TIDE SETTINGS, AUTO TIDE: no MODE page)", ui.page == page_of("TIDE SETTINGS") && str_eq(ti, "TIDE SETTINGS 2/3"));
     press(B_HOME);
@@ -1022,13 +1013,6 @@ static void t_ui(void)
     mode_page();
     frames(32);
     jl_sel = JL_MODE;
-#else
-    press(B_HOME);
-    frames(64);
-    page_title(ti);
-    expect("HOME tapped from the start (on MORPH) twice: the MODE page (HOME's last sub-page), its footer MODE 3/3 (0.2.25: the MIXER is GLO's)",
-           ui.page == page_of("MODE") && str_eq(ti, "MODE 3/3"));
-#endif
     mturn(0, 1);                                     /* (item 118: the list reads LAYER, STEREO, DUEL from the top; KNOB 1 to the right goes DOWN it) */
     expect("MODE: KNOB 1 right at DUEL (SPLIT, the list's last row) stays DUEL", duell_mode_req == DM_SPLIT);
     mturn(0, -1);
@@ -1041,15 +1025,6 @@ static void t_ui(void)
     mturn(2, 2);
     expect("  .. KNOB 2-3 (item 158: the cards line up to the left): XFADE (0 at the left end), SPLIT (OFF + 2: MIDDLE, then the note it stands for, F#4: 1.0.0-b7, item 155) move; the mode stays",
            duell_mode_req == DM_LAYER && mix_xf == 0 && mix_split == SPLIT_MID);
-#if !DUELL_TIDE                                          /* (TIDE: on a row of TIDE SETTINGS every knob 2 .. 4 turns the picked row) */
-    {
-        int16_t lv0 = trk[0].p[P_LEVEL], lv1 = trk[1].p[P_LEVEL];
-        uint8_t x0 = mix_xf, s0 = mix_split;
-        ui.msg_t = 0;
-        turn(EN_K4, 3);
-        expect("  .. KNOB 4 (no card): the knob does nothing and says nothing", trk[0].p[P_LEVEL] == lv0 && trk[1].p[P_LEVEL] == lv1 && mix_xf == x0 && mix_split == s0 && !ui.msg_t);
-    }
-#endif
     mix_split = 0;
     mturn(0, 2);
     frame();
@@ -1067,7 +1042,6 @@ static void t_ui(void)
     turn(EN_K3, 5);
     expect("MIXER in STEREO: KNOB 3 moves PAN", TSEL->p[P_PAN] != pan);
 }
-#if DUELL_TIDE
 /* TIDE: MODE, XFADE and SPLIT are the last three rows of TIDE SETTINGS (owner 2026-11-08), HOME has no MODE page */
 static void t_mode_rows(void)
 {
@@ -1297,7 +1271,6 @@ static void t_mode_rows(void)
     go_main();
     expect("  .. MORPH again", PAGES[ui.page].graph == GR_MORPH);
 }
-#endif
 static void t_settings(void)
 {
     persist_t p;
@@ -1767,7 +1740,6 @@ static void t_outputs(void)
     pr = peak_of(rec_l, rec_n) + peak_of(rec_r, rec_n);
     expect("MUTE: a muted part 1 sounds nothing, in LAYER (with part 2 not playing) and in SPLIT", pl == 0 && pr == 0);
 }
-#if DUELL_TIDE
 /* 1.0.0-b7 (docs/design/PLAY_MODE_SELECT.md): SPLIT MIDDLE follows OCT- / OCT+ (keys and MIDI); TIDE_PLAYSEL: ALGORITHM on a BOTH page is PART 1, LAYER, STEREO,
  * DUEL, PART 2 and STEREO / DUEL split the keys with BOTH; the codes in the settings and a multi */
 static uint32_t ps_keys(uint32_t lo, uint32_t hi, uint32_t plo, uint32_t phi)   /* keys lo and hi down: lo sounds on part plo alone, hi on phi alone; then let go, nothing left */
@@ -1974,7 +1946,6 @@ static void t_playsel(void)
     song.both = 0;
     mix_split = 0;
 }
-#endif
 int main(void)
 {
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -1993,10 +1964,8 @@ int main(void)
     t_click();
     t_cc();
     t_ui();
-#if DUELL_TIDE
     t_mode_rows();
     t_playsel();
-#endif
     t_settings();
     t_midi_ch();
     t_meter();

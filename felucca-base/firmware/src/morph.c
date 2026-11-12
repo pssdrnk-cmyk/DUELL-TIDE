@@ -105,9 +105,6 @@ _Static_assert(MORPH_HIST == 1u && XH == 1u, "no morph history (1.0.0-b5)");
 #define MORPH_AMOUNT_DEF 15u          /* the player's AMOUNT at first use (owner, 2026-10-11: 25 before) */
 #define MORPH_RAMP_N (FS / 20u)      /* 50 ms */
 #define MORPH_RAMP_STEP ((32768u * CTL + MORPH_RAMP_N / 2u) / MORPH_RAMP_N)   /* Q15 a block */
-#if !DUELL_TIDE
-enum { MT_SELECTED, MT_BOTH };
-#endif
 /* cloud job G, EDITABLE B (docs/design/EDITABLE_B_DESIGN.md): at the fader's B end (127) a knob on a value the morph can move sets End B's value for good ("set by hand", pinned): the value is kept as
  * an absolute number in End B and marked in pin[] (a bit per wide id). A pinned value ignores the Original's later edits (the other B values follow them as before); a roll drops the marks.
  * EDITB_PINH: End B's entries that keep marks (1: the end itself, MORPH_HIST) */
@@ -1158,10 +1155,8 @@ static void morph_twin_rules(const int8_t *o, const int8_t *st, int8_t *end)
  * tag view) but the Original's on / off locks (DUCK DEPTH, INSERT TYPE, TWIN TYPE); every zero lock (a matrix amount, MF_ZERO, ARP off, the pitch draws) is a
  * zero of the Original; the limits of the tags (MF_CAP, MF_FLOOR, MF_CEIL, MF_RISE) and the loudness rules' windows stay around the Original; the moves of a
  * rule (the other way, back toward) and the sides a value keeps are the start's. Pure: the same arguments give the same end; st == org: the roll of before */
-#if DUELL_TIDE
 #include "morph_music.c"         /* TIDE hook (H4): MUSICAL MORPH (MC_MUSIC) */
 #include "morph_fm_shape.c"      /* .. FM6's SHAPE coordinate */
-#endif
 static void morph_roll_step(const int8_t *org, const int8_t *st, int8_t *end, const engine_t *e, uint32_t amount, uint32_t seed,
                             uint32_t part, uint32_t stereo)
 {
@@ -1303,7 +1298,6 @@ typedef struct {
 } morph_part_t;
 static morph_part_t mph[NSHOWN];
 
-#if DUELL_TIDE
 static uint32_t morph_xside(const morph_part_t *mp, int32_t w, int aud);
 static void morph_xrest(uint32_t pi);
 static uint8_t morph_xr[NSHOWN];                        /* b10 round 7 (FELUCCA_GUARDS): 1 = morph_xrest has run and morph_xstep / morph_xplan have written nothing since: a part with no morph skips it */
@@ -1312,26 +1306,17 @@ static int morph_xstep(track_t *t, morph_part_t *mp, uint32_t pi);
 static uint32_t morph_xreg(uint32_t pi, const int16_t *p, uint8_t *tid, uint8_t *chk, int16_t *tlive, uint32_t m);
 static void morph_xpost(track_t *t, uint32_t pi);
 static void morph_fm6_at(const morph_part_t *mp, uint32_t tr, uint8_t *p, int32_t w, uint32_t sd);
-#endif
 
 TIDE_MORPH_PROTOS                                        /* TIDE hook */
 static struct {
     uint8_t cfg;                                         /* v2 (SPEC 3.5): MC_WILD (SMART off), MC_ARP, MC_PIT: the settings */
-#if !DUELL_TIDE
-    uint8_t target;                                      /* MT_SELECTED / MT_BOTH (plain DUELL: ALGORITHM's BOTH on the MORPH page and PERFORM) */
-#endif
     uint16_t seed;                                       /* the last roll's (shown) */
     uint32_t gen;                                        /* the seed generator */
 } morph;
 /* the part selection's BOTH: TIDE (1.0.0-b5) song.both, the one selection PART 1 / PART 2 / BOTH (ui_input.c part_select); plain DUELL morph.target, ALGORITHM's position as before.
  * SEL_BOTH is the stored value, PART_BOTH() whether it is on */
-#if DUELL_TIDE
 #define SEL_BOTH song.both
 #define PART_BOTH() (song.both)
-#else
-#define SEL_BOTH morph.target
-#define PART_BOTH() (morph.target == MT_BOTH)
-#endif
 
 static const int8_t *morph_cur(const morph_part_t *mp, uint32_t e) { return mp->h[e][mp->top[e]]; }
 static const int8_t *morph_curx(const morph_part_t *mp, uint32_t e) { return mp->hx[e][mp->top[e] % XH]; }   /* end e's extension slots (X0 .. X15) */
@@ -1395,11 +1380,9 @@ static void morph_build(morph_part_t *mp)
                     (pn[(id + q) >> 3] >> ((id + q) & 7u) & 1u);   /* (a value set by hand is listed even where it equals the Original: the Original may move) */
         if (!diff)
             continue;
-#if DUELL_TIDE
         if (id == P_LEVEL)                               /* MR5 (b7): the MIXER level is the part's, never an end's (T_NEV would flip it at the middle: a multi's
                                                           * part at 85 jumped to an End B's 112, 13 dB, on M08) */
             continue;
-#endif
         diff = 0;
         g = morph_tag(e, mp->base, id, 1);
         w = g.kind == MK_SLOT ? 3u : 1u;
@@ -1454,18 +1437,12 @@ static int32_t morph_dip(int32_t w, uint32_t x, int32_t r)
 
 /* the blend into p (in place: each value is read, then written): B's weight w (Q15, 0..32768), ramp: the ~50 ms ramp
  * applies; the faded choices into xf. p holds the live values (the Original as edited) */
-#if DUELL_TIDE
 static void morph_apply_at(const morph_part_t *mp, int16_t *p, int32_t w, int ramp, mxf_t *xf, int aud)
-#else
-static void morph_apply(const morph_part_t *mp, int16_t *p, int32_t w, int ramp, mxf_t *xf)
-#endif
 {
     const int8_t *A0 = morph_cur(mp, 0), *B0 = morph_cur(mp, 1), *base0 = mp->base, *O0 = mp->sm_old;
     const int8_t *Ax = morph_curx(mp, 0), *Bx = morph_curx(mp, 1), *basex = mp->base + XW_BASE, *Ox = mp->smx_old;   /* (the extension slots, by slot number) */
     uint32_t j, X = mp->sm_end;
-#if DUELL_TIDE
     uint32_t sd = morph_xside(mp, w, aud);
-#endif
     int32_t r = mp->sm_r;
     ramp = ramp && r < 32768;
     for (j = 0; j < mp->nid; j++) {
@@ -1516,15 +1493,9 @@ static void morph_apply(const morph_part_t *mp, int16_t *p, int32_t w, int ramp,
                 xf->on = 1;
             }
         } else if (kind == MK_STEP) {                   /* v2: a switch flips at the middle of the fader */
-#if DUELL_TIDE
             if (p[id] != base[ix] && (!pin || !sd))
                 continue;                               /* the user's choice */
             p[id] = (int16_t)(sd ? B[ix] : A[ix]);
-#else
-            if (p[id] != base[ix] && (!pin || w < 16384))
-                continue;
-            p[id] = (int16_t)(w < 16384 ? A[ix] : B[ix]);
-#endif
         } else {                                        /* MK_SLOT: SRC DST AMT at id .. id + 2 */
             int32_t sa = A[ix], da = A[id + 1u], aa = A[id + 2u] * 256, sb = B[ix], db = B[id + 1u], ab = B[id + 2u] * 256;
             int32_t we = w, s, d, v8;
@@ -1576,10 +1547,8 @@ static void morph_apply(const morph_part_t *mp, int16_t *p, int32_t w, int ramp,
     }
 }
 
-#if DUELL_TIDE
 static void morph_apply(const morph_part_t *mp, int16_t *p, int32_t w, int ramp, mxf_t *xf)
 { morph_apply_at(mp, p, w, ramp, xf, 0); }
-#endif
 
 /* eng_fm6.c fm6_sync (audio ISR): the key of part tr's FM6 blend (p null; 0 = none), or the blend into the patch copy p */
 static uint32_t morph_fm6(uint32_t tr, uint8_t *p)
@@ -1587,21 +1556,13 @@ static uint32_t morph_fm6(uint32_t tr, uint8_t *p)
     const morph_part_t *mp = tr < NSHOWN ? &mph[tr] : 0;
     uint32_t i, key;
     int32_t w;
-#if DUELL_TIDE
     uint32_t xon = tr < NLIVE && fm6_xt[tr].on;
     if (!mp || (!mp->fnid && !xon) || !morph_isfm(mp) || morph_stale(&trk[tr], mp))
-#else
-    if (!mp || !mp->fnid || !morph_isfm(mp) || morph_stale(&trk[tr], mp))
-#endif
         return 0;
-#if DUELL_TIDE
     /* Nonoverlapping fields: fader[0:6], generation[7:14], side[15], ramp[16:24], bridge serial[25:29], on[30]. */
     key = 0x80000000u | mp->fader | (uint32_t)mp->fser << 7 | morph_xside(mp, morph_wb(mp->fader), 1) << 15 |
           (mp->sm_r < 32768u ? (uint32_t)(mp->sm_r >> 7) + 1u : 0u) << 16;
     if (xon) key |= 0x40000000u | ((uint32_t)fm6_xt[tr].ser & 31u) << 25;
-#else
-    key = 0x80000000u | (uint32_t)mp->fser << 16 | (mp->sm_r < 32768u ? (uint32_t)(mp->sm_r >> 7) + 1u : 0u) << 7 | mp->fader;
-#endif
     if (!p)
         return key;
     w = morph_wb(mp->fader);
@@ -1631,9 +1592,7 @@ static int morph_stale(const track_t *t, const morph_part_t *mp)   /* another so
 #ifndef FELUCCA_HANDSKIP
 #define FELUCCA_HANDSKIP 0                               /* Later 9 (audit finding 12, D44): 1 = a fader moved by a hand or MIDI blends every other block as a GLIDE's does (about 70 us a block saved on part 1; the blend trails the fader by one block, 0.73 ms). 0 until the unit sweep has tried it (tools/build.py: env FELUCCA_HANDSKIP=1) */
 #endif
-#if DUELL_TIDE
 static uint8_t morph_gliding;                            /* a GLIDE runs (morph_glide.c glide_poll writes it; 0 in a build without it): budget.c and the blend below read it */
-#endif
 static int morph_begin(track_t *t, int adv)
 {
     uint32_t pi = (uint32_t)(t - trk), j, q, m = 0, n;
@@ -1644,21 +1603,16 @@ static int morph_begin(track_t *t, int adv)
     mp = &mph[pi];
     t->mf = mp->fader;                                  /* (4b) the matrix's MORPH source for this block (mod.c) */
     if ((!mp->nid && !mp->fnid) || t->mwon || morph_stale(t, mp)) {
-#if DUELL_TIDE
         if (!t->mwon) GD_COUNT(gd_xr_call);
         if (!t->mwon && !(FELUCCA_GUARDS && morph_xr[pi])) {
             GD_COUNT(gd_xr_run);
             morph_xrest(pi);
         }
-#endif
         return 0;
     }
-#if DUELL_TIDE
     if (adv && morph_xstep(t, mp, pi)) mp->cvalid = 0;
-#endif
     t->mwon = 1;
     t->mwpi = (uint8_t)pi;
-#if DUELL_TIDE
     {                                                   /* GLIDE CPU (unit 2026-11-06: a blend every block of a moving fader cost ~70 us a block on part 1): while the
                                                          * fader moves, blend every other block and write the last blend in between (the fader one block, 0.73 ms, behind) */
         static uint8_t rskip[NSHOWN];                   /* (K3 ease level 1: a GLIDE or a hand on the fader blends every 4th block, 3 written from the last blend) */
@@ -1670,11 +1624,8 @@ static int morph_begin(track_t *t, int adv)
         }
         rskip[pi] = 0;
     }
-#endif
     if (mp->cvalid && mp->cfader == mp->fader && mp->cst == duell_stereo) {   /* as the block before: write the values */
-#if DUELL_TIDE
 cached:
-#endif
         n = mp->cn;
         for (j = 0; j < n; j++) {
             uint32_t id = mp->cid[j];
@@ -1703,15 +1654,11 @@ cached:
                 tlive[m++] = v;
             }
         }
-#if DUELL_TIDE
         m = morph_xreg(pi, t->p, tid, chk, tlive, m);
         if (adv)
             EASE_PROBE(0);                              /* (tests: a block's blend) */
         morph_apply_at(mp, t->p, morph_wb(mp->fader), 1, mxp, 1);
         morph_xpost(t, pi);
-#else
-        morph_apply(mp, t->p, morph_wb(mp->fader), 1, mxp);
-#endif
         /* the cache keeps what was written, and what depends on its live value without a write now: a faded choice or
          * route (the user's once edited), a continuous value at the edge of its range (clamped to itself) */
         for (j = 0, n = 0; j < m; j++)
@@ -1759,11 +1706,7 @@ static int morph_view_on(uint32_t pi)
     return mp && mp->n[0] && mp->nid && !morph_stale(&trk[pi], mp);
 }
 /* item 159: every value of part pi at once into v[EXT_P_LEN] (the editor's DUMP / pushes: one blend, not one per id); morph_view(pi, id) is v[id] */
-#if DUELL_TIDE
 static void morph_view_at(uint32_t pi, int16_t *v, int aud)
-#else
-static void morph_view_all(uint32_t pi, int16_t *v)
-#endif
 {
     mxf_t xf;
     uint32_t j;
@@ -1771,20 +1714,14 @@ static void morph_view_all(uint32_t pi, int16_t *v)
     if (!morph_view_on(pi))
         return;
     memset(&xf, 0, sizeof xf);
-#if DUELL_TIDE
     morph_apply_at(&mph[pi], v, morph_wb(mph[pi].fader), 1, &xf, aud);
-#else
-    morph_apply(&mph[pi], v, morph_wb(mph[pi].fader), 1, &xf);
-#endif
     for (j = 0; j < mph[pi].nid; j++) {                  /* a faded choice: the dominant end (the audio path crossfades) */
         const ment_t *en = &mph[pi].ent[j];
         if ((en->kind & 0x3Fu) == MK_FADE && en->id < EXT_P_LEN && xf.on && xf.w[en->mx] >= 16384u)
             v[en->id] = xf.b[en->mx];
     }
 }
-#if DUELL_TIDE
 static void morph_view_all(uint32_t pi, int16_t *v) { morph_view_at(pi, v, 0); }
-#endif
 
 static int32_t morph_view(uint32_t pi, uint32_t id)
 {
@@ -1825,9 +1762,6 @@ static void morph_fm_live(uint32_t pi, uint8_t *live)     /* part pi's FM6 patch
 
 static uint32_t morph_new_seed(void);
 static void morph_roll_cfg(uint32_t pi, uint32_t x, uint32_t seed, uint32_t amount, uint32_t cfg);
-#if !DUELL_TIDE
-#define MM_NOWILD 0u                                  /* (b9 rc2: K2 defines it in morph_music.c, TIDE only; without TIDE the roll is the classic one: a WILD end stays allowed) */
-#endif
 static uint32_t morph_cfg_of(uint32_t pi) { return (morph.cfg & MC_SET & ~MM_NOWILD) | (duell_stereo ? MC_STEREO : 0u) | (pi ? MC_PART : 0u) | TIDE_CFG_BITS(); }   /* TIDE hook */
 /* v2: a patch's saved End B (MB_N bytes in the user preset record, upreset.c): 'M', seed (16 bit), AMOUNT, MC_* bits, 0,
  * a check byte (DUELL: byte 5 = the part's AMOUNT knob + 1 at saving, 0 = not stored: older patches; a load sets the part's AMOUNT to it, else to the roll's). morph_ld: the block of the sound being loaded (set by up_load before load_end, read by morph_rebase_part) */
@@ -1852,9 +1786,7 @@ static void morph_rebase_part(uint32_t pi)               /* ends = the Original,
     const track_t *t = &trk[pi];
     uint32_t id, e;
     MORPH_LOCK();
-#if DUELL_TIDE
     morph_xreset(pi);
-#endif
     for (id = 0; id < EXT_P_LEN; id++)
         mp->base[id] = (int8_t)clamp(t->p[id], -128, 127);
     mp->eng = t->eng_req;
@@ -1894,18 +1826,9 @@ static void morph_rebase_part(uint32_t pi)               /* ends = the Original,
                                                          * stream (on either part); PAN only where the mode lets it (3b).
                                                          * The part's AMOUNT knob stays the player's (a setting, kept over
                                                          * power cycles): it is the next ROLL's */
-#if !DUELL_BENCH && !DUELL_TIDE                           /* (TIDE hook (H6): a factory sound's B is rolled, MUSICAL by default: no DS_ENDB) */
-        const uint8_t *eb = ds_endb(t->eng_req, t->preset);    /* End B as exact values (the sound's block, as a saved patch carries it; the AMOUNT is in it); the bench builds keep the seed roll */
-        if (eb)
-            morph_bv_load(pi, eb);
-        else
-#endif
         {
         morph_roll_cfg(pi, 1u, ds_seed(t->eng_req, t->preset), TIDE_FACTORY_BAMT(t->eng_req, t->preset, ds_amount(t->eng_req, t->preset)),
                        (duell_stereo ? MC_STEREO : 0u) | TIDE_FACTORY_CFG());   /* TIDE hook */
-#if !DUELL_TIDE
-        mp->amount = (uint8_t)TIDE_FACTORY_AMOUNT(ds_amount(t->eng_req, t->preset));   /* ... and the part's AMOUNT knob follows the sound's category amount (TIDE b6: the player's AMOUNT stays) */
-#endif
         }
     } else {                                             /* none saved: a fresh roll at the current AMOUNT */
         morph_roll_cfg(pi, 1u, morph_new_seed(), mp->amount, morph_cfg_of(pi));
@@ -1914,7 +1837,6 @@ static void morph_rebase_part(uint32_t pi)               /* ends = the Original,
         morph_pin_load(mp, morph_ld_e, morph_ld_n);
 }
 static void morph_ready_first(uint32_t pi);
-#if DUELL_TIDE
 #include "knob_sets.h"          /* 1.0.0-b9: the genre knob sets (HOME page 1 K2..K4) */
 /* 1.0.0-b7: the loaded sound's FILTER, RESONANCE and ECHO (HOME's MORPH page K2..K4, ui_input.c H1_PG: OCT- + the knob puts its value back; b8: RESONANCE for LENGTH; b9: every parameter the genre macros move), taken when a sound is
  * loaded (morph_rebase), at a part's first use and when morph_ready finds another sound; not by a rebase of the same sound (HOME, KEEP: the edits stay the player's).
@@ -1930,9 +1852,6 @@ static void h1_take(uint32_t pi)
         h1_gorig[k - KN_NP] = song.g[KN_ID[k]];
 }
 #define H1_TAKE(pi) h1_take(pi)
-#else
-#define H1_TAKE(pi) ((void)0)
-#endif
 static void morph_rebase(const track_t *t)               /* a sound was loaded into t (ui.c, project.c) */
 {
     uint32_t pi = (uint32_t)(t - trk);
@@ -2040,7 +1959,6 @@ static void morph_ramp(morph_part_t *mp, uint32_t x)
 
 /* ROLL end x (0 A, 1 B) of part pi: seed 1..65535, AMOUNT, cfg (MC_*: the settings the roll is made with, STEREO mode, the part
  * whose stream it is). The same Original, seed, AMOUNT and cfg give the same end (the FM6 bytes too) */
-#if DUELL_TIDE
 #include "morph_tide.c"          /* TIDE hook (H4): MORPH TO, the MUSICAL roll, the FM6 target */
 
 #include "morph_xfer.c" /* TIDE: reachable crossing planner, valleys and wash */
@@ -2060,7 +1978,6 @@ static uint32_t morph_xside(const morph_part_t *mp, int32_t w, int aud)
 }
 
 #include "morph_complement.c"    /* .. the two parts' contrast */
-#endif
 /* ROLL CHAINED: from the start st / fst (EXT_P_LEN values, NFM FM6 bytes; the Original mp->base / mp->fb for a roll from the Original) */
 static void morph_end_pure(morph_part_t *mp, const int8_t *st, const uint8_t *fst, int8_t *end, uint8_t *fend, uint32_t pi, uint32_t seed, uint32_t amount, uint32_t cfg)
 {
@@ -2647,12 +2564,6 @@ static void morph_set_amount(uint32_t a)                 /* AMOUNT 0..100 % */
     for (; pi < end; pi++)
         morph_ready(pi)->aset = morph_ready(pi)->amount = (uint8_t)(a > 100u ? 100u : a);
 }
-#if !DUELL_TIDE
-static void morph_set_target(uint32_t both)
-{
-    morph.target = both ? MT_BOTH : MT_SELECTED;
-}
-#endif
 static void morph_set_cfg(uint32_t bit, uint32_t on)      /* v2: SMART (on = bit MC_WILD clear), ARP, PITCH */
 {
     morph.cfg = (uint8_t)(on ? morph.cfg | bit : morph.cfg & ~bit);
@@ -2688,12 +2599,6 @@ static uint32_t morph_seed_of(uint32_t pi, uint32_t e)  /* end e's seed, 0: no r
 static uint32_t morph_do(uint32_t kind, uint32_t mask, uint32_t v)
 {
     uint32_t pi, seed = 0;
-#if !DUELL_TIDE
-    if (kind == MQ_TARGET) {                             /* v2: 0 PART 1, 1 PART 2, 2 BOTH */
-        morph_set_target(v >= 2u);
-        return 0;
-    }
-#endif
     if (kind >= MQ_SMART) {
         morph_set_cfg(kind == MQ_SMART ? MC_WILD : kind == MQ_ARP ? MC_ARP : MC_PIT, kind == MQ_SMART ? !v : v);
         return 0;
@@ -2783,9 +2688,7 @@ static int morph_unpack(const uint8_t *b, uint32_t n)
     np = b[3] < NSHOWN ? b[3] : NSHOWN;
     if (n < 4u + np * MORPH_PACK_PART)
         return 0;
-#if DUELL_TIDE
     song.both = (uint8_t)(b[2] & 1u);                   /* b[2] TARGET: the selection's BOTH (1.0.0-b5: read back; 0.2.9 to b4 wrote it and never read it) */
-#endif                                                   /* (plain DUELL: reserved, ALGORITHM's BOTH is not loaded) */
     for (pi = 0; pi < np; pi++) {
         morph_part_t *mp = morph_ready(pi);
         const uint8_t *q = b + 4u + pi * MORPH_PACK_PART;

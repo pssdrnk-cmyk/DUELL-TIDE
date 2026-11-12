@@ -17,7 +17,7 @@ Please read [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) before you report. Back
 
 Small and focused, one thing at a time. Say what you changed and what you tested, and on what: a real FM-1, the emulator, or the computer only. A change to the sound, the sequencer or storage is best tried on a real FM-1, and comes with a host-test group that fails without it and passes with it (`./host_tests.sh group`). By contributing you agree that your work is licensed under GPL-3.0-only; new source files carry the SPDX header (`SPDX-License-Identifier: GPL-3.0-only`).
 
-**Fixes that belong in plain DUELL.** A fix that is also right for DUELL 1.1 without TIDE (it changes the `DUELL_TIDE=0` build too, see the check_off rule below) is offered to OSCILL/R's DUELL as a small, device-tested pull request, made from a branch based on OSCILL/R's `main` and not on a TIDE branch. OSCILL/R welcomes small, device-tested pull requests, and the fork owner opens these ones: say in an issue here which change you mean. TIDE itself (everything behind `DUELL_TIDE`) stays in this fork.
+**Fixes that belong in plain DUELL.** A fix that is also right for DUELL 1.1 without TIDE is offered to OSCILL/R's DUELL as a small, device-tested pull request, made from a branch based on OSCILL/R's `main` and not on a TIDE branch. OSCILL/R welcomes small, device-tested pull requests, and the fork owner opens these ones: say in an issue here which change you mean. TIDE itself stays in this fork (since b10 there is no plain build here any more: TIDE is the only firmware).
 
 ## Build
 
@@ -27,7 +27,7 @@ The firmware builds with the JieLi toolchain, which runs on Linux x86-64, or in 
 python3 tools/build.py
 ```
 
-TIDE is on by default. The package is `felucca-base/build/duell-1.1.fwsc`. `DUELL_TIDE=0` builds plain DUELL 1.1. On Windows, use Git Bash and `. jam/env.sh` (it expects a work folder with the toolchain next to the repository).
+TIDE is the firmware (the plain `DUELL_TIDE=0` build was retired in b10). The package is `felucca-base/build/duell-1.1.fwsc`. On Windows, use Git Bash and `. jam/env.sh` (it expects a work folder with the toolchain next to the repository).
 
 ## Test
 
@@ -35,11 +35,8 @@ TIDE is on by default. The package is `felucca-base/build/duell-1.1.fwsc`. `DUEL
 |---|---|
 | Linux, macOS | `./host_tests.sh` (all groups) or `./host_tests.sh group ...` (the groups are named at the top of the script) |
 | Windows (Git Bash) | `sh jam/check.sh` (the device build, then every group) or `sh jam/check.sh group ...` |
-| TIDE off | `sh jam/check_off.sh` |
 
 Run the groups that cover what you changed; a firmware change that touches storage, MIDI or the sound needs its own group to pass. CI runs all groups on Linux (`.github/workflows/host-tests.yml`). Some groups are skipped on Windows because they need `fork()`; `jam/check.sh` reports them as SKIP.
-
-**The check_off rule.** `jam/check_off.sh` builds with `DUELL_TIDE=0` and compares the package hash with `jam/off.sha256`. A TIDE change must never change that hash. A fix to DUELL's own behaviour (one that is also in a build without TIDE) does change it: update `jam/off.sha256` in the same commit and give the reason in the commit message.
 
 ## Style
 

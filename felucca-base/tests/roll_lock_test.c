@@ -6,9 +6,6 @@
 #define main hostsim_main
 #include "hostsim.c"
 #undef main
-#if !DUELL_TIDE
-int main(void) { puts("rolllock: plain DUELL: not applicable"); return 0; }
-#else
 static int bad;
 static void check(const char *what, int ok) { printf("rolllock: %-90s %s\n", what, ok ? "ok" : "FAIL"); bad += !ok; }
 static void fresh(void)
@@ -66,4 +63,3 @@ int main(void)
     printf("rolllock: %s\n", bad ? "FAIL" : "PASS");
     return bad != 0;
 }
-#endif

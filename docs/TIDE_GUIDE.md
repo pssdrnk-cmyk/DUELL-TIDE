@@ -104,7 +104,7 @@ The glide only moves while the transport plays. **STOP** pauses it; **PLAY** car
 
 STYLE DUB, DEEP, MINIMAL and DRONE use EVOLVE; AMBIENT and PEAK use TRAVEL. A saved setup with an old MODE of ONCE, LOOP or DRIFT opens as EVOLVE, and WANDER as EVOLVE too; JOURNEY opens as TRAVEL. On the AUTO TIDE page the top line reads EVOLVING TO B or TRAVEL TO B; ARC's hint reads NEEDS EVOLVE, and "DROP NEEDS EVOLVE/TRAVEL" when it cannot act.
 
-**The top line, in full.** `EVOLVING TO B   BAR 3/16` (with an ARC running, `EVOLVING TO B` and the ARC's own words beside it, for example `ARC RISE 1/3`); `TRAVEL TO B` in TRAVEL; `WAITING  1/2` while the trip is held; `GLIDE ON THE NEXT BAR` or `GLIDE STARTS WITH PLAY` before the first trip; `PAUSED: PLAY GOES ON`; `HAND  BACK IN n BARS` after your hand on the fader. On the MORPH page, knob 1's line shows the trip without the word BAR: `EVOLVING TO B 1/16`.
+**The top line, in full.** `EVOLVING TO B   BAR 3/16` (with an ARC running, its words sit at the top right, for example `ARC RISE 1/3`, and the ARC's shape is drawn under the faders: RISE, PEAK, BREAK); `TRAVEL TO B` in TRAVEL; `WAITING  1/2` while the trip is held; `GLIDE ON THE NEXT BAR` or `GLIDE STARTS WITH PLAY` before the first trip; `PAUSED: PLAY GOES ON`; `HAND  BACK IN n BARS` after your hand on the fader. On the MORPH page, knob 1's line shows the trip in short: `TO B 1/16` (the fader's number, then the bar, with no mode word).
 
 **COLR LFO.** GLO's page 6 of 13 is COLR LFO, one knob (COLOR LFO, 0 to 15): a slow 0.25 Hz wave that swings the delay's colour, so the repeats breathe. 0 is off; DUB BASIC and DUB CHORD use 5, and a multi stores the value.
 

@@ -54,9 +54,7 @@ static int erase_data_run(void)
     if (!flash_ok || erase_at)
         return 4;
     persist_pending = 0;                         /* nothing queued is written over the empty flash */
-#if DUELL_TIDE
     memset(tide_tail, 0, TIDE_TAIL_N);           /* (TIDE's fields live in the settings record: gone with it) */
-#endif
     ps_dirty = 0;
     as.wrote = 1;                                /* and no autosave for the next 60 s (autosave_poll's gap) */
     as.last = fm1_ms;

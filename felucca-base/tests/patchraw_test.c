@@ -552,7 +552,7 @@ int main(void)
         ok = pr_begin(23, PT_WORST + 1u, 0) == 1u && pr_begin(23, PT_FIX - 1u, 0) == 1u && pr_begin(23, PT_WORST, 0) == 0u;
         pr_end(23, 5);
         ck("the length limit follows PT_WORST (577; TIDE 580): BEGIN takes PT_WORST, refuses one byte more and a record shorter than the fixed part",
-           ok && PT_WORST == (DUELL_TIDE ? 580u : 577u));
+           ok && PT_WORST == 580u);
         /* the biggest record the store can write (every slot and value off default, End B at its biggest, FM6, SEQ arp) through PATCH_RAW into every slot was section 6 above */
     }
 

@@ -81,9 +81,7 @@ static void map_unmap(uint32_t cc, uint32_t restore)
 static const char *const MAP_ACT_NAME[MAP_T_ACT_END - MAP_T_MORPH] = {
     "MORPH", "ROLL A", "ROLL B", "-", "ROLL", "MORPH AMOUNT", "MORPH TARGET", "MORPH SMART", "MORPH ARP", "MORPH PITCH", "MODE", "-", "XFADE",
     "SPLIT NOTE", "CUTOFF", "RESONANCE"
-#if DUELL_TIDE
     , "GLIDE", "SEQ MORPH"
-#endif
 };
 static const char *const MAP_X_NAME[NX] = {"ROUTE", "LINK", "TWIN KEY TRK", "ENV TO TWIN CUTOFF", "LFO 1 TO TWIN CUTOFF", "LFO 2 TO TWIN CUTOFF", "SUB LEVEL",
                                            "SUB OCTAVE", "SUB WAVE", "SUB HARMONICS", "CYCLE MODE", "CYCLE RISE", "CYCLE FALL", "CYCLE CURVE",
@@ -165,9 +163,7 @@ static void map_target_info(uint32_t code, const track_t *t, map_info_t *r)
     } else {
         r->saved = code >= MAP_T_TARGET && code <= MAP_T_PITCH ? MAP_S_DEVICE : MAP_S_MULTI;
         r->kind = code == MAP_T_ROLL_A || code == MAP_T_ROLL_B || code == MAP_T_ROLL
-#if DUELL_TIDE
                   || code == MAP_T_GLIDE
-#endif
                   ? MAP_K_ACTION :
                   code == MAP_T_TARGET || code == MAP_T_MODE ? MAP_K_STEPPED : code >= MAP_T_SMART && code <= MAP_T_PITCH ? MAP_K_SWITCH : MAP_K_CONTINUOUS;
         if (code == MAP_T_CUTOFF_SMART || code == MAP_T_RES_SMART) {

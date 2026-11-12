@@ -66,7 +66,6 @@ static void midi_expression_channel(uint32_t ch)
             midi_expression(&trk[i], midi_channel(ch));
 }
 
-#if DUELL_TIDE
 /* review FR8 (A6): MIDI IN = SEL, the selected part changed (events_block): the part left keeps no bend or channel pressure its channel can no longer
  * reach (the centring bend and the pressure going to 0 go to the new part); a part still holding a MIDI note keeps them (its channel reaches it:
  * midi_targets). The mod wheel stays: it is a position, not a gesture that springs back */
@@ -80,19 +79,14 @@ static void midi_sel_change(void)
         trk[o].at = 0;
     }
 }
-#endif
 
 /* a MIDI note of track t sounds note: one played as itself, or a tone of one played as a chord (chord.c) */
 static int midi_note_held(const track_t *t, uint32_t note)
 {
     uint32_t ch, id = trk_index(t) + 1u, own = duell_mode == DM_LAYER && id == 2u ? 1u : id;   /* (LAYER: part 2's copy of part 1's) */
     for (ch = 0; ch < 16u; ch++) {
-#if DUELL_TIDE
         uint32_t o = MIDI_OWNER(midi_note_get(ch, note));
         if ((o == own || o == id) && !mchord_of(ch, note, id))   /* (review FR8: LAYER, a note part 2 plays alone is part 2's own: midi_note_event) */
-#else
-        if (MIDI_OWNER(midi_note_get(ch, note)) == own && !mchord_of(ch, note, id))
-#endif
             return 1;
     }
     return mchord_held(id, note);
@@ -275,13 +269,9 @@ static void midi_note_event(uint32_t ch, uint32_t note, uint32_t vel)
         midi_expression(t, c);
         if (t != TSEL && duell_mode != DM_LAYER)       /* (LAYER: part 1 plays both, whichever is selected) */
             midi_hint = (uint8_t)(trk_index(t) + 1u);
-#if DUELL_TIDE
         /* review FR8 (A4): LAYER with SPLIT, a note part 2 plays alone is owned by part 2, so its release (midi_release, id 2) leaves part 1 alone; kept
          * at the note-on, so a SPLIT moved while it is held cannot strand it */
         uint32_t own = duell_mode == DM_LAYER && !(lay_route(note) & 1u) ? 1u : trk_index(t);
-#else
-        uint32_t own = trk_index(t);
-#endif
         c->targets |= (uint8_t)(1u << own);
         midi_play(t, ch, note, vel);
         midi_note_put(ch, note, own + 1u);
@@ -475,7 +465,6 @@ static void __attribute__((noinline)) midi_morph(uint32_t ch, uint32_t pi, uint3
     }
 }
 
-#if DUELL_TIDE
 /* MIDI ISR: queue work; planning and sequence changes remain on the main loop.
  * Staying in one end zone must not restart a glide on every controller message. */
 static uint8_t midi_tide_fired[16]; /* two bits per shown part, independently on each channel */
@@ -493,7 +482,6 @@ static void midi_tide(uint32_t ch, uint32_t pi, uint32_t code, uint32_t value)
             morph_push(MQ_GLIDE, pi, zone - 1u);
     }
 }
-#endif
 
 /* DUELL step 5 (SPEC 5b.1): the MODE is global (not a part's): 0-42 SPLIT, 43-85 STEREO, 86-127 LAYER, on any channel (also one ROUT does
  * not play: the MODE is no part's), a value that keeps the mode does nothing. XFADE 0..127 -> 0..100 % (item 157: BALANCE is no target any more);
@@ -554,10 +542,8 @@ static void __attribute__((noinline)) midi_map_cc(uint32_t ch, track_t *ct, uint
             return;
         id = e == 15u ? (code == MAP_T_CUTOFF_SMART ? P_FREEA : P_FREEB) : P_E0 + e - 1u;   /* (15: the multimode filter's CUT, RES) */
         midi_cc_set(t, id, value);
-#if DUELL_TIDE
     } else if (code == MAP_T_GLIDE || code == MAP_T_SEQ) {
         midi_tide(ch, trk_index(t), code, value);
-#endif
     } else if (code >= MAP_T_MORPH && code <= MAP_T_PITCH) {
         midi_morph(ch, trk_index(t), code, value);
     } else {

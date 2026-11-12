@@ -182,7 +182,7 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 - **Builder and four reviewers.** Each change is built by one agent on its own branch, then read by separate reviewers: correctness, quality and cohesion, tests, docs. The coordinator decides the fixes; a verification review checks them.
 - **Pull requests.** Every change goes to GitHub as a pull request against `jam11`; GitHub runs the full host suite on it. Locally only the device build (size, hot-code check) and `check_docs.py`. Builders work in parallel; merges go one at a time, with the owner's OK.
 - **Never flash red.** A tagged beta is never flashed while the full suite is red. The tag comes before the build; the flashed commit is merged and pushed the same day.
-- **Plain DUELL is no longer kept identical** (owner, 8 November: no upstream merging). Shared code may change when that is simpler or smaller; the `DUELL_TIDE=0` build should still compile, but `jam/check_off.sh` is no longer a gate. The `partindep` pins are never regenerated.
+- **Plain DUELL is no longer kept identical** (owner, 8 November: no upstream merging). Shared code may change when that is simpler or smaller; there is no plain build any more (retired in b10). The `partindep` pins are never regenerated.
 - **Formats and user data are kept** (patches, patterns, multis, settings, KEEP / UNDO) unless the owner decides otherwise.
 - **No new pages.** TIDE options are rows on TIDE SETTINGS with good defaults; restyles keep every fader bar, note and shown value.
 - **Technical choices are the coordinator's**, with audio quality first, then risk and effort. The owner decides what is heard, seen and touched.
@@ -239,7 +239,6 @@ Each part is proposed with close-ups and approved by the owner before it's built
 
 **Live recording** ([audit](audits/2026-11-08/liverec/LIVEREC_AUDIT.md))
 - Documented limits of the keys-record-into-ARP-SEQ pattern (Released in b3): a 2-step pattern in REPLACE splits a chord across the step boundary, and the key's step is predicted from the POLY stretch before the next arp step runs (it can land one step off at a stretch change). [Brief R2](audits/2026-11-08/liverec/TASKS.md#r2)
-- Plain DUELL's `rec_note` stays under `#else`: deliberate, a shared `rec_put` would change the `DUELL_TIDE=0` binary.
 - ~~Named `tide.h` hooks for the raw `#if DUELL_TIDE` blocks in `seq.c`; a `seq_len()` helper; one "past half step" helper.~~ Built in b10 round 3 (`fw3`): hooks H20 in `tide.h`, `TIDE_LIVEREC`, `seq_len`, `past_half` / `before_half`; `seq.c` keeps one `#if DUELL_TIDE` (the include of `tide_seq.c`). The TIDE image is byte-identical.
 - ~~Dead `SC_MODE` code under TIDE~~: checked on 12 November (b10 round 2): nothing to buy back. The MODE page's draw, graph and knob code is under `#if !DUELL_TIDE`, and `TIDE_MODE_PG` / `TIDE_GRID3` are constant 0 in TIDE, so the compiler folds the rest; the rc2 image has no `graph_mode` and no `CG3` symbol (`mode_knob` stays: TIDE SETTINGS calls it).
 - ~~A small per-row kind table for TIDE SETTINGS (replaces the row comparisons in `tide_ui.c`).~~ Built in b10 round 3 (`JL_KIND`, +4 B).
@@ -257,7 +256,7 @@ Each part is proposed with close-ups and approved by the owner before it's built
 - The `emu` CI job: fixed in [#4](https://github.com/pssdrnk-cmyk/DUELL-TIDE/pull/4) (emsdk sourced under bash; merged 8 November), and the job gates.
 - Rename `jam11` to `tide`.
 - Gate the release channels by CI too (a Stable / Beta release is offered only from a green commit), from the 4 November decisions.
-- Retire the plain build (Later): `jam/check_off.sh` is already no longer a gate (owner, 8 November). Still open: drop `DUELL_TIDE=0`, `jam/check_off.sh`, `jam/off.sha256` and the tideoff test groups, and fold the `#if DUELL_TIDE` hooks into plain code where that saves flash or clarity. One step per beta.
+- ~~Retire the plain build~~ Done (b10 tools lane): `DUELL_TIDE=0`, `jam/check_off.sh`, `jam/off.sha256`, the `tideoff` and `multiv8` groups (and the 1.0 -> 1.1 record converter) are gone, and the `#if DUELL_TIDE` sides are folded; the TIDE image is byte for byte the one before.
 - Test quality notes left from finding 38: ~~split the FM6 budget check by crossing state~~ and ~~one generated multi-name table~~ built in b10 (tools-b); the `F_NONE` hang exemption if it flakes.
 - Workspace clean-up: retire merged worktrees (owner's OK).
 

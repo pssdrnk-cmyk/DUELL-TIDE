@@ -36,13 +36,12 @@ GROUPS = {
     "HELPERS": ["__udivdi3", "memcpy", "div_divlu", "memset", "div_samples", "beat_samples", "part_rand", "div_nlz32", "isqrt32", "isqrt64",
                 "phys_slot_of", "phys_reset"],
 }
-if os.environ.get("DUELL_TIDE") != "0":
-    # TIDE split the blend body from morph_apply; keep the audio body in RAM with its wrapper.
-    GROUPS["MORPH"].append("morph_apply_at")
-    # K3 (TIDE 1.0.0-b4): the ease ladder's per-half step (audio.c ease_step, a few compares); its level change ease_set stays in the flash (tools/ram_allow.py)
-    GROUPS["EASE"] = ["ease_step"]
-    # TIDE 1.0.0-b5 (CPU audit K5): the silent delay and master checks, every block (fx.c sil_dly, sil_mst; plain DUELL has none)
-    GROUPS["SILENT BUS"] = ["sil_dly", "sil_mst"]
+# TIDE split the blend body from morph_apply; keep the audio body in RAM with its wrapper.
+GROUPS["MORPH"].append("morph_apply_at")
+# K3 (TIDE 1.0.0-b4): the ease ladder's per-half step (audio.c ease_step, a few compares); its level change ease_set stays in the flash (tools/ram_allow.py)
+GROUPS["EASE"] = ["ease_step"]
+# TIDE 1.0.0-b5 (CPU audit K5): the silent delay and master checks, every block (fx.c sil_dly, sil_mst)
+GROUPS["SILENT BUS"] = ["sil_dly", "sil_mst"]
 NAMES = [f for fs in GROUPS.values() for f in fs]
 # DUELL_TWOCORE=1 (two-core stage 1, the merge of cloud/job5 with this line): what core 1 runs beyond the list above. The real call graph of the job (tc_job_run,
 # fm1_c1_main: the relocations of the compiled object, tools/ram_reach.py, docs/TWOCORE_REACH_REAL.md) reaches 153 functions; 109 are placed already (hot 22, X 39, Z 48), 44 are not:
@@ -71,8 +70,7 @@ if TWOCORE:
 # TIDE 1.0.0-b5 (RAM room for the one-part change): cold code back to the flash, about 1 KB of range Z. The EQ's coefficient design (fx.c eq_design and
 # its helpers eq_q28, eq_taylor, eq_hz_q8, and __divdi3, which only they call from RAM) runs when a band's integer key changes (a knob step, a morph
 # step, a band turned on or off), not every block: track_eq, the per-block filter, stays in range Z (tools/ram_allow.py has the reason). morph_apply
-# is called only from the UI (ui_input, morph_effective_x). Plain DUELL (DUELL_TIDE=0) keeps them in range Z, byte for byte.
+# is called only from the UI (ui_input, morph_effective_x).
 TIDE_FLASH = ("eq_design", "eq_q28", "eq_taylor", "eq_hz_q8", "__divdi3", "morph_apply")
-if os.environ.get("DUELL_TIDE") != "0":
-    NAMES = [f for f in NAMES if f not in TIDE_FLASH]
+NAMES = [f for f in NAMES if f not in TIDE_FLASH]
 HI = 0x01C74000                                 # the stack guard (app_ram.ld _guard0): Z ends below it

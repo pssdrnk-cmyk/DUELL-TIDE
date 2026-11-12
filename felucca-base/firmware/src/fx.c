@@ -13,8 +13,8 @@
  * input is 0 while the whole line has been written with zeros (dz) and its loop states are 0 (the chorus skipping too: cho_zs); the master's DC blocker, limiter
  * and knee (mix_master) are left out of a block whose mix is 0 while the DC blocker is at 0 and the limiter's envelope is back at its threshold. Each gives
  * then exactly the zeros the loop would have given and leaves its state as the loop would have left it (tests/silentskip_test.c, built with -DSIL_NOSKIP for the
- * firmware without the skip). Plain DUELL (DUELL_TIDE 0) is not changed */
-#if DUELL_TIDE && !defined(SIL_NOSKIP)
+ * firmware without the skip). */
+#if !defined(SIL_NOSKIP)
 #define SIL_SKIP 1
 #else
 #define SIL_SKIP 0
@@ -65,9 +65,7 @@ typedef struct {
     uint8_t byp;                         /* DUELL 1.1 BYPASS of the REVERB: 1 = skipped, its buffers cleared (fx_bus.c rev_byp) */
     uint8_t cho_zs;                      /* .. 1: this block's chorus input is all 0 and the whole line was 0 before it: fx_buses_m leaves the chorus out (its output is 0) */
     uint32_t dly_g;                      /* the plain delay's read offset now (Q15 samples; fx_bus.c fx_buses_m: a TIME or tempo change slides to it; 0 = not running, the next block takes the time at once) */
-#if DUELL_TIDE
     uint32_t dz, dz_w;                   /* TIDE K5 (fx.c sil_dly): the samples behind the delay's write head read back as 0 in a row (past the line's length: all of it is 0), and the write index at sil_dly's last call */
-#endif
 } fxs_t;
 static fxs_t fx;
 static int32_t lo_buf[CTL];             /* the reverb low cut's output block (fx_bus.c rev_locut; bus A and B run one after the other) */
@@ -639,12 +637,7 @@ static dlyev_t dlyev_b __attribute__((section(".pool")));                  /* 0.
  * the same way. Nothing changes while it is not engaged: the stored values are never touched, ovl_lite only steers the delay's switches below
  * (tests/ovl_test.c renders bit for bit with it compiled out, -DOVL_NOGUARD). Shown on ABOUT (LIGHT FX); flash code only */
 static uint8_t ovl_lite;                 /* 1: the guard is engaged */
-#if DUELL_TIDE
 #define ovl_count ease_n[2]              /* (TIDE 1.0.0-b4, K3: the guard is the ease ladder's level 3, audio.c ease_set; it counts the entries into that level) */
-#else
-static uint16_t ovl_calm;                /* halves in a row with the meter's load under 70 % while engaged */
-static uint32_t ovl_count;               /* times it engaged since power-on (the console) */
-#endif
 #ifdef OVL_NOGUARD
 #define OVL_LITE 0u                      /* (the test's reference build: the guard compiled out) */
 #else
@@ -652,23 +645,6 @@ static uint32_t ovl_count;               /* times it engaged since power-on (the
 #endif
 #define OVL_CALM_Q8 179u                 /* 70 % in the meter's Q8 (256 = the whole half): the bar's amber */
 #define OVL_CALM_HALVES ((3u * FS + HALF_FRAMES / 2u) / HALF_FRAMES)   /* ~3 s of halves (1034) */
-#if !DUELL_TIDE
-/* once a half (audio.c shed_check): over = the 85 % rule held (two halves in a row), q8 = the meter's load */
-static __attribute__((noinline)) void ovl_step(uint32_t over, uint32_t q8)
-{
-    if (over) {
-        ovl_count += !ovl_lite;
-        ovl_lite = 1;
-        ovl_calm = 0;
-        return;
-    }
-    if (!ovl_lite)
-        return;
-    ovl_calm = q8 < OVL_CALM_Q8 ? (uint16_t)(ovl_calm + 1u) : 0u;
-    if (ovl_calm >= OVL_CALM_HALVES)
-        ovl_lite = 0, ovl_calm = 0;
-}
-#endif
 static void dlyev_clear(void) { memset(&dlyev, 0, sizeof dlyev); memset(&dlyev_b, 0, sizeof dlyev_b); fx.dly_g = fx_b.dly_g = 0; }   /* the lines are cleared (SENDS OFF, STOP ALL, a mode change of the mix): from rest, both buses */
 static void dlyev_start(void) { dlyev.sync = 1; dlyev_b.sync = 1; }  /* PLAY: the clock edges count from the top (seq.c seq_start, as the DUCK's PUMP) */
 static struct { int32_t r[CTL], l[CTL]; } mixlr HOTG_BSS;   /* the pair in one pinned object (core.h HOTG_BSS): the hot PERFORM / delay code reaches the left as the right + 128 */
@@ -1379,9 +1355,7 @@ typedef struct {
     uint8_t dm_cur, dm_split, dm_hold, dm_clr;
     int8_t dm_dir, perf_space, perf_filt, perf_depth;
     uint8_t snd_st, mods_off, sp_tap, pf_mute;
-#if DUELL_TIDE
     uint32_t wv_blk, wv_on;      /* the MORPH card's scope tap (wv_tap below): this block's number and the tap's gate, stamped in mix_block and carried to core 1 with the rest, so a late job taps the block it was made for */
-#endif
 } blockstate_t;
 #include "perform.c"                                 /* DUELL 0.2.5 PERFORM: the white keys' master effects and mutes */
 
@@ -1476,7 +1450,6 @@ _Static_assert(sizeof(part_acc_t) == 8u * CTL * sizeof(int32_t), "part_acc_t is 
 static part_acc_t pacc[NLIVE];
 static uint8_t pacc_on[NLIVE];                          /* the part wrote its accumulators this block: bit 0 l / r, bits 1..3 the sends sc / sd / sr that are not 0, bit 4 the floors fc / fd / fr (a silent part writes none: mix_gather skips it) */
 
-#if DUELL_TIDE
 /* The MORPH card's scope tap (docs/design/WAVE_DISPLAY_PLAN.md 3.1, reduced to the RAM there is: 512 entries, mono). Each part's finished block, as the meters see it (after PATCH LEVEL, DIST, INSERT, EQ, DUCK and PAN; before the sends
  * and the master), as ONE mono entry per two frames: the average of the pair of L and the pair of R, at half scale (a loud chord passes full scale before the master). In 8 bits, companded (wvr_code, 1.0.0-b5):
  * 12 bits of that half scale (4,096 steps, -72 dB) in a sign and 7 bits, 8 segments of 16 as A-law, so a quiet note or a decay keeps its shape (the plain 1/128 steps up to b5's first try
@@ -1491,7 +1464,6 @@ static volatile uint8_t wv_sil[NLIVE];                  /* 1: the part was silen
 static uint32_t wv_last[NLIVE];                         /* the number of the part's last tapped block (written by the part's own writer, like wv_cnt) */
 static volatile uint32_t wv_blk;                        /* blocks since power-on (mix_block, core 0) */
 static volatile uint32_t wv_want;                       /* the UI: "wanted until block N" (signed difference with wv_blk); the only word the UI writes */
-#endif
 
 /* SPACE's STEREO WIDTH (0.2.9, the owner: "SPACE should decrease the stereo space to completely mono, and widen it on the plus side"), STEREO and
  * LAYER only, on the mix before the master (mix_l / mix_r with the buses' return, wet folded in): mid M = (L + R) / 2, side S = (L - R) / 2,
@@ -2912,16 +2884,12 @@ static __attribute__((noinline)) int part_voice(mixpart_t *m, track_t *t, uint32
     mod_begin(t);                                       /* the matrix's per-block values into t->p (mod.c) */
     m->spread = pscr[m->pp].spread_on = t->p[P_SPRD] > 0 && (trk_vmode(t) == V_POLY || trk_vmode(t) == V_UNISON) && !bs->dm_split;   /* (SPREAD,
                                                          * mix_spread; SPLIT: none, the part is mono on its side) */
-#if DUELL_TIDE
     uint32_t sounding = track_render(t, b, n);
     if (m->pp < NSHOWN) {                               /* (the valley and the wash keep the shown parts' state: mxs[NSHOWN]; the host rig's NPART=4 has more) */
         if (sounding) morph_valley(m->pp, b, m->spread ? pscr[m->pp].sbuf : 0, n);
         else morph_vrest(m->pp);
     }
     if (sounding)
-#else
-    if (track_render(t, b, n))
-#endif
         t->tail = t->p[P_ITYPE] ? 64 : 16;              /* blocks of DIST / INSERT state to run out after the last
                                                          * voice (the INSERT's: 46 ms, a flanger's feedback) */
     else if (!(t->p[P_DIST] | t->p[P_ITYPE] | t->p[P_EQLG] | t->p[P_EQMG] | t->p[P_EQHG]) ||
@@ -2962,10 +2930,8 @@ static __attribute__((noinline)) void part_rest(mixpart_t *m)
     mx_ok[pp] = 0;                                      /* (0.2.25: the matrix's mix ramp starts again from this block's values) */
     sp_go[pp] = 0;
     mx_was[pp] = mod_mixmv[pp];
-#if DUELL_TIDE
     if (m->bs->wv_on)                                   /* (the scope tap: a flag, no zeros) */
         wv_sil[pp] = 1;
-#endif
     if (MODW(t).on)
         mod_end(t);
 }
@@ -3121,7 +3087,6 @@ static __attribute__((noinline)) void part_mix(const mixpart_t *m)
     }
 }
 
-#if DUELL_TIDE
 /* an entry's code: v in 1/4,096 of the half scale (clamped at it), as a sign and 7 bits: segment e 0..7 (from 2 x 16 << e up, e 0 the 32 below linear), 4 bits in it (a step 2 << (e - 1), e 0: 2).
  * A short loop, a shift and a mask, small enough that part_end stays inlined; no library call (the audio interrupt's code, inlined into wv_tap) */
 static inline __attribute__((always_inline)) int8_t wvr_code(int32_t v)
@@ -3158,14 +3123,11 @@ static inline __attribute__((always_inline)) void wv_tap(const mixpart_t *m)
 #endif
     wv_cnt[pp] = w;
 }
-#endif
 
 /* the end of a sounding part's window: the stored SAT back (mod_end below also does), then the matrix's stored values */
 static inline __attribute__((always_inline)) void part_end(const mixpart_t *m)   /* (always inlined: core 1 calls it from RAM, fm1_c1_main, which cannot reach a flash copy) */
 {
-#if DUELL_TIDE
     wv_tap(m);                                          /* the MORPH card's scope tap */
-#endif
     m->t->p[P_DIST] = (int16_t)m->dist_st;              /* (the stored SAT back; mod_end below also does) */
     if (MODW(m->t).on)
         mod_end(m->t);                                  /* the stored values back */
@@ -3631,11 +3593,9 @@ static void mix_block(int32_t *out, uint32_t n)
         perf = perf_begin(n);
     }
     blk_snap(&bs, sp_tap);                              /* the shared control state, once: the parts only read it */
-#if DUELL_TIDE
     wv_blk++;                                           /* the scope tap: the block count, and the gate (the card wants the tap until block wv_want), read once and stamped into the block's state for both parts */
     bs.wv_blk = wv_blk;
     bs.wv_on = (uint32_t)((int32_t)(wv_want - wv_blk) > 0);
-#endif
 #if DUELL_TWOCORE
     tcr_begin(&bs, n);                                  /* DUELL TWO-CORE stage 1: part 2 goes to core 1 (twocore_run.c), part 1 stays here */
     {

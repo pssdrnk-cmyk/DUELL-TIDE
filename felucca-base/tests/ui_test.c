@@ -236,9 +236,7 @@ static int at_home(void) { return cur_page()->fam == FAM_TRK; }   /* HOME's roun
 #endif
 #include "../firmware/src/upreset.c"
 #include "../firmware/src/project.c"
-#if DUELL_TIDE
 #include "../firmware/src/tide_store.c"                   /* (felucca.c: TIDE's settings record, after upreset.c and project.c) */
-#endif
 
 /* names the firmware no longer has (the SCALE quick layer, PATCHES' RESTORE dialog): kept only so that this file, and tests/gen_factory_multis.c which includes it, compile.
  * The tests that use them are stale like ui_old_uslot's: they need rewriting to the current UI (not done here) */
@@ -382,7 +380,6 @@ static void press(uint32_t label)                 /* a tap: down, a frame, up, a
     frame();
 }
 static void frames(uint32_t ms) { uint32_t i; for (i = 0; i < ms / 16u; i++) frame(); }
-#if DUELL_TIDE
 /* 1.0.0-b9: TIDE SETTINGS has no ROLL TYPE row (KNOBS took its place; new rolls are MUSIC); the tests that need the old roll types (a saved SMART / WILD sound, the morph's WILD switch) set them
  * as the row did: 0 MUSIC, 1 SMART (the dials off), 2 WILD */
 static void roll_type_put(uint32_t v)
@@ -393,7 +390,6 @@ static void roll_type_put(uint32_t v)
     frame();
 }
 static uint32_t roll_type_get(void) { return morph.cfg & MC_WILD ? 2u : morph_musical ? 0u : 1u; }
-#endif
 #if defined(UI_TEXT_CAPTURE) || !defined(UI_TEST_NO_MAIN)
 /* DUELL 1.1 (item 127): what card c shows now = the texts drawn inside its rectangle (ui_draw.c grid_geo) by a full redraw of the screen (ui.force). The old cache key "LABEL|VALUE|UNIT"
  * is gone for the grid pages: card_is(c, "LABEL|VALUE|UNIT|..") asks that the label, the value and the unit (the fields that are not empty; a card's own \n is a space on the screen) were drawn
@@ -7667,9 +7663,6 @@ static int test_save_opens(void)
         {"LFO 1", DM_LAYER, GR_SLOTS},   {"ENV 2", DM_SPLIT, GR_BROWSE},     {"STEP", DM_LAYER, GR_PATS},
         {"STEP", DM_SPLIT, GR_PATS},     {"PARAMETER LOCKS", DM_STEREO, GR_PATS}, {"MIXER", DM_STEREO, GR_BROWSE},
         {"MORPH", DM_LAYER, GR_SLOTS},   {"REVERB", DM_STEREO, GR_BROWSE},   {"AMP ENV", DM_SPLIT, GR_BROWSE},
-#if !DUELL_TIDE                                         /* (TIDE 1.0.0-b4: PAGES has no MODE row) */
-        {"MODE", DM_LAYER, GR_SLOTS},
-#endif
     };
     uint32_t i;
     for (i = 0; i < NELEM(T); i++) {
@@ -7779,11 +7772,7 @@ static int test_no_flash(void)
  * C. PATCHES: the header shows PATCHES at every patch (never "ENGINE <name>" in the title's place, M on a higher baseline), the title's pixels are the same at all 128 patches.
  * D. MATRIX: the destination's smaller steps are the Bold face (L, T), never M or S, and fit their room.
  * E. MATRIX: the rows show the amounts as the fader sounds them (End B at the fader's B end), like the AMT card */
-#if DUELL_TIDE   /* TIDE's MUSICAL roll (the default) leaves the matrix routes alone; the rows' display checks roll the classic way */
 #define TIDE_CLASSIC_ROLL(on) (morph_musical = !(on))
-#else
-#define TIDE_CLASSIC_ROLL(on) ((void)0)
-#endif
 static uint32_t screen_hash(uint32_t y0, uint32_t y1, uint32_t x0, uint32_t x1)
 {
     uint32_t h = 2166136261u, x, y;
@@ -8234,11 +8223,7 @@ static int test_item158_pc(void)
     for (glob = 0; glob < 2; glob++) {
         ui_power_on();
         settings.palette = 0; palette_set(0);
-#if DUELL_TIDE
         if (glob) go_title("MIXER"); else go_main_to(HP_MORPH);   /* (a global screen, no capsules: GLO's MIXER; TIDE has no MODE page) */
-#else
-        go_main_to(glob ? HP_MODE : HP_MORPH);          /* (MODE: a global screen, no capsules) */
-#endif
         frames(160);
         for (part = 0; part < 2u; part++)
             for (i = 0; i < UP_SLOTS; i++) {
@@ -9319,25 +9304,6 @@ static int test_item158_pages(void)
         ok_m &= ui.page != co && page_visible(ui.page);
         bad += check("item 158 S3:   .. DUEL: STEREO MASTER and COMPRESSOR (every card hidden: nothing to adjust) out of GLO's order; STEREO / LAYER keep both; on COMPRESSOR, DUEL moves off it", ok_m);
     }
-#if !DUELL_TIDE                                          /* (TIDE: no MODE page, its rows are TIDE SETTINGS') */
-    {   /* owner: no gap in the knobs, the cards line up to the left: the MODE page in LAYER shows K1 (the list), K2 XFADE, K3 SPLIT, K4 nothing */
-        uint32_t k, dots = 0;
-        int x2 = 0, s3 = 0;
-        ui_power_on();
-        settings.palette = 0; palette_set(0);
-        ui_mode_set = duell_mode_req = duell_mode = DM_LAYER;
-        go_main_to(HP_MODE);
-        frames(64);
-        screen_read();
-        for (k = 0; k < txt_n; k++) {
-            if (txt_log[k].f == (const void *)&AF_DOT && txt_log[k].y0 > 24 && txt_log[k].s[0] >= '1' && txt_log[k].s[0] <= '4' && !txt_log[k].s[1])
-                dots |= 1u << (txt_log[k].s[0] - '1');
-            x2 |= !strcmp(txt_log[k].s, "XFADE") && txt_log[k].x0 < 78;    /* (the MODE row's K2 card: x 4 .. 79) */
-            s3 |= !strcmp(txt_log[k].s, "SPLIT") && txt_log[k].x0 >= 82 && txt_log[k].x0 < 156;
-        }
-        bad += check("item 158: MODE page in LAYER: the cards line up to the left: K1 the list, K2 XFADE, K3 SPLIT, K4 empty (no gap before a shown card)", dots == 7u && x2 && s3);
-    }
-#else
     {   /* TIDE (the MODE page's cards, now rows of TIDE SETTINGS): K1 is the page's one card (SETTING + the row picked, left), K2 .. K4 turn the picked row's value and draw no card;
          * XFADE and SPLIT say LAYER ONLY outside LAYER, PLAY MODE never does. The K1 card is found by its label SETTING and the name after it on the same line (not the list row's name, lower down) */
         uint32_t k, row, lay, has_set, has_row, has_need, k24, set_k;
@@ -9407,7 +9373,6 @@ static int test_item158_pages(void)
                 bad += check(m, found && (row && !lay ? ndim > 0u && ntheme == 0u : ntheme > 0u && ndim == 0u));
             }
     }
-#endif
     ui_power_on();
     return bad;
 }
@@ -9647,7 +9612,6 @@ static int test_load_undo(void)
     btn_up(B_OCTDN);
     frame();
     bad += check("..on PATTERNS (PRESETS loads nothing): no undo", same_sound(t, &before) && !msg_is("UNDO/REDO T1"));
-#if DUELL_TIDE
     go_page(GR_TIDE);
     ui.msg_t = 0;
     before = *t;
@@ -9657,7 +9621,6 @@ static int test_load_undo(void)
     btn_up(B_OCTDN);
     frame();
     bad += check("..on the TIDE pages OCT- stays TIDE's (the STYLE reset): the turn loads, no undo", cur_page()->scope == SC_TIDE && !msg_is("UNDO/REDO T1"));
-#endif
     /* T06: the PRESETS knob steps like PATCHES' K1 on every page: a fast turn loads only where it settles */
     ui_power_on();
     ui_prefs |= PREF_ACCEL;

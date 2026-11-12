@@ -27,7 +27,7 @@ Audiences: **player** (uses the unit), **installer** (flashes it), **contributor
 | [CHANGELOG.md](../CHANGELOG.md) | all | current | DUELL's own history (OSCILL/R); points to CHANGELOG-TIDE.md for the fork. |
 | [RELEASE_NOTES.md](../RELEASE_NOTES.md) | player | reference | OSCILL/R's release notes for DUELL 1.1, the base of this fork. |
 | [docs/ROADMAP.md](ROADMAP.md) | maintainer, contributor | current | Delivery status, memory budget, engineering and musical plan. |
-| [CONTRIBUTING.md](../CONTRIBUTING.md) | contributor | current | Where things go, how to build and test, the check_off rule, commit style. |
+| [CONTRIBUTING.md](../CONTRIBUTING.md) | contributor | current | Where things go, how to build and test, commit style. |
 | [SECURITY.md](../SECURITY.md) | all | current | The flashing risk and how to report a security problem. |
 | [CREDITS.md](../CREDITS.md), [NOTICE.md](../NOTICE.md) | all | current | Who made what, licences and the notice for a modified version. |
 | [UPSTREAM_COMMIT.txt](../UPSTREAM_COMMIT.txt) | contributor | reference | The Felucca commit DUELL was taken from. |
