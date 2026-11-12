@@ -594,8 +594,9 @@ static void step_edit(uint32_t slot, int32_t steps)
 /* HOME's MORPH pages (SPEC 3.4, 3.4a, 3.5; morph.c). MORPH (v3, 2026-10-11): KNOB 1 the fader 0..127 (A .. B), 2 ROLL
  * (a turn left past the detent rolls end A, right end B), 3 nothing (UNDO until 1.0.0-b5: the morph keeps no history),
  * 4 AMOUNT 0..100 %; SAVE held saves the patch (patch_save_ask; a
- * press of SAVE opens the SAVE pages as everywhere). MORPH SET: KNOB 1 SMART (right ON, left WILD), 2 ARP, 3 PITCH,
- * KNOB 4 an empty column (0.2.9: TARGET left the page; since 1.0.0-b5 the part selection is it: part_select below). Each control acts on the parts of
+ * press of SAVE opens the SAVE pages as everywhere). 1.1's MORPH SET page (KNOB 1 SMART / WILD, 2 ARP, 3 PITCH) has no page row in TIDE (params.c PAGES): TIDE SETTINGS (tide_ui.c) stands in its place,
+ * its ROLL TYPE row (SMART / WILD) was retired in b9 (every new End B is rolled MUSIC; the KNOBS row took its place) and ARP / PITCH have no row. The stored switches (morph.cfg) and the
+ * MIDI messages for them (MQ_SMART, MQ_ARP, MQ_PITCH, morph_act below) remain. Since 1.0.0-b5 the part selection is the morph's TARGET: part_select below. Each control acts on the parts of
  * morph_mask: the selected part, or with BOTH both parts. MIDI's CCs (midi_control.c midi_morph) do the same
  * through the queue morph_poll runs, with the same messages */
 #define MORPH_DET 3                                     /* detents a twist needs: one or two are a nudge, nothing (the tests' turn; ROLL fires on one) */
