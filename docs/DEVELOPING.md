@@ -31,7 +31,7 @@ Each group prints `== name` and then `PASS`, `FAIL` or `SKIP <why>` (a group tha
 
 ## What CI runs
 
-[`.github/workflows/host-tests.yml`](../.github/workflows/host-tests.yml) runs on every push to `jam11` (and by hand): the generators with the pinned packages, then every group of the default list, dealt to 8 machines, with `REQUIRE_CHROME=1` (a missing browser fails the browser tests). Each machine writes a PASS / FAIL / SKIP table to its job summary and keeps its log. [`pages.yml`](../.github/workflows/pages.yml) publishes the site only after that workflow is green on the same commit. The device build, `jam/check_off.sh` and the flashing are the owner's steps.
+[`.github/workflows/host-tests.yml`](../.github/workflows/host-tests.yml) runs on every push to `jam11` (and by hand): the generators with the pinned packages, then every group of the default list, dealt to 8 machines, with `REQUIRE_CHROME=1` (a missing browser fails the browser tests). Each machine writes a PASS / FAIL / SKIP table to its job summary and keeps its log. [`pages.yml`](../.github/workflows/pages.yml) publishes the site only after that workflow is green on the same commit. [`ci-retry.yml`](../.github/workflows/ci-retry.yml) re-runs, once or twice, only the jobs GitHub's runner failed ("job not acquired by Runner of type hosted", a shutdown signal; `jam/ci_retry.py`): never a job whose test failed, a run a newer one replaced, or a commit that is no longer the branch head. The device build, `jam/check_off.sh` and the flashing are the owner's steps.
 
 ## Rules that save time
 
