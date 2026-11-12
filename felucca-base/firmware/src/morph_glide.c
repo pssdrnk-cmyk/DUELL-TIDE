@@ -311,7 +311,16 @@ static void glide_motion(int on)
     for (k = 0; k < NSHOWN; k++) {
         if (mxs[k].follow || mxs[k].tp <= XW0 || mxs[k].tp >= XW1)   /* (a hand mid-dip keeps the edges it had: no jump in the dip's depth) */
             mxs[k].xe = (uint16_t)(on && ((gl.mask >> k) & 1u) ? xe : 0u);
-        mxs[k].motion = (uint16_t)(on && ((gl.mask >> k) & 1u) ? m : 0u);   /* (MR7: under a hand too, so neither the touch nor the return jumps) */
+        if (on && ((gl.mask >> k) & 1u))
+            mxs[k].motion = (uint16_t)m, mxs[k].mms = (uint16_t)fm1_ms;   /* (MR7: under a hand too, so neither the touch nor the return jumps) */
+        else if (mxs[k].motion) {                        /* W1: a stop lets the breath and the swell fade, 1/32 of what is left a millisecond (the passes run far faster than the audio blocks, so by time, not by pass; a slow frame fades at most 8 ms at once); WASH OFF: motion is 0, nothing to fade */
+            uint32_t n = (uint16_t)(fm1_ms - mxs[k].mms), dm;
+            if (n) {
+                dm = (mxs[k].motion / 32u + 1u) * (n > 8u ? 8u : n);
+                mxs[k].motion = (uint16_t)(dm >= mxs[k].motion ? 0u : mxs[k].motion - dm);
+                mxs[k].mms = (uint16_t)fm1_ms;
+            }
+        }
         mxs[k].follow = (uint8_t)(gl.on && ((gl.on >> GT_SOUND) & 1u) && (((gl.mask & ~gl.hw[GT_SOUND]) >> k) & 1u));   /* (the transition rides the trip itself; a hand's fader is its own) */
     }
 }
