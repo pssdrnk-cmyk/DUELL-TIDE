@@ -679,6 +679,8 @@ static void grid_fill(void)
 #ifndef GRID_PREFILL
 #define GRID_PREFILL() grid_fill()
 #endif
+static uint8_t gap_grid;                                /* the grid layout of the last full redraw (0: none / a page without a grid) */
+static uint16_t gap_bg;                                /* and the BG it was filled with */
 /* full redraw: the strips (header, cards, panel, footer) cover the rest; only the BG between them is filled */
 static void draw_frame(void)
 {
@@ -686,9 +688,16 @@ static void draw_frame(void)
     if (ui.force == 2)                                 /* item 152 A: the same page again (ui_refresh): the strips and cards cover their own rows, the BG between them is already there */
         return;
     if (grid_on) {                                     /* the grid: everything under the header is drawn over the background */
-        GRID_PREFILL();
+        if (gap_grid == grid_on && gap_bg == T_BG)      /* the same layout and BG as the last full redraw: the gaps are BG already, so the prefill changes nothing the player sees */
+            GRID_PREFILL();
+        else                                           /* another layout: its gutters and rows cut thin BG stripes through the OLD page's cards for the ~40 ms the cards take to draw (rc6: "two vertical lines, only a blink"):
+                                                        * the whole body first, as before Phase A (one blank, no stripes) */
+            gap_rows(H_HEAD, Y_FOOT + 15);
+        gap_grid = (uint8_t)grid_on;
+        gap_bg = T_BG;
         return;
     }
+    gap_grid = 0;
     gap_rows(H_HEAD, Y_LABEL);
     gap_rows(Y_LABEL + ch, gy);
     gap_rows(gy + gh, Y_FOOT);
@@ -2296,6 +2305,8 @@ static int area_plan(const page_t *pg, uint32_t g)
         for (s = 1; s < 4u; s++)
             slots += !slot_blank(pg, s);
         cols = g == 5u || slots >= 3u ? 3u : 2u;
+        if (g == 16u && pg->graph == GR_CHORD && (slot_hidden(pg, 2u) || slot_hidden(pg, 3u)))   /* b10 (one pair with GLOBAL SCALE): CHORD shows two cards at most (STRUM and the VOICE never both, card_hidden_vp; page_cards moves them left): GLOBAL SCALE's two columns */
+            cols = 2u;
         n = page_cards(pg, vis);
         for (c = 1; c < 4u && c < n; c++) {
             int16_t *vp;

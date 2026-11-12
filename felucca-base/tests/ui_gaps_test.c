@@ -8,7 +8,8 @@ static int prefill_on = 1;
 #define GRID_PREFILL() do { if (prefill_on) gap_rows(H_HEAD, Y_FOOT + 15); else grid_fill(); } while (0)
 #include <stdlib.h>
 static unsigned long long fillpx, gpx[64], gn[64];
-#define UI_FILL_HOOK(x_, y_, w_, h_) (fillpx += (unsigned long long)(w_) * (h_))
+static unsigned long long maxfill;
+#define UI_FILL_HOOK(x_, y_, w_, h_) (fillpx += (unsigned long long)(w_) * (h_), maxfill = (unsigned long long)(w_) * (h_) > maxfill ? (unsigned long long)(w_) * (h_) : maxfill)
 #include "ui_test.c"
 static const char *const FAMN[] = {"HOME", "ENV", "LFO", "FX", "SCL", "EDIT", "GLO", "SAVE", "ARP", "SEQ", "TRK", "?"};
 static uint16_t ref[240 * 240];
@@ -55,6 +56,21 @@ int main(void)
             one(ENGINES[e]->name, LY[l].n);
             btn_up(LY[l].b); frames(64);
         }
+    }
+    {   /* b10 (rc6 "two vertical lines, a blink"): a page change to ANOTHER grid layout fills the whole body first (no thin BG stripes across the old page while the cards draw);
+         * a page change within the same layout only the cheap gap prefill */
+        uint32_t fx = 12u, edit1 = 22u, voice = 33u, ok = 1;
+        prefill_on = 0;                                                     /* (the new gap prefill, not the old whole-body model) */
+        ui_power_on(); go_main_to(HP_MORPH); frames(64);
+        ui.page = (uint8_t)fx; page_entered(); frames(40);
+        ok &= grid_on == 1u && page_visible(edit1) && page_visible(voice);
+        maxfill = 0; ui.page = (uint8_t)edit1; page_entered(); frame();
+        ok &= grid_on == 14u && maxfill >= 240ull * 190ull;                 /* FX (grid 1) -> EDIT 1 (grid 14): the whole body */
+        frames(20);
+        maxfill = 0; ui.page = (uint8_t)voice; page_entered(); frame();
+        ok &= grid_on == 14u && maxfill < 240ull * 190ull;                  /* EDIT 1 -> VOICE 1/2 (both 14): the gap prefill only */
+        printf("uigaps: %s: another layout fills the whole body first, the same layout only its gaps" "%c", ok ? "ok" : "FAIL", 10);
+        if (!ok) return 1;
     }
     for (g2 = 0; g2 < 64u; g2++) {
         if (!ncase[g2]) continue;

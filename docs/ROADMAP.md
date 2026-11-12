@@ -202,12 +202,14 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 - **Phase 2 built in b10 round 9** (`fork/b10-perf2`): REPLY and ECHO as ANSWER choices (the loop doubles, a call is 2 bars at most, ROLL works on them: `ECHO` throws the last note 4 times, 100 / 80 / 60 / 40; `REPLY` moves the call in scale steps and ends on the tonic); the **key per multi**, `KEYS` in `tools/factory_multis.py` read by `gen_duell_multis.py` into `DF_KEY` (one byte a multi, 26 B; **not in the multi record**, which is unchanged: a user multi has no key until SCL says one; keys were read off each multi's patterns, thin beds and drones have none); the **REC state of the tide line** (red, filling with the loop; red dashes in the count-in; knob 1: `TAKE  BAR 3/4`). Flash +1.13 KB on phase 1 (the brief said 1 KB), `.bss` +0. Not asked, phase 3: the answer following every overdub pass.
 - **CAPTURE: owner said no** (12 November), not later either.
 
-**Full design overhaul: TIDE as its own instrument** (owner, 12 November: a separate, standalone topic, not now). b10 brought the TIDE colours, splash and tide line (direction A of the design consult (kept in the workspace notes, not shipped)); the shapes are still DUELL's, and the DUELL logo and artwork are not under the GPL. Three parts, in this order:
-- Off the unit: the website, installer, emulator page, release and package names (`duell-tide-…`) and README say TIDE, with the credits to DUELL and Felucca kept.
-- A TIDE home / performance page built around time: where the tide is, the ARC phase, bars, and live assist's take and answer on one screen.
-- The shape language: water-line fills, wave-edged knob bars, a TIDE header on the global pages, one icon style, replacing DUELL's cards and bars.
+Name: TIDE (owner, 12 November: drop DUELL; the attribution line stays)
 
-Each part is proposed with close-ups and approved by the owner before it's built.
+**Full design overhaul: TIDE as its own instrument** (owner, 12 November: a standalone topic, in this order; each part is proposed with close-ups and approved by the owner before it's built; the credits to DUELL (OSCILL/R) and Felucca (Hügelton Instruments) stay everywhere, and the DUELL logo and artwork, which are not under the GPL, go).
+1. **Identity foundation:** the TIDE name and wordmark (from the unit's splash), the palette, type rules (Barlow), the tone of the copy, one standard credit line, and an asset folder the other parts use.
+2. **GitHub:** the description; **renaming the repository DUELL-TIDE → TIDE is the owner's decision for later, not urgent** (git links redirect, but the site address moves to pssdrnk-cmyk.github.io/TIDE and the old one stops working), topics, a social preview image, a README rewrite (hero picture / GIF, what TIDE is in three lines, a 30-second start, install link, credits), a release-notes template and release names, issue / PR templates, and the default branch `jam11` → `tide`.
+3. **Website (GitHub Pages):** the landing page, installer and emulator pages ("DUELL with TIDE" headers, the DUELL-style title and buttons, the emulator's frame), docs pages (quick start, TIDE guide) in one style, a short demo video / audio.
+4. **Packages and names:** firmware file names (`duell-tide-beta-…` → `tide-…`), the version string ("DUELL 1.1" in the emulator header → the TIDE version), the update screen's text, backup file names, the web editor's title.
+5. **On the unit:** a TIDE performance home page built around time (tide, ARC phase, bars, live assist's take and answer), then TIDE's shape language (water-line fills, wave-edged knob bars, a TIDE header on the global pages, one icon style).
 
 **Screens** (redundancy audit 8 November, all 433 screens rendered)
 - TIDE rows SYNC and ROLL renamed so they don't share words with tempo sync and MORPH's ROLL. (The rest of this audit was released in b4.)
@@ -254,6 +256,8 @@ Each part is proposed with close-ups and approved by the owner before it's built
 - ~~U4, a flash slot behind every multi position (M17..M26).~~ Built in b10 (`b10/u4`): five new objects (ids 50..54) at 0xEA000..0xF3FFF, `MU_SLOTS` = `MU_SHOWN` = 26 (MR9's two multis), backup ids 42..46 (41 is the FM6 voice bank), caps 127, archive version 6. The web editor reads and writes the objects 42..46 too (Download / Rename / Import work on M17..M26 of a unit with caps bit 6).
 - ~~Patch capacity in the docs: INFO says 128 slots, TIDE guarantees 126 worst-case records; replace "every slot always fits" with exact wording.~~ Built in b10 chores: the docs already say 126 (`KNOWN_ISSUES.md:47`, `EDITOR_LIBRARIAN.md:17`); "every slot always fits" is not in the docs; INFO now reports 126 with TIDE (`editor.c:585`, `upreset.c:252`); the 160 figure is fixed (`DUELL_1_1_REFERENCE.md:28`).
 - ~~Pattern save: document the exact visible entry point (saving needs STOP) before any live test.~~ Built in b10 chores, with a correction: saving a pattern does not need STOP. SAVE held on PATTERNS goes to the slot confirm before the STOP check (`ui_input.c`, `patch_save_ask`); `ui_name.c:282` keeps a pattern in RAM while playing. Documented in `QUICKSTART.md:112`.
+
+**Tooling**
 
 **Repository and CI**
 - The `emu` CI job: fixed in [#4](https://github.com/pssdrnk-cmyk/DUELL-TIDE/pull/4) (emsdk sourced under bash; merged 8 November), and the job gates.
