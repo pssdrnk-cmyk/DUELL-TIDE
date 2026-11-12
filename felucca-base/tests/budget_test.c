@@ -386,7 +386,7 @@ static void load_multi(uint32_t i)
     if (i == 15u)
         scene_load(15, "M16_STRESS_TEST");              /* (U2 B: slot 16 of these hashes is the STRESS TEST, now a test scene; CELLAR TAPE is the factory M16) */
     else
-        project_load(i);
+        project_load(MIDX(i));
     frame();
 }
 static const char *why_name(uint32_t r)

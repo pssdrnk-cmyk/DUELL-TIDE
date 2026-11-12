@@ -362,7 +362,7 @@ static void t_multiload(void)
     frames(640);
     expect("  .. SPACE 0 and FILTER 0 after it, DEPTH kept (90 %)", perf_space == 0 && perf_filt == 0 && perf_depth == 90);
     perf_space = 66; perf_filt = 30; sv.spc = 66 * 256; perf_sp_live = 1;
-    project_load(0);
+    project_load(MIDX(0));
     expect("multi load: the same glide, not a jump", perf_space > 0 && perf_filt > 0 && perf_depth == 90);
     frames(640);
     expect("  .. SPACE 0 and FILTER 0 (DEPTH kept)", perf_space == 0 && perf_filt == 0 && perf_depth == 90);
@@ -370,7 +370,7 @@ static void t_multiload(void)
     turn(EN_PRESET, 1);
     frames(640);
     expect("PERF LEAVE KEEP: a patch load keeps SPACE (66) and FILTER (30)", perf_space == 66 && perf_filt == 30);
-    project_load(0);
+    project_load(MIDX(0));
     frames(640);
     expect("  .. a multi load too", perf_space == 66 && perf_filt == 30);
     ui_idle &= (uint8_t)~PERF_KEEP_BIT;

@@ -84,6 +84,7 @@ static void txt_blit(int32_t x, int32_t y)             /* the canvas goes to the
 #endif
 #define main hostsim_main
 #include "hostsim.c"
+#include "multi_names.h"      /* (MIDX / MPOS / MREC: a test names a multi by its record number, tools/factory_multis.py DISPLAY_ORDER) */
 #undef main
 
 /* ------------------------------------------------------------ HAL stubs --- */

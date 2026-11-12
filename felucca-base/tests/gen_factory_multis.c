@@ -189,7 +189,7 @@ static void dump(uint32_t k)
         printf("M%02u: no factory multi\n", k + 1u);
         return;
     }
-    project_load(k);
+    project_load(MIDX(k));
     printf("M%02u %-12s MODE %s  BPM %d SWING %d  DLY %s fdbk %d mix %d  REV %s size %d damp %d  PING %d  DMOD %d  XF %u SPLIT %u\n",
            k + 1u, proj_name, DM_NAME[duell_mode_req], song.g[G_BPM], song.g[G_SWING], N_DIV[song.g[G_DTIME] % 17], song.g[G_DFDBK],
            song.g[G_DMIX], N_RTYPE[song.g[G_RTYPE] % 5], song.g[G_RSIZE], song.g[G_RDAMP], song.g[G_DMODE] == DMD_PING, song.g[G_DMDEP], mix_xf, mix_split);
@@ -278,7 +278,7 @@ static void loud(uint32_t k, uint32_t nkeys, uint32_t solo)   /* solo: 0 both pa
                                                   * MODE RECALL OFF the keys played part 1 alone in a power-on's DUEL) */
     for (i = 0; i < nkeys; i++)
         kmask |= 1u << key_of(KEYS[i]);         /* (the keys of a power-on: the multi's TRN must not move them) */
-    project_load(k);
+    project_load(MIDX(k));
     song.master_q12 = 2048;                      /* (MASTER at its default position, main.c) */
     if (solo)
         trk[2u - solo].p[P_MUTE] = 1;
@@ -379,7 +379,7 @@ int main(int argc, char **argv)
         uint32_t k = (uint32_t)atoi(argv[2]) - 1u, pt = (uint32_t)atoi(argv[3]), n = (uint32_t)atoi(argv[4]), seed;
         uint8_t blk[MB_N];
         ui_power_on();
-        project_load(k);
+        project_load(MIDX(k));
         morph_blk_make(pt - 1u, blk);
         seed = blk[1] | blk[2] << 8;
         printf("M%02u part %u: End B seed %u AMOUNT %u cfg %u\n", k + 1u, pt, seed, blk[3], blk[4]);
@@ -434,7 +434,7 @@ int main(int argc, char **argv)
         uint32_t k = (uint32_t)atoi(argv[2]) - 1u, pi, id;
         int32_t out[2 * CTL];
         ui_power_on();
-        project_load(k);
+        project_load(MIDX(k));
         for (pi = 0; pi < 2u && argc > 4u + 2u * pi; pi++) {   /* moves SLOT [SEED1 AMOUNT1 [SEED2 AMOUNT2]]: End B rolled again first */
             uint8_t blk[MB_N];
             morph_blk_make(pi, blk);

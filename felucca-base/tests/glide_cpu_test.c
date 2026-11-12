@@ -111,7 +111,7 @@ static void load(uint32_t slot)
                                                       * its BIG STAB's End B changed the FM6 structure, so a GLIDE crosses on the bridge; the factory multis' End B is set by hand now and none does) */
         scene_load(1u, "reel/M02_DUB_CHORD");
     else
-        project_load(slot);
+        project_load(MIDX(slot));
     blk = 0;
     gl.on = gl.armed = 0;
     transport_req = 0;

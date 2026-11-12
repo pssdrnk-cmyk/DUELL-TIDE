@@ -289,7 +289,7 @@ static void gen_home_load_cases(void)
         seqm_set_fader(1, 127);
         sqm_refresh(1, 1);
         CHECK("(fixture: a generation is on part 2)", sqm[1].aon && ok);
-        if (k) pat_load(&trk[1], 0); else project_load(1);
+        if (k) pat_load(&trk[1], 0); else project_load(MIDX(1));
         sqm_refresh(1, 0);
         for (i = nz = 0; i < SQM_PITCH_BYTES; i++) nz |= sqm[1].b[sqm[1].top].pitch[i] | sqm[1].a.pitch[i];
         for (i = diff = 0; i < 16u; i++) diff += memcmp(sqm_step(&trk[1], i, 0), &trk[1].step[i], sizeof(step_t)) != 0;
@@ -341,7 +341,7 @@ static void gen_arc_case(void)
     gen_arc_blocks(4u * 4u * 12000u / CTL * 2u);
     CHECK("(fixture: running once more)", tarc.run && tarc.phr >= 1u);
     project_save(2);
-    project_load(2);
+    project_load(MIDX(2));
     CHECK("ARC: a multi load restarts it", !tarc.run);
     gl.on = 3; gl.mode = GM_WANDER; gl.mask = 3;           /* (the load ended the trip: the player starts it again) */
     gen_arc_blocks(40u);
@@ -392,7 +392,7 @@ static void gen_trip_case(void)
         for (b = 0; b < 48000u / CTL * 8u; b++) { events_block(CTL); seqm_poll(); glide_poll(); }
         mid = sqm[0].fader | sqm[1].fader;
         CHECK("(fixture: mid-trip, the SEQ fader is off A and the variation plays)", mid && gen_varied());
-        if (k) { pat_load(&trk[0], 0); pat_load(&trk[1], 0); } else project_load(3);
+        if (k) { pat_load(&trk[0], 0); pat_load(&trk[1], 0); } else project_load(MIDX(3));
         for (b = 0; b < 48000u / CTL; b++) {                /* the next bar */
             uint32_t n;
             events_block(CTL); seqm_poll(); glide_poll();

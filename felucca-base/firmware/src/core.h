@@ -596,7 +596,7 @@ typedef struct {                 /* the part in mix_part, its window: one per pa
 #define MU_SHOWN MU_SLOTS
 #endif
 #define MU_ROM(k) ((uint32_t)(k) >= MU_SLOTS)
-#define MU_DRONE(k) ((uint32_t)(k) - MU_SLOTS < 2u)   /* M17, M18: the built-in drone multis (TIDE plays them as STYLE DRONE, tide_ui.c tide_drone); M19.. are ROM-only factory multis of other genres (b10) */
+#define MU_DRONE(k) (DUELL_TIDE && (uint32_t)(k) - 22u < 2u)   /* M23, M24: the built-in drone multis (TIDE plays them as STYLE DRONE, tide_ui.c tide_drone); since b10 the list is in genre order (tools/factory_multis.py DISPLAY_ORDER): M17 .. M22 are ROM-only multis of other genres */
 #define MU_ROM_SAY "SAVE TO M01-M16"   /* SAVE / rename refused on M17, M18 (multi.c), as SOUNDS says PICK A USER SLOT */
 typedef struct track {
     int16_t p[EXT_P_LEN];        /* P_COUNT ids, a gap at 127, then the NX extension slots (ext.h XV); every store and format still counts P_COUNT */

@@ -381,7 +381,7 @@ int main(void)
         if (i == 15u)
             scene_load(15, "M16_STRESS_TEST");          /* (U2 B: the STRESS TEST, now a test scene, as these hashes had it; CELLAR TAPE is the factory M16) */
         else
-            project_load((int)i);
+            project_load(MIDX((int)i));
         frame();
         sweep();
     }

@@ -69,7 +69,7 @@ int main(int argc, char **argv)
             printf("compat: M%02u record: len %u ver %u np %u (now %u) ng %u (now %u) mode %u\n", slot + 1u, len, len ? r[0] : 0u, len ? r[1] : 0u, (unsigned)P_COUNT, len ? r[2] : 0u, (unsigned)G_COUNT, len ? r[4] : 0u);
         }
         trk[0].p[P_VOICE] = 3;
-        project_load(slot);
+        project_load(MIDX(slot));
         for (i = 0; i < 6; i++) {
             frame();
             budget_poll();

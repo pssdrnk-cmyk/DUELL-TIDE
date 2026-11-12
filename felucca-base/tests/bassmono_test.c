@@ -697,10 +697,10 @@ static void test_control(void)
     song.bm = 5;
     project_save_as(10, "BM TEST");                     /* M11 (saved over its factory multi) */
     song.bm = 0;
-    project_load(10);
+    project_load(MIDX(10));
     expect("a multi saved with BASS MONO 100 Hz does not bring it back on load (song.bm stays 0, as the unit has it)", song.bm == 0);
     song.bm = 8;
-    project_load(10);
+    project_load(MIDX(10));
     expect("  .. and a load leaves the unit's own 315 Hz as it is", song.bm == 8);
     {
         project_t q;
@@ -730,7 +730,7 @@ static void test_control(void)
     song.bm = 0;
     project_save_as(11, "BM OFF");
     song.bm = 9;
-    project_load(11);
+    project_load(MIDX(11));
     expect("a multi saved with OFF leaves the 400 Hz that was set", song.bm == 9);
     ok = 1;
     for (v = 0; v < DF_N; v++) {                        /* the factory multis: byte 5 bits 1..4 are the delay CLFO since b10 (0..15), never BASS MONO; bits 5..7 stay 0 */
@@ -743,7 +743,7 @@ static void test_control(void)
             if (df_of(k) >= DF_N)
                 continue;
             song.bm = 7;
-            project_load(k);
+            project_load(MIDX(k));
             ok &= song.bm == 7;
         }
     }

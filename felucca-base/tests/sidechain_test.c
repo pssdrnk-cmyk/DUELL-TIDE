@@ -156,14 +156,14 @@ int main(void)
         for (k = 0; k < 16u; k++) {
             if (df_of(k) >= DF_N)
                 continue;
-            project_load(k);
+            project_load(MIDX(k));
             frame();
             ok &= is(15, 7, 9, 99);
         }
         expect("a multi load (every factory multi) leaves the setup as it is", ok);
         project_save_as(10, "SC TEST");
         sc_put(0, 1);
-        project_load(10);
+        project_load(MIDX(10));
         frame();
         expect("  .. nor does a saved multi", is(1, 7, 9, 99));
         (void)amt; (void)set;

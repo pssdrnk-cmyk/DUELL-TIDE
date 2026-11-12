@@ -146,7 +146,7 @@ static void load_old(uint32_t k)                        /* a load as then: the C
     uint8_t keep = ui_prefs2;
     if (k >= 12u)
         ui_prefs2 |= PREF_MODE_RECALL >> 16;
-    project_load(k);
+    project_load(MIDX(k));
     ui_prefs2 = keep;
 }
 

@@ -228,7 +228,7 @@ int main(void)
     /* (d) M02 NIGHT ORGAN as stored */
     boot();
     ui_prefs2 |= PREF_MODE_RECALL >> 16;
-    project_load(2);
+    project_load(MIDX(2));
     frame();
     numbers(one, two);
     printf("polylimits: M02 as stored (%s / %s, voice modes %d / %d): one core %u + %u, two cores %u + %u\n", ENGINES[eng_idx(trk[0].eng_req)]->name, ENGINES[eng_idx(trk[1].eng_req)]->name,

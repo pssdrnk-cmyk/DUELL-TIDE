@@ -36,7 +36,7 @@ static void ml_setup(void *v)
     frame();
     song.master_q12 = 4096;
     ui_prefs2 |= PREF_MODE_RECALL >> 16;
-    project_load(slot);
+    project_load(MIDX(slot));
     for (i = 0; i < 40; i++) { memset(o, 0, sizeof o); mix_block(o, CTL); while (wave_service()) ; }
     SEL_BOTH = 1;
     morph_set_fader(getenv("ML_FADER") ? (uint32_t)atoi(getenv("ML_FADER")) : 0u);
