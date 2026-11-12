@@ -8,6 +8,7 @@ attribute is an error on variables, so build.py compiles felucca.c to LLVM IR wi
 optimizer, this script adds 'minsize' to those definitions, and the IR is then compiled at -Os
 (without the edit, that round trip is byte-identical to compiling felucca.c directly).
   size_fns.py IN.ll OUT.ll"""
+import os
 import re
 import sys
 from pathlib import Path
@@ -71,6 +72,18 @@ def size_names():
     return names
 
 
+def event_names():
+    """SP5 (docs/audits/2026-11-09/space/TASKS.md), behind a switch that is OFF unless FELUCCA_SIZE_EVENT=1: the functions tools/ram_allow.py lists as
+    "event rate" (they run once per note, MIDI message, sequencer step or load, not per sample or block) are also built for size, although the audio
+    interrupt reaches them. Never the "mix or effect stage" entries (those run every block). Off: the image is the one without SP5, byte for byte.
+    Not proven on the unit yet (the CPU sweep of chord-heavy and arp-heavy scenes and the 16-multi GLIDE sweep): it stays off in the package until then."""
+    if os.environ.get("FELUCCA_SIZE_EVENT") != "1":
+        return set()
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import ram_allow
+    return {n for n, why in ram_allow.ALLOW.items() if why.startswith("event rate")}
+
+
 IR_BODY = re.compile(r"^define [^\n]*?@\"?([\w.]+)\"?\((.*?)^\}", re.M | re.S)
 IR_REF = re.compile(r"@\"?([\w.]+)\"?")
 # LLVM may wrap aggregate initializers; follow their indented continuation lines too.
@@ -98,7 +111,8 @@ def isr_reach(ir):
 def main(src, dst):
     ir = Path(src).read_text()
     isr = isr_reach(ir)
-    names, hit = size_names() - isr, set()
+    ev = event_names()
+    names, hit = (size_names() - isr) | ev, set()
 
     def mark(m):
         if m.group(2) not in names:
@@ -110,7 +124,7 @@ def main(src, dst):
         return m.group(1) + attr + m.group(3)
     Path(dst).write_text(IR_DEF.sub(mark, ir))
     print(f"size: {len(hit)} main-loop functions built for size ({len(names) - len(hit)} not in this build; "
-          f"{len(size_names() & isr)} reached from an interrupt kept -Os)")
+          f"{len(size_names() & isr - ev)} reached from an interrupt kept -Os)" + (f" SP5 on: {len(hit & ev)} of them event-rate functions the interrupt reaches" if ev else ""))
     return 0
 
 

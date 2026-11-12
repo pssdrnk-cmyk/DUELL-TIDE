@@ -68,6 +68,57 @@ static int tide_aroll(const track_t *t, int hit);
 #define TIDE_APROB(t, hit) tide_aroll((t), (hit))
 static uint32_t tide_arp_out(const track_t *t, uint8_t *out, uint32_t m, uint32_t *vel);
 #define TIDE_ARP_OUT(t, out, m, vel) tide_arp_out((t), (out), (m), (vel))   /* (seq.c arp_seq_notes: TIDE's dynamics on an ARP SEQ step, D1; a thinned chord's two voices, MR4) */
+/* H20 (seq.c): live recording into an ARP SEQ part (audit liverec L2, R2) and the MIDI hooks of review FR8. TIDE_LIVEREC: the sections of seq.c only TIDE has (rec_put, arp_dur, rec_arp_note ..); a hook that returns, returns from the function it stands in */
+#define TIDE_LIVEREC 1
+#define TIDE_REC_VARS static volatile uint8_t tide_rec_replace; static uint32_t rec_key[NSHOWN][4];   /* (tide_rec_replace: TIDE SETTINGS REC, 0 ADD, 1 REPLACE; rec_key: the keys of an armed ARP SEQ part that went straight to the voices) */
+static int arp_rec_fire(track_t *t);
+#define TIDE_REC_ARP_ON(t) (rec_on(t) && (t)->p[P_AMODE] != AM_SEQ_ID)   /* (the arp records what it plays, except on an ARP SEQ part) */
+#define TIDE_ARP_SEQ_PRE(t) do { \
+        if ((t)->p[P_AMODE] == AM_SEQ && !(mods_off & MODS_SEQ))   /* b7 (review B2): the step's locks and automation on the step the arp plays (seq_play leaves them) */ \
+            motion_step((t), TIDE_ARP_IDX((t), (t)->arp_idx, seq_len(t)), &motion, 1u); \
+        if ((t)->p[P_AMODE] == AM_SEQ && arp_rec_fire(t)) \
+            return;                                     /* live recording put a key into this step already: it sounds, the step does not play again */ \
+    } while (0)
+#define TIDE_REC_REPLACE_PASS(t, idx, len, k) do { \
+        (k) = ((idx) + 2u * (len) - 2u) % (len);        /* REPLACE's pass: the playhead enters step idx, the mark of the step two behind it goes (rec_put) */ \
+        (t)->rec_wr[((k) >> 5) & 1u] &= ~(1u << ((k) & 31u)); \
+    } while (0)
+#define TIDE_REC_ARP_RELEASE(t) do { \
+        if (arp_mode(t) == AM_SEQ_ID) {                 /* an ARP SEQ part's hold runs on the arp's steps (rec_arp_note) */ \
+            if ((t)->rh_ties && (t)->arp_pos < 0x8000000u && TIDE_ARP_IDX((t), (t)->arp_idx, seq_len(t)) == (t)->rh_last && \
+                before_half((t)->arp_pos, arp_dur(t))) \
+                (t)->step[(t)->rh_last] = (t)->rh_bak; \
+            return; \
+        } \
+    } while (0)
+#define TIDE_REC_INPUT_ON(t, note, vel) do { \
+        tide_ghost_real(t);                             /* b7 (MULTIS): a real note ends the AUTO TIDE ghost chord on this part before it starts */ \
+        if (rec_arp_keys(t)) {                          /* R2: the key sounds as played and goes into the pattern the part plays (the stand-in runs on) */ \
+            rec_key_set((t), (note), 1); \
+            trk_note_on((t), (note), (vel)); \
+            rec_arp_note((t), (note), (vel)); \
+            return; \
+        } \
+        rec_key_set((t), (note), 0); \
+    } while (0)
+#define TIDE_REC_INPUT_OFF(t, note) do { \
+        if (rec_key_set((t), (note), 0)) {              /* (it never reached the arp: no arp_remove) */ \
+            trk_note_off((t), (note)); \
+            return; \
+        } \
+    } while (0)
+#define TIDE_MIDI_NOTE_HELD(t, x) midi_note_held((t), (x))
+#define TIDE_REC_ARP_KEYS(t) rec_arp_keys(t)
+#define TIDE_REC_RESET(t, i) do { \
+        (t)->rec_wr[0] = (t)->rec_wr[1] = (t)->arp_skip = 0; \
+        if ((i) < NSHOWN) \
+            memset(rec_key[i], 0, sizeof rec_key[i]); \
+    } while (0)
+#define TIDE_STEP_MOTION(t) ((t)->p[P_AMODE] != AM_SEQ)      /* (b7, review B2: an ARP SEQ part's locks play on the arp's steps) */
+#define TIDE_REC_HOLD_ON(t) (arp_mode(t) != AM_SEQ_ID)       /* (an ARP SEQ part's holds and marks run on its arp steps) */
+#define TIDE_REC_KEYS_CLEAR() memset(rec_key, 0, sizeof rec_key)
+#define TIDE_MIDI_SEL_POLL() do { if (song.sel != midi_sel_was) midi_sel_change(); } while (0)
+#define TIDE_FORGET_MIDI(keep) (!(keep))
 /* H13 (ui_input.c, main loop): once a frame, after morph_poll: GLIDE, the SEQ MORPH's ends, the settings */
 static void tide_poll(void);
 static void tide_ghost_poll(void);   /* (tide_seq.c, b7: the ghost chord of a part that waits for keys under AUTO TIDE; called by tide_poll) */
@@ -210,6 +261,22 @@ static int tide_foot_two(void);
 #define TIDE_CHANCE(t, idx, s, miss) (miss)
 #define TIDE_APROB(t, hit) (hit)
 #define TIDE_ARP_OUT(t, out, m, vel) (m)
+#define TIDE_LIVEREC 0
+#define TIDE_REC_VARS
+#define TIDE_REC_ARP_ON(t) rec_on(t)                    /* (plain DUELL: the arp records what it plays, ARP SEQ included) */
+#define TIDE_ARP_SEQ_PRE(t) ((void)0)
+#define TIDE_REC_REPLACE_PASS(t, idx, len, k) ((void)0)
+#define TIDE_REC_ARP_RELEASE(t) ((void)0)
+#define TIDE_REC_INPUT_ON(t, note, vel) ((void)0)
+#define TIDE_REC_INPUT_OFF(t, note) ((void)0)
+#define TIDE_MIDI_NOTE_HELD(t, x) 0
+#define TIDE_REC_ARP_KEYS(t) 0
+#define TIDE_REC_RESET(t, i) ((void)0)
+#define TIDE_STEP_MOTION(t) 1
+#define TIDE_REC_HOLD_ON(t) 1
+#define TIDE_REC_KEYS_CLEAR() ((void)0)
+#define TIDE_MIDI_SEL_POLL() ((void)0)
+#define TIDE_FORGET_MIDI(keep) 1
 #define TIDE_POLL() ((void)0)
 #define TIDE_FIRST_MULTI 0
 #define TIDE_PART_FIELDS
