@@ -5,6 +5,7 @@
 #define FELUCCA_CDC 1                                    /* (the developer builds' MENU: USB SERIAL is a row there; the product has none, tests/release_test.c) */
 #endif
 #define main hostsim_main
+#include "multi_names.h"      /* (MIDX: a test names a multi by its record number) */
 #include "hostsim.c"
 #undef main
 

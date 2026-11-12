@@ -32,7 +32,7 @@ end
 # ---- CHORDS
 
 test CHORDS-S1  M07 FINAL REEL, four chords; slack, current (3,481 ticks)
-load multi M06
+load multi M07
 mode LAYER
 tune slack 3481
 at 0.0  chord C3 E3 G3 B3 vel 90
@@ -48,7 +48,7 @@ measure 1.0 12.0
 expect report
 
 test CHORDS-S3  M07 FINAL REEL, four chords; slack x3 (10,443 ticks)
-load multi M06
+load multi M07
 mode LAYER
 tune slack 10443
 at 0.0  chord C3 E3 G3 B3 vel 90
@@ -64,7 +64,7 @@ measure 1.0 12.0
 expect report
 
 test CHORDS-S6  M07 FINAL REEL, four chords; slack x6 (20,886 ticks)
-load multi M06
+load multi M07
 mode LAYER
 tune slack 20886
 at 0.0  chord C3 E3 G3 B3 vel 90
@@ -80,7 +80,7 @@ measure 1.0 12.0
 expect report
 
 test CHORDS-POFF  M07 FINAL REEL, four chords; pause off (slack as the build's own)
-load multi M06
+load multi M07
 mode LAYER
 tune slack 3481
 tune pause off
@@ -99,7 +99,7 @@ expect report
 # ---- M07
 
 test M07-S1  M07 FINAL REEL cycle, 60 s; slack, current (3,481 ticks)
-load multi M06
+load multi M07
 mode LAYER
 tune slack 3481
 soak 60 repeat M07-CYCLE
@@ -108,7 +108,7 @@ tail 3
 expect report
 
 test M07-S3  M07 FINAL REEL cycle, 60 s; slack x3 (10,443 ticks)
-load multi M06
+load multi M07
 mode LAYER
 tune slack 10443
 soak 60 repeat M07-CYCLE
@@ -117,7 +117,7 @@ tail 3
 expect report
 
 test M07-S6  M07 FINAL REEL cycle, 60 s; slack x6 (20,886 ticks)
-load multi M06
+load multi M07
 mode LAYER
 tune slack 20886
 soak 60 repeat M07-CYCLE
@@ -126,7 +126,7 @@ tail 3
 expect report
 
 test M07-POFF  M07 FINAL REEL cycle, 60 s; pause off (slack as the build's own)
-load multi M06
+load multi M07
 mode LAYER
 tune slack 3481
 tune pause off

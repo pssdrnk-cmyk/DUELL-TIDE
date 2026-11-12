@@ -339,7 +339,7 @@ master WIDTH 100
 master BM 0
 keysense OFF
 budget OPEN
-load multi M04
+load multi M05
 tide wash 0
 at 0.0  chord C4 E4 G4 vel 100 ch 1
 at 7.0  release
@@ -359,7 +359,7 @@ master WIDTH 100
 master BM 0
 keysense OFF
 budget OPEN
-load multi M04
+load multi M05
 tide wash 2
 tide force 1 60 60
 tide force 2 60 60
