@@ -1623,7 +1623,7 @@ static void graph_sub(const track_t *t, uint16_t c)
         }
     }
     if (!lv)
-        graph_cap("NOT RUN AT LEVEL 0", T_MID);
+        graph_cap("OFF AT LEVEL 0", T_MID);              /* (I13: plain words) */
 }
 
 /* CYCLE ENV 1/2 and 2/2 (cloud job H, SUB_AND_CYCLE_DESIGN B4): the cycle's shape as cycle.c makes it (y = x + c (x^2 - x), c = CURVE / 64, on the rise; the fall is 1 - that of the progress), RISE and FALL in the

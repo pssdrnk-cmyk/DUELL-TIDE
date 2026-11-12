@@ -194,14 +194,8 @@ int main(void)
         uint32_t c, i;
         fm1_in.notes |= 1u << 12; host_notes |= 1u << 12;  /* one key down, through the key path (LAYER: both parts) */
         for (i = 0; i < 6; i++) { mix_block(o, CTL); frame(); for (k = 0; k < 2; k++) bnotes1[k] = (uint8_t)one[k], bnotes[k] = (uint8_t)two[k]; }
-        c = head_notes(n);
-        printf("polylimits: counter, two cores, one key down: %u capsules, %u + %u (numbers %u + %u, keys held %u + %u)\n", c, n[0], n[1], two[0], two[1], held(&trk[0]), held(&trk[1]));
-        chk("(b) counter with one key down on two cores = each capsule its OWN part's number less its one key (UT_CAP_VOICES_OWN: two numbers in LAYER too; not 0)",
-            c == 2u && held(&trk[0]) == 1u && held(&trk[1]) == 1u && n[0] == two[0] - 1u && n[1] == two[1] - 1u);
-        bd_one_now = 1;
-        c = head_notes(n);
-        printf("polylimits: counter, jobs paused (one core), one key down: %u + %u\n", n[0], n[1]);
-        chk("(b) .. with the jobs paused each capsule follows its own part's one-core number at once", c == 2u && n[0] == one[0] - 1u && n[1] == one[1] - 1u);
+        /* ((b), the capsule's free-voices counter: gone in b10 ui-b, owner 2026-11-12: the capsule is [number | letter]) */
+        (void)n; (void)c;
         bd_one_now = 0;
         for (i = 1; i < 8u; i++) {
             fm1_in.notes |= 1u << (12 + i); host_notes |= 1u << (12 + i);

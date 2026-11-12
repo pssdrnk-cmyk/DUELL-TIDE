@@ -109,7 +109,7 @@ static void cpu_meter_poll(void)                       /* once a window, and onl
         cpum.seen = 1;
     }
 }
-#if DUELL_TIDE
+#if DUELL_TIDE && DUELL_TEST_MODE                     /* (b10, owner 2026-11-12: the header's CPU pill only in a test build; the release has none, nor its RAM) */
 /* K2, TIDE: the CPU truth in the header of HOME's three pages (MORPH, TIDE SETTINGS, AUTO TIDE), in the two gaps beside the page title: at the left the ELAPSED peak (cpu_el_pk: what the DMA deadline sees,
  * the key scan nested in it included) in % of the half's time, the longest of the last 4 s (the window is read every 4 s), at the right the DMA periods missed recently (since the baseline, which moves up after CPU_MISS_SHOW_MS with no new miss; first CPU_HEAD_SETTLE_MS after power-on, so the start's own misses are left out; TEST > RESET sets it again). Drawn by ui_draw.c draw_head: the peak in a dim outlined pill beside part 1's capsule, the misses in a REC red badge beside part 2's, only when there are any (the colour output c is no longer used there). Read-only: its own window (CPU_W_HEAD), read every 4 s, nothing is cleared for anyone else */
 #define CPU_HEAD_SETTLE_MS 8000u                       /* the count starts from the misses at this time after power-on: the start (flash loads, USB enumerating, the first frames) is over then */
