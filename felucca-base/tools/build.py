@@ -697,7 +697,7 @@ def main():
         rp_err, rp_notes = elfcheck.check_ramplace(elf, img, dis, APP_XIP)
         lay_err += rp_err
         notes += rp_notes
-        hp_err, hp_notes = hot_reach.check(dis)     # the audio path runs from RAM, not the flash, unless tools/ram_allow.py says why (CPU audit K6)
+        hp_err, hp_notes = hot_reach.check(dis, elf=elf)   # the audio path runs from RAM, not the flash, unless tools/ram_allow.py says why (CPU audit K6)
         lay_err += hp_err
         notes += hp_notes
     if exact:                       # every call / goto relocation of the link at its address (tools/ram_place.py, elfcheck.py check_calls)

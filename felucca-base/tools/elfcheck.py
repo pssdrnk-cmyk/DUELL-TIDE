@@ -62,7 +62,7 @@ def read_elf(data):
         return data[off:data.index(b"\0", off)].decode("latin-1")
     names = [cstr(sh[shstrndx][4] + s[0]) for s in sh]
     sections = {n: (s[3], s[5]) for n, s in zip(names, sh) if n}
-    contents = {n: data[s[4]:s[4] + s[5]] for n, s in zip(names, sh) if n in (".ramx", ".ramz", ".ram_text", ".data") and s[1] == 1}
+    contents = {n: data[s[4]:s[4] + s[5]] for n, s in zip(names, sh) if n in (".text", ".ramx", ".ramz", ".ram_text", ".data") and s[1] == 1}
     symbols, funcs = [], []
     for s in sh:
         if s[1] != 2:              # SHT_SYMTAB

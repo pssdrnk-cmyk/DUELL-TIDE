@@ -25,6 +25,22 @@ ALLOW = {
     "morph_xstep": "in flash since b2; moving it needs ~1898 B of range Z; see audit finding 7 (docs/audits/2026-11-08/full/AUDIT_REPORT.md)",
     # ---- The audio interrupt (1)
     "fm1_alnk0_irq": "the audio interrupt itself, in flash since b2 (~2.8 KB; its hot loop bodies are in the hot block and range Z); moving it needs ~2,800 B of range Z, which is not there",
+    # ---- Engine-table hooks, reached through the function pointers of engine_t (hot_reach.py follows them since the K6 follow-up H1) (15)
+    "analog_desc": "event rate: the engine's EDIT descriptor hook (engine_t.desc), asked by the parameter lookup param_desc_of (event rate, allow-listed above), not per sample; in flash since the K6 baseline (48 B); reached through the engine table",
+    "analog_note_on": "event rate: a note-on of that engine (once per note, in engine_t.note_on), not per sample; in flash since the K6 baseline (34 B); reached through the engine table",
+    "fm6_note_on": "event rate: a note-on of that engine (once per note, in engine_t.note_on), not per sample; in flash since the K6 baseline (618 B); reached through the engine table",
+    "formant_note_on": "event rate: a note-on of that engine (once per note, in engine_t.note_on), not per sample; in flash since the K6 baseline (134 B); reached through the engine table",
+    "lofi_desc": "event rate: the engine's EDIT descriptor hook (engine_t.desc), asked by the parameter lookup param_desc_of (event rate, allow-listed above), not per sample; in flash since the K6 baseline (26 B); reached through the engine table",
+    "lofi_note_on": "event rate: a note-on of that engine (once per note, in engine_t.note_on), not per sample; in flash since the K6 baseline (60 B); reached through the engine table",
+    "noise_desc": "event rate: the engine's EDIT descriptor hook (engine_t.desc), asked by the parameter lookup param_desc_of (event rate, allow-listed above), not per sample; in flash since the K6 baseline (52 B); reached through the engine table",
+    "noise_note_on": "event rate: a note-on of that engine (once per note, in engine_t.note_on), not per sample; in flash since the K6 baseline (66 B); reached through the engine table",
+    "phase_note_on": "event rate: a note-on of that engine (once per note, in engine_t.note_on), not per sample; in flash since the K6 baseline (24 B); reached through the engine table",
+    "phys_desc": "event rate: the engine's EDIT descriptor hook (engine_t.desc), asked by the parameter lookup param_desc_of (event rate, allow-listed above), not per sample; in flash since the K6 baseline (34 B); reached through the engine table",
+    "phys_note_on": "event rate: a note-on of that engine (once per note, in engine_t.note_on), not per sample; in flash since the K6 baseline (92 B); reached through the engine table",
+    "retired_note_on": "event rate: a note-on of that engine (once per note, in engine_t.note_on), not per sample; in flash since the K6 baseline (4 B); reached through the engine table",
+    "trio_note_on": "event rate: a note-on of that engine (once per note, in engine_t.note_on), not per sample; in flash since the K6 baseline (44 B); reached through the engine table",
+    "wave_note_on": "event rate: a note-on of that engine (once per note, in engine_t.note_on), not per sample; in flash since the K6 baseline (156 B); reached through the engine table",
+    "wheel_note_on": "event rate: a note-on of that engine (once per note, in engine_t.note_on), not per sample; in flash since the K6 baseline (216 B); reached through the engine table",
     # ---- Event rate (notes, MIDI, sequencer, arp, locks, clears) (177)
     "tide_gh_end": "event rate (the transport stops, a real note arrives on a part holding AUTO TIDE's ghost chord), not per sample; in flash (82 B, b7 MULTIS); reached from seq_stop",
     "arp_add": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~352 B); reached from input_on",

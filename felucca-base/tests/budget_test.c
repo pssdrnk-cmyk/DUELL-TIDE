@@ -1203,8 +1203,18 @@ static void t_tide(void)
                 continue;
             load_both(DM_LAYER, s);
             if (ENGINES[eng_idx(trk[0].eng_req)] == &ENG_FM6 && (mph[0].nid || mph[0].fnid) && !morph_stale(&trk[0], &mph[0])) {
+                /* (audit finding 38: split by the crossing state, each with its own number; "IDLE or full" would pass either way. budget.c: the full bridge only while
+                 * fm6_xt[part].on, or while the fader moves a MORPH that changes the FM6 sound (bd_mv, XN_FM): neither is set here, so IDLE first, then the crossing on) */
+                uint8_t on0 = fm6_xt[0].on, mv0 = bd_mv[0];
+                fm6_xt[0].on = 0;
+                bd_mv[0] = 0;
                 bd_build(&b);
-                ok &= (b.p[0].tide_v == BD_TIDE_DIP + BD_TIDE_FM6_IDLE || b.p[0].tide_v == BD_TIDE_DIP + BD_TIDE_FM6) && b.p[0].ext >= BD_MORPH + b.p[0].tide_v;
+                ok &= b.p[0].tide_v == BD_TIDE_DIP + BD_TIDE_FM6_IDLE && b.p[0].ext >= BD_MORPH + b.p[0].tide_v;     /* no crossing: the bridge's state only */
+                fm6_xt[0].on = 1;
+                bd_build(&b);
+                ok &= b.p[0].tide_v == BD_TIDE_DIP + BD_TIDE_FM6 && b.p[0].ext >= BD_MORPH + b.p[0].tide_v;          /* a crossing runs: both sounds' operators */
+                fm6_xt[0].on = on0;
+                bd_mv[0] = mv0;
                 found = 1;
             }
         }
