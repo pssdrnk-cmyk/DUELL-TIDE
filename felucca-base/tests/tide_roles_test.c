@@ -4,7 +4,7 @@
  * runs it: the style's nine rows, TARGET SND+SEQ, ROLL MUSIC, the glide launched with PLAY (glide_launch). What a part plays is read off its voices (a voice started: its note and
  * the step the part is on), so these are the notes as the unit sounds them (LAYER sends no MIDI out for part 2, so the ring cannot be used). Everything is run with PITCH OFF
  * and PITCH ON, each run from the boot state in a forked child (ui_power_on() leaves voices, arcs and held keys behind). Time: about 10 s.
- *   4.1 lane      every note started lies in the Original's lane: [lowest, highest + 12] of the notes the multi plays on PLAY alone with TIDE idle (8 bars, the same load),
+ *   4.1 lane      every note started lies in the Original's lane: [lowest, highest + 12] of the notes the multi plays on PLAY alone with TIDE idle (16 bars, the same load: b10, a slow pad loop shows all its steps),
  *                 where a lane that starts at C3 (48) or above may reach down to 48 (spec C1). (b9: no floor under C2: the low end is welcome, 4.1f is gone.)
  *                 'strict' (printed only): notes outside [Original's lowest, highest + 12] without C1's allowance.
  *   4.2 density   onsets a bar, averaged over every 4-bar window (the bars of a DROP's two left out), inside the role's range (Appendix B DENS); a sustained role (PAD, ATMOS, AIR,
@@ -126,14 +126,13 @@ static const struct { uint8_t lo, hi; } DENS[14] = {{0, 0}, {20, 60}, {5, 20}, {
  * TO ADD A ROW for a multi (M17 and on, the sound lane's M19-M24): add its line to TR[] above and raise NROW (the loops and the loudness median follow it; tools/soundlab/build.sh takes this file as it is); a part needs
  * a line here only if the test names a violation that is TIDE's behaviour, never to pass a wrong role. */
 static const struct { int8_t up, dn; uint8_t cut, still, jac; } AL[NROW][2] = {
-    [0]  = {{4, 0, 2, 0, 50}},      /* M01 p1 STAB: b10: TIDE behaviour, not a role: notes up to 86 (lane top 82: +4), kept 0 of 3 hits in a bar (needs 2), Jaccard 0.52 */
-    [1]  = {{0, 0, 1, 0, 0}},       /* M02 p1 SKANK: b10: TIDE behaviour, not a role: 2 hits a bar, keeps 1 (needs 2) */
-    [3]  = {{2, 0, 0, 0, 0}},       /* M04 p1 STAB: b10: TIDE behaviour, not a role: note 82 under DUB (lane top 80: +2) */
-    [6]  = {{5, 0, 0, 0, 0}},       /* M07 p1 STAB: b10: TIDE behaviour, not a role: note 86 under PEAK (lane top 81: +5) */
-    [7]  = {{3, 0, 0, 0, 0}},       /* M08 p1 PROG: b10: TIDE behaviour, not a role: note 81 under PEAK (lane top 78: +3) */
-    [14] = {{0, 0, 0, 0, 0}, {0, 2, 0, 0, 0}},   /* M15 p2 ATMOS: b10: TIDE behaviour, not a role: note 46 under DEEP and MINIMAL (lane floor 48: -2) */
-    [15] = {{0, 0, 0, 1, 0}},       /* M16 p1 AIR: b10: TIDE behaviour, not a role: one bar with 2 onsets where the Original's steps give 1 */
-    [18] = {{0, 0, 1, 0, 0}},       /* M21 p1 MOTIF: b10: TIDE behaviour, not a role: under DEEP and DUB it keeps 3 of the 6 hits of every bar (needs 4) */
+    /* b10 Later 6 (round 2), each case decided: the range overshoots were a TIDE bug, fixed (seq_voicelead.c sqm_varp: a VOIC octave on an ARP SEQ step and PEAK's open
+     * voicing of its chord added up past the lane: M01 +4, M04 +2, M07 +5, M08 +3) and a test one (M15's -2 was its own lowest step, bars 12 .. 15: the Original is read
+     * over 16 bars now). Left, musical: */
+    [0]  = {{0, 0, 2, 0, 50}},      /* M01 p1 STAB: bar 4 of every 4 is CALL AND ANSWER's variation bar (seq_morph.c: both parts play End B), whose stab keeps 1 of its 3 hits in place (0 twice in 64 bars under DUB); Jaccard 0.52 */
+    [1]  = {{0, 0, 1, 0, 0}},       /* M02 p1 SKANK: the same variation bar keeps 1 of the 2 off-beat hits in place */
+    [15] = {{0, 0, 0, 1, 0}},       /* M16 p1 AIR: one bell of the 11-step loop moved half a note earlier (step 9 to 8): two onsets in that bar, none in the next, as many as written */
+    [18] = {{0, 0, 1, 0, 0}},       /* M21 p1 MOTIF: the variation bar keeps 3 of the riff's 6 hits in place (needs 4) */
 };
 /* the density band of part p of a row: the table's own band (b10: the bands measured on today's multis where no role's band fits), else the role's */
 #define DLO(row, p, r) (TR[row].dens[2 * (p) + 1] ? TR[row].dens[2 * (p)] : DENS[r].lo)
@@ -465,7 +464,7 @@ static void music(uint32_t row, uint32_t nbars)
     lane_t ref[2];
     res_t idle[2], r[2][2];                                         /* [pitch][part] */
     int keys = TR[row].role[0] == R_ARP || TR[row].role[1] == R_ARP;
-    play_iso(row, TR[row].style, 0, 0, 8u, keys, 0, idle);              /* the Original on PLAY alone */
+    play_iso(row, TR[row].style, 0, 0, 16u, keys, 0, idle);             /* the Original on PLAY alone (b10 Later 6: 16 bars, M15's pad plays its lowest step in bars 12 .. 15) */
     for (p = 0; p < 2u; p++) {
         ref[p].lo = idle[p].seen_lo < 0 ? 1 : idle[p].seen_lo;
         ref[p].hi = idle[p].seen_lo < 0 ? 0 : idle[p].seen_hi;

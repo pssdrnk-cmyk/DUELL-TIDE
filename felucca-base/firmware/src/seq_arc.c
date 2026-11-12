@@ -174,7 +174,7 @@ static void tide_loaded(uint32_t mask)
 {
     for (uint32_t k = 0; k < NSHOWN; k++)
         if ((mask >> k) & 1u)
-            seqm_home(k);
+            seqm_home(k), tide_mu[k] = 0;                /* (a factory multi's load sets tide_mu after this: multi.c project_load) */
     tarc.run = 0;
     sqm_restart = 1;
 }

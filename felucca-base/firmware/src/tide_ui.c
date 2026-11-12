@@ -539,11 +539,7 @@ static uint32_t tide_cls(int32_t atk, int32_t sus) { return atk >= 60 ? 2u : sus
  * only those within JCTX_NEAR; the memory and the random and contrast picks then choose among them. A dB a unit, an octave of
  * brightness 4. Measured from the Original, not from the sound left, so the steps cannot add up over a set. The sounds themselves are
  * not changed. Main loop. */
-#include "jrny_ctx.h"
-_Static_assert(JRNY_CTX_NE == NENGINES, "jrny_ctx.h: one row block an engine (build/host/jrny_ctx gen)");
-/* (the rows are read by the table's own JRNY_CTX_AT, not DS_ENG_AT: a build whose sound list differs, as the xvalues loader's with a sound
- * added, reads every measured sound right and has no row for the added one; host_tests.sh jrnyctx checks the table against the list) */
-#define JCTX_NONE 0xFFu                                  /* (a sound the table has no row for) */
+/* (jrny_ctx.h, JCTX_NONE and jctx_of: morph_tide.c, whose TRAVEL level match reads them first) */
 #define JCTX_KEEP 4u                                     /* (at most these: the memory, 4 deep, then rotates through the Original's nearest) */
 #define JCTX_MIN 2u                                      /* (at least these, so the sound keeps moving between the Original and two more) */
 #define JCTX_NEAR 3u                                     /* (past the minimum, only those within 3 dB; an octave of brightness is out) */
@@ -551,10 +547,6 @@ static uint32_t jctx_dist(uint32_t a, uint32_t b)
 {
     int32_t dl = (int32_t)(a >> 3) - (int32_t)(b >> 3), db = (int32_t)(a & 7u) - (int32_t)(b & 7u);
     return (uint32_t)(dl < 0 ? -dl : dl) + 4u * (uint32_t)(db < 0 ? -db : db);
-}
-static uint32_t jctx_of(uint32_t e, uint32_t j)          /* engine e's sound j in the table, JCTX_NONE when it has no row */
-{
-    return e < JRNY_CTX_NE && j < (uint32_t)(JRNY_CTX_AT[e + 1u] - JRNY_CTX_AT[e]) ? JRNY_CTX[JRNY_CTX_AT[e] + j] : JCTX_NONE;
 }
 static uint32_t jctx_near(uint32_t e, uint32_t at, uint32_t *pick, uint32_t n)
 {

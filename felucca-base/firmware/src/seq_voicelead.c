@@ -171,10 +171,20 @@ static void sqm_varp(uint32_t pi)
     n = n - 3u < 2u ? n : 0u;                            /* (a chord of 3 or 4 notes: a chord part) */
     sqm_v.cp = (uint8_t)((sqm_v.cp & ~(1u << pi)) | (n ? 1u << pi : 0u));
     n = sqm_varc ? n : 0u;
+    if (n) {                                             /* b10 Later 6: the steps play the chord moved by their offset from C4, so the chord may rise only by what the steps
+                                                          * leave of the Original's lane (its highest step + 12, sqm_lane): a VOIC octave on a step and PEAK's open voicing
+                                                          * added up past it (M01's stab 70 + 12 + 4 = 86, M07 +5, M08 +3, M04 +2) */
+        uint32_t len = sqm_len(t);
+        int32_t lo, hi, h0, h1;                          /* (each end's highest step + 12 against the Original's) */
+        sqm_lane(t->step, len, &lo, &hi);
+        sqm_lane(sqm_pat[pi][0], len, &lo, &h0);
+        sqm_lane(sqm_pat[pi][1], len, &lo, &h1);
+        r = c[sqm_vtop(c, n)] + hi - (h0 > h1 ? h0 : h1);
+    }
     MORPH_LOCK();
     for (i = 0; i < n; i++)
         sqm_v.src[pi][i] = c[i];
-    sqm_vchord(c, n, sqm_varc, -1, 108, 0);              /* (the chord's own lowest note the floor; its top stays where the step puts it) */
+    sqm_vchord(c, n, sqm_varc, -1, r, 0);                /* (the chord's own lowest note the floor; its top no higher than the steps leave room for) */
     for (i = 0; i < n; i++)
         sqm_v.out[pi][i] = c[i];
     sqm_v.n[pi] = (uint8_t)n;
