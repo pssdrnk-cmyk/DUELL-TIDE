@@ -77,14 +77,12 @@ static void power_cycle(void)                        /* the RAM is gone; the fla
     uint32_t k;
     dead = 0;
     cut_bytes = -1;
-#if DUELL_TIDE
     {   /* (TIDE's SEQ MORPH is RAM only: after a power cycle it starts as on a new unit, not from an earlier section's ends and fader) */
         static const sqm_part_t SQM0 = {0};
         for (k = 0; k < NSHOWN; k++)
             sqm[k] = SQM0;
         memset(sqm_pat, 0, sizeof sqm_pat);
     }
-#endif
     ui_power_on();
     for (k = 0; k < NTRK; k++)                       /* (the patches too: another sound than any saved) */
         memset(fm6_patch[k], 0, sizeof fm6_patch[k]);
@@ -274,21 +272,16 @@ static void keys_drive(void)
         play_run(k, 1u << d4, 2u * sec, sec, 0, q);
         ck("  another key (D4): both parts play the same figure two semitones up (follows the keys)", pr_shifted(&r[0], &q[0], 2) && pr_shifted(&r[1], &q[1], 2));
         play_run(k, 0u, 2u * sec, 0u, 1, z);
-#if DUELL_TIDE
         {   /* (TIDE, owner 2026-11-01: an ARP SEQ part plays on PLAY with no key, from its last chord or C4; the other parts stay silent) */
             uint32_t pi2;
             ok = 1;
             for (pi2 = 0; pi2 < NSHOWN; pi2++)
                 ok &= arp_mode(&trk[pi2]) == AM_SEQ_ID ? z[pi2].n > 0u : z[pi2].n == 0u;
         }
-#else
-        ok = z[0].n == 0u && z[1].n == 0u;
-#endif
         play_run(k, 1u << d4, 2u * sec, sec, 1, p);
         {
             static pr_t rr[NSHOWN];
             memcpy(rr, r, sizeof rr);
-#if DUELL_TIDE
             {   /* (after the release, on PLAY, the stand-in goes on from the last chord: an ARP SEQ part compares the notes while the key is held) */
                 uint32_t pi2;
                 for (pi2 = 0; pi2 < NSHOWN; pi2++)
@@ -299,7 +292,6 @@ static void keys_drive(void)
                             rr[pi2].n--;
                     }
             }
-#endif
             ck("  PLAY: no key, nothing plays (TIDE: an ARP SEQ part's stand-in does); a key with PLAY plays what it plays stopped",
                ok && pr_shifted(&rr[0], &p[0], 2) && pr_shifted(&rr[1], &p[1], 2));
         }
@@ -326,7 +318,7 @@ static void keys_drive(void)
             for (pi2 = 0; pi2 < NSHOWN; pi2++) {
                 for (n2 = st2 = 0; n2 < NSTEP; n2++)
                     st2 += trk[pi2].step[n2].time == ST_NOTE && trk[pi2].step[n2].n;
-                ok &= (arp_mode(&trk[pi2]) == AM_SEQ_ID ? DUELL_TIDE && z[pi2].n > 0u : (arp_mode(&trk[pi2]) == 0u && st2) ? z[pi2].n > 0u : z[pi2].n == 0u);
+                ok &= (arp_mode(&trk[pi2]) == AM_SEQ_ID ? z[pi2].n > 0u : (arp_mode(&trk[pi2]) == 0u && st2) ? z[pi2].n > 0u : z[pi2].n == 0u);
             }
         }
         ck("  PLAY without a key: the stored arrangement plays (patterns; ARP SEQ with TIDE's stand-in), a classic arp stays silent", ok);
@@ -350,8 +342,8 @@ static void keys_drive(void)
             play_run(k, 1u << d4, (m < 4u ? 8u : 3u) * sec, 0u, 1, p);
             if (m < 4u) {
                 snprintf(line, sizeof line, "U2 B: M%02u part %u (ARP SEQ): a key plays the arrangement (%u notes), D4 two semitones above C4 on the same blocks%s", k + 1u, pp + 1u, r[pp].n,
-                         DUELL_TIDE ? ", PLAY with no key plays it from C4" : "");
-                ck(line, trk[pp].p[P_AMODE] == 15 && r[pp].n >= 2u && pr_shifted(&r[pp], &q[pp], 2) && (!DUELL_TIDE || z[pp].n >= 2u));
+                         ", PLAY with no key plays it from C4");
+                ck(line, trk[pp].p[P_AMODE] == 15 && r[pp].n >= 2u && pr_shifted(&r[pp], &q[pp], 2) && z[pp].n >= 2u);
             } else {
                 snprintf(line, sizeof line, "U2 B: M%02u part %u (plain pattern): PLAY alone plays it (%u notes), a held key does not move its notes", k + 1u, pp + 1u, z[pp].n);
                 for (n = ok = 0; n < z[pp].n && n < PR_MAX; n++) {   /* (every note PLAY alone played is among the notes with the key held: the key adds its own) */
@@ -442,7 +434,6 @@ static void editb_worst_multi(void)
             ck("  (erased again)", project_erase(13u) == 0 && project_factory(13));
 }
 
-#if DUELL_TIDE
 /* TIDE 1.0.0-b6: the built-in drone multis M17 AMB DUNEHORN and M18 AMB GROWL (b9 rework2: was AMB VOID) (ROM only, MU_ROM): they show, load and preview as the factory multis do and match
  * their ROM records byte for byte; SAVE, rename and ERASE on them are refused and write nothing; M01..M16 and the flash objects are as before; MIDI program
  * change 16 and 17 load them, 18 and up are ignored; while one is loaded TIDE plays STYLE DRONE, another multi brings the STYLE back, the saved one never changes */
@@ -648,7 +639,6 @@ static void drones(void)
     }
     (void)amt; (void)set;
 }
-#endif
 
 int main(void)
 {
@@ -705,7 +695,6 @@ int main(void)
     frame();
     ck("SAVE > MULTI is SAVE's page, KNOB 1 M01..M16 (TIDE b6: ..M18, the two ROM drone multis), all sixteen stored slots the factory multis (0.2.23; M11 ACID LINES since the reel, 2026-11-10)",
        cur_page()->graph == GR_SLOTS && cur_page()->fam == FAM_SAVE && GP[G_SLOT].max == (int)MU_SHOWN && project_used(10) && project_factory(10) && str_eq(mu_names[10], MULTI_NAME[10]));
-#if DUELL_TIDE
     {                                                /* U3: browsing the MULTIS page (the preview) changes nothing live, decodes once per slot, and shows the record */
         uint32_t k, sum0, sum1, gen = multi_gen(), eng0 = trk[0].eng_req;
         mu_pv_t pv;
@@ -779,7 +768,6 @@ int main(void)
             }
         }
     }
-#endif
     watch = 1;
     press_k(EN_K3);                                  /* SAVE (1.1: K3): a used (factory) slot: OVERWRITE M11?, then the NAME screen */
     ck("SAVE over the factory M11 asks OVERWRITE M11?", ui.confirm == CF_OVR_PROJ);
@@ -1266,14 +1254,10 @@ int main(void)
         ck("  the engine and patch names the panel draws follow (ANALOG / SQUELCH, M18 ACID LINES)", str_eq(b, "M18 ACID LINES") &&
            str_eq(nm_a, "SQUELCH") && str_eq(ENGINES[trk[0].eng_req]->name, "ANALOG"));
         turn(EN_K3, 40);
-#if DUELL_TIDE
         ck("  many detents right: stops at the last used, M26 AMB GROWL (the last ROM multi)", proj_cur == MU_SHOWN - 1u && loaded_is(MU_SHOWN - 1u));
         turn(EN_K3, -(int32_t)(MU_SHOWN - 18u));
         ck("  back to M18 ACID LINES (ANALOG + PHASE)", proj_cur == 17u && trk[0].eng_req == 0u && str_eq(ENGINES[trk[1].eng_req]->name, "PHASE"));
         turn(EN_K3, (int32_t)(MU_SHOWN - 18u));
-#else
-        ck("  many detents right: stops at the last used, M16 AMB LOOPS (FM6 + WAVE)", proj_cur == 15u && trk[0].eng_req == ENGI_FM6 && str_eq(ENGINES[trk[1].eng_req]->name, "WAVE"));
-#endif
         f0 = (uint32_t)proj_cur;
         turn(EN_K3, 1);
         ck("  right at the end: nothing", proj_cur == f0);
@@ -1311,11 +1295,7 @@ int main(void)
         SEL_BOTH = 1;
         f0 = morph_fader_of(0);
         turn(EN_K1, -5);
-#if DUELL_TIDE
         ck("  MORPH TARGET BOTH: each part's fader by the same steps (1.0.0-b7; part 2 at A stays at A)", morph_fader_of(0) == f0 - 10u && morph_fader_of(1) == 0u);
-#else
-        ck("  MORPH TARGET BOTH: both parts' faders", morph_fader_of(0) < f0 && morph_fader_of(1) == morph_fader_of(0));
-#endif
         turn(EN_K2, -MORPH_DET);
         ck("K2 ROLL left past the detent: ROLLED A (as the MORPH page)", msg_is("ROLLED A"));
         frames(600);
@@ -1530,8 +1510,8 @@ int main(void)
         uint32_t m, k, pi;
         memset(nor, 0xFF, sizeof nor);
         power_cycle();
-        ok = !(ui_prefs2 & (PREF_MODE_RECALL >> 16)) && menu_get(MI_MODERECALL) == 0u && str_eq(menu_vname(MI_MODERECALL, 0), DUELL_TIDE ? "KEEPS PLAY MODE" : "KEEPS MODE") &&
-             str_eq(menu_vname(MI_MODERECALL, 1), DUELL_TIDE ? "SETS PLAY MODE" : "SETS MODE") && str_eq(MI_NAME[MI_MODERECALL], "MULTI LOAD") && MI_TAB[MI_MODERECALL] == MTAB_CONTROL;
+        ok = !(ui_prefs2 & (PREF_MODE_RECALL >> 16)) && menu_get(MI_MODERECALL) == 0u && str_eq(menu_vname(MI_MODERECALL, 0), "KEEPS PLAY MODE") &&
+             str_eq(menu_vname(MI_MODERECALL, 1), "SETS PLAY MODE") && str_eq(MI_NAME[MI_MODERECALL], "MULTI LOAD") && MI_TAB[MI_MODERECALL] == MTAB_CONTROL;
         ck("MODE RECALL (0.2.14: MULTI LOAD KEEPS MODE / SETS MODE): KEEP by default (CONTROL tab)", ok);
         ok = 1;
         for (m = 0; m < 3u; m++)                      /* KEEP: M01, M02, M04 (all LAYER): the mode stays */
@@ -1643,11 +1623,7 @@ int main(void)
             mu_note(o);
             trk[0].p[P_LEVEL] = 55;
             /* (0.2.23: every slot has a factory multi, so the slot shows that one; a slot with none would list "--" and load nothing) */
-#if DUELL_TIDE                                       /* (audit C01: a record that is there and does not load is DAMAGED, the factory multi is not shown for it) */
             ok2 &= !project_used(10u) && multi_bad(10u) && !project_info(10u, nm);
-#else
-            ok2 &= project_used(10u) && project_factory(10u) && project_info(10u, nm) && !strcmp(nm, "EERIE SIGNAL");
-#endif
             project_load(10u);                       /* (the old record is there: DAMAGED, nothing loaded, no crash) */
             ok2 &= trk[0].p[P_LEVEL] == 55;
             trk[0].p[P_LEVEL] = 77;
@@ -1667,13 +1643,8 @@ int main(void)
         }
         mu_obj_read(o);
         mu_note(o);
-#if DUELL_TIDE
         ok2 &= !project_used(0u) && multi_bad(0u) && !project_info(0u, nm);
         ck("  a factory slot (M01) holding one is DAMAGED too (audit C01: not its factory multi), a LOAD changes nothing", ok2 && (project_load(0u), 1));
-#else
-        ok2 &= project_used(0u) && project_factory(0u) && project_info(0u, nm) && !strcmp(nm, MULTI_NAME[0]);
-        ck("  a factory slot (M01) holding one shows its factory multi (BASIC CHORD) and loads it", ok2 && (project_load(0u), 1));
-#endif
         ok2 = project_save_as(10u, "NEW ONE") == 0 && project_used(10u) && !project_factory(10u) && project_info(10u, nm) && !strcmp(nm, "NEW ONE");
         ck("  a SAVE over the old record replaces it, the multi loads again", ok2);
         project_erase(10u);
@@ -1778,9 +1749,7 @@ int main(void)
         ck("  the sound, End B and steps of the worst multi always fit (_Static_assert in multi.c)",
            MU_G_AT + 2u * MU_NG + NSHOWN * (MU_PART_FIX + MBV_MAX + NSTEP * MU_STEP + UPF_PK) + 1u + 2u <= MU_REC_MAX);
     }
-#if DUELL_TIDE
     drones();                                        /* TIDE b6: M17 AMB DUNEHORN, M18 AMB GROWL, ROM only */
-#endif
     keys_drive();                                    /* 6: the factory multis played from the keys (0.2.12; 0.2.23's set) */
     editb_worst_multi();                             /* 7: cloud job G, the worst multi through SAVE (it leaves the state changed: last) */
     printf(bad ? "multi: FAILED (%d)\n" : "multi: all ok\n", bad);

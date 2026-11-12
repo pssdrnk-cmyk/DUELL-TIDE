@@ -28,7 +28,7 @@ static void dp_fresh(void)
     duell_mode_force(DM_SPLIT);
     duell_mode_force(DM_STEREO);
     host_tracks_init();
-#if DUELL_TIDE && !defined(NO_MUSICAL)
+#if !defined(NO_MUSICAL)
     morph_musical = 1;
 #endif
     song.sel = 0;

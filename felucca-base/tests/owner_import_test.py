@@ -59,8 +59,8 @@ ok(subprocess.run(cc, cwd=ROOT).returncode == 0, "tests/owner_export_gen.c compi
 tmp = Path(tempfile.mkdtemp(prefix="owner_import_"))
 P = ctx.ids
 base = {}
-# the records the export holds: every slot, or with TIDE (firmware/src/tide.h DUELL_TIDE) the 124 that hold a factory sound (the last four are USER slots)
-NREC = 124 if re.search(r"^#define DUELL_TIDE 1", (ROOT / "firmware/src/tide.h").read_text(), re.M) else 128
+# the records the export holds: the 124 that hold a factory sound (the last four are USER slots)
+NREC = 124
 
 
 def build(lst):

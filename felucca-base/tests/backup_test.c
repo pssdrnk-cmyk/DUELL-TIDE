@@ -612,7 +612,6 @@ int BACKUP_TEST_MAIN(void)
         reset();
     }
 
-#if DUELL_TIDE
     {   /* FM6's voice bank is object 41 (INFO 44 01 bit 1): read only, not in the plain LIST, the stored payload and its CRC */
         static uint8_t pk[FM6_PACKED], whole[FVB_LEN + 8u], one[FM6_PACKED];
         uint32_t k, c = 0xFFFFFFFFu, i, off, ok = 1, ids41 = 0;
@@ -648,7 +647,6 @@ int BACKUP_TEST_MAIN(void)
         bad += check("voice bank: it is read only here (PUT begin of id 41 answers rc 1: the restore is FM6B_BEGIN / WRITE / END)", put_begin(41, FVB_LEN + 4u, 0) == 1u);
         reset();
     }
-#endif
     printf("backup test %s\n", bad ? "FAILED" : "passed");
     return bad != 0;
 }

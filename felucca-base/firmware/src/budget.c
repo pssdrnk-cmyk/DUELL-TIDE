@@ -72,7 +72,6 @@ static const struct { const engine_t *e; uint16_t c; } BD_ENG[] = {   /* (cal) *
 #define BD_ENG_DEF 200u         /* an engine not in the table: above the dearest of the normal ones */
 #define BD_PART_ON 64u          /* the part's own work while it sounds, once whatever the number of notes (cal: the first note's extra over the next ones, 39 .. 64) */
 #define BD_MORPH 16u            /* the MORPH a voice (old: 0.5 %) */
-#if DUELL_TIDE
 /* TIDE's audio DSP (audit A01), ESTIMATES until the unit gives the numbers (jam_dev.py measure: docs/TESTING.md; tests/tide_cost_probe.c prints the basis). Host instructions a sample, charged while
  * the part has a MORPH (the same condition as BD_MORPH: a crossing or a GLIDE can run on it any time, in the middle of a full chord, which is when a late job costs a silent block). Basis: the host's
  * time ratios against two stages whose cost the budget has from the unit (SAT 28.3, EQ x3 83.6; the two agree within 4 .. 29 %), times a safety factor of 1.5, rounded up. Measured on the host:
@@ -85,7 +84,6 @@ static const struct { const engine_t *e; uint16_t c; } BD_ENG[] = {   /* (cal) *
 #define BD_TIDE_WASH_REST 6u    /* b10 round 6 (finding 34): the wash's power meter with WASH on and nothing moving - it runs on every block of a part with WASH on (morph_xfer.c morph_wash: the sum of squares before the "move" test): host 2 instructions a sample
                                  * (tests/budget_cal_probe.c (c)), charged 3 times that */
 #define BD_TIDE_FM6 76u         /* FM6's bridge, a voice: during a crossing both sounds' operators run (unit 2026-11-06, 9178086 probe: part 1's voice stage +35..45 % with the bridge on); half an FM6 voice */
-#endif
 #define BD_FADE 66u             /* .. an engine choice cross-faded, both shapes made (old: 2 %) */
 /* the part's own stages */
 static const uint8_t BD_INS[] = {0, 69, 65, 65, 70, 52, 68, 62, 65, 75, 88};   /* COST-CAL item 116 (rounded up; HARD CLIP .. VINYL slope -2 a voice: the mean over the key counts),  P_ITYPE order (N_ITYPE): OFF SOFT CLIP, HARD CLIP, FOLD, FUZZ, BIT CRUSHER, PHASER, FLANGER, CHORUS TAPE VINYL */
@@ -120,9 +118,7 @@ typedef struct {                /* per-part CPU budget breakdown: engine + filte
     uint32_t eng, filt, ext;    /* a voice: the engine, the multimode filter's slope, the morph's extras */
     uint32_t ins, sat, eq, misc;/* fixed: INSERT, SAT, EQ, the rest (ducker, KEY TRK, matrix, LFOs, arp) */
     uint32_t base;              /* fixed: the part's own work while it sounds (BD_PART_ON; no ablation removes it) */
-#if DUELL_TIDE
     uint32_t tide, tide_v;      /* what TIDE's DSP adds (A01; already inside misc and ext): fixed (valley, wash), and a voice (dip, FM6's bridge); the tests read them */
-#endif
     uint32_t cap;               /* the most notes it can have: NOTES_MAX, the pool, the engine's own limit */
     uint32_t on;                /* sounds at all (not muted) */
 } bd_part_t;
@@ -146,7 +142,6 @@ static uint32_t bd_slope(const engine_t *e, const int16_t *p)  /* filter 1, the 
  * and no ramp (= morph_effective_x). A continuous value is live + (end - Original); a choice the player changed (live != Original, not pinned at End B) stays the player's and is never
  * faded; a value End B holds by hand (pinned) is End B's. Before item 142 the budget read the ends' STORED values (morph_cur): a loaded patch edited to TWIN OFF / 12 dB was
  * still charged its Original's TWIN and 24 dB at both ends, which can never sound. q: EXT_P_LEN values */
-#if DUELL_TIDE
 /* the FM6 bridge's charge (owner 2026-11-06: the notes thin while a crossing runs): from the moment the part's fader moves with a plan that will bridge
  * (mxs need XN_FM), held ~1 s after it stops, so the NOTES number is down before the fader reaches the bridge (budget_poll runs once a frame) */
 static uint8_t bd_mv[NLIVE], bd_mvf[NLIVE];
@@ -164,7 +159,6 @@ static void bd_where(uint32_t pi, uint32_t *mid, uint32_t *arc)
     *mid = !FELUCCA_MOVECOST || mv || (w > 0u && w < 32768u);
     *arc = !FELUCCA_MOVECOST || mv || (x->planned && x->need && ((w > XW0 && w < XW1) || (tp > XW0 && tp < XW1)));
 }
-#endif
 static void bd_end(const track_t *t, const morph_part_t *mp, uint32_t e, int16_t *q)
 {
     mxf_t xf;
@@ -179,9 +173,7 @@ static void bd_part(const track_t *t, bd_part_t *r)
     const engine_t *e = ENGINES[eng_idx(t->eng_req)];   /* (the sound's engine: a switch fades first, eng_req leads) */
     const int16_t *p = t->p;
     uint32_t i, sl, bands, pi = (uint32_t)(t - trk), lf = 0, by = pi < 2u ? byp_m[pi] : 0u;   /* by: the BYPASS switches of the part (item 116: SAT, INSERT and EQ bypassed measured as not running) */
-#if DUELL_TIDE
     uint32_t tide = 0, tide_v = 0;                      /* TIDE's DSP items of the part (BD_TIDE_*) */
-#endif
     uint32_t sat = p[P_DIST] != 0;                      /* SAT on in the live values or at either morph end as it sounds (item 147) */
     bd_tw_t w = {0, 0, 0, 0};                           /* item 142: the TWIN FILTER of the morph's two ends as they sound (budget_feat.c adds the live one) */
     memset(r, 0, sizeof *r);
@@ -224,18 +216,14 @@ static void bd_part(const track_t *t, bd_part_t *r)
         sl = s1 > sl ? s1 : sl;
         if (s0 && s1 && d0 != q[P_FREED])
             sl = 2;                                     /* (the slopes cross-fade: both stages run) */
-#if DUELL_TIDE
         bd_where(pi, &mid, &arc);
-#endif
         r->ext += (fade && mid ? BD_FADE : 0u) + BD_MORPH;
-#if DUELL_TIDE
         /* TIDE's valley (morph_xfer.c morph_xstep: x->d, x->bv) runs only where the voices' own filter cannot carry the dip: the filter is not a low-pass that runs (x->lp, x->vf: here sl, as the plan reads it),
          * or a value of the filters themselves differs between the ends (SLOPE, MODE, filter 2's TYPE: XN_FILT). The dip in the voices' filter (morph_xcut) is BD_TIDE_DIP a voice. The wash runs whenever WASH is on */
         tide_v = BD_TIDE_DIP + (e == &ENG_FM6 ? (pi < NLIVE && (fm6_xt[pi].on || (bd_mv[pi] && (mxs[pi].need & XN_FM))) ? BD_TIDE_FM6 : BD_TIDE_FM6_IDLE) : 0u);   /* (owner 2026-11-06: the notes thin only while a crossing runs) */
         tide = arc ? ((p[P_FREEC] <= 32 && e->ufilt && sl) && s1 == s0 && d0 == q[P_FREED] && m0 == q[P_FREEC] && w0 == q[P_TWTYPE] ? 0u : BD_TIDE_VALLEY) + (morph_wlvl ? BD_TIDE_WASH : 0u)
                    : (morph_wlvl ? BD_TIDE_WASH_REST : 0u);   /* (the part's fixed cost below; at rest only the wash's meter runs: bd_where) */
         r->ext += tide_v;
-#endif
     }
     r->filt = sl == 2u ? BD_F24 : sl ? BD_F12 : 0;
     if (mods_off & MODS_PFX)                            /* (item 125: GLO > MODULES, PART FX OFF: the part's DIST, INSERT, EQ and DUCK are skipped, fx.c: they cost nothing; was charged as if on) */
@@ -257,10 +245,8 @@ static void bd_part(const track_t *t, bd_part_t *r)
     r->misc += ((lf & 1u) + (lf >> 1)) * BD_LFO;
     r->misc += arp_mode(t) ? BD_ARP : 0;                /* (item 125: the arp as it plays now: MODULES' ARP OFF costs nothing; was p[P_AMODE]) */
     r->base = BD_PART_ON;
-#if DUELL_TIDE
     r->misc += tide;
     r->tide = tide, r->tide_v = tide_v;
-#endif
     bd_feat(t, r, &w);                                  /* TWIN FILTER (live, and the morph ends' from above), SUB, CYCLE (budget_feat.c) */
 }
 
@@ -457,7 +443,6 @@ static void budget_poll(void)                           /* main loop, every fram
         return;
     }
 #endif
-#if DUELL_TIDE
     for (p = 0; p < NLIVE; p++) {                       /* (the fader moving: see bd_mv) */
         uint8_t f = (uint8_t)mph[p].fader;               /* (0 .. 127) */
         if (f != bd_mvf[p]) {                            /* (a step of the fader moving; a jump, as a load or the first poll, is not a move) */
@@ -469,7 +454,6 @@ static void budget_poll(void)                           /* main loop, every fram
             bd_mvc[p]--;
         bd_mv[p] = bd_mvc[p] != 0 || morph_gliding;   /* (a running GLIDE waits at its ends: the number stays down for the whole glide) */
     }
-#endif
     bd_build(&b);
     budget_solve2(&b, n, 0);
     for (p = 0; p < BD_N; p++)

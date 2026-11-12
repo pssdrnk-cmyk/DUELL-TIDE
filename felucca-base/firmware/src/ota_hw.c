@@ -27,15 +27,9 @@ static int ota_prog(uint32_t off, const void *p, uint32_t n)
     return fl_write(off, p, n);
 }
 static int ota_fread(uint32_t off, void *p, uint32_t n) { return st_read(off, p, n); }
-#if DUELL_TIDE   /* TIDE 1.0.0-b5: the loader's screen layout (firmware/loader/ldr_screen_tide.c): UPDATE as the page title, the step where the loader shows WRITING */
 #define OTA_TITLE_Y UT_TY(T, UT_TITLE_BASE)
 #define OTA_TITLE_F AF_T
 #define OTA_STEP_Y UT_TY(S, 74)
-#else
-#define OTA_TITLE_Y 92
-#define OTA_TITLE_F AF_M
-#define OTA_STEP_Y 124
-#endif
 static void ota_show(uint32_t step, int32_t code)
 {
     static const char *const STEP[] = {"", "PACKAGE", "CHECK HEAD", "LOADER", "CONFIRM", "RESTART"};

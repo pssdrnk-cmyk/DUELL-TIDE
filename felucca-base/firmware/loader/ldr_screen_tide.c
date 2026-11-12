@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* The update loader's screen in TIDE's look (TIDE 1.0.0-b5; included by ldr_screen.c when DUELL_TIDE is on, which keeps the guest rules, ls_check and the two entry points):
+/* The update loader's screen in TIDE's look (TIDE 1.0.0-b5; included by ldr_screen.c, which keeps the guest rules, ls_check and the two entry points):
  * a TIDE page (firmware/src/ui_tokens.h): plain background, no boxes, no rule under the title.
  *     row 16   UPDATE                        the header's page title (face T, T_TEXT, centred)
  *     row 74   WRITING                       face S, T_MID, centred

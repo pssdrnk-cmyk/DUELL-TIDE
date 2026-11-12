@@ -101,22 +101,14 @@ static void js_descs(const param_desc_t *d, uint32_t n)
 
 static const char *const FAMN[] = {"HOME", "ENV", "LFO", "FX", "SCL", "EDIT", "GLO", "SAVE", "ARP", "SEQ", "TRK"};
 static const char *const SCN[] = {"TRACK", "GLOBAL", "ENGINE", "STEP", "TRK", "MORPH", "MODE", "TEST", "SCALE", "MIDI", "PERF", "MODS", "FXSUM", "GMIX"
-#if DUELL_TIDE
                                   , "TIDE"   /* TIDE hook (H10): SC_TIDE */
-#endif
                                  };   /* (every SC_* of params.c, MODS and FXSUM too: an index past the table read whatever string lay after it) */
 static const char *const GRN[] = {"NONE", "ADSR", "LFO", "STEPS", "ARP", "SCALE", "FX", "ROLL", "BROWSE", "SLOTS", "USER", "TRK", "SLCR", "MOD", "PATS",
                                   "TOOLS", "CHORD", "SLICES", "EVENTS", "FMOP", "FMOP2", "FMENV", "INS", "ENGINE", "MORPH", "MORPHSET", "MODE", "GLO",
                                   "MIDI", "MLEARN", "SCHAIN", "TEST", "TEMPO", "PERF", "MODS", "MSTG", "FXSUM", "EQ", "COMP", "FILT", "SUB", "CYCLE"
-#if DUELL_TIDE
                                   , "TIDE", "TIDELIST"   /* TIDE hook (H10): GR_TIDE, GR_TIDELIST */
-#endif
                                  };   /* (every GR_* of params.c: MODS was missing, so MODULES' name was whatever string lay after the table; 0.2.25: FXSUM was missing too, then EQ COMP FILT) */
-#if DUELL_TIDE
 _Static_assert(sizeof GRN / sizeof GRN[0] == GR_TIDELIST + 1u && sizeof SCN / sizeof SCN[0] == SC_TIDE + 1u, "editordump: a name for every GR_* and SC_* (TIDE's too)");
-#else
-_Static_assert(sizeof GRN / sizeof GRN[0] == GR_CYCLE + 1u && sizeof SCN / sizeof SCN[0] == SC_GMIX + 1u, "editordump: a name for every GR_* and SC_* (0.2.25)");
-#endif
 
 /* page_visible (ui.c), by the page's ids: which engines show the page. "all" or a list of engine names */
 static void js_vis(const page_t *pg)

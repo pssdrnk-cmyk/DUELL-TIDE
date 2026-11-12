@@ -133,11 +133,9 @@ static void sched_block(int32_t *out, uint32_t n)
         perf = perf_begin(n);
     }
     blk_snap(&bs, sp_tap);
-#if DUELL_TIDE
     wv_blk++;                                           /* (mix_block's own lines: the scope tap's block count and gate) */
     bs.wv_blk = wv_blk;
     bs.wv_on = (uint32_t)((int32_t)(wv_want - wv_blk) > 0);
-#endif
     for (i = 0; i < 8u; i++)
         do_step(&SCHED[cur][i], n);
     mix_gather(n, &bs);
@@ -159,7 +157,6 @@ static uint64_t sched_run(uint32_t id, uint32_t sc)
     return scene_run(id, sched_block);
 }
 
-#if DUELL_TIDE
 /* the MORPH page's scope tap (fx.c wv_tap): after a scene the part's rings, counters, gap marks and silent flags must be the same in every schedule and in mix_block (the tap is as part-independent as the sound) */
 static uint64_t ring_hash(void)
 {
@@ -198,7 +195,6 @@ static uint64_t ring_run(uint32_t id, blk_t blk)
     waitpid(pid, &st, 0);
     return WIFEXITED(st) && WEXITSTATUS(st) == 0 ? h : 0;
 }
-#endif
 
 /* the scenes must exercise what they claim: each scene runs once more through mix_block with a probe that records, after every block, which of the paths
  * below have been taken (the bits), and the scene must have taken all of those it names in NEED */
@@ -259,9 +255,7 @@ static uint32_t probe(uint32_t id)
 int main(void)
 {
     uint32_t s, k, got;
-#if DUELL_TIDE
     wv_want = 0x40000000u;                              /* (the gate open for every block of every scene, in the children too) */
-#endif
     for (s = 0; s < NSCENE; s++) {
         uint64_t hr = scene_run(s, ref_mix_block), hf = scene_run(s, mix_block), hs[6];
         char what[200];
@@ -281,7 +275,6 @@ int main(void)
             snprintf(what, sizeof what, "scene %u: schedule %c equals the old combined path (%016llx)", s, SNAME[k], (unsigned long long)hs[k]);
             expect(what, hs[k] == hr);
         }
-#if DUELL_TIDE
         {
             uint64_t rf = ring_run(s, mix_block);
             snprintf(what, sizeof what, "scene %u: the scope rings are written (not the empty ones)", s);
@@ -294,7 +287,6 @@ int main(void)
                 expect(what, rk == rf);
             }
         }
-#endif
     }
     printf("partindep: %d checks, %d failed\n", ncheck, bad);
     return bad ? 1 : 0;

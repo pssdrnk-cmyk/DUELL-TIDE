@@ -25,11 +25,7 @@
 #define CPU_RECENT_MS 5000u
 #define CPU_WARN 80u
 #define CPU_HOT 95u
-#if DUELL_TIDE
 #define MENU_PAL_SIG ux.pal                 /* (the menu's signature: the theme applied, ui.c pal_q) */
-#else
-#define MENU_PAL_SIG settings.palette
-#endif
 static struct {
     uint16_t avg, peak, hold;                          /* % (peak and hold up to 999) */
     uint32_t miss, miss_t, t, hold_t, n0, sum0;        /* the misses seen, when the last one was seen, window start, ... */
@@ -109,7 +105,7 @@ static void cpu_meter_poll(void)                       /* once a window, and onl
         cpum.seen = 1;
     }
 }
-#if DUELL_TIDE && DUELL_TEST_MODE                     /* (b10, owner 2026-11-12: the header's CPU pill only in a test build; the release has none, nor its RAM) */
+#if DUELL_TEST_MODE
 /* K2, TIDE: the CPU truth in the header of HOME's three pages (MORPH, TIDE SETTINGS, AUTO TIDE), in the two gaps beside the page title: at the left the ELAPSED peak (cpu_el_pk: what the DMA deadline sees,
  * the key scan nested in it included) in % of the half's time, the longest of the last 4 s (the window is read every 4 s), at the right the DMA periods missed recently (since the baseline, which moves up after CPU_MISS_SHOW_MS with no new miss; first CPU_HEAD_SETTLE_MS after power-on, so the start's own misses are left out; TEST > RESET sets it again). Drawn by ui_draw.c draw_head: the peak in a dim outlined pill beside part 1's capsule, the misses in a REC red badge beside part 2's, only when there are any (the colour output c is no longer used there). Read-only: its own window (CPU_W_HEAD), read every 4 s, nothing is cleared for anyone else */
 #define CPU_HEAD_SETTLE_MS 8000u                       /* the count starts from the misses at this time after power-on: the start (flash loads, USB enumerating, the first frames) is over then */
@@ -210,12 +206,10 @@ static uint32_t about_step(void)                       /* the animation's step (
 enum { MC_TEXT, MC_TITLE, MC_URL };
 typedef struct { const char *text; uint8_t kind; } menu_credit_t;
 static const menu_credit_t MENU_CREDITS[] = {
-#if DUELL_TIDE
     {"DUELL", MC_TITLE},                           /* b10 TIDE identity: the firmware TIDE is built on */
     {"OSCILL/R: DUELL 1.1, a modified version of Felucca", MC_TEXT},
     {"GPL-3.0", MC_TEXT},
     {"", MC_TEXT},
-#endif
     {"H\xFCgelton Instruments", MC_TITLE},  /* Felucca's own: above; these are ours too */
     {"Leo Kuroshita", MC_TEXT},
     {"CrispyZebra (PHASE waveforms): GPL-3.0", MC_TEXT},
@@ -312,29 +306,14 @@ static uint32_t info_usb(void)                         /* 0 OFF, 1 WAIT, 2 BUS, 
 static int32_t about_sec[2];                           /* ABOUT's CREDITS and LICENSES headings, from the document's top (menu_document) */
 #define ABOUT_AIR 18                                   /* the air above and below the logo word */
 #define ABOUT_GAP 24                                   /* the gap under the logo word: more than a text line */
-#ifndef DUELL_BUILD_DATE                               /* ABOUT's build date (build.py DUELL_BUILD_DATE pins it: jam/check_off.sh compares across days) */
+#ifndef DUELL_BUILD_DATE                               /* ABOUT's build date (build.py DUELL_BUILD_DATE pins it: the tools compare builds across days) */
 #define DUELL_BUILD_DATE __DATE__
 #endif
 #define ABOUT_SH 50                                    /* the lines below shift down: 17 + 28 + 17 + 20 + 20 + 24 against the old 78 */
 /* the DUELL word of the logo (tools/gen_splash_logo.py SPL_WORD, 80 % of the splash's size), coverage blended onto the canvas in the text colour; (x, y) its top left */
 static void about_word_draw(int32_t x, int32_t y)
 {
-#if DUELL_TIDE
     tide_word(x, y, 28, 6, 5, T_TEXT);                  /* (b10 TIDE identity: the splash's wordmark, ui_draw.c) */
-#else
-
-    uint32_t i, p = 0;
-    for (i = 0; i < (uint32_t)sizeof SPL_WORD; i++) {
-        uint32_t v = SPL_WORD[i] >> 4, n = (SPL_WORD[i] & 15u) + 1u, e = p + n;
-        for (; v && p < e; p++) {
-            int32_t px = x + (int32_t)(p % SPL_WORD_W), py = y + CV_Y + (int32_t)(p / SPL_WORD_W);
-            if (px < 0 || py < 0 || px >= (int32_t)cv_w || py >= (int32_t)cv_h)
-                continue;
-            cv_px[(uint32_t)py * cv_w + (uint32_t)px] = swap16(ux_mix(swap16(cv_px[(uint32_t)py * cv_w + (uint32_t)px]), T_TEXT, (int32_t)(v * 100u / 15u)));
-        }
-        p = e;
-    }
-#endif
 }
 static const char *about_cores(const char **l2)         /* the CORES line (owner, test3): two cores playing, or one (the second core off: it did not start, a fault, or the jobs paused: the automatic fallback);
                                                         * item 119: the long form is 234 px, the card holds 220: two lines, "CORES: 1 RUNNING" and "(SECOND CORE OFF)", every word whole */
@@ -368,7 +347,6 @@ static int32_t menu_document(int32_t y, int draw)
             ver = vb;
         }
         about_word_draw(6, y0 + ABOUT_AIR);             /* the logo word, air above and below it (LOGO_SCREENS_V1.png; b10 TIDE: the TIDE wordmark) */
-#if DUELL_TIDE
         {   /* b10 TIDE identity (item 10): TIDE and its version, what it is built on (DUELL by OSCILL/R, Felucca by Huegelton Instruments), GPL-3.0; the line that it is
              * not made or endorsed by OSCILL/R or M-VAVE is in LICENSES + SOURCE below */
             char tl[40], bl[40];                         /* (drawn at once: on the stack) */
@@ -387,12 +365,6 @@ static int32_t menu_document(int32_t y, int draw)
             cv_text_grad(6, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 44, &AF_M, tl, 6);
             cv_text_r(222, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 47, &AF_S, DUELL_BUILD_DATE, T_MID, T_BG);
         }
-#else
-        cv_text(6, y0 + ABOUT_AIR + 28 + ABOUT_GAP, &AF_M, "MultiMorphing Bitimbral Synthesizer", T_TEXT);
-        cv_text(6, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 20, &AF_M, "by OSCILL/R", T_TEXT);
-        cv_text_grad(6, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 44, &AF_M, ver, 6);
-        cv_text_r(222, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 47, &AF_S, DUELL_BUILD_DATE, T_MID, T_BG);
-#endif
         cv_text(6, y + 96, &AF_S, "CPU", T_MID);                 /* the meter: the 1 s average, the held peak, the misses */
         cpu_pct(b, cpum.avg);
         cv_text(34, y + 96, &AF_S, b, col);
@@ -461,9 +433,7 @@ static int32_t menu_document(int32_t y, int draw)
     }
     about_sec[1] = y + 12 - y0;
     y = menu_text("LICENSES + SOURCE", y + 12, T_THEME, draw);
-#if DUELL_TIDE
     y = menu_text("TIDE by pssdrnk: GPL-3.0. Not made or endorsed by OSCILL/R or M-VAVE.", y, T_TEXT, draw);   /* (b10 TIDE identity, item 10) */
-#endif
     y = menu_text("Fonts and icons: their licences travel with the source and the release files.", y, T_TEXT, draw);
     y = menu_text("NO WARRANTY", y, T_TEXT, draw);
     y = menu_text("Full notices in source:", y + 8, T_TEXT, draw);
@@ -712,10 +682,8 @@ static void test_reset(void)                           /* K4: peak hold, missed 
 {
     cpu_meter_open();
     cpum.base = cpu_snap.miss;
-#if DUELL_TIDE
     cpuh.base = cpu_snap.miss;                          /* (the header's count too) */
     cpuh.armed = 1;
-#endif
     test_t = fm1_ms ? fm1_ms : 1u;
 }
 static uint8_t test_pick = 0xFFu;                      /* K3's multi (0..15): the last one stepped to or loaded */
@@ -876,11 +844,7 @@ static void draw_menu(void)
         uint32_t r;
         sig = 2166136261u;
         for (r = 0; r < MI_COUNT; r++)
-#if DUELL_TIDE
             sig = (sig ^ (r == MI_COLOR ? ux.pal : menu_get(r))) * 16777619u;   /* (COLOR: the theme applied: MENU > COLOR's steps wait for it, ui.c pal_q) */
-#else
-            sig = (sig ^ menu_get(r)) * 16777619u;
-#endif
     }
     sig += ui.menu * 7u + ui.menu_sel * 131u + MENU_PAL_SIG * 1009u + settings_hold * 3511u +
           settings_leds * 6151u + ui_prefs * 4099u + song.rec * 65537u + song.sel * 13u +

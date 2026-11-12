@@ -412,9 +412,7 @@ static void persist_note(const persist_t *p)       /* p is the record now in the
 {
     memcpy(&persist_saved, p, sizeof persist_saved);
     persist_saved_map = persist_map_crc(p->map);
-#if DUELL_TIDE
     memcpy(tide_tail_saved, p->map_tail + TIDE_TAIL_AT, TIDE_TAIL_N);
-#endif
 }
 static void persist_base(persist_t *p)             /* p := the saved record's head (fields this build does not export survive); the map is the caller's export */
 {
@@ -424,9 +422,7 @@ static void persist_base(persist_t *p)             /* p := the saved record's he
 static int persist_is_saved(const persist_t *p)    /* the exported p equals what is in the flash */
 {
     return !memcmp(p, &persist_saved, sizeof persist_saved) && persist_map_crc(p->map) == persist_saved_map
-#if DUELL_TIDE
            && !memcmp(p->map_tail + TIDE_TAIL_AT, tide_tail_saved, TIDE_TAIL_N)
-#endif
         ;
 }
 static uint8_t persist_pending;                 /* 1 requested, 2 waiting after a flash error */

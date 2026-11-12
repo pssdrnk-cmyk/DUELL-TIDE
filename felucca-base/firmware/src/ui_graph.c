@@ -24,10 +24,8 @@ static void graph_cap_at(int32_t x, const char *s, uint16_t col, int32_t up)   /
     cv_oy = o;
 }
 static void graph_cap(const char *s, uint16_t col) { graph_cap_at(grid_on ? UT_GR_NOTE_X : PANEL_X0 + 2, s, col, 0); }
-#if DUELL_TIDE
 static void live_mod(const track_t *t, int32_t y0);          /* TIDE LIVE GRAPHS (ui_live.c, below the pictures): the matrix rows' bars, the chord keys' bars */
 static void live_chord(const track_t *t);
-#endif
 static int32_t guide_wrap(int32_t x, int32_t y, int32_t w, const aafont_t *f, const char *s, uint16_t fg, int32_t p);   /* (ui_guide.c) */
 static uint32_t knob_slot(const page_t *pg, uint32_t k);   /* (ui_draw.c, T0227: the page slot a knob addresses once the cards moved left) */
 #ifndef CARD_LABEL_HOOK
@@ -303,10 +301,8 @@ static void graph_roll(const track_t *t, uint16_t c)
             continue;                                 /* a REST, empty, or a TIE after one */
         st = &seq_steps(t)[s];
         col = s == ui.cursor || si == ui.cursor ? c : ux_mix(T_BASE, c, UT_T7_NOTE_PCT);   /* (item 118, the picture: the notes dim, the cursor step's in the part's colour) */
-#if DUELL_TIDE
         if (si >= TIDE_PLAY_LEN(t))
             col = ux_mix(T_BG, col, 40);                  /* (POLY shortens the loop: the steps past it are not played now) */
-#endif
         if (s == si)
             pr_bars(st, x + UT_T7_NOTE_X, UT_T7_NOTE_W, col, (st->flags & SF_ACCENT) != 0u, &y, step_ratchet(st));
         else                                          /* a TIE: the bars on through the gap before */
@@ -317,9 +313,7 @@ static void graph_roll(const track_t *t, uint16_t c)
             cv_line(x + UT_T7_NOTE_X + UT_T7_NOTE_W, y + PR_RH / 2, x + PR_CW + UT_T7_NOTE_X + 2, ny + PR_RH / 2, T_TEXT);   /* the slide into the next note (from the end of its bar to the start of the next) */
         }
     }
-#if DUELL_TIDE
     tide_roll_ghosts(t, base, ncol);
-#endif
     {                                                 /* the rows cut at the window's edges (the area's rows above and under the window back to the background) */
         int32_t ay, ah;
         area_rect(&ay, &ah);
@@ -1629,13 +1623,8 @@ static void graph_sub(const track_t *t, uint16_t c)
 /* CYCLE ENV 1/2 and 2/2 (cloud job H, SUB_AND_CYCLE_DESIGN B4): the cycle's shape as cycle.c makes it (y = x + c (x^2 - x), c = CURVE / 64, on the rise; the fall is 1 - that of the progress), RISE and FALL in the
  * proportion of their times (ENV_LIN's steps; with SYNC the note values' share of a bar), three rise-fall shapes for LOOP, one then rest for ONCE. 2/2 draws the one cycle large, rise and fall the same width, with the straight line behind it
  * (CURVE 0) so the bend shows. The times themselves are on the cards: the picture is the shape, not a time scale */
-#if DUELL_TIDE                                      /* TIDE: the shape fits the 76-row card (the caption row 64 ..): stock 8 .. 92 ran under the cards, and the live playhead floated where no line showed */
 #define CY_TOP 6                                    /* (the base leaves the 7 px playhead dot clear of the PREVIEW caption, graph_cap) */
 #define CY_BASE 56
-#else
-#define CY_TOP 8
-#define CY_BASE 92
-#endif
 static void graph_cycle(const track_t *t, uint16_t c)
 {
     const int big = cur_page()->id[0] == XW_BASE + X_CYCURVE;
@@ -1865,9 +1854,7 @@ static uint32_t vals_hash(const track_t *t)
         h = (h ^ (uint32_t)(uint16_t)song.g[i]) * 16777619u;
     return h;
 }
-#if DUELL_TIDE
 #include "ui_live.c"                                 /* TIDE: LIVE GRAPHS, the overlays of the pictures above */
-#endif
 static uint32_t graph_signature(void)
 {
     const page_t *pg = cur_page();
@@ -1936,13 +1923,8 @@ static uint32_t graph_signature(void)
     h = (h ^ (mods_get() + 1u + mods_keep_get() * 64u) * 0x85EBCA6Bu) * 16777619u;   /* (0.2.14 GLO > MODULES: the switches; the cards they fade elsewhere) */
     if (pg->scope == SC_PERF)                        /* PERFORM: the keys held and running, what can run, the knobs, the part(s) */
         h = (h ^ perf_sig()) * 16777619u;
-#if !DUELL_TIDE
-    if (pg->scope == SC_MODE)                        /* step 5: the MODE asked for */
-        h = (h ^ (duell_mode_req + 1u) * 0x2545F491u ^ ((uint32_t)mix_xf << 8 | (uint32_t)mix_split << 16) * 0x9E3779B1u) * 16777619u;
-#endif
     if (pg->scope == SC_MORPH) {                     /* 4b: the faders, AMOUNT, TARGET; MORPH: the animation step */
         uint32_t pi = song.sel;
-#if DUELL_TIDE
         uint32_t f0 = morph_fader_of(pi), f1 = morph_fader_of(1u - pi);
         if (TIDE_WAVE_PAGE(pg)) {                    /* (b6, owner on the FM-1: "the UI gets weird if I use morph during the animation": the waves take the theme's fader colour (ux.fader:
                                                       * in steps of 8, taken on a picture's frame, ui_draw.c), so a turn of knob 1 redraws them with a picture, not at every value: each
@@ -1952,10 +1934,6 @@ static uint32_t graph_signature(void)
         }
         h = (h ^ (f0 | morph_amount_of(pi) << 8 | (uint32_t)SEL_BOTH << 16 | (uint32_t)morph.cfg << 20)) * 16777619u;
         h = (h ^ f1) * 16777619u;
-#else
-        h = (h ^ (morph_fader_of(pi) | morph_amount_of(pi) << 8 | (uint32_t)SEL_BOTH << 16 | (uint32_t)morph.cfg << 20)) * 16777619u;
-        h = (h ^ morph_fader_of(1u - pi)) * 16777619u;
-#endif
         if (pg->graph == GR_MORPH)                   /* v4: the picture's motion, a step every MV_MS (b6: 60 ms, ~16 /s, by the clock: mv_clock; TIDE: the parts' real sound, ui_scope.c) */
             h = (h ^ (mv_tick() + 1u) * 2654435761u) * 16777619u;
     }
@@ -1964,14 +1942,10 @@ static uint32_t graph_signature(void)
             h = (h ^ ((uint32_t)project_used(i) + 1u) * (i + 0x9E37u)) * 16777619u;   /* (each slot mixed in: the old bit per slot, 1u << (8 + i), overflowed at M25: MU_SHOWN 26, UBSAN) */
         graph_project_used(0);
         h += graph_pname_sig;
-#if DUELL_TIDE
         h = (h ^ (multi_gen() + 1u) * 0x9E3779B1u ^ (uint32_t)project_cur_slot() << 16) * 16777619u;   /* (U3: the preview's record, the multi loaded now) */
-#endif
     }
-#if DUELL_TIDE
     if (pg->graph == GR_PATS)                        /* (U3: the preview's slot record, the pattern loaded now) */
         h = (h ^ (ps_gen() + 1u) * 0x9E3779B1u ^ (uint32_t)pat_last[song.sel % NTRK] << 16) * 16777619u;
-#endif
     if (pg->graph == GR_TOOLS)                       /* TOOLS: the third row (RESTORE ALL PATCHES) is dimmed while no slot holds a saved sound */
         h = (h ^ (up_count() != 0u) * 0x27D4EB2Fu) * 16777619u;
     if (pg->graph == GR_EVENTS)                      /* PARAMETER LOCKS: the rows, the one selected, + ADD's place, PLAY,
@@ -1987,9 +1961,7 @@ static uint32_t graph_signature(void)
         if (ph / 16u != ui.bank)
             ph = 0xFFFFu;                            /* the roll shows the cursor's bank only */
         h ^= steps_hash(t) + ph * 31u + ui.cursor * 7919u + ui.bank * 613u;
-#if DUELL_TIDE
         h = (h ^ tide_roll_sig(t)) * 16777619u;
-#endif
         {                                            /* the parameter locks' marks (the roll) */
             uint64_t lk = motion_lock_steps(trk_index(t));
             h = (h ^ (uint32_t)lk ^ (uint32_t)(lk >> 32) * 2654435761u) * 16777619u;
@@ -2090,18 +2062,6 @@ static void graph_browse(void)
         }
     }
 }
-#if !DUELL_TIDE
-/* SAVE > PATTERNS: the 32 slots around the one picked ("P03  OFFBEAT"; one list, every slot holds a pattern) */
-static void graph_pats(void)
-{
-    uint32_t n = pat_count(), cur = pat_pick(), r, f = list5_first(cur, n);   /* TEMPLATE 9: five rows, the slot picked on the middle one where it can be */
-    for (r = 0; r < UT_L5_ROWS && f + r < n; r++) {
-        char tag[4], nm[13];
-        pat_label(f + r, tag, nm);
-        list_row5(r, f + r == cur, tag, nm, T_TEXT, 0);
-    }
-}
-#endif
 /* SAVE > TOOLS (DUELL/release_drafts/TOOLS_NEW_LAYOUT_V2.png, owner 2026-10-29): three rows on the background, no card, no box, no knob-1 line (this is NOT an area page,
  * template 9). Each row, screen rows, the rows TOOLS_PITCH apart: the numbered knob dot (11 px, white, its digit dark) at x TOOLS_DOT_X, its top on the name's capitals' first row; the action's
  * NAME in the names face (AF_NAME: Bold 20, capitals 14 rows), left aligned at x TOOLS_NAME_X; under it the sub line (M, the 11-row face, the selected part's colour) at the same x, and the OCT+ key
@@ -2277,7 +2237,6 @@ static void graph_events(void)
         }
     }
 }
-#if DUELL_TIDE
 /* SAVE > MULTIS and SAVE > PATTERNS (U3, owner 2026-11-03: the selectors say what they pick; 2026-11-04: the preview is not inside the list), ONE look: a plain list of LR_ROWS entries in the list rows' style
  * (the number (M, dim), the name (M), the picked one filled in the part colour with dark text, T_INK), all rows alike. An entry says what it holds in the status words flush right (a multi: what each part
  * does, SEQ / ARP / OFF in the part colours, not on the picked one: the panel below says it; a pattern: its LEN); the one loaded now has the star after its number (knob 1's line only names it when the
@@ -2436,20 +2395,6 @@ static __attribute__((noinline)) void list_panel(int pats)   /* (out of line: in
     cv_oy = 0;
     cv_blit(0, LP_Y);
 }
-#else
-/* SAVE > MULTI: the sixteen multis around the one picked ("M05  LOFI JAM"; unnamed "USED"; empty "M14  --" dim) */
-static void graph_slots(void)
-{
-    uint32_t cur = (uint32_t)(song.g[G_SLOT] - 1) % MU_SHOWN, r, f = list5_first(cur, MU_SHOWN);   /* TEMPLATE 9: five rows, the multi picked on the middle one where it can be */
-    for (r = 0; r < UT_L5_ROWS && f + r < MU_SHOWN; r++) {
-        char b[4];
-        int used = graph_project_used(f + r);
-        const char *nmp = graph_project_name(f + r);
-        mu_label(b, f + r);
-        list_row5(r, f + r == cur, b, !used ? "--" : nmp[0] ? nmp : "USED", used ? T_TEXT : T_DIM, 0);
-    }
-}
-#endif
 /* MIXER page: four SURF columns, one under each card: the track number on its cushion (in the accent:
  * the selected track) with a REC / ARM / MUTE badge (P_MUTE, KNOB 1), the sound's short name (a MUTE badge
  * when armed and muted), the LEVEL knob (dB inside) with the output meter beside it, then the PAN and REV
@@ -2539,24 +2484,6 @@ static void knob(int32_t x, int32_t y, int32_t r, const uint8_t *cov, const uint
 #define MV_KY 95                                     /* the key hints' row */
 #define MV_SY 108                                    /* "HOLD SAVE = SAVE PATCH" (its 15 px cell) */
 #define MV_SOFT 30                                   /* the front's half width (px) */
-#if !DUELL_TIDE
-static uint8_t mv_lvl[2];                            /* each part's level 0..255 (attack at once, fall 10 a step) */
-static uint32_t mv_step = 0xFFFFFFFFu;               /* (the step the levels last fell at) */
-typedef struct {
-    uint32_t ph;                                     /* the waves' travel (2^32 a wave) */
-    int32_t pit;                                     /* the pitch shown (1/16 semitone), eased toward the voices' */
-    uint8_t act, env;                                /* the sound's activity, its envelope (0..255) */
-    int16_t l1, l2;                                  /* LFO 1, 2 as shown (-255..255: x activity) */
-} mv_part_t;
-static mv_part_t mv_p[2];
-static void mv_reset(void)
-{
-    memset(mv_p, 0, sizeof mv_p);
-    mv_p[0].pit = mv_p[1].pit = 60 * 16;
-    memset(mv_lvl, 0, sizeof mv_lvl);
-    mv_step = 0xFFFFFFFFu;
-}
-#endif
 /* the MORPH page's picture clock (b6, owner on the FM-1: "the animation feels laggy again"): a new picture MV_MS after the last, by fm1_ms. It was every 4th main-loop pass, and on
  * the unit a pass that sends a picture takes ~44 ms of SPI and the others 15, so the pictures came 89 ms apart and any longer pass moved one. A pass that runs late moves its
  * picture only (the next counts from it: one is skipped, never two in a row); main.c ends the loop's 15 ms wait when one is due, so its pass starts on time */
@@ -2571,61 +2498,6 @@ static void mv_clock(void)                          /* once a pass (ui_draw), be
     }
 }
 static uint32_t mv_tick(void) { return (ui_prefs & PREF_ANIM_OFF) ? 0u : mv_n; }
-#if !DUELL_TIDE
-static void mv_levels(uint32_t tk)                  /* the parts' peaks since the last step (read and cleared, as the meters) */
-{
-    uint32_t k;
-    for (k = 0; k < 2u; k++) {
-        int32_t a = trk[k].peak, lg = 0, v = 0;
-        trk[k].peak = 0;
-        if (a >= 64) {
-            while ((a >> lg) > 1)
-                lg++;
-            v = clamp((lg * 8 + (((a << 3) >> lg) & 7) - 48) * 255 / 72, 0, 255);   /* -54 .. 0 dB */
-        }
-        if (v >= mv_lvl[k])
-            mv_lvl[k] = (uint8_t)v;
-        else if (tk != mv_step)
-            mv_lvl[k] = (uint8_t)(mv_lvl[k] > 10u ? mv_lvl[k] - 10u : 0u);
-    }
-}
-/* the sound of part k this step: its voices (the highest pitch, the loudest envelope), level and LFOs; then the motion */
-static void mv_listen(uint32_t k, uint32_t n)
-{
-    const track_t *t = &trk[k];
-    mv_part_t *m = &mv_p[k];
-    int32_t pit = -1, env = 0, act;
-    uint32_t i;
-    for (i = 0; i < NVOICE; i++)
-        if (t->v[i].active) {
-            if (t->v[i].pitch_cur > pit)
-                pit = t->v[i].pitch_cur;
-            if (t->v[i].env_out > env)
-                env = t->v[i].env_out;
-        }
-    env = clamp(env >> 7, 0, 255);
-    act = env > mv_lvl[k] ? env : mv_lvl[k];
-    m->act = (uint8_t)act;
-    m->env = (uint8_t)env;
-    m->l1 = (int16_t)((mulq15(t->lfo_val, t->lfo_fade) >> 7) * act >> 8);
-    m->l2 = (int16_t)((mulq15(t->lfo2.val, t->lfo2.fade) >> 7) * act >> 8);
-    if (!n)
-        return;
-    if (pit >= 0)                                    /* (silence: the last pitch stays) */
-        m->pit += (pit - m->pit) * (int32_t)(n > 2u ? 2u : n) / 4;
-    m->ph += n * ((1u << 18) + (uint32_t)act * 327680u);   /* silence: a crawl; loud: ~1/3 wave a second */
-}
-static int32_t mv_fold(int32_t v, int32_t lo, int32_t hi)   /* v folded back into lo .. hi (past an edge it turns round) */
-{
-    int32_t l = hi - lo, t;
-    if (v >= lo && v <= hi)
-        return v;
-    t = (v - lo) % (2 * l);
-    if (t < 0)
-        t += 2 * l;
-    return lo + (t <= l ? t : 2 * l - t);
-}
-#endif
 static void mv_line(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint16_t c)   /* 1 px (the box's rows) */
 {
     int32_t dx = x1 > x0 ? x1 - x0 : x0 - x1, sx = x0 < x1 ? 1 : -1, dy = y1 > y0 ? y0 - y1 : y1 - y0, sy = y0 < y1 ? 1 : -1;
@@ -2655,160 +2527,11 @@ static uint16_t mv_col(uint32_t k, int32_t pct, int32_t fade)
         return pl->c[2u * k + (pct >= 50)];
     return ux_mix(ux_mix(pl->c[2u * k], pl->c[2u * k + 1u], pct), T_BG, clamp(fade, 0, 92));
 }
-#if DUELL_TIDE
 #include "ui_scope.c"                                 /* the MORPH page's picture: the scope tap's stack of ridges */
-#else
-/* the front's position for fader c: past the right edge at A, past the left at B (px) */
-static int32_t mv_front(uint32_t c)
-{
-    return MV_BX1 - 1 + MV_SOFT - (int32_t)c * (MV_BX1 - 1 - MV_BX0 + 2 * MV_SOFT) / 127;
-}
-/* part k's field of lines between rows y0 and y1: nl lines A-like, 2 nl - 1 B-like */
-static void mv_field(uint32_t k, int32_t y0, int32_t y1, uint32_t nl)
-{
-    const ui_pal_t *pl = &UI_PALETTES[ux.pal % NPALETTES];
-    const mv_part_t *m = &mv_p[k];
-    uint32_t c = morph_fader_of(k), nj = 2u * nl - 1u, j, i;
-    int32_t fx = mv_front(c), note = m->pit / 16, h = y1 - y0;
-    int32_t cyc = clamp((note - 24) * 256 / 16, 192, 4 * 256);   /* waves across the width: ~1 a low note .. 4 high */
-    uint32_t inc = (uint32_t)(((uint64_t)(uint32_t)cyc << 24) / (uint32_t)(MV_BX1 - 1 - MV_BX0));
-    int32_t ampA = (int32_t)m->act * 5 * 256 / 255, ampB = 384 + (int32_t)m->act * 11 * 256 / 255;   /* px, Q8 (B: ripples at rest) */
-    int32_t rip = 64 + (int32_t)m->env * 160 / 255, sway = m->l1 * h / 2048;
-    int32_t lf = clamp((int32_t)mv_lvl[k] * 256 / 200, 0, 256), ym = (y0 + y1 - 1) / 2;   /* the spread 0 (flatline) .. 256 (full) */
-    uint32_t j0 = lf ? 0u : nj / 2u, j1 = lf ? nj : nj / 2u + 1u;   /* (silent: only the middle line) */
-    uint8_t bq[MV_NC];
-    for (i = 0; i < MV_NC; i++) {                    /* each column's B-ness 0..256: smooth across the front */
-        int32_t t = clamp(((int32_t)(MV_BX0 + 2 * i) - fx + MV_SOFT) * 256 / (2 * MV_SOFT), 0, 256);
-        bq[i] = (uint8_t)(t * t * (768 - 2 * t) / 65536 * 255 / 256);
-    }
-    if (c && c < 127u && fx > MV_BX0 && fx < MV_BX1 - 1 && !pl->hc)   /* the front: a faint glow */
-        for (i = (uint32_t)y0; i < (uint32_t)y1; i += 2u)
-            cv_pset(fx, (int32_t)i, mv_col(k, 50, 78));
-    for (j = j0; j < j1; j++) {
-        uint32_t bo = j & 1u, q;                     /* bo: a B-only line (fades in toward B) */
-        int32_t yl = y0 + (int32_t)(j + 1u) * h / (int32_t)(nj + 1u), px = 0, py = 0, pen = 0;
-        int32_t tap = sine_i((j + 1u) * (0x80000000u / (nj + 1u))), fade = 34 + (32767 - tap) * 36 / 32767 + (int32_t)bo * 12 + (j == nj / 2u ? 0 : (256 - lf) * 56 >> 8);   /* (stacked: the others faint) */
-        uint32_t lp = j * 0x15000000u + (uint32_t)(m->l2 * (int32_t)j * (1 << 18));
-        uint16_t col[9];
-        yl = ym + (yl - ym) * lf / 256;
-        for (q = 0; q < 9u; q++)
-            col[q] = mv_col(k, (int32_t)q * 100 / 8, fade + (bo && q < 6u ? (6 - (int32_t)q) * 11 : 0));
-        for (i = 0; i < MV_NC; i++) {
-            int32_t b = bq[i], x = MV_BX0 + 2 * (int32_t)i, wa, wb, w, amp, y;
-            uint32_t u;
-            if (bo && (b < 48 || (pl->hc && b < 128))) {
-                pen = 0;
-                continue;
-            }
-            u = (uint32_t)x * inc + m->ph + lp;
-            wa = sine_i(u);
-            if (b) {
-                uint32_t ub = u + j * 0x16000000u;   /* (the B lines out of step: a twelfth of a wave each) */
-                wb = (sine_i(ub) * 3 + sine_i(2u * ub + m->ph) * 2 + sine_i(3u * ub - 2u * m->ph + j * 0x2A000000u)) / 5 +
-                     ((sine_i(9u * ub + 3u * m->ph + j * 0x51000000u) >> 8) * rip >> 8);
-                w = wa + ((wb - wa) * b >> 8);
-            } else {
-                w = wa;
-            }
-            amp = (ampA + ((ampB - ampA) * b >> 8)) * (tap >> 7) >> 8;   /* px Q8, the middle lines the most */
-            y = yl + (int32_t)(((int64_t)w * amp) >> 23) + (sway * tap >> 15);
-            y = mv_fold(y, y0, y1 - 1);
-            if (pen)
-                mv_line(px, py, x, y, col[(b + 16) >> 5]);
-            px = x;
-            py = y;
-            pen = 1;
-        }
-    }
-}
-#endif
-#if DUELL_TIDE
 static void graph_morph(void)
 {
     wl_card(MV_BY0, MV_BY1);                         /* (the other layouts, a layer or the menu over the page: the picture alone in the old box; the page itself is template 9, ui_draw.c; b10: the old A..B track, thumb, ROLL A|B / AMT and HOLD SAVE lines are not compiled into TIDE) */
 }
-#else
-static void graph_morph(void)
-{
-    const ui_pal_t *pl = &UI_PALETTES[ux.pal % NPALETTES];
-    uint32_t pi = song.sel, f = morph_fader_of(pi), tk = mv_tick(), both = PART_BOTH(), n;
-    int32_t cx = MV_TX0 + (int32_t)(f * (uint32_t)(MV_TX1 - MV_TX0) / 127u), i;
-    char b[8];
-    khint_t kh[3];
-    mv_levels(tk);
-    n = mv_step == 0xFFFFFFFFu ? 0u : tk - mv_step;   /* (steps since the last: the motion moves on by as many) */
-    mv_listen(0, n > 4u ? 4u : n);
-    mv_listen(1, n > 4u ? 4u : n);
-    mv_step = tk;
-    if (grid_on) {   /* DUELL 1.1 HOME (PAGES_V1_home.png / PALETTES_V3_1.png): the knob mark and MORPH top left, the motion field under it, HOLD SAVE = SAVE PATCH at the bottom of the same area; no track, no thumb, no key row (the cards under are the controls) */
-        const int32_t y0 = 17, y1 = 62;
-        if (both) {
-            mv_field(0, y0, (y0 + y1) / 2, 3u);
-            mv_field(1, (y0 + y1) / 2, y1, 3u);
-        } else {
-            mv_field(pi, y0, y1, 5u);
-        }
-        {   /* the knob-1 dot and MORPH on one baseline, the note left aligned at the bottom (item 114, ui_tokens.h UT_GR_*; the dot is the label's cap height, as on every card) */
-            const int32_t by = UT_GR_TITLE_BASE - UT_GR_Y, dy = by - AF_S_CAP_H + 1;
-            cv_rrect(UT_GR_TITLE_X, dy, AF_S_CAP_H, AF_S_CAP_H, AF_S_CAP_H / 2, T_MID, T_BG);
-            cv_text_in(UT_GR_TITLE_X, dy + HALF_UP(AF_S_CAP_H - AF_D_CAP_H) - AF_D_CAP_Y, AF_S_CAP_H, &AF_DOT, "1", T_BG, T_MID);
-            cv_text_on(UT_GR_TITLE_X + UT_CARD_LBL_DX, UT_TY(S, by), &AF_S, "MORPH", T_MID, T_BG);
-            cv_text_on(UT_GR_NOTE_X, UT_TY(S, UT_GR_NOTE_BASE - UT_GR_Y), &AF_S, "HOLD SAVE = SAVE PATCH", T_DIM, T_BG);
-        }
-        return;
-    }
-    if (both) {                                      /* part 1 above, part 2 below */
-        mv_field(0, MV_BY0, (MV_BY0 + MV_BY1) / 2, 3u);
-        mv_field(1, (MV_BY0 + MV_BY1) / 2, MV_BY1, 3u);
-    } else {
-        mv_field(pi, MV_BY0, MV_BY1, 5u);
-    }
-    for (i = MV_TX0; i <= MV_TX1; i++) {             /* the A..B track (POLICE: two solid halves) */
-        int32_t p = (i - MV_TX0) * 100 / (MV_TX1 - MV_TX0);
-        uint16_t col = pl->hc ? pl->c[2u * pi + (p >= 50)] : ux_mix(ux_mix(pl->c[2u * pi], pl->c[2u * pi + 1u], p), T_BG, 45);
-        cv_rect(i, MV_TY - 1, 1, 2, col);
-    }
-    if (both && morph_fader_of(1u - pi) != f) {      /* BOTH with the faders apart: the other part's, a tick */
-        int32_t ox = MV_TX0 + (int32_t)(morph_fader_of(1u - pi) * (uint32_t)(MV_TX1 - MV_TX0) / 127u);
-        cv_rect(ox - 1, MV_TY - 5, 3, 10, T_PFILL(1u - pi));
-    }
-    GFX_HOOK_ALIGN(0, MV_TY - 7, 0, MV_TY + 8, AL_V, "morph end letter on the track");
-    cv_text_on(14, MV_TY - 7 + CAP_IN(S, 15), &AF_S, "A", T_MID, T_BG);
-    GFX_HOOK_ALIGN(0, MV_TY - 7, 0, MV_TY + 8, AL_V, "morph end letter on the track");
-    cv_text_r(226, MV_TY - 7 + CAP_IN(S, 15), &AF_S, "B", T_MID, T_BG);
-    fmt_int(b, (int32_t)f);
-    cv_rrect(cx - 14, MV_TY - 7, 29, 15, 7, T_PFILL(pi), T_BG);   /* the thumb: the value in the fader's colour */
-    GFX_HOOK_ALIGN(cx - 14, MV_TY - 7, cx + 15, MV_TY + 8, AL_HV, "morph value in its thumb");
-    cv_text_in(cx - 14, MV_TY - 7 + CAP_IN(S, 15), 29, &AF_S, b, T_INK, T_PFILL(pi));
-    kh[0] = (khint_t){KC_K2, "ROLL A|B"};
-    kh[1] = (khint_t){KC_K4, "AMT"};             /* (AMOUNT: 5 px too wide for the row; 1.0.0-b5: KNOB 3 has no job, no UNDO) */
-    cv_key_row(12, 228, MV_KY, kh, 2, 7u, T_BG);
-    GFX_HOOK_ALIGN(0, 0, 240, 0, AL_H, "morph save line centred");
-    cv_text_in(0, MV_SY, 240, &AF_S, "HOLD SAVE = SAVE PATCH", T_DIM, T_BG);
-}
-#endif
-#if !DUELL_TIDE                                      /* TIDE hook: no MODE page */
-static void graph_mode(void)
-{   /* DUELL 1.1 (PAGES_V2_home-modes.png), item 118: the three modes as a list in the order LAYER, STEREO, DUEL (the SETUP page's), the picked one on a box of the selected part's colour (ui_tokens.h TEMPLATE 6: the selection style of
-     * FINAL_V1_08_setup) with the same room above and below its text, never overlapping the next row; what it means under the list; the knob mark in front of everything */
-    static const char *const NM[3] = {"LAYER", "STEREO", "DUEL"}, *const WH[3] = {"Both parts combined: velocity crossfade, key split", "Both parts in one stereo field", "Dual mono, for external effects"};
-    uint32_t m = duell_mode_req < DM_N ? duell_mode_req : DM_SPLIT, i, sel = (uint32_t)(DM_LAYER - (int32_t)m);   /* (row 0 is LAYER = mode 2, row 2 is DUEL = mode 0) */
-    int32_t o = cv_oy;
-    const int32_t RH = 25, RP = 26, RY = 4;            /* a row: its box 25 px high, 26 px apart (a gap of 1), the first at y 4 */
-    uint16_t tint = ux_mix(T_BG, T_PTHEME(song.sel), UT_T6_SEL_PCT);
-    cv_oy = 0;
-    for (i = 0; i < 3u; i++) {
-        int32_t y = RY + RP * (int32_t)i;
-        if (i == sel)
-            { CV_HL(26, y, 206, RH); cv_card(26, y, 206, RH, tint, T_BG); }
-        cv_text_on(34, y + HALF_UP(RH - AF_L_CAP_H) - AF_L_CAP_Y, &AF_L, NM[i], T_TEXT, i == sel ? tint : T_BG);   /* (the capitals centred in the box: equal room above and below) */
-    }
-    guide_wrap(12, sel == 0u ? 83 : 86, 216, &AF_M, WH[sel], T_TEXT, 15);   /* (LAYER's two lines end 4 px above the card's edge, the room the picked box has above it) */
-    cv_rrect(8, RY + HALF_UP(RH - 11), 11, 11, 5, T_TEXT, T_BG);                           /* the knob mark, last: in front */
-    cv_text_in(8, RY + HALF_UP(RH - 11) + HALF_UP(11 - AF_D_CAP_H) - AF_D_CAP_Y, 11, &AF_DOT, "1", T_BG, T_TEXT);
-    cv_oy = o;
-}
-#endif
 /* a GLO page's line in M (0.2.24, owner: less tiny text, bigger labels): the name left, the value right, in the primary text colour; dim: both dim */
 static void big_line(int32_t y, const char *name, const char *val, uint32_t on)
 {
@@ -3038,12 +2761,10 @@ static void draw_graph(void)
                                                       * every picture here draws in SCREEN rows (cv_oy = minus the area's first row). PERFORM keeps its own path below (ui_perform.c) */
         int32_t ay, ah;
         area_rect(&ay, &ah);
-#if DUELL_TIDE
         if (TIDE_WAVE_PAGE(pg)) {                    /* (the MORPH page: taller than one canvas holds (CV_MAX 124 rows): a canvas a part, ui_scope.c wl_area) */
             wl_area(ay, ah);
             return;
         }
-#endif
         CV_BANDS(ah) {
             cv_begin(240, (uint32_t)ah, T_BG);
             cv_bg = T_BG;
@@ -3071,10 +2792,8 @@ static void draw_graph(void)
             cv_oy = 0;
             cv_blit(0, (uint32_t)ay);
         }
-#if DUELL_TIDE
         if (pg->graph == GR_PATS || pg->graph == GR_SLOTS)   /* (SAVE > PATTERNS / MULTIS: the picked entry's preview under the cards) */
             list_panel(pg->graph == GR_PATS);
-#endif
         return;
     }
     CV_BANDS(H_GRAPH) {
@@ -3129,18 +2848,6 @@ static void draw_graph(void)
             cv_oy = 0;
             graph_perf();
             break;
-    #if !DUELL_TIDE                                      /* TIDE hook: MORPH SET is not in TIDE's round (TIDE LIST has ROLL TYPE) */
-        case GR_MORPHSET:
-            cv_oy = 0;
-            graph_morphset();
-            break;
-    #endif
-    #if !DUELL_TIDE
-        case GR_MODE:
-            cv_oy = 0;
-            graph_mode();
-            break;
-    #endif
         TIDE_GRAPH_CASES                                 /* TIDE hook */
         case GR_MIDI:
             cv_oy = 0;

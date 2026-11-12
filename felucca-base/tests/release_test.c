@@ -65,10 +65,8 @@ int main(void)
     for (k = 0, ok = 1; k < MU_SLOTS; k++)
         ok &= project_used(k) && project_factory(k) && str_eq(mu_names[k], MULTI_NAME[k]);
     ck("M01..M16 are the factory multis (the reel, 2026-11-10: BASIC CHORD, DUB CHORD, JUNO DEEP .. BERLIN RUN, M16 AMB LOOPS), as in the test mode", ok);
-#if DUELL_TIDE
     ck("M17 AMB DUNEHORN, M18 AMB GROWL: the built-in drone multis, factory (ROM only)", MU_SHOWN >= 18u && project_used(16) && project_factory(16) && str_eq(mu_names[16], MULTI_NAME[16]) &&
        project_used(17) && project_factory(17) && str_eq(mu_names[17], MULTI_NAME[17]));
-#endif
     project_load(MIDX(2));
     ck("LOAD of M03 loads JUNO DEEP (ANALOG + ANALOG: WARM WASH, RUBBER BAND)", proj_cur == MIDX(2) && str_eq(ENGINES[trk[0].eng_req]->name, "ANALOG") && str_eq(ENGINES[trk[1].eng_req]->name, "ANALOG"));
     printf(bad ? "release: FAILED (%d)\n" : "release: all ok\n", bad);

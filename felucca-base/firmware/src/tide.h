@@ -1,17 +1,12 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* TIDE: the plug between DUELL and TIDE, the generative auto-morph (the fork's own code; JAM until 2026-11-01) (docs/design/MIGRATION_1_1_PLAN.md on branch jam, §3).
  * Every place where a DUELL file calls into TIDE is a hook below, marked "TIDE hook" at its call site, so the next
- * upstream merge finds them all with one grep. DUELL_TIDE=0 (env DUELL_TIDE=0 for tools/build.py) builds plain DUELL:
- * each hook expands to exactly the code that stood there before, and no TIDE file is compiled. That build is checked against
- * the hash in jam/off.sha256 (jam/check_off.sh; jam/off.history.md says what it covers). Included once, at the end of core.h. */
+ * upstream merge finds them all with one grep. (Until b10 a build with DUELL_TIDE=0 compiled plain DUELL, checked by jam/check_off.sh; that build is retired:
+ * TIDE is the only firmware, and the hooks are plain code.) Included once, at the end of core.h. */
 #ifndef TIDE_H
 #define TIDE_H
 
-#ifndef DUELL_TIDE
-#define DUELL_TIDE 1
-#endif
 
-#if DUELL_TIDE
 #define UP_NUSER 4u
 #define PS_NUSER 4u
 #define UP_EMPTY_USER(k) sl_empty_user(k)           /* U1 (upreset.c): slot k is an empty USER voice slot */
@@ -239,112 +234,6 @@ static int tide_foot_two(void);
  * (NIGHT ORGAN, now M04, before: 8 steps, "not a great showcase") */
 #define TIDE_FIRST_MULTI 1u
 
-#else
-
-#define TIDE_PLAY_STEP(t, idx) (&seq_steps(t)[(idx)])
-#define TIDE_SEQ_GHOST(t) 0
-#define TIDE_ARP_PAUSED(t) 0
-#define TIDE_SEQ_CHORD(t, list, n) (n)
-#define TIDE_SEQ_START() ((void)0)
-#define TIDE_GHOST_STOP() ((void)0)
-#define TIDE_SLEN(t) ((uint32_t)(t)->p[P_SLEN])
-#define TIDE_SWING_PAR(t) 0u
-#define TIDE_PLAY_IDX(t) ((uint32_t)(t)->seq_idx)
-#define TIDE_PLAY_LEN(t) ((uint32_t)(t)->p[P_SLEN])
-#define TIDE_SEQ_NEXT(t, len) (((uint32_t)(t)->seq_idx + 1u) % (len))
-#define TIDE_ARP_IDX(t, k, len) ((k) % (len))
-#define TIDE_ARP_TICK(t) ((void)0)
-#define TIDE_SEQ_RELEN(t, len) ((void)0)
-#define TIDE_BEAT_BLOCK(adv) ((void)(adv))
-#define TIDE_BEAT() ((void)0)
-#define TIDE_SEQ_LOOP(t, len) ((void)0)
-#define TIDE_CHANCE(t, idx, s, miss) (miss)
-#define TIDE_APROB(t, hit) (hit)
-#define TIDE_ARP_OUT(t, out, m, vel) (m)
-#define TIDE_LIVEREC 0
-#define TIDE_REC_VARS
-#define TIDE_REC_ARP_ON(t) rec_on(t)                    /* (plain DUELL: the arp records what it plays, ARP SEQ included) */
-#define TIDE_ARP_SEQ_PRE(t) ((void)0)
-#define TIDE_REC_REPLACE_PASS(t, idx, len, k) ((void)0)
-#define TIDE_REC_ARP_RELEASE(t) ((void)0)
-#define TIDE_REC_INPUT_ON(t, note, vel) ((void)0)
-#define TIDE_REC_INPUT_OFF(t, note) ((void)0)
-#define TIDE_MIDI_NOTE_HELD(t, x) 0
-#define TIDE_REC_ARP_KEYS(t) 0
-#define TIDE_REC_RESET(t, i) ((void)0)
-#define TIDE_STEP_MOTION(t) 1
-#define TIDE_REC_HOLD_ON(t) 1
-#define TIDE_REC_KEYS_CLEAR() ((void)0)
-#define TIDE_MIDI_SEL_POLL() ((void)0)
-#define TIDE_FORGET_MIDI(keep) 1
-#define TIDE_POLL() ((void)0)
-#define TIDE_FIRST_MULTI 0
-#define TIDE_PART_FIELDS
-#define TIDE_CFG_BITS() 0u
-#define TIDE_BLK_CFG_OK(c) ((c) < 32u)
-#define TIDE_ROLL(mp, pi, x, end, fend, seed, amount, cfg, ndep) 0
-#define TIDE_TOK_SET(mp, x, k, v) ((void)0)
-#define TIDE_TOK_COPY(mp, x, k, t) ((void)0)
-#define TIDE_REBASE_END(pi, mp, e) ((void)0)
-#define TIDE_FACTORY_AMOUNT(a) (a)
-#define TIDE_FACTORY_BAMT(e, k, a) (a)
-#define TIDE_FACTORY_CFG() 0u
-#define TIDE_BUILD_KIND(mp, id, kind) ((void)0)
-#define TIDE_BUILD_FNID(mp) ((void)0)
-#define TIDE_FM6_TARGET(mp, tr, p, w) ((void)0)
-#define TIDE_AMODE_KEEP(v) 0
-#define TIDE_AMODE_END(n) (n)
-#define TIDE_MORPH_PROTOS
-#define TIDE_MBV_FMT_N 0u
-#define TIDE_MBV_FLAGS 0u
-#define TIDE_MBV_SIZE(b, avail, len) (len)
-#define TIDE_MBV_MAKE(pi, out, n) (n)
-#define TIDE_MBV_LOAD(pi, b, len) ((void)0)
-#define TIDE_TL_KEEP
-#define TIDE_LOADED(mask) ((void)0)
-#define TIDE_SAVE_ERROR(rc) "SAVE ERROR"
-#define TIDE_THEME_F(f) (f)
-#define TIDE_FOOT_NAME(t, b) sound_label((t), (b))
-#define TIDE_FOOT_PART(sel) (sel)
-#define TIDE_TL_DO(t, p, was, len) ((void)0)
-#define TIDE_PT_NCH 22u
-#define TIDE_MG_N 4u
-#define TIDE_PAGE(pg) 0
-#define TIDE_WAVE_PAGE(pg) 0
-#define TIDE_LINK(kind, mask, v) ((void)0)
-#define TIDE_MQ_ROUTE(kind, mask, v, pi) 0
-#define TIDE_MQ_KINDS
-#define TIDE_MQ_MERGE(kind)
-#define TIDE_SCOPE_OPS
-#define TIDE_LIST_ON() 0
-#define TIDE_LIST_OCT(oct) ((void)0)
-#define TIDE_GRAPH_CASES
-#define TIDE_GRAPH_OWN(pg) ((void)0)
-#define TIDE_CARD_LIFT() 0
-#define TIDE_FOOT_FULL() 0
-#define TIDE_GRAPH_SIG(pg, h) ((void)0)
-#define TIDE_COLUMNS() ((void)0)
-#define TIDE_HOME_NAME "MORPH"
-#define TIDE_HOME_MODE_NAME "MODE"
-#define TIDE_MLOAD_NAMES {"KEEPS MODE", "SETS MODE"}
-#define TIDE_HOME_MODE(pg) ((pg)->scope == SC_MODE)
-#define TIDE_MODE_PG(pg) ((pg)->scope == SC_MODE)
-#define TIDE_GRID3 (grid_on == 3)
-#define TIDE_PICK_MODE() ((void)0)
-#define TIDE_MODE_SAY "MODE "
-#define TIDE_SAVE_NOTE(w) ((void)0)
-#define TIDE_LIVE_SIG(pg, t, h) ((void)0)
-#define TIDE_LIVE_DRAW(pg, t) ((void)0)
-#define TIDE_LIVE_MOD(t, y0) ((void)0)
-#define TIDE_LIVE_STRIP(pg, t) ((void)0)
-#define TIDE_LIVE_CHORD(t) ((void)0)
-#define TIDE_AMPDEST_FM6(pg, t) 0
-#define UP_NUSER 0u
-#define PS_NUSER 0u
-#define UP_EMPTY_USER(k) 0
-#define UP_REC_USER(t) ((t)->user)
-
-#endif
 
 /* U1 (upreset.c, patslot.c, ui*.c): the last UP_NUSER voice slots and PS_NUSER pattern slots are USER slots, empty until saved. The factory
  * sounds / patterns they displace stay listed after them as read-only places (voice places UP_SLOTS.., pattern places PS_SLOTS..). No record moves.
@@ -359,7 +248,7 @@ static int tide_foot_two(void);
 /* the pages where the part selection has its third position, BOTH (owner 2026-11-08): HOME's MORPH page, TIDE SETTINGS and AUTO TIDE, and PERFORM, whose K1 MORPH and ROLL are the MORPH page's
  * controls (and the test build's CPU TEST page). Everywhere else the selector picks PART 1 or PART 2 and the page shows and edits that part alone, as before; BOTH stays set for these pages */
 #define HOME_BOTH_PAGE(pg) ((pg)->graph == GR_MORPH || TIDE_PAGE(pg) || (pg)->scope == SC_TEST || (pg)->scope == SC_PERF)
-#if DUELL_TIDE && TIDE_PLAYSEL
+#if TIDE_PLAYSEL
 /* 1.0.0-b7 PLAY MODE SELECT: ALGORITHM's position names on those pages: PART 1, the middle named by the PLAY MODE row, PART 2 (ui_input.c play_pos; docs/design/PLAY_MODE_SELECT.md) */
 enum { PLS_P1, PLS_LAYER, PLS_STEREO, PLS_DUEL, PLS_P2, PLS_N };
 static const char *const PLS_NAME[PLS_N] = {"PART 1", "LAYER", "STEREO", "DUEL", "PART 2"};

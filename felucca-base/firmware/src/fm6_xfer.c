@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* The TIDE bridge of the FM6 engine (DUELL_TIDE only): a crossing between two unlike FM6 sounds (morph_xfer.c) retunes operators, switches the
+/* The TIDE bridge of the FM6 engine: a crossing between two unlike FM6 sounds (morph_xfer.c) retunes operators, switches the
  * algorithm and stands in free operators for the carriers that change frequency. Included once by eng_fm6.c (one translation unit) at the place
  * these functions had in it, so the generated code is the same; eng_fm6.c keeps the types it needs earlier (fm6_xt_t, fm6_xsave_t) and the
  * few hooks (fm6_sync, fm6_note_on, fm6_render, fm6_block). fm6_macros is the macro body of fm6_sync, which the OFF build keeps inline. */

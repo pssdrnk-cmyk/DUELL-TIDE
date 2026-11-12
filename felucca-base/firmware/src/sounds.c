@@ -35,23 +35,13 @@ typedef struct {
     uint32_t at;                 /* first bit in its DS_PACKED stream */
     uint16_t bseed;              /* End B: the seed (0: the hash of (engine, index)) */
     uint8_t bamt;                /* End B: the AMOUNT (%) */
-#if DUELL_TIDE
     uint8_t tamt;                /* TIDE: the factory End B's MUSICAL AMOUNT (0: MM_AMOUNT, tide.h TIDE_FACTORY_BAMT; in the padding) */
-#endif
 } ds_sound_t;
-#if DUELL_TIDE
 #define DS_TAMT(x) , x              /* (the generator writes a sound's 'tamt' through this) */
-#else
-#define DS_TAMT(x)                 /* (plain DUELL: not stored, so the table stays byte for byte) */
-#endif
 #define DSF_MONO 1u              /* (informative: the generator wrote VOICE LEG) */
 #define DSF_ARP 2u               /* sets the arp (a pair in P_AMODE .. P_AORDER) */
 #define DSF_KEYS 4u              /* sets the chord keys (a pair in P_CHRD, P_VOIC; never a scale: it is the instrument's, core.h): lent like the arp (ui.c ds_keys) */
-#if DUELL_TIDE
 #define DSF_TEXT 8u              /* an FX sound that is a texture or a drone (duell_sounds.py text=True): TIDE's JOURNEY family TEXT (tide_ui.c fam_of_sound); an FX without it is a one-shot */
-#else
-#define DSF_TEXT 0u              /* (plain DUELL: no JOURNEY, so the flag is not stored and the table stays byte for byte) */
-#endif
 #include "duell_sounds.h"
 _Static_assert(DS_NENG >= NENGINES && DS_N <= 255u, "duell_sounds.h: DS_ENG_AT covers every engine, DS_LIST bytes");
 _Static_assert(DS_PACKED_BITS <= 0xFFFFFFu, "duell_sounds.h: packed sound bit offsets fit ds_sound_t.at");

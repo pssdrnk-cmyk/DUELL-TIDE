@@ -24,11 +24,7 @@ static const char *const PF_NAME[PF_KEYS] = {
     "TAPE", "FREEZE", "OCT+", "OCT-",
     "FLG", "PHS", "DRV", "PUMP",
 
-#if DUELL_TIDE
     "GLIDE A", "GLIDE B",
-#else
-    "RND A", "RND B",
-#endif
     "MUTE 1", "MUTE 2",
 };
 #define PF_SMALL ((1u << 5) | (1u << 14) | (1u << 15))  /* FREEZE, MUTE 1, MUTE 2: the smaller size in the picture */
@@ -114,12 +110,8 @@ static void perf_input(uint32_t pressed, uint32_t now, uint32_t lay)
         while (ui.perf_rolls[k] != perf_roll_n[k]) {
             ui.perf_rolls[k]++;
             if (ok) {
-#if DUELL_TIDE
                 glide_launch(k, morph_mask(song.sel), song.sel);   /* (a panel launch: PLAY starts with it) */
                 ui_message(k ? "GLIDE TO B" : "GLIDE TO A");
-#else
-                morph_act(MQ_ROLL, morph_mask(song.sel), k, song.sel);
-#endif
             }
         }
     held = perf_places();

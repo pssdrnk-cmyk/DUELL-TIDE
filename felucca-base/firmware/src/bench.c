@@ -774,17 +774,13 @@ static BENCH_FN void bench_notes_off(void)
  * bm_sel, sense_enable) cannot be written here: the settings they come from are. The session's own values are kept at its start and put back by `bench reset` and at its end. The
  * BYPASS switches (byp_m, byp_sh) are plain RAM flags (editor_bypass.c): they start every test at 0. */
 static struct { uint8_t mods, ks, wash, mp1, mp2, route; int16_t cp1, ms0, bm; } bench_xk BENCH_BSS;   /* (mp1, mp2, route: GLO > MIDI as the owner has it: the console tests play on channels 1 and 2, see bench_midi_std) */
-#if DUELL_TIDE
 static struct { uint8_t pending, time; uint32_t after_h; } bench_tg BENCH_BSS;   /* `tide glide on TIME AFTER_MS`: GLIDE starts that long after the run's start (the held notes have been heard a while: the wash has learnt its level) */
-#endif
 static BENCH_FN void bench_extras_keep(void)
 {
     bench_xk.mods = (uint8_t)mods_get();
     bench_xk.cp1 = song.cp[1], bench_xk.ms0 = song.ms[0], bench_xk.bm = song.bm;
     bench_xk.mp1 = ui_midi_p1, bench_xk.mp2 = ui_midi_p2, bench_xk.route = (uint8_t)song.g[G_ROUTE];
-#if DUELL_TIDE
     bench_xk.wash = morph_wlvl;
-#endif
 #if DUELL_VELO
     bench_xk.ks = (uint8_t)(ui_idle & (KEYVEL_ON_BIT | AFTERT_OFF_BIT));
 #endif
@@ -799,7 +795,6 @@ static BENCH_FN void bench_extras_back(void)
     midi_ch_sync();
     byp_m[0] = byp_m[1] = 0;
     byp_sh = 0;
-#if DUELL_TIDE
     if (tide_drone_on) {                               /* (a built-in drone multi (M17, M18) had TIDE on STYLE DRONE: the rows it kept come back, as when another multi is loaded; a reset leaves no multi, and a drone multi loaded next
                                                         * then plays DRONE again, not as the one before it left things: WASH 3 for M17 after M16, 0 after M18: the note cap, the repeat check) */
         tide_rows_set(tide_drone_keep);
@@ -811,7 +806,6 @@ static BENCH_FN void bench_extras_back(void)
     memset(mxf, 0, sizeof mxf);
     memset(mxt, 0, sizeof mxt);
     bench_tg.pending = 0;
-#endif
 #if DUELL_VELO
     ui_idle = (uint8_t)((ui_idle & ~(KEYVEL_ON_BIT | AFTERT_OFF_BIT)) | bench_xk.ks);
 #endif
@@ -1692,13 +1686,11 @@ static BENCH_FN void bench_tl_tick(void)  /* every ui_input pass (bench_main_tic
 {
     if (!btl.sess)
         return;
-#if DUELL_TIDE
     if (bench_tg.pending && btl.state == TS_RUN && btl.h >= bench_tg.after_h) {
         bench_tg.pending = 0;
         gl.mode = GM_ONCE, gl.target = GT_SOUND, gl.wait = 0, gl.time = bench_tg.time;
         glide_launch(1u, 3u, 0u);
     }
-#endif
     kb_boot_hold = 1;                                  /* (as a row: the keys silent, the screen awake, nothing reaches the flash) */
     scrn.idle = fm1_ms;
     ui.mset_dirty = 0;
@@ -2102,7 +2094,6 @@ static BENCH_FN void bench_con_cal(const char *w, const char *p)   /* mods, bypa
 #endif
     }
 }
-#if DUELL_TIDE
 /* tide wash 0..3 | glide on [TIME 0..6 [AFTER_MS]] | glide off | force PART VALLEY MOTION | force off | reset | state     (TIDE's audio DSP: tools/tide_measure.py, tools/bench_suites/TIDE-DSP.txt)
  *   wash        TIDE LIST's WASH (0 OFF, 1 LOW, 2 MID, 3 HIGH): the session's value is put back by `bench reset` and `bench end`
  *   glide on    GLIDE once from End A to End B on both parts, the sound lane (TIME: 0 = 1 bar .. 6 = 64 bars; the transport starts with it); with AFTER_MS it starts that long after the
@@ -2212,7 +2203,6 @@ static BENCH_FN void bench_con_tide(const char *p)
     } else
         bench_err("tide: wash glide force reset state");
 }
-#endif
 /* updl CRC16 yes     the way back (bench_updl.c): the update loader the normal firmware staged at 0xE0000 (the bench build has no updater of its own, and never erases it) is checked against CRC16, the data
  *                    CRC of the package's loader (tools/tide_measure.py sends it; the unit needs the loader of the package that was just installed), the same UPDATA_PARM record ota.c writes goes
  *                    to the flash (when its place is blank) and the RAM, and the core resets into the loader: fm1_install.py then finishes the install of the normal package ("in update mode: the write
@@ -2492,11 +2482,7 @@ static BENCH_FN void bench_con(const char *p)
         return;
     }
     if (bench_ieq(w, "tide")) {
-#if DUELL_TIDE
         bench_con_tide(p);
-#else
-        bench_err("this build has no TIDE");
-#endif
         return;
     }
     if (bench_ieq(w, "set")) {
