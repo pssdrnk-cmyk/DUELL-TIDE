@@ -1,12 +1,12 @@
 tide_settings d08e26d0
 knobs_row ddac3339
-multis_m03 2c78a927
+multis_m03 1a272e67
 glo 776d68d0
 usb_audio_off f9498479
 usb_audio_on 343ee3ef
 knobs_ELEC_row d5ea11ed
 knobs_AMB_row 56dac0aa
-colr_lfo c2b2efd5
+colr_lfo 73855f49
 colr_lfo_off bb1bf539
 multis_m19 89154256
 multis_m20 76a62577
