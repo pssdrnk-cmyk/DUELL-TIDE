@@ -479,8 +479,12 @@ static int rec_tap(uint32_t seq)                        /* 1: the arming changed
                                                          * stopped, at the cursor (CHORD ENTRY ADD: adding) */
         return 1;
     }
-    if ((song.rec & bit) && !song.playing && !seq_counting())
-        transport_req = 1;
+    if ((song.rec & bit) && !song.playing && !seq_counting()) {
+        if (cin_bars)
+            transport_req = 1;                          /* the count-in on: as before */
+        else
+            rec_wait |= bit;                            /* b10 (live assist): REC arms and waits, the first key starts PLAY (an external clock: the master's start) */
+    }
     if ((song.rec & bit) && cur_page()->graph == GR_ROLL)
         ui_message("KEYS RECORD LIVE");               /* (seq_entry pauses while armed and playing) */
     if ((song.rec & bit) && trk[song.sel].p[P_AMODE] == AM_SEQ_ID)   /* TIDE (audit liverec L2): keys record into an ARP SEQ pattern (R2) */
@@ -491,7 +495,7 @@ static int rec_tap(uint32_t seq)                        /* 1: the arming changed
 /* live recording into the selected track now: the STEP page's key entry pauses meanwhile */
 static int live_rec_sel(void)
 {
-    return ((song.rec >> song.sel) & 1u) && (song.playing || transport_req == 1u || seq_counting());
+    return ((song.rec >> song.sel) & 1u) && (song.playing || transport_req == 1u || seq_counting() || ((rec_wait >> song.sel) & 1u));
 }
 
 /* the OCT- / OCT+ dialog (ui_draw.c draws it); trk: the track or the slot it is about */

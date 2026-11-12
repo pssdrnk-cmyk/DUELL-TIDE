@@ -294,8 +294,8 @@ MULTIS = apply_owner(MULTIS)
 # (firmware/src/tide_take.c) takes the key from SCL, else from here, else from the take itself (the header then shows a ?). Read by tools/gen_duell_multis.py (DF_KEY in duell_multis.h, one byte
 # a multi: 0xFF none, else the root 0 .. 11 | 16 for minor). The keys were read off each multi's own patterns (the key estimate of tide_take.c over both parts; M03, M06, M08, M15 agree with the
 # design report's hand-made keys). The record format is untouched: a multi saved by the player carries no key (0xFF) until it is saved with SCL.
-KEYS = {1: None, 2: None, 3: "A min", 4: "F min", 5: "G min", 6: "A min", 7: "E maj", 8: "C# min", 9: "A min", 10: "D min", 11: "E min", 12: "G min", 13: "F# min", 14: "D maj", 15: "F min",
-        16: None, 17: None, 18: None, 19: None, 20: "G maj", 21: "G# min", 22: "A min", 23: "A min", 24: "A maj", 25: None, 26: "G maj"}
+KEYS = {1: "G min", 2: "C min", 3: "A min", 4: "F min", 5: "G min", 6: "A min", 7: "E maj", 8: "C# min", 9: "A min", 10: "D min", 11: "E min", 12: "G min", 13: "F# min", 14: "D maj", 15: "F min",
+        16: "D# maj", 17: "C min", 18: "C min", 19: "F# min", 20: "G maj", 21: "G# min", 22: "A min", 23: "A min", 24: "A maj", 25: "G min", 26: "G maj"}
 DISPLAY_ORDER = [1, 2, 25, 20, 3, 4, 26, 5, 6, 21, 7, 8, 24, 19, 22, 9, 10, 11, 12, 13, 14, 23, 15, 16, 17, 18]
 
 

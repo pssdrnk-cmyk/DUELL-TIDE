@@ -177,29 +177,36 @@ static void reply_echo(void)
                         memset(trk[1].step, 0, sizeof trk[1].step);
                         tk_m.ans = 0;                                    /* (no live answer: a seed is a first answer's, the call is the part's loop) */
                         sg = sig_of(&trk[1]);
-                        if (d->bars > 2) {
-                            CHECK("a call of more than 2 bars: REPLY / ECHO write nothing", tk_gen(0, 1, seed, mode) == 0u && sig_of(&trk[1]) == sg && trk[1].p[P_SLEN] == 16 && trk[0].p[P_SLEN] == L);
-                            continue;
-                        }
-                        CHECK("REPLY / ECHO: the answer is written", tk_gen(0, 1, seed ? seed * 7919u : 0u, mode) == 1u);
+                        CHECK("REPLY / ECHO: the answer is written, on any LEN", tk_gen(0, 1, seed ? seed * 7919u : 0u, mode) == 1u);
                         n = answer_events(ev, 128);
-                        ok &= trk[0].p[P_SLEN] == 2 * L && trk[1].p[P_SLEN] == 2 * L;       /* the loop doubles: the call, then the answer */
-                        for (i = 0; i < n; i++)
-                            ok &= (mode == TA_ECHO || ev[i].t >= L) && ev[i].t + ev[i].len <= 2 * L && (mode == TA_ECHO || tk_in_key(ev[i].note));   /* (the echo is the call's own note: the player's pitch) */   /* (a reply plays in the bars after the call; the echo from where the call's last note ends) */
+                        ok &= trk[0].p[P_SLEN] == L && trk[1].p[P_SLEN] == L;               /* b10 assist2: the loop is LEN, the call and the answer share it */
                         if (mode == TA_REPLY) {
-                            ok &= n == d->nn;
-                            for (i = 0; i < n && i < d->nn; i++)
-                                ok &= ev[i].t == d->n[i].t + L && ev[i].len == d->n[i].len;    /* the call's rhythm */
-                            ok &= n > 0 && ev[n - 1].note % 12 == (int)tk_kr;                    /* ends on the tonic */
-                        } else {
-                            int last = d->nn - 1, t0 = d->n[last].t + d->n[last].len, gap = ev[1].t - ev[0].t;
-                            ok &= n == 4 && ev[0].t == t0 && (gap == 3 || gap == 4 || gap == 6) && (seed != 0u || gap == 3);
+                            int half = L / 2, cn = 0, lt = -1;
+                            for (i = 0; i < d->nn; i++)
+                                if (d->n[i].t < half) { cn++; lt = d->n[i].t; }
+                            ok &= n > 0 && n <= cn;
                             for (i = 0; i < n; i++)
-                                ok &= ev[i].note == d->n[last].note + trk[0].p[P_TRANS] && trk[1].step[ev[i].t].vel == 100 - 20 * i && ev[i].t == t0 + gap * i;
+                                ok &= ev[i].t >= half && ev[i].t < L && tk_in_key(ev[i].note);    /* (the first half calls, the second answers) */
+                            if (n && ev[n - 1].t == lt + half)
+                                ok &= ev[n - 1].note % 12 == (int)tk_kr;                        /* ends on the tonic */
+                        } else {
+                            int last = d->nn - 1, t0 = d->n[last].t + d->n[last].len, gap = 0;
+                            ok &= n == 4;
+                            for (i = 0; i < n; i++)
+                                if (ev[i].t == t0 % L) break;
+                            ok &= i < n;
+                            for (int g = 3; g <= 6; g++) {
+                                int c = 0;
+                                for (int r = 0; r < 4; r++)
+                                    for (int j = 0; j < n; j++)
+                                        c += ev[j].t == (t0 + g * r) % L && ev[j].note == d->n[last].note + trk[0].p[P_TRANS] && trk[1].step[ev[j].t].vel == 100 - 20 * r;
+                                if (c == 4) gap = g;
+                            }
+                            ok &= (gap == 3 || gap == 4 || gap == 6) && (seed != 0u || gap == 3);   /* 4 throws, 100 80 60 40, wrapping round the loop */
                         }
                         if (!ok)
                             printf("answer: %s on M%02d, %s, seed %u: loops %d %d, notes %d\n", d->name, MULTIS[mi], mode == TA_REPLY ? "REPLY" : "ECHO", seed, trk[0].p[P_SLEN], trk[1].p[P_SLEN], n);
-                        CHECK("REPLY / ECHO: loop doubled, after the call, in key, the reply ends on the tonic / the echo is 4 throws 100 80 60 40", ok);
+                        CHECK("REPLY / ECHO: inside LEN, in key, the reply in the second half ends on the tonic / the echo is 4 throws 100 80 60 40 round the loop", ok);
                         hs[seed] = sig_of(&trk[1]);
                         cases++; passed += ok;
                         if (seed == 0u) {
@@ -210,7 +217,7 @@ static void reply_echo(void)
                         }
                     }
                 }
-    printf("answer: REPLY / ECHO: %u cases of 2 bars or less pass the rules (9 seeds each)\n", passed);
+    printf("answer: REPLY / ECHO: %u cases of 1, 2 and 4 bars pass the rules (9 seeds each)\n", passed);
     CHECK("REPLY / ECHO cases all pass", cases && passed == cases);
 }
 /* ---- a take down in the bass register (rc6.4-test, owner: "something weird ... it doesn't play consistently"): the answer's notes must stay audible (C1 or above), rub-free, and be more than one ---- */
@@ -272,20 +279,13 @@ static void grid_mismatch(void)
                 tk_m.ans = 0;
                 ps = div_samples((uint32_t)trk[0].p[P_SDIV]);
                 pd = div_samples((uint32_t)trk[1].p[P_ARATE]);
-                want_len = (uint32_t)(d->bars * 16) * (mode >= TA_REPLY ? 2u : 1u);
-                want_len = ps == pd ? want_len : (want_len * ps + pd / 2u) / pd;
-                {
-                    uint32_t coarse = pd > ps || want_len > NSTEP;      /* (b10: the answer wins - a coarser or too fine a grid of the part is set to the take's) */
-                    wrote = tk_gen(0, 1, 0, mode);
-                    CHECK("an answer on a part with another grid is written", wrote == 1u);
-                    if (!wrote)
-                        continue;
-                    if (coarse) {
-                        want_len = (uint32_t)(d->bars * 16) * (mode >= TA_REPLY ? 2u : 1u);
-                        CHECK("a part grid too coarse for the answer is set to the take's", trk[1].p[P_ARATE] == trk[0].p[P_SDIV]);
-                    } else
-                        CHECK("a part grid that holds the answer stays", trk[1].p[P_ARATE] == RATES[ri]);
-                }
+                wrote = tk_gen(0, 1, 0, mode);
+                CHECK("an answer on an ARP SEQ part with another rate is written", wrote == 1u);
+                if (!wrote)
+                    continue;
+                (void)pd;
+                want_len = (uint32_t)(d->bars * 16);                 /* b10 assist2: an ARP SEQ part plays the answer as single notes, on the take's grid */
+                CHECK("an ARP SEQ part that holds the answer leaves ARP SEQ and sequences on the take's grid", trk[1].p[P_AMODE] == 0 && trk[1].p[P_SDIV] == trk[0].p[P_SDIV] && ps == div_samples((uint32_t)trk[1].p[P_SDIV]));
                 ok &= (uint32_t)trk[1].p[P_SLEN] == want_len;
                 for (i = 0; i < NSTEP; i++)
                     hits += trk[1].step[i].n != 0;
@@ -294,7 +294,7 @@ static void grid_mismatch(void)
                     ok &= !trk[1].step[i].n;                   /* nothing past the converted loop */
                 if (!ok)
                     printf("answer: grid M%02d arate %u mode %u: slen %d (want %u), %u steps with notes\n", MULTIS[mi], RATES[ri], mode, trk[1].p[P_SLEN], want_len, hits);
-                CHECK("an answer on a part with another grid: the loop is the take's in the part's steps, notes inside it, none past it", ok);
+                CHECK("an answer on an ARP SEQ part: the loop is the take's, notes inside it, none past it", ok);
             }
 }
 /* ---- M02 DUB CHORD part 2, the factory default multi's pad: an ARP SEQ part on a slow arp rate gave NO ANSWER (owner's setup); the answer wins: DOUBLE and BASS LINE are written on the take's grid, the part's RATE follows, and the history step restores it ---- */
@@ -319,6 +319,7 @@ static void m02_pad(void)
         CHECK("M02 part 2 is the ARP SEQ pad on a slow rate", amode == AM_SEQ_ID && div_samples((uint32_t)arate) > div_samples(2u));
         tk_save(&pre);
         CHECK("M02 pad: the answer is written", tk_gen(0, 1, 0, mode) == 1u);
+        CHECK("M02 has its own key: C minor (no guess, no ?)", tk_kr == 0u && tk_km == 1u && !tk_guess && !(tk_m.flags & 2u));
         n = answer_events(ev, 64);
         for (i = 0; i < n; i++) {
             rub += rubs(d, &ev[i]);
@@ -326,9 +327,9 @@ static void m02_pad(void)
             low += ev[i].note < 24;
         }
         CHECK("M02 pad: more than one note, in key, no rubs, none under C1", n >= 2 && !rub && !key && !low);
-        CHECK("M02 pad: the part's RATE is the take's grid and its loop the take's", trk[1].p[P_ARATE] == trk[0].p[P_SDIV] && trk[1].p[P_SLEN] == d->bars * 16);
+        CHECK("M02 pad: the part plays single notes (out of ARP SEQ) on the take's grid, its loop the take's", trk[1].p[P_AMODE] == 0 && trk[1].p[P_SDIV] == trk[0].p[P_SDIV] && trk[1].p[P_SLEN] == d->bars * 16);
         tk_load(&pre);
-        CHECK("M02 pad: the history step brings the old RATE and loop back", trk[1].p[P_ARATE] == arate && trk[1].p[P_SLEN] == slen && !memcmp(trk[1].step, keep, sizeof keep));
+        CHECK("M02 pad: the history step brings ARP SEQ, its DIV, RATE and loop back", trk[1].p[P_AMODE] == amode && trk[1].p[P_SDIV] == sdiv && trk[1].p[P_ARATE] == arate && trk[1].p[P_SLEN] == slen && !memcmp(trk[1].step, keep, sizeof keep));
     }
 }
 int main(void)
