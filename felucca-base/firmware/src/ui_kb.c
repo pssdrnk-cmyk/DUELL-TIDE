@@ -15,6 +15,7 @@
 #define KB_WHITE_OFF T_RAISE  /* an unlit white key: the lighter of the two unlit tones */
 #define KB_BLACK_OFF T_BASE   /* an unlit black key: the darker one */
 #define KB_ROOT T_TEXT        /* the root key: the light text tone */
+static uint8_t kb_scale;      /* b10 (SCALE / CHORD one pair): GLOBAL SCALE's keyboard: the root in every octave, the lit keys in the GLOBAL gradient (grad_col) at their middle */
 
 /* lit: bit mask of the semitones counted from C (bit 0 = C, up to 24 bits); root: a semitone index counted the same way, or 0xFF for none;
  * octaves: 1 or 2; colour: the lit keys' colour; x, y, w, h: the whole keyboard (x = 9, w = 222 on a 240 px page, h = 74). */
@@ -35,7 +36,7 @@ static void kb_draw(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t lit, ui
     for (i = 0; i < n; i++) {                                /* the white keys first */
         uint32_t semi = (uint32_t)WHITE_SEMI[i % 7] + 12u * (uint32_t)(i / 7);
         int32_t x0 = x + i * pitch_n / n, x1 = x + (i + 1) * pitch_n / n - KB_GAP;
-        uint16_t col = semi == root ? (uint16_t)KB_ROOT : ((lit >> semi) & 1u) ? colour : (uint16_t)KB_WHITE_OFF;
+        uint16_t col = semi == root || (kb_scale && semi % 12u == root) ? (uint16_t)KB_ROOT : ((lit >> semi) & 1u) ? (kb_scale && !ux.bw ? grad_col((x0 + x1) / 2) : colour) : (uint16_t)KB_WHITE_OFF;
         cv_rrect(x0, y, x1 - x0, h, KB_RADIUS, col, T_BG);
     }
     for (i = 0; i < (int32_t)octaves * 5; i++) {             /* the black keys on top, each in a ring of the page background */
@@ -43,7 +44,7 @@ static void kb_draw(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t lit, ui
         int32_t wi = (int32_t)BLACK_AFTER[i % 5] + 7 * (i / 5);
         int32_t cx = x + (wi + 1) * pitch_n / n - KB_GAP / 2;   /* the middle of the gap between the two white keys */
         int32_t bx = cx - bw / 2;
-        uint16_t col = semi == root ? (uint16_t)KB_ROOT : ((lit >> semi) & 1u) ? colour : (uint16_t)KB_BLACK_OFF;
+        uint16_t col = semi == root || (kb_scale && semi % 12u == root) ? (uint16_t)KB_ROOT : ((lit >> semi) & 1u) ? (kb_scale && !ux.bw ? grad_col(cx) : colour) : (uint16_t)KB_BLACK_OFF;
         cv_rrect(bx - 1, y - 1, bw + 2, bh + 2, KB_RADIUS + 1, T_BG, T_BG);   /* the ring: 1 px of page background around the key (it also reaches 1 px over the top edge) */
         cv_rrect(bx, y, bw, bh, KB_RADIUS, col, T_BG);
     }

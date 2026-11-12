@@ -306,25 +306,22 @@ static void wl_push(wl_t *s, int8_t *nd)
 }
 /* the sound has gone (silence, a note's tail): the newest ridge again at half its height (a flat one once nothing is left), so a shape fades out over a few pictures instead of
  * dropping to a ruled line */
-/* b10 Phase B (I3, audit: a stab's lane snapped to the flat lines between hits): silence pushes nothing; every ridge keeps its shape and shrinks to 15/16 a picture
- * (half in ~11 pictures, ~0.65 s; under half a px: flat), so the last notes stay where they were and fade, and the next note starts the stack moving again */
 static void wl_fade(wl_t *s)
 {
-    uint32_t r, p;
-    for (r = 0; r < s->hn; r++) {
-        uint32_t any = 0;
-        if ((s->flat >> r) & 1u)
-            continue;
-        for (p = 0; p < WL_NP; p++) {
-            int32_t v = s->rd[r][p] * 15 / 16;
-            v = v > -2 && v < 2 ? 0 : v;
-            s->rd[r][p] = (int8_t)v;
-            any |= v != 0;
-        }
-        if (!any)
-            s->flat |= (uint16_t)(1u << r);
+    int8_t nd[WL_NP];
+    uint32_t p, any = 0;
+    for (p = 0; p < WL_NP; p++) {
+        int32_t v = s->hn && !(s->flat & 1u) ? wl_rq(s, 0, p) : 0;
+        nd[p] = (int8_t)(v / 2);
+        nd[p] = nd[p] > -2 && nd[p] < 2 ? 0 : nd[p];   /* (under half a px: gone) */
+        any |= nd[p] != 0;
     }
-    s->got = 1;                                      /* (a picture step was taken: wl_tick waits for the next tick, as after a push) */
+    {
+        const uint16_t was = s->flat;
+        s->flat |= 1u;                               /* (no blend with it: the fade is the shape itself) */
+        wl_push(s, any ? nd : 0);
+        s->flat = (uint16_t)((was << 1 | (any ? 0u : 1u)) & ((1u << WL_HN) - 1u));
+    }
 }
 /* a picture that could not be read (too little since a hole in the tap, or torn twice): the front again (flat if it is), so the stack still moves back a step while the part
  * sounds (b6, owner 2026-11-09: "check why the current display doesn't move when piece is playing") */
