@@ -592,12 +592,12 @@ typedef struct {                 /* the part in mix_part, its window: one per pa
 /* TIDE 1.0.0-b6: the multis SHOWN (lists, labels, pickers, previews, MIDI program change) are M01..M18; the STORED ones stay MU_SLOTS (16: the flash
  * objects, storage.c). M17 DUNE HORN and M18 VOID DEEP are ROM only (MU_ROM; multi.c: they load and preview, never save, rename or erase) */
 #if DUELL_TIDE
-#define MU_SHOWN 24u                /* (b10: + M19 TECH HYPNO, M20 DUB HOUSE, M21 HSE LOFI, M22 TECH CINEMA, M23 AMB TECHNO, M24 TECH MINIMAL, ROM only as the drones; tools/drone_pack.py ROM_MULTIS) */
+#define MU_SHOWN 26u                /* (b10: + M19 TECH HYPNO, M20 DUB HOUSE, M21 HSE LOFI, M22 TECH CINEMA, M23 AMB TECHNO, M24 TECH MINIMAL, MR9 M25 DUB MINIMAL, M26 HSE KEYS, ROM only as the drones; tools/drone_pack.py ROM_MULTIS) */
 #else
 #define MU_SHOWN MU_SLOTS
 #endif
 #define MU_ROM(k) ((uint32_t)(k) >= MU_SLOTS)
-#define MU_DRONE(k) (DUELL_TIDE && (uint32_t)(k) - 22u < 2u)   /* M23, M24: the built-in drone multis (TIDE plays them as STYLE DRONE, tide_ui.c tide_drone); since b10 the list is in genre order (tools/factory_multis.py DISPLAY_ORDER): M17 .. M22 are ROM-only multis of other genres */
+#define MU_DRONE(k) (DUELL_TIDE && (uint32_t)(k) - 24u < 2u)   /* M25, M26: the built-in drone multis (TIDE plays them as STYLE DRONE, tide_ui.c tide_drone); since b10 the list is in genre order (tools/factory_multis.py DISPLAY_ORDER): M17 .. M24 are ROM-only multis of other genres */
 #define MU_ROM_SAY "SAVE TO M01-M16"   /* SAVE / rename refused on M17, M18 (multi.c), as SOUNDS says PICK A USER SLOT */
 typedef struct track {
     int16_t p[EXT_P_LEN];        /* P_COUNT ids, a gap at 127, then the NX extension slots (ext.h XV); every store and format still counts P_COUNT */

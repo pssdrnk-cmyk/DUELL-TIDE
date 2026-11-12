@@ -244,7 +244,7 @@ static void keys_drive(void)
     /* (reel, 2026-11-10: the ARP SEQ pairs of the fifteen new multis: M05 HSE ORGAN, M07 TECH DETROIT, M09 MINIMAL 12, M13 ELEC DEEPSEA (M03 and M06 are plain patterns now);
      * AMB: no factory multi has a latched pad any more, so the owner's WHISPER TIDE (the factory M11 until the reel) is the test scene tests/scenes/reel/M11_WHISPER_TIDE.bin,
      * stored in M11 for its check and erased again; M06 HSE FRENCH is the keyed pair (both parts played from the keys, HOLD OFF), as TINE STRINGS and FINAL REEL were) */
-    static const uint8_t GRV[4] = {1, 4, 6, 11}, P1[4] = {0, 0, 0, 0}, AMB[2] = {10, 5};   /* (b8 lane M09: slot 9 HYPNO 303 has a plain-pattern 303 on part 1: with M11 in the plain-pattern check below) */
+    static const uint8_t GRV[4] = {1, 4, 6, 11}, P1[4] = {0, 0, 0, 0}, AMB[2] = {8, 5};   /* (b8 lane M09: slot 9 HYPNO 303 has a plain-pattern 303 on part 1: with M11 in the plain-pattern check below) */
     static const char *const GN[4] = {"M02 DUB CHORD", "M05 HSE ORGAN", "M07 TECH DETROIT", "M12 ELEC ROBOT"};
     uint32_t j;
     char line[160];
@@ -309,15 +309,15 @@ static void keys_drive(void)
      * 0.2.25: M07 is the owner's refined FINAL REEL, HOLD OFF on both parts: keyed, nothing latched, as M06 */
     for (j = 0; j < 2u; j++) {
         k = AMB[j];
-        if (k == 10u)                                /* (reel: the latched pad is a test scene, saved in M11; the flash is read again by play_run's power cycle) */
-            scene_put(MIDX(10), "reel/M11_WHISPER_TIDE");          /* (in the slot record M11 has since the genre order) */
+        if (k == 8u)                                 /* (reel: the latched pad is a test scene, saved in M11; the flash is read again by play_run's power cycle) */
+            scene_put(MIDX(8u), "reel/M11_WHISPER_TIDE");          /* (in the slot of record M09 ACID HYPNO, a stored slot: record M11 is ROM only since MR9) */
         play_run(k, chord, sec, 3u * sec, 0, r);
         ok = r[0].n >= 3u && r[0].first <= 1u && r[1].n >= 1u && r[0].gated_after >= 3u && r[1].late >= 1u;
         if (k == 5u)                                 /* (reel: M06, now HSE FRENCH: both parts keyed, nothing latched (HOLD OFF), the release ends both; 0.2.25 .. b7 the owner's TINE STRINGS and FINAL REEL) */
             ok = r[0].n >= 3u && r[0].first <= 1u && r[1].n >= 1u && r[0].gated_after == 0u && r[1].gated_after == 0u && r[1].late == 0u;   /* (b9 rework3: HSE FRENCH's bass is mono, PRIO LOW: a chord plays its lowest key) */
         printf("multi:   M%02u C4 E4 G4 1 s, 3 s let go: part 1 %u note-ons, %u notes still gated; part 2 %u (%u after the release), %u gated\n",
                k + 1u, r[0].n, r[0].gated_after, r[1].n, r[1].late, r[1].gated_after);
-        ck(k == 10u ? "WHISPER TIDE (the owner's, a test scene in M11 since the reel): a chord latches the pad, the choir picks its notes and goes on after the release"
+        ck(k == 8u ? "WHISPER TIDE (the owner's, a test scene in record M09's slot since MR9): a chord latches the pad, the choir picks its notes and goes on after the release"
                     : "M06 HSE FRENCH (b9 rework3): a chord plays the electric piano, the mono bass its lowest key, nothing latched (HOLD OFF), the release ends both", ok);
         play_run(k, 0u, 2u * sec, 0u, 1, z);
         {   /* (U2 B: a plain pattern plays on PLAY whatever the build; an ARP SEQ part only with TIDE's stand-in; the classic arps (M05, M13) wait for keys) */
@@ -330,9 +330,9 @@ static void keys_drive(void)
             }
         }
         ck("  PLAY without a key: the stored arrangement plays (patterns; ARP SEQ with TIDE's stand-in), a classic arp stays silent", ok);
-        if (k == 10u) {                              /* (the scene leaves M11: the factory M11 ACID LINES is back for the checks below) */
+        if (k == 8u) {                               /* (the scene leaves: the factory ACID HYPNO is back for the checks below) */
             power_cycle();
-            ck("  (the WHISPER TIDE scene erased from M11: the factory M11 ACID LINES is back)", project_erase(MIDX(10u)) == 0 && project_factory(MIDX(10u)) && str_eq(mu_names[MIDX(10u)], MULTI_NAME[MIDX(10u)]));
+            ck("  (the WHISPER TIDE scene erased: the factory ACID HYPNO is back)", project_erase(MIDX(8u)) == 0 && project_factory(MIDX(8u)) && str_eq(mu_names[MIDX(8u)], MULTI_NAME[MIDX(8u)]));
         }
     }
     /* U2 B (1.1): the sequenced arrangements of PAD SPLIT, WHISPER TIDE, TINE STRINGS, FINAL REEL, HAZY TENSOR, CELLAR TAPE (M10 M11 M12 M16 M15 M03 since D31). PLAY alone starts the plain-pattern parts; the ARP SEQ
@@ -448,7 +448,7 @@ static void editb_worst_multi(void)
  * change 16 and 17 load them, 18 and up are ignored; while one is loaded TIDE plays STYLE DRONE, another multi brings the STYLE back, the saved one never changes */
 static void drones(void)
 {
-    #define DN_NAME(i) MULTI_NAME[22 + (i)]       /* (M23 AMB DUNEHORN, M24 AMB GROWL) */
+    #define DN_NAME(i) MULTI_NAME[MU_SHOWN - 2u + (i)]       /* (M23 AMB DUNEHORN, M24 AMB GROWL) */
     static const char *const DS[2][2] = {{"HORN SWELL", "VOID SHIMMER"}, {"REESE BASS", "NIGHT DRONE"}};
     /* the sequences (tools/drone_pack.py, b6: owner "I'm missing some sequence from the drone multis"): the part, its RATE (params.c N_DIV: 6 1/2, 7 1/1; b7: the bed beside it is ARP SEQ too, 1/4 = 0, one note tied over its 16 steps), the 16 steps
      * (a digit: the offset from the held key plus DQ_BASE, '-' a tie, '.' a rest; b9 rework2: M18 AMB GROWL moves C3, E flat 3, G3 over its bed on C2: DQ_BASE -12, DQ_BED -24) */
@@ -501,15 +501,15 @@ static void drones(void)
         objn[o] = (uint16_t)mu_obj_read(o);
         memcpy(obj[o], mu_buf, objn[o]);
     }
-    ck("drones: MU_SHOWN 24 (b10: M19-M24 ROM-only factory multis), MU_SLOTS (stored) still 16, the flash objects as before (OBJ_PATCH0 = OBJ_MULTI0 + 8)", MU_SHOWN == 24u && MU_SLOTS == 16u && MU_NOBJ == 8u && DF_N == MU_SHOWN);
-    for (k = 22u, ok = 1; k < 24u; k++) {
-        ok &= project_used(k) && project_factory(k) && !multi_bad(k) && project_info(k, nm) && str_eq(nm, DN_NAME(k - 22u)) && df_of(k) == k - 6u;     /* (the DM_* arrays are in record order: the drones are records 17, 18 = indexes 16, 17) */
-        ok &= str_eq(multi_vname(k, 0), DS[k - 22u][0]) && str_eq(multi_vname(k, 1), DS[k - 22u][1]);
-        ok &= multi_vmode(k, DQ[k - 22u]) == (2u | 4u) && multi_vmode(k, 1u - DQ[k - 22u]) == (2u | 4u);   /* (the MULTIS row, ui_graph.c graph_slots: "SEQ" on both: the moving part and, b7, the bed with its one tied step) */
+    ck("drones: MU_SHOWN 26 (b10: M19-M26 ROM-only factory multis), MU_SLOTS (stored) still 16, the flash objects as before (OBJ_PATCH0 = OBJ_MULTI0 + 8)", MU_SHOWN == 26u && MU_SLOTS == 16u && MU_NOBJ == 8u && DF_N == MU_SHOWN);
+    for (k = MU_SHOWN - 2u, ok = 1; k < MU_SHOWN; k++) {
+        ok &= project_used(k) && project_factory(k) && !multi_bad(k) && project_info(k, nm) && str_eq(nm, DN_NAME(k - (MU_SHOWN - 2u))) && df_of(k) == k - (MU_SHOWN - 18u);     /* (the DM_* arrays are in record order: the drones are records 17, 18 = indexes 16, 17) */
+        ok &= str_eq(multi_vname(k, 0), DS[k - (MU_SHOWN - 2u)][0]) && str_eq(multi_vname(k, 1), DS[k - (MU_SHOWN - 2u)][1]);
+        ok &= multi_vmode(k, DQ[k - (MU_SHOWN - 2u)]) == (2u | 4u) && multi_vmode(k, 1u - DQ[k - (MU_SHOWN - 2u)]) == (2u | 4u);   /* (the MULTIS row, ui_graph.c graph_slots: "SEQ" on both: the moving part and, b7, the bed with its one tied step) */
         multi_preview(k, &pv);
         ok &= pv.state == 1u;
     }
-    ck("  M23 AMB DUNEHORN, M24 AMB GROWL: used, factory, their names, sounds (HORN SWELL + VOID SHIMMER, REESE BASS + NIGHT DRONE), the MULTIS row SEQ / SEQ with notes in the pattern, the preview decodes", ok);
+    ck("  M25 AMB DUNEHORN, M26 AMB GROWL (the last two slots): used, factory, their names, sounds (HORN SWELL + VOID SHIMMER, REESE BASS + NIGHT DRONE), the MULTIS row SEQ / SEQ with notes in the pattern, the preview decodes", ok);
     {   /* 1.0.0-b7: a part with the arp OFF and notes in its pattern plays the sequencer on PLAY: the MULTIS row and the preview say SEQ, not OFF (M03 HSE JUNO, written patterns on both parts) */
         static proj_trk_t d;
         uint8_t v[4];
@@ -533,17 +533,17 @@ static void drones(void)
         ok &= pv.state == 1u && pv.p[0].mode == 2u && pv.p[1].mode == 2u;
         ck("  a part with the arp OFF and notes in its pattern shows SEQ (row and preview; M03 HSE JUNO both parts); OFF only with neither, ARP stays ARP", ok);
     }
-    for (k = 22u; k < 24u; k++) {
+    for (k = MU_SHOWN - 2u; k < MU_SHOWN; k++) {
         char path[64];
         FILE *f;
         uint32_t t;
-        snprintf(path, sizeof path, "tools/drone_multis/M%u.bin", (unsigned)k - 5u);   /* (the source of the ROM record: tools/drone_pack.py) */
+        snprintf(path, sizeof path, "tools/drone_multis/M%u.bin", (unsigned)(k - (MU_SHOWN - 2u) + 17u));   /* (the source of the ROM record: tools/drone_pack.py) */
         f = fopen(path, "rb");
         len = f ? (uint32_t)fread(rec, 1, sizeof rec, f) : 0u;
         if (f)
             fclose(f);
-        ok = len == DM_LEN[k - 6u] && !memcmp(rec, dm_rec(k - 6u, dmb), len) && rec[4] == DM_LAYER;
-        ok &= mu_unpack(&q, amt, set, dm_rec(k - 6u, dmb), DM_LEN[k - 6u]);
+        ok = len == DM_LEN[k - (MU_SHOWN - 18u)] && !memcmp(rec, dm_rec(k - (MU_SHOWN - 18u), dmb), len) && rec[4] == DM_LAYER;
+        ok &= mu_unpack(&q, amt, set, dm_rec(k - (MU_SHOWN - 18u), dmb), DM_LEN[k - (MU_SHOWN - 18u)]);
         project_load(k);
         frame();
         for (t = 0; t < NSHOWN; t++)
@@ -553,27 +553,27 @@ static void drones(void)
             ok &= trk[t].eng_req == q.t[t].engine && trk[t].preset == q.t[t].preset && !memcmp(trk[t].p, q.t[t].p, sizeof q.t[t].p) &&
                   !memcmp(trk[t].step, q.t[t].step, sizeof q.t[t].step);
         {                                            /* (the sequence, tools/drone_pack.py: one part ARP SEQ on 16 steps at its RATE, GATE 127, the steps' offsets; the other, b7, the bed: ARP SEQ 1/4, one tied note) */
-            const track_t *s = &trk[DQ[k - 22u]], *d = &trk[1u - DQ[k - 22u]];
+            const track_t *s = &trk[DQ[k - (MU_SHOWN - 2u)]], *d = &trk[1u - DQ[k - (MU_SHOWN - 2u)]];
             uint32_t bed_ok;
             ok &= trk[0].p[P_AHOLD] == 2 && trk[1].p[P_AHOLD] == 2 && d->p[P_AMODE] == AM_SEQ_ID && song.g[G_BPM] == 60;
-            ok &= s->p[P_AMODE] == AM_SEQ_ID && s->p[P_SLEN] == 16 && s->p[P_AGATE] == 127 && s->p[P_ARATE] == DQ_RATE[k - 22u];
+            ok &= s->p[P_AMODE] == AM_SEQ_ID && s->p[P_SLEN] == 16 && s->p[P_AGATE] == 127 && s->p[P_ARATE] == DQ_RATE[k - (MU_SHOWN - 2u)];
             for (t = 0; ok && t < 16u; t++)
-                ok &= DQ_STEP[k - 22u][t] == '.' ? s->step[t].time == ST_REST : DQ_STEP[k - 22u][t] == '-' ? s->step[t].time == ST_TIE :
-                      s->step[t].time == ST_NOTE && s->step[t].n == 1u && s->step[t].note[0] == (uint32_t)(60 + DQ_BASE[k - 22u] + (DQ_STEP[k - 22u][t] - '0')) && !(s->step[t].flags & SF_ACCENT);
+                ok &= DQ_STEP[k - (MU_SHOWN - 2u)][t] == '.' ? s->step[t].time == ST_REST : DQ_STEP[k - (MU_SHOWN - 2u)][t] == '-' ? s->step[t].time == ST_TIE :
+                      s->step[t].time == ST_NOTE && s->step[t].n == 1u && s->step[t].note[0] == (uint32_t)(60 + DQ_BASE[k - (MU_SHOWN - 2u)] + (DQ_STEP[k - (MU_SHOWN - 2u)][t] - '0')) && !(s->step[t].flags & SF_ACCENT);
             for (bed_ok = 1, t = 0; t < 16u; t++)     /* (b7: the bed, ARP SEQ 1/4, GATE 127: one note, the root (M18: two octaves down), tied over all 16 steps) */
-                bed_ok &= t ? d->step[t].time == ST_TIE : d->step[t].time == ST_NOTE && d->step[t].n == 1u && d->step[t].note[0] == (uint32_t)(60 + DQ_BED[k - 22u]);
+                bed_ok &= t ? d->step[t].time == ST_TIE : d->step[t].time == ST_NOTE && d->step[t].n == 1u && d->step[t].note[0] == (uint32_t)(60 + DQ_BED[k - (MU_SHOWN - 2u)]);
             ok &= bed_ok && d->p[P_SLEN] == 16 && d->p[P_AGATE] == 127 && d->p[P_ARATE] == 0;
         }
-        ck(k == 22u ? "  M23: the ROM record is tools/drone_multis/M17.bin byte for byte (LAYER); LOAD gives its engines, sounds, every value and step; HOLD ALL, 60 BPM; part 1 ARP SEQ 1/2 root root fourth root, part 2 ARP SEQ 1/4 one tied root"
+        ck(k == MU_SHOWN - 2u ? "  M23: the ROM record is tools/drone_multis/M17.bin byte for byte (LAYER); LOAD gives its engines, sounds, every value and step; HOLD ALL, 60 BPM; part 1 ARP SEQ 1/2 root root fourth root, part 2 ARP SEQ 1/4 one tied root"
                     : "  M24: the ROM record is tools/drone_multis/M18.bin byte for byte (LAYER); LOAD gives its engines, sounds, every value and step; HOLD ALL, 60 BPM; part 2 ARP SEQ 1/1 an octave down: root, minor third, fifth, part 1 ARP SEQ 1/4 one tied root two octaves down", ok);
     }
     memcpy(snap, nor, sizeof snap);
     gen = multi_gen();
-    ok = project_save_as(22u, "MINE") != 0 && msg_is(MU_ROM_SAY) && project_rename(23u, "MINE") != 0 && project_erase(23u) != 0 && msg_is("ALREADY FACTORY");
-    ok &= project_save(23u) != 0 && !memcmp(snap, nor, sizeof snap) && multi_gen() == gen && project_info(22u, nm) && str_eq(nm, MULTI_NAME[22]);
+    ok = project_save_as(MU_SHOWN - 2u, "MINE") != 0 && msg_is(MU_ROM_SAY) && project_rename(MU_SHOWN - 1u, "MINE") != 0 && project_erase(MU_SHOWN - 1u) != 0 && msg_is("ALREADY FACTORY");
+    ok &= project_save(MU_SHOWN - 1u) != 0 && !memcmp(snap, nor, sizeof snap) && multi_gen() == gen && project_info(MU_SHOWN - 2u, nm) && str_eq(nm, MULTI_NAME[MU_SHOWN - 2u]);
     ck("  SAVE, rename and ERASE on M23 / M24 refused (SAVE TO M01-M16, ALREADY FACTORY), nothing written, the names stand", ok);
     go_title("MULTIS");
-    song.g[G_SLOT] = 24;
+    song.g[G_SLOT] = (int16_t)MU_SHOWN;
     frame();
     ui.act = 3;                                      /* (K3: SAVE picked) */
     act_do();
@@ -587,13 +587,13 @@ static void drones(void)
     ok &= proj_cur == 3u && project_erase(3u) == 0 && project_factory(3u) && project_info(3u, nm) && str_eq(nm, MULTI_NAME[3]);   /* (reel, 2026-11-10: M04 is LATE RHODES) */
     ck("  an edited drone multi saves into M04 like any other, loads, and ERASE brings the factory M04 back", ok);
     proj_cur = 0;
-    midi_pc(0, 22);
+    midi_pc(0, MU_SHOWN - 2u);
     pc_poll();
-    ok = proj_cur == 22u;
-    midi_pc(0, 23);
+    ok = proj_cur == MU_SHOWN - 2u;
+    midi_pc(0, MU_SHOWN - 1u);
     pc_poll();
-    ok &= proj_cur == 23u;
-    midi_pc(0, 21);                                  /* (b10: M19 TECH HYPNO, a ROM multi, not a drone) */
+    ok &= proj_cur == MU_SHOWN - 1u;
+    midi_pc(0, 21);                                  /* (slot 22: a ROM multi, not a drone) */
     pc_poll();
     ok &= proj_cur == 21u;
     project_load(1u);                                /* (M02: M01 holds the DAMAGED record of the check above) */
@@ -601,21 +601,21 @@ static void drones(void)
     pc_poll();
     midi_pc(0, 127);
     pc_poll();
-    ck("  MIDI program change 22, 23, 21 (LAYER) load M23, M24, M22; MU_SHOWN (24) and 127 are ignored", ok && proj_cur == 1u);
+    ck("  MIDI program change MU_SHOWN - 2, MU_SHOWN - 1, 21 (LAYER) load the two drones and M22; MU_SHOWN (26) and 127 are ignored", ok && proj_cur == 1u);
     tide_settings();
     tide_style_apply(STY_DEEP);                     /* (the player's STYLE) */
     tide_settings();
     style0 = tide_seen[TS_STYLE];
     mph[0].aset = mph[0].amount = 37u;               /* (the player's AMOUNT, knob 4: MORPH c3 keeps it over a factory load) */
     mph[1].aset = mph[1].amount = 63u;
-    project_load(22u);
+    project_load(MU_SHOWN - 2u);
     tide_settings();
     ok = tide_style == STY_DRONE && tide_style_holds() && gl.mode == STY[STY_DRONE][0] && gl.time == STY[STY_DRONE][1] && str_eq(jl_vname(JL_STYLE, jl_get(JL_STYLE)), "DRONE");
     ok &= tide_seen[TS_STYLE] == STY_DEEP && style0 == STY_DEEP && tide_seen[TS_TIME] == STY[STY_DEEP][1];
     ck("  STYLE: M23 loaded, TIDE plays DRONE (its rows, TIDE SETTINGS shows DRONE); the saved STYLE stays DEEP", ok);
     ck("  M23 loaded: like every factory multi (MORPH c3), both parts keep the player's AMOUNT (37 / 63), and STYLE is still DRONE",
        mph[0].n[0] && mph[1].n[0] && mph[0].amount == 37u && mph[1].amount == 63u && tide_style == STY_DRONE);
-    project_load(23u);
+    project_load(MU_SHOWN - 1u);
     tide_settings();
     ok = tide_style == STY_DRONE && tide_seen[TS_STYLE] == STY_DEEP;
     project_load(1u);
@@ -627,8 +627,8 @@ static void drones(void)
          * (the unit's console sweep played one MIDI channel and saw part 2 at 0 voices, 9 November) */
         static pr_t dr[NSHOWN];
         uint32_t c3 = pr_key(60), e3 = pr_key(64), g3 = pr_key(67), s, sec = (uint32_t)(FS / CTL);
-        for (s = 22u; s < 24u; s++) {
-            play_run(s - 6u, 1u << c3 | 1u << e3 | 1u << g3, 3u * sec, sec, 0, dr);      /* (a record number: s is the slot, 22 and 23) */
+        for (s = MU_SHOWN - 2u; s < MU_SHOWN; s++) {
+            play_run(s - (MU_SHOWN - 18u), 1u << c3 | 1u << e3 | 1u << g3, 3u * sec, sec, 0, dr);      /* (a record number: s is the slot, 22 and 23) */
             printf("multi:   M%02u the keys C E G (MIDI 60 64 67) held 3 s (LAYER): part 1 %u note-ons, part 2 %u; still sounding after the release (HOLD ALL): %u / %u\n",
                    s + 1u, dr[0].n, dr[1].n, dr[0].gated_after, dr[1].gated_after);
             if (getenv("DR_DBG")) {
@@ -642,8 +642,8 @@ static void drones(void)
                 }
                 printf("\n");
             }
-            ck(s == 22u ? "  M23 AMB DUNEHORN from the keys (C E G, LAYER): both parts sound the chord" : "  M24 AMB GROWL from the keys (C E G, LAYER): the mono bed sounds, part 2 the chord",
-               c3 < 27u && e3 < 27u && g3 < 27u && dr[0].n >= (s == 23u ? 1u : 3u) && dr[1].n >= 3u);   /* (b9 rework2: M18 AMB GROWL's bed is a mono bass, PRIO LOW: the chord's lowest key, two octaves down) */
+            ck(s == MU_SHOWN - 2u ? "  M25 AMB DUNEHORN from the keys (C E G, LAYER): both parts sound the chord" : "  M26 AMB GROWL from the keys (C E G, LAYER): the mono bed sounds, part 2 the chord",
+               c3 < 27u && e3 < 27u && g3 < 27u && dr[0].n >= (s == MU_SHOWN - 1u ? 1u : 3u) && dr[1].n >= 3u);   /* (b9 rework2: M18 AMB GROWL's bed is a mono bass, PRIO LOW: the chord's lowest key, two octaves down) */
         }
     }
     (void)amt; (void)set;
@@ -852,7 +852,7 @@ int main(void)
             memcpy(eb[pi], morph_cur(&mph[pi], 1), P_COUNT);
             ne[pi] = morph_edits(pi, el[pi]);
         }
-        project_load(22u);                           /* another multi: the parts' B ends are other ones (the reel re-voiced: M23 AMB DUNEHORN, since the genre order, a ROM drone, no value set by hand at its B end; M02, used until then, has hand-set B values now;
+        project_load(MU_SHOWN - 2u);                 /* another multi: the parts' B ends are other ones (the reel re-voiced: AMB DUNEHORN, M25 since MR9 (M23 in the genre order before), a ROM drone, no value set by hand at its B end; M02, used until then, has hand-set B values now;
                                                       * M12, loaded here until then, is ROBOT FUNK now, whose End B is set value by value: it has edit lists of its own) */
         frames(50);
         ok = morph_edits(0, g) == 0u && morph_edits(1, g) == 0u;
@@ -1036,9 +1036,9 @@ int main(void)
         midi_in_event(0x0Cu | 0xC0u << 8 | 40u << 16);        /* PC 40: no multi */
         events_block(CTL); frame();
         ok = song.g[G_BPM] == 99;
-        midi_in_event(0x0Cu | 0xC0u << 8 | 11u << 16);        /* PC 11 ch 1: M12, erased above: its factory multi (reel: ROBOT FUNK, 128) */
+        midi_in_event(0x0Cu | 0xC0u << 8 | 11u << 16);        /* PC 11 ch 1: M12, erased above: its factory multi (MR9 genre order: TECH SOUL, 127) */
         events_block(CTL); frame();
-        ok &= song.g[G_BPM] == 131 && proj_cur == 11u && str_eq(mu_names[11], MULTI_NAME[11]);
+        ok &= song.g[G_BPM] == 127 && proj_cur == 11u && str_eq(mu_names[11], MULTI_NAME[11]);
         song.g[G_BPM] = 99;
         song.g[G_BPM] = 123;
         project_save_as(11, "PC M12");
@@ -1217,12 +1217,12 @@ int main(void)
         project_load(1);
         ck("project_erase of the overwrite restores DUB CHORD (after a power cycle too); it loads again", ok && project_factory(1) &&
            str_eq(mu_names[1], MULTI_NAME[1]) && str_eq(ds_name(trk[0].eng_req, trk[0].preset), "BIG STAB") && song.g[G_BPM] != 151);
-        n = project_rename(11, "STACK 2");
+        n = project_rename(MIDX(18u), "STACK 2");
         power_cycle();
-        ck("rename of the factory M12 (TECH HYPNO) stores it under the new name; the music of the record is the factory one", n == 0u &&
-           str_eq(mu_names[11], "STACK 2") && !project_factory(11) && project_used(11));
-        project_load(11);
-        ck("  and it loads HARM BASS + FM HAZE as before (b10 order: M12 is TECH HYPNO)", str_eq(ds_name(trk[0].eng_req, trk[0].preset), "HARM BASS") &&
+        ck("rename of the factory TECH HYPNO (record M19; M14 since MR9) stores it under the new name; the music of the record is the factory one", n == 0u &&
+           str_eq(mu_names[MIDX(18u)], "STACK 2") && !project_factory(MIDX(18u)) && project_used(MIDX(18u)));
+        project_load(MIDX(18u));
+        ck("  and it loads HARM BASS + FM HAZE as before (TECH HYPNO wherever the order puts it)", str_eq(ds_name(trk[0].eng_req, trk[0].preset), "HARM BASS") &&
            str_eq(ds_name(trk[1].eng_req, trk[1].preset), "FM HAZE"));
     }
 
@@ -1257,20 +1257,20 @@ int main(void)
         ck("  6 more right: M10 ACID TWO 303 (the factory multis stepped through)", proj_cur == 9u && loaded_is(9u));
         turn(EN_K3, 1);
         ck("  one more right: M11 TECH MINIMAL (b10 genre order)", proj_cur == 10u && loaded_is(10u));
-        turn(EN_K3, 5);
-        ck("  5 more right: M16 ACID LINES (ANALOG SQUELCH + PHASE DEEP BLUE)", proj_cur == 15u &&
+        turn(EN_K3, 7);
+        ck("  7 more right: M18 ACID LINES (ANALOG SQUELCH + PHASE DEEP BLUE; MR9: two multis before it)", proj_cur == 17u &&
            trk[0].eng_req == 0u && trk[1].eng_req == 2u && str_eq(ds_name(trk[0].eng_req, trk[0].preset), "SQUELCH") &&
-           str_eq(ds_name(trk[1].eng_req, trk[1].preset), "DEEP BLUE") && loaded_is(15u));
+           str_eq(ds_name(trk[1].eng_req, trk[1].preset), "DEEP BLUE") && loaded_is(17u));
         test_multi_name(b);
         sound_name(&trk[0], nm_a);
-        ck("  the engine and patch names the panel draws follow (ANALOG / SQUELCH, M16 ACID LINES)", str_eq(b, "M16 ACID LINES") &&
+        ck("  the engine and patch names the panel draws follow (ANALOG / SQUELCH, M18 ACID LINES)", str_eq(b, "M18 ACID LINES") &&
            str_eq(nm_a, "SQUELCH") && str_eq(ENGINES[trk[0].eng_req]->name, "ANALOG"));
         turn(EN_K3, 40);
 #if DUELL_TIDE
-        ck("  many detents right: stops at the last used, M24 AMB GROWL (b10: the last ROM multi)", proj_cur == MU_SHOWN - 1u && loaded_is(23u));
-        turn(EN_K3, -(int32_t)(MU_SHOWN - 16u));
-        ck("  back to M16 ACID LINES (ANALOG + PHASE)", proj_cur == 15u && trk[0].eng_req == 0u && str_eq(ENGINES[trk[1].eng_req]->name, "PHASE"));
-        turn(EN_K3, (int32_t)(MU_SHOWN - 16u));
+        ck("  many detents right: stops at the last used, M26 AMB GROWL (the last ROM multi)", proj_cur == MU_SHOWN - 1u && loaded_is(MU_SHOWN - 1u));
+        turn(EN_K3, -(int32_t)(MU_SHOWN - 18u));
+        ck("  back to M18 ACID LINES (ANALOG + PHASE)", proj_cur == 17u && trk[0].eng_req == 0u && str_eq(ENGINES[trk[1].eng_req]->name, "PHASE"));
+        turn(EN_K3, (int32_t)(MU_SHOWN - 18u));
 #else
         ck("  many detents right: stops at the last used, M16 AMB LOOPS (FM6 + WAVE)", proj_cur == 15u && trk[0].eng_req == ENGI_FM6 && str_eq(ENGINES[trk[1].eng_req]->name, "WAVE"));
 #endif
