@@ -1,6 +1,6 @@
 tide_settings 52901e4e
 knobs_row 5fb20ba7
-multis_m03 a177ed4f
+multis_m03 2c78a927
 glo 776d68d0
 usb_audio_off f9498479
 usb_audio_on 343ee3ef
@@ -8,9 +8,9 @@ knobs_ELEC_row 57f42973
 knobs_AMB_row d4c4f834
 colr_lfo c2b2efd5
 colr_lfo_off bb1bf539
-multis_m19 4fe9097b
-multis_m20 b33237ca
-multis_m21 11add7e2
-multis_m22 92e64462
-multis_m23 d9cd79ee
-multis_m24 4506b0be
+multis_m19 89154256
+multis_m20 76a62577
+multis_m21 81a503f0
+multis_m22 d05d1b84
+multis_m23 d69a9942
+multis_m24 7369c43c
