@@ -232,6 +232,20 @@ def extern_decls(s0, stats):
     if re.match(r"^\s*(extern|typedef)", s0):
         return [s0]
     body = s0.rstrip().rstrip(";")
+    k0 = body.find("{")
+    if k0 >= 0 and "=" not in body[:k0]:                 # struct { .. } a, b;
+        depth, k1 = 0, None
+        for idx in range(k0, len(body)):
+            if body[idx] == "{":
+                depth += 1
+            elif body[idx] == "}":
+                depth -= 1
+                if depth == 0:
+                    k1 = idx
+                    break
+        if k1 is not None:
+            spec = body[: k1 + 1]
+            return ["extern %s %s;" % (spec, split_top(pc, "=")[0].strip()) for pc in split_top(body[k1 + 1:], ",")]
     pieces = split_top(body, ",")
     first_dec = split_top(pieces[0], "=")[0]
     if "(" in first_dec.split("[")[0] or len(pieces) == 1 and "(" in first_dec:   # (a function pointer variable: one declarator)
@@ -288,6 +302,11 @@ def classify(t, kind):
             cut = k
             break
     dec = flat[:cut]
+    if kind == "type" and "}" in flat:
+        tail = flat.rsplit("}", 1)[1]
+        if not s.startswith("typedef") and re.search(r"[A-Za-z_*]", tail):
+            return "var"                              # struct { .. } name;
+        return "type"
     if kind == "type" and re.match(r"^\s*(?:(?:static|const|volatile|extern)\s+)*(struct|union|enum)\b[^;=]*$", flat.split("{")[0] if "{" in flat else flat) and not re.search(r"\}\s*[A-Za-z_*]", flat.rsplit("}", 1)[-1] if "}" in flat else ""):
         return "type"                                # struct X { ... };  (no declarator after the brace)
     if re.search(r"\(\s*\*\s*[A-Za-z_]\w*\s*\)\s*\(", dec):
@@ -396,7 +415,7 @@ def main(argv):
     src = "tests/hostsim.c"
     st = make(cc, outdir, src, report=True)
     obj = os.path.join(outdir, "fw.o")
-    cmd = cc + ["-c", "-o", obj, os.path.join(outdir, "fw.c")]
+    cmd = cc + ["-ffunction-sections", "-fdata-sections", "-c", "-o", obj, os.path.join(outdir, "fw.c")]
     p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     print("hostobj: compile fw.c: rc %d" % p.returncode)
     if p.returncode:
