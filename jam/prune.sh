@@ -11,10 +11,11 @@
 set -u
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 . "$REPO/jam/env.sh"
+. "$REPO/jam/safe.sh"
 go=0; [ "${1:-}" = "--yes" ] && go=1
 n=0
-drop() { [ -e "$1" ] || return 0; n=$((n + 1)); if [ $go -eq 1 ]; then rm -rf "$1" && echo "removed  $1"; else echo "would remove  $1"; fi; }
-for d in $(find "$JAM_WORK" -maxdepth 1 -name "check*" -mtime +7 2>/dev/null); do drop "$d"; done      # (older than a week: the work folder is shared by every checkout)
+drop() { [ -e "$1" ] || return 0; n=$((n + 1)); if [ $go -eq 1 ]; then { safe_rm "$REPO/felucca-base/build" "$1" || safe_rm "${JAM_WORK:-}" "$1"; } && echo "removed  $1"; else echo "would remove  $1"; fi; }   # (only inside this checkout's build/ or the work folder)
+if [ -n "${JAM_WORK:-}" ]; then for d in $(find "$JAM_WORK" -maxdepth 1 -name "check*" -mtime +7 2>/dev/null); do drop "$d"; done; fi      # (older than a week: the work folder is shared by every checkout)
 for d in "$REPO"/felucca-base/build/*_mut; do drop "$d"; done
 ls -dt "$REPO"/felucca-base/build/check/*/ 2>/dev/null | tail -n +4 | while read -r d; do drop "${d%/}"; done
 [ $go -eq 1 ] || echo "(nothing removed: run again with --yes)"

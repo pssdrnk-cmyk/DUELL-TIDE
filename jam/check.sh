@@ -16,7 +16,8 @@ LIMIT="${JAM_TEST_LIMIT:-900}"
 mkdir -p "$LOG"
 cd "$REPO" || exit 1
 if [ -z "${JAM_CHECK_LOG:-}" ]; then
-    ls -dt "$REPO"/felucca-base/build/check/*/ 2>/dev/null | tail -n +4 | while read -r d; do rm -rf "$d"; done
+    . "$REPO/jam/safe.sh"
+    ls -dt "$REPO"/felucca-base/build/check/*/ 2>/dev/null | tail -n +4 | while read -r d; do safe_rm "$REPO/felucca-base/build/check" "${d%/}"; done
 fi
 
 JOBS=0 CHANGED="" SHARD="" HOSTONLY=0 NOCACHE="" OUTF="" SUMF="" ALL=0 FAST=0

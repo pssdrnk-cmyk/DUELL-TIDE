@@ -22,6 +22,9 @@ SRC="$(cd "$(dirname "$0")/.." && pwd)"
 NAME="$(basename "$SRC")"
 DST="$HOME/duell-build/$NAME"
 case "$DST" in /mnt/*|"$SRC"*) echo "wslmirror: the mirror must be on WSL's own disk, not under /mnt or inside the worktree ($DST)"; exit 1 ;; esac
+. "$SRC/jam/safe.sh"
+# rsync --delete below empties DST: it must be a folder inside ~/duell-build, never ~, / or an empty / odd name
+safe_under "$HOME/duell-build" "$DST" || { echo "wslmirror: refusing: the mirror folder '$DST' is not a folder inside $HOME/duell-build"; exit 1; }
 [ -x "$HOME/venv/bin/python" ] && PATH="$HOME/venv/bin:$PATH"
 export PATH
 command -v rsync >/dev/null 2>&1 || { echo "wslmirror: rsync is not installed in this distribution (sudo apt-get install rsync)"; exit 1; }

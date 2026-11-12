@@ -1,0 +1,3 @@
+## changelog
+### 1.0.0-b10
+- **Fixed (developer tooling):** a WSL home directory was emptied on 2026-11-12 by a command handed to `wsl.exe` in a quoted string (`wsl.exe bash -c 'D=...; rm -rf "$D"/*'`: WSL's own shell ran it with `$D` empty, i.e. `rm -rf /*`). New `jam/safe.sh` (`safe_under`, `safe_rm`: no empty path, `/`, `$HOME` or `..`, nothing outside its root) guards the `rm -rf` of `check.sh` and `prune.sh` and the `rsync --delete` of `wslmirror.sh` (the mirror folder must be inside `~/duell-build`); `jam/test_safe.py` (in the CI step) tests it and lints the repository's own `wsl.exe` calls. `jam/README.md`: "Running things in WSL safely".
