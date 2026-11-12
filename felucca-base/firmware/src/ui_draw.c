@@ -3573,7 +3573,7 @@ static void ui_draw(void)
 #define TL_H (H_HEAD + 3 - TL_Y)
 #define TL_MID ((23 - TL_Y) * 16 + 8)                    /* the line's middle, 1/16 px in the strip: screen row 23.5 */
 #define TL_AMP 32                                        /* the swell, 1/16 px (2 px each way) */
-static uint32_t tl_tk = 0xFFFFFFFFu, tl_ph;               /* the picture the phase was taken at; the phase (2^32 a wavelength) */
+static uint32_t tl_tk = 0xFFFFFFFFu, tl_ph, tl_seen = 0xFFFFFFFFu, tl_seen_fr;   /* the picture the phase was taken at; the phase (2^32 a wavelength); the picture seen last, the pass it came in */
 static void tide_line_draw(void)
 {
     uint32_t prog = 0, beat = 0, mask = 3u, st = screen_global() || ui.menu || ui.guide ? 0u : (uint32_t)tide_line_state(&prog, &beat, &mask);
@@ -3581,10 +3581,17 @@ static void tide_line_draw(void)
     const int grey = ux.mono || ux.bw;
     uint32_t sig;
     tl_st = (uint8_t)st;
-    if (st == 2u && mv_tick() != tl_tk) {               /* (a step a picture: the belt's place, a wavelength every 16 lines) */
-        tl_tk = mv_tick();
-        wl_belt();
-        tl_ph = wl_bpos << 20;
+    if (st == 2u) {                                      /* (a step a picture, at most the page's picture rate (~11 a second on the unit), taken one pass after the picture's own
+                                                          * pass, so the wave page's busiest pass never sends the strip too: the belt's place, a wavelength every 16 lines) */
+        const uint32_t tk = mv_tick();
+        if (tk != tl_seen) {
+            tl_seen = tk;
+            tl_seen_fr = ui.frame;
+        } else if (tk != tl_tk && ui.frame != tl_seen_fr) {
+            tl_tk = tk;
+            wl_belt();
+            tl_ph = wl_bpos << 20;
+        }
     }
     sig = (st ? st * 7919u + (st == 2u ? tl_ph >> 22 : 0u) * 3u + mask * 1301u + ux.pal * 17u + 1u : 0u) + tl_up * 65537u;
     (void)prog;                                          /* (b10, owner: "make sure it's not redundant with other similar lines": the line is AUTO TIDE's state and the tempo,
