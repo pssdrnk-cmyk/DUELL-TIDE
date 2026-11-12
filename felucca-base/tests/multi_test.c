@@ -501,7 +501,7 @@ static void drones(void)
         objn[o] = (uint16_t)mu_obj_read(o);
         memcpy(obj[o], mu_buf, objn[o]);
     }
-    ck("drones: MU_SHOWN 24 (b10: M19-M24 ROM-only factory multis), MU_SLOTS (stored) still 16, the flash objects as before (OBJ_PATCH0 = OBJ_MULTI0 + 8)", MU_SHOWN == 24u && MU_SLOTS == 16u && MU_NOBJ == 8u && DF_N == MU_SHOWN);
+    ck("drones: MU_SHOWN 26 (b10: M19-M26 ROM-only factory multis), MU_SLOTS (stored) still 16, the flash objects as before (OBJ_PATCH0 = OBJ_MULTI0 + 8)", MU_SHOWN == 26u && MU_SLOTS == 16u && MU_NOBJ == 8u && DF_N == MU_SHOWN);
     for (k = 22u, ok = 1; k < 24u; k++) {
         ok &= project_used(k) && project_factory(k) && !multi_bad(k) && project_info(k, nm) && str_eq(nm, DN_NAME(k - 22u)) && df_of(k) == k - 6u;     /* (the DM_* arrays are in record order: the drones are records 17, 18 = indexes 16, 17) */
         ok &= str_eq(multi_vname(k, 0), DS[k - 22u][0]) && str_eq(multi_vname(k, 1), DS[k - 22u][1]);
@@ -852,7 +852,7 @@ int main(void)
             memcpy(eb[pi], morph_cur(&mph[pi], 1), P_COUNT);
             ne[pi] = morph_edits(pi, el[pi]);
         }
-        project_load(22u);                           /* another multi: the parts' B ends are other ones (the reel re-voiced: M23 AMB DUNEHORN, since the genre order, a ROM drone, no value set by hand at its B end; M02, used until then, has hand-set B values now;
+        project_load(MU_SHOWN - 2u);                 /* another multi: the parts' B ends are other ones (the reel re-voiced: AMB DUNEHORN, M25 since MR9 (M23 in the genre order before), a ROM drone, no value set by hand at its B end; M02, used until then, has hand-set B values now;
                                                       * M12, loaded here until then, is ROBOT FUNK now, whose End B is set value by value: it has edit lists of its own) */
         frames(50);
         ok = morph_edits(0, g) == 0u && morph_edits(1, g) == 0u;
