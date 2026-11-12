@@ -907,6 +907,12 @@ struct { uint32_t magic, failed, pending; } bootguard __attribute__((section(".n
 static uint8_t tide_lvc2[NLIVE];  /* TIDE live graphs: the latest note's effective cutoff of filter 2, Q8 dial steps >> 7 (chain_f2.c writes it, ui_live.c reads it; the pad bytes of track_t are used up) */
 #define LVC2(t) (tide_lvc2[(uint32_t)((t) - trk) % NLIVE])
 #endif
+/* Later 10 + 13 (b10 round 5): 1 = a part's morph costs are charged only while a transition moves (the engine cross-fade BD_FADE, TIDE's valley and wash: budget.c bd_part, bd_mv, the FM6 bridge's rule) and the
+ * INSERT dip asks for a new blend only when its value moved by a 1/256 step (morph_xfer.c morph_xstep, C1): more notes at rest, thinner while moving, fewer blends in a slow dip. 0 until the unit sweep has tried it
+ * (tools/build.py: env FELUCCA_MOVECOST=1) */
+#ifndef FELUCCA_MOVECOST
+#define FELUCCA_MOVECOST 0
+#endif
 /* the per-stage timing of the console probe `cpu` (fx.c, eng_fm6.c, console.c): the unit's test-mode build only (the host tests have no TIMER4); defined with or without TIDE (b10 round 5, finding 35: it sat inside #if DUELL_TIDE, undefined elsewhere) */
 #if DUELL_TEST_MODE && !defined(__x86_64__) && !defined(__i386__) && !defined(__aarch64__)
 #define DUELL_PROBE_STAGES 1
