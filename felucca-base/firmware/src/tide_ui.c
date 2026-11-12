@@ -756,6 +756,12 @@ static __attribute__((unused)) int tide_arc_text(char *l)
 {
     if (!(glide_running() && !gl.armed && song.playing && sqm_arc && sqm_auto && tarc.run))
         return 0;
+    if (cur_page()->graph == GR_TIDE) {                  /* (b10: AUTO TIDE draws the ARC: its words would say the phase again; only the hand's DROP NEXT, which the graph does not show) */
+        if (!(tarc.hand && tarc.phase != AP_DROP))
+            return 0;
+        str_cpy(l, "DROP NEXT", 40);
+        return 1;
+    }
     str_cpy(l, "ARC ", 40);
     str_cpy(l + 4, tarc_name(), 36);
     if (tarc.phase != AP_PEAK && tarc.phase != AP_DROP) {
@@ -1090,14 +1096,7 @@ static void graph_tide(void)
             cv_text_in(0, UT_TY(S, 104), 240, &AF_S, l, T_ACCENT, T_BG);
         } else
             cv_text_in(0, UT_TY(S, 104), 240, &AF_S, GL_MODE_WHAT[gl.mode % 5u], T_MID, T_BG);   /* (between the faders and the steps' tallest bars) */
-        /* Keep GLIDE's progress bar as well as its status and moving fader knobs.
-         * This strip sits below both parts' playheads and above the card row. */
-        if (glide_running() && !gl.armed && !arcv) {     /* (under ARC's picture the TRAVEL line's n/m says it: one progress mark there) */
-            int32_t w = (int32_t)((222u * gl.prog) >> GLIDE_Q);
-            cv_rrect(9, TB_Y1 - 3, 222, 3, 1, T_RAISE, T_BG);
-            if (w > 0)
-                cv_rrect(9, TB_Y1 - 3, w, 3, 1, T_ACCENT, T_RAISE);
-        }
+        /* (b10, owner: "not redundant with other similar lines": the trip's progress is the status line's n/m above; the bar under the steps that said it again is gone) */
         cv_oy = 0;
         cv_blit(0, TB_Y0);
     }
