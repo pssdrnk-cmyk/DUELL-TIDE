@@ -17,7 +17,7 @@ jam11 is the 1.0.0-b10 work; it is not tagged yet, so `TIDE_VERSION` still reads
 The owner's two tracks from the roadmap review of 12 November, plus quality checks and housekeeping. State: In progress (five lanes started on 12 November).
 
 - **Room on the unit.** 1,528 B of flash is free, so a size pass comes before features: RANDOM and COOK with TIDE's rules (Planned, below) wait for it, and so does anything that adds code. A room report says where the bytes are and one plan covers the next unit sweep (the switched-off savings of Later 9, 10 and 18 wait for that sweep).
-- **Test and tool debt.** The open rows Later 28 (a stale comment), 30 (the store's cross-version fixture) and 33 (the `budget` and `deadline` groups with MOVECOST on), the `benchsim` M17 finding in "On the unit", and the design for per-module host objects (the first open point under Tooling).
+- **Test and tool debt.** The open rows Later 28 (a stale comment), 30 (the store's cross-version fixture) and 33 (the `budget` and `deadline` groups with MOVECOST on; `benchsim` M17 is fixed, see "On the unit"), and the design for per-module host objects (the first open point under Tooling).
 - **Quality and housekeeping.** One review pass per pull request; the workspace and the GitHub branches cleaned (merged worktrees and branches removed, old outputs moved aside); this page refreshed.
 
 ## On the unit
@@ -33,7 +33,7 @@ The unit runs b10-rc6.8-test. Everything built since b7 (b7, b8, b9, b10 rc2 to 
 | Call and answer in place of TURNS: the two parts take turns bar by bar in WANDER and JOURNEY | Built; by voices 14 of 16 multis alternate, by hits 6 of 16 |
 | VOIC keeps an out-of-scale chord tone with OFF-SCALE PLAY (the VOIC part of [FR13](audits/2026-11-09/firmware-review/TASKS.md#fr13)) | Built; the tap-tempo part of FR13 is not (see Later) |
 | The ACID and ACSQ waves on the ANALOG engine play accents like a TB-303: a short sweep (about 200 ms), a level punch of about +9 dB, accents in a row stacking higher, and a soft RC slide (90 % in 53 ms, 99 % in 106 ms); checked against Open303 | Built, to set by ear on the unit |
-| `benchsim`: M17 DUNE HORN does not render the same forward and backward (its HORN SWELL sub); a test-side finding, the sound is right | Open: the CI lane's fix is not in this build |
+| `benchsim`: M17 DUNE HORN does not render the same forward and backward (its HORN SWELL sub); a test-side finding, the sound is right | Done in b11: fixed in jam11 by `54f0516` (b9 CI round 3c: the bench reset gives a drone multi's TIDE rows back, so M17 repeats) |
 
 The owner's answers to the musical review (9 November) are built in: the default for each of the nine questions, with the first start staying M02 DUB CHORD and FINAL REEL's brass pad keeping its octave.
 
