@@ -50,14 +50,14 @@ shared_config_ok || { echo "wslmirror: refusing to run: $MAIN/config has a core.
 
 mkdir -p "$DST" || exit 1
 t0=$(date +%s)
-rsync -a --delete --exclude=/.git --exclude=/felucca-base/build --exclude=node_modules "$SRC/" "$DST/" || { echo "wslmirror: rsync failed"; exit 1; }
+rsync -a --delete --exclude=/.git --exclude=/felucca-base/build --exclude=node_modules "${SRC:?}/" "${DST:?}/" || { echo "wslmirror: rsync failed"; exit 1; }
 echo "== mirror $SRC -> $DST ($(( $(date +%s) - t0 )) s)"
 
 # git for --changed, multiv8, otareuse: the mirror's own repository, made once as a shared clone, refs fetched from the shared one each run, HEAD and index set to the worktree's HEAD
 if [ -n "$MAIN" ] && [ -d "$MAIN" ]; then
-    [ -f "$DST/.git" ] && rm -f "$DST/.git"          # (an older mirror had a .git file naming a git dir: not any more)
+    [ -f "${DST:?}/.git" ] && rm -f "${DST:?}/.git"          # (an older mirror had a .git file naming a git dir: not any more)
     if [ ! -d "$DST/.git" ]; then
-        git clone -q --no-checkout --shared "$MAIN" "$DST/.clone.tmp" 2>/dev/null && mv "$DST/.clone.tmp/.git" "$DST/.git" && rmdir "$DST/.clone.tmp" \
+        git clone -q --no-checkout --shared "$MAIN" "${DST:?}/.clone.tmp" 2>/dev/null && mv "${DST:?}/.clone.tmp/.git" "${DST:?}/.git" && rmdir "${DST:?}/.clone.tmp" \
             || echo "wslmirror: note: could not make a repository for the mirror: the groups that read git will fail"
     fi
     if [ -d "$DST/.git" ]; then
