@@ -4,6 +4,7 @@
 """Host test of tools/bench_run.py (bench suite stage 1): the suite parser, the OWNER-1 suite, and the runner against the Mac twin
 (build/host/bench_sim --serve): a whole short run, the result files, a name that does not match, and a unit that restarts mid-test."""
 import csv
+import glob
 import os
 import re
 import subprocess
@@ -79,6 +80,25 @@ try:
     check("a wrong word in a suite is an error with its line", False)
 except br.SuiteError as e:
     check("a wrong word in a suite is an error with its line", "line 2" in str(e))
+
+# ---- the multi names: one table (build/gen/multi_names.txt, tools/gen_duell_multis.py), no suite spells a factory multi's name
+TABLE = dict(ln.rstrip().split(" ", 1) for ln in open(br.MULTI_NAMES, encoding="utf-8") if " " in ln)
+check("the name table has the 24 factory multis, M06 and M04 among them", len(TABLE) >= 16 and br.multi_name(6) == TABLE["6"] and br.multi_name(4) == TABLE["4"])
+check("`load multi M06` is slot 6 with the table's name",
+      br.parse_suite("test T x" + chr(10) + "load multi M06" + chr(10) + "at 0.0 chord C4 vel 64" + chr(10) + "end" + chr(10))[1][0].setup == [("multi", 6, TABLE["6"])])
+NOT_FACTORY = {"STRESS TEST"}       # (a test scene, no factory multi)
+stale = []
+for fn in sorted(glob.glob(os.path.join(ROOT, "tools", "bench_suites", "*.txt"))):
+    for no, ln in enumerate(open(fn, encoding="utf-8"), 1):
+        m = re.match(r'load multi ([0-9]+) "([^"]*)"', ln)
+        if m and m[2] not in NOT_FACTORY:
+            stale.append(f"{os.path.basename(fn)}:{no} {ln.strip()} (write `load multi M{int(m[1]):02d}`: the name comes from the table)")
+check("no suite spells a factory multi's name (a rename would SKIP every test of it): " + (stale[0] if stale else "none"), not stale)
+for fn in sorted(glob.glob(os.path.join(ROOT, "tools", "bench_suites", "*.txt"))):
+    try:
+        br.parse_suite(open(fn, encoding="utf-8").read())
+    except br.SuiteError as e:
+        check(os.path.basename(fn) + " parses: " + str(e), False)
 
 # ---- the runner against the Mac twin
 if os.name == "nt":                 # the runner talks to the unit or the twin through termios and select() on pipes (macOS / Linux only, its docstring)

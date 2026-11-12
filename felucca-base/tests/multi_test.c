@@ -15,7 +15,15 @@
 #define UI_TEST_NO_MAIN 1
 #define FELUCCA_FLASH 1
 #include "ui_test.c"
+#include "multi_names.h"                               /* (the factory multis' names by slot, generated: MULTI_NAME[slot - 1]; never spell one here, a rename would break the test) */
 #include "scenes.h"                                   /* (U2 B: the STRESS TEST, once M16, is the scene tests/scenes/M16_STRESS_TEST.bin) */
+
+static int loaded_is(uint32_t k)                           /* (the message of a multi load: LOADED M04 HSE RHODES, from the generated name table) */
+{
+    char b[48];
+    snprintf(b, sizeof b, "LOADED M%02u %s", (unsigned)k + 1u, MULTI_NAME[k]);
+    return msg_is(b);
+}
 
 static uint8_t nor[0x100000];
 static long cut_bytes = -1;                         /* the power goes after that many programmed bytes */
@@ -324,7 +332,7 @@ static void keys_drive(void)
         ck("  PLAY without a key: the stored arrangement plays (patterns; ARP SEQ with TIDE's stand-in), a classic arp stays silent", ok);
         if (k == 10u) {                              /* (the scene leaves M11: the factory M11 ACID LINES is back for the checks below) */
             power_cycle();
-            ck("  (the WHISPER TIDE scene erased from M11: the factory M11 ACID LINES is back)", project_erase(10u) == 0 && project_factory(10u) && str_eq(mu_names[10], "ACID LINES"));
+            ck("  (the WHISPER TIDE scene erased from M11: the factory M11 ACID LINES is back)", project_erase(10u) == 0 && project_factory(10u) && str_eq(mu_names[10], MULTI_NAME[10]));
         }
     }
     /* U2 B (1.1): the sequenced arrangements of PAD SPLIT, WHISPER TIDE, TINE STRINGS, FINAL REEL, HAZY TENSOR, CELLAR TAPE (M10 M11 M12 M16 M15 M03 since D31). PLAY alone starts the plain-pattern parts; the ARP SEQ
@@ -440,7 +448,7 @@ static void editb_worst_multi(void)
  * change 16 and 17 load them, 18 and up are ignored; while one is loaded TIDE plays STYLE DRONE, another multi brings the STYLE back, the saved one never changes */
 static void drones(void)
 {
-    static const char *const DN[2] = {"AMB DUNEHORN", "AMB GROWL"};
+    #define DN_NAME(i) MULTI_NAME[16 + (i)]       /* (M17 AMB DUNEHORN, M18 AMB GROWL) */
     static const char *const DS[2][2] = {{"HORN SWELL", "VOID SHIMMER"}, {"REESE BASS", "NIGHT DRONE"}};
     /* the sequences (tools/drone_pack.py, b6: owner "I'm missing some sequence from the drone multis"): the part, its RATE (params.c N_DIV: 6 1/2, 7 1/1; b7: the bed beside it is ARP SEQ too, 1/4 = 0, one note tied over its 16 steps), the 16 steps
      * (a digit: the offset from the held key plus DQ_BASE, '-' a tie, '.' a rest; b9 rework2: M18 AMB GROWL moves C3, E flat 3, G3 over its bed on C2: DQ_BASE -12, DQ_BED -24) */
@@ -478,7 +486,7 @@ static void drones(void)
         mu_obj_read(0u);
         (void)mu_rec(1u, &l1);
         mu_note(0u);
-        ok &= project_factory(0u) && project_info(0u, nm) && str_eq(nm, "DUB BASIC") && project_info(1u, nm2) && str_eq(nm2, "PARTNER") && !project_factory(1u);
+        ok &= project_factory(0u) && project_info(0u, nm) && str_eq(nm, MULTI_NAME[0]) && project_info(1u, nm2) && str_eq(nm2, "PARTNER") && !project_factory(1u);
         mu_obj_read(0u);
         multi_preview(0u, &pv);
         ok &= pv.state == 1u && MU_HDR + l1 <= MU_OBJ_MAX - MU_REC_MAX;
@@ -495,7 +503,7 @@ static void drones(void)
     }
     ck("drones: MU_SHOWN 24 (b10: M19-M24 ROM-only factory multis), MU_SLOTS (stored) still 16, the flash objects as before (OBJ_PATCH0 = OBJ_MULTI0 + 8)", MU_SHOWN == 24u && MU_SLOTS == 16u && MU_NOBJ == 8u && DF_N == MU_SHOWN);
     for (k = 16u, ok = 1; k < 18u; k++) {
-        ok &= project_used(k) && project_factory(k) && !multi_bad(k) && project_info(k, nm) && str_eq(nm, DN[k - 16u]) && df_of(k) == k;
+        ok &= project_used(k) && project_factory(k) && !multi_bad(k) && project_info(k, nm) && str_eq(nm, DN_NAME(k - 16u)) && df_of(k) == k;
         ok &= str_eq(multi_vname(k, 0), DS[k - 16u][0]) && str_eq(multi_vname(k, 1), DS[k - 16u][1]);
         ok &= multi_vmode(k, DQ[k - 16u]) == (2u | 4u) && multi_vmode(k, 1u - DQ[k - 16u]) == (2u | 4u);   /* (the MULTIS row, ui_graph.c graph_slots: "SEQ" on both: the moving part and, b7, the bed with its one tied step) */
         multi_preview(k, &pv);
@@ -562,7 +570,7 @@ static void drones(void)
     memcpy(snap, nor, sizeof snap);
     gen = multi_gen();
     ok = project_save_as(16u, "MINE") != 0 && msg_is(MU_ROM_SAY) && project_rename(17u, "MINE") != 0 && project_erase(17u) != 0 && msg_is("ALREADY FACTORY");
-    ok &= project_save(17u) != 0 && !memcmp(snap, nor, sizeof snap) && multi_gen() == gen && project_info(16u, nm) && str_eq(nm, "AMB DUNEHORN");
+    ok &= project_save(17u) != 0 && !memcmp(snap, nor, sizeof snap) && multi_gen() == gen && project_info(16u, nm) && str_eq(nm, MULTI_NAME[16]);
     ck("  SAVE, rename and ERASE on M17 / M18 refused (SAVE TO M01-M16, ALREADY FACTORY), nothing written, the names stand", ok);
     go_title("MULTIS");
     song.g[G_SLOT] = 18;
@@ -576,7 +584,7 @@ static void drones(void)
     ck("  every flash object of M01..M16 reads back unchanged (no format change)", ok);
     ok = project_save_as(3u, "EDITED DRONE") == 0 && project_info(3u, nm) && str_eq(nm, "EDITED DRONE") && !project_factory(3u);
     project_load(3u);
-    ok &= proj_cur == 3u && project_erase(3u) == 0 && project_factory(3u) && project_info(3u, nm) && str_eq(nm, "HSE RHODES");   /* (reel, 2026-11-10: M04 is LATE RHODES) */
+    ok &= proj_cur == 3u && project_erase(3u) == 0 && project_factory(3u) && project_info(3u, nm) && str_eq(nm, MULTI_NAME[3]);   /* (reel, 2026-11-10: M04 is LATE RHODES) */
     ck("  an edited drone multi saves into M04 like any other, loads, and ERASE brings the factory M04 back", ok);
     proj_cur = 0;
     midi_pc(0, 16);
@@ -696,7 +704,7 @@ int main(void)
     song.g[G_SLOT] = 11;
     frame();
     ck("SAVE > MULTI is SAVE's page, KNOB 1 M01..M16 (TIDE b6: ..M18, the two ROM drone multis), all sixteen stored slots the factory multis (0.2.23; M11 ACID LINES since the reel, 2026-11-10)",
-       cur_page()->graph == GR_SLOTS && cur_page()->fam == FAM_SAVE && GP[G_SLOT].max == (int)MU_SHOWN && project_used(10) && project_factory(10) && str_eq(mu_names[10], "ACID LINES"));
+       cur_page()->graph == GR_SLOTS && cur_page()->fam == FAM_SAVE && GP[G_SLOT].max == (int)MU_SHOWN && project_used(10) && project_factory(10) && str_eq(mu_names[10], MULTI_NAME[10]));
 #if DUELL_TIDE
     {                                                /* U3: browsing the MULTIS page (the preview) changes nothing live, decodes once per slot, and shows the record */
         uint32_t k, sum0, sum1, gen = multi_gen(), eng0 = trk[0].eng_req;
@@ -996,7 +1004,7 @@ int main(void)
     ck("project_erase (no UI in 1.1; the factory multi comes back): ERASED M12", project_erase(11) == 0 && msg_is("ERASED M12"));
     power_cycle();
     ck("  after a power cycle M12 is its factory multi again (ROBOT FUNK since the reel, 2026-11-10), its partner M11 kept", project_factory(11) &&
-       str_eq(mu_names[11], "ELEC ROBOT") && project_used(10) && str_eq(mu_names[10], "MULTI K"));
+       str_eq(mu_names[11], MULTI_NAME[11]) && project_used(10) && str_eq(mu_names[10], "MULTI K"));
     go_title("MULTIS");
     song.g[G_SLOT] = 4;
     frame();
@@ -1030,7 +1038,7 @@ int main(void)
         ok = song.g[G_BPM] == 99;
         midi_in_event(0x0Cu | 0xC0u << 8 | 11u << 16);        /* PC 11 ch 1: M12, erased above: its factory multi (reel: ROBOT FUNK, 128) */
         events_block(CTL); frame();
-        ok &= song.g[G_BPM] == 128 && proj_cur == 11u && str_eq(mu_names[11], "ELEC ROBOT");
+        ok &= song.g[G_BPM] == 128 && proj_cur == 11u && str_eq(mu_names[11], MULTI_NAME[11]);
         song.g[G_BPM] = 99;
         song.g[G_BPM] = 123;
         project_save_as(11, "PC M12");
@@ -1108,9 +1116,6 @@ int main(void)
      * 0.2.24: the owner's COLD CHAPEL, ACID ETHER and GARGLE ACID of 0.2.22 back in M06, M09, M14; 0.2.25: COLD CHAPEL in M13): in ROM, shown while the slot is empty in flash */
     {
         /* (reel, 2026-11-10: the fifteen new factory multis, one curated programme (tools/factory_multis.py); M02 DUB CHORD is the owner's record as before) */
-        static const char *const FN[16] = {"DUB BASIC", "DUB CHORD", "HSE JUNO", "HSE RHODES", "HSE ORGAN", "HSE FRENCH", "TECH DETROIT",
-                                           "TECH SOUL", "ACID HYPNO", "ACID TWO 303", "ACID LINES", "ELEC ROBOT", "ELEC DEEPSEA", "ELEC WARPED",
-                                           "AMB BERLIN", "AMB LOOPS"};
         static const char *const SN[16][2] = {{"CHORD ECHO", "WARM WASH"}, {"BIG STAB", "SLOW TIDE"}, {"WARM WASH", "RUBBER BAND"},
                                               {"TINE ROOM", "AIR SHIMMER"}, {"DUB DRAWBAR", "ORGAN WASH"}, {"MELLOW EP", "FRETLESS"},
                                               {"LOW STAB", "LAMPLIGHT"}, {"SUNDAY KEYS", "SYNTH BRASS"}, {"SQUELCH", "FOG BANK"},
@@ -1132,7 +1137,7 @@ int main(void)
         power_cycle();
         ok = 1;
         for (k = 0; k < MU_SLOTS; k++)
-            ok &= project_used(k) && project_factory(k) && str_eq(mu_names[k], FN[k]);
+            ok &= project_used(k) && project_factory(k) && str_eq(mu_names[k], MULTI_NAME[k]);
         ck("empty flash: M01..M16 are the factory multis (the reel, 2026-11-10: BASIC CHORD, DUB CHORD, JUNO DEEP .. BERLIN RUN, TWO LOOPS; the owner's DUB CHORD kept)", ok);
         ok = 1;
         ui_prefs2 |= PREF_MODE_RECALL >> 16;           /* (0.2.11: the MODE is read back from the multi) */
@@ -1211,7 +1216,7 @@ int main(void)
         power_cycle();
         project_load(1);
         ck("project_erase of the overwrite restores DUB CHORD (after a power cycle too); it loads again", ok && project_factory(1) &&
-           str_eq(mu_names[1], "DUB CHORD") && str_eq(ds_name(trk[0].eng_req, trk[0].preset), "BIG STAB") && song.g[G_BPM] != 151);
+           str_eq(mu_names[1], MULTI_NAME[1]) && str_eq(ds_name(trk[0].eng_req, trk[0].preset), "BIG STAB") && song.g[G_BPM] != 151);
         n = project_rename(11, "STACK 2");
         power_cycle();
         ck("rename of the factory M12 (ROBOT FUNK) stores it under the new name; the music of the record is the factory one", n == 0u &&
@@ -1240,27 +1245,27 @@ int main(void)
         proj_cur = PROJ_NO_SLOT;
         turn(EN_K3, 1);
         ck("K3 LOAD MULTI right: the next used multi (from none: M02 after the first used M01) is loaded at once, 'LOADED M02 DUB CHORD'",
-           proj_cur == 1u && msg_is("LOADED M02 DUB CHORD") && str_eq(ds_name(trk[0].eng_req, trk[0].preset), "BIG STAB") && trk[1].eng_req == 0u && !ui.confirm);
+           proj_cur == 1u && loaded_is(1u) && str_eq(ds_name(trk[0].eng_req, trk[0].preset), "BIG STAB") && trk[1].eng_req == 0u && !ui.confirm);
         frame();
         frames(48);
         test_multi_name(b);
         ck("  the panel's multi line follows (M02 DUB CHORD)", str_eq(b, "M02 DUB CHORD"));
         turn(EN_K3, 2);
         /* (reel, 2026-11-10: the names and engines of the new M04, M10, M11, M14, M16) */
-        ck("  2 detents right: M03 skipped through, M04 (stepping), loaded: M04 HSE RHODES", proj_cur == 3u && msg_is("LOADED M04 HSE RHODES"));
+        ck("  2 detents right: M03 skipped through, M04 (stepping), loaded: M04 HSE RHODES", proj_cur == 3u && loaded_is(3u));
         turn(EN_K3, 6);
-        ck("  6 more right: M10 ACID TWO 303 (the factory multis stepped through)", proj_cur == 9u && msg_is("LOADED M10 ACID TWO 303"));
+        ck("  6 more right: M10 ACID TWO 303 (the factory multis stepped through)", proj_cur == 9u && loaded_is(9u));
         turn(EN_K3, 1);
         ck("  one more right: M11 ACID LINES (ANALOG SQUELCH + PHASE DEEP BLUE)", proj_cur == 10u &&
            trk[0].eng_req == 0u && trk[1].eng_req == 2u && str_eq(ds_name(trk[0].eng_req, trk[0].preset), "SQUELCH") &&
-           str_eq(ds_name(trk[1].eng_req, trk[1].preset), "DEEP BLUE") && msg_is("LOADED M11 ACID LINES"));
+           str_eq(ds_name(trk[1].eng_req, trk[1].preset), "DEEP BLUE") && loaded_is(10u));
         test_multi_name(b);
         sound_name(&trk[0], nm_a);
         ck("  the engine and patch names the panel draws follow (ANALOG / SQUELCH, M11 ACID LINES)", str_eq(b, "M11 ACID LINES") &&
            str_eq(nm_a, "SQUELCH") && str_eq(ENGINES[trk[0].eng_req]->name, "ANALOG"));
         turn(EN_K3, 40);
 #if DUELL_TIDE
-        ck("  many detents right: stops at the last used, M24 TECH MINIMAL (b10: the last ROM multi)", proj_cur == MU_SHOWN - 1u && msg_is("LOADED M24 TECH MINIMAL"));
+        ck("  many detents right: stops at the last used, M24 TECH MINIMAL (b10: the last ROM multi)", proj_cur == MU_SHOWN - 1u && loaded_is(23u));
         turn(EN_K3, -(int32_t)(MU_SHOWN - 16u));
         ck("  back to M16 AMB LOOPS (FM6 + WAVE)", proj_cur == 15u && trk[0].eng_req == ENGI_FM6 && str_eq(ENGINES[trk[1].eng_req]->name, "WAVE"));
         turn(EN_K3, (int32_t)(MU_SHOWN - 16u));
@@ -1350,7 +1355,7 @@ int main(void)
         m01_bpm = (uint32_t)song.g[G_BPM];
         m01_mode = duell_mode_req;
         memcpy(g_copy, song.g, sizeof g_copy);
-        ck("M01 is the factory BASIC CHORD (D31; read through the factory path)", str_eq(mu_names[0], "DUB BASIC") && project_factory(0));
+        ck("M01 is the factory BASIC CHORD (D31; read through the factory path)", str_eq(mu_names[0], MULTI_NAME[0]) && project_factory(0));
 
         for (sector = 0; sector < 3u; sector++) {     /* 0 erased flash, 1 garbage (stock firmware's data), 2 zeros */
             memset(nor, 0xFF, sizeof nor);
@@ -1476,13 +1481,13 @@ int main(void)
                 frames(300);
                 if (!pass) {
                     ck("  power-on restores the autosave as left (tempo 77, no M01, not a first start)", first_boot_pending == 0u && song.g[G_BPM] == 77 &&
-                       proj_cur == PROJ_NO_SLOT && !str_eq(proj_name, TIDE_FIRST_MULTI ? "DUB CHORD" : "DUB BASIC"));
+                       proj_cur == PROJ_NO_SLOT && !str_eq(proj_name, MULTI_NAME[TIDE_FIRST_MULTI ? 1 : 0]));
                     ck("  .. the muted part 1 starts audible (MUTE cleared at power-on)", !trk[0].p[P_MUTE] && !trk[1].p[P_MUTE]);
                     ck("  .. the theme (4), MODE (STEREO), scale 5 and root 7 stay as stored", settings.palette == palette_from_stored(pb.palette) &&
                        duell_mode_req == DM_STEREO && (ui_scale_set & 0xCFu) == (0x80u | 5u) && ui_root_set == 7u);
                 } else {
                     ck("  RESTORE LAST OFF: the autosave is not restored, and it is not a first start either (no M01)", first_boot_pending == 0u &&
-                       song.g[G_BPM] != 77 && !str_eq(proj_name, TIDE_FIRST_MULTI ? "DUB CHORD" : "DUB BASIC") && proj_cur == PROJ_NO_SLOT);
+                       song.g[G_BPM] != 77 && !str_eq(proj_name, MULTI_NAME[TIDE_FIRST_MULTI ? 1 : 0]) && proj_cur == PROJ_NO_SLOT);
                 }
             }
         }
@@ -1664,7 +1669,7 @@ int main(void)
         ok2 &= !project_used(0u) && multi_bad(0u) && !project_info(0u, nm);
         ck("  a factory slot (M01) holding one is DAMAGED too (audit C01: not its factory multi), a LOAD changes nothing", ok2 && (project_load(0u), 1));
 #else
-        ok2 &= project_used(0u) && project_factory(0u) && project_info(0u, nm) && !strcmp(nm, "DUB BASIC");
+        ok2 &= project_used(0u) && project_factory(0u) && project_info(0u, nm) && !strcmp(nm, MULTI_NAME[0]);
         ck("  a factory slot (M01) holding one shows its factory multi (BASIC CHORD) and loads it", ok2 && (project_load(0u), 1));
 #endif
         ok2 = project_save_as(10u, "NEW ONE") == 0 && project_used(10u) && !project_factory(10u) && project_info(10u, nm) && !strcmp(nm, "NEW ONE");

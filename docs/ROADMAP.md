@@ -217,7 +217,7 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 - Rename `jam11` to `tide`.
 - Gate the release channels by CI too (a Stable / Beta release is offered only from a green commit), from the 4 November decisions.
 - Retire the plain build (Later): `jam/check_off.sh` is already no longer a gate (owner, 8 November). Still open: drop `DUELL_TIDE=0`, `jam/check_off.sh`, `jam/off.sha256` and the tideoff test groups, and fold the `#if DUELL_TIDE` hooks into plain code where that saves flash or clarity. One step per beta.
-- Test quality notes left from finding 38: split the FM6 budget check by crossing state, one generated multi-name table, the `F_NONE` hang exemption if it flakes.
+- Test quality notes left from finding 38: ~~split the FM6 budget check by crossing state~~ and ~~one generated multi-name table~~ built in b10 (tools-b); the `F_NONE` hang exemption if it flakes.
 - Workspace clean-up: retire merged worktrees (owner's OK).
 
 **Memory savings, when a feature needs room** (estimates until measured; none is free)
