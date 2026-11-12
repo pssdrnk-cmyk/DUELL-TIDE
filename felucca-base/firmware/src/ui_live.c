@@ -468,7 +468,7 @@ static void live_mod(const track_t *t, int32_t y0)
     uint32_t k;
     for (k = 0; lv.sig && lv.kind == LV_MOD && k < 4u; k++) {
         int32_t y = MX_Y0 + (int32_t)k * MX_PITCH + MX_H;
-        if (y >= y0 && y + 2 <= y0 + (int32_t)cv_h)
+        if (y >= y0 && y + 2 <= y0 + (int32_t)cv_ph)
             lv_bar(t, mod_page_base(cur_page()), k, y);
     }
 }

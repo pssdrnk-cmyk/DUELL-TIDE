@@ -116,8 +116,8 @@ int main(void)
         init_engine_of(TSEL, 0u);
         go_title("EQ 1/2");
         frames(48);
-        ok = card_is(0, "LOW\nFREQUENCY|") && card_is(1, "LOW\nGAIN|") && card_is(2, "MID\nFREQUENCY|") && card_is(3, "MID\nGAIN|");
-        expect("EQ 1/2's cards: LOW / FREQUENCY, LOW / GAIN, MID / FREQUENCY, MID / GAIN (two lines each; DUELL 1.1: the names in full words)", ok);
+        ok = card_is(0, "LOW FREQ|") && card_is(1, "LOW\nGAIN|") && card_is(2, "MID FREQ|") && card_is(3, "MID\nGAIN|");
+        expect("EQ 1/2's cards: LOW FREQ, LOW / GAIN, MID FREQ, MID / GAIN (b10 ui-b I13, owner 2026-11-12: the frequencies on one line, the gains on two)", ok);
         TSEL->p[P_CUT2] = 1;
         frames(48);
         ok = !card_hidden_vp(&TSEL->p[P_EQLG]) && !card_hidden_vp(&TSEL->p[P_EQHF]) && !str_eq(ui.col[1], "\x7f");
@@ -127,7 +127,7 @@ int main(void)
         expect("  .. K2 turns LOW GAIN (+3)", TSEL->p[P_EQLG] == 3);
         go_title("EQ 2/2");
         frames(48);
-        expect("EQ 2/2's cards: MID Q, HIGH / FREQUENCY, HIGH / GAIN, none", card_is(0, "MID Q|") && card_is(1, "HIGH\nFREQUENCY|") && card_is(2, "HIGH\nGAIN|"));
+        expect("EQ 2/2's cards: MID Q, HIGH FREQ, HIGH / GAIN, none (b10 ui-b I13)", card_is(0, "MID Q|") && card_is(1, "HIGH FREQ|") && card_is(2, "HIGH\nGAIN|"));
         TSEL->p[P_DKSRC] = 2;
         go_title("DUCK 1/2");
         frames(48);

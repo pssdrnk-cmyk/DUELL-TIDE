@@ -1,0 +1,66 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
+/* uigaps (b10 ui-a, Phase A cost #2): a full redraw of a grid layout no longer fills the whole body first (ui_draw.c grid_fill: only the BG the strips leave). Every page of every engine
+ * (LAYER / STEREO / DUEL, both parts) and the QUICK layers is redrawn (ui.force) on a screen poisoned with one colour: no pixel of it may be left (nothing is left uncovered), and the
+ * picture equals the one drawn over the old whole-body fill (live pictures, LFO 2 / CYCLE ENV, move between the two frames: counted, not failed). Prints the pixels the pre-fill sends per
+ * grid layout (the old fill: 46,320 px, 37 ms at 20 MHz). Built and run by host_tests.sh (name uigaps). */
+#define UI_TEST_NO_MAIN 1
+static int prefill_on = 1;
+#define GRID_PREFILL() do { if (prefill_on) gap_rows(H_HEAD, Y_FOOT + 15); else grid_fill(); } while (0)
+#include <stdlib.h>
+static unsigned long long fillpx, gpx[64], gn[64];
+#define UI_FILL_HOOK(x_, y_, w_, h_) (fillpx += (unsigned long long)(w_) * (h_))
+#include "ui_test.c"
+static const char *const FAMN[] = {"HOME", "ENV", "LFO", "FX", "SCL", "EDIT", "GLO", "SAVE", "ARP", "SEQ", "TRK", "?"};
+static uint16_t ref[240 * 240];
+static uint32_t ncase[64], ntot, nbadp, nlive;
+static void one(const char *eng, const char *key)
+{
+    uint32_t k, bad = 0, pz = 0, g = grid_on;
+    prefill_on = 1;
+    ui.force = 1; frame();
+    memcpy(ref, host_screen, sizeof ref);
+    for (k = 0; k < 240u * 240u; k++) host_screen[k] = 0x1357;
+    prefill_on = 0;
+    ui.force = 1; frame();
+    prefill_on = 1;
+    for (k = 0; k < 240u * 240u; k++) pz += host_screen[k] == 0x1357;
+    for (k = 0; k < 240u * 240u; k++)
+        bad += host_screen[k] != ref[k];
+    ncase[g & 63]++;
+    fillpx = 0; grid_fill(); gpx[g & 63] += fillpx; gn[g & 63]++;
+    ntot++, nbadp += pz != 0u, nlive += bad;
+    if (pz)
+        printf("uigaps: FAIL %s|%s|grid %u: %u pixels left uncovered\n", eng, key, g, pz);
+    memcpy(host_screen, ref, sizeof ref);
+}
+int main(void)
+{
+    uint32_t e, i, l, g, k, g2;
+    static const struct { uint8_t b; const char *n; } LY[] = {{B_GLO, "QUICK GLO"}, {B_SCL, "QUICK SCL"}, {B_EDIT, "QUICK MULTI"}, {B_LFO, "QUICK LFO"}, {B_ENV, "QUICK ENV"}, {B_ARP, "QUICK ARP"}};
+    for (g = 0; g < 6u; g++)
+    for (e = 0; e < NENGINES; e++) {
+        if (!eng_ok(e)) continue;
+        if (g && e > 2u) continue;
+        for (i = 0; i < NPAGES; i++) {
+            char key[64];
+            ui_power_on(); song.sel = (uint8_t)(g & 1u); duell_mode_req = (uint8_t)(g < 2u ? DM_LAYER : g < 4u ? DM_STEREO : DM_SPLIT); set_engine_of(TSEL, e); go_main_to(HP_MORPH); frames(64);
+            if (!page_visible(i)) continue;
+            ui.page = (uint8_t)i; page_entered(); frames(160);
+            snprintf(key, sizeof key, "%s:%s", FAMN[PAGES[i].fam % 12u], PAGES[i].title);
+            one(ENGINES[e]->name, key);
+        }
+        for (l = 0; l < NELEM(LY); l++) {
+            ui_power_on(); song.sel = 0; set_engine_of(TSEL, e); go_main_to(HP_MORPH); frames(64);
+            btn_down(LY[l].b); frames(480);
+            one(ENGINES[e]->name, LY[l].n);
+            btn_up(LY[l].b); frames(64);
+        }
+    }
+    for (g2 = 0; g2 < 64u; g2++) {
+        if (!ncase[g2]) continue;
+        printf("uigaps: grid %2u: %4u screens, the pre-fill sends %5llu px (was 46320: %.1f ms -> %.1f ms)\n", g2, ncase[g2], gpx[g2] / gn[g2], 46320 * 0.0008, gpx[g2] / gn[g2] * 0.0008);
+    }
+    printf("uigaps: %u screens redrawn on a poisoned screen, %u with a pixel nothing drew, %u pixels in live pictures differ from the old fill\n", ntot, nbadp, nlive);
+    if (nbadp) { printf("uigaps: FAIL\n"); return 1; }
+    return 0;
+}

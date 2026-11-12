@@ -27,7 +27,8 @@ words `bench ...` (firmware/src/bench.c), the unit plays the test itself on its 
 A suite is a plain text file (tools/bench_suites/*.txt), one test after another, times in seconds from the test's start:
 
   test    NAME   text                       a test (NAME has no spaces)           cycle NAME period S  .. end     a block, never run alone
-  load    multi 16 "FINAL REEL"             a multi (the name is checked on the unit; a wrong name: the test is SKIPPED)
+  load    multi M06                         a factory multi by slot; its name comes from build/gen/multi_names.txt (tools/gen_duell_multis.py), checked on the unit
+  load    multi 16 "STRESS TEST"            a multi with the name spelled out (not a factory multi; a wrong name: the test is SKIPPED)
   load    patch 1 #61 "EVOLVING PAD"        patch slot #NN to part 1 or 2
   mode    DUEL|STEREO|LAYER                 scene "HVY DUEL 8+8"   a row of the bench list (the NOTES budget held open)
   set     1 CUT 60   /  set g BPM 120       any part or global value (the unit's label or id; enum names too)
@@ -73,6 +74,22 @@ RUNS_DEFAULT = "bench_runs"
 
 class SuiteError(Exception):
     pass
+
+
+MULTI_NAMES = os.environ.get("DUELL_MULTI_NAMES") or os.path.join(HERE, "..", "build", "gen", "multi_names.txt")
+
+
+def multi_name(slot):
+    """the factory multi of a slot as the one name table has it (build/gen/multi_names.txt, written by tools/gen_duell_multis.py from tools/factory_multis.py;
+    DUELL_MULTI_NAMES = another file). A suite says `load multi M06`, never the name: a rename of a multi cannot break a suite"""
+    try:
+        with open(MULTI_NAMES, encoding="utf-8") as f:
+            names = dict(ln.rstrip().split(" ", 1) for ln in f if " " in ln)
+    except OSError:
+        raise SuiteError(f"load multi M{slot:02d}: {MULTI_NAMES} is missing (python3 tools/build.py --gen-only writes it)")
+    if str(slot) not in names:
+        raise SuiteError(f"load multi M{slot:02d}: no factory multi in slot {slot} (the table has {len(names)})")
+    return names[str(slot)]
 
 
 class LinkDown(Exception):
@@ -219,7 +236,10 @@ def parse_suite(text):
                 raise SuiteError("outside a test")
             elif k == "load":
                 if tok[1] == "multi":
-                    cur.setup.append(("multi", int(tok[2]), tok[3] if len(tok) > 3 else ""))
+                    if re.fullmatch(r"M[0-9]+", tok[2]) and len(tok) == 3:         # `load multi M06`: the slot and the name from the generated table
+                        cur.setup.append(("multi", int(tok[2][1:]), multi_name(int(tok[2][1:]))))
+                    else:
+                        cur.setup.append(("multi", int(tok[2]), tok[3] if len(tok) > 3 else ""))
                 elif tok[1] == "patch":
                     cur.setup.append(("patch", int(tok[2]), int(tok[3].lstrip("#")), tok[4] if len(tok) > 4 else ""))
                 else:

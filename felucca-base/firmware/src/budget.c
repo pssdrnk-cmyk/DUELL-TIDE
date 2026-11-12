@@ -37,7 +37,17 @@
  * DUELL 1.1 item 147 (owner): SAT is charged like the filters and the TWIN, from its played value at the morph's ends (live on, or on at either end as it sounds), not from the live value only;
  * the cap may differ for a patch whose SAT is on at End B only (tests/budget_test.c item 147 (f)).
  * CPU fix (wave 14, 2026-11-05; owner: "gotta conserve the cpu"): BUDGET_LIMIT 84 -> 72, BUDGET_PEAK (the allowance for the real per-second peak over the model) 6 -> 18, from the unit's own per-second
- * peaks of the 16 factory multis against this model (budget.h). The table and the margin are unchanged; the caps are 1 or 2 notes lower on most multis, and the runner's deadline reads neither. */
+ * peaks of the 16 factory multis against this model (budget.h). The table and the margin are unchanged; the caps are 1 or 2 notes lower on most multis, and the runner's deadline reads neither.
+ * b10 round 6 (ROADMAP Later 22; audit findings 5, 6, 34; docs/BUDGET_HONEST.md has the evidence and the list of what only the unit can confirm). WHAT THE TABLE DOES NOT CONTAIN, from the host (tests/budget_cal_probe.c and
+ * an A/B of each commit against its parent, the same scene timed in both trees, as ratios to SAT and a three-band EQ):
+ *   - rows that predate the DSP commits of 5 November (COST-CAL is 26 October): the SVF's precision below 100 Hz (85fb25d: about +5 instructions a sample and filter stage, BD_F12 / BD_F24 hold 89 / 123 for the 26 October filter),
+ *     the master's soft knee (1eef615: +4 a sample, in BD_IDLE's world), the delay loop's low cut (67c2829) and HALL / PLATE's pre-delay (4ff3788): both below the probe's resolution (under 8 a sample).
+ *     NOT folded into the table: the PEAK allowance below was fitted (30 + 0.74 x the model, 5 November, bb730b0) on firmware that HAS these commits, so adding them would count them twice and take notes away
+ *     that the sweep says are safe. They go in only together with a re-fit of BUDGET_PEAK on the unit (K9);
+ *   - the blend of a moving fader is charged BD_MORPH a VOICE (16); it is a cost of the PART (morph_begin once a block), 15 .. 25 instructions a sample on the host for every factory morph, and ~70 us a block on the unit
+ *     (BIG STAB, 6b6678f), which the host's ratio does not reach (x17). The sweep's fit covers it; the shape (per voice, not per part) is wrong for a part with few or many voices;
+ *   - FELUCCA_MOVECOST: see bd_where. A parked fader is not "at rest" unless it is at an end.
+ * The host figures are LOWER BOUNDS (the ratio method gives the unit's blend a seventeenth, fm6_xblock a fifth to a tenth): claim no free headroom from them. */
 
 #include "budget.h"
 
@@ -72,6 +82,8 @@ static const struct { const engine_t *e; uint16_t c; } BD_ENG[] = {   /* (cal) *
 #define BD_TIDE_WASH 60u        /* the wash, only while WASH is not OFF (the default is OFF): 39 x 1.5 */
 #define BD_TIDE_DIP 1u          /* the filter dip, a voice: 0.45 x 1.5 */
 #define BD_TIDE_FM6_IDLE 7u     /* .. the same part while no crossing runs (fm6_xt[].on 0): the bridge's state only, as before 2026-11-06 */
+#define BD_TIDE_WASH_REST 6u    /* b10 round 6 (finding 34): the wash's power meter with WASH on and nothing moving - it runs on every block of a part with WASH on (morph_xfer.c morph_wash: the sum of squares before the "move" test): host 2 instructions a sample
+                                 * (tests/budget_cal_probe.c (c)), charged 3 times that */
 #define BD_TIDE_FM6 76u         /* FM6's bridge, a voice: during a crossing both sounds' operators run (unit 2026-11-06, 9178086 probe: part 1's voice stage +35..45 % with the bridge on); half an FM6 voice */
 #endif
 #define BD_FADE 66u             /* .. an engine choice cross-faded, both shapes made (old: 2 %) */
@@ -139,6 +151,19 @@ static uint32_t bd_slope(const engine_t *e, const int16_t *p)  /* filter 1, the 
  * (mxs need XN_FM), held ~1 s after it stops, so the NOTES number is down before the fader reaches the bridge (budget_poll runs once a frame) */
 static uint8_t bd_mv[NLIVE], bd_mvf[NLIVE];
 static uint16_t bd_mvc[NLIVE];
+/* b10 round 6 (ROADMAP Later 22, finding 34): where the part's transition is, as FELUCCA_MOVECOST charges it. "At rest" is NOT "the fader is still": a fader parked inside the arc (5 % .. 95 %, XW0 .. XW1) still runs the
+ * valley (x->d) and the wash's noise (morph_wash: move), and a fader parked anywhere between its ends still makes both shapes of a cross-faded choice (morph_apply: xf.on while 0 < we < 1). So:
+ *   moving  bd_mv (the fader stepped, a GLIDE runs), or the transition's place trails the fader (tp != the fader's weight: a hand or MIDI jump, the 1.1 s of morph_xstep)
+ *   mid     the fader's weight is strictly between the ends (or moving): the engine cross-fade BD_FADE is charged
+ *   arc     the plan has a transition (mxs need) and the fader's weight or the transition's place is inside the arc (or moving): the valley, the wash and the INSERT dip are charged
+ * Read from the plan and the fader (not from mxs d, which morph_xrest clears), so a part that is silent now is charged for the notes it will play. Without FELUCCA_MOVECOST: both always */
+static void bd_where(uint32_t pi, uint32_t *mid, uint32_t *arc)
+{
+    const mxs_t *x = &mxs[pi % NLIVE];
+    uint32_t w = (uint32_t)morph_wb(mph[pi % NSHOWN].fader), tp = x->tp, mv = bd_mv[pi % NLIVE] || tp != w;
+    *mid = !FELUCCA_MOVECOST || mv || (w > 0u && w < 32768u);
+    *arc = !FELUCCA_MOVECOST || mv || (x->planned && x->need && ((w > XW0 && w < XW1) || (tp > XW0 && tp < XW1)));
+}
 #endif
 static void bd_end(const track_t *t, const morph_part_t *mp, uint32_t e, int16_t *q)
 {
@@ -174,7 +199,7 @@ static void bd_part(const track_t *t, bd_part_t *r)
     if (pi < NSHOWN && (mph[pi].nid || mph[pi].fnid) && !morph_stale(t, &mph[pi])) {   /* the MORPH on this part: each end as morph.c morph_apply plays it (item 142) */
         const morph_part_t *mp = &mph[pi];
         int16_t q[EXT_P_LEN], d0 = 0, c0[8] = {0}, m0 = 0, w0 = 0;   /* (one end at a time: End A's slope, SLOPE and engine choices are kept for the comparison with End B; m0, w0: its filter MODE and TWIN TYPE) */
-        uint32_t s0 = 0, s1, fade = 0, k;
+        uint32_t s0 = 0, s1, fade = 0, k, mid = 1, arc = 1;   /* (mid, arc: bd_where; charged when the build has no MOVECOST) */
         for (k = 0; k < 2u; k++) {
             const int16_t *v = q;
             if (!k && !memcmp(morph_cur(mp, 0), mp->base, P_COUNT) && !memcmp(morph_curx(mp, 0), mp->base + XW_BASE, NX))
@@ -199,12 +224,16 @@ static void bd_part(const track_t *t, bd_part_t *r)
         sl = s1 > sl ? s1 : sl;
         if (s0 && s1 && d0 != q[P_FREED])
             sl = 2;                                     /* (the slopes cross-fade: both stages run) */
-        r->ext += (fade ? BD_FADE : 0u) + BD_MORPH;
+#if DUELL_TIDE
+        bd_where(pi, &mid, &arc);
+#endif
+        r->ext += (fade && mid ? BD_FADE : 0u) + BD_MORPH;
 #if DUELL_TIDE
         /* TIDE's valley (morph_xfer.c morph_xstep: x->d, x->bv) runs only where the voices' own filter cannot carry the dip: the filter is not a low-pass that runs (x->lp, x->vf: here sl, as the plan reads it),
          * or a value of the filters themselves differs between the ends (SLOPE, MODE, filter 2's TYPE: XN_FILT). The dip in the voices' filter (morph_xcut) is BD_TIDE_DIP a voice. The wash runs whenever WASH is on */
         tide_v = BD_TIDE_DIP + (e == &ENG_FM6 ? (pi < NLIVE && (fm6_xt[pi].on || (bd_mv[pi] && (mxs[pi].need & XN_FM))) ? BD_TIDE_FM6 : BD_TIDE_FM6_IDLE) : 0u);   /* (owner 2026-11-06: the notes thin only while a crossing runs) */
-        tide = ((p[P_FREEC] <= 32 && e->ufilt && sl) && s1 == s0 && d0 == q[P_FREED] && m0 == q[P_FREEC] && w0 == q[P_TWTYPE] ? 0u : BD_TIDE_VALLEY) + (morph_wlvl ? BD_TIDE_WASH : 0u);   /* (the part's fixed cost below) */
+        tide = arc ? ((p[P_FREEC] <= 32 && e->ufilt && sl) && s1 == s0 && d0 == q[P_FREED] && m0 == q[P_FREEC] && w0 == q[P_TWTYPE] ? 0u : BD_TIDE_VALLEY) + (morph_wlvl ? BD_TIDE_WASH : 0u)
+                   : (morph_wlvl ? BD_TIDE_WASH_REST : 0u);   /* (the part's fixed cost below; at rest only the wash's meter runs: bd_where) */
         r->ext += tide_v;
 #endif
     }

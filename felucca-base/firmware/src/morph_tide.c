@@ -88,6 +88,18 @@ static int tide_roll(morph_part_t *mp, uint32_t pi, uint32_t x, int8_t *end, uin
     return 1;
 }
 
+#include "jrny_ctx.h"
+_Static_assert(JRNY_CTX_NE == NENGINES, "jrny_ctx.h: one row block an engine (build/host/jrny_ctx gen)");
+/* (the rows are read by the table's own JRNY_CTX_AT, not DS_ENG_AT: a build whose sound list differs, as the xvalues loader's with a sound
+ * added, reads every measured sound right and has no row for the added one; host_tests.sh jrnyctx checks the table against the list) */
+#define JCTX_NONE 0xFFu                                  /* (a sound the table has no row for) */
+static uint32_t jctx_of(uint32_t e, uint32_t j)          /* engine e's sound j in the table, JCTX_NONE when it has no row (tide_ui.c jctx_near, morph_to_sound) */
+{
+    return e < JRNY_CTX_NE && j < (uint32_t)(JRNY_CTX_AT[e + 1u] - JRNY_CTX_AT[e]) ? JRNY_CTX[JRNY_CTX_AT[e] + j] : JCTX_NONE;
+}
+#include "jrny_mu.h"
+static uint8_t tide_mu[NSHOWN];                          /* part pi as factory multi tide_mu - 1 loaded it (multi.c project_load), 0 not or no more (a sound loaded into it: seq_arc.c tide_loaded) */
+
 /* MORPH TO (TIDE LIST's TO, morph_glide.c JOURNEY): end x of part pi becomes factory sound k of the part's engine, exactly: every
  * value but the mix, the arp, the pattern (MF_NEVER, MF_ARP) and, with PITCH OFF, the pitch items; what does not blend (a switch,
  * a route, TRIM) flips at the middle (morph_build). No SMART rules: both ends are designed sounds. FM6: the 65 bytes the morph
@@ -137,13 +149,23 @@ static int morph_to_sound(uint32_t pi, uint32_t x, uint32_t k)
         if (!((g.flags | h.flags) & (MF_NEVER | MF_ARP | MF_GONE)) && (!((g.flags | h.flags) & MF_PIT) || (morph.cfg & MC_PIT)))
             end[id] = tv;                                /* (a switch, a route, TRIM too: morph_build flips what does not blend at the middle) */
     }
-    {                                                    /* MR5 (b7): a part the multi turned down stays down: the destination's factory TRIM less what the part's TRIM
-                                                          * takes off the Original's factory TRIM (M16's pads: JOURNEY played 9-12 dB over the multi). A TRIM raised to lift a
-                                                          * quiet sound (M02's BIG STAB) is not carried: the destination has its own level */
+    {                                                    /* the destination's loudness. b10 Later 26: a part as a factory multi loaded it (tide_mu) plays the destination at the
+                                                          * part's measured level, both in the Original's class pattern (jrny_mu.h, jrny_ctx.h; 2 TRIM steps a dB): the part's TRIM
+                                                          * says nothing alone, it lifts or lowers a sound the multi re-voiced (M06's darker EP +5 dB, M19's sparse bass +12 dB:
+                                                          * TRAVEL played 4 dB over to 9 dB under the multi). Else MR5 (b7): the destination's factory TRIM less what the part's TRIM
+                                                          * takes off the Original's (M16's pads: JOURNEY played 9-12 dB over the multi); a lift is not carried */
         const track_t *t = &trk[pi];
         int32_t o;
-        if (!UP_REC_USER(t) && t->preset < ds_count(en) && (o = mp->base[P_TRIM] - ds_value(ds_get(en, t->preset), P_TRIM, TP[P_TRIM].def)) < 0)
+        uint32_t b;
+        if (!UP_REC_USER(t) && t->preset < ds_count(en)) {
+            o = mp->base[P_TRIM] - ds_value(ds_get(en, t->preset), P_TRIM, TP[P_TRIM].def);
+            if (tide_mu[pi] && (b = jctx_of(en, k)) != JCTX_NONE &&   /* (the same class pattern, tests/jrny_ctx.c: a pad's, ATK 60 or more, or not; a bass's goes with its family, kept) */
+                (ds_value(ds_get(en, t->preset), P_ATK, TP[P_ATK].def) >= 60) == (v[P_ATK] >= 60))
+                o = (int32_t)JRNY_MU[tide_mu[pi] - 1u][pi] - 2 * (int32_t)(b >> 3);
+            else if (o > 0)
+                o = 0;
             end[P_TRIM] = (int8_t)clamp((int32_t)end[P_TRIM] + o, 0, 127);
+        }
     }
     if (fm) {                                            /* FM6: the patch's blended bytes; SLOT stays (turning it loads a patch) */
         end[P_E7] = mp->base[P_E7];

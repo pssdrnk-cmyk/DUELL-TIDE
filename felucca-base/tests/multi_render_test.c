@@ -77,7 +77,7 @@ static uint64_t render(const rn_t *rn, uint32_t fader)
     }
     if (rn->recall)
         ui_prefs2 |= PREF_MODE_RECALL >> 16;
-    project_load(rn->slot);
+    project_load(rn->scene ? rn->slot : MIDX(rn->slot));      /* (a scene sits in the slot it was put into; a factory entry is a record number) */
     for (i = 0; i < 40; i++) { memset(o, 0, sizeof o); mix_block(o, CTL); while (wave_service()) ; }
     SEL_BOTH = 1;
     morph_set_fader(fader);
@@ -180,7 +180,8 @@ int main(int argc, char **argv)
                    "# Audit P03 (filter precision), on purpose: the SVF keeps its precision at low cutoffs (dsp.c tsvf_coef_k): 102 of the 110 renders (the multis and scenes whose parts run a filter) are re-made once.\n"
                    "# Audit P08 (CUT dial slewed, voice.c cut_slew), on purpose, 55 renders: the fader 63 / 127 renders of the multis and scenes whose MORPH moves the CUT dial.\n"
                    "# Audit P09, on purpose, 9 renders: ANALOG's PW card is E4, the slot that held the old VCF's CUT; the test scenes S13, S14 and the spare X06 still store a CUT value there on a PWM part, which now sets its width.\n"
-                   "# D31 (audit G14, 2026-11-05), on purpose, 45 of the 108: the sixteen factory multis are in the curated dub / house order (BASIC CHORD, DUB CHORD, CELLAR TAPE, NIGHT ORGAN, ORGAN SKANK, WARM ECHO, MINIMAL 12, TINE DUB, DEEP 332, then the owner's PAD SPLIT .. FINAL REEL), six of them new: every M01..M16 render but M13 COLD CHAPEL (which keeps its slot) is another record; DUB CHORD's TIDAL SUB line is an octave up and its LEVEL 4 lower. The scenes and the spare renders are unchanged.\n");
+                   "# D31 (audit G14, 2026-11-05), on purpose, 45 of the 108: the sixteen factory multis are in the curated dub / house order (BASIC CHORD, DUB CHORD, CELLAR TAPE, NIGHT ORGAN, ORGAN SKANK, WARM ECHO, MINIMAL 12, TINE DUB, DEEP 332, then the owner's PAD SPLIT .. FINAL REEL), six of them new: every M01..M16 render but M13 COLD CHAPEL (which keeps its slot) is another record; DUB CHORD's TIDAL SUB line is an octave up and its LEVEL 4 lower. The scenes and the spare renders are unchanged.\n"
+                   "# b10 Later 19 (2026-11-12), on purpose, 8 of the 108: the MUSIC roll moves an FM6 carrier envelope once (morph_fm_shape.c), so the End B records of M02 M04 M06 M16 were rolled again (tools/factory_multis.py build): their fader 63 and 127 renders re-made; the others are unchanged.\n");
         for (m = 0; m < NR; m++)
             for (f = 0; f < 3u; f++)
                 fprintf(g, "%s f%u %016llx\n", RN[m].name, FAD[f], (unsigned long long)got[m * 3 + f]);

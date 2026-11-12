@@ -1015,19 +1015,21 @@ static void draw_layer(void)
         return;
     if (ui.force || sig != ui.layer_sig) {
         ui.layer_sig = sig;
-        cv_begin(240, H_GRAPH, T_BG);
-        cv_bg = T_BG;
-        if (l == LAYER_GLO && grid_on == 7)
-            glo_mute_cards();
-        else if (l == LAYER_GLO)
-            layer_glo();
-        else if (l == LAYER_SEQ)
-            layer_seq();
-        else if (l == LAYER_REC)
-            ;                                           /* (QUICK REC outside template 8, PERFORM on: an empty panel; its four are the cards) */
-        else
-            layer_quick(ly_q(l), 4, 112);              /* (QUICK FILTER, LFO, ENV, ARP) */
-        cv_blit(0, Y_GRAPH);
+        CV_BANDS(H_GRAPH) {
+            cv_begin(240, H_GRAPH, T_BG);
+            cv_bg = T_BG;
+            if (l == LAYER_GLO && grid_on == 7)
+                glo_mute_cards();
+            else if (l == LAYER_GLO)
+                layer_glo();
+            else if (l == LAYER_SEQ)
+                layer_seq();
+            else if (l == LAYER_REC)
+                ;                                           /* (QUICK REC outside template 8, PERFORM on: an empty panel; its four are the cards) */
+            else
+                layer_quick(ly_q(l), 4, 112);              /* (QUICK FILTER, LFO, ENV, ARP) */
+            cv_blit(0, Y_GRAPH);
+        }
         if (l == LAYER_GLO)
             gm.sig = 0;                                 /* (the strip over the panel just drawn) */
     }

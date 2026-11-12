@@ -364,7 +364,7 @@ static const param_desc_t GP[G_COUNT + 7u] = {
     [G_SAVE] = PE("SAVE", N_GO, 0),
     [G_ENGSEL] = PE("ENG", N_ENGNAME, 0),
     [G_RLOCUT] = PD("LOCUT", F_LOCUT, 0, 127, 75),   /* 0.2.14 (on the id of the old, unused G_ENGGO): the reverb's low cut; 0.2.22: 20 Hz .. 2 kHz, the default 75 = 299 Hz (61 = 88 Hz up to 0.2.21) */
-    [G_DCLFO] = PD("CLFO", F_INT, 0, 15, 0),   /* b9 (on the id of the old CLEAR PATTERN go-value): the delay colour's slow LFO, 0 = off (the delay as before, bit for bit), x 8 COLR units each way at 0.25 Hz (fx_bus.c dly_col) */
+    [G_DCLFO] = PD("CLFO", F_CLFO, 0, 15, 0),   /* b9 (on the id of the old CLEAR PATTERN go-value): the delay colour's slow LFO, 0 = off (the delay as before, bit for bit), x 8 COLR units each way at 0.25 Hz (fx_bus.c dly_col) */
     [G_INITSND] = PE("INIT", N_GO, 0),
     /* the reverb's model on the REVERB page: the id of the old GM drum channel (G_DRCH, inert since 1.0) */
     [G_RTYPE] = PE("TYPE", N_RTYPE, 2),         /* HALL at power-on since 1.2 (ROOM before; projects keep theirs) */
@@ -784,6 +784,12 @@ static void param_format(const param_desc_t *d, int32_t v, char *val, const char
     }
     case F_FMODE:                                   /* .. its MODE: the ends and the middle by name, a blend as the two */
         str_cpy(val, v <= 0 ? "LP" : v < 64 ? "LP>BP" : v == 64 ? "BP" : v < UF_HP ? "BP>HP" : "HP", 6);
+        break;
+    case F_CLFO:                                    /* the delay colour LFO: OFF, else the depth 1..15 */
+        if (v <= 0)
+            str_cpy(val, "OFF", 6);
+        else
+            fmt_int(val, v);
         break;
     case F_LOCUT:                                   /* the reverb's LOW CUT: OFF, else the corner in Hz */
         if (v <= 0) {
@@ -1294,8 +1300,8 @@ static const char *label_shown(const char *l)
 static const char *desc_shown(const param_desc_t *d)
 {
     static const struct { uint8_t id; const char *name; } TS[] = {
-        {P_TRIM, "PATCH\nLEVEL"}, {P_APROB, "CHANCE"}, {P_EQLF, "LOW\nFREQUENCY"}, {P_EQLG, "LOW\nGAIN"}, {P_EQMF, "MID\nFREQUENCY"}, {P_EQMG, "MID\nGAIN"},
-        {P_EQMQ, "MID Q"}, {P_EQHF, "HIGH\nFREQUENCY"}, {P_EQHG, "HIGH\nGAIN"}, {P_CHRD, "TYPE"},
+        {P_TRIM, "PATCH\nLEVEL"}, {P_APROB, "CHANCE"}, {P_EQLF, "LOW FREQ"}, {P_EQLG, "LOW\nGAIN"}, {P_EQMF, "MID FREQ"}, {P_EQMG, "MID\nGAIN"},
+        {P_EQMQ, "MID Q"}, {P_EQHF, "HIGH FREQ"}, {P_EQHG, "HIGH\nGAIN"}, {P_CHRD, "TYPE"},   /* (I13: the EQ's frequencies on one line) */
     };
     uint32_t i;
     for (i = 0; i < NELEM(TS); i++)

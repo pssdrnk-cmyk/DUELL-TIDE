@@ -47,6 +47,7 @@ LOCAL_INTER = os.path.expanduser("~/Library/Fonts/Inter.ttc")   # 4.001: 0 Regul
 EXTRAS = [0xA9, 0xB0, 0xB7, 0xC4, 0xD6, 0xDC, 0xE4, 0xF6, 0xFC, 0x2026]  # (c) deg . A: O: U: a: o: u: (Latin-1), ...
 CODE = {0x2026: 0x85}                  # characters outside Latin-1 -> their one-byte code in the firmware
 PHASES, PHASES_L = 4, 2                # horizontal phases per glyph (aa_raster.raster_font): S M, L
+PHASES_TXT = 2                         # barlow S M T (b10 font lever, owner 2026-11-12): 2 pen positions (1/2 px) instead of 4: -14.7 KB of flash, no visible change at 1x
 # Keep the frequently drawn S labels and tiny D digits as nibbles. The other
 # faces use the existing lossless decoder; glyph pixels and metrics stay exact.
 PLAIN = []             # (filled by main(): every face of the barlow preset is PLAIN: as the design pictures set text, no kerning, no OpenType features)
@@ -64,10 +65,10 @@ def preset(name):
         d = FONTS.parent / "assets" / "fonts"  # All faces PLAIN (no kerning, no OpenType features: as the design pictures set text; also what makes them reproducible without Raqm).
         sb, md, bd = (str(d / f"BarlowSemiCondensed-{w}.ttf") for w in ("SemiBold", "Medium", "Bold"))
         dig = [ord(c) for c in "0123456789"]
-        return [("S", sb, 15, (32, 126), [0xFC, 0x2026], 0.0, PHASES),      # S: SemiBold 15, small text of every kind: capsule letters / numbers, footer, labels, hints, notes, legends, list rows (was S 12 and F 15)
-                ("M", md, 15, (32, 126), [0x2026], 0.0, PHASES),            # M: Medium 15: engine name, units, patch numbers, menu rows (the design's M 15 / M 16 / M 18 roles)
+        return [("S", sb, 15, (32, 126), [0xFC, 0x2026], 0.0, PHASES_TXT),      # S: SemiBold 15, small text of every kind: capsule letters / numbers, footer, labels, hints, notes, legends, list rows (was S 12 and F 15)
+                ("M", md, 15, (32, 126), [0x2026], 0.0, PHASES_TXT),            # M: Medium 15: engine name, units, patch numbers, menu rows (the design's M 15 / M 16 / M 18 roles)
                 ("L", bd, 23, (32, 126), [], 0.0, PHASES_L),                # L: Bold 23: values and big headings (the design's S 20 / S 23 values, the guide's headings, the splash word)
-                ("T", bd, 15, (32, 90), [], 0.0, PHASES),                   # T: Bold 15, capitals: the header's page title (a lower case letter shows as its capital: gfx.c glyph)
+                ("T", bd, 15, (32, 90), [], 0.0, PHASES_TXT),                   # T: Bold 15, capitals: the header's page title (a lower case letter shows as its capital: gfx.c glyph)
                 ("D", sb, 12, (32, 32), dig, 0.0, PHASES),                  # D: SemiBold 12 digits only: the number inside a numbered dot (knob marks 1 .. 4; a 15 px digit does not fit the 11 px dot)
                 ("N", bd, 31, (32, 32), [ord(c) for c in "0123456789.-+%"], 0.0, PHASES_L),   # N: Bold 31 figures only: the design's big values (ENGINE page, FINAL_V1_02); text values use L
                 ("X", bd, 38, (32, 32), [ord(c) for c in "AB0123456789"], 0.0, PHASES_L),     # X: Bold 38: HOME's big MORPH value (A, B and figures)

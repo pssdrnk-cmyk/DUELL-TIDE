@@ -79,7 +79,7 @@ On the WAVETABLES tab, drop a WAV file (a single-cycle wave or a wavetable like 
 
 ## Multis
 
-The MULTIS tab lists M01 to M24. M01 to M16 are the unit's own slots: Recall, Save to unit, Download file, Rename and Import file work on them. M17 AMB DUNEHORN and M18 AMB GROWL (drone scenes, TIDE 1.0.0-b6) and M19 TECH HYPNO, M20 DUB HOUSE, M21 HSE LOFI, M22 TECH CINEMA, M23 AMB TECHNO, M24 TECH MINIMAL (1.0.0-b10) are built into the firmware, marked "read-only": Recall works, Save to unit, Download, Rename and Import into them do not. To keep an edited one, Recall it, change it on the unit, and save it into M01 to M16. Backups are unchanged: nothing is stored for M17 to M24.
+The MULTIS tab lists M01 to M24. M01 to M16 are the unit's own slots: Recall, Save to unit, Download file, Rename and Import file work on them. M17 to M22 (ELEC ROBOT, ELEC DEEPSEA, ELEC WARPED, AMB TECHNO, AMB BERLIN, AMB LOOPS) and the drone scenes M23 AMB DUNEHORN and M24 AMB GROWL (TIDE 1.0.0-b6) are built into the firmware, marked "read-only": Recall works, Save to unit, Download, Rename and Import into them do not. To keep an edited one, Recall it, change it on the unit, and save it into M01 to M16. Backups are unchanged: nothing is stored for M17 to M24.
 
 ## Good to know
 

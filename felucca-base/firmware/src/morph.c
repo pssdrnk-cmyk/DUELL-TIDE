@@ -1627,6 +1627,9 @@ static int morph_stale(const track_t *t, const morph_part_t *mp)   /* another so
 }
 
 /* before part t's block (adv: a block passes, the ramp moves) or note-on: the blend into t->p. 1 = applied */
+#ifndef FELUCCA_HANDSKIP
+#define FELUCCA_HANDSKIP 0                               /* Later 9 (audit finding 12, D44): 1 = a fader moved by a hand or MIDI blends every other block as a GLIDE's does (about 70 us a block saved on part 1; the blend trails the fader by one block, 0.73 ms). 0 until the unit sweep has tried it (tools/build.py: env FELUCCA_HANDSKIP=1) */
+#endif
 #if DUELL_TIDE
 static uint8_t morph_gliding;                            /* a GLIDE runs (morph_glide.c glide_poll writes it; 0 in a build without it): budget.c and the blend below read it */
 #endif
@@ -1654,7 +1657,7 @@ static int morph_begin(track_t *t, int adv)
     {                                                   /* GLIDE CPU (unit 2026-11-06: a blend every block of a moving fader cost ~70 us a block on part 1): while the
                                                          * fader moves, blend every other block and write the last blend in between (the fader one block, 0.73 ms, behind) */
         static uint8_t rskip[NSHOWN];                   /* (K3 ease level 1: a GLIDE or a hand on the fader blends every 4th block, 3 written from the last blend) */
-        if (mp->cvalid && mp->cst == duell_stereo && mp->cfader != mp->fader && adv && (morph_gliding || EASE >= EASE_RATE)) {   /* (level 0: a GLIDE only, a hand on the fader blends every block, as before) */
+        if (mp->cvalid && mp->cst == duell_stereo && mp->cfader != mp->fader && adv && (morph_gliding || FELUCCA_HANDSKIP || EASE >= EASE_RATE)) {   /* (level 0: a GLIDE only, a hand on the fader blends every block, as before; FELUCCA_HANDSKIP: a hand too) */
             if (rskip[pi] < (EASE >= EASE_RATE ? 3u : 1u)) {
                 rskip[pi]++;
                 goto cached;

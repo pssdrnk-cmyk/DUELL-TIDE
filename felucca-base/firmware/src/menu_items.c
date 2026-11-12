@@ -16,7 +16,7 @@
  * 1.2: TUNE is not a setting: it edits the project's G_TUNE, the value the project holds and saves as before (no format change;
  * a project load brings its own); nothing of its is in the settings record (MI_PROJECT: menu_get / menu_put read and write song.g) */
 /* DUELL 0.2.14 (the owner's MENU rework, 2026-10-14): new names (ANIM -> ANIMATION, HOLD -> BUTTON HOLD,
- * SPEAKER EQ -> OUTPUT EQ, MODE RECALL -> MULTI LOAD (KEEPS MODE / SETS MODE), CHORD ENTRY -> STEP KEYS (WRITE / ADD), CALIBRATION ->
+ * SPEAKER EQ -> OUTPUT EQ, MODE RECALL -> MULTI LOAD (KEEPS MODE / SETS MODE), CHORD ENTRY -> STEP KEYS (REPLACE / ADD), CALIBRATION ->
  * BUTTON MAP), new groups (SCALE LEDS in DISPLAY), SCOPE and OVERVIEW removed (their editor ids 18 and 23 retired, never reused).
  * MI order = the order the device shows (a tab's rows follow each other); the editor's ids are editor_menu.c ED_MENU's, by row, so
  * the order is no id. MI_NAME is the editor's name (at most 12 characters, ed_str) and the device's label unless MI_LABEL has one */
@@ -97,7 +97,7 @@ enum { MTAB_DISPLAY, MTAB_CONTROL, MTAB_AUDIO, MTAB_SYSTEM, MTAB_COUNT };   /* (
 #define MPAGE_UNITS 7u
 static const char *const MTAB_NAME[MTAB_COUNT] = {"DISPLAY", "CONTROL", "AUDIO", "SYSTEM"};
 static const uint8_t MI_TAB[MI_COUNT] = {
-    MTAB_DISPLAY, MTAB_DISPLAY, MTAB_DISPLAY, MTAB_DISPLAY, MTAB_DISPLAY, MTAB_DISPLAY, 0xFFu,   /* COLOR LEDS SCALE LEDS ANIMATION SCREEN OFF NOTES LEFT (CPU METER, last of its group: no tab, no row: the CPU bar is gone in DUELL 1.1; the row, its stored bit and its editor id 26 stay reserved) */
+    MTAB_DISPLAY, MTAB_DISPLAY, MTAB_DISPLAY, MTAB_DISPLAY, MTAB_DISPLAY, 0xFFu, 0xFFu,   /* COLOR LEDS SCALE LEDS ANIMATION SCREEN OFF (NOTES LEFT: no row since b10, owner 2026-11-12, the capsules show no voices; its bit stays reserved) (CPU METER, last of its group: no tab, no row: the CPU bar is gone in DUELL 1.1; the row, its stored bit and its editor id 26 stay reserved) */
     MTAB_CONTROL, MTAB_CONTROL, MTAB_CONTROL, MTAB_CONTROL, MTAB_CONTROL, MTAB_CONTROL,   /* MULTI LOAD HOME OPENS KNOB ACCEL BUTTON HOLD STEP KEYS
                                                                                           * STEP PREVIEW */
     MTAB_CONTROL,                                                                         /* PERF LEAVE (FADE / KEEP; the 7th unit: one page is full) */

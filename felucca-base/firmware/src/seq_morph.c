@@ -103,13 +103,14 @@ static uint32_t sqm_best(uint32_t *score, uint32_t len)
 }
 
 static volatile uint32_t sqm_thin[NSHOWN][2];            /* the steps a thinned part does not play, a bit each (seq_answer.c, main loop) */
-static volatile int8_t sqm_dyn;                         /* ARC's dynamics, tarc_bright: +1 louder, -1 softer (seq_answer.c, main loop) */
+static volatile int8_t sqm_dyn, sqm_dyn_nx;             /* ARC's dynamics, tarc_dyn: +1 louder, -2 softer (seq_answer.c, main loop); _nx: the next 8-bar unit's, armed with tarc_lev's bits 3-5 (seq_arc.c tarc_levers, taken from the unit's first bar on) */
 static volatile uint8_t sqm_lead;                        /* the parts that listen in CALL AND ANSWER and whose chords thin to two voices, a bit each: neither a bass nor a pad (seq_answer.c, main loop) */
 static volatile uint8_t sqm_arc;                         /* ARC: 0 OFF, 1 RISE, 2 DROP (tide_ui.c, the TIDE LIST; seq_arc.c) */
 static volatile uint8_t tarc_dropphr = 0xFFu, tarc_lev, tarc_unit;   /* seq_arc.c's planner to the audio side: the drop's 8-bar unit; the parts thinned (bits 0-1) and no POLY (bit 2) now,
                                                           * and the same three bits for the next 8-bar unit (bits 3-5); the unit the planner last looked at. The audio side takes the next unit's from
                                                           * its first bar on (tarc_lvl), so a new phase's first downbeat plays with its levers, not the main loop's catching up (1.0.0-b8) */
 #define TARC_ARMED 1
+#define TARC_DYN_ARMED 1                                 /* (and ARC's loudness step, sqm_dyn_nx: Later 25) */
 static __attribute__((noinline)) uint32_t tarc_lvl(uint32_t bar)   /* what bar plays with: the parts thinned (bits 0-1), no POLY (bit 2) */
 {
     return tarc_lev >> (((bar >> 3) & 63u) != tarc_unit ? 3u : 0u) & 7u;   /* (a unit the main loop has not looked at yet: the levers armed for it) */
@@ -122,6 +123,7 @@ static uint32_t glide_tide_on(void);
 static int tide_bass_part(const track_t *t);
 static uint32_t tarc_cap(uint32_t base);
 static int32_t tarc_bright(void);
+static int32_t tarc_dyn(void);
 static volatile uint8_t sqm_bassm;                       /* B1: the parts whose sound is in the BASS family, a bit each (seqm_poll, main loop): no POLY, no VOIC, no phrase gaps; bits 4-5: a PAD sound's */
 static volatile struct { uint8_t arc, hold, cp, cell, n[NSHOWN], src[NSHOWN][4], out[NSHOWN][4]; } sqm_v __attribute__((section(".pool")));   /* the chord bed's voicing with ARC (seq_voicelead.c):
     arc 0 as written, 1 open (PEAK), 2 closed (BREAK); hold: KEEP builds without it; an ARP SEQ part's chord as voiced (n notes, src: as played, out: voiced; the arp's list reads it) */
@@ -395,7 +397,7 @@ static int32_t sqm_dyn_of(uint32_t pi, uint32_t bar)     /* the dynamics now: -2
     int32_t b;
     if (pi >= NSHOWN || !song.playing || !((sqm_auto >> pi) & 1u))
         return 0;
-    b = sqm_dyn - sqm_listens(pi, bar);
+    b = (((bar >> 3) & 63u) != tarc_unit ? sqm_dyn_nx : sqm_dyn) - sqm_listens(pi, bar);   /* (a unit the main loop has not looked at yet: the dynamics armed for it, like tarc_lvl) */
     return b < -2 ? -2 : b;
 }
 static uint32_t sqm_dyn_scale(uint32_t v, int32_t b) { v = v * SQM_VS[b + 2] >> 7; return v > 127u ? 127u : v; }

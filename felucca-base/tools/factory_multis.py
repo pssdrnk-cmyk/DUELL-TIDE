@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 """DUELL factory multis (0.2.23; 0.2.24: the owner's multis back; 0.2.25: COLD CHAPEL in M13): the ONE source of the sixteen factory multis M01..M16 and the tool that builds them.
 
+    tools/factory_multis.py verify     a rebuild equals the committed records byte for byte (writes nothing in tools/)
     tools/factory_multis.py build      the records tools/factory_multis/M01.bin..M16.bin (needs build/gen from DUELL/gen_only.py)
     tools/factory_multis.py check      the records against this list (version, name, sounds, MODE, split) and the similarity check
     tools/factory_multis.py list       the list as text (slot, name, mode, parts '#NN NAME', owner / mine)
@@ -286,6 +287,10 @@ def apply_owner(multis):
 
 
 MULTIS = apply_owner(MULTIS)
+# The ORDER the unit lists the multis in (owner, 12 November 2026: genre by genre, not in the order they were made): the record numbers (M01 .. M24 as these tools, the tests' names and the
+# docs call a record: the files tools/factory_multis/Mnn.bin and tools/drone_multis/Mnn.bin) in the order of the slots. tools/gen_duell_multis.py gives each record the slot of its place here (the unit's
+# M01 .. M24, MIDI program changes 1 .. 24, DF_SLOT, multi_names.h); a record keeps its number in every tool. Slots 1 .. 16 can be saved over (flash objects), 17 .. 24 are ROM only, the last two the drones.
+DISPLAY_ORDER = [1, 2, 20, 3, 4, 5, 6, 21, 7, 8, 24, 19, 22, 9, 10, 11, 12, 13, 14, 23, 15, 16, 17, 18]
 
 
 # ---- the firmware's names --------------------------------------------------------------------------------------------------------
@@ -406,7 +411,8 @@ static const uint8_t *dm_rec(uint32_t i, uint8_t *out) { (void)out; return DM_RE
 """
 
 
-def build():
+def _make(out):
+    """builds the records of the list that are not `kept` into the folder `out` (the C tool's `build`); -> the sound table"""
     snd = sounds()
     resolve(snd)
     emit(GEN / "factory_multis_def.h")
@@ -417,14 +423,47 @@ def build():
           "-o", str(exe), "tests/gen_factory_multis.c", "-lm"]
     if subprocess.run(cc, cwd=ROOT).returncode:
         sys.exit("factory_multis: tests/gen_factory_multis.c does not compile (run DUELL/gen_only.py first: build/gen)")
-    if subprocess.run([str(exe), "build", str(DIR)], cwd=ROOT).returncode:
+    if subprocess.run([str(exe), "build", str(out)], cwd=ROOT).returncode:
         sys.exit("factory_multis: the build failed")
+    return snd
+
+
+def build():
+    snd = _make(DIR)
     want = {"M%02d.bin" % m["slot"] for m in MULTIS}
     for f in DIR.glob("M*.bin"):
         if f.name not in want:
             f.unlink()
             print("removed", f.name)
     check(snd)
+
+
+def verify():
+    """a rebuild from the list gives the committed records byte for byte (the records marked `kept` are not rebuilt: they are the source); nothing is written
+    to tools/factory_multis. Since b8 this holds (End B AMOUNT included); this keeps it so."""
+    import tempfile
+    if os.name == "nt":                                 # (the record builder is a host program that includes <sys/wait.h>: not on Windows; CI and WSL run this)
+        print("factory_multis: verify not run on Windows (tests/gen_factory_multis.c needs fork())")
+        return True
+    with tempfile.TemporaryDirectory() as tmp:
+        _make(tmp)
+        bad, n = [], 0
+        for m in MULTIS:
+            if m.get("kept"):
+                continue
+            name = "M%02d.bin" % m["slot"]
+            made = Path(tmp) / name
+            if not made.exists():
+                bad.append("%s: not built" % name)
+            elif made.read_bytes() != (DIR / name).read_bytes():
+                a, b = made.read_bytes(), (DIR / name).read_bytes()
+                at = next((i for i in range(min(len(a), len(b))) if a[i] != b[i]), min(len(a), len(b)))
+                bad.append("%s: a rebuild differs from the committed record (%d B vs %d B, first difference at byte %d)" % (name, len(a), len(b), at))
+            n += 1
+    for b in bad:
+        print("factory_multis: " + b)
+    print("factory_multis: %d records rebuilt, %d differ from the committed ones" % (n, len(bad)))
+    return not bad
 
 
 # ---- checks -------------------------------------------------------------------------------------------------------------------------
@@ -673,6 +712,8 @@ if __name__ == "__main__":
         sys.exit(0 if check() else 1)
     if cmd == "check":
         sys.exit(0 if check() else 1)
+    if cmd == "verify":
+        sys.exit(0 if verify() else 1)
     if cmd == "selftest":
         sys.exit(0 if selftest() else 1)
     if cmd == "list":

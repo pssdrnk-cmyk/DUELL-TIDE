@@ -7,7 +7,7 @@
  *   TIDE SETTINGS  (GR_TIDELIST) the settings in a list, as the MENU's: K1 picks the row, OCT+ or K2..K4 the next value, OCT- the one before.
  *                  STYLE, MODE, TARGET, ARC, KNOBS, AMOUNT, REC, PLAY MODE, XFADE, SPLIT (JL_NAME;1.0.0-b7, MR8: VARY BARS, WASH, TURNS, POLY and OFFBEAT
  *                  are STYLE's alone, no rows)        ... set and forget
- * LINK: TARGET SND+SEQ links the two faders: GLIDE moves both, and the MORPH fader moved by hand (the MORPH page, the mod wheel, CC 70:
+ * LINK: TARGET BOTH links the two faders (b10: it read SND+SEQ): GLIDE moves both, and the MORPH fader moved by hand (the MORPH page, the mod wheel, CC 70:
  * ui_input.c morph_act) moves the SEQ fader with it (tide_link). ALGORITHM is the morph's selector here too: PART 1, BOTH, PART 2
  * (morph_mask). The panel shows both faders with the glide on them, and the selected part's 16 steps as they play: varied ones
  * lit, dropped ones hollow. MODE, TIME, WAIT and the list are kept over a power cycle (tide_settings).
@@ -161,6 +161,10 @@ static void tide_link(uint32_t mask, uint32_t v)
 /* ---------------------------------------------------------------- TIDE SETTINGS --- */
 enum { JL_STYLE, JL_GMODE, JL_TARGET, JL_ARC, JL_KNOB, JL_AMOUNT, JL_REC, JL_MODE, JL_XFADE, JL_SPLIT, JL_N };   /* (GMODE: the glide's MODE, AUTO TIDE's K2 too; REC: live recording's; MODE (PLAY MODE), XFADE, SPLIT, the last three: the output mode's own settings; REC and those three no part of STYLE; the three go through ui_input.c mode_knob, whose header describes the old MODE page: TIDE's rows are these three) */
 static const char *const JL_NAME[JL_N] = {"STYLE", "MODE", "TARGET", "ARC", "KNOBS", "AMOUNT", "REC", "PLAY MODE", "XFADE", "SPLIT"};   /* (AMOUNT: how far a roll goes, the part's; on the MORPH page's K4 until 1.0.0-b7) */
+/* what kind of row each is: the code branches on the kind, not on the row's place. The order matters: JK_OUT .. JK_SPLIT are the output mode's rows (mode_knob, the last three
+ * rows), JK_XFADE and JK_SPLIT are LAYER's only. LIST: a value from JL_V (TARGET, REC), ARC: the same, and it acts only in automatic EVOLVE / TRAVEL on the SEQ */
+enum { JK_LIST, JK_STYLE, JK_GMODE, JK_ARC, JK_KNOBS, JK_AMOUNT, JK_OUT, JK_XFADE, JK_SPLIT };
+static const uint8_t JL_KIND[JL_N] = {JK_STYLE, JK_GMODE, JK_LIST, JK_ARC, JK_KNOBS, JK_AMOUNT, JK_LIST, JK_OUT, JK_XFADE, JK_SPLIT};
 static uint8_t jl_sel;                                   /* the row picked (K1) */
 /* 1.0.0-b9 KNOBS: HOME page 1's knobs 2..4 (knob_sets.h). Stored in the byte ROLL TYPE had (TS_KNOB): 0 or 1 AUTO (1 the default, an older record's 0 / 1 too), 2 STD, 3..8 DB HS TC AC EL AM.
  * AUTO takes the set from the first word of the music's name ("ACID HYPNO", knob_sets.h KN_TAG); any other first word, or no multi: STD */
@@ -186,7 +190,7 @@ static void tide_pick_mode(void) { jl_sel = JL_MODE; }   /* HOME OPENS = MODE (u
 
 /* STYLE: one move sets the eight values below together. MODE and ARC are rows, TIME and WAIT AUTO TIDE's knobs; VARY, POLY, SYNC (OFFBEAT) and WASH
  * are the style's alone (1.0.0-b7, MR8: no rows; the engine reads them as before; TURNS is gone since 1.0.0-b8: see TS_TURNS_OLD). TARGET chooses what TIDE may change, not the genre, and stays.
- * A hand edit of MODE, TIME, WAIT or ARC turns it into CUSTOM (tide_settings); CUSTOM itself changes nothing and keeps the style values it had.
+ * A hand edit of MODE, TIME, WAIT or ARC turns it into CUSTOM and says "STYLE CUSTOM" (tide_settings); CUSTOM itself changes nothing and keeps the style values it had.
  * mode, time (index), wait (index), VARY, POLY, SYNC, ARC, WASH */
 enum { STY_DUB, STY_DEEP, STY_MINIMAL, STY_AMBIENT, STY_PEAK, STY_DRONE, STY_CUSTOM };   /* (CUSTOM was 5 until 1.0.0-b4: a stored 5 is read as DRONE only if its rows are DRONE's, else CUSTOM; tide_settings) */
 static const uint8_t STY[6][8] = {
@@ -235,15 +239,16 @@ static void tide_custom_take(void)
  * XFADE and SPLIT are LAYER's only (1.0.0-b9: the KNOBS row acts always) */
 static __attribute__((noinline)) const char *jl_needs(uint32_t r)
 {
+    uint32_t k = JL_KIND[r];
 #if TIDE_PLAYSEL
-    if (r == JL_SPLIT || (r == JL_XFADE && duell_mode_req == DM_LAYER))   /* 1.0.0-b7: XFADE and SPLIT act in ALGORITHM's middle only (PART 1 / PART 2 play one part); SPLIT there in STEREO and DUEL too */
+    if (k == JK_SPLIT || (k == JK_XFADE && duell_mode_req == DM_LAYER))   /* 1.0.0-b7: XFADE and SPLIT act in ALGORITHM's middle only (PART 1 / PART 2 play one part); SPLIT there in STEREO and DUEL too */
         return song.both ? 0 : "2 PARTS ONLY";
 #endif
-    if (r >= JL_XFADE)
+    if (k >= JK_XFADE)
         return duell_mode_req == DM_LAYER ? 0 : "LAYER ONLY";
-    if (r != JL_ARC)
+    if (k != JK_ARC)
         return 0;
-    return gl.mode < GM_WANDER ? "NEEDS EVOLVE" : gl.target == GT_SOUND ? "TARGET SEQ" : 0;   /* (short: knob 1's line has room for these after "SETTING ARC"; EVOLVE / TRAVEL in full do not fit) */
+    return gl.mode < GM_WANDER ? "NEEDS EVOLVE" : gl.target == GT_SOUND ? "NEEDS SEQ" : 0;   /* (short: knob 1's line has room for these after "SETTING ARC"; EVOLVE / TRAVEL in full do not fit) */
 }
 /* does row r's value draw dim (it does nothing now)? whenever it lacks something (tests/mode_test.c checks this) */
 static int jl_dimmed(uint32_t r) { return jl_needs(r) != 0; }
@@ -256,21 +261,23 @@ static const char *const JL_V[] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK", 
                                    "AUTO", "STD", "DUB", "HSE", "TECH", "ACID", "ELEC", "AMB", "ADD", "REPLACE", "LAYER", "STEREO", "DUEL"};
 static const uint8_t JL_V0[JL_N] = {0, 0, 7, 10, 13, 0, 21, 23, 0, 0};   /* (each row's first name in JL_V; MODE's are GL_MODE_NAME) */
 static const char *const JL_SAY[JL_N] = {"STYLE ", "MODE ", 0, "ARC ", "", "AMOUNT ", "REC ", 0, 0, 0};
-static const char *const JL_OWN[3] = {"GLIDE SOUND", "GLIDE SEQ", "GLIDE BOTH"};   /* (TARGET's messages) */
+static const char *const JL_OWN[3] = {"TARGET SOUND", "TARGET SEQ", "TARGET BOTH"};   /* (TARGET's messages) */
 static uint32_t jl_n(uint32_t r) { return JL_NV[r % JL_N]; }
 /* SPLIT: the stored code (core.h mix_split) <-> its place in the list (OFF, MIDDLE, C-1 .. G9) */
 static uint32_t jl_split_ix(uint32_t s) { return s == SPLIT_MIDDLE ? 1u : s && s <= 128u ? s + 1u : 0u; }
 static uint32_t jl_split_code(uint32_t v) { return v == 1u ? SPLIT_MIDDLE : v ? v - 1u : 0u; }
 static uint32_t jl_get(uint32_t r)
 {
+    uint32_t k;
     r %= JL_N;
-    if (r == JL_MODE)                                    /* (the list reads LAYER, STEREO, DUEL: mode_knob's order) */
+    k = JL_KIND[r];
+    if (k == JK_OUT)                                     /* (the list reads LAYER, STEREO, DUEL: mode_knob's order) */
         return DM_LAYER - (duell_mode_req < DM_N ? duell_mode_req : DM_SPLIT);
-    if (r == JL_XFADE || r == JL_SPLIT)
-        return r == JL_XFADE ? mix_xf : jl_split_ix(mix_split);
-    if (r == JL_AMOUNT)
+    if (k == JK_XFADE || k == JK_SPLIT)
+        return k == JK_XFADE ? mix_xf : jl_split_ix(mix_split);
+    if (k == JK_AMOUNT)
         return morph_amount_of(song.sel);
-    if (r == JL_GMODE)                                   /* (b9: EVOLVE 0, TRAVEL 1; a stored ONCE / LOOP / DRIFT loads as EVOLVE, tide_settings) */
+    if (k == JK_GMODE)                                   /* (b9: EVOLVE 0, TRAVEL 1; a stored ONCE / LOOP / DRIFT loads as EVOLVE, tide_settings) */
         return gl.mode >= GM_JOURNEY ? 1u : 0u;
     if (JL_VAR[r])
         return *JL_VAR[r];
@@ -279,13 +286,15 @@ static uint32_t jl_get(uint32_t r)
 static const char *jl_vname(uint32_t r, uint32_t v)
 {
     static char b[8];                                    /* (one buffer for XFADE and SPLIT: the caller draws or copies the name before the next call; do not cache the pointer) */
+    uint32_t k;
     r %= JL_N;
-    if (r == JL_XFADE || r == JL_AMOUNT) {
+    k = JL_KIND[r];
+    if (k == JK_XFADE || k == JK_AMOUNT) {
         fmt_int(b, (int32_t)(v % 101u));
         str_cpy(b + str_len(b), "%", 2);
         return b;
     }
-    if (r == JL_SPLIT) {
+    if (k == JK_SPLIT) {
         v %= 130u;
         if (v == 1u)
             return "MIDDLE";
@@ -295,7 +304,7 @@ static const char *jl_vname(uint32_t r, uint32_t v)
             return "OFF";
         return b;
     }
-    if (r == JL_GMODE)
+    if (k == JK_GMODE)
         return GL_MODE_NAME[GM_WANDER + v % 2u];
     return JL_V[JL_V0[r] + v % JL_NV[r]];
 }
@@ -303,17 +312,19 @@ static void jl_put(uint32_t r, uint32_t v)
 {
     uint32_t pi = song.sel, mask = morph_mask(pi);
     const char *say;
+    uint32_t k;
     r %= JL_N, v %= JL_NV[r];
-    if (r == JL_SPLIT) {                              /* (a place in the list, set as it is: mode_knob would step out of MIDDLE to its note) */
+    k = JL_KIND[r];
+    if (k == JK_SPLIT) {                              /* (a place in the list, set as it is: mode_knob would step out of MIDDLE to its note) */
         if (TIDE_PLAYSEL ? song.both : duell_mode_req == DM_LAYER)
             mix_split = (uint8_t)jl_split_code(v);
         return;
     }
-    if (r >= JL_MODE) {                               /* the old MODE page's knobs, by steps from where the value is (mode_knob: its message, its limits, SPLIT's middle-key start) */
+    if (k >= JK_OUT) {                                /* the old MODE page's knobs, by steps from where the value is (mode_knob: its message, its limits, SPLIT's middle-key start) */
         mode_knob(r - JL_MODE, (int32_t)v - (int32_t)jl_get(r));
         return;
     }
-    if (r == JL_STYLE) {
+    if (k == JK_STYLE) {
         if (v < STY_CUSTOM) {
             if (tide_style == STY_CUSTOM || !tide_style_holds())
                 tide_custom_take();                      /* (the values being replaced are CUSTOM: kept for the way back) */
@@ -325,14 +336,14 @@ static void jl_put(uint32_t r, uint32_t v)
                 tide_style_last = tide_style;
             tide_style = STY_CUSTOM;
         }
-    } else if (r == JL_AMOUNT) {                         /* (BOTH: each part from its own AMOUNT by the same steps) */
+    } else if (k == JK_AMOUNT) {                         /* (BOTH: each part from its own AMOUNT by the same steps) */
         int32_t d = (int32_t)v - (int32_t)jl_get(r);
         for (uint32_t k = 0; k < NSHOWN; k++)
             if ((mask >> k) & 1u)
                 morph_act(MQ_AMOUNT, 1u << k, (uint32_t)clamp((int32_t)morph_amount_of(k) + d, 0, 100), k);
-    } else if (r == JL_KNOB) {                           /* (AUTO is stored 1, as the retired ROLL TYPE's MUSIC was: an older record's 0 or 1 reads AUTO) */
+    } else if (k == JK_KNOBS) {                          /* (AUTO is stored 1, as the retired ROLL TYPE's MUSIC was: an older record's 0 or 1 reads AUTO) */
         tide_knobs = (uint8_t)(v ? v + 1u : 1u);
-    } else if (r == JL_GMODE)                            /* (MODE: the glide's, as AUTO TIDE's K2: EVOLVE or TRAVEL) */
+    } else if (k == JK_GMODE)                            /* (MODE: the glide's, as AUTO TIDE's K2: EVOLVE or TRAVEL) */
         gl.mode = (uint8_t)(GM_WANDER + v);
     else                                                 /* (ARC: seq_arc.c) */
         *JL_VAR[r] = (uint8_t)v;
@@ -352,13 +363,13 @@ static uint32_t tide_list_sig(void)
 static int tide_list_on(void) { return !ui.perf && !ui.layer && cur_page()->graph == GR_TIDELIST; }
 static void tide_list_oct(uint32_t oct)
 {
-    uint32_t r = jl_sel % JL_N, v = jl_get(r);
-    if (r == JL_AMOUNT) {                                /* AMOUNT steps 5 % */
+    uint32_t r = jl_sel % JL_N, v = jl_get(r), k = JL_KIND[r];
+    if (k == JK_AMOUNT) {                                /* AMOUNT steps 5 % */
         jl_put(r, (uint32_t)clamp((int32_t)v + ((oct & 2u) ? 5 : (oct & 1u) ? -5 : 0), 0, 100));
         return;
     }
-    if (r >= JL_XFADE) {                                 /* XFADE steps 10 %, SPLIT one octave (12) from where it is; out of OFF the first step is MIDDLE, out of MIDDLE the note it stands for (mode_knob). Both stop at their ends */
-        mode_knob(r - JL_MODE, (oct & 2u) ? (r == JL_SPLIT && v < 2u ? 1 : r == JL_SPLIT ? 12 : 10) : (oct & 1u) ? (r == JL_SPLIT ? -12 : -10) : 0);
+    if (k >= JK_XFADE) {                                 /* XFADE steps 10 %, SPLIT one octave (12) from where it is; out of OFF the first step is MIDDLE, out of MIDDLE the note it stands for (mode_knob). Both stop at their ends */
+        mode_knob(r - JL_MODE, (oct & 2u) ? (k == JK_SPLIT && v < 2u ? 1 : k == JK_SPLIT ? 12 : 10) : (oct & 1u) ? (k == JK_SPLIT ? -12 : -10) : 0);
         return;
     }
     if ((oct & 2u) && v + 1u < jl_n(r))
@@ -375,9 +386,9 @@ static void tide_knob(uint32_t slot, int32_t s)
     if (cur_page()->graph == GR_TIDELIST) {               /* K1 the row; K2..K4 the picked row's value, a step an event as OCT+ / OCT- (audit C12: every other page has a knob a value) */
         if (slot == 0u)
             jl_sel = (uint8_t)clamp((int32_t)jl_sel + s, 0, JL_N - 1);
-        else if (jl_sel % JL_N >= JL_MODE)            /* MODE, XFADE, SPLIT: the detents turned, as the old knobs (a turn moved XFADE and SPLIT by many) */
+        else if (JL_KIND[jl_sel % JL_N] >= JK_OUT)    /* MODE, XFADE, SPLIT: the detents turned, as the old knobs (a turn moved XFADE and SPLIT by many) */
             mode_knob(jl_sel % JL_N - JL_MODE, s);
-        else if (jl_sel % JL_N == JL_AMOUNT)            /* AMOUNT: the detents turned, as its knob on the MORPH page did (b6) */
+        else if (JL_KIND[jl_sel % JL_N] == JK_AMOUNT)   /* AMOUNT: the detents turned, as its knob on the MORPH page did (b6) */
             jl_put(JL_AMOUNT, (uint32_t)clamp((int32_t)jl_get(JL_AMOUNT) + accel(EN_K1 + slot, s, 100), 0, 100));
         else
             tide_list_oct(s > 0 ? 2u : 1u);
@@ -528,11 +539,7 @@ static uint32_t tide_cls(int32_t atk, int32_t sus) { return atk >= 60 ? 2u : sus
  * only those within JCTX_NEAR; the memory and the random and contrast picks then choose among them. A dB a unit, an octave of
  * brightness 4. Measured from the Original, not from the sound left, so the steps cannot add up over a set. The sounds themselves are
  * not changed. Main loop. */
-#include "jrny_ctx.h"
-_Static_assert(JRNY_CTX_NE == NENGINES, "jrny_ctx.h: one row block an engine (build/host/jrny_ctx gen)");
-/* (the rows are read by the table's own JRNY_CTX_AT, not DS_ENG_AT: a build whose sound list differs, as the xvalues loader's with a sound
- * added, reads every measured sound right and has no row for the added one; host_tests.sh jrnyctx checks the table against the list) */
-#define JCTX_NONE 0xFFu                                  /* (a sound the table has no row for) */
+/* (jrny_ctx.h, JCTX_NONE and jctx_of: morph_tide.c, whose TRAVEL level match reads them first) */
 #define JCTX_KEEP 4u                                     /* (at most these: the memory, 4 deep, then rotates through the Original's nearest) */
 #define JCTX_MIN 2u                                      /* (at least these, so the sound keeps moving between the Original and two more) */
 #define JCTX_NEAR 3u                                     /* (past the minimum, only those within 3 dB; an octave of brightness is out) */
@@ -541,22 +548,22 @@ static uint32_t jctx_dist(uint32_t a, uint32_t b)
     int32_t dl = (int32_t)(a >> 3) - (int32_t)(b >> 3), db = (int32_t)(a & 7u) - (int32_t)(b & 7u);
     return (uint32_t)(dl < 0 ? -dl : dl) + 4u * (uint32_t)(db < 0 ? -db : db);
 }
-static uint32_t jctx_of(uint32_t e, uint32_t j)          /* engine e's sound j in the table, JCTX_NONE when it has no row */
+static uint32_t jctx_near(uint32_t e, uint32_t at, uint32_t *pick, uint32_t n, uint32_t pk)
 {
-    return e < JRNY_CTX_NE && j < (uint32_t)(JRNY_CTX_AT[e + 1u] - JRNY_CTX_AT[e]) ? JRNY_CTX[JRNY_CTX_AT[e] + j] : JCTX_NONE;
-}
-static uint32_t jctx_near(uint32_t e, uint32_t at, uint32_t *pick, uint32_t n)
-{
-    uint32_t i, j, m, keep = n < JCTX_KEEP ? n : JCTX_KEEP, a = jctx_of(e, at);
+    uint32_t i, j, m, keep = n < JCTX_KEEP ? n : JCTX_KEEP, a = jctx_of(e, at), col = tide_mu[pk];
     if (a == JCTX_NONE)                                  /* (the Original has no row: nothing to stay near, as for a USER record) */
         return n;
-    for (i = 0; i < keep; i++) {                         /* (a partial selection sort: the nearest first, the lower index on a tie; a sound with no row last) */
+    for (i = 0; i < keep; i++) {                         /* (a partial selection sort: the nearest first, the lower index on a tie. b10 Later 6b, MR5, col: a part
+                                                          * as a factory multi loaded it keeps the multi's colour: a sound in another brightness octave than the
+                                                          * Original, or with no row, is never kept (TRAVEL took M12's 1 kHz pad to 210 and 511 Hz, M17's held
+                                                          * drone to a decaying BELL STAB), nor one whose level its TRIM cannot reach (M19 -25.5 LUFS). A sound loaded alone walks as J1) */
         uint32_t best = i, bd = 0xFFFFFFFFu, d, v;
         for (j = i; j < n; j++)
-            if ((d = (v = jctx_of(e, pick[j])) == JCTX_NONE ? 0xFFFFFFFEu : jctx_dist(a, v)) < bd)
+            if ((d = (v = jctx_of(e, pick[j])) == JCTX_NONE || (col && (((v ^ a) & 7u) ||   /* (.. nor one whose level its TRIM cannot reach: morph_to_sound) */
+                 ds_value(ds_get(e, pick[j]), P_TRIM, TP[P_TRIM].def) + JRNY_MU[col - 1u][pk] - 2 * (int32_t)(v >> 3) > 127)) ? 0xFFFFFFFEu : jctx_dist(a, v)) < bd)
                 bd = d, best = j;
         m = pick[i], pick[i] = pick[best], pick[best] = m;
-        if (i >= JCTX_MIN && bd > JCTX_NEAR)
+        if ((col && bd >= 0xFFFFFFFEu) || (i >= JCTX_MIN && bd > JCTX_NEAR))
             return i;
     }
     return keep;
@@ -585,15 +592,15 @@ static void tide_journey(uint32_t mask, uint32_t x, uint32_t snd, uint32_t seq)
                     pick[n++] = j;
                 }
             if (!UP_REC_USER(t) && t->preset < ds_count(e))   /* (J1: the nearest to the Original's factory sound, so a set cannot drift away step by step, as WANDER; a USER record has no row: as before) */
-                n = jctx_near(e, t->preset, pick, n);
+                n = jctx_near(e, t->preset, pick, n, k);
             n = jh_filter(k, e, pick, n);                /* (then the memory: it moves on through those, never out of them) */
             c = n ? pick[(r >> 8) % n] : 0u;
             if (n > 1u)
                 c = sound_complement_pick(k, e, c, pick[(r >> 16) % n], r >> 4);
-            if (!n || !morph_to_sound(k, x, c))
-                gl_sound_roll(k, 1u << k, x);
-            else
+            if (n && morph_to_sound(k, x, c))
                 jh_push(k, c);                           /* (only a target really adopted is remembered) */
+            else if (n || !tide_mu[k])                   /* (b10: a factory multi's part with no sound of its colour keeps the end it left: it travels between its own two) */
+                gl_sound_roll(k, 1u << k, x);
             if (morph_isfm(morph_ready(k))) {
                 /* The scale checked the notes before the FM6 patch transpose.
                  * JRNY changes colour; keep the part's reference key. */
@@ -654,6 +661,7 @@ static int tide_foot_two(void)
  * (the status line's words: "EVOLVING TO B  3/8", "GLIDE ON THE NEXT BAR"; at rest the gesture, A<>B, and at the right the part(s) it
  * moves); MODE, TIME, WAIT the cards. TIDE SETTINGS: knob 1 the row picked (SETTING), no cards */
 static void tide_status(char *l);
+static int tide_arc_text(char *l);
 static void tide_columns(void)
 {
     static char st[40];
@@ -662,15 +670,23 @@ static void tide_columns(void)
     int32_t g;
     if (cur_page()->graph == GR_TIDELIST) {
         const char *nd = jl_needs(jl_sel % JL_N);
-        if (nd) {                                        /* a row that does nothing in this setup says what it needs (at the line's right end, as the status) */
-            k1_after_next = nd;
-            k1_after_col = T_MID;
-            k1_after_r = 1;
-        }
+        k1_after_next = nd ? nd : PLS_NAME[play_pos()];  /* a row that does nothing in this setup says what it needs (at the line's right end, as the status); else the play position (b10: the title names the page) */
+        k1_after_col = T_MID;
+        k1_after_r = 1;
         draw_column(0, "SETTING", JL_NAME[jl_sel % JL_N], "", VAL(0u), -1, ICON_NONE);
         return;                                          /* (no cards: the list and its hint own the card row; hiding them cleared it under the list on every redraw, a flicker while the colour follows a glide) */
     }
     g = morph_pending(TIDE_G_GLIDE);
+    if (glide_running()) {                               /* (I5: running, knob 1's line is the gesture as at rest and the ARC's words at its right; the trip is the line under the faders, graph_tide) */
+        str_cpy(val, g < 0 ? "<A" : g > 0 ? "B>" : "A<>B", sizeof val);
+        if (tide_arc_text(st)) {
+            k1_after_next = st;
+            k1_after_col = T_ACCENT;
+            k1_after_r = 1;
+        }
+        draw_column(0, "GLIDE", val, "", g ? T_ACCENT : VAL(0u), -1, ICON_NONE);
+        goto cards;
+    }
     tide_status(st);
     if (glide_running()) {
         draw_column(0, "GLIDE", st, "", T_ACCENT, -1, ICON_NONE);
@@ -681,6 +697,7 @@ static void tide_columns(void)
         k1_after_r = 1;
         draw_column(0, "GLIDE", val, "", g ? T_ACCENT : VAL(0u), -1, ICON_NONE);
     }
+cards:
     draw_column(1, "MODE", GL_MODE_NAME[gl.mode % 5u], "", VAL(1u), -1, ICON_NONE);
     fmt_int(val, (int32_t)glide_bars());
     draw_column(2, "TIME", val, glide_bars() == 1u ? "BAR" : "BARS", VAL(2u), -1, ICON_NONE);
@@ -700,9 +717,30 @@ static __attribute__((noinline)) void tide_frac(char *l, uint32_t a, uint32_t b)
     fmt_int(l, (int32_t)b);
 }
 /* AUTO TIDE's status line: what the glide does now, with its bar ("EVOLVING TO B  3/8", "WAITING  1/4"); stopped, the part(s) */
-static __attribute__((noinline)) void tide_status(char *l)
+static __attribute__((noinline)) void tide_status_arc(char *l, int arc);
+static void tide_status(char *l) { tide_status_arc(l, 1); }
+/* b10 Phase B (I4, I5): the trip without the ARC's words ("EVOLVING TO B  3/16", "WAITING  1/2"; armed, paused, a hand as tide_status) */
+static __attribute__((unused)) void tide_trip(char *l) { tide_status_arc(l, 0); }
+static __attribute__((unused)) void tide_trip_short(char *l) { tide_status_arc(l, 2); }   /* (the wave page's knob-1 line: no "BAR", it has less room) */
+/* .. and whether the glide moves part pi's sound now (the wave page says so on knob 1's line) */
+static __attribute__((unused)) int tide_moves(uint32_t pi) { return glide_running() && ((gl.on >> GT_SOUND) & 1u) && ((gl.mask >> pi) & 1u); }
+/* .. the ARC's words alone ("ARC RISE 1/3", "ARC PEAK  DROP NEXT"), 0: no ARC running */
+static __attribute__((unused)) int tide_arc_text(char *l)
 {
-    static const char *const ST[5] = {"GLIDING", "LOOPING", "DRIFTING", "EVOLVING", "TRAVEL"};
+    if (!(glide_running() && !gl.armed && song.playing && sqm_arc && sqm_auto && tarc.run))
+        return 0;
+    str_cpy(l, "ARC ", 40);
+    str_cpy(l + 4, tarc_name(), 36);
+    if (tarc.phase != AP_PEAK && tarc.phase != AP_DROP) {
+        str_cpy(l + str_len(l), " ", 4);
+        tide_frac(l, tarc.len - tarc.left + 1u, tarc.len);
+    }
+    if (tarc.hand && tarc.phase != AP_DROP)
+        str_cpy(l + str_len(l), "  DROP NEXT", 16);
+    return 1;
+}
+static __attribute__((noinline)) void tide_status_arc(char *l, int arc)
+{
     uint32_t bars = gl.hold ? GLIDE_WAIT_BARS[gl.wait % GLIDE_WAITS] : glide_trip_bars(), at = ((gl.prog * bars) >> GLIDE_Q) + 1u;
     if (!glide_running())
 #if TIDE_PLAYSEL
@@ -720,7 +758,7 @@ static __attribute__((noinline)) void tide_status(char *l)
         str_cpy(l, "HAND  BACK IN ", 40);
         fmt_int(l + str_len(l), (int32_t)(need ? need : 4u));
         str_cpy(l + str_len(l), need == 1u ? " BAR" : " BARS", 8);
-    } else if (sqm_arc && sqm_auto && tarc.run) {         /* ARC: where the shape is ("RISE 3/6", "PEAK", "DROP", "BREAK 2/3") */
+    } else if (arc == 1 && sqm_arc && sqm_auto && tarc.run) {   /* ARC: where the shape is ("RISE 3/6", "PEAK", "DROP", "BREAK 2/3"); not in the trip (I4, I5) */
         str_cpy(l, tarc_name(), 40);
         if (tarc.phase != AP_PEAK && tarc.phase != AP_DROP) {
             str_cpy(l + str_len(l), " ", 4);
@@ -733,10 +771,10 @@ static __attribute__((noinline)) void tide_status(char *l)
             tide_frac(l, at > bars ? bars : at, bars);
         }
     } else {
-        str_cpy(l, gl.hold ? "WAITING" : ST[gl.mode % 5u], 40);
+        str_cpy(l, gl.hold ? "WAITING" : gl.mode == GM_JOURNEY ? "TRAVEL" : "EVOLVING", 40);   /* (b10: ONCE / LOOP / DRIFT show as EVOLVE everywhere else) */
         if (!gl.hold)
             str_cpy(l + str_len(l), gl.to ? " TO B" : " TO A", 8);
-        str_cpy(l + str_len(l), "  ", 4);
+        str_cpy(l + str_len(l), arc ? "  " : "   BAR ", 8);
         tide_frac(l, at > bars ? bars : at, bars);
     }
 }
@@ -931,28 +969,35 @@ static const char *const GL_MODE_WHAT[5] = {"SLOWLY EVOLVES YOUR SOUND", "SLOWLY
 static void graph_tide(void)
 {
     uint32_t k;
-    cv_begin(240, TB_Y1 - TB_Y0, T_BG);
-    cv_bg = T_BG;
-    cv_oy = -TB_Y0;
-    for (k = 0; k < NSHOWN; k++) {
-        int32_t sy = 119 + 14 * (int32_t)k;
-        tide_track(70 + 14 * (int32_t)k, JB_X0, JB_X0 + JB_W, GT_SOUND, k);
-        tide_track(70 + 14 * (int32_t)k, JB_X0 + JB_DX, JB_X0 + JB_DX + JB_W, GT_SEQ, k);
-        tide_steps(&trk[k], sy, 9, tide_pc(k));
-        if (ui_part_hot(k))
-            cv_rect(5, sy - 9, 2, 10, T_PTHEME(k));      /* (the steps row's mark of the selected part) */
+    CV_BANDS(TB_Y1 - TB_Y0) {
+        cv_begin(240, TB_Y1 - TB_Y0, T_BG);
+        cv_bg = T_BG;
+        cv_oy = -TB_Y0;
+        for (k = 0; k < NSHOWN; k++) {
+            int32_t sy = 119 + 14 * (int32_t)k;
+            tide_track(70 + 14 * (int32_t)k, JB_X0, JB_X0 + JB_W, GT_SOUND, k);
+            tide_track(70 + 14 * (int32_t)k, JB_X0 + JB_DX, JB_X0 + JB_DX + JB_W, GT_SEQ, k);
+            tide_steps(&trk[k], sy, 9, tide_pc(k));
+            if (ui_part_hot(k))
+                cv_rect(5, sy - 9, 2, 10, T_PTHEME(k));      /* (the steps row's mark of the selected part) */
+        }
+        if (glide_running()) {                           /* (I5: running, the line says where the trip is: "EVOLVING TO B   BAR 3/16"; stopped, what the MODE does) */
+            char l[40];
+            tide_trip(l);
+            cv_text_in(0, UT_TY(S, 104), 240, &AF_S, l, T_ACCENT, T_BG);
+        } else
+            cv_text_in(0, UT_TY(S, 104), 240, &AF_S, GL_MODE_WHAT[gl.mode % 5u], T_MID, T_BG);   /* (between the faders and the steps' tallest bars) */
+        /* Keep GLIDE's progress bar as well as its status and moving fader knobs.
+         * This strip sits below both parts' playheads and above the card row. */
+        if (glide_running() && !gl.armed) {
+            int32_t w = (int32_t)((222u * gl.prog) >> GLIDE_Q);
+            cv_rrect(9, TB_Y1 - 3, 222, 3, 1, T_RAISE, T_BG);
+            if (w > 0)
+                cv_rrect(9, TB_Y1 - 3, w, 3, 1, T_ACCENT, T_RAISE);
+        }
+        cv_oy = 0;
+        cv_blit(0, TB_Y0);
     }
-    cv_text_in(0, UT_TY(S, 104), 240, &AF_S, GL_MODE_WHAT[gl.mode % 5u], T_MID, T_BG);   /* (between the faders and the steps' tallest bars) */
-    /* Keep GLIDE's progress bar as well as its status and moving fader knobs.
-     * This strip sits below both parts' playheads and above the card row. */
-    if (glide_running() && !gl.armed) {
-        int32_t w = (int32_t)((222u * gl.prog) >> GLIDE_Q);
-        cv_rrect(9, TB_Y1 - 3, 222, 3, 1, T_RAISE, T_BG);
-        if (w > 0)
-            cv_rrect(9, TB_Y1 - 3, w, 3, 1, T_ACCENT, T_RAISE);
-    }
-    cv_oy = 0;
-    cv_blit(0, TB_Y0);
 }
 /* TIDE SETTINGS: the settings as the list pages' rows (PATCHES, template 9: UT_L5_*), from row UT_L5_Y0, 20 apart: the name (M) at the left,
  * the value (M, the part's colour; a switch for ON / OFF) at the right, the picked row filled in the part's colour with dark text.
@@ -962,28 +1007,30 @@ static void graph_tidelist(void)
 {
     uint32_t r, top = jl_sel % JL_N >= JL_VIS ? jl_sel % JL_N - (JL_VIS - 1u) : 0u;
     int32_t y0 = UT_L5_Y0 - 2;
-    cv_begin(240, (uint32_t)(UT_L5_PITCH * (int32_t)JL_VIS + 2), T_BG);
-    cv_bg = T_BG;
-    cv_oy = -y0;
-    for (r = top; r < JL_N && r < top + JL_VIS; r++) {
-        int32_t y = UT_L5_Y0 + (int32_t)(r - top) * UT_L5_PITCH, ty = UT_TY(M, y + UT_L5_TEXT_BASE), xr = UT_L5_X + UT_L5_W - 5;   /* (the value 5 px in from the row's right end, as the name from its left: the SAVE lists' LR_R) */
-        int sel = r == jl_sel % JL_N;
-        uint16_t bg = sel ? T_THEME : T_BG;
-        const char *v = jl_vname(r, jl_get(r));
-        if (sel) {
-            CV_HL(UT_L5_X, y, UT_L5_W, UT_L5_H);          /* (the picked row's pill: an allowed highlight, as the other lists') */
-            cv_rrect(UT_L5_X, y, UT_L5_W, UT_L5_H, UT_T3_ROW_R, T_THEME, T_BG);
+    CV_BANDS(UT_L5_PITCH * (int32_t)JL_VIS + 2) {
+        cv_begin(240, (uint32_t)(UT_L5_PITCH * (int32_t)JL_VIS + 2), T_BG);
+        cv_bg = T_BG;
+        cv_oy = -y0;
+        for (r = top; r < JL_N && r < top + JL_VIS; r++) {
+            int32_t y = UT_L5_Y0 + (int32_t)(r - top) * UT_L5_PITCH, ty = UT_TY(M, y + UT_L5_TEXT_BASE), xr = UT_L5_X + UT_L5_W - 5;   /* (the value 5 px in from the row's right end, as the name from its left: the SAVE lists' LR_R) */
+            int sel = r == jl_sel % JL_N;
+            uint16_t bg = sel ? T_THEME : T_BG;
+            const char *v = jl_vname(r, jl_get(r));
+            if (sel) {
+                CV_HL(UT_L5_X, y, UT_L5_W, UT_L5_H);          /* (the picked row's pill: an allowed highlight, as the other lists') */
+                cv_rrect(UT_L5_X, y, UT_L5_W, UT_L5_H, UT_T3_ROW_R, T_THEME, T_BG);
+            }
+            cv_text_on(UT_L5_TAG_X, ty, &AF_M, JL_NAME[r], sel ? T_INK : T_TEXT, bg);
+            cv_text_r(xr, ty, &AF_M, v, sel ? T_INK : jl_dimmed(r) ? T_DIM : T_THEME, bg);   /* (a row that does nothing now: dim) */
         }
-        cv_text_on(UT_L5_TAG_X, ty, &AF_M, JL_NAME[r], sel ? T_INK : T_TEXT, bg);
-        cv_text_r(xr, ty, &AF_M, v, sel ? T_INK : jl_dimmed(r) ? T_DIM : T_THEME, bg);   /* (a row that does nothing now: dim) */
+        if (JL_N > JL_VIS) {                                 /* where the window is in the list: a 2 px mark at the right (audit C12) */
+            int32_t hh = UT_L5_PITCH * (int32_t)JL_VIS, th = hh * (int32_t)JL_VIS / (int32_t)JL_N;
+            cv_rect(236, UT_L5_Y0, 2, hh, T_RAISE);
+            cv_rect(236, UT_L5_Y0 + (hh - th) * (int32_t)top / (int32_t)(JL_N - JL_VIS), 2, th, T_MID);
+        }
+        cv_oy = 0;
+        cv_blit(0, (uint32_t)y0);
     }
-    if (JL_N > JL_VIS) {                                 /* where the window is in the list: a 2 px mark at the right (audit C12) */
-        int32_t hh = UT_L5_PITCH * (int32_t)JL_VIS, th = hh * (int32_t)JL_VIS / (int32_t)JL_N;
-        cv_rect(236, UT_L5_Y0, 2, hh, T_RAISE);
-        cv_rect(236, UT_L5_Y0 + (hh - th) * (int32_t)top / (int32_t)(JL_N - JL_VIS), 2, th, T_MID);
-    }
-    cv_oy = 0;
-    cv_blit(0, (uint32_t)y0);
     {   /* how a value changes (owner, 2026-11-01): the keycaps under the list, S, the hints' colour (the list's own strip: the canvas holds 124 rows) */
         int32_t hy = UT_L5_Y0 + UT_L5_PITCH * (int32_t)JL_VIS + 4, x;
         cv_begin(240, 20, T_BG);
@@ -1042,7 +1089,7 @@ static uint32_t tide_sig(void)
            ((uint32_t)sqm_arc | (uint32_t)tarc.phase << 2 | (uint32_t)tarc.left << 5 | (uint32_t)tarc.hand << 9 | (uint32_t)tarc.len << 10) * 0x2545F491u ^   /* (audit C4: no field ORed over another) */
            ((morph_fader_of(1u - pi) | seqm_fader_of(1u - pi) << 7 | (song.playing ? trk[1u - pi].seq_idx : 0xFFu) << 14) * 0x85EBCA77u ^
             sqm_key(&sqm[(1u - pi) % NSHOWN]) * 0xC2B2AE3Du ^ tide_steps_sig(&trk[1u - pi]) * 0x165667B1u ^ 0x27D4EB2Fu) ^
-           tide_steps_sig(t) * 0xD3A2646Cu;
+           tide_steps_sig(t) * 0xD3A2646Cu ^ (uint32_t)morph.seed * 0x1B873593u;   /* (the seed: a ROLL sets it at once and CALL AND ANSWER's listening bars follow; the ends' key comes later) */
 }
 
 /* ---------------------------------------------------------------- kept over a power cycle --- */
@@ -1119,6 +1166,8 @@ static void tide_settings(void)
     if (tide_style < STY_CUSTOM && !tide_style_holds()) {
         tide_style_last = tide_style;
         tide_style = STY_CUSTOM;                         /* a hand edit of any of the eight rows (knobs, rows, resets, MIDI) */
+        if (!reread)
+            ui_say("STYLE ", "CUSTOM");                  /* (b10: the player is told; not when a record is read) */
     }
     for (i = 0; i < TS_N; i++) {
         w[i] = i == TS_TURNS ? TS_TURNS_OLD : *TS_VAR[i];

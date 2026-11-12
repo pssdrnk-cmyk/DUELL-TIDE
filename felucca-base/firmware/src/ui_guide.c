@@ -270,18 +270,18 @@ static void guide_content(uint32_t pg)
         guide_option(&O1[0], "LAYER", "BOTH PARTS COMBINED:", "VELOCITY CROSSFADE, KEY SPLIT", "", "RECOMMENDED", guide_pick[0] == 0u);
         guide_option(&O1[1], "STEREO", "BOTH PARTS IN ONE STEREO FIELD", "", "", "", guide_pick[0] == 1u);
         guide_option(&O1[2], "DUEL", "DUAL MONO, FOR EXTERNAL EFFECTS", "", "", "", guide_pick[0] == 2u);
-    } else if (pg == 2u) {                              /* FIRST_RUN_SETUP_V2_A.png: PART MARKER, the capsule at the right, three short notes (part number, morph end, voices), each joined to its cell by a thin line */
+    } else if (pg == 2u) {                              /* FIRST_RUN_SETUP_V2_A.png: PART MARKER, the capsule at the right, two short notes (part number, morph end; b10: the voices cell is gone), each joined to its cell by a thin line */
         const int32_t cx = 240 - 12 - CAP_W, tw = 172, my = AF_M_CAP_Y + AF_M_CAP_H / 2;
-        static const char *const NOTE[3] = {"Number: part 1 or 2.", "Letter: morph end A or B.", "Voices free in POLY; else M, L, U."};
-        static const int32_t NY[3] = {62, 81, 100};
+        static const char *const NOTE[2] = {"Number: part 1 or 2.", "Letter: morph end A or B."};
+        static const int32_t NY[2] = {62, 81};
         uint32_t i;
         cv_text_on(GD_X, UT_TY(L, UT_T6_G_HEAD0), &AF_L, "PART MARKER", T_TEXT, T_BG);
         cv_oy += 50;                                    /* (head_capsule draws at the header's rows) */
-        head_capsule(cx, 0, 1u, 0u, 8, 0u);
+        head_capsule(cx, 0, 1u, 0u, 0u);
         cv_oy -= 50;
-        for (i = 0; i < 3u; i++) {                      /* each leader starts 3 px after the end of its own text's last line, runs right, then up to its item in the capsule */
-            int32_t xc = cx + (int32_t)i * CAP_NUM_W + (i == 0u ? CAP_NUM_W : i == 1u ? CAP_LET_W : CAP_VOI_W) / 2;
-            y = guide_wrap(GD_X, NY[i], i == 2u ? tw + 24 : tw, &AF_M, NOTE[i], T_TEXT, UT_T6_G_LINE + 1);
+        for (i = 0; i < 2u; i++) {                      /* each leader starts 3 px after the end of its own text's last line, runs right, then up to its item in the capsule */
+            int32_t xc = cx + (int32_t)i * CAP_NUM_W + (i == 0u ? CAP_NUM_W : CAP_LET_W) / 2;
+            y = guide_wrap(GD_X, NY[i], tw, &AF_M, NOTE[i], T_TEXT, UT_T6_G_LINE + 1);
             guide_leader2(guide_last_x + 3, y - (UT_T6_G_LINE + 1) + my, xc, 65);
         }
         guide_item(140, "SOUNDS AND MORPH", "PRESETS picks a sound, ALGORITHM a part. [HOME] morphs; hold for MENU.");
@@ -349,13 +349,15 @@ static void guide_draw(void)
         guide_kh = kh;
         for (band = 0; band < 2u; band++) {             /* two strips: the canvas holds 124 rows (the legend row is in the last one) */
             int32_t y0 = EDGE[band];
-            cv_begin(240, (uint32_t)(EDGE[band + 1] - y0), T_BG);
-            cv_oy = -y0;
-            guide_content(pg);
-            if (band == 1u)
-                guide_legend(kh, guide_ask(pg) && !ui.guide_menu ? 2u : 3u);
-            cv_oy = 0;
-            cv_blit(0, (uint32_t)y0);
+            CV_BANDS(EDGE[band + 1] - y0) {
+                cv_begin(240, (uint32_t)(EDGE[band + 1] - y0), T_BG);
+                cv_oy = -y0;
+                guide_content(pg);
+                if (band == 1u)
+                    guide_legend(kh, guide_ask(pg) && !ui.guide_menu ? 2u : 3u);
+                cv_oy = 0;
+                cv_blit(0, (uint32_t)y0);
+            }
         }
     }
     draw_head();                                        /* SETUP or GUIDE (ui_draw.c head_page_title), or a message (STOP ALL) */

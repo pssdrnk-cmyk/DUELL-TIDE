@@ -389,9 +389,17 @@ def build_app():
         if os.environ.get("FELUCCA_CDC") != "1" or os.environ.get("DUELL_VELO", "1") != "1" or "--release" in sys.argv:
             raise SystemExit("build: DUELL_VELO_CAPTURE=1 is a developer build: FELUCCA_CDC=1 (the USB serial console) and DUELL_VELO on, never --release")
         flags.append("-DDUELL_VELO_CAPTURE=1")
+    v = os.environ.get("FELUCCA_HANDSKIP", "1")     # firmware/src/morph.c (Later 9): 1 = a hand- or MIDI-moved morph fader blends every other block, as a GLIDE's does; unset or 1: every other block (ON in the rc3.1 package, 0 turns it off; host tests compile without it)  [was: unset or 0: every block (the default until the unit sweep)
+    if v in ("0", "1"):
+        flags.append(f"-DFELUCCA_HANDSKIP={v}")
+    if os.environ.get("DUELL_WAVE_ROWS", "1") == "1":   # ROADMAP Later 21: the wave page sends only the screen rows that changed (ui_scope.c wl_rows); OFF unless asked, +164 B
+        flags.append("-DWL_ROWS_DIFF=1")
     v = os.environ.get("FELUCCA_USB_LAYOUT")   # firmware/src/usb.c: how the USB composite presents itself (#67), 0..3
     if v in ("0", "1", "2", "3"):
         flags.append(f"-DFELUCCA_USB_LAYOUT={v}")
+    v = os.environ.get("FELUCCA_MOVECOST", "1")     # firmware/src/core.h (Later 10 + 13): 1 = a part's morph costs charged only while a transition moves, the INSERT dip's blend in 1/256 steps; unset or 0: as before (the default until the unit sweep)
+    if v in ("0", "1"):
+        flags.append(f"-DFELUCCA_MOVECOST={v}")
     v = os.environ.get("DUELL_BUILD_DATE")   # ABOUT's date ("Nov  1 2026", __DATE__'s form): unset, the day of the build
     if not v and "--release" in sys.argv:    # a release carries the date of its commit, so a rebuild of the same commit is byte-identical
         try:
@@ -694,7 +702,7 @@ def main():
         rp_err, rp_notes = elfcheck.check_ramplace(elf, img, dis, APP_XIP)
         lay_err += rp_err
         notes += rp_notes
-        hp_err, hp_notes = hot_reach.check(dis)     # the audio path runs from RAM, not the flash, unless tools/ram_allow.py says why (CPU audit K6)
+        hp_err, hp_notes = hot_reach.check(dis, elf=elf)   # the audio path runs from RAM, not the flash, unless tools/ram_allow.py says why (CPU audit K6)
         lay_err += hp_err
         notes += hp_notes
     if exact:                       # every call / goto relocation of the link at its address (tools/ram_place.py, elfcheck.py check_calls)

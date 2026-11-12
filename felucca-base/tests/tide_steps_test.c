@@ -16,6 +16,7 @@
 #include "ui_test.c"
 
 static int bad, checks;
+static uint32_t xbpm = 240, xseed;                                /* (exploring: TIDESTEPS_BPM, TIDESTEPS_SEED, TIDESTEPS_ONLY=first scenario) */
 #define CHECK(s, x) do { checks++; if (!(x)) { printf("tidesteps: FAIL %s\n", s); bad++; } } while (0)
 
 enum { M_OLD, M_NEW, M_N };
@@ -23,7 +24,7 @@ enum { C_BAR, C_CHANCE, C_ARP, C_TIE, C_POLY, C_OTHER, C_N };
 static const char *const CN[C_N] = {"bar boundary", "chance", "arp seq", "ties", "poly", "other"};
 enum { E_PHANTOM, E_MISSED, E_TIE, E_CHORD, E_HEAD, E_PAST, E_N };
 static const char *const EN[E_N] = {"phantom", "missed", "tie", "chord", "head", "past"};
-static uint32_t err[M_N][C_N][E_N], npred, nsteps, nmaybe, nvaried, nchance, ntie, narp, npoly, ndrop, nsig;
+static uint32_t err[M_N][C_N][E_N], npred, nsteps, nmaybe, nvaried, nchance, ntie, narp, npoly, ndrop, nsig, nseedsig, nseedview;
 
 /* ---- the page before the fix: the bar now for the whole page, a tie as stored ---- */
 static void old_view(const track_t *t, uint32_t idx, uint32_t bar, tv_t *e)
@@ -87,9 +88,15 @@ static void build(int kind)
         fill(a, 16, 3, 1), fill(b, 16, 41, 1);
         a->p[P_AMODE] = AM_SEQ, a->p[P_ARATE] = 3, a->p[P_APROB] = 90;
         break;
-    default:                                                 /* an ARP SEQ part of 20 steps, always playing, and a 12-step part */
+    case 3:                                                  /* an ARP SEQ part of 20 steps, always playing, and a 12-step part */
         fill(a, 20, 9, 0), fill(b, 12, 17, 1);
         a->p[P_AMODE] = AM_SEQ, a->p[P_ARATE] = 2, a->p[P_APROB] = 127;
+        break;
+    default:                                                 /* kinds 4 .. 9: a 12-step ARP SEQ loop (the old M09's blip) at other rates and chances, a 12-step ARP SEQ part against 16 */
+        fill(a, 12, 100u + (uint32_t)kind + xseed, kind & 1), fill(b, 16, 200u + (uint32_t)kind + xseed * 7u, 1);
+        a->p[P_AMODE] = AM_SEQ, a->p[P_ARATE] = (int16_t)(1 + (kind - 4) % 3), a->p[P_APROB] = kind < 7 ? 127 : 90;
+        if (kind >= 6)
+            b->p[P_AMODE] = AM_SEQ, b->p[P_ARATE] = 2, b->p[P_APROB] = 127;
         break;
     }
 }
@@ -185,7 +192,7 @@ static void run_scn(const scn_t *c, uint32_t id)
         project_load((uint32_t)c->multi);
     else
         build(c->kind);
-    song.g[G_BPM] = 240;
+    song.g[G_BPM] = xbpm;
     song.g[G_CLOCK] = 0;
     song.g[G_SWING] = 50;
     midi_pch[0] = 0;
@@ -205,7 +212,7 @@ static void run_scn(const scn_t *c, uint32_t id)
     sqm_vary_all = c->vary, sqm_poly = c->poly, sqm_sync = c->sync, sqm_arc = c->arc;
     mo_w = mo_r = 0;
     glide_launch(1u, 3u, 0);
-    nblk = c->bars * 4u * (uint32_t)FS * 60u / 240u / CTL + 40u;
+    nblk = c->bars * 4u * (uint32_t)FS * 60u / xbpm / CTL + 40u;
     for (blk = 0; blk < nblk; blk++) {
         if (c->arc && song.playing && sqm_bar >= 6 && (sqm_bar - 6) % 24 == 0 && !tarc.hand && tarc.phase != AP_DROP && (blk % 8u) == 0)
             tarc_drop_hand();                                 /* (OCT- + K2: a drop at the next phrase, in either ARC mode) */
@@ -301,6 +308,24 @@ static void run_scn(const scn_t *c, uint32_t id)
                 }
             }
         }
+        if ((blk % 50u) == 25u && song.playing) {                            /* Later 23: the audio side reads morph.seed the moment a ROLL sets it (CALL AND ANSWER's listening bars, POLY), tseed follows from the main loop: the page's redraw hash must see the seed itself */
+            uint16_t keep = morph.seed;
+            uint8_t lead = sqm_lead;
+            uint32_t s0, d, q;
+            tv_t va[16], vb[16];
+            sqm_lead = 3u;                                                   /* (both parts lead: whose bar it is to listen comes from the seed) */
+            s0 = tide_sig();
+            for (d = 1; d <= 4u; d++) {
+                tide_views(&trk[song.sel], 0xFFu, va);
+                morph.seed = (uint16_t)(keep + d * 0x1357u);
+                nseedsig += tide_sig() == s0;
+                tide_views(&trk[song.sel], 0xFFu, vb);
+                for (q = 0; q < 16u; q++)
+                    nseedview += memcmp(&va[q], &vb[q], sizeof va[q]) != 0;
+                morph.seed = keep;
+            }
+            sqm_lead = lead;
+        }
         if ((blk % 22u) == 21u) {                                            /* a UI frame: the page's playhead and its hash */
             uint32_t ts, ss;
             frame();
@@ -331,9 +356,16 @@ static void run_scn(const scn_t *c, uint32_t id)
 #else
 #define T_LEV(bar) (tarc_lev)
 #endif
+#ifdef TARC_DYN_ARMED                                   /* (Later 25: ARC's loudness step is armed a unit ahead too; what seq_morph.c sqm_dyn_of reads before the listening bars are taken off) */
+#define T_DYN(bar) ((((bar) >> 3) & 63u) != tarc_unit ? sqm_dyn_nx : sqm_dyn)
+#else
+#define T_DYN(bar) (sqm_dyn)
+#endif
 static void arc_levers(int multi, uint32_t arc_mode)
 {
     uint32_t blk, p, units = 0, moved = 0, wrong = 0, phases = 0, last_u = 0xFFu, last_lev = 0xFFu, last_ph = 9u, seen_ph = 0, bad_at = 0;
+    uint32_t dmoved = 0, dwrong = 0, dbad_at = 0, dseen = 0;
+    int32_t last_dyn = 99;
     ui_power_on();
     frame();
     gl.on = gl.armed = 0;
@@ -364,24 +396,33 @@ static void arc_levers(int multi, uint32_t arc_mode)
         events_block(CTL);
         if (song.playing && sqm_auto == 3u && tarc.run && ((sqm_bar >> 3) & 63u) != last_u) {   /* the first block of a unit: the main loop has not looked yet */
             uint32_t pre = T_LEV(sqm_bar), post;
+            int32_t dpre = T_DYN(sqm_bar), dpost;
             tarc_poll();
+            sqm_thin_poll();
             post = T_LEV(sqm_bar);
+            dpost = T_DYN(sqm_bar);
             if (last_u != 0xFFu) {
                 units++;
                 moved += post != last_lev;
                 if (pre != post && !wrong++)
                     bad_at = (uint32_t)sqm_bar;
+                dmoved += dpost != last_dyn;
+                dseen |= 1u << (uint32_t)(dpost + 2);
+                if (dpre != dpost && !dwrong++)
+                    dbad_at = (uint32_t)sqm_bar;
                 if (tarc.phase != last_ph)
                     phases++, seen_ph |= 1u << tarc.phase;
             }
-            last_u = (sqm_bar >> 3) & 63u, last_lev = post, last_ph = tarc.phase;
+            last_u = (sqm_bar >> 3) & 63u, last_lev = post, last_ph = tarc.phase, last_dyn = dpost;
         }
         if ((blk % 22u) == 21u)
             frame();
     }
-    printf("tidesteps: ARC levers, multi %d, ARC %u: %u units, %u phase changes, the levers moved %u times, %u read late (first: bar %u)\n", multi + 1, arc_mode, units, phases, moved, wrong, bad_at);
+    printf("tidesteps: ARC levers, multi %d, ARC %u: %u units, %u phase changes, the levers moved %u times, %u read late (first: bar %u); the loudness step moved %u times (values seen, mask %u), %u read late (first: bar %u)\n", multi + 1, arc_mode, units, phases, moved, wrong, bad_at, dmoved, dseen, dwrong, dbad_at);
     CHECK("ARC levers: the run saw whole arcs (units, phase changes, levers that moved)", units >= 8u && phases >= 4u && moved >= 3u);
     CHECK("ARC levers: a new phase's first downbeat reads the new phase's thinned parts and POLY hold", wrong == 0u);
+    CHECK("ARC dynamics: the loudness step changed in the run (louder in the late rise and peak, two steps softer in the breakdown)", dmoved >= 3u && (dseen & 1u) != 0u);
+    CHECK("ARC dynamics: a new phase's first downbeat reads the new phase's loudness step (Later 25)", dwrong == 0u);
     transport_req = 2u;
     frame();
     frame();
@@ -413,9 +454,14 @@ int main(void)
         {-1, 0, GM_WANDER, 1, 1, 2, 0, 0, 72},       /* (ARC needs its 5+ phrases before a drop) */
         {-1, 1, GM_JOURNEY, 2, 2, 2, 0, 0, 72},
         {-1, 3, GM_WANDER, 1, 1, 1, 0, 0, 72},
+        {-1, 4, GM_WANDER, 1, 1, 2, 0, 0, 72},
+        {-1, 6, GM_WANDER, 1, 1, 2, 0, 0, 72},
+        {-1, 8, GM_WANDER, 1, 1, 2, 0, 0, 72},
     };
     uint32_t i, m, c, e, tot[M_N] = {0, 0};
-    for (i = 0; i < sizeof S / sizeof S[0]; i++)
+    if (getenv("TIDESTEPS_BPM")) xbpm = (uint32_t)atoi(getenv("TIDESTEPS_BPM"));
+    if (getenv("TIDESTEPS_SEED")) xseed = (uint32_t)atoi(getenv("TIDESTEPS_SEED"));
+    for (i = getenv("TIDESTEPS_ONLY") ? (uint32_t)atoi(getenv("TIDESTEPS_ONLY")) : 0u; i < sizeof S / sizeof S[0]; i++)
         run_scn(&S[i], i);
     arc_levers(1, 2u);                                       /* (M02, ARC DROP) */
     arc_levers(5, 1u);                                       /* (M06, ARC RISE) */
@@ -439,6 +485,8 @@ int main(void)
     CHECK("the runs cover varied steps, chance steps, ties, an ARP SEQ part and POLY stretches", nvaried > 50u && nchance > 50u && ntie > 20u && narp > 50u && npoly > 20u);
     CHECK("the harness sees the old page's mismatches (it can fail)", tot[M_OLD] > 0u);
     CHECK("the page's hash changes whenever its steps do", nsig == 0u);
+    printf("tidesteps: a new morph seed alone changed %u steps of the page; the redraw hash stayed the same %u times of the seeds tried\n", nseedview, nseedsig);
+    CHECK("a new morph seed changes the page's redraw hash (CALL AND ANSWER and POLY read it at once)", nseedsig == 0u);
     CHECK("the page shows what plays: no phantom hit, missed note, wrong tie, chord size, playhead or step past the loop's end", tot[M_NEW] == 0u);
     printf("tidesteps: %d of %d checks failed\n", bad, checks);
     return bad != 0;

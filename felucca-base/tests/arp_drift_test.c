@@ -63,7 +63,7 @@ static void run(uint32_t slot, uint32_t bpm, uint32_t ext, uint32_t tap)   /* ta
     now_us = next_us = 0;
     pulse = 0;
     events_block(CTL);
-    project_load(slot);
+    project_load(MIDX(slot));
     song.g[G_BPM] = (int16_t)bpm;
     song.g[G_CLOCK] = ext ? 1 : 0;
     memset(ps, 0, sizeof ps);

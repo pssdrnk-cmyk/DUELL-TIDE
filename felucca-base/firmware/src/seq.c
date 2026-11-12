@@ -264,18 +264,14 @@ static void arp_remove(track_t *t, uint32_t note)
 static void rec_note(track_t *t, uint32_t note, uint32_t vel);
 static void rec_release(track_t *t, uint32_t note);
 static void rec_hold(track_t *t, uint32_t idx, uint32_t len);
-#if DUELL_TIDE
-static volatile uint8_t tide_rec_replace;       /* TIDE SETTINGS REC: 0 ADD (the default), 1 REPLACE (tide_ui.c TS_REC) */
-static uint32_t rec_key[NSHOWN][4];             /* the keys of an armed ARP SEQ part that went straight to the voices (rec_arp_keys): their key-up skips the arp */
-#endif
+TIDE_REC_VARS                                   /* TIDE hook (H20): tide_rec_replace (TIDE SETTINGS REC: 0 ADD, 1 REPLACE) and rec_key (the keys of an armed ARP SEQ part that went straight to the voices: their key-up skips the arp) */
 static int rec_on(const track_t *t) { return ((song.rec >> trk_index(t)) & 1u) && song.playing; }
+#define seq_len(t) ((t)->p[P_SLEN] > 0 ? (uint32_t)(t)->p[P_SLEN] : 1u)   /* the pattern's length (P_SLEN, at least 1) */
+#define past_half(pos, dur) ((pos) > (dur) / 2u)     /* a step's place `pos` is past the middle of its duration `dur` */
+#define before_half(pos, dur) ((pos) < (dur) / 2u)   /* (and before it; the middle itself is neither) */
 /* the arp records what it plays, except on an ARP SEQ part: there it plays the pattern recording would write into (it climbed to 127 in
  * three loops, audit liverec L2). Raw P_AMODE, as seq_play reads it, so MODULES' SEQ OFF does not change which path records */
-#if DUELL_TIDE
-static int rec_arp_on(const track_t *t) { return rec_on(t) && t->p[P_AMODE] != AM_SEQ_ID; }
-#else
-#define rec_arp_on(t) rec_on(t)                         /* (plain DUELL: the arp records what it plays, ARP SEQ included) */
-#endif
+static int rec_arp_on(const track_t *t) { return TIDE_REC_ARP_ON(t); }   /* TIDE hook (H20) */
 
 static uint32_t step_samples(const track_t *t, uint32_t period, uint32_t idx);   /* (below; motion.c) */
 #include "motion.c"
@@ -353,7 +349,7 @@ static __attribute__((noinline)) void arp_chord(track_t *t, const uint32_t *list
 /* the notes SEQ's step arp_idx plays (out, their number returned; 0: a rest), *vel their velocity */
 static uint32_t arp_seq_notes(track_t *t, const uint32_t *list, uint32_t n, uint8_t *out, uint32_t *vel)
 {
-    uint32_t len = t->p[P_SLEN] > 0 ? (uint32_t)t->p[P_SLEN] : 1u, k = t->arp_idx, i, j, m = 0, nt, lo = 127, oc;
+    uint32_t len = seq_len(t), k = t->arp_idx, i, j, m = 0, nt, lo = 127, oc;
     const step_t *s = TIDE_PLAY_STEP(t, TIDE_ARP_IDX(t, k, len));   /* TIDE hooks (H2, H3b) */
     int32_t off;
     if (s->time != ST_NOTE || !s->n)
@@ -379,7 +375,7 @@ static uint32_t arp_seq_notes(track_t *t, const uint32_t *list, uint32_t n, uint
 /* whether SEQ's step k is a TIE (it holds the note before it: arp_seq lengthens that note, arp_fire leaves it sounding) */
 static uint32_t arp_seq_tie(track_t *t, uint32_t k)
 {
-    uint32_t len = t->p[P_SLEN] > 0 ? (uint32_t)t->p[P_SLEN] : 1u;
+    uint32_t len = seq_len(t);
     return TIDE_PLAY_STEP(t, TIDE_ARP_IDX(t, k, len))->time == ST_TIE;
 }
 
@@ -586,9 +582,6 @@ static __attribute__((noinline)) void atg_fire(track_t *t, uint32_t *list, uint3
     t->arp_off = period * ties + period * (uint32_t)t->p[P_AGATE] / 128u;
 }
 
-#if DUELL_TIDE
-static int arp_rec_fire(track_t *t);
-#endif
 /* an arp step starts (period: its length): the next note of the list. Not inlined: once a step, kept out of the audio
  * ISR's loop over the tracks (tests/target_budget.py) */
 static __attribute__((noinline)) void arp_fire(track_t *t, uint32_t period)
@@ -601,12 +594,7 @@ static __attribute__((noinline)) void arp_fire(track_t *t, uint32_t period)
     }
     t->arp_idx++;
     TIDE_ARP_TICK(t);                               /* TIDE hook (H3b) */
-#if DUELL_TIDE
-    if (t->p[P_AMODE] == AM_SEQ && !(mods_off & MODS_SEQ))   /* b7 (review B2): the step's locks and automation on the step the arp plays (seq_play leaves them) */
-        motion_step(t, TIDE_ARP_IDX(t, t->arp_idx, t->p[P_SLEN] > 0 ? (uint32_t)t->p[P_SLEN] : 1u), &motion, 1u);
-    if (t->p[P_AMODE] == AM_SEQ && arp_rec_fire(t))
-        return;                                     /* live recording put a key into this step already: it sounds, the step does not play again */
-#endif
+    TIDE_ARP_SEQ_PRE(t);                            /* TIDE hook (H20) */
     if (atgt_bits(t)) {                             /* ARP TARGET: the units move, no note (atg_fire) */
         atg_fire(t, list, cnt, len, period);
         return;
@@ -732,7 +720,7 @@ static __attribute__((noinline)) int32_t rec_nudge(int32_t off, uint32_t period)
     return (off * NUDGE_DIV + (off < 0 ? -(int32_t)period / 2 : (int32_t)period / 2)) / (int32_t)(period ? period : 1u);
 }
 
-#if DUELL_TIDE
+#if TIDE_LIVEREC
 static uint32_t arp_dur(const track_t *t)           /* the samples of the arp step playing (arp_step's duration) */
 {
     uint32_t period = div_samples((uint32_t)t->p[P_ARATE]);
@@ -792,12 +780,12 @@ static void rec_put(track_t *t, uint32_t idx, uint32_t stored, uint32_t vel, int
  * notes of one step only). */
 static void rec_note(track_t *t, uint32_t note, uint32_t vel)
 {
-    uint32_t len = t->p[P_SLEN] > 0 ? (uint32_t)t->p[P_SLEN] : 1u, idx = t->seq_idx % len;
-#if !DUELL_TIDE
+    uint32_t len = seq_len(t), idx = t->seq_idx % len;
+#if !TIDE_LIVEREC
     uint32_t k;
 #endif
     uint32_t period = div_samples((uint32_t)t->p[P_SDIV]), cur = step_samples(t, period, t->seq_idx);
-    uint32_t next = t->seq_pos > cur / 2u, sounds;
+    uint32_t next = past_half(t->seq_pos, cur), sounds;
     int32_t off = rec_nudge(t->seq_pos >= cur ? 0 : next ? -(int32_t)(cur - t->seq_pos) : (int32_t)t->seq_pos, period);
     step_t *s;
     if (next)
@@ -806,7 +794,7 @@ static void rec_note(track_t *t, uint32_t note, uint32_t vel)
     /* the step's notes play later in this pass (it is the next one, not played early yet, or the one playing whose
      * nudge has not come yet): what sounds now must not play again there (rskip) */
     sounds = next ? t->nd_fired != idx + 1u : t->nd_late != ND_NONE;
-#if DUELL_TIDE
+#if TIDE_LIVEREC
     rec_put(t, idx, note, vel, off, note);
 #else
     if (s->time != ST_NOTE || !s->n || trk_vmode(t) != V_POLY) {
@@ -836,7 +824,7 @@ static void rec_note(track_t *t, uint32_t note, uint32_t vel)
         if (t->rskip_n < 4u)
             t->rskip[t->rskip_n++] = (uint8_t)note;
     }
-#if !DUELL_TIDE
+#if !TIDE_LIVEREC
     if (!t->rh_n || t->rh_start != idx) {           /* a new hold (one in another step ends) */
         t->rh_n = 0;
         t->rh_start = (uint8_t)idx;
@@ -854,10 +842,7 @@ static void rec_hold(track_t *t, uint32_t idx, uint32_t len)
 {
     step_t *s;
     uint32_t k;
-#if DUELL_TIDE
-    k = (idx + 2u * len - 2u) % len;                /* REPLACE's pass: the playhead enters step idx, the mark of the step two behind it goes (rec_put) */
-    t->rec_wr[(k >> 5) & 1u] &= ~(1u << (k & 31u));
-#endif
+    TIDE_REC_REPLACE_PASS(t, idx, len, k);          /* TIDE hook (H20) */
     if (!t->rh_n)
         return;
     if (!((song.rec >> trk_index(t)) & 1u) || t->rh_ties + 1u >= len) {
@@ -887,20 +872,13 @@ static void rec_release(track_t *t, uint32_t note)
             t->rh_note[k++] = t->rh_note[i];
     if (k == t->rh_n || (t->rh_n = (uint8_t)k))
         return;                                     /* not one of them, or others still held */
-#if DUELL_TIDE
-    if (arp_mode(t) == AM_SEQ_ID) {                 /* an ARP SEQ part's hold runs on the arp's steps (rec_arp_note) */
-        if (t->rh_ties && t->arp_pos < 0x8000000u && TIDE_ARP_IDX(t, t->arp_idx, t->p[P_SLEN] > 0 ? (uint32_t)t->p[P_SLEN] : 1u) == t->rh_last &&
-            t->arp_pos < arp_dur(t) / 2u)
-            t->step[t->rh_last] = t->rh_bak;
-        return;
-    }
-#endif
+    TIDE_REC_ARP_RELEASE(t);                        /* TIDE hook (H20) */
     if (t->rh_ties && t->seq_idx == t->rh_last &&
-        t->seq_pos < step_samples(t, div_samples((uint32_t)t->p[P_SDIV]), t->seq_idx) / 2u)
+        before_half(t->seq_pos, step_samples(t, div_samples((uint32_t)t->p[P_SDIV]), t->seq_idx)))
         t->step[t->rh_last] = t->rh_bak;            /* released early in it: not held into this step */
 }
 
-#if DUELL_TIDE
+#if TIDE_LIVEREC
 /* ARP SEQ, live recording (audit liverec L2, R2; owner 2026-11-08): the pattern keeps playing from its stand-in, a key sounds directly (no transpose, the arp
  * does not hear it) and goes into the arp's step nearest to it, as a step offset from the stand-in's root, so the pattern plays it back as played.
  * The step is the one the arp plays (tide_arp_idx), the next one when the key came past the middle of the playing one. REC = ADD / REPLACE as rec_note;
@@ -921,8 +899,8 @@ static uint32_t rec_key_set(const track_t *t, uint32_t note, uint32_t on)   /* t
 }
 static __attribute__((noinline)) void rec_arp_note(track_t *t, uint32_t note, uint32_t vel)
 {
-    uint32_t len = t->p[P_SLEN] > 0 ? (uint32_t)t->p[P_SLEN] : 1u, list[64], cnt = 0, root = 127, i, k = t->arp_idx, idx, oc;
-    if (t->arp_pos >= 0x8000000u || t->arp_pos > arp_dur(t) / 2u)
+    uint32_t len = seq_len(t), list[64], cnt = 0, root = 127, i, k = t->arp_idx, idx, oc;
+    if (t->arp_pos >= 0x8000000u || past_half(t->arp_pos, arp_dur(t)))
         k++;                                        /* the next arp step (or the first, which has not started yet) */
     idx = TIDE_ARP_IDX(t, k, len);
     if (arp_list(t, list, &cnt) && cnt) {
@@ -938,7 +916,7 @@ static __attribute__((noinline)) void rec_arp_note(track_t *t, uint32_t note, ui
 /* an ARP SEQ part's arp step starts: the pass's marks, the hold's ties, and (returns 1) the step a key was put into already, left out */
 static __attribute__((noinline)) int arp_rec_fire(track_t *t)
 {
-    uint32_t len = t->p[P_SLEN] > 0 ? (uint32_t)t->p[P_SLEN] : 1u, idx = TIDE_ARP_IDX(t, t->arp_idx, len), hit = t->arp_skip == t->arp_idx + 1u;
+    uint32_t len = seq_len(t), idx = TIDE_ARP_IDX(t, t->arp_idx, len), hit = t->arp_skip == t->arp_idx + 1u;
     if (t->arp_skip && (t->arp_skip <= t->arp_idx + 1u || !rec_on(t)))   /* (the step it was put into has come, or is past, or REC is off) */
         t->arp_skip = 0;
     rec_hold(t, idx, tide_play_len(t));             /* (seq_tick leaves an ARP SEQ part's hold to the arp; the loop it walks is POLY's, when a stretch shortens it) */
@@ -954,7 +932,7 @@ static __attribute__((noinline)) int arp_rec_fire(track_t *t)
 static __attribute__((noinline)) void cin_keep(track_t *t, uint32_t note, uint32_t vel)
 {
     uint32_t i = trk_index(t), k;
-    if (cin_left != 1u || cin_pos < click_beat_len() / 2u || !((song.rec >> i) & 1u) || arp_mode(t))
+    if (cin_left != 1u || before_half(cin_pos, click_beat_len()) || !((song.rec >> i) & 1u) || arp_mode(t))
         return;
     for (k = 0; k < cin_n[i] && cin_note[i][k] != note; k++)
         ;
@@ -971,16 +949,7 @@ static __attribute__((noinline)) void cin_keep(track_t *t, uint32_t note, uint32
 static void input_on(track_t *t, uint32_t note, uint32_t vel)
 {
     last_note = (uint8_t)note;
-#if DUELL_TIDE
-    tide_ghost_real(t);                             /* b7 (MULTIS): a real note ends the AUTO TIDE ghost chord on this part before it starts */
-    if (rec_arp_keys(t)) {                          /* R2: the key sounds as played and goes into the pattern the part plays (the stand-in runs on) */
-        rec_key_set(t, note, 1);
-        trk_note_on(t, note, vel);
-        rec_arp_note(t, note, vel);
-        return;
-    }
-    rec_key_set(t, note, 0);
-#endif
+    TIDE_REC_INPUT_ON(t, note, vel);                /* TIDE hook (H20) */
     arp_key_vel[trk_index(t)] = (uint8_t)vel;       /* (the arp plays the newest key's velocity) */
     if (cin_left)
         cin_keep(t, note, vel);
@@ -1062,12 +1031,7 @@ static void input_off(track_t *t, uint32_t note)
                 cin_up[i] |= (uint8_t)(1u << k);
     }
     rec_release(t, note);
-#if DUELL_TIDE
-    if (rec_key_set(t, note, 0)) {                  /* (it never reached the arp: no arp_remove) */
-        trk_note_off(t, note);
-        return;
-    }
-#endif
+    TIDE_REC_INPUT_OFF(t, note);                    /* TIDE hook (H20) */
     arp_remove(t, note);                            /* both: the note may have started in the */
     if (hold_all_keys(t) && in_held(t, note))
         return;                                     /* HOLD ALL: the latched chord keeps sounding */
@@ -1082,21 +1046,13 @@ static void input_off(track_t *t, uint32_t note)
 static void key_tone(uint32_t k, track_t *t, uint32_t i, uint32_t vel)
 {
     uint32_t x = kb_chord[k][i], mc = trk_midi_ch(trk_index(t));
-#if DUELL_TIDE
-    if (midi_local_held(t, x) || midi_note_held(t, x))   /* review FR8 (A4): a MIDI note holds it too (as midi_play): not counted twice by the arp */
-#else
-    if (midi_local_held(t, x))
-#endif
+    if (midi_local_held(t, x) || TIDE_MIDI_NOTE_HELD(t, x))   /* TIDE hook (H20; review FR8 A4): a MIDI note holds it too (as midi_play): not counted twice by the arp */
         return;
     if (duell_mode == DM_LAYER && t == trk)
         lay_input(t, x, vel);
     else
         input_on(t, x, vel);
-    #if DUELL_TIDE
-    if (!(arp_mode(t) && !atgt_bits(t)) || rec_arp_keys(t)) {   /* (ARP on: the arp's notes are what sounds and goes out: arp_note_on; but an armed ARP SEQ part's key went to the voices by input_on, so it goes out here, and kb_mo ends it) */
-#else
-    if (!(arp_mode(t) && !atgt_bits(t))) {          /* (ARP on: the arp's notes are what sounds and goes out: arp_note_on) */
-#endif
+    if (!(arp_mode(t) && !atgt_bits(t)) || TIDE_REC_ARP_KEYS(t)) {   /* (ARP on: the arp's notes are what sounds and goes out: arp_note_on; TIDE hook (H20): but an armed ARP SEQ part's key went to the voices by input_on, so it goes out here, and kb_mo ends it) */
         midi_out_event(0x09u | (0x90u | mc) << 8 | x << 16 | vel << 24);
         kb_mo |= 1u << k;
     }
@@ -1358,11 +1314,7 @@ static void seq_start(void)
         t->seq_pos = 0x7FFFFFFF;                   /* step 0 fires on the first block */
         t->rskip_n = 0;
         t->rh_n = 0;
-#if DUELL_TIDE
-        t->rec_wr[0] = t->rec_wr[1] = t->arp_skip = 0;
-        if (i < NSHOWN)
-            memset(rec_key[i], 0, sizeof rec_key[i]);   /* (a key still held: its key-up takes the normal way and ends the voice) */
-#endif
+        TIDE_REC_RESET(t, i);                       /* TIDE hook (H20; a key still held: its key-up takes the normal way and ends the voice) */
         t->rat_left = 0;
         t->nd_late = t->nd_early = ND_NONE;
         t->nd_fired = 0;
@@ -1562,9 +1514,7 @@ static __attribute__((noinline)) void seq_play(track_t *t, uint32_t idx, uint32_
     }
     if (TIDE_CHANCE(t, idx, s, step_chance(s) < 100u && rng() % 100u >= step_chance(s)))   /* TIDE hook (H3c) */
         skip = SEQ_MISS;
-#if DUELL_TIDE
-    if (t->p[P_AMODE] != AM_SEQ)                    /* (b7, review B2: an ARP SEQ part's locks play on the arp's steps: arp_fire) */
-#endif
+    if (TIDE_STEP_MOTION(t))                        /* TIDE hook (H20; b7, review B2: an ARP SEQ part's locks play on the arp's steps: arp_fire) */
     motion_step(t, idx, m, skip == SEQ_ROLLED);
     if (t->p[P_AMODE] == AM_SEQ) {                  /* DUELL 0.2.12: the steps are the SEQUENCER arp's (offsets on the held keys, */
         t->rskip_n = 0;                             /* arp_seq): PLAY does not also play them from C4 (the transport, the locks */
@@ -1649,13 +1599,8 @@ static void seq_tick(track_t *t, uint32_t n)
         t->seq_pos = t->seq_pos >= 0x7FFFFFFFu ? 0u : t->seq_pos - cur_len;   /* (the pattern loops: % len below) */
         t->seq_idx = (uint16_t)TIDE_SEQ_NEXT(t, len);   /* TIDE hook (H3b) */
         TIDE_SEQ_RELEN(t, len);
-#if DUELL_TIDE
-        if (arp_mode(t) != AM_SEQ_ID) {             /* (an ARP SEQ part's holds and marks run on its arp steps: arp_rec_fire) */
+        if (TIDE_REC_HOLD_ON(t))                    /* TIDE hook (H20; an ARP SEQ part's holds and marks run on its arp steps: arp_rec_fire) */
             rec_hold(t, t->seq_idx, len);
-        }
-#else
-        rec_hold(t, t->seq_idx, len);
-#endif
         if (t->p[P_SQNT] && !t->nd_fired)
             seq_play(t, t->seq_idx, period);        /* QUANTIZE ON: every step on its start, as before 1.2 */
         else
@@ -1838,9 +1783,7 @@ static __attribute__((noinline)) void stop_all(void)
     }
     memset(kb_chn, 0, sizeof kb_chn);
     kb_mo = 0;
-#if DUELL_TIDE
-    memset(rec_key, 0, sizeof rec_key);            /* (kb_chn is zero: the key ups of keys held never reach input_off to clear their marks) */
-#endif
+    TIDE_REC_KEYS_CLEAR();                         /* TIDE hook (H20; kb_chn is zero: the key ups of keys held never reach input_off to clear their marks) */
     memset(kb_chn2, 0, sizeof kb_chn2);
     memset(kb_sw, 0, sizeof kb_sw);               /* (item 144: the STRUM tones waiting) */
     memset(kb_sw2, 0, sizeof kb_sw2);
@@ -1971,10 +1914,7 @@ static void events_block(uint32_t n)
         if (!(midi_route & 1u))
             midi_route_block();
     }
-#if DUELL_TIDE
-    if (song.sel != midi_sel_was)
-        midi_sel_change();                            /* review FR8 (A6) */
-#endif
+    TIDE_MIDI_SEL_POLL();                             /* TIDE hook (H20; review FR8 A6) */
     pr = panic_req;
     pk = panic_keep;
     panic_req = 0;
@@ -1989,11 +1929,7 @@ static void events_block(uint32_t n)
         midi_hint = 0;
         for (i = 0; i < NTRK; i++) {
             trk[i].rh_n = trk[i].rskip_n = 0;
-#if DUELL_TIDE
-            trk[i].rec_wr[0] = trk[i].rec_wr[1] = trk[i].arp_skip = 0;
-            if (i < NSHOWN)
-                memset(rec_key[i], 0, sizeof rec_key[i]);
-#endif
+            TIDE_REC_RESET(&trk[i], i);             /* TIDE hook (H20) */
             trk[i].seq_n = trk[i].seq_hold = trk[i].slide_glide = trk[i].rat_left = 0;
         }
         pr |= (1u << NTRK) - 1u;
@@ -2006,19 +1942,13 @@ static void events_block(uint32_t n)
     for (i = 0; i < NTRK; i++) {
         track_t *t = &trk[i];
         if ((pr >> i) & 1u) {
-#if DUELL_TIDE
             int keep = ((pk >> i) & 1u) && (mods_keep & MODK_ARP) && arp_mode(t);
-            if (!keep)                                /* review FR8 (A3): the kept arp keeps who holds which MIDI note, so their note-offs still reach arp_remove */
-#endif
+            if (TIDE_FORGET_MIDI(keep))               /* TIDE hook (H20; review FR8 A3): the kept arp keeps who holds which MIDI note, so their note-offs still reach arp_remove */
                 midi_forget_track(i);
             strum_forget(i);                          /* (item 144: a held key's tones still waiting are dropped with the rest) */
             trk_all_off(t);
             t->m_cycle = t->m_env = t->m_env2 = 0;                            /* (item 135: the latest note's CYCLE for the per-block destinations: a new sound's first block does not read the old one's) */
-#if DUELL_TIDE
             if (keep) {
-#else
-            if (((pk >> i) & 1u) && (mods_keep & MODK_ARP) && arp_mode(t)) {
-#endif
                 /* DUELL 1.1 ARP KEEPS RUNNING, a patch load: the voices end (a new sound starts clean) and the arp's own notes get their MIDI note-offs (mo_flush), but the held and latched
                  * notes (nheld, held[], arp_phys), the step counter and the phrase (arp_ph) stay: the next arp step plays the new sound */
                 mo_flush(t);

@@ -100,7 +100,7 @@ static void draw_battery(void)
 #define CPU_BAR_HOT 85u
 #define CPU_BAR_STEPS 8u
 static uint16_t cpu_col(uint32_t lvl, uint16_t bg);   /* (ui_menu.c) */
-#if DUELL_TIDE
+#if DUELL_TIDE && DUELL_TEST_MODE
 static uint32_t cpu_head(char *l, char *r, uint16_t *c);   /* (ui_menu.c K2: the header's CPU readout on TIDE's pages) */
 static void cpu_head_arm(void);
 #endif
@@ -195,8 +195,8 @@ static int32_t roll_text(uint32_t k, int32_t x, int32_t y, const char *s, uint16
     str_cpy(t, s, sizeof t);
     for (i = 0; s[i]; i++)
         p += (uint32_t)roll_digit(s[i]);
-    cv_cy0 = (int16_t)(cy + cv_oy);                     /* the strip (the static characters lie inside it) */
-    cv_cy1 = (int16_t)(cy + cv_oy + h);
+    cv_cy0 = (int16_t)(cy + CV_Y);                     /* the strip (the static characters lie inside it) */
+    cv_cy1 = (int16_t)(cy + CV_Y + h);
     cv_scroll = 1;                                      /* (the lint: rolling digits are cut on purpose) */
     for (i = 0; s[i]; i++) {
         int32_t px, ny = y;
@@ -347,17 +347,10 @@ static void nm_title(char *b);                         /* ui_name.c: NAME's titl
 /* the header's centre text (0.2.1): what the screen is called. Over a page, the PAGE NAME (params.c titles; EDIT's: the engine's; the piano roll
  * "STEP C MIN", the GRID "GRID"; OVERVIEW); the full-screen dialogs and NAME their own title; a layer shows its label as a message
  * (head_msg). tb holds 24; *pi gets the page's icon (MIXER, PATTERNS, PARAMETER LOCKS) or ICON_NONE */
-#if DUELL_TIDE && TIDE_PLAYSEL
-static int head_ps_on(void) { return song.both && !ui.perf && !ui.layer && HOME_BOTH_PAGE(cur_page()); }   /* (PERFORM names it in its footer: ALGORITHM = ..) */
-static uint8_t head_ps;                                 /* 1: the title drawn is the play position (head_page_title) */
-#endif
 static void head_page_title(char *tb, uint32_t *pi)
 {
     char nm[28], ct[8];
     *pi = ICON_NONE;
-#if DUELL_TIDE && TIDE_PLAYSEL
-    head_ps = 0;
-#endif
     if (oct_show_on()) {
         str_cpy(tb, "OCTAVE", 24);
     } else if (ui.uboot) {
@@ -375,10 +368,8 @@ static void head_page_title(char *tb, uint32_t *pi)
         int roll = page_parts(nm, ct);
         str_cpy(tb, roll ? "SEQUENCER" : nm, 40);            /* (item 118, FINAL_V1_07: the piano roll's title is STEP, no scale name; the name is the SCALE page's) */
         *pi = page_icon(cur_page());
-#if DUELL_TIDE && TIDE_PLAYSEL
-        if ((head_ps = (uint8_t)head_ps_on()) != 0)     /* 1.0.0-b7: both parts selected on HOME's pages: the title is how the keys play, LAYER / STEREO / DUEL, in the theme colour (head_title_draw) */
-            str_cpy(tb, PLS_NAME[play_pos()], 40);
-#endif
+        /* (b10, owner 2026-11-12: HOME's pages are titled by their names, MORPH / TIDE SETTINGS / AUTO TIDE, also with both parts selected; the play position
+         * (PART 1, LAYER, STEREO, DUEL, PART 2) is at the right end of knob 1's line on those pages (ui_draw.c MORPH, tide_ui.c), and ALGORITHM still says it as it turns) */
     }
 }
 /* EDITABLE B (cloud job G, docs/design/EDITABLE_B_DESIGN.md 2.2): the letter A or B in a filled cushion in the part's A or B colour, right of the 1 2 badges (x 33, 14 px like them; where the multi number was
@@ -430,59 +421,9 @@ static uint32_t badge_lit(void)
     return lit;
 }
 
-/* DUELL 1.1 NOTES LEFT (MENU > DISPLAY > NOTES LEFT, ON by default): the notes each part can still play, digits only, in the header's left corner right after the part
- * badges (and the A / B letter where it shows), AF_S. A part's number is the voices the audio engine will give it (voice.c trk_nvoice: the stricter of the engine's own limit,
- * the VOICE CAP and the budget's NOTES, budget.c part_notes via bnotes[], which budget_poll refreshes every frame, so any change of patch, engine, filter, twin filter, effects or
- * mode shows at once) minus its keys held now (voices that are active with the gate on; fading ones count as free), never below 0. DUEL (DM_SPLIT): two numbers, part 1 then
- * part 2, 6 px apart. STEREO and LAYER (item 117, owner): one number, the SELECTED part's own (not the smaller of the two: every key plays on both parts, but the number says what
- * the part you are editing can still play). A muted part gives 0. A number is drawn in the accent
- * colour when it is 0, or when the budget (CPU) is what holds it under the engine's own limit and part_notes_reason names a cause; else in the theme colour. Hidden while the header
- * shows a message, a layer, the menu or a dialog (head_msg's room starts at x 45). The page name gives way (head_page_title's room starts after the numbers) */
-#define HEAD_NOTES_GAP 6
-static uint32_t head_notes(uint8_t *n)                  /* the numbers to show: how many (0, 1 or 2), in n[] */
-{
-    uint32_t p, k, v[2];
-    if (!notes_show_on())
-        return 0;
-    for (p = 0; p < 2u; p++) {
-        uint32_t held = 0, lim = trk[p].p[P_MUTE] ? 0u : trk_nvoice(&trk[p]);
-        for (k = 0; k < NVOICE; k++)
-            held += trk[p].v[k].active && trk[p].v[k].gate && trk[p].v[k].stage != 4u;
-        v[p] = lim > held ? lim - held : 0u;
-    }
-    if (duell_mode_req == DM_SPLIT || UT_CAP_VOICES_OWN) {
-        n[0] = (uint8_t)v[0];
-        n[1] = (uint8_t)v[1];
-        return 2;
-    }
-    n[0] = (uint8_t)v[song.sel & 1u];                   /* (item 117: the selected part's own number) */
-    return 1;
-}
-/* item 153 (owner): the third cell's number is the free voices in POLY only. MONO shows M, LEGATO L, UNISON U in its place (those modes play one note at a time; the
- * count there said nothing useful). The letter follows the part whose number would have stood there (the selected part's own for the one shared number). 0: POLY, a number */
-static char head_mode_ch(uint32_t p)
-{
-    switch (trk[p & 1u].p[P_VOICE]) {
-    case V_MONO: return 'M';
-    case V_LEGATO: return 'L';
-    case V_UNISON: return 'U';
-    default: return 0;
-    }
-}
-static uint32_t head_notes_cpu(uint32_t p)              /* 1: the budget (CPU) is what holds part p under its engine's own limit, and part_notes_reason names a cause */
-{
-    return !trk[p].p[P_MUTE] && bnotes[p] && bnotes[p] < trk_nvoice_eng(&trk[p]) && part_notes_reason((int)p) != NR_NONE;
-}
-static uint32_t head_notes_sig(void)                    /* what the drawing depends on (the numbers and, cheap, whether the budget is the limit) */
-{
-    uint8_t n[2];
-    uint32_t c = head_notes(n), s = c * 977u;
-    if (c)
-        s += n[0] * 31u + (c == 2u ? n[1] * 1009u : 0u) + (bnotes[0] < trk_nvoice_eng(&trk[0]) ? 5u : 0u) + (bnotes[1] < trk_nvoice_eng(&trk[1]) ? 7u : 0u);
-    return s;
-}
-
-/* DUELL 1.1 HEADER (owner, HANDOFF_V2 items 82, 83 and the one after 86; HEADER_MORPH_MARKER_V1.png, the CAPSULE): on a PART page part 1's capsule [number | letter | voices] stands top left, part 2's top right,
+/* (b10, owner 2026-11-12: the capsules no longer show the free voices, nor MONO / LEGATO / UNISON's letter in their place: NOTES LEFT, head_notes and head_mode_ch are gone;
+ * MENU > DISPLAY > NOTES LEFT has no row any more, its stored bit stays reserved, as CPU METER's) */
+/* DUELL 1.1 HEADER (owner, HANDOFF_V2 items 82, 83 and the one after 86; HEADER_MORPH_MARKER_V1.png, the CAPSULE): on a PART page part 1's capsule [number | letter] (b10: the voices cell is gone) stands top left, part 2's top right,
  * 4 px from the screen's side and top, full capsules (all four corners round); the number cell is filled in the part's colour (the other part's grey), the letter (A or B: the morph end the part's knobs
  * edit) and the AVAILABLE VOICES number are plain text on the dim part. The cells have fixed widths, so only the letter and the number ever change. The page title stands centred between them, on
  * their baseline; no line, no bar. DUEL shows both capsules, STEREO and LAYER one number in both capsules: the selected part's own (item 117; UT_CAP_VOICES_OWN 1: each its own). A GLOBAL page (screen_global: GLO, SCALE, MODE, SAVE, MENU, the
@@ -490,11 +431,10 @@ static uint32_t head_notes_sig(void)                    /* what the drawing depe
 #define CAP_X UT_CAP_X                                 /* (the numbers are ui_tokens.h's: item 111, measured on FINAL_V1_01_morph.png: 37 x 16, radius 5, cells 12 / 12 / 13) */
 #define CAP_Y UT_CAP_Y
 #define CAP_H UT_CAP_H
-#define CAP_NUM_W UT_CAP_CELL                          /* its cells: the part's number, the letter, the voices number (+ the right outline) */
-#define CAP_LET_W UT_CAP_CELL
-#define CAP_VOI_W (UT_CAP_W - 2 * UT_CAP_CELL)
+#define CAP_NUM_W UT_CAP_CELL                          /* its cells: the part's number, the letter (+ the right outline) */
+#define CAP_LET_W (UT_CAP_W - UT_CAP_CELL)
 #define CAP_W UT_CAP_W
-#define HEAD_TITLE_L (CAP_X + CAP_W + 4)               /* a message's room: 45 .. 195 (the page title's is UT_TITLE_L .. UT_TITLE_R) */
+#define HEAD_TITLE_L (CAP_X + CAP_W + 4)               /* a message's room: 33 .. 207 (b10; the page title's is UT_TITLE_L .. UT_TITLE_R) */
 #define HEAD_TITLE_R (240 - CAP_X - CAP_W - 4)
 /* a GLOBAL screen: the gradient accent, no part capsules (the pages that edit the instrument, not a part) */
 static int screen_global(void)
@@ -519,12 +459,12 @@ static uint32_t head_marks(uint32_t k)
 {
     return (trk[k].p[P_MUTE] != 0) | (arp_hold(&trk[k]) ? 2u : 0u);
 }
-static void head_capsule(int32_t x, uint32_t k, uint32_t lit, uint32_t b, int32_t voices, uint32_t mk)
+static void head_capsule(int32_t x, uint32_t k, uint32_t lit, uint32_t b, uint32_t mk)
 {
     uint16_t pc = lit ? T_PTHEME(k) : T_DIM, cell = lit ? ux_mix(T_BG, pc, UT_CAP_DIM_PCT) : ux_mix(T_BG, T_TEXT, UT_CAP_OFF_PCT);
     char n[8];
     cv_rrect(x, UT_CAP_Y, UT_CAP_W, UT_CAP_H, UT_CAP_R, pc, T_BG);                          /* the outline and the number cell in the part colour (an unlit part: T_DIM) */
-    cv_rrect(x + UT_CAP_CELL, UT_CAP_Y + 1, UT_CAP_W - UT_CAP_CELL - 1, UT_CAP_H - 2, UT_CAP_R - 1, cell, pc);   /* the dim part: the letter and the voices number */
+    cv_rrect(x + UT_CAP_CELL, UT_CAP_Y + 1, UT_CAP_W - UT_CAP_CELL - 1, UT_CAP_H - 2, UT_CAP_R - 1, cell, pc);   /* the dim part: the letter */
     cv_rect(x + UT_CAP_CELL, UT_CAP_Y + 1, 4, UT_CAP_H - 2, cell);                          /* (its left side square) */
     n[0] = (char)('1' + k);
     n[1] = 0;
@@ -537,14 +477,6 @@ static void head_capsule(int32_t x, uint32_t k, uint32_t lit, uint32_t b, int32_
     head_cell_text(x + UT_CAP_CELL, n, ux_mix(T_BG, T_TEXT, UT_CAP_LETTER_PCT), cell);
     if (mk & 2u)                                        /* HOLD: a line under the letter */
         cv_rect(x + UT_CAP_CELL + 2, UT_CAP_Y + UT_CAP_H - 2, 8, 1, T_TEXT);
-    if (voices < -1) {                                  /* item 153: a mode letter (the code is -voices: 'M', 'L', 'U') instead of the number */
-        n[0] = (char)(-voices);
-        n[1] = 0;
-        head_cell_text(x + 2 * UT_CAP_CELL - 1, n, T_TEXT, cell);   /* (owner, item 157: everything in the third cell one pixel to the left) */
-    } else if (voices >= 0) {
-        fmt_int(n, voices);
-        head_cell_text(x + 2 * UT_CAP_CELL - 1, n, T_TEXT, cell);   /* (owner V13: the voices number is T_TEXT always, also when the budget is short: no colour change; two digits are 16 px wide: 4 px over their cell) */
-    }
 }
 /* the page title, on the header canvas (item 111: face T Bold 15, T_TEXT white, centred on the screen's middle, no colour, no line; S when T does not fit; `glob`: no capsules, the whole width).
  * One function for every header: draw_head below and the MENU / ABOUT header (ui_menu.c menu_head, item 119) */
@@ -552,11 +484,7 @@ static int32_t head_title_ink(const char *tb, int glob, uint16_t ink, int32_t *p
 static void head_title_draw(const char *tb, int glob)
 {
     int32_t w;
-#if DUELL_TIDE && TIDE_PLAYSEL
-    (void)head_title_ink(tb, glob, head_ps ? T_THEME : T_TEXT, &w);
-#else
     (void)head_title_ink(tb, glob, T_TEXT, &w);
-#endif
 }
 /* item 158: the title's one placement and drawing, in colour ink (the page title: T_TEXT; a program change's '#NN NAME': the part's colour, head_title_msg). Returns the pen's
  * start in 1/16 px and *pw the advance in 1/16 px (the face is the title's: T, or S when T does not fit), so a message drawn here stands pixel for pixel where the same text as a title stands */
@@ -647,7 +575,7 @@ static void head_title_msg(int glob)
         cv_rect(k ? ax + aw - 1 - i : ax + i, top + (ah - h) / 2, 1, h, ink);
     }
 }
-#if DUELL_TIDE
+#if DUELL_TIDE && DUELL_TEST_MODE                     /* (b10, owner 2026-11-12: a test build's only) */
 static int cpu_head_on(int glob, int msg)              /* K2: HOME's three pages, a part page with no message, layer, menu, guide or dialog over the title */
 {
     return !glob && !msg && tide_foot_parts() && !ui.menu && !ui.guide && !ui.confirm;
@@ -674,15 +602,11 @@ static void draw_head(void)
     uint32_t pi;
     int msg = ui.msg_t || ui.layer, glob = screen_global();
     uint32_t sig;
-    uint8_t vn[2];
-    uint32_t nv = 0;
     head_page_title(tb, &pi);
-    if (!glob)
-        nv = head_notes(vn);
     sig = song.sel * 13131u + (uint32_t)glob * 7u + (ui.msg_t ? str_hash(7u, ui.msg) : ui.layer * 7919u + (uint32_t)layer_locked() * 3u) +
-          head_notes_sig() * 6007u + (uint32_t)head_mode_ch(0) * 53u + (uint32_t)head_mode_ch(1) * 59u + (uint32_t)(song.sel & 1u) * 61u + badge_lit() * 4093u + (uint32_t)duell_mode_req * 331u +
-          (msg ? 0u : str_hash(13u, tb) + pi * 31u) + (head_ab_b() ? 811u : 0u) + (morph_fader_of(1 - song.sel) >= 127u ? 1301u : 0u) + (uint32_t)(notes_show_on() ? 17u : 0u) + (uint32_t)nv * 41u + head_marks(0) * 3011u + head_marks(1) * 4421u;
-#if DUELL_TIDE                                         /* TIDE hook (K2): HOME's three pages show the CPU's elapsed peak and the missed blocks beside the title (ui_menu.c cpu_head) */
+          (uint32_t)(song.sel & 1u) * 61u + badge_lit() * 4093u + (uint32_t)duell_mode_req * 331u +
+          (msg ? 0u : str_hash(13u, tb) + pi * 31u) + (head_ab_b() ? 811u : 0u) + (morph_fader_of(1 - song.sel) >= 127u ? 1301u : 0u) + head_marks(0) * 3011u + head_marks(1) * 4421u;
+#if DUELL_TIDE && DUELL_TEST_MODE                      /* TIDE hook (K2): HOME's three pages show the CPU's elapsed peak and the missed blocks beside the title (ui_menu.c cpu_head) */
     char cps[8], cms[8];
     uint16_t cpc = 0;
     uint32_t cpk = 0;
@@ -697,23 +621,9 @@ static void draw_head(void)
     cv_begin(240, H_HEAD, T_BG);
     if (!glob) {                                       /* a part page: the capsules */
         uint32_t lit = badge_lit();
-        int32_t v0 = -1, v1 = -1;
-        if (nv == 2u) {
-            v0 = vn[0];
-            v1 = vn[1];
-        } else if (nv == 1u) {
-            v0 = v1 = vn[0];
-        }
-        if (nv) {                                      /* item 153: MONO / LEGATO / UNISON show their letter in place of the number (the shared number: the selected part's mode) */
-            char m0 = head_mode_ch(nv == 2u ? 0u : song.sel), m1 = head_mode_ch(nv == 2u ? 1u : song.sel);
-            if (m0)
-                v0 = -(int32_t)m0;
-            if (m1)
-                v1 = -(int32_t)m1;
-        }
-        /* both parts' capsules in every mode (owner, test3): the selected part lit, the other dim; STEREO and LAYER show the one shared voices number in both */
-        head_capsule(CAP_X, 0, lit & 1u, morph_fader_of(0) >= 127u, v0, head_marks(0));
-        head_capsule(240 - CAP_X - CAP_W, 1, (lit >> 1) & 1u, morph_fader_of(1) >= 127u, v1, head_marks(1));
+        /* both parts' capsules in every mode (owner, test3): the selected part lit, the other dim */
+        head_capsule(CAP_X, 0, lit & 1u, morph_fader_of(0) >= 127u, head_marks(0));
+        head_capsule(240 - CAP_X - CAP_W, 1, (lit >> 1) & 1u, morph_fader_of(1) >= 127u, head_marks(1));
     }
     if (ui.msg_t && (ui.msg[0] == MSG_PC1[0] || ui.msg[0] == MSG_PC2[0] || ui.msg[0] == MSG_TITLE[0])) {   /* item 157: a program change's load, as the title */
         head_title_msg(glob);
@@ -722,7 +632,7 @@ static void draw_head(void)
     } else {
         head_title_draw(tb, glob);
     }
-#if DUELL_TIDE
+#if DUELL_TIDE && DUELL_TEST_MODE
     if (cpk) {                                         /* K2: the elapsed peak in a T_RAISE pill UT_TITLE_GAP right of part 1's capsule; the missed periods, only when there are any, in a REC red badge UT_TITLE_GAP left of part 2's */
         k2_pill(CAP_X + CAP_W + UT_TITLE_GAP, cps, T_RAISE, T_RAISE, T_MID);
         if (cms[0] != '0')
@@ -747,6 +657,33 @@ static void draw_gaps(uint32_t y, uint32_t h)
         lcd_fill(x, y, w, h, T_BG);
     }
 }
+/* b10 ui-a (Phase A, cost #2): a grid layout's strips (header, cards, panel, cells, footer) cover ~95 % of the body, so the whole-body fill (46,320 px, 37 ms of SPI) before them is
+ * almost all drawn over. Only the BG the strips leave is filled: the rows between them (GAPB: grid, first row, rows) and the gutters beside the cards (every column set any grid
+ * uses, x 0..3, 79..81, 119..120, 158..160, 236..239, rows 27 .. 216: a fill under a strip is only drawn over). Found with tests/gap_probe.c:
+ * every page of every engine and the QUICK layers redrawn on a poisoned screen end equal to the whole-body fill's picture. A grid with no row here (13, any new one) is filled whole. */
+static void grid_fill(void)
+{
+    static const uint8_t GAPB[][3] = {{1, 24, 3}, {1, 103, 3}, {1, 160, 2}, {1, 216, 1}, {2, 24, 4}, {2, 112, 4}, {2, 200, 2}, {4, 24, 4},
+        {5, 24, 3}, {5, 51, 3}, {5, 130, 7}, {5, 209, 8}, {6, 24, 4}, {6, 80, 6}, {6, 198, 4}, {7, 24, 3}, {7, 90, 3}, {7, 152, 3}, {7, 214, 3},
+        {14, 24, 3}, {14, 119, 98}, {15, 24, 3}, {15, 51, 3}, {15, 133, 4}, {15, 216, 1},
+        {16, 24, 3}, {16, 150, 1}, {16, 170, 4}, {16, 184, 5}, {16, 194, 8}, {16, 209, 8}, {17, 24, 3}};
+    static const uint8_t GUT[5][2] = {{0, 4}, {79, 3}, {119, 2}, {158, 3}, {236, 4}};
+    uint32_t i, n = 0;
+    for (i = 0; i < sizeof GAPB / sizeof GAPB[0]; i++)
+        if (GAPB[i][0] == grid_on) {
+            lcd_fill(0, GAPB[i][1], 240, GAPB[i][2], T_BG);
+            n++;
+        }
+    if (!n) {
+        gap_rows(H_HEAD, Y_FOOT + 15);
+        return;
+    }
+    for (i = 0; i < 5u; i++)
+        lcd_fill(GUT[i][0], 27, GUT[i][1], 190, T_BG);
+}
+#ifndef GRID_PREFILL
+#define GRID_PREFILL() grid_fill()
+#endif
 /* full redraw: the strips (header, cards, panel, footer) cover the rest; only the BG between them is filled */
 static void draw_frame(void)
 {
@@ -754,7 +691,7 @@ static void draw_frame(void)
     if (ui.force == 2)                                 /* item 152 A: the same page again (ui_refresh): the strips and cards cover their own rows, the BG between them is already there */
         return;
     if (grid_on) {                                     /* the grid: everything under the header is drawn over the background */
-        gap_rows(H_HEAD, Y_FOOT + 15);
+        GRID_PREFILL();
         return;
     }
     gap_rows(H_HEAD, Y_LABEL);
@@ -911,6 +848,7 @@ static uint8_t k1_after_r;
 #define MROW_H 13                                       /* S face's whole box (caps 189 .. 199, descenders to 201: nothing cut, nothing under the footer's canvas); the picture above it */
 #define MROW_BASE (MROW_H - 3)                          /* rows 48 .. 183, two lanes of 68 (5 clear rows to the caps) */
 #define MROW_WAVES_END 184
+_Static_assert((MROW_WAVES_END - UT_A_GR_Y + 1) / 2 <= CV_BAND && MROW_WAVES_END <= 240, "a lane of the wave picture is one canvas band (ui_scope.c wl_area), and wl_rows keeps a row hash a screen row");
 #endif
 static void area_rect(int32_t *y, int32_t *h)
 {
@@ -1383,114 +1321,126 @@ static void draw_card_grid(uint32_t c, const char *label, const char *val, const
     if (!ui.force && str_eq(ui.col[c], key))
         return;
     str_cpy(ui.col[c], key, sizeof ui.col[c]);
-    cv_begin((uint32_t)gw, (uint32_t)gh, T_BG);
-    if (!label[0] && !vb[0]) {                          /* no card here: the background */
-        cv_blit((uint32_t)gx, (uint32_t)gy);
-        return;
-    }
-    if (AREA_ON && c == 0u) {                           /* TEMPLATE 9: knob 1's line */
-        k1_line(lb, vb, unit, after, vc, acol, aright, hot);
-        cv_blit((uint32_t)gx, (uint32_t)gy);
-        return;
-    }
-    if (AREA_ROW_ON) {                                  /* TEMPLATE 9 and the ENGINE page: a card of the area card row (its rows one label line lower inside the card when the page has a two-line label: the card starts that much higher) */
-        card_geo_t ga = grid_on == 5 ? CGE : CGA;
-        if (AREA_LIST_PG())                             /* (SAVE > MULTIS / PATTERNS: the label on the list rows' text base) */
-            ga.lbl_base = UT_L5_TEXT_BASE;
-        if (AREA_TWO) {
-            ga.lbl_base = (int16_t)(ga.lbl_base + UT_A_LBL2_PITCH);
-            ga.val_base = (int16_t)(ga.val_base + UT_A_LBL2_PITCH);
-            ga.val2_b1 = (int16_t)(ga.val2_b1 + UT_A_LBL2_PITCH);
-            ga.val2_b2 = (int16_t)(ga.val2_b2 + UT_A_LBL2_PITCH);
-            ga.bar_y = (int16_t)(ga.bar_y + UT_A_LBL2_PITCH);
-            ga.pill_base = (int16_t)(ga.pill_base + UT_A_LBL2_PITCH);
-        }
-        card_paint(&ga, c, gx, gw, gh, label[0] ? label : "", vb, val, unit, vc, ratio, hot, ctr, 0);
-        cv_blit((uint32_t)gx, (uint32_t)gy);
-        return;
-    }
-    if (grid_on == 1 || TIDE_GRID3) {                 /* TEMPLATE 1: the design's card (item 114); item 120: the MODE page's three cards with template 1's rows (CG3) */
-        card_paint(grid_on == 1 ? &CG1 : &CG3, c, gx, gw, gh, label[0] ? lb : "", vb, val, unit, vc, ratio, hot, ctr, big1);
-        cv_blit((uint32_t)gx, (uint32_t)gy);
-        return;
-    }
-    if (CELLS_ON) {                                     /* TEMPLATE 8: a cell of the CELL pages (item 156; item 165: the ENGINE page of LOFI / NOISE) */
-        card_paint(&CG8, c, gx, gw, gh, label[0] ? lb : "", vb, val, unit, vc, ratio, hot, ctr, 0);
-        cv_blit((uint32_t)gx, (uint32_t)gy);
-        return;
-    }
-    if (grid_on == 7) {                                 /* TEMPLATE 4: the MIXER's LEVEL / PAN card (item 117) */
-        card_t4_paint(c, gw, gh, lb, vb, unit, vc, ratio, hot, ctr);
-        cv_blit((uint32_t)gx, (uint32_t)gy);
-        return;
-    }
-#if !DUELL_TIDE
-    if (grid_big) {
-        int ok = 1;
-        grid_big = 0;
-        for (i = 0; vb[i]; i++)
-            ok &= (vb[i] >= '0' && vb[i] <= '9') || vb[i] == 'A' || vb[i] == 'B';
-        if (ok && vb[0]) {
-            cv_text_fit(4, gh / 2 + 13 - AF_X.asc, &AF_X, vb, vt(vc, T_BG), T_BG, gw - 14);
+    {   /* b10 ui-c: a card taller than a canvas band is drawn once for each band: what the body changes (the label and value text cut, a smaller face, the gradient colour) starts from the same values every pass */
+        char lb0[sizeof lb], vb0[sizeof vb];
+        const uint16_t vc0 = vc;
+        memcpy(lb0, lb, sizeof lb);
+        memcpy(vb0, vb, sizeof vb);
+        CV_BANDS(gh) {
+            memcpy(lb, lb0, sizeof lb);
+            memcpy(vb, vb0, sizeof vb);
+            vc = vc0;
+            vf = &AF_L;
+            cv_begin((uint32_t)gw, (uint32_t)gh, T_BG);
+            if (!label[0] && !vb[0]) {                          /* no card here: the background */
+                cv_blit((uint32_t)gx, (uint32_t)gy);
+                continue;
+            }
+            if (AREA_ON && c == 0u) {                           /* TEMPLATE 9: knob 1's line */
+                k1_line(lb, vb, unit, after, vc, acol, aright, hot);
+                cv_blit((uint32_t)gx, (uint32_t)gy);
+                continue;
+            }
+            if (AREA_ROW_ON) {                                  /* TEMPLATE 9 and the ENGINE page: a card of the area card row (its rows one label line lower inside the card when the page has a two-line label: the card starts that much higher) */
+                card_geo_t ga = grid_on == 5 ? CGE : CGA;
+                if (AREA_LIST_PG())                             /* (SAVE > MULTIS / PATTERNS: the label on the list rows' text base) */
+                    ga.lbl_base = UT_L5_TEXT_BASE;
+                if (AREA_TWO) {
+                    ga.lbl_base = (int16_t)(ga.lbl_base + UT_A_LBL2_PITCH);
+                    ga.val_base = (int16_t)(ga.val_base + UT_A_LBL2_PITCH);
+                    ga.val2_b1 = (int16_t)(ga.val2_b1 + UT_A_LBL2_PITCH);
+                    ga.val2_b2 = (int16_t)(ga.val2_b2 + UT_A_LBL2_PITCH);
+                    ga.bar_y = (int16_t)(ga.bar_y + UT_A_LBL2_PITCH);
+                    ga.pill_base = (int16_t)(ga.pill_base + UT_A_LBL2_PITCH);
+                }
+                card_paint(&ga, c, gx, gw, gh, label[0] ? label : "", vb, val, unit, vc, ratio, hot, ctr, 0);
+                cv_blit((uint32_t)gx, (uint32_t)gy);
+                continue;
+            }
+            if (grid_on == 1 || TIDE_GRID3) {                 /* TEMPLATE 1: the design's card (item 114); item 120: the MODE page's three cards with template 1's rows (CG3) */
+                card_paint(grid_on == 1 ? &CG1 : &CG3, c, gx, gw, gh, label[0] ? lb : "", vb, val, unit, vc, ratio, hot, ctr, big1);
+                cv_blit((uint32_t)gx, (uint32_t)gy);
+                continue;
+            }
+            if (CELLS_ON) {                                     /* TEMPLATE 8: a cell of the CELL pages (item 156; item 165: the ENGINE page of LOFI / NOISE) */
+                card_paint(&CG8, c, gx, gw, gh, label[0] ? lb : "", vb, val, unit, vc, ratio, hot, ctr, 0);
+                cv_blit((uint32_t)gx, (uint32_t)gy);
+                continue;
+            }
+            if (grid_on == 7) {                                 /* TEMPLATE 4: the MIXER's LEVEL / PAN card (item 117) */
+                card_t4_paint(c, gw, gh, lb, vb, unit, vc, ratio, hot, ctr);
+                cv_blit((uint32_t)gx, (uint32_t)gy);
+                continue;
+            }
+        #if !DUELL_TIDE
+            if (grid_big) {
+                int ok = 1;
+                grid_big = 0;
+                for (i = 0; vb[i]; i++)
+                    ok &= (vb[i] >= '0' && vb[i] <= '9') || vb[i] == 'A' || vb[i] == 'B';
+                if (ok && vb[0]) {
+                    cv_text_fit(4, gh / 2 + 13 - AF_X.asc, &AF_X, vb, vt(vc, T_BG), T_BG, gw - 14);
+                    cv_blit((uint32_t)gx, (uint32_t)gy);
+                    continue;
+                }
+            }
+        #endif
+            if (label[0]) {
+                uint16_t mk = hot ? T_ACCENT : T_TEXT;
+                dg[0] = (char)('1' + c);
+                dg[1] = 0;
+                cv_rrect(4, 6, 11, 11, 5, mk, T_BG);
+                cv_text_in(4, 6 + HALF_UP(11 - AF_D_CAP_H) - AF_D_CAP_Y, 11, &AF_DOT, dg, T_BG, mk);
+                {   /* a label wider than its room breaks at its last space into two lines (PULSE / WIDTH) */
+                    uint16_t lcol = hot ? T_ACCENT : ux_mix(T_BASE, T_TEXT, 44);   /* (the approved card label: the text at 44 % over the card, PALETTES_V3: (112,105,112) in VIOLET) */
+                    int32_t cut = -1, ly = 11 - AF_S_CAP_Y - AF_S_CAP_H / 2;
+                    for (i = 0; lb[i]; i++)
+                        if (lb[i] == ' ')
+                            cut = (int32_t)i;
+                    if (text_w(&AF_S, lb) > gw - 26 && cut > 0) {
+                        lb[cut] = 0;
+                        cv_text_fit(19, ly - 6, &AF_S, lb, lcol, T_BG, gw - 26);
+                        cv_text_fit(19, ly + 7, &AF_S, lb + cut + 1, lcol, T_BG, gw - 26);
+                    } else if (text_w(&AF_S, lb) > gw - 26)           /* one long word: on a line of its own under the knob mark */
+                        cv_text_fit(4, ly + 13, &AF_S, lb, lcol, T_BG, gw - 12);
+                    else
+                        cv_text_fit(19, ly, &AF_S, lb, lcol, T_BG, gw - 26);
+                }
+            }
+            if (text_w(vf, vb) + uw > gw - 14)
+                vf = &AF_M;
+            if (text_w(vf, vb) + uw > gw - 14)
+                vf = &AF_S;
+            for (i = 0; val[i] && val[i] != '\n'; i++)
+                ;
+            if (vf == &AF_S && text_w(vf, vb) + uw > gw - 14 && val[i]) {   /* a two-line value ("DOUBLE / SINE") in two small lines */
+                char v1[PV_LEN];
+                const char *v2 = val + i + 1;
+                str_cpy(v1, val, i + 1u);
+                cv_text_fit(4, vcy - AF_S_CAP_Y - AF_S_CAP_H / 2 - 7, &AF_S, v1, vt(vc, T_BG), T_BG, gw - 14);
+                cv_text_fit(4, vcy - AF_S_CAP_Y - AF_S_CAP_H / 2 + 6, &AF_S, v2, vt(vc, T_BG), T_BG, gw - 14);
+                vb[0] = 0;
+            }
+            vy = vf == &AF_L ? vcy - AF_L_CAP_Y - AF_L_CAP_H / 2 : vf == &AF_M ? vcy - AF_M_CAP_Y - AF_M_CAP_H / 2 : vcy - AF_S_CAP_Y - AF_S_CAP_H / 2;
+            if (ux.glob && !ux.bw && vc == T_THEME)           /* a GLOBAL page: the value in the gradient's colour at this card */
+                vc = grad_col(gx + gw / 2);
+            x = cv_text_fit(4, vy, vf, vb, vt(vc, T_BG), T_BG, vf == &AF_S && text_w(vf, vb) + uw <= gw - 8 ? gw - 8 - uw : gw - 14 - uw);   /* (the small face may use 6 px more of the margin before a word is cut) */
+            if (unit[0])
+                cv_text_on(x, vy + vf->asc - AF_S.asc, &AF_S, unit, T_MID, T_BG);
+            if (desc && desc[0])
+                guide_wrap(4, vcy + 10, gw - 14, &AF_M, desc, T_TEXT, 14);
+            if (ratio >= 0) {
+                int32_t bw = gw - 8, fx = ratio * bw / 1000, by = grid_on == 2 ? gh - 4 : grid_on == 5 ? gh - 12 : gh - 10;
+                uint16_t gc = hot ? T_ACCENT : vc == T_DIM ? T_DIM : ux.glob && !ux.bw ? grad_col(gx + gw / 2) : T_THEME;
+                if (ctr) {
+                    int32_t half = bw / 2, ext = (ratio - 500) * half / 500, x0 = 4 + half;
+                    cv_rrect(ext < 0 ? x0 + ext : x0 - (ext ? 0 : 1), by, ext < 0 ? -ext : ext < 2 ? 2 : ext, 3, 1, gc, T_BG);
+                } else
+                    cv_rrect(4, by, fx < 3 ? 3 : fx, 3, 1, gc, T_BG);
+            }
             cv_blit((uint32_t)gx, (uint32_t)gy);
-            return;
         }
     }
-#endif
-    if (label[0]) {
-        uint16_t mk = hot ? T_ACCENT : T_TEXT;
-        dg[0] = (char)('1' + c);
-        dg[1] = 0;
-        cv_rrect(4, 6, 11, 11, 5, mk, T_BG);
-        cv_text_in(4, 6 + HALF_UP(11 - AF_D_CAP_H) - AF_D_CAP_Y, 11, &AF_DOT, dg, T_BG, mk);
-        {   /* a label wider than its room breaks at its last space into two lines (PULSE / WIDTH) */
-            uint16_t lcol = hot ? T_ACCENT : ux_mix(T_BASE, T_TEXT, 44);   /* (the approved card label: the text at 44 % over the card, PALETTES_V3: (112,105,112) in VIOLET) */
-            int32_t cut = -1, ly = 11 - AF_S_CAP_Y - AF_S_CAP_H / 2;
-            for (i = 0; lb[i]; i++)
-                if (lb[i] == ' ')
-                    cut = (int32_t)i;
-            if (text_w(&AF_S, lb) > gw - 26 && cut > 0) {
-                lb[cut] = 0;
-                cv_text_fit(19, ly - 6, &AF_S, lb, lcol, T_BG, gw - 26);
-                cv_text_fit(19, ly + 7, &AF_S, lb + cut + 1, lcol, T_BG, gw - 26);
-            } else if (text_w(&AF_S, lb) > gw - 26)           /* one long word: on a line of its own under the knob mark */
-                cv_text_fit(4, ly + 13, &AF_S, lb, lcol, T_BG, gw - 12);
-            else
-                cv_text_fit(19, ly, &AF_S, lb, lcol, T_BG, gw - 26);
-        }
-    }
-    if (text_w(vf, vb) + uw > gw - 14)
-        vf = &AF_M;
-    if (text_w(vf, vb) + uw > gw - 14)
-        vf = &AF_S;
-    for (i = 0; val[i] && val[i] != '\n'; i++)
-        ;
-    if (vf == &AF_S && text_w(vf, vb) + uw > gw - 14 && val[i]) {   /* a two-line value ("DOUBLE / SINE") in two small lines */
-        char v1[PV_LEN];
-        const char *v2 = val + i + 1;
-        str_cpy(v1, val, i + 1u);
-        cv_text_fit(4, vcy - AF_S_CAP_Y - AF_S_CAP_H / 2 - 7, &AF_S, v1, vt(vc, T_BG), T_BG, gw - 14);
-        cv_text_fit(4, vcy - AF_S_CAP_Y - AF_S_CAP_H / 2 + 6, &AF_S, v2, vt(vc, T_BG), T_BG, gw - 14);
-        vb[0] = 0;
-    }
-    vy = vf == &AF_L ? vcy - AF_L_CAP_Y - AF_L_CAP_H / 2 : vf == &AF_M ? vcy - AF_M_CAP_Y - AF_M_CAP_H / 2 : vcy - AF_S_CAP_Y - AF_S_CAP_H / 2;
-    if (ux.glob && !ux.bw && vc == T_THEME)           /* a GLOBAL page: the value in the gradient's colour at this card */
-        vc = grad_col(gx + gw / 2);
-    x = cv_text_fit(4, vy, vf, vb, vt(vc, T_BG), T_BG, vf == &AF_S && text_w(vf, vb) + uw <= gw - 8 ? gw - 8 - uw : gw - 14 - uw);   /* (the small face may use 6 px more of the margin before a word is cut) */
-    if (unit[0])
-        cv_text_on(x, vy + vf->asc - AF_S.asc, &AF_S, unit, T_MID, T_BG);
-    if (desc && desc[0])
-        guide_wrap(4, vcy + 10, gw - 14, &AF_M, desc, T_TEXT, 14);
-    if (ratio >= 0) {
-        int32_t bw = gw - 8, fx = ratio * bw / 1000, by = grid_on == 2 ? gh - 4 : grid_on == 5 ? gh - 12 : gh - 10;
-        uint16_t gc = hot ? T_ACCENT : vc == T_DIM ? T_DIM : ux.glob && !ux.bw ? grad_col(gx + gw / 2) : T_THEME;
-        if (ctr) {
-            int32_t half = bw / 2, ext = (ratio - 500) * half / 500, x0 = 4 + half;
-            cv_rrect(ext < 0 ? x0 + ext : x0 - (ext ? 0 : 1), by, ext < 0 ? -ext : ext < 2 ? 2 : ext, 3, 1, gc, T_BG);
-        } else
-            cv_rrect(4, by, fx < 3 ? 3 : fx, 3, 1, gc, T_BG);
-    }
-    cv_blit((uint32_t)gx, (uint32_t)gy);
 }
 static void draw_column(uint32_t c, const char *label, const char *val, const char *unit, uint16_t vc,
                         int32_t ratio, uint32_t icon)
@@ -1539,8 +1489,10 @@ static void draw_column(uint32_t c, const char *label, const char *val, const ch
             grid_geo(c, &hx, &hy, &hw, &hh);
             if (!hw)                                    /* (item 156: a hidden card has no cell on a CELL page; another card's cell may be where it was; TEMPLATE 9: a column with no card) */
                 return;
-            cv_begin((uint32_t)hw, (uint32_t)hh, T_BG);
-            cv_blit((uint32_t)hx, (uint32_t)hy);
+            CV_BANDS((uint32_t)hh) {
+                cv_begin((uint32_t)hw, (uint32_t)hh, T_BG);
+                cv_blit((uint32_t)hx, (uint32_t)hy);
+            }
             return;
         }
         cv_begin(COL_W, COL_H, T_BG);
@@ -2075,6 +2027,15 @@ static void draw_foot(void)
     ctp = FOOT_CT_R * 16 - (ct[0] ? text_w16(&AF_S, ct) : 0);   /* the counter's pen, 1/16 px */
     rdot = foot_rec_dot(ctp);                          /* (the REC mark's left edge: the patch name ends before it) */
     fmt_int(tp, song.g[G_BPM]);                                   /* T12 (D26): the tempo (an external clock's measured one) before the number, the patch name ends before it; REC armed: the REC mark has the room */
+#if DUELL_TIDE
+    char tp1[6];                                                  /* b10 (owner 2026-11-12): the two-row footer (part 1 on row 1, part 2 on row 2) has the tempo on ROW 1, right-aligned above the
+                                                                   * counter and the battery, so part 2's name on row 2 gets its room back; part 1's name ends before it */
+    tp1[0] = 0;
+    if (pn1[0] && !ui.ml.on && !pfl[0] && !save_hint) {
+        str_cpy(tp1, tp, sizeof tp1);
+        tp[0] = 0;
+    }
+#endif
     if (rdot)
         tp[0] = 0;
     tpen = tp[0] ? ctp - FT_GAP * 16 - text_w16(&AF_S, tp) : rdot ? rdot * 16 : ctp;
@@ -2106,10 +2067,15 @@ static void draw_foot(void)
         cv_text_in(0, 2, 240, &AF_S, save_hint, T_DIM, T_BG);
 #if DUELL_TIDE
     } else if (pn1[0]) {                               /* TIDE hook: row 1, part 1 as row 2 names a part (its engine in its colour, the sound it plays) */
-        int32_t f1 = UT_FOOT_BASE - 15 - Y_FOOT - AF_S_CAP_Y - AF_S_CAP_H + 1, x = UT_FOOT_X * 16;
+        static const char FT_BPM[] = " BPM";          /* (owner 2026-11-12: "122 BPM", the unit dimmer, as the cards' units; part 1's name may end 2 px before the tempo's pen (the glyphs' own sides leave ~6 px of air), so M08's SUNDAY KEYS stays whole) */
+        int32_t f1 = UT_FOOT_BASE - 15 - Y_FOOT - AF_S_CAP_Y - AF_S_CAP_H + 1, x = UT_FOOT_X * 16, uw = text_w16(&AF_S, FT_BPM), bx = (UT_BAT_X + UT_BAT_W) * 16 - text_w16(&AF_S, tp1) - uw;   /* (bx: the tempo's pen; its unit ends with the battery) */
         cv_text_x16(x, f1, &AF_S, en1, vt(T_PTHEME(0u), T_BG), T_BG);
         x += text_w16(&AF_S, en1) + UT_FOOT_WORD_GAP * 16;
-        cv_free_text(x >> 4, f1, &AF_S, pn1, T_TEXT, T_BG, 235 - (x >> 4));
+        cv_free_text(x >> 4, f1, &AF_S, pn1, T_TEXT, T_BG, (tp1[0] ? (bx >> 4) - 2 : 235) - (x >> 4));
+        if (tp1[0]) {
+            cv_text_x16(bx, f1, &AF_S, tp1, T_MID, T_BG);
+            cv_text_x16((UT_BAT_X + UT_BAT_W) * 16 - uw, f1, &AF_S, FT_BPM, T_DIM, T_BG);
+        }
 #endif
     } else if (foot_steps()) {
         uint32_t i, ph = foot_playhead(t);
@@ -2400,6 +2366,8 @@ static const char *h1_echo_why(void)
     return (mods_off & MODS_SENDS) ? "ECHO: SENDS OFF" : !song.g[G_DMIX] ? "ECHO: DELAY MIX 0" : 0;   /* (the line's words whole: no buffer, RAM is tight) */
 }
 static uint32_t kn_cur(void);                           /* (tide_ui.c: the set the KNOBS row and the multi's name pick) */
+static int tide_moves(uint32_t pi);                     /* (tide_ui.c, I4: AUTO TIDE moves part pi's sound now; its trip in words) */
+static void tide_trip_short(char *l);
 /* the value v of the macro parameter ix (knob_sets.h KN_ID's place) as part t shows it (its card's form; a global as its page shows it), the cutoff's unit short ("2.4k", "880") */
 static void h1_val(uint32_t ix, const track_t *t, int32_t v, char *out)
 {
@@ -2592,6 +2560,13 @@ static void draw_columns(void)
 #if DUELL_TIDE
         const char *why = h1_echo_why();
         const int apart = song.both && morph_fader_of(1u - pi) != f;
+        char trip[40];
+        if (AREA_ON && tide_moves(pi) && !(ui.hot_t && ui.hot_col)) {   /* I4: AUTO TIDE moves this part: what it does, at the line's right end (a knob 2..4 just turned keeps its own words) */
+            tide_trip_short(trip);
+            k1_after_next = trip;
+            k1_after_col = T_ACCENT;
+            k1_after_r = 1;
+        } else
         if (AREA_ON && why && (!apart || (ui.hot_t && ui.hot_col == 3u))) {   /* 1.0.0-b7: ECHO dim, why (at the line's right end; with BOTH and the faders apart while knob 4 turns) */
             k1_after_next = why;
             k1_after_col = T_MID;
@@ -2611,6 +2586,10 @@ static void draw_columns(void)
             k1_after_next = other;
             k1_after_col = T_PFILL(1u - pi);
             k1_after_r = 0;
+        } else if (AREA_ON) {                            /* b10 (owner 2026-11-12): the play position, which the title showed before (PART 1, LAYER, STEREO, DUEL, PART 2) */
+            k1_after_next = PLS_NAME[play_pos()];
+            k1_after_col = T_MID;
+            k1_after_r = 1;
         }
 #endif
         draw_column(0, "MORPH", val, "", VAL(0u), (int32_t)f * 1000 / 127, ICON_MIX);   /* (TIDE 1.0.0-b4: a plain card, its label, value and bar as every K1 card) */
@@ -2692,7 +2671,7 @@ static void draw_columns(void)
                 }
                 if (!(c & 1u)) {                       /* (DUELL 1.1: the duck source under the part's channel) */
                     static char ds[24];
-                    str_cpy(ds, "Duck source: ", sizeof ds);
+                    str_cpy(ds, "DUCK SOURCE: ", sizeof ds);
                     str_cpy(ds + str_len(ds), val_shown(&TP[P_DKSRC], N_DKSRC[(uint32_t)clamp(trk[c >> 1].p[P_DKSRC], 0, 3)]), (uint32_t)sizeof ds - str_len(ds));
                     for (n = 13; ds[n]; n++)
                         if (ds[n] == '\n')                   /* (b4, UI audit 8: the value in its own capitals, as the card shows it; no lower-casing) */
@@ -2706,7 +2685,7 @@ static void draw_columns(void)
         }
         {
             uint32_t sel = song.g[G_ROUTE] == 1, k, n = midi_cards(vis), mm = duell_mode_req < DM_N ? duell_mode_req : DM_SPLIT;
-            static const char *const WH[3][2] = {{"Duel: left output", "Duel: right output"}, {"Stereo output", "Stereo output"}, {"Layer: plays both parts", "Layer: not heard, use PART 1"}};
+            static const char *const WH[3][2] = {{"DUEL: LEFT OUTPUT", "DUEL: RIGHT OUTPUT"}, {"STEREO OUTPUT", "STEREO OUTPUT"}, {"LAYER: PLAYS BOTH PARTS", "LAYER: NOT HEARD"}};
             grid_wide = 1;
             for (c = 0; c < 4u; c++) {                 /* the parts' channels (not shown when SELECTED listens on one channel; part 2 in LAYER), MIDI IN; T0227: moved left */
                 k = c < n ? vis[c] : 0xFFu;
@@ -2715,7 +2694,7 @@ static void draw_columns(void)
                     grid_d = WH[mm][k];
                     draw_column(c, k ? "PART 2\nCHANNEL" : "PART 1\nCHANNEL", val, "", VAL(c), (int32_t)midi_ch_get(k) * 1000 / 15, ICON_MIDI);   /* (item 86: never faded) */
                 } else if (k == 2u) {
-                    grid_d = sel ? "Any channel plays the selected part" : mm == DM_LAYER ? "Layer mode: part 1 channel counts" : "Each part on its own channel";
+                    grid_d = sel ? "ANY CHANNEL PLAYS THE SELECTED PART" : mm == DM_LAYER ? "LAYER: PART 1 CHANNEL COUNTS" : "EACH PART ON ITS OWN CHANNEL";
                     draw_column(c, "MIDI IN", sel ? "ANY\nCHANNEL" : "PART\nCHANNEL", "", VAL(c), -1, ICON_MIDI);
                 } else if (n < 3u) {
                     draw_column_hide(c);
@@ -3102,37 +3081,39 @@ static void splash_frame(uint32_t st, int32_t hint_y)
                         : ux_mix(ux_mix(pl->c[0], pl->c[2], (int32_t)j * 100 / (SPL_N - 1)), T_BG, SPL_LINE_DIM);
     for (band = 0; band < 3u; band++) {
         int32_t y0 = EDGE[band], h = EDGE[band + 1] - y0;
-        cv_begin(240, (uint32_t)h, T_BG);
-        cv_oy = -y0;
-        for (j = 0; j < (uint32_t)SPL_N; j++) {
-            int32_t px = 0, py = 0, pen = 0;
-            j2 = (int32_t)j * 2 - (SPL_N - 1);          /* -14 .. +14: the line's place across the ribbon */
-            for (x = 0; x < 240u; x += 2u) {
-                uint32_t xt = x * 17895697u / 100u;     /* x in hundredths of a turn per 1.00 cycle across the width */
-                int32_t mc = 120 + (sine_i(xt * 90u + m) * 22 >> 15);                      /* the ribbon's middle, 0.9 cycles */
-                int32_t w = 170 + (sine_i(xt * 130u + m * 2u + 0x40000000u) * 40 >> 15);   /* its width, 130 .. 210 */
-                int32_t mo = clamp(((int32_t)x - 120) * 256 / 240 + 128 + (sine_i(m) >> 8), 0, 256);   /* the morph: 0 left .. 256 right */
-                int32_t calm = sine_i(xt * 100u + j * 0x05000000u + m);                    /* the smooth wave every line has */
-                int32_t rip = (sine_i(xt * 370u + j * 0x0C000000u + m * 3u) * 3 + sine_i(xt * 710u - j * 0x1B000000u + m * 5u) * 2) / 5;   /* overtones and ripples */
-                int32_t y = mc + j2 * w / (2 * (SPL_N - 1)) + (int32_t)(((int64_t)calm * 5 + (int64_t)rip * mo / 256 * 4) >> 15);
-                if (pen)
-                    cv_line(px, py, (int32_t)x, y, col[j]);
-                px = (int32_t)x;
-                py = y;
-                pen = 1;
+        CV_BANDS(h) { /* (the strip may be taller than a canvas band: drawn once for each) */
+            cv_begin(240, (uint32_t)h, T_BG);
+            cv_oy = -y0;
+            for (j = 0; j < (uint32_t)SPL_N; j++) {
+                int32_t px = 0, py = 0, pen = 0;
+                j2 = (int32_t)j * 2 - (SPL_N - 1);          /* -14 .. +14: the line's place across the ribbon */
+                for (x = 0; x < 240u; x += 2u) {
+                    uint32_t xt = x * 17895697u / 100u;     /* x in hundredths of a turn per 1.00 cycle across the width */
+                    int32_t mc = 120 + (sine_i(xt * 90u + m) * 22 >> 15);                      /* the ribbon's middle, 0.9 cycles */
+                    int32_t w = 170 + (sine_i(xt * 130u + m * 2u + 0x40000000u) * 40 >> 15);   /* its width, 130 .. 210 */
+                    int32_t mo = clamp(((int32_t)x - 120) * 256 / 240 + 128 + (sine_i(m) >> 8), 0, 256);   /* the morph: 0 left .. 256 right */
+                    int32_t calm = sine_i(xt * 100u + j * 0x05000000u + m);                    /* the smooth wave every line has */
+                    int32_t rip = (sine_i(xt * 370u + j * 0x0C000000u + m * 3u) * 3 + sine_i(xt * 710u - j * 0x1B000000u + m * 5u) * 2) / 5;   /* overtones and ripples */
+                    int32_t y = mc + j2 * w / (2 * (SPL_N - 1)) + (int32_t)(((int64_t)calm * 5 + (int64_t)rip * mo / 256 * 4) >> 15);
+                    if (pen)
+                        cv_line(px, py, (int32_t)x, y, col[j]);
+                    px = (int32_t)x;
+                    py = y;
+                    pen = 1;
+                }
             }
+            cv_oy = -y0;
+            splash_logo_draw(y0, h);                        /* (the lockup, on top of the unbroken lines) */
+            if (hint_y && hint_y >= y0 && hint_y < y0 + h)
+                about_keys(hint_y);
+            if (!hint_y && splash_guide && y0 == 200) {     /* DUELL 1.1: the first start only: a small hint under the DUELL text (LOGO_SCREENS_V1.png), OCT + goes on, HOME skips */
+                static const khint_t FIRST[2] = {{KC_OCTUP, "NEXT"}, {KC_HOME, "SKIP"}};
+                cv_text(8, 199, &AF_S, "GUIDE FOR YOUR FIRST START", T_MID);
+                cv_key_row(8, 232, 217, FIRST, 2u, 3u, T_BG);
+            }
+            cv_oy = 0;
+            cv_blit(0, (uint32_t)y0);
         }
-        cv_oy = -y0;
-        splash_logo_draw(y0, h);                        /* (the lockup, on top of the unbroken lines) */
-        if (hint_y && hint_y >= y0 && hint_y < y0 + h)
-            about_keys(hint_y);
-        if (!hint_y && splash_guide && y0 == 200) {     /* DUELL 1.1: the first start only: a small hint under the DUELL text (LOGO_SCREENS_V1.png), OCT + goes on, HOME skips */
-            static const khint_t FIRST[2] = {{KC_OCTUP, "NEXT"}, {KC_HOME, "SKIP"}};
-            cv_text(8, 199, &AF_S, "GUIDE FOR YOUR FIRST START", T_MID);
-            cv_key_row(8, 232, 217, FIRST, 2u, 3u, T_BG);
-        }
-        cv_oy = 0;
-        cv_blit(0, (uint32_t)y0);
     }
     lcd_sync();
 }
@@ -3186,11 +3167,13 @@ static void draw_uboot(void)
     draw_text_box(0, 102, 240, &AF_L, d, T_THEME, 1);
     {   /* the two keycaps held, and what letting go does */
         int32_t w = kc_w(KC_OCTDN) + 3 + kh_ink(KC_OCTUP, "LET GO TO CANCEL"), x = HALF_UP(240 - w);
-        cv_begin(240, KC_H + 6, T_BG);                  /* (item 119: S 15's word is 19 rows high: the strip holds it whole, the keycaps stay on row 150) */
-        GFX_HOOK_ALIGN(0, 0, 240, 0, AL_H | AL_N(3), "update-mode keys centred");
-        x = cv_keycap(x, 3, KC_OCTDN, T_KEY, T_KINK, T_BG) + 3;
-        cv_key_hint(x, 3, KC_OCTUP, "LET GO TO CANCEL", 1, T_BG);
-        cv_blit(0, 147);
+        CV_BANDS(KC_H + 6) {
+            cv_begin(240, KC_H + 6, T_BG);                  /* (item 119: S 15's word is 19 rows high: the strip holds it whole, the keycaps stay on row 150) */
+            GFX_HOOK_ALIGN(0, 0, 240, 0, AL_H | AL_N(3), "update-mode keys centred");
+            x = cv_keycap(x, 3, KC_OCTDN, T_KEY, T_KINK, T_BG) + 3;
+            cv_key_hint(x, 3, KC_OCTUP, "LET GO TO CANCEL", 1, T_BG);
+            cv_blit(0, 147);
+        }
         lcd_sync();
     }
     ui.force = 0;
@@ -3218,24 +3201,28 @@ static void draw_countin(void)
     } else
         str_cpy(sub, "1 BAR", sizeof sub);
     draw_text_box(0, 56, 240, &AF_S, sub, T_MID, 1);   /* (the title, COUNT-IN, is the header's) */
-    cv_begin(216, CI_H, T_BG);
-    for (j = 0; j < 4u; j++) {
-        int32_t x = (int32_t)j * 56;
-        char d[2] = {(char)('4' - j), 0};
-        int now = j == e % 4u, gone = j < e % 4u;
-        uint16_t fill = now ? T_THEME : T_BG;
-        { CV_HL(x, 0, 48, CI_H); cv_rrect(x, 0, 48, CI_H, 8, fill, T_BG); }
-        GFX_HOOK_ALIGN(x, 0, x + 48, CI_H, AL_HV, "count-in beat centred in its cell");
-        cv_text_in(x, CAP_IN(L, CI_H), 48, &AF_L, d, now ? T_INK : gone ? T_DIM : T_TEXT, fill);
+    CV_BANDS(CI_H) {
+        cv_begin(216, CI_H, T_BG);
+        for (j = 0; j < 4u; j++) {
+            int32_t x = (int32_t)j * 56;
+            char d[2] = {(char)('4' - j), 0};
+            int now = j == e % 4u, gone = j < e % 4u;
+            uint16_t fill = now ? T_THEME : T_BG;
+            { CV_HL(x, 0, 48, CI_H); cv_rrect(x, 0, 48, CI_H, 8, fill, T_BG); }
+            GFX_HOOK_ALIGN(x, 0, x + 48, CI_H, AL_HV, "count-in beat centred in its cell");
+            cv_text_in(x, CAP_IN(L, CI_H), 48, &AF_L, d, now ? T_INK : gone ? T_DIM : T_TEXT, fill);
+        }
+        cv_blit(12, CI_Y);
     }
-    cv_blit(12, CI_Y);
     draw_text_box(0, CI_Y + CI_H + 14, 240, &AF_S, "RECORDING STARTS AFTER 1", T_MID, 1);
     {   /* PLAY stops it */
         int32_t x = HALF_UP(240 - kh_ink(KC_PLAY, "STOP"));
-        cv_begin(240, KC_H + 6, T_BG);                  /* (item 119: as UPDATE MODE's strip, the keycap stays on row 207) */
-        GFX_HOOK_ALIGN(0, 0, 240, 0, AL_H | AL_N(2), "count-in key centred");
-        cv_key_hint(x, 3, KC_PLAY, "STOP", 1, T_BG);
-        cv_blit(0, 204);
+        CV_BANDS(KC_H + 6) {
+            cv_begin(240, KC_H + 6, T_BG);                  /* (item 119: as UPDATE MODE's strip, the keycap stays on row 207) */
+            GFX_HOOK_ALIGN(0, 0, 240, 0, AL_H | AL_N(2), "count-in key centred");
+            cv_key_hint(x, 3, KC_PLAY, "STOP", 1, T_BG);
+            cv_blit(0, 204);
+        }
         lcd_sync();
     }
     ui.force = 0;
@@ -3371,27 +3358,29 @@ static void draw_confirm_erase(void)
     ui.head_sig = ~0u;
     for (strip = 0; strip < 2u; strip++) {
         const int32_t y0 = strip ? ERASE_STRIP : 0;
-        cv_begin((uint32_t)W, strip ? (uint32_t)(H - ERASE_STRIP) : (uint32_t)ERASE_STRIP, T_BG);
-        cv_oy = -y0;
-        GFX_HOOK_ALIGN(0, 0, W, 0, AL_H, "dialog icon centred");
-        /* (DUELL 1.1: no warning triangle: the words say it) */
-        GFX_HOOK_ALIGN(0, 0, W, 0, AL_H, "dialog question centred");
-        cv_text_in(0, 20, W, &AF_M, "ERASE ALL MY DATA?", T_TEXT, T_BG);
-        for (i = 0; i < 5u; i++) {
-            GFX_HOOK_ALIGN(0, 0, W, 0, AL_H, "dialog detail centred");
-            cv_text_in(0, 46 + (int32_t)i * 17, W, &AF_S, L[i], i == 4u ? T_ACCENT : T_MID, T_BG);
+        CV_BANDS(strip ? (uint32_t)(H - ERASE_STRIP) : (uint32_t)ERASE_STRIP) {
+            cv_begin((uint32_t)W, strip ? (uint32_t)(H - ERASE_STRIP) : (uint32_t)ERASE_STRIP, T_BG);
+            cv_oy = -y0;
+            GFX_HOOK_ALIGN(0, 0, W, 0, AL_H, "dialog icon centred");
+            /* (DUELL 1.1: no warning triangle: the words say it) */
+            GFX_HOOK_ALIGN(0, 0, W, 0, AL_H, "dialog question centred");
+            cv_text_in(0, 20, W, &AF_M, "ERASE ALL MY DATA?", T_TEXT, T_BG);
+            for (i = 0; i < 5u; i++) {
+                GFX_HOOK_ALIGN(0, 0, W, 0, AL_H, "dialog detail centred");
+                cv_text_in(0, 46 + (int32_t)i * 17, W, &AF_S, L[i], i == 4u ? T_ACCENT : T_MID, T_BG);
+            }
+            GFX_HOOK_ALIGN(16, BY, 106, BY + 26, AL_HV | AL_N(2), "dialog button NO");
+            cv_key_hint(16 + HALF_UP(90 - kh_ink(KC_OCTDN, "NO")), BY + HALF_UP(26 - KC_H), KC_OCTDN, "NO", 1, T_BG);
+            { CV_HL(118, BY, 90, 26); cv_rrect(118, BY, 90, 26, 6, T_THEME, T_BG);    /* OCT+: YES */ }
+            {
+                int32_t x = 118 + HALF_UP(90 - kh_ink(KC_OCTUP, "YES"));
+                GFX_HOOK_ALIGN(118, BY, 208, BY + 26, AL_HV | AL_N(2), "dialog button YES");
+                x = cv_keycap(x, BY + HALF_UP(26 - KC_H), KC_OCTUP, T_INK, T_THEME, T_THEME);
+                cv_text_on(x + KH_GAP, BY + HALF_UP(26 - KC_H) - 3, &AF_S, "YES", T_INK, T_THEME);   /* (item 122: the capitals centred on the pill) */
+            }
+            cv_oy = 0;
+            cv_blit(ERASE_X, (uint32_t)(H_HEAD + 6 + y0));
         }
-        GFX_HOOK_ALIGN(16, BY, 106, BY + 26, AL_HV | AL_N(2), "dialog button NO");
-        cv_key_hint(16 + HALF_UP(90 - kh_ink(KC_OCTDN, "NO")), BY + HALF_UP(26 - KC_H), KC_OCTDN, "NO", 1, T_BG);
-        { CV_HL(118, BY, 90, 26); cv_rrect(118, BY, 90, 26, 6, T_THEME, T_BG);    /* OCT+: YES */ }
-        {
-            int32_t x = 118 + HALF_UP(90 - kh_ink(KC_OCTUP, "YES"));
-            GFX_HOOK_ALIGN(118, BY, 208, BY + 26, AL_HV | AL_N(2), "dialog button YES");
-            x = cv_keycap(x, BY + HALF_UP(26 - KC_H), KC_OCTUP, T_INK, T_THEME, T_THEME);
-            cv_text_on(x + KH_GAP, BY + HALF_UP(26 - KC_H) - 3, &AF_S, "YES", T_INK, T_THEME);   /* (item 122: the capitals centred on the pill) */
-        }
-        cv_oy = 0;
-        cv_blit(ERASE_X, (uint32_t)(H_HEAD + 6 + y0));
     }
 }
 static void draw_confirm(void)
@@ -3408,37 +3397,39 @@ static void draw_confirm(void)
     confirm_text(a, b);
     lcd_fill(0, H_HEAD, 240, 240 - H_HEAD, T_BG);
     ui.head_sig = ~0u;
-    cv_begin(DLG_W, DLG_H + dh, T_BG);                /* a SURF card: warning, the question, the detail, two buttons */
-    GFX_HOOK_ALIGN(0, 0, DLG_W, 0, AL_H, "dialog icon centred");
-    /* (DUELL 1.1: no icon above the question) */
-    if (text_w(tf, a) > DLG_W - 16)
-        tf = &AF_S;
-    GFX_HOOK_ALIGN(0, 0, DLG_W, 0, AL_H, "dialog question centred");
-    cv_text_in(0, 34, DLG_W, tf, a, T_TEXT, T_BG);
-    if (ui.confirm == CF_SAVE_OVER)
-        TIDE_SAVE_NOTE(DLG_W);                          /* (1.0.0-b8: SAVE after JOURNEY: what it stores, in the card's empty top) */
-    if (b[0]) {
-        char f[32];
-        text_fit(f, sizeof f, b, &AF_M, DLG_W - 16);    /* a name: free text (M: what is selected, as the question) */
-        GFX_HOOK_ALIGN(0, 0, DLG_W, 0, AL_H, "dialog detail centred");
-        cv_text_flags(ink_in(&AF_M, f, DLG_W), 55, &AF_M, f, T_MID, T_BG, 8u | (f[str_len(f) - 1u] == ELLIPSIS));
+    CV_BANDS(DLG_H + dh) {
+        cv_begin(DLG_W, DLG_H + dh, T_BG);                /* a SURF card: warning, the question, the detail, two buttons */
+        GFX_HOOK_ALIGN(0, 0, DLG_W, 0, AL_H, "dialog icon centred");
+        /* (DUELL 1.1: no icon above the question) */
+        if (text_w(tf, a) > DLG_W - 16)
+            tf = &AF_S;
+        GFX_HOOK_ALIGN(0, 0, DLG_W, 0, AL_H, "dialog question centred");
+        cv_text_in(0, 34, DLG_W, tf, a, T_TEXT, T_BG);
+        if (ui.confirm == CF_SAVE_OVER)
+            TIDE_SAVE_NOTE(DLG_W);                          /* (1.0.0-b8: SAVE after JOURNEY: what it stores, in the card's empty top) */
+        if (b[0]) {
+            char f[32];
+            text_fit(f, sizeof f, b, &AF_M, DLG_W - 16);    /* a name: free text (M: what is selected, as the question) */
+            GFX_HOOK_ALIGN(0, 0, DLG_W, 0, AL_H, "dialog detail centred");
+            cv_text_flags(ink_in(&AF_M, f, DLG_W), 55, &AF_M, f, T_MID, T_BG, 8u | (f[str_len(f) - 1u] == ELLIPSIS));
+        }
+        if (hint) {                                       /* SAVE held: K1 picks the slot the sound goes to */
+            GFX_HOOK_ALIGN(0, 78, DLG_W, 78 + KC_H, AL_H | AL_N(4), "dialog hint centred");
+            int32_t w1 = kh_ink(KC_K1, "OTHER SLOT"), w2 = kh_ink(KC_K2, "RENAME"), x0 = HALF_UP(DLG_W - (w1 + 14 + w2)) - 1;   /* (the ink's centre on the dialog's: the keycaps' side margins) K1 OTHER SLOT, K2 RENAME (0.2.21) */
+            cv_key_hint(x0, 78, KC_K1, "OTHER SLOT", 1, T_BG);
+            cv_key_hint(x0 + w1 + 14, 78, KC_K2, "RENAME", 1, T_BG);
+        }
+        GFX_HOOK_ALIGN(10, by, 100, by + 26, AL_HV | AL_N(2), "dialog button NO");
+        cv_key_hint(10 + HALF_UP(90 - kh_ink(KC_OCTDN, "NO")), by + HALF_UP(26 - KC_H), KC_OCTDN, "NO", 1, T_BG);   /* (ink centred) */
+        { CV_HL(108, by, 90, 26); cv_rrect(108, by, 90, 26, 6, T_THEME, T_BG);    /* OCT+: YES (on the THEME fill: an INK keycap, THEME label) */ }
+        {
+            int32_t x = 108 + HALF_UP(90 - kh_ink(KC_OCTUP, "YES"));
+            GFX_HOOK_ALIGN(108, by, 198, by + 26, AL_HV | AL_N(2), "dialog button YES");
+            x = cv_keycap(x, by + HALF_UP(26 - KC_H), KC_OCTUP, T_INK, T_THEME, T_THEME);
+            cv_text_on(x + KH_GAP, by + HALF_UP(26 - KC_H) - 3, &AF_S, "YES", T_INK, T_THEME);   /* (item 122: the capitals centred on the pill) */
+        }
+        cv_blit(DLG_X, DLG_Y);
     }
-    if (hint) {                                       /* SAVE held: K1 picks the slot the sound goes to */
-        GFX_HOOK_ALIGN(0, 78, DLG_W, 78 + KC_H, AL_H | AL_N(4), "dialog hint centred");
-        int32_t w1 = kh_ink(KC_K1, "OTHER SLOT"), w2 = kh_ink(KC_K2, "RENAME"), x0 = HALF_UP(DLG_W - (w1 + 14 + w2)) - 1;   /* (the ink's centre on the dialog's: the keycaps' side margins) K1 OTHER SLOT, K2 RENAME (0.2.21) */
-        cv_key_hint(x0, 78, KC_K1, "OTHER SLOT", 1, T_BG);
-        cv_key_hint(x0 + w1 + 14, 78, KC_K2, "RENAME", 1, T_BG);
-    }
-    GFX_HOOK_ALIGN(10, by, 100, by + 26, AL_HV | AL_N(2), "dialog button NO");
-    cv_key_hint(10 + HALF_UP(90 - kh_ink(KC_OCTDN, "NO")), by + HALF_UP(26 - KC_H), KC_OCTDN, "NO", 1, T_BG);   /* (ink centred) */
-    { CV_HL(108, by, 90, 26); cv_rrect(108, by, 90, 26, 6, T_THEME, T_BG);    /* OCT+: YES (on the THEME fill: an INK keycap, THEME label) */ }
-    {
-        int32_t x = 108 + HALF_UP(90 - kh_ink(KC_OCTUP, "YES"));
-        GFX_HOOK_ALIGN(108, by, 198, by + 26, AL_HV | AL_N(2), "dialog button YES");
-        x = cv_keycap(x, by + HALF_UP(26 - KC_H), KC_OCTUP, T_INK, T_THEME, T_THEME);
-        cv_text_on(x + KH_GAP, by + HALF_UP(26 - KC_H) - 3, &AF_S, "YES", T_INK, T_THEME);   /* (item 122: the capitals centred on the pill) */
-    }
-    cv_blit(DLG_X, DLG_Y);
 }
 
 static void ui_draw_page(uint32_t counting);
@@ -3453,9 +3444,11 @@ static void draw_oct_page(void)
         b[0] = o > 0 ? '+' : o < 0 ? '-' : '0';
         b[1] = o ? (char)('0' + (o < 0 ? -o : o)) : 0;
         b[2] = 0;
-        cv_begin(240, 124, T_BG);
-        cv_text_in(0, 16, 240, &AF_B, b, T_TEXT, T_BG);
-        cv_blit(0, H_HEAD);
+        CV_BANDS(124) {
+            cv_begin(240, 124, T_BG);
+            cv_text_in(0, 16, 240, &AF_B, b, T_TEXT, T_BG);
+            cv_blit(0, H_HEAD);
+        }
         cv_begin(240, (uint32_t)(Y_FOOT - H_HEAD - 124), T_BG);
         for (i = -3; i <= 3; i++) {                     /* the seven octaves, the one now larger and white */
             int32_t cx = 120 + i * 18, cy = 28;

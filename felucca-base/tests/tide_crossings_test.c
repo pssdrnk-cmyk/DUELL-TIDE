@@ -196,13 +196,73 @@ static void chain_dip(void)
     memset(&m,0,sizeof m);
     REQUIRE("chain path: no dip, an open filter 1 stays off", !chain_f1_on(e,t,&v,&m,UF_TOP) && chain_uc(e,t,&v,&m,mid,0)==mid);
 }
+/* W1 (WASH on, Later 14): a hand stops a glide in mid-trip. The voices' effective cutoff (morph_xcut, an ANALOG low-pass pad) used to jump back by GLIDE's whole breath
+ * (two octaves, about 18 dial steps of 256 Q8) when glide_motion(0) zeroed the movement; it now fades by time. And the breath and a transition's dip do not stack: the lower of the two,
+ * each from the undipped cutoff. WASH OFF (motion 0): the cutoff is the same as before. */
+static int32_t xfl(void) { return (((int32_t)mxs[0].lfloor - 20098) * 2317) >> 12; }
+static void wash_stop(void)
+{
+    track_t *t=fresh(0);
+    int32_t uc, fl, e0, e1, worst=0, eb, ed, eboth, stacked;
+    unsigned blk, pass;
+    memset(&gl,0,sizeof gl);
+    t->mwon=1; t->mwpi=0;
+    mxs[0].lp=1; mxs[0].vf=1; mxs[0].lfloor=4096*9; morph_cdd[0]=0;
+    fl=xfl(); uc=fl+3*XBR_Q8;                              /* (room for the whole breath above the floor) */
+    gl.mask=1u; gl.tt=4u; gl.prog=(uint32_t)1u<<(GLIDE_Q-1);   /* 16 bars, the middle of the trip: the movement at its deepest */
+    morph_wlvl=2;                                          /* WASH MID: x 1 */
+    glide_motion(1);
+    REQUIRE("W1: WASH MID, mid-trip: the breath is on", mxs[0].motion>30000 && morph_xcut(t,uc)<uc-XBR_Q8*9/10);
+    e0=morph_xcut(t,uc);
+    for(blk=0;blk<400;blk++) {                             /* the glide stopped by hand: a pass is far faster than a block (here 50 to the millisecond), a block is 2 ms (the real one is 1.45) */
+        fm1_ms+=2u;
+        for(pass=0;pass<100;pass++) glide_motion(0);
+        e1=morph_xcut(t,uc);
+        if(e1-e0>worst) worst=e1-e0;
+        e0=e1;
+    }
+    printf("W1: the effective cutoff after a stop moves at most %d Q8 (%d dial steps) a block; after 800 ms: motion %u\n", (int)worst, (int)(worst/256), (unsigned)mxs[0].motion);
+    REQUIRE("W1: a stopped glide's cutoff moves at most 4 dial steps (1024 Q8) a block (it jumped 4634, 18 steps)", worst<=1024);
+    REQUIRE("W1: the breath is gone for good after the fade (back at the patch's own cutoff)", mxs[0].motion==0 && morph_xcut(t,uc)==uc);
+    /* the dips: breath at its deepest and a half-way transition dip */
+    memset(&gl,0,sizeof gl);
+    gl.mask=1u; gl.tt=4u; gl.prog=(uint32_t)1u<<(GLIDE_Q-1);
+    glide_motion(1);
+    uc=fl+6*XBR_Q8;
+    eb=morph_xcut(t,uc);                                   /* breath only */
+    morph_cdd[0]=16384; mxs[0].motion=0; ed=morph_xcut(t,uc);   /* dip only */
+    glide_motion(1);
+    eboth=morph_xcut(t,uc);
+    stacked=eb-(int32_t)(((int64_t)(eb-fl)*16384)>>15);    /* the old way: the dip taken from the breathed cutoff */
+    printf("W1: breath only %d, dip only %d, both %d (stacked would be %d), floor %d\n", (int)eb,(int)ed,(int)eboth,(int)stacked,(int)fl);
+    REQUIRE("W1: breath and transition dip together give the lower of the two, not both", eboth==(eb<ed?eb:ed) && eboth>stacked && eboth>=fl);
+    /* WASH OFF: no movement, the dip alone is as it was */
+    morph_wlvl=0; memset(&gl,0,sizeof gl);
+    gl.mask=1u; gl.tt=4u; gl.prog=(uint32_t)1u<<(GLIDE_Q-1);
+    mxs[0].motion=0; glide_motion(1);
+    REQUIRE("W1: WASH OFF: the movement stays 0 and the cutoff is the dip alone", mxs[0].motion==0 && morph_xcut(t,uc)==ed);
+    morph_cdd[0]=0; t->mwon=0; mxs[0].lp=mxs[0].vf=0;
+}
+/* Audit finding 9: a new Original's stand-in drain that was left to the render side (core 1 held part 2's job) waits while a new crossing runs already, instead of being cleared with the
+ * stand-ins mapped; with the bridge off it is done as before */
+static void drain_waits(void)
+{
+    track_t *t=fresh(ENGI_FM6);
+    fm6_xt[0].on=1; fm6_xt[0].drain=fm6_xt[0].dirty=1; fm6_xt[0].mute=63u;
+    fm6_block(t);
+    REQUIRE("finding 9: with a crossing running again the drain waits (drain, dirty and the mute kept)", fm6_xt[0].drain==1 && fm6_xt[0].mute==63u);
+    fm6_xt[0].on=0;
+    fm6_block(t);
+    REQUIRE("finding 9: with the bridge off the drain gives back and clears, as before", fm6_xt[0].drain==0 && fm6_xt[0].mute==0 && fm6_xt[0].dirty==0);
+    memset(fm6_xt,0,sizeof fm6_xt);
+}
 #endif
 int main(void)
 {
     setvbuf(stdout, 0, _IONBF, 0);
     at_rest();
 #ifdef CROSSINGS
-    curves(); key_layout(); held_retune(); held_keep_retune(); compact_tuning(); chain_dip();
+    curves(); key_layout(); held_retune(); held_keep_retune(); compact_tuning(); chain_dip(); wash_stop(); drain_waits();
 #endif
     printf("crossings: %u checks, %u failures\n",checks,failures);
     return failures?1:0;
