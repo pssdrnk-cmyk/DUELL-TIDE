@@ -1188,23 +1188,25 @@ static BENCH_FN void bench_draw(void)
     ui.force = 0;
     for (band = 0; band < 2u; band++) {
         int32_t y0 = (int32_t)band * 120;
-        cv_begin(240, 120, T_BG);
-        if (band == 0u) {
-            cv_text_on(4, 2, &AF_S, "BENCH " BENCH_TAG, T_THEME, T_BG);
-            bench_put(t, "PAGE ");
-            bench_num(t + 5, bench.page + 1);
-            bench_put(t + str_len(t), "/");
-            bench_num(t + str_len(t), (int32_t)bench_pages());
-            cv_text_r(236, 2, &AF_S, t, T_MID, T_BG);
-            cv_rect(0, 17, 240, 1, T_RAISE);
+        CV_BANDS(120) {
+            cv_begin(240, 120, T_BG);
+            if (band == 0u) {
+                cv_text_on(4, 2, &AF_S, "BENCH " BENCH_TAG, T_THEME, T_BG);
+                bench_put(t, "PAGE ");
+                bench_num(t + 5, bench.page + 1);
+                bench_put(t + str_len(t), "/");
+                bench_num(t + str_len(t), (int32_t)bench_pages());
+                cv_text_r(236, 2, &AF_S, t, T_MID, T_BG);
+                cv_rect(0, 17, 240, 1, T_RAISE);
+            }
+            if (bench.page == 0u)
+                bench_draw_state(y0);
+            else
+                bench_draw_table(bench.page, y0);
+            if (band == 1u)
+                cv_text_on(4, 224 - y0, &AF_S, bench.on ? "K1 PAGE   OCT - STOP" : "K1 PAGE   K4/OCT + START   OCT - BACK", T_DIM, T_BG);
+            cv_blit(0, (uint32_t)y0);
         }
-        if (bench.page == 0u)
-            bench_draw_state(y0);
-        else
-            bench_draw_table(bench.page, y0);
-        if (band == 1u)
-            cv_text_on(4, 224 - y0, &AF_S, bench.on ? "K1 PAGE   OCT - STOP" : "K1 PAGE   K4/OCT + START   OCT - BACK", T_DIM, T_BG);
-        cv_blit(0, (uint32_t)y0);
     }
 }
 

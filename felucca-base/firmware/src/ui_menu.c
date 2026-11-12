@@ -321,7 +321,7 @@ static void about_word_draw(int32_t x, int32_t y)
     for (i = 0; i < (uint32_t)sizeof SPL_WORD; i++) {
         uint32_t v = SPL_WORD[i] >> 4, n = (SPL_WORD[i] & 15u) + 1u, e = p + n;
         for (; v && p < e; p++) {
-            int32_t px = x + (int32_t)(p % SPL_WORD_W), py = y + cv_oy + (int32_t)(p / SPL_WORD_W);
+            int32_t px = x + (int32_t)(p % SPL_WORD_W), py = y + CV_Y + (int32_t)(p / SPL_WORD_W);
             if (px < 0 || py < 0 || px >= (int32_t)cv_w || py >= (int32_t)cv_h)
                 continue;
             cv_px[(uint32_t)py * cv_w + (uint32_t)px] = swap16(ux_mix(swap16(cv_px[(uint32_t)py * cv_w + (uint32_t)px]), T_TEXT, (int32_t)(v * 100u / 15u)));
@@ -883,16 +883,18 @@ static void draw_menu(void)
         int32_t thumb = MENU_DOC_H * MENU_DOC_H / (max + MENU_DOC_H);
         if (thumb < 12) thumb = 12;
         for (pass = 0; pass < 2u; pass++) {
-            cv_begin(240, pass ? MENU_DOC_H - 124u : 124u, T_BG);
-            cv_bg = T_BG;
-            cv_oy = pass ? -124 : 0;
-            cv_scroll = 1;
-            menu_document(-scroll, 1);
-            cv_scroll = 0;
-            cv_rrect(229, 4, 3, MENU_DOC_H - 8, 1, T_LINE, T_BG);           /* the scroll bar */
-            cv_rrect(229, 4 + (max ? scroll * (MENU_DOC_H - 8 - thumb) / max : 0), 3, thumb, 1, T_MID, T_LINE);
-            cv_oy = 0;
-            cv_blit(0, H_HEAD + pass * 124u);
+            CV_BANDS(pass ? MENU_DOC_H - 124u : 124u) {
+                cv_begin(240, pass ? MENU_DOC_H - 124u : 124u, T_BG);
+                cv_bg = T_BG;
+                cv_oy = pass ? -124 : 0;
+                cv_scroll = 1;
+                menu_document(-scroll, 1);
+                cv_scroll = 0;
+                cv_rrect(229, 4, 3, MENU_DOC_H - 8, 1, T_LINE, T_BG);           /* the scroll bar */
+                cv_rrect(229, 4 + (max ? scroll * (MENU_DOC_H - 8 - thumb) / max : 0), 3, thumb, 1, T_MID, T_LINE);
+                cv_oy = 0;
+                cv_blit(0, H_HEAD + pass * 124u);
+            }
         }
         cv_begin(240, 240 - (H_HEAD + MENU_DOC_H), T_BG);
         about_keys(ABOUT_KY - (H_HEAD + MENU_DOC_H));
@@ -908,30 +910,32 @@ static void draw_menu(void)
     split = menu_split(first, n, pg, end);
     for (pass = 0; pass < 2u; pass++) {
         int32_t top_y = pass ? (int32_t)split : H_HEAD;
-        cv_begin(240, pass ? 240u - split : split - H_HEAD, T_BG);
-        cv_oy = -top_y;                               /* drawn in screen rows */
-        if (!pass)
-            menu_tabs();
-        for (k = 0; k < n; k++)
-            if (menu_place(first + k, &u) == pg && mu_y(u) + (int32_t)menu_units(first + k) * MU_P - 1 > top_y && mu_y(u) - 1 < top_y + (int32_t)cv_h)
-                menu_row(first + k);
-        if (pass) {
-            {
-                int32_t xe = mtab_pages(menu_tab()) > 1u ? 196 : 232;
-                if (MI_READONLY(ui.menu_sel))                 /* TEST, ABOUT: SELECT picks the row, KNOB 1 right opens it */
-                    cv_key_row(8, xe, MK_Y, (const khint_t[2]){KEYS[0], KEYS[2]}, 2u, 3u, T_BG);
-                else
-                    cv_key_row(8, xe, MK_Y, KEYS, menu_valued(ui.menu_sel) ? 2u : 1u, 3u, T_BG);
-                if (xe < 232) {                               /* the page, as every page's counter: "1/2" */
-                    char pc[8] = "1/2";
-                    pc[0] = (char)('0' + menu_page() + 1u);
-                    pc[2] = (char)('0' + mtab_pages(menu_tab()));
-                    cv_text_r(232, MK_Y - 3, &AF_S, pc, T_MID, T_BG);   /* item 138: on the hint words' line (gfx.c cv_key_hint: y - 3); MK_Y + 3 put its capitals on rows 231 .. 242, past the screen's last row */
+        CV_BANDS(pass ? 240u - split : split - H_HEAD) {
+            cv_begin(240, pass ? 240u - split : split - H_HEAD, T_BG);
+            cv_oy = -top_y;                               /* drawn in screen rows */
+            if (!pass)
+                menu_tabs();
+            for (k = 0; k < n; k++)
+                if (menu_place(first + k, &u) == pg && mu_y(u) + (int32_t)menu_units(first + k) * MU_P - 1 > top_y && mu_y(u) - 1 < top_y + (int32_t)cv_ph)
+                    menu_row(first + k);
+            if (pass) {
+                {
+                    int32_t xe = mtab_pages(menu_tab()) > 1u ? 196 : 232;
+                    if (MI_READONLY(ui.menu_sel))                 /* TEST, ABOUT: SELECT picks the row, KNOB 1 right opens it */
+                        cv_key_row(8, xe, MK_Y, (const khint_t[2]){KEYS[0], KEYS[2]}, 2u, 3u, T_BG);
+                    else
+                        cv_key_row(8, xe, MK_Y, KEYS, menu_valued(ui.menu_sel) ? 2u : 1u, 3u, T_BG);
+                    if (xe < 232) {                               /* the page, as every page's counter: "1/2" */
+                        char pc[8] = "1/2";
+                        pc[0] = (char)('0' + menu_page() + 1u);
+                        pc[2] = (char)('0' + mtab_pages(menu_tab()));
+                        cv_text_r(232, MK_Y - 3, &AF_S, pc, T_MID, T_BG);   /* item 138: on the hint words' line (gfx.c cv_key_hint: y - 3); MK_Y + 3 put its capitals on rows 231 .. 242, past the screen's last row */
+                    }
                 }
             }
+            cv_oy = 0;
+            cv_blit(0, (uint32_t)top_y);
         }
-        cv_oy = 0;
-        cv_blit(0, (uint32_t)top_y);
     }
 }
 static void enc_drop(void)                             /* knob turns nobody takes */

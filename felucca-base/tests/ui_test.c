@@ -67,20 +67,35 @@ static void txt_hook(int32_t x0, int32_t y0, int32_t x1, int32_t y1, const char 
         txt_n++;
     }
 }
-static void txt_blit(int32_t x, int32_t y)             /* the canvas goes to the screen at (x, y): its texts get their screen boxes */
+static void txt_blit(int32_t x, int32_t y, int32_t ch)           /* the canvas goes to the screen at (x, y): its texts get their screen boxes */
 {
     if (txt_on && txt_grid_now())
         txt_grid = txt_grid_now();
-    for (; txt_pend < txt_n; txt_pend++) {
-        txt_log[txt_pend].x0 = (int16_t)(txt_log[txt_pend].x0 + x); txt_log[txt_pend].x1 = (int16_t)(txt_log[txt_pend].x1 + x);
-        txt_log[txt_pend].y0 = (int16_t)(txt_log[txt_pend].y0 + y); txt_log[txt_pend].y1 = (int16_t)(txt_log[txt_pend].y1 + y);
+    {   /* b10 ui-c: a picture drawn in canvas bands records every text in each band: the ones wholly outside this band's rows are not in it, one across two bands is the same screen box twice (kept once) */
+        uint32_t i, j, k = txt_pend;
+        for (i = txt_pend; i < txt_n; i++) {
+            int dup = 0;
+            if (txt_log[i].y1 <= 0 || txt_log[i].y0 >= ch)
+                continue;
+            txt_log[k] = txt_log[i];
+            txt_log[k].x0 = (int16_t)(txt_log[k].x0 + x); txt_log[k].x1 = (int16_t)(txt_log[k].x1 + x);
+            txt_log[k].y0 = (int16_t)(txt_log[k].y0 + y); txt_log[k].y1 = (int16_t)(txt_log[k].y1 + y);
+            for (j = 0; j < txt_pend && !dup; j++)
+                dup = txt_log[j].x0 == txt_log[k].x0 && txt_log[j].x1 == txt_log[k].x1 && txt_log[j].y0 == txt_log[k].y0 && txt_log[j].y1 == txt_log[k].y1 && !strcmp(txt_log[j].s, txt_log[k].s);
+            if (!dup)
+                k++;
+        }
+        txt_n = k;
+        txt_pend = k;
     }
 }
 #define GFX_HOOK_TEXT(x0, y0, x1, y1, s, flags) (txt_cw = (int32_t)cv_w, txt_hook((x0), (y0), (x1), (y1), (s)))
 #define GFX_HOOK_PEN(y, f) (txt_face = (f))
-#define GFX_HOOK_BLIT(x, y, r0) txt_blit((int32_t)(x), (int32_t)(y))
+#define GFX_HOOK_BLIT(x, y, r0) txt_blit((int32_t)(x), (int32_t)(y), (int32_t)cv_h)
 #define GFX_HOOK_BEGIN() (txt_pend = txt_n)
 #define GFX_HOOK_PIXELS(n) ((void)0)
+static uint32_t ui_over_n;                            /* (b10 ui-c: pictures taller than a canvas band begun outside CV_BANDS: they would be cut) */
+#define GFX_HOOK_OVER(h, inb) ((h) > CV_BAND && !(inb) ? ui_over_n++ : 0u)
 #endif
 #define main hostsim_main
 #include "hostsim.c"

@@ -937,28 +937,30 @@ static const char *const GL_MODE_WHAT[5] = {"SLOWLY EVOLVES YOUR SOUND", "SLOWLY
 static void graph_tide(void)
 {
     uint32_t k;
-    cv_begin(240, TB_Y1 - TB_Y0, T_BG);
-    cv_bg = T_BG;
-    cv_oy = -TB_Y0;
-    for (k = 0; k < NSHOWN; k++) {
-        int32_t sy = 119 + 14 * (int32_t)k;
-        tide_track(70 + 14 * (int32_t)k, JB_X0, JB_X0 + JB_W, GT_SOUND, k);
-        tide_track(70 + 14 * (int32_t)k, JB_X0 + JB_DX, JB_X0 + JB_DX + JB_W, GT_SEQ, k);
-        tide_steps(&trk[k], sy, 9, tide_pc(k));
-        if (ui_part_hot(k))
-            cv_rect(5, sy - 9, 2, 10, T_PTHEME(k));      /* (the steps row's mark of the selected part) */
+    CV_BANDS(TB_Y1 - TB_Y0) {
+        cv_begin(240, TB_Y1 - TB_Y0, T_BG);
+        cv_bg = T_BG;
+        cv_oy = -TB_Y0;
+        for (k = 0; k < NSHOWN; k++) {
+            int32_t sy = 119 + 14 * (int32_t)k;
+            tide_track(70 + 14 * (int32_t)k, JB_X0, JB_X0 + JB_W, GT_SOUND, k);
+            tide_track(70 + 14 * (int32_t)k, JB_X0 + JB_DX, JB_X0 + JB_DX + JB_W, GT_SEQ, k);
+            tide_steps(&trk[k], sy, 9, tide_pc(k));
+            if (ui_part_hot(k))
+                cv_rect(5, sy - 9, 2, 10, T_PTHEME(k));      /* (the steps row's mark of the selected part) */
+        }
+        cv_text_in(0, UT_TY(S, 104), 240, &AF_S, GL_MODE_WHAT[gl.mode % 5u], T_MID, T_BG);   /* (between the faders and the steps' tallest bars) */
+        /* Keep GLIDE's progress bar as well as its status and moving fader knobs.
+         * This strip sits below both parts' playheads and above the card row. */
+        if (glide_running() && !gl.armed) {
+            int32_t w = (int32_t)((222u * gl.prog) >> GLIDE_Q);
+            cv_rrect(9, TB_Y1 - 3, 222, 3, 1, T_RAISE, T_BG);
+            if (w > 0)
+                cv_rrect(9, TB_Y1 - 3, w, 3, 1, T_ACCENT, T_RAISE);
+        }
+        cv_oy = 0;
+        cv_blit(0, TB_Y0);
     }
-    cv_text_in(0, UT_TY(S, 104), 240, &AF_S, GL_MODE_WHAT[gl.mode % 5u], T_MID, T_BG);   /* (between the faders and the steps' tallest bars) */
-    /* Keep GLIDE's progress bar as well as its status and moving fader knobs.
-     * This strip sits below both parts' playheads and above the card row. */
-    if (glide_running() && !gl.armed) {
-        int32_t w = (int32_t)((222u * gl.prog) >> GLIDE_Q);
-        cv_rrect(9, TB_Y1 - 3, 222, 3, 1, T_RAISE, T_BG);
-        if (w > 0)
-            cv_rrect(9, TB_Y1 - 3, w, 3, 1, T_ACCENT, T_RAISE);
-    }
-    cv_oy = 0;
-    cv_blit(0, TB_Y0);
 }
 /* TIDE SETTINGS: the settings as the list pages' rows (PATCHES, template 9: UT_L5_*), from row UT_L5_Y0, 20 apart: the name (M) at the left,
  * the value (M, the part's colour; a switch for ON / OFF) at the right, the picked row filled in the part's colour with dark text.
@@ -968,28 +970,30 @@ static void graph_tidelist(void)
 {
     uint32_t r, top = jl_sel % JL_N >= JL_VIS ? jl_sel % JL_N - (JL_VIS - 1u) : 0u;
     int32_t y0 = UT_L5_Y0 - 2;
-    cv_begin(240, (uint32_t)(UT_L5_PITCH * (int32_t)JL_VIS + 2), T_BG);
-    cv_bg = T_BG;
-    cv_oy = -y0;
-    for (r = top; r < JL_N && r < top + JL_VIS; r++) {
-        int32_t y = UT_L5_Y0 + (int32_t)(r - top) * UT_L5_PITCH, ty = UT_TY(M, y + UT_L5_TEXT_BASE), xr = UT_L5_X + UT_L5_W - 5;   /* (the value 5 px in from the row's right end, as the name from its left: the SAVE lists' LR_R) */
-        int sel = r == jl_sel % JL_N;
-        uint16_t bg = sel ? T_THEME : T_BG;
-        const char *v = jl_vname(r, jl_get(r));
-        if (sel) {
-            CV_HL(UT_L5_X, y, UT_L5_W, UT_L5_H);          /* (the picked row's pill: an allowed highlight, as the other lists') */
-            cv_rrect(UT_L5_X, y, UT_L5_W, UT_L5_H, UT_T3_ROW_R, T_THEME, T_BG);
+    CV_BANDS(UT_L5_PITCH * (int32_t)JL_VIS + 2) {
+        cv_begin(240, (uint32_t)(UT_L5_PITCH * (int32_t)JL_VIS + 2), T_BG);
+        cv_bg = T_BG;
+        cv_oy = -y0;
+        for (r = top; r < JL_N && r < top + JL_VIS; r++) {
+            int32_t y = UT_L5_Y0 + (int32_t)(r - top) * UT_L5_PITCH, ty = UT_TY(M, y + UT_L5_TEXT_BASE), xr = UT_L5_X + UT_L5_W - 5;   /* (the value 5 px in from the row's right end, as the name from its left: the SAVE lists' LR_R) */
+            int sel = r == jl_sel % JL_N;
+            uint16_t bg = sel ? T_THEME : T_BG;
+            const char *v = jl_vname(r, jl_get(r));
+            if (sel) {
+                CV_HL(UT_L5_X, y, UT_L5_W, UT_L5_H);          /* (the picked row's pill: an allowed highlight, as the other lists') */
+                cv_rrect(UT_L5_X, y, UT_L5_W, UT_L5_H, UT_T3_ROW_R, T_THEME, T_BG);
+            }
+            cv_text_on(UT_L5_TAG_X, ty, &AF_M, JL_NAME[r], sel ? T_INK : T_TEXT, bg);
+            cv_text_r(xr, ty, &AF_M, v, sel ? T_INK : jl_dimmed(r) ? T_DIM : T_THEME, bg);   /* (a row that does nothing now: dim) */
         }
-        cv_text_on(UT_L5_TAG_X, ty, &AF_M, JL_NAME[r], sel ? T_INK : T_TEXT, bg);
-        cv_text_r(xr, ty, &AF_M, v, sel ? T_INK : jl_dimmed(r) ? T_DIM : T_THEME, bg);   /* (a row that does nothing now: dim) */
+        if (JL_N > JL_VIS) {                                 /* where the window is in the list: a 2 px mark at the right (audit C12) */
+            int32_t hh = UT_L5_PITCH * (int32_t)JL_VIS, th = hh * (int32_t)JL_VIS / (int32_t)JL_N;
+            cv_rect(236, UT_L5_Y0, 2, hh, T_RAISE);
+            cv_rect(236, UT_L5_Y0 + (hh - th) * (int32_t)top / (int32_t)(JL_N - JL_VIS), 2, th, T_MID);
+        }
+        cv_oy = 0;
+        cv_blit(0, (uint32_t)y0);
     }
-    if (JL_N > JL_VIS) {                                 /* where the window is in the list: a 2 px mark at the right (audit C12) */
-        int32_t hh = UT_L5_PITCH * (int32_t)JL_VIS, th = hh * (int32_t)JL_VIS / (int32_t)JL_N;
-        cv_rect(236, UT_L5_Y0, 2, hh, T_RAISE);
-        cv_rect(236, UT_L5_Y0 + (hh - th) * (int32_t)top / (int32_t)(JL_N - JL_VIS), 2, th, T_MID);
-    }
-    cv_oy = 0;
-    cv_blit(0, (uint32_t)y0);
     {   /* how a value changes (owner, 2026-11-01): the keycaps under the list, S, the hints' colour (the list's own strip: the canvas holds 124 rows) */
         int32_t hy = UT_L5_Y0 + UT_L5_PITCH * (int32_t)JL_VIS + 4, x;
         cv_begin(240, 20, T_BG);
