@@ -2942,7 +2942,7 @@ static void graph_mlearn(void)
         cv_text(12, 62, &AF_M, b, T_MID);
     } else if (!ui.ml.pick) {
         cv_text(12, 10, &AF_M, "1. TURN ANY KNOB TO PICK IT", T_TEXT);
-        cv_text(12, 32, &AF_M, "2. SEND A CC FROM YOUR CONTROLLER", T_TEXT);
+        cv_text(12, 32, &AF_M, "2. SEND A CC FROM YOUR GEAR", T_TEXT);
     } else {
         ml_name(a);
         cv_text_grad(12, 8, &AF_L, a, 12);
