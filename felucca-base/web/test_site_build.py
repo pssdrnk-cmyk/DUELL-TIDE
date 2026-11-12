@@ -56,9 +56,9 @@ class GreenGate(unittest.TestCase):
     """--require-green: only a release whose tag commit has a green Host tests run is offered"""
     SHA = {"stable-2026-11-03": "a" * 40, "beta-2026-11-04": "b" * 40}
 
-    def tags(self, fake, rels=None):
+    def tags(self, fake, rels=None, grand=None):
         said = []
-        c = releases.pick(FIXTURE if rels is None else rels, releases.green_gate("o/r", run=fake, say=said.append))
+        c = releases.pick(FIXTURE if rels is None else rels, releases.green_gate("o/r", run=fake, say=said.append, grandfathered=grand if grand is not None else {}))
         return (c["stable"] or {}).get("tag_name"), (c["beta"] or {}).get("tag_name"), said
 
     def test_both_green(self):
@@ -93,6 +93,30 @@ class GreenGate(unittest.TestCase):
         fake = Fake(self.SHA, self.SHA.values())
         self.tags(fake)
         self.assertIn(f"repos/o/r/actions/workflows/host-tests.yml/runs?head_sha={'a' * 40}&status=success&per_page=1", fake.asked)
+
+    def test_grandfathered_releases_are_offered_with_no_green_run_at_all(self):
+        fake = Fake(self.SHA, [])
+        st, be, said = self.tags(fake, grand=dict(self.SHA))
+        self.assertEqual((st, be), ("stable-2026-11-03", "beta-2026-11-04"))
+        self.assertTrue(all("published before the CI gate" in x for x in said) and len(said) == 2)
+        self.assertFalse([a for a in fake.asked if "/actions/" in a])              # (no run is looked up for them)
+
+    def test_a_grandfathered_tag_that_moved_is_gated(self):
+        self.assertEqual(self.tags(Fake(self.SHA, []), grand={"stable-2026-11-03": "9" * 40, "beta-2026-11-04": "9" * 40})[:2], (None, None))
+
+    def test_a_new_release_is_not_grandfathered(self):
+        rels = copy.deepcopy(FIXTURE)
+        newer = copy.deepcopy(rels[2])
+        newer.update(tag_name="stable-2026-11-10", published_at="2026-11-10T08:00:00Z", created_at="2026-11-10T08:00:00Z")
+        newer["assets"] = [{"name": "duell-tide-stable-2026-11-10.fwsc", "size": 5}]
+        fake = Fake(dict(self.SHA, **{"stable-2026-11-10": "c" * 40}), [])
+        self.assertEqual(self.tags(fake, rels + [newer], grand=dict(self.SHA))[:2], ("stable-2026-11-03", "beta-2026-11-04"))     # the new one is red (not grandfathered): the older ones stand
+
+    def test_the_real_list_names_the_published_releases(self):
+        old = releases.pre_gate_releases()
+        self.assertEqual(len(old), 8)
+        self.assertEqual(old["tide-1.0.0-b9"], "78876258ba54f393a3408906b8516d53c74788e6")
+        self.assertEqual(old["stable-2026-11-03"], "187e9d07e5cf7d4718822e44acf21047881bc367")
 
     def test_without_the_gate_nothing_is_asked(self):
         self.assertEqual(releases.pick(FIXTURE)["stable"]["tag_name"], "stable-2026-11-03")

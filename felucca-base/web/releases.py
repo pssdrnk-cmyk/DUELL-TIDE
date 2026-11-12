@@ -22,6 +22,8 @@ Nothing found is not an error: the site then shows "not released yet" for that c
 host-tests.yml: any run of that workflow on exactly that commit that concluded success, push, pull request or manual). The newest release that passes is
 chosen; one that does not is skipped with the reason printed, and the next older one is looked at (a beta must still be newer than the chosen stable).
 A commit that cannot be resolved, or a run list that cannot be read, counts as not green: nothing red or unchecked is offered.
+The releases published before the gate existed are listed in web/pre_gate_releases.txt (tag and commit, one per line). Such a release is offered as before, whether or not
+its commit has a run, and the log says "published before the CI gate". It matches only while the tag still points at the listed commit; a new release is never on the list.
 
 --releases-json FILE reads `gh api repos/OWNER/NAME/releases` output instead of calling gh (tests, offline runs).
 --no-download only prints the choice (no files, no gh download or commit lookup).
@@ -87,16 +89,34 @@ def tag_commit(repo, rel, run=None):
     return c.stdout.strip() if c.returncode == 0 and re.fullmatch(r"[0-9a-f]{40}", c.stdout.strip()) else ""
 
 
-def green_gate(repo, workflow="host-tests.yml", run=None, say=print):
+PRE_GATE = Path(__file__).resolve().with_name("pre_gate_releases.txt")
+
+
+def pre_gate_releases(path=None):
+    """-> {tag: commit (full SHA)} of the releases published before the CI gate (web/pre_gate_releases.txt: 'TAG SHA' per line, # comments)"""
+    out = {}
+    for ln in Path(path or PRE_GATE).read_text(encoding="utf-8").splitlines():
+        ln = ln.split("#", 1)[0].split()
+        if len(ln) == 2 and re.fullmatch(r"[0-9a-f]{40}", ln[1]):
+            out[ln[0]] = ln[1]
+    return out
+
+
+def green_gate(repo, workflow="host-tests.yml", run=None, say=print, grandfathered=None):
     """-> ok(release): True when the commit of the release's tag has a successful run of the tests workflow. Fails closed (an unresolved commit, an API
-    error, no run, a red or still running one: False, with the reason through say). Remembers each commit it asked about. run = the gh caller (tests)."""
+    error, no run, a red or still running one: False, with the reason through say). Remembers each commit it asked about. run = the gh caller (tests).
+    A release on the pre-gate list (grandfathered: {tag: SHA}, default web/pre_gate_releases.txt) whose tag still points at the listed commit passes without a run."""
     seen = {}
+    old = pre_gate_releases() if grandfathered is None else grandfathered
 
     def ok(rel):
         sha = tag_commit(repo, rel, run)
         if not sha:
             say(f"{rel['tag_name']}: skipped, the commit of the tag cannot be resolved")
             return False
+        if old.get(rel["tag_name"]) == sha:
+            say(f"{rel['tag_name']}: offered, published before the CI gate ({sha[:9]})")
+            return True
         if sha not in seen:
             r = (run or gh)("api", f"repos/{repo}/actions/workflows/{workflow}/runs?head_sha={sha}&status=success&per_page=1", "--jq", ".total_count", check=False)
             n = r.stdout.strip()
