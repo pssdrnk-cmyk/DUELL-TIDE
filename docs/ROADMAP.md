@@ -107,7 +107,7 @@ Status of 1 to 3 (b10): built and measured (`jam/check.sh -j N | --changed`, `ja
 2. A new ARC phase's first downbeat still plays with the old phase's level and voices (the main loop sets the levers after the bar turns; the drop's silence is armed ahead and is exact). One step per phase change; about 40 B to arm the levers a bar ahead.
 3. `factory_multis.py build` no longer reproduces the committed End B AMOUNT bytes: a rebuild moves four bytes in every built record (two values a part, 40 to 15 and 41 to 16). The b7 records were patched to keep the old bytes (`multi_patch.py keep-amount`); a rebuild from source shows the drift again. The sounds-against-records question is the pack's.
 4. RAM headroom: the b7 build had only about 8 B above the build's 4,096 B rule at the start of the night (4,104 B free); a change that adds RAM will fail the build. Re-measure the merged image.
-5. Cleanup after TURNS: `sqm_turns` and `tarc_fast` are kept for the tests and play nothing; they can go.
+5. ~~Cleanup after TURNS~~: `sqm_turns` and `tarc_fast` were removed in b8 (`5a3e086`); checked again on 12 November (b10 round 2): no symbol of them is in the rc2 image.
 6. TIDE range overshoot of 2 to 5 semitones past the Original's highest + 12 (M01 +4, M04 +2, M07 +5, M08 +3) and below the floor (M15 p2 -2), the stab anchors (M01 keeps 0 of 3 hits in a bar, M02 keeps 1 of 2) and one AIR onset (M16 p1): check whether it is musical or a TIDE bug. `tideroles` lists them as per-part allowances (`AL[]` in `tests/tide_roles_test.c`, sized to what was measured, found in b10); remove an allowance when its cause is fixed. The test's table also needs rows for the new multis (see the comment above `AL[]`).
 6. TRAVEL keeps the multi's colour: M02's 8-bar brightness range is x6.6 (mark x2.5). `JCTX_MIN 1` brought it to x4.2 but made M02 +5 LU louder, so it was reverted; and the blend between two sounds is dull mid-trip on M13 and the FM6 multis (the rest of X1). Needs a way to pick destinations by level and colour together ([MR5](audits/2026-11-09/musical-review/TASKS.md#mr5)).
 7. Two multis for the missing roles, a sparse figure with a texture and a keys house stab ([MR9](audits/2026-11-09/musical-review/TASKS.md#mr9)), and the roles rows T8 to T10 (the new reel and its `tideroles` levels). Not built in the night.
@@ -200,7 +200,7 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 - Documented limits of the keys-record-into-ARP-SEQ pattern (Released in b3): a 2-step pattern in REPLACE splits a chord across the step boundary, and the key's step is predicted from the POLY stretch before the next arp step runs (it can land one step off at a stretch change). [Brief R2](audits/2026-11-08/liverec/TASKS.md#r2)
 - Plain DUELL's `rec_note` stays under `#else`: deliberate, a shared `rec_put` would change the `DUELL_TIDE=0` binary.
 - Named `tide.h` hooks for the raw `#if DUELL_TIDE` blocks in `seq.c`; a `seq_len()` helper; one "past half step" helper.
-- Dead `SC_MODE` code under TIDE (flash to buy back, with the MODE page's `CG3` cards).
+- ~~Dead `SC_MODE` code under TIDE~~: checked on 12 November (b10 round 2): nothing to buy back. The MODE page's draw, graph and knob code is under `#if !DUELL_TIDE`, and `TIDE_MODE_PG` / `TIDE_GRID3` are constant 0 in TIDE, so the compiler folds the rest; the rc2 image has no `graph_mode` and no `CG3` symbol (`mode_knob` stays: TIDE SETTINGS calls it).
 - A small per-row kind table for TIDE SETTINGS (replaces the row comparisons in `tide_ui.c`).
 
 **Hot code check (K6)**
