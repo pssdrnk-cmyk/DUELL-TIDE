@@ -548,18 +548,22 @@ static uint32_t jctx_dist(uint32_t a, uint32_t b)
     int32_t dl = (int32_t)(a >> 3) - (int32_t)(b >> 3), db = (int32_t)(a & 7u) - (int32_t)(b & 7u);
     return (uint32_t)(dl < 0 ? -dl : dl) + 4u * (uint32_t)(db < 0 ? -db : db);
 }
-static uint32_t jctx_near(uint32_t e, uint32_t at, uint32_t *pick, uint32_t n)
+static uint32_t jctx_near(uint32_t e, uint32_t at, uint32_t *pick, uint32_t n, uint32_t pk)
 {
-    uint32_t i, j, m, keep = n < JCTX_KEEP ? n : JCTX_KEEP, a = jctx_of(e, at);
+    uint32_t i, j, m, keep = n < JCTX_KEEP ? n : JCTX_KEEP, a = jctx_of(e, at), col = tide_mu[pk];
     if (a == JCTX_NONE)                                  /* (the Original has no row: nothing to stay near, as for a USER record) */
         return n;
-    for (i = 0; i < keep; i++) {                         /* (a partial selection sort: the nearest first, the lower index on a tie; a sound with no row last) */
+    for (i = 0; i < keep; i++) {                         /* (a partial selection sort: the nearest first, the lower index on a tie. b10 Later 6b, MR5, col: a part
+                                                          * as a factory multi loaded it keeps the multi's colour: a sound in another brightness octave than the
+                                                          * Original, or with no row, is never kept (TRAVEL took M12's 1 kHz pad to 210 and 511 Hz, M17's held
+                                                          * drone to a decaying BELL STAB), nor one whose level its TRIM cannot reach (M19 -25.5 LUFS). A sound loaded alone walks as J1) */
         uint32_t best = i, bd = 0xFFFFFFFFu, d, v;
         for (j = i; j < n; j++)
-            if ((d = (v = jctx_of(e, pick[j])) == JCTX_NONE ? 0xFFFFFFFEu : jctx_dist(a, v)) < bd)
+            if ((d = (v = jctx_of(e, pick[j])) == JCTX_NONE || (col && (((v ^ a) & 7u) ||   /* (.. nor one whose level its TRIM cannot reach: morph_to_sound) */
+                 ds_value(ds_get(e, pick[j]), P_TRIM, TP[P_TRIM].def) + JRNY_MU[col - 1u][pk] - 2 * (int32_t)(v >> 3) > 127)) ? 0xFFFFFFFEu : jctx_dist(a, v)) < bd)
                 bd = d, best = j;
         m = pick[i], pick[i] = pick[best], pick[best] = m;
-        if (i >= JCTX_MIN && bd > JCTX_NEAR)
+        if ((col && bd >= 0xFFFFFFFEu) || (i >= JCTX_MIN && bd > JCTX_NEAR))
             return i;
     }
     return keep;
@@ -588,15 +592,15 @@ static void tide_journey(uint32_t mask, uint32_t x, uint32_t snd, uint32_t seq)
                     pick[n++] = j;
                 }
             if (!UP_REC_USER(t) && t->preset < ds_count(e))   /* (J1: the nearest to the Original's factory sound, so a set cannot drift away step by step, as WANDER; a USER record has no row: as before) */
-                n = jctx_near(e, t->preset, pick, n);
+                n = jctx_near(e, t->preset, pick, n, k);
             n = jh_filter(k, e, pick, n);                /* (then the memory: it moves on through those, never out of them) */
             c = n ? pick[(r >> 8) % n] : 0u;
             if (n > 1u)
                 c = sound_complement_pick(k, e, c, pick[(r >> 16) % n], r >> 4);
-            if (!n || !morph_to_sound(k, x, c))
-                gl_sound_roll(k, 1u << k, x);
-            else
+            if (n && morph_to_sound(k, x, c))
                 jh_push(k, c);                           /* (only a target really adopted is remembered) */
+            else if (n || !tide_mu[k])                   /* (b10: a factory multi's part with no sound of its colour keeps the end it left: it travels between its own two) */
+                gl_sound_roll(k, 1u << k, x);
             if (morph_isfm(morph_ready(k))) {
                 /* The scale checked the notes before the FM6 patch transpose.
                  * JRNY changes colour; keep the part's reference key. */
