@@ -199,7 +199,7 @@ class BackupTests(Base):
         self.assertRegex(f["created"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$")
         self.assertEqual([o["id"] for o in f["objects"]], [i for i in jd.DUELL_IDS if i not in jd.MULTI2_IDS] + [40] * 4)
         a = jd.read_archive(text.decode())
-        self.assertEqual(sorted(a.objects), sorted(jd.DUELL_IDS + [1000, 1001, 1005, 1064]))
+        self.assertEqual(sorted(a.objects), sorted([i for i in jd.DUELL_IDS if i not in jd.MULTI2_IDS] + [1000, 1001, 1005, 1064]))
 
     def test_web_file_read_here(self):
         a = jd.read_archive(ctl("captureJs")["text"])
