@@ -1053,7 +1053,7 @@ static uint32_t tide_sig(void)
            ((uint32_t)sqm_arc | (uint32_t)tarc.phase << 2 | (uint32_t)tarc.left << 5 | (uint32_t)tarc.hand << 9 | (uint32_t)tarc.len << 10) * 0x2545F491u ^   /* (audit C4: no field ORed over another) */
            ((morph_fader_of(1u - pi) | seqm_fader_of(1u - pi) << 7 | (song.playing ? trk[1u - pi].seq_idx : 0xFFu) << 14) * 0x85EBCA77u ^
             sqm_key(&sqm[(1u - pi) % NSHOWN]) * 0xC2B2AE3Du ^ tide_steps_sig(&trk[1u - pi]) * 0x165667B1u ^ 0x27D4EB2Fu) ^
-           tide_steps_sig(t) * 0xD3A2646Cu;
+           tide_steps_sig(t) * 0xD3A2646Cu ^ (uint32_t)morph.seed * 0x1B873593u;   /* (the seed: a ROLL sets it at once and CALL AND ANSWER's listening bars follow; the ends' key comes later) */
 }
 
 /* ---------------------------------------------------------------- kept over a power cycle --- */
