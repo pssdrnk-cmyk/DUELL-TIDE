@@ -1211,11 +1211,27 @@ static void k1_line(const char *label, const char *value, const char *unit, cons
     if (after && after[0]) {
         if (!after_r)
             cv_text_on(x + UT_A_K1_AFTER_GAP, ty, &AF_S, after, ac, T_BG);
-        else if (x + UT_A_K1_AFTER_GAP <= UT_A_K1_R - text_w(&AF_S, after))
-            cv_text_r(UT_A_K1_R, ty, &AF_S, after, ac, T_BG);
+        else {                                           /* (flush right if it fits; TRAVEL's "TO #84 TUBE BELLS  3/16" drops "TO ", then its bar count, and keeps the sound's number and name) */
+            char sb[32];
+            const int32_t room = UT_A_K1_R - (x + UT_A_K1_AFTER_GAP);
+            const int to = after[0] == 'T' && after[1] == 'O' && after[2] == ' ' && after[3] == '#';
+            str_cpy(sb, after + (to && text_w(&AF_S, after) > room ? 3 : 0), sizeof sb);
+            if (text_w(&AF_S, sb) > room && sb[0] == '#') {   /* (then one space before the bar count, then none of it) */
+                uint32_t i, cut = 0;
+                for (i = 0; sb[i]; i++)
+                    cut = sb[i] == ' ' && sb[i + 1] == ' ' ? i : cut;
+                if (cut) {
+                    str_cpy(sb + cut, sb + cut + 1u, sizeof sb - cut);
+                    if (text_w(&AF_S, sb) > room)
+                        sb[cut] = 0;
+                }
+            }
+            if (text_w(&AF_S, sb) <= room)
+                cv_text_r(UT_A_K1_R, ty, &AF_S, sb, ac, T_BG);
+        }
     }
 }
-/* the text after the knob-1 line's value of the page now (TEMPLATE 9): b holds 24; -> b, or 0 for none. ac: its colour, *right: 1 = flush right.
+/* the text after the knob-1 line's value of the page now (TEMPLATE 9): b holds 32; -> b, or 0 for none. ac: its colour, *right: 1 = flush right.
  * PERFORM: SELECT = BALANCE (what SELECT does here; it was the footer's first row). CHORD: the chord's name (Bm7b5: the last chord played, else the chord on the scale's root, as the old picture's name).
  * ARP 1/3 and 2/3: EXAMPLE: C E G at the right edge while the pattern is drawn from the example notes (no key held), as the old picture's text */
 static const char *k1_after_of(char *b, uint16_t *ac, int *right)
@@ -1227,7 +1243,7 @@ static const char *k1_after_of(char *b, uint16_t *ac, int *right)
     if (k1_after_next) {                                /* (set by draw_columns for the next line) */
         *ac = k1_after_col;
         *right = k1_after_r;
-        str_cpy(b, k1_after_next, 24);
+        str_cpy(b, k1_after_next, 32);
         return b;
     }
     if (pg->graph == GR_CHORD && t->p[P_CHRD]) {
@@ -1262,7 +1278,7 @@ static void draw_card_grid(uint32_t c, const char *label, const char *val, const
     grid_d = 0;
     if (grid_on == 2 && grid_wide && c == 3u)
         return;
-    char ab[24];
+    char ab[32];
     const char *after = 0;
     uint16_t acol = T_TEXT;
     int aright = 0;
@@ -1922,6 +1938,13 @@ static int32_t foot_scroll(const char *s, int32_t w)
 static int32_t tide_dot_x = -1;                         /* its left edge on the screen, -1: not shown (draw_foot sets it) */
 static uint32_t tide_dot_st = 0xFFFFFFFFu;
 #define TB_DOT_Y (UT_FOOT_BASE - 15 - AF_S_CAP_H / 2 - 2)   /* its top row on the screen (centred on row 1's capitals) */
+/* row 1 of the two-row footer: part 1's name's pen (1/16 px, after its engine) and room (px: to 4 px before the beat dot, or the edge without a tempo) */
+static int32_t foot_row1(const char *en1, const char *tp1, int32_t *x16)
+{
+    const int32_t bx = (UT_BAT_X + UT_BAT_W) * 16 - text_w16(&AF_S, tp1) - text_w16(&AF_S, clock_src() ? " EXT" : " BPM");
+    *x16 = UT_FOOT_X * 16 + text_w16(&AF_S, en1) + UT_FOOT_WORD_GAP * 16;
+    return (tp1[0] ? (bx >> 4) - TB_DOT_W - 4 : 235) - (*x16 >> 4);
+}
 static uint32_t tide_dot_now(uint16_t *col)              /* its state now (and colour) */
 {
     uint32_t b = beat_samples(), ext = clock_src() != 0u, run = song.playing || (ext && clock_state() == 1u && !midi_clock.stopped);
@@ -2052,6 +2075,10 @@ static void draw_foot(void)
     tpen = tp[0] ? ctp - FT_GAP * 16 - text_w16(&AF_S, tp) : rdot ? rdot * 16 : ctp;
     sig += clock_src() * 7351u;                          /* (BPM or EXT) */
     sig += (uint32_t)song.g[G_BPM] * 4003u;
+    if (pn1[0] && !ui.ml.on && !pfl[0] && !save_hint) {   /* (row 1's part-1 name scrolls the same way: its offset is part of the picture) */
+        int32_t x1, r1 = foot_row1(en1, tp1, &x1);
+        sig += (uint32_t)foot_scroll(pn1, r1) * 137u;
+    }
     {   /* a patch name wider than its room scrolls: the offset it has now is part of the picture */
         int32_t pen = UT_FOOT_X * 16 + ((fnm & 1u) ? text_w16(&AF_S, eng_shown(ename)) + UT_FOOT_WORD_GAP * 16 : 0);
         int32_t nw = (tpen >> 4) - UT_FOOT_WORD_GAP - (pen >> 4);
@@ -2083,19 +2110,15 @@ static void draw_foot(void)
     } else if (pn1[0]) {                               /* TIDE hook: row 1, part 1 as row 2 names a part (its engine in its colour, the sound it plays) */
         const char *const FT_BPM = clock_src() ? " EXT" : " BPM";   /* (b10 item 5: an external clock's measured tempo says EXT) */          /* (owner 2026-11-12: "122 BPM", the unit dimmer, as the cards' units; part 1's name may end 2 px before the tempo's pen (the glyphs' own sides leave ~6 px of air), so M08's SUNDAY KEYS stays whole) */
         int32_t f1 = UT_FOOT_BASE - 15 - Y_FOOT - AF_S_CAP_Y - AF_S_CAP_H + 1, x = UT_FOOT_X * 16, uw = text_w16(&AF_S, FT_BPM), bx = (UT_BAT_X + UT_BAT_W) * 16 - text_w16(&AF_S, tp1) - uw;   /* (bx: the tempo's pen; its unit ends with the battery) */
-        cv_text_x16(x, f1, &AF_S, en1, vt(T_PTHEME(0u), T_BG), T_BG);
-        x += text_w16(&AF_S, en1) + UT_FOOT_WORD_GAP * 16;
-        const char *nm1 = pn1;
-        int32_t room1;
+        int32_t x1, room1 = foot_row1(en1, tp1, &x1);
         if (tp1[0])
             tide_dot_x = (bx >> 4) - TB_DOT_W;           /* (the beat dot before the tempo; part 1's name ends 4 px before the dot) */
-        room1 = (tp1[0] ? tide_dot_x - 4 : 235) - (x >> 4);
-        if (nm1[0] == '#' && text_w16(&AF_S, nm1) > room1 * 16) {   /* (too long with its slot number: the name alone, so SUNDAY KEYS stays whole) */
-            while (*nm1 && *nm1 != ' ')
-                nm1++;
-            nm1 += *nm1 == ' ';
-        }
-        cv_free_text(x >> 4, f1, &AF_S, nm1, T_TEXT, T_BG, room1);
+        cv_scroll = 1;                                   /* (b10, owner: "some of the voices are still without number": the name keeps its number; one too long scrolls, as row 2's) */
+        cv_text_x16(x1 - foot_scroll(pn1, room1) * 16, f1, &AF_S, pn1, T_TEXT, T_BG);
+        cv_scroll = 0;
+        cv_rect(0, f1, x1 >> 4, 15, T_BG);               /* (the margins over it: the engine on the left, the dot and the tempo on the right) */
+        cv_rect((x1 >> 4) + room1, f1, 240 - ((x1 >> 4) + room1), 15, T_BG);
+        cv_text_x16(x, f1, &AF_S, en1, vt(T_PTHEME(0u), T_BG), T_BG);
         if (tp1[0]) {
             cv_text_x16(bx, f1, &AF_S, tp1, T_MID, T_BG);
             cv_text_x16((UT_BAT_X + UT_BAT_W) * 16 - uw, f1, &AF_S, FT_BPM, T_DIM, T_BG);

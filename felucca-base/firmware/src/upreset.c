@@ -1610,6 +1610,22 @@ static uint32_t slot_place(const track_t *t)
     r = t->user ? UP_SLOTS : ds_list_rank(t->eng_req % NENGINES, t->preset);
     return r >= UP_USER0 && r < UP_SLOTS + UP_NXTRA ? r + UP_NUSER : UP_VSLOTS;
 }
+/* factory sound (e, k) by name with the number PATCHES gives it (b holds 20): its slot's while the slot still holds it, the read-only place past the slots (#125 .. #171)
+ * for one a USER slot or the list's end displaced; a sound whose slot a saved patch took has no place, so no number (as PATCHES). b10 (owner: "some of the voices are
+ * still without number"): the one rule for every list that names a factory sound (TIDE's parts, TRAVEL, SAVE > MULTIS' parts; audit C11) */
+static void ds_label(uint32_t e, uint32_t k, char *b)
+{
+    const uint32_t r = ds_list_rank(e % NENGINES, k);
+    b[0] = 0;
+    if (r < UP_USER0 && !up_used(r)) {
+        up_slot_label(b, r);
+        str_cpy(b + str_len(b), " ", 2);
+    } else if (r >= UP_USER0 && r < UP_SLOTS + UP_NXTRA) {
+        up_slot_label(b, r + UP_NUSER);
+        str_cpy(b + str_len(b), " ", 2);
+    }
+    str_cpy(b + str_len(b), ds_name(e % NENGINES, k), 16);
+}
 /* where SAVE offers to write part t's sound: its slot; else the slot its factory sound belongs to (even if that holds a record now; a displaced one: the first
  * empty USER slot, else USER 1); else #1 */
 #if UP_NUSER
