@@ -40,12 +40,13 @@
  * then "a bit more calmer or slower, or we could link it to the bpm"): the stack moves back one ridge every WL_FLOW_PACE 16ths of the tempo (beat_samples: the BPM, or an external
  * clock's measured one; the same with the transport stopped), smoothly: each ridge drifts between its two places by the belt's phase, which runs at the tempo's
  * rate (an accumulator: a tempo change changes the speed, never jumps the place). The front takes every picture in place between the steps, so it follows the sound
- * as it dies; the last ridge fades out as it reaches the far end. An older ridge's shape settles flatter with its place (eased: the front whole, the back one at 30 %),
+ * as it dies; the last ridge fades out as it reaches the far end. An older ridge's shape settles flatter with its place (eased: the front whole, the back one at WL_FLOW_BACK %),
  * and the flat and settled lines carry very small ripples (WL_RIP_A, 150 px long, drifting a round every 16 lines) that ride back with their ridge, the two parts out of phase,
  * so at rest the lines still flow back. WL_FLOW 0: the rc2 look (a ridge every picture, no settling, no ripples) */
 #ifndef WL_FLOW
 #define WL_FLOW 1
 #endif
+#define WL_FLOW_BACK 18                              /* THE FLATTENING: the oldest line's shape, % of the newest's, eased in between (owner: "flatten the further they get a bit more": 30 -> 18) */
 #define WL_FLOW_PACE 3                               /* THE SPEED: 16th notes a line moves back (owner on the unit, rc6.3-test: "need to slow down significantly": 1 -> 3, a third) */
 #define WL_RIP_A 12                                  /* the ripples' height, 1/16 px (0.75 px each way: the owner tried 2.25, "the initial was better") */
 /* (b6: calm, 7032411's own drawing for sounds with no steady period, is gone: with every picture blended 1 : 1 into the front, a held pad chord measures the same without it,
@@ -587,7 +588,7 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
         const int32_t ph = (int32_t)(wl_bpos & 255u);
         for (r = nf - 1; r >= 0; r--) {
             const int32_t pz = r ? (r - 1) * 256 + ph : 0, x = nf > 1 ? pz / (nf - 1) : 0;   /* (its place, 1/256 of a ridge; 0 .. 256: the front .. the back) */
-            se[r] = 256 - 179 * x * x / 65536;
+            se[r] = 256 - (256 - WL_FLOW_BACK * 256 / 100) * x * x / 65536;
             if (r) {
                 const int32_t w0 = nf > 1 ? hw16 * (5 * (nf - 1) - (r - 1)) / (5 * (nf - 1)) : hw16, w1 = nf > 1 ? hw16 * (5 * (nf - 1) - r) / (5 * (nf - 1)) : hw16;
                 const int32_t w = w0 + (((w1 - w0) * ph) >> 8);
