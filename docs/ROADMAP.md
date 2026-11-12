@@ -199,9 +199,9 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 **Live recording** ([audit](audits/2026-11-08/liverec/LIVEREC_AUDIT.md))
 - Documented limits of the keys-record-into-ARP-SEQ pattern (Released in b3): a 2-step pattern in REPLACE splits a chord across the step boundary, and the key's step is predicted from the POLY stretch before the next arp step runs (it can land one step off at a stretch change). [Brief R2](audits/2026-11-08/liverec/TASKS.md#r2)
 - Plain DUELL's `rec_note` stays under `#else`: deliberate, a shared `rec_put` would change the `DUELL_TIDE=0` binary.
-- Named `tide.h` hooks for the raw `#if DUELL_TIDE` blocks in `seq.c`; a `seq_len()` helper; one "past half step" helper.
+- ~~Named `tide.h` hooks for the raw `#if DUELL_TIDE` blocks in `seq.c`; a `seq_len()` helper; one "past half step" helper.~~ Built in b10 round 3 (`fw3`): hooks H20 in `tide.h`, `TIDE_LIVEREC`, `seq_len`, `past_half` / `before_half`; `seq.c` keeps one `#if DUELL_TIDE` (the include of `tide_seq.c`). The TIDE image is byte-identical.
 - Dead `SC_MODE` code under TIDE (flash to buy back, with the MODE page's `CG3` cards).
-- A small per-row kind table for TIDE SETTINGS (replaces the row comparisons in `tide_ui.c`).
+- ~~A small per-row kind table for TIDE SETTINGS (replaces the row comparisons in `tide_ui.c`).~~ Built in b10 round 3 (`JL_KIND`, +4 B).
 
 **Hot code check (K6)**
 - K6 follow-up (review finding H1): `tools/hot_reach.py` does not follow function pointers or address-taken functions, so a new engine voice function left in flash and reached only through the engine table passes silently. Cheap fix: add an edge for every function whose address is a literal-pool word or in a data pointer table of a reached function, or name the engine entry points as roots. The self-test is `tools/test_hot_reach.py` (host group `hotreach`).

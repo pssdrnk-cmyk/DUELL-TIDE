@@ -161,6 +161,10 @@ static void tide_link(uint32_t mask, uint32_t v)
 /* ---------------------------------------------------------------- TIDE SETTINGS --- */
 enum { JL_STYLE, JL_GMODE, JL_TARGET, JL_ARC, JL_KNOB, JL_AMOUNT, JL_REC, JL_MODE, JL_XFADE, JL_SPLIT, JL_N };   /* (GMODE: the glide's MODE, AUTO TIDE's K2 too; REC: live recording's; MODE (PLAY MODE), XFADE, SPLIT, the last three: the output mode's own settings; REC and those three no part of STYLE; the three go through ui_input.c mode_knob, whose header describes the old MODE page: TIDE's rows are these three) */
 static const char *const JL_NAME[JL_N] = {"STYLE", "MODE", "TARGET", "ARC", "KNOBS", "AMOUNT", "REC", "PLAY MODE", "XFADE", "SPLIT"};   /* (AMOUNT: how far a roll goes, the part's; on the MORPH page's K4 until 1.0.0-b7) */
+/* what kind of row each is: the code branches on the kind, not on the row's place. The order matters: JK_OUT .. JK_SPLIT are the output mode's rows (mode_knob, the last three
+ * rows), JK_XFADE and JK_SPLIT are LAYER's only. LIST: a value from JL_V (TARGET, REC), ARC: the same, and it acts only in automatic EVOLVE / TRAVEL on the SEQ */
+enum { JK_LIST, JK_STYLE, JK_GMODE, JK_ARC, JK_KNOBS, JK_AMOUNT, JK_OUT, JK_XFADE, JK_SPLIT };
+static const uint8_t JL_KIND[JL_N] = {JK_STYLE, JK_GMODE, JK_LIST, JK_ARC, JK_KNOBS, JK_AMOUNT, JK_LIST, JK_OUT, JK_XFADE, JK_SPLIT};
 static uint8_t jl_sel;                                   /* the row picked (K1) */
 /* 1.0.0-b9 KNOBS: HOME page 1's knobs 2..4 (knob_sets.h). Stored in the byte ROLL TYPE had (TS_KNOB): 0 or 1 AUTO (1 the default, an older record's 0 / 1 too), 2 STD, 3..8 DB HS TC AC EL AM.
  * AUTO takes the set from the first word of the music's name ("ACID HYPNO", knob_sets.h KN_TAG); any other first word, or no multi: STD */
@@ -235,13 +239,14 @@ static void tide_custom_take(void)
  * XFADE and SPLIT are LAYER's only (1.0.0-b9: the KNOBS row acts always) */
 static __attribute__((noinline)) const char *jl_needs(uint32_t r)
 {
+    uint32_t k = JL_KIND[r];
 #if TIDE_PLAYSEL
-    if (r == JL_SPLIT || (r == JL_XFADE && duell_mode_req == DM_LAYER))   /* 1.0.0-b7: XFADE and SPLIT act in ALGORITHM's middle only (PART 1 / PART 2 play one part); SPLIT there in STEREO and DUEL too */
+    if (k == JK_SPLIT || (k == JK_XFADE && duell_mode_req == DM_LAYER))   /* 1.0.0-b7: XFADE and SPLIT act in ALGORITHM's middle only (PART 1 / PART 2 play one part); SPLIT there in STEREO and DUEL too */
         return song.both ? 0 : "2 PARTS ONLY";
 #endif
-    if (r >= JL_XFADE)
+    if (k >= JK_XFADE)
         return duell_mode_req == DM_LAYER ? 0 : "LAYER ONLY";
-    if (r != JL_ARC)
+    if (k != JK_ARC)
         return 0;
     return gl.mode < GM_WANDER ? "NEEDS EVOLVE" : gl.target == GT_SOUND ? "TARGET SEQ" : 0;   /* (short: knob 1's line has room for these after "SETTING ARC"; EVOLVE / TRAVEL in full do not fit) */
 }
@@ -263,14 +268,16 @@ static uint32_t jl_split_ix(uint32_t s) { return s == SPLIT_MIDDLE ? 1u : s && s
 static uint32_t jl_split_code(uint32_t v) { return v == 1u ? SPLIT_MIDDLE : v ? v - 1u : 0u; }
 static uint32_t jl_get(uint32_t r)
 {
+    uint32_t k;
     r %= JL_N;
-    if (r == JL_MODE)                                    /* (the list reads LAYER, STEREO, DUEL: mode_knob's order) */
+    k = JL_KIND[r];
+    if (k == JK_OUT)                                     /* (the list reads LAYER, STEREO, DUEL: mode_knob's order) */
         return DM_LAYER - (duell_mode_req < DM_N ? duell_mode_req : DM_SPLIT);
-    if (r == JL_XFADE || r == JL_SPLIT)
-        return r == JL_XFADE ? mix_xf : jl_split_ix(mix_split);
-    if (r == JL_AMOUNT)
+    if (k == JK_XFADE || k == JK_SPLIT)
+        return k == JK_XFADE ? mix_xf : jl_split_ix(mix_split);
+    if (k == JK_AMOUNT)
         return morph_amount_of(song.sel);
-    if (r == JL_GMODE)                                   /* (b9: EVOLVE 0, TRAVEL 1; a stored ONCE / LOOP / DRIFT loads as EVOLVE, tide_settings) */
+    if (k == JK_GMODE)                                   /* (b9: EVOLVE 0, TRAVEL 1; a stored ONCE / LOOP / DRIFT loads as EVOLVE, tide_settings) */
         return gl.mode >= GM_JOURNEY ? 1u : 0u;
     if (JL_VAR[r])
         return *JL_VAR[r];
@@ -279,13 +286,15 @@ static uint32_t jl_get(uint32_t r)
 static const char *jl_vname(uint32_t r, uint32_t v)
 {
     static char b[8];                                    /* (one buffer for XFADE and SPLIT: the caller draws or copies the name before the next call; do not cache the pointer) */
+    uint32_t k;
     r %= JL_N;
-    if (r == JL_XFADE || r == JL_AMOUNT) {
+    k = JL_KIND[r];
+    if (k == JK_XFADE || k == JK_AMOUNT) {
         fmt_int(b, (int32_t)(v % 101u));
         str_cpy(b + str_len(b), "%", 2);
         return b;
     }
-    if (r == JL_SPLIT) {
+    if (k == JK_SPLIT) {
         v %= 130u;
         if (v == 1u)
             return "MIDDLE";
@@ -295,7 +304,7 @@ static const char *jl_vname(uint32_t r, uint32_t v)
             return "OFF";
         return b;
     }
-    if (r == JL_GMODE)
+    if (k == JK_GMODE)
         return GL_MODE_NAME[GM_WANDER + v % 2u];
     return JL_V[JL_V0[r] + v % JL_NV[r]];
 }
@@ -303,17 +312,19 @@ static void jl_put(uint32_t r, uint32_t v)
 {
     uint32_t pi = song.sel, mask = morph_mask(pi);
     const char *say;
+    uint32_t k;
     r %= JL_N, v %= JL_NV[r];
-    if (r == JL_SPLIT) {                              /* (a place in the list, set as it is: mode_knob would step out of MIDDLE to its note) */
+    k = JL_KIND[r];
+    if (k == JK_SPLIT) {                              /* (a place in the list, set as it is: mode_knob would step out of MIDDLE to its note) */
         if (TIDE_PLAYSEL ? song.both : duell_mode_req == DM_LAYER)
             mix_split = (uint8_t)jl_split_code(v);
         return;
     }
-    if (r >= JL_MODE) {                               /* the old MODE page's knobs, by steps from where the value is (mode_knob: its message, its limits, SPLIT's middle-key start) */
+    if (k >= JK_OUT) {                                /* the old MODE page's knobs, by steps from where the value is (mode_knob: its message, its limits, SPLIT's middle-key start) */
         mode_knob(r - JL_MODE, (int32_t)v - (int32_t)jl_get(r));
         return;
     }
-    if (r == JL_STYLE) {
+    if (k == JK_STYLE) {
         if (v < STY_CUSTOM) {
             if (tide_style == STY_CUSTOM || !tide_style_holds())
                 tide_custom_take();                      /* (the values being replaced are CUSTOM: kept for the way back) */
@@ -325,14 +336,14 @@ static void jl_put(uint32_t r, uint32_t v)
                 tide_style_last = tide_style;
             tide_style = STY_CUSTOM;
         }
-    } else if (r == JL_AMOUNT) {                         /* (BOTH: each part from its own AMOUNT by the same steps) */
+    } else if (k == JK_AMOUNT) {                         /* (BOTH: each part from its own AMOUNT by the same steps) */
         int32_t d = (int32_t)v - (int32_t)jl_get(r);
         for (uint32_t k = 0; k < NSHOWN; k++)
             if ((mask >> k) & 1u)
                 morph_act(MQ_AMOUNT, 1u << k, (uint32_t)clamp((int32_t)morph_amount_of(k) + d, 0, 100), k);
-    } else if (r == JL_KNOB) {                           /* (AUTO is stored 1, as the retired ROLL TYPE's MUSIC was: an older record's 0 or 1 reads AUTO) */
+    } else if (k == JK_KNOBS) {                          /* (AUTO is stored 1, as the retired ROLL TYPE's MUSIC was: an older record's 0 or 1 reads AUTO) */
         tide_knobs = (uint8_t)(v ? v + 1u : 1u);
-    } else if (r == JL_GMODE)                            /* (MODE: the glide's, as AUTO TIDE's K2: EVOLVE or TRAVEL) */
+    } else if (k == JK_GMODE)                            /* (MODE: the glide's, as AUTO TIDE's K2: EVOLVE or TRAVEL) */
         gl.mode = (uint8_t)(GM_WANDER + v);
     else                                                 /* (ARC: seq_arc.c) */
         *JL_VAR[r] = (uint8_t)v;
@@ -352,13 +363,13 @@ static uint32_t tide_list_sig(void)
 static int tide_list_on(void) { return !ui.perf && !ui.layer && cur_page()->graph == GR_TIDELIST; }
 static void tide_list_oct(uint32_t oct)
 {
-    uint32_t r = jl_sel % JL_N, v = jl_get(r);
-    if (r == JL_AMOUNT) {                                /* AMOUNT steps 5 % */
+    uint32_t r = jl_sel % JL_N, v = jl_get(r), k = JL_KIND[r];
+    if (k == JK_AMOUNT) {                                /* AMOUNT steps 5 % */
         jl_put(r, (uint32_t)clamp((int32_t)v + ((oct & 2u) ? 5 : (oct & 1u) ? -5 : 0), 0, 100));
         return;
     }
-    if (r >= JL_XFADE) {                                 /* XFADE steps 10 %, SPLIT one octave (12) from where it is; out of OFF the first step is MIDDLE, out of MIDDLE the note it stands for (mode_knob). Both stop at their ends */
-        mode_knob(r - JL_MODE, (oct & 2u) ? (r == JL_SPLIT && v < 2u ? 1 : r == JL_SPLIT ? 12 : 10) : (oct & 1u) ? (r == JL_SPLIT ? -12 : -10) : 0);
+    if (k >= JK_XFADE) {                                 /* XFADE steps 10 %, SPLIT one octave (12) from where it is; out of OFF the first step is MIDDLE, out of MIDDLE the note it stands for (mode_knob). Both stop at their ends */
+        mode_knob(r - JL_MODE, (oct & 2u) ? (k == JK_SPLIT && v < 2u ? 1 : k == JK_SPLIT ? 12 : 10) : (oct & 1u) ? (k == JK_SPLIT ? -12 : -10) : 0);
         return;
     }
     if ((oct & 2u) && v + 1u < jl_n(r))
@@ -375,9 +386,9 @@ static void tide_knob(uint32_t slot, int32_t s)
     if (cur_page()->graph == GR_TIDELIST) {               /* K1 the row; K2..K4 the picked row's value, a step an event as OCT+ / OCT- (audit C12: every other page has a knob a value) */
         if (slot == 0u)
             jl_sel = (uint8_t)clamp((int32_t)jl_sel + s, 0, JL_N - 1);
-        else if (jl_sel % JL_N >= JL_MODE)            /* MODE, XFADE, SPLIT: the detents turned, as the old knobs (a turn moved XFADE and SPLIT by many) */
+        else if (JL_KIND[jl_sel % JL_N] >= JK_OUT)    /* MODE, XFADE, SPLIT: the detents turned, as the old knobs (a turn moved XFADE and SPLIT by many) */
             mode_knob(jl_sel % JL_N - JL_MODE, s);
-        else if (jl_sel % JL_N == JL_AMOUNT)            /* AMOUNT: the detents turned, as its knob on the MORPH page did (b6) */
+        else if (JL_KIND[jl_sel % JL_N] == JK_AMOUNT)   /* AMOUNT: the detents turned, as its knob on the MORPH page did (b6) */
             jl_put(JL_AMOUNT, (uint32_t)clamp((int32_t)jl_get(JL_AMOUNT) + accel(EN_K1 + slot, s, 100), 0, 100));
         else
             tide_list_oct(s > 0 ? 2u : 1u);
