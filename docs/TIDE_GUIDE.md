@@ -1,6 +1,6 @@
 # DUELL with TIDE: a player's guide
 
-Five minutes. This guide describes the development line, `jam11`, as the source has it. It is the betas `1.0.0-b1` to `1.0.0-b6` and what is merged after them for `1.0.0-b7` (the shorter TIDE SETTINGS page is from there). The older beta `beta-2026-11-04` is a little different; the list at the end says what came after it. The version of your unit is in MENU > SYSTEM > ABOUT, beside the date.
+Five minutes. This guide describes the development line, `jam11`, as the source has it. It describes `1.0.0-b10` (release candidate `rc5`) and the betas before it; the shorter TIDE SETTINGS page is from `1.0.0-b7`. The older beta `beta-2026-11-04` is a little different; the list at the end says what came after it. The version of your unit is in MENU > SYSTEM > ABOUT, beside the date.
 
 The stable build `stable-2026-11-03` has an earlier TIDE. Its TIDE SETTINGS page is still called MORPH SETTINGS. It lacks STYLE and ARC, and it has no TRAVEL role families or memory. The [README](../README.md#builds-stable-and-beta) lists the builds.
 
@@ -11,6 +11,10 @@ Values marked *start* are suggestions for dub and house techno backgrounds, not 
 Every sound has two ends, **A** (your sound) and **B** (a variation of it), and a fader between them. TIDE moves that fader by itself, bar by bar, while the music plays, and also moves the pattern the same way. Over minutes the part evolves; nothing needs your hands. You can touch it whenever you like.
 
 HOME's round, one tap of **HOME** each: **MORPH → TIDE SETTINGS → AUTO TIDE**. **ALGORITHM** picks PART 1, both parts or PART 2 on all of them.
+
+**Header and footer.** Each HOME page is titled by its name (MORPH, TIDE SETTINGS, AUTO TIDE). A part's capsule shows its number and its letter, `1 A`, with no voices count. The tempo is on the footer's first line, `117 BPM`, right-aligned above the page number and the battery; the second line holds part 2's name, whole.
+
+**Genre knobs.** A twist of a genre knob (K2 to K4 on HOME page 1, with KNOBS set) keeps its short name on the row and toasts the full name and value over the title, for example `BLOOM 2.1ms`.
 
 **ALGORITHM and the play mode** (1.0.0-b7). On MORPH, TIDE SETTINGS, AUTO TIDE and in PERFORM it has three positions, a click each: PART 1, the middle, PART 2. The middle selects both parts and plays the mode the **PLAY MODE** row of TIDE SETTINGS is set to, and it is named after it: PART 1, LAYER, PART 2 (or PART 1, STEREO, PART 2; PART 1, DUEL, PART 2).
 
@@ -48,7 +52,7 @@ These are the sound's own settings: they record into the pattern with REC armed,
 **Hold OCT- and turn a knob:** knob 1 goes back to your original sound and pattern (the glide stops, as OCT- + K1 on AUTO TIDE); knobs 2 to 4 go back to the value the loaded sound had.
 
 - The fader's position (A, 1 to 126, B) sits beside knob 1's label.
-- The slim row under the picture shows knobs 2 to 4 as FLT, RSN and ECH, each with its value.
+- The slim row under the picture shows knobs 2 to 4, each with its name and value. Which names depends on KNOBS (AUTO by default, from the multi's first word): DUB CHORD shows SND, FDBK and TIME.
 - The footer shows both parts' patches.
 - Most of the page shows the sound itself as waves, like an oscilloscope:
   - a held note stands still,
@@ -96,9 +100,13 @@ The glide only moves while the transport plays. **STOP** pauses it; **PLAY** car
 | Mode | Heard as |
 |---|---|
 | EVOLVE | Every dial steps one position toward its bound and turns around at each edge, never drifting further; step size grows at longer phrase boundaries (16, 32, 64, 128 bars). Always computed from your original, so it can't run away. |
-| TRAVEL | Travels through factory sounds of the part's own engine (FM6 too); it never changes engine. It stays in the starting sound's role family: pads and keys; bass; lead and pluck; hits (PERC); textures and drones (eight marked sounds); the other FX, one-shots (a USER record in FX counts as one). It also keeps the starting sound's attack: a pad (ATK 60 or more) goes to other pads, a stab (SUS 20 or less) to other stabs, keys to keys; where the family has no other sound of that attack it takes any sound of the family. A sound with no other in its family rolls a new End B of itself, it does not leave its role. Never the other part's sound, and it skips the last 4 destinations where it can. Of those, it keeps to the 2 to 4 that play nearest your sound in loudness and brightness, so the background keeps its level. Each part also gets its own pattern wander. |
+| TRAVEL | Travels through factory sounds of the part's own engine (FM6 too); it never changes engine. It stays in the starting sound's role family: pads and keys; bass; lead and pluck; hits (PERC); textures and drones (eight marked sounds); the other FX, one-shots (a USER record in FX counts as one). It also keeps the starting sound's attack: a pad (ATK 60 or more) goes to other pads, a stab (SUS 20 or less) to other stabs, keys to keys; where the family has no other sound of that attack it takes any sound of the family. A sound with no other in its family rolls a new End B of itself, it does not leave its role. Never the other part's sound, and it skips the last 4 destinations where it can. Of those, it keeps to the 2 to 4 that play nearest your sound in loudness, so a swapped sound plays at the multi's level and the background keeps its level. Each part also gets its own pattern wander. |
 
 STYLE DUB, DEEP, MINIMAL and DRONE use EVOLVE; AMBIENT and PEAK use TRAVEL. A saved setup with an old MODE of ONCE, LOOP or DRIFT opens as EVOLVE, and WANDER as EVOLVE too; JOURNEY opens as TRAVEL. On the AUTO TIDE page the top line reads EVOLVING TO B or TRAVEL TO B; ARC's hint reads NEEDS EVOLVE, and "DROP NEEDS EVOLVE/TRAVEL" when it cannot act.
+
+**The top line, in full.** `EVOLVING TO B   BAR 3/16` (with an ARC running, `EVOLVING TO B` and the ARC's own words beside it, for example `ARC RISE 1/3`); `TRAVEL TO B` in TRAVEL; `WAITING  1/2` while the trip is held; `GLIDE ON THE NEXT BAR` or `GLIDE STARTS WITH PLAY` before the first trip; `PAUSED: PLAY GOES ON`; `HAND  BACK IN n BARS` after your hand on the fader. On the MORPH page, knob 1's line shows the trip without the word BAR: `EVOLVING TO B 1/16`.
+
+**COLR LFO.** GLO's page 6 of 13 is COLR LFO, one knob (COLOR LFO, 0 to 15): a slow 0.25 Hz wave that swings the delay's colour, so the repeats breathe. 0 is off; DUB BASIC and DUB CHORD use 5, and a multi stores the value.
 
 Where two very different sounds cross, a short filter dip hides the change (the STYLE's wash, below). On a trip of 8 bars or more the sound closes over 2 bars, stays closed for 1 and opens over 2 (on a 1 to 4 bar trip, across the trip); FM6 sounds keep their sparkle through it. TRAVEL is the mode of STYLE AMBIENT and PEAK, or yours by hand; DUB, DEEP, MINIMAL and DRONE EVOLVE.
 
@@ -320,8 +328,7 @@ Merged on the development line, in `1.0.0-b1` and after it (the source is the re
 | **MORPH is the hands-on page** | Knob 1 MORPH at half the turning, knob 2 FILTER, knob 3 RESONANCE, knob 4 ECHO (b8: RESONANCE took LENGTH's place), on the slim row under the wave picture. With both parts selected (ALGORITHM's middle) every knob moves each part by the same amount. A new End B: hold OCT+ and click knob 1. AMOUNT is a TIDE SETTINGS row now; the new-A roll is gone from the page. |
 | **ALGORITHM's middle is the play mode** | PART 1, the middle, PART 2 on the HOME pages and PERFORM: the middle plays both parts in the PLAY MODE row's mode and the header names it (LAYER, STEREO or DUEL); PART 1 and PART 2 play one part on every key. Changing PLAY MODE moves ALGORITHM to the middle. |
 | **SPLIT MIDDLE** | A SPLIT value after OFF: the keys split in the middle wherever OCT- / OCT+ put them. With SPLIT set, STEREO and DUEL split the keys too. |
-| **A shorter TIDE SETTINGS page** | STYLE, MODE, TARGET, ARC, ROLL TYPE, AMOUNT, then REC, PLAY MODE, XFADE, SPLIT. VARY BARS, POLY, OFFBEAT and WASH are STYLE's values (no rows); ROLL ARP and ROLL PITCH have no row (OFF by default; a unit that had them ON keeps them). The tide's MODE is a row too. A saved STYLE stays that style. |
-| **ROLL TYPE no longer switches the rhythm off** | ARC and the pattern's movement act in EVOLVE and TRAVEL whatever ROLL TYPE is. ROLL TYPE is dim under TRAVEL, where it does nothing. |
+| **A shorter TIDE SETTINGS page** | STYLE, MODE, TARGET, ARC, KNOBS, AMOUNT, then REC, PLAY MODE, XFADE, SPLIT. VARY BARS, POLY, OFFBEAT and WASH are STYLE's values (no rows); ROLL ARP and ROLL PITCH have no row (OFF by default; a unit that had them ON keeps them). The tide's MODE is a row too. A saved STYLE stays that style. |
 | **DUB walks your sounds** | STYLE DUB plays EVOLVE: the multi's own sounds stay and evolve, and the level and brightness stay steadier. AMBIENT plays without the shortened loops (poly OFF). |
 | **An arc you can hear** | ARC's phases fall on 8-bar boundaries (an arc is 40 to 64 bars), the breakdown keeps each part's main hits, plays chords in two voices and drops the level by 2 to 5 dB, the first arc after PLAY drops under ARC DROP, and ARP SEQ parts follow ARC's dynamics too. In the breakdown the parts thin by voices and level; their number of hits drops less. |
 | **Call and answer** | In EVOLVE and TRAVEL the two parts take turns bar by bar: one plays out while the other steps back to its main hits; both play the fourth bar. A bass or pad is never pushed back. |
