@@ -211,7 +211,7 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 
 **Hot code check (K6)**
 - K6 follow-up (review finding H1): `tools/hot_reach.py` does not follow function pointers or address-taken functions, so a new engine voice function left in flash and reached only through the engine table passes silently. Cheap fix: add an edge for every function whose address is a literal-pool word or in a data pointer table of a reached function, or name the engine entry points as roots. The self-test is `tools/test_hot_reach.py` (host group `hotreach`).
-- K6 follow-up: 135 allow-list reasons in `tools/ram_allow.py` say "mix or effect stage ... not yet reviewed". They are per block, not per event; once each is reviewed, relabel it "per block, not yet reviewed" (or move the function to RAM). The classification is in [flash-hot REPORT](audits/2026-11-08/flash-hot/REPORT.md).
+- ~~K6 follow-up: 135 allow-list reasons in `tools/ram_allow.py` say "mix or effect stage ... not yet reviewed" ...~~ Reviewed in b10 round 5: every reason now says per block / per sample when on / event and either "RAM candidate" (44, ~13694 B) or why it stays in the flash; list in [REVIEW_2026-11-12.md](audits/2026-11-08/flash-hot/REVIEW_2026-11-12.md). Nothing measured on the unit.
 
 **Storage and backups**
 - U4, 24 multi slots: tested on `wip-24-multis` (`21ca3a7`), its own rollout with a format bump. At the rebase: renumber its backup ids (41 is now the FM6 voice bank), archive VERSION 6 against 5, update `erase_test.c` and `xb_test.c`, measure the flash first (keep 3 KB headroom; 4,556 B is free on the b5 build).
