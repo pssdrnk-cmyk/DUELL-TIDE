@@ -284,6 +284,8 @@ static void tide_scene(void)
             }
             if (!(mph[0].nid || mph[0].fnid) || !(mph[1].nid || mph[1].fnid) || morph_stale(&trk[0], &mph[0]) || morph_stale(&trk[1], &mph[1]) || trk[0].p[P_MUTE] || trk[1].p[P_MUTE])
                 continue;
+            bd_mv[0] = bd_mv[1] = 1;                  /* both faders are moving: with FELUCCA_MOVECOST (the shipped build; b10 round 6) the valley and the wash are charged only while a transition is under way
+                                                       * (budget.c bd_where; at rest only the wash's meter is), and this scene is about their full figures. Without the switch they are always charged: no change there. */
             trk[1].p[P_FREEC] = 40;                   /* part 2's filter MODE is no low-pass (a band-pass patch): its voices' filter cannot carry the dip, the valley after them does */
             {   /* all four stages: the valley is possible on a part too */
                 bd_part_t r0, r1;
@@ -329,6 +331,7 @@ static void tide_scene(void)
             }
             morph_wlvl = 0;
             tc.up = 0, tcr.cost_ok = 0;
+            bd_mv[0] = bd_mv[1] = 0;
         }
     h = sh, h2 = sh2, h3 = sh3, n_val = snv;
     tide_bad += !found;

@@ -1,0 +1,3 @@
+## changelog
+### 1.0.0-b10
+- **Fixed (developer tooling, b11 tests lane):** the `budget` and `deadline` host groups now build the shipped configuration (`-DFELUCCA_MOVECOST=1`, `tools/build.py` default 1); they had only ever run with the switch off and failed 3 and 1 checks when built on (cause 8cf2b7d, b10 round 6: a part at rest is charged for the wash's meter only, the valley, wash and dip only while a transition moves). `deadline`'s TIDE scene and `budget`'s A01 rule check put the parts in motion for the full figures, `budget` gains an at-rest check, and `LOADED_REF` is re-pinned (`jam/repin.sh`, proven by revert). The OFF run is dropped (nothing ships it; the `movecost` group still builds the switch both ways).
