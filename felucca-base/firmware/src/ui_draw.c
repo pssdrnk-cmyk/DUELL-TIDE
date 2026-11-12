@@ -240,6 +240,7 @@ static int oct_show_on(void)
  * (H_HEAD / 2; ui_test.c test_head_centres): icons by cv_icon_mid, text by its capitals' band (CAP_IN; the odd row left over above it, as
  * everywhere): M (the page name, the octave, a message: capitals rows 6..16) from y 2, S (OCT, a key hint: rows 7..15) from y 4 */
 #define HEAD_SY CAP_IN(S, H_HEAD)
+#define HEAD_ROWS 20                                 /* b10: the header's canvas, rows 0 .. 19 (its ink ends at row 19); rows 20 .. 26 are the tide line's (TL_Y) */
 #define HEAD_MY CAP_IN(M, H_HEAD)                   /* (the capitals on the header's middle, as the title's Bold 15 (item 111): was 2 rows higher, PALETTES_V3_1.png's rows 4 .. 14) */
 #define HEAD_TRK_X 3                                   /* the part badge: 1 2 side by side, 14 px cushions 15 apart (cv_part) */
 #define HEAD_LEFT_R 32                                 /* the part badges end here (ink 31): the page name starts 4 px on at the earliest */
@@ -613,7 +614,7 @@ static void draw_head(void)
     if (!ui.force && sig == ui.head_sig)
         return;
     ui.head_sig = sig;
-    cv_begin(240, H_HEAD, T_BG);
+    cv_begin(240, HEAD_ROWS, T_BG);
     if (!glob) {                                       /* a part page: the capsules */
         uint32_t lit = badge_lit();
         /* both parts' capsules in every mode (owner, test3): the selected part lit, the other dim */
@@ -3549,22 +3550,33 @@ static void ui_draw(void)
     ui_draw_page(counting);
     scr_shown();
 }
-/* b10 TIDE identity (design consult direction A, owner 2026-11-12): THE TIDE LINE. Rows 24 .. 26, between the header and knob 1's line (rows 27 ..), carry
- * AUTO TIDE's state on every part page: nothing while it is off; dashes while armed; while it runs a 1.5 px wave in the moved part's colour (both parts:
- * part 1's colour to part 2's across), bright up to the trip's progress and dim after it, its phase stepping a beat at a time (it breathes with the tempo);
+/* b10 TIDE identity (design consult direction A, owner 2026-11-12): THE TIDE LINE. Rows 20 .. 26, between the header (its canvas rows 0 .. 19) and knob 1's line (rows 27 ..),
+ * carry AUTO TIDE's state on every part page: nothing while it is off; dashes while armed; while it runs a 2 px wave of 2 px swell, 2.5 crests across, in the moved part's
+ * colour (both parts: part 1's colour to part 2's across), full up to the trip's progress and dim after it, drifting with the wave page's belt (ui_scope.c wl_belt: the
+ * tempo's clock and its pace), a step a picture (mv_tick, ~16 a second; owner on rc6.3: "this tide line is rather weak and not wavy enough");
  * WAIT: the line lies flat (slack water); stopped: all of it dim. GREY / MONO: part 2's stretch is dashed, so the parts differ without colour.
  * One 240 x 3 strip, sent only when it changes (~1 ms of SPI a beat); its signature is one word. The header's own rule ("no line under a title", V9) bends
  * here on purpose: a live readout, absent when AUTO TIDE is off */
 static int tide_line_state(uint32_t *prog, uint32_t *beat, uint32_t *mask);   /* tide_ui.c: 0 off, 1 armed, 2 running, 3 waiting (slack), 4 paused */
 static uint32_t tide_line_sig;
-#define TL_Y 24
-#define TL_H 3
+#define TL_Y HEAD_ROWS
+#define TL_H 7
+#define TL_MID 56                                        /* the line's middle in the strip, 1/16 px (row 3.5) */
+#define TL_AMP 32                                        /* the swell, 1/16 px (2 px each way) */
+static uint32_t tl_tk = 0xFFFFFFFFu, tl_ph;               /* the picture the phase was taken at; the phase (2^32 a wavelength) */
 static void tide_line_draw(void)
 {
     uint32_t prog = 0, beat = 0, mask = 3u, st = screen_global() || ui.menu || ui.guide ? 0u : (uint32_t)tide_line_state(&prog, &beat, &mask);
     int32_t xp = (int32_t)((prog * 240u) >> 16), x, r;
     const int grey = ux.mono || ux.bw;
-    uint32_t sig = st ? st * 7919u + (uint32_t)xp * 31u + (st == 2u ? (beat & 7u) * 3u : 0u) + mask * 1301u + ux.pal * 17u + 1u : 0u;
+    uint32_t sig;
+    if (st == 2u && mv_tick() != tl_tk) {               /* (a step a picture: the belt's place, a wavelength every 16 lines) */
+        tl_tk = mv_tick();
+        wl_belt();
+        tl_ph = wl_bpos << 20;
+    }
+    sig = st ? st * 7919u + (uint32_t)xp * 31u + (st == 2u ? tl_ph >> 22 : 0u) * 3u + mask * 1301u + ux.pal * 17u + 1u : 0u;
+    (void)beat;
     if (!ui.force && sig == tide_line_sig)
         return;
     tide_line_sig = sig;
@@ -3572,7 +3584,7 @@ static void tide_line_draw(void)
     for (x = 0; x < 240 && st; x++) {
         const uint32_t p2 = mask == 2u || (mask == 3u && x >= 120);   /* (part 2's stretch) */
         uint16_t c = mask == 3u && !grey ? ux_mix(T_PTHEME(0), T_PTHEME(1), x * 100 / 239) : T_PTHEME(p2);
-        int32_t yc16 = 24 + (st == 2u ? sine_i((uint32_t)x * 0x01111111u * 4u + (beat & 7u) * 0x20000000u) * 8 >> 15 : 0);   /* the middle, 1/16 px */
+        int32_t yc16 = TL_MID + (st == 2u ? sine_i((uint32_t)x * 44739243u - tl_ph) * TL_AMP >> 15 : 0);   /* the middle, 1/16 px (96 px a wavelength: 2.5 crests) */
         if ((st == 1u || st == 5u) && (x & 7) > 3)
             continue;                                   /* armed: dashes (5: the count-in of a take) */
         if (st >= 5u)
@@ -3583,8 +3595,8 @@ static void tide_line_draw(void)
             c = ux_mix(T_BG, c, 45);                    /* ahead of the tide (paused: all of it) */
         else if (x >= xp - 1)
             c = ux_mix(c, T_TEXT, 55);                  /* the tide's edge */
-        for (r = 0; r < TL_H; r++) {                    /* row r against the band yc - 0.75 .. yc + 0.75 px: its coverage */
-            int32_t a = (r + 1) * 16, b = r * 16, lo = yc16 - 12, hi = yc16 + 12, cov = (a < hi ? a : hi) - (b > lo ? b : lo);
+        for (r = 0; r < TL_H; r++) {                    /* row r against the band yc - 1 .. yc + 1 px (2 px): its coverage */
+            int32_t a = (r + 1) * 16, b = r * 16, lo = yc16 - 16, hi = yc16 + 16, cov = (a < hi ? a : hi) - (b > lo ? b : lo);
             if (cov > 0)
                 cv_pset(x, r, cov >= 16 ? c : ux_mix(T_BG, c, cov * 100 / 16));
         }
