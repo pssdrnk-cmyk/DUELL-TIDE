@@ -97,10 +97,6 @@ static uint32_t jctx_of(uint32_t e, uint32_t j)          /* engine e's sound j i
 {
     return e < JRNY_CTX_NE && j < (uint32_t)(JRNY_CTX_AT[e + 1u] - JRNY_CTX_AT[e]) ? JRNY_CTX[JRNY_CTX_AT[e] + j] : JCTX_NONE;
 }
-static uint32_t jctx_cx(uint32_t e, uint32_t k)          /* the pattern sound k was measured in (tests/jrny_ctx.c ctx): 2 a bass, 1 a pad (ATK 60 or more), 0 a stab / keys */
-{
-    return ds_cat_of(e, k) == 1u ? 2u : ds_value(ds_get(e, k), P_ATK, TP[P_ATK].def) >= 60 ? 1u : 0u;   /* (1: category.c's CAT_BASS, compiled later) */
-}
 #include "jrny_mu.h"
 static uint8_t tide_mu[NSHOWN];                          /* part pi as factory multi tide_mu - 1 loaded it (multi.c project_load), 0 not or no more (a sound loaded into it: seq_arc.c tide_loaded) */
 
@@ -163,7 +159,8 @@ static int morph_to_sound(uint32_t pi, uint32_t x, uint32_t k)
         uint32_t b;
         if (!UP_REC_USER(t) && t->preset < ds_count(en)) {
             o = mp->base[P_TRIM] - ds_value(ds_get(en, t->preset), P_TRIM, TP[P_TRIM].def);
-            if (tide_mu[pi] && tide_mu[pi] <= JRNY_MU_N && (b = jctx_of(en, k)) != JCTX_NONE && jctx_cx(en, t->preset) == jctx_cx(en, k))
+            if (tide_mu[pi] && (b = jctx_of(en, k)) != JCTX_NONE &&   /* (the same class pattern, tests/jrny_ctx.c: a pad's, ATK 60 or more, or not; a bass's goes with its family, kept) */
+                (ds_value(ds_get(en, t->preset), P_ATK, TP[P_ATK].def) >= 60) == (v[P_ATK] >= 60))
                 o = (int32_t)JRNY_MU[tide_mu[pi] - 1u][pi] - 2 * (int32_t)(b >> 3);
             else if (o > 0)
                 o = 0;

@@ -13,7 +13,7 @@
  *                 sub are welcome, the FM-1 only must not play the drums. The band is still measured and printed, on a 10 s render of PLAY and of PLAY with JRNY.)
  *   4.4 loudness  the 16 within 3 dB of their median, K-weighted as `gen_factory_multis loud` measures (same excitation: PLAY where a part has steps and no arp, else C4 E4 G4 held;
  *                 each multi from the boot state, so within about 1 dB of that tool, which runs them one after the other in one process), the peak under -3 dBFS
- *   4.5 motif     every loop of the Original (all its steps visited: a bar for a 16-step pattern, more for 32 steps or a slow one) but a DROP's and a listening bar's (CALL AND ANSWER, b10) keeps max(2, 3/5) of its hits in place;
+ *   4.5 motif     every loop of the Original (all its steps visited: a bar for a 16-step pattern, more for 32 steps or a slow one) but a DROP's keeps max(2, 3/5) of its hits in place;
  *                 the mean Jaccard of a loop's onset set against the Original's is 0.55 or more for SKANK, STAB, MOTIF, PULSE, ANSWER
  * The table TR[] is the E1 baseline's (the records of felucca-base/tools/factory_multis.py at integ 8308edb) with the spec's roles where a part fits a card; role 0 is measured and
  * printed, not checked, a LIVE part is not run, and a classic-arp part (ARP) gets its lane from 8 bars of itself. Tasks T8 and T9 replace the rows with the spec's Appendix B
@@ -126,14 +126,13 @@ static const struct { uint8_t lo, hi; } DENS[14] = {{0, 0}, {20, 60}, {5, 20}, {
  * TO ADD A ROW for a multi (M17 and on, the sound lane's M19-M24): add its line to TR[] above and raise NROW (the loops and the loudness median follow it; tools/soundlab/build.sh takes this file as it is); a part needs
  * a line here only if the test names a violation that is TIDE's behaviour, never to pass a wrong role. */
 static const struct { int8_t up, dn; uint8_t cut, still, jac; } AL[NROW][2] = {
-    [0]  = {{4, 0, 2, 0, 50}},      /* M01 p1 STAB: b10: TIDE behaviour, not a role: notes up to 86 (lane top 82: +4), kept 0 of 3 hits in a bar (needs 2), Jaccard 0.52 */
-    [1]  = {{0, 0, 1, 0, 0}},       /* M02 p1 SKANK: b10: TIDE behaviour, not a role: 2 hits a bar, keeps 1 (needs 2) */
-    [3]  = {{2, 0, 0, 0, 0}},       /* M04 p1 STAB: b10: TIDE behaviour, not a role: note 82 under DUB (lane top 80: +2) */
-    [6]  = {{5, 0, 0, 0, 0}},       /* M07 p1 STAB: b10: TIDE behaviour, not a role: note 86 under PEAK (lane top 81: +5) */
-    [7]  = {{3, 0, 0, 0, 0}},       /* M08 p1 PROG: b10: TIDE behaviour, not a role: note 81 under PEAK (lane top 78: +3) */
-    [14] = {{0, 0, 0, 0, 0}, {0, 2, 0, 0, 0}},   /* M15 p2 ATMOS: b10: TIDE behaviour, not a role: note 46 under DEEP and MINIMAL (lane floor 48: -2) */
-    [15] = {{0, 0, 0, 1, 0}},       /* M16 p1 AIR: b10: TIDE behaviour, not a role: one bar with 2 onsets where the Original's steps give 1 */
-    [18] = {{0, 0, 1, 0, 0}},       /* M21 p1 MOTIF: b10: TIDE behaviour, not a role: under DEEP and DUB it keeps 3 of the 6 hits of every bar (needs 4) */
+    /* b10 Later 6 (round 2), each case decided: the range overshoots were a TIDE bug, fixed (seq_voicelead.c sqm_varp: a VOIC octave on an ARP SEQ step and PEAK's open
+     * voicing of its chord added up past the lane: M01 +4, M04 +2, M07 +5, M08 +3) and a test one (M15's -2 was its own lowest step, bars 12 .. 15: the Original is read
+     * over 16 bars now). Left, musical: */
+    [0]  = {{0, 0, 2, 0, 50}},      /* M01 p1 STAB: bar 4 of every 4 is CALL AND ANSWER's variation bar (seq_morph.c: both parts play End B), whose stab keeps 1 of its 3 hits in place (0 twice in 64 bars under DUB); Jaccard 0.52 */
+    [1]  = {{0, 0, 1, 0, 0}},       /* M02 p1 SKANK: the same variation bar keeps 1 of the 2 off-beat hits in place */
+    [15] = {{0, 0, 0, 1, 0}},       /* M16 p1 AIR: one bell of the 11-step loop moved half a note earlier (step 9 to 8): two onsets in that bar, none in the next, as many as written */
+    [18] = {{0, 0, 1, 0, 0}},       /* M21 p1 MOTIF: the variation bar keeps 3 of the riff's 6 hits in place (needs 4) */
 };
 /* the density band of part p of a row: the table's own band (b10: the bands measured on today's multis where no role's band fits), else the role's */
 #define DLO(row, p, r) (TR[row].dens[2 * (p) + 1] ? TR[row].dens[2 * (p)] : DENS[r].lo)
@@ -239,13 +238,10 @@ static uint32_t popc64(uint64_t x) { uint32_t n = 0; for (; x; x >>= 1) n += (ui
 /* the drop's silent bars as the part plays them (b10): the flag is read when the bar line is seen and the drop's bars play one bar on in the voices (a run of the sixteen multis in PEAK: bars 32 and
  * 33 silent, flagged 31 and 32; the ACID and ELEC parts counted the first silent bar as a failed anchor bar), so the bar before is the one whose flag counts */
 #define DROPF(p, b) ((b) ? drop[p][(b) - 1u] : drop[p][b])
-/* (b10 Later 6) CALL AND ANSWER's listening bars (seq_morph.c sqm_listens: the part drops to its anchors and beats while the other speaks, bar 3 of 4
- * against a bass or a pad), read as the drop's flags are: the 4.5 rule counts the Original's hits kept, a listening bar keeps fewer by design */
-#define LISF(p, b) ((b) ? lis[p][(b) - 1u] : lis[p][b])
 static void play(uint32_t row, uint32_t style, uint32_t pitch, uint32_t tide, uint32_t nbars, int keys, const lane_t *ref, res_t *res)
 {
     static bar_t hist[2][NB_MAX];
-    static uint8_t drop[2][NB_MAX], lis[2][NB_MAX];  /* (b10: per part, see DROPF, LISF) */
+    static uint8_t drop[2][NB_MAX];                  /* (b10: per part, see DROPF) */
     bar_t cur[2];
     uint64_t orig[2], onote[2][2];
     uint32_t p, i, bars_done = 0, curbar = 0, started = 0, last, guard, lastblk[2] = {0, 0}, seen_on[2] = {0, 0}, lastidx[2] = {99, 99}, bpm;
@@ -253,7 +249,6 @@ static void play(uint32_t row, uint32_t style, uint32_t pitch, uint32_t tide, ui
     memset(res, 0, 2u * sizeof *res);
     memset(hist, 0, sizeof hist);
     memset(drop, 0, sizeof drop);
-    memset(lis, 0, sizeof lis);
     if (nbars > NB_MAX)
         nbars = NB_MAX;
     load(TR[row].slot - 1u);
@@ -296,7 +291,7 @@ static void play(uint32_t row, uint32_t style, uint32_t pitch, uint32_t tide, ui
             started = 1;
             curbar = sqm_bar;
             for (p = 0; p < 2u; p++)
-                drop[p][0] = TARC_DROP_BAR((uint32_t)sqm_bar + sqm_bar_turn), lis[p][0] = (uint8_t)sqm_listens(p, (uint32_t)sqm_bar + sqm_bar_turn);
+                drop[p][0] = TARC_DROP_BAR((uint32_t)sqm_bar + sqm_bar_turn);
         } else if ((uint32_t)sqm_bar != curbar) {
             for (p = 0; p < 2u; p++) {
                 hist[p][bars_done] = cur[p];
@@ -315,7 +310,7 @@ static void play(uint32_t row, uint32_t style, uint32_t pitch, uint32_t tide, ui
             curbar = sqm_bar;
             memset(cur, 0, sizeof cur);
             for (p = 0; p < 2u; p++)
-                drop[p][bars_done] = TARC_DROP_BAR((uint32_t)sqm_bar + sqm_bar_turn), lis[p][bars_done] = (uint8_t)sqm_listens(p, (uint32_t)sqm_bar + sqm_bar_turn);
+                drop[p][bars_done] = TARC_DROP_BAR((uint32_t)sqm_bar + sqm_bar_turn);
         }
         for (p = 0; p < 2u; p++) {
             int steps;
@@ -408,7 +403,7 @@ static void play(uint32_t row, uint32_t style, uint32_t pitch, uint32_t tide, ui
                 uint64_t vis = 0, pl = 0, exp;
                 uint32_t j, pe, kept, need, dr = 0;
                 for (j = b; j < b + ln; j++)
-                    vis |= hist[p][j].visited, pl |= hist[p][j].played, dr |= DROPF(p, j) | LISF(p, j);
+                    vis |= hist[p][j].visited, pl |= hist[p][j].played, dr |= DROPF(p, j);
                 exp = orig[p] & vis;
                 pe = popc64(exp), kept = popc64(pl & orig[p]);
                 if (dr || !pe)

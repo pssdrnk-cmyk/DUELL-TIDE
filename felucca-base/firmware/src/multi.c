@@ -765,6 +765,7 @@ static void project_load(uint32_t slot)
         for (pi = 0; pi < NSHOWN; pi++) {
             amt[pi] = (uint8_t)(mph[pi].n[0] ? mph[pi].aset : MORPH_AMOUNT_DEF);
             tide_mu[pi] = (uint8_t)(df_of(k) + 1u);    /* (b10 Later 26: TRAVEL's level, morph_tide.c; the restore above cleared it) */
+        _Static_assert(JRNY_MU_N == DF_N, "jrny_mu.h: a row a factory multi (build/host/jrny_mu gen)");
         }
 #endif
     for (pi = 0; pi < NSHOWN; pi++)                    /* MU_VER 8: End B as its values, the multi's AMOUNT; no block: a fresh B at that AMOUNT (a patch load's rule) */
