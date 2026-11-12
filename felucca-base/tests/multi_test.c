@@ -1496,7 +1496,7 @@ int main(void)
         power_cycle();
         memset(&pb, 0, sizeof pb);
         settings_export(&pb);
-        pb.palette = palette_to_stored(4u);
+        pb.palette = palette_to_stored(UI_GREY_INDEX);
         pb.favorites.factory[15][26] = 1u;
         ck("  the shorter older record (without the patches' favourites 32..127) is stored", st_save(OBJ_SETTINGS, &pb, (uint32_t)(sizeof pb - sizeof pb.favorites.user_hi)) == 0);
         power_cycle();
@@ -1506,7 +1506,7 @@ int main(void)
         settings_init();
         frames(100);
         ck("  and it is refused (0.2.14): the unit starts as new (its default theme, the home byte 0), nothing of the record taken over, no crash",
-           settings.palette != palette_from_stored(pb.palette) && favorites.factory[15][26] == 0u && menu_get(MI_HOMEPG) == 0u);
+           settings.palette != palette_from_stored(pb.palette) && settings.palette == UI_DEFAULT_INDEX && favorites.factory[15][26] == 0u && menu_get(MI_HOMEPG) == 0u);
     }
 
 

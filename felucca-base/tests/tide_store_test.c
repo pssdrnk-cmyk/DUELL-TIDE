@@ -140,7 +140,7 @@ int main(void)
         CHECK("  .. its tail is all zero", z);
         fresh();
         CHECK("old: restored onto a unit that has no TIDE settings yet: accepted, the defaults stay", put_all(1, &o, sizeof o, st_crc32(&o, sizeof o)) == 0 && !tide_store_load(b, 12) && !tide_tail_new);
-        CHECK("  .. the rest of the record took effect (palette, the compressor word)", settings.palette == 6u && cmp_set == (0xC8000000u | 20u | 3u << 6));
+        CHECK("  .. the rest of the record took effect (palette, the compressor word)", settings.palette == UI_DEFAULT_INDEX && cmp_set == (0xC8000000u | 20u | 3u << 6));
         fresh();
         memcpy(tide_tail, "TIDE", 4);
         tide_tail[4] = 12;

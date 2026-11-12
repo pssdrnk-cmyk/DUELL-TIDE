@@ -295,16 +295,16 @@ async function connect(opt = {}) { const m = new MockUnit(opt), u = new Unit(new
   ok(["MULTI FILTER 1/2", "MULTI FILTER 2/2", "FX", "INSERT 1/2", "DUCK 2/2", "ARP 1/3", "STEP", "LFO 2 DEST", "MATRIX 5-8"].every((t) => part.has(t)) && ["CHORUS", "DELAY 1/2", "DELAY 2/2", "REVERB", "TEMPO", "MODULES"].every((t) => glob.has(t)), "layout: filter, FX, arp and step pages are in the part tabs, buses and tempo in the global column");
   ok([...part].every((t) => !glob.has(t)), "layout: no page is in both a part tab and the global column");
   const P = L.PALETTES;
-  ok(P.LIST.length === 10 && P.LIST[P.DEFAULT].name === "TIDE" && P.LIST[0].name === "VIOLET" && P.LIST.every((p) => /^#[0-9a-f]{6}$/.test(p.text) && p.c.length === 4 && p.bg.length === 2), "theme: the firmware's 10 palettes (UI_PALETTES) are in layout.json, TIDE is the default (b10 TIDE identity; VIOLET first, saved ids keep theirs)");
+  ok(P.LIST.length === 4 && P.LIST[P.DEFAULT].name === "TIDE" && P.LIST.map((p) => p.name).join() === "TIDE,PAPER,GREY,MONO" && P.LIST.every((p) => /^#[0-9a-f]{6}$/.test(p.text) && p.c.length === 4 && p.bg.length === 2), "theme: the firmware's 4 palettes (UI_PALETTES: TIDE PAPER GREY MONO) are in layout.json, TIDE is the default (b10 TIDE identity; VIOLET first, saved ids keep theirs)");
   const vs = [0, 1, 2].map((k) => themeVars(P.DEFAULT, k));
   ok(vs.every((v) => /^#[0-9a-f]{6}$/.test(v["--bg"]) && /^#[0-9a-f]{6}$/.test(v["--acc"])) && vs[0]["--acc"] === P.LIST[P.DEFAULT].r[0] && vs[1]["--acc"] === P.LIST[P.DEFAULT].r[2], "theme: a part column takes its own accent (A of part 1, A of part 2) from the palette");
   ok(P.LIST.every((p, i) => Math.abs(lum(themeVars(i, 0)["--fg"]) - lum(themeVars(i, 0)["--bg"])) > 0.3), "theme: text and card colours are well apart in every palette");
-  ok(isDark(0) && !isDark(P.LIST.findIndex((p) => p.name === "PALE")) && !isDark(P.LIST.findIndex((p) => p.name === "MINT")), "theme: dark palettes give the dark scheme, PALE and MINT the light one");
+  ok(isDark(0) && !isDark(P.LIST.findIndex((p) => p.name === "PAPER")), "theme: dark palettes give the dark scheme, PAPER the light one");
   const { u, m } = await connect();
   const item = async () => (await u.readMenu()).find((i) => i.id === 0).value;
   ok(await item() === P.DEFAULT, "theme: the mock unit starts on the default palette (MENU id 0)");
-  m.devicePalette(3); ok(await item() === 3 && palette(3).name === "COBALT", "theme: a COLOR change on the unit is read back through MENU_DESC");
-  let seen = null; u.on("menu", (it) => { seen = it.find((x) => x.id === 0).value; }); await u.setMenu(0, 5); ok(seen === 5, "theme: setting COLOR from the page emits a menu event (the page re-themes at once)");
+  m.devicePalette(2); ok(await item() === 2 && palette(2).name === "GREY", "theme: a COLOR change on the unit is read back through MENU_DESC");
+  let seen = null; u.on("menu", (it) => { seen = it.find((x) => x.id === 0).value; }); await u.setMenu(0, 3); ok(seen === 3, "theme: setting COLOR from the page emits a menu event (the page re-themes at once)");
 }
 // ---- auto-connect (0.2.20): MIDI with SysEx already allowed -> connect at load and when the unit is plugged in later (permissions mocked)
 {

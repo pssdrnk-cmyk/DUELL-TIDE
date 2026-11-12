@@ -34,10 +34,16 @@ int main(void)
 {
     uint32_t i, p0, page0;
     setvbuf(stdout, NULL, _IONBF, 0);
-    expect("the default theme is TIDE (appended after GREY / MONO: saved ids keep their theme)", !strcmp(UI_PALETTES[UI_DEFAULT_INDEX].name, "TIDE") &&
-           UI_DEFAULT_INDEX == NPALETTES - 1u && !strcmp(UI_PALETTES[0].name, "VIOLET"));
+    expect("MENU > COLOR has four themes, TIDE (the default) PAPER GREY MONO (b10, owner 2026-11-12)", !strcmp(UI_PALETTES[UI_DEFAULT_INDEX].name, "TIDE") && NPALETTES == 4u &&
+           UI_DEFAULT_INDEX == 0u && !strcmp(UI_PALETTES[1].name, "PAPER") && UI_GREY_INDEX == 2u && UI_BW_INDEX == 3u);
     expect("a fresh unit (settings blank) starts in TIDE", (settings.magic = 0, settings_init(), settings.palette == UI_DEFAULT_INDEX));
-    expect("a unit with VIOLET saved keeps VIOLET", palette_from_stored(palette_to_stored(0u)) == 0u);
+    expect("a unit with GREY saved keeps GREY", palette_from_stored(palette_to_stored(UI_GREY_INDEX)) == UI_GREY_INDEX);
+    expect("the ten themes of before (stored as UI_PAL_TAG_OLD + index): GREY, MONO and TIDE keep their place, every removed theme is TIDE",
+           palette_from_stored(UI_PAL_TAG_OLD + 7u) == UI_GREY_INDEX && palette_from_stored(UI_PAL_TAG_OLD + 8u) == UI_BW_INDEX && palette_from_stored(UI_PAL_TAG_OLD + 9u) == UI_DEFAULT_INDEX &&
+           palette_from_stored(UI_PAL_TAG_OLD + 0u) == UI_DEFAULT_INDEX && palette_from_stored(UI_PAL_TAG_OLD + 4u) == UI_DEFAULT_INDEX && palette_from_stored(UI_PAL_TAG_OLD + 6u) == UI_DEFAULT_INDEX &&
+           palette_from_stored(UI_PAL_TAG_OLD + 10u) == UI_DEFAULT_INDEX && palette_from_stored(13u) == UI_DEFAULT_INDEX);
+    expect("a backup with a removed theme still restores (its id is valid), a made-up id does not", palette_stored_ok(UI_PAL_TAG_OLD + 3u) && palette_stored_ok(UI_PAL_TAG_OLD + 9u) &&
+           !palette_stored_ok(UI_PAL_TAG_OLD + 10u) && !palette_stored_ok(UI_PAL_TAG + 4u) && palette_stored_ok(UI_PAL_TAG + 3u));
     expect("the version is DUELL " DUELL_VERSION " (the VERSION file)", !strcmp(FELUCCA_VERSION, DUELL_VERSION_STR) && !strcmp(FELUCCA_VERSION, DUELL_VERSION_STR));
 
     ui_power_on();

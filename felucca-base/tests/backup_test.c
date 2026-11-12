@@ -237,13 +237,13 @@ int BACKUP_TEST_MAIN(void)
     memset(&ps, 0, sizeof ps);
     settings_export(&ps);
     ps.rsv = 2;                                          /* (the retired OUTPUT EQ field: whatever it holds is accepted and ignored since 0.2.19) */
-    ps.palette = palette_to_stored(6);
+    ps.palette = palette_to_stored(2);
     bad += check("settings with a retired OUTPUT EQ value restore", put_all(1, &ps, sizeof ps, st_crc32(&ps, sizeof ps)) == 0 &&
-                 settings.rsv == 0u && settings.palette == 6u);
+                 settings.rsv == 0u && settings.palette == 2u);
     ps.palette = 13;                                     /* an older backup: its PAPER (old id 13, Felucca's palettes; no longer read) */
     bad += check("settings of an older backup (an untagged palette id) are refused (rc 2, 0.2.14), the theme stays",
-                 put_all(1, &ps, sizeof ps, st_crc32(&ps, sizeof ps)) == 2u && settings.palette == 6u);
-    ps.palette = palette_to_stored(6);
+                 put_all(1, &ps, sizeof ps, st_crc32(&ps, sizeof ps)) == 2u && settings.palette == 2u);
+    ps.palette = palette_to_stored(2);
     before = erases;
     ps.rsv = 0;
     ps.bold = hold_to_stored(0, 3);                      /* HOLD 0.6 s */

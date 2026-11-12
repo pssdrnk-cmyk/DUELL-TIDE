@@ -42,25 +42,9 @@ from pathlib import Path
 # elevated, text, secondary, borders, (part1 A, part1 B, part2 A, part2 B), hc (no gradients: the morph colour jumps)
 def H(s): return tuple(int(s[i:i + 2], 16) for i in (1, 3, 5))
 # Contrast pass: dark themes have a deep ground, near-white text, panels a visible step lighter, strong borders; light themes have strong text and borders
-THEMES = [
-    ("VIOLET", "#080108", "#0C020E", None, "#0A0414", "#201040", "#FFFFFF", "#F0E0FF", "#9A3FE0",
-     ("#DC38FF", "#BC30F0", "#FF1F8E", "#E00B78"), 0, ("#12051A", "#300E3E", "#CC3490")),
-    ("ORANGE", "#090401", "#0D0502", None, "#150B06", "#2A1A10", "#FFF8F0", "#CDBBA9", "#7A5640",
-     ("#FF6A1A", "#E04A12", "#FF9A1F", "#D9690C"), 0),
-    ("MINT", "#BDF2D8", "#C2F1EA", None, "#F3FAF6", "#E2F6EC", "#0E2A24", "#3F5F57", "#8FCDB6",
-     ("#0DA874", "#0A8F5E", "#2B7BC9", "#1A4A79"), 0),   # (owner 2026-10-25, MINT option 1: part 1 #0DA874, part 2 #2B7BC9, the card off-white #F3FAF6; part 2 end B: end A at 60 %)
-    ("COBALT", "#06080F", "#080B14", None, "#141B2C", "#1F2A42", "#F2F7FF", "#A9BAD3", "#34445F",
-     ("#2F7BFF", "#1647B8", "#4CC3FF", "#1B78B8"), 0),
-    ("PALE", "#F7F4EE", "#F4F6F2", None, "#FFFFFF", "#FBF9F5", "#17171B", "#55515A", "#DDD6CA",
-     ("#5F7AAD", "#5E6BD8", "#CC7BA0", "#E0705C"), 0),   # (owner 2026-10-25: text #17171B, secondary #55515A, part 1 #5F7AAD, part 2 #CC7BA0, the background unchanged)
-    ("OCEAN", "#101B3A", "#0B2935", None, "#17263D", "#20344E", "#F0F7FF", "#A4BAD0", "#304762",
-     ("#4263EB", "#252F91", "#36D9E8", "#087E9B"), 0),
-    ("POLICE", "#141619", "#151923", "#171A21", "#1D2026", "#272B33", "#F5F7FA", "#A7AFBC", "#3B414D",
-     ("#FF2638", "#B80024", "#176BFF", "#1238B8"), 0),   # POLICE (was HI-CON; owner 2026-10-25): red to blue as a smooth gradient, no hard split (hc 0)
-]
+THEMES = []   # b10 palettes (owner 2026-11-12): MENU > COLOR has four themes, TIDE PAPER GREY MONO; the seven morph themes VIOLET ORANGE MINT COBALT PALE OCEAN POLICE are gone (git history has them)
 # 0.2.24: the GLOBAL colour of each theme (g; its accent ga is g moved toward the text colour, dark themes, or toward black, light ones): apart from both parts' hues
-GLOBAL = {"VIOLET": "#FFB84D", "ORANGE": "#3DD6C6", "MINT": "#5B2FB8", "COBALT": "#FFB84D", "PALE": "#0F7A66", "OCEAN": "#FFA040", "POLICE": "#FFD600",
-          "GREY": (200, 200, 200), "MONO": (255, 255, 255), "TIDE": "#F6E7A6"}
+GLOBAL = {"GREY": (200, 200, 200), "MONO": (255, 255, 255), "TIDE": "#F6E7A6", "PAPER": (40, 72, 150)}   # (PAPER: a deep blue, apart from its teal and brown part colours)
 # Appended AFTER the legacy rows (GREY, MONO): saved theme ids are indices, so existing ids keep their theme.
 # b10 TIDE identity (design consult direction A, owner 2026-11-12): TIDE, the night sea: part 1 sea glass, part 2 coral. A new unit starts in it
 # (DEFAULT_THEME); a unit with a saved colour keeps that one
@@ -91,7 +75,9 @@ BW_GREY = (82, 82, 82)             # MONO's one mid grey (RGB565 10/20/10): DIM 
 OLD = ["GREEN", "AMBER", "CYAN", "RED", "MONO", "VIOLET", "PINK", "ICE", "WARM", "OCEAN", "DUSK", "POLICE",
        "LIGHT", "PAPER", "SKY", "MINT", "LILAC", "ROSE", "SAND", "L-HICON"]
 OLD_TO_NEW = {}
-PAL_TAG = 64                       # stored id = PAL_TAG + index; below 20: an old id
+PAL_TAG = 80                       # stored id = PAL_TAG + index (b10: four themes; before, the tag was 64 with ten themes: PAL_TAG_OLD)
+PAL_TAG_OLD = 64
+OLD_ORDER = ["VIOLET", "ORANGE", "MINT", "COBALT", "PALE", "OCEAN", "POLICE", "GREY", "MONO", "TIDE"]   # the stored palettes of rc6 and before, in index order
 REC_DARK, REC_LIGHT = (255, 72, 72), (190, 24, 40)
 QR_LIGHT, QR_DARK, CRASH_BG, CRASH_INK = (255, 255, 255), (0, 0, 0), (160, 0, 0), (255, 255, 255)
 PCT = {"MID": 70, "DIM": 42, "LINE": 18, "SEL": 80, "TINT": 12, "KEY": 78}
@@ -276,7 +262,8 @@ def main():
     ap.add_argument("--report", action="store_true")
     a = ap.parse_args()
     fails = []
-    rows = [build_theme(t) for t in THEMES] + [build_legacy(p) for p in LEGACY if p[0] in ("GREY", BW)] + [build_theme(t) for t in THEMES_EXTRA]
+    by_name = {p[0]: p for p in LEGACY}
+    rows = [build_theme(t) for t in THEMES_EXTRA] + [build_legacy(by_name[n]) for n in ("PAPER", "GREY", BW)]   # TIDE (the default, first), PAPER, GREY, MONO
     assert len(rows) <= 63
     for d in rows:
         name = d["name"]
@@ -347,7 +334,10 @@ def main():
                 f"#define UI_GREY_INDEX {names.index('GREY')}u          /* GREY (hidden-test palette, last but one) */",
                 f"#define UI_BW_INDEX {names.index(BW)}u          /* MONO: black and white (src/gfx.c palette_set) */",
                 f"#define UI_BW_GREY 0x{to565(BW_GREY):04x}u          /* MONO's one grey: DIM LINE RAISE LANE */",
-                f"#define UI_PAL_TAG {PAL_TAG}u          /* stored id = UI_PAL_TAG + index; an untagged id is the first theme */",
+                f"#define UI_PAL_TAG {PAL_TAG}u          /* stored id = UI_PAL_TAG + index; an untagged id is the default theme */",
+                f"#define UI_PAL_TAG_OLD {PAL_TAG_OLD}u          /* the tag of the ten themes before b10: UI_PAL_TAG_OLD + the old index, read through UI_PAL_OLD */",
+                f"#define UI_PAL_OLD_N {len(OLD_ORDER)}u",
+                "#define UI_PAL_OLD_LIST " + ", ".join(str(names.index(n) if n in names else names.index(DEFAULT_THEME)) for n in OLD_ORDER) + "   /* the new index of each old one: GREY MONO TIDE stay, a removed theme is TIDE */",
                 f"#define UI_ACC_PCT {ACC_PCT}"]
         out += [f"#define UI_{k}_PCT {v}" for k, v in PCT.items()] + [f"#define UI_RAISE_PCT {RAISE_PCT}   /* SURF -> TEXT */"]
         out += [f"#define UI_REC_DARK 0x{to565(REC_DARK):04x}u", f"#define UI_REC_LIGHT 0x{to565(REC_LIGHT):04x}u",
