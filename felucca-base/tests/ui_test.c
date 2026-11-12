@@ -7814,7 +7814,10 @@ static int test_item152_flicker(void)
     ok &= flashed == 0u;
     if (flashed)
         printf("    item 152 A MORPH: %u pixels flashed in %u fader steps\n", flashed, steps);
+    ui_prefs |= PREF_ANIM_OFF;                           /* (b10 wave flow: the wave moves on every picture step, rests included (the belt, the ripples), so a redraw 16 ms later is another moment
+                                                          * of a moving picture; ANIM OFF holds the picture steps, and the forced redraw must then equal it: nothing in the picture is stale) */
     ok_eq &= forced_equals_now("MORPH");
+    ui_prefs &= ~PREF_ANIM_OFF;
     bad += check("item 152 A: the MORPH fader moving (colour A -> B) draws the page again with no blank frame (no pixel shows a value between before and after)", ok && ok_soft);
     bad += check("item 152 A:   .. and the screen equals a hard forced redraw (the BG between the cards needs no fill)", ok_eq);
     /* PATCHES: K1 through 128 patches (engine changes on the way), TYPE, FAV */
@@ -8789,8 +8792,11 @@ static int test_item162_boot(void)
         memcpy(keep, host_screen, sizeof keep);         /* the screen the frame that ended the splash left */
         for (i = 0; i < 240u * 240u; i++)
             host_screen[i] = 0x5A5A;                    /* a marked screen: the hard redraw must cover it all */
+        ui_prefs |= PREF_ANIM_OFF;                       /* (b10 wave flow: the page after the splash is the wave page, which moves on every picture step; ANIM OFF holds the step, so the
+                                                          * redraw shows the same moment: as item 152's MORPH check) */
         ui.force = 1;
         frame();
+        ui_prefs &= ~PREF_ANIM_OFF;
         for (i = d = 0; i < 240u * 240u; i++)
             d += keep[i] != host_screen[i];
         if (d)

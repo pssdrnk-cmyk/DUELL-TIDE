@@ -36,6 +36,19 @@
 #define WL_DEFW 200u
 #define WL_FLOOR (64 * 16)                           /* the smallest peak the gain scales to: 64 of the tap's 4,096 steps (-36 dB of the half scale), times 16 */
 #define WL_NC 24
+/* b10 wave flow (owner 2026-11-12, of the rc6 alternatives: "I like [the settling one] but with the speed of the original ... you could add VERY subtle ripples";
+ * then "a bit more calmer or slower, or we could link it to the bpm"): the stack moves back one ridge every WL_FLOW_PACE 16ths of the tempo (beat_samples: the BPM, or an external
+ * clock's measured one; the same with the transport stopped), smoothly: each ridge drifts between its two places by the belt's phase, which runs at the tempo's
+ * rate (an accumulator: a tempo change changes the speed, never jumps the place). The front takes every picture in place between the steps, so it follows the sound
+ * as it dies; the last ridge fades out as it reaches the far end. An older ridge's shape settles flatter with its place (eased: the front whole, the back one at WL_FLOW_BACK %),
+ * and the flat and settled lines carry very small ripples (WL_RIP_A, 150 px long, drifting a round every 16 lines) that ride back with their ridge, the two parts out of phase,
+ * so at rest the lines still flow back. WL_FLOW 0: the rc2 look (a ridge every picture, no settling, no ripples) */
+#ifndef WL_FLOW
+#define WL_FLOW 1
+#endif
+#define WL_FLOW_BACK 18                              /* THE FLATTENING: the oldest line's shape, % of the newest's, eased in between (owner: "flatten the further they get a bit more": 30 -> 18) */
+#define WL_FLOW_PACE 3                               /* THE SPEED: 16th notes a line moves back (owner on the unit, rc6.3-test: "need to slow down significantly": 1 -> 3, a third) */
+#define WL_RIP_A 12                                  /* the ripples' height, 1/16 px (0.75 px each way: the owner tried 2.25, "the initial was better") */
 /* (b6: calm, 7032411's own drawing for sounds with no steady period, is gone: with every picture blended 1 : 1 into the front, a held pad chord measures the same without it,
  * neighbouring lines 1.66 px apart with it and 1.65 without; the blend does what it did) */
 typedef struct {
@@ -52,6 +65,30 @@ typedef struct {
 static wl_t wl[2] __attribute__((section(".pool")));   /* (b10 ui-c: the pool, not .bss; zeroed by wl_tick the first time) */
 static uint8_t wl_zeroed;
 static uint32_t wl_tk = 0xFFFFFFFFu;
+#if WL_FLOW
+static uint32_t wl_pn[2];                            /* each part's pushes so far: a ridge's ripple rides back with it */
+static uint32_t wl_bpos, wl_brem, wl_bms, wl_bpn[2]; /* the belt's place (1/256 of a ridge) and the remainder of its last step, fm1_ms when it was last moved, the belt step at each part's last push */
+static void wl_belt(void)                            /* once a picture: the belt on by the time gone (fm1_ms: real ms on the unit and in the emulator, whatever the picture rate), a line
+                                                      * every WL_FLOW_PACE 16ths of the tempo (4 FS / beat_samples 16ths a second) */
+{
+    const uint32_t dt = fm1_ms - wl_bms, d = dt < 250u ? dt : 250u, bs = (beat_samples() ? beat_samples() : 1u) * WL_FLOW_PACE;   /* (a long gap, the page away: no catching up) */
+    const uint32_t num = d * (1024u * FS / 1000u) + wl_brem;   /* (256ths of a ridge x beat_samples x the pace: 32-bit, 250 ms x 45,158 at most) */
+    wl_bms = fm1_ms;
+    wl_bpos += num / bs;
+    wl_brem = num % bs;
+}
+static const int8_t wl_sin[65] = {0, 6, 12, 19, 24, 30, 36, 41, 45, 49, 53, 56, 59, 61, 63, 64, 64, 64, 63, 61, 59, 56, 53, 49, 45, 41, 36, 30, 24, 19, 12, 6,
+                                  0, -6, -12, -19, -24, -30, -36, -41, -45, -49, -53, -56, -59, -61, -63, -64, -64, -64, -63, -61, -59, -56, -53, -49, -45, -41, -36, -30, -24, -19, -12, -6, 0};
+static uint32_t wl_ripc(uint32_t k, int32_t c)       /* the ripples' phase at column c, 1/16384 of a round: 150 px long, drifting a round every 16 lines (WL_FLOW_PACE bars), the parts half a round apart */
+{
+    return (uint32_t)c * 16384u / 150u + wl_bpos * 4u + k * 8192u;
+}
+static int32_t wl_rip(uint32_t ph)                   /* the ripple at phase ph, 1/16 px */
+{
+    const uint32_t i = (ph >> 8) & 63u, f = ph & 255u;
+    return (wl_sin[i] * (int32_t)(256u - f) + wl_sin[i + 1u] * (int32_t)f) * WL_RIP_A / (64 * 256);
+}
+#endif
 _Static_assert(NLIVE == 2, "ui_scope.c keeps one reader state for each of the two parts");
 _Static_assert(WL_HN <= 16, "wl_t.flat has a bit a ridge");
 static uint32_t wl_k, wl_b, wl_per;                  /* (wl_per: the period the last wl_pic found, 1/16 entry, 0: none) */                          /* the ring being read, and the counter value of its entry 0 */
@@ -296,6 +333,16 @@ static void wl_push(wl_t *s, int8_t *nd)
                 nd[p] = (int8_t)((q + (q > 0)) / 2);
             }
     }
+#if WL_FLOW
+    if (s->hn && wl_bpn[s - wl] == wl_bpos >> 8) {    /* the belt has not moved a ridge since this part's last push: the front takes the picture in place */
+        for (p = 0; p < WL_NP; p++)
+            s->rd[0][p] = nd ? nd[p] : 0;
+        s->flat = (uint16_t)((s->flat & ~1u) | (nd ? 0u : 1u));
+        s->got = 1;
+        return;
+    }
+    wl_bpn[s - wl] = wl_bpos >> 8;
+#endif
     for (p = WL_HN - 1u; p > 0; p--)                 /* (row by row from the oldest: the firmware has no memmove) */
         memcpy(s->rd[p], s->rd[p - 1u], sizeof s->rd[0]);
     for (p = 0; p < WL_NP; p++)
@@ -303,6 +350,9 @@ static void wl_push(wl_t *s, int8_t *nd)
     s->flat = (uint16_t)((s->flat << 1 | (nd ? 0u : 1u)) & ((1u << WL_HN) - 1u));
     s->hn = s->hn < WL_HN ? s->hn + 1u : WL_HN;
     s->got = 1;
+#if WL_FLOW
+    wl_pn[s - wl]++;
+#endif
 }
 /* the sound has gone (silence, a note's tail): the newest ridge again at half its height (a flat one once nothing is left), so a shape fades out over a few pictures instead of
  * dropping to a ruled line */
@@ -318,9 +368,14 @@ static void wl_fade(wl_t *s)
     }
     {
         const uint16_t was = s->flat;
+#if WL_FLOW
+        const int moved = !s->hn || wl_bpn[s - wl] != wl_bpos >> 8;   /* (the belt moves the stack back with this picture, or the front takes it in place) */
+#else
+        const int moved = 1;
+#endif
         s->flat |= 1u;                               /* (no blend with it: the fade is the shape itself) */
         wl_push(s, any ? nd : 0);
-        s->flat = (uint16_t)((was << 1 | (any ? 0u : 1u)) & ((1u << WL_HN) - 1u));
+        s->flat = moved ? (uint16_t)((was << 1 | (any ? 0u : 1u)) & ((1u << WL_HN) - 1u)) : (uint16_t)((was & ~1u) | (any ? 0u : 1u));
     }
 }
 /* a picture that could not be read (too little since a hole in the tap, or torn twice): the front again (flat if it is), so the stack still moves back a step while the part
@@ -434,6 +489,8 @@ static int32_t wl_fit(int32_t h, int32_t *a, int32_t *st)
  * at any slope (a steep part fills the rows between), the edges shaded by coverage. A pixel is blended toward the stroke's colour c by pct * its coverage (1/16 .. 16/16) %: from tab
  * (tab[n]: the canvas background bg blended by n/16, made once a stroke) where it is still the background, else mixed (ux_mix: the same colour either way, three divisions less) */
 /* t[n], n 1 .. 16: colour c at str % covering n/16 of a pixel on the background, for the canvas (byte-swapped); one mix and shifts (b6 wavepace: 13 ridges' tables a lane) */
+static uint16_t wl_bwn(uint16_t c) { return ux.bw ? ux_gray((uint32_t)c >> 11) : c; }   /* (MONO: a blend snapped to exact gray: the channels rounded apart drift
+                                                                                        * off neutral where the flow's settling, ripples and fading line blend over each other) */
 static void wl_tab(uint16_t *t, uint16_t c, int32_t str)
 {
     const uint32_t f = ux_mix(T_BG, c, str), b = T_BG;
@@ -441,7 +498,7 @@ static void wl_tab(uint16_t *t, uint16_t c, int32_t str)
     const int32_t dr = (int32_t)(f >> 11) - r0, dg = (int32_t)(f >> 5 & 63u) - g0, db = (int32_t)(f & 31u) - b0;
     int32_t n;
     for (n = 1; n <= 16; n++)
-        t[n] = ux.mono ? swap16(ux_mix(T_BG, c, str * n / 16)) : swap16((uint16_t)((r0 + ((dr * n + 8) >> 4)) << 11 | (g0 + ((dg * n + 8) >> 4)) << 5 | (b0 + ((db * n + 8) >> 4))));
+        t[n] = ux.mono ? swap16(ux_mix(T_BG, c, str * n / 16)) : swap16(wl_bwn((uint16_t)((r0 + ((dr * n + 8) >> 4)) << 11 | (g0 + ((dg * n + 8) >> 4)) << 5 | (b0 + ((db * n + 8) >> 4)))));
 }
 static void wl_col(int32_t x, int32_t ya, int32_t yb, int32_t w16, uint16_t c, int32_t pct, int32_t ymin, int32_t ymax, const uint16_t *tab, uint16_t bg)
 {
@@ -455,7 +512,7 @@ static void wl_col(int32_t x, int32_t ya, int32_t yb, int32_t w16, uint16_t c, i
         if (row < ymin || row > ymax || r1 <= r0 || (uint32_t)y >= cv_h || m <= 0)
             continue;
         q = &cv_px[(uint32_t)y * cv_w + (uint32_t)x];
-        *q = *q == bg ? tab[r1 - r0] : swap16(ux_mix(swap16(*q), c, m > 100 ? 100 : m));
+        *q = *q == bg ? tab[r1 - r0] : swap16(wl_bwn(ux_mix(swap16(*q), c, m > 100 ? 100 : m)));
     }
 }
 /* ridge r's height at x16 (1/16 px) of its span from xl16, mul the points a 1/16 px (Q16): the two nearest points, linear; 1/16 px from its middle */
@@ -492,6 +549,10 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
     int32_t yb[WL_HN], xl[WL_HN], xr[WL_HN], mul[WL_HN], py[WL_HN];
     uint16_t col[WL_HN], ft[WL_HN][17];              /* (each ridge's colours by the share of a pixel its stroke covers, 0 .. 16 sixteenths: on the background) */
     uint32_t shp = 0, seen = 0;                      /* (bit r: ridge r drawn with its shape; ridge r has had a column) */
+#if WL_FLOW
+    int32_t se[WL_HN];                               /* (ridge r's shape, 1/256: flatter further back; the rest of it the ripple's share) */
+    uint32_t rp[WL_HN];                              /* (ridge r's ripple phase: it rides back with the ridge) */
+#endif
     if (y1 - y0 < 8)
         return;
     if (hot)                                         /* the selected part (both with BOTH): a bar at the half's edge (the tag goes over the lines, last) */
@@ -517,20 +578,55 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
         shp |= (uint32_t)(r < nr && !((s->flat >> r) & 1u)) << r;
         col[r] = mv_col(k, pct, r * 90 / nf);        /* (WAVE LAB's fade toward the back) */
         wl_tab(ft[r], col[r], r ? str : fstr);
+#if WL_FLOW
+        rp[r] = (wl_pn[k] - (uint32_t)r) * 256u;      /* (1/64 of a round from one ridge to the next) */
+#endif
     }
+#if WL_FLOW
+    {   /* the belt: ridge r between places r - 1 and r by its phase (ridge 1 peels off the front), the last one fading out as it reaches the far end; the shape settles
+         * by the place */
+        const int32_t ph = (int32_t)(wl_bpos & 255u);
+        for (r = nf - 1; r >= 0; r--) {
+            const int32_t pz = r ? (r - 1) * 256 + ph : 0, x = nf > 1 ? pz / (nf - 1) : 0;   /* (its place, 1/256 of a ridge; 0 .. 256: the front .. the back) */
+            se[r] = 256 - (256 - WL_FLOW_BACK * 256 / 100) * x * x / 65536;
+            if (r) {
+                const int32_t w0 = nf > 1 ? hw16 * (5 * (nf - 1) - (r - 1)) / (5 * (nf - 1)) : hw16, w1 = nf > 1 ? hw16 * (5 * (nf - 1) - r) / (5 * (nf - 1)) : hw16;
+                const int32_t w = w0 + (((w1 - w0) * ph) >> 8);
+                yb[r] = yb[r - 1] + (((yb[r] - yb[r - 1]) * ph) >> 8);
+                xl[r] = cx16 - w;
+                xr[r] = cx16 + w;
+                mul[r] = (int32_t)(((WL_NP - 1u) << 16) / (uint32_t)(2 * w > 0 ? 2 * w : 1));
+                col[r] = mv_col(k, pct, pz * 90 / (nf * 256));
+                wl_tab(ft[r], col[r], r == nf - 1 ? str * (256 - ph) / 256 : str);
+            }
+        }
+    }
+#endif
     {
-        int32_t y0f = shp & 1u ? yb[0] + wl_atx(s, 0u, WL_X0 * 16, xl[0], mul[0]) : yb[0];   /* (the front's height in this column; the next one's is found in the loop) */
+#if WL_FLOW
+#define WL_RP(r, cph) wl_rip((cph) + rp[r])
+#else
+#define WL_RP(r, cph) 0
+#endif
+        int32_t y0f = shp & 1u ? yb[0] + wl_atx(s, 0u, WL_X0 * 16, xl[0], mul[0]) : yb[0] + WL_RP(0, wl_ripc(k, WL_X0));   /* (the front's height in this column; the next one's is found in the loop) */
         for (c = WL_X0; c <= WL_X1; c++) {
-            const int32_t x16 = c * 16, yn = (shp & 1u) && c < WL_X1 ? yb[0] + wl_atx(s, 0u, x16 + 16, xl[0], mul[0]) : y0f;
+#if WL_FLOW
+            const uint32_t cph = wl_ripc(k, c), nph = cph + 16384u / 150u;
+#endif
+            const int32_t x16 = c * 16, yn = (shp & 1u) && c < WL_X1 ? yb[0] + wl_atx(s, 0u, x16 + 16, xl[0], mul[0]) : !(shp & 1u) && c < WL_X1 ? yb[0] + WL_RP(0, nph) : y0f;
             int32_t y[WL_HN], m, hz = y1 - 1;   /* (m: the ridges drawn in this column, the front and the older ones as wide as it reaches: each is narrower than the one before;
                                                       * hz: the horizon, the top row drawn in this column so far: an older ridge shows only above it) */
             y[0] = y0f;
             for (m = 1; m < nf && x16 >= xl[m] && x16 <= xr[m]; m++) {   /* (the heights, the front back: each shaped one at most at the bound the newer shaped ones leave) */
                 if (!((shp >> m) & 1u)) {
-                    y[m] = yb[m];
+                    y[m] = yb[m] + WL_RP(m, cph);
                     continue;
                 }
+#if WL_FLOW
+                y[m] = yb[m] + (wl_atx(s, (uint32_t)m, x16, xl[m], mul[m]) * se[m] + WL_RP(m, cph) * (256 - se[m])) / 256;
+#else
                 y[m] = yb[m] + wl_atx(s, (uint32_t)m, x16, xl[m], mul[m]);
+#endif
             }
             for (r = 0; r < m; r++) {
                 const int32_t ya = (seen >> r) & 1u ? py[r] : y[r];
@@ -578,6 +674,9 @@ static int wl_tick(void)
         return 0;
     stepit = tk != wl_tk || !(wl[0].got && wl[1].got);
     if (stepit) {
+#if WL_FLOW
+        wl_belt();
+#endif
         if ((int32_t)(wv_want - wv_blk) <= 0) {      /* the gate was shut (the page was left): the pictures start over, what the rings hold is not fresh */
             memset(wl, 0, sizeof wl);
             wl[0].base = wv_cnt[0];
