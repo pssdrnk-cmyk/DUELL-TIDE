@@ -748,7 +748,7 @@ static void tide_status(char *l) { tide_status_arc(l, 1); }
 /* b10 round 9: knob 1's line while a take records: TAKE  BAR 3/4 (0: no take is recording) */
 static uint32_t take_text(char *l)
 {
-    uint32_t pr = 0, p = song.rec & 1u ? 0u : 1u, spb = tk_spb(), len = TIDE_PLAY_LEN(&trk[p]);
+    uint32_t pr = 0, p = song.rec & 1u ? 0u : 1u, spb = tk_spb(&trk[p]), len = TIDE_PLAY_LEN(&trk[p]);
     if (take_line(&pr) != 2u)
         return 0;
     str_cpy(l, "TAKE  BAR ", 40);
