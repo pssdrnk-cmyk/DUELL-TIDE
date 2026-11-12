@@ -762,8 +762,10 @@ static void project_load(uint32_t slot)
 #endif
 #if DUELL_TIDE
     if (fact)                                          /* TIDE b6: a factory multi keeps the player's AMOUNT (a saved one restores its own); M17, M18 too (their STYLE DRONE is not AMOUNT) */
-        for (pi = 0; pi < NSHOWN; pi++)
+        for (pi = 0; pi < NSHOWN; pi++) {
             amt[pi] = (uint8_t)(mph[pi].n[0] ? mph[pi].aset : MORPH_AMOUNT_DEF);
+            tide_mu[pi] = (uint8_t)(df_of(k) + 1u);    /* (b10 Later 26: TRAVEL's level, morph_tide.c; the restore above cleared it) */
+        }
 #endif
     for (pi = 0; pi < NSHOWN; pi++)                    /* MU_VER 8: End B as its values, the multi's AMOUNT; no block: a fresh B at that AMOUNT (a patch load's rule) */
         if (proj_scratch.bvn[pi]) {

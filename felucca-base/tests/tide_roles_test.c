@@ -4,7 +4,7 @@
  * runs it: the style's nine rows, TARGET SND+SEQ, ROLL MUSIC, the glide launched with PLAY (glide_launch). What a part plays is read off its voices (a voice started: its note and
  * the step the part is on), so these are the notes as the unit sounds them (LAYER sends no MIDI out for part 2, so the ring cannot be used). Everything is run with PITCH OFF
  * and PITCH ON, each run from the boot state in a forked child (ui_power_on() leaves voices, arcs and held keys behind). Time: about 10 s.
- *   4.1 lane      every note started lies in the Original's lane: [lowest, highest + 12] of the notes the multi plays on PLAY alone with TIDE idle (8 bars, the same load),
+ *   4.1 lane      every note started lies in the Original's lane: [lowest, highest + 12] of the notes the multi plays on PLAY alone with TIDE idle (16 bars, the same load: b10, a slow pad loop shows all its steps),
  *                 where a lane that starts at C3 (48) or above may reach down to 48 (spec C1). (b9: no floor under C2: the low end is welcome, 4.1f is gone.)
  *                 'strict' (printed only): notes outside [Original's lowest, highest + 12] without C1's allowance.
  *   4.2 density   onsets a bar, averaged over every 4-bar window (the bars of a DROP's two left out), inside the role's range (Appendix B DENS); a sustained role (PAD, ATMOS, AIR,
@@ -13,7 +13,7 @@
  *                 sub are welcome, the FM-1 only must not play the drums. The band is still measured and printed, on a 10 s render of PLAY and of PLAY with JRNY.)
  *   4.4 loudness  the 16 within 3 dB of their median, K-weighted as `gen_factory_multis loud` measures (same excitation: PLAY where a part has steps and no arp, else C4 E4 G4 held;
  *                 each multi from the boot state, so within about 1 dB of that tool, which runs them one after the other in one process), the peak under -3 dBFS
- *   4.5 motif     every loop of the Original (all its steps visited: a bar for a 16-step pattern, more for 32 steps or a slow one) but a DROP's keeps max(2, 3/5) of its hits in place;
+ *   4.5 motif     every loop of the Original (all its steps visited: a bar for a 16-step pattern, more for 32 steps or a slow one) but a DROP's and a listening bar's (CALL AND ANSWER, b10) keeps max(2, 3/5) of its hits in place;
  *                 the mean Jaccard of a loop's onset set against the Original's is 0.55 or more for SKANK, STAB, MOTIF, PULSE, ANSWER
  * The table TR[] is the E1 baseline's (the records of felucca-base/tools/factory_multis.py at integ 8308edb) with the spec's roles where a part fits a card; role 0 is measured and
  * printed, not checked, a LIVE part is not run, and a classic-arp part (ARP) gets its lane from 8 bars of itself. Tasks T8 and T9 replace the rows with the spec's Appendix B
@@ -239,10 +239,13 @@ static uint32_t popc64(uint64_t x) { uint32_t n = 0; for (; x; x >>= 1) n += (ui
 /* the drop's silent bars as the part plays them (b10): the flag is read when the bar line is seen and the drop's bars play one bar on in the voices (a run of the sixteen multis in PEAK: bars 32 and
  * 33 silent, flagged 31 and 32; the ACID and ELEC parts counted the first silent bar as a failed anchor bar), so the bar before is the one whose flag counts */
 #define DROPF(p, b) ((b) ? drop[p][(b) - 1u] : drop[p][b])
+/* (b10 Later 6) CALL AND ANSWER's listening bars (seq_morph.c sqm_listens: the part drops to its anchors and beats while the other speaks, bar 3 of 4
+ * against a bass or a pad), read as the drop's flags are: the 4.5 rule counts the Original's hits kept, a listening bar keeps fewer by design */
+#define LISF(p, b) ((b) ? lis[p][(b) - 1u] : lis[p][b])
 static void play(uint32_t row, uint32_t style, uint32_t pitch, uint32_t tide, uint32_t nbars, int keys, const lane_t *ref, res_t *res)
 {
     static bar_t hist[2][NB_MAX];
-    static uint8_t drop[2][NB_MAX];                  /* (b10: per part, see DROPF) */
+    static uint8_t drop[2][NB_MAX], lis[2][NB_MAX];  /* (b10: per part, see DROPF, LISF) */
     bar_t cur[2];
     uint64_t orig[2], onote[2][2];
     uint32_t p, i, bars_done = 0, curbar = 0, started = 0, last, guard, lastblk[2] = {0, 0}, seen_on[2] = {0, 0}, lastidx[2] = {99, 99}, bpm;
@@ -250,6 +253,7 @@ static void play(uint32_t row, uint32_t style, uint32_t pitch, uint32_t tide, ui
     memset(res, 0, 2u * sizeof *res);
     memset(hist, 0, sizeof hist);
     memset(drop, 0, sizeof drop);
+    memset(lis, 0, sizeof lis);
     if (nbars > NB_MAX)
         nbars = NB_MAX;
     load(TR[row].slot - 1u);
@@ -292,7 +296,7 @@ static void play(uint32_t row, uint32_t style, uint32_t pitch, uint32_t tide, ui
             started = 1;
             curbar = sqm_bar;
             for (p = 0; p < 2u; p++)
-                drop[p][0] = TARC_DROP_BAR((uint32_t)sqm_bar + sqm_bar_turn);
+                drop[p][0] = TARC_DROP_BAR((uint32_t)sqm_bar + sqm_bar_turn), lis[p][0] = (uint8_t)sqm_listens(p, (uint32_t)sqm_bar + sqm_bar_turn);
         } else if ((uint32_t)sqm_bar != curbar) {
             for (p = 0; p < 2u; p++) {
                 hist[p][bars_done] = cur[p];
@@ -311,7 +315,7 @@ static void play(uint32_t row, uint32_t style, uint32_t pitch, uint32_t tide, ui
             curbar = sqm_bar;
             memset(cur, 0, sizeof cur);
             for (p = 0; p < 2u; p++)
-                drop[p][bars_done] = TARC_DROP_BAR((uint32_t)sqm_bar + sqm_bar_turn);
+                drop[p][bars_done] = TARC_DROP_BAR((uint32_t)sqm_bar + sqm_bar_turn), lis[p][bars_done] = (uint8_t)sqm_listens(p, (uint32_t)sqm_bar + sqm_bar_turn);
         }
         for (p = 0; p < 2u; p++) {
             int steps;
@@ -404,7 +408,7 @@ static void play(uint32_t row, uint32_t style, uint32_t pitch, uint32_t tide, ui
                 uint64_t vis = 0, pl = 0, exp;
                 uint32_t j, pe, kept, need, dr = 0;
                 for (j = b; j < b + ln; j++)
-                    vis |= hist[p][j].visited, pl |= hist[p][j].played, dr |= DROPF(p, j);
+                    vis |= hist[p][j].visited, pl |= hist[p][j].played, dr |= DROPF(p, j) | LISF(p, j);
                 exp = orig[p] & vis;
                 pe = popc64(exp), kept = popc64(pl & orig[p]);
                 if (dr || !pe)
@@ -465,7 +469,7 @@ static void music(uint32_t row, uint32_t nbars)
     lane_t ref[2];
     res_t idle[2], r[2][2];                                         /* [pitch][part] */
     int keys = TR[row].role[0] == R_ARP || TR[row].role[1] == R_ARP;
-    play_iso(row, TR[row].style, 0, 0, 8u, keys, 0, idle);              /* the Original on PLAY alone */
+    play_iso(row, TR[row].style, 0, 0, 16u, keys, 0, idle);             /* the Original on PLAY alone (b10 Later 6: 16 bars, M15's pad plays its lowest step in bars 12 .. 15) */
     for (p = 0; p < 2u; p++) {
         ref[p].lo = idle[p].seen_lo < 0 ? 1 : idle[p].seen_lo;
         ref[p].hi = idle[p].seen_lo < 0 ? 0 : idle[p].seen_hi;
