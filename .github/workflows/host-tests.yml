@@ -45,6 +45,7 @@ jobs:
           python3 jam/test_ci_retry.py
           python3 jam/test_assemble_changes.py
           python3 jam/test_safe.py
+          python3 jam/test_slow_tier.py
           python3 jam/check_groups.py
           python3 jam/test_check_groups.py
           python3 jam/check_docs.py

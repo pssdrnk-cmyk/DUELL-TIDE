@@ -46,3 +46,9 @@ A branch no longer edits the shared lines of `CHANGELOG-TIDE.md` / `docs/ROADMAP
 ## Every group runs by default or says why not (`jam/check_groups.py`)
 
 `host_tests.sh` names its groups twice: the default list (`want="${*:-...}"`, what CI's shards and `--changed` run) and the case labels. A group that is only a case is never run by anyone (`take`, `answer` and `guards` were, until PR 62). `python3 jam/check_groups.py [host_tests.sh]` (the `jam-tools` CI job) fails, naming the group, when a case label is neither in the list nor marked out by a line `# not default: LABEL - reason` (just above its case; the reason is not empty), when a marked group is in the list, when the list names something that is no case, or when a marker names no case. `$EMU` in the list stands for `emu`. Test: `jam/test_check_groups.py` (drops `take` from a copy of the list and expects the failure).
+
+## The slow tier of `--changed` (`--with-slow`, `--slow-s N`)
+
+`check.sh --changed` leaves out the groups whose last recorded run took over 60 s (`JAM_SLOW_S` or `--slow-s N` moves the limit; the times are `build/host/grouptimes.json`, kept by every run; a group never timed is not slow) and prints them by name as `== NOT RUN` at the end, so nobody takes them for passed. `--with-slow` runs them too (and refreshes their times); groups named on the command line, full runs (`-j N`, `--all`) and CI always run everything. `jam/test_slow_tier.py` tests the split.
+
+Measured on the WSL mirror (28 cores, nothing else running), `fx.c` touched (a typedef appended), `-j 4 --changed fork/jam11 --host-only`, every program recompiled: limit 60 s (default): 161 groups run, 9 left out, **517 s** (8.6 min); limit 20 s: 136 groups run, 40 left out, **269 s** (4.5 min). The remaining floor is the compile of the unity build in every group (HOSTOBJ.md, stage 1).

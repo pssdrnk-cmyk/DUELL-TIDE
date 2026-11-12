@@ -20,7 +20,7 @@ if [ -z "${JAM_CHECK_LOG:-}" ]; then
     ls -dt "$REPO"/felucca-base/build/check/*/ 2>/dev/null | tail -n +4 | while read -r d; do safe_rm "$REPO/felucca-base/build/check" "${d%/}"; done
 fi
 
-JOBS=0 CHANGED="" SHARD="" HOSTONLY=0 NOCACHE="" OUTF="" SUMF="" ALL=0 FAST=0 WITHSLOW=""
+JOBS=0 CHANGED="" SHARD="" HOSTONLY=0 NOCACHE="" OUTF="" SUMF="" ALL=0 FAST=0 WITHSLOW="" SLOWS=""
 while [ $# -gt 0 ]; do
     case "$1" in
         -j) JOBS="$2"; FAST=1; shift 2 ;;
@@ -36,6 +36,7 @@ while [ $# -gt 0 ]; do
         --host-only) HOSTONLY=1; shift ;;
         --no-cache) NOCACHE=1; shift ;;
         --with-slow) WITHSLOW=1; FAST=1; shift ;;
+        --slow-s) SLOWS="$2"; FAST=1; shift 2 ;;
         --out) OUTF="$2"; shift 2 ;;
         --summary) SUMF="$2"; shift 2 ;;
         *) break ;;
@@ -97,6 +98,7 @@ if [ "$FAST" = 1 ]; then
     [ -n "$SHARD" ] && fa="$fa --shard $SHARD"
     [ -n "$NOCACHE" ] && fa="$fa --no-cache"
     [ -n "$WITHSLOW" ] && fa="$fa --with-slow"
+    [ -n "$SLOWS" ] && fa="$fa --slow-s $SLOWS"
     [ -n "$OUTF" ] && fa="$fa --out $OUTF"
     [ -n "$SUMF" ] && fa="$fa --summary $SUMF"
     HT_REALCC="$(command -v cc)"; export HT_REALCC
