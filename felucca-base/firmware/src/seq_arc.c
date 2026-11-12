@@ -46,7 +46,7 @@ static void tarc_begin(uint32_t ph)
 }
 static void tarc_clear(void)
 {
-    tarc_dropphr = 0xFFu, tarc_lev = 0, sqm_dyn_nx = 0;
+    tarc_dropphr = 0xFFu, tarc_lev = 0, sqm_dyn_nx = 0, tarc_flt = 0;
     tarc.t = 0, tarc.hand = 0;
 }
 /* one 8-bar unit on: the phrase counted, the next phase begun when this one is done */
@@ -91,6 +91,29 @@ static void tarc_levers(uint32_t auto_mask, uint32_t cur)
     tarc_unit = (uint8_t)cur;
     MORPH_UNLOCK();
 }
+/* b10 round 6 (owner: ARC "rather underwhelming"): the arc through the sound as well as the notes, on PERFORM's master filter (K3 FILTER, 24 dB,
+ * +k a high-pass at about 20 Hz x 2^(k / 10), -k a low-pass at about 20 kHz x 2^(-k / 10)) while the player's K3 is at rest (perform.c PF_FILT).
+ * RISE: a low-pass opening from about 400 Hz (the first arc after PLAY or a load from about 2.5 kHz: a multi does not start muffled) to open over its bars but the last 2, which pull the lows out (a high-pass rising to about 120 Hz,
+ * a step a beat: the build's riser); PEAK: open, the full low end on its first beat; DROP and BREAK: the lows out (about 140 Hz: the bass keeps its
+ * line, without its weight); RECOVER: open, the low end back. Sources: Attack Magazine, the breakdown recipe and Filter Fills (work/b9/research/arc.md) */
+#define TARC_LP 56
+#define TARC_HPR 26
+#define TARC_HPB 28
+static int32_t tarc_flt_of(void)
+{
+    uint32_t ph = tarc.phase, tot = (uint32_t)tarc.len * 8u, pos = ((uint32_t)tarc.len - tarc.left) * 8u + (sqm_bar & 7u);
+    int32_t lp;
+    if (!sqm_arc || !sqm_auto || !tarc.run || !song.playing)
+        return 0;
+    if (ph == AP_DROP || ph == AP_BREAK)
+        return TARC_HPB;
+    if (ph != AP_RISE || tot < 8u)
+        return 0;
+    if (pos + 2u >= tot)                                 /* the last 2 bars: beat 0 .. 7 */
+        return TARC_HPR * (int32_t)(((pos + 2u - tot) * 4u + (beat_n & 3u)) + 1u) / 8;
+    lp = tarc.cnt <= 1u ? TARC_LP / 2 : TARC_LP;        /* (cnt 1: the first RISE since the arc began) */
+    return -(lp - lp * (int32_t)pos / (int32_t)(tot - 2u));
+}
 static void tarc_poll(void)
 {
     uint32_t cur = (uint32_t)(sqm_bar >> 3) & 63u, am = sqm_auto;   /* (the 8-bar unit now: MR4) */
@@ -118,6 +141,7 @@ static void tarc_poll(void)
     } else if (cur != tarc_dropphr)
         tarc_dropphr = 0xFFu;
     tarc_levers(am, cur);
+    tarc_flt = tarc_flt_of();
 }
 /* OCT- + K2 on the TIDE page: a drop at the next phrase; a second turn before it cancels (main loop) */
 static const char *tarc_drop_hand(void)

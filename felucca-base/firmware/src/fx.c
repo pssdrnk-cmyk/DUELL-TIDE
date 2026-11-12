@@ -3385,9 +3385,9 @@ static __attribute__((noinline)) void perf_master(uint32_t n)
         wet[i] = 0;
     }
     perf_block(mix_l, mix_r, n);
-    for (i = 0; i < n; i++) {                           /* (for mix_block's level at PERF_MG) */
-        mix_l[i] <<= 2;
-        mix_r[i] <<= 2;
+    for (i = 0; i < n; i++) {                           /* (for mix_block's level at PERF_MG; times 4, not << 2: a negative sample shifted left is undefined in C, the same bits) */
+        mix_l[i] *= 4;
+        mix_r[i] *= 4;
     }
 }
 

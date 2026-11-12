@@ -32,6 +32,8 @@ static uint32_t tide_seq_voice(const track_t *t, uint32_t *list, uint32_t n);   
  * phrase lifecycle, seq_rhythm.c). Counted here, read by tide_seq.c and the pages */
 static volatile uint8_t sqm_bar, sqm_bar_turn, sqm_bar_soon;   /* (soon: the bar's last 32nd, the bar an ARP SEQ step plays in: its clock runs a little ahead of the beat's; MR4) */
 static volatile uint8_t tide_seq_loops[NTRK];
+/* H3c (perform.c perf_filter, audio path): ARC's master filter (seq_arc.c tarc_flt_of, main loop), K3 FILTER's value while the player's K3 is at rest: 0 none */
+static volatile int8_t tarc_flt;
 /* H3b (seq.c, audio path): POLY (seq_poly.c): the loop's length now, the step after seq_idx, the arp step k, an arp step started */
 static void tide_poly_start(void);
 static uint32_t tide_slen(const track_t *t);
