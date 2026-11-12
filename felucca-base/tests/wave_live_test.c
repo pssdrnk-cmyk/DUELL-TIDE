@@ -314,7 +314,7 @@ int main(void)
     /* saw: #25 DRIVEN SAW on part 1, a new note every 250 ms, then one held (b6 W1: an older line crossed the front in about 1 picture of 15) */
     {
         static const uint8_t NT[8] = {0, 7, 4, 12, 5, 9, 2, 11};
-        uint32_t t, k, pics = 0, xs = 0, xh = 0, eh = 0, es = 0, nl = 0;
+        uint32_t t, k, pics = 0, xs = 0, xh = 0, eh = 0, es = 0, nes = 0, nl = 0, tf = 0;
         if (song.playing)
             press(B_PLAY);
         web_keys(0);
@@ -322,6 +322,9 @@ int main(void)
         preset_go(24);                                   /* (#25 DRIVEN SAW) */
         SEL_BOTH = 1;
         run(1500);
+#if WL_FLOW
+        tf = 12u * WL_FLOW_PACE * (beat_samples() / 4u) / (FS / 1000u) + 500u;   /* (b10 wave flow: the stack fills a line every WL_FLOW_PACE 16ths: the shaped lines are counted once it is full) */
+#endif
         for (t = 0; t < 8000u + 3000u; t += 31u) {       /* (a look twice a picture: none is missed) */
             uint32_t e = 0, l = 0;
             if (t < 8000u && t % 250u < 31u)
@@ -336,8 +339,8 @@ int main(void)
                 else if (t >= 8600u)
                     xh += c >= 4u;
                 nl = k ? nl : l;
-                if (!k && t < 8000u)
-                    es += e;
+                if (!k && t >= tf && t < 8000u)
+                    es += e, nes++;
                 else if (!k && t >= 8600u)
                     eh += e;
             }
@@ -346,8 +349,8 @@ int main(void)
         web_keys(0);
         snprintf(w, sizeof w, "saw: DRIVEN SAW, a new note every 250 ms: looks where an older line lies over 2 px under a newer one for 4 points %u of 516 (b10: hidden, not drawn: reported only)", xs);
         ok(w, 1);
-        snprintf(w, sizeof w, "saw: the stack moves back whole, none laid flat: %u shaped older lines over 258 looks of part 1 (need 10 a look of %u; b5 0.9 of 5)", es, nl - 1u);
-        ok(w, es >= 10u * 258u);
+        snprintf(w, sizeof w, "saw: the stack moves back whole, none laid flat: %u shaped older lines over %u looks of part 1 from %u ms (the stack full; need 10 a look of %u; b5 0.9 of 5)", es, nes, tf, nl - 1u);
+        ok(w, nes > 0u && es >= 10u * nes);
         snprintf(w, sizeof w, "saw: one held, after 0.6 s: crossings %u of %u looks (hidden behind the newer line since b10: reported only), echoes %u.%02u a look (need 95 %% of %u)", xh, 2u * pics, eh / pics, eh * 100u / pics % 100u, nl - 1u);
         ok(w, 20u * eh >= 19u * (nl - 1u) * pics);
     }

@@ -16,7 +16,7 @@
  *   tap          the entry the tap writes (the mean of eight values, four frames, half scale, companded, clamped; 8 entries a block); a block the part did not tap (part 2 skipped, a shut gate, silence) moves the gap up, a late job
  *                (the block's own number, not wv_blk) does not; the reader draws only what lies after the gap
  *   gate         ANIM OFF leaves the gate shut and the picture as it was; otherwise the gate opens ahead; leaving the page starts the pictures over
- *   flow         (WL_FLOW, b10) the belt moves 8 ridges a second at 120 BPM, 4 x BPM / 60 at any tempo, a tempo change changes its speed with no jump; between its steps a
+ *   flow         (WL_FLOW, b10) the belt moves 8 / WL_FLOW_PACE ridges a second at 120 BPM (a line every WL_FLOW_PACE 16ths), a tempo change changes its speed with no jump; between its steps a
  *                picture is taken into the front in place (the stack does not move); the ripples stay within WL_RIP_A and reach it. The checks above see one belt step a
  *                picture (wl_step below), as the reader's pictures did before the belt
  * Run: scope_test (exit 0 = all ok) */
@@ -580,9 +580,9 @@ int main(void)
             wl_belt();
         }
         d = wl_bpos - p0;
-        snprintf(w, sizeof w, "flow: 120 BPM, 6 s: the belt moved %u.%02u ridges (48: 8 a second, a 16th each)", d / 256u, d % 256u * 100u / 256u);
-        ok(w, d >= 48u * 256u - 64u && d <= 48u * 256u + 64u);
-        for (i = 0; i < 100u; i++) {                     /* 120 -> 140 BPM halfway: each picture's move between the two tempos' (122.9 .. 143.4), never a jump */
+        snprintf(w, sizeof w, "flow: 120 BPM, 6 s: the belt moved %u.%02u ridges (48 / WL_FLOW_PACE %u: a line every %u 16ths)", d / 256u, d % 256u * 100u / 256u, WL_FLOW_PACE, WL_FLOW_PACE);
+        ok(w, d >= 48u * 256u / WL_FLOW_PACE - 64u && d <= 48u * 256u / WL_FLOW_PACE + 64u);
+        for (i = 0; i < 100u; i++) {                     /* 120 -> 140 BPM halfway: each picture's move between the two tempos' (122.9 .. 143.4, / WL_FLOW_PACE), never a jump */
             if (i == 50u)
                 song.g[G_BPM] = 140;
             p0 = wl_bpos;
@@ -592,8 +592,8 @@ int main(void)
             dmin = d < dmin ? d : dmin;
             dmax = d > dmax ? d : dmax;
         }
-        snprintf(w, sizeof w, "flow: 120 -> 140 BPM: a picture's move %u .. %u of 256 (no jump: 122 .. 144)", dmin, dmax);
-        ok(w, dmin >= 122u && dmax <= 144u);
+        snprintf(w, sizeof w, "flow: 120 -> 140 BPM: a picture's move %u .. %u of 256 (no jump: %u .. %u)", dmin, dmax, 122u / WL_FLOW_PACE, 144u / WL_FLOW_PACE + 1u);
+        ok(w, dmin >= 122u / WL_FLOW_PACE && dmax <= 144u / WL_FLOW_PACE + 1u);
         song.g[G_BPM] = 120;
         sig_m = sine128;
         ring(0, 9000u);
