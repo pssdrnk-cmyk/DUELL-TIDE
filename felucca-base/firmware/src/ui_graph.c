@@ -1961,7 +1961,7 @@ static uint32_t graph_signature(void)
     }
     if (pg->graph == GR_SLOTS) {                     /* (a checksum over each slot) */
         for (i = 0; i < MU_SHOWN; i++)
-            h ^= (uint32_t)project_used(i) << (8u + i);
+            h ^= (uint32_t)project_used(i) << ((8u + i) & 31u);   /* (26 slots: 8 + i reaches 33) */
         graph_project_used(0);
         h += graph_pname_sig;
 #if DUELL_TIDE
