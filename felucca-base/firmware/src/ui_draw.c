@@ -911,6 +911,7 @@ static uint8_t k1_after_r;
 #define MROW_H 13                                       /* S face's whole box (caps 189 .. 199, descenders to 201: nothing cut, nothing under the footer's canvas); the picture above it */
 #define MROW_BASE (MROW_H - 3)                          /* rows 48 .. 183, two lanes of 68 (5 clear rows to the caps) */
 #define MROW_WAVES_END 184
+_Static_assert((MROW_WAVES_END - UT_A_GR_Y + 1) / 2 <= 72 && MROW_WAVES_END <= 240, "ui_scope.c wl_rows keeps its row hashes under the lanes (rows 72 up of the canvas)");
 #endif
 static void area_rect(int32_t *y, int32_t *h)
 {
