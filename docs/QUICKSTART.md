@@ -88,7 +88,7 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
    - AMOUNT is how far a roll goes.
    - STYLE DUB is the default.
 
-   Then AUTO TIDE. Press PLAY and twist K1 on AUTO TIDE right: the parts evolve by themselves. With no notes coming in TIDE plays in C minor; send or hold one note to set its key. The [TIDE guide](TIDE_GUIDE.md) has the rest.
+   Then AUTO TIDE. Press PLAY and twist K1 on AUTO TIDE right: the parts evolve by themselves. With no notes coming in TIDE plays its own chord on C; send or hold one note to set its key. The [TIDE guide](TIDE_GUIDE.md) has the rest.
 4. Press **SAVE**. The first page is **PATCHES**: 128 slots, #1 to #128.
 
    - The factory sounds fill them. With TIDE the last four are empty USER slots (U1 to U4) for new sounds. The factory sounds go to #171. (#129 and up are read-only places.)
@@ -198,7 +198,7 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
     - In those two modes the repeats do not alternate left and right, that is PING-PONG.
     - SPREAD is the stereo width. It is not shown in DIGITAL, nor in DUEL, where there is nothing to spread.
     - The pages run top-down: MODE, TIME, FDBK, COLR, then SPREAD, MRATE, MOD, MIX last.
-    - **COLR LFO** (its own page, one knob, CLFO 0 to 15): a slow wave at 0.25 Hz that swings the echo's colour darker and brighter, 8 colour units a step each way, so the repeats move like a hand on a dub echo's tone control. 0 is off. DUB BASIC and DUB CHORD use 5, and a multi stores it.
+    - **COLR LFO** is not on the DELAY pages. It is GLO's page 6 of 13 (its own page, shown as COLR LFO): one knob, COLOR LFO, 0 to 15, a slow wave at 0.25 Hz that swings the echo's colour darker and brighter, 8 colour units a step each way, so the repeats move like a hand on a dub echo's tone control. 0 is off. DUB BASIC and DUB CHORD use 5, and a multi stores it.
     - A TIME that does not fit the delay line (1/2 at 77 BPM, for example) is halved until it does, in every mode. The TIME card shows the note value that plays.
     - In DIGITAL and PING-PONG a change of TIME, TEMPO or an external clock bends the repeats like a tape instead of clicking.
     - In DUEL (new in 0.2.22) all four modes work, mono on each part's own side. PING-PONG sounds like DIGITAL there, because a ping-pong needs two sides. The RANDOM and OCT UP events stay in the middle of the part's side.
