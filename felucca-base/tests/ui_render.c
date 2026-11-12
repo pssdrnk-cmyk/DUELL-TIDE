@@ -1076,9 +1076,9 @@ static void setup(int s)
     case S_SONG_PICTURES: pslot_scene(4); break;
     /* 1.2: the header's slot letter (ui_draw.c head_slot): "1 A" (PROJECT A loaded; another track armed: the REC mark
      * outlined after it); "1 A*" edited since, armed (the REC mark after it) */
-    case S_HEAD_SLOT: song.playing = 0; project_save(0); project_load(MIDX(0)); song.rec = 1u << ((song.sel + 1u) % NTRK); go_home(); ui.msg_t = 0; break;
+    case S_HEAD_SLOT: song.playing = 0; project_save(0); project_load(0); song.rec = 1u << ((song.sel + 1u) % NTRK); go_home(); ui.msg_t = 0; break;
     case S_HEAD_SLOT_EDITED:
-        song.playing = 0; project_save(0); project_load(MIDX(0)); TSEL->step[3].note[0] = 70; TSEL->step[3].n = 1;
+        song.playing = 0; project_save(0); project_load(0); TSEL->step[3].note[0] = 70; TSEL->step[3].n = 1;
         song.rec = 1u << song.sel; go_home(); ui.msg_t = 0; break;
     case S_HEAD_SLOT_SONG: pslot_scene(6); break;
     case S_MIXER:                               /* (STEREO: PAN live; SPLIT's fixed PAN: S_MIXER_SPLIT) */
@@ -1279,8 +1279,8 @@ static void setup(int s)
         cpum.t = fm1_ms; cpum.avg = 88; cpum.hold = 104; cpum.miss = 12; cpum.seen = 1; cpum.miss_t = fm1_ms; break;   /* (and the meter in alarm) */          /* the REC mark beside OCT- BACK */
     case S_ABOUT_CREDITS: ui.menu = 2; ui.menu_scroll = 360; break;
     case S_ABOUT_END: ui.menu = 2; ui.menu_scroll = (uint16_t)menu_scroll_max(); break;
-    case S_TEST: project_load(MIDX(15)); felucca_dbg.erase_max_us = 41234u; ui.menu = 3; ui.menu_sel = MI_TEST; test_t = fm1_ms; cpum.avg = 58; cpum.hold = 73; cpum.miss = cpum.base = 0; cpum.seen = 0; cpum.t = fm1_ms; break;
-    case S_TEST_ALARM: project_load(MIDX(14)); ui.menu = 3; ui.menu_sel = MI_TEST; song.sel = 1; test_t = fm1_ms; cpum.avg = 97; cpum.hold = 124; cpum.miss = 27; cpum.base = 0; cpum.seen = 1;
+    case S_TEST: project_load(15); felucca_dbg.erase_max_us = 41234u; ui.menu = 3; ui.menu_sel = MI_TEST; test_t = fm1_ms; cpum.avg = 58; cpum.hold = 73; cpum.miss = cpum.base = 0; cpum.seen = 0; cpum.t = fm1_ms; break;
+    case S_TEST_ALARM: project_load(14); ui.menu = 3; ui.menu_sel = MI_TEST; song.sel = 1; test_t = fm1_ms; cpum.avg = 97; cpum.hold = 124; cpum.miss = 27; cpum.base = 0; cpum.seen = 1;
         cpum.miss_t = fm1_ms; cpum.t = fm1_ms; break;
     case S_UBOOT: ui.uboot = 3; break;
     /* the header's battery at each stock level (raw ADC: under 531, 531.., 561.., 591..) and on USB power */
@@ -1309,9 +1309,9 @@ static void setup(int s)
     case S_QUICK_FILTER: go_title("AMP ENV"); ui.layer = LAYER_EDIT; ui.hot_col = 0; ui.hot_t = 30; break;   /* EDIT held: QUICK FILTER (0.2.9) */
     case S_QUICK_GLO: go_title("AMP ENV"); ui.layer = LAYER_GLO; trk[0].peak = 11000; trk[1].peak = 4000; break;   /* 0.2.13 deck: GLO held, QUICK GLO (0.2.11) */
     case S_MULTIS: case S_MULTIS2:                /* 0.2.13 deck: SAVE > MULTIS, the factory multis in their 0.2.13 order (M01 REESE SWAMP loaded) */
-        song.playing = 0; project_load(MIDX(0)); song.g[G_SLOT] = s == S_MULTIS ? 1 : 7; go_page(GR_SLOTS); ui.act = 2; ui.msg_t = 0; break;
+        song.playing = 0; project_load(0); song.g[G_SLOT] = s == S_MULTIS ? 1 : 7; go_page(GR_SLOTS); ui.act = 2; ui.msg_t = 0; break;
     case S_MULTIS_M03:                            /* 1.0.0-b7: SAVE > MULTIS, M03 HSE JUNO picked: its two parts play written patterns with the arp OFF, SEQ in the preview (owner, from the emulator) */
-        song.playing = 0; project_load(MIDX(0)); song.g[G_SLOT] = 3; go_page(GR_SLOTS); ui.act = 2; ui.msg_t = 0; break;
+        song.playing = 0; project_load(0); song.g[G_SLOT] = 3; go_page(GR_SLOTS); ui.act = 2; ui.msg_t = 0; break;
     case S_MULTIS3:                               /* SAVE > MULTIS with nothing loaded, M09 (an ARP part, a SEQ part) picked, K3 SAVE picked: OCT+ saves */
         song.playing = 0; song.g[G_SLOT] = 9; go_page(GR_SLOTS); ui.act = 3; ui.msg_t = 0; break;
     case S_PSLOT_NOSEQ:                           /* SAVE > PATTERNS, a slot that holds no steps (NO SEQUENCE), K3 SAVE picked */
@@ -2494,7 +2494,7 @@ static int savenote_main(const char *out)
             setup(S_MORPH_MID);
             pal(PP[q]);
             song.playing = 0; song.rec = 0; usb.config = 0; ui.perf = 0;
-            project_load(MIDX(1));
+            project_load(1);
             go_page(GR_MORPH);
             SEL_BOTH = c == 1u;
             if (c < 2u) {
@@ -2532,7 +2532,7 @@ static int h1res_main(const char *out)
             setup(S_MORPH_MID);
             pal(PP[q]);
             song.playing = 0; song.rec = 0; usb.config = 0; ui.perf = 0;
-            project_load(MIDX(10));                            /* (M11 ACID LINES) */
+            project_load(10);                            /* (M11 ACID LINES) */
             go_page(GR_MORPH);
             SEL_BOTH = c == 1u;
             ui.msg_t = 0;

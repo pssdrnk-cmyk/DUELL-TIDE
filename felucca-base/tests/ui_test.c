@@ -700,7 +700,7 @@ static int test_sound_loads(void)
     /* project load: no copy, and the old one is gone */
     project_save(1);
     up_load(3);
-    project_load(MIDX(1));
+    project_load(1);
     bad += check("a project load drops the copy and takes none", undo.trk == 0 && undo_depth == 0);
     ui_power_on();
     {   /* the retired engines (core.h ENGI_RETIRED): DIGITAL 1, SAMPLE 4, GRAIN 8, DRUM 10, SLICE 13 */
@@ -801,7 +801,7 @@ static int test_patterns(void)
                  t->step[3].note[0] == 43 && !t->step[30].n && t->p[P_SLEN] == 16 && t->p[P_SDIV] == 2 && t->p[P_SSWING] == 40);
     /* a project's steps count as the user's */
     project_save(2);
-    project_load(MIDX(2));
+    project_load(2);
     press(B_OCTUP);
     bad += check("over a project's steps: the dialog", ui.confirm == CF_LOAD_PAT);
     press(B_OCTDN);
@@ -1878,27 +1878,27 @@ static int test_menu_project_rows(void)
     bad += check("TUNE / MIDI IN: nothing in the settings record; the autosave sees the change (the music's)", ok);
     project_save(2);                                     /* (PROJECT C) */
     song.g[G_TUNE] = 0; song.g[G_ROUTE] = 0;
-    project_load(MIDX(2));
+    project_load(2);
     ok = song.g[G_TUNE] == 4631 && song.g[G_ROUTE] == 3 && menu_get(MI_TUNE) == 478u;
     song.g[G_TUNE] = 4170; song.g[G_ROUTE] = 4;            /* (another project's values: the rows follow the load) */
     project_save(3);
-    project_load(MIDX(2));
+    project_load(2);
     ok &= song.g[G_TUNE] == 4631 && song.g[G_ROUTE] == 3;
-    project_load(MIDX(3));
+    project_load(3);
     ok &= song.g[G_TUNE] == 4170 && song.g[G_ROUTE] == 4 && str_eq(menu_vname(MI_TUNE, menu_get(MI_TUNE)), "417.0");
     bad += check("TUNE / MIDI IN: saved with the project and loaded back (round trip; each project its own)", ok);
     song.g[G_TUNE] = 12;                                 /* (0.2.22: an older project held cents, -50 .. 50: out of the Hz range, it reads 440.0, not the nearest end) */
     project_save(5);
     song.g[G_TUNE] = 4300;
-    project_load(MIDX(5));
+    project_load(5);
     ok = song.g[G_TUNE] == 4400;
-    song.g[G_TUNE] = -50; project_save(5); project_load(MIDX(5));
+    song.g[G_TUNE] = -50; project_save(5); project_load(5);
     ok &= song.g[G_TUNE] == 4400;
-    song.g[G_TUNE] = 4153; project_save(5); project_load(MIDX(5));
+    song.g[G_TUNE] = 4153; project_save(5); project_load(5);
     ok &= song.g[G_TUNE] == 4153;
-    song.g[G_TUNE] = 4662; project_save(5); project_load(MIDX(5));
+    song.g[G_TUNE] = 4662; project_save(5); project_load(5);
     ok &= song.g[G_TUNE] == 4662;
-    song.g[G_TUNE] = 4663; project_save(5); project_load(MIDX(5));
+    song.g[G_TUNE] = 4663; project_save(5); project_load(5);
     ok &= song.g[G_TUNE] == 4400;
     bad += check("TUNE: a project's value out of 415.3 .. 466.2 Hz (an older project's cents) loads as 440.0; the ends load as they are", ok);
     ui_power_on();
@@ -2881,7 +2881,7 @@ static int test_layer(void)
     project_save(2);
     turn(EN_K1, -1);
     ok &= song.g[G_RTYPE] == 0;
-    project_load(MIDX(2));
+    project_load(2);
     bad += check("REVERB page: TYPE HALL (power-on) / ROOM / SPRING on KNOB 1 (SIZE, DAMP beside it); a project keeps SPRING",
                  ok && song.g[G_RTYPE] == 1);
     go_title("CHORUS");
@@ -3149,7 +3149,7 @@ static int test_name(void)
                      str_eq(proj_name, "PNPNPNPN"));
     }
     proj_name[0] = 0;
-    project_load(MIDX(1));
+    project_load(1);
     bad += check("  loading it brings its name back (the next save's prefill)", str_eq(proj_name, "PNPNPNPN"));
     trk[0].p[P_LEVEL] = 7;
     press(B_EDIT);
@@ -3325,7 +3325,7 @@ static int test_retired_engines(void)
         project_save(10);                                /* a MULTI (M11) with the part on it: saved, loaded back */
         set_engine_of(t, 0);
         frames(1500);
-        project_load(MIDX(10));
+        project_load(10);
         frame();
         ok = t->eng_req == e && !memcmp(&t->p[P_E0], EV, sizeof EV) && !strncmp(ui.msg, "LOADED", 6) && str_eq(ui.msg2, MSG_NO_ENGINE);
         if (!ok)
@@ -4248,7 +4248,7 @@ static int test_bughunt_ui2(void)
         go_page(GR_SLOTS); song.g[G_SLOT] = 2;
         project_save_as(1, "OLD");
         project_save_as(2, "OTHER");
-        project_load(MIDX(1)); frame();
+        project_load(1); frame();
         ok = str_eq(proj_name, "OLD");
         project_rename(2, "ELSE");
         ok &= str_eq(proj_name, "OLD");                               /* another slot: the music's name stays */
@@ -7572,7 +7572,7 @@ static int test_fm6_ops(void)
     TSEL->p[P_E7] = 0;                               /* SLOT F1: another patch */
     fm6_poll();
     ok &= memcmp(mine, fm6_patch[tr], FP_SIZE) != 0;
-    project_load(MIDX(2));
+    project_load(2);
     ok &= !memcmp(mine, fm6_patch[tr], FP_SIZE) && slot_own();
     TSEL->p[P_E7] = 1; fm6_poll();
     up_load(9);
@@ -8108,7 +8108,7 @@ static int test_item157_pc(void)
     ok &= i157_find("LOADED M05", &at) && txt_log[at].f == (const void *)&AF_T && txt_log[at].y0 == ty0 && i157_ink_white_some();
     bad += check("item 157 B: LAYER, a multi's program change: 'LOADED M05' in the title's face and row, white, 40 frames", ok);
     ui.msg_t = 0;
-    project_load(MIDX(4));
+    project_load(4);
     screen_read();
     ok = i157_find("LOADED M05", &at) && txt_log[at].f != (const void *)&AF_T;
     bad += check("item 157 B:   .. the MULTI page's own LOAD keeps the message face (only the program change changed)", ok);

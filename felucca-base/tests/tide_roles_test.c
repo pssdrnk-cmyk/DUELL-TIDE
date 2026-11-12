@@ -558,7 +558,7 @@ static void render(uint32_t row, uint32_t mode, rend_t *r)
         load(TR[row].slot - 1u);
     }
     song.master_q12 = 2048;                                         /* (MASTER at its default position, main.c) */
-    r->name_ok = !strcmp(mu_names[TR[row].slot - 1u], TR[row].name);   /* (the table out of step with the records: tasks T8 / T9 change them together) */
+    r->name_ok = !strcmp(mu_names[MIDX(TR[row].slot - 1u)], TR[row].name);   /* (the table out of step with the records: tasks T8 / T9 change them together) */
     for (c = 0; c < 2u; c++)
         for (i = 0; i < NSTEP; i++)
             pat |= trk[c].step[i].time == ST_NOTE && trk[c].step[i].n && trk[c].p[P_AMODE] == 0;
