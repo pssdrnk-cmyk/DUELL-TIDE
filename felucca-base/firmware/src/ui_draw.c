@@ -240,7 +240,9 @@ static int oct_show_on(void)
  * (H_HEAD / 2; ui_test.c test_head_centres): icons by cv_icon_mid, text by its capitals' band (CAP_IN; the odd row left over above it, as
  * everywhere): M (the page name, the octave, a message: capitals rows 6..16) from y 2, S (OCT, a key hint: rows 7..15) from y 4 */
 #define HEAD_SY CAP_IN(S, H_HEAD)
-#define HEAD_ROWS 20                                 /* b10: the header's canvas, rows 0 .. 19 (its ink ends at row 19); rows 20 .. 26 are the tide line's (TL_Y) */
+#define HEAD_ROWS 20                                 /* b10: the header's canvas while the tide line shows, rows 0 .. 19 (its ink ends at row 19): the line has rows 20 .. 26; else H_HEAD (a message's
+                                                      * second line, the GUIDE, the menu: the header's whole height, the line's strip rows 24 .. 26 only) */
+static uint32_t tide_line_sig;
 #define HEAD_MY CAP_IN(M, H_HEAD)                   /* (the capitals on the header's middle, as the title's Bold 15 (item 111): was 2 rows higher, PALETTES_V3_1.png's rows 4 .. 14) */
 #define HEAD_TRK_X 3                                   /* the part badge: 1 2 side by side, 14 px cushions 15 apart (cv_part) */
 #define HEAD_LEFT_R 32                                 /* the part badges end here (ink 31): the page name starts 4 px on at the earliest */
@@ -592,6 +594,8 @@ static void k2_pill(int32_t x, const char *s, uint16_t edge, uint16_t fill, uint
     cv_text_in(x, UT_CAP_BASE - AF_S_CAP_Y - AF_S_CAP_H + 1 - Y_HEAD, w, &AF_S, s, ink, fill);
 }
 #endif
+static int tide_line_state(uint32_t *prog, uint32_t *beat, uint32_t *mask);   /* tide_ui.c: 0 off, 1 armed, 2 running, 3 waiting (slack), 4 paused */
+static uint8_t tl_page, tl_up;                       /* (the page draw is on, ui_draw_page; the rows above 24 the tide line has now: 4 or 0) */
 static void draw_head(void)
 {
     char tb[40];
@@ -611,10 +615,19 @@ static void draw_head(void)
         cpk = cpu_head(cps, cms, &cpc);
     sig += cpk * 6397u;
 #endif
+    {   /* (b10: the tide line has rows 20 .. 23 on a part page's own draw while it shows and no message is up; else the header keeps its whole height) */
+        uint32_t tp, tb, tm = 3u;
+        const uint8_t up = tl_page && !msg && !screen_global() && !ui.menu && !ui.guide && tide_line_state(&tp, &tb, &tm) ? 4u : 0u;
+        if (up != tl_up) {
+            tl_up = up;
+            tide_line_sig = 0xFFFFFFFFu;               /* (the strip is drawn again with its new rows) */
+        }
+        sig += (uint32_t)up * 5023u;
+    }
     if (!ui.force && sig == ui.head_sig)
         return;
     ui.head_sig = sig;
-    cv_begin(240, HEAD_ROWS, T_BG);
+    cv_begin(240, (uint32_t)(H_HEAD - tl_up), T_BG);
     if (!glob) {                                       /* a part page: the capsules */
         uint32_t lit = badge_lit();
         /* both parts' capsules in every mode (owner, test3): the selected part lit, the other dim */
@@ -3557,11 +3570,9 @@ static void ui_draw(void)
  * WAIT: the line lies flat (slack water); stopped: all of it dim. GREY / MONO: part 2's stretch is dashed, so the parts differ without colour.
  * One 240 x 3 strip, sent only when it changes (~1 ms of SPI a beat); its signature is one word. The header's own rule ("no line under a title", V9) bends
  * here on purpose: a live readout, absent when AUTO TIDE is off */
-static int tide_line_state(uint32_t *prog, uint32_t *beat, uint32_t *mask);   /* tide_ui.c: 0 off, 1 armed, 2 running, 3 waiting (slack), 4 paused */
-static uint32_t tide_line_sig;
-#define TL_Y HEAD_ROWS
-#define TL_H 7
-#define TL_MID 56                                        /* the line's middle in the strip, 1/16 px (row 3.5) */
+#define TL_Y (H_HEAD - (int32_t)tl_up)                /* the strip: rows 20 .. 26 while it has the header's last rows, else 24 .. 26 (a message over it: the line below row 24) */
+#define TL_H (H_HEAD + 3 - TL_Y)
+#define TL_MID ((23 - TL_Y) * 16 + 8)                    /* the line's middle, 1/16 px in the strip: screen row 23.5 */
 #define TL_AMP 32                                        /* the swell, 1/16 px (2 px each way) */
 static uint32_t tl_tk = 0xFFFFFFFFu, tl_ph;               /* the picture the phase was taken at; the phase (2^32 a wavelength) */
 static void tide_line_draw(void)
@@ -3575,12 +3586,12 @@ static void tide_line_draw(void)
         wl_belt();
         tl_ph = wl_bpos << 20;
     }
-    sig = st ? st * 7919u + (uint32_t)xp * 31u + (st == 2u ? tl_ph >> 22 : 0u) * 3u + mask * 1301u + ux.pal * 17u + 1u : 0u;
+    sig = (st ? st * 7919u + (uint32_t)xp * 31u + (st == 2u ? tl_ph >> 22 : 0u) * 3u + mask * 1301u + ux.pal * 17u + 1u : 0u) + tl_up * 0x10001u;
     (void)beat;
     if (!ui.force && sig == tide_line_sig)
         return;
     tide_line_sig = sig;
-    cv_begin(240, TL_H, T_BG);
+    cv_begin(240, (uint32_t)TL_H, T_BG);
     for (x = 0; x < 240 && st; x++) {
         const uint32_t p2 = mask == 2u || (mask == 3u && x >= 120);   /* (part 2's stretch) */
         uint16_t c = mask == 3u && !grey ? ux_mix(T_PTHEME(0), T_PTHEME(1), x * 100 / 239) : T_PTHEME(p2);
@@ -3759,8 +3770,10 @@ static void ui_draw_page(uint32_t counting)
     if (ui.force)
         draw_frame();
     felucca_dbg.stage = 3;
+    tl_page = 1;
     draw_head();
     tide_line_draw();                                   /* (b10: AUTO TIDE's tide line under the header) */
+    tl_page = 0;
     felucca_dbg.stage = 4;
     draw_columns();
     felucca_dbg.stage = 5;
