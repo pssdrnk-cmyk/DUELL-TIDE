@@ -42,3 +42,7 @@ A branch no longer edits the shared lines of `CHANGELOG-TIDE.md` / `docs/ROADMAP
 - the target is a `## <name>` section of the file, or in the roadmap a bold label `**<name>**` (`### 1.0.0-b10`, `### Repository and CI`, `### Later, in order`);
 - at RC time `python3 jam/assemble_changes.py` (`--dry-run` to look first) adds all fragments to the end of their targets, in file-name order, deletes them, and runs `jam/check_docs.py` on the result (a failure puts the two files back);
 - an unknown target stops the run before anything is written. Striking or rewording an existing row is still an edit of the roadmap itself. Test: `jam/test_assemble_changes.py` (two fragments for one heading both land).
+
+## Every group runs by default or says why not (`jam/check_groups.py`)
+
+`host_tests.sh` names its groups twice: the default list (`want="${*:-...}"`, what CI's shards and `--changed` run) and the case labels. A group that is only a case is never run by anyone (`take`, `answer` and `guards` were, until PR 62). `python3 jam/check_groups.py [host_tests.sh]` (the `jam-tools` CI job) fails, naming the group, when a case label is neither in the list nor marked out by a line `# not default: LABEL - reason` (just above its case; the reason is not empty), when a marked group is in the list, when the list names something that is no case, or when a marker names no case. `$EMU` in the list stands for `emu`. Test: `jam/test_check_groups.py` (drops `take` from a copy of the list and expects the failure).
