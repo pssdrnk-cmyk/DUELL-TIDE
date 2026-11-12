@@ -260,6 +260,8 @@ unset DUELL_TEST_MODE                                  # (the environment switch
 CCR="cc -O2 -w -DHOST_MIX_FOLLOWS_MASTER=1 -Ibuild/gen -Ifirmware/src -Itests"      # the release configuration (switch off)
 CCD="cc -O2 -w -Ibuild/gen -Ifirmware/src -Itests"      # the device's own mix level (no HOST_MIX_FOLLOWS_MASTER): the browser build, web/emu, has none
 CC="cc -O2 -w -DTIDE_ROLL_LOCK=0 -DHOST_MIX_FOLLOWS_MASTER=1 -DDUELL_TEST_MODE=1 -Ibuild/gen_test -Ibuild/gen -Ifirmware/src -Itests"   # test mode ON
+# jam/fastcheck.py generates the headers once for all its parallel groups (HT_GEN_ONLY=1 stops here) and its groups skip this (HT_NOGEN=1)
+if [ -z "${HT_NOGEN:-}" ]; then
 mkdir -p build/gen_test build/gen
 python3 tools/gen_duell_multis.py build/gen/duell_multis.h >/dev/null || exit 1                 # release header: M01..M16
 python3 tools/gen_duell_multis.py build/gen_test/duell_multis.h --test-mode >/dev/null || exit 1   # test header: the same sixteen
@@ -270,6 +272,8 @@ python3 tools/gen_midi_map.py --csv tests/midimap_legacy.csv build/gen_test/midi
 python3 tools/gen_midi_map.py --csv tests/midimap_legacy.csv --sym MIDI_MAP_LEGACY build/gen_test/midi_map_legacy.h >/dev/null || exit 1   # (tests/midimap_test.c: both lists by name)
 python3 tools/gen_midi_map.py --sym MIDI_MAP_SHIPPED build/gen_test/midi_map_shipped.h >/dev/null || exit 1
 python3 tools/gen_version.py build/gen/duell_version.h || exit 1   # VERSION file -> build/gen/duell_version.h
+fi
+[ -n "${HT_GEN_ONLY:-}" ] && exit 0
 FV=$(sed -n 's/^#define DUELL_VERSION_STR "\(.*\)"/\1/p' build/gen/duell_version.h)
 [ -f "$HOME/emsdk/emsdk_env.sh" ] && EMU=emu || EMU=
 want="${*:-emu_smoke rolllock patpack glidecpu acid ease midiout velaccent regress chord chordkeep strum mod perform perflevel perflevelmut performcap ui select step3 engine morph morphui knobs mode dlymod dlyev dlyglide dlyfb eqglide hang atgt patslot multi release menuproduct patch storexver patchraw bank dx7import dx7compat splash cpusnap knobjump sounds mrender fmbass fm6 physintune unisonlevel clockguard clockdrift arptiming arpdrift uartdma uarttimer uartflood fm6liveol tidekeep tidecrossings audiopolish ubsanrender tidecontrols liverec livegraph tideturns tidesteps f36 stophang tidedialogue tidevoicelead tidemotif slopehandoff loadcost cpuscen uf wave hold reset resetwalk pan mixsplit partindep scope wavelive duckpart twocore tcmeas tcstage1 tcwrap bootguard bootpack tcbench poolrule hotreach budget polylimits deadline velomono sat mxstep modinert eqon eq32 ovlguard matrixpack engswitch level guide guidesetup wtab wavetable modules uitest project fun10 motion persist backup editor editorjson midictl audio erase flashled usb elfcheck tideversion reverb halltail plate locut shimmer panic insert bassmono comp master stereochorus chorusskip silentskip sidechain tune bench benchsim benchrun tidemeasure tideroles benchupdl libcalls benchaudio ownerimport rollbrowser sliders xb xbmut fuzz xvalues twin subcyc pages scope2 editb velo midimap midimapmut ldrscreen otareuse lcdboot tidejrnymemory tidejrnyfamily $EMU converttwin multiv8 uitruth tidestore resotune dctail cull glide tideoff pitchmod phasealias engleft tidephrase tidebuild productcfg inherited orphans swing duck jrnyctx}"

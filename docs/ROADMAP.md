@@ -97,6 +97,10 @@ Built or being built in b9: **the sound lab** (`felucca-base/tools/soundlab/`: r
 4. **The emulator in testing:** drive the web emulator (the `emu` CI build) with scripted sessions (key presses, knob turns, page changes) to check screens and behaviour as the player meets them, with pictures for the "look first" rule, and audio captured for the sound lab.
 5. **A spec template per job type** (sound, firmware, docs) with the standard checks built in.
 
+Status of 1 to 3 (b10): built and measured (`jam/check.sh -j N | --changed`, `jam/repin.sh`, `jam/merge_branches.sh`; [jam/README.md](../jam/README.md)). Full run on WSL: 51 min serial, 26 min at `-j 2`, 8 min with a warm cache; CI shards 2.5 to 13 min. Two things stay open:
+- **`--changed` cannot get under 5 minutes for a firmware edit** (16.5 min at `-j 3`: a change in `fx.c` selects 177 of 192 groups). Every group compiles the whole firmware as one unit (`tests/hostsim.c` includes every source), so any firmware file is an input of nearly every program. The fix is per-module host objects: compile each firmware file once to an object, link the groups against the objects, and let the group map name objects instead of one translation unit.
+- **The merge helper's factory / drone record regeneration has not run on a real conflict.** The rc2 replay and a `golden.txt` conflict were exercised; `fork/b10-fw` (M01 / M02 records) and `fork/b10-new-multis` (M19 to M24) touch different record files and merge without a bin conflict, so the `factory_multis.py build` / `drone_pack.py` path still waits for the first conflicting pair.
+
 ## Later, in order
 
 1. ARP SEQ parts drift against the beat on the internal clock: the arp's step period and the sequencer's beat round differently, 12 to 14 samples a bar on M02 at 117 BPM, about 107 ms after 400 bars (found by the ARC lane with a host probe). Not measured under an external clock, where both follow the clock grid and probably do not drift.

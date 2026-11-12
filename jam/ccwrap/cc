@@ -1,0 +1,69 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-only
+# `cc` stand-in for the host tests (jam/fastcheck.py puts this folder first in PATH): a compile-and-link of ONE .c file to -o OUT is looked up
+# in a cache keyed by a hash of the preprocessed translation unit + the compiler flags + the compiler version, so groups that build the identical
+# program (and re-runs with unchanged sources) compile once. Everything else (-c, -E, -S, several .c, no -o) goes straight to the real cc.
+#   HT_REALCC    the real compiler command (set by fastcheck.py; default: the next `cc` in PATH after this folder)
+#   HT_CC_CACHE  the cache folder (build/host-cache); unset = no cache, plain pass-through
+#   HT_DEPS_DIR  if set, every compile appends the project files it read (the -MD list, relative) to $HT_DEPS_DIR/$HT_GROUP.deps (the group map's check)
+real="${HT_REALCC:-}"
+if [ -z "$real" ]; then
+    here="$(cd "$(dirname "$0")" && pwd)"
+    real=""
+    oldifs="$IFS"; IFS=:
+    for d in $PATH; do
+        [ -x "$d/cc" ] || continue
+        [ "$(cd "$d" && pwd)" = "$here" ] && continue
+        real="$d/cc"; break
+    done
+    IFS="$oldifs"
+    [ -n "$real" ] || { echo "ccwrap: no real cc in PATH" >&2; exit 127; }
+fi
+[ -n "${HT_CC_CACHE:-}" ] || exec "$real" "$@"
+
+out=""; nsrc=0; plain=0; prev=""
+for a in "$@"; do
+    case "$prev" in -o) out="$a"; prev=""; continue ;; esac
+    case "$a" in
+        -o) prev="-o" ;;
+        -c|-E|-S|-M|-MM|-MD|-MMD|-shared|-x|-save-temps|-fsyntax-only) plain=1 ;;
+        *.c|*.C|*.cc|*.cpp) nsrc=$((nsrc + 1)) ;;
+    esac
+done
+if [ -z "$out" ] || [ "$nsrc" -ne 1 ] || [ "$plain" -eq 1 ]; then exec "$real" "$@"; fi
+
+# the arguments without "-o OUT" (flags, the source path, libraries)
+n=$#; i=0; skip=0
+while [ $i -lt $n ]; do
+    a="$1"; shift; i=$((i + 1))
+    if [ "$skip" -eq 1 ]; then skip=0; continue; fi
+    if [ "$a" = "-o" ]; then skip=1; continue; fi
+    set -- "$@" "$a"
+done
+tmp="${TMPDIR:-/tmp}/htcc.$$"
+mkdir -p "$HT_CC_CACHE"
+if ! "$real" "$@" -E -P -MD -MF "$tmp.d" -MT x -o "$tmp.i" 2> "$tmp.err"; then
+    rm -f "$tmp.i" "$tmp.d" "$tmp.err"
+    exec "$real" "$@" -o "$out"          # let the real compiler print its own errors
+fi
+if [ -n "${HT_DEPS_DIR:-}" ]; then
+    mkdir -p "$HT_DEPS_DIR"
+    tr -d '\r' < "$tmp.d" | sed -e 's/^x: *//' -e 's/\$//' | tr ' ' '\n' | grep -v '^$' >> "$HT_DEPS_DIR/${HT_GROUP:-all}.deps"
+fi
+key=$({ "$real" --version 2>/dev/null | head -1; printf '%s\n' "$@"; cat "$tmp.i"; } | sha256sum | cut -c1-40)
+rm -f "$tmp.i" "$tmp.d" "$tmp.err"
+if [ -f "$HT_CC_CACHE/$key.bin" ]; then
+    ext=$(cat "$HT_CC_CACHE/$key.ext")
+    rm -f "$out" "$out.exe"
+    if cp -p "$HT_CC_CACHE/$key.bin" "$out$ext" 2>/dev/null; then
+        echo "hit $key ${HT_GROUP:-}" >> "$HT_CC_CACHE/stats.log"; exit 0
+    fi
+fi
+rm -f "$out" "$out.exe"
+"$real" "$@" -o "$out" || exit $?
+ext=""; [ -f "$out.exe" ] && ext=".exe"
+[ -f "$out$ext" ] || exit 0
+cp -p "$out$ext" "$HT_CC_CACHE/$key.$$.tmp" && printf '%s' "$ext" > "$HT_CC_CACHE/$key.$$.ext" \
+    && mv -f "$HT_CC_CACHE/$key.$$.ext" "$HT_CC_CACHE/$key.ext" && mv -f "$HT_CC_CACHE/$key.$$.tmp" "$HT_CC_CACHE/$key.bin"
+echo "miss $key ${HT_GROUP:-}" >> "$HT_CC_CACHE/stats.log"
+exit 0
