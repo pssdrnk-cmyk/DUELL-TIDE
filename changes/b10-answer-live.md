@@ -1,0 +1,3 @@
+## changelog
+### 1.0.0-b10
+- **New (live assist: the answer follows your overdub):** while REC stays armed on a part that already has a pattern, the BASS LINE or DOUBLE is made again in the last step of each loop pass from the part's steps as they are then (same seed: it changes only where the take changed), so it sounds from the next downbeat instead of only after REC is off; the whole armed session is one undo step. REPLY and ECHO stay at the close (they double the loop). The header message of a take or an answer (the answer and its key, ROLL n, UNDO / REDO TAKE n) now stays for 4 bars, at least 4 s and at most 8 s.
