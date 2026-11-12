@@ -15,7 +15,8 @@ runner id 0) or kill one in the middle ("The runner has received a shutdown sign
     "Canceling since a higher priority waiting request ..."; re-running it would cancel the newer run in turn. So does a run whose commit is no
     longer the head of its branch or tag, and a run for which a newer run of the same workflow and commit exists (--force skips only the head
     test, for a manual proof on an old run);
-  - only the runner-failed jobs are re-run (one request each), never the jobs that passed.
+  - one request re-runs the failed jobs of the run ("Re-run failed jobs"; the jobs that passed are kept). Since every red job was a runner failure,
+    that is exactly the runner-failed set. (A job-by-job request does not work: the first one puts the whole run back to running, the rest get 403.)
 The decision and the reason go to the job summary and to stdout. The token is only read from the environment and never printed."""
 import json
 import os
@@ -92,7 +93,7 @@ class Hub:
 
 
 def run_once(hub, run_id, dry=False, force=False, say=print):
-    """-> (decision text, [job ids re-run])"""
+    """-> (decision text, [ids of the jobs re-run: empty when nothing was or could be])"""
     st, run = hub.call("GET", f"/actions/runs/{run_id}")
     if st != 200:
         return f"run {run_id} not readable ({st}): {run.get('message')}", []
@@ -112,16 +113,14 @@ def run_once(hub, run_id, dry=False, force=False, say=print):
 
     ids, why = decide(run, jobs, notes_of, newer, head, force)
     say(f"ci-retry: run {run_id} attempt {run.get('run_attempt')}: {why}")
-    done = []
-    for jid in ids:
-        if dry:
-            say(f"ci-retry: dry run, would re-run job {jid}")
-            continue
-        st, r = hub.call("POST", f"/actions/jobs/{jid}/rerun", {"enable_debug_logging": False})
-        say(f"ci-retry: re-run of job {jid}: {st}" + ("" if st in (201, 204) else f" {r.get('message')}"))
-        if st in (201, 204):
-            done.append(jid)
-    return why, done
+    if not ids:
+        return why, []
+    if dry:
+        say(f"ci-retry: dry run, would re-run the failed jobs of run {run_id}: {ids}")
+        return why, []
+    st, r = hub.call("POST", f"/actions/runs/{run_id}/rerun-failed-jobs", {"enable_debug_logging": False})
+    say(f"ci-retry: re-run of the failed jobs of run {run_id}: {st}" + ("" if st in (201, 204) else f" {r.get('message')}"))
+    return why, ids if st in (201, 204) else []
 
 
 def main(argv):

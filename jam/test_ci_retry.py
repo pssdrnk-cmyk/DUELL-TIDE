@@ -53,10 +53,10 @@ ACQ = {2: ["The job was not acquired by Runner of type hosted even after multipl
 ok1, ok2 = job(1, "host-tests (0)", "success"), job(3, "host-tests (2)", "success")
 
 why, done, posted = go([ok1, job(2, "host-tests (1)", "cancelled", steps=0), ok2], ACQ)
-expect("a job no runner picked up is re-run, alone", done == [2] and posted == ["/actions/jobs/2/rerun"])
+expect("a job no runner picked up is re-run, by one request for the failed jobs of the run", done == [2] and posted == ["/actions/runs/100/rerun-failed-jobs"])
 
 why, done, posted = go([ok1, job(2, "host-tests (1)", "cancelled", steps=0), job(4, "host-tests (3)", "cancelled", steps=0)], {})
-expect("a job with no step at all is a runner failure even without a note", done == [2, 4])
+expect("a job with no step at all is a runner failure even without a note; two of them, still one request", done == [2, 4] and len(posted) == 1)
 
 why, done, posted = go([ok1, job(2, "host-tests (1)", "failure")], {2: ["The runner has received a shutdown signal. This can happen when the runner service is stopped."]})
 expect("a shutdown signal in the middle of a job is a runner failure", done == [2])
