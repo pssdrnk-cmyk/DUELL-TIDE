@@ -321,12 +321,19 @@ static uint32_t tcr_deadline(uint32_t now, int *nofit)
 {
     uint32_t k = tcr.blk, c1, c2, need, dl, cap, a1, a2;
     if (k == 0 || !tcr.cost_ok) {
+#if DUELL_PROBE_STAGES
+        uint32_t pb0 = fm1_ticks();                     /* (probe, test-mode builds: st_budget_us of the console `cpu`; ROADMAP Later 22, finding 6) */
+#endif
         part_dl(&trk[0], &tcr.c1f, &tcr.c1v);           /* (item 142: one bd_part a part, was two) */
         part_dl(&trk[1], &tcr.c2f, &tcr.c2v);
         tcr.g = global_cost_dl();
         tcr.two = (uint8_t)bd_two_now();
         tcr.t1f = TCR_TRUE(tcr.c1f), tcr.t1v = TCR_TRUE(tcr.c1v), tcr.t2f = TCR_TRUE(tcr.c2f), tcr.t2v = TCR_TRUE(tcr.c2v), tcr.tg = TCR_TRUE(tcr.g);
         tcr.cost_ok = 1;
+#if DUELL_PROBE_STAGES
+        pb0 = fm1_ticks() - pb0;
+        if (pb0 > prb_stage_pk[5]) prb_stage_pk[5] = pb0;
+#endif
     }
 #if TC_MEAS
     tcj.a1 = tcr_active(&trk[0]);

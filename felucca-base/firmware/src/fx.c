@@ -3174,7 +3174,7 @@ static inline __attribute__((always_inline)) void part_end(const mixpart_t *m)  
 /* one synth part into the dry mix and the sends: its stages in order (a part with no voice sounding costs the LFO tick and a cleared buffer only).
  * The callers' morph_begin / morph_end bracket it (mix_block); this function is the one place that fixes the order of a part's stages */
 #if DUELL_PROBE_STAGES
-volatile uint32_t prb_stage_pk[5];                  /* (probe) the longest block's morph_begin, part 1, part 2 wait (TIMER4 ticks) */
+volatile uint32_t prb_stage_pk[6];                  /* (probe) the longest block's morph_begin, part 1, part 2 wait, fm6_xblock, part 1 voices; [5]: the deadline's budget figures at a half's block 0 (twocore_run.c tcr_deadline: part_dl x2 + global_cost_dl; TIMER4 ticks) */
 #endif
 static void mix_part(track_t *t, uint32_t n, const blockstate_t *bs)
 {

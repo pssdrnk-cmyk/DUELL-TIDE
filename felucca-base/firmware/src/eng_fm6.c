@@ -567,7 +567,7 @@ static void fm6_block(track_t *t)       /* once a block and part: the macros, th
 #if DUELL_TIDE
     if (tr < NLIVE && (fm6_xt[tr].on || fm6_xt[tr].dirty || fm6_xt[tr].drain)) {   /* (drain: a drain that waited for a crossing to end still runs after it, even with no stand-in mapped) */
 #if DUELL_PROBE_STAGES
-        extern volatile uint32_t prb_stage_pk[5];
+        extern volatile uint32_t prb_stage_pk[6];
         uint32_t x0 = fm1_ticks();
         fm6_xblock(t, tr);
         if (!tr && fm1_ticks() - x0 > prb_stage_pk[3]) prb_stage_pk[3] = fm1_ticks() - x0;
