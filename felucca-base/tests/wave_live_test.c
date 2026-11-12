@@ -323,7 +323,8 @@ int main(void)
         SEL_BOTH = 1;
         run(1500);
 #if WL_FLOW
-        tf = 12u * WL_FLOW_PACE * (beat_samples() / 4u) / (FS / 1000u) + 500u;   /* (b10 wave flow: the stack fills a line every WL_FLOW_PACE 16ths: the shaped lines are counted once it is full) */
+        tf = 12u * WL_FLOW_PACE * (beat_samples() / 4u) / (FS / 1000u) + beat_samples() / (FS / 1000u) + 500u;   /* (b10 wave flow: the stack fills a line every WL_FLOW_PACE 16ths, after a beat
+                                                                                                                       * of easing from the rest's pace: the shaped lines are counted once it is full) */
 #endif
         for (t = 0; t < 8000u + 3000u; t += 31u) {       /* (a look twice a picture: none is missed) */
             uint32_t e = 0, l = 0;

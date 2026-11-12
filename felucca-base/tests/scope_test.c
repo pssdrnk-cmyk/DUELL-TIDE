@@ -16,7 +16,8 @@
  *   tap          the entry the tap writes (the mean of eight values, four frames, half scale, companded, clamped; 8 entries a block); a block the part did not tap (part 2 skipped, a shut gate, silence) moves the gap up, a late job
  *                (the block's own number, not wv_blk) does not; the reader draws only what lies after the gap
  *   gate         ANIM OFF leaves the gate shut and the picture as it was; otherwise the gate opens ahead; leaving the page starts the pictures over
- *   flow         (WL_FLOW, b10) the belt moves 8 / WL_FLOW_PACE ridges a second at 120 BPM (a line every WL_FLOW_PACE 16ths), a tempo change changes its speed with no jump; between its steps a
+ *   flow         (WL_FLOW, b10) the belt moves 8 / WL_FLOW_PACE ridges a second at 120 BPM while a part sounds, 8 / WL_FLOW_IDLE at rest; from rest to sound the pace eases over
+ *                about a beat with no jump in the move; a tempo change changes its speed with no jump; between its steps a
  *                picture is taken into the front in place (the stack does not move); the ripples stay within WL_RIP_A and reach it. The checks above see one belt step a
  *                picture (wl_step below), as the reader's pictures did before the belt
  * Run: scope_test (exit 0 = all ok) */
@@ -571,7 +572,10 @@ int main(void)
         uint32_t i, p0, d, dmin = ~0u, dmax = 0, hn, ph;
         int32_t rmax = 0, rmin = 0;
         char w[200];
+        uint32_t dprev = 0, djump = 0, settle = 0;
         song.g[G_BPM] = 120;
+        wl[0].hn = wl[1].hn = 0;                         /* at rest */
+        wl_brate = 256u / WL_FLOW_IDLE;
         wl_bms = fm1_ms;
         wl_belt();
         p0 = wl_bpos;
@@ -580,7 +584,28 @@ int main(void)
             wl_belt();
         }
         d = wl_bpos - p0;
-        snprintf(w, sizeof w, "flow: 120 BPM, 6 s: the belt moved %u.%02u ridges (48 / WL_FLOW_PACE %u: a line every %u 16ths)", d / 256u, d % 256u * 100u / 256u, WL_FLOW_PACE, WL_FLOW_PACE);
+        snprintf(w, sizeof w, "flow: at rest, 120 BPM, 6 s: the belt moved %u.%02u ridges (48 / WL_FLOW_IDLE %u)", d / 256u, d % 256u * 100u / 256u, WL_FLOW_IDLE);
+        ok(w, d >= 48u * 256u / WL_FLOW_IDLE - 64u && d <= 48u * 256u / WL_FLOW_IDLE + 64u);
+        wl[0].hn = 1;                                    /* a part sounds: the pace eases from rest's to the sound's */
+        wl[0].flat = 0;
+        for (i = 0; i < 30u; i++) {
+            p0 = wl_bpos;
+            fm1_ms += 60u;
+            wl_belt();
+            d = wl_bpos - p0;
+            djump = i && (d > dprev ? d - dprev : dprev - d) > djump ? (d > dprev ? d - dprev : dprev - d) : djump;
+            settle = !settle && wl_brate == 256u / WL_FLOW_PACE ? (i + 1u) * 60u : settle;
+            dprev = d;
+        }
+        snprintf(w, sizeof w, "flow: rest -> sound: the pace eases in %u ms (a beat: 500), a picture's move changes by %u of 256 at most (no jump)", settle, djump);
+        ok(w, settle >= 300u && settle <= 700u && djump <= 20u);
+        p0 = wl_bpos;
+        for (i = 0; i < 100u; i++) {
+            fm1_ms += 60u;
+            wl_belt();
+        }
+        d = wl_bpos - p0;
+        snprintf(w, sizeof w, "flow: a part sounding, 120 BPM, 6 s: the belt moved %u.%02u ridges (48 / WL_FLOW_PACE %u)", d / 256u, d % 256u * 100u / 256u, WL_FLOW_PACE);
         ok(w, d >= 48u * 256u / WL_FLOW_PACE - 64u && d <= 48u * 256u / WL_FLOW_PACE + 64u);
         for (i = 0; i < 100u; i++) {                     /* 120 -> 140 BPM halfway: each picture's move between the two tempos' (122.9 .. 143.4, / WL_FLOW_PACE), never a jump */
             if (i == 50u)
