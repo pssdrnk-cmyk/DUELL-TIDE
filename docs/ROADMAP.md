@@ -97,7 +97,7 @@ Closed from "Later": the parameter units as an index (SP4, below).
 
 ## On the unit: built in b10 (rc2)
 
-- **COLR LFO (CLFO):** a new DELAY page knob, 0..15, swings the echo's colour darker and brighter at a slow 0.25 Hz; 0 is off, and DUB BASIC and DUB CHORD use 5. Multis store it.
+- **COLR LFO (CLFO):** a new DELAY page knob, 0..15, swings the echo's colour darker and brighter at a slow 0.25 Hz; 0 is off; DUB BASIC uses 5, DUB CHORD 2. Multis store it.
 - **ELEC GRT and AMB DRF:** ELEC's GRT also moves the cutoff, so the odd harmonics span about 10 dB (was 2 dB); AMB's DRF reaches its full filter wobble in about 9 detents (twice as fast).
 - **Six new factory multis, M19 to M24:** TECH HYPNO, DUB HOUSE, HSE LOFI, TECH CINEMA, AMB TECHNO and TECH MINIMAL (24 factory multis in all).
 - **Developer tools:** `factory_multis.py verify` and `drone_pack.py verify` fail on any byte drift from the committed records M01 to M24; `multi_patch.py keep-amount` is removed.
