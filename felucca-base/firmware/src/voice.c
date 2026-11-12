@@ -378,7 +378,6 @@ static voice_t *voice_reuse(track_t *t, voice_t *v)
     return v;
 }
 
-#if DUELL_TIDE
 /* K3 ease level 2 (core.h ease, audio.c ease_step): while the part sounds np - 1 voices or more, a new note takes over the part's oldest released voice (as a note
  * over the part's number does) instead of a free one, so the voices sounding do not grow while the audio is eased. No released voice: a free one as ever (no held
  * note is cut, nothing sounding fades). Returns that voice, or np: none */
@@ -394,7 +393,6 @@ static __attribute__((noinline)) uint32_t ease_tail(const track_t *t, uint32_t n
             best = i;
     return best;
 }
-#endif
 
 /* POLY allocation (within the engine's voice cap): the same note again reuses its voice.
  * Else a free voice: ROTATE takes
@@ -419,10 +417,8 @@ static voice_t *voice_alloc(track_t *t, uint32_t note)
         nfree += !t->v[i].active;
 #endif
     }
-#if DUELL_TIDE
     if (EASE >= EASE_ADMIT && (i = ease_tail(t, np)) < np)    /* (K3 ease level 2: no new voice while eased, if a released one can take the note) */
         return voice_reuse(t, &t->v[i]);
-#endif
 #if NPART > 2
     if (nfree && voices_busy() >= VPOOL) {
         track_t *vp = 0;
@@ -1422,10 +1418,8 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
             m.cutoff = accent_lift(ACCENT_VEL(v), m.envq15);   /* the routes are the filter's, whatever CUT is; the accent's lift stays the engine's own (its tone control, as ever) */
             m.ucut = uc;
             m.ucn = ucn;
-#if DUELL_TIDE
             if (v == &t->v[t->m_vi % NVOICE])
                 t->lvc = (uint8_t)(uc >> 7);            /* TIDE live graphs: the FILTER page's tick (ui_live.c); written only */
-#endif
             if ((uc < UF_TOP || p[P_FREEC] > 0) && !BYP(t, BY_MULTI)) {   /* (the bypass: MODE LP, the effective cut at the open end; DUELL 1.1: or the BYPASS switch) */
                 if (v->uft == UF_BYP) {                 /* (0.2.25: out of the bypass while sounding: from rest, faded in over the block) */
                     v->uft = 0;

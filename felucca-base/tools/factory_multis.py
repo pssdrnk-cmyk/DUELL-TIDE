@@ -402,7 +402,6 @@ def emit(path):
 BOOT_H = """/* tools/factory_multis.py: no factory multis (the build of the generator itself) */
 #define DF_TEST_MULTIS DUELL_TEST_MODE
 #define DF_N 0u
-#define DF_TIDE DUELL_TIDE
 static const uint8_t DF_SLOT[1] = {0};
 static const uint16_t DM_LEN[1] = {0};
 static const uint16_t DM_AT[1] = {0};

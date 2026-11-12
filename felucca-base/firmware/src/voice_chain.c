@@ -99,12 +99,10 @@ static inline int32_t uc_eff(const track_t *t, const voice_t *v, const vmod_t *m
     int32_t kt = p[P_KTRK] ? UF_KT(p[P_KTRK], v->pitch_cur) : 0;
     int32_t uc = clamp(ucut0 + m->cutoff + kt, 0, UF_TOP);
     int32_t un = ucn ? clamp(ucut0 + m->cutoff - m->acc1 + kt, 0, UF_TOP) : 0;
-#if DUELL_TIDE
     int32_t ud = morph_xcut(t, uc);                     /* TIDE: the crossing dip */
     if (ucn)
         un = un == uc ? ud : morph_xcut(t, un);
     uc = ud;
-#endif
     if (ucn)
         *ucn = un;
     return uc;
@@ -120,10 +118,8 @@ static int32_t chain_uc(const engine_t *e, track_t *t, voice_t *v, vmod_t *m, in
     uc = uc_eff(t, v, m, ucut0, &m->ucn);
     m->cutoff = accent_lift(ACCENT_VEL(v), m->envq15);
     m->ucut = uc;                                       /* (NOISE's loudness make-up reads it) */
-#if DUELL_TIDE
     if (v == &t->v[t->m_vi % NVOICE])
         t->lvc = (uint8_t)(uc >> 7);                    /* TIDE live graphs (ui_live.c); written only */
-#endif
     return uc;
 }
 

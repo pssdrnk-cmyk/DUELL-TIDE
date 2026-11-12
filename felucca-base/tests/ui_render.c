@@ -774,18 +774,13 @@ static void state(void)                          /* a playing song with steps on
     ui_power_on();
     memset(&cpub, 0, sizeof cpub);                   /* (DUELL 0.2.9: the CPU bar under the battery in every scene: 5 of 8 steps, amber) */
     cpub.ok = 1; cpub.t = fm1_ms; cpub.step = 5; cpub.lvl = 1;
-#if DUELL_TIDE && DUELL_TEST_MODE
+#if DUELL_TEST_MODE
     memset(&cpuh, 0, sizeof cpuh);                   /* (K2: TIDE's header readout on HOME's three pages, test builds only since b10 ui-b: a 92 % elapsed peak in the dim pill, 3 periods missed in the red badge) */
     cpuh.t = fm1_ms; cpuh.hold = 92;
 #endif
-#if DUELL_TIDE
     cpu_snap.miss = 3; cpum.base = 0; cpum.miss = 0;
-#endif
     memset(&gm, 0, sizeof gm);                       /* (GLO's level meters from silence) */
     midi_pch[0] = 0; midi_pch[1] = 1; meter_bus[0] = meter_bus[1] = 0;
-#if !DUELL_TIDE
-    mv_reset();                                      /* (MORPH v4: the picture's motion and levels from silence) */
-#endif
     song.playing = 1;
     song.g[G_BPM] = 124;
     clk_pos = 0; clk_step = 8; cin_total = cin_left = 0;   /* (the bar's 3rd beat) */
@@ -835,18 +830,9 @@ static void pslot_scene(uint32_t v)
     ui.msg_t = 0;
 }
 /* HOME's second page: TIDE puts TIDE SETTINGS (a list: TARGET, VARY BARS, ROLL, ARP, PITCH) in MORPH SET's place */
-#if DUELL_TIDE
 #define MORPH_SET_TITLE "TIDE SETTINGS"
-#else
-#define MORPH_SET_TITLE "MORPH SET"
-#endif
-#if DUELL_TIDE                                           /* (MODE: with TIDE a row of TIDE SETTINGS, owner 2026-11-08) */
 #define MODE_GO() (go_title("TIDE SETTINGS"), jl_sel = JL_MODE)
 #define MODE_PAGE_TITLE "TIDE SETTINGS"
-#else
-#define MODE_GO() go_title("MODE")
-#define MODE_PAGE_TITLE "MODE"
-#endif
 /* the FM engine of the FM screens: FM6 (DIGITAL is gone in 0.2.14) */
 #define E_FM ENGI_FM6
 #define go_home() go_main_to(HP_MORPH)           /* (HOME is MORPH, the main page, since 0.2.14: the OVERVIEW screen is gone) */
@@ -1456,7 +1442,7 @@ static void setup(int s)
     case S_MORPH_SET: go_title(MORPH_SET_TITLE); break;
     case S_MORPH_SET_BOTH: SEL_BOTH = 1; go_title(MORPH_SET_TITLE); ui.hot_col = 0; ui.hot_t = 30; break;
     case S_MORPH_SET_WILD: morph_set_cfg(MC_WILD | MC_ARP | MC_PIT, 1); SEL_BOTH = 1; go_title(MORPH_SET_TITLE); ui.hot_col = 1; ui.hot_t = 30; 
-#if DUELL_TIDE && DUELL_TEST_MODE
+#if DUELL_TEST_MODE
         cpuh.hold = 138; cpu_snap.miss = 999;   /* (K2: the widest readout: 138 and 999, red; test builds only since b10 ui-b) */
 #endif
         break;
@@ -1468,11 +1454,7 @@ static void setup(int s)
         SEL_BOTH = 1; morph_do(MQ_FADER, 3u, 64u); go_title("MORPH"); trk[0].peak = 9000; trk[1].peak = 3000; break;
     /* DUELL step 5: HOME's MODE (HOME tapped three times from OVERVIEW: SPLIT, the power-on default), STEREO, LAYER (KNOB 1 just turned); the
      * MIXER in SPLIT (each part's PAN fixed: LEFT / RIGHT, DIM), part 2 selected and KNOB 2 turned (the message) */
-#if DUELL_TIDE                                           /* (TIDE: no MODE page; MODE is a row of TIDE SETTINGS, owner 2026-11-08) */
     case S_MODE: go_home(); MODE_GO(); break;
-#else
-    case S_MODE: go_home(); home_tap(); home_tap(); home_tap(); break;
-#endif
     case S_MODE_STEREO: ui_mode_set = DM_STEREO; duell_mode_req = DM_STEREO; MODE_GO(); break;
     case S_MODE_LAYER: ui_mode_set = DM_LAYER; duell_mode_req = DM_LAYER; MODE_GO(); ui.hot_col = 0; ui.hot_t = 30; break;
     case S_MIXER_SPLIT:
@@ -1655,7 +1637,7 @@ static void draw(int s)
             if (rep) fprintf(rep, "FIND %-26s the splash lines: part 1 colour %u px, part 2 colour %u px, %u px of a blend in POLICE\n", cur_name, c0, c1, other);
             nfind++;
         }
-        if (ink + soft < 800u || (!pl->hc && pl->name[0] != 'M' && !ink) || (!DUELL_TIDE && n_text)) {   /* (MONO's two-level screen may blend every edge; TIDE's splash is set in the fonts' glyphs, ui_draw.c splash_logo_draw: font texts by design) */
+        if (ink + soft < 800u || (!pl->hc && pl->name[0] != 'M' && !ink)) {   /* (MONO's two-level screen may blend every edge; TIDE's splash is set in the fonts' glyphs, ui_draw.c splash_logo_draw: font texts by design) */
             if (rep) fprintf(rep, "FIND %-26s the splash lockup: %u px of the text colour, %u soft edge px, %u font texts (want >= 800 together, text colour, none)\n", cur_name, ink, soft, n_text);
             nfind++;
         } else {
@@ -2446,7 +2428,7 @@ static int about_tide_main(const char *out)
     return 0;
 #endif
 }
-#if DUELL_TIDE && TIDE_PLAYSEL
+#if TIDE_PLAYSEL
 /* 1.0.0-b7 PLAY MODE SELECT, for looking at: --playsel DIR writes DIR/ppm/<PAL>_ps_<page>_<row>_<pos>.ppm (VIOLET, GREY): HOME page 1 (MORPH) and TIDE SETTINGS (its PLAY
  * MODE row picked) for each PLAY MODE row value (LAYER, STEREO, DUEL) with ALGORITHM on PART 1, the middle, PART 2 (part_select, as the encoder sets it) */
 static int playsel_main(const char *out)
@@ -2561,7 +2543,6 @@ static int h1res_main(const char *out)
     return nfind ? 1 : 0;
 }
 #endif
-#if DUELL_TIDE
 /* the MORPH page's wave, for looking at: --wave-study DIR writes DIR/ppm/<PAL>_<kind>_<sel>.ppm (VIOLET, GREY, MONO; held note, chord, sweep; PART 1, PART 2, BOTH selected) with the rings fed as the tap would
  * leave them (part 1 a saw, part 2 a sine). */
 static int32_t wstudy_v(uint32_t kind, uint32_t q, uint32_t st, uint32_t t)
@@ -2620,15 +2601,12 @@ static int wave_study_main(const char *out)
                     }
     return 0;
 }
-#endif
 int main(int argc, char **argv)
 {
     if (argc > 2 && !strcmp(argv[1], "--target")) return target_main(argv[2]);
-#if DUELL_TIDE
     if (argc > 2 && !strcmp(argv[1], "--wave-study")) return wave_study_main(argv[2]);
-#endif
     if (argc > 2 && !strcmp(argv[1], "--about-tide")) return about_tide_main(argv[2]);
-#if DUELL_TIDE && TIDE_PLAYSEL
+#if TIDE_PLAYSEL
     if (argc > 2 && !strcmp(argv[1], "--playsel")) return playsel_main(argv[2]);
     if (argc > 2 && !strcmp(argv[1], "--savenote")) return savenote_main(argv[2]);
     if (argc > 2 && !strcmp(argv[1], "--h1res")) return h1res_main(argv[2]);
@@ -2979,23 +2957,16 @@ int main(int argc, char **argv)
         static const char *const MN[] = {"A", "64", "B", "both64", "bothB"};
         static const char *const MP[] = {"VIOLET", "COBALT", "ORANGE", "MINT", "PALE", "OCEAN", "GREY", "MONO", "POLICE"};
         uint32_t k, j, pl, st, q;
-#if DUELL_TIDE
         uint32_t sel;
-#endif
         for (p = 0; p < NPALETTES; p++)
             for (j = 0; j < sizeof MP / sizeof MP[0]; j++)
                 if (!strcmp(UI_PALETTES[p].name, MP[j]))
                     for (k = 0; k < sizeof MS / sizeof MS[0]; k++)
-#if DUELL_TIDE
                         for (pl = 0; pl < 5u; pl++) {   /* (3: playing with GLO > MODULES SENDS OFF: the MORPH page's ECHO dim, knob 1's line says why; 4, at A only: BOTH, every part at the slim row's widest values) */
-#else
-                        for (pl = 0; pl < 2u; pl++) {
-#endif
                             char nm[48];
                             cur_name = "morph_v4";
                             setup(MS[k]);
                             pal(p);
-#if DUELL_TIDE
                             sel = pl == 2u ? 1u : 0u;
                             song.sel = (uint8_t)sel;
                             if (pl == 3u)
@@ -3021,9 +2992,7 @@ int main(int argc, char **argv)
                             memset(wl, 0, sizeof wl);
                             wl_tk = 0xFFFFFFFFu;
                             wv_want = wv_blk + 256u;
-#endif
                             for (st = 0; st < 40u; st++) {
-#if DUELL_TIDE
                                 for (q = 0; q < 2u; q++) {
                                     uint32_t cnt = 20000u + (st + 1u) * 1366u, i;
                                     int32_t amp = q ? 40 : 30 + (int32_t)(st % 8u) * 4;
@@ -3038,19 +3007,6 @@ int main(int argc, char **argv)
                                     if (st == 0u)
                                         wl[q].base = cnt - 1366u;
                                 }
-#else
-                                for (q = 0; q < 2u; q++) {
-                                    uint32_t ph = st % 8u, d = q ? 3u : 0u;
-                                    trk[q].peak = pl ? (int32_t)(q ? 6000 : 12000) * (int32_t)(8u - (ph + d) % 8u) / 8 : 0;
-                                    trk[q].v[0].active = (uint8_t)pl;
-                                    trk[q].v[0].pitch_cur = (int32_t)(q ? 72 : 55 + (st / 8u) % 2u * 5u) * 16;
-                                    trk[q].v[0].env_out = pl ? 30000 * (int32_t)(8u - (ph + d) % 8u) / 8 : 0;
-                                    trk[q].lfo_val = pl ? sine_i(st * 0x0C000000u + q * 0x40000000u) : 0;
-                                    trk[q].lfo_fade = 32767;
-                                    trk[q].lfo2.val = pl ? sine_i(st * 0x05000000u) : 0;
-                                    trk[q].lfo2.fade = 32767;
-                                }
-#endif
                                 ui.frame += 4u;
                                 draw(MS[k]);
                             }

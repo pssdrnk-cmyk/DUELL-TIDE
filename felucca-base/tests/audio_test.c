@@ -33,11 +33,7 @@ static int32_t host_pot = 1023;                        /* the MASTER pot as the 
 static int32_t fm1_adc_read(uint32_t ch) { return ch == FM1_ADC_MASTER ? host_pot : 620; }
 #include "../firmware/src/master.c"
 
-#if DUELL_TIDE
 #define EASE_OR0 ease
-#else
-#define EASE_OR0 0u
-#endif
 static int bad;
 static void check(const char *what, int ok)
 {
@@ -54,9 +50,7 @@ static void fresh(void)
     memset(&felucca_dbg, 0, sizeof felucca_dbg);
     audio_cpu_rem = audio_halves = audio_max_us = 0;
     shed_req = 0; shed_count = 0; shed_over = 0;
-#if DUELL_TIDE
     ease = 0; ease_calm = 0; ovl_lite = 0;              /* (K3: the ease ladder, tests/ease_test.c) */
-#endif
     host_clock = host_us = host_half_reads = host_dma_advanced = host_acks = host_nest = 0;
     host_pending = FM1_AUDIO_HALF;
     transport_req = panic_req = 0;
@@ -144,11 +138,7 @@ static void dma(void)
     fm1_alnk0_irq();
     check("one slow half (93 %) records elapsed load but does not shed yet", host_acks == 1u && !shed_req && felucca_dbg.last_us == 2700u && !felucca_dbg.late);
     fm1_alnk0_irq();
-#if DUELL_TIDE
     check("K3: a second slow half in a row eases one level (1), sheds nothing", host_acks == 2u && ease == 1u && !shed_req);
-#else
-    check("a second slow half in a row requests shedding", host_acks == 2u && shed_req == SHED_HELD);
-#endif
     shed_req = 0;
     host_half_reads = 0; host_dma_advanced = 1; host_us = 100;
     fm1_alnk0_irq();
@@ -157,11 +147,7 @@ static void dma(void)
     expected = HALF_FRAMES * 1000000u / FS;            /* the half's deadline in us */
     host_us = expected * 90u / 100u; host_nest = expected * 30u / 100u;   /* the render 60 %, TIMER5 nested 30 % */
     fm1_alnk0_irq(); fm1_alnk0_irq();
-#if DUELL_TIDE
     check("TIMER5 nested in the render counts toward the deadline (K3: the ladder eases)", ease == 1u && felucca_dbg.last_us == host_us - host_nest);
-#else
-    check("TIMER5 nested in the render counts toward the deadline", shed_req && felucca_dbg.last_us == host_us - host_nest);
-#endif
     fresh();
     host_us = 2700;
     fm1_alnk0_irq(); host_us = 100; fm1_alnk0_irq(); host_us = 2700; fm1_alnk0_irq();

@@ -426,13 +426,11 @@ ALLOW = {
     "vs_block": "RAM candidate, per block, reviewed 2026-11-12 (b10): every block (events_block), the voice-start queue; the inner loops run only when a start was held; ~170 B; four parts, no work in the common case; 168 B; in the flash for now: the hot block and range Z have no room for the whole list (move in the order of the report section 4); reached from events_block",
     "xcos": "per block, reviewed 2026-11-12 (b10): per block and part while a crossing runs (the dip curve); ~60 B; table-free approximation, no loop; stays in the flash: rare (see when), small, no loop; reached from morph_xstep",
 }
-import os as _os
-if _os.environ.get("DUELL_TIDE") != "0":
-    # ---- TIDE 1.0.0-b5 RAM room (tools/ram_fns_z.py TIDE_FLASH): range Z back to the flash, 1,048 B; plain DUELL keeps them in range Z (5)
-    ALLOW.update({
-        "eq_design": "event rate: a band's coefficients, designed only when its integer key changes (a knob or morph step, a band on or off; the matrix no longer offers EQ destinations, mod_dst_removed); track_eq's per-block filter stays in range Z (~738 B; b5 RAM room)",
-        "eq_q28": "event rate: eq_design's helper, only when a band is designed again (~92 B; b5 RAM room)",
-        "eq_taylor": "event rate: eq_design's helper, only when a band is designed again (~64 B; b5 RAM room)",
-        "eq_hz_q8": "event rate: eq_design's helper, only when a band is designed again (~78 B; b5 RAM room)",
-        "__divdi3": "event rate from RAM: reached only through eq_q28 / eq_taylor (a band designed again); the other callers are UI and morph code in the flash (~76 B; b5 RAM room)",
-    })
+# ---- TIDE 1.0.0-b5 RAM room (tools/ram_fns_z.py TIDE_FLASH): range Z back to the flash, 1,048 B
+ALLOW.update({
+    "eq_design": "event rate: a band's coefficients, designed only when its integer key changes (a knob or morph step, a band on or off; the matrix no longer offers EQ destinations, mod_dst_removed); track_eq's per-block filter stays in range Z (~738 B; b5 RAM room)",
+    "eq_q28": "event rate: eq_design's helper, only when a band is designed again (~92 B; b5 RAM room)",
+    "eq_taylor": "event rate: eq_design's helper, only when a band is designed again (~64 B; b5 RAM room)",
+    "eq_hz_q8": "event rate: eq_design's helper, only when a band is designed again (~78 B; b5 RAM room)",
+    "__divdi3": "event rate from RAM: reached only through eq_q28 / eq_taylor (a band designed again); the other callers are UI and morph code in the flash (~76 B; b5 RAM room)",
+})

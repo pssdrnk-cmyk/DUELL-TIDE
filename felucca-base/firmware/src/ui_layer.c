@@ -920,9 +920,7 @@ static void layer_quick(uint32_t q, int32_t y, int32_t h)
 }
 /* SEQ TOOLS: the white keys' tools, 4 a row from F3 (the sequence's: CLEAR REVERSE SHIFT < SHIFT >, RANDOM COOK TRANS + TRANS -) */
 static const char *const TL_NAME[TL_N] = {"CLEAR", "REVERSE", "SHIFT <", "SHIFT >", "RANDOM", "COOK", "TRANS +", "TRANS -",
-#if DUELL_TIDE
     "KEEP",
-#endif
 };
 #define TL_BIG ((1u << TL_CLEAR) | (1u << TL_COOK))      /* QUICK_SEQ_NEW_LAYOUT.png: CLEAR and COOK in the larger size, the rest in the smaller */
 /* DUELL 1.0 layout (QUICK_SEQ_NEW_LAYOUT.png): the eight tools as a 4 x 2 box grid in the big area (ui_boxes.c box_grid; rows UT_BOX_QS_*), the white
@@ -938,11 +936,9 @@ static void layer_seq(void)
         b[p].state = LS_OFF;
     }
     box_grid(UT_BOX_QS_Y0, 2u, 4u, UT_BOX_QS_DY, UT_BOX_QS_H, b);
-#if DUELL_TIDE
     int32_t ay, ah;
     area_rect(&ay, &ah);
     cv_text_in(8, UT_BOX_QS_Y0 + UT_BOX_QS_DY + UT_BOX_QS_H + 2 - ay, 224, &AF_M, "G4 KEEP", T_ACCENT, T_BG);
-#endif
 }
 
 /* QUICK GLO's and the MIXER's four cards (item 117, TEMPLATE 4): KNOB 1 LEVEL 1, KNOB 2 LEVEL 2, KNOB 3 PAN 1, KNOB 4 PAN 2 (the part's colour; DIM when it is muted; PAN not drawn in DUEL; PAN shows its own signed

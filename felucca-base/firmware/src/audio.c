@@ -160,7 +160,6 @@ static uint8_t shed_over;                              /* bit k: the half k halv
 #define SHED_FULL_TICKS ((HALF_FRAMES * 1000000u / FS) * FM1_TICKS_PER_US)                 /* the whole half */
 static uint32_t shed_count;
 
-#if DUELL_TIDE
 /* K3 THE EASE LADDER (TIDE 1.0.0-b4, CPU audit K3; core.h ease, EASE_*): in place of the two rules below (kill a voice after two halves over 85 %, LIGHT FX the
  * same), one level that eases the cheapest, least audible work first and cuts sound only when a half really missed. Driven by the ELAPSED half (all: TIMER5's
  * nested work included, what the DMA deadline sees):
@@ -228,21 +227,6 @@ static __attribute__((noinline)) uint32_t ease_step(uint32_t all)
         ease_set(n);
     return (all - t5_nested_ticks) / FM1_TICKS_PER_US;
 }
-#else
-/* end of a half: all = its ticks, TIMER5 nested in it included -> the render alone in us. The deadline sees
- * both; shed after 2 overloaded halves in a row (out of line: keeps the ISR's render loops as they were) */
-static __attribute__((noinline)) uint32_t shed_check(uint32_t all)
-{
-    shed_over = (uint8_t)(shed_over << 1 | (all > SHED_TICKS));
-    if ((shed_over & 3u) == 3u)
-        shed_req |= SHED_HELD;
-    if (all > SHED_FULL_TICKS)
-        shed_req |= SHED_FAST;
-    ovl_step((shed_over & 3u) == 3u, song.cpu_q8);     /* (0.2.25: the overload guard, fx.c: the same rule; the meter's load lets it go) */
-    return (all - t5_nested_ticks) / FM1_TICKS_PER_US;
-}
-#define ease_step shed_check                         /* (plain DUELL: the two rules as they were) */
-#endif
 
 static uint32_t shed_released(uint32_t n)             /* the n oldest released voices fade out; returns how many */
 {

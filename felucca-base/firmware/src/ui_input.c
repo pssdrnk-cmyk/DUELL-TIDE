@@ -428,11 +428,9 @@ static int roll_on(void)
  * on every page */
 static int rec_is_hold(void)
 {
-#if DUELL_TIDE
     if ((song.rec >> song.sel) & 1u)                    /* TIDE (audit liverec L6): the selected part is armed: REC disarms it on EVERY page and leaves HOLD alone
                                                          * (it could not be turned off from HOME, and the tap flipped HOLD by accident) */
         return 0;
-#endif
     return !(ui.layer == LAYER_SEQ || (!ui.perf && !page_over && cur_page()->fam == FAM_SEQ));
 }
 /* the parts the keys play (0.2.11): LAYER both (seq.c key_on), DUEL and STEREO the selected part only. REC as HOLD acts on all of them */
@@ -459,11 +457,9 @@ static void rec_hold_tap(void)
                                                          * now, so with MODULES' ARP OFF the keys latch: OFF <-> ALL) */
         motion_capture(t, P_AHOLD, t->p[P_AHOLD]);
     }
-#if DUELL_TIDE
     if (cur_page()->fam == FAM_TRK)                     /* TIDE (audit liverec L5): on HOME the tap is HOLD, so say how to record */
         ui_message(off ? "HOLD OFF: SEQ+REC=REC" : "HOLD ON: SEQ+REC=REC");
     else
-#endif
     ui_message(off ? "HOLD OFF" : "HOLD ON");
     ui.force = 1;
 }
@@ -476,10 +472,8 @@ static int rec_tap(uint32_t seq)                        /* 1: the arming changed
     }
     song.rec ^= bit;
     ui.force = 1;                                     /* also refresh the status on MENU / ABOUT */
-#if DUELL_TIDE
     if (!(song.rec & bit))
         ui_message("REC OFF");                          /* (audit liverec L6: said on every page, HOME included, where the header ring is small) */
-#endif
     if ((song.rec & bit) && !song.playing && !seq_counting() && roll_on()) {
         ui_message(ui_prefs2 & (PREF_CHORD_ADD >> 16) ? "KEYS ADD TO STEP" : "KEYS REPLACE STEPS");   /* step recording:
                                                          * stopped, at the cursor (CHORD ENTRY ADD: adding) */
@@ -489,10 +483,8 @@ static int rec_tap(uint32_t seq)                        /* 1: the arming changed
         transport_req = 1;
     if ((song.rec & bit) && cur_page()->graph == GR_ROLL)
         ui_message("KEYS RECORD LIVE");               /* (seq_entry pauses while armed and playing) */
-#if DUELL_TIDE
     if ((song.rec & bit) && trk[song.sel].p[P_AMODE] == AM_SEQ_ID)   /* TIDE (audit liverec L2): keys record into an ARP SEQ pattern (R2) */
         ui_message("ARP SEQ: KEYS RECORD");
-#endif
     return 1;
 }
 
@@ -634,7 +626,6 @@ static int32_t morph_pending(uint32_t g)
     return ui.mg.acc[g] < 0 ? -1 : 1;
 }
 static void morph_say_end(const char *a, uint32_t e) { ui_say(a, e ? "B" : "A"); }
-#if DUELL_TIDE
 /* The part selection (1.0.0-b5, owner 2026-11-08; three positions with the play mode in the middle since 1.0.0-b7, owner 2026-11-10, docs/design/PLAY_MODE_SELECT.md): ONE selection, PART 1 /
  * the middle / PART 2. song.sel is the part (0, 1), song.both the middle; with both on, song.sel stays the last single part (the one the edit pages edit). It replaces 0.2.9's
  * ALGORITHM-as-morph-target and AUTO TIDE's own TARGET: there is no other target state. In the middle the MORPH fader, ROLL, AMOUNT, MORPH SET's settings and the glide act on both parts
@@ -707,63 +698,7 @@ static void algo_input(int32_t s)
     } else                                              /* the edit pages: PART 1 / PART 2, as before (BOTH stays for the BOTH pages) */
         track_select((uint32_t)clamp((int32_t)song.sel + (s > 0 ? 1 : -1), 0, NSHOWN - 1));
 }
-#else
-/* an action on the parts of mask its message; from the page or MIDI */
-static void morph_act(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi)
-{
-    if (kind == MQ_TARGET && v < 2u)
-        track_select(v);                                /* (a learned CC for MORPH TARGET, which has no shipped number: PART 1 / PART 2; BOTH keeps the part the other pages edit) */
-    morph_do(kind, mask, v);
-    TIDE_LINK(kind, mask, v);                           /* TIDE hook (LINK: TARGET BOTH moves the SEQ fader with it) */
-    if (kind == MQ_ROLL)
-        morph_say_end("ROLLED ", v);
-    else if (kind == MQ_TARGET)                         /* (ALGORITHM's words: a learned MORPH TARGET CC is the same selector) */
-        ui_message(v >= 2u ? "BOTH" : v ? "PART 2" : "PART 1");
-    else if (kind == MQ_SMART)
-        ui_message(v ? "SMART ON" : "WILD");
-    else if (kind == MQ_ARP)
-        ui_message(v ? "ARP ON" : "ARP OFF");
-    else if (kind == MQ_PITCH)
-        ui_message(v ? "PITCH ON" : "PITCH OFF");
-}
-/* ALGORITHM (0.2.9, owner 2026-10-14, "option A"): on the MORPH page (HOME 1/5) and in PERFORM a three-position selector,
- * PART 1, BOTH, PART 2 from left to right (a detent a step, stopping at the ends, no wrap); it is the morph's target (it replaced
- * MORPH SET's TARGET knob): BOTH = morph.target MT_BOTH, the morph (the MORPH page, PERFORM's K1 MORPH and ROLL A / B, MIDI's CCs)
- * acts on both parts. On every other page ALGORITHM picks PART 1 or PART 2 only, as before (algo_input); BOTH stays as it was
- * left for the MORPH page and PERFORM (one shared state). song.sel is always the last single part chosen: the part every other
- * page edits and shows (its badge alone, the screen's colour), the keys' part. Not saved: power-on, a multi load and a settings
- * import never set BOTH (their TARGET bytes are reserved); a learned MORPH TARGET CC sets it (it is this selector's state; the shipped map has no number for it).
- * ALGO_BOTH_EDIT_HOOK (future, owner idea 2026-10-14, not built): BOTH on the edit pages, an edit moving both parts by the same
- * step (relative); algo_input and edit_param's call are where it would go. Today an edit changes song.sel's part only */
-static uint32_t algo_pos(void) { return morph.target == MT_BOTH ? 1u : song.sel ? 2u : 0u; }   /* 0 PART 1, 1 BOTH, 2 PART 2 */
-static void algo_step(int32_t s)
-{
-    uint32_t cur = algo_pos();
-    int32_t nv = clamp((int32_t)cur + (s > 0 ? 1 : -1), 0, 2);
-    if ((uint32_t)nv == cur)
-        return;
-    if (nv != 1)
-        track_select(nv ? 1u : 0u);
-    morph_do(MQ_TARGET, 0, nv == 1 ? 2u : 0u);
-    ui_message(nv == 1 ? "BOTH" : nv ? "PART 2" : "PART 1");
-    ui.force = 1;
-}
-static void algo_input(int32_t s)
-{
-    if (ui.perf || (cur_page()->graph == GR_MORPH) || TIDE_PAGE(cur_page()))   /* TIDE hook */   /* (PERFORM: its page, shown while ui.perf) */
-        algo_step(s);
-    else if (cur_page()->fam == FAM_GLO && page_global(cur_page())) {   /* GLO (the MIXER first): the selected part still changes (the part every other page and the keys use); the screen stays global, so a message names it */
-        uint32_t was = song.sel;
-        track_select((uint32_t)clamp((int32_t)song.sel + (s > 0 ? 1 : -1), 0, NSHOWN - 1));
-        if (song.sel != was)
-            ui_message(song.sel ? "PART 2" : "PART 1");
-    } else if (page_global(cur_page()) || TIDE_MODE_PG(cur_page()))   /* 0.2.24 (owner): a GLOBAL page edits no part: ALGORITHM does nothing there (it switched the highlight colour and nothing else); the MODE page counts as global (ui_draw.c screen_global) */
-        return;
-    else
-        track_select((uint32_t)clamp((int32_t)song.sel + (s > 0 ? 1 : -1), 0, NSHOWN - 1));
-}
-#endif
-#if !DUELL_TIDE || DUELL_TEST_MODE
+#if DUELL_TEST_MODE
 static void morph_roll_twist(int32_t s)                 /* ROLL A|B with its twist gesture (plain DUELL's MORPH page K2; TIDE: the TEST page's K2) */
 {
     int32_t d = gesture_det(0, s, 1);                   /* (one detent: a roll is instant) */
@@ -771,7 +706,6 @@ static void morph_roll_twist(int32_t s)                 /* ROLL A|B with its twi
         morph_act(MQ_ROLL, morph_mask(song.sel), d > 0, song.sel);
 }
 #endif
-#if DUELL_TIDE
 /* 1.0.0-b7 (owner 2026-11-10): HOME's MORPH page is the hands-on page. K1 MORPH, two fader steps a detent (half the twisting of b6; the ends still exact);
  * K2..K4 (b7: FILTER, RESONANCE, ECHO; b9: a genre's MACROS, knob_sets.h: one knob moves up to three parameters together, each from the part's own value by its own factor and
  * sign, AUTO from the multi's name prefix, TIDE SETTINGS > KNOBS): each parameter turned as on its page (edit_param: motion, locks, MIDI LEARN, EDITABLE B, a card the selection
@@ -828,35 +762,6 @@ static void morph_knob(uint32_t slot, int32_t s)
         ui_say(KN_FULL[set][slot - 1u], v);
     }
 }
-#else
-static void morph_knob(uint32_t slot, int32_t s)
-{
-    uint32_t pi = song.sel, mask = morph_mask(pi);
-    if (cur_page()->graph == GR_MORPHSET) {             /* SMART ARP PITCH: right on; KNOB 4 nothing (0.2.9: TARGET is ALGORITHM's BOTH) */
-        uint32_t on = s > 0;
-        if (slot == 0u && on != !(morph.cfg & MC_WILD))
-            morph_act(MQ_SMART, mask, on, pi);
-        else if (slot == 1u && on != ((morph.cfg & MC_ARP) != 0u))
-            morph_act(MQ_ARP, mask, on, pi);
-        else if (slot == 2u && on != ((morph.cfg & MC_PIT) != 0u))
-            morph_act(MQ_PITCH, mask, on, pi);
-        return;
-    }
-    switch (slot) {
-    case 0:
-        morph_act(MQ_FADER, mask, (uint32_t)clamp((int32_t)morph_fader_of(pi) + accel(EN_K1, s, 127), 0, 127), pi);
-        break;
-    case 1:                                             /* (v3: ROLL on KNOB 2, AMOUNT on 4; KNOB 3 nothing since UNDO left, 1.0.0-b5) */
-        morph_roll_twist(s);
-        break;
-    case 2:
-        break;
-    default:
-        morph_act(MQ_AMOUNT, mask, (uint32_t)clamp((int32_t)morph_amount_of(pi) + accel(EN_K4, s, 100), 0, 100), pi);
-        break;
-    }
-}
-#endif
 /* AMOUNT and SMART / ARP / PITCH <-> the settings bytes (ui.c ui_morph_set, ui_morph_cfg; byte 0's bit 7 is the part selection's BOTH, 1.0.0-b5: written and read back, so
  * a unit left on BOTH starts on BOTH; 0.2.9 to b4 kept it as stored and never read it): bytes changed from outside
  * (power-on, a settings import, the editor's restore) are read into the morph (and each part gets a fresh End B at that
@@ -870,9 +775,7 @@ static void morph_settings(void)
     uint32_t pi;
     if (!ui.mset_ok || b[0] != ui.mset_seen[0] || b[1] != ui.mset_seen[1] || ui_morph_cfg != ui.mset_seen[2]) {
         morph.cfg = (uint8_t)(ui_morph_cfg & MC_SET);
-#if DUELL_TIDE
         song.both = (uint8_t)(b[0] >> 7);               /* (the stored part selection: BOTH comes up BOTH, a single part as the part) */
-#endif
         for (pi = 0; pi < NSHOWN; pi++) {
             morph_part_t *mp = &mph[pi];
             uint32_t was = mp->n[0], a = mset_dec(b[pi]);
@@ -890,11 +793,7 @@ static void morph_settings(void)
         ui.mset_ok = 1;
         return;
     }
-#if DUELL_TIDE
     w[0] = (uint8_t)((song.both ? 0x80u : 0u) | mset_enc(mph[0].n[0] ? mph[0].aset : MORPH_AMOUNT_DEF));
-#else
-    w[0] = (uint8_t)((b[0] & 0x80u) | mset_enc(mph[0].n[0] ? mph[0].aset : MORPH_AMOUNT_DEF));   /* (plain DUELL: bit 7 kept as stored, never read) */
-#endif
     w[1] = (uint8_t)mset_enc(mph[1].n[0] ? mph[1].aset : MORPH_AMOUNT_DEF);
     w[2] = (uint8_t)(morph.cfg & MC_SET);
     if (w[0] != b[0] || w[1] != b[1] || w[2] != ui_morph_cfg) {
@@ -979,10 +878,6 @@ static void morph_poll(void)
 static void mode_knob(uint32_t slot, int32_t s)
 {
     int32_t m = duell_mode_req < DM_N ? duell_mode_req : DM_SPLIT;
-#if !DUELL_TIDE
-    if (slot == 3u)                                     /* (item 158: KNOB 4 has no card: it does nothing and says nothing; TIDE: only rows 0 .. 2 of TIDE SETTINGS call here, tide_ui.c) */
-        return;
-#endif
 #if TIDE_PLAYSEL
     if (slot >= 1u && (!song.both || (slot == 1u && m != DM_LAYER)))   /* (1.0.0-b7) XFADE and SPLIT in ALGORITHM's middle only; XFADE LAYER's, SPLIT any mode's */
         return;
@@ -1582,7 +1477,6 @@ static int reset_say(const char *name)
     (void)name;
     return 1;
 }
-#if DUELL_TIDE
 static void tide_home(uint32_t mask);                  /* (tide_ui.c) */
 /* HOME's MORPH page: K1 back to the Original sound, as OCT- + K1 on AUTO TIDE (tide_home: the glide stops); K2..K4 the macro's parameters back to the loaded
  * sound's values (morph.c h1_orig), on the part(s) the selection names (a global once: h1_gorig); a card the selection hides (ECHO with SENDS OFF): nothing (2) */
@@ -1617,22 +1511,6 @@ static int reset_morph(uint32_t k)
     }
     return 1;
 }
-#else
-static int reset_morph(uint32_t k)
-{
-    if (cur_page()->graph == GR_MORPHSET)
-        return 0;
-    if (k == 0u) {                                      /* the fader to A, as PERFORM's MORPH */
-        morph_act(MQ_FADER, morph_mask(song.sel), 0u, song.sel);
-        return reset_say("MORPH");
-    }
-    if (k == 3u) {
-        morph_act(MQ_AMOUNT, morph_mask(song.sel), MORPH_AMOUNT_DEF, song.sel);
-        return reset_say("AMOUNT");
-    }
-    return 0;
-}
-#endif
 static int reset_perf(uint32_t k)
 {
     if (k == 0u) {
@@ -1931,14 +1809,10 @@ static void seq_entry(uint32_t pressed)
 static int presets_loads(const page_t *pg)
 {
     uint32_t g = pg->graph;
-#if DUELL_TIDE
     /* TIDE (owner, 2026-11-08, "in SEQ mode I can't change the preset patch"): STEP and PARAMETER LOCKS load too. The reasons above are gone: the held-step
      * NUDGE on PRESETS no longer exists (NUDGE is PARAMETER LOCKS' rows) and a sound load keeps the motion that still means the same
      * (ui.c load_motion_hold, motion_sound_loaded), as on HOME. The list / action pages stay out */
     return !(g == GR_SLOTS || g == GR_PATS || g == GR_TOOLS);
-#else
-    return !(g == GR_ROLL || g == GR_SLOTS || g == GR_PATS || g == GR_EVENTS || g == GR_TOOLS);
-#endif
 }
 static void presets_turn(int32_t s)
 {
@@ -2553,7 +2427,6 @@ static void ui_input(void)
             ui.hot_t = 40;
             continue;
         }
-#if DUELL_TIDE
         if (!k && pg->graph == GR_MORPH && (oct_pend & 2u) && ((fm1_in.buttons >> panel.btn[B_OCTUP]) & 1u) && !((fm1_in.buttons >> panel.btn[B_OCTDN]) & 1u)) {
             /* the MORPH page (1.0.0-b7): OCT+ held + a click of K1, either way: End B a new roll (once a twist; the fader stays), OCT+ a modifier (no octave on its release) */
             morph_act(MQ_ROLL, morph_mask(song.sel), 1u, song.sel);
@@ -2562,7 +2435,6 @@ static void ui_input(void)
             kr_t[k] = fm1_ms;
             continue;
         }
-#endif
         const scope_ops_t *op = scope_ops(pg->scope);
         if ((op && ((op->hot >> k) & 1u) && !(pg->graph == GR_MORPHSET && k == 3u)) || page_desc(pg, k, &hv) ||
             (k == 3u && duck_midi_page(pg)) ||
@@ -2668,6 +2540,4 @@ timeout:
     ui.force = 1;
     ui_message("SETUP CANCELLED");
 }
-#if DUELL_TIDE
 #include "tide_ui.c"           /* TIDE hook (H13): TIDE's UI side */
-#endif

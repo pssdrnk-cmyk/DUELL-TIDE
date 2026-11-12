@@ -667,9 +667,9 @@ int PATCH_TEST_MAIN(void)
                (unsigned)(PT_CAP + ST_PAYLOAD_OFF));
         ck("PT_MAX = chunks x records per chunk (22 x 6 = 132, at least the 128 slots; TIDE 21 x 6 = 126), a chunk of PT_K worst records fits its payload",
            PT_MAX == PT_NCH * PT_K && PT_MAX + (22u - PT_NCH) * PT_K >= UP_SLOTS && UP_SLOTS == 128u && PT_K * PT_WORST + PT_HDR <= PT_CAP && PT_K == 6u &&
-           PT_NCH == (DUELL_TIDE ? 21u : 22u) && NSAVE == (DUELL_TIDE ? 126u : 128u));
+           PT_NCH == 21u && NSAVE == 126u);
         ck("  the payload ends at sector offset 0xF00 (the updater's scan), 22 objects = 16 more A/B pairs at 0xA6000..0xC5FFF (TIDE: the last one its settings)",
-           PT_CAP + ST_PAYLOAD_OFF == 0xF00u && PT_NCH + (DUELL_TIDE ? 1u : 0u) == 22u && st_sector(OBJ_PATCHX0, 0) == 0xA6000u && st_sector(OBJ_PATCHX0 + 9u, 1) + 4096u == 0xBA000u &&
+           PT_CAP + ST_PAYLOAD_OFF == 0xF00u && PT_NCH + 1u == 22u && st_sector(OBJ_PATCHX0, 0) == 0xA6000u && st_sector(OBJ_PATCHX0 + 9u, 1) + 4096u == 0xBA000u &&
            st_sector(OBJ_PATCHX0 + 10u, 0) == 0xBA000u && st_sector(OBJ_PATCHX0 + 15u, 1) + 4096u == 0xC6000u && OBJ_COUNT >= OBJ_PATCHX0 + 16u &&
            OBJ_PATCHX0 == OBJ_FM6VB + 1u);
         {   /* the 22 chunks' 44 sectors: all different, none of another object's, none the voice bank's (id 32 is refused) */

@@ -40,10 +40,8 @@ enum {
     MAP_T_SPLIT,                        /* 0 OFF, 1..127 the note (global) */
     MAP_T_CUTOFF_SMART,                 /* CC74: the engine's own cutoff, or the multimode filter's (MIDI_CC_ENG) */
     MAP_T_RES_SMART,                    /* CC71: the same for the resonance */
-#if DUELL_TIDE
     MAP_T_GLIDE,                        /* zone entry: 0..42 A, 43..84 neutral, 85..127 B */
     MAP_T_SEQ,                          /* sequence morph fader, 0..127 */
-#endif
     MAP_T_ACT_END,
     MAP_T_G0 = 320,                     /* 320 + G_* id: a global value (the effects block); up to 351 */
     MAP_T_G_END = 352,

@@ -18,7 +18,7 @@ FB = os.path.join(REPO, "felucca-base")
 NT = os.name == "nt"
 CCFLAGS = ["-O2", "-w", "-DHOST_MIX_FOLLOWS_MASTER=1", "-DDUELL_TEST_MODE=1", "-Ibuild/gen_test", "-Ibuild/gen", "-Ifirmware/src", "-Itests",
            '-DFELUCCA_VERSION=x']
-SLOW_FIRST = ("regress", "multiv8", "rollbrowser", "sliders", "editorjson", "benchaudio", "mrender", "soundlab")
+SLOW_FIRST = ("regress", "rollbrowser", "sliders", "editorjson", "benchaudio", "mrender", "soundlab")
 
 
 def posix(p):
@@ -107,7 +107,7 @@ def make_sandbox(root):
     bsrc, bdst = os.path.join(FB, "build"), os.path.join(root, "felucca-base", "build")
     for n in os.listdir(bsrc):
         s = os.path.join(bsrc, n)
-        if n in ("gen", "gen_test", "gen_off"):
+        if n in ("gen", "gen_test"):
             shutil.copytree(s, os.path.join(bdst, n))
         elif os.path.isfile(s):                    # device-build packages etc. (build/duell-*.fwsc: ldrscreen)
             shutil.copy2(s, os.path.join(bdst, n))

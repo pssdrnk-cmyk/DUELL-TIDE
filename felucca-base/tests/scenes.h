@@ -20,7 +20,7 @@
  * scene_load(k, NAME) does that and loads it as the MULTI page does, with the MODE, XFADE and SPLIT it holds applied (as the
  * CPU TEST multis always did, and as MODE RECALL ON does). A test loads a scene into the slot it used to load, so what it measures and
  * hashes is what it was. The files are read relative to felucca-base (host_tests.sh runs there). DUELL 1.1 loads only MU_VER 8: the records were
- * converted from version 7 by tools/multi_v7_to_v8.py (End B as the values 1.0 rolled; tests/multi_v7_to_v8_test.py). */
+ * converted from version 7 to 8 once (End B as the values 1.0 rolled; the converter, tools/multi_v7_to_v8.py, is retired and in the git history). */
 #include <stdio.h>
 static uint32_t scene_rec(const char *name, uint8_t *rec, uint32_t max)
 {

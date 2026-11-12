@@ -101,10 +101,6 @@ def read_version():
     return v
 
 
-def tide_on():
-    return os.environ.get("DUELL_TIDE") != "0"      # (firmware/src/tide.h: on unless built with DUELL_TIDE=0)
-
-
 def tide_version():
     """TIDE's own version: the one line of TIDE_VERSION at the repository root (1.0.0-b1 = a beta; 1.0.0 = a release)"""
     p = SRC.parent / "TIDE_VERSION"
@@ -253,8 +249,7 @@ def ldr_screen():
 def build_loader():
     LDR.mkdir(parents=True, exist_ok=True)
     src = FW / "loader"
-    flags = [*CFLAGS, "-Ifirmware/hal", "-Ifirmware/src", f"-DLDR_SCREEN={1 if ldr_screen() else 0}",
-             f"-DDUELL_TIDE={1 if tide_on() else 0}"]   # (TIDE 1.0.0-b5: the screen's TIDE look, ldr_screen_tide.c; DUELL_TIDE=0 builds DUELL's own screen, byte for byte)
+    flags = [*CFLAGS, "-Ifirmware/hal", "-Ifirmware/src", f"-DLDR_SCREEN={1 if ldr_screen() else 0}"]
     tc_all(("cc", "-c", src / "crt0_ldr.S", "-o", LDR / "crt0_ldr.o"),
            ("cc", *flags, "-c", src / "loader.c", "-o", LDR / "loader.o"))
     elf = LDR / "loader.elf"
@@ -361,8 +356,7 @@ def build_app():
                   f'-DFELUCCA_VERSION="DUELL {read_version()} bench {tag}"']
     for flag in ("FELUCCA_FLASH", "FELUCCA_OTA", "FELUCCA_OTA_DRYRUN", "FELUCCA_OTA_RAMONLY", "FELUCCA_CDC",
                  "FELUCCA_UART", "FELUCCA_UAC", "FELUCCA_UAC_TONE", "FELUCCA_UAC_48K", "FELUCCA_ICONS",
-                 "FELUCCA_CDC_DEFAULT", "DUELL_TEST_MODE", "DUELL_BENCH", "DUELL_CORE1_PROBE", "DUELL_TWOCORE", "DUELL_RAMPLACE",
-                 "DUELL_TIDE"):   # (DUELL_TIDE=0: plain DUELL, no JAM code; firmware/src/tide.h)
+                 "FELUCCA_CDC_DEFAULT", "DUELL_TEST_MODE", "DUELL_BENCH", "DUELL_CORE1_PROBE", "DUELL_TWOCORE", "DUELL_RAMPLACE"):
         v = os.environ.get(flag)    # unset: the default in firmware/src/felucca.c (DUELL_TEST_MODE: core.h, 0 = release: no TEST screen, no M13..M16)
         if v in ("0", "1"):
             flags.append(f"-D{flag}={v}")
@@ -409,10 +403,9 @@ def build_app():
             v = None                          # (no git: the day of the build, as before)
     if v and re.fullmatch(r"[A-Z][a-z]{2} [ 123]\d \d{4}", v):
         flags.append(f'-DDUELL_BUILD_DATE="{v}"')
-    if tide_on():                            # ABOUT's build id: DUELL_TIDE_ID, else the TIDE version ("+" when the tree is not exactly the tagged release)
-        v = tide_id()
-        if v:
-            flags.append(f'-DDUELL_TIDE_ID="{v}"')
+    v = tide_id()                            # ABOUT's build id: DUELL_TIDE_ID, else the TIDE version ("+" when the tree is not exactly the tagged release)
+    if v:
+        flags.append(f'-DDUELL_TIDE_ID="{v}"')
     flags.append(f'-DFELUCCA_ID="{PRODUCT}"')
     # felucca.c goes to LLVM IR without the optimizer, the main-loop functions (UI, stores, editor) are
     # marked minsize (tools/size_fns.py), then the IR is compiled at -Os. FELUCCA_SIZE=0: -Os everywhere

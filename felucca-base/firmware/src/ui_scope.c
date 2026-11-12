@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* The MORPH page's picture (DUELL_TIDE): the part's real sound, from fx.c's scope tap (wv_m, 512 mono entries a part at 11.025 kHz (46 ms), each a companded 8-bit code: wvr_code), drawn as a stack of ridges
+/* The MORPH page's picture: the part's real sound, from fx.c's scope tap (wv_m, 512 mono entries a part at 11.025 kHz (46 ms), each a companded 8-bit code: wvr_code), drawn as a stack of ridges
  * (docs/design/WAVE_DISPLAY_PLAN.md 3.2, reduced to the RAM there is; the look is the owner's pick from the WAVE LAB preview on plan/wave-displays, WAVE STACK). Included by ui_graph.c before graph_morph.
  * Core 0, main loop, nothing in the audio path.
  * Per part and picture step (about 16 a second, the page's step: mv_tick):

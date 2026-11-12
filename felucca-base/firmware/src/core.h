@@ -430,9 +430,9 @@ static volatile uint8_t mix_xf, mix_split;
 #define SPLIT_MIDDLE 129u        /* (the first free code: b6 reads it from the settings or a multi as OFF; docs/design/PLAY_MODE_SELECT.md) */
 /* TIDE_PLAYSEL (1.0.0-b7, an experiment, docs/design/PLAY_MODE_SELECT.md): ALGORITHM on the BOTH pages picks PART 1, LAYER, STEREO, DUEL, PART 2 (the selection and the
  * output MODE in one; ui_input.c algo_input) and SPLIT plays in STEREO / DUEL with BOTH (seq.c keyboard_block). 0: b6's PART 1 / BOTH / PART 2, SPLIT LAYER's only.
- * (DUELL_TIDE is set further down: this is only expanded where it is used) */
+ * (kept as a name: the PLAY-mode selector rows are always in) */
 #ifndef TIDE_PLAYSEL
-#define TIDE_PLAYSEL DUELL_TIDE
+#define TIDE_PLAYSEL 1
 #endif
 
 #ifndef DUELL_PRESETS
@@ -586,18 +586,11 @@ typedef struct {                 /* the part in mix_part, its window: one per pa
     int16_t keep[MOD_NK];
 } mod_win_t;
 
-#ifndef DUELL_TIDE
-#define DUELL_TIDE 1                /* (needed here: track_t below has TIDE's live-recording fields before tide.h, included at the end of this file, sets it too) */
-#endif
 /* TIDE 1.0.0-b6: the multis SHOWN (lists, labels, pickers, previews, MIDI program change) are M01..M18; the STORED ones stay MU_SLOTS (16: the flash
  * objects, storage.c). M17 DUNE HORN and M18 VOID DEEP are ROM only (MU_ROM; multi.c: they load and preview, never save, rename or erase) */
-#if DUELL_TIDE
 #define MU_SHOWN 24u                /* (b10: + M19 TECH HYPNO, M20 DUB HOUSE, M21 HSE LOFI, M22 TECH CINEMA, M23 AMB TECHNO, M24 TECH MINIMAL, ROM only as the drones; tools/drone_pack.py ROM_MULTIS) */
-#else
-#define MU_SHOWN MU_SLOTS
-#endif
 #define MU_ROM(k) ((uint32_t)(k) >= MU_SLOTS)
-#define MU_DRONE(k) (DUELL_TIDE && (uint32_t)(k) - 22u < 2u)   /* M23, M24: the built-in drone multis (TIDE plays them as STYLE DRONE, tide_ui.c tide_drone); since b10 the list is in genre order (tools/factory_multis.py DISPLAY_ORDER): M17 .. M22 are ROM-only multis of other genres */
+#define MU_DRONE(k) ((uint32_t)(k) - 22u < 2u)   /* M23, M24: the built-in drone multis (TIDE plays them as STYLE DRONE, tide_ui.c tide_drone); since b10 the list is in genre order (tools/factory_multis.py DISPLAY_ORDER): M17 .. M22 are ROM-only multis of other genres */
 #define MU_ROM_SAY "SAVE TO M01-M16"   /* SAVE / rename refused on M17, M18 (multi.c), as SOUNDS says PICK A USER SLOT */
 typedef struct track {
     int16_t p[EXT_P_LEN];        /* P_COUNT ids, a gap at 127, then the NX extension slots (ext.h XV); every store and format still counts P_COUNT */
@@ -658,11 +651,9 @@ typedef struct track {
     uint8_t rh_ties;             /* TIE steps written after it */
     uint8_t rh_last;             /* the last of them; rh_bak: what it held (an early release puts it back) */
     step_t rh_bak;
-#if DUELL_TIDE
     uint32_t rec_wr[2];          /* TIDE REC = REPLACE: the steps live recording wrote into this pass (bit idx), cleared two steps after the playhead (seq.c rec_put) */
     uint32_t arp_skip;           /* ARP SEQ live recording: the arp step (arp_idx + 1) a key was recorded into ahead; the arp leaves it out (0: none; seq.c rec_arp_note, arp_fire) */
     uint32_t rec_rsv;            /* (keeps track_t a multiple of 16 bytes) */
-#endif
     /* mono */
     uint8_t mono_stack[8];
     uint8_t nmono;
@@ -702,7 +693,7 @@ typedef struct track {
     int32_t m_cycle, f2add, venv;
     uint8_t f2m, cym, cy;
     uint8_t vrm;                 /* DUELL 1.1: the DEST cards' virtual per-note routes (mod.c VR): bit 0 CYCLE to TWIN CUTOFF, bit 1 CYCLE to PITCH */
-    union { uint8_t rsv_sz[1]; uint8_t lvc; };   /* TIDE live graphs: the pad byte, or (DUELL_TIDE) the latest note's effective cutoff of filter 1, Q8 dial steps >> 7 (voice.c, voice_chain.c write it; ui_live.c reads it; the audio never does; filter 2's is tide_lvc2[]) */
+    union { uint8_t rsv_sz[1]; uint8_t lvc; };   /* TIDE live graphs: the pad byte, or the latest note's effective cutoff of filter 1, Q8 dial steps >> 7 (voice.c, voice_chain.c write it; ui_live.c reads it; the audio never does; filter 2's is tide_lvc2[]) */
     /* (sizeof(track_t) a multiple of 16: below; 0.2.14: 12 more, the step_t hit / acc bytes and the drum notes gone; DUELL: 15 before ENV 2, LFO 2; 4b: 7 before mf; EQ: 4 less for P_COUNT 113; DUCK: 4 more for 119; DUCK 3: 6 more for 122, the old pad of 6 gone and 4 added; ENV 2 / LFO 2 DEST: 2 more for 127, the p[] growth padded to 4; wave 0: p[] 17 entries longer = 34 B, the pad 4 -> 2; F02: arp_nz, 2 -> 1) */
     uint8_t arp_nz;              /* (the pad's other byte) bit 0: arp_note, bit 1..3: arp_ch[0..2] sounds MIDI note 0 (its value 0 reads as none; seq.c ARP_UP) */
 } track_t;
@@ -728,9 +719,7 @@ typedef struct {
     uint8_t grid;                /* 2: NAME (ui_name.c): no key plays (0 otherwise; 1 was the DRUM grid, gone in 0.2.14) */
     uint8_t rec;                 /* live recording armed: bit per track */
     uint8_t sel;                 /* selected track 0..NTRK-1: keys, pages, editor */
-#if DUELL_TIDE
     uint8_t both;                /* 1.0.0-b5: the selection is BOTH parts (PART 1 / PART 2 / BOTH, ALGORITHM): the keys, the morph and the glide act on both, as the PLAY MODE says; sel stays the last single part, the one the edit pages edit */
-#endif
     int8_t octave;
     uint32_t tick;               /* sub-blocks since play */
     uint32_t cpu_q8;             /* audio ISR load, 1/256 */
@@ -768,7 +757,6 @@ static cpu_snap_t cpu_snap;
 static volatile uint32_t cpu_el_last;                   /* the last half's elapsed time (us; the ISR writes it: the bench's timeline window is read inside the interrupt) */
 static void cpu_snap_poll(void);
 static uint32_t cpu_win_take(uint32_t k);
-#if DUELL_TIDE
 /* K3 the EASE LADDER (TIDE 1.0.0-b4; audio.c ease_step, once a half): 0 = nothing eased; 1 the transitions at a lower rate (morph.c blend every 4th block, fm6_xfer.c retune
  * and morph_xfer.c the valley's and wash's coefficients every other block); 2 a new POLY note takes over a fading note before it takes a free voice (voice.c); 3 LIGHT FX
  * (fx.c ovl_lite); 4 released tails fade (audio.c shed_released); 5 a held note fades, only after a half that missed. The audio reads it as EASE: 0 in tests/ovl_test.c's
@@ -787,7 +775,6 @@ static uint8_t ease;
 #define EASE 0u
 #else
 #define EASE ease
-#endif
 #endif
 #if DUELL_BENCH
 #define C0_STK_FILL 0xC0C0C0C0u                                              /* main.c c0_stack_paint, bench.c c0_stack_peak: core 0's stack marks, developer builds only */
@@ -903,18 +890,16 @@ static volatile uint32_t fm1_ms;  /* milliseconds since boot (TIMER4-based, TIME
 /* boot-loop guard (main.c): two boots in a row that die in the first 30 s -> UBOOT */
 #define BOOTGUARD_MAGIC 0x42475244u
 struct { uint32_t magic, failed, pending; } bootguard __attribute__((section(".noinit")));
-#include "tide.h"                 /* TIDE hook: the plug (DUELL_TIDE; tide.h) */
-#if DUELL_TIDE
+#include "tide.h"                 /* TIDE hook: the plug (tide.h) */
 static uint8_t tide_lvc2[NLIVE];  /* TIDE live graphs: the latest note's effective cutoff of filter 2, Q8 dial steps >> 7 (chain_f2.c writes it, ui_live.c reads it; the pad bytes of track_t are used up) */
 #define LVC2(t) (tide_lvc2[(uint32_t)((t) - trk) % NLIVE])
-#endif
 /* Later 10 + 13 (b10 round 5): 1 = a part's morph costs are charged only while a transition moves (the engine cross-fade BD_FADE, TIDE's valley and wash: budget.c bd_part, bd_mv, the FM6 bridge's rule) and the
  * INSERT dip asks for a new blend only when its value moved by a 1/256 step (morph_xfer.c morph_xstep, C1): more notes at rest, thinner while moving, fewer blends in a slow dip. 0 until the unit sweep has tried it
  * (tools/build.py: env FELUCCA_MOVECOST=1) */
 #ifndef FELUCCA_MOVECOST
 #define FELUCCA_MOVECOST 0
 #endif
-/* the per-stage timing of the console probe `cpu` (fx.c, eng_fm6.c, console.c): the unit's test-mode build only (the host tests have no TIMER4); defined with or without TIDE (b10 round 5, finding 35: it sat inside #if DUELL_TIDE, undefined elsewhere) */
+/* the per-stage timing of the console probe `cpu` (fx.c, eng_fm6.c, console.c): the unit's test-mode build only (the host tests have no TIMER4); (b10 round 5, finding 35: it once sat inside a TIDE-only #if, undefined elsewhere) */
 #if DUELL_TEST_MODE && !defined(__x86_64__) && !defined(__i386__) && !defined(__aarch64__)
 #define DUELL_PROBE_STAGES 1
 #else

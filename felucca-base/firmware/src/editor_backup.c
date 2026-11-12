@@ -143,7 +143,6 @@ static const uint8_t *ed_bk_object(uint32_t id, uint32_t *len)
         *len = b ? ps_used_len(o) : 0u;             /* (no slot is empty: the object is always there, defaults included; 0: the flash failed) */
         return b;
     }
-#if DUELL_TIDE
     if (id == ED_BK_FVB) {                          /* the voice bank as stored (st_buf, which fvb_info fills) and its CRC after it; no bank: length 0 */
         uint32_t c;
         if (!fvb_info()) return ED_BK_RAW;
@@ -152,7 +151,6 @@ static const uint8_t *ed_bk_object(uint32_t id, uint32_t *len)
         *len = FVB_LEN + 4u;
         return st_buf;
     }
-#endif
     if (id == 0u) { *len = sizeof(project_store_t); return ED_BK_RAW; }
     if (id == 1u) { *len = sizeof(persist_t); return ed_bk_settings_rec(); }
     if (id >= 2u && id <= 5u)                       /* the retired project slots: always empty */
@@ -263,7 +261,7 @@ static uint32_t ed_bk_commit(void)
         settings_import(q, sizeof *q);
         panel_init(); settings_init(); palette_set(settings.palette);
 #if FELUCCA_FLASH
-        persist_note(q); persist_pending = DUELL_TIDE;   /* (TIDE: a backup without its fields keeps the unit's; the settings are saved again so the flash holds them too) */
+        persist_note(q); persist_pending = 1;   /* (TIDE: a backup without its fields keeps the unit's; the settings are saved again so the flash holds them too) */
 #endif
     }
     sync_reload = 1; ui.force = 1;

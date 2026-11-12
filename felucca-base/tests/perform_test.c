@@ -398,12 +398,7 @@ static void t_roll(void)
     frames(200);                                        /* (held: no more rolls) */
     key_up(k);
     frame();
-#if DUELL_TIDE                                         /* (TIDE: PERFORM's ROLL keys launch a glide to that end, perform ui_perform.c: no roll) */
     expect("GLIDE TO A (TIDE's ROLL A key, PART 1): the message, no roll on either part", rolls(0, 0) == a0 && rolls(1, 0) == a1 && msg_is("GLIDE TO A"));
-#else
-    expect("ROLL A (PART 1): part 1's end A rolled once, part 2 untouched", rolls(0, 0) == a0 + 1u && rolls(1, 0) == a1 &&
-                                                                             msg_is("ROLLED A"));
-#endif
     turn(EN_ALGO, 1);                                   /* BOTH (0.2.9: the middle) */
     b0 = rolls(0, 1);
     b1 = rolls(1, 1);
@@ -413,11 +408,7 @@ static void t_roll(void)
     key_down(k);
     key_up(k);                                          /* (two quick presses in one pass: two rolls) */
     frame();
-#if DUELL_TIDE
     expect("GLIDE TO B (TIDE's ROLL B key, BOTH, pressed twice): the message, no roll on either part", rolls(0, 1) == b0 && rolls(1, 1) == b1 && msg_is("GLIDE TO B"));
-#else
-    expect("ROLL B with BOTH, pressed twice: both parts' end B rolled twice", rolls(0, 1) == b0 + 2u && rolls(1, 1) == b1 + 2u);
-#endif
 }
 
 /* ------------------------------------------------------------ the song --- */

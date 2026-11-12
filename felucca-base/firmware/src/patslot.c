@@ -297,13 +297,9 @@ static uint32_t ps_def_rec(uint8_t *d, uint32_t k)
                   PATTERNS[k].gate ? PATTERNS[k].gate : (uint32_t)TP[P_SGATE].def, PATTERNS[k].name, ps_def_get, &k);
 }
 
-#if DUELL_TIDE
 static uint32_t ps_gen_n;                       /* counts the slots' changes: the PATTERNS preview decodes again when it moves */
 static uint32_t ps_gen(void) { return ps_gen_n; }
 static void ps_touch(uint32_t o) { ps_dirty |= (uint8_t)(1u << o); ps_gen_n++; }
-#else
-static void ps_touch(uint32_t o) { ps_dirty |= (uint8_t)(1u << o); }
-#endif
 
 static void ps_build_def(uint32_t o)            /* the defaults of object o into its RAM */
 {
@@ -401,11 +397,7 @@ static int ps_take(uint32_t o)
 static const uint8_t *ps_obj(uint32_t o) { return ps_take(o) ? 0 : PS_MEM(o); }
 
 static int ps_changed(uint32_t k) { return k < PS_SLOTS && (ps_m(k)->fl & PS_F_CHANGED); }   /* saved by the user: ERASE gives the default back */
-#if DUELL_TIDE                                   /* audit C1: a displaced default pattern (a read-only place PS_SLOTS..) has the LEN its LOAD gives */
 static uint32_t ps_len(uint32_t k) { return k < PS_SLOTS ? ps_m(k)->len : k < PS_VSLOTS ? (uint32_t)PATTERNS[k - PS_NUSER].len : 0u; }
-#else
-static uint32_t ps_len(uint32_t k) { return k < PS_SLOTS ? ps_m(k)->len : 0u; }
-#endif
 static void ps_name(uint32_t k, char *b)        /* slot k's stored name (b: 13 bytes; "" none) */
 {
     uint32_t i, n = k < PS_SLOTS ? ps_m(k)->nl : 0u;
@@ -561,7 +553,6 @@ static int ps_load_trk(track_t *t, uint32_t k)
     return 0;
 }
 
-#if DUELL_TIDE
 /* SAVE > PATTERNS' preview of slot k (read only: the record is read as a LOAD reads it, no write, no dip, and decoded into pat_pv_t; the tracks are not touched) */
 static void ps_preview(uint32_t k, pat_pv_t *o)
 {
@@ -604,7 +595,6 @@ static void ps_preview(uint32_t k, pat_pv_t *o)
     }
     o->state = 1;
 }
-#endif
 static void ps_label(char *b, uint32_t k)       /* "P01" .. "P32" (b: 4 bytes) */
 {
     b[0] = 'P';

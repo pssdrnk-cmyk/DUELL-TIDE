@@ -1,6 +1,6 @@
 # Building Felucca (DUELL with TIDE)
 
-> **DUELL with TIDE.** This is Felucca's build guide, with DUELL's changes. TIDE is built in by default; `DUELL_TIDE=0` builds plain DUELL 1.1 (`jam/check_off.sh` checks that it stays byte for byte the same). The package is `build/duell-1.1.fwsc`, named from the `VERSION` file. `python3 tools/build.py` does the same as `./build.sh` where the toolchain is installed. On Windows, `. jam/env.sh` in Git Bash points the build at a local toolchain folder (no Docker or WSL); see [../CONTRIBUTING.md](../CONTRIBUTING.md).
+> **DUELL with TIDE.** This is Felucca's build guide, with DUELL's changes. TIDE is the firmware (the plain `DUELL_TIDE=0` build and `jam/check_off.sh` were retired in b10). The package is `build/duell-1.1.fwsc`, named from the `VERSION` file. `python3 tools/build.py` does the same as `./build.sh` where the toolchain is installed. On Windows, `. jam/env.sh` in Git Bash points the build at a local toolchain folder (no Docker or WSL); see [../CONTRIBUTING.md](../CONTRIBUTING.md).
 
 The build makes three files in `build/`:
 

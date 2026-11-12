@@ -62,15 +62,9 @@ static uint32_t preset_by_name(uint32_t e, const char *n)
 }
 
 /* TIDE rolls a factory sound's B MUSICAL by default; the checks of the plain roll (seeds, independent ends, the audible gap) run with that off, as the MUSICAL ones set it on themselves */
-#if DUELL_TIDE
 #define PLAIN_ON() (morph_musical = 0)
 #define PLAIN_OFF() (morph_musical = 1)
 #define PLAIN_ROLL(f) do { PLAIN_ON(); f; PLAIN_OFF(); } while (0)
-#else
-#define PLAIN_ON() ((void)0)
-#define PLAIN_OFF() ((void)0)
-#define PLAIN_ROLL(f) f
-#endif
 static void fresh(uint32_t e, uint32_t pi)
 {
     uint32_t k;
@@ -1928,7 +1922,6 @@ static void test_editb(void)
     ok &= !morph_blk_make(0, (uint8_t[MB_N]){0});
     check("seed 0 plus a list is a valid B: the Original plus the list (no block to save, the list is)", ok);
     /* save: the roll again from the Original as it is, the hand-set values back on top; a load gives the same B */
-#if DUELL_TIDE
     {   /* (TIDE: a MUSICAL roll is depth 2, saved as values (MBV), never re-made from the seed: SAVE leaves the heard B as it is) */
         uint8_t blk[MB_N];
         fresh(0, 1);
@@ -1944,16 +1937,11 @@ static void test_editb(void)
         check("TIDE: a MUSICAL B is depth 2; save keeps the heard B (no re-make from the seed)", ok);
     }
     morph_musical = 0;                                   /* (the seed re-make below is the plain roll's) */
-#endif
     fresh(0, 1);
     busy(t);
     morph_set_amount(40);
-#if DUELL_TIDE
     morph_roll_cfg(0, 1u, morph_new_seed(), 40u, morph_cfg_of(0));   /* (TIDE rolls a factory sound's B, so ROLL would chain to depth 2: roll from the Original, depth 1) */
     morph_musical = 1;
-#else
-    morph_roll(1);
-#endif
     morph_set_fader(127);
     morph_b_set(0, P_FREEA, 61);
     morph_b_set(0, P_LD_FLT, 2);
