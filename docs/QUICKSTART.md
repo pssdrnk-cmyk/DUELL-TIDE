@@ -109,7 +109,7 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
   - **SAVE > TOOLS** has RESTORE ALL (every slot gets its factory sound).
   - MIDI program change n loads slot n (bank 2: the places from #129, program 0 is #129 and program 42 is #171).
   - Saving needs the transport stopped.
-- **PATTERNS**: 32 named, overwritable step patterns (P01 to P32). With TIDE P29 to P32 are USER slots (empty until saved); the default patterns they stand in for stay listed after them, read-only. The picked entry is opened with a preview of its 16 steps (or NO SEQUENCE). The page always opens with LOAD picked: knob 1 to the pattern, OCT+ loads it (knob 3 picks SAVE instead).
+- **PATTERNS**: 32 named, overwritable step patterns (P01 to P32). With TIDE P29 to P32 are USER slots (empty until saved); the default patterns they stand in for stay listed after them, read-only. The picked entry is opened with a preview of its 16 steps (or NO SEQUENCE). The page always opens with LOAD picked: knob 1 to the pattern, OCT+ loads it (knob 3 picks SAVE instead). **To save a pattern**, hold SAVE on the PATTERNS page: the picked slot is offered over itself ("SAVE OVER ... ?"), OCT+ writes it and OCT- cancels. Saving does not need STOP: the pattern is kept at once, and it goes to flash when nothing plays.
 - **MULTIS**: 16 slots that hold both parts, effects, arps, patterns, mode and morph settings. The page always opens with LOAD picked.
 
   - **Factory scenes (M01 to M16):** all music, a curated programme with a genre each. From M01 DUB BASIC through house, Detroit, minimal, acid, electro and IDM to M15 AMB BERLIN and M16 AMB LOOPS. The former STRESS TEST is a test scene only and free to overwrite.
