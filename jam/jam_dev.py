@@ -757,7 +757,7 @@ def check_object(key: int, b: bytes) -> Optional[str]:
         return "too large"
     if key == 0:
         if n != MAX_OBJ or _u32le(b, 0) != 0x46554E42:
-            return "not the current music of a DUELL unit"
+            return "not the current music of a TIDE unit"
         if b[63] != 2 or b[66] != MUSIC_P_COUNT or b[67] not in (7, 8):
             return "the music of an older DUELL version, which kept four parts and a song chain; make a new backup with this version"
         return _music8_problem(b) if b[67] == 8 else None
@@ -770,7 +770,7 @@ def check_object(key: int, b: bytes) -> Optional[str]:
             return "not a patch record as it is backed up (the slot and revision bytes are not 0)"
         why = record_problem(b)
         if why and b[4] & (16 | 64):
-            return "a patch record of an older DUELL version, which this firmware does not load; make a new backup with this version"   # (PT_VER 3: the extension block and bitmap flags, 16 and 64)
+            return "a patch record of an older version, which this firmware does not load; make a new backup with this version"   # (PT_VER 3: the extension block and bitmap flags, 16 and 64)
         return f"damaged patch record ({why})" if why else None
     if key == FVB_ID:
         if n != FVB_OBJ or _u32le(b, 0) != 0x56364D46 or _u16(b, 4) != 1 or _u16(b, 6) != FVB_N or not _printable0(b, 12, 12):
@@ -784,7 +784,7 @@ def check_object(key: int, b: bytes) -> Optional[str]:
     if g == "wavetables":
         why = wavetable_problem(b) if n else None
         return f"not a user wavetable ({why})" if why else None
-    return "not an object of a DUELL backup"
+    return "not an object of a TIDE backup"
 
 
 def object_label(key: int, b: Optional[bytes] = None) -> str:
@@ -932,11 +932,11 @@ def read_archive(file) -> Archive:
         except ValueError:
             raise DuellError("This is not a backup file (it is not valid JSON).")
     if not isinstance(file, dict) or not isinstance(file.get("objects"), list):
-        raise DuellError("This is not a DUELL backup file.")
+        raise DuellError("This is not a TIDE backup file.")
     if file.get("format") == "felucca-backup":
         raise DuellError("This is the installer's felucca-backup file: restore it with the web editor's Backup page.")
     if file.get("format") != FORMAT:
-        raise DuellError("This is not a DUELL backup file.")
+        raise DuellError("This is not a TIDE backup file.")
     version = file.get("version")
     if not _is_int(version) or version < 2:
         raise DuellError("This backup has an unknown version.")
@@ -972,7 +972,7 @@ def _read_items(items: list) -> tuple[dict[int, Obj], int]:
         is_old = oid in OLD_PATCH_IDS
         if not patch and not is_old and oid not in DUELL_IDS and oid != FVB_ID:
             if o.get("size"):
-                raise DuellError(f"Object {oid} is retired in DUELL and holds data: this is not a DUELL backup.")
+                raise DuellError(f"Object {oid} is retired in TIDE and holds data: this is not a TIDE backup.")
             continue
         if key in objects:
             raise DuellError(f"{name} is in the file twice." if patch else f"Object {oid} is in the file twice.")
@@ -1113,7 +1113,7 @@ def capture_backup(t: Transport, info: Info, progress: Optional[Progress] = None
     the check is kept raw with its problem; only a refused LIST, rc 3 (playing) or nothing readable at all stops the backup."""
     listed = list_unit(t, info.caps)
     if 0 not in listed or 1 not in listed:
-        raise DuellError("The unit does not list its music and settings: is it running DUELL?")
+        raise DuellError("The unit does not list its music and settings: is it running TIDE?")
     keys = [i for i in DUELL_IDS if i in listed] + sorted(k for k in listed if is_patch_key(k))
     if info.fv_bank and _has_bank(t):                    # not in the plain LIST; its own CRC is its last four bytes
         listed[FVB_ID] = Listed(FVB_OBJ, 0)
@@ -1197,9 +1197,9 @@ def _group_reason(g: Group, a: Archive, listed: dict[int, Listed], caps: int, pa
     if not all(i in a.objects for i in g.ids):
         return "not in this file"
     if g.key == "fm6bank" and not fv_bank:
-        return "this unit's firmware cannot restore it (it needs DUELL with TIDE, a build with the FM6 voice bank in its backup)"
+        return "this unit's firmware cannot restore it (it needs TIDE, a build with the FM6 voice bank in its backup)"
     if g.key in ("settings", "music") and (listed.get(g.ids[0]) or Listed(-1, 0)).size != a.objects[g.ids[0]].size:
-        return "the file was made by another DUELL version (its size differs from the unit's)"
+        return "the file was made by another version (its size differs from the unit's)"
     return None
 
 
@@ -1494,7 +1494,7 @@ def load_archive(path: str) -> Archive:
     if not p.is_file():
         raise UsageError(f"no such file: {path}")
     if p.stat().st_size > 200000:
-        raise DuellError("This file is too large to be a DUELL backup.")
+        raise DuellError("This file is too large to be a TIDE backup.")
     return read_archive(p.read_text(encoding="utf-8-sig"))
 
 
@@ -1516,7 +1516,7 @@ def name_of(key: int) -> str:
 def cmd_restore(a, conn: Conn, out, ask) -> int:
     arch = a.archive
     unit = conn.info.version.removeprefix("FELUCCA ")
-    print(f"file: a backup of {arch.firmware.removeprefix('FELUCCA ') or 'a DUELL unit'}, made {arch.created or 'an unknown date'}: {describe(arch)}", file=out)
+    print(f"file: a backup of {arch.firmware.removeprefix('FELUCCA ') or 'a TIDE unit'}, made {arch.created or 'an unknown date'}: {describe(arch)}", file=out)
     for line in raw_lines(arch) + arch.notes:
         print(f"  warning: {line}", file=out)
     plan = plan_restore(arch, list_unit(conn.t, conn.info.caps), conn.info.caps, a.include_raw, patch_cap=conn.info.patch_cap, fv_bank=conn.info.fv_bank)

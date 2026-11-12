@@ -458,7 +458,7 @@ class RestoreTests(Base):
         old = jd.plan_restore(a, jd.list_unit(t, 63), 7)
         self.assertEqual([lab for lab, _ in old.excluded], ["Patches", "User wavetables"])
         a.objects[1] = jd.Obj(1, a.objects[1].data + b"\0" * 16)
-        self.assertIn("another DUELL version", dict(jd.plan_restore(a, jd.list_unit(t, 63), 63).excluded)["Settings"])
+        self.assertIn("another version", dict(jd.plan_restore(a, jd.list_unit(t, 63), 63).excluded)["Settings"])
 
 
 class FlashTests(Base):
