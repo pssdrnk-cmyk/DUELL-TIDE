@@ -120,6 +120,7 @@ export function inertReason(part, id) {
   if (e.name === "LOFI" && id === P_E0 + 2 && p[P_E0 + 1] !== 0) return "WAVE NOT PULSE";   // 1.1: LOFI PULSE WIDTH (K4) shows with WAVE PLS only (the unit: ui_draw.c card_hidden_vp)
   if (id >= P_E0) return unusedLabel(descOf(part, id)) ? "UNUSED" : null;
   if (id >= ID.P_IA && id <= ID.P_IMIX && id !== ID.P_ITYPE && !p[ID.P_ITYPE]) return "INSERT OFF";
+  if (e.ownenv && (id === ID.P_ED_PIT || id === ID.P_ED_SHP)) return "OWN ENV";   // b9: AMP DEST's PITCH and TIMBRE take ENV 1, which FM6 (its operators have their own envelopes) does not run (the unit: ui_draw.c card_hidden_vp)
   if (id === ID.P_LRATE && p[ID.P_LSYNC]) return "SYNC ON";
   if (id === ID.P_L2RATE && p[ID.P_L2SYNC]) return "SYNC ON";
   // (DUELL 1.1, owner 2026-10-25: FM6's AMP ENV knobs show and act on the carrier operators; the matrix destinations for these four stay refused, dstWhy below)
@@ -263,7 +264,7 @@ export const PART_TABS = [
 // firmware params.c MASTER_PAGE_TITLE; this one place here); then COMPRESSOR (K1 RATIO, K2 THRESH, K3 ATTACK, K4 RELEASE)
 export const MASTER_TITLE = "STEREO MASTER";
 export const GLOBAL_TABS = [
-  { key: "global", label: "GLOBAL", pages: ["TEMPO", "CHORUS", "DELAY 1/2", "DELAY 2/2", "REVERB", "SHIMMER", MASTER_TITLE, "COMPRESSOR"] },
+  { key: "global", label: "GLOBAL", pages: ["TEMPO", "CHORUS", "DELAY 1/2", "DELAY 2/2", "COLR LFO", "REVERB", "SHIMMER", MASTER_TITLE, "COMPRESSOR"] },
   { key: "patches", label: "PATCHES", pages: ["PATCHES"] },
   { key: "multis", label: "MULTIS", pages: ["MULTIS"] },
   { key: "patterns", label: "PATTERNS", pages: ["PATTERNS"] },   // 0.2.25: the pattern slots P01..P16 through the backup objects 21..23 (stored.js)

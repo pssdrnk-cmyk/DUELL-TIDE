@@ -9,9 +9,9 @@
 static const char *const SETN[KS_N] = {"STD", "DUB", "HSE", "TECH", "ACID", "ELEC", "AMB"};
 static const uint8_t SETM[KS_N] = {0, 1, 2, 6, 8, 11, 14};   /* a multi of each category (slots 0..15): M01, M02, M03, M07, M09, M12, M15 */
 /* the candidate prefixed names (names only, ≤ 12 letters with the prefix; K3 renames the records) */
-static const char *const PFX_NAMES[MU_SHOWN] = {"DUB BASIC", "DUB CHORD", "HSE JUNO", "HSE RHODES", "HSE ORGAN", "HSE PIANO", "TECH DETROIT", "TECH SOUL",
+static const char *const PFX_NAMES[MU_SHOWN] = {"DUB BASIC", "DUB CHORD", "HSE JUNO", "HSE RHODES", "HSE ORGAN", "HSE FRENCH", "TECH DETROIT", "TECH SOUL",
                                                 "ACID HYPNO", "ACID TWO 303", "ACID LINES", "ELEC ROBOT", "ELEC DEEPSEA", "ELEC WARPED", "AMB BERLIN", "AMB LOOPS",
-                                                "AMB DUNEHORN", "AMB GROWL"};
+                                                "AMB DUNEHORN", "AMB GROWL", "TECH HYPNO", "DUB HOUSE", "HSE LOFI", "TECH CINEMA", "AMB TECHNO", "TECH MINIMAL"};
 
 static int widths(void)
 {

@@ -5,7 +5,7 @@
  *                  left: glide to A, right: to B, two detents to stop a running glide), K2 MODE (EVOLVE / TRAVEL), K3 TIME
  *                  (bars), K4 WAIT; OCT- + K1 back to the Original, + K2 an ARC drop, + K3 / K4 TIME and WAIT to the STYLE's   ... play
  *   TIDE SETTINGS  (GR_TIDELIST) the settings in a list, as the MENU's: K1 picks the row, OCT+ or K2..K4 the next value, OCT- the one before.
- *                  STYLE, MODE, TARGET, ARC, ROLL TYPE, AMOUNT, REC, PLAY MODE, XFADE, SPLIT (JL_NAME; 1.0.0-b7, MR8: VARY BARS, WASH, TURNS, POLY and OFFBEAT
+ *                  STYLE, MODE, TARGET, ARC, KNOBS, AMOUNT, REC, PLAY MODE, XFADE, SPLIT (JL_NAME;1.0.0-b7, MR8: VARY BARS, WASH, TURNS, POLY and OFFBEAT
  *                  are STYLE's alone, no rows)        ... set and forget
  * LINK: TARGET SND+SEQ links the two faders: GLIDE moves both, and the MORPH fader moved by hand (the MORPH page, the mod wheel, CC 70:
  * ui_input.c morph_act) moves the SEQ fader with it (tide_link). ALGORITHM is the morph's selector here too: PART 1, BOTH, PART 2
@@ -185,7 +185,7 @@ static void morph_act(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi);   
 static void tide_pick_mode(void) { jl_sel = JL_MODE; }   /* HOME OPENS = MODE (ui.c go_main_to): TIDE SETTINGS with the PLAY MODE row picked */
 
 /* STYLE: one move sets the eight values below together. MODE and ARC are rows, TIME and WAIT AUTO TIDE's knobs; VARY, POLY, SYNC (OFFBEAT) and WASH
- * are the style's alone (1.0.0-b7, MR8: no rows; the engine reads them as before; TURNS is gone since 1.0.0-b8: see TS_TURNS_OLD). TARGET and ROLL TYPE choose what TIDE may change, not the genre, and stay.
+ * are the style's alone (1.0.0-b7, MR8: no rows; the engine reads them as before; TURNS is gone since 1.0.0-b8: see TS_TURNS_OLD). TARGET chooses what TIDE may change, not the genre, and stays.
  * A hand edit of MODE, TIME, WAIT or ARC turns it into CUSTOM (tide_settings); CUSTOM itself changes nothing and keeps the style values it had.
  * mode, time (index), wait (index), VARY, POLY, SYNC, ARC, WASH */
 enum { STY_DUB, STY_DEEP, STY_MINIMAL, STY_AMBIENT, STY_PEAK, STY_DRONE, STY_CUSTOM };   /* (CUSTOM was 5 until 1.0.0-b4: a stored 5 is read as DRONE only if its rows are DRONE's, else CUSTOM; tide_settings) */
@@ -1059,13 +1059,13 @@ static volatile uint8_t *const TS_VAR[TS_N] = {&gl.mode, &gl.time, &gl.target, &
                                                &sqm_sync, &sqm_arc, &tide_style, &tide_rec_replace};
 static const uint8_t TS_LIM[TS_N] = {GM_JOURNEY + 1u, GLIDE_TIMES, GT_BOTH + 1u, GLIDE_WAITS, 0, KS_N + 2u, 0, 3, 3, 3, 3, STY_CUSTOM, 2},
                      TS_DEF[TS_N] = {GM_WANDER, 3, GT_SOUND, 0, 1, 1, 3, 1, 1, 1, 0, STY_CUSTOM, 0};
-/* TIDE 1.0.0-b6: while a built-in drone multi (M17, M18: MU_ROM) is the multi loaded, TIDE plays STYLE DRONE: the eight rows are DRONE's and TIDE SETTINGS
+/* TIDE 1.0.0-b6: while a built-in drone multi (M17, M18: MU_DRONE; b10: the ROM multis M19.. are not drones) is the multi loaded, TIDE plays STYLE DRONE: the eight rows are DRONE's and TIDE SETTINGS
  * shows DRONE. What was set (the eight rows and STYLE) is kept here and comes back when any other multi (or none) is loaded; the store always gets the
  * kept values, so the saved STYLE never changes. A hand edit of a row while the drone multi is loaded lasts until then. Main loop only (no audio cost) */
 static uint8_t tide_drone_on, tide_drone_keep[9];       /* (STY's eight rows, then STYLE) */
 static void tide_drone(int reread)
 {
-    uint32_t cs = project_cur_slot(), on = cs < MU_SHOWN && MU_ROM(cs);
+    uint32_t cs = project_cur_slot(), on = cs < MU_SHOWN && MU_DRONE(cs);
     if (reread)                                          /* (the rows were just read from the store: they are what is kept now) */
         tide_drone_on = 0;
     if (on == tide_drone_on)

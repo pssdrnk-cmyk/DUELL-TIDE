@@ -27,7 +27,7 @@ Renders are deterministic: same tree + same options = identical bytes. `multi` N
 The options added by lanes A / B beyond this list (`--dry`, `--solo`, `--fx`, `--ringout`, `--g NAME=VAL`, `--dump-params`) are in `soundlab --help`.
 Every metric, its JSON path and the old script it comes from: `METRICS.md`. Proof that soundlab gives the old lanes numbers: `REPRODUCE.md`.
 Known limits: per-part figures (steals, odd/even per part) use the mix, not stems (`--solo` stems are not wired into `measure` yet), and the voice log has no voice ids.
-Old "chord held" renders (`RR_SHIFT -12`) held only G3: use `--keys chord:G3` to compare; a full chord picks an octave that reaches every note (`keys_octave` in the JSON).
+Old "chord held" renders (`RR_SHIFT -12`) held only G3: use `--keys chord:G3` to compare; a full chord picks an octave that reaches every note (`keys_octave` in the JSON). `--keys` notes are what SOUNDS (a part TRN is compensated): `--keys-raw` presses the keys as they sound with TRN 0 so TRN shows, `--keys-turn MS` presses the keys one after another in the order given (PRIO, arp ORDER).
 ## Metrics (`PREFIX.metrics.json`; all dB are dBFS or ratios as stated)
 
 | Group | Metric | Definition |
@@ -80,7 +80,16 @@ Tags come from the numbers (thresholds in `atlas.py`, `tags_of`). Sounds, from t
 ## Genre targets
 
 `genres.json`: per genre (dub-techno, deep-house, classic-house, detroit, acid, electro, idm, berlin-school, ambient, drone) numeric target ranges, each with `source` (file:section of work/b9/research/) and `basis` (sourced / example / rule / measured). Where no source gave a number the metric is absent and `rules --genre NAME PREFIX` prints it UNSURE; never fill a gap from memory.
-`soundlab rules --genre dub-techno PREFIX` checks the measured values against the ranges. Add a number only with its source line.
+`soundlab rules --genre dub-techno PREFIX` checks the measured values against the ranges. Add a number only with its source line. Each genre also has a `measured` band: soundlab's own numbers over its factory multis in rc5 (PLAY alone, 4 bars); outside it `rules --genre` prints DRIFT (a regression signal, not a genre failure). Refill it with `soundlab atlas --only multis` after an approved sound change.
+
+## Dead parameters
+
+`soundlab deadparams [--engine NAME]` renders every parameter of every engine at its min and max (a held C3, then a C minor chord, then in each context where it could act: an LFO / ENV 2 / insert / EQ band / arp / voice mode / twin filter switched on, the wave slot at each value) and says DEAD (bit-identical), NEAR (< 0.5 dB and < 1/12 octave), LIVE or UNTESTED (sequencer, matrix, sidechain). `soundlab params` lists the descriptors. The table with the reason for each dead one: `DEADPARAMS.md`. About 8 minutes for all 10 engines.
+
+## Emulator sessions (emu_run)
+
+`sh web/emu/emu_run.sh --run web/emu/scripts/NAME.txt --out DIR` (from `felucca-base/`) plays a script on the emulator's device (`web/emu/felucca_web.c` built natively, the same sources the browser runs; CI checks wasm = native): `boot`, `button HOME|SAVE|GLO|OCTUP.. [tap|down|up]`, `enc K1..K4|SELECT N`, `keys C4 Eb4 G4|off`, `master V`, `midi S D1 D2`, `wait MS`, `shot NAME` (DIR/NAME.png, 240 x 240, and its CRC in `DIR/screens.txt`), `rec NAME|off` (DIR/NAME.wav + .json: `soundlab measure DIR/NAME` reads it). Header of `web/emu/emu_run.c` has the full list.
+Navigation: HOME cycles MORPH (K2-K4 the genre knobs), TIDE SETTINGS (K1 picks the row, OCT+/OCT- change it), AUTO TIDE; SAVE opens MULTIS (K1 the slot, OCT+ loads); a page persists, so do not press SAVE twice. Demos in `web/emu/scripts/`: `genre_knobs.txt` (K2-K4 down and up on M02 M03 M07 M09 M12 M17), `tide_settings.txt`, `multis_pages.txt` (M01-M18 page and 2 s of audio each), and one per b9 feature: `knobs_row.txt` (KNOBS row, 8 sets), `tide_modes.txt` (EVOLVE / TRAVEL), `usb_audio.txt` (MENU > SYSTEM > USB AUDIO; the menu opens by holding HOME on a page other than HOME), `delay_time_glide.txt` (TIME stepped in the DUB set, audio), `m18_growl.txt` (M18 AMB GROWL, audio). SP3 / SP4 and ROLL TYPE have no screen of their own (ROLL TYPE is gone from the KNOBS row demo). Group `emu_smoke` checks 6 screens against `tests/emu_smoke_ref.txt` (`tests/emu_smoke.sh --write-ref` after a UI change on purpose). The audio is the device's output at MASTER `master V`; its level is not soundlab's.
 
 ## Tests and checks
 

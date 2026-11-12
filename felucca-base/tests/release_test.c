@@ -33,7 +33,7 @@ static void ck(const char *what, int ok)
 
 int main(void)
 {
-    static const char *const FN[16] = {"DUB BASIC", "DUB CHORD", "HSE JUNO", "HSE RHODES", "HSE ORGAN", "HSE PIANO", "TECH DETROIT",
+    static const char *const FN[16] = {"DUB BASIC", "DUB CHORD", "HSE JUNO", "HSE RHODES", "HSE ORGAN", "HSE FRENCH", "TECH DETROIT",
                                        "TECH SOUL", "ACID HYPNO", "ACID TWO 303", "ACID LINES", "ELEC ROBOT", "ELEC DEEPSEA", "ELEC WARPED",
                                        "AMB BERLIN", "AMB LOOPS"};   /* (the reel, 2026-11-10: fifteen new multis as one curated programme, M02 the owner's DUB CHORD; tools/factory_multis.py) */
     uint32_t k, ok, test_rows = 0, sys_rows = 0;
@@ -68,7 +68,7 @@ int main(void)
         ok &= project_used(k) && project_factory(k) && str_eq(mu_names[k], FN[k]);
     ck("M01..M16 are the factory multis (the reel, 2026-11-10: BASIC CHORD, DUB CHORD, JUNO DEEP .. BERLIN RUN, M16 AMB LOOPS), as in the test mode", ok);
 #if DUELL_TIDE
-    ck("M17 AMB DUNEHORN, M18 AMB GROWL: the built-in drone multis, factory (ROM only)", MU_SHOWN == 18u && project_used(16) && project_factory(16) && str_eq(mu_names[16], "AMB DUNEHORN") &&
+    ck("M17 AMB DUNEHORN, M18 AMB GROWL: the built-in drone multis, factory (ROM only)", MU_SHOWN >= 18u && project_used(16) && project_factory(16) && str_eq(mu_names[16], "AMB DUNEHORN") &&
        project_used(17) && project_factory(17) && str_eq(mu_names[17], "AMB GROWL"));
 #endif
     project_load(2);

@@ -65,7 +65,7 @@ One map for the whole unit. A CC on a part's channel moves that part; "both part
 | 14 | SUB LEVEL | Undefined | the part of the channel |
 | 15 | SUB OCTAVE | Undefined | the part of the channel |
 | 16 | SUB WAVE | General Purpose Controller 1 | the part of the channel |
-| 17 | SUB HARMONICS (the HARM card is switched off for now: no effect) | General Purpose Controller 2 | the part of the channel |
+| 17 | (b9: free; was SUB HARMONICS, which nothing reads) | General Purpose Controller 2 | - |
 | 18 | MULTI FILTER ENV AMT | General Purpose Controller 3 | the part of the channel |
 | 19 | MULTI FILTER KEY TRK | General Purpose Controller 4 | the part of the channel |
 | 20 | MULTI FILTER MODE | Undefined | the part of the channel |

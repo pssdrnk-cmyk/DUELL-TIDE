@@ -34,7 +34,7 @@ end
 # ---- CHORDS
 
 test CHORDS-DEF  M07 FINAL REEL, four chords; the BENCHT4 defaults (only faults pause, floor off)
-load multi 6 "HSE PIANO"
+load multi 6 "HSE FRENCH"
 mode LAYER
 ref 34.0 55.5
 at 0.0  chord C3 E3 G3 B3 vel 90
@@ -52,7 +52,7 @@ expect report
 # ---- M07
 
 test M07-DEF  M07 FINAL REEL cycle, 180 s; the BENCHT4 defaults
-load multi 6 "HSE PIANO"
+load multi 6 "HSE FRENCH"
 mode LAYER
 ref 34.2 55.2
 soak 180 repeat M07-CYCLE

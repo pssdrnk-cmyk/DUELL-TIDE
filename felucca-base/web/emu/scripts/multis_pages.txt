@@ -1,0 +1,202 @@
+# Demo 3: SAVE > MULTIS: each of M01..M18 selected with K1 (its page), loaded with OCT+, played with a chord held for 2 s of audio.
+boot
+master 800
+button SAVE
+enc K1 -20
+shot M01_page
+button OCTUP
+wait 500
+keys C4 Eb4 G4
+wait 300
+rec M01
+wait 2000
+rec off
+keys off
+wait 300
+enc K1 1
+shot M02_page
+button OCTUP
+wait 500
+keys C4 Eb4 G4
+wait 300
+rec M02
+wait 2000
+rec off
+keys off
+wait 300
+enc K1 1
+shot M03_page
+button OCTUP
+wait 500
+keys C4 Eb4 G4
+wait 300
+rec M03
+wait 2000
+rec off
+keys off
+wait 300
+enc K1 1
+shot M04_page
+button OCTUP
+wait 500
+keys C4 Eb4 G4
+wait 300
+rec M04
+wait 2000
+rec off
+keys off
+wait 300
+enc K1 1
+shot M05_page
+button OCTUP
+wait 500
+keys C4 Eb4 G4
+wait 300
+rec M05
+wait 2000
+rec off
+keys off
+wait 300
+enc K1 1
+shot M06_page
+button OCTUP
+wait 500
+keys C4 Eb4 G4
+wait 300
+rec M06
+wait 2000
+rec off
+keys off
+wait 300
+enc K1 1
+shot M07_page
+button OCTUP
+wait 500
+keys C4 Eb4 G4
+wait 300
+rec M07
+wait 2000
+rec off
+keys off
+wait 300
+enc K1 1
+shot M08_page
+button OCTUP
+wait 500
+keys C4 Eb4 G4
+wait 300
+rec M08
+wait 2000
+rec off
+keys off
+wait 300
+enc K1 1
+shot M09_page
+button OCTUP
+wait 500
+keys C4 Eb4 G4
+wait 300
+rec M09
+wait 2000
+rec off
+keys off
+wait 300
+enc K1 1
+shot M10_page
+button OCTUP
+wait 500
+keys C4 Eb4 G4
+wait 300
+rec M10
+wait 2000
+rec off
+keys off
+wait 300
+enc K1 1
+shot M11_page
+button OCTUP
+wait 500
+keys C4 Eb4 G4
+wait 300
+rec M11
+wait 2000
+rec off
+keys off
+wait 300
+enc K1 1
+shot M12_page
+button OCTUP
+wait 500
+keys C4 Eb4 G4
+wait 300
+rec M12
+wait 2000
+rec off
+keys off
+wait 300
+enc K1 1
+shot M13_page
+button OCTUP
+wait 500
+keys C4 Eb4 G4
+wait 300
+rec M13
+wait 2000
+rec off
+keys off
+wait 300
+enc K1 1
+shot M14_page
+button OCTUP
+wait 500
+keys C4 Eb4 G4
+wait 300
+rec M14
+wait 2000
+rec off
+keys off
+wait 300
+enc K1 1
+shot M15_page
+button OCTUP
+wait 500
+keys C4 Eb4 G4
+wait 300
+rec M15
+wait 2000
+rec off
+keys off
+wait 300
+enc K1 1
+shot M16_page
+button OCTUP
+wait 500
+keys C4 Eb4 G4
+wait 300
+rec M16
+wait 2000
+rec off
+keys off
+wait 300
+enc K1 1
+shot M17_page
+button OCTUP
+wait 500
+keys C4 Eb4 G4
+wait 300
+rec M17
+wait 2000
+rec off
+keys off
+wait 300
+enc K1 1
+shot M18_page
+button OCTUP
+wait 500
+keys C4 Eb4 G4
+wait 300
+rec M18
+wait 2000
+rec off
+keys off
+wait 300

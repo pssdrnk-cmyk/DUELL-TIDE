@@ -647,7 +647,7 @@ static int stage1_checks(void)
         bad += check("8 load multi 7: 'OK multi 7 TECH DETROIT' (the runner checks the name; reel, 2026-11-10: M07 is DETROIT STAB)", !strcmp(r, "OK multi 7 TECH DETROIT\r\n"));
         r = con("load patch 1 61");
         bad += check("8 load patch 1 61: 'OK patch 61 EVOLVING PAD'", !strcmp(r, "OK patch 61 EVOLVING PAD\r\n"));
-        bad += check("8 load: no such multi / part / slot is ERR", is_err(MU_SHOWN > 16u ? "load multi 19" : "load multi 17") && is_err("load multi 0") && is_err("load patch 3 1") && is_err("load patch 1 129") && is_err("load foo"));
+        bad += check("8 load: no such multi / part / slot is ERR", is_err(MU_SHOWN > 16u ? "load multi 25" : "load multi 17") && is_err("load multi 0") && is_err("load patch 3 1") && is_err("load patch 1 129") && is_err("load foo"));
         bad += check("8 audit F07: a number out of the int32 range is ERR (it wrapped to a small one before); the int32 limits are numbers but no multi; a minus sign alone is no number",
                      is_err("load multi 4294967297") && is_err("load multi 4294967313") && is_err("load multi -4294967295") && is_err("load multi 2147483649") && is_err("load multi 99999999999999999999") && is_err("load multi -") && is_err("load multi 2147483647") && is_err("load multi -2147483648"));
         bad += check("8 mode: DUEL STEREO LAYER, others ERR", is_ok("mode LAYER") && duell_mode_req == DM_LAYER && is_ok("mode duel") && duell_mode_req == DM_SPLIT && is_ok("mode STEREO") && is_err("mode MONO") && is_err("mode"));
@@ -810,7 +810,7 @@ static int stage1_checks(void)
         int d_patch, d_multi, d_row, d_off;
         d_patch = repeat_sweep("the 128 factory patches", 128u, scn_patch, 2500u, 0);
         bad += check("8 the reset list: every factory patch repeats (a chord, aftertouch, release; played forward, then backward)", d_patch == 0);
-        d_multi = repeat_sweep(MU_SHOWN > 16u ? "the 18 factory multis (M17, M18 the drones)" : "the 16 factory multis", MU_SHOWN, scn_multi, 2300u, 0);
+        d_multi = repeat_sweep(MU_SHOWN > 16u ? "the factory multis (M17, M18 the drones; b10: M19-M24 ROM)" : "the 16 factory multis", MU_SHOWN, scn_multi, 2300u, 0);
         bad += check("8 the reset list: every factory multi repeats", d_multi == 0);
         d_row = repeat_sweep("the bench rows (88)", BENCH_NAUTO, scn_row, 2300u, 0);
         bad += check("8 the reset list: every row of the bench list repeats", d_row == 0);

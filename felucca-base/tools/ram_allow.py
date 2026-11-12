@@ -239,6 +239,7 @@ ALLOW = {
     "comp_stage": "mix or effect stage in flash at the K6 baseline (~1360 B, 2026-11-08); not yet reviewed for range Z (CPU audit section 5 F); reached from mix_master",
     "cut_slew": "mix or effect stage in flash at the K6 baseline (~50 B, 2026-11-08); not yet reviewed for range Z (CPU audit section 5 F); reached from part_voice",
     "delay_samples": "mix or effect stage in flash at the K6 baseline (~36 B, 2026-11-08); not yet reviewed for range Z (CPU audit section 5 F); reached from mix_sends",
+    "dly_col": "b10 CLFO: runs once a block (fx_buses / split_buses read the colour into dly_cv, which the hot dly_mod reads), not per sample; in flash (100 B) because the hot block keeps 244 B free and range Z has no room for it; reached from mix_sends",
     "dly_ev": "mix or effect stage in flash at the K6 baseline (~2600 B, 2026-11-08); not yet reviewed for range Z (CPU audit section 5 F); reached from fx_buses_ev",
     "dly_ev_b": "mix or effect stage in flash at the K6 baseline (~2032 B, 2026-11-08); not yet reviewed for range Z (CPU audit section 5 F); reached from fx_buses_ev_b",
     "dly_mod_b": "mix or effect stage in flash at the K6 baseline (~958 B, 2026-11-08); not yet reviewed for range Z (CPU audit section 5 F); reached from fx_buses_mod_b",

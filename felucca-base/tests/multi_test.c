@@ -235,7 +235,7 @@ static void keys_drive(void)
      * (D31: all five are arps). AMB: the pads, WHISPER TIDE, TINE STRINGS, FINAL REEL, COLD CHAPEL (their D31 slots) */
     /* (reel, 2026-11-10: the ARP SEQ pairs of the fifteen new multis: M05 HSE ORGAN, M07 TECH DETROIT, M09 MINIMAL 12, M13 ELEC DEEPSEA (M03 and M06 are plain patterns now);
      * AMB: no factory multi has a latched pad any more, so the owner's WHISPER TIDE (the factory M11 until the reel) is the test scene tests/scenes/reel/M11_WHISPER_TIDE.bin,
-     * stored in M11 for its check and erased again; M06 HSE PIANO is the keyed pair (both parts played from the keys, HOLD OFF), as TINE STRINGS and FINAL REEL were) */
+     * stored in M11 for its check and erased again; M06 HSE FRENCH is the keyed pair (both parts played from the keys, HOLD OFF), as TINE STRINGS and FINAL REEL were) */
     static const uint8_t GRV[4] = {1, 4, 6, 11}, P1[4] = {0, 0, 0, 0}, AMB[2] = {10, 5};   /* (b8 lane M09: slot 9 HYPNO 303 has a plain-pattern 303 on part 1: with M11 in the plain-pattern check below) */
     static const char *const GN[4] = {"M02 DUB CHORD", "M05 HSE ORGAN", "M07 TECH DETROIT", "M12 ELEC ROBOT"};
     uint32_t j;
@@ -305,12 +305,12 @@ static void keys_drive(void)
             scene_put(10, "reel/M11_WHISPER_TIDE");
         play_run(k, chord, sec, 3u * sec, 0, r);
         ok = r[0].n >= 3u && r[0].first <= 1u && r[1].n >= 1u && r[0].gated_after >= 3u && r[1].late >= 1u;
-        if (k == 5u)                                 /* (reel: M06 HSE PIANO: both parts keyed, nothing latched (HOLD OFF), the release ends both; 0.2.25 .. b7 the owner's TINE STRINGS and FINAL REEL) */
-            ok = r[0].n >= 3u && r[0].first <= 1u && r[1].n >= 3u && r[0].gated_after == 0u && r[1].gated_after == 0u && r[1].late == 0u;
+        if (k == 5u)                                 /* (reel: M06, now HSE FRENCH: both parts keyed, nothing latched (HOLD OFF), the release ends both; 0.2.25 .. b7 the owner's TINE STRINGS and FINAL REEL) */
+            ok = r[0].n >= 3u && r[0].first <= 1u && r[1].n >= 1u && r[0].gated_after == 0u && r[1].gated_after == 0u && r[1].late == 0u;   /* (b9 rework3: HSE FRENCH's bass is mono, PRIO LOW: a chord plays its lowest key) */
         printf("multi:   M%02u C4 E4 G4 1 s, 3 s let go: part 1 %u note-ons, %u notes still gated; part 2 %u (%u after the release), %u gated\n",
                k + 1u, r[0].n, r[0].gated_after, r[1].n, r[1].late, r[1].gated_after);
         ck(k == 10u ? "WHISPER TIDE (the owner's, a test scene in M11 since the reel): a chord latches the pad, the choir picks its notes and goes on after the release"
-                    : "M06 HSE PIANO (reel): a chord plays the piano and the strings, nothing latched (HOLD OFF), the release ends both", ok);
+                    : "M06 HSE FRENCH (b9 rework3): a chord plays the electric piano, the mono bass its lowest key, nothing latched (HOLD OFF), the release ends both", ok);
         play_run(k, 0u, 2u * sec, 0u, 1, z);
         {   /* (U2 B: a plain pattern plays on PLAY whatever the build; an ARP SEQ part only with TIDE's stand-in; the classic arps (M05, M13) wait for keys) */
             uint32_t pi2, st2, n2;
@@ -467,7 +467,7 @@ static void drones(void)
         memset(dmb, 0xA5, sizeof dmb);
         ok &= len > MU_G_AT && len == DM_LEN[k] && len <= MU_REC_MAX && !memcmp(rec, dm_rec(k, dmb), len) && dmb[len] == 0xA5u;
     }
-    ck("drones: all 18 factory records (M01-M16, M17, M18) rebuild from the packed ROM byte for byte to their .bin files, and write nothing past their length", ok && DF_N == 18u);
+    ck("drones: all factory records (M01-M16, the drones M17, M18, b10 M19..) rebuild from the packed ROM byte for byte to their .bin files, and write nothing past their length", ok && DF_N == MU_SHOWN);
     {                                                /* the rebuild beside a stored partner: M02 saved, M01 empty (its factory record decodes at the end of the staging buffer) */
         char nm2[PROJ_NAME_LEN + 1u];
         uint32_t l1;
@@ -493,7 +493,7 @@ static void drones(void)
         objn[o] = (uint16_t)mu_obj_read(o);
         memcpy(obj[o], mu_buf, objn[o]);
     }
-    ck("drones: MU_SHOWN 18, MU_SLOTS (stored) still 16, the flash objects as before (OBJ_PATCH0 = OBJ_MULTI0 + 8)", MU_SHOWN == 18u && MU_SLOTS == 16u && MU_NOBJ == 8u && DF_N == 18u);
+    ck("drones: MU_SHOWN 24 (b10: M19-M24 ROM-only factory multis), MU_SLOTS (stored) still 16, the flash objects as before (OBJ_PATCH0 = OBJ_MULTI0 + 8)", MU_SHOWN == 24u && MU_SLOTS == 16u && MU_NOBJ == 8u && DF_N == MU_SHOWN);
     for (k = 16u, ok = 1; k < 18u; k++) {
         ok &= project_used(k) && project_factory(k) && !multi_bad(k) && project_info(k, nm) && str_eq(nm, DN[k - 16u]) && df_of(k) == k;
         ok &= str_eq(multi_vname(k, 0), DS[k - 16u][0]) && str_eq(multi_vname(k, 1), DS[k - 16u][1]);
@@ -585,12 +585,15 @@ static void drones(void)
     midi_pc(0, 17);
     pc_poll();
     ok &= proj_cur == 17u;
+    midi_pc(0, 18);                                  /* (b10: M19 TECH HYPNO, a ROM multi, not a drone) */
+    pc_poll();
+    ok &= proj_cur == 18u;
     project_load(1u);                                /* (M02: M01 holds the DAMAGED record of the check above) */
-    midi_pc(0, 18);
+    midi_pc(0, MU_SHOWN);
     pc_poll();
     midi_pc(0, 127);
     pc_poll();
-    ck("  MIDI program change 16, 17 (LAYER) load M17, M18; 18 and 127 are ignored", ok && proj_cur == 1u);
+    ck("  MIDI program change 16, 17, 18 (LAYER) load M17, M18, M19; MU_SHOWN (24) and 127 are ignored", ok && proj_cur == 1u);
     tide_settings();
     tide_style_apply(STY_DEEP);                     /* (the player's STYLE) */
     tide_settings();
@@ -921,7 +924,23 @@ int main(void)
             mu_note(13u / 2u);
             song.bm = 3;
             project_load(13u);
-            ck("  a record saved by 0.2.19 / 0.2.20 with BASS MONO 100 Hz in byte 5 loads, the bit pattern ignored (the unit's 3 stays)", ok && project_used(13) && song.bm == 3);
+            ck("  a record saved by 0.2.19 / 0.2.20 with BASS MONO 100 Hz in byte 5 loads, the bit pattern is no BASS MONO (read as CLFO 5 since b10; the unit's 3 stays)", ok && project_used(13) && song.bm == 3);
+        }
+        /* b10 CLFO (G_DCLFO): byte 5 bits 1..4 are the delay colour's LFO now: packed as is (bit 0 and bits 5..7 left alone), read back by mu_unpack; 0 (every record written since 0.2.21) is no LFO */
+        {
+            static uint8_t rec3[MU_REC_MAX];
+            project_t q, q2;
+            uint32_t cut, len;
+            uint8_t amt[NSHOWN], set[6];
+            project_capture(&q);
+            q.g[G_DCLFO] = 9;
+            mu_pack(rec3, &q, &cut);
+            ck("  CLFO 9 is stored in byte 5 bits 1..4, bits 5..7 stay 0, a clamped 99 gives 15", (rec3[5] >> 1) == 9 && (rec3[5] >> 5) == 0 && (q.g[G_DCLFO] = 99, mu_pack(rec3, &q, &cut), (rec3[5] >> 1) == 15));
+            q.g[G_DCLFO] = 9;
+            len = mu_pack(rec3, &q, &cut);
+            q2 = q;
+            q2.g[G_DCLFO] = 0;
+            ck("  .. and mu_unpack gives it back (CLFO 9); a record with the bits 0 reads CLFO 0", mu_unpack(&q2, amt, set, rec3, len) && q2.g[G_DCLFO] == 9 && (rec3[5] &= 1u, mu_unpack(&q2, amt, set, rec3, len)) && q2.g[G_DCLFO] == 0);
         }
     }
 
@@ -1089,11 +1108,11 @@ int main(void)
      * 0.2.24: the owner's COLD CHAPEL, ACID ETHER and GARGLE ACID of 0.2.22 back in M06, M09, M14; 0.2.25: COLD CHAPEL in M13): in ROM, shown while the slot is empty in flash */
     {
         /* (reel, 2026-11-10: the fifteen new factory multis, one curated programme (tools/factory_multis.py); M02 DUB CHORD is the owner's record as before) */
-        static const char *const FN[16] = {"DUB BASIC", "DUB CHORD", "HSE JUNO", "HSE RHODES", "HSE ORGAN", "HSE PIANO", "TECH DETROIT",
+        static const char *const FN[16] = {"DUB BASIC", "DUB CHORD", "HSE JUNO", "HSE RHODES", "HSE ORGAN", "HSE FRENCH", "TECH DETROIT",
                                            "TECH SOUL", "ACID HYPNO", "ACID TWO 303", "ACID LINES", "ELEC ROBOT", "ELEC DEEPSEA", "ELEC WARPED",
                                            "AMB BERLIN", "AMB LOOPS"};
         static const char *const SN[16][2] = {{"CHORD ECHO", "WARM WASH"}, {"BIG STAB", "SLOW TIDE"}, {"WARM WASH", "RUBBER BAND"},
-                                              {"TINE ROOM", "AIR SHIMMER"}, {"DUB DRAWBAR", "ORGAN WASH"}, {"SALOON KEYS", "RAIN STRINGS"},
+                                              {"TINE ROOM", "AIR SHIMMER"}, {"DUB DRAWBAR", "ORGAN WASH"}, {"MELLOW EP", "FRETLESS"},
                                               {"LOW STAB", "LAMPLIGHT"}, {"SUNDAY KEYS", "SYNTH BRASS"}, {"SQUELCH", "FOG BANK"},
                                               {"TIDAL SUB", "SQUELCH"}, {"SQUELCH", "DEEP BLUE"}, {"LADDER BASS", "VOWEL PAD"},
                                               {"DIGI PLUCK", "PWM PAD"}, {"WAVE CHIMES", "TAPE CLOUD"}, {"RUBBER BAND", "CHOIR LOFT"},
@@ -1104,7 +1123,7 @@ int main(void)
         static const uint8_t SPL[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};          /* (the splits: F4 + 1, compared with the key as played) */
         static const uint8_t XF[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};   /* (reel, 2026-11-10: no factory multi sets XFADE; until then M16, the owner's FINAL REEL, had 58) */
         /* (seq.c AM_*: UP 1, RND 4, SEQ 15; D31: the six new multis are SEQ arps on both parts (BASIC CHORD's DUST BED is played live); the kept records as they were) */
-        /* (reel, 2026-11-10: ARP SEQ on both parts, but M03 HSE JUNO, M06 HSE PIANO, M10 ACID TWO 303 (b8) and M11 ACID LINES: written notes, plain patterns on both parts, the arp OFF) */
+        /* (reel, 2026-11-10: ARP SEQ on both parts, but M03 HSE JUNO, M06 HSE FRENCH (was HSE PIANO), M10 ACID TWO 303 (b8) and M11 ACID LINES: written notes, plain patterns on both parts, the arp OFF) */
         static const int8_t AM[16][2] = {{15, 15}, {15, 15}, {0, 0}, {15, 15}, {15, 15}, {0, 0}, {15, 15}, {15, 15}, {0, 15},
                                          {0, 0}, {0, 0}, {15, 15}, {15, 0}, {15, 15}, {15, 15}, {15, 15}};   /* (b9 sound: M13 ELEC DEEPSEA's pad is written chords now, the arp OFF; M01's bed is WARM WASH, no DUST BED) */
         static uint8_t before[0x100000];
@@ -1241,10 +1260,10 @@ int main(void)
            str_eq(nm_a, "SQUELCH") && str_eq(ENGINES[trk[0].eng_req]->name, "ANALOG"));
         turn(EN_K3, 40);
 #if DUELL_TIDE
-        ck("  many detents right: stops at the last used, M18 AMB GROWL (the built-in drone multi, TIDE b6)", proj_cur == 17u && msg_is("LOADED M18 AMB GROWL"));
-        turn(EN_K3, -2);
-        ck("  2 left: M16 AMB LOOPS (FM6 + WAVE)", proj_cur == 15u && trk[0].eng_req == ENGI_FM6 && str_eq(ENGINES[trk[1].eng_req]->name, "WAVE"));
-        turn(EN_K3, 2);
+        ck("  many detents right: stops at the last used, M24 TECH MINIMAL (b10: the last ROM multi)", proj_cur == MU_SHOWN - 1u && msg_is("LOADED M24 TECH MINIMAL"));
+        turn(EN_K3, -(int32_t)(MU_SHOWN - 16u));
+        ck("  back to M16 AMB LOOPS (FM6 + WAVE)", proj_cur == 15u && trk[0].eng_req == ENGI_FM6 && str_eq(ENGINES[trk[1].eng_req]->name, "WAVE"));
+        turn(EN_K3, (int32_t)(MU_SHOWN - 16u));
 #else
         ck("  many detents right: stops at the last used, M16 AMB LOOPS (FM6 + WAVE)", proj_cur == 15u && trk[0].eng_req == ENGI_FM6 && str_eq(ENGINES[trk[1].eng_req]->name, "WAVE"));
 #endif

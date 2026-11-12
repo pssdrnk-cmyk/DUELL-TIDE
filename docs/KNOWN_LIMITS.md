@@ -28,7 +28,7 @@ The fork's own limits are listed first, then the inherited DUELL 1.1 limits. [KN
 - **UNISON and DTUN have fixed reach.** UNISON DETUNE spreads the outer voices about 24 cents at its maximum, and the range is not widened. FM6's DTUN spreads the carriers up to 12 cents a step around the note (the outer ones 12 cents apart with two carriers, 60 with six); algorithms 17 to 19 have one carrier, so DTUN does nothing there. UNISON uses every voice the engine allows (up to 8; PHYS 3, VOICE 4), fewer when the NOTES budget needs the time.
 - **KEY VELOCITY is on by default.** A very hard press can come out quiet; the feel has not been measured. You can switch it off in MENU > CONTROL. AFTERTOUCH is on by default too.
 - **The editor has no MIDI MAP tab.** Assign CCs with MIDI LEARN on the unit.
-- **SUB HARMONICS is switched off.** The HARM card is not on the SUB OSC page; CC17 has no effect.
+- **SUB HARMONICS is switched off.** The HARM card is not on the SUB OSC page, and CC17 is no longer in the shipped MIDI map (b9: it moved nothing; a map saved earlier keeps its line, shown as doing nothing).
 - **No menu switch and no notice for the second core.** The fallback to one core is automatic and silent.
 - **No error screen in the update loader.** The update screen shows progress only; if a write fails the installer page tells you.
 - **MIDI** is not tested with many devices.

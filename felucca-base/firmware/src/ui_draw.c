@@ -1865,6 +1865,8 @@ static int card_hidden_vp(const int16_t *vp)
     if ((vp == &t->p[P_ED_SHP] || vp == &t->p[P_LD_SHP] || vp == &t->p[P_E2SHP] || vp == &t->p[P_L2SHP]) && mod_shp_inert(t))   /* 0.2.25 (owner: the hide rule for modulation): the SHAPE depths
                                                          * of AMP DEST, LFO 1 DEST, ENV 2 DEST, LFO 2 DEST with a wave that has no shape input (mod.c mod_shp_inert: ANALOG not PWM / SYNC, LOFI not PLS, TRIO with no pulse) */
         return 1;
+    if (ENGINES[t->eng_req % NENGINES]->ownenv && (vp == &t->p[P_ED_PIT] || vp == &t->p[P_ED_SHP] || vp == &XV(t, X_ESAT)))   /* b9 (dead parameters): AMP DEST's PITCH, TIMBRE and SATURATION take ENV 1, which an engine with its own operator envelopes (FM6) does not run (core.h ownenv; docs/MOD_INERT_TABLE.md OWN ENV) */
+        return 1;
     if (ENGINES[t->eng_req % NENGINES] == &ENG_LOFI && vp == &t->p[P_E2] && t->p[P_E1] != RW_PLS)   /* DUELL 1.1: LOFI's PULSE WIDTH (K4) is the pulse's only; every other WAVE hides it */
         return 1;
     if (ENGINES[t->eng_req % NENGINES] == &ENG_ANALOG && vp == &t->p[P_E4] && t->p[P_E0] != 4)   /* ANALOG's PW (audit P09) is PWM's width only: every other WAVE hides it */
@@ -1884,7 +1886,7 @@ static int byp_card(const page_t *pg, const int16_t *vp)
         {"ENV 2", BY_ENV2, 0}, {"ENV 2 DEST", BY_ENV2, 0}, {"CYCLE ENV 1/2", BY_CYC, 0}, {"CYCLE ENV 2/2", BY_CYC, 0},
         {"INSERT 1/2", BY_INS, 0}, {"INSERT 2/2", BY_INS, 0}, {"EQ 1/2", BY_EQ, 0}, {"EQ 2/2", BY_EQ, 0},
         {"DUCK 1/2", BY_DUCK, 0}, {"DUCK 2/2", BY_DUCK, 0},
-        {"CHORUS", 0, BYS_CHO}, {"DELAY 1/2", 0, BYS_DLY}, {"DELAY 2/2", 0, BYS_DLY}, {"REVERB", 0, BYS_REV}, {"SHIMMER", 0, BYS_REV},
+        {"CHORUS", 0, BYS_CHO}, {"DELAY 1/2", 0, BYS_DLY}, {"DELAY 2/2", 0, BYS_DLY}, {"COLR LFO", 0, BYS_DLY}, {"REVERB", 0, BYS_REV}, {"SHIMMER", 0, BYS_REV},
         {MASTER_PAGE_TITLE, 0, BYS_MST}, {"COMPRESSOR", 0, BYS_CMP}};
     uint32_t i;
     const track_t *t = TSEL;

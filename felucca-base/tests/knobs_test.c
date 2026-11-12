@@ -103,8 +103,8 @@ static const struct { uint8_t id; int8_t mul; } SPEC[KS_N][3][3] = {
     {{{P_FREEA, 14}, {P_FREEB, 3}}, {{P_DKDEP, 24}, {P_REV, -6}, {P_DLY, -3}}, {{P_REV, 20}, {P_REL, 3}}},
     {{{P_FREEA, 9}, {P_FREEB, 3}, {P_E2FLT, 3}}, {{P_DEC, 6}}, {{P_REV, 12}, {P_DLY, 4}}},
     {{{P_FREEA, 6}, {P_FREEB, 3}}, {{P_E2FLT, 8}, {P_FREEA, 4}, {P_DEC, -4}}, {{P_DIST, 12}}},
-    {{{P_FREEA, 8}}, {{P_DIST, 16}, {P_CHOR, 4}}, {{P_AGATE, -8}, {P_SGATE, -8}, {P_APROB, -12}}},
-    {{{P_ATK, 8}, {P_REL, 8}, {P_REV, 4}}, {{P_LD_FLT, 14}, {P_LRATE, -2}, {P_FREEA, -6}}, {{P_DLY, 16}, {P_REV, 16}}}};
+    {{{P_FREEA, 8}}, {{P_DIST, 16}, {P_CHOR, 4}, {P_FREEA, 3}}, {{P_AGATE, -8}, {P_SGATE, -8}, {P_APROB, -12}}},
+    {{{P_ATK, 8}, {P_REL, 8}, {P_REV, 4}}, {{P_LD_FLT, 28}, {P_LRATE, -2}, {P_FREEA, -6}}, {{P_DLY, 16}, {P_REV, 16}}}};
 int main(void)
 {
     uint32_t set, knob, k, j;

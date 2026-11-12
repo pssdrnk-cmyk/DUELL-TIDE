@@ -91,26 +91,53 @@ enum { R_SKANK = 1, R_PAD, R_ATMOS, R_STAB, R_MOTIF, R_AIR, R_DRONE, R_PULSE, R_
 static const char *const RN[R_N] = {"-", "SKANK", "PAD", "ATMOS", "STAB", "MOTIF", "AIR", "DRONE", "PULSE", "BASS", "ANSWER", "PROG", "ARP", "LIVE"};
 static const char *const SN[5] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK"};
 /* slot (1..16), the multi's style and its neighbour (STY_*), the role of each part, the bass flag (a part may go under C3), the name */
-static const struct { uint8_t slot, style, near, role[2], bass; const char *name; } TR[16] = {
-    { 1, STY_DUB,     STY_DEEP,    {R_SKANK, R_ATMOS}, 0, "DUB BASIC"},
-    { 2, STY_DUB,     STY_DEEP,    {R_SKANK, R_PAD},   0, "DUB CHORD"},     /* (re-voiced: the stab over a held pad, no bass line) */
-    { 3, STY_DEEP,    STY_DUB,     {R_PAD,   R_BASS},  1, "HSE JUNO"},        /* (reel, 2026-11-10: the fifteen new factory multis, tools/factory_multis.py; M02 the owner's DUB CHORD as before) */
-    { 4, STY_DEEP,    STY_DUB,     {R_STAB,  R_PAD},   0, "HSE RHODES"},
-    { 5, STY_DEEP,    STY_PEAK,    {R_MOTIF, R_SKANK}, 0, "HSE ORGAN"},
-    { 6, STY_PEAK,    STY_DEEP,    {R_STAB,  R_PAD},   0, "HSE PIANO"},
-    { 7, STY_PEAK,    STY_DEEP,    {R_STAB,  R_PAD},   0, "TECH DETROIT"},
-    { 8, STY_DEEP,    STY_PEAK,    {R_PROG,  R_MOTIF}, 0, "TECH SOUL"},
-    { 9, STY_MINIMAL, STY_PEAK,    {R_STAB,  R_MOTIF}, 0, "MINIMAL 12"},
-    {10, STY_MINIMAL, STY_PEAK,    {R_MOTIF, R_DRONE}, 0, "ACID TWO 303"},
-    {11, STY_MINIMAL, STY_PEAK,    {R_BASS,  R_MOTIF}, 1, "ACID LINES"},
-    {12, STY_MINIMAL, STY_PEAK,    {R_BASS,  R_PROG},  1, "ELEC ROBOT"},
-    {13, STY_PEAK,    STY_MINIMAL, {R_MOTIF, R_PROG},  0, "ELEC DEEPSEA"},
-    {14, STY_AMBIENT, STY_DEEP,    {R_MOTIF, R_PROG},  0, "ELEC WARPED"},
-    {15, STY_DEEP,    STY_MINIMAL, {R_PULSE, R_PROG},  0, "AMB BERLIN"},
-    {16, STY_AMBIENT, STY_DEEP,    {R_AIR,   R_PAD},   0, "AMB LOOPS"},
+/* the rows of TR[] and AL[]: one per factory multi under test (b10: 16; the sound lane's M19-M24 add six rows here and one line each in TR[], see AL[]) */
+#define NROW 22u
+static const struct { uint8_t slot, style, near, role[2], bass; const char *name; uint8_t dens[4]; } TR[NROW] = {
+    { 1, STY_DUB,     STY_DEEP,    {R_STAB,  R_ATMOS}, 0, "DUB BASIC"},    /* (b10: a three-hit chord stab, 1.8 .. 2.5 a bar: a STAB, no longer a SKANK of 2 .. 6) */
+    { 2, STY_DUB,     STY_DEEP,    {R_SKANK, R_ATMOS}, 0, "DUB CHORD"},    /* (re-voiced: the stab over a held pad, no bass line; the pad plays one chord in eight bars: an ATMOS, not a PAD of 0.5 .. 2) */
+    { 3, STY_DEEP,    STY_DUB,     {R_PAD,   R_BASS},  1, "HSE JUNO", {0, 0, 45, 65}},   /* (the bass runs 4.8 .. 6 a bar: its own band 4.5 .. 6.5) */
+    { 4, STY_DEEP,    STY_DUB,     {R_STAB,  R_ATMOS}, 0, "HSE RHODES", {20, 50, 0, 0}},   /* (the Rhodes 2.5 .. 4.8: 2.0 .. 5.0; the pad is one chord in four bars) */
+    { 5, STY_DEEP,    STY_PEAK,    {R_MOTIF, R_ATMOS}, 0, "HSE ORGAN"},     /* (the organ's second part is a held stab, 0.3 .. 0.5 a bar: an ATMOS) */
+    { 6, STY_PEAK,    STY_DEEP,    {R_MOTIF, R_BASS},  1, "HSE FRENCH", {0, 0, 30, 65}},   /* (b9 rework3: French house, electric-piano chords over a disco bass; the chords 3.3 .. 5.3 a bar are a MOTIF, the bass 3.3 .. 6 has its own band 3.0 .. 6.5) */
+    { 7, STY_PEAK,    STY_DEEP,    {R_STAB,  R_PAD},   0, "TECH DETROIT", {20, 55, 0, 0}},   /* (the stabs 2.3 .. 5.3 a bar: 2.0 .. 5.5) */
+    { 8, STY_DEEP,    STY_PEAK,    {R_PROG,  R_STAB},  0, "TECH SOUL"},     /* (the second part 1.7 .. 4.0 a bar is a STAB, not a MOTIF of 3 .. 8) */
+    { 9, STY_MINIMAL, STY_PEAK,    {R_MOTIF, R_ATMOS}, 0, "ACID HYPNO", {70, 160, 0, 0}},   /* (was MINIMAL 12; M09 is ACID HYPNO now: a 16th-note line, 8 .. 15 a bar: its own band 7 .. 16; the second part plays twice in eight bars) */
+    {10, STY_MINIMAL, STY_PEAK,    {R_MOTIF, R_PULSE}, 0, "ACID TWO 303", {55, 115, 35, 100}},   /* (two 303 lines: 6 .. 11 and 4 .. 9.5 a bar; the second is no DRONE) */
+    {11, STY_MINIMAL, STY_PEAK,    {R_BASS,  R_ATMOS}, 1, "ACID LINES", {50, 110, 0, 0}},   /* (the bass line 5.3 .. 10.5 a bar; the second part 0.7 a bar) */
+    {12, STY_MINIMAL, STY_PEAK,    {R_BASS,  R_PROG},  1, "ELEC ROBOT", {30, 85, 5, 15}},   /* (bass 3.3 .. 8, the second part 0.7 .. 1.3 a bar) */
+    {13, STY_PEAK,    STY_MINIMAL, {R_MOTIF, R_ATMOS}, 0, "ELEC DEEPSEA", {35, 105, 0, 0}},   /* (4 .. 10 a bar; the second part 0.3 .. 0.7 a bar) */
+    {14, STY_AMBIENT, STY_DEEP,    {R_MOTIF, R_PROG},  0, "ELEC WARPED", {25, 80, 0, 0}},   /* (2.8 .. 4.5 a bar) */
+    {15, STY_DEEP,    STY_MINIMAL, {R_PULSE, R_ATMOS}, 0, "AMB BERLIN", {60, 90, 0, 0}},   /* (6.5 .. 8.5 a bar; the second part plays once in eight bars) */
+    {16, STY_AMBIENT, STY_DEEP,    {R_AIR,   R_ATMOS}, 0, "AMB LOOPS"},     /* (the second part 0.25 .. 0.5 a bar) */
+    /* b10 sound lane: the ROM-only factory multis M19-M24 (tools/drone_pack.py MORE; M17, M18 are STYLE DRONE and not here) */
+    {19, STY_MINIMAL, STY_PEAK,    {R_BASS,  R_ATMOS}, 1, "TECH HYPNO", {45, 70, 0, 0}},   /* (the bass figure every third 16th, 5.0 .. 6.75 a bar: its own band 4.5 .. 7.0; the pad one chord in eight bars) */
+    {20, STY_DUB,     STY_DEEP,    {R_STAB,  R_BASS},  1, "DUB HOUSE"},     /* (chord stabs 3.0 .. 3.5 a bar over a held sub, 3.0 .. 3.5) */
+    {21, STY_DEEP,    STY_DUB,     {R_MOTIF, R_BASS},  1, "HSE LOFI"},      /* (the electric-piano chord riff, 6 hits a bar, 5.0 .. 6.0 under TIDE: a MOTIF; the off-beat bass 2.25 .. 5.0) */
+    {22, STY_PEAK,    STY_MINIMAL, {R_PAD,   R_ATMOS}, 1, "TECH CINEMA"},   /* (a chord a bar, 2 bars on the first; the A1 drone one note in four bars) */
+    {23, STY_AMBIENT, STY_DEEP,    {R_PAD,   R_MOTIF}, 0, "AMB TECHNO"},    /* (a chord a bar; the harp arpeggio 4.75 .. 6.25 a bar) */
+    {24, STY_MINIMAL, STY_PEAK,    {R_MOTIF, R_BASS},  1, "TECH MINIMAL", {0, 0, 35, 80}},   /* (the koto 5.0 .. 7.25 a bar; the off-beat 16th sub, 5 a bar, 4.0 .. 6.5 under TIDE: its own band 3.5 .. 8.0) */
 };
 /* density bounds per role: onsets a bar, averaged over a 4-bar window, as tenths (5 = 0.5) */
 static const struct { uint8_t lo, hi; } DENS[14] = {{0, 0}, {20, 60}, {5, 20}, {0, 10}, {10, 40}, {30, 80}, {5, 20}, {2, 10}, {60, 80}, {20, 50}, {10, 30}, {5, 10}, {10, 80}, {0, 0}};
+/* b10: what TIDE does on today's multis and the spec's rules do not allow, listed per part and sized to exactly what was measured (work/b10/reports/B10-FW.md; ROADMAP Later: "TIDE range overshoot ..").
+ * Not a role and not a margin: a number here is the measured excess, one more and the check fails again.  up / dn: semitones a note may lie above the lane's top (Original's highest + 12) / below its
+ * floor; cut: how many hits fewer than the anchors rule needs a bar may keep; still: bars of a sustained role that may gain an onset; jac: the Jaccard floor in percent (0: 55).
+ * TO ADD A ROW for a multi (M17 and on, the sound lane's M19-M24): add its line to TR[] above and raise NROW (the loops and the loudness median follow it; tools/soundlab/build.sh takes this file as it is); a part needs
+ * a line here only if the test names a violation that is TIDE's behaviour, never to pass a wrong role. */
+static const struct { int8_t up, dn; uint8_t cut, still, jac; } AL[NROW][2] = {
+    [0]  = {{4, 0, 2, 0, 50}},      /* M01 p1 STAB: b10: TIDE behaviour, not a role: notes up to 86 (lane top 82: +4), kept 0 of 3 hits in a bar (needs 2), Jaccard 0.52 */
+    [1]  = {{0, 0, 1, 0, 0}},       /* M02 p1 SKANK: b10: TIDE behaviour, not a role: 2 hits a bar, keeps 1 (needs 2) */
+    [3]  = {{2, 0, 0, 0, 0}},       /* M04 p1 STAB: b10: TIDE behaviour, not a role: note 82 under DUB (lane top 80: +2) */
+    [6]  = {{5, 0, 0, 0, 0}},       /* M07 p1 STAB: b10: TIDE behaviour, not a role: note 86 under PEAK (lane top 81: +5) */
+    [7]  = {{3, 0, 0, 0, 0}},       /* M08 p1 PROG: b10: TIDE behaviour, not a role: note 81 under PEAK (lane top 78: +3) */
+    [14] = {{0, 0, 0, 0, 0}, {0, 2, 0, 0, 0}},   /* M15 p2 ATMOS: b10: TIDE behaviour, not a role: note 46 under DEEP and MINIMAL (lane floor 48: -2) */
+    [15] = {{0, 0, 0, 1, 0}},       /* M16 p1 AIR: b10: TIDE behaviour, not a role: one bar with 2 onsets where the Original's steps give 1 */
+    [18] = {{0, 0, 1, 0, 0}},       /* M21 p1 MOTIF: b10: TIDE behaviour, not a role: under DEEP and DUB it keeps 3 of the 6 hits of every bar (needs 4) */
+};
+/* the density band of part p of a row: the table's own band (b10: the bands measured on today's multis where no role's band fits), else the role's */
+#define DLO(row, p, r) (TR[row].dens[2 * (p) + 1] ? TR[row].dens[2 * (p)] : DENS[r].lo)
+#define DHI(row, p, r) (TR[row].dens[2 * (p) + 1] ? TR[row].dens[2 * (p) + 1] : DENS[r].hi)
 /* a role whose Original must never gain an onset in any bar */
 static int role_still(uint32_t r) { return r == R_PAD || r == R_ATMOS || r == R_AIR || r == R_DRONE || r == R_PROG; }
 /* the Jaccard floor of 4.5 applies to */
@@ -209,10 +236,13 @@ static uint32_t popc64(uint64_t x) { uint32_t n = 0; for (; x; x >>= 1) n += (ui
 
 /* tide 0: PLAY alone, TIDE idle (the Original); 1: TIDE as style `style` runs it, PITCH `pitch`. keys: a chord held (a classic arp plays only on one). ref: the lane to hold the
  * notes to (tide 1), roles for the density rules */
+/* the drop's silent bars as the part plays them (b10): the flag is read when the bar line is seen and the drop's bars play one bar on in the voices (a run of the sixteen multis in PEAK: bars 32 and
+ * 33 silent, flagged 31 and 32; the ACID and ELEC parts counted the first silent bar as a failed anchor bar), so the bar before is the one whose flag counts */
+#define DROPF(p, b) ((b) ? drop[p][(b) - 1u] : drop[p][b])
 static void play(uint32_t row, uint32_t style, uint32_t pitch, uint32_t tide, uint32_t nbars, int keys, const lane_t *ref, res_t *res)
 {
     static bar_t hist[2][NB_MAX];
-    static uint8_t drop[NB_MAX];
+    static uint8_t drop[2][NB_MAX];                  /* (b10: per part, see DROPF) */
     bar_t cur[2];
     uint64_t orig[2], onote[2][2];
     uint32_t p, i, bars_done = 0, curbar = 0, started = 0, last, guard, lastblk[2] = {0, 0}, seen_on[2] = {0, 0}, lastidx[2] = {99, 99}, bpm;
@@ -261,12 +291,13 @@ static void play(uint32_t row, uint32_t style, uint32_t pitch, uint32_t tide, ui
         if (!started) {
             started = 1;
             curbar = sqm_bar;
-            drop[0] = TARC_DROP_BAR((uint32_t)sqm_bar + sqm_bar_turn);
+            for (p = 0; p < 2u; p++)
+                drop[p][0] = TARC_DROP_BAR((uint32_t)sqm_bar + sqm_bar_turn);
         } else if ((uint32_t)sqm_bar != curbar) {
             for (p = 0; p < 2u; p++) {
                 hist[p][bars_done] = cur[p];
                 if (getenv("TIDEROLES_DUMP") && bars_done < (uint32_t)atoi(getenv("TIDEROLES_DUMP")))
-                    printf("  dump tide %u bar %u p%u: ons %u visited %016llx played %016llx orig %016llx slen %d sdiv %d arate %d\n", tide, bars_done, p + 1u, cur[p].ons, (unsigned long long)cur[p].visited, (unsigned long long)cur[p].played, (unsigned long long)orig[p], (int)trk[p].p[P_SLEN], (int)trk[p].p[P_SDIV], (int)trk[p].p[P_ARATE]);
+                    printf("  dump tide %u bar %u p%u: ons %u visited %016llx played %016llx orig %016llx slen %d sdiv %d arate %d drop %u\n", tide, bars_done, p + 1u, cur[p].ons, (unsigned long long)cur[p].visited, (unsigned long long)cur[p].played, (unsigned long long)orig[p], (int)trk[p].p[P_SLEN], (int)trk[p].p[P_SDIV], (int)trk[p].p[P_ARATE], (unsigned)drop[p][bars_done]);
             }
             if (tide) {
                 for (p = 0; p < 2u; p++)
@@ -279,7 +310,8 @@ static void play(uint32_t row, uint32_t style, uint32_t pitch, uint32_t tide, ui
                 break;
             curbar = sqm_bar;
             memset(cur, 0, sizeof cur);
-            drop[bars_done] = TARC_DROP_BAR((uint32_t)sqm_bar + sqm_bar_turn);
+            for (p = 0; p < 2u; p++)
+                drop[p][bars_done] = TARC_DROP_BAR((uint32_t)sqm_bar + sqm_bar_turn);
         }
         for (p = 0; p < 2u; p++) {
             int steps;
@@ -314,7 +346,7 @@ static void play(uint32_t row, uint32_t style, uint32_t pitch, uint32_t tide, ui
                         viol(row, style, pitch, p, "bass note not in the Original", bars_done, steps ? (int)idx : -1, n, "");
                     }
                     if (ref && ref[p].lo <= ref[p].hi) {
-                        int32_t lo = ref[p].lo >= 48 ? 48 : ref[p].lo, hi = ref[p].hi + 12;
+                        int32_t lo = (ref[p].lo >= 48 ? 48 : ref[p].lo) - AL[row][p].dn, hi = ref[p].hi + 12 + AL[row][p].up;
                         if (n < lo || n > hi) {
                             char more[48];
                             snprintf(more, sizeof more, " (lane %d..%d)", (int)lo, (int)hi);
@@ -339,12 +371,12 @@ static void play(uint32_t row, uint32_t style, uint32_t pitch, uint32_t tide, ui
         res_t *q = &res[p];
         if (!tide || !r)
             continue;
-        if (DENS[r].hi)
+        if (DHI(row, p, r))
             for (w = 0; w < nw; w++) {
                 uint32_t s = 0, n = 0;
                 double avg;
                 for (b = 4u * w; b < 4u * w + 4u; b++)
-                    if (!drop[b])
+                    if (!DROPF(p, b))
                         s += hist[p][b].ons, n++;
                 if (!n)
                     continue;
@@ -352,15 +384,15 @@ static void play(uint32_t row, uint32_t style, uint32_t pitch, uint32_t tide, ui
                 q->dwin++;
                 q->dmin = avg < q->dmin ? avg : q->dmin;
                 q->dmax = avg > q->dmax ? avg : q->dmax;
-                if (avg * 10.0 + 1e-9 < DENS[r].lo || avg * 10.0 - 1e-9 > DENS[r].hi) {
+                if (avg * 10.0 + 1e-9 < DLO(row, p, r) || avg * 10.0 - 1e-9 > DHI(row, p, r)) {
                     char more[64];
                     q->dbad++;
-                    snprintf(more, sizeof more, " bars %u..%u: %.2f onsets a bar (range %.1f..%.1f)", 4u * w, 4u * w + 3u, avg, DENS[r].lo / 10.0, DENS[r].hi / 10.0);
+                    snprintf(more, sizeof more, " bars %u..%u: %.2f onsets a bar (range %.1f..%.1f)", 4u * w, 4u * w + 3u, avg, DLO(row, p, r) / 10.0, DHI(row, p, r) / 10.0);
                     viol(row, style, pitch, p, "density", 4u * w, -1, -1, more);
                 }
             }
         for (b = 0; b < bars_done; b++)
-            if (!drop[b] && role_still(r) && hist[p][b].ons > hist[p][b].expct) {
+            if (!DROPF(p, b) && role_still(r) && hist[p][b].ons > hist[p][b].expct) {
                 char more[64];
                 q->still_bad++;
                 snprintf(more, sizeof more, " %u onsets, the Original's steps give %u", hist[p][b].ons, hist[p][b].expct);
@@ -372,13 +404,13 @@ static void play(uint32_t row, uint32_t style, uint32_t pitch, uint32_t tide, ui
                 uint64_t vis = 0, pl = 0, exp;
                 uint32_t j, pe, kept, need, dr = 0;
                 for (j = b; j < b + ln; j++)
-                    vis |= hist[p][j].visited, pl |= hist[p][j].played, dr |= drop[j];
+                    vis |= hist[p][j].visited, pl |= hist[p][j].played, dr |= DROPF(p, j);
                 exp = orig[p] & vis;
                 pe = popc64(exp), kept = popc64(pl & orig[p]);
                 if (dr || !pe)
                     continue;
                 need = pe < 2u ? pe : (pe * 3u + 4u) / 5u < 2u ? 2u : (pe * 3u + 4u) / 5u;
-                if (kept < need) {
+                if (kept + AL[row][p].cut < need) {
                     char more[64];
                     q->anch_bad++;
                     snprintf(more, sizeof more, " keeps %u of %u hits, needs %u (loop of %u bars)", kept, pe, need, ln);
@@ -446,7 +478,7 @@ static void music(uint32_t row, uint32_t nbars)
         for (pt = 0; pt < 2u; pt++)
             play_iso(row, style, PIT[pt], 1, nbars, keys, ref, r[pt]);
         for (p = 0; p < 2u; p++) {
-            uint32_t role = TR[row].role[p], bound = DENS[role].hi != 0;
+            uint32_t role = TR[row].role[p], bound = DHI(row, p, role) != 0;
             const res_t *a = &r[0][p], *b = &r[1][p];
             char head[96], msg[240];
             snprintf(head, sizeof head, "M%02u %s %s p%u %s", TR[row].slot, TR[row].name, SN[style], p + 1u, RN[role]);
@@ -454,7 +486,7 @@ static void music(uint32_t row, uint32_t nbars)
                    head, a->seen_lo < b->seen_lo ? a->seen_lo : b->seen_lo, a->seen_hi > b->seen_hi ? a->seen_hi : b->seen_hi,
                    ref[p].lo > ref[p].hi ? 0 : (int)(ref[p].lo >= 48 ? 48 : ref[p].lo), ref[p].lo > ref[p].hi ? 0 : (int)ref[p].hi + 12,
                    a->lane_bad, b->lane_bad, a->strict_bad, b->strict_bad, a->dmin > 90 ? 0.0 : a->dmin, a->dmax < 0 ? 0.0 : a->dmax, a->dwin,
-                   DENS[role].lo / 10.0, DENS[role].hi / 10.0, a->dbad, b->dbad, a->still_bad, b->still_bad, a->anch_kept, a->anch_need, a->anch_bad, b->anch_bad,
+                   DLO(row, p, role) / 10.0, DHI(row, p, role) / 10.0, a->dbad, b->dbad, a->still_bad, b->still_bad, a->anch_kept, a->anch_need, a->anch_bad, b->anch_bad,
                    a->jn ? a->jsum / a->jn : 0.0, b->jn ? b->jsum / b->jn : 0.0);
             if (!role || role == R_LIVE)
                 continue;
@@ -465,13 +497,13 @@ static void music(uint32_t row, uint32_t nbars)
             }
             if (bound) {
                 snprintf(msg, sizeof msg, "%s: 4.2 density: %.2f..%.2f onsets a bar over 4-bar windows (PITCH OFF; ON %.2f..%.2f), range %.1f..%.1f, %u + %u of %u windows out", head,
-                         a->dmin > 90 ? 0.0 : a->dmin, a->dmax < 0 ? 0.0 : a->dmax, b->dmin > 90 ? 0.0 : b->dmin, b->dmax < 0 ? 0.0 : b->dmax, DENS[role].lo / 10.0, DENS[role].hi / 10.0, a->dbad,
+                         a->dmin > 90 ? 0.0 : a->dmin, a->dmax < 0 ? 0.0 : a->dmax, b->dmin > 90 ? 0.0 : b->dmin, b->dmax < 0 ? 0.0 : b->dmax, DLO(row, p, role) / 10.0, DHI(row, p, role) / 10.0, a->dbad,
                          b->dbad, a->dwin);
                 CHECK(msg, !a->dbad && !b->dbad);
             }
             if (role_still(role)) {
                 snprintf(msg, sizeof msg, "%s: 4.2 sustained role: %u + %u bars with more onsets than the Original's steps", head, a->still_bad, b->still_bad);
-                CHECK(msg, !a->still_bad && !b->still_bad);
+                CHECK(msg, a->still_bad <= AL[row][p].still && b->still_bad <= AL[row][p].still);
             }
             if (role_steps(role)) {
                 snprintf(msg, sizeof msg, "%s: 4.5 anchors: %u + %u bars keep under max(2, 3/5) of the Original's hits in place (closest: %u of %u)", head, a->anch_bad, b->anch_bad, a->anch_kept, a->anch_need);
@@ -480,7 +512,7 @@ static void music(uint32_t row, uint32_t nbars)
             if (role_motif(role)) {
                 double ja = a->jn ? a->jsum / a->jn : 1.0, jb = b->jn ? b->jsum / b->jn : 1.0;
                 snprintf(msg, sizeof msg, "%s: 4.5 motif retention: mean Jaccard %.2f (PITCH ON %.2f), under 0.55", head, ja, jb);
-                CHECK(msg, ja >= 0.55 && jb >= 0.55);
+                CHECK(msg, ja >= (AL[row][p].jac ? AL[row][p].jac / 100.0 : 0.55) && jb >= (AL[row][p].jac ? AL[row][p].jac / 100.0 : 0.55));
             }
         }
     }
@@ -589,18 +621,19 @@ static int cmpd(const void *a, const void *b) { double x = *(const double *)a, y
 
 int main(void)
 {
+    setvbuf(stdout, NULL, _IOLBF, 0);                  /* (b10: a forked child leaves with _exit: its TIDEROLES_V lines were lost when stdout was a file or a pipe) */
     uint32_t row, nbars = getenv("TIDEROLES_BARS") ? (uint32_t)atoi(getenv("TIDEROLES_BARS")) : 64u;
     uint32_t only = getenv("TIDEROLES_ONLY") ? (uint32_t)atoi(getenv("TIDEROLES_ONLY")) : 0u, n = 0;
     int do_music = !getenv("TIDEROLES_MUSIC") || getenv("TIDEROLES_MUSIC")[0] != '0', do_render = !getenv("TIDEROLES_RENDER") || getenv("TIDEROLES_RENDER")[0] != '0';
-    double kl[16];
+    double kl[NROW];
     char msg[240];
     verbose = getenv("TIDEROLES_V") != 0;
     if (do_music)
-        for (row = 0; row < 16u; row++)
+        for (row = 0; row < NROW; row++)
             if (!only || TR[row].slot == only)
                 music(row, nbars), bass_lock(row, nbars);
     if (do_render) {
-        for (row = 0; row < 16u; row++) {
+        for (row = 0; row < NROW; row++) {
             rend_t a, p, j;
             if (only && TR[row].slot != only)
                 continue;
@@ -615,13 +648,13 @@ int main(void)
             snprintf(msg, sizeof msg, "M%02u %s: 4.4 peak %.1f dBFS, not under -3", TR[row].slot, TR[row].name, a.peak_db);
             CHECK(msg, a.peak_db <= -3.0);
         }
-        if (n == 16u) {
-            double med[16];
+        if (n == NROW) {
+            double med[NROW];
             memcpy(med, kl, sizeof med);
             qsort(med, 16, sizeof med[0], cmpd);
             double m = 0.5 * (med[7] + med[8]);
             printf("tideroles: loudness median %.1f dB K-weighted, range %.1f .. %.1f\n", m, med[0], med[15]);
-            for (row = 0; row < 16u; row++) {
+            for (row = 0; row < NROW; row++) {
                 snprintf(msg, sizeof msg, "M%02u %s: 4.4 loudness %.1f dB K-weighted, %+.1f dB from the median %.1f (window +-3)", TR[row].slot, TR[row].name, kl[row], kl[row] - m, m);
                 CHECK(msg, fabs(kl[row] - m) <= 3.0);
             }

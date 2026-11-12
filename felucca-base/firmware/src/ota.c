@@ -207,7 +207,7 @@ static int ota_memeq(const uint8_t *a, const uint8_t *b, uint32_t n)
     return 1;
 }
 
-/* JLFS head "LOADER.BIN" in front of the staged loader (vm_update_defrag), written last */
+/* JLFS head "LOADER.BIN" in front of the staged loader, written last */
 static int ota_stage_head(uint32_t len)
 {
     static const char NAME[16] = "LOADER.BIN";
@@ -352,7 +352,7 @@ static int ota_session(void)
         ota_show(9, rc);
         return rc;
     }
-    /* 5./7. UPDATA_PARM (update_mode_api_v2 layout), flash copy first */
+    /* 5./7. UPDATA_PARM (the record described at the top of this file), flash copy first */
     for (i = 0; i < sizeof parm; i++)
         parm[i] = 0;
     ota_wr16(parm + 2, 0x5A0Du);

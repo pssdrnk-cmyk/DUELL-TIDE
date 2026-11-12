@@ -159,6 +159,8 @@ static inline __attribute__((always_inline)) void lofi_body(track_t *t, voice_t 
     v->s[5]++;
     pitch = m->pitch16 - v->s[3] + ARPS[ar & 3][(v->s[5] / 28) % 3] * 16;   /* ~50 Hz, chip-style */
     inc = pitch_inc(clamp(pitch, 0, 2047));
+    if (v->fine)                                        /* b9: UNISON DETUNE (voice.c mono_play: the voice's own fine offset, 0 in every other mode) was left out here, so DTUNE did nothing on LOFI */
+        inc += (uint32_t)((int32_t)(inc >> 12) * v->fine);
     if (p[P_E5])
         inc += (uint32_t)(((int32_t)(inc >> 12) * (((osc_sine(v->ph[1]) >> 8) * p[P_E5]) >> 4)) >> 4);   /* no overflow */
     v->ph[1] += 0x01000000u;

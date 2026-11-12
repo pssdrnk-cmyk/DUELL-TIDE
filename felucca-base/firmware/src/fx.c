@@ -702,6 +702,23 @@ busy:
     return 0;
 }
 #endif
+/* The delay loop's colour filter coefficient (COLR): 2000 + COLR x 240. b9 CLFO (G_DCLFO, page COLR LFO): a slow triangle on it, +-(8 x CLFO) COLR units around the set value at 0.25 Hz
+ * (the period 4 s counted in the samples the delay stages have run, dly_lfo_s: both buses and every mode see the same phase; the bench's per-test reset puts it back to 0, bench.c), kept inside COLR 0..127. CLFO 0 (every older store, a new unit): the plain colour, one load and a compare */
+static int32_t dly_cv = 2000 + 70 * 240;     /* the colour this block runs at, set by mix_sends (the hot dly_mod reads it: a call into the flash grew the hot block past its reserve) */
+static uint32_t dly_lfo_s;                   /* samples into the 4 s triangle (only counts while CLFO is on) */
+static int32_t dly_col(uint32_t n)
+{
+    int32_t col = 2000 + song.g[G_DCOLOR] * 240, d = song.g[G_DCLFO];
+    if (d > 0) {
+        uint32_t t = dly_lfo_s * 1000u / 44100u;                     /* ms into the period */
+        dly_lfo_s += n;
+        if (dly_lfo_s >= 4u * 44100u)
+            dly_lfo_s -= 4u * 44100u;
+        int32_t tri = (int32_t)(t < 2000u ? t : 4000u - t) - 1000;   /* -1000 .. 1000 */
+        col = clamp(col + ((tri * (d > 15 ? 15 : d) * 8 * 61) >> 8), 2000, 2000 + 127 * 240);   /* (240 / 1000 x 256 = 61: 8 COLR units a step at the triangle's ends) */
+    }
+    return col;
+}
 /* the buses (fx_bus.c): bus A on the globals they always had, bus B (SPLIT, part 2) on its own */
 static uint8_t dm_split;                /* (below: the mix runs SPLIT; RESO reads the part its bus carries) */
 #define BUS_FX fx
@@ -754,6 +771,7 @@ static uint8_t dly_side;                /* dly_sd holds this block's (PING-PONG,
 static uint8_t dly_plain_pp;            /* 1: the plain delay that ran last was the PING-PONG (the events' crossfade starts from it, and goes back to the mode's own) */
 static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t *rev_in, int32_t *wet, uint32_t n)
 {
+    dly_cv = dly_col(n);                                /* (b10 CLFO: once a block, the delay stages read it) */
     uint32_t dm = (uint32_t)song.g[G_DMODE];            /* (0.2.16: the delay's mode; DIGITAL, PING-PONG and a value past OCT UP: the paths below, bit for bit as 0.2.15's PING off / on) */
     uint32_t evm = dm == DMD_RAND || dm == DMD_OCTUP;   /* (the mode is an event mode) */
     uint32_t ev = evm && !OVL_LITE;                     /* (0.2.25: the overload guard runs it as the plain delay it cross-fades from) */
@@ -2086,6 +2104,7 @@ static __attribute__((noinline)) void snd_fade(uint32_t n)
 /* SPLIT: bus A on part 1's sends, its return (the mid) to the left; bus B on part 2's, to the right; wet stays 0 */
 static __attribute__((noinline)) void split_buses(uint32_t n)
 {
+    dly_cv = dly_col(n);
     uint32_t i, dl = delay_split();
     uint32_t dm = (uint32_t)song.g[G_DMODE];            /* (0.2.22: the delay's mode in DUEL, all mono per part: DIGI and PING the plain delay (a ping-pong needs two sides), RAND and OCT+ the events, centred) */
     uint32_t evm = dm == DMD_RAND || dm == DMD_OCTUP, ev = evm && !OVL_LITE;   /* (0.2.25: the overload guard, as in fx_buses) */
@@ -2401,7 +2420,7 @@ static __attribute__((noinline)) void fxb_done(uint32_t pp, int32_t *b, int32_t 
     if (d)
         fxb_mix(d, byp_dry[pp][1], n, by);
 }
-/* fxb_pre decides for the stage (bit) of part pp: 1 = held bypassed, skip it; 0 = run it as ever; 2 / 3 = the switch just went on / off: the dry block is kept (fxb_save) and fxb_post crossfades after the call.
+/* fxb_pre decides for the stage (bit) of part pp: 1 = held bypassed, skip it; 0 = run it as ever; 2 / 3 = the switch just went on / off: the dry block is kept (fxb_save) and fxb_done crossfades after the call.
  * It also notes the bit for the next block. In the flash: the stages' calls in part_fx (hot RAM of the second core) stay one call and one test each */
 static __attribute__((noinline)) uint32_t fxb_pre(uint32_t pp, uint32_t bit, const int32_t *b, const int32_t *d, uint32_t n)
 {
@@ -3412,7 +3431,7 @@ static __attribute__((noinline)) void perf_master(uint32_t n)
 
 /* EVENT stage: everything that is not audio and runs at the head of a block. events_block (seq.c: MIDI in, notes, the sequencer, the arp, the
  * clocks, the PUMP DUCK's beat count), then the MODE's step (the dip, dm_step) and MODULES SENDS' (snd_step). Reads: the MIDI / USB queues,
- * the transport, song.*. Writes: the voices' note state (t->v, envelopes, midi_bend), the parts' parameters (t->p, via the sequencer, CCs
+ * the transport, song.*. Writes: the voices' note state (t->v, envelopes, midi_bend_target), the parts' parameters (t->p, via the sequencer, CCs
  * and the morph's queue), duck_st[].ph / run / pos, dm_*, snd_st, mod_dk. It touches NO audio buffer (mix_l, send_*, pscr[].buf, ...), so it
  * can run on the core that owns the events while the other core renders: its outputs are the parts' and the buses' controls the
  * render stages then read (see MIXSPLIT_NOTES.md). Takes and gives no audio data */

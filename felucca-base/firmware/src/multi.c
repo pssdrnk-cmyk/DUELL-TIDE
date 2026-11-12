@@ -17,7 +17,7 @@
  *
  * Record (version MU_VER 8, little endian, variable length, at most MU_REC_MAX = 1916 bytes):
  *   0  version, np (P_COUNT when saved), ng (MU_NG: the globals stored), the selected part, MODE, byte 5: bit 0 TARGET (1 BOTH; 0.2.9: ALGORITHM's BOTH when saved, never
- *      loaded: reserved, the state is not saved), bits 1..4 unused since 0.2.21 (0.2.19 / 0.2.20 stored BASS MONO there: written 0, ignored when read), MORPH SET bits (morph.c
+ *      loaded: reserved, the state is not saved), bits 1..4 the delay colour's LFO CLFO 0..15 (b9; unused 0 before: 0.2.19 / 0.2.20 stored BASS MONO there, written 0 since 0.2.21), MORPH SET bits (morph.c
  *      MC_SET), the parts' automation PLAY bits (motion.on)
  *   8  the name, 12 bytes (ASCII 32..126, 0-padded)
  *  20  the MU_NG globals a multi loads (MU_GLOBAL, in id order), int16 each (MU_VER 8: the 9 it never loaded are not stored)
@@ -217,7 +217,7 @@ static uint32_t mu_pack(uint8_t *b, const project_t *p, uint32_t *cut)
     b[2] = MU_NG;
     b[3] = (uint8_t)(p->sel < NSHOWN ? p->sel : 0u);
     b[4] = (uint8_t)(duell_mode_req < DM_N ? duell_mode_req : DM_SPLIT);
-    b[5] = (uint8_t)PART_BOTH();                     /* bit 0 the part selection's BOTH (TARGET; TIDE reads it back since 1.0.0-b5); bits 1..4 were BASS MONO (0.2.19), a device setting since 0.2.21: written 0, ignored on read */
+    b[5] = (uint8_t)(PART_BOTH() | (uint32_t)clamp(p->g[G_DCLFO], 0, 15) << 1);   /* bit 0 the part selection's BOTH (TARGET; TIDE reads it back since 1.0.0-b5); bits 1..4: b9 the delay colour's LFO (CLFO, 0 = off; a multi from before b9 has 0 there: they were BASS MONO in 0.2.19 / 0.2.20, a device setting since 0.2.21, written 0) */
     b[6] = (uint8_t)(morph.cfg & MC_SET);
     b[7] = (uint8_t)(p->motion.on & ((1u << NSHOWN) - 1u));
     memcpy(b + MU_NAME_AT, nm, proj_name_get(nm, (const uint8_t *)p->name));
@@ -380,7 +380,7 @@ static int mu_unpack(project_t *q, uint8_t amt[NSHOWN], uint8_t set[6], const ui
     set[0] = b[4];
     set[1] = b[5] & 1u;
     set[2] = b[6];
-    /* b[5] bits 1..4 (BASS MONO of a 0.2.19 / 0.2.20 multi): ignored, q->bm stays what the device has (0.2.21: master effects are not part of a multi) */
+    q->g[G_DCLFO] = (int16_t)(b[5] >> 1 & 15u);     /* b[5] bits 1..4: CLFO (b9; BASS MONO of a 0.2.19 / 0.2.20 multi before: those records are written 0 since 0.2.21, and q->bm stays what the device has) */
     q->sum = proj_sum(q);
     return 1;
 }

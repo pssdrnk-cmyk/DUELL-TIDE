@@ -33,7 +33,7 @@ BU_FN uint32_t bu_crc16(const uint8_t *p, uint32_t n, uint32_t c)   /* poly 0x10
     }
     return c;
 }
-/* the record of ota.c ota_session (update_mode_api_v2 layout), byte for byte */
+/* the record of ota.c ota_session (the UPDATA_PARM record), byte for byte */
 BU_FN void bu_parm(uint8_t *parm)
 {
     static const char ID[12] = "ota-FM-1_015";           /* (the loader's own USB identity) */

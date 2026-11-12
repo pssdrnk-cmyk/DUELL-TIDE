@@ -28,8 +28,8 @@ static const kn_e KN_E[KS_N][3][3] = {
     {{{K_FLT, 14}, {K_RES, 3}}, {{K_DKD, 24}, {K_REV, -6}, {K_DLY, -3}}, {{K_REV, 20}, {K_REL, 3}}},                           /* HS: FLT (the classic sweep), PMP (the sends go down as the pump deepens, so the dip is not filled), REV */
     {{{K_FLT, 9}, {K_RES, 3}, {K_E2F, 3}}, {{K_DEC, 6}}, {{K_REV, 12}, {K_DLY, 4}}},                 /* TC: TNS, DEC, WSH */
     {{{K_FLT, 6}, {K_RES, 3}}, {{K_E2F, 8}, {K_FLT, 4}, {K_DEC, -4}}, {{K_DST, 12}}},                /* AC: SQL, BTE (ENV 2's depth, the cutoff up a little, decay shorter), DRT */
-    {{{K_FLT, 8}}, {{K_DST, 16}, {K_CHO, 4}}, {{K_AGT, -8}, {K_SGT, -8}, {K_APB, -12}}},             /* EL: FLT, GRT, GLT (gates shorter, steps dropped) */
-    {{{K_ATK, 8}, {K_REL, 8}, {K_REV, 4}}, {{K_LDF, 14}, {K_LRT, -2}, {K_FLT, -6}}, {{K_DLY, 16}, {K_REV, 16}}}};   /* AM: BLM, DRF (the cutoff comes down so the wobble has room), SPC */
+    {{{K_FLT, 8}}, {{K_DST, 16}, {K_CHO, 4}, {K_FLT, 3}}, {{K_AGT, -8}, {K_SGT, -8}, {K_APB, -12}}},             /* EL: FLT, GRT (b10: the cutoff follows a little, so the grit opens and closes with the filter: +10 dB of odd harmonics over the travel, was +2), GLT (gates shorter, steps dropped) */
+    {{{K_ATK, 8}, {K_REL, 8}, {K_REV, 4}}, {{K_LDF, 28}, {K_LRT, -2}, {K_FLT, -6}}, {{K_DLY, 16}, {K_REV, 16}}}};   /* AM: BLM, DRF (b10: LDF 28, twice the depth a detent; the cutoff comes down so the wobble has room), SPC */
 static const char *const KN_L[KS_N][3] = {{"FLT", "RSN", "ECH"}, {"SND", "FDBK", "TIME"}, {"FLT", "PMP", "REV"}, {"TNS", "DEC", "WSH"},
                                           {"SQL", "BTE", "DRT"}, {"FLT", "GRT", "GLT"}, {"BLM", "DRF", "SPC"}};   /* (vowels dropped, the owner's: SND for SEND, PMP for PUMP) */
 /* the columns' left ends of each set (the name there, its value 5 px after it): laid out for the widest value each knob can show, 12 px or more between the columns, the

@@ -40,8 +40,9 @@ static void usage(void)
     puts("soundlab: one sound-check tool (felucca-base/tools/soundlab/README.md)\n"
          "  soundlab render  --multi N | --sound N  [options]  --out PREFIX    -> PREFIX.wav, PREFIX.json   (soundlab render with no option: all options)\n"
          "  soundlab measure PREFIX [--from BAR --to BAR]                     -> PREFIX.metrics.json\n"
-         "  soundlab rules   PREFIX                                           -> PASS / FAIL / UNSURE per measurable rule of work/b9/MUSICAL_RULES_B9.md\n"
+         "  soundlab rules   [--genre NAME] PREFIX                                        -> PASS / FAIL / UNSURE per measurable rule of work/b9/MUSICAL_RULES_B9.md\n"
          "  soundlab atlas   [--only multis|sounds|patterns] | --find \"pad dark sub\"    -> tools/soundlab/atlas/ (every sound, multi and pattern measured)\n"
+         "  soundlab deadparams [--engine NAME]                              -> which parameters change nothing (tools/soundlab/DEADPARAMS.md)\n"
          "  soundlab sweep   --multi N --knob SET:K [--points -32,-16,0,16,32] [render options]   -> renders and measures each point, prints the table");
 }
 #ifdef _WIN32
@@ -58,13 +59,17 @@ int main(int argc, char **argv)
     sl_self = argv[0];
     if (!strcmp(argv[1], "render"))
         return sl_render_main(argc - 1, argv + 1) == 0 ? 0 : 1;
+    if (!strcmp(argv[1], "params"))
+        return sl_params_main(argc - 1, argv + 1);
+    if (!strcmp(argv[1], "wavdiff"))
+        return sl_wavdiff_main(argc - 1, argv + 1);
     if (!strcmp(argv[1], "sweep"))
         return sl_sweep_main(argc - 1, argv + 1);
     if (!strcmp(argv[1], "measure"))
         return sl_cmd_measure(argc - 2, argv + 2);
-    if (!strcmp(argv[1], "rules"))
+    if (!strcmp(argv[1], "rules") && !(argc > 2 && !strcmp(argv[2], "--genre")))
         return sl_cmd_rules(argc - 2, argv + 2);
-    if (!strcmp(argv[1], "atlas")) {                    /* the atlas builder is tools/soundlab/atlas.py (stdlib Python), run on this program */
+    if (!strcmp(argv[1], "atlas") || !strcmp(argv[1], "deadparams") || !strcmp(argv[1], "rules")) {   /* rules --genre NAME PREFIX is genre_check.py */                    /* the atlas builder is tools/soundlab/atlas.py (stdlib Python), run on this program */
         char cmd[8192], dir[4096];
         size_t n, i;
         int k;
@@ -72,8 +77,8 @@ int main(int argc, char **argv)
         for (n = strlen(dir); n > 0 && dir[n - 1] != '/' && dir[n - 1] != '\\'; n--)
             ;
         dir[n] = 0;                                     /* felucca-base/build/soundlab/ */
-        snprintf(cmd, sizeof cmd, SL_PY " \"%s../../tools/soundlab/atlas.py\" --exe \"%s\"", dir, sl_self);
-        for (k = 2; k < argc; k++) {
+        snprintf(cmd, sizeof cmd, SL_PY " \"%s../../tools/soundlab/%s.py\" --exe \"%s\"", dir, strcmp(argv[1], "rules") ? argv[1] : "genre_check", sl_self);
+        for (k = strcmp(argv[1], "rules") ? 2 : 3; k < argc; k++) {
             i = strlen(cmd);
             snprintf(cmd + i, sizeof cmd - i, " \"%s\"", argv[k]);
         }

@@ -52,7 +52,7 @@ expect report
 
 test M07-1CORE  M07 FINAL REEL cycle, 200 s; core 1 given no jobs (one-core reference)
 onecore-of M07-DEF
-load multi 6 "HSE PIANO"
+load multi 6 "HSE FRENCH"
 mode LAYER
 tune slack 400000
 soak 200 repeat M07-CYCLE
@@ -61,7 +61,7 @@ tail 3
 expect report
 
 test M07-DEF  M07 FINAL REEL cycle, 200 s; the BENCHT4 defaults (two cores)
-load multi 6 "HSE PIANO"
+load multi 6 "HSE FRENCH"
 mode LAYER
 ref 34.2 55.2
 soak 200 repeat M07-CYCLE

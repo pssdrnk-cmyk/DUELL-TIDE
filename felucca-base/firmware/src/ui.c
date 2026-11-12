@@ -407,7 +407,7 @@ static uint32_t mods_of(uint32_t glob, uint32_t id)
     if (glob) {
         switch (id) {
         case G_CRATE: case G_CDEPTH: case G_DTIME: case G_DFDBK: case G_DCOLOR: case G_DMIX: case G_PINGSPREAD:
-        case G_DMRATE: case G_DMDEP: case G_DMODE: case G_RTYPE: case G_RSIZE: case G_RDAMP: case G_RLOCUT: case G_SHPITCH: case G_SHMOD:
+        case G_DMRATE: case G_DMDEP: case G_DMODE: case G_DCLFO: case G_RTYPE: case G_RSIZE: case G_RDAMP: case G_RLOCUT: case G_SHPITCH: case G_SHMOD:
             return MODS_SENDS;
         default:
             return 0;

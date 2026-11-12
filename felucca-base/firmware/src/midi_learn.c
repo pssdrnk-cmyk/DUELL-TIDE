@@ -146,6 +146,7 @@ static void map_target_info(uint32_t code, const track_t *t, map_info_t *r)
         r->saved = code == P_LEVEL || code == P_PAN || code == P_MUTE ? MAP_S_MULTI : MAP_S_PATCH;
         r->automation = (uint8_t)motion_param(code);
         r->inert = d->max <= d->min || !d->label || d->label[0] == '-' || code == P_DKSRC ||
+                   code == P_ED_FLT || code == P_E2SHP || code == P_L2PIT || code == P_L2FLT || code == P_L2SHP ||   /* (b9: the five retired cards, morph.c T_GONE: a map saved with one shows it doing nothing) */
                    ((code == P_IA || code == P_IB || code == P_IC || code == P_IMIX) && !t->p[P_ITYPE]) || card_hidden_vp(&t->p[code]);   /* (LOFI PULSE WIDTH with WAVE not PLS, UNISON DETUNE in POLY, ...) */
         if (code == P_TWTYPE || code == P_CUT2 || code == P_RES2 || code == P_DRV2 || code == P_BLEND) {   /* (ext.h aliases: the TWIN filter) */
             r->kind = code == P_TWTYPE ? MAP_K_STEPPED : MAP_K_CONTINUOUS;
@@ -154,7 +155,8 @@ static void map_target_info(uint32_t code, const track_t *t, map_info_t *r)
     } else if (code >= XW_BASE && code < XW_BASE + NX) {
         uint32_t k = code - XW_BASE;
         r->kind = k == X_ROUTE || k == X_LINK || k == X_CYMODE || k == X_CYSYNC ? MAP_K_SWITCH : k == X_SUBOCT || k == X_SUBWAVE ? MAP_K_STEPPED : MAP_K_CONTINUOUS;
-        r->inert = k >= NX || (k <= X_LFO2 && !t->p[P_TWTYPE]) || (k == X_E2BLD || k == X_E2DRV || k == X_CYCUT2 || k == X_L2RES2 || k == X_L2BLD ? !t->p[P_TWTYPE] : 0) || (k >= X_SUBOCT && k <= X_SUBHARM && !XV(t, X_SUBLVL)) || card_hidden_vp(&XV(t, k));
+        r->inert = k >= NX || k == X_SUBHARM ||                /* (b9: SUB HARMONICS, nothing reads it) */
+                    (k <= X_LFO2 && !t->p[P_TWTYPE]) || (k == X_E2BLD || k == X_E2DRV || k == X_CYCUT2 || k == X_L2RES2 || k == X_L2BLD ? !t->p[P_TWTYPE] : 0) || (k >= X_SUBOCT && k <= X_SUBHARM && !XV(t, X_SUBLVL)) || card_hidden_vp(&XV(t, k));
     } else if (code >= MAP_T_G0 && code < MAP_T_G0 + G_COUNT) {
         const param_desc_t *d = &GP[code - MAP_T_G0];
         r->kind = d->fmt == F_ENUM ? MAP_K_STEPPED : MAP_K_CONTINUOUS;

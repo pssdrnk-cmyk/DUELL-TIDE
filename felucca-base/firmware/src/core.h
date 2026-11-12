@@ -197,7 +197,8 @@ enum {                          /* global parameters */
                                  * G_ENGGO, so G_COUNT and the formats do not move): the REVERB LOW CUT, K4 of the REVERB page. 0 OFF, 1..127 a one-pole
                                  * high-pass on the reverb bus's input, 20 Hz .. 450 Hz exponential (F_LOCUT; fx_bus.c rev_locut); default 61 (88 Hz).
                                  * DUELL 0.2.22 (owner, 2026-10-16): 20 Hz .. 2 kHz over the same 127 values (3.7 % a step), default 75 = 299 Hz */
-    G_CLRSEQ, G_INITSND,
+    G_DCLFO, G_INITSND,         /* G_DCLFO (b9): the delay colour's slow LFO (CLFO, page COLR LFO), 0..15 (x 8 COLR units each, CLFO_MAX), 0 = off, on the id of the retired CLEAR PATTERN go-value G_CLRSEQ (stored 0, read by
+                                 * nothing). The project stores it in g[] as ever; a multi keeps it in bits 1..4 of its byte 5 (multi.c), so MU_NG and the record do not move */
     G_RTYPE,                    /* REVERB TYPE: 0 ROOM, 1 SPRING, 2 HALL (1.2, the power-on default), 3 SHIM, 4 RESO (JIANT ports), 5 PLATE (0.2.14) (fx.c). Was
                                  * G_DRCH, the GM drum part's MIDI channel (inert since 1.0, never read) */
     G_PINGSPREAD,               /* DUELL: the PING-PONG's SPREAD (DLY 2), 0..100 %, stored directly, default 100 (GP def; 0 = the repeats
@@ -590,11 +591,12 @@ typedef struct {                 /* the part in mix_part, its window: one per pa
 /* TIDE 1.0.0-b6: the multis SHOWN (lists, labels, pickers, previews, MIDI program change) are M01..M18; the STORED ones stay MU_SLOTS (16: the flash
  * objects, storage.c). M17 DUNE HORN and M18 VOID DEEP are ROM only (MU_ROM; multi.c: they load and preview, never save, rename or erase) */
 #if DUELL_TIDE
-#define MU_SHOWN 18u
+#define MU_SHOWN 24u                /* (b10: + M19 TECH HYPNO, M20 DUB HOUSE, M21 HSE LOFI, M22 TECH CINEMA, M23 AMB TECHNO, M24 TECH MINIMAL, ROM only as the drones; tools/drone_pack.py ROM_MULTIS) */
 #else
 #define MU_SHOWN MU_SLOTS
 #endif
 #define MU_ROM(k) ((uint32_t)(k) >= MU_SLOTS)
+#define MU_DRONE(k) ((uint32_t)(k) - MU_SLOTS < 2u)   /* M17, M18: the built-in drone multis (TIDE plays them as STYLE DRONE, tide_ui.c tide_drone); M19.. are ROM-only factory multis of other genres (b10) */
 #define MU_ROM_SAY "SAVE TO M01-M16"   /* SAVE / rename refused on M17, M18 (multi.c), as SOUNDS says PICK A USER SLOT */
 typedef struct track {
     int16_t p[EXT_P_LEN];        /* P_COUNT ids, a gap at 127, then the NX extension slots (ext.h XV); every store and format still counts P_COUNT */

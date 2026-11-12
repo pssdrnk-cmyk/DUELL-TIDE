@@ -1,0 +1,55 @@
+# Demo 2: TIDE SETTINGS (HOME, second press): each row selected with K1, its value changed with OCT+ / OCT-; a screen for each, then AUTO TIDE.
+boot
+button HOME
+button HOME
+shot ts_open
+shot ts_row0_a
+button OCTUP
+shot ts_row0_b
+button OCTUP
+shot ts_row0_c
+button OCTDN
+button OCTDN
+enc K1 1
+shot ts_row1_a
+button OCTUP
+shot ts_row1_b
+button OCTUP
+shot ts_row1_c
+button OCTDN
+button OCTDN
+enc K1 1
+shot ts_row2_a
+button OCTUP
+shot ts_row2_b
+button OCTUP
+shot ts_row2_c
+button OCTDN
+button OCTDN
+enc K1 1
+shot ts_row3_a
+button OCTUP
+shot ts_row3_b
+button OCTUP
+shot ts_row3_c
+button OCTDN
+button OCTDN
+enc K1 1
+shot ts_row4_a
+button OCTUP
+shot ts_row4_b
+button OCTUP
+shot ts_row4_c
+button OCTDN
+button OCTDN
+enc K1 1
+shot ts_row5_a
+button OCTUP
+shot ts_row5_b
+button OCTUP
+shot ts_row5_c
+button OCTDN
+button OCTDN
+enc K1 1
+enc SELECT 1
+shot auto_tide

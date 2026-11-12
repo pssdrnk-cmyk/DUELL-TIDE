@@ -1,0 +1,18 @@
+# Demo 5 (K5): AUTO TIDE offers EVOLVE and TRAVEL (were WANDER / JOURNEY; ONCE, LOOP, DRIFT are gone). TIDE SETTINGS > MODE (row 2) with OCT+ / OCT-, then AUTO TIDE page K2.
+boot
+button HOME
+button HOME
+enc K1 1
+shot mode_row_a
+button OCTUP
+shot mode_row_b
+button OCTUP
+shot mode_row_c
+button OCTDN
+shot mode_row_back
+enc SELECT 1
+shot auto_tide_a
+enc K2 1
+shot auto_tide_k2_up
+enc K2 -1
+shot auto_tide_k2_down
