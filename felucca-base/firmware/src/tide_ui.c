@@ -159,12 +159,12 @@ static void tide_link(uint32_t mask, uint32_t v)
 }
 
 /* ---------------------------------------------------------------- TIDE SETTINGS --- */
-enum { JL_STYLE, JL_GMODE, JL_TARGET, JL_ARC, JL_KNOB, JL_AMOUNT, JL_REC, JL_MODE, JL_XFADE, JL_SPLIT, JL_N };   /* (GMODE: the glide's MODE, AUTO TIDE's K2 too; REC: live recording's; MODE (PLAY MODE), XFADE, SPLIT, the last three: the output mode's own settings; REC and those three no part of STYLE; the three go through ui_input.c mode_knob, whose header describes the old MODE page: TIDE's rows are these three) */
-static const char *const JL_NAME[JL_N] = {"STYLE", "MODE", "TARGET", "ARC", "KNOBS", "AMOUNT", "REC", "PLAY MODE", "XFADE", "SPLIT"};   /* (AMOUNT: how far a roll goes, the part's; on the MORPH page's K4 until 1.0.0-b7) */
+enum { JL_STYLE, JL_GMODE, JL_TARGET, JL_ARC, JL_KNOB, JL_AMOUNT, JL_REC, JL_ANS, JL_ANSON, JL_MODE, JL_XFADE, JL_SPLIT, JL_N };   /* (GMODE: the glide's MODE, AUTO TIDE's K2 too; REC: live recording's; MODE (PLAY MODE), XFADE, SPLIT, the last three: the output mode's own settings; REC and those three no part of STYLE; the three go through ui_input.c mode_knob, whose header describes the old MODE page: TIDE's rows are these three) */
+static const char *const JL_NAME[JL_N] = {"STYLE", "MODE", "TARGET", "ARC", "KNOBS", "AMOUNT", "REC", "ANSWER", "ANSWER ON", "PLAY MODE", "XFADE", "SPLIT"};   /* (AMOUNT: how far a roll goes, the part's; on the MORPH page's K4 until 1.0.0-b7) */
 /* what kind of row each is: the code branches on the kind, not on the row's place. The order matters: JK_OUT .. JK_SPLIT are the output mode's rows (mode_knob, the last three
  * rows), JK_XFADE and JK_SPLIT are LAYER's only. LIST: a value from JL_V (TARGET, REC), ARC: the same, and it acts only in automatic EVOLVE / TRAVEL on the SEQ */
 enum { JK_LIST, JK_STYLE, JK_GMODE, JK_ARC, JK_KNOBS, JK_AMOUNT, JK_OUT, JK_XFADE, JK_SPLIT };
-static const uint8_t JL_KIND[JL_N] = {JK_STYLE, JK_GMODE, JK_LIST, JK_ARC, JK_KNOBS, JK_AMOUNT, JK_LIST, JK_OUT, JK_XFADE, JK_SPLIT};
+static const uint8_t JL_KIND[JL_N] = {JK_STYLE, JK_GMODE, JK_LIST, JK_ARC, JK_KNOBS, JK_AMOUNT, JK_LIST, JK_LIST, JK_LIST, JK_OUT, JK_XFADE, JK_SPLIT};
 static uint8_t jl_sel;                                   /* the row picked (K1) */
 /* 1.0.0-b9 KNOBS: HOME page 1's knobs 2..4 (knob_sets.h). Stored in the byte ROLL TYPE had (TS_KNOB): 0 or 1 AUTO (1 the default, an older record's 0 / 1 too), 2 STD, 3..8 DB HS TC AC EL AM.
  * AUTO takes the set from the first word of the music's name ("ACID HYPNO", knob_sets.h KN_TAG); any other first word, or no multi: STD */
@@ -202,6 +202,7 @@ static const uint8_t STY[6][8] = {
     {GM_WANDER, 6, 0, 0, 0, 0, 0, 3}};                   /* DRONE: a held chord of a drone sound; WNDR keeps the sound, 64 bars, always moving, nothing rhythmic */
 #define STY_HAND 0x47u                                   /* (the values a hand can change, STY's columns: MODE, TIME, WAIT, ARC; the others only STYLE sets) */
 static uint8_t tide_style = STY_DUB, tide_style_last = STY_DUB;   /* (the style a hand edit left: OCT- + K3 / K4 go back to its TIME and WAIT) */
+#include "tide_take.c"                              /* b10 round 8 (after STYLE, which the answer's genre reads): TAKE + ANSWER, and the two settings rows' variables */
 static volatile uint8_t *const TIDE_ROW[8] = {&gl.mode, &gl.time, &gl.wait, &sqm_vary_all, &sqm_poly, &sqm_sync, &sqm_arc, &morph_wlvl};   /* (STY's order) */
 static __attribute__((noinline)) void tide_rows_set(const uint8_t *t)
 {
@@ -254,13 +255,13 @@ static __attribute__((noinline)) const char *jl_needs(uint32_t r)
 static int jl_dimmed(uint32_t r) { return jl_needs(r) != 0; }
 /* the rows as tables: how many values each has, its byte (STYLE, MODE, TARGET, ARC, REC; ROLL TYPE is the morph's), the values' names, and the
  * header message a change shows: the prefix + the value's name, or a message of its own (TARGET) */
-static const uint8_t JL_NV[JL_N] = {7, 2, 3, 3, KS_N + 1, 101, 2, 3, 101, 130};   /* (AMOUNT and XFADE 101: 0..100 %; SPLIT 130: 0 OFF, 1 MIDDLE (1.0.0-b7, mix_split SPLIT_MIDDLE), then the notes 0..127 (mix_split note + 1, the list 2..129): jl_split_ix) */
+static const uint8_t JL_NV[JL_N] = {7, 2, 3, 3, KS_N + 1, 101, 2, TA_N, 2, 3, 101, 130};   /* (AMOUNT and XFADE 101: 0..100 %; SPLIT 130: 0 OFF, 1 MIDDLE (1.0.0-b7, mix_split SPLIT_MIDDLE), then the notes 0..127 (mix_split note + 1, the list 2..129): jl_split_ix) */
 static volatile uint8_t *const JL_VAR[JL_N] = {[JL_STYLE] = &tide_style, [JL_GMODE] = &gl.mode, [JL_TARGET] = &gl.target, [JL_ARC] = &sqm_arc,
-                                               [JL_REC] = &tide_rec_replace};   /* (REC is no part of a STYLE: seq.c, live recording) */
+                                               [JL_REC] = &tide_rec_replace, [JL_ANS] = &tide_answer, [JL_ANSON] = &tide_answer_on};   /* (REC is no part of a STYLE: seq.c, live recording) */
 static const char *const JL_V[] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK", "DRONE", "CUSTOM", "SOUND", "SEQ", "BOTH", "OFF", "RISE", "DROP",
-                                   "AUTO", "STD", "DUB", "HSE", "TECH", "ACID", "ELEC", "AMB", "ADD", "REPLACE", "LAYER", "STEREO", "DUEL"};
-static const uint8_t JL_V0[JL_N] = {0, 0, 7, 10, 13, 0, 21, 23, 0, 0};   /* (each row's first name in JL_V; MODE's are GL_MODE_NAME) */
-static const char *const JL_SAY[JL_N] = {"STYLE ", "MODE ", 0, "ARC ", "", "AMOUNT ", "REC ", 0, 0, 0};
+                                   "AUTO", "STD", "DUB", "HSE", "TECH", "ACID", "ELEC", "AMB", "ADD", "REPLACE", "LAYER", "STEREO", "DUEL", "OFF", "BASS LINE", "DOUBLE", "OTHER", "OFF"};
+static const uint8_t JL_V0[JL_N] = {0, 0, 7, 10, 13, 0, 21, 26, 29, 23, 0, 0};   /* (each row's first name in JL_V; MODE's are GL_MODE_NAME) */
+static const char *const JL_SAY[JL_N] = {"STYLE ", "MODE ", 0, "ARC ", "", "AMOUNT ", "REC ", "ANSWER ", "ANSWER ON ", 0, 0, 0};
 static const char *const JL_OWN[3] = {"TARGET SOUND", "TARGET SEQ", "TARGET BOTH"};   /* (TARGET's messages) */
 static uint32_t jl_n(uint32_t r) { return JL_NV[r % JL_N]; }
 /* SPLIT: the stored code (core.h mix_split) <-> its place in the list (OFF, MIDDLE, C-1 .. G9) */
@@ -1188,15 +1189,15 @@ static uint32_t tide_sig(void)
  * every backup holds it; an earlier build's object 48 is read once; plan §4.5), not in the bytes the first build used (1.1 uses them). ARP, PITCH and WILD are the morph's own byte
  * (ui.c ui_morph_cfg). The record is read once at power-on and after a settings restore (none or damaged: the defaults; neither is written back); a change is saved ~2 s after the last one,
  * while stopped and not during ERASE DATA (tide_store_poll) */
-enum { TS_MODE, TS_TIME, TS_TARGET, TS_WAIT, TS_VARY, TS_KNOB, TS_WASH, TS_OLD, TS_TURNS = TS_OLD, TS_POLY, TS_SYNC, TS_ARC, TS_STYLE, TS_REC, TS_N };   /* (TS_OLD: the fields of the first record; a record of that length loads, the later fields at their defaults) */
+enum { TS_MODE, TS_TIME, TS_TARGET, TS_WAIT, TS_VARY, TS_KNOB, TS_WASH, TS_OLD, TS_TURNS = TS_OLD, TS_POLY, TS_SYNC, TS_ARC, TS_STYLE, TS_REC, TS_ANS, TS_ANSON, TS_N };   /* (TS_OLD: the fields of the first record; a record of that length loads, the later fields at their defaults) */
 static uint8_t tide_seen[TS_N], tide_seen_ok;
 #define TS_TURNS_OLD 1u                                  /* TURNS played nothing since 1.0.0-b7 and has no variable since b8: the record keeps its byte (the same size, so a
                                                           * build that reads it still can), always written as 1 (TAKE TURNS, the old default) and never read (TS_VAR 0) */
 /* each field's byte; read back: a value under TS_LIM kept, else TS_DEF (TS_LIM 0: masked with TS_DEF) */
 static volatile uint8_t *const TS_VAR[TS_N] = {&gl.mode, &gl.time, &gl.target, &gl.wait, &sqm_vary_all, &tide_knobs, &morph_wlvl, 0, &sqm_poly,
-                                               &sqm_sync, &sqm_arc, &tide_style, &tide_rec_replace};
-static const uint8_t TS_LIM[TS_N] = {GM_JOURNEY + 1u, GLIDE_TIMES, GT_BOTH + 1u, GLIDE_WAITS, 0, KS_N + 2u, 0, 3, 3, 3, 3, STY_CUSTOM, 2},
-                     TS_DEF[TS_N] = {GM_WANDER, 3, GT_SOUND, 0, 1, 1, 3, 1, 1, 1, 0, STY_CUSTOM, 0};
+                                               &sqm_sync, &sqm_arc, &tide_style, &tide_rec_replace, &tide_answer, &tide_answer_on};
+static const uint8_t TS_LIM[TS_N] = {GM_JOURNEY + 1u, GLIDE_TIMES, GT_BOTH + 1u, GLIDE_WAITS, 0, KS_N + 2u, 0, 3, 3, 3, 3, STY_CUSTOM, 2, TA_N, 2},
+                     TS_DEF[TS_N] = {GM_WANDER, 3, GT_SOUND, 0, 1, 1, 3, 1, 1, 1, 0, STY_CUSTOM, 0, TA_BASS, 0};
 /* TIDE 1.0.0-b6: while a built-in drone multi (M17, M18: MU_DRONE; b10: the ROM multis M19.. are not drones) is the multi loaded, TIDE plays STYLE DRONE: the eight rows are DRONE's and TIDE SETTINGS
  * shows DRONE. What was set (the eight rows and STYLE) is kept here and comes back when any other multi (or none) is loaded; the store always gets the
  * kept values, so the saved STYLE never changes. A hand edit of a row while the drone multi is loaded lasts until then. Main loop only (no audio cost) */
@@ -1228,7 +1229,7 @@ static void tide_settings(void)
         tide_seen_ok = 0;
     }
     if (!tide_seen_ok) {
-        uint8_t b[TS_N] = {[TS_TURNS] = 1u, [TS_POLY] = 1u, [TS_SYNC] = 1u, [TS_ARC] = 0u, [TS_STYLE] = STY_CUSTOM, [TS_REC] = 0u};   /* (the defaults of the fields an older record lacks) */
+        uint8_t b[TS_N] = {[TS_TURNS] = 1u, [TS_POLY] = 1u, [TS_SYNC] = 1u, [TS_ARC] = 0u, [TS_STYLE] = STY_CUSTOM, [TS_REC] = 0u, [TS_ANS] = TA_BASS, [TS_ANSON] = 0u};   /* (the defaults of the fields an older record lacks) */
         uint32_t have = tide_store_load_min(b, TS_N, TS_OLD);
         if (have) {                                      /* (an older record: STYLE CUSTOM, its values kept; a stored ECHO reads as LEAD: D7) */
             for (i = 0; i < TS_N; i++)
@@ -1251,6 +1252,7 @@ static void tide_settings(void)
         } else {
             tide_style_apply(STY_DUB);                   /* (no record: the DUB showcase; REC ADD) */
             tide_rec_replace = 0;
+            tide_answer = TA_BASS, tide_answer_on = 0;
         }
     }
     tide_drone(reread);
@@ -1288,4 +1290,5 @@ static void tide_poll(void)
     tide_ghost_poll();                                   /* MULTIS lane (b7): the ghost chord of a HOLD ALL part under AUTO TIDE (tide_seq.c) */
     morph_xpoll();                                       /* plan any destination GLIDE generated in this same pass */
     tide_store_poll();
+    take_poll();                                         /* b10 round 8: a pass of the live recorder opens or closes (tide_take.c) */
 }
