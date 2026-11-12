@@ -81,6 +81,8 @@ static void txt_blit(int32_t x, int32_t y)             /* the canvas goes to the
 #define GFX_HOOK_BLIT(x, y, r0) txt_blit((int32_t)(x), (int32_t)(y))
 #define GFX_HOOK_BEGIN() (txt_pend = txt_n)
 #define GFX_HOOK_PIXELS(n) ((void)0)
+static uint32_t ui_over_n;                            /* (b10 ui-c: pictures taller than a canvas band begun outside CV_BANDS: they would be cut) */
+#define GFX_HOOK_OVER(h, inb) ((h) > CV_BAND && !(inb) ? ui_over_n++ : 0u)
 #endif
 #define main hostsim_main
 #include "hostsim.c"

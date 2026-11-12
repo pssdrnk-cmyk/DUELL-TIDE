@@ -49,7 +49,8 @@ typedef struct {
     uint8_t fall;                                    /* the note's trigger takes falling crossings (held while its falling edges are the steeper; silence clears it) */
     uint8_t got, have, a, hn;                        /* a picture exists since the last reset; one with a trigger to match; the half height the ridges were made for; ridges kept */
 } wl_t;
-static wl_t wl[2];
+static wl_t wl[2] __attribute__((section(".pool")));   /* (b10 ui-c: the pool, not .bss; zeroed by wl_tick the first time) */
+static uint8_t wl_zeroed;
 static uint32_t wl_tk = 0xFFFFFFFFu;
 _Static_assert(NLIVE == 2, "ui_scope.c keeps one reader state for each of the two parts");
 _Static_assert(WL_HN <= 16, "wl_t.flat has a bit a ridge");
@@ -449,7 +450,7 @@ static void wl_col(int32_t x, int32_t ya, int32_t yb, int32_t w16, uint16_t c, i
     if ((uint32_t)x >= cv_w)
         return;
     for (row = top >> 4; row <= bot >> 4; row++) {
-        const int32_t r0 = row * 16 > top ? row * 16 : top, r1 = row * 16 + 16 < bot ? row * 16 + 16 : bot, y = row + cv_oy, m = pct * (r1 - r0) / 16;
+        const int32_t r0 = row * 16 > top ? row * 16 : top, r1 = row * 16 + 16 < bot ? row * 16 + 16 : bot, y = row + CV_Y, m = pct * (r1 - r0) / 16;
         uint16_t *q;
         if (row < ymin || row > ymax || r1 <= r0 || (uint32_t)y >= cv_h || m <= 0)
             continue;
@@ -547,10 +548,10 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
                     int32_t lo = t16 >> 4, hi = (b16 - 1) >> 4;
                     hi = hi < hz ? hi : hz - 1;      /* (above the horizon only: those pixels are still the background, so a coverage's colour is written as it is) */
                     lo = lo > y0 + 1 ? lo : y0 + 1;
-                    lo = lo > -cv_oy ? lo : -cv_oy;  /* (and inside the canvas) */
-                    hi = hi < (int32_t)cv_h - 1 - cv_oy ? hi : (int32_t)cv_h - 1 - cv_oy;
+                    lo = lo > -CV_Y ? lo : -CV_Y;  /* (and inside the canvas) */
+                    hi = hi < (int32_t)cv_h - 1 - CV_Y ? hi : (int32_t)cv_h - 1 - CV_Y;
                     if (lo <= hi && (uint32_t)c < cv_w) {
-                        uint16_t *q = &cv_px[(uint32_t)(lo + cv_oy) * cv_w + (uint32_t)c];
+                        uint16_t *q = &cv_px[(uint32_t)(lo + CV_Y) * cv_w + (uint32_t)c];
                         int32_t n2;
                         for (n2 = lo; n2 <= hi; n2++, q += cv_w)
                             *q = ft[r][(b16 < n2 * 16 + 16 ? b16 : n2 * 16 + 16) - (t16 > n2 * 16 ? t16 : n2 * 16)];
@@ -568,6 +569,10 @@ static int wl_tick(void)
 {
     uint32_t tk = mv_tick();
     int stepit;
+    if (!wl_zeroed) {
+        memset(wl, 0, sizeof wl);
+        wl_zeroed = 1;
+    }
     if (ui_prefs & PREF_ANIM_OFF)
         return 0;
     stepit = tk != wl_tk || !(wl[0].got && wl[1].got);
@@ -604,10 +609,11 @@ static void wl_card(int32_t y0, int32_t y1)
 #ifndef WL_TEST_HALF
 #define WL_TEST_HALF(y, n, end) ((void)0)
 #endif
-typedef uint32_t __attribute__((may_alias)) wl_u32;
+typedef uint32_t wl_u32;
+static wl_u32 wl_rh[240] __attribute__((section(".pool")));   /* (the hash of every screen row of what the panel holds) */
 static void wl_rows(uint32_t y)
 {
-    wl_u32 *const rh = (wl_u32 *)(cv_px + 72u * 240u) + y;
+    wl_u32 *const rh = wl_rh + y;
     const uint32_t n = cv_h;
     uint32_t r, s = 0, i, h, ch;
     GFX_HOOK_BLIT(0, y, 0u);

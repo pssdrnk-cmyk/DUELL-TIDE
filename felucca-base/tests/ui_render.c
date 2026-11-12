@@ -163,12 +163,12 @@ static void al_flush(void)                      /* a canvas blitted or begun: de
 }
 static int32_t icon_cell(uint32_t *size, uint32_t id);
 static void hk_icon(int32_t x, int32_t y, uint32_t size, uint32_t id);   /* (after the icons: their cells' nibbles) */
-#define GFX_HOOK_ALIGN(x0, y0, x1, y1, mode, tag) hk_align(x0, (y0) + cv_oy, x1, (y1) + cv_oy, mode, tag)
+#define GFX_HOOK_ALIGN(x0, y0, x1, y1, mode, tag) hk_align(x0, (y0) + CV_Y, x1, (y1) + CV_Y, mode, tag)
 static int32_t pen_c0, pen_c1;                  /* GFX_HOOK_PEN: the capitals' band of the text being hooked, always (item 122's keycap table) */
 static uint8_t pen_h;                           /* GFX_HOOK_PEN: the line height of the text being hooked (its face) */
-#define GFX_HOOK_PEN(y, f) (pen_h = (f)->h, pen_c0 = (y) + cv_oy + (f)->metrics[glyph((f), 'H') >> (f)->psh].by, pen_c1 = pen_c0 + (f)->metrics[glyph((f), 'H') >> (f)->psh].bh, al_n ? (al_cy0 = pen_c0, al_cy1 = pen_c1) : 0)
-#define GFX_HOOK_ITEM(x0, y0, x1, y1) al_item(x0, (y0) + cv_oy, x1, (y1) + cv_oy, 1, "cushion")
-#define GFX_HOOK_ICON(x, y, size, id) hk_icon(x, (y) + cv_oy, size, id)
+#define GFX_HOOK_PEN(y, f) (pen_h = (f)->h, pen_c0 = (y) + CV_Y + (f)->metrics[glyph((f), 'H') >> (f)->psh].by, pen_c1 = pen_c0 + (f)->metrics[glyph((f), 'H') >> (f)->psh].bh, al_n ? (al_cy0 = pen_c0, al_cy1 = pen_c1) : 0)
+#define GFX_HOOK_ITEM(x0, y0, x1, y1) al_item(x0, (y0) + CV_Y, x1, (y1) + CV_Y, 1, "cushion")
+#define GFX_HOOK_ICON(x, y, size, id) hk_icon(x, (y) + CV_Y, size, id)
 static void hk_text(int32_t x0, int32_t y0, int32_t x1, int32_t y1, const char *s, uint32_t flags)
 {
     al_text(x0, y0, x1, y1, s, flags);
@@ -225,10 +225,20 @@ static void hk_allow(int32_t x0, int32_t y0, int32_t x1, int32_t y1)
 {
     if (nallow_p < 256u) { allow_p[nallow_p][0] = (int16_t)x0; allow_p[nallow_p][1] = (int16_t)y0; allow_p[nallow_p][2] = (int16_t)x1; allow_p[nallow_p][3] = (int16_t)y1; nallow_p++; }
 }
-#define GFX_HOOK_ALLOW(x0, y0, x1, y1) hk_allow(x0, (y0) + cv_oy, x1, (y1) + cv_oy)
+#define GFX_HOOK_ALLOW(x0, y0, x1, y1) hk_allow(x0, (y0) + CV_Y, x1, (y1) + CV_Y)
 #define GFX_HOOK_INK(ink, bg) hk_ink(ink, bg)
 #define GFX_HOOK_PIXELS(n) (px_visited += (n))
+#define CV_SITE_TRACE 1
+static void cv_site_note(const char *file, int line, uint32_t h, int inb)
+{
+    static char seen[4096]; char k[64];
+    if (inb || h <= 68u) return;
+    snprintf(k, sizeof k, "|%s:%d|", file, line);
+    if (!strstr(seen, k)) { strcat(seen, k); fprintf(stderr, "OVER %s:%d h %u\n", file, line, h); }
+}
 #define UI_FILL_HOOK(x, y, w, h) hk_fill(x, y, w, h)
+static uint32_t cv_over_n;                               /* (b10 ui-c: pictures taller than a canvas band begun outside CV_BANDS: they would be cut) */
+#define GFX_HOOK_OVER(h, inb) ((h) > CV_BAND && !(inb) ? cv_over_n++ : 0u)
 static void fm6_hook(uint32_t kind, uint32_t a, uint32_t b);
 #define FM6_CHART_HOOK(kind, a, b) fm6_hook(kind, a, b)
 static void cs_hook(const char *v, const char *u);
@@ -400,7 +410,7 @@ static void fmp_check(uint32_t alg)
                     }
             }
         }
-    fmp_charts++;
+    fmp_charts += cv_by == 0;                           /* (b10 ui-c: a chart in a taller picture is drawn once for each canvas band; counted once, linted in each) */
 }
 static void fm6_hook(uint32_t kind, uint32_t a, uint32_t b)
 {
@@ -535,8 +545,9 @@ static void hk_blit(uint32_t x, uint32_t y, uint32_t r0, uint32_t w, uint32_t h)
     blit_px += (uint64_t)w * (h > r0 ? h - r0 : 0u);
     for (i = 0; i < npend; i++) {
         rbox_t b = pend[i];
-        if (b.y1 <= (int32_t)r0) continue;           /* rows not blitted */
+        if (b.y1 <= (int32_t)r0 || b.y0 >= (int32_t)h) continue;   /* rows not blitted (b10 ui-c: nor a box wholly below the canvas: a picture drawn in bands records its texts in every band) */
         if (b.y0 < (int32_t)r0) b.flags |= 2u;
+        if (b.y1 > (int32_t)h) b.flags |= 2u;          /* (b10 ui-c: the bottom edge too: an icon across two canvas bands is cut in both) */
         b.x0 += (int16_t)x; b.x1 += (int16_t)x; b.y0 += (int16_t)y; b.y1 += (int16_t)y;
         if (b.c1) { b.c0 += (int16_t)y; b.c1 += (int16_t)y; }
         if (!split_pair(&b)) pend[k++] = b;
@@ -1582,6 +1593,7 @@ static void setup(int s)
 }
 static void draw(int s)
 {
+    if (getenv("UIR_TRACE") && s >= 0) { fprintf(stderr, "%s ", S_NAME[s]); fflush(stderr); }
     if (s < 0 || (!strstr(S_NAME[s], "rec") && !strstr(S_NAME[s], "head") && !strstr(S_NAME[s], "batt") && !strstr(S_NAME[s], "motion") && !strstr(S_NAME[s], "layer_hint"))) {   /* (s -1: a state set by hand, the FM6 charts: no scene name to read) */
         song.rec = 0;                                  /* (the scenes arm the recording and set USB power for their own tests: an ordinary unit shows neither REC nor the charging bolt) */
         usb.config = 0;
@@ -2064,8 +2076,7 @@ static void align_sweeps(void)
         roll_scene(S_ROLL_ACID);
         for (v = 0; v + PR_ROWS <= 128; v++) {
             proll.lo = (uint8_t)v;
-            cv_begin(240, H_GRAPH, T_BG);
-            graph_roll(TSEL, T_THEME);
+            CV_BANDS(H_GRAPH) { cv_begin(240, H_GRAPH, T_BG); graph_roll(TSEL, T_THEME); }
         }
         state(); pal(UI_GREY_INDEX);
         cur_name = st ? "sweep LINE: mixer" : "sweep FLAT: mixer";
@@ -3213,5 +3224,6 @@ int main(int argc, char **argv)
            al_fail ? " (see align.txt)" : "");
     printf("ui_render: keycaps beside a word: %u pairs over all palettes, %u with the pill's centre off the capitals' centre (see keycap_table.txt)\n", nkc_pairs, nkc_off);
     printf("ui_render: boxes (a flat fill of 12 x 12 px or more that is not the page background and not an allowed highlight or data): %u (see boxes.txt)\n", nbox);
-    return nfind || nink || mono_bad || al_fail || nbox || nkc_off ? 1 : 0;
+    printf("ui_render: pictures taller than a canvas band (%u rows) drawn outside CV_BANDS: %u\n", (unsigned)CV_BAND, cv_over_n);
+    return nfind || nink || mono_bad || al_fail || nbox || nkc_off || cv_over_n ? 1 : 0;
 }

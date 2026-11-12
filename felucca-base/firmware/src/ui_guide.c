@@ -349,13 +349,15 @@ static void guide_draw(void)
         guide_kh = kh;
         for (band = 0; band < 2u; band++) {             /* two strips: the canvas holds 124 rows (the legend row is in the last one) */
             int32_t y0 = EDGE[band];
-            cv_begin(240, (uint32_t)(EDGE[band + 1] - y0), T_BG);
-            cv_oy = -y0;
-            guide_content(pg);
-            if (band == 1u)
-                guide_legend(kh, guide_ask(pg) && !ui.guide_menu ? 2u : 3u);
-            cv_oy = 0;
-            cv_blit(0, (uint32_t)y0);
+            CV_BANDS(EDGE[band + 1] - y0) {
+                cv_begin(240, (uint32_t)(EDGE[band + 1] - y0), T_BG);
+                cv_oy = -y0;
+                guide_content(pg);
+                if (band == 1u)
+                    guide_legend(kh, guide_ask(pg) && !ui.guide_menu ? 2u : 3u);
+                cv_oy = 0;
+                cv_blit(0, (uint32_t)y0);
+            }
         }
     }
     draw_head();                                        /* SETUP or GUIDE (ui_draw.c head_page_title), or a message (STOP ALL) */
