@@ -257,6 +257,8 @@ Name: TIDE (owner, 12 November: drop DUELL; the attribution line stays)
 - ~~Patch capacity in the docs: INFO says 128 slots, TIDE guarantees 126 worst-case records; replace "every slot always fits" with exact wording.~~ Built in b10 chores: the docs already say 126 (`KNOWN_ISSUES.md:47`, `EDITOR_LIBRARIAN.md:17`); "every slot always fits" is not in the docs; INFO now reports 126 with TIDE (`editor.c:585`, `upreset.c:252`); the 160 figure is fixed (`DUELL_1_1_REFERENCE.md:28`).
 - ~~Pattern save: document the exact visible entry point (saving needs STOP) before any live test.~~ Built in b10 chores, with a correction: saving a pattern does not need STOP. SAVE held on PATTERNS goes to the slot confirm before the STOP check (`ui_input.c`, `patch_save_ask`); `ui_name.c:282` keeps a pattern in RAM while playing. Documented in `QUICKSTART.md:112`.
 
+**Tooling**
+
 **Repository and CI**
 - The `emu` CI job: fixed in [#4](https://github.com/pssdrnk-cmyk/DUELL-TIDE/pull/4) (emsdk sourced under bash; merged 8 November), and the job gates.
 - Rename `jam11` to `tide`.
