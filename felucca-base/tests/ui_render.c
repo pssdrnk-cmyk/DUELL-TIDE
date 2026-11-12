@@ -2135,7 +2135,7 @@ static void al_keycaps(void)
 /* b6 SP2: every keycap pill (KC_COUNT, the knob dots too) in six states (the fills KEY, DIM and ACCENT over BG and over MID) and
  * five places (whole, cut by each canvas edge) in every palette: a hash of the pixels, which must be KC_SWEEP_HASH, b5's (the
  * pills as raw nibbles, cv_alpha) now that they are Huffman-coded (cv_alpha_hc). UI_KC_DUMP=FILE writes the canvases raw */
-#define KC_SWEEP_HASH 0x50ccba6du   /* (b10 tide-id: the TIDE palette row, swept with the others; proven by revert (jam/repin.sh fe30d72 ui: the old hash passes without it); was 0x1924f365u) */
+#define KC_SWEEP_HASH 0x89395b49u   /* (b10 palettes: the sweep runs over the four themes TIDE PAPER GREY MONO; proven by revert (jam/repin.sh 763a73f ui: the old hash passes without it); was 0x50ccba6du) */
 static uint32_t kc_sweep(void)
 {
     static const int16_t X[5] = {2, -5, 0, 2, 2}, Y[5] = {2, 2, 2, -4, 8};
