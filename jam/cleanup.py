@@ -12,6 +12,7 @@
   --apply         : for every worktree that is clean, merged, not the main or the current one, not on a protected branch and not locked: a backup ref
                     refs/backup/<date>/wt-<folder> at its HEAD, then `git worktree remove` (never --force: a refusal is reported and the worktree stays);
                     for every DELETE branch: refs/backup/<date>/<branch> at its tip. The push line is printed, never run.
+  jam/cleanup.keep: one worktree folder or branch name a line (# comments): never removed, never deleted, shown as "kept (keep list)"; --apply cannot touch it.
   --into "A B"    : the release lines (default "fork/jam11 fork/b9")     --no-fetch: do not `git fetch fork` first (no pruning, ever)
   --no-pr         : skip the open-PR lookup (the push line is then withheld)
   --from-refs NS  : judge the tips stored under NS (e.g. refs/backup/2026-11-12) as if they were the remote's branches: replays a cleanup afterwards
@@ -19,6 +20,15 @@
 import datetime, json, os, re, subprocess, sys, urllib.request
 
 PROTECTED = {"b8", "b9", "b9-release", "jam11", "main", "stable"}
+KEEP_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cleanup.keep")
+
+
+def keep_list():
+    """jam/cleanup.keep: one worktree folder name or branch name a line, # starts a comment; whatever it names is never removed or deleted, in the dry run it says "kept (keep list)"."""
+    try:
+        return {l.split("#")[0].strip() for l in open(KEEP_FILE) if l.split("#")[0].strip()}
+    except OSError:
+        return set()
 
 
 def git(*a, cwd=None):
@@ -96,6 +106,7 @@ def main():
     lines = args[args.index("--into") + 1].split() if "--into" in args else ["fork/jam11", "fork/b9"]
     from_refs = args[args.index("--from-refs") + 1].rstrip("/") if "--from-refs" in args else None
     here = os.path.normcase(os.path.realpath(out("rev-parse", "--show-toplevel")))
+    keep = keep_list()
     if "--no-fetch" not in args and not from_refs:
         if git("fetch", "-q", "fork").returncode:
             print("cleanup: `git fetch fork` failed: judging from the refs already here")
@@ -121,6 +132,8 @@ def main():
             why = "keep: main worktree"
         elif os.path.normcase(os.path.realpath(w["path"])) == here:
             why = "keep: this worktree"
+        elif name in keep or w.get("branch") in keep:
+            why = "kept (keep list)"
         elif w.get("branch") in PROTECTED:
             why = "keep: protected branch"
         elif w.get("locked"):
@@ -162,7 +175,9 @@ def main():
             continue
         ms, info = merged_state(tip, lines)
         pr = ("#" + ",#".join(map(str, prs[b]))) if prs and b in prs else ("?" if prs is None else "-")
-        if b in PROTECTED:
+        if b in keep:
+            v = "kept (keep list)"
+        elif b in PROTECTED:
             v = "keep: protected"
         elif prs and b in prs:
             v = "keep: open PR head"

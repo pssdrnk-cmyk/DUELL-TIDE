@@ -1,0 +1,11 @@
+# jam/cleanup.sh never removes a worktree or lists a branch for deletion when its folder name or branch name is here (one a line; # starts a comment).
+# worktrees in use
+b7-pkg          # the flash tool's worktree: the coordinator flashes the unit from it
+duell-jam11     # the jam11 checkout
+b9-release      # holds a release ref (worktree folder and branch)
+# the protected branches
+b8
+b9
+jam11
+main
+stable
