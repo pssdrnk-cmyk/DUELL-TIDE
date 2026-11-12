@@ -281,10 +281,26 @@ static void take_reply(void)
         CHECK("a call of 3 bars (a 4 bar loop): REPLY says so and writes nothing", trk[0].p[P_SLEN] == 64 && psig(1) == before && said("CALL: 2 BARS AT MOST"));
     }
 }
+static void take_line_test(void)
+{
+    uint32_t pr = 0, beat = 0, mask = 3u;
+    char l[48];
+    boot(); empty_part(0); setup(1, 0, V_POLY);
+    CHECK("no take: the tide line and knob 1 are as they were", take_line(&pr) == 0u && !take_text(l) && tide_line_state(&pr, &beat, &mask) == 0);
+    start(); song.rec = 1; run(100);
+    at_step(&trk[0], 20);
+    CHECK("a first take records: take_line says recording, the tide line is REC red (state 6), the fill is 20 of 64", take_line(&pr) == 2u && tide_line_state(&pr, &beat, &mask) == 6 && pr / 1024u == 20u);
+    CHECK("... knob 1's line says TAKE  BAR 2/4 (step 20 of the 64 the first take runs at)", take_text(l) == 1u && !strcmp(l, "TAKE  BAR 2/4"));
+    cin_left = 2;
+    CHECK("the count-in of a take: dashes (state 5)", tide_line_state(&pr, &beat, &mask) == 5);
+    cin_left = 0;
+    song.rec = 0; run(120);
+    CHECK("closed: the line is as before", take_line(&pr) == 0u && tide_line_state(&pr, &beat, &mask) == 0);
+}
 int main(void)
 {
     step1();
-    take_lifecycle(); take_history(); take_settings(); take_roll_test(); take_reply();
+    take_lifecycle(); take_history(); take_settings(); take_roll_test(); take_reply(); take_line_test();
     printf("take: %u checks, %u FAIL\n", checks, failures);
     return failures ? 1 : 0;
 }

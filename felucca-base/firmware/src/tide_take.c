@@ -525,6 +525,33 @@ static void take_roll(uint32_t mask, uint32_t seed)
     tk_say("ROLL ", tk_m.roll);
 }
 
+/* ---- the tide line and knob 1's line while a take records (b10 round 9, on the identity's tide line) ---- */
+static uint32_t take_line(uint32_t *prog)                  /* 0 no take, 1 the count-in, 2 recording (prog: how far through the loop, Q16) */
+{
+    uint32_t p, len, idx;
+    if (!(song.rec & 3u))
+        return 0;
+    if (cin_left)
+        return 1;
+    if (!song.playing)
+        return 0;
+    p = song.rec & 1u ? 0u : 1u;
+    len = TIDE_PLAY_LEN(&trk[p]);
+    idx = TIDE_PLAY_IDX(&trk[p]);
+    *prog = len ? (idx % len) * 65536u / len : 0u;
+    return 2;
+}
+static uint32_t take_text(char *l)                         /* knob 1's line: TAKE  BAR 3/4 (0: no take is recording) */
+{
+    uint32_t pr = 0, p = song.rec & 1u ? 0u : 1u, spb = tk_spb(), len = TIDE_PLAY_LEN(&trk[p]);
+    if (take_line(&pr) != 2u)
+        return 0;
+    str_cpy(l, "TAKE  BAR ", 40);
+    fmt_int(l + str_len(l), (int32_t)(TIDE_PLAY_IDX(&trk[p]) / spb + 1u));
+    str_cpy(l + str_len(l), "/", 4);
+    fmt_int(l + str_len(l), (int32_t)(len / spb ? len / spb : 1u));
+    return 1;
+}
 /* ---- passes: a take opens when a part's REC bit goes up, closes when it goes down ---- */
 static void tk_close(uint32_t mask)                       /* the parts of mask stopped recording */
 {
