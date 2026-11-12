@@ -204,7 +204,7 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 - A small per-row kind table for TIDE SETTINGS (replaces the row comparisons in `tide_ui.c`).
 
 **Hot code check (K6)**
-- K6 follow-up (review finding H1): `tools/hot_reach.py` does not follow function pointers or address-taken functions, so a new engine voice function left in flash and reached only through the engine table passes silently. Cheap fix: add an edge for every function whose address is a literal-pool word or in a data pointer table of a reached function, or name the engine entry points as roots. The self-test is `tools/test_hot_reach.py` (host group `hotreach`).
+- ~~K6 follow-up (review finding H1): `tools/hot_reach.py` follows function pointers~~: built in b10 (tools-b). An edge for every address-taken function and for every function pointer in a data table a reached function points to (ENGINES -> engine_t -> note_on / desc); 15 engine hooks were allow-listed as event rate.
 - K6 follow-up: 135 allow-list reasons in `tools/ram_allow.py` say "mix or effect stage ... not yet reviewed". They are per block, not per event; once each is reviewed, relabel it "per block, not yet reviewed" (or move the function to RAM). The classification is in [flash-hot REPORT](audits/2026-11-08/flash-hot/REPORT.md).
 
 **Storage and backups**
