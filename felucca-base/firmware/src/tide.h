@@ -72,8 +72,9 @@ static uint32_t tide_arp_out(const track_t *t, uint8_t *out, uint32_t m, uint32_
 #define TIDE_LIVEREC 1
 /* b10 round 8 (tide_take.c, work/b10/specs/PERF_PHASE1.md): TAKE + ANSWER. tk_fresh_v: the newest edit is a take or a roll (ui.c clears it when a load or a lock edit takes the undo copy); tk_said: a roll
  * wrote its own header message (ui_input.c morph_act then leaves "ROLLED A" out) */
-static uint8_t tk_fresh_v, tk_reset_v, tk_first, tk_adv[2], tk_roll_mask;
-static uint16_t tk_roll_seed;   /* (tk_reset_v: a multi / project loaded: the history of takes is of another music: tide_take.c take_poll drops it) */
+static uint8_t tk_fresh_v __attribute__((section(".pool"))), tk_reset_v __attribute__((section(".pool"))), tk_first __attribute__((section(".pool"))), tk_adv[2] __attribute__((section(".pool"))), tk_roll_mask __attribute__((section(".pool")));   /* (the pool: zero at power-on, and the RAM rule's .bss line has no room)
+ */
+static uint16_t tk_roll_seed __attribute__((section(".pool")));   /* (tk_reset_v: a multi / project loaded: the history of takes is of another music: tide_take.c take_poll drops it) */
 static void tide_take_step(track_t *t);
 static uint32_t take_undo(int32_t dir);
 #define TIDE_TAKE_STALE() (tk_fresh_v = 0)
