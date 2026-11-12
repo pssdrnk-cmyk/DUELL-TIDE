@@ -669,10 +669,8 @@ static void morph_act(uint32_t kind, uint32_t mask, uint32_t v, uint32_t pi)
     }
     morph_do(kind, mask, v);
     TIDE_LINK(kind, mask, v);                           /* TIDE hook (LINK: the fader moves the SEQ fader with it) */
-    if (kind == MQ_ROLL) {
-        if (!TIDE_TAKE_SAID())
-            morph_say_end("ROLLED ", v);                   /* (an answer that was rolled said its own: ROLL n  BASS LINE ..) */
-    }
+    if (kind == MQ_ROLL)
+        morph_say_end("ROLLED ", v);                   /* (an answer that was rolled says its own after it: ROLL n  BASS LINE .., tide_take.c) */
     else if (kind == MQ_SMART)
         ui_message(v ? "SMART ON" : "WILD");
     else if (kind == MQ_ARP)

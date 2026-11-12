@@ -67,14 +67,13 @@ static uint32_t tide_arp_out(const track_t *t, uint8_t *out, uint32_t m, uint32_
 #define TIDE_LIVEREC 1
 /* b10 round 8 (tide_take.c, work/b10/specs/PERF_PHASE1.md): TAKE + ANSWER. tk_fresh_v: the newest edit is a take or a roll (ui.c clears it when a load or a lock edit takes the undo copy); tk_said: a roll
  * wrote its own header message (ui_input.c morph_act then leaves "ROLLED A" out) */
-static uint8_t tk_fresh_v, tk_said;
+static uint8_t tk_fresh_v, tk_reset_v, tk_first, tk_adv[2], tk_roll_mask;
+static uint16_t tk_roll_seed;   /* (tk_reset_v: a multi / project loaded: the history of takes is of another music: tide_take.c take_poll drops it) */
 static void tide_take_step(track_t *t);
-static void take_roll(uint32_t mask, uint32_t seed);
 static uint32_t take_undo(int32_t dir);
 #define TIDE_TAKE_STALE() (tk_fresh_v = 0)
 #define TIDE_TAKE_UNDO(s) take_undo((s) < 0 ? -1 : 1)
-#define TIDE_TAKE_SAID() (tk_said ? (tk_said = 0, 1u) : 0u)
-#define TIDE_TAKE_ROLL(mask, seed) take_roll((mask), (seed))
+#define TIDE_TAKE_ROLL(mask, seed) (tk_roll_mask |= (uint8_t)(mask), tk_roll_seed = (uint16_t)(seed))   /* (morph_do, any context: take_poll writes the answer again in the main loop) */
 #define TIDE_REC_VARS static volatile uint8_t tide_rec_replace; static uint32_t rec_key[NSHOWN][4];   /* (tide_rec_replace: TIDE SETTINGS REC, 0 ADD, 1 REPLACE; rec_key: the keys of an armed ARP SEQ part that went straight to the voices) */
 static int arp_rec_fire(track_t *t);
 #define TIDE_REC_ARP_ON(t) (rec_on(t) && (t)->p[P_AMODE] != AM_SEQ_ID)   /* (the arp records what it plays, except on an ARP SEQ part) */
