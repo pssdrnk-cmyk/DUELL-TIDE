@@ -1,0 +1,20 @@
+# Release pictures (rc5 and later): the README pictures and the web emulator's poster. Run by shoot_release.sh, one command per release.
+# HOME's round: one tap of HOME each, MORPH -> TIDE SETTINGS -> AUTO TIDE (the third tap). ALGO is ALGORITHM (the middle = both parts).
+boot
+master 800
+button HOME
+shot morph_rest
+button HOME
+shot tide_settings
+button HOME
+shot auto_tide_part1
+shot auto_tide_both
+button PLAY
+wait 400
+enc K1 1
+wait 2500
+shot auto_tide_both_trip
+button HOME
+shot morph_gliding
+button PLAY
+keys off

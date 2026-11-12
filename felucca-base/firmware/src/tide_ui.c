@@ -623,10 +623,18 @@ static int32_t tide_heard_to(uint32_t pi)                /* the factory sound pa
     const morph_part_t *mp = &mph[pi % NSHOWN];
     return mp->n[0] && !morph_stale(&trk[pi % NSHOWN], mp) ? morph_to_of(pi, mp->fader >= 64u) : -1;
 }
-static void tide_part_name(uint32_t pi, char *b)
+static void tide_sound_name(uint32_t pi, int32_t k, char *b);
+static void tide_part_name(uint32_t pi, char *b) { tide_sound_name(pi, tide_heard_to(pi), b); }
+/* b10 TIDE identity (item 6): the sound at end `end` of part pi by name (b holds 20), as the footer names the heard one: TRAVEL names where it goes. JOURNEY
+ * picks a target as the end is left (glide_arrive, glide_start), so the trip's end already holds it: this only reads it, the sound is not changed */
+static void tide_end_name(uint32_t pi, uint32_t end, char *b)
+{
+    const morph_part_t *mp = &mph[pi % NSHOWN];
+    tide_sound_name(pi, mp->n[0] && !morph_stale(&trk[pi % NSHOWN], mp) ? morph_to_of(pi, end & 1u) : -1, b);
+}
+static void tide_sound_name(uint32_t pi, int32_t k, char *b)
 {
     const track_t *t = &trk[pi % NSHOWN];
-    int32_t k = tide_heard_to(pi);
     if (k >= 0) {                                        /* (the destination keeps the number its slot has: audit C11) */
         uint32_t e = t->eng_req % NENGINES, r = ds_list_rank(e, (uint32_t)k);
         b[0] = 0;
@@ -705,6 +713,20 @@ cards:
     draw_column(3, "WAIT", val, unit, VAL(3u), -1, ICON_NONE);
 }
 
+/* b10 TIDE identity: the tide line's state (ui_draw.c tide_line_draw): 0 off, 1 armed, 2 running, 3 waiting (slack water), 4 paused; the trip's progress (Q16),
+ * its beat, the parts it moves */
+static int tide_line_state(uint32_t *prog, uint32_t *beat, uint32_t *mask)
+{
+    if (!glide_running())
+        return 0;
+    *mask = gl.mask & 3u ? gl.mask & 3u : 3u;
+    if (gl.armed)
+        return 1;
+    *prog = gl.prog;
+    *beat = gl.beats;
+    return !song.playing ? 4 : gl.hold ? 3 : 2;
+}
+
 /* ---------------------------------------------------------------- the panels --- */
 
 /* "a/b" appended to l */
@@ -772,9 +794,21 @@ static __attribute__((noinline)) void tide_status_arc(char *l, int arc)
         }
     } else {
         str_cpy(l, gl.hold ? "WAITING" : gl.mode == GM_JOURNEY ? "TRAVEL" : "EVOLVING", 40);   /* (b10: ONCE / LOOP / DRIFT show as EVOLVE everywhere else) */
-        if (!gl.hold)
-            str_cpy(l + str_len(l), gl.to ? " TO B" : " TO A", 8);
-        str_cpy(l + str_len(l), arc ? "  " : "   BAR ", 8);
+        if (arc == 2 && !gl.hold)                        /* (the wave page's short line: "TO B  3/16", the fader's number before it leaves no room for the mode word) */
+            l[0] = 0;
+        if (!gl.hold && gl.mode == GM_JOURNEY && ((gl.on >> GT_SOUND) & 1u)) {   /* (b10 item 6: TRAVEL names the sound it goes to: "TRAVEL TO #168 VOID SHIMMER  2/16";
+                                                                                   * the selected part's, else the first it moves; the wave page's short line: the name alone) */
+            char nm[24];
+            uint32_t pi = ((gl.mask >> song.sel) & 1u) ? song.sel : (gl.mask & 1u) ? 0u : 1u;
+            tide_end_name(pi, gl.to, nm);
+            str_cpy(l + str_len(l), arc == 2 ? "TO " : " TO ", 8);
+            str_cpy(l + str_len(l), arc == 2 && nm[0] == '#' && str_len(nm) > 4u ? nm + (nm[3] == ' ' ? 4 : nm[4] == ' ' ? 5 : 0) : nm, 24);   /* (short: no slot number) */
+            str_cpy(l + str_len(l), "  ", 4);
+        } else {
+            if (!gl.hold)
+                str_cpy(l + str_len(l), (gl.to ? " TO B" : " TO A") + (arc == 2), 8);
+            str_cpy(l + str_len(l), arc ? "  " : "   BAR ", 8);
+        }
         tide_frac(l, at > bars ? bars : at, bars);
     }
 }
@@ -966,6 +1000,57 @@ static uint32_t tide_steps_sig(const track_t *t)
 /* what each MODE does, one short line under the faders (owner, 2026-11-01) */
 static const char *const GL_MODE_WHAT[5] = {"SLOWLY EVOLVES YOUR SOUND", "SLOWLY EVOLVES YOUR SOUND", "SLOWLY EVOLVES YOUR SOUND",
                                             "SLOWLY EVOLVES YOUR SOUND", "TRAVELS THROUGH OTHER SOUNDS"};
+/* b10 TIDE identity (item 4): ARC on screen. With ARC on (and the tide evolving the pattern), AUTO TIDE shows the arc's shape in place of the two step-mark
+ * rows: RISE a slope, PEAK the top, then DROP (down to nothing) or BREAK (down to low), RECOVER back half way; the moment now a mark on it, the arc so far
+ * filled. The phases' places are fixed (the arc's lengths are rolled as it goes: seq_arc.c); the mark moves through the phase it is in by the phase's units
+ * (8 bars each) and the bar in the unit. After PEAK: DROP or BREAK as the arc will take it (under ARC RISE always BREAK) */
+#define AC_X0 9
+#define AC_W 222
+#define AC_YT 113                                        /* the curve's top and bottom rows */
+#define AC_YB 135
+static int32_t tide_arc_y(int32_t x, int drop)            /* the curve's row at x (0 .. AC_W) */
+{
+    static const int16_t E[4] = {100, 155, 190, AC_W};   /* the phases' ends: RISE, PEAK, DROP / BREAK, RECOVER */
+    const int32_t h = AC_YB - AC_YT, lo = drop ? h - 1 : h * 7 / 10;
+    int32_t d;
+    if (x < E[0])
+        d = h - 3 - (h - 3) * x / E[0];
+    else if (x < E[1])
+        d = 0;
+    else if (x < E[2])
+        d = lo * (x - E[1]) / (E[2] - E[1]);
+    else
+        d = lo - (lo - h / 2) * (x - E[2]) / (E[3] - E[2]);
+    return AC_YT + d;
+}
+static void tide_arc_chart(void)
+{
+    static const int16_t S0[5] = {0, 100, 155, 155, 190}, SW[5] = {100, 55, 35, 35, 32};   /* each phase's start and width (RISE PEAK DROP BREAK RECOVER) */
+    const uint32_t ph = tarc.phase % 5u;
+    const int drop = ph == AP_DROP || (ph == AP_PEAK && tarc.next == AP_DROP) || (ph == AP_RISE && sqm_arc == 2u && tarc.cnt <= 1u);
+    const uint16_t c = T_THEME, cf = ux_mix(T_BG, c, 22), cd = ux_mix(T_BG, c, 45);
+    int32_t now = -1, x, py = 0;
+    if (tarc.run && tarc.len) {                           /* the mark: the phase's start + the units and the bar gone of its units */
+        uint32_t gone = ((uint32_t)tarc.len - tarc.left) * 8u + (sqm_bar & 7u);
+        now = S0[ph] + (int32_t)(gone * (uint32_t)SW[ph] / (tarc.len * 8u));
+    }
+    for (x = 0; x <= AC_W; x++) {                        /* the arc so far filled, the line (bright up to now, dim after) */
+        int32_t y = tide_arc_y(x, drop);
+        if (x <= now)
+            cv_rect(AC_X0 + x, y + 1, 1, AC_YB + 1 - y, cf);
+        if (x)
+            cv_line_t(AC_X0 + x - 1, py, AC_X0 + x, y, x <= now ? c : cd, 2);
+        py = y;
+    }
+    cv_text(AC_X0 + 2, UT_TY(S, AC_YT + 4), &AF_S, "RISE", ph == AP_RISE ? T_TEXT : T_MID);
+    cv_text_in(AC_X0 + 100, UT_TY(S, AC_YT + 18), 55, &AF_S, "PEAK", ph == AP_PEAK ? T_TEXT : T_MID, T_BG);
+    cv_text_r(AC_X0 + AC_W, UT_TY(S, AC_YT + 4), &AF_S, ph == AP_RECOVER ? "RECOVER" : drop ? "DROP" : "BREAK", ph >= AP_DROP ? T_TEXT : T_MID, T_BG);
+    if (now >= 0) {                                      /* now: a hairline and a dot on the curve */
+        int32_t y = tide_arc_y(now, drop);
+        cv_rect(AC_X0 + now, AC_YT - 3, 1, AC_YB - AC_YT + 4, T_TEXT);
+        cv_rrect(AC_X0 + now - 2, y - 2, 5, 5, 2, T_TEXT, T_BG);
+    }
+}
 static void graph_tide(void)
 {
     uint32_t k;
@@ -973,14 +1058,19 @@ static void graph_tide(void)
         cv_begin(240, TB_Y1 - TB_Y0, T_BG);
         cv_bg = T_BG;
         cv_oy = -TB_Y0;
+        const int arcv = sqm_arc && sqm_auto;             /* (b10 item 4: ARC on: its shape in the step rows' place) */
         for (k = 0; k < NSHOWN; k++) {
             int32_t sy = 119 + 14 * (int32_t)k;
             tide_track(70 + 14 * (int32_t)k, JB_X0, JB_X0 + JB_W, GT_SOUND, k);
             tide_track(70 + 14 * (int32_t)k, JB_X0 + JB_DX, JB_X0 + JB_DX + JB_W, GT_SEQ, k);
+            if (arcv)
+                continue;
             tide_steps(&trk[k], sy, 9, tide_pc(k));
             if (ui_part_hot(k))
                 cv_rect(5, sy - 9, 2, 10, T_PTHEME(k));      /* (the steps row's mark of the selected part) */
         }
+        if (arcv)
+            tide_arc_chart();
         if (glide_running()) {                           /* (I5: running, the line says where the trip is: "EVOLVING TO B   BAR 3/16"; stopped, what the MODE does) */
             char l[40];
             tide_trip(l);
@@ -1089,7 +1179,8 @@ static uint32_t tide_sig(void)
            ((uint32_t)sqm_arc | (uint32_t)tarc.phase << 2 | (uint32_t)tarc.left << 5 | (uint32_t)tarc.hand << 9 | (uint32_t)tarc.len << 10) * 0x2545F491u ^   /* (audit C4: no field ORed over another) */
            ((morph_fader_of(1u - pi) | seqm_fader_of(1u - pi) << 7 | (song.playing ? trk[1u - pi].seq_idx : 0xFFu) << 14) * 0x85EBCA77u ^
             sqm_key(&sqm[(1u - pi) % NSHOWN]) * 0xC2B2AE3Du ^ tide_steps_sig(&trk[1u - pi]) * 0x165667B1u ^ 0x27D4EB2Fu) ^
-           tide_steps_sig(t) * 0xD3A2646Cu ^ (uint32_t)morph.seed * 0x1B873593u;   /* (the seed: a ROLL sets it at once and CALL AND ANSWER's listening bars follow; the ends' key comes later) */
+           tide_steps_sig(t) * 0xD3A2646Cu ^ (uint32_t)morph.seed * 0x1B873593u ^   /* (the seed: a ROLL sets it at once and CALL AND ANSWER's listening bars follow; the ends' key comes later) */
+           ((uint32_t)(sqm_bar & 7u) | (uint32_t)tarc.next << 3 | (uint32_t)tarc.run << 6 | (uint32_t)sqm_auto << 7 | (uint32_t)tarc.cnt << 9) * 0x61C88647u;   /* (b10 item 4: the ARC chart's mark and its fall) */
 }
 
 /* ---------------------------------------------------------------- kept over a power cycle --- */

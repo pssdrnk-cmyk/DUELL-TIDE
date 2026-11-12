@@ -60,9 +60,15 @@ THEMES = [
 ]
 # 0.2.24: the GLOBAL colour of each theme (g; its accent ga is g moved toward the text colour, dark themes, or toward black, light ones): apart from both parts' hues
 GLOBAL = {"VIOLET": "#FFB84D", "ORANGE": "#3DD6C6", "MINT": "#5B2FB8", "COBALT": "#FFB84D", "PALE": "#0F7A66", "OCEAN": "#FFA040", "POLICE": "#FFD600",
-          "GREY": (200, 200, 200), "MONO": (255, 255, 255)}
-# Appended AFTER the legacy rows (GREY, MONO): saved theme ids are indices, so existing ids keep their theme. (None now.)
-THEMES_EXTRA = []
+          "GREY": (200, 200, 200), "MONO": (255, 255, 255), "TIDE": "#F6E7A6"}
+# Appended AFTER the legacy rows (GREY, MONO): saved theme ids are indices, so existing ids keep their theme.
+# b10 TIDE identity (design consult direction A, owner 2026-11-12): TIDE, the night sea: part 1 sea glass, part 2 coral. A new unit starts in it
+# (DEFAULT_THEME); a unit with a saved colour keeps that one
+THEMES_EXTRA = [
+    ("TIDE", "#02070D", "#030A11", None, "#071420", "#0D2434", "#F2FBFF", "#9CC2D3", "#1D5E77",
+     ("#3BE8D6", "#1AA8CC", "#FF8A5E", "#F25A6B"), 0),
+]
+DEFAULT_THEME = "TIDE"   # the palette a new unit (or an unreadable stored id) starts in
 # name, bg, surf, text, theme, accent, theme2 (8-bit RGB; stored as RGB565). theme2: DUELL's part 2 colour (SPEC 5a)
 LEGACY = [
     ("GREY",   (14, 14, 14),    (36, 36, 36),    (204, 204, 204), (232, 232, 232), (255, 255, 255), (190, 190, 190)),   # (b4, UI audit 2: part 2 was 150 = the label grey MID, its values looked disabled)
@@ -337,7 +343,7 @@ def main():
         for d in rows:
             out.append(f'    {{"{d["name"]}", {f4(d["bg"])}, 0x{d["bgl"]:04x}, {f4(d["surf"])}, 0x{d["text"]:04x}, 0x{d["mid"]:04x}, '
                        f'{f4(d["line"])}, {f4(d["raise_"])}, 0x{d["rec"]:04x}, {f4(d["c"])}, {f4(d["r"])}, {f4(d["a"])}, 0x{d["g"]:04x}, 0x{d["ga"]:04x}, {d["hc"]}}},')
-        out += ["};", f"#define UI_NPALETTES {len(rows)}u", f"#define UI_DEFAULT_INDEX 0u          /* the first theme */",
+        out += ["};", f"#define UI_NPALETTES {len(rows)}u", f"#define UI_DEFAULT_INDEX {names.index(DEFAULT_THEME)}u          /* a new unit's theme: {DEFAULT_THEME} (b10 TIDE identity) */",
                 f"#define UI_GREY_INDEX {names.index('GREY')}u          /* GREY (hidden-test palette, last but one) */",
                 f"#define UI_BW_INDEX {names.index(BW)}u          /* MONO: black and white (src/gfx.c palette_set) */",
                 f"#define UI_BW_GREY 0x{to565(BW_GREY):04x}u          /* MONO's one grey: DIM LINE RAISE LANE */",
