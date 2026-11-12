@@ -46,7 +46,7 @@ static void tarc_begin(uint32_t ph)
 }
 static void tarc_clear(void)
 {
-    tarc_dropphr = 0xFFu, tarc_lev = 0;
+    tarc_dropphr = 0xFFu, tarc_lev = 0, sqm_dyn_nx = 0;
     tarc.t = 0, tarc.hand = 0;
 }
 /* one 8-bar unit on: the phrase counted, the next phase begun when this one is done */
@@ -65,19 +65,29 @@ static uint32_t tarc_lv(uint32_t auto_mask, uint32_t bar, uint32_t dr)
     return (auto_mask & (ph - AP_DROP < 2u ? 3u : ph == AP_RECOVER && tarc.left == tarc.len && !(bar & 4u) ? 1u << (tarc.cnt & 1u) : 0u)) |   /* (RECOVER: one part still thinned for its first 4 bars) */
            (ph - AP_PEAK < 3u || dr ? 4u : 0u);          /* (PEAK, DROP, BREAK; B1: no POLY stretch in the breakdown either) */
 }
+static void tarc_tset(void)                              /* the phase's progress t (RISE: the brighter half from 128), from the units done */
+{
+    uint32_t el = (uint32_t)tarc.len - tarc.left, ph = tarc.phase;
+    tarc.t = (uint8_t)(ph == AP_RISE ? (el + 1u) * 255u / tarc.len : ph == AP_PEAK ? 255u : ph == AP_RECOVER ? (el + 1u) * 100u / tarc.len : 0u);
+}
 /* the levers of the phase and the phrase now, and of the next unit's phase (1.0.0-b8: the audio side takes those from the bar the unit begins on, tarc_thin_at: the same dice, run on a copy) */
 static void tarc_levers(uint32_t auto_mask, uint32_t cur)
 {
-    uint32_t el = (uint32_t)tarc.len - tarc.left, ph = tarc.phase, now, nxt;
+    uint32_t now, nxt;
+    int32_t dyn, ndyn;
     struct tarc_s keep;
-    tarc.t = (uint8_t)(ph == AP_RISE ? (el + 1u) * 255u / tarc.len : ph == AP_PEAK ? 255u : ph == AP_RECOVER ? (el + 1u) * 100u / tarc.len : 0u);
+    tarc_tset();
     now = tarc_lv(auto_mask, sqm_bar, tarc_dropphr != 0xFFu);
+    dyn = tarc_dyn();
     keep = tarc;
     tarc_adv();
     nxt = tarc_lv(auto_mask, 0, tarc.phase != AP_DROP && tarc.left == 1u && tarc.next == AP_DROP);
+    tarc_tset();
+    ndyn = tarc_dyn();                                   /* (the loudness step of the next unit's phase: its first beat plays with it, Later 25) */
     tarc = keep;
     MORPH_LOCK();                                        /* (audit C12: the levers change together for the audio interrupt) */
     tarc_lev = (uint8_t)(now | nxt << 3);
+    sqm_dyn = (int8_t)dyn, sqm_dyn_nx = (int8_t)ndyn;
     tarc_unit = (uint8_t)cur;
     MORPH_UNLOCK();
 }
@@ -151,6 +161,11 @@ static int32_t tarc_bright(void)                         /* +1 brighter, -1 soft
     if (!sqm_arc || !sqm_auto || !tarc.run)
         return 0;
     return tarc.phase == AP_PEAK || (tarc.phase == AP_RISE && tarc.t >= 128u) ? 1 : tarc.phase == AP_BREAK || tarc.phase == AP_DROP ? -1 : 0;
+}
+static int32_t tarc_dyn(void)                            /* the dynamics' ARC side: +1 louder, -2 softer (the breakdown), 0 none */
+{
+    int32_t b = tarc_bright();
+    return b < 0 ? -2 : b;
 }
 static const char *tarc_name(void) { static const char *const N[5] = {"RISE", "PEAK", "DROP", "BREAK", "RECOVER"}; return N[tarc.phase % 5u]; }
 /* TIDE hook H18: a multi, project or pattern load into the parts of mask. The tide starts as written (no generation, no pitch edits, D6) and the
