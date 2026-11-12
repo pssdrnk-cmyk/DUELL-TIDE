@@ -776,7 +776,7 @@ function fill(i) {
   app.cells.slice(before).forEach((x) => { x.partBody = i; });
   c.body.scrollTop = 0;
   c.body.dataset.tab = tabKey(i);
-  const t = tabsOf(i).find((x) => x.key === tabKey(i)); document.title = `TIDE editor: ${i === 2 ? "GLOBAL " : "PART " + (i + 1) + " "}${TAB[t?.key] ?? t?.label ?? ""}`;
+  const t = tabsOf(i).find((x) => x.key === tabKey(i)); document.title = `TIDE for FM-1 editor: ${i === 2 ? "GLOBAL " : "PART " + (i + 1) + " "}${TAB[t?.key] ?? t?.label ?? ""}`;
 }
 
 function renderMain() {
