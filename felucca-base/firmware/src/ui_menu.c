@@ -210,6 +210,12 @@ static uint32_t about_step(void)                       /* the animation's step (
 enum { MC_TEXT, MC_TITLE, MC_URL };
 typedef struct { const char *text; uint8_t kind; } menu_credit_t;
 static const menu_credit_t MENU_CREDITS[] = {
+#if DUELL_TIDE
+    {"DUELL", MC_TITLE},                           /* b10 TIDE identity: the firmware TIDE is built on */
+    {"OSCILL/R: DUELL 1.1, a modified version of Felucca", MC_TEXT},
+    {"GPL-3.0", MC_TEXT},
+    {"", MC_TEXT},
+#endif
     {"H\xFCgelton Instruments", MC_TITLE},  /* Felucca's own: above; these are ours too */
     {"Leo Kuroshita", MC_TEXT},
     {"CrispyZebra (PHASE waveforms): GPL-3.0", MC_TEXT},
@@ -314,7 +320,7 @@ static int32_t about_sec[2];                           /* ABOUT's CREDITS and LI
 static void about_word_draw(int32_t x, int32_t y)
 {
 #if DUELL_TIDE
-    cv_text(x, y + (28 - AF_L_CAP_H) / 2 - AF_L_CAP_Y, &AF_L, "DUELL", T_TEXT);
+    tide_word(x, y, 28, 6, 5, T_TEXT);                  /* (b10 TIDE identity: the splash's wordmark, ui_draw.c) */
 #else
 
     uint32_t i, p = 0;
@@ -361,13 +367,31 @@ static int32_t menu_document(int32_t y, int draw)
             vb[vi] = 0;
             ver = vb;
         }
-        about_word_draw(6, y0 + ABOUT_AIR);             /* the DUELL word of the logo at 80 %, air above and below it (LOGO_SCREENS_V1.png) */
+        about_word_draw(6, y0 + ABOUT_AIR);             /* the logo word, air above and below it (LOGO_SCREENS_V1.png; b10 TIDE: the TIDE wordmark) */
+#if DUELL_TIDE
+        {   /* b10 TIDE identity (item 10): TIDE and its version, what it is built on (DUELL by OSCILL/R, Felucca by Huegelton Instruments), GPL-3.0; the line that it is
+             * not made or endorsed by OSCILL/R or M-VAVE is in LICENSES + SOURCE below */
+            char tl[40], bl[40];                         /* (drawn at once: on the stack) */
+#if defined(DUELL_TIDE_ID) && !DUELL_TEST_MODE                                  /* the build's id (build.py DUELL_TIDE_ID: the TIDE version, "+" off a release tag) */
+            const char *tv = DUELL_TIDE_ID;
+#else
+            const char *tv = DUELL_TIDE_VERSION[0] ? DUELL_TIDE_VERSION : ver;   /* (the TIDE_VERSION file: tools/gen_version.py) */
+#endif
+            str_cpy(tl, "TIDE ", sizeof tl);
+            str_cpy(tl + 5, tv, sizeof tl - 5u);
+            str_cpy(bl, "built on DUELL ", sizeof bl);
+            str_cpy(bl + str_len(bl), ver, sizeof bl - str_len(bl));
+            str_cpy(bl + str_len(bl), " (OSCILL/R)", sizeof bl - str_len(bl));
+            cv_text(6, y0 + ABOUT_AIR + 28 + ABOUT_GAP, &AF_S, bl, T_TEXT);
+            cv_text(6, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 20, &AF_S, "and Felucca (GPL-3.0)", T_TEXT);
+            cv_text_grad(6, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 44, &AF_M, tl, 6);
+            cv_text_r(222, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 47, &AF_S, DUELL_BUILD_DATE, T_MID, T_BG);
+        }
+#else
         cv_text(6, y0 + ABOUT_AIR + 28 + ABOUT_GAP, &AF_M, "MultiMorphing Bitimbral Synthesizer", T_TEXT);
         cv_text(6, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 20, &AF_M, "by OSCILL/R", T_TEXT);
         cv_text_grad(6, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 44, &AF_M, ver, 6);
         cv_text_r(222, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 47, &AF_S, DUELL_BUILD_DATE, T_MID, T_BG);
-#if defined(DUELL_TIDE_ID) && !DUELL_TEST_MODE                                  /* TIDE: the build's short commit (or tag), build.py DUELL_TIDE_ID: stable and beta units differ here */
-        cv_text(72, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 47, &AF_S, DUELL_TIDE_ID, T_MID);
 #endif
         cv_text(6, y + 96, &AF_S, "CPU", T_MID);                 /* the meter: the 1 s average, the held peak, the misses */
         cpu_pct(b, cpum.avg);
@@ -437,6 +461,9 @@ static int32_t menu_document(int32_t y, int draw)
     }
     about_sec[1] = y + 12 - y0;
     y = menu_text("LICENSES + SOURCE", y + 12, T_THEME, draw);
+#if DUELL_TIDE
+    y = menu_text("TIDE by pssdrnk: GPL-3.0. Not made or endorsed by OSCILL/R or M-VAVE.", y, T_TEXT, draw);   /* (b10 TIDE identity, item 10) */
+#endif
     y = menu_text("Fonts and icons: their licences travel with the source and the release files.", y, T_TEXT, draw);
     y = menu_text("NO WARRANTY", y, T_TEXT, draw);
     y = menu_text("Full notices in source:", y + 8, T_TEXT, draw);

@@ -1963,6 +1963,76 @@ static int32_t foot_scroll(const char *s, int32_t w)
     t = (int32_t)(fm1_ms % (uint32_t)cyc);
     return t < 1200 ? 0 : t < 1200 + over * 40 ? (t - 1200) / 40 : over;
 }
+#if DUELL_TIDE
+/* b10 TIDE identity (item 5): the BEAT DOT of HOME's two-row footer: a 5 px dot on row 2, left of the page's number, under the tempo: lit on each beat
+ * (the first quarter of it), brighter on the bar's first; dark when nothing plays. With MIDI clock in, the tempo's unit says EXT and the dot takes the
+ * selected part's colour (the clock is locked). Its own 5 x 5 blit, a beat; the footer's signature does not hold it (draw_foot re-draws it after a
+ * redraw of its own). Not on the one-row footers (the tempo has no row of its own there) */
+#define TB_DOT_W 8                                      /* the room it takes from part 2's name: 5 px and its gap */
+static int32_t tide_dot_x = -1;                         /* its left edge on the screen, -1: not shown (draw_foot sets it) */
+static uint32_t tide_dot_st = 0xFFFFFFFFu;
+#define TB_DOT_Y (UT_FOOT_BASE - AF_S_CAP_H / 2 - 2)   /* its top row on the screen */
+static uint32_t tide_dot_now(uint16_t *col)              /* its state now (and colour) */
+{
+    uint32_t b = beat_samples(), ext = clock_src() != 0u, run = song.playing || (ext && clock_state() == 1u && !midi_clock.stopped);
+    uint32_t lit = run && beat_pos < b / 4u;
+    uint16_t cb = ext ? T_THEME : T_TEXT;
+    *col = !lit ? ux_mix(T_BG, T_MID, 30) : beat_n ? ux_mix(T_BG, cb, 60) : cb;
+    return (lit ? (beat_n ? 1u : 2u) : 0u) | ext << 2 | ux.pal << 3;
+}
+static void tide_beat_dot(void)                         /* between footer redraws: the dot alone when its state changed (draw_foot draws it in its own canvas) */
+{
+    uint16_t c;
+    uint32_t st;
+    if (tide_dot_x < 0 || (st = tide_dot_now(&c)) == tide_dot_st)
+        return;
+    tide_dot_st = st;
+    cv_begin(5, 5, T_BG);
+    cv_rrect(0, 0, 5, 5, 2, c, T_BG);
+    cv_blit((uint32_t)tide_dot_x, (uint32_t)TB_DOT_Y);
+}
+#endif
+#if DUELL_TIDE
+/* b10 TIDE identity (item 7): GENRE on SAVE > MULTIS. The list runs genre by genre (tools/factory_multis.py DISPLAY_ORDER); a multi's genre is the first word
+ * of its name (knob_sets.h KN_TAG: DUB HSE TECH ACID ELEC AMB; another word, or an empty slot: a group of its own). Knob 4's card says the genre of the
+ * multi picked and its place in it ("DUB 2/3"); a turn of knob 4 jumps to the first multi of the next or previous genre (ui_input.c). (The design's
+ * "SELECT held + K1": SELECT has no push, so knob 4, free on this page, does it) */
+static uint32_t mu_genre(uint32_t slot)                 /* 0 .. 5: KN_TAG; 6 any other first word; 7 an empty slot */
+{
+    const char *b = graph_project_name(slot);
+    uint32_t k, i;
+    if (!graph_project_used(slot))
+        return 7u;
+    for (k = 0; k < KS_N - 1u; k++) {
+        for (i = 0; KN_TAG[k][i] && b[i] == KN_TAG[k][i]; i++)
+            ;
+        if (!KN_TAG[k][i] && (b[i] == ' ' || !b[i]))
+            return k;
+    }
+    return 6u;
+}
+static uint32_t mu_group(uint32_t slot, uint32_t *first, uint32_t *n)   /* the run of slots of slot's genre around it: its first slot and length; returns the genre */
+{
+    uint32_t g = mu_genre(slot), a = slot, e = slot;
+    while (a && mu_genre(a - 1u) == g)
+        a--;
+    while (e + 1u < MU_SHOWN && mu_genre(e + 1u) == g)
+        e++;
+    *first = a;
+    *n = e - a + 1u;
+    return g;
+}
+static void mu_genre_jump(int32_t s)                    /* knob 4: the first multi of the next (s > 0) or previous genre; stops at the list's ends */
+{
+    uint32_t cur = (uint32_t)(song.g[G_SLOT] - 1) % MU_SHOWN, f, n, to = cur;
+    mu_group(cur, &f, &n);
+    if (s > 0 && f + n < MU_SHOWN)
+        to = f + n;
+    else if (s < 0 && f)
+        mu_group(f - 1u, &to, &n);
+    song.g[G_SLOT] = (int16_t)(to + 1u);
+}
+#endif
 static void draw_foot(void)
 {
     char s[48], pn[20], ti[28], ct[8], ln[56], pfl[24], pfr[24], tp[6];
@@ -2039,15 +2109,27 @@ static void draw_foot(void)
     if (rdot)
         tp[0] = 0;
     tpen = tp[0] ? ctp - FT_GAP * 16 - text_w16(&AF_S, tp) : rdot ? rdot * 16 : ctp;
+#if DUELL_TIDE
+    if (tp1[0] && !rdot)                                 /* (b10: the beat dot left of the page's number: part 2's name ends before it) */
+        tpen -= TB_DOT_W * 16;
+    sig += clock_src() * 7351u;                          /* (BPM or EXT) */
+#endif
     sig += (uint32_t)song.g[G_BPM] * 4003u;
     {   /* a patch name wider than its room scrolls: the offset it has now is part of the picture */
         int32_t pen = UT_FOOT_X * 16 + ((fnm & 1u) ? text_w16(&AF_S, eng_shown(ename)) + UT_FOOT_WORD_GAP * 16 : 0);
         int32_t nw = (tpen >> 4) - UT_FOOT_WORD_GAP - (pen >> 4);
         sig += (uint32_t)foot_scroll(pn, nw) * 131u;
     }
-    if (!ui.force && sig == ui.foot_sig)
+    if (!ui.force && sig == ui.foot_sig) {
+#if DUELL_TIDE
+        tide_beat_dot();
+#endif
         return;
+    }
     ui.foot_sig = sig;
+#if DUELL_TIDE
+    tide_dot_x = tp1[0] && !rdot ? (ctp >> 4) - (TB_DOT_W - 1) : -1;
+#endif
     foot_short = (grid_on == 1 || TIDE_GRID3 || grid_on == 4 || grid_on == 5 || grid_on == 7 || grid_on == 9 || grid_on == 12 || grid_on == 13 || grid_on == 14 || grid_on == 15 || grid_on == 16 || grid_on == 17 || ui.guide) && !ui.ml.on && !pfl[0] && !save_hint && !foot_steps() && !TIDE_FOOT_FULL();   /* TIDE hook: TIDE / TIDE SET keep both rows */   /* (DUELL 1.1 grid pages: row 1 is empty, the cards use its rows) */
     cv_begin(240, foot_short ? H_FOOT - 15 : pfl[0] ? H_FOOT + 15 : H_FOOT, T_BG);   /* (item 120: PERFORM's footer is 15 rows taller, its two hint lines on top) */
     cv_oy = foot_short ? -15 : pfl[0] ? 15 : 0;
@@ -2067,7 +2149,7 @@ static void draw_foot(void)
         cv_text_in(0, 2, 240, &AF_S, save_hint, T_DIM, T_BG);
 #if DUELL_TIDE
     } else if (pn1[0]) {                               /* TIDE hook: row 1, part 1 as row 2 names a part (its engine in its colour, the sound it plays) */
-        static const char FT_BPM[] = " BPM";          /* (owner 2026-11-12: "122 BPM", the unit dimmer, as the cards' units; part 1's name may end 2 px before the tempo's pen (the glyphs' own sides leave ~6 px of air), so M08's SUNDAY KEYS stays whole) */
+        const char *const FT_BPM = clock_src() ? " EXT" : " BPM";   /* (b10 item 5: an external clock's measured tempo says EXT) */          /* (owner 2026-11-12: "122 BPM", the unit dimmer, as the cards' units; part 1's name may end 2 px before the tempo's pen (the glyphs' own sides leave ~6 px of air), so M08's SUNDAY KEYS stays whole) */
         int32_t f1 = UT_FOOT_BASE - 15 - Y_FOOT - AF_S_CAP_Y - AF_S_CAP_H + 1, x = UT_FOOT_X * 16, uw = text_w16(&AF_S, FT_BPM), bx = (UT_BAT_X + UT_BAT_W) * 16 - text_w16(&AF_S, tp1) - uw;   /* (bx: the tempo's pen; its unit ends with the battery) */
         cv_text_x16(x, f1, &AF_S, en1, vt(T_PTHEME(0u), T_BG), T_BG);
         x += text_w16(&AF_S, en1) + UT_FOOT_WORD_GAP * 16;
@@ -2121,6 +2203,13 @@ static void draw_foot(void)
             cv_text_x16(ctp, fy, &AF_S, ct, T_MID, T_BG);
         draw_battery();
     }
+#if DUELL_TIDE
+    if (tide_dot_x >= 0) {                               /* (the beat dot in the footer's own canvas: one write a pixel, no flash) */
+        uint16_t c;
+        tide_dot_st = tide_dot_now(&c);
+        cv_rrect(tide_dot_x, TB_DOT_Y - Y_FOOT, 5, 5, 2, c, T_BG);
+    }
+#endif
     cv_oy = 0;
     cv_blit(0, foot_short ? Y_FOOT + 15 : pfl[0] ? Y_FOOT - 15 : Y_FOOT);
 }
@@ -2560,7 +2649,7 @@ static void draw_columns(void)
 #if DUELL_TIDE
         const char *why = h1_echo_why();
         const int apart = song.both && morph_fader_of(1u - pi) != f;
-        char trip[40];
+        static char trip[40];                          /* (static: k1_after_next keeps the pointer past this block; a stack array was gone by the time the line was drawn) */
         if (AREA_ON && tide_moves(pi) && !(ui.hot_t && ui.hot_col)) {   /* I4: AUTO TIDE moves this part: what it does, at the line's right end (a knob 2..4 just turned keeps its own words) */
             tide_trip_short(trip);
             k1_after_next = trip;
@@ -2823,6 +2912,16 @@ static void draw_columns(void)
                 k1_after_next = cur_txt;
                 k1_after_col = T_ACCENT;
                 k1_after_r = 1;
+            } else {                                   /* b10 item 7: the multi's genre and its place in it ("DUB 2/3"; knob 4 jumps genre: mu_genre_jump) */
+                uint32_t f, n, g = mu_group(k, &f, &n);
+                str_cpy(cur_txt, g < 6u ? KN_TAG[g] : g == 6u ? "OTHER" : "EMPTY", sizeof cur_txt);
+                str_cpy(cur_txt + str_len(cur_txt), " ", 2);
+                fmt_int(cur_txt + str_len(cur_txt), (int32_t)(k - f + 1u));
+                str_cpy(cur_txt + str_len(cur_txt), "/", 2);
+                fmt_int(cur_txt + str_len(cur_txt), (int32_t)n);
+                k1_after_next = cur_txt;
+                k1_after_col = T_MID;
+                k1_after_r = 1;
             }
         }
 #endif
@@ -3014,20 +3113,95 @@ static uint32_t splash_t0, splash_fr;
 /* The lockup (the art director's SVG, rasterised by tools/gen_splash_logo.py into build/gen/splash_logo.h: 4-bit coverage,
  * byte = value << 4 | (run - 1); 0x0f plus a byte skips 16..271 transparent pixels), blended in T_TEXT over what the strip holds; the strip starts at screen row y0, h rows.
  * No RAM: the run list is walked from its start, only the pixels inside the strip are touched. */
+#if DUELL_TIDE
+/* b10 TIDE identity: the wordmark TIDE, geometric: rectangles and an anti-aliased ring (no font, no bitmap), for the splash and ABOUT */
+static uint32_t tide_spl_st;                            /* the splash's animation step (splash_frame) */
+static uint8_t tide_spl_credits;                        /* 1: the credits at the bottom (the splash; not ABOUT's first view, nor the first start's GUIDE hint) */
+static uint16_t *tide_pp(int32_t x, int32_t y)
+{
+    y += CV_Y;
+    return (uint32_t)x < cv_w && (uint32_t)y < cv_h ? &cv_px[(uint32_t)y * cv_w + (uint32_t)x] : 0;
+}
+static void tide_put(int32_t x, int32_t y, uint16_t c, uint32_t a16)   /* blend c over the pixel by a16 / 16 */
+{
+    uint16_t *q = tide_pp(x, y);
+    if (q && a16)
+        *q = swap16(a16 >= 16u ? c : ux_mix(swap16(*q), c, (int32_t)(a16 * 100u / 16u)));
+}
+/* the ring ri8 .. ro8 (1/8 px) around (cx8, cy8) over the box x0 .. x1, y0 .. y1 (4 x 4 samples a pixel): the D's bowl */
+static void tide_ring(int32_t x0, int32_t y0, int32_t x1, int32_t y1, int32_t cx8, int32_t cy8, int32_t ro8, int32_t ri8, uint16_t c)
+{
+    int32_t x, y, sx, sy;
+    for (y = y0; y < y1; y++)
+        for (x = x0; x < x1; x++) {
+            uint32_t n = 0;
+            for (sy = 0; sy < 4; sy++)
+                for (sx = 0; sx < 4; sx++) {
+                    int32_t dx = x * 8 + sx * 2 + 1 - cx8, dy = y * 8 + sy * 2 + 1 - cy8, d = dx * dx + dy * dy;
+                    n += d <= ro8 * ro8 && d >= ri8 * ri8;
+                }
+            tide_put(x, y, c, n);
+        }
+}
+/* T I D E, cap height h, stroke s, letter gap g, from x, top row y; returns the right edge */
+static int32_t tide_word(int32_t x, int32_t y, int32_t h, int32_t s, int32_t g, uint16_t c)
+{
+    int32_t tw = h * 5 / 6, dw = h * 4 / 5, ew = h * 5 / 8, r = h / 2;
+    cv_rect(x, y, tw, s, c);                             /* T */
+    cv_rect(x + (tw - s) / 2, y, s, h, c);
+    x += tw + g;
+    cv_rect(x, y, s, h, c);                              /* I */
+    x += s + g;
+    cv_rect(x, y, s, h, c);                              /* D: the stem, the bars, the bowl */
+    cv_rect(x, y, dw - r, s, c);
+    cv_rect(x, y + h - s, dw - r, s, c);
+    tide_ring(x + dw - r, y, x + dw, y + h, (x + dw - r) * 8, y * 8 + h * 4, r * 8, (r - s) * 8, c);
+    x += dw + g;
+    cv_rect(x, y, s, h, c);                              /* E */
+    cv_rect(x, y, ew, s, c);
+    cv_rect(x, y + (h - s) / 2, ew - s / 2, s, c);
+    cv_rect(x, y + h - s, ew, s, c);
+    return x + ew;
+}
+static int32_t tide_word_w(int32_t h, int32_t s, int32_t g) { return h * 5 / 6 + s + h * 4 / 5 + h * 5 / 8 + 3 * g; }
+#endif
 static void splash_logo_draw(int32_t y0, int32_t h)
 {
 #if DUELL_TIDE
-    /* Reuse the existing font glyphs instead of a second bitmap alphabet. */
+    /* b10 TIDE identity (design consult direction A, owner 2026-11-12): the name TIDE, cut by the water line (the letters under it in part 1's colour, the
+     * sea), the sea of wave lines below it (splash_frame), the credits small at the bottom: built on DUELL (OSCILL/R) and Felucca, GPL-3.0. No maker's
+     * lockup: nothing reads as made or endorsed by OSCILL/R or M-VAVE. ABOUT's first view leaves the credits out (its key hints sit there; ABOUT carries
+     * them in full further down) */
+    const ui_pal_t *pl = &UI_PALETTES[ux.pal % NPALETTES];
+    const uint32_t m = tide_spl_st * 0x00800000u;
+    int32_t H = 50, S = 10, G = 9, w = tide_word_w(H, S, G), x0 = (240 - w) / 2, Y = 40, x, y;
+    uint16_t sea = ux_mix(T_BG, pl->c[0], 62), ln = pl->c[0];
     (void)y0; (void)h;
-    /* the name, DUELL with TIDE: one centred line, "with" smaller and muted on the same baseline */
-    int32_t gap = 6, x = (240 - text_w(&AF_L, "DUELL") - text_w(&AF_M, "with") - text_w(&AF_L, "TIDE") - 2 * gap) / 2;
-    x = cv_text_on(x, 74 - AF_L_CAP_Y, &AF_L, "DUELL", T_TEXT, T_BG) + gap;   /* (the block 6 rows higher than before: ABOUT's key hints from row 206 no longer crowd the credit line) */
-    x = cv_text_on(x, 74 + AF_L_CAP_H - AF_M_CAP_H - AF_M_CAP_Y, &AF_M, "with", T_MID, T_BG) + gap;
-    cv_text_on(x, 74 - AF_L_CAP_Y, &AF_L, "TIDE", T_TEXT, T_BG);
-    cv_text_in(0, 117, 240, &AF_M, "MultiMorphing", T_TEXT, T_BG);
-    cv_text_in(0, 139, 240, &AF_M, "Bitimbral Synthesizer", T_TEXT, T_BG);
-    cv_text_in(0, 161, 240, &AF_S, "by OSCILL/R", T_TEXT, T_BG);
-    cv_text_in(0, 182, 240, &AF_S, "generative TIDE by pssdrnk", T_TEXT, T_BG);   /* the fork's part */
+    tide_word(x0, Y, H, S, G, T_TEXT);
+    for (x = 0; x < 240; x++) {
+        int32_t wy16 = (Y + 33) * 16 + (sine_i((uint32_t)x * 0x02222222u + m) * 28 >> 15), g0 = (T_BG >> 5) & 63, gt = ((T_TEXT >> 5) & 63) - g0;
+        uint32_t fade = x < 6 || x >= 234 ? 0u : x < 30 ? (uint32_t)(x - 6) * 16u / 24u : x > 210 ? (uint32_t)(234 - x) * 16u / 24u : 16u;
+        for (y = Y; y < Y + H; y++) {                    /* the letters: cut 1 px each side of the line, under it in the sea colour (by their coverage) */
+            uint16_t *q = tide_pp(x, y);
+            int32_t d = y * 16 + 8 - wy16, ad = d < 0 ? -d : d, a;
+            if (!q || swap16(*q) == T_BG || !gt)
+                continue;
+            a = clamp((((int32_t)((swap16(*q) >> 5) & 63) - g0) * 100) / gt, 0, 100);
+            if (fade && ad < 32)
+                a = a * clamp(ad - 16, 0, 16) / 16;
+            *q = swap16(ux_mix(T_BG, d > 0 ? sea : T_TEXT, a));
+        }
+        for (y = (wy16 >> 4) - 1; y <= (wy16 >> 4) + 1 && fade; y++) {   /* the water line, 1.25 px, anti-aliased */
+            int32_t lo = wy16 - 10, hi = wy16 + 10, a0 = y * 16, a1 = a0 + 16, cov = (a1 < hi ? a1 : hi) - (a0 > lo ? a0 : lo);
+            if (cov > 0)
+                tide_put(x, y, ln, (uint32_t)cov * fade / 16u);
+        }
+    }
+    cv_text_in(0, 108, 240, &AF_M, "generative bitimbral synth", T_TEXT, T_BG);
+    if (tide_spl_credits) {                              /* the GPL credits: the base it is built on, its licence */
+        cv_text_in(0, 202, 240, &AF_S, "built on DUELL (OSCILL/R) and Felucca", T_MID, T_BG);
+        cv_text_in(0, 218, 240, &AF_S, "GPL-3.0  -  TIDE by pssdrnk", T_MID, T_BG);
+    }
 #else
 
     uint16_t tx = T_TEXT;
@@ -3066,7 +3240,7 @@ static void about_keys(int32_t y)                      /* SCROLL and HEADINGS on
 static void splash_frame(uint32_t st, int32_t hint_y)
 {
 #if DUELL_TIDE
-    static const int32_t EDGE[4] = {0, 102, 182, 240};   /* the strips: no text row lies across an edge (TIDE's credit line is on rows 186 .. 200) */
+    static const int32_t EDGE[4] = {0, 106, 196, 240};   /* the strips: no text row lies across an edge (b10 TIDE: the wordmark, the sea, the credits) */
 #define SPL_LINE_DIM 45                                  /* the lines toward the background, %: TIDE's lockup is the fonts' thinner glyphs, which lines at 18 % crossed almost at the text's own strength (GREY) */
 #else
     static const int32_t EDGE[4] = {0, 108, 200, 240};   /* the strips: no text row lies across an edge */
@@ -3079,6 +3253,10 @@ static void splash_frame(uint32_t st, int32_t hint_y)
     for (j = 0; j < (uint32_t)SPL_N; j++)               /* the part 1 colour to the part 2 colour; HC: two flat halves */
         col[j] = pl->hc ? pl->c[j >= (uint32_t)SPL_N / 2u ? 2 : 0]
                         : ux_mix(ux_mix(pl->c[0], pl->c[2], (int32_t)j * 100 / (SPL_N - 1)), T_BG, SPL_LINE_DIM);
+#if DUELL_TIDE
+    tide_spl_st = st;
+    tide_spl_credits = (uint8_t)(!hint_y && !splash_guide);   /* (ABOUT's key hints and the first start's GUIDE hint have those rows) */
+#endif
     for (band = 0; band < 3u; band++) {
         int32_t y0 = EDGE[band], h = EDGE[band + 1] - y0;
         CV_BANDS(h) { /* (the strip may be taller than a canvas band: drawn once for each) */
@@ -3089,8 +3267,13 @@ static void splash_frame(uint32_t st, int32_t hint_y)
                 j2 = (int32_t)j * 2 - (SPL_N - 1);          /* -14 .. +14: the line's place across the ribbon */
                 for (x = 0; x < 240u; x += 2u) {
                     uint32_t xt = x * 17895697u / 100u;     /* x in hundredths of a turn per 1.00 cycle across the width */
+#if DUELL_TIDE
+                    int32_t mc = 160 + (sine_i(xt * 90u + m) * 5 >> 15);                       /* (b10 TIDE: the sea, under the name) */
+                    int32_t w = 48 + (sine_i(xt * 130u + m * 2u + 0x40000000u) * 10 >> 15);
+#else
                     int32_t mc = 120 + (sine_i(xt * 90u + m) * 22 >> 15);                      /* the ribbon's middle, 0.9 cycles */
                     int32_t w = 170 + (sine_i(xt * 130u + m * 2u + 0x40000000u) * 40 >> 15);   /* its width, 130 .. 210 */
+#endif
                     int32_t mo = clamp(((int32_t)x - 120) * 256 / 240 + 128 + (sine_i(m) >> 8), 0, 256);   /* the morph: 0 left .. 256 right */
                     int32_t calm = sine_i(xt * 100u + j * 0x05000000u + m);                    /* the smooth wave every line has */
                     int32_t rip = (sine_i(xt * 370u + j * 0x0C000000u + m * 3u) * 3 + sine_i(xt * 710u - j * 0x1B000000u + m * 5u) * 2) / 5;   /* overtones and ripples */
@@ -3106,7 +3289,7 @@ static void splash_frame(uint32_t st, int32_t hint_y)
             splash_logo_draw(y0, h);                        /* (the lockup, on top of the unbroken lines) */
             if (hint_y && hint_y >= y0 && hint_y < y0 + h)
                 about_keys(hint_y);
-            if (!hint_y && splash_guide && y0 == 200) {     /* DUELL 1.1: the first start only: a small hint under the DUELL text (LOGO_SCREENS_V1.png), OCT + goes on, HOME skips */
+            if (!hint_y && splash_guide && y0 == EDGE[2]) {     /* DUELL 1.1: the first start only: a small hint under the DUELL text (LOGO_SCREENS_V1.png), OCT + goes on, HOME skips */
                 static const khint_t FIRST[2] = {{KC_OCTUP, "NEXT"}, {KC_HOME, "SKIP"}};
                 cv_text(8, 199, &AF_S, "GUIDE FOR YOUR FIRST START", T_MID);
                 cv_key_row(8, 232, 217, FIRST, 2u, 3u, T_BG);
@@ -3521,6 +3704,48 @@ static void ui_draw(void)
     ui_draw_page(counting);
     scr_shown();
 }
+#if DUELL_TIDE
+/* b10 TIDE identity (design consult direction A, owner 2026-11-12): THE TIDE LINE. Rows 24 .. 26, between the header and knob 1's line (rows 27 ..), carry
+ * AUTO TIDE's state on every part page: nothing while it is off; dashes while armed; while it runs a 1.5 px wave in the moved part's colour (both parts:
+ * part 1's colour to part 2's across), bright up to the trip's progress and dim after it, its phase stepping a beat at a time (it breathes with the tempo);
+ * WAIT: the line lies flat (slack water); stopped: all of it dim. GREY / MONO: part 2's stretch is dashed, so the parts differ without colour.
+ * One 240 x 3 strip, sent only when it changes (~1 ms of SPI a beat); its signature is one word. The header's own rule ("no line under a title", V9) bends
+ * here on purpose: a live readout, absent when AUTO TIDE is off */
+static int tide_line_state(uint32_t *prog, uint32_t *beat, uint32_t *mask);   /* tide_ui.c: 0 off, 1 armed, 2 running, 3 waiting (slack), 4 paused */
+static uint32_t tide_line_sig;
+#define TL_Y 24
+#define TL_H 3
+static void tide_line_draw(void)
+{
+    uint32_t prog = 0, beat = 0, mask = 3u, st = screen_global() || ui.menu || ui.guide ? 0u : (uint32_t)tide_line_state(&prog, &beat, &mask);
+    int32_t xp = (int32_t)((prog * 240u) >> 16), x, r;
+    const int grey = ux.mono || ux.bw;
+    uint32_t sig = st ? st * 7919u + (uint32_t)xp * 31u + (st == 2u ? (beat & 7u) * 3u : 0u) + mask * 1301u + ux.pal * 17u + 1u : 0u;
+    if (!ui.force && sig == tide_line_sig)
+        return;
+    tide_line_sig = sig;
+    cv_begin(240, TL_H, T_BG);
+    for (x = 0; x < 240 && st; x++) {
+        const uint32_t p2 = mask == 2u || (mask == 3u && x >= 120);   /* (part 2's stretch) */
+        uint16_t c = mask == 3u && !grey ? ux_mix(T_PTHEME(0), T_PTHEME(1), x * 100 / 239) : T_PTHEME(p2);
+        int32_t yc16 = 24 + (st == 2u ? sine_i((uint32_t)x * 0x01111111u * 4u + (beat & 7u) * 0x20000000u) * 8 >> 15 : 0);   /* the middle, 1/16 px */
+        if (st == 1u && (x & 7) > 3)
+            continue;                                   /* armed: dashes */
+        if (grey && p2 && (x & 7) > 5)
+            continue;                                   /* GREY / MONO: part 2 dashed (6 on, 2 off) */
+        if (st == 4u || st == 1u || x > xp)
+            c = ux_mix(T_BG, c, 45);                    /* ahead of the tide (paused: all of it) */
+        else if (x >= xp - 1)
+            c = ux_mix(c, T_TEXT, 55);                  /* the tide's edge */
+        for (r = 0; r < TL_H; r++) {                    /* row r against the band yc - 0.75 .. yc + 0.75 px: its coverage */
+            int32_t a = (r + 1) * 16, b = r * 16, lo = yc16 - 12, hi = yc16 + 12, cov = (a < hi ? a : hi) - (b > lo ? b : lo);
+            if (cov > 0)
+                cv_pset(x, r, cov >= 16 ? c : ux_mix(T_BG, c, cov * 100 / 16));
+        }
+    }
+    cv_blit(0, TL_Y);
+}
+#endif
 static void ui_draw_page(uint32_t counting)
 {
     {   /* item 120: the PERFORM page (not over a layer, menu or dialog) has its own map rows and a two-line footer hint (Y_GRAPH, H_GRAPH, draw_foot) */
@@ -3678,6 +3903,9 @@ static void ui_draw_page(uint32_t counting)
         draw_frame();
     felucca_dbg.stage = 3;
     draw_head();
+#if DUELL_TIDE
+    tide_line_draw();                                   /* (b10: AUTO TIDE's tide line under the header) */
+#endif
     felucca_dbg.stage = 4;
     draw_columns();
     felucca_dbg.stage = 5;

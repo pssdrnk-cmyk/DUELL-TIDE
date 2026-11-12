@@ -1372,8 +1372,8 @@ int main(void)
             settings_init();
             ck(sector == 0u ? "first start on erased flash: counted as new (no valid settings)" :
                sector == 1u ? "  garbage in the flash: counted as new too" : "  zeros in the flash: counted as new too", first_boot_pending == 1u);
-            ck("  the theme is VIOLET (the default index, UI_DEFAULT_INDEX 0)", settings.palette == UI_DEFAULT_INDEX &&
-               str_eq(UI_PALETTES[settings.palette].name, "VIOLET"));
+            ck("  the theme is TIDE (the default index, UI_DEFAULT_INDEX; b10 TIDE identity)", settings.palette == UI_DEFAULT_INDEX &&
+               str_eq(UI_PALETTES[settings.palette].name, "TIDE"));
             if (autosave_boot(1))
                 first_boot_pending = 0;
             ck("  no autosave on a new unit", first_boot_pending == 1u);
@@ -1435,7 +1435,7 @@ int main(void)
             first_boot_pending = 0;
             persist_boot();
             settings_init();
-            ck("  next start: not new any more (settings valid), VIOLET and LAYER kept", first_boot_pending == 0u && settings.palette == UI_DEFAULT_INDEX &&
+            ck("  next start: not new any more (settings valid), TIDE and LAYER kept", first_boot_pending == 0u && settings.palette == UI_DEFAULT_INDEX &&
                ui_mode_set == DM_LAYER);
             if (sector == 2u)
                 break;
