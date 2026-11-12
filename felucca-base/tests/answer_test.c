@@ -274,10 +274,17 @@ static void grid_mismatch(void)
                 pd = div_samples((uint32_t)trk[1].p[P_ARATE]);
                 want_len = (uint32_t)(d->bars * 16) * (mode >= TA_REPLY ? 2u : 1u);
                 want_len = ps == pd ? want_len : (want_len * ps + pd / 2u) / pd;
-                wrote = tk_gen(0, 1, 0, mode);
-                if (!wrote) {
-                    CHECK("a grid too slow or too fast for the take: nothing is written and the part's loop stays", want_len == 0u || want_len > NSTEP || trk[1].p[P_SLEN] == 4);
-                    continue;
+                {
+                    uint32_t coarse = pd > ps || want_len > NSTEP;      /* (b10: the answer wins - a coarser or too fine a grid of the part is set to the take's) */
+                    wrote = tk_gen(0, 1, 0, mode);
+                    CHECK("an answer on a part with another grid is written", wrote == 1u);
+                    if (!wrote)
+                        continue;
+                    if (coarse) {
+                        want_len = (uint32_t)(d->bars * 16) * (mode >= TA_REPLY ? 2u : 1u);
+                        CHECK("a part grid too coarse for the answer is set to the take's", trk[1].p[P_ARATE] == trk[0].p[P_SDIV]);
+                    } else
+                        CHECK("a part grid that holds the answer stays", trk[1].p[P_ARATE] == RATES[ri]);
                 }
                 ok &= (uint32_t)trk[1].p[P_SLEN] == want_len;
                 for (i = 0; i < NSTEP; i++)
@@ -289,6 +296,40 @@ static void grid_mismatch(void)
                     printf("answer: grid M%02d arate %u mode %u: slen %d (want %u), %u steps with notes\n", MULTIS[mi], RATES[ri], mode, trk[1].p[P_SLEN], want_len, hits);
                 CHECK("an answer on a part with another grid: the loop is the take's in the part's steps, notes inside it, none past it", ok);
             }
+}
+/* ---- M02 DUB CHORD part 2, the factory default multi's pad: an ARP SEQ part on a slow arp rate gave NO ANSWER (owner's setup); the answer wins: DOUBLE and BASS LINE are written on the take's grid, the part's RATE follows, and the history step restores it ---- */
+static void m02_pad(void)
+{
+    for (uint32_t mode = TA_BASS; mode <= TA_DOUBLE; mode++) {
+        const take_def_t *d = &TAKES[0];
+        static tk_snap_t pre;
+        step_t keep[NSTEP];
+        int16_t amode, arate, sdiv, slen;
+        ev_t ev[64];
+        int n, i, rub = 0, key = 0, low = 0;
+        power();
+        project_load(MIDX(1));
+        frame();
+        amode = trk[1].p[P_AMODE]; arate = trk[1].p[P_ARATE]; sdiv = trk[1].p[P_SDIV]; slen = trk[1].p[P_SLEN];
+        memcpy(keep, trk[1].step, sizeof keep);
+        fill(d);
+        trk[1].p[P_AMODE] = amode; trk[1].p[P_ARATE] = arate; trk[1].p[P_SDIV] = sdiv; trk[1].p[P_SLEN] = slen;
+        memcpy(trk[1].step, keep, sizeof keep);
+        tk_m.ans = 0;
+        CHECK("M02 part 2 is the ARP SEQ pad on a slow rate", amode == AM_SEQ_ID && div_samples((uint32_t)arate) > div_samples(2u));
+        tk_save(&pre);
+        CHECK("M02 pad: the answer is written", tk_gen(0, 1, 0, mode) == 1u);
+        n = answer_events(ev, 64);
+        for (i = 0; i < n; i++) {
+            rub += rubs(d, &ev[i]);
+            key += !tk_in_key(ev[i].note);
+            low += ev[i].note < 24;
+        }
+        CHECK("M02 pad: more than one note, in key, no rubs, none under C1", n >= 2 && !rub && !key && !low);
+        CHECK("M02 pad: the part's RATE is the take's grid and its loop the take's", trk[1].p[P_ARATE] == trk[0].p[P_SDIV] && trk[1].p[P_SLEN] == d->bars * 16);
+        tk_load(&pre);
+        CHECK("M02 pad: the history step brings the old RATE and loop back", trk[1].p[P_ARATE] == arate && trk[1].p[P_SLEN] == slen && !memcmp(trk[1].step, keep, sizeof keep));
+    }
 }
 int main(void)
 {
@@ -355,6 +396,7 @@ int main(void)
     printf("%c", 10);
     low_take();
     grid_mismatch();
+    m02_pad();
     CHECK("every answer at seed 0 passes the rules", passed == combos);
     CHECK("rolls give different answers in most bass cases", distinct_cases && distinct_ok * 4u >= distinct_cases * 3u);
     (void)ok_all;

@@ -32,11 +32,12 @@ static void setup(uint32_t part, int amode, int voice)
     t->p[P_AOCT] = 1; t->p[P_AGATE] = 64; t->p[P_VOICE] = (int16_t)voice; t->p[P_CHRD] = 0; t->p[P_TRANS] = 0;
     t->p[P_AHOLD] = 0; t->p[P_SQNT] = 0;
 }
+static uint32_t boot_bpm = 120;
 static void boot(void)
 {
     ui_power_on(); frame();
     transport_req = 2u; run(48);
-    song.g[G_BPM] = 120;
+    song.g[G_BPM] = (int16_t)boot_bpm;
     memset(tide_chord_n, 0, sizeof tide_chord_n);
     song.rec = 0;
     tk_reset_v = 1; frame();                             /* (a power-on: no history) */
@@ -137,7 +138,7 @@ static void rec_note_at(uint32_t part, uint32_t idx, uint32_t note, uint32_t ms)
     at_step(&trk[part], idx);
     input_on(&trk[part], note, 100); run(ms); input_off(&trk[part], note);
 }
-static int said(const char *w) { return !strncmp(ui.msg, w, str_len(w)); }
+static int said(const char *w) { return ui.msg_t && !strncmp(ui.msg, w, str_len(w)); }   /* (shown now: the text stays in the buffer after its frames are over) */
 /* a first take on an empty part 1 (a melody over ~1.5 bars), closed by REC; part 2 holds the PAT pattern */
 static void first_take(void)
 {
@@ -297,10 +298,63 @@ static void take_line_test(void)
     song.rec = 0; run(120);
     CHECK("closed: the line is as before", take_line(&pr) == 0u && tide_line_state(&pr, &beat, &mask) == 0);
 }
+/* ---- the answer follows the live pass (owner: "when I overwrite an existing sequence via live play the response should be generated instantly") ---- */
+static void take_live(void)
+{
+    uint32_t s1, s2, a1, a2, a3, pass;
+    boot(); setup(0, 0, V_POLY); setup(1, 0, V_POLY); tide_answer = TA_BASS; tide_answer_on = 0; tide_rec_replace = 0;
+    s1 = psig(0); s2 = psig(1);
+    start(); song.rec = 1; run(100);
+    CHECK("REC armed over an existing part: nothing is written yet", psig(1) == s2 && tk_cnt == 0);
+    for (pass = 1; pass <= 3u; pass++) {
+        rec_note_at(0, 2 + 3 * pass, 60 + 4 * pass, 60);
+        at_step(&trk[0], 15); run(60);                    /* the last step of the pass: the answer is made from the part's steps as they are now */
+        if (pass == 1) a1 = psig(1);
+        if (pass == 2) a2 = psig(1);
+        if (pass == 3) a3 = psig(1);
+        CHECK("an answer is written at the end of the loop pass, before REC is off, and no history step yet", psig(1) != s2 && tk_cnt == 0 && tk_live && said("BASS LINE"));
+    }
+    CHECK("the answer follows the take (it changed between passes)", a1 != a2 || a2 != a3 || a1 != s2);
+    at_step(&trk[0], 3); song.rec = 0; run(120);
+    CHECK("REC off: one history step for the whole armed session, the answer unchanged (same seed, take unchanged since the last pass)", tk_cnt == 1 && tk_pos == 1 && psig(1) == a3);
+    CHECK("undo goes back to before the armed session: the take's part and the answer's part as they were", take_undo(-1) == 1u && psig(0) == s1 && psig(1) == s2);
+    /* ANSWER ON OFF and ANSWER OFF: nothing changes */
+    boot(); setup(0, 0, V_POLY); setup(1, 0, V_POLY); tide_answer = TA_BASS; tide_answer_on = 1; tide_rec_replace = 0;
+    s2 = psig(1);
+    start(); song.rec = 1; run(100);
+    rec_note_at(0, 5, 67, 60); at_step(&trk[0], 15); run(60);
+    CHECK("ANSWER ON OFF: no answer while the pass is open", psig(1) == s2 && !tk_live);
+    tide_answer_on = 0; tide_answer = TA_OFF;
+    rec_note_at(0, 9, 70, 60); at_step(&trk[0], 15); run(60);
+    CHECK("ANSWER OFF: no answer while the pass is open", psig(1) == s2 && !tk_live);
+    song.rec = 0; run(120);
+}
+/* the header message of a take / answer stays 4 bars, 4 s at least, 8 s at most (120 bpm: 8 s) */
+static void take_hold(void)
+{
+    uint32_t t0;
+    first_take();
+    CHECK("the answer's message is shown", said("BASS LINE"));
+    t0 = fm1_ms;
+    run(3500);
+    CHECK("... still there after 3.5 s", said("BASS LINE") && fm1_ms - t0 >= 3400u);
+    run(3500);
+    CHECK("... and after 7 s (4 bars at 120 bpm = 8 s)", said("BASS LINE") && fm1_ms - t0 >= 6900u);
+    run(2800);
+    CHECK("... and gone after 9.8 s (the held frames end with the hold, 8 s, and the normal 0.7 s)", !said("BASS LINE") && fm1_ms - t0 >= 9700u);
+    boot_bpm = 240;
+    first_take();
+    t0 = fm1_ms;
+    run(3500);
+    CHECK("at 240 bpm (4 bars = 4 s) the minimum applies: still there after 3.5 s", said("BASS LINE"));
+    run(2500);
+    CHECK("... gone after 6 s", !said("BASS LINE"));
+    boot_bpm = 120;
+}
 int main(void)
 {
     step1();
-    take_lifecycle(); take_history(); take_settings(); take_roll_test(); take_reply(); take_line_test();
+    take_lifecycle(); take_history(); take_settings(); take_roll_test(); take_reply(); take_line_test(); take_live(); take_hold();
     printf("take: %u checks, %u FAIL\n", checks, failures);
     return failures ? 1 : 0;
 }

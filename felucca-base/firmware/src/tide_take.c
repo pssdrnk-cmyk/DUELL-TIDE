@@ -20,6 +20,7 @@ typedef struct {                                         /* the answer that is l
 typedef struct {
     step_t s[2][NSTEP];
     uint8_t len[2];
+    uint8_t gr[2][2];                                    /* each part's SDIV and ARATE (an answer may set the grid of the part that holds it) */
     tk_meta_t m;
 } tk_snap_t;
 static tk_snap_t tk_h[3] __attribute__((section(".pool")));      /* history: tk_h[j] the state before step j + 1 (a take or a roll) */
@@ -33,6 +34,8 @@ static tk_meta_t tk_m __attribute__((section(".pool")));                        
 static uint16_t tk_hn[2] __attribute__((section(".pool")));                                /* history step j: its number, bit 15 a roll */
 static uint8_t tk_cnt __attribute__((section(".pool"))), tk_pos __attribute__((section(".pool"))), tk_open __attribute__((section(".pool"))), tk_oldlen[2] __attribute__((section(".pool")));   /* (tk_fresh_v, tk_first, tk_adv ..: tide.h) */
 static uint16_t tk_total __attribute__((section(".pool")));
+static uint32_t tk_mh __attribute__((section(".pool"))), tk_mu __attribute__((section(".pool"))), tk_lsig __attribute__((section(".pool")));   /* the header message held (its hash, until when: fm1_ms); the part's steps at the last live answer */
+static uint8_t tk_wd __attribute__((section(".pool"))), tk_live __attribute__((section(".pool")));            /* this pass's answer is made; an answer was made while the pass was open */
 #define tk_fresh tk_fresh_v
 
 /* ---- the key: SCL (scale_g, root_g), else the take's own (guessed) ---- */
@@ -116,7 +119,8 @@ static int32_t tk_triad_pc(int32_t d, int32_t i) { return tk_wrap((int32_t)tk_kr
 /* ---- the take as events ---- */
 /* b10 (rc6.4-test: an answer on an ARP SEQ part played at the wrong speed or not at all): a part's steps sit on its own grid - the sequencer's division, or on an ARP SEQ part the arp's rate (seq.c arp_dur) - so a take is read
  * in the grid of the part it was recorded on and the answer is written in the grid of the part that plays it (tk_put converts; equal grids: no change) */
-static uint32_t tk_gp(const track_t *t) { return div_samples((uint32_t)(arp_mode(t) == AM_SEQ_ID ? t->p[P_ARATE] : t->p[P_SDIV])); }
+static uint32_t tk_gi(const track_t *t) { return (uint32_t)(arp_mode(t) == AM_SEQ_ID ? P_ARATE : P_SDIV); }   /* the parameter that sets the part's grid */
+static uint32_t tk_gp(const track_t *t) { return div_samples((uint32_t)t->p[tk_gi(t)]); }
 static uint32_t tk_ps __attribute__((section(".pool"))), tk_pd __attribute__((section(".pool"))), tk_slen __attribute__((section(".pool")));   /* the take's grid, the answer's grid (samples a step), the take's length in steps */
 static uint32_t tk_spb(const track_t *t)                 /* steps in a bar on the part's grid (16 at 1/16) */
 {
@@ -398,7 +402,7 @@ static uint32_t tk_genre(void)                           /* DUB HSE TECH ACID EL
 static uint32_t tk_gen(uint32_t src, uint32_t dst, uint32_t seed, uint32_t mode)
 {
     track_t *ts = &trk[src], *td = &trk[dst];
-    uint32_t len = seq_len(ts), spb = tk_spb(ts), bars, i, n = 0, call = mode >= TA_REPLY, dlen;
+    uint32_t len = seq_len(ts), spb = tk_spb(ts), bars, i, n = 0, call = mode >= TA_REPLY, dlen, gset = 0;
     int32_t shift = td->p[P_TRANS] - ts->p[P_TRANS];
     if (call && seed && tk_m.ans && tk_m.mode == mode && tk_m.clen)
         len = tk_m.clen;                                 /* (a roll: the part's loop is the doubled one: the call is the first half) */
@@ -416,8 +420,13 @@ static uint32_t tk_gen(uint32_t src, uint32_t dst, uint32_t seed, uint32_t mode)
     tk_ps = tk_gp(ts);
     tk_pd = tk_gp(td);
     dlen = tk_ps == tk_pd || !tk_pd ? tk_slen : (tk_slen * tk_ps + tk_pd / 2u) / tk_pd;
+    if (tk_pd && tk_pd != tk_ps && (tk_pd > tk_ps || dlen > NSTEP)) {   /* b10 (M02's pad, an ARP SEQ part at a slow rate, gave NO ANSWER): the answer wins - when the part's own grid is too coarse to hold it (or too fine to fit 64 steps) it is written on the take's grid and the part's RATE / DIV is set to match while the answer stands (the history step holds the old one) */
+        gset = 1;
+        tk_pd = tk_ps;
+        dlen = tk_slen;
+    }
     if (!dlen || dlen > NSTEP)
-        return 0;                                        /* (the answer's grid is too slow or too fast for the take to fit 64 steps) */
+        return 0;
     if (!tk_pd)
         tk_pd = tk_ps;
     tk_olen = dlen;
@@ -445,6 +454,8 @@ static uint32_t tk_gen(uint32_t src, uint32_t dst, uint32_t seed, uint32_t mode)
     fm1_irq_off();
     memcpy(td->step, tk_out, sizeof td->step);
     td->p[P_SLEN] = (int16_t)tk_olen;
+    if (gset)
+        td->p[tk_gi(td)] = ts->p[tk_gi(ts)];
     if (call)
         ts->p[P_SLEN] = (int16_t)tk_slen;               /* the call's loop doubles: the call, then the answer */
     fm1_irq_on();
@@ -460,6 +471,13 @@ static uint32_t tk_gen(uint32_t src, uint32_t dst, uint32_t seed, uint32_t mode)
 }
 
 /* ---- the header ---- */
+/* b10 (owner: "the text on the top that adding bass only briefly visible"): a take / answer message stays in the header for 4 bars (4 s at least, 8 s at most) unless another message replaces it: take_poll keeps its frames up */
+static void tk_hold(void)
+{
+    uint32_t bpm = (uint32_t)song.g[G_BPM];
+    tk_mh = str_hash(7u, ui.msg);
+    tk_mu = fm1_ms + (uint32_t)clamp((int32_t)(bpm ? 960000u / bpm : 8000u), 4000, 8000);
+}
 static void tk_cat(char *b, const char *s) { str_cpy(b + str_len(b), s, 48u - str_len(b)); }
 static void tk_say(const char *pre, uint32_t no)
 {
@@ -479,6 +497,7 @@ static void tk_say(const char *pre, uint32_t no)
     if (tk_m.flags & 2u)
         tk_cat(b, "?");
     ui_say(b, "");
+    tk_hold();
 }
 
 /* ---- the history ---- */
@@ -488,6 +507,8 @@ static void tk_save(tk_snap_t *d)
     for (p = 0; p < 2u; p++) {
         memcpy(d->s[p], trk[p].step, sizeof d->s[p]);
         d->len[p] = (uint8_t)trk[p].p[P_SLEN];
+        d->gr[p][0] = (uint8_t)trk[p].p[P_SDIV];
+        d->gr[p][1] = (uint8_t)trk[p].p[P_ARATE];
     }
     d->m = tk_m;
 }
@@ -498,6 +519,8 @@ static void tk_load(const tk_snap_t *d)
     for (p = 0; p < 2u; p++) {
         memcpy(trk[p].step, d->s[p], sizeof trk[p].step);
         trk[p].p[P_SLEN] = d->len[p];
+        trk[p].p[P_SDIV] = d->gr[p][0];
+        trk[p].p[P_ARATE] = d->gr[p][1];
     }
     fm1_irq_on();
     tk_m = d->m;
@@ -533,6 +556,7 @@ static __attribute__((noinline)) uint32_t take_undo(int32_t dir)
     tk_cat(b, hn & 0x8000u ? "ROLL " : "TAKE ");
     fmt_int(b + str_len(b), (int32_t)(hn & 0x7FFFu));
     ui_say(b, "");
+    tk_hold();
     return 1;
 }
 #define TAKE_STALE() (tk_fresh = 0)                       /* a load or a lock edit took the undo copy: the newest edit is not a take any more (ui.c) */
@@ -541,8 +565,8 @@ static __attribute__((noinline)) uint32_t take_undo(int32_t dir)
 static __attribute__((noinline)) void take_roll(uint32_t mask, uint32_t seed)
 {
     uint32_t ap;
-    if (!tk_m.ans || !((mask >> (tk_m.ans - 1u)) & 1u))
-        return;
+    if (tk_open || !tk_m.ans || !((mask >> (tk_m.ans - 1u)) & 1u))
+        return;                                          /* (not while a pass is open: its history step is the pass's) */
     ap = (uint32_t)tk_m.ans - 1u;
     if (steps_sig(&trk[ap]) != tk_m.sig)
         return;                                          /* the answer was edited since: it is the player's now */
@@ -612,17 +636,24 @@ static __attribute__((noinline)) void tk_close(uint32_t mask)                   
     if (!changed)
         return;
     tk_total++;
-    tk_m.ans = 0;
+    {
+        uint32_t sd = tk_live ? tk_m.seed : 0u;          /* (b10: the answer made while the pass was open keeps its seed: it changes only where the take did) */
+        tk_live = 0;
+        tk_m.ans = 0;
     if (nch == 1u && tide_answer && !tide_answer_on) {
         uint32_t o = 1u - who;
-        if (!((song.rec >> o) & 1u) && tk_gen(who, o, 0u, tide_answer)) {
+        if (!((song.rec >> o) & 1u) && tk_gen(who, o, sd, tide_answer)) {
             tk_m.roll = 0;
             tk_push(tk_total, 0u);
             tk_say(0, 0);
             return;
         }
         if (!((song.rec >> o) & 1u))
-            ui_message(tide_answer >= TA_REPLY ? "CALL: 2 BARS AT MOST" : "NO ANSWER: NO ROOM UNDER IT");   /* (REPLY and ECHO need room: the call and its answer share 64 steps; a take already in the bass register leaves none for a bass line) */
+        {
+            ui_message(tide_answer >= TA_REPLY ? "CALL: 2 BARS AT MOST" : "NO ANSWER: NO ROOM UNDER IT");
+            tk_hold();
+        }   /* (REPLY and ECHO need room: the call and its answer share 64 steps; a take already in the bass register leaves none for a bass line) */
+    }
     }
     tk_push(tk_total, 0u);
 }
@@ -642,9 +673,33 @@ static __attribute__((noinline)) void take_poll(void)                           
         tk_first = 0;
         return;
     }
+    if (tk_mu) {                                         /* a take / answer message is held: its frames are kept up while it is still the one shown */
+        if ((int32_t)(tk_mu - fm1_ms) > 0 && ui.msg_t && str_hash(7u, ui.msg) == tk_mh)
+            ui.msg_t = 40;
+        else
+            tk_mu = 0;
+    }
+    if (was && tide_answer && !tide_answer_on && tide_answer <= TA_DOUBLE && song.playing && !cin_left && (was == 1u || was == 2u)) {   /* b10 (owner: "the response should be generated instantly"): while REC stays armed on one part, the answer is made again in the last step of each loop pass, from the part's steps as they are then, so it lands on the next downbeat; BASS LINE and DOUBLE (REPLY and ECHO double the loop: at the close) */
+        uint32_t q = was & 1u ? 0u : 1u, len = TIDE_PLAY_LEN(&trk[q]), idx = TIDE_PLAY_IDX(&trk[q]);
+        if (((tk_first >> q) & 1u) || len < 2u)
+            tk_wd = 1;
+        else if (idx + 1u < len)
+            tk_wd = 0;
+        else if (!tk_wd) {
+            uint32_t sg = steps_sig(&trk[q]);
+            tk_wd = 1;
+            if (sg != tk_lsig && tk_gen(q, 1u - q, tk_live ? tk_m.seed : 0u, tide_answer)) {
+                tk_live = 1;
+                tk_lsig = sg;
+                tk_say(0, 0);
+            }
+        }
+    }
     if (now == was)
         return;
     if (now & ~was) {                                      /* a part armed */
+        tk_live = tk_wd = 0;
+        tk_lsig = steps_sig(&trk[now & 1u ? 0u : 1u]);   /* (the armed part's steps now: an answer is made when a pass has changed them) */
         if (!was)
             tk_save(&tk_pre);                              /* (the state of both parts when the pass opens) */
         for (p = 0; p < 2u; p++)
