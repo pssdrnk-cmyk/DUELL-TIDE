@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 """Pick the releases the DUELL with TIDE site publishes, and download their packages (the Pages workflow runs this).
 
-  releases.py --repo OWNER/NAME --out DIR [--releases-json FILE] [--no-download]
+  releases.py --repo OWNER/NAME --out DIR [--releases-json FILE] [--no-download] [--require-green [--tests-workflow FILE]]
 
 Two channels, from the repository's GitHub releases (drafts never count):
 
@@ -17,6 +17,11 @@ For each channel found it downloads the package and its .sha256 into DIR/<channe
 (the release data make_site.py turns into install/channels.json: tag, date, commit, SHA-256, release notes URL, notes body).
 The SHA-256 comes from the release's .sha256 asset and from GitHub's own digest of the asset; when both exist they must agree.
 Nothing found is not an error: the site then shows "not released yet" for that channel.
+
+--require-green (the Pages workflow passes it): a release is offered only if the commit of its tag has a green "Host tests" run (--tests-workflow, default
+host-tests.yml: any run of that workflow on exactly that commit that concluded success, push, pull request or manual). The newest release that passes is
+chosen; one that does not is skipped with the reason printed, and the next older one is looked at (a beta must still be newer than the chosen stable).
+A commit that cannot be resolved, or a run list that cannot be read, counts as not green: nothing red or unchecked is offered.
 
 --releases-json FILE reads `gh api repos/OWNER/NAME/releases` output instead of calling gh (tests, offline runs).
 --no-download only prints the choice (no files, no gh download or commit lookup).
@@ -64,13 +69,43 @@ def package_asset(rel, channel):
     return max(found, key=lambda a: parse_package(a["name"])["key"], default=None)
 
 
-def pick(releases):
-    """{"stable": release | None, "beta": release | None} by the rules above (releases: the REST API list)"""
+def pick(releases, ok=None):
+    """{"stable": release | None, "beta": release | None} by the rules above (releases: the REST API list). ok(release) -> bool is the
+    green-commit gate (--require-green): the newest release that passes it is chosen, the ones before it are skipped; None = no gate"""
+    ok = ok or (lambda rel: True)
     live = sorted((r for r in releases if not r.get("draft")), key=_when, reverse=True)
-    stable = max((r for r in live if not r.get("prerelease") and package_asset(r, "stable")), key=lambda r: _build(r, "stable"), default=None)
+    stables = sorted((r for r in live if not r.get("prerelease") and package_asset(r, "stable")), key=lambda r: _build(r, "stable"), reverse=True)
+    stable = next((r for r in stables if ok(r)), None)
     betas = sorted((r for r in live if r.get("prerelease") and package_asset(r, "beta")), key=lambda r: _build(r, "beta"), reverse=True)
-    beta = next((r for r in betas if stable is None or _build(r, "beta") > _build(stable, "stable")), None)
+    beta = next((r for r in betas if (stable is None or _build(r, "beta") > _build(stable, "stable")) and ok(r)), None)
     return {"stable": stable, "beta": beta}
+
+
+def tag_commit(repo, rel, run=None):
+    """the full commit SHA of a release's tag, or '' (the lookup the page's "commit" shows, too)"""
+    c = (run or gh)("api", f"repos/{repo}/commits/{rel['tag_name']}", "--jq", ".sha", check=False)
+    return c.stdout.strip() if c.returncode == 0 and re.fullmatch(r"[0-9a-f]{40}", c.stdout.strip()) else ""
+
+
+def green_gate(repo, workflow="host-tests.yml", run=None, say=print):
+    """-> ok(release): True when the commit of the release's tag has a successful run of the tests workflow. Fails closed (an unresolved commit, an API
+    error, no run, a red or still running one: False, with the reason through say). Remembers each commit it asked about. run = the gh caller (tests)."""
+    seen = {}
+
+    def ok(rel):
+        sha = tag_commit(repo, rel, run)
+        if not sha:
+            say(f"{rel['tag_name']}: skipped, the commit of the tag cannot be resolved")
+            return False
+        if sha not in seen:
+            r = (run or gh)("api", f"repos/{repo}/actions/workflows/{workflow}/runs?head_sha={sha}&status=success&per_page=1", "--jq", ".total_count", check=False)
+            n = r.stdout.strip()
+            seen[sha] = (r.returncode == 0 and n.isdigit() and int(n) > 0, "" if r.returncode == 0 else r.stderr.strip())
+        good, err = seen[sha]
+        if not good:
+            say(f"{rel['tag_name']}: skipped, no green {workflow} run on {sha[:9]}" + (f" ({err})" if err else ""))
+        return good
+    return ok
 
 
 def commit_in_body(body):
@@ -135,6 +170,8 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--releases-json")
     ap.add_argument("--no-download", action="store_true")
+    ap.add_argument("--require-green", action="store_true", help="offer only a release whose tag commit has a green Host tests run")
+    ap.add_argument("--tests-workflow", default="host-tests.yml")
     a = ap.parse_args()
     if a.releases_json:
         releases = read_releases_json(Path(a.releases_json).read_text(encoding="utf-8"))
@@ -145,7 +182,9 @@ def main():
         releases = read_releases_json(r.stdout) if r.returncode == 0 else []
         if r.returncode:
             print(f"could not list the releases ({r.stderr.strip()}): no package this time")
-    chosen = pick(releases)
+    if a.require_green and not a.repo:
+        raise SystemExit("--require-green needs --repo OWNER/NAME")
+    chosen = pick(releases, green_gate(a.repo, a.tests_workflow) if a.require_green else None)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     for channel in ("stable", "beta"):
@@ -165,8 +204,7 @@ def main():
         if any(x.get("name") == asset["name"] + ".sha256" for x in rel.get("assets", [])):
             gh("release", "download", rel["tag_name"], "--repo", a.repo, "--pattern", asset["name"] + ".sha256", "--dir", str(folder), "--clobber")
             sha_text = (folder / (asset["name"] + ".sha256")).read_text(encoding="utf-8", errors="replace")
-        c = gh("api", f"repos/{a.repo}/commits/{rel['tag_name']}", "--jq", ".sha", check=False)
-        commit = c.stdout.strip() if c.returncode == 0 and re.fullmatch(r"[0-9a-f]{40}", c.stdout.strip()) else ""
+        commit = tag_commit(a.repo, rel)
         data = info(rel, channel, commit, sha_text, str(folder / asset["name"]))
         (out / f"{channel}.json").write_text(json.dumps(data, indent=1) + "\n", encoding="utf-8")
 

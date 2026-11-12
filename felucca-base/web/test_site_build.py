@@ -5,9 +5,11 @@ No network, no gh. The fixture fixtures/releases_api.json is the shape of `gh ap
 import copy
 import hashlib
 import json
+import re
 import subprocess
 import sys
 import tempfile
+import types
 import unittest
 from pathlib import Path
 
@@ -29,6 +31,71 @@ def fake_package(product="FM-1_901", loader=True, extra=b""):
     if loader:
         raw[2000:2016] = b"FELUCCA-LOADER-1"
     return bytes(raw) + extra
+
+
+class Fake:
+    """a gh caller for the green gate: commits {tag: sha}, green = the commits whose Host tests run is green; records the paths it was asked"""
+
+    def __init__(self, commits, green, broken=()):
+        self.commits, self.green, self.broken, self.asked = commits, set(green), set(broken), []
+
+    def __call__(self, *args, check=True):
+        path = args[1]
+        self.asked.append(path)
+        if "/commits/" in path:
+            tag = path.split("/commits/")[1]
+            sha = self.commits.get(tag)
+            return types.SimpleNamespace(returncode=0 if sha else 1, stdout=(sha or "") + "\n", stderr="" if sha else "Not Found")
+        sha = re.search(r"head_sha=([0-9a-f]+)", path).group(1)
+        if sha in self.broken:
+            return types.SimpleNamespace(returncode=1, stdout="", stderr="HTTP 500")
+        return types.SimpleNamespace(returncode=0, stdout=("1" if sha in self.green else "0") + "\n", stderr="")
+
+
+class GreenGate(unittest.TestCase):
+    """--require-green: only a release whose tag commit has a green Host tests run is offered"""
+    SHA = {"stable-2026-11-03": "a" * 40, "beta-2026-11-04": "b" * 40}
+
+    def tags(self, fake, rels=None):
+        said = []
+        c = releases.pick(FIXTURE if rels is None else rels, releases.green_gate("o/r", run=fake, say=said.append))
+        return (c["stable"] or {}).get("tag_name"), (c["beta"] or {}).get("tag_name"), said
+
+    def test_both_green(self):
+        self.assertEqual(self.tags(Fake(self.SHA, self.SHA.values()))[:2], ("stable-2026-11-03", "beta-2026-11-04"))
+
+    def test_red_beta_is_not_offered(self):
+        st, be, said = self.tags(Fake(self.SHA, ["a" * 40]))
+        self.assertEqual((st, be), ("stable-2026-11-03", None))
+        self.assertTrue(any("beta-2026-11-04" in x and "no green" in x for x in said))
+
+    def test_red_stable_is_not_offered_and_the_beta_may_stand_alone(self):
+        self.assertEqual(self.tags(Fake(self.SHA, ["b" * 40]))[:2], (None, "beta-2026-11-04"))
+
+    def test_nothing_green_offers_nothing(self):
+        self.assertEqual(self.tags(Fake(self.SHA, []))[:2], (None, None))
+
+    def test_a_red_newest_stable_falls_back_to_the_older_green_one(self):
+        rels = copy.deepcopy(FIXTURE)
+        newer = copy.deepcopy(rels[2])
+        newer.update(tag_name="stable-2026-11-10", published_at="2026-11-10T08:00:00Z", created_at="2026-11-10T08:00:00Z")
+        newer["assets"] = [{"name": "duell-tide-stable-2026-11-10.fwsc", "size": 5}]
+        fake = Fake(dict(self.SHA, **{"stable-2026-11-10": "c" * 40}), ["a" * 40])
+        self.assertEqual(self.tags(fake, rels + [newer])[:2], ("stable-2026-11-03", None))
+
+    def test_an_unresolved_commit_or_an_api_error_fails_closed(self):
+        self.assertEqual(self.tags(Fake({}, self.SHA.values()))[:2], (None, None))
+        st, be, said = self.tags(Fake(self.SHA, self.SHA.values(), broken=["a" * 40]))
+        self.assertEqual((st, be), (None, "beta-2026-11-04"))
+        self.assertTrue(any("HTTP 500" in x for x in said))
+
+    def test_it_asks_for_exactly_the_tag_commit_and_the_tests_workflow(self):
+        fake = Fake(self.SHA, self.SHA.values())
+        self.tags(fake)
+        self.assertIn(f"repos/o/r/actions/workflows/host-tests.yml/runs?head_sha={'a' * 40}&status=success&per_page=1", fake.asked)
+
+    def test_without_the_gate_nothing_is_asked(self):
+        self.assertEqual(releases.pick(FIXTURE)["stable"]["tag_name"], "stable-2026-11-03")
 
 
 class Pick(unittest.TestCase):
