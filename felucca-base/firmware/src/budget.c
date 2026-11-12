@@ -139,6 +139,9 @@ static uint32_t bd_slope(const engine_t *e, const int16_t *p)  /* filter 1, the 
  * (mxs need XN_FM), held ~1 s after it stops, so the NOTES number is down before the fader reaches the bridge (budget_poll runs once a frame) */
 static uint8_t bd_mv[NLIVE], bd_mvf[NLIVE];
 static uint16_t bd_mvc[NLIVE];
+#define BD_AT_REST(pi) (FELUCCA_MOVECOST && !bd_mv[(pi) % NLIVE])   /* Later 10: the part's fader is still and no GLIDE runs: its transition costs (cross-fade, valley, wash) are not charged */
+#else
+#define BD_AT_REST(pi) 0
 #endif
 static void bd_end(const track_t *t, const morph_part_t *mp, uint32_t e, int16_t *q)
 {
@@ -199,12 +202,12 @@ static void bd_part(const track_t *t, bd_part_t *r)
         sl = s1 > sl ? s1 : sl;
         if (s0 && s1 && d0 != q[P_FREED])
             sl = 2;                                     /* (the slopes cross-fade: both stages run) */
-        r->ext += (fade ? BD_FADE : 0u) + BD_MORPH;
+        r->ext += (fade && !BD_AT_REST(pi) ? BD_FADE : 0u) + BD_MORPH;
 #if DUELL_TIDE
         /* TIDE's valley (morph_xfer.c morph_xstep: x->d, x->bv) runs only where the voices' own filter cannot carry the dip: the filter is not a low-pass that runs (x->lp, x->vf: here sl, as the plan reads it),
          * or a value of the filters themselves differs between the ends (SLOPE, MODE, filter 2's TYPE: XN_FILT). The dip in the voices' filter (morph_xcut) is BD_TIDE_DIP a voice. The wash runs whenever WASH is on */
         tide_v = BD_TIDE_DIP + (e == &ENG_FM6 ? (pi < NLIVE && (fm6_xt[pi].on || (bd_mv[pi] && (mxs[pi].need & XN_FM))) ? BD_TIDE_FM6 : BD_TIDE_FM6_IDLE) : 0u);   /* (owner 2026-11-06: the notes thin only while a crossing runs) */
-        tide = ((p[P_FREEC] <= 32 && e->ufilt && sl) && s1 == s0 && d0 == q[P_FREED] && m0 == q[P_FREEC] && w0 == q[P_TWTYPE] ? 0u : BD_TIDE_VALLEY) + (morph_wlvl ? BD_TIDE_WASH : 0u);   /* (the part's fixed cost below) */
+        tide = BD_AT_REST(pi) ? 0u : ((p[P_FREEC] <= 32 && e->ufilt && sl) && s1 == s0 && d0 == q[P_FREED] && m0 == q[P_FREEC] && w0 == q[P_TWTYPE] ? 0u : BD_TIDE_VALLEY) + (morph_wlvl ? BD_TIDE_WASH : 0u);   /* (the part's fixed cost below) */
         r->ext += tide_v;
 #endif
     }

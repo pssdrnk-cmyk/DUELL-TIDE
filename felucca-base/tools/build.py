@@ -395,6 +395,9 @@ def build_app():
     v = os.environ.get("FELUCCA_USB_LAYOUT")   # firmware/src/usb.c: how the USB composite presents itself (#67), 0..3
     if v in ("0", "1", "2", "3"):
         flags.append(f"-DFELUCCA_USB_LAYOUT={v}")
+    v = os.environ.get("FELUCCA_MOVECOST")     # firmware/src/core.h (Later 10 + 13): 1 = a part's morph costs charged only while a transition moves, the INSERT dip's blend in 1/256 steps; unset or 0: as before (the default until the unit sweep)
+    if v in ("0", "1"):
+        flags.append(f"-DFELUCCA_MOVECOST={v}")
     v = os.environ.get("DUELL_BUILD_DATE")   # ABOUT's date ("Nov  1 2026", __DATE__'s form): unset, the day of the build
     if not v and "--release" in sys.argv:    # a release carries the date of its commit, so a rebuild of the same commit is byte-identical
         try:

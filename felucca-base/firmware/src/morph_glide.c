@@ -241,7 +241,7 @@ static void glide_launch(uint32_t to, uint32_t mask, uint32_t pi)
         gl.armed = 2;
     }
 }
-static void glide_stop(void) { gl.on = 0, gl.armed = 0, gl.hold = 0, gl.hw[0] = gl.hw[1] = 0; }
+static void glide_stop(void) { gl.on = 0, gl.armed = 0, gl.hold = 0, gl.hw[0] = gl.hw[1] = 0; }   /* (morph_gliding follows at the next glide_poll, a pass later: clearing it here costs 4 B, b10 round 5, finding 35: left) */
 static int glide_running(void) { return gl.on != 0; }
 
 /* progress of the glide now, Q16 (0 at the start .. 1 at the end) */
