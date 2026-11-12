@@ -76,7 +76,8 @@ static void fill(const take_def_t *d)
     }
     t->p[P_SLEN] = (int16_t)(d->bars * 16);
     t->p[P_SDIV] = 2;                                    /* 1/16: a bar is 16 steps (the loaded multi's part may sequence on another grid) */
-    t->p[P_AMODE] = 0;
+    t->p[P_AMODE] = 0;    trk[1].p[P_SDIV] = 2;                                /* the answer's part on the same grid (the grid conversion has its own test, grid_mismatch) */
+    trk[1].p[P_AMODE] = 0;
 }
 static uint32_t all_sig = 2166136261u;                    /* (a hash of every answer made: the size pass of b10 round 10 must leave it as it was)
  */
@@ -212,6 +213,83 @@ static void reply_echo(void)
     printf("answer: REPLY / ECHO: %u cases of 2 bars or less pass the rules (9 seeds each)\n", passed);
     CHECK("REPLY / ECHO cases all pass", cases && passed == cases);
 }
+/* ---- a take down in the bass register (rc6.4-test, owner: "something weird ... it doesn't play consistently"): the answer's notes must stay audible (C1 or above), rub-free, and be more than one ---- */
+static void low_take(void)
+{
+    static const nt_t T5[] = {N(0,1,31), N(3,1,31), N(4,1,50), N(6,1,31), N(8,1,53), N(10,1,43), N(12,1,57), N(13,1,41), N(15,1,38)};   /* (what M12's part 1 sounds: G1 and up) */
+    static const take_def_t D = {"low_bass_take", 12, 1, 0, 0, T5, 9};
+    static const int LM[4] = {12, 6, 15, 3};            /* ELEC (8 onsets a bar), HSE, AMB, HSE */
+    for (int mi = 0; mi < 4; mi++)
+        for (int scl = 0; scl < 2; scl++)
+            for (uint32_t seed = 0; seed <= 4u; seed++) {
+                ev_t ev[128];
+                int n, i, low = 0, rub = 0, key = 0;
+                power();
+                project_load(MIDX(LM[mi] - 1));
+                frame();
+                scale_g = scl ? 2 : 0;
+                root_g = scl ? 7 : 0;
+                fill(&D);
+                trk[0].p[P_TRANS] = trk[1].p[P_TRANS] = 0;
+                trk[1].p[P_SLEN] = 16;
+                memset(trk[1].step, 0, sizeof trk[1].step);
+                tk_m.ans = 0;
+                {
+                    uint32_t wrote = tk_gen(0, 1, seed ? seed * 7919u : 0u, TA_BASS), sg0 = sig_of(&trk[1]);
+                    n = answer_events(ev, 128);
+                    if (!wrote) {                                  /* no room under the take: the other part is left as it was (empty here), never a single stray note */
+                        CHECK("a take in the bass register with no room: nothing is written", n == 0 && sg0 == sig_of(&trk[1]));
+                        continue;
+                    }
+                }
+                for (i = 0; i < n; i++) {
+                    low += ev[i].note < 24;
+                    rub += rubs(&D, &ev[i]);
+                    key += !tk_in_key(ev[i].note);
+                }
+                if (n < 1 || low || rub || key)
+                    printf("answer: low take on M%02d, seed %u: %d notes, %d under C1, %d rubs, %d out of key\n", MULTIS[mi], seed, n, low, rub, key);
+                CHECK("a take in the bass register: when a bass line is written, it has a note, none under C1, no rubs, in key", n >= 1 && !low && !rub && !key);
+            }
+}
+/* ---- the grids (rc6.4-test): an answer on an ARP SEQ part whose arp rate differs from the take's grid must land on the same moments in the arp's own steps ---- */
+static void grid_mismatch(void)
+{
+    static const uint8_t RATES[4] = {0, 1, 8, 9};
+    for (int mi = 0; mi < 2; mi++)
+        for (int ri = 0; ri < 4; ri++)
+            for (uint32_t mode = TA_BASS; mode <= TA_ECHO; mode++) {
+                const take_def_t *d = &TAKES[mode == TA_BASS ? 0 : 3];
+                uint32_t ps, pd, wrote, want_len, i, hits = 0, ok = 1;
+                power();
+                project_load(MIDX(MULTIS[mi] - 1));
+                frame();
+                fill(d);
+                trk[1].p[P_AMODE] = AM_SEQ_ID;
+                trk[1].p[P_ARATE] = RATES[ri];
+                trk[1].p[P_SLEN] = 4;
+                memset(trk[1].step, 0, sizeof trk[1].step);
+                tk_m.ans = 0;
+                ps = div_samples((uint32_t)trk[0].p[P_SDIV]);
+                pd = div_samples((uint32_t)trk[1].p[P_ARATE]);
+                want_len = (uint32_t)(d->bars * 16) * (mode >= TA_REPLY ? 2u : 1u);
+                want_len = ps == pd ? want_len : (want_len * ps + pd / 2u) / pd;
+                wrote = tk_gen(0, 1, 0, mode);
+                if (!wrote) {
+                    CHECK("a grid too slow or too fast for the take: nothing is written and the part's loop stays", want_len == 0u || want_len > NSTEP || trk[1].p[P_SLEN] == 4);
+                    continue;
+                }
+                ok &= (uint32_t)trk[1].p[P_SLEN] == want_len;
+                for (i = 0; i < NSTEP; i++)
+                    hits += trk[1].step[i].n != 0;
+                ok &= hits >= 1u && hits <= 4u * (uint32_t)d->bars * 16u;
+                for (i = want_len; i < NSTEP; i++)
+                    ok &= !trk[1].step[i].n;                   /* nothing past the converted loop */
+                if (!ok)
+                    printf("answer: grid M%02d arate %u mode %u: slen %d (want %u), %u steps with notes\n", MULTIS[mi], RATES[ri], mode, trk[1].p[P_SLEN], want_len, hits);
+                CHECK("an answer on a part with another grid: the loop is the take's in the part's steps, notes inside it, none past it", ok);
+            }
+}
 int main(void)
 {
     int ti, mi, ok_all = 1;
@@ -273,6 +351,10 @@ int main(void)
                 }
     printf("answer: %u takes x multis x answers x keys: %u pass every rule at seed 0; the rolls of 8 seeds gave at least 5 different answers in %u of %u bass cases of 2 bars or more\n", combos, passed, distinct_ok, distinct_cases);
     reply_echo();
+    printf("answer: hash of every answer made before the low takes: %08x", all_sig);
+    printf("%c", 10);
+    low_take();
+    grid_mismatch();
     CHECK("every answer at seed 0 passes the rules", passed == combos);
     CHECK("rolls give different answers in most bass cases", distinct_cases && distinct_ok * 4u >= distinct_cases * 3u);
     (void)ok_all;

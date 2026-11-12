@@ -114,9 +114,13 @@ static int32_t tk_note_of(int32_t d, int32_t o)
 static int32_t tk_triad_pc(int32_t d, int32_t i) { return tk_wrap((int32_t)tk_kr + tk_deg[(d + 2 * i) % (int32_t)tk_nd]); }
 
 /* ---- the take as events ---- */
-static uint32_t tk_spb(void)                             /* steps in a bar at the sequencer's division (16 at 1/16) */
+/* b10 (rc6.4-test: an answer on an ARP SEQ part played at the wrong speed or not at all): a part's steps sit on its own grid - the sequencer's division, or on an ARP SEQ part the arp's rate (seq.c arp_dur) - so a take is read
+ * in the grid of the part it was recorded on and the answer is written in the grid of the part that plays it (tk_put converts; equal grids: no change) */
+static uint32_t tk_gp(const track_t *t) { return div_samples((uint32_t)(arp_mode(t) == AM_SEQ_ID ? t->p[P_ARATE] : t->p[P_SDIV])); }
+static uint32_t tk_ps __attribute__((section(".pool"))), tk_pd __attribute__((section(".pool"))), tk_slen __attribute__((section(".pool")));   /* the take's grid, the answer's grid (samples a step), the take's length in steps */
+static uint32_t tk_spb(const track_t *t)                 /* steps in a bar on the part's grid (16 at 1/16) */
 {
-    uint32_t period = div_samples((uint32_t)trk[0].p[P_SDIV]), n = period ? (4u * click_beat_len() + period / 2u) / period : 16u;
+    uint32_t period = tk_gp(t), n = period ? (4u * click_beat_len() + period / 2u) / period : 16u;
     return n < 4u ? 4u : n > 64u ? 64u : n;
 }
 static __attribute__((noinline)) void tk_events(const track_t *t, uint32_t len)
@@ -187,8 +191,16 @@ static void tk_put(int32_t t, int32_t len, int32_t note, uint32_t vel, uint32_t 
 {
     step_t *s;
     int32_t i;
-    if (t < 0 || t >= (int32_t)tk_olen || note < 0 || note > 127)
+    if (t < 0 || t >= (int32_t)tk_slen || note < 0 || note > 127)
         return;
+    if (tk_ps != tk_pd) {                                /* the answer's part runs on another grid: the same moments, its own steps */
+        len = (int32_t)(((uint32_t)len * tk_ps + tk_pd / 2u) / tk_pd);
+        t = (int32_t)((uint32_t)t * tk_ps / tk_pd);
+        if (len < 1)
+            len = 1;
+        if (t >= (int32_t)tk_olen)
+            return;
+    }
     s = &tk_out[t];
     if (mono || s->time != ST_NOTE)
         memset(s, 0, sizeof *s);                         /* (a bass note is alone in its step; a tie gives way to a note) */
@@ -253,10 +265,10 @@ static int32_t tk_fit(int32_t t, int32_t len, int32_t cand)
     if (!tk_in_key(cand))
         return -1;
     if (tk_sounding(t, &plo))
-        while (cand > plo - 12 && cand > 12)
+        while (cand > plo - 12 && cand > 24)           /* (b10: never lower than C1: a take down in the bass register leaves no room under it, the bass stays audible or is not written) */
             cand -= 12;
     for (k = 0; k < 2; k++, cand -= 12)
-        if (cand >= 12 && !tk_rubs(t, len, cand))
+        if (cand >= 24 && !tk_rubs(t, len, cand))
             return cand;
     return -1;
 }
@@ -386,7 +398,7 @@ static uint32_t tk_genre(void)                           /* DUB HSE TECH ACID EL
 static uint32_t tk_gen(uint32_t src, uint32_t dst, uint32_t seed, uint32_t mode)
 {
     track_t *ts = &trk[src], *td = &trk[dst];
-    uint32_t len = seq_len(ts), spb = tk_spb(), bars, i, n = 0, call = mode >= TA_REPLY;
+    uint32_t len = seq_len(ts), spb = tk_spb(ts), bars, i, n = 0, call = mode >= TA_REPLY, dlen;
     int32_t shift = td->p[P_TRANS] - ts->p[P_TRANS];
     if (call && seed && tk_m.ans && tk_m.mode == mode && tk_m.clen)
         len = tk_m.clen;                                 /* (a roll: the part's loop is the doubled one: the call is the first half) */
@@ -400,7 +412,15 @@ static uint32_t tk_gen(uint32_t src, uint32_t dst, uint32_t seed, uint32_t mode)
         return 0;
     tk_key();
     memset(tk_out, 0, sizeof tk_out);
-    tk_olen = call ? 2u * len : len;
+    tk_slen = call ? 2u * len : len;
+    tk_ps = tk_gp(ts);
+    tk_pd = tk_gp(td);
+    dlen = tk_ps == tk_pd || !tk_pd ? tk_slen : (tk_slen * tk_ps + tk_pd / 2u) / tk_pd;
+    if (!dlen || dlen > NSTEP)
+        return 0;                                        /* (the answer's grid is too slow or too fast for the take to fit 64 steps) */
+    if (!tk_pd)
+        tk_pd = tk_ps;
+    tk_olen = dlen;
     if (mode == TA_REPLY)
         tk_reply(len, seed);
     else if (mode == TA_ECHO)
@@ -414,8 +434,8 @@ static uint32_t tk_gen(uint32_t src, uint32_t dst, uint32_t seed, uint32_t mode)
     }
     for (i = 0; i < tk_olen; i++)
         n += tk_out[i].n != 0;
-    if (!n)
-        return 0;
+    if (!n || (mode == TA_BASS && n < bars))
+        return 0;                                        /* (nothing, or less than a note a bar: the other part keeps its pattern; a take down in the bass register leaves no room under it) */
     if (shift)                                           /* (the answer sounds as written: the other part's TRN is taken off) */
         for (i = 0; i < tk_olen; i++)
             for (n = 0; n < tk_out[i].n; n++) {
@@ -426,7 +446,7 @@ static uint32_t tk_gen(uint32_t src, uint32_t dst, uint32_t seed, uint32_t mode)
     memcpy(td->step, tk_out, sizeof td->step);
     td->p[P_SLEN] = (int16_t)tk_olen;
     if (call)
-        ts->p[P_SLEN] = (int16_t)tk_olen;               /* the call's loop doubles: the call, then the answer */
+        ts->p[P_SLEN] = (int16_t)tk_slen;               /* the call's loop doubles: the call, then the answer */
     fm1_irq_on();
     tk_m.clen = (uint8_t)len;
     tk_m.ans = (uint8_t)(dst + 1u);
@@ -564,7 +584,7 @@ static __attribute__((noinline)) void tk_close(uint32_t mask)                   
         ch = memcmp(t->step, tk_pre.s[p], sizeof t->step) != 0;
         if ((tk_first >> p) & 1u) {
             if (ch) {                                    /* the first take: its length is the loop, whole bars */
-                uint32_t spb = tk_spb(), lw = 0, i, n, bars;
+                uint32_t spb = tk_spb(t), lw = 0, i, n, bars;
                 for (i = 0; i < NSTEP; i++)
                     if (t->step[i].n || t->step[i].time == ST_TIE)
                         lw = i + 1u;
@@ -601,8 +621,8 @@ static __attribute__((noinline)) void tk_close(uint32_t mask)                   
             tk_say(0, 0);
             return;
         }
-        if (tide_answer >= TA_REPLY && !((song.rec >> o) & 1u))
-            ui_message("CALL: 2 BARS AT MOST");           /* (REPLY and ECHO need room: the call and its answer share 64 steps) */
+        if (!((song.rec >> o) & 1u))
+            ui_message(tide_answer >= TA_REPLY ? "CALL: 2 BARS AT MOST" : "NO ANSWER: NO ROOM UNDER IT");   /* (REPLY and ECHO need room: the call and its answer share 64 steps; a take already in the bass register leaves none for a bass line) */
     }
     tk_push(tk_total, 0u);
 }
