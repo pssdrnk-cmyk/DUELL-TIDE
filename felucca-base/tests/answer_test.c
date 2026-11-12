@@ -78,7 +78,9 @@ static void fill(const take_def_t *d)
     t->p[P_SDIV] = 2;                                    /* 1/16: a bar is 16 steps (the loaded multi's part may sequence on another grid) */
     t->p[P_AMODE] = 0;
 }
-static uint32_t sig_of(const track_t *t) { return steps_sig(t); }
+static uint32_t all_sig = 2166136261u;                    /* (a hash of every answer made: the size pass of b10 round 10 must leave it as it was)
+ */
+static uint32_t sig_of(const track_t *t) { uint32_t h = steps_sig(t); all_sig = (all_sig ^ h) * 16777619u; return h; }
 /* the answer part's notes as events */
 typedef struct { int t, len, note; } ev_t;
 static int answer_events(ev_t *out, int max)
@@ -274,6 +276,7 @@ int main(void)
     CHECK("every answer at seed 0 passes the rules", passed == combos);
     CHECK("rolls give different answers in most bass cases", distinct_cases && distinct_ok * 4u >= distinct_cases * 3u);
     (void)ok_all;
+    printf("answer: hash of every answer made: %08x\n", all_sig);
     printf("answer: %u checks, %u FAIL\n", checks, failures);
     return failures ? 1 : 0;
 }

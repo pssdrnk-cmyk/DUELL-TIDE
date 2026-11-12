@@ -745,6 +745,16 @@ static __attribute__((noinline)) void tide_frac(char *l, uint32_t a, uint32_t b)
 /* AUTO TIDE's status line: what the glide does now, with its bar ("EVOLVING TO B  3/8", "WAITING  1/4"); stopped, the part(s) */
 static __attribute__((noinline)) void tide_status_arc(char *l, int arc);
 static void tide_status(char *l) { tide_status_arc(l, 1); }
+/* b10 round 9: knob 1's line while a take records: TAKE  BAR 3/4 (0: no take is recording) */
+static uint32_t take_text(char *l)
+{
+    uint32_t pr = 0, p = song.rec & 1u ? 0u : 1u, spb = tk_spb(), len = TIDE_PLAY_LEN(&trk[p]);
+    if (take_line(&pr) != 2u)
+        return 0;
+    str_cpy(l, "TAKE  BAR ", 40);
+    tide_frac(l, TIDE_PLAY_IDX(&trk[p]) / spb + 1u, len / spb ? len / spb : 1u);
+    return 1;
+}
 /* b10 Phase B (I4, I5): the trip without the ARC's words ("EVOLVING TO B  3/16", "WAITING  1/2"; armed, paused, a hand as tide_status) */
 static __attribute__((unused)) void tide_trip(char *l) { tide_status_arc(l, 0); }
 static __attribute__((unused)) void tide_trip_short(char *l) { tide_status_arc(l, 2); }   /* (the wave page's knob-1 line: no "BAR", it has less room) */
