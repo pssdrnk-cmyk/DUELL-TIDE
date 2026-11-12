@@ -982,7 +982,7 @@ this firmware sends 3 (DUELL 0.2.14: 7, bit 2 = ids 13..23 below; with the user 
 | 32..34 | user sample slots 1..3 (DUELL 0.2.9: retired, always listed empty; the archive keeps its ids) | 0 |
 
 Reading: `BACKUP_LIST` (no arguments) stops the transport, then takes a snapshot of the runtime object and
-answers `1, rc, count` (13 since 1.0.3, 12 with FM6 up to 1.0.2, 11 before; DUELL: 16 with caps 3, 27 with caps 7, 30 with caps 15, 40 with caps 31; **24 with caps 63**: 0, 1, 2..5, 8, 13..26, 32..34) and, per object in the order above, `id, size u32, crc u32` (CRC-32, zlib). The other objects are read as
+answers `1, rc, count` (13 since 1.0.3, 12 with FM6 up to 1.0.2, 11 before; DUELL: 16 with caps 3, 27 with caps 7, 30 with caps 15, 40 with caps 31; **24 with caps 63**: 0, 1, 2..5, 8, 13..26, 32..34; **29 with caps 127** (b10 U4, bit 6): 42..46 added) and, per object in the order above, `id, size u32, crc u32` (CRC-32, zlib). The other objects are read as
 they are in RAM or flash. Then `BACKUP_GET` reads an object in pieces: `id, offset u32, count lo, count hi`
 (count 1..256, LSB first 7 bit pair) answers `id, rc, offset u32, count lo, count hi` and the data as pack7. Check each object's CRC
 against the list; if it differs the device changed, so start again.
@@ -1021,7 +1021,7 @@ earlier objects restored; the file is still the source.
 A `LIST` replaces the snapshot, and a `PUT` begin ends it: a `GET` after a begin gets rc 5.
 
 **DUELL 0.2.14: the multis and the pattern slots are in the archive** (`42 01 7`, bit 2). The list is then 27 ids: 0..12, **13..20**, **21..23**, 32..34 (a
-0.2.13 unit lists the 16 without 13..23). **The user wavetables are in it too** (`42 01 15`, bit 3, value 8): 30 ids, **24..26** added (a unit with caps 7 lists 27). **DUELL 0.2.15: the patch store's other ten chunks are in it** (`42 01 31`, bit 4, value 16): 40 ids, **27..31** and **35..39** added (a unit with caps 15 lists 30). (**Cloud plan job A, caps 63, takes all the patch chunk ids away again: 24 ids and the patch records, "Patch records in the archive" below.**) The ids 2..5, 8 and 32..34 are retired and always empty; the web editor's `duell-backup` file leaves them out.
+0.2.13 unit lists the 16 without 13..23). **b10 U4: the multis M17 to M26 are in it** (`42 01 127`, bit 6, value 64): ids **42..46** (two multis an object, M17-18 .. M25-26, the same `MUL1` object as 13..20; 41 is the FM6 voice bank). A unit lists all five: the last object (M25, M26) reads empty until the unit has those slots, and a `PUT` of it is kept as it is. The `duell-backup` file is then "version 6"; a version 5 file has none of them and its restore leaves M17 and up as they are. **The user wavetables are in it too** (`42 01 15`, bit 3, value 8): 30 ids, **24..26** added (a unit with caps 7 lists 27). **DUELL 0.2.15: the patch store's other ten chunks are in it** (`42 01 31`, bit 4, value 16): 40 ids, **27..31** and **35..39** added (a unit with caps 15 lists 30). (**Cloud plan job A, caps 63, takes all the patch chunk ids away again: 24 ids and the patch records, "Patch records in the archive" below.**) The ids 2..5, 8 and 32..34 are retired and always empty; the web editor's `duell-backup` file leaves them out.
 
 | id | object | size |
 | --- | --- | --- |

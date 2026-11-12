@@ -204,7 +204,7 @@ static int preferences(void)
         host_wire[e - 61] == 1 && host_wire[e - 60] == 9 &&
         host_wire[e - 59] == 0x4d && host_wire[e - 58] == 1 &&
         host_wire[e - 57] == 64u && host_wire[e - 56] == 1 &&   /* (64 kept: 41 01 says 128) */
-        host_wire[e - 55] == 0x42 && host_wire[e - 54] == 1 && host_wire[e - 53] == 63 &&   /* (the cloud plan's job A: bit 5, the patch store as logical records, object 40 + a slot; DUELL 0.2.15: bit 4, the patch store's chunks 6..15 as backup ids 27..31 and 35..39; DUELL 0.2.14: bit 2, multis and pattern slots in the backup; bit 3, the user wavetables 24..26 and cmds 81..83) */
+        host_wire[e - 55] == 0x42 && host_wire[e - 54] == 1 && host_wire[e - 53] == 127 &&   /* (the cloud plan's job A: bit 5, the patch store as logical records, object 40 + a slot; DUELL 0.2.15: bit 4, the patch store's chunks 6..15 as backup ids 27..31 and 35..39; DUELL 0.2.14: bit 2, multis and pattern slots in the backup; bit 3, the user wavetables 24..26 and cmds 81..83) */
         host_wire[e - 52] == 0x46 && host_wire[e - 51] == 1 && host_wire[e - 50] == FM6_NFACTORY &&
         host_wire[e - 49] == 0 &&                        /* (no bank since 1.0.3) */
         host_wire[e - 48] == 0x53 && host_wire[e - 47] == 1 && host_wire[e - 46] == 3 &&
@@ -445,7 +445,7 @@ static int samples(void)
 /* (DUELL: the song protocol went with the song mode: ED_SONG_RETIRED keeps the id) */
 static int malformed_saves(void)
 {
-    static const uint8_t slot[] = {1, 16}, name[] = {0, 'X', 0, 'Y'};
+    static const uint8_t slot[] = {1, MU_SLOTS}, name[] = {0, 'X', 0, 'Y'};
     const uint8_t save[] = {1, 0};
     int bad = 0;
     reset();
@@ -457,13 +457,13 @@ static int malformed_saves(void)
     TSEL->p[P_LEVEL] = 21; song.playing = 1; host_progress = 0;
     bad += check("PROJECT never confirms a used slot when STOP timed out (DUELL: the slot is a MULTI)",
                  !request(ED_PROJECT, save, sizeof save));
-    {   /* TIDE b6: a save to the ROM-only M17 / M18 is refused before the transport is touched: playback goes on, nothing is confirmed */
-        static const uint8_t rom[] = {1, 16}, rom2[] = {1, 17}, past[] = {1, 18};
-        song.playing = 1; host_progress = 1; transport_req = 0;
-        bad += check("PROJECT save to M17 / M18 (ROM only) is refused without stopping playback; slot 18 and up are invalid",
-                     !request(ED_PROJECT, rom, sizeof rom) && !request(ED_PROJECT, rom2, sizeof rom2) && !request(ED_PROJECT, past, sizeof past) &&
-                     song.playing && transport_req == 0u);
+    {   /* b10 U4: M17 .. M26 are stored slots like M01 .. M16: a save confirms and the slot no longer shows its factory multi; slot 26 and up are invalid */
+        static const uint8_t m17[] = {1, 16}, m24[] = {1, 25}, past[] = {1, 26};
         song.playing = 0; host_progress = 0;
+        bad += check("  PROJECT save to M17 answers", request(ED_PROJECT, m17, sizeof m17) == 9u);
+        bad += check("  PROJECT save to M26 answers", request(ED_PROJECT, m24, sizeof m24) == 9u);
+        bad += check("  M17 and M26 are stored now and used", !project_factory(16) && !project_factory(25) && project_used(16) && project_used(25));
+        bad += check("  slot 26 and up are invalid", !request(ED_PROJECT, past, sizeof past));
     }
     return bad;
 }

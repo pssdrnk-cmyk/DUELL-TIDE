@@ -62,12 +62,13 @@ def slot_bytes(slot: int) -> list[int]:
     """A slot in a GET / PUT begin: one 7-bit byte; a slot of 128..191 a second byte, its bit 7 (JAM bank: the unit takes the longer request)."""
     return [slot & 127] if slot < 128 else [slot & 127, slot >> 7]
 REC_FIX, REC_WORST = 20, 580   # (PT_VER 4: the unit's PT_WORST 577 + TIDE's 3)
-CAPS_MULTI_PATTERN, CAPS_WAVETABLES, CAPS_PATCH16, CAPS_PATCH_RECORDS = 4, 8, 16, 32
-FORMAT, VERSION = "duell-backup", 5
-DUELL_IDS = [0, 1, *range(13, 27)]
-RESTORE_ORDER = [*range(13, 27), 1, 0]
+CAPS_MULTI_PATTERN, CAPS_WAVETABLES, CAPS_PATCH16, CAPS_PATCH_RECORDS, CAPS_MULTI_MORE = 4, 8, 16, 32, 64
+FORMAT, VERSION = "duell-backup", 6   # (6: the multis M17..M26, ids 42..46, caps bit 6; duellbackup.js)
+MULTI2_IDS = [42, 43, 44, 45, 46]
+DUELL_IDS = [0, 1, *range(13, 27), *MULTI2_IDS]
+RESTORE_ORDER = [*range(13, 21), *MULTI2_IDS, *range(21, 27), 1, 0]
 OLD_PATCH_IDS = [6, 7, 9, 10, 11, 12, 27, 28, 29, 30, 31, 35, 36, 37, 38, 39]
-KNOWN_IDS = set([0, 1, 2, 3, 4, 5, 8, *range(13, 27), 41, 32, 33, 34, *OLD_PATCH_IDS])
+KNOWN_IDS = set([0, 1, 2, 3, 4, 5, 8, *range(13, 27), 41, *MULTI2_IDS, 32, 33, 34, *OLD_PATCH_IDS])
 # FM6's voice bank (DUELL with TIDE, INFO tag 44 01 bit 1; duellbackup.js FVB_ID): object 41, read with GET (not in the plain LIST; rc 1 = the unit holds none), written back voice
 # by voice with FM6B_BEGIN / WRITE / END (cmds 74..76). The object is the stored payload (a 32 byte header: "FM6V", 1, 32, the used mask, a 12 character name; the 32 voices of 112 bytes,
 # a record's 128 7-bit bytes packed 8 to 7) and its CRC-32 (u32 little endian) after it.
@@ -776,7 +777,7 @@ def check_object(key: int, b: bytes) -> Optional[str]:
             return "not an FM6 voice bank"
         return None if crc32(b[:FVB_LEN]) == _u32le(b, FVB_LEN) else "the voice bank failed its checksum"
     g = group_key(key)
-    if g == "multis":
+    if g in ("multis", "multis2"):
         return multi_problem(b)
     if g == "patterns":
         return pattern_problem(key - 21, b) if n else None
@@ -797,6 +798,9 @@ def object_label(key: int, b: Optional[bytes] = None) -> str:
         return "the settings"
     if 13 <= key <= 20:
         a = 2 * (key - 13) + 1
+        return f"multis M{a:02d} and M{a + 1:02d}"
+    if key in MULTI2_IDS:
+        a = 2 * (key - 42) + 17
         return f"multis M{a:02d} and M{a + 1:02d}"
     if 21 <= key <= 23:
         a = 11 * (key - 21) + 1
@@ -822,7 +826,8 @@ class Group:
 GROUPS = [Group("patches", "Patches", [], CAPS_PATCH_RECORDS, True), Group("multis", "Multis", list(range(13, 21)), CAPS_MULTI_PATTERN),
           Group("patterns", "Pattern slots", [21, 22, 23], CAPS_MULTI_PATTERN), Group("wavetables", "User wavetables", [24, 25, 26], CAPS_WAVETABLES),
           Group("fm6bank", "FM6 voice bank (B1 to B32)", [FVB_ID], 0, False, True),
-          Group("settings", "Settings", [1], 0), Group("music", "Current music (both parts)", [0], 0)]
+          Group("settings", "Settings", [1], 0), Group("music", "Current music (both parts)", [0], 0),
+          Group("multis2", "Multis M17 and up", MULTI2_IDS, CAPS_MULTI_MORE, False, True)]   # (optional: a file from before version 6 has none; last, as duellbackup.js)
 
 
 @dataclass
@@ -914,6 +919,8 @@ def _check_versions(version: int, items: list) -> None:
         raise DuellError(f"This backup is version {version}, which carries patches as records, but it holds patch chunks (ids 6, 7, 9 to 12, 27 to 31, 35 to 39): it is damaged.")
     if version < 5 and PATCH_ID in ids:
         raise DuellError(f"This backup is version {version}, which has no patch records (id {PATCH_ID}): it is damaged.")
+    if version < 6 and any(i in MULTI2_IDS for i in ids):
+        raise DuellError(f"This backup is version {version}, which has no multis M17 and up (ids 42 to 46): it is damaged.")
 
 
 def read_archive(file) -> Archive:
@@ -1220,7 +1227,7 @@ def _object_steps(g: Group, a: Archive, include_raw: bool, plan: Plan) -> None:
         if o.raw and not include_raw:
             plan.excluded.append((label, f"it could not be checked when the backup was made ({o.problem}); the unit keeps what it holds there"))
             continue
-        old = next((v for v in multi_versions(o.data) if v != (8, MUSIC_P_COUNT)), None) if g.key == "multis" and not o.raw else None   # (MU_VER 8 since 1.1)
+        old = next((v for v in multi_versions(o.data) if v != (8, MUSIC_P_COUNT)), None) if g.key in ("multis", "multis2") and not o.raw else None   # (MU_VER 8 since 1.1)
         if old and not include_raw:
             plan.excluded.append((label, f"a multi record of version {old[0]}, which this firmware does not load; the unit keeps what it holds there"))
             continue

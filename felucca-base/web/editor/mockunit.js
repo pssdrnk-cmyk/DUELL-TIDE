@@ -4,7 +4,7 @@
 // editor/?mock=1 (try the page without a unit). It is NOT the firmware: the C tests (tests/backup_test.c) cover that.
 import { BACKUP_CMD, bkU32, bkR32, bkPack, bkUnpack, bkCrc } from "../fm1backup.js";
 import { PS as PATS, buildPatObject, nslotOf } from "./patslot.js";
-import { checkObject, DUELL_IDS, decodeMultis, OLD_PATCH_IDS, CAPS_PATCH_RECORDS, PATCH_ID, PATCH_PAGE, PATCH_PAGES, PATCH_MAX, FVB_ID, FVB_LEN, FVB_OBJ, FVB_N, FVB_REC, FVB_PK, FVB_HEAD, FM6B_CMD, packVoice } from "./duellbackup.js";
+import { checkObject, DUELL_IDS, decodeMultis, multiObjId, OLD_PATCH_IDS, CAPS_PATCH_RECORDS, PATCH_ID, PATCH_PAGE, PATCH_PAGES, PATCH_MAX, FVB_ID, FVB_LEN, FVB_OBJ, FVB_N, FVB_REC, FVB_PK, FVB_HEAD, FM6B_CMD, packVoice } from "./duellbackup.js";
 import { WT, buildObject, parseObject, cleanName, ampToByte } from "./wavetable.js";
 import { CMD, v14, rv14, cstr, rstr } from "./proto.js";
 import { L, ID, X, NX, descOf, xdescOf, xDefaults, clampTo, P_E0 } from "./layout.js";
@@ -146,7 +146,7 @@ export class MockUnit {
     this.parts = [defaultPart(0), defaultPart(12)];
     this.parts[1].p[ID.P_PAN] = 20;
     this.g = L.GP.map((d) => d.def); this.selected = 0; this.watching = false; this.onpush = null; this.watchTime = 0;
-    this.patches = new Map(); this.multiStored = Array(16).fill(null); this.multiUsedExtra = new Set();
+    this.patches = new Map(); this.multiStored = Array(26).fill(null); this.multiUsedExtra = new Set();
     this.menu = MENU.map((m) => m.slice()); this.learn = []; this.steps = [0, 1].map(() => Array.from({ length: 64 }, (_, i) => ({ index: i, n: i % 4 === 0 ? 1 : 0, notes: [i % 4 === 0 ? 48 + (i % 12) : 0, 0, 0, 0], time: i % 4 === 0 ? 0 : 2, flags: 0, vel: 100, hits: [0, 0, 0], chance: 100, ratchet: 1, nudge: 8 })));
     for (const st of this.steps) {      // a few things to look at: a chord held over two TIEs, a SLIDE, a RATCHET, a CHANCE, an accent
       Object.assign(st[8], { n: 2, notes: [55, 59, 0, 0], time: 0, vel: 90 }); Object.assign(st[9], { n: 0, notes: [0, 0, 0, 0], time: 1 }); Object.assign(st[10], { n: 0, notes: [0, 0, 0, 0], time: 1 });
@@ -176,9 +176,9 @@ export class MockUnit {
       for (const [id, r] of chunks) if (r.length) this.objs.set(id, buildLegacyPatchChunk(r)); else this.objs.delete(id);
     }
     if (this.caps & 8) this.tables.forEach((t, u) => { if (t) this.objs.set(24 + u, buildObject(t.name, t.data)); else this.objs.delete(24 + u); });
-    if (this.caps & 4) for (let o = 0; o < 8; o++) {
+    if (this.caps & 4) for (let o = 0; o < ((this.caps & 64) ? 13 : 8); o++) {
       const n = [this.multiStored[2 * o], this.multiStored[2 * o + 1]];
-      if (n[0] == null && n[1] == null) this.objs.delete(13 + o); else this.objs.set(13 + o, buildMultiObject(n));
+      if (n[0] == null && n[1] == null) this.objs.delete(multiObjId(o)); else this.objs.set(multiObjId(o), buildMultiObject(n));
     }
   }
   // the stored record of a saved slot (built from the entry when it has none yet), as the unit holds it: slot and revision set
@@ -197,9 +197,9 @@ export class MockUnit {
   // a BACKUP_PUT committed object id: take the multis / wavetables from the objects
   fromObjects(id) {
     if (id >= 24 && id <= 26) { const b = this.objs.get(id); this.tables[id - 24] = b && b.length ? parseObject(b) : null; }
-    if (id >= 13 && id <= 20) {
-      this.multiStored = Array(16).fill(null);
-      for (const m of decodeMultis([...Array(8).keys()].map((o) => this.objs.get(13 + o) || null))) this.multiStored[+m.label.slice(1) - 1] = m.name;
+    if (id >= 13 && id <= 20 || id >= 42 && id <= 46) {
+      this.multiStored = Array(26).fill(null);
+      for (const m of decodeMultis([...Array(13).keys()].map((o) => this.objs.get(multiObjId(o)) || null))) this.multiStored[+m.label.slice(1) - 1] = m.name;
     }
   }
   info() {
@@ -219,7 +219,7 @@ export class MockUnit {
   }
   get capacity() { return this.caps & 16 ? this.storeMax : 48; }                // the patches the unit holds (INFO tag 58 01 with caps bit 4)
   get records() { return (this.caps & CAPS_PATCH_RECORDS) !== 0; }    // caps bit 5: the patches go one at a time as records (editor_backup.c); without it the unit is an older firmware: no pages, GET / PUT of 40 answer rc 1
-  has(id) { return [0, 1, 2, 3, 4, 5, 8, 32, 33, 34].includes(id) || (OLD_PATCH_IDS.includes(id) ? !this.records && (id < 27 || (this.caps & 16) !== 0) : id >= 24 ? (this.caps & 8) !== 0 && id <= 26 : id >= 13 && id <= 23 && (this.caps & 4) !== 0); }
+  has(id) { return [0, 1, 2, 3, 4, 5, 8, 32, 33, 34].includes(id) || (OLD_PATCH_IDS.includes(id) ? !this.records && (id < 27 || (this.caps & 16) !== 0) : id >= 24 ? (this.caps & 8) !== 0 && id <= 26 : id >= 13 && id <= 23 && (this.caps & 4) !== 0) || (id >= 42 && id <= 46 && (this.caps & 64) !== 0); }
   patchBytes(slot) { const v = slot < 128 ? this.patches.get(slot) : null; return v ? this.recordOf(v).slice().fill(0, 2, 4) : null; }   // the saved record as the store gives it out (up_raw_get): slot and revision 0
   push(cmd, args) { if (this.watching && this.onpush) this.onpush(cmd, args); }
   // ---- what the unit's panel does (tests and the page's "turn a knob on the unit" button)
@@ -257,7 +257,7 @@ export class MockUnit {
       if (a.length) return [1, 1, 0];
       if (this.playing) return [1, 3, 0];
       this.listed = true;
-      const ids = this.records ? [0, 1, 2, 3, 4, 5, 8, ...(this.caps & 4 ? [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23] : []), ...(this.caps & 8 ? [24, 25, 26] : []), 32, 33, 34]   // (24 in all with caps 63)
+      const ids = this.records ? [0, 1, 2, 3, 4, 5, 8, ...(this.caps & 4 ? [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23] : []), ...(this.caps & 8 ? [24, 25, 26] : []), 32, 33, 34, ...(this.caps & 64 ? [42, 43, 44, 45, 46] : [])]   // (24 in all with caps 63; 29 with 127, b10 U4)
         : [...Array(13).keys(), ...(this.caps & 4 ? [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23] : []), ...(this.caps & 8 ? [24, 25, 26] : []), ...(this.caps & 16 ? [27, 28, 29, 30, 31] : []), 32, 33, 34, ...(this.caps & 16 ? [35, 36, 37, 38, 39] : [])];   // an older firmware lists its patch chunks
       return [1, 0, ids.length, ...ids.flatMap((id) => { const v = this.objs.get(id); return [id, ...bkU32(v ? v.length : 0), ...bkU32(v && v.length ? bkCrc(v) : 0)]; })];
     }
@@ -408,8 +408,8 @@ export class MockUnit {
         q.fm6 = Uint8Array.from(a.slice(2)); q.p[P_E0 + 7] = 8; return [a[0], a[1], 0];
       }
       case CMD.PROJECT: {
-        if (a[1] > 15) return undefined;
-        const used = this.multiStored[a[1]] != null || a[1] < 16 || this.multiUsedExtra.has(a[1]);   // (DUELL 0.2.23: all sixteen slots hold a factory multi)
+        if (a[1] > ((this.caps & 64) ? 25 : 15)) return undefined;
+        const used = this.multiStored[a[1]] != null || a[1] < ((this.caps & 64) ? 26 : 16) || this.multiUsedExtra.has(a[1]);   // (DUELL 0.2.23: all sixteen slots hold a factory multi)
         if (a[0] === 2) return [2, a[1], used ? 1 : 0];
         if (a[0] === 1) {
           if (this.playing) throw new Error("mock unit: no reply (playing)");
@@ -626,7 +626,7 @@ export class MockUnit {
       if (!RETIRED_IDS.includes(id) && ((!DUELL_IDS.includes(id) && !OLD_PATCH_IDS.includes(id)) || !this.has(id))) return ret(1);   // (the retired ids 2..5 and 8 are accepted and dropped, as editor_backup.c does for an older archive)
       const size = bkR32(a, 2), crc = bkR32(a, 7);
       const bad = size > 3840 || (id === 0 && size !== 3840) || (id === 1 && size !== this.settingsSize) ||
-        (id >= 13 && id <= 20 && size && size < 8) || (id >= 21 && id <= 23 && size && (size < 8 || size > 3584)) || (id >= 24 && id <= 26 && size && size !== WT.OBJ);
+        ((id >= 13 && id <= 20 || id >= 42 && id <= 46) && size && size < 8) || (id >= 21 && id <= 23 && size && (size < 8 || size > 3584)) || (id >= 24 && id <= 26 && size && size !== WT.OBJ);
       if (bad) return ret(1);
       if (this.playing) return ret(3);
       this.staged = { id, size, crc, bytes: new Uint8Array(size), pos: 0 };

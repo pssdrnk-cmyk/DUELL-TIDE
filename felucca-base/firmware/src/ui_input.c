@@ -825,9 +825,7 @@ static void patch_save_ask(void)
     }
     if (cur_page()->graph == GR_SLOTS) {    /* MULTIS: the multi picked, the music over it under its name (an empty slot: NAME) */
         uint32_t k = (uint32_t)(song.g[G_SLOT] - 1) % MU_SHOWN;
-        if (MU_ROM(k))                                  /* (TIDE b6: M17, M18 are ROM only) */
-            ui_message(MU_ROM_SAY);
-        else if (transport_busy())
+        if (transport_busy())
             ui_message("STOP TO SAVE");
         else if (project_used(k))
             confirm_open(CF_HOLD_MULTI, k);
@@ -1667,9 +1665,7 @@ static void act_do(void)
         if (c == 1u) {
             project_load(k);                              /* (no dialog, as PROJECT's LOAD; playing: it goes on) */
         } else if (c == 2u) {
-            if (MU_ROM(k))                                /* (TIDE b6: M17, M18 are ROM only: an edit of one saves into M01..M16) */
-                ui_message(MU_ROM_SAY);
-            else if (transport_busy())
+            if (transport_busy())
                 ui_message("STOP TO SAVE");
             else if (project_used(k))
                 confirm_open(CF_OVR_PROJ, k);             /* OVERWRITE M05? */

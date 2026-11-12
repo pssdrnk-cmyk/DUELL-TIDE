@@ -2,7 +2,7 @@
 // DUELL editor (0.2.25): the unit's stored MULTIS and PATTERN SLOTS as the editor reaches them, through the backup objects (EDITOR_PROTOCOL.md
 // "v7: full backup": BACKUP_LIST / GET / PUT; there is no command of their own). A LIST stops playback on the unit; a PUT is checked by the unit
 // (shape, version, CRC) and written power-cut safe; the partner records of an object are copied unchanged.
-//   multis: ids 13..20, two to an object (magic MUL1, u16 lengths, record 1, record 2; multi.c). A record is the whole multi (both parts, steps,
+//   multis: ids 13..20 (and, INFO caps bit 6, 42..46 for M17..M26), two to an object (magic MUL1, u16 lengths, record 1, record 2; multi.c). A record is the whole multi (both parts, steps,
 //           effects, End B as values, mode, name at byte 8); its first byte is its version (the firmware loads only its own: 8 since ROLL CHAINED storage, multi.c MU_VER).
 //   patterns: ids 21..23, 11 + 11 + 10 slots (magic PTS3: compact objects of the unit's own, patslot.js; patslot.c). The editor's record of one slot is 596 bytes: used 0xA7, version 2,
 //           LEN DIV SWING GATE QUANTIZE, flags, name 12, 64 x 9-byte steps
@@ -11,7 +11,7 @@ import { BACKUP_CMD, bkU32, bkR32, bkPack, bkUnpack, bkCrc } from "../fm1backup.
 import { CMD, v14, parseStep, stepBytes } from "./proto.js";
 import { ID } from "./layout.js";
 import { UnitError } from "./unit.js";
-import { checkObject, MULTI_VERSION } from "./duellbackup.js";
+import { checkObject, MULTI_VERSION, multiObjId, multiSlotsOf } from "./duellbackup.js";
 import { PS as PSF, parsePatObject, buildPatObject, nslotOf, recordProblem } from "./patslot.js";
 
 const u16 = (b, o) => b[o] | b[o + 1] << 8;
@@ -75,15 +75,16 @@ export function multiProblem(rec) {
   for (let i = 0; i < 12; i++) if (rec[8 + i] && (rec[8 + i] < 32 || rec[8 + i] > 126)) return "its name is damaged";
   return null;
 }
-export async function readMultis(u) {                       // -> { objs: Map id -> bytes, records: [rec | null] x16 }
-  const objs = await readObjects(u, [13, 14, 15, 16, 17, 18, 19, 20]);
-  return { objs, records: Array.from({ length: 16 }, (_, s) => multiRecord(objs.get(13 + (s >> 1)), s)) };
+export async function readMultis(u) {                       // -> { objs: Map id -> bytes, records: [rec | null] x16 (x26 with caps bit 6) }
+  const n = multiSlotsOf(u.info?.caps), objs = await readObjects(u, Array.from({ length: n / 2 }, (_, o) => multiObjId(o)));
+  return { objs, records: Array.from({ length: n }, (_, s) => multiRecord(objs.get(multiObjId(s >> 1)), s)) };
 }
 // a record into slot (the object read again first: the partner multi as the unit holds it now)
 export async function importMulti(u, slot, rec, name = null) {
   const why = multiProblem(rec); if (why) throw new UnitError(`This multi cannot go into this unit: ${why}.`);
   if (name) rec = setMultiName(rec, name);
-  const { objs } = await readMultis(u), id = 13 + (slot >> 1);
+  if (slot >= multiSlotsOf(u.info?.caps)) throw new UnitError(`This unit has no stored multi in slot ${M_LABEL(slot)} (its firmware keeps M01 to M16 only).`);
+  const { objs } = await readMultis(u), id = multiObjId(slot >> 1);
   await writeObject(u, id, withMultiRecord(objs.get(id), slot, rec));
 }
 export const MULTI_FORMAT = "duell-multis";

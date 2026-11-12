@@ -6,6 +6,7 @@ import { CMD, v14, rv14, cstr, parseInfo, parseTrackQuery, parseTrackDump, parse
 import { lo7, hi7, join7 } from "./modbypass.js";
 import { L, ID, P_E0, NX, X, descOf, xdescOf, xDefaults, clampTo } from "./layout.js";
 import { BACKUP_CMD, bkU32, bkR32, bkPack, bkUnpack, bkCrc } from "../fm1backup.js";
+import { multiObjId, multiSlotsOf } from "./duellbackup.js";
 
 export const UP_SLOTS = 128;   // the patch slots, ids 0..127 (DUELL 0.2.17: one list; a slot is its saved record or else the factory sound at that place of the list)
 export class UnitError extends Error { constructor(msg, rc) { super(msg); this.rc = rc; } }
@@ -353,7 +354,7 @@ export class Unit {
   // ---- multis
   async multiUsed() {
     const used = [];
-    for (let s = 0; s < 16; s++) { const a = await this.req(CMD.PROJECT, [2, s]); used.push(!!a[2]); }
+    for (let s = 0; s < multiSlotsOf(this.info?.caps); s++) { const a = await this.req(CMD.PROJECT, [2, s]); used.push(!!a[2]); }
     this.multis = used; this.emit("multis", used); return used;
   }
   async loadMulti(slot) {
@@ -369,24 +370,25 @@ export class Unit {
     if (!a[2]) throw new UnitError("The unit did not store the multi.");
     await this.multiUsed();
   }
-  // the multi objects (BACKUP ids 13..20; a LIST stops playback on the unit): returns [{slot, name} | null] x16 (stored records only)
+  // the multi objects (BACKUP ids 13..20, and 42..46 with caps bit 6; a LIST stops playback on the unit): returns [name | null] x16 (x26 with caps bit 6; stored records only)
   async readMultiObjects() {
     const l = await this.req(BACKUP_CMD.LIST, [], 4000);
     if (l[0] !== 1 || l[1] !== 0) throw new UnitError(l[1] === 3 ? "The unit is playing. Stop playback on the unit first." : `The unit refused the list (error ${l[1]}).`, l[1]);
     const n = l[2], sizes = new Map();
     for (let i = 0; i < n; i++) sizes.set(l[3 + i * 11], bkR32(l, 3 + i * 11 + 1));
     const objs = [];
-    for (let o = 0; o < 8; o++) {
-      const size = sizes.get(13 + o) ?? 0, b = new Uint8Array(size);
+    const nObj = multiSlotsOf(this.info?.caps) / 2;
+    for (let o = 0; o < nObj; o++) {
+      const size = sizes.get(multiObjId(o)) ?? 0, b = new Uint8Array(size);
       for (let off = 0; off < size; off += 256) {
-        const c = Math.min(256, size - off), a = await this.req(BACKUP_CMD.GET, [13 + o, ...bkU32(off), c & 127, c >> 7], 2500);
+        const c = Math.min(256, size - off), a = await this.req(BACKUP_CMD.GET, [multiObjId(o), ...bkU32(off), c & 127, c >> 7], 2500);
         if (a[1]) throw new UnitError(`The unit refused to read the multis (error ${a[1]}).`, a[1]);
         b.set(bkUnpack(a.slice(9), c), off);
       }
       objs.push(b);
     }
     this.multiObjs = objs;
-    const names = Array(16).fill(null);
+    const names = Array(nObj * 2).fill(null);
     objs.forEach((b, o) => { if (b.length >= 8) for (let h = 0, at = 8; h < 2; at += b[4 + 2 * h] | b[5 + 2 * h] << 8, h++) { const len = b[4 + 2 * h] | b[5 + 2 * h] << 8; if (len) names[2 * o + h] = text(b, at + 8, 12); } });
     this.multiNames = names; this.emit("multinames", names); return names;
   }
@@ -401,7 +403,7 @@ export class Unit {
     const at = 8 + (h ? len[0] : 0) + 8;
     for (let i = 0; i < 12; i++) b[at + i] = i < name.length ? name.charCodeAt(i) : 0;
     const put = async (args) => { const a = await this.req(BACKUP_CMD.PUT, args, 8000); if (a[2]) throw new UnitError(`The unit refused the write (error ${a[2]}).`, a[2]); };
-    const id = 13 + o;
+    const id = multiObjId(o);
     await put([0, id, ...bkU32(b.length), ...bkU32(bkCrc(b))]);
     try {
       for (let off = 0; off < b.length; off += 256) await put([1, id, ...bkU32(off), ...bkPack(b.subarray(off, off + 256))]);
