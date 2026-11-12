@@ -687,7 +687,7 @@ static void fm6_render(track_t *t, voice_t *v, int32_t *out, uint32_t len, const
 
 /* --------------------------------------------------------- the engine --- */
 static const char *const N_FM6_ALG[] = {
-                                        "PATCH",   /* (I13: the patch's own algorithm, as a word) */
+                                        "OWN",     /* (I13: the patch's own algorithm, as a word: OWN as SLOT says it; PATCH is too wide for the editor's macro cell) */
                                         "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13",
                                         "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25",
                                         "26", "27", "28", "29", "30", "31", "32", 0};

@@ -44,6 +44,7 @@
 #endif
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>          /* (strcmp in the text capture hook below, before hostsim.c: gcc 14 makes an implicit declaration an error) */
 /* DUELL 1.1 (item 127): the grid cards (ui_draw.c draw_card_grid) keep a hash, not "LABEL|VALUE|UNIT", in ui.col, so a test reads a card from the texts drawn in its rectangle:
  * GFX_HOOK_TEXT records every text with its ink box while txt_on is set (card_text / card_is / card_hid below). Only the tests that ask (UI_TEXT_CAPTURE, or this file's own main) build the hook. */
 #if defined(UI_TEXT_CAPTURE) || !defined(UI_TEST_NO_MAIN)
