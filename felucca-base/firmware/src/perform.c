@@ -103,6 +103,7 @@ static volatile uint8_t perf_beat;    /* ISR: the beats of the tempo, counted (s
 /* the knobs (ui_perform.c perf_knob; transient, never saved): K2 SPACE and K3 FILTER -100 .. 100, 0 = neutral (back to 0 when
  * PERFORM is left); K4 DEPTH 0 .. 100 % (kept until power-off) */
 static volatile int8_t perf_space, perf_filt;
+#define PF_FILT (perf_filt ? perf_filt : tarc_flt)    /* K3 FILTER as it plays: the player's knob, or at its rest ARC's (b10 round 6: tide.h tarc_flt) */
 static volatile int8_t perf_depth = 100;
 
 static struct {
@@ -366,7 +367,7 @@ static __attribute__((noinline)) int perf_begin(uint32_t n)
 {
     uint32_t held = perf_defer((perf_kill ? 0u : perf_held) & perf_avail());
     uint32_t q, k, ph0, bnd;
-    if (!held && !pf.busy && !perf_filt) {          /* nothing at the master: the clock only (and a mute's ramp) */
+    if (!held && !pf.busy && !PF_FILT) {          /* nothing at the master: the clock only (and a mute's ramp) */
         pf.ph += n;
         pf.sync = 0;
         perf_act = pf.act = pf.act0 = 0;
@@ -403,7 +404,7 @@ static __attribute__((noinline)) int perf_begin(uint32_t n)
     return 1;
 }
 /* the test of perf_begin's early way out, inlined in mix_block: nothing held, nothing ramping */
-static inline int perf_idle(void) { return !perf_held && !pf.busy && !pf.mute && !perf_filt; }
+static inline int perf_idle(void) { return !perf_held && !pf.busy && !pf.mute && !PF_FILT; }
 /* idle: the 1/16's clock only (samples since PLAY, as perf_begin counts them) */
 static inline void perf_tick(uint32_t n)
 {
@@ -728,14 +729,15 @@ static void pf_fade(int32_t *x, const int32_t *f, uint32_t n, int32_t *fa, int32
 /* K3 FILTER on the block (noinline: its own loop) */
 static __attribute__((noinline)) void perf_filter(int32_t *bl, int32_t *br, uint32_t n)
 {
-    uint32_t i, wm = perf_filt > 0 ? 1u : perf_filt < 0 ? 0u : pf.fm;
-    int32_t m = perf_filt < 0 ? -perf_filt : perf_filt, kt = m > PF_KILL ? (m - PF_KILL) * (32768 / (100 - PF_KILL)) : 0;
+    int32_t pv = PF_FILT;                               /* (one read: the player's or ARC's) */
+    uint32_t i, wm = pv > 0 ? 1u : pv < 0 ? 0u : pf.fm;
+    int32_t m = pv < 0 ? -pv : pv, kt = m > PF_KILL ? (m - PF_KILL) * (32768 / (100 - PF_KILL)) : 0;
     int32_t same, tk, ta, d, c[6], dc;
     if (!pf.fa && wm != pf.fm) {                        /* at rest: the other mode, from its open end */
         pf.fm = wm;
         pf.fk = 0;
     }
-    same = perf_filt && wm == pf.fm;
+    same = pv && wm == pf.fm;
     tk = same ? (m < PF_KILL ? m : PF_KILL) << 8 : 0;   /* (across the middle: open first) */
     d = tk - pf.fk;
     pf.fk += d > -16 && d < 16 ? d : d >> 4;            /* the glide: 1/16 of the way a block (11.6 ms) */
@@ -1021,7 +1023,7 @@ static __attribute__((noinline)) void perf_block(int32_t *bl, int32_t *br, uint3
         bl[i] = l;
         br[i] = r;
     }
-    if (perf_filt || pf.fa || pf.ka)
+    if (PF_FILT || pf.fa || pf.ka)
         perf_filter(bl, br, n);
     if ((pf.act & PF_BIT(PF_FLG)) || pf.fw || pf.fn)
         perf_flanger(bl, br, n);
@@ -1029,7 +1031,7 @@ static __attribute__((noinline)) void perf_block(int32_t *bl, int32_t *br, uint3
         perf_phaser(bl, br, n);
     if ((pf.act & PF_BIT(PF_PUMP)) || pf.pph)
         perf_pump(bl, br, n);
-    pf.busy = pf.act || pf.mode != BM_NONE || pf.w || pf.fa || pf.ka || pf.fw || pf.pw || pf.fn || pf.dw || pf.pph || perf_filt;
+    pf.busy = pf.act || pf.mode != BM_NONE || pf.w || pf.fa || pf.ka || pf.fw || pf.pw || pf.fn || pf.dw || pf.pph || PF_FILT;
 }
 
 /* the master's lines from silence (fx.c dm_lines_clear: a change between DUEL and STEREO / LAYER): a buffer effect held records anew */

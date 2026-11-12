@@ -204,7 +204,7 @@ typedef struct {
     int fx;                                             /* 0 full, 1 dry, 2 delay only (reverb 0), 3 reverb only (delay 0) */
     char nofx[8];
     int solo, uncap, transport, dump_params, control;   /* transport -1: default */
-    int keys_raw, keys_turn_ms;                         /* --keys-raw: the keys as pressed (part 1's TRN not compensated); --keys-turn MS: pressed one after another, in the order given */
+    int keys_raw, keys_turn_ms, arc;                    /* (arc: --arc off|rise|drop after the style, -1 = the style's) */                         /* --keys-raw: the keys as pressed (part 1's TRN not compensated); --keys-turn MS: pressed one after another, in the order given */
     double ringout;
     int skip;
     const char *out;
@@ -280,6 +280,7 @@ static int sl_run(const sl_opt_t *o, int argc, char **argv)
     int keys_n = 0, keys[8], keys_oct = 0, keys_drop = 0, k0_set = 0, stag_n = 0;
     uint32_t stag_bit[8] = {0};
     double bar_t[4096], ring_start = -1.0;
+    int8_t bar_ph[4096];                                 /* ARC's phase at each bar's start (-1: no arc running): "arc" in the JSON */
     uint8_t pst[2][NVOICE] = {{0}}, pact[2][NVOICE] = {{0}};
     uint32_t page[2][NVOICE] = {{0}};
     int open_v[2][NVOICE], vmax[2] = {0, 0}, fader0 = 0, fader1 = 0;
@@ -440,6 +441,8 @@ static int sl_run(const sl_opt_t *o, int argc, char **argv)
     skip = (uint32_t)(o->skip >= 0 ? o->skip : (o->tide && transport ? 4 : 0));
     if (o->tide) {
         tide_style_apply((uint32_t)style);
+        if (o->arc >= 0)
+            sqm_arc = (uint8_t)o->arc;                   /* (--arc: the TIDE LIST's ARC row by hand; on the unit that turns STYLE into CUSTOM) */
         if (o->tide == 1)
             gl.mode = GM_WANDER;
         else if (o->tide == 2)
@@ -470,6 +473,7 @@ static int sl_run(const sl_opt_t *o, int argc, char **argv)
     perbar = (uint32_t)(4.0 * FS * 60.0 / (song.g[G_BPM] ? song.g[G_BPM] : 120) / CTL);   /* control blocks a bar */
     guard = (nb + skip + 8u) * perbar * 2u + 8000u;
     bar_t[0] = 0.0;
+    memset(bar_ph, -1, sizeof bar_ph);
     fire_end = 0;
     if (nb > 4000u)
         return sl_die("--bars: at most 4000", 0);
@@ -523,6 +527,8 @@ static int sl_run(const sl_opt_t *o, int argc, char **argv)
                     bar_rec = (int)(bar - skip);
                     if (bar_rec > 0 && (uint32_t)bar_rec <= nb)
                         bar_t[bar_rec] = (double)nsamp / FS;
+                    if ((uint32_t)bar_rec < nb)
+                        bar_ph[bar_rec] = (int8_t)(sqm_arc && tarc.run ? tarc.phase : -1);
                     if (bar_rec > 0)
                         SL_DUMP_PARAMS(bar_rec);
                 }
@@ -539,6 +545,7 @@ static int sl_run(const sl_opt_t *o, int argc, char **argv)
                 bar_rec = (int)cur;
                 if (cur > 0)
                     bar_t[cur] = (double)nsamp / FS;
+                bar_ph[cur] = (int8_t)(sqm_arc && tarc.run ? tarc.phase : -1);
             }
         }
         if (o->keys_turn_ms > 0 && keys_n > 1 && nsamp < (uint32_t)(o->keys_turn_ms * (keys_n + 1) * (FS / 1000u))) {   /* --keys-turn: key i goes down at i * MS */
@@ -769,6 +776,9 @@ static int sl_run(const sl_opt_t *o, int argc, char **argv)
         fputs(",\n \"bar_starts\":[", fj);
         for (b = 0; b <= nb; b++)
             fprintf(fj, "%s%.6f", b ? "," : "", bar_t[b]);
+        fputs("],\n \"arc\":[", fj);                     /* ARC's phase at each bar: 0 RISE 1 PEAK 2 DROP 3 BREAK 4 RECOVER, -1 none (seq_arc.c AP_*) */
+        for (b = 0; b < nb; b++)
+            fprintf(fj, "%s%d", b ? "," : "", bar_ph[b]);
         fputs("],\n \"events\":[", fj);
         for (a = 0; a < nlog; a++) {
             const sl_ev_t *e = &log_ev[a];
@@ -918,7 +928,7 @@ int sl_render_main(int argc, char **argv)
     sl_opt_t o;
     int a, r = 0;
     memset(&o, 0, sizeof o);
-    o.multi = 0, o.sound = -1, o.bars = 16, o.style = -1, o.morph = -1, o.transport = -1, o.skip = -1, o.solo = 0;
+    o.multi = 0, o.sound = -1, o.bars = 16, o.style = -1, o.morph = -1, o.transport = -1, o.skip = -1, o.solo = 0, o.arc = -1;
     if (argc < 2) {
         sl_usage();
         return 2;
@@ -980,6 +990,11 @@ int sl_render_main(int argc, char **argv)
             NEEDV;
             if ((o.style = sl_style(v)) < 0)
                 return sl_die("--style DUB DEEP MINIMAL AMBIENT PEAK DRONE", v);
+        } else if (!strcmp(k, "--arc")) {
+            NEEDV;
+            o.arc = !strcmp(v, "off") ? 0 : !strcmp(v, "rise") ? 1 : !strcmp(v, "drop") ? 2 : -1;
+            if (o.arc < 0)
+                return sl_die("--arc off|rise|drop", v);
         } else if (!strcmp(k, "--pitch")) {
             NEEDV;
             o.pitch = !strcmp(v, "on");
