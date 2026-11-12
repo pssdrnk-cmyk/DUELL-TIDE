@@ -3564,7 +3564,7 @@ static void ui_draw(void)
 }
 /* b10 TIDE identity (design consult direction A, owner 2026-11-12): THE TIDE LINE. Rows 20 .. 26, between the header (its canvas rows 0 .. 19) and knob 1's line (rows 27 ..),
  * carry AUTO TIDE's state on every part page: nothing while it is off; dashes while armed; while it runs a 2 px wave of 2 px swell, 2.5 crests across, in the moved part's
- * colour (both parts: part 1's colour to part 2's across), full up to the trip's progress and dim after it, drifting with the wave page's belt (ui_scope.c wl_belt: the
+ * colour (both parts: part 1's colour to part 2's across), no progress of its own (one job a line: the trip's n/m, the ARC graph, the glide's knobs, the beat dot say theirs), drifting with the wave page's belt (ui_scope.c wl_belt: the
  * tempo's clock and its pace), a step a picture (mv_tick, ~16 a second; owner on rc6.3: "this tide line is rather weak and not wavy enough");
  * WAIT: the line lies flat (slack water); stopped: all of it dim. GREY / MONO: part 2's stretch is dashed, so the parts differ without colour.
  * One 240 x 3 strip, sent only when it changes (~1 ms of SPI a beat); its signature is one word. The header's own rule ("no line under a title", V9) bends
@@ -3577,7 +3577,7 @@ static uint32_t tl_tk = 0xFFFFFFFFu, tl_ph;               /* the picture the pha
 static void tide_line_draw(void)
 {
     uint32_t prog = 0, beat = 0, mask = 3u, st = screen_global() || ui.menu || ui.guide ? 0u : (uint32_t)tide_line_state(&prog, &beat, &mask);
-    int32_t xp = (int32_t)((prog * 240u) >> 16), x, r;
+    int32_t x, r;
     const int grey = ux.mono || ux.bw;
     uint32_t sig;
     tl_st = (uint8_t)st;
@@ -3586,7 +3586,9 @@ static void tide_line_draw(void)
         wl_belt();
         tl_ph = wl_bpos << 20;
     }
-    sig = (st ? st * 7919u + (uint32_t)xp * 31u + (st == 2u ? tl_ph >> 22 : 0u) * 3u + mask * 1301u + ux.pal * 17u + 1u : 0u) + tl_up * 65537u;
+    sig = (st ? st * 7919u + (st == 2u ? tl_ph >> 22 : 0u) * 3u + mask * 1301u + ux.pal * 17u + 1u : 0u) + tl_up * 65537u;
+    (void)prog;                                          /* (b10, owner: "make sure it's not redundant with other similar lines": the line is AUTO TIDE's state and the tempo,
+                                                          * no progress: the trip's is its n/m (AUTO TIDE's status line, the wave page's knob-1 line), the take's TAKE  BAR n/m) */
     (void)beat;
     if (!ui.force && sig == tide_line_sig)
         return;
@@ -3602,10 +3604,8 @@ static void tide_line_draw(void)
             c = T_REC;                                  /* b10 round 9: a take records: REC red, filling with the loop */
         else if (grey && p2 && (x & 7) > 5)
             continue;                                   /* GREY / MONO: part 2 dashed (6 on, 2 off) */
-        if (st == 4u || st == 1u || st == 5u || x > xp)
-            c = ux_mix(T_BG, c, 45);                    /* ahead of the tide (paused: all of it) */
-        else if (x >= xp - 1)
-            c = ux_mix(c, T_TEXT, 55);                  /* the tide's edge */
+        if (st == 4u || st == 1u || st == 5u)
+            c = ux_mix(T_BG, c, 45);                    /* (paused, armed, a take's count-in: dim) */
         for (r = 0; r < TL_H; r++) {                    /* row r against the band yc - 1 .. yc + 1 px (2 px): its coverage */
             int32_t a = (r + 1) * 16, b = r * 16, lo = yc16 - 16, hi = yc16 + 16, cov = (a < hi ? a : hi) - (b > lo ? b : lo);
             if (cov > 0)
