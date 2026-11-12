@@ -28,7 +28,9 @@ export const FORMAT = "duell-backup";
 export const VERSION = 6;                      // 6 adds the multis M17 to M26 (ids 42..46, caps bit 6); 5 carries the patches as logical records (id 40 + slot); 4 adds the ten more patch chunks (ids 27..31, 35..39); 3 adds the user wavetables (ids 24..26); 2 is read as it was; 1 is the installer's "felucca-backup" file of a DUELL unit (read here, never written)
 export const CAPS_MULTI_PATTERN = 4;           // INFO 42 01 caps, bit 2
 export const CAPS_MULTI_MORE = 64;             // bit 6 (b10): the multis M17 to M26, ids 42..46
-export const MULTI2_IDS = [42, 43, 44, 45, 46];   // two multis an object, M17-18 .. M25-26 (the unit has slots up to M24 for now; the last object reads empty)
+export const MULTI2_IDS = [42, 43, 44, 45, 46];   // two multis an object, M17-18 .. M25-26 (the unit has all of them since MR9; a unit with fewer slots lists the last object empty)
+export const multiObjId = (o) => (o < 8 ? 13 + o : MULTI2_IDS[0] + (o - 8));   // the backup id of multi object o (two multis an object): 0..7 are ids 13..20, 8..12 are ids 42..46
+export const multiSlotsOf = (caps) => (((caps ?? 0) & CAPS_MULTI_MORE) ? 26 : 16);   // the stored multis a unit has (without caps bit 6 M17 and up are built in and read-only, or absent)
 export const CAPS_WAVETABLES = 8;              // bit 3: the user wavetables (ids 24..26, cmds 81..83)
 export const CAPS_PATCH16 = 16;                // bit 4: the unit holds 128 patches (INFO tag 58 01)
 export const CAPS_PATCH_RECORDS = 32;          // bit 5: the patches are backed up and restored one at a time, as records (id 40, LIST page)

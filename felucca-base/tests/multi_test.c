@@ -31,7 +31,7 @@ static int dead, watch;
 static uint32_t stray;                              /* (watch) bytes erased / programmed outside the multi store */
 static void hit(uint32_t off, uint32_t n)
 {
-    if (watch && !((off >= 0x97000u && off + n <= 0x9F000u) || (off >= 0xCE000u && off + n <= 0xD6000u) || (off >= 0xEA000u && off + n <= 0xF2000u)))   /* (b10 U4: M17..M24 = OBJ_MULTIX0..3) */
+    if (watch && !((off >= 0x97000u && off + n <= 0x9F000u) || (off >= 0xCE000u && off + n <= 0xD6000u) || (off >= 0xEA000u && off + n <= 0xF4000u)))   /* (b10 U4: M17..M26 = OBJ_MULTIX0..4) */
         stray += n;
 }
 static int st_read(uint32_t off, void *dst, uint32_t n) { memcpy(dst, nor + off, n); return 0; }

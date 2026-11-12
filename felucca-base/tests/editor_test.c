@@ -458,13 +458,13 @@ static int malformed_saves(void)
     bad += check("PROJECT never confirms a used slot when STOP timed out (DUELL: the slot is a MULTI)",
                  !request(ED_PROJECT, save, sizeof save));
 #if DUELL_TIDE
-    {   /* b10 U4: M17 .. M24 are stored slots like M01 .. M16: a save confirms and the slot no longer shows its factory multi; slot 24 and up are invalid */
-        static const uint8_t m17[] = {1, 16}, m24[] = {1, 23}, past[] = {1, 24};
+    {   /* b10 U4: M17 .. M26 are stored slots like M01 .. M16: a save confirms and the slot no longer shows its factory multi; slot 26 and up are invalid */
+        static const uint8_t m17[] = {1, 16}, m24[] = {1, 25}, past[] = {1, 26};
         song.playing = 0; host_progress = 0;
         bad += check("  PROJECT save to M17 answers", request(ED_PROJECT, m17, sizeof m17) == 9u);
-        bad += check("  PROJECT save to M24 answers", request(ED_PROJECT, m24, sizeof m24) == 9u);
-        bad += check("  M17 and M24 are stored now and used", !project_factory(16) && !project_factory(23) && project_used(16) && project_used(23));
-        bad += check("  slot 24 and up are invalid", !request(ED_PROJECT, past, sizeof past));
+        bad += check("  PROJECT save to M26 answers", request(ED_PROJECT, m24, sizeof m24) == 9u);
+        bad += check("  M17 and M26 are stored now and used", !project_factory(16) && !project_factory(25) && project_used(16) && project_used(25));
+        bad += check("  slot 26 and up are invalid", !request(ED_PROJECT, past, sizeof past));
     }
 #endif
     return bad;

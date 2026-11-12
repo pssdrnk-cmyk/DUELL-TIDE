@@ -390,7 +390,7 @@ int BACKUP_TEST_MAIN(void)
         bad += check("restore: M03 and M04 are back by name, used (names, mask updated at once)",
                      project_used(2) && project_used(3) && !strcmp(mu_names[2], "TESTONE") && !strcmp(mu_names[3], "TESTTWO") &&
                      project_factory(9) && list(14, &len, &crc) == 0 && len == ml && crc == mc);
-        bad += check("restore: the multi LOADs (its part A step 0)", (host_tracks_init(), project_load(MIDX(2)), trk[0].step[0].note[0] == 62u));
+        bad += check("restore: the multi LOADs (its part A step 0)", (host_tracks_init(), project_load(2), trk[0].step[0].note[0] == 62u));
         ps_save_trk(&trk[1], 5, "NEWER");                   /* P6 now in the mirror, dirty: the restore must win over it */
         bad += check("restore: the pattern object (id 21) commits over a dirty mirror", (ps_dirty & 1u) && put_all(21, p_a, pl, pc) == 0 && !(ps_dirty & 1u));
         ps_poll();
@@ -466,9 +466,10 @@ int BACKUP_TEST_MAIN(void)
             multi_boot(); ps_boot();
             project_save_as(16, "SEVENTEEN");
             project_save_as(23, "TWENTYFOUR");
-            bad += check("U4: a saved M17 lists in id 42, M24 in id 45; ids 43, 44, 46 are empty; 41 is not a multi object here",
+            project_save_as(25, "TWENTYSIX");
+            bad += check("U4: a saved M17 lists in id 42, M24 in id 45, M26 in id 46; ids 43, 44 are empty; 41 is not a multi object here",
                          list(42, &l42, &c42) == 0 && l42 > 8u && list(45, &l45, &c45) == 0 && l45 > 8u && list(43, &len, &crc) == 0 && len == 0 &&
-                         list(44, &len, &crc) == 0 && len == 0 && list(46, &len, &crc) == 0 && len == 0 && put_begin(41, 0, 0) == 1u && put_begin(47, 0, 0) == 1u);
+                         list(44, &len, &crc) == 0 && len == 0 && list(46, &len, &crc) == 0 && len > 8u && put_begin(41, 0, 0) == 1u && put_begin(47, 0, 0) == 1u);
             for (off2 = 0; off2 < l42; off2 += 256u) {
                 uint32_t n = l42 - off2 > 256u ? 256u : l42 - off2;
                 uint8_t a[8] = {42};
@@ -483,8 +484,8 @@ int BACKUP_TEST_MAIN(void)
             bad += check("U4: restore of id 42 commits; M17 is back by name, stored (not the factory multi); M24 is not", put_all(42, o42, l42, c42) == 0 &&
                          project_used(16) && !project_factory(16) && !strcmp(mu_names[16], "SEVENTEEN") && !project_factory(16) && list(42, &len, &crc) == 0 && len == l42 && crc == c42 &&
                          list(45, &len, &crc) == 0 && len == 0);
-            bad += check("U4: length 0 for id 42 gives M17 back its factory multi; length 0 for id 46 (no slot) commits and changes nothing",
-                         put_all(42, "", 0, 0) == 0 && list(42, &len, &crc) == 0 && len == 0 && put_all(46, "", 0, 0) == 0);
+            bad += check("U4: length 0 for id 42 gives M17 back its factory multi; length 0 for id 46 empties M25 / M26",
+                         put_all(42, "", 0, 0) == 0 && list(42, &len, &crc) == 0 && len == 0 && put_all(46, "", 0, 0) == 0 && list(46, &len, &crc) == 0 && len == 0);
         }
     }
 

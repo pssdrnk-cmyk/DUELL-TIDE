@@ -450,8 +450,8 @@ async function lists() {
     await E(`[...document.querySelectorAll('.col.glob button')].find((b) => b.textContent === 'Load from unit')?.click(); true`); await c.sleep(1500);
     const mr = JSON.parse(await E(`JSON.stringify([...document.querySelectorAll('.col.glob .mrow2')].map((r) => ({ t: r.textContent, ti: r.title, b: [...r.querySelectorAll('button')].map((b) => b.textContent) })))`));
     ok(mr.length === 24 && !mr.some((r) => /factory|saved/i.test(r.t + r.ti)), `MULTIS (?mock=${mode}): ${mr.length} rows (TIDE b6: M01-M16 and the built-in M17-M24), no kind words in a row or its tooltip`);
-    ok(mr.slice(16).every((r) => !/read-only/.test(r.t) && r.b[0] === 'Recall' && r.b[1] === 'Save to unit') && JSON.parse(await E(`JSON.stringify([...document.querySelectorAll('.col.glob .mrow2')].slice(16).map((r) => { const b = [...r.querySelectorAll('button')]; return [b[0].disabled, b[1].disabled, b[2].disabled, b[3].disabled]; }))`)).every((d) => !d[0] && !d[1] && d[2] && d[3]),
-       `MULTIS (?mock=${mode}): M17 and up (b10 U4): Recall and Save to unit work, Download / Rename are off (not in this editor's file code yet)`);
+    ok(mr.slice(16).every((r) => /read-only/.test(r.t) && r.b[0] === 'Recall') && JSON.parse(await E(`JSON.stringify([...document.querySelectorAll('.col.glob .mrow2')].slice(16).map((r) => [...r.querySelectorAll('button')].slice(1).every((b) => b.disabled)))`)).every(Boolean),
+       `MULTIS (?mock=${mode}): M17, M18 read-only: Recall only, Save / Download / Rename disabled`);
     const j = mr.findIndex((r) => /^Replace M\d\d /.test(r.b[1]));
     ok(j >= 0, `MULTIS (?mock=${mode}): the save button names what it replaces (${mr[j]?.b[1]})`);
     const wm = await E(`window.__app.mock.log.filter((x) => /^write 1[3-9]|^write 20/.test(x)).length`);

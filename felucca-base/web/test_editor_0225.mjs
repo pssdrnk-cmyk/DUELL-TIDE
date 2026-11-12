@@ -191,6 +191,33 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   ok(!S.parseMultiFile({ format: "duell-multis", version: 1, multis: [{ slot: 1, data: file.multis[0].data, size: 3, crc: 1 }] }).multis[0].bytes, "multi file: a damaged entry is left out (checksum)");
 }
 
+// ---- 1b: b10 U4: the multis M17..M26 (backup ids 42..46, caps bit 6): the same calls, 26 slots
+{
+  const { m, u } = await connect({ caps: 127 });
+  ok(u.info.caps === 127, "U4: the mock unit reports caps 127");
+  const used = await u.multiUsed();
+  ok(used.length === 26, "U4: multiUsed asks all 26 slots");
+  let r = await S.readMultis(u);
+  ok(r.records.length === 26 && r.records[16] === null && r.objs.size === 13, "U4: readMultis reads 13 objects (13..20, 42..46) and gives 26 records; M17 holds none yet");
+  const rec = r.records[11];
+  await S.importMulti(u, 16, rec, "SEVENTEEN");
+  await S.importMulti(u, 25, rec, "TWENTYSIX");
+  r = await S.readMultis(u);
+  ok(S.multiName(r.records[16]) === "SEVENTEEN" && S.multiName(r.records[25]) === "TWENTYSIX" && m.multiStored[16] === "SEVENTEEN" && m.multiStored[25] === "TWENTYSIX" && m.objs.has(42) && m.objs.has(46) && !m.objs.has(43),
+     "U4: import into M17 and M26 writes the objects 42 and 46, M18 and the rest stay empty");
+  const names = await u.readMultiObjects();
+  ok(names.length === 26 && names[16] === "SEVENTEEN" && names[25] === "TWENTYSIX" && names[2] === "TESTONE", "U4: readMultiObjects names 26 slots");
+  await u.renameMulti(16, "RENAMED 17");
+  ok(u.multiNames[16] === "RENAMED 17" && m.multiStored[16] === "RENAMED 17" && m.multiStored[25] === "TWENTYSIX", "U4: rename of M17 rewrites object 42 only");
+  const file = S.multiFile([{ slot: 25, bytes: (await S.readMultis(u)).records[25] }], u.info.version);
+  ok(S.parseMultiFile(JSON.parse(JSON.stringify(file))).multis[0].slot === 25, "U4: the multi file keeps slot 26");
+}
+{
+  const { u } = await connect();      // caps 63: M17 and up are built in, no stored slot behind them
+  let msg = ""; try { await S.importMulti(u, 16, (await S.readMultis(u)).records[11]); } catch (e) { msg = e.message; }
+  ok((await S.readMultis(u)).records.length === 16 && /no stored multi in slot M17/.test(msg) && (await u.multiUsed()).length === 16, "U4: a unit without caps bit 6 has 16 stored multis; an import into M17 is refused with the reason");
+}
+
 // ---- 4: pattern slots
 {
   const { m, u } = await connect();

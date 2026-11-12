@@ -24,8 +24,8 @@
  * DUELL 0.2.14: what a PUT restores must be of this firmware's formats (project.c, multi.c, upreset.c): a project of another format
  * or revision (2), a multi object whose record is not MU_VER with P_COUNT values (2), a patch chunk with a record without PTF_CB (2) are
  * refused; nothing is written or changed then.
- * b10 U4 (INFO 42 01 caps bit 6, value 64): ids 42..46 = OBJ_MULTIX0..4 (M17-18 .. M25-26, the same object format as 13..20; "version 6"; the flash has room for M26, a unit shows M24 until MR9 adds two:
- * the last object reads empty and a restore of it is kept as it is). A version 5 archive has none of them: its restore leaves M17 and up as they are.
+ * b10 U4 (INFO 42 01 caps bit 6, value 64): ids 42..46 = OBJ_MULTIX0..4 (M17-18 .. M25-26, the same object format as 13..20; "version 6"; the flash holds exactly M26: a build with fewer slots lists the last
+ * object empty and a restore of it is kept as it is). A version 5 archive has none of them: its restore leaves M17 and up as they are.
  * DUELL 0.2.14 (INFO 42 01 caps bit 2): ids 13..20 = OBJ_MULTI0..7 (M01-02 .. M15-16, two multis an object, magic MUL1, multi.c) and ids
  * 21..23 = OBJ_PATSLOT0..2 (P01-11, P12-22, P23-32, 11 / 11 / 10 slots an object, magic PTS3, a compact variable-length object, patslot.c) are in the
  * archive (27 ids). They are read
