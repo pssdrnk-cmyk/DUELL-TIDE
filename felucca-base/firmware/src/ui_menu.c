@@ -309,7 +309,7 @@ static int32_t about_sec[2];                           /* ABOUT's CREDITS and LI
 #ifndef DUELL_BUILD_DATE                               /* ABOUT's build date (build.py DUELL_BUILD_DATE pins it: the tools compare builds across days) */
 #define DUELL_BUILD_DATE __DATE__
 #endif
-#define ABOUT_SH 50                                    /* the lines below shift down: 17 + 28 + 17 + 20 + 20 + 24 against the old 78 */
+#define ABOUT_SH 70                                    /* the lines below shift down: 17 + 28 + 17 + 20 + 20 + 20 + 24 against the old 78 (the attribution line takes three text lines) */
 /* the DUELL word of the logo (tools/gen_splash_logo.py SPL_WORD, 80 % of the splash's size), coverage blended onto the canvas in the text colour; (x, y) its top left */
 static void about_word_draw(int32_t x, int32_t y)
 {
@@ -357,10 +357,11 @@ static int32_t menu_document(int32_t y, int draw)
 #endif
             str_cpy(tl, "TIDE ", sizeof tl);
             str_cpy(tl + 5, tv, sizeof tl - 5u);
-            cv_text(6, y0 + ABOUT_AIR + 28 + ABOUT_GAP, &AF_S, "built on DUELL (OSCILL/R) and Felucca", T_TEXT);          /* the one attribution line, as the splash and the site say it */
-            cv_text(6, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 20, &AF_S, "(H\xFCgelton Instruments), GPL-3.0", T_TEXT);
-            cv_text_grad(6, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 44, &AF_M, tl, 6);
-            cv_text_r(222, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 47, &AF_S, DUELL_BUILD_DATE, T_MID, T_BG);
+            cv_text(6, y0 + ABOUT_AIR + 28 + ABOUT_GAP, &AF_S, "built on DUELL (OSCILL/R) and", T_TEXT);        /* the one attribution line, as the splash and the site say it, in three lines of the 223 px the document has */
+            cv_text(6, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 20, &AF_S, "Felucca (H\xFCgelton Instruments),", T_TEXT);
+            cv_text(6, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 40, &AF_S, "GPL-3.0", T_TEXT);
+            cv_text_grad(6, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 64, &AF_M, tl, 6);
+            cv_text_r(222, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 67, &AF_S, DUELL_BUILD_DATE, T_MID, T_BG);
         }
         cv_text(6, y + 96, &AF_S, "CPU", T_MID);                 /* the meter: the 1 s average, the held peak, the misses */
         cpu_pct(b, cpum.avg);
