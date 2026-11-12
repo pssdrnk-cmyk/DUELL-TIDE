@@ -914,6 +914,15 @@ static uint8_t tide_lvc2[NLIVE];  /* TIDE live graphs: the latest note's effecti
 #ifndef FELUCCA_MOVECOST
 #define FELUCCA_MOVECOST 0
 #endif
+/* b10 round 7 (ROADMAP Later 14, the RAM-candidate review): 1 = two per-block functions run only when their inputs are live - morph_xrest (a part with no morph, every block: only the first time after
+ * its state was last written) and vs_block (the note-start queue: only while a note-on is waiting or was counted this block). Same sound, bit for bit; 92 + 168 B of hot code off the always-on set.
+ * ON by default; FELUCCA_GUARDS=0 python tools/build.py turns it off if a glitch is reported (host tests: group "guards" builds both) */
+#ifndef FELUCCA_GUARDS
+#define FELUCCA_GUARDS 1
+#endif
+#ifndef GD_COUNT
+#define GD_COUNT(c) ((void)0)          /* tests/guards_test.c counts the calls and the runs of the two guarded functions (define GD_COUNT(c) (c##_n++) there) */
+#endif
 /* the per-stage timing of the console probe `cpu` (fx.c, eng_fm6.c, console.c): the unit's test-mode build only (the host tests have no TIMER4); defined with or without TIDE (b10 round 5, finding 35: it sat inside #if DUELL_TIDE, undefined elsewhere) */
 #if DUELL_TEST_MODE && !defined(__x86_64__) && !defined(__i386__) && !defined(__aarch64__)
 #define DUELL_PROBE_STAGES 1
