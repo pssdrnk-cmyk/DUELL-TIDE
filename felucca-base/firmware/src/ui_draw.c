@@ -1914,14 +1914,14 @@ static int32_t foot_scroll(const char *s, int32_t w)
     t = (int32_t)(fm1_ms % (uint32_t)cyc);
     return t < 1200 ? 0 : t < 1200 + over * 40 ? (t - 1200) / 40 : over;
 }
-/* b10 TIDE identity (item 5): the BEAT DOT of HOME's two-row footer: a 5 px dot on row 2, left of the page's number, under the tempo: lit on each beat
+/* b10 TIDE identity (item 5): the BEAT DOT of HOME's two-row footer: a 5 px dot on row 1 just before the tempo ("* 122 BPM"; owner on rc6: "the dot is not at the bpm's line"): lit on each beat
  * (the first quarter of it), brighter on the bar's first; dark when nothing plays. With MIDI clock in, the tempo's unit says EXT and the dot takes the
  * selected part's colour (the clock is locked). Its own 5 x 5 blit, a beat; the footer's signature does not hold it (draw_foot re-draws it after a
  * redraw of its own). Not on the one-row footers (the tempo has no row of its own there) */
-#define TB_DOT_W 8                                      /* the room it takes from part 2's name: 5 px and its gap */
+#define TB_DOT_W 8                                      /* the room it takes from part 1's name: 5 px and its gap to the tempo */
 static int32_t tide_dot_x = -1;                         /* its left edge on the screen, -1: not shown (draw_foot sets it) */
 static uint32_t tide_dot_st = 0xFFFFFFFFu;
-#define TB_DOT_Y (UT_FOOT_BASE - AF_S_CAP_H / 2 - 2)   /* its top row on the screen */
+#define TB_DOT_Y (UT_FOOT_BASE - 15 - AF_S_CAP_H / 2 - 2)   /* its top row on the screen (centred on row 1's capitals) */
 static uint32_t tide_dot_now(uint16_t *col)              /* its state now (and colour) */
 {
     uint32_t b = beat_samples(), ext = clock_src() != 0u, run = song.playing || (ext && clock_state() == 1u && !midi_clock.stopped);
@@ -2050,8 +2050,6 @@ static void draw_foot(void)
     if (rdot)
         tp[0] = 0;
     tpen = tp[0] ? ctp - FT_GAP * 16 - text_w16(&AF_S, tp) : rdot ? rdot * 16 : ctp;
-    if (tp1[0] && !rdot)                                 /* (b10: the beat dot left of the page's number: part 2's name ends before it) */
-        tpen -= TB_DOT_W * 16;
     sig += clock_src() * 7351u;                          /* (BPM or EXT) */
     sig += (uint32_t)song.g[G_BPM] * 4003u;
     {   /* a patch name wider than its room scrolls: the offset it has now is part of the picture */
@@ -2064,7 +2062,7 @@ static void draw_foot(void)
         return;
     }
     ui.foot_sig = sig;
-    tide_dot_x = tp1[0] && !rdot ? (ctp >> 4) - (TB_DOT_W - 1) : -1;
+    tide_dot_x = -1;                                     /* (row 1's tempo places it, below) */
     foot_short = (grid_on == 1 || TIDE_GRID3 || grid_on == 4 || grid_on == 5 || grid_on == 7 || grid_on == 9 || grid_on == 12 || grid_on == 13 || grid_on == 14 || grid_on == 15 || grid_on == 16 || grid_on == 17 || ui.guide) && !ui.ml.on && !pfl[0] && !save_hint && !foot_steps() && !TIDE_FOOT_FULL();   /* TIDE hook: TIDE / TIDE SET keep both rows */   /* (DUELL 1.1 grid pages: row 1 is empty, the cards use its rows) */
     cv_begin(240, foot_short ? H_FOOT - 15 : pfl[0] ? H_FOOT + 15 : H_FOOT, T_BG);   /* (item 120: PERFORM's footer is 15 rows taller, its two hint lines on top) */
     cv_oy = foot_short ? -15 : pfl[0] ? 15 : 0;
@@ -2087,7 +2085,17 @@ static void draw_foot(void)
         int32_t f1 = UT_FOOT_BASE - 15 - Y_FOOT - AF_S_CAP_Y - AF_S_CAP_H + 1, x = UT_FOOT_X * 16, uw = text_w16(&AF_S, FT_BPM), bx = (UT_BAT_X + UT_BAT_W) * 16 - text_w16(&AF_S, tp1) - uw;   /* (bx: the tempo's pen; its unit ends with the battery) */
         cv_text_x16(x, f1, &AF_S, en1, vt(T_PTHEME(0u), T_BG), T_BG);
         x += text_w16(&AF_S, en1) + UT_FOOT_WORD_GAP * 16;
-        cv_free_text(x >> 4, f1, &AF_S, pn1, T_TEXT, T_BG, (tp1[0] ? (bx >> 4) - 2 : 235) - (x >> 4));
+        const char *nm1 = pn1;
+        int32_t room1;
+        if (tp1[0])
+            tide_dot_x = (bx >> 4) - TB_DOT_W;           /* (the beat dot before the tempo; part 1's name ends 4 px before the dot) */
+        room1 = (tp1[0] ? tide_dot_x - 4 : 235) - (x >> 4);
+        if (nm1[0] == '#' && text_w16(&AF_S, nm1) > room1 * 16) {   /* (too long with its slot number: the name alone, so SUNDAY KEYS stays whole) */
+            while (*nm1 && *nm1 != ' ')
+                nm1++;
+            nm1 += *nm1 == ' ';
+        }
+        cv_free_text(x >> 4, f1, &AF_S, nm1, T_TEXT, T_BG, room1);
         if (tp1[0]) {
             cv_text_x16(bx, f1, &AF_S, tp1, T_MID, T_BG);
             cv_text_x16((UT_BAT_X + UT_BAT_W) * 16 - uw, f1, &AF_S, FT_BPM, T_DIM, T_BG);
