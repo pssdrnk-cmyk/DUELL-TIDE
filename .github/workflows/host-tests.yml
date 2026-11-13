@@ -172,7 +172,7 @@ jobs:
           path: |
             ~/.jieli
             ~/fw-AC79_AIoT_SDK
-          key: jieli-toolchain-sdk-v1
+          key: jieli-toolchain-sdk-v2
 
       - name: Fetch the toolchain and the SDK files
         if: steps.tc.outputs.cache-hit != 'true'
@@ -180,8 +180,8 @@ jobs:
           sh felucca-base/tools/get_toolchain.sh
           git clone --depth 1 --filter=blob:none --sparse --branch AC79NN_SDK_V1.2.1_2023-12-13 https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK.git "$HOME/fw-AC79_AIoT_SDK" \
             || { rm -rf "$HOME/fw-AC79_AIoT_SDK"; git clone --depth 1 --branch AC79NN_SDK_V1.2.1_2023-12-13 https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK.git "$HOME/fw-AC79_AIoT_SDK"; }
-          git -C "$HOME/fw-AC79_AIoT_SDK" sparse-checkout set --no-cone /cpu/wl82/tools/uboot.boot /cpu/wl82/tools/cfg_tool.bin /cfg/eq_cfg_hw.bin || true
-          ls -l "$HOME/fw-AC79_AIoT_SDK/cpu/wl82/tools/uboot.boot"
+          git -C "$HOME/fw-AC79_AIoT_SDK" sparse-checkout set --no-cone /cpu/wl82/tools/uboot.boot /cpu/wl82/tools/cfg_tool.bin /cpu/wl82/tools/cfg/eq_cfg_hw.bin || true
+          ls -l "$HOME"/fw-AC79_AIoT_SDK/cpu/wl82/tools/uboot.boot "$HOME"/fw-AC79_AIoT_SDK/cpu/wl82/tools/cfg_tool.bin "$HOME"/fw-AC79_AIoT_SDK/cpu/wl82/tools/cfg/eq_cfg_hw.bin
 
       - name: Device build (and its size checks)
         run: |
