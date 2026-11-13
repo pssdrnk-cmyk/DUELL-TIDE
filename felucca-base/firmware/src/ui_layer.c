@@ -816,46 +816,7 @@ static void glo_mute_cards(void)
         cv_keycap(kx, y + UT_T4_LBL_BASE - KC_H + 2, kc, T_KEY, T_KINK, fill);
     }
 }
-/* the two level meters (own strips, each frame when a level moved). b11 (design review 2.3): a small wave belt under the MUTE card's row, as the wave page's: a 2 px front line
- * from the left to the level (the part's colour while it sounds, else DIM), four 1 px hairlines above it every 2 px, each shorter and fainter (68 .. 15 %), a 1 px track to the end, the
- * peak hold a 2 px tick across the belt. On a muted card (filled in the part's colour) it is drawn in ink */
-#define GB_W 108                                         /* the belt: its width, height, and place in the MUTE card */
-#define GB_H 14
-#define GB_X 4
-#define GB_Y 30
-static void glo_meters7(void)
-{
-    static const uint8_t HL[4] = {68, 46, 30, 15};
-    uint32_t k, i;
-    uint32_t sig = 0x7D5u;
-    int32_t px[NSHOWN], hp[NSHOWN];
-    for (k = 0; k < NSHOWN; k++) {
-        px[k] = gm_px(gm.lvl[k]) * (GB_W - 2) / GM_BH;
-        hp[k] = gm_px(gm.hold[k]) * (GB_W - 2) / GM_BH;
-        sig = (sig * 33u + (uint32_t)px[k]) * 33u + (uint32_t)hp[k] + glo_sounding(k) * 3u + (uint32_t)trk[k].p[P_MUTE] * 5u;
-    }
-    sig += ux.gen * 4099u;
-    if (!ui.force && sig == gm.sig)
-        return;
-    gm.sig = sig;
-    for (k = 0; k < NSHOWN; k++) {
-        const int mu = trk[k].p[P_MUTE] != 0;
-        const uint16_t under = mu ? T_PTHEME(k) : T_BG, col = mu ? T_INK : glo_sounding(k) ? T_PTHEME(k) : T_DIM;
-        cv_begin(GB_W, GB_H, under);
-        cv_rect(0, GB_H - 1, GB_W, 1, mu ? ux_mix(under, T_INK, 30) : ux_mix(T_BASE_P1, T_TEXT, UT_T4_TRACK_PCT));
-        if (px[k] > 0) {
-            cv_rect(0, GB_H - 2, px[k], 2, col);
-            for (i = 0; i < 4u; i++) {
-                const int32_t w = px[k] * (int32_t)(8u - i) / 10;
-                if (w > 0)
-                    cv_rect(0, GB_H - 4 - 2 * (int32_t)i, w, 1, ux_mix(under, col, HL[i]));
-            }
-        }
-        if (hp[k] > 0)
-            cv_rect(hp[k], GB_H - 11, 2, 11, mu ? T_INK : T_TEXT);
-        cv_blit((uint32_t)(UT_T4_X0 + UT_T4_DX * (int32_t)k + GB_X), (uint32_t)(UT_T4_MUTE_Y + GB_Y));
-    }
-}
+#include "ui_lmh.c"                                     /* b11: the MIXER's LOW / MID / HIGH (its one call: lmh_draw, below) */
 static void layer_glo(void)
 {
     uint32_t e;
@@ -1058,7 +1019,7 @@ static void draw_layer(void)
     if (l == LAYER_GLO) {                               /* the level meters: their own strip, each frame */
         glo_meter_step();
         if (grid_on == 7)
-            glo_meters7();
+            lmh_draw();
         else
             glo_meters();
     }
