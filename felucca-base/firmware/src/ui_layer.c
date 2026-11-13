@@ -921,12 +921,12 @@ static const char *const TL_NAME[TL_N] = {"CLEAR", "REVERSE", "SHIFT <", "SHIFT 
 static void layer_seq(void)
 {
     box_t b[8];
-    uint32_t p;
+    uint32_t p, pend = tide_sw_pending();
     for (p = 0; p < 8u; p++) {
         b[p].name = p < TL_N ? TL_NAME[p] : "";
         b[p].key = W_NOTE[p];
         b[p].big = (uint8_t)((TL_BIG >> p) & 1u);
-        b[p].state = LS_OFF;
+        b[p].state = (pend && p == (pend == 2u ? TL_COOK : TL_RANDOM)) ? LS_WAIT : LS_OFF;   /* (b11: the SWELL / RIPPLE that waits for the loop start is lit) */
     }
     box_grid(UT_BOX_QS_Y0, 2u, 4u, UT_BOX_QS_DY, UT_BOX_QS_H, b);
     int32_t ay, ah;
@@ -997,7 +997,7 @@ static void draw_layer(void)
     else if (l == LAYER_REC)
         sig += (uint32_t)ui_rec_prefs * 31u + (uint32_t)rec_clearable() * 5u + song.sel * 977u;
     else if (l == LAYER_SEQ)
-        sig += song.sel * 977u;
+        sig += song.sel * 977u + steps_sig(TSEL) * 31u + tide_sw_pending() * 4099u;   /* (b11: the steps and a waiting SWELL / RIPPLE are in the picture) */
     else if (l == LAYER_EDIT)
         sig += (TSEL->eng_req % NENGINES) * 31u + song.sel * 977u + (uint32_t)ly_page(l)->id[2] * 4099u + (uint32_t)ly_page(l)->id[3] * 65537u;   /* (cloud job H: its cards follow filter 2) */
     if (l == LAYER_REC && grid_on == 14)                /* QUICK REC (template 8): the cells are the whole body, no panel of its own */

@@ -545,6 +545,33 @@ static void take_swell(void)
     at_step(&trk[0], 3);
     rec_off();
 }
+/* b11: QUICK SEQ (SEQ held) shows what a SWELL / RIPPLE does: the layer's redraw signature (ui.layer_sig) moves when a press is pending and again when it lands, also on a stopped transport */
+static void take_swell_layer(void)
+{
+    uint32_t s0, s1, s2, s3, a0;
+    boot(); setup(1, 0, V_POLY);
+    first_take();
+    song.sel = 1; frame();
+    btn_down(B_SEQ); run(700);
+    CHECK("the layer is open (SEQ held)", ui.layer == LAYER_SEQ);
+    s0 = ui.layer_sig;
+    at_step(&trk[1], 4);
+    sw_press(1, 0);
+    frame(); frame();
+    s1 = ui.layer_sig;
+    CHECK("a SWELL that waits for the loop start changes the layer's picture (the lit box)", tk_sw_k == 1u && s1 != s0);
+    a0 = psig(1);
+    to_loop_end(1);
+    frame(); frame();
+    s2 = ui.layer_sig;
+    CHECK("... and landing changes it again (the new steps are in the signature), the pending mark is gone", psig(1) != a0 && !tk_sw_k && s2 != s1 && s2 != s0);
+    stop();
+    sw_press(1, 0);
+    frame(); frame();
+    s3 = ui.layer_sig;
+    CHECK("stopped: SWELL lands at once and the layer's signature moves", !tk_sw_k && s3 != s2);
+    btn_up(B_SEQ); frame();
+}
 static uint32_t notes_in(uint32_t p, uint32_t a, uint32_t b) { uint32_t i, n = 0; for (i = a; i < b; i++) n += trk[p].step[i].n != 0; return n; }
 static void take_reply(void)
 {
@@ -724,7 +751,7 @@ static void take_hold(void)
 int main(void)
 {
     step1();
-    take_lifecycle(); take_history(); take_settings(); take_barline(); take_roll_test(); take_swell(); take_reply(); take_line_test(); take_first_key(); take_layer(); take_arpseq(); take_live(); take_hold();
+    take_lifecycle(); take_history(); take_settings(); take_barline(); take_roll_test(); take_swell(); take_swell_layer(); take_reply(); take_line_test(); take_first_key(); take_layer(); take_arpseq(); take_live(); take_hold();
     printf("take: %u checks, %u FAIL\n", checks, failures);
     return failures ? 1 : 0;
 }
