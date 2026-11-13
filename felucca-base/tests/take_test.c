@@ -401,6 +401,9 @@ static void take_swell(void)
     a1 = psig(1);
     sw_press(0, 0);
     CHECK("... a press on the part that held the undone take is a plain tool: at once, the other part is not touched", !tk_sw_k && psig(0) != h0 && psig(1) == a1);
+    h0 = psig(0);
+    sw_press(0, 0);
+    CHECK("... and the next press too (the history step of the first one must not bring the undone take's identity back)", !tk_sw_k && psig(0) != h0 && psig(1) == a1);
     /* stopped: at once */
     first_take();
     a0 = psig(1);
@@ -493,8 +496,13 @@ static void take_swell(void)
     CHECK("ARP SEQ answer part: RIPPLE moves a note, the rhythm kept, the notes in the key as they sound", c >= 1u && osig(trk[1].step) == w0 && key_ok(trk[1].step, 1));
     /* TRN on the answer part: the notes are stored lower than they sound; RIPPLE keeps what SOUNDS in the key */
     boot(); setup(1, 0, V_POLY);
-    trk[1].p[P_TRANS] = 3;
     first_take();
+    for (i = 0; i < 64u; i++)                            /* (the answer as it would be written for a part with TRN +3: stored 3 lower, sounding the same) */
+        for (ok = 0; ok < 4u; ok++)
+            if (trk[1].step[i].note[ok] > 3u)
+                trk[1].step[i].note[ok] = (uint8_t)(trk[1].step[i].note[ok] - 3u);
+    trk[1].p[P_TRANS] = 3;
+    tk_m.sig = steps_sig(&trk[1]);
     memcpy(keep, trk[1].step, sizeof keep);
     w0 = osig(keep);
     at_step(&trk[1], 4);

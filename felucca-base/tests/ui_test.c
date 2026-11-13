@@ -5858,7 +5858,13 @@ static int test_seq_tools(void)
     }
     bad += check("  C4 SWELL (melodic): the rhythm kept, new notes in the scale near the middle (40 seeds)", ok);
     bad += check("  D4 RIPPLE x12: each press changes it, the rhythm and the scale kept, the header says RIPPLE", okc);
-    bad += check("  OCT- + PRESETS after RIPPLEs: the last one undone only (the take history, one step a press)", take_undo(-1) == 1u && !memcmp(TSEL->step, mid, sizeof mid));
+    {
+        uint32_t p0 = tk_pos;                           /* (the panel gesture itself: OCT- held, a PRESETS turn to the left) */
+        btn_down(B_OCTDN); frame();
+        turn(EN_PRESET, -1); frame();
+        btn_up(B_OCTDN); frames(400);
+        bad += check("  OCT- + PRESETS after RIPPLEs: the last one undone only (the take history, one step a press)", tk_pos + 1u == p0 && !memcmp(TSEL->step, mid, sizeof mid));
+    }
     ui_power_on();
     track_defaults_steps(TSEL);
     TSEL->p[P_SLEN] = 16;

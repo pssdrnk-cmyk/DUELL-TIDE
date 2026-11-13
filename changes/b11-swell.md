@@ -1,6 +1,3 @@
 ## changelog
 ### 1.0.0-b10
 - **New (SWELL and RIPPLE, owner 13 November):** SEQ held + C4 is SWELL (was RANDOM: a whole new wave) and D4 is RIPPLE (was COOK: a few notes move). On the part that holds the answer to a take, SWELL makes the answer again with a fresh seed in the mode ANSWER shows now and RIPPLE moves 15 to 25 % of its notes (at least one) inside the key and clear of rubs, rhythm kept; on the part that holds the take they change the take and the answer follows. Both land at the start of the next loop (the header says SWELL  NEXT LOOP and the tide line shows accent dashes until then), a second press replaces the waiting one, and each press is one step of OCT- + PRESETS (the take history; it also replaces "only the last COOK can be undone"). On any other part they write new or slightly changed notes at once, in the multi's key when SCL is off, with no semitone rubs against the other part, the genre's rhythm for SWELL on an empty part, a seed a press. A change of the ANSWER row alone never touches a standing answer: it only picks the mode of the next take or SWELL.
-## roadmap
-### Planned, not yet scheduled
-- **RANDOM and COOK with TIDE's rules: built (b11) as SWELL and RIPPLE** (SEQ held + C4 / D4; see the 13 November changelog line). Builds on the live assist's take history; the answer part's SWELL / RIPPLE land at the next loop start.
