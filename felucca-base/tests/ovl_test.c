@@ -30,6 +30,7 @@
 static uint32_t host_clock, host_us, host_nest;
 static volatile uint32_t t5_nested_ticks;
 static uint32_t fm1_ticks(void) { t5_nested_ticks = host_nest; host_clock += host_us; return host_clock; }
+#define AUDIO_BLK_TICKS() (host_clock)                 /* (b11: the guard's block clock reads without a step: this test's half is one step at its end) */
 static uint8_t fm1_audio_pending(void) { return FM1_AUDIO_HALF; }
 static void fm1_audio_ack_aux(uint8_t p) { (void)p; }
 static uint32_t fm1_audio_free_half(void) { return 0u; }

@@ -11,6 +11,9 @@
  *             takes a free one (no held note cut); level 0 and 1: a free one as ever; MONO, LEGATO, UNISON bit for bit as at level 0; the other part untouched
  *   LEVEL4/5  level 4 fades the two oldest released tails, never a held note, however long 90 % lasts (level 5 reached, no miss); level 5 and a half that misses:
  *             one held note fades (not the bass)
+ *   GUARD     (b11, DUELL 1.2's in-buffer guard, audio.c guard_block) blocks at 20 % of a half each; then a half whose first block takes 38 %: the guard fades the three
+ *             released tails (two at block 0, the last at block 1), never a held note, and the ladder takes no step (no ease_n entry); at 21 % a block (84 %) nothing
+ *             fades; with no released voice nothing fades and no held note is cut
  *   LEVEL1    the valley and the wash with their coefficients every other block (level 1) against every block (level 0): the same input, the output within
  *             -30 dB of the level-0 render (a one-block lag of the coefficients), no step over the level-0 render's own, and really different (it holds);
  *             the valley's depth falling to 0 and the wash's movement stopping on any block: no step in what the stage adds over level 0's
@@ -24,6 +27,8 @@
 static uint32_t host_clock, host_us;
 static volatile uint32_t t5_nested_ticks;
 static uint32_t fm1_ticks(void) { t5_nested_ticks = 0; host_clock += host_us; return host_clock; }
+static uint32_t host_blk_ticks(void);                   /* b11 GUARD: the block clock (audio.c AUDIO_BLK_TICKS): a block's time between its start and its end read; 0 outside GUARD */
+#define AUDIO_BLK_TICKS() host_blk_ticks()
 static uint8_t fm1_audio_pending(void) { return FM1_AUDIO_HALF; }
 static void fm1_audio_ack_aux(uint8_t p) { (void)p; }
 static uint32_t fm1_audio_free_half(void) { return 0u; }
@@ -39,6 +44,7 @@ static int32_t fm1_adc_read(uint32_t ch) { return ch == FM1_ADC_MASTER ? 1023 : 
 #include "../firmware/src/master.c"
 
 static int bad, ncheck;
+static uint32_t host_blk_n, blk_pct[4];
 static void expect(const char *what, int ok)
 {
     ncheck++;
@@ -60,8 +66,11 @@ static void fresh(void)
     shed_req = 0; shed_count = 0; shed_over = 0; voice_kills = 0;
     ease = 0; ease_calm = ease_avg = 0; ease_since = 0xFFFFu; ease_fxl = 0; memset(ease_n, 0, sizeof ease_n); ovl_lite = 0;
     host_clock = host_us = 0;
+    host_blk_n = 0; memset(blk_pct, 0, sizeof blk_pct); guard_q = guard_count = 0;
 }
 static void half(uint32_t pct) { host_us = US_OF(pct); fm1_alnk0_irq(); }
+static uint32_t host_blk_ticks(void) { uint32_t n = host_blk_n++; if (n & 1u) host_clock += US_OF(blk_pct[(n >> 1) & 3u]); return host_clock; }   /* (the odd reads: a block's end) */
+static void hblk(uint32_t b0, uint32_t b1, uint32_t b2, uint32_t b3) { host_us = 0; blk_pct[0] = b0, blk_pct[1] = b1, blk_pct[2] = b2, blk_pct[3] = b3; fm1_alnk0_irq(); }
 static uint32_t sounding(const track_t *t) { uint32_t i, n = 0; for (i = 0; i < NVOICE; i++) n += t->v[i].active && t->v[i].stage != 4u; return n; }
 static uint32_t held_n(const track_t *t) { uint32_t i, n = 0; for (i = 0; i < NVOICE; i++) n += t->v[i].active && t->v[i].gate && t->v[i].stage != 4u; return n; }
 
@@ -239,6 +248,38 @@ static void voices(void)
     half(110u);
     half(50u);
     expect("  .. a miss at level 0: to 4, the two oldest tails fade (the 0.2.11 fast shed), no held note", ease == 4u && shed_count == 2u && held_n(&trk[0]) == 3u);
+}
+
+/* ------------------------------------------------------------------ GUARD: the in-buffer guard (b11, from DUELL 1.2) --- */
+static void guard_scene(uint32_t release)
+{
+    uint32_t i;
+    fresh();
+    trk[0].p[P_VOICE] = V_POLY;
+    trk[0].p[P_REL] = 120;
+    for (i = 0; i < 6u; i++) trk_note_on(&trk[0], 48u + 2u * i, 100);
+    for (i = 0; i < 40u; i++) hblk(20u, 20u, 20u, 20u);   /* (the running mean of a later block settles at 20 %) */
+    if (release) { trk_note_off(&trk[0], 50); trk_note_off(&trk[0], 54); trk_note_off(&trk[0], 58); }
+    hblk(20u, 20u, 20u, 20u);
+    shed_count = 0; voice_kills = 0; guard_count = 0;
+}
+static void guard(void)
+{
+    uint32_t k, e0 = 0;
+    guard_scene(1);
+    hblk(38u, 20u, 20u, 20u);
+    for (k = 0; k < EASE_MAX; k++) e0 += ease_n[k];
+    expect("GUARD: a half whose first block takes 38 % (98 % projected): the three released tails fade within the half, held notes sound",
+           shed_count == 3u && sounding(&trk[0]) == 3u && held_n(&trk[0]) == 3u);
+    expect("  .. two checks faded (block 0: two tails, block 1: the last; block 2 finds none)", guard_count == 2u);
+    expect("  .. the ladder took no step (level 0, no ease_n entry): a guard fade is not a ladder entry", ease == 0u && e0 == 0u && !shed_req);
+    guard_scene(1);
+    for (k = 0; k < 50u; k++) hblk(21u, 21u, 21u, 21u);
+    expect("  .. 50 halves at 21 % a block (84 %): nothing fades, the tails ring on", shed_count == 0u && guard_count == 0u && sounding(&trk[0]) == 6u);
+    guard_scene(0);
+    hblk(38u, 20u, 20u, 20u);
+    expect("  .. the same half with every note held: nothing fades (no held note is ever the guard's)", shed_count == 0u && guard_count == 0u && held_n(&trk[0]) == 6u);
+    memset(blk_pct, 0, sizeof blk_pct);
 }
 
 /* ------------------------------------------------------------------ LEVEL 1: the valley and the wash --- */
@@ -425,6 +466,7 @@ int main(void)
     setvbuf(stdout, NULL, _IONBF, 0);
     sequence();
     voices();
+    guard();
     level1();
     level1_jump();
     level2_modes();
