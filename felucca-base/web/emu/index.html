@@ -510,7 +510,7 @@ document.getElementById("dl").addEventListener("click", async () => {
   const d = new Date(), p = (n) => String(n).padStart(2, "0");
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([packFlash(sectors)], { type: "application/octet-stream" }));
-  a.download = `duell-flash-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}.bin`;
+  a.download = `tide-flash-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}.bin`;
   document.body.appendChild(a);
   a.click();
   a.remove();

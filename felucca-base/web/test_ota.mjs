@@ -3,7 +3,7 @@
 //
 // Node checks of the installer's package and update code (no browser, no hardware). Run from the repo root:
 //   node web/test_ota.mjs
-// - fm1pkg.js: productOf and logicalImage on build/duell-1.1.fwsc (skipped without a build)
+// - fm1pkg.js: productOf and logicalImage on build/tide-latest.fwsc (skipped without a build)
 // - fm1ota.js: a full install and an unplug during the write against a simulated FM-1
 // (These were the last checks of the old web/test_web.mjs, which tested the retired web/editor.html.)
 
@@ -23,7 +23,7 @@ const FW_ROOT = process.env.FELUCCA_ROOT || join(HERE, "..");   // the tree with
 
 /* ------------------------------------------------------- packages: JS == Python --- */
 async function packages() {
-  const pkg = ["build/duell-1.1.fwsc", "build/felucca.fwsc"].map((f) => join(FW_ROOT, f)).find(existsSync);
+  const pkg = ["build/tide-latest.fwsc", "build/duell-1.1.fwsc", "build/felucca.fwsc"].map((f) => join(FW_ROOT, f)).find(existsSync);
   if (!pkg) {
     console.log("packages: skipped (no build: python tools/build.py first)");
     return;

@@ -87,7 +87,7 @@ class Base(unittest.TestCase):
     def backup_file(self) -> Path:
         rc, out, err = run_main(["backup", "--out", str(self.dir)])
         self.assertEqual(rc, 0, err)
-        files = sorted(self.dir.glob("DUELL-backup-*.json"))
+        files = sorted(self.dir.glob("TIDE-backup-*.json"))
         self.assertEqual(len(files), 1)
         return files[0]
 
@@ -189,7 +189,7 @@ class BackupTests(Base):
 
     def test_cli_backup_read_by_web_editor(self):
         p = self.backup_file()
-        self.assertRegex(p.name, r"^DUELL-backup-\d{4}-\d\d-\d\d-\d{4}\.json$")
+        self.assertRegex(p.name, r"^TIDE-backup-\d{4}-\d\d-\d\d-\d{4}\.json$")
         text = p.read_bytes()
         self.assertFalse(text.endswith(b"\n") or b"\r" in text)
         r = ctl("readArchive", text=text.decode())
@@ -323,7 +323,7 @@ class BankTests(Base):
         self.assertEqual(rc, 0, err)
         self.assertEqual(state()["bank"], before)
         self.assertIn("FM6 voice bank", out)
-        self.assertTrue(ctl("readArchive", text=next(self.dir.glob("DUELL-safety-backup-*.json")).read_text())["accepted"])   # (the safety backup was made first)
+        self.assertTrue(ctl("readArchive", text=next(self.dir.glob("TIDE-safety-backup-*.json")).read_text())["accepted"])   # (the safety backup was made first)
 
     def test_no_bank_in_file_leaves_the_unit_alone(self):
         ctl("reset", options={"fvBank": True})
@@ -380,11 +380,11 @@ class RestoreTests(Base):
         self.assertEqual((after["objs"], after["patches"]), (before["objs"], before["patches"]))
         self.assertIn("Patches: 3 written, 1 saved on the unit but not in the file removed, 2 already identical.", out)
         self.assertRegex(out, r"Done: 20 objects written, 18 read back equal")
-        self.assertTrue(any(re.match(r"DUELL-safety-backup-.*\.json$", f.name) for f in self.dir.iterdir()))
+        self.assertTrue(any(re.match(r"TIDE-safety-backup-.*\.json$", f.name) for f in self.dir.iterdir()))
         log = after["log"]
         self.assertEqual([x for x in log if "patch" in x], ["remove patch 9", "write patch 0", "write patch 5", "write patch 10"])   # (the removals first: they free room, D05)
         self.assertEqual(log[-2:], ["write 1", "write 0"])                    # the settings, then the live music last
-        safety = next(self.dir.glob("DUELL-safety-backup-*.json"))
+        safety = next(self.dir.glob("TIDE-safety-backup-*.json"))
         self.assertTrue(ctl("readArchive", text=safety.read_text())["accepted"])
         self.assertIn(9, ctl("readArchive", text=safety.read_text())["patches"])   # (the safety backup holds the unit as it was)
 
@@ -430,7 +430,7 @@ class RestoreTests(Base):
         self.assertEqual(rc, 1)
         self.assertIn("the safety backup failed, nothing was written", err)
         self.assertEqual(state()["sent"], [])
-        self.assertEqual(list(self.dir.glob("DUELL-safety-backup-*")), [])
+        self.assertEqual(list(self.dir.glob("TIDE-safety-backup-*")), [])
         ctl("playing", on=True)                                  # (playing: LIST answers rc 3, not even a plan)
         rc, _, err = run_main(["restore", str(p), "--yes", "--out", str(self.dir)])
         self.assertEqual(rc, 1)
@@ -481,7 +481,7 @@ class FlashTests(Base):
         self.assertIn("writing 100%", out)
         self.assertIn("now running: DUELL 0.2.25", out)
         self.assertLess(out.index("saved "), out.index("running: "))                 # the backup comes first
-        self.assertEqual(len(list(self.dir.glob("DUELL-backup-*.json"))), 1)
+        self.assertEqual(len(list(self.dir.glob("TIDE-backup-*.json"))), 1)
 
     def test_backup_failure_stops_flash(self):
         ctl("playing", on=True)
@@ -577,7 +577,7 @@ class MeasureTests(Base):
         self.assertIn("fm1_unbrick.py restore", out, "the recovery is printed up front")
         self.assertIn("ADMINISTRATOR PowerShell", out)
         self.assertIn("preflight: 4.0 voices sounding", out)
-        self.assertTrue(list((self.d / "bk").glob("DUELL-backup-*.json")), "a backup is made before the unit is touched")
+        self.assertTrue(list((self.d / "bk").glob("TIDE-backup-*.json")), "a backup is made before the unit is touched")
         text = (self.d / "m" / "report.md").read_text(encoding="utf-8")
         self.assertIn("## A01", text)
         self.assertIn("| valley, SPREAD off | 1 (core 0) |", text)
@@ -613,7 +613,7 @@ class MeasureTests(Base):
         self.assertIn("could not come back by itself", err)
         self.assertFalse(self.installs.exists(), "the unit is not touched")
         self.assertEqual(self.sent, [])
-        self.assertFalse(list((self.d / "bk").glob("DUELL-backup-*.json")), "not even a backup: nothing was started")
+        self.assertFalse(list((self.d / "bk").glob("TIDE-backup-*.json")), "not even a backup: nothing was started")
 
     def test_back_step_only_goes_back(self):
         rc, out, err = self.run_measure("back", "--yes", "--com", "COM9")
