@@ -817,7 +817,7 @@ static uint32_t take_line(uint32_t *prog)                  /* 0 no take, 1 the c
 {
     uint32_t p, len, idx;
     if (!(song.rec & 3u))
-        return 0;
+        return tk_sw_k ? 3u : 0u;                        /* (b11: 3, a SWELL / RIPPLE waits for the loop start: the line's accent dashes) */
     if (cin_left)
         return 1;
     if (!song.playing)

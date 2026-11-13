@@ -319,11 +319,19 @@ static void take_swell(void)
     memcpy(&sv, &mph[1], sizeof sv);
     sw_press(1, 0);
     CHECK("SWELL on the answer: it waits for the loop start, the header says so", tk_sw_k == 1u && said("SWELL  NEXT LOOP") && psig(1) == a0);
+    {
+        uint32_t pr = 0, bt = 0, mk = 0;
+        CHECK("... and the tide line shows it (state 7, accent dashes) until it lands", take_line(&pr) == 3u && tide_line_state(&pr, &bt, &mk) == 7);
+    }
     at_step(&trk[1], 20); run(16);
     CHECK("... not at once, not at the bar line: the answer is still the old one halfway through the loop", psig(1) == a0 && tk_sw_k == 1u);
     to_loop_end(1);
     a1 = psig(1);
     CHECK("... at the loop start it lands: a new answer in the mode ANSWER shows now (DOUBLE), a history step", a1 != a0 && tk_m.mode == TA_DOUBLE && !tk_sw_k && tk_cnt == 2 && said("SWELL  DOUBLE"));
+    {
+        uint32_t pr = 0, bt = 0, mk = 0;
+        CHECK("... the tide line is back to nothing", take_line(&pr) == 0u && tide_line_state(&pr, &bt, &mk) == 0);
+    }
     CHECK("... the take is untouched, the sound's End B too", psig(0) == h0 && !memcmp(&mph[1], &sv, sizeof sv));
     CHECK("undo: SWELL goes back one step (the first answer), then the take", take_undo(-1) == 1u && said("UNDO SWELL") && psig(1) == a0 && take_undo(-1) == 1u && said("UNDO TAKE 1") && psig(1) == s2);
     CHECK("... redo twice brings them back", take_undo(1) == 1u && take_undo(1) == 1u && said("REDO SWELL") && psig(1) == a1);
