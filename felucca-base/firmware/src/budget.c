@@ -431,10 +431,24 @@ static uint8_t part_notes_reason(int part)
     return NR_ENGINE;                                   /* the engine's own voices are what is left */
 }
 
+/* the deadline's cost items for the audio side (budget.h): main loop only (b11, from DUELL 1.2 by OSCILL/R, GPL-3.0) */
+static void bd_dl_publish(void)
+{
+    bd_dl_t *d = &bd_dl_buf[bd_dl_i ^ 1u];
+    part_dl(&trk[0], &d->c1f, &d->c1v);
+    part_dl(&trk[1], &d->c2f, &d->c2v);
+    d->g = global_cost_dl();
+    d->ms = fm1_ms;
+    RING_PUBLISH();                                     /* (the copy's stores before the byte: core.h's compiler barrier) */
+    bd_dl_i = (uint8_t)(bd_dl_i ^ 1u);                  /* (one byte, written last: the audio interrupt reads either the old whole copy or the new one) */
+    bd_dl_ok = 1;
+}
+
 static void budget_poll(void)                           /* main loop, every frame (main.c) */
 {
     bd_t b;
     uint32_t n[2], p;
+    bd_dl_publish();                                    /* (first, before the bench's way out below: the runner needs the items with the budget held open too) */
 #if DUELL_BENCH
     if (bench_bopen) {                                 /* (bench builds: a cost row of src/bench.c holds the budget open: no numbers, every voice the
                                                         * VOICE CAP and the pool give, as the bench of 0.2.25 measured) */

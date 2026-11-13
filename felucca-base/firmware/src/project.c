@@ -326,6 +326,7 @@ static int project_restore_runtime(const project_t *input)
     uint8_t fv[NTRK][FP_SIZE + 1u];
     int32_t fslot[NTRK];
     if (!proj_ok(input) || !proj_engines_ok(input)) return 1;
+    bd_dl_ok = 0;                                       /* b11: the deadline's items from the audio interrupt again until budget_poll's next publish (budget.h) */
     if (p != input) memcpy(p, input, sizeof *p);
     if (!proj_keep_play)
         transport_req = 2;
