@@ -126,14 +126,17 @@ static int32_t bar_x(uint32_t i) { return 12 + (int32_t)(i % 16u) * 13 + (int32_
 
 /* b11 THE NOTE STRIP (LANGUAGE.md 5a, owner's pick B): the one painter of a part's 16 steps, for the footer, AUTO TIDE, MULTIS and PATTERNS, in AUTO TIDE's
  * look (owner: "kinda got used to this one"). A state byte a step: pv_bar_of's class (0 past the end, 1 rest, 2 tie, 3 note, 4 chord), |8 an accent,
- * the high nibble the pitch rank (ui.c pv_rank). Bottom-aligned on row yb - 1, the bar_x columns, hmax the tallest bar (9: AUTO TIDE's).
- * A note (a chord: its top note) is 9 x (3 .. hmax) by its pitch, in the part's colour; rest 9 x 3 DIM, tie 9 x 3 MID, past the end a 1 px LINE (as AUTO TIDE).
+ * the high nibble the pitch rank (ui.c pv_rank). Bottom-aligned on row yb - 1, the bar_x columns, hmax the tallest bar the place's row holds.
+ * A note (a chord: its top note) is never shorter than AUTO TIDE's 9 x 6 rounded note (manager on rc10-test: a 3 px note read as a rest); its pitch
+ * adds height above that, up to hmax: 6 .. 11 in the footer, MULTIS and PATTERNS (NS_HMAX), 6 .. 9 on AUTO TIDE (its rows are 14 px apart).
+ * Rest 9 x 3 DIM, tie 9 x 3 MID, past the end a 1 px LINE (as AUTO TIDE); the corners rounded (2) at every height.
  * The accent: the bar's top row TEXT. Marks 9 x 2 at yb + 2: the cursor ACCENT, else the playhead TEXT */
 enum { NS_END, NS_REST, NS_TIE, NS_NOTE, NS_CHORD };
-#define NS_HMAX 9
+#define NS_HMIN 6                                        /* AUTO TIDE's note: a note is never a rest's height */
+#define NS_HMAX 11                                       /* the footer's, MULTIS' and PATTERNS' rows (AUTO TIDE passes its own 9) */
 static int32_t ns_h(uint32_t s, int32_t hmax)
 {
-    return 3 + (int32_t)(s >> 4) * (hmax - 3) / 15;
+    return NS_HMIN + (int32_t)(s >> 4) * (hmax - NS_HMIN) / 15;
 }
 static void ns_step(int32_t x, int32_t yb, int32_t hmax, uint32_t s, uint16_t c)
 {
