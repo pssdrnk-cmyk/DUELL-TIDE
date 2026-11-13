@@ -194,9 +194,9 @@ function channelPage() {
   // legal and safety lines that must stay
   for (const t of ["GPL-3.0", "no warranty", "Felucca by Leo Kuroshita", "JIANT", "JieLi AC79 SDK", "Apache-2.0", "not affiliated with, endorsed by or supported by", "not by OSCILL/R", "This writes the official M-VAVE firmware back."])
     ok(h.includes(t), `page keeps: ${t}`);
-  ok(h.includes("Built on DUELL (OSCILL/R) and Felucca (H&uuml;gelton Instruments), GPL-3.0."), "page keeps the one attribution line");
+  ok(h.includes("Built on DUELL (OSCILL/R) and Felucca (H&uuml;gelton Instruments). GPL-3.0."), "page keeps the one attribution line");
   const l = readFileSync(new URL("./landing.html", import.meta.url), "utf8");
-  for (const t of ["GPL-3.0", "no warranty", "Felucca", "JIANT", "JieLi AC79 SDK", "Apache-2.0", "not made, affiliated with or endorsed by OSCILL/R or M-VAVE", "Built on DUELL (OSCILL/R) and Felucca (H&uuml;gelton Instruments), GPL-3.0.", "Install Stable", "Install Beta", "Try the emulator", "DUELL-TIDE/issues", "Use at your own risk"])
+  for (const t of ["GPL-3.0", "no warranty", "Felucca", "JIANT", "JieLi AC79 SDK", "Apache-2.0", "not made, affiliated with or endorsed by OSCILL/R or M-VAVE", "Built on DUELL (OSCILL/R) and Felucca (H&uuml;gelton Instruments). GPL-3.0.", "Install Stable", "Install Beta", "Try the emulator", "DUELL-TIDE/issues", "Use at your own risk"])
     ok(l.includes(t), `landing keeps: ${t}`);
   const strip = (x) => x.replace(/data:image[^"]*/g, "");
   ok(!/oscillr\/DUELL\/issues/.test(h + l), "pages: no bug-report link to OSCILL/R (they are credit and original-DUELL links only)");

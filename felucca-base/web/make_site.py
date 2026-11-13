@@ -5,8 +5,8 @@
 """Make the TIDE site (GitHub Pages) as a static folder:
 
   index.html                  landing page (web/landing.html)
-  assets/                     the site's stylesheet, theme script and self-hosted fonts (web/assets/); no external requests
-  img/                        the cover and the device screenshots (docs/duell-tide-cover.jpg, docs/tide/*.png)
+  assets/                     the site's stylesheet, wordmark and self-hosted fonts (web/assets/); no external requests
+  img/                        the social card and the device screenshots (docs/tide-social.png, docs/tide/*.png)
   emu/                        the browser emulator (the output of web/emu/build.sh: build/emu), or a
                               "not attached yet" page
   install/index.html          the installer page (web/install/index.html)
@@ -175,7 +175,7 @@ def main():
     shutil.copytree(HERE / "assets", out / "assets", ignore=shutil.ignore_patterns(".DS_Store"))
     img = out / "img"
     img.mkdir()
-    for src in [ROOT / "docs" / "duell-tide-cover.jpg", *sorted((ROOT / "docs" / "tide").glob("*.png"))]:
+    for src in [ROOT / "docs" / "tide-social.png", *sorted((ROOT / "docs" / "tide").glob("*.png"))]:
         shutil.copy(src, img / src.name)
 
     shutil.copytree(HERE / "editor", out / "editor", ignore=shutil.ignore_patterns(".DS_Store", "*.wav"))   # (a test WAV of the librarian is not part of the site)

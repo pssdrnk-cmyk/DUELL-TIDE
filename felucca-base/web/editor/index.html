@@ -10,11 +10,12 @@
 <title>TIDE for FM-1 editor</title>
 <link rel="stylesheet" href="./editor.css">
 <link rel="stylesheet" href="./look11.css">
+<link rel="stylesheet" href="./tide-sea.css">
 </head>
 <body>
 <header id="top">
   <!-- The owner's header image (white on transparent, wordmark + "by OSCILL/R" + "MultiMorphing Bitimbral Synthesizer"): img/editor-header.png (also .svg). On light palettes it is inverted by CSS. -->
-  <img id="logoslot" class="hdr" src="./img/editor-header.png" alt="TIDE for FM-1, built on DUELL (OSCILL/R)" width="960" height="180">
+  <img id="logoslot" class="hdr tide" src="../assets/tide-wordmark.svg" alt="TIDE for FM-1"><span class="tidesub">sound editor</span>
   <span class="grow"></span>
   <!-- DUELL 1.1: the DEMO switch (works with no unit), the octave button (its own full view), the part markers and the battery, as in the device header -->
   <button id="demosw" class="demosw" type="button" aria-pressed="false" title="DEMO: the editor with a simulated unit, no unit, no MIDI, nothing saved">DEMO</button>
@@ -29,7 +30,7 @@
 <div id="demobar" class="demobar" hidden><b>DEMO</b><span>No unit is connected. Everything here is simulated and nothing is saved. Click through every tab.</span><button id="demoleave" class="small ghost" type="button">Leave DEMO</button></div>
 <main id="main"></main>
 <footer id="foot"><span id="msg" class="msg" role="status" aria-live="polite"></span>
-  <span class="small right" id="stocknote">This is the sound editor of the base firmware (DUELL 1.1, OSCILL/R): the TIDE pages are not editable here.</span>
+  <span class="small right" id="stocknote">TIDE for FM-1 by pssdrnk. Built on DUELL (OSCILL/R) and Felucca (Hügelton Instruments). GPL-3.0. AUTO TIDE and TIDE SETTINGS are set on the unit.</span>
   <span id="mockbar" class="mockbar" hidden><b>SIMULATED UNIT</b>
     <button id="mockturn" class="small" title="The unit's panel changes PART 1's CUT; the page follows (WATCH)">knob</button>
     <button id="mockselect" class="small" title="ALGORITHM on the unit: the other part is selected">ALGORITHM</button>

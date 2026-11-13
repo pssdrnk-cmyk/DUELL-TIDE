@@ -7,7 +7,7 @@
 @font-face { font-family: "Barlow Semi Condensed"; font-weight: 700; src: url("./fonts/BarlowSemiCondensed-Bold.ttf") format("truetype"); }
 
 /* dark from the start, as the unit (before a unit's colour is read) */
-:root { --bg: #18181b; --fg: #fffbff; --dim: #a09da0; --line: #35343a; --panel: #0d0d0f; --acc: #de38ff; --accfg: #fff; --page: #08080a; --p1: #de38ff; --p2: #ff1c8b; --grey: #737073; --greytext: #cfcccf;
+:root { --bg: #18181b; --fg: #fffbff; --dim: #a09da0; --line: #35343a; --panel: #0d0d0f; --acc: #3BE8D6; --accfg: #02070D; --page: #040B13; --p1: #3BE8D6; --p2: #FF8A5E; --grey: #737073; --greytext: #cfcccf;
   --fs: 15px; --tabfs: 15px; --ttlfs: 12px; --labfs: 12px; --valfs: 16px; --unitfs: 12px; --ctlfs: 13px; --namefs: 15px; --top: 44px; color-scheme: dark; }
 html, body { background: var(--page); }
 body, button, input, select, textarea { font-family: "Barlow Semi Condensed", "Arial Narrow", Arial, sans-serif; }

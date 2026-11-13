@@ -903,13 +903,13 @@ function applyTheme(i) {
   const root = document.documentElement.style;
   const known = ["--bg", "--fg", "--dim", "--line", "--panel", "--acc", "--accfg", "--page", "--warn", "--ok"];
   const set = (el, vars) => { for (const k of known) el.setProperty(k, vars[k]); };
-  const act = activePart(), cols = DEMO ? ["#de38ff", "#ff1c8b"] : null, tv = (part) => look11Vars(i, part, act, cols);
+  const act = activePart(), cols = null   /* b11: the demo shows the default palette (TIDE) too */, tv = (part) => look11Vars(i, part, act, cols);
   const unset = (el) => { for (const k of known) el.removeProperty(k); };
   if (i == null) { unset(root); root.removeProperty("color-scheme"); document.documentElement.dataset.scheme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; $("unit").title = ""; return; }
   set(root, tv(2)); root.setProperty("color-scheme", isDark(i) ? "dark" : "light"); document.documentElement.dataset.scheme = isDark(i) ? "dark" : "light";
   for (let k = 0; k < 3; k++) if (app.cols[k]) set(app.cols[k].col.style, tv(k));
   const pc = cols ?? [L.PALETTES.LIST[i]?.r?.[0], L.PALETTES.LIST[i]?.r?.[2]];
-  root.setProperty("--p1", pc[0] ?? "#de38ff"); root.setProperty("--p2", pc[1] ?? "#ff1c8b");
+  root.setProperty("--p1", pc[0] ?? "#3BE8D6"); root.setProperty("--p2", pc[1] ?? "#FF8A5E");
   renderMarkers();
   $("unit").title = `The unit's colour: ${paletteName(i)}`;
 }
