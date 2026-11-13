@@ -238,6 +238,27 @@ static void take_settings(void)
     song.rec = 0;
 }
 /* the answer switches on the bar line, not when REC goes off */
+/* b13 (hunt F2): a multi loaded while REC is armed: the pass starts again on the new music. REC off with nothing played on it is no take (the new multi's
+ * parts stay as loaded: no answer nobody asked for), and after a note on it, the undo gives the new multi's parts back, not the old multi's */
+static void take_load_armed(void)
+{
+    uint32_t m0, m1;
+    boot(); empty_part(0); trk[0].p[P_SLEN] = 32; setup(1, 0, V_POLY); tide_answer = TA_BASS; tide_answer_on = 0;
+    start(); song.rec = 1; run(100);
+    rec_note_at(0, 2, 69, 60);
+    project_load(2); run(200);
+    m0 = psig(0); m1 = psig(1);
+    song.rec = 0; run(48); land(); run(400);
+    CHECK("a load while REC is armed, REC off with nothing played on the new multi: no take, its parts as loaded", tk_cnt == 0 && psig(0) == m0 && psig(1) == m1);
+    boot(); empty_part(0); trk[0].p[P_SLEN] = 32; setup(1, 0, V_POLY); tide_answer = TA_BASS; tide_answer_on = 0;
+    start(); song.rec = 1; run(100);
+    rec_note_at(0, 2, 69, 60);
+    project_load(2); run(200);
+    m0 = psig(0); m1 = psig(1);
+    rec_note_at(0, 5, 72, 60);
+    song.rec = 0; run(48); land(); run(100);
+    CHECK("... a note on the new multi is a take; its undo gives the new multi's parts back", tk_cnt == 1 && psig(0) != m0 && take_undo(-1) == 1u && psig(0) == m0 && psig(1) == m1);
+}
 static void take_barline(void)
 {
     uint32_t s2;
@@ -784,7 +805,7 @@ static void take_hold(void)
 int main(void)
 {
     step1();
-    take_lifecycle(); take_history(); take_settings(); take_barline(); take_roll_test(); take_swell(); take_swell_layer(); take_reply(); take_line_test(); take_first_key(); take_layer(); take_arpseq(); take_live(); take_chords(); take_hold();
+    take_lifecycle(); take_history(); take_settings(); take_barline(); take_load_armed(); take_roll_test(); take_swell(); take_swell_layer(); take_reply(); take_line_test(); take_first_key(); take_layer(); take_arpseq(); take_live(); take_chords(); take_hold();
     printf("take: %u checks, %u FAIL\n", checks, failures);
     return failures ? 1 : 0;
 }

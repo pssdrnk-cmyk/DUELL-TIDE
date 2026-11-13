@@ -992,6 +992,11 @@ static __attribute__((noinline)) void take_poll(void)                           
         tk_sw_k = 0;
         tk_mu = 0;
         tk_open = (uint8_t)now;
+        if (now) {                                       /* b13 (hunt F2): REC stays armed through a load: the pass starts again on the new music (its copy, its steps), */
+            tk_save(&tk_pre);                            /* so REC off makes no take of the load itself, and an undo never puts the old multi's patterns back */
+            tk_live = tk_wd = 0;
+            tk_lsig = steps_sig(&trk[now & 1u ? 0u : 1u]);
+        }
         return;
     }
     if (tk_sw_k && tk_sw_due())
