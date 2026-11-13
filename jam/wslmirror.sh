@@ -61,6 +61,7 @@ if [ -n "$MAIN" ] && [ -d "$MAIN" ]; then
             || echo "wslmirror: note: could not make a repository for the mirror: the groups that read git will fail"
     fi
     if [ -d "$DST/.git" ]; then
+        git -C "$DST" config core.fileMode false          # (rsync -a from /mnt/c gives every file mode 755; the index has 644: without this `git diff BASE` lists every file and --changed selects every group; set on every run, also on a mirror made before this line)
         git -C "$DST" fetch -q --no-tags origin '+refs/remotes/fork/*:refs/remotes/fork/*' '+refs/heads/*:refs/remotes/origin/*' '+refs/tags/*:refs/tags/*' 2>/dev/null
         head=$(git --git-dir="$GD" rev-parse HEAD 2>/dev/null)
         if [ -n "$head" ]; then
