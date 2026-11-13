@@ -1,4 +1,0 @@
-/* b11-design MOCK (local branch only, not for merge): the editor in the TIDE language */
-#top { background: var(--page, #02070D); border-bottom: 1px solid #1D5E77; }
-#top .hdr.tide { height: 34px; width: auto; margin: 0 2px 0 0; filter: none; }
-#top .tidesub { font-weight: 600; letter-spacing: .06em; text-transform: uppercase; font-size: 12px; color: #9CC2D3; margin-right: 18px; }

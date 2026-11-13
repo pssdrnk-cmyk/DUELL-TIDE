@@ -33,7 +33,7 @@ export const isDark = (i) => lum(palette(i).bgl) < 0.4;
 export const GREY = "#737073", GREY_TEXT = "#cfcccf";
 export function look11Vars(i, part, active, partColours = null) {
   const p = palette(i), col = partColours ?? [p.r[0], p.r[2]];
-  const sea = p.name === "TIDE";   // b11-design MOCK (local branch only): TIDE's editor sits on the unit's night sea, the global column in sand
+  const sea = p.name === "TIDE";   // b11: TIDE's editor sits on the unit's night sea, the global column in sand
   if (lum(p.bgl) >= 0.4) return themeVars(i, part);
   if (part === 2) {   // DUELL 1.1 (owner, round 2): the global column and the global pages (GLOBAL, PATCHES, MULTIS, PATTERNS, MIDI, MIDI MAP, WAVETABLES, SETTINGS, the OCTAVE view) take NO part colour: white and greys on black, as the unit's global pages (PAGES_V2_glo-a.png)
     if (sea) return { "--bg": p.surf[0], "--fg": p.text, "--dim": p.mid, "--line": p.line[0], "--panel": p.bg[0], "--acc": p.g, "--accfg": p.bg[0], "--page": p.bg[0], "--warn": "#FF5A5A", "--ok": "#3BE8D6", "--base": p.bg[1] };
