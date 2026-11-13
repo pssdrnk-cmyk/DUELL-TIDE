@@ -2440,8 +2440,8 @@ static uint32_t midi_cards(uint8_t vis[4])
 }
 /* (the name a card shows: params.c desc_shown, T0227's unit label pass) */
 /* 1.0.0-b7 (owner 2026-11-10: HOME's MORPH page is the hands-on page): knob 2, 3 and 4 on the one row under the picture, rows MROW_Y .. + MROW_H - 1, in three fixed
- * columns left to right as the knobs (knob_sets.h KN_X, a set's own): "FLT 2.4k", "RSN 40%", "ECH 30%", the knob's number dot at the column's left (b11), the name and the value
- * beside it, so nothing moves while a value changes. The selected part's values as
+ * columns left to right as the knobs (knob_sets.h KN_X, a set's own): "FLT 2.4k", "RSN 40%", "ECH 30%", the name at the column's left and the value beside it, so the
+ * names never move. No knob dots: with them the three do not fit the width. The selected part's values as
  * its cards show them (the morph's blend: card_vv); the knob just turned's name in the accent; ECHO dim while the delay does nothing (h1_echo_why: knob 1's line
  * says why). While SAVE is held (and only then) the row says HOLD SAVE = SAVE PATCH instead. Drawn only when what it shows changes */
 static const char *h1_echo_why(void)
@@ -2461,7 +2461,7 @@ static void h1_val(uint32_t ix, const track_t *t, int32_t v, char *out)
 static void morph_row(void)
 {
     static char last[24];
-    char key[24];
+    char key[24], v[PV_LEN + 4];
     const int hint = ui.save_t0 != 0u, dim = h1_echo_why() != 0;
     const int32_t ty = UT_TY(S, MROW_BASE);             /* (the row's label baseline: the face's box, descenders included, ends on the canvas's last row) */
     const uint32_t set = kn_cur();
@@ -2489,19 +2489,15 @@ static void morph_row(void)
     cv_oy = 0;
     if (hint)
         cv_text_in(0, ty, 240, &AF_S, "HOLD SAVE = SAVE PATCH", T_DIM, T_BG);
-    else {   /* b11 MORPH polish (design review 2.1): each knob's number before its name, as on every other page, in the set's fixed columns (QC: nothing moves while a knob turns) */
-        char vs[PV_LEN + 4];
+    else
         for (i = 0; i < 3u; i++) {
             const char *nm = KN_L[set][i];
-            const int32_t x = KN_X[set][i];
             ix = KN_E[set][i][0].ix;
-            h1_val(ix, TSEL, nv[i], vs);
             const int hot = ui.hot_t && ui.hot_col == i + 1u, d = dim && (ix == K_DLY || ix == K_FDB || ix == K_TIM);   /* (a macro led by the echo does nothing while the delay does nothing) */
-            const uint16_t lc = d ? T_DIM : hot ? T_ACCENT : T_TEXT;
-            dot_label(i + 1u, x, x + KN_DW, MROW_BASE, nm, lc, lc, 240, T_BG);
-            cv_text_on(x + KN_DW + text_w(&AF_S, nm) + 5, ty, &AF_S, vs, d ? T_DIM : VAL(i + 1u), T_BG);   /* (the value in the knob-1 line's colour, beside its name) */
+            h1_val(ix, TSEL, nv[i], v);
+            cv_text_on(KN_X[set][i], ty, &AF_S, nm, d ? T_DIM : hot ? T_ACCENT : T_TEXT, T_BG);
+            cv_text_on(KN_X[set][i] + text_w(&AF_S, nm) + 5, ty, &AF_S, v, d ? T_DIM : VAL(i + 1u), T_BG);   /* (the value in the knob-1 line's colour, beside its name) */
         }
-    }
     cv_blit(0, MROW_Y);
 }
 static void draw_columns(void)

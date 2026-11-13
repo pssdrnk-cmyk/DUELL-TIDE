@@ -684,7 +684,7 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
                 c = WL_X1 - WL_SOFT;                     /* (the middle is untouched: on to the right end) */
                 continue;
             }
-            for (row = y0 + 1; row < y1 - 1; row++) {
+            for (row = y0 + 1; row < y1; row++) {             /* (every row a line can reach: wl_col's y0 + 1 .. y1 - 1) */
                 const int32_t yy = row + CV_Y;
                 uint16_t *q;
                 if ((uint32_t)yy >= cv_h || (uint32_t)c >= cv_w)

@@ -31,18 +31,18 @@ static int widths(void)
                 }
             }
         }
-        {   int32_t need = 3 + 2 * KN_GAP, sl, x1, x2;
-            for (i = 0; i < 3u; i++) need += KN_DW + text_w(&AF_S, KN_L[s][i]) + 5 + w[i];
+        {   int32_t need = 3 + 24, sl, x1, x2;
+            for (i = 0; i < 3u; i++) need += text_w(&AF_S, KN_L[s][i]) + 5 + w[i];
             sl = 237 - need;
-            x1 = 3 + KN_DW + text_w(&AF_S, KN_L[s][0]) + 5 + w[0] + KN_GAP + sl / 2;
-            x2 = x1 + KN_DW + text_w(&AF_S, KN_L[s][1]) + 5 + w[1] + KN_GAP + (sl - sl / 2);
+            x1 = 3 + text_w(&AF_S, KN_L[s][0]) + 5 + w[0] + 12 + sl / 2;
+            x2 = x1 + text_w(&AF_S, KN_L[s][1]) + 5 + w[1] + 12 + (sl - sl / 2);
             printf("KNX %s: {3, %d, %d}, slack %d\n", SETN[s], x1, x2, sl);
         }
         for (i = 0; i < 3u; i++) {
-            x = KN_X[s][i] + KN_DW + text_w(&AF_S, KN_L[s][i]) + 5 + w[i];
-            e = x + (i < 2u ? KN_GAP : 0) <= (i < 2u ? KN_X[s][i + 1u] : 237);
+            x = KN_X[s][i] + text_w(&AF_S, KN_L[s][i]) + 5 + w[i];
+            e = x + (i < 2u ? 12 : 0) <= (i < 2u ? KN_X[s][i + 1u] : 237);
             ok &= e;
-            printf("%-3s %-8s label %2d px, widest value %2d px, ends at x %3d (limit %3d) %s\n", SETN[s], KN_L[s][i], text_w(&AF_S, KN_L[s][i]), w[i], x, i < 2u ? KN_X[s][i + 1u] - KN_GAP : 237, e ? "ok" : "TOO WIDE");
+            printf("%-3s %-8s label %2d px, widest value %2d px, ends at x %3d (limit %3d) %s\n", SETN[s], KN_L[s][i], text_w(&AF_S, KN_L[s][i]), w[i], x, i < 2u ? KN_X[s][i + 1u] - 12 : 237, e ? "ok" : "TOO WIDE");
         }
     }
     return (int)ok;
