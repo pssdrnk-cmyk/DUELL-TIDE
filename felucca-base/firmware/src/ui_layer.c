@@ -918,36 +918,43 @@ static const char *const TL_NAME[TL_N] = {"CLEAR", "REVERSE", "SHIFT <", "SHIFT 
 #define TL_BIG ((1u << TL_CLEAR) | (1u << TL_COOK))      /* QUICK_SEQ_NEW_LAYOUT.png: CLEAR and RIPPLE in the larger size, the rest in the smaller */
 /* DUELL 1.0 layout (QUICK_SEQ_NEW_LAYOUT.png): the eight tools as a 4 x 2 box grid in the big area (ui_boxes.c box_grid; rows UT_BOX_QS_*), the white
  * keys F G A B over C D E F, the key letter in the corner, the names centred */
-/* b11: the selected part's pattern as bars (one a step across w px: the note's height between its lowest and highest, a tie a thin run after it): what SWELL / RIPPLE / any tool just wrote, on the layer itself */
+/* b11: the selected part's pattern as bars, in the part's own colour: every step the same width and the same gap (16, 32 and 64 steps fill 128 px evenly, another LEN uses the whole px a step it can and is centred),
+ * a note a bar whose height is its place between the pattern's lowest and highest note (3 px at least), a tie the same bar without the gap, an empty step one baseline px in the dim text colour. So what SWELL, RIPPLE
+ * or any tool just wrote is on the layer itself the moment it lands. */
 static void layer_spark(int32_t x0, int32_t y0, int32_t w, int32_t h)
 {
     const track_t *t = TSEL;
-    uint32_t len = (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP), i, n = 0;
-    int32_t lo = 127, hi = 0, last = 0, x, x1, bw, y, j;
+    const uint16_t ink = T_PTHEME(trk_index(t));
+    uint32_t len = (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP), i;
+    int32_t lo = 127, hi = 0, unit = w / (int32_t)len, gap, bw, hgt = 0, x, y, j, top, k;
     for (i = 0; i < len; i++)
         if (t->step[i].time == ST_NOTE && t->step[i].n) {
             lo = t->step[i].note[0] < lo ? t->step[i].note[0] : lo;
             hi = t->step[i].note[0] > hi ? t->step[i].note[0] : hi;
-            n++;
         }
-    for (x = 0; x < w; x += 2)                          /* (the baseline: dotted) */
-        cv_pset(x0 + x, y0 + h - 1, T_DIM);
-    bw = w / (int32_t)len;
-    bw = bw < 1 ? 1 : bw > 3 ? 3 : bw;
-    for (i = 0; i < len && n; i++) {
-        x = x0 + (int32_t)(i * (uint32_t)w / len);
-        x1 = x0 + (int32_t)((i + 1u) * (uint32_t)w / len);
+    unit = unit < 1 ? 1 : unit;
+    gap = unit >= 6 ? 2 : unit >= 3 ? 1 : unit >= 2 ? 1 : 0;
+    bw = unit - gap;
+    x0 += (w - (int32_t)len * unit) / 2;                /* (centred when LEN does not divide the width) */
+    for (i = 0; i < len; i++) {
+        x = x0 + (int32_t)i * unit;
         if (t->step[i].time == ST_NOTE && t->step[i].n) {
-            last = 3 + (hi > lo ? (t->step[i].note[0] - lo) * (h - 5) / (hi - lo) : (h - 5) / 2);
-            for (y = y0 + h - 2; y > y0 + h - 2 - last; y--)
-                for (j = 0; j < bw && x + j < x1; j++)
-                    cv_pset(x + j, y, T_ACCENT);
-        } else if (t->step[i].time == ST_TIE && last) {
-            for (j = 0; j < bw && x + j < x1; j++)
-                cv_pset(x + j, y0 + h - 2 - last, T_ACCENT);
+            hgt = 3 + (hi > lo ? (t->step[i].note[0] - lo) * (h - 3) / (hi - lo) : (h - 3) / 2);
+            k = 0;
+        } else if (!(t->step[i].time == ST_TIE && hgt)) {
+            hgt = 0;
         } else {
-            last = 0;
+            k = gap;                                    /* (a tie: the same height, no gap to the bar before it) */
         }
+        if (!hgt) {
+            for (j = 0; j < bw; j++)
+                cv_pset(x + j, y0 + h - 1, T_DIM);      /* (empty: the baseline px) */
+            continue;
+        }
+        top = y0 + h - hgt;
+        for (y = top; y < y0 + h; y++)
+            for (j = -k; j < bw; j++)
+                cv_pset(x + j, y, ink);
     }
 }
 static void layer_seq(void)
