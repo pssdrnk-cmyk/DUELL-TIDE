@@ -1617,17 +1617,18 @@ static void draw(int s)
         splash_on = 0; splash_guide = 0;
         return;
     }
-    if (s == S_SPLASH) {                          /* the power-on splash (ui_draw.c, the ribbon at step 5): the lockup (a graphic: its mask in the
-                                                   * text colour, no text drawn) over lines coloured part 1 -> part 2 of the theme (POLICE: two flat colours) */
+    if (s == S_SPLASH) {                          /* the power-on splash (ui_draw.c, step 5): the lockup (a graphic: its mask in the text colour, no text drawn) over the sea
+                                                   * (b11, spl_sea): its pixels in rows 108 .. 217, the front line at full strength in the part 2 colour (POLICE: two flat colours) */
         const ui_pal_t *pl = &UI_PALETTES[ux.pal % NPALETTES];
         uint32_t x, y, c0 = 0, c1 = 0, other = 0, ink = 0, soft = 0;
-        uint16_t top = pl->hc ? pl->c[0] : ux_mix(ux_mix(pl->c[0], pl->c[2], 0), T_BG, SPL_LINE_DIM), bot = pl->hc ? pl->c[2] : ux_mix(ux_mix(pl->c[0], pl->c[2], 100), T_BG, SPL_LINE_DIM);
+        uint16_t top = pl->c[0], bot = pl->c[2];
         n_text = 0;
         splash_frame(5, 0);
         for (y = 0; y < 240u; y++)                /* the ribbon's pixels: the two end colours present; POLICE: nothing but them and the page */
             for (x = 0; x < 240u; x++) {
                 uint16_t p = swap16(host_screen[y * 240u + x]);
-                c0 += p == top; c1 += p == bot;
+                c0 += pl->hc ? p == top : y >= 108u && y < 218u && p != T_BG;   /* (b11: the sea's pixels; POLICE: part 1's flat colour) */
+                c1 += p == bot;
                 if (x >= SPL_LOGO_X0 && x < SPL_LOGO_X0 + SPL_LOGO_W && y >= SPL_LOGO_Y0 && y < SPL_LOGO_Y0 + SPL_LOGO_H) {
                     ink += p == T_TEXT;                   /* (the mask's full coverage: exactly the text colour; the edges blend) */
                     soft += p != T_TEXT && p != top && p != bot && p != T_BG;
