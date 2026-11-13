@@ -12,14 +12,14 @@ TIDE for FM-1 by pssdrnk. Built on DUELL (OSCILL/R) and Felucca (Hügelton Instr
 
 - DUELL's MORPH glides a sound between two versions of itself, End A and End B, with one fader. **TIDE moves that fader for you**, in time with the music, each trip a little different, like a tide between two shores.
 - It is made for playing the FM-1 as a **background**: set a tide going, then play your drum machine, bass or sampler over it. A hand on the knob can take over at any time.
-- 26 factory multis in genre order, six STYLE presets (DUB, DEEP, MINIMAL, AMBIENT, PEAK, DRONE), a live view of the sound as waves.
+- 26 factory multis in genre order plus a blank one for playing live (M27 EMPTY), six STYLE presets (DUB, DEEP, MINIMAL, AMBIENT, PEAK, DRONE), a live view of the sound as waves.
 
-<p align="center"><img src="docs/tide/auto-tide-glide.gif" width="360" alt="The AUTO TIDE page during a glide, recorded from the emulator: both parts' SOUND and SEQ faders travel from A to B, each part's live line moves under its steps, and the status reads RISE TO B 1/4 up to 4/4"></p>
-<p align="center"><em>AUTO TIDE during one glide, recorded from the firmware running in the <a href="https://pssdrnk-cmyk.github.io/DUELL-TIDE/emu/">web emulator</a> (TIME 4 bars so the trip fits in a few seconds).</em></p>
+<p align="center"><img src="docs/tide/auto-tide-glide.gif" width="360" alt="The AUTO TIDE page during a glide to B and back, recorded from the emulator: each part's steps stand in water that rises toward B and falls back to A, and knob 1's line reads RISE TO B, RISE WAITING, RISE TO A"></p>
+<p align="center"><em>AUTO TIDE during one glide to B and back, recorded from the firmware running in the emulator (TIME 2 bars so a round trip fits in a few seconds).</em></p>
 
 ## Start in 30 seconds
 
-1. Press **HOME** until **AUTO TIDE** shows (HOME's round is MORPH, TIDE SETTINGS, AUTO TIDE).
+1. Press **HOME** until **AUTO TIDE** shows (HOME's round is MORPH, AUTO TIDE, TIDE SETTINGS; HOME opens MORPH, so one more tap).
 2. Twist **knob 1** right (to B) and press **PLAY**. The glide starts on the next bar.
 3. Play over it. **STOP** pauses the glide; PLAY goes on from there.
 
@@ -31,13 +31,13 @@ Each block says what a function does for you and which control to use. The pictu
 
 ### AUTO TIDE: the glide
 
-<img align="right" src="docs/tide/auto-tide.png" width="240" alt="AUTO TIDE with an ARC: each part is a lane with its SOUND and SEQ faders, its steps and a live line; a thin progress line at the foot shows the ARC">
+<img align="right" src="docs/tide/auto-tide.png" width="240" alt="AUTO TIDE, the water page: each part's steps stand in water, part 1 in sea glass above and part 2 in coral below; the water stands high when the part is near B. Knob 1's line reads RISE TO B, and MODE, TIME and WAIT are under the water">
 
-AUTO TIDE moves the sound and the pattern from A to B and back, bar by bar, while the music plays. It is the page you live on.
-- **Knob 1 (GLIDE):** twist right to go to B, left to go to A. It starts on the next bar. Twist two detents again while it runs and it stops where it is.
+AUTO TIDE moves the sound and the pattern from A to B and back, bar by bar, while the music plays. It is the page you live on, and it looks like a tide.
+- **What you see:** each part's steps stand in water, part 1 in sea glass above and part 2 in coral below. The water is **low at A and high at B** and rises and falls as the glide goes. While the tide waits at an end (WAIT) the water rolls slowly in moonlight; armed (waiting for PLAY) it holds still, dashed; stopped it holds still and dim. A take that is recording turns it red.
+- **Knob 1 (GLIDE):** twist right to go to B, left to go to A. It starts on the next bar. Twist two detents again while it runs and it stops where it is. Its line says where the trip is, for example `RISE  TO B 2/16`.
 - **PLAY and STOP:** the glide only moves while the transport plays. STOP pauses it; PLAY carries on from there.
 - **Knob 2 MODE:** EVOLVE walks your own sounds; TRAVEL hops through factory sounds of the same kind. **Knob 3 TIME:** bars per trip, 1 to 64. **Knob 4 WAIT:** bars to rest at each end, OFF to 16.
-- **What you see:** each part is a lane: its SOUND and SEQ faders, its 16 steps and under them a live line, the part's sound right now, in the part's colour (sea glass for part 1, coral for part 2). With an ARC on, a thin progress line at the foot marks its phases; knob 1's line says where the trip is, for example `RISE  TO B 2/16`.
 - Hold **OCT-** and turn knob 1 to go back to your original sound and pattern.
 
 More: [AUTO TIDE in the guide](docs/TIDE_GUIDE.md#2-auto-tide-the-page-you-live-on).<br clear="right">
@@ -72,7 +72,7 @@ More: [MORPH in the guide](docs/TIDE_GUIDE.md#1-morph-the-hand-page).<br clear="
 
 <img align="right" src="docs/tide/multis.png" width="240" alt="The MULTIS page: three list rows with the picked multi opened below, showing both parts' sound names, ARP or SEQ and their first 16 steps">
 
-The FM-1 has two **parts**, each a sound with its own pattern. A **multi** holds both parts, their effects, arps, patterns, mode and morph settings. There are 26 factory multis, in genre order (dub, house, techno, acid, electro, ambient, and two drones), and you can save over any of them.
+The FM-1 has two **parts**, each a sound with its own pattern. A **multi** holds both parts, their effects, arps, patterns, mode and morph settings. There are 26 factory multis, in genre order (dub, house, techno, acid, electro, ambient, and two drones), and a blank one after them, **M27 EMPTY**, for playing live. You can save over the factory multis.
 - **Load one:** short-press **SAVE** (it opens MULTIS in LAYER), turn **knob 1** to the multi, press **OCT+**. The preview shows both parts' sounds and their first 16 steps before you load.
 - **ALGORITHM** picks PART 1, both parts (the middle) or PART 2 on the HOME pages. The middle plays the mode set by the PLAY MODE row: **LAYER** (both parts on every key), **STEREO** or **DUEL** (part 1 left, part 2 right). **SPLIT** divides the keys between the parts; **XFADE** crossfades them by velocity in LAYER.
 
@@ -117,7 +117,7 @@ Not happy with the answer? Hold **SEQ** and press **C4: SWELL** for a whole new 
 
 <img align="right" src="docs/tide/save.png" width="240" alt="The SAVE confirm dialog: OVERWRITE a patch slot, with OCT- NO and OCT+ YES">
 
-**Hold SAVE** on a page to save what it edits: a patch, a pattern or a multi; the dialog offers the picked slot over itself, **OCT+** says yes, **OCT-** no. A short press opens the SAVE page that fits where you are (PATTERNS from a sequencer page, otherwise MULTIS in LAYER and PATCHES in DUEL and STEREO); SELECT moves between PATCHES, PATTERNS, MULTIS and TOOLS. Saving needs the transport stopped. SAVE keeps the sound as you loaded it, not the one TRAVEL moved it to: to keep what you hear, use KEEP first. The last four patch and pattern slots are empty USER slots. [Back up](docs/RECOVERY.md) before you update.<br clear="right">
+**Hold SAVE** on a page to save what it edits: a patch, a pattern or a multi; the dialog offers the picked slot over itself, **OCT+** says yes, **OCT-** no. A short press opens the SAVE page that fits where you are (PATTERNS from a sequencer page, otherwise MULTIS in LAYER and PATCHES in DUEL and STEREO); SELECT moves between PATCHES, PATTERNS, MULTIS and TOOLS. Saving needs the transport stopped. SAVE keeps the sound as you loaded it, not the one TRAVEL moved it to: to keep what you hear, use KEEP first. Every factory sound has its own slot and can be saved over (RESTORE brings the factory sound back); USER 1 to 4 start empty. [Back up](docs/RECOVERY.md) before you update.<br clear="right">
 
 ## Install
 
