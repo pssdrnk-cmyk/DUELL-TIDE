@@ -810,39 +810,13 @@ static void glo_mute_cards(void)
         char lb[8] = "MUTE 1";
         lb[5] = (char)('1' + e);
         { CV_HL(x, y, UT_T4_W, UT_T4_MUTE_H); cv_rrect(x, y, UT_T4_W, UT_T4_MUTE_H, UT_T4_R, fill, T_BG); }
-        cv_text_on(x + UT_T4_PAD, y + UT_TY(S, UT_T4_LBL_BASE), &AF_S, lb, grey, fill);
-        kx = cv_text_on(x + UT_T4_PAD, y + UT_TY(M, UT_T4_HOLD_BASE), &AF_M, "Hold", ink, fill) + UT_T4_KEY_GAP;
-        cv_keycap(kx, y + UT_T4_HOLD_BASE - KC_H + 2, KC_GLO, T_KEY, T_KINK, fill);
-        kx = cv_text_on(x + UT_T4_PAD, y + UT_TY(M, UT_T4_PRESS_BASE), &AF_M, "and press", ink, fill) + UT_T4_KEY_GAP;
-        cv_keycap(kx, y + UT_T4_PRESS_BASE - KC_H + 2, kc, T_KEY, T_KINK, fill);
+        (void)ink;
+        kx = cv_text_on(x + UT_T4_PAD, y + UT_TY(S, UT_T4_LBL_BASE), &AF_S, lb, grey, fill) + 6;   /* b11 (design review 2.3): MUTE n and the keys that flip it, chips on one row */
+        kx = cv_keycap(kx, y + UT_T4_LBL_BASE - KC_H + 2, KC_GLO, T_KEY, T_KINK, fill) + UT_T4_KEY_GAP;
+        cv_keycap(kx, y + UT_T4_LBL_BASE - KC_H + 2, kc, T_KEY, T_KINK, fill);
     }
 }
-/* the two level meters (own strips, each frame when a level moved): a 6 x 44 bar at the MUTE card's right, the 48 dB range over its height, the level in the part's colour from the bottom, the peak hold a 2 px tick */
-static void glo_meters7(void)
-{
-    uint32_t k;
-    uint32_t sig = 0x7D5u;
-    int32_t px[NSHOWN], hp[NSHOWN];
-    for (k = 0; k < NSHOWN; k++) {
-        px[k] = gm_px(gm.lvl[k]) * UT_T4_METER_H / GM_BH;
-        hp[k] = gm_px(gm.hold[k]) * UT_T4_METER_H / GM_BH;
-        sig = (sig * 33u + (uint32_t)px[k]) * 33u + (uint32_t)hp[k] + glo_sounding(k) * 3u + (uint32_t)trk[k].p[P_MUTE] * 5u;
-    }
-    sig += ux.gen * 4099u;
-    if (!ui.force && sig == gm.sig)
-        return;
-    gm.sig = sig;
-    for (k = 0; k < NSHOWN; k++) {
-        uint16_t under = trk[k].p[P_MUTE] ? T_PTHEME(k) : T_BG, track = trk[k].p[P_MUTE] ? T_RAISE : ux_mix(T_BASE_P1, T_TEXT, UT_T4_TRACK_PCT);
-        cv_begin(UT_T4_METER_W, UT_T4_METER_H, under);
-        cv_rrect(0, 0, UT_T4_METER_W, UT_T4_METER_H, UT_T4_METER_R, track, under);
-        if (px[k] > 0)
-            cv_rrect(0, UT_T4_METER_H - px[k], UT_T4_METER_W, px[k], px[k] < 2 * UT_T4_METER_R ? px[k] / 2 : UT_T4_METER_R, glo_sounding(k) ? T_PTHEME(k) : T_DIM, track);
-        if (hp[k] > 0)
-            cv_rect(0, UT_T4_METER_H - 1 - hp[k], UT_T4_METER_W, 2, T_TEXT);
-        cv_blit((uint32_t)(UT_T4_X0 + UT_T4_DX * (int32_t)k + UT_T4_METER_X), (uint32_t)(UT_T4_MUTE_Y + UT_T4_METER_Y));
-    }
-}
+#include "ui_lmh.c"                                     /* b11: the MIXER's LOW / MID / HIGH (its one call: lmh_draw, below) */
 static void layer_glo(void)
 {
     uint32_t e;
@@ -1045,7 +1019,7 @@ static void draw_layer(void)
     if (l == LAYER_GLO) {                               /* the level meters: their own strip, each frame */
         glo_meter_step();
         if (grid_on == 7)
-            glo_meters7();
+            lmh_draw();
         else
             glo_meters();
     }
