@@ -54,17 +54,15 @@ static int32_t foot_rec_dot(int32_t right16)
 {
     if (!song.rec)
         return 0;
-    return (right16 - UT_FOOT_REC_GAP * 16 - text_w16(&AF_S, "REC") - UT_REC_DOT_DX * 16) >> 4;
+    return (right16 >> 4) - UT_FOOT_REC_GAP - UT_REC_DOT;
 }
 static void foot_rec_mark(int32_t right16)
 {
-    int32_t rx16, dx, dy = UT_FOOT_BASE - UT_REC_DOT_DY - Y_FOOT;
+    int32_t dx, dy = UT_FOOT_BASE - UT_REC_DOT_DY - Y_FOOT;
     if (!song.rec)
         return;
-    rx16 = right16 - UT_FOOT_REC_GAP * 16 - text_w16(&AF_S, "REC");
     dx = foot_rec_dot(right16);
     GFX_HOOK_ALIGN(0, dy, 0, dy + UT_REC_DOT, AL_V, "footer REC mark on the names' line");
-    cv_text_x16(rx16, UT_FOOT_BASE - Y_FOOT - AF_S_CAP_Y - AF_S_CAP_H + 1, &AF_S, "REC", T_REC, T_BG);
     cv_rrect(dx, dy, UT_REC_DOT, UT_REC_DOT, UT_REC_DOT / 2, T_REC, T_BG);
     if (!((song.rec >> song.sel) & 1u))                /* (another part only: a ring) */
         cv_rrect(dx + 2, dy + 2, UT_REC_DOT - 4, UT_REC_DOT - 4, UT_REC_DOT / 2 - 2, T_BG, T_REC);
