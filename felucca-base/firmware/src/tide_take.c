@@ -486,7 +486,8 @@ static uint32_t tk_genre(void)                           /* DUB HSE TECH ACID EL
 static int tk_due(void) { return !(song.playing && clk_pos != CLK_START) || (clk_step & 15u) == 15u; }
 static void tk_land(void)
 {
-    track_t *td = &trk[tk_pend - 1u];
+    uint32_t dp = tk_pend - 1u, was = (uint32_t)trk[dp].p[P_SLEN], si;
+    track_t *td = &trk[dp], *ts = &trk[1u - dp];        /* (the answer is always the other part's: ts holds the take) */
     fm1_irq_off();
     memcpy(td->step, tk_out, sizeof td->step);
     td->p[P_SLEN] = (int16_t)tk_olen;
@@ -500,6 +501,14 @@ static void tk_land(void)
         td->p[P_ARATE] = tk_prg[1];
         td->p[P_AMODE] = tk_prg[2];
         tk_prest = 0;
+    }
+    /* b13 (hunt F1): a new loop length starts the answer where the take part is in its loop, so bar n of the answer plays under bar n of the take (it went on
+     * from its old, shorter loop's step before: a 2-bar answer a bar out of step for good). Same length: the parts keep the phase they had */
+    si = tide_play_idx(ts);
+    if (tk_olen != was && si != 0xFFFFFFFFu && arp_mode(td) != AM_SEQ_ID && tk_gp(td)) {
+        si = si * tk_gp(ts) / tk_gp(td) % tk_olen;          /* (on the answer's grid; 64 steps x a whole note's samples fit 32 bits) */
+        td->seq_idx = (uint16_t)si;
+        poly_ref[dp] = (uint8_t)si;
     }
     fm1_irq_on();
     tk_m.sig = steps_sig(td);
