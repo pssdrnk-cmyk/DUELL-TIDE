@@ -151,7 +151,7 @@ MULTIS = [
          what="Detroit techno, B minor: one saw minor-seventh block walking in parallel (B, F sharp, E), off the downbeats, each hit closing its filter gently and ringing into a long dotted echo, a 2-bar walk with its turnaround; under it a warm phase-distortion string chord swelling again every bar (E, A, B: the 11th, 7th and root of B minor, so no walk of the stab rubs it; b9 rework2: was square-ish string-machine fifths at B4 to F sharp 5) (125 BPM)",
          g=dict(G_BPM=125, G_DTIME="8D", G_DFDBK=55, G_DMIX=71, G_DMODE="PING", G_RTYPE="HALL", G_RSIZE=80, G_RDAMP=61),
          parts=[dict(sound="LOW STAB", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=112, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="CLOSE", P_FREEA=36, P_E2FLT=40, P_E2DEC=62, P_REL=74, P_SPRD=50, P_CHOR=50,
-                                                 P_DKSRC="PUMP", P_DKRATE="1/4", P_DKDEP=24, P_DLY=60, P_REV=30, P_LEVEL=103),
+                                                 P_DKSRC="PUMP", P_DKRATE="1/4", P_DKDEP=24, P_DLY=60, P_REV=30, P_TRIM=110, P_LEVEL=103),
                      steps=". . -1A . . -1 . . . -6 . . -6A . . . . . -8A . . -8 . . . -1 . . . . -1A -1", bars=2, bseed=43134, amt=30, b={"P_FREEA": 44, "P_DEC": 80}),
                 dict(sound="LAMPLIGHT", set=dict(P_AMODE="SEQ", P_ARATE="1/1", P_AGATE=127, P_AHOLD="OFF", P_CHRD="SUS4", P_VOIC="OPEN", P_ATK=70, P_REL=72, P_FREEA=50, P_CHOR=90, P_SPRD=60, P_DLY=32, P_REV=64, P_LEVEL=91),
                      steps="-8 -8", len=2, bseed=53501, amt=30, b={"P_FREEA": 52})]),

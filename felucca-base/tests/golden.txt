@@ -30,7 +30,6 @@
 # LOFI NOISE TRIO WAVE WHEEL, the sends and the 4-track mix fall to -40 .. -52 dB residual, which is (2) BIT DEPTH (the level stages keep the two low bits), REVERB_FIX (comb damping and
 # delay feedback rounded, tails end in exact silence), the SHIM rework. (3) The rest: the velocity accent and PHYS exciter brightness from the key (not the velocity), the string loop's
 # tuning (phys_dsp.c), PHASE's bend, and the factory sounds' new recipes, TRANS and End B as values (tools/duell_sounds.py): the sound/ renders and the PHYS / PHASE / VOICE presets.
-# b11 (FM6 exp2 table 1025 -> 513 entries, 679ff39), on purpose, 27 lines: FM6 phases drift (spectra within 0.5 dB, level 0.01 dB); jam/repin.sh, proven by revert.
 preset/ANALOG/00_SAW_LEAD 6fd0837e47965e57
 preset/ANALOG/01_SOFT_PAD 12b1733ff8fba2fc
 preset/ANALOG/02_SQR_BASS 5c5ef9fbef9a9061
@@ -119,13 +118,13 @@ sound/ANALOG/17_SQUARE_LEAD 0ab7b1aa36274341
 sound/ANALOG/18_ARP_PLUCK 5e54f66a4505668b
 sound/ANALOG/19_DRIVEN_SAW 2a51cc3f68b61e8e
 sound/ANALOG/20_CHORD_ECHO 8a981a4172db1d7c
-sound/ANALOG/21_DARK_MIN7 400edc4ea32a1a17
+sound/ANALOG/21_DARK_MIN7 0cb5987be9dc40b8
 sound/ANALOG/22_WARM_WASH ecc0034344193b42
 sound/ANALOG/23_SLOW_TIDE d6990042a47af448
 sound/ANALOG/24_SUB_PLUCK 46d52370c66bcf04
 sound/ANALOG/25_SOUL_STAB 43a0ebaaee667dcb
 sound/ANALOG/26_SUNDAY_KEYS 82522374a3db88b8
-sound/ANALOG/27_LOW_STAB 7dc9e3a08a6c80e0
+sound/ANALOG/27_LOW_STAB 9be37c4d2f0f0082
 sound/ANALOG/28_FOG_BANK 5532815958dd6fc0
 sound/ANALOG/29_NEON_DRIFT 29cc174d00cf58e8
 sound/ANALOG/30_DUB_BLIP b3e575b885db5f9d
@@ -151,7 +150,7 @@ sound/PHASE/13_MELLOW_EP 14217e0dc864f6f7
 sound/PHASE/14_DEEP_BLUE c6a45b9e94e8a579
 sound/PHASE/15_TAPE_CLOUD 9baa21ddb750e1f9
 sound/PHASE/16_ICE_STAB 6fc5e23bf3ff65f9
-sound/PHASE/17_SOFT_EP 9f33fbf9ee7cdcef
+sound/PHASE/17_SOFT_EP 1059ec9054359b2c
 sound/LOFI/00_CARTRIDGE a793bb358e3b6b4c
 sound/LOFI/01_PIXEL_HERO 05566be95b58f544
 sound/LOFI/02_WOW_FLUTTER 18bd75c9cb9ba92c
@@ -168,7 +167,7 @@ sound/VOICE/02_DOO_WOP a0b12285c8b5387a
 sound/VOICE/03_GHOST_VOICES bf075059f3ac4dd7
 sound/VOICE/04_VOCAL_BEATS 282027a7397943f9
 sound/VOICE/05_WHISPER_PAD 264be8d18f41b640
-sound/VOICE/06_PLATE_CHOIR af452e4b2104b5ae
+sound/VOICE/06_PLATE_CHOIR 4c3b26bc7caf1bef
 sound/VOICE/07_YO_YA 8ff47a45c4067579
 sound/TRIO/00_BREADBIN 286802d027e9ffbc
 sound/TRIO/01_BANSHEE a501b18f0b870575
@@ -199,11 +198,11 @@ sound/WHEEL/10_HOUSE_ORGAN d595a67efbbc3ddc
 sound/WHEEL/11_ORGAN_WASH 6b490487f4ed61c3
 sound/WHEEL/12_ROTOR_HAZE 226437426f4aef4b
 sound/PHYS/00_PAN_WHISTLE 77fe43be19488e2c
-sound/PHYS/01_SINGING_BOWL 3d512496dbfc98d7
+sound/PHYS/01_SINGING_BOWL e2d6e88c293374ee
 sound/PHYS/02_GHOST_HARP ae83152acc1e9bb1
 sound/PHYS/03_NYLON_GUT 82cb6b5c3cd32417
 sound/PHYS/04_ROSEWOOD 5b6a0b1c6a7db0ff
-sound/PHYS/05_MOTOR_VIBES f149bea1b81a2e68
+sound/PHYS/05_MOTOR_VIBES 4ae7947abdf3132a
 sound/PHYS/06_RAIN_CHIMES 4ca662c14c6170f0
 sound/PHYS/07_TABLA_TALK 554143239f703862
 sound/PHYS/08_FLOOR_THUD 3549ff4fdb4d6af7
@@ -211,14 +210,14 @@ sound/PHYS/09_NURSERY_KEYS ffee2e7a65b0f53c
 sound/PHYS/10_FAUX_HARPSI 0850422e27c3a40e
 sound/PHYS/11_PLUCK_BASS 485201f258c2d964
 sound/NOISE/00_GEARBOX e7ed843fa867f06c
-sound/NOISE/01_HORNET bd6df6181b2f61b6
+sound/NOISE/01_HORNET a724661e1e53fb76
 sound/NOISE/02_SEA_ORGAN 70c215649b0e486e
 sound/NOISE/03_WHITE_OUT 59ea73d031ddc3be
 sound/NOISE/04_MOOR_WIND 40b05d4395bf6663
 sound/NOISE/05_TIZZ_HAT e15e121df021500d
 sound/NOISE/06_OPEN_SIZZLE b2b92d75da80f073
 sound/NOISE/07_STATIC_SNARE 11b6e6df83eaccc5
-sound/NOISE/08_GEIGER 6925b100fe8a8a7f
+sound/NOISE/08_GEIGER 6ae1a8eb9f055166
 sound/NOISE/09_MODEM 816a4eaa44de6ffa
 sound/NOISE/10_REV_CYMBAL 23a35f51fdb372a4
 sound/NOISE/11_DUST_BED e984a0e162bf67cc
