@@ -20,6 +20,7 @@
  * echo the slot byte as sent (its low 7 bits). The backup has its own id for these slots (47, editor_backup.c) */
 enum { ED_SLOT_HI = 90 };
 static uint8_t ed_shi, ed_shi_next;                   /* this command's high slot bit; the one SLOT_HI set for the next */
+static uint32_t ed_shi_ms;                            /* when SLOT_HI came: it holds 50 ms (a lost command frame does not hand it to a later command: review PR 99, 5) */
 static uint32_t ed_slot(uint32_t b) { return b > 127u ? UP_SLOTS : b | (uint32_t)ed_shi << 7; }   /* (a byte past 127 is no data byte: no slot) */
 /* (here, not in editor.c: the tests that build this file alone have it too; editor.c's UP_* and editor_fm6.c come after it) */
 enum { ED_PATCH_RAW = 84 };

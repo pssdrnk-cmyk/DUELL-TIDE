@@ -653,7 +653,7 @@ static int user_preset_roundtrip(void)
         for (s = 0; s < UP_SLOTS; s++)
             if (up_used(s))
                 up_put(s, 0);
-        for (s = 0; s < PCAP; s++)
+        for (s = 0; s < TIDE_PT_END; s = TIDE_PT_NEXT(s))
             up_store(s, nm);
         a[0] = UP_SLOTS - 1u - 128u;                      /* (b12: slot 175 = SLOT_HI + 46) */
         a[k - 1u] = CAT_PAD;

@@ -483,23 +483,24 @@ int main(void)
             W[k][14] = (char)('0' + k % 10u);
             W[k][mb0 + 1u] = (uint8_t)(1u + k % 100u);           /* End B's AMOUNT (+ 1, at most 101): the records differ a little */
         }
-        for (k = 0; k < NSAVE && !rc; k++)
+        for (k = 0; k < TIDE_PT_END && !rc; k = TIDE_PT_NEXT(k))
             rc = pr_all(k, W[k], lw[k]);
         ck("the worst record into every slot the store takes through PATCH_RAW: every write rc 0, whatever the other slots hold", !rc);
         if (NSAVE < UP_SLOTS)
-            ck("  TIDE: one more NEW record is refused with rc 6 (STORE FULL), nothing lost", pr_all(NSAVE, W[NSAVE], lw[NSAVE]) == 6u && !up_used(NSAVE) && up_count() == NSAVE);
-        for (k = 0; k < NSAVE; k++)
+            ck("  TIDE: one more NEW record is refused with rc 6 (STORE FULL), nothing lost", pr_all(TIDE_PT_END, W[TIDE_PT_END], lw[TIDE_PT_END]) == 6u && !up_used(TIDE_PT_END) &&
+               pr_all(126u, W[126], lw[126]) == 6u && !up_used(126u) && up_count() == NSAVE);   /* (b12: both rooms full) */
+        for (k = 0; k < TIDE_PT_END; k = TIDE_PT_NEXT(k))
             good += pr_read(k, G, &gl) == 1 && gl == lw[k] && same_but_pos(k, W[k], lw[k]) && !memcmp(G + 7, W[k] + 7, 12);
         ck("  each slot reads back its own record, the slot bytes the unit's", good == NSAVE);
         power_cycle();
-        for (k = 0, good = 0; k < NSAVE; k++)
+        for (k = 0, good = 0; k < TIDE_PT_END; k = TIDE_PT_NEXT(k))
             good += pr_read(k, G, &gl) == 1 && gl == lw[k] && !memcmp(G + 4, W[k] + 4, lw[k] - 4u);
         ck("  and after a power cycle", good == NSAVE);
-        for (k = 0, rc = 0; k < NSAVE && !rc; k++) {
+        for (k = 0, rc = 0; k < TIDE_PT_END && !rc; k = TIDE_PT_NEXT(k)) {
             W[k][7] = 'Z';
             rc = pr_all(k, W[k], lw[k]);
         }
-        for (k = 0, good = 0; k < NSAVE; k++)
+        for (k = 0, good = 0; k < TIDE_PT_END; k = TIDE_PT_NEXT(k))
             good += pr_read(k, G, &gl) == 1 && G[7] == 'Z' && flash_rec(k)[3] >= 1u;
         ck("  a rewrite of all of them (a newer revision each): rc 0, all read back", !rc && good == NSAVE);
         ck("  every slot is saved (UP_LIST's SAVED), RESTORE of one brings its factory sound back and READ then says so", up_used(5) && sl_restore(5) == 0 && pr_read(5, G, &gl) == 0 && pr_read(6, G, &gl) == 1);

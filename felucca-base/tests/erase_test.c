@@ -103,7 +103,7 @@ static void fill(void)                                /* every kind of user data
     apply_preset_to(&trk[0], 3u);
     up_store_trk(&trk[0], 7u, "TEST A", CAT_BASS);
     up_store_trk(&trk[0], 20u, "TEST B", CAT_LEAD);
-    for (i = 0; i < PT_MAX; i++)                      /* fill every supported patch slot and every patch chunk */
+    for (i = 0; i < TIDE_PT_END; i = TIDE_PT_NEXT(i))                      /* fill every supported patch slot and every patch chunk */
         if (i != 7u && i != 20u)
             up_store_trk(&trk[0], i, "FILL", CAT_PAD);
     {   /* the velocity calibration (OBJ_VELO, 0xC6000 / 0xC7000): 128 bytes, saved twice so both copies hold one */

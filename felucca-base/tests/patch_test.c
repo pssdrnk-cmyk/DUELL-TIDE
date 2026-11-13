@@ -691,25 +691,26 @@ int PATCH_TEST_MAIN(void)
         /* A: NSAVE small records (every slot; TIDE: 126 of them), the directory is all there is in RAM: no mirror */
         set_engine_of(&trk[0], 0u);
         apply_preset_to(&trk[0], 2u);
-        for (n = 0, k = 0; k < NSAVE; k++) {
+        for (n = 0, k = 0; k < TIDE_PT_END; k = TIDE_PT_NEXT(k)) {
             char nmx[8] = {'S', (char)('0' + k / 10u % 10u), (char)('0' + k % 10u), 0};
             trk[0].p[P_TRIM] = (int16_t)(40 + k % 50u);
             n += up_store_trk(&trk[0], k, nmx, 0) == 0;
         }
         ck("NSAVE plain records store, one a slot (b12: 150)", n == NSAVE && up_count() == NSAVE);
         if (NSAVE < UP_SLOTS)
-            ck("  TIDE: one more NEW record is refused as full (STORE FULL), nothing lost", up_store_trk(&trk[0], NSAVE, "FULL", 0) == PT_FULL && !up_used(NSAVE) && up_count() == NSAVE);
+            ck("  TIDE: one more NEW record is refused as full (STORE FULL), nothing lost", up_store_trk(&trk[0], 126u, "FULL", 0) == PT_FULL && !up_used(126u) &&
+               up_store_trk(&trk[0], TIDE_PT_END, "FULL", 0) == PT_FULL && !up_used(TIDE_PT_END) && up_count() == NSAVE);   /* (b12: both rooms full, 126 + 24) */
         for (c = 0; c < PT_NCH; c++)
             mx = pt_cnt(c) > mx ? pt_cnt(c) : mx;
         ck("  no chunk holds more than PT_K records, and every one of the 25 chunks is used", mx <= PT_K && pt_cnt(0) && pt_cnt(PT_NCH - 1u));
         {   /* b12: a slot of the bank's 128 is in chunks 0..20 while they have room, a slot past it in 21..24 first (an earlier build reads only 0..20 and only slots under 128) */
             uint32_t lo_new = 0, hi_old = 0;
-            for (k = 0; k < NSAVE; k++)
-                if (k < UP_BANK - 2u)
+            for (k = 0; k < UP_SLOTS; k++)
+                if (up_used(k) && k < UP_BANK)
                     lo_new += pt_dir[k].ch >= TIDE_PT_NOLD;
-                else if (k >= UP_BANK)
+                else if (up_used(k))
                     hi_old += pt_dir[k].ch < TIDE_PT_NOLD;
-            ck("  b12: slots 1..126 in the chunks an earlier build reads, slots past the 128 in the new chunks 21..24 (all 24 places of them)", !lo_new && !hi_old);
+            ck("  b12: two rooms: slots 1..128 only in the chunks an earlier build reads (0..20), slots past the 128 only in the new chunks 21..24", !lo_new && !hi_old);
         }
         {   /* the sector tails: nothing from sector offset 0xF00 is ever programmed; each chunk's live copy is within PT_CAP */
             uint32_t o, cc, tail = 1, maxlen = 0;
@@ -735,12 +736,12 @@ int PATCH_TEST_MAIN(void)
             memset(pt_dir, 0x5A, sizeof pt_dir);
             memset(pt_len, 0x5A, sizeof pt_len);
             power_cycle();
-            ok = !memcmp(snap, pt_dir, NSAVE * sizeof snap[0]) && up_count() == NSAVE;
-            for (k = NSAVE; k < UP_SLOTS; k++)                /* (an unused slot: only its chunk mark is rebuilt, the rest is never read) */
-                ok &= pt_dir[k].ch == PT_NOCH;
+            ok = up_count() == NSAVE;
+            for (k = 0; k < UP_SLOTS; k++)                    /* (an unused slot: only its chunk mark is rebuilt, the rest is never read) */
+                ok &= up_used(k) ? !memcmp(&snap[k], &pt_dir[k], sizeof snap[0]) : pt_dir[k].ch == PT_NOCH;
             ck("  a power cycle rebuilds the directory from flash: every entry equal (TIDE: the two unused slots marked unused)", ok);
             ok = 1;
-            for (k = 0; k < NSAVE; k++) {
+            for (k = 0; k < TIDE_PT_END; k = TIDE_PT_NEXT(k)) {
                 char nmx[8] = {'S', (char)('0' + k / 10u % 10u), (char)('0' + k % 10u), 0}, got[13];
                 up_name(k, got);
                 ok &= str_eq(got, nmx) && !str_eq(up_rec(k)->name, "") && up_rec(k)->engine == 0u;
@@ -756,7 +757,7 @@ int PATCH_TEST_MAIN(void)
            up_count() == NSAVE && up_used(77) && trk[0].user == 78u);
         watch = 0;
         /* B: every one of them overwritten with the worst record, in place: all fit whatever the first fill looked like */
-        for (n = 0, k = 0; k < NSAVE; k++) {
+        for (n = 0, k = 0; k < TIDE_PT_END; k = TIDE_PT_NEXT(k)) {
             char nmx[8] = {'W', (char)('0' + k / 10u % 10u), (char)('0' + k % 10u), 0};
             worst_part(&trk[1], k);
             fm6_adopt(1);
@@ -774,7 +775,7 @@ int PATCH_TEST_MAIN(void)
             per += pt_len[c] > PT_HDR;
         power_cycle();
         ck("  after a power cycle: all of them there, the FM6 patch of each intact, every chunk used", up_count() == NSAVE && per == PT_NCH);
-        for (ok = 1, k = 0; k < NSAVE; k++) {
+        for (ok = 1, k = 0; k < TIDE_PT_END; k = TIDE_PT_NEXT(k)) {
             const up_rec_t *r = up_rec(k);
             ak_t a;
             ok &= r->engine == ENGI_FM6 && !upf_get(k, pk2) && pk2[6] == (uint8_t)(k % 99u) && ak_get(k, &a) &&
@@ -798,7 +799,7 @@ int PATCH_TEST_MAIN(void)
             /* (typical: no End B, the slots at their defaults) */
             for (i = 0; i < NX; i++)
                 XV(&trk[1], i) = (int16_t)xb_def(i) - 64;
-            for (n = 0, k = 0; k < NSAVE; k++) {
+            for (n = 0, k = 0; k < TIDE_PT_END; k = TIDE_PT_NEXT(k)) {
                 char nmx[8] = {'F', (char)('0' + k / 10u % 10u), (char)('0' + k % 10u), 0};
                 set_engine_of(&trk[1], ENGI_FM6);
                 apply_preset_to(&trk[1], 1u + k % 7u);
@@ -814,33 +815,33 @@ int PATCH_TEST_MAIN(void)
                 mx = pt_len[c] > mx ? pt_len[c] : mx;
             printf("patch: the fullest chunk holds %u of %u bytes\n", mx, (unsigned)PT_CAP);
             power_cycle();
-            for (ok = 1, k = 0; k < NSAVE; k++)
+            for (ok = 1, k = 0; k < TIDE_PT_END; k = TIDE_PT_NEXT(k))
                 ok &= upf_fm6(k) && !upf_get(k, pk2);
             ck("  after a power cycle all of them are there with their patches", ok && up_count() == NSAVE);
             for (k = 0; k < UP_SLOTS; k++)
                 up_put(k, 0);
         }
         /* C: the last save torn by a power cut: that one is lost, the others stay; then it works */
-        for (k = 0; k + 1u < NSAVE; k++) {
+        for (k = 0; TIDE_PT_NEXT(k) < TIDE_PT_END; k = TIDE_PT_NEXT(k)) {
             worst_part(&trk[1], k);
             fm6_adopt(1);
             store_worst(&trk[1], k, "W");
         }
         ck("NSAVE - 1 worst-case records stored", up_count() == NSAVE - 1u);
-        worst_part(&trk[1], NSAVE - 1u);
+        worst_part(&trk[1], TIDE_PT_LAST);
         fm6_adopt(1);
         for (n = 0; n < 2u; n++) {
             cut_bytes = n ? (long)(PT_WORST + PT_HDR + 8u) : 100;
             ck(n ? "a power cut in the last save's payload (the last that fits): SAVE ERROR" : "a power cut at the start of the last save: SAVE ERROR",
-               store_worst(&trk[1], NSAVE - 1u, "LAST") != 0);
+               store_worst(&trk[1], TIDE_PT_LAST, "LAST") != 0);
             power_cycle();
-            ck("  after the power comes back: the other records, the last one not stored", up_count() == NSAVE - 1u && !up_used(NSAVE - 1u));
-            worst_part(&trk[1], NSAVE - 1u);
+            ck("  after the power comes back: the other records, the last one not stored", up_count() == NSAVE - 1u && !up_used(TIDE_PT_LAST));
+            worst_part(&trk[1], TIDE_PT_LAST);
             fm6_adopt(1);
         }
-        ck("  the same save then works: NSAVE stored", store_worst(&trk[1], NSAVE - 1u, "LAST") == 0 && up_count() == NSAVE);
+        ck("  the same save then works: NSAVE stored", store_worst(&trk[1], TIDE_PT_LAST, "LAST") == 0 && up_count() == NSAVE);
         power_cycle();
-        ck("  after a power cycle: NSAVE records, the last one too", up_count() == NSAVE && up_used(NSAVE - 1u));
+        ck("  after a power cycle: NSAVE records, the last one too", up_count() == NSAVE && up_used(TIDE_PT_LAST));
         worst_part(&trk[1], 5u);
         fm6_adopt(1);
         ck("an overwrite of a stored one with the store full still works (in place)", store_worst(&trk[1], 100u, "LAST 2") == 0 && up_count() == NSAVE);
@@ -862,8 +863,8 @@ int PATCH_TEST_MAIN(void)
                 if (up_count() != NSAVE || !up_used(100) || (!str_eq(got, "LAST 2") && !str_eq(got, "CUTSTEP")))
                     bad_cut++;
                 newer += str_eq(got, "CUTSTEP");
-                for (k = 0; k < NSAVE && !bad_cut; k += 9u)
-                    if (k != 100u && !upf_fm6(k))
+                for (k = 0; k < TIDE_PT_END && !bad_cut; k += 9u)
+                    if (k != 100u && k != 126u && !upf_fm6(k))   /* (126: U3, outside a full store's slots, b12) */
                         bad_cut++;
                 if (str_eq(got, "CUTSTEP"))
                     store_worst(&trk[1], 100u, "LAST 2");   /* back to the old name for the next cut */

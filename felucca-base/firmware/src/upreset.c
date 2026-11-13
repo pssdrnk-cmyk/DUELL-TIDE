@@ -17,7 +17,8 @@
  * with a full 16-step pattern, End B, a shadow marker, every parameter off its default), PT_K of them fit a chunk with its header,
  * PT_MAX = PT_NCH x PT_K records of any kind always fit: 22 x 6 = 132 >= 128 = UP_SLOTS, so without TIDE every one of the 128 slots can always be written,
  * whatever the other 127 hold. With TIDE (chunk 21 stays out of the store: earlier TIDE builds keep their settings there, tide_store.c) it was 21 x 6 = 126; b12 adds
- * chunks 21..24 (objects 55..58 at 0xF4000..0xFBFFF, pt_obj) for the 175 slots: 25 x 6 = 150. A 151st NEW record finds no chunk under PT_K records, PT_FULL,
+ * chunks 21..24 (objects 55..58 at 0xF4000..0xFBFFF, pt_obj) for the slots past the bank's 128: 24 records there, 126 for slots 1..128 (two rooms, never mixed:
+ * pt_put_enc). A NEW record its room cannot take finds no chunk under PT_K records, PT_FULL,
  * nothing written (the screen says STORE FULL, tide.h TIDE_SAVE_ERROR); a slot that already holds a record can always be rewritten. A chunk takes a NEW
  * record only under PT_K records, whatever its size, which keeps both guarantees.
  *
@@ -218,7 +219,7 @@ static void up_values(const up_rec_t *r, int16_t *v)   /* the record's values cl
 #define PT_VER 4u                                /* the chunk image's version (byte 2 after "PT"): 4 = ROLL CHAINED storage (2026-10-29: the values by wide id in the bits of their ranges, End B as values (morph.c MBV), the AK block's steps in 7 bytes; 6 records a chunk, 22 chunks); 3 and before are refused (no backward compatibility before the alpha) */
 #define PT_NONE 0xFFFFu
 #define PT_NOCH 0xFFu                            /* a directory entry with no record */
-#define PT_FULL 4                                /* up_put: no chunk takes a new record (the 151st new record: STORE FULL) */
+#define PT_FULL 4                                /* up_put: no chunk takes a new record (the 127th of slots 1..128, the 25th of 129..175: STORE FULL) */
 #define PT_VB 20u                                /* PT_VER 4: the values' bitmap, a bit per wide id (0..126 the ids, 127 never, 128..155 the extension slots) */
 #define PTF_PAT 1u
 #define PTF_TR 2u                                /* 0.2.19: the TRIM form: the loudness is the pair of P_TRIM (the PATCH TRIM) and the record carries no MIXER LEVEL (P_LEVEL is never written). A record
@@ -256,6 +257,7 @@ static void up_values(const up_rec_t *r, int16_t *v)   /* the record's values cl
 _Static_assert(PT_CAP + ST_PAYLOAD_OFF == ST_PAYLOAD_END && PT_CAP <= ST_PAYLOAD_MAX, "a patch chunk is one storage object whose payload ends at 0xF00");
 #endif
 _Static_assert(PT_WORST == 577u + TIDE_MBV_FMT_N && PT_K == 6u && PT_WORST * PT_K + PT_HDR <= PT_CAP && PT_MAX == 150u && PT_MAX <= UP_SLOTS && AK_WORST <= AK_MAX, "the store's limit: 6 records of the worst size fit a chunk; b12: 25 chunks, 150 records for the 175 slots");
+_Static_assert(TIDE_PT_NOLD * PT_K == 126u && (PT_NCH - TIDE_PT_NOLD) * PT_K == 24u, "b12: the two rooms, 126 records for slots 1..128 and 24 for 129..175 (editor duellbackup.js PATCH_CAP_*)");
 _Static_assert(UP_SLOTS == UP_VSLOTS && UP_SLOTS <= 255u && TIDE_PT_NOLD < PT_NCH, "b12: a slot per place (the record's slot byte, pt_dir; UP_SLOTS itself is pt_write's 'no slot to cut')");
 _Static_assert(PT_NCH == TIDE_PT_NCH, "pt_obj, the erase list (erase_data.c), the backup (editor_backup.c)");   /* TIDE hook (21: chunk 21 is left to the earlier TIDE builds' settings record) */
 _Static_assert(PT_FIX + PT_VB + PT_VMAX + MBV_MAX + 32u + UPF_PK + AK_MAX <= 768u, "pt_enc holds a record");
@@ -949,7 +951,7 @@ static uint32_t pt_next_rev(uint32_t k) { return pt_dir[k].ch != PT_NOCH ? (uint
 /* slot k := the record already in pt_enc (n bytes, its slot and revision bytes set): the part of pt_put that places and writes it */
 static int pt_put_enc(uint32_t k, uint32_t n)
 {
-    uint32_t oc = PT_NCH, orl = 0, d = 0, i;
+    uint32_t oc = PT_NCH, orl = 0, d, d1 = k < UP_BANK ? TIDE_PT_NOLD : PT_NCH;
     int rc;
     if (pt_dir[k].ch != PT_NOCH) {
         oc = pt_dir[k].ch;
@@ -957,13 +959,11 @@ static int pt_put_enc(uint32_t k, uint32_t n)
     }
     if (oc != PT_NCH && pt_len[oc] - orl + n <= PT_CAP)   /* in its own chunk */
         return pt_write(oc, k, n);
-    for (i = 0; i < PT_NCH; i++) {               /* b12: a slot of the bank's 128 tries chunks 0..20 first, a slot past them 21..24 first (an earlier build, which
-                                                  * reads only 0..20 and only slots under 128, then never meets one of them: pt_rec_ok) */
-        d = k < UP_BANK ? i : (i + TIDE_PT_NOLD) % PT_NCH;
-        if (d != oc && pt_takes(d, n))
-            break;
-    }
-    if (i == PT_NCH)
+    /* b12: two rooms, never mixed: a slot of the bank's 128 lives in chunks 0..20 (126 records, as before), a slot past it in 21..24 only (24). An earlier
+     * build reads 0..20 and never writes 21..24 (its FL_STORE_OK): it neither meets a record it would drop nor misses one it should see (review PR 99, 1 and 2) */
+    for (d = k < UP_BANK ? 0u : TIDE_PT_NOLD; d < d1 && (d == oc || !pt_takes(d, n)); d++)
+        ;
+    if (d == d1)
         return PT_FULL;
     rc = pt_write(d, UP_SLOTS, n);               /* the new record first (the newer revision wins until the old is cut) */
     if (rc == 2 || oc == PT_NCH)

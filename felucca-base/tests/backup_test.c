@@ -514,7 +514,7 @@ int BACKUP_TEST_MAIN(void)
         reset();
         set_engine_of(&trk[0], 0u);
         apply_preset_to(&trk[0], 2u);
-        for (k = 0; k < NSAVE; k++) {
+        for (k = 0; k < TIDE_PT_END; k = TIDE_PT_NEXT(k)) {
             char nmx[8] = {'B', (char)('0' + k / 10u % 10u), (char)('0' + k % 10u), 0};
             for (i = 0; i < NX; i++)
                 XV(&trk[0], i) = (int16_t)(k % 5u == 0u ? (int)(k + 3u * i) % 120 - 50 : (int)xb_def(i) - 64);   /* every 5th slot: slots off their defaults */
@@ -526,21 +526,21 @@ int BACKUP_TEST_MAIN(void)
             rcrc[k] = st_crc32(rec[k], rlen[k]);
             bytes += rlen[k];
         }
-        bad += check("150 patches saved (b12: slots 1..150, one per slot, every 5th with the 16 slots off default, every 7th with End B values set by hand, every 14th with 32 of them)", ok && up_count() == NSAVE);
+        bad += check("150 patches saved (b12: slots 1..126 and 129..152, one per slot, every 5th with the 16 slots off default, every 7th with End B values set by hand, every 14th with 32 of them)", ok && up_count() == NSAVE);
         bad += check("LIST pages: before the capture LIST a page is stale (5); page 0 and 7 are invalid (1), page 6 (slots 161..175, none saved) is empty",
                      (ed_bk_valid = 0, list_page(1) == 5u) && (call(ED_BACKUP_LIST, 0, 0), list_page(0) == 1u && list_page(7) == 1u && list_page(6) == 0u && rep[2] == 0u));
         for (pg = 1; pg <= 5u; pg++) {
-            ok = list_page(pg) == 0 && rep[2] == (pg * ED_BK_PPAGE <= NSAVE ? ED_BK_PPAGE : NSAVE - (pg - 1u) * ED_BK_PPAGE);   /* (TIDE: the last page 30) */
+            ok = list_page(pg) == 0 && rep[2] == ({ uint32_t q, c2 = 0; for (q = (pg - 1u) * ED_BK_PPAGE; q < pg * ED_BK_PPAGE; q++) c2 += q < 126u || (q >= UP_BANK && q < TIDE_PT_END); c2; });   /* (b12: 1..126 and 129..152) */   /* (TIDE: the last page 30) */
             for (i = 0; ok && i < rep[2]; i++) {
                 const uint8_t *o = rep + 3 + i * 11u;
                 k = o[0] + (pg >= 5u ? 128u : 0u);                    /* (b12: pages 5, 6 give the slot less 128, id 47's byte) */
                 ok &= k >= (pg - 1u) * ED_BK_PPAGE && k < pg * ED_BK_PPAGE && ed_bk_r32(o + 1) == rlen[k] && ed_bk_r32(o + 6) == rcrc[k];
                 listed++;
             }
-            bad += check("  a LIST page: its saved slots (32, page 5 the 22 of slots 129..150) with the length and CRC of each record", ok);
+            bad += check("  a LIST page: its saved slots (32 32 32 30, page 5 the 24 of slots 129..152) with the length and CRC of each record", ok);
         }
         bad += check("  5 pages = every saved record listed (150)", listed == NSAVE);
-        for (k = 0, ok = 1; k < NSAVE; k++) {
+        for (k = 0, ok = 1; k < TIDE_PT_END; k = TIDE_PT_NEXT(k)) {
             uint32_t off;
             for (off = 0; ok && off < rlen[k]; off += 256u) {
                 uint32_t n = rlen[k] - off > 256u ? 256u : rlen[k] - off;
@@ -559,25 +559,25 @@ int BACKUP_TEST_MAIN(void)
             ok = list_page(1) == 0 && rep[2] == ED_BK_PPAGE - 1u;
             bad += check("a slot with no record (its factory sound) is not listed", ok);
         }
-        for (k = 0; k < NSAVE; k++)
+        for (k = 0; k < TIDE_PT_END; k = TIDE_PT_NEXT(k))
             up_put(k, 0);
         bad += check("  the store erased: no saved patch, every slot its factory sound again", up_count() == 0u && !up_used(5u));
-        for (k = 0, ok = 1; k < NSAVE; k++)
+        for (k = 0, ok = 1; k < TIDE_PT_END; k = TIDE_PT_NEXT(k))
             ok &= k == 9u || put_patch(k, rec[k], rlen[k], rcrc[k]) == 0;
         same = 0;
-        for (k = 0; k < NSAVE; k++) {
+        for (k = 0; k < TIDE_PT_END; k = TIDE_PT_NEXT(k)) {
             want[0] = 'B'; want[1] = (char)('0' + k / 10u % 10u); want[2] = (char)('0' + k % 10u); want[3] = 0;
             up_name(k, nm);
             same += up_used(k) && !strcmp(nm, want) && up_raw_get(k, got) == rlen[k] && !memcmp(got, rec[k], rlen[k]);
         }
         bad += check("  every record restored by PUT (slot 9 left out): the same patches, names, slots and bytes", ok && same == NSAVE - 1u && up_count() == NSAVE - 1u && !up_used(9));
-        for (k = 0, ok = 1; k < NSAVE; k++)
+        for (k = 0, ok = 1; k < TIDE_PT_END; k = TIDE_PT_NEXT(k))
             if (k != 9u) {
                 const up_rec_t *r = up_rec(k);
                 ok &= !memcmp(r->xz, was[k].xz, sizeof r->xz) && r->xb_n == was[k].xb_n && !memcmp(r->xb, was[k].xb, was[k].xb_n * sizeof r->xb[0]);
             }
         bad += check("  the extension slots and the hand-set B lists of every record are back (up_rec)", ok);
-        for (k = 0, ok = 1; k < NSAVE; k++)
+        for (k = 0, ok = 1; k < TIDE_PT_END; k = TIDE_PT_NEXT(k))
             if (k != 9u) {
                 uint8_t ex[PT_WORST + 8];
                 ok &= put_patch(k, rec[k], rlen[k], rcrc[k]) == 0 && up_raw_get(k, ex) == rlen[k] && !memcmp(ex, rec[k], rlen[k]);
@@ -619,7 +619,7 @@ int BACKUP_TEST_MAIN(void)
         put_patch(5, rec[5], rlen[5], rcrc[5]);
         /* the worst record into all 128 slots through PUT */
         {
-            for (k = 0, ok = 1; k < NSAVE; k++) {
+            for (k = 0, ok = 1; k < TIDE_PT_END; k = TIDE_PT_NEXT(k)) {
                 for (i = 0; i < NX; i++)
                     XV(&trk[0], i) = (int16_t)((i & 1u) ? -64 + (int)k % 40 : 127 - (int)k % 40);
                 for (xbn = 0; xbn < XB_MAX; xbn++)
@@ -629,13 +629,13 @@ int BACKUP_TEST_MAIN(void)
                 rlen[k] = up_raw_get(k, rec[k]);
                 rcrc[k] = st_crc32(rec[k], rlen[k]);
             }
-            for (k = 0; k < NSAVE; k++)
+            for (k = 0; k < TIDE_PT_END; k = TIDE_PT_NEXT(k))
                 up_put(k, 0);
-            for (k = 0; k < NSAVE; k++)
+            for (k = 0; k < TIDE_PT_END; k = TIDE_PT_NEXT(k))
                 ok &= put_patch(k, rec[k], rlen[k], rcrc[k]) == 0;
-            for (k = 0, same = 0; k < NSAVE; k++)
+            for (k = 0, same = 0; k < TIDE_PT_END; k = TIDE_PT_NEXT(k))
                 same += up_raw_get(k, got) == rlen[k] && !memcmp(got, rec[k], rlen[k]);
-            bad += check("126 (TIDE) or 128 records with the 16 slots off default and 32 edits, written back through PUT into an empty store: all take, the same bytes", ok && same == NSAVE);
+            bad += check("150 records (b12) with the 16 slots off default and 32 edits, written back through PUT into an empty store: all take, the same bytes", ok && same == NSAVE);
         }
         for (k = 0; k < UP_SLOTS; k++)
             up_put(k, 0);

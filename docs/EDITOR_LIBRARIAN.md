@@ -14,11 +14,11 @@ On a TIDE unit with b12 or newer the editor works on **175 slots**. Every factor
 - **#1 to #124**, the first 124 factory sounds.
 - **U1 to U4**, the USER slots. Until you save into one it is listed as `USER EMPTY` and holds no factory sound: loading it into a part changes nothing, and the editor reads it as a blank default sound. **Restore** on a saved USER slot empties it again.
 - **#125 to #171**, the other 47 factory sounds. They behave like any other slot: save over one, and **Restore** brings its factory sound back.
-- **The store holds 150 saved patches at once.** Overwriting a saved slot always works. Saving into a 151st empty slot is refused by the unit (it shows STORE FULL), nothing is written, and the editor reports the error. **Restore** a saved slot to make room. An import that would need more room stops at that point; the patches before it are written.
+- **The store holds 150 saved patches at once, in two parts:** up to 126 of slots 1 to 128 (#1 to #124 and U1 to U4) and up to 24 of #125 to #171. Overwriting a saved slot always works. A new save past the limit of its part is refused by the unit (it shows STORE FULL), nothing is written, and the editor reports the error. **Restore** a saved slot to make room. An import that would need more room stops at that point; the patches before it are written.
 - **The slot boxes ask for the place in the list**, 1 to 175 (the U slots are 125 to 128, #125 is 129). The lines under the box show the name of the slot you picked.
 - **Backup** (the Backup page) saves all of them; a file made by b12 (version 7) needs a b12 unit to put the patches in slots 129 to 175 back. On an older unit the editor restores the rest and tells you how many patches it left out.
 - **The pattern slots P29 to P32 are USER slots too.** They are on the unit's SAVE > PATTERNS page; this page is about patches only.
-- **The mock unit** (`?mock=1`) models the b12 unit: 175 slots, a store of 150, STORE FULL at the 151st. `?mock=128` is the older 128-slot bank. Try the real thing on a unit or in the [emulator](https://pssdrnk-cmyk.github.io/DUELL-TIDE/emu/).
+- **The mock unit** (`?mock=1`) models the b12 unit: 175 slots, a store of 126 + 24 (STORE FULL past either). `?mock=128` is the older 128-slot bank. Try the real thing on a unit or in the [emulator](https://pssdrnk-cmyk.github.io/DUELL-TIDE/emu/).
 
 An older TIDE unit (before b12) still shows **128 slots**, numbered 1 to 128, and holds 126 saved patches; the editor works with it as it always did.
 

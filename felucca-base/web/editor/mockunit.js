@@ -139,6 +139,7 @@ export class MockUnit {
     this.slots175 = slots175;                      // b12 (INFO 44 01 bit 2): 175 slots, SLOT_HI (cmd 90), the patch store takes 150, backup id 47 and LIST pages 5 / 6; false: the unit of before, 128 slots, a store of 128 (the default mock is the b12 unit)
     this.fvBank = fvBank; this.bank = null; this.bankTx = null;   // INFO 44 01 bit 1: GET 41 and FM6B_BEGIN / WRITE / END (the FM6 voice bank, this.bank: the object as the unit stores it, or null)
     this.tide = tide || fvBank || slots175;                    // INFO 44 01 bit 0: the unit is TIDE
+    this.rooms = storeMax == null && slots175;          // b12: two rooms as the unit's store (upreset.c pt_put_enc): slots 1..128 take 126 records, slots 129..175 take 24
     this.storeMax = storeMax ?? (slots175 ? 150 : 128);   // the patch records the store takes (INFO 58 01): 150 on b12, 126 on TIDE before; a new record past it is rc 6 (STORE FULL), a saved slot can always be rewritten
     this.morphView = morphView; this.shift = [new Map(), new Map()];   // item 159 (INFO 4F 01): the values read AS SHOWN at the MORPH fader; shift: a part's fader offset per id (shown = stored + offset)
     this.locksCap = locksCap; this.motion = []; this.bypassCap = bypassCap; this.pat32 = pat32; this.scope2 = scope2; this.savedFlags = savedFlags; this.patchRaw = patchRaw; this.prStage = null; this.version = version; this.caps = caps; this.playing = playing;
@@ -222,7 +223,12 @@ export class MockUnit {
   get records() { return (this.caps & CAPS_PATCH_RECORDS) !== 0; }    // caps bit 5: the patches go one at a time as records (editor_backup.c); without it the unit is an older firmware: no pages, GET / PUT of 40 answer rc 1
   has(id) { return [0, 1, 2, 3, 4, 5, 8, 32, 33, 34].includes(id) || (OLD_PATCH_IDS.includes(id) ? !this.records && (id < 27 || (this.caps & 16) !== 0) : id >= 24 ? (this.caps & 8) !== 0 && id <= 26 : id >= 13 && id <= 23 && (this.caps & 4) !== 0) || (id >= 42 && id <= 46 && (this.caps & 64) !== 0); }
   get nslots() { return this.slots175 ? PATCH_SLOTS : PATCH_SLOTS_OLD; }
-  full(slot) { return !this.patches.has(slot) && this.patches.size >= this.storeMax; }   // a NEW record past the capacity: rc 6
+  full(slot) {
+    if (this.patches.has(slot)) return false;
+    if (!this.rooms) return this.patches.size >= this.storeMax;
+    const lo = slot < 128, n = [...this.patches.keys()].filter((k) => (k < 128) === lo).length;
+    return n >= (lo ? 126 : 24);
+  }   // a NEW record past the capacity: rc 6
   patchBytes(slot) { const v = slot < this.nslots ? this.patches.get(slot) : null; return v ? this.recordOf(v).slice().fill(0, 2, 4) : null; }   // the saved record as the store gives it out (up_raw_get): slot and revision 0
   push(cmd, args) { if (this.watching && this.onpush) this.onpush(cmd, args); }
   // ---- what the unit's panel does (tests and the page's "turn a knob on the unit" button)
@@ -666,7 +672,7 @@ export class MockUnit {
       if (RETIRED_IDS.includes(id)) { this.listed = false; return ret(0); }   // (dropped)
       if (id === PATCH_ID || id === PATCH_ID2) {        // the store's own check (pt_rec_ok, up_put_raw): the slot and revision bytes of the record are not looked at
         if (st.size && recordProblem(st.bytes)) return ret(2);
-        if (st.size && !this.patches.has(st.slot) && this.patches.size >= this.storeMax) return ret(6);   // STORE FULL: nothing written
+        if (st.size && this.full(st.slot)) return ret(6);   // STORE FULL: nothing written
         if (st.size) { this.setRecord(st.slot, st.bytes); this.log.push(`write patch ${st.slot}`); } else { this.patches.delete(st.slot); this.log.push(`remove patch ${st.slot}`); }
         this.listed = false;
         return ret(0);

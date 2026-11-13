@@ -41,6 +41,7 @@ export const PATCH_ID = 40;                    // the wire id of a patch record 
 export const PATCH_KEY0 = 1000;                // the Map key of the patch in slot k is PATCH_KEY0 + k
 export const PATCH_ID2 = 47;                   // b12: the wire id of the patch records of slots 128..174 (the byte after it is slot - 128)
 export const CAPS_SLOTS175 = 4;                // INFO tag 44 01 bit 2: 175 patch slots
+export const PATCH_CAP_BANK = 126, PATCH_CAP_HI = 24;   // b12: the records a unit with the 175 slots takes: slots 1..128 (chunks 0..20) and slots 129..175 (chunks 21..24), apart
 export const PATCH_SLOTS_OLD = 128, PATCH_SLOTS = 175, PATCH_PAGE = 32, PATCH_PAGES_OLD = 4, PATCH_PAGES = 6, PATCH_MAX = WORST;   // (a unit without the bit has 128 slots and LIST pages 1..4)
 export const patchWireId = (slot) => (slot < PATCH_SLOTS_OLD ? PATCH_ID : PATCH_ID2);   // the wire id and slot byte of the patch in `slot`: patchWireId(slot), slot & 127
 export const patchKey = (slot) => PATCH_KEY0 + slot;
@@ -247,7 +248,9 @@ export function objectsToFile(objects, info, opt = {}) {
   const ordered = [...objects.filter((o) => !isPatchKey(o.id)), ...objects.filter((o) => isPatchKey(o.id)).sort((a, b) => a.id - b.id)];
   const problems = ordered.filter((o) => o.raw).map((o) => ({ ...wire(o), problem: o.problem || "not checked" }));
   return {
-    format: FORMAT, version: VERSION, firmware: info.version, created: new Date().toISOString(), engines: info.engines,
+    // (version 7 = the file holds slots 129..175 when they are saved: only a unit with them writes it; a version 7 file from a 128-slot unit would remove a b12 unit's
+    // saved #125..#171 on restore, review PR 99 finding 3)
+    format: FORMAT, version: info.slots175 ? VERSION : 6, firmware: info.version, created: new Date().toISOString(), engines: info.engines,
     patchRecords: opt.patchRecords ?? objects.some((o) => isPatchKey(o.id)),
     ...(opt.notes?.length ? { notes: opt.notes } : {}),
     ...(problems.length ? { problems } : {}),
@@ -459,7 +462,11 @@ export function planRestore(archive, list, caps, sel, opt = {}) {
     if (g.key === "patches") {
       if (!archive.hasPatches) reason = archive.oldPatchChunks ? OLD_CHUNKS_NOTE.replace(/^P/, "p").replace(/\.$/, "") : "not in this file";
       else if (!((caps ?? 0) & g.caps)) reason = "this unit's firmware cannot restore patches one at a time (update it first)";
-      else if (opt.patchCap && idsOf(g, archive.objects).filter((k) => wide || patchSlot(k) < PATCH_SLOTS_OLD).length > opt.patchCap) reason = `the file holds ${idsOf(g, archive.objects).length} patches and this unit stores at most ${opt.patchCap} (STORE FULL); remove some from the file or restore them later in parts`;
+      else if ((() => { const ks = idsOf(g, archive.objects), lo = ks.filter((k) => patchSlot(k) < PATCH_SLOTS_OLD).length, hi = ks.length - lo;   // (b12: two rooms, the bank's slots 126, the slots past it 24)
+        if (wide ? lo > PATCH_CAP_BANK || hi > PATCH_CAP_HI : opt.patchCap && lo > opt.patchCap)
+          return (reason = wide ? `the file holds ${lo} patches of slots 1..128 and ${hi} of slots 129..175, and this unit stores at most ${PATCH_CAP_BANK} and ${PATCH_CAP_HI} (STORE FULL)`
+                                : `the file holds ${lo} patches and this unit stores at most ${opt.patchCap} (STORE FULL)`);
+        return false; })()) { /* (reason set) */ }
     } else if (g.caps && ((caps ?? 0) & g.caps) !== g.caps) reason = "this unit's firmware cannot restore them (update it first)";
     else if (!g.ids.every((id) => archive.objects.has(id))) reason = "not in this file";
     else if (g.needs && !opt[g.needs]) reason = "this unit's firmware cannot restore it (it needs TIDE, a build with the FM6 voice bank in its backup)";

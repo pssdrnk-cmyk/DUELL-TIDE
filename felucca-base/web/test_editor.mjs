@@ -543,14 +543,15 @@ async function connect(opt = {}) { const m = new MockUnit(opt), u = new Unit(new
   const nSaved = b.u.slots.filter((s) => s.saved).length;
   ok(await b.u.restoreAll() === nSaved && b.u.slots.every((s) => !s.saved) && b.m.patches.size === 0, "b12: Restore all goes over the slots past 127 too");
   const F = await cB();
-  for (let k = 0; k < 150; k++) F.m.setRecord(k, buildPatchRecord({ name: `P${k}` }));
+  for (let k = 0; k < 152; k++) if (k !== 126 && k !== 127) F.m.setRecord(k, buildPatchRecord({ name: `P${k}` }));   // (b12: the two rooms full, 1..126 and 129..152)
   F.m.rebuild();
   await F.u.listSlots();
-  ok(F.u.info.patchCap === 150 && F.u.slots.filter((s) => s.saved).length === 150 && F.u.slots[149].saved && !F.u.slots[150].saved, "b12: the store holds 150 saved records (INFO 58 01 says 150)");
-  ok(await rejects(() => F.u.saveSlot(0, 170, "ONE TOO MANY"), /STORE FULL.*150/) && !F.m.patches.has(170), "b12: the 151st new record (slot 170) is refused rc 6, STORE FULL");
+  ok(F.u.info.patchCap === 150 && F.u.slots.filter((s) => s.saved).length === 150 && F.u.slots[151].saved && !F.u.slots[152].saved && !F.u.slots[126].saved, "b12: the store holds 150 saved records (INFO 58 01 says 150)");
+  ok(await rejects(() => F.u.saveSlot(0, 170, "ONE TOO MANY"), /STORE FULL/) && !F.m.patches.has(170), "b12: the 25th new record past the 128 (slot 170) is refused rc 6, STORE FULL");
+  ok(await rejects(() => F.u.saveSlot(0, 126, "ONE TOO MANY"), /STORE FULL/) && !F.m.patches.has(126), "b12: the 127th of slots 1..128 (U3) is refused rc 6 too: the rooms do not share");
   await F.u.saveSlot(0, 149, "REWRITE");
   ok(F.u.slots[149].name === "REWRITE", "b12: a saved slot can still be rewritten when the store is full");
-  await F.u.restoreSlot(3);
+  await F.u.restoreSlot(140);
   await F.u.saveSlot(0, 170, "ROOM NOW");
   ok(F.u.slots[170].saved && F.u.slots[170].name === "ROOM NOW", "b12: after a Restore frees a place the slot past 127 is written");
 }
