@@ -30,7 +30,7 @@
 # LOFI NOISE TRIO WAVE WHEEL, the sends and the 4-track mix fall to -40 .. -52 dB residual, which is (2) BIT DEPTH (the level stages keep the two low bits), REVERB_FIX (comb damping and
 # delay feedback rounded, tails end in exact silence), the SHIM rework. (3) The rest: the velocity accent and PHYS exciter brightness from the key (not the velocity), the string loop's
 # tuning (phys_dsp.c), PHASE's bend, and the factory sounds' new recipes, TRANS and End B as values (tools/duell_sounds.py): the sound/ renders and the PHYS / PHASE / VOICE presets.
-# b11 (FM6 exp2 table 1025 -> 513 entries, 679ff39), on purpose, 27 of the lines: FM6 renders drift apart in phase (waveforms differ, spectra and levels do not: third-octave bands within 0.5 dB, level within 0.01 dB); re-made through jam/repin.sh, proven by revert.
+# b11 (FM6 exp2 table 1025 -> 513 entries, 679ff39), on purpose, 27 lines: FM6 phases drift (spectra within 0.5 dB, level 0.01 dB); jam/repin.sh, proven by revert.
 preset/ANALOG/00_SAW_LEAD 6fd0837e47965e57
 preset/ANALOG/01_SOFT_PAD 12b1733ff8fba2fc
 preset/ANALOG/02_SQR_BASS 5c5ef9fbef9a9061
