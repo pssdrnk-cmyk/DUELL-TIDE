@@ -2618,6 +2618,46 @@ static int wave_study_main(const char *out)
                     }
     return 0;
 }
+/* b12 (rule O: pictures with music playing): a page with the MIXER / QUICK GLO LOW / MID / HIGH meters (ui_lmh.c) is drawn after 24 frames of sound on the
+ * MORPH card's tap, as the mv_ loop feeds the wave page: each frame 735 new entries a part (33 ms at 22.05 kHz) of a bass, a mid and a high tone, fm1_ms 33 ms on.
+ * Test data only: the firmware is untouched. Called after the scene's one draw, with the meter's gate flag cleared before it: only a page whose draw set it (lmh_draw) gets the frames. */
+static void lmh_feed(int s)
+{
+    static const int32_t AMP[2][3] = {{1500, 700, 260}, {900, 900, 420}};   /* (part 1 bass-heavy, part 2 brighter: wvr_code's input, 1/4,096 steps) */
+    static const double HZ[3] = {82.0, 900.0, 6000.0};
+    uint32_t f, q, i;
+    FILE *const au = aud;                           /* (the GREY pass's text audit saw the scene's one draw; the meter frames are not written to it) */
+    static int8_t m0[sizeof wv_m];                     /* (what the frames change is put back after them: the next scenes see the run as before) */
+    uint32_t c0[2], g0[2], s0[2], ms0 = fm1_ms, fr0 = ui.frame;
+    if (!lmh.on)
+        return;
+    aud = 0;
+    memcpy(m0, wv_m, sizeof wv_m);
+    for (q = 0; q < 2u; q++)
+        c0[q] = wv_cnt[q], g0[q] = wv_gap[q], s0[q] = wv_sil[q];
+    for (f = 0; f < 24u; f++) {
+        for (q = 0; q < 2u; q++) {
+            const uint32_t cnt = 40000u + (f + 1u) * 735u;
+            for (i = 0; i < 735u; i++) {
+                const uint32_t t = cnt - 735u + i;
+                const double x = 6.283185307179586 * t / 22050.0;
+                wv_m[q][t & (WVR_N - 1u)] = wvr_code((int32_t)(AMP[q][0] * sin(HZ[0] * x) + AMP[q][1] * sin(HZ[1] * x) + AMP[q][2] * sin(HZ[2] * x)));
+            }
+            wv_cnt[q] = cnt;
+            wv_gap[q] = 0;
+            wv_sil[q] = 0;
+        }
+        fm1_ms += 33u;
+        ui.frame += 1u;
+        draw(s);
+    }
+    aud = au;
+    memcpy(wv_m, m0, sizeof wv_m);
+    for (q = 0; q < 2u; q++)
+        wv_cnt[q] = c0[q], wv_gap[q] = g0[q], wv_sil[q] = s0[q];
+    fm1_ms = ms0;
+    ui.frame = fr0;
+}
 int main(int argc, char **argv)
 {
     if (argc > 2 && !strcmp(argv[1], "--target")) return target_main(argv[2]);
@@ -2931,7 +2971,9 @@ int main(int argc, char **argv)
             setup((int)s);
             pal(p);
             if (p == UI_GREY_INDEX) aud = audf;
+            lmh.on = 0;
             draw((int)s);
+            lmh_feed((int)s);                      /* (the L / M / H meters with sound: nothing on a page without them) */
             lint();
             if (p == UI_GREY_INDEX) { audit_scene(S_NAME[s]); font_scene("FLAT", S_NAME[s]); aud = 0; }
             mono_check();
