@@ -30,10 +30,10 @@ static int project_name(uint32_t slot, char *b);
 static int project_info(uint32_t slot, char *b);
 static int project_rename(uint32_t slot, const char *name);
 static void project_cur_name(char *b);
-static uint32_t project_cur_slot(void);           /* .. the multi the music came from (0..15; 0xFF none) */
-static int project_factory(uint32_t slot);         /* .. M01..M10 not overwritten: shows its factory multi */
+static uint32_t project_cur_slot(void);           /* .. the multi the music came from (0..MU_SHOWN - 1; 0xFF none) */
+static int project_factory(uint32_t slot);         /* .. an empty slot: shows its factory multi */
 static int erase_data_run(void);                   /* DUELL 0.2.2: MENU > SYSTEM > ERASE DATA (erase_data.c) */
-static void mu_label(char *b, uint32_t k);         /* .. "M01" .. "M16" */
+static void mu_label(char *b, uint32_t k);         /* .. "M01" .. "M26" */
 typedef struct {
     uint8_t state;
     struct {

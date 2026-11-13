@@ -290,7 +290,7 @@ Part 1 listens on channel 1 and part 2 on channel 2 (editable).
 - On the device: clock in, program change and bank select.
 - The mod wheel (CC1) moves the MORPH fader and is also a matrix source.
 - CC 70 morph, 102 roll (0 to 42 rolls End A, 85 to 127 rolls End B), 103 amount.
-- In LAYER, program change 0 to 15 on part 1's channel recalls MULTIs M01 to M16 (with TIDE: 0 to 23, M17 to M24 the built-in scenes or what you saved over them).
+- In LAYER, program change 0 to 15 on part 1's channel recalls MULTIs M01 to M16 (with TIDE: 0 to 25, M01 to M26, the built-in scenes or what you saved over them; bank 0 only).
 - With an external clock, MIDI Start plays step 0 on the first clock pulse after it.
 - The tempo is averaged over four beats so a steady clock keeps the delay time and the TEMPO display still.
 - PLAY on this unit while a master's clock is arriving waits for the master's next bar (STOP, STOP ALL or the master's Stop cancel the wait).
