@@ -45,11 +45,11 @@ enum {
 };
 
 /* ---------------------------------------------------------------- math --- */
-/* 2^(x / 2^24), Q24 (msfa Exp2::lookup): the Q30 mantissa from FM6_EXP2 (257 points, 8 bits of the fraction, linear between them: worst relative error 9.2e-7), shifted by the integer part */
+/* 2^(x / 2^24), Q24 (msfa Exp2::lookup): the Q30 mantissa from FM6_EXP2 (513 points, 9 bits of the fraction, linear between them: worst relative error 2.3e-7), shifted by the integer part */
 static inline uint32_t fm6_mant(int32_t x)
 {
-    uint32_t f = (uint32_t)x & 0xFFFFFFu, k = f >> 16, a = FM6_EXP2[k];
-    return (1u << 30) + a + (uint32_t)(((uint64_t)(FM6_EXP2[k + 1u] - a) * (f & 0xFFFFu)) >> 16);
+    uint32_t f = (uint32_t)x & 0xFFFFFFu, k = f >> 15, a = FM6_EXP2[k];
+    return (1u << 30) + a + (uint32_t)(((uint64_t)(FM6_EXP2[k + 1u] - a) * (f & 0x7FFFu)) >> 15);
 }
 static inline int32_t fm6_exp2(int32_t x)
 {

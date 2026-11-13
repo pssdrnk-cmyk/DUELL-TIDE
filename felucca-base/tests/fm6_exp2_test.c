@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* FM6's exp2 lookup (fm6_core.c fm6_mant / fm6_exp2, the table FM6_EXP2 from tools/gen_tables.py) against the double-precision exp2, over the whole input range
- * (b11 room lane, item 10): the table has 257 entries (a point every 2^16 of the Q24 fraction) with the interpolation between them; the worst relative error of the
+ * (b11 room lane, item 10): the table has 513 entries (a point every 2^15 of the Q24 fraction) with the interpolation between them; the worst relative error of the
  * mantissa must stay under 1e-6 (0.03 LSB at full scale). Prints the worst error, the input it sits at, and the same for fm6_exp2 over its integer range.
  *   build/host/fm6_exp2_test            (host_tests.sh "fm6exp2") */
 #define main hostsim_main
