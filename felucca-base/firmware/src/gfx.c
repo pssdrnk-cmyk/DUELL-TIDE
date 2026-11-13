@@ -103,8 +103,8 @@ static const uint8_t GUT[5][2] = {{0, 4}, {79, 3}, {119, 2}, {158, 3}, {236, 4}}
 #define GUT_Y0 27u
 #define GUT_H 190u
 static uint16_t gut_cov[GUT_H] __attribute__((section(".pool")));   /* the gutter columns covered since gut_arm, a row */
-static uint16_t gut_bg;                                             /* the BG to fill with; 0x0001 | armed in gut_on */
-static uint8_t gut_on;
+static uint16_t gut_bg __attribute__((section(".pool")));           /* the BG to fill with */
+static uint8_t gut_on __attribute__((section(".pool")));            /* armed (the pool is cleared at boot, main.c: off); all three outside .bss */
 static void gut_mark(uint32_t x, uint32_t y, uint32_t w, uint32_t h)
 {
     uint32_t i, c, b = 0, m = 0, y1 = y + h;
@@ -121,13 +121,17 @@ static void gut_mark(uint32_t x, uint32_t y, uint32_t w, uint32_t h)
     for (; m && y < y1; y++)
         gut_cov[y - GUT_Y0] |= (uint16_t)m;
 }
-/* every blit from here on marks the gutters (one wrapper, not a mark at every call: flash); the fills: ui_draw.c (some host tests take gfx.c without an lcd_fill) */
+/* every transfer from here on marks the gutters: every UI file is compiled after this line (felucca.c: ui.c, ui_graph.c, ui_scope.c, ui_draw.c, ...), so none can send one
+ * unmarked (gut_flush would then paint BG over it). One wrapper a kind, not a mark at every call (flash). lcd_fill: lcd.c, the emulator and ui_test.c define it before
+ * this file; some host tests have none and call none, so gut_fill (which calls it) is in ui_draw.c (a test that reaches it without ui_draw.c fails to link, loudly) */
 static void gut_blit(uint32_t x, uint32_t y, uint32_t w, uint32_t h, const uint16_t *p)
 {
     gut_mark(x, y, w, h);
     lcd_blit(x, y, w, h, p);
 }
 #define lcd_blit gut_blit
+static void gut_fill(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint16_t c);
+#define lcd_fill(x, y, w, h, c) gut_fill((x), (y), (w), (h), (c))
 static void gut_arm(uint16_t bg)
 {
     uint32_t r;

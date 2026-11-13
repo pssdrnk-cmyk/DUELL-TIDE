@@ -34,6 +34,53 @@ static void one(const char *eng, const char *key)
         printf("uigaps: FAIL %s|%s|grid %u: %u pixels left uncovered\n", eng, key, g, pz);
     memcpy(host_screen, ref, sizeof ref);
 }
+/* b11 stripe check (below, main): a stripe = gutter pixels (gfx.c GUT) that, in one frame, pass through a value that is neither the old picture's nor the new one's
+ * (ui_test.c host_fl), in a row where nothing else does */
+static uint32_t frame_stripes(void)
+{
+    uint32_t y, x, i, n = 0;
+    host_fl_begin();
+    frame();
+    for (y = GUT_Y0; y < GUT_Y0 + GUT_H; y++) {
+        uint32_t ing = 0, outg = 0, gut;
+        for (x = 0; x < 240u; x++) {
+            const uint32_t k = y * 240u + x;
+            if (host_fl_n[k] != 2u || host_fl_mid[k] == host_screen[k])
+                continue;
+            for (gut = 0, i = 0; i < 5u; i++)
+                gut |= x >= GUT[i][0] && x < (uint32_t)GUT[i][0] + GUT[i][1];
+            if (gut)
+                ing++;
+            else
+                outg++;
+        }
+        if (!outg)
+            n += ing;
+    }
+    host_fl_on = 0;
+    return n;
+}
+/* one action watched frame by frame for 12 frames: kind 0 a button (a), 1 an encoder step (role a), 2 a key (a); 0 when the layout changed (another layout fills the whole body first) */
+static uint32_t act_stripes(uint32_t kind, uint32_t a)
+{
+    uint32_t f, n = 0, g0 = grid_on;
+    if (kind == 0u)
+        btn_down(a);
+    else if (kind == 1u)
+        host_enc[panel.enc[a]] += panel.dir[a];
+    else
+        key_down(a);
+    for (f = 0; f < 12u; f++) {
+        if (f == 1u && kind == 0u)
+            btn_up(a);
+        if (f == 1u && kind == 2u)
+            key_up(a);
+        n += frame_stripes();
+        if (f == 0u && kind == 1u)
+            host_ticks += 200000u;
+    }
+    return g0 == grid_on ? n : 0u;
+}
 int main(void)
 {
     uint32_t e, i, l, g, k, g2;
@@ -72,50 +119,43 @@ int main(void)
         printf("uigaps: %s: another layout fills the whole body first, the same layout only its gaps" "%c", ok ? "ok" : "FAIL", 10);
         if (!ok) return 1;
     }
-    {   /* b11 (owner on rc8: "when a screen is redrawn there are still 3 vertical lines for a couple of milliseconds"): a page change sends no vertical BG stripe through the old
-         * page. The gutters' fill (gfx.c GUT: x 0..3, 79..81, 119..120, 158..160, 236..239) went out before the strips and cut through whatever the old page had there; it now goes
-         * out at the end of the pass, only where nothing drew. Checked with ui_test.c host_fl, frame by frame: a stripe = gutter pixels that pass through a value that is neither
-         * the old page's nor the new one's, in a row where nothing else does, on a page change within one layout (another layout fills the whole body first, above) */
+    {   /* b11 (owner on rc8: "when a screen is redrawn there are still 3 vertical lines for a couple of milliseconds"; on SAVE > MULTIS turning ALGORITHM, and in QUICK SEQ
+         * picking a tool): no vertical stripe through the old picture when a page is redrawn within one layout. The gutters' fill (gfx.c GUT: x 0..3, 79..81, 119..120,
+         * 158..160, 236..239) went out before the strips and cut through whatever the old picture had there; it now goes out at the end of the pass, only where nothing drew */
         static const uint8_t BT[] = {B_HOME, B_HOME, B_HOME, B_FX, B_FX, B_ENV, B_LFO, B_EDIT, B_EDIT};
-        uint32_t b, f, y, x, n = 0, nb, g0;
+        uint32_t b, nb, n = 0, nm = 0, nq = 0, ok = 1;
         prefill_on = 0;
         ui_power_on(); go_main_to(HP_MORPH); frames(160);
         for (b = 0; b < NELEM(BT); b++) {
-            nb = 0;
-            g0 = grid_on;
-            btn_down(BT[b]);
-            for (f = 0; f < 12u; f++) {
-                if (f == 1u)
-                    btn_up(BT[b]);
-                host_fl_begin();
-                frame();
-                for (y = GUT_Y0; y < GUT_Y0 + GUT_H; y++) {
-                    uint32_t ing = 0, outg = 0, i, gut;
-                    for (x = 0; x < 240u; x++) {
-                        const uint32_t k = y * 240u + x;
-                        if (host_fl_n[k] != 2u || host_fl_mid[k] == host_screen[k])
-                            continue;
-                        for (gut = 0, i = 0; i < 5u; i++)
-                            gut |= x >= GUT[i][0] && x < (uint32_t)GUT[i][0] + GUT[i][1];
-                        if (gut)
-                            ing++;
-                        else
-                            outg++;
-                    }
-                    if (!outg)
-                        nb += ing;
-                }
-                host_fl_on = 0;
-            }
-            if (g0 != grid_on)
-                nb = 0;                                 /* (another layout: the whole body's fill, one blank) */
+            nb = act_stripes(0u, BT[b]);
             if (nb)
                 printf("uigaps: page change %u (grid %u): %u stripe pixels\n", b, grid_on, nb);
             n += nb;
             frames(160);
         }
-        printf("uigaps: %s: a page change sends no vertical stripe through the old page (%u stripe pixels)\n", n ? "FAIL" : "ok", n);
-        if (n) return 1;
+        ui_power_on(); duell_mode_req = DM_LAYER; go_main_to(HP_MORPH); frames(160);   /* the owner's case 1: SAVE > MULTIS (LAYER mode's SAVE page), ALGORITHM turned (the part's row: the card row redrawn in place) */
+        for (b = 0; b < NPAGES; b++)                    /* (straight to MULTIS: the SAVE family's slot page) */
+            if (PAGES[b].graph == GR_SLOTS && page_visible(b)) {
+                ui.page = (uint8_t)b;
+                page_entered();
+                break;
+            }
+        frames(300);
+        if (cur_page()->graph != GR_SLOTS) { printf("uigaps: not on MULTIS: graph %u page %s\n", (unsigned)cur_page()->graph, cur_page()->title); ok = 0; }
+        for (b = 0; b < 3u; b++) {
+            nm += act_stripes(1u, EN_ALGO);
+            frames(300);
+        }
+        ui_power_on(); go_main_to(HP_MORPH); frames(160);   /* the owner's case 2: QUICK SEQ (SEQ held), a key picks a tool (G3: REVERSE, A3: SHIFT <) */
+        btn_down(B_SEQ); frames(700);
+        if (ui.layer != LAYER_SEQ) { printf("uigaps: not in QUICK SEQ: layer %u\n", (unsigned)ui.layer); ok = 0; }
+        nq += act_stripes(2u, 2u); frames(300);
+        nq += act_stripes(2u, 4u); frames(300);
+        btn_up(B_SEQ); frames(300);
+        printf("uigaps: MULTIS + ALGORITHM: %u stripe pixels; QUICK SEQ + a key: %u stripe pixels%s\n", nm, nq, ok ? "" : " (FAIL: did not reach the page / the layer)");
+        n += nm + nq;
+        printf("uigaps: %s: a redraw within one layout sends no vertical stripe through the old picture (%u stripe pixels)\n", n || !ok ? "FAIL" : "ok", n);
+        if (n || !ok) return 1;
     }
     for (g2 = 0; g2 < 64u; g2++) {
         if (!ncase[g2]) continue;

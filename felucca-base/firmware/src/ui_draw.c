@@ -10,13 +10,12 @@
  * (a card value with its unit wider than the card, a dialog question or a header message too long) it is set in S;
  * free text (names) is ellipsised at its size. */
 #include "ui_tokens.h"                                /* DUELL 1.1 item 111: the shared header / footer / battery numbers, one set */
-/* b11: every fill from here on marks the gutters (gfx.c gut_mark: a grid's gutter fill waits for the end of the pass, only where nothing drew) */
+/* b11: every fill marks the gutters (gfx.c: the lcd_fill macro calls this; a grid's gutter fill waits for the end of the pass, only where nothing drew). (lcd_fill): the function */
 static void gut_fill(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint16_t c)
 {
     gut_mark(x, y, w, h);
-    lcd_fill(x, y, w, h, c);
+    (lcd_fill)(x, y, w, h, c);
 }
-#define lcd_fill gut_fill
 static void draw_menu(void);
 static int name_on(void);                              /* NAME (ui_name.c) */
 static int32_t morph_pending(uint32_t g);              /* the twists building up: MORPH's ROLL, GLO's MUTE 1, MUTE 2 (ui_input.c, 4b) */
