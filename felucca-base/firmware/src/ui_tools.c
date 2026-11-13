@@ -20,7 +20,7 @@ static struct { step_t step[NSTEP]; motion_store_t mo; } tl_open __attribute__((
 static uint32_t tl_len(const track_t *t) { return (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP); }
 /* b11 (SWELL / RIPPLE, TIDE's rules): a press has a seed (tl_sd, never 0: the same seed, the same notes; 0 = libc rng(), the stock dice), the part's key (SCL, else the multi's key byte), and it keeps clear of semitone rubs
  * against the other part (tl_rub) */
-static uint32_t tl_sd, tl_ms = 0xFFFu, tl_rt;
+static uint32_t tl_sd __attribute__((section(".pool"))), tl_ms __attribute__((section(".pool"))), tl_rt __attribute__((section(".pool")));   /* (the pool: the RAM rule's .bss has no room; tl_rules sets the key before every press) */
 static uint32_t tl_rr(void)
 {
     if (!tl_sd)
