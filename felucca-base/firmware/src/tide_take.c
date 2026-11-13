@@ -37,6 +37,8 @@ static uint8_t tk_cnt __attribute__((section(".pool"))), tk_pos __attribute__((s
 static uint8_t tk_pend __attribute__((section(".pool"))), tk_pg __attribute__((section(".pool"))), tk_pplain __attribute__((section(".pool")));   /* the answer waits for the bar line: its part + 1 (0 none), the grid it sets (255 none), the part leaves ARP SEQ */
 static uint16_t tk_total __attribute__((section(".pool")));
 static uint32_t tk_mh __attribute__((section(".pool"))), tk_mu __attribute__((section(".pool"))), tk_lsig __attribute__((section(".pool")));   /* the header message held (its hash, until when: fm1_ms); the part's steps at the last live answer */
+static uint8_t tk_who __attribute__((section(".pool"))), tk_lm __attribute__((section(".pool"))), tk_force __attribute__((section(".pool"))), tk_prest __attribute__((section(".pool")));   /* the newest take's part + 1 (0 none or both); the ANSWER / ANSWER ON values last seen; a mode change while REC is armed forces the next re-make; the pending "answer" is the part's old pattern coming back */
+static uint8_t tk_prg[3] __attribute__((section(".pool")));                                /* that old pattern's SDIV, ARATE, AMODE */
 static uint8_t tk_wd __attribute__((section(".pool"))), tk_live __attribute__((section(".pool")));            /* this pass's answer is made; an answer was made while the pass was open */
 #define tk_fresh tk_fresh_v
 
@@ -431,6 +433,12 @@ static void tk_land(void)
             td->p[P_AMODE] = 0;
         td->p[P_SDIV] = tk_pg;
     }
+    if (tk_prest) {
+        td->p[P_SDIV] = tk_prg[0];
+        td->p[P_ARATE] = tk_prg[1];
+        td->p[P_AMODE] = tk_prg[2];
+        tk_prest = 0;
+    }
     fm1_irq_on();
     tk_m.sig = steps_sig(td);
     tk_pend = 0;
@@ -451,6 +459,7 @@ static uint32_t tk_gen(uint32_t src, uint32_t dst, uint32_t seed, uint32_t mode)
         return 0;
     tk_key();
     tk_pend = 0;
+    tk_prest = 0;
     memset(tk_out, 0, sizeof tk_out);
     tk_slen = len;
     tk_ps = tk_gp(ts);
@@ -557,7 +566,8 @@ static void tk_load(const tk_snap_t *d)
     }
     fm1_irq_on();
     tk_m = d->m;
-    tk_pend = 0;                                         /* (an answer that waited for its bar line is gone with the state it was made for) */
+    tk_pend = 0;
+    tk_prest = 0;                                        /* (an answer that waited for its bar line is gone with the state it was made for) */
 }
 static void tk_push(uint32_t no)                         /* tk_pre is the state before this step; the tracks hold the state after it */
 {
@@ -620,6 +630,61 @@ static __attribute__((noinline)) void take_roll(uint32_t mask, uint32_t seed)
     tk_say("ROLL ", tk_m.roll);
 }
 
+/* ---- ANSWER or ANSWER ON turned while a take stands: the answer is made again from the take with the new mode (seed 0, the take's own: the same mode again gives the same answer), on the next bar line; no history step, so undo
+ * still goes to before the take. OFF gives the other part its old pattern back (the history step holds it), also on the bar line. Turned several times before the bar line, the last value counts (tk_gen / this replace the waiting
+ * answer). An answer the player edited since (and a pattern edited since the take, when there was no answer) is the player's: left alone. While REC is armed the change only forces the next pass's re-make (take_poll). ---- */
+static __attribute__((noinline)) void take_mode(void)
+{
+    uint32_t who, dst;
+    const tk_snap_t *pre;
+    tk_meta_t keep;
+    if (tk_open) {
+        tk_force = 1;
+        return;
+    }
+    if (!tk_fresh || !tk_cnt || tk_pos != tk_cnt || !tk_who)
+        return;
+    who = (uint32_t)tk_who - 1u;
+    dst = 1u - who;
+    pre = &tk_h[tk_cnt - 1u];                            /* (the state before the newest take) */
+    if ((song.rec >> dst) & 1u)
+        return;
+    if (tide_answer && !tide_answer_on) {
+        if (tk_m.ans) {
+            if (tk_m.ans != dst + 1u || (!tk_pend && steps_sig(&trk[dst]) != tk_m.sig))
+                return;
+        } else if (memcmp(trk[dst].step, pre->s[dst], sizeof trk[dst].step)) {
+            return;
+        }
+        keep = tk_m;
+        tk_m.roll = 0;
+        if (!tk_gen(who, dst, 0u, tide_answer)) {
+            tk_m = keep;
+            return;
+        }
+        tk_say(0, 0);
+        return;
+    }
+    if (!tk_m.ans || tk_m.ans != dst + 1u)
+        return;
+    if (!tk_pend && steps_sig(&trk[dst]) != tk_m.sig) {  /* (the player's now) */
+        tk_m.ans = 0;
+        return;
+    }
+    memcpy(tk_out, pre->s[dst], sizeof tk_out);
+    tk_olen = pre->len[dst];
+    tk_pg = 255u;
+    tk_pplain = 0;
+    tk_prg[0] = pre->gr[dst][0], tk_prg[1] = pre->gr[dst][1], tk_prg[2] = pre->gr[dst][2];
+    tk_prest = 1;
+    tk_pend = (uint8_t)(dst + 1u);
+    tk_m.ans = 0;
+    if (tk_due())
+        tk_land();
+    ui_say("ANSWER OFF", "");
+    tk_hold();
+}
+
 /* ---- the tide line and knob 1's line while a take records (b10 round 9, on the identity's tide line) ---- */
 static uint32_t take_line(uint32_t *prog)                  /* 0 no take, 1 the count-in, 2 recording (prog: how far through the loop, Q16) */
 {
@@ -673,6 +738,7 @@ static __attribute__((noinline)) void tk_close(uint32_t mask)                   
     if (!changed)
         return;
     tk_total++;
+    tk_who = nch == 1u ? (uint8_t)(who + 1u) : 0u;
     {
         uint32_t sd = tk_live ? tk_m.seed : 0u;          /* (the answer made while the pass was open keeps its seed: it changes only where the take did) */
         tk_live = 0;
@@ -702,8 +768,19 @@ static __attribute__((noinline)) void take_poll(void)                           
         tk_cnt = tk_pos = 0, tk_total = 0;
         tk_m.ans = 0;
         tk_pend = 0;
+        tk_prest = 0;
+        tk_who = 0;
+        tk_force = 0;
+        tk_lm = (uint8_t)(tide_answer | (tide_answer_on << 4));
         tk_open = (uint8_t)now;
         return;
+    }
+    {
+        uint8_t cur = (uint8_t)(tide_answer | (tide_answer_on << 4));
+        if (cur != tk_lm) {                              /* ANSWER or ANSWER ON turned (take_mode: nothing happens without a standing take) */
+            tk_lm = cur;
+            take_mode();
+        }
     }
     if (tk_pend && tk_due())
         tk_land();
@@ -722,7 +799,8 @@ static __attribute__((noinline)) void take_poll(void)                           
         else if (!tk_wd) {
             uint32_t sg = steps_sig(&trk[q]);
             tk_wd = 1;
-            if (sg != tk_lsig && tk_gen(q, 1u - q, tk_live ? tk_m.seed : 0u, tide_answer)) {
+            if ((sg != tk_lsig || tk_force) && tk_gen(q, 1u - q, tk_live ? tk_m.seed : 0u, tide_answer)) {
+                tk_force = 0;
                 tk_live = 1;
                 tk_lsig = sg;
                 tk_say(0, 0);
@@ -738,6 +816,8 @@ static __attribute__((noinline)) void take_poll(void)                           
             tk_save(&tk_pre);                              /* (the state of both parts when the pass opens) */
     }
     tk_open = (uint8_t)now;
-    if (was & ~now)
+    if (was & ~now) {
+        tk_force = 0;
         tk_close(was & ~now);
+    }
 }
