@@ -26,7 +26,7 @@ The slot number matters: slot #44 is the factory sound #44. Saving a patch into 
 ## 2. Refine a multi
 
 1. **MULTIS** tab: **Load** the multi, change the music of both parts, the tempo, the effects, the arps.
-2. **Save here...** into the same slot (M01 to M16). The unit stops playback and writes it.
+2. **Save here...** into the same slot (M01 to M26 on a b10 unit; an older one keeps M17 and up built in). The unit stops playback and writes it.
 3. The multi keeps its own copy of the sounds' values, so changing a patch does not change a multi, and the other way round. Refine both if you want both.
 
 ## 3. Take the files out
