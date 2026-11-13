@@ -842,7 +842,7 @@ static void t_amount_keep(void)
     gl.on = 0;
 }
 /* the slim row (owner on the unit, 2026-11-10; b9: every genre set, knob_sets.h): every value each column can show, in every form (the engine and ENV SYNC loops are left from when K4 was LEN),
- * fits its column: the name, 5 px, the widest value, then 12 px or more before the next column; the last ends by x 237 */
+ * fits its column: the number dot (KN_DW), the name, 5 px, the widest value, then KN_GAP px or more before the next column; the last ends by x 237 */
 static int h1_fits(void)
 {
     uint32_t set, i, f, v, ok = 1;
@@ -866,8 +866,8 @@ static int h1_fits(void)
             }
         }
         for (i = 0; i < 3u; i++) {
-            x = KN_X[set][i] + text_w(&AF_S, KN_L[set][i]) + 5 + w[i];
-            ok &= x + (i < 2u ? 12 : 0) <= (i < 2u ? KN_X[set][i + 1u] : 237);
+            x = KN_X[set][i] + KN_DW + text_w(&AF_S, KN_L[set][i]) + 5 + w[i];   /* (b11: the knob's number dot first) */
+            ok &= x + (i < 2u ? KN_GAP : 0) <= (i < 2u ? KN_X[set][i + 1u] : 237);
             if (set == 0u)
                 printf("morphui: row column %s: widest value %d px, ends at x %d\n", KN_L[set][i], w[i], x);
         }

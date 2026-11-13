@@ -32,8 +32,11 @@ static const kn_e KN_E[KS_N][3][3] = {
     {{{K_ATK, 8}, {K_REL, 8}, {K_REV, 4}}, {{K_LDF, 28}, {K_LRT, -2}, {K_FLT, -6}}, {{K_DLY, 16}, {K_REV, 16}}}};   /* AM: BLM, DRF (b10: LDF 28, twice the depth a detent; the cutoff comes down so the wobble has room), SPC */
 static const char *const KN_L[KS_N][3] = {{"FLT", "RSN", "ECH"}, {"SND", "FDBK", "TIME"}, {"FLT", "PMP", "REV"}, {"TNS", "DEC", "WSH"},
                                           {"SQL", "BTE", "DRT"}, {"FLT", "GRT", "GLT"}, {"BLM", "DRF", "SPC"}};   /* (vowels dropped, the owner's: SND for SEND, PMP for PUMP) */
-/* the columns' left ends of each set (the name there, its value 5 px after it): laid out for the widest value each knob can show, 12 px or more between the columns, the
- * last ends by x 237 (tests/knobs_pics.c and tests/morph_ui_test.c check every value; tests/knobs_pics.c prints the rows) */
+/* the columns' left ends of each set (b11: the knob's number dot there, KN_DW wide with its gap, then the name, its value 5 px after it): laid out for the widest value each knob
+ * can show, KN_GAP px or more between the columns, the last ends by x 237, so nothing on the row moves when a value changes (tests/knobs_pics.c and tests/morph_ui_test.c check
+ * every value; tests/knobs_pics.c prints the rows) */
+#define KN_DW (AF_S_CAP_H + 3)
+#define KN_GAP 8
 static const uint8_t KN_X[KS_N][3] = {{4, 79, 164}, {3, 88, 172}, {3, 85, 172}, {3, 82, 168}, {3, 83, 172}, {3, 86, 173}, {3, 87, 172}};   /* (STD: as the owner has had it since b7) */
 /* the multi's genre: the first word of its name (up to the first space) is one of these tags: the sets 1..6 in order; anything else: STD */
 static const char *const KN_TAG[KS_N - 1u] = {"DUB", "HSE", "TECH", "ACID", "ELEC", "AMB"};
