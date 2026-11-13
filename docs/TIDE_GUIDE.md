@@ -65,16 +65,13 @@ These are the sound's own settings: they record into the pattern with REC armed,
 
 ## 2. AUTO TIDE (the page you live on)
 
-The screen shows:
+The page always shows both parts, each as one lane:
 
-- the **SOUND** and **SEQ** faders with the glide's path
-- the 16 steps as they play
-- a status line
-
-The page always shows both parts:
-
-- the faders sit in two columns, **SOUND** and **SEQ**, a row per part
-- the steps in two rows
+- its **SOUND** and **SEQ** faders with the glide's path, in two columns
+- its 16 steps as they play, under the faders, with a small bar beside them for the selected part
+- under its steps a live line: the part's sound right now, the MORPH page's front wave, in the part's colour
+- with an ARC on, a thin progress line at the foot of the picture, its phases marked by small gaps
+- the status on knob 1's line, for example `RISE  TO B 2/16`
 
 The part the knobs act on (the selected part) is drawn in full colour with its number in a filled pill and a small bar beside its steps; the other part is dimmed.
 
@@ -104,7 +101,7 @@ The glide only moves while the transport plays. **STOP** pauses it; **PLAY** car
 
 STYLE DUB, DEEP, MINIMAL and DRONE use EVOLVE; AMBIENT and PEAK use TRAVEL. A saved setup with an old MODE of ONCE, LOOP or DRIFT opens as EVOLVE, and WANDER as EVOLVE too; JOURNEY opens as TRAVEL. On the AUTO TIDE page the top line reads EVOLVING TO B or TRAVEL TO B; ARC's hint reads NEEDS EVOLVE, and "DROP NEEDS EVOLVE/TRAVEL" when it cannot act.
 
-**The top line, in full.** `EVOLVING TO B   BAR 3/16` (with an ARC running, its words sit at the top right, for example `ARC RISE 1/3`, and the ARC's shape is drawn under the faders: RISE, PEAK, BREAK); `TRAVEL TO B` in TRAVEL; `WAITING  1/2` while the trip is held; `GLIDE ON THE NEXT BAR` or `GLIDE STARTS WITH PLAY` before the first trip; `PAUSED: PLAY GOES ON`; `HAND  BACK IN n BARS` after your hand on the fader. On the MORPH page, knob 1's line shows the trip in short: `TO B 1/16` (the fader's number, then the bar, with no mode word).
+**The status line, in full.** `EVOLVING TO B   BAR 3/16` (with an ARC running, knob 1's line names its phase first, for example `RISE  TO B 2/16`; the arc itself is the thin progress line at the foot of the picture); `TRAVEL TO B` in TRAVEL; `WAITING  1/2` while the trip is held; `GLIDE ON THE NEXT BAR` or `GLIDE STARTS WITH PLAY` before the first trip; `PAUSED: PLAY GOES ON`; `HAND  BACK IN n BARS` after your hand on the fader. On the MORPH page, knob 1's line shows the trip in short: `TO B 1/16` (the fader's number, then the bar, with no mode word).
 
 **COLR LFO.** GLO's page 6 of 13 is COLR LFO, one knob (COLOR LFO, 0 to 15): a slow 0.25 Hz wave that swings the delay's colour, so the repeats breathe. 0 is off; DUB BASIC uses 5, DUB CHORD 2, and a multi stores the value.
 
@@ -114,7 +111,7 @@ Where two very different sounds cross, a short filter dip hides the change (the 
 
 ## 3. TIDE SETTINGS (set and forget)
 
-Ten rows: STYLE, MODE, TARGET, ARC, KNOBS and AMOUNT for the tide, then REC, PLAY MODE, XFADE and SPLIT.
+Twelve rows: STYLE, MODE, TARGET, ARC, KNOBS and AMOUNT for the tide, then REC, ANSWER, ANSWER ON, PLAY MODE, XFADE and SPLIT.
 - K1 picks the row.
 - **OCT+** the next value, **OCT-** the one before.
 - Knobs 2 to 4 turn it too, one step a click.
