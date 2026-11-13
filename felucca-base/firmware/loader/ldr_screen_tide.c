@@ -1,29 +1,28 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* The update loader's screen in TIDE's look (TIDE 1.0.0-b5; included by ldr_screen.c, which keeps the guest rules, ls_check and the two entry points):
- * a TIDE page (firmware/src/ui_tokens.h): plain background, no boxes, no rule under the title.
- *     row 16   UPDATE                        the header's page title (face T, T_TEXT, centred)
- *     row 74   WRITING                       face S, T_MID, centred
- *     row 108  45 %                          the percent as a big value (face N, T_TEXT) and its unit (face M, T_MID) on one baseline, centred
- *     rows 120 .. 125                        the capsule bar, x 22 .. 217: the part 1 -> part 2 colour over the T_RAISE track, both ends round
- *     rows 156 .. 174  DO NOT SWITCH OFF     in a filled pill (T_THEME), the text in T_BG
-*     row 231  TIDE                         the footer row (face S, T_MID)
+/* The update loader's screen in TIDE's look (TIDE 1.0.0-b5; b11, owner: "it's pink": the night sea; included by ldr_screen.c, which keeps the guest rules, ls_check and
+ * the two entry points): a TIDE page on the ground colour, no boxes, no rule (firmware/src/ui_tokens.h, the TIDE palette).
+ *     rows 40 .. 89    the splash's wordmark, where the splash has it (W1: the letters cut by the water line, foam above it, sea glass under it)
+ *     row 116          WRITING                       face S, moonlight, centred
+ *     row 150          45 %                          the percent as a big value (face N, foam) and its unit (face M, moonlight) on one baseline, centred
+ *     rows 160 .. 166  the progress as the water line, x 22 .. 217: a 2 px wave, sea glass up to the percent, the line colour ahead, soft ends
+ *     rows 186 .. 204  DO NOT SWITCH OFF             in a filled pill in amber (warn: "careful"), the text in the ground colour
  * Rows are the capitals' last rows. Only drawing lives here: buffers, colours, bitmaps, the band renderer. The data: ldr_screen_tide_data.h (tools/gen_loader_screen_tide.py). */
 #include "ldr_screen_tide_data.h"
 
 #define LS_BAND_H 44u                           /* the strip: 240 x 44 pixels, 21,120 B */
-#define LS_UP_Y 84u                             /* the band that changes with the percent: the percent and the bar (rows 84 .. 127) */
-#define LS_BAND_TAB 0, 44, 84, 128, 172, 216, 240   /* the whole screen in bands of LS_BAND_H rows at most, LS_UP_Y .. + LS_BAND_H one of them */
+#define LS_UP_Y 124u                            /* the band that changes with the percent: the percent and the water line (rows 124 .. 167) */
+#define LS_BAND_TAB 0, 44, 84, 124, 168, 212, 240   /* the whole screen in bands of LS_BAND_H rows at most, LS_UP_Y .. + LS_BAND_H one of them */
 #define LS_NB 6u
 #define LS_BUDGET_MS 400u                       /* a draw longer than this: the screen gives up */
-#define LS_TITLE_ROW 16                         /* capitals' last rows */
-#define LS_WRITING_ROW 74
-#define LS_PCT_ROW 108
-#define LS_PILL_Y 156                           /* the pill's top row; its text's capitals end on row LS_PILL_Y + 14 */
-#define LS_NAME_ROW 231
-#define LS_NAME_X 5                             /* the footer's first pen (UT_FOOT_X) */
-#define LS_BAR_X0 22u                           /* the bar: x 22 .. 217 (both included), rows 120 .. 125 */
+#define LS_WM_X 24                              /* the wordmark's top-left: the splash's place */
+#define LS_WM_Y 40
+#define LS_WRITING_ROW 116                      /* capitals' last rows */
+#define LS_PCT_ROW 150
+#define LS_PILL_Y 186                           /* the pill's top row; its text's capitals end on row LS_PILL_Y + 14 */
+#define LS_BAR_X0 22u                           /* the water line: x 22 .. 217 (both included), its middle on row LS_LINE_Y (1/16 px: + 8), 2 px thick, rows 160 .. 166 */
 #define LS_BAR_X1 217u
-#define LS_BAR_Y 120u
+#define LS_LINE_Y 163u
+#define LS_SOFT 12u                             /* its soft ends, px */
 
 static uint16_t ls_buf[240u * LS_BAND_H];       /* byte-swapped RGB565, the order the panel takes */
 static uint8_t ls_on;                           /* 1: drawing; 0: never started or given up */
@@ -57,6 +56,22 @@ static void ls_alpha(const uint8_t *d, uint32_t w, uint32_t h, int32_t x, int32_
         }
 }
 
+/* the wordmark (16 colours, index 0 the ground: not drawn) at its place, the rows of it inside the strip */
+static void ls_wordmark(uint32_t y0)
+{
+    uint32_t r, col, k;
+    for (r = 0; r < LS_WM_H; r++) {
+        const int32_t py = LS_WM_Y + (int32_t)r - (int32_t)y0;
+        if (py < 0 || py >= (int32_t)LS_BAND_H)
+            continue;
+        for (col = 0, k = r * LS_WM_W; col < LS_WM_W; col++, k++) {
+            const uint32_t i = (k & 1u) ? LS_WM[k >> 1] & 15u : LS_WM[k >> 1] >> 4;
+            if (i)
+                ls_buf[(uint32_t)py * 240u + LS_WM_X + col] = ls_sw(LS_WM_PAL[i]);
+        }
+    }
+}
+
 /* a text bitmap NAME (ldr_screen_tide_data.h) with its pen at x and its capitals' last row at row */
 #define LS_TEXT_AT(NAME, x, row, y0, c) \
     ls_alpha(LS_##NAME, LS_##NAME##_W, LS_##NAME##_H, (int32_t)(x) + LS_##NAME##_BX, (int32_t)(row) + 1 + LS_##NAME##_BY, y0, c)
@@ -82,33 +97,25 @@ static void ls_percent(uint32_t pct, uint32_t y0)   /* "45" (face N) and "%" (fa
     LS_TEXT_AT(PCT, x, LS_PCT_ROW, y0, LS_MID);
 }
 
-static uint32_t ls_bar_end(uint32_t pct)        /* the fill's last column (pct > 0): in proportion, never shorter than its two round ends */
+static uint32_t ls_bar_end(uint32_t pct)        /* the sea glass's last column (pct > 0), in proportion */
 {
-    uint32_t e = LS_BAR_X0 + (LS_BAR_X1 - LS_BAR_X0) * pct / 100u;
-    return e < LS_BAR_X0 + LS_BAR_H - 1u ? LS_BAR_X0 + LS_BAR_H - 1u : e;
+    return LS_BAR_X0 + (LS_BAR_X1 - LS_BAR_X0) * pct / 100u;
 }
 
-static uint32_t ls_cap(uint32_t a, uint32_t b, uint32_t x, uint32_t r)   /* the coverage (0 .. 15) of a capsule spanning columns a .. b at column x, row r */
+/* the water line: per column its middle (1/16 px) on the swell, a 2 px stroke, each row's share of it its coverage; sea glass up to the percent, the line colour ahead;
+ * the LS_SOFT columns at each end fade into the ground */
+static void ls_water(uint32_t pct, uint32_t y0)
 {
-    if (x - a < LS_BAR_H / 2u)
-        return LS_CAPEND[r * (LS_BAR_H / 2u) + x - a];
-    if (b - x < LS_BAR_H / 2u)
-        return LS_CAPEND[r * (LS_BAR_H / 2u) + b - x];
-    return 15u;
-}
-
-static void ls_bar(uint32_t pct, uint32_t y0)
-{
-    uint32_t r, x, xe = pct ? ls_bar_end(pct) : 0u;
-    for (r = 0; r < LS_BAR_H; r++) {
-        uint32_t y = LS_BAR_Y + r;
-        if (y < y0 || y >= y0 + LS_BAND_H)
-            continue;
-        for (x = LS_BAR_X0; x <= LS_BAR_X1; x++) {
-            uint16_t c = ls_mix(LS_BG, LS_RAISE_, (int32_t)(ls_cap(LS_BAR_X0, LS_BAR_X1, x, r) * 100u / 15u));
-            if (pct && x <= xe)
-                c = ls_mix(c, ls_mix(LS_C0, LS_C2, (int32_t)((x - LS_BAR_X0) * 100u / (LS_BAR_X1 - LS_BAR_X0))), (int32_t)(ls_cap(LS_BAR_X0, xe, x, r) * 100u / 15u));
-            ls_buf[(y - y0) * 240u + x] = ls_sw(c);
+    uint32_t x, xe = pct ? ls_bar_end(pct) : 0u;
+    for (x = LS_BAR_X0; x <= LS_BAR_X1; x++) {
+        const int32_t m = (int32_t)LS_LINE_Y * 16 + 8 + LS_WAVE[(x - LS_BAR_X0) % LS_WAVE_N], top = m - 16, bot = m + 16;
+        const uint32_t e = x - LS_BAR_X0 < LS_BAR_X1 - x ? x - LS_BAR_X0 : LS_BAR_X1 - x;
+        const uint16_t c = pct && x <= xe ? LS_C0 : LS_LINE;
+        int32_t row;
+        for (row = top >> 4; row <= (bot - 1) >> 4; row++) {
+            const int32_t a = (row * 16 + 16 < bot ? row * 16 + 16 : bot) - (row * 16 > top ? row * 16 : top), py = row - (int32_t)y0;
+            if (a > 0 && py >= 0 && py < (int32_t)LS_BAND_H)
+                ls_buf[(uint32_t)py * 240u + x] = ls_sw(ls_mix(LS_BG, c, (int32_t)((uint32_t)a * 100u / 16u * (e < LS_SOFT ? e + 1u : LS_SOFT) / LS_SOFT)));
         }
     }
 }
@@ -119,14 +126,13 @@ static void ls_band(uint32_t y0, uint32_t h, uint32_t pct)   /* render rows y0 .
     uint16_t bg = ls_sw(LS_BG);
     for (i = 0; i < n; i++)
         ls_buf[i] = bg;
-    LS_TEXT_AT(TITLE, 120 - LS_TITLE_ADV / 2, LS_TITLE_ROW, y0, LS_TEXT);
+    ls_wordmark(y0);
     LS_TEXT_AT(WRITING, 120 - LS_WRITING_ADV / 2, LS_WRITING_ROW, y0, LS_MID);
     if (y0 <= (uint32_t)LS_PCT_ROW && y0 + h > (uint32_t)LS_PCT_ROW - 24u)
         ls_percent(pct, y0);
-    ls_bar(pct, y0);
-    ls_alpha(LS_PILL, LS_PILL_W, LS_PILL_H, 120 - LS_PILL_W / 2, LS_PILL_Y, y0, LS_C0);
+    ls_water(pct, y0);
+    ls_alpha(LS_PILL, LS_PILL_W, LS_PILL_H, 120 - LS_PILL_W / 2, LS_PILL_Y, y0, LS_WARN);
     LS_TEXT_AT(DONOT, 120 - LS_DONOT_ADV / 2, LS_PILL_Y + 14, y0, LS_BG);
-    LS_TEXT_AT(NAME, LS_NAME_X, LS_NAME_ROW, y0, LS_MID);
     lcd_blit(0, y0, 240, h, ls_buf);
     lcd_sync();                                   /* the strip is sent before anything else runs (and before the next one is drawn into it) */
 }

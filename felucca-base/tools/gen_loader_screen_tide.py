@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
-"""TIDE 1.0.0-b5: the data of the update loader's TIDE screen (firmware/loader/ldr_screen_tide.c) -> firmware/loader/ldr_screen_tide_data.h (committed, like
-ldr_screen_data.h: the loader is built in parallel with generate(), so its data is a source file, remade only when this script or its inputs change).
+"""TIDE 1.0.0-b5, b11 (owner: "it's pink"): the data of the update loader's TIDE screen (firmware/loader/ldr_screen_tide.c) -> firmware/loader/ldr_screen_tide_data.h
+(committed, like ldr_screen_data.h: the loader is built in parallel with generate(), so its data is a source file, remade only when this script or its inputs change).
 
     tools/gen_loader_screen_tide.py [OUT.h]     (needs Pillow; build/gen/ui_palettes.h from gen_only.py)
 
-The screen is a TIDE page (firmware/src/ui_tokens.h): plain background, no boxes, no rule; the header's page title UPDATE (face T, Barlow Semi Condensed Bold 15, T_TEXT, centred,
-capitals' last row 16); WRITING (face S, SemiBold 15, T_MID); the percent as a big value (face N, Bold 31 figures, T_TEXT) with its unit % (face M, Medium 15, T_MID) on the same baseline;
-a capsule bar (6 px, the part 1 -> part 2 colour over the T_RAISE track); DO NOT SWITCH OFF in a filled pill (T_THEME, the text in T_BG); the name line TIDE in the footer row
-(face S, T_MID, capitals' last row 231). Colours: the VIOLET palette, as the DUELL loader screen. Bitmaps are 4-bit alpha, two pixels a byte, row after row; each text's offsets are
-from its pen and its baseline."""
+The screen is a TIDE page on the night sea (the TIDE palette, firmware/src/ui_tokens.h; no pink, no violet): the splash's wordmark where the splash has it (W1, cut by the water
+line: assets/loader/tide_wordmark.png, the host render of the splash cropped at x 24 .. 215, rows 40 .. 89, kept as 16 colours); WRITING (face S, SemiBold 15, moonlight); the
+percent as a big value (face N, Bold 31 figures, foam) with its unit % (face M, Medium 15, moonlight) on the same baseline; the progress as the water line (a 2 px wave, sea glass
+up to the percent, the line colour ahead, soft ends); DO NOT SWITCH OFF in a filled pill in amber (the language's "careful", warn 0xFDA8), the text in the ground colour.
+Bitmaps are 4-bit, two pixels a byte, row after row: the texts alpha, the wordmark a colour index; each text's offsets are from its pen and its baseline."""
+import math
 import re
 import sys
 from pathlib import Path
@@ -17,28 +18,33 @@ from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parent.parent
 FD = ROOT / "assets" / "fonts"
+WM = ROOT / "assets" / "loader" / "tide_wordmark.png"
+WARN = 0xFDA8                                  # warn (b11 design language: amber, "careful"): not a palette row yet
 
 
 def face(weight, px):
     return ImageFont.truetype(str(FD / f"BarlowSemiCondensed-{weight}.ttf"), px)
 
 
-S, M, T, N = face("SemiBold", 15), face("Medium", 15), face("Bold", 15), face("Bold", 31)   # the faces of tools/gen_aa_font.py preset barlow
+S, M, N = face("SemiBold", 15), face("Medium", 15), face("Bold", 31)   # the faces of tools/gen_aa_font.py preset barlow
 
 
 def pal():
     t = (ROOT / "build/gen/ui_palettes.h").read_text()
-    m = re.search(r'\{"VIOLET", \{(0x\w+), 0x\w+\}, 0x\w+, \{(0x\w+), (0x\w+)\}, (0x\w+), (0x\w+), \{(0x\w+), (0x\w+)\}, \{(0x\w+), (0x\w+)\}, (0x\w+), \{(0x\w+), (0x\w+), (0x\w+)', t)
+    m = re.search(r'\{"TIDE", \{(0x\w+), 0x\w+\}, 0x\w+, \{(0x\w+), (0x\w+)\}, (0x\w+), (0x\w+), \{(0x\w+), (0x\w+)\}, \{(0x\w+), (0x\w+)\}, (0x\w+), \{(0x\w+), (0x\w+), (0x\w+)', t)
     v = [int(x, 16) for x in m.groups()]
-    return dict(bg=v[0], text=v[3], mid=v[4], raise_=v[7], c0=v[10], c2=v[12])
+    return dict(bg=v[0], text=v[3], mid=v[4], line=v[5], c0=v[10], warn=WARN)
 
 
-def nib(im):
-    w, h = im.size
-    n = [min(15, (im.getpixel((x, y)) + 8) * 15 // 255) for y in range(h) for x in range(w)]
+def nib(n):
     if len(n) & 1:
-        n.append(0)
+        n = n + [0]
     return [(n[i] << 4) | n[i + 1] for i in range(0, len(n), 2)]
+
+
+def alpha(im):
+    w, h = im.size
+    return nib([min(15, (im.getpixel((x, y)) + 8) * 15 // 255) for y in range(h) for x in range(w)])
 
 
 def text_bitmap(f, s, pad=8):
@@ -47,26 +53,32 @@ def text_bitmap(f, s, pad=8):
     ImageDraw.Draw(im).text((pad, 44), s, font=f, fill=255, anchor="ls")
     bb = im.getbbox()
     c = im.crop(bb)
-    return c.size[0], c.size[1], bb[0] - pad, bb[1] - 44, nib(c)
+    return c.size[0], c.size[1], bb[0] - pad, bb[1] - 44, alpha(c)
 
 
 def pill_bitmap(w, h):
     """a capsule w x h (radius h / 2), anti-aliased (4 x 4 supersampling)"""
     big = Image.new("L", (w * 4, h * 4), 0)
     ImageDraw.Draw(big).rounded_rectangle((0, 0, w * 4 - 1, h * 4 - 1), radius=h * 2, fill=255)
-    return nib(big.resize((w, h), Image.BOX))
+    return alpha(big.resize((w, h), Image.BOX))
 
 
-def cap_end(h):
-    """the coverage (0..15) of a capsule's end, h rows x h / 2 columns, column 0 the outermost"""
-    r = h // 2
-    out = []
-    for y in range(h):
-        for x in range(r):
-            n = sum(1 for sy in range(8) for sx in range(8)
-                    if (x + (sx + .5) / 8 - r) ** 2 + (y + (sy + .5) / 8 - r) ** 2 <= r * r)
-            out.append(min(15, (n * 15 + 32) // 64))
-    return out
+def rgb565(c):
+    r, g, b = c[:3]
+    return (round(r * 31 / 255) << 11) | (round(g * 63 / 255) << 5) | round(b * 31 / 255)
+
+
+def wordmark():
+    """the wordmark as 16 colours, index 0 the ground (not drawn): (w, h, palette, bytes)"""
+    im = Image.open(WM).convert("RGB")
+    q = im.quantize(16, method=Image.Quantize.MEDIANCUT)
+    p = q.getpalette()[:48]
+    ground = q.getpixel((0, 0))
+    order = [ground] + [i for i in range(16) if i != ground]
+    remap = {old: new for new, old in enumerate(order)}
+    w, h = q.size
+    idx = [remap[q.getpixel((x, y))] for y in range(h) for x in range(w)]
+    return w, h, [rgb565(p[3 * i:3 * i + 3]) for i in order], nib(idx)
 
 
 def arr(name, vals, per=24, typ="uint8_t"):
@@ -76,19 +88,19 @@ def arr(name, vals, per=24, typ="uint8_t"):
     return s + "};\n"
 
 
-BAR_H = 6
 PILL_PAD, PILL_H = 8, 19
+WAVE_N, WAVE_A = 48, 1.5                       # the water line: one swell every 48 px, 1.5 px each way
 
 
 def main():
     out = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "firmware/loader/ldr_screen_tide_data.h"
     P = pal()
     h = ["/* generated by tools/gen_loader_screen_tide.py: do not edit (SPDX-License-Identifier: GPL-3.0-only) */",
-         "/* the update loader's TIDE screen: the VIOLET palette, Barlow Semi Condensed (faces T, S, M, N of tools/gen_aa_font.py preset barlow), the capsule bar's end, the pill */"]
+         "/* the update loader's TIDE screen: the TIDE palette (the night sea), the splash's wordmark, Barlow Semi Condensed (faces S, M, N of tools/gen_aa_font.py preset barlow), the pill, the water line */"]
     for k, v in P.items():
         h.append("#define LS_%s 0x%04xu" % (k.upper(), v))
     s = ""
-    for name, f, text in (("TITLE", T, "UPDATE"), ("WRITING", S, "WRITING"), ("DONOT", S, "DO NOT SWITCH OFF"), ("NAME", S, "TIDE"), ("PCT", M, "%")):
+    for name, f, text in (("WRITING", S, "WRITING"), ("DONOT", S, "DO NOT SWITCH OFF"), ("PCT", M, "%")):
         w, hh, bx, by, data = text_bitmap(f, text)
         h.append("#define LS_%s_W %d\n#define LS_%s_H %d\n#define LS_%s_BX %d\n#define LS_%s_BY %d\n#define LS_%s_ADV %d"
                  % (name, w, name, hh, name, bx, name, by, name, round(f.getlength(text))))
@@ -97,8 +109,11 @@ def main():
             pw = w + 2 * PILL_PAD
             h.append("#define LS_PILL_W %d\n#define LS_PILL_H %d" % (pw, PILL_H))
             s += arr("LS_PILL", pill_bitmap(pw, PILL_H))
-    h.append("#define LS_BAR_H %du" % BAR_H)
-    s += arr("LS_CAPEND", cap_end(BAR_H), BAR_H // 2)
+    w, hh, wpal, data = wordmark()
+    h.append("#define LS_WM_W %d\n#define LS_WM_H %d" % (w, hh))
+    s += arr("LS_WM_PAL", wpal, 16, "uint16_t") + arr("LS_WM", data)
+    h.append("#define LS_WAVE_N %du" % WAVE_N)
+    s += arr("LS_WAVE", [round(16 * WAVE_A * math.sin(2 * math.pi * i / WAVE_N)) for i in range(WAVE_N)], 24, "int8_t")
     tab, blob = [], []
     for ch in "0123456789":
         w, hh, bx, by, data = text_bitmap(N, ch)
