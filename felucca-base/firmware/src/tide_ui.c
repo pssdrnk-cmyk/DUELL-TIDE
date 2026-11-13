@@ -261,8 +261,8 @@ static const uint8_t JL_NV[JL_N] = {7, 2, 3, 3, KS_N + 1, 101, 2, TA_N, 2, 3, 10
 static volatile uint8_t *const JL_VAR[JL_N] = {[JL_STYLE] = &tide_style, [JL_GMODE] = &gl.mode, [JL_TARGET] = &gl.target, [JL_ARC] = &sqm_arc,
                                                [JL_REC] = &tide_rec_replace, [JL_ANS] = &tide_answer, [JL_ANSON] = &tide_answer_on};   /* (REC is no part of a STYLE: seq.c, live recording) */
 static const char *const JL_V[] = {"DUB", "DEEP", "MINIMAL", "AMBIENT", "PEAK", "DRONE", "CUSTOM", "SOUND", "SEQ", "BOTH", "OFF", "RISE", "DROP",
-                                   "AUTO", "STD", "DUB", "HSE", "TECH", "ACID", "ELEC", "AMB", "ADD", "REPLACE", "LAYER", "STEREO", "DUEL", "OFF", "BASS LINE", "DOUBLE", "REPLY", "ECHO", "OTHER", "OFF"};
-static const uint8_t JL_V0[JL_N] = {0, 0, 7, 10, 13, 0, 21, 26, 31, 23, 0, 0};   /* (each row's first name in JL_V; MODE's are GL_MODE_NAME) */
+                                   "AUTO", "STD", "DUB", "HSE", "TECH", "ACID", "ELEC", "AMB", "ADD", "REPLACE", "LAYER", "STEREO", "DUEL", "OFF", "BASS LINE", "DOUBLE", "REPLY", "ECHO", "CHORDS", "OTHER", "OFF"};
+static const uint8_t JL_V0[JL_N] = {0, 0, 7, 10, 13, 0, 21, 26, 32, 23, 0, 0};   /* (each row's first name in JL_V; MODE's are GL_MODE_NAME) */
 static const char *const JL_SAY[JL_N] = {"STYLE ", "MODE ", 0, "ARC ", "", "AMOUNT ", "REC ", "ANSWER ", "ANSWER ON ", 0, 0, 0};
 static const char *const JL_OWN[3] = {"TARGET SOUND", "TARGET SEQ", "TARGET BOTH"};   /* (TARGET's messages) */
 static uint32_t jl_n(uint32_t r) { return JL_NV[r % JL_N]; }

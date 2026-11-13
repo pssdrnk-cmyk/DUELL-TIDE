@@ -2,13 +2,13 @@
 /* TAKE + ANSWER (TIDE, b10 round 8: live performance assist, phase 1; work/b10/specs/PERF_PHASE1.md, work/b10/reports/PERF_ASSIST.md). Main loop only: nothing here runs in the audio interrupt
  * and the notes of the answer are written with the interrupt off, a whole part's steps at a time.
  *   A TAKE is one pass of the live recorder (seq.c rec_put): the part's REC bit goes up (the pass opens: both parts' steps are kept) and down (it closes). A pass that wrote something is a take:
- *   it goes on a history of the last 2 takes, and ANSWER (TIDE SETTINGS) writes a BASS LINE, a DOUBLE, a REPLY or an ECHO of the take into the other part's pattern (ANSWER ON). b10 assist2 (work/b10/reports/PERF_ASSIST_REVIEW.md):
+ *   it goes on a history of the last 2 takes, and ANSWER (TIDE SETTINGS) writes a BASS LINE, a DOUBLE, a REPLY, an ECHO or the CHORDS of the take into the other part's pattern (ANSWER ON). b10 assist2 (work/b10/reports/PERF_ASSIST_REVIEW.md):
  *   the loop is the part's own LEN (REC arms and waits, the first key starts it: seq.c rec_wait), every answer fits inside that LEN (REPLY: the first half calls, the second answers; ECHO wraps round the loop), the answer is
  *   written in the other part on the next bar line (tk_pend, tk_land), an ARP SEQ part that holds a take or an answer plays single notes. OCT- held + a PRESETS turn goes back (left) and forward (right) along
  *   the history while the newest edit is a take (tk_fresh); a ROLL (morph_do MQ_ROLL, the gesture and word TIDE has) on the answering part writes the answer again with the roll's seed (no history step; also while REC is armed).
  *   The generators are the host prototype's (tools/perf/perf_probe.c): integer only, deterministic, the same seed the same answer.
  * Pool: 4 snapshots of both parts' steps (4.6 KB), the take's events and the answer's steps (1.1 KB). */
-enum { TA_OFF, TA_BASS, TA_DOUBLE, TA_REPLY, TA_ECHO, TA_N };
+enum { TA_OFF, TA_BASS, TA_DOUBLE, TA_REPLY, TA_ECHO, TA_CHORDS, TA_N };
 static volatile uint8_t tide_answer __attribute__((section(".pool")));           /* TIDE SETTINGS ANSWER: what the other part is given when a take closes (a fresh unit: BASS LINE) */
 static volatile uint8_t tide_answer_on __attribute__((section(".pool")));                  /* TIDE SETTINGS ANSWER ON: 0 the other part, 1 OFF */
 
@@ -364,6 +364,54 @@ static __attribute__((noinline)) void tk_bass(uint32_t bars, uint32_t spb, uint3
         }
     }
 }
+/* ---- CHORDS (b13): the bar's triad (tk_chords) as a pad in the middle, C3..C5: 3 notes in the first step of the bar tied for the whole bar, dropped an octave under the take's lowest note when that sits in the range (never under G2),
+ * the inversion that moves least from the bar before (bar 1: root position nearest C4), a note that rubs left out. A roll with bit 1 of the seed set plays the chords as short stabs in the genre's rhythm (digits: the length in
+ * 16ths, as TK_BL; a genre with none, ACID and AMB, keeps the pad) ---- */
+static const char TK_PT[6][17] = {"......2.........", "..2...2...2...2.", "...2......2.....", "", "2......2........", ""};
+static __attribute__((noinline)) void tk_pad(uint32_t bars, uint32_t spb, uint32_t g, uint32_t seed)
+{
+    int32_t pv[3] = {0, 0, 0};
+    uint32_t b, s, i, r, o, held = !(seed & 2u) || !TK_PT[g][0];
+    for (b = 0; b < bars && b < 4u; b++) {
+        int32_t pc[3], v[3], bv[3], plo = 999, best = 99999, st = (int32_t)(b * spb), en = st + (int32_t)spb;
+        for (i = 0; i < 3u; i++)
+            pc[i] = tk_triad_pc(tk_chord[b], (int32_t)i);
+        for (i = 0; i < tk_nev; i++)                     /* (the take's lowest note sounding in the bar) */
+            if (tk_ev[i].t < en && tk_ev[i].t + tk_ev[i].len > st && tk_ev[i].note < plo)
+                plo = tk_ev[i].note;
+        for (r = 0; r < 3u; r++)
+            for (o = 0; o < 3u; o++) {
+                int32_t c = 0, sh = 0;
+                v[0] = 48 + pc[r] + 12 * (int32_t)o;     /* (the inversion r: its bottom note, then the next chord tones up) */
+                v[1] = v[0] + tk_wrap(pc[(r + 1u) % 3u] - pc[r]);
+                v[2] = v[1] + tk_wrap(pc[(r + 2u) % 3u] - pc[(r + 1u) % 3u]);
+                if (v[2] > 72)
+                    continue;
+                while (plo >= 48 && v[2] + sh >= plo && v[0] + sh - 12 >= 43)
+                    sh -= 12;
+                for (i = 0; i < 3u; i++) {
+                    v[i] += sh;
+                    c += b ? (v[i] > pv[i] ? v[i] - pv[i] : pv[i] - v[i]) : 0;
+                }
+                if (!b)
+                    c = r ? 999 : (v[1] > 60 ? v[1] - 60 : 60 - v[1]);
+                if (c < best) {
+                    best = c;
+                    memcpy(bv, v, sizeof bv);
+                }
+            }
+        memcpy(pv, bv, sizeof pv);
+        for (s = 0; s < 16u; s++) {
+            char ch = held ? (s ? '.' : 'g') : TK_PT[g][s];
+            int32_t t = st + (int32_t)(s * spb >> 4), len = ch == 'g' ? (int32_t)spb : (int32_t)((uint32_t)(ch - '0') * spb >> 4);
+            if (ch == '.')
+                continue;
+            for (i = 0; i < 3u; i++)
+                if (!tk_rubs(t, len < 1 ? 1 : len, bv[i]))
+                    tk_put(t, len < 1 ? 1 : len, bv[i], 80u, 0u);
+        }
+    }
+}
 /* ---- DOUBLE: the take's notes a diatonic third above, in time (a roll: an octave down on odd seeds) ---- */
 static __attribute__((noinline)) void tk_double(uint32_t seed)
 {
@@ -461,7 +509,7 @@ static void tk_land(void)
 static uint32_t tk_gen(uint32_t src, uint32_t dst, uint32_t seed, uint32_t mode)
 {
     track_t *ts = &trk[src], *td = &trk[dst];
-    uint32_t len = seq_len(ts), spb = tk_spb(ts), bars, i, n = 0, call = mode >= TA_REPLY, dlen, gset = 0, plain = arp_mode(td) == AM_SEQ_ID;
+    uint32_t len = seq_len(ts), spb = tk_spb(ts), bars, i, n = 0, call = mode - TA_REPLY <= TA_ECHO - TA_REPLY, dlen, gset = 0, plain = arp_mode(td) == AM_SEQ_ID;
     int32_t shift = td->p[P_TRANS] - ts->p[P_TRANS];
     bars = (len + spb - 1u) / spb;
     if (bars > 4u)
@@ -497,6 +545,8 @@ static uint32_t tk_gen(uint32_t src, uint32_t dst, uint32_t seed, uint32_t mode)
         tk_chords(bars, spb);
         if (mode == TA_BASS)
             tk_bass(bars, spb, tk_genre(), seed);
+        else if (mode == TA_CHORDS)
+            tk_pad(bars, spb, tk_genre(), seed);
         else
             tk_double(seed);
     }
@@ -555,7 +605,7 @@ static void tk_say(const char *pre, uint32_t no)
 /* the live answer in words, appended to b (48): "BASS LINE  A MINOR" (b12: AUTO TIDE's knob-1 line says it too, tide_ui.c tide_columns) */
 static __attribute__((noinline)) void tk_words(char *b)
 {
-    tk_cat(b, tk_m.mode == TA_DOUBLE ? "DOUBLE  " : tk_m.mode == TA_REPLY ? "REPLY  " : tk_m.mode == TA_ECHO ? "ECHO  " : "BASS LINE  ");
+    tk_cat(b, tk_m.mode == TA_DOUBLE ? "DOUBLE  " : tk_m.mode == TA_REPLY ? "REPLY  " : tk_m.mode == TA_ECHO ? "ECHO  " : tk_m.mode == TA_CHORDS ? "CHORDS  " : "BASS LINE  ");
     tk_cat(b, N_NOTE[tk_m.key % 12u]);
     tk_cat(b, (tk_m.flags & 4u) ? " " : tk_m.flags & 1u ? " MINOR" : " MAJOR");
     if (tk_m.flags & 4u)

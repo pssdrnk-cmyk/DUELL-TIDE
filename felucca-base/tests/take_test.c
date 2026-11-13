@@ -696,7 +696,7 @@ static void take_arpseq(void)
 static void take_live(void)
 {
     uint32_t s1, s2, a1 = 0, a2 = 0, a3 = 0, pass, m;
-    for (m = TA_BASS; m <= TA_ECHO; m++) {
+    for (m = TA_BASS; m <= TA_CHORDS; m++) {
         boot(); setup(0, 0, V_POLY); setup(1, 0, V_POLY); tide_answer = (uint8_t)m; tide_answer_on = 0; tide_rec_replace = 0;
         s1 = psig(0); s2 = psig(1);
         start(); song.rec = 1; run(100);
@@ -726,6 +726,39 @@ static void take_live(void)
     CHECK("ANSWER OFF: no answer while the pass is open", psig(1) == s2 && !tk_live);
     rec_off();
 }
+/* b13: ANSWER CHORDS: a take is answered with the pad (3 notes at each bar start, tied for the bar), the header says CHORDS, a ROLL (seed bit 1 set or not) writes it again without a history step, undo brings the old part back, and a
+ * stored ANSWER of an older build (0..4) still loads */
+static void take_chords(void)
+{
+    uint32_t a0, a1, s2, n, i, held = 0, stab = 0, r;
+    boot(); setup(1, 0, V_POLY);
+    s2 = psig(1);
+    tide_answer = TA_CHORDS;
+    CHECK("ANSWER has a CHORDS row value after ECHO", jl_n(JL_ANS) == TA_N && TA_N == 6 && !strcmp(jl_vname(JL_ANS, 5), "CHORDS") && !strcmp(jl_vname(JL_ANS, 4), "ECHO") && !strcmp(jl_vname(JL_ANSON, 0), "OTHER") && !strcmp(jl_vname(JL_ANSON, 1), "OFF"));
+    empty_part(0); trk[0].p[P_SLEN] = 32;
+    start();
+    song.rec = 1; run(100);
+    rec_note_at(0, 2, 69, 60); rec_note_at(0, 6, 72, 60); rec_note_at(0, 10, 76, 60); rec_note_at(0, 14, 74, 60);
+    rec_note_at(0, 18, 72, 60); rec_note_at(0, 22, 69, 60);
+    at_step(&trk[0], 26);
+    rec_off();
+    a0 = psig(1);
+    for (i = 0, n = 0; i < 32u; i++)
+        n += trk[1].step[i].n != 0;
+    CHECK("CHORDS: the other part holds the chords of the take: one step a bar, 3 notes, tied for the bar, the loop the take's", a0 != s2 && trk[1].p[P_SLEN] == 32 && n == 2u && trk[1].step[0].n == 3u && trk[1].step[16].n == 3u && trk[1].step[1].time == ST_TIE && trk[1].step[15].time == ST_TIE && trk[1].step[17].time == ST_TIE);
+    CHECK("... the header says CHORDS and the key, one step of history", said("CHORDS") && tk_m.mode == TA_CHORDS && tk_cnt == 1);
+    for (r = 1; r <= 8u; r++) {                          /* (rolls: the seed's bit 1 picks the stabs, the pad otherwise; none takes a history step) */
+        morph_do(MQ_ROLL, 2u, 0u); run(32); land();
+        for (i = 0, n = 0; i < 32u; i++)
+            n += trk[1].step[i].n != 0;
+        if (n == 2u && trk[1].step[0].n == 3u && trk[1].step[16].n == 3u) held++; else stab += n > 0u;
+    }
+    CHECK("CHORDS: the rolls give both the pad and stabs, no history step, the header says ROLL n  CHORDS", held > 0u && stab > 0u && tk_cnt == 1 && said("ROLL 8  CHORDS"));
+    a1 = psig(1);
+    CHECK("... undo goes back to before the take", take_undo(-1) == 1u && psig(1) == s2);
+    CHECK("... redo brings the last rolled answer back", take_undo(1) == 1u && psig(1) == a1);
+    stop();
+}
 /* the header message of a take / answer stays 4 bars, 4 s at least, 8 s at most (120 bpm: 8 s) */
 static void take_hold(void)
 {
@@ -751,7 +784,7 @@ static void take_hold(void)
 int main(void)
 {
     step1();
-    take_lifecycle(); take_history(); take_settings(); take_barline(); take_roll_test(); take_swell(); take_swell_layer(); take_reply(); take_line_test(); take_first_key(); take_layer(); take_arpseq(); take_live(); take_hold();
+    take_lifecycle(); take_history(); take_settings(); take_barline(); take_roll_test(); take_swell(); take_swell_layer(); take_reply(); take_line_test(); take_first_key(); take_layer(); take_arpseq(); take_live(); take_chords(); take_hold();
     printf("take: %u checks, %u FAIL\n", checks, failures);
     return failures ? 1 : 0;
 }

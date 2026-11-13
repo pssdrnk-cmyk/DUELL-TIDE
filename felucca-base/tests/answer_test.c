@@ -332,6 +332,85 @@ static void m02_pad(void)
         CHECK("M02 pad: the history step brings ARP SEQ, its DIV, RATE and loop back", trk[1].p[P_AMODE] == amode && trk[1].p[P_SDIV] == sdiv && trk[1].p[P_ARATE] == arate && trk[1].p[P_SLEN] == slen && !memcmp(trk[1].step, keep, sizeof keep));
     }
 }
+/* ---- CHORDS (b13): the bar's triad as a pad (seed bit 1 clear) or as the genre's stabs (set): in key, 3 notes a step at most, inside G2..C5, no rub against the take, the same seed the same answer; held: a step at each bar start, tied
+ * for the bar (a bar whose three notes all rub the take stays empty), the root position in bar 1; stabs: at most 4 a bar, on the templates' steps; and the stabs differ from the pad where a genre has a template ---- */
+static unsigned chords_bad(const take_def_t *d, int stabs, const char *lab)
+{
+    ev_t ev[128];
+    int n = answer_events(ev, 128), i, b, bars = d->bars, bad = 0, lo = 999;
+    unsigned mask = (1u << 0) | (1u << 2) | (1u << 3) | (1u << 6) | (1u << 7) | (1u << 10) | (1u << 14);
+    for (i = 0; i < trk[1].p[P_SLEN]; i++) {
+        const step_t *st = &trk[1].step[i];
+        if (st->n > 3u || (st->n && st->time != ST_NOTE) || (st->flags & SF_ACCENT) || (st->n && st->vel != 80u && st->vel != 0u))
+            bad |= 1;
+        if (st->n && !stabs && i % 16 != 0)
+            bad |= 2;
+        if (!stabs && i % 16 && trk[1].step[i - i % 16].n && st->time != ST_TIE)
+            bad |= 4;
+        if (st->n && stabs && !((mask >> (i % 16)) & 1u))
+            bad |= 8;
+    }
+    for (i = 0; i < n; i++) {
+        bad |= (!tk_in_key(ev[i].note)) << 4;
+        bad |= (ev[i].note < 43 || ev[i].note > 72) << 5;
+        bad |= (rubs(d, &ev[i]) != 0) << 6;
+    }
+    for (b = 0; b < bars; b++) {
+        int c = 0;
+        for (i = 0; i < 16; i++)
+            c += trk[1].step[b * 16 + i].n != 0;
+        bad |= (c > (stabs ? 4 : 1)) << 7;
+    }
+    if (trk[1].step[0].n == 3u && !stabs) {
+        for (i = 0; i < 3; i++)
+            lo = trk[1].step[0].note[i] < lo ? trk[1].step[0].note[i] : lo;
+        bad |= (lo % 12 != (int)tk_triad_pc(tk_chord[0], 0)) << 8;
+    }
+    bad |= (trk[1].p[P_SLEN] != bars * 16 || n == 0) << 9;
+    if (bad)
+        printf("answer: CHORDS %s: %s: fails 0x%x\n", stabs ? "stabs" : "held", lab, bad);
+    return (unsigned)bad;
+}
+static void chords(void)
+{
+    unsigned differ = 0, cases = 0, fail = 0;
+    for (int ti = 0; ti < 5; ti++)
+        for (int mi = 0; mi < 5; mi++)
+            for (int scl = 0; scl < 2; scl++) {
+                const take_def_t *d = &TAKES[ti];
+                uint32_t held_sig = 0;
+                for (uint32_t seed = 0; seed < 8u; seed += 2u) {
+                    int stabs = (seed & 2u) != 0;
+                    char lab[96];
+                    uint32_t h1, h2;
+                    power();
+                    project_load(MIDX(MULTIS[mi] - 1));
+                    frame();
+                    scale_g = scl ? d->scale : 0;
+                    root_g = scl ? d->root : 0;
+                    fill(d);
+                    trk[1].p[P_SLEN] = 16;
+                    snprintf(lab, sizeof lab, "%s on M%02d, %s, seed %u", d->name, MULTIS[mi], scl ? "SCL set" : "SCL chromatic", seed);
+                    CHECK(lab, tk_gen(0, 1, seed, TA_CHORDS) == 1u);
+                    h1 = steps_sig(&trk[1]);
+                    fail += chords_bad(d, stabs, lab) != 0;
+                    memset(trk[1].step, 0, sizeof trk[1].step);
+                    tk_gen(0, 1, seed, TA_CHORDS);
+                    h2 = steps_sig(&trk[1]);
+                    CHECK("CHORDS: the same seed gives the same answer", h1 == h2);
+                    cases++;
+                    if (!seed)
+                        held_sig = h1;
+                    else if (seed == 2u)
+                        differ += h1 != held_sig;
+                    else if (seed == 4u)
+                        CHECK("CHORDS: a held seed is the pad whichever it is", h1 == held_sig);
+                }
+            }
+    CHECK("CHORDS: every case passes the rules", cases && !fail);
+    CHECK("CHORDS: the genres with a template give stabs unlike the pad", differ > 0u);
+    printf("answer: CHORDS %u cases, %u failing, stabs unlike the pad in %u of 50 takes x multis x keys\n", cases, fail, differ);
+}
 int main(void)
 {
     int ti, mi, ok_all = 1;
@@ -398,6 +477,7 @@ int main(void)
     low_take();
     grid_mismatch();
     m02_pad();
+    chords();
     CHECK("every answer at seed 0 passes the rules", passed == combos);
     CHECK("rolls give different answers in most bass cases", distinct_cases && distinct_ok * 4u >= distinct_cases * 3u);
     (void)ok_all;
