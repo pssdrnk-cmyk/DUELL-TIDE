@@ -918,20 +918,53 @@ static const char *const TL_NAME[TL_N] = {"CLEAR", "REVERSE", "SHIFT <", "SHIFT 
 #define TL_BIG ((1u << TL_CLEAR) | (1u << TL_COOK))      /* QUICK_SEQ_NEW_LAYOUT.png: CLEAR and RIPPLE in the larger size, the rest in the smaller */
 /* DUELL 1.0 layout (QUICK_SEQ_NEW_LAYOUT.png): the eight tools as a 4 x 2 box grid in the big area (ui_boxes.c box_grid; rows UT_BOX_QS_*), the white
  * keys F G A B over C D E F, the key letter in the corner, the names centred */
+/* b11: the selected part's pattern as bars (one a step across w px: the note's height between its lowest and highest, a tie a thin run after it): what SWELL / RIPPLE / any tool just wrote, on the layer itself */
+static void layer_spark(int32_t x0, int32_t y0, int32_t w, int32_t h)
+{
+    const track_t *t = TSEL;
+    uint32_t len = (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP), i, n = 0;
+    int32_t lo = 127, hi = 0, last = 0, x, x1, bw, y, j;
+    for (i = 0; i < len; i++)
+        if (t->step[i].time == ST_NOTE && t->step[i].n) {
+            lo = t->step[i].note[0] < lo ? t->step[i].note[0] : lo;
+            hi = t->step[i].note[0] > hi ? t->step[i].note[0] : hi;
+            n++;
+        }
+    for (x = 0; x < w; x += 2)                          /* (the baseline: dotted) */
+        cv_pset(x0 + x, y0 + h - 1, T_DIM);
+    bw = w / (int32_t)len;
+    bw = bw < 1 ? 1 : bw > 3 ? 3 : bw;
+    for (i = 0; i < len && n; i++) {
+        x = x0 + (int32_t)(i * (uint32_t)w / len);
+        x1 = x0 + (int32_t)((i + 1u) * (uint32_t)w / len);
+        if (t->step[i].time == ST_NOTE && t->step[i].n) {
+            last = 3 + (hi > lo ? (t->step[i].note[0] - lo) * (h - 5) / (hi - lo) : (h - 5) / 2);
+            for (y = y0 + h - 2; y > y0 + h - 2 - last; y--)
+                for (j = 0; j < bw && x + j < x1; j++)
+                    cv_pset(x + j, y, T_ACCENT);
+        } else if (t->step[i].time == ST_TIE && last) {
+            for (j = 0; j < bw && x + j < x1; j++)
+                cv_pset(x + j, y0 + h - 2 - last, T_ACCENT);
+        } else {
+            last = 0;
+        }
+    }
+}
 static void layer_seq(void)
 {
     box_t b[8];
-    uint32_t p;
+    uint32_t p, pend = tide_sw_pending();
     for (p = 0; p < 8u; p++) {
         b[p].name = p < TL_N ? TL_NAME[p] : "";
         b[p].key = W_NOTE[p];
         b[p].big = (uint8_t)((TL_BIG >> p) & 1u);
-        b[p].state = LS_OFF;
+        b[p].state = (pend && p == (pend == 2u ? TL_COOK : TL_RANDOM)) ? LS_WAIT : LS_OFF;   /* (b11: the SWELL / RIPPLE that waits for the loop start is lit) */
     }
     box_grid(UT_BOX_QS_Y0, 2u, 4u, UT_BOX_QS_DY, UT_BOX_QS_H, b);
     int32_t ay, ah;
     area_rect(&ay, &ah);
-    cv_text_in(8, UT_BOX_QS_Y0 + UT_BOX_QS_DY + UT_BOX_QS_H + 2 - ay, 224, &AF_M, "G4 KEEP", T_ACCENT, T_BG);
+    cv_text_in(8, UT_BOX_QS_Y0 + UT_BOX_QS_DY + UT_BOX_QS_H + 2 - ay, 90, &AF_M, "G4 KEEP", T_ACCENT, T_BG);
+    layer_spark(104, UT_BOX_QS_Y0 + UT_BOX_QS_DY + UT_BOX_QS_H + 3 - ay, 128, 14);
 }
 
 /* QUICK GLO's and the MIXER's four cards (item 117, TEMPLATE 4): KNOB 1 LEVEL 1, KNOB 2 LEVEL 2, KNOB 3 PAN 1, KNOB 4 PAN 2 (the part's colour; DIM when it is muted; PAN not drawn in DUEL; PAN shows its own signed
@@ -997,7 +1030,7 @@ static void draw_layer(void)
     else if (l == LAYER_REC)
         sig += (uint32_t)ui_rec_prefs * 31u + (uint32_t)rec_clearable() * 5u + song.sel * 977u;
     else if (l == LAYER_SEQ)
-        sig += song.sel * 977u;
+        sig += song.sel * 977u + steps_sig(TSEL) * 31u + tide_sw_pending() * 4099u;   /* (b11: the steps and a waiting SWELL / RIPPLE are in the picture) */
     else if (l == LAYER_EDIT)
         sig += (TSEL->eng_req % NENGINES) * 31u + song.sel * 977u + (uint32_t)ly_page(l)->id[2] * 4099u + (uint32_t)ly_page(l)->id[3] * 65537u;   /* (cloud job H: its cards follow filter 2) */
     if (l == LAYER_REC && grid_on == 14)                /* QUICK REC (template 8): the cells are the whole body, no panel of its own */

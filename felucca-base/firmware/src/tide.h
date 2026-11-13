@@ -203,6 +203,7 @@ static uint32_t tide_roll_sig(const track_t *t);
 static int tide_foot_two(void);
 #define TIDE_FOOT_PART(sel) (tide_foot_two() ? 1u : (sel))   /* the part footer row 2 names: on TIDE and TIDE SET part 2 (row 1: part 1) */
 static const char *tide_tl_swell(track_t *t, uint32_t ripple);   /* (tide_take.c: SEQ held + C4 SWELL / D4 RIPPLE, b11) */
+static uint32_t tide_sw_pending(void);                    /* (tide_take.c: 1 a SWELL waits for the loop start, 2 a RIPPLE, 0 none) */
 static uint32_t tl_sw_apply(track_t *t, uint32_t ripple, uint32_t seed, uint32_t live);   /* (ui_tools.c; live: the part is playing, the result is built in a scratch copy and written with the interrupt off) */
 static int32_t tk_poff(const track_t *t);                /* (tide_take.c: what a step note of the part sounds at) */
 #define TIDE_TL_DO(t, p, was, len) do { if ((p) == TL_KEEP) return tide_tl_keep((t), (was), (len)); if ((p) == TL_RANDOM || (p) == TL_COOK) return tide_tl_swell((t), (p) == TL_COOK); } while (0)

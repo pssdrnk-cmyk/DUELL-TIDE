@@ -729,6 +729,7 @@ static uint32_t tk_restore(uint32_t dst)
     tk_m.ans = 0;
     return 1;
 }
+static uint32_t tide_sw_pending(void) { return tk_sw_k; }
 static int tk_sw_due(void)
 {
     track_t *t = &trk[tk_sw_p - 1u];
@@ -740,6 +741,7 @@ static __attribute__((noinline)) void tk_sw_run(void)
 {
     uint32_t ripple = tk_sw_k == 2u, pi = (uint32_t)tk_sw_p - 1u, seed = tk_sw_seed, src, dst, made = 0, on;
     tk_sw_k = 0;
+    tk_mu = 0;                                           /* (the NEXT LOOP line is over: what lands says its own)*/
     if (!tk_stands())
         return;
     src = (uint32_t)tk_who - 1u;
@@ -821,6 +823,7 @@ static const char *tide_tl_swell(track_t *t, uint32_t ripple)
         } else {
             ui_say(ripple ? "RIPPLE  NEXT LOOP" : "SWELL  NEXT LOOP", "");
             tk_hold();
+            tk_mu = fm1_ms + 120000u;                    /* (b11: the line stays until it lands, however long the loop) */
         }
         return "";
     }
@@ -929,6 +932,7 @@ static __attribute__((noinline)) void take_poll(void)                           
         tk_who = 0;
         tk_force = 0;
         tk_sw_k = 0;
+        tk_mu = 0;
         tk_open = (uint8_t)now;
         return;
     }
