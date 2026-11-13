@@ -67,4 +67,17 @@ static uint8_t part_notes_reason(int part);     /* NR_*: what limits it */
 static void budget_poll(void);                  /* main loop, every frame: hands the numbers to the note-on path (voice.c trk_nvoice) */
 static uint32_t bd_two_now(void);               /* DUELL 1.1 item 90: 1 = the two-core rule is in force (core 1 up, no fault, jobs not paused), 0 = the one-core rule */
 
+/* THE DEADLINE'S COST ITEMS, HANDED OVER BY THE MAIN LOOP (b11, ported from DUELL 1.2 by OSCILL/R, GPL-3.0: budget.h / budget.c bd_dl_publish, twocore_run.c tcr_costs). Working them out in the
+ * audio interrupt at every half's first block cost 113 to 127 us there on this firmware (the b11 sweep's st_budget_us, all 26 multis; 1.2 measured 171 to 188 us on its own), the largest single
+ * piece of the block that starts a half late. budget_poll (main loop, every frame) calls bd_dl_publish: the five items (part_dl of both parts, global_cost_dl) into the copy the audio side is NOT
+ * reading, then one byte says which copy is the new one. The runner (twocore_run.c tcr_deadline) reads the copy that byte names: the main loop never interrupts the audio interrupt, so it always
+ * reads a whole copy. The items are an estimate for the deadline (a 15 % margin in them); after a knob or a fader moves they are at most one main-loop pass old (the old way: one half).
+ * A LOAD (a sound, an engine, a multi, a project: ui.c load_begin, project.c project_restore_runtime) clears bd_dl_ok, so the runner works the items out itself, as before, until the next
+ * publish: a load can change them by more than the margin, and the main loop's next pass may be up to a frame and a redraw away (ui_input and the editor also run in the frame's wait).
+ * Before the first publish (and in host tests that never run the main loop's pass) the runner works them out itself too */
+typedef struct { uint32_t c1f, c1v, c2f, c2v, g; } bd_dl_t;
+static bd_dl_t bd_dl_buf[2];
+static volatile uint8_t bd_dl_i, bd_dl_ok;
+static void bd_dl_publish(void);
+
 #endif

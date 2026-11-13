@@ -324,9 +324,14 @@ static uint32_t tcr_deadline(uint32_t now, int *nofit)
 #if DUELL_PROBE_STAGES
         uint32_t pb0 = fm1_ticks();                     /* (probe, test-mode builds: st_budget_us of the console `cpu`; ROADMAP Later 22, finding 6) */
 #endif
-        part_dl(&trk[0], &tcr.c1f, &tcr.c1v);           /* (item 142: one bd_part a part, was two) */
-        part_dl(&trk[1], &tcr.c2f, &tcr.c2v);
-        tcr.g = global_cost_dl();
+        if (bd_dl_ok) {                                 /* b11 (from DUELL 1.2 by OSCILL/R, GPL-3.0: tcr_costs): the copy the main loop handed over (budget.h bd_dl_publish): five words */
+            const bd_dl_t *d = &bd_dl_buf[bd_dl_i];
+            tcr.c1f = d->c1f, tcr.c1v = d->c1v, tcr.c2f = d->c2f, tcr.c2v = d->c2v, tcr.g = d->g;
+        } else {                                        /* (before the first publish, and after a load until the next one: worked out here, as before) */
+            part_dl(&trk[0], &tcr.c1f, &tcr.c1v);       /* (item 142: one bd_part a part, was two) */
+            part_dl(&trk[1], &tcr.c2f, &tcr.c2v);
+            tcr.g = global_cost_dl();
+        }
         tcr.two = (uint8_t)bd_two_now();
         tcr.t1f = TCR_TRUE(tcr.c1f), tcr.t1v = TCR_TRUE(tcr.c1v), tcr.t2f = TCR_TRUE(tcr.c2f), tcr.t2v = TCR_TRUE(tcr.c2v), tcr.tg = TCR_TRUE(tcr.g);
         tcr.cost_ok = 1;

@@ -1122,6 +1122,7 @@ static void load_motion_hold(track_t *t, uint32_t what)
 static void load_begin(track_t *t, uint32_t what)
 {
     uint32_t i = trk_index(t);
+    bd_dl_ok = 0;                                 /* b11: the deadline's items are worked out in the audio interrupt again until budget_poll's next publish (budget.h) */
     if ((what & UNDO_SOUND) && !(what & UNDO_ENG)) {
         pl_pend_on = 0;                           /* (and no cursor place waits for a load) */
         perf_fade_begin(0);                       /* (0.2.14 PERF LEAVE FADE: a sound load takes PERFORM's SPACE and KILL back to neutral; 0.2.24: not an engine change) */

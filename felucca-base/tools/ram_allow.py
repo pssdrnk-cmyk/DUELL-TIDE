@@ -96,6 +96,7 @@ ALLOW = {
     "events_block": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~3610 B); reached from mix_events",
     "fm1_cpu1_halt": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~116 B); reached from tc_fail",
     "fnv": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~24 B); reached from motion_sig",
+    "global_cost_dl": "fallback only, reviewed 2026-11-13 (b11, the deadline items from the main loop: budget.h bd_dl_publish): ~40 B; was inlined into tcr_deadline, now also called from budget_poll (main loop, every frame); the audio interrupt calls it only before the first publish and after a load until the next one (tcr_deadline's bd_dl_ok fallback), as part_dl and bd_global beside it; stays in the flash; reached from fm1_alnk0_irq",
     "glide_set": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~90 B); reached from mono_play",
     "hold_all_keys": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~70 B); reached from input_off",
     "input_off": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~366 B); reached from events_block",
