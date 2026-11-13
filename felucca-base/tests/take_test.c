@@ -251,6 +251,30 @@ static void take_barline(void)
     while (tk_pend && trk[0].seq_idx != 15u) run(16);
     CHECK("... it lands in the last 16th of the bar, before the downbeat", !tk_pend && psig(1) != s2 && (clk_step & 15u) == 15u);
 }
+/* b13 (hunt F1): a 2- or 4-bar answer to a part on a shorter loop plays in step with the take: bar n under bar n (it went on from the old 1-bar loop's step:
+ * a bar out of step for good), whichever bar REC goes off in, the other part plain or ARP SEQ */
+static void take_in_step(void)
+{
+    static const uint8_t CASE[5][3] = {{2, 0, 0}, {2, 1, 0}, {4, 3, 0}, {2, 0, 1}, {2, 1, 1}};   /* bars, the bar REC goes off in, the other part ARP SEQ */
+    uint32_t c, i, b, out = 0, n;
+    for (c = 0; c < 5u; c++) {
+        uint32_t bars = CASE[c][0], len = 16u * bars, mis = 0;
+        boot(); empty_part(0); trk[0].p[P_SLEN] = (int16_t)len; setup(1, CASE[c][2] ? AM_SEQ_ID : 0, V_POLY);
+        if (CASE[c][2]) { tide_chord[1][0] = 48; tide_chord_n[1] = 1; }
+        tide_answer = TA_BASS; tide_answer_on = 0;
+        start(); song.rec = 1; run(100);
+        for (b = 0; b < bars; b++) { rec_note_at(0, 16u * b + 2u, 69u - 3u * b, 60); rec_note_at(0, 16u * b + 8u, 72, 60); }
+        at_step(&trk[0], 16u * CASE[c][1] + 9u);
+        song.rec = 0; run(48);
+        for (n = 0; tk_pend && n < 400u; n++) run(16);
+        run(48);
+        for (i = 0; i < 200u; i++) { run(16); mis += TIDE_PLAY_IDX(&trk[0]) != TIDE_PLAY_IDX(&trk[1]); }
+        out += mis != 0u;
+        if (mis)
+            printf("take: in step: %u-bar take, REC off in bar %u%s: %u of 200 frames out of step\n", bars, CASE[c][1] + 1u, CASE[c][2] ? ", ARP SEQ answer part" : "", mis);
+    }
+    CHECK("a 2- or 4-bar answer to a 1-bar part plays in step with the take (5 cases)", !out);
+}
 static void take_roll_test(void)
 {
     uint32_t a0, a1, a2, h0, s2;
@@ -442,10 +466,9 @@ static void take_swell(void)
     sw_press(1, 0);
     song.rec = 1; run(100);
     to_loop_end(1);
-    CHECK("REC arms while a press waits: it is not dropped, the header says NEXT PASS", !tk_sw_k && tk_force == 1u && said("SWELL  NEXT PASS") && psig(1) == a0);
-    to_loop_end(0);
+    /* (b13, hunt F1: the answer now plays in step with the take, so the answer part's loop end IS the armed pass's end: the press is made there, in one frame) */
     land();
-    CHECK("... it lands at the end of the armed pass: the answer is made again", psig(1) != a0 && !tk_force);
+    CHECK("REC arms while a press waits: it is not dropped, it lands at the end of the armed pass: the answer is made again", !tk_sw_k && psig(1) != a0 && !tk_force);
     at_step(&trk[0], 3);
     rec_off();
     /* ANSWER OFF: SWELL gives the other part its old pattern back */
@@ -784,7 +807,7 @@ static void take_hold(void)
 int main(void)
 {
     step1();
-    take_lifecycle(); take_history(); take_settings(); take_barline(); take_roll_test(); take_swell(); take_swell_layer(); take_reply(); take_line_test(); take_first_key(); take_layer(); take_arpseq(); take_live(); take_chords(); take_hold();
+    take_lifecycle(); take_history(); take_settings(); take_barline(); take_in_step(); take_roll_test(); take_swell(); take_swell_layer(); take_reply(); take_line_test(); take_first_key(); take_layer(); take_arpseq(); take_live(); take_chords(); take_hold();
     printf("take: %u checks, %u FAIL\n", checks, failures);
     return failures ? 1 : 0;
 }
