@@ -1077,6 +1077,9 @@ static void graph_tide(void)
             tide_track(TL_TY(k), JB_X0, JB_X0 + JB_W, GT_SOUND, k);
             tide_track(TL_TY(k), JB_X0 + JB_DX, JB_X0 + JB_DX + JB_W, GT_SEQ, k);
             tide_steps(&trk[k], TL_SY(k), 9, tide_pc(k));
+            wl_front = 1;                                /* (the live line in the band too, as tide_dance draws it: the page's redraw never sends its rows empty first, uigaps) */
+            wl_stack(k, TL_LY(k) - 1, TL_LY(k) + 9);
+            wl_front = 0;
         }
         if (sqm_arc && sqm_auto)                         /* (the status is on knob 1's line, tide_columns) */
             tide_arc_line();
@@ -1092,11 +1095,12 @@ static uint32_t td_rh[NSHOWN][9] __attribute__((section(".pool")));   /* (each l
 static void tide_dance(int whole)
 {
     uint32_t k, r, s, h, i;
-    if (wl_tick()) {
+    if (!whole) {                                        /* (each frame: a new picture with the page's step; the page's redraw (whole) draws the lines as the band has them) */
+        if (!wl_tick())
+            return;
         wl_step(0, WL_FRONT_A);
         wl_step(1, WL_FRONT_A);
-    } else if (!whole)
-        return;
+    }
     for (k = 0; k < NSHOWN; k++) {
         const int32_t y0 = TL_LY(k);
         cv_begin(240, 9, T_BG);
