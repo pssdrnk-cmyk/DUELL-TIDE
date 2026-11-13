@@ -6,7 +6,7 @@ State words on this page: Released in bN, Ready (built and tested, waiting for a
 
 ## Now: 1.0.0-b10 (jam11)
 
-jam11 is the 1.0.0-b10 work; it is not tagged yet, so `TIDE_VERSION` still reads 1.0.0-b9. The unit runs rc7-test, flashed 13 November at 06:51 (after the sweep builds): jam11 `00ca7f6`, which has live assist v2 (PR 55; the owner's feedback on it is still open). Flash free on the unit: 7,968 B (1,528 B on rc6.8-test). The version string still reads 1.0.0-b9.
+jam11 is the 1.0.0-b10 work; it is not tagged yet, so `TIDE_VERSION` still reads 1.0.0-b9. The unit runs rc8-test, flashed 13 November: jam11 with live assist v2 (PR 55; the owner's feedback on it is still open), SWELL and RIPPLE (PR 74) and the level fix (PR 75). Flash free on the unit: about 4.4 KB (the build lane reports the exact figure; it was 1,528 B on rc6.8-test). The version string still reads 1.0.0-b9.
 
 | What | State |
 |---|---|
@@ -14,15 +14,15 @@ jam11 is the 1.0.0-b10 work; it is not tagged yet, so `TIDE_VERSION` still reads
 
 ## B11: room on the unit, and test and tool debt (owner, 12 November)
 
-The owner's two tracks from the roadmap review of 12 November, plus quality checks and housekeeping. State: In progress (five lanes started on 12 November).
+The owner's two tracks from the roadmap review of 12 November, plus quality checks and housekeeping. State: In progress (five lanes started on 12 November). Built so far, all merged into jam11 and on the unit in rc8-test: SWELL and RIPPLE (the SEQ tools C4 and D4, PR 74); the levels (eight factory sounds 1.5 to 2.5 LU lower when chorded, within the quiet-body rule; PLATE CHOIR's level comes down through its reverb send; M21 with a chord held 4.7 LU quieter, PR 75); and the two flash savings (the factory multis stored smaller, 4,416 B, PR 67; the FM6 table at 513 entries, 2,052 B, PR 68). The 13 November unit sweep is in Later 22.
 
-- **Room on the unit.** 1,528 B of flash is free, so a size pass comes before features: anything that adds code waits for it (SWELL and RIPPLE, the SEQ tools C4 and D4 that were RANDOM and COOK, are built: Planned, below, struck). The room report (b11 lane, measured on the unit's build) says where the bytes are. SP5 (Later 18), HANDSKIP (Later 9), MOVECOST (Later 10) and GUARDS are not switched off: they have been ON by default since the rc3.1 package (`tools/build.py` and `tools/size_fns.py` default to `"1"`), so the unit already runs them and there is no saving left to win there; the unit sweep of 13 November confirmed them (no worse; Later 22). Measured costs: SP5 -1,756 B, HANDSKIP -36 B, MOVECOST +228 B, GUARDS +80 B. A CPU sweep needs a test-mode build (the one with the console), 12,028 B bigger than the device build: it ran on 13 November with USB audio off. Room work: harder packing of the factory multis (about -4.5 KB) and a smaller FM6 table (-3 KB).
+- **Room on the unit.** Flash was 1,528 B free at the start of b11, so a size pass came before features. SWELL and RIPPLE (the SEQ tools C4 and D4 that were RANDOM and COOK) are built (Planned, below, struck); anything else that adds code is measured against the free figure above. The room report (b11 lane, measured on the unit's build) says where the bytes are. SP5 (Later 18), HANDSKIP (Later 9), MOVECOST (Later 10) and GUARDS are not switched off: they have been ON by default since the rc3.1 package (`tools/build.py` and `tools/size_fns.py` default to `"1"`), so the unit already runs them and there is no saving left to win there; the unit sweep of 13 November confirmed them (no worse; Later 22). Measured costs: SP5 -1,756 B, HANDSKIP -36 B, MOVECOST +228 B, GUARDS +80 B. A CPU sweep needs a test-mode build (the one with the console), 12,028 B bigger than the device build: it ran on 13 November with USB audio off. Room work, built: the factory multis packed harder (-4,416 B) and the FM6 table at 513 entries (-2,052 B).
 - **Test and tool debt.** The one open point is the design for per-module host objects (the first open point under Tooling). Done in b11: Later 28 (a stale comment, PR 61), Later 30 (the store's cross-version fixture, PR 59) and Later 33 (`budget` and `deadline` build the shipped MOVECOST=1 configuration; the OFF state stays covered by `movecost`; PR 57) and the `benchsim` M17 finding, and the live assist groups (`take`, `answer`, `guards`) now run in CI (PR 62).
 - **Quality and housekeeping.** One review pass per pull request; the workspace and the GitHub branches cleaned (merged worktrees and branches removed, old outputs moved aside); this page refreshed.
 
 ## On the unit
 
-The unit runs rc7-test. Everything built since b7 (b7, b8, b9, b10 rc2 to rc6.8) is in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md); the old per-beta tables of this page, every row word for word, are kept in [history/ROADMAP_built_b7-b10.md](history/ROADMAP_built_b7-b10.md). What was only partly done, open, or left to the ear stays here:
+The unit runs rc8-test. Everything built since b7 (b7, b8, b9, b10 rc2 to rc6.8) is in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md); the old per-beta tables of this page, every row word for word, are kept in [history/ROADMAP_built_b7-b10.md](history/ROADMAP_built_b7-b10.md). What was only partly done, open, or left to the ear stays here:
 
 | What | State |
 |---|---|
