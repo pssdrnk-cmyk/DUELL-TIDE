@@ -10,7 +10,7 @@ jam11 is the 1.0.0-b10 work; it is not tagged yet, so `TIDE_VERSION` still reads
 
 | What | State |
 |---|---|
-| Reverb on the second core, to free CPU (K4) | Built on the branch `fix/b6-k4` (`e5e0815`) only: it is not in jam11 and not on the unit. It costs +1,712 B of flash by its own commit message, so it makes room worse; it needs its own FM-1 sweep with K4 on and off |
+| Reverb on the second core, to free CPU (K4) | Built on the branch `fix/b6-k4` (head `98c8a38`, which holds `e5e0815` plus a console compile fix) only: it is not in jam11 and not on the unit. It costs +1,712 B of flash by its own commit message, so it makes room worse; it needs its own FM-1 sweep with K4 on and off |
 
 ## B11: room on the unit, and test and tool debt (owner, 12 November)
 
