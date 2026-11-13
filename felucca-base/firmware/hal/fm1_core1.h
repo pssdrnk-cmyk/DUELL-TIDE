@@ -44,6 +44,21 @@
 #define FM1_STR(x) FM1_STR_(x)
 
 FM1_INLINE void fm1_c1_sync(void) { __asm__ volatile("csync" ::: "memory"); }
+/* THE WAITING LOOP'S PAUSE (b11, ported from DUELL 1.2 by OSCILL/R, GPL-3.0: hal/fm1_core1.h fm1_c1_pause). 1.2's bench, the WHEEL crash (2026-11-06): core 1 polling the job word
+ * in a loop of a few instructions (tens of millions of loads a second) made core 0 lose register writes: 4 crashes in 5 runs of WHEEL-LONG with core 1 idling, 0 in 10 with core 1 held
+ * (1.2's bench builds BENCHVI / BENCHVJ). TIDE ran the same bare loop. So between two looks at the job word core 1 counts FM1_C1_PAUSE_N passes in a register: no load, no store.
+ * A job is seen that much later (about 3 cycles a pass: ~400 cycles, a few us at most, against a half's 2,902 us) */
+#ifndef FM1_C1_PAUSE_N
+#define FM1_C1_PAUSE_N 128
+#endif
+static inline __attribute__((always_inline)) void fm1_c1_pause(void)
+{
+    uint32_t n = FM1_C1_PAUSE_N;
+    while (n) {
+        __asm__ volatile("" : "+r"(n));                 /* (the count stays in a register: the compiler may not fold the loop away) */
+        n--;
+    }
+}
 
 /* ---- the hal of src/twocore.h, device side */
 /* TC_LD / TC_ST call these two helpers: the volatile access stays in hal/, so src/twocore*.c/.h pass the build's
@@ -85,8 +100,10 @@ void __attribute__((section(".c1_text"), noreturn, used, noinline)) fm1_c1_main(
     tc_c1_init(&c);
     TC_ST(&tc_mb.alive, 1u);
     fm1_c1_sync();
-    for (;;)
+    for (;;) {
         tc_c1_step(&c);
+        fm1_c1_pause();                                 /* b11 (from DUELL 1.2): no load or store for FM1_C1_PAUSE_N passes between two looks (above) */
+    }
 }
 /* core 1's entry (as the SDK's startup and Felucca's fm1_cpu1.S): interrupts off, no interrupt configuration, its stacks, then rti into its loop */
 __asm__(".section .c1_text,\"ax\",@progbits\n"
