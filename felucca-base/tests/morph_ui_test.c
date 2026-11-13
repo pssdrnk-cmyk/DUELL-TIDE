@@ -177,7 +177,7 @@ static void turn_old(uint32_t role, int32_t s)
 /* ------------------------------------------------------------------ ROUND --- */
 static void t_round(void)
 {
-    static const char *const T[] = {"MORPH", "TIDE SETTINGS", "AUTO TIDE"};   /* (TIDE: TIDE SETTINGS in MORPH SET's place, then AUTO TIDE; MODE is rows of TIDE SETTINGS, owner 2026-11-08) */
+    static const char *const T[] = {"MORPH", "AUTO TIDE", "TIDE SETTINGS"};   /* (TIDE, b12 owner: AUTO TIDE in MORPH SET's place, then TIDE SETTINGS; MODE is rows of TIDE SETTINGS, owner 2026-11-08) */
     const uint32_t NT = sizeof T / sizeof T[0];
     uint32_t k, ok = 1;
     fresh();
@@ -189,7 +189,7 @@ static void t_round(void)
     }
     press(B_HOME);
     frames(64);
-    expect("HOME tapped: MORPH, MORPH SET (TIDE: TIDE SETTINGS, AUTO TIDE), MODE (plain DUELL), then MORPH again (0.2.14: no OVERVIEW; 0.2.25: no MIXER)", ok && str_eq(PAGES[ui.page].title, "MORPH"));
+    expect("HOME tapped: MORPH, MORPH SET (TIDE: AUTO TIDE, TIDE SETTINGS), MODE (plain DUELL), then MORPH again (0.2.14: no OVERVIEW; 0.2.25: no MIXER)", ok && str_eq(PAGES[ui.page].title, "MORPH"));
     press(B_HOME);
     frames(64);
     expect("  .. and MORPH SET; from another page HOME opens MORPH", str_eq(PAGES[ui.page].title, T[1]));

@@ -664,6 +664,26 @@ static int tide_foot_two(void)
  * moves); MODE, TIME, WAIT the cards. TIDE SETTINGS: knob 1 the row picked (SETTING), no cards */
 static void tide_status(char *l);
 static int tide_arc_text(char *l);
+/* b12 (design overhaul part 5: AUTO TIDE is TIDE's home): the answer on knob 1's line, unless a take records (its TAKE  BAR n/m stays). Waiting for the bar line:
+ * ANSWER NEXT BAR in sand (armed); live, while no glide runs (glide: 1, its trip keeps the line): the answer's words in the answering part's colour, until a load or ANSWER OFF */
+static void tide_answer_line(char *st, int glide)
+{
+#if TIDE_HOME_ANSWER
+    char b[48];
+    uint32_t pr;
+    if (!tk_m.ans || take_line(&pr) == 2u || (glide && !tk_pend))
+        return;
+    b[0] = 0;
+    if (tk_pend)
+        str_cpy(b, "ANSWER NEXT BAR", sizeof b);
+    else
+        tk_words(b);
+    str_cpy(st, b, 40);
+    k1_after_col = tk_pend ? ux.gth : T_PTHEME(tk_m.ans - 1u);
+#else
+    (void)st, (void)glide;
+#endif
+}
 static void tide_columns(void)
 {
     static char st[40];
@@ -695,6 +715,7 @@ static void tide_columns(void)
         k1_after_next = st;
         k1_after_col = T_ACCENT;
         k1_after_r = 1;
+        tide_answer_line(st, 1);
         draw_column(0, "GLIDE", val, "", g ? T_ACCENT : VAL(0u), -1, ICON_NONE);
         goto cards;
     }
@@ -706,6 +727,7 @@ static void tide_columns(void)
         k1_after_next = st;                              /* (PART 1, PART 2, BOTH PARTS at the line's right end) */
         k1_after_col = T_MID;
         k1_after_r = 1;
+        tide_answer_line(st, 0);
         draw_column(0, "GLIDE", val, "", g ? T_ACCENT : VAL(0u), -1, ICON_NONE);
     }
 cards:
@@ -1061,6 +1083,14 @@ static void tide_arc_line(void)
     cv_rect(AC_X0 + 120, AC_Y, 1, 2, T_BG);
     cv_rect(AC_X0 + 164, AC_Y, 1, 2, T_BG);
 }
+/* b12 (AUTO TIDE as TIDE's home): which bar of the loop plays, beside the lane's steps (they show one bank of 16): a cell a bank (2 .. 4), bottom up on the steps'
+ * baseline, filled in the part's colour up to the bank playing and `line` ahead, the water-line fill's "how far along"; nothing on a loop of one bank */
+static __attribute__((unused)) void tide_loop_bar(const track_t *t, int32_t y, uint16_t c)
+{
+    uint32_t len = song.playing ? tide_play_len(t) : sqm_len(t), n = (len + 15u) / 16u, at = song.playing ? tide_play_idx(t) / 16u : 0xFFu, i;
+    for (i = 0; n >= 2u && i < n && i < 4u; i++)
+        cv_rect(231, y - 3 - 4 * (int32_t)i, 8, 3, i <= at ? c : T_LINE);
+}
 #define TL_TY(k) (69 + 38 * (int32_t)(k))                 /* b11: part k's lane: its tracks' row */
 #define TL_SY(k) (TL_TY(k) + 18)                         /* .. its steps' baseline (their playhead mark 2 .. 3 rows under it) */
 #define TL_LY(k) (TL_TY(k) + 22)                         /* .. its live line's rows TL_LY .. + 8 (tide_dance) */
@@ -1077,6 +1107,9 @@ static void graph_tide(void)
             tide_track(TL_TY(k), JB_X0, JB_X0 + JB_W, GT_SOUND, k);
             tide_track(TL_TY(k), JB_X0 + JB_DX, JB_X0 + JB_DX + JB_W, GT_SEQ, k);
             tide_steps(&trk[k], TL_SY(k), 9, tide_pc(k));
+#if TIDE_HOME_BARS
+            tide_loop_bar(&trk[k], TL_SY(k), tide_pc(k));
+#endif
             wl_front = 1;                                /* (the live line in the band too, as tide_dance draws it: the page's redraw never sends its rows empty first, uigaps) */
             wl_stack(k, TL_LY(k) - 1, TL_LY(k) + 9);
             wl_front = 0;
@@ -1221,7 +1254,8 @@ static uint32_t tide_sig(void)
            ((morph_fader_of(1u - pi) | seqm_fader_of(1u - pi) << 7 | (song.playing ? trk[1u - pi].seq_idx : 0xFFu) << 14) * 0x85EBCA77u ^
             sqm_key(&sqm[(1u - pi) % NSHOWN]) * 0xC2B2AE3Du ^ tide_steps_sig(&trk[1u - pi]) * 0x165667B1u ^ 0x27D4EB2Fu) ^
            tide_steps_sig(t) * 0xD3A2646Cu ^ (uint32_t)morph.seed * 0x1B873593u ^   /* (the seed: a ROLL sets it at once and CALL AND ANSWER's listening bars follow; the ends' key comes later) */
-           ((uint32_t)(sqm_bar & 7u) | (uint32_t)tarc.next << 3 | (uint32_t)tarc.run << 6 | (uint32_t)sqm_auto << 7 | (uint32_t)tarc.cnt << 9) * 0x61C88647u;   /* (b10 item 4: the ARC chart's mark and its fall) */
+           ((uint32_t)(sqm_bar & 7u) | (uint32_t)tarc.next << 3 | (uint32_t)tarc.run << 6 | (uint32_t)sqm_auto << 7 | (uint32_t)tarc.cnt << 9) * 0x61C88647u ^   /* (b10 item 4: the ARC chart's mark and its fall) */
+           ((uint32_t)tk_m.ans | (uint32_t)tk_pend << 2 | (uint32_t)tk_m.mode << 4 | (uint32_t)tk_m.key << 8 | (uint32_t)tk_m.flags << 12) * 0x7FEB352Du;   /* (b12: the answer on knob 1's line) */
 }
 
 /* ---------------------------------------------------------------- kept over a power cycle --- */
