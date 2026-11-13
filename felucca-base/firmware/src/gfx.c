@@ -121,9 +121,13 @@ static void gut_mark(uint32_t x, uint32_t y, uint32_t w, uint32_t h)
     for (; m && y < y1; y++)
         gut_cov[y - GUT_Y0] |= (uint16_t)m;
 }
-/* every transfer from here on marks the gutters (the macros expand where lcd_fill / lcd_blit are called; lcd.c, the emulator and the host tests define them; (name) calls the function) */
-#define lcd_fill(x, y, w, h, c) (gut_mark((x), (y), (w), (h)), (lcd_fill)((x), (y), (w), (h), (c)))
-#define lcd_blit(x, y, w, h, p) (gut_mark((x), (y), (w), (h)), (lcd_blit)((x), (y), (w), (h), (p)))
+/* every blit from here on marks the gutters (one wrapper, not a mark at every call: flash); the fills: ui_draw.c (some host tests take gfx.c without an lcd_fill) */
+static void gut_blit(uint32_t x, uint32_t y, uint32_t w, uint32_t h, const uint16_t *p)
+{
+    gut_mark(x, y, w, h);
+    lcd_blit(x, y, w, h, p);
+}
+#define lcd_blit gut_blit
 static void gut_arm(uint16_t bg)
 {
     uint32_t r;
